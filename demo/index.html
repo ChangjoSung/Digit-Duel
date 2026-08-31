@@ -37,6 +37,11 @@
   .pc.p0{background:#33406e;} .pc.p1{background:#6e3340;}
   .pc.hiddenId{background:#3a4152;}
   .pc .el{font-size:9px; font-weight:normal;}
+  .pc .nm{font-size:9px; max-width:40px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rosterCard{display:flex; flex-direction:column; gap:1px; padding:4px 6px; border:1px solid var(--line); border-radius:6px;
+    cursor:pointer; font-size:10px; background:var(--panel2); color:var(--dim);}
+  .rosterCard b{font-size:12px;}
+  .rosterCard.on{border-color:#fff; box-shadow:0 0 0 1px #fff5;}
   .el-fire{color:var(--fire);} .el-water{color:var(--water);} .el-grass{color:var(--grass);} .el-lightning{color:var(--lightning);}
   .pc.immob{border-color:var(--danger);}
   .badge{display:inline-block; padding:1px 6px; border-radius:8px; background:var(--panel2); border:1px solid var(--line); font-size:12px; margin:1px;}
@@ -121,6 +126,22 @@ const TYPE_KO={minion:"하수인",bomb:"폭탄",ally:"동료",trap:"함정",king
 const SKILL_KO={fire:"화염탄",water:"물대포",grass:"넝쿨 흡수",lightning:"낙뢰"};
 const COMMON={evade:{ko:"회피 태세",desc:"다음 피격 30% 감소"}, heal:{ko:"응급 처치",desc:"HP 15% 회복"}};
 const ITEMS={potion:{ko:"회복약",desc:"HP 20% 회복"}, cool:{ko:"쿨링수",desc:"스킬 쿨타임 초기화"}, cure:{ko:"해독제",desc:"상태이상 해제"}};
+/* 하수인 로스터 12종 — 아키타입 3종(표준·공격·방어) × 속성 4종 (GDD-13 4.2 개정) */
+const ARCH_KO={std:"표준",atk:"공격",def:"방어"};
+const ROSTER=[
+  {id:"M-F1",name:"새끼 화룡",element:"fire",arch:"std",hp:100,atk:22,skill:35,cd:2},
+  {id:"M-F2",name:"화염 투사",element:"fire",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-F3",name:"용암 거북",element:"fire",arch:"def",hp:120,atk:18,skill:30,cd:2},
+  {id:"M-W1",name:"물방울 요정",element:"water",arch:"std",hp:100,atk:22,skill:35,cd:2},
+  {id:"M-W2",name:"심해 사냥꾼",element:"water",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-W3",name:"산호 수호자",element:"water",arch:"def",hp:120,atk:18,skill:30,cd:2},
+  {id:"M-G1",name:"새싹 파수꾼",element:"grass",arch:"std",hp:100,atk:22,skill:35,cd:2},
+  {id:"M-G2",name:"가시 덩굴",element:"grass",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-G3",name:"고목 수호자",element:"grass",arch:"def",hp:120,atk:18,skill:30,cd:2},
+  {id:"M-L1",name:"스파크",element:"lightning",arch:"std",hp:100,atk:22,skill:35,cd:2},
+  {id:"M-L2",name:"뇌격수",element:"lightning",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-L3",name:"피뢰 골렘",element:"lightning",arch:"def",hp:120,atk:18,skill:30,cd:2}
+];
 
 /* ===== 상태 ===== */
 let S=null;
@@ -134,6 +155,7 @@ function newGame(mode){
     mode, phase:"setup", setupPlayer:0, current:0, turnCount:0,
     pieces:[], events:[], inv:[[],[]], balls:[BAL.ballStart,BAL.ballStart],
     commonSkillChoice:["evade","evade"],
+    roster:[[],[]],
     traces:[new Set(), new Set()],
     selected:null, mainUsed:false, battlesUsed:0,
     movedPiece:null, contactSet:[], firstBattleWonByMover:false,
@@ -145,7 +167,8 @@ function newGame(mode){
     log:[]
   };
   for(const p of [0,1]){
-    for(let i=0;i<6;i++) S.pieces.push(mkPiece(p,"minion",ELEMS[i%4]));
+    for(let i=0;i<6;i++) S.pieces.push(mkPiece(p,"minion")); // 속성·스탯은 로스터 선택 시 주입
+
     for(let i=0;i<3;i++) S.pieces.push(mkPiece(p,"bomb"));
     for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"ally"));
     for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"trap"));
@@ -158,10 +181,22 @@ function mkPiece(owner,type,element){
   const b = BAL[type]||{};
   return {id:PID++, owner, type, element:element||null,
     hp:b.hp||1, maxHp:b.hp||1, atk:b.atk||0, skillAtk:b.skill||0,
+    rosterId:null, name:null, cdMax:b.cd||0,
     cd:0, cdCommon:0, common:null,
     r:0,c:0, placed:false, revealed:false, alive:true, movedEver:false,
     immobile:0, cap:null,
     burn:0, burnBy:null, weaken:0, shield:0, absorbed:0, shock:false, evadeCharge:false};
+}
+/* 선택된 로스터 6종의 스탯을 플레이어 p의 하수인 6기에 주입 (선택 변경 시 재주입) */
+function applyRoster(p){
+  const ms=S.pieces.filter(x=>x.owner===p&&x.type==="minion");
+  ms.forEach((m,i)=>{
+    const rd=S.roster[p][i]?ROSTER.find(r=>r.id===S.roster[p][i]):null;
+    if(rd){m.rosterId=rd.id; m.name=rd.name; m.element=rd.element;
+      m.hp=rd.hp; m.maxHp=rd.hp; m.atk=rd.atk; m.skillAtk=rd.skill; m.cdMax=rd.cd;}
+    else {m.rosterId=null; m.name=null; m.element=null;
+      m.hp=BAL.minion.hp; m.maxHp=BAL.minion.hp; m.atk=BAL.minion.atk; m.skillAtk=BAL.minion.skill; m.cdMax=BAL.minion.cd;}
+  });
 }
 function genEvents(){
   S.events=[];
@@ -192,7 +227,7 @@ function visibleTo(viewer,e){
   return alivePieces().some(m=>m.owner===viewer&&adj(m,e));
 }
 function idLabel(viewer,p){
-  if(p.owner===viewer||p.revealed||viewer===2) return TYPE_KO[p.type]+(p.element?"·"+ELEM_KO[p.element]:"");
+  if(p.owner===viewer||p.revealed||viewer===2) return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.element?"·"+ELEM_KO[p.element]:"");
   return "?";
 }
 function addLog(msg,cls){S.log.push({msg,cls:cls||""}); renderLog();}
@@ -232,7 +267,7 @@ function renderBoard(){
         const known = viewer===2||p.owner===viewer||p.revealed;
         chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"");
         chip.innerHTML = known
-          ? `<span>${TYPE_KO[p.type]}</span>`+(p.element?`<span class="el el-${p.element}">${ELEM_KO[p.element]}</span>`:"")
+          ? `<span${p.type==="minion"&&p.name?' class="nm"':""}>${p.type==="minion"&&p.name?p.name:TYPE_KO[p.type]}</span>`+(p.element?`<span class="el el-${p.element}">${ELEM_KO[p.element]}</span>`:"")
             +((p.owner===viewer||viewer===2||p.revealed)&&(p.type==="minion"||p.type==="ally"||p.type==="king")?`<span class="el">${p.hp}</span>`:"")
           : "?";
         cell.appendChild(chip);
@@ -316,14 +351,25 @@ function renderSide(){
 }
 function renderSetup(sp){
   const p=S.setupPlayer;
+  const sel=S.roster[p], rosterDone=sel.length===6;
   const unplaced=S.pieces.filter(x=>x.owner===p&&!x.placed);
-  let h=`<h2>${pname(p)} 비공개 배치 (${14-unplaced.length}/14)</h2>
-  <small>말을 클릭 → 자기 진영 칸 클릭. 배치된 말 클릭 시 회수. 하수인의 [속성]을 눌러 변경.</small>
+  let h=`<h2>${pname(p)} 로스터 선택 (${sel.length}/6)</h2>
+  <small>12종 중 6종을 중복 없이 선택 (클릭 토글). 속성은 종에 고정.</small>`;
+  for(const el of ELEMS){
+    h+=`<div class="row">`;
+    for(const rd of ROSTER.filter(r=>r.element===el))
+      h+=`<div class="rosterCard ${sel.includes(rd.id)?"on":""}" onclick="toggleRoster('${rd.id}')">
+        <b class="el-${rd.element}">${rd.name}</b>
+        <small>${ELEM_KO[rd.element]}·${ARCH_KO[rd.arch]} · HP${rd.hp} 공${rd.atk} 스킬${rd.skill} 쿨${rd.cd}</small></div>`;
+    h+=`</div>`;
+  }
+  h+=`<h2>비공개 배치 (${14-unplaced.length}/14)</h2>
+  <small>말을 클릭 → 자기 진영 칸 클릭. 배치된 말 클릭 시 회수.${rosterDone?"":" <b>하수인은 로스터 6종 선택 후 활성됩니다.</b>"}</small>
   <div class="tray">`;
   for(const x of unplaced){
+    if(x.type==="minion"&&!rosterDone) continue;
     h+=`<div class="trayItem ${S.selected&&S.selected.id===x.id?"sel":""}" onclick="selTray(${x.id})">
-      <div class="pc p${p}"><span>${TYPE_KO[x.type]}</span>${x.element?`<span class="el el-${x.element}">${ELEM_KO[x.element]}</span>`:""}</div>
-      ${x.type==="minion"?`<button style="font-size:10px;padding:1px 4px" onclick="event.stopPropagation();cycleElem(${x.id})">속성</button>`:""}
+      <div class="pc p${p}"><span${x.name?' class="nm"':""}>${x.type==="minion"&&x.name?x.name:TYPE_KO[x.type]}</span>${x.element?`<span class="el el-${x.element}">${ELEM_KO[x.element]}</span>`:""}</div>
     </div>`;
   }
   h+=`</div><div class="row"><b>공용 스킬(하수인 전체):</b>`;
@@ -332,7 +378,7 @@ function renderSetup(sp){
   h+=`</div><div class="row">
     <button onclick="autoPlace()">무작위 배치</button>
     <button onclick="clearPlace()">전체 회수</button>
-    <button class="primary" onclick="setupDone()" ${unplaced.length?"disabled":""}>배치 완료</button></div>`;
+    <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>배치 완료</button></div>`;
   sp.innerHTML=h;
 }
 function renderLog(){
@@ -372,9 +418,22 @@ function beginPlay(){
 
 /* ===== 배치 ===== */
 window.selTray=id=>{S.selected={tray:true,id}; render();};
-window.cycleElem=id=>{const x=S.pieces.find(p=>p.id===id); x.element=ELEMS[(ELEMS.indexOf(x.element)+1)%4]; render();};
+window.toggleRoster=rid=>{ // 로스터 클릭 토글 — 중복 불가·최대 6종, 변경 시 하수인 회수 후 스탯 재주입
+  const p=S.setupPlayer, sel=S.roster[p], i=sel.indexOf(rid);
+  if(i>=0) sel.splice(i,1);
+  else if(sel.length<6) sel.push(rid);
+  else return;
+  for(const x of S.pieces.filter(x=>x.owner===p&&x.type==="minion")) x.placed=false;
+  applyRoster(p); S.selected=null; render();
+};
+function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중복 없음)
+  const rest=shuffle(ROSTER.filter(r=>!S.roster[p].includes(r.id)).map(r=>r.id));
+  while(S.roster[p].length<6) S.roster[p].push(rest.pop());
+  applyRoster(p);
+}
 window.autoPlace=()=>{
   const p=S.setupPlayer, rows=zoneOf(p);
+  if(S.roster[p].length<6) fillRosterRandom(p);
   const cells=[]; for(const r of rows) for(let c=1;c<=COLS;c++) cells.push([r,c]);
   shuffle(cells);
   for(const x of S.pieces.filter(x=>x.owner===p&&!x.placed)){
@@ -385,6 +444,8 @@ window.autoPlace=()=>{
 window.clearPlace=()=>{for(const x of S.pieces.filter(x=>x.owner===S.setupPlayer)){x.placed=false;} S.selected=null; render();};
 window.setupDone=()=>{
   const p=S.setupPlayer;
+  if(S.roster[p].length!==6||S.pieces.some(x=>x.owner===p&&!x.placed)){
+    showToast("로스터 6종 선택과 14개 배치를 모두 완료하세요."); return;}
   finalizeSetup(p);
   S.selected=null;
   if(S.mode==="pvp"){
@@ -491,7 +552,7 @@ function tryCapture(p,mode){
   const ok= mode==="safe" || (mode==="risky"&&roll<0.5) || (mode==="attack"&&roll<0.7);
   if(ok){
     const el=shuffle(ELEMS.slice())[0], cb=BAL.captured;
-    p.cap={element:el,hp:cb.hp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,common:S.commonSkillChoice[p.owner],cdCommon:0};
+    p.cap={element:el,hp:cb.hp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd,common:S.commonSkillChoice[p.owner],cdCommon:0};
     S.metrics.captures++;
     return {ok:true,el};
   }
@@ -593,7 +654,7 @@ function battleModal(){
   const ownerP=side==="A"?B.attP.owner:B.defP.owner;
   const aiActor=isAI(ownerP);
   const fmt=(f,piece,rec,oppMax,sid)=>{
-    const nm=(f===piece)?TYPE_KO[piece.type]+(piece.element?"·"+ELEM_KO[piece.element]:""):"포획 하수인·"+ELEM_KO[f.element];
+    const nm=(f===piece)?(piece.type==="minion"&&piece.name?piece.name:TYPE_KO[piece.type])+(piece.element?"·"+ELEM_KO[piece.element]:""):"포획 하수인·"+ELEM_KO[f.element];
     return `<div class="fighter" id="fb-${sid}"><div><b>${nm}</b> <small>(${pname(piece.owner)})</small>
       <div class="hpbar"><div style="width:${Math.max(0,f.hp/f.maxHp*100)}%"></div></div>
       <div class="dmgbar"><div style="width:${Math.min(100,rec/oppMax*100)}%"></div></div>
@@ -632,7 +693,7 @@ function battleModal(){
       const isSkill=kind==="skill";
       let dmg=isSkill?f.skillAtk:f.atk;
       if(BAL.dmgVar) dmg=Math.round(dmg*(1-BAL.dmgVar+Math.random()*2*BAL.dmgVar)); // D8 피해 분산 ±20% (기대값 유지)
-      if(isSkill) f.cd=BAL.minion.cd;
+      if(isSkill) f.cd=f.cdMax||BAL.minion.cd;
       if(f.weaken>0){dmg=Math.round(dmg*(1-BAL.weakenPct)); f.weaken--;}
       if(f.element&&opp.element){
         if(BEATS[f.element]===opp.element) dmg=Math.round(dmg*BAL.advMult);
@@ -923,8 +984,23 @@ function aiCapture(p){
   if(!mode) return; // 포기
   tryCapture(p,mode);
 }
+/* AI 로스터 선택: 4속성 각 1종 이상 + 나머지 2종 무작위 (중복 없음, 아키타입 혼합 선호) */
+function aiPickRoster(p){
+  if(S.roster[p].length===6) return;
+  S.roster[p]=[];
+  const archs=shuffle(["std","atk","def"]);
+  shuffle(ELEMS.slice()).forEach((el,i)=>{
+    const pool=ROSTER.filter(r=>r.element===el);
+    S.roster[p].push((pool.find(r=>r.arch===archs[i%3])||pool[0]).id);
+  });
+  const rest=shuffle(ROSTER.filter(r=>!S.roster[p].includes(r.id)).map(r=>r.id));
+  S.roster[p].push(rest[0],rest[1]);
+  shuffle(S.roster[p]);
+  applyRoster(p);
+}
 /* AI 휴리스틱 배치 */
 function aiAutoPlace(p){
+  aiPickRoster(p);
   const rows=zoneOf(p);
   const back = p===1?rows[0]:rows[2];     // 후열
   const mid  = rows[1];
