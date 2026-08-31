@@ -72,6 +72,19 @@
   .dmgbar>div{height:100%; background:var(--danger);}
   .status{font-size:11px; color:var(--dim);}
   #battleLog{height:120px; overflow-y:auto; font-size:12px; background:#0006; border-radius:6px; padding:6px; margin:6px 0; line-height:1.5;}
+  /* 전투 스테이지 (포켓몬식 개편 — #6) */
+  #bstage{position:relative; height:180px; border-radius:8px; margin:6px 0; overflow:hidden;
+    background:linear-gradient(160deg,#1a2030,#242b3d); transition:box-shadow .3s;}
+  .btok{position:absolute; width:88px; height:88px; border-radius:50%; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; font-size:26px; border:3px solid #0006; box-shadow:0 4px 14px #0008; transition:opacity .6s;}
+  .btok small{font-size:12px; color:#fffd; font-weight:bold;}
+  .btok.tok-me{bottom:14px; left:30px;} .btok.tok-op{top:14px; right:30px;}
+  .btok.shake{animation:bshake .5s;}
+  @keyframes bshake{0%,100%{margin-left:0}20%{margin-left:-8px}40%{margin-left:7px}60%{margin-left:-5px}80%{margin-left:3px}}
+  .btok.ko{opacity:0;}
+  .btok .dmgfloat{left:50%; top:-18px; right:auto; margin-left:-18px;}
+  #msgBox{min-height:46px; background:#000a; border:1px solid var(--line); border-radius:6px; padding:8px 10px;
+    font-size:14px; line-height:1.6; margin:6px 0;}
   .tray{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
   .trayItem{display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px; border:1px solid var(--line); border-radius:6px; cursor:pointer;}
   .trayItem.sel{border-color:#fff;}
@@ -114,6 +127,7 @@ const BAL={
   commonHealPct:0.15, commonCd:2,
   maxRounds:6, maxTurns:60, simMaxTurns:500, dmgVar:0.2,
   itemPerBattle:2, itemPerRound:1, invMax:5, ballStart:3,
+  burnStart:65, // 버닝 타임 진입 표시 턴 (GDD-13 4.11 개정)
   captureAtkFailPct:0.25,
   eventsPerForest:3,
   itemHealPct:0.20,
@@ -123,6 +137,7 @@ const ELEMS=["fire","water","grass","lightning"];
 const ELEM_KO={fire:"불",water:"물",grass:"풀",lightning:"번개"};
 const BEATS={fire:"grass",grass:"lightning",lightning:"water",water:"fire"}; // D1 제안: 불→풀→번개→물→불
 const TYPE_KO={minion:"하수인",bomb:"폭탄",ally:"동료",trap:"함정",king:"왕",captured:"포획"};
+const WINTYPE_KO={king:"왕 제거",edge:"끝줄 승리",resign:"기권",draw:"무승부"};
 const SKILL_KO={fire:"화염탄",water:"물대포",grass:"넝쿨 흡수",lightning:"낙뢰"};
 const COMMON={evade:{ko:"회피 태세",desc:"다음 피격 30% 감소"}, heal:{ko:"응급 처치",desc:"HP 15% 회복"}};
 const ITEMS={potion:{ko:"회복약",desc:"HP 20% 회복"}, cool:{ko:"쿨링수",desc:"스킬 쿨타임 초기화"}, cure:{ko:"해독제",desc:"상태이상 해제"}};
@@ -163,7 +178,8 @@ function newGame(mode){
     battle:null, winner:null, aiPending:false, aiBattlePending:false, aiVanguard:[null,null],
     metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,
              bombHitsMinion:0,bombClearedByVip:0,kingForestTurns:0,battleRefusals:0,
-             attackerWins:0,defenderWins:0,kingStandoff:0,endTurn:0},
+             attackerWins:0,defenderWins:0,kingStandoff:0,endTurn:0,
+             winType:null,btReached:false,btEnterTurn:0},
     log:[]
   };
   for(const p of [0,1]){
@@ -183,7 +199,7 @@ function mkPiece(owner,type,element){
     hp:b.hp||1, maxHp:b.hp||1, atk:b.atk||0, skillAtk:b.skill||0,
     rosterId:null, name:null, cdMax:b.cd||0,
     cd:0, cdCommon:0, common:null,
-    r:0,c:0, placed:false, revealed:false, alive:true, movedEver:false,
+    r:0,c:0, placed:false, revealed:false, alive:true, movedEver:false, movedPreBT:false,
     immobile:0, cap:null,
     burn:0, burnBy:null, weaken:0, shield:0, absorbed:0, shock:false, evadeCharge:false};
 }
@@ -219,6 +235,10 @@ const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
 const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
 const zoneOf=p=> p===0 ? [11,12,13] : [1,2,3];
 const adj=(a,b)=>Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1;
+/* 버닝 타임 (GDD-13 4.11): 표시 턴 65부터 이동 강화·폭탄/함정 기동 */
+const isBurning=()=>S.turnCount+1>=BAL.burnStart;
+/* 원정 구역 = 자기 기준 상대 측 숲+상대 진영 (BT 2칸 이동 불가 구역) */
+const expedZone=(owner,r)=> owner===0 ? r<=5 : r>=9;
 function adjEnemies(p){return alivePieces().filter(e=>e.owner!==p.owner&&adj(p,e));}
 function visibleTo(viewer,e){
   if(e.owner===viewer) return true;
@@ -248,7 +268,7 @@ const $=id=>document.getElementById(id);
 function render(){
   $("phaseLabel").textContent = S.phase==="menu" ? ""
     : S.phase==="setup" ? `— 배치: ${pname(S.setupPlayer)}`
-    : S.phase==="play" ? `— ${pname(S.current)} 턴 ${S.turnCount+1}` : S.phase==="over"?"— 종료":"";
+    : S.phase==="play" ? `— ${pname(S.current)} 턴 ${S.turnCount+1}${isBurning()?" 🔥BT":""}` : S.phase==="over"?"— 종료":"";
   renderBoard(); renderSide(); renderTurnBar(); renderMetrics();
 }
 function renderBoard(){
@@ -288,9 +308,16 @@ function renderBoard(){
 }
 function canMoveTo(p,r,c){
   if(S.phase!=="play"||S.mainUsed||p.owner!==S.current) return false;
-  if(p.type==="bomb"||p.type==="trap") return false;
+  if((p.type==="bomb"||p.type==="trap")&&!isBurning()) return false; // BT 중에만 1칸 기동
   if(p.immobile>0) return false;
-  if(Math.abs(p.r-r)+Math.abs(p.c-c)!==1) return false;
+  const d=Math.abs(p.r-r)+Math.abs(p.c-c);
+  if(d!==1){
+    // BT 이동 강화: 직선 2칸 (폭탄·함정 제외, 출발·경유·도착이 원정 구역이면 불가)
+    if(d!==2||(p.r!==r&&p.c!==c)||!isBurning()||p.type==="bomb"||p.type==="trap") return false;
+    if(expedZone(p.owner,p.r)||expedZone(p.owner,(p.r+r)/2)||expedZone(p.owner,r)) return false;
+    const m=at((p.r+r)/2,(p.c+c)/2);
+    if(m&&visibleTo(p.owner,m)) return false; // 경유 칸의 보이는 말 차단 (숨은 적 충돌은 doMove가 해석)
+  }
   const o=at(r,c);
   if(o&&o.owner===p.owner) return false;
   if(o&&visibleTo(p.owner,o)) return false;
@@ -332,6 +359,7 @@ function renderSide(){
   if(S.phase==="setup"){renderSetup(sp);return;}
   if(S.phase==="over"){
     sp.innerHTML=`<h2>경기 종료</h2><p style="font-size:18px;margin:8px 0">${S.winner===null?"무승부 (시뮬레이션 턴 상한 도달)":pname(S.winner)+" 승리! 🏆"}</p>
+    ${S.metrics.winType?`<p style="margin:4px 0;color:var(--dim)">승리 유형: ${WINTYPE_KO[S.metrics.winType]}</p>`:""}
     <button class="primary" onclick="location.reload()">처음으로</button>`;
     return;
   }
@@ -389,7 +417,7 @@ function renderLog(){
 function renderMetrics(){
   if(S.phase==="menu"){$("metrics").textContent="모드를 선택하면 지표 수집을 시작합니다.";return;}
   const m=S.metrics;
-  $("metrics").innerHTML=`[${S.mode.toUpperCase()}] 턴 ${S.turnCount} · 전투 ${m.battles} (판정 ${m.judged}·동률 ${m.ties}) · 공격측 승 ${m.attackerWins}/방어측 승 ${m.defenderWins} · 밀어내기 ${m.pushes} · 탐색 ${m.searches} · 포획 ${m.captures}(실패 ${m.captureFails}) · 폭탄: 하수인 소모 ${m.bombHitsMinion}/VIP 제거 ${m.bombClearedByVip} · 왕 숲 체류 ${m.kingForestTurns}턴 · 전투 회피 ${m.battleRefusals}${S.phase==="over"?` · 종료 턴 ${m.endTurn}`:""}`;
+  $("metrics").innerHTML=`[${S.mode.toUpperCase()}] 턴 ${S.turnCount} · 전투 ${m.battles} (판정 ${m.judged}·동률 ${m.ties}) · 공격측 승 ${m.attackerWins}/방어측 승 ${m.defenderWins} · 밀어내기 ${m.pushes} · 탐색 ${m.searches} · 포획 ${m.captures}(실패 ${m.captureFails}) · 폭탄: 하수인 소모 ${m.bombHitsMinion}/VIP 제거 ${m.bombClearedByVip} · 왕 숲 체류 ${m.kingForestTurns}턴 · 전투 회피 ${m.battleRefusals} · ${m.btReached?`🔥BT 진입 턴 ${m.btEnterTurn}`:"BT 미도달"}${S.phase==="over"?` · 종료 턴 ${m.endTurn}${m.winType?` · 승리 유형 ${WINTYPE_KO[m.winType]}`:""}`:""}`;
 }
 
 /* ===== 모드 시작 ===== */
@@ -464,13 +492,18 @@ function startTurn(){
   S.selected=null; S.tempReveal.clear();
   const tmsg=`— ${pname(S.current)} 턴 ${S.turnCount+1} —`;
   addLog(tmsg,"sys"); showToast(tmsg,"sys");
+  if(isBurning()&&!S.metrics.btReached){ // BT 진입 1회 고지
+    S.metrics.btReached=true; S.metrics.btEnterTurn=S.turnCount+1;
+    const bt="🔥 버닝 타임! 이동 강화·폭탄/함정 기동 개시";
+    addLog(bt,"imp"); showToast(bt);
+  }
 }
 function endTurn(){
   for(const x of alivePieces()) if(x.owner===S.current&&x.immobile>0) x.immobile--;
   for(const k of alivePieces()) if(k.type==="king"&&inForest(k)) S.metrics.kingForestTurns++;
   if(S.battlesUsed===0 && alivePieces().some(x=>x.owner===S.current&&adjEnemies(x).length&&x.type!=="bomb"&&x.type!=="trap")) S.metrics.battleRefusals++;
   S.turnCount++;
-  if(S.mode==="sim"&&S.turnCount>=BAL.simMaxTurns){S.phase="over";S.winner=null;S.metrics.endTurn=S.turnCount;
+  if(S.mode==="sim"&&S.turnCount>=BAL.simMaxTurns){S.phase="over";S.winner=null;S.metrics.endTurn=S.turnCount;S.metrics.winType="draw";
     const dmsg=`${BAL.simMaxTurns}턴 도달 — 무승부`; addLog(dmsg,"imp"); showToast(dmsg); render(); return;}
   S.current=1-S.current; startTurn();
   if(S.mode==="pvp") handoff(pname(S.current)+" 턴 시작", render);
@@ -481,7 +514,7 @@ function confirmResign(){
   const loser=S.current;
   modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,
     [["기권 확정",()=>{close();
-      S.winner=1-loser; S.phase="over"; S.metrics.endTurn=S.turnCount;
+      S.winner=1-loser; S.phase="over"; S.metrics.endTurn=S.turnCount; S.metrics.winType="resign";
       const msg=`🏳️ ${pname(loser)} 기권 — ${pname(S.winner)} 승리!`;
       addLog(msg,"imp"); showToast(msg); render();}],
      ["취소",close]]);
@@ -504,8 +537,14 @@ function onCell(r,c){
   if(canMoveTo(s,r,c)) doMove(s,r,c);
 }
 function doMove(p,r,c){
-  const hidden=at(r,c);
   S.mainUsed=true; p.movedEver=true;
+  if(!isBurning()) p.movedPreBT=true; // BT 이전 이동 이력 — AI 폭탄·함정 논리 추론은 이것만 사용
+  if(Math.abs(p.r-r)+Math.abs(p.c-c)===2){ // BT 2칸: 1칸째부터 단계 해석 → 충돌 규칙 자연 적용
+    const mr=(p.r+r)/2, mc=(p.c+c)/2;
+    if(at(mr,mc)){ r=mr; c=mc; } // 경유 칸의 숨은 말 → 그 칸 진입 시도로 전환
+    else { p.r=mr; p.c=mc; }
+  }
+  const hidden=at(r,c);
   if(hidden){ // 숲 충돌: 직전 칸 정지 + 양측 일시 공개
     S.tempReveal.add(hidden.id); S.tempReveal.add(p.id);
     S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
@@ -515,11 +554,24 @@ function doMove(p,r,c){
   }
   p.r=r; p.c=c;
   S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
+  if(checkKingReach()) return;
   const ev=S.events.find(e=>e.r===r&&e.c===c&&!e.consumed);
   if(ev){S.traces[p.owner].add(ev.r+"_"+ev.c);
     if(!isAI(p.owner)){addLog("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)","imp");
       showToast("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)");}}
   render();
+}
+
+/* 왕 끝줄 도달 즉시 승리 (GDD-13 4.1 개정) — 왕 위치가 바뀌는 모든 지점 직후 호출 */
+function checkKingReach(){
+  if(S.phase!=="play") return false;
+  const k=alivePieces().find(p=>p.type==="king"&&((p.owner===0&&p.r===1)||(p.owner===1&&p.r===ROWS)));
+  if(!k) return false;
+  k.revealed=true;
+  S.phase="over"; S.winner=k.owner; S.metrics.endTurn=S.turnCount; S.metrics.winType="edge";
+  const msg=`👑 왕이 적진 최후방에 도달 — ${pname(k.owner)} 승리!`;
+  addLog(msg,"imp"); showToast(msg); render();
+  return true;
 }
 
 /* ===== 탐색·이벤트·포획 ===== */
@@ -629,6 +681,7 @@ function doPush(att,def){
   else {def.r=nr; def.c=nc; msg=`방어자가 1칸 밀려났습니다 (${nr}행 ${nc}열).`;}
   addLog(`🤜 양측 본체 출전 → 밀어내기! ${msg}`,"imp");
   showToast(`🤜 양측 본체 출전 → 밀어내기! ${msg}`);
+  if(checkKingReach()) return; // 밀어내기로 끝줄 진입도 승리 인정
   if(isAI(S.current)){ afterBattle(att,false); render(); return; }
   modal(`<h2>밀어내기 (Q2-b)</h2><p>양측 모두 본체로 출전해 전투 대신 위치 판정. ${msg}</p>`,[["확인",()=>{close();afterBattle(att,false);render();}]]);
 }
@@ -636,8 +689,10 @@ function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; S.metrics.battles++;
   attP.revealed=true; defP.revealed=true;
   S.battle={attP,defP,fa,fd,round:1,phase:0,
-    recA:0,recD:0, itemsA:0,itemsD:0, itemRoundA:false,itemRoundD:false, lastItemA:null,lastItemD:null, blog:[]};
+    recA:0,recD:0, itemsA:0,itemsD:0, itemRoundA:false,itemRoundD:false, lastItemA:null,lastItemD:null,
+    blog:[], msgQ:[], dispHpA:fa.hp, dispHpD:fd.hp};
   resetBattleTemps(fa); resetBattleTemps(fd);
+  bmsg(`⚔️ ${fighterName("A")} vs ${fighterName("D")} — 전투 개시!`);
   battleModal();
 }
 function resetBattleTemps(f){f.burn=0;f.burnBy=null;f.weaken=0;f.shield=0;f.absorbed=0;f.shock=false;f.evadeCharge=false;}
@@ -653,44 +708,63 @@ function battleModal(){
   const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner;
   const aiActor=isAI(ownerP);
-  const fmt=(f,piece,rec,oppMax,sid)=>{
-    const nm=(f===piece)?(piece.type==="minion"&&piece.name?piece.name:TYPE_KO[piece.type])+(piece.element?"·"+ELEM_KO[piece.element]:""):"포획 하수인·"+ELEM_KO[f.element];
-    return `<div class="fighter" id="fb-${sid}"><div><b>${nm}</b> <small>(${pname(piece.owner)})</small>
-      <div class="hpbar"><div style="width:${Math.max(0,f.hp/f.maxHp*100)}%"></div></div>
+  const busy=B.msgQ.length>0; // 메시지 재생 대기 중 커맨드 비활성
+  const mySide=S.mode==="pve"?(B.attP.owner===0?"A":"D"):"A", topSide=mySide==="A"?"D":"A";
+  const panel=sid=>{ // 전투원 정보 패널: 이름·아키타입/속성 배지·HP바·상태·가한 유효 피해 게이지
+    const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP, rec=sid==="A"?B.recA:B.recD, oppMax=(sid==="A"?B.fd:B.fa).maxHp;
+    const rd=pf===piece&&piece.rosterId?ROSTER.find(x=>x.id===piece.rosterId):null;
+    const dhp=B["dispHp"+sid]!==undefined?B["dispHp"+sid]:pf.hp; // 표시 HP (메시지 재생과 동기화)
+    return `<div class="fighter"><div>
+      <b>${fighterName(sid)}</b> <small>(${pname(piece.owner)})</small>
+      ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
+      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div></div>
+      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp} · <span id="bst-${sid}">${stIcons(pf)}</span></div>
       <div class="dmgbar"><div style="width:${Math.min(100,rec/oppMax*100)}%"></div></div>
-      <div class="status">HP ${f.hp}/${f.maxHp} · 가한 유효 피해 ${rec} (${pct(Math.min(1,rec/oppMax))})
-      ${f.shield?` · 🛡${f.shield}`:""}${f.burn?` · 🔥화상${f.burn}R`:""}${f.weaken?` · 💧약화${f.weaken}`:""}${f.shock?" · ⚡감전":""}${f.evadeCharge?" · 회피":""}</div></div></div>`;
+      <div class="status">가한 유효 피해 ${rec} (${pct(Math.min(1,rec/oppMax))})</div>
+    </div></div>`;
+  };
+  const token=sid=>{ // 스테이지 토큰: 속성색 원형 + 이모지·속성명
+    const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
+    const col=pf.element?`var(--${pf.element})`:"#5a6377";
+    const emo=pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
+    return `<div class="btok ${sid===mySide?"tok-me":"tok-op"}" id="tok-${sid}" style="background:${col}">${emo}<small>${pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type]}</small></div>`;
   };
   const canSkill=f.skillAtk&&f.cd===0, canCommon=f.common&&f.cdCommon===0;
   const usedItems=side==="A"?B.itemsA:B.itemsD, itemRound=side==="A"?B.itemRoundA:B.itemRoundD, lastItem=side==="A"?B.lastItemA:B.lastItemD;
+  const dis=aiActor||busy;
   let itemBtns=S.inv[ownerP].map((k,i)=>
-    `<button ${aiActor||usedItems>=BAL.itemPerBattle||itemRound||k===lastItem?"disabled":""} onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
-  modal(`<h2>⚔️ 전투 — 라운드 ${B.round}/${BAL.maxRounds} · ${side==="A"?"공격측":"방어측"} 차례${aiActor?" 🤖":""}</h2>
-    ${fmt(B.fa,B.attP,B.recA,B.fd.maxHp,"A")}${fmt(B.fd,B.defP,B.recD,B.fa.maxHp,"D")}
-    <div id="battleLog">${B.blog.slice(-14).join("<br>")}</div>
+    `<button ${dis||usedItems>=BAL.itemPerBattle||itemRound||k===lastItem?"disabled":""} onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
+  modal(`<h2>⚔️ 전투 — 라운드 ${B.round}/${BAL.maxRounds} · ${sideName(side)} 차례${aiActor?" 🤖":""}</h2>
+    ${panel(topSide)}
+    <div id="bstage">${token(topSide)}${token(mySide)}</div>
+    ${panel(mySide)}
+    <div id="msgBox">${busy?"":`${fighterName(side)}의 행동을 선택하세요.`}</div>
     <div class="row"><b>${pname(ownerP)}:</b>
-      <button ${aiActor?"disabled":""} onclick="window.__act('basic')">기본 공격 ${f.atk}</button>
-      <button ${aiActor||!canSkill?"disabled":""} onclick="window.__act('skill')">${f.element?SKILL_KO[f.element]:"스킬"} ${f.skillAtk||""}${f.cd?` (쿨${f.cd})`:""}</button>
-      <button ${aiActor||!canCommon?"disabled":""} onclick="window.__act('common')">${f.common?COMMON[f.common].ko:""}${f.cdCommon?` (쿨${f.cdCommon})`:""}</button>
+      <button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${f.atk}</button>
+      <button ${dis||!canSkill?"disabled":""} onclick="window.__act('skill')">${f.element?SKILL_KO[f.element]:"스킬"} ${f.skillAtk||""}${f.cd?` (쿨${f.cd})`:""}</button>
+      <button ${dis||!canCommon?"disabled":""} onclick="window.__act('common')">${f.common?COMMON[f.common].ko:""}${f.cdCommon?` (쿨${f.cdCommon})`:""}</button>
     </div>
-    <div class="row"><small>보너스 아이템(라운드당 1·전투당 2·연속 동일 불가):</small> ${itemBtns||"<small>없음</small>"}</div>`,
+    <div class="row"><small>보너스 아이템(라운드당 1·전투당 2·연속 동일 불가):</small> ${itemBtns||"<small>없음</small>"}</div>
+    <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
     []);
-  renderFloats();
   window.__useItem=i=>{
     const k=S.inv[ownerP][i]; S.inv[ownerP].splice(i,1);
     if(side==="A"){B.itemsA++;B.itemRoundA=true;B.lastItemA=k;} else {B.itemsD++;B.itemRoundD=true;B.lastItemD=k;}
-    if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h); B.blog.push(`🧪 회복약 +${h}`); pushFloat(side,`<span class="pos">+${h}</span>`);}
-    if(k==="cool"){f.cd=0; B.blog.push("🧪 쿨링수 — 스킬 쿨 초기화");}
-    if(k==="cure"){f.burn=0;f.weaken=0;f.shock=false; B.blog.push("🧪 해독제 — 상태이상 해제");}
+    if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
+      bmsg(`🧪 회복약! ${fighterName(side)}의 HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
+    if(k==="cool"){f.cd=0; bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!");}
+    if(k==="cure"){f.burn=0;f.weaken=0;f.shock=false; bmsg("🧪 해독제 — 상태이상 해제!",{st:{side,text:stIcons(f)}});}
     battleModal();
   };
   window.__act=kind=>{
     if(kind==="common"){
-      if(f.common==="evade"){f.evadeCharge=true; B.blog.push(`${sideName(side)} 회피 태세`);}
-      else {const h=Math.round(f.maxHp*BAL.commonHealPct); f.hp=Math.min(f.maxHp,f.hp+h); B.blog.push(`${sideName(side)} 응급 처치 +${h}`); pushFloat(side,`<span class="pos">+${h}</span>`);}
+      if(f.common==="evade"){f.evadeCharge=true; bmsg(`${fighterName(side)}의 회피 태세! 다음 피격 30% 감소.`,{st:{side,text:stIcons(f)}});}
+      else {const h=Math.round(f.maxHp*BAL.commonHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
+        bmsg(`${fighterName(side)}의 응급 처치! HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
       f.cdCommon=BAL.commonCd;
     } else {
-      const isSkill=kind==="skill";
+      const isSkill=kind==="skill", oSide=side==="A"?"D":"A";
+      bmsg(`${fighterName(side)}의 ${isSkill?(f.element?SKILL_KO[f.element]:"스킬"):"기본 공격"}!`);
       let dmg=isSkill?f.skillAtk:f.atk;
       if(BAL.dmgVar) dmg=Math.round(dmg*(1-BAL.dmgVar+Math.random()*2*BAL.dmgVar)); // D8 피해 분산 ±20% (기대값 유지)
       if(isSkill) f.cd=f.cdMax||BAL.minion.cd;
@@ -704,10 +778,9 @@ function battleModal(){
         f.shield=Math.round(f.maxHp*BAL.shieldPct);
         const gh=Math.round(f.maxHp*BAL.healPct);
         f.hp=Math.min(f.maxHp,f.hp+gh);
-        B.blog.push(`${sideName(side)} 보호막·회복 획득`);
-        pushFloat(side,`<span class="pos">+${gh}</span>`);
+        bmsg(`🌿 보호막·회복 획득!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:{side,text:stIcons(f)}});
       }
-      if(opp.evadeCharge){dmg=Math.round(dmg*(1-BAL.evadeReduce)); opp.evadeCharge=false; B.blog.push("상대가 회피 태세로 피해 감소");}
+      if(opp.evadeCharge){dmg=Math.round(dmg*(1-BAL.evadeReduce)); opp.evadeCharge=false; bmsg("상대는 회피 태세로 피해를 흘렸다!",{st:{side:oSide,text:stIcons(opp)}});}
       let absorbed=Math.min(dmg,opp.shield); opp.shield-=absorbed;
       let hpDmg=dmg-absorbed;
       const actual=Math.min(hpDmg,opp.hp); opp.hp-=actual;
@@ -715,33 +788,62 @@ function battleModal(){
       const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
       const counted=actual+(absorbed-freeAbsorb);
       addRec(side,counted);
-      B.blog.push(`${sideName(side)} ${isSkill?(f.element?SKILL_KO[f.element]:"스킬"):"기본 공격"} → ${dmg} 피해${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`);
-      pushFloat(side==="A"?"D":"A",`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`);
-      if(isSkill&&f.element==="fire"&&!opp.burn){opp.burn=BAL.burnRounds; opp.burnBy=side; B.blog.push("🔥 화상 부여");}
-      if(isSkill&&f.element==="water"&&!opp.weaken){opp.weaken=BAL.weakenHits; B.blog.push("💧 약화 부여");}
-      if(isSkill&&f.element==="lightning"&&!opp.shock){opp.shock=true; B.blog.push("⚡ 감전 — 다음 라운드 후공");}
+      bmsg(`${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
+        {shake:oSide,flash:f.element||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
+         hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:{side:oSide,text:stIcons(opp)}});
+      if(isSkill&&f.element==="fire"&&!opp.burn){opp.burn=BAL.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다!`,{st:{side:oSide,text:stIcons(opp)}});}
+      if(isSkill&&f.element==="water"&&!opp.weaken){opp.weaken=BAL.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다!`,{st:{side:oSide,text:stIcons(opp)}});}
+      if(isSkill&&f.element==="lightning"&&!opp.shock){opp.shock=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
     }
     if(checkDeath()) return;
     nextPhase();
   };
-  if(aiActor) aiScheduleBattle();
+  // 표시 계층: 큐 재생 완료 후 다음 행동자 활성 (AI면 재렌더 시 aiScheduleBattle)
+  if(B.msgQ.length) playMsgs(B.msgQ.splice(0),()=>{ if(S.battle===B) battleModal(); });
+  else if(aiActor) aiScheduleBattle();
 }
 function sideName(s){return s==="A"?"공격측":"방어측";}
-/* 전투 플로팅 피해/회복 표시 — 모달 재렌더 후 DOM append (S.battle.floats 큐) */
-function pushFloat(side,html){const B=S.battle; if(!B) return; (B.floats||(B.floats=[])).push({side,html});}
-function renderFloats(){
+const ELEM_EMO={fire:"🔥",water:"💧",grass:"🌿",lightning:"⚡"};
+function fighterName(sid){
+  const B=S.battle, pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
+  return pf===piece?(piece.type==="minion"&&piece.name?piece.name:TYPE_KO[piece.type]):"포획 하수인·"+ELEM_KO[pf.element];
+}
+function stIcons(f){
+  return [f.shield?`🛡${f.shield}`:"",f.burn?`🔥화상${f.burn}R`:"",f.weaken?`💧약화${f.weaken}`:"",f.shock?"⚡감전":"",f.evadeCharge?"🌀회피":""].filter(Boolean).join(" ")||"-";
+}
+/* 전투 메시지 시퀀스 — 로직은 동기 완결, 표시 계층만 타이머 재생 (헤드리스: 큐만 적재 후 즉시 소진) */
+function bmsg(txt,fx){const B=S.battle; if(!B) return; B.blog.push(txt); B.msgQ.push({txt,fx:fx||null});}
+let MSGQ=[], MSGPLAYING=false, MSGAFTER=null;
+function liveBattleDom(){ // 실제 DOM에 msgBox가 있을 때만 재생 (sim·헤드리스 스텁 제외)
+  try{const mb=$("msgBox"); return S.mode!=="sim"&&!!mb&&mb.nodeType===1;}catch(e){return false;}
+}
+function playMsgs(q,after){ // 0.6초 간격 순차 재생 — 재생 불가 환경은 즉시 완료
+  MSGQ.push(...q); MSGAFTER=after||null;
+  if(MSGPLAYING) return;
+  if(!liveBattleDom()){ MSGQ.length=0; const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); return; }
+  MSGPLAYING=true;
+  (function step(){
+    const m=MSGQ.shift();
+    if(!m){ MSGPLAYING=false; const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); return; }
+    try{ const mb=$("msgBox"); if(mb) mb.innerHTML=m.txt; applyFx(m.fx); }catch(e){}
+    setTimeout(step,600);
+  })();
+}
+function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·HP바·상태 아이콘) — 실패는 조용히 무시
+  if(!fx) return;
   try{
-    const B=S.battle; if(!B||!B.floats||!B.floats.length) return;
-    const off={A:0,D:0};
-    for(const fl of B.floats){
-      const box=document.getElementById("fb-"+fl.side); if(!box||!box.appendChild) continue;
-      const d=document.createElement("div"); d.className="dmgfloat"; d.innerHTML=fl.html;
-      d.style.top=(2+off[fl.side]*16)+"px"; off[fl.side]++;
-      box.appendChild(d);
-      setTimeout(()=>{if(d.parentNode)d.parentNode.removeChild(d);},1100);
-    }
-    B.floats=[];
-  }catch(e){ if(S.battle) S.battle.floats=[]; }
+    if(fx.hp){ if(S.battle) S.battle["dispHp"+fx.hp.side]=fx.hp.val;
+      const bar=$("hpfill-"+fx.hp.side); if(bar) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%";
+      const t=$("hptxt-"+fx.hp.side); if(t) t.textContent=fx.hp.val; }
+    if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text; }
+    if(fx.shake){ const t=$("tok-"+fx.shake); if(t){t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake");} }
+    if(fx.flash){ const st=$("bstage"); if(st){st.style.boxShadow=`inset 0 0 70px var(--${fx.flash})`;
+      setTimeout(()=>{try{st.style.boxShadow="";}catch(e){}},380);} }
+    if(fx.float){ const t=$("tok-"+fx.float.side); if(t&&t.appendChild){const d=document.createElement("div");
+      d.className="dmgfloat"; d.innerHTML=fx.float.html; t.appendChild(d);
+      setTimeout(()=>{if(d.parentNode)d.parentNode.removeChild(d);},1100);} }
+    if(fx.ko){ const t=$("tok-"+fx.ko); if(t) t.classList.add("ko"); }
+  }catch(e){}
 }
 function addRec(side,amount){
   const B=S.battle;
@@ -753,8 +855,8 @@ function nextPhase(){
   if(B.phase===0){B.phase=1; battleModal(); return;}
   for(const [f,side] of [[B.fa,"A"],[B.fd,"D"]]){
     if(f.burn>0){const d=Math.min(f.hp,Math.round(f.maxHp*BAL.burnPct)); f.hp-=d; f.burn--;
-      addRec(f.burnBy,d); B.blog.push(`🔥 ${sideName(side)} 화상 피해 ${d}`);
-      pushFloat(side,`<span class="neg">-${d}</span>`);
+      addRec(f.burnBy,d);
+      bmsg(`🔥 ${fighterName(side)}는 화상 피해 ${d}!`,{shake:side,float:{side,html:`<span class="neg">-${d}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:{side,text:stIcons(f)}});
       if(checkDeath()) return;}
     if(f.cd>0)f.cd--; if(f.cdCommon>0)f.cdCommon--;
     f.shock=false;
@@ -780,8 +882,10 @@ function judge(){
 function finishBattle(winSide,how){
   const B=S.battle;
   const winP=winSide==="A"?B.attP:B.defP, loseP=winSide==="A"?B.defP:B.attP;
-  const loseF=winSide==="A"?B.fd:B.fa;
+  const loseF=winSide==="A"?B.fd:B.fa, loseSide=winSide==="A"?"D":"A";
   if(winSide==="A")S.metrics.attackerWins++; else S.metrics.defenderWins++;
+  bmsg(`${fighterName(loseSide)}는(은) 쓰러졌다!`,{ko:loseSide,shake:loseSide,hp:{side:loseSide,val:Math.max(0,loseF.hp),max:loseF.maxHp}});
+  bmsg(`${how} — ${pname(winP.owner)} 승!`);
   let msg;
   if(loseF===loseP){ loseP.alive=false; msg=`${TYPE_KO[loseP.type]} 패배(${how}) — 제거`; }
   else { loseP.cap=null; loseP.alive=false;
@@ -790,8 +894,12 @@ function finishBattle(winSide,how){
   showToast(`⚔️ 전투 종료: ${pname(winP.owner)} 승 — ${msg}`);
   resetAfter(B.fa); resetAfter(B.fd);
   const attacker=B.attP;
-  S.battle=null; close();
-  if(loseP.type==="king"){S.phase="over"; S.winner=winP.owner; S.metrics.endTurn=S.turnCount;
+  const q=B.msgQ.splice(0);
+  S.battle=null;
+  // 연출: 남은 메시지 재생 후 0.8초 지연 닫힘 — 헤드리스·sim은 기존처럼 즉시 닫힘
+  if(liveBattleDom()) playMsgs(q,()=>setTimeout(()=>{if(!S.battle)close();},800));
+  else close();
+  if(loseP.type==="king"){S.phase="over"; S.winner=winP.owner; S.metrics.endTurn=S.turnCount; S.metrics.winType="king";
     const gmsg=`🏁 경기 종료 — ${pname(winP.owner)} 승리!`; addLog(gmsg,"imp"); showToast(gmsg);
     render(); return;}
   afterBattle(attacker, winSide==="A"&&attacker.alive);
@@ -829,13 +937,13 @@ function aiThreatOf(me,e){ // 상대 말 위험도 추정 (공정: 비공개면 
     if(e.type==="trap") return "trap";
     return "unit";
   }
-  return e.movedEver ? "unit" : "unknownStatic"; // 이동한 말은 폭탄·함정 아님 (논리 추론)
+  return e.movedPreBT ? "unit" : "unknownStatic"; // BT 이전 이동 이력만 유닛 확정 (BT 중에는 폭탄·함정도 이동)
 }
 function aiStaticRisk(me){ // 공개 정보(제거는 전부 공개 이벤트) 기반 폭탄·함정 확률 추정
   const opp=1-me;
   const bombsLeft=S.pieces.filter(p=>p.owner===opp&&p.type==="bomb"&&p.alive).length;
   const trapsLeft=S.pieces.filter(p=>p.owner===opp&&p.type==="trap"&&p.alive).length;
-  const unknownStatic=S.pieces.filter(p=>p.owner===opp&&p.alive&&p.placed&&!p.revealed&&!p.movedEver).length;
+  const unknownStatic=S.pieces.filter(p=>p.owner===opp&&p.alive&&p.placed&&!p.revealed&&!p.movedPreBT).length;
   return (bombsLeft+trapsLeft*0.5)/Math.max(1,unknownStatic);
 }
 function aiMain(me){
@@ -888,6 +996,11 @@ function aiMain(me){
         if(p.type==="king") sc-=4; // 왕은 소극적으로
         if((r>=4&&r<=5)||(r>=9&&r<=10)) sc+=3; // 숲 내부 배회(흔적 발견)
       }
+      if(p.type==="king"){ // 끝줄 도달 승리 (GDD-13 4.1 개정) — 안전 회피(위 2단계)가 항상 우선
+        const goal=me===0?1:ROWS;
+        if(r===goal) sc+=100; // 도달 = 즉시 승리
+        sc+=(Math.abs(p.r-goal)-Math.abs(r-goal))*1.5; // 상대 진영 접근 소폭 가점
+      }
       sc -= aiCellDanger(me,[r,c])*3;
       sc += Math.random()*2;
       cands.push({p,r,c,sc});
@@ -899,11 +1012,12 @@ function aiMain(me){
 }
 function aiMoveOptions(p){
   const out=[];
-  for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
-    const r=p.r+dr,c=p.c+dc;
-    if(r<1||r>ROWS||c<1||c>COLS) continue;
-    if(canMoveTo(p,r,c)) out.push([r,c]);
-  }
+  for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]])
+    for(const k of (isBurning()?[1,2]:[1])){ // BT 중 직선 2칸 후보 포함
+      const r=p.r+dr*k,c=p.c+dc*k;
+      if(r<1||r>ROWS||c<1||c>COLS) continue;
+      if(canMoveTo(p,r,c)) out.push([r,c]);
+    }
   return out;
 }
 function aiCellDanger(me,[r,c]){ // 그 칸에 인접한 (보이는) 적 유닛 수
@@ -947,6 +1061,8 @@ function aiEvalBattles(me,peek){
         } else { sc = (att.type==="minion" ? 6 : -10)+pressure*0.5; }
       }
       sc += att.hp/20;
+      // 수비: 자기 최후방 행 인접(1칸 전 도달 위협) 적은 우선 제거 — 끝줄 승리 저지
+      if(th!=="bomb"&&th!=="trap"&&Math.abs(def.r-(me===0?ROWS:1))<=1) sc+=40;
       if(!best||sc>best.score) best={att,def,score:sc};
     }
   }
