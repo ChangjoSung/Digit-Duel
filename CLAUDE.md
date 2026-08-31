@@ -18,6 +18,9 @@ CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 �
 4. **기획서 동기화**: 규칙 변경은 Decision Log + 해당 본문 섹션을 동시에 갱신하고, 보고에 "문서 반영 위치" 표를 포함한다.
 5. **DIGEST**: 마일스톤 종료·대규모 규칙 개정 시 eli-adult로 읽기 좋은 정리본을 생성한다.
 6. **Worker**: 독립 기능·대규모 변경은 Orca Worker 위임, 소규모 Delta는 직접. Worker는 git 쓰기 금지, Coordinator가 diff 리뷰·검증 후 커밋한다.
+7. **문서 정리 원칙**: 문서 갱신은 누적이 아니라 치환 — 새 내용을 추가할 때 대체·불필요해진 기존 내용을 삭제한다. 결정 완료된 질문 표·중복 서술은 본문 반영 후 압축하고, Decision Log는 이력을 간결하게 유지한다.
+
+CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.com/p/3cd1e7f17085810e9514e5773757bbe3)
 
 ## Git / GitHub 컨벤션 (MyFundManager 벤치마킹)
 - 브랜치: `main`(릴리스) / `dev`(통합) / `dev_html`(HTML 데모 전용 라인). **main 직접 커밋 금지.** 데모 작업은 dev_html에서 진행 후 마일스톤 단위로 dev에 통합.
