@@ -32,6 +32,7 @@
   .cell.hl-attack{outline:2px solid var(--danger); outline-offset:-2px;}
   .cell.hl-sel{outline:2px solid #fff; outline-offset:-2px;}
   .cell .trace{position:absolute; top:1px; right:2px; font-size:11px;}
+  .cell .memo{position:absolute; bottom:1px; left:2px; font-size:10px;}
   .pc{width:42px; height:42px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-size:11px; font-weight:bold; border:2px solid #0008; line-height:1.05; text-align:center;}
   .pc.own{box-shadow:0 0 0 2px #ffffff33;}
@@ -223,6 +224,8 @@ function newGame(mode){
     pieces:[], events:[], inv:[[],[]], balls:[BAL.ballStart,BAL.ballStart],
     roster:[[],[]],
     traces:[new Set(), new Set()],
+    memos:[{},{}], // #11 추측 메모: [뷰어(PVE:0/PVP:플레이어)][pieceId]=text — 상대 비노출
+
     selected:null, mainUsed:false, battlesUsed:0,
     movedPiece:null, contactSet:[], firstBattleWonByMover:false,
     forcedTargets:[], teleport:null,
@@ -320,6 +323,7 @@ function showToast(msg,kind){
 }
 function clearToasts(){try{const box=$("toasts"); if(box) box.innerHTML="";}catch(e){}}
 function pct(n){return Math.round(n*100)+"%";}
+function esc(t){return String(t).replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");} // #11 메모 텍스트 HTML 이스케이프
 
 /* ===== 렌더 ===== */
 const $=id=>document.getElementById(id);
@@ -331,7 +335,7 @@ function render(){
 }
 function renderBoard(){
   const bd=$("board"); bd.innerHTML="";
-  const viewer = S.phase==="menu"?0 : S.mode==="sim"?2 : humanViewer();
+  const viewer = S.phase==="menu"?0 : (S.mode==="sim"||S.phase==="over")?2 : humanViewer(); // #11 종료 리빌: over 시 전체 공개 시점
   for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++){
     const cell=document.createElement("div");
     cell.className="cell"+(r<=3?" zA":r<=5?" forest":r<=8?"":r<=10?" forest":" zB");
@@ -349,6 +353,9 @@ function renderBoard(){
             +((p.owner===viewer||viewer===2||p.revealed)&&(p.type==="minion"||p.type==="ally"||p.type==="king")?`<span class="el">${p.hp}</span>`:"")
           : "?";
         cell.appendChild(chip);
+        if(S.phase==="play"&&viewer!==2&&p.owner!==viewer&&S.memos[viewer][p.id]){ // #11 메모 뱃지 (뷰어 전용)
+          const m=document.createElement("span"); m.className="memo"; m.textContent="📝"; cell.appendChild(m);
+        }
       }
       if(S.selected&&!isAI(S.current)){
         const s=S.selected;
@@ -430,6 +437,7 @@ function renderSide(){
   if(S.phase==="over"){
     sp.innerHTML=`<h2>경기 종료</h2><p style="font-size:18px;margin:8px 0">${S.winner===null?"무승부 (시뮬레이션 턴 상한 도달)":pname(S.winner)+" 승리! 🏆"}</p>
     ${S.metrics.winType?`<p style="margin:4px 0;color:var(--dim)">승리 유형: ${WINTYPE_KO[S.metrics.winType]}</p>`:""}
+    ${S.mode!=="sim"?`<p style="margin:4px 0;color:var(--dim)">🔍 종료 공개 — 보드의 모든 말 위치·정체가 공개되었습니다.</p>`:""}
     <button class="primary" onclick="location.reload()">처음으로</button>`;
     return;
   }
@@ -448,6 +456,13 @@ function renderSide(){
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
   if(S.teleport&&!isAI(S.current)) h+=`<h2>🌀 텔레포트</h2><small>${S.teleport.stage===1?"귀환시킬 자기 말을 클릭하세요 (이동 불가 말 제외).":"자기 진영의 빈 칸을 클릭하세요. (말 재클릭 시 다시 선택)"}</small>`;
   if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
+  if(!isAI(S.current)){ // #11 추측 메모 목록 (뷰어 전용 — 상대 비노출)
+    const mm=Object.entries(S.memos[p]).map(([id,t])=>{
+      const x=S.pieces.find(z=>z.id===Number(id));
+      return x&&x.alive&&x.placed?`<div class="status">📝 ${x.r}행 ${x.c}열 ${idLabel(p,x)} — ${esc(t)}</div>`:"";
+    }).filter(Boolean).join("");
+    if(mm) h+=`<h2>📝 추측 메모</h2>${mm}<small>상대 말 클릭으로 수정·삭제</small>`;
+  }
   sp.innerHTML=h;
 }
 function renderSetup(sp){
@@ -571,6 +586,8 @@ function startTurn(){
   S.mainUsed=false; S.battlesUsed=0; S.movedPiece=null; S.contactSet=[]; S.firstBattleWonByMover=false;
   S.forcedTargets=[]; S.teleport=null;
   S.selected=null; S.tempReveal.clear();
+  for(const v of [0,1]) for(const id in S.memos[v]) // #11: 제거된 말의 메모 정리
+    if(!S.pieces.some(x=>x.id===Number(id)&&x.alive&&x.placed)) delete S.memos[v][id];
   const tmsg=`— ${pname(S.current)} 턴 ${S.turnCount+1} —`;
   addLog(tmsg,"sys"); showToast(tmsg,"sys");
   if(isBurning()&&!S.metrics.btReached){ // BT 진입 1회 고지
@@ -624,8 +641,11 @@ function onCell(r,c){
   if(S.forcedTargets&&S.forcedTargets.length&&p&&S.forcedTargets.includes(p.id)&&S.movedPiece&&canBattle(S.movedPiece,p)){ initBattle(S.movedPiece,p); return; } // T1: 강제 대상 직접 클릭
   if(p&&p.owner===S.current){S.selected=p; render(); return;}
   const s=S.selected&&!S.selected.tray?S.selected:null;
+  if(p&&p.owner!==S.current&&visibleTo(humanViewer(),p)){
+    if(s&&adj(s,p)&&canBattle(s,p)){ initBattle(s,p); return; } // 전투 대상 지정 경로
+    memoModal(p); return; // #11: 그 외 상대 말 클릭 — 추측 메모
+  }
   if(!s) return;
-  if(p&&p.owner!==S.current&&adj(s,p)&&visibleTo(S.current,p)){ if(canBattle(s,p)) initBattle(s,p); return; }
   if(canMoveTo(s,r,c)) doMove(s,r,c);
 }
 function doMove(p,r,c){
@@ -1559,6 +1579,20 @@ function modal(html,buttons){
   $("overlay").classList.remove("hidden");
 }
 function close(){$("overlay").classList.add("hidden");}
+/* #11 추측 메모: 게임 중 상대 말 클릭(전투 지정 경로 외) — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개 저장 */
+function memoModal(pc){
+  if(S.phase!=="play") return;
+  const v=humanViewer(), cur=S.memos[v][pc.id]||"";
+  modal(`<h2>📝 추측 메모 — ${idLabel(v,pc)} (${pc.r}행 ${pc.c}열)</h2>
+    <small>이 상대 말에 대한 나만의 추측 기록입니다. 상대에게는 보이지 않습니다.</small>
+    <div class="row"><input id="memoIn" type="text" maxlength="40" placeholder="예: 폭탄 같음"
+      style="flex:1;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px"></div>`,
+    [["저장",()=>{const el=$("memoIn"), t=((el&&el.value)||"").trim();
+      if(t) S.memos[v][pc.id]=t; else delete S.memos[v][pc.id]; close(); render();}],
+     ["삭제",()=>{delete S.memos[v][pc.id]; close(); render();}],
+     ["닫기",close]]);
+  const inp=$("memoIn"); if(inp){inp.value=cur; try{inp.focus();}catch(e){}}
+}
 function handoff(title,after){
   clearToasts();
   modal(`<h2>🔄 기기를 넘기세요</h2><p style="margin:10px 0">${title}</p><small>상대는 화면을 보지 마세요.</small>`,
