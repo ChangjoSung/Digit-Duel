@@ -126,7 +126,7 @@ const BAL={
   shieldPct:0.15, healPct:0.10, absorbCapPct:0.30, evadeReduce:0.3,
   commonHealPct:0.15, commonCd:2,
   maxRounds:6, maxTurns:60, simMaxTurns:500, dmgVar:0.2,
-  itemPerBattle:2, itemPerRound:1, invMax:5, ballStart:3,
+  itemPerBattle:2, itemPerRound:1, invMax:5, ballStart:3, itemStart:2, // itemStart: D11 시작 아이템 수
   burnStart:65, // 버닝 타임 진입 표시 턴 (GDD-13 4.11 개정)
   captureAtkFailPct:0.25,
   statusProb:0.7, // T5-A(D10): 스킬 상태이상 부여 확률 (지속형은 100%, 테스트는 1로 고정)
@@ -201,6 +201,7 @@ function newGame(mode){
     for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"ally"));
     for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"trap"));
     S.pieces.push(mkPiece(p,"king"));
+    for(let i=0;i<BAL.itemStart;i++) S.inv[p].push(shuffle(Object.keys(ITEMS).slice())[0]); // D11 시작 아이템
   }
   genEvents();
 }
@@ -247,7 +248,7 @@ const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
 const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
 const zoneOf=p=> p===0 ? [11,12,13] : [1,2,3];
 const adj=(a,b)=>Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1;
-/* 버닝 타임 (GDD-13 4.11): 표시 턴 65부터 이동 강화·폭탄/함정 기동 */
+/* 버닝 타임 (GDD-13 4.11): 표시 턴 65부터 직선 2칸 이동 강화 (폭탄 포함·함정 제외) */
 const isBurning=()=>S.turnCount+1>=BAL.burnStart;
 /* 원정 구역 = 자기 기준 상대 측 숲+상대 진영 (BT 2칸 이동 불가 구역) */
 const expedZone=(owner,r)=> owner===0 ? r<=5 : r>=9;
@@ -328,12 +329,12 @@ function renderBoard(){
 }
 function canMoveTo(p,r,c){
   if(S.phase!=="play"||S.mainUsed||p.owner!==S.current) return false;
-  if((p.type==="bomb"||p.type==="trap")&&!isBurning()) return false; // BT 중에만 1칸 기동
+  if(p.type==="trap") return false; // 함정은 상시 고정 (GDD-13 4.5 개정 — 폭탄만 이동 상시화)
   if(p.immobile>0) return false;
   const d=Math.abs(p.r-r)+Math.abs(p.c-c);
   if(d!==1){
-    // BT 이동 강화: 직선 2칸 (폭탄·함정 제외, 출발·경유·도착이 원정 구역이면 불가)
-    if(d!==2||(p.r!==r&&p.c!==c)||!isBurning()||p.type==="bomb"||p.type==="trap") return false;
+    // BT 이동 강화: 직선 2칸 (폭탄 포함·함정 제외, 출발·경유·도착이 원정 구역이면 불가)
+    if(d!==2||(p.r!==r&&p.c!==c)||!isBurning()) return false;
     if(expedZone(p.owner,p.r)||expedZone(p.owner,(p.r+r)/2)||expedZone(p.owner,r)) return false;
     const m=at((p.r+r)/2,(p.c+c)/2);
     if(m&&visibleTo(p.owner,m)) return false; // 경유 칸의 보이는 말 차단 (숨은 적 충돌은 doMove가 해석)
@@ -408,11 +409,11 @@ function renderSetup(sp){
   const sel=S.roster[p], rosterDone=sel.length===6;
   const unplaced=S.pieces.filter(x=>x.owner===p&&!x.placed);
   let h=`<h2>${pname(p)} 로스터 선택 (${sel.length}/6)</h2>
-  <small>20종 중 6종을 중복 없이 선택 (클릭 토글). 속성은 종에 고정.</small>`;
+  <small>20종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정.</small>`;
   for(const el of ELEMS){
     h+=`<div class="row">`;
     for(const rd of ROSTER.filter(r=>r.element===el))
-      h+=`<div class="rosterCard ${sel.includes(rd.id)?"on":""}" onclick="toggleRoster('${rd.id}')">
+      h+=`<div class="rosterCard ${sel.includes(rd.id)?"on":""}" onclick="rosterInfo('${rd.id}')">
         <b class="el-${rd.element}">${rd.name}</b>
         <small>${ELEM_KO[rd.element]}·${ARCH_KO[rd.arch]} · HP${rd.hp} 공${rd.atk} 스킬${rd.skill} 쿨${rd.cd}</small></div>`;
     h+=`</div>`;
@@ -472,13 +473,30 @@ function beginPlay(){
 
 /* ===== 배치 ===== */
 window.selTray=id=>{S.selected={tray:true,id}; render();};
-window.toggleRoster=rid=>{ // 로스터 클릭 토글 — 중복 불가·최대 6종, 변경 시 하수인 회수 후 스탯 재주입
+window.toggleRoster=rid=>{ // 로스터 선택 토글 — 중복 불가·최대 6종, 변경 시 하수인 회수 후 스탯 재주입
   const p=S.setupPlayer, sel=S.roster[p], i=sel.indexOf(rid);
   if(i>=0) sel.splice(i,1);
   else if(sel.length<6) sel.push(rid);
-  else return;
+  else {showToast("이미 6종을 모두 선택했습니다. 다른 종을 해제 후 선택하세요."); return;}
   for(const x of S.pieces.filter(x=>x.owner===p&&x.type==="minion")) x.placed=false;
   applyRoster(p); S.selected=null; render();
+};
+window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 해제]는 toggleRoster와 동일 동작 (6/6·중복 불가 유지)
+  const rd=ROSTER.find(r=>r.id===rid); if(!rd) return;
+  const on=S.roster[S.setupPlayer].includes(rid);
+  const sp=skillParamsOf({rosterId:rd.id,element:rd.element});
+  const prob=rd.arch==="sustain"?"100%":pct(BAL.statusProb);
+  const eff={
+    fire:`피해 후 화상 ${sp.burnRounds}R 부여 (라운드당 최대 HP ${pct(BAL.burnPct)} 피해, 부여 확률 ${prob})`,
+    water:`피해 후 약화 ${sp.weakenHits}회 부여 (대상의 공격 ${pct(BAL.weakenPct)} 감소, 부여 확률 ${prob})`,
+    grass:`피해 ${pct(sp.grassDmgMult)}${sp.shieldPct?` + 보호막 ${pct(sp.shieldPct)}`:""} + 자체 회복 ${pct(sp.healPct)} (확률 100%)`,
+    lightning:`피해 후 감전 ${sp.shockRounds}R 부여 — 대상은 후공 (부여 확률 ${prob})`
+  }[rd.element];
+  modal(`<h2 class="el-${rd.element}">${rd.name}</h2>
+    <div class="row"><span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span><span class="badge">${ARCH_KO[rd.arch]}형</span>${on?`<span class="badge">✔ 선택됨</span>`:""}</div>
+    <div class="status" style="margin:6px 0">HP ${rd.hp} · 공격 ${rd.atk} · 스킬 위력 ${rd.skill} · 스킬 쿨 ${rd.cd}</div>
+    <p style="font-size:13px;margin:6px 0"><b>${SKILL_KO[rd.element]}</b> — ${eff}</p>`,
+    [[on?"선택 해제":"선택하기",()=>{close(); toggleRoster(rid);}],["닫기",close]]);
 };
 function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중복 없음)
   const rest=shuffle(ROSTER.filter(r=>!S.roster[p].includes(r.id)).map(r=>r.id));
@@ -521,7 +539,7 @@ function startTurn(){
   addLog(tmsg,"sys"); showToast(tmsg,"sys");
   if(isBurning()&&!S.metrics.btReached){ // BT 진입 1회 고지
     S.metrics.btReached=true; S.metrics.btEnterTurn=S.turnCount+1;
-    const bt="🔥 버닝 타임! 이동 강화·폭탄/함정 기동 개시";
+    const bt="🔥 버닝 타임! 직선 2칸 이동 강화 개시 (폭탄 포함·함정 제외)";
     addLog(bt,"imp"); showToast(bt);
   }
 }
@@ -576,7 +594,7 @@ function onCell(r,c){
 }
 function doMove(p,r,c){
   S.mainUsed=true; p.movedEver=true;
-  if(!isBurning()) p.movedPreBT=true; // BT 이전 이동 이력 — AI 폭탄·함정 논리 추론은 이것만 사용
+  if(!isBurning()) p.movedPreBT=true; // BT 이전 이동 이력 — '함정 아님'만 증명 (폭탄 이동 상시화로 폭탄 배제 불가)
   const pr=p.r, beforeAdj=new Set(adjEnemies(p).map(e=>e.id)); // T1: 이동 전 인접 집합
   if(Math.abs(p.r-r)+Math.abs(p.c-c)===2){ // BT 2칸: 1칸째부터 단계 해석 → 충돌 규칙 자연 적용
     const mr=(p.r+r)/2, mc=(p.c+c)/2;
@@ -1074,14 +1092,17 @@ function aiThreatOf(me,e){ // 상대 말 위험도 추정 (공정: 비공개면 
     if(e.type==="trap") return "trap";
     return "unit";
   }
-  return e.movedPreBT ? "unit" : "unknownStatic"; // BT 이전 이동 이력만 유닛 확정 (BT 중에는 폭탄·함정도 이동)
+  // 폭탄 이동 상시화(GDD-13 4.5): 이동 이력은 '함정 아님'만 증명 — 폭탄 후보는 남음
+  return e.movedPreBT ? "unknownMoved" : "unknownStatic";
 }
-function aiStaticRisk(me){ // 공개 정보(제거는 전부 공개 이벤트) 기반 폭탄·함정 확률 추정
+/* 공개 정보(제거는 전부 공개 이벤트)·이동 이력 기반 폭탄·함정 확률 추정
+   moved=true: 이동 이력 있는 미공개 말 — 폭탄 후보만 / false: 미이동 — 폭탄+함정 후보 */
+function aiStaticRisk(me,moved){
   const opp=1-me;
   const bombsLeft=S.pieces.filter(p=>p.owner===opp&&p.type==="bomb"&&p.alive).length;
   const trapsLeft=S.pieces.filter(p=>p.owner===opp&&p.type==="trap"&&p.alive).length;
-  const unknownStatic=S.pieces.filter(p=>p.owner===opp&&p.alive&&p.placed&&!p.revealed&&!p.movedPreBT).length;
-  return (bombsLeft+trapsLeft*0.5)/Math.max(1,unknownStatic);
+  const pool=S.pieces.filter(p=>p.owner===opp&&p.alive&&p.placed&&!p.revealed&&(moved?p.movedPreBT:!p.movedPreBT)).length;
+  return ((moved?0:trapsLeft*0.5)+bombsLeft)/Math.max(1,pool);
 }
 function aiMain(me){
   const prof=aiProf(me), caut=aiCaution(me);
@@ -1100,6 +1121,14 @@ function aiMain(me){
     if(opts.length&&aiCellDanger(me,[king.r,king.c])>aiCellDanger(me,opts[0])){
       doMove(king,opts[0][0],opts[0][1]); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return;
     }
+  }
+  // 2.5 폭탄 이동 활용(간단 휴리스틱): BT 중 왕 비인접 폭탄을 왕 인접 빈 칸으로 호위 재배치
+  if(isBurning()&&king){
+    const holes=[[king.r+1,king.c],[king.r-1,king.c],[king.r,king.c+1],[king.r,king.c-1]]
+      .filter(([r,c])=>r>=1&&r<=ROWS&&c>=1&&c<=COLS&&!at(r,c));
+    for(const b of alivePieces().filter(x=>x.owner===me&&x.type==="bomb"&&x.immobile===0&&!adj(x,king)))
+      for(const [r,c] of holes)
+        if(canMoveTo(b,r,c)){ doMove(b,r,c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
   }
   // 3. 강한 전투 기회가 있으면 주 행동 생략(위치 보존)
   const pick=aiEvalBattles(me,true);
@@ -1226,26 +1255,24 @@ function aiBattlePairScore(me,att,def){
   let sc=0;
   if(th==="bomb"){ sc = (att.type==="ally") ? 30 : (att.type==="king"? -100 : -100); }
   else if(th==="trap"){ sc = att.type==="minion" ? -15 : -30; }
-  else if(th==="unknownStatic"){ // 미이동·비공개: 폭탄·함정 확률 추정 후 계산된 위험 감수
+  else if(th==="unknownStatic"||th==="unknownMoved"){ // 비공개: 이동/미이동 풀별 폭탄·함정 확률 추정 후 계산된 위험 감수
     // 폭탄 트레이드는 하수인 1 ↔ 폭탄 1 교환(왕 호위 해체)이라 EV가 크게 나쁘지 않음
-    const risk=aiStaticRisk(me);
+    const risk=aiStaticRisk(me,th==="unknownMoved");
     sc = att.type==="ally" ? 18+pressure
        : att.type==="king" ? -100
        : 8 - 18*risk + pressure;
-  } else { // 유닛 (공개 또는 이동 이력)
-    if(def.revealed){
-      if(def.type==="king") sc=45;
-      else if(def.type==="ally") sc=25;
-      else { sc=10;
-        if(att.element&&def.element){
-          if(BEATS[att.element]===def.element) sc+=20;
-          else if(BEATS[def.element]===att.element) sc-=20;
-        }
-        sc += (att.hp-def.hp)/5;
+  } else { // 유닛 (공개)
+    if(def.type==="king") sc=45;
+    else if(def.type==="ally") sc=25;
+    else { sc=10;
+      if(att.element&&def.element){
+        if(BEATS[att.element]===def.element) sc+=20;
+        else if(BEATS[def.element]===att.element) sc-=20;
       }
-      if(att.type==="king") sc-=25; // 왕은 웬만하면 싸우지 않음
-      if(att.type==="ally"&&!att.cap) sc-=15;
-    } else { sc = (att.type==="minion" ? 6 : -10)+pressure*0.5; }
+      sc += (att.hp-def.hp)/5;
+    }
+    if(att.type==="king") sc-=25; // 왕은 웬만하면 싸우지 않음
+    if(att.type==="ally"&&!att.cap) sc-=15;
   }
   sc += att.hp/20;
   sc = sc>0 ? sc*prof.aggression : sc*aiCaution(me); // T6: 공세 점수×aggression·위험 페널티×caution(전멸 위기 강화)
