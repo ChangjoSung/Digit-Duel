@@ -186,6 +186,7 @@ function newGame(mode){
     forcedTargets:[], teleport:null,
     tempReveal:new Set(),
     battle:null, winner:null, aiPending:false, aiBattlePending:false, aiVanguard:[null,null],
+    aiProfile:[null,null],
     metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,
              bombHitsMinion:0,bombClearedByVip:0,kingForestTurns:0,battleRefusals:0,
              attackerWins:0,defenderWins:0,kingStandoff:0,endTurn:0,
@@ -1051,6 +1052,20 @@ function aiStep(){
   if(pick){ initBattle(pick.att,pick.def); if(!S.battle) return; return; } // 동기 해결은 afterBattle 훅이 재개
   endTurn();
 }
+/* T6 성격 프로파일: AI별 랜덤 가중치(0.6~1.4)·ε(0.05~0.15) — 게임당 고정, sim 양측 독립 생성 */
+function aiProf(me){
+  if(!S.aiProfile) S.aiProfile=[null,null];
+  if(!S.aiProfile[me]){
+    const r=()=>0.6+Math.random()*0.8;
+    S.aiProfile[me]={aggression:r(),capture:r(),kingRush:r(),caution:r(),eps:0.05+Math.random()*0.10};
+  }
+  return S.aiProfile[me];
+}
+/* T6 전멸 회피: 전투 가능 말(하수인+동료) 2 이하면 신중 가중 강화 */
+function aiCaution(me){
+  const n=alivePieces().filter(x=>x.owner===me&&(x.type==="minion"||x.type==="ally")).length;
+  return aiProf(me).caution*(n<=2?1.6:1);
+}
 /* 관측: AI는 visibleTo(me)·revealed·이동 이력(논리 추론)만 사용 */
 function aiVisible(me){return alivePieces().filter(e=>e.owner!==me&&visibleTo(me,e));}
 function aiThreatOf(me,e){ // 상대 말 위험도 추정 (공정: 비공개면 확률 기반)
@@ -1069,8 +1084,9 @@ function aiStaticRisk(me){ // 공개 정보(제거는 전부 공개 이벤트) �
   return (bombsLeft+trapsLeft*0.5)/Math.max(1,unknownStatic);
 }
 function aiMain(me){
-  // ε-무작위
-  if(Math.random()<BAL.aiEps){ if(aiRandomMove(me)) return; }
+  const prof=aiProf(me), caut=aiCaution(me);
+  // ε-무작위 — T6 프로파일 기반 0.05~0.15
+  if(Math.random()<prof.eps){ if(aiRandomMove(me)) return; }
   // 1. 흔적 위 말이 있으면 탐색
   for(const p of alivePieces().filter(p=>p.owner===me)){
     const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
@@ -1103,7 +1119,7 @@ function aiMain(me){
       let sc=0;
       const fwd = me===1 ? (r-p.r) : (p.r-r); // 전진 방향
       if(p.type==="minion"){
-        sc += fwd*6 + (4-Math.abs(c-4));
+        sc += fwd*6*prof.aggression + (4-Math.abs(c-4));
         if(p.id===vg) sc+=12; // 선봉 우선 이동권
         if(hunt){const dNow=Math.abs(p.r-hunt.r)+Math.abs(p.c-hunt.c), dNew=Math.abs(r-hunt.r)+Math.abs(c-hunt.c); sc+=(dNow-dNew)*12;}
       }
@@ -1114,23 +1130,62 @@ function aiMain(me){
         const targetRows = me===1?[4,5]:[9,10];
         const dNow=Math.min(...targetRows.map(tr=>Math.abs(p.r-tr)));
         const dNew=Math.min(...targetRows.map(tr=>Math.abs(r-tr)));
-        sc += (dNow-dNew)*8;
+        sc += (dNow-dNew)*8*prof.capture;
         if(p.type==="king") sc-=4; // 왕은 소극적으로
-        if((r>=4&&r<=5)||(r>=9&&r<=10)) sc+=3; // 숲 내부 배회(흔적 발견)
+        if((r>=4&&r<=5)||(r>=9&&r<=10)) sc+=3*prof.capture; // 숲 내부 배회(흔적 발견)
       }
       if(p.type==="king"){ // 끝줄 도달 승리 (GDD-13 4.1 개정) — 안전 회피(위 2단계)가 항상 우선
         const goal=me===0?1:ROWS;
-        if(r===goal) sc+=100; // 도달 = 즉시 승리
-        sc+=(Math.abs(p.r-goal)-Math.abs(r-goal))*1.5; // 상대 진영 접근 소폭 가점
+        if(r===goal) sc+=100*prof.kingRush; // 도달 = 즉시 승리
+        sc+=(Math.abs(p.r-goal)-Math.abs(r-goal))*1.5*prof.kingRush; // 상대 진영 접근 소폭 가점
       }
-      sc -= aiCellDanger(me,[r,c])*3;
+      const fsc=aiForcedScore(me,p,r,c); // T6 강제 전투 예측: 불리한 신규 인접 회피·유리하면 적극
+      if(fsc!==null) sc+=fsc*0.8;
+      sc -= aiCellDanger(me,[r,c])*3*caut;
       sc += Math.random()*2;
       cands.push({p,r,c,sc});
     }
   }
   cands.sort((a,b)=>b.sc-a.sc);
+  const tp=aiTeleportPick(me); // T6 텔레포트: 점수 기반으로 일반 이동과 경쟁 (남용 방지)
+  if(tp&&tp.sc>(cands.length?cands[0].sc:0)){ doTeleport(tp.p,tp.r,tp.c); addLog("🤖 AI 주 행동","ai"); return; }
   if(cands.length){ const t=cands[0]; doMove(t.p,t.r,t.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
   S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략");
+}
+/* T6 강제 전투 예측: (r,c) 이동 시 새로 인접하게 될 보이는 적 중 최선 전투 기대 점수 (없으면 null) */
+function aiForcedScore(me,p,r,c){
+  let best=null;
+  for(const e of aiVisible(me)){
+    if(Math.abs(e.r-r)+Math.abs(e.c-c)!==1) continue;
+    if(adj(p,e)) continue; // 기존 인접은 강제 대상 아님
+    if(p.type==="king"&&e.type==="king") continue; // 왕 vs 왕 불가침 — 강제 미발동
+    const s=aiBattlePairScore(me,p,e);
+    if(best===null||s>best) best=s;
+  }
+  return best;
+}
+/* T6 텔레포트 판단: 위기 말(HP<40%·인접 적)·고아 침투 말·위험한 왕(런 성향 낮을 때) 귀환 — 자기 진영 최저 위험 빈 칸 */
+function aiTeleportPick(me){
+  if(S.mainUsed||!teleportAvailable(me)) return null;
+  const prof=aiProf(me), caut=aiCaution(me);
+  const dests=[];
+  for(const r of zoneOf(me)) for(let c=1;c<=COLS;c++) if(!at(r,c)) dests.push([r,c]);
+  if(!dests.length) return null;
+  dests.sort((a,b)=>aiCellDanger(me,a)-aiCellDanger(me,b));
+  let best=null;
+  for(const p of alivePieces().filter(x=>x.owner===me&&x.immobile===0&&x.type!=="bomb"&&x.type!=="trap")){
+    if(zoneOf(me).includes(p.r)&&!adjEnemies(p).length) continue; // 자기 진영·비위협은 귀환 의미 없음
+    const hpR=p.hp/p.maxHp;
+    let sc=0;
+    if(hpR<0.4&&adjEnemies(p).length) sc=Math.max(sc,(16+(0.4-hpR)*50)*caut); // 위기 말 구출
+    if(p.type==="minion"&&zoneOf(1-me).includes(p.r)
+       &&!alivePieces().some(f=>f.owner===me&&f.id!==p.id&&Math.abs(f.r-p.r)+Math.abs(f.c-p.c)<=2))
+      sc=Math.max(sc,(10+16*(1-hpR))*caut); // 고아가 된 침투 말 귀환
+    if(p.type==="king"&&adjEnemies(p).length&&prof.kingRush<1) sc=Math.max(sc,22*caut); // 왕 위험 시 귀환
+    if(sc>0&&(!best||sc>best.sc)) best={p,sc};
+  }
+  if(!best) return null;
+  return {p:best.p,r:dests[0][0],c:dests[0][1],sc:best.sc};
 }
 function aiMoveOptions(p){
   const out=[];
@@ -1156,69 +1211,79 @@ function aiEvalBattles(me,peek){
     for(const def of adjEnemies(att)){
       if(!visibleTo(me,def)) continue;
       if(!canBattle(att,def)) continue;
-      const th=aiThreatOf(me,def);
-      const pressure=(S.turnCount/BAL.maxTurns)*14; // 후반 공세 압력 (무승부 방지)
-      let sc=0;
-      if(th==="bomb"){ sc = (att.type==="ally") ? 30 : (att.type==="king"? -100 : -100); }
-      else if(th==="trap"){ sc = att.type==="minion" ? -15 : -30; }
-      else if(th==="unknownStatic"){ // 미이동·비공개: 폭탄·함정 확률 추정 후 계산된 위험 감수
-        // 폭탄 트레이드는 하수인 1 ↔ 폭탄 1 교환(왕 호위 해체)이라 EV가 크게 나쁘지 않음
-        const risk=aiStaticRisk(me);
-        sc = att.type==="ally" ? 18+pressure
-           : att.type==="king" ? -100
-           : 8 - 18*risk + pressure;
-      } else { // 유닛 (공개 또는 이동 이력)
-        if(def.revealed){
-          if(def.type==="king") sc=45;
-          else if(def.type==="ally") sc=25;
-          else { sc=10;
-            if(att.element&&def.element){
-              if(BEATS[att.element]===def.element) sc+=20;
-              else if(BEATS[def.element]===att.element) sc-=20;
-            }
-            sc += (att.hp-def.hp)/5;
-          }
-          if(att.type==="king") sc-=25; // 왕은 웬만하면 싸우지 않음
-          if(att.type==="ally"&&!att.cap) sc-=15;
-        } else { sc = (att.type==="minion" ? 6 : -10)+pressure*0.5; }
-      }
-      sc += att.hp/20;
-      // 수비: 자기 최후방 행 인접(1칸 전 도달 위협) 적은 우선 제거 — 끝줄 승리 저지
-      if(th!=="bomb"&&th!=="trap"&&Math.abs(def.r-(me===0?ROWS:1))<=1) sc+=40;
+      const sc=aiBattlePairScore(me,att,def);
       if(!best||sc>best.score) best={att,def,score:sc};
     }
   }
   if(!best||best.score<6) return null;
   return peek?best:best;
 }
+/* T6: 전투 쌍 기대 점수 — aiEvalBattles·강제 전투 예측(aiForcedScore) 공용, 프로파일 가중 포함 */
+function aiBattlePairScore(me,att,def){
+  const prof=aiProf(me);
+  const th=aiThreatOf(me,def);
+  const pressure=(S.turnCount/BAL.maxTurns)*14; // 후반 공세 압력 (무승부 방지)
+  let sc=0;
+  if(th==="bomb"){ sc = (att.type==="ally") ? 30 : (att.type==="king"? -100 : -100); }
+  else if(th==="trap"){ sc = att.type==="minion" ? -15 : -30; }
+  else if(th==="unknownStatic"){ // 미이동·비공개: 폭탄·함정 확률 추정 후 계산된 위험 감수
+    // 폭탄 트레이드는 하수인 1 ↔ 폭탄 1 교환(왕 호위 해체)이라 EV가 크게 나쁘지 않음
+    const risk=aiStaticRisk(me);
+    sc = att.type==="ally" ? 18+pressure
+       : att.type==="king" ? -100
+       : 8 - 18*risk + pressure;
+  } else { // 유닛 (공개 또는 이동 이력)
+    if(def.revealed){
+      if(def.type==="king") sc=45;
+      else if(def.type==="ally") sc=25;
+      else { sc=10;
+        if(att.element&&def.element){
+          if(BEATS[att.element]===def.element) sc+=20;
+          else if(BEATS[def.element]===att.element) sc-=20;
+        }
+        sc += (att.hp-def.hp)/5;
+      }
+      if(att.type==="king") sc-=25; // 왕은 웬만하면 싸우지 않음
+      if(att.type==="ally"&&!att.cap) sc-=15;
+    } else { sc = (att.type==="minion" ? 6 : -10)+pressure*0.5; }
+  }
+  sc += att.hp/20;
+  sc = sc>0 ? sc*prof.aggression : sc*aiCaution(me); // T6: 공세 점수×aggression·위험 페널티×caution(전멸 위기 강화)
+  // 수비: 자기 최후방 행 인접(1칸 전 도달 위협) 적은 우선 제거 — 끝줄 승리 저지 (프로파일 무관)
+  if(th!=="bomb"&&th!=="trap"&&Math.abs(def.r-(me===0?ROWS:1))<=1) sc+=40;
+  return sc;
+}
 function aiBattleAction(){
   const B=S.battle; if(!B) return;
   const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner;
   if(!isAI(ownerP)) return;
-  // 보너스 아이템
+  const prof=aiProf(ownerP), caut=aiCaution(ownerP); // T6 전투 성향 프로파일
+  // 보너스 아이템 — 사용 임계 프로파일화 (신중할수록 일찍 회복)
   const usedItems=side==="A"?B.itemsA:B.itemsD, itemRound=side==="A"?B.itemRoundA:B.itemRoundD, lastItem=side==="A"?B.lastItemA:B.lastItemD;
   if(!itemRound&&usedItems<BAL.itemPerBattle){
     const inv=S.inv[ownerP];
     let use=-1;
-    if(f.hp<f.maxHp*0.4&&inv.includes("potion")&&lastItem!=="potion") use=inv.indexOf("potion");
+    if(f.hp<f.maxHp*(0.25+0.15*caut)&&inv.includes("potion")&&lastItem!=="potion") use=inv.indexOf("potion");
     else if((f.burn||f.weaken)&&inv.includes("cure")&&lastItem!=="cure") use=inv.indexOf("cure");
     if(use>=0){ window.__useItem(use); return; } // 모달 재렌더 → 재스케줄
   }
-  // 행동 선택
-  if(f.common&&f.cdCommon===0&&f.hp<f.maxHp*0.45){ window.__act("common"); return; }
+  // 행동 선택 — T6 확률 혼합: 유리해도 일부 기본 공격 (결정적 패턴 해소)
+  if(f.common&&f.cdCommon===0&&f.hp<f.maxHp*(0.3+0.15*caut)){ window.__act("common"); return; }
   if(f.skillAtk&&f.cd===0){
     const advantage = f.element&&opp.element&&BEATS[f.element]===opp.element;
     const wantStatus = f.element!=="grass" ? !opp[{fire:"burn",water:"weaken",lightning:"shock"}[f.element]] : f.shield===0;
-    if(advantage||wantStatus){ window.__act("skill"); return; }
+    const pSkill=(advantage||wantStatus)?Math.min(0.92,0.68+0.12*prof.aggression):0.15*prof.aggression;
+    if(Math.random()<pSkill){ window.__act("skill"); return; }
   }
   window.__act("basic");
 }
 function aiCapture(p){
   const b=S.balls[p.owner];
+  const caut=aiCaution(p.owner); // T6: 신중할수록 공격 포획(실패 피해) 회피
   let mode=null;
   if(b>=2) mode="safe";
-  else if(b===1&&p.hp>p.maxHp*0.5) mode="attack";
+  else if(b===1&&p.hp>p.maxHp*Math.min(0.9,0.5*caut)) mode="attack";
   if(!mode) return; // 포기
   tryCapture(p,mode);
 }
