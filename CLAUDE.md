@@ -10,7 +10,17 @@
 
 규칙: 기획에 없는 내용은 임의 구현하지 않고 [기획 필요]로 보고한다. CJ 결정은 GDD-13 Decision Log에 날짜와 함께 기록한다. 모든 보고는 확정/추론/미확정을 구분한다.
 
-## CJ Comment 운영 계약 v1 (2026-08-31 승인)
+## 조직 구조 — Creat2ve Vibe Coding Structure (2026-09-01 승인)
+태양계 명명 부서제. 정의 원본: Notion "Creat2ve Vibe Coding Structure" (https://app.notion.com/p/3ce1e7f17085818c82c5dd886149ad5b)
+- ☀️ **CJ (CEO/SUN)**: 방향성 제시(CJ Comment)·최종 승인
+- ☿ **Mercury (PD, Codex)**: Notion·GitHub·문서·완료 보고·전달 허브 — *과도기(S1-C): Codex PD 가동 + 기존 Claude 세션이 감사·백업 병행, 안정화 후 이관*
+- ♀ **Venus (Plan, Codex)**: 기획서 작성 루프 (초안→PD 컨펌→CJ 승인→일정 등록) — 스팟 가동
+- 🌍 **Earth (Art, Codex)**: Unity 리소스 — Phase 2(v0.4.0)부터
+- ♂ **Mars (Client, Claude Code)**: 구현 Worker — 완료 시 Jupiter QA 요청
+- ♃ **Jupiter (Server/QA, Claude Code)**: 독립 QA 전담(현 단계) + 서버 스택(Phase 2)
+운영: **이벤트 구동**(요청·일정 발생 시 부서 Worker 기동→완료 보고→release, 상시 터미널 없음) · 최종 승인 시 Clear · 세션 종료 시 PD가 "Mercury 인수인계 스냅샷"(Notion) 치환 갱신(10시 자동화는 Phase 2) · 부서별 수동 백업 Prompt는 구조 문서 5장.
+
+## CJ Comment 운영 계약 v2 (2026-08-31 v1 → 2026-09-01 조직 구조 결합)
 CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 불필요하며, Notion의 Plan Prompt·Orchestration Launcher는 새 환경/다른 도구용 백업이다.
 1. **분류**: 매 보고 첫머리에 Comment를 [결정]/[피드백]/[질문]으로 분류해 표기한다.
 2. **Issue 생성**: 코드 변경이 필요한 작업만 이슈화한다. 문서·결정·분석은 Notion Decision Log만. 한 피드백의 여러 항목은 이슈 1개 + 체크리스트로 묶는다.
