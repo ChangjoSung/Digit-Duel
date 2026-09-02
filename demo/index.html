@@ -1,0 +1,2162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit Dual — HTML 프로토타입 데모</title>
+<style>
+  :root{
+    --bg:#12151c; --panel:#1c2130; --panel2:#242b3d; --line:#333c52;
+    --txt:#e8ecf5; --dim:#8a93a8; --accent:#5b8cff; --danger:#ff5b6e; --ok:#4fd88a;
+    --zoneA:#2a3350; --zoneB:#502a33; --forest:#1f3a2a; --mid:#2a2f3d;
+    --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d;
+    --heal:#4fd88a; --guard:#4da3ff; --buff:#ffd84d;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--txt); font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif; font-size:14px;}
+  #app{display:flex; gap:12px; padding:12px; max-width:1200px; margin:0 auto;}
+  h1{font-size:16px; margin-bottom:6px;}
+  h2{font-size:14px; margin:8px 0 4px;}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px;}
+  #left{flex:0 0 auto; position:relative;}
+  #toasts{position:absolute; top:44px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:6px; z-index:40; pointer-events:none; width:max-content; max-width:92%;}
+  .toast{background:#000d; border:1px solid var(--line); border-radius:8px; padding:6px 14px; font-size:12px; color:var(--txt); animation:toastFade 2.2s forwards;}
+  @keyframes toastFade{0%{opacity:0;transform:translateY(-6px)}8%{opacity:1;transform:translateY(0)}78%{opacity:1}100%{opacity:0}}
+  #right{flex:1; min-width:300px; display:flex; flex-direction:column; gap:10px;}
+  #board{display:grid; grid-template-columns:repeat(7,52px); grid-auto-rows:52px; gap:2px; user-select:none;}
+  .cell{position:relative; border:1px solid #2a3040; border-radius:4px; background:var(--mid);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .cell.zA{background:var(--zoneA);} .cell.zB{background:var(--zoneB);}
+  .cell.forest{background:var(--forest);}
+  .cell.hl-move{outline:2px solid var(--accent); outline-offset:-2px;}
+  .cell.hl-attack{outline:2px solid var(--danger); outline-offset:-2px;}
+  .cell.hl-sel{outline:2px solid #fff; outline-offset:-2px;}
+  .cell .trace{position:absolute; top:1px; right:2px; font-size:11px;}
+  .cell .memo{position:absolute; bottom:1px; left:2px; font-size:10px;}
+  .pc{width:42px; height:42px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:11px; font-weight:bold; border:2px solid #0008; line-height:1.05; text-align:center;}
+  .pc.own{box-shadow:0 0 0 2px #ffffff33;}
+  .pc.p0{background:#33406e;} .pc.p1{background:#6e3340;}
+  .pc.hiddenId{background:#3a4152;}
+  .pc .el{font-size:9px; font-weight:normal;}
+  .pc .nm{font-size:9px; max-width:40px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rosterCard{display:flex; flex-direction:column; gap:1px; padding:4px 6px; border:1px solid var(--line); border-radius:6px;
+    cursor:pointer; font-size:10px; background:var(--panel2); color:var(--dim);}
+  .rosterCard b{font-size:12px;}
+  .rosterCard.on{border-color:#fff; box-shadow:0 0 0 1px #fff5;}
+  .el-fire{color:var(--fire);} .el-water{color:var(--water);} .el-grass{color:var(--grass);} .el-lightning{color:var(--lightning);}
+  .pc.immob{border-color:var(--danger);}
+  .badge{display:inline-block; padding:1px 6px; border-radius:8px; background:var(--panel2); border:1px solid var(--line); font-size:12px; margin:1px;}
+  button{background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px;}
+  button:hover{border-color:var(--accent);}
+  button:disabled{opacity:.35; cursor:default;}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  button.big{font-size:16px; padding:12px 20px;}
+  button.danger{border-color:var(--danger); color:var(--danger);}
+  #log{height:170px; overflow-y:auto; font-size:12px; line-height:1.5; color:var(--dim);}
+  #log .imp{color:var(--txt);}
+  #log .sys{color:var(--accent);}
+  #log .ai{color:#c9a25b;}
+  .row{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:4px 0;}
+  .overlay{position:fixed; inset:0; background:#000c; display:flex; align-items:center; justify-content:center; z-index:50;}
+  .overlay .box{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:24px; max-width:560px; width:92%;
+    max-height:92vh; overflow-y:auto;}
+  .hidden{display:none !important;}
+  .fighter{display:flex; gap:10px; align-items:center; background:var(--panel2); border-radius:8px; padding:8px; margin:4px 0; position:relative;}
+  .hpbar{height:10px; background:#333; border-radius:5px; overflow:hidden; width:180px;}
+  .hpbar>div{height:100%; background:var(--ok); transition:width .3s;}
+  .dmgfloat{position:absolute; right:14px; top:2px; font-weight:bold; font-size:15px; pointer-events:none; animation:floatUp 1s ease-out forwards; text-shadow:0 1px 2px #000;}
+  .dmgfloat .neg{color:var(--danger);}
+  .dmgfloat .pos{color:var(--ok);}
+  .dmgfloat .abs{color:var(--water); font-size:12px;}
+  @keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-26px)}}
+  .dmgbar{height:6px; background:#333; border-radius:3px; overflow:hidden; width:180px; margin-top:2px;}
+  .dmgbar>div{height:100%; background:var(--danger);}
+  .status{font-size:11px; color:var(--dim);}
+  #battleLog{height:120px; overflow-y:auto; font-size:12px; background:#0006; border-radius:6px; padding:6px; margin:6px 0; line-height:1.5;}
+  /* 전투 스테이지 (포켓몬식 개편 — #6) */
+  #bstage{position:relative; height:180px; border-radius:8px; margin:6px 0; overflow:hidden;
+    background:linear-gradient(160deg,#1a2030,#242b3d); transition:box-shadow .3s;}
+  .btok{position:absolute; width:88px; height:88px; border-radius:50%; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; font-size:26px; border:3px solid #0006; box-shadow:0 4px 14px #0008; transition:opacity .6s;}
+  .btok small{font-size:12px; color:#fffd; font-weight:bold;}
+  .btok.tok-me{bottom:14px; left:30px;} .btok.tok-op{top:14px; right:30px;}
+  .btok.shake{animation:bshake .5s;}
+  @keyframes bshake{0%,100%{margin-left:0}20%{margin-left:-8px}40%{margin-left:7px}60%{margin-left:-5px}80%{margin-left:3px}}
+  .btok.ko{opacity:0;}
+  #bstage.sigblink{animation:sigblink .7s;}
+  @keyframes sigblink{0%,100%{box-shadow:none}25%{box-shadow:inset 0 0 0 4px #fff8, inset 0 0 60px #ffd84d55}55%{box-shadow:inset 0 0 0 2px #fff5}}
+  .btok .dmgfloat{left:50%; top:-18px; right:auto; margin-left:-18px;}
+  #msgBox{min-height:46px; background:#000a; border:1px solid var(--line); border-radius:6px; padding:8px 10px;
+    font-size:14px; line-height:1.6; margin:6px 0;}
+  .tray{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
+  .trayItem{display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px; border:1px solid var(--line); border-radius:6px; cursor:pointer;}
+  .trayItem.sel{border-color:#fff;}
+  small{color:var(--dim);}
+  a.simlink{color:var(--dim); font-size:11px; text-decoration:underline; cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left" class="panel">
+    <h1>Digit Dual <small id="phaseLabel"></small></h1>
+    <div id="toasts"></div>
+    <div id="board"></div>
+    <div class="row" id="turnBar"></div>
+  </div>
+  <div id="right">
+    <div class="panel" id="sidePanel"></div>
+    <div class="panel"><h2>로그</h2><div id="log"></div></div>
+    <div class="panel"><h2>지표 (GDD-12 연동 스캐폴드)</h2><div id="metrics" style="font-size:12px;color:var(--dim)"></div></div>
+    <div class="panel" style="font-size:11px;color:var(--dim)">
+      기준: GDD-13 v0.7 확정 규칙 · 수치는 [DATA] 전투 수치 v0.1 제안값(승인 전 임시) ·
+      AI: 공정 관측(플레이어와 동일한 정보 제한, 이동 이력 기반 논리 추론만 사용) ·
+      기술 4슬롯 체계: GDD-16 v1.0 (S1~S3 A안) ·
+      간소화: PVP 대리 출전 순차 블라인드, 후퇴-탐색 금지·제한 시간 미구현, 마지막 목격 칸 미표시(A/B는 v0.3.0)
+    </div>
+  </div>
+</div>
+<div id="overlay" class="overlay hidden"><div class="box" id="overlayBox"></div></div>
+
+<script>
+"use strict";
+/* ===== 상수 — [DATA] 전투 수치 v0.1 제안값 (승인 전 임시) ===== */
+const COLS=7, ROWS=13;
+const BAL={
+  minion:{hp:100,atk:22,skill:35,cd:2},
+  ally:{hp:100,atk:16}, king:{hp:100,atk:16},
+  captured:{hp:100,atk:20,skill:30,cd:2},
+  advMult:1.3, disMult:0.75,
+  burnPct:0.05, burnRounds:2, weakenPct:0.2, weakenHits:2,
+  shieldPct:0.15, healPct:0.10, absorbCapPct:0.30,
+  maxRounds:6, maxTurns:60, simMaxTurns:500, dmgVar:0.2,
+  itemPerBattle:2, itemPerRound:1, invMax:5, ballStart:3, itemStart:2, // itemStart: D11 시작 아이템 수
+  burnStart:65, // 버닝 타임 진입 표시 턴 (GDD-13 4.11 개정)
+  captureAtkFailPct:0.25,
+  statusProb:0.7, // T5-A(D10): 스킬 상태이상 부여 확률 (지속형은 100%, 테스트는 1로 고정)
+  eventsPerForest:3, // 구역당 최소 개수 (3~4개 무작위 — #12)
+  ballMax:3, nextBuffPct:0.15, // #12: 몬스터볼 상한·일시버프(다음 전투 공격 +15%)
+  enemyCapProb:0.7, // #12: 적 하수인 포획 성공률
+  fleeProb:0.5, // #13: 도망 성공률 (자기 HP<50% 시 시도 가능)
+  teleMax:2, // #14: 텔레포트 스왑 경기당 플레이어별 횟수
+  enemyCapHp:70, // #20: 전투 중 적 하수인 포획(finishByCapture) 예비 하수인 시작 HP (maxHP 100 유지) — 숲 공용 포획(tryCapture)은 100/100
+  itemHealPct:0.20,
+  aiDelay:650, simDelay:60, aiEps:0.08,
+  aiStrongBudgetMs:120, aiStrongTopK:14, aiStrongReplyCap:36 // #21 5단: 판단 시간 상한·2-ply 후보 상한·상대 응수 상한
+};
+/* ===== #21 시드 가능한 RNG — 게임 로직의 모든 난수는 rand()를 경유. setSeed(n)로 결정적 재현, setSeed(null)로 Math.random 복귀 ===== */
+let RNG=null; // null → Math.random (테스트 하네스의 Math.random 오버라이드와 호환)
+function rand(){return RNG?RNG():Math.random();}
+function mulberry32(a){return function(){a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296;};}
+function setSeed(seed){RNG=(seed===null||seed===undefined)?null:mulberry32(Number(seed)>>>0); return RNG;}
+window.setSeed=setSeed;
+/* ===== #21 AI 난이도: grade5(5급 — 휴리스틱 기준선) / dan5(5단 — 탐색·추론 기반 강AI) ===== */
+const AI_LEVEL_KO={grade5:"5급",dan5:"5단"};
+const ELEMS=["fire","water","grass","lightning"];
+const ELEM_KO={fire:"불",water:"물",grass:"풀",lightning:"번개"};
+const BEATS={fire:"grass",grass:"lightning",lightning:"water",water:"fire"}; // D1 제안: 불→풀→번개→물→불
+const TYPE_KO={minion:"하수인",bomb:"폭탄",ally:"동료",trap:"함정",king:"왕",captured:"포획"};
+const WINTYPE_KO={king:"왕 제거",edge:"끝줄 승리",resign:"기권",draw:"무승부",wipe:"전멸"};
+const SKILL_KO={fire:"화염탄",water:"물대포",grass:"넝쿨 흡수",lightning:"낙뢰"};
+/* ===== 기술 4슬롯 체계 (GDD-16 v1.0 3장) — 속성 공격기 12종 + 공용 보조기 6종 + 시그니처 5종 ===== */
+const SKILL_ATK_BASE=22; // 위력 스케일 기준: 최종 위력 = 기술 위력 × (종 atk / 22), 사사오입
+const SKIND_KO={attack:"공격기",support:"보조기",sig:"시그니처"};
+const SKILLS={
+  // 속성 공격기 — tier: stable(안정)/effect(효과)/heavy(고위력)
+  fire_stable:{ko:"화염탄",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
+  fire_effect:{ko:"잔불 표식",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 화상 2R"},
+  fire_heavy:{ko:"폭염 강타",kind:"attack",cd:3,pow:38,desc:"고위력 공격기"},
+  water_stable:{ko:"물대포",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
+  water_effect:{ko:"침식 수류",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 약화 2회"},
+  water_heavy:{ko:"쇄도 파도",kind:"attack",cd:3,pow:32,bonusVsShield:6,desc:"대상 보호막 보유 시 +6"},
+  grass_stable:{ko:"덩굴 채찍",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
+  grass_effect:{ko:"흡수 새싹",kind:"attack",cd:2,pow:20,drainPct:0.4,desc:"실HP 피해의 40% 회복"},
+  grass_heavy:{ko:"가시 폭발",kind:"attack",cd:3,pow:34,selfShieldPct:0.10,desc:"자기 최대 HP 10% 보호막"},
+  lightning_stable:{ko:"전기탄",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
+  lightning_effect:{ko:"감전 침",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 감전(후공 1회)"},
+  lightning_heavy:{ko:"연쇄 번개",kind:"attack",cd:3,pow:34,bonusVsStatus:6,desc:"대상 상태이상 시 +6"},
+  // 공용 보조기 6종
+  sup_heal:{ko:"응급 치유",kind:"support",cd:3,healPct:0.20,desc:"자기 HP 20% 회복"},
+  sup_guard:{ko:"수호 자세",kind:"support",cd:3,shieldPct:0.18,desc:"최대 HP 18% 보호막"},
+  sup_focus:{ko:"집중",kind:"support",cd:3,focus:true,desc:"다음 공격기 위력 +20% (1회)"},
+  sup_cool:{ko:"냉각",kind:"support",cd:4,coolAny:true,desc:"남은 쿨 최장 기술 1개 쿨 -1 (자기 제외)"},
+  sup_cleanse:{ko:"정화",kind:"support",cd:3,cleanse:true,desc:"자기 상태이상 1개 제거"},
+  sup_evade:{ko:"회피 자세",kind:"support",cd:3,dmgCut:0.25,desc:"다음 피격 25% 감소"},
+  // 시그니처 5종 (아키타입별)
+  sig_std:{ko:"전술 연계",kind:"sig",cd:3,pow:30,coolAttack:true,desc:"다른 속성 공격기 1개 쿨 -1"},
+  sig_atk:{ko:"결정타",kind:"sig",cd:4,pow:44,selfVuln:0.15,desc:"사용 후 다음 피격 피해 +15%"},
+  sig_def:{ko:"불굴 진형",kind:"sig",cd:4,shieldPct:0.22,dmgCut:0.15,desc:"22% 보호막 + 다음 피격 15% 감소"},
+  sig_swift:{ko:"급속 순환",kind:"sig",cd:2,pow:22,coolAttackLongest:true,desc:"남은 쿨 최장 공격기 쿨 -1"},
+  sig_sustain:{ko:"잔류장",kind:"sig",cd:3,pow:18,statusSelf:true,desc:"자기 속성 상태효과 부여 (100%)"}
+};
+/* 종별 장착 템플릿 (GDD-16 4장) — 공격기는 자기 속성 풀, 슬롯2=보조기·슬롯3=시그니처 고정 */
+const ARCH_TMPL={
+  std:["stable","effect","sup_heal","sig_std"],
+  atk:["stable","heavy","sup_focus","sig_atk"],
+  def:["effect","heavy","sup_guard","sig_def"],
+  swift:["stable","effect","sup_cool","sig_swift"],
+  sustain:["effect","heavy","sup_cleanse","sig_sustain"]
+};
+function archSkills(arch,el){return ARCH_TMPL[arch].map(t=>(t==="stable"||t==="effect"||t==="heavy")?el+"_"+t:t);}
+function slotPow(f,sk){return Math.round(sk.pow*f.atk/SKILL_ATK_BASE);} // 위력 스케일 (사사오입)
+const ITEMS={potion:{ko:"회복약",desc:"HP 20% 회복"}, cool:{ko:"쿨링수",desc:"스킬 쿨타임 초기화"}, cure:{ko:"해독제",desc:"상태이상 해제"}};
+/* 하수인 로스터 20종 — 아키타입 5종(표준·공격·방어·속공·지속) × 속성 4종 (GDD-13 4.2 개정, T5-B) */
+const ARCH_KO={std:"표준",atk:"공격",def:"방어",swift:"속공",sustain:"지속"};
+const ROSTER=[
+  {id:"M-F1",name:"새끼 화룡",element:"fire",arch:"std",hp:100,atk:22,skill:35,cd:2},
+  {id:"M-F2",name:"화염 투사",element:"fire",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-F3",name:"용암 거북",element:"fire",arch:"def",hp:120,atk:18,skill:30,cd:2},
+  {id:"M-W1",name:"물방울 요정",element:"water",arch:"std",hp:100,atk:22,skill:35,cd:2},
+  {id:"M-W2",name:"심해 사냥꾼",element:"water",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-W3",name:"산호 수호자",element:"water",arch:"def",hp:120,atk:18,skill:30,cd:2},
+  {id:"M-G1",name:"새싹 파수꾼",element:"grass",arch:"std",hp:100,atk:22,skill:35,cd:2},
+  {id:"M-G2",name:"가시 덩굴",element:"grass",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-G3",name:"고목 수호자",element:"grass",arch:"def",hp:120,atk:18,skill:30,cd:2},
+  {id:"M-L1",name:"스파크",element:"lightning",arch:"std",hp:100,atk:22,skill:35,cd:2},
+  {id:"M-L2",name:"뇌격수",element:"lightning",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-L3",name:"피뢰 골렘",element:"lightning",arch:"def",hp:120,atk:18,skill:30,cd:2},
+  {id:"M-F4",name:"불티 정령",element:"fire",arch:"swift",hp:85,atk:24,skill:30,cd:1},
+  {id:"M-W4",name:"안개 무희",element:"water",arch:"swift",hp:85,atk:24,skill:30,cd:1},
+  {id:"M-G4",name:"포자 요정",element:"grass",arch:"swift",hp:85,atk:24,skill:30,cd:1},
+  {id:"M-L4",name:"번개 여우",element:"lightning",arch:"swift",hp:85,atk:24,skill:30,cd:1},
+  {id:"M-F5",name:"재의 주술사",element:"fire",arch:"sustain",hp:95,atk:20,skill:28,cd:2},
+  {id:"M-W5",name:"파도 술사",element:"water",arch:"sustain",hp:95,atk:20,skill:28,cd:2},
+  {id:"M-G5",name:"숲의 현자",element:"grass",arch:"sustain",hp:95,atk:20,skill:28,cd:2},
+  {id:"M-L5",name:"전자기 술사",element:"lightning",arch:"sustain",hp:95,atk:20,skill:28,cd:2}
+];
+
+/* ===== 상태 ===== */
+let S=null;
+function pname(p){
+  if(S.mode==="pve") return p===0?"플레이어":"AI("+(AI_LEVEL_KO[S.aiLevel[1]]||"5급")+")";
+  if(S.mode==="sim") return (p===0?"AI-1":"AI-2")+"("+(AI_LEVEL_KO[S.aiLevel[p]]||"5급")+")";
+  return p===0?"P1(하단·청)":"P2(상단·적)";
+}
+/* #20 플레이어별 핵심 행동 지표 키 — 합산(S.metrics[key])과 byPlayer[p][key]를 met()로 동시 증가시켜 이중 집계 정합 유지 */
+const PLAYER_METRIC_KEYS=["battles","forcedBattles","teleports","searches","minionSearches","captures","captureFails",
+  "enemyCapTries","enemyCaptures","enemyCapFails","fleeTries","fleeOks","bombMoves","trapTriggers","kingForestTurns",
+  "battleRefusals","pushes","bombHitsMinion","bombClearedByVip","minionInvades"];
+const PLAYER_METRIC_KO={battles:"전투",forcedBattles:"강제 전투",teleports:"텔레포트",searches:"탐색",minionSearches:"하수인 탐색",
+  captures:"중립 포획 성공",captureFails:"중립 포획 실패",enemyCapTries:"적 포획 시도",enemyCaptures:"적 포획 성공",enemyCapFails:"적 포획 실패",
+  fleeTries:"도망 시도",fleeOks:"도망 성공",bombMoves:"폭탄 이동",trapTriggers:"함정 발동(자기 함정)",kingForestTurns:"왕 숲 체류(턴)",
+  battleRefusals:"전투 회피",pushes:"밀어내기",bombHitsMinion:"자기 폭탄에 적 하수인 소모",bombClearedByVip:"자기 폭탄 VIP 제거",minionInvades:"적진 진입"};
+function met(p,key,n){ // 합산 + 플레이어별 동시 증가 (p: 행동 주체 플레이어)
+  n=n===undefined?1:n;
+  if(S.metrics[key]===undefined) S.metrics[key]=0;
+  S.metrics[key]+=n;
+  if(p===0||p===1) S.metrics.byPlayer[p][key]=(S.metrics.byPlayer[p][key]||0)+n;
+}
+function newPlayerMetrics(){const o={}; for(const k of PLAYER_METRIC_KEYS) o[k]=0; return o;}
+function newGame(mode,opts){
+  opts=opts||{};
+  S={
+    mode, phase:"setup", setupPlayer:0, current:0, turnCount:0,
+    aiLevel:opts.aiLevel||["grade5","grade5"], // #21 플레이어별 AI 난이도 (PVE는 [1]만 의미)
+    aiSeenMoved:[new Set(),new Set()], // #21 공개 관측 기억: [관측자][적 말 id] — 관측자에게 보이는 상태에서 BT 이전 이동이 목격된 적 말 (숨은 숲 내부 이동은 미기록)
+    aiHist:[[],[]], // #21 5단 반복 패턴 완화용 최근 이동 이력 [{id,r,c}]
+    pieces:[], events:[], inv:[[],[]], balls:[BAL.ballStart,BAL.ballStart],
+    reserve:[null,null], teleUsed:[0,0], forcedQueue:[], // #12 포획 예비 슬롯 · #14 스왑 횟수 · #18 강제 전투 독립 queue [{pid,targets}]
+    roster:[[],[]],
+    traces:[new Set(), new Set()],
+    memos:[{},{}], // #11 추측 메모: [뷰어(PVE:0/PVP:플레이어)][pieceId]=text — 상대 비노출
+
+    selected:null, mainUsed:false, battlesUsed:0,
+    movedPiece:null, contactSet:[], firstBattleWonByMover:false,
+    forcedTargets:[], teleport:null,
+    tempReveal:new Set(),
+    battle:null, winner:null, aiPending:false, aiBattlePending:false, aiVanguard:[null,null],
+    aiProfile:[null,null],
+    metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,
+             bombHitsMinion:0,bombClearedByVip:0,kingForestTurns:0,battleRefusals:0,
+             attackerWins:0,defenderWins:0,kingStandoff:0,endTurn:0,
+             winType:null,btReached:false,btEnterTurn:0,
+             forcedBattles:0,teleports:0,statusApplied:0,statusFailed:0,minionInvades:0,
+             enemyCaptures:0,fleeTries:0,fleeOks:0,minionSearches:0, // #20: minionEventUses → minionSearches (하수인 탐색)
+             enemyCapTries:0,enemyCapFails:0,bombMoves:0,trapTriggers:0, // #20 누락 카운터
+             firstPlayer:null,winner:null, // #20 선공·승자
+             byPlayer:[newPlayerMetrics(),newPlayerMetrics()]}, // #20 플레이어별 핵심 행동 (합산과 met()로 동시 집계)
+    log:[]
+  };
+  for(const p of [0,1]){
+    for(let i=0;i<6;i++) S.pieces.push(mkPiece(p,"minion")); // 속성·스탯은 로스터 선택 시 주입
+
+    for(let i=0;i<3;i++) S.pieces.push(mkPiece(p,"bomb"));
+    for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"ally"));
+    for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"trap"));
+    S.pieces.push(mkPiece(p,"king"));
+    for(let i=0;i<BAL.itemStart;i++) S.inv[p].push(shuffle(Object.keys(ITEMS).slice())[0]); // D11 시작 아이템
+  }
+  genEvents();
+}
+let PID=1;
+function mkPiece(owner,type,element){
+  const b = BAL[type]||{};
+  return {id:PID++, owner, type, element:element||null,
+    hp:b.hp||1, maxHp:b.hp||1, atk:b.atk||0, skillAtk:b.skill||0,
+    rosterId:null, name:null, cdMax:b.cd||0,
+    cd:0, skills:null, cds:[0,0,0,0], revealedSkills:null,
+    r:0,c:0, placed:false, revealed:false, alive:true, movedEver:false, movedPreBT:false,
+    immobile:0, cap:null, nextBattleBuff:false,
+    burn:0, burnBy:null, weaken:0, shield:0, absorbed:0, shock:0, shockFresh:false,
+    focusCharge:false, vulnMark:false, dmgCut:0};
+}
+/* 선택된 로스터 6종의 스탯을 플레이어 p의 하수인 6기에 주입 (선택 변경 시 재주입) */
+function applyRoster(p){
+  const ms=S.pieces.filter(x=>x.owner===p&&x.type==="minion");
+  ms.forEach((m,i)=>{
+    const rd=S.roster[p][i]?ROSTER.find(r=>r.id===S.roster[p][i]):null;
+    if(rd){m.rosterId=rd.id; m.name=rd.name; m.element=rd.element;
+      m.hp=rd.hp; m.maxHp=rd.hp; m.atk=rd.atk; m.skillAtk=rd.skill; m.cdMax=rd.cd;
+      m.skills=archSkills(rd.arch,rd.element); m.cds=[0,0,0,0]; m.revealedSkills=[];}
+    else {m.rosterId=null; m.name=null; m.element=null;
+      m.hp=BAL.minion.hp; m.maxHp=BAL.minion.hp; m.atk=BAL.minion.atk; m.skillAtk=BAL.minion.skill; m.cdMax=BAL.minion.cd;
+      m.skills=null; m.cds=[0,0,0,0]; m.revealedSkills=null;}
+  });
+}
+/* #12 숲 이벤트 개편: 구역당 3~4개(무작위), 풀 6종 완전 랜덤 */
+const EVENT_POOL=["potion","cool","cure","ball","buff","recruit"];
+function genEvents(){
+  S.events=[];
+  for(const rows of [[4,5],[9,10]]){
+    const cells=[];
+    for(const r of rows) for(let c=1;c<=COLS;c++) cells.push([r,c]);
+    shuffle(cells);
+    const n=BAL.eventsPerForest+Math.floor(rand()*2); // 3~4개
+    for(let i=0;i<n;i++)
+      S.events.push({r:cells[i][0], c:cells[i][1], kind:EVENT_POOL[Math.floor(rand()*EVENT_POOL.length)], consumed:false});
+  }
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+/* ===== 유틸 ===== */
+const isAI=p=>(S.mode==="pve"&&p===1)||S.mode==="sim";
+const humanViewer=()=> S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:S.current) : 0;
+const alivePieces=()=>S.pieces.filter(p=>p.alive&&p.placed);
+const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
+const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
+const zoneOf=p=> p===0 ? [11,12,13] : [1,2,3];
+const adj=(a,b)=>Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1;
+/* 버닝 타임 (GDD-13 4.11): 표시 턴 65부터 직선 2칸 이동 강화 (폭탄 포함·함정 제외) */
+const isBurning=()=>S.turnCount+1>=BAL.burnStart;
+/* 원정 구역 = 자기 기준 상대 측 숲+상대 진영 (BT 2칸 이동 불가 구역) */
+const expedZone=(owner,r)=> owner===0 ? r<=5 : r>=9;
+function adjEnemies(p){return alivePieces().filter(e=>e.owner!==p.owner&&adj(p,e));}
+function visibleTo(viewer,e){
+  if(e.owner===viewer) return true;
+  if(!inForest(e)) return true;
+  if(S.tempReveal.has(e.id)) return true;
+  return alivePieces().some(m=>m.owner===viewer&&adj(m,e));
+}
+function idLabel(viewer,p){
+  if(p.owner===viewer||p.revealed||viewer===2) return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.element?"·"+ELEM_KO[p.element]:"");
+  return "?";
+}
+function addLog(msg,cls){S.log.push({msg,cls:cls||""}); renderLog();}
+function showToast(msg,kind){
+  try{
+    const box=$("toasts"); if(!box||!box.appendChild) return;
+    while(box.children&&box.children.length>=3) box.removeChild(box.firstChild);
+    const t=document.createElement("div"); t.className="toast"+(kind?" "+kind:""); t.textContent=msg;
+    box.appendChild(t);
+    setTimeout(()=>{if(t.parentNode)t.parentNode.removeChild(t);},2300);
+  }catch(e){}
+}
+function clearToasts(){try{const box=$("toasts"); if(box) box.innerHTML="";}catch(e){}}
+function pct(n){return Math.round(n*100)+"%";}
+function esc(t){return String(t).replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");} // #11 메모 텍스트 HTML 이스케이프
+
+/* ===== 렌더 ===== */
+const $=id=>document.getElementById(id);
+function render(){
+  $("phaseLabel").textContent = S.phase==="menu" ? ""
+    : S.phase==="setup" ? `— 배치: ${pname(S.setupPlayer)}`
+    : S.phase==="play" ? `— ${pname(S.current)} 턴 ${S.turnCount+1}${isBurning()?" 🔥BT":""}` : S.phase==="over"?"— 종료":"";
+  renderBoard(); renderSide(); renderTurnBar(); renderMetrics();
+}
+function renderBoard(){
+  const bd=$("board"); bd.innerHTML="";
+  const viewer = S.phase==="menu"?0 : (S.mode==="sim"||S.phase==="over")?2 : humanViewer(); // #11 종료 리빌: over 시 전체 공개 시점
+  for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++){
+    const cell=document.createElement("div");
+    cell.className="cell"+(r<=3?" zA":r<=5?" forest":r<=8?"":r<=10?" forest":" zB");
+    cell.dataset.r=r; cell.dataset.c=c;
+    if(S.phase!=="menu"){
+      const ev=S.events.find(e=>e.r===r&&e.c===c&&!e.consumed);
+      if(ev&&viewer!==2&&S.traces[viewer]&&S.traces[viewer].has(ev.r+"_"+ev.c)){const t=document.createElement("span");t.className="trace";t.textContent="🔍";cell.appendChild(t);}
+      const p=at(r,c);
+      if(p&&(viewer===2||visibleTo(viewer,p))){
+        const chip=document.createElement("div");
+        const known = viewer===2||p.owner===viewer||p.revealed;
+        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"");
+        chip.innerHTML = known
+          ? `<span${p.type==="minion"&&p.name?' class="nm"':""}>${p.type==="minion"&&p.name?p.name:TYPE_KO[p.type]}</span>`+(p.element?`<span class="el el-${p.element}">${ELEM_KO[p.element]}</span>`:"")
+            +((p.owner===viewer||viewer===2||p.revealed)&&(p.type==="minion"||p.type==="ally"||p.type==="king")?`<span class="el">${p.hp}</span>`:"")
+          : "?";
+        cell.appendChild(chip);
+        if(S.phase==="play"&&viewer!==2&&p.owner!==viewer&&S.memos[viewer][p.id]){ // #11 메모 뱃지 (뷰어 전용)
+          const m=document.createElement("span"); m.className="memo"; m.textContent="📝"; cell.appendChild(m);
+        }
+      }
+      if(S.selected&&!isAI(S.current)){
+        const s=S.selected;
+        if(S.phase==="setup"&&s.tray&&zoneOf(S.setupPlayer).includes(r)&&!at(r,c)) cell.classList.add("hl-move");
+        if(S.phase==="play"&&!s.tray){
+          if(s.id&&p&&p.id===s.id) cell.classList.add("hl-sel");
+          if(canMoveTo(s,r,c)) cell.classList.add("hl-move");
+          if(p&&p.owner!==s.owner&&adj(s,p)&&visibleTo(viewer===2?0:viewer,p)&&canBattle(s,p)) cell.classList.add("hl-attack");
+        }
+      }
+      if(S.phase==="play"&&!isAI(S.current)){
+        if(S.forcedTargets&&S.forcedTargets.length&&p&&S.forcedTargets.includes(p.id)) cell.classList.add("hl-attack"); // T1 강제 대상
+        if(S.teleport){ // #14 스왑형: 자기 말 2개 선택 하이라이트
+          if(S.teleport.stage===1){ if(p&&p.owner===S.current&&p.immobile===0) cell.classList.add("hl-move"); }
+          else { if(p&&p.owner===S.current&&p.immobile===0&&p.id!==S.teleport.piece.id) cell.classList.add("hl-move");
+            if(p&&S.teleport.piece&&p.id===S.teleport.piece.id) cell.classList.add("hl-sel"); }
+        }
+      }
+    }
+    cell.onclick=()=>onCell(r,c);
+    bd.appendChild(cell);
+  }
+}
+function canMoveTo(p,r,c){
+  if(S.phase!=="play"||S.mainUsed||p.owner!==S.current) return false;
+  if(p.type==="trap") return false; // 함정은 상시 고정 (GDD-13 4.5 개정 — 폭탄만 이동 상시화)
+  if(p.immobile>0) return false;
+  const d=Math.abs(p.r-r)+Math.abs(p.c-c);
+  if(d!==1){
+    // BT 이동 강화: 직선 2칸 (폭탄 포함·함정 제외, 출발·경유·도착이 원정 구역이면 불가)
+    if(d!==2||(p.r!==r&&p.c!==c)||!isBurning()) return false;
+    if(expedZone(p.owner,p.r)||expedZone(p.owner,(p.r+r)/2)||expedZone(p.owner,r)) return false;
+    const m=at((p.r+r)/2,(p.c+c)/2);
+    if(m&&visibleTo(p.owner,m)) return false; // 경유 칸의 보이는 말 차단 (숨은 적 충돌은 doMove가 해석)
+  }
+  const o=at(r,c);
+  if(o&&o.owner===p.owner) return false;
+  if(o&&visibleTo(p.owner,o)) return false;
+  return true;
+}
+function canBattle(att,def){
+  if(S.phase!=="play"||att.owner!==S.current||S.battlesUsed>=2) return false;
+  if(att.type==="bomb"||att.type==="trap") return false;
+  if(att.type==="king"&&def.type==="king"){return false;} // 왕 vs 왕 불가침
+  if(S.forcedTargets&&S.forcedTargets.length&&(att!==S.movedPiece||!S.forcedTargets.includes(def.id))) return false; // T1: 강제 대상 외 전투 봉쇄
+  if(S.battlesUsed===1){
+    // #14: 텔레포트 스왑 둘째 말의 승계 강제 전투는 연쇄(첫 전투 승리) 조건 면제
+    const forcedOk=S.forcedTargets&&S.forcedTargets.length&&att===S.movedPiece&&S.forcedTargets.includes(def.id);
+    if(!forcedOk){
+      if(!S.firstBattleWonByMover||!att.alive||att!==S.movedPiece) return false;
+      if(!S.contactSet.includes(def.id)) return false;
+    }
+  }
+  return true;
+}
+function renderTurnBar(){
+  const tb=$("turnBar"); tb.innerHTML="";
+  if(S.phase!=="play") return;
+  const aiTurn=isAI(S.current);
+  const mk=(txt,fn,dis,cls)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=fn;b.disabled=!!dis||aiTurn;if(cls)b.className=cls;tb.appendChild(b);};
+  mk("주 행동 생략",()=>{S.mainUsed=true;addLog(`${pname(S.current)} 주 행동 생략`);render();},S.mainUsed);
+  const sel=S.selected&&!S.selected.tray?S.selected:null;
+  const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
+  mk("탐색",()=>doSearch(sel,ev),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))); // #20: 폭탄·함정은 탐색 실행 불가
+  mk(S.teleport?"텔레포트 취소":`텔레포트 ${BAL.teleMax-S.teleUsed[S.current]}회`,()=>{S.teleport=S.teleport?null:{stage:1,piece:null};S.selected=null;render();},S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax); // #14 스왑형·2회 제한
+  const forced=S.forcedTargets&&S.forcedTargets.length>0;
+  mk("턴 종료",endTurn,forced,"primary");
+  mk("기권",confirmResign,false,"danger");
+  if(forced){const s=document.createElement("span");s.className="badge";s.textContent="⚔️ 강제 전투 대상 선택";tb.appendChild(s);}
+  if(aiTurn){const s=document.createElement("span");s.className="badge";s.textContent="🤖 AI 행동 중…";tb.appendChild(s);}
+}
+function renderSide(){
+  const sp=$("sidePanel");
+  if(S.phase==="menu"){
+    sp.innerHTML=`<h2>Digit Dual — 프로토타입 데모</h2>
+      <p style="margin:8px 0;font-size:13px;color:var(--dim)">7×13 전장에서 정체와 숲 속 위치를 감춘 14개의 말을 운용해 상대 왕을 제거하세요.</p>
+      <h2>PVE (AI 대전) — 난이도 선택</h2>
+      <div class="row"><button class="primary big" onclick="startMode('pve',{aiLevel:'grade5'})">5급 — 기본 AI</button>
+        <button class="primary big" onclick="startMode('pve',{aiLevel:'dan5'})">5단 — 탐색·추론 기반 강AI</button></div>
+      <small>5급: 휴리스틱 기준선 AI · 5단: 공정 관측 아래 2수 앞(상대 최선 응수)까지 평가하는 제한 탐색 AI</small>
+      <div class="row" style="margin-top:10px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button></div>
+      <div class="row"><a class="simlink" onclick="startMode('sim')">AI vs AI 시뮬레이션(관전 · 5급 vs 5급)</a>
+        <a class="simlink" onclick="startMode('sim',{aiLevel:['dan5','grade5']})">5단 vs 5급 관전</a></div>`;
+    return;
+  }
+  if(S.phase==="setup"){renderSetup(sp);return;}
+  if(S.phase==="over"){
+    sp.innerHTML=`<h2>경기 종료</h2><p style="font-size:18px;margin:8px 0">${S.winner===null?"무승부 (시뮬레이션 턴 상한 도달)":pname(S.winner)+" 승리! 🏆"}</p>
+    ${S.metrics.winType?`<p style="margin:4px 0;color:var(--dim)">승리 유형: ${WINTYPE_KO[S.metrics.winType]}</p>`:""}
+    ${S.mode!=="sim"?`<p style="margin:4px 0;color:var(--dim)">🔍 종료 공개 — 보드의 모든 말 위치·정체가 공개되었습니다.</p>`:""}
+    <button class="primary" onclick="location.reload()">처음으로</button>`;
+    return;
+  }
+  const p = S.mode==="pvp"?S.current:0;
+  let h=`<h2>${pname(p)}</h2>
+  <div class="row"><span class="badge">몬스터볼 ${S.balls[p]}</span>
+  <span class="badge">아이템 ${S.inv[p].length}/${BAL.invMax}</span>
+  <span class="badge">전투 ${S.battlesUsed}/2</span>
+  ${S.reserve[p]?`<span class="badge">예비 하수인(${ELEM_KO[S.reserve[p].element]}) HP ${S.reserve[p].hp}/${S.reserve[p].maxHp}</span>`:""}
+  <span class="badge">${S.mainUsed?"주 행동 완료":"주 행동 가능"}</span></div>
+  <div class="row">${S.inv[p].map(i=>`<span class="badge">${ITEMS[i].ko}</span>`).join("")||"<small>아이템 없음</small>"}</div>`;
+  if(S.selected&&!S.selected.tray&&!isAI(S.current)){
+    const s=S.selected;
+    h+=`<h2>선택: ${idLabel(p,s)}</h2><div class="status">HP ${s.hp}/${s.maxHp}${s.immobile>0?` · 이동 불가 ${s.immobile}턴`:""}${s.cap?` · 포획 하수인(${ELEM_KO[s.cap.element]}) HP ${s.cap.hp}/${s.cap.maxHp}`:""}${s.nextBattleBuff?` · ✨다음 전투 공격+${pct(BAL.nextBuffPct)}`:""}</div>
+    ${s.skills?`<div class="status">${s.skills.map((id,i)=>SKILLS[id].ko+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
+    <small>이동: 파란 칸 · 전투: 빨간 칸 클릭</small>`;
+  } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
+  if(S.teleport&&!isAI(S.current)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
+  if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
+  if(!isAI(S.current)){ // #11 추측 메모 목록 (뷰어 전용 — 상대 비노출)
+    const mm=Object.entries(S.memos[p]).map(([id,t])=>{
+      const x=S.pieces.find(z=>z.id===Number(id));
+      return x&&x.alive&&x.placed?`<div class="status">📝 ${x.r}행 ${x.c}열 ${idLabel(p,x)} — ${esc(t)}</div>`:"";
+    }).filter(Boolean).join("");
+    if(mm) h+=`<h2>📝 추측 메모</h2>${mm}<small>상대 말 클릭으로 수정·삭제</small>`;
+  }
+  sp.innerHTML=h;
+}
+function renderSetup(sp){
+  const p=S.setupPlayer;
+  const sel=S.roster[p], rosterDone=sel.length===6;
+  const unplaced=S.pieces.filter(x=>x.owner===p&&!x.placed);
+  let h=`<h2>${pname(p)} 로스터 선택 (${sel.length}/6)</h2>
+  <small>20종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정.</small>`;
+  for(const el of ELEMS){
+    h+=`<div class="row">`;
+    for(const rd of ROSTER.filter(r=>r.element===el))
+      h+=`<div class="rosterCard ${sel.includes(rd.id)?"on":""}" onclick="rosterInfo('${rd.id}')">
+        <b class="el-${rd.element}">${rd.name}</b>
+        <small>${ELEM_KO[rd.element]}·${ARCH_KO[rd.arch]} · HP${rd.hp} 공${rd.atk} · ${archSkills(rd.arch,rd.element).map(s=>SKILLS[s].ko).join("·")}</small></div>`;
+    h+=`</div>`;
+  }
+  h+=`<h2>비공개 배치 (${14-unplaced.length}/14)</h2>
+  <small>말을 클릭 → 자기 진영 칸 클릭. 배치된 말 클릭 시 회수.${rosterDone?"":" <b>하수인은 로스터 6종 선택 후 활성됩니다.</b>"}</small>
+  <div class="tray">`;
+  for(const x of unplaced){
+    if(x.type==="minion"&&!rosterDone) continue;
+    h+=`<div class="trayItem ${S.selected&&S.selected.id===x.id?"sel":""}" onclick="selTray(${x.id})">
+      <div class="pc p${p}"><span${x.name?' class="nm"':""}>${x.type==="minion"&&x.name?x.name:TYPE_KO[x.type]}</span>${x.element?`<span class="el el-${x.element}">${ELEM_KO[x.element]}</span>`:""}</div>
+    </div>`;
+  }
+  h+=`</div><div class="row">
+    <button onclick="autoPlace()">무작위 배치</button>
+    <button onclick="clearPlace()">전체 회수</button>
+    <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>배치 완료</button></div>`;
+  sp.innerHTML=h;
+}
+function renderLog(){
+  const el=$("log");
+  el.innerHTML=S.log.slice(-60).map(l=>`<div class="${l.cls}">${l.msg}</div>`).join("");
+  el.scrollTop=el.scrollHeight;
+}
+function renderMetrics(){
+  if(S.phase==="menu"){$("metrics").textContent="모드를 선택하면 지표 수집을 시작합니다.";return;}
+  const m=S.metrics;
+  const total=`[${S.mode.toUpperCase()}] 턴 ${S.turnCount} · 선공 ${m.firstPlayer===null?"-":pname(m.firstPlayer)} · 전투 ${m.battles} (판정 ${m.judged}·동률 ${m.ties}) · 공격측 승 ${m.attackerWins}/방어측 승 ${m.defenderWins} · 밀어내기 ${m.pushes} · 강제 전투 ${m.forcedBattles} · 텔레포트 ${m.teleports} · 상태 부여 ${m.statusApplied}/실패 ${m.statusFailed} · 적진 진입 ${m.minionInvades} · 탐색 ${m.searches} · 하수인 탐색 ${m.minionSearches} · 중립 포획 ${m.captures}(실패 ${m.captureFails}) · 적 포획 시도 ${m.enemyCapTries}/성공 ${m.enemyCaptures}/실패 ${m.enemyCapFails} · 도망 ${m.fleeOks}/${m.fleeTries} · 폭탄 이동 ${m.bombMoves} · 함정 발동 ${m.trapTriggers} · 폭탄: 하수인 소모 ${m.bombHitsMinion}/VIP 제거 ${m.bombClearedByVip} · 왕 숲 체류 ${m.kingForestTurns}턴 · 전투 회피 ${m.battleRefusals} · ${m.btReached?`🔥BT 진입 턴 ${m.btEnterTurn}`:"BT 미도달"}${S.phase==="over"?` · 종료 턴 ${m.endTurn}${m.winType?` · 승리 유형 ${WINTYPE_KO[m.winType]}`:""} · 승자 ${S.winner===null?"없음(무승부)":pname(S.winner)}`:""}`;
+  // #20 플레이어별 핵심 행동 (합산과 이중 집계 정합: 각 키의 [0]+[1] = 합산)
+  const per=[0,1].map(p=>`<div style="margin-top:3px"><b>${pname(p)}</b>${p===m.firstPlayer?" (선공)":""}${S.phase==="over"&&S.winner===p?" 🏆승자":""}: `+
+    PLAYER_METRIC_KEYS.map(k=>`${PLAYER_METRIC_KO[k]} ${m.byPlayer[p][k]||0}`).join(" · ")+`</div>`).join("");
+  $("metrics").innerHTML=total+per;
+}
+/* #20 지표 저장용 스냅샷 (합산 + 플레이어별 + 승자·선공·승리 유형) — 헤드리스·리포트 공용 */
+function metricsSnapshot(){
+  const m=S.metrics;
+  return {mode:S.mode,aiLevel:S.aiLevel.slice(),turn:S.turnCount,phase:S.phase,firstPlayer:m.firstPlayer,winner:S.winner,winType:m.winType,endTurn:m.endTurn,
+    total:Object.fromEntries(Object.keys(m).filter(k=>k!=="byPlayer").map(k=>[k,m[k]])),
+    byPlayer:[Object.assign({},m.byPlayer[0]),Object.assign({},m.byPlayer[1])]};
+}
+window.metricsSnapshot=metricsSnapshot;
+
+/* ===== 모드 시작 ===== */
+window.startMode=(mode,opts)=>{
+  opts=opts||{};
+  let lv=opts.aiLevel; // #21: 문자열(PVE 상대 난이도) 또는 [p0,p1] 배열(sim)
+  if(typeof lv==="string") lv=["grade5",lv];
+  newGame(mode,{aiLevel:lv});
+  if(mode==="pvp"||mode==="pve"){
+    addLog(mode==="pve"?`PVE(${AI_LEVEL_KO[S.aiLevel[1]]}${S.aiLevel[1]==="dan5"?" · 탐색·추론 기반 강AI":""}) — 당신의 14개 말을 배치하세요.`:"PVP — 두 플레이어가 번갈아 비공개 배치합니다.","sys");
+    render();
+  } else { // sim
+    aiAutoPlace(0);
+    aiAutoPlace(1);
+    beginPlay();
+  }
+};
+function beginPlay(){
+  S.phase="play";
+  S.current=Math.floor(rand()*2); // 무작위 선공 (Q6 확정)
+  S.metrics.firstPlayer=S.current; // #20 선공 저장
+  addLog(`무작위 선공: ${pname(S.current)}`,"sys");
+  startTurn();
+  if(S.mode==="pvp") handoff(pname(S.current)+" 턴 시작", render);
+  else { render(); if(isAI(S.current)) aiSchedule(); }
+}
+
+/* ===== 배치 ===== */
+window.selTray=id=>{S.selected={tray:true,id}; render();};
+window.toggleRoster=rid=>{ // 로스터 선택 토글 — 중복 불가·최대 6종, 변경 시 하수인 회수 후 스탯 재주입
+  const p=S.setupPlayer, sel=S.roster[p], i=sel.indexOf(rid);
+  if(i>=0) sel.splice(i,1);
+  else if(sel.length<6) sel.push(rid);
+  else {showToast("이미 6종을 모두 선택했습니다. 다른 종을 해제 후 선택하세요."); return;}
+  for(const x of S.pieces.filter(x=>x.owner===p&&x.type==="minion")) x.placed=false;
+  applyRoster(p); S.selected=null; render();
+};
+window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 해제]는 toggleRoster와 동일 동작 (6/6·중복 불가 유지)
+  const rd=ROSTER.find(r=>r.id===rid); if(!rd) return;
+  const on=S.roster[S.setupPlayer].includes(rid);
+  const slots=archSkills(rd.arch,rd.element);
+  const rows=slots.map((sid,i)=>{const sk=SKILLS[sid];
+    const p=sk.pow?Math.round(sk.pow*rd.atk/SKILL_ATK_BASE):0;
+    return `<div style="font-size:13px;margin:3px 0"><span class="badge">${i+1}</span> <b>${sk.ko}</b> <small>[${SKIND_KO[sk.kind]}]${p?` 위력 ${p}`:""}${sk.cd?` · 쿨 ${sk.cd}`:""} — ${sk.desc}</small></div>`;
+  }).join("");
+  modal(`<h2 class="el-${rd.element}">${rd.name}</h2>
+    <div class="row"><span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span><span class="badge">${ARCH_KO[rd.arch]}형</span>${on?`<span class="badge">✔ 선택됨</span>`:""}</div>
+    <div class="status" style="margin:6px 0">HP ${rd.hp} · 공격 ${rd.atk} (기술 위력 = 표기 위력 × 공격/${SKILL_ATK_BASE})</div>
+    ${rows}`,
+    [[on?"선택 해제":"선택하기",()=>{close(); toggleRoster(rid);}],["닫기",close]]);
+};
+function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중복 없음)
+  const rest=shuffle(ROSTER.filter(r=>!S.roster[p].includes(r.id)).map(r=>r.id));
+  while(S.roster[p].length<6) S.roster[p].push(rest.pop());
+  applyRoster(p);
+}
+window.autoPlace=()=>{
+  const p=S.setupPlayer, rows=zoneOf(p);
+  if(S.roster[p].length<6) fillRosterRandom(p);
+  const cells=[]; for(const r of rows) for(let c=1;c<=COLS;c++) cells.push([r,c]);
+  shuffle(cells);
+  for(const x of S.pieces.filter(x=>x.owner===p&&!x.placed)){
+    const cell=cells.find(([r,c])=>!at(r,c)); x.r=cell[0];x.c=cell[1];x.placed=true;
+  }
+  S.selected=null; render();
+};
+window.clearPlace=()=>{for(const x of S.pieces.filter(x=>x.owner===S.setupPlayer)){x.placed=false;} S.selected=null; render();};
+window.setupDone=()=>{
+  const p=S.setupPlayer;
+  if(S.roster[p].length!==6||S.pieces.some(x=>x.owner===p&&!x.placed)){
+    showToast("로스터 6종 선택과 14개 배치를 모두 완료하세요."); return;}
+  S.selected=null;
+  if(S.mode==="pvp"){
+    if(p===0){S.setupPlayer=1; handoff(pname(1)+" 배치", render);}
+    else beginPlay();
+  } else { // pve: 인간(0) 배치 완료 → AI 배치
+    aiAutoPlace(1);
+    addLog("AI 배치 완료.","ai");
+    beginPlay();
+  }
+};
+
+/* ===== 턴 진행 ===== */
+function startTurn(){
+  S.mainUsed=false; S.battlesUsed=0; S.movedPiece=null; S.contactSet=[]; S.firstBattleWonByMover=false;
+  S.forcedTargets=[]; S.teleport=null; S.forcedQueue=[];
+  S.selected=null; S.tempReveal.clear();
+  for(const v of [0,1]) for(const id in S.memos[v]) // #11: 제거된 말의 메모 정리
+    if(!S.pieces.some(x=>x.id===Number(id)&&x.alive&&x.placed)) delete S.memos[v][id];
+  const tmsg=`— ${pname(S.current)} 턴 ${S.turnCount+1} —`;
+  addLog(tmsg,"sys"); showToast(tmsg,"sys");
+  if(isBurning()&&!S.metrics.btReached){ // BT 진입 1회 고지
+    S.metrics.btReached=true; S.metrics.btEnterTurn=S.turnCount+1;
+    const bt="🔥 버닝 타임! 직선 2칸 이동 강화 개시 (폭탄 포함·함정 제외)";
+    addLog(bt,"imp"); showToast(bt);
+  }
+}
+function endTurn(){
+  if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18: 대기 중인 강제 전투가 있으면 먼저 꺼냄
+  if(S.forcedTargets&&S.forcedTargets.length){ // T1: 강제 전투 미이행 시 턴 종료 불가
+    if(!isAI(S.current)){showToast("⚔️ 강제 전투 대상과 전투해야 턴을 마칠 수 있습니다."); return;}
+    S.forcedTargets=[]; S.forcedQueue=[]; // AI 안전장치 (이행 불가 상태 해소)
+  }
+  for(const x of alivePieces()) if(x.owner===S.current&&x.immobile>0) x.immobile--;
+  // #20 정확도: 왕 숲 체류는 자기 턴 종료 시 자기 왕만 1회 집계 (양측 턴마다 이중 집계하던 오류 수정)
+  for(const k of alivePieces()) if(k.owner===S.current&&k.type==="king"&&inForest(k)) met(S.current,"kingForestTurns");
+  // #20 오탐 제거: 실제 canBattle 가능(보이는 대상·전투 규칙 충족)한 인접 대상이 있었는데 전투하지 않은 경우만 회피로 집계
+  if(S.battlesUsed===0 && alivePieces().some(x=>x.owner===S.current&&adjEnemies(x).some(e=>visibleTo(S.current,e)&&canBattle(x,e)))) met(S.current,"battleRefusals");
+  S.turnCount++;
+  if(S.mode==="sim"&&S.turnCount>=BAL.simMaxTurns){gameOver(null,"draw");
+    const dmsg=`${BAL.simMaxTurns}턴 도달 — 무승부`; addLog(dmsg,"imp"); showToast(dmsg); render(); return;}
+  S.current=1-S.current; startTurn();
+  if(S.mode==="pvp") handoff(pname(S.current)+" 턴 시작", render);
+  else { render(); if(isAI(S.current)) aiSchedule(); }
+}
+function confirmResign(){
+  if(S.phase!=="play"||isAI(S.current)) return;
+  const loser=S.current;
+  modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,
+    [["기권 확정",()=>{close();
+      gameOver(1-loser,"resign");
+      const msg=`🏳️ ${pname(loser)} 기권 — ${pname(S.winner)} 승리!`;
+      addLog(msg,"imp"); showToast(msg); render();}],
+     ["취소",close]]);
+}
+function onCell(r,c){
+  if(S.phase==="setup"){
+    const p=at(r,c);
+    if(S.selected&&S.selected.tray&&zoneOf(S.setupPlayer).includes(r)&&!p){
+      const x=S.pieces.find(z=>z.id===S.selected.id); x.r=r;x.c=c;x.placed=true; S.selected=null; render(); return;
+    }
+    if(p&&p.owner===S.setupPlayer){p.placed=false; S.selected=null; render();}
+    return;
+  }
+  if(S.phase!=="play"||S.battle||isAI(S.current)) return;
+  const p=at(r,c);
+  if(S.teleport){ // #14 스왑형: 자기 말 2개 선택 → 위치 교환
+    if(S.teleport.stage===1){ if(p&&p.owner===S.current&&p.immobile===0){S.teleport={stage:2,piece:p}; render();} return; }
+    if(p&&p.id===S.teleport.piece.id){ S.teleport={stage:1,piece:null}; render(); } // 첫 말 재클릭 — 선택 취소
+    else if(p&&p.owner===S.current&&p.immobile===0){ doTeleportSwap(S.teleport.piece,p); }
+    return;
+  }
+  if(S.forcedTargets&&S.forcedTargets.length&&p&&S.forcedTargets.includes(p.id)&&S.movedPiece&&canBattle(S.movedPiece,p)){ initBattle(S.movedPiece,p); return; } // T1: 강제 대상 직접 클릭
+  if(p&&p.owner===S.current){S.selected=p; render(); return;}
+  const s=S.selected&&!S.selected.tray?S.selected:null;
+  if(p&&p.owner!==S.current&&visibleTo(humanViewer(),p)){
+    if(s&&adj(s,p)&&canBattle(s,p)){ initBattle(s,p); return; } // 전투 대상 지정 경로
+    memoModal(p); return; // #11: 그 외 상대 말 클릭 — 추측 메모
+  }
+  if(!s) return;
+  if(canMoveTo(s,r,c)) doMove(s,r,c);
+}
+/* #21 공개 관측 기억: 상대(관측자)가 볼 수 있는 상태에서 일어난 BT 이전 이동만 기록 — 숨은 숲 내부 이동은 사람에게 보이지 않으므로 AI도 알 수 없다 */
+function observeMove(p,visBefore){
+  if(isBurning()) return; // '함정 아님' 추론은 BT 이전 이동만 유효 (기존 movedPreBT 의미 유지)
+  const obs=1-p.owner;
+  if(visBefore||visibleTo(obs,p)) S.aiSeenMoved[obs].add(p.id);
+}
+function doMove(p,r,c){
+  S.mainUsed=true; p.movedEver=true;
+  if(!isBurning()) p.movedPreBT=true; // 실제 이동 이력(엔진 내부 사실) — AI 추론은 공개 관측 기억(aiSeenMoved)만 사용 (#21 누수 제거)
+  if(p.type==="bomb") met(p.owner,"bombMoves"); // #20 폭탄 이동 카운터
+  const visBefore=visibleTo(1-p.owner,p); // #21 이동 전 관측 가능 여부
+  const pr=p.r, beforeAdj=new Set(adjEnemies(p).map(e=>e.id)); // T1: 이동 전 인접 집합
+  if(Math.abs(p.r-r)+Math.abs(p.c-c)===2){ // BT 2칸: 1칸째부터 단계 해석 → 충돌 규칙 자연 적용
+    const mr=(p.r+r)/2, mc=(p.c+c)/2;
+    if(at(mr,mc)){ r=mr; c=mc; } // 경유 칸의 숨은 말 → 그 칸 진입 시도로 전환
+    else { p.r=mr; p.c=mc; }
+  }
+  const hidden=at(r,c);
+  if(hidden){ // 숲 충돌: 직전 칸 정지 + 양측 일시 공개
+    S.tempReveal.add(hidden.id); S.tempReveal.add(p.id);
+    observeMove(p,visBefore); // 충돌 공개 → 이동 목격
+    S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
+    const cmsg=`${pname(p.owner)} 이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다.`;
+    addLog(cmsg,"imp"); showToast(cmsg);
+    if(p.type==="minion"&&zoneOf(1-p.owner).includes(p.r)&&!zoneOf(1-p.owner).includes(pr)) met(p.owner,"minionInvades");
+    if(applyForced(p,beforeAdj)) return;
+    render(); return;
+  }
+  p.r=r; p.c=c;
+  observeMove(p,visBefore); // #21 이동 후 보이면 목격
+  S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
+  if(p.type==="minion"&&zoneOf(1-p.owner).includes(r)&&!zoneOf(1-p.owner).includes(pr)) met(p.owner,"minionInvades"); // 지표: 하수인 적진 진입
+  if(checkKingReach()) return;
+  const ev=S.events.find(e=>e.r===r&&e.c===c&&!e.consumed);
+  if(ev){S.traces[p.owner].add(ev.r+"_"+ev.c);
+    if(!isAI(p.owner)){addLog("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)","imp");
+      showToast("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)");}}
+  if(applyForced(p,beforeAdj)) return;
+  render();
+}
+/* T1 강제 전투: 이동·텔레포트로 새로 인접한 적과는 반드시 전투 (canBattle 불가 조합 제외 — 왕vs왕 등, 폭탄·함정 포함) */
+function applyForced(p,beforeAdj,list){
+  S.forcedTargets=[];
+  if(!list) list=adjEnemies(p).filter(e=>!beforeAdj.has(e.id)&&canBattle(p,e)).map(e=>e.id);
+  if(!list.length) return false;
+  S.forcedTargets=list;
+  if(list.length===1){
+    const def=alivePieces().find(e=>e.id===list[0]);
+    const fmsg="⚔️ 신규 인접 — 강제 전투!";
+    addLog(fmsg,"imp"); showToast(fmsg);
+    render();
+    if(!isAI(p.owner)&&def) initBattle(p,def); // 사람: 확인 없이 즉시 개시 (왕·동료는 기존 모달 흐름) · AI: aiStep이 최우선 개시
+    return true;
+  }
+  S.selected=p;
+  const fmsg=`⚔️ 강제 전투 — 신규 인접 대상 ${list.length}개 중 하나를 선택하세요.`;
+  addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
+  render();
+  return true;
+}
+/* #14 텔레포트 스왑형: 자기 말이 상대 진영에 있는 동안, 주 행동으로 자기 말 2개의 위치를 교환 (왕·폭탄·함정 포함).
+   경기당 플레이어별 BAL.teleMax(2)회 · 교환된 두 말 모두 신규 인접 검사→강제 전투 · movedPreBT 미기록 유지 */
+function teleportAvailable(p){
+  return S.phase==="play"&&alivePieces().some(x=>x.owner===p&&zoneOf(1-p).includes(x.r));
+}
+/* #18 강제 전투 적격 (연쇄 규칙 무관 — 텔레포트 강제 전투는 첫 전투 승리 조건 면제): 폭탄·함정은 공격 불가, 왕 vs 왕 불가침 */
+function forcedEligible(att,def){
+  if(att.type==="bomb"||att.type==="trap") return false;
+  if(att.type==="king"&&def.type==="king") return false;
+  return true;
+}
+/* #18 스왑 후 새로 인접할 적격 적 목록: p가 (r,c)로 이동했을 때, 기존 인접(before)이 아닌 적 */
+function newAdjAt(p,r,c,before){
+  return alivePieces().filter(e=>e.owner!==p.owner&&adj({r,c},e)&&!before.has(e.id)&&forcedEligible(p,e)).map(e=>e.id);
+}
+/* #18 스왑 사전 검사: 새 강제 전투 수가 남은 전투 슬롯(턴당 2회)을 초과하면 실행 전에 차단 (조용한 누락 금지) */
+function teleportSwapBlock(a,b){
+  const beforeA=new Set(adjEnemies(a).map(e=>e.id)), beforeB=new Set(adjEnemies(b).map(e=>e.id));
+  const need=(newAdjAt(a,b.r,b.c,beforeA).length?1:0)+(newAdjAt(b,a.r,a.c,beforeB).length?1:0);
+  const remain=Math.max(0,2-S.battlesUsed);
+  if(need>remain) return `새 강제 전투 ${need}회 > 남은 전투 ${remain}회 (턴당 최대 2회)`;
+  return null;
+}
+function doTeleportSwap(a,b){
+  if(S.teleUsed[S.current]>=BAL.teleMax) return false; // 2회 제한 방어
+  const block=teleportSwapBlock(a,b);
+  if(block){ // #18: 실행 전 차단 + 이유 안내 (텔레포트 횟수·주 행동 미소모)
+    const bmsg=`🌀 텔레포트 스왑 차단 — ${block}`;
+    addLog(bmsg,"imp"); if(!isAI(S.current)) showToast(bmsg);
+    if(S.teleport) S.teleport={stage:1,piece:null};
+    S.selected=null; render(); return false;
+  }
+  const beforeA=new Set(adjEnemies(a).map(e=>e.id)), beforeB=new Set(adjEnemies(b).map(e=>e.id));
+  S.mainUsed=true; met(S.current,"teleports"); S.teleUsed[S.current]++; S.teleport=null; S.selected=null;
+  const ar=a.r, ac=a.c; a.r=b.r; a.c=b.c; b.r=ar; b.c=ac; // movedEver/movedPreBT 미설정 — 걷는 이동이 아님 (폭탄 재배치 위장 유지)
+  if(S.mode==="pve"&&a.owner===0){addLog(`🌀 텔레포트 스왑: ${idLabel(0,a)} ↔ ${idLabel(0,b)}`,"imp"); showToast("🌀 텔레포트 완료");}
+  else {addLog("상대가 텔레포트를 사용했습니다","imp"); showToast("상대가 텔레포트를 사용했습니다");} // 대상·위치 비공개 (중립 문구)
+  for(const p of [a,b]){ // 도착 칸 이벤트 흔적
+    const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed);
+    if(ev){S.traces[p.owner].add(ev.r+"_"+ev.c);
+      if(!isAI(p.owner)){addLog("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)","imp");}}
+  }
+  if(checkKingReach()) return true; // 왕 포함 스왑 — 끝줄 도달 즉시 승리
+  // #18: 두 말의 강제 전투를 독립 queue에 적재 — 첫 전투의 결과(승·패·도주)와 무관하게 게임이 끝나지 않으면 둘째 실행
+  S.forcedQueue=[];
+  for(const [p,before] of [[a,beforeA],[b,beforeB]]){
+    const list=adjEnemies(p).filter(e=>!before.has(e.id)&&forcedEligible(p,e)).map(e=>e.id);
+    if(list.length) S.forcedQueue.push({pid:p.id,targets:list});
+  }
+  if(!drainForcedQueue(true)) render();
+  return true;
+}
+/* #18 강제 전투 queue 소비: 대기 항목 하나를 꺼내 forcedTargets로 승격. 전투 종료 지점(승·패·포획·도주·폭탄·함정·밀어내기)마다 호출.
+   autoStart: 사람·단일 대상이면 즉시 개시(스왑 직후) / false면 대상 표시만(전투 연출 종료 직후 — 클릭으로 개시).
+   대상·말 소멸이나 전투 횟수 소진으로 이행 불가하면 반드시 로그로 면제 사유를 남긴다 (조용한 누락 금지). */
+function drainForcedQueue(autoStart){
+  if(!S.forcedQueue) S.forcedQueue=[];
+  while(S.forcedQueue.length&&S.phase==="play"&&!S.battle&&!(S.forcedTargets&&S.forcedTargets.length)){
+    const n=S.forcedQueue.shift();
+    const p=alivePieces().find(x=>x.id===n.pid);
+    if(!p){ addLog("⚔️ 강제 전투 면제 — 해당 말이 제거되었습니다.","imp"); continue; }
+    if(S.battlesUsed>=2){ addLog("⚔️ 강제 전투 면제 — 이번 턴 전투 횟수(2회)를 모두 사용했습니다.","imp"); if(!isAI(p.owner)) showToast("⚔️ 강제 전투 면제 — 전투 횟수 소진"); continue; }
+    const list=adjEnemies(p).filter(e=>n.targets.includes(e.id)&&forcedEligible(p,e)).map(e=>e.id);
+    if(!list.length){ addLog("⚔️ 강제 전투 면제 — 신규 인접 대상이 사라졌습니다.","imp"); continue; }
+    S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
+    if(autoStart){ applyForced(p,null,list); return true; }
+    S.forcedTargets=list; S.selected=p;
+    const fmsg=list.length===1?"⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! (빨간 표시 대상을 클릭)":`⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! 대상 ${list.length}개 중 하나를 선택하세요.`;
+    addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
+    return true;
+  }
+  return false;
+}
+/* #20 경기 종료 공통: 승자(null=무승부)·승리 유형·종료 턴을 지표에 저장 */
+function gameOver(winner,type){
+  S.phase="over"; S.winner=winner; S.metrics.endTurn=S.turnCount; S.metrics.winType=type; S.metrics.winner=winner;
+}
+/* T4 전멸 패배: 하수인 6+동료 2 전원 사망 → 즉시 패배. 말 제거가 발생하는 모든 지점 후 호출 */
+function checkWipe(){
+  if(S.phase!=="play") return false;
+  for(const p of [0,1]){
+    if(!S.pieces.some(x=>x.owner===p&&x.alive&&x.placed&&(x.type==="minion"||x.type==="ally"))){
+      gameOver(1-p,"wipe");
+      const msg=`💀 ${pname(p)} 전투 가능 말 전멸 — ${pname(1-p)} 승리!`;
+      addLog(msg,"imp"); showToast(msg); render(); return true;
+    }
+  }
+  return false;
+}
+
+/* 왕 끝줄 도달 즉시 승리 (GDD-13 4.1 개정) — 왕 위치가 바뀌는 모든 지점 직후 호출 */
+function checkKingReach(){
+  if(S.phase!=="play") return false;
+  const k=alivePieces().find(p=>p.type==="king"&&((p.owner===0&&p.r===1)||(p.owner===1&&p.r===ROWS)));
+  if(!k) return false;
+  k.revealed=true;
+  gameOver(k.owner,"edge");
+  const msg=`👑 왕이 적진 최후방에 도달 — ${pname(k.owner)} 승리!`;
+  addLog(msg,"imp"); showToast(msg); render();
+  return true;
+}
+
+/* ===== 탐색·이벤트·포획 ===== */
+/* #20 탐색 실행 가능 말 — GDD 역할대로 하수인·동료·왕만. 폭탄·함정은 흔적 발견·칸 점유는 가능하나 탐색 실행 불가 (cap·버프 사장 방지) */
+function canSearchPiece(p){return !!p&&(p.type==="minion"||p.type==="ally"||p.type==="king");}
+function doSearch(p,ev){
+  if(!canSearchPiece(p)){ if(!isAI(p.owner)) showToast("폭탄·함정은 탐색할 수 없습니다."); return false; }
+  if(!ev||ev.consumed||ev.r!==p.r||ev.c!==p.c) return false;
+  S.mainUsed=true; ev.consumed=true; met(p.owner,"searches");
+  const ai=isAI(p.owner), own=p.owner;
+  const smsg=ai?`상대가 숲 이벤트를 발생시켰습니다.`:`${pname(own)} 숲 이벤트 발생`;
+  addLog(smsg, ai?"":"imp"); showToast(smsg);
+  if(p.type==="minion") met(own,"minionSearches"); // #12·#20: 하수인 탐색 (구 '하수인 이벤트')
+  if(ev.kind==="buff"){ // #12 일시버프 — 소비 말 종류 무관 그대로 획득 (다음 전투 동안 공격 +15%, 1회성)
+    p.nextBattleBuff=true;
+    if(!ai) modal(`<h2>✨ 일시 버프 획득</h2><p>${idLabel(own,p)} — 다음 전투 동안 공격 +${pct(BAL.nextBuffPct)} (1회성)</p>`,[["확인",close]]);
+  } else if(ev.kind==="ball"){ // #12·#17 몬스터볼: 소비 말 종류 무관(하수인 포함) 플레이어 공용 볼 +1, 상한 BAL.ballMax(3) 초과 시 획득 없음
+    const gained=S.balls[own]<BAL.ballMax;
+    if(gained) S.balls[own]++;
+    const rmsg=gained?`🔴 몬스터볼 +1 (보유 ${S.balls[own]}/${BAL.ballMax})`:`🔴 몬스터볼 상한(${BAL.ballMax}) — 이미 최대 보유, 획득하지 못했습니다.`;
+    if(!ai){ showToast(rmsg); // GDD-13 4.7: 공용 로그에는 이벤트 종류·보유량을 남기지 않는다 (generic 숲 이벤트 로그만) — 토스트·모달은 소비자 전용
+      modal(`<h2>${gained?"몬스터볼 획득":"몬스터볼 상한"}</h2><p>${rmsg}</p>`,[["확인",close]]);}
+  } else if(ev.kind!=="recruit"&&p.type==="minion"){ // #12 하수인의 아이템류(회복약·쿨링수·해독제) 소비 — 대체 보상: 자기 기술 쿨 전체 초기화
+    p.cd=0; if(p.skills) p.cds=[0,0,0,0];
+    if(!ai) modal(`<h2>이벤트 소모</h2><p>하수인은 아이템 대신 자기 기술 쿨타임이 전체 초기화됩니다.</p>`,[["확인",close]]);
+  } else if(ev.kind!=="recruit"){ // #12 회복약·쿨링수·해독제 — 동료·왕: 해당 아이템 획득
+    if(S.inv[own].length<BAL.invMax){S.inv[own].push(ev.kind);
+      if(!ai) modal(`<h2>아이템 획득</h2><p>${ITEMS[ev.kind].ko} — ${ITEMS[ev.kind].desc}</p>`,[["확인",close]]);}
+    else if(!ai) modal(`<h2>인벤토리 가득</h2><p>아이템을 획득하지 못했습니다 (최대 ${BAL.invMax}).</p>`,[["확인",close]]);
+  } else {
+    if(p.type==="minion"){
+      // [임시 대체 — 기획 확정 전] 보조기 슬롯(슬롯2)을 무작위 다른 보조기로 교체 제안 (구 공용 스킬 교체 대체)
+      if(p.skills){
+        const cur=p.skills[2];
+        const alt=shuffle(Object.keys(SKILLS).filter(k=>SKILLS[k].kind==="support"&&k!==cur))[0];
+        const swap=()=>{p.skills[2]=alt; p.cds[2]=0; if(p.revealedSkills) p.revealedSkills=p.revealedSkills.filter(i=>i!==2);};
+        if(ai){ if(rand()<0.5) swap(); }
+        else modal(`<h2>공용 하수인 발견</h2><p>이 하수인의 보조기를 교체할까요?<br>현재: ${SKILLS[cur].ko} → ${SKILLS[alt].ko}<small> (${SKILLS[alt].desc})</small></p>`,
+          [["교체",()=>{swap();close();render();}],["유지",close]]);
+      }
+    } else if(p.cap){ if(!ai) modal(`<h2>공용 하수인 발견</h2><p>이미 포획 하수인을 보유 중입니다 (각 1개 제한).</p>`,[["확인",close]]); }
+    else { if(ai) aiCapture(p); else captureModal(p); }
+  }
+  render();
+}
+function tryCapture(p,mode){
+  const cost=mode==="safe"?2:1; S.balls[p.owner]-=cost;
+  const roll=rand();
+  const ok= mode==="safe" || (mode==="risky"&&roll<0.5) || (mode==="attack"&&roll<0.7);
+  if(ok){
+    const el=shuffle(ELEMS.slice())[0], cb=BAL.captured;
+    // 포획 하수인: 해당 속성 표준형 세트 적용 (추론 — GDD-16 4장 템플릿 준용)
+    p.cap={element:el,hp:cb.hp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // 숲 공용 하수인 포획: 100/100 유지 (#20)
+      skills:archSkills("std",el),cds:[0,0,0,0],revealedSkills:[]};
+    met(p.owner,"captures");
+    return {ok:true,el};
+  }
+  met(p.owner,"captureFails");
+  let dmg=0;
+  if(mode==="attack"){dmg=Math.round(p.maxHp*BAL.captureAtkFailPct); p.hp=Math.max(1,p.hp-dmg);}
+  return {ok:false,dmg};
+}
+function captureModal(p){
+  const b=S.balls[p.owner];
+  const opt=(name,cost,rate,risk,fn)=>`<div class="fighter"><b>${name}</b><small>볼 ${cost} · 성공 ${rate}${risk?" · "+risk:""}</small>
+    <button ${b<cost?"disabled":""} onclick="window.__cap('${fn}')">시도</button></div>`;
+  window.__cap=mode=>{
+    const r=tryCapture(p,mode);
+    if(r.ok) modal(`<h2>포획 성공!</h2><p>포획 하수인(${ELEM_KO[r.el]}) 확보 — 대리 출전 가능</p>`,[["확인",close]]);
+    else modal(`<h2>포획 실패</h2><p>공용 하수인이 사라졌습니다.${r.dmg?`<br>탐색 말이 최대 HP 25% 피해 (HP ${p.hp})`:""}</p>`,[["확인",close]]);
+    render();
+  };
+  modal(`<h2>포획 시도 (몬스터볼 ${b})</h2><small>공격 포획 실패 시 최대 HP 25% 피해 경고!</small>
+    ${opt("안전 포획",2,"100%","", "safe")}${opt("위험 포획",1,"50%","실패 시 소멸","risky")}${opt("공격 포획",1,"70%","실패 시 소멸+HP 25% 피해","attack")}`,
+    [["포기",close]]);
+}
+
+/* ===== 전투 ===== */
+function initBattle(att,def){
+  if(S.forcedTargets&&S.forcedTargets.length&&S.forcedTargets.includes(def.id)){S.forcedTargets=[]; met(att.owner,"forcedBattles");} // T1: 강제 이행
+  if(def.type==="bomb"){
+    S.battlesUsed++; met(att.owner,"battles");
+    def.alive=false;
+    if(att.type==="minion"){att.alive=false; met(def.owner,"bombHitsMinion"); // #20: 폭탄 소유자 기준
+      addLog(`💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.`,"imp");
+      showToast(`💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.`);}
+    else {met(def.owner,"bombClearedByVip");
+      addLog(`💥 폭탄 발동! 폭탄만 제거되고 공격한 말은 생존했습니다. (정체 비공개 유지)`,"imp");
+      showToast(`💥 폭탄 발동! 폭탄만 제거되고 공격한 말은 생존했습니다. (정체 비공개 유지)`);}
+    if(checkWipe()) return; // T4: 폭탄 동귀 후 전멸 판정
+    afterBattle(att,false); return;
+  }
+  if(def.type==="trap"){
+    S.battlesUsed++; met(att.owner,"battles"); met(def.owner,"trapTriggers"); // #20: 함정 발동은 함정 소유자 기준
+    def.alive=false; att.immobile=2;
+    addLog(`🪤 함정 발동! 함정은 제거되고 대상 말은 소유자 기준 2턴 이동 불가. (정체 비공개 유지)`,"imp");
+    showToast(`🪤 함정 발동! 함정은 제거되고 대상 말은 소유자 기준 2턴 이동 불가. (정체 비공개 유지)`);
+    afterBattle(att,false); render(); return;
+  }
+  const needA=(att.type==="ally"||att.type==="king"), needD=(def.type==="ally"||def.type==="king");
+  if(needA||needD){ vipChoice(att,def); return; }
+  startRounds(att,def,att,def);
+}
+function vipChoice(att,def){
+  const choices={};
+  const ask=(side,piece,next)=>{
+    const res=(!piece.cap&&S.reserve[piece.owner])?S.reserve[piece.owner]:null; // #12: cap 없고 예비(포획 하수인) 있으면 대리 출전 가능
+    if(!(piece.type==="ally"||piece.type==="king")||(!piece.cap&&!res)){choices[side]="body"; next(); return;}
+    const useRes=()=>{piece.cap=S.reserve[piece.owner]; S.reserve[piece.owner]=null;}; // 사용 시 reserve 소모 → 해당 전투원의 cap
+    if(isAI(piece.owner)){if(res)useRes(); choices[side]="cap"; next(); return;} // AI: 보유 시 항상 대리 (진짜 비공개 선택)
+    modal(`<h2>🔒 ${pname(piece.owner)}만 확인${S.mode==="pvp"?" (상대는 시선 회피)":""}</h2>
+      <p>${TYPE_KO[piece.type]} 출전 선택 — 어느 쪽이 패배해도 ${piece.type==="king"?"경기 패배":"동료·포획 하수인 동시 제거"}입니다.</p>`,
+      [["본체 출전",()=>{choices[side]="body";close();next();}],
+       res?[`예비 하수인(${ELEM_KO[res.element]}) HP ${res.hp}/${res.maxHp} 대리 출전`,()=>{useRes();choices[side]="cap";close();next();}]
+          :[`포획 하수인(${ELEM_KO[piece.cap.element]}) HP ${piece.cap.hp}/${piece.cap.maxHp} 출전`,()=>{choices[side]="cap";close();next();}]]);
+  };
+  ask("A",att,()=>ask("D",def,()=>{
+    att.revealed=true; def.revealed=true;
+    const fa=choices.A==="cap"?att.cap:att, fd=choices.D==="cap"?def.cap:def;
+    const aIsBody=(att.type==="ally"||att.type==="king")&&choices.A!=="cap";
+    const dIsBody=(def.type==="ally"||def.type==="king")&&choices.D!=="cap";
+    if(aIsBody&&dIsBody){ doPush(att,def); return; } // Q2-b C안
+    const desc=`공격: ${fa===att?TYPE_KO[att.type]:"포획 하수인("+ELEM_KO[fa.element]+")"} vs 방어: ${fd===def?TYPE_KO[def.type]:"포획 하수인("+ELEM_KO[fd.element]+")"}`;
+    if(S.mode==="sim"){ addLog("출전 공개 — "+desc,"ai"); startRounds(att,def,fa,fd); return; }
+    modal(`<h2>출전 공개</h2><p>${desc}</p>`,[["전투 시작",()=>{close();startRounds(att,def,fa,fd);}]]);
+  }));
+}
+function doPush(att,def){
+  S.battlesUsed++; met(att.owner,"battles"); met(att.owner,"pushes");
+  const dr=def.r-att.r, dc=def.c-att.c, nr=def.r+dr, nc=def.c+dc;
+  let msg;
+  if(nr<1||nr>ROWS||nc<1||nc>COLS||at(nr,nc)) msg="밀 수 없는 위치 — 제자리 유지.";
+  else {def.r=nr; def.c=nc; msg=`방어자가 1칸 밀려났습니다 (${nr}행 ${nc}열).`;}
+  addLog(`🤜 양측 본체 출전 → 밀어내기! ${msg}`,"imp");
+  showToast(`🤜 양측 본체 출전 → 밀어내기! ${msg}`);
+  if(checkKingReach()) return; // 밀어내기로 끝줄 진입도 승리 인정
+  if(isAI(S.current)){ afterBattle(att,false); render(); return; }
+  modal(`<h2>밀어내기 (Q2-b)</h2><p>양측 모두 본체로 출전해 전투 대신 위치 판정. ${msg}</p>`,[["확인",()=>{close();afterBattle(att,false);render();}]]);
+}
+function startRounds(attP,defP,fa,fd){
+  S.battlesUsed++; met(attP.owner,"battles");
+  attP.revealed=true; defP.revealed=true;
+  S.battle={attP,defP,fa,fd,round:1,phase:0,
+    recA:0,recD:0, itemsA:0,itemsD:0, itemRoundA:false,itemRoundD:false, lastItemA:null,lastItemD:null,
+    ballThrowA:false, ballThrowD:false, // #12: 볼 투척 라운드당 1회
+    blog:[], msgQ:[], dispHpA:fa.hp, dispHpD:fd.hp};
+  resetBattleTemps(fa); resetBattleTemps(fd);
+  for(const [piece,f,sd] of [[attP,fa,"A"],[defP,fd,"D"]]) // #12 일시버프: 다음 전투 개시 시 소진·전투 내내 유지
+    if(piece.nextBattleBuff){piece.nextBattleBuff=false; f.atkBuff=true;
+      bmsg(`✨ ${fighterName(sd)} 일시 버프 — 이번 전투 공격 +${pct(BAL.nextBuffPct)}!`);}
+  bmsg(`⚔️ ${fighterName("A")} vs ${fighterName("D")} — 전투 개시!`);
+  battleModal();
+}
+function resetBattleTemps(f){f.burn=0;f.burnBy=null;f.weaken=0;f.shield=0;f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;} // 쿨(cds)은 전투 간 유지 (HP와 동일)
+function actorOfPhase(){
+  const B=S.battle;
+  let firstIsAtt = B.round%2===1;
+  if(firstIsAtt && B.fa.shock) firstIsAtt=false;
+  if(!firstIsAtt && B.fd.shock) firstIsAtt=true;
+  return B.phase===0 ? (firstIsAtt?"A":"D") : (firstIsAtt?"D":"A");
+}
+function battleModal(){
+  const B=S.battle; if(!B) return;
+  const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
+  const ownerP=side==="A"?B.attP.owner:B.defP.owner;
+  const aiActor=isAI(ownerP);
+  const viewer=S.mode==="sim"?2:(S.mode==="pve"?0:ownerP); // 기술 공개 기준 시점 (pvp는 현재 행동자 화면)
+  const busy=B.msgQ.length>0; // 메시지 재생 대기 중 커맨드 비활성
+  const mySide=S.mode==="pve"?(B.attP.owner===0?"A":"D"):"A", topSide=mySide==="A"?"D":"A";
+  const panel=sid=>{ // 전투원 정보 패널: 이름·아키타입/속성 배지·HP바·상태·가한 유효 피해 게이지
+    const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP, rec=sid==="A"?B.recA:B.recD, oppMax=(sid==="A"?B.fd:B.fa).maxHp;
+    const rd=pf===piece&&piece.rosterId?ROSTER.find(x=>x.id===piece.rosterId):null;
+    const dhp=B["dispHp"+sid]!==undefined?B["dispHp"+sid]:pf.hp; // 표시 HP (메시지 재생과 동기화)
+    return `<div class="fighter"><div>
+      <b>${fighterName(sid)}</b> <small>(${pname(piece.owner)})</small>
+      ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
+      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div></div>
+      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp} · <span id="bst-${sid}">${stIcons(pf)}</span></div>
+      <div class="dmgbar"><div style="width:${Math.min(100,rec/oppMax*100)}%"></div></div>
+      <div class="status">가한 유효 피해 ${rec} (${pct(Math.min(1,rec/oppMax))})</div>
+      ${pf.skills?`<div class="status">${pf.skills.map((sid2,i)=>{
+        const sk2=SKILLS[sid2], known=viewer===2||piece.owner===viewer||(pf.revealedSkills&&pf.revealedSkills.includes(i));
+        return known?`${sk2.ko}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:`?${SKIND_KO[sk2.kind]}`;
+      }).join(" · ")}</div>`:""}
+    </div></div>`;
+  };
+  const token=sid=>{ // 스테이지 토큰: 속성색 원형 + 이모지·속성명
+    const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
+    const col=pf.element?`var(--${pf.element})`:"#5a6377";
+    const emo=pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
+    return `<div class="btok ${sid===mySide?"tok-me":"tok-op"}" id="tok-${sid}" style="background:${col}">${emo}<small>${pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type]}</small></div>`;
+  };
+  const usedItems=side==="A"?B.itemsA:B.itemsD, itemRound=side==="A"?B.itemRoundA:B.itemRoundD, lastItem=side==="A"?B.lastItemA:B.lastItemD;
+  const dis=aiActor||busy;
+  let cmdBtns;
+  if(f.skills){ // 4슬롯 커맨드 — 기본 공격 버튼 제거, 전 슬롯 쿨일 때만 폴백 노출
+    const maskCmd=viewer!==2&&ownerP!==viewer;
+    cmdBtns=f.skills.map((sid2,i)=>{
+      const sk2=SKILLS[sid2], onCd=f.cds[i]>0;
+      const known=!maskCmd||(f.revealedSkills&&f.revealedSkills.includes(i));
+      const label=known?`${sk2.ko}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:""}`:`? ${SKIND_KO[sk2.kind]}`;
+      return `<button ${dis||onCd?"disabled":""} title="${known?sk2.desc:""}" onclick="window.__act(${i})">${label}</button>`;
+    }).join("");
+    if(!f.cds.some(c=>c===0)) cmdBtns+=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(f.atk)}</button>`;
+  } else { // 왕·동료 본체·구형 경로: 기본 공격 유지
+    const canSkill=f.skillAtk&&f.cd===0;
+    cmdBtns=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(f.atk)}</button>`
+      +(f.skillAtk?`<button ${dis||!canSkill?"disabled":""} onclick="window.__act('skill')">${f.element?SKILL_KO[f.element]:"스킬"} ${dmgRange(f.skillAtk)}${f.cd?` (쿨${f.cd})`:""}</button>`:"");
+  }
+  // #12 볼 투척: 대상이 적 하수인·HP<30%·볼 보유·예비 슬롯 빈 상태·라운드당 1회 / #13 도망: 자기 HP<50%
+  const oppPiece=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
+  const canThrow=oppPiece.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown;
+  const canFlee=f.hp<f.maxHp*0.5;
+  cmdBtns+=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 볼 투척 ${pct(BAL.enemyCapProb)}</button>`
+    +`<button class="danger" ${dis||!canFlee?"disabled":""} title="자기 HP 50% 미만 시 가능 · 실패 시 상대 즉시 공격 1회" onclick="window.__flee()">🏃 도망 ${pct(BAL.fleeProb)}</button>`;
+  let itemBtns=S.inv[ownerP].map((k,i)=>
+    `<button ${dis||usedItems>=BAL.itemPerBattle||itemRound||k===lastItem?"disabled":""} onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
+  const turnLabel=S.mode==="pve"?(ownerP===0?"나의 턴":"상대 턴"):`P${ownerP+1} 턴`; // T3: 현재 행동자 대형 표시
+  modal(`<h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>
+    <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${BAL.maxRounds}</div>
+    ${panel(topSide)}
+    <div id="bstage">${token(topSide)}${token(mySide)}</div>
+    ${panel(mySide)}
+    <div id="msgBox">${busy?"":`${fighterName(side)}의 행동을 선택하세요.`}</div>
+    <div class="row"><b>${pname(ownerP)}:</b> ${cmdBtns}</div>
+    <div class="row"><small>보너스 아이템(라운드당 1·전투당 2·연속 동일 불가):</small> ${itemBtns||"<small>없음</small>"}</div>
+    <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
+    []);
+  window.__useItem=i=>{
+    const k=S.inv[ownerP][i]; S.inv[ownerP].splice(i,1);
+    if(side==="A"){B.itemsA++;B.itemRoundA=true;B.lastItemA=k;} else {B.itemsD++;B.itemRoundD=true;B.lastItemD=k;}
+    if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
+      bmsg(`🧪 회복약! ${fighterName(side)}의 HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
+    if(k==="cool"){f.cd=0; if(f.skills)f.cds=[0,0,0,0]; bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!");} // 4슬롯 전체 초기화 (아이템 설명 문언 준용 — [기획 필요] 후보)
+    if(k==="cure"){f.burn=0;f.weaken=0;f.shock=0;f.shockFresh=false; bmsg("🧪 해독제 — 상태이상 해제!",{st:{side,text:stIcons(f)}});}
+    battleModal();
+  };
+  window.__throwBall=()=>{ // #12 적 하수인 포획: 볼 소모(성공·실패 공통) — 성공 시 포획 종료, 실패 시 행동 소모
+    if(S.battle!==B||!canThrow) return;
+    S.balls[ownerP]--;
+    if(side==="A")B.ballThrowA=true; else B.ballThrowD=true;
+    met(ownerP,"enemyCapTries"); // #20 적 포획 시도
+    bmsg(`🔴 ${pname(ownerP)}의 몬스터볼 투척!`);
+    if(rand()<BAL.enemyCapProb){ finishByCapture(side); return; }
+    met(ownerP,"enemyCapFails"); // #20 적 포획 실패
+    bmsg(`🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 ${S.balls[ownerP]})`);
+    nextPhase();
+  };
+  window.__flee=()=>{ // #13 도망: 성공 시 전투 즉시 종료(판정·제거 없음·battlesUsed 유지), 실패 시 행동 소모+상대 즉시 공격 1회
+    if(S.battle!==B||!canFlee) return;
+    met(ownerP,"fleeTries");
+    bmsg(`🏃 ${fighterName(side)}의 도망 시도!`);
+    if(rand()<BAL.fleeProb){
+      met(ownerP,"fleeOks");
+      const piece=side==="A"?B.attP:B.defP;
+      bmsg(`🏃 도망 성공! 전투가 종료되었다.`);
+      addLog(`🏃 ${pname(ownerP)} 도망 성공 — 전투 종료 (판정·제거 없음)`,"imp"); showToast("🏃 도망 성공 — 전투 종료");
+      resetAfter(B.fa); resetAfter(B.fd);
+      const q=B.msgQ.splice(0);
+      S.battle=null;
+      if(liveBattleDom()) playMsgs(q,()=>setTimeout(()=>{if(!S.battle){close(); fleeSwapPrompt(piece);}},800));
+      else {close(); fleeSwapPrompt(piece);}
+      return;
+    }
+    bmsg(`🏃 도망 실패! 상대의 공격이 이어진다.`);
+    fleeCounter(side);
+  };
+  window.__act=kind=>{
+    // 슬롯 인덱스(0~3) + 레거시 매핑: 'basic'→슬롯0(쿨이면 순수 기본 공격 폴백), 'skill'→슬롯1, 'common'→슬롯2
+    let slot=null;
+    if(typeof kind==="number"){ if(f.skills&&f.skills[kind]!==undefined) slot=kind; }
+    else if(kind==="basic") slot=(f.skills&&f.cds[0]===0)?0:-1;
+    else if(kind==="skill"&&f.skills) slot=1;
+    else if(kind==="common"&&f.skills) slot=2;
+    if(slot!==null){ execSlot(side,slot); return; }
+    if(kind!=="skill"||!f.skillAtk){ execSlot(side,-1); return; } // 왕·동료 본체: 기본 공격
+    // ===== 구형 속성 스킬 경로 (로스터 미적용 하수인 전용 — 레거시 테스트 호환) =====
+    const oSide=side==="A"?"D":"A", sp=skillParamsOf(f);
+    const tryStatus=()=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb
+      if(archOf(f)==="sustain"||rand()<BAL.statusProb){S.metrics.statusApplied++; return true;}
+      S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
+    };
+    bmsg(`${fighterName(side)}의 ${f.element?SKILL_KO[f.element]:"스킬"}!`);
+    let dmg=f.skillAtk;
+    if(f.atkBuff) dmg=Math.round(dmg*(1+BAL.nextBuffPct)); // #12 일시버프 (레거시 경로)
+    if(BAL.dmgVar) dmg=Math.round(dmg*(1-BAL.dmgVar+rand()*2*BAL.dmgVar)); // D8 피해 분산 ±20% (기대값 유지)
+    f.cd=f.cdMax||BAL.minion.cd;
+    if(f.weaken>0){dmg=Math.round(dmg*(1-BAL.weakenPct)); f.weaken--;
+      if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:{side,text:stIcons(f)}});}
+    if(f.element&&opp.element){
+      if(BEATS[f.element]===opp.element) dmg=Math.round(dmg*BAL.advMult);
+      else if(BEATS[opp.element]===f.element) dmg=Math.round(dmg*BAL.disMult);
+    }
+    if(f.element==="grass"){
+      dmg=Math.round(dmg*sp.grassDmgMult);
+      if(sp.shieldPct) f.shield=Math.round(f.maxHp*sp.shieldPct);
+      const gh=Math.round(f.maxHp*sp.healPct);
+      f.hp=Math.min(f.maxHp,f.hp+gh);
+      bmsg(sp.shieldPct?`🌿 보호막·회복 획득!`:`🌿 회복 획득!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:{side,text:stIcons(f)}});
+    }
+    if(opp.dmgCut>0){dmg=Math.round(dmg*(1-opp.dmgCut)); opp.dmgCut=0; bmsg("상대는 자세를 낮춰 피해를 흘렸다!",{st:{side:oSide,text:stIcons(opp)}});}
+    if(opp.vulnMark){dmg=Math.round(dmg*1.15); opp.vulnMark=false; bmsg(`⚠️ 결정타의 반동 — 피격 +15%!`);}
+    let absorbed=Math.min(dmg,opp.shield); opp.shield-=absorbed;
+    let hpDmg=dmg-absorbed;
+    const actual=Math.min(hpDmg,opp.hp); opp.hp-=actual;
+    const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed);
+    const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
+    const counted=actual+(absorbed-freeAbsorb);
+    addRec(side,counted);
+    bmsg(`${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
+      {shake:oSide,flash:f.element||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
+       hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:{side:oSide,text:stIcons(opp)}});
+    if(f.element==="fire"&&!opp.burn&&tryStatus()){opp.burn=sp.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${sp.burnRounds}R)`,{st:{side:oSide,text:stIcons(opp)}});}
+    if(f.element==="water"&&!opp.weaken&&tryStatus()){opp.weaken=sp.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${sp.weakenHits}회)`,{st:{side:oSide,text:stIcons(opp)}});}
+    if(f.element==="lightning"&&!opp.shock&&tryStatus()){opp.shock=sp.shockRounds; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${sp.shockRounds}라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
+    if(checkDeath()) return;
+    nextPhase();
+  };
+  // 표시 계층: 큐 재생 완료 후 다음 행동자 활성 (AI면 재렌더 시 aiScheduleBattle)
+  if(B.msgQ.length) playMsgs(B.msgQ.splice(0),()=>{ if(S.battle===B) battleModal(); });
+  else if(aiActor) aiScheduleBattle();
+}
+/* ===== 4슬롯 실행 엔진 (GDD-16) — slot -1은 폴백 기본 공격, 로직은 동기 완결 ===== */
+function execSlot(side,slot){
+  const B=S.battle; if(!B) return;
+  const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A";
+  const sk=(slot>=0&&f.skills)?SKILLS[f.skills[slot]]:null;
+  if(sk){ f.cds[slot]=sk.cd;
+    if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
+  const gate=force=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기 70%·잔류장 100%)
+    if(force||rand()<BAL.statusProb){S.metrics.statusApplied++; return true;}
+    S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
+  };
+  const applyStatus=force=>{
+    if(f.element==="fire"&&!opp.burn&&gate(force)){opp.burn=BAL.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${BAL.burnRounds}R)`,{st:{side:oSide,text:stIcons(opp)}});}
+    else if(f.element==="water"&&!opp.weaken&&gate(force)){opp.weaken=BAL.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${BAL.weakenHits}회)`,{st:{side:oSide,text:stIcons(opp)}});}
+    else if(f.element==="lightning"&&!opp.shock&&gate(force)){opp.shock=1; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
+  };
+  const coolReduce=(filter,label)=>{ // 쿨 감소류: 조건 내 남은 쿨 최장 기술 1개 쿨 -1
+    let pick=-1;
+    for(let i=0;i<4;i++) if(f.cds[i]>0&&filter(i)&&(pick<0||f.cds[i]>f.cds[pick])) pick=i;
+    if(pick<0){ if(label) bmsg(`${label} — 단축할 쿨이 없다.`); return; }
+    f.cds[pick]--; bmsg(`🔄 ${SKILLS[f.skills[pick]].ko} 쿨 -1 (남은 쿨 ${f.cds[pick]})`);
+  };
+  const supFlash=sk&&!sk.pow?(sk.healPct?"heal":(sk.shieldPct||sk.dmgCut)?"guard":"buff"):null; // S3-A 보조 3계열
+  bmsg(`${fighterName(side)}의 ${sk?sk.ko:"기본 공격"}!`,(sk&&sk.kind==="sig")?{sig:true,flash:supFlash}:(supFlash?{flash:supFlash}:null));
+  if(sk&&!sk.pow){ // 비피해 기술: 보조기·불굴 진형
+    if(sk.healPct){const h=Math.round(f.maxHp*sk.healPct); f.hp=Math.min(f.maxHp,f.hp+h);
+      bmsg(`💚 HP ${h} 회복!`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
+    if(sk.shieldPct){f.shield=Math.max(f.shield,Math.round(f.maxHp*sk.shieldPct)); // 보호막 중첩: 최대값 갱신 (합산 금지)
+      bmsg(`🛡 보호막 ${f.shield}!`,{st:{side,text:stIcons(f)}});}
+    if(sk.dmgCut){f.dmgCut=Math.max(f.dmgCut,sk.dmgCut);
+      bmsg(`🌀 다음 피격 ${pct(sk.dmgCut)} 감소!`,{st:{side,text:stIcons(f)}});}
+    if(sk.focus){f.focusCharge=true; bmsg(`🎯 집중 — 다음 공격기 위력 +20%!`,{st:{side,text:stIcons(f)}});}
+    if(sk.coolAny) coolReduce(i=>i!==slot,"냉각");
+    if(sk.cleanse){
+      if(f.burn){f.burn=0;f.burnBy=null;bmsg(`✨ 화상이 정화되었다!`,{st:{side,text:stIcons(f)}});}
+      else if(f.weaken){f.weaken=0;bmsg(`✨ 약화가 정화되었다!`,{st:{side,text:stIcons(f)}});}
+      else if(f.shock){f.shock=0;f.shockFresh=false;bmsg(`✨ 감전이 정화되었다!`,{st:{side,text:stIcons(f)}});}
+      else bmsg(`정화 — 제거할 상태이상이 없다.`);
+    }
+  } else { // 피해 기술: 공격기·시그니처·기본 공격 — 스케일 후 기존 파이프라인(분산·상성) 그대로
+    let dmg=sk?slotPow(f,sk):f.atk;
+    if(f.atkBuff) dmg=Math.round(dmg*(1+BAL.nextBuffPct)); // #12 일시버프
+    if(f.focusCharge&&sk&&sk.kind==="attack"){dmg=Math.round(dmg*1.2); f.focusCharge=false;
+      bmsg(`🎯 집중 발동 — 위력 +20%!`,{st:{side,text:stIcons(f)}});}
+    if(BAL.dmgVar) dmg=Math.round(dmg*(1-BAL.dmgVar+rand()*2*BAL.dmgVar)); // D8 피해 분산 ±20%
+    if(f.weaken>0){dmg=Math.round(dmg*(1-BAL.weakenPct)); f.weaken--;
+      if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:{side,text:stIcons(f)}});}
+    if(f.element&&opp.element){
+      if(BEATS[f.element]===opp.element) dmg=Math.round(dmg*BAL.advMult);
+      else if(BEATS[opp.element]===f.element) dmg=Math.round(dmg*BAL.disMult);
+    }
+    if(sk&&sk.bonusVsShield&&opp.shield>0){dmg+=sk.bonusVsShield; bmsg(`🌊 보호막 대상 추가 위력 +${sk.bonusVsShield}!`);}
+    if(sk&&sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock)){dmg+=sk.bonusVsStatus; bmsg(`⚡ 상태이상 대상 추가 위력 +${sk.bonusVsStatus}!`);}
+    if(opp.dmgCut>0){dmg=Math.round(dmg*(1-opp.dmgCut)); bmsg(`${fighterName(oSide)}는 자세를 낮춰 피해 ${pct(opp.dmgCut)} 감소!`); opp.dmgCut=0;}
+    if(opp.vulnMark){dmg=Math.round(dmg*1.15); opp.vulnMark=false; bmsg(`⚠️ 결정타의 반동 — 피격 +15%!`);}
+    let absorbed=Math.min(dmg,opp.shield); opp.shield-=absorbed;
+    let hpDmg=dmg-absorbed;
+    const actual=Math.min(hpDmg,opp.hp); opp.hp-=actual;
+    const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed);
+    const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
+    const counted=actual+(absorbed-freeAbsorb);
+    addRec(side,counted);
+    bmsg(`${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
+      {shake:oSide,flash:f.element||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
+       hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:{side:oSide,text:stIcons(opp)}});
+    if(sk){
+      if(sk.drainPct&&actual>0){const gh=Math.round(actual*sk.drainPct); f.hp=Math.min(f.maxHp,f.hp+gh);
+        bmsg(`🌿 흡수 — HP ${gh} 회복!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
+      if(sk.selfShieldPct){f.shield=Math.max(f.shield,Math.round(f.maxHp*sk.selfShieldPct));
+        bmsg(`🌿 보호막 ${f.shield}!`,{st:{side,text:stIcons(f)}});}
+      if(sk.status) applyStatus(false);
+      if(sk.statusSelf){ // 잔류장: 자기 속성 상태효과 100% — 풀은 대응 상태이상 부재로 흡수 회복(실피해 40%) 임시 대체 [기획 필요]
+        if(f.element==="grass"){const gh=Math.round(actual*0.4); if(gh>0){f.hp=Math.min(f.maxHp,f.hp+gh);
+          bmsg(`🌿 잔류 흡수 — HP ${gh} 회복!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}}
+        else applyStatus(true);
+      }
+      if(sk.selfVuln){f.vulnMark=true; bmsg(`⚠️ ${fighterName(side)}의 자세가 무너졌다 — 다음 피격 +15%!`,{st:{side,text:stIcons(f)}});}
+      if(sk.coolAttack) coolReduce(i=>i!==slot&&SKILLS[f.skills[i]].kind==="attack",null); // 전술 연계
+      if(sk.coolAttackLongest) coolReduce(i=>SKILLS[f.skills[i]].kind==="attack",null);   // 급속 순환
+    }
+  }
+  if(checkDeath()) return;
+  nextPhase();
+}
+function sideName(s){return s==="A"?"공격측":"방어측";}
+function dmgRange(v){return BAL.dmgVar?Math.round(v*(1-BAL.dmgVar))+"~"+Math.round(v*(1+BAL.dmgVar)):v;} // T7: 분산 반영 표기
+/* T5-B 아키타입별 스킬 파라미터: 지속형 강화(화상3R·약화3회·풀15%/15%·감전2R), 풀 속공 변형(회복 8%·보호막 없음) */
+function archOf(f){const rd=f.rosterId?ROSTER.find(r=>r.id===f.rosterId):null; return rd?rd.arch:null;}
+function skillParamsOf(f){
+  const a=archOf(f);
+  return {
+    burnRounds:a==="sustain"?3:BAL.burnRounds,
+    weakenHits:a==="sustain"?3:BAL.weakenHits,
+    shockRounds:a==="sustain"?2:1,
+    shieldPct:(f.element==="grass"&&a==="swift")?0:BAL.shieldPct,
+    healPct:a==="sustain"?0.15:(f.element==="grass"&&a==="swift")?0.08:BAL.healPct,
+    grassDmgMult:(f.element==="grass"&&a==="swift")?1:0.6
+  };
+}
+const ELEM_EMO={fire:"🔥",water:"💧",grass:"🌿",lightning:"⚡"};
+function fighterName(sid){
+  const B=S.battle, pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
+  return pf===piece?(piece.type==="minion"&&piece.name?piece.name:TYPE_KO[piece.type]):"포획 하수인·"+ELEM_KO[pf.element];
+}
+function stIcons(f){
+  return [f.shield?`🛡${f.shield}`:"",f.burn?`🔥화상${f.burn}R`:"",f.weaken?`💧약화${f.weaken}회`:"",f.shock?`⚡감전${f.shock}R`:"",
+    f.dmgCut?`🌀감쇠${pct(f.dmgCut)}`:"",f.focusCharge?"🎯집중":"",f.vulnMark?"⚠️피격+15%":""].filter(Boolean).join(" ")||"-";
+}
+/* 전투 메시지 시퀀스 — 로직은 동기 완결, 표시 계층만 타이머 재생 (헤드리스: 큐만 적재 후 즉시 소진) */
+function bmsg(txt,fx){const B=S.battle; if(!B) return; B.blog.push(txt); B.msgQ.push({txt,fx:fx||null});}
+let MSGQ=[], MSGPLAYING=false, MSGAFTER=null;
+function liveBattleDom(){ // 실제 DOM에 msgBox가 있을 때만 재생 (sim·헤드리스 스텁 제외)
+  try{const mb=$("msgBox"); return S.mode!=="sim"&&!!mb&&mb.nodeType===1;}catch(e){return false;}
+}
+function playMsgs(q,after){ // 0.6초 간격 순차 재생 — 재생 불가 환경은 즉시 완료
+  MSGQ.push(...q); MSGAFTER=after||null;
+  if(MSGPLAYING) return;
+  if(!liveBattleDom()){ MSGQ.length=0; const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); return; }
+  MSGPLAYING=true;
+  (function step(){
+    const m=MSGQ.shift();
+    if(!m){ MSGPLAYING=false; const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); return; }
+    try{ const mb=$("msgBox"); if(mb) mb.innerHTML=m.txt; applyFx(m.fx); }catch(e){}
+    setTimeout(step,600);
+  })();
+}
+function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·HP바·상태 아이콘) — 실패는 조용히 무시
+  if(!fx) return;
+  try{
+    if(fx.hp){ if(S.battle) S.battle["dispHp"+fx.hp.side]=fx.hp.val;
+      const bar=$("hpfill-"+fx.hp.side); if(bar) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%";
+      const t=$("hptxt-"+fx.hp.side); if(t) t.textContent=fx.hp.val; }
+    if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text; }
+    if(fx.shake){ const t=$("tok-"+fx.shake); if(t){t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake");} }
+    if(fx.flash){ const st=$("bstage"); if(st){st.style.boxShadow=`inset 0 0 70px var(--${fx.flash})`;
+      setTimeout(()=>{try{st.style.boxShadow="";}catch(e){}},380);} }
+    if(fx.sig){ const st=$("bstage"); if(st&&st.classList){st.classList.remove("sigblink"); void st.offsetWidth; st.classList.add("sigblink");
+      setTimeout(()=>{try{st.classList.remove("sigblink");}catch(e){}},750);} } // 시그니처 전용 강조 (테두리 점멸)
+    if(fx.float){ const t=$("tok-"+fx.float.side); if(t&&t.appendChild){const d=document.createElement("div");
+      d.className="dmgfloat"; d.innerHTML=fx.float.html; t.appendChild(d);
+      setTimeout(()=>{if(d.parentNode)d.parentNode.removeChild(d);},1100);} }
+    if(fx.ko){ const t=$("tok-"+fx.ko); if(t) t.classList.add("ko"); }
+  }catch(e){}
+}
+function addRec(side,amount){
+  const B=S.battle;
+  if(side==="A") B.recA=Math.min(B.fd.maxHp,B.recA+amount);
+  else B.recD=Math.min(B.fa.maxHp,B.recD+amount);
+}
+function nextPhase(){
+  const B=S.battle;
+  if(B.phase===0){B.phase=1; battleModal(); return;}
+  for(const [f,side] of [[B.fa,"A"],[B.fd,"D"]]){
+    if(f.burn>0){const d=Math.min(f.hp,Math.round(f.maxHp*BAL.burnPct)); f.hp-=d; f.burn--;
+      addRec(f.burnBy,d);
+      bmsg(`🔥 ${fighterName(side)}는 화상 피해 ${d}!`,{shake:side,float:{side,html:`<span class="neg">-${d}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:{side,text:stIcons(f)}});
+      if(!f.burn) bmsg(`🔥 ${fighterName(side)}의 화상이 해제되었다.`,{st:{side,text:stIcons(f)}});
+      if(checkDeath()) return;}
+    if(f.cd>0)f.cd--; if(f.skills)for(let i=0;i<4;i++)if(f.cds[i]>0)f.cds[i]--; // 슬롯별 개별 쿨 감소 (라운드 종료 시)
+    if(f.shockFresh) f.shockFresh=false; // 감전은 부여 라운드가 아닌 다음 라운드부터 소진
+    else if(f.shock>0){f.shock--; if(!f.shock) bmsg(`⚡ ${fighterName(side)}의 감전이 풀렸다.`,{st:{side,text:stIcons(f)}});}
+  }
+  B.itemRoundA=false; B.itemRoundD=false;
+  B.ballThrowA=false; B.ballThrowD=false; // #12: 볼 투척 라운드당 1회 리셋
+  B.round++;
+  if(B.round>BAL.maxRounds){judge(); return;}
+  B.phase=0; battleModal();
+}
+function checkDeath(){
+  const B=S.battle;
+  if(B.fd.hp<=0){finishBattle("A","즉사"); return true;}
+  if(B.fa.hp<=0){finishBattle("D","즉사"); return true;}
+  return false;
+}
+function judge(){
+  const B=S.battle; S.metrics.judged++;
+  const ra=B.recA/B.fd.maxHp, rd=B.recD/B.fa.maxHp;
+  if(ra>rd) finishBattle("A",`판정 ${pct(ra)} vs ${pct(rd)}`);
+  else if(rd>ra) finishBattle("D",`판정 ${pct(rd)} vs ${pct(ra)}`);
+  else {S.metrics.ties++; finishBattle("D","동률 — 방어자 승");}
+}
+function finishBattle(winSide,how){
+  const B=S.battle;
+  const winP=winSide==="A"?B.attP:B.defP, loseP=winSide==="A"?B.defP:B.attP;
+  const loseF=winSide==="A"?B.fd:B.fa, loseSide=winSide==="A"?"D":"A";
+  if(winSide==="A")S.metrics.attackerWins++; else S.metrics.defenderWins++;
+  bmsg(`${fighterName(loseSide)}는(은) 쓰러졌다!`,{ko:loseSide,shake:loseSide,hp:{side:loseSide,val:Math.max(0,loseF.hp),max:loseF.maxHp}});
+  bmsg(`${how} — ${pname(winP.owner)} 승!`);
+  let msg;
+  if(loseF===loseP){ loseP.alive=false; msg=`${TYPE_KO[loseP.type]} 패배(${how}) — 제거`; }
+  else { loseP.cap=null; loseP.alive=false;
+    msg=`포획 하수인 패배(${how}) — ${TYPE_KO[loseP.type]} 동시 ${loseP.type==="king"?"패배":"제거"}`; }
+  addLog(`⚔️ 전투 종료: ${pname(winP.owner)} 승 — ${msg}`,"imp");
+  showToast(`⚔️ 전투 종료: ${pname(winP.owner)} 승 — ${msg}`);
+  resetAfter(B.fa); resetAfter(B.fd);
+  const attacker=B.attP;
+  const q=B.msgQ.splice(0);
+  S.battle=null;
+  // 연출: 남은 메시지 재생 후 0.8초 지연 닫힘 — 헤드리스·sim은 기존처럼 즉시 닫힘
+  if(liveBattleDom()) playMsgs(q,()=>setTimeout(()=>{if(!S.battle)close();},800));
+  else close();
+  if(loseP.type==="king"){gameOver(winP.owner,"king");
+    const gmsg=`🏁 경기 종료 — ${pname(winP.owner)} 승리!`; addLog(gmsg,"imp"); showToast(gmsg);
+    render(); return;}
+  if(checkWipe()) return; // T4: 전투 제거(대리 동시 제거 포함) 후 전멸 판정
+  afterBattle(attacker, winSide==="A"&&attacker.alive);
+  render();
+}
+function resetAfter(f){f.burn=0;f.burnBy=null;f.weaken=0;f.shield=0;f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;}
+/* #12 포획 종료: 적 하수인 즉시 제거 + S.reserve 저장 — 누적 판정 없이 전투 즉시 종료 (포획으로 승리) */
+function finishByCapture(side){
+  const B=S.battle;
+  const winP=side==="A"?B.attP:B.defP, loseP=side==="A"?B.defP:B.attP, loseSide=side==="A"?"D":"A";
+  const p=winP.owner, cb=BAL.captured;
+  const el=loseP.element||shuffle(ELEMS.slice())[0], arch=archOf(loseP)||"std";
+  S.reserve[p]={element:el,hp:BAL.enemyCapHp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // #20: 전투 중 적 포획만 HP 70/maxHP 100
+    skills:archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[]}; // 포획 하수인 규격 준용 (속성·아키타입은 대상 승계)
+  met(p,"enemyCaptures");
+  loseP.alive=false;
+  bmsg(`🔴 몬스터볼 적중! ${fighterName(loseSide)}를(을) 포획했다!`,{ko:loseSide});
+  addLog(`🔴 포획 종료: ${pname(p)}가 적 하수인을 포획 — 전투 즉시 종료 (예비 하수인 HP ${BAL.enemyCapHp}/${cb.hp})`,"imp");
+  showToast(`🔴 포획 종료 — 적 하수인 포획! (예비 HP ${BAL.enemyCapHp}/${cb.hp})`);
+  resetAfter(B.fa); resetAfter(B.fd);
+  const attacker=B.attP;
+  const q=B.msgQ.splice(0);
+  S.battle=null;
+  if(liveBattleDom()) playMsgs(q,()=>setTimeout(()=>{if(!S.battle)close();},800));
+  else close();
+  if(checkWipe()) return; // 제거이므로 전멸 판정 기여
+  afterBattle(attacker, side==="A"&&attacker.alive);
+  render();
+}
+/* #13 도망 실패 반격: 상대의 즉시 공격 1회 — 기본 행동 AI 선택 로직 재사용 (최고 위력 가용 공격 슬롯, 없으면 기본 공격) */
+function fleeCounter(fleeSide){
+  const B=S.battle; if(!B) return;
+  const oSide=fleeSide==="A"?"D":"A", of=oSide==="A"?B.fa:B.fd;
+  let slot=-1;
+  if(of.skills)
+    for(let i=0;i<4;i++){const sk=SKILLS[of.skills[i]];
+      if(of.cds[i]===0&&sk.pow&&(slot<0||sk.pow>SKILLS[of.skills[slot]].pow)) slot=i;}
+  execSlot(oSide,slot); // 도망 측 행동 소모로 처리 (nextPhase는 execSlot이 호출)
+}
+/* #13 도망 성공 후: 자기 후방 말과 위치 교환 선택 (생략 가능 · 신규 인접 강제 전투 미적용) */
+function fleeSwapPrompt(piece){
+  drainForcedQueue(false); // #18: 도주 성공으로 끝난 첫 전투 뒤에도 스왑 둘째 말의 강제 전투를 승격
+  const done=()=>{render(); if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule();};
+  if(S.phase!=="play"||!piece.alive){done(); return;}
+  const own=piece.owner;
+  const dutyId=(S.forcedTargets&&S.forcedTargets.length&&S.movedPiece)?S.movedPiece.id:null; // 강제 전투 대기 말은 교환 대상에서 제외
+  const rear=alivePieces().filter(x=>x.owner===own&&x.id!==piece.id&&x.id!==dutyId&&(own===0?x.r>piece.r:x.r<piece.r)); // 후방 = 자기 진영 방향으로 행이 더 뒤
+  if(!rear.length){done(); return;}
+  if(isAI(own)){ // AI: 폭탄>함정>하수인 순 우선 교환 (전선에 위장 말 배치)
+    const pri={bomb:0,trap:1,minion:2,ally:3,king:4};
+    const t=rear.sort((x,y)=>(pri[x.type]-pri[y.type])||(own===0?y.r-x.r:x.r-y.r))[0];
+    fleeSwap(piece,t); done(); return;
+  }
+  const btns=rear.map(t=>[`${t.r}행 ${t.c}열 ${idLabel(own,t)}`,()=>{close();fleeSwap(piece,t);done();}]);
+  btns.push(["교환 생략",()=>{close();done();}]);
+  modal(`<h2>🏃 도망 성공 — 위치 교환</h2><p>후방의 자기 말과 위치를 교환할 수 있습니다. (신규 인접 강제 전투 미적용)</p>`,btns);
+}
+function fleeSwap(a,b){
+  const ar=a.r, ac=a.c; a.r=b.r; a.c=b.c; b.r=ar; b.c=ac; // movedPreBT 미기록·강제 전투 미적용
+  addLog(`🏃 도망 — 후방 말과 위치를 교환했습니다.`,"imp");
+  checkKingReach();
+}
+function afterBattle(attacker,attackerWonAlive){
+  if(S.battlesUsed===1) S.firstBattleWonByMover = (attacker===S.movedPiece && attackerWonAlive);
+  drainForcedQueue(false); // #18: 스왑 둘째 말 강제 전투 — 독립 queue에서 승격 (승·패·포획 종료 공통)
+  render();
+  if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule();
+}
+
+/* ===== AI (공정 관측 휴리스틱 — Phase 1) ===== */
+function aiSchedule(){
+  if(S.aiPending) return; S.aiPending=true;
+  setTimeout(()=>{S.aiPending=false; aiStep();}, S.mode==="sim"?BAL.simDelay:BAL.aiDelay);
+}
+function aiScheduleBattle(){
+  if(S.aiBattlePending) return; S.aiBattlePending=true;
+  setTimeout(()=>{S.aiBattlePending=false; aiBattleAction();}, S.mode==="sim"?BAL.simDelay:BAL.aiDelay);
+}
+function aiStep(){
+  if(!S||S.phase!=="play"||!isAI(S.current)||S.battle) return;
+  const me=S.current;
+  if(!S.mainUsed){ if(aiLevelOf(me)==="dan5") aiMainStrong(me); else aiMain(me); render(); aiSchedule(); return; } // #21 난이도 분기
+  if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18 안전장치
+  if(S.forcedTargets&&S.forcedTargets.length){ // T1: 강제 전투 최우선 이행 (aiEvalBattles보다 우선)
+    const att=S.movedPiece, def=att?alivePieces().find(e=>S.forcedTargets.includes(e.id)&&canBattle(att,e)):null;
+    if(att&&def){ initBattle(att,def); return; }
+    S.forcedTargets=[]; // 이행 불가 조합 방어 (크래시 방지)
+    if(S.forcedQueue.length){ aiSchedule(); return; } // 다음 대기 항목 처리
+  }
+  const pick=aiLevelOf(me)==="dan5"?aiEvalBattlesStrong(me):aiEvalBattles(me);
+  if(pick){ initBattle(pick.att,pick.def); if(!S.battle) return; return; } // 동기 해결은 afterBattle 훅이 재개
+  endTurn();
+}
+/* T6 성격 프로파일: AI별 랜덤 가중치(0.6~1.4)·ε(0.05~0.15) — 게임당 고정, sim 양측 독립 생성 */
+function aiProf(me){
+  if(!S.aiProfile) S.aiProfile=[null,null];
+  if(!S.aiProfile[me]){
+    if(aiLevelOf(me)==="dan5") S.aiProfile[me]={aggression:1,capture:1,kingRush:1,caution:1,eps:0}; // #21 5단: 고정 프로파일·ε 무작위 없음
+    else {
+      const r=()=>0.6+rand()*0.8;
+      S.aiProfile[me]={aggression:r(),capture:r(),kingRush:r(),caution:r(),eps:0.05+rand()*0.10};
+    }
+  }
+  return S.aiProfile[me];
+}
+/* T6 전멸 회피: 전투 가능 말(하수인+동료) 2 이하면 신중 가중 강화 */
+function aiCaution(me){
+  const n=alivePieces().filter(x=>x.owner===me&&(x.type==="minion"||x.type==="ally")).length;
+  return aiProf(me).caution*(n<=2?1.6:1);
+}
+/* 관측: AI는 visibleTo(me)·revealed·이동 이력(논리 추론)만 사용 */
+function aiVisible(me){return alivePieces().filter(e=>e.owner!==me&&visibleTo(me,e));}
+function aiThreatOf(me,e){ // 상대 말 위험도 추정 (공정: 비공개면 확률 기반)
+  if(e.revealed){
+    if(e.type==="bomb") return "bomb";
+    if(e.type==="trap") return "trap";
+    return "unit";
+  }
+  // 폭탄 이동 상시화(GDD-13 4.5): 이동 이력은 '함정 아님'만 증명 — 폭탄 후보는 남음
+  // #21 누수 제거: 엔진 내부 movedPreBT가 아니라 관측자(me)가 실제로 목격한 이동 기억(aiSeenMoved)만 사용 — 숨은 숲 내부 이동은 미기록
+  return aiSeenMoved(me,e) ? "unknownMoved" : "unknownStatic";
+}
+function aiSeenMoved(me,e){return S.aiSeenMoved&&S.aiSeenMoved[me]&&S.aiSeenMoved[me].has(e.id);}
+/* 공개 정보(제거는 전부 공개 이벤트)·목격 이동 기반 폭탄·함정 확률 추정
+   moved=true: 이동 목격 미공개 말 — 폭탄 후보만 / false: 이동 미목격 — 폭탄+함정 후보 */
+function aiStaticRisk(me,moved){
+  const opp=1-me;
+  const bombsLeft=S.pieces.filter(p=>p.owner===opp&&p.type==="bomb"&&p.alive).length; // 제거는 공개 이벤트 → 잔여 수 공개 정보
+  const trapsLeft=S.pieces.filter(p=>p.owner===opp&&p.type==="trap"&&p.alive).length;
+  const pool=S.pieces.filter(p=>p.owner===opp&&p.alive&&p.placed&&!p.revealed&&(moved?aiSeenMoved(me,p):!aiSeenMoved(me,p))).length;
+  return ((moved?0:trapsLeft*0.5)+bombsLeft)/Math.max(1,pool);
+}
+function aiMain(me){
+  const prof=aiProf(me), caut=aiCaution(me);
+  // ε-무작위 — T6 프로파일 기반 0.05~0.15
+  if(rand()<prof.eps){ if(aiRandomMove(me)) return; }
+  // 1. 흔적 위 말이 있으면 탐색 (#20: 하수인·동료·왕만 — 폭탄·함정은 탐색 실행 불가)
+  for(const p of alivePieces().filter(p=>p.owner===me&&canSearchPiece(p))){
+    const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
+    if(ev){ doSearch(p,ev); addLog("🤖 AI 탐색 행동","ai"); return; }
+  }
+  // 2. 왕 안전: 인접 적 있으면 회피 이동
+  const king=alivePieces().find(p=>p.owner===me&&p.type==="king");
+  if(king&&adjEnemies(king).length&&king.immobile===0){
+    const opts=aiMoveOptions(king).filter(([r,c])=>!at(r,c))
+      .sort((a,b)=>aiCellDanger(me,a)-aiCellDanger(me,b));
+    if(opts.length&&aiCellDanger(me,[king.r,king.c])>aiCellDanger(me,opts[0])){
+      doMove(king,opts[0][0],opts[0][1]); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return;
+    }
+  }
+  // 2.5 폭탄 이동 활용(간단 휴리스틱): BT 중 왕 비인접 폭탄을 왕 인접 빈 칸으로 호위 재배치
+  if(isBurning()&&king){
+    const holes=[[king.r+1,king.c],[king.r-1,king.c],[king.r,king.c+1],[king.r,king.c-1]]
+      .filter(([r,c])=>r>=1&&r<=ROWS&&c>=1&&c<=COLS&&!at(r,c));
+    for(const b of alivePieces().filter(x=>x.owner===me&&x.type==="bomb"&&x.immobile===0&&!adj(x,king)))
+      for(const [r,c] of holes)
+        if(canMoveTo(b,r,c)){ doMove(b,r,c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
+  }
+  // 3. 강한 전투 기회가 있으면 주 행동 생략(위치 보존)
+  const pick=aiEvalBattles(me,true);
+  if(pick&&pick.score>=18){ S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략"); return; }
+  // 4. 목적 이동: 동료·왕(볼 보유·포획 미보유) → 숲 / 하수인 → 전진 (공개된 적 왕은 추격)
+  // 선봉 집중: 하수인 1기를 지정해 지속 전진 (이동권 분산으로 전선이 형성되지 않는 문제 방지)
+  let vg=S.aiVanguard[me];
+  if(!vg||!S.pieces.find(p=>p.id===vg&&p.alive&&p.immobile===0)){
+    const vcands=alivePieces().filter(p=>p.owner===me&&p.type==="minion"&&p.immobile===0);
+    vcands.sort((a,b)=>((me===1?b.r-a.r:a.r-b.r)*10+Math.abs(a.c-4)-Math.abs(b.c-4)));
+    vg=S.aiVanguard[me]=vcands.length?vcands[0].id:null;
+  }
+  const hunt=aiVisible(me).find(e=>e.type==="king"&&e.revealed);
+  const cands=[];
+  for(const p of alivePieces().filter(p=>p.owner===me&&p.immobile===0&&p.type!=="bomb"&&p.type!=="trap")){
+    for(const [r,c] of aiMoveOptions(p)){
+      let sc=0;
+      const fwd = me===1 ? (r-p.r) : (p.r-r); // 전진 방향
+      if(p.type==="minion"){
+        sc += fwd*6*prof.aggression + (4-Math.abs(c-4));
+        if(p.id===vg) sc+=12; // 선봉 우선 이동권
+        if(hunt){const dNow=Math.abs(p.r-hunt.r)+Math.abs(p.c-hunt.c), dNew=Math.abs(r-hunt.r)+Math.abs(c-hunt.c); sc+=(dNow-dNew)*12;}
+      }
+      if(p.type==="ally"&&(p.cap||S.balls[me]===0)){
+        sc += fwd*5; // 포획 완료·볼 소진 동료는 후열 소탕(폭탄 제거) 전환
+        if(hunt){const dNow=Math.abs(p.r-hunt.r)+Math.abs(p.c-hunt.c), dNew=Math.abs(r-hunt.r)+Math.abs(c-hunt.c); sc+=(dNow-dNew)*10;}
+      } else if(p.type==="ally"||(p.type==="king"&&!adjEnemies(p).length)){
+        const targetRows = me===1?[4,5]:[9,10];
+        const dNow=Math.min(...targetRows.map(tr=>Math.abs(p.r-tr)));
+        const dNew=Math.min(...targetRows.map(tr=>Math.abs(r-tr)));
+        sc += (dNow-dNew)*8*prof.capture;
+        if(p.type==="king") sc-=4; // 왕은 소극적으로
+        if((r>=4&&r<=5)||(r>=9&&r<=10)) sc+=3*prof.capture; // 숲 내부 배회(흔적 발견)
+      }
+      if(p.type==="king"){ // 끝줄 도달 승리 (GDD-13 4.1 개정) — 안전 회피(위 2단계)가 항상 우선
+        const goal=me===0?1:ROWS;
+        if(r===goal) sc+=100*prof.kingRush; // 도달 = 즉시 승리
+        sc+=(Math.abs(p.r-goal)-Math.abs(r-goal))*1.5*prof.kingRush; // 상대 진영 접근 소폭 가점
+      }
+      const fsc=aiForcedScore(me,p,r,c); // T6 강제 전투 예측: 불리한 신규 인접 회피·유리하면 적극
+      if(fsc!==null) sc+=fsc*0.8;
+      sc -= aiCellDanger(me,[r,c])*3*caut;
+      sc += rand()*2;
+      cands.push({p,r,c,sc});
+    }
+  }
+  cands.sort((a,b)=>b.sc-a.sc);
+  const tp=aiTeleportPick(me); // #14 텔레포트 스왑: 점수 기반으로 일반 이동과 경쟁 (남용 방지)
+  if(tp&&tp.sc>(cands.length?cands[0].sc:0)&&doTeleportSwap(tp.a,tp.b)){ addLog("🤖 AI 주 행동","ai"); return; } // #18: 차단 시 일반 이동으로 대체
+  if(cands.length){ const t=cands[0]; doMove(t.p,t.r,t.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
+  S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략");
+}
+/* T6 강제 전투 예측: (r,c) 이동 시 새로 인접하게 될 보이는 적 중 최선 전투 기대 점수 (없으면 null) */
+function aiForcedScore(me,p,r,c){
+  let best=null;
+  for(const e of aiVisible(me)){
+    if(Math.abs(e.r-r)+Math.abs(e.c-c)!==1) continue;
+    if(adj(p,e)) continue; // 기존 인접은 강제 대상 아님
+    if(p.type==="king"&&e.type==="king") continue; // 왕 vs 왕 불가침 — 강제 미발동
+    const s=aiBattlePairScore(me,p,e);
+    if(best===null||s>best) best=s;
+  }
+  return best;
+}
+/* #14 텔레포트 스왑 판단: 침투 말↔왕(왕 러시 — 도착 칸 안전할 때)·위기 왕↔후방 스왑, 2회 제한 준수 */
+function aiTeleportPick(me){
+  if(S.mainUsed||!teleportAvailable(me)||S.teleUsed[me]>=BAL.teleMax) return null;
+  const prof=aiProf(me), caut=aiCaution(me);
+  const king=alivePieces().find(x=>x.owner===me&&x.type==="king"&&x.immobile===0);
+  if(!king) return null;
+  let best=null;
+  // 1) 왕 러시: 적진 침투 말과 스왑 — 도착 칸 인접 위협 0일 때만 (kingRush 가중)
+  const goal=me===0?1:ROWS;
+  for(const p of alivePieces().filter(x=>x.owner===me&&x.id!==king.id&&x.immobile===0&&zoneOf(1-me).includes(x.r))){
+    if(aiCellDanger(me,[p.r,p.c])>0||teleportSwapBlock(king,p)) continue; // #18: 슬롯 초과 스왑 후보 제외
+    const sc=(20+(3-Math.abs(p.r-goal))*8)*prof.kingRush;
+    if(!best||sc>best.sc) best={a:king,b:p,sc};
+  }
+  // 2) 위기 왕 구출: 인접 적 존재 시 자기 진영의 안전한 후방 말과 스왑
+  if(adjEnemies(king).length){
+    const rears=alivePieces().filter(x=>x.owner===me&&x.id!==king.id&&x.immobile===0
+      &&zoneOf(me).includes(x.r)&&aiCellDanger(me,[x.r,x.c])===0&&!teleportSwapBlock(king,x)); // #18
+    if(rears.length){const sc=24*caut; if(!best||sc>best.sc) best={a:king,b:rears[0],sc};}
+  }
+  return best;
+}
+function aiMoveOptions(p){
+  const out=[];
+  for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]])
+    for(const k of (isBurning()?[1,2]:[1])){ // BT 중 직선 2칸 후보 포함
+      const r=p.r+dr*k,c=p.c+dc*k;
+      if(r<1||r>ROWS||c<1||c>COLS) continue;
+      if(canMoveTo(p,r,c)) out.push([r,c]);
+    }
+  return out;
+}
+function aiCellDanger(me,[r,c]){ // 그 칸에 인접한 (보이는) 적 유닛 수
+  return aiVisible(me).filter(e=>Math.abs(e.r-r)+Math.abs(e.c-c)===1&&aiThreatOf(me,e)!=="trap").length;
+}
+function aiRandomMove(me){
+  const ps=shuffle(alivePieces().filter(p=>p.owner===me&&p.immobile===0&&p.type!=="bomb"&&p.type!=="trap"));
+  for(const p of ps){ const o=aiMoveOptions(p); if(o.length){const [r,c]=o[Math.floor(rand()*o.length)]; doMove(p,r,c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return true;} }
+  return false;
+}
+function aiEvalBattles(me,peek){
+  let best=null;
+  for(const att of alivePieces().filter(p=>p.owner===me)){
+    for(const def of adjEnemies(att)){
+      if(!visibleTo(me,def)) continue;
+      if(!canBattle(att,def)) continue;
+      const sc=aiBattlePairScore(me,att,def);
+      if(!best||sc>best.score) best={att,def,score:sc};
+    }
+  }
+  if(!best||best.score<6) return null;
+  return peek?best:best;
+}
+/* T6: 전투 쌍 기대 점수 — aiEvalBattles·강제 전투 예측(aiForcedScore) 공용, 프로파일 가중 포함 */
+function aiBattlePairScore(me,att,def){
+  const prof=aiProf(me);
+  const th=aiThreatOf(me,def);
+  const pressure=(S.turnCount/BAL.maxTurns)*14; // 후반 공세 압력 (무승부 방지)
+  let sc=0;
+  if(th==="bomb"){ sc = (att.type==="ally") ? 30 : (att.type==="king"? -100 : -100); }
+  else if(th==="trap"){ sc = att.type==="minion" ? -15 : -30; }
+  else if(th==="unknownStatic"||th==="unknownMoved"){ // 비공개: 이동/미이동 풀별 폭탄·함정 확률 추정 후 계산된 위험 감수
+    // 폭탄 트레이드는 하수인 1 ↔ 폭탄 1 교환(왕 호위 해체)이라 EV가 크게 나쁘지 않음
+    const risk=aiStaticRisk(me,th==="unknownMoved");
+    sc = att.type==="ally" ? 18+pressure
+       : att.type==="king" ? -100
+       : 8 - 18*risk + pressure;
+  } else { // 유닛 (공개)
+    if(def.type==="king") sc=45;
+    else if(def.type==="ally") sc=25;
+    else { sc=10;
+      if(att.element&&def.element){
+        if(BEATS[att.element]===def.element) sc+=20;
+        else if(BEATS[def.element]===att.element) sc-=20;
+      }
+      sc += (att.hp-def.hp)/5;
+    }
+    if(att.type==="king") sc-=25; // 왕은 웬만하면 싸우지 않음
+    if(att.type==="ally"&&!att.cap) sc-=15;
+  }
+  sc += att.hp/20;
+  sc = sc>0 ? sc*prof.aggression : sc*aiCaution(me); // T6: 공세 점수×aggression·위험 페널티×caution(전멸 위기 강화)
+  // 수비: 자기 최후방 행 인접(1칸 전 도달 위협) 적은 우선 제거 — 끝줄 승리 저지 (프로파일 무관)
+  if(th!=="bomb"&&th!=="trap"&&Math.abs(def.r-(me===0?ROWS:1))<=1) sc+=40;
+  return sc;
+}
+function aiBattleAction(){
+  const B=S.battle; if(!B) return;
+  const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
+  const ownerP=side==="A"?B.attP.owner:B.defP.owner;
+  if(!isAI(ownerP)) return;
+  if(aiLevelOf(ownerP)==="dan5"){ aiBattleActionStrong(side); return; } // #21 5단 전투 행동 (기대치 기반)
+  const prof=aiProf(ownerP), caut=aiCaution(ownerP); // T6 전투 성향 프로파일
+  // 보너스 아이템 — 사용 임계 프로파일화 (신중할수록 일찍 회복)
+  const usedItems=side==="A"?B.itemsA:B.itemsD, itemRound=side==="A"?B.itemRoundA:B.itemRoundD, lastItem=side==="A"?B.lastItemA:B.lastItemD;
+  if(!itemRound&&usedItems<BAL.itemPerBattle){
+    const inv=S.inv[ownerP];
+    let use=-1;
+    if(f.hp<f.maxHp*(0.25+0.15*caut)&&inv.includes("potion")&&lastItem!=="potion") use=inv.indexOf("potion");
+    else if((f.burn||f.weaken)&&inv.includes("cure")&&lastItem!=="cure") use=inv.indexOf("cure");
+    if(use>=0){ window.__useItem(use); return; } // 모달 재렌더 → 재스케줄
+  }
+  // #12 적 하수인 포획: 게이트 충족 시 확률적 투척 (capture 프로파일 가중)
+  const oppPc=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
+  if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown
+     &&rand()<0.4+0.4*prof.capture){ window.__throwBall(); return; }
+  // #13 도망: 동료·왕 본체 또는 열세 전투원 (caution 가중)
+  const myPc=side==="A"?B.attP:B.defP;
+  if(f.hp<f.maxHp*0.5){
+    const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
+    const losing=f.hp/f.maxHp<opp.hp/opp.maxHp-0.15;
+    if((vipBody||losing)&&rand()<(vipBody?0.5:0.25)*caut){ window.__flee(); return; }
+  }
+  // 행동 선택 — 4슬롯 점수화 (킬 가능>시그니처>효과기>안정기, 저HP 시 회복/방어) + T6 프로파일 가중·확률 혼합
+  // 공정 관측: 자기 기술·상대의 공개 전투 정보(HP·보호막·상태·속성)만 사용, 상대 미공개 기술 미참조
+  if(!f.skills){
+    if(f.skillAtk&&f.cd===0&&rand()<0.5){ window.__act("skill"); return; } // 구형 경로 잔여
+    window.__act("basic"); return;
+  }
+  const usable=f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>f.cds[x.i]===0);
+  if(!usable.length){ window.__act("basic"); return; } // 전 슬롯 쿨 → 폴백 기본 공격
+  const adv=f.element&&opp.element&&BEATS[f.element]===opp.element;
+  const disadv=f.element&&opp.element&&BEATS[opp.element]===f.element;
+  const mult=(adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1);
+  const lowHp=f.hp<f.maxHp*(0.3+0.15*caut);
+  const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[f.element];
+  const scored=usable.map(({i,sk})=>{
+    let sc=0;
+    if(sk.pow){ // 피해 기술
+      const est=slotPow(f,sk)*mult*(f.focusCharge&&sk.kind==="attack"?1.2:1);
+      sc=6+est/4;
+      if(est*(1-BAL.dmgVar)>=opp.hp+opp.shield) sc=100; // 킬 가능 최우선
+      else if(sk.kind==="sig") sc+=5;
+      if(sk.status&&statusKey&&!opp[statusKey]) sc+=4;
+      if(sk.bonusVsShield&&opp.shield>0) sc+=3;
+      if(sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock)) sc+=3;
+      if(sk.selfVuln&&lowHp) sc-=6; // 저HP에 결정타 반동 위험
+      sc*=prof.aggression;
+    } else { // 보조기·불굴 진형
+      if(sk.healPct) sc=lowHp?20+10*caut:2;
+      else if(sk.shieldPct) sc=(lowHp?14:5)*(f.shield>0?0.3:1);
+      else if(sk.dmgCut) sc=lowHp?10:3;
+      else if(sk.focus) sc=(!f.focusCharge&&!lowHp)?7:1;
+      else if(sk.coolAny) sc=f.cds.some((c,j)=>j!==i&&c>=2)?6:0.5;
+      else if(sk.cleanse) sc=(f.burn||f.weaken||f.shock)?9:0.5;
+      if(lowHp) sc*=caut;
+    }
+    return {i,sc:sc+rand()*3}; // T6 확률 혼합 유지 (결정적 패턴 해소)
+  });
+  scored.sort((a,b)=>b.sc-a.sc);
+  const pick=(scored.length>1&&rand()<0.10)?scored[1]:scored[0]; // ε 차선 혼합
+  window.__act(pick.i);
+}
+function aiCapture(p){
+  const b=S.balls[p.owner];
+  const caut=aiCaution(p.owner); // T6: 신중할수록 공격 포획(실패 피해) 회피
+  let mode=null;
+  if(b>=2) mode="safe";
+  else if(b===1&&p.hp>p.maxHp*Math.min(0.9,0.5*caut)) mode="attack";
+  if(!mode) return; // 포기
+  tryCapture(p,mode);
+}
+/* ===== #21 5단 — 탐색·추론 기반 강AI (공정 관측: 결정 시점에 고정한 가시 적 집합 V·revealed·공개 제거 집계·목격 이동 기억만 사용) =====
+   구조: 후보 행동(이동·텔레포트 스왑·탐색·생략) → 1-ply 위치 평가(+강제 전투 기대치·공격 기회) → 상위 K 후보에 대해
+   2-ply: 보이는 적의 최선 응수(공격·이동)로 내 평가가 얼마나 나빠지는지 감점 → 최종 = 0.4·1-ply + 0.6·최악 응수 후 평가.
+   판단 시간 상한(BAL.aiStrongBudgetMs) 초과 시 남은 후보는 1-ply 순위로 처리. 반복 완화: 최근 이력 칸 복귀 감점. */
+function aiLevelOf(p){return (S.aiLevel&&S.aiLevel[p])||"grade5";}
+function aiUnitValue(x,me){ // 말 가치 (자기 말 또는 공개된 적 말) — 적의 포획 하수인 보유(cap)는 비공개 정보라 자기 말만 반영
+  if(x.type==="king") return 200;
+  if(x.type==="ally") return 40+(x.cap&&x.owner===me?25:0);
+  if(x.type==="minion") return 26+(x.hp/x.maxHp)*24;
+  if(x.type==="bomb") return 18;
+  if(x.type==="trap") return 10;
+  return 20;
+}
+function aiWinProb(att,def,me){ // 공개 스탯 기반 승률 추정 — 포획 하수인(cap) 출전은 자기 말(owner===me)만 가정, 적의 cap은 비공개
+  const fa=(att.owner===me&&att.cap)?att.cap:att, fd=(def.owner===me&&def.cap)?def.cap:def;
+  let p=0.5;
+  if(fa.element&&fd.element){ if(BEATS[fa.element]===fd.element) p+=0.18; else if(BEATS[fd.element]===fa.element) p-=0.18; }
+  p+=((fa.hp/fa.maxHp)-(fd.hp/fd.maxHp))*0.3;
+  p+=((fa.atk||0)-(fd.atk||0))/60;
+  if(!fa.skills&&(att.type==="king"||att.type==="ally")) p-=0.1; // 본체 출전은 기술 없음
+  if(!fd.skills&&(def.type==="king"||def.type==="ally")) p+=0.1;
+  if(att.nextBattleBuff) p+=0.05;
+  return Math.max(0.08,Math.min(0.92,p));
+}
+/* 전투 기대치 (me 관점, 양수=유리): 미공개 적은 목격 이동 여부별 폭탄·함정 확률 혼합 */
+function aiBattleEV(me,att,def){
+  if(att.type==="bomb"||att.type==="trap") return null;
+  if(att.type==="king"&&def.type==="king") return null; // 불가침
+  const th=aiThreatOf(me,def), va=aiUnitValue(att,me);
+  const bombEV=att.type==="minion"?-va+16:22, trapEV=-10;
+  if(th==="bomb") return bombEV;
+  if(th==="trap") return trapEV;
+  const edgeGuard=Math.abs(def.r-(me===0?ROWS:1))<=1?45:0; // 끝줄 저지: 내 최후방 1칸 이내 적은 우선 제거 (왕 끝줄 승리 차단)
+  const pressure=Math.min(1,S.turnCount/BAL.maxTurns)*8; // 후반 공세 압력 (무승부 방지)
+  if(th==="unit"){
+    const p=aiWinProb(att,def,me);
+    let ev=p*(aiUnitValue(def,me)+(def.type==="king"?400:0))-(1-p)*va;
+    if(att.type==="king"&&!att.cap) ev-=(1-p)*400; // 왕 본체 패배 = 경기 패배
+    else ev+=4; // 선제 보너스: 인접 적은 어차피 다음 턴 나를 칠 수 있음 — 공격측 선공 이득
+    return ev+edgeGuard+pressure;
+  }
+  const r=Math.min(1,aiStaticRisk(me,th==="unknownMoved")), trapShare=th==="unknownMoved"?0:0.35;
+  const p=aiWinProb(att,{element:null,hp:100,maxHp:100,atk:22,type:"minion"},me);
+  let unitEV=p*28-(1-p)*va;
+  if(att.type==="king"&&!att.cap) unitEV-=(1-p)*400;
+  return r*(bombEV*(1-trapShare)+trapEV*trapShare)+(1-r)*unitEV+edgeGuard*(att.type==="king"?0:1)+pressure;
+}
+/* 위치 평가 — V: 결정 시점 고정 가시 적 목록 (가상 이동 중 새로 인접해도 숨은 말은 절대 참조하지 않음) */
+function aiEvalPos(me,V){
+  const my=alivePieces().filter(x=>x.owner===me);
+  const king=my.find(x=>x.type==="king");
+  const units=V.filter(e=>!(e.revealed&&(e.type==="bomb"||e.type==="trap")));
+  const dist=(a,b)=>Math.abs(a.r-b.r)+Math.abs(a.c-b.c);
+  let v=0;
+  for(const x of my) v+=aiUnitValue(x,me);
+  for(const e of S.pieces.filter(e=>e.owner!==me&&e.alive&&e.placed)) v-=e.revealed?aiUnitValue(e,me):28; // 잔여 수는 공개 정보(제거 공개), 정체는 공개 시만
+  const goal=me===0?1:ROWS, last=me===0?ROWS:1;
+  if(king){
+    const danger=units.filter(e=>dist(e,king)===1).length, near=units.filter(e=>dist(e,king)===2).length;
+    v-=danger*48+near*10;
+    v+=my.filter(b=>b.type==="bomb"&&dist(b,king)===1).length*6;
+    if(inForest(king)) v+=3;
+    const dg=Math.abs(king.r-goal);
+    if(dg===0) v+=1000;
+    else v+=(12-dg)*(danger===0&&near===0?4:1);
+    if(zoneOf(1-me).includes(king.r)&&danger) v-=40;
+  }
+  const eking=V.find(e=>e.type==="king"&&e.revealed);
+  for(const e of units){ // 끝줄 저지: 내 최후방 접근 적은 큰 감점, 내 말이 붙어 있으면 완화
+    const d=Math.abs(e.r-last);
+    if(d<=2){ v-=(3-d)*18; if(d<=1){ v-=30; if(my.some(x=>x.type!=="bomb"&&x.type!=="trap"&&dist(x,e)===1)) v+=28; } }
+  }
+  for(const x of my){
+    if(x.type==="minion"){ v+=(me===1?x.r:ROWS+1-x.r)*1.2+(4-Math.abs(x.c-4))*0.5; if(eking) v+=(10-Math.min(10,dist(x,eking)))*3; }
+    if(x.type==="ally"){ if(eking) v+=(10-Math.min(10,dist(x,eking)))*2; }
+    if(canSearchPiece(x)){
+      const ev=S.events.find(e=>e.r===x.r&&e.c===x.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
+      if(ev) v+=10;
+      if((x.type==="ally"||x.type==="king")&&S.balls[me]>0&&!x.cap&&!S.reserve[me]){
+        const df=Math.min(...(me===1?[4,5]:[9,10]).map(tr=>Math.abs(x.r-tr)));
+        v+=(5-Math.min(5,df))*(x.type==="king"?0.8:2);
+      }
+    }
+    if(x.type==="bomb"){ if(units.some(e=>e.type!=="king"&&dist(e,x)===1)) v+=5; if(x.revealed) v-=6; }
+    if(x.type!=="bomb"&&x.type!=="trap"&&x.type!=="king") // 접촉 압력(불리한 인접은 감점) — 상세 응수는 2-ply가 처리
+      for(const e of units) if(dist(x,e)===1){ const p=aiWinProb(x,e.revealed?e:{element:null,hp:100,maxHp:100,atk:22,type:"minion"},me); v+=(p-0.5)*10; }
+  }
+  v+=S.balls[me]*3+(S.reserve[me]?15:0)+S.inv[me].length*2;
+  return v;
+}
+/* 2-ply: 보이는 적의 최선 응수(내 말 공격 또는 1칸 이동) 후 내 평가의 최악값 */
+function aiWorstReply(me,V,deadline){
+  const my=alivePieces().filter(x=>x.owner===me), occ=(r,c)=>my.some(x=>x.r===r&&x.c===c)||V.some(e=>e.r===r&&e.c===c);
+  const base=aiEvalPos(me,V);
+  let worst=base, n=0;
+  for(const e of V){
+    if(e.revealed&&(e.type==="bomb"||e.type==="trap")) continue;
+    if(e.immobile>0) continue;
+    for(const x of my){ // 공격 응수: 내 말 x를 e가 공격 (내 관점 EV 부호 반전은 x가 방어자)
+      if(Math.abs(e.r-x.r)+Math.abs(e.c-x.c)!==1) continue;
+      if(x.type==="bomb"||x.type==="trap") continue; // 적이 내 폭탄·함정을 치면 나에게 이득 → 최선 응수 아님
+      if(e.type==="king"&&e.revealed&&x.type==="king") continue;
+      const p=1-aiWinProb(e.revealed?e:{element:null,hp:100,maxHp:100,atk:22,type:"minion"},x,me);
+      const harm=(1-p)*(aiUnitValue(x,me)+(x.type==="king"?400:0))-p*(e.revealed?aiUnitValue(e,me):28);
+      worst=Math.min(worst,base-harm); n++;
+    }
+    for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){ // 이동 응수
+      const r=e.r+dr,c=e.c+dc; if(r<1||r>ROWS||c<1||c>COLS||occ(r,c)) continue;
+      const or=e.r,oc=e.c; e.r=r;e.c=c;
+      worst=Math.min(worst,aiEvalPos(me,V)); n++;
+      e.r=or;e.c=oc;
+      if(n>=BAL.aiStrongReplyCap||Date.now()>deadline) return worst;
+    }
+  }
+  return worst;
+}
+function aiMainStrong(me){
+  const t0=Date.now(), deadline=t0+BAL.aiStrongBudgetMs;
+  const V=aiVisible(me); // 결정 시점 고정 가시 집합
+  const my=alivePieces().filter(x=>x.owner===me);
+  const hist=S.aiHist[me]||(S.aiHist[me]=[]);
+  const cands=[];
+  const virt=(fn)=>{ // 가상 적용 → 평가 → 복원
+    const snap=my.map(x=>[x,x.r,x.c]); fn();
+    const s=aiEvalPos(me,V);
+    for(const [x,r,c] of snap){x.r=r;x.c=c;}
+    return s;
+  };
+  const forcedGain=(p,before)=>{ // 이동 후 새로 인접한 보이는 적과의 강제 전투 기대치 (내가 대상 선택 → 최대) — 없으면 0
+    let best=null;
+    for(const e of V){ if(Math.abs(e.r-p.r)+Math.abs(e.c-p.c)!==1||before.has(e.id)) continue;
+      const ev=aiBattleEV(me,p,e); if(ev===null) continue; if(best===null||ev>best) best=ev; }
+    return best===null?0:best;
+  };
+  const attackOpp=()=>{ // 이동 후 가능한 최선 공격 기회(양수만, 0.8 가중)
+    let best=0;
+    for(const x of my) for(const e of V){ if(Math.abs(e.r-x.r)+Math.abs(e.c-x.c)!==1) continue;
+      const ev=aiBattleEV(me,x,e); if(ev!==null&&ev>best) best=ev; }
+    return best*0.8;
+  };
+  const adjIds=p=>new Set(V.filter(e=>Math.abs(e.r-p.r)+Math.abs(e.c-p.c)===1).map(e=>e.id));
+  const hiddenLeft=S.pieces.filter(e=>e.owner!==me&&e.alive&&e.placed).length-V.length; // 아직 보이지 않는 적 말 수 (공개 정보: 총 잔여 − 가시)
+  const unseenForestAdj=(r,c,mover)=>{ // (r,c)에 인접한 숲 칸 중 내 다른 말이 인접하지 않아 관측되지 않는 칸 수
+    let n=0;
+    for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){ const fr=r+dr,fc=c+dc;
+      if(fr<1||fr>ROWS||fc<1||fc>COLS||!inForest({r:fr,c:fc})) continue;
+      if(my.some(x=>x!==mover&&Math.abs(x.r-fr)+Math.abs(x.c-fc)<=1)) continue;
+      n++; }
+    return n;
+  };
+  // 후보 1: 탐색
+  for(const p of my.filter(canSearchPiece)){
+    const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
+    if(ev) cands.push({kind:"search",p,ev,s1:aiEvalPos(me,V)+14+attackOpp(),desc:"탐색"});
+  }
+  // 후보 2: 이동 (폭탄 포함·함정 제외 — canMoveTo가 규칙 처리)
+  for(const p of my.filter(x=>x.immobile===0&&x.type!=="trap")){
+    for(const [r,c] of aiMoveOptions(p)){
+      const before=adjIds(p);
+      let s1=virt(()=>{p.r=r;p.c=c;});
+      { const or=p.r,oc=p.c; p.r=r;p.c=c; s1+=forcedGain(p,before)+attackOpp(); p.r=or;p.c=oc; } // 강제 전투 기대치·공격 기회
+      if(hist.some(h=>h.id===p.id&&h.r===r&&h.c===c)) s1-=6; // 반복 완화
+      if(p.type==="king"&&r===(me===0?1:ROWS)) s1+=1000;
+      if(p.type==="king"&&hiddenLeft>0) s1-=unseenForestAdj(r,c,p)*22; // 왕: 도착 칸에 인접한 관측 불가 숲 칸마다 감점 (숨은 적 강제 전투 위험)
+      cands.push({kind:"move",p,r,c,s1,desc:"이동"});
+    }
+  }
+  // 후보 3: 텔레포트 스왑 — 왕↔침투 말(러시)·왕↔후방(구출)·폭탄↔전방 하수인(미끼) 상한 12
+  if(teleportAvailable(me)&&S.teleUsed[me]<BAL.teleMax){
+    const king=my.find(x=>x.type==="king"&&x.immobile===0);
+    const pairs=[];
+    if(king) for(const x of my.filter(x=>x.id!==king.id&&x.immobile===0)) pairs.push([king,x]);
+    for(const b of my.filter(x=>x.type==="bomb"&&x.immobile===0)) for(const m of my.filter(x=>x.type==="minion"&&x.immobile===0&&zoneOf(1-me).includes(x.r))) pairs.push([b,m]);
+    for(const [a,b] of pairs.slice(0,12)){
+      const ba=adjIds(a), bb=adjIds(b);
+      const s1=virt(()=>{const ar=a.r,ac=a.c; a.r=b.r;a.c=b.c; b.r=ar;b.c=ac;})
+        +(()=>{const ar=a.r,ac=a.c; a.r=b.r;a.c=b.c; b.r=ar;b.c=ac; const g=forcedGain(a,ba)+forcedGain(b,bb)+attackOpp(); b.r=a.r;b.c=a.c; a.r=ar;a.c=ac; return g;})()
+        -8; // 자원 소모 비용
+      cands.push({kind:"tele",a,b,s1,desc:"텔레포트"});
+    }
+  }
+  // 후보 4: 생략 (위치 보존)
+  cands.push({kind:"skip",s1:aiEvalPos(me,V)+attackOpp()-2,desc:"생략"});
+  for(const c of cands) c.s1+=rand()*0.5; // 동점 타이브레이크 (시드 재현 가능)
+  cands.sort((a,b)=>b.s1-a.s1);
+  // 2-ply: 상위 K 후보에 대해 최악 응수 반영
+  const top=cands.slice(0,BAL.aiStrongTopK);
+  for(const c of top){
+    if(Date.now()>deadline){ c.s2=c.s1; continue; }
+    const snap=my.map(x=>[x,x.r,x.c]);
+    if(c.kind==="move"){c.p.r=c.r;c.p.c=c.c;}
+    else if(c.kind==="tele"){const ar=c.a.r,ac=c.a.c; c.a.r=c.b.r;c.a.c=c.b.c; c.b.r=ar;c.b.c=ac;}
+    const worst=aiWorstReply(me,V,deadline);
+    for(const [x,r,c2] of snap){x.r=r;x.c=c2;}
+    c.s2=0.4*c.s1+0.6*(worst+(c.s1-aiEvalPos(me,V))); // 최악 응수 후 평가에 내 행동의 즉시 이득(강제 전투·공격 기회)을 유지
+  }
+  top.sort((a,b)=>b.s2-a.s2);
+  S.aiLastThinkMs=Date.now()-t0;
+  for(const c of top){ // 실행 (텔레포트 차단 시 다음 후보)
+    if(c.kind==="search"){ doSearch(c.p,c.ev); addLog("🤖 AI 탐색 행동","ai"); return; }
+    if(c.kind==="move"){ hist.push({id:c.p.id,r:c.p.r,c:c.p.c}); if(hist.length>6) hist.shift();
+      doMove(c.p,c.r,c.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
+    if(c.kind==="tele"){ if(doTeleportSwap(c.a,c.b)){ addLog("🤖 AI 주 행동","ai"); return; } continue; }
+    S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략"); return;
+  }
+  S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai");
+}
+/* 5단 전투 개시 선택: 기대치 기반 (canBattle·가시 대상만) */
+function aiEvalBattlesStrong(me){
+  let best=null;
+  for(const att of alivePieces().filter(p=>p.owner===me))
+    for(const def of adjEnemies(att)){
+      if(!visibleTo(me,def)||!canBattle(att,def)) continue;
+      const ev=aiBattleEV(me,att,def); if(ev===null) continue;
+      if(!best||ev>best.score) best={att,def,score:ev};
+    }
+  return best&&best.score>2?best:null;
+}
+/* 5단 전투 중 행동: 킬 가능·피해 경쟁(누가 먼저 쓰러지는가) 기반으로 아이템·볼 투척·도망·기술을 결정 — 상대 미공개 기술은 참조하지 않고 공개 스탯(atk)·속성만 사용 */
+function aiBattleActionStrong(side){
+  const B=S.battle; if(!B) return;
+  const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
+  const ownerP=side==="A"?B.attP.owner:B.defP.owner, myPc=side==="A"?B.attP:B.defP, oppPc=side==="A"?B.defP:B.attP;
+  const adv=f.element&&opp.element&&BEATS[f.element]===opp.element, disadv=f.element&&opp.element&&BEATS[opp.element]===f.element;
+  const mult=(adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1)*(f.atkBuff?1+BAL.nextBuffPct:1);
+  const oAdv=opp.element&&f.element&&BEATS[opp.element]===f.element, oDis=opp.element&&f.element&&BEATS[f.element]===opp.element;
+  const oppEst=(opp.atk||16)*(opp.skills?1.18:1)*(oAdv?BAL.advMult:oDis?BAL.disMult:1)*(opp.weaken>0?(1-BAL.weakenPct):1)*(f.dmgCut?1-f.dmgCut:1);
+  const usable=f.skills?f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>f.cds[x.i]===0):[];
+  const dmgOf=sk=>(sk?slotPow(f,sk):f.atk)*mult*(f.focusCharge&&sk&&sk.kind==="attack"?1.2:1);
+  let bestDmg=f.atk*mult, bestSlot=-1;
+  for(const {i,sk} of usable) if(sk.pow&&dmgOf(sk)>bestDmg){bestDmg=dmgOf(sk); bestSlot=i;}
+  const killNow=bestDmg*(1-BAL.dmgVar)>=opp.hp+opp.shield;
+  const toKillMe=Math.ceil(Math.max(1,f.hp)/Math.max(1,oppEst)), toKillOpp=Math.ceil((opp.hp+opp.shield)/Math.max(1,bestDmg));
+  const losing=toKillMe<toKillOpp;
+  // 아이템: 사망 위기면 회복약(다음 피격 생존), 상태이상이면 해독제
+  const usedItems=side==="A"?B.itemsA:B.itemsD, itemRound=side==="A"?B.itemRoundA:B.itemRoundD, lastItem=side==="A"?B.lastItemA:B.lastItemD;
+  if(!itemRound&&usedItems<BAL.itemPerBattle){
+    const inv=S.inv[ownerP]; let use=-1;
+    if(!killNow&&f.hp<=oppEst*1.25&&inv.includes("potion")&&lastItem!=="potion") use=inv.indexOf("potion");
+    else if((f.burn||f.weaken||f.shock)&&inv.includes("cure")&&lastItem!=="cure"&&toKillOpp>1) use=inv.indexOf("cure");
+    else if(!usable.length&&f.skills&&inv.includes("cool")&&lastItem!=="cool") use=inv.indexOf("cool");
+    if(use>=0){ window.__useItem(use); return; }
+  }
+  // 볼 투척: 게이트 충족 시 포획(제거+예비 확보)이 킬보다 가치 큼 — 확정 킬이고 내 HP가 위험할 때만 킬 우선
+  const thrown=side==="A"?B.ballThrowA:B.ballThrowD;
+  if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown&&(!killNow||f.hp>f.maxHp*0.6)){ window.__throwBall(); return; }
+  // 도망: 본체 VIP가 죽을 위기이거나 열세 전투 (확정 킬 가능하면 안 함)
+  if(f.hp<f.maxHp*0.5&&!killNow){
+    const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
+    if((vipBody&&(losing||toKillMe<=1))||(losing&&toKillMe<=2)){ window.__flee(); return; }
+  }
+  if(!f.skills){ if(f.skillAtk&&f.cd===0){window.__act("skill");return;} window.__act("basic"); return; }
+  if(!usable.length){ window.__act("basic"); return; }
+  const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[f.element];
+  const lowHp=f.hp<=oppEst*1.5;
+  const scored=usable.map(({i,sk})=>{
+    let sc=0;
+    if(sk.pow){
+      const est=dmgOf(sk);
+      sc=est/3;
+      if(est*(1-BAL.dmgVar)>=opp.hp+opp.shield) sc=100;
+      else if(est>=opp.hp+opp.shield) sc=60; // 분산 상단으로 킬 가능
+      if(sk.kind==="sig") sc+=3;
+      if(sk.status&&statusKey&&!opp[statusKey]) sc+=4;
+      if(sk.drainPct&&lowHp) sc+=4;
+      if(sk.selfShieldPct&&lowHp) sc+=3;
+      if(sk.bonusVsShield&&opp.shield>0) sc+=2;
+      if(sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock)) sc+=2;
+      if(sk.selfVuln&&lowHp) sc-=8;
+    } else {
+      if(sk.healPct) sc=(lowHp&&toKillOpp>1)?25:1;
+      else if(sk.shieldPct) sc=(lowHp&&toKillOpp>1?16:4)*(f.shield>0?0.3:1);
+      else if(sk.dmgCut) sc=lowHp&&toKillOpp>1?12:2;
+      else if(sk.focus) sc=(!f.focusCharge&&toKillOpp>=2&&!lowHp)?8:0.5;
+      else if(sk.coolAny) sc=f.cds.some((c,j)=>j!==i&&c>=2)?5:0.3;
+      else if(sk.cleanse) sc=(f.burn||f.weaken||f.shock)?9:0.3;
+    }
+    return {i,sc:sc+rand()*0.3};
+  });
+  scored.sort((a,b)=>b.sc-a.sc);
+  window.__act(scored[0].i);
+}
+/* AI 로스터 선택: 4속성 각 1종 이상 + 나머지 2종 무작위 (중복 없음, 아키타입 혼합 선호) */
+function aiPickRoster(p){
+  if(S.roster[p].length===6) return;
+  S.roster[p]=[];
+  const archs=shuffle(["std","atk","def"]);
+  shuffle(ELEMS.slice()).forEach((el,i)=>{
+    const pool=ROSTER.filter(r=>r.element===el);
+    S.roster[p].push((pool.find(r=>r.arch===archs[i%3])||pool[0]).id);
+  });
+  const rest=shuffle(ROSTER.filter(r=>!S.roster[p].includes(r.id)).map(r=>r.id));
+  S.roster[p].push(rest[0],rest[1]);
+  shuffle(S.roster[p]);
+  applyRoster(p);
+}
+/* AI 휴리스틱 배치 */
+function aiAutoPlace(p){
+  aiPickRoster(p);
+  const rows=zoneOf(p);
+  const back = p===1?rows[0]:rows[2];     // 후열
+  const mid  = rows[1];
+  const front= p===1?rows[2]:rows[0];     // 전열
+  const free=(r,c)=>r>=1&&r<=ROWS&&c>=1&&c<=COLS&&rows.includes(r)&&!at(r,c);
+  const put=(x,r,c)=>{x.r=r;x.c=c;x.placed=true;};
+  const mine=t=>S.pieces.filter(x=>x.owner===p&&x.type===t&&!x.placed);
+  // 왕: 후열(80%) 또는 중열(20% 블러핑), 무작위 열
+  const king=mine("king")[0];
+  {const kr=rand()<0.8?back:mid; const cols=shuffle([1,2,3,4,5,6,7]);
+   put(king,kr,cols.find(c=>free(kr,c)));}
+  // 폭탄: 1~2개 왕 인접 호위, 나머지 무작위
+  const bombs=mine("bomb"); let guard=0;
+  for(const b of bombs){
+    if(guard<2){
+      const spots=shuffle([[king.r+1,king.c],[king.r-1,king.c],[king.r,king.c+1],[king.r,king.c-1]]).filter(([r,c])=>free(r,c));
+      if(spots.length){put(b,spots[0][0],spots[0][1]);guard++;continue;}
+    }
+    aiPutRandom(b,rows,free,put);
+  }
+  // 함정: 전열 중앙(3~5열) 침투로
+  for(const t of mine("trap")){
+    const spots=shuffle([[front,3],[front,4],[front,5],[mid,3],[mid,4],[mid,5]]).filter(([r,c])=>free(r,c));
+    if(spots.length) put(t,spots[0][0],spots[0][1]); else aiPutRandom(t,rows,free,put);
+  }
+  // 동료: 측면(1·2·6·7열) 숲 접근
+  for(const a of mine("ally")){
+    const spots=shuffle([[front,1],[front,2],[front,6],[front,7],[mid,1],[mid,7]]).filter(([r,c])=>free(r,c));
+    if(spots.length) put(a,spots[0][0],spots[0][1]); else aiPutRandom(a,rows,free,put);
+  }
+  // 하수인: 전열 우선, 속성 분산 유지
+  for(const m of mine("minion")){
+    const spots=[];
+    for(const c of shuffle([1,2,3,4,5,6,7])){ if(free(front,c)) spots.push([front,c]); }
+    for(const c of shuffle([1,2,3,4,5,6,7])){ if(free(mid,c)) spots.push([mid,c]); }
+    if(spots.length) put(m,spots[0][0],spots[0][1]); else aiPutRandom(m,rows,free,put);
+  }
+}
+function aiPutRandom(x,rows,free,put){
+  const cells=[]; for(const r of rows) for(let c=1;c<=COLS;c++) if(free(r,c)) cells.push([r,c]);
+  shuffle(cells); put(x,cells[0][0],cells[0][1]);
+}
+
+/* ===== 모달·핸드오프 ===== */
+function modal(html,buttons){
+  $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
+  const ob=$("obBtns");
+  for(const [txt,fn] of buttons){const b=document.createElement("button"); b.textContent=txt; b.onclick=fn; b.className="primary"; ob.appendChild(b);}
+  $("overlay").classList.remove("hidden");
+}
+function close(){$("overlay").classList.add("hidden");}
+/* #11 추측 메모: 게임 중 상대 말 클릭(전투 지정 경로 외) — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개 저장 */
+function memoModal(pc){
+  if(S.phase!=="play") return;
+  const v=humanViewer(), cur=S.memos[v][pc.id]||"";
+  modal(`<h2>📝 추측 메모 — ${idLabel(v,pc)} (${pc.r}행 ${pc.c}열)</h2>
+    <small>이 상대 말에 대한 나만의 추측 기록입니다. 상대에게는 보이지 않습니다.</small>
+    <div class="row"><input id="memoIn" type="text" maxlength="40" placeholder="예: 폭탄 같음"
+      style="flex:1;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px"></div>`,
+    [["저장",()=>{const el=$("memoIn"), t=((el&&el.value)||"").trim();
+      if(t) S.memos[v][pc.id]=t; else delete S.memos[v][pc.id]; close(); render();}],
+     ["삭제",()=>{delete S.memos[v][pc.id]; close(); render();}],
+     ["닫기",close]]);
+  const inp=$("memoIn"); if(inp){inp.value=cur; try{inp.focus();}catch(e){}}
+}
+function handoff(title,after){
+  clearToasts();
+  modal(`<h2>🔄 기기를 넘기세요</h2><p style="margin:10px 0">${title}</p><small>상대는 화면을 보지 마세요.</small>`,
+    [["확인 — 시작",()=>{close();after();}]]);
+}
+
+/* ===== 시작: 모드 선택 화면 ===== */
+newGame("pvp"); S.phase="menu";
+render();
+</script>
+</body>
+</html>
