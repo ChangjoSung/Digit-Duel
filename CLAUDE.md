@@ -38,10 +38,15 @@ CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 �
 CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.com/p/3cd1e7f17085810e9514e5773757bbe3)
 
 ## Git / GitHub 컨벤션 (MyFundManager 벤치마킹)
-- 브랜치: `main`(릴리스) / `dev`(통합) / `dev_html`(HTML 데모 전용 라인). **main 직접 커밋 금지.** 데모 작업은 dev_html에서 진행 후 마일스톤 단위로 dev에 통합.
+- 브랜치: `main`(릴리스 전용) / `dev`(통합 개발). **main·dev 직접 커밋 금지.** 모든 작업은 최신 `origin/dev`에서 `feature/<issue>-<slug>` · `fix/<issue>-<slug>` · `infra/<issue>-<slug>` · `doc/<issue>-<slug>` 중 하나로 분기한다. 과거 `dev_html` 라인은 PR #22로 `dev`에 병합하고 2026-09-02 폐기했다.
+- 병합: 이슈 브랜치 → `dev`는 원칙적으로 squash merge 후 로컬·원격 브랜치를 삭제한다. 여러 마일스톤을 보존하는 이관 PR과 `dev` → `main` 릴리스 PR만 merge commit을 사용한다. rebase merge는 사용하지 않는다.
+- 릴리스: 마일스톤의 승인 범위가 완료됐을 때만 `dev` → `main` 릴리스 PR을 연다. 병합된 main SHA에 annotated tag `vX.Y.Z`와 동일 버전 GitHub Release를 생성한다. 과거 버전을 현재 `dev` 상태로 소급 릴리스하지 않는다.
 - 이슈·PR·커밋 제목: `[scope] 제목 (#이슈번호)` — scope: `[infra]` `[demo]` `[client]` `[design]`
 - 마일스톤: `vX.Y.Z — 제목` 릴리스 트레인 (v0.1.0 인프라 / v0.2.0 HTML 데모 / v0.3.0 A/B·지표 / v0.4.0 Unity 포팅)
-- 라벨 14종 운영 (backlog·check·dependencies·dev_client·doc·feature·fix·github_actions·infra·question·Release·skill-update·html_demo·design)
+- 버전 통제: 계획 버전은 Milestone 하나로만 관리하고, 배포 버전은 main tag·GitHub Release로만 관리한다. 중복되는 `vX.Y.Z` 라벨은 만들지 않는다.
+- 라벨: PR마다 작업 유형 1개(`feature`/`fix`/`infra`/`doc`)와 영역 1개(`html_demo`/`dev_client`/향후 `dev_server`/`design`)를 붙인다. `Release`는 `dev` → `main` 릴리스 PR에만 사용한다.
+- PR 필수 항목: 연결 이슈(`Ref #N`; 기본 브랜치가 main이므로 dev PR에서 자동 종료 키워드 금지), Acceptance Criteria, 변경 파일, 검증 결과, Saturn 판정, UI 변경 시 스크린샷, rollback. `dev` 병합 후 이슈는 검증 근거를 남기고 수동 종료한다.
+- 보호: private 저장소 플랜에서 branch protection/ruleset을 강제할 수 없는 동안 위 계약과 CI를 필수 통제로 사용한다. 지원 가능한 플랜으로 변경되면 main/dev에 PR 필수·force push/삭제 금지·대화 해결·필수 checks를 설정한다.
 - 모든 작업 결과는 해당 GitHub Issue에 코멘트로 기록 (수정 파일·검증 결과·커밋 해시)
 
 ## HTML 데모 (demo/index.html)
