@@ -226,7 +226,7 @@ function newGame(mode){
   S={
     mode, phase:"setup", setupPlayer:0, current:0, turnCount:0,
     pieces:[], events:[], inv:[[],[]], balls:[BAL.ballStart,BAL.ballStart],
-    reserve:[null,null], teleUsed:[0,0], teleForcedNext:null, // #12 포획 예비 슬롯 · #14 스왑 횟수·둘째 말 강제 전투 승계
+    reserve:[null,null], teleUsed:[0,0], forcedQueue:[], // #12 포획 예비 슬롯 · #14 스왑 횟수 · #18 강제 전투 독립 queue [{pid,targets}]
     roster:[[],[]],
     traces:[new Set(), new Set()],
     memos:[{},{}], // #11 추측 메모: [뷰어(PVE:0/PVP:플레이어)][pieceId]=text — 상대 비노출
@@ -597,7 +597,7 @@ window.setupDone=()=>{
 /* ===== 턴 진행 ===== */
 function startTurn(){
   S.mainUsed=false; S.battlesUsed=0; S.movedPiece=null; S.contactSet=[]; S.firstBattleWonByMover=false;
-  S.forcedTargets=[]; S.teleport=null; S.teleForcedNext=null;
+  S.forcedTargets=[]; S.teleport=null; S.forcedQueue=[];
   S.selected=null; S.tempReveal.clear();
   for(const v of [0,1]) for(const id in S.memos[v]) // #11: 제거된 말의 메모 정리
     if(!S.pieces.some(x=>x.id===Number(id)&&x.alive&&x.placed)) delete S.memos[v][id];
@@ -610,9 +610,10 @@ function startTurn(){
   }
 }
 function endTurn(){
+  if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18: 대기 중인 강제 전투가 있으면 먼저 꺼냄
   if(S.forcedTargets&&S.forcedTargets.length){ // T1: 강제 전투 미이행 시 턴 종료 불가
     if(!isAI(S.current)){showToast("⚔️ 강제 전투 대상과 전투해야 턴을 마칠 수 있습니다."); return;}
-    S.forcedTargets=[]; // AI 안전장치 (이행 불가 상태 해소)
+    S.forcedTargets=[]; S.forcedQueue=[]; // AI 안전장치 (이행 불가 상태 해소)
   }
   for(const x of alivePieces()) if(x.owner===S.current&&x.immobile>0) x.immobile--;
   for(const k of alivePieces()) if(k.type==="king"&&inForest(k)) S.metrics.kingForestTurns++;
@@ -692,9 +693,9 @@ function doMove(p,r,c){
   render();
 }
 /* T1 강제 전투: 이동·텔레포트로 새로 인접한 적과는 반드시 전투 (canBattle 불가 조합 제외 — 왕vs왕 등, 폭탄·함정 포함) */
-function applyForced(p,beforeAdj){
+function applyForced(p,beforeAdj,list){
   S.forcedTargets=[];
-  const list=adjEnemies(p).filter(e=>!beforeAdj.has(e.id)&&canBattle(p,e)).map(e=>e.id);
+  if(!list) list=adjEnemies(p).filter(e=>!beforeAdj.has(e.id)&&canBattle(p,e)).map(e=>e.id);
   if(!list.length) return false;
   S.forcedTargets=list;
   if(list.length===1){
@@ -716,8 +717,33 @@ function applyForced(p,beforeAdj){
 function teleportAvailable(p){
   return S.phase==="play"&&alivePieces().some(x=>x.owner===p&&zoneOf(1-p).includes(x.r));
 }
+/* #18 강제 전투 적격 (연쇄 규칙 무관 — 텔레포트 강제 전투는 첫 전투 승리 조건 면제): 폭탄·함정은 공격 불가, 왕 vs 왕 불가침 */
+function forcedEligible(att,def){
+  if(att.type==="bomb"||att.type==="trap") return false;
+  if(att.type==="king"&&def.type==="king") return false;
+  return true;
+}
+/* #18 스왑 후 새로 인접할 적격 적 목록: p가 (r,c)로 이동했을 때, 기존 인접(before)이 아닌 적 */
+function newAdjAt(p,r,c,before){
+  return alivePieces().filter(e=>e.owner!==p.owner&&adj({r,c},e)&&!before.has(e.id)&&forcedEligible(p,e)).map(e=>e.id);
+}
+/* #18 스왑 사전 검사: 새 강제 전투 수가 남은 전투 슬롯(턴당 2회)을 초과하면 실행 전에 차단 (조용한 누락 금지) */
+function teleportSwapBlock(a,b){
+  const beforeA=new Set(adjEnemies(a).map(e=>e.id)), beforeB=new Set(adjEnemies(b).map(e=>e.id));
+  const need=(newAdjAt(a,b.r,b.c,beforeA).length?1:0)+(newAdjAt(b,a.r,a.c,beforeB).length?1:0);
+  const remain=Math.max(0,2-S.battlesUsed);
+  if(need>remain) return `새 강제 전투 ${need}회 > 남은 전투 ${remain}회 (턴당 최대 2회)`;
+  return null;
+}
 function doTeleportSwap(a,b){
-  if(S.teleUsed[S.current]>=BAL.teleMax) return; // 2회 제한 방어
+  if(S.teleUsed[S.current]>=BAL.teleMax) return false; // 2회 제한 방어
+  const block=teleportSwapBlock(a,b);
+  if(block){ // #18: 실행 전 차단 + 이유 안내 (텔레포트 횟수·주 행동 미소모)
+    const bmsg=`🌀 텔레포트 스왑 차단 — ${block}`;
+    addLog(bmsg,"imp"); if(!isAI(S.current)) showToast(bmsg);
+    if(S.teleport) S.teleport={stage:1,piece:null};
+    S.selected=null; render(); return false;
+  }
   const beforeA=new Set(adjEnemies(a).map(e=>e.id)), beforeB=new Set(adjEnemies(b).map(e=>e.id));
   S.mainUsed=true; S.metrics.teleports++; S.teleUsed[S.current]++; S.teleport=null; S.selected=null;
   const ar=a.r, ac=a.c; a.r=b.r; a.c=b.c; b.r=ar; b.c=ac; // movedEver/movedPreBT 미설정 — 걷는 이동이 아님 (폭탄 재배치 위장 유지)
@@ -728,12 +754,36 @@ function doTeleportSwap(a,b){
     if(ev){S.traces[p.owner].add(ev.r+"_"+ev.c);
       if(!isAI(p.owner)){addLog("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)","imp");}}
   }
-  if(checkKingReach()) return; // 왕 포함 스왑 — 끝줄 도달 즉시 승리
-  S.movedPiece=a; S.contactSet=adjEnemies(a).map(e=>e.id);
-  const listB=adjEnemies(b).filter(e=>!beforeB.has(e.id)).map(e=>e.id);
-  if(applyForced(a,beforeA)){ if(listB.length) S.teleForcedNext={pid:b.id,targets:listB}; return; } // 둘째 말은 첫 전투 후 승계
-  if(listB.length){ S.movedPiece=b; S.contactSet=adjEnemies(b).map(e=>e.id); if(applyForced(b,beforeB)) return; }
-  render();
+  if(checkKingReach()) return true; // 왕 포함 스왑 — 끝줄 도달 즉시 승리
+  // #18: 두 말의 강제 전투를 독립 queue에 적재 — 첫 전투의 결과(승·패·도주)와 무관하게 게임이 끝나지 않으면 둘째 실행
+  S.forcedQueue=[];
+  for(const [p,before] of [[a,beforeA],[b,beforeB]]){
+    const list=adjEnemies(p).filter(e=>!before.has(e.id)&&forcedEligible(p,e)).map(e=>e.id);
+    if(list.length) S.forcedQueue.push({pid:p.id,targets:list});
+  }
+  if(!drainForcedQueue(true)) render();
+  return true;
+}
+/* #18 강제 전투 queue 소비: 대기 항목 하나를 꺼내 forcedTargets로 승격. 전투 종료 지점(승·패·포획·도주·폭탄·함정·밀어내기)마다 호출.
+   autoStart: 사람·단일 대상이면 즉시 개시(스왑 직후) / false면 대상 표시만(전투 연출 종료 직후 — 클릭으로 개시).
+   대상·말 소멸이나 전투 횟수 소진으로 이행 불가하면 반드시 로그로 면제 사유를 남긴다 (조용한 누락 금지). */
+function drainForcedQueue(autoStart){
+  if(!S.forcedQueue) S.forcedQueue=[];
+  while(S.forcedQueue.length&&S.phase==="play"&&!S.battle&&!(S.forcedTargets&&S.forcedTargets.length)){
+    const n=S.forcedQueue.shift();
+    const p=alivePieces().find(x=>x.id===n.pid);
+    if(!p){ addLog("⚔️ 강제 전투 면제 — 해당 말이 제거되었습니다.","imp"); continue; }
+    if(S.battlesUsed>=2){ addLog("⚔️ 강제 전투 면제 — 이번 턴 전투 횟수(2회)를 모두 사용했습니다.","imp"); if(!isAI(p.owner)) showToast("⚔️ 강제 전투 면제 — 전투 횟수 소진"); continue; }
+    const list=adjEnemies(p).filter(e=>n.targets.includes(e.id)&&forcedEligible(p,e)).map(e=>e.id);
+    if(!list.length){ addLog("⚔️ 강제 전투 면제 — 신규 인접 대상이 사라졌습니다.","imp"); continue; }
+    S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
+    if(autoStart){ applyForced(p,null,list); return true; }
+    S.forcedTargets=list; S.selected=p;
+    const fmsg=list.length===1?"⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! (빨간 표시 대상을 클릭)":`⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! 대상 ${list.length}개 중 하나를 선택하세요.`;
+    addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
+    return true;
+  }
+  return false;
 }
 /* T4 전멸 패배: 하수인 6+동료 2 전원 사망 → 즉시 패배. 말 제거가 발생하는 모든 지점 후 호출 */
 function checkWipe(){
@@ -770,13 +820,15 @@ function doSearch(p,ev){
   if(ev.kind==="buff"){ // #12 일시버프 — 소비 말 종류 무관 그대로 획득 (다음 전투 동안 공격 +15%, 1회성)
     p.nextBattleBuff=true;
     if(!ai) modal(`<h2>✨ 일시 버프 획득</h2><p>${idLabel(own,p)} — 다음 전투 동안 공격 +${pct(BAL.nextBuffPct)} (1회성)</p>`,[["확인",close]]);
-  } else if(ev.kind!=="recruit"&&p.type==="minion"){ // #12 하수인의 아이템류 소비 — 대체 보상: 자기 기술 쿨 전체 초기화
+  } else if(ev.kind==="ball"){ // #12·#17 몬스터볼: 소비 말 종류 무관(하수인 포함) 플레이어 공용 볼 +1, 상한 BAL.ballMax(3) 초과 시 획득 없음
+    const gained=S.balls[own]<BAL.ballMax;
+    if(gained) S.balls[own]++;
+    const rmsg=gained?`🔴 몬스터볼 +1 (보유 ${S.balls[own]}/${BAL.ballMax})`:`🔴 몬스터볼 상한(${BAL.ballMax}) — 이미 최대 보유, 획득하지 못했습니다.`;
+    if(!ai){ showToast(rmsg); // GDD-13 4.7: 공용 로그에는 이벤트 종류·보유량을 남기지 않는다 (generic 숲 이벤트 로그만) — 토스트·모달은 소비자 전용
+      modal(`<h2>${gained?"몬스터볼 획득":"몬스터볼 상한"}</h2><p>${rmsg}</p>`,[["확인",close]]);}
+  } else if(ev.kind!=="recruit"&&p.type==="minion"){ // #12 하수인의 아이템류(회복약·쿨링수·해독제) 소비 — 대체 보상: 자기 기술 쿨 전체 초기화
     p.cd=0; if(p.skills) p.cds=[0,0,0,0];
     if(!ai) modal(`<h2>이벤트 소모</h2><p>하수인은 아이템 대신 자기 기술 쿨타임이 전체 초기화됩니다.</p>`,[["확인",close]]);
-  } else if(ev.kind==="ball"){ // #12 몬스터볼 +1 (상한 초과 시 손실)
-    if(S.balls[own]<BAL.ballMax){S.balls[own]++;
-      if(!ai) modal(`<h2>몬스터볼 획득</h2><p>몬스터볼 +1 (보유 ${S.balls[own]}/${BAL.ballMax})</p>`,[["확인",close]]);}
-    else if(!ai) modal(`<h2>몬스터볼 손실</h2><p>이미 최대 ${BAL.ballMax}개 보유 — 획득하지 못했습니다.</p>`,[["확인",close]]);
   } else if(ev.kind!=="recruit"){ // #12 회복약·쿨링수·해독제 — 동료·왕: 해당 아이템 획득
     if(S.inv[own].length<BAL.invMax){S.inv[own].push(ev.kind);
       if(!ai) modal(`<h2>아이템 획득</h2><p>${ITEMS[ev.kind].ko} — ${ITEMS[ev.kind].desc}</p>`,[["확인",close]]);}
@@ -1316,10 +1368,12 @@ function fleeCounter(fleeSide){
 }
 /* #13 도망 성공 후: 자기 후방 말과 위치 교환 선택 (생략 가능 · 신규 인접 강제 전투 미적용) */
 function fleeSwapPrompt(piece){
+  drainForcedQueue(false); // #18: 도주 성공으로 끝난 첫 전투 뒤에도 스왑 둘째 말의 강제 전투를 승격
   const done=()=>{render(); if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule();};
   if(S.phase!=="play"||!piece.alive){done(); return;}
   const own=piece.owner;
-  const rear=alivePieces().filter(x=>x.owner===own&&x.id!==piece.id&&(own===0?x.r>piece.r:x.r<piece.r)); // 후방 = 자기 진영 방향으로 행이 더 뒤
+  const dutyId=(S.forcedTargets&&S.forcedTargets.length&&S.movedPiece)?S.movedPiece.id:null; // 강제 전투 대기 말은 교환 대상에서 제외
+  const rear=alivePieces().filter(x=>x.owner===own&&x.id!==piece.id&&x.id!==dutyId&&(own===0?x.r>piece.r:x.r<piece.r)); // 후방 = 자기 진영 방향으로 행이 더 뒤
   if(!rear.length){done(); return;}
   if(isAI(own)){ // AI: 폭탄>함정>하수인 순 우선 교환 (전선에 위장 말 배치)
     const pri={bomb:0,trap:1,minion:2,ally:3,king:4};
@@ -1337,19 +1391,7 @@ function fleeSwap(a,b){
 }
 function afterBattle(attacker,attackerWonAlive){
   if(S.battlesUsed===1) S.firstBattleWonByMover = (attacker===S.movedPiece && attackerWonAlive);
-  if(S.teleForcedNext&&S.phase==="play"&&(!S.forcedTargets||!S.forcedTargets.length)){ // #14: 스왑 둘째 말 강제 전투 승계
-    const n=S.teleForcedNext; S.teleForcedNext=null;
-    const p2=alivePieces().find(x=>x.id===n.pid);
-    if(p2){
-      S.movedPiece=p2; S.contactSet=adjEnemies(p2).map(e=>e.id);
-      S.forcedTargets=n.targets.slice();
-      S.forcedTargets=adjEnemies(p2).filter(e=>n.targets.includes(e.id)&&canBattle(p2,e)).map(e=>e.id);
-      if(S.forcedTargets.length){
-        const fmsg="⚔️ 텔레포트 스왑 — 두 번째 말도 강제 전투!";
-        addLog(fmsg,"imp"); if(!isAI(p2.owner)) showToast(fmsg);
-      }
-    }
-  }
+  drainForcedQueue(false); // #18: 스왑 둘째 말 강제 전투 — 독립 queue에서 승격 (승·패·포획 종료 공통)
   render();
   if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule();
 }
@@ -1367,10 +1409,12 @@ function aiStep(){
   if(!S||S.phase!=="play"||!isAI(S.current)||S.battle) return;
   const me=S.current;
   if(!S.mainUsed){ aiMain(me); render(); aiSchedule(); return; }
+  if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18 안전장치
   if(S.forcedTargets&&S.forcedTargets.length){ // T1: 강제 전투 최우선 이행 (aiEvalBattles보다 우선)
     const att=S.movedPiece, def=att?alivePieces().find(e=>S.forcedTargets.includes(e.id)&&canBattle(att,e)):null;
     if(att&&def){ initBattle(att,def); return; }
     S.forcedTargets=[]; // 이행 불가 조합 방어 (크래시 방지)
+    if(S.forcedQueue.length){ aiSchedule(); return; } // 다음 대기 항목 처리
   }
   const pick=aiEvalBattles(me);
   if(pick){ initBattle(pick.att,pick.def); if(!S.battle) return; return; } // 동기 해결은 afterBattle 훅이 재개
@@ -1483,7 +1527,7 @@ function aiMain(me){
   }
   cands.sort((a,b)=>b.sc-a.sc);
   const tp=aiTeleportPick(me); // #14 텔레포트 스왑: 점수 기반으로 일반 이동과 경쟁 (남용 방지)
-  if(tp&&tp.sc>(cands.length?cands[0].sc:0)){ doTeleportSwap(tp.a,tp.b); addLog("🤖 AI 주 행동","ai"); return; }
+  if(tp&&tp.sc>(cands.length?cands[0].sc:0)&&doTeleportSwap(tp.a,tp.b)){ addLog("🤖 AI 주 행동","ai"); return; } // #18: 차단 시 일반 이동으로 대체
   if(cands.length){ const t=cands[0]; doMove(t.p,t.r,t.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
   S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략");
 }
@@ -1509,14 +1553,14 @@ function aiTeleportPick(me){
   // 1) 왕 러시: 적진 침투 말과 스왑 — 도착 칸 인접 위협 0일 때만 (kingRush 가중)
   const goal=me===0?1:ROWS;
   for(const p of alivePieces().filter(x=>x.owner===me&&x.id!==king.id&&x.immobile===0&&zoneOf(1-me).includes(x.r))){
-    if(aiCellDanger(me,[p.r,p.c])>0) continue;
+    if(aiCellDanger(me,[p.r,p.c])>0||teleportSwapBlock(king,p)) continue; // #18: 슬롯 초과 스왑 후보 제외
     const sc=(20+(3-Math.abs(p.r-goal))*8)*prof.kingRush;
     if(!best||sc>best.sc) best={a:king,b:p,sc};
   }
   // 2) 위기 왕 구출: 인접 적 존재 시 자기 진영의 안전한 후방 말과 스왑
   if(adjEnemies(king).length){
     const rears=alivePieces().filter(x=>x.owner===me&&x.id!==king.id&&x.immobile===0
-      &&zoneOf(me).includes(x.r)&&aiCellDanger(me,[x.r,x.c])===0);
+      &&zoneOf(me).includes(x.r)&&aiCellDanger(me,[x.r,x.c])===0&&!teleportSwapBlock(king,x)); // #18
     if(rears.length){const sc=24*caut; if(!best||sc>best.sc) best={a:king,b:rears[0],sc};}
   }
   return best;
