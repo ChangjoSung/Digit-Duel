@@ -10,7 +10,7 @@
 
 규칙: 기획에 없는 내용은 임의 구현하지 않고 [기획 필요]로 보고한다. CJ 결정은 GDD-13 Decision Log에 날짜와 함께 기록한다. 모든 보고는 확정/추론/미확정을 구분한다.
 
-## 조직 구조 — Creat2ve Vibe Coding Structure (2026-09-01 승인)
+## 조직 구조 — Creat2ve Vibe Coding Structure release 0.2.0 / rev 5 (2026-09-02)
 태양계 명명 부서제. 정의 원본: Notion "Creat2ve Vibe Coding Structure" (https://app.notion.com/p/3ce1e7f17085818c82c5dd886149ad5b). 범용 핸드북·승인형 bootstrap 원본: [creat2ve-structure](https://github.com/ChangjoSung/creat2ve-structure).
 - ☀️ **CJ (CEO/SUN)**: 방향성 제시(CJ Comment)·최종 승인
 - ☿ **Mercury (PD, Codex)**: 상설 CJ 접수창구이자 Notion·GitHub·문서·완료 보고·전달 허브. 역할은 상설 유지하되 내부 실행 세션은 스냅샷 기반으로 교대
@@ -23,7 +23,9 @@
 **복합 안건 10단계 워크플로우 (2026-09-02)**: 복합 피드백·신규 기획 = PD 분류 → 소관 부서 분석 → PD 취합 1차 보고 → CJ 승인(재작성은 해당 부서만) → 병렬 구현 → Saturn QA → PD 취합 보고 → CJ 플레이 QA → PD 정리. **단순 지시는 패스트트랙**(분석 보고 생략). 모든 부서는 Clear 전 자기 작업을 이슈·Notion에 기록.
 운영: **이벤트 구동**(요청·일정 발생 시 부서 Worker 기동) · 독립 안건은 fresh Worker가 기본이며 `worker_done` 후 결과를 archive하고 release · 동일한 좁은 범위의 즉시 후속 작업만 부서별 최대 1개·기한부 lease로 retain · 역할 연속성은 대화가 아니라 Issue·Notion·스냅샷으로 유지 · Mercury 창구는 상설 유지하되 마일스톤 종료, 반복 압축, 문서·Task 상태 불일치 등 객관적 신호에서 인수인계 스냅샷을 치환 갱신한 뒤 내부 세션을 교대 · 부서별 수동 백업 Prompt는 구조 문서 5장.
 
-## CJ Comment 운영 계약 v2 (2026-08-31 v1 → 2026-09-01 조직 구조 결합)
+**Notion 문서 수명주기 (rev 5):** 새 문서·갱신 시 `Project=현재 프로젝트`, `Edit Date=실제 수정일`, `Editor=실제 Notion 사람 편집자`를 설정한다. Agent·Mercury 표기는 Summary/본문 운영 이력에만 남긴다. Archive는 홀딩이지 삭제가 아니다. 삭제는 ① 현재 프로젝트 소속 ② 대체·중복 사실 ③ Parent/Sub-Task/선행/후속/참조 연결 부재를 모두 확인한 때에만 하며, 다른 프로젝트·연결된 문서는 자동 삭제하지 않는다. 하나라도 불명확하면 Archive에 유지하고 CJ에게 질문한다.
+
+## CJ Comment 운영 계약 v3 (2026-08-31 v1 → 2026-09-01 조직 구조 → 2026-09-02 Notion 수명주기)
 CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 불필요하며, Notion의 Plan Prompt·Orchestration Launcher는 새 환경/다른 도구용 백업이다.
 1. **분류**: 매 보고 첫머리에 Comment를 [결정]/[피드백]/[질문]으로 분류해 표기한다.
 2. **Issue 생성**: 코드 변경이 필요한 작업만 이슈화한다. 문서·결정·분석은 Notion Decision Log만. 한 피드백의 여러 항목은 이슈 1개 + 체크리스트로 묶는다. **Sub-issues(2026-09-01 채택)**: 피드백 사이클·기능 묶음은 부모(에픽) 이슈로 만들고, 파생 작업(후속 delta·설계 승인 후 구현 분리)은 sub-issue로 부모에 연결한다(깊이 1단계만, `gh api repos/{r}/issues/{n}/sub_issues` POST에 sub_issue_id=이슈의 numeric id). 부모는 모든 sub 종결 + CJ QA 통과 시 닫는다 — 꼬리 무는 이슈 체인 방지.
@@ -31,7 +33,7 @@ CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 �
 4. **기획서 동기화**: 규칙 변경은 Decision Log + 해당 본문 섹션을 동시에 갱신하고, 보고에 "문서 반영 위치" 표를 포함한다.
 5. **DIGEST**: 마일스톤 종료·대규모 규칙 개정 시 eli-adult로 읽기 좋은 정리본을 생성한다.
 6. **Worker**: 독립 기능·대규모 변경은 Orca Worker 위임, 소규모 Delta는 직접. Worker는 git 쓰기 금지, Coordinator가 diff 리뷰·검증 후 커밋한다.
-7. **문서 정리 원칙**: 문서 갱신은 누적이 아니라 치환 — 새 내용을 추가할 때 대체·불필요해진 기존 내용을 삭제한다. 결정 완료된 질문 표·중복 서술은 본문 반영 후 압축하고, Decision Log는 이력을 간결하게 유지한다.
+7. **문서 정리 원칙**: 문서 갱신은 누적이 아니라 치환한다. 결정 완료된 질문 표·중복 서술은 본문 반영 후 압축하고 Decision Log는 이력을 간결하게 유지하되, 페이지 자체의 Archive·삭제는 위 Notion 수명주기 계약을 따른다. Archive에 있다는 이유만으로 삭제하지 않는다.
 
 CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.com/p/3cd1e7f17085810e9514e5773757bbe3)
 
