@@ -14,10 +14,13 @@
 태양계 명명 부서제. 정의 원본: Notion "Creat2ve Vibe Coding Structure" (https://app.notion.com/p/3ce1e7f17085818c82c5dd886149ad5b)
 - ☀️ **CJ (CEO/SUN)**: 방향성 제시(CJ Comment)·최종 승인
 - ☿ **Mercury (PD, Codex)**: Notion·GitHub·문서·완료 보고·전달 허브 — *과도기(S1-C): Codex PD 가동 + 기존 Claude 세션이 감사·백업 병행, 안정화 후 이관*
-- ♀ **Venus (Plan, Codex)**: 기획서 작성 루프 (초안→PD 컨펌→CJ 승인→일정 등록) — 스팟 가동
+- ♀ **Venus (Plan, Claude Code — 2026-09-02 변경)**: 기획서 작성 루프 (초안→PD 컨펌→CJ 승인→일정 등록) — 스팟 가동
 - 🌍 **Earth (Art, Codex)**: Unity 리소스 — Phase 2(v0.4.0)부터
-- ♂ **Mars (Client, Claude Code)**: 구현 Worker — 완료 시 Jupiter QA 요청
-- ♃ **Jupiter (Server/QA, Claude Code)**: 독립 QA 전담(현 단계) + 서버 스택(Phase 2)
+- ♂ **Mars (Client, Claude Code)**: 구현 Worker — 완료 시 Saturn QA 요청
+- ♄ **Saturn (QA, Codex — 2026-09-02 신설)**: 교차 모델 독립 QA (Claude 구현 ↔ Codex 검증, 동종 편향 제거). Codex 장애 시 감사역(Claude)이 백업 QA
+- ♃ **Jupiter (Server, Claude Code)**: 서버 스택 — Phase 2 대기 (QA는 Saturn으로 이관)
+
+**복합 안건 10단계 워크플로우 (2026-09-02)**: 복합 피드백·신규 기획 = PD 분류 → 소관 부서 분석 → PD 취합 1차 보고 → CJ 승인(재작성은 해당 부서만) → 병렬 구현 → Saturn QA → PD 취합 보고 → CJ 플레이 QA → PD 정리. **단순 지시는 패스트트랙**(분석 보고 생략). 모든 부서는 Clear 전 자기 작업을 이슈·Notion에 기록.
 운영: **이벤트 구동**(요청·일정 발생 시 부서 Worker 기동→완료 보고→release, 상시 터미널 없음) · 최종 승인 시 Clear · 세션 종료 시 PD가 "Mercury 인수인계 스냅샷"(Notion) 치환 갱신(10시 자동화는 Phase 2) · 부서별 수동 백업 Prompt는 구조 문서 5장.
 
 ## CJ Comment 운영 계약 v2 (2026-08-31 v1 → 2026-09-01 조직 구조 결합)
