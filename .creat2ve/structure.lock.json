@@ -1,0 +1,65 @@
+{
+  "name": "Creat2ve Vibe Coding Structure",
+  "structure_revision": 6,
+  "release": "0.3.0",
+  "structure_date": "2026-09-02",
+  "handbook_sha256": "a46eb8ae455700da0973ba55c537683eb8d4282ac1729ac2bb29d610ae17ab6b",
+  "project_name": "Digit-Duel",
+  "docs_dir": "docs/creat2ve",
+  "applied_at": "2026-09-02T13:45:04.524Z",
+  "approved_by": "CJ",
+  "approval_token": "0cc34437807eb9fe",
+  "previous": null,
+  "files": {
+    "CLAUDE.md": {
+      "mode": "block",
+      "sha256": "909c70c284d1f6cc06abe5b9b42988873372581f628c8e87aa544df0c2f8378f"
+    },
+    "docs/creat2ve/README.md": {
+      "mode": "managed",
+      "sha256": "bdca45aa0f4236fa28411b09e5a074b4d9abc0a2c61d6b37bae9e23952c2a0a8"
+    },
+    "docs/creat2ve/Creat2veVibeCodingStructure.html": {
+      "mode": "managed",
+      "sha256": "a46eb8ae455700da0973ba55c537683eb8d4282ac1729ac2bb29d610ae17ab6b"
+    },
+    "docs/creat2ve/AUTHORITY.md": {
+      "mode": "seed",
+      "sha256": "91828f1fac32492776396498708e72a16e5fd6d2a4805f8f5a5ecbe42222bbb9",
+      "created_by_bootstrap": true
+    },
+    "docs/creat2ve/HANDOVER_SNAPSHOT.md": {
+      "mode": "seed",
+      "sha256": "f3d589c16fd497a1d3d8a739c26bb763d5509a079f4e81829c8a19b183b4577d",
+      "created_by_bootstrap": true
+    },
+    "docs/creat2ve/github-infra.json": {
+      "mode": "managed",
+      "sha256": "4b6913b31a5ff2b02c4c068f1e7b206d96832542b03858bed17fe2ef8e607479"
+    },
+    "docs/creat2ve/prompts/mercury.md": {
+      "mode": "managed",
+      "sha256": "a8f6476997b26c391f5c764473d948b6a1d9c5d4686ee129af1f31d8b57f5789"
+    },
+    "docs/creat2ve/prompts/venus.md": {
+      "mode": "managed",
+      "sha256": "fd73d1b35bc08881a54cc463d8aa40cd4bac954d2205f6cd2c60e78b339d5dfc"
+    },
+    "docs/creat2ve/prompts/earth.md": {
+      "mode": "managed",
+      "sha256": "43494b01def9a0ead2040cbdc47b4db3d1ff4709790471a8943a3bf37b164672"
+    },
+    "docs/creat2ve/prompts/mars.md": {
+      "mode": "managed",
+      "sha256": "a87c16c2e644e90102922cdb07b9e1fb7fd5bae31c0ab3ac2323f3bee97efcb4"
+    },
+    "docs/creat2ve/prompts/jupiter.md": {
+      "mode": "managed",
+      "sha256": "1b70ac2993d22455e54b62e110ea24975649315e127bf57f1ba262a776e15508"
+    },
+    "docs/creat2ve/prompts/saturn.md": {
+      "mode": "managed",
+      "sha256": "171bf4eb41b1e093271be66f6b70d82cbebf5f10fbe715c218e1f1f4c3a090c1"
+    }
+  }
+}
