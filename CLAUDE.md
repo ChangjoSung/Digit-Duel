@@ -39,7 +39,7 @@ CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.
 
 ## Git / GitHub 컨벤션 (MyFundManager 벤치마킹)
 - 브랜치: `main`(릴리스 전용) / `dev`(통합 개발). **main·dev 직접 커밋 금지.** 모든 작업은 최신 `origin/dev`에서 `feature/<issue>-<slug>` · `fix/<issue>-<slug>` · `infra/<issue>-<slug>` · `doc/<issue>-<slug>` 중 하나로 분기한다. 과거 `dev_html` 라인은 PR #22로 `dev`에 병합하고 2026-09-02 폐기했다.
-- 병합: 이슈 브랜치 → `dev`는 원칙적으로 squash merge 후 로컬·원격 브랜치를 삭제한다. 여러 마일스톤을 보존하는 이관 PR과 `dev` → `main` 릴리스 PR만 merge commit을 사용한다. rebase merge는 사용하지 않는다.
+- 병합: 이슈 브랜치 → `dev`는 원칙적으로 squash merge 후 Mercury가 해당 로컬·원격 브랜치를 명시적으로 삭제한다. GitHub의 전역 `delete_branch_on_merge`는 릴리스 PR의 장수 `dev`까지 삭제하므로 사용하지 않는다. `main`·`dev`는 삭제 대상이 아니다. 여러 마일스톤을 보존하는 이관 PR과 `dev` → `main` 릴리스 PR만 merge commit을 사용한다. rebase merge는 사용하지 않는다.
 - 릴리스: 마일스톤의 승인 범위가 완료됐을 때만 `dev` → `main` 릴리스 PR을 연다. 병합된 main SHA에 annotated tag `vX.Y.Z`와 동일 버전 GitHub Release를 생성한다. 과거 버전을 현재 `dev` 상태로 소급 릴리스하지 않는다.
 - 이슈·PR·커밋 제목: `[scope] 제목 (#이슈번호)` — scope: `[infra]` `[demo]` `[client]` `[design]`
 - 마일스톤: `vX.Y.Z — 제목` 릴리스 트레인 (v0.1.0 인프라 / v0.2.0 HTML 데모 / v0.3.0 A/B·지표 / v0.4.0 Unity 포팅)
