@@ -3,13 +3,21 @@
 "use strict";
 const fs=require("fs"), path=require("path");
 
-function mkEl(){return {_html:"",textContent:"",style:{},className:"",dataset:{},value:"",disabled:false,
-  scrollTop:0,scrollHeight:0,offsetWidth:0,children:[],onclick:null,parentNode:null,
+function mkEl(){const el={_html:"",textContent:"",style:{},className:"",dataset:{},value:"",disabled:false,
+  scrollTop:0,scrollHeight:0,offsetWidth:0,children:[],onclick:null,parentNode:null,isConnected:true,
   get innerHTML(){return this._html;}, set innerHTML(v){this._html=v; this.children.length=0;}, // 실제 DOM처럼 innerHTML 대입 시 자식 제거 (다경기 실행 시 누수 방지)
   get firstChild(){return this.children[0]||null;},
-  classList:{add(){},remove(){},contains(){return false;}},
+  _cls:new Set(), classList:null, // #26: 실제 클래스 추적 (hidden 토글 검증)
+  _attrs:{}, setAttribute(k,v){this._attrs[k]=String(v);}, getAttribute(k){return k in this._attrs?this._attrs[k]:null;},
+  removeAttribute(k){delete this._attrs[k];}, hasAttribute(k){return k in this._attrs;},
+  _listeners:{}, addEventListener(t,fn){(this._listeners[t]=this._listeners[t]||[]).push(fn);},
+  dispatch(t,ev){for(const fn of (this._listeners[t]||[])) fn(ev);}, // 테스트용: 등록된 리스너 직접 호출
+  contains(n){for(let x=n;x;x=x.parentNode) if(x===this) return true; return false;},
   appendChild(c){c.parentNode=this;this.children.push(c);},
-  removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);},focus(){}};}
+  removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);},
+  focus(){if(this.disabled) return; global.document.activeElement=this;}, blur(){if(global.document.activeElement===this) global.document.activeElement=global.document.body;}};
+  el.classList={add(c){el._cls.add(c);},remove(c){el._cls.delete(c);},contains(c){return el._cls.has(c);}};
+  return el;}
 
 function load(htmlPath){
   htmlPath=htmlPath||path.join(__dirname,"..","index.html");
@@ -17,7 +25,9 @@ function load(htmlPath){
   const m=html.match(/<script>([\s\S]*)<\/script>/);
   if(!m) throw new Error("script block not found");
   const els={};
-  global.document={getElementById:id=>els[id]||(els[id]=mkEl()),createElement:()=>mkEl()};
+  const body=mkEl();
+  global.document={getElementById:id=>els[id]||(els[id]=mkEl()),createElement:()=>mkEl(),body,activeElement:body,
+    contains(n){return !!n&&n.isConnected!==false;}}; // #26: 포커스 추적·속성 스텁
   global.window=global;
   global.location={reload(){}};
   // 가짜 타이머
@@ -31,7 +41,9 @@ function load(htmlPath){
   finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
-  renderSide,renderMetrics,render,startMode,html:${JSON.stringify(html)}};`;
+  renderSide,renderMetrics,render,startMode,modal,close,
+  TUT,TUT_STEPS,TUT_HINTS,TUT_KEY,tutStore,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose, // #26 튜토리얼 (S와 분리)
+  html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;
   T.drain=drain; T.TQ=TQ; T.els=els;
