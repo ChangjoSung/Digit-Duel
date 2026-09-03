@@ -574,11 +574,11 @@ function renderSide(){
         <button class="primary big" onclick="startMode('pve',{aiLevel:'dan5'})">5단 — 탐색·추론 기반 강AI</button></div>
       <small>5급: 휴리스틱 기준선 AI · 5단: 공정 관측 아래 2수 앞(상대 최선 응수)까지 평가하는 제한 탐색 AI</small>
       <div class="row" style="margin-top:10px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button></div>
-      <div class="row"><button class="primary big" onclick="netConnect()">🌐 온라인 PVP (서버 매칭)</button>
+      <div class="row"><button class="primary big" onclick="netPrepare()">🌐 온라인 PVP (배치 후 자동 매칭)</button>
         <input id="netServer" value="${netServerDefault()}" placeholder="서버 주소 (예: 192.168.3.19:8080)"
           style="width:200px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px">
         <span class="badge" id="netStatus" style="display:none"></span></div>
-      <small>내부망 전용 — 같은 공유기(네트워크) 안에서만 접속됩니다. 상대는 http://서버IP:8080 으로 접속하거나, html 파일을 직접 열면 위 서버 주소로 연결됩니다.</small>
+      <small>내부망 전용 — 먼저 로스터·배치를 마치면 자동으로 매칭됩니다. 상대는 http://서버IP:8080 으로 접속하거나, html 파일을 직접 열면 위 서버 주소로 연결됩니다.</small>
       <div class="row"><a class="simlink" onclick="startMode('sim')">AI vs AI 시뮬레이션(관전 · 5급 vs 5급)</a>
         <a class="simlink" onclick="startMode('sim',{aiLevel:['dan5','grade5']})">5단 vs 5급 관전</a></div>
       <div class="row" style="margin-top:10px"><button type="button" onclick="tutOpen()">📖 튜토리얼 다시 보기</button></div>`;
@@ -619,13 +619,20 @@ function renderSide(){
 }
 function renderSetup(sp){
   const p=S.setupPlayer;
+  if(NET.queued){ // 온라인: 배치 완료 → 매칭 대기
+    sp.innerHTML=`<h2>🌐 매칭 대기 중…</h2>
+      <p style="margin:8px 0;color:var(--dim)">배치가 저장되었습니다. 상대도 배치를 마치고 매칭을 시작하면 자동으로 대전이 시작됩니다.</p>
+      <div class="row"><span class="badge" id="netStatus">🌐 서버 접속 중…</span></div>
+      <div class="row"><button class="danger" onclick="netCancelQueue()">매칭 취소 (배치 유지)</button></div>`;
+    return;
+  }
   if(NET.mode&&p!==NET.me){ // 온라인: 상대 배치 화면(로스터·배치 상황) 비노출
     sp.innerHTML=`<h2>🌐 상대 배치 중…</h2><small>상대가 로스터 선택과 비공개 배치를 진행하고 있습니다. 완료되면 자동으로 진행됩니다.</small>`;
     return;
   }
   const sel=S.roster[p], rosterDone=sel.length===6;
   const unplaced=S.pieces.filter(x=>x.owner===p&&!x.placed);
-  let h=`<h2>${pname(p)} 로스터 선택 (${sel.length}/6)</h2>
+  let h=`<h2>${NET.preparing?"🌐 온라인 대전 — 내":pname(p)} 로스터 선택 (${sel.length}/6)</h2>
   <small>20종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정.</small>`;
   for(const el of ELEMS){
     h+=`<div class="row">`;
@@ -647,7 +654,7 @@ function renderSetup(sp){
   h+=`</div><div class="row">
     <button onclick="autoPlace()">무작위 배치</button>
     <button onclick="clearPlace()">전체 회수</button>
-    <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>배치 완료</button></div>`;
+    <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>${NET.preparing?"배치 완료 → 매칭 시작":"배치 완료"}</button></div>`;
   sp.innerHTML=h;
 }
 function renderLog(){
@@ -744,6 +751,10 @@ window.setupDoneCore=()=>{
   if(S.roster[p].length!==6||S.pieces.some(x=>x.owner===p&&!x.placed)){
     showToast("로스터 6종 선택과 14개 배치를 모두 완료하세요."); return;}
   S.selected=null;
+  if(NET.preparing){ // 온라인: 내 배치 캡처 → 매칭 큐 진입 (게임은 매칭 후 공유 시드로 재생성)
+    NET.mySetup={roster:S.roster[0].slice(), pos:S.pieces.filter(x=>x.owner===0).map(x=>[x.r,x.c])};
+    NET.queued=true; render(); netConnect(); return;
+  }
   if(S.mode==="pvp"){
     if(p===0){S.setupPlayer=1; handoff(pname(1)+" 배치", render);}
     else beginPlay();
@@ -2523,7 +2534,8 @@ window.tutOpen=tutOpen; window.tutHintClose=tutHintClose;
    플레이어 "입력(액션)"만 릴레이 서버로 중계·재생한다. 모든 게임 난수는 rand()(시드 RNG) 경유이고
    로직은 동기 완결이므로 두 클라이언트의 상태가 항상 일치한다 (서버는 내용 무해석 릴레이).
    숨은 정보는 시점(viewer=NET.me) 고정·비소유 모달 마스킹으로만 가린다 (프로토타입: 치팅 방지 없음). */
-const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncModal:null,localOpen:false,modalOwner:null,started:false};
+const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncModal:null,localOpen:false,modalOwner:null,started:false,
+  preparing:false,queued:false,mySetup:null,pendingSeed:null}; // 사전 배치: 배치 → 매칭 큐 → 매칭 시 배치 교환
 function netActor(){ // 지금 게임이 입력을 기다리는 플레이어
   if(!S) return null;
   if(S.phase==="setup") return S.setupPlayer;
@@ -2618,6 +2630,48 @@ modal=function(html,buttons){
     $("overlayBox").innerHTML=`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`;
   }
 };
+/* 사전 배치 → 매칭: 메뉴에서 배치 먼저(오프라인, 시드 무관) → 완료 시 큐 진입 → 매칭 시 양측 배치 교환 후
+   공유 시드로 게임을 재생성하고 두 배치를 적용해 즉시 플레이 시작 */
+window.netPrepare=function(){
+  if(NET.ws||NET.mode){ showToast("이미 온라인 대전이 진행 중입니다."); return; }
+  const inp=$("netServer"); // 메뉴 입력칸 값은 배치 화면으로 넘어가기 전에 저장
+  if(inp&&inp.value&&inp.value.trim()){
+    let a=inp.value.trim();
+    if(a.indexOf("://")>=0) a=a.split("://")[1];
+    if(a.indexOf(":")<0) a+=":8080";
+    try{ localStorage.setItem("netServer",a); }catch(e){}
+  }
+  NET.preparing=true; NET.queued=false; NET.mySetup=null;
+  newGame("pvp"); // 배치용 로컬 게임 (매칭 후 공유 시드로 재생성되므로 시드 무관)
+  addLog("🌐 온라인 대전 — 로스터 6종을 고르고 14개 말을 배치한 뒤 [배치 완료 → 매칭 시작]을 누르세요.","sys");
+  render();
+};
+window.netCancelQueue=function(){
+  NET.queued=false;
+  if(NET.ws){ try{NET.ws.close();}catch(e){} NET.ws=null; }
+  showToast("🌐 매칭을 취소했습니다. 배치는 유지됩니다.");
+  render();
+};
+/* 사전 배치 적용 — 데이터는 항상 플레이어 0 진영(11~13행) 기준, p=1이면 행 미러링(r→14−r).
+   손상 데이터는 무작위 대체(양측 동일 데이터·동일 시드 → 동일 결과, 락스텝 유지) */
+function applyNetSetup(p,data){
+  const mine=S.pieces.filter(x=>x.owner===p);
+  const ok=data&&Array.isArray(data.roster)&&data.roster.length===6
+    &&new Set(data.roster).size===6&&data.roster.every(id=>ROSTER.some(r=>r.id===id))
+    &&Array.isArray(data.pos)&&data.pos.length===mine.length
+    &&data.pos.every(q=>Array.isArray(q)&&zoneOf(0).includes(q[0])&&q[1]>=1&&q[1]<=COLS)
+    &&new Set(data.pos.map(q=>q[0]+"_"+q[1])).size===data.pos.length;
+  if(!ok){
+    S.roster[p]=[]; fillRosterRandom(p);
+    const cells=[]; for(const r of zoneOf(p)) for(let c=1;c<=COLS;c++) cells.push([r,c]);
+    shuffle(cells);
+    mine.forEach((x,i)=>{x.r=cells[i][0]; x.c=cells[i][1]; x.placed=true;});
+    addLog(`🌐 ${pname(p)} 배치 데이터 손상 — 무작위 배치로 대체`,"sys");
+    return;
+  }
+  S.roster[p]=data.roster.slice(); applyRoster(p);
+  mine.forEach((x,i)=>{ x.r=(p===1)?(ROWS+1-data.pos[i][0]):data.pos[i][0]; x.c=data.pos[i][1]; x.placed=true; });
+}
 /* 접속·매칭·시작 — 내부망(LAN) 전용 구성 */
 const NET_LAN_DEFAULT="192.168.3.19:8080"; // 개발 PC 내부망 기본값 — html 파일을 직접 열었을 때(file://) 기본 접속지. 메뉴 입력칸에서 변경 가능(기억됨)
 function netServerDefault(){
@@ -2640,32 +2694,43 @@ window.netConnect=function(){
   ws.onerror=()=>{ showToast("🌐 서버 연결 오류 — 서버(npm start)가 켜져 있는지 확인하세요."); };
   ws.onclose=()=>{ NET.ws=null;
     if(NET.mode&&S&&S.phase!=="over") showToast("🌐 서버 연결이 끊겼습니다.");
+    else if(NET.queued&&!NET.started){ NET.queued=false; showToast("🌐 연결 종료 — [배치 완료 → 매칭 시작]으로 다시 시도하세요."); render(); }
     else { const s=$("netStatus"); if(s) s.textContent="연결 종료"; } };
   ws.onmessage=ev=>{
     let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.type==="waiting"){ const s=$("netStatus"); if(s) s.textContent="🌐 상대 대기 중… (상대도 온라인 PVP를 누르면 시작)"; return; }
     if(m.type==="matched"){
       NET.me=m.you==="p1"?0:1;
-      if(NET.me===0){ const seed=Math.floor(Math.random()*0x7fffffff); netSend({t:"hello",seed}); netStart(seed); }
-      else { const s=$("netStatus"); if(s) s.textContent="🌐 매칭 완료 — 시작 대기…"; }
+      if(NET.me===0){ // P1: 시드 + 내 배치 전송 → 상대 배치(hello2) 수신 후 시작
+        NET.pendingSeed=Math.floor(Math.random()*0x7fffffff);
+        netSend({t:"hello",seed:NET.pendingSeed,setup:NET.mySetup});
+        const s=$("netStatus"); if(s) s.textContent="🌐 매칭 완료 — 상대 배치 수신 대기…";
+      } else { const s=$("netStatus"); if(s) s.textContent="🌐 매칭 완료 — 시작 대기…"; }
       return; }
     if(m.type==="opponent_left"){
       if(NET.mode&&S&&S.phase!=="over"&&S.phase!=="menu"){
         gameOver(NET.me,"resign");
         const msg="🌐 상대 연결 끊김 — 몰수승!"; addLog(msg,"imp"); showToast(msg); render();
-      } else showToast("🌐 상대가 나갔습니다.");
+      } else { showToast("🌐 상대가 나갔습니다 — 매칭을 다시 시작해 주세요."); try{ws.close();}catch(e){} }
       return; }
-    if(m.t==="hello"){ if(!NET.started) netStart(m.seed); return; }
+    if(m.t==="hello"){ // P2: 시드+상대 배치 수신 → 내 배치 회신 후 시작
+      if(!NET.started){ netSend({t:"hello2",setup:NET.mySetup}); netStart(m.seed,[m.setup,NET.mySetup]); }
+      return; }
+    if(m.t==="hello2"){ if(!NET.started) netStart(NET.pendingSeed,[NET.mySetup,m.setup]); return; }
     if(m.t==="a"){ NET.queue.push(m.a); netPump(); return; }
   };
 };
-function netStart(seed){
-  NET.mode=true; NET.started=true; NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
+function netStart(seed,setups){
+  NET.mode=true; NET.started=true; NET.preparing=false; NET.queued=false;
+  NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
   setSeed(seed); // 동일 시드 → 이벤트 배치·전투 난수까지 양쪽 완전 일치
-  startMode("pvp");
-  addLog(`🌐 온라인 매치 시작 — 당신은 ${NET.me===0?"P1(하단·선배치)":"P2(상단)"}입니다.`,"sys");
+  startMode("pvp"); // 공유 시드로 게임 재생성
+  applyNetSetup(0,setups[0]); // 양측 사전 배치 적용 (setups: [P1, P2] — 양쪽 동일 순서)
+  applyNetSetup(1,setups[1]);
+  S.selected=null;
+  addLog(`🌐 온라인 매치 시작 — 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}입니다. 양측 사전 배치가 적용되었습니다.`,"sys");
   showToast(`🌐 매칭 완료! 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}`);
-  render();
+  beginPlay(); // 무작위 선공(시드) → 바로 플레이 시작
 }
 
 /* ===== 시작: 모드 선택 화면 ===== */
