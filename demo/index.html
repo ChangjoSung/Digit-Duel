@@ -32,7 +32,14 @@
   .cell.hl-attack{outline:2px solid var(--danger); outline-offset:-2px;}
   .cell.hl-sel{outline:2px solid #fff; outline-offset:-2px;}
   .cell .trace{position:absolute; top:1px; right:2px; font-size:11px;}
-  .cell .memo{position:absolute; bottom:1px; left:2px; font-size:10px;}
+  /* #36 추측 이모지: 물음표 자리에 뷰어 전용 반투명 표시 — 실제 공개 말과 구별 (점선 테두리·opacity .5) */
+  .pc.memo-guess{border-style:dashed; border-color:#fff8;}
+  .pc.memo-guess .guess{font-size:20px; opacity:.5; line-height:1;}
+  .memo-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0;}
+  .memo-opt{display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; font-size:12px; min-height:56px;}
+  .memo-opt .ico{font-size:22px; line-height:1;}
+  .memo-opt[aria-pressed="true"]{background:var(--accent); border-color:#fff; box-shadow:0 0 0 1px #fff8; color:#fff;}
+  .memo-opt:focus-visible{outline:2px solid #fff; outline-offset:1px;}
   .pc{width:42px; height:42px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-size:11px; font-weight:bold; border:2px solid #0008; line-height:1.05; text-align:center;}
   .pc.own{box-shadow:0 0 0 2px #ffffff33;}
@@ -94,12 +101,65 @@
   .trayItem.sel{border-color:#fff;}
   small{color:var(--dim);}
   a.simlink{color:var(--dim); font-size:11px; text-decoration:underline; cursor:pointer;}
+  /* ===== #26 튜토리얼 모달·상황 도움말 (게임 모달 #overlay z50 위 z60 · 도움말은 z45로 게임 모달 아래) ===== */
+  .tutBtn{width:26px; height:26px; padding:0; border-radius:50%; font-size:14px; font-weight:bold; margin-left:6px; vertical-align:middle; line-height:1;}
+  #tutOverlay{position:fixed; inset:0; background:#000d; display:flex; align-items:center; justify-content:center; z-index:60; padding:12px;}
+  #tutBox{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 16px 14px; width:100%; max-width:420px;
+    max-height:92vh; max-height:92dvh; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:8px; outline:none;}
+  #tutBox:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+  .tut-head{display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--dim);}
+  #tutTitle{font-size:19px; text-align:center; margin:0; line-height:1.3;}
+  #tutBox>*{flex-shrink:0;} /* #32 내용이 max-height를 넘으면 장면·본문을 찌그러뜨리지 않고 박스 내부 스크롤 */
+  .tut-scene{background:var(--panel2); border-radius:10px; padding:6px 4px; overflow:hidden;} /* #32 장면 그림: 인라인 SVG, viewBox 320 기준 폭 맞춤 */
+  .tut-scene svg{display:block; width:100%; height:auto; font-family:inherit; overflow:visible;}
+  .tut-body{font-size:15px; line-height:1.6;}
+  .tut-body p{margin:0 0 6px; display:flex; gap:8px; align-items:flex-start;}
+  .tut-body p>span:last-child{flex:1; min-width:0;}
+  .tut-n{flex:0 0 20px; width:20px; height:20px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:bold; display:inline-flex; align-items:center; justify-content:center; margin-top:2px;}
+  .tut-body b{color:#fff;}
+  .tut-dots{display:flex; justify-content:center; gap:6px; margin:2px 0;}
+  .tut-dots span{width:8px; height:8px; border-radius:50%; background:var(--line); display:inline-block;}
+  .tut-dots span.on{background:var(--accent);}
+  .tut-nav{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 0;}
+  .tut-nav button{min-height:42px; flex:1 1 30%; font-size:14px;}
+  .tut-nav button.primary{flex:2 1 40%;}
+  .tut-nav button:focus-visible{outline:2px solid #fff; outline-offset:2px;}
+  #tutHint{position:fixed; left:50%; bottom:14px; transform:translateX(-50%); z-index:45; width:min(94vw,440px);
+    background:#0b0e14f2; border:1px solid var(--accent); border-radius:10px; padding:10px 12px; font-size:13px; line-height:1.5;
+    display:flex; gap:8px; align-items:flex-start; box-shadow:0 6px 24px #000a;}
+  #tutHint .tut-hint-icon{font-size:22px; line-height:1;}
+  #tutHint .tut-hint-text{flex:1;}
+  #tutHint .tut-hint-ok{padding:4px 8px; font-size:12px; white-space:nowrap;}
+  @media (max-width:480px){
+    #tutOverlay{padding:8px; align-items:flex-end;}
+    #tutBox{padding:14px 12px 12px; max-height:calc(100vh - 16px); max-height:calc(100dvh - 16px); border-radius:12px 12px 8px 8px;}
+    #tutTitle{font-size:17px;}
+    .tut-body{font-size:14px; line-height:1.55;}
+    .tut-scene{padding:4px 2px;}
+  }
+  /* ===== #34 데스크톱 튜토리얼: 폭·간격만 확대 (내용·SVG·동작·글자 크기 무변경). 모바일(≤480px) 규칙은 위 블록 그대로 ===== */
+  @media (min-width:768px){
+    #tutOverlay{padding:24px;}
+    #tutBox{max-width:640px; padding:22px 28px 20px; gap:10px;}
+    .tut-scene{width:100%; max-width:min(100%,calc(100vh - 230px)); margin:0 auto; padding:10px 8px;} /* #37 width:100% 복구 — 폭 auto+auto margin+SVG 고유 폭 조합으로 ~320px 수축하던 문제. 박스 가용 폭(640−패딩)을 다 쓰고, 낮은 화면(768px 높이 등)에서만 100vh−230px(본문·버튼 예산)로 폭을 제한해 내부 스크롤 방지 (SVG 자체 규칙은 유지) */
+    .tut-body{line-height:1.65;}
+    .tut-body p{margin:0 0 6px; gap:12px;}
+    .tut-dots{gap:8px; margin:4px 0;}
+    .tut-nav{gap:12px; margin:6px 0 0;}
+  }
+  @media (min-width:1400px) and (min-height:960px){ /* 큰 PC 화면(예: 1920×1080·2048×1054): 한 단계 더 여유 — 1440×900 같은 낮은 화면은 위 단계 유지 */
+    #tutBox{max-width:760px; padding:30px 36px 26px; gap:16px;}
+    .tut-scene{max-width:min(100%,calc(100vh - 230px)); padding:12px 10px;} /* #37 큰 PC: 박스 가용 폭(760−패딩) 전체 사용 */
+    .tut-body{line-height:1.75;}
+    .tut-body p{margin:0 0 10px; gap:14px;}
+    .tut-nav{gap:14px; margin:8px 0 0;}
+  }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="left" class="panel">
-    <h1>Digit Dual <small id="phaseLabel"></small></h1>
+    <h1>Digit Dual <small id="phaseLabel"></small> <button id="tutBtn" class="tutBtn" type="button" aria-label="튜토리얼 다시 보기" title="튜토리얼 다시 보기" onclick="tutOpen()">?</button></h1>
     <div id="toasts"></div>
     <div id="board"></div>
     <div class="row" id="turnBar"></div>
@@ -117,6 +177,9 @@
   </div>
 </div>
 <div id="overlay" class="overlay hidden"><div class="box" id="overlayBox"></div></div>
+<!-- #26 상황 도움말(비모달, 1회) · 튜토리얼 모달(게임 내부, 외부 창·서버 없음) -->
+<div id="tutHint" class="hidden" role="status" aria-live="polite"></div>
+<div id="tutOverlay" class="hidden" aria-hidden="true"><div id="tutBox" role="dialog" aria-modal="true" aria-labelledby="tutTitle" aria-describedby="tutBody" tabindex="-1"></div></div>
 
 <script>
 "use strict";
@@ -157,6 +220,10 @@ const ELEM_KO={fire:"불",water:"물",grass:"풀",lightning:"번개"};
 const BEATS={fire:"grass",grass:"lightning",lightning:"water",water:"fire"}; // D1 제안: 불→풀→번개→물→불
 const TYPE_KO={minion:"하수인",bomb:"폭탄",ally:"동료",trap:"함정",king:"왕",captured:"포획"};
 const WINTYPE_KO={king:"왕 제거",edge:"끝줄 승리",resign:"기권",draw:"무승부",wipe:"전멸"};
+/* #36 추측 메모 선택지 — 저장은 key(안정 문자열)만, 표시는 emoji·ko. 순서 = 팝업 표시 순서 */
+const MEMO_OPTS=[{key:"king",emoji:"👑",ko:"왕"},{key:"ally",emoji:"🤝",ko:"동료"},{key:"minion_fire",emoji:"🔥",ko:"불 하수인"},{key:"minion_grass",emoji:"🌿",ko:"풀 하수인"},
+  {key:"minion_water",emoji:"💧",ko:"물 하수인"},{key:"minion_lightning",emoji:"⚡",ko:"전기 하수인"},{key:"bomb",emoji:"💣",ko:"폭탄"},{key:"trap",emoji:"🪤",ko:"함정"}];
+const memoOpt=key=>MEMO_OPTS.find(o=>o.key===key)||null;
 const SKILL_KO={fire:"화염탄",water:"물대포",grass:"넝쿨 흡수",lightning:"낙뢰"};
 /* ===== 기술 4슬롯 체계 (GDD-16 v1.0 3장) — 속성 공격기 12종 + 공용 보조기 6종 + 시그니처 5종 ===== */
 const SKILL_ATK_BASE=22; // 위력 스케일 기준: 최종 위력 = 기술 위력 × (종 atk / 22), 사사오입
@@ -258,7 +325,7 @@ function newGame(mode,opts){
     reserve:[null,null], teleUsed:[0,0], forcedQueue:[], // #12 포획 예비 슬롯 · #14 스왑 횟수 · #18 강제 전투 독립 queue [{pid,targets}]
     roster:[[],[]],
     traces:[new Set(), new Set()],
-    memos:[{},{}], // #11 추측 메모: [뷰어(PVE:0/PVP:플레이어)][pieceId]=text — 상대 비노출
+    memos:[{},{}], // #11·#36 추측 메모: [뷰어(PVE:0/PVP:플레이어)][pieceId]=MEMO_OPTS 키 — 상대·AI·로그 비노출, 인메모리만
 
     selected:null, mainUsed:false, battlesUsed:0,
     movedPiece:null, contactSet:[], firstBattleWonByMover:false,
@@ -363,7 +430,6 @@ function showToast(msg,kind){
 }
 function clearToasts(){try{const box=$("toasts"); if(box) box.innerHTML="";}catch(e){}}
 function pct(n){return Math.round(n*100)+"%";}
-function esc(t){return String(t).replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");} // #11 메모 텍스트 HTML 이스케이프
 
 /* ===== 렌더 ===== */
 const $=id=>document.getElementById(id);
@@ -388,14 +454,13 @@ function renderBoard(){
         const chip=document.createElement("div");
         const known = viewer===2||p.owner===viewer||p.revealed;
         chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"");
+        const g=!known&&S.phase==="play"&&viewer!==2?memoOpt(S.memos[viewer][p.id]):null; // #36 뷰어 전용 추측 — 실제 공개(known)면 실제 렌더 우선
         chip.innerHTML = known
           ? `<span${p.type==="minion"&&p.name?' class="nm"':""}>${p.type==="minion"&&p.name?p.name:TYPE_KO[p.type]}</span>`+(p.element?`<span class="el el-${p.element}">${ELEM_KO[p.element]}</span>`:"")
             +((p.owner===viewer||viewer===2||p.revealed)&&(p.type==="minion"||p.type==="ally"||p.type==="king")?`<span class="el">${p.hp}</span>`:"")
-          : "?";
+          : g ? `<span class="guess" aria-hidden="true">${g.emoji}</span>` : "?";
+        if(g){ chip.className+=" memo-guess"; chip.setAttribute("title",`추측: ${g.ko} (내 메모 · 정체 미공개)`); chip.setAttribute("aria-label",`정체 미공개 상대 말 — 내 추측: ${g.ko}`); }
         cell.appendChild(chip);
-        if(S.phase==="play"&&viewer!==2&&p.owner!==viewer&&S.memos[viewer][p.id]){ // #11 메모 뱃지 (뷰어 전용)
-          const m=document.createElement("span"); m.className="memo"; m.textContent="📝"; cell.appendChild(m);
-        }
       }
       if(S.selected&&!isAI(S.current)){
         const s=S.selected;
@@ -460,7 +525,9 @@ function renderTurnBar(){
   const sel=S.selected&&!S.selected.tray?S.selected:null;
   const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
   mk("탐색",()=>doSearch(sel,ev),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))); // #20: 폭탄·함정은 탐색 실행 불가
-  mk(S.teleport?"텔레포트 취소":`텔레포트 ${BAL.teleMax-S.teleUsed[S.current]}회`,()=>{S.teleport=S.teleport?null:{stage:1,piece:null};S.selected=null;render();},S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax); // #14 스왑형·2회 제한
+  const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
+  mk(S.teleport?"텔레포트 취소":`텔레포트 ${BAL.teleMax-S.teleUsed[S.current]}회`,()=>{S.teleport=S.teleport?null:{stage:1,piece:null};S.selected=null;render();},teleDis); // #14 스왑형·2회 제한
+  if(!teleDis&&!aiTurn&&S.mode!=="sim") tutHint("teleport"); // #26 사람 턴에 텔레포트가 처음 가능해질 때 1회 도움말 (게임 상태 무변경)
   const forced=S.forcedTargets&&S.forcedTargets.length>0;
   mk("턴 종료",endTurn,forced,"primary");
   mk("기권",confirmResign,false,"danger");
@@ -478,7 +545,8 @@ function renderSide(){
       <small>5급: 휴리스틱 기준선 AI · 5단: 공정 관측 아래 2수 앞(상대 최선 응수)까지 평가하는 제한 탐색 AI</small>
       <div class="row" style="margin-top:10px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button></div>
       <div class="row"><a class="simlink" onclick="startMode('sim')">AI vs AI 시뮬레이션(관전 · 5급 vs 5급)</a>
-        <a class="simlink" onclick="startMode('sim',{aiLevel:['dan5','grade5']})">5단 vs 5급 관전</a></div>`;
+        <a class="simlink" onclick="startMode('sim',{aiLevel:['dan5','grade5']})">5단 vs 5급 관전</a></div>
+      <div class="row" style="margin-top:10px"><button type="button" onclick="tutOpen()">📖 튜토리얼 다시 보기</button></div>`;
     return;
   }
   if(S.phase==="setup"){renderSetup(sp);return;}
@@ -505,12 +573,12 @@ function renderSide(){
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
   if(S.teleport&&!isAI(S.current)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
   if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
-  if(!isAI(S.current)){ // #11 추측 메모 목록 (뷰어 전용 — 상대 비노출)
-    const mm=Object.entries(S.memos[p]).map(([id,t])=>{
-      const x=S.pieces.find(z=>z.id===Number(id));
-      return x&&x.alive&&x.placed?`<div class="status">📝 ${x.r}행 ${x.c}열 ${idLabel(p,x)} — ${esc(t)}</div>`:"";
+  if(!isAI(S.current)){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기
+    const mm=Object.entries(S.memos[p]).map(([id,k])=>{
+      const x=S.pieces.find(z=>z.id===Number(id)), o=memoOpt(k);
+      return x&&x.alive&&x.placed&&o?`<div class="status"><span class="guess" aria-hidden="true">${o.emoji}</span> ${x.r}행 ${x.c}열 — ${o.ko} 추측${x.revealed?` (공개됨: ${idLabel(p,x)})`:""}</div>`:"";
     }).filter(Boolean).join("");
-    if(mm) h+=`<h2>📝 추측 메모</h2>${mm}<small>상대 말 클릭으로 수정·삭제</small>`;
+    if(mm) h+=`<h2>📝 추측 메모</h2>${mm}<small>물음표 말 클릭으로 변경·삭제</small>`;
   }
   sp.innerHTML=h;
 }
@@ -659,6 +727,7 @@ function startTurn(){
     S.metrics.btReached=true; S.metrics.btEnterTurn=S.turnCount+1;
     const bt="🔥 버닝 타임! 직선 2칸 이동 강화 개시 (폭탄 포함·함정 제외)";
     addLog(bt,"imp"); showToast(bt);
+    if(S.mode!=="sim") tutHint("burning"); // #26 버닝 타임 첫 진입 1회 도움말 (게임 상태 무변경)
   }
 }
 function endTurn(){
@@ -2134,19 +2203,33 @@ function modal(html,buttons){
   $("overlay").classList.remove("hidden");
 }
 function close(){$("overlay").classList.add("hidden");}
-/* #11 추측 메모: 게임 중 상대 말 클릭(전투 지정 경로 외) — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개 저장 */
+/* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음) */
+const MEMO_UI={btns:[],piece:null}; // 테스트·포커스용 (게임 상태 S와 분리)
+function memoSet(v,pid,key){ // key: MEMO_OPTS 키 또는 null(삭제). 그 외 값은 무시 — 상대 말·게임 중에만
+  const pc=S.pieces.find(x=>x.id===pid); if(!pc||pc.owner===v||(v!==0&&v!==1)) return false;
+  if(key===null||key===undefined){ delete S.memos[v][pid]; return true; }
+  if(!memoOpt(key)) return false;
+  S.memos[v][pid]=key; return true;
+}
 function memoModal(pc){
-  if(S.phase!=="play") return;
-  const v=humanViewer(), cur=S.memos[v][pc.id]||"";
-  modal(`<h2>📝 추측 메모 — ${idLabel(v,pc)} (${pc.r}행 ${pc.c}열)</h2>
-    <small>이 상대 말에 대한 나만의 추측 기록입니다. 상대에게는 보이지 않습니다.</small>
-    <div class="row"><input id="memoIn" type="text" maxlength="40" placeholder="예: 폭탄 같음"
-      style="flex:1;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px"></div>`,
-    [["저장",()=>{const el=$("memoIn"), t=((el&&el.value)||"").trim();
-      if(t) S.memos[v][pc.id]=t; else delete S.memos[v][pc.id]; close(); render();}],
-     ["삭제",()=>{delete S.memos[v][pc.id]; close(); render();}],
-     ["닫기",close]]);
-  const inp=$("memoIn"); if(inp){inp.value=cur; try{inp.focus();}catch(e){}}
+  if(S.phase!=="play"||!pc) return;
+  const v=humanViewer();
+  if(pc.owner===v) return;
+  if(pc.revealed){ showToast(`이미 공개된 말: ${idLabel(v,pc)}`); return; } // 실제 정체가 우선 — 추측 불필요
+  const cur=S.memos[v][pc.id]||null;
+  modal(`<h2>📝 정체 추측 — ? (${pc.r}행 ${pc.c}열)</h2>
+    <small>이 물음표 말이 무엇일지 골라 두세요. 나만 보이는 메모이며 상대·AI에게는 보이지 않아요.</small>
+    <div class="memo-grid" id="memoOpts" role="group" aria-label="정체 추측 선택"></div>`,
+    [["추측 삭제",()=>{memoSet(v,pc.id,null); close(); render();}],["닫기",close]]);
+  const grid=$("memoOpts"); MEMO_UI.btns=[]; MEMO_UI.piece=pc.id;
+  for(const o of MEMO_OPTS){
+    const b=document.createElement("button"); b.className="memo-opt"; b.innerHTML=`<span class="ico" aria-hidden="true">${o.emoji}</span><span>${o.ko}</span>`;
+    b.setAttribute("type","button"); b.setAttribute("aria-label",`${o.ko} ${o.emoji} 추측`); b.setAttribute("aria-pressed",o.key===cur?"true":"false"); b.dataset.key=o.key;
+    b.onclick=()=>{ memoSet(v,pc.id,o.key); close(); render(); };
+    grid.appendChild(b); MEMO_UI.btns.push(b);
+  }
+  const del=$("obBtns").children[0]; if(del) del.disabled=!cur;
+  const focusTo=MEMO_UI.btns.find(b=>b.dataset.key===cur)||MEMO_UI.btns[0]; try{ if(focusTo) focusTo.focus(); }catch(e){}
 }
 function handoff(title,after){
   clearToasts();
@@ -2154,9 +2237,232 @@ function handoff(title,after){
     [["확인 — 시작",()=>{close();after();}]]);
 }
 
+/* ===== #26·#32 첫 플레이어용 ELI5 튜토리얼 — 게임 상태 S와 완전 분리 (TUT) · 영구 저장은 localStorage 키 tutorialSeen 하나뿐 ·
+   게임 내부 모달(#tutOverlay, 외부 서버·창·이미지 없음) · 10단계 한 화면 한 개념 · 단계마다 인라인 SVG 장면 그림(행동 전후·원인→결과) ·
+   상황 도움말(텔레포트·버닝 타임)은 첫 발생 시 1회, 게임 상태 무변경 ===== */
+const TUT_KEY="tutorialSeen";
+/* #32 장면 그림 도우미 — 인라인 SVG 문자열만 생성 (DOM·canvas·네트워크·외부 리소스 없음). 좌표계 viewBox 320×H */
+const TSV={
+  MIN_FS:13, // #32 글자 최소 13 viewBox 단위 — 360px 폭(장면 폭 314px, 배율 0.981)에서도 렌더 12 CSS px 이상
+  C:{own:"#2f3a5e",op:"#5e2f3a",forest:"#23422f",mid:"#2b3140",line:"#3d475e",txt:"#e8ecf5",dim:"#9aa3b8",acc:"#5b8cff",bad:"#ff5b6e",ok:"#4fd88a",gold:"#ffd84d"},
+  esc:s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"),
+  t(x,y,s,o){ o=o||{}; return `<text x="${x}" y="${y}" font-size="${Math.max(o.fs||13,TSV.MIN_FS)}" fill="${o.fill||TSV.C.txt}" text-anchor="${o.an||"middle"}" dominant-baseline="middle"${o.b?' font-weight="bold"':""}${o.op?` opacity="${o.op}"`:""}>${s}</text>`; },
+  cell(x,y,k,s,o){ s=s||22; return `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="3" fill="${TSV.C[k||"mid"]}" stroke="${o&&o.st||TSV.C.line}"${o&&o.sw?` stroke-width="${o.sw}"`:""}/>`; },
+  grid(x,y,cols,rows,kf,s){ s=s||22; let o=""; for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) o+=TSV.cell(x+c*s,y+r*s,kf?kf(r,c):"mid",s); return o; },
+  tok(cx,cy,g,side,r){ r=r||9; const f=side==="op"||side==="opghost"?"#7a3644":side==="hid"?"#3a4152":"#3a4a80"; const st=side==="me"||side==="ghost"?"#dfe6ff":"#0008";
+    const dash=/ghost/.test(side)?' stroke-dasharray="3 2" opacity=".55"':""; return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${f}" stroke="${st}" stroke-width="1.5"${dash}/>`+TSV.t(cx,cy+0.5,g,{fs:Math.max(TSV.MIN_FS,Math.round(r*1.1))}); },
+  arrow(x1,y1,x2,y2,col,w,dash){ col=col||TSV.C.acc; w=w||2; const a=Math.atan2(y2-y1,x2-x1), h=6; const hx=x2-Math.cos(a)*h, hy=y2-Math.sin(a)*h;
+    const p1=[hx+Math.sin(a)*4,hy-Math.cos(a)*4], p2=[hx-Math.sin(a)*4,hy+Math.cos(a)*4];
+    return `<line x1="${x1}" y1="${y1}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="${col}" stroke-width="${w}"${dash?' stroke-dasharray="4 3"':""}/><polygon points="${x2},${y2} ${p1[0].toFixed(1)},${p1[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="${col}"/>`; },
+  x(cx,cy,r,col){ r=r||6; col=col||TSV.C.bad; return `<line x1="${cx-r}" y1="${cy-r}" x2="${cx+r}" y2="${cy+r}" stroke="${col}" stroke-width="2.5"/><line x1="${cx-r}" y1="${cy+r}" x2="${cx+r}" y2="${cy-r}" stroke="${col}" stroke-width="2.5"/>`; },
+  num(x,y,n){ return `<g class="tut-sn" data-n="${n}"><circle cx="${x}" cy="${y}" r="8" fill="${TSV.C.acc}"/>${TSV.t(x,y+0.5,n,{fs:10,b:1,fill:"#fff"})}</g>`; },
+  hp(x,y,w,p,col){ return `<rect x="${x}" y="${y}" width="${w}" height="7" rx="3" fill="#333"/><rect x="${x}" y="${y}" width="${Math.round(w*p)}" height="7" rx="3" fill="${col||TSV.C.ok}"/>`; },
+  pill(x,y,w,h,s,col,fs,tc){ return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h/2}" fill="${col||TSV.C.mid}" stroke="${TSV.C.line}"/>`+TSV.t(x+w/2,y+h/2+0.5,s,{fs:fs||10,fill:tc}); },
+  wrap(h,alt,body){ return `<svg viewBox="0 0 320 ${h}" role="img" aria-label="${TSV.esc(alt)}" focusable="false">${body}</svg>`; }
+};
+const TUT_SCENES={
+  win(){ const C=TSV.C; let s="";
+    // #37 좌표만 조정: 글자 최소 13 기준으로 제목 3개(74+105+87)+배지가 한 줄 320을 넘어 겹치던 것 → 배지를 제목 위 줄로(2줄 머리), 나머지 +14 하향, '끝줄' 라벨은 격자 왼쪽, 2열 설명 두 줄, 높이 118→140
+    s+=TSV.num(53,11,1)+TSV.t(53,26,"상대 왕 잡기",{b:1})+TSV.grid(20,38,3,3,()=>"op")+TSV.tok(53,93,"⚔","me")+TSV.tok(53,49,"👑","op")+TSV.arrow(53,80,53,62)+TSV.x(53,49,7)+TSV.t(53,122,"왕을 잡으면 승리",{fs:10,fill:C.ok});
+    s+=TSV.num(161,11,2)+TSV.t(161,26,"내 왕이 끝줄 닿기",{b:1})+TSV.grid(128,38,3,3,()=>"op")+`<rect x="128" y="38" width="66" height="22" rx="3" fill="none" stroke="${C.gold}" stroke-width="2"/>`
+      +TSV.tok(161,93,"👑","me")+TSV.tok(161,49,"👑","ghost")+TSV.arrow(161,80,161,62)+TSV.t(124,49,"끝줄",{fs:9,fill:C.gold,an:"end"})+TSV.t(161,111,"맨 끝줄에 서면",{fs:10,fill:C.ok})+TSV.t(161,130,"승리",{fs:10,fill:C.ok}); // #37 REVISE: 두 줄 y 115/129(간격 14) → 111/130(간격 19). 글자 13의 실제 bbox 높이 ≈17.5 viewBox 단위라 14 간격은 2.9~6.9px 겹침 — 19 간격은 bbox 여유 ≥1.4, 아래 줄 bbox 하단 ≈136.7 < 140
+    s+=TSV.num(265,11,3)+TSV.t(265,26,"싸우는 말 전멸",{b:1});
+    [232,254,276,298].forEach((x,i)=>{ s+=TSV.tok(x,58,"⚔","op")+TSV.x(x,58,7); s+=TSV.tok(x,84,i<2?"⚔":"🤝","op")+TSV.x(x,84,7); });
+    s+=TSV.t(265,104,"하수인 6 + 동료 2",{fs:9,fill:C.dim})+TSV.t(265,122,"모두 없애면 승리",{fs:10,fill:C.ok});
+    return TSV.wrap(140,"이기는 법 세 가지 그림. 1번: 내 하수인이 상대 진영의 상대 왕을 공격해 지우는 장면. 2번: 내 왕이 상대편 맨 끝줄 칸까지 올라가 서는 장면. 3번: 상대의 하수인 6개와 동료 2개가 모두 엑스 표시로 지워진 장면.",s); },
+  pieces(){ const C=TSV.C; let s="";
+    const rows=[["하수인",6,"⚔"],["동료",2,"🤝"],["왕",1,"👑"],["폭탄",3,"💣"],["함정",2,"🪤"]];
+    s+=TSV.num(12,12,1)+TSV.t(24,12,"내 눈: 내 말 14개",{b:1,an:"start"})+TSV.num(178,12,2)+TSV.t(190,12,"상대 눈: 전부 ?",{b:1,an:"start"});
+    rows.forEach((r,i)=>{ const y=32+i*18; s+=TSV.t(8,y,`${r[0]} ${r[1]}`,{fs:10,an:"start",fill:C.dim}); for(let k=0;k<r[1];k++){ s+=TSV.tok(66+k*15,y,r[2],"me",7); s+=TSV.tok(200+k*15,y,"?","hid",7); } });
+    s+=TSV.arrow(150,58,170,58,C.dim)+TSV.t(160,44,"👁",{fs:12});
+    s+=TSV.num(12,132,3)+TSV.tok(40,132,"?","hid")+TSV.t(66,121,"⚔ 싸움",{fs:9,fill:C.bad})+TSV.arrow(54,132,80,132)+TSV.tok(94,132,"⚔","me")+TSV.t(112,132,"싸우고 나면 정체가 드러나요",{fs:11,an:"start"});
+    return TSV.wrap(148,"말 5가지와 숨은 정체 그림. 1번: 내 눈에는 하수인 6개, 동료 2개, 왕 1개, 폭탄 3개, 함정 2개, 모두 14개가 종류별로 보이는 장면. 2번: 같은 14개가 상대 눈에는 전부 물음표로 보이는 장면. 3번: 물음표 말이 싸움을 거친 뒤 하수인으로 정체가 드러나는 장면.",s); },
+  move(){ const C=TSV.C; let s="";
+    s+=TSV.num(10,12,1)+TSV.t(56,12,"한 칸 이동",{b:1})+TSV.grid(17,24,3,3)+TSV.tok(50,57,"⚔","me");
+    s+=TSV.arrow(50,46,50,31)+TSV.arrow(50,68,50,83)+TSV.arrow(39,57,24,57)+TSV.arrow(61,57,76,57);
+    [[28,35],[72,35],[28,79],[72,79]].forEach(p=>{ s+=TSV.x(p[0],p[1],3.5); }); s+=TSV.t(50,99,"위·아래·옆만")+TSV.t(50,117,"대각선 ✗",{fill:C.bad});
+    s+=TSV.num(110,12,2)+TSV.t(166,12,"숲에 숨기",{b:1,fs:10.5})+TSV.grid(114,22,3,1,()=>"forest")+TSV.tok(125,33,"⚔","ghost")+TSV.tok(191,33,"?","op")+TSV.t(158,53,"멀면 안 보임 🙈",{fs:9.5,fill:C.dim});
+    s+=TSV.grid(114,62,3,1,()=>"forest")+TSV.tok(125,73,"⚔","me")+TSV.tok(147,73,"?","op")+TSV.t(158,93,"옆이면 보임 👁",{fs:9.5})+TSV.t(158,108,"떨어지면 다시 숨어요",{fs:9.5,fill:C.dim});
+    s+=TSV.num(224,12,3)+TSV.t(276,12,"숨은 말 충돌",{b:1})+TSV.grid(233,30,3,1,()=>"forest")+TSV.tok(244,41,"⚔","ghost")+TSV.arrow(252,41,260,41)+TSV.tok(266,41,"⚔","me")+TSV.tok(288,41,"?","op")+TSV.t(278,26,"💥",{fs:12})
+      +TSV.t(272,68,"앞 칸에 멈춤",{fs:9.5})+TSV.t(272,84,"둘 다 공개 👁",{fs:9.5})+TSV.t(270,100,"(이번 차례만)",{fill:C.dim});
+    return TSV.wrap(136,"움직이기와 숲 그림. 1번: 내 말에서 위, 아래, 왼쪽, 오른쪽 한 칸으로 화살표가 나가고 대각선 네 방향에는 엑스 표시. 2번: 숲 칸의 내 말이 멀리 있는 상대에게는 흐리게 숨겨지고, 상대가 바로 옆에 오면 또렷하게 보이는 두 장면. 3번: 내 말이 숨은 상대 말이 있는 숲 칸으로 가다 부딪혀 그 앞 칸에 멈추고 둘 다 공개되는 장면.",s); },
+  search(){ const C=TSV.C; let s="";
+    s+=TSV.num(10,12,1)+TSV.t(80,12,"이번 차례: 흔적 발견",{b:1})+TSV.grid(28,24,3,1,()=>"forest")+TSV.tok(39,35,"⚔","ghost")+TSV.arrow(48,35,52,35)+TSV.tok(61,35,"⚔","me")+TSV.t(77,27,"🔍",{fs:11})+TSV.t(80,58,"말이 서면 🔍 흔적 표시",{fs:9.5});
+    s+=TSV.num(168,12,2)+TSV.t(244,12,"다음 차례: 탐색",{b:1})+TSV.cell(176,24,"forest")+TSV.tok(187,35,"⚔","me")+TSV.t(203,27,"🔍",{fs:11})+TSV.pill(210,27,44,17,"탐색",C.acc,10,"#fff")+TSV.arrow(258,35,280,35)+TSV.t(296,35,"🎁",{fs:16})+TSV.t(244,58,"버튼 → 선물",{fs:9.5});
+    s+=TSV.num(10,82,3)+TSV.t(22,82,"탐색 가능",{fs:10,an:"start"})+TSV.tok(84,82,"⚔","me",8)+TSV.tok(106,82,"🤝","me",8)+TSV.tok(128,82,"👑","me",8)+TSV.t(146,82,"✓",{fs:12,fill:C.ok})
+      +`<line x1="166" y1="72" x2="166" y2="92" stroke="${C.line}"/>`+TSV.tok(186,82,"💣","me",8)+TSV.x(186,82,6)+TSV.tok(208,82,"🪤","me",8)+TSV.x(208,82,6)+TSV.t(226,82,"못 해요",{fs:10,an:"start",fill:C.bad});
+    s+=TSV.num(10,110,4)+TSV.t(22,110,"선물은 이런 것들이에요",{fs:10,an:"start"});
+    [["🔴","몬스터볼",50],["🧪","아이템",125],["✨","힘 버프",195],["🐾","공용 하수인",268]].forEach(it=>{ s+=TSV.t(it[2],130,it[0],{fs:16})+TSV.t(it[2],147,it[1],{fs:9.5,fill:C.dim}); });
+    return TSV.wrap(156,"흔적과 탐색 그림. 1번: 내 말이 숲 칸에 서자 돋보기 흔적 표시가 뜨는 장면. 2번: 다음 차례에 탐색 버튼을 누르면 선물 상자를 받는 장면. 3번: 하수인, 동료, 왕은 탐색 가능 체크, 폭탄과 함정은 엑스. 4번: 선물 종류 몬스터볼, 아이템, 힘 버프, 공용 하수인.",s); },
+  battle(){ const C=TSV.C; let s="";
+    s+=TSV.num(10,12,1)+TSV.t(84,12,"옆에 붙으면 강제 전투",{b:1,fs:10.5})+TSV.grid(14,22,4,1)+TSV.tok(25,33,"⚔","me")+TSV.arrow(36,33,52,33)+TSV.tok(69,33,"?","op")+TSV.t(112,33,"이동",{fs:10,fill:C.dim,an:"start"});
+    s+=TSV.grid(14,50,4,1)+TSV.tok(47,61,"⚔","me")+TSV.tok(69,61,"?","op")+TSV.t(58,48,"⚔",{fs:12})+TSV.t(112,61,"싸움!",{fs:11,fill:C.bad,an:"start",b:1});
+    s+=TSV.pill(14,80,132,17,"한 차례 싸움 최대 2번 ⚔⚔",undefined,9.5);
+    s+=TSV.num(170,12,2)+TSV.t(248,12,"속성 가위바위보",{b:1});
+    const E=[["불",C.fire||"#ff7a4d",240,38],["풀","#5fd06b",292,68],["번개","#ffd84d",240,98],["물","#4da3ff",188,68]];
+    E.forEach(e=>{ s+=`<circle cx="${e[2]}" cy="${e[3]}" r="13" fill="${e[1]}"/>`+TSV.t(e[2],e[3]+0.5,e[0],{fs:10,b:1,fill:"#151515"}); });
+    s+=TSV.arrow(251,46,281,61,C.txt)+TSV.arrow(284,80,252,93,C.txt)+TSV.arrow(229,93,197,80,C.txt)+TSV.arrow(198,58,229,44,C.txt)+TSV.t(240,68,"→ 이겨요",{fs:8.5,fill:C.dim});
+    s+=TSV.num(10,124,3)+TSV.t(24,124,"싸움이 끝나면",{b:1,an:"start"});
+    s+=TSV.hp(22,138,80,0.6)+TSV.t(110,142,"HP 60 그대로",{fs:10,an:"start"})+TSV.t(204,142,"⏳ 쿨타임 그대로",{fs:10,an:"start"});
+    s+=TSV.t(22,162,"🔥 화상 · ☠ 약화",{fs:10,an:"start"})+`<line x1="22" y1="162" x2="112" y2="162" stroke="${C.bad}" stroke-width="2"/>`+TSV.t(126,162,"→ 상태이상은 사라져요 ✓",{fs:10,an:"start",fill:C.ok});
+    return TSV.wrap(174,"싸움 그림. 1번: 내 하수인이 한 칸 움직여 상대 물음표 말 바로 옆에 붙자 칼 표시와 함께 싸움이 시작되는 전후 장면, 아래에 한 차례 싸움 최대 2번 표시. 2번: 불, 풀, 번개, 물 네 원이 고리로 이어져 불은 풀을, 풀은 번개를, 번개는 물을, 물은 불을 이기는 화살표. 3번: 싸움 뒤 HP 막대 60과 쿨타임은 그대로 남고, 화상 같은 상태이상 글자에는 줄이 그어져 사라짐.",s); },
+  bombtrap(){ const C=TSV.C; let s="";
+    s+=TSV.num(10,12,1)+TSV.t(56,12,"움직임",{b:1})+TSV.grid(12,22,3,1)+TSV.tok(23,33,"💣","me")+TSV.arrow(34,33,52,33)+TSV.t(56,54,"폭탄 1칸")+TSV.t(56,70,"(버닝 땐 2칸)",{fill:C.dim});
+    s+=TSV.grid(12,80,2,1)+TSV.tok(23,91,"🪤","me")+TSV.t(45,91,"🔒")+TSV.t(56,114,"함정은 고정");
+    s+=TSV.num(110,12,2)+TSV.t(166,12,"폭탄을 건드리면",{b:1,fs:10.5});
+    s+=TSV.tok(122,40,"⚔","me")+TSV.arrow(132,40,140,40,C.bad)+TSV.tok(152,40,"💣","op")+TSV.t(137,26,"💥",{fs:12})+TSV.x(122,40,7)+TSV.x(152,40,7)+TSV.t(168,40,"둘 다 ✗",{fs:10,an:"start",fill:C.bad});
+    s+=TSV.tok(122,80,"👑","me")+TSV.arrow(132,80,140,80,C.bad)+TSV.tok(152,80,"💣","op")+TSV.t(137,66,"💥",{fs:12})+TSV.x(152,80,7)+TSV.t(168,80,"폭탄만 ✗",{fs:10,an:"start"})+TSV.t(122,99,"살아남음 ✓",{fs:9,fill:C.ok})+TSV.t(162,116,"하수인 ✗ · 동료·왕 ✓",{fs:9.5,fill:C.dim});
+    s+=TSV.num(224,12,3)+TSV.t(276,12,"함정을 밟으면",{b:1,fs:10.5})+TSV.tok(228,40,"⚔","me")+TSV.arrow(238,40,246,40,C.bad)+TSV.tok(258,40,"🪤","op")+TSV.x(258,40,7)+TSV.t(274,40,"함정 ✗",{an:"start"});
+    s+=TSV.tok(250,80,"⚔","me")+TSV.t(264,70,"🔒",{fs:13})+TSV.pill(214,92,104,18,"내 차례 2번 정지")+TSV.t(266,116,"못 움직여요",{fill:C.dim});
+    return TSV.wrap(130,"폭탄과 함정 그림. 1번: 폭탄은 한 칸 화살표로 움직이고 버닝 타임엔 2칸, 함정은 자물쇠로 고정. 2번: 하수인이 폭탄을 건드리면 둘 다 엑스로 사라지고, 왕이 건드리면 폭탄만 사라지고 왕은 살아남음. 3번: 함정을 밟으면 함정이 사라지고 밟은 말은 자물쇠와 함께 내 차례 2번 동안 정지.",s); },
+  capture(){ const C=TSV.C; let s="";
+    s+=TSV.num(10,12,1)+TSV.t(22,12,"볼 던지기: HP 30% 아래",{b:1,an:"start"});
+    s+=TSV.tok(30,42,"⚔","op",11)+TSV.hp(12,60,36,0.25,C.bad)+TSV.t(30,74,"HP 25%",{fs:10,fill:C.bad})+TSV.t(62,42,"🔴",{fs:14})+TSV.arrow(74,42,98,42)+TSV.t(86,30,"70%",{fs:10,b:1});
+    s+=TSV.num(178,12,2)+TSV.t(190,12,"결과: 둘 다 볼 −1",{b:1,an:"start"});
+    s+=TSV.t(152,34,"✓ 성공",{fs:10,an:"start",fill:C.ok})+`<rect x="196" y="24" width="118" height="20" rx="4" fill="${C.own}" stroke="${C.acc}"/>`+TSV.t(255,34,"예비 HP 70/100");
+    s+=TSV.t(152,58,"✗ 실패",{fs:10,an:"start",fill:C.bad})+TSV.t(196,58,"볼이 튕겨요",{fs:10,an:"start",fill:C.dim})+TSV.pill(232,68,76,17,"🔴 볼 −1",undefined,10);
+    s+=TSV.num(10,98,3)+TSV.t(22,98,"도망: 내 HP 50% 아래",{b:1,an:"start"});
+    s+=TSV.tok(30,128,"⚔","me",11)+TSV.hp(12,146,36,0.4,C.gold)+TSV.t(30,160,"HP 40%",{fs:10,fill:C.gold})+TSV.t(62,128,"🏃",{fs:14})+TSV.arrow(74,128,98,128)+TSV.t(86,116,"50%",{fs:10,b:1});
+    s+=TSV.num(178,98,4)+TSV.t(190,98,"결과",{b:1,an:"start"});
+    s+=TSV.t(152,120,"✓ 성공",{fs:10,an:"start",fill:C.ok})+TSV.tok(200,120,"⚔","me",8)+TSV.t(216,120,"⇄",{fs:14})+TSV.tok(232,120,"💣","me",8)+TSV.t(244,120,"뒷말과 교환",{an:"start",fill:C.dim});
+    s+=TSV.t(152,152,"✗ 실패",{fs:10,an:"start",fill:C.bad})+TSV.tok(204,152,"⚔","op",8)+TSV.arrow(214,152,236,152,C.bad)+TSV.t(225,140,"⚡",{fs:11})+TSV.tok(246,152,"⚔","me",8)+TSV.t(258,152,"바로 공격",{fs:10,an:"start",fill:C.dim});
+    return TSV.wrap(172,"잡아오기와 도망 그림. 1번: HP가 25%로 떨어진 상대 하수인에게 몬스터볼을 던지는 장면, 성공률 70%. 2번: 성공하면 예비 하수인 HP 70/100 칸에 들어가고, 실패하면 볼이 튕기며, 둘 다 볼 1개가 줄어듦. 3번: HP 40%인 내 말이 도망을 시도하는 장면, 성공률 50%. 4번: 성공하면 뒤에 있는 내 말과 자리를 바꾸고, 실패하면 상대가 바로 한 번 공격.",s); },
+  teleport(){ const C=TSV.C; let s="";
+    s+=TSV.num(10,12,1)+TSV.t(56,12,"조건",{b:1})+TSV.grid(25,22,3,4,r=>r<3?"op":r===3?"forest":"mid",16)+TSV.tok(49,46,"⚔","me",7)+TSV.t(56,98,"상대 땅에 내 말",{fill:C.dim})+TSV.t(56,115,"🌀 켜짐 ✓",{fill:C.ok});
+    s+=TSV.num(108,12,2)+TSV.t(168,12,"둘 자리 바꾸기",{b:1})+TSV.cell(118,26)+TSV.cell(172,26)+TSV.tok(129,37,"💣","me")+TSV.tok(183,37,"⚔","me")+TSV.arrow(142,33,170,33)+TSV.arrow(170,42,142,42)
+      +TSV.t(160,64,"왕·폭탄·함정도 OK",{fs:9,fill:C.dim})+TSV.pill(120,74,80,17,"한 경기 2번",undefined,9.5)+TSV.t(160,104,"🌀🌀",{fs:13});
+    s+=TSV.num(228,12,3)+TSV.t(278,12,"각자 싸움",{b:1})+TSV.tok(238,40,"⚔","me",8)+TSV.tok(258,40,"?","op",8)+TSV.t(248,26,"⚔",{fs:11})+TSV.tok(286,40,"🤝","me",8)+TSV.tok(306,40,"?","op",8)+TSV.t(296,26,"⚔",{fs:11})
+      +TSV.t(268,60,"따로따로 싸워요")+TSV.pill(232,74,80,17,"남은 싸움 부족",C.op,9)+TSV.t(268,104,"🌀 ✗ 못 써요",{fill:C.bad});
+    return TSV.wrap(130,"텔레포트 그림. 1번: 상대 땅 3줄 안에 내 말이 들어가 있어 텔레포트가 켜진 장면. 2번: 내 폭탄과 내 하수인 두 말의 자리가 양방향 화살표로 바뀌는 장면, 한 경기 2번 표시. 3번: 바뀐 두 말이 각각 상대 옆에 붙어 따로 싸우는 장면과, 남은 싸움 횟수가 부족하면 텔레포트를 못 쓴다는 표시.",s); },
+  burning(){ const C=TSV.C; let s="";
+    s+=TSV.pill(96,4,128,19,"턴 65부터 🔥 버닝 타임",C.op,10.5);
+    s+=TSV.num(10,36,1)+TSV.t(58,36,"곧게 2칸",{b:1})+TSV.grid(39,46,1,3)+TSV.tok(50,101,"⚔","me")+TSV.arrow(50,90,50,50)+TSV.t(84,66,"꺾기",{fs:9,fill:C.dim})+TSV.x(84,80,5)+TSV.t(58,128,"곧게만 2칸까지",{fs:9.5});
+    s+=TSV.num(110,36,2)+TSV.t(166,36,"상대 숲·땅은 1칸",{b:1,fs:10.5})+TSV.grid(147,46,1,3,r=>r===0?"op":r===1?"forest":"mid")+TSV.tok(158,101,"⚔","me")+TSV.arrow(158,90,158,72)+TSV.arrow(158,68,158,50,C.dim,2,1)+TSV.x(158,57,5)
+      +TSV.t(190,57,"상대 땅",{fs:8.5,fill:C.dim,an:"start"})+TSV.t(190,79,"상대 숲",{fs:8.5,fill:C.dim,an:"start"})+TSV.t(162,128,"들어가면 1칸");
+    s+=TSV.num(218,36,3)+TSV.t(274,36,"폭탄·함정",{b:1})+TSV.grid(232,46,1,3)+TSV.tok(243,101,"💣","me")+TSV.arrow(243,90,243,50)+TSV.t(243,128,"✓",{fs:12,fill:C.ok})+TSV.tok(290,101,"🪤","me")+TSV.t(290,78,"🔒",{fs:14})+TSV.t(290,128,"고정",{fs:9.5});
+    return TSV.wrap(140,"버닝 타임 그림. 위에 턴 65부터 버닝 타임 표시. 1번: 내 하수인이 곧게 2칸 올라가는 화살표와 꺾는 길에는 엑스. 2번: 상대 숲과 상대 땅으로 들어가는 길은 첫 칸까지만 화살표가 그려지고 둘째 칸은 엑스. 3번: 폭탄은 2칸 화살표에 체크, 함정은 자물쇠로 고정.",s); },
+  recap(){ const C=TSV.C; let s="";
+    s+=TSV.num(10,14,1)+TSV.t(22,14,"이기는 길 셋",{b:1,an:"start"})+TSV.pill(20,26,86,18,"👑 상대 왕 잡기",undefined,9)+TSV.pill(114,26,86,18,"🏁 내 왕이 끝줄",undefined,9)+TSV.pill(206,26,106,18,"💀 상대 전멸");
+    s+=TSV.num(10,62,2)+TSV.t(22,62,"내 차례 흐름",{b:1,an:"start"});
+    s+=`<rect x="20" y="74" width="96" height="28" rx="5" fill="${C.mid}" stroke="${C.line}"/>`+TSV.t(68,82,"주 행동 1개",{fs:10,b:1})+TSV.t(68,96,"이동·탐색·텔레포트",{fs:8,fill:C.dim})+TSV.arrow(118,88,132,88);
+    s+=`<rect x="134" y="74" width="92" height="28" rx="5" fill="${C.mid}" stroke="${C.line}"/>`+TSV.t(180,82,"옆에 붙었으면 ⚔",{fs:9.5,b:1})+TSV.t(180,96,"꼭 싸움 (최대 2번)",{fs:8,fill:C.dim})+TSV.arrow(228,88,242,88);
+    s+=`<rect x="244" y="74" width="66" height="28" rx="5" fill="${C.acc}"/>`+TSV.t(277,88,"턴 종료 ▶",{fs:10,b:1,fill:"#fff"});
+    s+=TSV.num(10,120,3)+TSV.t(22,120,"기억할 것",{b:1,an:"start"})+TSV.pill(20,132,84,18,"🌲 숲에 숨기",undefined,9)+TSV.pill(112,132,84,18,"🔍 흔적 찾기",undefined,9)+TSV.pill(204,132,100,18,"❓ 물음표 추리",undefined,9);
+    return TSV.wrap(162,"빠른 복습 그림. 1번: 이기는 길 셋 — 상대 왕 잡기, 내 왕이 끝줄, 하수인과 동료 전멸. 2번: 내 차례 흐름 — 주 행동 1개(이동, 탐색, 텔레포트)에서 옆에 붙었으면 꼭 싸움(최대 2번)으로, 그다음 턴 종료 버튼으로 이어지는 화살표. 3번: 기억할 것 — 숲에 숨기, 흔적 찾기, 물음표 추리.",s); }
+};
+const TUT_STEPS=[
+  {icon:"🏆",title:"이기는 법 세 가지",scene:TUT_SCENES.win(),
+   lines:["상대 <b>왕</b>을 찾아서 잡으면 이겨요.","내 <b>왕</b>이 상대편 <b>맨 끝줄</b>에 서도 이겨요.","상대의 싸우는 말(<b>하수인</b> 6개 + <b>동료</b> 2개)을 모두 없애도 이겨요."]},
+  {icon:"🎭",title:"말 5가지와 숨은 정체",scene:TUT_SCENES.pieces(),
+   lines:["내 말은 모두 <b>14개</b>예요. <b>하수인</b>(싸우는 말) 6개, <b>동료</b> 2개, <b>왕</b> 1개, <b>폭탄</b> 3개, <b>함정</b> 2개예요.","상대에게 내 말은 전부 <b>물음표(?)</b>로 보여요. 상대 말도 나에게는 물음표예요.","싸우고 나면 그 말의 정체가 드러나요."]},
+  {icon:"🌲",title:"움직이기와 숲에 숨기",scene:TUT_SCENES.move(),
+   lines:["내 차례에 말 <b>하나</b>를 위·아래·옆으로 <b>한 칸</b> 움직여요. 대각선은 안 돼요.","초록 칸은 <b>숲</b>이에요. 숲의 말은 상대가 <b>바로 옆</b>에 올 때만 보이고, 떨어지면 다시 숨어요.","숨은 말이 있는 칸으로 가면 <b>부딪혀요</b>. 그 앞 칸에 멈추고, 둘 다 이번 차례 동안 보여요."]},
+  {icon:"🔍",title:"흔적과 탐색",scene:TUT_SCENES.search(),
+   lines:["숲 어딘가에 <b>선물</b>이 숨어 있어요. 말이 그 칸에 서면 <b>흔적</b> 표시가 떠요.","그 말로 <b>다음 차례</b>에 <b>탐색</b>(찾아보기) 버튼을 누르면 선물을 받아요.","탐색은 <b>하수인·동료·왕</b>만 할 수 있어요. 폭탄·함정은 못 해요.","선물은 <b>몬스터볼</b>, 회복약 같은 <b>아이템</b>, 다음 싸움 <b>힘 버프</b>, 공용 하수인이에요."]},
+  {icon:"⚔️",title:"옆에 붙으면 꼭 싸워요",scene:TUT_SCENES.battle(),
+   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요."]},
+  {icon:"💣",title:"폭탄과 함정",scene:TUT_SCENES.bombtrap(),
+   lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). <b>함정</b>은 놓은 자리에서 못 움직여요.","<b>하수인</b>이 폭탄을 건드리면 펑! 둘 다 사라져요. <b>동료·왕</b>이 건드리면 폭탄만 사라지고 살아남아요.","<b>함정</b>을 건드리면 함정은 사라지고, 건드린 말은 <b>내 차례 2번</b> 동안 못 움직여요."]},
+  {icon:"🔴",title:"잡아오기와 도망치기",scene:TUT_SCENES.capture(),
+   lines:["싸울 때 상대 <b>하수인</b> HP가 <b>30%</b> 아래면 <b>몬스터볼</b>을 던져요. 성공률 <b>70%</b>예요.","성공하면 내 <b>예비 하수인</b>(HP 70/100)이 돼요. 성공·실패 모두 볼 <b>1개</b>가 없어져요.","내 말 HP가 <b>50%</b> 아래면 <b>도망</b>칠 수 있어요. 성공률 <b>50%</b>예요.","실패하면 상대가 바로 한 번 더 때려요. 성공하면 <b>뒤에 있는 내 말</b>과 자리를 바꿔도 돼요."]},
+  {icon:"🌀",title:"텔레포트(순간이동)",scene:TUT_SCENES.teleport(),
+   lines:["내 말이 <b>상대편 땅</b>(상대 진영 3줄)에 들어가 있으면 <b>텔레포트</b>(순간이동)를 쓸 수 있어요.","텔레포트는 내 말 <b>두 개</b>의 자리를 서로 바꿔요. 왕·폭탄·함정도 돼요. 한 경기에 <b>2번</b>까지예요.","바뀐 두 말이 각각 상대 옆에 새로 붙으면 <b>각자 따로</b> 싸워요. 남은 싸움 횟수가 모자라면 못 써요."]},
+  {icon:"🔥",title:"버닝 타임(불타는 시간)",scene:TUT_SCENES.burning(),
+   lines:["<b>65번째 턴</b>부터 <b>버닝 타임</b>(불타는 시간)이에요. 말이 <b>곧게 2칸</b>까지 움직일 수 있어요.","상대편 <b>숲</b>이나 상대편 <b>땅</b>에 있거나, 들어가거나, 지나갈 때는 그대로 <b>1칸</b>이에요.","<b>폭탄</b>도 2칸 움직여요. <b>함정</b>은 여전히 고정이에요."]},
+  {icon:"🏁",title:"빠른 복습 — 첫 차례 체크리스트",scene:TUT_SCENES.recap(),
+   lines:["이기는 길은 셋! 상대 <b>왕</b> 잡기, 내 왕이 상대 <b>끝줄</b>에 서기, 상대 <b>하수인·동료 전멸</b>이에요.","내 차례엔 <b>주 행동 하나</b>(이동·탐색·텔레포트)를 해요. 옆에 새로 붙은 상대와 꼭 싸우고, <b>턴 종료</b>를 눌러요.","숲에 숨고, 흔적을 찾고, 물음표 뒤를 추리해요. 이제 시작해요!"]}
+];
+const TUT_HINTS={ // 첫 발생 시 1회 짧은 상황 도움말 (게임 상태 S 무변경 · 저장 안 함)
+  teleport:{icon:"🌀",text:"텔레포트(순간이동)를 쓸 수 있어요! 내 말이 상대편 땅에 들어가 있으면, 내 말 두 개의 자리를 서로 바꿀 수 있어요. 한 경기에 2번까지예요."},
+  burning:{icon:"🔥",text:"버닝 타임(불타는 시간)이 시작됐어요! 이제부터 말이 곧게 2칸까지 움직일 수 있어요. 함정은 그대로예요."}
+};
+const TUT={open:false,step:0,seenThisLoad:false,auto:false,hints:{teleport:false,burning:false},hintShown:null,restore:null,btns:[]};
+const tutStore={ // localStorage 미지원·접근 예외(SecurityError 등)·쓰기 예외(용량·시크릿 모드) 모두 허용 — 실패 시 false
+  get(){ try{ const ls=window.localStorage; return !!ls&&ls.getItem(TUT_KEY)==="1"; }catch(e){ return false; } },
+  set(){ try{ const ls=window.localStorage; if(!ls) return false; ls.setItem(TUT_KEY,"1"); return true; }catch(e){ return false; } }
+};
+function tutSeen(){ return TUT.seenThisLoad||tutStore.get(); }
+function tutAttr(el,k,v){ try{ if(!el) return; if(v===null){ if(el.removeAttribute) el.removeAttribute(k); } else if(el.setAttribute) el.setAttribute(k,String(v)); }catch(e){} }
+function tutSetInert(on){ // 배경(게임 화면·게임 모달)을 스크린리더·포커스·클릭에서 제외 — 열릴 때만
+  for(const id of ["app","overlay","tutHint"]){ const el=$(id); tutAttr(el,"inert",on?"":null); tutAttr(el,"aria-hidden",on?"true":null); }
+}
+function tutFocus(el){ try{ if(el&&el.focus) el.focus(); }catch(e){} }
+function tutOpen(opts){
+  opts=opts||{};
+  if(TUT.open){ tutGo(0); return; } // 이미 열려 있으면 처음으로
+  TUT.open=true; TUT.step=0; TUT.auto=!!opts.auto;
+  const ae=document.activeElement;
+  TUT.restore=(ae&&ae!==document.body&&ae.focus)?ae:null; // 닫을 때 안전 복원
+  tutSetInert(true);
+  const ov=$("tutOverlay"); if(ov){ ov.classList.remove("hidden"); tutAttr(ov,"aria-hidden",null); }
+  tutRender();
+}
+function tutGo(i){ TUT.step=Math.max(0,Math.min(TUT_STEPS.length-1,i)); tutRender(); }
+function tutNext(){ if(!TUT.open) return; if(TUT.step>=TUT_STEPS.length-1) tutClose("finish"); else tutGo(TUT.step+1); }
+function tutPrev(){ if(!TUT.open) return; if(TUT.step>0) tutGo(TUT.step-1); }
+function tutSkip(){ if(TUT.open) tutClose("skip"); }
+function tutClose(reason){
+  if(!TUT.open) return;
+  TUT.open=false; TUT.seenThisLoad=true; tutStore.set(); // 건너뛰기·완료 모두 '봤음' — 저장 실패해도 이번 로드에서는 재표시 안 함
+  const ov=$("tutOverlay"); if(ov){ ov.classList.add("hidden"); tutAttr(ov,"aria-hidden","true"); }
+  tutSetInert(false);
+  TUT.btns=[];
+  const r=TUT.restore; TUT.restore=null; // 포커스 복원: 원래 요소가 아직 문서에 있고 비활성이 아닐 때만, 아니면 헤더 ? 버튼
+  let ok=false;
+  if(r&&r.isConnected!==false&&!r.disabled){ tutFocus(r); ok=document.activeElement===r; }
+  if(!ok) tutFocus($("tutBtn"));
+}
+function tutRender(){
+  const box=$("tutBox"); if(!box) return;
+  const i=TUT.step, st=TUT_STEPS[i], n=TUT_STEPS.length, last=i===n-1;
+  box.innerHTML=`<div class="tut-head"><span id="tutCount" aria-live="polite" aria-atomic="true">${i+1} / ${n} 단계</span><span>📖 튜토리얼</span></div>
+    <h2 id="tutTitle"><span aria-hidden="true">${st.icon}</span> ${st.title}</h2>
+    <div class="tut-scene">${st.scene}</div>
+    <div id="tutBody" class="tut-body">${st.lines.map((l,k)=>`<p><span class="tut-n">${k+1}</span><span>${l}</span></p>`).join("")}</div>
+    <div class="tut-dots" aria-hidden="true">${TUT_STEPS.map((_,k)=>`<span class="${k===i?"on":""}"></span>`).join("")}</div>
+    <div class="row tut-nav" id="tutNav"></div>`;
+  const nav=$("tutNav"); TUT.btns=[];
+  const mk=(txt,fn,opt)=>{ opt=opt||{}; const b=document.createElement("button"); b.textContent=txt; b.onclick=fn; b.disabled=!!opt.dis;
+    if(opt.cls) b.className=opt.cls; tutAttr(b,"type","button"); if(opt.aria) tutAttr(b,"aria-label",opt.aria); nav.appendChild(b); TUT.btns.push(b); return b; };
+  mk("◀ 이전",tutPrev,{dis:i===0,aria:"이전 단계"});
+  const primary=last?mk("게임 시작 ▶",()=>tutClose("finish"),{cls:"primary",aria:"튜토리얼 마치고 게임 시작"}):mk("다음 ▶",tutNext,{cls:"primary",aria:"다음 단계"});
+  if(last) mk("처음부터",()=>tutGo(0),{aria:"튜토리얼 처음부터 다시 보기"}); else mk("건너뛰기",tutSkip,{aria:"튜토리얼 건너뛰기"});
+  tutFocus(primary);
+}
+function tutKeydown(e){ // 대화상자 내부 키보드: Esc=건너뛰기 · ←/→=이전/다음 · Tab=대화상자 안에서 순환 (게임 화면에는 키 핸들러가 없어 충돌 없음)
+  if(!TUT.open||!e) return false;
+  const k=e.key, stop=()=>{ if(e.preventDefault) e.preventDefault(); if(e.stopPropagation) e.stopPropagation(); };
+  if(k==="Escape"){ stop(); tutSkip(); return true; }
+  if(k==="ArrowRight"){ stop(); if(TUT.step<TUT_STEPS.length-1) tutNext(); return true; }
+  if(k==="ArrowLeft"){ stop(); tutPrev(); return true; }
+  if(k==="Tab"){
+    const f=TUT.btns.filter(b=>!b.disabled); if(!f.length) return false;
+    stop();
+    const cur=f.indexOf(document.activeElement);
+    const nx=e.shiftKey?(cur<=0?f.length-1:cur-1):(cur<0||cur>=f.length-1?0:cur+1);
+    tutFocus(f[nx]); return true;
+  }
+  return false;
+}
+function tutHint(key){ // 첫 발생 시 1회 — 두 번째부터 false. 게임 상태·저장소 무변경
+  if(TUT.hints[key]!==false) return false;
+  const h=TUT_HINTS[key]; if(!h) return false;
+  TUT.hints[key]=true; TUT.hintShown=key;
+  const box=$("tutHint"); if(!box) return true;
+  box.innerHTML=`<span class="tut-hint-icon" aria-hidden="true">${h.icon}</span><span class="tut-hint-text">${h.text}</span>`;
+  const b=document.createElement("button"); b.textContent="알겠어요"; b.className="tut-hint-ok"; b.onclick=tutHintClose; tutAttr(b,"type","button"); tutAttr(b,"aria-label","도움말 닫기");
+  box.appendChild(b); box.classList.remove("hidden");
+  setTimeout(()=>{ if(TUT.hintShown===key) tutHintClose(); },12000);
+  return true;
+}
+function tutHintClose(){ TUT.hintShown=null; const box=$("tutHint"); if(box){ box.classList.add("hidden"); box.innerHTML=""; } }
+window.tutOpen=tutOpen; window.tutHintClose=tutHintClose;
+(function(){ const ov=$("tutOverlay"); if(ov&&ov.addEventListener) ov.addEventListener("keydown",tutKeydown); })();
+
 /* ===== 시작: 모드 선택 화면 ===== */
 newGame("pvp"); S.phase="menu";
 render();
+if(!tutSeen()) tutOpen({auto:true}); // #26 최초 방문 1회 자동 표시 (tutorialSeen 미저장 시)
 </script>
 </body>
 </html>
