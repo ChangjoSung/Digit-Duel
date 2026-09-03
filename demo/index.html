@@ -295,6 +295,7 @@ const ROSTER=[
 /* ===== 상태 ===== */
 let S=null;
 function pname(p){
+  if(NET.mode) return (p===NET.me?"나":"상대")+"(P"+(p+1)+")";
   if(S.mode==="pve") return p===0?"플레이어":"AI("+(AI_LEVEL_KO[S.aiLevel[1]]||"5급")+")";
   if(S.mode==="sim") return (p===0?"AI-1":"AI-2")+"("+(AI_LEVEL_KO[S.aiLevel[p]]||"5급")+")";
   return p===0?"P1(하단·청)":"P2(상단·적)";
@@ -397,7 +398,7 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1
 
 /* ===== 유틸 ===== */
 const isAI=p=>(S.mode==="pve"&&p===1)||S.mode==="sim";
-const humanViewer=()=> S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:S.current) : 0;
+const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:S.current) : 0); // 온라인: 항상 내 시점 고정
 const alivePieces=()=>S.pieces.filter(p=>p.alive&&p.placed);
 const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
 const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
@@ -462,7 +463,7 @@ function renderBoard(){
         if(g){ chip.className+=" memo-guess"; chip.setAttribute("title",`추측: ${g.ko} (내 메모 · 정체 미공개)`); chip.setAttribute("aria-label",`정체 미공개 상대 말 — 내 추측: ${g.ko}`); }
         cell.appendChild(chip);
       }
-      if(S.selected&&!isAI(S.current)){
+      if(S.selected&&!isAI(S.current)&&(!NET.mode||netActor()===NET.me)){ // 온라인: 상대 선택 하이라이트 비노출 (숨은 말 위치 누출 방지)
         const s=S.selected;
         if(S.phase==="setup"&&s.tray&&zoneOf(S.setupPlayer).includes(r)&&!at(r,c)) cell.classList.add("hl-move");
         if(S.phase==="play"&&!s.tray){
@@ -471,7 +472,7 @@ function renderBoard(){
           if(p&&p.owner!==s.owner&&adj(s,p)&&visibleTo(viewer===2?0:viewer,p)&&canBattle(s,p)) cell.classList.add("hl-attack");
         }
       }
-      if(S.phase==="play"&&!isAI(S.current)){
+      if(S.phase==="play"&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대 턴 강제 대상·텔레포트 하이라이트 비노출
         if(S.forcedTargets&&S.forcedTargets.length&&p&&S.forcedTargets.includes(p.id)) cell.classList.add("hl-attack"); // T1 강제 대상
         if(S.teleport){ // #14 스왑형: 자기 말 2개 선택 하이라이트
           if(S.teleport.stage===1){ if(p&&p.owner===S.current&&p.immobile===0) cell.classList.add("hl-move"); }
@@ -519,20 +520,20 @@ function canBattle(att,def){
 function renderTurnBar(){
   const tb=$("turnBar"); tb.innerHTML="";
   if(S.phase!=="play") return;
-  const aiTurn=isAI(S.current);
+  const aiTurn=isAI(S.current)||(NET.mode&&S.current!==NET.me); // 온라인: 상대 턴이면 조작 불가
   const mk=(txt,fn,dis,cls)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=fn;b.disabled=!!dis||aiTurn;if(cls)b.className=cls;tb.appendChild(b);};
-  mk("주 행동 생략",()=>{S.mainUsed=true;addLog(`${pname(S.current)} 주 행동 생략`);render();},S.mainUsed);
+  mk("주 행동 생략",()=>netAction({t:"skipMain"}),S.mainUsed);
   const sel=S.selected&&!S.selected.tray?S.selected:null;
   const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
-  mk("탐색",()=>doSearch(sel,ev),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))); // #20: 폭탄·함정은 탐색 실행 불가
+  mk("탐색",()=>netAction({t:"search"}),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))); // #20: 폭탄·함정은 탐색 실행 불가
   const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
-  mk(S.teleport?"텔레포트 취소":`텔레포트 ${BAL.teleMax-S.teleUsed[S.current]}회`,()=>{S.teleport=S.teleport?null:{stage:1,piece:null};S.selected=null;render();},teleDis); // #14 스왑형·2회 제한
+  mk(S.teleport?"텔레포트 취소":`텔레포트 ${BAL.teleMax-S.teleUsed[S.current]}회`,()=>netAction({t:"tele"}),teleDis); // #14 스왑형·2회 제한
   if(!teleDis&&!aiTurn&&S.mode!=="sim") tutHint("teleport"); // #26 사람 턴에 텔레포트가 처음 가능해질 때 1회 도움말 (게임 상태 무변경)
   const forced=S.forcedTargets&&S.forcedTargets.length>0;
-  mk("턴 종료",endTurn,forced,"primary");
+  mk("턴 종료",()=>netAction({t:"endTurn"}),forced,"primary");
   mk("기권",confirmResign,false,"danger");
   if(forced){const s=document.createElement("span");s.className="badge";s.textContent="⚔️ 강제 전투 대상 선택";tb.appendChild(s);}
-  if(aiTurn){const s=document.createElement("span");s.className="badge";s.textContent="🤖 AI 행동 중…";tb.appendChild(s);}
+  if(aiTurn){const s=document.createElement("span");s.className="badge";s.textContent=(NET.mode&&!isAI(S.current))?"🌐 상대 턴 진행 중…":"🤖 AI 행동 중…";tb.appendChild(s);}
 }
 function renderSide(){
   const sp=$("sidePanel");
@@ -543,7 +544,8 @@ function renderSide(){
       <div class="row"><button class="primary big" onclick="startMode('pve',{aiLevel:'grade5'})">5급 — 기본 AI</button>
         <button class="primary big" onclick="startMode('pve',{aiLevel:'dan5'})">5단 — 탐색·추론 기반 강AI</button></div>
       <small>5급: 휴리스틱 기준선 AI · 5단: 공정 관측 아래 2수 앞(상대 최선 응수)까지 평가하는 제한 탐색 AI</small>
-      <div class="row" style="margin-top:10px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button></div>
+      <div class="row" style="margin-top:10px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button>
+        <button class="primary big" onclick="netConnect()">🌐 온라인 PVP (서버 매칭)</button><span class="badge" id="netStatus" style="display:none"></span></div>
       <div class="row"><a class="simlink" onclick="startMode('sim')">AI vs AI 시뮬레이션(관전 · 5급 vs 5급)</a>
         <a class="simlink" onclick="startMode('sim',{aiLevel:['dan5','grade5']})">5단 vs 5급 관전</a></div>
       <div class="row" style="margin-top:10px"><button type="button" onclick="tutOpen()">📖 튜토리얼 다시 보기</button></div>`;
@@ -557,7 +559,7 @@ function renderSide(){
     <button class="primary" onclick="location.reload()">처음으로</button>`;
     return;
   }
-  const p = S.mode==="pvp"?S.current:0;
+  const p = NET.mode?NET.me:(S.mode==="pvp"?S.current:0); // 온라인: 사이드 패널은 항상 내 정보
   let h=`<h2>${pname(p)}</h2>
   <div class="row"><span class="badge">몬스터볼 ${S.balls[p]}</span>
   <span class="badge">아이템 ${S.inv[p].length}/${BAL.invMax}</span>
@@ -565,14 +567,14 @@ function renderSide(){
   ${S.reserve[p]?`<span class="badge">예비 하수인(${ELEM_KO[S.reserve[p].element]}) HP ${S.reserve[p].hp}/${S.reserve[p].maxHp}</span>`:""}
   <span class="badge">${S.mainUsed?"주 행동 완료":"주 행동 가능"}</span></div>
   <div class="row">${S.inv[p].map(i=>`<span class="badge">${ITEMS[i].ko}</span>`).join("")||"<small>아이템 없음</small>"}</div>`;
-  if(S.selected&&!S.selected.tray&&!isAI(S.current)){
+  if(S.selected&&!S.selected.tray&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대가 선택한 말 정보(HP 등) 비노출
     const s=S.selected;
     h+=`<h2>선택: ${idLabel(p,s)}</h2><div class="status">HP ${s.hp}/${s.maxHp}${s.immobile>0?` · 이동 불가 ${s.immobile}턴`:""}${s.cap?` · 포획 하수인(${ELEM_KO[s.cap.element]}) HP ${s.cap.hp}/${s.cap.maxHp}`:""}${s.nextBattleBuff?` · ✨다음 전투 공격+${pct(BAL.nextBuffPct)}`:""}</div>
     ${s.skills?`<div class="status">${s.skills.map((id,i)=>SKILLS[id].ko+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
     <small>이동: 파란 칸 · 전투: 빨간 칸 클릭</small>`;
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
-  if(S.teleport&&!isAI(S.current)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
-  if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
+  if(S.teleport&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
+  if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
   if(!isAI(S.current)){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기
     const mm=Object.entries(S.memos[p]).map(([id,k])=>{
       const x=S.pieces.find(z=>z.id===Number(id)), o=memoOpt(k);
@@ -584,6 +586,10 @@ function renderSide(){
 }
 function renderSetup(sp){
   const p=S.setupPlayer;
+  if(NET.mode&&p!==NET.me){ // 온라인: 상대 배치 화면(로스터·배치 상황) 비노출
+    sp.innerHTML=`<h2>🌐 상대 배치 중…</h2><small>상대가 로스터 선택과 비공개 배치를 진행하고 있습니다. 완료되면 자동으로 진행됩니다.</small>`;
+    return;
+  }
   const sel=S.roster[p], rosterDone=sel.length===6;
   const unplaced=S.pieces.filter(x=>x.owner===p&&!x.placed);
   let h=`<h2>${pname(p)} 로스터 선택 (${sel.length}/6)</h2>
@@ -660,8 +666,8 @@ function beginPlay(){
 }
 
 /* ===== 배치 ===== */
-window.selTray=id=>{S.selected={tray:true,id}; render();};
-window.toggleRoster=rid=>{ // 로스터 선택 토글 — 중복 불가·최대 6종, 변경 시 하수인 회수 후 스탯 재주입
+window.selTrayCore=id=>{S.selected={tray:true,id}; render();};
+window.toggleRosterCore=rid=>{ // 로스터 선택 토글 — 중복 불가·최대 6종, 변경 시 하수인 회수 후 스탯 재주입
   const p=S.setupPlayer, sel=S.roster[p], i=sel.indexOf(rid);
   if(i>=0) sel.splice(i,1);
   else if(sel.length<6) sel.push(rid);
@@ -677,6 +683,7 @@ window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 �
     const p=sk.pow?Math.round(sk.pow*rd.atk/SKILL_ATK_BASE):0;
     return `<div style="font-size:13px;margin:3px 0"><span class="badge">${i+1}</span> <b>${sk.ko}</b> <small>[${SKIND_KO[sk.kind]}]${p?` 위력 ${p}`:""}${sk.cd?` · 쿨 ${sk.cd}`:""} — ${sk.desc}</small></div>`;
   }).join("");
+  netLocalModal(); // 로스터 정보 팝업은 로컬 전용 — 선택 확정(toggleRoster)만 동기화
   modal(`<h2 class="el-${rd.element}">${rd.name}</h2>
     <div class="row"><span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span><span class="badge">${ARCH_KO[rd.arch]}형</span>${on?`<span class="badge">✔ 선택됨</span>`:""}</div>
     <div class="status" style="margin:6px 0">HP ${rd.hp} · 공격 ${rd.atk} (기술 위력 = 표기 위력 × 공격/${SKILL_ATK_BASE})</div>
@@ -688,7 +695,7 @@ function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중
   while(S.roster[p].length<6) S.roster[p].push(rest.pop());
   applyRoster(p);
 }
-window.autoPlace=()=>{
+window.autoPlaceCore=()=>{
   const p=S.setupPlayer, rows=zoneOf(p);
   if(S.roster[p].length<6) fillRosterRandom(p);
   const cells=[]; for(const r of rows) for(let c=1;c<=COLS;c++) cells.push([r,c]);
@@ -698,8 +705,8 @@ window.autoPlace=()=>{
   }
   S.selected=null; render();
 };
-window.clearPlace=()=>{for(const x of S.pieces.filter(x=>x.owner===S.setupPlayer)){x.placed=false;} S.selected=null; render();};
-window.setupDone=()=>{
+window.clearPlaceCore=()=>{for(const x of S.pieces.filter(x=>x.owner===S.setupPlayer)){x.placed=false;} S.selected=null; render();};
+window.setupDoneCore=()=>{
   const p=S.setupPlayer;
   if(S.roster[p].length!==6||S.pieces.some(x=>x.owner===p&&!x.placed)){
     showToast("로스터 6종 선택과 14개 배치를 모두 완료하세요."); return;}
@@ -750,15 +757,13 @@ function endTurn(){
 }
 function confirmResign(){
   if(S.phase!=="play"||isAI(S.current)) return;
-  const loser=S.current;
+  if(NET.mode&&S.current!==NET.me) return; // 온라인: 자기 턴에만 기권
+  netLocalModal(); // 확인 모달은 로컬 전용 — 확정만 동기화
   modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,
-    [["기권 확정",()=>{close();
-      gameOver(1-loser,"resign");
-      const msg=`🏳️ ${pname(loser)} 기권 — ${pname(S.winner)} 승리!`;
-      addLog(msg,"imp"); showToast(msg); render();}],
+    [["기권 확정",()=>{close(); netAction({t:"resign"});}],
      ["취소",close]]);
 }
-function onCell(r,c){
+function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell 래퍼가 동기화 후 호출
   if(S.phase==="setup"){
     const p=at(r,c);
     if(S.selected&&S.selected.tray&&zoneOf(S.setupPlayer).includes(r)&&!p){
@@ -1011,7 +1016,7 @@ function captureModal(p){
   const b=S.balls[p.owner];
   const opt=(name,cost,rate,risk,fn)=>`<div class="fighter"><b>${name}</b><small>볼 ${cost} · 성공 ${rate}${risk?" · "+risk:""}</small>
     <button ${b<cost?"disabled":""} onclick="window.__cap('${fn}')">시도</button></div>`;
-  window.__cap=mode=>{
+  window.__capCore=mode=>{
     const r=tryCapture(p,mode);
     if(r.ok) modal(`<h2>포획 성공!</h2><p>포획 하수인(${ELEM_KO[r.el]}) 확보 — 대리 출전 가능</p>`,[["확인",close]]);
     else modal(`<h2>포획 실패</h2><p>공용 하수인이 사라졌습니다.${r.dmg?`<br>탐색 말이 최대 HP 25% 피해 (HP ${p.hp})`:""}</p>`,[["확인",close]]);
@@ -1055,7 +1060,8 @@ function vipChoice(att,def){
     if(!(piece.type==="ally"||piece.type==="king")||(!piece.cap&&!res)){choices[side]="body"; next(); return;}
     const useRes=()=>{piece.cap=S.reserve[piece.owner]; S.reserve[piece.owner]=null;}; // 사용 시 reserve 소모 → 해당 전투원의 cap
     if(isAI(piece.owner)){if(res)useRes(); choices[side]="cap"; next(); return;} // AI: 보유 시 항상 대리 (진짜 비공개 선택)
-    modal(`<h2>🔒 ${pname(piece.owner)}만 확인${S.mode==="pvp"?" (상대는 시선 회피)":""}</h2>
+    netModalOwner(piece.owner); // 온라인: 이 비공개 선택의 주인은 해당 말 소유자 (방어자 포함)
+    modal(`<h2>🔒 ${pname(piece.owner)}만 확인${S.mode==="pvp"&&!NET.mode?" (상대는 시선 회피)":""}</h2>
       <p>${TYPE_KO[piece.type]} 출전 선택 — 어느 쪽이 패배해도 ${piece.type==="king"?"경기 패배":"동료·포획 하수인 동시 제거"}입니다.</p>`,
       [["본체 출전",()=>{choices[side]="body";close();next();}],
        res?[`예비 하수인(${ELEM_KO[res.element]}) HP ${res.hp}/${res.maxHp} 대리 출전`,()=>{useRes();choices[side]="cap";close();next();}]
@@ -1111,9 +1117,9 @@ function battleModal(){
   const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner;
   const aiActor=isAI(ownerP);
-  const viewer=S.mode==="sim"?2:(S.mode==="pve"?0:ownerP); // 기술 공개 기준 시점 (pvp는 현재 행동자 화면)
+  const viewer=S.mode==="sim"?2:(S.mode==="pve"?0:NET.mode?NET.me:ownerP); // 기술 공개 기준 시점 (핫시트는 행동자·온라인은 내 화면 고정)
   const busy=B.msgQ.length>0; // 메시지 재생 대기 중 커맨드 비활성
-  const mySide=S.mode==="pve"?(B.attP.owner===0?"A":"D"):"A", topSide=mySide==="A"?"D":"A";
+  const mySide=S.mode==="pve"?(B.attP.owner===0?"A":"D"):NET.mode?(B.attP.owner===NET.me?"A":"D"):"A", topSide=mySide==="A"?"D":"A";
   const panel=sid=>{ // 전투원 정보 패널: 이름·아키타입/속성 배지·HP바·상태·가한 유효 피해 게이지
     const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP, rec=sid==="A"?B.recA:B.recD, oppMax=(sid==="A"?B.fd:B.fa).maxHp;
     const rd=pf===piece&&piece.rosterId?ROSTER.find(x=>x.id===piece.rosterId):null;
@@ -1138,7 +1144,7 @@ function battleModal(){
     return `<div class="btok ${sid===mySide?"tok-me":"tok-op"}" id="tok-${sid}" style="background:${col}">${emo}<small>${pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type]}</small></div>`;
   };
   const usedItems=side==="A"?B.itemsA:B.itemsD, itemRound=side==="A"?B.itemRoundA:B.itemRoundD, lastItem=side==="A"?B.lastItemA:B.lastItemD;
-  const dis=aiActor||busy;
+  const dis=aiActor||busy||(NET.mode&&ownerP!==NET.me); // 온라인: 상대 행동 차례엔 조작 불가
   let cmdBtns;
   if(f.skills){ // 4슬롯 커맨드 — 기본 공격 버튼 제거, 전 슬롯 쿨일 때만 폴백 노출
     const maskCmd=viewer!==2&&ownerP!==viewer;
@@ -1160,9 +1166,9 @@ function battleModal(){
   const canFlee=f.hp<f.maxHp*0.5;
   cmdBtns+=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 볼 투척 ${pct(BAL.enemyCapProb)}</button>`
     +`<button class="danger" ${dis||!canFlee?"disabled":""} title="자기 HP 50% 미만 시 가능 · 실패 시 상대 즉시 공격 1회" onclick="window.__flee()">🏃 도망 ${pct(BAL.fleeProb)}</button>`;
-  let itemBtns=S.inv[ownerP].map((k,i)=>
+  let itemBtns=(NET.mode&&ownerP!==NET.me)?`<small>상대 아이템 비공개</small>`:S.inv[ownerP].map((k,i)=>
     `<button ${dis||usedItems>=BAL.itemPerBattle||itemRound||k===lastItem?"disabled":""} onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
-  const turnLabel=S.mode==="pve"?(ownerP===0?"나의 턴":"상대 턴"):`P${ownerP+1} 턴`; // T3: 현재 행동자 대형 표시
+  const turnLabel=(S.mode==="pve"||NET.mode)?(ownerP===(NET.mode?NET.me:0)?"나의 턴":"상대 턴"):`P${ownerP+1} 턴`; // T3: 현재 행동자 대형 표시
   modal(`<h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>
     <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${BAL.maxRounds}</div>
     ${panel(topSide)}
@@ -1173,7 +1179,7 @@ function battleModal(){
     <div class="row"><small>보너스 아이템(라운드당 1·전투당 2·연속 동일 불가):</small> ${itemBtns||"<small>없음</small>"}</div>
     <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
     []);
-  window.__useItem=i=>{
+  window.__useItemCore=i=>{
     const k=S.inv[ownerP][i]; S.inv[ownerP].splice(i,1);
     if(side==="A"){B.itemsA++;B.itemRoundA=true;B.lastItemA=k;} else {B.itemsD++;B.itemRoundD=true;B.lastItemD=k;}
     if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
@@ -1182,7 +1188,7 @@ function battleModal(){
     if(k==="cure"){f.burn=0;f.weaken=0;f.shock=0;f.shockFresh=false; bmsg("🧪 해독제 — 상태이상 해제!",{st:{side,text:stIcons(f)}});}
     battleModal();
   };
-  window.__throwBall=()=>{ // #12 적 하수인 포획: 볼 소모(성공·실패 공통) — 성공 시 포획 종료, 실패 시 행동 소모
+  window.__throwBallCore=()=>{ // #12 적 하수인 포획: 볼 소모(성공·실패 공통) — 성공 시 포획 종료, 실패 시 행동 소모
     if(S.battle!==B||!canThrow) return;
     S.balls[ownerP]--;
     if(side==="A")B.ballThrowA=true; else B.ballThrowD=true;
@@ -1193,7 +1199,7 @@ function battleModal(){
     bmsg(`🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 ${S.balls[ownerP]})`);
     nextPhase();
   };
-  window.__flee=()=>{ // #13 도망: 성공 시 전투 즉시 종료(판정·제거 없음·battlesUsed 유지), 실패 시 행동 소모+상대 즉시 공격 1회
+  window.__fleeCore=()=>{ // #13 도망: 성공 시 전투 즉시 종료(판정·제거 없음·battlesUsed 유지), 실패 시 행동 소모+상대 즉시 공격 1회
     if(S.battle!==B||!canFlee) return;
     met(ownerP,"fleeTries");
     bmsg(`🏃 ${fighterName(side)}의 도망 시도!`);
@@ -1212,7 +1218,7 @@ function battleModal(){
     bmsg(`🏃 도망 실패! 상대의 공격이 이어진다.`);
     fleeCounter(side);
   };
-  window.__act=kind=>{
+  window.__actCore=kind=>{
     // 슬롯 인덱스(0~3) + 레거시 매핑: 'basic'→슬롯0(쿨이면 순수 기본 공격 폴백), 'skill'→슬롯1, 'common'→슬롯2
     let slot=null;
     if(typeof kind==="number"){ if(f.skills&&f.skills[kind]!==undefined) slot=kind; }
@@ -1525,6 +1531,7 @@ function fleeSwapPrompt(piece){
   }
   const btns=rear.map(t=>[`${t.r}행 ${t.c}열 ${idLabel(own,t)}`,()=>{close();fleeSwap(piece,t);done();}]);
   btns.push(["교환 생략",()=>{close();done();}]);
+  netModalOwner(own); // 온라인: 도망친 말의 소유자가 선택 (방어자일 수 있음)
   modal(`<h2>🏃 도망 성공 — 위치 교환</h2><p>후방의 자기 말과 위치를 교환할 수 있습니다. (신규 인접 강제 전투 미적용)</p>`,btns);
 }
 function fleeSwap(a,b){
@@ -2213,10 +2220,12 @@ function memoSet(v,pid,key){ // key: MEMO_OPTS 키 또는 null(삭제). 그 외 
 }
 function memoModal(pc){
   if(S.phase!=="play"||!pc) return;
+  if(NET.replaying) return; // 온라인: 상대 클릭 재생 시 내 메모 팝업 금지 (메모는 뷰어 전용·비동기화)
   const v=humanViewer();
   if(pc.owner===v) return;
   if(pc.revealed){ showToast(`이미 공개된 말: ${idLabel(v,pc)}`); return; } // 실제 정체가 우선 — 추측 불필요
   const cur=S.memos[v][pc.id]||null;
+  netLocalModal(); // 메모 피커는 로컬 전용 모달
   modal(`<h2>📝 정체 추측 — ? (${pc.r}행 ${pc.c}열)</h2>
     <small>이 물음표 말이 무엇일지 골라 두세요. 나만 보이는 메모이며 상대·AI에게는 보이지 않아요.</small>
     <div class="memo-grid" id="memoOpts" role="group" aria-label="정체 추측 선택"></div>`,
@@ -2232,6 +2241,7 @@ function memoModal(pc){
   const focusTo=MEMO_UI.btns.find(b=>b.dataset.key===cur)||MEMO_UI.btns[0]; try{ if(focusTo) focusTo.focus(); }catch(e){}
 }
 function handoff(title,after){
+  if(NET.mode){after();return;} // 온라인: 기기 넘김 불필요 — 즉시 진행
   clearToasts();
   modal(`<h2>🔄 기기를 넘기세요</h2><p style="margin:10px 0">${title}</p><small>상대는 화면을 보지 마세요.</small>`,
     [["확인 — 시작",()=>{close();after();}]]);
@@ -2458,6 +2468,148 @@ function tutHint(key){ // 첫 발생 시 1회 — 두 번째부터 false. 게임
 function tutHintClose(){ TUT.hintShown=null; const box=$("tutHint"); if(box){ box.classList.add("hidden"); box.innerHTML=""; } }
 window.tutOpen=tutOpen; window.tutHintClose=tutHintClose;
 (function(){ const ov=$("tutOverlay"); if(ov&&ov.addEventListener) ov.addEventListener("keydown",tutKeydown); })();
+
+/* ===== 온라인 PVP — WebSocket 릴레이 + 시드 락스텝 동기화 =====
+   원리: 매치 시 P1이 난수 시드를 공유 → 양쪽이 같은 시드로 같은 게임을 로컬 실행하고,
+   플레이어 "입력(액션)"만 릴레이 서버로 중계·재생한다. 모든 게임 난수는 rand()(시드 RNG) 경유이고
+   로직은 동기 완결이므로 두 클라이언트의 상태가 항상 일치한다 (서버는 내용 무해석 릴레이).
+   숨은 정보는 시점(viewer=NET.me) 고정·비소유 모달 마스킹으로만 가린다 (프로토타입: 치팅 방지 없음). */
+const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncModal:null,localOpen:false,modalOwner:null,started:false};
+function netActor(){ // 지금 게임이 입력을 기다리는 플레이어
+  if(!S) return null;
+  if(S.phase==="setup") return S.setupPlayer;
+  if(S.battle) return (actorOfPhase()==="A"?S.battle.attP:S.battle.defP).owner;
+  return S.current;
+}
+function netLocalModal(){NET.localOpen=true;}   // 다음 modal()을 로컬 전용으로 (동기화·seq 제외)
+function netModalOwner(p){NET.modalOwner=p;}    // 다음 modal()의 소유자 명시 (기본: netActor())
+function netSend(m){ try{ if(NET.ws&&NET.ws.readyState===1) NET.ws.send(JSON.stringify(m)); }catch(e){} }
+function netAction(a){ // 모든 상태 변경 입력의 단일 경로 — 오프라인은 즉시 적용, 온라인은 검증·송신 후 적용
+  if(NET.mode&&!NET.replaying){
+    if(netActor()!==NET.me){ showToast("🌐 상대 턴입니다."); return; }
+    netSend({t:"a",a});
+  }
+  applyAction(a);
+}
+function applyAction(a){
+  switch(a.t){
+    case "cell": onCellCore(a.r,a.c); break;
+    case "selTray": window.selTrayCore(a.id); break;
+    case "roster": window.toggleRosterCore(a.rid); break;
+    case "auto": window.autoPlaceCore(); break;
+    case "clear": window.clearPlaceCore(); break;
+    case "setupDone": window.setupDoneCore(); break;
+    case "skipMain": S.mainUsed=true; addLog(`${pname(S.current)} 주 행동 생략`); render(); break;
+    case "search": {
+      const sel=S.selected&&!S.selected.tray?S.selected:null;
+      const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
+      if(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel)) doSearch(sel,ev);
+      break; }
+    case "tele": S.teleport=S.teleport?null:{stage:1,piece:null}; S.selected=null; render(); break;
+    case "endTurn": endTurn(); break;
+    case "resign": { const loser=S.current; gameOver(1-loser,"resign");
+      const msg=`🏳️ ${pname(loser)} 기권 — ${pname(S.winner)} 승리!`;
+      addLog(msg,"imp"); showToast(msg); render(); break; }
+    case "act": if(window.__actCore) window.__actCore(a.k); break;
+    case "item": if(window.__useItemCore) window.__useItemCore(a.i); break;
+    case "ball": if(window.__throwBallCore) window.__throwBallCore(); break;
+    case "flee": if(window.__fleeCore) window.__fleeCore(); break;
+    case "cap": if(window.__capCore) window.__capCore(a.m); break;
+    case "modal": if(NET.syncModal&&NET.syncModal.seq===a.seq&&NET.syncModal.fns[a.i]) NET.syncModal.fns[a.i](); break;
+  }
+}
+/* 수신 액션 큐 — 표시 계층(메시지 재생·타이머 모달)이 따라잡은 뒤에만 재생 (원격 지연·백그라운드 탭 방어) */
+function netReady(a){
+  if(!NET.started||!S) return false;
+  if(a.t==="modal") return !!NET.syncModal&&NET.syncModal.seq===a.seq&&!MSGPLAYING;
+  if(a.t==="act"||a.t==="item"||a.t==="ball"||a.t==="flee")
+    return !!S.battle&&!MSGPLAYING&&S.battle.msgQ.length===0&&!!window.__actCore;
+  return !MSGPLAYING;
+}
+function netPump(){
+  if(NET.replaying) return;
+  while(NET.queue.length&&netReady(NET.queue[0])){
+    const a=NET.queue.shift();
+    NET.replaying=true;
+    try{ applyAction(a); }catch(e){ try{console.error("net replay error",e,a);}catch(_){} }
+    NET.replaying=false;
+  }
+}
+setInterval(netPump,80);
+/* 동기화 대상 입력의 안정 진입점 — 원본(…Core)은 applyAction만 호출 */
+function onCell(r,c){ netAction({t:"cell",r,c}); }
+window.selTray=id=>netAction({t:"selTray",id});
+window.toggleRoster=rid=>netAction({t:"roster",rid});
+window.autoPlace=()=>netAction({t:"auto"});
+window.clearPlace=()=>netAction({t:"clear"});
+window.setupDone=()=>netAction({t:"setupDone"});
+window.__act=k=>netAction({t:"act",k});
+window.__useItem=i=>netAction({t:"item",i});
+window.__throwBall=()=>netAction({t:"ball"});
+window.__flee=()=>netAction({t:"flee"});
+window.__cap=m=>netAction({t:"cap",m});
+/* modal() 래퍼: 동기화 모달은 seq 부여 + 소유자만 조작(클릭 시 인덱스 중계), 비소유자는 내용 마스킹 */
+const _modalCore=modal;
+modal=function(html,buttons){
+  const local=NET.localOpen; NET.localOpen=false;
+  const owner=(NET.modalOwner!==null&&NET.modalOwner!==undefined)?NET.modalOwner:netActor();
+  NET.modalOwner=null;
+  _modalCore(html,buttons);
+  if(!NET.mode||local) return;
+  if(!buttons||!buttons.length){ NET.syncModal=null; return; } // 전투 모달 등 — 시맨틱 액션으로 동기화
+  NET.modalSeq++;
+  const seq=NET.modalSeq, fns=buttons.map(b=>b[1]);
+  NET.syncModal={seq,owner,fns};
+  if(owner===NET.me){
+    const ob=$("obBtns");
+    if(ob) Array.prototype.slice.call(ob.children).forEach((btn,i)=>{
+      btn.onclick=()=>{ if(!NET.replaying) netSend({t:"a",a:{t:"modal",seq,i}}); fns[i](); };
+    });
+  } else {
+    $("overlayBox").innerHTML=`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`;
+  }
+};
+/* 접속·매칭·시작 */
+window.netConnect=function(){
+  if(NET.ws){ showToast("이미 서버에 연결 중입니다."); return; }
+  const url=location.protocol.indexOf("http")===0
+    ? (location.protocol==="https:"?"wss://":"ws://")+location.host
+    : "ws://localhost:8080"; // file:// 로 열었을 때 폴백
+  let ws;
+  try{ ws=new WebSocket(url); }catch(e){ showToast("서버 연결 실패: "+url); return; }
+  NET.ws=ws;
+  const st=$("netStatus"); if(st){ st.style.display=""; st.textContent="🌐 서버 접속 중…"; }
+  ws.onopen=()=>{ const s=$("netStatus"); if(s) s.textContent="🌐 매칭 요청…"; };
+  ws.onerror=()=>{ showToast("🌐 서버 연결 오류 — 서버(npm start)가 켜져 있는지 확인하세요."); };
+  ws.onclose=()=>{ NET.ws=null;
+    if(NET.mode&&S&&S.phase!=="over") showToast("🌐 서버 연결이 끊겼습니다.");
+    else { const s=$("netStatus"); if(s) s.textContent="연결 종료"; } };
+  ws.onmessage=ev=>{
+    let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+    if(m.type==="waiting"){ const s=$("netStatus"); if(s) s.textContent="🌐 상대 대기 중… (상대도 온라인 PVP를 누르면 시작)"; return; }
+    if(m.type==="matched"){
+      NET.me=m.you==="p1"?0:1;
+      if(NET.me===0){ const seed=Math.floor(Math.random()*0x7fffffff); netSend({t:"hello",seed}); netStart(seed); }
+      else { const s=$("netStatus"); if(s) s.textContent="🌐 매칭 완료 — 시작 대기…"; }
+      return; }
+    if(m.type==="opponent_left"){
+      if(NET.mode&&S&&S.phase!=="over"&&S.phase!=="menu"){
+        gameOver(NET.me,"resign");
+        const msg="🌐 상대 연결 끊김 — 몰수승!"; addLog(msg,"imp"); showToast(msg); render();
+      } else showToast("🌐 상대가 나갔습니다.");
+      return; }
+    if(m.t==="hello"){ if(!NET.started) netStart(m.seed); return; }
+    if(m.t==="a"){ NET.queue.push(m.a); netPump(); return; }
+  };
+};
+function netStart(seed){
+  NET.mode=true; NET.started=true; NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
+  setSeed(seed); // 동일 시드 → 이벤트 배치·전투 난수까지 양쪽 완전 일치
+  startMode("pvp");
+  addLog(`🌐 온라인 매치 시작 — 당신은 ${NET.me===0?"P1(하단·선배치)":"P2(상단)"}입니다.`,"sys");
+  showToast(`🌐 매칭 완료! 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}`);
+  render();
+}
 
 /* ===== 시작: 모드 선택 화면 ===== */
 newGame("pvp"); S.phase="menu";
