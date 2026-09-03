@@ -130,6 +130,23 @@
     .tut-body{font-size:14px; line-height:1.55;}
     .tut-scene{padding:4px 2px;}
   }
+  /* ===== #34 데스크톱 튜토리얼: 폭·간격만 확대 (내용·SVG·동작·글자 크기 무변경). 모바일(≤480px) 규칙은 위 블록 그대로 ===== */
+  @media (min-width:768px){
+    #tutOverlay{padding:24px;}
+    #tutBox{max-width:640px; padding:22px 28px 20px; gap:10px;}
+    .tut-scene{max-width:min(480px,52vh); margin:0 auto; padding:10px 8px;} /* 그림은 박스보다 좁게 중앙 정렬, 낮은 화면(768~900px 높이)에서는 52vh로 제한 — 세로 넘침 방지 (SVG 자체 규칙은 유지) */
+    .tut-body{line-height:1.65;}
+    .tut-body p{margin:0 0 6px; gap:12px;}
+    .tut-dots{gap:8px; margin:4px 0;}
+    .tut-nav{gap:12px; margin:6px 0 0;}
+  }
+  @media (min-width:1400px) and (min-height:960px){ /* 큰 PC 화면(예: 1920×1080·2048×1054): 한 단계 더 여유 — 1440×900 같은 낮은 화면은 위 단계 유지 */
+    #tutBox{max-width:760px; padding:30px 36px 26px; gap:16px;}
+    .tut-scene{max-width:560px; padding:12px 10px;}
+    .tut-body{line-height:1.75;}
+    .tut-body p{margin:0 0 10px; gap:14px;}
+    .tut-nav{gap:14px; margin:8px 0 0;}
+  }
 </style>
 </head>
 <body>
