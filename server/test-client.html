@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>PvP 테스트 클라이언트</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
+    #log { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 8px; font-family: monospace; font-size: 13px; }
+    #status { font-weight: bold; margin-bottom: 8px; }
+    input { width: 70%; }
+  </style>
+</head>
+<body>
+  <h2>PvP 테스트 클라이언트</h2>
+  <div id="status">연결 중...</div>
+  <div id="log"></div>
+  <p>
+    <input id="msg" placeholder="보낼 메시지 (상대에게 그대로 전달됨)">
+    <button id="send">전송</button>
+  </p>
+  <script>
+    const log = (text) => {
+      const el = document.getElementById('log');
+      el.innerHTML += text + '<br>';
+      el.scrollTop = el.scrollHeight;
+    };
+    const status = (text) => { document.getElementById('status').textContent = text; };
+
+    const ws = new WebSocket('ws://localhost:8080');
+    ws.onopen = () => status('서버 연결됨 — 매칭 대기');
+    ws.onclose = () => status('서버 연결 끊김');
+    ws.onmessage = (e) => {
+      let m;
+      try { m = JSON.parse(e.data); } catch { log('수신(raw): ' + e.data); return; }
+      if (m.type === 'waiting') status('상대 기다리는 중... (탭 하나 더 여세요)');
+      else if (m.type === 'matched') status(`매치 성사! 방 ${m.room}, 나는 ${m.you}`);
+      else if (m.type === 'opponent_left') status('상대가 나갔습니다');
+      log('수신: ' + e.data);
+    };
+
+    document.getElementById('send').onclick = () => {
+      const input = document.getElementById('msg');
+      if (!input.value) return;
+      ws.send(JSON.stringify({ type: 'chat', text: input.value }));
+      log('송신: ' + input.value);
+      input.value = '';
+    };
+    document.getElementById('msg').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('send').click();
+    });
+  </script>
+</body>
+</html>
