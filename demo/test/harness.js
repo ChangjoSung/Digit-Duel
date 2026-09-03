@@ -41,7 +41,8 @@ function load(htmlPath){
   finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
-  renderSide,renderMetrics,render,startMode,modal,close,
+  renderSide,renderMetrics,render,startMode,modal,close,onCell,humanViewer,idLabel,
+  MEMO_OPTS,MEMO_UI,memoOpt,memoSet,memoModal, // #36 추측 메모 피커
   TUT,TUT_STEPS,TUT_HINTS,TUT_KEY,tutStore,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose, // #26 튜토리얼 (S와 분리)
   html:${JSON.stringify(html)}};`;
   eval(code);

@@ -104,6 +104,17 @@ const N=10, LAST=N-1;
     "G15 3단계 방향 라벨: '위·아래·옆만' / '대각선 ✗' 두 줄·x=50 중앙·줄당 6자 이하·세로 18 이상 간격 — "+JSON.stringify(lab));
   const vb3=+s3.match(/viewBox="0 0 320 (\d+)"/)[1];
   ok(lab.length===2&&Math.max(...lab.map(l=>l.y))+9<=vb3-2&&Math.min(...lab.map(l=>l.y))-9>=0,"G15b 3단계 라벨 세로 위치가 viewBox 높이 "+vb3+" 안 (글자 높이 절반 9 + 여유 2)");
+  // #37 데스크톱(≥768px) 장면 실제 폭: width:100% 복구 → 박스 가용 폭(max-width − 좌우 padding·border − 장면 padding)을 그대로 사용, ~320px 수축 없음
+  const dsk=T.html.match(/@media \(min-width:768px\)\{([\s\S]*?)\n  \}/), big=T.html.match(/@media \(min-width:1400px\) and \(min-height:960px\)\{([\s\S]*?)\n  \}/);
+  ok(!!dsk&&/\.tut-scene\{[^}]*width:100%/.test(dsk[1])&&!/\.tut-scene\{[^}]*max-width:min\(480px/.test(dsk[1]),"G16 데스크톱 .tut-scene width:100% 복구 (480px 상한 제거)");
+  const dGeo=(blk,boxMaxDefault)=>{ const bm=parseFloat((blk.match(/#tutBox\{[^}]*max-width:([0-9.]+)px/)||[])[1]||boxMaxDefault), bp=parseFloat(blk.match(/#tutBox\{[^}]*padding:[0-9.]+px ([0-9.]+)px/)[1]), sp=parseFloat(blk.match(/\.tut-scene\{[^}]*padding:[0-9.]+px ([0-9.]+)px/)[1]);
+    return {boxMax:bm,svgW:bm-2*(bp+1+sp)}; };
+  const gD=dsk&&dGeo(dsk[1]), gB=big&&dGeo(big[1]);
+  ok(gD&&gD.boxMax===640&&gD.svgW>=560&&gD.svgW/320>=1.75,"G17 일반 PC(768~1399px 또는 높이<960): 장면 SVG 폭 "+(gD&&gD.svgW)+"px (배율 "+(gD&&(gD.svgW/320).toFixed(2))+") — 이전 ~320px 대비 명백히 확대");
+  ok(gB&&gB.boxMax===760&&gB.svgW>=660&&gB.svgW>gD.svgW,"G18 대형 PC(≥1400×960): 장면 SVG 폭 "+(gB&&gB.svgW)+"px — 일반 PC보다 큼");
+  ok(/\.tut-scene\{[^}]*max-width:min\(100%,calc\(100vh - \d+px\)\)/.test(dsk[1])&&/\.tut-scene\{[^}]*max-width:min\(100%,calc\(100vh - \d+px\)\)/.test(big[1]),"G19 장면 폭 상한은 100% + (100vh − 본문 예산) — 낮은 화면(768px)에서만 축소해 팝업 내부 스크롤 방지");
+  const maxH=Math.max(...sc.map(s=>+s.match(/viewBox="0 0 320 (\d+)"/)[1]));
+  ok(maxH<=174&&(gD.svgW*maxH/320+2*10)<=0.92*768-300,"G20 가장 높은 장면(viewBox "+maxH+")도 768px 높이 데스크톱에서 장면 "+Math.round(gD.svgW*maxH/320+20)+"px ≤ 92vh−본문 예산 300px (정적)");
   T.tutSkip();
 }
 

@@ -32,7 +32,14 @@
   .cell.hl-attack{outline:2px solid var(--danger); outline-offset:-2px;}
   .cell.hl-sel{outline:2px solid #fff; outline-offset:-2px;}
   .cell .trace{position:absolute; top:1px; right:2px; font-size:11px;}
-  .cell .memo{position:absolute; bottom:1px; left:2px; font-size:10px;}
+  /* #36 추측 이모지: 물음표 자리에 뷰어 전용 반투명 표시 — 실제 공개 말과 구별 (점선 테두리·opacity .5) */
+  .pc.memo-guess{border-style:dashed; border-color:#fff8;}
+  .pc.memo-guess .guess{font-size:20px; opacity:.5; line-height:1;}
+  .memo-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0;}
+  .memo-opt{display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; font-size:12px; min-height:56px;}
+  .memo-opt .ico{font-size:22px; line-height:1;}
+  .memo-opt[aria-pressed="true"]{background:var(--accent); border-color:#fff; box-shadow:0 0 0 1px #fff8; color:#fff;}
+  .memo-opt:focus-visible{outline:2px solid #fff; outline-offset:1px;}
   .pc{width:42px; height:42px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-size:11px; font-weight:bold; border:2px solid #0008; line-height:1.05; text-align:center;}
   .pc.own{box-shadow:0 0 0 2px #ffffff33;}
@@ -134,7 +141,7 @@
   @media (min-width:768px){
     #tutOverlay{padding:24px;}
     #tutBox{max-width:640px; padding:22px 28px 20px; gap:10px;}
-    .tut-scene{max-width:min(480px,52vh); margin:0 auto; padding:10px 8px;} /* 그림은 박스보다 좁게 중앙 정렬, 낮은 화면(768~900px 높이)에서는 52vh로 제한 — 세로 넘침 방지 (SVG 자체 규칙은 유지) */
+    .tut-scene{width:100%; max-width:min(100%,calc(100vh - 230px)); margin:0 auto; padding:10px 8px;} /* #37 width:100% 복구 — 폭 auto+auto margin+SVG 고유 폭 조합으로 ~320px 수축하던 문제. 박스 가용 폭(640−패딩)을 다 쓰고, 낮은 화면(768px 높이 등)에서만 100vh−230px(본문·버튼 예산)로 폭을 제한해 내부 스크롤 방지 (SVG 자체 규칙은 유지) */
     .tut-body{line-height:1.65;}
     .tut-body p{margin:0 0 6px; gap:12px;}
     .tut-dots{gap:8px; margin:4px 0;}
@@ -142,7 +149,7 @@
   }
   @media (min-width:1400px) and (min-height:960px){ /* 큰 PC 화면(예: 1920×1080·2048×1054): 한 단계 더 여유 — 1440×900 같은 낮은 화면은 위 단계 유지 */
     #tutBox{max-width:760px; padding:30px 36px 26px; gap:16px;}
-    .tut-scene{max-width:560px; padding:12px 10px;}
+    .tut-scene{max-width:min(100%,calc(100vh - 230px)); padding:12px 10px;} /* #37 큰 PC: 박스 가용 폭(760−패딩) 전체 사용 */
     .tut-body{line-height:1.75;}
     .tut-body p{margin:0 0 10px; gap:14px;}
     .tut-nav{gap:14px; margin:8px 0 0;}
@@ -213,6 +220,10 @@ const ELEM_KO={fire:"불",water:"물",grass:"풀",lightning:"번개"};
 const BEATS={fire:"grass",grass:"lightning",lightning:"water",water:"fire"}; // D1 제안: 불→풀→번개→물→불
 const TYPE_KO={minion:"하수인",bomb:"폭탄",ally:"동료",trap:"함정",king:"왕",captured:"포획"};
 const WINTYPE_KO={king:"왕 제거",edge:"끝줄 승리",resign:"기권",draw:"무승부",wipe:"전멸"};
+/* #36 추측 메모 선택지 — 저장은 key(안정 문자열)만, 표시는 emoji·ko. 순서 = 팝업 표시 순서 */
+const MEMO_OPTS=[{key:"king",emoji:"👑",ko:"왕"},{key:"ally",emoji:"🤝",ko:"동료"},{key:"minion_fire",emoji:"🔥",ko:"불 하수인"},{key:"minion_grass",emoji:"🌿",ko:"풀 하수인"},
+  {key:"minion_water",emoji:"💧",ko:"물 하수인"},{key:"minion_lightning",emoji:"⚡",ko:"전기 하수인"},{key:"bomb",emoji:"💣",ko:"폭탄"},{key:"trap",emoji:"🪤",ko:"함정"}];
+const memoOpt=key=>MEMO_OPTS.find(o=>o.key===key)||null;
 const SKILL_KO={fire:"화염탄",water:"물대포",grass:"넝쿨 흡수",lightning:"낙뢰"};
 /* ===== 기술 4슬롯 체계 (GDD-16 v1.0 3장) — 속성 공격기 12종 + 공용 보조기 6종 + 시그니처 5종 ===== */
 const SKILL_ATK_BASE=22; // 위력 스케일 기준: 최종 위력 = 기술 위력 × (종 atk / 22), 사사오입
@@ -314,7 +325,7 @@ function newGame(mode,opts){
     reserve:[null,null], teleUsed:[0,0], forcedQueue:[], // #12 포획 예비 슬롯 · #14 스왑 횟수 · #18 강제 전투 독립 queue [{pid,targets}]
     roster:[[],[]],
     traces:[new Set(), new Set()],
-    memos:[{},{}], // #11 추측 메모: [뷰어(PVE:0/PVP:플레이어)][pieceId]=text — 상대 비노출
+    memos:[{},{}], // #11·#36 추측 메모: [뷰어(PVE:0/PVP:플레이어)][pieceId]=MEMO_OPTS 키 — 상대·AI·로그 비노출, 인메모리만
 
     selected:null, mainUsed:false, battlesUsed:0,
     movedPiece:null, contactSet:[], firstBattleWonByMover:false,
@@ -419,7 +430,6 @@ function showToast(msg,kind){
 }
 function clearToasts(){try{const box=$("toasts"); if(box) box.innerHTML="";}catch(e){}}
 function pct(n){return Math.round(n*100)+"%";}
-function esc(t){return String(t).replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");} // #11 메모 텍스트 HTML 이스케이프
 
 /* ===== 렌더 ===== */
 const $=id=>document.getElementById(id);
@@ -444,14 +454,13 @@ function renderBoard(){
         const chip=document.createElement("div");
         const known = viewer===2||p.owner===viewer||p.revealed;
         chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"");
+        const g=!known&&S.phase==="play"&&viewer!==2?memoOpt(S.memos[viewer][p.id]):null; // #36 뷰어 전용 추측 — 실제 공개(known)면 실제 렌더 우선
         chip.innerHTML = known
           ? `<span${p.type==="minion"&&p.name?' class="nm"':""}>${p.type==="minion"&&p.name?p.name:TYPE_KO[p.type]}</span>`+(p.element?`<span class="el el-${p.element}">${ELEM_KO[p.element]}</span>`:"")
             +((p.owner===viewer||viewer===2||p.revealed)&&(p.type==="minion"||p.type==="ally"||p.type==="king")?`<span class="el">${p.hp}</span>`:"")
-          : "?";
+          : g ? `<span class="guess" aria-hidden="true">${g.emoji}</span>` : "?";
+        if(g){ chip.className+=" memo-guess"; chip.setAttribute("title",`추측: ${g.ko} (내 메모 · 정체 미공개)`); chip.setAttribute("aria-label",`정체 미공개 상대 말 — 내 추측: ${g.ko}`); }
         cell.appendChild(chip);
-        if(S.phase==="play"&&viewer!==2&&p.owner!==viewer&&S.memos[viewer][p.id]){ // #11 메모 뱃지 (뷰어 전용)
-          const m=document.createElement("span"); m.className="memo"; m.textContent="📝"; cell.appendChild(m);
-        }
       }
       if(S.selected&&!isAI(S.current)){
         const s=S.selected;
@@ -564,12 +573,12 @@ function renderSide(){
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
   if(S.teleport&&!isAI(S.current)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
   if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
-  if(!isAI(S.current)){ // #11 추측 메모 목록 (뷰어 전용 — 상대 비노출)
-    const mm=Object.entries(S.memos[p]).map(([id,t])=>{
-      const x=S.pieces.find(z=>z.id===Number(id));
-      return x&&x.alive&&x.placed?`<div class="status">📝 ${x.r}행 ${x.c}열 ${idLabel(p,x)} — ${esc(t)}</div>`:"";
+  if(!isAI(S.current)){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기
+    const mm=Object.entries(S.memos[p]).map(([id,k])=>{
+      const x=S.pieces.find(z=>z.id===Number(id)), o=memoOpt(k);
+      return x&&x.alive&&x.placed&&o?`<div class="status"><span class="guess" aria-hidden="true">${o.emoji}</span> ${x.r}행 ${x.c}열 — ${o.ko} 추측${x.revealed?` (공개됨: ${idLabel(p,x)})`:""}</div>`:"";
     }).filter(Boolean).join("");
-    if(mm) h+=`<h2>📝 추측 메모</h2>${mm}<small>상대 말 클릭으로 수정·삭제</small>`;
+    if(mm) h+=`<h2>📝 추측 메모</h2>${mm}<small>물음표 말 클릭으로 변경·삭제</small>`;
   }
   sp.innerHTML=h;
 }
@@ -2194,19 +2203,33 @@ function modal(html,buttons){
   $("overlay").classList.remove("hidden");
 }
 function close(){$("overlay").classList.add("hidden");}
-/* #11 추측 메모: 게임 중 상대 말 클릭(전투 지정 경로 외) — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개 저장 */
+/* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음) */
+const MEMO_UI={btns:[],piece:null}; // 테스트·포커스용 (게임 상태 S와 분리)
+function memoSet(v,pid,key){ // key: MEMO_OPTS 키 또는 null(삭제). 그 외 값은 무시 — 상대 말·게임 중에만
+  const pc=S.pieces.find(x=>x.id===pid); if(!pc||pc.owner===v||(v!==0&&v!==1)) return false;
+  if(key===null||key===undefined){ delete S.memos[v][pid]; return true; }
+  if(!memoOpt(key)) return false;
+  S.memos[v][pid]=key; return true;
+}
 function memoModal(pc){
-  if(S.phase!=="play") return;
-  const v=humanViewer(), cur=S.memos[v][pc.id]||"";
-  modal(`<h2>📝 추측 메모 — ${idLabel(v,pc)} (${pc.r}행 ${pc.c}열)</h2>
-    <small>이 상대 말에 대한 나만의 추측 기록입니다. 상대에게는 보이지 않습니다.</small>
-    <div class="row"><input id="memoIn" type="text" maxlength="40" placeholder="예: 폭탄 같음"
-      style="flex:1;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px"></div>`,
-    [["저장",()=>{const el=$("memoIn"), t=((el&&el.value)||"").trim();
-      if(t) S.memos[v][pc.id]=t; else delete S.memos[v][pc.id]; close(); render();}],
-     ["삭제",()=>{delete S.memos[v][pc.id]; close(); render();}],
-     ["닫기",close]]);
-  const inp=$("memoIn"); if(inp){inp.value=cur; try{inp.focus();}catch(e){}}
+  if(S.phase!=="play"||!pc) return;
+  const v=humanViewer();
+  if(pc.owner===v) return;
+  if(pc.revealed){ showToast(`이미 공개된 말: ${idLabel(v,pc)}`); return; } // 실제 정체가 우선 — 추측 불필요
+  const cur=S.memos[v][pc.id]||null;
+  modal(`<h2>📝 정체 추측 — ? (${pc.r}행 ${pc.c}열)</h2>
+    <small>이 물음표 말이 무엇일지 골라 두세요. 나만 보이는 메모이며 상대·AI에게는 보이지 않아요.</small>
+    <div class="memo-grid" id="memoOpts" role="group" aria-label="정체 추측 선택"></div>`,
+    [["추측 삭제",()=>{memoSet(v,pc.id,null); close(); render();}],["닫기",close]]);
+  const grid=$("memoOpts"); MEMO_UI.btns=[]; MEMO_UI.piece=pc.id;
+  for(const o of MEMO_OPTS){
+    const b=document.createElement("button"); b.className="memo-opt"; b.innerHTML=`<span class="ico" aria-hidden="true">${o.emoji}</span><span>${o.ko}</span>`;
+    b.setAttribute("type","button"); b.setAttribute("aria-label",`${o.ko} ${o.emoji} 추측`); b.setAttribute("aria-pressed",o.key===cur?"true":"false"); b.dataset.key=o.key;
+    b.onclick=()=>{ memoSet(v,pc.id,o.key); close(); render(); };
+    grid.appendChild(b); MEMO_UI.btns.push(b);
+  }
+  const del=$("obBtns").children[0]; if(del) del.disabled=!cur;
+  const focusTo=MEMO_UI.btns.find(b=>b.dataset.key===cur)||MEMO_UI.btns[0]; try{ if(focusTo) focusTo.focus(); }catch(e){}
 }
 function handoff(title,after){
   clearToasts();
@@ -2239,13 +2262,14 @@ const TSV={
 };
 const TUT_SCENES={
   win(){ const C=TSV.C; let s="";
-    s+=TSV.num(12,12,1)+TSV.t(60,12,"상대 왕 잡기",{b:1})+TSV.grid(20,24,3,3,()=>"op")+TSV.tok(53,79,"⚔","me")+TSV.tok(53,35,"👑","op")+TSV.arrow(53,66,53,48)+TSV.x(53,35,7)+TSV.t(53,106,"왕을 잡으면 승리",{fs:10,fill:C.ok});
-    s+=TSV.num(118,12,2)+TSV.t(168,12,"내 왕이 끝줄 닿기",{b:1})+TSV.grid(128,24,3,3,()=>"op")+`<rect x="128" y="24" width="66" height="22" rx="3" fill="none" stroke="${C.gold}" stroke-width="2"/>`
-      +TSV.tok(161,79,"👑","me")+TSV.tok(161,35,"👑","ghost")+TSV.arrow(161,66,161,48)+TSV.t(204,35,"끝줄",{fs:9,fill:C.gold,an:"start"})+TSV.t(161,106,"맨 끝줄에 서면 승리",{fs:10,fill:C.ok});
-    s+=TSV.num(226,12,3)+TSV.t(272,12,"싸우는 말 전멸",{b:1});
-    [232,254,276,298].forEach((x,i)=>{ s+=TSV.tok(x,44,"⚔","op")+TSV.x(x,44,7); s+=TSV.tok(x,70,i<2?"⚔":"🤝","op")+TSV.x(x,70,7); });
-    s+=TSV.t(265,92,"하수인 6 + 동료 2",{fs:9,fill:C.dim})+TSV.t(265,106,"모두 없애면 승리",{fs:10,fill:C.ok});
-    return TSV.wrap(118,"이기는 법 세 가지 그림. 1번: 내 하수인이 상대 진영의 상대 왕을 공격해 지우는 장면. 2번: 내 왕이 상대편 맨 끝줄 칸까지 올라가 서는 장면. 3번: 상대의 하수인 6개와 동료 2개가 모두 엑스 표시로 지워진 장면.",s); },
+    // #37 좌표만 조정: 글자 최소 13 기준으로 제목 3개(74+105+87)+배지가 한 줄 320을 넘어 겹치던 것 → 배지를 제목 위 줄로(2줄 머리), 나머지 +14 하향, '끝줄' 라벨은 격자 왼쪽, 2열 설명 두 줄, 높이 118→140
+    s+=TSV.num(53,11,1)+TSV.t(53,26,"상대 왕 잡기",{b:1})+TSV.grid(20,38,3,3,()=>"op")+TSV.tok(53,93,"⚔","me")+TSV.tok(53,49,"👑","op")+TSV.arrow(53,80,53,62)+TSV.x(53,49,7)+TSV.t(53,122,"왕을 잡으면 승리",{fs:10,fill:C.ok});
+    s+=TSV.num(161,11,2)+TSV.t(161,26,"내 왕이 끝줄 닿기",{b:1})+TSV.grid(128,38,3,3,()=>"op")+`<rect x="128" y="38" width="66" height="22" rx="3" fill="none" stroke="${C.gold}" stroke-width="2"/>`
+      +TSV.tok(161,93,"👑","me")+TSV.tok(161,49,"👑","ghost")+TSV.arrow(161,80,161,62)+TSV.t(124,49,"끝줄",{fs:9,fill:C.gold,an:"end"})+TSV.t(161,111,"맨 끝줄에 서면",{fs:10,fill:C.ok})+TSV.t(161,130,"승리",{fs:10,fill:C.ok}); // #37 REVISE: 두 줄 y 115/129(간격 14) → 111/130(간격 19). 글자 13의 실제 bbox 높이 ≈17.5 viewBox 단위라 14 간격은 2.9~6.9px 겹침 — 19 간격은 bbox 여유 ≥1.4, 아래 줄 bbox 하단 ≈136.7 < 140
+    s+=TSV.num(265,11,3)+TSV.t(265,26,"싸우는 말 전멸",{b:1});
+    [232,254,276,298].forEach((x,i)=>{ s+=TSV.tok(x,58,"⚔","op")+TSV.x(x,58,7); s+=TSV.tok(x,84,i<2?"⚔":"🤝","op")+TSV.x(x,84,7); });
+    s+=TSV.t(265,104,"하수인 6 + 동료 2",{fs:9,fill:C.dim})+TSV.t(265,122,"모두 없애면 승리",{fs:10,fill:C.ok});
+    return TSV.wrap(140,"이기는 법 세 가지 그림. 1번: 내 하수인이 상대 진영의 상대 왕을 공격해 지우는 장면. 2번: 내 왕이 상대편 맨 끝줄 칸까지 올라가 서는 장면. 3번: 상대의 하수인 6개와 동료 2개가 모두 엑스 표시로 지워진 장면.",s); },
   pieces(){ const C=TSV.C; let s="";
     const rows=[["하수인",6,"⚔"],["동료",2,"🤝"],["왕",1,"👑"],["폭탄",3,"💣"],["함정",2,"🪤"]];
     s+=TSV.num(12,12,1)+TSV.t(24,12,"내 눈: 내 말 14개",{b:1,an:"start"})+TSV.num(178,12,2)+TSV.t(190,12,"상대 눈: 전부 ?",{b:1,an:"start"});
@@ -2263,8 +2287,8 @@ const TUT_SCENES={
       +TSV.t(272,68,"앞 칸에 멈춤",{fs:9.5})+TSV.t(272,84,"둘 다 공개 👁",{fs:9.5})+TSV.t(270,100,"(이번 차례만)",{fill:C.dim});
     return TSV.wrap(136,"움직이기와 숲 그림. 1번: 내 말에서 위, 아래, 왼쪽, 오른쪽 한 칸으로 화살표가 나가고 대각선 네 방향에는 엑스 표시. 2번: 숲 칸의 내 말이 멀리 있는 상대에게는 흐리게 숨겨지고, 상대가 바로 옆에 오면 또렷하게 보이는 두 장면. 3번: 내 말이 숨은 상대 말이 있는 숲 칸으로 가다 부딪혀 그 앞 칸에 멈추고 둘 다 공개되는 장면.",s); },
   search(){ const C=TSV.C; let s="";
-    s+=TSV.num(10,12,1)+TSV.t(80,12,"이번 차례: 흔적 발견",{b:1})+TSV.grid(28,24,3,1,()=>"forest")+TSV.tok(39,35,"⚔","ghost")+TSV.arrow(48,35,52,35)+TSV.tok(61,35,"⚔","me")+TSV.t(74,25,"🔍",{fs:11})+TSV.t(80,58,"말이 서면 🔍 흔적 표시",{fs:9.5});
-    s+=TSV.num(168,12,2)+TSV.t(244,12,"다음 차례: 탐색",{b:1})+TSV.cell(176,24,"forest")+TSV.tok(187,35,"⚔","me")+TSV.t(200,25,"🔍",{fs:11})+TSV.pill(210,27,44,17,"탐색",C.acc,10,"#fff")+TSV.arrow(258,35,280,35)+TSV.t(296,35,"🎁",{fs:16})+TSV.t(244,58,"버튼 → 선물",{fs:9.5});
+    s+=TSV.num(10,12,1)+TSV.t(80,12,"이번 차례: 흔적 발견",{b:1})+TSV.grid(28,24,3,1,()=>"forest")+TSV.tok(39,35,"⚔","ghost")+TSV.arrow(48,35,52,35)+TSV.tok(61,35,"⚔","me")+TSV.t(77,27,"🔍",{fs:11})+TSV.t(80,58,"말이 서면 🔍 흔적 표시",{fs:9.5});
+    s+=TSV.num(168,12,2)+TSV.t(244,12,"다음 차례: 탐색",{b:1})+TSV.cell(176,24,"forest")+TSV.tok(187,35,"⚔","me")+TSV.t(203,27,"🔍",{fs:11})+TSV.pill(210,27,44,17,"탐색",C.acc,10,"#fff")+TSV.arrow(258,35,280,35)+TSV.t(296,35,"🎁",{fs:16})+TSV.t(244,58,"버튼 → 선물",{fs:9.5});
     s+=TSV.num(10,82,3)+TSV.t(22,82,"탐색 가능",{fs:10,an:"start"})+TSV.tok(84,82,"⚔","me",8)+TSV.tok(106,82,"🤝","me",8)+TSV.tok(128,82,"👑","me",8)+TSV.t(146,82,"✓",{fs:12,fill:C.ok})
       +`<line x1="166" y1="72" x2="166" y2="92" stroke="${C.line}"/>`+TSV.tok(186,82,"💣","me",8)+TSV.x(186,82,6)+TSV.tok(208,82,"🪤","me",8)+TSV.x(208,82,6)+TSV.t(226,82,"못 해요",{fs:10,an:"start",fill:C.bad});
     s+=TSV.num(10,110,4)+TSV.t(22,110,"선물은 이런 것들이에요",{fs:10,an:"start"});
@@ -2320,8 +2344,8 @@ const TUT_SCENES={
   recap(){ const C=TSV.C; let s="";
     s+=TSV.num(10,14,1)+TSV.t(22,14,"이기는 길 셋",{b:1,an:"start"})+TSV.pill(20,26,86,18,"👑 상대 왕 잡기",undefined,9)+TSV.pill(114,26,86,18,"🏁 내 왕이 끝줄",undefined,9)+TSV.pill(206,26,106,18,"💀 상대 전멸");
     s+=TSV.num(10,62,2)+TSV.t(22,62,"내 차례 흐름",{b:1,an:"start"});
-    s+=`<rect x="20" y="74" width="96" height="28" rx="5" fill="${C.mid}" stroke="${C.line}"/>`+TSV.t(68,83,"주 행동 1개",{fs:10,b:1})+TSV.t(68,95,"이동 · 탐색 · 텔레포트",{fs:8,fill:C.dim})+TSV.arrow(118,88,132,88);
-    s+=`<rect x="134" y="74" width="92" height="28" rx="5" fill="${C.mid}" stroke="${C.line}"/>`+TSV.t(180,83,"옆에 붙었으면 ⚔",{fs:9.5,b:1})+TSV.t(180,95,"꼭 싸움 (최대 2번)",{fs:8,fill:C.dim})+TSV.arrow(228,88,242,88);
+    s+=`<rect x="20" y="74" width="96" height="28" rx="5" fill="${C.mid}" stroke="${C.line}"/>`+TSV.t(68,82,"주 행동 1개",{fs:10,b:1})+TSV.t(68,96,"이동·탐색·텔레포트",{fs:8,fill:C.dim})+TSV.arrow(118,88,132,88);
+    s+=`<rect x="134" y="74" width="92" height="28" rx="5" fill="${C.mid}" stroke="${C.line}"/>`+TSV.t(180,82,"옆에 붙었으면 ⚔",{fs:9.5,b:1})+TSV.t(180,96,"꼭 싸움 (최대 2번)",{fs:8,fill:C.dim})+TSV.arrow(228,88,242,88);
     s+=`<rect x="244" y="74" width="66" height="28" rx="5" fill="${C.acc}"/>`+TSV.t(277,88,"턴 종료 ▶",{fs:10,b:1,fill:"#fff"});
     s+=TSV.num(10,120,3)+TSV.t(22,120,"기억할 것",{b:1,an:"start"})+TSV.pill(20,132,84,18,"🌲 숲에 숨기",undefined,9)+TSV.pill(112,132,84,18,"🔍 흔적 찾기",undefined,9)+TSV.pill(204,132,100,18,"❓ 물음표 추리",undefined,9);
     return TSV.wrap(162,"빠른 복습 그림. 1번: 이기는 길 셋 — 상대 왕 잡기, 내 왕이 끝줄, 하수인과 동료 전멸. 2번: 내 차례 흐름 — 주 행동 1개(이동, 탐색, 텔레포트)에서 옆에 붙었으면 꼭 싸움(최대 2번)으로, 그다음 턴 종료 버튼으로 이어지는 화살표. 3번: 기억할 것 — 숲에 숨기, 흔적 찾기, 물음표 추리.",s); }
