@@ -573,8 +573,12 @@ function renderSide(){
       <div class="row"><button class="primary big" onclick="startMode('pve',{aiLevel:'grade5'})">5급 — 기본 AI</button>
         <button class="primary big" onclick="startMode('pve',{aiLevel:'dan5'})">5단 — 탐색·추론 기반 강AI</button></div>
       <small>5급: 휴리스틱 기준선 AI · 5단: 공정 관측 아래 2수 앞(상대 최선 응수)까지 평가하는 제한 탐색 AI</small>
-      <div class="row" style="margin-top:10px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button>
-        <button class="primary big" onclick="netConnect()">🌐 온라인 PVP (서버 매칭)</button><span class="badge" id="netStatus" style="display:none"></span></div>
+      <div class="row" style="margin-top:10px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button></div>
+      <div class="row"><button class="primary big" onclick="netConnect()">🌐 온라인 PVP (서버 매칭)</button>
+        <input id="netServer" value="${netServerDefault()}" placeholder="서버 주소 (예: 192.168.3.19:8080)"
+          style="width:200px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px">
+        <span class="badge" id="netStatus" style="display:none"></span></div>
+      <small>내부망 전용 — 같은 공유기(네트워크) 안에서만 접속됩니다. 상대는 http://서버IP:8080 으로 접속하거나, html 파일을 직접 열면 위 서버 주소로 연결됩니다.</small>
       <div class="row"><a class="simlink" onclick="startMode('sim')">AI vs AI 시뮬레이션(관전 · 5급 vs 5급)</a>
         <a class="simlink" onclick="startMode('sim',{aiLevel:['dan5','grade5']})">5단 vs 5급 관전</a></div>
       <div class="row" style="margin-top:10px"><button type="button" onclick="tutOpen()">📖 튜토리얼 다시 보기</button></div>`;
@@ -2614,12 +2618,20 @@ modal=function(html,buttons){
     $("overlayBox").innerHTML=`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`;
   }
 };
-/* 접속·매칭·시작 */
+/* 접속·매칭·시작 — 내부망(LAN) 전용 구성 */
+const NET_LAN_DEFAULT="192.168.3.19:8080"; // 개발 PC 내부망 기본값 — html 파일을 직접 열었을 때(file://) 기본 접속지. 메뉴 입력칸에서 변경 가능(기억됨)
+function netServerDefault(){
+  try{ const s=localStorage.getItem("netServer"); if(s) return s; }catch(e){}
+  return location.protocol.indexOf("http")===0 ? location.host : NET_LAN_DEFAULT;
+}
 window.netConnect=function(){
   if(NET.ws){ showToast("이미 서버에 연결 중입니다."); return; }
-  const url=location.protocol.indexOf("http")===0
-    ? (location.protocol==="https:"?"wss://":"ws://")+location.host
-    : "ws://localhost:8080"; // file:// 로 열었을 때 폴백
+  const inp=$("netServer");
+  let addr=(inp&&inp.value&&inp.value.trim())||netServerDefault();
+  if(addr.indexOf("://")>=0) addr=addr.split("://")[1]; // 프로토콜까지 입력해도 허용
+  if(addr.indexOf(":")<0) addr+=":8080"; // 포트 생략 시 기본 포트
+  try{ localStorage.setItem("netServer",addr); }catch(e){} // 다음에 열 때 기억
+  const url=(location.protocol==="https:"?"wss://":"ws://")+addr;
   let ws;
   try{ ws=new WebSocket(url); }catch(e){ showToast("서버 연결 실패: "+url); return; }
   NET.ws=ws;
