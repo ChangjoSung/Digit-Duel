@@ -129,6 +129,9 @@ node demo/test/smoke_cycle5.js
 node demo/test/smoke_memo.js
 node demo/test/smoke_tutorial.js
 
+# 데모 — 온라인 PVP 접속 경로 회귀 (서버 주소 기본값·정규화·ws/wss 선택·사전 배치 매칭)
+node demo/test/smoke_online.js
+
 # 데모 — 튜토리얼 카드 레이아웃 실측 (헤드리스 Chrome · 5개 뷰포트)
 node demo/test/tut_layout_cdp.js
 
@@ -139,8 +142,6 @@ node demo/test/ai_compare.js
 cd server && npm install && npm test
 ```
 
-> 온라인 PVP 병합 이후 `demo/test/harness.js`의 DOM 스텁이 갱신되지 않아, 하네스를 거치는 스모크(`smoke_cycle5` · `smoke_tutorial` · `ai_compare`)가 현재 로드 단계에서 실패합니다. 복구는 [#54](https://github.com/ChangjoSung/Digit-Duel/issues/54)에서 진행 중입니다.
-
 ## 로드맵
 
 | 버전 | 범위 | 상태 |
@@ -150,7 +151,7 @@ cd server && npm install && npm test
 | v0.3.0 | A/B · 지표 | 완료 |
 | v0.3.1 | 온보딩(튜토리얼) | 완료 |
 | **v0.4.0** | **온라인 PVP · HTML 안정화** | **현재 릴리스** |
-| v0.4.1 | HTML 데모 후속 — 헤드리스 하네스 회귀 복구, 온라인 PVP 플레이테스트 안정화, 밸런싱 백로그 반영 | 예정 |
+| v0.4.1 | HTML 데모 후속 — 온라인 PVP 플레이테스트 보완 및 밸런싱 백로그 반영 | 예정 |
 | v0.5.0 | Unity 포팅 기반 (Android 타깃) | 예정 |
 
 ## 문서
