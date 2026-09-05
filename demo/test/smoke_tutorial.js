@@ -9,11 +9,11 @@ const H=require("./harness");
 const htmlPath=process.argv[2];
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
-function setLS(obj){ // 테스트용 localStorage 스텁 (null → 미지원)
-  if(obj===null){ Object.defineProperty(global,"localStorage",{value:undefined,configurable:true,writable:true}); return; }
-  Object.defineProperty(global,"localStorage",{value:obj,configurable:true,writable:true});
-}
-function memLS(){ const st={}, log=[]; return {st,log,getItem:k=>(k in st?st[k]:null),setItem(k,v){st[k]=String(v); log.push(k);},removeItem(k){delete st[k];}}; }
+/* #54 REVISE: 저장소는 전역에 직접 꽂지 않고 하네스의 "명시적 사전 설치" 계약으로 넘긴다.
+   (load()는 storage 옵션이 없으면 빈 저장소를 새로 만들고, setStorage()로 설치한 것만 물려받는다 —
+    앞선 load가 남긴 저장소를 우연히 물려받는 비결정성 제거) */
+function setLS(obj){ return H.setStorage(obj); } // null → 웹 스토리지 미지원 환경
+function memLS(){ return H.mkStorage(); }        // st·log(setItem 키 목록)·writes 기록형 인메모리 스텁
 function strip(s){return String(s).replace(/<[^>]+>/g,"");}
 function sSnap(T){ const s=T.S; return JSON.stringify({mode:s.mode,phase:s.phase,cur:s.current,main:s.mainUsed,tele:s.teleUsed,bu:s.battlesUsed,tp:s.teleport,sel:s.selected&&s.selected.id,
   pcs:s.pieces.map(p=>[p.id,p.r,p.c,p.alive,p.placed,p.hp]),m:T.metricsSnapshot(),log:s.log.length}); }
@@ -139,7 +139,7 @@ const N=10, LAST=N-1;
 
 /* ===== C. localStorage 접근·쓰기 예외 허용 ===== */
 {
-  Object.defineProperty(global,"localStorage",{configurable:true,get(){throw new Error("SecurityError: denied");}});
+  setLS(H.throwingStorage("SecurityError: denied")); // 접근 자체가 던지는 환경 (시크릿 모드·정책 차단)
   let T=null, err=null;
   try{ T=H.load(htmlPath); }catch(e){ err=e; }
   ok(!err&&T&&T.TUT.open===true,"C1 localStorage 접근 자체가 예외를 던져도 로드·자동 표시 정상 ("+(err&&err.message)+")");
@@ -205,7 +205,7 @@ const N=10, LAST=N-1;
   T.TUT.hints.teleport=false; T.TUT.hints.burning=false; T.tutHintClose();
   const r=H.runSim(T,["grade5","grade5"],321);
   ok(r.phase==="over"&&T.TUT.hints.teleport===false&&T.TUT.hints.burning===false&&T.els.tutHint.classList.contains("hidden"),"E10 sim 모드에서는 도움말 미발생 · sim 완주 정상");
-  ok(T.TUT.hints.teleport===false&&Object.keys(global.localStorage.st).every(k=>k==="tutorialSeen"),"E11 도움말은 저장하지 않음 (localStorage에 tutorialSeen 외 키 없음)");
+  ok(T.TUT.hints.teleport===false&&H.storageTrace(T.storage).all.every(k=>k==="tutorialSeen")&&T.cookieWrites.length===0,"E11 도움말은 저장하지 않음 (이 로드의 저장 흔적은 tutorialSeen뿐·쿠키 0)");
   T.TQ.length=0;
 }
 
@@ -226,12 +226,21 @@ const N=10, LAST=N-1;
   H.freshPlay(T,"pvp"); const snap=sSnap(T); T.tutOpen(); T.render(); ok(sSnap(T)===snap&&T.TUT.open,"F5 튜토리얼 열린 채 render()해도 상태·튜토리얼 유지"); T.tutSkip();
   const src=T.html.slice(T.html.indexOf("첫 플레이어용 ELI5 튜토리얼"), T.html.indexOf("/* ===== 온라인 PVP")).replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/[^\r\n]*/g,""); // 주석 제외
   ok(src.length>1000&&!/window\.open|https?:\/\/|fetch\(|XMLHttpRequest|<iframe|WebSocket|navigator\.sendBeacon|<img|canvas|new Image/.test(src),"F6 튜토리얼 코드에 외부 창·서버·사이트·이미지·canvas 연동 없음");
-  // #54: 저장 범위는 "localStorage 문자열 개수"가 아니라 실제 저장 키로 판정한다 (온라인 주소 netServer 병합 후 개수 세기가 오탐).
-  const tutKeys=H.storageKeys(src).map(k=>k==="TUT_KEY"?T.TUT_KEY:k); // 튜토리얼 구간이 쓰는 키 (F6에서 잘라둔 구간)
-  const allKeys=H.storageKeys(T.html).map(k=>k==="TUT_KEY"?T.TUT_KEY:k); // 파일 전체가 쓰는 키
-  ok(T.TUT_KEY==="tutorialSeen"&&tutKeys.length>0&&tutKeys.every(k=>k===T.TUT_KEY)
-    &&allKeys.every(k=>k===T.TUT_KEY||k==="netServer")&&!/sessionStorage|indexedDB|document\.cookie/.test(T.html),
-    "F7 튜토리얼 저장은 tutorialSeen 단일 키 (파일 전체 저장 키도 tutorialSeen·netServer뿐·다른 저장소 없음) — 사용 키 ["+[...new Set(allKeys)].join(",")+"]");
+  /* #54 REVISE: 저장 범위 판정을 "키 추출 정규식"에서 (1) 구간 직접 금지 (2) 런타임 저장 불변식으로 바꾼다.
+     키 추출 파서는 localStorage["setItem"](…)·별칭·직접 대입 같은 대체 표기를 놓친다. 아래 두 가지는 표기법과 무관하다. */
+  // src는 구간 머리 주석 안에서 잘려 시작하므로 남은 주석 꼬리(첫 "*/")까지 버리고 코드만 본다
+  const tutCode=src.indexOf("*/")>=0?src.slice(src.indexOf("*/")+2):src;
+  const tutLines=tutCode.split(/\r?\n/).filter(l=>H.persistApiHits(l).length); // 튜토리얼 구간에서 저장 API 이름이 등장하는 줄
+  ok(T.TUT_KEY==="tutorialSeen"&&tutLines.length>0
+    &&tutLines.every(l=>/localStorage/.test(l)&&/TUT_KEY/.test(l)&&!/sessionStorage|indexedDB|cookie|openDatabase|caches|sendBeacon|XMLHttpRequest|fetch\s*\(/.test(l)),
+    "F7 튜토리얼 구간의 저장 API는 tutStore의 localStorage+TUT_KEY 줄뿐 (다른 저장소·전송 API는 구간 내 직접 금지) — "+tutLines.length+"줄");
+  /* 런타임 불변식: 튜토리얼을 실제로 끝까지 조작해도 저장 흔적은 tutorialSeen 하나. 대괄호·별칭·직접 대입도 여기서 잡힌다. */
+  const fresh=H.mkStorage(); const T7=H.load(htmlPath,{storage:fresh});
+  T7.tutOpen(); for(let i=0;i<LAST;i++) T7.tutNext(); T7.tutSkip(); T7.tutOpen(); T7.tutSkip(); T7.tutHint("teleport"); T7.tutHintClose();
+  const tr=H.storageTrace(fresh);
+  ok(tr.all.length===1&&tr.all[0]===T.TUT_KEY&&tr.extras.length===0
+    &&H.storageTrace(T7.sessionStorage).all.length===0&&T7.cookieWrites.length===0&&T7.indexedDB.opens.length===0,
+    "F7b 런타임 저장 불변식: 튜토리얼 전 과정 후 저장 흔적은 ["+tr.all.join(",")+"]뿐 · sessionStorage·쿠키·indexedDB 무기록");
   const lines=T.TUT_STEPS.map(s=>s.lines.map(strip));
   ok(lines.every(ls=>ls.length>=3&&ls.length<=4&&ls.every(l=>l.length<=78)),"F8 한 화면 3~4문단·문단 78자 이하 ("+lines.map(ls=>ls.map(l=>l.length).join("/")).join(" | ")+")");
   ok(lines.every(ls=>ls.every(l=>/[요!][.!]?\s*$/.test(l.trim()))),"F9 모든 문단이 '~요'/'!'로 끝나는 쉬운 말투");
