@@ -9,11 +9,11 @@ const H=require("./harness");
 const htmlPath=process.argv[2];
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
-function setLS(obj){ // 테스트용 localStorage 스텁 (null → 미지원)
-  if(obj===null){ Object.defineProperty(global,"localStorage",{value:undefined,configurable:true,writable:true}); return; }
-  Object.defineProperty(global,"localStorage",{value:obj,configurable:true,writable:true});
-}
-function memLS(){ const st={}, log=[]; return {st,log,getItem:k=>(k in st?st[k]:null),setItem(k,v){st[k]=String(v); log.push(k);},removeItem(k){delete st[k];}}; }
+/* #54 REVISE: 저장소는 전역에 직접 꽂지 않고 하네스의 "명시적 사전 설치" 계약으로 넘긴다.
+   (load()는 storage 옵션이 없으면 빈 저장소를 새로 만들고, setStorage()로 설치한 것만 물려받는다 —
+    앞선 load가 남긴 저장소를 우연히 물려받는 비결정성 제거) */
+function setLS(obj){ return H.setStorage(obj); } // null → 웹 스토리지 미지원 환경
+function memLS(){ return H.mkStorage(); }        // st·log(setItem 키 목록)·writes 기록형 인메모리 스텁
 function strip(s){return String(s).replace(/<[^>]+>/g,"");}
 function sSnap(T){ const s=T.S; return JSON.stringify({mode:s.mode,phase:s.phase,cur:s.current,main:s.mainUsed,tele:s.teleUsed,bu:s.battlesUsed,tp:s.teleport,sel:s.selected&&s.selected.id,
   pcs:s.pieces.map(p=>[p.id,p.r,p.c,p.alive,p.placed,p.hp]),m:T.metricsSnapshot(),log:s.log.length}); }
@@ -52,69 +52,60 @@ const N=10, LAST=N-1;
   ok(/id="tutCount" aria-live="polite"/.test(T.els.tutBox.innerHTML)&&/id="tutTitle"/.test(T.els.tutBox.innerHTML)&&/id="tutBody"/.test(T.els.tutBox.innerHTML),"A18 단계 카운터 aria-live·제목/본문 id 렌더");
 }
 
-/* ===== G. #32 장면 그림 — 단계별 고유 인라인 SVG·접근성·문단↔장면 대응·외부 리소스 없음 ===== */
+/* ===== G. #42 장면 = (1)~(n) 독립 카드 블록 — 번호 배지·제목·그림·결과·설명이 DOM, 공간 도형만 소형 SVG/DOM 격자 · 절대좌표 텍스트 없음 · 반응형 격자 ===== */
 {
   setLS(memLS());
   const T=H.load(htmlPath);
-  const sc=T.TUT_STEPS.map(s=>s.scene);
-  ok(sc.every(s=>typeof s==="string"&&/^<svg viewBox="0 0 320 \d+" role="img" aria-label="[^"]{40,}" focusable="false">[\s\S]*<\/svg>$/.test(s)),"G1 모든 단계가 인라인 SVG 장면 (viewBox·role=img·40자 이상 aria-label)");
-  ok(new Set(sc).size===N&&new Set(T.TUT_STEPS.map(s=>s.scene.match(/aria-label="([^"]*)"/)[1])).size===N,"G2 10개 장면·대체 텍스트가 서로 다름 (고유)");
-  const kinds=s=>["rect","circle","text","line","polygon"].filter(k=>new RegExp("<"+k+"[ >]").test(s)).length;
-  const shapes=s=>(s.match(/<(rect|circle|line|polygon)[ >]/g)||[]).length, texts=s=>(s.match(/<text[ >]/g)||[]).length;
-  ok(sc.every(s=>s.length>2500&&kinds(s)>=4&&shapes(s)>=12&&texts(s)>=6),"G3 장면이 단순 이모지 나열이 아닌 구성 요소(도형 12+·글 6+·요소 종류 4+) — "+sc.map(s=>shapes(s)+"/"+texts(s)).join(" "));
-  ok(sc.every(s=>/<polygon/.test(s))&&sc.filter(s=>/stroke-width="2.5"|✗/.test(s)).length>=7,"G4 행동·결과 표현: 모든 장면에 화살표, 7단계 이상에 ✗(제거·불가) 표시");
-  ok(T.TUT_STEPS.every(st=>st.lines.every((_,k)=>new RegExp('class="tut-sn" data-n="'+(k+1)+'"').test(st.scene))&&!new RegExp('data-n="'+(st.lines.length+1)+'"').test(st.scene)),"G5 문단 번호 ①..n 이 장면 안의 번호 배지와 1:1 대응");
+  const steps=T.TUT_STEPS, cards=steps.map(s=>s.cards);
+  ok(cards.every((cs,i)=>Array.isArray(cs)&&cs.length===steps[i].lines.length&&cs.length>=3&&cs.length<=4),"G1 모든 단계가 카드 배열 — 카드 수 = 설명 문단 수 (3~4) — "+cards.map(c=>c.length).join("/"));
+  ok(cards.every(cs=>cs.every(c=>typeof c.t==="string"&&c.t.length>=2&&c.t.length<=16&&typeof c.vis==="string"&&c.vis.length>20&&(c.res===undefined||typeof c.res==="string"))),"G2 카드 = 제목(2~16자)·그림(vis)·결과(선택) 구조");
+  ok(cards.every(cs=>new Set(cs.map(c=>c.t)).size===cs.length),"G3 한 단계 안의 카드 제목은 서로 다름");
+  const allVis=cards.flat().map(c=>c.vis), allSvg=allVis.flatMap(v=>v.match(/<svg[\s\S]*?<\/svg>/g)||[]);
+  ok(allSvg.length>=20&&allSvg.every(sv=>/^<svg class="tut-(fig|ico|ico lg|arr)" viewBox="0 0 \d+ \d+"/.test(sv)&&/preserveAspectRatio="xMidYMid meet"|aria-hidden="true"/.test(sv)&&/focusable="false"/.test(sv)),"G4 소형 SVG는 고유 viewBox + meet 비율 유지(잘림 없음) + focusable=false — "+allSvg.length+"개");
+  const figs=allSvg.filter(sv=>/class="tut-(fig|ico)"/.test(sv));
+  ok(figs.every(sv=>/role="img" aria-label="[^"]{8,}"/.test(sv)),"G5 그림 SVG마다 role=img + 8자 이상 대체 텍스트 (장식 화살표만 aria-hidden)");
+  const vb=figs.map(sv=>sv.match(/viewBox="0 0 (\d+) (\d+)"/).slice(1,3).map(Number));
+  ok(vb.every(([w,h])=>w<=160&&h<=100)&&!/viewBox="0 0 320 /.test(T.html),"G6 큰 단일 320×H 장면 SVG 제거 — 모든 그림은 소형(폭 ≤160·높이 ≤100 단위) — 최대 "+Math.max(...vb.map(v=>v[0]))+"×"+Math.max(...vb.map(v=>v[1])));
+  const svgTexts=allSvg.flatMap(sv=>(sv.match(/<text[^>]*>([^<]*)<\/text>/g)||[]).map(m=>m.replace(/<[^>]+>/g,"")));
+  ok(svgTexts.length>=40&&svgTexts.every(t=>!/[가-힣A-Za-z0-9%]/.test(t)),"G7 SVG <text>는 이모지·기호 글리프만 (한글·영문·숫자는 전부 DOM 텍스트) — "+svgTexts.length+"개, 위반: "+svgTexts.filter(t=>/[가-힣A-Za-z0-9%]/.test(t)).join(","));
+  const domTxt=allVis.map(v=>v.replace(/<svg[\s\S]*?<\/svg>/g,"").replace(/<[^>]+>/g,"").trim()).filter(Boolean);
+  ok(domTxt.length>=14&&domTxt.some(t=>/70%/.test(t))&&domTxt.some(t=>/50%/.test(t))&&domTxt.some(t=>/하수인 6/.test(t))&&domTxt.some(t=>/턴 종료/.test(t)),"G8 수치·이름 라벨(70%·50%·하수인 6·턴 종료 …)은 DOM 텍스트로 렌더 — 카드 그림 DOM 텍스트 "+domTxt.length+"개");
   const bad=/<img|<image|<iframe|<video|<audio|<object|<embed|<foreignObject|<use|xlink:href|href=|url\(|https?:|data:|canvas|<script|<style/i;
-  ok(sc.every(s=>!bad.test(s)),"G6 장면에 외부 이미지·URL·iframe·foreignObject·use·canvas·스크립트 없음");
-  ok(sc.every(s=>!/aria-hidden="true"/.test(s.slice(0,120))),"G7 그림 전체를 aria-hidden으로 숨기지 않음 (role=img + aria-label로 노출)");
-  const alts=T.TUT_STEPS.map(s=>s.scene.match(/aria-label="([^"]*)"/)[1]);
-  ok(alts.every((a,i)=>T.TUT_STEPS[i].lines.every((_,k)=>a.includes((k+1)+"번"))),"G8 대체 텍스트가 문단 번호별 장면을 서술 (1번…n번)");
-  ok(/30%|25%/.test(alts[6])&&/70/.test(alts[6])&&/50%/.test(alts[6])&&/65/.test(alts[8])&&/2번/.test(alts[7])&&/6개/.test(alts[0]),"G9 대체 텍스트에도 핵심 수치(포획 30%/70·도망 50%·턴 65·텔레포트 2번·하수인 6개)");
-  // 렌더: 현재 단계의 장면이 대화상자에 그대로 삽입되고 tut-scene 컨테이너·번호 배지가 있다
-  T.tutGo(4);
-  ok(T.els.tutBox.innerHTML.includes(sc[4])&&/class="tut-scene"/.test(T.els.tutBox.innerHTML)&&(T.els.tutBox.innerHTML.match(/class="tut-n"/g)||[]).length===T.TUT_STEPS[4].lines.length,"G10 렌더된 대화상자에 현재 단계 장면 + 문단 번호 배지");
-  ok(!/tut-pic|tut-icon/.test(T.els.tutBox.innerHTML)&&!/class="tut-pic"/.test(T.html),"G11 이모지 토큰 나열(tut-pic) 제거");
-  ok(/\.tut-scene svg\{[^}]*width:100%/.test(T.html)&&/\.tut-scene svg\{[^}]*height:auto/.test(T.html),"G12 SVG는 폭 100%·높이 자동 (viewBox 비율 유지, 360px에서 축소 표시)");
-  // #32 REVISE — 글자 크기: 소스 단위 최소 13 + CSS에서 유도한 최악 배율(360px 폭)로 렌더 12 CSS px 이상
-  const TSV=new Function(T.html.slice(T.html.indexOf("const TSV={"),T.html.indexOf("const TUT_SCENES="))+";return TSV;")(); // 하네스가 노출하지 않는 장면 도우미를 소스에서 재구성
-  const fsAll=sc.flatMap(s=>(s.match(/font-size="([0-9.]+)"/g)||[]).map(m=>parseFloat(m.slice(11))));
-  const minFs=Math.min(...fsAll);
-  ok(fsAll.length>=150&&minFs>=13&&TSV.MIN_FS>=13,"G13 장면 글자 크기 최소 13 (viewBox 단위) — 실측 최소 "+minFs+" / "+fsAll.length+"개");
-  ok(/font-size="13"/.test(TSV.t(0,0,"x",{fs:5}))&&/font-size="13"/.test(TSV.t(0,0,"x"))&&/font-size="13"/.test(TSV.tok(0,0,"x","me",7)),"G13b TSV.t / TSV.tok 이 13 미만 요청을 13으로 올림 (기본값 포함)");
-  const cssNum=(re)=>{ const m=T.html.match(re); return m?parseFloat(m[1]):NaN; };
-  const geo=(vw)=>{ // 장면 SVG 폭(CSS px) = 뷰포트 폭 → 오버레이 여백 → 박스 max-width·좌우 padding·border → 장면 좌우 padding
-    const mob=vw<=480;
-    const ovPad=mob?cssNum(/@media \(max-width:480px\)\{[\s\S]*?#tutOverlay\{[^}]*padding:([0-9.]+)px/):cssNum(/#tutOverlay\{[^}]*padding:([0-9.]+)px/);
-    const boxPadX=mob?cssNum(/@media \(max-width:480px\)\{[\s\S]*?#tutBox\{[^}]*padding:[0-9.]+px ([0-9.]+)px/):cssNum(/#tutBox\{[^}]*padding:[0-9.]+px ([0-9.]+)px/);
-    const boxMax=cssNum(/#tutBox\{[^}]*max-width:([0-9.]+)px/), border=cssNum(/#tutBox\{[^}]*border:([0-9.]+)px/);
-    const scPadX=mob?cssNum(/@media \(max-width:480px\)\{[\s\S]*?\.tut-scene\{[^}]*padding:[0-9.]+px ([0-9.]+)px/):cssNum(/\.tut-scene\{[^}]*padding:[0-9.]+px ([0-9.]+)px/);
-    const boxW=Math.min(boxMax,vw-2*ovPad), svgW=boxW-2*(boxPadX+border+scPadX);
-    return {ovPad,boxPadX,boxMax,border,scPadX,svgW,scale:svgW/320};
-  };
-  const g360=geo(360), g1280=geo(1280);
-  ok([g360,g1280].every(g=>Object.values(g).every(v=>Number.isFinite(v))),"G14a CSS 기하(오버레이·박스·장면 padding·border·max-width) 파싱 가능 — "+JSON.stringify({g360,g1280}));
-  ok(g360.svgW===314&&Math.abs(g360.scale-0.98125)<1e-6,"G14b 360px 폭에서 장면 SVG 폭 314px → 배율 0.981 (viewBox 320) — 실측 "+g360.svgW+" / "+g360.scale.toFixed(4));
-  const minPx360=minFs*g360.scale, minPx1280=minFs*g1280.scale;
-  ok(minPx360>=12&&minPx1280>=12&&TSV.MIN_FS*g360.scale>=12,"G14c 렌더 글자 최소 12 CSS px (배율 반영·정적): 360px→"+minPx360.toFixed(2)+"px · 1280px→"+minPx1280.toFixed(2)+"px");
-  ok(sc.every(s=>{ const m=s.match(/viewBox="0 0 (\d+) (\d+)"/); return m&&+m[1]===320; })&&/\.tut-scene svg\{[^}]*width:100%/.test(T.html)&&!/\.tut-scene svg\{[^}]*max-width/.test(T.html)&&!/\.tut-scene svg\{[^}]*transform/.test(T.html),
-    "G14d 모든 장면 viewBox 폭 320·SVG 폭 100% (추가 축소 규칙 없음) — 배율 유도 전제 유지");
-  // #32 REVISE — 3단계 방향 라벨: 한 줄 긴 문장 대신 두 줄, x=50 중앙 정렬, 12..88 안에 들어갈 길이(각 줄 6 글자 이하), 세로 18 단위 간격
-  const s3=sc[2], lab=[...s3.matchAll(/<text x="([0-9.]+)" y="([0-9.]+)" font-size="([0-9.]+)"[^>]*text-anchor="(\w+)"[^>]*>(위·아래·옆만|대각선 ✗)<\/text>/g)].map(m=>({x:+m[1],y:+m[2],fs:+m[3],an:m[4],s:m[5]}));
-  ok(!/위·아래·옆만, 대각선/.test(s3)&&lab.length===2&&lab.every(l=>l.x===50&&l.an==="middle"&&l.fs>=13&&l.s.replace(/[·\s]/g,"").length<=6)&&Math.abs(lab[0].y-lab[1].y)>=18,
-    "G15 3단계 방향 라벨: '위·아래·옆만' / '대각선 ✗' 두 줄·x=50 중앙·줄당 6자 이하·세로 18 이상 간격 — "+JSON.stringify(lab));
-  const vb3=+s3.match(/viewBox="0 0 320 (\d+)"/)[1];
-  ok(lab.length===2&&Math.max(...lab.map(l=>l.y))+9<=vb3-2&&Math.min(...lab.map(l=>l.y))-9>=0,"G15b 3단계 라벨 세로 위치가 viewBox 높이 "+vb3+" 안 (글자 높이 절반 9 + 여유 2)");
-  // #37 데스크톱(≥768px) 장면 실제 폭: width:100% 복구 → 박스 가용 폭(max-width − 좌우 padding·border − 장면 padding)을 그대로 사용, ~320px 수축 없음
-  const dsk=T.html.match(/@media \(min-width:768px\)\{([\s\S]*?)\n  \}/), big=T.html.match(/@media \(min-width:1400px\) and \(min-height:960px\)\{([\s\S]*?)\n  \}/);
-  ok(!!dsk&&/\.tut-scene\{[^}]*width:100%/.test(dsk[1])&&!/\.tut-scene\{[^}]*max-width:min\(480px/.test(dsk[1]),"G16 데스크톱 .tut-scene width:100% 복구 (480px 상한 제거)");
-  const dGeo=(blk,boxMaxDefault)=>{ const bm=parseFloat((blk.match(/#tutBox\{[^}]*max-width:([0-9.]+)px/)||[])[1]||boxMaxDefault), bp=parseFloat(blk.match(/#tutBox\{[^}]*padding:[0-9.]+px ([0-9.]+)px/)[1]), sp=parseFloat(blk.match(/\.tut-scene\{[^}]*padding:[0-9.]+px ([0-9.]+)px/)[1]);
-    return {boxMax:bm,svgW:bm-2*(bp+1+sp)}; };
-  const gD=dsk&&dGeo(dsk[1]), gB=big&&dGeo(big[1]);
-  ok(gD&&gD.boxMax===640&&gD.svgW>=560&&gD.svgW/320>=1.75,"G17 일반 PC(768~1399px 또는 높이<960): 장면 SVG 폭 "+(gD&&gD.svgW)+"px (배율 "+(gD&&(gD.svgW/320).toFixed(2))+") — 이전 ~320px 대비 명백히 확대");
-  ok(gB&&gB.boxMax===760&&gB.svgW>=660&&gB.svgW>gD.svgW,"G18 대형 PC(≥1400×960): 장면 SVG 폭 "+(gB&&gB.svgW)+"px — 일반 PC보다 큼");
-  ok(/\.tut-scene\{[^}]*max-width:min\(100%,calc\(100vh - \d+px\)\)/.test(dsk[1])&&/\.tut-scene\{[^}]*max-width:min\(100%,calc\(100vh - \d+px\)\)/.test(big[1]),"G19 장면 폭 상한은 100% + (100vh − 본문 예산) — 낮은 화면(768px)에서만 축소해 팝업 내부 스크롤 방지");
-  const maxH=Math.max(...sc.map(s=>+s.match(/viewBox="0 0 320 (\d+)"/)[1]));
-  ok(maxH<=174&&(gD.svgW*maxH/320+2*10)<=0.92*768-300,"G20 가장 높은 장면(viewBox "+maxH+")도 768px 높이 데스크톱에서 장면 "+Math.round(gD.svgW*maxH/320+20)+"px ≤ 92vh−본문 예산 300px (정적)");
+  ok(allVis.every(v=>!bad.test(v)),"G9 카드 그림에 외부 이미지·URL·iframe·foreignObject·use·canvas·스크립트 없음");
+  ok(allVis.every(v=>!/position\s*:|\bleft\s*:|\btop\s*:|transform\s*:/.test(v)),"G10 카드 그림에 절대좌표 인라인 스타일(position/left/top/transform) 없음 — 간격은 CSS gap/padding");
+  // 렌더: 현재 단계가 카드(article) n개로 그려지고 배지·제목·그림·설명이 카드 안에 있다
+  for(const i of [0,3,6,8]){
+    T.tutGo(i); const h=T.els.tutBox.innerHTML, n=steps[i].cards.length;
+    const arts=h.match(/<article class="tut-card"[\s\S]*?<\/article>/g)||[];
+    ok(arts.length===n&&arts.every((a,k)=>new RegExp('<span class="tut-sn" data-n="'+(k+1)+'">'+(k+1)+'</span>').test(a)&&a.includes('<h3 id="tutCard'+k+'">'+steps[i].cards[k].t+'</h3>')&&a.includes('<div class="tut-vis">'+steps[i].cards[k].vis+'</div>')&&a.includes('<p class="tut-txt">'+steps[i].lines[k]+'</p>')&&(!steps[i].cards[k].res||a.includes(steps[i].cards[k].res))),
+      "G11 "+(i+1)+"단계 렌더: article.tut-card × "+n+" — 각 카드에 번호 배지(data-n) · 제목 h3 · 그림 · 결과 · 설명 문단 1:1");
+    ok(/<div id="tutBody" class="tut-scene">/.test(h)&&!new RegExp('data-n="'+(n+1)+'"').test(h)&&!/tut-body|tut-pic|class="tut-n"/.test(h),"G12 "+(i+1)+"단계: 카드 격자가 aria-describedby 대상(tutBody) · 여분 배지·구 tut-body/tut-pic 없음");
+  }
+  T.tutGo(8); ok(/<div class="tut-banner">턴 65부터 🔥 버닝 타임<\/div>/.test(T.els.tutBox.innerHTML)&&(T.els.tutBox.innerHTML.match(/tut-banner/g)||[]).length===1,"G13 9단계 상단 배너(턴 65부터 버닝 타임)는 격자 전체 폭 1개");
+  T.tutGo(4); ok(!/tut-banner/.test(T.els.tutBox.innerHTML),"G13b 다른 단계엔 배너 없음");
+  // CSS 구조: 격자 auto-fit/minmax · 간격은 변수 · 배지 place-items:center · 텍스트 자연 줄바꿈 · 절대좌표 없음
+  const css=T.html.slice(T.html.indexOf("/* ===== #26 튜토리얼 모달"),T.html.indexOf("</style>"));
+  ok(/\.tut-scene\{[^}]*display:grid;[^}]*grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,var\(--tut-card-min\)\),1fr\)\);[^}]*gap:var\(--tut-gap\)/.test(css),"G14 .tut-scene = CSS Grid auto-fit/minmax(var(--tut-card-min)) + gap 변수");
+  ok(/\.tut-sn\{[^}]*display:grid;[^}]*place-items:center/.test(css),"G15 번호 원형 배지는 display:grid + place-items:center");
+  ok(/\.tut-card\{[^}]*min-width:0/.test(css)&&/\.tut-txt\{[^}]*overflow-wrap:anywhere/.test(css)&&/\.tut-card-h h3\{[^}]*overflow-wrap:anywhere/.test(css)&&/\.tut-res\{[^}]*overflow-wrap:anywhere/.test(css),"G16 카드·제목·결과·설명은 min-width:0 + overflow-wrap:anywhere (좁은 열에서 자연 줄바꿈, 넘침 없음)");
+  ok(!/position:absolute/.test(css)&&(css.match(/position:fixed/g)||[]).length===2,"G17 튜토리얼 CSS에 position:absolute 없음 (fixed는 오버레이·도움말 2곳뿐)");
+  ok(/\.tut-vis svg\.tut-fig\{[^}]*width:100%;[^}]*height:var\(--tut-vis-h\)/.test(css)&&/#tutBox\{[^}]*--tut-vis-h:/.test(css),"G18 그림 SVG 높이는 --tut-vis-h 변수, 폭 100% (meet 비율로 카드 안에 맞춤)");
+  // 반응형 열 수 (정적 계산): 뷰포트 → 오버레이 여백 → 박스 max-width·padding·border → 카드 최소폭·gap
+  const num=(blk,re,d)=>{ const m=blk.match(re); return m?parseFloat(m[1]):d; };
+  const base={ov:num(css,/#tutOverlay\{[^}]*padding:([0-9.]+)px/),max:num(css,/#tutBox\{[^}]*max-width:([0-9.]+)px/),padX:num(css,/#tutBox\{[^}]*padding:[0-9.]+px ([0-9.]+)px/),min:num(css,/#tutBox\{[^}]*--tut-card-min:([0-9.]+)px/),gap:num(css,/#tutBox\{[^}]*--tut-gap:([0-9.]+)px/)};
+  const blk=(re)=>{ const m=css.match(re); return m?m[1]:""; };
+  const mob=blk(/@media \(max-width:480px\)\{([\s\S]*?)\n  \}/), dsk=blk(/@media \(min-width:600px\)\{([\s\S]*?)\n  \}/), big=blk(/@media \(min-width:1400px\) and \(min-height:960px\)\{([\s\S]*?)\n  \}/);
+  const tier=(b,parent)=>({ov:num(b,/#tutOverlay\{[^}]*padding:([0-9.]+)px/,parent.ov),max:num(b,/#tutBox\{[^}]*max-width:([0-9.]+)px/,parent.max),padX:num(b,/#tutBox\{[^}]*padding:[0-9.]+px ([0-9.]+)px/,parent.padX),min:num(b,/#tutBox\{[^}]*--tut-card-min:([0-9.]+)px/,parent.min),gap:num(b,/#tutBox\{[^}]*--tut-gap:([0-9.]+)px/,parent.gap)});
+  const tMob=tier(mob,base), tDsk=tier(dsk,base), tBig=tier(big,tDsk);
+  const cols=(t,vw)=>{ const box=Math.min(t.max,vw-2*t.ov), inner=box-2*t.padX-2; return {box,inner,cols:Math.max(1,Math.floor((inner+t.gap)/(t.min+t.gap)))}; };
+  const c360=cols(tMob,360), c640=cols(tDsk,640), c768=cols(tDsk,768), c1024=cols(tDsk,1024), c1280=cols(tDsk,1280), c1440=cols(tDsk,1440), c1920=cols(tBig,1920);
+  ok([base,tMob,tDsk,tBig].every(t=>Object.values(t).every(Number.isFinite)),"G19 CSS 기하(오버레이 여백·박스 max-width/padding·카드 최소폭·gap) 3단계 모두 파싱 — "+JSON.stringify({base,tMob,tDsk,tBig}));
+  ok(tDsk.max>=1000&&tBig.max>tDsk.max&&tDsk.max<=1280,"G20 PC 팝업 최대폭 확대: ≥600px "+tDsk.max+"px · 큰 PC "+tBig.max+"px (기존 640/760 대비)");
+  ok(c1280.cols===4&&c1440.cols===4&&c1920.cols===4&&c1024.cols>=3&&c768.cols>=3,"G21 열 수(정적): 1280→"+c1280.cols+" · 1440→"+c1440.cols+" · 1920→"+c1920.cols+" · 1024→"+c1024.cols+" · 768→"+c768.cols+" (3~4열, 4카드 단계도 한 줄)");
+  ok(c1280.inner/4-tDsk.gap>=200&&c1920.inner/4-tBig.gap>=230,"G22 4열일 때 카드 폭 ≥200px(1280) / ≥230px(1920) — "+Math.floor(c1280.inner/4-tDsk.gap)+" / "+Math.floor(c1920.inner/4-tBig.gap));
+  ok(c640.cols===2&&c360.cols===1,"G23 reflow: 200% 줌 상당(CSS 640px)→"+c640.cols+"열 · 모바일 360px→"+c360.cols+"열");
+  ok(/#tutBox\{[^}]*max-height:92vh;[^}]*overflow-y:auto/.test(css)&&/#tutBox>\*\{flex-shrink:0;\}/.test(css),"G24 높이 부족 시 박스 내부 세로 스크롤 (카드 찌그러짐 없음)");
+  ok(/@media \(max-width:480px\)/.test(css)&&/#tutBox\{[^}]*max-width:420px/.test(css)&&tMob.min>=200,"G25 모바일(≤480px)은 1열 카드 (카드 최소폭 "+tMob.min+"px)");
   T.tutSkip();
 }
 
@@ -148,7 +139,7 @@ const N=10, LAST=N-1;
 
 /* ===== C. localStorage 접근·쓰기 예외 허용 ===== */
 {
-  Object.defineProperty(global,"localStorage",{configurable:true,get(){throw new Error("SecurityError: denied");}});
+  setLS(H.throwingStorage("SecurityError: denied")); // 접근 자체가 던지는 환경 (시크릿 모드·정책 차단)
   let T=null, err=null;
   try{ T=H.load(htmlPath); }catch(e){ err=e; }
   ok(!err&&T&&T.TUT.open===true,"C1 localStorage 접근 자체가 예외를 던져도 로드·자동 표시 정상 ("+(err&&err.message)+")");
@@ -214,7 +205,7 @@ const N=10, LAST=N-1;
   T.TUT.hints.teleport=false; T.TUT.hints.burning=false; T.tutHintClose();
   const r=H.runSim(T,["grade5","grade5"],321);
   ok(r.phase==="over"&&T.TUT.hints.teleport===false&&T.TUT.hints.burning===false&&T.els.tutHint.classList.contains("hidden"),"E10 sim 모드에서는 도움말 미발생 · sim 완주 정상");
-  ok(T.TUT.hints.teleport===false&&Object.keys(global.localStorage.st).every(k=>k==="tutorialSeen"),"E11 도움말은 저장하지 않음 (localStorage에 tutorialSeen 외 키 없음)");
+  ok(T.TUT.hints.teleport===false&&H.storageTrace(T.storage).all.every(k=>k==="tutorialSeen")&&T.cookieWrites.length===0,"E11 도움말은 저장하지 않음 (이 로드의 저장 흔적은 tutorialSeen뿐·쿠키 0)");
   T.TQ.length=0;
 }
 
@@ -233,17 +224,71 @@ const N=10, LAST=N-1;
   T.tutSkip();
   ok(/z-index:60/.test(T.html)&&/#tutHint\{[^}]*z-index:45/.test(T.html),"F4 z-order: 튜토리얼(60) > 게임 모달(50) > 상황 도움말(45)");
   H.freshPlay(T,"pvp"); const snap=sSnap(T); T.tutOpen(); T.render(); ok(sSnap(T)===snap&&T.TUT.open,"F5 튜토리얼 열린 채 render()해도 상태·튜토리얼 유지"); T.tutSkip();
-  const src=T.html.slice(T.html.indexOf("첫 플레이어용 ELI5 튜토리얼"), T.html.indexOf("/* ===== 시작: 모드 선택 화면")).replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/[^\r\n]*/g,""); // 주석 제외
+  const src=T.html.slice(T.html.indexOf("첫 플레이어용 ELI5 튜토리얼"), T.html.indexOf("/* ===== 온라인 PVP")).replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/[^\r\n]*/g,""); // 주석 제외
   ok(src.length>1000&&!/window\.open|https?:\/\/|fetch\(|XMLHttpRequest|<iframe|WebSocket|navigator\.sendBeacon|<img|canvas|new Image/.test(src),"F6 튜토리얼 코드에 외부 창·서버·사이트·이미지·canvas 연동 없음");
-  ok(!/localStorage\.(getItem|setItem)\(\s*["'](?!tutorialSeen)/.test(T.html)&&(T.html.match(/localStorage/g)||[]).length<=4,"F7 localStorage 사용은 tutStore(tutorialSeen)로 한정");
+  /* #54 REVISE: 저장 범위 판정을 "키 추출 정규식"에서 (1) 구간 직접 금지 (2) 런타임 저장 불변식으로 바꾼다.
+     키 추출 파서는 localStorage["setItem"](…)·별칭·직접 대입 같은 대체 표기를 놓친다. 아래 두 가지는 표기법과 무관하다. */
+  // src는 구간 머리 주석 안에서 잘려 시작하므로 남은 주석 꼬리(첫 "*/")까지 버리고 코드만 본다
+  const tutCode=src.indexOf("*/")>=0?src.slice(src.indexOf("*/")+2):src;
+  const tutLines=tutCode.split(/\r?\n/).filter(l=>H.persistApiHits(l).length); // 튜토리얼 구간에서 저장 API 이름이 등장하는 줄
+  ok(T.TUT_KEY==="tutorialSeen"&&tutLines.length>0
+    &&tutLines.every(l=>/localStorage/.test(l)&&/TUT_KEY/.test(l)&&!/sessionStorage|indexedDB|cookie|openDatabase|caches|sendBeacon|XMLHttpRequest|fetch\s*\(/.test(l)),
+    "F7 튜토리얼 구간의 저장 API는 tutStore의 localStorage+TUT_KEY 줄뿐 (다른 저장소·전송 API는 구간 내 직접 금지) — "+tutLines.length+"줄");
+  /* 런타임 불변식: 튜토리얼을 실제로 끝까지 조작해도 저장 흔적은 tutorialSeen 하나. 대괄호·별칭·직접 대입도 여기서 잡힌다. */
+  const fresh=H.mkStorage(); const T7=H.load(htmlPath,{storage:fresh});
+  T7.tutOpen(); for(let i=0;i<LAST;i++) T7.tutNext(); T7.tutSkip(); T7.tutOpen(); T7.tutSkip(); T7.tutHint("teleport"); T7.tutHintClose();
+  const tr=H.storageTrace(fresh);
+  ok(tr.all.length===1&&tr.all[0]===T.TUT_KEY&&tr.extras.length===0
+    &&H.storageTrace(T7.sessionStorage).all.length===0&&T7.cookieWrites.length===0&&T7.indexedDB.opens.length===0,
+    "F7b 런타임 저장 불변식: 튜토리얼 전 과정 후 저장 흔적은 ["+tr.all.join(",")+"]뿐 · sessionStorage·쿠키·indexedDB 무기록");
   const lines=T.TUT_STEPS.map(s=>s.lines.map(strip));
   ok(lines.every(ls=>ls.length>=3&&ls.length<=4&&ls.every(l=>l.length<=78)),"F8 한 화면 3~4문단·문단 78자 이하 ("+lines.map(ls=>ls.map(l=>l.length).join("/")).join(" | ")+")");
   ok(lines.every(ls=>ls.every(l=>/[요!][.!]?\s*$/.test(l.trim()))),"F9 모든 문단이 '~요'/'!'로 끝나는 쉬운 말투");
   const all=lines.flat().join(" ");
   ok(/강제 전투\(무조건 싸움\)/.test(all)&&/HP\(체력\)/.test(all)&&/탐색\(찾아보기\)/.test(all)&&/하수인\(싸우는 말\)/.test(all)&&/텔레포트\(순간이동\)/.test(all)&&/버닝 타임\(불타는 시간\)/.test(all),"F10 전문어 즉시 풀이: 강제 전투·HP·탐색·하수인·텔레포트·버닝 타임");
-  ok(T.TUT_STEPS.every(s=>s.icon&&s.title&&s.scene&&s.lines.length&&!("pic" in s)),"F11 모든 단계에 아이콘·제목·장면 그림·본문 (구 pic 필드 없음)");
+  ok(T.TUT_STEPS.every(s=>s.icon&&s.title&&Array.isArray(s.cards)&&s.cards.length&&s.lines.length&&!("pic" in s)&&!("scene" in s)),"F11 모든 단계에 아이콘·제목·카드 목록·본문 (구 pic·scene 필드 없음)");
   ok(/@media \(max-width:480px\)\{[\s\S]*#tutBox\{[^}]*max-height:calc\(100dvh - 16px\)/.test(T.html)&&/#tutBox\{[^}]*max-width:420px/.test(T.html)&&/\.tut-nav button\{[^}]*min-height:42px/.test(T.html),"F12 모바일 레이아웃: ≤480px 미디어쿼리·박스 max-width 420·버튼 높이 42px");
-  ok(/#tutOverlay\{[^}]*padding:12px/.test(T.html)&&/#tutBox\{[^}]*overflow-y:auto/.test(T.html)&&/#tutHint\{[^}]*width:min\(94vw,440px\)/.test(T.html)&&/\.tut-scene\{[^}]*overflow:hidden/.test(T.html),"F13 360px 폭 수용: 오버레이 여백·박스 내부 스크롤·도움말 폭 94vw·장면 컨테이너 넘침 방지");
+  ok(/#tutOverlay\{[^}]*padding:12px/.test(T.html)&&/#tutBox\{[^}]*overflow-y:auto/.test(T.html)&&/#tutHint\{[^}]*width:min\(94vw,440px\)/.test(T.html)&&/\.tut-scene\{[^}]*min-width:0/.test(T.html)&&/#tutBox\{[^}]*overflow-x:hidden/.test(T.html),"F13 360px 폭 수용: 오버레이 여백·박스 내부 스크롤·도움말 폭 94vw·격자 min-width:0·가로 넘침 숨김");
+}
+
+/* ===== H. #42 REVISE 스크롤·포커스 계약 — 새 단계는 항상 제목(맨 위)부터, 포커스는 스크롤을 끌지 않는다 =====
+   회귀: 200% 줌 상당(CSS 640×360)·360px 좁은 폭에서 #tutBox 내용이 넘칠 때, 렌더 끝의 하단 기본 버튼 포커스가
+   브라우저 자동 스크롤을 유발해 제목·카드 1~2가 가려진 채 단계가 열렸다. (실측은 tut_layout_cdp.js) */
+{
+  setLS(memLS());
+  const T=H.load(htmlPath); const D=global.document;
+  const box=T.els.tutBox, nav=T.els.tutNav;
+  nav.parentNode=box;                          // 스텁은 getElementById로 요소를 따로 만들므로 실제 DOM 포함관계(nav ⊂ box)를 명시
+  box.scrollHeight=1200; box.clientHeight=344; // 640×360 상당: 내용이 박스보다 세로로 김 → 스크롤 컨테이너
+  const primary=()=>T.TUT.btns.find(b=>/다음|게임 시작/.test(b.textContent));
+  T.tutOpen();
+  ok(box.scrollTop===0,"H1 열릴 때 박스 스크롤이 맨 위 (제목부터) — scrollTop="+box.scrollTop);
+  ok(primary()&&primary().focusOpts&&primary().focusOpts.preventScroll===true,"H2 렌더 포커스는 preventScroll:true (포커스가 박스를 아래로 끌지 않음)");
+  ok(D.activeElement===primary(),"H3 포커스 의미 보존: 기본 버튼('다음')에 포커스");
+  // 다음/이전/처음부터 — 어느 경로로 들어와도 새 단계는 맨 위부터
+  let worst=0, badSteps=[];
+  for(let i=0;i<LAST;i++){ box.scrollTop=box.scrollHeight-box.clientHeight; T.tutNext(); worst=Math.max(worst,box.scrollTop); if(box.scrollTop!==0) badSteps.push(i+2); }
+  ok(worst===0,"H4 '다음'으로 "+LAST+"번 이동 — 매 단계 진입 시 scrollTop 0 (직전 단계에서 맨 아래로 스크롤돼 있어도) 위반 단계: "+(badSteps.join(",")||"없음"));
+  worst=0; badSteps=[];
+  for(let i=LAST;i>0;i--){ box.scrollTop=800; T.tutPrev(); worst=Math.max(worst,box.scrollTop); if(box.scrollTop!==0) badSteps.push(i); }
+  ok(worst===0&&T.TUT.step===0,"H5 '이전'으로 되돌아올 때도 매 단계 scrollTop 0 · 최종 1단계 위반 단계: "+(badSteps.join(",")||"없음"));
+  worst=0; badSteps=[];
+  for(let i=0;i<N;i++){ box.scrollTop=999; T.tutGo(i); if(box.scrollTop!==0) badSteps.push(i+1);
+    if(!(primary()&&primary().focusOpts&&primary().focusOpts.preventScroll===true)) badSteps.push("focus"+(i+1)); }
+  ok(badSteps.length===0,"H6 10단계 전부 tutGo 진입 시 scrollTop 0 + preventScroll 포커스 — 위반: "+(badSteps.join(",")||"없음"));
+  T.tutGo(LAST); box.scrollTop=700; T.TUT.btns.find(b=>/처음부터/.test(b.textContent)).onclick();
+  ok(box.scrollTop===0&&T.TUT.step===0,"H7 '처음부터' 버튼도 1단계를 맨 위부터 연다");
+  // Tab 순환은 의도적으로 기본 스크롤 유지 — 포커스한 버튼이 보이도록 브라우저가 스크롤해야 한다
+  T.tutGo(2); const f0=T.TUT.btns.filter(b=>!b.disabled);
+  const e={key:"Tab",shiftKey:false,preventDefault(){},stopPropagation(){}}; T.tutKeydown(e);
+  ok(D.activeElement!==f0[0]&&D.activeElement.focusOpts==null,"H8 Tab 순환 포커스는 preventScroll 없이 기본 동작 (포커스 요소 노출) — 키보드 의미 보존");
+  // 닫을 때 복원 포커스도 기본 동작
+  T.tutSkip();
+  ok(T.els.tutBtn.focusOpts==null&&D.activeElement===T.els.tutBtn,"H9 닫힘 복원 포커스(? 버튼)도 preventScroll 없이 기본 동작");
+  // 소스 계약 — 렌더 경로에서만 preventScroll + 최상단 복귀
+  ok(/tutFocus\(primary,\{preventScroll:true\}\);\s*\n\s*tutScrollTop\(\);/.test(T.html),"H10 tutRender는 preventScroll 포커스 직후 tutScrollTop()으로 최상단 복귀 (미지원 브라우저 대비 순서)");
+  ok(/function tutScrollTop\(\)\{[\s\S]*?box\.scrollTop=0/.test(T.html),"H11 tutScrollTop이 #tutBox.scrollTop=0으로 초기화");
+  ok(!/tutFocus\(f\[nx\],\s*\{preventScroll/.test(T.html)&&!/tutFocus\(r,\s*\{preventScroll/.test(T.html),"H12 Tab 순환·닫기 복원 경로에는 preventScroll을 쓰지 않음");
 }
 
 console.log(`
