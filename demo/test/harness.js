@@ -25,7 +25,51 @@ function mkEl(){const el={_html:"",textContent:"",style:{},className:"",dataset:
   el.classList={add(c){el._cls.add(c);},remove(c){el._cls.delete(c);},contains(c){return el._cls.has(c);}};
   return el;}
 
-function load(htmlPath){
+const DEFAULT_HREF="file:///C:/Digit-Duel/demo/index.html"; // #54: 기본 실행 경로 = html 파일 직접 열기(file:)
+/* #54: 실제 브라우저에 가까운 location 스텁 — netServerDefault()/netConnect()가 protocol·host를 읽는다.
+   기본값은 html 파일을 직접 여는 실사용 경로(file:, host 빈 문자열)이고, 테스트는 setLocation()으로 http/https를 바꿔 끼운다. */
+function mkLocation(href){
+  const u=new URL(href||DEFAULT_HREF);
+  return {href:u.href,protocol:u.protocol,host:u.host,hostname:u.hostname,port:u.port,pathname:u.pathname,
+    search:u.search,hash:u.hash,origin:u.origin,
+    reloadCount:0,reload(){this.reloadCount++;}, // #54: reload 스텁 유지 (결과 화면 "처음으로")
+    assign(h){Object.assign(this,mkLocation(h));},replace(h){this.assign(h);},
+    toString(){return this.href;}};
+}
+function setLocation(href){ global.location=mkLocation(href); if(global.window) global.window.location=global.location; return global.location; }
+
+/* #54: WebSocket 스텁 — Node 18+ 전역 WebSocket으로 실제 접속을 시도하지 않도록 하네스가 항상 덮어쓴다.
+   생성된 소켓은 wsLog에 쌓이므로 온라인 주소·프로토콜(ws/wss) 검증에 그대로 쓴다. */
+const WS_LOG=[];
+function mkWebSocket(){
+  const F=function(url){ this.url=String(url); this.readyState=0; this.sent=[]; this.closed=false;
+    this.onopen=this.onclose=this.onerror=this.onmessage=null;
+    this.send=m=>{this.sent.push(m);}; this.close=()=>{this.readyState=3;this.closed=true;};
+    WS_LOG.push(this); };
+  F.CONNECTING=0; F.OPEN=1; F.CLOSING=2; F.CLOSED=3;
+  return F;
+}
+
+/* #54: 인메모리 웹 스토리지 스텁 — 테스트가 저장 키를 결정적으로 관찰·주입한다 (st로 직접 확인 가능).
+   load()는 기본으로 설치하지 않는다: 스토리지 미지원·예외 시나리오를 검증하는 테스트가 스스로 정의하기 때문. */
+function mkStorage(init){
+  const st=Object.assign({},init||{});
+  return {st,getItem(k){return Object.prototype.hasOwnProperty.call(st,k)?st[k]:null;},
+    setItem(k,v){st[k]=String(v);},removeItem(k){delete st[k];},clear(){for(const k of Object.keys(st)) delete st[k];},
+    get length(){return Object.keys(st).length;},key(i){return Object.keys(st)[i]||null;}};
+}
+function setStorage(s){ Object.defineProperty(global,"localStorage",{value:s,configurable:true,writable:true}); return s; }
+
+/* #54: html 전체에서 사용하는 웹 스토리지 키를 수집한다 — "localStorage 문자열 개수"가 아니라 실제 키로
+   저장 범위를 판정하기 위한 것 (온라인 주소 저장이 메모·튜토리얼 검증을 오탐시키던 회귀). */
+function storageKeys(html){
+  const out=[], re=/(?:localStorage|sessionStorage|\bls)\s*\.\s*(?:get|set|remove)Item\s*\(\s*([^,)]+)/g;
+  let m; while((m=re.exec(html))) out.push(m[1].trim().replace(/^["'`]|["'`]$/g,""));
+  return out;
+}
+
+function load(htmlPath,opts){
+  opts=opts||{};
   htmlPath=htmlPath||path.join(__dirname,"..","index.html");
   const html=fs.readFileSync(htmlPath,"utf8");
   const m=html.match(/<script>([\s\S]*)<\/script>/);
@@ -35,7 +79,9 @@ function load(htmlPath){
   global.document={getElementById:id=>els[id]||(els[id]=mkEl()),createElement:()=>mkEl(),body,activeElement:body,
     contains(n){return !!n&&n.isConnected!==false;}}; // #26: 포커스 추적·속성 스텁
   global.window=global;
-  global.location={reload(){}};
+  setLocation(opts.href); // #54: protocol/host 없는 스텁이 netServerDefault()에서 즉시 예외를 던지던 회귀 방지
+  WS_LOG.length=0; global.WebSocket=mkWebSocket();
+  if(opts.storage!==undefined) setStorage(opts.storage);
   // 가짜 타이머
   const TQ=[];
   global.setTimeout=fn=>{TQ.push(fn);return 0;};
@@ -50,11 +96,12 @@ function load(htmlPath){
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
   renderSide,renderMetrics,render,startMode,modal,close,onCell,humanViewer,idLabel,
   MEMO_OPTS,MEMO_UI,memoOpt,memoSet,memoModal, // #36 추측 메모 피커
+  NET,NET_LAN_DEFAULT,netServerDefault,netActor,netAction,netPrepare,netConnect,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
   TUT,TUT_STEPS,TUT_HINTS,TUT_KEY,tutStore,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
   html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;
-  T.drain=drain; T.TQ=TQ; T.els=els;
+  T.drain=drain; T.TQ=TQ; T.els=els; T.wsLog=WS_LOG; T.location=global.location;
   T.BAL.aiDelay=0; T.BAL.simDelay=0;
   return T;
 }
@@ -117,4 +164,4 @@ function runSim(T,levels,seed,opts){
     thinkAvg:think.length?think.reduce((a,b)=>a+b,0)/think.length:0, thinkMax:think.length?Math.max(...think):0};
 }
 
-module.exports={load,freshPlay,clearCell,place,mine,clearBoard,invariants,runSim};
+module.exports={load,freshPlay,clearCell,place,mine,clearBoard,invariants,runSim,mkLocation,setLocation,mkStorage,setStorage,storageKeys,DEFAULT_HREF};

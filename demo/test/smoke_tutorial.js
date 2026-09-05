@@ -226,7 +226,12 @@ const N=10, LAST=N-1;
   H.freshPlay(T,"pvp"); const snap=sSnap(T); T.tutOpen(); T.render(); ok(sSnap(T)===snap&&T.TUT.open,"F5 튜토리얼 열린 채 render()해도 상태·튜토리얼 유지"); T.tutSkip();
   const src=T.html.slice(T.html.indexOf("첫 플레이어용 ELI5 튜토리얼"), T.html.indexOf("/* ===== 온라인 PVP")).replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/[^\r\n]*/g,""); // 주석 제외
   ok(src.length>1000&&!/window\.open|https?:\/\/|fetch\(|XMLHttpRequest|<iframe|WebSocket|navigator\.sendBeacon|<img|canvas|new Image/.test(src),"F6 튜토리얼 코드에 외부 창·서버·사이트·이미지·canvas 연동 없음");
-  ok(!/localStorage\.(getItem|setItem)\(\s*["'](?!tutorialSeen)/.test(T.html)&&(T.html.match(/localStorage/g)||[]).length<=4,"F7 localStorage 사용은 tutStore(tutorialSeen)로 한정");
+  // #54: 저장 범위는 "localStorage 문자열 개수"가 아니라 실제 저장 키로 판정한다 (온라인 주소 netServer 병합 후 개수 세기가 오탐).
+  const tutKeys=H.storageKeys(src).map(k=>k==="TUT_KEY"?T.TUT_KEY:k); // 튜토리얼 구간이 쓰는 키 (F6에서 잘라둔 구간)
+  const allKeys=H.storageKeys(T.html).map(k=>k==="TUT_KEY"?T.TUT_KEY:k); // 파일 전체가 쓰는 키
+  ok(T.TUT_KEY==="tutorialSeen"&&tutKeys.length>0&&tutKeys.every(k=>k===T.TUT_KEY)
+    &&allKeys.every(k=>k===T.TUT_KEY||k==="netServer")&&!/sessionStorage|indexedDB|document\.cookie/.test(T.html),
+    "F7 튜토리얼 저장은 tutorialSeen 단일 키 (파일 전체 저장 키도 tutorialSeen·netServer뿐·다른 저장소 없음) — 사용 키 ["+[...new Set(allKeys)].join(",")+"]");
   const lines=T.TUT_STEPS.map(s=>s.lines.map(strip));
   ok(lines.every(ls=>ls.length>=3&&ls.length<=4&&ls.every(l=>l.length<=78)),"F8 한 화면 3~4문단·문단 78자 이하 ("+lines.map(ls=>ls.map(l=>l.length).join("/")).join(" | ")+")");
   ok(lines.every(ls=>ls.every(l=>/[요!][.!]?\s*$/.test(l.trim()))),"F9 모든 문단이 '~요'/'!'로 끝나는 쉬운 말투");
