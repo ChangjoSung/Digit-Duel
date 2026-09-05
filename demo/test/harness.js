@@ -3,7 +3,10 @@
 "use strict";
 const fs=require("fs"), path=require("path");
 
-function mkEl(){const el={_html:"",textContent:"",style:{},className:"",dataset:{},value:"",disabled:false,
+/* #54 REVISE(Saturn_3): 요소는 자기를 만든 문서(ownerDocument)를 들고 다닌다.
+   포커스/블러가 전역 document를 건드리면, 나중 load()가 전역을 갈아끼운 뒤 앞선 T의 포커스가
+   "가장 최근 로드"의 문서에 기록된다. doc를 인자로 받아 그 문서에만 쓴다. */
+function mkEl(doc){const el={ownerDocument:doc||null,_html:"",textContent:"",style:{},className:"",dataset:{},value:"",disabled:false,
   scrollTop:0,scrollHeight:0,clientHeight:0,scrollWidth:0,clientWidth:0,offsetWidth:0,children:[],onclick:null,parentNode:null,isConnected:true,
   get innerHTML(){return this._html;}, set innerHTML(v){this._html=v; this.children.length=0;}, // 실제 DOM처럼 innerHTML 대입 시 자식 제거 (다경기 실행 시 누수 방지)
   get firstChild(){return this.children[0]||null;},
@@ -20,8 +23,8 @@ function mkEl(){const el={_html:"",textContent:"",style:{},className:"",dataset:
      "포커스 요소를 보이게 하려고 스크롤 조상을 끝까지 끌어내리는" 동작을 흉내 낸다 (tutBox가 맨 아래로 밀리던 회귀 재현). */
   focus(opt){if(this.disabled) return; this.focusOpts=opt||null; this.focusCount++;
     if(!(opt&&opt.preventScroll)){ for(let a=this.parentNode;a;a=a.parentNode) if(a.scrollHeight>a.clientHeight) a.scrollTop=a.scrollHeight-a.clientHeight; }
-    global.document.activeElement=this;},
-  blur(){if(global.document.activeElement===this) global.document.activeElement=global.document.body;}};
+    const d=this.ownerDocument; if(d) d.activeElement=this;},
+  blur(){const d=this.ownerDocument; if(d&&d.activeElement===this) d.activeElement=d.body;}};
   el.classList={add(c){el._cls.add(c);},remove(c){el._cls.delete(c);},contains(c){return el._cls.has(c);}};
   return el;}
 
@@ -110,10 +113,11 @@ function load(htmlPath,opts){
   const m=html.match(/<script>([\s\S]*)<\/script>/);
   if(!m) throw new Error("script block not found");
   const els={};
-  const body=mkEl();
   const cookieWrites=[];
-  const doc={getElementById:id=>els[id]||(els[id]=mkEl()),createElement:()=>mkEl(),body,activeElement:body,
+  // doc를 먼저 만들고 모든 요소를 mkEl(doc)로 생성한다 — 포커스는 이 로드의 문서에만 기록된다
+  const doc={getElementById:id=>els[id]||(els[id]=mkEl(doc)),createElement:()=>mkEl(doc),body:null,activeElement:null,
     contains(n){return !!n&&n.isConnected!==false;}}; // #26: 포커스 추적·속성 스텁
+  doc.body=mkEl(doc); doc.activeElement=doc.body;
   Object.defineProperty(doc,"cookie",{configurable:true,enumerable:true,
     get(){return "";},set(v){cookieWrites.push(String(v));}}); // 쿠키 저장도 런타임으로 잡는다
   global.document=doc;

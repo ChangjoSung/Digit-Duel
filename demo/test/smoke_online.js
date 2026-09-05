@@ -169,6 +169,20 @@ function prepared(){ const T=loadAt(FILE_HREF); T.netPrepare(); return T; }
   ok($el(T1,"sidePanel").innerHTML.indexOf("1.1.1.1:1111")>=0,"D6 앞선 T의 render()는 자기 문서에 그린다 (나중 load의 document로 새지 않음)");
 }
 {
+  /* #54 REVISE(Saturn_3): 포커스 추적도 로드별로 갈린다.
+     회귀: mkEl().focus()가 전역 document.activeElement에 썼기 때문에, T2가 로드된 뒤 T1을 조작하면
+     T1의 포커스가 T2의 문서에 기록되고 T1.document.activeElement는 그대로였다. */
+  const T1=loadAt(FILE_HREF), T2=loadAt(FILE_HREF);
+  const t1Body=T1.document.body, t2Before=T2.document.activeElement;
+  ok(T1.document!==T2.document&&T1.document.activeElement===t1Body,"D11 전제: 두 로드의 문서는 서로 다르고 T1 포커스는 자기 body");
+  T1.tutOpen(); // 튜토리얼이 열리면 '다음' 버튼에 포커스가 간다 (T1에서만 조작)
+  const f1=T1.document.activeElement;
+  ok(f1!==t1Body&&f1===T1.TUT.btns[1]&&/다음/.test(f1.textContent),"D12 T1 튜토리얼 조작은 T1 문서의 activeElement를 바꾼다 ("+f1.textContent+")");
+  ok(T2.document.activeElement===t2Before&&T2.document.activeElement===T2.document.body,"D13 같은 조작이 나중 로드 T2의 문서 포커스는 건드리지 않는다");
+  ok(f1.ownerDocument===T1.document&&T2.document.body.ownerDocument===T2.document,"D14 요소는 자기를 만든 문서를 소유 문서로 들고 있다");
+  T1.tutSkip(); T1.TQ.length=0; T2.TQ.length=0;
+}
+{
   // storage 옵션을 생략한 load는 "앞선 load가 남긴 저장소"를 물려받지 않는다 (결정적 기본값 = 빈 저장소)
   H.resetStorage();
   const A=H.load(htmlPath,{href:FILE_HREF,storage:H.mkStorage({netServer:"9.9.9.9:9999"})});
