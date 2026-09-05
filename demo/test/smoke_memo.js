@@ -6,7 +6,8 @@ const H=require("./harness");
 const htmlPath=process.argv[2];
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
-Object.defineProperty(global,"localStorage",{value:{getItem:()=>"1",setItem(){},removeItem(){}},configurable:true,writable:true}); // 튜토리얼 자동 표시 억제
+// #54: 기록형 인메모리 스토리지 — 튜토리얼 자동 표시를 억제(tutorialSeen)하면서 메모가 실제로 무엇을 저장하는지 관찰한다.
+const LS=H.setStorage(H.mkStorage({tutorialSeen:"1"}));
 const WANT=[["king","👑","왕"],["ally","🤝","동료"],["minion_fire","🔥","불 하수인"],["minion_grass","🌿","풀 하수인"],["minion_water","💧","물 하수인"],["minion_lightning","⚡","전기 하수인"],["bomb","💣","폭탄"],["trap","🪤","함정"]];
 function ovHidden(T){ return !T.els.overlay||T.els.overlay.classList.contains("hidden"); } // overlay 미접근 = 열린 적 없음
 function cellOf(T,r,c){ return T.els.board.children.find(x=>x.dataset.r===r&&x.dataset.c===c); }
@@ -51,7 +52,38 @@ function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 �
   T.memoSet(0,P.ek.id,"bomb"); T.memoSet(0,P.em.id,"minion_fire"); T.render();
   const sp=T.els.sidePanel.innerHTML;
   ok(/📝 추측 메모/.test(sp)&&/💣<\/span> 2행 4열 — 폭탄 추측/.test(sp)&&/🔥<\/span> 11행 4열 — 불 하수인 추측/.test(sp)&&!/<input/.test(sp),"A19 사이드 패널 목록: 이모지 + 쉬운 라벨 + 위치");
-  ok(!/localStorage|sessionStorage|indexedDB/.test(T.html.slice(T.html.indexOf("const MEMO_UI="),T.html.indexOf("function handoff")))&&(T.html.match(/localStorage/g)||[]).length<=4,"A20 메모 코드에 영구 저장 없음 (인메모리만)");
+  /* #54 REVISE: 판정을 (1) MEMO 구간 저장 API 직접 금지 (2) 런타임 저장 불변식 두 가지로 한다.
+     "저장 키 추출 정규식"은 localStorage["setItem"](…)·별칭·직접 대입 같은 대체 표기를 놓치므로 판정 근거에서 뺀다.
+     구간 직접 금지는 이름이 등장하는지만 보므로 표기법과 무관하고, 런타임 불변식은 아예 표기와 상관이 없다. */
+  const memoSrc=T.html.slice(T.html.indexOf("const MEMO_UI="),T.html.indexOf("function handoff"));
+  ok(H.persistApiHits(memoSrc).length===0,
+    "A20 메모 구간에 저장·전송 API 이름이 하나도 없음 (localStorage·sessionStorage·indexedDB·cookie·fetch 등 직접 금지)");
+  // 런타임 불변식: 메모를 실제로 만들고 바꾸고 지워도 이 로드의 저장소·쿠키·sessionStorage·indexedDB에 흔적이 없다
+  const M=H.load(htmlPath,{storage:H.mkStorage({tutorialSeen:"1"})}); const MP=setup(M,"pve");
+  const before=H.storageSnapshot(M.storage);
+  M.memoSet(0,MP.ek.id,"bomb"); M.memoSet(0,MP.em.id,"minion_fire"); M.memoSet(0,MP.ek.id,"king"); M.memoSet(0,MP.em.id,null);
+  M.onCell(2,4); if(M.MEMO_UI.btns[0]) M.MEMO_UI.btns[0].onclick(); M.render();
+  ok(H.storageSnapshot(M.storage)===before&&H.storageTrace(M.storage).writes.length===0
+    &&H.storageTrace(M.sessionStorage).all.length===0&&M.cookieWrites.length===0&&M.indexedDB.opens.length===0,
+    "A20b 런타임 저장 불변식: 메모 생성·변경·삭제·피커 조작 후 저장소 무변화 (쓰기 0·직접 대입 0·쿠키 0·indexedDB 0)");
+  const T3=H.load(htmlPath); // #54: 새 로드 = 새로고침 — 앞에서 저장한 추측이 살아 돌아오지 않아야 인메모리 증명
+  ok(Object.keys(T3.S.memos[0]).length===0&&Object.keys(T3.S.memos[1]).length===0&&LS.getItem("netServer")===null
+    &&H.storageTrace(LS).all.every(k=>k==="tutorialSeen"),
+    "A21 새로고침(재로드) 시 이전 추측 메모가 남지 않음 (메모는 인메모리 · 공유 저장소 흔적은 tutorialSeen뿐)");
+  /* #54 REVISE: 탐지기 자체의 대체 표기 회귀 — 아래 우회 표기가 하나라도 "저장 없음"으로 통과하면 안 된다.
+     (구 판정인 키 추출 정규식은 점 표기 setItem만 봤기 때문에 1~3번을 모두 놓쳤다.) */
+  const EVADE=[
+    ['localStorage["setItem"]("memoGuess","1")',"대괄호 문자열 접근"],
+    ['const zz=window.localStorage; zz.setItem("memoGuess","1")',"별칭 변수 경유"],
+    ['localStorage.memoGuess="1"',"직접 프로퍼티 대입"],
+    ['sessionStorage["setItem"]("memoGuess","1")',"sessionStorage 대괄호"],
+    ['document.cookie="memoGuess=1"',"쿠키"]];
+  ok(EVADE.every(([snip])=>H.persistApiHits(snip).length>0),
+    "A22 구간 직접 금지 검사가 대체 표기를 모두 잡는다 ("+EVADE.map(e=>e[1]).join("·")+")");
+  // 직접 대입(localStorage.k="v")은 정적 검사만으로는 키를 못 뽑는다 — 기록형 스텁이 런타임에서 잡는지 확인
+  const probe=H.mkStorage(); probe.memoGuess="1"; probe["또다른"]="2";
+  ok(H.storageExtras(probe).join(",")==="memoGuess,또다른"&&H.storageTrace(probe).all.includes("memoGuess"),
+    "A23 기록형 저장소 스텁은 setItem 없이 직접 대입한 저장도 흔적으로 잡는다");
 }
 
 /* ===== B. 실제 공개 우선 · 공개된 말 클릭 · 전투 우선 · 제거된 말 정리 ===== */
