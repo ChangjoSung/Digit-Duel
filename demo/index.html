@@ -2706,6 +2706,10 @@ const NET_CODE_TOKEN=/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/; // RFC 7230 token — 서
 const NET_CODE_HINT="🌐 접속 코드를 확인하세요 — 서버 콘솔의 [접속 코드] 값을 그대로 입력합니다 ("+NET_CODE_MIN+"~"+NET_CODE_MAX+"자 · 공백·쉼표·따옴표 불가).";
 /* 거부 사유를 구분해서 알리지 않는다 — 입력값을 되풀이하지도 않는다(코드를 주소 칸에 잘못 넣었을 수 있다). */
 const NET_ADDR_HINT="🌐 접속할 수 없는 주소입니다 — 이 데모는 localhost·127.0.0.1 이나 같은 내부망의 사설 IP 주소(예: 192.168.x.x:8080)로만 접속합니다. 도메인 이름·공인 주소는 지원하지 않습니다.";
+/* #66 하위 프로토콜 협상 실패 안내 — 고정 문구 하나다. 선택된 값도, 접속 코드도, 마커도 담지 않는다.
+   우리가 제시한 토큰은 [공개 마커, 접속 코드] 둘이므로, 마커가 아닌 값이 선택돼 돌아왔다면 그 값은
+   접속 코드 자신일 수 있다 — 사유를 세분하거나 값을 되풀이하면 그 한 줄이 곧 코드 유출이다. */
+const NET_PROTO_FAIL="🌐 접속을 끊었습니다 — 서버와 하위 프로토콜 협상이 맞지 않습니다. 서버 버전을 확인한 뒤 다시 시도하세요 (접속 코드를 다시 묻습니다).";
 /* 판정만 한다. 어떤 실패 경로에서도 입력값 자체를 되돌리거나 남기지 않는다 (토스트·상태 배지·로그·예외 메시지 포함). */
 function netCodeValid(c){
   return typeof c==="string"&&c.length>=NET_CODE_MIN&&c.length<=NET_CODE_MAX
@@ -2825,12 +2829,44 @@ window.netConnect=function(){
   try{ ws=new WebSocket(url,[NET_PROTOCOL_MARKER,NET.code]); }catch(e){ showToast("서버 연결 실패: "+url); return; }
   NET.ws=ws;
   const st=$("netStatus"); if(st){ st.style.display=""; st.textContent="🌐 서버 접속 중…"; }
-  ws.onopen=()=>{ const s=$("netStatus"); if(s) s.textContent="🌐 매칭 요청…"; };
+  /* 이 소켓의 콜백은 이 소켓(sock)만 본다 — 재접속으로 NET.ws가 바뀌어도 관측이 섞이지 않는다. */
+  const sock=ws;
+  let protoFail=false;
+  /* #67 버려진 소켓(stale socket) 차단. 취소·재접속으로 NET.ws가 다른 소켓을 가리키면 이 소켓은 이미 버려진 것이고,
+     그 뒤늦은 콜백은 새 연결의 것이 아니다. 브라우저는 close() 뒤에도 이미 큐에 들어간 open·message·error·close를 마저
+     전달하므로, 이 확인이 없으면 옛 소켓이 새 소켓을 지우거나(NET.ws=null), 전역 NET.ws를 타고 새 소켓으로 회신하거나
+     (netSend), 새 연결의 상태 배지·토스트·큐·코드·매치 상태를 덮어쓴다. 버려진 소켓은 자기만 닫고 조용히 물러난다.
+     예외는 아래 protoAbort() 하나 — 그것만이 (NET.ws===sock 확인 뒤) 자기 소켓을 의도적으로 지운다. */
+  const live=()=>NET.ws===sock;                            // 이 소켓이 아직 "지금의 연결"인가
+  const dropStale=()=>{ try{ sock.close(); }catch(e){} };  // 버려진 소켓은 닫기만 한다 (상태·화면 불변)
+  /* #66 협상 실패 = 실패로 닫는다(fail closed). 값을 되풀이하지 않고 즉시 끊고, 이 접속을 매칭 전
+     실패 경계로 취급해 들고 있던 코드를 버린다(코드는 어떤 저장소에도 쓰지 않으므로 지우면 그만이다).
+     화면 갱신을 먼저 하고 안내를 나중에 얹는다 — render()가 상태 배지를 다시 그리면서 고정 안내를
+     "서버 접속 중…"으로 되돌리는 순서 역전을 막는다. */
+  const protoAbort=()=>{
+    protoFail=true;
+    try{ sock.close(); }catch(e){}
+    if(NET.ws===sock) NET.ws=null;
+    NET.queued=false; NET.code=null;
+    render();
+    const s=$("netStatus"); if(s){ s.style.display=""; s.textContent=NET_PROTO_FAIL; }
+    showToast(NET_PROTO_FAIL);
+  };
+  /* 협상 결과는 공개 마커와의 정확 비교에만 쓰고 화면·로그에 싣지 않는다. 서버 계약
+     (server/security.js selectProtocol)상 되돌아오는 값은 공개 마커 하나뿐이므로, 그 밖의 값
+     — 비밀 코드·빈 값·임의 문자열 — 은 서버가 계약을 어겼거나 중간에 누가 끼어든 것이다. */
+  ws.onopen=()=>{
+    if(!live()){ dropStale(); return; } // 버려진 소켓의 뒤늦은 open — 협상 판정도, 상태 갱신도 하지 않는다
+    if(sock.protocol!==NET_PROTOCOL_MARKER){ protoAbort(); return; }
+    const s=$("netStatus"); if(s) s.textContent="🌐 매칭 요청…"; };
   // 서버는 실패 사유를 알려주지 않는다(코드 존재·길이·오답을 흘리지 않으려는 설계). 그래서 안내는
   // 원인 후보를 나열하는 쪽이다 — 코드 값 자체는 어느 문구에도 넣지 않는다.
-  ws.onerror=()=>{ showToast("🌐 서버 연결 오류 — 서버(npm start)가 켜져 있는지, 접속 코드가 맞는지 확인하세요."
+  ws.onerror=()=>{ if(protoFail||!live()) return; // 협상 실패 뒤·버려진 소켓의 콜백은 지금의 안내를 덮지 않는다
+    showToast("🌐 서버 연결 오류 — 서버(npm start)가 켜져 있는지, 접속 코드가 맞는지 확인하세요."
     +(location.protocol==="file:"?" (file:// 로 연 페이지는 서버가 Origin을 거부합니다 — http://127.0.0.1:8080 처럼 서버가 서빙하는 주소로 여세요.)":"")); };
-  ws.onclose=()=>{ NET.ws=null;
+  ws.onclose=()=>{ if(protoFail) return; // 정리는 protoAbort()가 이미 끝냈다
+    if(!live()) return; // 버려진 소켓의 종료는 새 연결을 지우지 않는다 (NET.ws는 이미 새 소켓의 것)
+    NET.ws=null;
     if(NET.mode&&S&&S.phase!=="over") showToast("🌐 서버 연결이 끊겼습니다.");
     else if(NET.queued&&!NET.started){ NET.queued=false;
       // 매칭 전에 끊겼다 = 코드 거부(401)일 수 있고, 서버가 다시 켜졌다면 코드 자체가 새로 발급됐다.
@@ -2839,6 +2875,8 @@ window.netConnect=function(){
       showToast("🌐 연결 종료 — [배치 완료 → 매칭 시작]으로 다시 시도하세요 (접속 코드를 다시 묻습니다)."); render(); }
     else { const s=$("netStatus"); if(s) s.textContent="연결 종료"; } };
   ws.onmessage=ev=>{
+    if(protoFail) return; // 계약을 벗어난 협상 뒤에 오는 프레임은 읽지도, 매치를 시작하지도 않는다
+    if(!live()){ dropStale(); return; } // 버려진 소켓의 프레임은 읽지도, 새 소켓으로 회신하지도 않는다
     let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.type==="waiting"){ const s=$("netStatus"); if(s) s.textContent="🌐 상대 대기 중… (상대도 온라인 PVP를 누르면 시작)"; return; }
     if(m.type==="matched"){

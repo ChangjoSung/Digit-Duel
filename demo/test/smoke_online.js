@@ -11,7 +11,10 @@
    게임 규칙·UI는 검증 범위가 아니다 (규칙 회귀는 smoke_cycle5). */
 "use strict";
 const H=require("./harness");
-const htmlPath=process.argv[2];
+/* 인자 없이 돌리는 저장소 표준 명령(node demo/test/smoke_online.js)이 기본이다 — 경로는 여기서 한 번 확정해
+   두어야 하네스 밖에서 직접 파일을 읽는 곳(J 음성 대조군)도 같은 대상을 본다. 명시 인자는 그대로 우선하며,
+   과거 커밋의 소스로 이 테스트를 돌리는 음성 대조 실행이 그 통로를 쓴다. */
+const htmlPath=process.argv[2]||require("path").join(__dirname,"..","index.html");
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
 
@@ -19,7 +22,8 @@ const FILE_HREF="file:///C:/Digit-Duel/demo/index.html";
 const CODE="5F65J3YKGD";          // 서버가 만드는 것과 같은 모양의 유효 코드 (10자 · Crockford 계열)
 const MARKER="digit-duel.v1";     // 공개 마커 — server/security.js PROTOCOL_MARKER 와 같아야 한다
 /* href(페이지 위치) + 저장소 내용을 지정해 새 로드 — 실제 사용자가 그 주소에서 html을 연 상태와 같다 */
-function loadAt(href,st){ return H.load(htmlPath,{href:href,storage:H.mkStorage(Object.assign({tutorialSeen:"1"},st||{}))}); }
+function loadFrom(p,href,st){ return H.load(p,{href:href,storage:H.mkStorage(Object.assign({tutorialSeen:"1"},st||{}))}); }
+function loadAt(href,st){ return loadFrom(htmlPath,href,st); }
 /* #54 REVISE: 요소는 반드시 "그 로드의" 문서에서 집는다 (전역 document 경유는 나중 load에 끌려간다).
    하네스 els는 getElementById로 접근한 순간 생기므로 렌더 문자열만으로는 아직 없다. */
 function $el(T,id){ return T.byId(id); }
@@ -467,6 +471,197 @@ function prepared(){ const T=loadAt(FILE_HREF); typeCode(T,CODE); T.netPrepare()
   H.resetStorage();
   const E=H.load(htmlPath,{href:FILE_HREF});
   ok(E.storage!==pre&&E.netServerDefault()===E.NET_LOCAL_DEFAULT,"G15 resetStorage() 후에는 다시 빈 저장소가 기본");
+}
+
+/* ===== I. 하위 프로토콜 협상 게이트 (#66) — 계약 밖 값이면 실패로 닫는다 =====
+   서버 계약(server/security.js selectProtocol)상 되돌아오는 하위 프로토콜은 공개 마커 하나뿐이다.
+   그런데 우리가 제시한 토큰은 [마커, 접속 코드] 둘이므로, 서버가 계약을 어기거나 중간에 누가 끼어들면
+   **우리가 건네준 비밀 코드 자신**이 선택돼 돌아올 수 있다. 그때 접속을 그대로 이어가면
+   ① 코드를 골라 되돌려준 상대와 매치를 시작하고 ② 그 값이 ws.protocol·중계 프록시 로그에 남는다.
+   그래서 마커와 정확히 같지 않은 모든 선택값(비밀 코드·빈 값·임의 문자열)은 즉시 끊고,
+   값 없는 고정 안내 하나만 띄우며, 뒤따르는 콜백이 그 안내를 덮거나 프레임을 처리하지 못하게 한다. */
+/* 큐 진입까지 간 상태 — 배치 완료 → 매칭 시작 → 소켓 1개 생성 (실사용과 같은 경로) */
+function queuedT(p){
+  const T=loadFrom(p||htmlPath,FILE_HREF);
+  typeCode(T,CODE); T.netPrepare();
+  T.netAction({t:"auto"}); T.netAction({t:"setupDone"});
+  return T;
+}
+/* 서버가 sel 을 골라 핸드셰이크가 열린 상황 재현 */
+function openWs(ws,sel){ ws.readyState=1; ws.protocol=sel; ws.onopen(); return ws; }
+function handshake(T,sel){ return openWs(T.wsLog[0],sel); }
+/* 코드가 샐 수 있는 표면 전부 — 상태 배지·토스트·게임 로그·화면·URL·저장소 */
+function surfaces(T){
+  return [toasts(T).join("|"),$el(T,"netStatus").textContent,logText(T),
+    $el(T,"sidePanel").innerHTML,$el(T,"overlayBox").innerHTML,
+    T.wsLog.map(w=>w.url).join("|"),T.location.href,T.location.search,T.location.hash,
+    JSON.stringify(H.storageTrace(T.storage)),JSON.stringify(T.storage.st),
+    JSON.stringify(H.storageTrace(T.sessionStorage)),T.cookieWrites.join("|")].join("\u0000");
+}
+{
+  // 공격 경로: 서버가 우리가 제시한 '접속 코드' 토큰을 골라 되돌려준다
+  const T=queuedT();
+  const ws=T.wsLog[0];
+  ok(T.NET.queued===true&&protos(ws)[0]===MARKER&&protos(ws)[1]===CODE,
+    "I1 전제: 큐 진입 + 코드가 하위 프로토콜 토큰으로 제시돼 있다 (서버가 고를 수 있다)");
+  handshake(T,CODE);
+  ok(ws.readyState===3&&ws.closed===true,"I2 마커가 아닌 값이 선택되면 즉시 소켓을 닫는다");
+  ok(T.NET.ws===null,"I3 닫은 소켓을 연결로 들고 있지 않는다 (송신 경로가 열려 있지 않다)");
+  ok(T.NET.started===false&&T.NET.mode===false&&T.S.phase!=="play","I4 매치를 시작하지 않는다");
+  ok(T.NET.code===null,"I5 매칭 전 실패 경계 — 들고 있던 코드를 버린다 (다음 시도는 재입력을 묻는다)");
+  const trace=H.storageTrace(T.storage);
+  ok(trace.all.every(k=>k==="tutorialSeen"||k==="netServer")&&trace.writes.every(k=>k==="netServer"),
+    "I6 코드를 버리는 과정에서 어떤 저장소에도 코드를 쓰지 않는다 ["+trace.all.join(",")+"]");
+  const hay=surfaces(T);
+  ok(hay.indexOf(CODE)<0,"I7 되돌아온 비밀값(=접속 코드)이 상태 배지·토스트·게임 로그·화면·ws URL·저장소 어디에도 없다");
+  const shown=toasts(T).join("|");
+  ok(/하위 프로토콜 협상/.test(shown),"I8 협상 실패는 값 없는 고정 안내 한 줄로만 알린다 ("+shown+")");
+  ok(T.NET.mySetup!==null&&T.S.pieces.filter(x=>x.owner===0&&x.placed).length===14,"I9 코드를 버려도 배치는 유지된다");
+}
+{
+  // 협상 실패 뒤에 오는 콜백은 고정 안내를 덮지도, 프레임을 처리하지도 못한다
+  const T=queuedT();
+  const ws=T.wsLog[0];
+  handshake(T,CODE);
+  const noticeBefore=toasts(T).join("|"), statusBefore=$el(T,"netStatus").textContent;
+  ws.onerror(); ws.onclose();
+  ok(toasts(T).join("|")===noticeBefore&&$el(T,"netStatus").textContent===statusBefore,
+    "I10 뒤따르는 error·close 가 고정 안내를 덮거나 다른 안내를 덧붙이지 않는다");
+  ws.onmessage({data:JSON.stringify({type:"matched",room:CODE,you:"p1"})});
+  ws.onmessage({data:JSON.stringify({t:"hello",seed:12345,setup:T.NET.mySetup})});
+  ok(T.NET.started===false&&T.NET.mode===false&&T.S.phase!=="play","I11 협상 실패 뒤 도착한 matched·hello 로는 매치가 시작되지 않는다");
+  ok(ws.sent.length===0,"I12 협상 실패한 소켓으로는 아무것도 보내지 않는다 (배치·시드 회신 없음)");
+  ok(surfaces(T).indexOf(CODE)<0&&toasts(T).join("|")===noticeBefore,"I13 그 프레임에 코드가 실려 와도 읽거나 기록하지 않는다");
+}
+{
+  // 마커와 정확히 같지 않은 모든 값 — 비밀 코드·빈 값·대소문자 차이·꼬리 공백·임의 문자열
+  const bad=[], notices=new Set();
+  for(const sel of [CODE,"",MARKER.toUpperCase(),MARKER+" "," "+MARKER,"x-other",MARKER+".v2",CODE.toLowerCase()]){
+    const T=queuedT();
+    const ws=handshake(T,sel);
+    const shown=toasts(T).join("|");
+    notices.add(shown);
+    if(ws.readyState!==3||T.NET.ws!==null||T.NET.started!==false||T.NET.code!==null
+      ||!/하위 프로토콜 협상/.test(shown)||(sel&&shown.indexOf(sel)>=0)||surfaces(T).indexOf(CODE)>=0) bad.push(JSON.stringify(sel));
+  }
+  ok(bad.length===0,"I14 마커와 정확히 같지 않은 선택값은 모두 끊고, 그 값을 안내에 넣지 않는다"+(bad.length?" — 실패: "+bad.join(","):""));
+  ok(notices.size===1,"I15 어떤 값이 선택됐든 안내는 같은 고정 문구 하나다 (사유가 값을 구분해 새지 않는다) — "+notices.size+"종");
+}
+{
+  // 정상 경로 회귀: 공개 마커가 정확히 선택되면 기존 흐름이 그대로다
+  const T=queuedT();
+  const ws=handshake(T,MARKER);
+  ok(ws.readyState===1&&ws.closed===false&&T.NET.ws===ws,"I16 마커가 선택되면 소켓을 유지한다");
+  ok(T.NET.queued===true&&T.NET.code===CODE,"I17 정상 협상에서는 큐·코드를 그대로 둔다");
+  ok(/매칭 요청/.test($el(T,"netStatus").textContent),"I18 정상 협상이면 매칭 요청 상태로 넘어간다");
+  ok($el(T,"netStatus").textContent.indexOf(MARKER)<0&&toasts(T).join("|").indexOf(MARKER)<0,
+    "I19 정상 경로에서도 협상 값을 화면에 되풀이하지 않는다");
+  ws.onmessage({data:JSON.stringify({type:"matched",room:1,you:"p2"})});
+  ws.onmessage({data:JSON.stringify({t:"hello",seed:12345,setup:T.NET.mySetup})});
+  ok(T.NET.me===1&&T.NET.started===true&&T.NET.mode===true&&T.S.phase==="play","I20 마커 경로에서는 matched→hello 로 대국이 시작된다 (기존 흐름 보존)");
+  ok(ws.sent.some(m=>JSON.parse(m).t==="hello2")&&ws.sent.every(m=>m.indexOf(CODE)<0),"I21 정상 협상 뒤 릴레이 송신도 그대로 (코드는 실리지 않는다)");
+  T.TQ.length=0;
+}
+{
+  // 정적: 협상 값은 마커와의 정확 비교에만 쓰이고, 어떤 출력 경로에도 끼워 넣지 않는다
+  const src=loadAt(FILE_HREF).html;
+  ok(/\.protocol!==NET_PROTOCOL_MARKER/.test(src.replace(/\s+/g,"")),"I22 협상 값은 공개 마커와의 정확 비교(!==)에만 쓴다 (정적)");
+  ok(!/\$\{[^}]*(?:sock|ws)\.protocol[^}]*\}/.test(src),"I23 템플릿 문자열에 소켓 하위 프로토콜 값을 끼워 넣지 않는다 (정적)");
+  ok(!/(?:showToast|addLog|textContent\s*=)[^\n]*\b(?:sock|ws)\.protocol/.test(src),
+    "I24 토스트·게임 로그·상태 배지 어느 인자에도 소켓 protocol 값이 들어가지 않는다 (정적)");
+  const failLines=src.split(/\r?\n/).filter(l=>/NET_PROTO_FAIL/.test(l));
+  ok(failLines.length>0&&!failLines.some(l=>/localStorage|sessionStorage|indexedDB|document\.cookie|location\.(href|search|hash|assign|replace)|console\.|addLog\(/.test(l)),
+    "I25 고정 안내가 등장하는 줄에 저장·주소·콘솔·게임 로그 API가 하나도 없다 (정적)");
+}
+
+/* ===== J. 버려진 소켓(stale socket) 경합 (#67 REVISE) =====
+   시나리오: 옛 소켓이 닫혔거나(서버가 끊음) 취소된 뒤 새 소켓이 자리를 잡았는데, 그 옛 소켓의 콜백이
+   뒤늦게 도착한다 — 브라우저는 close() 뒤에도 이미 큐에 들어간 open·message·error·close를 마저 전달한다.
+   옛 소켓은 그때 새 연결의 무엇도 건드리면 안 된다: 전역 NET.ws를 타고 새 소켓으로 보내지 말 것,
+   새 소켓을 지우거나 닫지 말 것, 새 연결의 상태 배지·토스트를 덮지 말 것,
+   matched·hello·turn 프레임을 처리하지 말 것, 큐·코드·매치 상태를 바꾸지 말 것. */
+/* 새 연결에서 관측 가능한 전부 — 하나라도 달라지면 옛 소켓이 새 연결을 흔든 것이다 */
+function netSnap(T,fresh){
+  return JSON.stringify({live:T.NET.ws===fresh,closed:fresh.closed,sent:fresh.sent.slice(),
+    mode:T.NET.mode,started:T.NET.started,queued:T.NET.queued,code:T.NET.code,me:T.NET.me,
+    queue:T.NET.queue.length,phase:T.S&&T.S.phase,
+    status:$el(T,"netStatus").textContent,toasts:toasts(T).join("|"),log:logText(T),
+    side:$el(T,"sidePanel").innerHTML.length,overlay:$el(T,"overlayBox").innerHTML.length});
+}
+/* 옛 소켓을 버리고 새 소켓을 세운 뒤, 옛 소켓의 뒤늦은 콜백을 전부 흘려보낸다.
+   drop: "cancel"(사용자가 매칭 취소) | "close"(서버가 먼저 끊음) · oldProto: 옛 소켓이 들고 있던 협상 값 */
+function staleRace(p,drop,oldProto){
+  const T=queuedT(p);
+  const oldWs=T.wsLog[0];
+  oldWs.protocol=oldProto;
+  if(drop==="cancel") T.netCancelQueue();                      // 취소 → 이 소켓은 버려진다
+  else { openWs(oldWs,MARKER); oldWs.onclose(); typeCode(T,CODE); } // 서버가 끊음 → 코드 재입력 후 재시도
+  T.netAction({t:"setupDone"});                                 // 다시 매칭 시작 → 새 소켓
+  const freshWs=T.wsLog[1];
+  openWs(freshWs,MARKER);                                       // 새 소켓은 정상 협상까지 마쳤다
+  freshWs.onmessage({data:JSON.stringify({type:"waiting"})});    // 새 연결만의 뚜렷한 상태
+  T.TQ.length=0;
+  const before=netSnap(T,freshWs);
+  oldWs.onmessage({data:JSON.stringify({type:"matched",room:1,you:"p1"})});
+  oldWs.onmessage({data:JSON.stringify({t:"hello",seed:777,setup:T.NET.mySetup})});
+  oldWs.onmessage({data:JSON.stringify({t:"a",a:{t:"endTurn"}})});
+  oldWs.onerror();
+  oldWs.onclose();
+  oldWs.onopen();                                               // 뒤늦은 open (협상 판정까지 다시 도는 경로)
+  const after=netSnap(T,freshWs);
+  T.TQ.length=0;
+  return {T:T,oldWs:oldWs,freshWs:freshWs,before:before,after:after};
+}
+/* 대조군에서 재사용하는 실패 목록 — 비어 있어야 통과 */
+function staleBad(r){
+  const bad=[];
+  if(r.T.NET.ws!==r.freshWs) bad.push("새 소켓 연결이 지워짐");
+  if(r.freshWs.sent.length!==0) bad.push("새 소켓으로 송신");
+  if(r.freshWs.closed) bad.push("새 소켓이 닫힘");
+  if(r.after!==r.before) bad.push("새 연결 상태·화면 변경");
+  return bad;
+}
+{
+  const r=staleRace(htmlPath,"cancel",MARKER);
+  ok(r.T.wsLog.length===2&&r.oldWs!==r.freshWs&&r.T.NET.ws===r.freshWs,
+    "J1 전제: 취소된 옛 소켓과 새 소켓이 따로 있고, 지금 연결은 새 소켓이다");
+  ok(r.T.NET.ws===r.freshWs,"J2 옛 소켓의 close 가 새 소켓 연결(NET.ws)을 지우지 않는다");
+  ok(r.freshWs.sent.length===0,"J3 옛 소켓이 받은 matched·hello 로 새 소켓에 아무것도 보내지 않는다");
+  ok(r.freshWs.closed===false,"J4 옛 소켓의 콜백이 새 소켓을 닫지 않는다");
+  ok(r.after===r.before,"J5 새 연결의 상태 배지·토스트·로그·큐·코드·매치 상태가 그대로다");
+  ok(r.T.NET.started===false&&r.T.NET.mode===false&&r.T.S.phase!=="play","J6 옛 소켓의 hello 로는 대국이 시작되지 않는다");
+  ok(r.T.NET.queue.length===0,"J7 옛 소켓의 액션 프레임은 재생 큐에 들어가지 않는다");
+  ok(r.oldWs.closed===true,"J8 버려진 소켓은 자기만 닫는다");
+}
+{
+  const r=staleRace(htmlPath,"cancel",CODE); // 옛 소켓은 협상까지 어긋나 있었다 — 그 실패 처리도 새 연결을 건드리면 안 된다
+  ok(staleBad(r).length===0,"J9 협상이 어긋난 옛 소켓의 뒤늦은 open 도 새 연결의 코드·큐·안내를 덮지 않는다 ["+staleBad(r).join(",")+"]");
+  ok(r.T.NET.code===CODE&&r.T.NET.queued===true,"J10 새 연결의 접속 코드·큐 상태가 옛 소켓의 실패로 버려지지 않는다");
+  ok(surfaces(r.T).indexOf(CODE)<0,"J11 그 과정에서 코드가 화면·저장소 어디에도 새지 않는다");
+}
+{
+  const r=staleRace(htmlPath,"close",MARKER); // 서버가 먼저 끊고 재접속한 경우
+  ok(staleBad(r).length===0,"J12 서버가 끊은 뒤 재접속한 경우에도 옛 소켓의 뒤늦은 콜백은 새 연결을 흔들지 못한다 ["+staleBad(r).join(",")+"]");
+}
+{
+  /* 음성 대조군(mutation control) — 이 회귀 검사가 실제로 무언가를 잡는지 스스로 증명한다.
+     소켓 동일성 확인 live()를 항상 참으로 바꾼 사본 = 이 수정 이전(ed7fe345)의 동작이다.
+     그 사본에서는 위 J 검사가 반드시 실패해야 한다 — 실패하지 않으면 검사가 비어 있는 것이다. */
+  const fs=require("fs"), os=require("os"), path=require("path");
+  const GUARD="const live=()=>NET.ws===sock;";
+  const src=fs.readFileSync(htmlPath,"utf8");
+  ok(src.indexOf(GUARD)>=0,"J13 전제: 소켓 동일성 확인(live)이 제품 소스에 있다");
+  const mutantPath=path.join(os.tmpdir(),"digitduel_stale_mutant_"+process.pid+".html");
+  fs.writeFileSync(mutantPath,src.replace(GUARD,"const live=()=>true;"));
+  const caught=[];
+  for(const c of [["cancel",MARKER],["cancel",CODE],["close",MARKER]]){
+    let bad;
+    try{ bad=staleBad(staleRace(mutantPath,c[0],c[1])); }catch(e){ bad=["예외: "+e.message]; }
+    caught.push(c[0]+"/"+(c[1]===CODE?"비마커":"마커")+"→"+(bad.length?bad.join("+"):"잡지 못함"));
+  }
+  try{ fs.unlinkSync(mutantPath); }catch(e){}
+  ok(caught.every(x=>x.indexOf("잡지 못함")<0),
+    "J14 음성 대조군: 동일성 확인을 없앤 사본(=수정 전 동작)에서는 세 시나리오가 모두 실패로 잡힌다 ["+caught.join(" | ")+"]");
 }
 
 console.log(`\n=== smoke_online: pass ${pass} / fail ${fail} ===`);
