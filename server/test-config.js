@@ -78,26 +78,33 @@ function startServer(env) {
   });
 }
 
-const SECRET = 'S3CRET,CODE99';   // 쉼표 포함 — 거부 대상이면서, 로그 유출 여부를 볼 표식이기도 하다
+// 상한을 넘기되 'xxx…' 처럼 뭉개지지 않게 — 반향 여부를 찾을 때 눈에 띄는 값이어야 한다.
+const OVERLONG = 'L0NGCODE'.repeat(Math.ceil((S.MAX_ACCESS_CODE_LENGTH + 1) / 8));
 
+// 각 케이스는 자기가 주입한 값(secret)을 들고 다닌다. 한 케이스의 값이 다른 케이스의 출력에
+// 없다는 것은 아무것도 증명하지 못하므로, 반향 검사는 언제나 그 케이스 자신이 넣은 값으로 한다.
+// 공개 마커처럼 비밀이 아닌 값도 포함한다 — 거부 사유를 알리자고 거부된 입력을 되풀이하면
+// 그 값이 로그·터미널 기록에 남고, 기록에는 "코드로 쓰인 값"으로 남는다.
+// DD_ACCESS_CODE 가 없는 바인드 전용 케이스만 secret 을 생략한다.
 const ABORT_CASES = [
-  [{ DD_ACCESS_CODE: SECRET }, '쉼표 포함 코드'],
-  [{ DD_ACCESS_CODE: ' PADDED12 ' }, '앞뒤 공백 코드'],
-  [{ DD_ACCESS_CODE: '코드코드코드코드' }, '비ASCII 코드'],
-  [{ DD_ACCESS_CODE: 'x'.repeat(S.MAX_ACCESS_CODE_LENGTH + 1) }, '과길이 코드'],
-  [{ DD_ACCESS_CODE: MARKER }, '공개 마커를 코드로 지정'],
-  [{ DD_BIND: '0.0.0.0' }, '옵트인 없는 0.0.0.0 바인드'],
-  [{ DD_BIND: '192.168.0.5' }, '옵트인 없는 LAN 주소 바인드'],
-  [{ DD_LAN: '1', DD_BIND: '8.8.8.8', DD_ACCESS_CODE: CODE }, 'LAN 옵트인 + 공인 주소 바인드'],
+  { env: { DD_ACCESS_CODE: 'S3CRET,CODE99' }, label: '쉼표 포함 코드', secret: 'S3CRET,CODE99' },
+  { env: { DD_ACCESS_CODE: ' PADDED12 ' }, label: '앞뒤 공백 코드', secret: 'PADDED12' },
+  { env: { DD_ACCESS_CODE: '코드코드코드코드' }, label: '비ASCII 코드', secret: '코드코드코드코드' },
+  { env: { DD_ACCESS_CODE: OVERLONG }, label: '과길이 코드', secret: OVERLONG },
+  { env: { DD_ACCESS_CODE: MARKER }, label: '공개 마커를 코드로 지정', secret: MARKER },
+  { env: { DD_ACCESS_CODE: MARKER.toUpperCase() }, label: '공개 마커 대문자 변형', secret: MARKER.toUpperCase() },
+  { env: { DD_BIND: '0.0.0.0' }, label: '옵트인 없는 0.0.0.0 바인드' },
+  { env: { DD_BIND: '192.168.0.5' }, label: '옵트인 없는 LAN 주소 바인드' },
+  { env: { DD_LAN: '1', DD_BIND: '8.8.8.8', DD_ACCESS_CODE: CODE }, label: 'LAN 옵트인 + 공인 주소 바인드', secret: CODE },
 ];
 
 async function abortTests() {
   section('기동 fail-closed — 잘못된 설정은 listen 전에 중단');
-  for (const [env, label] of ABORT_CASES) {
+  for (const { env, label, secret } of ABORT_CASES) {
     const r = await startServer(env);
     eq(r.code, 1, `${label} — 종료 코드 1`);
     ok(!r.out.includes('listening'), `${label} — listen 하지 않는다`);
-    ok(!r.out.includes(SECRET), `${label} — 실패 로그에 코드 값이 새지 않는다`);
+    if (secret) ok(!r.out.includes(secret), `${label} — 실패 로그에 자기가 넣은 값이 새지 않는다`);
   }
 }
 

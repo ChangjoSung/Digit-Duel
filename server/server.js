@@ -51,9 +51,11 @@ const ACCESS_CODE = (() => {
   if (injected === undefined || injected === '') return S.generateAccessCode(); // 미설정 → 런타임 생성
   const checked = S.validateAccessCode(injected);
   if (!checked.ok) {
+    // 사유만 알린다. 거부된 주입값은 어떤 형태로도 되풀이하지 않는다 — 공개 마커라도
+    // 마찬가지다. 그 값을 도로 찍으면 "코드로 쓴 값"이 로그·터미널 기록에 남는다.
     abort(`DD_ACCESS_CODE 가 유효하지 않습니다 (사유: ${checked.reason}). `
       + `공백·쉼표·세미콜론·비ASCII 없이 ${S.MIN_ACCESS_CODE_LENGTH}~${S.MAX_ACCESS_CODE_LENGTH}자, `
-      + `공개 마커(${S.PROTOCOL_MARKER})와 다른 값이어야 합니다.`);
+      + `공개 프로토콜 마커와 다른 값이어야 합니다. 마커 값은 server/README.md 를 보세요.`);
   }
   return checked.code;
 })();
