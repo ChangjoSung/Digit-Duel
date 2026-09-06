@@ -18,17 +18,45 @@ const S = require('./security');
 
 const PORT = Number(process.env.PORT || 8080);
 
-// 기본은 루프백 전용. LAN 공개는 DD_LAN=1 (또는 --lan) 명시적 옵트인일 때만.
-const LAN_OPT_IN = process.env.DD_LAN === '1' || process.argv.includes('--lan');
-const BIND = process.env.DD_BIND || (LAN_OPT_IN ? '0.0.0.0' : '127.0.0.1');
-
-// 접근 코드는 매 기동마다 새로 만든다. 저장소에 비밀값을 두지 않는다.
-// DD_ACCESS_CODE 로 외부(런처·CI)에서 주입할 수 있으나 기본값은 없다.
-const ACCESS_CODE = (process.env.DD_ACCESS_CODE || '').trim() || S.generateAccessCode();
-if (ACCESS_CODE.length < 8) {
-  console.error('[보안] DD_ACCESS_CODE 는 8자 이상이어야 합니다. 기동을 중단합니다.');
+// 설정이 어긋나면 listen 하기 전에 멈춘다. 잘못된 설정으로 "일단 뜨고 보는" 서버는
+// 안내문(루프백 전용·코드 인증)과 실제 노출이 어긋난 채로 돌아간다 — 그게 더 위험하다.
+// 실패 메시지에는 사유(reason)만 싣고 값 자체는 절대 출력하지 않는다.
+function abort(message) {
+  console.error(`[보안] ${message} 기동을 중단합니다.`);
   process.exit(1);
 }
+
+// 기본은 루프백 전용. LAN 공개는 DD_LAN=1 (또는 --lan) 명시적 옵트인일 때만.
+const LAN_OPT_IN = process.env.DD_LAN === '1' || process.argv.includes('--lan');
+
+// DD_BIND 는 노출 정책과 대조한다. 옵트인 없이 0.0.0.0 을 조용히 받아들이면
+// "이 PC 전용"이라고 안내하면서 모든 인터페이스에서 listen 하게 된다.
+const bindChoice = S.resolveBindAddress(process.env.DD_BIND, LAN_OPT_IN);
+if (!bindChoice.ok) {
+  abort({
+    wildcard_without_lan: 'DD_BIND 가 전체 인터페이스(0.0.0.0·::)를 가리키는데 DD_LAN 옵트인이 없습니다. LAN 공개는 DD_LAN=1 로 명시하세요.',
+    not_loopback: 'DD_LAN 옵트인 없이는 DD_BIND 에 루프백 주소(127.0.0.1·::1)만 지정할 수 있습니다.',
+    not_private: 'DD_BIND 가 사설 대역이 아닙니다. 외부망(공인 IP) 공개는 지원하지 않습니다.',
+  }[bindChoice.reason] || `DD_BIND 가 유효하지 않습니다 (사유: ${bindChoice.reason}).`);
+}
+const BIND = bindChoice.bind;
+
+// 접근 코드는 매 기동마다 새로 만든다. 저장소에 비밀값을 두지 않는다.
+// DD_ACCESS_CODE 로 외부(런처·CI)에서 주입할 수 있으나 기본값은 없다. 주입값은 하위 프로토콜
+// 토큰으로만 전달되므로, 그 통로가 실어 나를 수 없는 값이면 기동을 막는다 — 그대로 뜨면
+// "코드를 설정했는데 아무도 못 붙는" 조용한 고장이거나(공백·쉼표·비ASCII·과길이),
+// 공개 마커와 같아 비밀이 아닌 값(digit-duel.v1)이 된다.
+const ACCESS_CODE = (() => {
+  const injected = process.env.DD_ACCESS_CODE;
+  if (injected === undefined || injected === '') return S.generateAccessCode(); // 미설정 → 런타임 생성
+  const checked = S.validateAccessCode(injected);
+  if (!checked.ok) {
+    abort(`DD_ACCESS_CODE 가 유효하지 않습니다 (사유: ${checked.reason}). `
+      + `공백·쉼표·세미콜론·비ASCII 없이 ${S.MIN_ACCESS_CODE_LENGTH}~${S.MAX_ACCESS_CODE_LENGTH}자, `
+      + `공개 마커(${S.PROTOCOL_MARKER})와 다른 값이어야 합니다.`);
+  }
+  return checked.code;
+})();
 
 const LIMITS = {
   maxUrlLength: 2048,

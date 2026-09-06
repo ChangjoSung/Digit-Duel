@@ -38,6 +38,36 @@ function isPrivateIp(ip) {
   return false;
 }
 
+/* ===== 바인드 주소 판정 (기동 fail-closed) ===== */
+
+// 모든 인터페이스를 뜻하는 와일드카드. 이것만은 LAN 옵트인의 기본값이라 예외로 다룬다.
+const WILDCARD_BINDS = new Set(['0.0.0.0', '::', '*']);
+
+// DD_BIND 를 노출 정책(LAN 옵트인 여부)과 대조한다. 피어 검사(peerAllowed)가 뒤에서 한 번 더
+// 거르지만, 그건 이미 열린 소켓에 붙은 상대를 돌려보내는 것이지 소켓을 안 여는 것이 아니다.
+// 루프백 전용 모드에서 DD_BIND=0.0.0.0 을 조용히 받아들이면 "이 PC 전용"이라고 안내하면서
+// 실제로는 모든 인터페이스에서 listen 하게 된다 — 그래서 여기서 기동 자체를 막는다.
+// 반환: { ok:true, bind, source } 또는 { ok:false, reason }
+function resolveBindAddress(rawBind, lanOptIn) {
+  const raw = typeof rawBind === 'string' ? rawBind.trim() : '';
+  if (!raw) return { ok: true, bind: lanOptIn ? '0.0.0.0' : '127.0.0.1', source: 'default' };
+
+  const addr = normalizeIp(raw);
+  const wildcard = WILDCARD_BINDS.has(addr);
+  const bind = wildcard ? (addr === '*' ? '0.0.0.0' : addr) : addr;
+
+  if (!lanOptIn) {
+    // 옵트인 없이는 명시적 루프백 주소만. 와일드카드·호스트명·그 밖의 주소는 전부 거부한다.
+    if (wildcard) return { ok: false, reason: 'wildcard_without_lan' };
+    if (!isLoopbackIp(addr)) return { ok: false, reason: 'not_loopback' };
+    return { ok: true, bind, source: 'env' };
+  }
+  // LAN 옵트인이어도 공인 주소에는 바인드하지 않는다 (외부망 공개 경로는 위협 모델 밖).
+  if (wildcard) return { ok: true, bind, source: 'env' };
+  if (!isPrivateIp(addr)) return { ok: false, reason: 'not_private' };
+  return { ok: true, bind, source: 'env' };
+}
+
 /* ===== 접근 코드 (런타임 생성 — 저장소에 비밀값을 커밋하지 않는다) ===== */
 
 // 혼동하기 쉬운 글자(I·L·O·U·0·1)를 뺀 Crockford 계열 알파벳
@@ -128,6 +158,27 @@ function presentedAccessCode(header) {
 function selectProtocol(protocols) {
   const list = protocols instanceof Set ? Array.from(protocols) : (Array.isArray(protocols) ? protocols : []);
   return list.includes(PROTOCOL_MARKER) ? PROTOCOL_MARKER : false;
+}
+
+/* ===== 주입된 접근 코드 검증 (기동 fail-closed) ===== */
+
+// DD_ACCESS_CODE 는 Sec-WebSocket-Protocol 토큰으로만 전달되므로, 그 통로가 실어 나를 수 있는
+// 값만 허용한다. 공백·쉼표·세미콜론·비ASCII 는 헤더에서 토큰이 쪼개지거나 깨져 "설정은 됐는데
+// 아무도 못 붙는" 조용한 고장이 되고, 공개 마커와 같은 값은 비밀이 아니라 누구나 아는 값이 된다.
+// 그래서 검증은 서버가 뜨기 전에 하고, 어긋나면 기동을 중단한다(값은 절대 되돌려 담지 않는다).
+// 반환: { ok:true, code } 또는 { ok:false, reason }
+const MIN_ACCESS_CODE_LENGTH = 8;
+const MAX_ACCESS_CODE_LENGTH = MAX_PROTOCOL_LENGTH; // 헤더 토큰 상한과 같게 묶는다
+
+function validateAccessCode(raw) {
+  if (typeof raw !== 'string' || raw === '') return { ok: false, reason: 'absent' };
+  if (/\s/.test(raw)) return { ok: false, reason: 'whitespace' };            // 앞뒤 공백 포함 — trim 하지 않고 거부
+  if (/[^\x21-\x7e]/.test(raw)) return { ok: false, reason: 'non_ascii' };   // 제어문자·비ASCII
+  if (raw.length < MIN_ACCESS_CODE_LENGTH) return { ok: false, reason: 'too_short' };
+  if (raw.length > MAX_ACCESS_CODE_LENGTH) return { ok: false, reason: 'too_long' };
+  if (!PROTOCOL_TOKEN.test(raw)) return { ok: false, reason: 'bad_char' };   // 쉼표·세미콜론·따옴표 등
+  if (raw.toLowerCase() === PROTOCOL_MARKER) return { ok: false, reason: 'public_marker' };
+  return { ok: true, code: raw };
 }
 
 /* ===== HTTP 정적 경로 ===== */
@@ -420,6 +471,8 @@ module.exports = {
   isLoopbackIp,
   isPrivateIp,
   generateAccessCode,
+  validateAccessCode,
+  resolveBindAddress,
   safeEqual,
   resolveStaticPath,
   parseOfferedProtocols,
@@ -438,4 +491,7 @@ module.exports = {
   PROTOCOL_MARKER,
   MAX_OFFERED_PROTOCOLS,
   MAX_PROTOCOL_LENGTH,
+  MIN_ACCESS_CODE_LENGTH,
+  MAX_ACCESS_CODE_LENGTH,
+  WILDCARD_BINDS,
 };
