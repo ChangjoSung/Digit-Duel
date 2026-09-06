@@ -5,10 +5,11 @@
   "scripts": {
     "start": "node server.js",
     "start:lan": "node server.js --lan",
-    "test": "node test.js && node test-security.js && node test-config.js",
+    "test": "node test.js && node test-security.js && node test-config.js && node test-launcher.js",
     "test:protocol": "node test.js",
     "test:security": "node test-security.js",
-    "test:config": "node test-config.js"
+    "test:config": "node test-config.js",
+    "test:launcher": "node test-launcher.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
