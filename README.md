@@ -212,3 +212,9 @@ cd server && npm install && npm test
 ## 문서
 
 규칙·수치의 진실 원본은 Notion 기준 문서이며, 저장소 규약과 부서별 작업 계약은 [`CLAUDE.md`](CLAUDE.md)에 정리되어 있습니다. 데모의 수치 상수는 승인 전 임시값이라 밸런싱 조정은 보류 백로그로 관리합니다. 기획에 없는 내용은 임의로 구현하지 않고 `[기획 필요]`로 보고합니다.
+
+## 라이선스
+
+소스 코드·테스트·설정·문서는 [Apache License 2.0](LICENSE)으로 배포됩니다. 각 기여자는 자신의 기여분에 대한 저작권을 유지하며, 자세한 귀속 사항은 [`NOTICE`](NOTICE)를 확인하세요.
+
+Digit-Duel/Digit Dual 명칭과 브랜딩, `docs/screenshots/`의 렌더링된 게임 화면은 Apache-2.0 대상이 아닙니다. 해당 자산의 범위와 이용 조건은 [`ASSET-LICENSE.md`](ASSET-LICENSE.md)에 별도로 명시되어 있습니다. 기여 전에는 [`CONTRIBUTING.md`](CONTRIBUTING.md)를 확인하세요.
