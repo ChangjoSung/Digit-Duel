@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 774" width="900" height="774"
+     role="img" aria-labelledby="ovTitle ovDesc">
+  <title id="ovTitle">그림으로 보는 게임 방법 — 튜토리얼 10단계 요약</title>
+  <desc id="ovDesc">데모에 들어 있는 10단계 튜토리얼을 두 열 다섯 줄의 카드로 정리한 그림입니다. 각 카드는 단계 번호, 아이콘, 단계 제목, 그리고 그 단계의 핵심 규칙 두 줄로 이루어져 있습니다. 순서대로 이기는 법 세 가지, 말 5가지와 숨은 정체, 움직이기와 숲에 숨기, 흔적과 탐색, 옆에 붙으면 꼭 싸워요, 폭탄과 함정, 잡아오기와 도망치기, 텔레포트, 버닝 타임, 빠른 복습입니다.</desc>
+  <style>
+    /* 로컬 폰트만 사용 — 외부 리소스·스크립트 없음 */
+    .dd { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+    .h1 { font-size: 20px; font-weight: 700; fill: #1f2328; }
+    .h2 { font-size: 13px; fill: #57606a; }
+    .num { font-size: 12.5px; font-weight: 700; fill: #ffffff; }
+    .ico { font-size: 18px; }
+    .ttl { font-size: 16px; font-weight: 700; fill: #1f2328; }
+    .fct { font-size: 12.5px; fill: #57606a; }
+    .card { fill: #f6f8fa; stroke: #d8dee4; stroke-width: 1; }
+    .badge { fill: #1f6feb; }
+  </style>
+
+  <rect x="0.5" y="0.5" width="899" height="773" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+  <g class="dd">
+    <text class="h1" x="32" y="42">그림으로 보는 게임 방법 — 튜토리얼 10단계</text>
+    <text class="h2" x="32" y="66">데모(demo/index.html) 안의 10단계 튜토리얼을 한 장으로 요약했습니다. 실제 튜토리얼은 게임에서 언제든 다시 볼 수 있습니다.</text>
+    <line x1="24" y1="80" x2="876" y2="80" stroke="#e4e8ed" stroke-width="1"/>
+
+    <!-- 1 -->
+    <g transform="translate(24,94)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">1</text>
+      <text class="ico" x="56" y="33">🏆</text>
+      <text class="ttl" x="87" y="33">이기는 법 세 가지</text>
+      <text class="fct" x="18" y="66">상대 왕 잡기 · 내 왕이 상대 끝줄에 서기</text>
+      <text class="fct" x="18" y="90">상대의 하수인 6 + 동료 2 를 모두 없애기</text>
+    </g>
+    <!-- 2 -->
+    <g transform="translate(460,94)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">2</text>
+      <text class="ico" x="56" y="33">🎭</text>
+      <text class="ttl" x="87" y="33">말 5가지와 숨은 정체</text>
+      <text class="fct" x="18" y="66">하수인 6 · 동료 2 · 왕 1 · 폭탄 3 · 함정 2 = 14개</text>
+      <text class="fct" x="18" y="90">상대에겐 전부 물음표 · 싸우고 나면 정체 공개</text>
+    </g>
+    <!-- 3 -->
+    <g transform="translate(24,230)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">3</text>
+      <text class="ico" x="56" y="33">🌲</text>
+      <text class="ttl" x="87" y="33">움직이기와 숲에 숨기</text>
+      <text class="fct" x="18" y="66">내 말 하나를 위·아래·옆 한 칸 · 대각선 불가</text>
+      <text class="fct" x="18" y="90">숲의 말은 상대가 바로 옆에 와야 보입니다</text>
+    </g>
+    <!-- 4 -->
+    <g transform="translate(460,230)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">4</text>
+      <text class="ico" x="56" y="33">🔍</text>
+      <text class="ttl" x="87" y="33">흔적과 탐색</text>
+      <text class="fct" x="18" y="66">말이 서면 흔적 → 다음 차례에 탐색으로 선물 획득</text>
+      <text class="fct" x="18" y="90">하수인·동료·왕만 가능 · 폭탄·함정은 못 합니다</text>
+    </g>
+    <!-- 5 -->
+    <g transform="translate(24,366)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">5</text>
+      <text class="ico" x="56" y="33">⚔️</text>
+      <text class="ttl" x="87" y="33">옆에 붙으면 꼭 싸워요</text>
+      <text class="fct" x="18" y="66">새로 인접하면 강제 전투 · 한 차례 최대 2번</text>
+      <text class="fct" x="18" y="90">불 → 풀 → 번개 → 물 → 불 순서로 이깁니다</text>
+    </g>
+    <!-- 6 -->
+    <g transform="translate(460,366)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">6</text>
+      <text class="ico" x="56" y="33">💣</text>
+      <text class="ttl" x="87" y="33">폭탄과 함정</text>
+      <text class="fct" x="18" y="66">하수인이 폭탄을 건드리면 둘 다 사라집니다</text>
+      <text class="fct" x="18" y="90">동료·왕은 살아남음 · 함정은 내 차례 2번 정지</text>
+    </g>
+    <!-- 7 -->
+    <g transform="translate(24,502)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">7</text>
+      <text class="ico" x="56" y="33">🔴</text>
+      <text class="ttl" x="87" y="33">잡아오기와 도망치기</text>
+      <text class="fct" x="18" y="66">상대 하수인 HP 30% 아래 → 몬스터볼 (성공률 70%)</text>
+      <text class="fct" x="18" y="90">내 말 HP 50% 아래 → 도망 (성공률 50%)</text>
+    </g>
+    <!-- 8 -->
+    <g transform="translate(460,502)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">8</text>
+      <text class="ico" x="56" y="33">🌀</text>
+      <text class="ttl" x="87" y="33">텔레포트(순간이동)</text>
+      <text class="fct" x="18" y="66">내 말이 상대편 땅에 들어가 있으면 켜집니다</text>
+      <text class="fct" x="18" y="90">내 말 두 개의 자리 교환 · 한 경기에 2번</text>
+    </g>
+    <!-- 9 -->
+    <g transform="translate(24,638)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">9</text>
+      <text class="ico" x="56" y="33">🔥</text>
+      <text class="ttl" x="87" y="33">버닝 타임(불타는 시간)</text>
+      <text class="fct" x="18" y="66">65번째 턴부터 곧게 2칸까지 · 꺾기는 안 됩니다</text>
+      <text class="fct" x="18" y="90">상대 숲·상대 땅은 1칸 · 함정은 여전히 고정</text>
+    </g>
+    <!-- 10 -->
+    <g transform="translate(460,638)">
+      <rect class="card" x="0.5" y="0.5" width="415" height="119" rx="8"/>
+      <rect class="badge" x="16" y="16" width="28" height="22" rx="6"/>
+      <text class="num" x="30" y="31.5" text-anchor="middle">10</text>
+      <text class="ico" x="56" y="33">🏁</text>
+      <text class="ttl" x="87" y="33">빠른 복습 — 첫 차례 체크리스트</text>
+      <text class="fct" x="18" y="66">주 행동 1개 → 붙었으면 강제 전투 → 턴 종료</text>
+      <text class="fct" x="18" y="90">숲에 숨고, 흔적을 찾고, 물음표 뒤를 추리하기</text>
+    </g>
+  </g>
+</svg>
