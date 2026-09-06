@@ -133,5 +133,68 @@ const FILE={protocol:"file:",host:""};
   ok(T.wsLog.length===0,"C14 로드만으로는 접속하지 않는다 ([접속]을 눌러야 한다)");
 }
 
+/* ===== D. 하위 프로토콜 협상 결과 — 되돌아온 값은 화면에 싣지 않는다 =====
+   서버 계약(server/security.js selectProtocol)상 되돌아오는 하위 프로토콜은 공개 마커 하나뿐이다.
+   클라이언트가 제시한 토큰은 [마커, 접속 코드] 둘이므로, 마커가 아닌 값이 선택돼 돌아왔다면
+   그 값이 접속 코드 자신일 수 있다. 여기서 값을 그대로 출력하면 서버(또는 중간자)가
+   고른 문자열 하나로 코드가 화면·로그에 그대로 찍힌다 — 그래서 값을 되풀이하지 않고 끊는다. */
+{
+  // 정상 경로: 서버가 공개 마커를 골라 돌려준다
+  const T=load(HTTP).connect("192.168.0.7:8080",CODE);
+  const ws=T.wsLog[0];
+  ws.readyState=1; ws.protocol=MARKER;
+  ws.onopen();
+  ok(ws.readyState===1,"D1 마커가 선택되면 소켓을 유지한다");
+  ok(/서버 연결됨/.test(T.status()),"D2 정상 협상이면 접속 안내를 보여준다");
+  ok(T.status().indexOf(MARKER)<0,"D3 정상 경로에서도 협상 값을 화면에 되풀이하지 않는다");
+  T.doc.getElementById("msg").value="hi";
+  T.doc.getElementById("send").onclick();
+  ok(ws.sent.length===1,"D4 정상 협상 뒤에는 릴레이 송신이 된다 (기존 경로 회귀)");
+}
+{
+  // 공격 경로: 서버가 우리가 제시한 '접속 코드' 토큰을 골라 되돌려준다
+  const T=load(HTTP).connect("192.168.0.7:8080",CODE);
+  const ws=T.wsLog[0];
+  ok(ws.protocols[1]===CODE,"D5 전제: 코드가 하위 프로토콜 토큰으로 제시돼 있다 (서버가 고를 수 있다)");
+  ws.readyState=1; ws.protocol=CODE; // 서버가 비밀 토큰을 선택해 돌려준 상황
+  ws.onopen();
+  ok(ws.readyState===3,"D6 마커가 아닌 값이 선택되면 즉시 소켓을 닫는다");
+  const st=T.status();
+  ok(st.indexOf(CODE)<0,"D7 상태 줄에 되돌아온 비밀값(=접속 코드)이 없다"+(st.indexOf(CODE)<0?"":" — 노출: "+st));
+  ok(T.logText().indexOf(CODE)<0,"D8 로그에도 비밀값이 남지 않는다");
+  ok(ws.url.indexOf(CODE)<0,"D9 URL에도 비밀값이 없다");
+  ok(/프로토콜 협상/.test(st),"D10 협상 실패는 값 없는 고정 안내 한 줄로만 알린다");
+  // 연결된 것으로 취급하지 않는다 — 닫힌 소켓으로는 송신 경로가 열리지 않는다
+  T.doc.getElementById("msg").value="hi";
+  T.doc.getElementById("send").onclick();
+  ok(ws.sent.length===0&&/먼저 접속하세요/.test(T.status()),"D11 협상 실패한 소켓은 접속으로 취급하지 않는다");
+  // 뒤이어 오는 close/error/message 가 안내를 덮거나 값을 흘리지 않는다
+  T.doc.getElementById("status").textContent=st;
+  ws.onclose(); ws.onerror();
+  ok(T.status()===st,"D12 뒤따르는 close·error 가 협상 실패 안내를 덮지 않는다");
+  ws.onmessage({data:JSON.stringify({type:"matched",room:CODE,you:"p1"})});
+  ok(T.status()===st&&T.logText().indexOf(CODE)<0,"D13 협상 실패 뒤 도착한 프레임은 읽지도 기록하지도 않는다");
+}
+{
+  // 마커도 코드도 아닌 임의의 값 · 빈 값 — 어느 쪽이든 계약 밖이므로 같은 처리
+  const bad=[];
+  for(const sel of ["x-other","", MARKER.toUpperCase(), MARKER+" ", CODE.toLowerCase()]){
+    const T=load(HTTP).connect("192.168.0.7:8080",CODE);
+    const ws=T.wsLog[0];
+    ws.readyState=1; ws.protocol=sel; ws.onopen();
+    const st=T.status();
+    if(ws.readyState!==3||!/프로토콜 협상/.test(st)||(sel&&st.indexOf(sel)>=0)) bad.push(JSON.stringify(sel));
+  }
+  ok(bad.length===0,"D14 마커와 정확히 같지 않은 선택값은 모두 끊고, 그 값을 안내에 넣지 않는다"
+    +(bad.length?" — 실패: "+bad.join(","):""));
+}
+{
+  // 정적: 협상 값을 상태·로그로 흘려보내는 표현 자체가 없다
+  ok(!/\$\{[^}]*\.protocol[^}]*\}/.test(script),"D15 템플릿 문자열에 하위 프로토콜 값을 끼워 넣지 않는다");
+  ok(!/(?:status|log)\s*\([^)]*\bws\.protocol/.test(script)&&!/(?:status|log)\s*\([^)]*\bsock\.protocol/.test(script),
+    "D16 status()·log() 인자에 소켓 protocol 값이 들어가지 않는다");
+  ok(/\.protocol\s*!==\s*PROTOCOL_MARKER/.test(script),"D17 협상 값은 공개 마커와의 정확 비교에만 쓴다");
+}
+
 console.log(`\n=== smoke_testclient: pass ${pass} / fail ${fail} ===`);
 if(fail){ console.log("실패:", fails.join(" | ")); process.exit(1); }

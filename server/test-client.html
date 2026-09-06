@@ -53,6 +53,8 @@
     const PROTOCOL_MARKER = 'digit-duel.v1';
     const CODE_MIN = 8, CODE_MAX = 64;
     const CODE_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/; // RFC 7230 token — 서버 validateAccessCode 와 같은 집합
+    // 협상 실패 안내는 고정 문구 하나다 — 선택된 값도, 접속 코드도 담지 않는다.
+    const PROTO_FAIL_MSG = '연결 실패: 서버와 하위 프로토콜 협상이 맞지 않아 접속을 끊었습니다 — 서버 버전을 확인하세요.';
 
     if (location.protocol === 'file:') $('fileWarn').hidden = false;
     $('addr').value = location.protocol.indexOf('http') === 0 ? location.host : '127.0.0.1:8080';
@@ -143,10 +145,25 @@
         return;
       }
       status('연결 중… ' + url);
-      ws.onopen = () => status(`서버 연결됨 (하위 프로토콜: ${ws.protocol || '없음'}) — 매칭 대기`);
-      ws.onerror = () => status('연결 오류 — 서버가 켜져 있는지, 접속 코드가 맞는지 확인하세요. (서버는 거부 사유를 알려주지 않습니다)');
-      ws.onclose = () => status('서버 연결 끊김 — 코드를 다시 입력해 접속하세요.');
+      const sock = ws;   // 이 소켓의 핸들러는 이 소켓만 본다 — 재접속으로 ws 가 바뀌어도 섞이지 않는다
+      let protoFail = false;
+      /* 협상 결과는 화면에 싣지 않는다. 서버 계약(server/security.js)상 되돌아오는 하위 프로토콜은
+         공개 마커 하나뿐이고, 우리가 제시한 토큰은 [마커, 접속 코드] 둘이다. 마커가 아닌 값이
+         선택됐다면 그 값은 접속 코드 자신일 수 있으므로 — 서버가 계약을 어겼든, 중간에 누가
+         끼어들었든 — 값을 되풀이하지 않고 즉시 끊는다. */
+      ws.onopen = () => {
+        if (sock.protocol !== PROTOCOL_MARKER) {
+          protoFail = true;
+          try { sock.close(); } catch (e) {}
+          status(PROTO_FAIL_MSG);
+          return;
+        }
+        status('서버 연결됨 — 매칭 대기');
+      };
+      ws.onerror = () => { if (protoFail) return; status('연결 오류 — 서버가 켜져 있는지, 접속 코드가 맞는지 확인하세요. (서버는 거부 사유를 알려주지 않습니다)'); };
+      ws.onclose = () => { if (protoFail) return; status('서버 연결 끊김 — 코드를 다시 입력해 접속하세요.'); };
       ws.onmessage = (e) => {
+        if (protoFail) return; // 계약을 벗어난 협상 뒤에 오는 프레임은 읽지 않는다
         let m;
         try { m = JSON.parse(e.data); } catch { log('수신(raw): ' + e.data); return; }
         if (m.type === 'waiting') status('상대 기다리는 중... (탭 하나 더 여세요)');
