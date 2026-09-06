@@ -4,50 +4,187 @@
   <meta charset="utf-8">
   <title>PvP 테스트 클라이언트</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
+    body { font-family: sans-serif; max-width: 640px; margin: 2rem auto; }
     #log { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 8px; font-family: monospace; font-size: 13px; }
     #status { font-weight: bold; margin-bottom: 8px; }
-    input { width: 70%; }
+    .row { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
+    .row input { flex: 1; }
+    .note { color: #666; font-size: 13px; line-height: 1.5; }
+    .warn { color: #a33; font-size: 13px; line-height: 1.5; }
   </style>
 </head>
 <body>
   <h2>PvP 테스트 클라이언트</h2>
-  <div id="status">연결 중...</div>
+  <div id="status">대기 중 — 주소와 접속 코드를 입력하고 [접속]을 누르세요.</div>
+
+  <!-- #63: 주소와 접속 코드는 반드시 서로 다른 칸이다. 코드가 붙은 URL 을 한 번 만들면 그대로
+       복사돼 주소창·방문 기록·Referer·프록시 로그에 비밀값이 남는다. -->
+  <div class="row">
+    <input id="addr" placeholder="서버 주소 (예: 127.0.0.1:8080)">
+    <input id="code" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="64" placeholder="접속 코드 (서버 콘솔)">
+    <button id="connect">접속</button>
+  </div>
+  <p class="note">서버 콘솔에 <b>접속 주소</b>와 <b>접속 코드</b>가 서로 다른 줄로 출력됩니다(코드는 그 터미널에 운영자 전달용으로 한 번 표시됩니다).
+    코드는 WebSocket 업그레이드의 <code>Sec-WebSocket-Protocol</code> 헤더로만 전송되며, 이 페이지는 코드를 URL·쿼리·쿠키·브라우저 저장소·로그에 기록하지 않습니다.
+    다만 평문 <code>ws://</code> 링크에서는 그 헤더도 평문이라 같은 망의 관찰자에게는 기밀이 아닙니다 — 헤더를 쓰는 목적은 도청 방지가 아니라 주소창·방문 기록·프록시 로그에 코드가 남지 않게 하는 것입니다.
+    서버가 다시 시작되면 코드도 새로 발급됩니다.</p>
+  <p class="warn" id="fileWarn" hidden>⚠️ 이 페이지를 html 파일로 직접 연 상태(file://)입니다. 서버는 file:// 페이지의 Origin(null)을 거부하므로
+    접속되지 않습니다. 이 파일을 서버가 서빙하는 폴더(<code>demo/</code>)에 복사한 뒤
+    <code>http://127.0.0.1:8080/test-client.html</code>(또는 <code>http://&lt;서버 IP&gt;:8080/test-client.html</code>)로 여세요.</p>
+
   <div id="log"></div>
-  <p>
+  <div class="row">
     <input id="msg" placeholder="보낼 메시지 (상대에게 그대로 전달됨)">
     <button id="send">전송</button>
-  </p>
+  </div>
+
   <script>
+    const $ = (id) => document.getElementById(id);
     const log = (text) => {
-      const el = document.getElementById('log');
-      el.innerHTML += text + '<br>';
+      const el = $('log');
+      el.appendChild(document.createTextNode(text));
+      el.appendChild(document.createElement('br'));
       el.scrollTop = el.scrollHeight;
     };
-    const status = (text) => { document.getElementById('status').textContent = text; };
+    const status = (text) => { $('status').textContent = text; };
 
-    const ws = new WebSocket('ws://localhost:8080');
-    ws.onopen = () => status('서버 연결됨 — 매칭 대기');
-    ws.onclose = () => status('서버 연결 끊김');
-    ws.onmessage = (e) => {
-      let m;
-      try { m = JSON.parse(e.data); } catch { log('수신(raw): ' + e.data); return; }
-      if (m.type === 'waiting') status('상대 기다리는 중... (탭 하나 더 여세요)');
-      else if (m.type === 'matched') status(`매치 성사! 방 ${m.room}, 나는 ${m.you}`);
-      else if (m.type === 'opponent_left') status('상대가 나갔습니다');
-      log('수신: ' + e.data);
+    // 공개 마커 — 비밀값이 아니며 서버가 응답에 되돌려주는 유일한 하위 프로토콜.
+    // 클라이언트는 토큰을 정확히 2개, [마커, 접속 코드] 순서로 제시한다 (server/security.js 계약).
+    const PROTOCOL_MARKER = 'digit-duel.v1';
+    const CODE_MIN = 8, CODE_MAX = 64;
+    const CODE_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/; // RFC 7230 token — 서버 validateAccessCode 와 같은 집합
+    // 협상 실패 안내는 고정 문구 하나다 — 선택된 값도, 접속 코드도 담지 않는다.
+    const PROTO_FAIL_MSG = '연결 실패: 서버와 하위 프로토콜 협상이 맞지 않아 접속을 끊었습니다 — 서버 버전을 확인하세요.';
+
+    if (location.protocol === 'file:') $('fileWarn').hidden = false;
+    $('addr').value = location.protocol.indexOf('http') === 0 ? location.host : '127.0.0.1:8080';
+
+    let ws = null;
+
+    /* 주소 파싱·허용 판정 — 접속 코드가 나갈 수 있는 목적지를 위협 모델(로컬·내부망)로 못 박는다.
+       정규화만 하면 오타·붙여넣기로 남의 호스트에 소켓을 열게 되고, 그 순간 코드가 하위 프로토콜
+       헤더에 실려 그쪽으로 간다. localhost 와 루프백·사설·링크로컬 IP 리터럴만 허용한다
+       (서버 자신도 Host 헤더에 같은 정책을 걸고 있어 정상 서버가 그 밖에 있을 수 없다).
+       demo/index.html 의 netParseAddr 와 같은 규칙이다. */
+    function ipv4Class(h) { // null: IPv4 리터럴 아님 · true: 허용 · false: 공인
+      const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+      if (!m) return null;
+      const s = m.slice(1);
+      if (s.some((x) => x.length > 1 && x[0] === '0')) return false; // 8진수로 읽히는 표기
+      const o = s.map(Number);
+      if (o.some((n) => n > 255)) return false;
+      return o[0] === 127 || o[0] === 10 || (o[0] === 172 && o[1] >= 16 && o[1] <= 31)
+        || (o[0] === 192 && o[1] === 168) || (o[0] === 169 && o[1] === 254);
+    }
+    function ipv6Allowed(h) {
+      if (!/^[0-9a-f:]+$/.test(h) || h.indexOf(':') < 0) return false;
+      if ((h.match(/::/g) || []).length > 1) return false;
+      return h === '::1' || /^0*:(?:0*:)*0*1$/.test(h) || /^fe[89ab][0-9a-f]:/.test(h) || /^f[cd][0-9a-f]{2}:/.test(h);
+    }
+    function parseAddr(raw) {
+      let a = String(raw || '').trim();
+      if (a.indexOf('://') >= 0) a = a.slice(a.indexOf('://') + 3);
+      a = a.trim();
+      if (!a) return null;
+      if (a.indexOf('?') >= 0 || a.indexOf('#') >= 0) return null; // 쿼리·프래그먼트는 릴레이 주소가 아니다
+      const slash = a.indexOf('/');
+      if (slash >= 0) {
+        if (slash !== a.length - 1) return null; // 경로가 붙은 입력은 잘라내지 않고 거부한다
+        a = a.slice(0, -1);                      // 후행 '/' 하나만 허용
+      }
+      if (!a) return null;
+      if (a.indexOf('@') >= 0) return null; // user:pass@host — 진짜 목적지를 가리는 표기
+      let host, portRaw = null;
+      if (a.charAt(0) === '[') {
+        const e = a.indexOf(']');
+        if (e < 0) return null;
+        host = a.slice(1, e);
+        const rest = a.slice(e + 1);
+        if (rest) { if (rest.charAt(0) !== ':') return null; portRaw = rest.slice(1); }
+      } else {
+        const parts = a.split(':');
+        if (parts.length === 1) host = parts[0];
+        else if (parts.length === 2) { host = parts[0]; portRaw = parts[1]; }
+        else host = a; // 대괄호 없는 IPv6 리터럴
+      }
+      host = host.trim().toLowerCase();
+      if (!host) return null;
+      const port = portRaw === null ? '8080' : portRaw.trim();
+      if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) return null;
+      const v4 = ipv4Class(host);
+      let ipv6 = false;
+      if (host === 'localhost') { /* 허용 */ }
+      else if (v4 !== null) { if (v4 !== true) return null; }
+      else if (host.indexOf(':') >= 0) { if (!ipv6Allowed(host)) return null; ipv6 = true; }
+      else return null; // 도메인 이름
+      return (ipv6 ? '[' + host + ']' : host) + ':' + port;
+    }
+
+    $('connect').onclick = () => {
+      if (ws && ws.readyState <= 1) { status('이미 연결되어 있습니다.'); return; }
+      // 목적지 판정이 소켓 생성보다 먼저다 — 허용 밖이면 코드는 이 탭 밖으로 나가지 않는다.
+      const addr = parseAddr($('addr').value);
+      if (!addr) {
+        status('접속할 수 없는 주소입니다 — localhost·127.0.0.1 이나 같은 내부망 사설 IP 주소만 지원합니다.');
+        return;
+      }
+      const codeEl = $('code');
+      const code = codeEl.value.trim(); // 붙여넣기로 딸려온 앞뒤 공백만 제거 — 서버 코드에는 공백이 없다
+      if (code.length < CODE_MIN || code.length > CODE_MAX || !CODE_TOKEN.test(code) || code.toLowerCase() === PROTOCOL_MARKER) {
+        status(`접속 코드를 확인하세요 — ${CODE_MIN}~${CODE_MAX}자, 공백·쉼표·따옴표 불가.`); // 값 자체는 되풀이하지 않는다
+        return;
+      }
+      codeEl.value = ''; // 입력칸에 남기지 않는다
+      const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + addr;
+      try {
+        // 코드는 URL 이 아니라 하위 프로토콜 토큰으로만 나간다.
+        ws = new WebSocket(url, [PROTOCOL_MARKER, code]);
+      } catch (e) {
+        // 예외 메시지에는 거부된 토큰(=코드)이 들어 있을 수 있으므로 화면에 싣지 않는다.
+        status('연결 실패: ' + url);
+        return;
+      }
+      status('연결 중… ' + url);
+      const sock = ws;   // 이 소켓의 핸들러는 이 소켓만 본다 — 재접속으로 ws 가 바뀌어도 섞이지 않는다
+      let protoFail = false;
+      /* 협상 결과는 화면에 싣지 않는다. 서버 계약(server/security.js)상 되돌아오는 하위 프로토콜은
+         공개 마커 하나뿐이고, 우리가 제시한 토큰은 [마커, 접속 코드] 둘이다. 마커가 아닌 값이
+         선택됐다면 그 값은 접속 코드 자신일 수 있으므로 — 서버가 계약을 어겼든, 중간에 누가
+         끼어들었든 — 값을 되풀이하지 않고 즉시 끊는다. */
+      ws.onopen = () => {
+        if (sock.protocol !== PROTOCOL_MARKER) {
+          protoFail = true;
+          try { sock.close(); } catch (e) {}
+          status(PROTO_FAIL_MSG);
+          return;
+        }
+        status('서버 연결됨 — 매칭 대기');
+      };
+      ws.onerror = () => { if (protoFail) return; status('연결 오류 — 서버가 켜져 있는지, 접속 코드가 맞는지 확인하세요. (서버는 거부 사유를 알려주지 않습니다)'); };
+      ws.onclose = () => { if (protoFail) return; status('서버 연결 끊김 — 코드를 다시 입력해 접속하세요.'); };
+      ws.onmessage = (e) => {
+        if (protoFail) return; // 계약을 벗어난 협상 뒤에 오는 프레임은 읽지 않는다
+        let m;
+        try { m = JSON.parse(e.data); } catch { log('수신(raw): ' + e.data); return; }
+        if (m.type === 'waiting') status('상대 기다리는 중... (탭 하나 더 여세요)');
+        else if (m.type === 'matched') status(`매치 성사! 방 ${m.room}, 나는 ${m.you}`);
+        else if (m.type === 'opponent_left') status('상대가 나갔습니다');
+        log('수신: ' + e.data);
+      };
     };
 
-    document.getElementById('send').onclick = () => {
-      const input = document.getElementById('msg');
+    $('send').onclick = () => {
+      if (!ws || ws.readyState !== 1) { status('먼저 접속하세요.'); return; }
+      const input = $('msg');
       if (!input.value) return;
-      ws.send(JSON.stringify({ type: 'chat', text: input.value }));
+      // 릴레이 봉투 계약: 최상위는 문자열 t 를 가진 객체이고 예약 키 type 은 쓸 수 없다
+      // (서버 제어 프레임 위조 차단 — type 을 쓰면 서버가 중계하지 않고 위반으로 센다).
+      ws.send(JSON.stringify({ t: 'chat', text: input.value }));
       log('송신: ' + input.value);
       input.value = '';
     };
-    document.getElementById('msg').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') document.getElementById('send').click();
-    });
+    $('msg').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('send').click(); });
+    $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('connect').click(); });
   </script>
 </body>
 </html>

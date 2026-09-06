@@ -45,8 +45,16 @@ function setLocation(href){ global.location=mkLocation(href); if(global.window) 
 
 /* #54 REVISE: WebSocket 스텁은 load()마다 새 생성자 + 새 로그를 갖는다.
    (회귀: 모듈 전역 WS_LOG 하나를 공유하고 load()가 그것을 비워, 나중 load가 앞선 T.wsLog를 지워버렸다.) */
+/* #63: 하위 프로토콜 인자(접속 코드 통로)까지 기록한다 — new WebSocket(url, [마커, 코드]) 계약 검증용.
+   실제 브라우저처럼 배열·문자열 어느 쪽으로 넘겨도 받고, 넘기지 않으면 undefined 로 남긴다. */
 function mkWebSocket(log){
-  const F=function(url){ this.url=String(url); this.readyState=0; this.sent=[]; this.closed=false;
+  const F=function(url,protocols){
+    /* 생성 실패 재현용 스위치 — 브라우저가 하위 프로토콜 토큰을 거부하면 그 예외 메시지에 코드가 들어 있다.
+       제품 코드가 그 메시지를 화면에 싣지 않는지(#63) 검증하려면 실제로 던지는 생성자가 필요하다. */
+    if(F.throwNext){ F.throwNext=false; throw new Error(F.throwMessage||"SyntaxError: invalid subprotocol"); }
+    this.url=String(url); this.readyState=0; this.sent=[]; this.closed=false;
+    this.protocols=protocols===undefined?undefined:(Array.isArray(protocols)?protocols.map(String):[String(protocols)]);
+    this.protocol=""; // 서버가 고른 하위 프로토콜 (핸드셰이크 전에는 빈 문자열)
     this.onopen=this.onclose=this.onerror=this.onmessage=null;
     this.send=m=>{this.sent.push(m);}; this.close=()=>{this.readyState=3;this.closed=true;};
     log.push(this); };
@@ -164,7 +172,8 @@ function load(htmlPath,opts){
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
   renderSide,renderMetrics,render,startMode,modal,close,onCell,humanViewer,idLabel,
   MEMO_OPTS,MEMO_UI,memoOpt,memoSet,memoModal, // #36 추측 메모 피커
-  NET,NET_LAN_DEFAULT,netServerDefault,netActor,netAction,netPrepare,netConnect,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
+  NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
+  netServerDefault,netActor,netAction,netPrepare,netConnect,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
   TUT,TUT_STEPS,TUT_HINTS,TUT_KEY,tutStore,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
   html:${JSON.stringify(html)}};`;
   eval(code);
