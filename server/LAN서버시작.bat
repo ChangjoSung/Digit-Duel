@@ -3,18 +3,20 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
-rem Digit Dual PVP relay server - Windows one-click launcher (LOCAL ONLY).
+rem Digit Dual PVP relay server - Windows one-click launcher (LAN).
 rem
-rem This launcher has exactly one purpose: start the server bound to this PC.
-rem It reads no caller-supplied argument at all - no positional token, no
-rem argument list - never prints one, and never forwards one to server.js.
+rem This launcher has exactly one purpose: start the server open to the same
+rem router. It reads no caller-supplied argument at all - no positional token,
+rem no argument list - never prints one, and never forwards one to server.js.
 rem The command below is fixed, so double-clicking and any other way of
 rem calling this file do the same thing.
 rem
-rem For LAN play use the separate LAN서버시작.bat. There is no option here that
-rem turns this launcher into that one - the mode is the file you double-click.
+rem LAN mode lasts exactly as long as this window: no environment variable is
+rem set and no Windows setting is changed. Firewall rules, port forwarding and
+rem the browser are left untouched. For this PC only, use 서버시작.bat instead -
+rem the mode is the file you double-click.
 
-title Digit Dual PVP Server - Local only
+title Digit Dual PVP Server - LAN
 
 where node >nul 2>nul
 if errorlevel 1 (
@@ -35,9 +37,9 @@ if not exist node_modules (
 
 echo ============================================
 echo   Digit Dual PVP Server  (close = stop)
-echo   Mode: LOCAL ONLY - this PC only, binds 127.0.0.1
+echo   Mode: LAN - same router only, private addresses only
 echo ============================================
-node server.js
+node server.js --lan
 set "EXITCODE=%ERRORLEVEL%"
 echo.
 if not "%EXITCODE%"=="0" echo [ERROR] Server exited with code %EXITCODE%.
