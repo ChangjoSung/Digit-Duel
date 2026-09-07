@@ -284,19 +284,19 @@ const SKILL_KO={fire:"화염탄",water:"물대포",grass:"넝쿨 흡수",lightni
 const SKILL_ATK_BASE=22; // 위력 스케일 기준: 최종 위력 = 기술 위력 × (종 atk / 22), 사사오입
 const SKIND_KO={attack:"공격기",support:"보조기",sig:"시그니처"};
 const SKILLS={
-  // 속성 공격기 — tier: stable(안정)/effect(효과)/heavy(고위력)
-  fire_stable:{ko:"화염탄",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  fire_effect:{ko:"잔불 표식",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 화상 2R"},
-  fire_heavy:{ko:"폭염 강타",kind:"attack",cd:3,pow:38,desc:"고위력 공격기"},
-  water_stable:{ko:"물대포",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  water_effect:{ko:"침식 수류",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 약화 2회"},
-  water_heavy:{ko:"쇄도 파도",kind:"attack",cd:3,pow:32,bonusVsShield:6,desc:"대상 보호막 보유 시 +6"},
-  grass_stable:{ko:"덩굴 채찍",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  grass_effect:{ko:"흡수 새싹",kind:"attack",cd:2,pow:20,drainPct:0.4,desc:"실HP 피해의 40% 회복"},
-  grass_heavy:{ko:"가시 폭발",kind:"attack",cd:3,pow:34,selfShieldPct:0.10,desc:"자기 최대 HP 10% 보호막"},
-  lightning_stable:{ko:"전기탄",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  lightning_effect:{ko:"감전 침",kind:"attack",cd:2,pow:22,status:true,desc:"50% 확률 감전(후공 1회)"},
-  lightning_heavy:{ko:"연쇄 번개",kind:"attack",cd:3,pow:34,bonusVsStatus:6,desc:"대상 상태이상 시 +6"},
+  // 속성 공격기 — tier: stable(안정)/effect(효과)/heavy(고위력) · el: 기술 속성 (#92 v0.4.4 §2.4 — 공격 상성·상태 종류·이펙트·전투 AI 판단은 기술 속성, 방어 상성은 본체 속성)
+  fire_stable:{ko:"화염탄",kind:"attack",el:"fire",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
+  fire_effect:{ko:"잔불 표식",kind:"attack",el:"fire",tier:"effect",cd:2,pow:22,status:true,desc:"70% 확률 화상 2R"},
+  fire_heavy:{ko:"폭염 강타",kind:"attack",el:"fire",tier:"heavy",cd:3,pow:38,desc:"고위력 공격기"},
+  water_stable:{ko:"물대포",kind:"attack",el:"water",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
+  water_effect:{ko:"침식 수류",kind:"attack",el:"water",tier:"effect",cd:2,pow:22,status:true,desc:"70% 확률 약화 2회"},
+  water_heavy:{ko:"쇄도 파도",kind:"attack",el:"water",tier:"heavy",cd:3,pow:32,bonusVsShield:6,desc:"대상 보호막 보유 시 +6"},
+  grass_stable:{ko:"덩굴 채찍",kind:"attack",el:"grass",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
+  grass_effect:{ko:"흡수 새싹",kind:"attack",el:"grass",tier:"effect",cd:2,pow:20,drainPct:0.4,desc:"실HP 피해의 40% 회복"},
+  grass_heavy:{ko:"가시 폭발",kind:"attack",el:"grass",tier:"heavy",cd:3,pow:34,selfShieldPct:0.10,desc:"자기 최대 HP 10% 보호막"},
+  lightning_stable:{ko:"전기탄",kind:"attack",el:"lightning",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
+  lightning_effect:{ko:"감전 침",kind:"attack",el:"lightning",tier:"effect",cd:2,pow:22,status:true,desc:"50% 확률 감전(후공 1회)"},
+  lightning_heavy:{ko:"연쇄 번개",kind:"attack",el:"lightning",tier:"heavy",cd:3,pow:34,bonusVsStatus:6,desc:"대상 상태이상 시 +6"},
   // 공용 보조기 6종
   sup_heal:{ko:"응급 치유",kind:"support",cd:3,healPct:0.20,desc:"자기 HP 20% 회복"},
   sup_guard:{ko:"수호 자세",kind:"support",cd:3,shieldPct:0.18,desc:"최대 HP 18% 보호막"},
@@ -321,6 +321,29 @@ const ARCH_TMPL={
 };
 function archSkills(arch,el){return ARCH_TMPL[arch].map(t=>(t==="stable"||t==="effect"||t==="heavy")?el+"_"+t:t);}
 function slotPow(f,sk){return Math.round(sk.pow*f.atk/SKILL_ATK_BASE);} // 위력 스케일 (사사오입)
+/* #92 기술 속성 판정 — 공격기(el 보유)는 기술 속성, 기본 공격·시그니처·보조기·레거시 경로는 본체 속성 그대로 */
+const SKILL_TIER_KO={stable:"안정",effect:"효과",heavy:"고위력"};
+function atkElOf(f,sk){return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element;}
+function skillNameKo(sid,bodyEl){const sk=SKILLS[sid]; return (sk.el&&bodyEl&&sk.el!==bodyEl)?`${ELEM_EMO[sk.el]}${sk.ko}`:sk.ko;} // 본체와 다른 속성의 공격기는 속성 이모지를 앞에 붙여 구분 (소유자 화면 전용)
+/* #92 탐색 보상 — 속성 교차 공격기 후보: 본체와 다른 3속성 × {안정·효과·고위력} 9종 중 이미 장착한 기술 제외 (순서 고정 → 공유 시드 rand 1회로 결정) */
+function recruitCandidates(p){
+  const have=new Set(p.skills||[]);
+  const out=[];
+  for(const el of ELEMS){ if(el===p.element) continue;
+    for(const tier of ["stable","effect","heavy"]){ const id=el+"_"+tier; if(!have.has(id)) out.push(id); } }
+  return out;
+}
+/* #92 AI 교체 정책 (v0.4.4 §2.7): ① 방어형·지속형은 효과기 슬롯을 교체 후보에서 제외 ② 남은 슬롯이 없으면 유지
+   ③ 남은 슬롯 중 위력이 가장 낮은 슬롯(동률은 앞 슬롯)을 고르고 후보 위력 ≥ 그 슬롯 위력이면 교체, 아니면 유지. 난수 미소비(결정적) */
+function aiRecruitSlot(p,alt){
+  const a=archOf(p), keepEffect=(a==="def"||a==="sustain");
+  let pick=-1;
+  for(const i of [0,1]){ const sk=SKILLS[p.skills[i]]; if(!sk||sk.kind!=="attack") continue;
+    if(keepEffect&&sk.tier==="effect") continue;
+    if(pick<0||sk.pow<SKILLS[p.skills[pick]].pow) pick=i; }
+  if(pick<0) return -1;
+  return SKILLS[alt].pow>=SKILLS[p.skills[pick]].pow?pick:-1;
+}
 const ITEMS={potion:{ko:"회복약",desc:"HP 20% 회복"}, cool:{ko:"쿨링수",desc:"스킬 쿨타임 초기화"}, cure:{ko:"해독제",desc:"상태이상 해제"}};
 /* 하수인 로스터 20종 — 아키타입 5종(표준·공격·방어·속공·지속) × 속성 4종 (GDD-13 4.2 개정, T5-B) */
 const ARCH_KO={std:"표준",atk:"공격",def:"방어",swift:"속공",sustain:"지속"};
@@ -799,7 +822,7 @@ function renderSide(){
   if(S.selected&&!S.selected.tray&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대가 선택한 말 정보(HP 등) 비노출
     const s=S.selected;
     h+=`<h2>선택: ${idLabel(p,s)}</h2><div class="status">HP ${s.hp}/${s.maxHp}${s.immobile>0?` · 이동 불가 ${s.immobile}턴`:""}${s.cap?` · 포획 하수인(${ELEM_KO[s.cap.element]}) HP ${s.cap.hp}/${s.cap.maxHp}`:""}${s.nextBattleBuff?` · ✨다음 전투 공격+${pct(BAL.nextBuffPct)}`:""}</div>
-    ${s.skills?`<div class="status">${s.skills.map((id,i)=>SKILLS[id].ko+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
+    ${s.skills?`<div class="status">${s.skills.map((id,i)=>skillNameKo(id,s.element)+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
     <small>이동: 파란 칸 · 전투: 빨간 칸 클릭</small>`;
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
   if(S.teleport&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
@@ -1224,19 +1247,30 @@ function doSearch(p,ev){
     else if(!ai) modal(`<h2>인벤토리 가득</h2><p>아이템을 획득하지 못했습니다 (최대 ${BAL.invMax}).</p>`,[["확인",close]]);
   } else {
     if(p.type==="minion"){
-      // [임시 대체 — 기획 확정 전] 보조기 슬롯(슬롯2)을 무작위 다른 보조기로 교체 제안 (구 공용 스킬 교체 대체)
+      // #92 (v0.4.4 §2): 속성 교차 공격기 교체 — 본체와 다른 3속성 × 안정/효과/고위력 중 미장착 후보 1종을 공유 시드 rand 1회로 뽑고,
+      // 공격기 1·2 중 하나와 교체하거나 유지한다(유지해도 이벤트 칸 소모). 새 기술은 교체 슬롯의 남은 쿨을 그대로 승계하고 그 슬롯은 다시 비공개가 된다.
       if(p.skills){
-        const cur=p.skills[2];
-        const alt=shuffle(Object.keys(SKILLS).filter(k=>SKILLS[k].kind==="support"&&k!==cur))[0];
-        const swap=()=>{p.skills[2]=alt; p.cds[2]=0; if(p.revealedSkills) p.revealedSkills=p.revealedSkills.filter(i=>i!==2);};
-        if(ai){ if(rand()<0.5) swap(); }
-        else modal(`<h2>공용 하수인 발견</h2><p>이 하수인의 보조기를 교체할까요?<br>현재: ${SKILLS[cur].ko} → ${SKILLS[alt].ko}<small> (${SKILLS[alt].desc})</small></p>`,
-          [["교체",()=>{swap();close();render();}],["유지",close]]);
+        const cands=recruitCandidates(p);
+        const alt=cands.length?cands[Math.floor(rand()*cands.length)]:null;
+        const swap=slot=>{p.skills[slot]=alt; if(p.revealedSkills) p.revealedSkills=p.revealedSkills.filter(i=>i!==slot);}; // cds[slot] 유지(초기화 금지)
+        if(!alt){ if(!ai) modal(`<h2>공용 하수인 발견</h2><p>배울 수 있는 기술이 없습니다.</p>`,[["확인",close]]); }
+        else if(ai){ const slot=aiRecruitSlot(p,alt); if(slot>=0) swap(slot); }
+        else recruitModal(p,alt,swap);
       }
     } else if(p.cap){ if(!ai) modal(`<h2>공용 하수인 발견</h2><p>이미 포획 하수인을 보유 중입니다 (각 1개 제한).</p>`,[["확인",close]]); }
     else { if(ai) aiCapture(p); else captureModal(p); }
   }
   render();
+}
+/* #92 교체 제안 모달 — 새 기술과 현재 공격기 1·2를 속성·위력·쿨·효과로 나란히 비교한다. 온라인은 기존 modal() 동기화 래퍼(버튼 인덱스 중계)로 양측이 같은 선택을 적용 */
+function recruitModal(p,alt,swap){
+  const card=(sid,head,cdLeft)=>{ const sk=SKILLS[sid];
+    return `<div class="fighter"><b>${head} ${sk.ko}</b><small>${sk.el?`<span class="badge el-${sk.el}">${ELEM_KO[sk.el]}</span> `:""}${SKILL_TIER_KO[sk.tier]||SKIND_KO[sk.kind]} · 위력 ${sk.pow?dmgRange(slotPow(p,sk)):"-"} · 쿨 ${sk.cd}${cdLeft?` (남은 쿨 ${cdLeft})`:""}<br>${sk.desc}</small></div>`; };
+  modal(`<h2>공용 하수인 발견</h2><p>${idLabel(p.owner,p)} — 다른 속성의 공격기를 배울 수 있습니다. 공격기 하나와 바꾸거나 유지하세요.<br><small>바꾼 기술은 그 자리의 남은 쿨타임을 이어받고, 상대에게는 다시 비공개가 됩니다.</small></p>
+    ${card(alt,"새 기술:",0)}
+    <p style="margin:6px 0 2px"><small>현재 공격기</small></p>
+    ${card(p.skills[0],"공격기 1:",p.cds[0])}${card(p.skills[1],"공격기 2:",p.cds[1])}`,
+    [["공격기 1과 교체",()=>{swap(0);close();render();}],["공격기 2와 교체",()=>{swap(1);close();render();}],["유지",close]]);
 }
 function tryCapture(p,mode){
   const cost=mode==="safe"?2:1; S.balls[p.owner]-=cost;
@@ -1377,7 +1411,7 @@ function battleModal(){
       <div class="status">가한 유효 피해 ${rec} (${pct(Math.min(1,rec/oppMax))})</div>
       ${pf.skills?`<div class="status">${pf.skills.map((sid2,i)=>{
         const sk2=SKILLS[sid2], known=viewer===2||piece.owner===viewer||(pf.revealedSkills&&pf.revealedSkills.includes(i));
-        return known?`${sk2.ko}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:`?${SKIND_KO[sk2.kind]}`;
+        return known?`${skillNameKo(sid2,pf.element)}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:`?${SKIND_KO[sk2.kind]}`;
       }).join(" · ")}</div>`:""}
     </div></div>`;
   };
@@ -1400,8 +1434,9 @@ function battleModal(){
     cmdBtns=f.skills.map((sid2,i)=>{
       const sk2=SKILLS[sid2], onCd=f.cds[i]>0;
       const known=!maskCmd||(f.revealedSkills&&f.revealedSkills.includes(i));
-      const label=known?`${sk2.ko}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:""}`:`? ${SKIND_KO[sk2.kind]}`;
-      return `<button ${dis||onCd?"disabled":""} title="${known?sk2.desc:""}" onclick="window.__act(${i})">${label}</button>`;
+      const label=known?`${skillNameKo(sid2,f.element)}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:""}`:`? ${SKIND_KO[sk2.kind]}`;
+      const cross=known&&sk2.el&&f.element&&sk2.el!==f.element; // #92 본체와 다른 속성의 공격기 — 판정 속성을 설명에 덧붙여 비교 가능하게
+      return `<button ${dis||onCd?"disabled":""} title="${known?sk2.desc+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:""):""}" onclick="window.__act(${i})">${label}</button>`;
     }).join("");
     if(!f.cds.some(c=>c===0)) cmdBtns+=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(f.atk)}</button>`;
   } else { // 왕·동료 본체·구형 경로: 기본 공격 유지
@@ -1527,16 +1562,17 @@ function execSlot(side,slot){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A";
   const sk=(slot>=0&&f.skills)?SKILLS[f.skills[slot]]:null;
+  const atkEl=atkElOf(f,sk); // #92 판정 속성: 공격기는 기술 속성, 기본 공격·시그니처(잔류장 포함)는 본체 속성
   if(sk){ f.cds[slot]=sk.cd;
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
   const gate=(force,prob)=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기: 화상·약화 statusProb 70% · 감전 shockProb 50% (#96) · 잔류장 100% — force는 rand 미소비)
     if(force||rand()<(prob===undefined?BAL.statusProb:prob)){S.metrics.statusApplied++; return true;}
     S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
   };
-  const applyStatus=force=>{
-    if(f.element==="fire"&&!opp.burn&&gate(force)){opp.burn=BAL.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${BAL.burnRounds}R)`,{st:{side:oSide,text:stIcons(opp)}});}
-    else if(f.element==="water"&&!opp.weaken&&gate(force)){opp.weaken=BAL.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${BAL.weakenHits}회)`,{st:{side:oSide,text:stIcons(opp)}});}
-    else if(f.element==="lightning"&&!opp.shock&&gate(force,BAL.shockProb)){opp.shock=1; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
+  const applyStatus=force=>{ // 상태 종류는 판정 속성(atkEl) 기준 — 불 본체가 배운 감전 침은 감전이지 화상이 아니다 (#92)
+    if(atkEl==="fire"&&!opp.burn&&gate(force)){opp.burn=BAL.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${BAL.burnRounds}R)`,{st:{side:oSide,text:stIcons(opp)}});}
+    else if(atkEl==="water"&&!opp.weaken&&gate(force)){opp.weaken=BAL.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${BAL.weakenHits}회)`,{st:{side:oSide,text:stIcons(opp)}});}
+    else if(atkEl==="lightning"&&!opp.shock&&gate(force,BAL.shockProb)){opp.shock=1; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
   };
   const coolReduce=(filter,label)=>{ // 쿨 감소류: 조건 내 남은 쿨 최장 기술 1개 쿨 -1
     let pick=-1;
@@ -1569,9 +1605,9 @@ function execSlot(side,slot){
     if(BAL.dmgVar) dmg=Math.round(dmg*(1-BAL.dmgVar+rand()*2*BAL.dmgVar)); // D8 피해 분산 ±20%
     if(f.weaken>0){dmg=Math.round(dmg*(1-BAL.weakenPct)); f.weaken--;
       if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:{side,text:stIcons(f)}});}
-    if(f.element&&opp.element){
-      if(BEATS[f.element]===opp.element) dmg=Math.round(dmg*BAL.advMult);
-      else if(BEATS[opp.element]===f.element) dmg=Math.round(dmg*BAL.disMult);
+    if(atkEl&&opp.element){ // #92 공격 상성은 판정 속성(기술 속성) vs 상대 본체 속성 — 방어 상성은 본체 속성 그대로
+      if(BEATS[atkEl]===opp.element) dmg=Math.round(dmg*BAL.advMult);
+      else if(BEATS[opp.element]===atkEl) dmg=Math.round(dmg*BAL.disMult);
     }
     if(sk&&sk.bonusVsShield&&opp.shield>0){dmg+=sk.bonusVsShield; bmsg(`🌊 보호막 대상 추가 위력 +${sk.bonusVsShield}!`);}
     if(sk&&sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock)){dmg+=sk.bonusVsStatus; bmsg(`⚡ 상태이상 대상 추가 위력 +${sk.bonusVsStatus}!`);}
@@ -1585,7 +1621,7 @@ function execSlot(side,slot){
     const counted=actual+(absorbed-freeAbsorb);
     addRec(side,counted);
     bmsg(`${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
-      {shake:oSide,flash:f.element||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
+      {shake:oSide,flash:atkEl||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`}, // #92 속성 플래시도 판정 속성
        hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:{side:oSide,text:stIcons(opp)}});
     if(sk){
       if(sk.drainPct&&actual>0){const gh=Math.round(actual*sk.drainPct); f.hp=Math.min(f.maxHp,f.hp+gh);
@@ -1739,7 +1775,7 @@ function finishByCapture(side){
   const el=loseP.element||shuffle(ELEMS.slice())[0], arch=archOf(loseP)||"std";
   const rd=loseP.rosterId?ROSTER.find(r=>r.id===loseP.rosterId):null; // #91 원래 종 외형 정체 보존(표시 전용 artRosterId) — 로스터 정체가 없던 하수인은 null (임의 종으로 가장하지 않는다)
   S.reserve[p]={element:el,hp:BAL.enemyCapHp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // #20: 전투 중 적 포획만 HP 70/maxHP 100
-    skills:archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null}; // 포획 하수인 규격 준용 (속성·아키타입은 대상 승계 · 수치는 공용 규격)
+    skills:loseP.skills?loseP.skills.slice():archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null}; // #92 (GDD-13 4.8): 대상의 현재 장착 기술 4슬롯을 복사 승계(탐색 교체 기술 포함, 참조 비공유) · 기술 배열이 없는 레거시 대상만 아키타입 템플릿 폴백 · 쿨 0·공개 기록 []·수치는 공용 규격
   met(p,"enemyCaptures");
   loseP.alive=false;
   bmsg(`🔴 몬스터볼 적중! ${fighterName(loseSide)}를(을) 포획했다!`,{ko:loseSide});
@@ -2069,15 +2105,15 @@ function aiBattleAction(){
   }
   const usable=f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>f.cds[x.i]===0);
   if(!usable.length){ window.__act("basic"); return; } // 전 슬롯 쿨 → 폴백 기본 공격
-  const adv=f.element&&opp.element&&BEATS[f.element]===opp.element;
-  const disadv=f.element&&opp.element&&BEATS[opp.element]===f.element;
-  const mult=(adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1);
+  const multOf=el=>{ // #92 기대 피해 상성은 기술 속성(공격기) 기준 — 기본 공격·시그니처는 본체 속성
+    const adv=el&&opp.element&&BEATS[el]===opp.element, disadv=el&&opp.element&&BEATS[opp.element]===el;
+    return (adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1); };
   const lowHp=f.hp<f.maxHp*(0.3+0.15*caut);
-  const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[f.element];
   const scored=usable.map(({i,sk})=>{
     let sc=0;
+    const atkEl=atkElOf(f,sk), statusKey={fire:"burn",water:"weaken",lightning:"shock"}[atkEl]; // 상태 키도 기술 속성 (#92)
     if(sk.pow){ // 피해 기술
-      const est=slotPow(f,sk)*mult*(f.focusCharge&&sk.kind==="attack"?1.2:1);
+      const est=slotPow(f,sk)*multOf(atkEl)*(f.focusCharge&&sk.kind==="attack"?1.2:1);
       sc=6+est/4;
       if(est*(1-BAL.dmgVar)>=opp.hp+opp.shield) sc=100; // 킬 가능 최우선
       else if(sk.kind==="sig") sc+=5;
@@ -2333,13 +2369,15 @@ function aiBattleActionStrong(side){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner, myPc=side==="A"?B.attP:B.defP, oppPc=side==="A"?B.defP:B.attP;
-  const adv=f.element&&opp.element&&BEATS[f.element]===opp.element, disadv=f.element&&opp.element&&BEATS[opp.element]===f.element;
-  const mult=(adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1)*(f.atkBuff?1+BAL.nextBuffPct:1);
+  const multOf=el=>{ // #92 내 기대 피해 상성은 기술 속성(공격기) 기준 — 기본 공격·시그니처는 본체 속성
+    const adv=el&&opp.element&&BEATS[el]===opp.element, disadv=el&&opp.element&&BEATS[opp.element]===el;
+    return (adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1)*(f.atkBuff?1+BAL.nextBuffPct:1); };
+  // 상대 기대 피해: 상대 미공개 기술은 참조하지 않으므로(공정 관측) 상대 본체 속성 vs 내 본체 속성(방어 상성)으로 추정 — 현행 유지
   const oAdv=opp.element&&f.element&&BEATS[opp.element]===f.element, oDis=opp.element&&f.element&&BEATS[f.element]===opp.element;
   const oppEst=(opp.atk||16)*(opp.skills?1.18:1)*(oAdv?BAL.advMult:oDis?BAL.disMult:1)*(opp.weaken>0?(1-BAL.weakenPct):1)*(f.dmgCut?1-f.dmgCut:1);
   const usable=f.skills?f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>f.cds[x.i]===0):[];
-  const dmgOf=sk=>(sk?slotPow(f,sk):f.atk)*mult*(f.focusCharge&&sk&&sk.kind==="attack"?1.2:1);
-  let bestDmg=f.atk*mult, bestSlot=-1;
+  const dmgOf=sk=>(sk?slotPow(f,sk):f.atk)*multOf(atkElOf(f,sk))*(f.focusCharge&&sk&&sk.kind==="attack"?1.2:1);
+  let bestDmg=f.atk*multOf(f.element), bestSlot=-1;
   for(const {i,sk} of usable) if(sk.pow&&dmgOf(sk)>bestDmg){bestDmg=dmgOf(sk); bestSlot=i;}
   const killNow=bestDmg*(1-BAL.dmgVar)>=opp.hp+opp.shield;
   const toKillMe=Math.ceil(Math.max(1,f.hp)/Math.max(1,oppEst)), toKillOpp=Math.ceil((opp.hp+opp.shield)/Math.max(1,bestDmg));
@@ -2363,10 +2401,10 @@ function aiBattleActionStrong(side){
   }
   if(!f.skills){ if(f.skillAtk&&f.cd===0){window.__act("skill");return;} window.__act("basic"); return; }
   if(!usable.length){ window.__act("basic"); return; }
-  const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[f.element];
   const lowHp=f.hp<=oppEst*1.5;
   const scored=usable.map(({i,sk})=>{
     let sc=0;
+    const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[atkElOf(f,sk)]; // 상태 키는 기술 속성 (#92)
     if(sk.pow){
       const est=dmgOf(sk);
       sc=est/3;
@@ -2858,7 +2896,10 @@ modal=function(html,buttons){
   const local=NET.localOpen; NET.localOpen=false;
   const owner=(NET.modalOwner!==null&&NET.modalOwner!==undefined)?NET.modalOwner:netActor();
   NET.modalOwner=null;
-  _modalCore(html,buttons);
+  const masked=NET.mode&&!local&&!!(buttons&&buttons.length)&&owner!==NET.me; // 동기화 모달의 비소유자
+  if(masked) // #92: 비소유자 화면에는 원문(탐색 후보 기술 등 소유자 전용 정보)을 한 번도 쓰지 않고 대기 화면만 그린다 — 코어 modal()을 그대로 지나가므로 #94 메모 피커 토큰 무효·overlayOpen 소유권도 종전과 동일
+    _modalCore(`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`,[]);
+  else _modalCore(html,buttons);
   if(!NET.mode||local) return;
   if(!buttons||!buttons.length){ NET.syncModal=null; return; } // 전투 모달 등 — 시맨틱 액션으로 동기화
   NET.modalSeq++;
@@ -2869,8 +2910,6 @@ modal=function(html,buttons){
     if(ob) Array.prototype.slice.call(ob.children).forEach((btn,i)=>{
       btn.onclick=()=>{ if(!NET.replaying) netSend({t:"a",a:{t:"modal",seq,i}}); fns[i](); };
     });
-  } else {
-    $("overlayBox").innerHTML=`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`;
   }
 };
 /* 사전 배치 → 매칭: 메뉴에서 배치 먼저(오프라인, 시드 무관) → 완료 시 큐 진입 → 매칭 시 양측 배치 교환 후

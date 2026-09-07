@@ -42,6 +42,10 @@
 /docs/qa/issue96-integration.md text eol=lf
 /docs/qa/issue96-saturn.md text eol=lf
 /docs/qa/issue96/*.json text eol=lf
+/demo/test/smoke_cross_skill.js text eol=lf
+/demo/test/issue92_cdp.js text eol=lf
+/docs/qa/issue92*.md text eol=lf
+/docs/qa/issue92/*.json text eol=lf
 
 /demo/test/smoke_own_side.js text eol=lf
 /demo/test/issue93_cdp.js text eol=lf
