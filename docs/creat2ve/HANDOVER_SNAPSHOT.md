@@ -15,18 +15,19 @@
 
 | Issue | 목표 | 상태 |
 |---|---|---|
-| #91 | 탐색 공용 하수인 대리 출전 아트 누락 원인·수정 | 연결 누락 확인, 중립 표준형·적 원종 보존 구현 중 |
+| #91 | 탐색 공용 하수인 대리 출전 아트 누락 원인·수정 | 구현 3360d56·PR#98 Draft, Saturn K8b 테스트 REVISE를 Mars_3 수정 중 |
 | #92 | 탐색에서 다른 속성 기술 획득·교체 | 타 속성 후보1·공격 슬롯0/1 선택·쿨 승계 계약 채택, 구현 대기 |
 | #93 | 양측 모두 자기 진영을 아래에 표시 | 행 표시 순서만 반사·공통 좌표 보존, 구현 대기 |
-| #94 | 상대 턴에도 상대 말 추측 메모 허용 | 로컬 메모 분리·오래된 콜백 보호, 구현 대기 |
-| #95 | 공격형 연속 공격 위력 완화 | Venus V6 atk26→25·결정타44→40 채택, 구현 대기 |
+| #94 | 상대 턴에도 상대 말 추측 메모 허용 | 로컬 메모 분리·오래된 콜백 보호, Mars_1 구현 중 |
+| #95 | 공격형 연속 공격 위력 완화 | Venus V6 atk26→25·결정타44→40, Mars_2 구현 중 |
 | #96 | 감전 확률 하향 | 일반70→50%·확정 시그니처100% 유지 채택, 구현 대기 |
 
-- Run **run_0e980a99ab14**. Mars #91 구현 task_8a6aaf784bad / ctx_8aacb5344e21(mutation=code) 진행 중. Venus 계약 문서·REVISE·#92 포획 승계 검토/반영은 완료하고 모든 Venus Worker를 release했다. 상태는 실제 orchestration check/worker-show를 우선한다.
-- Mars 초기 분석 msg_9225fd125c3f는 절대 reportPath 계약 위반으로 role_scope_mismatch 거절, task_9ad94fa319b2 failed 정정·Worker release. 참고 입력을 현재 Mars Task에서 재확인·상대경로로 납품한다. Venus 분석은 인수 후 같은 범위 문서 작업에 45분 lease 이관.
-- 현재 첫 수정 브랜치 **fix/91-reserve-minion-art**, origin/dev에서 분기. 같은 index.html 동시 쓰기 충돌을 피하기 위해 #94·#95는 아래 Orca 작업 공간에 격리하고 코드 작업을 병렬화할 준비를 했다. 독립 목표별 Issue1개+통합PR1개, Worker별 중복 Issue/PR 금지.
-- 준비한 작업 공간(아직 Worker 미배치, 모두 eff5c16 기준): `C:/Users/pc_77/orca/workspaces/Digit-Duel/fix-94-opponent-turn-memo` → `fix/94-opponent-turn-memo`, `C:/Users/pc_77/orca/workspaces/Digit-Duel/fix-95-attack-archetype-balance` → `fix/95-attack-archetype-balance`. Orca child lineage, setup run으로 생성하고 자동 branch prefix를 Git 계약대로 정정했다. 구현자 납품·검수 후 PD가 최신 dev를 통합하고 목표별 PR로 관리한다.
-- #91 완료 후 현재 Mars를 release하고, 후속 병렬 Mars_1/Mars_2는 접미사를 dispatch 동안 유지한다. 현재 기본 이름 Mars와 Mars_1을 동시에 띄우지 않는다. QA와 병행 시 전체 역할 슬롯을 검사한다.
+- Run **run_0e980a99ab14**. #91 Mars task_8a6aaf784bad / ctx_8aacb5344e21 완료·release. Mars 보고 637/637, 신규 CDP9·기존82 문제0이며 아직 독립 QA 판정 전이다. Venus 계약·REVISE·#92 포획 승계 검토/반영은 완료하고 모두 release했다.
+- 현재 활성: Mars_3 #91 테스트 REVISE **task_a4a9a1e7c5ce / ctx_4de59dcc0904**(root), Mars_1 #94 **task_1c7609762607 / ctx_01e4692008a9**, Mars_2 #95 **task_589cbb9660e7 / ctx_5d020b2a673e**. Saturn_1 최초 QA task_27b74fba75b6 / ctx_5413a5d02763은 REVISE 납품 후 release했다. 상태는 실제 orchestration check/worker-show를 우선한다.
+- Saturn 최초 직접480 PASS·브라우저91측정 문제0, 기존이미지100동일. 단 K8b가 송신 수 대신 소켓 생성 수를 세어 기존 연결의 불필요한 netSend 변형도 통과했다. 제품의 실제 불필요한 송신은 발견하지 않았다. `docs/qa/issue91-saturn-initial.md`에 기록, 테스트 수정·동일 검사기 음성 대조 후 재QA한다.
+- Mars 초기 분석 msg_9225fd125c3f는 절대 reportPath 계약 위반으로 거절·task failed·release. 재확인한 상대경로 보고는 `docs/qa/v044-technical-analysis-mars.md`에 납품했다. #91 표시 전용 필드는 `artRosterId`로 확정했으며 규칙이 읽는 `rosterId`를 새로 넣지 않는다.
+- 현재 root 브랜치 **fix/91-reserve-minion-art**, PR#98 제품 커밋 **3360d56e4260d5c4c2518432cad740f22769aa14**. 같은 index.html 동시 쓰기는 아래 작업 공간으로 격리했다. 독립 목표별 Issue1개+통합PR1개, Worker별 중복 Issue/PR 금지.
+- 병렬 작업 공간(각 eff5c16 기준): Mars_1 `C:/Users/pc_77/orca/workspaces/Digit-Duel/fix-94-opponent-turn-memo` → `fix/94-opponent-turn-memo`, Mars_2 `C:/Users/pc_77/orca/workspaces/Digit-Duel/fix-95-attack-archetype-balance` → `fix/95-attack-archetype-balance`. 납품 후 PD가 최신 dev를 통합하고 Saturn 검수·목표별 PR로 관리한다. 접미사는 dispatch 동안 유지한다.
 - #92 포획 승계 추가 계약: 실제 장착 skills 배열 복사(습득 기술 포함), 레거시만 템플릿 폴백, HP70/공용스탯/쿨0/공개기록[] 유지. 중립 포획은 std 그대로. #91에는 이 규칙 변경을 넣지 않는다. 임시 보조기 교체 시절부터 있던 잠재 불일치를 정합화한다.
 - 구현자 납품 후 Saturn 독립 QA, PD diff·증빙 검토·dev squash, 정확한 feature 브랜치 삭제, CJ 플레이 확인 순서.
 - GitHub·Notion·Git 쓰기는 Mercury만. main/dev 직접 커밋 금지. Worker 완료 시 즉시 archive·release하거나 같은 좁은 범위 즉시 후속 Task에 기한부 lease로 이관.

@@ -568,15 +568,28 @@ function proxyBattle(T,att,def,pickA,pickD){
 }
 {
   // K8 온라인 양측 정체 일치 — 같은 시드에서 두 독립 인스턴스(1P 화면·2P 화면)가 같은 cap/reserve 정체를 만든다 · 네트워크 송신 0
-  const mk=(me)=>{ const T=H.load(htmlPath); const P=setup(T,"pvp"); T.NET.mode=true; T.NET.me=me; return {T,P}; };
+  //    송신 0 은 "연결된 소켓(NET.ws, readyState 1)의 실제 send 호출 수"로 잰다 — wsLog 는 생성된 소켓 수라 메시지 수가 아니다 (Saturn REVISE).
+  //    K8d 가 같은 검사기로 음성 대조: 제품의 실제 netSend 경로(netAction)로 보내면 같은 판정이 반드시 실패한다.
+  const mk=(me)=>{ const T=H.load(htmlPath); const P=setup(T,"pvp"); T.NET.mode=true; T.NET.me=me;
+    const ws=new T.WebSocketCtor("ws://127.0.0.1:8080/",[T.NET_PROTOCOL_MARKER,"qa-k8-code"]); ws.readyState=1; T.NET.ws=ws; // 연결된 소켓 준비 — 이 소켓의 send 만이 실제 송신이다
+    return {T,P,ws}; };
   const A=mk(0), Bb=mk(1);
-  const capOf=({T,P})=>{ const sent=T.wsLog?T.wsLog.length:0; T.setSeed(4242); T.S.balls[0]=5; P.king0.cap=null; T.tryCapture(P.king0,"safe"); return {c:P.king0.cap,sent:(T.wsLog?T.wsLog.length:0)-sent}; };
+  /* 검사기: fn 동안 (1) 연결 소켓의 실제 send 증분 (2) 새 소켓 생성 수 (3) 감시 중인 소켓이 여전히 NET.ws 이며 열려 있는지 — (3) 이 깨지면 다른 소켓으로 샌 송신을 놓칠 수 있으므로 함께 판정 */
+  const sentBy=({T,ws},fn)=>{ const s0=ws.sent.length, k0=T.wsLog.length; const out=fn(); return {out,sent:ws.sent.length-s0,socks:T.wsLog.length-k0,live:T.NET.ws===ws&&ws.readyState===1}; };
+  const silent=r=>r.sent===0&&r.socks===0&&r.live;
+  const capOf=(X)=>sentBy(X,()=>{ X.T.setSeed(4242); X.T.S.balls[0]=5; X.P.king0.cap=null; X.T.tryCapture(X.P.king0,"safe"); return X.P.king0.cap; });
   const ca=capOf(A), cb=capOf(Bb);
-  ok(ca.c&&cb.c&&ca.c.artRosterId===cb.c.artRosterId&&ca.c.element===cb.c.element&&ca.c.artRosterId===stdOf(A.T,ca.c.element).id,"K8a 중립 포획: 1P·2P 인스턴스가 같은 정체("+ca.c.artRosterId+") — 시드 결정론만으로 일치, 프로토콜 무변경");
-  ok(ca.sent===0&&cb.sent===0,"K8b 정체 기록은 네트워크 메시지를 보내지 않는다");
-  const resOf=({T,P})=>{ giveSpecies(T,P.em,T.ROSTER.find(r=>r.id==="M-G2")); T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.reserve[0]=null; T.initBattle(P.me,P.em); T.drain(500); T.finishByCapture("A"); T.TQ.length=0; return T.S.reserve[0]; };
+  ok(ca.out&&cb.out&&ca.out.artRosterId===cb.out.artRosterId&&ca.out.element===cb.out.element&&ca.out.artRosterId===stdOf(A.T,ca.out.element).id,"K8a 중립 포획: 1P·2P 인스턴스가 같은 정체("+ca.out.artRosterId+") — 시드 결정론만으로 일치, 프로토콜 무변경");
+  ok(silent(ca)&&silent(cb),"K8b 중립 포획의 정체 기록은 연결된 소켓으로 아무것도 보내지 않는다 (실제 send 1P "+ca.sent+"·2P "+cb.sent+" · 새 소켓 0 · 연결 유지)");
+  const resOf=(X)=>{ const {T,P}=X; giveSpecies(T,P.em,T.ROSTER.find(r=>r.id==="M-G2")); T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.reserve[0]=null; T.initBattle(P.me,P.em); T.drain(500);
+    const r=sentBy(X,()=>{ T.finishByCapture("A"); return T.S.reserve[0]; }); T.TQ.length=0; return r; };
   const ra=resOf(A), rb=resOf(Bb);
-  ok(ra&&rb&&ra.artRosterId==="M-G2"&&rb.artRosterId==="M-G2"&&ra.hp===rb.hp,"K8c 적 포획: 양측 인스턴스 모두 원래 종(M-G2) 보존 — 전투 공개 시점(포획 순간)에 이미 양측이 아는 정보");
+  ok(ra.out&&rb.out&&ra.out.artRosterId==="M-G2"&&rb.out.artRosterId==="M-G2"&&ra.out.hp===rb.out.hp,"K8c 적 포획: 양측 인스턴스 모두 원래 종(M-G2) 보존 — 전투 공개 시점(포획 순간)에 이미 양측이 아는 정보");
+  ok(silent(ra)&&silent(rb),"K8c' 적 포획(finishByCapture)의 정체 기록도 연결된 소켓으로 아무것도 보내지 않는다 (실제 send 1P "+ra.sent+"·2P "+rb.sent+")");
+  // 음성 대조 — 제품의 실제 송신 경로(netAction → netSend → NET.ws.send)로 한 건 보내면 같은 검사기·같은 판정이 반드시 실패해야 한다 (검사기가 살아 있음을 증명)
+  A.T.S.current=0; // netActor()===NET.me(0) 이어야 netAction 이 송신한다 — 포획 뒤 턴 상태를 명시
+  const neg=sentBy(A,()=>A.T.netAction({t:"qa-unwanted-send"}));
+  ok(neg.sent===1&&!silent(neg)&&/qa-unwanted-send/.test(A.ws.sent[A.ws.sent.length-1])&&neg.socks===0&&neg.live,"K8d 음성 대조: 실제 netSend 한 건이면 같은 검사기가 송신 "+neg.sent+"건으로 잡아 K8b/K8c' 판정이 실패한다 (wsLog 는 여전히 0 증가 — 소켓 수로는 잡히지 않는다)");
   A.T.TQ.length=0; Bb.T.TQ.length=0;
 }
 {
