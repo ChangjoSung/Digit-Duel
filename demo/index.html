@@ -355,10 +355,22 @@ const ART_DIRS=ROSTER.map(r=>r.element+"_"+r.arch);       // 20종 허용 목록
 const ART_DIR_SET=new Set(ART_DIRS);
 const ART={failed:new Set(),loaded:new Set(),preloaded:false,rerender:null};
 function artUrl(dir,file){return ART_BASE+dir+"/"+file;}
-/* 말 → 종 폴더. rosterId 가 없거나(미배정 하수인·포획/예비 하수인) 허용 목록 밖이면 null → 안전 폴백 */
+/* 말 → 종 폴더. rosterId 가 없거나(미배정 하수인) 허용 목록 밖이면 null → 안전 폴백. 포획·예비 하수인(cap)은 type 이 없어 여기서는 항상 null — 전투 토큰은 artDirOfFighter (#91) */
 function artDirOf(p){
   if(!p||p.type!=="minion"||!p.rosterId) return null;
   const rd=ROSTER.find(r=>r.id===p.rosterId); if(!rd) return null;
+  const dir=rd.element+"_"+rd.arch;
+  return ART_DIR_SET.has(dir)?dir:null;
+}
+/* #91 전투 토큰용: 지금 실제로 싸우는 전투원(pf)의 종 폴더.
+   본체(pf===piece)는 artDirOf 그대로. 대리 출전(포획·예비 하수인)은 pf 가 정확히 그 말의 cap 객체일 때만, cap 의 표시 전용 외형 정체 artRosterId 가
+   허용 목록(ROSTER 20종)에 있고 그 종의 속성이 cap 의 표시 속성과 같을 때만 폴더를 돌려준다. 그 밖(왕·동료 본체·id 없음·오염·불일치)은 null → 현행 이모지 토큰.
+   artRosterId 는 rosterId 와 다른 이름이라 전투 규칙(archOf→skillParamsOf)이 읽지 않는다 (v0.4.4 규격 1장) — cap 의 수치·기술·RNG 는 공용 규격(BAL.captured) 그대로. */
+function artDirOfFighter(pf,piece){
+  if(!pf||!piece) return null;
+  if(pf===piece) return artDirOf(piece);
+  if(pf!==piece.cap||!pf.artRosterId) return null;
+  const rd=ROSTER.find(r=>r.id===pf.artRosterId); if(!rd||rd.element!==pf.element) return null;
   const dir=rd.element+"_"+rd.arch;
   return ART_DIR_SET.has(dir)?dir:null;
 }
@@ -1225,8 +1237,9 @@ function tryCapture(p,mode){
   if(ok){
     const el=shuffle(ELEMS.slice())[0], cb=BAL.captured;
     // 포획 하수인: 해당 속성 표준형 세트 적용 (추론 — GDD-16 4장 템플릿 준용)
+    const rd=ROSTER.find(r=>r.element===el&&r.arch==="std"); // #91 공용 하수인 = 그 속성의 표준형 종 — 생성 시 외형 정체(표시 전용 artRosterId)를 기록한다 (rand 소비 없음)
     p.cap={element:el,hp:cb.hp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // 숲 공용 하수인 포획: 100/100 유지 (#20)
-      skills:archSkills("std",el),cds:[0,0,0,0],revealedSkills:[]};
+      skills:archSkills("std",el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null};
     met(p.owner,"captures");
     return {ok:true,el};
   }
@@ -1360,11 +1373,11 @@ function battleModal(){
       }).join(" · ")}</div>`:""}
     </div></div>`;
   };
-  const token=sid=>{ // 스테이지 토큰: 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료·포획 하수인은 현행 속성색 원형 + 이모지 유지 (규격 6.3)
+  const token=sid=>{ // 스테이지 토큰: 하수인 본체·대리 출전 포획 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료 본체는 현행 속성색 원형 + 이모지 유지 (규격 6.3 · #91)
     const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
     const pos=sid===mySide?"tok-me":"tok-op", label=pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type];
-    // #89 지금 실제로 싸우는 전투원이 본체일 때만 그 말의 종 이미지를 쓴다. 대리 출전(포획·예비 하수인)은 pf!==piece 이므로 본체 그림을 쓰지 않는다
-    const dir=pf===piece?artDirOf(piece):null;
+    // #89/#91 지금 실제로 싸우는 전투원 기준: 본체면 그 말의 종, 대리 출전(포획·예비 하수인)이면 cap 에 기록된 종. 왕·동료 본체 그림은 없으므로 null → 이모지
+    const dir=artDirOfFighter(pf,piece);
     if(artOk(dir))
       return `<div class="btok art ${pos}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`;
     const col=pf.element?`var(--${pf.element})`:"#5a6377";
@@ -1716,8 +1729,9 @@ function finishByCapture(side){
   const winP=side==="A"?B.attP:B.defP, loseP=side==="A"?B.defP:B.attP, loseSide=side==="A"?"D":"A";
   const p=winP.owner, cb=BAL.captured;
   const el=loseP.element||shuffle(ELEMS.slice())[0], arch=archOf(loseP)||"std";
+  const rd=loseP.rosterId?ROSTER.find(r=>r.id===loseP.rosterId):null; // #91 원래 종 외형 정체 보존(표시 전용 artRosterId) — 로스터 정체가 없던 하수인은 null (임의 종으로 가장하지 않는다)
   S.reserve[p]={element:el,hp:BAL.enemyCapHp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // #20: 전투 중 적 포획만 HP 70/maxHP 100
-    skills:archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[]}; // 포획 하수인 규격 준용 (속성·아키타입은 대상 승계)
+    skills:archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null}; // 포획 하수인 규격 준용 (속성·아키타입은 대상 승계 · 수치는 공용 규격)
   met(p,"enemyCaptures");
   loseP.alive=false;
   bmsg(`🔴 몬스터볼 적중! ${fighterName(loseSide)}를(을) 포획했다!`,{ko:loseSide});

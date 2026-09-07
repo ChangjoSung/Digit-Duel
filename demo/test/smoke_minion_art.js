@@ -1,7 +1,7 @@
 /* #89 하수인 아트 게임 적용 헤드리스 회귀 — node demo/test/smoke_minion_art.js [demo/index.html]
    범위: 양측 말 공통 아이콘 체계 · known/unknown/invisible 렌더 · 메모 8종 · 미공개 정보 비노출(DOM·src·요청·a11y) ·
    HP 표시 대상과 자릿수 · 20종 허용 목록과 rosterId 없음/오염 시 폴백 · 배치 트레이 · 로스터 설명창 일러스트 ·
-   전투 토큰(본체/대리 출전) · 로드 실패 폴백 · 납품 아트 바이트 보존.
+   전투 토큰(본체/대리 출전) · 로드 실패 폴백 · 납품 아트 바이트 보존 · #91 포획/예비 하수인 대리 출전 정체·아트·정보 경계(K 절).
    이 파일은 기계로 판정 가능한 불변식만 다룬다. 선명도·대비·사람 식별성은 실제 브라우저 시각 검수 소관이며 여기 숫자로 대체하지 않는다. */
 "use strict";
 const H=require("./harness");
@@ -10,6 +10,8 @@ const htmlPath=process.argv[2];
 const ROOT=path.resolve(__dirname,"..",".."); // 저장소 루트
 const ASSETS=path.join(ROOT,"demo","assets","minions");
 let pass=0,fail=0; const fails=[];
+/* #91 대리 출전 종 폴더 헬퍼 — 기준선(변경 전) html 로 A/B 대조 실행할 때도 크래시 대신 실패로 집계되게 감싼다 */
+const adf=(T,pf,piece)=>typeof T.artDirOfFighter==="function"?T.artDirOfFighter(pf,piece):"missing";
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
 
 const MEMO8=[["king","👑"],["ally","🤝"],["minion_fire","🔥"],["minion_grass","🌿"],["minion_water","💧"],["minion_lightning","⚡"],["bomb","💣"],["trap","🪤"]];
@@ -222,9 +224,17 @@ function setup(T,mode,seed){
   const T3=H.load(htmlPath); const R=setup(T3,"pve");
   const cap={element:"fire",hp:100,maxHp:100,atk:20,skillAtk:28,cd:0,cdMax:2,skills:T3.archSkills?T3.archSkills("std","fire"):null,cds:[0,0,0,0],revealedSkills:[]};
   ok(T3.pcFaceHtml({type:"minion",rosterId:null,name:null,element:"fire"}).indexOf("<img")===-1,"G8 rosterId 없는 하수인(포획·예비)은 종 이미지를 만들지 않는다");
-  // 본체가 하수인이어도 pf!==piece 이면 본체 이미지를 쓰지 않는다 — 계약을 코드 문자열로 확인
-  ok(/const dir=pf===piece\?artDirOf\(piece\):null;/.test(T3.html),"G9 전투 토큰은 pf===piece 일 때만 본체 종 이미지를 쓴다 (대리 출전 오용 차단)");
-  T3.TQ.length=0;
+  /* #91: 이전 G9 는 코드 문자열(pf===piece?artDirOf(piece):null)을 정규식으로 고정했다. 이제는 행동으로 확인한다 —
+     대리 출전 전투원(pf!==piece)에게 본체 말의 종 폴더를 절대 돌려주지 않고, 왕·동료 본체는 계속 null 이다. 대리 출전의 양성 경로는 K 절. */
+  const kingLike={type:"king",rosterId:"M-F1",artRosterId:"M-F1",element:null,cap:cap}; // 오염: 왕에 rosterId 가 붙어도 본체 그림은 없다
+  ok(adf(T3,kingLike,kingLike)===null&&adf(T3,R.king0,R.king0)===null&&adf(T3,R.ally0,R.ally0)===null,"G9a 왕·동료 본체(pf===piece)는 rosterId·artRosterId 가 붙어 있어도 종 폴더 없음 (artDirOf 의 type 검사 그대로)");
+  ok(adf(T3,R.me,R.me)===T3.artDirOf(R.me)&&!!T3.artDirOf(R.me),"G9b 하수인 본체(pf===piece)는 #89 그대로 자기 종 폴더");
+  const minionCap=Object.assign({},cap,{artRosterId:R.me.rosterId,element:R.me.element}); R.me.cap=minionCap;
+  ok(adf(T3,minionCap,R.me)===T3.artDirOf({type:"minion",rosterId:R.me.rosterId})&&adf(T3,minionCap,R.me)!==null,"G9c 대리 출전(pf!==piece)은 본체 말이 아니라 cap 에 기록된 종만 본다 (같은 종이면 같은 폴더)");
+  const other=Object.assign({},cap,{artRosterId:"M-L5",element:"lightning"}); R.me.cap=other;
+  ok(adf(T3,other,R.me)==="lightning_sustain"&&adf(T3,other,R.me)!==T3.artDirOf(R.me),"G9d 대리 출전 전투원의 종 폴더는 본체 하수인의 종과 무관 — 본체 그림 오용 차단을 행동으로 확인");
+  ok(adf(T3,other,R.king0)===null&&adf(T3,cap,R.me)===null,"G9e pf 가 그 말의 cap 객체가 아니면(다른 말의 cap · 떠도는 객체) 종 폴더 없음");
+  R.me.cap=null; T3.TQ.length=0;
 }
 
 /* ===== H. 로드 실패 폴백 — 플레이 계속 · 고리 없음 · 누출 없음 ===== */
@@ -370,6 +380,257 @@ function setup(T,mode,seed){
       "J13k 음성 대조: FX 가 대체된 노드가 아닌 다른 노드(decoy)로 가면 진행(J13f)은 참이어도 J13g 검사기는 실패한다 ["+v.detail+"]");
     N.T.close(); N.T.S.battle=null; N.T.TQ.length=0; }
 }
+/* ===== K. #91 공용/적 포획 하수인 대리 출전 아트 — 정체 보존 · 표시 전용 · 안전 폴백 · 정보 경계 ===== */
+const stdOf=(T,el)=>T.ROSTER.find(r=>r.element===el&&r.arch==="std");
+const capStats=(T,c,hp)=>c&&c.hp===hp&&c.maxHp===T.BAL.captured.hp&&c.atk===T.BAL.captured.atk&&c.skillAtk===T.BAL.captured.skill&&c.cd===0&&c.cdMax===T.BAL.captured.cd
+  &&JSON.stringify(c.cds)==="[0,0,0,0]"&&JSON.stringify(c.revealedSkills)==="[]";
+/* 하수인 말에 로스터 종 r 을 주입 (applyRoster 와 같은 필드) */
+function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
+const tokOf=(T,sid)=>{ const m=T.byId("overlayBox").innerHTML.match(new RegExp('<div class="btok[^"]*" id="tok-'+sid+'"[^>]*>[\\s\\S]*?<\\/div>')); return m?m[0]:""; };
+const srcOf=t=>(tokImg(t)||{}).src;
+const tokImg=t=>{ const m=t.match(/<img class="bsprite" src="([^"]+)" alt="([^"]*)"/); return m?{src:m[1],alt:m[2]}:null; };
+/* 지정 속성의 중립 포획 하수인을 시드 탐색으로 만든다 (제품 tryCapture 경로 그대로) */
+function neutralCap(T,piece,el){ let got=null; for(let seed=1;seed<400&&got!==el;seed++){ T.setSeed(seed); piece.cap=null; T.tryCapture(piece,"safe"); got=piece.cap&&piece.cap.element; } return got===el; }
+/* 왕(포획 하수인 보유)이 인접 상대 말을 공격하고, 출전 선택에서 대리(두 번째 버튼)/본체(첫 버튼)를 고른 뒤 출전 공개를 지나 전투에 들어간다 */
+/* 헤드리스 스텁의 obBtns 는 모달이 바뀌어도 이전 버튼이 남는다(overlayBox.innerHTML 대입이 obBtns 자식을 지우지 않음) — 새 모달의 버튼은 항상 끝에 붙으므로 끝에서 센다 */
+const modalBtn=(T,total,i)=>{ const ch=T.byId("obBtns").children; const b=ch[ch.length-total+i]; if(!b) return false; b.onclick(); T.drain(500); return true; };
+function proxyBattle(T,att,def,pickA,pickD){
+  T.byId("obBtns").children.length=0;
+  T.initBattle(att,def); T.drain(500);
+  if(!T.S.battle&&/출전 선택/.test(T.byId("overlayBox").innerHTML)) modalBtn(T,2,pickA?1:0);
+  if(!T.S.battle&&/출전 선택/.test(T.byId("overlayBox").innerHTML)) modalBtn(T,2,pickD?1:0);
+  if(!T.S.battle&&/출전 공개/.test(T.byId("overlayBox").innerHTML)) modalBtn(T,1,0);
+  return T.S.battle;
+}
+{
+  // K1 중립 공용 하수인 포획: 무작위 속성의 표준형 종 정체를 생성 시 기록한다 — 4속성 전부 · 공용 스탯 100/100/20/30/CD2 · 기술 템플릿 std · rand 소비량 불변
+  const T=H.load(htmlPath); const P=setup(T,"pvp");
+  const seen={}; let allGood=true, rngGood=true, tries=0;
+  for(let seed=1;seed<=200&&Object.keys(seen).length<4;seed++){
+    tries++;
+    T.setSeed(seed); const ref=[]; for(let i=0;i<5;i++) ref.push(T.rand()); // 기대 소비량: 성공 판정 1 + shuffle(4원소) 3 = 4 → 다섯 번째 값이 "다음 rand"
+    T.setSeed(seed); T.S.balls[0]=5; P.ally0.cap=null;
+    const res=T.tryCapture(P.ally0,"safe"); const c=P.ally0.cap;
+    if(!res.ok||!c){ allGood=false; continue; }
+    const rd=stdOf(T,c.element);
+    if(!(rd&&c.artRosterId===rd.id&&c.rosterId===undefined&&c.arch===undefined&&capStats(T,c,T.BAL.captured.hp)&&JSON.stringify(c.skills)===JSON.stringify(T.archSkills("std",c.element))&&res.el===c.element)) allGood=false;
+    if(T.rand()!==ref[4]) rngGood=false;
+    seen[c.element]=rd.id;
+  }
+  ok(Object.keys(seen).length===4&&allGood,"K1a 중립 포획 cap 은 4속성 모두 '그 속성의 표준형 종' 외형 정체(artRosterId)를 갖고 rosterId·arch 필드는 없으며(변경 전과 동일) 공용 스탯·std 기술 템플릿·HP 100 은 그대로 ["+JSON.stringify(seen)+" · 시드 "+tries+"개]");
+  ok(rngGood,"K1b 정체 기록은 rand 를 추가로 소비하지 않는다 (판정 1 + shuffle 3 = 4회 뒤 다음 값이 기준 시퀀스와 일치 — 온라인 락스텝·시드 재현 보존)");
+  T.setSeed(7); T.S.balls[0]=5; P.ally0.cap=null; P.ally0.hp=P.ally0.maxHp;
+  let fails=0, okc=0; for(let i=0;i<40;i++){ P.ally0.cap=null; const r=T.tryCapture(P.ally0,"risky"); if(r.ok) okc++; else fails++; }
+  ok(okc>0&&fails>0&&T.S.balls[0]===5-40,"K1c 위험 포획의 성공/실패 판정과 볼 소모(1)는 변하지 않았다 [성공 "+okc+" · 실패 "+fails+"]");
+  T.TQ.length=0;
+}
+{
+  // K2 적 하수인 포획(전투 중 볼 적중): 원래 종 rosterId·arch 를 보존 — 20종 전부 · HP 70/최대 100 · 공용 스탯 · 기술 템플릿은 원래 아키타입
+  const T=H.load(htmlPath);
+  let good=0, dirs=new Set(), filesOk=true, detail=[];
+  for(const r of T.ROSTER){
+    const P=setup(T,"pvp"); giveSpecies(T,P.em,r);
+    T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.reserve[0]=null;
+    T.initBattle(P.me,P.em); T.drain(500);
+    if(!T.S.battle){ detail.push(r.id+":no-battle"); continue; }
+    T.finishByCapture("A"); const rv=T.S.reserve[0];
+    const cond=rv&&rv.artRosterId===r.id&&rv.rosterId===undefined&&rv.arch===undefined&&rv.element===r.element&&capStats(T,rv,T.BAL.enemyCapHp)
+      &&JSON.stringify(rv.skills)===JSON.stringify(T.archSkills(r.arch,r.element))&&P.em.alive===false&&T.S.battle===null;
+    if(cond){ good++; P.ally0.cap=rv; const d=adf(T,rv,P.ally0); dirs.add(d); if(d!==r.element+"_"+r.arch||!fs.existsSync(path.join(ASSETS,d,"battle.png"))) filesOk=false; }
+    else detail.push(r.id);
+    T.TQ.length=0;
+  }
+  ok(good===20,"K2a 적 포획 예비 하수인은 20종 전부 원래 종 외형 정체(artRosterId)·속성을 보존하고(rosterId·arch 필드 없음 = 변경 전과 동일) HP 70/100·공용 스탯·원래 아키타입 기술 템플릿·즉시 제거·전투 종료는 그대로 ["+(detail.join(",")||"20/20")+"]");
+  ok(dirs.size===20&&filesOk,"K2b 대리 출전 시 20종 → 20개 서로 다른 허용 폴더로 대응하고 battle.png 가 실제 존재 (신규 아트 0)");
+  const P=setup(T,"pvp"); P.em.rosterId=null; P.em.name=null; P.em.element="fire"; P.em.skills=null; P.em.revealedSkills=null;
+  T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.reserve[0]=null;
+  T.initBattle(P.me,P.em); T.drain(500); T.finishByCapture("A"); const rv=T.S.reserve[0]; P.ally0.cap=rv;
+  ok(rv&&rv.artRosterId===null&&rv.rosterId===undefined&&rv.element==="fire"&&adf(T,rv,P.ally0)===null&&JSON.stringify(rv.skills)===JSON.stringify(T.archSkills("std","fire")),"K2c 원래 종을 모르는 적 포획(rosterId 없음)은 임의 종으로 가장하지 않는다 — artRosterId null · std 템플릿 · 대리 출전 그림 없음");
+  T.TQ.length=0;
+}
+{
+  // K3 대리 출전 전투 토큰 — PVE: 내 왕이 중립 포획 하수인(fire_std)으로 대리 출전 → tok-A 에 fire_std/battle.png · 상대 하수인 본체는 자기 종 그대로
+  const T=H.load(htmlPath); const P=setup(T,"pve");
+  H.place(T,P.king0,12,4); H.place(T,P.em,11,4); T.S.balls[0]=5; T.S.reserve[0]=null;
+  ok(neutralCap(T,P.king0,"fire")&&P.king0.cap.artRosterId==="M-F1","K3a 전제: 왕이 중립 포획 하수인(불 · M-F1 표준형) 보유");
+  T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0;
+  const B=proxyBattle(T,P.king0,P.em,true,false);
+  ok(!!B&&B.fa===P.king0.cap&&B.fa!==B.attP&&B.attP===P.king0&&B.fd===P.em,"K3b 전제: 대리 출전 전투 — fa 는 왕의 cap 객체(pf!==piece), 방어는 하수인 본체");
+  const tA=tokOf(T,"A"), tD=tokOf(T,"D"), iA=tokImg(tA), iD=tokImg(tD);
+  ok(!!iA&&iA.src==="assets/minions/fire_std/battle.png"&&/class="btok art tok-me" id="tok-A"/.test(tA),"K3c 대리 출전 포획 하수인 토큰 = 그 종(fire_std)의 기존 battle.png · art 클래스·tok-me·id 계약 유지");
+  ok(!!iA&&iA.alt==="포획 하수인·불"&&/<small>불<\/small>/.test(tA),"K3d alt·라벨은 기존 fighterName/속성 문구 그대로 (표시 정체 외 새 문구 없음)");
+  ok(!!iD&&iD.src==="assets/minions/"+T.artDirOf(P.em)+"/battle.png"&&/id="tok-D"/.test(tD),"K3e 상대 하수인 본체 토큰은 #89 그대로 자기 종");
+  ok(/onerror="artSpriteFail\('fire_std',this\)"/.test(tA),"K3f 대리 출전 토큰도 같은 실패 폴백 경로(artSpriteFail) 연결");
+  ok(!/👑/.test(tA)&&!tA.includes(T.artDirOf(P.em)),"K3g 대리 출전 토큰에 왕 이모지·상대 종 폴더가 섞이지 않는다");
+  const hpD=B.fd.hp, blog=B.blog.length; global.__act("basic"); T.drain(5000);
+  ok(T.S.battle===B&&B.fd.hp<hpD&&B.blog.length>blog,"K3h 대리 출전 전투가 실제로 진행된다 (D HP "+hpD+"→"+B.fd.hp+")");
+  T.close(); T.S.battle=null; T.TQ.length=0;
+}
+{
+  // K4 양측 대리 출전 — 핫시트: 1P 왕(중립 포획 물 표준형) vs 2P 동료(적 포획 예비 = 1P 의 원래 하수인 종 M-L5 번개 지속형)
+  const T=H.load(htmlPath); const P=setup(T,"pvp");
+  const eAlly=T.S.pieces.find(x=>x.owner===1&&x.type==="ally");
+  giveSpecies(T,P.me,T.ROSTER.find(r=>r.id==="M-L5"));
+  T.S.current=1; T.S.mainUsed=false; T.S.battlesUsed=0; T.initBattle(P.em,P.me); T.drain(500); T.finishByCapture("A"); T.TQ.length=0;
+  const rv=T.S.reserve[1];
+  ok(!!rv&&rv.artRosterId==="M-L5"&&rv.element==="lightning"&&P.me.alive===false,"K4a 전제: 2P 예비 하수인 = 포획한 1P 하수인의 원래 종(M-L5 번개 지속형)");
+  P.em.placed=false; H.place(T,P.king0,12,4); H.place(T,eAlly,11,4); T.S.balls[0]=5; T.S.reserve[0]=null;
+  ok(neutralCap(T,P.king0,"water")&&P.king0.cap.artRosterId==="M-W1","K4b 전제: 1P 왕이 중립 포획 하수인(물 · M-W1) 보유");
+  T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.selected=null; T.render();
+  const B=proxyBattle(T,P.king0,eAlly,true,true);
+  ok(!!B&&B.fa===P.king0.cap&&B.fd===eAlly.cap&&eAlly.cap===rv&&T.S.reserve[1]===null,"K4c 전제: 양측 대리 출전 — D 는 예비 하수인이 동료의 cap 으로 옮겨져(reserve 소모) 싸운다");
+  const iA=tokImg(tokOf(T,"A")), iD=tokImg(tokOf(T,"D"));
+  ok(!!iA&&iA.src==="assets/minions/water_std/battle.png"&&!!iD&&iD.src==="assets/minions/lightning_sustain/battle.png","K4d 양측 토큰이 각자 실제 대리 전투원의 종 — A water_std · D lightning_sustain (동료 본체 🤝·왕 본체 👑 아님)");
+  ok(eAlly.cap.artRosterId==="M-L5"&&eAlly.cap===rv,"K4d2 예비→cap 이전(useRes) 후에도 같은 객체·외형 정체 유지 (AC 5)");
+  ok(!!iD&&iD.alt==="포획 하수인·번개"&&/<small>번개<\/small>/.test(tokOf(T,"D")),"K4e D 라벨·alt 는 기존 문구 그대로");
+  const st=T.byId("overlayBox").innerHTML;
+  ok(!/👑|🤝/.test(tokOf(T,"A")+tokOf(T,"D")),"K4f 대리 출전 토큰에는 왕·동료 이모지가 없다 (본체 표현은 본체 출전 때만)");
+  ok(B.fd.hp===T.BAL.enemyCapHp&&B.fd.maxHp===T.BAL.captured.hp&&B.fd.atk===T.BAL.captured.atk&&B.fd.skillAtk===T.BAL.captured.skill&&B.fd.cdMax===T.BAL.captured.cd,"K4g 표시 종이 붙어도 전투 수치는 포획 공용 규격(HP 70/100 · 공 20 · 기 30 · CD 2) — 종 스탯(M-L5 95/20/28)으로 바뀌지 않는다");
+  ok(/HP <span id="hptxt-D">70<\/span>\/100/.test(st),"K4h 정보 패널 HP 표기도 70/100");
+  T.close(); T.S.battle=null; T.TQ.length=0;
+  // 본체 출전은 그대로 (본체 vs 본체는 규칙상 밀어내기이므로 각각 하수인을 상대로 연다): 왕 본체(포획 보유) vs 하수인 → 👑 · 하수인 vs 동료 본체(예비 보유) → 🤝
+  const T2=H.load(htmlPath); const Q=setup(T2,"pvp"); const eAlly2=T2.S.pieces.find(x=>x.owner===1&&x.type==="ally");
+  H.place(T2,Q.king0,12,4); H.place(T2,Q.em,11,4); T2.S.balls[0]=5; ok(neutralCap(T2,Q.king0,"grass"),"K4 전제: 왕 풀 cap");
+  T2.S.reserve[1]={element:"grass",hp:70,maxHp:100,atk:20,skillAtk:30,cd:0,cdMax:2,skills:T2.archSkills("std","grass"),cds:[0,0,0,0],revealedSkills:[],artRosterId:"M-G1"};
+  T2.S.current=0; T2.S.mainUsed=false; T2.S.battlesUsed=0;
+  const B2=proxyBattle(T2,Q.king0,Q.em,false,false);
+  const a2=tokOf(T2,"A");
+  ok(!!B2&&B2.fa===Q.king0&&B2.attP===Q.king0&&!!Q.king0.cap,"K4i 왕 본체 출전 선택 시 fa 는 본체이고 cap 은 그대로 보유");
+  ok(/👑/.test(a2)&&!/<img/.test(a2)&&!/minions\//.test(a2)&&!/grass_std/.test(T2.byId("overlayBox").innerHTML),"K4j 왕 본체 토큰은 현행 이모지 그대로 — 보유 중인 포획 하수인의 종(grass_std)이 전투 화면 어디에도 없다");
+  T2.close(); T2.S.battle=null; T2.TQ.length=0;
+  H.place(T2,Q.me,12,3); H.place(T2,eAlly2,11,3); T2.S.current=0; T2.S.mainUsed=false; T2.S.battlesUsed=0;
+  const B3=proxyBattle(T2,Q.me,eAlly2,false,false);
+  const d3=tokOf(T2,"D");
+  ok(!!B3&&B3.fd===eAlly2&&B3.fa===Q.me&&T2.S.reserve[1]!==null&&!eAlly2.cap,"K4k 동료 본체 출전 선택 시 fd 는 본체이고 예비는 소모되지 않는다");
+  ok(/🤝/.test(d3)&&!/<img/.test(d3)&&!/grass_std/.test(T2.byId("overlayBox").innerHTML),"K4l 동료 본체 토큰은 현행 이모지 그대로 — 예비 하수인의 종(grass_std)이 전투 화면에 없다");
+  T2.close(); T2.S.battle=null; T2.TQ.length=0;
+}
+{
+  // K5 잘못된/누락 식별자 안전 폴백 — 화이트리스트 밖·오염·속성 불일치 → 이모지 토큰 · <img>·경로 없음
+  const T=H.load(htmlPath); const P=setup(T,"pvp");
+  H.place(T,P.king0,12,4); H.place(T,P.em,11,4); T.S.balls[0]=5;
+  ok(neutralCap(T,P.king0,"grass"),"K5 전제: 풀 중립 포획");
+  T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0;
+  const B=proxyBattle(T,P.king0,P.em,true,false);
+  ok(!!B&&B.fa===P.king0.cap&&srcOf(tokOf(T,"A"))==="assets/minions/grass_std/battle.png","K5a 전제: 정상 정체(grass_std)에서는 그림");
+  const bad=[["M-X9","미등록 id"],["","빈 문자열"],["../../etc","경로 조작"],["M-F1/../..","경로 조작 2"],["<script>","마크업"],[0,"숫자 0"],[null,"null"],[undefined,"undefined"],[{},"객체"],["M-F1","속성 불일치(불 id · 풀 cap)"]];
+  for(const [v,label] of bad){
+    B.fa.artRosterId=v; T.battleModal(); const t=tokOf(T,"A");
+    ok(!/<img/.test(t)&&!/minions\//.test(t)&&t.includes("🌿")&&/<small>풀<\/small>/.test(t)&&/style="background:var\(--grass\)"/.test(t)&&/id="tok-A"/.test(t),"K5b."+label+" → 그림 없이 현행 속성 이모지 토큰(풀·속성색) · 경로 문자열 없음 · id 유지");
+  }
+  B.fa.artRosterId="M-G1"; T.battleModal();
+  ok(srcOf(tokOf(T,"A"))==="assets/minions/grass_std/battle.png","K5c 정상 id 복귀 시 다시 그림 (폴백은 상태를 오염시키지 않음)");
+  B.fa.artRosterId="M-X9"; T.battleModal(); const hpD=B.fd.hp; global.__act("basic"); T.drain(5000);
+  ok(T.S.battle===B&&B.fd.hp<hpD,"K5d 오염된 id 상태에서도 전투 진행 (D HP "+hpD+"→"+B.fd.hp+")");
+  T.close(); T.S.battle=null; T.TQ.length=0;
+}
+{
+  // K6 이미지 로드 실패 → 대리 출전 토큰도 즉시 현행 이모지로 대체되고 전투가 이어진다 (J11~J13 계약을 대리 출전에 적용)
+  const T=H.load(htmlPath); const P=setup(T,"pvp");
+  H.place(T,P.king0,12,4); H.place(T,P.em,11,4); T.S.balls[0]=5;
+  ok(neutralCap(T,P.king0,"lightning"),"K6 전제: 번개 중립 포획");
+  T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0;
+  const B=proxyBattle(T,P.king0,P.em,true,false);
+  ok(!!B&&srcOf(tokOf(T,"A"))==="assets/minions/lightning_std/battle.png","K6a 전제: 대리 출전 lightning_std 그림");
+  const live=T.byId("tok-A"); live.id="tok-A"; live.classList.add("btok"); live.classList.add("art"); live.classList.add("tok-me");
+  const img={onerror:function(){},style:{},parentNode:live};
+  T.artSpriteFail("lightning_std",img);
+  ok(img.onerror===null&&T.ART.failed.has("lightning_std")&&!live.classList.contains("art")&&live.innerHTML==="⚡<small>번개</small>"&&live.style.background==="var(--lightning)"&&img.style.display!=="none",
+    "K6b 실패 즉시 같은 노드가 '지금 싸우는 대리 전투원'의 속성 이모지·라벨·속성색으로 대체 (왕 이모지 아님 · 숨김 경로 아님)");
+  T.battleModal();
+  ok(!/<img/.test(tokOf(T,"A"))&&/⚡/.test(tokOf(T,"A"))&&!!tokImg(tokOf(T,"D")),"K6c 재렌더에서도 실패한 종은 이모지, 상대 본체 종은 그림 유지 (그 종만 실패 처리)");
+  const hpD=B.fd.hp; global.__act("basic"); T.drain(5000);
+  ok(T.S.battle===B&&B.fd.hp<hpD,"K6d 실패 후 전투 진행 (D HP "+hpD+"→"+B.fd.hp+")");
+  T.close(); T.S.battle=null; T.TQ.length=0;
+}
+{
+  // K7 전투 불변: 외형 정체(artRosterId)는 표시 전용 — 같은 시드에서 rosterId 를 지운 대리 전투원과 로그·HP 가 완전히 같다.
+  //    지속형(M-F5 fire_sustain) 예비를 대리로 세워 archOf 계열(지속형 화상 3R·상태 100%)이 cap 에 새지 않음을 화상 지속 라운드로 확인한다.
+  const run=(strip)=>{
+    const T=H.load(htmlPath); const P=setup(T,"pvp"); T.BAL.statusProb=1; T.BAL.dmgVar=0;
+    const eAlly=T.S.pieces.find(x=>x.owner===1&&x.type==="ally");
+    giveSpecies(T,P.me,T.ROSTER.find(r=>r.id==="M-F5"));
+    T.S.current=1; T.S.mainUsed=false; T.S.battlesUsed=0; T.initBattle(P.em,P.me); T.drain(500); T.finishByCapture("A"); T.TQ.length=0;
+    P.em.placed=false; H.place(T,P.king0,12,4); H.place(T,eAlly,11,4); T.S.balls[0]=5; T.S.reserve[0]=null;
+    neutralCap(T,P.king0,"water");
+    if(strip){ for(const c of [P.king0.cap,T.S.reserve[1]]){ delete c.artRosterId; } }
+    T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.setSeed(99);
+    const B=proxyBattle(T,P.king0,eAlly,true,true);
+    const dirs=[adf(T,B.fa,B.attP),adf(T,B.fd,B.defP)], hasId=!!(B.fa.artRosterId&&B.fd.artRosterId);
+    let i=0; while(T.S.battle===B&&i<12){ global.__act("basic"); T.drain(5000); i++; } // 지속형 슬롯0 = 효과기(화상) → 기본 공격 반복이면 D 의 첫 행동에서 화상 부여
+    return {T,B,hasId,blog:B.blog.slice(),hpA:B.fa.hp,hpD:B.fd.hp,burnMax:Math.max(0,...B.blog.map(l=>{const m=/화상을 입었다! \((\d+)R\)/.exec(l); return m?+m[1]:0;})),dirs};
+  };
+  const a=run(false), b=run(true);
+  ok(a.hasId&&!b.hasId&&JSON.stringify(a.dirs)==='["water_std","fire_sustain"]'&&JSON.stringify(b.dirs)==='[null,null]',"K7a 전제: 한쪽은 정체 있음(그림 water_std·fire_sustain), 다른 쪽은 정체 제거(그림 없음)");
+  ok(a.blog.length>4&&JSON.stringify(a.blog)===JSON.stringify(b.blog)&&a.hpA===b.hpA&&a.hpD===b.hpD,"K7b 같은 시드·같은 행동에서 전투 로그·HP 가 완전히 동일 — 정체는 전투에 영향 0 ["+a.blog.length+"줄]");
+  ok(a.T.archOf(a.B.fd)===null&&a.T.archOf(a.B.fa)===null&&a.burnMax>0&&a.burnMax===a.T.BAL.burnRounds,"K7c 지속형 종 정체가 붙은 예비 하수인의 화상은 공용 규격(BAL.burnRounds="+a.T.BAL.burnRounds+"R)이지 지속형 강화(3R)가 아니다 — archOf(cap)===null 이고 화상도 공용 규격 [관측 "+a.burnMax+"R]");
+  a.T.TQ.length=0; b.T.TQ.length=0;
+}
+{
+  // K8 온라인 양측 정체 일치 — 같은 시드에서 두 독립 인스턴스(1P 화면·2P 화면)가 같은 cap/reserve 정체를 만든다 · 네트워크 송신 0
+  //    송신 0 은 "연결된 소켓(NET.ws, readyState 1)의 실제 send 호출 수"로 잰다 — wsLog 는 생성된 소켓 수라 메시지 수가 아니다 (Saturn REVISE).
+  //    K8d 가 같은 검사기로 음성 대조: 제품의 실제 netSend 경로(netAction)로 보내면 같은 판정이 반드시 실패한다.
+  const mk=(me)=>{ const T=H.load(htmlPath); const P=setup(T,"pvp"); T.NET.mode=true; T.NET.me=me;
+    const ws=new T.WebSocketCtor("ws://127.0.0.1:8080/",[T.NET_PROTOCOL_MARKER,"qa-k8-code"]); ws.readyState=1; T.NET.ws=ws; // 연결된 소켓 준비 — 이 소켓의 send 만이 실제 송신이다
+    return {T,P,ws}; };
+  const A=mk(0), Bb=mk(1);
+  /* 검사기: fn 동안 (1) 연결 소켓의 실제 send 증분 (2) 새 소켓 생성 수 (3) 감시 중인 소켓이 여전히 NET.ws 이며 열려 있는지 — (3) 이 깨지면 다른 소켓으로 샌 송신을 놓칠 수 있으므로 함께 판정 */
+  const sentBy=({T,ws},fn)=>{ const s0=ws.sent.length, k0=T.wsLog.length; const out=fn(); return {out,sent:ws.sent.length-s0,socks:T.wsLog.length-k0,live:T.NET.ws===ws&&ws.readyState===1}; };
+  const silent=r=>r.sent===0&&r.socks===0&&r.live;
+  const capOf=(X)=>sentBy(X,()=>{ X.T.setSeed(4242); X.T.S.balls[0]=5; X.P.king0.cap=null; X.T.tryCapture(X.P.king0,"safe"); return X.P.king0.cap; });
+  const ca=capOf(A), cb=capOf(Bb);
+  ok(ca.out&&cb.out&&ca.out.artRosterId===cb.out.artRosterId&&ca.out.element===cb.out.element&&ca.out.artRosterId===stdOf(A.T,ca.out.element).id,"K8a 중립 포획: 1P·2P 인스턴스가 같은 정체("+ca.out.artRosterId+") — 시드 결정론만으로 일치, 프로토콜 무변경");
+  ok(silent(ca)&&silent(cb),"K8b 중립 포획의 정체 기록은 연결된 소켓으로 아무것도 보내지 않는다 (실제 send 1P "+ca.sent+"·2P "+cb.sent+" · 새 소켓 0 · 연결 유지)");
+  const resOf=(X)=>{ const {T,P}=X; giveSpecies(T,P.em,T.ROSTER.find(r=>r.id==="M-G2")); T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.reserve[0]=null; T.initBattle(P.me,P.em); T.drain(500);
+    const r=sentBy(X,()=>{ T.finishByCapture("A"); return T.S.reserve[0]; }); T.TQ.length=0; return r; };
+  const ra=resOf(A), rb=resOf(Bb);
+  ok(ra.out&&rb.out&&ra.out.artRosterId==="M-G2"&&rb.out.artRosterId==="M-G2"&&ra.out.hp===rb.out.hp,"K8c 적 포획: 양측 인스턴스 모두 원래 종(M-G2) 보존 — 전투 공개 시점(포획 순간)에 이미 양측이 아는 정보");
+  ok(silent(ra)&&silent(rb),"K8c' 적 포획(finishByCapture)의 정체 기록도 연결된 소켓으로 아무것도 보내지 않는다 (실제 send 1P "+ra.sent+"·2P "+rb.sent+")");
+  // 음성 대조 — 제품의 실제 송신 경로(netAction → netSend → NET.ws.send)로 한 건 보내면 같은 검사기·같은 판정이 반드시 실패해야 한다 (검사기가 살아 있음을 증명)
+  A.T.S.current=0; // netActor()===NET.me(0) 이어야 netAction 이 송신한다 — 포획 뒤 턴 상태를 명시
+  const neg=sentBy(A,()=>A.T.netAction({t:"qa-unwanted-send"}));
+  ok(neg.sent===1&&!silent(neg)&&/qa-unwanted-send/.test(A.ws.sent[A.ws.sent.length-1])&&neg.socks===0&&neg.live,"K8d 음성 대조: 실제 netSend 한 건이면 같은 검사기가 송신 "+neg.sent+"건으로 잡아 K8b/K8c' 판정이 실패한다 (wsLog 는 여전히 0 증가 — 소켓 수로는 잡히지 않는다)");
+  A.T.TQ.length=0; Bb.T.TQ.length=0;
+}
+{
+  // K9 정보 경계 — 보드·사이드·출전 선택·출전 공개 모달에는 포획/예비 하수인의 종 폴더가 나타나지 않고, 전투 스테이지에서만(출전 공개 후) 나타난다
+  const T=H.load(htmlPath); const P=setup(T,"pve");
+  H.place(T,P.king0,12,4); H.place(T,P.em,11,4); T.S.balls[0]=5; T.S.balls[1]=5;
+  ok(neutralCap(T,P.king0,"fire")&&neutralCap(T,P.ek,"water"),"K9 전제: 내 왕 불 cap · 상대 왕 물 cap");
+  T.S.reserve[1]={element:"grass",hp:70,maxHp:100,atk:20,skillAtk:30,cd:0,cdMax:2,skills:T.archSkills("std","grass"),cds:[0,0,0,0],revealedSkills:[],artRosterId:"M-G1"};
+  T.S.reserve[0]={element:"lightning",hp:70,maxHp:100,atk:20,skillAtk:30,cd:0,cdMax:2,skills:T.archSkills("sustain","lightning"),cds:[0,0,0,0],revealedSkills:[],artRosterId:"M-L5"};
+  T.S.current=0; T.S.selected=P.king0; T.render();
+  const knownDirs=new Set(T.S.pieces.filter(p=>p.placed&&p.alive&&(p.owner===0||p.revealed)).map(p=>T.artDirOf(p)).filter(Boolean));
+  const hidden=["fire_std","water_std","grass_std","lightning_sustain"].filter(d=>!knownDirs.has(d));
+  const dom=()=>boardDump(T)+"|"+T.byId("sidePanel").innerHTML+"|"+T.byId("overlayBox").innerHTML;
+  ok(hidden.length>=3&&hidden.every(d=>dom().indexOf(d)<0),"K9a 보드·사이드 패널(선택된 왕 정보 포함)에 내/상대 포획·예비 하수인의 종 폴더가 없다 ["+hidden.join(",")+"]");
+  ok(/예비 하수인\(번개\) HP 70\/100/.test(T.byId("sidePanel").innerHTML)&&/포획 하수인\(불\) HP 100\/100/.test(T.byId("sidePanel").innerHTML),"K9b 예비·포획 배지는 기존처럼 속성·HP 텍스트만");
+  T.S.mainUsed=false; T.S.battlesUsed=0; T.byId("obBtns").children.length=0;
+  T.initBattle(P.king0,P.em); T.drain(500);
+  ok(/출전 선택/.test(T.byId("overlayBox").innerHTML)&&hidden.every(d=>T.byId("overlayBox").innerHTML.indexOf(d)<0),"K9c 출전 선택 모달(비공개 선택)에 종 폴더 없음");
+  modalBtn(T,2,1);
+  ok(/출전 공개/.test(T.byId("overlayBox").innerHTML)&&/포획 하수인\(불\)/.test(T.byId("overlayBox").innerHTML)&&hidden.every(d=>T.byId("overlayBox").innerHTML.indexOf(d)<0),"K9d 출전 공개 모달은 기존 문구(포획 하수인(불))만 — 그림·폴더는 아직 없음");
+  modalBtn(T,1,0);
+  const st=T.byId("overlayBox").innerHTML;
+  ok(!!T.S.battle&&st.indexOf("fire_std")>=0&&hidden.filter(d=>d!=="fire_std").every(d=>st.indexOf(d)<0),"K9e 전투 스테이지(출전 공개 후)에서만 대리 전투원의 종이 나타나고, 상대 왕의 미공개 cap·양측 예비의 종은 여전히 없다");
+  ok(hidden.filter(d=>d!=="fire_std").every(d=>boardDump(T).indexOf(d)<0&&T.byId("sidePanel").innerHTML.indexOf(d)<0),"K9f 전투 중에도 보드·사이드에는 비공개 cap/예비 종이 없다");
+  T.close(); T.S.battle=null; T.TQ.length=0;
+}
+{
+  // K10 AI 공정 관측 — 상대 cap/예비의 외형 정체(artRosterId)는 AI 평가에 쓰이지 않는다: 정체를 지워도 평가값이 같고, AI 함수 소스에 정체 필드 참조가 없다
+  const T=H.load(htmlPath); const P=setup(T,"pve");
+  H.place(T,P.king0,12,4); H.place(T,P.em,11,4); T.S.balls[0]=5;
+  T.setSeed(5); T.tryCapture(P.king0,"safe"); P.king0.revealed=true;
+  const evWith=T.aiBattleEV(P.em,P.king0,1);
+  const saved={artRosterId:P.king0.cap.artRosterId}; delete P.king0.cap.artRosterId;
+  const evWithout=T.aiBattleEV(P.em,P.king0,1);
+  Object.assign(P.king0.cap,saved);
+  ok(JSON.stringify(evWith)===JSON.stringify(evWithout),"K10a AI 전투 기대치는 상대 cap 정체 유무와 무관 (같은 값)");
+  const aiFns=["aiMain","aiMainStrong","aiBattleAction","aiBattleActionStrong","aiBattleEV","aiEvalPos","aiEvalBattles","aiEvalBattlesStrong","aiThreatOf","aiStaticRisk","aiProf"].filter(k=>typeof T[k]==="function");
+  ok(aiFns.length>=8&&aiFns.every(k=>!/artRosterId|artDirOf/.test(T[k].toString())),"K10b AI 함수 "+aiFns.length+"개 소스에 artRosterId·아트 헬퍼 참조 없음 (외형 정체 필드는 표시 계층 전용)");
+  T.TQ.length=0;
+}
+
 /* J13f/g 검사기 — 양성(J13f·g)과 음성 대조(J13j·k)가 같은 함수를 쓴다.
    j13Fresh: 핫시트 전투를 열고 실 문서 토큰 tok-A 를 전투 도트 실패로 대체한 상태.
    j13Arm : 메시지·FX 재생 경로를 켜고(msgBox.nodeType=1), A 의 phase 0 이 지난 뒤(phase=1) 를 재렌더해 D(P2) 의 행동 차례로 만든다 —

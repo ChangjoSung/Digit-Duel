@@ -16,3 +16,10 @@
 /demo/test/minion_art_cdp.js text eol=lf
 /docs/qa/minion-art-integration-*.md text eol=lf
 /docs/qa/minion-art-integration/minion_art_cdp_report.json text eol=lf
+/demo/test/issue91_cdp.js text eol=lf
+/docs/qa/issue91-mars.md text eol=lf
+/docs/qa/issue91-saturn.md text eol=lf
+/docs/qa/issue91-saturn-initial.md text eol=lf
+/docs/qa/issue91-mars-revise.md text eol=lf
+/docs/qa/v044-technical-analysis-mars.md text eol=lf
+/docs/qa/issue91/issue91_cdp_report.json text eol=lf
