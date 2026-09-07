@@ -172,6 +172,10 @@ function load(htmlPath,opts){
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
   renderSide,renderMetrics,render,startMode,modal,close,onCell,humanViewer,idLabel,
   MEMO_OPTS,MEMO_UI,memoOpt,memoSet,memoModal, // #36 추측 메모 피커
+  ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
+  GLYPH,glyphOk,glyphSpan,memoShort,pieceMemoKey,
+  artFail:window.artFail,artSpriteFail:window.artSpriteFail,artPortraitFail:window.artPortraitFail,
+  rosterInfo:window.rosterInfo,battleModal,toggleRoster:window.toggleRoster, // #89 하수인 아트 연결 (표시 계층)
   NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
   netServerDefault,netActor,netAction,netPrepare,netConnect,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
   TUT,TUT_STEPS,TUT_HINTS,TUT_KEY,tutStore,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀

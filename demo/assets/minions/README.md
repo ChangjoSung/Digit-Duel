@@ -1,0 +1,34 @@
+# v0.4.3 하수인 아트
+
+CJ 제공 `all-minions-v0.4.3`의 20종 디자인과 승인된 파생 아트를 보관한다.
+원본 반입은 PR #86, 전투 4종 보완 및 말판 아이콘 20종은 Issue #87 / PR #88의 납품 범위다.
+CJ 디자인 확인 후 게임 화면의 이미지 로딩·HP 배치를 [PR #90](https://github.com/ChangjoSung/Digit-Duel/pull/90)에서 구현하고 Saturn 독립 QA를 통과했다. [Issue #89](https://github.com/ChangjoSung/Digit-Duel/issues/89)는 CJ 플레이 확인 대기다. 정적 아트 검수와 런타임 검수는 구분한다.
+
+## 파일 구성
+
+각 `속성_아키타입` 폴더에 아래 5파일, 총 **100파일**을 납품한다.
+
+| 파일 | 용도 | 크기 |
+|---|---|---|
+| `portrait.png` | 설명창 원본 보존 | 512×512 |
+| `portrait.webp` | 설명창 기본 로딩 | 512×512 |
+| `battle-grid.png` | 전투 도트 작업 그리드 | 64×64 |
+| `battle.png` | 전투 도트, 그리드의 최근접 2배 | 128×128 |
+| `icon.png` | 직접 픽셀 제작 말판 아이콘 | 32×32 |
+
+최초 반입 80파일·7,488,176바이트는 [원본 매니페스트](../../../docs/art/minions-v0.4.3/source-manifest.csv)에 기록했다.
+설명창 40파일 및 비대상 전투 32파일은 원본 바이트를 유지한다.
+`fire_sustain`, `water_swift`, `grass_atk`, `lightning_atk`의 전투 4쌍은 승인된 가독성 보완을 적용했다.
+해당 8파일과 신규 아이콘 20파일의 현재 해시는 [납품 매니페스트](../../../docs/art/minions-v0.4.3/delivery-manifest.csv)를 따른다.
+`battle-grid.png`는 작업 원고이며 런타임 로딩 대상이 아니다.
+
+로스터 대응·규격·최신 QA는 [외형 규격](../../../docs/minion-visual-spec-v0.4.3.md),
+비교 이미지·제작 근거는 [아트 납품 안내](../../../docs/art/minions-v0.4.3/README.md)를 참조한다.
+왕·동료·폭탄·함정·원소 기호는 기존 메모 이모지를 재사용한다.
+
+## 자산 조건
+
+이 디렉터리의 원본 및 파생 아트는 Apache-2.0 적용 대상이 아니다.
+[ASSET-LICENSE.md](../../../ASSET-LICENSE.md)의 자산 조건을 따른다.
+원본 작성 도구·프롬프트·레이어 파일의 출처는 제공 패키지에서 확인되지 않았으며,
+파일 수령 사실을 권리 관계나 상업적 독창성의 검증으로 간주하지 않는다.

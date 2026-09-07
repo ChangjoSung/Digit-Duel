@@ -42,17 +42,19 @@
 
 ## 화면
 
-### 플레이 화면 (PVE · 1440×900)
+### 플레이 화면 (PVE · 1280×800)
 
-내 말은 종류·속성·HP까지 보이고 상대 말은 물음표로만 보입니다. 왼쪽은 보드, 오른쪽은 상태 패널 · 로그 · 지표 패널입니다.
+내 말과 공개된 상대 말은 하수인 아이콘 또는 메모와 같은 기호로 표시됩니다. 하수인·동료·왕의 현재 HP는 아래 한 줄에, 미공개 상대는 물음표 또는 내가 지정한 추측 메모로 표시됩니다. 왼쪽은 보드, 오른쪽은 상태 패널 · 로그 · 지표 패널입니다.
 
-![PVE 플레이 화면 — 보드와 사이드 패널](docs/screenshots/gameplay-pve.png)
+![PVE 검증 장면 — 하수인 아이콘·HP·공개된 상대와 미공개 상대](docs/qa/minion-art-integration/file_desktop-1280_3-board.png)
 
-### 전투 화면 (PVE · 1440×900)
+### 전투 화면 (PVE · 1280×800)
 
 속성·HP·기술 공개 상태를 비교하면서 행동을 고릅니다. 라운드, 양측 전투원, 속성 상성, 기술·아이템·포획·도망 조건을 한 화면에서 확인할 수 있습니다.
 
-![PVE 전투 화면 — 속성 전투와 행동 선택](docs/screenshots/battle.png)
+![PVE 검증 장면 — 제공된 하수인 전투 아트와 행동 선택](docs/qa/minion-art-integration/file_desktop-1280_4-battle.png)
+
+위 두 화면은 실제 Chromium에서 검증용 게임 상태를 구성해 촬영했습니다.
 
 ### 튜토리얼 (10단계 · 1440×900)
 
@@ -67,7 +69,7 @@
 설치도, 서버도, 인터넷 연결도 필요 없습니다.
 
 1. 이 저장소를 내려받습니다.
-2. `demo/index.html`을 브라우저로 엽니다.
+2. `demo/assets/` 폴더를 함께 유지한 채 `demo/index.html`을 브라우저로 엽니다. 하수인 이미지는 이 상대경로에서 불러옵니다.
 3. 메뉴에서 모드를 고릅니다.
    - **PVE** — `5급(기본 AI)` 또는 `5단(탐색·추론 기반 강AI)`
    - **PVP (핫시트 2인)** — 한 기기에서 두 사람이 번갈아 플레이
@@ -167,7 +169,8 @@
 
 ```
 demo/
-  index.html          HTML 프로토타입 데모 (단일 파일 · 브라우저로 열면 실행)
+  index.html          HTML 프로토타입 데모 (오프라인은 브라우저로 열면 실행)
+  assets/minions/     하수인 설명창·전투·말판 이미지 (index.html과 함께 필요)
   test/               Node 헤드리스 회귀 테스트
 server/
   server.js           PVP 릴레이 서버 + demo/ 정적 서빙 (기본 로컬 전용 · LAN 공개는 --lan / DD_LAN=1 옵트인)
@@ -196,6 +199,11 @@ node demo/test/smoke_cycle5.js
 # 데모 — 추측 메모 / 튜토리얼 회귀
 node demo/test/smoke_memo.js
 node demo/test/smoke_tutorial.js
+
+# 데모 — 하수인 아트·HP·정보 은닉 회귀 / 실제 Chrome 로딩·화면 실측
+node demo/test/smoke_minion_art.js
+node demo/test/minion_art_cdp.js --read-only
+# --read-only를 빼면 docs/qa/minion-art-integration/에 보고서와 화면 증빙을 갱신합니다.
 
 # 데모 — 온라인 PVP 접속 경로 회귀 (주소 기본값·목적지 허용 목록·ws/wss·접속 코드 검증과 비노출·사전 배치 매칭)
 node demo/test/smoke_online.js

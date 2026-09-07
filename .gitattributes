@@ -1,0 +1,18 @@
+# Preserve the exact bytes recorded by the v0.4.3 art QA reports.
+# Authors used both LF and CRLF; checkout must not change reviewed hashes.
+/tools/minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/tests/test_minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/art/minions-v0.4.3/pixel-sources/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/art/minions-v0.4.3/battle-patches/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/art/minions-v0.4.3/delivery-manifest.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/art/minions-v0.4.3/art-pipeline.md -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/art/minions-v0.4.3/mars-pipeline-report.md -text whitespace=trailing-space,space-before-tab,cr-at-eol
+
+# Keep the runtime QA working-tree hashes stable across checkout platforms.
+/demo/index.html text eol=crlf
+/demo/test/harness.js text eol=crlf
+/demo/test/smoke_memo.js text eol=crlf
+/demo/test/smoke_minion_art.js text eol=lf
+/demo/test/minion_art_cdp.js text eol=lf
+/docs/qa/minion-art-integration-*.md text eol=lf
+/docs/qa/minion-art-integration/minion_art_cdp_report.json text eol=lf

@@ -1,0 +1,7 @@
+# Saturn 아트 출력 도구 최종 QA
+
+2026-09-07 · Task task_d35ce50bb8c0 · Dispatch ctx_43ccac5dc243
+
+Saturn 읽기 전용 보고를 Mercury가 보존했다. Technical PASS; 20종 최종 아트 검수는 별도다.
+
+[피드백] required_role=Saturn / instance=Saturn / instance_index=null / files_modified=[]: 지정 문서·구현·테스트를 읽기 전용 검토한 결과 Technical PASS이며 시작·종료 SHA256은 tool=3f9ecf1ed9b649f982ff6626e18a6be519e51b5fa04dbe25c5a7f93e2bf6ec8c, tests=d0e0564df29ebcf689002f6d093ad85543ebf7afa5e364019d5ed5d16b43cb92, art-pipeline=d45c16aec0ef5ec8a05568f066b57c94631e09fd6644e486e686c7111d39156d, mars-report=35846ca0f38a81df368b0ac2282686f43f2d337548cff9ce90d1cb786cdd2588, pilot-qa=7531e780e613ccc3e5dfc78c4df5fe594234a42b236aa54cc35c075047c7b64e, CLAUDE=bdd2cdb9fd5cc9be1022e2423e33950127591386823019f71a382052d14845d7로 일치했습니다. 근거는 Mars 소유 tools/minion_art.py:492·498의 실제 2x 헤더와 4종 흑백 패널 전픽셀 검증(T1), :64·289·690 및 art-pipeline.md:81의 bbox proxy/독립 지각 AC 유지(T2), :588·610·633의 고정 baseline 재계산과 전체 80개 원본·전투 합법성/허용 8개 출력 일치 및 메모리 변조 거부(T3), :661·778·787·799·830의 전체 입력·보존 선검증과 명시 누락·필수 패치·20종 게이트(T4)이며, 지정 순서 python -B pilot4 --check는 exit0/write0/unchanged20, 메모리 검증 20건 PASS와 감시 95파일 hash/mtime 불변, 기존 CLI 3종은 각 2회 PASS로 실제 반환 1/2/2였고 첫 exit1은 정렬된 id 순서 때문에 시트 3개만 불일치한 결과이며, 더 작은 --ids는 :750 및 문서:153에 명시된 매니페스트 축소 거부로 중단하므로 투명한 부분 재출력으로 평가하지 않습니다. 남은 것은 Earth 데이터 완료 후 최종20 ART QA이며, 기존 68개 정의·주요 :531·555·608의 바이트/mtime 보존 테스트를 검토했지만 직접 실행한 기존 테스트는 CLI 3종뿐이고 라벨 테스트 :659의 소스문자열 검사 한계는 실제 PNG 검증으로 보완했으며, 전체68·쓰기모드 멱등성·디스크 I/O 실패 원자성·실제 --all·제품 브라우저/회귀는 실행하지 않았고 누락16은 메모리에서 재현했으므로 진행 중 데이터나 과거 문서의 ART 대기표기를 도구 실패/새 ART 판정으로 취급하지 않았습니다.
