@@ -2,7 +2,7 @@
 
 CJ 제공 `all-minions-v0.4.3`의 20종 디자인과 승인된 파생 아트를 보관한다.
 원본 반입은 PR #86, 전투 4종 보완 및 말판 아이콘 20종은 Issue #87 / PR #88의 납품 범위다.
-게임 화면의 이미지 로딩·HP 배치는 후속 제품 작업이다.
+CJ 디자인 확인 후 게임 화면의 이미지 로딩·HP 배치를 [PR #90](https://github.com/ChangjoSung/Digit-Duel/pull/90)에서 구현하고 Saturn 독립 QA를 통과했다. [Issue #89](https://github.com/ChangjoSung/Digit-Duel/issues/89)는 CJ 플레이 확인 대기다. 정적 아트 검수와 런타임 검수는 구분한다.
 
 ## 파일 구성
 
@@ -11,7 +11,7 @@ CJ 제공 `all-minions-v0.4.3`의 20종 디자인과 승인된 파생 아트를 
 | 파일 | 용도 | 크기 |
 |---|---|---|
 | `portrait.png` | 설명창 원본 보존 | 512×512 |
-| `portrait.webp` | 설명창 배포 후보 | 512×512 |
+| `portrait.webp` | 설명창 기본 로딩 | 512×512 |
 | `battle-grid.png` | 전투 도트 작업 그리드 | 64×64 |
 | `battle.png` | 전투 도트, 그리드의 최근접 2배 | 128×128 |
 | `icon.png` | 직접 픽셀 제작 말판 아이콘 | 32×32 |

@@ -377,7 +377,7 @@ Mercury 지적: JSON `shots` 배열 길이 74 ≠ 실제 고유 PNG 70 (`_2-rost
 
 ### 8.8 Saturn 2차 QA — J13f/g 테스트 결함 정정 (2026-09-07 · task_b0d5cd57581d / ctx_c180061634a3)
 
-**지적(Saturn 2차 QA, PD 경유 전달 — 이 절은 그 판정문을 대신 쓰지 않는다)**: 8.2 에서 교체한 J13f 는 `B.blog.length>0` 을 보는데 `startRounds` 가 "전투 개시" 로그를 이미 넣어 두므로 **`__act` 가 아무 일도 하지 않아도 통과**했고, J13g 는 `fxD||fxA` 라서 **대체된 tok-A 의 FX 를 없애도 tok-D 의 FX 로 통과**했다(둘 다 128/128 유지). 이 두 단언은 8.2 표에 취소선으로 남기고 아래 정정판으로 대체했다. 제품 코드·자산·하네스·다른 테스트는 손대지 않았다.
+**지적(Saturn 2차 QA, PD 경유 전달 — 이 절은 그 판정문을 대신 쓰지 않는다)**: 8.2 에서 교체한 J13f 는 `B.blog.length>0` 을 보는데 `startRounds` 가 "전투 개시" 로그를 이미 넣어 두므로 **`__act` 가 아무 일도 하지 않아도 통과**했고, J13g 는 `fxD||fxA` 라서 **대체된 tok-A 의 FX 를 없애도 tok-D 의 FX 로 통과**했다(Saturn 실측: 원래 PVE의 __act no-op은 127/128로 J13g만 실패하고 J13f는 허위 통과; A측 FX만 제거하면 128/128). 이 두 단언은 8.2 표에 취소선으로 남기고 아래 정정판으로 대체했다. 제품 코드·자산·하네스·다른 테스트는 손대지 않았다.
 
 **원인 (확정, 재현으로 확인)**: 기존 픽스처는 pve 에서 A(내 하수인) 가 round 1 phase 0 의 행동자라 `__act("basic")` 의 피격 대상이 **tok-D** 였다. 대체된 토큰 tok-A 는 피격 대상이 아니었고, tok-A 가 받은 FX 는 그 뒤 타이머로 이어진 **D(AI) 의 반격**에서 온 것이라 "내가 넣은 행동 1회" 로 한정되지 않았다. 또 제품이 dmgfloat 를 1.1초 뒤 떼어내므로 drain 후 `children` 만 봐서는 float 를 영영 볼 수 없었다. 수정 전 재현값: no-op 시 A/D HP 120/120·round 1·phase 0·로그 +0 이지만 `blog.length===1` 로 J13f 통과 / pve 정상 행동 시 tok-D shake=true 라 tok-A 의 FX 와 무관하게 J13g 통과.
 
@@ -403,7 +403,7 @@ Mercury 지적: JSON `shots` 배열 길이 74 ≠ 실제 고유 PNG 70 (`_2-rost
 | `__act("basic")` → 메모리 no-op | **129 / 131 · 종료 코드 1** | J13f · J13g |
 | FX 가 대체 노드가 아닌 decoy 노드로 감 | **130 / 131 · 종료 코드 1** | J13g |
 
-이전 128판은 같은 두 변이에서 모두 128/128 이었다(Saturn 지적 그대로). 약화한 단언은 없다 — 이전 J13f/g 가 잡던 경우(전투 정지·FX 전무)는 정정판도 잡는다.
+**Mercury 기록 정정(2026-09-07, Saturn msg_6d4d24fc7c65):** 이전 128판의 Saturn 독립 측정은 원래 PVE 픽스처에서 __act no-op 127/128(J13g 실패), A측 FX 제거 128/128, FX-only action 128/128이었다. 위 표의 Mars 결과는 양성 호출만 바꾼 정정판 실험이며, 제품 함수 전체를 치환한 Saturn 최종 결과와 변이 범위가 다르다. 이전판의 두 변이가 모두 통과했다는 문장은 Saturn 결과로 귀속할 수 없어 정정한다. 약화한 단언은 없다 — 이전 J13f/g 가 잡던 경우(전투 정지·FX 전무)는 정정판도 잡는다.
 
 **해시**: `demo/test/smoke_minion_art.js` `ddebec86…` → **`bbf08d5d7b7c333568ca354df9035726b299e7b8b730f6dbc0e67921bace2923`** · `demo/index.html` `1c172a63…` 불변 · `demo/test/harness.js` `2381e0ec…` 불변.
 
