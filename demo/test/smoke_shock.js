@@ -49,7 +49,7 @@ const readSrc=p=>fs.readFileSync(path.join(__dirname,p),"utf8");
   ok(T.SKILLS.sig_sustain.desc==="자기 속성 상태효과 부여 (100%)"&&T.SKILLS.sig_sustain.statusSelf===true,"A5 잔류장 desc·statusSelf 불변");
   ok(!/70% 확률 감전/.test(T.html),"A6 소스에 '70% 확률 감전' 잔존 0");
   const other=["fire_effect","water_effect","lightning_effect","lightning_stable","lightning_heavy","sig_sustain"].map(k=>{const s=Object.assign({},T.SKILLS[k]); delete s.desc; return JSON.stringify(s);}).join("|");
-  ok(other==='{"ko":"잔불 표식","kind":"attack","cd":2,"pow":22,"status":true}|{"ko":"침식 수류","kind":"attack","cd":2,"pow":22,"status":true}|{"ko":"감전 침","kind":"attack","cd":2,"pow":22,"status":true}|{"ko":"전기탄","kind":"attack","cd":0,"pow":26}|{"ko":"연쇄 번개","kind":"attack","cd":3,"pow":34,"bonusVsStatus":6}|{"ko":"잔류장","kind":"sig","cd":3,"pow":18,"statusSelf":true}',"A7 관련 기술의 desc 외 필드(위력·쿨·플래그) 불변");
+  ok(other==='{"ko":"잔불 표식","kind":"attack","el":"fire","tier":"effect","cd":2,"pow":22,"status":true}|{"ko":"침식 수류","kind":"attack","el":"water","tier":"effect","cd":2,"pow":22,"status":true}|{"ko":"감전 침","kind":"attack","el":"lightning","tier":"effect","cd":2,"pow":22,"status":true}|{"ko":"전기탄","kind":"attack","el":"lightning","tier":"stable","cd":0,"pow":26}|{"ko":"연쇄 번개","kind":"attack","el":"lightning","tier":"heavy","cd":3,"pow":34,"bonusVsStatus":6}|{"ko":"잔류장","kind":"sig","cd":3,"pow":18,"statusSelf":true}',"A7 관련 기술의 desc 외 필드(위력·쿨·플래그) 불변 — #92 기술 속성 필드 el·tier 만 추가");
 }
 
 /* ===== B. 감전 침 1000회 부여율 (AC 3) — 실제 execSlot · 표준형 번개(M-L1, 슬롯1=lightning_effect) vs 풀 표준형(M-G1, 상성 없음·상태 없음) ===== */
@@ -222,7 +222,7 @@ let B_RATE=null;
   v=mut("sig-rolls","if(force||rand()<(prob===undefined?BAL.statusProb:prob))","if(rand()<(prob===undefined?BAL.statusProb:prob))");
   if(v.M){ const r=rateOf(v.M,"M-L5",3,o=>o.shock===1); ok(r.rate<1&&Object.keys(r.consumed).join(",")!=="1","J2 [음성] 보장 경로가 난수를 굴리면 100%·rand 1회 검사기가 잡는다 ("+(r.rate*100).toFixed(1)+"% "+JSON.stringify(r.consumed)+")"); } else ok(false,"J2 "+v.error);
   // J3: 화상까지 shockProb 로 내려가면(전역 하향 — Venus 모형과 같은 실수) C1 의 65~75% 검사기가 잡는다
-  v=mut("burn-uses-shockProb",'if(f.element==="fire"&&!opp.burn&&gate(force))','if(f.element==="fire"&&!opp.burn&&gate(force,BAL.shockProb))');
+  v=mut("burn-uses-shockProb",'if(atkEl==="fire"&&!opp.burn&&gate(force))','if(atkEl==="fire"&&!opp.burn&&gate(force,BAL.shockProb))'); // #92: 상태 분기는 판정 속성 atkEl 기준
   if(v.M){ const r=rateOf(v.M,"M-F1",1,o=>o.burn>0,1000); ok(r.rate<0.65,"J3 [음성] 화상이 shockProb 를 읽으면 부여율 "+(r.rate*100).toFixed(1)+"% → 65~75% 검사기가 잡는다"); } else ok(false,"J3 "+v.error);
   // J4: 레거시 번개가 statusProb 로 되돌아가면 E1 이 잡는다
   v=mut("legacy-ignores-shockProb","tryStatus(BAL.shockProb)","tryStatus()");
