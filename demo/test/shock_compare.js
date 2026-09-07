@@ -1,12 +1,14 @@
-/* #96 같은 시드 실제 제품 before/after 대조 — node demo/test/shock_compare.js [--base <git ref>=dcb668e] [--html <현행 index.html>] [--sims N=40]
+/* #96 같은 시드 실제 제품 before/after 대조 — node demo/test/shock_compare.js [--base <git ref>=dadc8bc] [--html <현행 index.html>] [--sims N=40]
    before = `git show <ref>:demo/index.html` 을 메모리로 읽어 harness.load({html}) — 파일을 쓰지 않는다 (Saturn --read-only 재실행 안전).
+   기본 기준판 dadc8bc = origin/dev 통합 시점(#91+#95 공격형 너프 반영, #96 미반영). #95 이후를 기준으로 삼아 before/after 차이를 #96(shockProb) 단독으로 귀속한다.
+   최초 납품 보고(docs/qa/issue96-mars.md 3.3)의 dcb668e 기준 수치는 `--base dcb668e` 로 재현 가능한 역사 자료이며 #95 변수가 섞여 있다.
    after  = 현행 demo/index.html. 두 제품을 같은 시드로 돌려 (1) 감전 침 부여율 (2) 화상·약화 시드별 결과 완전 일치 (3) shockProb=0.7 이면 옛 제품과 로그 완전 일치
    (4) 잔류장 100% 양쪽 동일 (5) AI vs AI 시뮬 같은 시드 N판의 감전·화상·약화 부여 횟수 총합 을 보고한다. 종료 코드 1 = 대조 판정 실패. */
 "use strict";
 const path=require("path"), {execSync}=require("child_process");
 const H=require("./harness");
 const args=process.argv.slice(2); const opt=(k,d)=>{ const i=args.indexOf(k); return i>=0?args[i+1]:d; };
-const REF=opt("--base","dcb668e"), HTML=path.resolve(opt("--html",path.join(__dirname,"..","index.html"))), SIMS=Number(opt("--sims","40"));
+const REF=opt("--base","dadc8bc"), HTML=path.resolve(opt("--html",path.join(__dirname,"..","index.html"))), SIMS=Number(opt("--sims","40"));
 const ROOT=path.resolve(__dirname,"..","..");
 const baseHtml=execSync(`git show ${REF}:demo/index.html`,{cwd:ROOT,encoding:"utf8",maxBuffer:64*1024*1024});
 let pass=0,fail=0; const fails=[];

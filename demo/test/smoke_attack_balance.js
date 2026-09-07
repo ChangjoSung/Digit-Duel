@@ -65,7 +65,7 @@ function setupDuel(T,aId,dId){
   return {A,D};
 }
 {
-  const T=H.load(htmlPath); T.BAL.dmgVar=0; T.BAL.statusProb=1;
+  const T=H.load(htmlPath); T.BAL.dmgVar=0; T.BAL.statusProb=1; T.BAL.shockProb=1; // #96: 감전 확률도 함께 고정 (AC 7 · smoke_shock H1)
   // C1: 공격형(불)이 R1 후공 — R1 2번째(heavy) + R2 1번째(결정타) 연속 구간 → 표준형 100 HP 가 12 남는다 (변경 전 3)
   let {A,D}=setupDuel(T,"M-F1","M-F2");
   T.execSlot("A",2); // 표준형 R1 선공: 보조기(응급 치유, 비피해) — 방어측 HP 변화 없음
