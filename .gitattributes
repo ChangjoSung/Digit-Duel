@@ -23,3 +23,10 @@
 /docs/qa/issue91-mars-revise.md text eol=lf
 /docs/qa/v044-technical-analysis-mars.md text eol=lf
 /docs/qa/issue91/issue91_cdp_report.json text eol=lf
+/demo/test/smoke_attack_balance.js text eol=lf
+/demo/test/attack_balance_compare.js text eol=lf
+/demo/test/issue95_cdp.js text eol=lf
+/docs/qa/issue95-mars.md text eol=lf
+/docs/qa/issue95-saturn.md text eol=lf
+/docs/qa/issue95/*.md text eol=lf
+/docs/qa/issue95/*.json text eol=lf
