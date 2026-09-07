@@ -1,0 +1,2195 @@
+{
+ "html": "demo/index.html",
+ "n": 150,
+ "seedBase": 5000,
+ "file": {
+  "atk": [
+   25
+  ],
+  "sig": 40,
+  "hp": [
+   90
+  ],
+  "skillAtk": [
+   40
+  ]
+ },
+ "variants": {
+  "v0.4.3": {
+   "values": {
+    "atk": 26,
+    "sig": 44
+   },
+   "role": {
+    "first": {
+     "n": 3000,
+     "win": 1699,
+     "lose": 457,
+     "flee": 844,
+     "judge": 2,
+     "winDecided": 78.80333951762523,
+     "winAll": 56.63333333333333,
+     "fleeShare": 28.133333333333333,
+     "avgRounds": 2.4766666666666666
+    },
+    "second": {
+     "n": 3000,
+     "win": 2126,
+     "lose": 142,
+     "flee": 732,
+     "judge": 0,
+     "winDecided": 93.7389770723104,
+     "winAll": 70.86666666666666,
+     "fleeShare": 24.4,
+     "avgRounds": 2.5103333333333335
+    }
+   },
+   "gap": 14.935637554685172,
+   "gapAll": 14.233333333333327,
+   "byOpp": {
+    "std": {
+     "first": {
+      "n": 600,
+      "win": 408,
+      "lose": 29,
+      "flee": 163,
+      "judge": 0,
+      "winDecided": 93.36384439359267,
+      "winAll": 68,
+      "fleeShare": 27.166666666666668,
+      "avgRounds": 2.7783333333333333
+     },
+     "second": {
+      "n": 600,
+      "win": 439,
+      "lose": 5,
+      "flee": 156,
+      "judge": 0,
+      "winDecided": 98.87387387387388,
+      "winAll": 73.16666666666667,
+      "fleeShare": 26,
+      "avgRounds": 2.68
+     }
+    },
+    "atk": {
+     "first": {
+      "n": 600,
+      "win": 107,
+      "lose": 365,
+      "flee": 128,
+      "judge": 0,
+      "winDecided": 22.66949152542373,
+      "winAll": 17.833333333333336,
+      "fleeShare": 21.333333333333336,
+      "avgRounds": 1.7833333333333334
+     },
+     "second": {
+      "n": 600,
+      "win": 365,
+      "lose": 107,
+      "flee": 128,
+      "judge": 0,
+      "winDecided": 77.33050847457628,
+      "winAll": 60.83333333333333,
+      "fleeShare": 21.333333333333336,
+      "avgRounds": 1.7833333333333334
+     }
+    },
+    "def": {
+     "first": {
+      "n": 600,
+      "win": 385,
+      "lose": 32,
+      "flee": 183,
+      "judge": 2,
+      "winDecided": 92.32613908872902,
+      "winAll": 64.16666666666667,
+      "fleeShare": 30.5,
+      "avgRounds": 3.645
+     },
+     "second": {
+      "n": 600,
+      "win": 331,
+      "lose": 16,
+      "flee": 253,
+      "judge": 0,
+      "winDecided": 95.38904899135446,
+      "winAll": 55.166666666666664,
+      "fleeShare": 42.16666666666667,
+      "avgRounds": 3.395
+     }
+    },
+    "swift": {
+     "first": {
+      "n": 600,
+      "win": 396,
+      "lose": 15,
+      "flee": 189,
+      "judge": 0,
+      "winDecided": 96.35036496350365,
+      "winAll": 66,
+      "fleeShare": 31.5,
+      "avgRounds": 1.8283333333333334
+     },
+     "second": {
+      "n": 600,
+      "win": 539,
+      "lose": 0,
+      "flee": 61,
+      "judge": 0,
+      "winDecided": 100,
+      "winAll": 89.83333333333333,
+      "fleeShare": 10.166666666666666,
+      "avgRounds": 2.195
+     }
+    },
+    "sustain": {
+     "first": {
+      "n": 600,
+      "win": 403,
+      "lose": 16,
+      "flee": 181,
+      "judge": 0,
+      "winDecided": 96.18138424821002,
+      "winAll": 67.16666666666666,
+      "fleeShare": 30.166666666666668,
+      "avgRounds": 2.348333333333333
+     },
+     "second": {
+      "n": 600,
+      "win": 452,
+      "lose": 14,
+      "flee": 134,
+      "judge": 0,
+      "winDecided": 96.99570815450643,
+      "winAll": 75.33333333333333,
+      "fleeShare": 22.333333333333332,
+      "avgRounds": 2.4983333333333335
+     }
+    }
+   },
+   "byEl": {
+    "fire": {
+     "first": {
+      "n": 750,
+      "win": 429,
+      "lose": 129,
+      "flee": 192,
+      "judge": 0,
+      "winDecided": 76.88172043010752,
+      "winAll": 57.199999999999996,
+      "fleeShare": 25.6,
+      "avgRounds": 2.32
+     },
+     "second": {
+      "n": 750,
+      "win": 590,
+      "lose": 36,
+      "flee": 124,
+      "judge": 0,
+      "winDecided": 94.24920127795528,
+      "winAll": 78.66666666666666,
+      "fleeShare": 16.53333333333333,
+      "avgRounds": 2.3413333333333335
+     }
+    },
+    "water": {
+     "first": {
+      "n": 750,
+      "win": 417,
+      "lose": 109,
+      "flee": 224,
+      "judge": 0,
+      "winDecided": 79.27756653992395,
+      "winAll": 55.60000000000001,
+      "fleeShare": 29.86666666666667,
+      "avgRounds": 2.570666666666667
+     },
+     "second": {
+      "n": 750,
+      "win": 503,
+      "lose": 31,
+      "flee": 216,
+      "judge": 0,
+      "winDecided": 94.19475655430712,
+      "winAll": 67.06666666666666,
+      "fleeShare": 28.799999999999997,
+      "avgRounds": 2.644
+     }
+    },
+    "grass": {
+     "first": {
+      "n": 750,
+      "win": 449,
+      "lose": 97,
+      "flee": 204,
+      "judge": 1,
+      "winDecided": 82.23443223443223,
+      "winAll": 59.86666666666667,
+      "fleeShare": 27.200000000000003,
+      "avgRounds": 2.564
+     },
+     "second": {
+      "n": 750,
+      "win": 525,
+      "lose": 31,
+      "flee": 194,
+      "judge": 0,
+      "winDecided": 94.42446043165468,
+      "winAll": 70,
+      "fleeShare": 25.866666666666667,
+      "avgRounds": 2.529333333333333
+     }
+    },
+    "lightning": {
+     "first": {
+      "n": 750,
+      "win": 404,
+      "lose": 122,
+      "flee": 224,
+      "judge": 1,
+      "winDecided": 76.80608365019012,
+      "winAll": 53.86666666666666,
+      "fleeShare": 29.86666666666667,
+      "avgRounds": 2.452
+     },
+     "second": {
+      "n": 750,
+      "win": 508,
+      "lose": 44,
+      "flee": 198,
+      "judge": 0,
+      "winDecided": 92.02898550724638,
+      "winAll": 67.73333333333333,
+      "fleeShare": 26.400000000000002,
+      "avgRounds": 2.526666666666667
+     }
+    }
+   },
+   "cells": [
+    {
+     "el": "fire",
+     "oppArch": "std",
+     "role": "first",
+     "win": 107,
+     "lose": 9,
+     "flee": 34,
+     "judge": 0,
+     "rounds": 397,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "std",
+     "role": "second",
+     "win": 121,
+     "lose": 2,
+     "flee": 27,
+     "judge": 0,
+     "rounds": 376,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "atk",
+     "role": "first",
+     "win": 25,
+     "lose": 98,
+     "flee": 27,
+     "judge": 0,
+     "rounds": 261,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "atk",
+     "role": "second",
+     "win": 98,
+     "lose": 25,
+     "flee": 27,
+     "judge": 0,
+     "rounds": 261,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "def",
+     "role": "first",
+     "win": 98,
+     "lose": 13,
+     "flee": 39,
+     "judge": 0,
+     "rounds": 506,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "def",
+     "role": "second",
+     "win": 97,
+     "lose": 3,
+     "flee": 50,
+     "judge": 0,
+     "rounds": 464,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "swift",
+     "role": "first",
+     "win": 100,
+     "lose": 2,
+     "flee": 48,
+     "judge": 0,
+     "rounds": 260,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "swift",
+     "role": "second",
+     "win": 146,
+     "lose": 0,
+     "flee": 4,
+     "judge": 0,
+     "rounds": 314,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "sustain",
+     "role": "first",
+     "win": 99,
+     "lose": 7,
+     "flee": 44,
+     "judge": 0,
+     "rounds": 316,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "sustain",
+     "role": "second",
+     "win": 128,
+     "lose": 6,
+     "flee": 16,
+     "judge": 0,
+     "rounds": 341,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "std",
+     "role": "first",
+     "win": 95,
+     "lose": 8,
+     "flee": 47,
+     "judge": 0,
+     "rounds": 432,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "std",
+     "role": "second",
+     "win": 106,
+     "lose": 1,
+     "flee": 43,
+     "judge": 0,
+     "rounds": 424,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "atk",
+     "role": "first",
+     "win": 27,
+     "lose": 88,
+     "flee": 35,
+     "judge": 0,
+     "rounds": 272,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "atk",
+     "role": "second",
+     "win": 88,
+     "lose": 27,
+     "flee": 35,
+     "judge": 0,
+     "rounds": 272,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "def",
+     "role": "first",
+     "win": 96,
+     "lose": 3,
+     "flee": 51,
+     "judge": 0,
+     "rounds": 559,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "def",
+     "role": "second",
+     "win": 79,
+     "lose": 2,
+     "flee": 69,
+     "judge": 0,
+     "rounds": 528,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "swift",
+     "role": "first",
+     "win": 93,
+     "lose": 8,
+     "flee": 49,
+     "judge": 0,
+     "rounds": 296,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "swift",
+     "role": "second",
+     "win": 124,
+     "lose": 0,
+     "flee": 26,
+     "judge": 0,
+     "rounds": 352,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "sustain",
+     "role": "first",
+     "win": 106,
+     "lose": 2,
+     "flee": 42,
+     "judge": 0,
+     "rounds": 369,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "sustain",
+     "role": "second",
+     "win": 106,
+     "lose": 1,
+     "flee": 43,
+     "judge": 0,
+     "rounds": 407,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "std",
+     "role": "first",
+     "win": 109,
+     "lose": 4,
+     "flee": 37,
+     "judge": 0,
+     "rounds": 418,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "std",
+     "role": "second",
+     "win": 106,
+     "lose": 1,
+     "flee": 43,
+     "judge": 0,
+     "rounds": 401,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "atk",
+     "role": "first",
+     "win": 29,
+     "lose": 87,
+     "flee": 34,
+     "judge": 0,
+     "rounds": 270,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "atk",
+     "role": "second",
+     "win": 87,
+     "lose": 29,
+     "flee": 34,
+     "judge": 0,
+     "rounds": 270,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "def",
+     "role": "first",
+     "win": 99,
+     "lose": 2,
+     "flee": 49,
+     "judge": 1,
+     "rounds": 578,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "def",
+     "role": "second",
+     "win": 78,
+     "lose": 0,
+     "flee": 72,
+     "judge": 0,
+     "rounds": 521,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "swift",
+     "role": "first",
+     "win": 106,
+     "lose": 1,
+     "flee": 43,
+     "judge": 0,
+     "rounds": 272,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "swift",
+     "role": "second",
+     "win": 138,
+     "lose": 0,
+     "flee": 12,
+     "judge": 0,
+     "rounds": 325,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "sustain",
+     "role": "first",
+     "win": 106,
+     "lose": 3,
+     "flee": 41,
+     "judge": 0,
+     "rounds": 385,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "sustain",
+     "role": "second",
+     "win": 116,
+     "lose": 1,
+     "flee": 33,
+     "judge": 0,
+     "rounds": 380,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "std",
+     "role": "first",
+     "win": 97,
+     "lose": 8,
+     "flee": 45,
+     "judge": 0,
+     "rounds": 420,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "std",
+     "role": "second",
+     "win": 106,
+     "lose": 1,
+     "flee": 43,
+     "judge": 0,
+     "rounds": 407,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "atk",
+     "role": "first",
+     "win": 26,
+     "lose": 92,
+     "flee": 32,
+     "judge": 0,
+     "rounds": 267,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "atk",
+     "role": "second",
+     "win": 92,
+     "lose": 26,
+     "flee": 32,
+     "judge": 0,
+     "rounds": 267,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "def",
+     "role": "first",
+     "win": 92,
+     "lose": 14,
+     "flee": 44,
+     "judge": 1,
+     "rounds": 544,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "def",
+     "role": "second",
+     "win": 77,
+     "lose": 11,
+     "flee": 62,
+     "judge": 0,
+     "rounds": 524,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "swift",
+     "role": "first",
+     "win": 97,
+     "lose": 4,
+     "flee": 49,
+     "judge": 0,
+     "rounds": 269,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "swift",
+     "role": "second",
+     "win": 131,
+     "lose": 0,
+     "flee": 19,
+     "judge": 0,
+     "rounds": 326,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "sustain",
+     "role": "first",
+     "win": 92,
+     "lose": 4,
+     "flee": 54,
+     "judge": 0,
+     "rounds": 339,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "sustain",
+     "role": "second",
+     "win": 102,
+     "lose": 6,
+     "flee": 42,
+     "judge": 0,
+     "rounds": 371,
+     "n": 150
+    }
+   ]
+  },
+  "V6": {
+   "values": {
+    "atk": 25,
+    "sig": 40
+   },
+   "role": {
+    "first": {
+     "n": 3000,
+     "win": 1678,
+     "lose": 521,
+     "flee": 801,
+     "judge": 6,
+     "winDecided": 76.30741246020919,
+     "winAll": 55.93333333333334,
+     "fleeShare": 26.700000000000003,
+     "avgRounds": 2.813
+    },
+    "second": {
+     "n": 3000,
+     "win": 1834,
+     "lose": 289,
+     "flee": 877,
+     "judge": 2,
+     "winDecided": 86.38718794159209,
+     "winAll": 61.133333333333326,
+     "fleeShare": 29.233333333333334,
+     "avgRounds": 2.763333333333333
+    }
+   },
+   "gap": 10.079775481382896,
+   "gapAll": 5.199999999999989,
+   "byOpp": {
+    "std": {
+     "first": {
+      "n": 600,
+      "win": 358,
+      "lose": 90,
+      "flee": 152,
+      "judge": 0,
+      "winDecided": 79.91071428571429,
+      "winAll": 59.66666666666667,
+      "fleeShare": 25.333333333333336,
+      "avgRounds": 3.1283333333333334
+     },
+     "second": {
+      "n": 600,
+      "win": 370,
+      "lose": 26,
+      "flee": 204,
+      "judge": 0,
+      "winDecided": 93.43434343434343,
+      "winAll": 61.66666666666667,
+      "fleeShare": 34,
+      "avgRounds": 2.9833333333333334
+     }
+    },
+    "atk": {
+     "first": {
+      "n": 600,
+      "win": 187,
+      "lose": 292,
+      "flee": 121,
+      "judge": 0,
+      "winDecided": 39.03966597077244,
+      "winAll": 31.166666666666664,
+      "fleeShare": 20.166666666666664,
+      "avgRounds": 2.0633333333333335
+     },
+     "second": {
+      "n": 600,
+      "win": 292,
+      "lose": 187,
+      "flee": 121,
+      "judge": 0,
+      "winDecided": 60.96033402922756,
+      "winAll": 48.66666666666667,
+      "fleeShare": 20.166666666666664,
+      "avgRounds": 2.0633333333333335
+     }
+    },
+    "def": {
+     "first": {
+      "n": 600,
+      "win": 319,
+      "lose": 62,
+      "flee": 219,
+      "judge": 6,
+      "winDecided": 83.72703412073491,
+      "winAll": 53.166666666666664,
+      "fleeShare": 36.5,
+      "avgRounds": 3.815
+     },
+     "second": {
+      "n": 600,
+      "win": 297,
+      "lose": 38,
+      "flee": 265,
+      "judge": 2,
+      "winDecided": 88.65671641791046,
+      "winAll": 49.5,
+      "fleeShare": 44.166666666666664,
+      "avgRounds": 3.6166666666666667
+     }
+    },
+    "swift": {
+     "first": {
+      "n": 600,
+      "win": 412,
+      "lose": 30,
+      "flee": 158,
+      "judge": 0,
+      "winDecided": 93.21266968325791,
+      "winAll": 68.66666666666667,
+      "fleeShare": 26.333333333333332,
+      "avgRounds": 2.27
+     },
+     "second": {
+      "n": 600,
+      "win": 485,
+      "lose": 4,
+      "flee": 111,
+      "judge": 0,
+      "winDecided": 99.18200408997954,
+      "winAll": 80.83333333333333,
+      "fleeShare": 18.5,
+      "avgRounds": 2.405
+     }
+    },
+    "sustain": {
+     "first": {
+      "n": 600,
+      "win": 402,
+      "lose": 47,
+      "flee": 151,
+      "judge": 0,
+      "winDecided": 89.53229398663697,
+      "winAll": 67,
+      "fleeShare": 25.166666666666664,
+      "avgRounds": 2.7883333333333336
+     },
+     "second": {
+      "n": 600,
+      "win": 390,
+      "lose": 34,
+      "flee": 176,
+      "judge": 0,
+      "winDecided": 91.98113207547169,
+      "winAll": 65,
+      "fleeShare": 29.333333333333332,
+      "avgRounds": 2.7483333333333335
+     }
+    }
+   },
+   "byEl": {
+    "fire": {
+     "first": {
+      "n": 750,
+      "win": 410,
+      "lose": 161,
+      "flee": 179,
+      "judge": 0,
+      "winDecided": 71.80385288966725,
+      "winAll": 54.666666666666664,
+      "fleeShare": 23.866666666666667,
+      "avgRounds": 2.604
+     },
+     "second": {
+      "n": 750,
+      "win": 507,
+      "lose": 56,
+      "flee": 187,
+      "judge": 0,
+      "winDecided": 90.05328596802842,
+      "winAll": 67.60000000000001,
+      "fleeShare": 24.933333333333334,
+      "avgRounds": 2.5613333333333332
+     }
+    },
+    "water": {
+     "first": {
+      "n": 750,
+      "win": 424,
+      "lose": 118,
+      "flee": 208,
+      "judge": 1,
+      "winDecided": 78.22878228782287,
+      "winAll": 56.53333333333334,
+      "fleeShare": 27.73333333333333,
+      "avgRounds": 2.970666666666667
+     },
+     "second": {
+      "n": 750,
+      "win": 436,
+      "lose": 82,
+      "flee": 232,
+      "judge": 1,
+      "winDecided": 84.16988416988417,
+      "winAll": 58.13333333333334,
+      "fleeShare": 30.933333333333334,
+      "avgRounds": 2.948
+     }
+    },
+    "grass": {
+     "first": {
+      "n": 750,
+      "win": 446,
+      "lose": 103,
+      "flee": 201,
+      "judge": 3,
+      "winDecided": 81.23861566484517,
+      "winAll": 59.46666666666667,
+      "fleeShare": 26.8,
+      "avgRounds": 2.888
+     },
+     "second": {
+      "n": 750,
+      "win": 466,
+      "lose": 53,
+      "flee": 231,
+      "judge": 1,
+      "winDecided": 89.78805394990366,
+      "winAll": 62.133333333333326,
+      "fleeShare": 30.8,
+      "avgRounds": 2.7733333333333334
+     }
+    },
+    "lightning": {
+     "first": {
+      "n": 750,
+      "win": 398,
+      "lose": 139,
+      "flee": 213,
+      "judge": 2,
+      "winDecided": 74.11545623836126,
+      "winAll": 53.06666666666666,
+      "fleeShare": 28.4,
+      "avgRounds": 2.7893333333333334
+     },
+     "second": {
+      "n": 750,
+      "win": 425,
+      "lose": 98,
+      "flee": 227,
+      "judge": 0,
+      "winDecided": 81.26195028680688,
+      "winAll": 56.666666666666664,
+      "fleeShare": 30.266666666666666,
+      "avgRounds": 2.7706666666666666
+     }
+    }
+   },
+   "cells": [
+    {
+     "el": "fire",
+     "oppArch": "std",
+     "role": "first",
+     "win": 93,
+     "lose": 26,
+     "flee": 31,
+     "judge": 0,
+     "rounds": 451,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "std",
+     "role": "second",
+     "win": 102,
+     "lose": 3,
+     "flee": 45,
+     "judge": 0,
+     "rounds": 426,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "atk",
+     "role": "first",
+     "win": 34,
+     "lose": 88,
+     "flee": 28,
+     "judge": 0,
+     "rounds": 291,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "atk",
+     "role": "second",
+     "win": 88,
+     "lose": 34,
+     "flee": 28,
+     "judge": 0,
+     "rounds": 291,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "def",
+     "role": "first",
+     "win": 78,
+     "lose": 21,
+     "flee": 51,
+     "judge": 0,
+     "rounds": 517,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "def",
+     "role": "second",
+     "win": 87,
+     "lose": 5,
+     "flee": 58,
+     "judge": 0,
+     "rounds": 488,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "swift",
+     "role": "first",
+     "win": 107,
+     "lose": 6,
+     "flee": 37,
+     "judge": 0,
+     "rounds": 309,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "swift",
+     "role": "second",
+     "win": 130,
+     "lose": 2,
+     "flee": 18,
+     "judge": 0,
+     "rounds": 340,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "sustain",
+     "role": "first",
+     "win": 98,
+     "lose": 20,
+     "flee": 32,
+     "judge": 0,
+     "rounds": 385,
+     "n": 150
+    },
+    {
+     "el": "fire",
+     "oppArch": "sustain",
+     "role": "second",
+     "win": 100,
+     "lose": 12,
+     "flee": 38,
+     "judge": 0,
+     "rounds": 376,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "std",
+     "role": "first",
+     "win": 78,
+     "lose": 26,
+     "flee": 46,
+     "judge": 0,
+     "rounds": 480,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "std",
+     "role": "second",
+     "win": 88,
+     "lose": 11,
+     "flee": 51,
+     "judge": 0,
+     "rounds": 470,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "atk",
+     "role": "first",
+     "win": 56,
+     "lose": 60,
+     "flee": 34,
+     "judge": 0,
+     "rounds": 327,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "atk",
+     "role": "second",
+     "win": 60,
+     "lose": 56,
+     "flee": 34,
+     "judge": 0,
+     "rounds": 327,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "def",
+     "role": "first",
+     "win": 81,
+     "lose": 13,
+     "flee": 56,
+     "judge": 1,
+     "rounds": 616,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "def",
+     "role": "second",
+     "win": 75,
+     "lose": 8,
+     "flee": 67,
+     "judge": 1,
+     "rounds": 577,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "swift",
+     "role": "first",
+     "win": 102,
+     "lose": 10,
+     "flee": 38,
+     "judge": 0,
+     "rounds": 369,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "swift",
+     "role": "second",
+     "win": 113,
+     "lose": 1,
+     "flee": 36,
+     "judge": 0,
+     "rounds": 389,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "sustain",
+     "role": "first",
+     "win": 107,
+     "lose": 9,
+     "flee": 34,
+     "judge": 0,
+     "rounds": 436,
+     "n": 150
+    },
+    {
+     "el": "water",
+     "oppArch": "sustain",
+     "role": "second",
+     "win": 100,
+     "lose": 6,
+     "flee": 44,
+     "judge": 0,
+     "rounds": 448,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "std",
+     "role": "first",
+     "win": 104,
+     "lose": 14,
+     "flee": 32,
+     "judge": 0,
+     "rounds": 467,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "std",
+     "role": "second",
+     "win": 95,
+     "lose": 2,
+     "flee": 53,
+     "judge": 0,
+     "rounds": 441,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "atk",
+     "role": "first",
+     "win": 48,
+     "lose": 72,
+     "flee": 30,
+     "judge": 0,
+     "rounds": 317,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "atk",
+     "role": "second",
+     "win": 72,
+     "lose": 48,
+     "flee": 30,
+     "judge": 0,
+     "rounds": 317,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "def",
+     "role": "first",
+     "win": 84,
+     "lose": 7,
+     "flee": 59,
+     "judge": 3,
+     "rounds": 586,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "def",
+     "role": "second",
+     "win": 75,
+     "lose": 0,
+     "flee": 75,
+     "judge": 1,
+     "rounds": 560,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "swift",
+     "role": "first",
+     "win": 106,
+     "lose": 5,
+     "flee": 39,
+     "judge": 0,
+     "rounds": 345,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "swift",
+     "role": "second",
+     "win": 122,
+     "lose": 1,
+     "flee": 27,
+     "judge": 0,
+     "rounds": 350,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "sustain",
+     "role": "first",
+     "win": 104,
+     "lose": 5,
+     "flee": 41,
+     "judge": 0,
+     "rounds": 451,
+     "n": 150
+    },
+    {
+     "el": "grass",
+     "oppArch": "sustain",
+     "role": "second",
+     "win": 102,
+     "lose": 2,
+     "flee": 46,
+     "judge": 0,
+     "rounds": 412,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "std",
+     "role": "first",
+     "win": 83,
+     "lose": 24,
+     "flee": 43,
+     "judge": 0,
+     "rounds": 479,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "std",
+     "role": "second",
+     "win": 85,
+     "lose": 10,
+     "flee": 55,
+     "judge": 0,
+     "rounds": 453,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "atk",
+     "role": "first",
+     "win": 49,
+     "lose": 72,
+     "flee": 29,
+     "judge": 0,
+     "rounds": 303,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "atk",
+     "role": "second",
+     "win": 72,
+     "lose": 49,
+     "flee": 29,
+     "judge": 0,
+     "rounds": 303,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "def",
+     "role": "first",
+     "win": 76,
+     "lose": 21,
+     "flee": 53,
+     "judge": 2,
+     "rounds": 570,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "def",
+     "role": "second",
+     "win": 60,
+     "lose": 25,
+     "flee": 65,
+     "judge": 0,
+     "rounds": 545,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "swift",
+     "role": "first",
+     "win": 97,
+     "lose": 9,
+     "flee": 44,
+     "judge": 0,
+     "rounds": 339,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "swift",
+     "role": "second",
+     "win": 120,
+     "lose": 0,
+     "flee": 30,
+     "judge": 0,
+     "rounds": 364,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "sustain",
+     "role": "first",
+     "win": 93,
+     "lose": 13,
+     "flee": 44,
+     "judge": 0,
+     "rounds": 401,
+     "n": 150
+    },
+    {
+     "el": "lightning",
+     "oppArch": "sustain",
+     "role": "second",
+     "win": 88,
+     "lose": 14,
+     "flee": 48,
+     "judge": 0,
+     "rounds": 413,
+     "n": 150
+    }
+   ]
+  }
+ },
+ "symmetry": {
+  "v0.4.3": {
+   "std": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 830,
+      "lose": 1163,
+      "flee": 1007,
+      "judge": 385,
+      "winDecided": 41.64576016056197,
+      "winAll": 27.666666666666668,
+      "fleeShare": 33.56666666666667,
+      "avgRounds": 4.024
+     },
+     "second": {
+      "n": 3000,
+      "win": 911,
+      "lose": 980,
+      "flee": 1109,
+      "judge": 333,
+      "winDecided": 48.175568482284504,
+      "winAll": 30.366666666666664,
+      "fleeShare": 36.96666666666666,
+      "avgRounds": 3.9353333333333333
+     }
+    },
+    "gap": 6.529808321722534,
+    "gapAll": 2.6999999999999957,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 116,
+      "lose": 228,
+      "flee": 256,
+      "judge": 66,
+      "winDecided": 33.72093023255814,
+      "winAll": 19.333333333333332,
+      "fleeShare": 42.66666666666667,
+      "avgRounds": 4.17
+     },
+     "second": {
+      "n": 600,
+      "win": 228,
+      "lose": 116,
+      "flee": 256,
+      "judge": 66,
+      "winDecided": 66.27906976744185,
+      "winAll": 38,
+      "fleeShare": 42.66666666666667,
+      "avgRounds": 4.17
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 714,
+      "lose": 935,
+      "flee": 751,
+      "judge": 319,
+      "winDecided": 43.29896907216495,
+      "winAll": 29.75,
+      "fleeShare": 31.291666666666668,
+      "avgRounds": 3.9875
+     },
+     "second": {
+      "n": 2400,
+      "win": 683,
+      "lose": 864,
+      "flee": 853,
+      "judge": 267,
+      "winDecided": 44.14996767937944,
+      "winAll": 28.458333333333336,
+      "fleeShare": 35.541666666666664,
+      "avgRounds": 3.8766666666666665
+     },
+     "gap": 0.8509986072144926,
+     "gapAll": -1.2916666666666643
+    }
+   },
+   "atk": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 1699,
+      "lose": 457,
+      "flee": 844,
+      "judge": 2,
+      "winDecided": 78.80333951762523,
+      "winAll": 56.63333333333333,
+      "fleeShare": 28.133333333333333,
+      "avgRounds": 2.4766666666666666
+     },
+     "second": {
+      "n": 3000,
+      "win": 2126,
+      "lose": 142,
+      "flee": 732,
+      "judge": 0,
+      "winDecided": 93.7389770723104,
+      "winAll": 70.86666666666666,
+      "fleeShare": 24.4,
+      "avgRounds": 2.5103333333333335
+     }
+    },
+    "gap": 14.935637554685172,
+    "gapAll": 14.233333333333327,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 107,
+      "lose": 365,
+      "flee": 128,
+      "judge": 0,
+      "winDecided": 22.66949152542373,
+      "winAll": 17.833333333333336,
+      "fleeShare": 21.333333333333336,
+      "avgRounds": 1.7833333333333334
+     },
+     "second": {
+      "n": 600,
+      "win": 365,
+      "lose": 107,
+      "flee": 128,
+      "judge": 0,
+      "winDecided": 77.33050847457628,
+      "winAll": 60.83333333333333,
+      "fleeShare": 21.333333333333336,
+      "avgRounds": 1.7833333333333334
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 1592,
+      "lose": 92,
+      "flee": 716,
+      "judge": 2,
+      "winDecided": 94.53681710213777,
+      "winAll": 66.33333333333333,
+      "fleeShare": 29.833333333333336,
+      "avgRounds": 2.65
+     },
+     "second": {
+      "n": 2400,
+      "win": 1761,
+      "lose": 35,
+      "flee": 604,
+      "judge": 0,
+      "winDecided": 98.05122494432071,
+      "winAll": 73.375,
+      "fleeShare": 25.166666666666664,
+      "avgRounds": 2.692083333333333
+     },
+     "gap": 3.5144078421829335,
+     "gapAll": 7.041666666666671
+    }
+   },
+   "def": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 1113,
+      "lose": 892,
+      "flee": 995,
+      "judge": 1012,
+      "winDecided": 55.51122194513716,
+      "winAll": 37.1,
+      "fleeShare": 33.166666666666664,
+      "avgRounds": 4.877666666666666
+     },
+     "second": {
+      "n": 3000,
+      "win": 1168,
+      "lose": 909,
+      "flee": 923,
+      "judge": 1081,
+      "winDecided": 56.234954260953295,
+      "winAll": 38.93333333333333,
+      "fleeShare": 30.766666666666666,
+      "avgRounds": 4.824333333333334
+     }
+    },
+    "gap": 0.723732315816136,
+    "gapAll": 1.8333333333333286,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 236,
+      "lose": 260,
+      "flee": 104,
+      "judge": 480,
+      "winDecided": 47.58064516129033,
+      "winAll": 39.33333333333333,
+      "fleeShare": 17.333333333333336,
+      "avgRounds": 5.8
+     },
+     "second": {
+      "n": 600,
+      "win": 260,
+      "lose": 236,
+      "flee": 104,
+      "judge": 480,
+      "winDecided": 52.41935483870967,
+      "winAll": 43.333333333333336,
+      "fleeShare": 17.333333333333336,
+      "avgRounds": 5.8
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 877,
+      "lose": 632,
+      "flee": 891,
+      "judge": 532,
+      "winDecided": 58.117958913187536,
+      "winAll": 36.541666666666664,
+      "fleeShare": 37.125,
+      "avgRounds": 4.647083333333334
+     },
+     "second": {
+      "n": 2400,
+      "win": 908,
+      "lose": 673,
+      "flee": 819,
+      "judge": 601,
+      "winDecided": 57.43200506008856,
+      "winAll": 37.833333333333336,
+      "fleeShare": 34.125,
+      "avgRounds": 4.580416666666666
+     },
+     "gap": -0.6859538530989795,
+     "gapAll": 1.2916666666666714
+    }
+   },
+   "swift": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 473,
+      "lose": 1597,
+      "flee": 930,
+      "judge": 88,
+      "winDecided": 22.85024154589372,
+      "winAll": 15.766666666666667,
+      "fleeShare": 31,
+      "avgRounds": 3.344333333333333
+     },
+     "second": {
+      "n": 3000,
+      "win": 652,
+      "lose": 1381,
+      "flee": 967,
+      "judge": 89,
+      "winDecided": 32.07083128381702,
+      "winAll": 21.73333333333333,
+      "fleeShare": 32.233333333333334,
+      "avgRounds": 3.4236666666666666
+     }
+    },
+    "gap": 9.220589737923301,
+    "gapAll": 5.966666666666663,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 145,
+      "lose": 271,
+      "flee": 184,
+      "judge": 0,
+      "winDecided": 34.855769230769226,
+      "winAll": 24.166666666666668,
+      "fleeShare": 30.666666666666664,
+      "avgRounds": 3.1666666666666665
+     },
+     "second": {
+      "n": 600,
+      "win": 271,
+      "lose": 145,
+      "flee": 184,
+      "judge": 0,
+      "winDecided": 65.14423076923077,
+      "winAll": 45.166666666666664,
+      "fleeShare": 30.666666666666664,
+      "avgRounds": 3.1666666666666665
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 328,
+      "lose": 1326,
+      "flee": 746,
+      "judge": 88,
+      "winDecided": 19.830713422007253,
+      "winAll": 13.666666666666666,
+      "fleeShare": 31.083333333333336,
+      "avgRounds": 3.38875
+     },
+     "second": {
+      "n": 2400,
+      "win": 381,
+      "lose": 1236,
+      "flee": 783,
+      "judge": 89,
+      "winDecided": 23.562152133580703,
+      "winAll": 15.875,
+      "fleeShare": 32.625,
+      "avgRounds": 3.4879166666666666
+     },
+     "gap": 3.7314387115734498,
+     "gapAll": 2.208333333333334
+    }
+   },
+   "sustain": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 641,
+      "lose": 1357,
+      "flee": 1002,
+      "judge": 252,
+      "winDecided": 32.08208208208208,
+      "winAll": 21.366666666666667,
+      "fleeShare": 33.4,
+      "avgRounds": 3.8813333333333335
+     },
+     "second": {
+      "n": 3000,
+      "win": 609,
+      "lose": 1344,
+      "flee": 1047,
+      "judge": 236,
+      "winDecided": 31.182795698924732,
+      "winAll": 20.3,
+      "fleeShare": 34.9,
+      "avgRounds": 3.9103333333333334
+     }
+    },
+    "gap": -0.8992863831573494,
+    "gapAll": -1.0666666666666664,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 181,
+      "lose": 186,
+      "flee": 233,
+      "judge": 28,
+      "winDecided": 49.31880108991826,
+      "winAll": 30.166666666666668,
+      "fleeShare": 38.83333333333333,
+      "avgRounds": 4.221666666666667
+     },
+     "second": {
+      "n": 600,
+      "win": 186,
+      "lose": 181,
+      "flee": 233,
+      "judge": 28,
+      "winDecided": 50.68119891008175,
+      "winAll": 31,
+      "fleeShare": 38.83333333333333,
+      "avgRounds": 4.221666666666667
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 460,
+      "lose": 1171,
+      "flee": 769,
+      "judge": 224,
+      "winDecided": 28.203556100551808,
+      "winAll": 19.166666666666668,
+      "fleeShare": 32.04166666666667,
+      "avgRounds": 3.79625
+     },
+     "second": {
+      "n": 2400,
+      "win": 423,
+      "lose": 1163,
+      "flee": 814,
+      "judge": 208,
+      "winDecided": 26.670870113493066,
+      "winAll": 17.625,
+      "fleeShare": 33.916666666666664,
+      "avgRounds": 3.8325
+     },
+     "gap": -1.5326859870587413,
+     "gapAll": -1.5416666666666679
+    }
+   }
+  },
+  "V6": {
+   "std": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 851,
+      "lose": 1094,
+      "flee": 1055,
+      "judge": 385,
+      "winDecided": 43.753213367609256,
+      "winAll": 28.366666666666667,
+      "fleeShare": 35.16666666666667,
+      "avgRounds": 4.084666666666666
+     },
+     "second": {
+      "n": 3000,
+      "win": 972,
+      "lose": 930,
+      "flee": 1098,
+      "judge": 333,
+      "winDecided": 51.10410094637224,
+      "winAll": 32.4,
+      "fleeShare": 36.6,
+      "avgRounds": 4.005333333333334
+     }
+    },
+    "gap": 7.350887578762986,
+    "gapAll": 4.033333333333331,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 116,
+      "lose": 228,
+      "flee": 256,
+      "judge": 66,
+      "winDecided": 33.72093023255814,
+      "winAll": 19.333333333333332,
+      "fleeShare": 42.66666666666667,
+      "avgRounds": 4.17
+     },
+     "second": {
+      "n": 600,
+      "win": 228,
+      "lose": 116,
+      "flee": 256,
+      "judge": 66,
+      "winDecided": 66.27906976744185,
+      "winAll": 38,
+      "fleeShare": 42.66666666666667,
+      "avgRounds": 4.17
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 735,
+      "lose": 866,
+      "flee": 799,
+      "judge": 319,
+      "winDecided": 45.908806995627735,
+      "winAll": 30.625000000000004,
+      "fleeShare": 33.29166666666667,
+      "avgRounds": 4.0633333333333335
+     },
+     "second": {
+      "n": 2400,
+      "win": 744,
+      "lose": 814,
+      "flee": 842,
+      "judge": 267,
+      "winDecided": 47.753530166880616,
+      "winAll": 31,
+      "fleeShare": 35.083333333333336,
+      "avgRounds": 3.964166666666667
+     },
+     "gap": 1.8447231712528804,
+     "gapAll": 0.37499999999999645
+    }
+   },
+   "atk": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 1678,
+      "lose": 521,
+      "flee": 801,
+      "judge": 6,
+      "winDecided": 76.30741246020919,
+      "winAll": 55.93333333333334,
+      "fleeShare": 26.700000000000003,
+      "avgRounds": 2.813
+     },
+     "second": {
+      "n": 3000,
+      "win": 1834,
+      "lose": 289,
+      "flee": 877,
+      "judge": 2,
+      "winDecided": 86.38718794159209,
+      "winAll": 61.133333333333326,
+      "fleeShare": 29.233333333333334,
+      "avgRounds": 2.763333333333333
+     }
+    },
+    "gap": 10.079775481382896,
+    "gapAll": 5.199999999999989,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 187,
+      "lose": 292,
+      "flee": 121,
+      "judge": 0,
+      "winDecided": 39.03966597077244,
+      "winAll": 31.166666666666664,
+      "fleeShare": 20.166666666666664,
+      "avgRounds": 2.0633333333333335
+     },
+     "second": {
+      "n": 600,
+      "win": 292,
+      "lose": 187,
+      "flee": 121,
+      "judge": 0,
+      "winDecided": 60.96033402922756,
+      "winAll": 48.66666666666667,
+      "fleeShare": 20.166666666666664,
+      "avgRounds": 2.0633333333333335
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 1491,
+      "lose": 229,
+      "flee": 680,
+      "judge": 6,
+      "winDecided": 86.68604651162791,
+      "winAll": 62.125,
+      "fleeShare": 28.333333333333332,
+      "avgRounds": 3.0004166666666667
+     },
+     "second": {
+      "n": 2400,
+      "win": 1542,
+      "lose": 102,
+      "flee": 756,
+      "judge": 2,
+      "winDecided": 93.7956204379562,
+      "winAll": 64.25,
+      "fleeShare": 31.5,
+      "avgRounds": 2.9383333333333335
+     },
+     "gap": 7.109573926328295,
+     "gapAll": 2.125
+    }
+   },
+   "def": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 1135,
+      "lose": 858,
+      "flee": 1007,
+      "judge": 1014,
+      "winDecided": 56.9493226292022,
+      "winAll": 37.833333333333336,
+      "fleeShare": 33.56666666666667,
+      "avgRounds": 4.922
+     },
+     "second": {
+      "n": 3000,
+      "win": 1198,
+      "lose": 843,
+      "flee": 959,
+      "judge": 1085,
+      "winDecided": 58.69671729544341,
+      "winAll": 39.93333333333333,
+      "fleeShare": 31.966666666666665,
+      "avgRounds": 4.858333333333333
+     }
+    },
+    "gap": 1.7473946662412132,
+    "gapAll": 2.0999999999999943,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 236,
+      "lose": 260,
+      "flee": 104,
+      "judge": 480,
+      "winDecided": 47.58064516129033,
+      "winAll": 39.33333333333333,
+      "fleeShare": 17.333333333333336,
+      "avgRounds": 5.8
+     },
+     "second": {
+      "n": 600,
+      "win": 260,
+      "lose": 236,
+      "flee": 104,
+      "judge": 480,
+      "winDecided": 52.41935483870967,
+      "winAll": 43.333333333333336,
+      "fleeShare": 17.333333333333336,
+      "avgRounds": 5.8
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 899,
+      "lose": 598,
+      "flee": 903,
+      "judge": 534,
+      "winDecided": 60.05344021376086,
+      "winAll": 37.458333333333336,
+      "fleeShare": 37.625,
+      "avgRounds": 4.7025
+     },
+     "second": {
+      "n": 2400,
+      "win": 938,
+      "lose": 607,
+      "flee": 855,
+      "judge": 605,
+      "winDecided": 60.711974110032365,
+      "winAll": 39.08333333333333,
+      "fleeShare": 35.625,
+      "avgRounds": 4.622916666666667
+     },
+     "gap": 0.658533896271507,
+     "gapAll": 1.624999999999993
+    }
+   },
+   "swift": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 477,
+      "lose": 1543,
+      "flee": 980,
+      "judge": 88,
+      "winDecided": 23.613861386138613,
+      "winAll": 15.9,
+      "fleeShare": 32.666666666666664,
+      "avgRounds": 3.3863333333333334
+     },
+     "second": {
+      "n": 3000,
+      "win": 667,
+      "lose": 1397,
+      "flee": 936,
+      "judge": 89,
+      "winDecided": 32.315891472868216,
+      "winAll": 22.233333333333334,
+      "fleeShare": 31.2,
+      "avgRounds": 3.512
+     }
+    },
+    "gap": 8.702030086729604,
+    "gapAll": 6.333333333333334,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 145,
+      "lose": 271,
+      "flee": 184,
+      "judge": 0,
+      "winDecided": 34.855769230769226,
+      "winAll": 24.166666666666668,
+      "fleeShare": 30.666666666666664,
+      "avgRounds": 3.1666666666666665
+     },
+     "second": {
+      "n": 600,
+      "win": 271,
+      "lose": 145,
+      "flee": 184,
+      "judge": 0,
+      "winDecided": 65.14423076923077,
+      "winAll": 45.166666666666664,
+      "fleeShare": 30.666666666666664,
+      "avgRounds": 3.1666666666666665
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 332,
+      "lose": 1272,
+      "flee": 796,
+      "judge": 88,
+      "winDecided": 20.698254364089774,
+      "winAll": 13.833333333333334,
+      "fleeShare": 33.166666666666664,
+      "avgRounds": 3.44125
+     },
+     "second": {
+      "n": 2400,
+      "win": 396,
+      "lose": 1252,
+      "flee": 752,
+      "judge": 89,
+      "winDecided": 24.029126213592235,
+      "winAll": 16.5,
+      "fleeShare": 31.333333333333336,
+      "avgRounds": 3.598333333333333
+     },
+     "gap": 3.3308718495024614,
+     "gapAll": 2.666666666666666
+    }
+   },
+   "sustain": {
+    "role": {
+     "first": {
+      "n": 3000,
+      "win": 661,
+      "lose": 1295,
+      "flee": 1044,
+      "judge": 252,
+      "winDecided": 33.79345603271984,
+      "winAll": 22.03333333333333,
+      "fleeShare": 34.8,
+      "avgRounds": 3.9313333333333333
+     },
+     "second": {
+      "n": 3000,
+      "win": 640,
+      "lose": 1343,
+      "flee": 1017,
+      "judge": 236,
+      "winDecided": 32.274331820474025,
+      "winAll": 21.333333333333336,
+      "fleeShare": 33.900000000000006,
+      "avgRounds": 3.9983333333333335
+     }
+    },
+    "gap": -1.5191242122458135,
+    "gapAll": -0.6999999999999957,
+    "mirror": {
+     "first": {
+      "n": 600,
+      "win": 181,
+      "lose": 186,
+      "flee": 233,
+      "judge": 28,
+      "winDecided": 49.31880108991826,
+      "winAll": 30.166666666666668,
+      "fleeShare": 38.83333333333333,
+      "avgRounds": 4.221666666666667
+     },
+     "second": {
+      "n": 600,
+      "win": 186,
+      "lose": 181,
+      "flee": 233,
+      "judge": 28,
+      "winDecided": 50.68119891008175,
+      "winAll": 31,
+      "fleeShare": 38.83333333333333,
+      "avgRounds": 4.221666666666667
+     }
+    },
+    "nonMirror": {
+     "first": {
+      "n": 2400,
+      "win": 480,
+      "lose": 1109,
+      "flee": 811,
+      "judge": 224,
+      "winDecided": 30.207677784770297,
+      "winAll": 20,
+      "fleeShare": 33.791666666666664,
+      "avgRounds": 3.85875
+     },
+     "second": {
+      "n": 2400,
+      "win": 454,
+      "lose": 1162,
+      "flee": 784,
+      "judge": 208,
+      "winDecided": 28.094059405940598,
+      "winAll": 18.916666666666668,
+      "fleeShare": 32.666666666666664,
+      "avgRounds": 3.9425
+     },
+     "gap": -2.113618378829699,
+     "gapAll": -1.0833333333333321
+    }
+   }
+  }
+ },
+ "generated": "2026-09-07T10:58:16.328Z",
+ "elapsedMs": 16467
+}
