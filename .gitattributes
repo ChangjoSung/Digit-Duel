@@ -37,3 +37,9 @@
 /docs/qa/issue96-integration.md text eol=lf
 /docs/qa/issue96-saturn.md text eol=lf
 /docs/qa/issue96/*.json text eol=lf
+
+/demo/test/smoke_own_side.js text eol=lf
+/demo/test/issue93_cdp.js text eol=lf
+/docs/qa/issue93-mars.md text eol=lf
+/docs/qa/issue93-saturn.md text eol=lf
+/docs/qa/issue93/*.json text eol=lf
