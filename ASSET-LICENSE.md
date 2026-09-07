@@ -8,6 +8,8 @@ The following material is **not** licensed under Apache-2.0:
 
 - the names **Digit-Duel** and **Digit Dual**, and associated project branding;
 - the rendered gameplay screenshots under `docs/screenshots/`;
+- the original and derived minion artwork under `demo/assets/minions/`, and
+  art review images under `docs/art/minions-v0.4.3/`;
 - any future original artwork, logos, audio, narrative text, or other media
   that is explicitly marked as excluded from the code license.
 
