@@ -547,7 +547,7 @@ function proxyBattle(T,att,def,pickA,pickD){
   // K7 전투 불변: 외형 정체(artRosterId)는 표시 전용 — 같은 시드에서 rosterId 를 지운 대리 전투원과 로그·HP 가 완전히 같다.
   //    지속형(M-F5 fire_sustain) 예비를 대리로 세워 archOf 계열(지속형 화상 3R·상태 100%)이 cap 에 새지 않음을 화상 지속 라운드로 확인한다.
   const run=(strip)=>{
-    const T=H.load(htmlPath); const P=setup(T,"pvp"); T.BAL.statusProb=1; T.BAL.dmgVar=0;
+    const T=H.load(htmlPath); const P=setup(T,"pvp"); T.BAL.statusProb=1; T.BAL.shockProb=1; T.BAL.dmgVar=0; // #96: shockProb도 고정
     const eAlly=T.S.pieces.find(x=>x.owner===1&&x.type==="ally");
     giveSpecies(T,P.me,T.ROSTER.find(r=>r.id==="M-F5"));
     T.S.current=1; T.S.mainUsed=false; T.S.battlesUsed=0; T.initBattle(P.em,P.me); T.drain(500); T.finishByCapture("A"); T.TQ.length=0;

@@ -117,7 +117,7 @@ function persistApiHits(src){ return PERSIST_API.filter(re=>re.test(String(src))
 function load(htmlPath,opts){
   opts=opts||{};
   htmlPath=htmlPath||path.join(__dirname,"..","index.html");
-  const html=opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"); // #94 opts.html: 인메모리 소스(변이본 음성 대조용 — 파일을 쓰지 않는다)
+  const html=opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"); // #94·#96 opts.html: 파일을 쓰지 않고 메모리 HTML을 로드 — #94 변이본 음성 대조, #96 git show 기준판 before/after 대조용
   const m=html.match(/<script>([\s\S]*)<\/script>/);
   if(!m) throw new Error("script block not found");
   const els={};
