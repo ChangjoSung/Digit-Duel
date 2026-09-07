@@ -305,7 +305,9 @@ function setup(T,mode,seed){
   T.GLYPH.cache["🪤"]=true; T.GLYPH.cache["👑"]=true; T.TQ.length=0;
 
   // 전투 도트 실패 → 지금 보고 있는 전투에서도 즉시 이모지 토큰으로 대체 (빈 자리 없음)
-  const T2=H.load(htmlPath); const Q=setup(T2,"pve");
+  /* Saturn 2차 QA(#89) 후속: 핫시트(pvp) 로 고정한다. pve 에서는 D(AI) 가 타이머로 뒤이어 행동해 J13f/g 의 변화량이 "내가 넣은 행동 1회" 로
+     한정되지 않았다. J9~J13e 는 모드와 무관하다 (A 토큰은 두 모드 모두 tok-me · 대체 분기는 S.battle 과 id 만 본다). */
+  const T2=H.load(htmlPath); const Q=setup(T2,"pvp");
   Q.me.r=12;Q.me.c=4; Q.em.r=11;Q.em.c=4;
   T2.S.current=0; T2.S.mainUsed=false; T2.S.battlesUsed=0;
   T2.initBattle(Q.me,Q.em); T2.drain(500);
@@ -337,15 +339,70 @@ function setup(T,mode,seed){
     const imgL={onerror:function(){},style:{},parentNode:live};
     T2.artSpriteFail(dirA,imgL);
     ok(!live.classList.contains("art")&&live.id==="tok-A"&&T2.byId("tok-A")===live,"J13e 실 문서 토큰(tok-A)도 같은 객체 그대로 대체 — 노드 교체 없음");
-    const hpBefore=B.fd.hp, phaseBefore=B.phase;
-    T2.byId("msgBox").nodeType=1; // 제품은 실제 DOM(msgBox.nodeType===1)에서만 메시지·FX 를 재생한다 — 스텁에서 그 경로를 켠다
+    /* Saturn 2차 QA(#89) 지적 수정 — 이전 J13f 는 `B.blog.length>0` 을 봤는데 startRounds 가 "전투 개시" 로그를 이미 넣어 두므로 __act 가
+       아무 일도 하지 않아도 통과했고, 이전 J13g 는 `fxD||fxA` 라서 대체된 tok-A 의 FX 가 사라져도 tok-D 의 FX 로 통과했다.
+       지금은 (1) 행동 전 HP·라운드·단계·로그 길이를 잡아 실제 변화량을 증명하고 (2) 대체된 tok-A 가 피격 대상이 되도록 D(P2) 의
+       행동 차례에서 기본 공격을 넣으며 (3) 행동 전 FX 잔재를 지우고 그 뒤 같은 노드에 새로 붙는 FX 만 센다.
+       같은 검사기(j13Arm/j13Check)를 무효 행동(J13j)·엉뚱한 노드(J13k) 에 돌려 각각 실패함을 이 파일 안에서 증명한다. */
+    const s=j13Arm(T2,B,live);
+    ok(s.clean,"J13i 전제: 행동 전 대체 토큰에 FX 잔재 없음 (shake·ko·dmgfloat 0 — 이후 FX 는 이번 행동이 붙인 것만 센다)");
     global.__act("basic"); T2.drain(5000);
-    const fxA=live.classList.contains("shake")||live.classList.contains("ko")||live.children.some(x=>/dmgfloat/.test(x.className));
-    const fxD=T2.byId("tok-D").classList.contains("shake")||T2.byId("tok-D").classList.contains("ko");
-    ok(T2.S.battle===B&&(B.fd.hp<hpBefore||B.phase!==phaseBefore||B.blog.length>0),"J13f 실패 후에도 전투가 실제로 진행된다 (기본 공격 → HP·단계·로그 변화)");
-    ok(fxD||fxA,"J13g 실패 후 FX 가 같은 id 의 토큰 노드에 붙는다 (shake/ko/dmgfloat 중 하나 이상 — FX 경로 보존)");
+    const v=j13Check(T2,B,live,s);
+    ok(v.progress,"J13f 실패 후에도 전투가 실제로 진행된다 — A HP 감소량 == 로그의 피해 합(>0) · D HP 불변(피격 대상은 A) · 라운드 +1 · 로그 증가 · 전투 유지 ["+v.detail+"]");
+    ok(v.fx,"J13g 실패 후 FX 가 대체된 바로 그 노드(tok-A)에 새로 붙는다 — shake · dmgfloat(-피해량) 1개 · HP 표시 동기화 · tok-D 는 흔들리지 않음 ["+v.detail+"]");
     ok(live.id==="tok-A"&&!live.classList.contains("art"),"J13h 전투 진행 후에도 실패 토큰은 id 유지·art 미복원 (실패 종 재요청 없음)"); }
   T2.close(); T2.S.battle=null; T2.TQ.length=0;
+
+  // 음성 대조 1 — 무효 행동: __act 를 메모리에서 no-op 로 바꾸면 J13f·J13g 검사기가 둘 다 실패해야 한다 (이전 J13f 는 여기서 통과했다)
+  { const N=j13Fresh(); const s=j13Arm(N.T,N.B,N.live);
+    const real=global.__act; global.__act=()=>{}; global.__act("basic"); N.T.drain(5000); global.__act=real;
+    const v=j13Check(N.T,N.B,N.live,s);
+    ok(s.clean&&!v.progress&&!v.fx&&N.B.fa.hp===s.hpA&&N.B.blog.length===s.blog,"J13j 음성 대조: no-op __act 는 J13f(진행)·J13g(FX) 검사기를 둘 다 통과하지 못한다 ["+v.detail+"]");
+    N.T.close(); N.T.S.battle=null; N.T.TQ.length=0; }
+  // 음성 대조 2 — 엉뚱한 노드: 제품이 id 로 찾는 tok-A 가 대체된 노드가 아니면(FX 가 다른 노드로 감) 진행은 되어도 J13g 검사기는 실패해야 한다
+  { const N=j13Fresh(); const s=j13Arm(N.T,N.B,N.live);
+    const orig=N.T.document.getElementById, decoy=N.T.document.createElement("div");
+    N.T.document.getElementById=id=>id==="tok-A"?decoy:orig(id);
+    global.__act("basic"); N.T.drain(5000);
+    N.T.document.getElementById=orig;
+    const v=j13Check(N.T,N.B,N.live,s);
+    ok(s.clean&&v.progress&&!v.fx&&decoy.classList.contains("shake")&&!N.live.classList.contains("shake")&&s.floats.length===0,
+      "J13k 음성 대조: FX 가 대체된 노드가 아닌 다른 노드(decoy)로 가면 진행(J13f)은 참이어도 J13g 검사기는 실패한다 ["+v.detail+"]");
+    N.T.close(); N.T.S.battle=null; N.T.TQ.length=0; }
+}
+/* J13f/g 검사기 — 양성(J13f·g)과 음성 대조(J13j·k)가 같은 함수를 쓴다.
+   j13Fresh: 핫시트 전투를 열고 실 문서 토큰 tok-A 를 전투 도트 실패로 대체한 상태.
+   j13Arm : 메시지·FX 재생 경로를 켜고(msgBox.nodeType=1), A 의 phase 0 이 지난 뒤(phase=1) 를 재렌더해 D(P2) 의 행동 차례로 만든다 —
+            이제 기본 공격의 피격 대상은 대체된 tok-A 다. 행동 전 FX 잔재를 지우고 appendChild 를 감시해 새로 붙는 dmgfloat 만 기록한다
+            (제품은 dmgfloat 를 1.1초 뒤 떼어내므로 drain 후 children 만 보면 항상 0 — 그래서 기록이 필요하다).
+   j13Check: progress = 전투 유지 · A HP 감소량 == 새 로그의 "N 피해!" 합(>0) · D HP 불변 · 라운드 +1/phase 0 · 로그 증가
+             fx       = 같은 노드(byId 동일 객체)에 shake · dmgfloat 정확히 1개(그 피해량) · hptxt-A/dispHpA 가 실제 HP 와 동기화 · tok-D 는 shake 없음 */
+function j13Fresh(){
+  const T=H.load(htmlPath); const Q=setup(T,"pvp");
+  T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0;
+  T.initBattle(Q.me,Q.em); T.drain(500);
+  const B=T.S.battle, live=T.byId("tok-A");
+  live.id="tok-A"; live.classList.add("btok"); live.classList.add("art"); live.classList.add("tok-me");
+  T.artSpriteFail(T.artDirOf(Q.me),{onerror:function(){},style:{},parentNode:live});
+  return {T,B,live};
+}
+function j13Arm(T,B,live){
+  T.byId("msgBox").nodeType=1; // 제품은 실제 DOM(msgBox.nodeType===1)에서만 메시지·FX 를 재생한다 — 스텁에서 그 경로를 켠다
+  B.phase=1; T.battleModal();   // A 의 phase 0 이 지난 상태 → 행동자 D(P2) · __actCore 의 side="D" · 피격 대상 A
+  live.classList.remove("shake"); live.classList.remove("ko"); live.children.length=0; // 잔재 제거 — 이후 붙는 것만 이번 행동의 FX
+  const floats=[], orig=live.appendChild;
+  live.appendChild=function(c){ if(/dmgfloat/.test(c.className)) floats.push(c); return orig.call(this,c); };
+  const clean=!live.classList.contains("shake")&&!live.classList.contains("ko")&&live.children.length===0&&floats.length===0&&B.phase===1&&T.S.battle===B;
+  return {hpA:B.fa.hp,hpD:B.fd.hp,blog:B.blog.length,round:B.round,floats,clean};
+}
+function j13Check(T,B,live,s){
+  const dHp=s.hpA-B.fa.hp, logDmg=B.blog.slice(s.blog).reduce((a,l)=>{const m=/^(\d+) 피해!/.exec(l); return a+(m?+m[1]:0);},0);
+  const progress=T.S.battle===B&&dHp>0&&dHp===logDmg&&B.fd.hp===s.hpD&&B.round===s.round+1&&B.phase===0&&B.blog.length>s.blog;
+  const tokD=T.byId("tok-D");
+  const fx=T.byId("tok-A")===live&&live.classList.contains("shake")&&s.floats.length===1&&s.floats[0].parentNode===live
+    &&s.floats[0].innerHTML.indexOf(`>-${dHp}<`)>=0&&String(T.byId("hptxt-A").textContent)===String(B.fa.hp)&&B.dispHpA===B.fa.hp&&!tokD.classList.contains("shake");
+  const detail=`A ${s.hpA}→${B.fa.hp} · 로그 피해 ${logDmg} · D ${s.hpD}→${B.fd.hp} · R${s.round}→R${B.round} p${B.phase} · 로그 +${B.blog.length-s.blog} · shake ${live.classList.contains("shake")} · float ${s.floats.length}`;
+  return {progress,fx,detail};
 }
 
 console.log(`\n=== smoke_minion_art: pass ${pass} / fail ${fail} ===`);

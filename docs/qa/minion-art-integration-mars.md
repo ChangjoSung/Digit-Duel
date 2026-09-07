@@ -3,7 +3,7 @@
 - 역할: **Mars** (instance=Mars · instance_index=null · mode=IMPLEMENT · area=HTML · mutation=code · provider=Claude Code)
 - 브랜치: `feature/89-minion-art-integration` · 기준: `258d4ea` (PR #88 병합본)
 - 근거 문서: `CLAUDE.md`(HTML 데모 절) · `docs/creat2ve/HANDOVER_SNAPSHOT.md` · `docs/minion-visual-spec-v0.4.3.md` **rev7** (3장 · 5.3 · 6.3 · 7.10 · 14.2~14.6)
-- 작성: 2026-09-07 · **개정 2026-09-07 (Saturn 1차 REVISE 3건 후속 수정 반영 — 8절)**
+- 작성: 2026-09-07 · **개정 2026-09-07 (Saturn 1차 REVISE 3건 후속 수정 반영 — 8절 · Saturn 2차 QA J13f/g 테스트 결함 정정 — 8.8)**
 - **이 문서가 주장하는 범위**: 기계로 잰 사실과 저장한 화면 증빙까지다. **Saturn 독립 QA와 CJ 플레이 QA 이전이므로 "검증 완료"를 주장하지 않는다.**
 
 ---
@@ -138,7 +138,7 @@
 
 `harness.js` 변경은 **아트 심볼 노출 4줄 추가**뿐이다. 기존 단언·스텁 동작은 하나도 바뀌지 않았다.
 
-### 4.2 신규 헤드리스 불변식 — `demo/test/smoke_minion_art.js` (**128 / 128 PASS**, 종료 코드 0 · 초기판 113 → Saturn 1차 QA 후속 수정으로 F10·H8a~h·J13a~h 추가, 무효 단언 2개 제거)
+### 4.2 신규 헤드리스 불변식 — `demo/test/smoke_minion_art.js` (**131 / 131 PASS**, 종료 코드 0 · 초기판 113 → Saturn 1차 QA 후속 수정으로 F10·H8a~h·J13a~h 추가, 무효 단언 2개 제거 → 128 · Saturn 2차 QA 후속 8.8 로 J13f/g 정정 + J13i~k 추가 → 131)
 
 | 구간 | 개수 | 다루는 불변식 |
 |---|---:|---|
@@ -151,9 +151,9 @@
 | G | 9 | 전투 토큰 하수인 128 · 왕 본체 이모지 유지 · **대리 출전 오용 차단** · 토큰 id 계약 |
 | H | 16 | 로드 실패 폴백 · onerror 고리 없음 · 같은 32px 박스 · **실패 후 실제 이동(12,4→12,3 합법 빈칸)** — 좌표·주 행동 소모·이동 말 기록·강제 전투 없음·같은 턴 재이동 거부·재렌더 위치까지 확인. 이전 목적지 11,4 가 상대 칸이라 불법이었음을 H8a 로 고정 |
 | I | 4 | **납품 아트 28파일 SHA-256 전부 일치 · 100파일 구조 그대로** |
-| J | 22 | 글리프 폴백(있음/없음 양쪽) · **판정이 폭 비교가 아니라 렌더 픽셀 확증인지** · 확정·추측 일관 · 전투 도트 즉시 대체 · **J13a~h: 대체 내용 = 지금 싸우는 전투원의 기호·라벨·속성색, 숨김 경로 미사용(strict), 위치 클래스 보존, 전투 토큰이 아닌 노드는 대체하지 않음(분기 오판 검출), 실 문서 토큰 동일 객체, 실패 후 `__act("basic")` 실제 진행(HP·단계·로그)과 같은 id 노드에 FX(shake/ko/dmgfloat) 부착** |
+| J | 25 | 글리프 폴백(있음/없음 양쪽) · **판정이 폭 비교가 아니라 렌더 픽셀 확증인지** · 확정·추측 일관 · 전투 도트 즉시 대체 · **J13a~e: 대체 내용 = 지금 싸우는 전투원의 기호·라벨·속성색, 숨김 경로 미사용(strict), 위치 클래스 보존, 전투 토큰이 아닌 노드는 대체하지 않음(분기 오판 검출), 실 문서 토큰 동일 객체** · **J13i·f·g·h (8.8 정정판): 행동 전 FX 잔재 0 전제, D(P2) 기본 공격 → A HP 감소량 == 로그 피해 합·D HP 불변·라운드 +1·로그 증가, 대체된 바로 그 노드에 shake·dmgfloat(-피해량) 1개·HP 표시 동기화·tok-D 무진동, id 유지·art 미복원** · **J13j·k 음성 대조(파일 내): no-op `__act` 는 J13f·g 둘 다 실패 · FX 가 다른 노드로 가면 J13g 실패** |
 
-구간 합계 11+17+20+13+5+11+9+16+4+22 = **128** (실행 시 단언 이름 첫 글자로 집계한 실측 개수).
+구간 합계 11+17+20+13+5+11+9+16+4+25 = **131** (실행 시 단언 이름 첫 글자로 집계한 실측 개수 · 8.8 이전 128).
 
 > 초기 작성판의 C3/C7/C8 은 "그 문자열이 화면 어디에도 없다"로 판정해 **내 말과 상대 미공개 말이 우연히 같은 종일 때 오탐**했다(1/2 확률로 흔들림). 불변식을 "보드에 나타난 종 ⊆ 이미 공개된 말의 종" + "미공개 말 각각의 DOM 에 어떤 종 폴더명도 없다"로 고치고 시드를 고정했다. 검사는 더 촘촘해졌다.
 
@@ -224,7 +224,7 @@
 | 파일 | 상태 | SHA-256 |
 |---|---|---|
 | `demo/index.html` | 수정 (Saturn 1차 QA 후속: CSS 규칙 순서 1건 · 8.1) | `1c172a638307046258c2e794ab22a28b6587029d04f17337269252cfd69a11e3` (1차 QA 기준 `9a102ee0…`) |
-| `demo/test/smoke_minion_art.js` | **신규** (후속: F10·H8a~h·J13a~h) | `ddebec86dbc58cebac81f8c49d08f53330914725ee0fcf3de26ac8bab6fc77e7` (1차 QA 기준 `049c45d6…`) |
+| `demo/test/smoke_minion_art.js` | **신규** (후속: F10·H8a~h·J13a~h · **8.8: J13f/g 정정 + J13i~k**) | `bbf08d5d7b7c333568ca354df9035726b299e7b8b730f6dbc0e67921bace2923` (1차 QA 기준 `049c45d6…` · 2차 QA 기준 `ddebec86…`) |
 | `demo/test/minion_art_cdp.js` | **신규** (후속: roster-fb 18측정 · RESOURCE/CLEANUP · 문구 · 상대경로 JSON · **shots 고유 경로/captures 분리**) | `d2f044b891deaf5e40c73f9805493438c0d356a9bc21eeefbe11350118bca75a` (1차 QA 기준 `e5d3aa9c…` · 후속 1차 `2a0d1380…` · 8.6 기준 `889e508d…` — 8.7 공백 전용 변경) |
 | `demo/test/harness.js` | 수정 (+4, 심볼 노출만) | `2381e0ec51fd56af3e63ccd40e3ca4a9a39731105af14a4e4394f3f30d813e0b` |
 | `demo/test/smoke_memo.js` | 수정 (단언 2건 갱신) | `c14f63437e8edeeb4f58689fa011db03bcf036365556396ac7650bd7ae6ed00a` |
@@ -327,8 +327,8 @@ QA 원문: `docs/qa/minion-art-integration-saturn-initial.md` (Mercury 보존, �
 | J13c | `btok`·`tok-me` 유지, `art` 만 제거 | 위치 클래스가 사라지면 |
 | J13d | 전투 토큰이 아닌 노드(`tok-X`) 는 대체하지 않고 숨김만 | 분기 오판으로 아무 노드나 고쳐 쓰면 |
 | J13e | 실 문서 토큰 `tok-A` 도 같은 객체 그대로 대체 (`byId("tok-A")===live`) | 노드를 교체하면 |
-| J13f | 실패 후 `__act("basic")` → HP·단계·로그 중 하나 이상 변화 | 실패가 전투 진행을 막으면 |
-| J13g | 같은 id 노드에 shake/ko/dmgfloat 중 하나 이상 부착 | FX 가 다른 노드에 가거나 사라지면 |
+| J13f | ~~실패 후 `__act("basic")` → HP·단계·로그 중 하나 이상 변화~~ **(Saturn 2차 QA 지적: 무효 — 8.8 로 대체)** | ~~실패가 전투 진행을 막으면~~ 실제로는 no-op 도 통과했다 |
+| J13g | ~~같은 id 노드에 shake/ko/dmgfloat 중 하나 이상 부착~~ **(Saturn 2차 QA 지적: 무효 — 8.8 로 대체)** | ~~FX 가 다른 노드에 가거나 사라지면~~ 실제로는 tok-A 의 FX 가 없어도 통과했다 |
 | J13h | 진행 후에도 id 유지·`art` 미복원 | 실패 종을 다시 요청하면 |
 
 ### 8.3 P3 문구 결함 — `--read-only` 의 "파일 생성 0"
@@ -374,3 +374,39 @@ Mercury 지적: JSON `shots` 배열 길이 74 ≠ 실제 고유 PNG 70 (`_2-rost
 - 검증: `node --check demo/test/minion_art_cdp.js` 통과 · `git diff --check` 후행 공백 0건 · 변경 diff 는 292행 1줄(공백 삭제)뿐.
 - 해시: `demo/test/minion_art_cdp.js` 8.6 `889e508df6e2f2299cb0f021bede6a41cf4dcd07a8bdd28b0c4eac4eb4cbbb0b` → **`d2f044b891deaf5e40c73f9805493438c0d356a9bc21eeefbe11350118bca75a`**. `demo/index.html`·`smoke_minion_art.js`·아트 파일 불변.
 - 이 보고서 자체는 SHA 표기 갱신(5.x 표 · 8.6 해시 행)과 EOF 잉여 빈 줄 제거만 했다. `art/`·`orca-hook-latency-report.md`·Downloads 무접촉. Git/GitHub/Notion 쓰기 없음. QA 판정은 Saturn 소관이다.
+
+### 8.8 Saturn 2차 QA — J13f/g 테스트 결함 정정 (2026-09-07 · task_b0d5cd57581d / ctx_c180061634a3)
+
+**지적(Saturn 2차 QA, PD 경유 전달 — 이 절은 그 판정문을 대신 쓰지 않는다)**: 8.2 에서 교체한 J13f 는 `B.blog.length>0` 을 보는데 `startRounds` 가 "전투 개시" 로그를 이미 넣어 두므로 **`__act` 가 아무 일도 하지 않아도 통과**했고, J13g 는 `fxD||fxA` 라서 **대체된 tok-A 의 FX 를 없애도 tok-D 의 FX 로 통과**했다(둘 다 128/128 유지). 이 두 단언은 8.2 표에 취소선으로 남기고 아래 정정판으로 대체했다. 제품 코드·자산·하네스·다른 테스트는 손대지 않았다.
+
+**원인 (확정, 재현으로 확인)**: 기존 픽스처는 pve 에서 A(내 하수인) 가 round 1 phase 0 의 행동자라 `__act("basic")` 의 피격 대상이 **tok-D** 였다. 대체된 토큰 tok-A 는 피격 대상이 아니었고, tok-A 가 받은 FX 는 그 뒤 타이머로 이어진 **D(AI) 의 반격**에서 온 것이라 "내가 넣은 행동 1회" 로 한정되지 않았다. 또 제품이 dmgfloat 를 1.1초 뒤 떼어내므로 drain 후 `children` 만 봐서는 float 를 영영 볼 수 없었다. 수정 전 재현값: no-op 시 A/D HP 120/120·round 1·phase 0·로그 +0 이지만 `blog.length===1` 로 J13f 통과 / pve 정상 행동 시 tok-D shake=true 라 tok-A 의 FX 와 무관하게 J13g 통과.
+
+**수정 (테스트 파일 한정 · `demo/test/smoke_minion_art.js`)**
+
+| 항목 | 내용 |
+|---|---|
+| 픽스처 | J9~J13 구간을 **핫시트(pvp)** 로 고정 — AI 반격 타이머가 없어 변화량이 행동 1회로 한정된다. J9~J13e 는 모드 무관(두 모드 모두 A 토큰 = `tok-me`, 대체 분기는 `S.battle`·id 만 본다) — 결과 불변 |
+| 행동 주체 | `j13Arm`: msgBox 재생 경로를 켠 뒤 `B.phase=1` + `battleModal()` 재렌더 → `__actCore` 의 side="D"(P2 인간). **기본 공격의 피격 대상 = 대체된 tok-A** |
+| 잔재 제거 | 행동 전 tok-A 의 shake·ko 클래스와 children 을 지우고 `appendChild` 를 감시해 **이후 붙는 dmgfloat 만 기록**. 전제 단언 **J13i** (잔재 0·phase 1·전투 유지) |
+| J13f (정정) | `S.battle===B` · **A HP 감소량 == 새 로그의 "N 피해!" 합(>0)** · **D HP 불변**(피격 대상이 A 임을 증명) · **round +1 / phase 0** · 로그 길이 증가 |
+| J13g (정정) | `byId("tok-A")===live`(동일 객체) · live 에 shake · **기록된 dmgfloat 정확히 1개, parent=live, 내용 `-<감소량>`** · `hptxt-A`·`dispHpA` 가 실제 HP 와 동기화 · **tok-D 는 shake 없음**(FX 가 다른 쪽으로 가지 않음) |
+| J13h | 유지 (id 유지·art 미복원) |
+| J13j (음성 대조, 파일 내) | 새 로드에서 같은 픽스처 → `global.__act` 를 메모리에서 no-op 으로 바꿔 호출·drain·복원 → **progress=false, fx=false, HP·로그 불변** 이어야 통과 |
+| J13k (음성 대조, 파일 내) | 새 로드에서 같은 픽스처 → 제품이 `document.getElementById("tok-A")` 로 찾는 노드를 decoy 로 바꿔 진짜 `__act` 실행 → **progress=true 이지만 fx=false, decoy 에 shake·live 에는 없음·기록 float 0** 이어야 통과 |
+
+**결과**: `node demo/test/smoke_minion_art.js` → **131 / 131 PASS · 종료 코드 0** (128 + J13i·j·k 3). 시드 20260907 고정 결정값: A 120→100 · 로그 피해 20 · D 120→120 · R1→R2 p0 · 로그 +3 · shake true · float 1 (단언 메시지 끝의 `[…]` 에 같은 값이 찍힌다). `node --check` 통과 · `git diff --check` 공백 0건 · LF · EOF 개행 1개.
+
+**독립 음성 대조 (저장소 밖 변이 사본 — 파일 안의 J13j/k 와 별개로 정정판 자체가 실패함을 확인)**: 정정판을 스크래치로 복사해 **양성 경로의 `__act` 호출만** 바꿔 실행했다.
+
+| 변이 | 결과 | 실패 단언 |
+|---|---|---|
+| `__act("basic")` → 메모리 no-op | **129 / 131 · 종료 코드 1** | J13f · J13g |
+| FX 가 대체 노드가 아닌 decoy 노드로 감 | **130 / 131 · 종료 코드 1** | J13g |
+
+이전 128판은 같은 두 변이에서 모두 128/128 이었다(Saturn 지적 그대로). 약화한 단언은 없다 — 이전 J13f/g 가 잡던 경우(전투 정지·FX 전무)는 정정판도 잡는다.
+
+**해시**: `demo/test/smoke_minion_art.js` `ddebec86…` → **`bbf08d5d7b7c333568ca354df9035726b299e7b8b730f6dbc0e67921bace2923`** · `demo/index.html` `1c172a63…` 불변 · `demo/test/harness.js` `2381e0ec…` 불변.
+
+**손대지 않은 것**: 제품 코드·CSS·JSON·PNG·아트 100파일·`art/`·`orca-hook-latency-report.md`·Downloads·하네스·다른 스모크·CDP 스크립트·PD 소유 문서·Saturn 보고서(초기·최종). Git/GitHub/Notion 쓰기 없음. 이미 통과한 다른 스위트·CDP 는 이 변경이 그 파일들을 건드리지 않으므로 재실행하지 않았다.
+
+**한계·판정 소관**: 이 절은 구현자 증빙이다. 최종 PASS/REVISE 는 Saturn 이 판정하며, Saturn 2차 QA 의 실브라우저 검사 결과는 이 문서에 포함하지 않는다.
