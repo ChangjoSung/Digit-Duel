@@ -1,0 +1,100 @@
+{
+  "html": "demo/index.html",
+  "date": "2026-09-07T11:16:00.776Z",
+  "readOnly": false,
+  "pass": 18,
+  "fail": 0,
+  "shots": [
+    "docs/qa/issue94/1-online-opponent-turn-picker.png",
+    "docs/qa/issue94/2-online-opponent-turn-memo-saved.png",
+    "docs/qa/issue94/3-online-actor-view-no-memo.png",
+    "docs/qa/issue94/4-pve-ai-turn-picker.png"
+  ],
+  "report": [
+    {
+      "what": "1 온라인 매칭·시작·양측 상태 일치",
+      "ok": true,
+      "detail": "A me=0 B me=1 선공 P1"
+    },
+    {
+      "what": "2a 전제: W 가 볼 수 있는 비인접 미공개 상대 하수인",
+      "ok": true,
+      "detail": "{\"id\":57,\"r\":12,\"c\":6}"
+    },
+    {
+      "what": "2b 상대 턴 클릭 → 피커 열림 · 송신 0 · 차단 토스트 없음 · selected 없음",
+      "ok": true,
+      "detail": "sent=0 picker=true toasts=[]"
+    },
+    {
+      "what": "3a 저장: W 메모 💣 · 보드 추측 표시 · 사이드 패널 목록 · 피커 닫힘 · 송신 0",
+      "ok": true,
+      "detail": "sent=0 guess=[[12,6,\"💣\"]]"
+    },
+    {
+      "what": "3b X: 실제 수신 액션 프레임 0 · 메모 없음 · 보드 추측 흔적 0",
+      "ok": true,
+      "detail": "X recvA=0"
+    },
+    {
+      "what": "3c 양측 게임 상태 일치(메모 제외)",
+      "ok": true
+    },
+    {
+      "what": "3d 상대 턴 배지·턴바 비활성 표시",
+      "ok": true,
+      "detail": "[\"🌐 상대 턴 진행 중…\"]"
+    },
+    {
+      "what": "4 상대 턴 자기 말 클릭 → 차단 토스트 · 선택 없음 · 송신 0",
+      "ok": true,
+      "detail": "[\"🌐 상대 턴입니다.\"]"
+    },
+    {
+      "what": "5a 전제: X 이동 계획",
+      "ok": true,
+      "detail": "{\"id\":57,\"r\":12,\"c\":6,\"tr\":12,\"tc\":5}"
+    },
+    {
+      "what": "5b X 선택+이동 송신 2 · W 재생 후 양측 상태 일치 · W 메모 유지",
+      "ok": true,
+      "detail": "X sent=2 W sent=0"
+    },
+    {
+      "what": "6a 자기 턴 비인접 미공개 상대 말 클릭 → 피커 · 송신 0 (원래 메모 분기도 네트워크 밖)",
+      "ok": true
+    },
+    {
+      "what": "6b 자기 턴 저장 🪤 · 송신 0",
+      "ok": true
+    },
+    {
+      "what": "6c 자기 턴 자기 말 선택은 송신 1 (권한·우선순위 경로 불변) · 양측 일치",
+      "ok": true,
+      "detail": "sent=1"
+    },
+    {
+      "what": "7a 메모 있는 말 재클릭 → 피커(현재 선택 표시) · 송신 그대로 1",
+      "ok": true
+    },
+    {
+      "what": "7b 추측 삭제 → 메모 제거 · 보드 물음표 복귀 · 송신 그대로 1",
+      "ok": true,
+      "detail": "memos={}"
+    },
+    {
+      "what": "8a 전제: PVE AI 턴 · 보이는 미공개 상대 하수인",
+      "ok": true,
+      "detail": "{\"id\":43,\"r\":3,\"c\":2}"
+    },
+    {
+      "what": "8b AI 턴 클릭 → 피커 · AI 배지 유지 · selected 없음",
+      "ok": true,
+      "detail": "[\"🤖 AI 행동 중…\"]"
+    },
+    {
+      "what": "8c AI 턴 저장 👑 · 보드 표시 · 사이드 패널 목록 · current 그대로 AI",
+      "ok": true
+    }
+  ]
+}
