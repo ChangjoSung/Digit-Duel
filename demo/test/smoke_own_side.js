@@ -9,6 +9,8 @@
      E. 강조 위치: 선택·합법 이동·강제 전투·텔레포트·버닝 2칸·메모 추측·흔적 — 반사 화면에서 같은 논리 칸에, DOM 순서만 뒤집힌다
      F. 종료(over) 리빌도 같은 방향 유지 · 로그·토스트 문구
      G. 소스 불변 조각 — applyNetSetup 행 미러링·열 유지, dataset 논리 좌표, 옛 "P2(상단)" 문구 부재
+   REVISE (Saturn 지적, 2026-09-07): 항상 참이던 C10(`||true`)·F3(`||true`)·E10(indexOf>=0) 을 실측 단언 C10a/b·F3a/b·E10a/b 로 치환 (63 → 66).
+   D11 은 목표 칸의 흔적 🔍 span 을 칩으로 세던 시드 의존 간헐 실패를 칩만 세도록 고쳤다.
    파일을 쓰지 않는다 (Saturn --read-only 재실행 가능). 게임 규칙 회귀는 smoke_cycle5, 접속 경로는 smoke_online 이 맡는다. */
 "use strict";
 const fs=require("fs"), path=require("path");
@@ -121,7 +123,17 @@ const R=pair();
   ok(chips(T2,21,70).length===0&&chips(T1,21,70).length===0,"C7b 시작 직후 중간 7행에는 칩 없음 (양쪽)");
   ok(/당신은 P2입니다 \(자기 진영이 화면 아래\)/.test(logText(T2))&&/당신은 P1입니다 \(자기 진영이 화면 아래\)/.test(logText(T1)),"C8 시작 로그: 양측 모두 '자기 진영이 화면 아래'");
   ok(!/P2\(상단\)/.test(logText(T2))&&!/상단/.test(toastT2)&&/P2 — 자기 진영이 화면 아래/.test(toastT2),"C9 옛 'P2(상단)' 문구 없음 · 토스트 갱신");
-  ok(T2.S.log.every(l=>!/\(\s*\d+\s*,\s*\d+\s*\)/.test(l.msg)||true),"C10 로그 좌표 형식 불변 (표시 반사는 로그에 개입하지 않는다)");
+  /* C10 (REVISE): 옛 단언은 `||true` 로 항상 참이었다. 대체 — (a) 반사 렌더는 표시 전용이라 논리 S·로그·토스트에 아무것도 쓰지 않는다:
+     반사 렌더 2회 전후 정본(snap·로그 전문·로그 길이·토스트) 완전 동일 · (b) 양 클라이언트 로그는 뷰어 식별 한 줄(당신은 P1/P2)만 빼면 전문 동일 —
+     로그에 화면 좌표·반사 표기가 섞이면 (b) 가, 렌더가 로그·상태를 건드리면 (a) 가 깨진다. */
+  { use(T2); const before=[snap(T2),logText(T2),T2.S.log.length,toasts(T2)].join("");
+    T2.render(); T2.render();
+    const after=[snap(T2),logText(T2),T2.S.log.length,toasts(T2)].join("");
+    ok(before===after&&flipOf(T2)==="1"&&orderOk(T2,true)&&T2.S.log.length>=3,"C10a 반사 렌더 2회 전후 정본(논리 S·로그 전문·길이·토스트) 완전 동일 — 렌더는 상태·로그에 쓰지 않는다");
+    /* 정규화는 기존 뷰어 상대 호칭 두 가지뿐이다: pname 온라인 분기 "나(Pn)/상대(Pn)" → "Pn", netStart 식별 줄 "당신은 Pn입니다" → "당신은 P?입니다". 그 외 문자(좌표·행·반사 표기)는 그대로 비교한다. */
+    const canon=T=>JSON.stringify(T.S.log.map(l=>l.cls+":"+l.msg.replace(/(나|상대)\((P[12])\)/g,"$2").replace(/당신은 P[12]입니다/,"당신은 P?입니다")));
+    const idLines=T=>T.S.log.filter(l=>/당신은 P[12]입니다/.test(l.msg)).length;
+    ok(canon(T1)===canon(T2)&&idLines(T1)===1&&idLines(T2)===1&&logText(T1)!==logText(T2),"C10b 양측 로그 전문 동일 (뷰어 상대 호칭 나/상대·당신은 P1/P2 만 정규화 · 식별 줄 각 1개 · 원문은 다름) — 반사·화면 좌표가 로그에 섞이지 않는다"); }
 }
 /* D. 반사 화면에서의 실제 입력 → 논리 좌표 · 락스텝 */
 function clickCell(T,r,c){ use(T); const el=cellOf(T,r,c); el.onclick(); T.drain(); return el; }
@@ -158,7 +170,8 @@ function frontMove(T,p){ // p 의 말 중 논리 전방(P2: r+1 / P1: r−1) 이
     const a1=T1.S.pieces.find(z=>z.id===x.id), a2=T2.S.pieces.find(z=>z.id===x.id);
     ok(a2.r===r&&a2.c===c&&a1.r===r&&a1.c===c,"D9 이동이 양 클라이언트에 같은 논리 칸으로 적용");
     ok(snap(T1)===snap(T2),"D10 이동 후 양측 S 동일");
-    ok(cells(T2).indexOf(cellOf(T2,r,c))===dispIdx(true,r,c)&&cellOf(T2,r,c).children.length===1&&/\bown\b/.test(cellOf(T2,r,c).children[0].className),"D11 이동한 말이 P2 화면의 반사 위치에 own 칩으로");
+    const d11=cellOf(T2,r,c).children.filter(k=>/\bpc\b/.test(k.className)); // 목표 칸에 이벤트가 있으면 흔적 🔍 span 이 함께 붙으므로(doMove) 칩만 센다 — 시드 의존 간헐 실패 제거
+    ok(cells(T2).indexOf(cellOf(T2,r,c))===dispIdx(true,r,c)&&d11.length===1&&/\bown\b/.test(d11[0].className),"D11 이동한 말이 P2 화면의 반사 위치에 own 칩으로");
     ok(cells(T1).indexOf(cellOf(T1,r,c))===dispIdx(false,r,c),"D12 같은 말이 P1 화면에서는 종전 위치 규칙으로");
     use(T2); T2.netAction({t:"endTurn"}); T2.drain(); relay(R);
     ok(T1.S.current===0&&T2.S.current===0&&snap(T1)===snap(T2),"D13 P2 턴 종료 → 양측 P1 턴, S 동일");
@@ -199,7 +212,18 @@ function sameSig(a,b){ const ka=Object.keys(a), kb=Object.keys(b); if(ka.length!
   S.selected=null; S.forcedTargets=[foe.id]; S.movedPiece=me; chk("E6 강제 전투 대상 강조 동일"); S.forcedTargets=[]; S.movedPiece=null;
   S.teleport={stage:1,piece:null}; chk("E7 텔레포트 1단계 강조 동일"); S.teleport={stage:2,piece:me}; chk("E8 텔레포트 2단계 강조(hl-sel+hl-move) 동일"); S.teleport=null;
   S.turnCount=T.BAL.burnStart-1; S.selected=me; foe.placed=false; chk("E9 버닝 타임 2칸 이동 강조 동일"); S.turnCount=2; S.selected=null;
-  const f=withFlip(T,true); ok(cells(T).filter(x=>x.children[0]&&/\bown\b/.test(x.children[0].className)).every(x=>cells(T).indexOf(x)>=0),"E10 (전제) 반사 렌더 완주");
+  /* E10 (REVISE): 옛 단언은 indexOf>=0 항등(항상 참)이었다. 대체 — 같은 상태·같은 뷰어(P2)를 반사/비반사로 렌더해 비대칭 기대치를 직접 잰다:
+     반사(온라인 P2) 화면에서 내(P2, 논리 1~3행) 말은 전부 아래 3행(인덱스 70~90)·own 칩, 상대(P1, 논리 11~13행) 말은 전부 위 3행(0~20)·own 아님;
+     비반사(핫시트, 같은 뷰어) 화면에서는 띠가 정반대다. 두 렌더 사이에 말마다 화면 인덱스는 다르고 열(인덱스 mod 7)은 같다.
+     (E5 의 H.place 가 me 아래 칸을 비웠을 수 있어 내 말은 13~14개, E9 가 foe 를 내렸으므로 상대 말은 13개.) 하네스의 board.children 은 렌더마다 제자리 갱신되므로 인덱스는 렌더 직후 읽는다. */
+  { const mineP=S.pieces.filter(x=>x.owner===1&&x.placed&&x.alive), theirs=S.pieces.filter(x=>x.owner===0&&x.placed&&x.alive), all=mineP.concat(theirs);
+    const chipOf=p=>cellOf(T,p.r,p.c).children.find(k=>/\bpc\b/.test(k.className));
+    const band=(ps,lo,hi,flip,own)=>ps.every(p=>{ const i=cells(T).indexOf(cellOf(T,p.r,p.c)), k=chipOf(p);
+      return i===dispIdx(flip,p.r,p.c)&&i>=lo&&i<=hi&&!!k&&new RegExp("\\bp"+p.owner+"\\b").test(k.className)&&/\bown\b/.test(k.className)===own; });
+    const f=withFlip(T,true); const idxF=all.map(p=>cells(T).indexOf(cellOf(T,p.r,p.c)));
+    ok(f.o&&mineP.length>=13&&theirs.length===13&&band(mineP,70,90,true,true)&&band(theirs,0,20,true,false),"E10a 반사 렌더: 내(P2) 말 "+mineP.length+"개 전부 아래 3행(70~90)·own 칩, 상대 13개 전부 위 3행(0~20)·own 아님");
+    const u=withFlip(T,false); const idxU=all.map(p=>cells(T).indexOf(cellOf(T,p.r,p.c)));
+    ok(u.o&&band(mineP,0,20,false,true)&&band(theirs,70,90,false,false)&&idxF.every((i,n)=>i!==idxU[n]&&i%COLS===idxU[n]%COLS),"E10b 비반사 렌더(같은 뷰어): 띠가 정반대(내 말 0~20 · 상대 70~90) · 말마다 화면 인덱스는 다르고 열은 같다"); }
   T.NET.me=1; T.render();
   ok(S.pieces.filter(x=>x.owner===1&&x.placed).every(x=>cells(T).indexOf(cellOf(T,x.r,x.c))===dispIdx(true,x.r,x.c)),"E11 내 말 전부가 반사 인덱스에 (논리 r/c 불변)");
   T.NET.mode=false; T.NET.me=null; T.TQ.length=0;
@@ -210,7 +234,16 @@ function sameSig(a,b){ const ka=Object.keys(a), kb=Object.keys(b); if(ka.length!
   use(T2); T2.gameOver(0,"king"); T2.drain(); T2.render(); use(T1); T1.gameOver(0,"king"); T1.drain(); T1.render();
   ok(T2.S.phase==="over"&&flipOf(T2)==="1"&&orderOk(T2,true),"F1 P2 종료 리빌 화면도 행 13→1 유지");
   ok(flipOf(T1)==="0"&&orderOk(T1,false),"F2 P1 종료 화면 종전 그대로");
-  ok(cells(T2).slice(70).every(x=>x.children.length===1&&/\bp1\b/.test(x.children[0].className))||true,"F3 (관측) 종료 리빌 렌더 완주");
+  /* F3 (REVISE): 옛 단언은 `||true` 로 항상 참이었다. 대체 — 종료 리빌은 viewer=2(전체 공개)이므로
+     (a) 살아있는 모든 말이 P2 화면의 반사 인덱스 칸에 칩 정확히 1개로 그려지고, 칩은 실제 정체(innerHTML=pcBodyHtml · aria-label=pcLabel)이며
+         hiddenId·"?"·memo-guess·own 표기가 없다 — 시작 이후 미공개(revealed=false)였던 상대 말이 있어야 리빌 검증이 실제가 된다(전제 수치를 라벨에 기록)
+     (b) 양 클라이언트의 논리 칸별 렌더 서명(클래스·강조·칩 HTML)이 완전 동일하다 — 둘 다 전체 공개 시점이므로 차이는 DOM 순서(F1·F2)뿐이어야 한다. */
+  const identity=T=>T.alivePieces().every(p=>{ const ch=cellOf(T,p.r,p.c).children.filter(k=>/\bpc\b/.test(k.className));
+    return ch.length===1&&new RegExp("\\bp"+p.owner+"\\b").test(ch[0].className)&&!/hiddenId|memo-guess|\bown\b/.test(ch[0].className)
+      &&ch[0].innerHTML!=="?"&&ch[0].innerHTML===T.pcBodyHtml(p)&&ch[0].getAttribute("aria-label")===T.pcLabel(p); });
+  const hiddenP1=T2.S.pieces.filter(p=>p.owner===0&&p.alive&&p.placed&&!p.revealed).length;
+  ok(hiddenP1>0&&identity(T2)&&T2.alivePieces().every(p=>cells(T2).indexOf(cellOf(T2,p.r,p.c))===dispIdx(true,p.r,p.c)),"F3a P2 종료 리빌: 미공개였던 상대 말 "+hiddenP1+"개 포함 살아있는 말 전부가 반사 인덱스 칸에 실제 정체(pcBodyHtml·aria-label=pcLabel) 칩 1개 — hiddenId·?·메모·own 없음");
+  ok(identity(T1)&&sameSig(sig(T1),sig(T2))&&Object.keys(sig(T2)).length===ROWS*COLS,"F3b 양 클라이언트 종료 리빌의 논리 칸별 서명 완전 동일(전체 공개 시점) — 차이는 DOM 순서(F1·F2)뿐");
   ok(cells(T2).every(x=>{ const p=T2.at(+x.dataset.r,+x.dataset.c); return !!p===(x.children.filter(k=>/\bpc\b/.test(k.className)).length===1); }),"F4 종료 리빌: 모든 살아있는 말이 논리 칸의 반사 위치에 정확히 하나씩");
   T1.TQ.length=0; T2.TQ.length=0;
 }
