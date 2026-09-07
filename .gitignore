@@ -104,3 +104,7 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Python art pipeline (tools/minion_art.py, tests/)
+__pycache__/
+*.py[cod]

@@ -1,56 +1,50 @@
-# Digit-Duel — 인수인계 스냅샷
+﻿# Digit-Duel — 인수인계 스냅샷
 
-> 기준일: 2026-09-07 · 작성: Mercury (PD) · **누적 금지 — 치환 갱신.** 새 세션은 `CLAUDE.md` 다음으로 이 문서를 읽고 시작한다.
+> 기준일: 2026-09-07 · 작성: Mercury (PD) · 누적 금지, 현재 상태로 치환한다.
 
-## 프로젝트 현재 상태
+## 현재 상태
 
-- **현재 마일스톤**: GitHub Milestone #7 `v0.4.3 — HTML 데모 후속 업데이트` 진행 중
-- **최근 릴리스**: `v0.4.2` — Public·Apache-2.0·원클릭 LAN
-- **QA**: v0.4.2 릴리스까지 완료. 이후 제품 코드 변경 없음. v0.4.3 하수인 외형·말판 아이콘 규격은 구현 전 기획 문서 단계이므로 실행 QA 미착수
-- **GitHub**: Issue #81 하수인 외형 이미지 규격 문서화 완료, Issue #83 Mercury 세션 교대 스냅샷 완료. 두 건 모두 v0.4.3 마일스톤 소속
-- **Git**: `dev`와 `origin/dev`를 통합 기준으로 사용. 사용자 소유 미추적 항목 `art/`, `orca-hook-latency-report.md`는 수정·커밋하지 않는다
-- **기획 문서**: `docs/minion-visual-spec-v0.4.3.md`가 현재 하수인 외형 이미지 규격 분석 원본
-- **조직 문서**: `CLAUDE.md`의 Creat2ve Vibe Coding Structure rev 6 / release 0.3.0과 역할 계약을 따른다
+- 상설 Mercury: GPT-6 Astra, high. 인수 절차 완료. CJ Comment를 이 창구에서 수신한다.
+- 최신 릴리스: **v0.4.2**. 현재 GitHub Milestone #7: **v0.4.3 — HTML 데모 후속 업데이트**.
+- 원본 기준: PR #86 / 202edf3c23e65453bd7db8dd9fed5fdf0587fd0d. 이번 납품 통합 기준은 Issue #87에 연결한 단일 PR의 squash 커밋이다. 실제 dev/origin/dev HEAD는 교대 시 Git·GitHub에서 확인한다.
+- 열린 납품 목표: [Issue #87](https://github.com/ChangjoSung/Digit-Duel/issues/87), 단일 통합 [PR #88](https://github.com/ChangjoSung/Digit-Duel/pull/88). CJ 납품 확인 전 Issue를 닫지 않는다.
+- 원본 80파일은 PR #86으로 등록했고, 이번 납품은 전투4종 보완·아이콘20종을 더한 100파일이다. 원본 해시는 docs/art/minions-v0.4.3/source-manifest.csv에 보존한다.
+- 최신 CJ **“구현 승인”**은 보고한 전투 4종 보완·직접 32px 아이콘 20종·독립 검수·필요한 출력 도구·단일 Issue/PR 운영안 착수 승인이다. 제작 방식 재승인 요청 금지. 게임 화면 적용은 해당 납품 제안 범위 밖이다.
+- 사용자 소유 미추적 **art/**, **orca-hook-latency-report.md**는 수정·스테이징 금지. Downloads/all-minions-v0.4.3 원본도 읽기 전용이다.
 
-## 진행 중 작업 (dispatch 기준)
+## 납품 결과·진행 상태
 
-| 역할 인스턴스 (Role 또는 Role_n) | mode / area / mutation | 작업 | 상태 | retain lease (있으면 기한·범위) |
-|---|---|---|---|---|
-| 없음 | — | 원본 반입·독립 검수·규격 문서 갱신 완료 | 모든 Worker archive·release 완료, 아이콘 제작 방식 CJ 응답 대기 | 없음 |
+- 아이콘 **20/20 출력 완료**, 최종 자산 **100파일**. 원본 portrait40·비대상 전투32파일의 바이트를 유지하고 승인된 전투4쌍8파일만 보완했다.
+- Saturn **ART PASS 20/20·REVISE0, Technical PASS**. 모든 원고/PNG exact, 전투20종 최근접2배 exact, manifest28행 exact. 전체 --check exit0/write0/unchanged36.
+- 뇌격수는 파일럿 두 차례 수정 후 V2에서 통과했다. 초기·수정·최종 판정은 docs/art/minions-v0.4.3의 pilot-qa / pilot-v1-qa / pilot-v2-qa / final-qa-saturn.md에 보존한다.
+- Mars 도구 테스트 **68/68 PASS**, Saturn 독립 도구 검수 **PASS**(tooling-qa-saturn.md). 최종 출력·재실행 write0/unchanged36 증빙은 mars-pipeline-report.md §5.1이며 Saturn이 인수 완료했다.
+- 원본 이력은 source-manifest.csv, 현재 파생 산출물28개는 delivery-manifest.csv로 구분한다. 납품 인덱스·비교 시트는 docs/art/minions-v0.4.3/README.md.
+- 도구 SHA256: 3f9ecf1ed9b649f982ff6626e18a6be519e51b5fa04dbe25c5a7f93e2bf6ec8c. 검수 대상 해시가 바뀌면 해당 판정 범위를 다시 확인한다.
 
-## 인계 사항
+Run: run_d5fb1e7a2b5f. Earth_1·Earth_2·Mars·Saturn·Venus의 모든 Worker는 결과 보존·archive·release 완료. 활성 Worker 없음.
+산출물은 GitHub PR #88에 전량 등록했다. 실제 dev 통합·squash SHA는 PR #88의 병합 기록을 기준으로 확인한다. feature 브랜치는 병합 후 명시 삭제한다.
 
-- CJ Comment는 이 Mercury 창구가 유일하게 직접 수신한다.
-- Mercury는 조정·Git·문서 메타데이터만 집행한다. 제품·런타임·빌드·도구·테스트 코드는 Mars/Jupiter 역할로 라우팅한다.
-- `main`·`dev` 직접 커밋은 금지한다. 최신 `origin/dev`에서 이슈 브랜치를 만들고 PR로 `dev`에 squash merge한다.
-- 현재 저장소는 Public이다. 코드는 Apache License 2.0이고 자산은 `ASSET-LICENSE.md`의 별도 조건을 따른다.
-- 서버 기본 실행은 루프백 전용이며 LAN 공개는 `server/LAN서버시작.bat`을 선택한 실행에만 적용된다.
-- v0.4.3 하수인 외형 권장안은 설명창 512×512px 제작·192×192px 표시, 전투 도트 64×64px 작업·128×128px 납품/표시, 전투 영역 높이 200px이다.
-- 말판 아이콘은 32×32px 제작·납품, 투명 여백 2px, 8~12색(최대 16색+투명)을 이번 제작 기준으로 사용한다. 화면 표시는 32px가 목표이며 칸 52px 유지·말 컨테이너 최대 48px 둥근 사각형·별도 정보 행은 아직 제품 구현 제안이다.
-- 전체 하수인 설계는 설명창·전투·말판 20종씩 총 60개다. 기존 메모 8종 이모지를 확정 표시의 종류·속성 기호에도 재사용하므로 새 공용 기호 이미지는 필수가 아니다. 메모 20종 확장은 이번 범위 밖이며, 미공개 말의 실제 종·HP를 메모로 노출하지 않는다.
-- 2026-09-07 CJ는 HP 방식으로 아이콘 아래 현재 HP 숫자 한 줄을 승인했다. 최신 Comment로 `C:/Users/pc_77/Downloads/all-minions-v0.4.3` 전체 아트의 GitHub 등록과 현행 규격에 맞는 말판 아이콘 제작을 지시하고 Earth 병렬 분할을 허용했다. 20종 원본 80파일을 확인했다. 아트 제작·등록은 승인됐으며 제품 구현은 최종 분석 보고 이후 별도 CJ 구현 OK를 기다린다.
-- 이전 규격 문서화 Run `run_710ed914c12b`는 완료·release했다. 현재 Run `run_813ce88533e4`에서 Earth_1·Earth_2는 원본 80파일을 반입했고 Saturn은 기술 PASS·시각 REVISE를 보고했다. 세 Worker는 archive·release했다. 2종 아이콘 생성 시험은 1254px RGB·불투명 체크무늬로 규격에 실패했으며 최종 icon은 0/20이다. Earth 직접 32px 픽셀 제작 방식은 CJ 선택 대기다. 최신 CJ 결정은 Notion GDD-13 9장·12장에 반영했다.
-- 이전 Mercury 세션은 장기 대화와 실제 컨텍스트 압축 발생으로 교대한다. 새 Mercury 목표 모델은 `gpt-6-astra`, reasoning effort는 `high`다.
+## 승인 규격·역할 경계
 
-## 남은 결정 (CJ)
+- 설명창: 512×512px 제작·192×192px 표시 권장. 전투: 64×64px 작업·128×128px nearest 2배 납품, 영역 높이 200px 권장.
+- 아이콘: native 32×32px, 투명 여백 2px, 8~12색 목표·최대 16색+투명, alpha 0/255. HP·글자·속성 기호를 이미지에 굽지 않는다. 말판 세 배경 #33406e, #6e3340, #3a4152에서 검수한다.
+- HP 결정: 아이콘 아래 현재 HP 숫자 한 줄. 기존 공개 조건을 유지하고 미공개 상대·메모에는 HP를 표시하지 않는다.
+- 기존 메모 8종 이모지를 확정 말의 종류·속성 기호에도 재사용한다. 메모 20종 확장은 범위 밖이며 실제 종·HP를 추측으로 노출하지 않는다.
+- Earth는 docs/art/minions-v0.4.3/pixel-sources/<id>.json, battle-patches/<id>.json 및 아트 보고서만 작성한다. Mars가 소스를 검증해 PNG·미리보기를 출력한다. 과거 실패한 1254px 체크무늬 생성 시험 2건은 참고 이력이며 납품 수량에서 제외한다.
+- Saturn은 모든 파일에 읽기 전용(files_modified=[]). Mars/Jupiter만 도구·테스트·제품 코드를 구현한다. Mercury는 조정·Git·문서 메타데이터만 집행하며 QA 판정을 대신하지 않는다. Venus는 기획 문서만 담당한다.
+- 코드와 납품 자산은 목표당 Issue 1개 + 통합 PR 1개. Worker별 분할은 Task·체크리스트로 관리하며 GitHub·Notion·Git 쓰기는 Mercury가 취합한다. 독립 출시·롤백 범위만 별도 Issue·PR로 분리한다(CLAUDE 운영 계약에 CJ 승인 반영).
+- main·dev 직접 커밋 금지. 최신 origin/dev에서 분기, dev에 squash merge 후 해당 feature 로컬·원격 브랜치를 명시 삭제한다. 장수 main/dev는 삭제하지 않는다.
+- Public 저장소. 코드 Apache-2.0, 아트는 ASSET-LICENSE.md 별도 조건. 서버 기본 루프백, LAN은 사용자가 선택한 LAN 실행에만 적용한다.
 
-- [기획 필요] 단일 HTML 원칙을 완화하고 `demo/assets/minions/` 외부 상대경로를 사용할지
-- [기획 필요] v0.4.3에서 전투 방향을 정면 또는 3/4 한 종으로 제한할지
-- 말판 개별 외형은 CJ의 규격 문서화 요청 범위에 포함됐다. 로스터 카드 적용은 별도 보류다.
-- 말판 아이콘 32px·여백 2px·최대 16색은 최신 CJ의 규격 준수 제작 지시에 따른 이번 제작 기준이다. 납품 검수 및 CJ 최종 디자인 확인은 별도다.
-- [기획 필요] 48px 둥근 사각형 말 컨테이너 권장안 검토
-- 하수인 원본 전체 등록·Earth 병렬 아이콘 제작은 CJ 승인 완료. 최종 분석 보고 후 CJ 구현 OK 이전에는 제품 코드를 수정하지 않는다.
+## 남은 제품 결정
 
-## 새 Mercury 개시 체크리스트
+- 외부 상대경로 이미지의 게임 화면 적용·단일 HTML 원칙 완화.
+- 정면/3/4 한 방향 전투 이미지 사용 및 로스터 카드 적용 범위.
+- 52px 칸·최대 48px 둥근 사각형 말 컨테이너 권장안의 최종 화면 검토.
+- 이번 20종 아이콘 및 4종 보완의 CJ 최종 디자인 확인. Saturn 정적 ART·기술 검수는 완료했으며 실제 게임 이미지 로딩·HP·DPR·사람 대상 식별 시험을 뜻하지 않는다.
 
-1. `CLAUDE.md` 전체와 이 스냅샷을 읽는다.
-2. `git status --short --branch`로 `dev` 동기화 상태와 사용자 미추적 파일을 확인한다.
-3. GitHub Milestone #7 및 열린 Issue/PR을 확인한다.
-4. 역할 계약과 패스트트랙/10단계 워크플로우를 유지한다.
-5. CJ에게 GPT-6 Astra Mercury 인수 완료를 보고하고 다음 Comment를 기다린다.
+기준 문서: docs/minion-visual-spec-v0.4.3.md §8.2(현재 수량·QA). Notion GDD-13 9장 및 Decision Log 26에 승인·납품 결과를 기록한다. Project=Digit Dual·Edit Date=2026-09-07·Editor=실제 사람 성창조 유지.
 
-## 교대 기록
+## 교대 시 확인
 
-| 날짜 | 신호 | 이전 세션이 남긴 한 줄 |
-|---|---|---|
-| 2026-09-07 | 장기 상설 세션·컨텍스트 압축 발생·모델 전환 요청 | GPT-6 Astra Mercury가 인수 완료했다. 말판 아이콘 규격을 추가하고 HP 숫자 결정을 반영했다. 구현은 미승인 상태이며 남은 결정은 위 목록을 따른다. |
+CLAUDE.md와 이 스냅샷 전체 → git status 및 실제 origin/dev → Milestone #7·열린 Issue/PR → 위 Run/Task/Dispatch의 실제 상태를 순서대로 확인한다. 진행 중 승인 작업은 계속 수행하며 중복 Worker·Issue·PR을 만들지 않는다.
