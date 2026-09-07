@@ -1,63 +1,51 @@
-# v0.4.3 전체 아트 반입·아이콘 제작 검토
+# v0.4.3 하수인 아트 납품
 
-2026-09-07 CJ Comment에 대한 Mercury 취합 기록이다.
-아트 등록·규격에 맞는 아이콘 제작은 승인됐고, 제품 구현은 최종 보고 후 CJ의 구현 OK를 기다린다.
+2026-09-07 CJ 구현 승인에 따라 [Issue #87](https://github.com/ChangjoSung/Digit-Duel/issues/87)에서
+전투 4종 보완·직접 32px 아이콘 20종·출력 도구·독립 검수를 하나의 납품으로 취합한다.
+게임 화면 적용은 후속 제품 작업이다. 최신 수량과 QA 상태는 [외형 규격 §8.2](../../minion-visual-spec-v0.4.3.md)에 모은다.
 
-## 현재 결과
+## 납품 구성
 
-| 대상 | 결과 | 근거 |
-|---|---|---|
-| 제공 원본 20종·80파일 | 반입 완료, 원본과 SHA-256 80/80 일치 | [원본 매니페스트](source-manifest.csv) |
-| 파일 기술 검수 | Saturn PASS: 크기·디코딩·투명도·전투 2배 픽셀 일치 | [Saturn 원본 QA](source-qa-saturn.md) |
-| 기존 디자인 시각 검수 | Saturn REVISE 의견: 4종의 작은 전투 표현 보완 권장 | 아래 보완 목록 |
-| 새 말판 아이콘 | **0/20 — 납품 미완료** | 생성 시험 2종 모두 현행 규격 불충족 |
-| 제품 코드·게임 실행 QA | 미착수 | 후속 CJ 구현 OK 대기 |
+- 20종 `icon.png`: Earth가 각 종의 제공 디자인을 직접 32×32 픽셀로 재구성했다.
+- 4종 전투 보완: 재의 주술사 불꽃 단서, 안개 무희 얼굴·날개 분리, 가시 덩굴 입·이빨, 뇌격수 턱·팔 분리.
+- 최종 자산은 20종×5파일 = **100파일**이다. 설명창 40파일과 비대상 전투 32파일은 원본 바이트 그대로 유지한다.
+- 원본 반입 80파일·7,488,176바이트의 해시는 [원본 매니페스트](source-manifest.csv)에 보존한다.
+  승인된 전투 8파일의 변경과 아이콘 20파일은 [납품 매니페스트](delivery-manifest.csv)로 별도 기록한다.
 
-원본은 [demo/assets/minions](../../../demo/assets/minions/)에 보존한다.
-총 용량은 7,488,176바이트다. 각 종의 portrait PNG·WebP는 512px,
-battle-grid는 64px, battle은 그리드를 최근접 2배 확대한 128px다.
-원본의 약점을 발견했다는 이유로 제공 파일을 임의 수정하지 않았다.
+| 검토 자료 | 확인할 내용 |
+|---|---|
+| [20종 비교 시트](review/icons-contact-sheet.png) | 실제 32px·최근접 4배 확대 |
+| [세 말판 배경](review/icons-board-backgrounds.png) | 아군·적군·중립 배경 대비 |
+| [흑백 실루엣](review/icons-silhouette.png) | 실제 2배 확대에서 전체 형태 구별 |
+| [불 보완](review/battle-repair-fire_sustain.png) · [물 보완](review/battle-repair-water_swift.png) · [풀 보완](review/battle-repair-grass_atk.png) · [번개 보완](review/battle-repair-lightning_atk.png) | 원본·수정 결과·변경 픽셀 대조 |
 
-## 시각 보완 의견
+## 제작·검수 근거
 
-| 종 | Saturn 관측 | 아이콘 제작 시 보존할 핵심 |
-|---|---|---|
-| M-F5 재의 주술사 | 회색이 우세해 불 속성 단서가 약함 | 흰 가면·넓은 깃·불꽃 단서 |
-| M-W4 안개 무희 | 날개와 목 사이에서 얼굴이 작아 방향 판독이 약함 | 명확한 얼굴과 큰 날개 사이 빈 공간 |
-| M-G2 가시 덩굴 | 큰 입·이빨이 얇은 선으로 축약됨 | 포식성 머리와 공격 기관 |
-| M-L2 뇌격수 | 얼굴·가슴·창 주변 밝은 픽셀이 밀집함 | 얼굴과 비대칭 공격 팔의 분리 |
+Earth_1은 불·물, Earth_2는 풀·번개를 담당했다. [픽셀 원고](pixel-sources/)와
+[전투 패치](battle-patches/)를 Mars의 [출력 도구](art-pipeline.md)로 검증·출력한다.
+도구의 외접상자 중점은 기하학적 대리 지표이며 시각 중심의 독립 판정을 대체하지 않는다.
 
-명백한 종 교체·ID 매핑 오류·누락·손상·캔버스 가장자리 잘림은 발견되지 않았다.
-기술 PASS는 20종의 사람 식별성 또는 최종 디자인 승인을 뜻하지 않는다.
-별도 아이콘과 실제 화면이 없으므로 32px 배경 대비·DPR·HP 배치·게임 회귀 PASS도 아직 없다.
+- Earth 제작 보고: [불·물 파일럿](earth-1-native-report.md), [풀·번개 파일럿](earth-2-native-report.md),
+  [불·물 잔여 8종](earth-1-full-delivery-report.md), [풀·번개 잔여 8종](earth-2-full-delivery-report.md).
+- 파일럿 검수: [1차](pilot-qa-saturn.md) → [뇌격수 V1 REVISE](pilot-v1-qa-saturn.md) → [V2 ART PASS](pilot-v2-qa-saturn.md).
+  뇌격수는 국소 수정으로 해결되지 않아 얼굴·몸 비례를 재구성한 뒤 통과했다.
+- 도구: [Mars 구현·출력 증빙](mars-pipeline-report.md), [Saturn 독립 기술 PASS](tooling-qa-saturn.md).
+  Mars 테스트 68/68과 Saturn의 읽기 전용 검증은 수행 주체와 범위를 구분한다.
+- 전체 납품: [Saturn 최종 20종 ART·기술 검수](final-qa-saturn.md). 종별 판정과 검수 대상 해시를 보존한다.
+- [원본 QA](source-qa-saturn.md)는 최초 반입 시점의 기록이며 현재 수정본 판정과 구분한다.
 
-## 제작 시험
+초기 이미지 생성 시험 2건은 투명도·크기·색 수 규격을 충족하지 못해 참고 이력으로만 보존한다.
+[Earth_1 시험 보고](earth-1-report.md)와 [Earth_2 시험 보고](earth-2-report.md)의 생성 이미지는 납품 수량에서 제외한다.
 
-Earth_1은 불·물, Earth_2는 풀·번개를 맡아 각 10종 원본을 분석했다.
-각각 새끼 화룡과 스파크 1종을 내장 이미지 도구로 생성했으나 다음 결과가 나왔다.
-
-| 시험 | 실제 크기·형식 | 색 수 | 투명 배경 | 판정 |
-|---|---|---:|---|---|
-| [새끼 화룡 참고본](earth-1-fire-std-generated-reference.png) | 1254×1254 RGB PNG | 103,697 | 없음; 체크무늬가 픽셀에 포함 | 납품 불가 |
-| [스파크 참고본](earth-2-lightning-std-generated-reference.png) | 1254×1254 RGB PNG | 81,249 | 없음; 체크무늬가 픽셀에 포함 | 납품 불가 |
-
-두 파일은 **실패한 제작 참고본**이며 `icon.png` 대체물이나 최종 디자인이 아니다.
-이 두 번의 관측만으로 이미지 도구의 모든 출력이 불가능하다고 일반화하지 않는다.
-단순 축소·배경 제거만으로는 직접 32격자 설계 및 최대 16색 기준을 만족했다고 할 수 없다.
-Earth가 원본 특징을 보며 32×32 격자에 직접 픽셀을 배치하는 방식을 CJ에게 권장했고,
-현재는 제작 방식 선택을 기다린다. 제품 구현 승인과는 별개의 선택이다.
-
-실제 입력 프롬프트·개별 원본 특징·검사 수치는
-[Earth_1 보고](earth-1-report.md), [Earth_2 보고](earth-2-report.md)에 기록했다.
-최종 아이콘이 만들어지면 투명 여백 2px·최대 16색·접지선·3종 말 배경 대비와
-원본 캐릭터 정체를 검수한 뒤 이 상태표를 갱신한다.
+정적 아트·파일 규격 검수는 실제 게임의 이미지 로딩·HP 배치·DPR 검증이나 사람 대상 식별 시험을 뜻하지 않는다.
+현재 HP 숫자 한 줄과 메모 8종 이모지 재사용은 결정됐으며, 게임 화면 반영은 후속 제품 범위다.
 
 ## 문서 반영 위치
 
 | 문서 | 역할 |
 |---|---|
-| [외형 규격](../../minion-visual-spec-v0.4.3.md) | 제작 기준·원본 검수 현황·제품 구현 전 결정 |
-| [인계 스냅샷](../../creat2ve/HANDOVER_SNAPSHOT.md) | 활성 작업·남은 작업·CJ 결정 |
-| [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) 9·12장 | 최신 CJ 결정 본문·Decision Log |
+| [외형 규격](../../minion-visual-spec-v0.4.3.md) | 제작 기준·현재 수량·최종 QA·제품 결정 |
+| [인계 스냅샷](../../creat2ve/HANDOVER_SNAPSHOT.md) | 현재 통합 상태·남은 작업 |
+| [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) 9·12장 | CJ 결정 본문·Decision Log |
 
 원본 및 파생 아트의 자산 조건은 [ASSET-LICENSE.md](../../../ASSET-LICENSE.md)를 따른다.

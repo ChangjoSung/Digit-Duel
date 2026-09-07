@@ -20,7 +20,7 @@
 - ♄ **Saturn (QA, Codex — 2026-09-02 신설)**: 교차 모델 독립 QA (Claude 구현 ↔ Codex 검증, 동종 편향 제거)
 - ♃ **Jupiter (Server, Claude Code)**: 서버 스택 — Phase 2 대기 (QA는 Saturn으로 이관)
 
-**복합 안건 10단계 워크플로우 (2026-09-02)**: 복합 피드백·신규 기획 = PD 분류 → 소관 부서 분석 → PD 취합 1차 보고 → CJ 승인(재작성은 해당 부서만) → 병렬 구현 → Saturn QA → PD 취합 보고 → CJ 플레이 QA → PD 정리. **단순 지시는 패스트트랙**(분석 보고 생략). 모든 부서는 Clear 전 자기 작업을 이슈·Notion에 기록.
+**복합 안건 10단계 워크플로우 (2026-09-02)**: 복합 피드백·신규 기획 = PD 분류 → 소관 부서 분석 → PD 취합 1차 보고 → CJ 승인(재작성은 해당 부서만) → 병렬 구현 → Saturn QA → PD 취합 보고 → CJ 플레이 QA → PD 정리. **단순 지시는 패스트트랙**(분석 보고 생략). 모든 부서는 Clear 전 자기 작업을 PD에게 보고하고, PD가 통합 이슈·Notion에 기록.
 운영: **이벤트 구동**(요청·일정 발생 시 부서 Worker 기동) · 독립 안건은 fresh Worker가 기본이며 `worker_done` 후 결과를 archive하고 release · 동일한 좁은 범위의 즉시 후속 작업만 부서별 최대 1개·기한부 lease로 retain · 역할 연속성은 대화가 아니라 Issue·Notion·스냅샷으로 유지 · Mercury 창구는 상설 유지하되 마일스톤 종료, 반복 압축, 문서·Task 상태 불일치 등 객관적 신호에서 인수인계 스냅샷을 치환 갱신한 뒤 내부 세션을 교대 · 부서별 수동 백업 Prompt는 구조 문서 5장.
 
 **Notion 문서 수명주기 (rev 5):** 새 문서·갱신 시 `Project=현재 프로젝트`, `Edit Date=실제 수정일`, `Editor=실제 Notion 사람 편집자`를 설정한다. Agent·Mercury 표기는 Summary/본문 운영 이력에만 남긴다. Archive는 홀딩이지 삭제가 아니다. 삭제는 ① 현재 프로젝트 소속 ② 대체·중복 사실 ③ Parent/Sub-Task/선행/후속/참조 연결 부재를 모두 확인한 때에만 하며, 다른 프로젝트·연결된 문서는 자동 삭제하지 않는다. 하나라도 불명확하면 Archive에 유지하고 CJ에게 질문한다.
@@ -28,7 +28,7 @@
 ## CJ Comment 운영 계약 v3 (2026-08-31 v1 → 2026-09-01 조직 구조 → 2026-09-02 Notion 수명주기)
 CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 불필요하며, Notion의 Plan Prompt·Orchestration Launcher는 새 환경/다른 도구용 백업이다.
 1. **분류**: 매 보고 첫머리에 Comment를 [결정]/[피드백]/[질문]으로 분류해 표기한다.
-2. **Issue 생성**: 코드 변경이 필요한 작업만 이슈화한다. 문서·결정·분석은 Notion Decision Log만. 한 피드백의 여러 항목은 이슈 1개 + 체크리스트로 묶는다. **Sub-issues(2026-09-01 채택)**: 피드백 사이클·기능 묶음은 부모(에픽) 이슈로 만들고, 파생 작업(후속 delta·설계 승인 후 구현 분리)은 sub-issue로 부모에 연결한다(깊이 1단계만, `gh api repos/{r}/issues/{n}/sub_issues` POST에 sub_issue_id=이슈의 numeric id). 부모는 모든 sub 종결 + CJ QA 통과 시 닫는다 — 꼬리 무는 이슈 체인 방지.
+2. **Issue·PR 단위 (2026-09-07 CJ 승인)**: 코드 변경과 납품 자산 변경을 이슈화한다. 문서·결정·분석만 있는 안건은 Notion Decision Log로 관리한다. 하나의 납품 목표는 Mercury가 **Issue 1개 + 통합 PR 1개**로 관리하며, 같은 목표의 병렬 Worker 작업은 체크리스트와 Orca Task로 나눈다. Worker별 Issue·PR을 만들지 않는다. 독립 출시·독립 롤백이 필요한 범위만 별도 Issue·PR로 분리할 수 있고, 부모 에픽이 있으면 sub-issue로 연결한다(깊이 1단계). 부모는 모든 sub 종결 + CJ QA 통과 시 닫는다. Worker는 결과를 PD에게 보고하고, GitHub·Notion 기록과 Git 쓰기는 Mercury가 취합·집행한다.
 3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주해 근거 코멘트와 함께 close한다. 마일스톤 종료 시 전수 정리.
 4. **기획서 동기화**: 규칙 변경은 Decision Log + 해당 본문 섹션을 동시에 갱신하고, 보고에 "문서 반영 위치" 표를 포함한다.
 5. **DIGEST**: 마일스톤 종료·대규모 규칙 개정 시 eli-adult로 읽기 좋은 정리본을 생성한다.
@@ -82,7 +82,7 @@ CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.
 
 **복합 안건 10단계 워크플로우**: 1. CJ Comment를 안건별로 분류하고 영역·역할 기준으로 어느 역할이 1차 분석할지 판단 (provider 가용성은 판단 근거가 아니다) → 2. 기획 소관 안건 → Venus에 분석 요청 → 3. 아트 소관 안건 → Earth에 분석 요청 → 4. 개발 소관 안건 → Client·HTML·Unity·툴링은 Mars, Server는 Jupiter에 분석 요청 → 5. 부서 분석 보고를 취합해 CJ에 1차 보고 → 6. 검토 — OK 또는 재작성 (재작성은 해당 부서만 다시) → 7. 전체 OK 시 역할별 병렬 구현 시작 — Client·HTML·Unity·툴링은 Mars, Server는 Jupiter, 아트는 Earth. 같은 역할이 둘 이상이면 Mars_1·Mars_2처럼 접미사로 병렬화. Venus는 구현하지 않고 PD는 취합만 → 8. 코드 구현물은 Saturn(Codex)이 교차 QA — PASS/REVISE/BLOCKED → 9. 구현 보고서 취합 → CJ 보고 → 10. CJ 플레이 QA 최종 승인 → PD가 GitHub·Notion·문서 최신화·정리
 **패스트트랙**: 복합 피드백·신규 기획 = 10단계 풀 사이클. 단순 지시(명확한 단일 변경) = 패스트트랙(1~6 생략: 구현 → QA → 보고).
-모든 부서는 Clear(세션 종료) 전에 자기 작업을 GitHub 이슈와 Notion에 기록한다.
+모든 부서는 Clear(세션 종료) 전에 자기 작업을 Mercury에게 보고한다. Mercury가 통합 Issue·Notion에 기록하며 Worker가 별도 Issue·PR을 만들거나 GitHub·Notion에 직접 쓰지 않는다.
 
 **세션 lease / 교대**: 부서 Worker는 매 작업 fresh 세션이 기본이다. 같은 좁은 범위의 즉시 후속 작업만 부서별 최대 1개, 기한부 lease로 retain한다. 장수 세션(PD)은 스냅샷을 갱신한 뒤 교대한다. 독립 안건은 fresh Worker 기동 → worker_done → 결과 archive → release.
 - retain 조건(모두 만족): 직전 작업과 동일한 좁은 범위의 즉시 후속 작업일 것 / 역할 인스턴스(Role 또는 Role_n)별 동시에 최대 1개만 retain / 기한부 lease — 기한 도래 또는 범위 이탈 시 release / retain 여부와 기한을 dispatch 기록에 남길 것
@@ -103,7 +103,7 @@ CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.
 ## CJ Comment 운영 계약
 CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 불필요하며, docs/creat2ve/prompts/ 의 부서별 Prompt는 자동 경로 장애 시 수동 백업이다.
 1. **입력**: CJ Comment가 유일한 런처. 매 보고 첫머리에 [결정]/[피드백]/[질문] 분류 표기.
-2. **이슈**: 코드 변경만 이슈화. 피드백 1건 = 에픽 1개 + Sub-issues(깊이 1단계). 종결은 CJ QA 통과 또는 묵시적 승인(다음 Comment 무이의).
+2. **이슈·PR (2026-09-07 CJ 승인)**: 코드·납품 자산 변경은 납품 목표 1개 = Issue 1개 + 통합 PR 1개. 병렬 Worker는 체크리스트·Orca Task로 분할하고 GitHub·Notion 기록·Git 쓰기는 Mercury가 취합한다. 독립 출시·롤백 범위만 별도 Issue·PR 및 필요 시 sub-issue(깊이 1단계)로 분리한다. 종결은 CJ QA 통과 또는 완료 보고 후 다음 Comment 무이의.
 3. **기획서 동기화**: 규칙 변경 = Decision Log + 본문 섹션 동시 갱신. 보고에 "문서 반영 위치" 표 필수.
 4. **문서 정리**: 누적이 아니라 치환. 대규모 개정 후에는 eli-adult 정리본(DIGEST).
 5. **Notion 문서**: 새 문서·갱신 시 Project=현재 프로젝트, Edit Date=실제 수정일, Editor=실제 Notion 사람 편집자. Agent·Mercury 표기는 Summary/본문의 운영 이력에만. Archive는 홀딩이고 삭제가 아니다 — 삭제는 현재 프로젝트 소속·대체/중복·연결 부재 3가지를 확인한 뒤에만, 다른 프로젝트·연결된 문서는 자동 삭제 금지.

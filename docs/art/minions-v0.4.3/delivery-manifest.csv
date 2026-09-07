@@ -1,0 +1,29 @@
+kind,id,path,bytes,sha256,detail
+icon,fire_atk,demo/assets/minions/fire_atk/icon.png,849,7d6d6527153921246a0d69ff30570e86c020603affa4cccc65e58c7ca5bf08e9,"colors=10;bbox=(3, 2, 27, 29);bboxMidX=15.0(proxy)"
+icon,fire_def,demo/assets/minions/fire_def/icon.png,751,bd780d3cd3d0909447771be86b310215e4a674eb5b21bc04f1cbe0f8d6c7ac56,"colors=11;bbox=(3, 4, 27, 29);bboxMidX=15.0(proxy)"
+icon,fire_std,demo/assets/minions/fire_std/icon.png,872,1780a298d11b8d09aad4ffaa2ca9db28ff6eebaa82456761d911c630b5921feb,"colors=11;bbox=(4, 2, 27, 29);bboxMidX=15.5(proxy)"
+battle-grid,fire_sustain,demo/assets/minions/fire_sustain/battle-grid.png,2963,3b3af4bfe76bc774447043e29c1b54341c22a5f07e243ce853e27dc7eb476e07,patched=28;changed=28
+battle,fire_sustain,demo/assets/minions/fire_sustain/battle.png,3386,55676a3fc3c71cc4913d34a11883367479d345292880c942c1131b59002682b5,nearest2x(battle-grid)
+icon,fire_sustain,demo/assets/minions/fire_sustain/icon.png,935,20f1822f532e4d44f651d41c6981b537e96061cfee7ced0c7c55e5c7220199bd,"colors=12;bbox=(2, 2, 27, 29);bboxMidX=14.5(proxy)"
+icon,fire_swift,demo/assets/minions/fire_swift/icon.png,739,c3bfd2ea7ce56a52c9125717cbe501fc38119cabd0cb6d63b4f8cad033f8d91c,"colors=10;bbox=(6, 2, 25, 29);bboxMidX=15.5(proxy)"
+battle-grid,grass_atk,demo/assets/minions/grass_atk/battle-grid.png,3127,6868e7693b8575ffc50e71347bf9474c6b31021c013cc197ced9346abbaf3a91,patched=35;changed=35
+battle,grass_atk,demo/assets/minions/grass_atk/battle.png,3694,e664c3fd7e75cd59ff1b8411c61d29c453abee6d776016c2131293c7be2f3e4b,nearest2x(battle-grid)
+icon,grass_atk,demo/assets/minions/grass_atk/icon.png,974,1a51f5bd39e1f25cc0fdcd90a9316a43c3f892f4610ecc9f79833015bfaa091e,"colors=11;bbox=(3, 2, 28, 29);bboxMidX=15.5(proxy)"
+icon,grass_def,demo/assets/minions/grass_def/icon.png,1000,674bf6ef3f1facb7e0ab232a2c4000e8cfe93cb06f470171da067687344b0646,"colors=11;bbox=(3, 2, 29, 29);bboxMidX=16.0(proxy)"
+icon,grass_std,demo/assets/minions/grass_std/icon.png,872,69f8747354cdbbf3b4834313336cf147ff37accb7b02850735a8b00619e5c3e3,"colors=11;bbox=(5, 2, 27, 29);bboxMidX=16.0(proxy)"
+icon,grass_sustain,demo/assets/minions/grass_sustain/icon.png,694,10c902466d2c7788e5f8eb8b731571a23b15b9b620336184f968735fd9a470eb,"colors=10;bbox=(4, 2, 29, 29);bboxMidX=16.5(proxy)"
+icon,grass_swift,demo/assets/minions/grass_swift/icon.png,830,2a577f825bf17ade1b6a63db2a805f35cae3f61b12ec72a1294b48d4839c0820,"colors=10;bbox=(3, 2, 27, 29);bboxMidX=15.0(proxy)"
+battle-grid,lightning_atk,demo/assets/minions/lightning_atk/battle-grid.png,2488,4d46db21c58a7b0292037805cd7af76ff54d1246f558363c3402015510cb45bd,patched=28;changed=28
+battle,lightning_atk,demo/assets/minions/lightning_atk/battle.png,4101,a60551cfd8f2a0db6fdab3b9983c2bde38411e31e156ad3436c157bcaf87701c,nearest2x(battle-grid)
+icon,lightning_atk,demo/assets/minions/lightning_atk/icon.png,911,63d4b701c7648e12711f496ca52d47847244e3488848636e97198f7b23b23dde,"colors=10;bbox=(3, 2, 29, 29);bboxMidX=16.0(proxy)"
+icon,lightning_def,demo/assets/minions/lightning_def/icon.png,928,05751cadde005fb4537e4299fa2be3c74feadc1e089199ff5725295b5204f315,"colors=10;bbox=(3, 2, 28, 29);bboxMidX=15.5(proxy)"
+icon,lightning_std,demo/assets/minions/lightning_std/icon.png,834,f6f2447340dcbe2ded2f5e99b6862a172ab0cdb31b3e9b396a37303d99ff63e8,"colors=10;bbox=(5, 2, 26, 29);bboxMidX=15.5(proxy)"
+icon,lightning_sustain,demo/assets/minions/lightning_sustain/icon.png,789,c844f69522aeda26c15b5c08ebfcf868c293558f2092ea3dfd26ca9253b8d0f0,"colors=10;bbox=(4, 2, 26, 29);bboxMidX=15.0(proxy)"
+icon,lightning_swift,demo/assets/minions/lightning_swift/icon.png,814,054e3d53817c9c2f6fcce61cd223bbc4ed3dda75b7d82c4cac4c6137fc57ae7a,"colors=10;bbox=(3, 2, 29, 29);bboxMidX=16.0(proxy)"
+icon,water_atk,demo/assets/minions/water_atk/icon.png,792,3fe7b7693704f826fbd84523d6cdad7f40acc715e718e122e10140526befc5b7,"colors=11;bbox=(3, 2, 27, 29);bboxMidX=15.0(proxy)"
+icon,water_def,demo/assets/minions/water_def/icon.png,782,cd682b263a7165cefb1ac0bfc4fdcb85604d62fb6715abde26665a06f2157de8,"colors=11;bbox=(3, 2, 27, 29);bboxMidX=15.0(proxy)"
+icon,water_std,demo/assets/minions/water_std/icon.png,723,7e95ab2cbd796ad1b7648ec221f1504dbf1408bed07e59a03a92319064555020,"colors=11;bbox=(6, 2, 25, 29);bboxMidX=15.5(proxy)"
+icon,water_sustain,demo/assets/minions/water_sustain/icon.png,808,99ee754eb25e64df43f92b1be5f6889e4a9847de0afa7ced2db1c33a3671f236,"colors=10;bbox=(5, 2, 28, 29);bboxMidX=16.5(proxy)"
+battle-grid,water_swift,demo/assets/minions/water_swift/battle-grid.png,3129,abcba704371d0cc7b9060c0f57f15f5c75d90c44436751b14668e5ba3fce9337,patched=25;changed=25
+battle,water_swift,demo/assets/minions/water_swift/battle.png,3731,2ba2ba89ef30889cd27643011f1f75012fa5360651dd13b4c1f915466377576e,nearest2x(battle-grid)
+icon,water_swift,demo/assets/minions/water_swift/icon.png,760,c2436b71fc00ba37d367de3e861c71f77e25bc4a6b8e3510be7507a7af8477e8,"colors=10;bbox=(2, 2, 28, 29);bboxMidX=15.0(proxy)"

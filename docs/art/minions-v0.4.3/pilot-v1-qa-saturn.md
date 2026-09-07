@@ -1,0 +1,7 @@
+# Saturn 파일럿 QA — 뇌격수 V1 재검수
+
+2026-09-07 · Task task_6dbd124edbfe · Dispatch ctx_a37bfc70c009
+
+Saturn 읽기 전용 보고를 Mercury가 보존했다. files_modified=[].
+
+[피드백] required_role=Saturn, instance=Saturn, files_modified=[]로 지정 문서와 원본 portrait·보정 battle·현재 PNG/시트를 읽기 전용 재검수했고, 4종 모두 JSON 픽셀 exact 및 기존 다른3종 원고 SHA 불변·동일 픽셀을 확인하여 기존 PASS를 유지하며, V1 기술 수치는 PASS(32×32 RGBA, alpha0/255,10색,322불투명,bbox x4..29/y2..29,여백2이상,y29)이고 SHA256은 V1 source=8497b1c2f94dbf91862c9a8a3aaf2659e524c85b8c93210c889c7cc195a770c0, V1 icon=c289a14dcf05f9cc53ef2ebb6424707db477df671436ee79df2ea3e29566e3e4, fire icon=20f1822f532e4d44f651d41c6981b537e96061cfee7ced0c7c55e5c7220199bd, water icon=c2436b71fc00ba37d367de3e861c71f77e25bc4a6b8e3510be7507a7af8477e8, grass icon=1a51f5bd39e1f25cc0fdcd90a9316a43c3f892f4610ecc9f79833015bfaa091e이다. 독립 시각 판정은 V1 ART REVISE로, 현재 PNG와 exact인 #33406e/#6e3340/#3a4152의 실제32·최근접4배를 직접 보니 x13..16/y8..11 얼굴 면과 y12 어두운 목 단절은 개선됐으나 얼굴은 여전히 약4행의 작은 면이고 y13..29의 긴 가슴·다리에 비해 작아서 실제32에서 얼굴 방향보다 교차한 뿔·창과 밝은 가슴선이 먼저 읽히므로, Earth_2는 x12..17/y8..12 머리·목 주변의 얼굴 덩어리와 눈·턱 방향성을 키우고 아래 몸통·다리 비중을 압축해 spec7.6의 머리 비중·2~2.5등신을 충족하되 기존 뿔·창·남색 갑주·낫팔/발톱·목 단절·y29·여백 AC를 유지해야 한다. 나머지16 ART 착수는 보류하며 Mercury가 이 인라인 보고를 보존하고 Earth 수정→Mars 재출력→Saturn ART 재판정이 남고, 검수 시트 SHA256은 board=098a5c726ea4be942c5069e4f3b95903a260b073edca3e802fbd0b7a2845e02e, contact=dc8f5664f373df2ae55b27d09a362b26ab9d58098ad793a3e7461fb2d4a67756, silhouette=b553d30a0b1f483640dfe2de1eacf7e0df452445f1a4b9268f0e321ecab79b90이며 기존 전투4종 PASS는 승계하고 T1~4 최종 도구QA·전체20종·브라우저/런타임QA·최종CJ승인은 이번 판정에 포함하지 않았다.
