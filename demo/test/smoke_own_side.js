@@ -255,7 +255,12 @@ function sameSig(a,b){ const ka=Object.keys(a), kb=Object.keys(b); if(ka.length!
   ok(/x\.r=\(p===1\)\?\(ROWS\+1-data\.pos\[i\]\[0\]\):data\.pos\[i\]\[0\]; x\.c=data\.pos\[i\]\[1\];/.test(src),"G3 applyNetSetup 은 행만 미러링·열 유지 (무변경)");
   ok(src.indexOf("P2(상단)")<0&&src.indexOf('"P1(하단)"')<0,"G4 netStart 의 옛 상단/하단 고정 문구 제거");
   ok(/return p===0\?"P1\(하단·청\)":"P2\(상단·적\)";/.test(src),"G5 핫시트 pname 문구는 무변경");
-  ok(/function onCell\(r,c\)\{ netAction\(\{t:"cell",r,c\}\); \}/.test(src),"G6 onCell → netAction 논리 좌표 경로 무변경");
+  /* G6 (#94 갱신): onCell 은 memoClickTarget(r,c) 로컬 메모 분기 → 그 외 netAction({t:"cell",r,c}) 폴백. 두 경로 모두 인자 r,c 를 그대로 넘기고
+     함수 안에서 행 반사(ROWS+1-r·14-r·boardFlipped·dataset)나 r/c 재대입을 하지 않는다 — 한 줄 서식이 아니라 onCell 함수 소스(Function#toString) 범위로 검사 */
+  ok((fn=>/^function onCell\(\s*r\s*,\s*c\s*\)/.test(fn)&&/memoClickTarget\(\s*r\s*,\s*c\s*\)/.test(fn)
+    &&/netAction\(\s*\{\s*t\s*:\s*"cell"\s*,\s*(?:r|r\s*:\s*r)\s*,\s*(?:c|c\s*:\s*c)\s*\}\s*\)/.test(fn)
+    &&!/ROWS|COLS|\b1[34]\s*-|-\s*[rc]\b|boardFlipped|dataset|\b[rc]\s*=(?!=)/.test(fn))(String(T.onCell).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm,"")),
+    "G6 onCell 논리 좌표 계약: memoClickTarget(r,c) 메모 분기와 netAction({t:\"cell\",r,c}) 폴백 모두 r,c 그대로 전달 — 함수 안 행 반사·r/c 재대입 없음");
   ok(!/dataset\.vr|14-r|14 - r/.test(src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm,"")),"G7 코드에 화면 좌표를 상태·dataset 으로 되돌리는 역변환 없음");
 }
 
