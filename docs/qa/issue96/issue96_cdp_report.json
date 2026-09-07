@@ -1,0 +1,189 @@
+{
+ "html": "demo/index.html",
+ "schemes": [
+  "file"
+ ],
+ "viewports": [
+  {
+   "name": "desktop-1280",
+   "w": 1280,
+   "h": 800,
+   "dpr": 1
+  }
+ ],
+ "shots": [
+  "docs/qa/issue96/file_desktop-1280_1-roster-info.png",
+  "docs/qa/issue96/file_desktop-1280_2-battle-cmd.png",
+  "docs/qa/issue96/file_desktop-1280_3-shock-apply.png",
+  "docs/qa/issue96/file_desktop-1280_4-shock-fail.png"
+ ],
+ "report": [
+  {
+   "scheme": "file",
+   "vp": "desktop-1280",
+   "scene": "0-consts",
+   "shockProb": 0.5,
+   "statusProb": 0.7,
+   "desc": "50% 확률 감전(후공 1회)",
+   "fireDesc": "70% 확률 화상 2R",
+   "waterDesc": "70% 확률 약화 2회",
+   "sigDesc": "자기 속성 상태효과 부여 (100%)",
+   "has70": false,
+   "issues": [],
+   "consoleErrors": []
+  },
+  {
+   "scheme": "file",
+   "vp": "desktop-1280",
+   "scene": "1-roster-info",
+   "text": "스파크\n번개\n표준형\nHP 100 · 공격 22 (기술 위력 = 표기 위력 × 공격/22)\n1 전기탄 [공격기] 위력 26 — 안정 공격기\n2 감전 침 [공격기] 위력 22 · 쿨 2 — 50% 확률 감전(후공 1회)\n3 응급 치유 [보조기] · 쿨 3 — 자기 HP 20% 회복\n4 전술 연계 [시그니처] 위력 30 · 쿨 3 — 다른 속성 공격기 1개 쿨 -1\n선택하기\n닫기",
+   "hasName": true,
+   "hasSkill": true,
+   "has50": true,
+   "has70": false,
+   "hidden": false,
+   "issues": [],
+   "consoleErrors": []
+  },
+  {
+   "scheme": "file",
+   "vp": "desktop-1280",
+   "scene": "2-battle-cmd",
+   "fa": "M-L1",
+   "fd": "M-G1",
+   "round": 1,
+   "phase": 0,
+   "btns": [
+    {
+     "text": "전기탄 21~31",
+     "title": "안정 공격기",
+     "disabled": true
+    },
+    {
+     "text": "감전 침 18~26",
+     "title": "50% 확률 감전(후공 1회)",
+     "disabled": true
+    },
+    {
+     "text": "응급 치유",
+     "title": "자기 HP 20% 회복",
+     "disabled": true
+    },
+    {
+     "text": "전술 연계 24~36",
+     "title": "다른 속성 공격기 1개 쿨 -1",
+     "disabled": true
+    },
+    {
+     "text": "🔴 볼 투척 70%",
+     "title": "적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)",
+     "disabled": true
+    },
+    {
+     "text": "🏃 도망 50%",
+     "title": "자기 HP 50% 미만 시 가능 · 실패 시 상대 즉시 공격 1회",
+     "disabled": true
+    },
+    {
+     "text": "쿨링수",
+     "title": "",
+     "disabled": true
+    },
+    {
+     "text": "쿨링수",
+     "title": "",
+     "disabled": true
+    }
+   ],
+   "shockBtn": {
+    "text": "감전 침 18~26",
+    "title": "50% 확률 감전(후공 1회)",
+    "disabled": true
+   },
+   "titleOk": true,
+   "has70": false,
+   "fireTitle": false,
+   "stageText": "풀\n번개",
+   "issues": [],
+   "consoleErrors": []
+  },
+  {
+   "scheme": "file",
+   "vp": "desktop-1280",
+   "scene": "3-shock-apply",
+   "act": {
+    "seed": 1,
+    "shockBefore": 0,
+    "hpD": 100,
+    "blog": 1,
+    "before": {
+     "blog": 1,
+     "hpD": 100,
+     "st": "-"
+    },
+    "clickedVia": "window.__act(1)"
+   },
+   "blog": [
+    "⚔️ 스파크 vs 새싹 파수꾼 — 전투 개시!",
+    "스파크의 감전 침!",
+    "17 피해! · 유효 17",
+    "⚡ 새싹 파수꾼는 감전 — 다음 1라운드 후공!",
+    "새싹 파수꾼의 전술 연계!",
+    "34 피해! · 유효 34"
+   ],
+   "opShock": 1,
+   "opFresh": false,
+   "hpD": 83,
+   "round": 2,
+   "phase": 0,
+   "logShock": true,
+   "logFail": false,
+   "uiShock": true,
+   "uiFailText": false,
+   "uiShockText": false,
+   "queued": 0,
+   "text": "▶ 나의 턴\n⚔️ 라운드 2/6\n새싹 파수꾼 (AI(5급)) 표준풀\nHP 83/100 · ⚡감전1R\n가한 유효 피해 34 (34%)\n?공격기 · ?공격기 · ?보조기 · 전술 연계(쿨2)\n풀\n번개\n-34\n스파크 (플레이어) 표준번개\nHP 66/100 · -\n가한 유효 피해 17 (17%)\n전기탄 · 감전 침(쿨1) · 응급 치유 · 전술 연계\n34 피해! · 유효 34\n플레이어:\n전기탄 21~31\n감전 침 18~26 (쿨1)\n응급 치유\n전술 연계 24~36\n🔴 볼 투척 70%\n🏃 도망 50%\n보너스 아이템(라운드당 1·전투당 2·연속 동일 불가):\n쿨링수\n쿨링수\n전투 이력",
+   "issues": [],
+   "consoleErrors": []
+  },
+  {
+   "scheme": "file",
+   "vp": "desktop-1280",
+   "scene": "4-shock-fail",
+   "act": {
+    "seed": 5,
+    "shockBefore": 0,
+    "hpD": 100,
+    "blog": 1,
+    "before": {
+     "blog": 1,
+     "hpD": 100,
+     "st": "-"
+    },
+    "clickedVia": "window.__act(1)"
+   },
+   "blog": [
+    "⚔️ 스파크 vs 새싹 파수꾼 — 전투 개시!",
+    "스파크의 감전 침!",
+    "18 피해! · 유효 18",
+    "상태이상 부여 실패!",
+    "새싹 파수꾼의 전술 연계!",
+    "38 피해! · 유효 38"
+   ],
+   "opShock": 0,
+   "opFresh": false,
+   "hpD": 82,
+   "round": 2,
+   "phase": 0,
+   "logShock": false,
+   "logFail": true,
+   "uiShock": false,
+   "uiFailText": false,
+   "uiShockText": false,
+   "queued": 0,
+   "text": "▶ 상대 턴 🤖\n⚔️ 라운드 2/6\n새싹 파수꾼 (AI(5급)) 표준풀\nHP 82/100 · -\n가한 유효 피해 38 (38%)\n?공격기 · ?공격기 · ?보조기 · 전술 연계(쿨2)\n풀\n번개\n-38\n스파크 (플레이어) 표준번개\nHP 62/100 · -\n가한 유효 피해 18 (18%)\n전기탄 · 감전 침(쿨1) · 응급 치유 · 전술 연계\n38 피해! · 유효 38\nAI(5급):\n? 공격기\n? 공격기\n? 보조기\n전술 연계 24~36 (쿨2)\n🔴 볼 투척 70%\n🏃 도망 50%\n보너스 아이템(라운드당 1·전투당 2·연속 동일 불가):\n해독제\n해독제\n전투 이력",
+   "issues": [],
+   "consoleErrors": []
+  }
+ ]
+}

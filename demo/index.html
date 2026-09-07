@@ -250,7 +250,8 @@ const BAL={
   itemPerBattle:2, itemPerRound:1, invMax:5, ballStart:3, itemStart:2, // itemStart: D11 시작 아이템 수
   burnStart:65, // 버닝 타임 진입 표시 턴 (GDD-13 4.11 개정)
   captureAtkFailPct:0.25,
-  statusProb:0.7, // T5-A(D10): 스킬 상태이상 부여 확률 (지속형은 100%, 테스트는 1로 고정)
+  statusProb:0.7, // T5-A(D10): 스킬 상태이상 부여 확률 — 화상·약화 (지속형은 100%, 테스트는 1로 고정)
+  shockProb:0.5, // #96 (v0.4.4 §4): 감전 부여 확률 — 일반 번개 효과기·레거시 비지속형 번개만. 잔류장·레거시 지속형은 100% 유지 (테스트는 statusProb와 함께 1로 고정)
   eventsPerForest:3, // 구역당 최소 개수 (3~4개 무작위 — #12)
   ballMax:3, nextBuffPct:0.15, // #12: 몬스터볼 상한·일시버프(다음 전투 공격 +15%)
   enemyCapProb:0.7, // #12: 적 하수인 포획 성공률
@@ -294,7 +295,7 @@ const SKILLS={
   grass_effect:{ko:"흡수 새싹",kind:"attack",cd:2,pow:20,drainPct:0.4,desc:"실HP 피해의 40% 회복"},
   grass_heavy:{ko:"가시 폭발",kind:"attack",cd:3,pow:34,selfShieldPct:0.10,desc:"자기 최대 HP 10% 보호막"},
   lightning_stable:{ko:"전기탄",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  lightning_effect:{ko:"감전 침",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 감전(후공 1회)"},
+  lightning_effect:{ko:"감전 침",kind:"attack",cd:2,pow:22,status:true,desc:"50% 확률 감전(후공 1회)"},
   lightning_heavy:{ko:"연쇄 번개",kind:"attack",cd:3,pow:34,bonusVsStatus:6,desc:"대상 상태이상 시 +6"},
   // 공용 보조기 6종
   sup_heal:{ko:"응급 치유",kind:"support",cd:3,healPct:0.20,desc:"자기 HP 20% 회복"},
@@ -1477,8 +1478,8 @@ function battleModal(){
     if(kind!=="skill"||!f.skillAtk){ execSlot(side,-1); return; } // 왕·동료 본체: 기본 공격
     // ===== 구형 속성 스킬 경로 (로스터 미적용 하수인 전용 — 레거시 테스트 호환) =====
     const oSide=side==="A"?"D":"A", sp=skillParamsOf(f);
-    const tryStatus=()=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb
-      if(archOf(f)==="sustain"||rand()<BAL.statusProb){S.metrics.statusApplied++; return true;}
+    const tryStatus=prob=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb (#96: 감전은 shockProb)
+      if(archOf(f)==="sustain"||rand()<(prob===undefined?BAL.statusProb:prob)){S.metrics.statusApplied++; return true;}
       S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
     };
     bmsg(`${fighterName(side)}의 ${f.element?SKILL_KO[f.element]:"스킬"}!`);
@@ -1513,7 +1514,7 @@ function battleModal(){
        hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:{side:oSide,text:stIcons(opp)}});
     if(f.element==="fire"&&!opp.burn&&tryStatus()){opp.burn=sp.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${sp.burnRounds}R)`,{st:{side:oSide,text:stIcons(opp)}});}
     if(f.element==="water"&&!opp.weaken&&tryStatus()){opp.weaken=sp.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${sp.weakenHits}회)`,{st:{side:oSide,text:stIcons(opp)}});}
-    if(f.element==="lightning"&&!opp.shock&&tryStatus()){opp.shock=sp.shockRounds; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${sp.shockRounds}라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
+    if(f.element==="lightning"&&!opp.shock&&tryStatus(BAL.shockProb)){opp.shock=sp.shockRounds; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${sp.shockRounds}라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
     if(checkDeath()) return;
     nextPhase();
   };
@@ -1528,14 +1529,14 @@ function execSlot(side,slot){
   const sk=(slot>=0&&f.skills)?SKILLS[f.skills[slot]]:null;
   if(sk){ f.cds[slot]=sk.cd;
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
-  const gate=force=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기 70%·잔류장 100%)
-    if(force||rand()<BAL.statusProb){S.metrics.statusApplied++; return true;}
+  const gate=(force,prob)=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기: 화상·약화 statusProb 70% · 감전 shockProb 50% (#96) · 잔류장 100% — force는 rand 미소비)
+    if(force||rand()<(prob===undefined?BAL.statusProb:prob)){S.metrics.statusApplied++; return true;}
     S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
   };
   const applyStatus=force=>{
     if(f.element==="fire"&&!opp.burn&&gate(force)){opp.burn=BAL.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${BAL.burnRounds}R)`,{st:{side:oSide,text:stIcons(opp)}});}
     else if(f.element==="water"&&!opp.weaken&&gate(force)){opp.weaken=BAL.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${BAL.weakenHits}회)`,{st:{side:oSide,text:stIcons(opp)}});}
-    else if(f.element==="lightning"&&!opp.shock&&gate(force)){opp.shock=1; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
+    else if(f.element==="lightning"&&!opp.shock&&gate(force,BAL.shockProb)){opp.shock=1; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
   };
   const coolReduce=(filter,label)=>{ // 쿨 감소류: 조건 내 남은 쿨 최장 기술 1개 쿨 -1
     let pick=-1;

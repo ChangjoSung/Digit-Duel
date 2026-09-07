@@ -5,7 +5,7 @@ const T=H.load(process.argv[2]);
 const S=()=>T.S;
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
-T.BAL.dmgVar=0; T.BAL.statusProb=1;
+T.BAL.dmgVar=0; T.BAL.statusProb=1; T.BAL.shockProb=1; // #96: 감전 확률도 함께 고정 (테스트 결정론)
 const realRandom=Math.random;
 
 /* ===== A. #20-1 지표 분리·이중 집계 정합 (sim 완주 후 합산 = byPlayer[0]+byPlayer[1]) ===== */
