@@ -1,0 +1,152 @@
+{
+ "html": "demo/index.html",
+ "viewport": {
+  "name": "desktop-1280",
+  "w": 1280,
+  "h": 800,
+  "dpr": 1
+ },
+ "schemes": [
+  "file",
+  "http"
+ ],
+ "expected": {
+  "roster": [
+   "HP 90 · 공격 25",
+   "위력 30",
+   "위력 43 · 쿨 3",
+   "위력 45 · 쿨 4"
+  ],
+  "battle": [
+   "화염탄 24~36",
+   "폭염 강타 34~52",
+   "집중",
+   "결정타 36~54"
+  ],
+  "old": [
+   "공격 26",
+   "위력 45 · 쿨 3",
+   "위력 52",
+   "결정타 42~62",
+   "폭염 강타 36~54",
+   "화염탄 25~37"
+  ]
+ },
+ "shots": [
+  "docs/qa/issue95/file_desktop-1280_1-roster-M-F2.png",
+  "docs/qa/issue95/file_desktop-1280_2-battle-commands.png",
+  "docs/qa/issue95/file_desktop-1280_3-after-sig-click.png",
+  "docs/qa/issue95/http_desktop-1280_1-roster-M-F2.png",
+  "docs/qa/issue95/http_desktop-1280_2-battle-commands.png",
+  "docs/qa/issue95/http_desktop-1280_3-after-sig-click.png"
+ ],
+ "report": [
+  {
+   "scheme": "file",
+   "what": "roster",
+   "phase": "setup",
+   "text": "화염 투사 불 공격형 HP 90 · 공격 25 (기술 위력 = 표기 위력 × 공격/22) 1 화염탄 [공격기] 위력 30 — 안정 공격기 2 폭염 강타 [공격기] 위력 43 · 쿨 3 — 고위력 공격기 3 집중 [보조기] · 쿨 3 — 다음 공격기 위력 +20% (1회) 4 결정타 [시그니처] 위력 45 · 쿨 4 — 사용 후 다음 피격 피해 +15% 선택하기 닫기",
+   "issues": []
+  },
+  {
+   "scheme": "file",
+   "what": "battle",
+   "me": "M-F2",
+   "op": "M-F1",
+   "opHp": "100/100",
+   "btns": [
+    "화염탄 24~36",
+    "폭염 강타 34~52",
+    "집중",
+    "결정타 36~54"
+   ],
+   "ranges": [
+    "화염탄 24~36",
+    "폭염 강타 34~52",
+    "결정타 36~54"
+   ],
+   "hpD": "100",
+   "issues": []
+  },
+  {
+   "scheme": "file",
+   "what": "sig-click",
+   "clicked": "clicked",
+   "hpD": 55,
+   "hpTxt": "55",
+   "dispHpD": 55,
+   "hit": "45 피해! · 유효 45",
+   "vuln": true,
+   "log": [
+    "⚔️ 화염 투사 vs 새끼 화룡 — 전투 개시!",
+    "화염 투사의 결정타!",
+    "45 피해! · 유효 45",
+    "⚠️ 화염 투사의 자세가 무너졌다 — 다음 피격 +15%!",
+    "새끼 화룡의 전술 연계!",
+    "⚠️ 결정타의 반동 — 피격 +15%!",
+    "35 피해! · 유효 35"
+   ],
+   "issues": []
+  },
+  {
+   "scheme": "file",
+   "what": "console",
+   "errors": [],
+   "issues": []
+  },
+  {
+   "scheme": "http",
+   "what": "roster",
+   "phase": "setup",
+   "text": "화염 투사 불 공격형 HP 90 · 공격 25 (기술 위력 = 표기 위력 × 공격/22) 1 화염탄 [공격기] 위력 30 — 안정 공격기 2 폭염 강타 [공격기] 위력 43 · 쿨 3 — 고위력 공격기 3 집중 [보조기] · 쿨 3 — 다음 공격기 위력 +20% (1회) 4 결정타 [시그니처] 위력 45 · 쿨 4 — 사용 후 다음 피격 피해 +15% 선택하기 닫기",
+   "issues": []
+  },
+  {
+   "scheme": "http",
+   "what": "battle",
+   "me": "M-F2",
+   "op": "M-F1",
+   "opHp": "100/100",
+   "btns": [
+    "화염탄 24~36",
+    "폭염 강타 34~52",
+    "집중",
+    "결정타 36~54"
+   ],
+   "ranges": [
+    "화염탄 24~36",
+    "폭염 강타 34~52",
+    "결정타 36~54"
+   ],
+   "hpD": "100",
+   "issues": []
+  },
+  {
+   "scheme": "http",
+   "what": "sig-click",
+   "clicked": "clicked",
+   "hpD": 55,
+   "hpTxt": "55",
+   "dispHpD": 55,
+   "hit": "45 피해! · 유효 45",
+   "vuln": true,
+   "log": [
+    "⚔️ 화염 투사 vs 새끼 화룡 — 전투 개시!",
+    "화염 투사의 결정타!",
+    "45 피해! · 유효 45",
+    "⚠️ 화염 투사의 자세가 무너졌다 — 다음 피격 +15%!",
+    "새끼 화룡의 전술 연계!",
+    "⚠️ 결정타의 반동 — 피격 +15%!",
+    "35 피해! · 유효 35"
+   ],
+   "issues": []
+  },
+  {
+   "scheme": "http",
+   "what": "console",
+   "errors": [],
+   "issues": []
+  }
+ ],
+ "generated": "2026-09-07T11:00:31.991Z"
+}

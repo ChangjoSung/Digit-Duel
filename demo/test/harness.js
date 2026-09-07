@@ -174,13 +174,13 @@ function load(htmlPath,opts){
 ;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,EVENT_POOL,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
   newGame,genEvents,doSearch,canSearchPiece,applyRoster,aiAutoPlace,startTurn,endTurn,doMove,canMoveTo,canBattle,
   initBattle,startRounds,doTeleportSwap,teleportAvailable,checkWipe,alivePieces,at,fleeSwap,visibleTo,inForest,
-  finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,isBurning,beginPlay,
+  finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,archSkills,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
   renderSide,renderMetrics,render,startMode,modal,close,onCell,humanViewer,idLabel,
   MEMO_OPTS,MEMO_UI,memoOpt,memoSet,memoModal, // #36 추측 메모 피커
   memoClickTarget:typeof memoClickTarget==="function"?memoClickTarget:undefined, memoTargetOk:typeof memoTargetOk==="function"?memoTargetOk:undefined, // #94 로컬 메모 분기 (변경 전 소스로 음성 대조를 돌릴 수 있게 부재 허용)
-  ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
+  ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artDirOfFighter:typeof artDirOfFighter==="function"?artDirOfFighter:undefined,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
   GLYPH,glyphOk,glyphSpan,memoShort,pieceMemoKey,
   artFail:window.artFail,artSpriteFail:window.artSpriteFail,artPortraitFail:window.artPortraitFail,
   rosterInfo:window.rosterInfo,battleModal,toggleRoster:window.toggleRoster, // #89 하수인 아트 연결 (표시 계층)
