@@ -603,6 +603,11 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1
 /* ===== 유틸 ===== */
 const isAI=p=>(S.mode==="pve"&&p===1)||S.mode==="sim";
 const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:S.current) : 0); // 온라인: 항상 내 시점 고정
+/* #93 온라인 P2 화면 행 반사 — 표시 전용. 논리 좌표(S·dataset.r/c·클릭·통신·로그)는 불변이고 열 순서도 그대로다.
+   조건은 NET.mode(=netStart 이후)이지 NET.me 단독이 아니다: 사전 배치·매칭 대기는 NET.mode=false 인 로컬 P0 배치(11~13행 = 이미 하단)라
+   matched 로 NET.me=1 이 정해진 뒤에도 뒤집지 않는다 — netStart 의 applyNetSetup 이 P2 말을 1~3행으로 옮긴 뒤부터만 반사한다(이중 반전 방지).
+   종료(over) 화면도 같은 방향을 유지한다. 핫시트 PVP·PVE·sim 은 NET.mode=false 라 무변경. */
+const boardFlipped=()=> NET.mode&&NET.me===1;
 const alivePieces=()=>S.pieces.filter(p=>p.alive&&p.placed);
 const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
 const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
@@ -656,7 +661,9 @@ function render(){
 function renderBoard(){
   const bd=$("board"); bd.innerHTML="";
   const viewer = S.phase==="menu"?0 : (S.mode==="sim"||S.phase==="over")?2 : humanViewer(); // #11 종료 리빌: over 시 전체 공개 시점
-  for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++){
+  const flip=boardFlipped(); bd.dataset.flip=flip?"1":"0"; // #93 표시 메타데이터만 — 화면 행 i 에 논리 행 r=14−i (열 유지)
+  for(let i=1;i<=ROWS;i++) for(let c=1;c<=COLS;c++){
+    const r=flip?ROWS+1-i:i;
     const cell=document.createElement("div");
     cell.className="cell"+(r<=3?" zA":r<=5?" forest":r<=8?"":r<=10?" forest":" zB");
     cell.dataset.r=r; cell.dataset.c=c;
@@ -3094,8 +3101,8 @@ function netStart(seed,setups){
   applyNetSetup(0,setups[0]); // 양측 사전 배치 적용 (setups: [P1, P2] — 양쪽 동일 순서)
   applyNetSetup(1,setups[1]);
   S.selected=null;
-  addLog(`🌐 온라인 매치 시작 — 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}입니다. 양측 사전 배치가 적용되었습니다.`,"sys");
-  showToast(`🌐 매칭 완료! 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}`);
+  addLog(`🌐 온라인 매치 시작 — 당신은 P${NET.me+1}입니다 (자기 진영이 화면 아래). 양측 사전 배치가 적용되었습니다.`,"sys"); // #93 양측 모두 자기 진영 하단
+  showToast(`🌐 매칭 완료! 당신은 P${NET.me+1} — 자기 진영이 화면 아래입니다`);
   beginPlay(); // 무작위 선공(시드) → 바로 플레이 시작
 }
 
