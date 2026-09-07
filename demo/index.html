@@ -40,17 +40,36 @@
   .memo-opt .ico{font-size:22px; line-height:1;}
   .memo-opt[aria-pressed="true"]{background:var(--accent); border-color:#fff; box-shadow:0 0 0 1px #fff8; color:#fff;}
   .memo-opt:focus-visible{outline:2px solid #fff; outline-offset:1px;}
-  .pc{width:42px; height:42px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-size:11px; font-weight:bold; border:2px solid #0008; line-height:1.05; text-align:center;}
-  .pc.own{box-shadow:0 0 0 2px #ffffff33;}
+  /* #89 말 컨테이너: 48×48 라운드 사각(내부 44 = 아이콘 32 + 간격 1 + 정보 행 11, 겹침 없음). 칸 52px는 불변이며 각 변 1px 여백이 남는다 */
+  .pc{width:48px; height:48px; border-radius:12px; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+    font-size:11px; font-weight:bold; border:2px solid #0008; line-height:1.05; text-align:center; overflow:hidden;}
+  .pc.own{box-shadow:inset 0 0 0 2px #ffffff33;} /* #89 inset — 48+2+2=52 는 칸 내부 50px 을 넘으므로 바깥 그림자를 쓰지 않는다 */
   .pc.p0{background:#33406e;} .pc.p1{background:#6e3340;}
   .pc.hiddenId{background:#3a4152;}
-  .pc .el{font-size:9px; font-weight:normal;}
+  /* #89 종 아이콘: native 32×32 도트를 1:1 표시 (보간 대신 최근접 확대 요청 — CSS px 정수가 선명도를 보장하지는 않는다) */
+  .pc .icon{width:32px; height:32px; object-fit:contain; image-rendering:pixelated; display:block;}
+  .pc .face{width:32px; height:32px; display:flex; align-items:center; justify-content:center; font-size:24px; line-height:1;}
+  .pc .face .nm{max-width:32px;}
+  /* #89 글리프 폴백: 플랫폼에 그 이모지 글리프가 없을 때(예: 일부 Windows 의 🪤) 같은 뜻의 짧은 텍스트로 되돌린다 */
+  .pc .face .sym.ng{font-size:11px; font-weight:bold; line-height:1.05;}
+  .pc .info .sym.ng{font-size:9px;}
+  .pc.memo-guess .guess.ng{font-size:11px; font-weight:bold;}
+  /* #89 정보 행: 아이콘 아래 별도 한 줄 — 원소 기호 + 현재 HP. 아이콘 영역(32×32)을 덮지 않는다 */
+  .pc .info{height:11px; line-height:11px; font-size:10px; font-weight:normal; max-width:44px; display:flex; align-items:center; justify-content:center; gap:2px; white-space:nowrap;}
+  .pc .info .sym{font-size:10px; line-height:1;}
   .pc .nm{font-size:9px; max-width:40px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .rosterCard{display:flex; flex-direction:column; gap:1px; padding:4px 6px; border:1px solid var(--line); border-radius:6px;
     cursor:pointer; font-size:10px; background:var(--panel2); color:var(--dim);}
   .rosterCard b{font-size:12px;}
   .rosterCard.on{border-color:#fff; box-shadow:0 0 0 1px #fff5;}
+  /* #89 하수인 설명창 일러스트: 512 원본을 192로 축소 표시 (일반 일러스트이므로 pixelated 미적용 — 브라우저 보간 축소가 정상) */
+  .rosterArt{display:flex; justify-content:center; margin:2px 0 8px;}
+  .rosterArt img{width:192px; height:192px; object-fit:contain; border-radius:8px; background:#0003;}
+  /* #89 일러스트 두 단계 모두 실패: 같은 자리·같은 크기의 대체 표시 (모달 레이아웃이 튀지 않는다) */
+  .rosterArt.fb{width:192px; height:192px; margin:2px auto 8px; align-items:center; border-radius:8px; background:#0003; color:var(--dim); font-size:12px; text-align:center;}
+  /* 규격 5.1: 화면 높이가 부족하면 128~160px. Saturn 1차 QA(#89) 수정 — 이 @media 규칙은 반드시 .rosterArt.fb 뒤에 온다:
+     .rosterArt.fb 와 @media 안의 .rosterArt.fb 는 특이성이 같아(0,2,0) 소스 순서로 승자가 정해진다. 앞에 두면 짧은 화면에서 대체상자가 192로 커지고 버튼이 밀린다 */
+  @media (max-height:700px){ .rosterArt img,.rosterArt.fb{width:128px; height:128px;} }
   .el-fire{color:var(--fire);} .el-water{color:var(--water);} .el-grass{color:var(--grass);} .el-lightning{color:var(--lightning);}
   .pc.immob{border-color:var(--danger);}
   .badge{display:inline-block; padding:1px 6px; border-radius:8px; background:var(--panel2); border:1px solid var(--line); font-size:12px; margin:1px;}
@@ -82,12 +101,18 @@
   .status{font-size:11px; color:var(--dim);}
   #battleLog{height:120px; overflow-y:auto; font-size:12px; background:#0006; border-radius:6px; padding:6px; margin:6px 0; line-height:1.5;}
   /* 전투 스테이지 (포켓몬식 개편 — #6) */
-  #bstage{position:relative; height:180px; border-radius:8px; margin:6px 0; overflow:hidden;
+  #bstage{position:relative; height:200px; border-radius:8px; margin:6px 0; overflow:hidden;
     background:linear-gradient(160deg,#1a2030,#242b3d); transition:box-shadow .3s;}
   .btok{position:absolute; width:88px; height:88px; border-radius:50%; display:flex; flex-direction:column;
     align-items:center; justify-content:center; font-size:26px; border:3px solid #0006; box-shadow:0 4px 14px #0008; transition:opacity .6s;}
   .btok small{font-size:12px; color:#fffd; font-weight:bold;}
   .btok.tok-me{bottom:14px; left:30px;} .btok.tok-op{top:14px; right:30px;}
+  /* #89 하수인 전투 도트: 원형 배경·테두리를 없애고 128×128 스프라이트 + 아래 그림자만 남긴다 (규격 6.2).
+     자산이 없는 왕·동료·포획 하수인은 위의 원형 이모지 토큰을 그대로 쓴다 — 좁은 폭 겹침을 피하려 art 토큰만 안쪽 여백을 줄인다 */
+  .btok.art{width:128px; height:auto; border-radius:0; border:none; background:none; box-shadow:none;}
+  .btok.art.tok-me{left:8px;} .btok.art.tok-op{right:8px;}
+  .btok .bsprite{width:128px; height:128px; object-fit:contain; image-rendering:pixelated; display:block;
+    filter:drop-shadow(0 6px 5px #0009);}
   .btok.shake{animation:bshake .5s;}
   @keyframes bshake{0%,100%{margin-left:0}20%{margin-left:-8px}40%{margin-left:7px}60%{margin-left:-5px}80%{margin-left:3px}}
   .btok.ko{opacity:0;}
@@ -321,6 +346,144 @@ const ROSTER=[
   {id:"M-L5",name:"전자기 술사",element:"lightning",arch:"sustain",hp:95,atk:20,skill:28,cd:2}
 ];
 
+/* ===== #89 하수인 아트 연결 — 표시 계층 전용. 규칙·수치·AI 공정 관측은 하나도 바뀌지 않는다 =====
+   자산: demo/assets/minions/<속성>_<아키타입>/{icon.png 32 · battle.png 128 · portrait.webp 512}.
+   상대경로이므로 file:// 오프라인(index.html 과 assets/ 를 함께 둔 폴더)과 기존 HTTP 서빙 양쪽에서 같은 경로로 읽힌다.
+   정보 은닉(규격 7.10.3): 정체를 모르는 말에는 <img>·src·개별 요청·alt/title/aria/data/클래스 어디에도 실제 종 값을 만들지 않는다. */
+const ART_BASE="assets/minions/";
+const ART_DIRS=ROSTER.map(r=>r.element+"_"+r.arch);       // 20종 허용 목록 — 이 목록 밖의 값으로 경로를 만들지 않는다
+const ART_DIR_SET=new Set(ART_DIRS);
+const ART={failed:new Set(),loaded:new Set(),preloaded:false,rerender:null};
+function artUrl(dir,file){return ART_BASE+dir+"/"+file;}
+/* 말 → 종 폴더. rosterId 가 없거나(미배정 하수인·포획/예비 하수인) 허용 목록 밖이면 null → 안전 폴백 */
+function artDirOf(p){
+  if(!p||p.type!=="minion"||!p.rosterId) return null;
+  const rd=ROSTER.find(r=>r.id===p.rosterId); if(!rd) return null;
+  const dir=rd.element+"_"+rd.arch;
+  return ART_DIR_SET.has(dir)?dir:null;
+}
+function artOk(dir){return !!dir&&!ART.failed.has(dir);}
+/* 로드 실패: 그 종만 텍스트·기호 폴백으로 되돌리고 한 번만 다시 그린다. onerror 를 즉시 끊어 재요청 고리를 만들지 않는다 */
+window.artFail=function(dir,el){
+  if(el) try{el.onerror=null;}catch(e){}
+  if(!dir||ART.failed.has(dir)) return;
+  ART.failed.add(dir);
+  if(ART.rerender) return;
+  ART.rerender=setTimeout(()=>{ART.rerender=null; try{if(S&&S.phase!=="menu") render();}catch(e){}},0);
+};
+/* 전투 도트 실패: 지금 보고 있는 전투에서도 즉시 현행 이모지 토큰으로 바꿔 끼운다 — 전투원 자리가 비어 보이지 않는다.
+   battleModal() 을 다시 부르지 않으므로 메시지 재생·FX 에 재진입하지 않고, 토큰의 id·위치 클래스는 그대로라 shake·ko·dmgfloat 경로가 유지된다 */
+window.artSpriteFail=function(dir,el){
+  if(el) try{el.onerror=null;}catch(e){}
+  if(dir) ART.failed.add(dir);
+  const tok=el&&el.parentNode;
+  try{
+    const B=S&&S.battle;
+    if(tok&&tok.classList&&B&&(tok.id==="tok-A"||tok.id==="tok-D")){
+      const sid=tok.id==="tok-A"?"A":"D", pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
+      tok.classList.remove("art");
+      tok.style.background=pf.element?`var(--${pf.element})`:"#5a6377";
+      const emo=pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
+      tok.innerHTML=`${emo}<small>${pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type]}</small>`;
+      return;
+    }
+  }catch(e){}
+  try{el.style.display="none";}catch(e){}
+};
+/* 설명창 일러스트: webp(배포본) → png(원본) → 숨김. 각 단계에서 onerror 를 끊으므로 고리가 생기지 않는다 */
+window.artPortraitFail=function(el,dir){
+  if(!el) return;
+  try{el.onerror=null;}catch(e){}
+  const stage=(el._artStage||1)+1; el._artStage=stage;
+  if(stage===2&&ART_DIR_SET.has(dir)){ el.onerror=function(){artPortraitFail(el,dir);}; el.src=artUrl(dir,"portrait.png"); return; }
+  // 둘 다 실패: 자리를 유지한 채 대체 표시로 바꾼다 — 이미지를 지워 모달 레이아웃이 튀지 않게 한다
+  try{
+    const box=el.parentNode;
+    if(box&&box.classList&&box.classList.contains("rosterArt")){ box.classList.add("fb"); box.innerHTML=`<span>이미지를 불러오지 못했습니다</span>`; return; }
+  }catch(e){}
+  try{el.style.display="none";}catch(e){}
+};
+/* 프리로드는 페이지 로드 시 20종 일괄이다 — 개별 말이 개별 파일을 요청하지 않으므로 요청 목록이 정체와 상관관계를 만들지 않는다.
+   설명창 원본(portrait 20종 약 3.1MB)은 여기서 받지 않고 설명창을 열 때만 받는다 */
+function artPreload(){
+  if(ART.preloaded) return; ART.preloaded=true;
+  for(const dir of ART_DIRS) for(const f of ["icon.png","battle.png"]){
+    try{
+      const im=document.createElement("img");
+      im.onload=()=>{ART.loaded.add(dir+"/"+f);};
+      im.onerror=()=>{if(f==="icon.png") ART.failed.add(dir);};
+      im.src=artUrl(dir,f);
+    }catch(e){}
+  }
+}
+/* 기호 어휘는 MEMO_OPTS 8종 하나뿐이다 — 확정 표시와 추측 메모가 같은 이모지를 쓴다 (규격 7.10.1 · 신규 래스터 0장) */
+function memoEmoji(key){const o=memoOpt(key); return o?o.emoji:"";}
+function memoShort(key){ // 기호를 그릴 수 없을 때 쓰는 같은 뜻의 짧은 현행 라벨 (왕·동료·폭탄·함정·불·물·풀·번개)
+  return key&&key.indexOf("minion_")===0?(ELEM_KO[key.slice(7)]||""):((memoOpt(key)||{}).ko||"");
+}
+/* 플랫폼 글리프 지원 확인 — 일부 환경에는 최신 이모지 글리프가 어떤 설치 폰트에도 없어 빈 네모(두부)로 그려진다.
+   실측(Windows 10 19045 · Chrome): 🪤(U+1FAA4)는 sans-serif · "Segoe UI Emoji" · Apple/Noto 를 모두 얹은 스택에서 폭이 두부와 같다 —
+   즉 CSS 폰트 스택으로는 해결되지 않는 폰트 커버리지 문제다. 기호 계약은 그대로 두고, 그릴 수 없는 기호만 현행 텍스트 라벨로 되돌린다.
+   측정이 불가능한 환경(canvas 없음)에서는 "지원함"으로 본다 — 기본 계약은 이모지다. */
+const GLYPH={cache:{},font:'16px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif',NOTDEF:"\u{10FFFD}"};
+function glyphOk(ch){
+  if(!ch) return false;
+  if(ch in GLYPH.cache) return GLYPH.cache[ch];
+  let ok=true;
+  try{
+    const cv=document.createElement("canvas"), c=cv.getContext&&cv.getContext("2d");
+    if(c&&c.measureText&&c.getImageData){
+      cv.width=28; cv.height=28; // 캔버스 크기를 먼저 정하고(상태 초기화) 폰트를 건다
+      c.font=GLYPH.font;
+      const w=c.measureText(ch).width, tw=c.measureText(GLYPH.NOTDEF).width;
+      /* 폭이 같다는 사실만으로 "글리프 없음"이라고 단정하지 않는다 — 정상 글리프도 같은 advance 를 가질 수 있다.
+         폭 일치는 값싼 1차 거름이고, 확증은 실제로 그려 본 픽셀이 "그리지 못한 그림"과 완전히 같은지로 한다. */
+      if(w>0&&tw>0&&Math.abs(w-tw)<0.01){
+        const px=s=>{ c.clearRect(0,0,cv.width,cv.height); c.fillStyle="#fff"; c.textBaseline="top"; c.font=GLYPH.font;
+                      c.fillText(s,2,2); return c.getImageData(0,0,cv.width,cv.height).data; };
+        const a=px(ch), b=px(GLYPH.NOTDEF);
+        let same=a.length===b.length;
+        for(let i=0;same&&i<a.length;i++) if(a[i]!==b[i]) same=false;
+        ok=!same;
+      }
+    }
+  }catch(e){ ok=true; } // 측정 불가 환경에서는 기본 계약(이모지)을 유지한다
+  GLYPH.cache[ch]=ok; return ok;
+}
+/* 기호 1개를 그린다 — 그릴 수 있으면 계약대로 이모지, 없으면 같은 뜻의 짧은 텍스트. 확정·추측이 같은 규칙을 쓴다 */
+function glyphSpan(key,cls){
+  const o=memoOpt(key); if(!o) return "";
+  return glyphOk(o.emoji)?`<span class="${cls}" aria-hidden="true">${o.emoji}</span>`
+                         :`<span class="${cls} ng">${memoShort(key)}</span>`;
+}
+function pieceEmoji(p){ // 기호 문자 자체 (테스트·라벨용)
+  if(!p) return "";
+  if(p.type==="minion") return p.element?memoEmoji("minion_"+p.element):"";
+  return memoEmoji(p.type); // king·ally·bomb·trap 는 MEMO_OPTS 키와 이름이 같다
+}
+function pieceMemoKey(p){ return !p?null:(p.type==="minion"?(p.element?"minion_"+p.element:null):(memoOpt(p.type)?p.type:null)); }
+/* 확정(known) 말의 얼굴 — 하수인은 종 아이콘, 그 외는 같은 메모 기호. 자산이 없거나 실패하면 현행 텍스트로 복귀한다 (규격 14.6.4) */
+function pcFaceHtml(p){
+  const dir=artDirOf(p);
+  if(artOk(dir)) return `<img class="icon" src="${artUrl(dir,"icon.png")}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${dir}',this)">`;
+  const key=p.type!=="minion"?pieceMemoKey(p):null;
+  if(key) return `<span class="face">${glyphSpan(key,"sym")}</span>`;
+  return `<span class="face"><span class="nm">${p.type==="minion"&&p.name?p.name:(TYPE_KO[p.type]||"?")}</span></span>`;
+}
+/* 정보 행 — 원소 기호(하수인만) + 현재 HP(하수인·동료·왕만). 폭탄·함정은 전체 공개에서도 HP 를 표시하지 않는다 (규격 7.8·7.9) */
+function pcInfoHtml(p){
+  const key=p.type==="minion"?pieceMemoKey(p):null;
+  const hp=(p.type==="minion"||p.type==="ally"||p.type==="king")?String(p.hp):"";
+  if(!key&&!hp) return "";
+  return `<span class="info">${key?glyphSpan(key,"sym"):""}${hp?`<span class="hp">${hp}</span>`:""}</span>`;
+}
+/* 말판과 배치 트레이가 같은 함수를 쓴다 — 한쪽만 아이콘으로 바뀌는 불일치가 생기지 않는다 (규격 7.10.4) */
+function pcBodyHtml(p){return pcFaceHtml(p)+pcInfoHtml(p);}
+function pcLabel(p){ // 확정 말의 접근성 문구 — 이미 공개된 값만 쓴다
+  return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.type==="minion"&&p.element?" · "+ELEM_KO[p.element]:"")
+    +((p.type==="minion"||p.type==="ally"||p.type==="king")?" · HP "+p.hp:"");
+}
+
 /* ===== 상태 ===== */
 let S=null;
 function pname(p){
@@ -494,10 +657,11 @@ function renderBoard(){
         const known = viewer===2||p.owner===viewer||p.revealed;
         chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"");
         const g=!known&&S.phase==="play"&&viewer!==2?memoOpt(S.memos[viewer][p.id]):null; // #36 뷰어 전용 추측 — 실제 공개(known)면 실제 렌더 우선
+        // #89 확정 말은 종 아이콘(하수인) 또는 같은 메모 이모지 + 정보 행. 미공개 말은 현행 그대로 ? 또는 뷰어 자신의 추측 이모지만 — 종 아이콘·경로를 만들지 않는다
         chip.innerHTML = known
-          ? `<span${p.type==="minion"&&p.name?' class="nm"':""}>${p.type==="minion"&&p.name?p.name:TYPE_KO[p.type]}</span>`+(p.element?`<span class="el el-${p.element}">${ELEM_KO[p.element]}</span>`:"")
-            +((p.owner===viewer||viewer===2||p.revealed)&&(p.type==="minion"||p.type==="ally"||p.type==="king")?`<span class="el">${p.hp}</span>`:"")
-          : g ? `<span class="guess" aria-hidden="true">${g.emoji}</span>` : "?";
+          ? pcBodyHtml(p)
+          : g ? glyphSpan(g.key,"guess") : "?"; // 추측도 확정과 같은 기호 규칙 — 그릴 수 없는 기호만 같은 뜻의 텍스트로
+        if(known) chip.setAttribute("aria-label",pcLabel(p)); // 이미 공개된 값만 — 미공개 말에는 붙이지 않는다
         if(g){ chip.className+=" memo-guess"; chip.setAttribute("title",`추측: ${g.ko} (내 메모 · 정체 미공개)`); chip.setAttribute("aria-label",`정체 미공개 상대 말 — 내 추측: ${g.ko}`); }
         cell.appendChild(chip);
       }
@@ -660,7 +824,7 @@ function renderSetup(sp){
   for(const x of unplaced){
     if(x.type==="minion"&&!rosterDone) continue;
     h+=`<div class="trayItem ${S.selected&&S.selected.id===x.id?"sel":""}" onclick="selTray(${x.id})">
-      <div class="pc p${p}"><span${x.name?' class="nm"':""}>${x.type==="minion"&&x.name?x.name:TYPE_KO[x.type]}</span>${x.element?`<span class="el el-${x.element}">${ELEM_KO[x.element]}</span>`:""}</div>
+      <div class="pc p${p}" aria-label="${pcLabel(x)}">${pcBodyHtml(x)}</div>
     </div>`;
   }
   h+=`</div><div class="row">
@@ -736,7 +900,10 @@ window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 �
     return `<div style="font-size:13px;margin:3px 0"><span class="badge">${i+1}</span> <b>${sk.ko}</b> <small>[${SKIND_KO[sk.kind]}]${p?` 위력 ${p}`:""}${sk.cd?` · 쿨 ${sk.cd}`:""} — ${sk.desc}</small></div>`;
   }).join("");
   netLocalModal(); // 로스터 정보 팝업은 로컬 전용 — 선택 확정(toggleRoster)만 동기화
-  modal(`<h2 class="el-${rd.element}">${rd.name}</h2>
+  // #89 설명창 일러스트: 자기 로스터를 고르는 화면이므로 정보 은닉 대상이 아니다 (규격 5.3). 512 원본을 192로 축소 표시하고 실패 시 png → 숨김
+  const rdir=rd.element+"_"+rd.arch;
+  const rart=ART_DIR_SET.has(rdir)?`<div class="rosterArt"><img src="${artUrl(rdir,"portrait.webp")}" alt="${rd.name} 일러스트" width="192" height="192" onerror="artPortraitFail(this,'${rdir}')"></div>`:"";
+  modal(`<h2 class="el-${rd.element}">${rd.name}</h2>${rart}
     <div class="row"><span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span><span class="badge">${ARCH_KO[rd.arch]}형</span>${on?`<span class="badge">✔ 선택됨</span>`:""}</div>
     <div class="status" style="margin:6px 0">HP ${rd.hp} · 공격 ${rd.atk} (기술 위력 = 표기 위력 × 공격/${SKILL_ATK_BASE})</div>
     ${rows}`,
@@ -1193,11 +1360,16 @@ function battleModal(){
       }).join(" · ")}</div>`:""}
     </div></div>`;
   };
-  const token=sid=>{ // 스테이지 토큰: 속성색 원형 + 이모지·속성명
+  const token=sid=>{ // 스테이지 토큰: 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료·포획 하수인은 현행 속성색 원형 + 이모지 유지 (규격 6.3)
     const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
+    const pos=sid===mySide?"tok-me":"tok-op", label=pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type];
+    // #89 지금 실제로 싸우는 전투원이 본체일 때만 그 말의 종 이미지를 쓴다. 대리 출전(포획·예비 하수인)은 pf!==piece 이므로 본체 그림을 쓰지 않는다
+    const dir=pf===piece?artDirOf(piece):null;
+    if(artOk(dir))
+      return `<div class="btok art ${pos}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`;
     const col=pf.element?`var(--${pf.element})`:"#5a6377";
     const emo=pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
-    return `<div class="btok ${sid===mySide?"tok-me":"tok-op"}" id="tok-${sid}" style="background:${col}">${emo}<small>${pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type]}</small></div>`;
+    return `<div class="btok ${pos}" id="tok-${sid}" style="background:${col}">${emo}<small>${label}</small></div>`;
   };
   const usedItems=side==="A"?B.itemsA:B.itemsD, itemRound=side==="A"?B.itemRoundA:B.itemRoundD, lastItem=side==="A"?B.lastItemA:B.lastItemD;
   const dis=aiActor||busy||(NET.mode&&ownerP!==NET.me); // 온라인: 상대 행동 차례엔 조작 불가
@@ -2915,6 +3087,7 @@ function netStart(seed,setups){
 
 /* ===== 시작: 모드 선택 화면 ===== */
 newGame("pvp"); S.phase="menu";
+artPreload(); // #89 20종 일괄 — 어떤 말이 무엇인지와 무관하게 항상 같은 요청 집합이 나간다 (규격 7.10.3)
 render();
 if(!tutSeen()) tutOpen({auto:true}); // #26 최초 방문 1회 자동 표시 (tutorialSeen 미저장 시)
 </script>

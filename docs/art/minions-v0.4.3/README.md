@@ -2,7 +2,7 @@
 
 2026-09-07 CJ 구현 승인에 따라 [Issue #87](https://github.com/ChangjoSung/Digit-Duel/issues/87)에서
 전투 4종 보완·직접 32px 아이콘 20종·출력 도구·독립 검수를 [PR #88](https://github.com/ChangjoSung/Digit-Duel/pull/88) 하나로 취합했다.
-게임 화면 적용은 후속 제품 작업이다. 최신 수량과 QA 상태는 [외형 규격 §8.2](../../minion-visual-spec-v0.4.3.md)에 모은다.
+CJ 디자인 확인으로 아트 납품은 수락됐다. 게임 화면 적용은 [PR #90](https://github.com/ChangjoSung/Digit-Duel/pull/90)에 취합했고 Saturn 독립 QA를 통과했다. [Issue #89](https://github.com/ChangjoSung/Digit-Duel/issues/89)는 CJ 플레이 확인 대기다. 최신 수량과 QA 상태는 [외형 규격 §8.2](../../minion-visual-spec-v0.4.3.md)에 모은다.
 
 ## 납품 구성
 
@@ -38,7 +38,7 @@ Earth_1은 불·물, Earth_2는 풀·번개를 담당했다. [픽셀 원고](pix
 [Earth_1 시험 보고](earth-1-report.md)와 [Earth_2 시험 보고](earth-2-report.md)의 생성 이미지는 납품 수량에서 제외한다.
 
 정적 아트·파일 규격 검수는 실제 게임의 이미지 로딩·HP 배치·DPR 검증이나 사람 대상 식별 시험을 뜻하지 않는다.
-현재 HP 숫자 한 줄과 메모 8종 이모지 재사용은 결정됐으며, 게임 화면 반영은 후속 제품 범위다.
+HP 숫자 한 줄과 메모 8종 이모지 재사용을 포함한 게임 적용은 Issue #89의 제품 범위이며, 런타임 검수 결과는 정적 아트 검수와 별도로 기록한다.
 
 ## 문서 반영 위치
 

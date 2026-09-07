@@ -92,7 +92,12 @@ function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 �
   T.memoSet(0,P.em.id,"bomb"); T.render(); ok(guessOf(T,11,4)==="💣","B1 전제: 11,4 하수인에 💣 추측");
   P.em.revealed=true; T.render();
   const ch=chipOf(T,11,4);
-  ok(!/memo-guess/.test(ch.className)&&!/💣/.test(ch.innerHTML)&&new RegExp(P.em.name||"하수인").test(ch.innerHTML)&&ch.getAttribute("title")===null,"B2 실제 공개되면 실제 렌더 우선·추측 이모지 숨김");
+  /* #89 공개된 하수인은 이름 텍스트가 아니라 종 아이콘으로 그려진다 — 판정 대상은 그대로다(추측 이모지가 숨고 실제 정체가 우선한다).
+     "이름 문자열이 있다"를 "그 말의 종 아이콘이 있다"로 바꾼 것이지 검사를 빼거나 약화한 것이 아니다. */
+  const dirB2=T.artDirOf(P.em);
+  ok(!/memo-guess/.test(ch.className)&&!/💣/.test(ch.innerHTML)&&!!dirB2
+    &&ch.innerHTML.includes(`src="assets/minions/${dirB2}/icon.png"`)&&/class="icon"/.test(ch.innerHTML)
+    &&ch.getAttribute("title")===null&&!/추측/.test(ch.getAttribute("aria-label")||""),"B2 실제 공개되면 실제 렌더(종 아이콘) 우선·추측 이모지 숨김");
   ok(new RegExp("💣</span> 11행 4열 — 폭탄 추측 \\(공개됨: ").test(T.els.sidePanel.innerHTML),"B3 사이드 패널은 추측 + 공개된 실제 정체 병기");
   T.onCell(11,4); ok(ovHidden(T)&&T.MEMO_UI.piece!==P.em.id,"B4 공개된 말 클릭은 피커를 열지 않음 (실제 정체 우선)");
   P.em.revealed=false; T.render(); ok(guessOf(T,11,4)==="💣","B5 (테스트) 다시 미공개면 추측 표시 복귀");
@@ -112,7 +117,12 @@ function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 �
   T.onCell(2,4); T.MEMO_UI.btns[6].onclick();
   ok(T.S.memos[0][P.ek.id]==="bomb"&&Object.keys(T.S.memos[1]).length===0&&guessOf(T,2,4)==="💣","C1 PVP P1이 상대 왕에 💣 추측 (P2 메모 없음)");
   T.S.current=1; T.S.selected=null; T.render();
-  ok(chipOf(T,2,4).innerHTML!=="?"&&!/memo-guess|💣/.test(T.els.board.innerHTML+JSON.stringify(T.els.board.children.map(c=>c.children.map(x=>x.className+x.innerHTML))))&&!/추측 메모/.test(T.els.sidePanel.innerHTML),"C2 P2 시점: P1의 추측이 보드·사이드 패널에 없음 (자기 왕은 실제로 보임)");
+  /* #89 확정 표시가 메모와 같은 이모지 어휘를 쓰게 되었으므로(P2 자기 폭탄 = 💣), "보드에 💣 문자가 없다"는 더 이상 격리의 근거가 아니다.
+     추측이 새는 경로 자체 — memo-guess 클래스 · class="guess" 요소 · 추측 문구가 든 title/aria-label — 를 전부 검사한다. 범위를 좁힌 것이 아니라 넓혔다. */
+  const dumpC2=JSON.stringify(T.els.board.children.map(c=>c.children.map(x=>[x.className,x.innerHTML,x.getAttribute("title"),x.getAttribute("aria-label")])));
+  ok(chipOf(T,2,4).innerHTML!=="?"&&/👑/.test(chipOf(T,2,4).innerHTML)
+    &&!/memo-guess/.test(dumpC2)&&!/class=\\"guess\\"/.test(dumpC2)&&!/추측/.test(dumpC2)
+    &&!/추측 메모/.test(T.els.sidePanel.innerHTML),"C2 P2 시점: P1의 추측이 보드·사이드 패널에 없음 (자기 왕은 실제로 보임)");
   ok(!/memo-guess/.test(JSON.stringify(T.els.board.children.map(c=>c.children.map(x=>x.className)))),"C3 P2 시점 보드에 memo-guess 클래스 0");
   T.onCell(11,4); ok(T.S.selected&&T.S.selected.id===P.em.id&&ovHidden(T),"C4 P2가 자기 말 클릭 → 선택 (피커 없음)");
   T.S.selected=null; T.onCell(12,4); T.MEMO_UI.btns[7].onclick();
