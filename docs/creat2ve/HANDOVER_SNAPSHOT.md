@@ -7,7 +7,7 @@
 - 상설 Mercury: GPT-6 Astra, high. 인수 절차 완료. CJ Comment를 이 창구에서 수신한다.
 - 최신 릴리스: **v0.4.2**. 현재 GitHub Milestone #7: **v0.4.3 — HTML 데모 후속 업데이트**.
 - 원본 기준: PR #86 / 202edf3c23e65453bd7db8dd9fed5fdf0587fd0d. 이번 납품 통합 기준은 Issue #87에 연결한 단일 PR의 squash 커밋이다. 실제 dev/origin/dev HEAD는 교대 시 Git·GitHub에서 확인한다.
-- 열린 납품 목표: [Issue #87](https://github.com/ChangjoSung/Digit-Duel/issues/87). 최종 통합 PR 1개로 관리하며 CJ 납품 확인 전 Issue를 닫지 않는다.
+- 열린 납품 목표: [Issue #87](https://github.com/ChangjoSung/Digit-Duel/issues/87), 단일 통합 [PR #88](https://github.com/ChangjoSung/Digit-Duel/pull/88). CJ 납품 확인 전 Issue를 닫지 않는다.
 - 원본 80파일은 PR #86으로 등록했고, 이번 납품은 전투4종 보완·아이콘20종을 더한 100파일이다. 원본 해시는 docs/art/minions-v0.4.3/source-manifest.csv에 보존한다.
 - 최신 CJ **“구현 승인”**은 보고한 전투 4종 보완·직접 32px 아이콘 20종·독립 검수·필요한 출력 도구·단일 Issue/PR 운영안 착수 승인이다. 제작 방식 재승인 요청 금지. 게임 화면 적용은 해당 납품 제안 범위 밖이다.
 - 사용자 소유 미추적 **art/**, **orca-hook-latency-report.md**는 수정·스테이징 금지. Downloads/all-minions-v0.4.3 원본도 읽기 전용이다.
@@ -22,7 +22,7 @@
 - 도구 SHA256: 3f9ecf1ed9b649f982ff6626e18a6be519e51b5fa04dbe25c5a7f93e2bf6ec8c. 검수 대상 해시가 바뀌면 해당 판정 범위를 다시 확인한다.
 
 Run: run_d5fb1e7a2b5f. Earth_1·Earth_2·Mars·Saturn·Venus의 모든 Worker는 결과 보존·archive·release 완료. 활성 Worker 없음.
-PD는 단일 통합 PR의 검증·dev squash 통합 및 CJ 보고를 수행한다. PR 상태와 실제 병합 SHA는 Issue #87의 연결 PR을 확인한다.
+산출물은 GitHub PR #88에 전량 등록했다. 실제 dev 통합·squash SHA는 PR #88의 병합 기록을 기준으로 확인한다. feature 브랜치는 병합 후 명시 삭제한다.
 
 ## 승인 규격·역할 경계
 

@@ -1,7 +1,7 @@
 # v0.4.3 하수인 아트 납품
 
 2026-09-07 CJ 구현 승인에 따라 [Issue #87](https://github.com/ChangjoSung/Digit-Duel/issues/87)에서
-전투 4종 보완·직접 32px 아이콘 20종·출력 도구·독립 검수를 하나의 납품으로 취합한다.
+전투 4종 보완·직접 32px 아이콘 20종·출력 도구·독립 검수를 [PR #88](https://github.com/ChangjoSung/Digit-Duel/pull/88) 하나로 취합했다.
 게임 화면 적용은 후속 제품 작업이다. 최신 수량과 QA 상태는 [외형 규격 §8.2](../../minion-visual-spec-v0.4.3.md)에 모은다.
 
 ## 납품 구성
