@@ -301,6 +301,7 @@ const stateOf=X=>J({sk:X.P.me.skills,cds:X.P.me.cds,rev:X.P.me.revealedSkills,se
   const b0=B.ws.sent.length; recv(B,lastFrame(A).a);
   ok(ob(A.T).includes(A.T.SKILLS[alt].ko)&&J(btns(A.T)).length>0&&A.T.NET.syncModal&&A.T.NET.syncModal.seq===1&&A.T.NET.syncModal.owner===0,"H2 1P(소유자): 후보 모달·seq 1");
   ok(B.T.NET.syncModal&&B.T.NET.syncModal.seq===1&&ob(B.T).includes("상대 선택 대기")&&!ob(B.T).includes(A.T.SKILLS[alt].ko)&&!hidden(B.T)&&B.ws.sent.length===b0,"H3 2P(비소유자): 같은 seq·대기 화면·후보 이름 없음·송신 0");
+  ok(B.T.MEMO_UI.overlayOpen===true&&B.T.MEMO_UI.token===null&&(B.T.byId("obBtns").children||[]).length===0,"H3b 2P 잠금 화면도 코어 modal()을 지나간다 — #94 메모 피커 소유권(overlayOpen true·token null) 유지·버튼 0");
   // 1P 버튼 클릭(래핑된 onclick) → modal 프레임 송신 → 2P 재생 → 동일
   click(A.T,"공격기 1과 교체");
   const f=lastFrame(A); ok(J(f)===J({t:"a",a:{t:"modal",seq:1,i:0}}),"H4 1P 선택은 기존 modal 동기화 프레임(seq·버튼 인덱스)");
@@ -413,6 +414,10 @@ const stateOf=X=>J({sk:X.P.me.skills,cds:X.P.me.cds,rev:X.P.me.revealedSkills,se
   ok(r5>=0.6,"L9c 5급 AI(확률 혼합 포함) 60시드: 전기탄(기술 속성 ×1.3) 선택률 "+(r5*100).toFixed(0)+"% ≥ 60%");
   v=mut("ai5-mult-body",'const est=slotPow(f,sk)*multOf(atkEl)*(f.focusCharge','const est=slotPow(f,sk)*multOf(f.element)*(f.focusCharge');
   if(v.M){ const rm=pick5(v.M,seeds); ok(rm<=0.3,"L9d [음성] 5급 기대 피해를 본체 속성으로 되돌리면 전기탄 선택률 "+(rm*100).toFixed(0)+"% ≤ 30% — L9c 검사기가 잡는다"); } else ok(false,"L9d "+v.error);
+  v=mut("mask-bypass-core",'_modalCore(`<h2>🔒 상대 선택 대기 중…</h2>','(x=>{ $("overlayBox").innerHTML=x; $("overlay").classList.remove("hidden"); })(`<h2>🔒 상대 선택 대기 중…</h2>');
+  if(v.M){ const M=v.M; setup(M,"pvp"); M.NET.mode=true; M.NET.me=1; M.NET.started=true; M.S.current=0; M.MEMO_UI.overlayOpen=false; M.MEMO_UI.token={game:M.S};
+    M.modal("<h2>x</h2>",[["ok",()=>{}]]);
+    ok(M.MEMO_UI.overlayOpen!==true||M.MEMO_UI.token!==null,"L10 [음성] 잠금 화면이 코어 modal()을 우회하면(직접 innerHTML) H3b 검사기(overlayOpen true·token null)가 잡는다 (overlayOpen="+M.MEMO_UI.overlayOpen+" token="+(M.MEMO_UI.token?"유지":"null")+")"); } else ok(false,"L10 "+v.error);
   T.setSeed(null);
 }
 

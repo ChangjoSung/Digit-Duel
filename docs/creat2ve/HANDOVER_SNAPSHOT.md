@@ -16,18 +16,18 @@
 | Issue | 목표 | 상태 |
 |---|---|---|
 | #91 | 탐색 공용 하수인 대리 출전 아트 누락 원인·수정 | Saturn 최종 PASS·PR#98 dev dcb668e 통합, CJ 플레이 확인 대기 |
-| #92 | 탐색에서 다른 속성 기술 획득·교체 | 타 속성 후보1·공격 슬롯0/1 선택·쿨 승계, Mars_3 구현 중 |
+| #92 | 탐색에서 다른 속성 기술 획득·교체 | Mars 최초 868/868·실제 Chrome/온라인20 PASS, 최신 dev 통합 검증 중·독립 QA 남음 |
 | #93 | 양측 모두 자기 진영을 아래에 표시 | 배치/대전 단계 구분·행 표시 반사·공통 좌표 보존, PR#102·Saturn 최종 PASS·dev 3f006bb 통합, CJ 플레이 대기 |
 | #94 | 상대 턴에도 상대 말 추측 메모 허용 | 로컬 메모 분리·오래된 콜백 보호, PR#100·Saturn 최종 PASS·dev cdfd349 통합, CJ 플레이 대기 |
 | #95 | 공격형 연속 공격 위력 완화 | V6 atk25·결정타40, Saturn PASS·PR#99 dev dadc8bc 통합, CJ 플레이 대기 |
 | #96 | 감전 확률 하향 | 일반70→50%·확정 시그니처100% 유지, PR#101·Saturn_3 독립 PASS·dev d614392 통합, CJ 플레이 대기 |
 
 - Run **run_0e980a99ab14**. #91 Mars task_8a6aaf784bad / ctx_8aacb5344e21 완료·release. Mars 보고 637/637, 신규 CDP9·기존82 문제0이며 최초 납품 수치이며 아래 최종 QA로 대체됐다. Venus 계약·REVISE·#92 포획 승계 검토/반영은 완료하고 모두 release했다.
-- 현재 활성: Mars_3 #92 **task_3d3b706a2533 / ctx_85703abbfdd1**. 새 cross_skill114·shock65가 Mars에서 통과, 실제온라인 도구 issue92_cdp.js 납품 준비. 제안한 Mars_1 병렬 도구 task_791aab9dd1c0/ctx_bbc10559f749는 원작업에 같은 도구가 이미 완성돼 PD가 중복 범위를 취소했다(파일 산출0). worker-stop 반환은 dispatch_inactive였으나 worker-show는 exactWorker exited/operator_close를 확인했다. release는 identity_unproven retained이므로 강제 정리하지 않는다(살아 있는 작업자 아님). #93 최종 QA PASS 후 release. 실제 orchestration 상태를 우선한다.
+- 현재 활성: Mars_3 #92 통합 **task_b7698e3e2b28 / ctx_6c7d2211748c**, 직전 납품 직후 정확한 동일 터미널을 유한 통합 후속 Task로 이관했다. 최초 task_3d3b706a2533/ctx_85703abbfdd1 납품은 `docs/qa/issue92-mars.md`: 868/868·실제 Chrome/온라인20·PNG5장, 독립 QA 전이다. 최신 dev 자동 병합 후 메모 검사4개 실패를 조사 중. 제안한 Mars_1 병렬 도구 task_791aab9dd1c0/ctx_bbc10559f749는 원작업 도구와 중복돼 산출물0 상태에서 취소했다. worker-stop 반환은 dispatch_inactive였으나 worker-show는 exactWorker exited/operator_close를 확인했다. release는 identity_unproven retained이므로 강제 정리하지 않는다(살아 있는 작업자 아님). 실제 orchestration 상태를 우선한다.
 - Saturn 최초 직접480 PASS·브라우저91측정 문제0, 기존이미지100동일. K8b의 송신 검사 결함은 Mars_3가 고쳤고 최종 Saturn 직접199 PASS 및 불필요한 송신 변형3개 탐지로 해소했다. 최초480과 최신199는 중복 합산하지 않는다. `docs/qa/issue91-saturn-initial.md`·`issue91-mars-revise.md`·`issue91-saturn.md`에 근거 보존. 실제 온라인2연결은 미검증.
 - Mars 초기 분석 msg_9225fd125c3f는 절대 reportPath 계약 위반으로 거절·task failed·release. 재확인한 상대경로 보고는 `docs/qa/v044-technical-analysis-mars.md`에 납품했다. #91 표시 전용 필드는 `artRosterId`로 확정했으며 규칙이 읽는 `rosterId`를 새로 넣지 않는다.
-- 현재 root 브랜치 **feat/92-cross-element-skills**, origin/dev d614392에서 분기. #92 구현 중이며 #94·93은 납품 후 최신 dev를 합친다. PR#98·99·101 feature 로컬·원격 삭제 완료, squash 최종 트리 동일 확인. 독립 목표별 Issue1개+통합PR1개, Worker별 중복 Issue/PR 금지.
-- 병렬 작업 공간: Mars_1 `C:/Users/pc_77/orca/workspaces/Digit-Duel/fix-94-opponent-turn-memo` → `fix/94-opponent-turn-memo`(eff5c16 분기), Mars_2 `C:/Users/pc_77/orca/workspaces/Digit-Duel/fix-95-attack-archetype-balance` → **fix/93-own-side-bottom**(폴더 재사용, 최신 dadc8bc 분기). 납품 후 PD가 최신 dev를 통합하고 Saturn 검수·목표별 PR로 관리한다. 접미사는 dispatch 동안 유지한다.
+- 현재 root 브랜치 **feat/92-cross-element-skills**, 최초 구현9018700에 origin/dev 3f006bb를 자동 병합해 검증 중(merge commit 전). PR#98·99·101·100·102 feature 로컬·원격 삭제 완료, squash 최종 트리 동일 확인. 독립 목표별 Issue1개+통합PR1개, Worker별 중복 Issue/PR 금지.
+- 완료한 병렬 작업 공간: `C:/Users/pc_77/orca/workspaces/Digit-Duel/fix-94-opponent-turn-memo` detached cdfd349, `C:/Users/pc_77/orca/workspaces/Digit-Duel/fix-95-attack-archetype-balance` detached 3f006bb. 활성 Worker 없음.
 - #95 독립 검증: 스모크532·Chrome8·추가 실제피해/UI32·통계80셀. 전체 판 후공−선공 격차14.2→5.2pt, 도망 제외 결판14.9→10.1pt지만 비미러 결판3.5→7.1pt·불17.4→18.2pt는 증가했다. `docs/qa/issue95-saturn.md`·Mars 보고·GDD-13 DL29·GDD-14 8장에 분모와 한계를 보존한다. 사람 균형 해결이나 모든 대진 개선으로 해석하지 않는다.
 - #92 포획 승계 추가 계약: 실제 장착 skills 배열 복사(습득 기술 포함), 레거시만 템플릿 폴백, HP70/공용스탯/쿨0/공개기록[] 유지. 중립 포획은 std 그대로. #91에는 이 규칙 변경을 넣지 않는다. 임시 보조기 교체 시절부터 있던 잠재 불일치를 정합화한다.
 - 구현자 납품 후 Saturn 독립 QA, PD diff·증빙 검토·dev squash, 정확한 feature 브랜치 삭제, CJ 플레이 확인 순서.

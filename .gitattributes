@@ -30,6 +30,11 @@
 /docs/qa/issue95-saturn.md text eol=lf
 /docs/qa/issue95/*.md text eol=lf
 /docs/qa/issue95/*.json text eol=lf
+
+/demo/test/memo_cdp.js text eol=lf
+/docs/qa/issue94-mars.md text eol=lf
+/docs/qa/issue94-saturn.md text eol=lf
+/docs/qa/issue94/*.json text eol=lf
 /demo/test/smoke_shock.js text eol=lf
 /demo/test/shock_compare.js text eol=lf
 /demo/test/issue96_cdp.js text eol=lf
@@ -37,3 +42,13 @@
 /docs/qa/issue96-integration.md text eol=lf
 /docs/qa/issue96-saturn.md text eol=lf
 /docs/qa/issue96/*.json text eol=lf
+/demo/test/smoke_cross_skill.js text eol=lf
+/demo/test/issue92_cdp.js text eol=lf
+/docs/qa/issue92*.md text eol=lf
+/docs/qa/issue92/*.json text eol=lf
+
+/demo/test/smoke_own_side.js text eol=lf
+/demo/test/issue93_cdp.js text eol=lf
+/docs/qa/issue93-mars.md text eol=lf
+/docs/qa/issue93-saturn.md text eol=lf
+/docs/qa/issue93/*.json text eol=lf

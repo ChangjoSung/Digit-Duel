@@ -1,6 +1,6 @@
 {
   "html": "demo/index.html",
-  "date": "2026-09-07T12:02:47.349Z",
+  "date": "2026-09-07T12:12:49.254Z",
   "readOnly": false,
   "pass": 20,
   "fail": 0,
@@ -30,7 +30,7 @@
     {
       "what": "1d 자기 말 재선택 → 사이드 패널 기술 목록에 ⚡감전 침 표시",
       "ok": true,
-      "detail": "플레이어 몬스터볼 3 아이템 2/5 전투 0/2 주 행동 완료 해독제 해독제 선택: 새끼 화룡·불 HP 100/100 ⚡감전 침(쿨2) · 잔불 표식(쿨1) · 응급 치유 · 전술 연계 이동: 파란 칸 · 전투: 빨간 칸 클릭"
+      "detail": "플레이어 몬스터볼 3 아이템 2/5 전투 0/2 주 행동 완료 쿨링수 회복약 선택: 새끼 화룡·불 HP 100/100 ⚡감전 침(쿨2) · 잔불 표식(쿨1) · 응급 치유 · 전술 연계 이동: 파란 칸 · 전투: 빨간 칸 클릭"
     },
     {
       "what": "1e 콘솔 오류 0 (PVE 탐색·교체)",
@@ -65,32 +65,32 @@
     {
       "what": "3c X 실제 클릭 탐색(송신 2: 선택+탐색) → X 후보 모달(타 속성 공격기)·양측 모달 seq 동일",
       "ok": true,
-      "detail": "cand=가시 폭발(grass_heavy) sent=2"
+      "detail": "cand=물대포(water_stable) sent=2"
     },
     {
       "what": "3d W 화면: 잠금 대기 화면만 — 오버레이 DOM 변이 기록·body HTML(탐색 전 대비 증가 0)·title·aria/title 속성·URL·로그 어디에도 후보 이름 없음 · W 송신 0",
       "ok": true,
-      "detail": "obs=2 lock=true bodyCount=1→1"
+      "detail": "obs=3 lock=true bodyCount=2→2"
     },
     {
       "what": "3e [공격기 1과 교체] → 양측 skills·cds([2,1,0,0] 승계)·공개([0,1]→[1])·seq·난수 동일",
       "ok": true,
-      "detail": "{\"sk\":[\"grass_heavy\",\"fire_effect\",\"sup_heal\",\"sig_std\"],\"cds\":[2,1,0,0],\"rev\":[1],\"seq\":1,\"sync\":1,\"hidden\":true,\"main\":true,\"cur\":0,\"queue\":0}"
+      "detail": "{\"sk\":[\"water_stable\",\"fire_effect\",\"sup_heal\",\"sig_std\"],\"cds\":[2,1,0,0],\"rev\":[1],\"seq\":1,\"sync\":1,\"hidden\":true,\"main\":true,\"cur\":0,\"queue\":0}"
     },
     {
-      "what": "3f 2회차: 후보 덩굴 채찍 → [공격기 2와 교체] → 양측 동일·두 슬롯 모두 타 속성·W 화면 후보 노출 0",
+      "what": "3f 2회차: 후보 전기탄 → [공격기 2와 교체] → 양측 동일·두 슬롯 모두 타 속성·W 화면 후보 노출 0",
       "ok": true,
-      "detail": "[\"grass_heavy\",\"grass_stable\",\"sup_heal\",\"sig_std\"]"
+      "detail": "[\"water_stable\",\"lightning_stable\",\"sup_heal\",\"sig_std\"]"
     },
     {
-      "what": "3g 3회차: 후보 전기탄 → [유지] → 양측 동일·기술 불변·이벤트 소모",
+      "what": "3g 3회차: 후보 흡수 새싹 → [유지] → 양측 동일·기술 불변·이벤트 소모",
       "ok": true,
       "detail": "seq=3"
     },
     {
       "what": "3h 3회 탐색 뒤 W body HTML(탐색 전 대비 증가 0)·변이 기록·로그에 배운 두 기술 이름 없음 · W 송신 0",
       "ok": true,
-      "detail": "W sent=0 recvA=9 obs=6"
+      "detail": "W sent=0 recvA=9 obs=9"
     },
     {
       "what": "3i 양 탭 동일 포획 스캐폴드(W 하수인 인접·대상 HP 20·볼 3·예비 없음·W 턴)",
@@ -100,12 +100,12 @@
     {
       "what": "3j 실제 볼 투척(같은 시드 1) → 양측 예비 하수인 동일: 교체 기술 승계·쿨 0·공개 []·HP 70/100·불·외형 M-F1·참조 비공유·대상 제거",
       "ok": true,
-      "detail": "{\"skills\":[\"grass_heavy\",\"grass_stable\",\"sup_heal\",\"sig_std\"],\"cds\":[0,0,0,0],\"rev\":[],\"hp\":70,\"maxHp\":100,\"el\":\"fire\",\"art\":\"M-F1\",\"atk\":20,\"alias\":false}"
+      "detail": "{\"skills\":[\"water_stable\",\"lightning_stable\",\"sup_heal\",\"sig_std\"],\"cds\":[0,0,0,0],\"rev\":[],\"hp\":70,\"maxHp\":100,\"el\":\"fire\",\"art\":\"M-F1\",\"atk\":20,\"alias\":false}"
     },
     {
       "what": "3k 포획 뒤 양측 난수 상태 동일 · W 사이드 패널 예비 하수인 배지",
       "ok": true,
-      "detail": "나(P2) 몬스터볼 2 아이템 2/5 전투 1/2 예비 하수인(불) HP 70/100 주 행동 가능 해독제 회복약 선택: 스파크·번개 HP 100/100 전기탄 · 감전 침 · 응급 치유 · 전술 연계 이동: 파란 "
+      "detail": "나(P2) 몬스터볼 2 아이템 2/5 전투 1/2 예비 하수인(불) HP 70/100 주 행동 가능 회복약 회복약 선택: 새싹 파수꾼·풀 HP 100/100 덩굴 채찍 · 흡수 새싹 · 응급 치유 · 전술 연계 이동"
     },
     {
       "what": "3l 콘솔 오류 0 (온라인 3탭 흐름 전체)",

@@ -1,0 +1,106 @@
+{
+  "html": "demo/index.html",
+  "viewport": {
+    "w": 1280,
+    "h": 1000
+  },
+  "date": "2026-09-07T11:26:07.233Z",
+  "readOnly": false,
+  "pass": 18,
+  "fail": 0,
+  "shots": [
+    "docs/qa/issue93/http_desktop-1280_1-p2-start-own-bottom.png",
+    "docs/qa/issue93/http_desktop-1280_2-p1-start-unchanged.png",
+    "docs/qa/issue93/http_desktop-1280_3-p2-selected-highlights.png",
+    "docs/qa/issue93/http_desktop-1280_4-p2-after-move.png"
+  ],
+  "report": [
+    {
+      "what": "A 배치 단계: 뒤집지 않음 (data-flip=0 · 첫 칸 (1,1) · 내 말 전부 아래)",
+      "ok": true,
+      "detail": "{\"phase\":\"setup\",\"flip\":\"0\",\"first\":[1,1],\"own\":14,\"y1\":81,\"y13\":729}"
+    },
+    {
+      "what": "B 배치 단계: 뒤집지 않음 (data-flip=0 · 첫 칸 (1,1) · 내 말 전부 아래)",
+      "ok": true,
+      "detail": "{\"phase\":\"setup\",\"flip\":\"0\",\"first\":[1,1],\"own\":14,\"y1\":81,\"y13\":729}"
+    },
+    {
+      "what": "A 매칭 대기 중: NET.mode=false · 보드 그대로 (flip=0)",
+      "ok": true,
+      "detail": "{\"queued\":true,\"mode\":false,\"flip\":\"0\"}"
+    },
+    {
+      "what": "실제 서버 매칭: A=P1(me 0) · B=P2(me 1) · 양측 play",
+      "ok": true,
+      "detail": "{\"A\":{\"started\":true,\"mode\":true,\"phase\":\"play\",\"cur\":0,\"me\":0,\"turn\":0,\"setupPlayer\":0},\"B\":{\"started\":true,\"mode\":true,\"phase\":\"play\",\"cur\":0,\"me\":1,\"turn\":0,\"setupPlayer\":0},\"gB\":{\"queued\":true,\"mode\":false}}"
+    },
+    {
+      "what": "시작 직후 양 클라이언트 논리 상태 동일 (스냅샷)",
+      "ok": true
+    },
+    {
+      "what": "B(P2) 보드: data-flip=1 · DOM 순서 = 행 반사(열 유지) · 첫 칸 (13,1) · 마지막 (1,7)",
+      "ok": true,
+      "detail": "{\"flip\":\"1\",\"first\":[13,1],\"last\":[1,7],\"order\":true}"
+    },
+    {
+      "what": "B(P2) 화면 픽셀: 논리 1행이 13행보다 아래 (y1>y13) · 내 말 14개 전부가 상대 말 14개보다 아래",
+      "ok": true,
+      "detail": "{\"y1\":729,\"y13\":81,\"ownMinY\":621,\"foeMaxY\":189}"
+    },
+    {
+      "what": "B(P2) elementFromPoint: 보드 좌상단 픽셀의 칸은 논리 (13,1)",
+      "ok": true,
+      "detail": "[13,1]"
+    },
+    {
+      "what": "A(P1) 보드: data-flip=0 · 행 1→13 · 첫 칸 (1,1) · 내 말 전부 아래 (종전 그대로)",
+      "ok": true,
+      "detail": "{\"flip\":\"0\",\"first\":[1,1],\"y1\":81,\"y13\":729,\"topLeft\":[1,1]}"
+    },
+    {
+      "what": "B 화면 기하: 내 말(논리 r)의 전방(논리 r+1)이 화면에서 위쪽 (y 감소) · 내 말은 보드 아래 절반",
+      "ok": true,
+      "detail": "{\"from\":[1,5,729],\"to\":[2,5,675]}"
+    },
+    {
+      "what": "B 실제 마우스 클릭(반사 위치) → 논리 좌표의 내 말 선택 · hl-sel 그 칸 · hl-move 에 전방 칸 포함",
+      "ok": true,
+      "detail": "{\"sel\":73,\"hlSel\":[[1,5]],\"hlMove\":[[2,5],[1,6]],\"hlAttack\":[]}"
+    },
+    {
+      "what": "B 목표 칸 실제 클릭 → 양 클라이언트 모두 논리 (tr,tc) 로 이동 · 스냅샷 동일",
+      "ok": true,
+      "detail": "{\"A\":{\"r\":2,\"c\":5,\"alive\":true,\"placed\":true},\"B\":{\"r\":2,\"c\":5,\"alive\":true,\"placed\":true}}"
+    },
+    {
+      "what": "이동 후 화면: B 는 반사 위치에 own 칩(위로 한 칸) · A 는 종전 규칙 위치에 상대 칩(A 화면에선 아래로 한 칸) · 양쪽 DOM 순서 유지",
+      "ok": true,
+      "detail": "{\"B\":675,\"A\":135,\"forest\":false}"
+    },
+    {
+      "what": "B 화면 기하: 상대 말은 보드 위 절반",
+      "ok": true,
+      "detail": "{\"rc\":[11,5],\"y\":189}"
+    },
+    {
+      "what": "상대 말 실제 클릭 → 기존 메모 피커 (제목에 논리 행·열)",
+      "ok": true,
+      "detail": "📝 정체 추측 — ? (11행 5열) 이 물음표 말이 무엇일지 골라 두세요. 나만 보이는 메모이며 상대·AI에게는 보이지 않아요. 👑왕🤝동"
+    },
+    {
+      "what": "👑 저장 → 피커 닫힘 · 추측 칩이 그 논리 칸(반사 위치 = 클릭한 픽셀 위치)에 표시 · 메모는 로컬(양측 논리 상태 여전히 동일)",
+      "ok": true,
+      "detail": "{\"guess\":[[11,5,189]],\"memos\":[{},{\"57\":\"king\"}]}"
+    },
+    {
+      "what": "A 화면에는 B 의 메모 비노출",
+      "ok": true
+    },
+    {
+      "what": "콘솔 오류 0 (두 탭)",
+      "ok": true
+    }
+  ]
+}

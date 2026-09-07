@@ -627,6 +627,11 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1
 /* ===== 유틸 ===== */
 const isAI=p=>(S.mode==="pve"&&p===1)||S.mode==="sim";
 const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:S.current) : 0); // 온라인: 항상 내 시점 고정
+/* #93 온라인 P2 화면 행 반사 — 표시 전용. 논리 좌표(S·dataset.r/c·클릭·통신·로그)는 불변이고 열 순서도 그대로다.
+   조건은 NET.mode(=netStart 이후)이지 NET.me 단독이 아니다: 사전 배치·매칭 대기는 NET.mode=false 인 로컬 P0 배치(11~13행 = 이미 하단)라
+   matched 로 NET.me=1 이 정해진 뒤에도 뒤집지 않는다 — netStart 의 applyNetSetup 이 P2 말을 1~3행으로 옮긴 뒤부터만 반사한다(이중 반전 방지).
+   종료(over) 화면도 같은 방향을 유지한다. 핫시트 PVP·PVE·sim 은 NET.mode=false 라 무변경. */
+const boardFlipped=()=> NET.mode&&NET.me===1;
 const alivePieces=()=>S.pieces.filter(p=>p.alive&&p.placed);
 const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
 const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
@@ -680,7 +685,9 @@ function render(){
 function renderBoard(){
   const bd=$("board"); bd.innerHTML="";
   const viewer = S.phase==="menu"?0 : (S.mode==="sim"||S.phase==="over")?2 : humanViewer(); // #11 종료 리빌: over 시 전체 공개 시점
-  for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++){
+  const flip=boardFlipped(); bd.dataset.flip=flip?"1":"0"; // #93 표시 메타데이터만 — 화면 행 i 에 논리 행 r=14−i (열 유지)
+  for(let i=1;i<=ROWS;i++) for(let c=1;c<=COLS;c++){
+    const r=flip?ROWS+1-i:i;
     const cell=document.createElement("div");
     cell.className="cell"+(r<=3?" zA":r<=5?" forest":r<=8?"":r<=10?" forest":" zB");
     cell.dataset.r=r; cell.dataset.c=c;
@@ -820,7 +827,7 @@ function renderSide(){
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
   if(S.teleport&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
   if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
-  if(!isAI(S.current)){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기
+  if(!isAI(S.current)||NET.mode||S.mode==="pve"){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기 · #94 온라인·PVE는 상대 턴·AI 턴에도 표시(메모 편집 가능)
     const mm=Object.entries(S.memos[p]).map(([id,k])=>{
       const x=S.pieces.find(z=>z.id===Number(id)), o=memoOpt(k);
       return x&&x.alive&&x.placed&&o?`<div class="status"><span class="guess" aria-hidden="true">${o.emoji}</span> ${x.r}행 ${x.c}열 — ${o.ko} 추측${x.revealed?` (공개됨: ${idLabel(p,x)})`:""}</div>`:"";
@@ -2484,38 +2491,74 @@ function aiPutRandom(x,rows,free,put){
 }
 
 /* ===== 모달·핸드오프 ===== */
+/* #11·#36 추측 메모 UI 상태 (게임 상태 S와 분리) — btns/piece: 테스트·포커스용.
+   #94 token: 지금 오버레이를 소유한 메모 피커의 토큰(다른 modal()/close()가 오면 null) · seq: 피커 발급 번호 · overlayOpen: 오버레이 표시 여부 */
+const MEMO_UI={btns:[],piece:null,token:null,seq:0,overlayOpen:false};
 function modal(html,buttons){
+  MEMO_UI.token=null; MEMO_UI.overlayOpen=true; // #94 새 모달이 오버레이를 가져간다 — 열려 있던 메모 피커 콜백은 무효
   $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
   const ob=$("obBtns");
   for(const [txt,fn] of buttons){const b=document.createElement("button"); b.textContent=txt; b.onclick=fn; b.className="primary"; ob.appendChild(b);}
   $("overlay").classList.remove("hidden");
 }
-function close(){$("overlay").classList.add("hidden");}
-/* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음) */
-const MEMO_UI={btns:[],piece:null}; // 테스트·포커스용 (게임 상태 S와 분리)
+function close(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; $("overlay").classList.add("hidden");}
+/* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음)
+   #94 상대 턴·AI 턴에도 뷰어가 고정된 모드(온라인 NET.me · PVE 0)에서는 로컬로 연다 — 진입은 onCell → memoClickTarget (네트워크·RNG·selected·게임 로그 무변화) */
 function memoSet(v,pid,key){ // key: MEMO_OPTS 키 또는 null(삭제). 그 외 값은 무시 — 상대 말·게임 중에만
   const pc=S.pieces.find(x=>x.id===pid); if(!pc||pc.owner===v||(v!==0&&v!==1)) return false;
   if(key===null||key===undefined){ delete S.memos[v][pid]; return true; }
   if(!memoOpt(key)) return false;
   S.memos[v][pid]=key; return true;
 }
+/* #94 메모 대상 자격 — 살아 있고 배치된, 미공개, 뷰어가 볼 수 있는 상대 말 (죽은 말·비가시·자기 말·공개된 말은 불가) */
+function memoTargetOk(v,pc){ return !!pc&&pc.alive&&pc.placed&&!pc.revealed&&pc.owner!==v&&visibleTo(v,pc); }
+/* #94 이 셀 클릭이 "순수 로컬 메모"인가 — 맞으면 대상 말, 아니면 null(현행 netAction 경로 그대로).
+   (a) 상대 턴·AI 턴 — 뷰어 고정 모드(온라인 NET.me · PVE 0)에서 뷰어가 볼 수 있는 상대 말. 공개된 말도 여기로 와서 memoModal의 기존 안내 토스트를 받는다.
+       핫시트 PVP는 뷰어=현재 플레이어라 "상대 턴"이 없다(상대 메모 세트 오염 방지) · sim은 대상 아님.
+   (b) 자기 턴 — onCellCore의 우선순위(강제 전투 대상 → 텔레포트 → 자기 말 선택 → 인접 전투 지정)를 그대로 흉내 내어,
+       원래 memoModal 분기에 도달할 클릭만 로컬 처리(송신 0). 이동·전투·탐색·텔레포트 권한 가드는 건드리지 않는다.
+   오버레이가 열려 있으면(전투 모달·상대 선택 대기·이미 열린 피커) 로컬 분기를 쓰지 않는다 — 원격 모달 권한·대기 큐를 가리지 않는다. */
+function memoClickTarget(r,c){
+  if(!S||S.phase!=="play"||S.battle||NET.replaying||MEMO_UI.overlayOpen) return null;
+  const v=humanViewer(); if(v!==0&&v!==1) return null;
+  const p=at(r,c); if(!p||p.owner===v||!visibleTo(v,p)) return null;
+  const myTurn=NET.mode?netActor()===NET.me:!isAI(S.current);
+  if(!myTurn) return (NET.mode||S.mode==="pve")?p:null; // (a)
+  if(S.teleport) return null;
+  if(S.forcedTargets&&S.forcedTargets.length&&S.forcedTargets.includes(p.id)&&S.movedPiece&&canBattle(S.movedPiece,p)) return null;
+  if(p.owner===S.current) return null;
+  const s=S.selected&&!S.selected.tray?S.selected:null;
+  if(s&&adj(s,p)&&canBattle(s,p)) return null;
+  return p; // (b)
+}
 function memoModal(pc){
   if(S.phase!=="play"||!pc) return;
   if(NET.replaying) return; // 온라인: 상대 클릭 재생 시 내 메모 팝업 금지 (메모는 뷰어 전용·비동기화)
   const v=humanViewer();
   if(pc.owner===v) return;
+  if(!pc.alive||!pc.placed||!visibleTo(v,pc)) return; // #94 죽은 말·비가시 말은 대상이 아니다
   if(pc.revealed){ showToast(`이미 공개된 말: ${idLabel(v,pc)}`); return; } // 실제 정체가 우선 — 추측 불필요
   const cur=S.memos[v][pc.id]||null;
+  /* #94 오래된 콜백 무효: 이 피커의 토큰이 오버레이 소유권을 잃었거나(다른 모달·close·새 게임) 대상이 공개·사망·비가시가 되면
+     저장·삭제·닫기 콜백은 메모 세트를 바꾸지 않는다. 소유권을 잃은 경우에는 close()·render()도 하지 않는다 — 새 모달(전투·상대 선택 대기)을 가리지 않는다. */
+  const tk={game:S,piece:pc.id,viewer:v,seq:++MEMO_UI.seq};
+  const live=()=>MEMO_UI.token===tk&&S===tk.game;
+  const commit=key=>{ if(!live()) return; MEMO_UI.token=null;
+    const cur2=S.pieces.find(x=>x.id===pc.id);
+    if(S.phase==="play"&&memoTargetOk(v,cur2)) memoSet(v,pc.id,key); else showToast("대상 말의 상태가 바뀌어 추측을 적용하지 않았습니다.");
+    close(); render(); };
+  const dismiss=()=>{ if(!live()) return; MEMO_UI.token=null; close(); };
   netLocalModal(); // 메모 피커는 로컬 전용 모달
   modal(`<h2>📝 정체 추측 — ? (${pc.r}행 ${pc.c}열)</h2>
     <small>이 물음표 말이 무엇일지 골라 두세요. 나만 보이는 메모이며 상대·AI에게는 보이지 않아요.</small>
     <div class="memo-grid" id="memoOpts" role="group" aria-label="정체 추측 선택"></div>`,
-    [["추측 삭제",()=>{memoSet(v,pc.id,null); close(); render();}],["닫기",close]]);
+    [["추측 삭제",()=>commit(null)],["닫기",dismiss]]);
+  MEMO_UI.token=tk; // modal()이 토큰을 비운 뒤에 이 피커가 오버레이를 소유한다
   const grid=$("memoOpts"); MEMO_UI.btns=[]; MEMO_UI.piece=pc.id;
   for(const o of MEMO_OPTS){
     const b=document.createElement("button"); b.className="memo-opt"; b.innerHTML=`<span class="ico" aria-hidden="true">${o.emoji}</span><span>${o.ko}</span>`;
     b.setAttribute("type","button"); b.setAttribute("aria-label",`${o.ko} ${o.emoji} 추측`); b.setAttribute("aria-pressed",o.key===cur?"true":"false"); b.dataset.key=o.key;
-    b.onclick=()=>{ memoSet(v,pc.id,o.key); close(); render(); };
+    b.onclick=()=>commit(o.key);
     grid.appendChild(b); MEMO_UI.btns.push(b);
   }
   const del=$("obBtns").children[0]; if(del) del.disabled=!cur;
@@ -2836,7 +2879,7 @@ function netPump(){
 }
 (function(){ const t=setInterval(netPump,80); if(t&&typeof t.unref==="function") t.unref(); })(); // 브라우저는 숫자 반환(무영향) · Node 하네스에서는 이벤트 루프를 붙잡지 않음 (#41 회귀: smoke 종료 지연)
 /* 동기화 대상 입력의 안정 진입점 — 원본(…Core)은 applyAction만 호출 */
-function onCell(r,c){ netAction({t:"cell",r,c}); }
+function onCell(r,c){ const m=memoClickTarget(r,c); if(m){ memoModal(m); return; } netAction({t:"cell",r,c}); } // #94 로컬 메모 클릭은 송신·seq·RNG 없이 피커만 연다
 window.selTray=id=>netAction({t:"selTray",id});
 window.toggleRoster=rid=>netAction({t:"roster",rid});
 window.autoPlace=()=>netAction({t:"auto"});
@@ -2854,8 +2897,8 @@ modal=function(html,buttons){
   const owner=(NET.modalOwner!==null&&NET.modalOwner!==undefined)?NET.modalOwner:netActor();
   NET.modalOwner=null;
   const masked=NET.mode&&!local&&!!(buttons&&buttons.length)&&owner!==NET.me; // 동기화 모달의 비소유자
-  if(masked) // #92: 비소유자 화면에는 원문(탐색 후보 기술 등 소유자 전용 정보)을 한 번도 쓰지 않고 대기 화면만 그린다 (최종 표시는 종전과 동일)
-    { $("overlayBox").innerHTML=`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`; $("overlay").classList.remove("hidden"); }
+  if(masked) // #92: 비소유자 화면에는 원문(탐색 후보 기술 등 소유자 전용 정보)을 한 번도 쓰지 않고 대기 화면만 그린다 — 코어 modal()을 그대로 지나가므로 #94 메모 피커 토큰 무효·overlayOpen 소유권도 종전과 동일
+    _modalCore(`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`,[]);
   else _modalCore(html,buttons);
   if(!NET.mode||local) return;
   if(!buttons||!buttons.length){ NET.syncModal=null; return; } // 전투 모달 등 — 시맨틱 액션으로 동기화
@@ -3134,8 +3177,8 @@ function netStart(seed,setups){
   applyNetSetup(0,setups[0]); // 양측 사전 배치 적용 (setups: [P1, P2] — 양쪽 동일 순서)
   applyNetSetup(1,setups[1]);
   S.selected=null;
-  addLog(`🌐 온라인 매치 시작 — 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}입니다. 양측 사전 배치가 적용되었습니다.`,"sys");
-  showToast(`🌐 매칭 완료! 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}`);
+  addLog(`🌐 온라인 매치 시작 — 당신은 P${NET.me+1}입니다 (자기 진영이 화면 아래). 양측 사전 배치가 적용되었습니다.`,"sys"); // #93 양측 모두 자기 진영 하단
+  showToast(`🌐 매칭 완료! 당신은 P${NET.me+1} — 자기 진영이 화면 아래입니다`);
   beginPlay(); // 무작위 선공(시드) → 바로 플레이 시작
 }
 
