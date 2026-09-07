@@ -30,3 +30,8 @@
 /docs/qa/issue95-saturn.md text eol=lf
 /docs/qa/issue95/*.md text eol=lf
 /docs/qa/issue95/*.json text eol=lf
+
+/demo/test/memo_cdp.js text eol=lf
+/docs/qa/issue94-mars.md text eol=lf
+/docs/qa/issue94-saturn.md text eol=lf
+/docs/qa/issue94/*.json text eol=lf
