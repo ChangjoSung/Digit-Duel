@@ -1,0 +1,84 @@
+{
+  "source": "demo/index.html",
+  "sha256": "ff54b6db923b89b1888b975dbb05bed7452c6493c0d303a5cbfccf8da5da40d2",
+  "date": "2026-09-08T09:53:09.164Z",
+  "passed": 9,
+  "failed": null,
+  "results": [
+    {
+      "name": "real relay matched two Chrome clients through public setup APIs"
+    },
+    {
+      "name": "flee owner 1 candidate click",
+      "detail": {
+        "sent": [
+          0,
+          2
+        ],
+        "received": [
+          2,
+          0
+        ],
+        "battlesUsed": 1,
+        "defaultFleeAndPushMs": 2000
+      }
+    },
+    {
+      "name": "flee owner 1 skip",
+      "detail": {
+        "sent": [
+          0,
+          2
+        ],
+        "received": [
+          2,
+          0
+        ],
+        "battlesUsed": 1,
+        "defaultFleeAndPushMs": 2000
+      }
+    },
+    {
+      "name": "flee owner 0 candidate click",
+      "detail": {
+        "sent": [
+          2,
+          0
+        ],
+        "received": [
+          0,
+          2
+        ],
+        "battlesUsed": 1,
+        "defaultFleeAndPushMs": 2000
+      }
+    },
+    {
+      "name": "flee owner 0 skip",
+      "detail": {
+        "sent": [
+          2,
+          0
+        ],
+        "received": [
+          0,
+          2
+        ],
+        "battlesUsed": 1,
+        "defaultFleeAndPushMs": 2000
+      }
+    },
+    {
+      "name": "live bomb/trap contact relocates both, canonical states including logs match"
+    },
+    {
+      "name": "full HP healing wait auto-ends once from owner only; state agrees, healing identity stays private"
+    },
+    {
+      "name": "current player resignation works during defender-owned flee selection"
+    },
+    {
+      "name": "old DOM flee callback and pending 2s banner cannot mutate a new game"
+    }
+  ]
+}

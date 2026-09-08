@@ -200,6 +200,10 @@ function load(htmlPath,opts){
   turnBannerFx:typeof turnBannerFx==="function"?turnBannerFx:undefined,viewerIsOwner:typeof viewerIsOwner==="function"?viewerIsOwner:undefined,fxTurnLabel:typeof fxTurnLabel==="function"?fxTurnLabel:undefined,resultBannerOf:typeof resultBannerOf==="function"?resultBannerOf:undefined,
   renderTurnBar,renderBoard,netReady,netAction,onCellCore,execSlot,aiSchedule,aiScheduleBattle,
   playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,fighterName,
+  // #114 v0.4.5 (기준판 로드 호환: 부재 시 undefined) — 양측 밀기·재배치·도망 보드 교환·AI 밀기 평가
+  pushResolve:typeof pushResolve==="function"?pushResolve:undefined,pushPair:typeof pushPair==="function"?pushPair:undefined,relocatePair:typeof relocatePair==="function"?relocatePair:undefined,relocCandidates:typeof relocCandidates==="function"?relocCandidates:undefined,relocZone:typeof relocZone==="function"?relocZone:undefined,
+  fleeSwapPrompt:typeof fleeSwapPrompt==="function"?fleeSwapPrompt:undefined,fleeResolve:typeof fleeResolve==="function"?fleeResolve:undefined,fleePickMine:typeof fleePickMine==="function"?fleePickMine:undefined,
+  aiPushScore:typeof aiPushScore==="function"?aiPushScore:undefined,aiVipPair:typeof aiVipPair==="function"?aiVipPair:undefined,aiTeleportPick:typeof aiTeleportPick==="function"?aiTeleportPick:undefined,aiHistTele:typeof aiHistTele==="function"?aiHistTele:undefined,aiBattlePairScore:typeof aiBattlePairScore==="function"?aiBattlePairScore:undefined,aiWorstReply:typeof aiWorstReply==="function"?aiWorstReply:undefined,netActor:typeof netActor==="function"?netActor:undefined,
   get MSGPLAYING(){return MSGPLAYING;},get MSGQ(){return MSGQ;},
   html:${JSON.stringify(html)}};`;
   eval(code);

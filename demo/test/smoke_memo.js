@@ -402,7 +402,7 @@ block("D12 우선순위·정적 블록",()=>{
   ok(T4.memoClickTarget(anyE.r,anyE.c)===null,"D12i sim 관전 모드는 로컬 메모 분기 없음");
   // 정적 계약: onCell 은 memoClickTarget 을 먼저 보고, netAction 의 상대 턴 가드·onCellCore 의 AI 가드는 그대로
   ok(/memoClickTarget\(r,c\)/.test(String(T.onCell))&&/netAction\(\{t:"cell",r,c\}\)/.test(String(T.onCell)),"D12j onCell = 로컬 메모 분기 → 그 외 netAction (정적)");
-  ok(/netActor\(\)!==NET\.me/.test(String(T.netAction))&&/상대 턴입니다/.test(String(T.netAction)),"D12k netAction 의 상대 턴 차단 가드는 그대로");
+  ok(/a\.t==="resign"\?S\.current:netActor\(\)/.test(String(T.netAction))&&/!==NET\.me/.test(String(T.netAction))&&/상대 턴입니다/.test(String(T.netAction)),"D12k #114 선택 소유자 가드·기권은 현재 플레이어 소유 (실행 회귀 smoke_issue114)");
   ok(/isAI\(S\.current\)\) return;/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"D12l onCellCore 의 AI 턴 가드는 그대로 (메모는 onCell 단에서만 분기)");
   ok(!/netSend|netAction|rand\(/.test(String(T.memoClickTarget)+String(T.memoModal)+String(T.memoTargetOk)+String(T.memoSet)),"D12m 메모 경로(memoClickTarget·memoModal·memoTargetOk·memoSet)에 송신·액션·난수 호출 없음 (정적)");
   T.TQ.length=0; T2.TQ.length=0; T3.TQ.length=0; T4.TQ.length=0;

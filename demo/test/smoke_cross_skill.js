@@ -371,10 +371,13 @@ const stateOf=X=>J({sk:X.P.me.skills,cds:X.P.me.cds,rev:X.P.me.revealedSkills,se
        대신 "첫 #106 사건이 일어나기 전까지"는 같은 시드에서 로그가 기준판과 완전히 같아야 한다 — 학습 없는 전투·AI·RNG 소비 순서가 그 밖에서는 바뀌지 않았다는 증거. */
     const IS106=typeof T.healTick==="function";
     let same=0, tot=0, turns=[], pre=0, preOk=0, firstEv=[];
-    const EV=/회복 자세 시작|회복 행동|함정 발동|남은 HP 비율|폭탄 접촉|폭탄이 상대 폭탄/;
+    const EV=/회복 자세 시작|회복 행동|함정 발동|남은 HP 비율|폭탄 접촉|폭탄이 상대 폭탄|동료·왕끼리 접촉|도망 성공/;
+    let repeat=0;
     for(const seed of [31,32,33,34,35]){ const a=play(Tb,seed), b=play(T,seed); tot++; if(a===b) same++; const B=JSON.parse(b), A=JSON.parse(a); turns.push(B.t);
+      if(T.pushResolve&&b===play(T,seed)) repeat++;
       if(IS106){ const i=B.log.findIndex(l=>EV.test(l)); firstEv.push(i); if(i>0){ pre++; if(J(B.log.slice(0,i))===J(A.log.slice(0,i))) preOk++; } } }
     if(!IS106) ok(same===tot,"K2 recruit 없는 같은 시드 5경기: 기준판과 승자·턴·로그·지표 완전 일치 ("+same+"/"+tot+", 턴 "+turns.join("/")+") — 학습 없는 전투·AI·RNG 소비 무변경");
+    else if(T.pushResolve) ok(repeat===tot,"K2 #114 현행 동일 시드 5경기 두 번: 승자·턴·전체 로그·지표 결정론 일치 ("+repeat+"/"+tot+") — VIP 평가/도망 후 밀기로 구판 AI와 RNG 경로가 달라지는 것은 승인 범위");
     else ok(pre===tot&&preOk===pre&&firstEv.every(i=>i>5),"K2 (#106 이후) 같은 시드 5경기: 첫 #106 규칙 사건 이전 로그 접두가 기준판과 완전 일치 ("+preOk+"/"+pre+", 첫 사건 로그 index "+firstEv.join("/")+", 턴 "+turns.join("/")+") — 그 밖의 전투·AI·RNG 소비 무변경");
     // 대조 확인: recruit 가 있으면 기준판(보조기 교체·shuffle)과 갈라진다
     const P=setup(T); const Pb=setup(Tb); for(const [X,Q] of [[T,P],[Tb,Pb]]){ giveSpecies(X,Q.me,R(X,"M-F1")); X.setSeed(11); }
