@@ -4,7 +4,7 @@
 
 ## 현재 상태
 
-- 최신 릴리스 **v0.4.4**. CJ의 **“[CJ QA Test] PASS — Release 진행.”** 승인으로 출시 완료. 최신 지시는 **v0.4.5 턴 행동 추가 내용 분석, docs 정리, README·Release Note·Milestones·튜토리얼10단계 갱신**이다. [분석 취합](../v0.4.5-analysis.md)을 완료했으며 턴 종료 방식·함정 강제 이동 등 경계와 신규 규칙 구현은 CJ 결정 대기다.
+- 최신 릴리스 **v0.4.4**. CJ의 **“[CJ QA Test] PASS — Release 진행.”** 승인으로 출시 완료. 최신 지시는 **v0.4.5 턴 행동 추가 내용 분석, docs 정리, README·Release Note·Milestones·튜토리얼10단계 갱신**이다. [분석 취합](../v0.4.5-analysis.md)을 완료했다. CJ는 선택 전투가 남을 때만 “싸우지 않고 종료” 표시·함정 강제 밀기/재배치 허용을 확정했다. 만피 회복 지정 대기 수단을 동반 제안으로 반영했으며 나머지 세부 경계와 신규 제품 구현은 분석3장 계약안에 따른 승인 대기다.
 - [v0.4.4 Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4), [Milestone10](https://github.com/ChangjoSung/Digit-Duel/milestone/10). 릴리스 PR은 dev→main merge commit, 버전 태그는 그 main 커밋을 가리킨다. main/dev 장수 브랜치를 삭제하지 않는다.
 - 릴리스 PR **#111**, main/origin/main 및 annotated tag **aff981217e33c88e8685adebe10351b6d5c5100d**. 출시 당시 dev는 **ceca7ed7009debfcec17a6efb65dd59e1d11ed5a**이며 main/dev 트리는 같았다. 이번 인계 문서 PR은 dev에만 추가되므로 이후 HEAD와 문서 트리는 다를 수 있다. 제품·서버·아트가 릴리스와 같은지 확인하며 태그를 이동하거나 다시 출시하지 않는다.
 - #91·92·94·95·96은 이전 CJ PASS로 종료했고, 이번 최종 PASS로 #104→부모#93·#105·#106도 종료했다. v0.4.4 범위에 미승인 구현은 없다.
@@ -68,4 +68,4 @@
 - Notion #105 원문3d51e7f1708580f18f2dc4a643721059의 v0.4.4 작업은 완료됐다. #106 원문3d51e7f1708580b0916ded4bd3d9d06e는 외부 편집으로 Status=수정 대응, Summary=“v0.4.4 1차 완료 / v0.4.5 추가 구현 예정”이 됐으며 보존했다.
 - Notion 메타데이터: Project=DigitDual, EditDate=실제날짜, Editor=실제 사람 성창조(user8e0a8270-d0e3-407e-a7d2-b3f992f1e366). Agent는 운영 본문에만 쓴다.
 - 이전 세션 수치 이력: 압축15회, 2026-09-08 17:47:40 KST 마지막 요청92,019/258,400(여유64.4%). 현재 Mercury의 사용량이 아니며 판단력 저하를 입증한 수치도 아니다. 교대는 완료됐다. 상세: docs/qa/mercury-self-audit-2026-09-08.md.
-- 다음 행동은 [v0.4.5 분석](../v0.4.5-analysis.md)의 결정 경계를 CJ와 확정하는 것이다. 제품·튜토리얼 변경과 10장 재캡처는 규칙 승인 후 Mars→Saturn 경로로 진행한다. 인수 확인을 다시 하거나 추가 PD를 스폰하지 않는다.
+- 다음 행동은 [v0.4.5 분석](../v0.4.5-analysis.md)3장의 남은 계약안·구현 범위를 CJ에게 보고하는 것이다. 2장의 조건부 종료·함정 강제 이동은 이미 결정됐으므로 재질문하지 않는다. 제품·튜토리얼 변경과 10장 재캡처는 구현 승인 후 Mars→Saturn 경로로 진행한다. 인수 확인을 다시 하거나 추가 PD를 스폰하지 않는다.
