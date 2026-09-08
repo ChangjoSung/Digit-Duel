@@ -1,6 +1,6 @@
 # 릴리스 노트
 
-최신 정식 버전은 **[v0.4.4](v0.4.4.md)**입니다. v0.4.5는 [턴 행동·문서·튜토리얼 갱신](https://github.com/ChangjoSung/Digit-Duel/milestone/11)을 검토·준비 중이며 아직 출시되지 않았습니다.
+최신 정식 버전은 **[v0.4.4](v0.4.4.md)**입니다. v0.4.5는 [턴 행동·문서·튜토리얼 갱신](https://github.com/ChangjoSung/Digit-Duel/milestone/11)의 제품 구현·독립 QA를 마치고 CJ 플레이 QA를 기다립니다. 변경 내용과 검수 근거는 [v0.4.5 노트 (UNRELEASED)](v0.4.5.md)에 있으며, 출시일은 릴리스 시 채웁니다.
 
 | 출시일 | 버전 | 주요 변경 |
 |---|---|---|

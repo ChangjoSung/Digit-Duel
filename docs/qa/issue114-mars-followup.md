@@ -39,6 +39,101 @@ Each affected scene is translated down within a taller viewBox (6 units for expl
 
 ## Capture gate and evidence
 
-Pending explicit PD `CAPTURE_GO` with a verified commit SHA. No tutorial or PR proof image has been captured in this follow-up yet. The browser tool has an optional `--shots` switch prepared to collect defender choice, nonowner waiting and conditional-end UI evidence after authorization; default and `--read-only` operation do not write screenshots.
+PD committed the corrections as `5de47a9db4960ae7392e85ed3a811248743d090b`, then sent `CAPTURE_GO` in `msg_0f1f473ef41e` after accepting independent Saturn's report `msg_07b3163164df`. All captures below were made after that message. This report records Mars implementation verification; independent media QA remains with Saturn/PD.
 
-README keeps its existing eight major sections and current release distinction. Final capture SHA/blob, 10 PNG hashes, manifest path, 1100/390 verification results, UI proof files and exact modified-file list will be recorded here after the gate.
+- Exact capture SHA: `5de47a9db4960ae7392e85ed3a811248743d090b`.
+- Captured and final working product blob: `61a3ce3e5927697ea80ec8ebd379ffb98ebfdb92`.
+- Captured/final product SHA-256: `f742b6ba205fbcba2f3081134057dbccb81193fb55b24d5140df16be7a90fc33`.
+- Manifest: [issue114-media/capture-manifest.json](issue114-media/capture-manifest.json).
+- Capture environment: Windows 10.0.19045, Node v24.16.0, Chrome 152.0.7977.82; viewport 1280×900, DPR 2, common clip x84/y43/1112×814 CSS pixels. Each PNG is 2224×1628. All 10 steps had zero internal vertical scrolling.
+- README retains eight H2 sections and identifies v0.4.4 as the released version. Gallery heading, captions/alt text and the former paragraph-82 provenance distinguish these unreleased v0.4.5 screenshots. Final README SHA-256: `18911a9a496ab190853f3a1635fd518c08b40f119695f11a65ce080c0451f13d`.
+
+| Command | Final result |
+|---|---|
+| `node tools/readme_media_capture.js capture --ref 5de47a9db4960ae7392e85ed3a811248743d090b --out docs/media --manifest docs/qa/issue114-media/capture-manifest.json` | Exit 0; ten images, no reported problems. Exact commit served from memory. |
+| `node tools/readme_media_capture.js verify --manifest docs/qa/issue114-media/capture-manifest.json --out docs/qa/issue114-media --viewport 1100x900` | Exit 0; 10/10 images loaded, captions/links/anchor resolved, no page/table overflow, gallery 2×5 with 162px thumbnails. |
+| `node tools/readme_media_capture.js verify --manifest docs/qa/issue114-media/capture-manifest.json --out docs/qa/issue114-media --viewport 390x844` | Exit 0; 10/10 images loaded, captions/links/anchor resolved, no page/table overflow, gallery 2×5 with 44px thumbnails. |
+| `node demo/test/issue114_cdp.js --shots --out docs/qa/issue114-media` | Exit 0; nine checks, failed=false; real relay, two Chrome clients and actual mouse input, plus three UI screenshots. Both owners select/skip, nonowner sends zero, canonical gameplay states/RNG and public events agree; private healing details intentionally differ. Flee/relocation logs normalize existing viewer labels only. fleePush adds no battle, full-HP healing auto-ends once, resignation and stale callbacks covered. PD clarified this validation shorthand after Saturn media review; raw log identity is not claimed. |
+
+Both README checks used the real read-only `gh api markdown` sanitizer followed by local Chrome rendering with approximate GitHub CSS. No `--no-gh`/`--no-render` fallback was used. External URL existence and external badge availability are outside these checks, and local CSS is not pixel-identical to github.com. Narrow-gallery thumbnails are intentionally small; clicking opens the original-size PNG. All ten tutorial images, both gallery widths and the three UI proof images were inspected locally. No product change followed capture.
+
+UI proof uses deterministic battle fixtures in the actual current HTML and relay; it is not a natural-play match capture. The optional screenshot path dismisses the nonowner's legitimate private memo using its real close button, then records the waiting UI. The conditional-end fixture refreshes the cleared fixture log and toast layer before capture, removing stale text from the preceding healing scenario. The screenshot helper brings each tab to the foreground before capture. Default and `--read-only` runs do not write screenshots.
+
+Tool iteration record: the initial valid screenshot run passed nine checks, but inspection showed a private memo overlay obscuring waiting proof and stale preceding-fixture logs in conditional-end proof. One subsequent run exited 1 on a test-only reference to a nonexistent `modalOpen` helper (replaced with the actual overlay class assertion), and another exited 1 on a background-tab screenshot timeout (resolved by `Page.bringToFront`). No product failure was concealed; final outputs replace those temporary evidence attempts. The enhanced layout tool's first experimental committed-page load also failed because redeclaring page constants left the tutorial hidden; the final loader uses a fresh about:blank document, and only the subsequent valid negative-control run supplies the 36/140 clipping result above.
+
+Capture cleanup: owned Chrome PID 52924/profile `readme-media-profile-IqcuOe` removed and its memory HTTP server closed. Final README verification cleaned owned Chrome PIDs 88528/60868 and profiles `readme-media-profile-RyG251`/`readme-media-profile-hp95Nj`; earlier verification runs also reported owned cleanup. Browser retry PIDs 98184/89376 and 91768/114852 with their exact `issue114-SAq6au`/`issue114-hjMur6` profiles were cleaned. No unrelated process or directory was targeted.
+
+Final dual-client run cleaned owned Chrome PID 77400, relay PID 96620 and exact profile `issue114-ObGKNF`.
+
+## Tutorial PNG SHA-256
+
+| Relative path | SHA-256 |
+|---|---|
+| `docs/media/tutorial-01.png` | `fcc234c1eac28f01b48b07203827e042048ebfe7f4903670faaa41a970b2f76f` |
+| `docs/media/tutorial-02.png` | `5be4b02b432e0c80b7e5a62ef260890a5b348caf83ee8c4297946bfa7fe3f55e` |
+| `docs/media/tutorial-03.png` | `5821f7c5ac466da619e5d089b1e7064bc480f22fa90c9c813324c8d15e09d315` |
+| `docs/media/tutorial-04.png` | `81e7e244fa3cac88310cc433ee509542341101e28afaec9abd40a45298a51fce` |
+| `docs/media/tutorial-05.png` | `95210446af4577076ab33791603f6c6c1ac4e62dbe5c132ce3675ffcf2f85fbd` |
+| `docs/media/tutorial-06.png` | `550af4d74d8502e9db8eef269933ba01d2f05974450e268ddebbcb6956acae2d` |
+| `docs/media/tutorial-07.png` | `ff19476d53d4c5d42b4082a6b4a89f29b392f656ac4002d9d4efa175c228ee21` |
+| `docs/media/tutorial-08.png` | `b6d15875c4c6a5a55b4fb8eb997444d4c50f1f57e8dfc6339ffaa62e0cca86c3` |
+| `docs/media/tutorial-09.png` | `28ac171c224b9fd0e8dc338d5d1a595cd81ee7d03eef6007ca7faebd7b8df65e` |
+| `docs/media/tutorial-10.png` | `8f3913f2c7217e19a9c970e9d2b1675fa2da68560c55913d80701b2a153fe490` |
+
+## Scope and handoff
+
+No worker Git mutations, external GitHub/Notion writes, tag, release or new art. `tools/readme_media_capture.js` was reused without changes. Historical issue105/106 reports and their original assets were preserved; the shared docs/media/tutorial images were intentionally refreshed. Other concurrent documentation edits belong to Venus/PD and are excluded from this file list. Remaining work is PD's commit/publication sequence and independent Saturn media QA.
+
+Final integrity check exited 0: all 10 PNG hashes equal the explicit manifest, both verification reports reference the final README hash and contain zero findings, the nine-check browser report references the unchanged product SHA-256, and all 47 relative files below exist. Final `git diff --check` exited 0 with ordinary LF/CRLF notices. The pre-completion orchestration inbox was checked; PD's request to replace the pending capture wording is satisfied by this completed report.
+
+Exact relative files modified by this dispatch, including corrections already committed by PD (47):
+
+```text
+README.md
+demo/index.html
+demo/test/harness.js
+demo/test/smoke_issue114.js
+demo/test/tut_layout_cdp.js
+demo/test/issue114_cdp.js
+docs/qa/issue114-mars-followup.md
+docs/qa/issue114-media/tut_layout_report.json
+docs/qa/issue114-media/issue114_cdp_report.json
+docs/media/tutorial-01.png
+docs/media/tutorial-02.png
+docs/media/tutorial-03.png
+docs/media/tutorial-04.png
+docs/media/tutorial-05.png
+docs/media/tutorial-06.png
+docs/media/tutorial-07.png
+docs/media/tutorial-08.png
+docs/media/tutorial-09.png
+docs/media/tutorial-10.png
+docs/qa/issue114-media/capture-manifest.json
+docs/qa/issue114-media/conditional-end-option.png
+docs/qa/issue114-media/flee-attacker-waiting.png
+docs/qa/issue114-media/flee-defender-choice.png
+docs/qa/issue114-media/gallery-open.png
+docs/qa/issue114-media/gallery-open-w390.png
+docs/qa/issue114-media/readme-gh-render.html
+docs/qa/issue114-media/readme-gh-render-w390.html
+docs/qa/issue114-media/verify-report.json
+docs/qa/issue114-media/verify-report-w390.json
+docs/qa/issue114-media/section-00.png
+docs/qa/issue114-media/section-00-w390.png
+docs/qa/issue114-media/section-01.png
+docs/qa/issue114-media/section-01-w390.png
+docs/qa/issue114-media/section-02.png
+docs/qa/issue114-media/section-02-w390.png
+docs/qa/issue114-media/section-03.png
+docs/qa/issue114-media/section-03-w390.png
+docs/qa/issue114-media/section-04.png
+docs/qa/issue114-media/section-04-w390.png
+docs/qa/issue114-media/section-05.png
+docs/qa/issue114-media/section-05-w390.png
+docs/qa/issue114-media/section-06.png
+docs/qa/issue114-media/section-06-w390.png
+docs/qa/issue114-media/section-07.png
+docs/qa/issue114-media/section-07-w390.png
+docs/qa/issue114-media/section-08.png
+docs/qa/issue114-media/section-08-w390.png
+```
