@@ -1,27 +1,30 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-08 · Mercury(PD, GPT-6 Astra/high). 마일스톤 종료 시점으로 치환. 실제 main/dev HEAD와 Release 상태는 Git/GitHub에서 확인한다.
+> 2026-09-08 · Mercury(PD, GPT-6 Astra/high) 인수 완료. v0.4.5 제품·문서·미디어 독립 QA 및 CJ 플레이 QA PASS, 배포 승인 반영. 실제 dev/main HEAD·PR 병합·Release 상태는 Git/GitHub가 원본이다.
 
 ## 현재 상태
 
-- 최신 릴리스 **v0.4.4**. CJ 최신 Comment: **“[CJ QA Test] PASS — Release 진행.”** 해당 승인이 main 병합·annotated tag·GitHub Release·Milestone10 종료의 근거다.
+- 현재 출시 버전 **[v0.4.5](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5)**. [Issue #114](https://github.com/ChangjoSung/Digit-Duel/issues/114)·[통합 PR #115](https://github.com/ChangjoSung/Digit-Duel/pull/115)의 무제한 텔레포트, 양측 밀기·공동 안전 재배치·부재 예외, 함정 강제 이동, 도망 소유자 보드 선택/생략, 조건부 종료·만피 회복 대기, 튜토리얼10단계·README 캡처를 납품했다. **제품·문서·미디어 Saturn 독립 PASS, 2026-09-08 CJ 플레이 QA PASS 및 배포 승인**. 출시용 README·노트·규칙 정리본·Milestone 정리를 집행한다. 실제 발행 결과와 릴리스 PR/main SHA는 Release·Issue114가 원본이다.
 - [v0.4.4 Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4), [Milestone10](https://github.com/ChangjoSung/Digit-Duel/milestone/10). 릴리스 PR은 dev→main merge commit, 버전 태그는 그 main 커밋을 가리킨다. main/dev 장수 브랜치를 삭제하지 않는다.
+- 이전 v0.4.4 릴리스 PR **#111**, 당시 main/origin/main 및 annotated tag **aff981217e33c88e8685adebe10351b6d5c5100d**. 출시 당시 dev는 **ceca7ed7009debfcec17a6efb65dd59e1d11ed5a**이며 main/dev 트리는 같았다. 이후 v0.4.5 개발로 현재 HEAD·제품과는 다르다. 과거 태그를 이동하거나 다시 출시하지 않는다.
 - #91·92·94·95·96은 이전 CJ PASS로 종료했고, 이번 최종 PASS로 #104→부모#93·#105·#106도 종료했다. v0.4.4 범위에 미승인 구현은 없다.
-- 검수 제품은 PR109 squash **a6fdaad752a8ffedadd2781dfb5d95018273575f**. 이후 릴리스 준비는 README·패치노트·DIGEST·상태 문서만 갱신한다. 제품·서버·아트 변경은 없다.
-- 제품 Git blob **f580e4f9aa4b5ce3daceef940891a875586a1e34**, 검수 당시 LF 파일 SHA256 **a4932cb80a1407fc728ace6ee918315880840c76010de7b21361a7f618e97280**. Windows checkout의 줄바꿈 차이는 Git blob으로 구분한다.
+- v0.4.4 검수 제품은 PR109 squash **a6fdaad752a8ffedadd2781dfb5d95018273575f**다. 당시 이후 릴리스 준비는 문서만 변경했다. v0.4.5 현재 검수 제품은 **5de47a9db4960ae7392e85ed3a811248743d090b**, blob **61a3ce3e5927697ea80ec8ebd379ffb98ebfdb92**, LF SHA256 **f742b6ba205fbcba2f3081134057dbccb81193fb55b24d5140df16be7a90fc33**이다. 이 정확한 SHA에서 README PNG10장과 manifest를 생성했고 독립 재캡처10/10 바이트 일치를 확인했다. PR115 squash dev `f4ae0870ce7f7316f22d96ff4ec7184f8943b469`에서 제품 blob·전체 트리 일치를 확인했다. 이후 출시 준비는 문서 메타데이터만 바꾼다.
+- v0.4.4 출시 제품 Git blob **f580e4f9aa4b5ce3daceef940891a875586a1e34**, 당시 LF SHA256 **a4932cb80a1407fc728ace6ee918315880840c76010de7b21361a7f618e97280**는 이전 출시 근거다. v0.4.5 제품과 혼동하지 않는다. Windows 줄바꿈 차이는 Git blob으로 구분한다.
 - 이전 v0.4.3은 main/tag **cc3f382496473233334f374896d46639b83d7974**, PR97·Milestone7 완료 이력으로 보존한다. 과거 태그를 다시 만들지 않는다.
-- 다음 **Milestone11 v0.4.5 OPEN**: 공용 하수인·아트 확장, 속성 기술·전체 위력·감전 추가 조정 검토의 계획만. 신규 구현은 CJ Comment 대기.
+- **[Milestone11 v0.4.5](https://github.com/ChangjoSung/Digit-Duel/milestone/11)**: CJ PASS로 범위 완료, 릴리스 발행 후 종결. 턴 행동 정리·문서·튜토리얼 갱신. 이전 공용 하수인·아트·밸런스는 보류 기획이며 이번 구현 승인에 포함하지 않는다. 수풀 탐색 전면 점검은 CJ 원문상 v0.4.6 예정이다. 마일스톤11개를 실제 출시·계획에 맞춰 정리했고 상태·연결 항목은 보존했다.
 - **사용자 소유 미추적 art/·orca-hook-latency-report.md는 접근·수정·스테이징 금지.** 승인 아트100파일과 Downloads 원본도 보존한다.
 
 ## 역할·작업자
 
 - Mercury = 조정·Git·문서 메타데이터. 제품·도구·테스트는 Mars(Client/Claude) 또는 Jupiter(Server/Claude), 기획은 Venus(Claude), 아트는 Earth(Codex), 독립 QA는 Saturn(Codex READ_ONLY)으로 라우팅한다.
-- PD 소유 활성 작업자0, 완료 작업자는 archive/release했다. 새 작업은 실제 Orca 상태를 확인한 뒤 fresh 역할 Worker로 배정한다. 같은 납품 목표는 Issue1개·통합PR1개, 병렬 분할은 Task로 관리한다.
+- **CJ 실행기 예외 승인(2026-09-08):** Claude 주간 사용량94%로 중단 가능성을 알렸고, 실제 한도 오류·진행 불가가 확인되면 Codex에 인계해 계속 구현하도록 지시했다. 같은 역할·파일 소유권·검수 절차는 유지하고 실행기만 Codex로 바꾼다. 기존 작업자의 중단과 변경 파일을 확인한 후 후임을 시작해 중복 편집을 막는다. 이 전환을 재승인 요청하지 않는다.
+- Issue114 작업자는 완료 보고 후 archive/release했다: Codex Mars 구현 ctx_e7c4f5e3f0b1 → 보완·캡처 ctx_9351b9848b46, Codex Venus ctx_077ea36bfc54, Saturn_1 문서 ctx_674abc8d97d2 → 보완 ctx_441aec18d976, Saturn_2 제품 ctx_d1c90945267a → 미디어 ctx_4bf2f32acd0c. 초기 AI 평가값·SVG 잘림·Notion 현재 문구 REVISE를 보완해 모두 PASS다. Claude quota로 멈춘 Mars ctx_571ae06b55e2·Venus ctx_ec8ec326d97d는 exact stop 후 failed/process_exited를 확인했다. 종료 경합의 dispatch_inactive 및 identity_unproven retained 메타데이터는 강제 정리하지 않았다. 자동 재개와 중복 작업은 없다. [PD 보고](../qa/issue114-pd-report.md)에 역할·판정·절차·한계를 보존했다.
+- 현재 Mercury terminal **term_d2dcbfa3-a932-4ce2-a844-38526dd4975b**, Run **run_3719d466e1d2**. v0.4.5 분석 Venus ctx_a5fa47f469e3·Mars ctx_3d36f46320b7 및 문서QA Saturn ctx_60d56ed6a48e 모두 수정0·inline 보고 후 archive/release 완료. 상세 근거는 분석 취합6장.
 - 이전 Run **run_195c28ae423a**, PD terminal **term_abae9146-14a1-47e9-8e9a-0a6e3c4c041a**. 마지막 Mars_2 ctx_7e1fba3a5a28, Saturn_2 ctx_db164ebf2352 모두 exact terminal release 완료.
 - 사용자 소유 terminal **term_f715b1c1-8dc5-438c-b035-540ab8b4082e** 및 과거 Saturn ctx_7587a359d6a6 user_owned retained는 재사용/종료 금지. ctx_bbc10559f749의 identity_unproven 메타데이터도 강제 정리하지 않는다.
 - Saturn은 어떤 파일도 수정하지 않는다. filesModified=[]의 inline 보고를 PD가 보존한다. 원본 smoke_online.js는 디스크 변이를 쓰므로 READ_ONLY 실행에 사용하지 않는다.
 
-## 릴리스 범위와 근거
+## 이전 v0.4.4 릴리스 범위와 근거
 
 ### #91~#96 및 #104
 
@@ -61,8 +64,9 @@
 
 ## 문서·다음 세션
 
-- [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) Decision Log30 및 릴리스 결정, GDD12/14/16 본문에 최신 규칙을 반영했다.
-- [DIGEST2호](https://app.notion.com/p/3cd1e7f17085813992ccd85ce72b1d0f), docs/v0.4.4-rules-digest.md를 출시 상태로 갱신한다. 새 규칙을 추가하지 않는다.
-- Notion #105 원문3d51e7f1708580f18f2dc4a643721059, #106 원문3d51e7f1708580b0916ded4bd3d9d06e는 최종 승인 완료 처리한다.
+- [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) DL31 출시·DL32 교대·DL33 분석/정리·DL34 구현 승인·DL35 본문 동기화를 기록했다. GDD13/12/14 현재 규칙과 과거 출시 이력을 구분하고 문서 독립 검수에서 발견한 상태·적용 범위 문구를 정정했다. v0.4.5 구현·검수·통합 후속 기록은 PR115·Issue114와 최신 Decision Log를 따른다.
+- [DIGEST2호](https://app.notion.com/p/3cd1e7f17085813992ccd85ce72b1d0f)는 v0.4.4 출시 설명으로 보존한다. [v0.4.5 규칙 정리본](../v0.4.5-rules-digest.md)을 DIGEST3호로 승격하고 GDD13의 현재 참조를 치환한다. [릴리스 노트](../releases/v0.4.5.md), [검수 보고](../qa/issue114-pd-report.md)는 v0.4.5 출시 기준이며 캡처 출처와 초기 QA 한계는 유지한다.
+- Notion #105 원문3d51e7f1708580f18f2dc4a643721059의 v0.4.4 작업은 완료됐다. #106 원문3d51e7f1708580b0916ded4bd3d9d06e는 외부 편집으로 Status=수정 대응, Summary=“v0.4.4 1차 완료 / v0.4.5 추가 구현 예정”이 됐으며 보존했다.
 - Notion 메타데이터: Project=DigitDual, EditDate=실제날짜, Editor=실제 사람 성창조(user8e0a8270-d0e3-407e-a7d2-b3f992f1e366). Agent는 운영 본문에만 쓴다.
-- 다음 세션은 CLAUDE 전체→이 문서→Git/GitHub 실제 Release·Milestone·HEAD→Orca 상태를 확인한다. 마일스톤 종료에 따라 이 스냅샷으로 내부 세션을 교대할 수 있으며 Mercury 창구는 유지한다. 이후 CJ의 v0.4.5 Comment를 기다린다.
+- 이전 세션 수치 이력: 압축15회, 2026-09-08 17:47:40 KST 마지막 요청92,019/258,400(여유64.4%). 현재 Mercury의 사용량이 아니며 판단력 저하를 입증한 수치도 아니다. 교대는 완료됐다. 상세: docs/qa/mercury-self-audit-2026-09-08.md.
+- CJ 플레이 QA·배포 승인은 완료됐다. README·릴리스 노트·Milestone 갱신과 v0.4.5 발행 결과를 보고한 뒤 **다음 CJ Comment 대기**. 같은 승인을 다시 묻지 않는다. 새 Comment 없이 재릴리스·추가 기획·구현·상시 Worker 감시를 시작하지 않는다. 현재 Mercury가 상설 창구를 유지하며 추가 PD 스폰이나 세션 교대를 하지 않는다.

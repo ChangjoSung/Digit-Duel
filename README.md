@@ -25,6 +25,7 @@
 - **숲에 숨고 흔적을 쫓으세요** — 7열 × 13행 판 가운데에는 몸을 숨길 수 있는 숲이 흩어져 있습니다. 숲 속의 말은 상대가 바로 옆에 와야만 보입니다. 숲 어딘가에 숨은 선물의 흔적을 찾아 탐색하면 몬스터볼 · 회복약 · 다음 전투 버프 · 공용 하수인을 얻습니다.
 - **옆에 붙으면 시작되는 전투** — 전투 가능한 말이 이동해서 상대 말 옆에 새로 붙으면 전투를 피할 수 없습니다. 전투는 불 → 풀 → 번개 → 물 → 불 순서의 속성 가위바위보입니다. 깎인 HP와 기술 쿨타임은 전투가 끝나도 그대로 남으니, 언제 싸울지 고르는 것도 전략입니다.
 - **하수인 20종, 나만의 로스터 6종** — 속성 4종 × 아키타입 5종(표준 · 공격 · 방어 · 속공 · 지속) 가운데 경기마다 6종을 고릅니다. 각 하수인은 속성 공격기 2개, 공용 보조기 1개, 아키타입 시그니처 기술 1개를 들고 싸웁니다.
+- **기술을 바꾸고 회복을 준비하세요** — 탐색으로 다른 속성 공격기를 얻으면 공격 슬롯 하나와 교체할 수 있습니다. 주 행동으로 회복 자세를 지정하면 그 턴 종료부터 나와 상대의 각 턴마다 최대 HP의 5%를 회복합니다. 그 말이 이동·탐색·텔레포트·전투에 참여하면 자세가 풀립니다. 전투가 6라운드까지 이어지면 남은 HP 비율로 승패를 가르고, 동률이면 방어자가 이깁니다.
 - **잡아오고, 도망치고, 순간이동하세요** — HP가 낮아진 상대 하수인은 몬스터볼로 포획할 수 있고, 위험한 내 말은 도망칠 수 있습니다. 상대 진영 깊숙이 들어가면 텔레포트로 내 말 두 개의 자리를 바꿔 허를 찌르세요. 65턴부터 버닝 타임이 시작되면 이동 가능한 말은 최대 두 칸까지 움직입니다. 적진·적 숲에 있거나 진입·통과할 때는 한 칸으로 제한됩니다.
 - **혼자서도, 둘이서도** — 5급 · 5단 두 단계의 AI와 겨루는 PVE, 한 기기에서 번갈아 두는 핫시트 PVP, 같은 공유기 안의 두 PC가 겨루는 온라인 PVP를 지원합니다. AI는 플레이어와 같은 정보만 보고 판단하며, 숨은 정보를 들여다보지 않습니다.
 
@@ -46,7 +47,7 @@
 </table>
 
 <details>
-<summary><b>튜토리얼 10단계 보기</b> — 게임을 처음 켜면 자동으로 열리는 그림 설명</summary>
+<summary><b>튜토리얼 10단계 보기</b> — v0.4.5 · 양측 밀어내기와 새 턴 흐름</summary>
 <br>
 <table>
   <tr>
@@ -54,39 +55,41 @@
     <td align="center" width="20%"><a href="docs/media/tutorial-02.png"><img src="docs/media/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
     <td align="center" width="20%"><a href="docs/media/tutorial-03.png"><img src="docs/media/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
     <td align="center" width="20%"><a href="docs/media/tutorial-04.png"><img src="docs/media/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-05.png"><img src="docs/media/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요" width="100%"></a><br><sub>5. 옆에 붙으면 꼭 싸워요</sub></td>
+    <td align="center" width="20%"><a href="docs/media/tutorial-05.png"><img src="docs/media/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 전투와 양측 밀어내기" width="100%"></a><br><sub>5. 전투 · 양측 밀어내기</sub></td>
   </tr>
   <tr>
     <td align="center" width="20%"><a href="docs/media/tutorial-06.png"><img src="docs/media/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-07.png"><img src="docs/media/tutorial-07.png" alt="7단계 잡아오기와 도망치기" width="100%"></a><br><sub>7. 잡아오기와 도망치기</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-08.png"><img src="docs/media/tutorial-08.png" alt="8단계 텔레포트(순간이동)" width="100%"></a><br><sub>8. 텔레포트(순간이동)</sub></td>
+    <td align="center" width="20%"><a href="docs/media/tutorial-07.png"><img src="docs/media/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · 도망 후 후방 말 선택</sub></td>
+    <td align="center" width="20%"><a href="docs/media/tutorial-08.png"><img src="docs/media/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 횟수 제한 없는 텔레포트</sub></td>
     <td align="center" width="20%"><a href="docs/media/tutorial-09.png"><img src="docs/media/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-10.png"><img src="docs/media/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트" width="100%"></a><br><sub>10. 빠른 복습</sub></td>
+    <td align="center" width="20%"><a href="docs/media/tutorial-10.png"><img src="docs/media/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 턴 종료 선택</sub></td>
   </tr>
 </table>
 <sub>튜토리얼은 게임 안에서 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다.</sub>
+
+캡처 출처: v0.4.5 검수 커밋 `5de47a9db4960ae7392e85ed3a811248743d090b` · [10장 캡처 기록과 해시](docs/qa/issue114-media/capture-manifest.json). 출시본과 같은 게임 코드에서 촬영한 화면입니다.
 </details>
 
 ## 새로운 기능
 
-[![v0.4.4](https://img.shields.io/badge/v0.4.4-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4) 탐색 기술 교체와 지속 회복, 온라인 시점과 턴 흐름을 개선했습니다.
+[![v0.4.5](https://img.shields.io/badge/v0.4.5-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5) 양측 밀어내기와 도망 후 선택, 턴 흐름과 튜토리얼을 개선했습니다.
 
-**v0.4.4 Patch Note** (2026-09-08)
+**v0.4.5 Patch Note** (2026-09-08)
 
-- [기능 추가] 탐색에서 다른 속성 공격기를 얻어 교체할 수 있습니다. 회복 자세는 지정한 턴 종료부터 각 플레이어 턴마다 최대 HP의 5%를 지속 회복합니다.
-- [개선] 온라인 양쪽 모두 자기 진영을 아래에서 보고, 상대 턴에도 메모할 수 있습니다. 숨은 말 충돌 시 위치 동기화 오류와 공용 하수인 대리 출전 아트 누락을 수정했습니다.
-- [개선] 전투 4메뉴·보호막/HP 표시·턴 연출·자동 종료를 추가했습니다. 65턴 버닝타임 안내는 일반 턴 전에 2초 표시됩니다.
-- [규칙 조정] 함정과 걸린 말 모두 공개, 폭탄 직접 신규 접촉 발동, 6라운드 잔여 HP 비율 판정(동률 방어자 승), 공격형 위력·일반 감전 확률 완화를 적용했습니다.
+- [기능 추가] 텔레포트의 경기당 횟수 제한을 없앴습니다. 사용 조건과 주 행동 소모는 그대로입니다.
+- [규칙 조정] 동료·왕끼리, 폭탄이 폭탄·함정과 만나면 서로 한 칸씩 밀려납니다. 밀린 뒤에도 적과 붙어 있으면 두 말을 안전한 곳에 함께 재배치합니다. 함정도 강제로 옮겨질 수 있습니다.
+- [개선] 도망에 성공하면 보드에서 후방의 내 말을 골라 교환하거나 생략합니다. 이어서 전선의 말과 상대가 서로 밀려납니다.
+- [개선] 평소 턴 종료 버튼을 없애고 선택 전투가 남을 때만 ‘싸우지 않고 종료’를 표시합니다. HP가 가득 차도 회복 자세를 지정해 기다릴 수 있습니다. 새 규칙과 기술 교체 설명에 맞춰 튜토리얼 10단계와 캡처를 갱신했습니다.
 
-상세 내용은 [v0.4.4 릴리스 노트](docs/releases/v0.4.4.md)와 [최신 규칙 정리본](docs/v0.4.4-rules-digest.md)을 참고하세요. 튜토리얼 이미지는 v0.4.3 캡처이며 변경된 규칙은 정리본이 기준입니다.
+상세 내용은 [v0.4.5 릴리스 노트](docs/releases/v0.4.5.md)와 [v0.4.5 규칙 정리본](docs/v0.4.5-rules-digest.md)을 참고하세요. 세부 규칙과 예외는 [v0.4.5 게임플레이 계약](docs/v0.4.5-gameplay-spec.md)에 정리되어 있습니다.
 
-이전 버전의 패치 노트는 [`docs/releases/`](docs/releases/)와 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다.
+이전 버전의 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)과 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다.
 
 ## 게임 정보
 
 | 항목 | 내용 |
 | --- | --- |
-| 현재 버전 | [v0.4.4](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4) |
+| 현재 버전 | [v0.4.5](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5) |
 | 최근 업데이트 | 2026-09-08 |
 | Star · Fork | [![Stars](https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars)](https://github.com/ChangjoSung/Digit-Duel) [![Forks](https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks)](https://github.com/ChangjoSung/Digit-Duel/forks) |
 | 필요한 환경 | 오프라인: 최신 데스크톱 브라우저(Chrome 권장) · 온라인: Windows PC 1대 + [Node.js](https://nodejs.org) |
@@ -138,14 +141,17 @@ docs/
   media/                README용 홍보 일러스트·튜토리얼 이미지
   releases/             버전별 패치 노트
   screenshots/          이전 README용 실행 화면
-  qa/                   하수인 아트 적용 검증 화면과 보고서
+  qa/                   버전별 구현·독립 QA 보고와 검증 화면
   art/                  하수인 아트 검토 이미지·제작 기록
   minion-visual-spec-v0.4.3.md   하수인 이미지 규격
+  v0.4.x-*.md           버전별 게임플레이 계약·규칙 정리본
   creat2ve/             개발 조직·작업 계약 문서
 CLAUDE.md               프로젝트 규약 · 기준 문서 링크
 CONTRIBUTING.md         기여 안내
 LICENSE · NOTICE · ASSET-LICENSE.md   라이선스와 자산 정책
 ```
+
+문서의 현재 기준과 과거 검수 이력은 [docs 안내](docs/README.md)에서 구분해 볼 수 있습니다.
 
 ## 라이선스
 
