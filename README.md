@@ -39,7 +39,7 @@
       <br><b>플레이 화면</b><br><sub>내 말과 공개된 상대 말은 아이콘으로, 아직 모르는 상대 말은 물음표로 보입니다.</sub>
     </td>
     <td align="center" width="50%">
-      <a href="docs/qa/minion-art-integration/file_desktop-1280_4-battle.png"><img src="docs/qa/minion-art-integration/file_desktop-1280_4-battle.png" alt="전투 화면 — 양측 하수인 전투 아트, 속성 상성, 기술·아이템·포획·도망 선택지" width="100%"></a>
+      <a href="docs/qa/issue106-browser/06-b1-menu-root-actor.png"><img src="docs/qa/issue106-browser/06-b1-menu-root-actor.png" alt="v0.4.4 전투 화면 — 양측 하수인 전투 아트와 HP, 싸우기·가방·포획·도망 선택지" width="100%"></a>
       <br><b>전투 화면</b><br><sub>속성 상성과 HP를 보며 기술 · 아이템 · 포획 · 도망 가운데 행동을 고릅니다.</sub>
     </td>
   </tr>
@@ -69,13 +69,16 @@
 
 ## 새로운 기능
 
-[![v0.4.3](https://img.shields.io/badge/v0.4.3-%ED%95%98%EC%88%98%EC%9D%B8%2020%EC%A2%85%20%EC%95%84%ED%8A%B8%20%EC%A0%81%EC%9A%A9-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.3) 하수인 20종의 디자인이 게임 화면에 들어왔습니다.
+[![v0.4.4](https://img.shields.io/badge/v0.4.4-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4) 탐색 기술 교체와 지속 회복, 온라인 시점과 턴 흐름을 개선했습니다.
 
-**v0.4.3 Patch Note** (2026-09-07)
+**v0.4.4 Patch Note** (2026-09-08)
 
-- [기능 추가] 하수인 20종의 일러스트가 배치 단계 설명창에, 도트 아트가 전투 화면에 표시됩니다.
-- [기능 추가] 말판의 내 말과 정체가 공개된 상대 말이 32px 아이콘으로 구분되고, 하수인 · 동료 · 왕의 남은 HP를 아이콘 아래 숫자로 확인할 수 있습니다.
-- [개선] 이미지를 불러오지 못해도 설명창 자리와 전투 진행이 그대로 유지되도록 대체 표시를 넣었습니다.
+- [기능 추가] 탐색에서 다른 속성 공격기를 얻어 교체할 수 있습니다. 회복 자세는 지정한 턴 종료부터 각 플레이어 턴마다 최대 HP의 5%를 지속 회복합니다.
+- [개선] 온라인 양쪽 모두 자기 진영을 아래에서 보고, 상대 턴에도 메모할 수 있습니다. 숨은 말 충돌 시 위치 동기화 오류와 공용 하수인 대리 출전 아트 누락을 수정했습니다.
+- [개선] 전투 4메뉴·보호막/HP 표시·턴 연출·자동 종료를 추가했습니다. 65턴 버닝타임 안내는 일반 턴 전에 2초 표시됩니다.
+- [규칙 조정] 함정과 걸린 말 모두 공개, 폭탄 직접 신규 접촉 발동, 6라운드 잔여 HP 비율 판정(동률 방어자 승), 공격형 위력·일반 감전 확률 완화를 적용했습니다.
+
+상세 내용은 [v0.4.4 릴리스 노트](docs/releases/v0.4.4.md)와 [최신 규칙 정리본](docs/v0.4.4-rules-digest.md)을 참고하세요. 튜토리얼 이미지는 v0.4.3 캡처이며 변경된 규칙은 정리본이 기준입니다.
 
 이전 버전의 패치 노트는 [`docs/releases/`](docs/releases/)와 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다.
 
@@ -83,8 +86,8 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 현재 버전 | [v0.4.3](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.3) |
-| 최근 업데이트 | 2026-09-07 |
+| 현재 버전 | [v0.4.4](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4) |
+| 최근 업데이트 | 2026-09-08 |
 | Star · Fork | [![Stars](https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars)](https://github.com/ChangjoSung/Digit-Duel) [![Forks](https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks)](https://github.com/ChangjoSung/Digit-Duel/forks) |
 | 필요한 환경 | 오프라인: 최신 데스크톱 브라우저(Chrome 권장) · 온라인: Windows PC 1대 + [Node.js](https://nodejs.org) |
 | 장르 | 1대1 턴제 전략 보드게임 (숨은 정체 · 속성 배틀) |

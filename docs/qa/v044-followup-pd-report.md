@@ -1,15 +1,15 @@
 # v0.4.4 CJ QA 후속 — Mercury 통합 보고
 
-> 2026-09-08 · Mercury(PD, GPT-6 Astra/high). 승인된 구현·독립 검수 결과를 취합한다. 공식 릴리스는 v0.4.3이며 v0.4.4는 CJ 재검수 전이다.
+> 2026-09-08 · Mercury(PD, GPT-6 Astra/high). 승인된 구현·독립 검수 결과를 취합한다. 후속 CJ Comment “[CJ QA Test] PASS — Release 진행”으로 v0.4.4 출시를 승인받았다. 아래 자동 검수 이력과 환경 한계는 그대로 보존한다.
 
 ## 납품 상태
 
 | 범위 | 현재 결과 | CJ 상태 |
 |---|---|---|
 | #91·#92·#94·#95·#96 | 이전 dev 통합 후 CJ PASS로 종료 | PASS |
-| #93 하위 #104 | 숨은 말 충돌 결함 수정·PR107 dev6baa0b5 통합. 65턴 전후 추가 시점 감사도 Saturn PASS | CJ 재검수 전 OPEN |
-| #105 README/Releases | Saturn 최종 PASS·PR108 dev40415c2 통합, 기존 Release6개 본문 갱신 게시 | 최종 확인 전 OPEN |
-| #106 턴 개편 | 제품 a4932cb8… 및 도구 동결, Saturn 최종 PASS. 단일 [PR109](https://github.com/ChangjoSung/Digit-Duel/pull/109)로 dev 통합 | CJ 플레이 QA 전 OPEN |
+| #93 하위 #104 | 숨은 말 충돌 결함 수정·PR107 dev6baa0b5 통합. 65턴 전후 추가 시점 감사도 Saturn PASS | CJ PASS · 종료 |
+| #105 README/Releases | Saturn 최종 PASS·PR108 dev40415c2 통합, 기존 Release6개 본문 갱신 게시 | CJ PASS · 종료 |
+| #106 턴 개편 | 제품 a4932cb8… 및 도구 동결, Saturn 최종 PASS. 단일 [PR109](https://github.com/ChangjoSung/Digit-Duel/pull/109)로 dev 통합 | CJ PASS · 종료 |
 
 ## 동기화 — 확정된 결함과 추가 감사 구분
 
@@ -57,7 +57,7 @@ rev3의 [최종 Saturn 재검수](issue104-orientation-saturn-final.md)는 PASS�
 - 게임의390~400px 전투 메뉴와 페이지 전체 반응형 처리는 다르다. 기존 고정 보드와 우측 패널 때문에 페이지 전체 가로 넘침은 남아 있다.
 - Worker가4개 기존 테스트를 Git으로 복원하고 프로필 접두사로 Chrome을 종료한 절차 위반은 [사건 기록](issue106-pd-incident.md)에 남겼다. Saturn 실행에 대한 영향은 관찰되지 않았지만 전체 종료 대상의 소유권은 입증되지 않았다. 불확실한 임시 프로필은 삭제하지 않았다.
 - 전체 기술·상성·감전·공용 하수인 및 추가 아트 검토는 v0.4.5 계획이다. #95가 모든 대진을 개선한다는 결론은 내리지 않는다.
-- CJ 후속 플레이/출시 지시 전까지 v0.4.4 main 병합·태그·Release·Milestone 종료는 진행하지 않는다.
+- 2026-09-08 CJ의 최종 QA PASS 및 Release 지시를 수락했다. [v0.4.4 Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4)에 출시 기록을 남기고, #93·#104·#105·#106 및 Milestone10을 완료 처리한다. v0.4.5는 별도 계획이다.
 
 ## 문서 반영 위치
 
