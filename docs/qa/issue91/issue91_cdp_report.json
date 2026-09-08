@@ -1,0 +1,652 @@
+{
+ "html": "demo/index.html",
+ "schemes": [
+  "file",
+  "http"
+ ],
+ "viewports": [
+  {
+   "name": "desktop-1280",
+   "w": 1280,
+   "h": 800,
+   "dpr": 1,
+   "schemes": [
+    "file",
+    "http"
+   ]
+  },
+  {
+   "name": "mobile-390",
+   "w": 390,
+   "h": 844,
+   "dpr": 2,
+   "schemes": [
+    "http"
+   ]
+  }
+ ],
+ "shots": [
+  "docs/qa/issue91/file_desktop-1280_1-neutral-proxy.png",
+  "docs/qa/issue91/file_desktop-1280_2-both-proxy.png",
+  "docs/qa/issue91/file_desktop-1280_3-proxy-fallback.png",
+  "docs/qa/issue91/http_desktop-1280_1-neutral-proxy.png",
+  "docs/qa/issue91/http_desktop-1280_2-both-proxy.png",
+  "docs/qa/issue91/http_desktop-1280_3-proxy-fallback.png",
+  "docs/qa/issue91/http_mobile-390_1-neutral-proxy.png",
+  "docs/qa/issue91/http_mobile-390_2-both-proxy.png",
+  "docs/qa/issue91/http_mobile-390_3-proxy-fallback.png"
+ ],
+ "report": [
+  {
+   "scheme": "file",
+   "vp": "desktop-1280",
+   "scene": "1-neutral-proxy",
+   "setup": {
+    "capId": "M-F1",
+    "capEl": "fire",
+    "opDir": "grass_atk",
+    "modal": "🔒 플레이어만 확인\n\n왕 출전 선택 — 어느 쪽이 패배해도 경기 패배입"
+   },
+   "clicks": [
+    "포획 하수인(불) HP 100/100 출전",
+    "전투 시작"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/grass_atk/battle.png",
+     "alt": "가시 덩굴",
+     "text": "풀",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/fire_std/battle.png",
+     "alt": "포획 하수인·불",
+     "text": "불",
+     "bg": ""
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": false,
+   "faId": "M-F1",
+   "fdId": null,
+   "faRosterId": "undefined",
+   "fdRosterId": "M-G2",
+   "faEl": "fire",
+   "fdEl": "grass",
+   "faHp": "100/100",
+   "fdHp": "90/90",
+   "faAtk": 20,
+   "fdAtk": 26,
+   "attType": "king",
+   "defType": "minion",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": []
+  },
+  {
+   "scheme": "file",
+   "vp": "desktop-1280",
+   "scene": "2-both-proxy",
+   "setup": {
+    "capId": "M-W1",
+    "reserveDir": "fire_std",
+    "modal": "🔒 P1(하단·청)만 확인 (상대는 시선 회피)\n\n왕 출전 선택 — 어"
+   },
+   "reserve": {
+    "step": 1,
+    "reserveId": "M-F1"
+   },
+   "clicks": [
+    "포획 하수인(물) HP 100/100 출전",
+    "예비 하수인(불) HP 70/100 대리 출전",
+    "전투 시작"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/fire_std/battle.png",
+     "alt": "포획 하수인·불",
+     "text": "불",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/water_std/battle.png",
+     "alt": "포획 하수인·물",
+     "text": "물",
+     "bg": ""
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": true,
+   "faId": "M-W1",
+   "fdId": "M-F1",
+   "faRosterId": "undefined",
+   "fdRosterId": "undefined",
+   "faEl": "water",
+   "fdEl": "fire",
+   "faHp": "100/100",
+   "fdHp": "70/100",
+   "faAtk": 20,
+   "fdAtk": 20,
+   "attType": "king",
+   "defType": "ally",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": []
+  },
+  {
+   "scheme": "file",
+   "vp": "desktop-1280",
+   "scene": "3-proxy-fallback",
+   "setup": {
+    "capId": "M-F1",
+    "capEl": "fire",
+    "opDir": "grass_atk",
+    "modal": "🔒 플레이어만 확인\n\n왕 출전 선택 — 어느 쪽이 패배해도 경기 패배입"
+   },
+   "clicks": [
+    "포획 하수인(불) HP 100/100 출전",
+    "전투 시작"
+   ],
+   "progress": {
+    "before": {
+     "hpA": 100,
+     "hpD": 90,
+     "n": 1
+    },
+    "after": {
+     "hpA": 54,
+     "hpD": 59,
+     "n": 6,
+     "tokA": "btok tok-me shake"
+    }
+   },
+   "blocked": [
+    "*/fire_std/battle.png"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/grass_atk/battle.png",
+     "alt": "가시 덩굴",
+     "text": "풀",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": false,
+     "w": 88,
+     "h": 88,
+     "natW": 0,
+     "dispW": 0,
+     "loaded": null,
+     "src": "",
+     "alt": "",
+     "text": "🔥불",
+     "bg": "var(--fire)"
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": false,
+   "faId": "M-F1",
+   "fdId": null,
+   "faRosterId": "undefined",
+   "fdRosterId": "M-G2",
+   "faEl": "fire",
+   "fdEl": "grass",
+   "faHp": "100/100",
+   "fdHp": "90/90",
+   "faAtk": 20,
+   "fdAtk": 26,
+   "attType": "king",
+   "defType": "minion",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": []
+  },
+  {
+   "scheme": "http",
+   "vp": "desktop-1280",
+   "scene": "1-neutral-proxy",
+   "setup": {
+    "capId": "M-F1",
+    "capEl": "fire",
+    "opDir": "grass_atk",
+    "modal": "🔒 플레이어만 확인\n\n왕 출전 선택 — 어느 쪽이 패배해도 경기 패배입"
+   },
+   "clicks": [
+    "포획 하수인(불) HP 100/100 출전",
+    "전투 시작"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/grass_atk/battle.png",
+     "alt": "가시 덩굴",
+     "text": "풀",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/fire_std/battle.png",
+     "alt": "포획 하수인·불",
+     "text": "불",
+     "bg": ""
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": false,
+   "faId": "M-F1",
+   "fdId": null,
+   "faRosterId": "undefined",
+   "fdRosterId": "M-G2",
+   "faEl": "fire",
+   "fdEl": "grass",
+   "faHp": "100/100",
+   "fdHp": "90/90",
+   "faAtk": 20,
+   "fdAtk": 26,
+   "attType": "king",
+   "defType": "minion",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": [
+    "log: Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:55904/favicon.ico"
+   ]
+  },
+  {
+   "scheme": "http",
+   "vp": "desktop-1280",
+   "scene": "2-both-proxy",
+   "setup": {
+    "capId": "M-W1",
+    "reserveDir": "fire_std",
+    "modal": "🔒 P1(하단·청)만 확인 (상대는 시선 회피)\n\n왕 출전 선택 — 어"
+   },
+   "reserve": {
+    "step": 1,
+    "reserveId": "M-F1"
+   },
+   "clicks": [
+    "포획 하수인(물) HP 100/100 출전",
+    "예비 하수인(불) HP 70/100 대리 출전",
+    "전투 시작"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/fire_std/battle.png",
+     "alt": "포획 하수인·불",
+     "text": "불",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/water_std/battle.png",
+     "alt": "포획 하수인·물",
+     "text": "물",
+     "bg": ""
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": true,
+   "faId": "M-W1",
+   "fdId": "M-F1",
+   "faRosterId": "undefined",
+   "fdRosterId": "undefined",
+   "faEl": "water",
+   "fdEl": "fire",
+   "faHp": "100/100",
+   "fdHp": "70/100",
+   "faAtk": 20,
+   "fdAtk": 20,
+   "attType": "king",
+   "defType": "ally",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": []
+  },
+  {
+   "scheme": "http",
+   "vp": "desktop-1280",
+   "scene": "3-proxy-fallback",
+   "setup": {
+    "capId": "M-F1",
+    "capEl": "fire",
+    "opDir": "grass_atk",
+    "modal": "🔒 플레이어만 확인\n\n왕 출전 선택 — 어느 쪽이 패배해도 경기 패배입"
+   },
+   "clicks": [
+    "포획 하수인(불) HP 100/100 출전",
+    "전투 시작"
+   ],
+   "progress": {
+    "before": {
+     "hpA": 100,
+     "hpD": 90,
+     "n": 1
+    },
+    "after": {
+     "hpA": 54,
+     "hpD": 59,
+     "n": 6,
+     "tokA": "btok tok-me shake"
+    }
+   },
+   "blocked": [
+    "*/fire_std/battle.png"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/grass_atk/battle.png",
+     "alt": "가시 덩굴",
+     "text": "풀",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": false,
+     "w": 88,
+     "h": 88,
+     "natW": 0,
+     "dispW": 0,
+     "loaded": null,
+     "src": "",
+     "alt": "",
+     "text": "🔥불",
+     "bg": "var(--fire)"
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": false,
+   "faId": "M-F1",
+   "fdId": null,
+   "faRosterId": "undefined",
+   "fdRosterId": "M-G2",
+   "faEl": "fire",
+   "fdEl": "grass",
+   "faHp": "100/100",
+   "fdHp": "90/90",
+   "faAtk": 20,
+   "fdAtk": 26,
+   "attType": "king",
+   "defType": "minion",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": []
+  },
+  {
+   "scheme": "http",
+   "vp": "mobile-390",
+   "scene": "1-neutral-proxy",
+   "setup": {
+    "capId": "M-F1",
+    "capEl": "fire",
+    "opDir": "grass_atk",
+    "modal": "🔒 플레이어만 확인\n\n왕 출전 선택 — 어느 쪽이 패배해도 경기 패배입"
+   },
+   "clicks": [
+    "포획 하수인(불) HP 100/100 출전",
+    "전투 시작"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/grass_atk/battle.png",
+     "alt": "가시 덩굴",
+     "text": "풀",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/fire_std/battle.png",
+     "alt": "포획 하수인·불",
+     "text": "불",
+     "bg": ""
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": false,
+   "faId": "M-F1",
+   "fdId": null,
+   "faRosterId": "undefined",
+   "fdRosterId": "M-G2",
+   "faEl": "fire",
+   "fdEl": "grass",
+   "faHp": "100/100",
+   "fdHp": "90/90",
+   "faAtk": 20,
+   "fdAtk": 26,
+   "attType": "king",
+   "defType": "minion",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": []
+  },
+  {
+   "scheme": "http",
+   "vp": "mobile-390",
+   "scene": "2-both-proxy",
+   "setup": {
+    "capId": "M-W1",
+    "reserveDir": "fire_std",
+    "modal": "🔒 P1(하단·청)만 확인 (상대는 시선 회피)\n\n왕 출전 선택 — 어"
+   },
+   "reserve": {
+    "step": 1,
+    "reserveId": "M-F1"
+   },
+   "clicks": [
+    "포획 하수인(물) HP 100/100 출전",
+    "예비 하수인(불) HP 70/100 대리 출전",
+    "전투 시작"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/fire_std/battle.png",
+     "alt": "포획 하수인·불",
+     "text": "불",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/water_std/battle.png",
+     "alt": "포획 하수인·물",
+     "text": "물",
+     "bg": ""
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": true,
+   "faId": "M-W1",
+   "fdId": "M-F1",
+   "faRosterId": "undefined",
+   "fdRosterId": "undefined",
+   "faEl": "water",
+   "fdEl": "fire",
+   "faHp": "100/100",
+   "fdHp": "70/100",
+   "faAtk": 20,
+   "fdAtk": 20,
+   "attType": "king",
+   "defType": "ally",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": []
+  },
+  {
+   "scheme": "http",
+   "vp": "mobile-390",
+   "scene": "3-proxy-fallback",
+   "setup": {
+    "capId": "M-F1",
+    "capEl": "fire",
+    "opDir": "grass_atk",
+    "modal": "🔒 플레이어만 확인\n\n왕 출전 선택 — 어느 쪽이 패배해도 경기 패배입"
+   },
+   "clicks": [
+    "포획 하수인(불) HP 100/100 출전",
+    "전투 시작"
+   ],
+   "progress": {
+    "before": {
+     "hpA": 100,
+     "hpD": 90,
+     "n": 1
+    },
+    "after": {
+     "hpA": 54,
+     "hpD": 59,
+     "n": 6,
+     "tokA": "btok tok-me shake"
+    }
+   },
+   "blocked": [
+    "*/fire_std/battle.png"
+   ],
+   "toks": [
+    {
+     "id": "tok-D",
+     "art": true,
+     "w": 128,
+     "h": 144,
+     "natW": 128,
+     "dispW": 128,
+     "loaded": true,
+     "src": "assets/minions/grass_atk/battle.png",
+     "alt": "가시 덩굴",
+     "text": "풀",
+     "bg": ""
+    },
+    {
+     "id": "tok-A",
+     "art": false,
+     "w": 88,
+     "h": 88,
+     "natW": 0,
+     "dispW": 0,
+     "loaded": null,
+     "src": "",
+     "alt": "",
+     "text": "🔥불",
+     "bg": "var(--fire)"
+    }
+   ],
+   "issues": [],
+   "proxyA": true,
+   "proxyD": false,
+   "faId": "M-F1",
+   "fdId": null,
+   "faRosterId": "undefined",
+   "fdRosterId": "M-G2",
+   "faEl": "fire",
+   "fdEl": "grass",
+   "faHp": "100/100",
+   "fdHp": "90/90",
+   "faAtk": 20,
+   "fdAtk": 26,
+   "attType": "king",
+   "defType": "minion",
+   "bodyHasHiddenDirs": null,
+   "consoleErrors": [],
+   "ignoredConsole": []
+  }
+ ]
+}

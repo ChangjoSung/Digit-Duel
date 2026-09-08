@@ -5,7 +5,7 @@ const T=H.load(process.argv[2]);
 const S=()=>T.S;
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
-T.BAL.dmgVar=0; T.BAL.statusProb=1;
+T.BAL.dmgVar=0; T.BAL.statusProb=1; T.BAL.shockProb=1; // #96: 감전 확률도 함께 고정 (테스트 결정론)
 const realRandom=Math.random;
 
 /* ===== A. #20-1 지표 분리·이중 집계 정합 (sim 완주 후 합산 = byPlayer[0]+byPlayer[1]) ===== */
@@ -320,8 +320,9 @@ const realRandom=Math.random;
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   const m1=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), m2=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
   H.place(T,m1,7,4); H.place(T,m2,6,4); H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1); H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
-  T.startRounds(m1,m2,m1,m2); T.S.battle.recA=40; T.S.battle.recD=10; T.judge();
-  ok(!m2.alive&&m1.alive&&S().metrics.judged===1&&S().metrics.attackerWins===1,"J7 판정 승 (공격측)");
+  // #106 T6: 판정은 남은 HP 비율(hp/maxHp) — 누적 유효 피해(recA/recD)는 지표로만 남는다. 옛 규칙이면 D 승(recD 40 > recA 10)이지만 새 규칙은 A 100% > D 60% 로 A 승
+  T.startRounds(m1,m2,m1,m2); T.S.battle.recA=10; T.S.battle.recD=40; m2.hp=60; T.judge();
+  ok(!m2.alive&&m1.alive&&S().metrics.judged===1&&S().metrics.attackerWins===1,"J7 판정 승 (공격측) — #106 남은 HP 비율 기준 (recA/recD 무관)");
   T.TQ.length=0;
 }
 

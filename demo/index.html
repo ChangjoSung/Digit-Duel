@@ -72,6 +72,37 @@
   @media (max-height:700px){ .rosterArt img,.rosterArt.fb{width:128px; height:128px;} }
   .el-fire{color:var(--fire);} .el-water{color:var(--water);} .el-grass{color:var(--grass);} .el-lightning{color:var(--lightning);}
   .pc.immob{border-color:var(--danger);}
+  /* ===== #106 턴 흐름·연출 (v0.4.4 turn-flow 계약 3·4·5장) — 표시 계층 전용 ===== */
+  .pc.healing{box-shadow:0 0 0 2px var(--heal), 0 0 12px var(--heal); animation:healPulse 1.6s ease-in-out infinite;} /* 회복 자세: 소유자 화면 항상, 상대 화면은 공개 말만 (H8) */
+  @keyframes healPulse{0%,100%{box-shadow:0 0 0 2px var(--heal),0 0 6px var(--heal)}50%{box-shadow:0 0 0 2px var(--heal),0 0 16px var(--heal)}}
+  .pc.fx-ghost{opacity:.9; animation:ghostBoom 2s ease-out forwards;} /* 폭발 표시 유지(hold): 규칙상 이미 제거된 말을 연출이 끝날 때까지 그린다 */
+  @keyframes ghostBoom{0%{filter:brightness(2.2)}60%{filter:brightness(1.4)}100%{opacity:.15; filter:brightness(.6)}}
+  .cell.fx-boom{animation:cellBoom 2s ease-out;} .cell.fx-boom::after{content:"💥"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:30px; pointer-events:none; animation:boomPop 2s ease-out forwards;}
+  @keyframes cellBoom{0%{background:#ffd84d; box-shadow:0 0 30px #ff7a4d}30%{background:#ff7a4d}100%{}}
+  @keyframes boomPop{0%{transform:scale(.4); opacity:1}40%{transform:scale(1.4); opacity:1}100%{transform:scale(1.1); opacity:0}}
+  .cell.fx-trap{animation:trapBlink 2s;} .cell.fx-trap::after{content:"🪤"; position:absolute; top:-6px; right:-4px; font-size:18px; pointer-events:none;}
+  @keyframes trapBlink{0%,20%,40%{outline:3px solid var(--danger); outline-offset:-3px}10%,30%,100%{outline:3px solid transparent}}
+  #fxBanner{position:fixed; inset:0; z-index:55; display:flex; align-items:center; justify-content:center; background:#000a; pointer-events:auto;}
+  #fxBanner.nodim{background:transparent;} /* 폭발·함정: 보드를 보여 주면서 입력만 막는다 */
+  #fxBanner .fxBox{text-align:center; padding:22px 34px; border-radius:14px; background:#0b0e14e8; border:1px solid var(--line); box-shadow:0 10px 40px #000c; max-width:92vw; animation:bannerIn .35s ease-out;}
+  #fxBanner.nodim .fxBox{display:none;}
+  @keyframes bannerIn{0%{transform:scale(.7); opacity:0}100%{transform:scale(1); opacity:1}}
+  #fxTitle{font-size:34px; font-weight:bold; line-height:1.25;}
+  #fxSub{font-size:15px; color:var(--dim); margin-top:8px; line-height:1.5; white-space:pre-line;}
+  #fxBanner.count #fxTitle{font-size:84px; line-height:1;} #fxBanner.count .fxBox{background:transparent; border:none; box-shadow:none;}
+  #fxBanner.result #fxTitle{font-size:40px; color:var(--buff);} #fxBanner.result.lose #fxTitle{color:var(--danger);}
+  #fxBanner.contact #fxTitle{color:var(--danger);} #fxBanner.bt #fxTitle{color:var(--fire);} #fxBanner.mine #fxTitle{color:var(--accent);}
+  body.fx-lock #board, body.fx-lock #turnBar button:not(.danger), body.fx-lock #overlayBox button{pointer-events:none;} /* 잠금 중 클릭 차단 — 기권만 허용 */
+  /* 전투 4카테고리 메뉴·HP/방어막 바 */
+  .bmenu{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0;}
+  .bmenu button{font-size:15px; padding:12px 6px; font-weight:bold;}
+  .bsub{margin:6px 0;}
+  .bsub .row{gap:6px;}
+  .bsub small{display:block; margin:2px 0 4px;}
+  .shbar{height:5px; background:#222; border-radius:3px; overflow:hidden; width:180px; margin-top:2px;}
+  .shbar>div{height:100%; background:var(--guard); transition:width .6s;} /* HP 바 전환(.6s)은 아래 .hpbar>div 한 곳에서 — BAL.fx.barStep 과 같은 값 */
+  #msgBox.big{font-size:18px; font-weight:bold; text-align:center;}
+  @media (max-width:480px){ .bmenu button{font-size:13px; padding:10px 4px;} #fxTitle{font-size:26px;} #fxBanner.count #fxTitle{font-size:64px;} }
   .badge{display:inline-block; padding:1px 6px; border-radius:8px; background:var(--panel2); border:1px solid var(--line); font-size:12px; margin:1px;}
   button{background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px;}
   button:hover{border-color:var(--accent);}
@@ -90,7 +121,7 @@
   .hidden{display:none !important;}
   .fighter{display:flex; gap:10px; align-items:center; background:var(--panel2); border-radius:8px; padding:8px; margin:4px 0; position:relative;}
   .hpbar{height:10px; background:#333; border-radius:5px; overflow:hidden; width:180px;}
-  .hpbar>div{height:100%; background:var(--ok); transition:width .3s;}
+  .hpbar>div{height:100%; background:var(--ok); transition:width .6s;} /* #106 5.5: 약 0.6초 (BAL.fx.barStep). 종전 .3s 는 위쪽 .6s 선언을 덮어쓰던 사각지대 */
   .dmgfloat{position:absolute; right:14px; top:2px; font-weight:bold; font-size:15px; pointer-events:none; animation:floatUp 1s ease-out forwards; text-shadow:0 1px 2px #000;}
   .dmgfloat .neg{color:var(--danger);}
   .dmgfloat .pos{color:var(--ok);}
@@ -231,6 +262,8 @@
   </div>
 </div>
 <div id="overlay" class="overlay hidden"><div class="box" id="overlayBox"></div></div>
+<!-- #106 연출 배너 오버레이 (게임 모달 z50 위 · 튜토리얼 z60 아래) — 표시 전용, 규칙 상태 무관 -->
+<div id="fxBanner" class="hidden" role="status" aria-live="polite"><div class="fxBox"><div id="fxTitle"></div><div id="fxSub"></div></div></div>
 <!-- #26 상황 도움말(비모달, 1회) · 튜토리얼 모달(게임 내부, 외부 창·서버 없음) -->
 <div id="tutHint" class="hidden" role="status" aria-live="polite"></div>
 <div id="tutOverlay" class="hidden" aria-hidden="true"><div id="tutBox" role="dialog" aria-modal="true" aria-labelledby="tutTitle" aria-describedby="tutBody" tabindex="-1"></div></div>
@@ -250,7 +283,8 @@ const BAL={
   itemPerBattle:2, itemPerRound:1, invMax:5, ballStart:3, itemStart:2, // itemStart: D11 시작 아이템 수
   burnStart:65, // 버닝 타임 진입 표시 턴 (GDD-13 4.11 개정)
   captureAtkFailPct:0.25,
-  statusProb:0.7, // T5-A(D10): 스킬 상태이상 부여 확률 (지속형은 100%, 테스트는 1로 고정)
+  statusProb:0.7, // T5-A(D10): 스킬 상태이상 부여 확률 — 화상·약화 (지속형은 100%, 테스트는 1로 고정)
+  shockProb:0.5, // #96 (v0.4.4 §4): 감전 부여 확률 — 일반 번개 효과기·레거시 비지속형 번개만. 잔류장·레거시 지속형은 100% 유지 (테스트는 statusProb와 함께 1로 고정)
   eventsPerForest:3, // 구역당 최소 개수 (3~4개 무작위 — #12)
   ballMax:3, nextBuffPct:0.15, // #12: 몬스터볼 상한·일시버프(다음 전투 공격 +15%)
   enemyCapProb:0.7, // #12: 적 하수인 포획 성공률
@@ -259,7 +293,13 @@ const BAL={
   enemyCapHp:70, // #20: 전투 중 적 하수인 포획(finishByCapture) 예비 하수인 시작 HP (maxHP 100 유지) — 숲 공용 포획(tryCapture)은 100/100
   itemHealPct:0.20,
   aiDelay:650, simDelay:60, aiEps:0.08,
-  aiStrongBudgetMs:120, aiStrongTopK:14, aiStrongReplyCap:36 // #21 5단: 판단 시간 상한·2-ply 후보 상한·상대 응수 상한
+  aiStrongBudgetMs:120, aiStrongTopK:14, aiStrongReplyCap:36, // #21 5단: 판단 시간 상한·2-ply 후보 상한·상대 응수 상한
+  healPostPct:0.05, // #106 (T2, CJ 최종): 회복 자세 — 각 플레이어 턴 종료마다 최대 HP 5% (나·상대 한 쌍 = 10%), 상한 maxHp, 정수 반올림
+  /* #106 연출 시간(ms) — 계약 3.4 고정 상수. 모든 연출 시간은 이 표 한 곳에서만 읽는다. 규칙·난수와 무관한 표시 계층 전용이며
+     헤드리스·sim(fxLive() false)에서는 전부 0 으로 취급된다. autoEnd: 자동 턴 종료 발화(4.6) 스위치 — 헤드리스 하네스는 기존 회귀 호환을 위해 끄고 전용 테스트에서 켠다 */
+  fx:{turnBanner:2000,contactBanner:2000,explosion:2000,trapFx:2000,countStep:1000,roundBanner:2000,skillFx:2000,damageFx:2000,itemFx:2000,
+      captureFx:2000,fleeFx:2000,resultBanner:2500,judgeBanner:2000,pushBanner:2000,roundEndFx:1000,msgStep:600,autoEndGrace:1000,watchdog:1000,autoEnd:true,
+      barStep:600} // 5.5 HP·방어막 바 너비 전환 시간(= CSS .hpbar>div/.shbar>div transition .6s). 방어막이 먼저 줄고 HP 바는 barStep 뒤에 시작해 둘 다 damageFx 안에서 끝난다
 };
 /* ===== #21 시드 가능한 RNG — 게임 로직의 모든 난수는 rand()를 경유. setSeed(n)로 결정적 재현, setSeed(null)로 Math.random 복귀 ===== */
 let RNG=null; // null → Math.random (테스트 하네스의 Math.random 오버라이드와 호환)
@@ -283,19 +323,19 @@ const SKILL_KO={fire:"화염탄",water:"물대포",grass:"넝쿨 흡수",lightni
 const SKILL_ATK_BASE=22; // 위력 스케일 기준: 최종 위력 = 기술 위력 × (종 atk / 22), 사사오입
 const SKIND_KO={attack:"공격기",support:"보조기",sig:"시그니처"};
 const SKILLS={
-  // 속성 공격기 — tier: stable(안정)/effect(효과)/heavy(고위력)
-  fire_stable:{ko:"화염탄",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  fire_effect:{ko:"잔불 표식",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 화상 2R"},
-  fire_heavy:{ko:"폭염 강타",kind:"attack",cd:3,pow:38,desc:"고위력 공격기"},
-  water_stable:{ko:"물대포",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  water_effect:{ko:"침식 수류",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 약화 2회"},
-  water_heavy:{ko:"쇄도 파도",kind:"attack",cd:3,pow:32,bonusVsShield:6,desc:"대상 보호막 보유 시 +6"},
-  grass_stable:{ko:"덩굴 채찍",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  grass_effect:{ko:"흡수 새싹",kind:"attack",cd:2,pow:20,drainPct:0.4,desc:"실HP 피해의 40% 회복"},
-  grass_heavy:{ko:"가시 폭발",kind:"attack",cd:3,pow:34,selfShieldPct:0.10,desc:"자기 최대 HP 10% 보호막"},
-  lightning_stable:{ko:"전기탄",kind:"attack",cd:0,pow:26,desc:"안정 공격기"},
-  lightning_effect:{ko:"감전 침",kind:"attack",cd:2,pow:22,status:true,desc:"70% 확률 감전(후공 1회)"},
-  lightning_heavy:{ko:"연쇄 번개",kind:"attack",cd:3,pow:34,bonusVsStatus:6,desc:"대상 상태이상 시 +6"},
+  // 속성 공격기 — tier: stable(안정)/effect(효과)/heavy(고위력) · el: 기술 속성 (#92 v0.4.4 §2.4 — 공격 상성·상태 종류·이펙트·전투 AI 판단은 기술 속성, 방어 상성은 본체 속성)
+  fire_stable:{ko:"화염탄",kind:"attack",el:"fire",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
+  fire_effect:{ko:"잔불 표식",kind:"attack",el:"fire",tier:"effect",cd:2,pow:22,status:true,desc:"70% 확률 화상 2R"},
+  fire_heavy:{ko:"폭염 강타",kind:"attack",el:"fire",tier:"heavy",cd:3,pow:38,desc:"고위력 공격기"},
+  water_stable:{ko:"물대포",kind:"attack",el:"water",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
+  water_effect:{ko:"침식 수류",kind:"attack",el:"water",tier:"effect",cd:2,pow:22,status:true,desc:"70% 확률 약화 2회"},
+  water_heavy:{ko:"쇄도 파도",kind:"attack",el:"water",tier:"heavy",cd:3,pow:32,bonusVsShield:6,desc:"대상 보호막 보유 시 +6"},
+  grass_stable:{ko:"덩굴 채찍",kind:"attack",el:"grass",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
+  grass_effect:{ko:"흡수 새싹",kind:"attack",el:"grass",tier:"effect",cd:2,pow:20,drainPct:0.4,desc:"실HP 피해의 40% 회복"},
+  grass_heavy:{ko:"가시 폭발",kind:"attack",el:"grass",tier:"heavy",cd:3,pow:34,selfShieldPct:0.10,desc:"자기 최대 HP 10% 보호막"},
+  lightning_stable:{ko:"전기탄",kind:"attack",el:"lightning",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
+  lightning_effect:{ko:"감전 침",kind:"attack",el:"lightning",tier:"effect",cd:2,pow:22,status:true,desc:"50% 확률 감전(후공 1회)"},
+  lightning_heavy:{ko:"연쇄 번개",kind:"attack",el:"lightning",tier:"heavy",cd:3,pow:34,bonusVsStatus:6,desc:"대상 상태이상 시 +6"},
   // 공용 보조기 6종
   sup_heal:{ko:"응급 치유",kind:"support",cd:3,healPct:0.20,desc:"자기 HP 20% 회복"},
   sup_guard:{ko:"수호 자세",kind:"support",cd:3,shieldPct:0.18,desc:"최대 HP 18% 보호막"},
@@ -305,7 +345,7 @@ const SKILLS={
   sup_evade:{ko:"회피 자세",kind:"support",cd:3,dmgCut:0.25,desc:"다음 피격 25% 감소"},
   // 시그니처 5종 (아키타입별)
   sig_std:{ko:"전술 연계",kind:"sig",cd:3,pow:30,coolAttack:true,desc:"다른 속성 공격기 1개 쿨 -1"},
-  sig_atk:{ko:"결정타",kind:"sig",cd:4,pow:44,selfVuln:0.15,desc:"사용 후 다음 피격 피해 +15%"},
+  sig_atk:{ko:"결정타",kind:"sig",cd:4,pow:40,selfVuln:0.15,desc:"사용 후 다음 피격 피해 +15%"},
   sig_def:{ko:"불굴 진형",kind:"sig",cd:4,shieldPct:0.22,dmgCut:0.15,desc:"22% 보호막 + 다음 피격 15% 감소"},
   sig_swift:{ko:"급속 순환",kind:"sig",cd:2,pow:22,coolAttackLongest:true,desc:"남은 쿨 최장 공격기 쿨 -1"},
   sig_sustain:{ko:"잔류장",kind:"sig",cd:3,pow:18,statusSelf:true,desc:"자기 속성 상태효과 부여 (100%)"}
@@ -320,21 +360,44 @@ const ARCH_TMPL={
 };
 function archSkills(arch,el){return ARCH_TMPL[arch].map(t=>(t==="stable"||t==="effect"||t==="heavy")?el+"_"+t:t);}
 function slotPow(f,sk){return Math.round(sk.pow*f.atk/SKILL_ATK_BASE);} // 위력 스케일 (사사오입)
+/* #92 기술 속성 판정 — 공격기(el 보유)는 기술 속성, 기본 공격·시그니처·보조기·레거시 경로는 본체 속성 그대로 */
+const SKILL_TIER_KO={stable:"안정",effect:"효과",heavy:"고위력"};
+function atkElOf(f,sk){return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element;}
+function skillNameKo(sid,bodyEl){const sk=SKILLS[sid]; return (sk.el&&bodyEl&&sk.el!==bodyEl)?`${ELEM_EMO[sk.el]}${sk.ko}`:sk.ko;} // 본체와 다른 속성의 공격기는 속성 이모지를 앞에 붙여 구분 (소유자 화면 전용)
+/* #92 탐색 보상 — 속성 교차 공격기 후보: 본체와 다른 3속성 × {안정·효과·고위력} 9종 중 이미 장착한 기술 제외 (순서 고정 → 공유 시드 rand 1회로 결정) */
+function recruitCandidates(p){
+  const have=new Set(p.skills||[]);
+  const out=[];
+  for(const el of ELEMS){ if(el===p.element) continue;
+    for(const tier of ["stable","effect","heavy"]){ const id=el+"_"+tier; if(!have.has(id)) out.push(id); } }
+  return out;
+}
+/* #92 AI 교체 정책 (v0.4.4 §2.7): ① 방어형·지속형은 효과기 슬롯을 교체 후보에서 제외 ② 남은 슬롯이 없으면 유지
+   ③ 남은 슬롯 중 위력이 가장 낮은 슬롯(동률은 앞 슬롯)을 고르고 후보 위력 ≥ 그 슬롯 위력이면 교체, 아니면 유지. 난수 미소비(결정적) */
+function aiRecruitSlot(p,alt){
+  const a=archOf(p), keepEffect=(a==="def"||a==="sustain");
+  let pick=-1;
+  for(const i of [0,1]){ const sk=SKILLS[p.skills[i]]; if(!sk||sk.kind!=="attack") continue;
+    if(keepEffect&&sk.tier==="effect") continue;
+    if(pick<0||sk.pow<SKILLS[p.skills[pick]].pow) pick=i; }
+  if(pick<0) return -1;
+  return SKILLS[alt].pow>=SKILLS[p.skills[pick]].pow?pick:-1;
+}
 const ITEMS={potion:{ko:"회복약",desc:"HP 20% 회복"}, cool:{ko:"쿨링수",desc:"스킬 쿨타임 초기화"}, cure:{ko:"해독제",desc:"상태이상 해제"}};
 /* 하수인 로스터 20종 — 아키타입 5종(표준·공격·방어·속공·지속) × 속성 4종 (GDD-13 4.2 개정, T5-B) */
 const ARCH_KO={std:"표준",atk:"공격",def:"방어",swift:"속공",sustain:"지속"};
 const ROSTER=[
   {id:"M-F1",name:"새끼 화룡",element:"fire",arch:"std",hp:100,atk:22,skill:35,cd:2},
-  {id:"M-F2",name:"화염 투사",element:"fire",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-F2",name:"화염 투사",element:"fire",arch:"atk",hp:90,atk:25,skill:40,cd:3},
   {id:"M-F3",name:"용암 거북",element:"fire",arch:"def",hp:120,atk:18,skill:30,cd:2},
   {id:"M-W1",name:"물방울 요정",element:"water",arch:"std",hp:100,atk:22,skill:35,cd:2},
-  {id:"M-W2",name:"심해 사냥꾼",element:"water",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-W2",name:"심해 사냥꾼",element:"water",arch:"atk",hp:90,atk:25,skill:40,cd:3},
   {id:"M-W3",name:"산호 수호자",element:"water",arch:"def",hp:120,atk:18,skill:30,cd:2},
   {id:"M-G1",name:"새싹 파수꾼",element:"grass",arch:"std",hp:100,atk:22,skill:35,cd:2},
-  {id:"M-G2",name:"가시 덩굴",element:"grass",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-G2",name:"가시 덩굴",element:"grass",arch:"atk",hp:90,atk:25,skill:40,cd:3},
   {id:"M-G3",name:"고목 수호자",element:"grass",arch:"def",hp:120,atk:18,skill:30,cd:2},
   {id:"M-L1",name:"스파크",element:"lightning",arch:"std",hp:100,atk:22,skill:35,cd:2},
-  {id:"M-L2",name:"뇌격수",element:"lightning",arch:"atk",hp:90,atk:26,skill:40,cd:3},
+  {id:"M-L2",name:"뇌격수",element:"lightning",arch:"atk",hp:90,atk:25,skill:40,cd:3},
   {id:"M-L3",name:"피뢰 골렘",element:"lightning",arch:"def",hp:120,atk:18,skill:30,cd:2},
   {id:"M-F4",name:"불티 정령",element:"fire",arch:"swift",hp:85,atk:24,skill:30,cd:1},
   {id:"M-W4",name:"안개 무희",element:"water",arch:"swift",hp:85,atk:24,skill:30,cd:1},
@@ -355,10 +418,22 @@ const ART_DIRS=ROSTER.map(r=>r.element+"_"+r.arch);       // 20종 허용 목록
 const ART_DIR_SET=new Set(ART_DIRS);
 const ART={failed:new Set(),loaded:new Set(),preloaded:false,rerender:null};
 function artUrl(dir,file){return ART_BASE+dir+"/"+file;}
-/* 말 → 종 폴더. rosterId 가 없거나(미배정 하수인·포획/예비 하수인) 허용 목록 밖이면 null → 안전 폴백 */
+/* 말 → 종 폴더. rosterId 가 없거나(미배정 하수인) 허용 목록 밖이면 null → 안전 폴백. 포획·예비 하수인(cap)은 type 이 없어 여기서는 항상 null — 전투 토큰은 artDirOfFighter (#91) */
 function artDirOf(p){
   if(!p||p.type!=="minion"||!p.rosterId) return null;
   const rd=ROSTER.find(r=>r.id===p.rosterId); if(!rd) return null;
+  const dir=rd.element+"_"+rd.arch;
+  return ART_DIR_SET.has(dir)?dir:null;
+}
+/* #91 전투 토큰용: 지금 실제로 싸우는 전투원(pf)의 종 폴더.
+   본체(pf===piece)는 artDirOf 그대로. 대리 출전(포획·예비 하수인)은 pf 가 정확히 그 말의 cap 객체일 때만, cap 의 표시 전용 외형 정체 artRosterId 가
+   허용 목록(ROSTER 20종)에 있고 그 종의 속성이 cap 의 표시 속성과 같을 때만 폴더를 돌려준다. 그 밖(왕·동료 본체·id 없음·오염·불일치)은 null → 현행 이모지 토큰.
+   artRosterId 는 rosterId 와 다른 이름이라 전투 규칙(archOf→skillParamsOf)이 읽지 않는다 (v0.4.4 규격 1장) — cap 의 수치·기술·RNG 는 공용 규격(BAL.captured) 그대로. */
+function artDirOfFighter(pf,piece){
+  if(!pf||!piece) return null;
+  if(pf===piece) return artDirOf(piece);
+  if(pf!==piece.cap||!pf.artRosterId) return null;
+  const rd=ROSTER.find(r=>r.id===pf.artRosterId); if(!rd||rd.element!==pf.element) return null;
   const dir=rd.element+"_"+rd.arch;
   return ART_DIR_SET.has(dir)?dir:null;
 }
@@ -495,11 +570,13 @@ function pname(p){
 /* #20 플레이어별 핵심 행동 지표 키 — 합산(S.metrics[key])과 byPlayer[p][key]를 met()로 동시 증가시켜 이중 집계 정합 유지 */
 const PLAYER_METRIC_KEYS=["battles","forcedBattles","teleports","searches","minionSearches","captures","captureFails",
   "enemyCapTries","enemyCaptures","enemyCapFails","fleeTries","fleeOks","bombMoves","trapTriggers","kingForestTurns",
-  "battleRefusals","pushes","bombHitsMinion","bombClearedByVip","minionInvades"];
+  "battleRefusals","pushes","bombHitsMinion","bombClearedByVip","minionInvades",
+  "heals","healHp","bombContacts","autoEnds"]; // #106: 회복 지정 횟수·누적 회복량·폭탄 직접 접촉 발동·자동 턴 종료
 const PLAYER_METRIC_KO={battles:"전투",forcedBattles:"강제 전투",teleports:"텔레포트",searches:"탐색",minionSearches:"하수인 탐색",
   captures:"중립 포획 성공",captureFails:"중립 포획 실패",enemyCapTries:"적 포획 시도",enemyCaptures:"적 포획 성공",enemyCapFails:"적 포획 실패",
   fleeTries:"도망 시도",fleeOks:"도망 성공",bombMoves:"폭탄 이동",trapTriggers:"함정 발동(자기 함정)",kingForestTurns:"왕 숲 체류(턴)",
-  battleRefusals:"전투 회피",pushes:"밀어내기",bombHitsMinion:"자기 폭탄에 적 하수인 소모",bombClearedByVip:"자기 폭탄 VIP 제거",minionInvades:"적진 진입"};
+  battleRefusals:"전투 회피",pushes:"밀어내기",bombHitsMinion:"자기 폭탄에 적 하수인 소모",bombClearedByVip:"자기 폭탄 VIP 제거",minionInvades:"적진 진입",
+  heals:"회복 지정",healHp:"회복량",bombContacts:"폭탄 접촉 발동",autoEnds:"자동 턴 종료"};
 function met(p,key,n){ // 합산 + 플레이어별 동시 증가 (p: 행동 주체 플레이어)
   n=n===undefined?1:n;
   if(S.metrics[key]===undefined) S.metrics[key]=0;
@@ -509,6 +586,7 @@ function met(p,key,n){ // 합산 + 플레이어별 동시 증가 (p: 행동 주�
 function newPlayerMetrics(){const o={}; for(const k of PLAYER_METRIC_KEYS) o[k]=0; return o;}
 function newGame(mode,opts){
   opts=opts||{};
+  fxReleaseAll(); // #106: 새 게임 — 이전 게임의 연출 잠금·타이머·대기 콜백 전부 무효 (불변식 2)
   S={
     mode, phase:"setup", setupPlayer:0, current:0, turnCount:0,
     aiLevel:opts.aiLevel||["grade5","grade5"], // #21 플레이어별 AI 난이도 (PVE는 [1]만 의미)
@@ -526,7 +604,8 @@ function newGame(mode,opts){
     tempReveal:new Set(),
     battle:null, winner:null, aiPending:false, aiBattlePending:false, aiVanguard:[null,null],
     aiProfile:[null,null],
-    metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,
+    healTickTurn:-1, btBannerDue:false, contactKind:"move", // #106: 회복 틱 중복 가드(같은 turn 1회) · 버닝 타임 배너 1회 예약 · 접촉 배너 부제 종류
+    metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,heals:0,healHp:0,bombContacts:0,autoEnds:0,
              bombHitsMinion:0,bombClearedByVip:0,kingForestTurns:0,battleRefusals:0,
              attackerWins:0,defenderWins:0,kingStandoff:0,endTurn:0,
              winType:null,btReached:false,btEnterTurn:0,
@@ -556,7 +635,7 @@ function mkPiece(owner,type,element){
     rosterId:null, name:null, cdMax:b.cd||0,
     cd:0, skills:null, cds:[0,0,0,0], revealedSkills:null,
     r:0,c:0, placed:false, revealed:false, alive:true, movedEver:false, movedPreBT:false,
-    immobile:0, cap:null, nextBattleBuff:false,
+    immobile:0, cap:null, nextBattleBuff:false, healing:false, // #106 healing: 회복 자세(지속형) — 소유자·공개 말만 표시, AI 는 미공개 상대 말의 값을 읽지 않는다
     burn:0, burnBy:null, weaken:0, shield:0, absorbed:0, shock:0, shockFresh:false,
     focusCharge:false, vulnMark:false, dmgCut:0};
 }
@@ -591,6 +670,11 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1
 /* ===== 유틸 ===== */
 const isAI=p=>(S.mode==="pve"&&p===1)||S.mode==="sim";
 const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:S.current) : 0); // 온라인: 항상 내 시점 고정
+/* #93 온라인 P2 화면 행 반사 — 표시 전용. 논리 좌표(S·dataset.r/c·클릭·통신·로그)는 불변이고 열 순서도 그대로다.
+   조건은 NET.mode(=netStart 이후)이지 NET.me 단독이 아니다: 사전 배치·매칭 대기는 NET.mode=false 인 로컬 P0 배치(11~13행 = 이미 하단)라
+   matched 로 NET.me=1 이 정해진 뒤에도 뒤집지 않는다 — netStart 의 applyNetSetup 이 P2 말을 1~3행으로 옮긴 뒤부터만 반사한다(이중 반전 방지).
+   종료(over) 화면도 같은 방향을 유지한다. 핫시트 PVP·PVE·sim 은 NET.mode=false 라 무변경. */
+const boardFlipped=()=> NET.mode&&NET.me===1;
 const alivePieces=()=>S.pieces.filter(p=>p.alive&&p.placed);
 const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
 const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
@@ -633,29 +717,147 @@ function escAttr(v){
     .replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/`/g,"&#96;");
 }
 
-/* ===== 렌더 ===== */
 const $=id=>document.getElementById(id);
+
+/* ===== #106 연출 잠금·배너 큐 (turn-flow 계약 3장) =====
+   원칙: 규칙 상태(S) 전이는 종전처럼 동기·즉시. 여기 있는 것은 표시 계층(배너 오버레이·입력 잠금·표시 유지)뿐이며 rand() 를 쓰지 않고
+   규칙 함수를 부르지 않는다 (예외 두 가지 — 행동자 클라이언트의 자동 턴 종료 '입력 액션' 발생, AI 스케줄 idle 콜백 — 은 계약 3.1-3).
+   - 큐: fxPlay(item) 로 항목을 순서대로 재생. 항목이 하나라도 남아 있으면 fxLocked() — 보드 셀·턴바·전투 커맨드·동기 모달 버튼 입력이 무시된다(기권 제외).
+   - 토큰: FX.gen(게임 세대)·항목 id 로 오래된 타이머를 무효화한다 (불변식 1). 새 게임(newGame)에서 fxReleaseAll().
+   - 워치독: 모든 항목은 선언 시간 + BAL.fx.watchdog 안에 반드시 끝난다 (불변식 2). onStart/onEnd 예외도 큐를 막지 못한다.
+   - 시간 0(헤드리스·sim·fxLive() false)이면 항목을 즉시 동기 처리하고 FX.log 에만 기록한다 — 기존 회귀·AI vs AI 결과 불변.
+   - idle: 큐와 전투 메시지 재생이 모두 끝나면 fxIdle() 이 대기 콜백(AI 스케줄·전투 재렌더)을 실행하고 수신 큐(netPump)·자동 턴 종료 평가를 돌린다. */
+const FX={q:[],cur:null,gen:0,seq:0,force:false,idle:[],hold:[],log:[],inputSeq:0,auto:null};
+function fxLive(){ // 실제 DOM 이 있고 사람이 보는 모드일 때만 시간이 흐른다 (sim·헤드리스 스텁은 0). FX.force 는 타이머 테스트 전용 스위치
+  if(FX.force) return true;
+  if(!S||S.mode==="sim") return false;
+  try{ const el=$("fxBanner"); return !!el&&el.nodeType===1; }catch(e){ return false; }
+}
+function fxMs(key){ return fxLive()?(BAL.fx[key]||0):0; }
+function fxLocked(){ return !!FX.cur||FX.q.length>0||MSGPLAYING; }
+function fxSetLockClass(on){ try{ const b=document.body; if(b&&b.classList){ if(on) b.classList.add("fx-lock"); else b.classList.remove("fx-lock"); } }catch(e){} }
+function fxShow(item){
+  fxSetLockClass(true);
+  try{
+    const el=$("fxBanner"); if(!el) return;
+    el.className=(item.kind||"banner")+(item.cls?" "+item.cls:"")+(item.dim===false?" nodim":"");
+    const t=$("fxTitle"), s=$("fxSub"); if(t) t.textContent=item.title||""; if(s) s.textContent=item.sub||"";
+    el.classList.remove("hidden");
+    if(item.cells&&el.nodeType===1) for(const [r,c] of item.cells){ const cell=document.querySelector(`#board .cell[data-r="${r}"][data-c="${c}"]`); if(cell) cell.classList.add(item.cellCls||"fx-boom"); }
+  }catch(e){}
+}
+function fxHide(){
+  fxSetLockClass(false);
+  try{ const el=$("fxBanner"); if(el) el.classList.add("hidden"); }catch(e){}
+}
+/* item: {key, title, sub, kind:"banner"|"count"|"result"|"contact"|"bt"|"boom"|"trap", cls, dim:false→투명, cells:[[r,c]], cellCls, hold:[{piece,r,c}], onStart, onEnd, ms(선택 — 기본은 BAL.fx[key])} */
+function fxPlay(item){
+  const ms=item.ms!==undefined?item.ms:fxMs(item.key);
+  const entry={key:item.key,title:item.title||"",sub:item.sub||"",kind:item.kind||"banner",turn:S?S.turnCount:-1,ms,t:Date.now(),shown:0}; FX.log.push(entry); item._log=entry; // 진단 기록 (테스트·리포트용, 규칙 무관)
+  if(ms<=0){ try{ if(item.onStart) item.onStart(); }catch(e){} try{ if(item.onEnd) item.onEnd(); }catch(e){} return; }
+  FX.q.push(Object.assign({},item,{ms}));
+  if(!FX.cur) fxNext();
+}
+function fxNext(){
+  const item=FX.q.shift();
+  if(!item){ FX.cur=null; FX.hold=[]; fxHide(); fxIdle(); return; }
+  FX.cur=item; const gen=FX.gen, id=++FX.seq; item.id=id; if(item._log) item._log.shown=Date.now();
+  if(item.hold){ FX.hold=item.hold.slice(); try{ renderBoard(); }catch(e){} }
+  fxShow(item);
+  try{ if(item.onStart) item.onStart(); }catch(e){}
+  const done=()=>{
+    if(FX.gen!==gen||!FX.cur||FX.cur.id!==id) return; // 오래된 타이머(새 게임·이미 넘어간 항목)는 무효
+    FX.cur=null;
+    if(item.hold){ FX.hold=[]; try{ if(S&&S.phase!=="menu") renderBoard(); }catch(e){} } // 이 항목의 표시 유지는 onEnd 전에 걷는다 — onEnd 가 새 항목을 시작하면 그 항목의 hold 가 대신 선다
+    try{ if(item.onEnd) item.onEnd(); }catch(e){}
+    if(FX.gen!==gen) return; // onEnd 가 새 게임을 열었다 — 옛 항목의 다음 항목 진행은 새 게임 큐를 건드리지 않는다 (msg_3e9ac3ba0ea9)
+    if(FX.cur) return; // 같은 세대 재진입: onEnd(결과 배너 닫기 → 도망 교환 → 추가 접촉 배너 등)가 이미 새 현재 항목을 시작했다 — 그 항목이 큐를 소유하므로 여기서 fxNext 를 부르면 그 항목이 즉시 버려진다 (Saturn msg_db013b1c24df)
+    fxNext();
+  };
+  setTimeout(done,item.ms);
+  setTimeout(done,item.ms+(BAL.fx.watchdog||1000)); // 하드 데드라인 — 첫 타이머가 어떤 이유로든 못 돌아도 선언 시간 + 1초 안에 푼다
+}
+function fxWhenIdle(fn){ if(!fxLocked()) fn(); else FX.idle.push(fn); }
+function fxIdle(){ // 큐·메시지 재생이 모두 끝났을 때 한 번 — 대기 콜백 → 수신 큐 → 자동 턴 종료 평가
+  if(fxLocked()) return;
+  const gen=FX.gen, cbs=FX.idle.splice(0);
+  for(let i=0;i<cbs.length;i++){ try{ cbs[i](); }catch(e){}
+    if(FX.gen!==gen) return; // 콜백이 새 게임(fxReleaseAll)을 열었다 — 옛 세대의 남은 콜백은 실행도 재적재도 하지 않는다 (PD 리뷰 msg_3e9ac3ba0ea9)
+    if(fxLocked()){ FX.idle.unshift(...cbs.slice(i+1)); return; } } // 콜백이 새 연출을 시작하면 남은 콜백은 (순서 유지) 다음 idle 로 넘긴다 — PD 리뷰 msg_41fdc516c9ba
+  try{ if(NET.mode) netPump(); }catch(e){}
+  try{ autoEndCheck(); }catch(e){}
+}
+function fxReleaseAll(){ FX.gen++; FX.q.length=0; FX.cur=null; FX.idle.length=0; FX.hold=[]; FX.auto=null; FX.log.length=0; MSGQ.length=0; MSGPLAYING=false; MSGAFTER=null; fxHide(); }
+/* 뷰어가 지금 턴(또는 전투 행동)의 행동자인가 — 거울 문구(4.7) 기준. 핫시트·sim 은 항상 행동자 시점 */
+function viewerIsOwner(p){ if(NET.mode) return p===NET.me; if(S.mode==="pve") return p===0; return true; }
+function fxTurnLabel(p,battle){ // "나의 턴!/상대 턴!" (PVE·온라인) · 핫시트 전투 라운드는 "P1 턴!/P2 턴!", 보드는 기기를 받은 현재 플레이어 시점 = "나의 턴!"
+  if(S.mode==="pvp"&&!NET.mode) return battle?`P${p+1} 턴!`:"나의 턴!";
+  return viewerIsOwner(p)?"나의 턴!":"상대 턴!";
+}
+/* 4.1 턴 시작 배너 (+ 4.1 버닝 타임 배너 1회) — startTurn 직후, 핫시트는 handoff 확인 뒤 호출된다 */
+function turnBannerFx(){
+  if(S.phase!=="play"||S.mode==="sim") return;
+  if(S.btBannerDue){ S.btBannerDue=false; fxPlay({key:"turnBanner",kind:"bt",title:"버닝타임입니다! 2칸씩 이동 가능합니다",sub:"직선 2칸 이동 강화 (폭탄 포함 · 함정 제외 · 적진·적 숲은 1칸)"}); }
+  const mine=(S.mode==="pvp"&&!NET.mode)||viewerIsOwner(S.current);
+  fxPlay({key:"turnBanner",kind:"banner",cls:mine?"mine":"",title:fxTurnLabel(S.current,false),
+    sub:mine?"말 이동 / 수풀 탐색 / 말 회복 행동 중 하나를 실행하세요!":"상대가 행동을 선택하고 있습니다"});
+}
+/* 4.3.2 접촉 상황 문구 — 행동자 화면 / 4.7 거울(상대 화면). 현행 로그가 이미 공개하는 사실만 담는다 */
+function contactText(att,def,mine){
+  const vip=x=>x.type==="ally"||x.type==="king";
+  const dName=TYPE_KO[def.type]||"말";
+  if(att.type==="bomb"){
+    if(def.type==="minion") return mine?"폭탄이 터져 상대 하수인과 함께 제거됩니다.":"상대 폭탄이 터져 내 하수인이 제거됩니다.";
+    if(vip(def)) return mine?"상대 말이 내 폭탄을 제거하였습니다.":"내 말이 상대 폭탄을 제거하였습니다.";
+    return "아무 일도 일어나지 않습니다.";
+  }
+  if(def.type==="bomb"){
+    if(att.type==="minion") return mine?"폭탄이 터져 내 하수인이 제거됩니다.":"내 폭탄이 터져 상대 하수인이 제거됩니다.";
+    return mine?"상대 폭탄이 터졌지만 내 말은 생존했습니다.":"상대 말이 내 폭탄을 제거하였습니다.";
+  }
+  if(def.type==="trap"){
+    const a=att.type==="minion"?"하수인":"말";
+    return mine?`함정에 걸려 내 ${a}의 이동이 2턴간 제한됩니다.`:`상대 ${a}이 내 함정에 걸렸습니다! (정체 공개 · 2턴 이동 불가)`;
+  }
+  if(mine) return vip(att)?"배틀을 시작합니다. (출전을 선택하세요)":"배틀을 시작합니다.";
+  return `상대가 내 ${dName}에게 배틀을 걸었습니다.`;
+}
+function contactBannerFx(att,sub){ // "⚠️ 상대 말 접촉!" (거울: 내 말 접촉!) — 추가 접촉·숲 충돌 부제 포함
+  const mine=viewerIsOwner(att.owner);
+  const again=S.contactKind==="again";
+  const title=mine?(again?"⚠️ 상대 말 추가 접촉!":"⚠️ 상대 말 접촉!"):(again?"⚠️ 내 말 추가 접촉!":"⚠️ 내 말 접촉!");
+  const base=S.contactKind==="collision"?"이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다":(S.contactKind==="tele"?"텔레포트로 새로 인접했습니다":"");
+  fxPlay({key:"contactBanner",kind:"contact",title,sub:[base,sub||""].filter(Boolean).join("\n")});
+}
+function situationFx(att,def){ fxPlay({key:"contactBanner",kind:"contact",title:viewerIsOwner(att.owner)?"⚠️ 상대 말 접촉!":"⚠️ 내 말 접촉!",sub:contactText(att,def,viewerIsOwner(att.owner))}); }
+
+/* ===== 렌더 ===== */
 function render(){
   $("phaseLabel").textContent = S.phase==="menu" ? ""
     : S.phase==="setup" ? `— 배치: ${pname(S.setupPlayer)}`
     : S.phase==="play" ? `— ${pname(S.current)} 턴 ${S.turnCount+1}${isBurning()?" 🔥BT":""}` : S.phase==="over"?"— 종료":"";
   renderBoard(); renderSide(); renderTurnBar(); renderMetrics();
+  try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
 }
 function renderBoard(){
   const bd=$("board"); bd.innerHTML="";
   const viewer = S.phase==="menu"?0 : (S.mode==="sim"||S.phase==="over")?2 : humanViewer(); // #11 종료 리빌: over 시 전체 공개 시점
-  for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++){
+  const flip=boardFlipped(); bd.dataset.flip=flip?"1":"0"; // #93 표시 메타데이터만 — 화면 행 i 에 논리 행 r=14−i (열 유지)
+  for(let i=1;i<=ROWS;i++) for(let c=1;c<=COLS;c++){
+    const r=flip?ROWS+1-i:i;
     const cell=document.createElement("div");
     cell.className="cell"+(r<=3?" zA":r<=5?" forest":r<=8?"":r<=10?" forest":" zB");
     cell.dataset.r=r; cell.dataset.c=c;
     if(S.phase!=="menu"){
       const ev=S.events.find(e=>e.r===r&&e.c===c&&!e.consumed);
       if(ev&&viewer!==2&&S.traces[viewer]&&S.traces[viewer].has(ev.r+"_"+ev.c)){const t=document.createElement("span");t.className="trace";t.textContent="🔍";cell.appendChild(t);}
-      const p=at(r,c);
-      if(p&&(viewer===2||visibleTo(viewer,p))){
+      const live=at(r,c), ghost=!live&&FX.hold.length?FX.hold.find(h=>h.r===r&&h.c===c):null; // #106 폭발 표시 유지(hold): 제거된 말을 연출이 끝날 때까지 그린다 (공개 이벤트 — 가시성 무관)
+      const p=live||(ghost?ghost.piece:null);
+      if(p&&(ghost||viewer===2||visibleTo(viewer,p))){
         const chip=document.createElement("div");
         const known = viewer===2||p.owner===viewer||p.revealed;
-        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"");
+        const healVis=!!p.healing&&(viewer===2||p.owner===viewer||p.revealed); // #106 H8: 회복 이펙트는 소유자 화면 항상, 상대 화면은 공개 말만
+        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"")+(healVis?" healing":"")+(ghost?" fx-ghost":"");
         const g=!known&&S.phase==="play"&&viewer!==2?memoOpt(S.memos[viewer][p.id]):null; // #36 뷰어 전용 추측 — 실제 공개(known)면 실제 렌더 우선
         // #89 확정 말은 종 아이콘(하수인) 또는 같은 메모 이모지 + 정보 행. 미공개 말은 현행 그대로 ? 또는 뷰어 자신의 추측 이모지만 — 종 아이콘·경로를 만들지 않는다
         chip.innerHTML = known
@@ -731,6 +933,7 @@ function renderTurnBar(){
   const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
   mk(S.teleport?"텔레포트 취소":`텔레포트 ${BAL.teleMax-S.teleUsed[S.current]}회`,()=>netAction({t:"tele"}),teleDis); // #14 스왑형·2회 제한
   if(!teleDis&&!aiTurn&&S.mode!=="sim") tutHint("teleport"); // #26 사람 턴에 텔레포트가 처음 가능해질 때 1회 도움말 (게임 상태 무변경)
+  mk("🌿 회복",()=>netAction({t:"heal",id:sel?sel.id:null}),!(sel&&canHeal(sel))); // #106 T2 회복 주 행동 — 자기 말 선택·HP<최대·하수인/동료/왕
   const forced=S.forcedTargets&&S.forcedTargets.length>0;
   mk("턴 종료",()=>netAction({t:"endTurn"}),forced,"primary");
   mk("기권",confirmResign,false,"danger");
@@ -778,13 +981,13 @@ function renderSide(){
   <div class="row">${S.inv[p].map(i=>`<span class="badge">${ITEMS[i].ko}</span>`).join("")||"<small>아이템 없음</small>"}</div>`;
   if(S.selected&&!S.selected.tray&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대가 선택한 말 정보(HP 등) 비노출
     const s=S.selected;
-    h+=`<h2>선택: ${idLabel(p,s)}</h2><div class="status">HP ${s.hp}/${s.maxHp}${s.immobile>0?` · 이동 불가 ${s.immobile}턴`:""}${s.cap?` · 포획 하수인(${ELEM_KO[s.cap.element]}) HP ${s.cap.hp}/${s.cap.maxHp}`:""}${s.nextBattleBuff?` · ✨다음 전투 공격+${pct(BAL.nextBuffPct)}`:""}</div>
-    ${s.skills?`<div class="status">${s.skills.map((id,i)=>SKILLS[id].ko+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
+    h+=`<h2>선택: ${idLabel(p,s)}</h2><div class="status">HP ${s.hp}/${s.maxHp}${s.immobile>0?` · 이동 불가 ${s.immobile}턴`:""}${s.cap?` · 포획 하수인(${ELEM_KO[s.cap.element]}) HP ${s.cap.hp}/${s.cap.maxHp}`:""}${s.nextBattleBuff?` · ✨다음 전투 공격+${pct(BAL.nextBuffPct)}`:""}${s.healing?` · 🌿회복 자세(턴마다 +${Math.round(s.maxHp*BAL.healPostPct)})`:""}</div>
+    ${s.skills?`<div class="status">${s.skills.map((id,i)=>skillNameKo(id,s.element)+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
     <small>이동: 파란 칸 · 전투: 빨간 칸 클릭</small>`;
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
   if(S.teleport&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
   if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
-  if(!isAI(S.current)){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기
+  if(!isAI(S.current)||NET.mode||S.mode==="pve"){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기 · #94 온라인·PVE는 상대 턴·AI 턴에도 표시(메모 편집 가능)
     const mm=Object.entries(S.memos[p]).map(([id,k])=>{
       const x=S.pieces.find(z=>z.id===Number(id)), o=memoOpt(k);
       return x&&x.alive&&x.placed&&o?`<div class="status"><span class="guess" aria-hidden="true">${o.emoji}</span> ${x.r}행 ${x.c}열 — ${o.ko} 추측${x.revealed?` (공개됨: ${idLabel(p,x)})`:""}</div>`:"";
@@ -877,8 +1080,12 @@ function beginPlay(){
   S.metrics.firstPlayer=S.current; // #20 선공 저장
   addLog(`무작위 선공: ${pname(S.current)}`,"sys");
   startTurn();
-  if(S.mode==="pvp") handoff(pname(S.current)+" 턴 시작", render);
-  else { render(); if(isAI(S.current)) aiSchedule(); }
+  afterStartTurn();
+}
+/* #106 턴 시작 공통 후처리: 핫시트는 기기 넘김 확인 뒤, 그 외는 즉시 턴 배너(+버닝 타임 배너 1회) → 렌더 → AI 스케줄(연출 idle 후) */
+function afterStartTurn(){
+  if(S.mode==="pvp"&&!NET.mode) handoff(pname(S.current)+" 턴 시작", ()=>{ turnBannerFx(); render(); });
+  else { turnBannerFx(); render(); if(isAI(S.current)) aiSchedule(); }
 }
 
 /* ===== 배치 ===== */
@@ -955,9 +1162,40 @@ function startTurn(){
   addLog(tmsg,"sys"); showToast(tmsg,"sys");
   if(isBurning()&&!S.metrics.btReached){ // BT 진입 1회 고지
     S.metrics.btReached=true; S.metrics.btEnterTurn=S.turnCount+1;
+    S.btBannerDue=true; // #106 T9: "버닝타임입니다!" 배너를 턴 배너보다 먼저 1회 (turnBannerFx 가 소비 — 표시 전용·송신 없음)
     const bt="🔥 버닝 타임! 직선 2칸 이동 강화 개시 (폭탄 포함·함정 제외)";
     addLog(bt,"imp"); showToast(bt);
     if(S.mode!=="sim") tutHint("burning"); // #26 버닝 타임 첫 진입 1회 도움말 (게임 상태 무변경)
+  }
+}
+/* ===== #106 T2 회복 주 행동 (CJ 최종 2026-09-08) =====
+   지정 = 주 행동 소모, 자세는 재지정 없이 지속. 틱은 전역 플레이어 턴 종료(endTurn) 한 곳에서 양 플레이어의 자세 말 전부에 +round(maxHp×5%),
+   상한 maxHp, 같은 turn 이중 틱 방지(S.healTickTurn). 지정 시점 즉시 회복 없음. 그 말의 이동·탐색·텔레포트·전투(공격·방어·폭탄·함정·밀어내기)·도망 교환은 자세를 해제한다.
+   만피 도달은 자세를 풀지 않는다(회복량 0). 대상은 보드의 하수인·동료·왕(예비·폭탄·함정 제외), 지정 가능 조건은 현재 HP < 최대 HP. rand() 소비 없음 */
+function healTargetOk(p){ return !!p&&p.alive&&p.placed&&(p.type==="minion"||p.type==="ally"||p.type==="king"); }
+function canHeal(p){
+  if(S.phase!=="play"||S.mainUsed||!p||p.owner!==S.current||!healTargetOk(p)) return false;
+  if(S.teleport||(S.forcedTargets&&S.forcedTargets.length)) return false;
+  return p.hp<p.maxHp&&!p.healing;
+}
+function healVisibleTo(viewer,p){ return viewer===2||p.owner===viewer||p.revealed; } // H8: 미공개 상대 말의 회복은 표시·로그에 싣지 않는다
+function doHeal(p){
+  if(!canHeal(p)) return false;
+  S.mainUsed=true; p.healing=true; met(p.owner,"heals"); S.selected=null;
+  const v=humanViewer();
+  if(S.mode==="sim"||healVisibleTo(v,p)){ const m=`🌿 ${idLabel(v,p)} 회복 자세 시작 (턴마다 최대 HP ${pct(BAL.healPostPct)})`; addLog(m,"imp"); if(!isAI(p.owner)) showToast(m); }
+  else addLog("상대가 말 회복 행동을 했습니다.","imp"); // 미공개 말: 대상·위치 비공개 (중립 문구)
+  render();
+  return true;
+}
+function healBreak(p){ if(p&&p.healing){ p.healing=false; const v=humanViewer(); if(S.mode==="sim"||healVisibleTo(v,p)) addLog(`🌿 ${idLabel(v,p)} 회복 자세 해제`); } }
+function healTick(){ // endTurn 에서 turn++ 직전 1회 — 양 플레이어의 자세 말 전부
+  if(S.healTickTurn===S.turnCount) return; S.healTickTurn=S.turnCount;
+  const v=humanViewer();
+  for(const p of alivePieces()){ if(!p.healing||!healTargetOk(p)) continue;
+    const gain=Math.min(Math.round(p.maxHp*BAL.healPostPct),p.maxHp-p.hp);
+    if(gain>0){ p.hp+=gain; met(p.owner,"healHp",gain); }
+    if(S.mode==="sim"||healVisibleTo(v,p)) addLog(gain>0?`🌿 ${idLabel(v,p)} HP +${gain} (회복 자세)`:`🌿 ${idLabel(v,p)} 최대 HP — 회복 자세 유지`);
   }
 }
 function endTurn(){
@@ -971,12 +1209,55 @@ function endTurn(){
   for(const k of alivePieces()) if(k.owner===S.current&&k.type==="king"&&inForest(k)) met(S.current,"kingForestTurns");
   // #20 오탐 제거: 실제 canBattle 가능(보이는 대상·전투 규칙 충족)한 인접 대상이 있었는데 전투하지 않은 경우만 회피로 집계
   if(S.battlesUsed===0 && alivePieces().some(x=>x.owner===S.current&&adjEnemies(x).some(e=>visibleTo(S.current,e)&&canBattle(x,e)))) met(S.current,"battleRefusals");
+  healTick(); // #106 4.2.2: 강제 전투 잔여 확인 → immobile 감소 → 지표 → 회복 틱 → turn++ → 교대
   S.turnCount++;
   if(S.mode==="sim"&&S.turnCount>=BAL.simMaxTurns){gameOver(null,"draw");
     const dmsg=`${BAL.simMaxTurns}턴 도달 — 무승부`; addLog(dmsg,"imp"); showToast(dmsg); render(); return;}
   S.current=1-S.current; startTurn();
-  if(S.mode==="pvp") handoff(pname(S.current)+" 턴 시작", render);
-  else { render(); if(isAI(S.current)) aiSchedule(); }
+  afterStartTurn();
+}
+/* ===== #106 T7 자동 턴 종료 (4.6) — 행동자 클라이언트만 발화하는 '입력 액션'. 조건: 플레이 중·전투 없음·모달/오버레이 없음·텔레포트 선택 아님·
+   강제 대상/queue 없음·주 행동 완료·canBattle 가능한 가시 인접 적 없음·연출 idle. 주 행동 전 특례: 가능한 주 행동이 하나도 없으면 생략을 자동 적용 후 재평가.
+   BAL.fx.autoEndGrace 뒤 발화하며 그 사이 입력(FX.inputSeq)이 있으면 재평가. 수신 측(온라인 비행동자)·AI 턴은 절대 발화하지 않는다 */
+function humanActorNow(){
+  if(!S||S.phase!=="play"||S.battle||isAI(S.current)) return false;
+  if(NET.mode&&(S.current!==NET.me||NET.replaying)) return false;
+  return true;
+}
+function optionalBattleLeft(){ return alivePieces().some(x=>x.owner===S.current&&adjEnemies(x).some(e=>visibleTo(S.current,e)&&canBattle(x,e))); }
+function anyMainActionLeft(){
+  if(S.mainUsed) return false;
+  const me=S.current;
+  for(const p of alivePieces().filter(x=>x.owner===me)){
+    if(canHeal(p)) return true;
+    const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
+    if(ev&&canSearchPiece(p)) return true;
+    if(p.type!=="trap"&&p.immobile===0) for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]) for(const k of (isBurning()?[1,2]:[1])){
+      const r=p.r+dr*k, c=p.c+dc*k; if(r<1||r>ROWS||c<1||c>COLS) continue; if(canMoveTo(p,r,c)) return true; }
+  }
+  if(teleportAvailable(me)&&S.teleUsed[me]<BAL.teleMax&&alivePieces().filter(x=>x.owner===me&&x.immobile===0).length>=2) return true;
+  return false;
+}
+function autoEndReady(){
+  if(!BAL.fx.autoEnd||!humanActorNow()||fxLocked()) return null;
+  if(TUT.open||S.teleport||(S.forcedTargets&&S.forcedTargets.length)||(S.forcedQueue&&S.forcedQueue.length)) return null;
+  try{ if(!$("overlay").classList.contains("hidden")) return null; }catch(e){ return null; }
+  if(!S.mainUsed) return anyMainActionLeft()?null:"skip";
+  return optionalBattleLeft()?null:"end";
+}
+function autoEndCheck(){
+  const what=autoEndReady(); if(!what){ FX.auto=null; return; }
+  if(FX.auto&&FX.auto.turn===S.turnCount&&FX.auto.gen===FX.gen&&FX.auto.what===what) return; // 이미 예약됨
+  const tk={gen:FX.gen,turn:S.turnCount,what,input:FX.inputSeq,game:S}; FX.auto=tk;
+  setTimeout(()=>{
+    if(FX.auto!==tk||FX.gen!==tk.gen||S!==tk.game||S.turnCount!==tk.turn) return; // 오래된 예약
+    FX.auto=null;
+    if(FX.inputSeq!==tk.input){ autoEndCheck(); return; } // 그 사이 입력이 있었으면 재평가
+    if(autoEndReady()!==what) { autoEndCheck(); return; }
+    if(what==="skip"){ showToast("가능한 주 행동이 없습니다 — 주 행동을 생략합니다."); netAction({t:"skipMain"}); return; }
+    showToast("할 수 있는 행동이 없어 턴을 종료합니다.");
+    netAction({t:"endTurn",auto:true}); // auto 표식은 액션 프레임에 실려 양 클라이언트가 같은 지표(autoEnds)를 기록한다
+  }, fxLive()?(BAL.fx.autoEndGrace||0):0);
 }
 function confirmResign(){
   if(S.phase!=="play"||isAI(S.current)) return;
@@ -1003,10 +1284,14 @@ function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell �
     else if(p&&p.owner===S.current&&p.immobile===0){ doTeleportSwap(S.teleport.piece,p); }
     return;
   }
-  if(S.forcedTargets&&S.forcedTargets.length&&p&&S.forcedTargets.includes(p.id)&&S.movedPiece&&canBattle(S.movedPiece,p)){ initBattle(S.movedPiece,p); return; } // T1: 강제 대상 직접 클릭
+  if(p&&forcedPickOk(p)){ initBattle(S.movedPiece,p); return; } // T1: 강제 대상 직접 클릭 (#106: 이동한 말이 폭탄이어도 대상 선택 가능)
   if(p&&p.owner===S.current){S.selected=p; render(); return;}
   const s=S.selected&&!S.selected.tray?S.selected:null;
-  if(p&&p.owner!==S.current&&visibleTo(humanViewer(),p)){
+  /* #104: 상대 말 분기는 행위자(S.current) 시점의 가시성으로 결정한다 — 뷰어(humanViewer) 시점이 아니다.
+     온라인에서 같은 {t:"cell"} 을 상대 클라이언트가 재생할 때 뷰어는 그 말의 주인이라 항상 "보이는" 말이 되어, 행위자에게는 숨은 말(중앙을 넘어
+     내 쪽 숲에 비인접 은신)이 있는 칸으로의 BT 2칸 이동이 행위자 쪽에서는 충돌 처리(경유 칸 정지·일시 공개·강제 전투)되고 상대 쪽에서는 메모 분기로
+     빠져 적용되지 않아 양측 S 가 영구 분기했다. 행위자 클라이언트·핫시트·PVE 는 humanViewer()===S.current 라 동작이 같다. */
+  if(p&&p.owner!==S.current&&visibleTo(S.current,p)){
     if(s&&adj(s,p)&&canBattle(s,p)){ initBattle(s,p); return; } // 전투 대상 지정 경로
     memoModal(p); return; // #11: 그 외 상대 말 클릭 — 추측 메모
   }
@@ -1019,8 +1304,20 @@ function observeMove(p,visBefore){
   const obs=1-p.owner;
   if(visBefore||visibleTo(obs,p)) S.aiSeenMoved[obs].add(p.id);
 }
+/* #106 4.4.2 접촉 적격 (applyForced 후보 산출): 이동·텔레포트·숲 충돌로 새로 인접한 상대. 폭탄은 직접 접촉 시 발동(하수인·동료·왕·폭탄·함정 모두 대상),
+   함정은 여전히 수동, 왕 vs 왕 불가침. 그 밖은 canBattle 규칙(전투 횟수 등) 그대로. 능동 클릭 경로(canBattle)는 폭탄 공격 불가를 유지한다 */
+function contactEligible(att,def){
+  if(att.type==="trap") return false;
+  if(att.type==="bomb") return S.phase==="play"&&att.owner===S.current&&S.battlesUsed<2;
+  return canBattle(att,def);
+}
+function forcedPickOk(def){ // 강제 대상 클릭·AI 이행: 이동한 말이 폭탄이면 canBattle 대신 접촉 적격으로 판정
+  if(!(S.forcedTargets&&S.forcedTargets.length&&S.movedPiece&&S.forcedTargets.includes(def.id))) return false;
+  return S.movedPiece.type==="bomb"?contactEligible(S.movedPiece,def):canBattle(S.movedPiece,def);
+}
 function doMove(p,r,c){
-  S.mainUsed=true; p.movedEver=true;
+  S.mainUsed=true; p.movedEver=true; healBreak(p); // #106: 이동은 회복 자세 해제 (숲 충돌 정지 포함)
+  S.contactKind="move";
   if(!isBurning()) p.movedPreBT=true; // 실제 이동 이력(엔진 내부 사실) — AI 추론은 공개 관측 기억(aiSeenMoved)만 사용 (#21 누수 제거)
   if(p.type==="bomb") met(p.owner,"bombMoves"); // #20 폭탄 이동 카운터
   const visBefore=visibleTo(1-p.owner,p); // #21 이동 전 관측 가능 여부
@@ -1034,7 +1331,7 @@ function doMove(p,r,c){
   if(hidden){ // 숲 충돌: 직전 칸 정지 + 양측 일시 공개
     S.tempReveal.add(hidden.id); S.tempReveal.add(p.id);
     observeMove(p,visBefore); // 충돌 공개 → 이동 목격
-    S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
+    S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id); S.contactKind="collision";
     const cmsg=`${pname(p.owner)} 이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다.`;
     addLog(cmsg,"imp"); showToast(cmsg);
     if(p.type==="minion"&&zoneOf(1-p.owner).includes(p.r)&&!zoneOf(1-p.owner).includes(pr)) met(p.owner,"minionInvades");
@@ -1056,13 +1353,14 @@ function doMove(p,r,c){
 /* T1 강제 전투: 이동·텔레포트로 새로 인접한 적과는 반드시 전투 (canBattle 불가 조합 제외 — 왕vs왕 등, 폭탄·함정 포함) */
 function applyForced(p,beforeAdj,list){
   S.forcedTargets=[];
-  if(!list) list=adjEnemies(p).filter(e=>!beforeAdj.has(e.id)&&canBattle(p,e)).map(e=>e.id);
+  if(!list) list=adjEnemies(p).filter(e=>!beforeAdj.has(e.id)&&contactEligible(p,e)).map(e=>e.id); // #106: 폭탄 직접 접촉 포함
   if(!list.length) return false;
   S.forcedTargets=list;
   if(list.length===1){
     const def=alivePieces().find(e=>e.id===list[0]);
-    const fmsg="⚔️ 신규 인접 — 강제 전투!";
+    const fmsg=p.type==="bomb"?"💣 신규 인접 — 폭탄 접촉 발동!":"⚔️ 신규 인접 — 강제 전투!";
     addLog(fmsg,"imp"); showToast(fmsg);
+    contactBannerFx(p,null); // #106 4.3.1: 접촉 배너 (상황 문구는 initBattle 이 이어 붙인다)
     render();
     if(!isAI(p.owner)&&def) initBattle(p,def); // 사람: 확인 없이 즉시 개시 (왕·동료는 기존 모달 흐름) · AI: aiStep이 최우선 개시
     return true;
@@ -1070,6 +1368,7 @@ function applyForced(p,beforeAdj,list){
   S.selected=p;
   const fmsg=`⚔️ 강제 전투 — 신규 인접 대상 ${list.length}개 중 하나를 선택하세요.`;
   addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
+  contactBannerFx(p,viewerIsOwner(p.owner)?"여러 말과 접촉하였습니다. 어떤 말을 선택하시겠습니까?":"상대가 접촉한 말 중 하나를 고르고 있습니다"); // 상황 1 — 배너 뒤 잠금 해제, 클릭 선택(시간 제한 없음)
   render();
   return true;
 }
@@ -1080,7 +1379,7 @@ function teleportAvailable(p){
 }
 /* #18 강제 전투 적격 (연쇄 규칙 무관 — 텔레포트 강제 전투는 첫 전투 승리 조건 면제): 폭탄·함정은 공격 불가, 왕 vs 왕 불가침 */
 function forcedEligible(att,def){
-  if(att.type==="bomb"||att.type==="trap") return false;
+  if(att.type==="trap") return false; // #106: 폭탄은 텔레포트 도착·숲 충돌로 새로 인접해도 발동한다 (스왑 사전 차단 계산에도 포함)
   if(att.type==="king"&&def.type==="king") return false;
   return true;
 }
@@ -1107,6 +1406,7 @@ function doTeleportSwap(a,b){
   }
   const beforeA=new Set(adjEnemies(a).map(e=>e.id)), beforeB=new Set(adjEnemies(b).map(e=>e.id));
   S.mainUsed=true; met(S.current,"teleports"); S.teleUsed[S.current]++; S.teleport=null; S.selected=null;
+  healBreak(a); healBreak(b); S.contactKind="tele"; // #106: 텔레포트 교환은 두 말의 회복 자세 해제
   const ar=a.r, ac=a.c; a.r=b.r; a.c=b.c; b.r=ar; b.c=ac; // movedEver/movedPreBT 미설정 — 걷는 이동이 아님 (폭탄 재배치 위장 유지)
   if(S.mode==="pve"&&a.owner===0){addLog(`🌀 텔레포트 스왑: ${idLabel(0,a)} ↔ ${idLabel(0,b)}`,"imp"); showToast("🌀 텔레포트 완료");}
   else {addLog("상대가 텔레포트를 사용했습니다","imp"); showToast("상대가 텔레포트를 사용했습니다");} // 대상·위치 비공개 (중립 문구)
@@ -1142,6 +1442,7 @@ function drainForcedQueue(autoStart){
     S.forcedTargets=list; S.selected=p;
     const fmsg=list.length===1?"⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! (빨간 표시 대상을 클릭)":`⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! 대상 ${list.length}개 중 하나를 선택하세요.`;
     addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
+    S.contactKind="again"; contactBannerFx(p,viewerIsOwner(p.owner)?"남은 말의 접촉 대상(빨간 표시)을 클릭하세요":"상대가 남은 접촉 대상을 고르고 있습니다"); // #106 4.5 "추가 접촉" 배너 (보드 복귀 뒤 순서)
     return true;
   }
   return false;
@@ -1181,7 +1482,7 @@ function canSearchPiece(p){return !!p&&(p.type==="minion"||p.type==="ally"||p.ty
 function doSearch(p,ev){
   if(!canSearchPiece(p)){ if(!isAI(p.owner)) showToast("폭탄·함정은 탐색할 수 없습니다."); return false; }
   if(!ev||ev.consumed||ev.r!==p.r||ev.c!==p.c) return false;
-  S.mainUsed=true; ev.consumed=true; met(p.owner,"searches");
+  S.mainUsed=true; ev.consumed=true; met(p.owner,"searches"); healBreak(p); // #106: 탐색은 회복 자세 해제
   const ai=isAI(p.owner), own=p.owner;
   const smsg=ai?`상대가 숲 이벤트를 발생시켰습니다.`:`${pname(own)} 숲 이벤트 발생`;
   addLog(smsg, ai?"":"imp"); showToast(smsg);
@@ -1204,19 +1505,30 @@ function doSearch(p,ev){
     else if(!ai) modal(`<h2>인벤토리 가득</h2><p>아이템을 획득하지 못했습니다 (최대 ${BAL.invMax}).</p>`,[["확인",close]]);
   } else {
     if(p.type==="minion"){
-      // [임시 대체 — 기획 확정 전] 보조기 슬롯(슬롯2)을 무작위 다른 보조기로 교체 제안 (구 공용 스킬 교체 대체)
+      // #92 (v0.4.4 §2): 속성 교차 공격기 교체 — 본체와 다른 3속성 × 안정/효과/고위력 중 미장착 후보 1종을 공유 시드 rand 1회로 뽑고,
+      // 공격기 1·2 중 하나와 교체하거나 유지한다(유지해도 이벤트 칸 소모). 새 기술은 교체 슬롯의 남은 쿨을 그대로 승계하고 그 슬롯은 다시 비공개가 된다.
       if(p.skills){
-        const cur=p.skills[2];
-        const alt=shuffle(Object.keys(SKILLS).filter(k=>SKILLS[k].kind==="support"&&k!==cur))[0];
-        const swap=()=>{p.skills[2]=alt; p.cds[2]=0; if(p.revealedSkills) p.revealedSkills=p.revealedSkills.filter(i=>i!==2);};
-        if(ai){ if(rand()<0.5) swap(); }
-        else modal(`<h2>공용 하수인 발견</h2><p>이 하수인의 보조기를 교체할까요?<br>현재: ${SKILLS[cur].ko} → ${SKILLS[alt].ko}<small> (${SKILLS[alt].desc})</small></p>`,
-          [["교체",()=>{swap();close();render();}],["유지",close]]);
+        const cands=recruitCandidates(p);
+        const alt=cands.length?cands[Math.floor(rand()*cands.length)]:null;
+        const swap=slot=>{p.skills[slot]=alt; if(p.revealedSkills) p.revealedSkills=p.revealedSkills.filter(i=>i!==slot);}; // cds[slot] 유지(초기화 금지)
+        if(!alt){ if(!ai) modal(`<h2>공용 하수인 발견</h2><p>배울 수 있는 기술이 없습니다.</p>`,[["확인",close]]); }
+        else if(ai){ const slot=aiRecruitSlot(p,alt); if(slot>=0) swap(slot); }
+        else recruitModal(p,alt,swap);
       }
     } else if(p.cap){ if(!ai) modal(`<h2>공용 하수인 발견</h2><p>이미 포획 하수인을 보유 중입니다 (각 1개 제한).</p>`,[["확인",close]]); }
     else { if(ai) aiCapture(p); else captureModal(p); }
   }
   render();
+}
+/* #92 교체 제안 모달 — 새 기술과 현재 공격기 1·2를 속성·위력·쿨·효과로 나란히 비교한다. 온라인은 기존 modal() 동기화 래퍼(버튼 인덱스 중계)로 양측이 같은 선택을 적용 */
+function recruitModal(p,alt,swap){
+  const card=(sid,head,cdLeft)=>{ const sk=SKILLS[sid];
+    return `<div class="fighter"><b>${head} ${sk.ko}</b><small>${sk.el?`<span class="badge el-${sk.el}">${ELEM_KO[sk.el]}</span> `:""}${SKILL_TIER_KO[sk.tier]||SKIND_KO[sk.kind]} · 위력 ${sk.pow?dmgRange(slotPow(p,sk)):"-"} · 쿨 ${sk.cd}${cdLeft?` (남은 쿨 ${cdLeft})`:""}<br>${sk.desc}</small></div>`; };
+  modal(`<h2>공용 하수인 발견</h2><p>${idLabel(p.owner,p)} — 다른 속성의 공격기를 배울 수 있습니다. 공격기 하나와 바꾸거나 유지하세요.<br><small>바꾼 기술은 그 자리의 남은 쿨타임을 이어받고, 상대에게는 다시 비공개가 됩니다.</small></p>
+    ${card(alt,"새 기술:",0)}
+    <p style="margin:6px 0 2px"><small>현재 공격기</small></p>
+    ${card(p.skills[0],"공격기 1:",p.cds[0])}${card(p.skills[1],"공격기 2:",p.cds[1])}`,
+    [["공격기 1과 교체",()=>{swap(0);close();render();}],["공격기 2와 교체",()=>{swap(1);close();render();}],["유지",close]]);
 }
 function tryCapture(p,mode){
   const cost=mode==="safe"?2:1; S.balls[p.owner]-=cost;
@@ -1225,8 +1537,9 @@ function tryCapture(p,mode){
   if(ok){
     const el=shuffle(ELEMS.slice())[0], cb=BAL.captured;
     // 포획 하수인: 해당 속성 표준형 세트 적용 (추론 — GDD-16 4장 템플릿 준용)
+    const rd=ROSTER.find(r=>r.element===el&&r.arch==="std"); // #91 공용 하수인 = 그 속성의 표준형 종 — 생성 시 외형 정체(표시 전용 artRosterId)를 기록한다 (rand 소비 없음)
     p.cap={element:el,hp:cb.hp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // 숲 공용 하수인 포획: 100/100 유지 (#20)
-      skills:archSkills("std",el),cds:[0,0,0,0],revealedSkills:[]};
+      skills:archSkills("std",el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null};
     met(p.owner,"captures");
     return {ok:true,el};
   }
@@ -1251,30 +1564,64 @@ function captureModal(p){
 }
 
 /* ===== 전투 ===== */
+/* #106 폭발 연출 (4.4.1): 규칙은 이미 적용됐고(alive=false) 표시만 유지(hold) — 제거된 말은 폭발이 끝날 때 사라진다. 헤드리스는 즉시 */
+function explosionFx(pieces){
+  const hold=pieces.map(p=>({piece:p,r:p.r,c:p.c}));
+  fxPlay({key:"explosion",kind:"boom",dim:false,cells:hold.map(h=>[h.r,h.c]),cellCls:"fx-boom",hold});
+}
+function trapFxPlay(trap,victim){ fxPlay({key:"trapFx",kind:"trap",dim:false,cells:[[trap.r,trap.c],[victim.r,victim.c]],cellCls:"fx-trap",hold:[{piece:trap,r:trap.r,c:trap.c}]}); }
 function initBattle(att,def){
-  if(S.forcedTargets&&S.forcedTargets.length&&S.forcedTargets.includes(def.id)){S.forcedTargets=[]; met(att.owner,"forcedBattles");} // T1: 강제 이행
+  const forced=S.forcedTargets&&S.forcedTargets.length&&S.forcedTargets.includes(def.id);
+  if(forced){S.forcedTargets=[]; met(att.owner,"forcedBattles");} // T1: 강제 이행
+  situationFx(att,def); // #106 4.3.1 상황 2: 6상황 문구 (강제·선택 전투 공통) → 해결
+  healBreak(att); healBreak(def); // #106: 전투 참여(공격·방어·폭탄·함정)는 회복 자세 해제 — 틱보다 먼저
+  if(att.type==="bomb"){ bombAttack(att,def); return; } // #106 4.4.2 폭탄 직접 접촉 발동
   if(def.type==="bomb"){
     S.battlesUsed++; met(att.owner,"battles");
     def.alive=false;
     if(att.type==="minion"){att.alive=false; met(def.owner,"bombHitsMinion"); // #20: 폭탄 소유자 기준
       addLog(`💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.`,"imp");
-      showToast(`💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.`);}
+      showToast(`💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.`);
+      explosionFx([def,att]);}
     else {met(def.owner,"bombClearedByVip");
       addLog(`💥 폭탄 발동! 폭탄만 제거되고 공격한 말은 생존했습니다. (정체 비공개 유지)`,"imp");
-      showToast(`💥 폭탄 발동! 폭탄만 제거되고 공격한 말은 생존했습니다. (정체 비공개 유지)`);}
+      showToast(`💥 폭탄 발동! 폭탄만 제거되고 공격한 말은 생존했습니다. (정체 비공개 유지)`);
+      explosionFx([def]);}
     if(checkWipe()) return; // T4: 폭탄 동귀 후 전멸 판정
     afterBattle(att,false); return;
   }
   if(def.type==="trap"){
     S.battlesUsed++; met(att.owner,"battles"); met(def.owner,"trapTriggers"); // #20: 함정 발동은 함정 소유자 기준
     def.alive=false; att.immobile=2;
-    addLog(`🪤 함정 발동! 함정은 제거되고 대상 말은 소유자 기준 2턴 이동 불가. (정체 비공개 유지)`,"imp");
-    showToast(`🪤 함정 발동! 함정은 제거되고 대상 말은 소유자 기준 2턴 이동 불가. (정체 비공개 유지)`);
+    def.revealed=true; att.revealed=true; // #106 T4 (CJ 최종): 함정과 걸린 말 모두 정체 공개 — 그 밖의 말은 공개 대상 비확대
+    const tmsg=`🪤 함정 발동! ${idLabel(2,att)} 정체 공개 · 2턴 이동 불가 (함정 제거)`;
+    addLog(tmsg,"imp"); showToast(tmsg);
+    trapFxPlay(def,att);
     afterBattle(att,false); render(); return;
   }
   const needA=(att.type==="ally"||att.type==="king"), needD=(def.type==="ally"||def.type==="king");
   if(needA||needD){ vipChoice(att,def); return; }
   startRounds(att,def,att,def);
+}
+/* #106 4.4.2 폭탄 직접 접촉 발동 (CJ 최종 — GDD-13 4.5 "폭탄 이동은 강제 전투 미유발" 대체):
+   상황 4 하수인 → 폭탄·하수인 모두 제거 / 상황 5 동료·왕 → 폭탄만 제거(상대 생존·비공개 유지) / 상황 6 폭탄·함정 → 아무 일 없음(양쪽 유지·비공개).
+   전투 1회 계산(battlesUsed·battles·forcedBattles 는 initBattle 에서)·bombContacts. 발동 기회는 1회 소모 — 같은 턴 재선택 없음. revealed 는 세우지 않는다 */
+function bombAttack(bomb,def){
+  S.battlesUsed++; met(bomb.owner,"battles"); met(bomb.owner,"bombContacts");
+  if(def.type==="minion"){
+    bomb.alive=false; def.alive=false; met(bomb.owner,"bombHitsMinion");
+    const m=`💥 폭탄 접촉 발동! 폭탄과 상대 하수인이 함께 제거되었습니다.`; addLog(m,"imp"); showToast(m);
+    explosionFx([bomb,def]);
+    if(checkWipe()) return;
+  } else if(def.type==="ally"||def.type==="king"){
+    bomb.alive=false; met(bomb.owner,"bombClearedByVip");
+    const m=`💥 폭탄 접촉 발동! 상대 말이 폭탄을 제거했습니다 — 상대 말 생존 (정체 비공개 유지)`; addLog(m,"imp"); showToast(m);
+    explosionFx([bomb]);
+    if(checkWipe()) return;
+  } else {
+    const m=`💣 폭탄이 상대 폭탄·함정과 접촉 — 아무 일도 일어나지 않았습니다. (양쪽 유지 · 정체 비공개)`; addLog(m,"imp"); showToast(m);
+  }
+  afterBattle(bomb,false); render();
 }
 function vipChoice(att,def){
   const choices={};
@@ -1309,6 +1656,8 @@ function doPush(att,def){
   else {def.r=nr; def.c=nc; msg=`방어자가 1칸 밀려났습니다 (${nr}행 ${nc}열).`;}
   addLog(`🤜 양측 본체 출전 → 밀어내기! ${msg}`,"imp");
   showToast(`🤜 양측 본체 출전 → 밀어내기! ${msg}`);
+  healBreak(att); healBreak(def); // #106: 밀어내기도 전투 참여 — 회복 자세 해제
+  fxPlay({key:"pushBanner",kind:"banner",title:"밀어내기!",sub:msg}); // #106 5.6 배너 "밀어내기!" + 결과 문구 2초
   if(checkKingReach()) return; // 밀어내기로 끝줄 진입도 승리 인정
   if(isAI(S.current)){ afterBattle(att,false); render(); return; }
   modal(`<h2>밀어내기 (Q2-b)</h2><p>양측 모두 본체로 출전해 전투 대신 위치 판정. ${msg}</p>`,[["확인",()=>{close();afterBattle(att,false);render();}]]);
@@ -1316,6 +1665,7 @@ function doPush(att,def){
 function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; met(attP.owner,"battles");
   attP.revealed=true; defP.revealed=true;
+  healBreak(attP); healBreak(defP); // #106: 전투 참여 해제 (initBattle 경유가 아닌 직접 호출도 동일)
   S.battle={attP,defP,fa,fd,round:1,phase:0,
     recA:0,recD:0, itemsA:0,itemsD:0, itemRoundA:false,itemRoundD:false, lastItemA:null,lastItemD:null,
     ballThrowA:false, ballThrowD:false, // #12: 볼 투척 라운드당 1회
@@ -1335,36 +1685,37 @@ function actorOfPhase(){
   if(!firstIsAtt && B.fd.shock) firstIsAtt=true;
   return B.phase===0 ? (firstIsAtt?"A":"D") : (firstIsAtt?"D":"A");
 }
+function stFx(side,f){ return {side,text:stIcons(f),shield:f.shield||0,max:f.maxHp}; } // #106 5.5: 상태 아이콘 + 방어막 바 값을 함께 실어 재생과 동기화
 function battleModal(){
   const B=S.battle; if(!B) return;
   const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner;
   const aiActor=isAI(ownerP);
   const viewer=S.mode==="sim"?2:(S.mode==="pve"?0:NET.mode?NET.me:ownerP); // 기술 공개 기준 시점 (핫시트는 행동자·온라인은 내 화면 고정)
-  const busy=B.msgQ.length>0; // 메시지 재생 대기 중 커맨드 비활성
+  const busy=B.msgQ.length>0||fxLocked(); // 메시지 재생·연출 대기 중 커맨드 비활성 (#106: 배너·카운트다운 잠금 포함)
   const mySide=S.mode==="pve"?(B.attP.owner===0?"A":"D"):NET.mode?(B.attP.owner===NET.me?"A":"D"):"A", topSide=mySide==="A"?"D":"A";
-  const panel=sid=>{ // 전투원 정보 패널: 이름·아키타입/속성 배지·HP바·상태·가한 유효 피해 게이지
-    const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP, rec=sid==="A"?B.recA:B.recD, oppMax=(sid==="A"?B.fd:B.fa).maxHp;
+  const panel=sid=>{ // 전투원 정보 패널: 이름·아키타입/속성 배지·HP바·방어막 바(#106 5.5)·상태. "가한 유효 피해" 게이지는 HP 비율 판정(H1)과 달라 제거 — recA/recD 는 지표로만 기록
+    const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
     const rd=pf===piece&&piece.rosterId?ROSTER.find(x=>x.id===piece.rosterId):null;
     const dhp=B["dispHp"+sid]!==undefined?B["dispHp"+sid]:pf.hp; // 표시 HP (메시지 재생과 동기화)
+    const dsh=B["dispSh"+sid]!==undefined?B["dispSh"+sid]:(pf.shield||0);
     return `<div class="fighter"><div>
       <b>${fighterName(sid)}</b> <small>(${pname(piece.owner)})</small>
       ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
       <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div></div>
+      <div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>
       <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp} · <span id="bst-${sid}">${stIcons(pf)}</span></div>
-      <div class="dmgbar"><div style="width:${Math.min(100,rec/oppMax*100)}%"></div></div>
-      <div class="status">가한 유효 피해 ${rec} (${pct(Math.min(1,rec/oppMax))})</div>
       ${pf.skills?`<div class="status">${pf.skills.map((sid2,i)=>{
         const sk2=SKILLS[sid2], known=viewer===2||piece.owner===viewer||(pf.revealedSkills&&pf.revealedSkills.includes(i));
-        return known?`${sk2.ko}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:`?${SKIND_KO[sk2.kind]}`;
+        return known?`${skillNameKo(sid2,pf.element)}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:`?${SKIND_KO[sk2.kind]}`;
       }).join(" · ")}</div>`:""}
     </div></div>`;
   };
-  const token=sid=>{ // 스테이지 토큰: 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료·포획 하수인은 현행 속성색 원형 + 이모지 유지 (규격 6.3)
+  const token=sid=>{ // 스테이지 토큰: 하수인 본체·대리 출전 포획 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료 본체는 현행 속성색 원형 + 이모지 유지 (규격 6.3 · #91)
     const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
     const pos=sid===mySide?"tok-me":"tok-op", label=pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type];
-    // #89 지금 실제로 싸우는 전투원이 본체일 때만 그 말의 종 이미지를 쓴다. 대리 출전(포획·예비 하수인)은 pf!==piece 이므로 본체 그림을 쓰지 않는다
-    const dir=pf===piece?artDirOf(piece):null;
+    // #89/#91 지금 실제로 싸우는 전투원 기준: 본체면 그 말의 종, 대리 출전(포획·예비 하수인)이면 cap 에 기록된 종. 왕·동료 본체 그림은 없으므로 null → 이모지
+    const dir=artDirOfFighter(pf,piece);
     if(artOk(dir))
       return `<div class="btok art ${pos}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`;
     const col=pf.element?`var(--${pf.element})`:"#5a6377";
@@ -1379,8 +1730,9 @@ function battleModal(){
     cmdBtns=f.skills.map((sid2,i)=>{
       const sk2=SKILLS[sid2], onCd=f.cds[i]>0;
       const known=!maskCmd||(f.revealedSkills&&f.revealedSkills.includes(i));
-      const label=known?`${sk2.ko}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:""}`:`? ${SKIND_KO[sk2.kind]}`;
-      return `<button ${dis||onCd?"disabled":""} title="${known?sk2.desc:""}" onclick="window.__act(${i})">${label}</button>`;
+      const label=known?`${skillNameKo(sid2,f.element)}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:""}`:`? ${SKIND_KO[sk2.kind]}`;
+      const cross=known&&sk2.el&&f.element&&sk2.el!==f.element; // #92 본체와 다른 속성의 공격기 — 판정 속성을 설명에 덧붙여 비교 가능하게
+      return `<button ${dis||onCd?"disabled":""} title="${known?sk2.desc+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:""):""}" onclick="window.__act(${i})">${label}</button>`;
     }).join("");
     if(!f.cds.some(c=>c===0)) cmdBtns+=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(f.atk)}</button>`;
   } else { // 왕·동료 본체·구형 경로: 기본 공격 유지
@@ -1392,28 +1744,43 @@ function battleModal(){
   const oppPiece=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
   const canThrow=oppPiece.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown;
   const canFlee=f.hp<f.maxHp*0.5;
-  cmdBtns+=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 볼 투척 ${pct(BAL.enemyCapProb)}</button>`
-    +`<button class="danger" ${dis||!canFlee?"disabled":""} title="자기 HP 50% 미만 시 가능 · 실패 시 상대 즉시 공격 1회" onclick="window.__flee()">🏃 도망 ${pct(BAL.fleeProb)}</button>`;
+  const throwWhy=oppPiece.type!=="minion"?"상대가 하수인이 아닙니다":opp.hp>=opp.maxHp*0.3?`상대 HP ${pct(opp.hp/opp.maxHp)} — 30% 미만이어야 합니다`:S.balls[ownerP]<=0?"몬스터볼이 없습니다":S.reserve[ownerP]?"예비 슬롯이 차 있습니다":thrown?"이번 라운드에 이미 던졌습니다":"";
+  const fleeWhy=canFlee?"":`내 HP ${pct(f.hp/f.maxHp)} — 50% 미만이어야 합니다`;
+  const ballBtn=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
+  const fleeBtn=`<button class="danger" ${dis||!canFlee?"disabled":""} title="자기 HP 50% 미만 시 가능 · 실패 시 상대 즉시 공격 1회" onclick="window.__flee()">🏃 도망 (성공 ${pct(BAL.fleeProb)})</button>`;
   let itemBtns=(NET.mode&&ownerP!==NET.me)?`<small>상대 아이템 비공개</small>`:S.inv[ownerP].map((k,i)=>
-    `<button ${dis||usedItems>=BAL.itemPerBattle||itemRound||k===lastItem?"disabled":""} onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
-  const turnLabel=(S.mode==="pve"||NET.mode)?(ownerP===(NET.mode?NET.me:0)?"나의 턴":"상대 턴"):`P${ownerP+1} 턴`; // T3: 현재 행동자 대형 표시
+    `<button ${dis||usedItems>=BAL.itemPerBattle||itemRound||k===lastItem?"disabled":""} title="${ITEMS[k].desc}" onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
+  const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
+  const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
+  const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}<div class="row"><button onclick="window.__menu(null)">← 뒤로</button></div></div>`;
   modal(`<h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>
     <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${BAL.maxRounds}</div>
     ${panel(topSide)}
     <div id="bstage">${token(topSide)}${token(mySide)}</div>
     ${panel(mySide)}
     <div id="msgBox">${busy?"":`${fighterName(side)}의 행동을 선택하세요.`}</div>
-    <div class="row"><b>${pname(ownerP)}:</b> ${cmdBtns}</div>
-    <div class="row"><small>보너스 아이템(라운드당 1·전투당 2·연속 동일 불가):</small> ${itemBtns||"<small>없음</small>"}</div>
+    <div class="bmenu${menu?" hidden":""}" id="bmenu"><b style="grid-column:1/-1;font-size:12px;color:var(--dim)">${pname(ownerP)}:</b>
+      <button ${dis?"disabled":""} onclick="window.__menu('fight')">⚔️ 싸우기</button><button ${dis?"disabled":""} onclick="window.__menu('bag')">🎒 가방</button>
+      <button ${dis?"disabled":""} onclick="window.__menu('ball')">🔴 포획</button><button ${dis?"disabled":""} onclick="window.__menu('flee')">🏃 도망가기</button></div>
+    ${sub("fight",`<small>⚔️ 싸우기 — 기술 4슬롯 (전 슬롯 쿨이면 기본 공격)</small><div class="row">${cmdBtns}</div>`)}
+    ${sub("bag",`<small>🎒 가방 — 보너스 행동 (라운드당 1·전투당 2·연속 동일 불가) · 사용 후 같은 행동자의 메뉴로 복귀</small><div class="row">${itemBtns||"<small>없음</small>"}</div>`)}
+    ${sub("ball",`<small>🔴 포획 — 상대 하수인 HP 30% 미만 · 볼 ${S.balls[ownerP]}개 · 성공 ${pct(BAL.enemyCapProb)}${throwWhy?` · <b>${throwWhy}</b>`:""}</small><div class="row">${ballBtn}</div>`)}
+    ${sub("flee",`<small>🏃 도망가기 — 내 HP 50% 미만 · 성공 ${pct(BAL.fleeProb)} · 실패 시 상대 즉시 공격 1회${fleeWhy?` · <b>${fleeWhy}</b>`:""}</small><div class="row">${fleeBtn}</div>`)}
     <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
     []);
+  window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
+    if(S.battle!==B) return; B.menu=key||null;
+    try{ const root=$("bmenu"); if(root){ if(B.menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
+      for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===B.menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
+  };
   window.__useItemCore=i=>{
     const k=S.inv[ownerP][i]; S.inv[ownerP].splice(i,1);
     if(side==="A"){B.itemsA++;B.itemRoundA=true;B.lastItemA=k;} else {B.itemsD++;B.itemRoundD=true;B.lastItemD=k;}
     if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
-      bmsg(`🧪 회복약! ${fighterName(side)}의 HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
-    if(k==="cool"){f.cd=0; if(f.skills)f.cds=[0,0,0,0]; bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!");} // 4슬롯 전체 초기화 (아이템 설명 문언 준용 — [기획 필요] 후보)
-    if(k==="cure"){f.burn=0;f.weaken=0;f.shock=0;f.shockFresh=false; bmsg("🧪 해독제 — 상태이상 해제!",{st:{side,text:stIcons(f)}});}
+      bmsg(`🧪 회복약! ${fighterName(side)}의 HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}},{key:"itemFx"});}
+    if(k==="cool"){f.cd=0; if(f.skills)f.cds=[0,0,0,0]; bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!",null,{key:"itemFx"});} // 4슬롯 전체 초기화 (아이템 설명 문언 준용 — [기획 필요] 후보)
+    if(k==="cure"){f.burn=0;f.weaken=0;f.shock=0;f.shockFresh=false; bmsg("🧪 해독제 — 상태이상 해제!",{st:stFx(side,f)},{key:"itemFx"});}
+    B.menu=null; // 사용 연출 뒤 같은 행동자의 메뉴(루트)로 복귀 — 행동 미소모 (GDD 4.6 보너스 행동)
     battleModal();
   };
   window.__throwBallCore=()=>{ // #12 적 하수인 포획: 볼 소모(성공·실패 공통) — 성공 시 포획 종료, 실패 시 행동 소모
@@ -1421,16 +1788,18 @@ function battleModal(){
     S.balls[ownerP]--;
     if(side==="A")B.ballThrowA=true; else B.ballThrowD=true;
     met(ownerP,"enemyCapTries"); // #20 적 포획 시도
-    bmsg(`🔴 ${pname(ownerP)}의 몬스터볼 투척!`);
+    B.menu=null;
+    bmsg(`🔴 ${pname(ownerP)}의 몬스터볼 투척!`,null,{key:"captureFx"});
     if(rand()<BAL.enemyCapProb){ finishByCapture(side); return; }
     met(ownerP,"enemyCapFails"); // #20 적 포획 실패
-    bmsg(`🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 ${S.balls[ownerP]})`);
+    bmsg(`🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 ${S.balls[ownerP]})`,null,{key:"captureFx"});
     nextPhase();
   };
   window.__fleeCore=()=>{ // #13 도망: 성공 시 전투 즉시 종료(판정·제거 없음·battlesUsed 유지), 실패 시 행동 소모+상대 즉시 공격 1회
     if(S.battle!==B||!canFlee) return;
     met(ownerP,"fleeTries");
-    bmsg(`🏃 ${fighterName(side)}의 도망 시도!`);
+    B.menu=null;
+    bmsg(`🏃 ${fighterName(side)}의 도망 시도!`,null,{key:"fleeFx"});
     if(rand()<BAL.fleeProb){
       met(ownerP,"fleeOks");
       const piece=side==="A"?B.attP:B.defP;
@@ -1439,8 +1808,7 @@ function battleModal(){
       resetAfter(B.fa); resetAfter(B.fd);
       const q=B.msgQ.splice(0);
       S.battle=null;
-      if(liveBattleDom()) playMsgs(q,()=>setTimeout(()=>{if(!S.battle){close(); fleeSwapPrompt(piece);}},800));
-      else {close(); fleeSwapPrompt(piece);}
+      battleEndFx(q,{title:"도망 성공 — 전투 종료",cls:""},()=>{ if(!S.battle){ close(); fleeSwapPrompt(piece); } });
       return;
     }
     bmsg(`🏃 도망 실패! 상대의 공격이 이어진다.`);
@@ -1448,6 +1816,7 @@ function battleModal(){
   };
   window.__actCore=kind=>{
     // 슬롯 인덱스(0~3) + 레거시 매핑: 'basic'→슬롯0(쿨이면 순수 기본 공격 폴백), 'skill'→슬롯1, 'common'→슬롯2
+    B.menu=null;
     let slot=null;
     if(typeof kind==="number"){ if(f.skills&&f.skills[kind]!==undefined) slot=kind; }
     else if(kind==="basic") slot=(f.skills&&f.cds[0]===0)?0:-1;
@@ -1457,17 +1826,17 @@ function battleModal(){
     if(kind!=="skill"||!f.skillAtk){ execSlot(side,-1); return; } // 왕·동료 본체: 기본 공격
     // ===== 구형 속성 스킬 경로 (로스터 미적용 하수인 전용 — 레거시 테스트 호환) =====
     const oSide=side==="A"?"D":"A", sp=skillParamsOf(f);
-    const tryStatus=()=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb
-      if(archOf(f)==="sustain"||rand()<BAL.statusProb){S.metrics.statusApplied++; return true;}
+    const tryStatus=prob=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb (#96: 감전은 shockProb)
+      if(archOf(f)==="sustain"||rand()<(prob===undefined?BAL.statusProb:prob)){S.metrics.statusApplied++; return true;}
       S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
     };
-    bmsg(`${fighterName(side)}의 ${f.element?SKILL_KO[f.element]:"스킬"}!`);
+    bmsg(`${fighterName(side)}의 ${f.element?SKILL_KO[f.element]:"스킬"}!`,null,{key:"skillFx"});
     let dmg=f.skillAtk;
     if(f.atkBuff) dmg=Math.round(dmg*(1+BAL.nextBuffPct)); // #12 일시버프 (레거시 경로)
     if(BAL.dmgVar) dmg=Math.round(dmg*(1-BAL.dmgVar+rand()*2*BAL.dmgVar)); // D8 피해 분산 ±20% (기대값 유지)
     f.cd=f.cdMax||BAL.minion.cd;
     if(f.weaken>0){dmg=Math.round(dmg*(1-BAL.weakenPct)); f.weaken--;
-      if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:{side,text:stIcons(f)}});}
+      if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:stFx(side,f)});}
     if(f.element&&opp.element){
       if(BEATS[f.element]===opp.element) dmg=Math.round(dmg*BAL.advMult);
       else if(BEATS[opp.element]===f.element) dmg=Math.round(dmg*BAL.disMult);
@@ -1477,9 +1846,9 @@ function battleModal(){
       if(sp.shieldPct) f.shield=Math.round(f.maxHp*sp.shieldPct);
       const gh=Math.round(f.maxHp*sp.healPct);
       f.hp=Math.min(f.maxHp,f.hp+gh);
-      bmsg(sp.shieldPct?`🌿 보호막·회복 획득!`:`🌿 회복 획득!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:{side,text:stIcons(f)}});
+      bmsg(sp.shieldPct?`🌿 보호막·회복 획득!`:`🌿 회복 획득!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)});
     }
-    if(opp.dmgCut>0){dmg=Math.round(dmg*(1-opp.dmgCut)); opp.dmgCut=0; bmsg("상대는 자세를 낮춰 피해를 흘렸다!",{st:{side:oSide,text:stIcons(opp)}});}
+    if(opp.dmgCut>0){dmg=Math.round(dmg*(1-opp.dmgCut)); opp.dmgCut=0; bmsg("상대는 자세를 낮춰 피해를 흘렸다!",{st:stFx(oSide,opp)});}
     if(opp.vulnMark){dmg=Math.round(dmg*1.15); opp.vulnMark=false; bmsg(`⚠️ 결정타의 반동 — 피격 +15%!`);}
     let absorbed=Math.min(dmg,opp.shield); opp.shield-=absorbed;
     let hpDmg=dmg-absorbed;
@@ -1490,32 +1859,48 @@ function battleModal(){
     addRec(side,counted);
     bmsg(`${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
       {shake:oSide,flash:f.element||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
-       hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:{side:oSide,text:stIcons(opp)}});
-    if(f.element==="fire"&&!opp.burn&&tryStatus()){opp.burn=sp.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${sp.burnRounds}R)`,{st:{side:oSide,text:stIcons(opp)}});}
-    if(f.element==="water"&&!opp.weaken&&tryStatus()){opp.weaken=sp.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${sp.weakenHits}회)`,{st:{side:oSide,text:stIcons(opp)}});}
-    if(f.element==="lightning"&&!opp.shock&&tryStatus()){opp.shock=sp.shockRounds; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${sp.shockRounds}라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
+       hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
+    if(f.element==="fire"&&!opp.burn&&tryStatus()){opp.burn=sp.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${sp.burnRounds}R)`,{st:stFx(oSide,opp)});}
+    if(f.element==="water"&&!opp.weaken&&tryStatus()){opp.weaken=sp.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${sp.weakenHits}회)`,{st:stFx(oSide,opp)});}
+    if(f.element==="lightning"&&!opp.shock&&tryStatus(BAL.shockProb)){opp.shock=sp.shockRounds; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${sp.shockRounds}라운드 후공!`,{st:stFx(oSide,opp)});}
     if(checkDeath()) return;
     nextPhase();
   };
-  // 표시 계층: 큐 재생 완료 후 다음 행동자 활성 (AI면 재렌더 시 aiScheduleBattle)
-  if(B.msgQ.length) playMsgs(B.msgQ.splice(0),()=>{ if(S.battle===B) battleModal(); });
-  else if(aiActor) aiScheduleBattle();
+  /* #106 5.1·5.2 표시 순서: (1) 진입 카운트다운 3·2·1·배틀 시작! (1회) → (2) 남은 메시지 재생 → (3) 행동(phase) 배너 "나의 턴!/상대 턴!" (행동마다 1회) → (4) 메뉴 활성 / AI 스케줄.
+     각 단계는 끝나면 battleModal 을 다시 그려 다음 단계로 간다 — 플래그(intro·bannerKey)로 같은 단계를 두 번 재생하지 않는다. 헤드리스·sim 은 (1)(3) 이 0ms 라 종전 흐름과 같다 */
+  if(!B.intro){ B.intro=true;
+    if(fxLive()){ for(const t of ["3","2","1","배틀 시작!"]) fxPlay({key:"countStep",kind:"count",title:t}); fxWhenIdle(()=>{ if(S.battle===B) battleModal(); }); return; } }
+  if(B.msgQ.length){ playMsgs(B.msgQ.splice(0),()=>{ if(S.battle===B) battleModal(); }); return; }
+  const bkey=B.round+"-"+B.phase;
+  if(B.bannerKey!==bkey){ B.bannerKey=bkey;
+    if(fxLive()){ fxPlay({key:"roundBanner",kind:"banner",cls:viewerIsOwner(ownerP)&&!(S.mode==="pvp"&&!NET.mode)?"mine":"",title:turnLabel,sub:`Round ${B.round} / ${BAL.maxRounds}`}); fxWhenIdle(()=>{ if(S.battle===B) battleModal(); }); return; } }
+  if(aiActor) aiScheduleBattle();
+}
+/* #106 5.6 전투 종료 연출 공통: 남은 메시지 재생 → 결과 배너(뷰어 기준 문구) → 닫기 콜백. 헤드리스는 즉시 */
+function battleEndFx(q,banner,after){
+  const run=()=>fxPlay({key:"resultBanner",kind:"result",cls:banner.cls||"",title:banner.title,sub:banner.sub||"",onEnd:after});
+  if(liveBattleDom()) playMsgs(q,run); else { MSGQ.length=0; run(); }
+}
+function resultBannerOf(winP){ // 사망·판정 결과 문구: 핫시트 중립 "P1 승리!", PVE·온라인 뷰어 기준 "전투에서 승리!/패배,,,"
+  if(S.mode==="pvp"&&!NET.mode) return {title:`${pname(winP.owner)} 승리!`,cls:""};
+  return viewerIsOwner(winP.owner)?{title:"전투에서 승리!",cls:""}:{title:"전투에서 패배,,,",cls:"lose"};
 }
 /* ===== 4슬롯 실행 엔진 (GDD-16) — slot -1은 폴백 기본 공격, 로직은 동기 완결 ===== */
 function execSlot(side,slot){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A";
   const sk=(slot>=0&&f.skills)?SKILLS[f.skills[slot]]:null;
+  const atkEl=atkElOf(f,sk); // #92 판정 속성: 공격기는 기술 속성, 기본 공격·시그니처(잔류장 포함)는 본체 속성
   if(sk){ f.cds[slot]=sk.cd;
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
-  const gate=force=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기 70%·잔류장 100%)
-    if(force||rand()<BAL.statusProb){S.metrics.statusApplied++; return true;}
+  const gate=(force,prob)=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기: 화상·약화 statusProb 70% · 감전 shockProb 50% (#96) · 잔류장 100% — force는 rand 미소비)
+    if(force||rand()<(prob===undefined?BAL.statusProb:prob)){S.metrics.statusApplied++; return true;}
     S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
   };
-  const applyStatus=force=>{
-    if(f.element==="fire"&&!opp.burn&&gate(force)){opp.burn=BAL.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${BAL.burnRounds}R)`,{st:{side:oSide,text:stIcons(opp)}});}
-    else if(f.element==="water"&&!opp.weaken&&gate(force)){opp.weaken=BAL.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${BAL.weakenHits}회)`,{st:{side:oSide,text:stIcons(opp)}});}
-    else if(f.element==="lightning"&&!opp.shock&&gate(force)){opp.shock=1; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:{side:oSide,text:stIcons(opp)}});}
+  const applyStatus=force=>{ // 상태 종류는 판정 속성(atkEl) 기준 — 불 본체가 배운 감전 침은 감전이지 화상이 아니다 (#92)
+    if(atkEl==="fire"&&!opp.burn&&gate(force)){opp.burn=BAL.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${BAL.burnRounds}R)`,{st:stFx(oSide,opp)});}
+    else if(atkEl==="water"&&!opp.weaken&&gate(force)){opp.weaken=BAL.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${BAL.weakenHits}회)`,{st:stFx(oSide,opp)});}
+    else if(atkEl==="lightning"&&!opp.shock&&gate(force,BAL.shockProb)){opp.shock=1; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:stFx(oSide,opp)});}
   };
   const coolReduce=(filter,label)=>{ // 쿨 감소류: 조건 내 남은 쿨 최장 기술 1개 쿨 -1
     let pick=-1;
@@ -1524,33 +1909,34 @@ function execSlot(side,slot){
     f.cds[pick]--; bmsg(`🔄 ${SKILLS[f.skills[pick]].ko} 쿨 -1 (남은 쿨 ${f.cds[pick]})`);
   };
   const supFlash=sk&&!sk.pow?(sk.healPct?"heal":(sk.shieldPct||sk.dmgCut)?"guard":"buff"):null; // S3-A 보조 3계열
-  bmsg(`${fighterName(side)}의 ${sk?sk.ko:"기본 공격"}!`,(sk&&sk.kind==="sig")?{sig:true,flash:supFlash}:(supFlash?{flash:supFlash}:null));
-  if(sk&&!sk.pow){ // 비피해 기술: 보조기·불굴 진형
+  bmsg(`${fighterName(side)}의 ${sk?sk.ko:"기본 공격"}!`,(sk&&sk.kind==="sig")?{sig:true,flash:supFlash}:(supFlash?{flash:supFlash}:null),{key:"skillFx"}); // #106 5.4 그룹1 기술 연출
+  if(sk&&!sk.pow){ // 비피해 기술: 보조기·불굴 진형 — 첫 효과 메시지가 그룹2(효과 연출 damageFx)를 열고 나머지는 같은 그룹에 덧붙는다
+    let effKey="damageFx"; const eb=(t,fx)=>{ bmsg(t,fx,effKey?{key:effKey}:null); effKey=null; };
     if(sk.healPct){const h=Math.round(f.maxHp*sk.healPct); f.hp=Math.min(f.maxHp,f.hp+h);
-      bmsg(`💚 HP ${h} 회복!`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
+      eb(`💚 HP ${h} 회복!`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
     if(sk.shieldPct){f.shield=Math.max(f.shield,Math.round(f.maxHp*sk.shieldPct)); // 보호막 중첩: 최대값 갱신 (합산 금지)
-      bmsg(`🛡 보호막 ${f.shield}!`,{st:{side,text:stIcons(f)}});}
+      eb(`🛡 보호막 ${f.shield}!`,{st:stFx(side,f)});}
     if(sk.dmgCut){f.dmgCut=Math.max(f.dmgCut,sk.dmgCut);
-      bmsg(`🌀 다음 피격 ${pct(sk.dmgCut)} 감소!`,{st:{side,text:stIcons(f)}});}
-    if(sk.focus){f.focusCharge=true; bmsg(`🎯 집중 — 다음 공격기 위력 +20%!`,{st:{side,text:stIcons(f)}});}
-    if(sk.coolAny) coolReduce(i=>i!==slot,"냉각");
+      eb(`🌀 다음 피격 ${pct(sk.dmgCut)} 감소!`,{st:stFx(side,f)});}
+    if(sk.focus){f.focusCharge=true; eb(`🎯 집중 — 다음 공격기 위력 +20%!`,{st:stFx(side,f)});}
+    if(sk.coolAny) coolReduce(i=>i!==slot,"냉각"); // 냉각 결과 줄은 기술 그룹에 덧붙는다 (메시지 수 불변)
     if(sk.cleanse){
-      if(f.burn){f.burn=0;f.burnBy=null;bmsg(`✨ 화상이 정화되었다!`,{st:{side,text:stIcons(f)}});}
-      else if(f.weaken){f.weaken=0;bmsg(`✨ 약화가 정화되었다!`,{st:{side,text:stIcons(f)}});}
-      else if(f.shock){f.shock=0;f.shockFresh=false;bmsg(`✨ 감전이 정화되었다!`,{st:{side,text:stIcons(f)}});}
-      else bmsg(`정화 — 제거할 상태이상이 없다.`);
+      if(f.burn){f.burn=0;f.burnBy=null;eb(`✨ 화상이 정화되었다!`,{st:stFx(side,f)});}
+      else if(f.weaken){f.weaken=0;eb(`✨ 약화가 정화되었다!`,{st:stFx(side,f)});}
+      else if(f.shock){f.shock=0;f.shockFresh=false;eb(`✨ 감전이 정화되었다!`,{st:stFx(side,f)});}
+      else eb(`정화 — 제거할 상태이상이 없다.`);
     }
   } else { // 피해 기술: 공격기·시그니처·기본 공격 — 스케일 후 기존 파이프라인(분산·상성) 그대로
     let dmg=sk?slotPow(f,sk):f.atk;
     if(f.atkBuff) dmg=Math.round(dmg*(1+BAL.nextBuffPct)); // #12 일시버프
     if(f.focusCharge&&sk&&sk.kind==="attack"){dmg=Math.round(dmg*1.2); f.focusCharge=false;
-      bmsg(`🎯 집중 발동 — 위력 +20%!`,{st:{side,text:stIcons(f)}});}
+      bmsg(`🎯 집중 발동 — 위력 +20%!`,{st:stFx(side,f)});}
     if(BAL.dmgVar) dmg=Math.round(dmg*(1-BAL.dmgVar+rand()*2*BAL.dmgVar)); // D8 피해 분산 ±20%
     if(f.weaken>0){dmg=Math.round(dmg*(1-BAL.weakenPct)); f.weaken--;
-      if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:{side,text:stIcons(f)}});}
-    if(f.element&&opp.element){
-      if(BEATS[f.element]===opp.element) dmg=Math.round(dmg*BAL.advMult);
-      else if(BEATS[opp.element]===f.element) dmg=Math.round(dmg*BAL.disMult);
+      if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:stFx(side,f)});}
+    if(atkEl&&opp.element){ // #92 공격 상성은 판정 속성(기술 속성) vs 상대 본체 속성 — 방어 상성은 본체 속성 그대로
+      if(BEATS[atkEl]===opp.element) dmg=Math.round(dmg*BAL.advMult);
+      else if(BEATS[opp.element]===atkEl) dmg=Math.round(dmg*BAL.disMult);
     }
     if(sk&&sk.bonusVsShield&&opp.shield>0){dmg+=sk.bonusVsShield; bmsg(`🌊 보호막 대상 추가 위력 +${sk.bonusVsShield}!`);}
     if(sk&&sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock)){dmg+=sk.bonusVsStatus; bmsg(`⚡ 상태이상 대상 추가 위력 +${sk.bonusVsStatus}!`);}
@@ -1564,20 +1950,20 @@ function execSlot(side,slot){
     const counted=actual+(absorbed-freeAbsorb);
     addRec(side,counted);
     bmsg(`${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
-      {shake:oSide,flash:f.element||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
-       hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:{side:oSide,text:stIcons(opp)}});
+      {shake:oSide,flash:atkEl||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`}, // #92 속성 플래시도 판정 속성
+       hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"}); // #106 5.4 그룹2 피 깎임 연출
     if(sk){
       if(sk.drainPct&&actual>0){const gh=Math.round(actual*sk.drainPct); f.hp=Math.min(f.maxHp,f.hp+gh);
         bmsg(`🌿 흡수 — HP ${gh} 회복!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
       if(sk.selfShieldPct){f.shield=Math.max(f.shield,Math.round(f.maxHp*sk.selfShieldPct));
-        bmsg(`🌿 보호막 ${f.shield}!`,{st:{side,text:stIcons(f)}});}
+        bmsg(`🌿 보호막 ${f.shield}!`,{st:stFx(side,f)});}
       if(sk.status) applyStatus(false);
       if(sk.statusSelf){ // 잔류장: 자기 속성 상태효과 100% — 풀은 대응 상태이상 부재로 흡수 회복(실피해 40%) 임시 대체 [기획 필요]
         if(f.element==="grass"){const gh=Math.round(actual*0.4); if(gh>0){f.hp=Math.min(f.maxHp,f.hp+gh);
           bmsg(`🌿 잔류 흡수 — HP ${gh} 회복!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}}
         else applyStatus(true);
       }
-      if(sk.selfVuln){f.vulnMark=true; bmsg(`⚠️ ${fighterName(side)}의 자세가 무너졌다 — 다음 피격 +15%!`,{st:{side,text:stIcons(f)}});}
+      if(sk.selfVuln){f.vulnMark=true; bmsg(`⚠️ ${fighterName(side)}의 자세가 무너졌다 — 다음 피격 +15%!`,{st:stFx(side,f)});}
       if(sk.coolAttack) coolReduce(i=>i!==slot&&SKILLS[f.skills[i]].kind==="attack",null); // 전술 연계
       if(sk.coolAttackLongest) coolReduce(i=>SKILLS[f.skills[i]].kind==="attack",null);   // 급속 순환
     }
@@ -1610,30 +1996,55 @@ function stIcons(f){
     f.dmgCut?`🌀감쇠${pct(f.dmgCut)}`:"",f.focusCharge?"🎯집중":"",f.vulnMark?"⚠️피격+15%":""].filter(Boolean).join(" ")||"-";
 }
 /* 전투 메시지 시퀀스 — 로직은 동기 완결, 표시 계층만 타이머 재생 (헤드리스: 큐만 적재 후 즉시 소진) */
-function bmsg(txt,fx){const B=S.battle; if(!B) return; B.blog.push(txt); B.msgQ.push({txt,fx:fx||null});}
+/* #106 5.4: opts.key 가 있는 메시지는 새 표시 그룹을 연다(그룹 시간 = BAL.fx[key] — skillFx·damageFx·itemFx·captureFx·fleeFx·judgeBanner·roundEndFx).
+   key 없는 메시지는 직전 그룹에 줄로 덧붙는다(쿨 감소·상태 부여·약화 해제 등). 재생 시작 시점에 그룹이 없으면 msgStep(0.6초) 단독 그룹. opts.big: 큰 글씨 */
+function bmsg(txt,fx,opts){const B=S.battle; if(!B) return; B.blog.push(txt); B.msgQ.push({txt,fx:fx||null,key:opts&&opts.key||null,big:!!(opts&&opts.big)});}
 let MSGQ=[], MSGPLAYING=false, MSGAFTER=null;
 function liveBattleDom(){ // 실제 DOM에 msgBox가 있을 때만 재생 (sim·헤드리스 스텁 제외)
   try{const mb=$("msgBox"); return S.mode!=="sim"&&!!mb&&mb.nodeType===1;}catch(e){return false;}
 }
-function playMsgs(q,after){ // 0.6초 간격 순차 재생 — 재생 불가 환경은 즉시 완료
+function playMsgs(q,after){ // 그룹 단위 순차 재생 (계약 5.4) — 재생 불가 환경은 즉시 완료. 재생 중은 fxLocked() (입력 잠금·수신 보류)
   MSGQ.push(...q); MSGAFTER=after||null;
   if(MSGPLAYING) return;
   if(!liveBattleDom()){ MSGQ.length=0; const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); return; }
-  MSGPLAYING=true;
+  MSGPLAYING=true; fxSetLockClass(true);
+  const gen=FX.gen;
   (function step(){
+    if(FX.gen!==gen) return; // 새 게임 — 옛 세대의 step 은 아무것도 만지지 않는다: MSGQ·MSGPLAYING·MSGAFTER 는 fxReleaseAll 이 이미 비웠고 그 뒤 새 게임의 재생이 소유한다 (REVISE msg_d847280b3dba)
     const m=MSGQ.shift();
-    if(!m){ MSGPLAYING=false; const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); return; }
-    try{ const mb=$("msgBox"); if(mb) mb.innerHTML=m.txt; applyFx(m.fx); }catch(e){}
-    setTimeout(step,600);
+    if(!m){ MSGPLAYING=false; if(!FX.cur&&!FX.q.length) fxSetLockClass(false); const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); fxIdle(); return; }
+    const lines=[m.txt]; applyFx(m.fx);
+    while(MSGQ.length&&!MSGQ[0].key){ const n=MSGQ.shift(); lines.push(n.txt); applyFx(n.fx); } // 같은 그룹의 후속 줄 즉시 병합
+    try{ const mb=$("msgBox"); if(mb){ mb.innerHTML=lines.join("<br>"); if(mb.classList){ if(m.big) mb.classList.add("big"); else mb.classList.remove("big"); } } }catch(e){}
+    const ms=m.key?fxMs(m.key):(fxLive()?BAL.fx.msgStep:0);
+    setTimeout(step,ms>0?ms:600);
   })();
 }
-function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·HP바·상태 아이콘) — 실패는 조용히 무시
+/* #106 5.5 HP 바 지연 표시 토큰 (side 별 일련번호) — 표시 계층 전용, 규칙 상태(S)·난수와 무관.
+   한 피해 이벤트가 방어막과 HP 를 모두 줄이면 방어막 바만 즉시 줄이고(CSS 전환 .6s) HP 바·숫자는 BAL.fx.barStep 뒤에 쓴다 → 화면에서 방어막 흡수가 먼저 보이고 HP 가 그 다음 줄어든다.
+   두 전환(0.6s + 0.6s)은 damageFx(2s) 안에서 끝난다. 표시값 dispHp 는 종전처럼 즉시 갱신하므로 재렌더는 항상 최신 값을 그린다.
+   지연 콜백은 게임 세대(FX.gen)·같은 전투 객체·같은 HP 바 DOM 노드·같은 side 일련번호가 모두 일치할 때만 쓴다 — 옛 게임·닫힌 전투·다시 그려진 모달·뒤따른 HP 갱신을 덮어쓰지 않는다.
+   헤드리스·sim(fxLive() false)은 barStep 0 → 종전처럼 동기 즉시 쓰기 (REVISE msg_d847280b3dba 2번: setter 순서가 아니라 실제 시간 단계로 분리) */
+const HPSTAGE={A:0,D:0};
+function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·HP바·방어막 바·상태 아이콘) — 실패는 조용히 무시
   if(!fx) return;
   try{
-    if(fx.hp){ if(S.battle) S.battle["dispHp"+fx.hp.side]=fx.hp.val;
-      const bar=$("hpfill-"+fx.hp.side); if(bar) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%";
-      const t=$("hptxt-"+fx.hp.side); if(t) t.textContent=fx.hp.val; }
-    if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text; }
+    const B=S?S.battle:null;
+    let stage=0; // 5.5: 같은 side 의 방어막·HP 가 이번 이벤트로 함께 줄 때만 HP 표시를 barStep 만큼 늦춘다 (회복·방어막만 감소·HP 만 감소는 즉시)
+    if(fx.st&&fx.st.max&&fx.hp&&fx.hp.side===fx.st.side&&B){
+      const side=fx.st.side, prevSh=B["dispSh"+side]!==undefined?B["dispSh"+side]:0, prevHp=B["dispHp"+side];
+      if(prevSh>(fx.st.shield||0)&&prevHp!==undefined&&prevHp>fx.hp.val) stage=fxMs("barStep"); }
+    if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text;
+      if(fx.st.max){ if(B) B["dispSh"+fx.st.side]=fx.st.shield||0; // #106 5.5 방어막 바 — 항상 즉시 (흡수가 먼저 줄고 HP 는 barStep 뒤)
+        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; } }
+    if(fx.hp){ const side=fx.hp.side; if(B) B["dispHp"+side]=fx.hp.val;
+      const seq=++HPSTAGE[side], bar=$("hpfill-"+side), t=$("hptxt-"+side); // 새 HP 갱신은 같은 side 의 대기 중인 지연 쓰기를 무효화한다 (최신 값이 이긴다)
+      const write=()=>{ if(bar) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%"; if(t) t.textContent=fx.hp.val; };
+      if(stage>0){ const gen=FX.gen;
+        setTimeout(()=>{ if(FX.gen!==gen||!S||S.battle!==B||HPSTAGE[side]!==seq) return; // 옛 게임·끝난 전투·뒤따른 갱신 → 무효
+          if($("hpfill-"+side)!==bar) return; // 모달이 다시 그려져 노드가 바뀌었다 — 재렌더가 dispHp 로 이미 최신 값을 그렸다
+          try{ write(); }catch(e){} },stage); }
+      else write(); }
     if(fx.shake){ const t=$("tok-"+fx.shake); if(t){t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake");} }
     if(fx.flash){ const st=$("bstage"); if(st){st.style.boxShadow=`inset 0 0 70px var(--${fx.flash})`;
       setTimeout(()=>{try{st.style.boxShadow="";}catch(e){}},380);} }
@@ -1656,12 +2067,12 @@ function nextPhase(){
   for(const [f,side] of [[B.fa,"A"],[B.fd,"D"]]){
     if(f.burn>0){const d=Math.min(f.hp,Math.round(f.maxHp*BAL.burnPct)); f.hp-=d; f.burn--;
       addRec(f.burnBy,d);
-      bmsg(`🔥 ${fighterName(side)}는 화상 피해 ${d}!`,{shake:side,float:{side,html:`<span class="neg">-${d}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:{side,text:stIcons(f)}});
-      if(!f.burn) bmsg(`🔥 ${fighterName(side)}의 화상이 해제되었다.`,{st:{side,text:stIcons(f)}});
+      bmsg(`🔥 ${fighterName(side)}는 화상 피해 ${d}!`,{shake:side,float:{side,html:`<span class="neg">-${d}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)},{key:"roundEndFx"}); // #106 5.4 라운드 종료 처리 그룹(1초)
+      if(!f.burn) bmsg(`🔥 ${fighterName(side)}의 화상이 해제되었다.`,{st:stFx(side,f)});
       if(checkDeath()) return;}
     if(f.cd>0)f.cd--; if(f.skills)for(let i=0;i<4;i++)if(f.cds[i]>0)f.cds[i]--; // 슬롯별 개별 쿨 감소 (라운드 종료 시)
     if(f.shockFresh) f.shockFresh=false; // 감전은 부여 라운드가 아닌 다음 라운드부터 소진
-    else if(f.shock>0){f.shock--; if(!f.shock) bmsg(`⚡ ${fighterName(side)}의 감전이 풀렸다.`,{st:{side,text:stIcons(f)}});}
+    else if(f.shock>0){f.shock--; if(!f.shock) bmsg(`⚡ ${fighterName(side)}의 감전이 풀렸다.`,{st:stFx(side,f)});}
   }
   B.itemRoundA=false; B.itemRoundD=false;
   B.ballThrowA=false; B.ballThrowD=false; // #12: 볼 투척 라운드당 1회 리셋
@@ -1675,19 +2086,23 @@ function checkDeath(){
   if(B.fa.hp<=0){finishBattle("D","즉사"); return true;}
   return false;
 }
+/* #106 T6 (H1, CJ 최종): 6라운드 종료 판정은 남은 HP 비율(현재 HP ÷ 최대 HP)이 높은 쪽 승, 동률은 방어자 승. 방어막은 HP 가 아니므로 미포함.
+   누적 유효 피해(recA/recD)는 판정에 쓰지 않고 지표로만 계속 기록한다 (GDD-13 4.6 "누적 유효 피해" 대체) */
 function judge(){
   const B=S.battle; S.metrics.judged++;
-  const ra=B.recA/B.fd.maxHp, rd=B.recD/B.fa.maxHp;
+  const ra=B.fa.hp/B.fa.maxHp, rd=B.fd.hp/B.fd.maxHp;
+  bmsg("⚖️ 남은 HP 비율로 판별합니다!",null,{key:"judgeBanner",big:true});
+  bmsg(`${fighterName("A")} ${pct(ra)} vs ${fighterName("D")} ${pct(rd)}`);
   if(ra>rd) finishBattle("A",`판정 ${pct(ra)} vs ${pct(rd)}`);
   else if(rd>ra) finishBattle("D",`판정 ${pct(rd)} vs ${pct(ra)}`);
-  else {S.metrics.ties++; finishBattle("D","동률 — 방어자 승");}
+  else {S.metrics.ties++; finishBattle("D",`동률 ${pct(ra)} — 방어자 승`);}
 }
 function finishBattle(winSide,how){
   const B=S.battle;
   const winP=winSide==="A"?B.attP:B.defP, loseP=winSide==="A"?B.defP:B.attP;
   const loseF=winSide==="A"?B.fd:B.fa, loseSide=winSide==="A"?"D":"A";
   if(winSide==="A")S.metrics.attackerWins++; else S.metrics.defenderWins++;
-  bmsg(`${fighterName(loseSide)}는(은) 쓰러졌다!`,{ko:loseSide,shake:loseSide,hp:{side:loseSide,val:Math.max(0,loseF.hp),max:loseF.maxHp}});
+  bmsg(`${fighterName(loseSide)}는(은) 쓰러졌다!`,{ko:loseSide,shake:loseSide,hp:{side:loseSide,val:Math.max(0,loseF.hp),max:loseF.maxHp}},{key:"damageFx"}); // #106: KO 연출 그룹
   bmsg(`${how} — ${pname(winP.owner)} 승!`);
   let msg;
   if(loseF===loseP){ loseP.alive=false; msg=`${TYPE_KO[loseP.type]} 패배(${how}) — 제거`; }
@@ -1699,9 +2114,8 @@ function finishBattle(winSide,how){
   const attacker=B.attP;
   const q=B.msgQ.splice(0);
   S.battle=null;
-  // 연출: 남은 메시지 재생 후 0.8초 지연 닫힘 — 헤드리스·sim은 기존처럼 즉시 닫힘
-  if(liveBattleDom()) playMsgs(q,()=>setTimeout(()=>{if(!S.battle)close();},800));
-  else close();
+  // #106 5.6 연출: 남은 메시지 재생 → 결과 배너(뷰어 기준 "전투에서 승리!/패배,,,") → 닫힘 — 헤드리스·sim은 즉시 닫힘
+  battleEndFx(q,resultBannerOf(winP),()=>{ if(!S.battle) close(); });
   if(loseP.type==="king"){gameOver(winP.owner,"king");
     const gmsg=`🏁 경기 종료 — ${pname(winP.owner)} 승리!`; addLog(gmsg,"imp"); showToast(gmsg);
     render(); return;}
@@ -1716,19 +2130,19 @@ function finishByCapture(side){
   const winP=side==="A"?B.attP:B.defP, loseP=side==="A"?B.defP:B.attP, loseSide=side==="A"?"D":"A";
   const p=winP.owner, cb=BAL.captured;
   const el=loseP.element||shuffle(ELEMS.slice())[0], arch=archOf(loseP)||"std";
+  const rd=loseP.rosterId?ROSTER.find(r=>r.id===loseP.rosterId):null; // #91 원래 종 외형 정체 보존(표시 전용 artRosterId) — 로스터 정체가 없던 하수인은 null (임의 종으로 가장하지 않는다)
   S.reserve[p]={element:el,hp:BAL.enemyCapHp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // #20: 전투 중 적 포획만 HP 70/maxHP 100
-    skills:archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[]}; // 포획 하수인 규격 준용 (속성·아키타입은 대상 승계)
+    skills:loseP.skills?loseP.skills.slice():archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null}; // #92 (GDD-13 4.8): 대상의 현재 장착 기술 4슬롯을 복사 승계(탐색 교체 기술 포함, 참조 비공유) · 기술 배열이 없는 레거시 대상만 아키타입 템플릿 폴백 · 쿨 0·공개 기록 []·수치는 공용 규격
   met(p,"enemyCaptures");
   loseP.alive=false;
-  bmsg(`🔴 몬스터볼 적중! ${fighterName(loseSide)}를(을) 포획했다!`,{ko:loseSide});
+  bmsg(`🔴 몬스터볼 적중! ${fighterName(loseSide)}를(을) 포획했다!`,{ko:loseSide},{key:"captureFx"}); // #106 5.4 성공 연출
   addLog(`🔴 포획 종료: ${pname(p)}가 적 하수인을 포획 — 전투 즉시 종료 (예비 하수인 HP ${BAL.enemyCapHp}/${cb.hp})`,"imp");
   showToast(`🔴 포획 종료 — 적 하수인 포획! (예비 HP ${BAL.enemyCapHp}/${cb.hp})`);
   resetAfter(B.fa); resetAfter(B.fd);
   const attacker=B.attP;
   const q=B.msgQ.splice(0);
   S.battle=null;
-  if(liveBattleDom()) playMsgs(q,()=>setTimeout(()=>{if(!S.battle)close();},800));
-  else close();
+  battleEndFx(q,{title:"포획 성공! 전투 종료",cls:viewerIsOwner(p)||(S.mode==="pvp"&&!NET.mode)?"":"lose"},()=>{ if(!S.battle) close(); }); // #106 5.6
   if(checkWipe()) return; // 제거이므로 전멸 판정 기여
   afterBattle(attacker, side==="A"&&attacker.alive);
   render();
@@ -1764,6 +2178,7 @@ function fleeSwapPrompt(piece){
 }
 function fleeSwap(a,b){
   const ar=a.r, ac=a.c; a.r=b.r; a.c=b.c; b.r=ar; b.c=ac; // movedPreBT 미기록·강제 전투 미적용
+  healBreak(a); healBreak(b); // #106: 도망 후 교환도 자세 해제
   addLog(`🏃 도망 — 후방 말과 위치를 교환했습니다.`,"imp");
   checkKingReach();
 }
@@ -1775,13 +2190,14 @@ function afterBattle(attacker,attackerWonAlive){
 }
 
 /* ===== AI (공정 관측 휴리스틱 — Phase 1) ===== */
+/* #106 6.3: AI 는 사람과 같은 연출을 기다린다 — 잠금 중이면 idle 콜백에 등록되고 idle 뒤 aiDelay 를 기산한다. 판단·정책·난수 순서는 불변 */
 function aiSchedule(){
   if(S.aiPending) return; S.aiPending=true;
-  setTimeout(()=>{S.aiPending=false; aiStep();}, S.mode==="sim"?BAL.simDelay:BAL.aiDelay);
+  const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return; S.aiPending=false; aiStep(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
 }
 function aiScheduleBattle(){
   if(S.aiBattlePending) return; S.aiBattlePending=true;
-  setTimeout(()=>{S.aiBattlePending=false; aiBattleAction();}, S.mode==="sim"?BAL.simDelay:BAL.aiDelay);
+  const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return; S.aiBattlePending=false; aiBattleAction(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
 }
 function aiStep(){
   if(!S||S.phase!=="play"||!isAI(S.current)||S.battle) return;
@@ -1789,7 +2205,7 @@ function aiStep(){
   if(!S.mainUsed){ if(aiLevelOf(me)==="dan5") aiMainStrong(me); else aiMain(me); render(); aiSchedule(); return; } // #21 난이도 분기
   if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18 안전장치
   if(S.forcedTargets&&S.forcedTargets.length){ // T1: 강제 전투 최우선 이행 (aiEvalBattles보다 우선)
-    const att=S.movedPiece, def=att?alivePieces().find(e=>S.forcedTargets.includes(e.id)&&canBattle(att,e)):null;
+    const att=S.movedPiece, def=att?alivePieces().find(e=>forcedPickOk(e)):null; // #106: 폭탄 접촉 대상도 이행
     if(att&&def){ initBattle(att,def); return; }
     S.forcedTargets=[]; // 이행 불가 조합 방어 (크래시 방지)
     if(S.forcedQueue.length){ aiSchedule(); return; } // 다음 대기 항목 처리
@@ -1859,9 +2275,10 @@ function aiMain(me){
   if(isBurning()&&king){
     const holes=[[king.r+1,king.c],[king.r-1,king.c],[king.r,king.c+1],[king.r,king.c-1]]
       .filter(([r,c])=>r>=1&&r<=ROWS&&c>=1&&c<=COLS&&!at(r,c));
+    const vipAdj=(r,c)=>aiVisible(me).some(e=>e.revealed&&(e.type==="ally"||e.type==="king")&&Math.abs(e.r-r)+Math.abs(e.c-c)===1); // #106: 폭탄이 공개 동료·왕과 새로 인접하면 폭탄만 잃는다 — 회피
     for(const b of alivePieces().filter(x=>x.owner===me&&x.type==="bomb"&&x.immobile===0&&!adj(x,king)))
       for(const [r,c] of holes)
-        if(canMoveTo(b,r,c)){ doMove(b,r,c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
+        if(canMoveTo(b,r,c)&&!vipAdj(r,c)){ doMove(b,r,c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
   }
   // 3. 강한 전투 기회가 있으면 주 행동 생략(위치 보존)
   const pick=aiEvalBattles(me,true);
@@ -1910,9 +2327,21 @@ function aiMain(me){
   }
   cands.sort((a,b)=>b.sc-a.sc);
   const tp=aiTeleportPick(me); // #14 텔레포트 스왑: 점수 기반으로 일반 이동과 경쟁 (남용 방지)
+  const hl=aiHealPick(me); // #106 6.3 권고: 가시 인접 적 없고 HP<60% 인 자기 말 — 다른 후보 점수가 낮을 때만 (난수 미소비)
+  if(hl&&hl.sc>(cands.length?cands[0].sc:0)&&(!tp||hl.sc>tp.sc)&&doHeal(hl.p)){ addLog("🤖 AI 회복 행동","ai"); showToast("🤖 AI 회복 행동"); return; }
   if(tp&&tp.sc>(cands.length?cands[0].sc:0)&&doTeleportSwap(tp.a,tp.b)){ addLog("🤖 AI 주 행동","ai"); return; } // #18: 차단 시 일반 이동으로 대체
   if(cands.length){ const t=cands[0]; doMove(t.p,t.r,t.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
   S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략");
+}
+/* #106 5급 회복 후보: 가시 인접 적이 없고 HP<60% 인 자기 하수인·동료·왕 중 손실 비율이 가장 큰 말 (공정 관측 — 자기 말 정보만, 난수 미소비) */
+function aiHealPick(me){
+  const caut=aiCaution(me), vis=aiVisible(me);
+  let best=null;
+  for(const p of alivePieces().filter(x=>x.owner===me&&canHeal(x)&&x.hp<x.maxHp*0.6&&!vis.some(e=>adj(e,x)))){
+    const sc=(1-p.hp/p.maxHp)*30*caut+(p.type==="king"?10:0);
+    if(!best||sc>best.sc) best={p,sc};
+  }
+  return best;
 }
 /* T6 강제 전투 예측: (r,c) 이동 시 새로 인접하게 될 보이는 적 중 최선 전투 기대 점수 (없으면 null) */
 function aiForcedScore(me,p,r,c){
@@ -2047,15 +2476,15 @@ function aiBattleAction(){
   }
   const usable=f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>f.cds[x.i]===0);
   if(!usable.length){ window.__act("basic"); return; } // 전 슬롯 쿨 → 폴백 기본 공격
-  const adv=f.element&&opp.element&&BEATS[f.element]===opp.element;
-  const disadv=f.element&&opp.element&&BEATS[opp.element]===f.element;
-  const mult=(adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1);
+  const multOf=el=>{ // #92 기대 피해 상성은 기술 속성(공격기) 기준 — 기본 공격·시그니처는 본체 속성
+    const adv=el&&opp.element&&BEATS[el]===opp.element, disadv=el&&opp.element&&BEATS[opp.element]===el;
+    return (adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1); };
   const lowHp=f.hp<f.maxHp*(0.3+0.15*caut);
-  const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[f.element];
   const scored=usable.map(({i,sk})=>{
     let sc=0;
+    const atkEl=atkElOf(f,sk), statusKey={fire:"burn",water:"weaken",lightning:"shock"}[atkEl]; // 상태 키도 기술 속성 (#92)
     if(sk.pow){ // 피해 기술
-      const est=slotPow(f,sk)*mult*(f.focusCharge&&sk.kind==="attack"?1.2:1);
+      const est=slotPow(f,sk)*multOf(atkEl)*(f.focusCharge&&sk.kind==="attack"?1.2:1);
       sc=6+est/4;
       if(est*(1-BAL.dmgVar)>=opp.hp+opp.shield) sc=100; // 킬 가능 최우선
       else if(sk.kind==="sig") sc+=5;
@@ -2114,7 +2543,13 @@ function aiWinProb(att,def,me){ // 공개 스탯 기반 승률 추정 — 포획
 }
 /* 전투 기대치 (me 관점, 양수=유리): 미공개 적은 목격 이동 여부별 폭탄·함정 확률 혼합 */
 function aiBattleEV(me,att,def){
-  if(att.type==="bomb"||att.type==="trap") return null;
+  if(att.type==="trap") return null;
+  if(att.type==="bomb"){ // #106 4.4.2: 폭탄이 새로 인접하면 발동 — 하수인 추정 대상은 교환 이득, 동료·왕은 폭탄 손실, 폭탄·함정은 0. 공정 관측(revealed·목격 이동 기억만)
+    const th=aiThreatOf(me,def);
+    if(th==="bomb"||th==="trap") return 0;
+    if(th==="unit") return def.type==="minion"?aiUnitValue(def,me)-18:-18;
+    return (1-Math.min(1,aiStaticRisk(me,th==="unknownMoved")))*2; // 미공개: 하수인·동료·왕 혼합 기대치 — 소폭 양수
+  }
   if(att.type==="king"&&def.type==="king") return null; // 불가침
   const th=aiThreatOf(me,def), va=aiUnitValue(att,me);
   const bombEV=att.type==="minion"?-va+16:22, trapEV=-10;
@@ -2222,9 +2657,9 @@ function aiMainStrong(me){
       const ev=aiBattleEV(me,p,e); if(ev===null) continue; if(best===null||ev>best) best=ev; }
     return best===null?0:best;
   };
-  const attackOpp=()=>{ // 이동 후 가능한 최선 공격 기회(양수만, 0.8 가중)
+  const attackOpp=()=>{ // 이동 후 가능한 최선 공격 기회(양수만, 0.8 가중) — 폭탄은 능동 공격 불가라 제외 (#106)
     let best=0;
-    for(const x of my) for(const e of V){ if(Math.abs(e.r-x.r)+Math.abs(e.c-x.c)!==1) continue;
+    for(const x of my) for(const e of V){ if(x.type==="bomb"||Math.abs(e.r-x.r)+Math.abs(e.c-x.c)!==1) continue;
       const ev=aiBattleEV(me,x,e); if(ev!==null&&ev>best) best=ev; }
     return best*0.8;
   };
@@ -2243,6 +2678,9 @@ function aiMainStrong(me){
     const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
     if(ev) cands.push({kind:"search",p,ev,s1:aiEvalPos(me,V)+14+attackOpp(),desc:"탐색"});
   }
+  // 후보 1b (#106 6.3 권고): 회복 — 가시 인접 적이 없고 HP<60% 인 자기 말. 타이브레이크 난수를 쓰지 않아 기존 rand 소비 순서를 바꾸지 않는다
+  for(const p of my.filter(x=>canHeal(x)&&x.hp<x.maxHp*0.6&&!V.some(e=>Math.abs(e.r-x.r)+Math.abs(e.c-x.c)===1)))
+    cands.push({kind:"heal",p,s1:aiEvalPos(me,V)+(1-p.hp/p.maxHp)*24+(p.type==="king"?8:0)+attackOpp(),desc:"회복",noTie:true});
   // 후보 2: 이동 (폭탄 포함·함정 제외 — canMoveTo가 규칙 처리)
   for(const p of my.filter(x=>x.immobile===0&&x.type!=="trap")){
     for(const [r,c] of aiMoveOptions(p)){
@@ -2271,7 +2709,7 @@ function aiMainStrong(me){
   }
   // 후보 4: 생략 (위치 보존)
   cands.push({kind:"skip",s1:aiEvalPos(me,V)+attackOpp()-2,desc:"생략"});
-  for(const c of cands) c.s1+=rand()*0.5; // 동점 타이브레이크 (시드 재현 가능)
+  for(const c of cands) if(!c.noTie) c.s1+=rand()*0.5; // 동점 타이브레이크 (시드 재현 가능) — 회복 후보는 제외(난수 소비 불변)
   cands.sort((a,b)=>b.s1-a.s1);
   // 2-ply: 상위 K 후보에 대해 최악 응수 반영
   const top=cands.slice(0,BAL.aiStrongTopK);
@@ -2288,6 +2726,7 @@ function aiMainStrong(me){
   S.aiLastThinkMs=Date.now()-t0;
   for(const c of top){ // 실행 (텔레포트 차단 시 다음 후보)
     if(c.kind==="search"){ doSearch(c.p,c.ev); addLog("🤖 AI 탐색 행동","ai"); return; }
+    if(c.kind==="heal"){ if(doHeal(c.p)){ addLog("🤖 AI 회복 행동","ai"); return; } continue; }
     if(c.kind==="move"){ hist.push({id:c.p.id,r:c.p.r,c:c.p.c}); if(hist.length>6) hist.shift();
       doMove(c.p,c.r,c.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
     if(c.kind==="tele"){ if(doTeleportSwap(c.a,c.b)){ addLog("🤖 AI 주 행동","ai"); return; } continue; }
@@ -2311,13 +2750,15 @@ function aiBattleActionStrong(side){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner, myPc=side==="A"?B.attP:B.defP, oppPc=side==="A"?B.defP:B.attP;
-  const adv=f.element&&opp.element&&BEATS[f.element]===opp.element, disadv=f.element&&opp.element&&BEATS[opp.element]===f.element;
-  const mult=(adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1)*(f.atkBuff?1+BAL.nextBuffPct:1);
+  const multOf=el=>{ // #92 내 기대 피해 상성은 기술 속성(공격기) 기준 — 기본 공격·시그니처는 본체 속성
+    const adv=el&&opp.element&&BEATS[el]===opp.element, disadv=el&&opp.element&&BEATS[opp.element]===el;
+    return (adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1)*(f.atkBuff?1+BAL.nextBuffPct:1); };
+  // 상대 기대 피해: 상대 미공개 기술은 참조하지 않으므로(공정 관측) 상대 본체 속성 vs 내 본체 속성(방어 상성)으로 추정 — 현행 유지
   const oAdv=opp.element&&f.element&&BEATS[opp.element]===f.element, oDis=opp.element&&f.element&&BEATS[f.element]===opp.element;
   const oppEst=(opp.atk||16)*(opp.skills?1.18:1)*(oAdv?BAL.advMult:oDis?BAL.disMult:1)*(opp.weaken>0?(1-BAL.weakenPct):1)*(f.dmgCut?1-f.dmgCut:1);
   const usable=f.skills?f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>f.cds[x.i]===0):[];
-  const dmgOf=sk=>(sk?slotPow(f,sk):f.atk)*mult*(f.focusCharge&&sk&&sk.kind==="attack"?1.2:1);
-  let bestDmg=f.atk*mult, bestSlot=-1;
+  const dmgOf=sk=>(sk?slotPow(f,sk):f.atk)*multOf(atkElOf(f,sk))*(f.focusCharge&&sk&&sk.kind==="attack"?1.2:1);
+  let bestDmg=f.atk*multOf(f.element), bestSlot=-1;
   for(const {i,sk} of usable) if(sk.pow&&dmgOf(sk)>bestDmg){bestDmg=dmgOf(sk); bestSlot=i;}
   const killNow=bestDmg*(1-BAL.dmgVar)>=opp.hp+opp.shield;
   const toKillMe=Math.ceil(Math.max(1,f.hp)/Math.max(1,oppEst)), toKillOpp=Math.ceil((opp.hp+opp.shield)/Math.max(1,bestDmg));
@@ -2341,10 +2782,10 @@ function aiBattleActionStrong(side){
   }
   if(!f.skills){ if(f.skillAtk&&f.cd===0){window.__act("skill");return;} window.__act("basic"); return; }
   if(!usable.length){ window.__act("basic"); return; }
-  const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[f.element];
   const lowHp=f.hp<=oppEst*1.5;
   const scored=usable.map(({i,sk})=>{
     let sc=0;
+    const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[atkElOf(f,sk)]; // 상태 키는 기술 속성 (#92)
     if(sk.pow){
       const est=dmgOf(sk);
       sc=est/3;
@@ -2431,38 +2872,75 @@ function aiPutRandom(x,rows,free,put){
 }
 
 /* ===== 모달·핸드오프 ===== */
+/* #11·#36 추측 메모 UI 상태 (게임 상태 S와 분리) — btns/piece: 테스트·포커스용.
+   #94 token: 지금 오버레이를 소유한 메모 피커의 토큰(다른 modal()/close()가 오면 null) · seq: 피커 발급 번호 · overlayOpen: 오버레이 표시 여부 */
+const MEMO_UI={btns:[],piece:null,token:null,seq:0,overlayOpen:false};
 function modal(html,buttons){
+  MEMO_UI.token=null; MEMO_UI.overlayOpen=true; // #94 새 모달이 오버레이를 가져간다 — 열려 있던 메모 피커 콜백은 무효
   $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
   const ob=$("obBtns");
-  for(const [txt,fn] of buttons){const b=document.createElement("button"); b.textContent=txt; b.onclick=fn; b.className="primary"; ob.appendChild(b);}
+  for(const [txt,fn] of buttons){const b=document.createElement("button"); b.textContent=txt; b.onclick=()=>{ if(fxLocked()) return; fn(); }; b.className="primary"; ob.appendChild(b);} // #106: 연출 잠금 중 모달 버튼 무시
   $("overlay").classList.remove("hidden");
 }
-function close(){$("overlay").classList.add("hidden");}
-/* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음) */
-const MEMO_UI={btns:[],piece:null}; // 테스트·포커스용 (게임 상태 S와 분리)
+function close(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; $("overlay").classList.add("hidden");}
+/* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음)
+   #94 상대 턴·AI 턴에도 뷰어가 고정된 모드(온라인 NET.me · PVE 0)에서는 로컬로 연다 — 진입은 onCell → memoClickTarget (네트워크·RNG·selected·게임 로그 무변화) */
 function memoSet(v,pid,key){ // key: MEMO_OPTS 키 또는 null(삭제). 그 외 값은 무시 — 상대 말·게임 중에만
   const pc=S.pieces.find(x=>x.id===pid); if(!pc||pc.owner===v||(v!==0&&v!==1)) return false;
   if(key===null||key===undefined){ delete S.memos[v][pid]; return true; }
   if(!memoOpt(key)) return false;
   S.memos[v][pid]=key; return true;
 }
+/* #94 메모 대상 자격 — 살아 있고 배치된, 미공개, 뷰어가 볼 수 있는 상대 말 (죽은 말·비가시·자기 말·공개된 말은 불가) */
+function memoTargetOk(v,pc){ return !!pc&&pc.alive&&pc.placed&&!pc.revealed&&pc.owner!==v&&visibleTo(v,pc); }
+/* #94 이 셀 클릭이 "순수 로컬 메모"인가 — 맞으면 대상 말, 아니면 null(현행 netAction 경로 그대로).
+   (a) 상대 턴·AI 턴 — 뷰어 고정 모드(온라인 NET.me · PVE 0)에서 뷰어가 볼 수 있는 상대 말. 공개된 말도 여기로 와서 memoModal의 기존 안내 토스트를 받는다.
+       핫시트 PVP는 뷰어=현재 플레이어라 "상대 턴"이 없다(상대 메모 세트 오염 방지) · sim은 대상 아님.
+   (b) 자기 턴 — onCellCore의 우선순위(강제 전투 대상 → 텔레포트 → 자기 말 선택 → 인접 전투 지정)를 그대로 흉내 내어,
+       원래 memoModal 분기에 도달할 클릭만 로컬 처리(송신 0). 이동·전투·탐색·텔레포트 권한 가드는 건드리지 않는다.
+   오버레이가 열려 있으면(전투 모달·상대 선택 대기·이미 열린 피커) 로컬 분기를 쓰지 않는다 — 원격 모달 권한·대기 큐를 가리지 않는다. */
+function memoClickTarget(r,c){
+  if(!S||S.phase!=="play"||S.battle||NET.replaying||MEMO_UI.overlayOpen) return null;
+  if(fxLocked()) return null; // #106 3.2: 배너·연출 잠금 중에는 메모 피커도 열지 않는다 (잠금이 풀리면 종전대로)
+  const v=humanViewer(); if(v!==0&&v!==1) return null;
+  const p=at(r,c); if(!p||p.owner===v||!visibleTo(v,p)) return null;
+  const myTurn=NET.mode?netActor()===NET.me:!isAI(S.current);
+  if(!myTurn) return (NET.mode||S.mode==="pve")?p:null; // (a)
+  if(S.teleport) return null;
+  if(forcedPickOk(p)) return null;
+  if(p.owner===S.current) return null;
+  const s=S.selected&&!S.selected.tray?S.selected:null;
+  if(s&&adj(s,p)&&canBattle(s,p)) return null;
+  return p; // (b)
+}
 function memoModal(pc){
   if(S.phase!=="play"||!pc) return;
   if(NET.replaying) return; // 온라인: 상대 클릭 재생 시 내 메모 팝업 금지 (메모는 뷰어 전용·비동기화)
   const v=humanViewer();
   if(pc.owner===v) return;
+  if(!pc.alive||!pc.placed||!visibleTo(v,pc)) return; // #94 죽은 말·비가시 말은 대상이 아니다
   if(pc.revealed){ showToast(`이미 공개된 말: ${idLabel(v,pc)}`); return; } // 실제 정체가 우선 — 추측 불필요
   const cur=S.memos[v][pc.id]||null;
+  /* #94 오래된 콜백 무효: 이 피커의 토큰이 오버레이 소유권을 잃었거나(다른 모달·close·새 게임) 대상이 공개·사망·비가시가 되면
+     저장·삭제·닫기 콜백은 메모 세트를 바꾸지 않는다. 소유권을 잃은 경우에는 close()·render()도 하지 않는다 — 새 모달(전투·상대 선택 대기)을 가리지 않는다. */
+  const tk={game:S,piece:pc.id,viewer:v,seq:++MEMO_UI.seq};
+  const live=()=>MEMO_UI.token===tk&&S===tk.game;
+  const commit=key=>{ if(!live()) return; MEMO_UI.token=null;
+    const cur2=S.pieces.find(x=>x.id===pc.id);
+    if(S.phase==="play"&&memoTargetOk(v,cur2)) memoSet(v,pc.id,key); else showToast("대상 말의 상태가 바뀌어 추측을 적용하지 않았습니다.");
+    close(); render(); };
+  const dismiss=()=>{ if(!live()) return; MEMO_UI.token=null; close(); };
   netLocalModal(); // 메모 피커는 로컬 전용 모달
   modal(`<h2>📝 정체 추측 — ? (${pc.r}행 ${pc.c}열)</h2>
     <small>이 물음표 말이 무엇일지 골라 두세요. 나만 보이는 메모이며 상대·AI에게는 보이지 않아요.</small>
     <div class="memo-grid" id="memoOpts" role="group" aria-label="정체 추측 선택"></div>`,
-    [["추측 삭제",()=>{memoSet(v,pc.id,null); close(); render();}],["닫기",close]]);
+    [["추측 삭제",()=>commit(null)],["닫기",dismiss]]);
+  MEMO_UI.token=tk; // modal()이 토큰을 비운 뒤에 이 피커가 오버레이를 소유한다
   const grid=$("memoOpts"); MEMO_UI.btns=[]; MEMO_UI.piece=pc.id;
   for(const o of MEMO_OPTS){
     const b=document.createElement("button"); b.className="memo-opt"; b.innerHTML=`<span class="ico" aria-hidden="true">${o.emoji}</span><span>${o.ko}</span>`;
     b.setAttribute("type","button"); b.setAttribute("aria-label",`${o.ko} ${o.emoji} 추측`); b.setAttribute("aria-pressed",o.key===cur?"true":"false"); b.dataset.key=o.key;
-    b.onclick=()=>{ memoSet(v,pc.id,o.key); close(); render(); };
+    b.onclick=()=>commit(o.key);
     grid.appendChild(b); MEMO_UI.btns.push(b);
   }
   const del=$("obBtns").children[0]; if(del) del.disabled=!cur;
@@ -2551,7 +3029,8 @@ const TUT_SCENES={
     return [
       {t:"옆에 붙으면 강제 전투",vis:TSV.svg(90,58,"내 하수인이 한 칸 움직여 상대 물음표 말 바로 옆에 붙자 칼 표시와 함께 싸움이 시작되는 전후 장면",g1),res:"한 차례 싸움 최대 2번 ⚔⚔"},
       {t:"속성 가위바위보",vis:TSV.svg(130,100,"불, 풀, 번개, 물 네 원이 고리로 이어져 불은 풀을, 풀은 번개를, 번개는 물을, 물은 불을 이기는 화살표",g2),res:"🔥불 → 🌿풀 → ⚡번개 → 💧물 → 🔥불 순서로 이겨요"},
-      {t:"싸움이 끝나면",vis:TSV.stack(TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60 그대로","txt")),TSV.row(TSV.lbl("⏳ 쿨타임 그대로","txt")),TSV.row(`<span class="tut-strike">🔥 화상 · ☠ 약화</span>`,TSV.arr(),TSV.lbl("상태이상은 사라져요 ✓","ok"))),res:"HP·쿨타임 유지 · 상태이상 해제"}]; },
+      {t:"싸움이 끝나면",vis:TSV.stack(TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60 그대로","txt")),TSV.row(TSV.lbl("⏳ 쿨타임 그대로","txt")),TSV.row(`<span class="tut-strike">🔥 화상 · ☠ 약화</span>`,TSV.arr(),TSV.lbl("상태이상은 사라져요 ✓","ok"))),res:"HP·쿨타임 유지 · 상태이상 해제"},
+      {t:"6라운드가 끝나면",vis:TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60%","ok"),TSV.lbl("vs"),TSV.dhp(0.4,"bad"),TSV.lbl("HP 40%","bad"),TSV.arr(),TSV.lbl("60% 승 ✓","ok")),res:"남은 HP 비율이 높은 쪽 승리 · 같으면 지킨 쪽",tone:"ok"}]; }, // #106 T6
   bombtrap(){ const C=TSV.C;
     const g1=TSV.grid(2,2,3,1)+TSV.tok(13,13,"💣","me")+TSV.arrow(24,13,42,13)+TSV.grid(2,34,2,1)+TSV.tok(13,45,"🪤","me")+TSV.g(35,45,"🔒",12);
     const g2=TSV.tok(14,20,"⚔","me")+TSV.arrow(24,20,32,20,C.bad)+TSV.tok(44,20,"💣","op")+TSV.g(29,6,"💥",12)+TSV.x(14,20,7)+TSV.x(44,20,7)
@@ -2560,8 +3039,8 @@ const TUT_SCENES={
       +TSV.tok(30,52,"⚔","me")+TSV.g(48,44,"🔒",13);
     return [
       {t:"움직임",vis:TSV.svg(70,64,"폭탄은 한 칸 화살표로 움직이고, 함정은 자물쇠로 고정",g1),res:"폭탄 1칸 (버닝 땐 2칸) · 함정은 고정"},
-      {t:"폭탄을 건드리면",vis:TSV.svg(76,66,"하수인이 폭탄을 건드리면 둘 다 엑스로 사라지고, 왕이 건드리면 폭탄만 사라지고 왕은 살아남는 장면",g2),res:"하수인 ✗ 둘 다 사라짐 · 동료·왕 ✓ 살아남음"},
-      {t:"함정을 밟으면",vis:TSV.svg(76,66,"함정을 밟으면 함정이 사라지고 밟은 말은 자물쇠와 함께 정지하는 장면",g3),res:"함정 ✗ · 밟은 말은 내 차례 2번 정지"}]; },
+      {t:"폭탄을 건드리면",vis:TSV.svg(76,66,"하수인이 폭탄을 건드리면 둘 다 엑스로 사라지고, 왕이 건드리면 폭탄만 사라지고 왕은 살아남는 장면",g2),res:"하수인 ✗ 둘 다 사라짐 · 동료·왕 ✓ 살아남음 · 내 폭탄이 붙어도 펑"},
+      {t:"함정을 밟으면",vis:TSV.svg(76,66,"함정을 밟으면 함정이 사라지고 밟은 말은 자물쇠와 함께 정지하는 장면",g3),res:"함정 ✗ · 밟은 말은 내 차례 2번 정지 · 둘 다 정체 공개"}]; },
   capture(){ const C=TSV.C;
     const g1=TSV.tok(22,16,"⚔","op",11)+TSV.hp(4,32,36,0.25,C.bad);
     const g3=TSV.tok(22,16,"⚔","me",11)+TSV.hp(4,32,36,0.4,C.gold);
@@ -2590,22 +3069,22 @@ const TUT_SCENES={
   recap(){
     return [
       {t:"이기는 길 셋",vis:TSV.row(TSV.pill("👑 상대 왕 잡기"),TSV.pill("🏁 내 왕이 끝줄"),TSV.pill("💀 상대 전멸"))},
-      {t:"내 차례 흐름",vis:`<div class="tut-flow"><span class="tut-flow-box">주 행동 1개<small>이동·탐색·텔레포트</small></span>${TSV.arr()}<span class="tut-flow-box">옆에 붙었으면 ⚔<small>꼭 싸움 (최대 2번)</small></span>${TSV.arr()}<span class="tut-flow-box acc">턴 종료 ▶</span></div>`},
+      {t:"내 차례 흐름",vis:`<div class="tut-flow"><span class="tut-flow-box">주 행동 1개<small>이동·탐색·텔레포트·회복</small></span>${TSV.arr()}<span class="tut-flow-box">옆에 붙었으면 ⚔<small>꼭 싸움 (최대 2번)</small></span>${TSV.arr()}<span class="tut-flow-box acc">턴 종료 ▶<small>할 게 없으면 자동</small></span></div>`,res:"회복: 고른 말이 매 턴 조금씩 나아요 (움직이거나 싸우면 풀려요)"},
       {t:"기억할 것",vis:TSV.row(TSV.pill("🌲 숲에 숨기"),TSV.pill("🔍 흔적 찾기"),TSV.pill("❓ 물음표 추리"))}]; }
 };
 const TUT_STEPS=[
   {icon:"🏆",title:"이기는 법 세 가지",cards:TUT_SCENES.win(),
    lines:["상대 <b>왕</b>을 찾아서 잡으면 이겨요.","내 <b>왕</b>이 상대편 <b>맨 끝줄</b>에 서도 이겨요.","상대의 싸우는 말(<b>하수인</b> 6개 + <b>동료</b> 2개)을 모두 없애도 이겨요."]},
   {icon:"🎭",title:"말 5가지와 숨은 정체",cards:TUT_SCENES.pieces(),
-   lines:["내 말은 모두 <b>14개</b>예요. <b>하수인</b>(싸우는 말) 6개, <b>동료</b> 2개, <b>왕</b> 1개, <b>폭탄</b> 3개, <b>함정</b> 2개예요.","상대에게 내 말은 전부 <b>물음표(?)</b>로 보여요. 상대 말도 나에게는 물음표예요.","싸우고 나면 그 말의 정체가 드러나요."]},
+   lines:["내 말은 모두 <b>14개</b>예요. <b>하수인</b>(싸우는 말) 6개, <b>동료</b> 2개, <b>왕</b> 1개, <b>폭탄</b> 3개, <b>함정</b> 2개예요.","상대에게 내 말은 전부 <b>물음표(?)</b>로 보여요. 상대 말도 나에게는 물음표예요.","싸우고 나면 그 말의 정체가 드러나요. <b>함정</b>을 밟으면 함정과 밟은 말도 드러나요."]},
   {icon:"🌲",title:"움직이기와 숲에 숨기",cards:TUT_SCENES.move(),
    lines:["내 차례에 말 <b>하나</b>를 위·아래·옆으로 <b>한 칸</b> 움직여요. 대각선은 안 돼요.","초록 칸은 <b>숲</b>이에요. 숲의 말은 상대가 <b>바로 옆</b>에 올 때만 보이고, 떨어지면 다시 숨어요.","숨은 말이 있는 칸으로 가면 <b>부딪혀요</b>. 그 앞 칸에 멈추고, 둘 다 이번 차례 동안 보여요."]},
   {icon:"🔍",title:"흔적과 탐색",cards:TUT_SCENES.search(),
    lines:["숲 어딘가에 <b>선물</b>이 숨어 있어요. 말이 그 칸에 서면 <b>흔적</b> 표시가 떠요.","그 말로 <b>다음 차례</b>에 <b>탐색</b>(찾아보기) 버튼을 누르면 선물을 받아요.","탐색은 <b>하수인·동료·왕</b>만 할 수 있어요. 폭탄·함정은 못 해요.","선물은 <b>몬스터볼</b>, 회복약 같은 <b>아이템</b>, 다음 싸움 <b>힘 버프</b>, 공용 하수인이에요."]},
   {icon:"⚔️",title:"옆에 붙으면 꼭 싸워요",cards:TUT_SCENES.battle(),
-   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요."]},
+   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요."]},
   {icon:"💣",title:"폭탄과 함정",cards:TUT_SCENES.bombtrap(),
-   lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). <b>함정</b>은 놓은 자리에서 못 움직여요.","<b>하수인</b>이 폭탄을 건드리면 펑! 둘 다 사라져요. <b>동료·왕</b>이 건드리면 폭탄만 사라지고 살아남아요.","<b>함정</b>을 건드리면 함정은 사라지고, 건드린 말은 <b>내 차례 2번</b> 동안 못 움직여요."]},
+   lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). 상대 옆에 새로 붙으면 터져요. <b>함정</b>은 놓은 자리에서 못 움직여요.","<b>하수인</b>이 폭탄을 건드리면 펑! 둘 다 사라져요. <b>동료·왕</b>이 건드리면 폭탄만 사라지고 살아남아요.","<b>함정</b>을 건드리면 함정은 사라지고, 건드린 말은 <b>내 차례 2번</b> 동안 못 움직여요. 둘 다 정체가 드러나요."]},
   {icon:"🔴",title:"잡아오기와 도망치기",cards:TUT_SCENES.capture(),
    lines:["싸울 때 상대 <b>하수인</b> HP가 <b>30%</b> 아래면 <b>몬스터볼</b>을 던져요. 성공률 <b>70%</b>예요.","성공하면 내 <b>예비 하수인</b>(HP 70/100)이 돼요. 성공·실패 모두 볼 <b>1개</b>가 없어져요.","내 말 HP가 <b>50%</b> 아래면 <b>도망</b>칠 수 있어요. 성공률 <b>50%</b>예요.","실패하면 상대가 바로 한 번 더 때려요. 성공하면 <b>뒤에 있는 내 말</b>과 자리를 바꿔도 돼요."]},
   {icon:"🌀",title:"텔레포트(순간이동)",cards:TUT_SCENES.teleport(),
@@ -2613,7 +3092,7 @@ const TUT_STEPS=[
   {icon:"🔥",title:"버닝 타임(불타는 시간)",cards:TUT_SCENES.burning(),banner:"턴 65부터 🔥 버닝 타임",
    lines:["<b>65번째 턴</b>부터 <b>버닝 타임</b>(불타는 시간)이에요. 말이 <b>곧게 2칸</b>까지 움직일 수 있어요.","상대편 <b>숲</b>이나 상대편 <b>땅</b>에 있거나, 들어가거나, 지나갈 때는 그대로 <b>1칸</b>이에요.","<b>폭탄</b>도 2칸 움직여요. <b>함정</b>은 여전히 고정이에요."]},
   {icon:"🏁",title:"빠른 복습 — 첫 차례 체크리스트",cards:TUT_SCENES.recap(),
-   lines:["이기는 길은 셋! 상대 <b>왕</b> 잡기, 내 왕이 상대 <b>끝줄</b>에 서기, 상대 <b>하수인·동료 전멸</b>이에요.","내 차례엔 <b>주 행동 하나</b>(이동·탐색·텔레포트)를 해요. 옆에 새로 붙은 상대와 꼭 싸우고, <b>턴 종료</b>를 눌러요.","숲에 숨고, 흔적을 찾고, 물음표 뒤를 추리해요. 이제 시작해요!"]}
+   lines:["이기는 길은 셋! 상대 <b>왕</b> 잡기, 내 왕이 상대 <b>끝줄</b>에 서기, 상대 <b>하수인·동료 전멸</b>이에요.","내 차례엔 <b>주 행동 하나</b>(이동·탐색·텔레포트·<b>회복</b>)를 해요. 옆에 새로 붙은 상대와 꼭 싸우고, <b>턴 종료</b>를 눌러요.","숲에 숨고, 흔적을 찾고, 물음표 뒤를 추리해요. 할 게 없으면 턴이 저절로 넘어가요. 이제 시작해요!"]}
 ];
 const TUT_HINTS={ // 첫 발생 시 1회 짧은 상황 도움말 (게임 상태 S 무변경 · 저장 안 함)
   teleport:{icon:"🌀",text:"텔레포트(순간이동)를 쓸 수 있어요! 내 말이 상대편 땅에 들어가 있으면, 내 말 두 개의 자리를 서로 바꿀 수 있어요. 한 경기에 2번까지예요."},
@@ -2731,6 +3210,8 @@ function netLocalModal(){NET.localOpen=true;}   // 다음 modal()을 로컬 전�
 function netModalOwner(p){NET.modalOwner=p;}    // 다음 modal()의 소유자 명시 (기본: netActor())
 function netSend(m){ try{ if(NET.ws&&NET.ws.readyState===1) NET.ws.send(JSON.stringify(m)); }catch(e){} }
 function netAction(a){ // 모든 상태 변경 입력의 단일 경로 — 오프라인은 즉시 적용, 온라인은 검증·송신 후 적용
+  if(!NET.replaying){ FX.inputSeq++; // #106 3.2 입력 잠금: 연출 중 사람 입력(셀·턴바·전투 커맨드)은 무시 — 기권만 허용, AI·수신 재생·자동 종료(idle 뒤)는 해당 없음
+    if(fxLocked()&&a.t!=="resign"&&!isAI(netActor())) return; }
   if(NET.mode&&!NET.replaying){
     if(netActor()!==NET.me){ showToast("🌐 상대 턴입니다."); return; }
     netSend({t:"a",a});
@@ -2752,7 +3233,8 @@ function applyAction(a){
       if(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel)) doSearch(sel,ev);
       break; }
     case "tele": S.teleport=S.teleport?null:{stage:1,piece:null}; S.selected=null; render(); break;
-    case "endTurn": endTurn(); break;
+    case "endTurn": if(a.auto) met(S.current,"autoEnds"); endTurn(); break; // #106 T7: 자동 종료 표식은 프레임에 실려 양측 지표 동일
+    case "heal": { const p=S.pieces.find(x=>x.id===a.id); if(p) doHeal(p); break; } // #106 T2 회복 주 행동 (lockstep 액션 — rand 소비 0)
     case "resign": { const loser=S.current; gameOver(1-loser,"resign");
       const msg=`🏳️ ${pname(loser)} 기권 — ${pname(S.winner)} 승리!`;
       addLog(msg,"imp"); showToast(msg); render(); break; }
@@ -2765,12 +3247,12 @@ function applyAction(a){
   }
 }
 /* 수신 액션 큐 — 표시 계층(메시지 재생·타이머 모달)이 따라잡은 뒤에만 재생 (원격 지연·백그라운드 탭 방어) */
-function netReady(a){
+function netReady(a){ // #106 3.1-4: 잠금(배너·연출·메시지 재생) 중에는 큐에 보관만 하고 idle 에 적용 — 드롭·재정렬 없음, 워치독으로 잠금은 반드시 풀린다
   if(!NET.started||!S) return false;
-  if(a.t==="modal") return !!NET.syncModal&&NET.syncModal.seq===a.seq&&!MSGPLAYING;
+  if(a.t==="modal") return !!NET.syncModal&&NET.syncModal.seq===a.seq&&!fxLocked();
   if(a.t==="act"||a.t==="item"||a.t==="ball"||a.t==="flee")
-    return !!S.battle&&!MSGPLAYING&&S.battle.msgQ.length===0&&!!window.__actCore;
-  return !MSGPLAYING;
+    return !!S.battle&&!fxLocked()&&S.battle.msgQ.length===0&&!!window.__actCore;
+  return !fxLocked();
 }
 function netPump(){
   if(NET.replaying) return;
@@ -2783,7 +3265,7 @@ function netPump(){
 }
 (function(){ const t=setInterval(netPump,80); if(t&&typeof t.unref==="function") t.unref(); })(); // 브라우저는 숫자 반환(무영향) · Node 하네스에서는 이벤트 루프를 붙잡지 않음 (#41 회귀: smoke 종료 지연)
 /* 동기화 대상 입력의 안정 진입점 — 원본(…Core)은 applyAction만 호출 */
-function onCell(r,c){ netAction({t:"cell",r,c}); }
+function onCell(r,c){ const m=memoClickTarget(r,c); if(m){ memoModal(m); return; } netAction({t:"cell",r,c}); } // #94 로컬 메모 클릭은 송신·seq·RNG 없이 피커만 연다 (#106 잠금 중에는 memoClickTarget 이 null → netAction 가드가 막는다)
 window.selTray=id=>netAction({t:"selTray",id});
 window.toggleRoster=rid=>netAction({t:"roster",rid});
 window.autoPlace=()=>netAction({t:"auto"});
@@ -2800,7 +3282,10 @@ modal=function(html,buttons){
   const local=NET.localOpen; NET.localOpen=false;
   const owner=(NET.modalOwner!==null&&NET.modalOwner!==undefined)?NET.modalOwner:netActor();
   NET.modalOwner=null;
-  _modalCore(html,buttons);
+  const masked=NET.mode&&!local&&!!(buttons&&buttons.length)&&owner!==NET.me; // 동기화 모달의 비소유자
+  if(masked) // #92: 비소유자 화면에는 원문(탐색 후보 기술 등 소유자 전용 정보)을 한 번도 쓰지 않고 대기 화면만 그린다 — 코어 modal()을 그대로 지나가므로 #94 메모 피커 토큰 무효·overlayOpen 소유권도 종전과 동일
+    _modalCore(`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`,[]);
+  else _modalCore(html,buttons);
   if(!NET.mode||local) return;
   if(!buttons||!buttons.length){ NET.syncModal=null; return; } // 전투 모달 등 — 시맨틱 액션으로 동기화
   NET.modalSeq++;
@@ -2809,10 +3294,8 @@ modal=function(html,buttons){
   if(owner===NET.me){
     const ob=$("obBtns");
     if(ob) Array.prototype.slice.call(ob.children).forEach((btn,i)=>{
-      btn.onclick=()=>{ if(!NET.replaying) netSend({t:"a",a:{t:"modal",seq,i}}); fns[i](); };
+      btn.onclick=()=>{ if(fxLocked()) return; if(!NET.replaying) netSend({t:"a",a:{t:"modal",seq,i}}); fns[i](); }; // #106: 잠금 중 소유자 클릭도 무시 (송신 0)
     });
-  } else {
-    $("overlayBox").innerHTML=`<h2>🔒 상대 선택 대기 중…</h2><p style="margin:8px 0;color:var(--dim)">상대가 행동을 선택하고 있습니다. 완료되면 자동으로 진행됩니다.</p>`;
   }
 };
 /* 사전 배치 → 매칭: 메뉴에서 배치 먼저(오프라인, 시드 무관) → 완료 시 큐 진입 → 매칭 시 양측 배치 교환 후
@@ -3080,8 +3563,8 @@ function netStart(seed,setups){
   applyNetSetup(0,setups[0]); // 양측 사전 배치 적용 (setups: [P1, P2] — 양쪽 동일 순서)
   applyNetSetup(1,setups[1]);
   S.selected=null;
-  addLog(`🌐 온라인 매치 시작 — 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}입니다. 양측 사전 배치가 적용되었습니다.`,"sys");
-  showToast(`🌐 매칭 완료! 당신은 ${NET.me===0?"P1(하단)":"P2(상단)"}`);
+  addLog(`🌐 온라인 매치 시작 — 당신은 P${NET.me+1}입니다 (자기 진영이 화면 아래). 양측 사전 배치가 적용되었습니다.`,"sys"); // #93 양측 모두 자기 진영 하단
+  showToast(`🌐 매칭 완료! 당신은 P${NET.me+1} — 자기 진영이 화면 아래입니다`);
   beginPlay(); // 무작위 선공(시드) → 바로 플레이 시작
 }
 

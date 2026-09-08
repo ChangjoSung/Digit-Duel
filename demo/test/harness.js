@@ -117,7 +117,7 @@ function persistApiHits(src){ return PERSIST_API.filter(re=>re.test(String(src))
 function load(htmlPath,opts){
   opts=opts||{};
   htmlPath=htmlPath||path.join(__dirname,"..","index.html");
-  const html=fs.readFileSync(htmlPath,"utf8");
+  const html=opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"); // #94·#96 opts.html: 파일을 쓰지 않고 메모리 HTML을 로드 — #94 변이본 음성 대조, #96 git show 기준판 before/after 대조용
   const m=html.match(/<script>([\s\S]*)<\/script>/);
   if(!m) throw new Error("script block not found");
   const els={};
@@ -143,12 +143,18 @@ function load(htmlPath,opts){
   /* window.localStorage 경로(tutStore)도 자기 로드의 저장소를 보도록 얇은 프록시로 감싼다.
      읽기 중 스토리지·location·WebSocket만 가로채고 나머지(window.__act 등 제품이 붙이는 심볼)는 전역 그대로 — 격리 최소 침습. */
   const OVERRIDE={location:loc,WebSocket:WebSocketCtor,sessionStorage,indexedDB,document:doc};
+  /* #94: 제품이 window.xxx= 로 붙이는 진입점(startMode·autoPlaceCore·__actCore …)을 로드별로도 기록한다.
+     window.xxx 읽기는 항상 자기 로드의 것을 돌려주고, 전역(bare 식별자 호출 경로)은 종전대로 "마지막 로드"가 갖되
+     T.activate() 로 어느 로드든 다시 전역의 주인이 될 수 있다 — 두 온라인 클라이언트를 한 프로세스에서 번갈아 구동하는 락스텝 픽스처용.
+     단일 로드 실행에서는 종전과 완전히 같다 (기록된 값 = 전역 값). */
+  const winProps={};
   const win=new Proxy(global,{
     get(t,p){ if(p==="localStorage"){ if(storage&&storage.__throws) throw new Error(storage.__throws); return storage; }
       if(Object.prototype.hasOwnProperty.call(OVERRIDE,p)) return OVERRIDE[p];
       if(p==="window"||p==="self"||p==="globalThis") return win;
+      if(Object.prototype.hasOwnProperty.call(winProps,p)) return winProps[p];
       return t[p]; },
-    set(t,p,v){ t[p]=v; return true; },
+    set(t,p,v){ winProps[p]=v; t[p]=v; return true; },
     has(t,p){ return p in t; }});
 
   // 전역 미러 — 테스트가 global.location / global.localStorage 로 "현재 로드"를 관찰하는 기존 방식 유지
@@ -158,7 +164,8 @@ function load(htmlPath,opts){
 
   // 가짜 타이머
   const TQ=[];
-  global.setTimeout=fn=>{TQ.push(fn);return 0;};
+  const ownSetTimeout=fn=>{TQ.push(fn);return 0;};
+  global.setTimeout=ownSetTimeout;
   global.setInterval=()=>0; global.clearInterval=()=>{}; // #41 온라인 PVP 수신 펌프(setInterval) — 헤드리스에서는 무동작 (Node 이벤트 루프 유지로 프로세스가 안 끝나던 회귀 방지)
   const drain=(cap)=>{cap=cap||5000000; let n=0; while(TQ.length&&n<cap){TQ.shift()();n++;} return n;};
   const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win};
@@ -167,18 +174,33 @@ function load(htmlPath,opts){
 ;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,EVENT_POOL,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
   newGame,genEvents,doSearch,canSearchPiece,applyRoster,aiAutoPlace,startTurn,endTurn,doMove,canMoveTo,canBattle,
   initBattle,startRounds,doTeleportSwap,teleportAvailable,checkWipe,alivePieces,at,fleeSwap,visibleTo,inForest,
-  finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,isBurning,beginPlay,
+  finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,archSkills,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
+  applyAction,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,shuffle, // #92 온라인 수신 경로·표시 헬퍼
+  recruitCandidates:typeof recruitCandidates==="function"?recruitCandidates:undefined,aiRecruitSlot:typeof aiRecruitSlot==="function"?aiRecruitSlot:undefined, // #92 (기준판 로드 호환: 없으면 undefined)
+  atkElOf:typeof atkElOf==="function"?atkElOf:undefined,skillNameKo:typeof skillNameKo==="function"?skillNameKo:undefined,recruitModal:typeof recruitModal==="function"?recruitModal:undefined,
+  SKILL_TIER_KO:typeof SKILL_TIER_KO!=="undefined"?SKILL_TIER_KO:undefined,
   renderSide,renderMetrics,render,startMode,modal,close,onCell,humanViewer,idLabel,
   MEMO_OPTS,MEMO_UI,memoOpt,memoSet,memoModal, // #36 추측 메모 피커
-  ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
+  memoClickTarget:typeof memoClickTarget==="function"?memoClickTarget:undefined, memoTargetOk:typeof memoTargetOk==="function"?memoTargetOk:undefined, // #94 로컬 메모 분기 (변경 전 소스로 음성 대조를 돌릴 수 있게 부재 허용)
+  ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artDirOfFighter:typeof artDirOfFighter==="function"?artDirOfFighter:undefined,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
   GLYPH,glyphOk,glyphSpan,memoShort,pieceMemoKey,
   artFail:window.artFail,artSpriteFail:window.artSpriteFail,artPortraitFail:window.artPortraitFail,
   rosterInfo:window.rosterInfo,battleModal,toggleRoster:window.toggleRoster, // #89 하수인 아트 연결 (표시 계층)
   NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
-  netServerDefault,netActor,netAction,netPrepare,netConnect,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
+  netServerDefault,netActor,netAction,netPrepare,netConnect,netPump,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
   TUT,TUT_STEPS,TUT_HINTS,TUT_KEY,tutStore,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
+  // #106 턴 흐름·연출 계약 (기준판 로드 호환: 부재 시 undefined)
+  FX:typeof FX!=="undefined"?FX:undefined,fxLocked:typeof fxLocked==="function"?fxLocked:undefined,fxPlay:typeof fxPlay==="function"?fxPlay:undefined,fxReleaseAll:typeof fxReleaseAll==="function"?fxReleaseAll:undefined,
+  fxLive:typeof fxLive==="function"?fxLive:undefined,fxMs:typeof fxMs==="function"?fxMs:undefined,fxWhenIdle:typeof fxWhenIdle==="function"?fxWhenIdle:undefined,fxIdle:typeof fxIdle==="function"?fxIdle:undefined,
+  doHeal:typeof doHeal==="function"?doHeal:undefined,canHeal:typeof canHeal==="function"?canHeal:undefined,healTick:typeof healTick==="function"?healTick:undefined,healBreak:typeof healBreak==="function"?healBreak:undefined,
+  contactText:typeof contactText==="function"?contactText:undefined,contactEligible:typeof contactEligible==="function"?contactEligible:undefined,forcedPickOk:typeof forcedPickOk==="function"?forcedPickOk:undefined,bombAttack:typeof bombAttack==="function"?bombAttack:undefined,
+  autoEndCheck:typeof autoEndCheck==="function"?autoEndCheck:undefined,autoEndReady:typeof autoEndReady==="function"?autoEndReady:undefined,anyMainActionLeft:typeof anyMainActionLeft==="function"?anyMainActionLeft:undefined,optionalBattleLeft:typeof optionalBattleLeft==="function"?optionalBattleLeft:undefined,
+  turnBannerFx:typeof turnBannerFx==="function"?turnBannerFx:undefined,viewerIsOwner:typeof viewerIsOwner==="function"?viewerIsOwner:undefined,fxTurnLabel:typeof fxTurnLabel==="function"?fxTurnLabel:undefined,resultBannerOf:typeof resultBannerOf==="function"?resultBannerOf:undefined,
+  renderTurnBar,renderBoard,netReady,netAction,onCellCore,execSlot,aiSchedule,aiScheduleBattle,
+  playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,fighterName,
+  get MSGPLAYING(){return MSGPLAYING;},get MSGQ(){return MSGQ;},
   html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;
@@ -187,7 +209,12 @@ function load(htmlPath,opts){
   T.storage=storage; T.sessionStorage=sessionStorage; T.indexedDB=indexedDB; T.cookieWrites=cookieWrites;
   T.byId=id=>doc.getElementById(id); // 이 로드의 문서에서만 요소를 집는다 (전역 document 경유 금지)
   T.setLocation=href=>{ Object.assign(loc,mkLocation(href)); return loc; }; // 객체 정체성 유지 → 제품이 묶은 location 그대로
+  /* #94: 이 로드를 다시 전역의 주인으로 — window 진입점·가짜 타이머·전역 미러를 이 로드의 것으로 되돌린다 (다중 로드 락스텝용) */
+  T.activate=()=>{ for(const k of Object.keys(winProps)) global[k]=winProps[k];
+    global.setTimeout=ownSetTimeout; global.document=doc; global.window=global; global.location=loc; global.WebSocket=WebSocketCtor;
+    global.sessionStorage=sessionStorage; global.indexedDB=indexedDB; defineStorage(global,storage); return T; };
   T.BAL.aiDelay=0; T.BAL.simDelay=0;
+  if(T.BAL.fx) T.BAL.fx.autoEnd=false; // #106: 기존 회귀는 endTurn 을 직접 부른다 — 자동 턴 종료는 전용 테스트(smoke_turnflow)에서 명시적으로 켜서 검증한다
   return T;
 }
 
