@@ -47,7 +47,7 @@
 </table>
 
 <details>
-<summary><b>튜토리얼 10단계 보기</b> — v0.4.3 캡처, 최신 규칙은 아래 정리본 참고</summary>
+<summary><b>튜토리얼 10단계 보기</b> — v0.4.5 개발판 · 양측 밀어내기와 새 턴 흐름</summary>
 <br>
 <table>
   <tr>
@@ -55,17 +55,19 @@
     <td align="center" width="20%"><a href="docs/media/tutorial-02.png"><img src="docs/media/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
     <td align="center" width="20%"><a href="docs/media/tutorial-03.png"><img src="docs/media/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
     <td align="center" width="20%"><a href="docs/media/tutorial-04.png"><img src="docs/media/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-05.png"><img src="docs/media/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요" width="100%"></a><br><sub>5. 옆에 붙으면 꼭 싸워요</sub></td>
+    <td align="center" width="20%"><a href="docs/media/tutorial-05.png"><img src="docs/media/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 전투와 양측 밀어내기" width="100%"></a><br><sub>5. 전투 · 양측 밀어내기</sub></td>
   </tr>
   <tr>
     <td align="center" width="20%"><a href="docs/media/tutorial-06.png"><img src="docs/media/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-07.png"><img src="docs/media/tutorial-07.png" alt="7단계 잡아오기와 도망치기" width="100%"></a><br><sub>7. 잡아오기와 도망치기</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-08.png"><img src="docs/media/tutorial-08.png" alt="8단계 텔레포트(순간이동)" width="100%"></a><br><sub>8. 텔레포트(순간이동)</sub></td>
+    <td align="center" width="20%"><a href="docs/media/tutorial-07.png"><img src="docs/media/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · 도망 후 후방 말 선택</sub></td>
+    <td align="center" width="20%"><a href="docs/media/tutorial-08.png"><img src="docs/media/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 횟수 제한 없는 텔레포트</sub></td>
     <td align="center" width="20%"><a href="docs/media/tutorial-09.png"><img src="docs/media/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-10.png"><img src="docs/media/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트" width="100%"></a><br><sub>10. 빠른 복습</sub></td>
+    <td align="center" width="20%"><a href="docs/media/tutorial-10.png"><img src="docs/media/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 턴 종료 선택</sub></td>
   </tr>
 </table>
 <sub>튜토리얼은 게임 안에서 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다.</sub>
+
+캡처 출처: 미출시 v0.4.5 개발 커밋 `5de47a9db4960ae7392e85ed3a811248743d090b` · [10장 캡처 기록과 해시](docs/qa/issue114-media/capture-manifest.json). 아래 정식 릴리스 정보와 구분해 보세요.
 </details>
 
 ## 새로운 기능
@@ -79,9 +81,11 @@
 - [개선] 전투 4메뉴·보호막/HP 표시·턴 연출·자동 종료를 추가했습니다. 65턴 버닝타임 안내는 일반 턴 전에 2초 표시됩니다.
 - [규칙 조정] 함정과 걸린 말 모두 공개, 폭탄 직접 신규 접촉 발동, 6라운드 잔여 HP 비율 판정(동률 방어자 승), 공격형 위력·일반 감전 확률 완화를 적용했습니다.
 
-상세 내용은 [v0.4.4 릴리스 노트](docs/releases/v0.4.4.md)와 [최신 규칙 정리본](docs/v0.4.4-rules-digest.md)을 참고하세요. 튜토리얼 이미지는 v0.4.3 캡처이며 변경된 규칙은 정리본이 기준입니다.
+정식 릴리스의 상세 내용은 [v0.4.4 릴리스 노트](docs/releases/v0.4.4.md)와 [v0.4.4 규칙 정리본](docs/v0.4.4-rules-digest.md)을 참고하세요. 위 튜토리얼 10장은 미출시 v0.4.5 개발 커밋 `5de47a9d`의 화면이며, 해당 규칙은 [v0.4.5 게임플레이 계약](docs/v0.4.5-gameplay-spec.md)에 정리되어 있습니다.
 
-이전 버전의 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)과 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다. v0.4.5의 턴 행동·문서·튜토리얼 갱신은 [다음 마일스톤](https://github.com/ChangjoSung/Digit-Duel/milestone/11)에서 준비 중입니다.
+이전 버전의 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)과 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다.
+
+**준비 중 — v0.4.5** (미출시, [다음 마일스톤](https://github.com/ChangjoSung/Digit-Duel/milestone/11)) 개발 브랜치에 텔레포트 횟수 제한 해제, 동료·왕끼리와 폭탄끼리 만났을 때 서로 한 칸씩 밀려나는 양측 밀어내기·재배치, 도망 뒤 보드에서 후방 말 고르기, 평소 턴 종료 버튼 정리, 튜토리얼 10단계 갱신을 반영했습니다. 승인된 규칙은 [v0.4.5 게임플레이 계약](docs/v0.4.5-gameplay-spec.md)과 [규칙 정리본 초안](docs/v0.4.5-rules-digest.md), 예정 변경은 [v0.4.5 릴리스 노트 초안](docs/releases/v0.4.5.md)에 있습니다. 최신 정식 릴리스는 v0.4.4이며, v0.4.5는 출시 전 검증 중입니다.
 
 ## 게임 정보
 
@@ -142,6 +146,7 @@ docs/
   qa/                   버전별 구현·독립 QA 보고와 검증 화면
   art/                  하수인 아트 검토 이미지·제작 기록
   minion-visual-spec-v0.4.3.md   하수인 이미지 규격
+  v0.4.x-*.md           버전별 게임플레이 계약·규칙 정리본 (v0.4.5는 승인 설계·미출시)
   creat2ve/             개발 조직·작업 계약 문서
 CLAUDE.md               프로젝트 규약 · 기준 문서 링크
 CONTRIBUTING.md         기여 안내

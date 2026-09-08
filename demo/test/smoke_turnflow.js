@@ -43,7 +43,7 @@ block("A 회복",()=>{
   m.hp=50; a.hp=80;
   ok(!T.canHeal(m)===false&&T.canHeal(m)&&T.canHeal(a),"A1 HP<최대 하수인·동료는 회복 지정 가능");
   ok(!T.canHeal(b)&&!T.canHeal(t),"A2 폭탄·함정은 회복 대상이 아니다");
-  const full=first(0,"minion",1); H.place(T,full,11,1); ok(!T.canHeal(full),"A3 만피 말은 지정 불가");
+  const full=first(0,"minion",1); H.place(T,full,11,1); ok(T.canHeal(full),"A3 #114 만피 말도 기다리기로 회복 지정 가능");
   ok(!T.canHeal(e),"A4 상대 말은 지정 불가 (자기 턴·자기 말만)");
   const used=randUsed(()=>{ T.applyAction({t:"heal",id:m.id}); });
   ok(m.healing===true&&S().mainUsed===true&&m.hp===50&&used===0,"A5 지정 → mainUsed·자세 시작·즉시 회복 없음·rand 소비 0 (hp "+m.hp+", rand "+used+")");
@@ -128,7 +128,7 @@ block("A' 회복 표시",()=>{
   T.S.mainUsed=false; T.renderTurnBar(); let hb=T.els.turnBar.children.find(x=>/회복/.test(x.textContent));
   ok(hb&&hb.disabled===true,"A'7 이미 자세인 말 선택 시 회복 버튼 비활성 (재지정 없음)");
   m.healing=false; T.renderTurnBar(); hb=T.els.turnBar.children.find(x=>/회복/.test(x.textContent)); ok(hb&&hb.disabled===false,"A'8 HP<최대·자세 아님 → 회복 버튼 활성");
-  m.hp=100; T.renderTurnBar(); hb=T.els.turnBar.children.find(x=>/회복/.test(x.textContent)); ok(hb&&hb.disabled===true,"A'9 만피 → 회복 버튼 비활성");
+  m.hp=100; T.renderTurnBar(); hb=T.els.turnBar.children.find(x=>/회복/.test(x.textContent)); ok(hb&&hb.disabled===false,"A'9 #114 만피 → 회복 버튼 활성");
   // AI 공정 관측 (정적): AI 함수 본문에서 healing 을 읽는 곳은 자기 말 후보(aiHealPick·canHeal)뿐
   const src=T.html, ai=src.slice(src.indexOf("/* ===== AI (공정 관측"),src.indexOf("/* ===== 모달·핸드오프"));
   const refs=(ai.match(/\.healing/g)||[]).length;
@@ -158,7 +158,7 @@ block("B 폭탄 접촉",()=>{
   // B3 폭탄 → 폭탄/함정: 아무 일 없음, 전투 1회 소모, 재선택 없음
   board("pvp"); b=first(0,"bomb"); const eb=first(1,"bomb"); H.place(T,b,8,4); H.place(T,eb,6,4); T.doMove(b,7,4);
   ok(b.alive&&eb.alive&&!b.revealed&&!eb.revealed&&S().battlesUsed===1&&S().forcedTargets.length===0&&S().metrics.bombContacts===1,"B3 폭탄→폭탄: 양쪽 유지·비공개·전투 1회 소모·강제 대상 해소");
-  ok(T.FX.log.some(x=>x.sub==="아무 일도 일어나지 않습니다."),"B3b 상황 6 문구");
+  ok(T.FX.log.some(x=>x.sub==="아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."),"B3b #114 상황 6 밀기 문구");
   board("pvp"); b=first(0,"bomb"); const et=first(1,"trap"); H.place(T,b,8,4); H.place(T,et,6,4); T.doMove(b,7,4);
   ok(b.alive&&et.alive&&!et.revealed&&S().battlesUsed===1,"B3c 폭탄→함정: 아무 일 없음 (함정 수동 유지·비공개)");
   // B4 복수 대상: 소유자가 하나 선택 → 상황 6(함정) 고르면 아무 일 없고 다른 대상(하수인) 재선택 불가
@@ -276,7 +276,7 @@ block("E 자동 종료",()=>{
   T.FX.inputSeq++; const e4=first(1,"minion"); H.place(T,e4,9,4); // 그 사이 상황 변화(가시 인접 적 등장) + 입력
   const t4=S().turnCount; T.drain(); ok(S().turnCount===t4,"E10 발화 시점 재평가 — 선택 전투가 생겼으면 종료하지 않는다");
   // 주 행동 전 특례: 가능한 주 행동이 없으면 생략 자동 적용 후 종료
-  prep(); for(const x of T.alivePieces()) if(x.owner===0) x.immobile=2; T.S.mainUsed=false; T.render();
+  prep(); for(const x of T.alivePieces()) if(x.owner===0){ x.immobile=2; x.healing=true; } T.S.mainUsed=false; T.render(); // #114 만피도 회복 가능하므로 이미 자세인 말로 모든 주 행동 없음 구성
   ok(T.autoEndReady()==="skip"&&!T.anyMainActionLeft(),"E11 이동·탐색·텔레포트·회복 전부 불가 → 생략 특례 예약");
   const t5=S().turnCount; T.drain(); ok(S().mainUsed===true||S().turnCount===t5+1,"E12 생략 자동 적용 → 재평가 → 종료 (turn "+t5+"→"+S().turnCount+")");
   ok(S().turnCount===t5+1,"E12b 생략 뒤 자동 종료까지 이어짐");
@@ -391,6 +391,10 @@ block("G 연출 큐",()=>{
     let n=0; while(T.MSGPLAYING&&n++<10){ const fn=T.TQ.shift(); if(!fn) break; fn(); }
     ok(!T.S.battle&&T.FX.cur&&T.FX.cur.key==="resultBanner","G27a 도망 성공 → 결과 배너 재생 중");
     const doneTimer=T.TQ.shift(); T.TQ.length=0; doneTimer(); // 결과 배너 본 타이머 → onEnd: close → fleeSwapPrompt → drainForcedQueue → 추가 접촉 배너 fxPlay
+    ok(T.S.fleePick&&T.S.forcedQueue.length===1&&T.FX.cur.key==="fleeFx"&&T.fxLocked(),"G27e #114 도망 선택 배너가 이전 결과 타이머 뒤에도 유지되고 queue 승격 보류");
+    for(const fn of T.TQ.splice(0)) fn();
+    T.netAction({t:"fleeSkip"}); // 사람 보드 선택 완료 뒤 밀기 → 추가 접촉 배너
+    let pn=0; while(T.FX.cur&&T.FX.cur.key!=="contactBanner"&&T.TQ.length&&pn++<20) T.TQ.shift()();
     ok(T.S.forcedTargets.length===1&&T.S.forcedTargets[0]===e2.id,"G27b onEnd 연쇄로 forcedQueue 승격");
     ok(T.FX.cur&&T.FX.cur.key==="contactBanner"&&/추가 접촉/.test(T.FX.cur.title)&&T.FX.cur.ms===T.BAL.fx.contactBanner&&T.fxLocked()&&!T.els.fxBanner._cls.has("hidden"),"G27 옛 done 이 새 현재 항목(추가 접촉 배너)을 버리지 않는다 — 선언 시간 그대로 잠금·표시 유지 (cur="+(T.FX.cur&&T.FX.cur.title)+")");
     ok(T.FX.q.length===0&&T.FX.log.filter(x=>x.key==="contactBanner").length===1&&T.FX.log.filter(x=>x.key==="resultBanner").length===1,"G27c 추가 접촉 배너 항목은 1개뿐이고 큐에 중복·유실 없음 (옛 done 의 fxNext 중복 호출 없음)");
@@ -423,11 +427,11 @@ block("H 문구",()=>{
   const C=(a,d,mine)=>T.contactText(a,d,mine);
   ok(C(mi,em,true)==="배틀을 시작합니다."&&C(mi,ea,true)==="배틀을 시작합니다."&&C(mi,ek,true)==="배틀을 시작합니다.","H1 상황 1 하수인→하수인/동료/왕");
   ok(C(mi,eb,true)==="폭탄이 터져 내 하수인이 제거됩니다."&&C(mi,et,true)==="함정에 걸려 내 하수인의 이동이 2턴간 제한됩니다.","H2·3 상황 2·3");
-  ok(C(bo,em,true)==="폭탄이 터져 상대 하수인과 함께 제거됩니다."&&C(bo,ea,true)==="상대 말이 내 폭탄을 제거하였습니다."&&C(bo,ek,true)==="상대 말이 내 폭탄을 제거하였습니다."&&C(bo,eb,true)==="아무 일도 일어나지 않습니다."&&C(bo,et,true)==="아무 일도 일어나지 않습니다.","H4~6 상황 4·5·6");
+  ok(C(bo,em,true)==="폭탄이 터져 상대 하수인과 함께 제거됩니다."&&C(bo,ea,true)==="상대 말이 내 폭탄을 제거하였습니다."&&C(bo,ek,true)==="상대 말이 내 폭탄을 제거하였습니다."&&C(bo,eb,true)==="아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."&&C(bo,et,true)==="아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다.","H4~6 상황 4·5·6");
   ok(C(al,em,true)==="배틀을 시작합니다. (출전을 선택하세요)"&&C(kg,eb,true)==="상대 폭탄이 터졌지만 내 말은 생존했습니다."&&C(al,et,true)==="함정에 걸려 내 말의 이동이 2턴간 제한됩니다.","H7 CJ 표 밖 조합 (동료·왕)");
   ok(C(mi,em,false)==="상대가 내 하수인에게 배틀을 걸었습니다."&&C(mi,ea,false)==="상대가 내 동료에게 배틀을 걸었습니다."&&C(mi,ek,false)==="상대가 내 왕에게 배틀을 걸었습니다.","H8 거울 1");
   ok(C(mi,eb,false)==="내 폭탄이 터져 상대 하수인이 제거됩니다."&&C(mi,et,false)==="상대 하수인이 내 함정에 걸렸습니다! (정체 공개 · 2턴 이동 불가)","H9 거울 2·3");
-  ok(C(bo,em,false)==="상대 폭탄이 터져 내 하수인이 제거됩니다."&&C(bo,ea,false)==="내 말이 상대 폭탄을 제거하였습니다."&&C(bo,eb,false)==="아무 일도 일어나지 않습니다."&&C(kg,eb,false)==="상대 말이 내 폭탄을 제거하였습니다.","H10 거울 4·5·6·동료→폭탄");
+  ok(C(bo,em,false)==="상대 폭탄이 터져 내 하수인이 제거됩니다."&&C(bo,ea,false)==="내 말이 상대 폭탄을 제거하였습니다."&&C(bo,eb,false)==="아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."&&C(kg,eb,false)==="상대 말이 내 폭탄을 제거하였습니다.","H10 거울 4·5·6·동료→폭탄");
   // 뷰어 판정: PVE 뷰어 0, 온라인 NET.me, 핫시트 항상 행동자
   T.S.mode="pve"; ok(T.viewerIsOwner(0)&&!T.viewerIsOwner(1)&&T.fxTurnLabel(1,false)==="상대 턴!"&&T.fxTurnLabel(0,true)==="나의 턴!","H11 PVE 뷰어 0 기준");
   T.S.mode="pvp"; ok(T.viewerIsOwner(1)&&T.fxTurnLabel(1,false)==="나의 턴!"&&T.fxTurnLabel(1,true)==="P2 턴!","H12 핫시트: 보드는 항상 '나의 턴!', 전투 라운드는 'P1/P2 턴!'");

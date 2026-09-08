@@ -1,0 +1,286 @@
+{
+ "tool": "tools/readme_media_capture.js",
+ "command": "tools/readme_media_capture.js capture --ref 5de47a9db4960ae7392e85ed3a811248743d090b --out docs/media --manifest docs/qa/issue114-media/capture-manifest.json",
+ "env": {
+  "ref": "5de47a9db4960ae7392e85ed3a811248743d090b",
+  "refSha": "5de47a9db4960ae7392e85ed3a811248743d090b",
+  "htmlBlob": "61a3ce3e5927697ea80ec8ebd379ffb98ebfdb92",
+  "url": "http://127.0.0.1:<port>/demo/index.html (git show 5de47a9db4960ae7392e85ed3a811248743d090b:demo/* → memory)",
+  "viewport": "1280x900",
+  "dpr": 2,
+  "clip": {
+   "x": 84,
+   "y": 43,
+   "width": 1112,
+   "height": 814
+  },
+  "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "chromeVersion": "152.0.7977.82",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "node": "v24.16.0",
+  "platform": "win32 10.0.19045",
+  "capturedAt": "2026-09-08T10:05:22.941Z"
+ },
+ "frames": [
+  {
+   "file": "tutorial-01.png",
+   "step": 1,
+   "count": "1 / 10 단계",
+   "title": "🏆 이기는 법 세 가지",
+   "cards": 3,
+   "nav": [
+    "◀ 이전(비활성)",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 243,
+    "w": 1080,
+    "h": 414
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "fcc234c1eac28f01b48b07203827e042048ebfe7f4903670faaa41a970b2f76f",
+   "path": "docs/media/tutorial-01.png",
+   "bytes": 197114
+  },
+  {
+   "file": "tutorial-02.png",
+   "step": 2,
+   "count": "2 / 10 단계",
+   "title": "🎭 말 5가지와 숨은 정체",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 215,
+    "w": 1080,
+    "h": 471
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "5be4b02b432e0c80b7e5a62ef260890a5b348caf83ee8c4297946bfa7fe3f55e",
+   "path": "docs/media/tutorial-02.png",
+   "bytes": 196970
+  },
+  {
+   "file": "tutorial-03.png",
+   "step": 3,
+   "count": "3 / 10 단계",
+   "title": "🌲 움직이기와 숲에 숨기",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 234,
+    "w": 1080,
+    "h": 431
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "5821f7c5ac466da619e5d089b1e7064bc480f22fa90c9c813324c8d15e09d315",
+   "path": "docs/media/tutorial-03.png",
+   "bytes": 198042
+  },
+  {
+   "file": "tutorial-04.png",
+   "step": 4,
+   "count": "4 / 10 단계",
+   "title": "🔍 흔적과 탐색",
+   "cards": 4,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 220,
+    "w": 1080,
+    "h": 460
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "81e7e244fa3cac88310cc433ee509542341101e28afaec9abd40a45298a51fce",
+   "path": "docs/media/tutorial-04.png",
+   "bytes": 211958
+  },
+  {
+   "file": "tutorial-05.png",
+   "step": 5,
+   "count": "5 / 10 단계",
+   "title": "⚔️ 옆에 붙으면 꼭 싸워요",
+   "cards": 5,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 59,
+    "w": 1080,
+    "h": 782
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "95210446af4577076ab33791603f6c6c1ac4e62dbe5c132ce3675ffcf2f85fbd",
+   "path": "docs/media/tutorial-05.png",
+   "bytes": 231808
+  },
+  {
+   "file": "tutorial-06.png",
+   "step": 6,
+   "count": "6 / 10 단계",
+   "title": "💣 폭탄과 함정",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 223,
+    "w": 1080,
+    "h": 454
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "550af4d74d8502e9db8eef269933ba01d2f05974450e268ddebbcb6956acae2d",
+   "path": "docs/media/tutorial-06.png",
+   "bytes": 216301
+  },
+  {
+   "file": "tutorial-07.png",
+   "step": 7,
+   "count": "7 / 10 단계",
+   "title": "🔴 잡아오기와 도망치기",
+   "cards": 4,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 203,
+    "w": 1080,
+    "h": 495
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "ff19476d53d4c5d42b4082a6b4a89f29b392f656ac4002d9d4efa175c228ee21",
+   "path": "docs/media/tutorial-07.png",
+   "bytes": 221876
+  },
+  {
+   "file": "tutorial-08.png",
+   "step": 8,
+   "count": "8 / 10 단계",
+   "title": "🌀 텔레포트(순간이동)",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 217,
+    "w": 1080,
+    "h": 466
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "b6d15875c4c6a5a55b4fb8eb997444d4c50f1f57e8dfc6339ffaa62e0cca86c3",
+   "path": "docs/media/tutorial-08.png",
+   "bytes": 212746
+  },
+  {
+   "file": "tutorial-09.png",
+   "step": 9,
+   "count": "9 / 10 단계",
+   "title": "🔥 버닝 타임(불타는 시간)",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 192,
+    "w": 1080,
+    "h": 516
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "28ac171c224b9fd0e8dc338d5d1a595cd81ee7d03eef6007ca7faebd7b8df65e",
+   "path": "docs/media/tutorial-09.png",
+   "bytes": 176360
+  },
+  {
+   "file": "tutorial-10.png",
+   "step": 10,
+   "count": "10 / 10 단계",
+   "title": "🏁 빠른 복습 — 첫 차례 체크리스트",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "게임 시작 ▶",
+    "처음부터"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 222,
+    "w": 1080,
+    "h": 456
+   },
+   "size": {
+    "w": 2224,
+    "h": 1628
+   },
+   "sha256": "8f3913f2c7217e19a9c970e9d2b1675fa2da68560c55913d80701b2a153fe490",
+   "path": "docs/media/tutorial-10.png",
+   "bytes": 210777
+  }
+ ]
+}

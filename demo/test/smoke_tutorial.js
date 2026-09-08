@@ -40,8 +40,8 @@ const N=10, LAST=N-1;
   ok(/30%/.test(body[6])&&/70%/.test(body[6])&&/70\/100/.test(body[6])&&/볼.*1개.*없어/.test(body[6])&&/50%.*도망/.test(body[6])&&/성공률 ?(은 )?<?b?>?50%/.test(strip(T.TUT_STEPS[6].lines[2]))&&/바로 한 번 더/.test(body[6])&&/뒤에 있는 내 말/.test(body[6]),
     "A11 포획(HP<30%·70%·예비 70/100·볼 소모)·도망(HP<50%·50%·실패 시 즉시 공격·후방 교환) 수치가 엔진과 일치");
   ok(Math.round(T.BAL.enemyCapProb*100)===70&&Math.round(T.BAL.fleeProb*100)===50&&T.BAL.enemyCapHp===70&&T.BAL.captured.hp===100,"A11b 엔진 상수 전제 (enemyCapProb .7·fleeProb .5·enemyCapHp 70/100)");
-  ok(/상대편 땅/.test(body[7])&&/두 개/.test(body[7])&&new RegExp(T.BAL.teleMax+"번").test(body[7])&&/각자 따로/.test(body[7])&&/모자라면 못/.test(body[7]),"A12 텔레포트 조건·스왑·경기당 "+T.BAL.teleMax+"회·양측 독립 강제 전투·슬롯 부족 차단");
-  ok(new RegExp(T.BAL.burnStart+"번째 턴").test(body[8])&&/곧게 2칸/.test(body[8])&&/숲.*땅.*1칸/.test(body[8])&&/폭탄.*2칸/.test(body[8])&&/함정.*고정/.test(body[8]),"A13 버닝 타임 턴 "+T.BAL.burnStart+"·직선 2칸·상대 숲/진영 1칸·폭탄 2칸·함정 고정");
+  ok(/상대편 땅/.test(body[7])&&/두 개/.test(body[7])&&T.BAL.teleMax===Infinity&&/몇 번이든/.test(body[7])&&/주 행동/.test(body[7])&&/각자 따로/.test(body[7])&&/모자라면 못/.test(body[7]),"A12 #114 텔레포트 무제한·주 행동 소모·양측 독립 강제 전투·슬롯 부족 차단");
+  ok(new RegExp(T.BAL.burnStart+"번째 턴").test(body[8])&&/곧게 2칸/.test(body[8])&&/숲.*땅.*1칸/.test(body[8])&&/폭탄.*2칸/.test(body[8])&&/함정.*스스로는.*못 움직/.test(body[8]),"A13 #114 버닝 타임 이동 유지·함정 자발 이동 금지·강제 이동 허용");
   ok(/왕/.test(body[9])&&/끝줄/.test(body[9])&&/전멸/.test(body[9])&&/주 행동 하나/.test(body[9])&&/턴 종료/.test(body[9]),"A14 복습: 승리 3조건·주 행동 1개·강제 전투·턴 종료 체크리스트");
   // S와 분리
   const before=sSnap(T);
@@ -57,7 +57,7 @@ const N=10, LAST=N-1;
   setLS(memLS());
   const T=H.load(htmlPath);
   const steps=T.TUT_STEPS, cards=steps.map(s=>s.cards);
-  ok(cards.every((cs,i)=>Array.isArray(cs)&&cs.length===steps[i].lines.length&&cs.length>=3&&cs.length<=4),"G1 모든 단계가 카드 배열 — 카드 수 = 설명 문단 수 (3~4) — "+cards.map(c=>c.length).join("/"));
+  ok(cards.every((cs,i)=>Array.isArray(cs)&&cs.length===steps[i].lines.length&&cs.length>=3&&cs.length<=(i===4?5:4)),"G1 카드 수 = 문단 수 (3~4, #114 접촉 단계에 VIP 밀기 카드 1개 추가) — "+cards.map(c=>c.length).join("/"));
   ok(cards.every(cs=>cs.every(c=>typeof c.t==="string"&&c.t.length>=2&&c.t.length<=16&&typeof c.vis==="string"&&c.vis.length>20&&(c.res===undefined||typeof c.res==="string"))),"G2 카드 = 제목(2~16자)·그림(vis)·결과(선택) 구조");
   ok(cards.every(cs=>new Set(cs.map(c=>c.t)).size===cs.length),"G3 한 단계 안의 카드 제목은 서로 다름");
   const allVis=cards.flat().map(c=>c.vis), allSvg=allVis.flatMap(v=>v.match(/<svg[\s\S]*?<\/svg>/g)||[]);
@@ -242,7 +242,7 @@ const N=10, LAST=N-1;
     &&H.storageTrace(T7.sessionStorage).all.length===0&&T7.cookieWrites.length===0&&T7.indexedDB.opens.length===0,
     "F7b 런타임 저장 불변식: 튜토리얼 전 과정 후 저장 흔적은 ["+tr.all.join(",")+"]뿐 · sessionStorage·쿠키·indexedDB 무기록");
   const lines=T.TUT_STEPS.map(s=>s.lines.map(strip));
-  ok(lines.every(ls=>ls.length>=3&&ls.length<=4&&ls.every(l=>l.length<=78)),"F8 한 화면 3~4문단·문단 78자 이하 ("+lines.map(ls=>ls.map(l=>l.length).join("/")).join(" | ")+")");
+  ok(lines.every((ls,i)=>ls.length>=3&&ls.length<=(i===4?5:4)&&ls.every(l=>l.length<=78)),"F8 문단 78자 이하 유지·접촉 단계만 새 VIP 밀기 카드 포함 5문단 ("+lines.map(ls=>ls.map(l=>l.length).join("/")).join(" | ")+")");
   ok(lines.every(ls=>ls.every(l=>/[요!][.!]?\s*$/.test(l.trim()))),"F9 모든 문단이 '~요'/'!'로 끝나는 쉬운 말투");
   const all=lines.flat().join(" ");
   ok(/강제 전투\(무조건 싸움\)/.test(all)&&/HP\(체력\)/.test(all)&&/탐색\(찾아보기\)/.test(all)&&/하수인\(싸우는 말\)/.test(all)&&/텔레포트\(순간이동\)/.test(all)&&/버닝 타임\(불타는 시간\)/.test(all),"F10 전문어 즉시 풀이: 강제 전투·HP·탐색·하수인·텔레포트·버닝 타임");

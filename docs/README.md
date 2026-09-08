@@ -1,6 +1,6 @@
 # Digit-Duel 문서 안내
 
-최신 정식 릴리스는 **v0.4.4**입니다. **v0.4.5는 턴 행동 추가 내용 분석과 문서·튜토리얼 갱신 단계**이며, 검토안을 출시된 규칙으로 읽지 않습니다.
+최신 정식 릴리스는 **v0.4.4**입니다. **v0.4.5는 [Issue #114](https://github.com/ChangjoSung/Digit-Duel/issues/114) 제품 구현·Saturn 독립 QA를 마치고 CJ 플레이 QA를 기다립니다.** 검수된 개발 제품과 정식 출시를 구분합니다.
 
 ## 지금 읽을 문서
 
@@ -10,8 +10,12 @@
 | 출시된 규칙 | [v0.4.4 규칙 정리본](v0.4.4-rules-digest.md) |
 | 버전별 변경 내용 | [릴리스 노트 목록](releases/README.md) |
 | 구현·QA 기준과 최신 CJ 결정 | [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) |
-| 현재 v0.4.5 안건 | [Milestone11](https://github.com/ChangjoSung/Digit-Duel/milestone/11), [CJ 턴 행동 원문](https://app.notion.com/p/3d51e7f1708580b0916ded4bd3d9d06e) |
+| 현재 v0.4.5 안건 | [Milestone11](https://github.com/ChangjoSung/Digit-Duel/milestone/11), [Issue #114](https://github.com/ChangjoSung/Digit-Duel/issues/114), [CJ 턴 행동 원문](https://app.notion.com/p/3d51e7f1708580b0916ded4bd3d9d06e) |
+| v0.4.5 승인 규칙 (구현·QA 계약) | [v0.4.5 게임플레이 계약](v0.4.5-gameplay-spec.md) |
+| v0.4.5 규칙을 쉽게 읽기 (미출시 초안) | [규칙 정리본 3호 초안](v0.4.5-rules-digest.md) |
+| v0.4.5 변경·검증 결과 | [릴리스 노트 (UNRELEASED)](releases/v0.4.5.md), [PD 통합 보고](qa/issue114-pd-report.md) |
 | v0.4.5 분석·튜토리얼 수정안 | [부서 분석 취합·CJ 결정 경계](v0.4.5-analysis.md) |
+| v0.4.5 Notion 동기화·독립 검수 이력 | [GDD-13·12·14·DIGEST 치환 근거](qa/issue114-notion-sync.md) |
 | 역할·Git·작업 계약 | [CLAUDE.md](../CLAUDE.md), [권위 문서 등록표](creat2ve/AUTHORITY.md) |
 | Mercury 인수·현재 상태 | [인수인계 스냅샷](creat2ve/HANDOVER_SNAPSHOT.md) |
 

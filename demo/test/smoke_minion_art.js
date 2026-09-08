@@ -397,8 +397,8 @@ const modalBtn=(T,total,i)=>{ const ch=T.byId("obBtns").children; const b=ch[ch.
 function proxyBattle(T,att,def,pickA,pickD){
   T.byId("obBtns").children.length=0;
   T.initBattle(att,def); T.drain(500);
-  if(!T.S.battle&&/출전 선택/.test(T.byId("overlayBox").innerHTML)) modalBtn(T,2,pickA?1:0);
-  if(!T.S.battle&&/출전 선택/.test(T.byId("overlayBox").innerHTML)) modalBtn(T,2,pickD?1:0);
+  if(["king","ally"].includes(att.type)&&!T.S.battle&&/출전 선택/.test(T.byId("overlayBox").innerHTML)) modalBtn(T,2,pickA?1:0);
+  if(["king","ally"].includes(def.type)&&!T.S.battle&&/출전 선택/.test(T.byId("overlayBox").innerHTML)) modalBtn(T,2,pickD?1:0);
   if(!T.S.battle&&/출전 공개/.test(T.byId("overlayBox").innerHTML)) modalBtn(T,1,0);
   return T.S.battle;
 }
@@ -477,14 +477,20 @@ function proxyBattle(T,att,def,pickA,pickD){
   P.em.placed=false; H.place(T,P.king0,12,4); H.place(T,eAlly,11,4); T.S.balls[0]=5; T.S.reserve[0]=null;
   ok(neutralCap(T,P.king0,"water")&&P.king0.cap.artRosterId==="M-W1","K4b 전제: 1P 왕이 중립 포획 하수인(물 · M-W1) 보유");
   T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.selected=null; T.render();
-  const B=proxyBattle(T,P.king0,eAlly,true,true);
-  ok(!!B&&B.fa===P.king0.cap&&B.fd===eAlly.cap&&eAlly.cap===rv&&T.S.reserve[1]===null,"K4c 전제: 양측 대리 출전 — D 는 예비 하수인이 동료의 cap 으로 옮겨져(reserve 소모) 싸운다");
-  const iA=tokImg(tokOf(T,"A")), iD=tokImg(tokOf(T,"D"));
+  // #114 VIP끼리는 대리 전투가 없으므로 각각 하수인을 상대로 실제 대리 출전 경로를 검증한다.
+  eAlly.placed=false;H.place(T,P.em,11,4);
+  const BA=proxyBattle(T,P.king0,P.em,true,false), iA=tokImg(tokOf(T,"A")), tokA=tokOf(T,"A");
+  const attackerCapOk=!!BA&&BA.fa===P.king0.cap;
+  T.close();T.S.battle=null;T.TQ.length=0;T.S.battlesUsed=0;P.king0.placed=false;P.em.placed=false;
+  P.me.hp=P.me.maxHp;H.place(T,P.me,12,4);H.place(T,eAlly,11,4);
+  const B=proxyBattle(T,P.me,eAlly,false,true);
+  ok(attackerCapOk&&!!B&&B.fd===eAlly.cap&&eAlly.cap===rv&&T.S.reserve[1]===null,"K4c #114 공격/방어 대리는 각각 하수인 상대 전투에서 검증·예비 cap 이전");
+  const iD=tokImg(tokOf(T,"D"));
   ok(!!iA&&iA.src==="assets/minions/water_std/battle.png"&&!!iD&&iD.src==="assets/minions/lightning_sustain/battle.png","K4d 양측 토큰이 각자 실제 대리 전투원의 종 — A water_std · D lightning_sustain (동료 본체 🤝·왕 본체 👑 아님)");
   ok(eAlly.cap.artRosterId==="M-L5"&&eAlly.cap===rv,"K4d2 예비→cap 이전(useRes) 후에도 같은 객체·외형 정체 유지 (AC 5)");
   ok(!!iD&&iD.alt==="포획 하수인·번개"&&/<small>번개<\/small>/.test(tokOf(T,"D")),"K4e D 라벨·alt 는 기존 문구 그대로");
   const st=T.byId("overlayBox").innerHTML;
-  ok(!/👑|🤝/.test(tokOf(T,"A")+tokOf(T,"D")),"K4f 대리 출전 토큰에는 왕·동료 이모지가 없다 (본체 표현은 본체 출전 때만)");
+  ok(!/👑|🤝/.test(tokA+tokOf(T,"D")),"K4f 대리 출전 토큰에는 왕·동료 이모지가 없다 (본체 표현은 본체 출전 때만)");
   ok(B.fd.hp===T.BAL.enemyCapHp&&B.fd.maxHp===T.BAL.captured.hp&&B.fd.atk===T.BAL.captured.atk&&B.fd.skillAtk===T.BAL.captured.skill&&B.fd.cdMax===T.BAL.captured.cd,"K4g 표시 종이 붙어도 전투 수치는 포획 공용 규격(HP 70/100 · 공 20 · 기 30 · CD 2) — 종 스탯(M-L5 95/20/28)으로 바뀌지 않는다");
   ok(/HP <span id="hptxt-D">70<\/span>\/100/.test(st),"K4h 정보 패널 HP 표기도 70/100");
   T.close(); T.S.battle=null; T.TQ.length=0;
@@ -555,7 +561,9 @@ function proxyBattle(T,att,def,pickA,pickD){
     neutralCap(T,P.king0,"water");
     if(strip){ for(const c of [P.king0.cap,T.S.reserve[1]]){ delete c.artRosterId; } }
     T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.setSeed(99);
-    const B=proxyBattle(T,P.king0,eAlly,true,true);
+    // #114 VIP 접촉은 밀기로 끝난다. 이 항목은 접촉 규칙이 아닌 두 포획 전투원의 순수 표시/계산 불변성 픽스처다.
+    eAlly.cap=T.S.reserve[1];T.S.reserve[1]=null;
+    T.startRounds(P.king0,eAlly,P.king0.cap,eAlly.cap);T.drain(500);const B=T.S.battle;
     const dirs=[adf(T,B.fa,B.attP),adf(T,B.fd,B.defP)], hasId=!!(B.fa.artRosterId&&B.fd.artRosterId);
     let i=0; while(T.S.battle===B&&i<12){ global.__act("basic"); T.drain(5000); i++; } // 지속형 슬롯0 = 효과기(화상) → 기본 공격 반복이면 D 의 첫 행동에서 화상 부여
     return {T,B,hasId,blog:B.blog.slice(),hpA:B.fa.hp,hpD:B.fd.hp,burnMax:Math.max(0,...B.blog.map(l=>{const m=/화상을 입었다! \((\d+)R\)/.exec(l); return m?+m[1]:0;})),dirs};

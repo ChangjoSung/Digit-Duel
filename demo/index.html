@@ -289,7 +289,7 @@ const BAL={
   ballMax:3, nextBuffPct:0.15, // #12: 몬스터볼 상한·일시버프(다음 전투 공격 +15%)
   enemyCapProb:0.7, // #12: 적 하수인 포획 성공률
   fleeProb:0.5, // #13: 도망 성공률 (자기 HP<50% 시 시도 가능)
-  teleMax:2, // #14: 텔레포트 스왑 경기당 플레이어별 횟수
+  teleMax:Infinity, // #14 → #114 (v0.4.5 CJ 원문 "기존 2회 → 무제한"): 경기당 횟수 제한 해제. 사용 위치(상대 진영 진입)·주 행동 1회 소모·강제 접촉·전투 횟수 사전 차단·취소는 그대로. teleUsed 는 지표(teleports)와 함께 계속 기록한다
   enemyCapHp:70, // #20: 전투 중 적 하수인 포획(finishByCapture) 예비 하수인 시작 HP (maxHP 100 유지) — 숲 공용 포획(tryCapture)은 100/100
   itemHealPct:0.20,
   aiDelay:650, simDelay:60, aiEps:0.08,
@@ -571,12 +571,13 @@ function pname(p){
 const PLAYER_METRIC_KEYS=["battles","forcedBattles","teleports","searches","minionSearches","captures","captureFails",
   "enemyCapTries","enemyCaptures","enemyCapFails","fleeTries","fleeOks","bombMoves","trapTriggers","kingForestTurns",
   "battleRefusals","pushes","bombHitsMinion","bombClearedByVip","minionInvades",
-  "heals","healHp","bombContacts","autoEnds"]; // #106: 회복 지정 횟수·누적 회복량·폭탄 직접 접촉 발동·자동 턴 종료
+  "heals","healHp","bombContacts","autoEnds", // #106: 회복 지정 횟수·누적 회복량·폭탄 직접 접촉 발동·자동 턴 종료
+  "relocations","fleePushes"]; // #114 (v0.4.5): 밀기 후 재배치 발생 수(접촉 행동자 기준)·도망 후 교환/생략 밀기 수(도망 측 기준)
 const PLAYER_METRIC_KO={battles:"전투",forcedBattles:"강제 전투",teleports:"텔레포트",searches:"탐색",minionSearches:"하수인 탐색",
   captures:"중립 포획 성공",captureFails:"중립 포획 실패",enemyCapTries:"적 포획 시도",enemyCaptures:"적 포획 성공",enemyCapFails:"적 포획 실패",
   fleeTries:"도망 시도",fleeOks:"도망 성공",bombMoves:"폭탄 이동",trapTriggers:"함정 발동(자기 함정)",kingForestTurns:"왕 숲 체류(턴)",
   battleRefusals:"전투 회피",pushes:"밀어내기",bombHitsMinion:"자기 폭탄에 적 하수인 소모",bombClearedByVip:"자기 폭탄 VIP 제거",minionInvades:"적진 진입",
-  heals:"회복 지정",healHp:"회복량",bombContacts:"폭탄 접촉 발동",autoEnds:"자동 턴 종료"};
+  heals:"회복 지정",healHp:"회복량",bombContacts:"폭탄 접촉 발동",autoEnds:"자동 턴 종료",relocations:"재배치",fleePushes:"도망 후 밀기"};
 function met(p,key,n){ // 합산 + 플레이어별 동시 증가 (p: 행동 주체 플레이어)
   n=n===undefined?1:n;
   if(S.metrics[key]===undefined) S.metrics[key]=0;
@@ -605,7 +606,8 @@ function newGame(mode,opts){
     battle:null, winner:null, aiPending:false, aiBattlePending:false, aiVanguard:[null,null],
     aiProfile:[null,null],
     healTickTurn:-1, btBannerDue:false, contactKind:"move", // #106: 회복 틱 중복 가드(같은 turn 1회) · 버닝 타임 배너 1회 예약 · 접촉 배너 부제 종류
-    metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,heals:0,healHp:0,bombContacts:0,autoEnds:0,
+    fleePick:null, // #114 도망 후 교환 선택 상태 {owner,pieceId,oppId,cands:[id]} — 소유자(S.current 와 다를 수 있음)만 보드 클릭·생략 입력, 상대는 대기
+    metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,heals:0,healHp:0,bombContacts:0,autoEnds:0,relocations:0,fleePushes:0,
              bombHitsMinion:0,bombClearedByVip:0,kingForestTurns:0,battleRefusals:0,
              attackerWins:0,defenderWins:0,kingStandoff:0,endTurn:0,
              winType:null,btReached:false,btEnterTurn:0,
@@ -669,7 +671,7 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1
 
 /* ===== 유틸 ===== */
 const isAI=p=>(S.mode==="pve"&&p===1)||S.mode==="sim";
-const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:S.current) : 0); // 온라인: 항상 내 시점 고정
+const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:(S.fleePick?S.fleePick.owner:S.current)) : 0); // 온라인: 항상 내 시점 고정 · 핫시트: 도망 교환 선택 중에는 도망친 말의 소유자 시점(기기 공유 — 상대는 시선 회피)
 /* #93 온라인 P2 화면 행 반사 — 표시 전용. 논리 좌표(S·dataset.r/c·클릭·통신·로그)는 불변이고 열 순서도 그대로다.
    조건은 NET.mode(=netStart 이후)이지 NET.me 단독이 아니다: 사전 배치·매칭 대기는 NET.mode=false 인 로컬 P0 배치(11~13행 = 이미 하단)라
    matched 로 NET.me=1 이 정해진 뒤에도 뒤집지 않는다 — netStart 의 applyNetSetup 이 P2 말을 1~3행으로 옮긴 뒤부터만 반사한다(이중 반전 방지).
@@ -785,6 +787,7 @@ function fxIdle(){ // 큐·메시지 재생이 모두 끝났을 때 한 번 — 
     if(FX.gen!==gen) return; // 콜백이 새 게임(fxReleaseAll)을 열었다 — 옛 세대의 남은 콜백은 실행도 재적재도 하지 않는다 (PD 리뷰 msg_3e9ac3ba0ea9)
     if(fxLocked()){ FX.idle.unshift(...cbs.slice(i+1)); return; } } // 콜백이 새 연출을 시작하면 남은 콜백은 (순서 유지) 다음 idle 로 넘긴다 — PD 리뷰 msg_41fdc516c9ba
   try{ if(NET.mode) netPump(); }catch(e){}
+  try{ if(S&&S.phase==="play") renderTurnBar(); }catch(e){}
   try{ autoEndCheck(); }catch(e){}
 }
 function fxReleaseAll(){ FX.gen++; FX.q.length=0; FX.cur=null; FX.idle.length=0; FX.hold=[]; FX.auto=null; FX.log.length=0; MSGQ.length=0; MSGPLAYING=false; MSGAFTER=null; fxHide(); }
@@ -809,8 +812,9 @@ function contactText(att,def,mine){
   if(att.type==="bomb"){
     if(def.type==="minion") return mine?"폭탄이 터져 상대 하수인과 함께 제거됩니다.":"상대 폭탄이 터져 내 하수인이 제거됩니다.";
     if(vip(def)) return mine?"상대 말이 내 폭탄을 제거하였습니다.":"내 말이 상대 폭탄을 제거하였습니다.";
-    return "아무 일도 일어나지 않습니다.";
+    return "아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."; // #114 상황 6: 폭탄 → 폭탄/함정 — 제거·공개 없이 양측 한 칸씩 밀기
   }
+  if(vip(att)&&vip(def)) return "아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."; // #114 상황 8: 동료/왕 → 동료/왕 — 포획 하수인이 있어도 전투 없이 밀기 (양측 비공개)
   if(def.type==="bomb"){
     if(att.type==="minion") return mine?"폭탄이 터져 내 하수인이 제거됩니다.":"내 폭탄이 터져 상대 하수인이 제거됩니다.";
     return mine?"상대 폭탄이 터졌지만 내 말은 생존했습니다.":"상대 말이 내 폭탄을 제거하였습니다.";
@@ -876,6 +880,10 @@ function renderBoard(){
           if(p&&p.owner!==s.owner&&adj(s,p)&&visibleTo(viewer===2?0:viewer,p)&&canBattle(s,p)) cell.classList.add("hl-attack");
         }
       }
+      if(S.phase==="play"&&fleePickMine()&&p&&p.owner===S.fleePick.owner){ // #114 도망 교환: 소유자 화면에만 후방 후보(파란)·도망친 말(흰) 강조 — 상대 화면 비노출
+        if(S.fleePick.cands.includes(p.id)) cell.classList.add("hl-move");
+        if(p.id===S.fleePick.pieceId) cell.classList.add("hl-sel");
+      }
       if(S.phase==="play"&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대 턴 강제 대상·텔레포트 하이라이트 비노출
         if(S.forcedTargets&&S.forcedTargets.length&&p&&S.forcedTargets.includes(p.id)) cell.classList.add("hl-attack"); // T1 강제 대상
         if(S.teleport){ // #14 스왑형: 자기 말 2개 선택 하이라이트
@@ -885,7 +893,8 @@ function renderBoard(){
         }
       }
     }
-    cell.onclick=()=>onCell(r,c);
+    const game=S, pick=S.fleePick;
+    cell.onclick=()=>{if(S===game&&S.fleePick===pick) onCell(r,c);}; // #114 오래된 도망 후보 DOM은 새 선택·새 게임에 입력하지 않는다
     bd.appendChild(cell);
   }
 }
@@ -925,20 +934,35 @@ function renderTurnBar(){
   const tb=$("turnBar"); tb.innerHTML="";
   if(S.phase!=="play") return;
   const aiTurn=isAI(S.current)||(NET.mode&&S.current!==NET.me); // 온라인: 상대 턴이면 조작 불가
-  const mk=(txt,fn,dis,cls)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=fn;b.disabled=!!dis||aiTurn;if(cls)b.className=cls;tb.appendChild(b);};
-  mk("주 행동 생략",()=>netAction({t:"skipMain"}),S.mainUsed);
+  const game=S, turn=S.turnCount, pick=S.fleePick;
+  const fresh=()=>S===game&&S.turnCount===turn&&S.fleePick===pick;
+  const mk=(txt,fn,dis,cls)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=()=>{if(fresh()) fn();};b.disabled=!!dis||aiTurn;if(cls)b.className=cls;tb.appendChild(b);return b;};
+  if(S.fleePick){ // #114 도망 교환 선택 중: 소유자(S.current 와 다를 수 있음)만 [교환 생략] — 그 외 턴 조작은 전부 숨긴다. 기권은 자기 턴 규칙 그대로
+    const mine=fleePickMine();
+    const b=document.createElement("button"); b.textContent="교환 생략 (그대로 밀어내기)"; b.onclick=()=>{if(fresh()) netAction({t:"fleeSkip"});}; b.disabled=!mine; b.className="primary"; tb.appendChild(b);
+    mk("기권",confirmResign,false,"danger");
+    const s=document.createElement("span"); s.className="badge"; s.textContent=mine?"🏃 도망 성공 — 후방 말(파란 칸)을 클릭해 교환하거나 생략":"🏃 상대가 말을 교체 중입니다…"; tb.appendChild(s);
+    return;
+  }
   const sel=S.selected&&!S.selected.tray?S.selected:null;
   const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
   mk("탐색",()=>netAction({t:"search"}),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))); // #20: 폭탄·함정은 탐색 실행 불가
   const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
-  mk(S.teleport?"텔레포트 취소":`텔레포트 ${BAL.teleMax-S.teleUsed[S.current]}회`,()=>netAction({t:"tele"}),teleDis); // #14 스왑형·2회 제한
+  mk(S.teleport?"텔레포트 취소":"🌀 텔레포트",()=>netAction({t:"tele"}),teleDis); // #14 스왑형 · #114 경기당 횟수 제한 없음 (주 행동 1회 소모)
   if(!teleDis&&!aiTurn&&S.mode!=="sim") tutHint("teleport"); // #26 사람 턴에 텔레포트가 처음 가능해질 때 1회 도움말 (게임 상태 무변경)
-  mk("🌿 회복",()=>netAction({t:"heal",id:sel?sel.id:null}),!(sel&&canHeal(sel))); // #106 T2 회복 주 행동 — 자기 말 선택·HP<최대·하수인/동료/왕
+  mk("🌿 회복",()=>netAction({t:"heal",id:sel?sel.id:null}),!(sel&&canHeal(sel))); // #106 T2 회복 주 행동 — 자기 말 선택·하수인/동료/왕 (#114: 만피 말도 '기다리기'로 지정 가능)
   const forced=S.forcedTargets&&S.forcedTargets.length>0;
-  mk("턴 종료",()=>netAction({t:"endTurn"}),forced,"primary");
+  /* #114 CJ 선택 A: 평소 [주 행동 생략]·[턴 종료] 버튼은 없다 — 할 수 있는 행동이 없으면 자동으로 넘어간다(autoEndCheck).
+     주 행동을 마친 뒤 선택 전투가 남아 있을 때만 "싸우지 않고 종료" 를 표시해 기존 전투 선택권을 유지한다. 강제 대상이 남으면 표시하지 않는다 */
+  if(S.mainUsed&&!forced&&!S.forcedQueue.length&&!S.teleport&&!fxLocked()&&$("overlay").classList.contains("hidden")&&optionalBattleLeft()) mk("싸우지 않고 종료",()=>netAction({t:"endTurn"}),false,"primary");
   mk("기권",confirmResign,false,"danger");
   if(forced){const s=document.createElement("span");s.className="badge";s.textContent="⚔️ 강제 전투 대상 선택";tb.appendChild(s);}
   if(aiTurn){const s=document.createElement("span");s.className="badge";s.textContent=(NET.mode&&!isAI(S.current))?"🌐 상대 턴 진행 중…":"🤖 AI 행동 중…";tb.appendChild(s);}
+}
+/* #114 도망 교환 선택의 입력 주인이 이 화면의 사람인가 — PVE: 사람(0) · 핫시트: 기기 공유(소유자 시점으로 전환) · 온라인: NET.me */
+function fleePickMine(){
+  if(!S||!S.fleePick||isAI(S.fleePick.owner)) return false;
+  return NET.mode?S.fleePick.owner===NET.me:true;
 }
 function renderSide(){
   const sp=$("sidePanel");
@@ -986,6 +1010,9 @@ function renderSide(){
     <small>이동: 파란 칸 · 전투: 빨간 칸 클릭</small>`;
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
   if(S.teleport&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
+  if(S.fleePick) h+=fleePickMine() // #114 도망 교환: 소유자 안내 / 상대 대기 (거울) — 후보·위치는 소유자 화면에만
+    ?`<h2>🏃 도망 성공 — 위치 교환</h2><small>${S.mode==="pvp"&&!NET.mode?`🔒 ${pname(S.fleePick.owner)}만 확인 (상대는 시선 회피) · `:""}후방의 자기 말(파란 칸)을 클릭하면 도망친 말과 자리를 바꿉니다. 교환 후 전선의 말과 상대 말을 한 칸씩 밀어냅니다. 생략하면 도망친 말과 상대 말을 밀어냅니다.</small>`
+    :`<h2>🛗 도망 성공!</h2><small>상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다.</small>`;
   if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
   if(!isAI(S.current)||NET.mode||S.mode==="pve"){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기 · #94 온라인·PVE는 상대 턴·AI 턴에도 표시(메모 편집 가능)
     const mm=Object.entries(S.memos[p]).map(([id,k])=>{
@@ -1175,8 +1202,8 @@ function startTurn(){
 function healTargetOk(p){ return !!p&&p.alive&&p.placed&&(p.type==="minion"||p.type==="ally"||p.type==="king"); }
 function canHeal(p){
   if(S.phase!=="play"||S.mainUsed||!p||p.owner!==S.current||!healTargetOk(p)) return false;
-  if(S.teleport||(S.forcedTargets&&S.forcedTargets.length)) return false;
-  return p.hp<p.maxHp&&!p.healing;
+  if(S.teleport||S.fleePick||(S.forcedTargets&&S.forcedTargets.length)) return false;
+  return !p.healing; // #114 (CJ 선택 A 동반 제안): 만피 말도 회복 자세 지정 가능 — "움직이지 않고 기다리기" 수단. 만피 틱은 회복량 0 (자세 유지)
 }
 function healVisibleTo(viewer,p){ return viewer===2||p.owner===viewer||p.revealed; } // H8: 미공개 상대 말의 회복은 표시·로그에 싣지 않는다
 function doHeal(p){
@@ -1199,6 +1226,7 @@ function healTick(){ // endTurn 에서 turn++ 직전 1회 — 양 플레이어�
   }
 }
 function endTurn(){
+  if(S.phase!=="play"||S.battle||S.fleePick||S.teleport) return;
   if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18: 대기 중인 강제 전투가 있으면 먼저 꺼냄
   if(S.forcedTargets&&S.forcedTargets.length){ // T1: 강제 전투 미이행 시 턴 종료 불가
     if(!isAI(S.current)){showToast("⚔️ 강제 전투 대상과 전투해야 턴을 마칠 수 있습니다."); return;}
@@ -1220,7 +1248,7 @@ function endTurn(){
    강제 대상/queue 없음·주 행동 완료·canBattle 가능한 가시 인접 적 없음·연출 idle. 주 행동 전 특례: 가능한 주 행동이 하나도 없으면 생략을 자동 적용 후 재평가.
    BAL.fx.autoEndGrace 뒤 발화하며 그 사이 입력(FX.inputSeq)이 있으면 재평가. 수신 측(온라인 비행동자)·AI 턴은 절대 발화하지 않는다 */
 function humanActorNow(){
-  if(!S||S.phase!=="play"||S.battle||isAI(S.current)) return false;
+  if(!S||S.phase!=="play"||S.battle||S.fleePick||isAI(S.current)) return false; // #114: 도망 교환 선택 중(소유자가 상대일 수 있음)에는 행동자도 자동 종료하지 않는다
   if(NET.mode&&(S.current!==NET.me||NET.replaying)) return false;
   return true;
 }
@@ -1262,9 +1290,10 @@ function autoEndCheck(){
 function confirmResign(){
   if(S.phase!=="play"||isAI(S.current)) return;
   if(NET.mode&&S.current!==NET.me) return; // 온라인: 자기 턴에만 기권
+  const game=S, turn=S.turnCount;
   netLocalModal(); // 확인 모달은 로컬 전용 — 확정만 동기화
   modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,
-    [["기권 확정",()=>{close(); netAction({t:"resign"});}],
+    [["기권 확정",()=>{if(S!==game||S.turnCount!==turn) return; close(); netAction({t:"resign"});}],
      ["취소",close]]);
 }
 function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell 래퍼가 동기화 후 호출
@@ -1276,7 +1305,12 @@ function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell �
     if(p&&p.owner===S.setupPlayer){p.placed=false; S.selected=null; render();}
     return;
   }
-  if(S.phase!=="play"||S.battle||isAI(S.current)) return;
+  if(S.phase!=="play"||S.battle) return;
+  if(S.fleePick){ // #114 도망 교환: 소유자(S.current 와 다를 수 있음)의 후방 후보 클릭 → 교환 → 밀기. 그 외 클릭은 무시 (온라인은 netAction 이 소유자 외 입력을 이미 거부)
+    const q=at(r,c); if(q&&S.fleePick.cands.includes(q.id)&&!isAI(S.fleePick.owner)) fleeResolve(q.id);
+    return;
+  }
+  if(isAI(S.current)) return;
   const p=at(r,c);
   if(S.teleport){ // #14 스왑형: 자기 말 2개 선택 → 위치 교환
     if(S.teleport.stage===1){ if(p&&p.owner===S.current&&p.immobile===0){S.teleport={stage:2,piece:p}; render();} return; }
@@ -1429,6 +1463,7 @@ function doTeleportSwap(a,b){
    autoStart: 사람·단일 대상이면 즉시 개시(스왑 직후) / false면 대상 표시만(전투 연출 종료 직후 — 클릭으로 개시).
    대상·말 소멸이나 전투 횟수 소진으로 이행 불가하면 반드시 로그로 면제 사유를 남긴다 (조용한 누락 금지). */
 function drainForcedQueue(autoStart){
+  if(S.fleePick) return false;
   if(!S.forcedQueue) S.forcedQueue=[];
   while(S.forcedQueue.length&&S.phase==="play"&&!S.battle&&!(S.forcedTargets&&S.forcedTargets.length)){
     const n=S.forcedQueue.shift();
@@ -1618,12 +1653,19 @@ function bombAttack(bomb,def){
     const m=`💥 폭탄 접촉 발동! 상대 말이 폭탄을 제거했습니다 — 상대 말 생존 (정체 비공개 유지)`; addLog(m,"imp"); showToast(m);
     explosionFx([bomb]);
     if(checkWipe()) return;
-  } else {
-    const m=`💣 폭탄이 상대 폭탄·함정과 접촉 — 아무 일도 일어나지 않았습니다. (양쪽 유지 · 정체 비공개)`; addLog(m,"imp"); showToast(m);
+  } else { // #114 상황 6 (CJ 원문): 폭탄 → 폭탄/함정 — 제거·공개 없이 양측 한 칸씩 밀기 (함정도 강제 밀기·재배치 대상, 스스로 이동은 계속 불가)
+    const m=`💣 폭탄이 상대 폭탄·함정과 접촉 — 아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다. (양쪽 유지 · 정체 비공개)`; addLog(m,"imp"); showToast(m);
+    pushResolve(bomb,def,{who:bomb.owner});
+    if(S.phase!=="play") return;
   }
   afterBattle(bomb,false); render();
 }
 function vipChoice(att,def){
+  const vip=x=>x.type==="ally"||x.type==="king";
+  if(vip(att)&&vip(def)){ // #114 상황 8 (CJ 원문): 동료/왕 ↔ 동료/왕은 포획 하수인 보유와 무관하게 전투 없이 밀기 — 출전 선택·정체 공개·제거 없음
+    addLog("🤜 동료·왕끼리 접촉 — 아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다. (양측 정체 비공개)","imp");
+    doPush(att,def); return;
+  }
   const choices={};
   const ask=(side,piece,next)=>{
     const res=(!piece.cap&&S.reserve[piece.owner])?S.reserve[piece.owner]:null; // #12: cap 없고 예비(포획 하수인) 있으면 대리 출전 가능
@@ -1648,19 +1690,77 @@ function vipChoice(att,def){
     modal(`<h2>출전 공개</h2><p>${desc}</p>`,[["전투 시작",()=>{close();startRounds(att,def,fa,fd);}]]);
   }));
 }
-function doPush(att,def){
-  S.battlesUsed++; met(att.owner,"battles"); met(att.owner,"pushes");
-  const dr=def.r-att.r, dc=def.c-att.c, nr=def.r+dr, nc=def.c+dc;
-  let msg;
-  if(nr<1||nr>ROWS||nc<1||nc>COLS||at(nr,nc)) msg="밀 수 없는 위치 — 제자리 유지.";
-  else {def.r=nr; def.c=nc; msg=`방어자가 1칸 밀려났습니다 (${nr}행 ${nc}열).`;}
-  addLog(`🤜 양측 본체 출전 → 밀어내기! ${msg}`,"imp");
-  showToast(`🤜 양측 본체 출전 → 밀어내기! ${msg}`);
+/* ===== #114 (v0.4.5) 양측 밀기·재배치 — CJ 원문 "아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다" 개정 (docs/v0.4.5-analysis.md 3장 계약 1~4) =====
+   pushResolve(att,def): 접촉 축(att→def)의 반대 방향으로 두 말을 각각 한 칸 민다 — 목적 칸이 보드 밖이거나 점유(숨은 말 포함)면 그 말은 제자리, 다른 말은 가능하면 이동
+   (둘 다 밀리면 사이에 빈 칸 2개 = 맨해튼 거리 3). → 왕이 실제로 밀려 상대 끝줄에 닿으면 승리를 먼저 확정하고 후속 재배치를 중단한다.
+   → 밀기 뒤 두 말이 여전히 붙어 있거나 어느 쪽이든 다른 적(숨은 말 포함)과 붙어 있으면 재배치(relocatePair). 안전한 조합이 없으면 밀기 결과를 유지하고
+   그 접촉을 한 번 처리한 것으로 끝낸다(승인된 예외 — 추가 제거·승패를 만들지 않는다).
+   밀기·재배치는 강제 이동이다: movedEver/movedPreBT/observeMove/흔적/강제 전투(forcedQueue)를 만들지 않는다 — 함정도 밀리고 재배치되지만 스스로 이동은 계속 불가.
+   숨은 적 좌표·후보·제외 사유는 UI/로그에 싣지 않는다 (결과 위치에서의 간접 추론 가능성은 계약이 인정한 잔여). 난수 미소비 */
+const PUSH_MSG="접촉 축을 따라 두 말을 각각 한 칸 밀어냅니다. (막힌 말은 제자리)";
+const RELOC_MSG="각자의 말이 밀어낼 수 없는 상황입니다. 두 말을 재배치합니다.";
+function pushPair(att,def){
+  const dr=Math.sign(def.r-att.r), dc=Math.sign(def.c-att.c);
+  const dT=[def.r+dr,def.c+dc], aT=[att.r-dr,att.c-dc]; // 목적 칸은 서로 다르고 두 말의 출발 칸과도 다르다 — 이동 순서에 결과가 의존하지 않는다
+  const tryMove=(p,r,c)=>{ if(r<1||r>ROWS||c<1||c>COLS||at(r,c)) return false; p.r=r; p.c=c; return true; };
+  const movedD=tryMove(def,dT[0],dT[1]), movedA=tryMove(att,aT[0],aT[1]);
+  return {movedA,movedD};
+}
+function relocZone(o,r){ // 재배치 영역 우선순위: 0 자기 진영 → 1 자기 숲 → 2 중앙 광장 (그 밖 -1)
+  if(zoneOf(o).includes(r)) return 0;
+  if(o===0?(r>=9&&r<=10):(r>=4&&r<=5)) return 1;
+  if(r>=6&&r<=8) return 2;
+  return -1;
+}
+function relocCandidates(p,others){ // p 의 후보 칸 (두 말의 출발 칸은 비운 상태) — 빈 칸·다른 적(숨은 말 포함) 비인접. 고정 정렬: 영역 → 원위치 거리 → 자기 진영 방향 행 → 열
+  const occ=new Set(others.map(x=>x.r+"_"+x.c)), en=others.filter(e=>e.owner!==p.owner), out=[];
+  for(let r=1;r<=ROWS;r++) for(let c=1;c<=COLS;c++){
+    const z=relocZone(p.owner,r); if(z<0||occ.has(r+"_"+c)) continue;
+    if(en.some(e=>Math.abs(e.r-r)+Math.abs(e.c-c)===1)) continue;
+    out.push({r,c,z,d:Math.abs(p.r-r)+Math.abs(p.c-c),back:p.owner===0?ROWS-r:r-1});
+  }
+  out.sort((a,b)=>a.z-b.z||a.d-b.d||a.back-b.back||a.c-b.c);
+  return out;
+}
+function relocatePair(att,def){ // 두 목적지 조합 검토 — 단순 선착순으로 둘째 말의 자리를 막지 않는다. 조합 순위: 영역 합 → 거리 합 → att 후보 순위 → def 후보 순위
+  const others=alivePieces().filter(x=>x!==att&&x!==def);
+  const LA=relocCandidates(att,others), LD=relocCandidates(def,others);
+  let best=null;
+  for(let i=0;i<LA.length;i++) for(let j=0;j<LD.length;j++){
+    const a=LA[i], d=LD[j];
+    if(a.r===d.r&&a.c===d.c) continue;
+    if(Math.abs(a.r-d.r)+Math.abs(a.c-d.c)===1) continue; // 두 말끼리도 붙지 않아야 한다
+    const key=[a.z+d.z,a.d+d.d,i,j];
+    if(!best||key[0]<best.key[0]||(key[0]===best.key[0]&&(key[1]<best.key[1]||(key[1]===best.key[1]&&(key[2]<best.key[2]||(key[2]===best.key[2]&&key[3]<best.key[3])))))) best={a,d,key};
+  }
+  if(!best) return false;
+  att.r=best.a.r; att.c=best.a.c; def.r=best.d.r; def.c=best.d.c;
+  return true;
+}
+function pushResolve(att,def,opts){ // 밀기 → 왕 끝줄 승리 → 재배치. 반환: true=처리됨. 전투 횟수는 부르는 쪽(doPush/bombAttack/도망)이 계산한다
+  opts=opts||{};
+  const who=opts.who!==undefined?opts.who:att.owner;
   healBreak(att); healBreak(def); // #106: 밀어내기도 전투 참여 — 회복 자세 해제
-  fxPlay({key:"pushBanner",kind:"banner",title:"밀어내기!",sub:msg}); // #106 5.6 배너 "밀어내기!" + 결과 문구 2초
-  if(checkKingReach()) return; // 밀어내기로 끝줄 진입도 승리 인정
-  if(isAI(S.current)){ afterBattle(att,false); render(); return; }
-  modal(`<h2>밀어내기 (Q2-b)</h2><p>양측 모두 본체로 출전해 전투 대신 위치 판정. ${msg}</p>`,[["확인",()=>{close();afterBattle(att,false);render();}]]);
+  if(!adj(att,def)) return false;
+  met(who,"pushes");
+  pushPair(att,def);
+  addLog(`🤜 밀어내기! ${PUSH_MSG}`,"imp"); showToast(`🤜 밀어내기! ${PUSH_MSG}`);
+  fxPlay({key:"pushBanner",kind:"banner",title:"밀어내기!",sub:PUSH_MSG}); // #106 5.6 배너 "밀어내기!" + 결과 문구 2초
+  if(checkKingReach()) return true; // 왕이 실제 밀려 상대 끝줄 도달 — 승리 먼저 확정, 재배치 중단
+  const stuck=adj(att,def)||adjEnemies(att).length>0||adjEnemies(def).length>0; // 숨은 말 포함 (규칙 엔진 내부 판정)
+  if(stuck){
+    if(relocatePair(att,def)){ met(who,"relocations");
+      addLog(`🔄 말 재배치! ${RELOC_MSG}`,"imp"); showToast(`🔄 말 재배치! ${RELOC_MSG}`);
+      fxPlay({key:"pushBanner",kind:"banner",title:"🔄 말 재배치!",sub:RELOC_MSG}); }
+    else addLog("🔄 재배치할 안전한 자리가 없어 밀기 결과를 유지합니다. (이 접촉은 처리 완료)","imp"); // 승인된 예외 — 추가 제거·승패 없음
+  }
+  return true;
+}
+function doPush(att,def){ // 동료/왕 ↔ 동료/왕 접촉 (전투 1회 계산)
+  S.battlesUsed++; met(att.owner,"battles");
+  pushResolve(att,def);
+  if(S.phase!=="play") return;
+  afterBattle(att,false); render();
 }
 function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; met(attP.owner,"battles");
@@ -1802,13 +1902,13 @@ function battleModal(){
     bmsg(`🏃 ${fighterName(side)}의 도망 시도!`,null,{key:"fleeFx"});
     if(rand()<BAL.fleeProb){
       met(ownerP,"fleeOks");
-      const piece=side==="A"?B.attP:B.defP;
+      const piece=side==="A"?B.attP:B.defP, oppPiece=side==="A"?B.defP:B.attP; // #114 전투 상대(former opponent)는 전투 객체가 사라진 뒤에도 교환·밀기 대상으로 보존
       bmsg(`🏃 도망 성공! 전투가 종료되었다.`);
       addLog(`🏃 ${pname(ownerP)} 도망 성공 — 전투 종료 (판정·제거 없음)`,"imp"); showToast("🏃 도망 성공 — 전투 종료");
       resetAfter(B.fa); resetAfter(B.fd);
       const q=B.msgQ.splice(0);
       S.battle=null;
-      battleEndFx(q,{title:"도망 성공 — 전투 종료",cls:""},()=>{ if(!S.battle){ close(); fleeSwapPrompt(piece); } });
+      battleEndFx(q,{title:"도망 성공 — 전투 종료",cls:""},()=>{ if(!S.battle){ close(); fleeSwapPrompt(piece,oppPiece); } });
       return;
     }
     bmsg(`🏃 도망 실패! 상대의 공격이 이어진다.`);
@@ -2157,27 +2257,45 @@ function fleeCounter(fleeSide){
       if(of.cds[i]===0&&sk.pow&&(slot<0||sk.pow>SKILLS[of.skills[slot]].pow)) slot=i;}
   execSlot(oSide,slot); // 도망 측 행동 소모로 처리 (nextPhase는 execSlot이 호출)
 }
-/* #13 도망 성공 후: 자기 후방 말과 위치 교환 선택 (생략 가능 · 신규 인접 강제 전투 미적용) */
-function fleeSwapPrompt(piece){
-  drainForcedQueue(false); // #18: 도주 성공으로 끝난 첫 전투 뒤에도 스왑 둘째 말의 강제 전투를 승격
-  const done=()=>{render(); if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule();};
-  if(S.phase!=="play"||!piece.alive){done(); return;}
+/* #13 → #114 도망 성공 후: 보드에서 후방 자기 말을 골라 위치 교환(생략 가능) → 밀기 (docs/v0.4.5-analysis.md 3장 계약 5·6).
+   입력 주인은 도망친 말의 소유자(방어자일 수 있어 S.current 와 다름) — 온라인은 netActor() 가 소유자를 돌려주므로 소유자 클라이언트만 cell/fleeSkip 을 송신하고 상대는 대기.
+   교환하면 전선으로 들어온 말 ↔ 전투 상대를, 생략하거나 후방 후보가 없으면 도망친 말 ↔ 상대를 민다. 교환·밀기·재배치는 강제 전투·탐색 흔적을 만들지 않는다.
+   대기 중인 텔레포트 forcedQueue 는 위치가 확정된 뒤(밀기·재배치 후) 승격한다 — 승격 시 인접을 다시 검사하므로 밀려난 대상은 자연히 면제된다. rand 소비 0 */
+function fleeSwapPrompt(piece,opp){
+  if(S.phase!=="play"||!piece.alive){fleeDone(); return;}
   const own=piece.owner;
   const dutyId=(S.forcedTargets&&S.forcedTargets.length&&S.movedPiece)?S.movedPiece.id:null; // 강제 전투 대기 말은 교환 대상에서 제외
-  const rear=alivePieces().filter(x=>x.owner===own&&x.id!==piece.id&&x.id!==dutyId&&(own===0?x.r>piece.r:x.r<piece.r)); // 후방 = 자기 진영 방향으로 행이 더 뒤
-  if(!rear.length){done(); return;}
-  if(isAI(own)){ // AI: 폭탄>함정>하수인 순 우선 교환 (전선에 위장 말 배치)
+  const duty=new Set([dutyId,...S.forcedQueue.map(x=>x.pid)]);
+  const rear=alivePieces().filter(x=>x.owner===own&&x.id!==piece.id&&!duty.has(x.id)&&(own===0?x.r>piece.r:x.r<piece.r)); // 후방 = 자기 진영 방향으로 행이 더 뒤
+  S.selected=null;
+  S.fleePick={owner:own,pieceId:piece.id,oppId:(opp&&opp.alive&&opp.placed)?opp.id:null,cands:rear.map(x=>x.id),token:S.turnCount+":"+S.battlesUsed+":"+piece.id};
+  if(!rear.length){ fleeResolve(null); return; }
+  if(isAI(own)){ // AI: 폭탄>함정>하수인 순 우선 교환 (전선에 위장 말 배치) — 난수 미소비
     const pri={bomb:0,trap:1,minion:2,ally:3,king:4};
-    const t=rear.sort((x,y)=>(pri[x.type]-pri[y.type])||(own===0?y.r-x.r:x.r-y.r))[0];
-    fleeSwap(piece,t); done(); return;
+    const t=rear.slice().sort((x,y)=>(pri[x.type]-pri[y.type])||(own===0?y.r-x.r:x.r-y.r))[0];
+    fleeResolve(t.id); return;
   }
-  const btns=rear.map(t=>[`${t.r}행 ${t.c}열 ${idLabel(own,t)}`,()=>{close();fleeSwap(piece,t);done();}]);
-  btns.push(["교환 생략",()=>{close();done();}]);
-  netModalOwner(own); // 온라인: 도망친 말의 소유자가 선택 (방어자일 수 있음)
-  modal(`<h2>🏃 도망 성공 — 위치 교환</h2><p>후방의 자기 말과 위치를 교환할 수 있습니다. (신규 인접 강제 전투 미적용)</p>`,btns);
+  const mine=fleePickMine();
+  const m=mine?"🏃 도망 성공 — 후방의 자기 말(파란 칸)을 클릭해 교환하거나 [교환 생략]":"🛗 도망 성공! 상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다.";
+  addLog("🏃 도망 성공 — 후방 말 교환 선택 중","imp"); showToast(m);
+  fxPlay({key:"fleeFx",kind:"banner",title:"🛗 도망 성공!",sub:mine?"후방의 자기 말을 골라 자리를 바꾸거나 생략하세요. 교체 후 말을 한칸씩 밀어냅니다.":"상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다."});
+  render();
+}
+function fleeDone(){ if(S.phase==="play"&&!S.battle) drainForcedQueue(false); render(); if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule(); } // #18: 스왑 둘째 말의 강제 전투는 밀기·재배치 뒤 승격
+function fleeResolve(swapId){ // swapId: 후방 후보 id 또는 null(생략) — 온라인 양측이 같은 액션 프레임으로 같은 결과
+  const fp=S.fleePick; if(!fp) return false;
+  S.fleePick=null;
+  const piece=S.pieces.find(x=>x.id===fp.pieceId), opp=fp.oppId!==null?S.pieces.find(x=>x.id===fp.oppId):null;
+  let front=piece;
+  const t=(swapId!==null&&swapId!==undefined)?S.pieces.find(x=>x.id===swapId):null;
+  if(t&&fp.cands.includes(t.id)&&t.alive&&t.placed&&piece.alive&&piece.placed){ fleeSwap(piece,t); front=t; }
+  else addLog(fp.cands.length?"🏃 도망 — 교환 생략":"🏃 도망 — 교환할 후방 말이 없습니다","imp");
+  if(S.phase==="play"&&opp&&opp.alive&&opp.placed&&front.alive&&front.placed&&adj(front,opp)){ met(fp.owner,"fleePushes"); pushResolve(front,opp,{who:fp.owner}); }
+  fleeDone();
+  return true;
 }
 function fleeSwap(a,b){
-  const ar=a.r, ac=a.c; a.r=b.r; a.c=b.c; b.r=ar; b.c=ac; // movedPreBT 미기록·강제 전투 미적용
+  const ar=a.r, ac=a.c; a.r=b.r; a.c=b.c; b.r=ar; b.c=ac; // movedPreBT 미기록·강제 전투 미적용·흔적 미기록
   healBreak(a); healBreak(b); // #106: 도망 후 교환도 자세 해제
   addLog(`🏃 도망 — 후방 말과 위치를 교환했습니다.`,"imp");
   checkKingReach();
@@ -2200,7 +2318,7 @@ function aiScheduleBattle(){
   const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return; S.aiBattlePending=false; aiBattleAction(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
 }
 function aiStep(){
-  if(!S||S.phase!=="play"||!isAI(S.current)||S.battle) return;
+  if(!S||S.phase!=="play"||!isAI(S.current)||S.battle||S.fleePick) return; // #114: 상대(사람)의 도망 교환 선택이 끝나야 재개 (fleeResolve → done 이 재스케줄)
   const me=S.current;
   if(!S.mainUsed){ if(aiLevelOf(me)==="dan5") aiMainStrong(me); else aiMain(me); render(); aiSchedule(); return; } // #21 난이도 분기
   if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18 안전장치
@@ -2422,6 +2540,8 @@ function aiBattlePairScore(me,att,def){
     sc = att.type==="ally" ? 18+pressure
        : att.type==="king" ? -100
        : 8 - 18*risk + pressure;
+  } else if(aiVipPair(att,def)){ // #114 전투가 아닌 밀기: 중립/왕 손실 평가를 그대로 반환 (전투 HP·공세·끝줄 공격 보너스 제외)
+    return aiPushScore(att,def);
   } else { // 유닛 (공개)
     if(def.type==="king") sc=45;
     else if(def.type==="ally") sc=25;
@@ -2440,6 +2560,14 @@ function aiBattlePairScore(me,att,def){
   // 수비: 자기 최후방 행 인접(1칸 전 도달 위협) 적은 우선 제거 — 끝줄 승리 저지 (프로파일 무관)
   if(th!=="bomb"&&th!=="trap"&&Math.abs(def.r-(me===0?ROWS:1))<=1) sc+=40;
   return sc;
+}
+/* #114 AI 밀기 평가 (5급·5단 공용, 공정 관측 — def 는 revealed 동료/왕일 때만 호출).
+   새 가중치 없음: 상대 왕 끝줄 승리 위험은 기존 aiUnitValue(king)의 손실, 제거 없는 밀기는 기존 aiBattleEV의 중립값 0.
+   전투용 HP/공세/공격 기회 보너스를 더하지 않는다. */
+function aiVipPair(att,def){ const vip=x=>x.type==="ally"||x.type==="king"; return vip(att)&&def.revealed&&vip(def); }
+function aiPushScore(att,def){
+  if(def.type==="king"){ const nr=def.r+Math.sign(def.r-att.r); if(nr===(def.owner===0?1:ROWS)) return -aiUnitValue(def,att.owner); }
+  return 0;
 }
 function aiBattleAction(){
   const B=S.battle; if(!B) return;
@@ -2558,6 +2686,7 @@ function aiBattleEV(me,att,def){
   const edgeGuard=Math.abs(def.r-(me===0?ROWS:1))<=1?45:0; // 끝줄 저지: 내 최후방 1칸 이내 적은 우선 제거 (왕 끝줄 승리 차단)
   const pressure=Math.min(1,S.turnCount/BAL.maxTurns)*8; // 후반 공세 압력 (무승부 방지)
   if(th==="unit"){
+    if(aiVipPair(att,def)) return aiPushScore(att,def); // #114 동료/왕끼리는 밀기 (전투 없음)
     const p=aiWinProb(att,def,me);
     let ev=p*(aiUnitValue(def,me)+(def.type==="king"?400:0))-(1-p)*va;
     if(att.type==="king"&&!att.cap) ev-=(1-p)*400; // 왕 본체 패배 = 경기 패배
@@ -2625,6 +2754,7 @@ function aiWorstReply(me,V,deadline){
       if(Math.abs(e.r-x.r)+Math.abs(e.c-x.c)!==1) continue;
       if(x.type==="bomb"||x.type==="trap") continue; // 적이 내 폭탄·함정을 치면 나에게 이득 → 최선 응수 아님
       if(e.type==="king"&&e.revealed&&x.type==="king") continue;
+      if(e.revealed&&(e.type==="ally"||e.type==="king")&&(x.type==="ally"||x.type==="king")) continue; // #114 공개 동료/왕이 내 동료/왕을 치면 전투가 아니라 밀기 — 손실 응수로 세지 않는다
       const p=1-aiWinProb(e.revealed?e:{element:null,hp:100,maxHp:100,atk:22,type:"minion"},x,me);
       const harm=(1-p)*(aiUnitValue(x,me)+(x.type==="king"?400:0))-p*(e.revealed?aiUnitValue(e,me):28);
       worst=Math.min(worst,base-harm); n++;
@@ -2703,7 +2833,7 @@ function aiMainStrong(me){
       const ba=adjIds(a), bb=adjIds(b);
       const s1=virt(()=>{const ar=a.r,ac=a.c; a.r=b.r;a.c=b.c; b.r=ar;b.c=ac;})
         +(()=>{const ar=a.r,ac=a.c; a.r=b.r;a.c=b.c; b.r=ar;b.c=ac; const g=forcedGain(a,ba)+forcedGain(b,bb)+attackOpp(); b.r=a.r;b.c=a.c; a.r=ar;a.c=ac; return g;})()
-        -8; // 자원 소모 비용
+        -8; // 기존 주 행동 소모 비용
       cands.push({kind:"tele",a,b,s1,desc:"텔레포트"});
     }
   }
@@ -2904,6 +3034,7 @@ function memoClickTarget(r,c){
   if(fxLocked()) return null; // #106 3.2: 배너·연출 잠금 중에는 메모 피커도 열지 않는다 (잠금이 풀리면 종전대로)
   const v=humanViewer(); if(v!==0&&v!==1) return null;
   const p=at(r,c); if(!p||p.owner===v||!visibleTo(v,p)) return null;
+  if(S.fleePick) return (NET.mode&&S.fleePick.owner!==NET.me)?p:null; // #114 도망 교환 선택 중: 소유자 클릭은 규칙 경로(cell 액션), 온라인 대기자는 로컬 메모만
   const myTurn=NET.mode?netActor()===NET.me:!isAI(S.current);
   if(!myTurn) return (NET.mode||S.mode==="pve")?p:null; // (a)
   if(S.teleport) return null;
@@ -2992,7 +3123,7 @@ const TUT_SCENES={
     let g3=""; [0,1,2,3].forEach(i=>{ const x=12+i*24; g3+=TSV.tok(x,12,"⚔","op")+TSV.x(x,12,7)+TSV.tok(x,38,i<2?"⚔":"🤝","op")+TSV.x(x,38,7); });
     return [
       {t:"상대 왕 잡기",vis:TSV.svg(70,70,"내 하수인이 상대 진영의 상대 왕을 공격해 지우는 장면",g1),res:"왕을 잡으면 승리",tone:"ok"},
-      {t:"내 왕이 끝줄 닿기",vis:TSV.svg(70,70,"내 왕이 상대편 맨 끝줄(금색 테두리 줄)까지 올라가 서는 장면",g2),res:"맨 끝줄에 서면 승리",tone:"ok"},
+      {t:"내 왕이 끝줄 닿기",vis:TSV.svg(70,70,"내 왕이 상대편 맨 끝줄(금색 테두리 줄)까지 올라가 서는 장면",g2),res:"맨 끝줄에 서면 승리 · 밀려서 닿아도 승리",tone:"ok"},
       {t:"싸우는 말 전멸",vis:TSV.svg(96,50,"상대의 하수인 6개와 동료 2개가 모두 엑스 표시로 지워진 장면",g3),res:"하수인 6 + 동료 2 모두 없애면 승리",tone:"ok"}]; },
   pieces(){
     const rows=[["하수인",6,"⚔"],["동료",2,"🤝"],["왕",1,"👑"],["폭탄",3,"💣"],["함정",2,"🪤"]];
@@ -3010,7 +3141,7 @@ const TUT_SCENES={
     return [
       {t:"한 칸 이동",vis:TSV.svg(90,90,"내 말에서 위, 아래, 왼쪽, 오른쪽 한 칸으로 화살표가 나가고 대각선 네 방향에는 엑스 표시",g1),res:"위·아래·옆만 · 대각선 ✗"},
       {t:"숲에 숨기",vis:TSV.svg(110,56,"숲 칸의 내 말이 멀리 있는 상대에게는 흐리게 숨겨지고, 상대가 바로 옆에 오면 또렷하게 보이는 두 장면",g2),res:"멀면 안 보임 🙈 · 옆이면 보임 👁 · 떨어지면 다시 숨어요"},
-      {t:"숨은 말 충돌",vis:TSV.svg(70,50,"내 말이 숨은 상대 말이 있는 숲 칸으로 가다 부딪혀 그 앞 칸에 멈추고 둘 다 공개되는 장면",g3),res:"앞 칸에 멈춤 · 둘 다 공개 👁 (이번 차례만)"}]; },
+      {t:"숨은 말 충돌",vis:TSV.svg(70,56,"내 말이 숨은 상대 말이 있는 숲 칸으로 가다 부딪혀 그 앞 칸에 멈추고 둘 다 공개되는 장면",'<g transform="translate(0 6)">'+g3+'</g>'),res:"앞 칸에 멈춤 · 둘 다 공개 👁 (이번 차례만)"}]; },
   search(){ const C=TSV.C;
     const g1=TSV.grid(2,12,3,1,()=>"forest")+TSV.tok(13,23,"⚔","ghost")+TSV.arrow(22,23,26,23)+TSV.tok(35,23,"⚔","me")+TSV.g(51,13,"🔍",11);
     const g2=TSV.cell(2,8,"forest")+TSV.tok(13,19,"⚔","me")+TSV.g(30,11,"🔍",11);
@@ -3030,7 +3161,9 @@ const TUT_SCENES={
       {t:"옆에 붙으면 강제 전투",vis:TSV.svg(90,58,"내 하수인이 한 칸 움직여 상대 물음표 말 바로 옆에 붙자 칼 표시와 함께 싸움이 시작되는 전후 장면",g1),res:"한 차례 싸움 최대 2번 ⚔⚔"},
       {t:"속성 가위바위보",vis:TSV.svg(130,100,"불, 풀, 번개, 물 네 원이 고리로 이어져 불은 풀을, 풀은 번개를, 번개는 물을, 물은 불을 이기는 화살표",g2),res:"🔥불 → 🌿풀 → ⚡번개 → 💧물 → 🔥불 순서로 이겨요"},
       {t:"싸움이 끝나면",vis:TSV.stack(TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60 그대로","txt")),TSV.row(TSV.lbl("⏳ 쿨타임 그대로","txt")),TSV.row(`<span class="tut-strike">🔥 화상 · ☠ 약화</span>`,TSV.arr(),TSV.lbl("상태이상은 사라져요 ✓","ok"))),res:"HP·쿨타임 유지 · 상태이상 해제"},
-      {t:"6라운드가 끝나면",vis:TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60%","ok"),TSV.lbl("vs"),TSV.dhp(0.4,"bad"),TSV.lbl("HP 40%","bad"),TSV.arr(),TSV.lbl("60% 승 ✓","ok")),res:"남은 HP 비율이 높은 쪽 승리 · 같으면 지킨 쪽",tone:"ok"}]; }, // #106 T6
+      {t:"6라운드가 끝나면",vis:TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60%","ok"),TSV.lbl("vs"),TSV.dhp(0.4,"bad"),TSV.lbl("HP 40%","bad"),TSV.arr(),TSV.lbl("60% 승 ✓","ok")),res:"남은 HP 비율이 높은 쪽 승리 · 같으면 지킨 쪽",tone:"ok"}, // #106 T6
+      {t:"동료·왕끼리는 밀기",vis:TSV.svg(112,44,"내 동료와 상대 동료가 붙자 싸우지 않고 서로 반대쪽으로 한 칸씩 밀려나 사이에 빈 칸 두 개가 생기는 장면",
+        TSV.grid(2,11,5,1)+TSV.tok(35,22,"🤝","ghost")+TSV.tok(57,22,"🤝","opghost")+TSV.arrow(30,6,16,6,C.acc)+TSV.arrow(62,6,76,6,C.bad)+TSV.tok(13,22,"🤝","me")+TSV.tok(79,22,"🤝","op")),res:"싸움 없이 각자 한 칸씩 뒤로 · 정체는 그대로 비밀"}]; }, // #114 상황 8
   bombtrap(){ const C=TSV.C;
     const g1=TSV.grid(2,2,3,1)+TSV.tok(13,13,"💣","me")+TSV.arrow(24,13,42,13)+TSV.grid(2,34,2,1)+TSV.tok(13,45,"🪤","me")+TSV.g(35,45,"🔒",12);
     const g2=TSV.tok(14,20,"⚔","me")+TSV.arrow(24,20,32,20,C.bad)+TSV.tok(44,20,"💣","op")+TSV.g(29,6,"💥",12)+TSV.x(14,20,7)+TSV.x(44,20,7)
@@ -3038,9 +3171,9 @@ const TUT_SCENES={
     const g3=TSV.tok(14,20,"⚔","me")+TSV.arrow(24,20,32,20,C.bad)+TSV.tok(44,20,"🪤","op")+TSV.x(44,20,7)
       +TSV.tok(30,52,"⚔","me")+TSV.g(48,44,"🔒",13);
     return [
-      {t:"움직임",vis:TSV.svg(70,64,"폭탄은 한 칸 화살표로 움직이고, 함정은 자물쇠로 고정",g1),res:"폭탄 1칸 (버닝 땐 2칸) · 함정은 고정"},
-      {t:"폭탄을 건드리면",vis:TSV.svg(76,66,"하수인이 폭탄을 건드리면 둘 다 엑스로 사라지고, 왕이 건드리면 폭탄만 사라지고 왕은 살아남는 장면",g2),res:"하수인 ✗ 둘 다 사라짐 · 동료·왕 ✓ 살아남음 · 내 폭탄이 붙어도 펑"},
-      {t:"함정을 밟으면",vis:TSV.svg(76,66,"함정을 밟으면 함정이 사라지고 밟은 말은 자물쇠와 함께 정지하는 장면",g3),res:"함정 ✗ · 밟은 말은 내 차례 2번 정지 · 둘 다 정체 공개"}]; },
+      {t:"움직임",vis:TSV.svg(70,64,"폭탄은 한 칸 화살표로 움직이고, 함정은 자물쇠로 스스로는 못 움직임",g1),res:"폭탄 1칸 (버닝 땐 2칸) · 함정은 스스로 못 움직여요"},
+      {t:"폭탄을 건드리면",vis:TSV.svg(76,72,"하수인이 폭탄을 건드리면 둘 다 엑스로 사라지고, 왕이 건드리면 폭탄만 사라지고 왕은 살아남는 장면",'<g transform="translate(0 6)">'+g2+'</g>'),res:"하수인 ✗ 둘 다 사라짐 · 동료·왕 ✓ 살아남음 · 내 폭탄이 붙어도 펑 · 폭탄끼리·폭탄↔함정은 밀기"},
+      {t:"함정을 밟으면",vis:TSV.svg(76,66,"함정을 밟으면 함정이 사라지고 밟은 말은 자물쇠와 함께 정지하는 장면",g3),res:"함정 ✗ · 밟은 말은 내 차례 2번 정지 · 둘 다 정체 공개 · 밀리면 함정도 옮겨져요"}]; },
   capture(){ const C=TSV.C;
     const g1=TSV.tok(22,16,"⚔","op",11)+TSV.hp(4,32,36,0.25,C.bad);
     const g3=TSV.tok(22,16,"⚔","me",11)+TSV.hp(4,32,36,0.4,C.gold);
@@ -3048,15 +3181,15 @@ const TUT_SCENES={
       {t:"볼 던지기: HP 30% 아래",vis:TSV.row(TSV.svg(44,44,"HP 막대가 25%까지 줄어든 상대 하수인",g1,"tut-ico lg"),TSV.lbl("HP 25%","bad"),`<span class="tut-big">🔴</span>`,TSV.arr(),TSV.lbl("성공률 70%","gold")),res:"상대 하수인 HP 30% 아래 → 몬스터볼"},
       {t:"결과: 둘 다 볼 −1",vis:TSV.stack(TSV.row(TSV.lbl("✓ 성공","ok"),TSV.pill("예비 HP 70/100","own")),TSV.row(TSV.lbl("✗ 실패","bad"),TSV.lbl("볼이 튕겨요")),TSV.row(TSV.pill("🔴 볼 −1"))),res:"성공·실패 모두 볼 1개 소모"},
       {t:"도망: 내 HP 50% 아래",vis:TSV.row(TSV.svg(44,44,"HP 막대가 40%까지 줄어든 내 하수인",g3,"tut-ico lg"),TSV.lbl("HP 40%","gold"),`<span class="tut-big">🏃</span>`,TSV.arr(),TSV.lbl("성공률 50%","gold")),res:"내 말 HP 50% 아래 → 도망"},
-      {t:"도망 결과",vis:TSV.stack(TSV.row(TSV.lbl("✓ 성공","ok"),TSV.dtok("⚔","me",1),TSV.lbl("⇄","txt"),TSV.dtok("💣","me",1),TSV.lbl("뒷말과 교환")),TSV.row(TSV.lbl("✗ 실패","bad"),TSV.dtok("⚔","op",1),TSV.arr(C.bad),TSV.dtok("⚔","me",1),TSV.lbl("⚡ 바로 공격"))),res:"실패하면 상대가 한 번 더 때려요"}]; },
+      {t:"도망 결과",vis:TSV.stack(TSV.row(TSV.lbl("✓ 성공","ok"),TSV.dtok("⚔","me",1),TSV.lbl("⇄","txt"),TSV.dtok("💣","me",1),TSV.lbl("보드에서 뒷말 클릭 → 교환 → 밀기")),TSV.row(TSV.lbl("✗ 실패","bad"),TSV.dtok("⚔","op",1),TSV.arr(C.bad),TSV.dtok("⚔","me",1),TSV.lbl("⚡ 바로 공격"))),res:"성공: 뒷말 고르기(생략 가능) → 교환 → 한 칸씩 밀기 · 실패: 상대가 한 번 더 때려요"}]; },
   teleport(){ const C=TSV.C;
     const g1=TSV.grid(6,2,3,4,r=>r<3?"op":"forest",16)+TSV.tok(30,26,"⚔","me",7);
     const g2=TSV.cell(4,9)+TSV.cell(64,9)+TSV.tok(15,20,"💣","me")+TSV.tok(75,20,"⚔","me")+TSV.arrow(28,16,62,16)+TSV.arrow(62,24,28,24);
     const g3=TSV.tok(14,24,"⚔","me",8)+TSV.tok(34,24,"?","op",8)+TSV.g(24,9,"⚔",11)+TSV.tok(66,24,"🤝","me",8)+TSV.tok(86,24,"?","op",8)+TSV.g(76,9,"⚔",11);
     return [
       {t:"조건",vis:TSV.svg(60,70,"상대 땅 3줄 안에 내 말이 들어가 있는 장면",g1),res:"상대 땅에 내 말 → 🌀 켜짐 ✓",tone:"ok"},
-      {t:"둘 자리 바꾸기",vis:TSV.svg(90,40,"내 폭탄과 내 하수인 두 말의 자리가 양방향 화살표로 바뀌는 장면",g2),res:"왕·폭탄·함정도 OK · 한 경기 2번 🌀🌀"},
-      {t:"각자 싸움",vis:TSV.svg(100,40,"바뀐 두 말이 각각 상대 옆에 붙어 따로 싸우는 장면",g3)+TSV.row(TSV.pill("남은 싸움 부족","op"),TSV.lbl("🌀 ✗ 못 써요","bad")),res:"따로따로 싸워요"}]; },
+      {t:"둘 자리 바꾸기",vis:TSV.svg(90,40,"내 폭탄과 내 하수인 두 말의 자리가 양방향 화살표로 바뀌는 장면",g2),res:"왕·폭탄·함정도 OK · 횟수 제한 없음 🌀 (한 차례에 주 행동 1개)"},
+      {t:"각자 싸움",vis:TSV.svg(100,42,"바뀐 두 말이 각각 상대 옆에 붙어 따로 싸우는 장면",'<g transform="translate(0 2)">'+g3+'</g>')+TSV.row(TSV.pill("남은 싸움 부족","op"),TSV.lbl("🌀 ✗ 못 써요","bad")),res:"따로따로 싸워요"}]; },
   burning(){ const C=TSV.C;
     const g1=TSV.grid(2,2,1,3)+TSV.tok(13,57,"⚔","me")+TSV.arrow(13,46,13,8)+TSV.arrow(24,35,44,35,C.dim,2,1)+TSV.x(44,35,5);
     const g2=TSV.grid(2,2,1,3,r=>r===0?"op":r===1?"forest":"mid")+TSV.tok(13,57,"⚔","me")+TSV.arrow(13,46,13,28)+TSV.arrow(13,24,13,8,C.dim,2,1)+TSV.x(13,13,5);
@@ -3065,38 +3198,38 @@ const TUT_SCENES={
     return [
       {t:"곧게 2칸",vis:TSV.svg(60,80,"내 하수인이 곧게 2칸 올라가는 화살표와 꺾는 길에는 엑스",g1),res:"곧게만 2칸까지 · 꺾기 ✗"},
       {t:"상대 숲·땅은 1칸",vis:TSV.row(TSV.svg(30,80,"상대 숲과 상대 땅으로 들어가는 길은 첫 칸까지만 화살표가 그려지고 둘째 칸은 엑스",g2,"tut-fig"),legend),res:"들어가면 1칸"},
-      {t:"폭탄·함정",vis:TSV.svg(70,80,"폭탄은 2칸 화살표에 체크, 함정은 자물쇠로 고정",g3),res:"폭탄 2칸 ✓ · 함정 고정 🔒"}]; },
+      {t:"폭탄·함정",vis:TSV.svg(70,80,"폭탄은 2칸 화살표에 체크, 함정은 자물쇠로 스스로는 못 움직임",g3),res:"폭탄 2칸 ✓ · 함정은 스스로 못 움직여요 🔒 (밀리면 옮겨져요)"}]; },
   recap(){
     return [
       {t:"이기는 길 셋",vis:TSV.row(TSV.pill("👑 상대 왕 잡기"),TSV.pill("🏁 내 왕이 끝줄"),TSV.pill("💀 상대 전멸"))},
-      {t:"내 차례 흐름",vis:`<div class="tut-flow"><span class="tut-flow-box">주 행동 1개<small>이동·탐색·텔레포트·회복</small></span>${TSV.arr()}<span class="tut-flow-box">옆에 붙었으면 ⚔<small>꼭 싸움 (최대 2번)</small></span>${TSV.arr()}<span class="tut-flow-box acc">턴 종료 ▶<small>할 게 없으면 자동</small></span></div>`,res:"회복: 고른 말이 매 턴 조금씩 나아요 (움직이거나 싸우면 풀려요)"},
+      {t:"내 차례 흐름",vis:`<div class="tut-flow"><span class="tut-flow-box">주 행동 1개<small>이동·탐색·텔레포트·회복</small></span>${TSV.arr()}<span class="tut-flow-box">옆에 붙었으면 ⚔<small>꼭 싸움 (최대 2번)</small></span>${TSV.arr()}<span class="tut-flow-box acc">턴 종료 ▶<small>할 게 없으면 자동 · 싸울 상대만 남으면 [싸우지 않고 종료]</small></span></div>`,res:"회복: 고른 말이 나와 상대 차례가 끝날 때마다 최대 HP 5%씩 나아요 (이동·탐색·텔레포트·싸움으로 풀려요)"},
       {t:"기억할 것",vis:TSV.row(TSV.pill("🌲 숲에 숨기"),TSV.pill("🔍 흔적 찾기"),TSV.pill("❓ 물음표 추리"))}]; }
 };
 const TUT_STEPS=[
   {icon:"🏆",title:"이기는 법 세 가지",cards:TUT_SCENES.win(),
-   lines:["상대 <b>왕</b>을 찾아서 잡으면 이겨요.","내 <b>왕</b>이 상대편 <b>맨 끝줄</b>에 서도 이겨요.","상대의 싸우는 말(<b>하수인</b> 6개 + <b>동료</b> 2개)을 모두 없애도 이겨요."]},
+   lines:["상대 <b>왕</b>을 찾아서 잡으면 이겨요.","내 <b>왕</b>이 상대편 <b>맨 끝줄</b>에 서도 이겨요. 스스로 걸어가도, 상대에게 <b>밀려서</b> 닿아도 승리예요.","상대의 싸우는 말(<b>하수인</b> 6개 + <b>동료</b> 2개)을 모두 없애도 이겨요."]},
   {icon:"🎭",title:"말 5가지와 숨은 정체",cards:TUT_SCENES.pieces(),
    lines:["내 말은 모두 <b>14개</b>예요. <b>하수인</b>(싸우는 말) 6개, <b>동료</b> 2개, <b>왕</b> 1개, <b>폭탄</b> 3개, <b>함정</b> 2개예요.","상대에게 내 말은 전부 <b>물음표(?)</b>로 보여요. 상대 말도 나에게는 물음표예요.","싸우고 나면 그 말의 정체가 드러나요. <b>함정</b>을 밟으면 함정과 밟은 말도 드러나요."]},
   {icon:"🌲",title:"움직이기와 숲에 숨기",cards:TUT_SCENES.move(),
    lines:["내 차례에 말 <b>하나</b>를 위·아래·옆으로 <b>한 칸</b> 움직여요. 대각선은 안 돼요.","초록 칸은 <b>숲</b>이에요. 숲의 말은 상대가 <b>바로 옆</b>에 올 때만 보이고, 떨어지면 다시 숨어요.","숨은 말이 있는 칸으로 가면 <b>부딪혀요</b>. 그 앞 칸에 멈추고, 둘 다 이번 차례 동안 보여요."]},
   {icon:"🔍",title:"흔적과 탐색",cards:TUT_SCENES.search(),
-   lines:["숲 어딘가에 <b>선물</b>이 숨어 있어요. 말이 그 칸에 서면 <b>흔적</b> 표시가 떠요.","그 말로 <b>다음 차례</b>에 <b>탐색</b>(찾아보기) 버튼을 누르면 선물을 받아요.","탐색은 <b>하수인·동료·왕</b>만 할 수 있어요. 폭탄·함정은 못 해요.","선물은 <b>몬스터볼</b>, 회복약 같은 <b>아이템</b>, 다음 싸움 <b>힘 버프</b>, 공용 하수인이에요."]},
+   lines:["숲 어딘가에 <b>선물</b>이 숨어 있어요. 말이 그 칸에 서면 <b>흔적</b> 표시가 떠요.","그 말로 <b>다음 차례</b>에 <b>탐색</b>(찾아보기) 버튼을 누르면 선물을 받아요.","탐색은 <b>하수인·동료·왕</b>만 할 수 있어요. 폭탄·함정은 못 해요.","선물은 <b>몬스터볼·아이템·힘 버프·공용 하수인</b>이에요. 하수인은 공용 하수인에게 <b>다른 속성 공격기</b>를 배워 바꿀 수 있어요. 그대로 둬도 돼요."]},
   {icon:"⚔️",title:"옆에 붙으면 꼭 싸워요",cards:TUT_SCENES.battle(),
-   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요."]},
+   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요.","<b>동료·왕</b>끼리는 포획 하수인이 있어도 싸우지 않고 <b>각자 한 칸씩</b> 밀려요. 막히면 제자리예요. 적과 붙어 있으면 <b>자기 편 땅부터 재배치</b>해요."]},
   {icon:"💣",title:"폭탄과 함정",cards:TUT_SCENES.bombtrap(),
-   lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). 상대 옆에 새로 붙으면 터져요. <b>함정</b>은 놓은 자리에서 못 움직여요.","<b>하수인</b>이 폭탄을 건드리면 펑! 둘 다 사라져요. <b>동료·왕</b>이 건드리면 폭탄만 사라지고 살아남아요.","<b>함정</b>을 건드리면 함정은 사라지고, 건드린 말은 <b>내 차례 2번</b> 동안 못 움직여요. 둘 다 정체가 드러나요."]},
+   lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). 상대 옆에 새로 붙으면 터져요. <b>함정</b>은 <b>스스로 움직일 수 없어요</b>.","<b>하수인</b>이 폭탄을 건드리면 둘 다 사라져요. <b>동료·왕</b>은 살아남아요. 폭탄끼리·폭탄과 함정은 <b>서로 한 칸씩</b> 밀려요. 정체는 비밀이에요.","<b>함정</b>을 건드리면 함정은 사라지고 그 말은 <b>내 차례 2번</b> 못 움직여요. 둘 다 정체가 드러나요. 함정도 <b>밀기·재배치</b>로 옮겨질 수 있어요."]},
   {icon:"🔴",title:"잡아오기와 도망치기",cards:TUT_SCENES.capture(),
-   lines:["싸울 때 상대 <b>하수인</b> HP가 <b>30%</b> 아래면 <b>몬스터볼</b>을 던져요. 성공률 <b>70%</b>예요.","성공하면 내 <b>예비 하수인</b>(HP 70/100)이 돼요. 성공·실패 모두 볼 <b>1개</b>가 없어져요.","내 말 HP가 <b>50%</b> 아래면 <b>도망</b>칠 수 있어요. 성공률 <b>50%</b>예요.","실패하면 상대가 바로 한 번 더 때려요. 성공하면 <b>뒤에 있는 내 말</b>과 자리를 바꿔도 돼요."]},
+   lines:["싸울 때 상대 <b>하수인</b> HP가 <b>30%</b> 아래면 <b>몬스터볼</b>을 던져요. 성공률 <b>70%</b>예요.","성공하면 내 <b>예비 하수인</b>(HP 70/100)이 돼요. 성공·실패 모두 볼 <b>1개</b>가 없어져요.","내 말 HP가 <b>50%</b> 아래면 <b>도망</b>칠 수 있어요. 성공률 <b>50%</b>예요. 실패하면 상대가 바로 한 번 더 때려요.","성공하면 <b>보드에서 뒤에 있는 내 말</b>과 교환하거나 생략해요. 이후 전선의 내 말과 상대를 <b>한 칸씩</b> 밀어요."]},
   {icon:"🌀",title:"텔레포트(순간이동)",cards:TUT_SCENES.teleport(),
-   lines:["내 말이 <b>상대편 땅</b>(상대 진영 3줄)에 들어가 있으면 <b>텔레포트</b>(순간이동)를 쓸 수 있어요.","텔레포트는 내 말 <b>두 개</b>의 자리를 서로 바꿔요. 왕·폭탄·함정도 돼요. 한 경기에 <b>2번</b>까지예요.","바뀐 두 말이 각각 상대 옆에 새로 붙으면 <b>각자 따로</b> 싸워요. 남은 싸움 횟수가 모자라면 못 써요."]},
+   lines:["내 말이 <b>상대편 땅</b>(상대 진영 3줄)에 들어가 있으면 <b>텔레포트</b>(순간이동)를 쓸 수 있어요.","텔레포트는 내 말 <b>두 개</b>의 자리를 서로 바꿔요. 왕·폭탄·함정도 돼요. 한 경기에 <b>몇 번이든</b> 쓸 수 있지만, 한 차례의 <b>주 행동</b>을 써요.","바뀐 두 말이 각각 상대 옆에 새로 붙으면 <b>각자 따로</b> 싸워요. 남은 싸움 횟수가 모자라면 못 써요."]},
   {icon:"🔥",title:"버닝 타임(불타는 시간)",cards:TUT_SCENES.burning(),banner:"턴 65부터 🔥 버닝 타임",
-   lines:["<b>65번째 턴</b>부터 <b>버닝 타임</b>(불타는 시간)이에요. 말이 <b>곧게 2칸</b>까지 움직일 수 있어요.","상대편 <b>숲</b>이나 상대편 <b>땅</b>에 있거나, 들어가거나, 지나갈 때는 그대로 <b>1칸</b>이에요.","<b>폭탄</b>도 2칸 움직여요. <b>함정</b>은 여전히 고정이에요."]},
+   lines:["<b>65번째 턴</b>부터 <b>버닝 타임</b>(불타는 시간)이에요. 말이 <b>곧게 2칸</b>까지 움직일 수 있어요.","상대편 <b>숲</b>이나 상대편 <b>땅</b>에 있거나, 들어가거나, 지나갈 때는 그대로 <b>1칸</b>이에요.","<b>폭탄</b>도 2칸 움직여요. <b>함정</b>은 버닝 타임에도 <b>스스로는</b> 못 움직여요. 밀리면 옮겨져요."]},
   {icon:"🏁",title:"빠른 복습 — 첫 차례 체크리스트",cards:TUT_SCENES.recap(),
-   lines:["이기는 길은 셋! 상대 <b>왕</b> 잡기, 내 왕이 상대 <b>끝줄</b>에 서기, 상대 <b>하수인·동료 전멸</b>이에요.","내 차례엔 <b>주 행동 하나</b>(이동·탐색·텔레포트·<b>회복</b>)를 해요. 옆에 새로 붙은 상대와 꼭 싸우고, <b>턴 종료</b>를 눌러요.","숲에 숨고, 흔적을 찾고, 물음표 뒤를 추리해요. 할 게 없으면 턴이 저절로 넘어가요. 이제 시작해요!"]}
+   lines:["이기는 길은 셋! 상대 <b>왕</b> 잡기, 내 왕이 상대 <b>끝줄</b>에 서기, 상대 <b>하수인·동료 전멸</b>이에요.","<b>주 행동 하나</b> 뒤 새로 붙은 상대와 꼭 싸워요. 할 게 없으면 <b>턴 종료</b>는 자동이에요. 싸울 상대만 남으면 <b>싸우지 않고 종료</b>를 눌러요.","<b>회복</b>은 나와 상대 차례 끝마다 최대 HP의 <b>5%</b>씩 나아요. 만피도 고를 수 있어요. 이동·탐색·텔레포트·싸움으로 풀려요. 이제 시작해요!"]}
 ];
 const TUT_HINTS={ // 첫 발생 시 1회 짧은 상황 도움말 (게임 상태 S 무변경 · 저장 안 함)
-  teleport:{icon:"🌀",text:"텔레포트(순간이동)를 쓸 수 있어요! 내 말이 상대편 땅에 들어가 있으면, 내 말 두 개의 자리를 서로 바꿀 수 있어요. 한 경기에 2번까지예요."},
-  burning:{icon:"🔥",text:"버닝 타임(불타는 시간)이 시작됐어요! 이제부터 말이 곧게 2칸까지 움직일 수 있어요. 함정은 그대로예요."}
+  teleport:{icon:"🌀",text:"텔레포트(순간이동)를 쓸 수 있어요! 내 말이 상대편 땅에 들어가 있으면, 내 말 두 개의 자리를 서로 바꿀 수 있어요. 횟수 제한은 없지만 한 차례의 주 행동을 써요."},
+  burning:{icon:"🔥",text:"버닝 타임(불타는 시간)이 시작됐어요! 이제부터 말이 곧게 2칸까지 움직일 수 있어요. 함정은 스스로는 못 움직여요."}
 };
 const TUT={open:false,step:0,seenThisLoad:false,auto:false,hints:{teleport:false,burning:false},hintShown:null,restore:null,btns:[]};
 const tutStore={ // localStorage 미지원·접근 예외(SecurityError 등)·쓰기 예외(용량·시크릿 모드) 모두 허용 — 실패 시 false
@@ -3204,21 +3337,26 @@ function netActor(){ // 지금 게임이 입력을 기다리는 플레이어
   if(!S) return null;
   if(S.phase==="setup") return S.setupPlayer;
   if(S.battle) return (actorOfPhase()==="A"?S.battle.attP:S.battle.defP).owner;
+  if(S.fleePick) return S.fleePick.owner; // #114 도망 교환 선택은 도망친 말의 소유자 입력 (방어자일 수 있음)
   return S.current;
 }
 function netLocalModal(){NET.localOpen=true;}   // 다음 modal()을 로컬 전용으로 (동기화·seq 제외)
 function netModalOwner(p){NET.modalOwner=p;}    // 다음 modal()의 소유자 명시 (기본: netActor())
 function netSend(m){ try{ if(NET.ws&&NET.ws.readyState===1) NET.ws.send(JSON.stringify(m)); }catch(e){} }
 function netAction(a){ // 모든 상태 변경 입력의 단일 경로 — 오프라인은 즉시 적용, 온라인은 검증·송신 후 적용
+  if(S.fleePick&&!["cell","fleeSwap","fleeSkip","resign"].includes(a.t)) return;
+  if(!NET.replaying&&["cell","fleeSwap","fleeSkip"].includes(a.t)&&S.fleePick) a=Object.assign({},a,{pick:S.fleePick.token});
   if(!NET.replaying){ FX.inputSeq++; // #106 3.2 입력 잠금: 연출 중 사람 입력(셀·턴바·전투 커맨드)은 무시 — 기권만 허용, AI·수신 재생·자동 종료(idle 뒤)는 해당 없음
     if(fxLocked()&&a.t!=="resign"&&!isAI(netActor())) return; }
   if(NET.mode&&!NET.replaying){
-    if(netActor()!==NET.me){ showToast("🌐 상대 턴입니다."); return; }
+    if((a.t==="resign"?S.current:netActor())!==NET.me){ showToast(S.fleePick?"🌐 상대가 말을 교체 중입니다.":"🌐 상대 턴입니다."); return; }
     netSend({t:"a",a});
   }
   applyAction(a);
 }
 function applyAction(a){
+  if(a.pick&&(!S.fleePick||a.pick!==S.fleePick.token)) return;
+  if(S.fleePick&&(!["cell","fleeSwap","fleeSkip","resign"].includes(a.t)||(["cell","fleeSwap","fleeSkip"].includes(a.t)&&a.pick!==S.fleePick.token))) return;
   switch(a.t){
     case "cell": onCellCore(a.r,a.c); break;
     case "selTray": window.selTrayCore(a.id); break;
@@ -3235,6 +3373,8 @@ function applyAction(a){
     case "tele": S.teleport=S.teleport?null:{stage:1,piece:null}; S.selected=null; render(); break;
     case "endTurn": if(a.auto) met(S.current,"autoEnds"); endTurn(); break; // #106 T7: 자동 종료 표식은 프레임에 실려 양측 지표 동일
     case "heal": { const p=S.pieces.find(x=>x.id===a.id); if(p) doHeal(p); break; } // #106 T2 회복 주 행동 (lockstep 액션 — rand 소비 0)
+    case "fleeSwap": if(S.fleePick&&S.fleePick.cands.includes(a.id)) fleeResolve(a.id); break; // #114 도망 후 교환 (소유자 입력, rand 소비 0)
+    case "fleeSkip": if(S.fleePick) fleeResolve(null); break; // #114 교환 생략 → 도망친 말 ↔ 상대 밀기
     case "resign": { const loser=S.current; gameOver(1-loser,"resign");
       const msg=`🏳️ ${pname(loser)} 기권 — ${pname(S.winner)} 승리!`;
       addLog(msg,"imp"); showToast(msg); render(); break; }
