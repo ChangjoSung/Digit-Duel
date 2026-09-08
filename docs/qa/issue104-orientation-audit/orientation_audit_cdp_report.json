@@ -1,0 +1,179 @@
+{
+  "source": "git:6baa0b5",
+  "sha256": "d77be36dcd5d9528ea0cbd2c96286e6c865f9a59b1fcdb0b67e78c588a044fef",
+  "viewport": {
+    "width": 1280,
+    "height": 1000
+  },
+  "date": "2026-09-08T07:09:42.857Z",
+  "readOnly": false,
+  "pass": 20,
+  "fail": 0,
+  "shots": [
+    "docs/qa/issue104-orientation-audit/http_desktop-1280_1-p2-start.png",
+    "docs/qa/issue104-orientation-audit/http_desktop-1280_2-p2-pre65-after-crossing.png",
+    "docs/qa/issue104-orientation-audit/http_desktop-1280_3-p2-after-crossing.png",
+    "docs/qa/issue104-orientation-audit/http_desktop-1280_4-p1-after-crossing.png"
+  ],
+  "report": [
+    {
+      "what": "0 두 탭이 고정 ref(git:6baa0b5) 본문을 받았다 (setDocumentContent 주입 2회 · #104 주석 존재 · 출처=http://127.0.0.1:58403)",
+      "ok": true,
+      "detail": "served=2"
+    },
+    {
+      "what": "1a 탭A: 로스터 카드 클릭 6종 · 트레이→칸 클릭 14개 (배치 단계 flip=0)",
+      "ok": true,
+      "detail": "placed=14"
+    },
+    {
+      "what": "1b 탭B: 로스터 카드 클릭 6종 · 트레이→칸 클릭 14개 (배치 단계 flip=0)",
+      "ok": true,
+      "detail": "placed=14"
+    },
+    {
+      "what": "1c 실제 서버 매칭 — A/B 가 P1·P2 로 갈렸다",
+      "ok": true,
+      "detail": "A me=0 B me=1 선공 P2"
+    },
+    {
+      "what": "2a P1 탭 픽셀 91칸 ↔ 독자 변환(항등) ↔ P2 탭 S",
+      "ok": true,
+      "detail": "hyp={\"reflect\":91,\"rotate\":91,\"identity\":91} elementFromPoint=91/91 flip=0"
+    },
+    {
+      "what": "2b P2 탭 픽셀 91칸 ↔ 독자 변환(행 반사) ↔ P1 탭 S",
+      "ok": true,
+      "detail": "hyp={\"reflect\":91,\"rotate\":13,\"identity\":7} elementFromPoint=91/91 flip=1"
+    },
+    {
+      "what": "2c 가설 판별: P2 화면 = 행 반사 91/91 · 180° 회전은 중앙열 13칸만 · 항등은 7행 7칸만",
+      "ok": true,
+      "detail": "[{\"reflect\":91,\"rotate\":91,\"identity\":91},{\"reflect\":91,\"rotate\":13,\"identity\":7}]"
+    },
+    {
+      "what": "2d elementFromPoint(칸 중심) 이 그 칸을 돌려준다 (양 탭 91/91)",
+      "ok": true,
+      "detail": "91,91"
+    },
+    {
+      "what": "2e P1 배치 단계에 클릭한 픽셀 자리 14개 = 시작 후 자기 화면의 그 말 픽셀 자리 (배치 보존)",
+      "ok": true,
+      "detail": "same=14"
+    },
+    {
+      "what": "2e P2 배치 단계에 클릭한 픽셀 자리 14개 = 시작 후 자기 화면의 그 말 픽셀 자리 (배치 보존)",
+      "ok": true,
+      "detail": "same=14"
+    },
+    {
+      "what": "3a 횡단 말 존재: P1 (11,2) · P2 (3,6)",
+      "ok": true
+    },
+    {
+      "what": "3b BT 이전 실제 픽셀 클릭(전진 3·측면·후진·전진·측면 복귀) — 매 클릭 페이로드·강조·양 탭 S·91칸 픽셀 대조",
+      "ok": true,
+      "detail": "clicks=28"
+    },
+    {
+      "what": "3c **65턴 이전** 중앙 7행·양쪽 숲 횡단 → P1 (2,2) · P2 (12,6) — 매 클릭 페이로드·강조·양 탭 S·91칸 픽셀 대조",
+      "ok": true,
+      "detail": "P1=(2,2) P2=(12,6) turn=28 bt=false "
+    },
+    {
+      "what": "4a 65턴 BT 진입 (실제 턴 버튼) — 매 교대 뒤 양 탭 91칸 픽셀 대조",
+      "ok": true,
+      "detail": "turn=65 "
+    },
+    {
+      "what": "4b 65턴 이후용 두 번째 하수인 선택",
+      "ok": true,
+      "detail": "P1 (11,1) P2 (3,4)"
+    },
+    {
+      "what": "4c 65턴 이후 BT 2칸 전·후·전 + 중앙 횡단 → P1 (5,x) · P2 (9,y) — 매 클릭 페이로드·강조·S·91칸",
+      "ok": true,
+      "detail": "P1=(5,1) P2=(9,4) "
+    },
+    {
+      "what": "4d 횡단·BT·턴 교대 내내 flip 불변 (P1=0 · P2=1) · 페이로드 불일치 0 · 매 step 뒤 양 탭 91칸 픽셀 대조 + elementFromPoint 91/91 실제 수행",
+      "ok": true,
+      "detail": "clicks=80 mismatch=0 stepAudits=119 efp91=119"
+    },
+    {
+      "what": "5 기권 → 양 탭 over · 종료 화면 91칸 픽셀 대조(전체 공개) · P2 는 여전히 행 반사",
+      "ok": true,
+      "detail": "viewer=2,2"
+    },
+    {
+      "what": "6 콘솔 오류 0 (두 탭)",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "what": "7 아트 실제 로드 성공: 종료 화면(전체 공개)의 공개 하수인 칩 img 가 전부 디코딩됨 (complete·naturalWidth>0) — 경로 검사가 아닌 로드 검사",
+      "ok": true,
+      "detail": "P1 12/12 · P2 12/12 (시작 직후: P1 6/6 · P2 6/6)"
+    }
+  ],
+  "extra": {
+    "grid": {
+      "P1": {
+        "ys": [
+          81,
+          135,
+          189,
+          243,
+          297,
+          351,
+          405,
+          459,
+          513,
+          567,
+          621,
+          675,
+          729
+        ],
+        "xs": [
+          89,
+          143,
+          197,
+          251,
+          305,
+          359,
+          413
+        ]
+      },
+      "P2": {
+        "ys": [
+          81,
+          135,
+          189,
+          243,
+          297,
+          351,
+          405,
+          459,
+          513,
+          567,
+          621,
+          675,
+          729
+        ],
+        "xs": [
+          89,
+          143,
+          197,
+          251,
+          305,
+          359,
+          413
+        ]
+      }
+    },
+    "stepBad": [],
+    "clicks": 80,
+    "stepAudits": 119,
+    "efpAudits": 119
+  }
+}
