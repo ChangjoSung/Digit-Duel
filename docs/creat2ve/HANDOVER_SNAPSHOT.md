@@ -6,7 +6,7 @@
 
 - Mercury=조정·Git·문서 메타데이터. 제품·테스트·도구=Mars/Jupiter, 기획=Venus, 아트=Earth, QA=Saturn READ_ONLY.
 - 최신 릴리스 **v0.4.3**, main/tag **cc3f382496473233334f374896d46639b83d7974**, Release PR#97 MERGED. Milestone#7 CLOSED, Issue#89 CLOSED. 재출시하지 않는다.
-- dev/origin/dev **ad5f2a8b066cd8ad6ec5fb7b02928db634e0dd68**. 현재 **fix/104-online-piece-sync**에서 #104 우선 수정 중. 실제 Git 상태로 재확인한다.
+- dev/origin/dev **6baa0b5f618b147029fdf5078a78b564753b0133** (#104 PR107 통합). 현재 **doc/105-readme-releases**. #106 제품 변경은 분리된 미커밋 소유로 진행하며 PD가105파일만 커밋·통합 후106브랜치로 옮긴다. 실제 Git 상태로 재확인한다.
 - **Milestone#10 v0.4.4 OPEN·미출시**. CJ 2026-09-08 QA로 #91·92·94·95·96 PASS CLOSED. **#93 REVISE OPEN**, 실제 GitHub child **#104** 최우선. 추가 **#105 README/Releases**, **#106 턴 행동 개편** OPEN.
 - 새 **Milestone#11 v0.4.5** OPEN은 공용 하수인/아트 확장·속성 기술/전체 위력/감전 추가 하향 검토의 후속 계획만. v0.4.5 구현 미착수.
 - 보호: 사용자 미추적 **art/**·**orca-hook-latency-report.md** 접근·수정·스테이징 금지. Downloads 원본·기존 승인 아트100파일 보존.
@@ -14,7 +14,7 @@
 
 ## CJ 최신 결정 및 진행
 
-- #104: 같은 서버·버전에서 BT 2칸 이동으로 자기 숲의 숨은 상대 말에 충돌하면, 상대 클라이언트가 뷰어 가시성으로 메모 분기를 타 이동을 적용하지 않는 결함을 재현·수정했다. **visibleTo(S.current,p)**로 행위자 시야 통일. Mars1032·Chrome22, Saturn 신규23+기존852·Chrome22 PASS 및 구 조건 음성대조 D3/D4 실패. 보고 docs/qa/issue104-mars.md·issue104-saturn.md. CJ 경기가 실제65턴 이후였는지는 미확정, 별도 이전턴 원인까지 해결했다고 단정하지 않는다. PR 통합 준비 중.
+- #104: 같은 서버·버전에서 BT 2칸 이동으로 자기 숲의 숨은 상대 말에 충돌하면, 상대 클라이언트가 뷰어 가시성으로 메모 분기를 타 이동을 적용하지 않는 결함을 재현·수정했다. **visibleTo(S.current,p)**로 행위자 시야 통일. Mars1032·Chrome22, Saturn 신규23+기존852·Chrome22 PASS 및 구 조건 음성대조 D3/D4 실패. 보고 docs/qa/issue104-mars.md·issue104-saturn.md. PR107 dev통합 완료. **CJ 추가: 65턴 이전은 미확인, 2P 하단 전환 자체의 좌표·진행 방향을 의심하므로 전 경로 감사 지시.** Mars_3 고정6baa0b5 감사 진행, BT결함만으로 원경기 전체원인 해결을 단정하지 않는다.
 - #105 원문: https://app.notion.com/p/3d51e7f1708580f18f2dc4a643721059
   README는 게임 소개/기능/플레이 사진/새로운 기능/게임 정보/플레이 방법/저장소 구조/라이선스의8개 범주. Earth 소개 그림→실제보드/전투→튜토리얼10장. GitHub README는 JS/CSS 슬라이드를 지원하지 않아 작은 이미지+원본 링크/접기 대안. 최신 정식 릴리스 패치노트만 남기고 기존 GitHub Release6개 본문도 간결한 실제 버전별 변경으로 치환. **원문의 v0.4.3 아래 v0.4.4 변경 예시는 오기이므로 소급하지 않는다**. 기존 tag/대상/날짜/첨부자산 보존.
 - #106 원문: https://app.notion.com/p/3d51e7f1708580b0916ded4bd3d9d06e
@@ -30,10 +30,12 @@ Run **run_195c28ae423a**, root terminal **term_abae9146-14a1-47e9-8e9a-0a6e3c4c0
 
 | 역할 | Task / Dispatch | 소유 범위 |
 |---|---|---|
-| Mars_2 Claude | task_283fb19b35ec / ctx_136c0240bf04 | #105 도구 READ_ONLY REVISE 수정: tools/readme_media_capture.js·QA 보고/렌더 |
+| Venus_1 Claude | task_8e679fd4a136 / ctx_9795bb02bd73 | docs/v0.4.4-rules-digest.md (현재 규칙 읽는 정리본, docs only) |
+| Mars_1 Claude | task_6ae7dc111180 / ctx_1f2761c63d3d | #106 demo/index.html·필요 demo/test·docs/qa/issue106-mars.md·issue106/ |
+| Mars_3 Claude | task_93c7aaca8f0f / ctx_76174d80ca14 | 고정dev6baa0b5 전체 시점감사: 신규 orientation_audit 도구·issue104-orientation-audit 보고/증빙만, 제품편집 금지 |
 
-- #104 Mars_1 및 Saturn_1(ctx_5ab897faea7c)은 납품·QA PASS 후 archive/release. #106 Venus_1 계약 납품·release, 최신 CJ와 PD 채택 사항은 docs/v0.4.4-turn-flow-spec.md에 반영. #104 dev 통합 후 Mars 제품 구현.
-- #105 Saturn ART/editorial PASS, 미디어 정적검사 PASS. 독립 전체 렌더는 도구의 임시 HTML/JSON 쓰기 및 READ_ONLY 렌더 비활성화 때문에 REVISE. Saturn_2 ctx_d2a032f189b4 archive/release; docs/qa/issue105-saturn-media-first.md. 도구 수정 후 fresh Saturn 재검수 필요.
+- #104 이전 Mars_1 및 Saturn_1(ctx_5ab897faea7c)은 납품·QA PASS 후 archive/release. #106 이전 Venus_1 계약 납품·release, 최신 CJ와 PD 채택 사항은 docs/v0.4.4-turn-flow-spec.md에 반영. 새 Mars_1 제품 구현 중.
+- #105 **Saturn 전체 최종 PASS**, msg_e4dbcc01b99d, docs/qa/issue105-saturn-final.md. 도구 초기 READ_ONLY REVISE와 익명 Stars 링크404를 모두 수정·재검수. 현재 README SHA256 2d4e5f9dac0b6f6293aff9bbe3393a3e2d5201e727574bc692a849a4865dcd53. 이전 HTML/JSON은 Stars 링크 수정 전 이력, 최신 해시는 최종 보고에 분리. Mars_2 ctx_136c0240bf04 및 Saturn_2 ctx_2ef918f4a496 archive/release 완료. 단일105PR 통합 준비.
 
 - Earth_1 task_e6a756265fdc/ctx_153d36a0a934 완료, msg_0092c4cd89d3 인수·archive·release(exact terminal closed).
   새 소개 그림 docs/media/digit-duel-hero.png **1672×941**, SHA256 **3215151a1cf978b90c8bd654b752c205fbd8a79b7a15188449ed4c4f49f33832**. 출처 docs/art/readme-hero-v0.4.4.md. 독립 Saturn 아트 PASS, #104 PR에 섞지 않는다.

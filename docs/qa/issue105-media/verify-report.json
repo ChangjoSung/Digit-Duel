@@ -1,0 +1,782 @@
+{
+ "tool": "tools/readme_media_capture.js",
+ "toolSha256": "79b2e7548986f9e494216d6fb584bc26e4fa8adac4ab1c6f2d0353c903ab9dc8",
+ "command": "tools/readme_media_capture.js verify",
+ "readme": "README.md",
+ "readmeSha256": "85d993cd4e1790d4879475b71a4443e0ff4d15aa9e18d5f54186e0323193336e",
+ "at": "2026-09-08T06:16:33.054Z",
+ "viewport": "1100x900",
+ "fail": 0,
+ "refs": [
+  {
+   "kind": "image",
+   "target": "docs/media/digit-duel-hero.png",
+   "line": 4,
+   "ok": true,
+   "note": "1672x941"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/digit-duel-hero.png",
+   "line": 4,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "#게임-플레이-사진",
+   "line": 6,
+   "ok": true,
+   "note": "앵커"
+  },
+  {
+   "kind": "image",
+   "target": "https://img.shields.io/github/v/release/ChangjoSung/Digit-Duel?label=release",
+   "line": 10,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/releases/latest",
+   "line": 10,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "image",
+   "target": "https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat",
+   "line": 11,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/stargazers",
+   "line": 11,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "image",
+   "target": "https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat",
+   "line": 12,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/forks",
+   "line": 12,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "image",
+   "target": "https://img.shields.io/badge/code-Apache--2.0-blue",
+   "line": 13,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "LICENSE",
+   "line": 13,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/qa/minion-art-integration/file_desktop-1280_3-board.png",
+   "line": 38,
+   "ok": true,
+   "note": "1280x800"
+  },
+  {
+   "kind": "link",
+   "target": "docs/qa/minion-art-integration/file_desktop-1280_3-board.png",
+   "line": 38,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/qa/minion-art-integration/file_desktop-1280_4-battle.png",
+   "line": 42,
+   "ok": true,
+   "note": "1280x800"
+  },
+  {
+   "kind": "link",
+   "target": "docs/qa/minion-art-integration/file_desktop-1280_4-battle.png",
+   "line": 42,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-01.png",
+   "line": 53,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-01.png",
+   "line": 53,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-02.png",
+   "line": 54,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-02.png",
+   "line": 54,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-03.png",
+   "line": 55,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-03.png",
+   "line": 55,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-04.png",
+   "line": 56,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-04.png",
+   "line": 56,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-05.png",
+   "line": 57,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-05.png",
+   "line": 57,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-06.png",
+   "line": 60,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-06.png",
+   "line": 60,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-07.png",
+   "line": 61,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-07.png",
+   "line": 61,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-08.png",
+   "line": 62,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-08.png",
+   "line": 62,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-09.png",
+   "line": 63,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-09.png",
+   "line": 63,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/media/tutorial-10.png",
+   "line": 64,
+   "ok": true,
+   "note": "2224x1096"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/tutorial-10.png",
+   "line": 64,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "https://img.shields.io/badge/v0.4.3-%ED%95%98%EC%88%98%EC%9D%B8%2020%EC%A2%85%20%EC%95%84%ED%8A%B8%20%EC%A0%81%EC%9A%A9-4c9a2a",
+   "line": 72,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "docs/releases/",
+   "line": 80,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/releases",
+   "line": 80,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.3",
+   "line": 86,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars",
+   "line": 88,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks",
+   "line": 88,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://nodejs.org",
+   "line": 89,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://nodejs.org",
+   "line": 106,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "server/README.md",
+   "line": 116,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "LICENSE",
+   "line": 149,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "NOTICE",
+   "line": 149,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "ASSET-LICENSE.md",
+   "line": 151,
+   "ok": true,
+   "note": ""
+  }
+ ],
+ "headings": [
+  "digit-duel",
+  "게임-소개",
+  "게임-기능",
+  "게임-플레이-사진",
+  "새로운-기능",
+  "게임-정보",
+  "플레이-방법",
+  "저장소-구조",
+  "라이선스"
+ ],
+ "tutorial": {
+  "ok": true,
+  "dims": {
+   "w": 2224,
+   "h": 1096
+  },
+  "files": [
+   {
+    "file": "docs/media/tutorial-01.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 127603,
+    "sha256": "108e819f986ccb0d642edc9ca32dc4bd71037a9858b6e27f00c03c7f3c98b797",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-02.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 132227,
+    "sha256": "6e22f119ce14b9e3d516a2b8baf4b933f4f3468ac317e57a492362e576c7cb08",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-03.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 140301,
+    "sha256": "2355f0d9527a2ed5e9761800edb65aae2d988b5fccd4d7538da03ba842cca0c6",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-04.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 140872,
+    "sha256": "36abb371a3bc5809bfe917ac3bb59bc5485173cff25820ba147f8478b9a417d8",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-05.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 148125,
+    "sha256": "19b1ee47ad2f3ca6e50ce016f9561f06a76bd5ed304a59d348a1bcf6668d6092",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-06.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 130696,
+    "sha256": "859020bec4c7536a66b449f43fcb261c9b10985de30ffc0544f636ee9123c97f",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-07.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 149579,
+    "sha256": "4dbb655196c105573f614ea427643a07667593cbdb5fd21efd57535f2c43b208",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-08.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 145712,
+    "sha256": "09e087e9bf44fc41c9176ec25d8ca61f221846595e7cc5b2975d1d5dc74d1183",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-09.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 109488,
+    "sha256": "deb18b303ad031d95a160d3a2199239585d541c184d849ea7fcdc9df469eb4f3",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-10.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1096
+    },
+    "bytes": 122340,
+    "sha256": "24a19d5953261cdd13aa7a2067cc1c0b1550bb3162cdfc82622b8a3fc28355e0",
+    "note": ""
+   }
+  ]
+ },
+ "gh": {
+  "bytes": 18513,
+  "sha256": "7c21991c86c6de41ad6a78ebc5dfda8c72e463cf79ec268a0b9144eef05cd290",
+  "imgs": 20,
+  "anchors": 30,
+  "details": 1,
+  "dropped": 0,
+  "script": false
+ },
+ "render": {
+  "viewport": "1100x900",
+  "cssNote": "approximate GitHub markdown CSS — layout/image/link verification only, not pixel-identical to github.com",
+  "pageHeight": 4200,
+  "pageWidth": 1100,
+  "bodyWidth": 1012,
+  "sections": [
+   {
+    "tag": "H1",
+    "text": "Digit-Duel",
+    "top": 53
+   },
+   {
+    "tag": "H2",
+    "text": "게임 소개",
+    "top": 765
+   },
+   {
+    "tag": "H2",
+    "text": "게임 기능",
+    "top": 985
+   },
+   {
+    "tag": "H2",
+    "text": "게임 플레이 사진",
+    "top": 1402
+   },
+   {
+    "tag": "H2",
+    "text": "새로운 기능",
+    "top": 1915
+   },
+   {
+    "tag": "H2",
+    "text": "게임 정보",
+    "top": 2225
+   },
+   {
+    "tag": "H2",
+    "text": "플레이 방법",
+    "top": 2682
+   },
+   {
+    "tag": "H2",
+    "text": "저장소 구조",
+    "top": 3279
+   },
+   {
+    "tag": "H2",
+    "text": "라이선스",
+    "top": 3868
+   }
+  ],
+  "tables": [
+   {
+    "index": 0,
+    "display": "table",
+    "rows": 1,
+    "cols": 2,
+    "width": 948,
+    "scrollWidth": 948,
+    "clientWidth": 948,
+    "hscroll": false,
+    "right": 1024,
+    "inDetails": false,
+    "firstCell": "플레이 화면내 말과 공개된 상대 말은 아이콘으로, 아직"
+   },
+   {
+    "index": 1,
+    "display": "table",
+    "rows": 2,
+    "cols": 5,
+    "width": 948,
+    "scrollWidth": 948,
+    "clientWidth": 948,
+    "hscroll": false,
+    "right": 1024,
+    "inDetails": true,
+    "firstCell": "1. 이기는 법 세 가지"
+   },
+   {
+    "index": 2,
+    "display": "block",
+    "rows": 10,
+    "cols": 2,
+    "width": 948,
+    "scrollWidth": 948,
+    "clientWidth": 948,
+    "hscroll": false,
+    "right": 1024,
+    "inDetails": false,
+    "firstCell": "항목"
+   }
+  ],
+  "overflowElements": [],
+  "shots": [
+   {
+    "name": "section-00.png",
+    "text": "Digit-Duel",
+    "height": 712,
+    "saved": "docs/qa/issue105-media/section-00.png",
+    "sha256": "d71c87aeea5c189095cb95174b9ff397f5c52a11917a2fa7cfa8b6ccece323a8"
+   },
+   {
+    "name": "section-01.png",
+    "text": "게임 소개",
+    "height": 220,
+    "saved": "docs/qa/issue105-media/section-01.png",
+    "sha256": "323a046a1a2605d7c666b8bba9a2c777cfcd84bd7f51e9ed0770ee775695d983"
+   },
+   {
+    "name": "section-02.png",
+    "text": "게임 기능",
+    "height": 417,
+    "saved": "docs/qa/issue105-media/section-02.png",
+    "sha256": "50efdd2eab0dc5e2bc417c72b26cfd90b4273d9de1a968757128ed7ec86e8c2a"
+   },
+   {
+    "name": "section-03.png",
+    "text": "게임 플레이 사진",
+    "height": 513,
+    "saved": "docs/qa/issue105-media/section-03.png",
+    "sha256": "9decc6a4469715ba14853190cb110b18b1a8ea1e432cc061213ca33f404b5e3e"
+   },
+   {
+    "name": "section-04.png",
+    "text": "새로운 기능",
+    "height": 310,
+    "saved": "docs/qa/issue105-media/section-04.png",
+    "sha256": "09c583db363870255261d6cc6955e6d49af5dab9a82175d04f6b27342a0a87eb"
+   },
+   {
+    "name": "section-05.png",
+    "text": "게임 정보",
+    "height": 457,
+    "saved": "docs/qa/issue105-media/section-05.png",
+    "sha256": "418624805fec8e342ac76848462fcbb9fb0c736d295c7567731504a850cfe21d"
+   },
+   {
+    "name": "section-06.png",
+    "text": "플레이 방법",
+    "height": 597,
+    "saved": "docs/qa/issue105-media/section-06.png",
+    "sha256": "2d35d8b1c70e18d62ab00c6d9c2a116fbf01e8da9959cd409b9a890026dd4872"
+   },
+   {
+    "name": "section-07.png",
+    "text": "저장소 구조",
+    "height": 589,
+    "saved": "docs/qa/issue105-media/section-07.png",
+    "sha256": "5bb94169a441c4cfed35e2d036423b252a4aa6714af4d461da4fe664979d08db"
+   },
+   {
+    "name": "section-08.png",
+    "text": "라이선스",
+    "height": 340,
+    "saved": "docs/qa/issue105-media/section-08.png",
+    "sha256": "943ea70e0e7b0b4205f4b63cdfd2e6c957a468b09f263850f57d85b7c1e5ecf5"
+   },
+   {
+    "name": "gallery-open.png",
+    "text": "details 갤러리(펼침)",
+    "height": 342,
+    "saved": "docs/qa/issue105-media/gallery-open.png",
+    "sha256": "07e1657de9139397b8f7c7baa9677fc5fe98594de6f86a9fc2bf48e0b2e1f989"
+   }
+  ],
+  "localImgs": [
+   {
+    "src": "docs/media/digit-duel-hero.png",
+    "ok": true,
+    "w": 1672,
+    "h": 941,
+    "disp": 948
+   },
+   {
+    "src": "docs/qa/minion-art-integration/file_desktop-1280_3-board.png",
+    "ok": true,
+    "w": 1280,
+    "h": 800,
+    "disp": 447
+   },
+   {
+    "src": "docs/qa/minion-art-integration/file_desktop-1280_4-battle.png",
+    "ok": true,
+    "w": 1280,
+    "h": 800,
+    "disp": 447
+   },
+   {
+    "src": "docs/media/tutorial-01.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-02.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-03.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-04.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-05.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-06.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-07.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-08.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-09.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   },
+   {
+    "src": "docs/media/tutorial-10.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1096,
+    "disp": 162
+   }
+  ],
+  "localLinks": [
+   "docs/media/digit-duel-hero.png",
+   "LICENSE",
+   "docs/qa/minion-art-integration/file_desktop-1280_3-board.png",
+   "docs/qa/minion-art-integration/file_desktop-1280_4-battle.png",
+   "docs/media/tutorial-01.png",
+   "docs/media/tutorial-02.png",
+   "docs/media/tutorial-03.png",
+   "docs/media/tutorial-04.png",
+   "docs/media/tutorial-05.png",
+   "docs/media/tutorial-06.png",
+   "docs/media/tutorial-07.png",
+   "docs/media/tutorial-08.png",
+   "docs/media/tutorial-09.png",
+   "docs/media/tutorial-10.png",
+   "docs/releases/",
+   "server/README.md",
+   "LICENSE",
+   "NOTICE",
+   "ASSET-LICENSE.md"
+  ],
+  "anchorLinks": [
+   "#게임-플레이-사진"
+  ],
+  "gallery": {
+   "rows": 2,
+   "cols": 5,
+   "imgs": 10,
+   "loaded": 10,
+   "thumbWidths": [
+    162
+   ],
+   "clip": {
+    "x": 0,
+    "y": 1859,
+    "width": 1100,
+    "height": 342
+   },
+   "saved": "docs/qa/issue105-media/gallery-open.png",
+   "sha256": "07e1657de9139397b8f7c7baa9677fc5fe98594de6f86a9fc2bf48e0b2e1f989"
+  }
+ }
+}
