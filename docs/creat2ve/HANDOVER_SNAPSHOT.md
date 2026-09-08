@@ -8,7 +8,7 @@
 - 최신 정식 릴리스 **v0.4.3**, main/tag **cc3f382496473233334f374896d46639b83d7974**, Release PR97 MERGED, Milestone7 CLOSED. 재출시하지 않는다.
 - **v0.4.4 Milestone10 OPEN·미출시**. CJ PASS로 #91·92·94·95·96 CLOSED. **#93·104·105·106 OPEN**, CJ 플레이/최종 확인 대기.
 - #104 PR107은 dev **6baa0b5f618b147029fdf5078a78b564753b0133**에, #105 PR108은 dev **40415c2bec5fc360c59a8cfd7cb2cf1eaf2c018e**에 통합했다. 전용 브랜치 로컬·원격 삭제 완료.
-- #106 제품·규격·QA 및 #104 추가 시점 감사는 **feature/106-turn-flow**, 기반40415c2에서 최종 Saturn PASS. PD 단일 PR로 dev 통합한다. 정확한 현재 커밋과 PR은 Git/GitHub에서 확인한다.
+- #106 제품·규격·QA 및 #104 추가 시점 감사는 기반40415c2에서 최종 Saturn PASS. 검수 납품 커밋 **e4d4269**, 단일 dev 통합 **[PR109](https://github.com/ChangjoSung/Digit-Duel/pull/109)**로 관리한다. 이후 변경은 문서 상태·링크뿐이다. 정확한 최신 dev HEAD는 PR 병합 커밋과 Git 상태로 확인한다. 통합 후 feature/106-turn-flow 로컬·원격을 삭제하며 장수 dev를 유지한다.
 - 보호: 사용자 미추적 **art/**·**orca-hook-latency-report.md** 접근·수정·스테이징 금지. 승인 아트100파일·Downloads 원본 보존.
 - 사용자 승인된 v0.4.4 구현·dev 통합은 다시 묻지 않는다. v0.4.4 main 병합·태그·Release·마일스톤 종료는 후속 CJ 플레이/출시 지시 전 진행하지 않는다.
 - Milestone11 v0.4.5는 공용 하수인/아트 확장·속성 기술/전체 위력/감전 추가 하향 검토의 계획만. 구현 미착수.

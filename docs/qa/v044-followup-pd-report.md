@@ -9,7 +9,7 @@
 | #91·#92·#94·#95·#96 | 이전 dev 통합 후 CJ PASS로 종료 | PASS |
 | #93 하위 #104 | 숨은 말 충돌 결함 수정·PR107 dev6baa0b5 통합. 65턴 전후 추가 시점 감사도 Saturn PASS | CJ 재검수 전 OPEN |
 | #105 README/Releases | Saturn 최종 PASS·PR108 dev40415c2 통합, 기존 Release6개 본문 갱신 게시 | 최종 확인 전 OPEN |
-| #106 턴 개편 | 제품 a4932cb8… 및 도구 동결, Saturn 최종 검사 통과. 단일 PR로 dev 통합 | CJ 플레이 QA 전 OPEN |
+| #106 턴 개편 | 제품 a4932cb8… 및 도구 동결, Saturn 최종 PASS. 단일 [PR109](https://github.com/ChangjoSung/Digit-Duel/pull/109)로 dev 통합 | CJ 플레이 QA 전 OPEN |
 
 ## 동기화 — 확정된 결함과 추가 감사 구분
 
