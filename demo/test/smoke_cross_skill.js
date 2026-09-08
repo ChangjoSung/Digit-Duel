@@ -367,9 +367,15 @@ const stateOf=X=>J({sk:X.P.me.skills,cds:X.P.me.cds,rev:X.P.me.revealedSkills,se
     ok(!/el:"fire",tier:"stable"/.test(Tb.html)&&Tb.recruitCandidates===undefined&&/\[임시 대체 — 기획 확정 전\]/.test(Tb.html),"K1 기준판에는 기술 속성·후보 함수가 없고 임시 보조기 교체가 있다 (대조가 공허하지 않음)");
     const play=(X,seed)=>{ useTimers(X); X.setSeed(seed); X.TQ.length=0; X.startMode("sim",{aiLevel:["grade5","grade5"]}); for(const e of X.S.events) if(e.kind==="recruit") e.kind="potion";
       let n=0; while(X.TQ.length&&n<3000000){ X.TQ.shift()(); n++; } return J({w:X.S.winner,t:X.S.turnCount,wt:X.S.metrics.winType,log:X.S.log.map(l=>l.msg),m:X.metricsSnapshot()}); };
-    let same=0, tot=0, turns=[];
-    for(const seed of [31,32,33,34,35]){ const a=play(Tb,seed), b=play(T,seed); tot++; if(a===b) same++; turns.push(JSON.parse(b).t); }
-    ok(same===tot,"K2 recruit 없는 같은 시드 5경기: 기준판과 승자·턴·로그·지표 완전 일치 ("+same+"/"+tot+", 턴 "+turns.join("/")+") — 학습 없는 전투·AI·RNG 소비 무변경");
+    /* #106 (turn-flow) 이후 기준판 d614392 와의 완전 일치는 규칙 변경(회복 주 행동·함정+걸린 말 공개·남은 HP 비율 판정·폭탄 직접 접촉)으로 성립하지 않는다.
+       대신 "첫 #106 사건이 일어나기 전까지"는 같은 시드에서 로그가 기준판과 완전히 같아야 한다 — 학습 없는 전투·AI·RNG 소비 순서가 그 밖에서는 바뀌지 않았다는 증거. */
+    const IS106=typeof T.healTick==="function";
+    let same=0, tot=0, turns=[], pre=0, preOk=0, firstEv=[];
+    const EV=/회복 자세 시작|회복 행동|함정 발동|남은 HP 비율|폭탄 접촉|폭탄이 상대 폭탄/;
+    for(const seed of [31,32,33,34,35]){ const a=play(Tb,seed), b=play(T,seed); tot++; if(a===b) same++; const B=JSON.parse(b), A=JSON.parse(a); turns.push(B.t);
+      if(IS106){ const i=B.log.findIndex(l=>EV.test(l)); firstEv.push(i); if(i>0){ pre++; if(J(B.log.slice(0,i))===J(A.log.slice(0,i))) preOk++; } } }
+    if(!IS106) ok(same===tot,"K2 recruit 없는 같은 시드 5경기: 기준판과 승자·턴·로그·지표 완전 일치 ("+same+"/"+tot+", 턴 "+turns.join("/")+") — 학습 없는 전투·AI·RNG 소비 무변경");
+    else ok(pre===tot&&preOk===pre&&firstEv.every(i=>i>5),"K2 (#106 이후) 같은 시드 5경기: 첫 #106 규칙 사건 이전 로그 접두가 기준판과 완전 일치 ("+preOk+"/"+pre+", 첫 사건 로그 index "+firstEv.join("/")+", 턴 "+turns.join("/")+") — 그 밖의 전투·AI·RNG 소비 무변경");
     // 대조 확인: recruit 가 있으면 기준판(보조기 교체·shuffle)과 갈라진다
     const P=setup(T); const Pb=setup(Tb); for(const [X,Q] of [[T,P],[Tb,Pb]]){ giveSpecies(X,Q.me,R(X,"M-F1")); X.setSeed(11); }
     recruitAt(T,P.me); click(T,"공격기 1과 교체"); recruitAt(Tb,Pb.me); (Tb.byId("obBtns").children.find(b=>b.textContent==="교체")).onclick();

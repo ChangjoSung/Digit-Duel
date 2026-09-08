@@ -191,6 +191,16 @@ function load(htmlPath,opts){
   NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
   netServerDefault,netActor,netAction,netPrepare,netConnect,netPump,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
   TUT,TUT_STEPS,TUT_HINTS,TUT_KEY,tutStore,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
+  // #106 턴 흐름·연출 계약 (기준판 로드 호환: 부재 시 undefined)
+  FX:typeof FX!=="undefined"?FX:undefined,fxLocked:typeof fxLocked==="function"?fxLocked:undefined,fxPlay:typeof fxPlay==="function"?fxPlay:undefined,fxReleaseAll:typeof fxReleaseAll==="function"?fxReleaseAll:undefined,
+  fxLive:typeof fxLive==="function"?fxLive:undefined,fxMs:typeof fxMs==="function"?fxMs:undefined,fxWhenIdle:typeof fxWhenIdle==="function"?fxWhenIdle:undefined,fxIdle:typeof fxIdle==="function"?fxIdle:undefined,
+  doHeal:typeof doHeal==="function"?doHeal:undefined,canHeal:typeof canHeal==="function"?canHeal:undefined,healTick:typeof healTick==="function"?healTick:undefined,healBreak:typeof healBreak==="function"?healBreak:undefined,
+  contactText:typeof contactText==="function"?contactText:undefined,contactEligible:typeof contactEligible==="function"?contactEligible:undefined,forcedPickOk:typeof forcedPickOk==="function"?forcedPickOk:undefined,bombAttack:typeof bombAttack==="function"?bombAttack:undefined,
+  autoEndCheck:typeof autoEndCheck==="function"?autoEndCheck:undefined,autoEndReady:typeof autoEndReady==="function"?autoEndReady:undefined,anyMainActionLeft:typeof anyMainActionLeft==="function"?anyMainActionLeft:undefined,optionalBattleLeft:typeof optionalBattleLeft==="function"?optionalBattleLeft:undefined,
+  turnBannerFx:typeof turnBannerFx==="function"?turnBannerFx:undefined,viewerIsOwner:typeof viewerIsOwner==="function"?viewerIsOwner:undefined,fxTurnLabel:typeof fxTurnLabel==="function"?fxTurnLabel:undefined,resultBannerOf:typeof resultBannerOf==="function"?resultBannerOf:undefined,
+  renderTurnBar,renderBoard,netReady,netAction,onCellCore,execSlot,aiSchedule,aiScheduleBattle,
+  playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,fighterName,
+  get MSGPLAYING(){return MSGPLAYING;},get MSGQ(){return MSGQ;},
   html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;
@@ -204,6 +214,7 @@ function load(htmlPath,opts){
     global.setTimeout=ownSetTimeout; global.document=doc; global.window=global; global.location=loc; global.WebSocket=WebSocketCtor;
     global.sessionStorage=sessionStorage; global.indexedDB=indexedDB; defineStorage(global,storage); return T; };
   T.BAL.aiDelay=0; T.BAL.simDelay=0;
+  if(T.BAL.fx) T.BAL.fx.autoEnd=false; // #106: 기존 회귀는 endTurn 을 직접 부른다 — 자동 턴 종료는 전용 테스트(smoke_turnflow)에서 명시적으로 켜서 검증한다
   return T;
 }
 

@@ -1,0 +1,543 @@
+{
+  "tool": "demo/test/issue106_browser_audit.js",
+  "toolSha256": "756a2236f1bf5ab5f59025fccf041695bdbb15bea5816efd4fd1f294394651c0",
+  "source": {
+    "path": "demo/index.html",
+    "ref": "working-tree",
+    "sha256": "a4932cb80a1407fc728ace6ee918315880840c76010de7b21361a7f618e97280",
+    "gitBlob": "f580e4f9aa4b5ce3daceef940891a875586a1e34",
+    "bytes": 282568,
+    "frozenInMemory": true
+  },
+  "fxDefaults": {
+    "turnBanner": 2000,
+    "contactBanner": 2000,
+    "countStep": 1000,
+    "roundBanner": 2000,
+    "skillFx": 2000,
+    "damageFx": 2000,
+    "itemFx": 2000,
+    "resultBanner": 2500,
+    "judgeBanner": 2000,
+    "autoEndGrace": 1000
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 1000
+  },
+  "narrow": {
+    "width": 390,
+    "height": 844
+  },
+  "date": "2026-09-08T08:01:47.253Z",
+  "readOnly": false,
+  "sections": [
+    "hotseat",
+    "pve",
+    "online"
+  ],
+  "wallMs": 284020,
+  "shotsSkipped": [],
+  "pass": 64,
+  "fail": 0,
+  "warn": 2,
+  "assertions": 66,
+  "fixtures": [
+    {
+      "label": "F-pve 내 하수인을 AI 하수인 2칸 아래로 재배치 (로컬 전용, 규칙 무변경)",
+      "value": {
+        "m": 29,
+        "e": 43,
+        "r": 5,
+        "c": 6
+      }
+    },
+    {
+      "label": "F-B1 P1 M-L2 를 (11,1)→(5,1) 재배치 (양 탭)",
+      "same": true
+    },
+    {
+      "label": "F-B2 P1 M-F1 (11,5)→(5,5) 재배치 · M-F1·P2 동료 hp=maxHp=1000 (양 탭)",
+      "same": true
+    },
+    {
+      "label": "F-tie 12번째 행동 직전: 양측 hp=maxHp · P1 응급 치유 쿨 0 (양 탭)",
+      "same": true
+    },
+    {
+      "label": "F-bt65 양 탭 S.turnCount=63 (표시 64턴) · btReached false · rand() 호출 계수 래퍼(관측 전용)",
+      "same": true
+    }
+  ],
+  "timing": [
+    {
+      "what": "H5 핫시트 턴 배너 시간",
+      "ms": 2010,
+      "expect": 2000
+    },
+    {
+      "what": "P5b 결과 배너 시간",
+      "ms": 2512,
+      "expect": 2500
+    },
+    {
+      "what": "P7 PVE 상대 턴 배너 시간",
+      "ms": 2013,
+      "expect": 2000
+    },
+    {
+      "what": "B1b 카운트 '3' 시간",
+      "ms": 1007,
+      "expect": 1000
+    },
+    {
+      "what": "B1b 카운트 '배틀 시작!' 시간",
+      "ms": 1010,
+      "expect": 1000
+    },
+    {
+      "what": "B1c 라운드 배너 시간",
+      "ms": 2016,
+      "expect": 2000
+    },
+    {
+      "what": "B1l 아이템 연출 시간",
+      "ms": 2002,
+      "expect": 2000
+    },
+    {
+      "what": "B1n 기술 연출 시간",
+      "ms": 2003,
+      "expect": 2000
+    },
+    {
+      "what": "B1o 피해 연출 시간",
+      "ms": 2016,
+      "expect": 2000
+    },
+    {
+      "what": "B1v 결과 배너 시간",
+      "ms": 2513,
+      "expect": 2500
+    },
+    {
+      "what": "B2g 판정 배너 시간",
+      "ms": 2017,
+      "expect": 2000
+    },
+    {
+      "what": "T65c P1 버닝 타임 배너 시간",
+      "ms": 2013,
+      "expect": 2000
+    },
+    {
+      "what": "T65d P2 버닝 타임 배너 시간",
+      "ms": 2014,
+      "expect": 2000
+    },
+    {
+      "what": "T65e 이어지는 턴 배너 시간",
+      "ms": 2016,
+      "expect": 2000
+    }
+  ],
+  "shots": [
+    "docs/qa/issue106-browser/01-hotseat-handoff-before-banner.png",
+    "docs/qa/issue106-browser/02-hotseat-my-turn-banner.png",
+    "docs/qa/issue106-browser/03-hotseat-390px-board.png",
+    "docs/qa/issue106-browser/04-pve-battle-menu-my-turn.png",
+    "docs/qa/issue106-browser/05-pve-board-after-ai-turn.png",
+    "docs/qa/issue106-browser/06-b1-menu-root-actor.png",
+    "docs/qa/issue106-browser/07-b1-menu-root-mirror.png",
+    "docs/qa/issue106-browser/08-b1-submenu-fight.png",
+    "docs/qa/issue106-browser/09-b1-submenu-capture-guard.png",
+    "docs/qa/issue106-browser/10-b1-390px-menu-root.png",
+    "docs/qa/issue106-browser/11-b1-390px-submenu-fight.png",
+    "docs/qa/issue106-browser/12-b1-after-item-same-actor.png",
+    "docs/qa/issue106-browser/13-b1-board-after-battle.png",
+    "docs/qa/issue106-browser/14-b2-reveal-modal-owner-p1.png",
+    "docs/qa/issue106-browser/15-b2-reveal-modal-wait-p2.png",
+    "docs/qa/issue106-browser/16-b2-board-after-tie.png",
+    "docs/qa/issue106-browser/17-bt65-banner-p1.png",
+    "docs/qa/issue106-browser/18-bt65-banner-p2.png"
+  ],
+  "report": [
+    {
+      "what": "H0 페이지 BAL.fx 기본값(계약 3.4) · 도구는 바꾸지 않는다",
+      "ok": true,
+      "detail": "{\"turnBanner\":2000,\"contactBanner\":2000,\"explosion\":2000,\"trapFx\":2000,\"countStep\":1000,\"roundBanner\":2000,\"skillFx\":2000,\"damageFx\":2000,\"itemFx\":2000,\"captureFx\":2000,\"fleeFx\":2000,\"resultBanner\":2500,\"judgeBanner\":2000,\"pushBanner\":2000,\"roundEndFx\":1000,\"msgStep\":600,\"autoEndGrace\":1000,\"watchdog\":1000,\"autoEnd\":true,\"barStep\":600}",
+      "at": 960
+    },
+    {
+      "what": "H1 P1 배치 완료(실제 버튼) → 'P2 배치' 기기 넘김 모달 · 배너 없음",
+      "ok": true,
+      "detail": "🔄 기기를 넘기세요",
+      "at": 1781
+    },
+    {
+      "what": "H2 플레이 시작: 턴 시작 기기 넘김 모달이 먼저 · 배너·잠금 없음",
+      "ok": true,
+      "detail": "🔄 기기를 넘기세요",
+      "at": 2687
+    },
+    {
+      "what": "H3 확인 → '나의 턴!' 배너(핫시트는 항상 나의 턴) · 잠금 · 모달 닫힘",
+      "ok": true,
+      "detail": "나의 턴!",
+      "at": 2968
+    },
+    {
+      "what": "H4 배너 중 자기 말 클릭 무시(선택 없음)",
+      "ok": true,
+      "at": 3229
+    },
+    {
+      "what": "H5 핫시트 턴 배너 시간 실측 2010ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 4725
+    },
+    {
+      "what": "H6 주 행동 생략 → 자동 턴 종료(1107ms ≥ grace 1000) → 다음 플레이어 기기 넘김 모달이 배너보다 먼저",
+      "ok": true,
+      "detail": "🔄 기기를 넘기세요",
+      "at": 5987
+    },
+    {
+      "what": "H7 확인 → 다음 플레이어 '나의 턴!' 배너",
+      "ok": true,
+      "at": 6271
+    },
+    {
+      "what": "H8 [관찰·판정 제외] 390px 보드 화면: 문서 가로 넘침 · 보드·턴바 버튼 화면 밖 — #106 범위 밖 기존 레이아웃",
+      "warn": true,
+      "ok": false,
+      "detail": "{\"vw\":390,\"docW\":778,\"boxOverflow\":false,\"boxRight\":0,\"menuVisible\":false,\"menuBtns\":0,\"menuOut\":0,\"menuClip\":0,\"turnBtns\":6,\"turnOut\":2,\"boardRight\":455}",
+      "at": 8345
+    },
+    {
+      "what": "H9 핫시트 콘솔 오류 0",
+      "ok": true,
+      "detail": "[]",
+      "at": 8599
+    },
+    {
+      "what": "P1 PVE 시작(실제 버튼: 5급·무작위 배치·배치 완료) → 첫 턴 배너",
+      "ok": true,
+      "detail": "선공 나 '나의 턴!'",
+      "at": 10082
+    },
+    {
+      "what": "P2 실제 클릭 이동 → AI 하수인과 신규 인접 → 강제 전투(규칙 즉시) · 접촉 배너",
+      "ok": true,
+      "detail": "⚠️ 상대 말 접촉!",
+      "at": 12267
+    },
+    {
+      "what": "P3 PVE 진입 연출: 접촉 → '배틀을 시작합니다.' → 3·2·1·배틀 시작! → '나의 턴!'",
+      "ok": true,
+      "detail": "⚠️ 상대 말 접촉! → ⚠️ 상대 말 접촉!/배틀을 시작합니다. → 3 → 2 → 1 → 배틀 시작! → 나의 턴!/Round 1 / 6",
+      "at": 22653
+    },
+    {
+      "what": "P4 PVE 전투 완주 (내 클릭 5 · AI 행동 6) · AI 는 잠금 중 한 번도 행동하지 않음 · 라운드 배너 종료 후 aiDelay(650ms) 뒤 행동",
+      "ok": true,
+      "detail": "gaps 654/656/656/3328/654/656ms",
+      "at": 94756
+    },
+    {
+      "what": "P5 결과 배너(뷰어 기준 승/패 또는 포획·도망 종료)",
+      "ok": true,
+      "detail": "전투에서 승리!",
+      "at": 94758
+    },
+    {
+      "what": "P5b 결과 배너 시간 실측 2512ms (기대 2500ms · 허용 2380~3800)",
+      "ok": true,
+      "at": 94758
+    },
+    {
+      "what": "P6 AI 턴: '상대 턴!' 배너 동안 aiStep 호출 없음 → 배너 뒤 행동 → 턴 종료 → 내 턴 복귀",
+      "ok": true,
+      "detail": "banner 2013ms steps 2 firstGap 657ms",
+      "at": 99138
+    },
+    {
+      "what": "P7 PVE 상대 턴 배너 시간 실측 2013ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 99138
+    },
+    {
+      "what": "P8 PVE 콘솔 오류 0",
+      "ok": true,
+      "detail": "[]",
+      "at": 99227
+    },
+    {
+      "what": "O1A 탭A: 로스터 6종 카드 클릭 · 14개 트레이→칸 클릭 배치",
+      "ok": true,
+      "detail": "placed=14",
+      "at": 104958
+    },
+    {
+      "what": "O1B 탭B: 로스터 6종 카드 클릭 · 14개 트레이→칸 클릭 배치",
+      "ok": true,
+      "detail": "placed=14",
+      "at": 109844
+    },
+    {
+      "what": "O2 실제 서버 매칭 — A=P1 · B=P2 · 선공 P1 · 양 탭 동일",
+      "ok": true,
+      "at": 110143
+    },
+    {
+      "what": "O3 대본 전제: P1 M-L2 (11,1) · P2 M-W3 (3,1) · P1 M-F1 (11,5) · P2 동료 (3,5)",
+      "ok": true,
+      "at": 111936
+    },
+    {
+      "what": "B1a 실제 클릭 접촉 → 접촉 → '배틀을 시작합니다.' → 3·2·1·배틀 시작! → 라운드 배너 (양 탭, 거울 문구)",
+      "ok": true,
+      "detail": "⚠️ 상대 말 접촉! → ⚠️ 상대 말 접촉!/배틀을 시작합니다. → 3 → 2 → 1 → 배틀 시작! → 나의 턴!/Round 1 / 6 || ⚠️ 내 말 접촉! → ⚠️ 내 말 접촉!/상대가 내 하수인에게 배틀을 걸었습니다. → 3 → 2 → 1 → 배틀 시작! → 상대 턴!/Round 1 / 6",
+      "at": 122841
+    },
+    {
+      "what": "B1b 카운트 '3' 시간 실측 1007ms (기대 1000ms · 허용 880~2300)",
+      "ok": true,
+      "at": 122842
+    },
+    {
+      "what": "B1b 카운트 '배틀 시작!' 시간 실측 1010ms (기대 1000ms · 허용 880~2300)",
+      "ok": true,
+      "at": 122842
+    },
+    {
+      "what": "B1c 라운드 배너 시간 실측 2016ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 122842
+    },
+    {
+      "what": "B1d 4카테고리 ⚔️ 싸우기 / 🎒 가방 / 🔴 포획 / 🏃 도망가기 — 행동자 활성 · 상대 탭 비활성",
+      "ok": true,
+      "detail": "⚔️ 싸우기,🎒 가방,🔴 포획,🏃 도망가기",
+      "at": 122843
+    },
+    {
+      "what": "B1e 하위 메뉴 4개 열고 닫기: 루트 숨김/패널 표시 전환 · 송신 프레임 0 · S 무변경",
+      "ok": true,
+      "detail": "frames 2",
+      "at": 124794
+    },
+    {
+      "what": "B1f 싸우기: 기술 4슬롯 · 기본 공격 버튼 없음",
+      "ok": true,
+      "detail": "전기탄 24~36 · 연쇄 번개 31~47 · 집중 · 결정타 36~54",
+      "at": 124794
+    },
+    {
+      "what": "B1g 포획 가드: 상대 HP 30% 이상 → 던지기 비활성 + 사유",
+      "ok": true,
+      "detail": "🔴 포획 — 상대 하수인 HP 30% 미만 · 볼 3개 · 성공 70% · 상대 HP 100% — 30% 미만이어야 합니다",
+      "at": 124794
+    },
+    {
+      "what": "B1h 도망 가드: 내 HP 50% 이상 → 도망 비활성 + 사유",
+      "ok": true,
+      "detail": "🏃 도망가기 — 내 HP 50% 미만 · 성공 50% · 실패 시 상대 즉시 공격 1회 · 내 HP 100% — 50% 미만이어야 합니다",
+      "at": 124794
+    },
+    {
+      "what": "B1i 가방: 시작 아이템(D11) 목록 · 상대 탭 '상대 아이템 비공개'",
+      "ok": true,
+      "detail": "쿨링수,회복약",
+      "at": 124794
+    },
+    {
+      "what": "B1j 390px 실제 전투 화면(전투 메뉴): 모달 상자 화면 안·내부 넘침 없음 · 4카테고리/싸우기 버튼 화면 밖·잘림 0",
+      "ok": true,
+      "detail": "root {\"vw\":390,\"docW\":929,\"boxOverflow\":false,\"boxRight\":374,\"menuVisible\":true,\"menuBtns\":4,\"menuOut\":0,\"menuClip\":0,\"turnBtns\":6,\"turnOut\":2,\"boardRight\":606} fight {\"vw\":390,\"docW\":929,\"boxOverflow\":false,\"boxRight\":374,\"menuVisible\":false,\"menuBtns\":5,\"menuOut\":0,\"menuClip\":0,\"turnBtns\":6,\"turnOut\":2,\"boardRight\":606}",
+      "at": 125839
+    },
+    {
+      "what": "B1j2 [관찰·판정 제외] 390px 보드 페이지(모달 뒤): 문서 가로 넘침 · 턴바 버튼 화면 밖 — #app/#board 고정 폭 CSS 는 dev HEAD 와 동일(#106 범위 밖)",
+      "warn": true,
+      "ok": false,
+      "detail": "docW 929 boardRight 606 turnOut 2/6",
+      "at": 125840
+    },
+    {
+      "what": "B1k 가방 '쿨링수' → 연출 중 잠금(카테고리 클릭 무시) → 같은 행동자 루트 메뉴 복귀 (round/phase 불변 · 행동 미소모) · 송신 item 1 · act 0",
+      "ok": true,
+      "detail": "round 1.0→1.0 actor 0→0 frames item",
+      "at": 128290
+    },
+    {
+      "what": "B1l 아이템 연출 시간 실측 2002ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 128290
+    },
+    {
+      "what": "B1m 싸우기: 기술 연출 그룹 → 피해 그룹 (첫 피해 행동)",
+      "ok": true,
+      "detail": "연쇄 번개 31~47: 기술 2003ms → 피해 2016ms",
+      "at": 172942
+    },
+    {
+      "what": "B1n 기술 연출 시간 실측 2003ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 172942
+    },
+    {
+      "what": "B1o 피해 연출 시간 실측 2016ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 172942
+    },
+    {
+      "what": "B1p 기술 클릭 직후 잠금 · 행동당 act 프레임 1 · 잠금 중 카테고리 클릭 송신 0 (전 행동)",
+      "ok": true,
+      "detail": "1.0:1/0 1.1:1/0 2.0:1/0 2.1:1/0 3.0:1/0 3.1:1/0 4.0:1/0 4.1:1/0",
+      "at": 172942
+    },
+    {
+      "what": "B1q 모든 피해 행동(5) 기술≥2초·피해≥2초 (마지막 KO 그룹은 결과 배너로 이어져 제외)",
+      "ok": true,
+      "detail": "1.0 연쇄 번개 31~47: 2003/2016 · 2.1 전기탄 24~36: 2012/2016 · 3.0 전기탄 24~36: 2004/2016 · 3.1 침식 수류 14~22: 2006/2015 · 4.0 쇄도 파도 21~31: 2014/2001",
+      "at": 172942
+    },
+    {
+      "what": "B1r 방어막 바: 수호 자세 → shield 22 (=round(120×18%)) · 방어막 바 너비 갱신 · 효과 연출 2초",
+      "ok": true,
+      "detail": "shield 0→22 bar 18.3333% eff 2017ms",
+      "at": 172942
+    },
+    {
+      "what": "B1s2 시간 순서(style.width 쓰기 시퀀스 트랩): 흡수 피해 그룹에서 방어막 바 쓰기가 HP 바 쓰기보다 먼저",
+      "ok": true,
+      "detail": "writes shfill-D=0% → hpfill-D=54.166666666666664%",
+      "at": 172942
+    },
+    {
+      "what": "B1s3 실제 바 너비 시퀀스(getBoundingClientRect 16ms 샘플): 방어막 바가 먼저 줄기 시작 · 그 시점 HP 바는 옛 너비 유지 · 그 뒤 HP 바 감소 · 전체가 피해 연출 2초 안에 완료",
+      "ok": true,
+      "detail": "{\"sh0\":39,\"hp0\":100.5,\"tShieldStart\":1631,\"tHpStart\":2298,\"hpWidthAtShieldStart\":100.5,\"shieldEnd\":2718,\"hpEnd\":2718,\"samples\":91}",
+      "at": 172942
+    },
+    {
+      "what": "B1s 흡수 산술: 방어막 감소 = 흡수량 · 나머지만 HP · 문구 '(흡수 N)' · 두 바 모두 갱신 (시간 순서는 B1s2)",
+      "ok": true,
+      "detail": "28 피해! (흡수 26) · 유효 2 shield 26→0 hp 67→65",
+      "at": 172942
+    },
+    {
+      "what": "B1t HP바 전환(.6s)이 피해 연출 2초 안에 끝남",
+      "ok": true,
+      "at": 172943
+    },
+    {
+      "what": "B1u KO('쓰러졌다!') → 결과 배너 뷰어 기준: P1 '전투에서 승리!' / P2 '전투에서 패배,,,' · 양 탭 동일",
+      "ok": true,
+      "detail": "winner P1 L2 hp=55 W3 alive=false acts=8",
+      "at": 181108
+    },
+    {
+      "what": "B1v 결과 배너 시간 실측 2513ms (기대 2500ms · 허용 2380~3800)",
+      "ok": true,
+      "at": 181108
+    },
+    {
+      "what": "B2a 접촉 배너 중(잠금): 방어 동료는 예비 하수인이 없어 출전 선택이 자동(본체) → 행동자 P1 에 '출전 공개' 동기 모달(전투 시작 버튼) · P2 는 대기 화면 · 양 탭 잠금",
+      "ok": true,
+      "detail": "P1 '출전 공개' P2 '🔒 상대 선택 대기 중…'",
+      "at": 188151
+    },
+    {
+      "what": "B2b 잠금 중 소유자(P1) 모달 버튼 클릭 무시 · 송신 0 · 전투 미개시",
+      "ok": true,
+      "at": 188387
+    },
+    {
+      "what": "B2c 접촉 → '배틀을 시작합니다.' / 거울 '상대가 내 동료에게 배틀을 걸었습니다.' → 잠금 해제 → 모달 재개(P1 클릭 가능)",
+      "ok": true,
+      "detail": "⚠️ 상대 말 접촉! → ⚠️ 상대 말 접촉!/배틀을 시작합니다. || ⚠️ 내 말 접촉! → ⚠️ 내 말 접촉!/상대가 내 동료에게 배틀을 걸었습니다.",
+      "at": 191583
+    },
+    {
+      "what": "B2d 출전 공개 모달 내용: 공격 하수인 vs 방어 동료 · 양측 revealed 는 모달 시점에 이미 설정",
+      "ok": true,
+      "detail": "출전 공개",
+      "at": 191753
+    },
+    {
+      "what": "B2d2 '전투 시작' 클릭 → modal 프레임 1 송신 → 양 탭 전투 진입",
+      "ok": true,
+      "at": 192039
+    },
+    {
+      "what": "B2e 전투 시작 → 3·2·1·배틀 시작! → 라운드 배너",
+      "ok": true,
+      "detail": "3 → 2 → 1 → 배틀 시작! → 나의 턴!/Round 1 / 6",
+      "at": 198492
+    },
+    {
+      "what": "B2f 12행동 완주(실제 클릭 12) → 판정 배너 '⚖️ 남은 HP 비율로 판별합니다!' → '100% vs 100%'",
+      "ok": true,
+      "detail": "⚖️ 남은 HP 비율로 판별합니다!새끼 화룡 100% vs 동료 100% | ⚖️ 남은 HP 비율로 판별합니다!새끼 화룡 100% vs 동료 100%",
+      "at": 278296
+    },
+    {
+      "what": "B2g 판정 배너 시간 실측 2017ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 278296
+    },
+    {
+      "what": "B2h 동률 → 방어자(P2 동료) 승: ties +1 · judged +1 · P1 M-F1 제거 · 동료 생존 · 결과 배너 P1 '전투에서 패배,,,' / P2 '전투에서 승리!' · 양 탭 동일",
+      "ok": true,
+      "detail": "ties=1 judged=1 P1 '전투에서 패배,,,' P2 '전투에서 승리!'",
+      "at": 278297
+    },
+    {
+      "what": "T65a 65턴 진입 순간 양 탭 배너 = '버닝타임입니다! 2칸씩 이동 가능합니다' (스크린샷 시점)",
+      "ok": true,
+      "detail": "P1 '버닝타임입니다! 2칸씩 이동 가능합니다' P2 '버닝타임입니다! 2칸씩 이동 가능합니다'",
+      "at": 283467
+    },
+    {
+      "what": "T65b 양 탭 순서: 버닝 타임 배너 → 턴 배너(행동자 '나의 턴!' / 상대 '상대 턴!') · 각 1회",
+      "ok": true,
+      "detail": "P1 버닝타임입니다! 2칸씩 이동 가능합니다/직선 2칸 이동 강화 (폭탄 포함 · 함정 제외 · 적진·적 숲은 1칸) → 상대 턴!/상대가 행동을 선택하고 있습니다 || P2 버닝타임입니다! 2칸씩 이동 가능합니다/직선 2칸 이동 강화 (폭탄 포함 · 함정 제외 · 적진·적 숲은 1칸) → 나의 턴!/말 이동 / 수풀 탐색 / 말 회복 행동 중 하나를 실행하세요!",
+      "at": 283467
+    },
+    {
+      "what": "T65c P1 버닝 타임 배너 시간 실측 2013ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 283467
+    },
+    {
+      "what": "T65d P2 버닝 타임 배너 시간 실측 2014ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 283467
+    },
+    {
+      "what": "T65e 이어지는 턴 배너 시간 실측 2016ms (기대 2000ms · 허용 1880~3300)",
+      "ok": true,
+      "at": 283467
+    },
+    {
+      "what": "T65f 프레임: 행동자만 skipMain(있으면)+endTurn 송신 · 상대 0 · 배너로 인한 프레임 없음 · rand() 호출 0 (양 탭) · S 동일",
+      "ok": true,
+      "detail": "actor endTurn other 0 rand 0/0",
+      "at": 283469
+    },
+    {
+      "what": "T65g 규칙 상태: btReached·btEnterTurn=65 · btBannerDue 소비 · isBurning",
+      "ok": true,
+      "detail": "{\"reached\":true,\"enter\":65,\"due\":false,\"bt\":true}",
+      "at": 283470
+    },
+    {
+      "what": "O9 콘솔 오류 0 (두 탭)",
+      "ok": true,
+      "detail": "[]",
+      "at": 283471
+    }
+  ]
+}

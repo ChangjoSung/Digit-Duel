@@ -320,8 +320,9 @@ const realRandom=Math.random;
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   const m1=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), m2=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
   H.place(T,m1,7,4); H.place(T,m2,6,4); H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1); H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
-  T.startRounds(m1,m2,m1,m2); T.S.battle.recA=40; T.S.battle.recD=10; T.judge();
-  ok(!m2.alive&&m1.alive&&S().metrics.judged===1&&S().metrics.attackerWins===1,"J7 판정 승 (공격측)");
+  // #106 T6: 판정은 남은 HP 비율(hp/maxHp) — 누적 유효 피해(recA/recD)는 지표로만 남는다. 옛 규칙이면 D 승(recD 40 > recA 10)이지만 새 규칙은 A 100% > D 60% 로 A 승
+  T.startRounds(m1,m2,m1,m2); T.S.battle.recA=10; T.S.battle.recD=40; m2.hp=60; T.judge();
+  ok(!m2.alive&&m1.alive&&S().metrics.judged===1&&S().metrics.attackerWins===1,"J7 판정 승 (공격측) — #106 남은 HP 비율 기준 (recA/recD 무관)");
   T.TQ.length=0;
 }
 

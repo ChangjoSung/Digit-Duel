@@ -1,0 +1,292 @@
+{
+  "html": "demo/index.html",
+  "viewport": {
+    "width": 1280,
+    "height": 1000
+  },
+  "date": "2026-09-08T07:20:29.808Z",
+  "readOnly": false,
+  "pass": 50,
+  "fail": 0,
+  "shots": [
+    "docs/qa/issue106/1-turn-banner-actor.png",
+    "docs/qa/issue106/2-turn-banner-opponent.png",
+    "docs/qa/issue106/3-contact-banner-actor.png",
+    "docs/qa/issue106/4-countdown.png",
+    "docs/qa/issue106/5-battle-menu-actor.png",
+    "docs/qa/issue106/6-battle-menu-mirror.png",
+    "docs/qa/issue106/7-skill-group.png",
+    "docs/qa/issue106/8-damage-group.png",
+    "docs/qa/issue106/9-result-banner.png",
+    "docs/qa/issue106/10-heal-effect.png",
+    "docs/qa/issue106/11-explosion-hold.png",
+    "docs/qa/issue106/12-trap-reveal-p1.png",
+    "docs/qa/issue106/13-bt-banner.png",
+    "docs/qa/issue106/14-pve-opponent-turn.png",
+    "docs/qa/issue106/15-narrow-battle-menu.png",
+    "docs/qa/issue106/16-narrow-fight-submenu.png"
+  ],
+  "timing": {
+    "turnBanner": {
+      "ms": 2000,
+      "heldApprox": 2051
+    },
+    "contactToMenu": {
+      "gaps": [
+        2010,
+        2001,
+        1015,
+        1014,
+        1015,
+        1621
+      ],
+      "total": 10967
+    },
+    "total": 132160
+  },
+  "report": [
+    {
+      "what": "1a 탭A: 로스터 6종·14개 수동 배치 (실제 클릭)",
+      "ok": true,
+      "detail": "placed=14"
+    },
+    {
+      "what": "1b 탭B: 로스터 6종·14개 수동 배치 (실제 클릭)",
+      "ok": true,
+      "detail": "placed=14"
+    },
+    {
+      "what": "1c 실제 서버 매칭 — 서로 다른 탭이 P1·P2",
+      "ok": true,
+      "detail": "선공 P2"
+    },
+    {
+      "what": "2a 시작 직후 행동자 탭 '나의 턴!' 배너·body.fx-lock·fxLocked",
+      "ok": true,
+      "detail": "{\"visible\":true,\"cls\":\"banner mine\",\"title\":\"나의 턴!\",\"sub\":\"말 이동 / 수풀 탐색 / 말 회복 행동 중 하나를 실행하세요!\"}"
+    },
+    {
+      "what": "2b 상대 탭 '상대 턴!' 배너 (거울)",
+      "ok": true,
+      "detail": "{\"visible\":true,\"cls\":\"banner\",\"title\":\"상대 턴!\",\"sub\":\"상대가 행동을 선택하고 있습니다\"}"
+    },
+    {
+      "what": "2c 배너 중 자기 말 클릭 무시 (선택 없음·송신 0)",
+      "ok": true,
+      "detail": "sel=null"
+    },
+    {
+      "what": "2d 턴 배너 2초(기본값) 뒤 해제 · 잠금 유지 시간 실측",
+      "ok": true,
+      "detail": "held≈2051ms (선언 2000)"
+    },
+    {
+      "what": "2e 해제 후 같은 클릭은 선택됨 (양 탭 동일 상태)",
+      "ok": true
+    },
+    {
+      "what": "3a 자동 턴 종료 2회: 각 턴의 행동자 클라이언트만 endTurn 1프레임 송신 (P1 1 · P2 1)",
+      "ok": true,
+      "detail": "turn=2 autoEnds=2"
+    },
+    {
+      "what": "3 전제: P1 (11,5)·P2 (3,5) 모두 하수인",
+      "ok": true,
+      "detail": "minion / minion"
+    },
+    {
+      "what": "3b 5열 접근 완료 (M (8,5) · N (6,5)) 양 탭 동일",
+      "ok": true,
+      "detail": "M (8,5) N (6,5)"
+    },
+    {
+      "what": "4a 이동 즉시 양 탭 전투 진입(규칙 동기) · 접촉 배너 표시·잠금",
+      "ok": true,
+      "detail": "P1 ⚠️ 상대 말 접촉! / P2 ⚠️ 내 말 접촉!"
+    },
+    {
+      "what": "4b 상대 탭 거울 배너 '⚠️ 내 말 접촉!'",
+      "ok": true,
+      "detail": "⚠️ 내 말 접촉!"
+    },
+    {
+      "what": "4c 2초 뒤 상황 문구 '배틀을 시작합니다.' / 거울 '상대가 내 하수인에게 배틀을 걸었습니다.'",
+      "ok": true,
+      "detail": "배틀을 시작합니다. | 상대가 내 하수인에게 배틀을 걸었습니다."
+    },
+    {
+      "what": "4d 그 뒤 카운트다운(3 또는 2 — 샘플 시각 오차)",
+      "ok": true,
+      "detail": "{\"visible\":true,\"cls\":\"count\",\"title\":\"2\",\"sub\":\"\"}"
+    },
+    {
+      "what": "4e 카운트다운 중 카테고리 클릭 무시 (menu null)",
+      "ok": true
+    },
+    {
+      "what": "4f 양 탭 연출 순서: 접촉 → 상황 → 3·2·1·배틀 시작! → 라운드 배너 (거울 문구)",
+      "ok": true,
+      "detail": "P1 ⚠️ 상대 말 접촉!|배틀을 시작합니다.|3|2|1|배틀 시작!|나의 턴! / P2 ⚠️ 내 말 접촉!|상대가 내 하수인에게 배틀을 걸었습니다.|3|2|1|배틀 시작!|상대 턴!"
+    },
+    {
+      "what": "4g 각 구간 실측 ≥ 선언 시간 (접촉 2000·상황 2000·카운트 1000×4·라운드 2000)",
+      "ok": true,
+      "detail": "2010/2001/1015/1014/1015/1621ms · 총 10967ms"
+    },
+    {
+      "what": "4h 행동자 탭 4카테고리 활성 · 상대 탭 거울 사본 비활성",
+      "ok": true,
+      "detail": "⚔️ 싸우기,🎒 가방,🔴 포획,🏃 도망가기"
+    },
+    {
+      "what": "4i 싸우기: 기술 문구 → 피해 문구 간격 실측 ≈2초",
+      "ok": true,
+      "detail": "2014ms"
+    },
+    {
+      "what": "4j 전투 완주 (실제 버튼 5회) · 양 탭 S 동일 · 승자 확정",
+      "ok": true,
+      "detail": "M alive=true hp=50 / N alive=false hp=0 judged=0"
+    },
+    {
+      "what": "4k 결과 배너 뷰어 기준 (P1 '전투에서 승리!' / P2 '전투에서 패배,,,')",
+      "ok": true,
+      "detail": "기대 P1 전투에서 승리! / P2 전투에서 패배,,,"
+    },
+    {
+      "what": "4l 전투 중 비행동자(P2) endTurn 프레임 증가 0 · 행동자(P1)는 전투 뒤 자동 종료 최대 1 (수신 측 자율 발화 없음)",
+      "ok": true,
+      "detail": "P1 +0 P2 +0"
+    },
+    {
+      "what": "5a 손상 말 선택 → 회복 버튼 활성",
+      "ok": true,
+      "detail": "[[\"주 행동 생략\",false],[\"탐색\",true],[\"텔레포트 2회\",true],[\"🌿 회복\",false],[\"턴 종료\",false],[\"기권\",false]]"
+    },
+    {
+      "what": "5b 만피 말 선택 → 회복 버튼 비활성",
+      "ok": true
+    },
+    {
+      "what": "5c 회복 지정 → 양 탭 healing=true · mainUsed · 즉시 회복 없음",
+      "ok": true,
+      "detail": "hp 50/95"
+    },
+    {
+      "what": "5d 소유자 화면 회복 이펙트 칩 · 상대 화면은 공개 말이면 표시(전투로 revealed)",
+      "ok": true,
+      "detail": "owner [[7,5]] other [[7,5]] revealed=true"
+    },
+    {
+      "what": "5e 지정한 턴 종료에 +5 (양 탭 동일)",
+      "ok": true,
+      "detail": "50 → 55/55"
+    },
+    {
+      "what": "5f 상대 턴 종료에도 +5 (한 쌍 10%) · 양 탭 동일",
+      "ok": true,
+      "detail": "60/60"
+    },
+    {
+      "what": "6a 전제: P1 하수인 (11,2) · P2 폭탄 (3,2)",
+      "ok": true
+    },
+    {
+      "what": "6b 접근 완료 K (8,2) · 폭탄 (6,2)",
+      "ok": true
+    },
+    {
+      "what": "6c 폭탄 이동 → 접촉 배너 (행동자 P2 '상대 말 접촉!' / P1 '내 말 접촉!')",
+      "ok": true,
+      "detail": "⚠️ 상대 말 접촉! | ⚠️ 내 말 접촉!"
+    },
+    {
+      "what": "6d 상황 4 문구 / 거울",
+      "ok": true,
+      "detail": "폭탄이 터져 상대 하수인과 함께 제거됩니다. | 상대 폭탄이 터져 내 하수인이 제거됩니다."
+    },
+    {
+      "what": "6e 폭발 연출 중: 규칙상 이미 제거(alive=false)됐지만 표시 유지(ghost 칩 2) 양 탭",
+      "ok": true,
+      "detail": "ghosts P1=2 P2=2"
+    },
+    {
+      "what": "6f 연출 종료 후 칩 소멸 · bombContacts +1 · 양 탭 동일",
+      "ok": true,
+      "detail": "bombContacts 0→1"
+    },
+    {
+      "what": "7a 전제: P2 하수인 (3,7) · P1 함정 (11,7)",
+      "ok": true
+    },
+    {
+      "what": "7b 함정 발동: 걸린 말·함정 revealed · immobile 2 · 함정 제거 · 양 탭 동일",
+      "ok": true,
+      "detail": "Q revealed=true immobile=2 / trap alive=false revealed=true"
+    },
+    {
+      "what": "7c 새로 공개된 말은 그 둘뿐",
+      "ok": true,
+      "detail": "69,71"
+    },
+    {
+      "what": "8a 65턴 진입: 양 탭 '버닝타임입니다! 2칸씩 이동 가능합니다' → 턴 배너 순서",
+      "ok": true,
+      "detail": "P1 버닝타임입니다! 2칸씩 이동 가능합니다 → 상대 턴! / P2 버닝타임입니다! 2칸씩 이동 가능합니다 → 나의 턴!"
+    },
+    {
+      "what": "8b 66턴에는 재표시 없음 (경기당 1회) · 송신 프레임에 배너 없음",
+      "ok": true,
+      "detail": "P1 1 P2 1"
+    },
+    {
+      "what": "8c 전체 구간 자동 종료 프레임 = 각 탭 자기 턴 수 (수신 측 자율 발화 0) · autoEnds 양 탭 동일",
+      "ok": true,
+      "detail": "P1 32 + P2 33 = autoEnds 65"
+    },
+    {
+      "what": "8d 콘솔 오류 0 (두 탭)",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "what": "9a PVE 시작: 첫 턴 배너 (선공 AI)",
+      "ok": true,
+      "detail": "{\"visible\":true,\"cls\":\"banner\",\"title\":\"상대 턴!\",\"sub\":\"상대가 행동을 선택하고 있습니다\"}"
+    },
+    {
+      "what": "9b AI 턴 '상대 턴!' 배너·잠금",
+      "ok": true,
+      "detail": "{\"visible\":true,\"cls\":\"banner\",\"title\":\"상대 턴!\",\"sub\":\"상대가 행동을 선택하고 있습니다\"}"
+    },
+    {
+      "what": "9c 배너 중(≈1.2초) AI 미행동 (mainUsed false)",
+      "ok": true,
+      "detail": "main=false locked=true"
+    },
+    {
+      "what": "9d 배너 해제 후 AI 행동: 배너 표시부터 2761ms ≥ 2000+aiDelay(650)",
+      "ok": true,
+      "detail": "shown→act 2761ms"
+    },
+    {
+      "what": "9e 400px 폭: 전투 모달 가로 넘침 없음 · 4카테고리 메뉴 표시 (페이지 자체 폭 docW 는 #106 이전부터 고정 보드 376px + 사이드 패널 min-width 300px 레이아웃 — 부채로 기록, 판정 제외)",
+      "ok": true,
+      "detail": "{\"overflow\":false,\"menuW\":318,\"menuVisible\":true,\"docW\":778,\"vw\":400}"
+    },
+    {
+      "what": "9f 싸우기 열기 → 기술 패널 표시·루트 숨김",
+      "ok": true,
+      "detail": "{\"shown\":true,\"btns\":5,\"rootHidden\":true}"
+    },
+    {
+      "what": "9g ← 뒤로 → 루트 복귀 (송신·규칙 무변경)",
+      "ok": true
+    },
+    {
+      "what": "9h PVE 탭 콘솔 오류 0",
+      "ok": true,
+      "detail": "[]"
+    }
+  ]
+}
