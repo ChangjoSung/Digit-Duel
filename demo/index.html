@@ -1049,7 +1049,11 @@ function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell �
   if(S.forcedTargets&&S.forcedTargets.length&&p&&S.forcedTargets.includes(p.id)&&S.movedPiece&&canBattle(S.movedPiece,p)){ initBattle(S.movedPiece,p); return; } // T1: 강제 대상 직접 클릭
   if(p&&p.owner===S.current){S.selected=p; render(); return;}
   const s=S.selected&&!S.selected.tray?S.selected:null;
-  if(p&&p.owner!==S.current&&visibleTo(humanViewer(),p)){
+  /* #104: 상대 말 분기는 행위자(S.current) 시점의 가시성으로 결정한다 — 뷰어(humanViewer) 시점이 아니다.
+     온라인에서 같은 {t:"cell"} 을 상대 클라이언트가 재생할 때 뷰어는 그 말의 주인이라 항상 "보이는" 말이 되어, 행위자에게는 숨은 말(중앙을 넘어
+     내 쪽 숲에 비인접 은신)이 있는 칸으로의 BT 2칸 이동이 행위자 쪽에서는 충돌 처리(경유 칸 정지·일시 공개·강제 전투)되고 상대 쪽에서는 메모 분기로
+     빠져 적용되지 않아 양측 S 가 영구 분기했다. 행위자 클라이언트·핫시트·PVE 는 humanViewer()===S.current 라 동작이 같다. */
+  if(p&&p.owner!==S.current&&visibleTo(S.current,p)){
     if(s&&adj(s,p)&&canBattle(s,p)){ initBattle(s,p); return; } // 전투 대상 지정 경로
     memoModal(p); return; // #11: 그 외 상대 말 클릭 — 추측 메모
   }

@@ -1,0 +1,1847 @@
+{
+  "html": "demo/index.html",
+  "viewport": {
+    "width": 1280,
+    "height": 1000
+  },
+  "date": "2026-09-08T05:57:40.037Z",
+  "readOnly": false,
+  "pass": 22,
+  "fail": 0,
+  "shots": [
+    "docs/qa/issue104/http_desktop-1280_1-p1-after-hidden-collision.png",
+    "docs/qa/issue104/http_desktop-1280_2-p2-after-hidden-collision.png"
+  ],
+  "report": [
+    {
+      "what": "1a 탭A: 로스터 6종 카드 클릭 순서대로 선택 · 14개 트레이→칸 클릭 배치",
+      "ok": true,
+      "detail": "placed=14 roster=M-F2,M-W1,M-G3,M-L4,M-F5,M-W2"
+    },
+    {
+      "what": "1b 탭B: 로스터 6종 카드 클릭 순서대로 선택 · 14개 트레이→칸 클릭 배치",
+      "ok": true,
+      "detail": "placed=14 roster=M-L1,M-G2,M-W3,M-F4,M-L5,M-G1"
+    },
+    {
+      "what": "1c 실제 서버 매칭 — 서로 다른 탭이 P1·P2",
+      "ok": true,
+      "detail": "A me=0 B me=1 선공 P2"
+    },
+    {
+      "what": "2a 28개 말 정규 스냅샷(id·owner·rosterId·name·hp·기술·좌표) 양 탭 동일",
+      "ok": true,
+      "detail": "identical"
+    },
+    {
+      "what": "2b P1 이 제출한 배치가 P1 탭 정규 좌표에 반영 (P2 = 14−r·열 유지)",
+      "ok": true
+    },
+    {
+      "what": "2b P1 이 제출한 배치가 P2 탭 정규 좌표에 반영 (P2 = 14−r·열 유지)",
+      "ok": true
+    },
+    {
+      "what": "2b P2 이 제출한 배치가 P1 탭 정규 좌표에 반영 (P2 = 14−r·열 유지)",
+      "ok": true
+    },
+    {
+      "what": "2b P2 이 제출한 배치가 P2 탭 정규 좌표에 반영 (P2 = 14−r·열 유지)",
+      "ok": true
+    },
+    {
+      "what": "2c P1 탭 DOM ↔ 자기 S (칩·가시성·공개·순서·자기 말 하단)",
+      "ok": true,
+      "detail": "null"
+    },
+    {
+      "what": "2d P2 탭 DOM ↔ 자기 S (행 반사 순서·자기 말 하단)",
+      "ok": true,
+      "detail": "null"
+    },
+    {
+      "what": "3 P1 하수인 11→5행 횡단 — 매 이동 뒤 양 탭 위치·상태 일치",
+      "ok": true,
+      "detail": "(10,3) (9,3) (8,3) (7,3) (6,3) (5,3)"
+    },
+    {
+      "what": "4a 전제: BT 진입 · P1 말이 (5,3) 에 P2 시점 비가시(P1 시점 가시) · P2 하수인 (3,3) · (4,3) 빈 칸 · P2 턴",
+      "ok": true,
+      "detail": "turn=65 hid={\"id\":59,\"owner\":0,\"type\":\"minion\",\"r\":5,\"c\":3,\"visMe\":false,\"visOwner\":true,\"revealed\":false} mover={\"id\":73,\"owner\":1,\"type\":\"minion\",\"r\":3,\"c\":3,\"visMe\":true,\"visOwner\":true,\"revealed\":false}"
+    },
+    {
+      "what": "4b P2 탭에서 (3,3)→(5,3) 2칸 이동은 합법 (canMoveTo)",
+      "ok": true
+    },
+    {
+      "what": "4c 행위자(P2) 탭: 경유 칸 (4,3) 정지 · 충돌 일시 공개 · 주 행동 소모 · 강제 전투 진입",
+      "ok": true,
+      "detail": "P2: (4,3) reveal=true main=true battle=true"
+    },
+    {
+      "what": "4d 상대(P1) 탭이 같은 클릭을 재생한 결과가 동일 (#104 핵심)",
+      "ok": true,
+      "detail": "P1: (4,3) reveal=true main=true battle=true / P2: (4,3) reveal=true main=true battle=true"
+    },
+    {
+      "what": "4e 양 탭 전체 스냅샷(28개 말·전투·이벤트) 동일",
+      "ok": true
+    },
+    {
+      "what": "5a 강제 전투를 실제 버튼으로 완주 — 양 탭 전투 종료·스냅샷 동일",
+      "ok": true,
+      "detail": "rounds=12 turn=65"
+    },
+    {
+      "what": "5b 전투 후 P1 탭 DOM ↔ S",
+      "ok": true,
+      "detail": "null"
+    },
+    {
+      "what": "5c 전투 후 P2 탭 DOM ↔ S",
+      "ok": true,
+      "detail": "null"
+    },
+    {
+      "what": "5d 턴 교대 후 양 탭 동일",
+      "ok": true
+    },
+    {
+      "what": "5e 콘솔 오류 0 (두 탭)",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "what": "6 재매칭(새로고침 후 재접속) 시작 — 28개 말 정규 스냅샷(id 포함) 동일 · 양 탭 DOM ↔ S",
+      "ok": true
+    }
+  ],
+  "initial": {
+    "P1": [
+      {
+        "id": 57,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-F2",
+        "name": "화염 투사",
+        "element": "fire",
+        "hp": 90,
+        "maxHp": 90,
+        "atk": 25,
+        "skills": [
+          "fire_stable",
+          "fire_heavy",
+          "sup_focus",
+          "sig_atk"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 58,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-W1",
+        "name": "물방울 요정",
+        "element": "water",
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 22,
+        "skills": [
+          "water_stable",
+          "water_effect",
+          "sup_heal",
+          "sig_std"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 2,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 59,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-G3",
+        "name": "고목 수호자",
+        "element": "grass",
+        "hp": 120,
+        "maxHp": 120,
+        "atk": 18,
+        "skills": [
+          "grass_effect",
+          "grass_heavy",
+          "sup_guard",
+          "sig_def"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 3,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 60,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-L4",
+        "name": "번개 여우",
+        "element": "lightning",
+        "hp": 85,
+        "maxHp": 85,
+        "atk": 24,
+        "skills": [
+          "lightning_stable",
+          "lightning_effect",
+          "sup_cool",
+          "sig_swift"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 4,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 61,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-F5",
+        "name": "재의 주술사",
+        "element": "fire",
+        "hp": 95,
+        "maxHp": 95,
+        "atk": 20,
+        "skills": [
+          "fire_effect",
+          "fire_heavy",
+          "sup_cleanse",
+          "sig_sustain"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 5,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 62,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-W2",
+        "name": "심해 사냥꾼",
+        "element": "water",
+        "hp": 90,
+        "maxHp": 90,
+        "atk": 25,
+        "skills": [
+          "water_stable",
+          "water_heavy",
+          "sup_focus",
+          "sig_atk"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 6,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 63,
+        "owner": 0,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 12,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 64,
+        "owner": 0,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 12,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 65,
+        "owner": 0,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 66,
+        "owner": 0,
+        "type": "ally",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 12,
+        "c": 3,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 67,
+        "owner": 0,
+        "type": "ally",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 12,
+        "c": 5,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 68,
+        "owner": 0,
+        "type": "trap",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 13,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 69,
+        "owner": 0,
+        "type": "trap",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 13,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 70,
+        "owner": 0,
+        "type": "king",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 13,
+        "c": 4,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 71,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-L1",
+        "name": "스파크",
+        "element": "lightning",
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 22,
+        "skills": [
+          "lightning_stable",
+          "lightning_effect",
+          "sup_heal",
+          "sig_std"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 72,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-G2",
+        "name": "가시 덩굴",
+        "element": "grass",
+        "hp": 90,
+        "maxHp": 90,
+        "atk": 25,
+        "skills": [
+          "grass_stable",
+          "grass_heavy",
+          "sup_focus",
+          "sig_atk"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 5,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 73,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-W3",
+        "name": "산호 수호자",
+        "element": "water",
+        "hp": 120,
+        "maxHp": 120,
+        "atk": 18,
+        "skills": [
+          "water_effect",
+          "water_heavy",
+          "sup_guard",
+          "sig_def"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 3,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 74,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-F4",
+        "name": "불티 정령",
+        "element": "fire",
+        "hp": 85,
+        "maxHp": 85,
+        "atk": 24,
+        "skills": [
+          "fire_stable",
+          "fire_effect",
+          "sup_cool",
+          "sig_swift"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 75,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-L5",
+        "name": "전자기 술사",
+        "element": "lightning",
+        "hp": 95,
+        "maxHp": 95,
+        "atk": 20,
+        "skills": [
+          "lightning_effect",
+          "lightning_heavy",
+          "sup_cleanse",
+          "sig_sustain"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 6,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 76,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-G1",
+        "name": "새싹 파수꾼",
+        "element": "grass",
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 22,
+        "skills": [
+          "grass_stable",
+          "grass_effect",
+          "sup_heal",
+          "sig_std"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 2,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 77,
+        "owner": 1,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 2,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 78,
+        "owner": 1,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 4,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 79,
+        "owner": 1,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 6,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 80,
+        "owner": 1,
+        "type": "ally",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 1,
+        "c": 3,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 81,
+        "owner": 1,
+        "type": "ally",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 1,
+        "c": 5,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 82,
+        "owner": 1,
+        "type": "trap",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 83,
+        "owner": 1,
+        "type": "trap",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 84,
+        "owner": 1,
+        "type": "king",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 4,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      }
+    ],
+    "P2": [
+      {
+        "id": 57,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-F2",
+        "name": "화염 투사",
+        "element": "fire",
+        "hp": 90,
+        "maxHp": 90,
+        "atk": 25,
+        "skills": [
+          "fire_stable",
+          "fire_heavy",
+          "sup_focus",
+          "sig_atk"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 58,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-W1",
+        "name": "물방울 요정",
+        "element": "water",
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 22,
+        "skills": [
+          "water_stable",
+          "water_effect",
+          "sup_heal",
+          "sig_std"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 2,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 59,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-G3",
+        "name": "고목 수호자",
+        "element": "grass",
+        "hp": 120,
+        "maxHp": 120,
+        "atk": 18,
+        "skills": [
+          "grass_effect",
+          "grass_heavy",
+          "sup_guard",
+          "sig_def"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 3,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 60,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-L4",
+        "name": "번개 여우",
+        "element": "lightning",
+        "hp": 85,
+        "maxHp": 85,
+        "atk": 24,
+        "skills": [
+          "lightning_stable",
+          "lightning_effect",
+          "sup_cool",
+          "sig_swift"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 4,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 61,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-F5",
+        "name": "재의 주술사",
+        "element": "fire",
+        "hp": 95,
+        "maxHp": 95,
+        "atk": 20,
+        "skills": [
+          "fire_effect",
+          "fire_heavy",
+          "sup_cleanse",
+          "sig_sustain"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 5,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 62,
+        "owner": 0,
+        "type": "minion",
+        "rosterId": "M-W2",
+        "name": "심해 사냥꾼",
+        "element": "water",
+        "hp": 90,
+        "maxHp": 90,
+        "atk": 25,
+        "skills": [
+          "water_stable",
+          "water_heavy",
+          "sup_focus",
+          "sig_atk"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 6,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 63,
+        "owner": 0,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 12,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 64,
+        "owner": 0,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 12,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 65,
+        "owner": 0,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 11,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 66,
+        "owner": 0,
+        "type": "ally",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 12,
+        "c": 3,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 67,
+        "owner": 0,
+        "type": "ally",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 12,
+        "c": 5,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 68,
+        "owner": 0,
+        "type": "trap",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 13,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 69,
+        "owner": 0,
+        "type": "trap",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 13,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 70,
+        "owner": 0,
+        "type": "king",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 13,
+        "c": 4,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 71,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-L1",
+        "name": "스파크",
+        "element": "lightning",
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 22,
+        "skills": [
+          "lightning_stable",
+          "lightning_effect",
+          "sup_heal",
+          "sig_std"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 72,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-G2",
+        "name": "가시 덩굴",
+        "element": "grass",
+        "hp": 90,
+        "maxHp": 90,
+        "atk": 25,
+        "skills": [
+          "grass_stable",
+          "grass_heavy",
+          "sup_focus",
+          "sig_atk"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 5,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 73,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-W3",
+        "name": "산호 수호자",
+        "element": "water",
+        "hp": 120,
+        "maxHp": 120,
+        "atk": 18,
+        "skills": [
+          "water_effect",
+          "water_heavy",
+          "sup_guard",
+          "sig_def"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 3,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 74,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-F4",
+        "name": "불티 정령",
+        "element": "fire",
+        "hp": 85,
+        "maxHp": 85,
+        "atk": 24,
+        "skills": [
+          "fire_stable",
+          "fire_effect",
+          "sup_cool",
+          "sig_swift"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 75,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-L5",
+        "name": "전자기 술사",
+        "element": "lightning",
+        "hp": 95,
+        "maxHp": 95,
+        "atk": 20,
+        "skills": [
+          "lightning_effect",
+          "lightning_heavy",
+          "sup_cleanse",
+          "sig_sustain"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 6,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 76,
+        "owner": 1,
+        "type": "minion",
+        "rosterId": "M-G1",
+        "name": "새싹 파수꾼",
+        "element": "grass",
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 22,
+        "skills": [
+          "grass_stable",
+          "grass_effect",
+          "sup_heal",
+          "sig_std"
+        ],
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 2,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 77,
+        "owner": 1,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 2,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 78,
+        "owner": 1,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 4,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 79,
+        "owner": 1,
+        "type": "bomb",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 3,
+        "c": 6,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 80,
+        "owner": 1,
+        "type": "ally",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 1,
+        "c": 3,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 81,
+        "owner": 1,
+        "type": "ally",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 1,
+        "c": 5,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 82,
+        "owner": 1,
+        "type": "trap",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 1,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 83,
+        "owner": 1,
+        "type": "trap",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 1,
+        "maxHp": 1,
+        "atk": 0,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 7,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      },
+      {
+        "id": 84,
+        "owner": 1,
+        "type": "king",
+        "rosterId": null,
+        "name": null,
+        "element": null,
+        "hp": 100,
+        "maxHp": 100,
+        "atk": 16,
+        "skills": null,
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "r": 2,
+        "c": 4,
+        "placed": true,
+        "alive": true,
+        "revealed": false,
+        "immobile": 0,
+        "cap": null
+      }
+    ],
+    "submitted": {
+      "P1": [
+        {
+          "type": "minion",
+          "rosterId": "M-F2",
+          "name": "화염 투사",
+          "r": 11,
+          "c": 1
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-W1",
+          "name": "물방울 요정",
+          "r": 11,
+          "c": 2
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-G3",
+          "name": "고목 수호자",
+          "r": 11,
+          "c": 3
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-L4",
+          "name": "번개 여우",
+          "r": 11,
+          "c": 4
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-F5",
+          "name": "재의 주술사",
+          "r": 11,
+          "c": 5
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-W2",
+          "name": "심해 사냥꾼",
+          "r": 11,
+          "c": 6
+        },
+        {
+          "type": "bomb",
+          "rosterId": null,
+          "name": null,
+          "r": 12,
+          "c": 1
+        },
+        {
+          "type": "bomb",
+          "rosterId": null,
+          "name": null,
+          "r": 12,
+          "c": 7
+        },
+        {
+          "type": "bomb",
+          "rosterId": null,
+          "name": null,
+          "r": 11,
+          "c": 7
+        },
+        {
+          "type": "ally",
+          "rosterId": null,
+          "name": null,
+          "r": 12,
+          "c": 3
+        },
+        {
+          "type": "ally",
+          "rosterId": null,
+          "name": null,
+          "r": 12,
+          "c": 5
+        },
+        {
+          "type": "trap",
+          "rosterId": null,
+          "name": null,
+          "r": 13,
+          "c": 1
+        },
+        {
+          "type": "trap",
+          "rosterId": null,
+          "name": null,
+          "r": 13,
+          "c": 7
+        },
+        {
+          "type": "king",
+          "rosterId": null,
+          "name": null,
+          "r": 13,
+          "c": 4
+        }
+      ],
+      "P2": [
+        {
+          "type": "minion",
+          "rosterId": "M-L1",
+          "name": "스파크",
+          "r": 11,
+          "c": 7
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-G2",
+          "name": "가시 덩굴",
+          "r": 11,
+          "c": 5
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-W3",
+          "name": "산호 수호자",
+          "r": 11,
+          "c": 3
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-F4",
+          "name": "불티 정령",
+          "r": 11,
+          "c": 1
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-L5",
+          "name": "전자기 술사",
+          "r": 12,
+          "c": 6
+        },
+        {
+          "type": "minion",
+          "rosterId": "M-G1",
+          "name": "새싹 파수꾼",
+          "r": 12,
+          "c": 2
+        },
+        {
+          "type": "bomb",
+          "rosterId": null,
+          "name": null,
+          "r": 11,
+          "c": 2
+        },
+        {
+          "type": "bomb",
+          "rosterId": null,
+          "name": null,
+          "r": 11,
+          "c": 4
+        },
+        {
+          "type": "bomb",
+          "rosterId": null,
+          "name": null,
+          "r": 11,
+          "c": 6
+        },
+        {
+          "type": "ally",
+          "rosterId": null,
+          "name": null,
+          "r": 13,
+          "c": 3
+        },
+        {
+          "type": "ally",
+          "rosterId": null,
+          "name": null,
+          "r": 13,
+          "c": 5
+        },
+        {
+          "type": "trap",
+          "rosterId": null,
+          "name": null,
+          "r": 12,
+          "c": 1
+        },
+        {
+          "type": "trap",
+          "rosterId": null,
+          "name": null,
+          "r": 12,
+          "c": 7
+        },
+        {
+          "type": "king",
+          "rosterId": null,
+          "name": null,
+          "r": 12,
+          "c": 4
+        }
+      ]
+    }
+  }
+}
