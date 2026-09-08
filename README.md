@@ -47,7 +47,7 @@
 </table>
 
 <details>
-<summary><b>튜토리얼 10단계 보기</b> — v0.4.5 개발판 · 양측 밀어내기와 새 턴 흐름</summary>
+<summary><b>튜토리얼 10단계 보기</b> — v0.4.5 · 양측 밀어내기와 새 턴 흐름</summary>
 <br>
 <table>
   <tr>
@@ -67,31 +67,29 @@
 </table>
 <sub>튜토리얼은 게임 안에서 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다.</sub>
 
-캡처 출처: 미출시 v0.4.5 개발 커밋 `5de47a9db4960ae7392e85ed3a811248743d090b` · [10장 캡처 기록과 해시](docs/qa/issue114-media/capture-manifest.json). 아래 정식 릴리스 정보와 구분해 보세요.
+캡처 출처: v0.4.5 검수 커밋 `5de47a9db4960ae7392e85ed3a811248743d090b` · [10장 캡처 기록과 해시](docs/qa/issue114-media/capture-manifest.json). 출시본과 같은 게임 코드에서 촬영한 화면입니다.
 </details>
 
 ## 새로운 기능
 
-[![v0.4.4](https://img.shields.io/badge/v0.4.4-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4) 탐색 기술 교체와 지속 회복, 온라인 시점과 턴 흐름을 개선했습니다.
+[![v0.4.5](https://img.shields.io/badge/v0.4.5-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5) 양측 밀어내기와 도망 후 선택, 턴 흐름과 튜토리얼을 개선했습니다.
 
-**v0.4.4 Patch Note** (2026-09-08)
+**v0.4.5 Patch Note** (2026-09-08)
 
-- [기능 추가] 탐색에서 다른 속성 공격기를 얻어 교체할 수 있습니다. 회복 자세는 지정한 턴 종료부터 각 플레이어 턴마다 최대 HP의 5%를 지속 회복합니다.
-- [개선] 온라인 양쪽 모두 자기 진영을 아래에서 보고, 상대 턴에도 메모할 수 있습니다. 숨은 말 충돌 시 위치 동기화 오류와 공용 하수인 대리 출전 아트 누락을 수정했습니다.
-- [개선] 전투 4메뉴·보호막/HP 표시·턴 연출·자동 종료를 추가했습니다. 65턴 버닝타임 안내는 일반 턴 전에 2초 표시됩니다.
-- [규칙 조정] 함정과 걸린 말 모두 공개, 폭탄 직접 신규 접촉 발동, 6라운드 잔여 HP 비율 판정(동률 방어자 승), 공격형 위력·일반 감전 확률 완화를 적용했습니다.
+- [기능 추가] 텔레포트의 경기당 횟수 제한을 없앴습니다. 사용 조건과 주 행동 소모는 그대로입니다.
+- [규칙 조정] 동료·왕끼리, 폭탄이 폭탄·함정과 만나면 서로 한 칸씩 밀려납니다. 밀린 뒤에도 적과 붙어 있으면 두 말을 안전한 곳에 함께 재배치합니다. 함정도 강제로 옮겨질 수 있습니다.
+- [개선] 도망에 성공하면 보드에서 후방의 내 말을 골라 교환하거나 생략합니다. 이어서 전선의 말과 상대가 서로 밀려납니다.
+- [개선] 평소 턴 종료 버튼을 없애고 선택 전투가 남을 때만 ‘싸우지 않고 종료’를 표시합니다. HP가 가득 차도 회복 자세를 지정해 기다릴 수 있습니다. 새 규칙과 기술 교체 설명에 맞춰 튜토리얼 10단계와 캡처를 갱신했습니다.
 
-정식 릴리스의 상세 내용은 [v0.4.4 릴리스 노트](docs/releases/v0.4.4.md)와 [v0.4.4 규칙 정리본](docs/v0.4.4-rules-digest.md)을 참고하세요. 위 튜토리얼 10장은 미출시 v0.4.5 개발 커밋 `5de47a9d`의 화면이며, 해당 규칙은 [v0.4.5 게임플레이 계약](docs/v0.4.5-gameplay-spec.md)에 정리되어 있습니다.
+상세 내용은 [v0.4.5 릴리스 노트](docs/releases/v0.4.5.md)와 [v0.4.5 규칙 정리본](docs/v0.4.5-rules-digest.md)을 참고하세요. 세부 규칙과 예외는 [v0.4.5 게임플레이 계약](docs/v0.4.5-gameplay-spec.md)에 정리되어 있습니다.
 
 이전 버전의 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)과 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다.
-
-**준비 중 — v0.4.5** (미출시, [다음 마일스톤](https://github.com/ChangjoSung/Digit-Duel/milestone/11)) 개발 브랜치에 텔레포트 횟수 제한 해제, 동료·왕끼리와 폭탄끼리 만났을 때 서로 한 칸씩 밀려나는 양측 밀어내기·재배치, 도망 뒤 보드에서 후방 말 고르기, 평소 턴 종료 버튼 정리, 튜토리얼 10단계 갱신을 반영했습니다. 승인된 규칙은 [v0.4.5 게임플레이 계약](docs/v0.4.5-gameplay-spec.md)과 [규칙 정리본 초안](docs/v0.4.5-rules-digest.md), 예정 변경은 [v0.4.5 릴리스 노트 초안](docs/releases/v0.4.5.md)에 있습니다. 최신 정식 릴리스는 v0.4.4이며, v0.4.5는 출시 전 검증 중입니다.
 
 ## 게임 정보
 
 | 항목 | 내용 |
 | --- | --- |
-| 현재 버전 | [v0.4.4](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4) |
+| 현재 버전 | [v0.4.5](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5) |
 | 최근 업데이트 | 2026-09-08 |
 | Star · Fork | [![Stars](https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars)](https://github.com/ChangjoSung/Digit-Duel) [![Forks](https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks)](https://github.com/ChangjoSung/Digit-Duel/forks) |
 | 필요한 환경 | 오프라인: 최신 데스크톱 브라우저(Chrome 권장) · 온라인: Windows PC 1대 + [Node.js](https://nodejs.org) |
@@ -146,7 +144,7 @@ docs/
   qa/                   버전별 구현·독립 QA 보고와 검증 화면
   art/                  하수인 아트 검토 이미지·제작 기록
   minion-visual-spec-v0.4.3.md   하수인 이미지 규격
-  v0.4.x-*.md           버전별 게임플레이 계약·규칙 정리본 (v0.4.5는 승인 설계·미출시)
+  v0.4.x-*.md           버전별 게임플레이 계약·규칙 정리본
   creat2ve/             개발 조직·작업 계약 문서
 CLAUDE.md               프로젝트 규약 · 기준 문서 링크
 CONTRIBUTING.md         기여 안내

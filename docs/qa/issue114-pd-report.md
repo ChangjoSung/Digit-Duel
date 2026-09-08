@@ -1,6 +1,6 @@
 # Issue #114 — Mercury 통합 보고
 
-[피드백] 2026-09-08 · v0.4.5 턴 행동·문서·튜토리얼. **제품·문서·미디어 독립 QA PASS, CJ 플레이 QA 대기, 미출시.** 통합 대상은 [PR #115](https://github.com/ChangjoSung/Digit-Duel/pull/115)이며 병합 상태·최종 dev SHA는 해당 PR과 Issue114가 원본이다. CJ의 “구현 시작” 승인과 Claude 한도 중단 시 Codex 인계 승인을 집행했다. 최신 정식 버전은 v0.4.4다.
+[결정] 2026-09-08 · v0.4.5 턴 행동·문서·튜토리얼. **제품·문서·미디어 독립 QA PASS, CJ 플레이 QA PASS 및 배포 승인.** [PR #115](https://github.com/ChangjoSung/Digit-Duel/pull/115)를 dev `f4ae0870ce7f7316f22d96ff4ec7184f8943b469`에 통합했다. 출시 버전은 [v0.4.5](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5)이며 실제 main SHA와 태그는 Release·Issue114가 원본이다. Claude 한도 중단 시 Codex 인계 승인과 초기 REVISE 이력은 아래에 보존한다.
 
 ## 소유권과 승인
 
@@ -61,6 +61,12 @@ Saturn_2의 독립 미디어 검수는 **PASS**(`msg_a888acb71dc3`, `task_897a5d
 
 Saturn은 README41(앵커1 포함)·미출시 노트6·PD 보고9·Mars 후속1의 상대 참조가 모두 유효함을 확인했다. PD도 관련 문서11개의 상대 링크82개를 별도 검사해 오류0을 확인했다. 외부 링크15개와 배지 가용성은 이 링크 검사 범위가 아니다. 완료 문구와 비공개 회복 로그의 범위 설명도 정정 후 재확인했다. Chrome152·Windows·Node24.16, GitHub 정제 HTML과 근사 CSS 검수이며 실제 GitHub 페이지 전체의 픽셀 동일성이나 물리 모바일 검수를 주장하지 않는다.
 
-## 통합·CJ QA
+## 출시 문서 독립 검수
 
-[PR #115](https://github.com/ChangjoSung/Digit-Duel/pull/115)는 feature/114-v045-turn-flow → dev의 단일 통합 PR이다. 병합 시 최종 트리와 검수 제품 blob 일치를 확인하며 근거를 Issue114·PR에 기록한다. Issue114와 Milestone11은 CJ 플레이 QA 전 OPEN으로 유지한다. main 및 최신 정식 v0.4.4의 `aff981217e33c88e8685adebe10351b6d5c5100d`는 보존한다.
+2026-09-08 Saturn **PASS** (`msg_a1ad21e209cb`, `task_b5e7ab121cd8` / `ctx_c044eb12d88b`, `files_modified=[]`). 출시 문서9개만 검토했고 README 8개 H2와 순서를 보존했다. 현재 README SHA256은 `1298e4ec822a9d825a56889e166d36c9e918294e9c336195a2232ccfb3f47a62`다. 기존 읽기 전용 `readme_media_capture.js verify`를 명시적 manifest와 함께 1100×900·390×844에서 실행해 각각 로컬 이미지13/13·튜토리얼10/10·캡션 일치·페이지/표 넘침0·산출물 쓰기0·감시파일26개 변경0을 확인했다. 문서11개의 상대 참조113개는 경로·대소문자·앵커 오류0이다.
+
+PNG10장의 2224×1628 크기·해시는 manifest와 기준 커밋에 일치했다. 제품·서버·도구·PNG·manifest diff는 비었고, 추적파일493개의 크기/mtime/SHA256 비교도 변경0이었다. 검수/캡처 SHA `5de47a9db4960ae7392e85ed3a811248743d090b`, 제품 blob `61a3ce3e5927697ea80ec8ebd379ffb98ebfdb92`, LF SHA256 `f742b6ba205fbcba2f3081134057dbccb81193fb55b24d5140df16be7a90fc33`와 299181bytes를 재확인했다. 제품 불변·CJ PASS에 따라 제품 테스트는 다시 실행하지 않았다. GitHub 정제 HTML+근사 CSS 검수이며 외부 URL 가용성·물리 모바일·실제 GitHub 픽셀 동일성은 범위 밖이다. 검수 당시 출시/비교 링크는 발행 예정으로 구분했고 실제 발행 확인은 Mercury가 수행한다. Worker는 보고 후 archive/release했다. 이 항목은 Saturn inline 보고를 Mercury가 기록한 것이다.
+
+## 통합·CJ QA·출시
+
+[PR #115](https://github.com/ChangjoSung/Digit-Duel/pull/115)의 최종 feature `ecd6aa88b6e0d3a470fa2a00973271650faa2338`와 통합 dev `f4ae0870ce7f7316f22d96ff4ec7184f8943b469`는 전체 트리 `c1bdbabfac3b4839efe583d9754adbe9b768b408`가 같다. 2026-09-08 CJ가 “CJ Play QA Test : PASS”와 문서 갱신 후 배포를 명시했다. 이에 Issue114를 수락 종결하고 README·릴리스 노트·정리본을 출시 기준으로 갱신한다. dev→main은 merge commit으로 병합하고 그 main SHA에 annotated tag v0.4.5를 발행한다. 실제 발행 결과·릴리스 PR·Milestone11 종결은 [Issue114](https://github.com/ChangjoSung/Digit-Duel/issues/114)와 [Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5)를 따른다. 과거 v0.4.4 태그 `aff981217e33c88e8685adebe10351b6d5c5100d`는 보존한다.
