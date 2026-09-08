@@ -1,17 +1,17 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-08 · Mercury(PD, GPT-6 Astra/high) 인수 완료. v0.4.5 제품·문서·미디어 독립 QA PASS, CJ 플레이 QA 대기. 실제 dev/main HEAD·PR 병합·Release 상태는 Git/GitHub가 원본이다.
+> 2026-09-08 · Mercury(PD, GPT-6 Astra/high) 인수 완료. v0.4.5 제품·문서·미디어 독립 QA 및 CJ 플레이 QA PASS, 배포 승인 반영. 실제 dev/main HEAD·PR 병합·Release 상태는 Git/GitHub가 원본이다.
 
 ## 현재 상태
 
-- 최신 릴리스 **v0.4.4**. CJ의 **“구현 시작”** 승인 범위를 [Issue #114](https://github.com/ChangjoSung/Digit-Duel/issues/114)·[통합 PR #115](https://github.com/ChangjoSung/Digit-Duel/pull/115)로 납품한다. 무제한 텔레포트, 양측 밀기·공동 안전 재배치·부재 예외, 함정 강제 이동, 도망 후 소유자 보드 선택/생략, 조건부 종료·만피 회복 대기, 튜토리얼10단계와 README 캡처를 구현했다. **제품·문서·미디어 Saturn 독립 PASS, CJ 플레이 QA 대기**다. v0.4.5 정식 출시와 Issue/Milestone 종결은 아직 승인 전이다.
+- 현재 출시 버전 **[v0.4.5](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5)**. [Issue #114](https://github.com/ChangjoSung/Digit-Duel/issues/114)·[통합 PR #115](https://github.com/ChangjoSung/Digit-Duel/pull/115)의 무제한 텔레포트, 양측 밀기·공동 안전 재배치·부재 예외, 함정 강제 이동, 도망 소유자 보드 선택/생략, 조건부 종료·만피 회복 대기, 튜토리얼10단계·README 캡처를 납품했다. **제품·문서·미디어 Saturn 독립 PASS, 2026-09-08 CJ 플레이 QA PASS 및 배포 승인**. 출시용 README·노트·규칙 정리본·Milestone 정리를 집행한다. 실제 발행 결과와 릴리스 PR/main SHA는 Release·Issue114가 원본이다.
 - [v0.4.4 Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.4), [Milestone10](https://github.com/ChangjoSung/Digit-Duel/milestone/10). 릴리스 PR은 dev→main merge commit, 버전 태그는 그 main 커밋을 가리킨다. main/dev 장수 브랜치를 삭제하지 않는다.
-- 릴리스 PR **#111**, main/origin/main 및 annotated tag **aff981217e33c88e8685adebe10351b6d5c5100d**. 출시 당시 dev는 **ceca7ed7009debfcec17a6efb65dd59e1d11ed5a**이며 main/dev 트리는 같았다. 이번 인계 문서 PR은 dev에만 추가되므로 이후 HEAD와 문서 트리는 다를 수 있다. 제품·서버·아트가 릴리스와 같은지 확인하며 태그를 이동하거나 다시 출시하지 않는다.
+- 이전 v0.4.4 릴리스 PR **#111**, 당시 main/origin/main 및 annotated tag **aff981217e33c88e8685adebe10351b6d5c5100d**. 출시 당시 dev는 **ceca7ed7009debfcec17a6efb65dd59e1d11ed5a**이며 main/dev 트리는 같았다. 이후 v0.4.5 개발로 현재 HEAD·제품과는 다르다. 과거 태그를 이동하거나 다시 출시하지 않는다.
 - #91·92·94·95·96은 이전 CJ PASS로 종료했고, 이번 최종 PASS로 #104→부모#93·#105·#106도 종료했다. v0.4.4 범위에 미승인 구현은 없다.
-- v0.4.4 검수 제품은 PR109 squash **a6fdaad752a8ffedadd2781dfb5d95018273575f**다. 당시 이후 릴리스 준비는 문서만 변경했다. v0.4.5 현재 검수 제품은 **5de47a9db4960ae7392e85ed3a811248743d090b**, blob **61a3ce3e5927697ea80ec8ebd379ffb98ebfdb92**, LF SHA256 **f742b6ba205fbcba2f3081134057dbccb81193fb55b24d5140df16be7a90fc33**이다. 이 정확한 SHA에서 README PNG10장과 manifest를 생성했고 독립 재캡처10/10 바이트 일치를 확인했다. 최종 통합 시 제품 blob 일치를 확인하며 실제 dev SHA는 PR115·Issue114에 기록한다.
+- v0.4.4 검수 제품은 PR109 squash **a6fdaad752a8ffedadd2781dfb5d95018273575f**다. 당시 이후 릴리스 준비는 문서만 변경했다. v0.4.5 현재 검수 제품은 **5de47a9db4960ae7392e85ed3a811248743d090b**, blob **61a3ce3e5927697ea80ec8ebd379ffb98ebfdb92**, LF SHA256 **f742b6ba205fbcba2f3081134057dbccb81193fb55b24d5140df16be7a90fc33**이다. 이 정확한 SHA에서 README PNG10장과 manifest를 생성했고 독립 재캡처10/10 바이트 일치를 확인했다. PR115 squash dev `f4ae0870ce7f7316f22d96ff4ec7184f8943b469`에서 제품 blob·전체 트리 일치를 확인했다. 이후 출시 준비는 문서 메타데이터만 바꾼다.
 - v0.4.4 출시 제품 Git blob **f580e4f9aa4b5ce3daceef940891a875586a1e34**, 당시 LF SHA256 **a4932cb80a1407fc728ace6ee918315880840c76010de7b21361a7f618e97280**는 이전 출시 근거다. v0.4.5 제품과 혼동하지 않는다. Windows 줄바꿈 차이는 Git blob으로 구분한다.
 - 이전 v0.4.3은 main/tag **cc3f382496473233334f374896d46639b83d7974**, PR97·Milestone7 완료 이력으로 보존한다. 과거 태그를 다시 만들지 않는다.
-- **Milestone11 v0.4.5 OPEN**: 턴 행동 정리·문서·튜토리얼 갱신. 이전 공용 하수인·아트·밸런스는 보류 기획이며 이번 구현 승인에 포함하지 않는다. 수풀 탐색 전면 점검은 CJ 원문상 v0.4.6 예정이다. 마일스톤11개를 실제 출시·계획에 맞춰 정리했고 상태·연결 항목은 보존했다.
+- **[Milestone11 v0.4.5](https://github.com/ChangjoSung/Digit-Duel/milestone/11)**: CJ PASS로 범위 완료, 릴리스 발행 후 종결. 턴 행동 정리·문서·튜토리얼 갱신. 이전 공용 하수인·아트·밸런스는 보류 기획이며 이번 구현 승인에 포함하지 않는다. 수풀 탐색 전면 점검은 CJ 원문상 v0.4.6 예정이다. 마일스톤11개를 실제 출시·계획에 맞춰 정리했고 상태·연결 항목은 보존했다.
 - **사용자 소유 미추적 art/·orca-hook-latency-report.md는 접근·수정·스테이징 금지.** 승인 아트100파일과 Downloads 원본도 보존한다.
 
 ## 역할·작업자
@@ -65,8 +65,8 @@
 ## 문서·다음 세션
 
 - [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) DL31 출시·DL32 교대·DL33 분석/정리·DL34 구현 승인·DL35 본문 동기화를 기록했다. GDD13/12/14 현재 규칙과 과거 출시 이력을 구분하고 문서 독립 검수에서 발견한 상태·적용 범위 문구를 정정했다. v0.4.5 구현·검수·통합 후속 기록은 PR115·Issue114와 최신 Decision Log를 따른다.
-- [DIGEST2호](https://app.notion.com/p/3cd1e7f17085813992ccd85ce72b1d0f)는 v0.4.4 출시 설명으로 보존하고 v0.4.5 미출시 안내를 추가했다. 새 [v0.4.5 규칙 정리본](../v0.4.5-rules-digest.md)과 [미출시 노트](../releases/v0.4.5.md), [검수 보고](../qa/issue114-pd-report.md)는 현재 개발 제품 기준이다. DIGEST3호의 정식 승격은 v0.4.5 출시 후다.
+- [DIGEST2호](https://app.notion.com/p/3cd1e7f17085813992ccd85ce72b1d0f)는 v0.4.4 출시 설명으로 보존한다. [v0.4.5 규칙 정리본](../v0.4.5-rules-digest.md)을 DIGEST3호로 승격하고 GDD13의 현재 참조를 치환한다. [릴리스 노트](../releases/v0.4.5.md), [검수 보고](../qa/issue114-pd-report.md)는 v0.4.5 출시 기준이며 캡처 출처와 초기 QA 한계는 유지한다.
 - Notion #105 원문3d51e7f1708580f18f2dc4a643721059의 v0.4.4 작업은 완료됐다. #106 원문3d51e7f1708580b0916ded4bd3d9d06e는 외부 편집으로 Status=수정 대응, Summary=“v0.4.4 1차 완료 / v0.4.5 추가 구현 예정”이 됐으며 보존했다.
 - Notion 메타데이터: Project=DigitDual, EditDate=실제날짜, Editor=실제 사람 성창조(user8e0a8270-d0e3-407e-a7d2-b3f992f1e366). Agent는 운영 본문에만 쓴다.
 - 이전 세션 수치 이력: 압축15회, 2026-09-08 17:47:40 KST 마지막 요청92,019/258,400(여유64.4%). 현재 Mercury의 사용량이 아니며 판단력 저하를 입증한 수치도 아니다. 교대는 완료됐다. 상세: docs/qa/mercury-self-audit-2026-09-08.md.
-- 다음 게이트는 **CJ 플레이 QA**다. PR115의 dev 통합/검수 blob 확인 후 CJ에게 보고하며 같은 구현 승인을 다시 묻지 않는다. 새 CJ Comment 없이 재릴리스·추가 기획·구현·상시 Worker 감시를 시작하지 않는다. 현재 Mercury가 상설 창구를 유지하고 인수 확인을 위한 추가 PD 스폰이나 세션 교대를 하지 않는다.
+- CJ 플레이 QA·배포 승인은 완료됐다. README·릴리스 노트·Milestone 갱신과 v0.4.5 발행 결과를 보고한 뒤 **다음 CJ Comment 대기**. 같은 승인을 다시 묻지 않는다. 새 Comment 없이 재릴리스·추가 기획·구현·상시 Worker 감시를 시작하지 않는다. 현재 Mercury가 상설 창구를 유지하며 추가 PD 스폰이나 세션 교대를 하지 않는다.
