@@ -108,4 +108,16 @@ test("AI vs AI completes both levels with board/metrics invariants",()=>{
     C.activate();const r=H.runSim(C,levels,seed,{check:25,cap:100000});assert.equal(r.phase,"over");assert.deepEqual(r.viol,[]);console.log("SIM "+JSON.stringify({levels,seed,turns:r.turns,result:r.winType,teleports:r.snap.total.teleports,steps:r.steps}));
   }
 });
+test("VIP push uses existing king loss/neutral evaluation at both AI levels without combat bonuses",()=>{
+  for(const owner of [0,1]){
+    const s=board(T),a=piece(T,owner,"ally"),b=piece(T,1-owner,"ally");s.current=owner;
+    H.place(T,a,owner?3:11,4);H.place(T,b,owner?2:12,4);b.revealed=true;s.turnCount=200;
+    assert.equal(T.aiPushScore(a,b),0);assert.equal(T.aiBattlePairScore(owner,a,b),0);assert.equal(T.aiBattleEV(owner,a,b),0);
+    a.cap={...piece(T,owner,"minion")};a.hp=a.maxHp;assert.equal(T.aiBattlePairScore(owner,a,b),0);
+    assert.equal(T.aiEvalBattles(owner),null);assert.equal(T.aiEvalBattlesStrong(owner),null);
+    b.type="king";const loss=-T.aiUnitValue(b,owner);
+    assert.equal(T.aiPushScore(a,b),loss);assert.equal(T.aiBattlePairScore(owner,a,b),loss);assert.equal(T.aiBattleEV(owner,a,b),loss);
+    assert.equal(T.aiEvalBattles(owner),null);assert.equal(T.aiEvalBattlesStrong(owner),null);
+  }
+});
 console.log("smoke_issue114: "+pass+" groups passed");

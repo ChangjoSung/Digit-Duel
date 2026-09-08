@@ -1,12 +1,13 @@
 /* Issue114: real Chrome two-tab + real relay, public setup API, deterministic battle fixtures,
-   actual mouse flee/category/candidate/skip/resign clicks. No screenshots or release capture.
-   node demo/test/issue114_cdp.js [--read-only] [--out docs/qa/issue114-media]
+   actual mouse flee/category/candidate/skip/resign clicks. Optional --shots records fixture UI proof, not release capture.
+   node demo/test/issue114_cdp.js [--read-only] [--out docs/qa/issue114-media] [--shots]
    Gameplay fixtures shorten unrelated effects; flee selection/push effects retain 2000ms.
    Only this run's child processes and exact temporary profile are cleaned up. */
 "use strict";
 const fs=require("fs"),path=require("path"),os=require("os"),crypto=require("crypto"),assert=require("assert/strict"),{spawn}=require("child_process");
 const ROOT=path.resolve(__dirname,"../.."),args=process.argv.slice(2),READ=args.includes("--read-only");
 const OUT=path.resolve(args.includes("--out")?args[args.indexOf("--out")+1]:path.join(ROOT,"docs/qa/issue114-media"));
+const SHOTS=args.includes("--shots")&&!READ;
 const CHROME=[process.env.CHROME_PATH,"C:/Program Files/Google/Chrome/Application/chrome.exe","C:/Program Files (x86)/Google/Chrome/Application/chrome.exe","/usr/bin/google-chrome","/usr/bin/chromium"].filter(Boolean).find(p=>fs.existsSync(p));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let chrome,server,profile,cdp;const results=[];
@@ -42,6 +43,7 @@ const state=`(()=>({phase:S.phase,fp:S.fleePick,cur:S.current,battles:S.battlesU
 const canon=`JSON.stringify({pieces:S.pieces,current:S.current,turn:S.turnCount,main:S.mainUsed,battles:S.battlesUsed,fp:S.fleePick,forced:S.forcedTargets,queue:S.forcedQueue,metrics:S.metrics,log:S.log.map(l=>({...l,msg:l.msg.replace(/(?:나|상대)\\(P([12])\\)/g,'P$1')})),traces:S.traces.map(x=>[...x])})`;
 async function same(clients,logs=true){const [a,b]=await Promise.all(clients.map(async t=>JSON.parse(await t.ev(canon))));if(!logs){delete a.log;delete b.log;}function diff(x,y,p="S"){if(JSON.stringify(x)===JSON.stringify(y))return null;if(!x||!y||typeof x!=="object"||typeof y!=="object")return p+": "+JSON.stringify(x)+" != "+JSON.stringify(y);for(const k of new Set([...Object.keys(x),...Object.keys(y)])){const d=diff(x[k],y[k],p+"."+k);if(d)return d;}}assert.equal(diff(a,b),null);}
 async function idle(t){return t.ev("!fxLocked()&&NET.queue.length===0");}
+async function shot(t,name){if(!SHOTS)return;fs.mkdirSync(OUT,{recursive:true});const {data}=await cdp.send("Page.captureScreenshot",{format:"png"},t.sid);fs.writeFileSync(path.join(OUT,name+".png"),Buffer.from(data,"base64"));console.log("SHOT "+path.relative(ROOT,path.join(OUT,name+".png")));}
 const fixture=owner=>`(()=>{
   close();fxReleaseAll();BAL.fx.autoEnd=false;for(const k of Object.keys(BAL.fx))if(typeof BAL.fx[k]==='number')BAL.fx[k]=0;BAL.fx.fleeFx=2000;BAL.fx.pushBanner=2000;BAL.fx.watchdog=1000;
   for(const p of S.pieces){p.placed=false;p.alive=true;p.revealed=false;p.healing=false;p.hp=p.maxHp;}
@@ -75,6 +77,7 @@ const fixture=owner=>`(()=>{
       assert.equal(await other.ev("document.querySelectorAll('.cell.hl-move').length"),0);
       const beforeOther=(await other.ev(state)).sent.length;await other.click(cell(...f[owner].rear));assert.equal((await other.ev(state)).sent.length,beforeOther);
       assert(await other.ev("document.getElementById('sidePanel').textContent.includes('상대가 말을 교체 중')"));
+      if(owner===1&&!skip){await shot(own,"flee-defender-choice");await shot(other,"flee-attacker-waiting");}
       if(skip)await own.click("#turnBar button:first-child");else await own.click(cell(...f[owner].rear));
       await until(async()=>(await Promise.all(clients.map(t=>t.ev("!S.fleePick&&!fxLocked()&&NET.queue.length===0")))).every(Boolean),"push settle");
       await same(clients);assert.equal(await own.ev("S.battlesUsed"),1);assert.equal(await own.ev("rand()"),await other.ev("rand()"));
@@ -97,6 +100,11 @@ const fixture=owner=>`(()=>{
     const publicHeal=logs=>logs.filter(l=>!/(최대 HP — 회복 자세 유지|HP \+\d+ \(회복 자세\))/.test(l)).map(l=>/회복 자세 시작|상대가 말 회복 행동/.test(l)?"HEAL_ACTION":l.replace(/(?:나|상대)\(P([12])\)/g,"P$1"));
     assert.equal(publicHeal(healLogs[0]).filter(l=>l==="HEAL_ACTION").length,1);assert.deepEqual(publicHeal(healLogs[0]),publicHeal(healLogs[1]));
     note("full HP healing wait auto-ends once from owner only; state agrees, healing identity stays private");
+    if(SHOTS){
+      for(const t of clients){await t.ev(fixture(0));await t.ev("S.battle=null;close();fxReleaseAll();S.battlesUsed=0;S.selected=at(7,4);render();true");}
+      assert(await clients[0].ev("[...document.querySelectorAll('#turnBar button')].some(b=>b.textContent==='싸우지 않고 종료'&&!b.disabled)"));
+      await shot(clients[0],"conditional-end-option");
+    }
     for(const t of clients){await t.ev(fixture(1));await t.ev("S.battle=null;close();fxReleaseAll();fleeSwapPrompt(at(6,4),at(7,4));true");}
     await until(async()=>(await Promise.all(clients.map(idle))).every(Boolean),"resign selection idle");
     assert(await clients[1].ev("document.querySelector('#turnBar button.danger').disabled"));
