@@ -51,9 +51,14 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 ## 실행
 
 ### Studio 테스트 (2인 로컬)
-1. [Rojo](https://rojo.space) 설치 후 `roblox/` 에서 `rojo serve`
-2. Studio 에서 Rojo 플러그인으로 연결 → Test 탭 → **Clients and Servers: 2 Players** 로 실행
-3. 양쪽 클라이언트에서 [🌐 빠른 매칭] → 자동 매칭 → 대전
+1. `build.bat` 실행 → `build/DigitDual.rbxl` 생성 (rojo.exe 는 `build/` 에 두며 git 에 올리지 않는다 — 없으면 bat 이 다운로드 링크를 안내)
+2. Roblox Studio 로 `build/DigitDual.rbxl` 열기 → Test 탭 → **Clients and Servers: 2 Players** → Start
+3. 열린 클라이언트 창 2개에서 각각 [🌐 빠른 매칭] → 자동 매칭 → 대전
+
+코드를 고친 뒤에는 `build.bat` 을 다시 돌려 rbxl 을 갱신한다. 라이브 동기화가 필요하면 `build\rojo.exe serve` + Studio Rojo 플러그인.
+
+### Roblox 게시 (실제 다인 플레이)
+Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버 인스턴스를 호스팅하며, 같은 인스턴스에 들어온 플레이어를 `init.server.luau` 가 1:1 로 매칭한다.
 
 ### 헤드리스 테스트 (커밋 전 필수)
 ```

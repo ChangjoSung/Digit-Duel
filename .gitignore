@@ -108,3 +108,6 @@ InitTestScene*.unity*
 # Python art pipeline (tools/minion_art.py, tests/)
 __pycache__/
 *.py[cod]
+
+# Roblox build output + rojo binary (roblox/build.bat 으로 재생성)
+roblox/build/
