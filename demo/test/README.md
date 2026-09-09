@@ -1,10 +1,10 @@
 # 검사 인덱스 — `demo/test`
 
-이 폴더의 33개 파일은 **성격에 따라 네 폴더**로 나뉜다. 어디에 두느냐가 곧 그 파일의 성격이다.
+이 폴더의 35개 파일은 **성격에 따라 네 폴더**로 나뉜다. 어디에 두느냐가 곧 그 파일의 성격이다.
 
 | 폴더 | 성격 | 지금도 도는가 | 파일 쓰기 |
 |---|---|---|---|
-| [`regression/`](regression) | 현행 규칙을 지키는 **살아 있는 게이트**. CI 잡 A가 매 PR에서 16개 전부 실행한다 | 예 | 저장소에는 없음 (한 곳만 tmp 음성 대조 사본) |
+| [`regression/`](regression) | 현행 규칙을 지키는 **살아 있는 게이트**. CI 잡 A가 매 PR에서 18개 전부 실행한다 | 예 | 저장소에는 없음 (한 곳만 tmp 음성 대조 사본) |
 | [`reports/`](reports) | 필요할 때 돌려 표를 뽑는 **재사용 리포트 생성기**. 어서션·종료 코드가 없어 게이트가 아니다 | 필요 시 | 인자로 출력 파일을 줄 때만 |
 | [`milestone/`](milestone) | 그 이슈에서 한 번 돌려 증빙을 남긴 **과거 시점의 감사 도구** | 재현용 | 기본값이 보관소 경로인 것이 많다 — 아래 표 참조 |
 | [`shared/`](shared) | 위 셋이 공통으로 쓰는 로더 | — | 없음 |
@@ -15,7 +15,7 @@
 
 | 파일 | 버전 | Issue | 하는 일 |
 |---|---|---|---|
-| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. **18개**가 이 로더를 쓴다 — 회귀 15 · `ai_compare` · `attack_balance_compare` · `shock_compare`. CDP 증빙 13종과 `smoke_testclient`는 쓰지 않는다 |
+| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. **20개**가 이 로더를 쓴다 — 회귀 17 · `ai_compare` · `attack_balance_compare` · `shock_compare`. CDP 증빙 13종과 `smoke_testclient`는 쓰지 않는다 |
 
 ## 회귀 게이트 (`regression/`) — CI 잡 A
 
@@ -29,7 +29,7 @@
 | [`smoke_online.js`](regression/smoke_online.js) | v0.4.0 | #54 #63 | 온라인 PVP 접속 경로·주소 정규화·스킴. **J절 음성 대조만 `os.tmpdir()`에 변이 HTML 사본 1개를 만들고 삭제한다** |
 | [`smoke_testclient.js`](regression/smoke_testclient.js) | v0.4.1 | #63 | 릴레이 점검 클라이언트(`server/test-client.html`)의 목적지 허용 목록·코드 비노출 |
 | [`smoke_minion_art.js`](regression/smoke_minion_art.js) | v0.4.3 | #89 (+#91) | 하수인 아이콘 체계·미공개 정보 비노출·납품 아트 바이트 보존 |
-| [`smoke_cross_skill.js`](regression/smoke_cross_skill.js) | v0.4.4 | #92 | 탐색 보상 속성 교차 공격기. 기준판 `d614392`를 `git show`로 읽어 대조한다(CI `fetch-depth: 0` 필요) |
+| [`smoke_cross_skill.js`](regression/smoke_cross_skill.js) | v0.4.4 | #92 | 속성 교차 공격기의 **엔진 계약**(후보 함수·AI 슬롯 정책·공격/방어 상성 판정·UI 표시·포획 승계). 기준판 `d614392`를 `git show`로 읽어 대조한다(CI `fetch-depth: 0` 필요). v0.4.7 #121 로 **보상 전달** 부분은 `smoke_search_packages.js` 로 이전 |
 | [`smoke_own_side.js`](regression/smoke_own_side.js) | v0.4.4 | #93 | 온라인 양측 자기 진영 아래 표시 — 표시 전용 행 반사, 논리 좌표 불변 |
 | [`smoke_attack_balance.js`](regression/smoke_attack_balance.js) | v0.4.4 | #95 | 공격형 atk 25 · `sig_atk.pow` 40 수치 고정과 파생값 |
 | [`smoke_shock.js`](regression/smoke_shock.js) | v0.4.4 | #96 | `shockProb=0.5` 계약. H절이 같은 폴더의 다른 `smoke_*.js`를 읽어 결정론 계약(H0·H0b·H1·H2)을 검사한다 |
@@ -39,6 +39,8 @@
 | [`smoke_turnflow_timers.js`](regression/smoke_turnflow_timers.js) | v0.4.4 | #106 | 가짜 타이머 대신 Node 실제 `setTimeout`으로 잠금·데드라인 검증 |
 | [`smoke_issue114.js`](regression/smoke_issue114.js) | v0.4.5 | #114 | v0.4.5 턴 행동 규칙 + 격리된 2클라이언트 락스텝 |
 | [`smoke_ai_completion.js`](regression/smoke_ai_completion.js) | v0.4.7(미출시) | #132 | AI vs AI 완주 게이트 — 고정 시드·스텝 예산·불변식·종료 상태 적법성 |
+| [`smoke_fx_timing.js`](regression/smoke_fx_timing.js) | v0.4.7(미출시) | #125 | 연출 시간 단축(2초 → 1.2초) 계약 — 연출 시간표 · 같은 연출의 CSS 애니메이션·바 전환 동기 · 실제 `setTimeout` 으로 관측한 1.2초 잠금과 `damageFx` 안 방어막→HP 2단 여유. **실제 타이머라 약 10초가 걸린다** |
+| [`smoke_search_packages.js`](regression/smoke_search_packages.js) | v0.4.7(미출시) | #121 #129 | 탐색 이벤트 3종 배치·공용 인벤토리·패키지 개봉·전투 버프 3종·신규 공용 기술 3종(드래곤·마녀·사신)·숲 포획·탐색 완료 턴 종료. 온라인 2인스턴스 락스텝·정보 경계·AI 두 난이도·AI vs AI 완주를 같은 파일에서 본다. 옛 `smoke_cross_skill` 의 보상 전달 절(B·C8~C9·G·H·I·J)이 이 파일로 이전됐다 |
 
 ## 리포트 생성기 (`reports/`)
 

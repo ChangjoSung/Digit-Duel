@@ -171,13 +171,31 @@ function load(htmlPath,opts){
   const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win};
   /* 렉시컬 캡처 — 이 줄은 제품 코드 1행과 같은 줄에 이어 붙지 않도록 개행 없이 앞에 둔다 (에러 행 번호 보존) */
   const code=`const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window}=__ENV;`+m[1]+`
-;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,EVENT_POOL,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
+;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
+  EVENT_POOL:typeof EVENT_POOL!=="undefined"?EVENT_POOL:undefined, // v0.4.6 이하 기준판 호환 (v0.4.7 에서 EVENT_KINDS 로 대체)
+  EVENT_KINDS:typeof EVENT_KINDS!=="undefined"?EVENT_KINDS:undefined, EVENT_KO:typeof EVENT_KO!=="undefined"?EVENT_KO:undefined, // #121 계약 1.1
+  ITEMS:typeof ITEMS!=="undefined"?ITEMS:undefined,
+  GIFT_PICKS:typeof GIFT_PICKS!=="undefined"?GIFT_PICKS:undefined, GIFT_KO:typeof GIFT_KO!=="undefined"?GIFT_KO:undefined, // #121 계약 2.2
+  BUFFS:typeof BUFFS!=="undefined"?BUFFS:undefined, BUFF_KEYS:typeof BUFF_KEYS!=="undefined"?BUFF_KEYS:undefined, // #121 계약 3
+  NEW_SKILLS:typeof NEW_SKILLS!=="undefined"?NEW_SKILLS:undefined, SKILL_CLS_KO:typeof SKILL_CLS_KO!=="undefined"?SKILL_CLS_KO:undefined, // #121 계약 5
+  WITCH_EFFECTS:typeof WITCH_EFFECTS!=="undefined"?WITCH_EFFECTS:undefined, WITCH_COMBOS:typeof WITCH_COMBOS!=="undefined"?WITCH_COMBOS:undefined,
+  witchApply:typeof witchApply==="function"?witchApply:undefined, reaperWhy:typeof reaperWhy==="function"?reaperWhy:undefined,
+  slotUsable:typeof slotUsable==="function"?slotUsable:undefined, battleMaxRounds:typeof battleMaxRounds==="function"?battleMaxRounds:undefined,
+  resetAfter:typeof resetAfter==="function"?resetAfter:undefined, resetBattleTemps:typeof resetBattleTemps==="function"?resetBattleTemps:undefined, // #121 계약 3.1 전투 종료 정리 검증용
+  recruitState:typeof recruitState==="function"?recruitState:undefined, searchFinalize:typeof searchFinalize==="function"?searchFinalize:undefined, // #121 계약 4·6 · #129 계약 7
+  searchEndCheck:typeof searchEndCheck==="function"?searchEndCheck:undefined, rosterMinions:typeof rosterMinions==="function"?rosterMinions:undefined,
+  capReceivers:typeof capReceivers==="function"?capReceivers:undefined,
+  get __openPkgCore(){return window.__openPkgCore;}, get __pkgPickCore(){return window.__pkgPickCore;}, // #121 전투 중 패키지 (battleModal 클로저 — 매 렌더 교체되므로 getter)
+  get __recruitCore(){return window.__recruitCore;},
+  get __openPkg(){return window.__openPkg;}, get __act(){return window.__act;}, get __useItem(){return window.__useItem;}, // netAction 래퍼 (온라인 송신 경로 검증용)
+  get __useItemCore(){return window.__useItemCore;}, get __throwBallCore(){return window.__throwBallCore;}, // 전투 모달 클로저 — 매 렌더 교체되므로 getter
+  get __fleeCore(){return window.__fleeCore;}, get __actCore(){return window.__actCore;}, get __menu(){return window.__menu;},
   newGame,genEvents,doSearch,canSearchPiece,applyRoster,aiAutoPlace,startTurn,endTurn,doMove,canMoveTo,canBattle,
   initBattle,startRounds,doTeleportSwap,teleportAvailable,checkWipe,alivePieces,at,fleeSwap,visibleTo,inForest,
   finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,archSkills,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,aiUnitValue,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
-  applyAction,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,shuffle, // #92 온라인 수신 경로·표시 헬퍼
+  applyAction,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼
   recruitCandidates:typeof recruitCandidates==="function"?recruitCandidates:undefined,aiRecruitSlot:typeof aiRecruitSlot==="function"?aiRecruitSlot:undefined, // #92 (기준판 로드 호환: 없으면 undefined)
   atkElOf:typeof atkElOf==="function"?atkElOf:undefined,skillNameKo:typeof skillNameKo==="function"?skillNameKo:undefined,recruitModal:typeof recruitModal==="function"?recruitModal:undefined,
   SKILL_TIER_KO:typeof SKILL_TIER_KO!=="undefined"?SKILL_TIER_KO:undefined,

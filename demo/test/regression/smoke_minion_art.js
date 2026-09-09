@@ -382,15 +382,25 @@ function setup(T,mode,seed){
 }
 /* ===== K. #91 공용/적 포획 하수인 대리 출전 아트 — 정체 보존 · 표시 전용 · 안전 폴백 · 정보 경계 ===== */
 const stdOf=(T,el)=>T.ROSTER.find(r=>r.element===el&&r.arch==="std");
-const capStats=(T,c,hp)=>c&&c.hp===hp&&c.maxHp===T.BAL.captured.hp&&c.atk===T.BAL.captured.atk&&c.skillAtk===T.BAL.captured.skill&&c.cd===0&&c.cdMax===T.BAL.captured.cd
+/* #121 계약 6 (v0.4.7 승인): 숲 포획은 더 이상 공용 템플릿(100/20/30·CD2·std 기술)이 아니다 —
+   **뽑힌 ROSTER 종의 HP·최대 HP·ATK·기술 수치·CD·4기술·아트 정체를 그대로** 쓴다. 그래서 기준이 BAL.captured 가 아니라 종 데이터(rd)다.
+   전투 중 적 포획(finishByCapture → 예비)의 HP 70/최대 100 규격은 계약 6 "범위 밖"이라 그대로이며 아래 capStatsLegacy 로 계속 검사한다. */
+const capSpecies=(T,c,rd)=>c&&rd&&c.element===rd.element&&c.hp===rd.hp&&c.maxHp===rd.hp&&c.atk===rd.atk&&c.skillAtk===rd.skill&&c.cd===0&&c.cdMax===rd.cd
+  &&c.artRosterId===rd.id&&c.rosterId===rd.id
+  &&JSON.stringify(c.skills)===JSON.stringify(T.archSkills(rd.arch,rd.element))
+  &&JSON.stringify(c.cds)==="[0,0,0,0]"&&JSON.stringify(c.revealedSkills)==="[]";
+const capStatsLegacy=(T,c,hp)=>c&&c.hp===hp&&c.maxHp===T.BAL.captured.hp&&c.atk===T.BAL.captured.atk&&c.skillAtk===T.BAL.captured.skill&&c.cd===0&&c.cdMax===T.BAL.captured.cd
   &&JSON.stringify(c.cds)==="[0,0,0,0]"&&JSON.stringify(c.revealedSkills)==="[]";
 /* 하수인 말에 로스터 종 r 을 주입 (applyRoster 와 같은 필드) */
 function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
 const tokOf=(T,sid)=>{ const m=T.byId("overlayBox").innerHTML.match(new RegExp('<div class="btok[^"]*" id="tok-'+sid+'"[^>]*>[\\s\\S]*?<\\/div>')); return m?m[0]:""; };
 const srcOf=t=>(tokImg(t)||{}).src;
 const tokImg=t=>{ const m=t.match(/<img class="bsprite" src="([^"]+)" alt="([^"]*)"/); return m?{src:m[1],alt:m[2]}:null; };
-/* 지정 속성의 중립 포획 하수인을 시드 탐색으로 만든다 (제품 tryCapture 경로 그대로) */
-function neutralCap(T,piece,el){ let got=null; for(let seed=1;seed<400&&got!==el;seed++){ T.setSeed(seed); piece.cap=null; T.tryCapture(piece,"safe"); got=piece.cap&&piece.cap.element; } return got===el; }
+/* 지정 속성의 숲 포획 하수인을 만든다 (제품 tryCapture 경로 그대로).
+   #121 계약 6: 후보 종은 **탐색 시점에 이미 고정**되어 tryCapture 의 인자로 들어오므로, 속성을 시드로 더듬을 필요가 없다.
+   아래 절들은 "그 속성의 표준형 종" 아트 정체를 전제하므로 기본 후보를 stdOf 로 준다 (아트 매핑 검사의 입력 고정). */
+function neutralCap(T,piece,el,rdOpt){ const rd=rdOpt||stdOf(T,el); T.setSeed(1); piece.cap=null;
+  T.tryCapture(piece,"safe",piece,rd); return !!(piece.cap&&piece.cap.element===el&&piece.cap.artRosterId===rd.id); }
 /* 왕(포획 하수인 보유)이 인접 상대 말을 공격하고, 출전 선택에서 대리(두 번째 버튼)/본체(첫 버튼)를 고른 뒤 출전 공개를 지나 전투에 들어간다 */
 /* 헤드리스 스텁의 obBtns 는 모달이 바뀌어도 이전 버튼이 남는다(overlayBox.innerHTML 대입이 obBtns 자식을 지우지 않음) — 새 모달의 버튼은 항상 끝에 붙으므로 끝에서 센다 */
 const modalBtn=(T,total,i)=>{ const ch=T.byId("obBtns").children; const b=ch[ch.length-total+i]; if(!b) return false; b.onclick(); T.drain(500); return true; };
@@ -403,22 +413,56 @@ function proxyBattle(T,att,def,pickA,pickD){
   return T.S.battle;
 }
 {
-  // K1 중립 공용 하수인 포획: 무작위 속성의 표준형 종 정체를 생성 시 기록한다 — 4속성 전부 · 공용 스탯 100/100/20/30/CD2 · 기술 템플릿 std · rand 소비량 불변
+  /* K1 숲 포획 (#121 계약 6): ROSTER 20종 균등 추첨 · 뽑힌 종의 수치·4기술·아트 정체를 **그대로** · rand 소비량 고정.
+     종전(#20)은 속성만 무작위이고 수치는 공용 100/20/30·std 템플릿이었다 — 그 단언은 승인된 계약 6 으로 갱신한다. */
   const T=H.load(htmlPath); const P=setup(T,"pvp");
-  const seen={}; let allGood=true, rngGood=true, tries=0;
-  for(let seed=1;seed<=200&&Object.keys(seen).length<4;seed++){
-    tries++;
-    T.setSeed(seed); const ref=[]; for(let i=0;i<5;i++) ref.push(T.rand()); // 기대 소비량: 성공 판정 1 + shuffle(4원소) 3 = 4 → 다섯 번째 값이 "다음 rand"
-    T.setSeed(seed); T.S.balls[0]=5; P.ally0.cap=null;
-    const res=T.tryCapture(P.ally0,"safe"); const c=P.ally0.cap;
-    if(!res.ok||!c){ allGood=false; continue; }
-    const rd=stdOf(T,c.element);
-    if(!(rd&&c.artRosterId===rd.id&&c.rosterId===undefined&&c.arch===undefined&&capStats(T,c,T.BAL.captured.hp)&&JSON.stringify(c.skills)===JSON.stringify(T.archSkills("std",c.element))&&res.el===c.element)) allGood=false;
-    if(T.rand()!==ref[4]) rngGood=false;
-    seen[c.element]=rd.id;
+  // K1a 20종 전부를 후보로 주면 그 종 그대로 들어온다 (수치·4기술·아트 정체·rosterId)
+  let allGood=true; const seenSp={};
+  for(const rd of T.ROSTER){
+    T.setSeed(11); T.S.balls[0]=5; P.ally0.cap=null;
+    const res=T.tryCapture(P.ally0,"safe",P.ally0,rd); const c=P.ally0.cap;
+    if(!res.ok||!capSpecies(T,c,rd)||res.el!==rd.element) allGood=false; else seenSp[rd.id]=c.hp+"/"+c.atk;
   }
-  ok(Object.keys(seen).length===4&&allGood,"K1a 중립 포획 cap 은 4속성 모두 '그 속성의 표준형 종' 외형 정체(artRosterId)를 갖고 rosterId·arch 필드는 없으며(변경 전과 동일) 공용 스탯·std 기술 템플릿·HP 100 은 그대로 ["+JSON.stringify(seen)+" · 시드 "+tries+"개]");
-  ok(rngGood,"K1b 정체 기록은 rand 를 추가로 소비하지 않는다 (판정 1 + shuffle 3 = 4회 뒤 다음 값이 기준 시퀀스와 일치 — 온라인 락스텝·시드 재현 보존)");
+  ok(allGood&&Object.keys(seenSp).length===20,"K1a 숲 포획 cap 은 ROSTER 20종 각각의 HP·최대HP·ATK·기술 수치·CD·4기술·정체(rosterId·artRosterId)를 그대로 갖는다 — 계약 6 \"그 종 그대로\"는 기술 ID 뿐 아니라 archOf 파생 동작까지 보존한다 (cds 0 · 공개 기록 [])");
+  const hps=new Set(T.ROSTER.map(r=>r.hp)), atks=new Set(T.ROSTER.map(r=>r.atk));
+  ok(hps.size>1&&atks.size>1&&Math.min(...hps)===85&&Math.max(...hps)===120&&Math.min(...atks)===18&&Math.max(...atks)===25,
+     "K1a' 종별 편차가 실제로 생긴다 — HP 85~120 · ATK 18~25 (공용 템플릿 100/20 단일값이 아니다)");
+  // K1b 기술 배열은 복사본이다 (원본 템플릿·다른 cap 과 참조를 공유하지 않는다 — 계약 6)
+  T.setSeed(11); T.S.balls[0]=5; P.ally0.cap=null; T.tryCapture(P.ally0,"safe",P.ally0,stdOf(T,"fire"));
+  T.S.balls[0]=5; P.king0.cap=null; T.tryCapture(P.king0,"safe",P.king0,stdOf(T,"fire"));
+  const c1=P.ally0.cap, c2=P.king0.cap; c1.skills[0]="water_stable";
+  ok(c1.skills!==c2.skills&&c2.skills[0]!=="water_stable","K1b 기술 배열은 복사본 — 한 cap 의 슬롯 변경이 다른 cap·템플릿에 번지지 않는다");
+  // K1c 종 추첨은 탐색 시점 rand 1회, 포획 판정은 rand 1회 — 방법을 바꿔도 같은 종 (계약 6 후보 고정)
+  let rngGood=true, fixedSpecies=true;
+  for(let seed=1;seed<=40;seed++){
+    T.setSeed(seed); const ref=[]; for(let i=0;i<3;i++) ref.push(T.rand()); // 기대 소비량: 성공 판정 1회뿐 → 두 번째 값이 "다음 rand"
+    T.setSeed(seed); T.S.balls[0]=9; P.ally0.cap=null;
+    T.tryCapture(P.ally0,"safe",P.ally0,stdOf(T,"grass"));
+    if(T.rand()!==ref[1]) rngGood=false;                  // 속성 shuffle 3회가 사라져 소비가 1회로 줄었다
+    const first=P.ally0.cap.rosterId;
+    P.ally0.cap=null; T.S.balls[0]=9; T.tryCapture(P.ally0,"risky",P.ally0,stdOf(T,"grass"));
+    if(P.ally0.cap&&P.ally0.cap.rosterId!==first) fixedSpecies=false;
+  }
+  ok(rngGood,"K1c 포획 판정은 rand 1회만 쓴다 (종전 속성 shuffle 3회 소비가 사라졌다 — 종 추첨은 탐색 시점에 이미 끝났다)");
+  ok(fixedSpecies,"K1c' 포획 방법을 바꿔도 같은 종 — 후보는 탐색 중 한 번 결정되고 재추첨하지 않는다 (계약 6)");
+  // K1d 탐색 시점의 종 추첨이 ROSTER 20종 균등이고 rand 를 딱 1회 쓴다
+  {
+    const U=H.load(htmlPath); const Q=H.freshPlay(U,"pvp");
+    const king=U.S.pieces.find(x=>x.owner===0&&x.type==="king"); H.clearBoard(U);
+    H.place(U,king,9,3); H.place(U,U.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
+    const hit={}; let drawGood=true;
+    for(let seed=1;seed<=400;seed++){
+      U.S.events=[{r:9,c:3,kind:"recruit",consumed:false}]; U.S.traces[0].add("9_3");
+      U.S.mainUsed=false; U.S.current=0; U.S.recruit=null;
+      U.setSeed(seed); const ref=[]; for(let i=0;i<3;i++) ref.push(U.rand());
+      U.setSeed(seed); U.doSearch(king,U.S.events[0]);
+      const R=U.S.recruit; if(!R||!R.species){ drawGood=false; break; }
+      hit[R.species]=(hit[R.species]||0)+1;
+      if(U.rand()!==ref[1]) drawGood=false;               // 종 추첨은 rand 1회
+      U.close();
+    }
+    ok(drawGood&&Object.keys(hit).length===20,"K1d 탐색 시 후보 종은 ROSTER 20종 전체에서 나오고 추첨에 rand 를 딱 1회 쓴다 (관측 "+Object.keys(hit).length+"종/400시드)");
+  }
   T.setSeed(7); T.S.balls[0]=5; P.ally0.cap=null; P.ally0.hp=P.ally0.maxHp;
   let fails=0, okc=0; for(let i=0;i<40;i++){ P.ally0.cap=null; const r=T.tryCapture(P.ally0,"risky"); if(r.ok) okc++; else fails++; }
   ok(okc>0&&fails>0&&T.S.balls[0]===5-40,"K1c 위험 포획의 성공/실패 판정과 볼 소모(1)는 변하지 않았다 [성공 "+okc+" · 실패 "+fails+"]");
@@ -434,7 +478,7 @@ function proxyBattle(T,att,def,pickA,pickD){
     T.initBattle(P.me,P.em); T.drain(500);
     if(!T.S.battle){ detail.push(r.id+":no-battle"); continue; }
     T.finishByCapture("A"); const rv=T.S.reserve[0];
-    const cond=rv&&rv.artRosterId===r.id&&rv.rosterId===undefined&&rv.arch===undefined&&rv.element===r.element&&capStats(T,rv,T.BAL.enemyCapHp)
+    const cond=rv&&rv.artRosterId===r.id&&rv.rosterId===undefined&&rv.arch===undefined&&rv.element===r.element&&capStatsLegacy(T,rv,T.BAL.enemyCapHp)
       &&JSON.stringify(rv.skills)===JSON.stringify(T.archSkills(r.arch,r.element))&&P.em.alive===false&&T.S.battle===null;
     if(cond){ good++; P.ally0.cap=rv; const d=adf(T,rv,P.ally0); dirs.add(d); if(d!==r.element+"_"+r.arch||!fs.existsSync(path.join(ASSETS,d,"battle.png"))) filesOk=false; }
     else detail.push(r.id);
@@ -571,7 +615,17 @@ function proxyBattle(T,att,def,pickA,pickD){
   const a=run(false), b=run(true);
   ok(a.hasId&&!b.hasId&&JSON.stringify(a.dirs)==='["water_std","fire_sustain"]'&&JSON.stringify(b.dirs)==='[null,null]',"K7a 전제: 한쪽은 정체 있음(그림 water_std·fire_sustain), 다른 쪽은 정체 제거(그림 없음)");
   ok(a.blog.length>4&&JSON.stringify(a.blog)===JSON.stringify(b.blog)&&a.hpA===b.hpA&&a.hpD===b.hpD,"K7b 같은 시드·같은 행동에서 전투 로그·HP 가 완전히 동일 — 정체는 전투에 영향 0 ["+a.blog.length+"줄]");
-  ok(a.T.archOf(a.B.fd)===null&&a.T.archOf(a.B.fa)===null&&a.burnMax>0&&a.burnMax===a.T.BAL.burnRounds,"K7c 지속형 종 정체가 붙은 예비 하수인의 화상은 공용 규격(BAL.burnRounds="+a.T.BAL.burnRounds+"R)이지 지속형 강화(3R)가 아니다 — archOf(cap)===null 이고 화상도 공용 규격 [관측 "+a.burnMax+"R]");
+  /* #121 계약 6 (v0.4.7 승인) — **두 포획 경로가 갈라진다.** 이 절의 전투원은 서로 다른 경로로 만들어졌다:
+       · B.fa = 내 왕의 **숲 포획** cap → 계약 6 "그 종 그대로"라 rosterId 를 갖고 archOf 가 그 종의 아키타입을 돌려준다.
+       · B.fd = 상대의 **전투 중 적 포획** 예비 → 계약 6 "범위 밖"이라 종전대로 rosterId 가 없고 archOf 는 null,
+               수치는 공용 규격(HP 70/최대 100)이다.
+       화상을 부여하는 쪽은 fd(지속형 종 정체의 예비 하수인)다. 그 경로는 바뀌지 않았으므로 화상은 여전히 공용 규격 2R 이다 —
+       4슬롯 경로의 상태 부여는 BAL.burnRounds 를 직접 읽고 skillParamsOf(아키타입 파생)를 거치지 않기 때문이며,
+       이는 일반 로스터 하수인도 마찬가지다. 기대값을 낮춘 것이 아니라 **두 경로의 분리**를 그대로 단언한다. */
+  const faArch=a.T.archOf(a.B.fa), fdArch=a.T.archOf(a.B.fd);
+  ok(faArch==="std"&&a.B.fa.rosterId==="M-W1","K7c 숲 포획 cap 은 그 종 정체(rosterId M-W1 · archOf std)를 갖는다 — 계약 6 '그 종 그대로' (관측 "+faArch+")");
+  ok(fdArch===null&&a.B.fd.rosterId===undefined&&a.B.fd.maxHp===a.T.BAL.captured.hp,"K7c' 전투 중 적 포획 예비는 종전 공용 규격 유지 — rosterId 없음·archOf null·최대 HP "+a.B.fd.maxHp+" (계약 6 범위 밖)");
+  ok(a.burnMax>0&&a.burnMax===a.T.BAL.burnRounds,"K7c'' 예비 하수인(지속형 종 정체)의 화상은 공용 규격 "+a.T.BAL.burnRounds+"R — 4슬롯 경로의 상태 부여는 BAL 값을 직접 읽고 아키타입 파생(skillParamsOf)을 타지 않는다 [관측 "+a.burnMax+"R]");
   a.T.TQ.length=0; b.T.TQ.length=0;
 }
 {

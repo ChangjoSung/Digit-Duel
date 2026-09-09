@@ -29,7 +29,17 @@ function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); consol
   ok(Object.entries(POW).every(([k,p])=>T.SKILLS[k]&&T.SKILLS[k].pow===p),"A8 다른 피해 기술 15종 pow 불변");
   const CD={fire_stable:0,fire_effect:2,fire_heavy:3,water_stable:0,water_effect:2,water_heavy:3,grass_stable:0,grass_effect:2,grass_heavy:3,lightning_stable:0,lightning_effect:2,lightning_heavy:3,
     sup_heal:3,sup_guard:3,sup_focus:3,sup_cool:4,sup_cleanse:3,sup_evade:3,sig_std:3,sig_atk:4,sig_def:4,sig_swift:2,sig_sustain:3};
-  ok(Object.keys(T.SKILLS).length===23&&Object.entries(CD).every(([k,c])=>T.SKILLS[k].cd===c),"A9 기술 23종 쿨 불변");
+  /* #121 계약 5 (v0.4.7 승인): 신규 공용 3종(드래곤 숨결·마녀의 장난·사신의 낫)이 추가되어 23 → 26종이다.
+     **기존 23종의 쿨은 하나도 바뀌지 않았다** — 위 CD 표 전수 비교를 그대로 유지하고, 늘어난 개수와 신규 3종의
+     승인 수치(위력 30/18 · 쿨 3/3 · 사신은 쿨이 아니라 봉인이라 cd 0)를 같은 자리에서 함께 고정한다.
+     사신의 cd 0 은 "쿨이 없다"가 아니라 **게이트가 CD 와 분리됐다**는 뜻이다 — 쿨 감소 수단으로 봉인이 풀리지 않게 하려고
+     cds[] 를 줄이는 경로가 이 슬롯을 아예 집지 않도록 0 으로 둔다 (계약 5.3). */
+  ok(Object.keys(T.SKILLS).length===26&&Object.entries(CD).every(([k,c])=>T.SKILLS[k].cd===c),"A9 기존 23종 쿨 불변 · 신규 3종 추가로 총 26종");
+  const NEW={dragon_breath:{pow:30,cd:3,cls:"dragon"},witch_prank:{pow:18,cd:3,cls:"dark"},reaper_scythe:{pow:undefined,cd:0,cls:"blood"}};
+  ok(Object.entries(NEW).every(([k,v])=>{const sk=T.SKILLS[k]; return sk&&sk.pow===v.pow&&sk.cd===v.cd&&sk.cls===v.cls&&sk.kind==="attack";}),
+     "A9b 신규 3종 승인 수치 — 드래곤 30/쿨3 · 마녀 18/쿨3 · 사신 위력 없음/쿨 0(봉인 게이트 분리) · 모두 기술 전용 분류(cls)");
+  ok(["dragon_breath","witch_prank","reaper_scythe"].every(k=>T.SKILLS[k].el===undefined),
+     "A9c 신규 3종은 속성(el)을 갖지 않는다 — 상성표 4종과 방어 상성(본체 속성)은 불변 (계약 5 '다섯 번째 상성이 아니다')");
   ok(T.SKILLS.sig_atk.pow>Math.max(...["fire_heavy","water_heavy","grass_heavy","lightning_heavy"].map(k=>T.SKILLS[k].pow)),"A10 결정타 40 > 모든 heavy(≤38) — 시그니처 정체성 유지");
   ok(T.BAL.dmgVar===0.2&&T.BAL.statusProb===0.7&&T.BAL.advMult===1.3&&T.BAL.disMult===0.75&&T.BAL.maxRounds===6,"A11 분산 ±20% · 상태 확률 0.7 · 상성 1.3/0.75 · 6라운드 불변");
   ok(!/pow:44|atk:26/.test(T.html),"A12 소스에 옛 값(pow:44 · atk:26) 잔재 없음");

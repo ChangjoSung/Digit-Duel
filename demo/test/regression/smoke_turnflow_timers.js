@@ -93,7 +93,8 @@ const mbLog=[]; { const mb=T.byId("msgBox"); let v=""; Object.defineProperty(mb,
   ok(T.NET.queue.length===0&&T.S.mainUsed,"6b 해제 후 프레임 적용");
   T.NET.started=false;
   /* 7. 5.5 방어막 → HP 표시 단계 (실제 타이머): 실제 전투 행동에서 방어막 바 쓰기 시각 < HP 바 쓰기 시각, 간격 ≥ barStep, HP 쓰기는 피해 그룹(damageFx) 안에서 1회 */
-  T.BAL.fx.barStep=30; // damageFx(70ms) 안에서 끝나도록 (실제 값 600 < damageFx 2000 과 같은 비율 조건)
+  T.BAL.fx.barStep=30; // damageFx(70ms) 안에서 끝나도록 (#125 제품 값 barStep 350 < damageFx 1200 과 같은 비율 조건).
+  // 이 절은 축소한 시간으로 2단 표시의 **관계**만 본다. 제품 값(1200/350) 자체의 사이 여유는 smoke_fx_timing.js D절이 실제 타이머로 찍는다.
   board("pvp"); const a7=first(0,"minion"), d7=first(1,"minion"); H.place(T,a7,8,4); H.place(T,d7,6,4);
   T.doMove(a7,7,4); n=0; while(T.fxLocked()&&n++<200) await sleep(10); // 접촉 → 카운트다운 → 라운드 배너 → 메뉴
   const B7=T.S.battle; ok(!!B7&&!T.fxLocked()&&B7.phase===0,"7a 전투 메뉴 활성 (공격자 A 행동)");
