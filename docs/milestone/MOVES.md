@@ -1,0 +1,53 @@
+# MOVES — 옛 경로 대조표 안내
+
+문서를 읽다가 `docs/qa/issue106-mars.md`처럼 **지금은 없는 경로**를 만나면 [`MOVES.csv`](MOVES.csv)에서 현재 위치를 찾는다. 이 문서는 그 CSV를 어떻게 읽는지만 설명한다.
+
+## 기준
+
+| 항목 | 값 |
+|---|---|
+| 이동 기준 트리 | `39f022293008d352e4709762af07e42d63fb557e` (Issue #132 착수 시점의 `dev`) |
+| 이동 실행 | 2026-09-09 · Issue [#132](https://github.com/ChangjoSung/Digit-Duel/issues/132) |
+| 대상 | `git ls-files` 기준 `docs/` 추적 파일 342개 |
+| 판정 | 이동 306 · 제자리 유지 36 |
+| 삭제·병합 | 0건 |
+
+## 열
+
+`from,to,action,reason,original_blob` 다섯 열이다.
+
+| 열 | 뜻 |
+|---|---|
+| `from` | 기준 트리에서의 저장소 루트 상대 경로 |
+| `to` | 현재 경로. `action=keep`이면 `from`과 같다 |
+| `action` | `move` 306 · `keep` 36 |
+| `reason` | 그 판정의 근거 |
+| `original_blob` | 기준 트리에서의 blob SHA-1 |
+
+`original_blob`은 이동이 **경로만 바꿨는지**를 기계로 확인하는 열이다. 같은 파일의 현재 blob SHA-1(`git rev-parse HEAD:<to>`)이 이 값과 같으면 내용이 한 바이트도 바뀌지 않았다.
+
+단, `git mv` 이후 **본문을 고친 Markdown은 이 값과 달라진다**. 이 표가 다루는 `docs/` 342개 안에서 링크·안내가 갱신된 Markdown이 있고, 현재 안내(`docs/README.md`)와 인수인계 스냅샷처럼 계속 갱신되는 문서도 있으므로 **Markdown의 blob은 달라질 수 있다**고 보는 편이 맞다. 고정된 숫자로 세지 않는다.
+
+**비-Markdown 250개(이동 233 · 유지 17)는 전부 `original_blob`과 일치한다** — 이미지·JSON·CSV·저장된 HTML은 한 파일도 편집하지 않았다. 이 부분이 Saturn 독립 확인의 대상이다.
+
+참고: 링크 갱신은 `docs/` 밖의 루트 `README.md`·`demo/assets/minions/README.md` 등에도 있었지만, 그 파일들은 이 표의 범위(`docs/` 342개)에 들어 있지 않다.
+
+## 사용법
+
+```
+# 옛 경로로 현재 위치 찾기
+rg -F '"docs/qa/issue106-mars.md"' docs/milestone/MOVES.csv
+
+# 현재 경로로 옛 경로 찾기
+rg -F '"docs/milestone/v0.4.4/issues/106/Mars/issue106-mars.md"' docs/milestone/MOVES.csv
+```
+
+## 무엇을 고쳤고 무엇을 남겼나
+
+**고친 것 — 클릭 가능한 링크와 이미지.** Markdown의 `[텍스트](경로)`·`![대체텍스트](경로)`와 문서에 직접 박힌 `<a href>`·`<img src>`다. 이동 후에도 열리도록 새 경로로 갱신했다.
+
+**남긴 것 — 본문의 평문 경로 언급, 명령문에 적힌 경로, JSON·CSV·저장된 HTML 안의 경로 문자열.** 그 시점의 참조 원형을 그대로 두는 편이 출처를 되짚기에 편해서다. 경로와 그 파일의 SHA-256을 한 줄에 묶어 기록한 검수 입력표가 대표적인 예다. 그래서 원문을 남기고 이 대조표를 대신 둔다 — 과거 입력은 기준 트리와 `from`·`original_blob`으로 찾는다.
+
+## 검사
+
+`node tools/docs_link_check.js --verbose`가 추적 중인 모든 `*.md`의 내부 상대 링크·이미지를 검사한다. CI의 `docs-integrity` 잡이 매 PR에서 같은 명령을 돌린다.

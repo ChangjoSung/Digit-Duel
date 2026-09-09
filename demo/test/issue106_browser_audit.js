@@ -15,7 +15,7 @@ const args=process.argv.slice(2);
 const opt=(k,d)=>{ const i=args.indexOf(k); return i>=0?args[i+1]:d; };
 const has=k=>args.includes(k);
 const ROOT=path.resolve(__dirname,"..","..");
-const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","qa","issue106-browser")));
+const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","milestone","v0.4.4","issues","106","Mars","browser-artifacts")));
 const READ_ONLY=has("--read-only")||has("--no-write");
 const SHOTS=!has("--no-shots")&&!READ_ONLY;
 const SECTIONS=opt("--sections","hotseat,pve,online").split(",");

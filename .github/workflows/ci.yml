@@ -1,0 +1,236 @@
+# Digit Dual CI — Issue #132
+#
+# 설계 원칙
+#   - 액션은 전부 **전체 커밋 SHA** 로 고정한다. GitHub 보안 지침상 액션을 불변 릴리스로 쓰는 유일한 방법이다.
+#     (docs.github.com/en/actions/reference/security/secure-use — "Pinning an action to a full-length commit SHA
+#      is currently the only way to use an action as an immutable release")
+#     주석의 vX.Y.Z 는 사람이 읽기 위한 표기이며, 실제 확인은 SHA 로 한다.
+#   - 최소 권한: 최상위 `permissions: contents: read` 하나뿐이다. 어떤 잡도 쓰기 권한이나 secret 을 쓰지 않는다.
+#   - `pull_request_target` · `workflow_run` 을 쓰지 않는다. 두 트리거는 privileged 라 포크의 신뢰할 수 없는
+#     코드와 secret 이 만나는 통로가 된다. 이 워크플로의 모든 잡은 secret 없이 성립하므로 일반 `pull_request` 로 충분하다.
+#   - `persist-credentials: false` — 체크아웃 토큰을 .git/config 에 남기지 않는다.
+#   - `fetch-depth: 0` (필수) — smoke_cross_skill.js 가 `git show d614392:demo/index.html`,
+#     tools/minion_art.py 가 고정 baseline 커밋을 `git cat-file` 로 읽는다. 얕은 클론이면 이들이 환경 오류로 죽는다.
+#     저장소가 84 커밋 · .git 43MB 라 전체 히스토리 비용은 무시할 수 있다.
+#   - 잡마다 timeout-minutes 를 명시한다 (기본 360분 방치 방지).
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 같은 PR 에 새 커밋이 오면 이전 실행을 취소한다. main·dev 로의 push 는 릴리스 이력이므로 취소하지 않는다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '24'    # Active LTS (2025-10-28 ~ 2026-10-20), EOL 2028-04-30 — nodejs/Release schedule.json
+                        # Node 20 은 2026-04-30 EOL 이라 사용하지 않는다.
+                        # 도구가 요구하는 하한은 Node 22+ (tools/readme_media_capture.js 헤더)
+
+jobs:
+  # ── A. 규칙 회귀 + AI vs AI 완주 (헤드리스, 브라우저 없음) ────────────────────
+  rules-headless:
+    name: A. 규칙 회귀·AI 완주 (헤드리스)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # demo/index.html 의 <script> 를 DOM 스텁 위에서 eval 하는 하네스 기반. 외부 패키지 0.
+      # 모든 스위트가 **현재 작업 트리**의 demo/index.html 을 검사한다.
+      - name: 턴 흐름·전투·온라인 규칙 회귀
+        run: |
+          set -e
+          node demo/test/smoke_cycle5.js
+          node demo/test/smoke_turnflow.js
+          node demo/test/smoke_turnflow_timers.js
+          node demo/test/smoke_memo.js
+          node demo/test/smoke_own_side.js
+          node demo/test/smoke_online.js
+          node demo/test/smoke_online_sync.js
+          node demo/test/smoke_testclient.js
+          node demo/test/smoke_minion_art.js
+          node demo/test/smoke_issue114.js
+          node demo/test/smoke_tutorial.js
+
+      # v0.4.5 출시본의 밸런스·튜토리얼 계약. 향후 승인된 기획 변경은 같은 PR 에서 이 단언들을 갱신한다.
+      - name: 밸런스·튜토리얼 계약 회귀 (v0.4.5 출시 기준)
+        run: |
+          set -e
+          node demo/test/smoke_attack_balance.js
+          node demo/test/smoke_shock.js
+
+      # 기준판(d614392) 대조 — fetch-depth:0 이 필요한 지점
+      - name: 기준판 대조 회귀
+        run: node demo/test/smoke_cross_skill.js
+
+      # 기본 소스가 고정 ref(6baa0b5) 라서 --path 로 **현재 작업 트리**를 명시한다.
+      # 이 인자가 없으면 PR 내용과 무관하게 2026-09-08 판 파일을 검사해 항상 통과한다.
+      - name: 보드 방향 감사 (현재 작업 트리)
+        run: node demo/test/smoke_orientation_audit.js --path demo/index.html
+
+      # AI vs AI 완주 게이트 — 고정 시드·스텝 예산·불변식·종료 상태 적법성.
+      # demo/test/ai_compare.js 는 어서션도 process.exit 도 없는 리포트 생성기라 게이트로 쓰지 않는다.
+      - name: AI vs AI 완주 게이트
+        run: node demo/test/smoke_ai_completion.js
+
+  # ── B. 릴레이 서버 (프로토콜·보안·기동 설정) ──────────────────────────────────
+  server:
+    name: B. 서버 (프로토콜·보안·설정)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false      # 서버 잡은 git 히스토리를 읽지 않는다
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # 락파일 기준 설치 (유일한 런타임 의존성: ws)
+      - name: 의존성 설치 (npm ci)
+        run: npm ci
+        working-directory: server
+
+      # 각 테스트는 PORT=0(임의 포트)·루프백으로 자식 서버를 띄운다 — 러너 포트 충돌 없음.
+      # test-launcher.js 는 Windows 전용이라 여기서는 스스로 SKIP 한다 (실제 검증은 아래 server-launcher-windows).
+      - name: 서버 회귀 (프로토콜·보안·설정·실행기)
+        run: npm test
+        working-directory: server
+
+  # ── B2. Windows 실행기 회귀 ──────────────────────────────────────────────────
+  # server/test-launcher.js 는 `if (process.platform !== 'win32') { SKIP; exit(0) }` 라
+  # Linux 잡에서는 **한 건도 검증하지 않는다**. 배치 실행기(서버시작.bat · LAN서버시작.bat)의
+  # 인자 무시·모드 고정·주입 방지·종료 코드 전파 계약을 실제로 확인하려면 Windows 러너가 필요하다.
+  server-launcher-windows:
+    name: B2. Windows 실행기 회귀
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # 스텁 server.js 로만 돌아가므로 npm install 이 필요 없다 (테스트가 node_modules 를 미리 만든다).
+      - name: 배치 실행기 계약 회귀
+        run: node test-launcher.js
+        working-directory: server
+
+  # ── C. 문서 무결성 (링크·이미지) ──────────────────────────────────────────────
+  docs-integrity:
+    name: C. 문서 링크·이미지 무결성
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # 검사기 자체의 회귀가 먼저다 — 음성 대조(깨진 링크·대소문자·저장소 밖 참조)와
+      # 종료 코드 전파(크래시·타임아웃)를 소유 임시 디렉터리 안에서만 확인한다.
+      - name: 링크 검사기 회귀 (음성 대조 포함)
+        run: node tools/test/docs_link_check_test.js
+
+      # 추적 중인 *.md 의 내부 상대 링크·이미지. 대소문자 정확 일치까지 본다
+      # (Windows·macOS 는 대소문자를 구분하지 않아 로컬에서는 안 보이는 실패가 Linux·github.com 에서 터진다).
+      - name: 문서 링크·이미지 검사
+        run: node tools/docs_link_check.js --verbose
+
+      # README 미디어 도구의 정적 자기 검사 + 오프라인 검증.
+      # --no-gh --no-render 로 gh CLI·Chrome·네트워크·secret 없이 파일시스템 검사만 수행한다.
+      - name: README 미디어 도구 자기 검사
+        run: node tools/readme_media_capture.js selfcheck
+
+      # --manifest 를 명시한다: 도구 기본값은 Issue #105(v0.4.4) 매니페스트라, 현재 README 가
+      # 링크한 v0.4.5 PNG 10장을 옛 SHA 와 대조해 WARN 을 뿜는다(최초 실행에서 관측).
+      # 도구 기본값·경고 정책·테스트는 그대로 두고 CI 인자만 현재 납품본에 맞춘다.
+      # 이 도구의 SHA 불일치는 지금도 WARN 이지 엄격한 해시 게이트가 아니다.
+      - name: README 링크·이미지 오프라인 검증 (현재 v0.4.5 매니페스트)
+        run: >-
+          node tools/readme_media_capture.js verify --read-only --no-gh --no-render
+          --manifest docs/milestone/v0.4.5/issues/114/Mars/artifacts/capture-manifest.json
+
+      # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
+      - name: README 도구 READ_ONLY 회귀
+        run: node tools/test/readme_media_readonly_test.js --quick --no-gh
+
+  # ── D. 납품 아트 자산 무결성 ─────────────────────────────────────────────────
+  # 이 잡은 **납품된 바이트 그대로**를 대조하므로 러너를 그 바이트를 구운 환경에 맞춘다 —
+  # windows-2025 · Python 3.14.3 · Pillow 12.3.0. ubuntu-24.04 + Python 3.12.14 에서는 같은
+  # 핀으로도 unchanged=14 mismatch=15 로 실패했다(run 34309177070 / job 102332065379).
+  # 관측·추론과 근거 데이터는 docs/milestone/v0.4.6/issues/132/Mars/report.md 4부 참조.
+  # 권위 있는 실패 기준은 아래 바이트·매니페스트 대조다 — 자산 재생성·픽셀 비교 하향·skip 로
+  # 통과시키지 않는다.
+  assets-integrity:
+    name: D. 납품 아트 자산 무결성
+    runs-on: windows-2025
+    timeout-minutes: 15
+    # Windows 러너의 stdout 은 파이프라 Python 3.14 가 로케일 인코딩을 쓴다(UTF-8 기본은 3.15부터).
+    # 지금 깨지지는 않지만(로컬 cp1252 음성 대조에서 68 tests OK) stdout 은 errors=strict 라,
+    # 텍스트 취급을 Linux 와 같게 맞춰 둔다. PNG·매니페스트는 바이너리 IO 라 영향 없다.
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0                  # minion_art.py 가 고정 baseline 커밋을 git cat-file 로 읽는다
+          persist-credentials: false
+      # 바이트를 정하는 것은 CPython 패치 버전이 아니라 설치되는 Pillow 휠(cp314 win_amd64)이다.
+      # 로컬 실측과 같게 3.14.3 으로 고정한다. 러너 매니페스트에 없으면 같은 계열 '3.14' 로
+      # 완화해도 같은 휠을 받는다. .gitattributes 가 이 잡의 텍스트 입력을 전부 `-text` 로 묶어
+      # 두어 Windows 체크아웃에서도 CRLF 변환이 없다.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14.3'
+          cache: pip
+          cache-dependency-path: tools/requirements-art.txt
+      - name: 의존성 설치 (고정 버전)
+        run: python -m pip install --disable-pip-version-check -r tools/requirements-art.txt
+
+      # 진단(출력 전용) — 바이트 대조 앞에 인코더 백엔드를 찍어 둔다. 실패 판정은 하지 않는다.
+      # 대조가 깨졌을 때 환경이 바뀐 것인지 자산이 바뀐 것인지 로그 위쪽에서 바로 구분하기 위한
+      # 정보다. 파일을 만들지 않고 표준 출력만 쓴다.
+      - name: 인코더 백엔드 기록 (판정 없음)
+        shell: python
+        run: |
+          import sys, PIL
+          from PIL import features
+          print("Python ", sys.version.split()[0])
+          print("Pillow ", PIL.__version__)
+          print("zlib   ", features.version("zlib"))
+          print("zlib_ng", features.version("zlib_ng"))
+
+      # --check 는 산출물을 덮어쓰지 않고 일치 여부만 본다 (승인된 자산을 재생성하지 않는다).
+      # --no-preview 로 미리보기 시트를 건너뛴다: 그 시트만 ImageDraw.text 로 글자를 그리므로
+      # 폰트가 다른 환경에서 바이트가 달라진다. 아이콘·전투 PNG 는 픽셀 데이터에서 굽고 글꼴을
+      # 쓰지 않아 **글꼴 영향은 받지 않지만**, 그것만으로 바이트가 재현되지는 않는다 —
+      # 재현에는 같은 PNG 인코더 환경(위에 고정한 러너·Python·Pillow)이 함께 필요하다.
+      - name: 납품 PNG·매니페스트 일치 검사 (재생성 없음)
+        run: python tools/minion_art.py --all --check --no-preview
+
+      # 도구 자체의 회귀 — 픽스처는 전부 임시 디렉터리에 만든다 (저장소에 쓰지 않는다).
+      - name: 아트 파이프라인 도구 회귀
+        run: python -m unittest discover -s tests -v
