@@ -1,16 +1,29 @@
-# Roblox 아트 인계 — v0.5.0
+# [결정] Roblox 아트 인계 — 기본 P0 완료
 
-- [하수인 납품 보고·전체 진행표](earth-report.md): 최초 P0-A 60PNG 납품 이력과 현재 기본 요청 P0 69/129 현황.
-- [토큰·공통 가림 모델 보고](earth-token-report.md): CJ 선택3건 승인 반영, 토큰9PNG·가림3D1종, 독립 QA·정보 은닉 구현 인계·이번 worker_done.
-- [로비 납품 보고](earth-lobby-report.md): 책상·의자·판·바닥·벽·기둥6메시와 텍스처의 별도 납품.
-- [PNG 납품 manifest](../../../roblox/assets/manifest.csv): 하수인60+토큰9의 해시·크기·출처. [가림 모델 manifest](../../../roblox/assets/tokens/model-manifest.csv)는 별도다.
-- [원본 보존 기준](source-baseline.json): 현재 승인 아트100개와 README의 작업 전 SHA-256.
-- 하수인: [32px 세 배경](review/minions-icons32-three-backgrounds.png) · [흑백 실루엣](review/minions-icons32-silhouette.png).
-- 토큰: [팀 틴트](review/tokens-tint-preview.png) · [32px 세 배경](review/tokens-32-three-backgrounds.png) · [흑백 실루엣](review/tokens-silhouette.png).
-- 가림 모델: [3D 팀 색](review/unknown-model-tints.png) · [0.6셀 보드 적합성](review/unknown-board-fit.png) · [편집 원본](token-source/token-set.blend).
+2026-09-09 · Ref #118 · **기본 요청 P0 129/129 PNG 납품.** 이 폴더의 v0.5.0은 기존 경로명이며 Roblox #118의 현재 마일스톤은 v0.4.6이다.
 
-하수인 시트는4행(불·물·풀·번개)×5열(표준·공격·방어·속공·지속)이다.
-토큰 시트 열 순서는 왕·동료·폭탄·덫·공통 가림이다. 속성4종·흔적1종은 아직 없으므로 해당 QA 완료를 의미하지 않는다.
-3D 보드 이미지는 크기·색 비교용 Blender 렌더이며, 내 말까지 가리는 실제 게임 상태를 뜻하지 않는다.
-이 폴더의 파생 아트 PNG는 [ASSET-LICENSE.md](../../../ASSET-LICENSE.md)에 따라
-Apache-2.0에서 제외된다. Copyright 2026 Sung Changjo and the respective contributors. All rights reserved.
+- [최신 UI·속성·흔적·보드 납품 보고](earth-ui-report.md): 이번 추가60PNG, 독립 QA, 정확한 변경 파일 목록.
+- [Claude 적용 인계](../../roblox/claude-art-apply-handoff.md): 이미 연결된 자산은 유지하고 신규60개를 추가 연결.
+- [UI 적용 계약·60개 키 전수표](../../../roblox/assets/ui/README.md): 틴트7개, SliceCenter26개, 작은 셀의 SliceScale 주의점.
+- [하수인 납품 보고·전체 진행표](earth-report.md): 최초 P0-A60PNG 제작 이력과 최신 전체 수량.
+- [토큰·공통 가림 모델 보고](earth-token-report.md): 승인 선택3건과 토큰9PNG·가림3D1종.
+- [로비 납품 보고](earth-lobby-report.md): 별도6메시·6알베도·1상태 표지.
+- [PNG manifest](../../../roblox/assets/manifest.csv): 기본 P0 전체129개. [가림 모델 manifest](../../../roblox/assets/tokens/model-manifest.csv)와 [로비 manifest](../../../roblox/assets/lobby/manifest.csv)는 별도.
+- [하수인 원본 보존 기준](source-baseline.json): 최초 하수인 작업 전100개 이미지와 README의 SHA-256.
+- [신규 원고60개](ui-source/native-assets.json) · [Blender 보조 원본](ui-source/p0-ui.blend) · [52개 슬라이스 검토 좌표](ui-source/slice-review-cases.json).
+
+## 검토 이미지
+
+- [보드·UI 조합](review/p0-board-ui-composition.png) · [아이콘30종](review/p0-icons-contact.png) · [32px 세 배경](review/p0-icons32-backgrounds.png).
+- [왕·동료·폭탄·덫·가림·속성4의 기호9종](review/p0-symbols9-proof.png) · [타일 반복](review/p0-board-tiles-2x2.png) · [버튼12상태](review/p0-buttons-states.png).
+- [보드·패널 슬라이스](review/p0-9slice-board-panels.png) · [버튼 슬라이스](review/p0-9slice-buttons.png) · [배지·바 슬라이스](review/p0-9slice-meters.png).
+- 기존 하수인: [32px 세 배경](review/minions-icons32-three-backgrounds.png) · [흑백 실루엣](review/minions-icons32-silhouette.png).
+- 기존 토큰: [팀 틴트](review/tokens-tint-preview.png) · [32px 세 배경](review/tokens-32-three-backgrounds.png) · [흑백 실루엣](review/tokens-silhouette.png).
+- 기존 가림 모델: [3D 팀 색](review/unknown-model-tints.png) · [0.6셀 보드 적합성](review/unknown-board-fit.png) · [편집 원본](token-source/token-set.blend).
+
+조합 그림은 아트 배치 검토용이며 실제 게임 화면·규칙·승인된 모바일 레이아웃의 증빙이 아니다.
+48px 계열은 native24여서32px 시트가 비정수 최근접 축소 스트레스 테스트다. 정수 표시는24/48/72px를 사용한다.
+P1 연출·배너와 P2 스토어·모바일은 미납품이다. 정적 아트 QA와 Studio/실플레이 QA는 구분한다.
+
+이 폴더의 원본·파생 시각 아트는 [ASSET-LICENSE.md](../../../ASSET-LICENSE.md)에 따라 Apache-2.0에서 제외된다.
+Copyright 2026 Sung Changjo and the respective contributors. All rights reserved.

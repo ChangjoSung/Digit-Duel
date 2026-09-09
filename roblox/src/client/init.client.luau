@@ -1,12 +1,12 @@
 --!nonstrict
--- init.client.luau — Digit Dual Roblox 클라이언트 (Phase 2c: 로스터 선택 · 판 위 수동 배치 · 합법 수 표시)
+-- init.client.luau — Digit Dual Roblox 클라이언트 (Phase 2d: P0 UI 아트 전량 적용)
 -- 구조:
 --   로비 HUD(왼쪽 위) · 배치 패널(앉았을 때, 하단: 로스터 → 배치 → 준비) · 사이드 패널(대전 중, 오른쪽) · 전투 패널(중앙) · 2D 보드(폴백)
---   판 위 대국: 앉으면 카메라가 판을 향하고, 서버가 보내준 뷰어 필터 상태(view.board)로 **이 클라이언트에만** 말을 로컬 생성한다.
---     공개 말 = 도트 빌보드(하수인 icon64 / 토큰 64 팀 틴트) · 미공개 말 = 공통 덮개 메시(팀 틴트) · 모든 말 아래 팀 색 받침
---   배치: 설정 좌표는 HTML 계약대로 "내 진영 = 11~13행". B 자리는 엔진 행 1~3 이 내 진영이므로 화면(엔진) 행 ↔ 설정 행을 14-r 로 변환한다.
---   합법 수: 서버가 view.legal(내 말별 이동·공격 목록)을 보내고 클라이언트는 그리기만 한다 — 규칙 코드는 클라이언트에 없다.
---   입력: 판(Board 파트)·로컬 말을 raycast 로 맞혀 셀(r,c). 판 파트가 없거나 [2D 보드] 면 2D 보드 GUI 로 폴백.
+--   판 위 대국: 앉으면 카메라가 판을 향하고, 서버 필터 상태(view.board)로 **이 클라이언트에만** 말을 로컬 생성한다.
+--   배치: 설정 좌표는 "내 진영 = 11~13행". B 자리는 엔진 행 1~3 이 내 진영이므로 화면(엔진) 행 ↔ 설정 행을 14-r 로 변환한다.
+--   합법 수: 서버가 view.legal 을 보내고 클라이언트는 그리기만 한다.
+--   아트(roblox/assets/ui/README.md 계약): 타일·하이라이트·프레임(2D 셀), 패널 3종, 버튼 4상태×3종, 배지, HP/방어막 바(클립 채움),
+--     상태·아이템·행동·기술 종류·속성·흔적 아이콘. 자산이 없으면 이전 단색/텍스트 폴백. 틴트는 Art.TINT 7개 + 팀 토큰뿐.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p2c.1"
+local CLIENT_VERSION = "0.5.0-p2d.1"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -74,20 +74,19 @@ local WHITE = Color3.new(1, 1, 1)
 local SLOT_TYPES = { "minion", "minion", "minion", "minion", "minion", "minion", "bomb", "bomb", "bomb", "ally", "ally", "trap", "trap", "king" }
 
 -- 현재 상태
-local view = nil -- 서버 필터 뷰 (대전 중)
-local tableInfo = nil -- 서버 "table" 메시지 (앉았을 때)
+local view = nil
+local tableInfo = nil
 local selectedId = nil
 local teleFirst = nil
 local logLines = {}
 local force2D = false
 local boardMode = "2d"
-local render -- 전방 선언
-local renderSetup -- 전방 선언
--- 사전 배치: stage roster → place → ready. pos[i] = {설정행, 열} (i = SLOT_TYPES 인덱스, 설정행 11~13)
+local render
+local renderSetup
 local setup = { stage = "roster", roster = {}, pos = {}, tray = nil, detail = nil }
 
 --==================================================================
--- UI 구성
+-- UI 헬퍼 (아트 적용 — 자산 없으면 단색 폴백)
 --==================================================================
 
 local function mk(class, props, parent)
@@ -99,69 +98,210 @@ local function mk(class, props, parent)
 	return o
 end
 
+local function slice(img, kind, scale) -- SliceCenter 는 원본 중앙 사각형 좌표 (README 계약)
+	local s = Art.SLICE[kind]
+	img.ScaleType = Enum.ScaleType.Slice
+	img.SliceCenter = Rect.new(s[1], s[2], s[3], s[4])
+	img.SliceScale = scale or 1
+end
+
+-- 프레임 뒤에 9-slice 배경을 깔고 프레임 자체 배경은 투명 (ZIndex 0 — 형제 자식들보다 아래)
+local function bgImage(frame, uiKey, sliceKind, scale)
+	local u = Art.ui(uiKey)
+	if not u then
+		return nil
+	end
+	local img = mk("ImageLabel", {
+		Name = "Bg", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Image = u,
+		ResampleMode = Enum.ResampleMode.Pixelated, ZIndex = 0,
+	}, frame)
+	slice(img, sliceKind, scale)
+	frame.BackgroundTransparency = 1
+	return img
+end
+
+local function iconLabel(parent, x, y, size, image, tint, zindex)
+	return mk("ImageLabel", {
+		Size = UDim2.new(0, size, 0, size), Position = UDim2.new(0, x, 0, y), BackgroundTransparency = 1, Image = image,
+		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, ImageColor3 = tint or WHITE, ZIndex = zindex or 2,
+	}, parent)
+end
+
+local BTN_FALLBACK = { default = Color3.fromRGB(60, 68, 88), primary = Color3.fromRGB(91, 140, 255), danger = Color3.fromRGB(170, 60, 70) }
+
+-- 이미지 버튼 (btn_<kind>_<normal|hover|pressed|disabled> 9-slice, SliceScale 0.5). icon = 이미지 URL(선택). enabled=false 면 disabled 이미지 + 입력 무시
+local function smallBtn(parent, x, y, w, text, cb, kind, enabled, icon, h)
+	kind = kind or "default"
+	local on = enabled ~= false
+	h = h or 26
+	local normal = Art.ui("btn_" .. kind .. "_normal")
+	local disabledImg = Art.ui("btn_" .. kind .. "_disabled")
+	local b = mk("ImageButton", {
+		Size = UDim2.new(0, w, 0, h), Position = UDim2.new(0, x, 0, y),
+		BackgroundTransparency = normal and 1 or 0, BackgroundColor3 = on and BTN_FALLBACK[kind] or Color3.fromRGB(38, 42, 54),
+		AutoButtonColor = (normal == nil) and on, Image = (on and normal or disabledImg) or "", ResampleMode = Enum.ResampleMode.Pixelated,
+		ZIndex = parent.ZIndex,
+	}, parent)
+	if normal then
+		slice(b, "btn", 0.5)
+	end
+	local tx = 2
+	if icon then
+		iconLabel(b, 6, math.floor((h - 18) / 2), 18, icon, nil, b.ZIndex + 1)
+		tx = 26
+	end
+	mk("TextLabel", {
+		Size = UDim2.new(1, -tx - 4, 1, 0), Position = UDim2.new(0, tx, 0, 0), BackgroundTransparency = 1, Text = text,
+		TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = on and WHITE or Color3.fromRGB(120, 126, 140),
+		ZIndex = b.ZIndex + 1, TextTruncate = Enum.TextTruncate.AtEnd,
+	}, b)
+	if on and normal then
+		local hover, pressed = Art.ui("btn_" .. kind .. "_hover"), Art.ui("btn_" .. kind .. "_pressed")
+		b.MouseEnter:Connect(function()
+			b.Image = hover or normal
+		end)
+		b.MouseLeave:Connect(function()
+			b.Image = normal
+		end)
+		b.MouseButton1Down:Connect(function()
+			b.Image = pressed or normal
+		end)
+		b.MouseButton1Up:Connect(function()
+			b.Image = hover or normal
+		end)
+	end
+	b.Activated:Connect(function()
+		if on then
+			cb()
+		end
+	end)
+	return b
+end
+
+local function mkBadge(parent, x, y, w, icon, text, z)
+	z = z or parent.ZIndex
+	local f = mk("Frame", { Size = UDim2.new(0, w, 0, 22), Position = UDim2.new(0, x, 0, y), BackgroundColor3 = Color3.fromRGB(43, 49, 64), BorderSizePixel = 0, ZIndex = z }, parent)
+	bgImage(f, "badge", "badge", 0.5)
+	local tx = 6
+	if icon then
+		iconLabel(f, 4, 3, 16, icon, nil, z + 1)
+		tx = 22
+	end
+	mk("TextLabel", {
+		Size = UDim2.new(1, -tx - 4, 1, 0), Position = UDim2.new(0, tx, 0, 0), BackgroundTransparency = 1, Text = text,
+		TextSize = 11, Font = Enum.Font.GothamBold, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = z + 1, TextTruncate = Enum.TextTruncate.AtEnd,
+	}, f)
+	return f
+end
+
+-- HP/방어막 바: 배경 9-slice + 전체 길이 채움을 클립 폭으로 가린다 (캡 압축 금지, 0 이면 숨김)
+local function mkBar(parent, x, y, w, h, kind, z)
+	z = z or parent.ZIndex
+	local fillImg = Art.ui(kind .. "bar_fill")
+	local tint = Art.TINT[kind .. "bar_fill"] or (kind == "hp" and Color3.fromRGB(0x4f, 0xd8, 0x8a) or Color3.fromRGB(0x4d, 0xa3, 0xff))
+	local f = mk("Frame", { Size = UDim2.new(0, w, 0, h), Position = UDim2.new(0, x, 0, y), BackgroundColor3 = Color3.fromRGB(40, 44, 56), BorderSizePixel = 0, ZIndex = z }, parent)
+	bgImage(f, kind .. "bar_bg", "bar", 0.5)
+	local clip = mk("Frame", { Name = "Clip", Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = z + 1 }, f)
+	local fi = mk("ImageLabel", {
+		Name = "Fill", Size = UDim2.new(0, w, 0, h), BackgroundTransparency = fillImg and 1 or 0, BackgroundColor3 = tint,
+		Image = fillImg or "", ImageColor3 = tint, ResampleMode = Enum.ResampleMode.Pixelated, ZIndex = z + 1,
+	}, clip)
+	if fillImg then
+		slice(fi, "bar", 0.5)
+	end
+	return f
+end
+
+local function setBar(bar, pct)
+	local clip = bar:FindFirstChild("Clip")
+	if not clip then
+		return
+	end
+	pct = math.clamp(pct or 0, 0, 1)
+	clip.Visible = pct > 0
+	clip.Size = UDim2.new(pct, 0, 1, 0)
+end
+
+local function clearChildren(parent, keepName)
+	for _, ch in parent:GetChildren() do
+		if ch.Name ~= keepName then
+			ch:Destroy()
+		end
+	end
+end
+
+--==================================================================
+-- UI 구성
+--==================================================================
+
 local gui = mk("ScreenGui", { Name = "DigitDual", ResetOnSpawn = false, IgnoreGuiInset = true }, playerGui)
 
+-- 로비 HUD
 local hud = mk("Frame", {
 	Size = UDim2.new(0, 460, 0, 92), Position = UDim2.new(0, 12, 0, 12),
 	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.15, BorderSizePixel = 0,
 }, gui)
+bgImage(hud, "panel_side", "panel", 1)
 mk("TextLabel", {
-	Text = "Digit Dual", Size = UDim2.new(1, -16, 0, 24), Position = UDim2.new(0, 8, 0, 4),
+	Text = "Digit Dual", Size = UDim2.new(1, -16, 0, 24), Position = UDim2.new(0, 10, 0, 6),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 18, Font = Enum.Font.GothamBold,
 	TextXAlignment = Enum.TextXAlignment.Left,
 }, hud)
 local hudLabel = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 40), Position = UDim2.new(0, 8, 0, 28),
+	Text = "", Size = UDim2.new(1, -20, 0, 50), Position = UDim2.new(0, 10, 0, 32),
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
 }, hud)
-local standBtn = mk("TextButton", {
-	Text = "🪑 자리 떠나기", Size = UDim2.new(0, 110, 0, 22), Position = UDim2.new(1, -118, 0, 4), Visible = false,
-	TextColor3 = WHITE, BackgroundColor3 = Color3.fromRGB(120, 60, 60), TextSize = 12, Font = Enum.Font.GothamBold,
-}, hud)
-local modeBtn = mk("TextButton", {
-	Text = "2D 보드", Size = UDim2.new(0, 70, 0, 22), Position = UDim2.new(1, -196, 0, 4), Visible = false,
-	TextColor3 = WHITE, BackgroundColor3 = Color3.fromRGB(60, 68, 88), TextSize = 12, Font = Enum.Font.GothamBold,
-}, hud)
+local hudBtns = mk("Frame", { Size = UDim2.new(0, 200, 0, 26), Position = UDim2.new(1, -206, 0, 6), BackgroundTransparency = 1 }, hud)
 
--- 배치 패널 (앉았을 때 · 하단)
+-- 배치 패널
 local setupPanel = mk("Frame", {
 	Size = UDim2.new(0, 680, 0, 236), Position = UDim2.new(0.5, -340, 1, -256), Visible = false,
 	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.08, BorderSizePixel = 0,
 }, gui)
+bgImage(setupPanel, "panel_side", "panel", 1)
 local setupTitle = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 22), Position = UDim2.new(0, 8, 0, 4),
+	Text = "", Size = UDim2.new(1, -20, 0, 22), Position = UDim2.new(0, 10, 0, 6),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 15, Font = Enum.Font.GothamBold,
 	TextXAlignment = Enum.TextXAlignment.Left,
 }, setupPanel)
 local setupHint = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 18), Position = UDim2.new(0, 8, 0, 26),
+	Text = "", Size = UDim2.new(1, -20, 0, 18), Position = UDim2.new(0, 10, 0, 28),
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left,
 }, setupPanel)
-local setupContent = mk("Frame", { Size = UDim2.new(1, -16, 0, 150), Position = UDim2.new(0, 8, 0, 46), BackgroundTransparency = 1 }, setupPanel)
-local setupBtns = mk("Frame", { Size = UDim2.new(1, -16, 0, 30), Position = UDim2.new(0, 8, 1, -34), BackgroundTransparency = 1 }, setupPanel)
+local setupContent = mk("Frame", { Size = UDim2.new(1, -20, 0, 150), Position = UDim2.new(0, 10, 0, 48), BackgroundTransparency = 1 }, setupPanel)
+local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 30), Position = UDim2.new(0, 10, 1, -36), BackgroundTransparency = 1 }, setupPanel)
 
--- 로스터 상세 팝업 (초상화 · 스탯 · 기술)
+-- 로스터 상세 팝업
 local rosterDetail = mk("Frame", {
-	Size = UDim2.new(0, 470, 0, 250), Position = UDim2.new(0.5, -235, 0.5, -200), Visible = false, ZIndex = 8,
+	Size = UDim2.new(0, 480, 0, 250), Position = UDim2.new(0.5, -240, 0.5, -200), Visible = false, ZIndex = 8,
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), BorderSizePixel = 0,
 }, gui)
+bgImage(rosterDetail, "panel_modal", "panel", 1)
 local detailPortrait = mk("ImageLabel", {
-	Size = UDim2.new(0, 160, 0, 160), Position = UDim2.new(0, 10, 0, 10), BackgroundColor3 = Color3.fromRGB(19, 22, 30),
+	Size = UDim2.new(0, 160, 0, 160), Position = UDim2.new(0, 12, 0, 12), BackgroundColor3 = Color3.fromRGB(19, 22, 30),
 	BorderSizePixel = 0, ScaleType = Enum.ScaleType.Fit, ZIndex = 8,
 }, rosterDetail)
+local detailElem = iconLabel(rosterDetail, 182, 12, 22, "", nil, 9)
 local detailText = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -190, 0, 200), Position = UDim2.new(0, 180, 0, 10), ZIndex = 8,
+	Text = "", Size = UDim2.new(1, -220, 0, 200), Position = UDim2.new(0, 208, 0, 12), ZIndex = 8,
 	TextColor3 = WHITE, BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham, RichText = true,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
 }, rosterDetail)
-local detailBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 30), Position = UDim2.new(0, 10, 1, -36), BackgroundTransparency = 1, ZIndex = 8 }, rosterDetail)
+local detailBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 30), Position = UDim2.new(0, 12, 1, -38), BackgroundTransparency = 1, ZIndex = 8 }, rosterDetail)
 
 -- 대전 화면 (배경 투명)
 local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false }, gui)
 
--- 2D 보드 (폴백 — 대전·배치 공용)
+-- 2D 보드 (폴백 — 대전·배치 공용). 외곽 프레임(board_frame) + 셀마다 타일·하이라이트 오버레이
+local boardFrameImg = mk("ImageLabel", {
+	Size = UDim2.new(0, COLS * CELL + 32, 0, ROWS * CELL + 32), Position = UDim2.new(0, 4, 0, 100), BackgroundTransparency = 1,
+	Image = Art.board("frame") or "", ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 0,
+}, gui)
+if Art.board("frame") then
+	slice(boardFrameImg, "hl", 0.5)
+end
 local boardFrame = mk("Frame", {
 	Size = UDim2.new(0, COLS * CELL, 0, ROWS * CELL), Position = UDim2.new(0, 20, 0, 116),
 	BackgroundColor3 = Color3.fromRGB(30, 34, 46), Visible = false,
@@ -175,6 +315,10 @@ for dr = 1, ROWS do
 			Text = "", TextSize = 12, Font = Enum.Font.Gotham, TextColor3 = WHITE,
 			BackgroundColor3 = Color3.fromRGB(43, 49, 64), BorderSizePixel = 0,
 		}, boardFrame)
+		mk("ImageLabel", { -- 타일 (128→32 균등 축소)
+			Name = "Tile", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Stretch,
+			ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 0,
+		}, b)
 		mk("ImageLabel", {
 			Name = "Icon", Size = UDim2.new(1, -4, 1, -4), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1,
 			ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 2,
@@ -184,10 +328,18 @@ for dr = 1, ROWS do
 			Text = "", TextSize = 10, Font = Enum.Font.GothamBold, TextColor3 = WHITE, TextStrokeTransparency = 0.2,
 			TextXAlignment = Enum.TextXAlignment.Right, Visible = false, ZIndex = 3,
 		}, b)
+		local mark = mk("ImageLabel", { -- 흔적 (trace48) — 없으면 텍스트 폴백
+			Name = "Mark", Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 1, 0, 1), BackgroundTransparency = 1,
+			Image = Art.trace() or "", ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 3,
+		}, b)
 		mk("TextLabel", {
-			Name = "Mark", Size = UDim2.new(0, 14, 0, 12), Position = UDim2.new(0, 1, 0, 0), BackgroundTransparency = 1,
+			Name = "MarkTxt", Size = UDim2.new(0, 14, 0, 12), Position = UDim2.new(0, 1, 0, 0), BackgroundTransparency = 1,
 			Text = "🔍", TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = WHITE, Visible = false, ZIndex = 3,
 		}, b)
+		local hl = mk("ImageLabel", { -- 하이라이트 오버레이 (128 9-slice, 32px 셀 → SliceScale 0.25)
+			Name = "Hl", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 4,
+		}, b)
+		slice(hl, "hl", 0.25)
 		cells[dr][c] = b
 	end
 end
@@ -197,55 +349,60 @@ local side = mk("Frame", {
 	Size = UDim2.new(0, 360, 0, ROWS * CELL), Position = UDim2.new(1, -372, 0, 116),
 	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.08, BorderSizePixel = 0,
 }, game_)
-local infoLabel = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 150), Position = UDim2.new(0, 8, 0, 8),
+bgImage(side, "panel_side", "panel", 1)
+local infoHead = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -20, 0, 44), Position = UDim2.new(0, 10, 0, 8),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 14, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, RichText = true,
 }, side)
-local btnRow = mk("Frame", { Size = UDim2.new(1, -16, 0, 100), Position = UDim2.new(0, 8, 0, 160), BackgroundTransparency = 1 }, side)
+local badgeRow = mk("Frame", { Size = UDim2.new(1, -20, 0, 24), Position = UDim2.new(0, 10, 0, 54), BackgroundTransparency = 1 }, side)
+local infoLabel = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -20, 0, 78), Position = UDim2.new(0, 10, 0, 82),
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
+	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, RichText = true,
+}, side)
+local btnRow = mk("Frame", { Size = UDim2.new(1, -20, 0, 100), Position = UDim2.new(0, 10, 0, 162), BackgroundTransparency = 1 }, side)
 local logBox = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 1, -390), Position = UDim2.new(0, 8, 0, 270),
-	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundColor3 = Color3.fromRGB(19, 22, 30), TextSize = 12,
+	Text = "", Size = UDim2.new(1, -20, 1, -392), Position = UDim2.new(0, 10, 0, 270),
+	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.3, TextSize = 12,
 	Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Bottom, TextWrapped = true,
 }, side)
 local promptFrame = mk("Frame", {
-	Size = UDim2.new(1, -16, 0, 110), Position = UDim2.new(0, 8, 1, -118), BackgroundColor3 = Color3.fromRGB(35, 40, 54), Visible = false,
+	Size = UDim2.new(1, -20, 0, 110), Position = UDim2.new(0, 10, 1, -118), BackgroundColor3 = Color3.fromRGB(35, 40, 54), Visible = false,
 }, side)
+bgImage(promptFrame, "panel_modal", "panel", 1)
 local promptLabel = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -12, 0, 40), Position = UDim2.new(0, 6, 0, 4),
+	Text = "", Size = UDim2.new(1, -16, 0, 40), Position = UDim2.new(0, 8, 0, 6),
 	TextColor3 = WHITE, BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham, TextWrapped = true,
 	TextXAlignment = Enum.TextXAlignment.Left,
 }, promptFrame)
-local promptBtns = mk("Frame", { Size = UDim2.new(1, -12, 0, 60), Position = UDim2.new(0, 6, 0, 46), BackgroundTransparency = 1 }, promptFrame)
+local promptBtns = mk("Frame", { Size = UDim2.new(1, -16, 0, 60), Position = UDim2.new(0, 8, 0, 46), BackgroundTransparency = 1 }, promptFrame)
 
 -- 전투 패널
 local battleFrame = mk("Frame", {
-	Size = UDim2.new(0, 380, 0, 430), Position = UDim2.new(0.5, -190, 0.5, -215),
+	Size = UDim2.new(0, 400, 0, 440), Position = UDim2.new(0.5, -200, 0.5, -220),
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
 }, game_)
-local battleTop = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -120, 0, 70), Position = UDim2.new(0, 8, 0, 6), ZIndex = 5,
-	TextColor3 = WHITE, BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
-	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, RichText = true,
-}, battleFrame)
-local battleBottom = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -120, 0, 70), Position = UDim2.new(0, 8, 0, 80), ZIndex = 5,
-	TextColor3 = WHITE, BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
-	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, RichText = true,
-}, battleFrame)
+bgImage(battleFrame, "panel_battle", "panel", 1)
+local fighterTop = mk("Frame", { Size = UDim2.new(1, -130, 0, 74), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
+local fighterBottom = mk("Frame", { Size = UDim2.new(1, -130, 0, 74), Position = UDim2.new(0, 12, 0, 88), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
 local function mkSpriteLabel(y)
 	return mk("ImageLabel", {
-		Size = UDim2.new(0, 96, 0, 96), Position = UDim2.new(1, -104, 0, y), BackgroundTransparency = 1, ZIndex = 6,
+		Size = UDim2.new(0, 96, 0, 96), Position = UDim2.new(1, -108, 0, y), BackgroundTransparency = 1, ZIndex = 6,
 		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false,
 	}, battleFrame)
 end
-local spriteTop, spriteBottom = mkSpriteLabel(2), mkSpriteLabel(76)
+local spriteTop, spriteBottom = mkSpriteLabel(6), mkSpriteLabel(84)
+local battleRound = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -24, 0, 18), Position = UDim2.new(0, 12, 0, 164), ZIndex = 5,
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
+}, battleFrame)
 local battleMsg = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 120), Position = UDim2.new(0, 8, 0, 155), ZIndex = 5,
-	TextColor3 = Color3.fromRGB(255, 224, 150), BackgroundColor3 = Color3.fromRGB(19, 22, 30), TextSize = 12,
+	Text = "", Size = UDim2.new(1, -24, 0, 100), Position = UDim2.new(0, 12, 0, 184), ZIndex = 5,
+	TextColor3 = Color3.fromRGB(255, 224, 150), BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.3, TextSize = 12,
 	Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Bottom, TextWrapped = true,
 }, battleFrame)
-local battleBtns = mk("Frame", { Size = UDim2.new(1, -16, 0, 140), Position = UDim2.new(0, 8, 0, 282), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
+local battleBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 140), Position = UDim2.new(0, 12, 0, 292), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
 
 --==================================================================
 -- 헬퍼
@@ -274,18 +431,31 @@ local function myOwner()
 	return mySide() == "B" and 1 or 0
 end
 
--- 설정 행(내 진영 = 11~13) ↔ 엔진 행 (B 자리는 대합 14-r). 대합이라 양방향 같은 식
 local function toEngineRow(setupRow)
 	return mySide() == "B" and (ROWS + 1 - setupRow) or setupRow
 end
 
--- #93 2D 보드용 화면 행 반사 (표시 전용). owner 1 은 자기 진영(1~3행)이 아래로 오도록 뒤집는다
 local function dispRow(r)
 	if myOwner() == 1 then
 		return ROWS + 1 - r
 	end
 	return r
 end
+
+local function zoneOfRow(r) -- 뷰어 기준 타일: own / enemy / forest / mid
+	local me = myOwner()
+	local ownRows = (me == 0) and (r >= 11 and r <= 13) or (me == 1) and (r >= 1 and r <= 3)
+	local oppRows = (me == 0) and (r >= 1 and r <= 3) or (me == 1) and (r >= 11 and r <= 13)
+	if ownRows then
+		return "own"
+	elseif oppRows then
+		return "enemy"
+	elseif (r >= 4 and r <= 5) or (r >= 9 and r <= 10) then
+		return "forest"
+	end
+	return "mid"
+end
+local ZONE_FALLBACK = { own = Color3.fromRGB(47, 58, 94), enemy = Color3.fromRGB(74, 46, 58), forest = Color3.fromRGB(35, 66, 47), mid = Color3.fromRGB(43, 49, 64) }
 
 local function pieceAt(r, c)
 	if not view then
@@ -340,34 +510,49 @@ local function hpText(p)
 	return nil
 end
 
-local function clearChildren(parent)
-	for _, ch in parent:GetChildren() do
-		ch:Destroy()
-	end
-end
-
--- enabled=false 면 흐리게 표시하고 클릭을 무시한다
-local function smallBtn(parent, x, y, w, text, cb, color, enabled)
-	local on = enabled ~= false
-	local b = mk("TextButton", {
-		Size = UDim2.new(0, w, 0, 26), Position = UDim2.new(0, x, 0, y), Text = text, TextSize = 12,
-		Font = Enum.Font.GothamBold, TextColor3 = on and WHITE or Color3.fromRGB(120, 126, 140),
-		BackgroundColor3 = on and (color or Color3.fromRGB(60, 68, 88)) or Color3.fromRGB(38, 42, 54), ZIndex = parent.ZIndex,
-		AutoButtonColor = on,
-	}, parent)
-	b.Activated:Connect(function()
-		if on then
-			cb()
-		end
-	end)
-	return b
-end
-
 local function legalOf(id)
 	if not view or not view.legal or not id then
 		return nil
 	end
 	return view.legal[tostring(id)]
+end
+
+-- 2D 셀 상태 그리기 공용: 타일·하이라이트(우선순위 forced > attack > sel > flee > move)·흔적
+local function cellReset(b, r)
+	local zone = zoneOfRow(r)
+	local tu = Art.board("tile_" .. zone)
+	b.BackgroundColor3 = ZONE_FALLBACK[zone]
+	b.Tile.Image = tu or ""
+	b.Tile.Visible = tu ~= nil
+	b.Text = ""
+	b.TextColor3 = WHITE
+	b.BorderSizePixel = 0
+	b.Icon.Visible = false
+	b.Hp.Visible = false
+	b.Mark.Visible = false
+	b.MarkTxt.Visible = false
+	b.Hl.Visible = false
+end
+
+local HL_FALLBACK = { move = Color3.fromRGB(50, 90, 160), flee = Color3.fromRGB(50, 90, 160), sel = Color3.fromRGB(120, 120, 40), attack = Color3.fromRGB(150, 50, 50), forced = Color3.fromRGB(160, 50, 50) }
+local function cellHighlight(b, key) -- key: move|flee|sel|attack|forced
+	local u = Art.board("hl_" .. key)
+	if u then
+		b.Hl.Image = u
+		b.Hl.ImageColor3 = Art.TINT["hl_" .. key] or WHITE
+		b.Hl.Visible = true
+	else
+		b.BackgroundColor3 = HL_FALLBACK[key]
+		b.Tile.Visible = false
+	end
+end
+
+local function cellMark(b)
+	if Art.trace() then
+		b.Mark.Visible = true
+	else
+		b.MarkTxt.Visible = true
+	end
 end
 
 --==================================================================
@@ -412,12 +597,12 @@ local function mkBase(cf, color, r, c)
 	return tagCell(p, r, c)
 end
 
-local function mkBillboard(cf, r, c, sizeStud)
+local function mkBillboard(cf, r, c, sizeStud, lift)
 	local anchor = Instance.new("Part")
 	anchor.Name = "Piece"
 	anchor.Size = Vector3.new(0.5, 0.5, 0.5)
 	anchor.Transparency = 1
-	anchor.CFrame = cf * CFrame.new(0, 0.32, 0)
+	anchor.CFrame = cf * CFrame.new(0, lift or 0.32, 0)
 	tagCell(anchor, r, c)
 	local bb = Instance.new("BillboardGui")
 	bb.Size = UDim2.fromScale(sizeStud or 0.62, sizeStud or 0.62)
@@ -427,8 +612,8 @@ local function mkBillboard(cf, r, c, sizeStud)
 	return anchor, bb
 end
 
-local function mkSprite(cf, image, tint, hp, r, c)
-	local anchor, bb = mkBillboard(cf, r, c)
+local function mkSprite(cf, image, tint, hp, r, c, sizeStud, lift)
+	local anchor, bb = mkBillboard(cf, r, c, sizeStud, lift)
 	local img = Instance.new("ImageLabel")
 	img.Size = UDim2.fromScale(1, 1)
 	img.BackgroundTransparency = 1
@@ -492,6 +677,14 @@ local function mkUnknown(cf, color, r, c)
 	return tagCell(p, r, c)
 end
 
+local HL = {
+	sel = Color3.fromRGB(255, 220, 80),
+	forced = Color3.fromRGB(255, 70, 70),
+	flee = Color3.fromRGB(80, 140, 255),
+	move = Color3.fromRGB(80, 160, 255),
+	attack = Color3.fromRGB(255, 80, 80),
+}
+
 local function mkHighlight(cf, color, r, c, transparency)
 	local p = Instance.new("Part")
 	p.Name = "Hl"
@@ -503,15 +696,15 @@ local function mkHighlight(cf, color, r, c, transparency)
 	return tagCell(p, r, c)
 end
 
-local HL = {
-	sel = Color3.fromRGB(255, 220, 80),
-	forced = Color3.fromRGB(255, 70, 70),
-	flee = Color3.fromRGB(80, 140, 255),
-	move = Color3.fromRGB(80, 160, 255),
-	attack = Color3.fromRGB(255, 80, 80),
-}
+local function mkTrace3D(cf, r, c)
+	local tu = Art.trace()
+	if tu then
+		mkSprite(cf * CFrame.new(0.17, 0, -0.17), tu, nil, nil, r, c, 0.28, 0.2)
+	else
+		mkTextSprite(cf * CFrame.new(0.18, 0.25, -0.18), "🔍", WHITE, r, c)
+	end
+end
 
--- 대전 중 3D 동기화
 local function sync3D()
 	local3d:ClearAllChildren()
 	local bp = findBoardPart()
@@ -520,7 +713,7 @@ local function sync3D()
 	end
 	local forced = view.forcedTargets or {}
 	local legal = legalOf(selectedId)
-	if legal then -- 이동 가능(파랑)·공격 가능(빨강) 칸 — 서버 계산
+	if legal then
 		for _, rc in legal.moves do
 			mkHighlight(cellCFrame(bp, rc[1], rc[2]), HL.move, rc[1], rc[2], 0.5)
 		end
@@ -557,7 +750,7 @@ local function sync3D()
 		if not pieceAt(tr.r, tr.c) then
 			mkHighlight(cf, WHITE, tr.r, tr.c, 0.7)
 		end
-		mkTextSprite(cf * CFrame.new(0.18, 0.25, -0.18), "🔍", WHITE, tr.r, tr.c)
+		mkTrace3D(cf, tr.r, tr.c)
 	end
 end
 
@@ -665,7 +858,6 @@ local function sendReady()
 	send({ t = "ready", setup = { roster = table.clone(setup.roster), pos = pos } })
 end
 
--- 배치 중 3D 동기화: 내 진영 3행 옅은 표시 · 트레이 선택 시 빈 칸 강조 · 배치된 말
 local function sync3DSetup()
 	local3d:ClearAllChildren()
 	local bp = findBoardPart()
@@ -760,8 +952,10 @@ local function openDetail(rid)
 	end
 	setup.detail = rid
 	rosterDetail.Visible = true
-	local pu = Art.portrait(rid)
-	detailPortrait.Image = pu or ""
+	detailPortrait.Image = Art.portrait(rid) or ""
+	local eu = Art.element(rd.element)
+	detailElem.Image = eu or ""
+	detailElem.Visible = eu ~= nil
 	local lines = {
 		("<b>%s</b>  %s · %s형"):format(rd.name, Data.ELEM_KO[rd.element], Data.ARCH_KO[rd.arch]),
 		("HP %d · 공격 %d  (기술 위력 = 표기 × 공격/%d)"):format(rd.hp, rd.atk, Data.SKILL_ATK_BASE),
@@ -779,7 +973,7 @@ local function openDetail(rid)
 		local idx = table.find(setup.roster, rid)
 		if idx then
 			table.remove(setup.roster, idx)
-			setup.pos = {} -- 로스터가 바뀌면 하수인 슬롯이 달라지므로 배치 초기화 (HTML toggleRoster 와 동일)
+			setup.pos = {}
 		elseif #setup.roster < 6 then
 			table.insert(setup.roster, rid)
 			setup.pos = {}
@@ -789,7 +983,7 @@ local function openDetail(rid)
 		end
 		closeDetail()
 		renderSetup()
-	end, on and Color3.fromRGB(120, 60, 60) or Color3.fromRGB(91, 140, 255), on or #setup.roster < 6)
+	end, on and "danger" or "primary", on or #setup.roster < 6)
 	smallBtn(detailBtns, 126, 0, 70, "닫기", closeDetail)
 end
 
@@ -808,12 +1002,16 @@ local function renderRosterGrid()
 				}, setupContent)
 				local iu = Art.icon(rd.id)
 				if iu then
-					mk("ImageLabel", { Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1, Image = iu, ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated }, card)
+					iconLabel(card, 2, 2, 30, iu)
 				else
 					mk("TextLabel", { Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1, Text = Data.ELEM_EMO[rd.element] or "", TextSize = 18 }, card)
 				end
+				local eu = Art.element(rd.element)
+				if eu then
+					iconLabel(card, 110, 2, 14, eu)
+				end
 				mk("TextLabel", {
-					Size = UDim2.new(1, -36, 0, 16), Position = UDim2.new(0, 34, 0, 1), BackgroundTransparency = 1, Text = rd.name,
+					Size = UDim2.new(1, -52, 0, 16), Position = UDim2.new(0, 34, 0, 1), BackgroundTransparency = 1, Text = rd.name,
 					TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = on and WHITE or Color3.fromRGB(220, 224, 232), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 				}, card)
 				mk("TextLabel", {
@@ -844,10 +1042,8 @@ local function renderTray()
 		}, setupContent)
 		local iu, tint = slotImage(i)
 		if iu then
-			mk("ImageLabel", {
-				Size = UDim2.new(0, 36, 0, 36), Position = UDim2.new(0, 4, 0, 2), BackgroundTransparency = 1, Image = iu,
-				ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, ImageColor3 = tint or WHITE, ImageTransparency = placed and 0.65 or 0,
-			}, chip)
+			local il = iconLabel(chip, 4, 2, 36, iu, tint)
+			il.ImageTransparency = placed and 0.65 or 0
 		else
 			mk("TextLabel", { Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 2), BackgroundTransparency = 1, Text = slotLabel(i), TextSize = 10, TextColor3 = team, TextWrapped = true }, chip)
 		end
@@ -857,7 +1053,7 @@ local function renderTray()
 		}, chip)
 		local slot = i
 		chip.Activated:Connect(function()
-			if setup.pos[slot] then -- 배치된 말 클릭 → 회수해서 손에 들기
+			if setup.pos[slot] then
 				setup.pos[slot] = nil
 			end
 			setup.tray = slot
@@ -871,21 +1067,12 @@ local function renderTray()
 	}, setupContent)
 end
 
--- 2D 보드로 배치 (판 파트 없을 때)
 local function renderBoard2DSetup()
-	local team = Art.TEAM[myOwner()]
 	for r = 1, ROWS do
 		for c = 1, COLS do
 			local b = cells[dispRow(r)][c]
-			local zone = (r <= 3) and Color3.fromRGB(74, 46, 58) or (r >= 11) and Color3.fromRGB(47, 58, 94)
-				or ((r >= 4 and r <= 5) or (r >= 9 and r <= 10)) and Color3.fromRGB(35, 66, 47) or Color3.fromRGB(43, 49, 64)
-			b.BackgroundColor3 = zone
-			b.Text = ""
-			b.BorderSizePixel = 0
-			b.Icon.Visible = false
-			b.Hp.Visible = false
-			b.Mark.Visible = false
-			local sr = toEngineRow(r) -- 엔진 행 → 설정 행 (대합)
+			cellReset(b, r)
+			local sr = toEngineRow(r)
 			if sr >= 11 and sr <= 13 then
 				local i = setupPieceAt(sr, c)
 				if i then
@@ -897,10 +1084,9 @@ local function renderBoard2DSetup()
 					else
 						b.Text = slotLabel(i)
 					end
-					b.BorderSizePixel = 2
-					b.BorderColor3 = (i == setup.tray) and HL.sel or team
+					cellHighlight(b, (i == setup.tray) and "sel" or "flee")
 				elseif setup.tray then
-					b.BackgroundColor3 = Color3.fromRGB(60, 80, 130)
+					cellHighlight(b, "move")
 				end
 			end
 		end
@@ -911,6 +1097,7 @@ function renderSetup()
 	if not tableInfo or (view and view.phase ~= "over") or tableInfo.inGame then
 		setupPanel.Visible = false
 		boardFrame.Visible = boardFrame.Visible and view ~= nil
+		boardFrameImg.Visible = boardFrame.Visible
 		return
 	end
 	if tableInfo.myReady then
@@ -924,6 +1111,10 @@ function renderSetup()
 	local oppLine = ti.opp and ("상대: " .. ti.opp .. (ti.oppReady and " (배치 완료)" or " (배치 중)")) or "상대 없음 — 맞은편에 누가 앉으면 시작"
 	local bp = findBoardPart()
 	local use3D = bp ~= nil and not force2D
+	local function show2D(on)
+		boardFrame.Visible = on
+		boardFrameImg.Visible = on
+	end
 	if setup.stage == "roster" then
 		setupTitle.Text = ("로스터 선택 (%d/6) — 테이블 %d %s 자리"):format(#setup.roster, ti.tableId, ti.side)
 		setupHint.Text = oppLine .. " · 카드를 누르면 상세(초상화·기술)와 선택 버튼"
@@ -939,14 +1130,14 @@ function renderSetup()
 			setup.tray = nextUnplaced(1)
 			closeDetail()
 			renderSetup()
-		end, Color3.fromRGB(91, 140, 255), #setup.roster == 6)
+		end, "primary", #setup.roster == 6)
 		smallBtn(setupBtns, 400, 2, 260, "⚡ 전부 무작위로 배치 완료 (빠른 시작)", function()
 			autoPlace()
 			closeDetail()
 			sendReady()
-		end, Color3.fromRGB(70, 100, 70))
+		end)
 		local3d:ClearAllChildren()
-		boardFrame.Visible = false
+		show2D(false)
 	elseif setup.stage == "place" then
 		setupTitle.Text = ("비공개 배치 (%d/14) — 테이블 %d %s 자리"):format(placedCount(), ti.tableId, ti.side)
 		setupHint.Text = oppLine .. (use3D and " · 손에 든 말을 판의 내 진영 칸에 클릭" or " · 왼쪽 2D 보드의 내 진영 칸을 클릭")
@@ -963,16 +1154,16 @@ function renderSetup()
 			clearPlace()
 			renderSetup()
 		end)
-		smallBtn(setupBtns, 520, 2, 140, "배치 완료 ✔", sendReady, Color3.fromRGB(91, 140, 255), placedCount() == 14)
+		smallBtn(setupBtns, 520, 2, 140, "배치 완료 ✔", sendReady, "primary", placedCount() == 14)
 		if use3D then
-			boardFrame.Visible = false
+			show2D(false)
 			sync3DSetup()
 		else
-			boardFrame.Visible = true
+			show2D(true)
 			local3d:ClearAllChildren()
 			renderBoard2DSetup()
 		end
-	else -- ready
+	else
 		setupTitle.Text = ("✅ 배치 완료 — 테이블 %d %s 자리"):format(ti.tableId, ti.side)
 		setupHint.Text = oppLine .. " · " .. ((ti.opp and ti.oppReady) and "시작 중…" or "상대가 배치를 마치면 시작합니다")
 		clearChildren(setupContent)
@@ -980,16 +1171,16 @@ function renderSetup()
 			send({ t = "unready" })
 		end)
 		if use3D then
-			boardFrame.Visible = false
+			show2D(false)
 			sync3DSetup()
 		else
-			boardFrame.Visible = true
+			show2D(true)
 			renderBoard2DSetup()
 		end
 	end
 end
 
-local function onSetupCell(er, c) -- 엔진 좌표 클릭 → 설정 좌표
+local function onSetupCell(er, c)
 	if setup.stage ~= "place" then
 		return
 	end
@@ -1012,30 +1203,45 @@ end
 -- 로비 상태 표시
 --==================================================================
 
+local function renderHudButtons()
+	clearChildren(hudBtns)
+	if findBoardPart() ~= nil and (tableInfo or view) then
+		smallBtn(hudBtns, 0, 0, 78, force2D and "3D 판" or "2D 보드", function()
+			force2D = not force2D
+			if view then
+				render()
+			else
+				renderSetup()
+			end
+		end, "default", true, nil, 24)
+	end
+	if tableInfo then
+		smallBtn(hudBtns, 84, 0, 116, "자리 떠나기", function()
+			send({ t = "stand" })
+		end, "danger", true, Art.action("resign"), 24)
+	end
+end
+
 local function renderLobby()
 	setBoardCamera(tableInfo ~= nil)
+	renderHudButtons()
 	if view and view.phase ~= "over" then
 		setupPanel.Visible = false
-		standBtn.Visible = true
 		hudLabel.Text = tableInfo and ("테이블 %d · ⚔️ 대전 중 (자리 떠나기 = 기권)"):format(tableInfo.tableId) or "⚔️ 대전 중"
 		return
 	end
 	if not tableInfo then
 		hudLabel.Text = "🪑 테이블 의자 앞에서 [E] 앉기 → 로스터 선택 → 판 위에 배치 → 맞은편 상대도 배치를 마치면 대전 시작"
-		standBtn.Visible = false
-		modeBtn.Visible = false
 		setupPanel.Visible = false
 		closeDetail()
 		if not view then
 			boardFrame.Visible = false
+			boardFrameImg.Visible = false
 			local3d:ClearAllChildren()
 		end
 		return
 	end
 	local ti = tableInfo
-	standBtn.Visible = true
-	modeBtn.Visible = findBoardPart() ~= nil
-	modeBtn.Text = force2D and "3D 판" or "2D 보드"
 	hudLabel.Text = ("테이블 %d · %s 자리 · %s"):format(ti.tableId, ti.side, ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)")
 	renderSetup()
 end
@@ -1047,6 +1253,7 @@ local function closeGame()
 	teleFirst = nil
 	local3d:ClearAllChildren()
 	boardFrame.Visible = false
+	boardFrameImg.Visible = false
 	renderLobby()
 end
 
@@ -1060,21 +1267,12 @@ local function renderBoard2D()
 	for r = 1, ROWS do
 		for c = 1, COLS do
 			local b = cells[dispRow(r)][c]
-			local zone = (r <= 3) and Color3.fromRGB(74, 46, 58) or (r >= 11) and Color3.fromRGB(47, 58, 94)
-				or ((r >= 4 and r <= 5) or (r >= 9 and r <= 10)) and Color3.fromRGB(35, 66, 47)
-				or Color3.fromRGB(43, 49, 64)
-			b.BackgroundColor3 = zone
-			b.Text = ""
-			b.TextColor3 = WHITE
-			b.BorderSizePixel = 0
-			local icon, hpLabel, mark = b.Icon, b.Hp, b.Mark
-			icon.Visible = false
-			hpLabel.Visible = false
-			mark.Visible = false
+			cellReset(b, r)
+			local hl = nil
 			if legal then
 				for _, rc in legal.moves do
 					if rc[1] == r and rc[2] == c then
-						b.BackgroundColor3 = Color3.fromRGB(50, 90, 160)
+						hl = "move"
 					end
 				end
 			end
@@ -1086,33 +1284,36 @@ local function renderBoard2D()
 				b.BorderColor3 = team
 				local img, tint = pieceImage(p, 64)
 				if img then
-					icon.Image = img
-					icon.ImageColor3 = tint or WHITE
-					icon.Visible = true
+					b.Icon.Image = img
+					b.Icon.ImageColor3 = tint or WHITE
+					b.Icon.Visible = true
 					local hp = hpText(p)
 					if hp then
-						hpLabel.Text = hp
-						hpLabel.Visible = true
+						b.Hp.Text = hp
+						b.Hp.Visible = true
 					end
 				else
 					b.Text = pieceLabel(p)
 				end
+				if view.fleePick and table.find(view.fleePick.cands, p.id) then
+					hl = "flee"
+				end
 				if p.id == selectedId or p.id == teleFirst then
-					b.BackgroundColor3 = Color3.fromRGB(120, 120, 40)
+					hl = "sel"
 				end
 				if legal and table.find(legal.attacks, p.id) then
-					b.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+					hl = "attack"
 				end
 				if table.find(forced, p.id) then
-					b.BackgroundColor3 = Color3.fromRGB(160, 50, 50)
+					hl = "forced"
 				end
-				if view.fleePick and table.find(view.fleePick.cands, p.id) then
-					b.BackgroundColor3 = Color3.fromRGB(50, 90, 160)
-				end
+			end
+			if hl then
+				cellHighlight(b, hl)
 			end
 			for _, tr in view.traces do
 				if tr.r == r and tr.c == c then
-					mark.Visible = true
+					cellMark(b)
 				end
 			end
 		end
@@ -1121,91 +1322,103 @@ end
 
 local function renderSide()
 	local myTurn = view.phase == "play" and view.current == view.me
-	local head = ("<b>%s</b>  턴 %d %s\n"):format(
+	local head = ("<b>%s</b>  턴 %d %s"):format(
 		view.phase == "over" and "경기 종료" or (myTurn and "🟢 나의 턴" or "⏳ 상대 턴"),
 		view.turnCount + 1, view.burning and "🔥BT" or "")
 	if view.phase == "over" then
 		local w = view.winner
-		head ..= (w == view.me and "🏆 승리! " or w == -1 and "무승부 " or "패배… ")
-			.. "(" .. (view.winType and Data.WINTYPE_KO[view.winType] or "") .. ")\n"
+		head ..= "\n" .. (w == view.me and "🏆 승리! " or w == -1 and "무승부 " or "패배… ")
+			.. "(" .. (view.winType and Data.WINTYPE_KO[view.winType] or "") .. ")"
 	end
-	head ..= ("몬스터볼 %d · 아이템 %d개 · 전투 %d/2 · 주 행동 %s\n"):format(
-		view.balls, #view.inv, view.battlesUsed, view.mainUsed and "완료" or "가능")
+	infoHead.Text = head
+	-- 배지 행: 몬스터볼 · 아이템 · 전투 · 예비 하수인
+	clearChildren(badgeRow)
+	local x = 0
+	mkBadge(badgeRow, x, 0, 76, Art.item("ball"), "볼 " .. view.balls)
+	x += 80
+	mkBadge(badgeRow, x, 0, 84, Art.action("bag"), "아이템 " .. #view.inv)
+	x += 88
+	mkBadge(badgeRow, x, 0, 76, Art.action("fight"), ("전투 %d/2"):format(view.battlesUsed))
+	x += 80
 	if view.reserve then
-		head ..= ("예비 하수인(%s) HP %d/%d\n"):format(Data.ELEM_KO[view.reserve.element], view.reserve.hp, view.reserve.maxHp)
+		mkBadge(badgeRow, x, 0, 96, Art.item("reserve"), ("예비 %d/%d"):format(view.reserve.hp, view.reserve.maxHp))
 	end
+	local info = ""
 	local sel = selectedId and pieceById(selectedId)
 	if sel and sel.known then
-		head ..= ("선택: %s HP %s"):format(sel.name or Data.TYPE_KO[sel.type or ""] or "?", tostring(sel.hp or "-"))
+		info ..= ("선택: %s HP %s"):format(sel.name or Data.TYPE_KO[sel.type or ""] or "?", tostring(sel.hp or "-"))
 		local lg = legalOf(selectedId)
 		if lg then
-			head ..= (" · 이동 %d칸%s"):format(#lg.moves, #lg.attacks > 0 and (" · 공격 가능 " .. #lg.attacks) or "")
+			info ..= (" · 이동 %d칸%s"):format(#lg.moves, #lg.attacks > 0 and (" · 공격 가능 " .. #lg.attacks) or "")
 		end
-		head ..= "\n"
+		info ..= "\n"
 	end
 	if teleFirst then
-		head ..= "🌀 텔레포트: 교환할 두 번째 말을 클릭\n"
+		info ..= "🌀 텔레포트: 교환할 두 번째 말을 클릭\n"
 	end
 	if view.fleePick then
-		head ..= "🏃 도망 성공 — 후방 말(파란 표시) 클릭으로 교환 또는 생략\n"
+		info ..= "🏃 도망 성공 — 후방 말(파란 표시) 클릭으로 교환 또는 생략\n"
 	end
 	if view.fleeWait then
-		head ..= "🛗 상대가 말을 교체 중입니다…\n"
+		info ..= "🛗 상대가 말을 교체 중입니다…\n"
 	end
 	if view.pendingWait then
-		head ..= "🔒 상대 선택 대기 중…\n"
+		info ..= "🔒 상대 선택 대기 중…\n"
 	end
 	if view.forcedTargets then
-		head ..= "⚔️ 강제 전투 — 빨간 대상 클릭\n"
+		info ..= "⚔️ 강제 전투 — 빨간 대상 클릭\n"
 	end
-	if myTurn and not sel and not view.battle then
-		head ..= "내 말을 클릭하면 이동(파랑)·공격(빨강) 가능 칸이 표시됩니다\n"
+	if myTurn and not sel and not view.battle and info == "" then
+		info ..= "내 말을 클릭하면 이동 가능 칸(파랑)·공격 가능 대상(빨강)이 표시됩니다\n"
 	end
-	infoLabel.Text = head
+	if view.mainUsed and myTurn and not view.battle then
+		info ..= "주 행동 완료 — 전투 대상이 없으면 자동으로 턴이 넘어갑니다\n"
+	end
+	infoLabel.Text = info
 end
 
 local function renderButtons()
 	clearChildren(btnRow)
 	local myTurn = view.phase == "play" and view.current == view.me and not view.battle and not view.pending and not view.pendingWait
 	if view.fleePick then
-		smallBtn(btnRow, 0, 0, 170, "교환 생략 (그대로 밀기)", function()
+		smallBtn(btnRow, 0, 0, 190, "교환 생략 (그대로 밀기)", function()
 			send({ t = "fleeSkip" })
-		end, Color3.fromRGB(91, 140, 255))
-		smallBtn(btnRow, 180, 0, 60, "기권", function()
+		end, "primary", true, Art.action("skip"))
+		smallBtn(btnRow, 196, 0, 90, "기권", function()
 			send({ t = "resign" })
-		end, Color3.fromRGB(170, 60, 70))
+		end, "danger", true, Art.action("resign"))
 		return
 	end
 	if not myTurn then
 		if view.phase == "over" then
-			smallBtn(btnRow, 0, 0, 150, "닫기 (자리로 돌아가기)", closeGame, Color3.fromRGB(91, 140, 255))
+			smallBtn(btnRow, 0, 0, 170, "닫기 (자리로 돌아가기)", closeGame, "primary")
 		end
 		return
 	end
 	local lg = legalOf(selectedId)
-	smallBtn(btnRow, 0, 0, 70, "탐색", function()
+	smallBtn(btnRow, 0, 0, 90, "탐색", function()
 		send({ t = "search", id = selectedId })
-	end, nil, lg ~= nil and lg.search)
-	smallBtn(btnRow, 76, 0, 90, teleFirst and "🌀 취소" or "🌀 텔레포트", function()
+	end, "default", lg ~= nil and lg.search, Art.action("search"))
+	smallBtn(btnRow, 96, 0, 112, teleFirst and "취소" or "텔레포트", function()
 		if teleFirst then
 			teleFirst = nil
 		else
 			teleFirst = selectedId
 		end
 		render()
-	end, nil, teleFirst ~= nil or (view.teleAvailable and selectedId ~= nil))
-	smallBtn(btnRow, 172, 0, 70, "🌿 회복", function()
+	end, "default", teleFirst ~= nil or (view.teleAvailable and selectedId ~= nil), Art.action("teleport"))
+	smallBtn(btnRow, 214, 0, 90, "회복", function()
 		send({ t = "heal", id = selectedId })
-	end, nil, lg ~= nil and lg.heal)
-	smallBtn(btnRow, 0, 32, 100, "주 행동 생략", function()
+	end, "default", lg ~= nil and lg.heal, Art.action("heal"))
+	smallBtn(btnRow, 0, 32, 120, "주 행동 생략", function()
 		send({ t = "skipMain" })
-	end, nil, not view.mainUsed)
-	smallBtn(btnRow, 106, 32, 80, "턴 종료", function()
+	end, "default", not view.mainUsed, Art.action("skip"))
+	smallBtn(btnRow, 126, 32, 96, "턴 종료", function()
 		send({ t = "endTurn" })
-	end, Color3.fromRGB(91, 140, 255))
-	smallBtn(btnRow, 192, 32, 60, "기권", function()
+	end, "primary", true, Art.action("endturn"))
+	smallBtn(btnRow, 228, 32, 80, "기권", function()
 		send({ t = "resign" })
-	end, Color3.fromRGB(170, 60, 70))
+	end, "danger", true, Art.action("resign"))
 end
 
 local function renderPrompt()
@@ -1222,22 +1435,22 @@ local function renderPrompt()
 		end)
 		local alt = pd.cap or pd.reserve
 		if alt then
-			smallBtn(promptBtns, 106, 0, 200, ("하수인(%s) HP %d/%d 대리 출전"):format(Data.ELEM_KO[alt.element], alt.hp, alt.maxHp), function()
+			smallBtn(promptBtns, 106, 0, 220, ("하수인(%s) HP %d/%d 대리 출전"):format(Data.ELEM_KO[alt.element], alt.hp, alt.maxHp), function()
 				send({ t = "vipPick", use = "cap" })
-			end, Color3.fromRGB(91, 140, 255))
+			end, "primary", true, Art.item("reserve"))
 		end
 	elseif pd.kind == "capture" then
 		promptLabel.Text = ("포획 시도 (몬스터볼 %d) — 공격 포획 실패 시 최대 HP 25%% 피해"):format(pd.balls)
 		smallBtn(promptBtns, 0, 0, 105, "안전 (볼2·100%)", function()
 			send({ t = "capTry", mode = "safe" })
-		end, nil, pd.balls >= 2)
+		end, "default", pd.balls >= 2)
 		smallBtn(promptBtns, 110, 0, 100, "위험 (볼1·50%)", function()
 			send({ t = "capTry", mode = "risky" })
-		end, nil, pd.balls >= 1)
+		end, "default", pd.balls >= 1)
 		smallBtn(promptBtns, 215, 0, 100, "공격 (볼1·70%)", function()
 			send({ t = "capTry", mode = "attack" })
-		end, nil, pd.balls >= 1)
-		smallBtn(promptBtns, 0, 30, 60, "포기", function()
+		end, "danger", pd.balls >= 1)
+		smallBtn(promptBtns, 0, 30, 70, "포기", function()
 			send({ t = "capSkip" })
 		end)
 	elseif pd.kind == "recruit" then
@@ -1245,38 +1458,87 @@ local function renderPrompt()
 		promptLabel.Text = ("공용 하수인 — 새 기술 [%s] 을 배우겠습니까? (남은 쿨 승계·재비공개)"):format(alt.ko)
 		local s1 = pd.slots and Data.SKILLS[pd.slots[1]] or nil
 		local s2 = pd.slots and Data.SKILLS[pd.slots[2]] or nil
-		smallBtn(promptBtns, 0, 0, 150, ("공격기1 교체 (%s)"):format(s1 and s1.ko or "?"), function()
+		smallBtn(promptBtns, 0, 0, 160, ("공격기1 교체 (%s)"):format(s1 and s1.ko or "?"), function()
 			send({ t = "recruitSwap", slot = 1 })
-		end)
-		smallBtn(promptBtns, 156, 0, 150, ("공격기2 교체 (%s)"):format(s2 and s2.ko or "?"), function()
+		end, "default", true, Art.skillKind("attack"))
+		smallBtn(promptBtns, 166, 0, 160, ("공격기2 교체 (%s)"):format(s2 and s2.ko or "?"), function()
 			send({ t = "recruitSwap", slot = 2 })
-		end)
-		smallBtn(promptBtns, 0, 30, 60, "유지", function()
+		end, "default", true, Art.skillKind("attack"))
+		smallBtn(promptBtns, 0, 30, 70, "유지", function()
 			send({ t = "recruitKeep" })
 		end)
 	end
 end
 
-local function fighterText(fv, label)
-	local st = {}
+-- 전투원 카드: 속성 아이콘 · 이름 · HP 바 · 방어막 바 · 상태 아이콘
+local function renderFighterCard(container, fv, label)
+	clearChildren(container)
+	local z = container.ZIndex
+	local name = fv.isCap and ("포획 하수인·" .. (Data.ELEM_KO[fv.element] or "")) or (fv.name or Data.TYPE_KO[fv.pieceType] or "?")
+	local x = 0
+	local eu = Art.element(fv.element)
+	if eu then
+		iconLabel(container, 0, 0, 20, eu, nil, z + 1)
+		x = 24
+	end
+	mk("TextLabel", {
+		Size = UDim2.new(1, -x, 0, 20), Position = UDim2.new(0, x, 0, 0), BackgroundTransparency = 1, RichText = true,
+		Text = ("<b>%s</b> %s (%s)"):format(label, name, fv.owner == view.me and "나" or "상대"), TextSize = 13, Font = Enum.Font.Gotham,
+		TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = z + 1, TextTruncate = Enum.TextTruncate.AtEnd,
+	}, container)
+	local hp = mkBar(container, 0, 24, 150, 12, "hp", z + 1)
+	setBar(hp, fv.hp / fv.maxHp)
+	mk("TextLabel", {
+		Size = UDim2.new(0, 100, 0, 12), Position = UDim2.new(0, 156, 0, 24), BackgroundTransparency = 1,
+		Text = ("HP %d/%d"):format(fv.hp, fv.maxHp), TextSize = 11, Font = Enum.Font.GothamBold, TextColor3 = WHITE,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = z + 1,
+	}, container)
+	local sh = mkBar(container, 0, 39, 150, 8, "sh", z + 1)
+	setBar(sh, fv.shield / fv.maxHp)
 	if fv.shield > 0 then
-		table.insert(st, "🛡" .. fv.shield)
+		mk("TextLabel", {
+			Size = UDim2.new(0, 100, 0, 10), Position = UDim2.new(0, 156, 0, 38), BackgroundTransparency = 1,
+			Text = "방어막 " .. fv.shield, TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(0x4d, 0xa3, 0xff),
+			TextXAlignment = Enum.TextXAlignment.Left, ZIndex = z + 1,
+		}, container)
+	end
+	local sx = 0
+	local function st(key, txt, fallback)
+		local u = Art.status(key)
+		if u then
+			iconLabel(container, sx, 52, 18, u, nil, z + 1)
+			sx += 20
+		else
+			txt = fallback .. (txt or "")
+		end
+		if txt and txt ~= "" then
+			local w = 8 + 7 * #txt
+			mk("TextLabel", {
+				Size = UDim2.new(0, w, 0, 18), Position = UDim2.new(0, sx, 0, 52), BackgroundTransparency = 1, Text = txt,
+				TextSize = 11, Font = Enum.Font.GothamBold, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = z + 1,
+			}, container)
+			sx += w
+		end
+		sx += 4
 	end
 	if fv.burn > 0 then
-		table.insert(st, "🔥화상" .. fv.burn .. "R")
+		st("burn", fv.burn .. "R", "🔥")
 	end
 	if fv.weaken > 0 then
-		table.insert(st, "💧약화" .. fv.weaken)
+		st("weaken", fv.weaken .. "회", "💧")
 	end
 	if fv.shock > 0 then
-		table.insert(st, "⚡감전")
+		st("shock", "", "⚡")
+	end
+	if fv.dmgCut > 0 then
+		st("dmgcut", math.floor(fv.dmgCut * 100 + 0.5) .. "%", "🌀")
 	end
 	if fv.focusCharge then
-		table.insert(st, "🎯집중")
+		st("focus", "", "🎯")
 	end
-	local name = fv.isCap and ("포획 하수인·" .. (Data.ELEM_KO[fv.element] or "")) or (fv.name or Data.TYPE_KO[fv.pieceType] or "?")
-	return ("<b>%s</b> %s (%s)\nHP %d/%d  %s"):format(
-		label, name, fv.owner == view.me and "나" or "상대", fv.hp, fv.maxHp, table.concat(st, " "))
+	if fv.vulnMark then
+		st("vuln", "+15%", "⚠️")
+	end
 end
 
 local function fighterImage(fv)
@@ -1294,9 +1556,9 @@ local function renderBattle()
 	end
 	local myActing = bt.actorOwner == view.me
 	local topSide = (bt.mySide == "A") and "D" or "A"
-	battleTop.Text = fighterText(bt[topSide], topSide == "A" and "[공격]" or "[방어]")
-	battleBottom.Text = fighterText(bt[bt.mySide], bt.mySide == "A" and "[공격]" or "[방어]")
-		.. ("\n라운드 %d/%d — %s"):format(bt.round, bt.maxRounds, myActing and "🟢 나의 행동" or "⏳ 상대 행동")
+	renderFighterCard(fighterTop, bt[topSide], topSide == "A" and "[공격]" or "[방어]")
+	renderFighterCard(fighterBottom, bt[bt.mySide], bt.mySide == "A" and "[공격]" or "[방어]")
+	battleRound.Text = ("⚔️ 라운드 %d/%d — %s"):format(bt.round, bt.maxRounds, myActing and "🟢 나의 행동" or "⏳ 상대 행동")
 	for _, pair in { { spriteTop, bt[topSide] }, { spriteBottom, bt[bt.mySide] } } do
 		local img, fv = pair[1], pair[2]
 		local u, tint = fighterImage(fv)
@@ -1313,41 +1575,43 @@ local function renderBattle()
 		local anyReady = false
 		for i = 1, 4 do
 			local sv = myF.skills[i]
-			local text, enabled
+			local text, enabled, kind
 			if sv.id then
 				local sk = Data.SKILLS[sv.id]
 				text = sk.ko .. (sv.cd > 0 and (" (쿨" .. sv.cd .. ")") or "")
 				enabled = sv.cd == 0
+				kind = sk.kind
 			else
 				text = "? " .. (Data.SKIND_KO[sv.kind] or "")
 				enabled = false
+				kind = sv.kind
 			end
 			anyReady = anyReady or enabled
-			smallBtn(battleBtns, ((i - 1) % 2) * 180, math.floor((i - 1) / 2) * 30, 174, text, function()
+			smallBtn(battleBtns, ((i - 1) % 2) * 186, math.floor((i - 1) / 2) * 30, 180, text, function()
 				send({ t = "act", k = i })
-			end, nil, enabled)
+			end, "default", enabled, Art.skillKind(kind))
 		end
-		smallBtn(battleBtns, 0, 62, 90, "기본 공격", function()
+		smallBtn(battleBtns, 0, 62, 100, "기본 공격", function()
 			send({ t = "act", k = "basic" })
-		end, nil, not anyReady)
+		end, "default", not anyReady, Art.action("fight"))
 	else
 		smallBtn(battleBtns, 0, 0, 120, "기본 공격", function()
 			send({ t = "act", k = "basic" })
-		end)
+		end, "default", true, Art.action("fight"))
 	end
 	for i, k in bt.myItems do
 		if i <= 3 then
-			smallBtn(battleBtns, 96 + (i - 1) * 76, 62, 72, Data.ITEMS[k].ko, function()
+			smallBtn(battleBtns, 106 + (i - 1) * 88, 62, 84, Data.ITEMS[k].ko, function()
 				send({ t = "item", i = i })
-			end, Color3.fromRGB(70, 100, 70))
+			end, "default", true, Art.item(k))
 		end
 	end
-	smallBtn(battleBtns, 0, 94, 110, "🔴 볼 던지기", function()
+	smallBtn(battleBtns, 0, 94, 130, "볼 던지기", function()
 		send({ t = "ball" })
-	end, Color3.fromRGB(150, 60, 60))
-	smallBtn(battleBtns, 116, 94, 90, "🏃 도망", function()
+	end, "danger", true, Art.item("ball"))
+	smallBtn(battleBtns, 136, 94, 100, "도망", function()
 		send({ t = "flee" })
-	end, Color3.fromRGB(120, 90, 40))
+	end, "default", true, Art.action("flee"))
 end
 
 function render()
@@ -1360,8 +1624,7 @@ function render()
 	local bp = findBoardPart()
 	boardMode = (bp and not force2D) and "3d" or "2d"
 	boardFrame.Visible = boardMode == "2d"
-	modeBtn.Visible = bp ~= nil
-	modeBtn.Text = force2D and "3D 판" or "2D 보드"
+	boardFrameImg.Visible = boardFrame.Visible
 	DIAG.board = bp and (" · 판 " .. boardMode) or " · 판 없음(2D)"
 	refreshFooter()
 	renderLobby()
@@ -1427,7 +1690,6 @@ local function onCell(r, c)
 	send({ t = "move", id = sel.id, r = r, c = c })
 end
 
--- 보드 클릭 라우팅 (엔진 좌표): 대전 중 → onCell, 배치 중 → onSetupCell
 local function onBoardClick(r, c)
 	if view and view.phase == "play" then
 		onCell(r, c)
@@ -1461,17 +1723,6 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
-standBtn.Activated:Connect(function()
-	send({ t = "stand" })
-end)
-modeBtn.Activated:Connect(function()
-	force2D = not force2D
-	if view then
-		render()
-	else
-		renderLobby()
-	end
-end)
 renderLobby()
 DIAG.ui = true
 refreshFooter()
@@ -1515,7 +1766,7 @@ reState.OnClientEvent:Connect(function(msg)
 			elseif ev.t == "bmsg" then
 				battleMsg.Text = (battleMsg.Text ~= "" and battleMsg.Text .. "\n" or "") .. ev.text
 				local lines = string.split(battleMsg.Text, "\n")
-				while #lines > 8 do
+				while #lines > 7 do
 					table.remove(lines, 1)
 				end
 				battleMsg.Text = table.concat(lines, "\n")
