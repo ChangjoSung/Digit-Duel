@@ -392,6 +392,52 @@ else
 	ok(string.find(Art.icon("M-F2") or "", "^rbxassetid://%d+$") ~= nil, "ID 있음 → rbxassetid URL")
 	ok(string.find(Art.battle("M-F2") or "", "^rbxassetid://%d+$") ~= nil, "battle URL")
 	print(("  AssetIds %d개 로드"):format(n))
+	if n >= 143 then -- P0 129 PNG + 로비 13 + 가림 1 전량 업로드 후
+		local function isUrl(u)
+			return type(u) == "string" and string.find(u, "^rbxassetid://%d+$") ~= nil
+		end
+		for _, k in { "king", "ally", "bomb", "trap", "unknown" } do
+			ok(isUrl(Art.token(k, 64)), "token64 " .. k)
+		end
+		for _, el in Data.ELEMS do
+			ok(isUrl(Art.element(el)), "element " .. el)
+		end
+		ok(isUrl(Art.trace()), "trace")
+		for _, k in { "shield", "burn", "weaken", "shock", "dmgcut", "focus", "vuln" } do
+			ok(isUrl(Art.status(k)), "status " .. k)
+		end
+		for _, k in { "potion", "cool", "cure", "ball", "reserve" } do
+			ok(isUrl(Art.item(k)), "item " .. k)
+		end
+		for _, k in { "search", "teleport", "heal", "skip", "endturn", "resign", "fight", "bag", "capture", "flee" } do
+			ok(isUrl(Art.action(k)), "action " .. k)
+		end
+		for _, k in { "attack", "support", "sig" } do
+			ok(isUrl(Art.skillKind(k)), "skillKind " .. k)
+		end
+		for _, k in { "tile_own", "tile_enemy", "tile_forest", "tile_mid", "hl_move", "hl_attack", "hl_sel", "hl_flee", "hl_forced", "frame" } do
+			ok(isUrl(Art.board(k)), "board " .. k)
+		end
+		for _, kind in { "default", "primary", "danger" } do
+			for _, st in { "normal", "hover", "pressed", "disabled" } do
+				ok(isUrl(Art.ui("btn_" .. kind .. "_" .. st)), "btn " .. kind .. " " .. st)
+			end
+		end
+		for _, k in { "panel_side", "panel_battle", "panel_modal", "badge", "hpbar_bg", "hpbar_fill", "shbar_bg", "shbar_fill" } do
+			ok(isUrl(Art.ui(k)), "ui " .. k)
+		end
+		for _, k in { "desk", "chair", "board", "floor", "wall", "pillar" } do
+			ok(type(Art.lobbyMeshId(k)) == "number", "lobby mesh " .. k)
+		end
+		ok(type(Art.meshId("unknown")) == "number", "unknown mesh id")
+		-- 틴트 7종·슬라이스 5군 계약
+		for _, k in { "hl_move", "hl_flee", "hl_attack", "hl_forced", "hl_sel", "hpbar_fill", "shbar_fill" } do
+			ok(Art.TINT[k] ~= nil, "tint " .. k)
+		end
+		for _, k in { "hl", "panel", "btn", "badge", "bar" } do
+			ok(Art.SLICE[k] ~= nil and #Art.SLICE[k] == 4, "slice " .. k)
+		end
+	end
 end
 
 --==================================================================

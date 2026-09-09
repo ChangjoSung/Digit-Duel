@@ -79,6 +79,62 @@ function Art.lobbyImage(key: string): string?
 	return url(AssetIds["lobby_" .. key])
 end
 
+--==================================================================
+-- P0-B/C/D UI 자산 (roblox/assets/ui/README.md 가 적용 계약) — 키는 루트 manifest 의 kind_id
+--==================================================================
+
+-- 9-slice SliceCenter 좌표 {L,T,R,B} — 원본 이미지의 중앙 사각형 (여백값이 아님). 클라이언트가 Rect.new 로 만든다
+Art.SLICE = {
+	hl = { 32, 32, 96, 96 }, -- 하이라이트 5 · board frame (128×128) — 32px 셀은 SliceScale 0.25, 64px 는 0.5
+	panel = { 16, 16, 112, 112 }, -- 패널 3 (128×128)
+	btn = { 12, 12, 116, 52 }, -- 버튼 12 (128×64)
+	badge = { 12, 12, 52, 28 }, -- badge (64×40)
+	bar = { 8, 8, 56, 24 }, -- HP/방어막 바 4 (64×32)
+}
+
+-- 흰색 단색 자산에 입힐 색 (신규 60 중 tint=yes 7개만). 나머지는 흰색 ImageColor3 유지
+Art.TINT = {
+	hl_move = rgb(0x5b, 0x8c, 0xff),
+	hl_flee = rgb(0x5b, 0x8c, 0xff),
+	hl_attack = rgb(0xff, 0x5b, 0x6e),
+	hl_forced = rgb(0xff, 0x5b, 0x6e),
+	hl_sel = rgb(0xff, 0xd8, 0x4d),
+	hpbar_fill = rgb(0x4f, 0xd8, 0x8a),
+	shbar_fill = rgb(0x4d, 0xa3, 0xff),
+}
+
+function Art.element(el: string?): string? -- fire|water|grass|lightning (64) — 공개된 속성 또는 사용자의 수동 추측에만
+	return el and url(AssetIds["element64_" .. el]) or nil
+end
+
+function Art.trace(): string? -- 흔적 (48) — 서버가 허용한 칸에만
+	return url(AssetIds["trace48_trace"])
+end
+
+function Art.status(key: string): string? -- shield|burn|weaken|shock|dmgcut|focus|vuln (48)
+	return url(AssetIds["status48_" .. key])
+end
+
+function Art.item(key: string): string? -- potion|cool|cure|ball|reserve (64)
+	return url(AssetIds["item64_" .. key])
+end
+
+function Art.action(key: string): string? -- search|teleport|heal|skip|endturn|resign|fight|bag|capture|flee (48)
+	return url(AssetIds["action48_" .. key])
+end
+
+function Art.skillKind(kind: string): string? -- attack|support|sig (32) — 이미 공개된 종류만
+	return url(AssetIds["skill32_" .. kind])
+end
+
+function Art.board(key: string): string? -- tile_own|tile_enemy|tile_forest|tile_mid|hl_move|hl_attack|hl_sel|hl_flee|hl_forced|frame (128, 2D 셀 전용)
+	return url(AssetIds["board_" .. key])
+end
+
+function Art.ui(key: string): string? -- panel_side|panel_battle|panel_modal|btn_<default|primary|danger>_<normal|hover|pressed|disabled>|badge|hpbar_bg|hpbar_fill|shbar_bg|shbar_fill
+	return url(AssetIds["ui_" .. key])
+end
+
 -- 모델 자산 ID (숫자, 서버 InsertService 용): 로비 메시 desk|chair|board|floor|wall|pillar, 공통 가림 unknown
 function Art.lobbyMeshId(name: string): number?
 	local id = AssetIds["lobbymesh_" .. name]

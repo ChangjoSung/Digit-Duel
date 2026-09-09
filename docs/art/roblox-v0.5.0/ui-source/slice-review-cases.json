@@ -1,0 +1,841 @@
+{
+  "schema": "earth-slice-review-v1",
+  "review_base": "../review",
+  "runtime_base": "../../../..",
+  "background": "#1b202e",
+  "slice_scale": 1,
+  "cases": [
+    {
+      "path": "roblox/assets/board/hl_move.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        196,
+        8,
+        112,
+        88
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_move.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        12,
+        112,
+        296,
+        80
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_attack.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        516,
+        8,
+        112,
+        88
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_attack.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        332,
+        112,
+        296,
+        80
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_sel.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        836,
+        8,
+        112,
+        88
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_sel.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        652,
+        112,
+        296,
+        80
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_flee.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        196,
+        216,
+        112,
+        88
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_flee.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        12,
+        320,
+        296,
+        80
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_forced.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        516,
+        216,
+        112,
+        88
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/hl_forced.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        332,
+        320,
+        296,
+        80
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/frame.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        836,
+        216,
+        112,
+        88
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/board/frame.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        652,
+        320,
+        296,
+        80
+      ],
+      "slice_center": [
+        32,
+        32,
+        96,
+        96
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/panel_side.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        196,
+        424,
+        112,
+        88
+      ],
+      "slice_center": [
+        16,
+        16,
+        112,
+        112
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/panel_side.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        12,
+        528,
+        296,
+        80
+      ],
+      "slice_center": [
+        16,
+        16,
+        112,
+        112
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/panel_battle.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        516,
+        424,
+        112,
+        88
+      ],
+      "slice_center": [
+        16,
+        16,
+        112,
+        112
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/panel_battle.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        332,
+        528,
+        296,
+        80
+      ],
+      "slice_center": [
+        16,
+        16,
+        112,
+        112
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/panel_modal.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        836,
+        424,
+        112,
+        88
+      ],
+      "slice_center": [
+        16,
+        16,
+        112,
+        112
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/panel_modal.png",
+      "preview": "p0-9slice-board-panels.png",
+      "rect": [
+        652,
+        528,
+        296,
+        80
+      ],
+      "slice_center": [
+        16,
+        16,
+        112,
+        112
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_default_normal.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        144,
+        8,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_default_normal.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        12,
+        96,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_default_hover.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        384,
+        8,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_default_hover.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        252,
+        96,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_default_pressed.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        624,
+        8,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_default_pressed.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        492,
+        96,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_default_disabled.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        864,
+        8,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_default_disabled.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        732,
+        96,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_primary_normal.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        144,
+        188,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_primary_normal.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        12,
+        276,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_primary_hover.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        384,
+        188,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_primary_hover.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        252,
+        276,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_primary_pressed.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        624,
+        188,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_primary_pressed.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        492,
+        276,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_primary_disabled.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        864,
+        188,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_primary_disabled.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        732,
+        276,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_danger_normal.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        144,
+        368,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_danger_normal.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        12,
+        456,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_danger_hover.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        384,
+        368,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_danger_hover.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        252,
+        456,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_danger_pressed.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        624,
+        368,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_danger_pressed.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        492,
+        456,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_danger_disabled.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        864,
+        368,
+        84,
+        72
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/btn_danger_disabled.png",
+      "preview": "p0-9slice-buttons.png",
+      "rect": [
+        732,
+        456,
+        208,
+        64
+      ],
+      "slice_center": [
+        12,
+        12,
+        116,
+        52
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/badge.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        128,
+        36,
+        440,
+        48
+      ],
+      "slice_center": [
+        12,
+        12,
+        52,
+        28
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/badge.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        600,
+        20,
+        136,
+        88
+      ],
+      "slice_center": [
+        12,
+        12,
+        52,
+        28
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/hpbar_bg.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        128,
+        164,
+        440,
+        48
+      ],
+      "slice_center": [
+        8,
+        8,
+        56,
+        24
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/hpbar_bg.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        600,
+        148,
+        136,
+        88
+      ],
+      "slice_center": [
+        8,
+        8,
+        56,
+        24
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/hpbar_fill.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        128,
+        292,
+        440,
+        48
+      ],
+      "slice_center": [
+        8,
+        8,
+        56,
+        24
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/hpbar_fill.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        600,
+        276,
+        136,
+        88
+      ],
+      "slice_center": [
+        8,
+        8,
+        56,
+        24
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/shbar_bg.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        128,
+        420,
+        440,
+        48
+      ],
+      "slice_center": [
+        8,
+        8,
+        56,
+        24
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/shbar_bg.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        600,
+        404,
+        136,
+        88
+      ],
+      "slice_center": [
+        8,
+        8,
+        56,
+        24
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/shbar_fill.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        128,
+        548,
+        440,
+        48
+      ],
+      "slice_center": [
+        8,
+        8,
+        56,
+        24
+      ]
+    },
+    {
+      "path": "roblox/assets/ui/shbar_fill.png",
+      "preview": "p0-9slice-meters.png",
+      "rect": [
+        600,
+        532,
+        136,
+        88
+      ],
+      "slice_center": [
+        8,
+        8,
+        56,
+        24
+      ]
+    }
+  ]
+}

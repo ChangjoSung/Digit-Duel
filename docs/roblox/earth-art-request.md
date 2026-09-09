@@ -5,6 +5,8 @@
 
 > **현재 결정 (2026-09-09 CJ 후속 Comment):** 왕·동료는 상징 문양, 폭탄은 어울리는 모양, 함정은 물리적 **덫**, 팀 구분은 파랑/빨강 틴트. 정체 공개 전 모든 종류에 공통으로 쓰는 가림 3D 모델도 추가 요청했다. 이3개 선택은 대기 종료다. [추가 납품·적용 계약](../art/roblox-v0.5.0/earth-token-report.md).
 
+> **최신 납품 (2026-09-09): 기본 P0 129/129 PNG 완료.** CJ의 후속 지시로 P0-B 속성4·흔적1, P0-C10, P0-D45를 추가 납품했다. [최신60개 보고](../art/roblox-v0.5.0/earth-ui-report.md) · [키·틴트·SliceCenter 계약](../../roblox/assets/ui/README.md) · [Claude 적용 인계](claude-art-apply-handoff.md). P1/P2는 미납품이며, 아래 배경의 Phase1 상태는 요청 작성 당시 이력이다. 현재 구현 상태는 최신 코드와 Mars 보고를 확인한다.
+
 --- PROMPT ---
 
 ## dispatch preflight
@@ -24,12 +26,12 @@
 - CJ 결정(2026-09-09): HTML 데모(`demo/index.html` v0.4.5)를 **Roblox**로 포팅한다. 구현은 Mars, 아트는 Earth.
 - Mars가 Phase 1(룰 엔진·서버 권위·최소 UI)을 `roblox/` 에 구현했다. 현재 클라이언트는 텍스트·이모지·단색 박스로만 그린다.
 - Phase 2(본 UI·연출)에 들어가려면 Roblox용 아트 자산이 필요하다. **이 요청은 그 자산 일체의 납품**이다.
-- 하수인 20종 외형은 이미 v0.4.3에서 확정·납품됐다 (`demo/assets/minions/`, 원본 `docs/art/minions-v0.4.3/pixel-sources/*.json`, 생성 도구 `tools/minion_art.py`). **디자인을 바꾸지 말고 Roblox 규격으로 재출력**한다.
+- 하수인 20종 외형은 이미 v0.4.3에서 확정·납품됐다 (`demo/assets/minions/`, 원본 `docs/milestone/v0.4.3/assets/minions/pixel-sources/`, 생성 도구 `tools/art/minion_art.py`). **디자인을 바꾸지 말고 Roblox 규격으로 재출력**한다.
 
 ## 2. 반드시 읽을 참조
 
-1. `docs/minion-visual-spec-v0.4.3.md` — 하수인 외형 규격·검수 기준(7장)·아키타입 실루엣 원칙
-2. `docs/art/minions-v0.4.3/README.md`, `art-pipeline.md`, `delivery-manifest.csv` — 기존 납품 파이프라인
+1. `docs/milestone/v0.4.3/specs/minion-visual-spec-v0.4.3.md` — 하수인 외형 규격·검수 기준(7장)·아키타입 실루엣 원칙
+2. `docs/milestone/v0.4.3/assets/minions/README.md`, 같은 폴더의 `delivery-manifest.csv`, `docs/milestone/v0.4.3/issues/87/Mars/art-pipeline.md` — 기존 납품 파이프라인
 3. `demo/index.html` `<style>` 블록 (7~242행) — 현행 팔레트(`--fire --water --grass --lightning --panel --line --dim --buff` 등)·보드 셀 색·전투 토큰 규격
 4. `roblox/README.md`, `docs/roblox/port-plan.md` — 포팅 구조와 Phase 계획
 5. `roblox/src/client/init.client.luau` — 현재 클라이언트가 그리는 요소 목록(무엇이 자산으로 대체될지)
@@ -96,7 +98,7 @@
 | HP 바 배경·채움 · 방어막 바 배경·채움 | 4 | 9-slice 가로. 채움은 흰색(코드 틴트) |
 | 상태 아이콘 7종: 방어막·화상·약화·감전·감쇠(피격 감소)·집중·피격+15%(결정타 반동) | 7 | 48×48 |
 | 아이템 3종(회복약·쿨링수·해독제) + 몬스터볼 + 예비 하수인 슬롯 | 5 | 64×64 |
-| 행동 아이콘 9종: 탐색·텔레포트·회복·주 행동 생략·턴 종료·기권 / 싸우기·가방·포획·도망 | 10 | 48×48 |
+| 행동 아이콘 10종: 탐색·텔레포트·회복·주 행동 생략·턴 종료·기권 / 싸우기·가방·포획·도망 | 10 | 48×48 |
 | 기술 종류 아이콘 3종: 공격기·보조기·시그니처 (미공개 슬롯 `?` 표시용) | 3 | 32×32 |
 
 ### P1 전투 연출·배너 (FX 계약 #106 — 시간표는 코드가 가짐)
@@ -136,7 +138,7 @@ roblox/assets/
 ```
 
 - `manifest.csv`의 `tint=yes`는 "흰색 단색으로 만들어 코드가 색을 입힌다"는 뜻 — 신규 토큰5종·HP 채움·하이라이트에 적용. 기존 컬러 하수인 그림에는 팀 틴트를 곱하지 않는다.
-- 기존 파이프라인(`docs/art/minions-v0.4.3/delivery-manifest.csv`)과 같은 열 구성을 유지하고 열을 추가하는 방식으로
+- 기존 파이프라인(`docs/milestone/v0.4.3/assets/minions/delivery-manifest.csv`)과 같은 열 구성을 유지하고 열을 추가하는 방식으로
 
 ## 6. 제작 원칙·금지
 
@@ -145,17 +147,19 @@ roblox/assets/
 3. **32px 축소 검수**: 보드 칩에서 64→32로 줄여도 왕/동료/폭탄/덫/공통 가림이 구별돼야 한다
 4. **기존 유명 IP 연상 금지**(규격 1·7): 포켓몬·기타 캐릭터의 실루엣·색 배치·특징 요소 복제 금지
 5. **텍스트·이모지 금지**: 이미지 안에 글자·이모지 없음
-6. **코드 작성 금지**: Luau·JS·Python 수정·추가 금지. `tools/minion_art.py`로 재출력이 필요하면 **파라미터 변경 요청을 보고서에 적어 Mars에게** 넘긴다 (직접 고치지 않는다)
+6. **코드 작성 금지**: Luau·JS·Python 수정·추가 금지. `tools/art/minion_art.py`로 재출력이 필요하면 **파라미터 변경 요청을 보고서에 적어 Mars에게** 넘긴다 (직접 고치지 않는다)
 7. **라이선스**: 신규 자산은 `ASSET-LICENSE.md` 규칙대로 표기 — 외부 소재 사용 시 출처·라이선스를 manifest `source`에 기재. 불명확한 소재는 사용하지 않는다
 
 ## 7. 수용 기준 (AC)
 
-- [ ] P0 전 항목 납품 · manifest.csv 에 전 파일 등재 · 모든 PNG ≤ 1024px · WebP/SVG 0개
-- [ ] 하수인 20종 × 3규격 = 60장, 기존 디자인과 픽셀 단위 일치(정수 확대만)
-- [ ] 9-slice 자산은 슬라이스 경계가 manifest에 있고 늘렸을 때 모서리가 깨지지 않음
-- [ ] 흑백 실루엣·32px 축소 검수 결과를 보고서에 스크린샷으로 첨부
-- [ ] 이모지·텍스트가 구워진 이미지 0개
-- [ ] `[기획 필요]` 항목(8장)은 임의 결정하지 않고 목록으로 보고
+- [x] P0 전 항목129PNG 납품 · manifest.csv 전 파일 등재 · 모든 PNG ≤1024px · 기본 P0 WebP/SVG0개
+- [x] 하수인20종 ×3규격 =60장, 기존 디자인과 픽셀 단위 일치(최초 P0-A 독립 검수)
+- [x] 신규9-slice26개 경계 등재 · 정적 늘림52사례에서 모서리 픽셀 보존 검수
+- [x] 흑백 실루엣·32px 축소 검토 이미지 첨부(48계열의32px는 비정수 최근접 스트레스 테스트)
+- [x] 신규 기호·프레임에 이모지·텍스트를 굽지 않음
+- [x] `[기획 필요]` 항목(8장)은 임의 결정하지 않고 보고
+
+위 체크는 **로컬 파일·정적 아트 검수**의 완료다. Studio 업로드 후 표시, 입력·상태 전환, 실기기 가독성은 Mars/Saturn의 적용 검수로 남는다.
 
 ## 8. 결정 현황 — CJ 승인과 남은 `[기획 필요]`
 
@@ -172,15 +176,15 @@ worker_done:
   role: Earth
   instance_index: null
   dispatch_ref: "#118 Roblox 아트 P0"
-  files_modified: [ "roblox/assets/**", "docs/art/roblox-v0.5.0/earth-report.md" ]  # 코드 파일 0개
+  files_modified: []  # 실제 변경 파일을 workspace 상대 경로 client/...로 각각 열거; glob·절대 경로 금지, 코드 파일 0개
   summary: |
     납품 수량 · 규격 검수 결과(흑백 실루엣·32px) · 스크린샷 경로
   requests_to_mars: |
-    tools/minion_art.py 파라미터 변경 요청(있으면) · 업로드 시 주의점
+    tools/art/minion_art.py 파라미터 변경 요청(있으면) · 업로드 시 주의점
   planning_needed: [ ... 8장 항목 중 판단 필요한 것 ... ]
   qa_request: Saturn 검수 요청 항목
 ```
 
-보고서 위치: `docs/art/roblox-v0.5.0/earth-report.md` (기존 `docs/art/minions-v0.4.3/` 구조와 동일한 포맷).
+보고서: 최초 P0-A는 `docs/art/roblox-v0.5.0/earth-report.md`, 후속 토큰은 `earth-token-report.md`, 이번 P0-B 잔여/P0-C/P0-D는 `earth-ui-report.md`에 기록한다.
 
 --- END PROMPT ---

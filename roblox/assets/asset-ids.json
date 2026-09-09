@@ -1,9 +1,69 @@
 {
-  "generatedAt": "2026-09-09T07:32:38.734Z",
+  "generatedAt": "2026-09-09T08:24:42.861Z",
   "creator": {
     "userId": "11639564357"
   },
   "assets": {
+    "action48_bag": {
+      "assetId": 104734828695963,
+      "assetType": "Image",
+      "sha256": "208d26605d7da415f6f9cc6fe198bd941c42b589f6ba6ad2a6482f0a919dc8f3",
+      "file": "roblox/assets/actions/bag_48.png"
+    },
+    "action48_capture": {
+      "assetId": 100653242357356,
+      "assetType": "Image",
+      "sha256": "83710f772b3453199b295a257bf9adda25cfd722593d07abf9543a6a954a9ef9",
+      "file": "roblox/assets/actions/capture_48.png"
+    },
+    "action48_endturn": {
+      "assetId": 73985847362542,
+      "assetType": "Image",
+      "sha256": "9ce9bcfbf15698869ff13dc11f5b8bde215f8a8629e022b6481d22cc2d3f9d6a",
+      "file": "roblox/assets/actions/endturn_48.png"
+    },
+    "action48_fight": {
+      "assetId": 129647765749680,
+      "assetType": "Image",
+      "sha256": "e81aca956cac6c1d2dc9b0a8897d17504bdba01a60b6e561402896fcdab6b53f",
+      "file": "roblox/assets/actions/fight_48.png"
+    },
+    "action48_flee": {
+      "assetId": 84921635030604,
+      "assetType": "Image",
+      "sha256": "90cf17b329bd917eddcba075b6f6727e7ae7dbc47c56f675726ab82d64abc676",
+      "file": "roblox/assets/actions/flee_48.png"
+    },
+    "action48_heal": {
+      "assetId": 121433949356121,
+      "assetType": "Image",
+      "sha256": "fdfb88e307ab61f02fffc55a5cd3a10366dfdb09ed6749df06d3870843a5ca51",
+      "file": "roblox/assets/actions/heal_48.png"
+    },
+    "action48_resign": {
+      "assetId": 89858284434955,
+      "assetType": "Image",
+      "sha256": "16661390165e9215ed3c78c313620f357bc105d9afb614a95634967d2c7c2c99",
+      "file": "roblox/assets/actions/resign_48.png"
+    },
+    "action48_search": {
+      "assetId": 124281410081833,
+      "assetType": "Image",
+      "sha256": "0a0d8f26faab7197eaf41c24d5435c50d7922faa2b4e8753a9785aa07b2a12fb",
+      "file": "roblox/assets/actions/search_48.png"
+    },
+    "action48_skip": {
+      "assetId": 134544997139837,
+      "assetType": "Image",
+      "sha256": "1361db36e0cd5d1c1c284d3d4e71f492fb04a0a6d7cffb3676941e8f550cee6d",
+      "file": "roblox/assets/actions/skip_48.png"
+    },
+    "action48_teleport": {
+      "assetId": 122706951020833,
+      "assetType": "Image",
+      "sha256": "562327decfff29c8294395202beb803492a351d4cad55c7d38f9a35023f4d574",
+      "file": "roblox/assets/actions/teleport_48.png"
+    },
     "battle_fire_atk": {
       "assetId": 72987966041483,
       "assetType": "Image",
@@ -124,6 +184,90 @@
       "sha256": "596252252abf4242cb2278a4c872f3c47420ba182da0d0ea37ee44a10897e190",
       "file": "roblox/assets/minions/water_swift/battle256.png"
     },
+    "board_frame": {
+      "assetId": 128988336435538,
+      "assetType": "Image",
+      "sha256": "78f48224cb3bc49d58f01b267c929f405e66a3ed908cdaa6cad4a621c8098641",
+      "file": "roblox/assets/board/frame.png"
+    },
+    "board_hl_attack": {
+      "assetId": 78101750992576,
+      "assetType": "Image",
+      "sha256": "166336b1d93ff875fd854e701888d3e447648b36826f1a3dd71feab5c1b76db3",
+      "file": "roblox/assets/board/hl_attack.png"
+    },
+    "board_hl_flee": {
+      "assetId": 115767073434220,
+      "assetType": "Image",
+      "sha256": "9801f61bc441e7e17a5c62ae6ba4def333455f0bdb3c1b9c5adba344e890f3e0",
+      "file": "roblox/assets/board/hl_flee.png"
+    },
+    "board_hl_forced": {
+      "assetId": 98930818081953,
+      "assetType": "Image",
+      "sha256": "fcf11b909aeb8552560cfd45415526a3f5556d8899aa25f9b219a98c0f454b1a",
+      "file": "roblox/assets/board/hl_forced.png"
+    },
+    "board_hl_move": {
+      "assetId": 136251747804093,
+      "assetType": "Image",
+      "sha256": "ab2f1d843bebec9bcef3599b3f52c2b39153bdcc2411a5cacb828f8093e9dd32",
+      "file": "roblox/assets/board/hl_move.png"
+    },
+    "board_hl_sel": {
+      "assetId": 91023999669257,
+      "assetType": "Image",
+      "sha256": "67339cc8993bfd038830580887124c3c278665caa30d0f1c5007537c56d6385c",
+      "file": "roblox/assets/board/hl_sel.png"
+    },
+    "board_tile_enemy": {
+      "assetId": 95991291066202,
+      "assetType": "Image",
+      "sha256": "e4a0524d357af92af52a0beabbf7ba9b5c965827a66820e9a3862d3742e99676",
+      "file": "roblox/assets/board/tile_enemy.png"
+    },
+    "board_tile_forest": {
+      "assetId": 133469805322771,
+      "assetType": "Image",
+      "sha256": "557be9d70b2b0e98bde09ff33f6322928f50d9c2bd54bf78d33d82e7750b35f4",
+      "file": "roblox/assets/board/tile_forest.png"
+    },
+    "board_tile_mid": {
+      "assetId": 125686530294182,
+      "assetType": "Image",
+      "sha256": "deba27d9c4071480f7e31a578dfe3c9bdc26d1eb78cf3b20c77b65c4ed39ad15",
+      "file": "roblox/assets/board/tile_mid.png"
+    },
+    "board_tile_own": {
+      "assetId": 133535049480540,
+      "assetType": "Image",
+      "sha256": "5f1f6a8973f76ddacb201b7460f8b5eec9a72bfecba20106a89f49b5b8bc4a87",
+      "file": "roblox/assets/board/tile_own.png"
+    },
+    "element64_fire": {
+      "assetId": 104267526422089,
+      "assetType": "Image",
+      "sha256": "a1a82e0a5161dcb033a183d8aca7dc970c19a37a83ca96888decb2129a1caf62",
+      "file": "roblox/assets/elements/fire_64.png"
+    },
+    "element64_grass": {
+      "assetId": 129095220032740,
+      "assetType": "Image",
+      "sha256": "a8252a630a6998c57b52a9015abe55c422cb2f6ff5218ffc4fb77eeb4ca4ea4e",
+      "file": "roblox/assets/elements/grass_64.png"
+    },
+    "element64_lightning": {
+      "assetId": 110140127392213,
+      "assetType": "Image",
+      "sha256": "447f06ef04c48de3af897dd97badbf3bed9b61a2f7f62174fb8674a88d23f35e",
+      "file": "roblox/assets/elements/lightning_64.png"
+    },
+    "element64_water": {
+      "assetId": 75319975619743,
+      "assetType": "Image",
+      "sha256": "9b749265769b5d4bf4247135edeafc43ba1d7cf366d14e534918fc7fdfe509b3",
+      "file": "roblox/assets/elements/water_64.png"
+    },
     "icon_fire_atk": {
       "assetId": 129778993494980,
       "assetType": "Image",
@@ -243,6 +387,36 @@
       "assetType": "Image",
       "sha256": "9b9f9f8614e66839f238e572e4d4b8e285f286d82feeabcaf65750f0ab2f679c",
       "file": "roblox/assets/minions/water_swift/icon64.png"
+    },
+    "item64_ball": {
+      "assetId": 139677944382051,
+      "assetType": "Image",
+      "sha256": "9d87f2dc56f63353d5f77fdd51a9ffb6b53819eeaaf012c21ced836a0984f8dd",
+      "file": "roblox/assets/items/ball_64.png"
+    },
+    "item64_cool": {
+      "assetId": 76468761182107,
+      "assetType": "Image",
+      "sha256": "615631ecc9f27755f588ac4e4c77094f042e5881b478593772c758d38f48b0da",
+      "file": "roblox/assets/items/cool_64.png"
+    },
+    "item64_cure": {
+      "assetId": 103715538259962,
+      "assetType": "Image",
+      "sha256": "3e093277d6588a21c4460a1141582facd2ab82a6753d99d2bf00af8ced36e272",
+      "file": "roblox/assets/items/cure_64.png"
+    },
+    "item64_potion": {
+      "assetId": 74002672987469,
+      "assetType": "Image",
+      "sha256": "a7de494c191c880f04d1d1fe81a0b1409fb5a691a80960c6b6d9fba560e8fb66",
+      "file": "roblox/assets/items/potion_64.png"
+    },
+    "item64_reserve": {
+      "assetId": 81169495429336,
+      "assetType": "Image",
+      "sha256": "cc9d76e42a09f00d14225584539fb44a800e02f407e580635215c7bb3d684c36",
+      "file": "roblox/assets/items/reserve_64.png"
     },
     "lobby_board_grid": {
       "assetId": 130695506858819,
@@ -448,6 +622,66 @@
       "sha256": "491d20296d5440c2be732b12743e8acb0c97aedf994c0825a5ea2e653f8439f3",
       "file": "roblox/assets/minions/water_swift/portrait512.png"
     },
+    "skill32_attack": {
+      "assetId": 114217409689611,
+      "assetType": "Image",
+      "sha256": "f2d356d119fa402d8f0cef901dd3932370335002b410bf3da2860929abb5d6a3",
+      "file": "roblox/assets/skillkind/attack_32.png"
+    },
+    "skill32_sig": {
+      "assetId": 99293414577360,
+      "assetType": "Image",
+      "sha256": "abe3a454a67bc265d8af21bcd4e30e8282549150719aca0bb9054a4df221d849",
+      "file": "roblox/assets/skillkind/sig_32.png"
+    },
+    "skill32_support": {
+      "assetId": 125962999222780,
+      "assetType": "Image",
+      "sha256": "885f4ebede3f5d2befeef5409bd20ceb2339d713dace41e25cc9d360a1307f9a",
+      "file": "roblox/assets/skillkind/support_32.png"
+    },
+    "status48_burn": {
+      "assetId": 112667361701828,
+      "assetType": "Image",
+      "sha256": "4062b151b659bf2d4ae001c7228f527417ecd115f28912ce44e4e3cc7de00001",
+      "file": "roblox/assets/status/burn_48.png"
+    },
+    "status48_dmgcut": {
+      "assetId": 77175245398100,
+      "assetType": "Image",
+      "sha256": "df7c8cc32b64bedf423e5b6af0f481a2b00cdc72ae60a39d28976aa9bfd779ba",
+      "file": "roblox/assets/status/dmgcut_48.png"
+    },
+    "status48_focus": {
+      "assetId": 106009293142929,
+      "assetType": "Image",
+      "sha256": "b9a492c0f1a0bd151f00f9aa603d276b548318c62442c7b86f7d7a00c3947e9b",
+      "file": "roblox/assets/status/focus_48.png"
+    },
+    "status48_shield": {
+      "assetId": 99491271787460,
+      "assetType": "Image",
+      "sha256": "61b42a6710f72816275f6f3520d25dca776cb2db72cb15a29e531db9b164f6c3",
+      "file": "roblox/assets/status/shield_48.png"
+    },
+    "status48_shock": {
+      "assetId": 119456211095008,
+      "assetType": "Image",
+      "sha256": "d36bfaadc7c446178177d5a348408d73fc3b672e79cf5cbfa6f6a92fe69d52df",
+      "file": "roblox/assets/status/shock_48.png"
+    },
+    "status48_vuln": {
+      "assetId": 99758702824576,
+      "assetType": "Image",
+      "sha256": "4e35de30648acd798ec529c037ffe80ae0c7ead6c101a6393953c469d536a7e2",
+      "file": "roblox/assets/status/vuln_48.png"
+    },
+    "status48_weaken": {
+      "assetId": 94915629981343,
+      "assetType": "Image",
+      "sha256": "6be4bae3444d70d66f598808ddb6d3a2019b79124645532225cfc39cb45cff10",
+      "file": "roblox/assets/status/weaken_48.png"
+    },
     "token128_ally": {
       "assetId": 136173347492529,
       "assetType": "Image",
@@ -501,6 +735,132 @@
       "assetType": "Image",
       "sha256": "ff5993fad66bedd116c952cb7075a35f2b6c8801a495c35e05f25eb47e592ab9",
       "file": "roblox/assets/tokens/unknown_64.png"
+    },
+    "trace48_trace": {
+      "assetId": 109936670666420,
+      "assetType": "Image",
+      "sha256": "263e9f8c36e5c68c0d8f0c6ad3b59360aa6f5b1fdcb3da6d2a2ce0544577ab55",
+      "file": "roblox/assets/tokens/trace_48.png"
+    },
+    "ui_badge": {
+      "assetId": 114424112696313,
+      "assetType": "Image",
+      "sha256": "5de527525a0aaeb4a99bc4a57037526f1814cae7281c7170929c3cb28fe2f17e",
+      "file": "roblox/assets/ui/badge.png"
+    },
+    "ui_btn_danger_disabled": {
+      "assetId": 72715217889762,
+      "assetType": "Image",
+      "sha256": "1746c24128d572576189c4da64a51cafcf97498efe01bb7eeebdebbab90e636b",
+      "file": "roblox/assets/ui/btn_danger_disabled.png"
+    },
+    "ui_btn_danger_hover": {
+      "assetId": 92437198362280,
+      "assetType": "Image",
+      "sha256": "20cb12b55be972f38682fae06b0ba4c0fb5c5755e291262084f2e1acd144354f",
+      "file": "roblox/assets/ui/btn_danger_hover.png"
+    },
+    "ui_btn_danger_normal": {
+      "assetId": 115592574281286,
+      "assetType": "Image",
+      "sha256": "7312f83a30e288e86dfcf025cf25c5acb0e6b243c06b5c42421561527731d3d3",
+      "file": "roblox/assets/ui/btn_danger_normal.png"
+    },
+    "ui_btn_danger_pressed": {
+      "assetId": 92827374483330,
+      "assetType": "Image",
+      "sha256": "3d4506c0caf394b41e38fff4605c3282c89fd28e0113ec882bdf6e5bafb4233e",
+      "file": "roblox/assets/ui/btn_danger_pressed.png"
+    },
+    "ui_btn_default_disabled": {
+      "assetId": 81016487699452,
+      "assetType": "Image",
+      "sha256": "3b8cc9ecb67c64fb9542d877bdc1b85db55f247190320620419fa7a1f0a35152",
+      "file": "roblox/assets/ui/btn_default_disabled.png"
+    },
+    "ui_btn_default_hover": {
+      "assetId": 132045902112820,
+      "assetType": "Image",
+      "sha256": "d9d2cef9332bf201ef845f08ec4ef58b7ba7903defd49a30a5d760e687bfaae5",
+      "file": "roblox/assets/ui/btn_default_hover.png"
+    },
+    "ui_btn_default_normal": {
+      "assetId": 140284204850425,
+      "assetType": "Image",
+      "sha256": "c36f0028cba4687352cf083dbb9b6dc4b1f475e2d7f55c645032faed69deede0",
+      "file": "roblox/assets/ui/btn_default_normal.png"
+    },
+    "ui_btn_default_pressed": {
+      "assetId": 77754199585828,
+      "assetType": "Image",
+      "sha256": "11100a482ef4208ac06601e3ed4e89c5ce97fe3ba8a9f97b9ed900f985eb0ea9",
+      "file": "roblox/assets/ui/btn_default_pressed.png"
+    },
+    "ui_btn_primary_disabled": {
+      "assetId": 111253162413154,
+      "assetType": "Image",
+      "sha256": "fdee56d92a8d39cfed11a9de0858f93d618776ee68f876d6aa17637d736e1472",
+      "file": "roblox/assets/ui/btn_primary_disabled.png"
+    },
+    "ui_btn_primary_hover": {
+      "assetId": 136456405321000,
+      "assetType": "Image",
+      "sha256": "49d3e4760a4248e9f5a1f39c547ecd2c1c9fc98f62a145bf39844da5e6658709",
+      "file": "roblox/assets/ui/btn_primary_hover.png"
+    },
+    "ui_btn_primary_normal": {
+      "assetId": 135392653469298,
+      "assetType": "Image",
+      "sha256": "6c9171548177eaa79d18e7b23eaa1ab1ffa053834539aea69550b676d60fc64b",
+      "file": "roblox/assets/ui/btn_primary_normal.png"
+    },
+    "ui_btn_primary_pressed": {
+      "assetId": 86226023543448,
+      "assetType": "Image",
+      "sha256": "e34c19878ddad90c391a40dab895c06e3b5ec00cdae87b5641d06ba2990d9e1a",
+      "file": "roblox/assets/ui/btn_primary_pressed.png"
+    },
+    "ui_hpbar_bg": {
+      "assetId": 112516891761612,
+      "assetType": "Image",
+      "sha256": "5e46f90ffa400573102dd9d1cb8d0d6f36902bddb3c140310d990a0174ddb9a4",
+      "file": "roblox/assets/ui/hpbar_bg.png"
+    },
+    "ui_hpbar_fill": {
+      "assetId": 101226879218214,
+      "assetType": "Image",
+      "sha256": "26cf5ec6d98b3b9adda2783e6f1986e9d3cf45ea2d9254e0d3ce2be0db1b5c79",
+      "file": "roblox/assets/ui/hpbar_fill.png"
+    },
+    "ui_panel_battle": {
+      "assetId": 127951287913049,
+      "assetType": "Image",
+      "sha256": "65f7bde18e697ba8951ee4a3dd75972debefd37e0c38f0c10ef68473795f9b46",
+      "file": "roblox/assets/ui/panel_battle.png"
+    },
+    "ui_panel_modal": {
+      "assetId": 109202035264232,
+      "assetType": "Image",
+      "sha256": "9fe139c80ccf06a10ac1215bb9aebd980593838e10ae98f96ac956504d2139bf",
+      "file": "roblox/assets/ui/panel_modal.png"
+    },
+    "ui_panel_side": {
+      "assetId": 85927200121558,
+      "assetType": "Image",
+      "sha256": "a5c5da6f668b9d6eef14e132458b264b3fb0a97fbce4075471020139c2f7516b",
+      "file": "roblox/assets/ui/panel_side.png"
+    },
+    "ui_shbar_bg": {
+      "assetId": 104136907187149,
+      "assetType": "Image",
+      "sha256": "c241f0dcfeb4b4cb1e561a5e84cd9210c9741b901317a38f47d1392beee249a5",
+      "file": "roblox/assets/ui/shbar_bg.png"
+    },
+    "ui_shbar_fill": {
+      "assetId": 85919091332297,
+      "assetType": "Image",
+      "sha256": "6687a486ddecc1014c74d94ae49cfa23a194aafd5d0764125b2b8cb4c8344967",
+      "file": "roblox/assets/ui/shbar_fill.png"
     }
   }
 }

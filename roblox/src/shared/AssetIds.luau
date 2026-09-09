@@ -1,8 +1,18 @@
 --!strict
 -- AssetIds.luau — 생성 파일 (roblox/tools/upload_assets.js). 직접 수정하지 말 것.
--- 생성 2026-09-09T07:32:38.734Z · 업로더 user 11639564357 · 83개
+-- 생성 2026-09-09T08:24:42.861Z · 업로더 user 11639564357 · 143개
 -- 키: icon_/battle_/portrait_<종> · token64_/token128_<토큰> (Image) · lobby_<텍스처> (Image) · lobbymesh_<메시> · mesh_unknown (Model)
 return {
+	action48_bag = 104734828695963, -- Image
+	action48_capture = 100653242357356, -- Image
+	action48_endturn = 73985847362542, -- Image
+	action48_fight = 129647765749680, -- Image
+	action48_flee = 84921635030604, -- Image
+	action48_heal = 121433949356121, -- Image
+	action48_resign = 89858284434955, -- Image
+	action48_search = 124281410081833, -- Image
+	action48_skip = 134544997139837, -- Image
+	action48_teleport = 122706951020833, -- Image
 	battle_fire_atk = 72987966041483, -- Image
 	battle_fire_def = 99284637270201, -- Image
 	battle_fire_std = 103282407821149, -- Image
@@ -23,6 +33,20 @@ return {
 	battle_water_std = 118068408315683, -- Image
 	battle_water_sustain = 127821528554245, -- Image
 	battle_water_swift = 70938872117617, -- Image
+	board_frame = 128988336435538, -- Image
+	board_hl_attack = 78101750992576, -- Image
+	board_hl_flee = 115767073434220, -- Image
+	board_hl_forced = 98930818081953, -- Image
+	board_hl_move = 136251747804093, -- Image
+	board_hl_sel = 91023999669257, -- Image
+	board_tile_enemy = 95991291066202, -- Image
+	board_tile_forest = 133469805322771, -- Image
+	board_tile_mid = 125686530294182, -- Image
+	board_tile_own = 133535049480540, -- Image
+	element64_fire = 104267526422089, -- Image
+	element64_grass = 129095220032740, -- Image
+	element64_lightning = 110140127392213, -- Image
+	element64_water = 75319975619743, -- Image
 	icon_fire_atk = 129778993494980, -- Image
 	icon_fire_def = 118200996572569, -- Image
 	icon_fire_std = 86479979242479, -- Image
@@ -43,6 +67,11 @@ return {
 	icon_water_std = 82927732367674, -- Image
 	icon_water_sustain = 94939682117426, -- Image
 	icon_water_swift = 110336911517976, -- Image
+	item64_ball = 139677944382051, -- Image
+	item64_cool = 76468761182107, -- Image
+	item64_cure = 103715538259962, -- Image
+	item64_potion = 74002672987469, -- Image
+	item64_reserve = 81169495429336, -- Image
 	lobby_board_grid = 130695506858819, -- Image
 	lobby_chair_albedo = 71532932636607, -- Image
 	lobby_desk_albedo = 98884595903306, -- Image
@@ -77,6 +106,16 @@ return {
 	portrait_water_std = 88423498289003, -- Image
 	portrait_water_sustain = 137969208873970, -- Image
 	portrait_water_swift = 116705516961600, -- Image
+	skill32_attack = 114217409689611, -- Image
+	skill32_sig = 99293414577360, -- Image
+	skill32_support = 125962999222780, -- Image
+	status48_burn = 112667361701828, -- Image
+	status48_dmgcut = 77175245398100, -- Image
+	status48_focus = 106009293142929, -- Image
+	status48_shield = 99491271787460, -- Image
+	status48_shock = 119456211095008, -- Image
+	status48_vuln = 99758702824576, -- Image
+	status48_weaken = 94915629981343, -- Image
 	token128_ally = 136173347492529, -- Image
 	token128_bomb = 118562555376601, -- Image
 	token128_king = 84063688062407, -- Image
@@ -86,4 +125,25 @@ return {
 	token64_king = 114816628929782, -- Image
 	token64_trap = 120755404495408, -- Image
 	token64_unknown = 131950984299832, -- Image
+	trace48_trace = 109936670666420, -- Image
+	ui_badge = 114424112696313, -- Image
+	ui_btn_danger_disabled = 72715217889762, -- Image
+	ui_btn_danger_hover = 92437198362280, -- Image
+	ui_btn_danger_normal = 115592574281286, -- Image
+	ui_btn_danger_pressed = 92827374483330, -- Image
+	ui_btn_default_disabled = 81016487699452, -- Image
+	ui_btn_default_hover = 132045902112820, -- Image
+	ui_btn_default_normal = 140284204850425, -- Image
+	ui_btn_default_pressed = 77754199585828, -- Image
+	ui_btn_primary_disabled = 111253162413154, -- Image
+	ui_btn_primary_hover = 136456405321000, -- Image
+	ui_btn_primary_normal = 135392653469298, -- Image
+	ui_btn_primary_pressed = 86226023543448, -- Image
+	ui_hpbar_bg = 112516891761612, -- Image
+	ui_hpbar_fill = 101226879218214, -- Image
+	ui_panel_battle = 127951287913049, -- Image
+	ui_panel_modal = 109202035264232, -- Image
+	ui_panel_side = 85927200121558, -- Image
+	ui_shbar_bg = 104136907187149, -- Image
+	ui_shbar_fill = 85919091332297, -- Image
 } :: { [string]: number }
