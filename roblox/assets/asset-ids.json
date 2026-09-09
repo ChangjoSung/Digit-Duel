@@ -1,308 +1,506 @@
 {
-  "generatedAt": "2026-09-09T03:44:08.173Z",
+  "generatedAt": "2026-09-09T07:32:38.734Z",
   "creator": {
     "userId": "11639564357"
   },
   "assets": {
     "battle_fire_atk": {
-      "assetId": 74488652265477,
+      "assetId": 72987966041483,
+      "assetType": "Image",
       "sha256": "9d7a39578f566dc5028f037300001e3bf724f5389b55605cc1b97934ebd37469",
       "file": "roblox/assets/minions/fire_atk/battle256.png"
     },
     "battle_fire_def": {
-      "assetId": 99658678328416,
+      "assetId": 99284637270201,
+      "assetType": "Image",
       "sha256": "0b193284c9ef1e2ce41a91d5ca58890e9e4e87d25bed9d8ff9f4073239ccc3c2",
       "file": "roblox/assets/minions/fire_def/battle256.png"
     },
     "battle_fire_std": {
-      "assetId": 124873211774081,
+      "assetId": 103282407821149,
+      "assetType": "Image",
       "sha256": "644ac58299bd8ec5c6134fe3c938d02d728112eb31527bd6000fff60d8f36397",
       "file": "roblox/assets/minions/fire_std/battle256.png"
     },
     "battle_fire_sustain": {
-      "assetId": 75191661504191,
+      "assetId": 135890365328751,
+      "assetType": "Image",
       "sha256": "5086320559dfb16ec98498b5eca0800a92ebd99851ba1a057007ec806827758e",
       "file": "roblox/assets/minions/fire_sustain/battle256.png"
     },
     "battle_fire_swift": {
-      "assetId": 91958405566832,
+      "assetId": 73368988256449,
+      "assetType": "Image",
       "sha256": "ebdc64b89a60114dc1a664c62d8ea086bb223d5acb9063090baac4ebedb61598",
       "file": "roblox/assets/minions/fire_swift/battle256.png"
     },
     "battle_grass_atk": {
-      "assetId": 132594660824662,
+      "assetId": 72145909639838,
+      "assetType": "Image",
       "sha256": "b7062ae0f74504f79709c5bc76c1c34e0e3a60c0c49f2d281fb7a33afd614224",
       "file": "roblox/assets/minions/grass_atk/battle256.png"
     },
     "battle_grass_def": {
-      "assetId": 119250974847200,
+      "assetId": 101857806696933,
+      "assetType": "Image",
       "sha256": "4a7abc70bef43d452269af8000f3231196af17dd25986b99e5519c182d4530ff",
       "file": "roblox/assets/minions/grass_def/battle256.png"
     },
     "battle_grass_std": {
-      "assetId": 104906153501258,
+      "assetId": 87566786582637,
+      "assetType": "Image",
       "sha256": "b3d6ad3d667083e63b207146439ee8bfc5422fea64fee853575e29f2ab423d87",
       "file": "roblox/assets/minions/grass_std/battle256.png"
     },
     "battle_grass_sustain": {
-      "assetId": 128784766493927,
+      "assetId": 103752429059122,
+      "assetType": "Image",
       "sha256": "363b16124cbff181b4fa1c99c3eba6c6f92f4c6c86c2a01a532402b9858b6f66",
       "file": "roblox/assets/minions/grass_sustain/battle256.png"
     },
     "battle_grass_swift": {
-      "assetId": 95975967806439,
+      "assetId": 89178592814873,
+      "assetType": "Image",
       "sha256": "709712d1efee348db1dfe5804215ae13e009a941a55b786821258e34be6a30b0",
       "file": "roblox/assets/minions/grass_swift/battle256.png"
     },
     "battle_lightning_atk": {
-      "assetId": 95589840701792,
+      "assetId": 93301884556733,
+      "assetType": "Image",
       "sha256": "43dc438a5213fe5e33461004f2e15165c58a05206cb7e2acf565344bb6740875",
       "file": "roblox/assets/minions/lightning_atk/battle256.png"
     },
     "battle_lightning_def": {
-      "assetId": 86381551407212,
+      "assetId": 139565480395521,
+      "assetType": "Image",
       "sha256": "7d4b6fa0703219a1d7da73811a77d54ba00ca7ad47658517c253f36136b54de4",
       "file": "roblox/assets/minions/lightning_def/battle256.png"
     },
     "battle_lightning_std": {
-      "assetId": 128398243818227,
+      "assetId": 74713364478748,
+      "assetType": "Image",
       "sha256": "d9dd0894d2c34bdb3a80984861b42ac5eadaff45f1988d66c54df7eff65941dd",
       "file": "roblox/assets/minions/lightning_std/battle256.png"
     },
     "battle_lightning_sustain": {
-      "assetId": 94282887996489,
+      "assetId": 81433743501891,
+      "assetType": "Image",
       "sha256": "97902ed0ad8f0cd557156d892a4d6e3c0abb7653b6d5a94e4af08de9f28a1be0",
       "file": "roblox/assets/minions/lightning_sustain/battle256.png"
     },
     "battle_lightning_swift": {
-      "assetId": 72954028133056,
+      "assetId": 102903196436912,
+      "assetType": "Image",
       "sha256": "0f51d8f629a4eac38d17ddfaf9dcf658a433ac3535f8b0457d952cbb8e1a9a1a",
       "file": "roblox/assets/minions/lightning_swift/battle256.png"
     },
     "battle_water_atk": {
-      "assetId": 94776873723455,
+      "assetId": 113918778357708,
+      "assetType": "Image",
       "sha256": "f034be3c71a27e1603a2e56c39a28b64e4cb17302dbe8d761003cf4cb0038a2f",
       "file": "roblox/assets/minions/water_atk/battle256.png"
     },
     "battle_water_def": {
-      "assetId": 77151569060690,
+      "assetId": 88242407798091,
+      "assetType": "Image",
       "sha256": "431f48eecd62d033dbb7a8c10ffe8634a9e68b0c88f459c8476e1dbf1e353185",
       "file": "roblox/assets/minions/water_def/battle256.png"
     },
     "battle_water_std": {
-      "assetId": 74372036310017,
+      "assetId": 118068408315683,
+      "assetType": "Image",
       "sha256": "631ec367bfaaf9bf4900347e23391daf5179970eac1129c4da6da4edba6a20f1",
       "file": "roblox/assets/minions/water_std/battle256.png"
     },
     "battle_water_sustain": {
-      "assetId": 109306024892393,
+      "assetId": 127821528554245,
+      "assetType": "Image",
       "sha256": "204fee587672f51a84ba9860eeaac67eb06a391f7c58e4ef84207b8c4bab5a76",
       "file": "roblox/assets/minions/water_sustain/battle256.png"
     },
     "battle_water_swift": {
-      "assetId": 87911253047867,
+      "assetId": 70938872117617,
+      "assetType": "Image",
       "sha256": "596252252abf4242cb2278a4c872f3c47420ba182da0d0ea37ee44a10897e190",
       "file": "roblox/assets/minions/water_swift/battle256.png"
     },
     "icon_fire_atk": {
-      "assetId": 128653582612137,
+      "assetId": 129778993494980,
+      "assetType": "Image",
       "sha256": "834bc34cd66bc31629ecda879cf443b3d66eb49953404b012ced1c329cedce43",
       "file": "roblox/assets/minions/fire_atk/icon64.png"
     },
     "icon_fire_def": {
-      "assetId": 98164236313160,
+      "assetId": 118200996572569,
+      "assetType": "Image",
       "sha256": "a14d4412df1d6db0f7a4ce0c1b0dd9db221c697fe7a1a6ce6d859ae4b191417c",
       "file": "roblox/assets/minions/fire_def/icon64.png"
     },
     "icon_fire_std": {
-      "assetId": 113343541043711,
+      "assetId": 86479979242479,
+      "assetType": "Image",
       "sha256": "93b3e8f088087166817d894ca7d4373e9d965061d4c82d1343ae9432df0e4855",
       "file": "roblox/assets/minions/fire_std/icon64.png"
     },
     "icon_fire_sustain": {
-      "assetId": 139677549318858,
+      "assetId": 135037775193716,
+      "assetType": "Image",
       "sha256": "7e4de67b1719a9934073ebf5ea2e2c4bb1b6d6b68bb715d84cc55a16a01b8fb2",
       "file": "roblox/assets/minions/fire_sustain/icon64.png"
     },
     "icon_fire_swift": {
-      "assetId": 90207681903049,
+      "assetId": 113387155889038,
+      "assetType": "Image",
       "sha256": "1d6d8c41dc6657cc107044a48dd57d5efe1646ad9aec0f81c65f8d2238462acd",
       "file": "roblox/assets/minions/fire_swift/icon64.png"
     },
     "icon_grass_atk": {
-      "assetId": 86722009070427,
+      "assetId": 133434168187637,
+      "assetType": "Image",
       "sha256": "7927af05946200982f090c052eb3dc82d2304904bd740493aa39b18750e9aa6c",
       "file": "roblox/assets/minions/grass_atk/icon64.png"
     },
     "icon_grass_def": {
-      "assetId": 111374140611654,
+      "assetId": 72244288485314,
+      "assetType": "Image",
       "sha256": "6ebfc4a5249d17cf0ed15abd1b4bc3ccfd3cd3111eb2da2b866c9a016380f931",
       "file": "roblox/assets/minions/grass_def/icon64.png"
     },
     "icon_grass_std": {
-      "assetId": 115953233716872,
+      "assetId": 83266181526667,
+      "assetType": "Image",
       "sha256": "d8a52a10285dde98a7241ee35396204d986c4252ea2d6e4e638868417060965c",
       "file": "roblox/assets/minions/grass_std/icon64.png"
     },
     "icon_grass_sustain": {
-      "assetId": 124790275355604,
+      "assetId": 104215765705596,
+      "assetType": "Image",
       "sha256": "9c2d9a222ebc022b53327be948cc6c58968ac7d0573283a07d04f8ca4757c79b",
       "file": "roblox/assets/minions/grass_sustain/icon64.png"
     },
     "icon_grass_swift": {
-      "assetId": 134870457804735,
+      "assetId": 85957143284891,
+      "assetType": "Image",
       "sha256": "9dd3369a2e690f4580f6c76b0a0822dcc603ba975014c44eca5de7571fdb29ef",
       "file": "roblox/assets/minions/grass_swift/icon64.png"
     },
     "icon_lightning_atk": {
-      "assetId": 94062426889374,
+      "assetId": 106320907099042,
+      "assetType": "Image",
       "sha256": "13c2847fd96cd51825bf410860ca19eee902bd6d85d1f0473ab29ac6efe10130",
       "file": "roblox/assets/minions/lightning_atk/icon64.png"
     },
     "icon_lightning_def": {
-      "assetId": 88028968151102,
+      "assetId": 74910060892051,
+      "assetType": "Image",
       "sha256": "abc915e5f0195d663337c90ab7f311f9897369a9215c66b344cbb2d682f1bfbe",
       "file": "roblox/assets/minions/lightning_def/icon64.png"
     },
     "icon_lightning_std": {
-      "assetId": 125442802331940,
+      "assetId": 89781531922519,
+      "assetType": "Image",
       "sha256": "d2495fb020fe5b51d5dbc788320ee7d7ab92ee438a1fcfa3e93403cd1fb97bd8",
       "file": "roblox/assets/minions/lightning_std/icon64.png"
     },
     "icon_lightning_sustain": {
-      "assetId": 89928852030483,
+      "assetId": 120483905487418,
+      "assetType": "Image",
       "sha256": "f27e4e2b79b46a6fa4728cd5c541f284a9a94e30b6854ad4c5cb8d63f21c3074",
       "file": "roblox/assets/minions/lightning_sustain/icon64.png"
     },
     "icon_lightning_swift": {
-      "assetId": 97081683239221,
+      "assetId": 119038922815036,
+      "assetType": "Image",
       "sha256": "52063097a24b2b15b6304693954cc26a1dcac6bd5e93c86759b4753ddd0c9a60",
       "file": "roblox/assets/minions/lightning_swift/icon64.png"
     },
     "icon_water_atk": {
-      "assetId": 89312835936168,
+      "assetId": 112793556751280,
+      "assetType": "Image",
       "sha256": "7c3b48b80e480c4cbab009cd707bf260056f1f10a96b7dbd28d8003c7eb58676",
       "file": "roblox/assets/minions/water_atk/icon64.png"
     },
     "icon_water_def": {
-      "assetId": 85286653205645,
+      "assetId": 108219950491773,
+      "assetType": "Image",
       "sha256": "fc47754b6311a0748a225eb0137174445d9409e7d3677190de409174bf494cfe",
       "file": "roblox/assets/minions/water_def/icon64.png"
     },
     "icon_water_std": {
-      "assetId": 130964826671251,
+      "assetId": 82927732367674,
+      "assetType": "Image",
       "sha256": "52e92e76ce800594de31a9885f396436373331521956f38fbfc8feb77fb16fc5",
       "file": "roblox/assets/minions/water_std/icon64.png"
     },
     "icon_water_sustain": {
-      "assetId": 138722362266753,
+      "assetId": 94939682117426,
+      "assetType": "Image",
       "sha256": "6d7db7d0c2b72c96ef6c06dc471812327e9414aa8f560b7b62a8b5c80bc01dbc",
       "file": "roblox/assets/minions/water_sustain/icon64.png"
     },
     "icon_water_swift": {
-      "assetId": 118499802487714,
+      "assetId": 110336911517976,
+      "assetType": "Image",
       "sha256": "9b9f9f8614e66839f238e572e4d4b8e285f286d82feeabcaf65750f0ab2f679c",
       "file": "roblox/assets/minions/water_swift/icon64.png"
     },
+    "lobby_board_grid": {
+      "assetId": 130695506858819,
+      "assetType": "Image",
+      "sha256": "f35c8171516f7a679948440e23786406154f9f38be08b8734a0c1960605bf5f5",
+      "file": "roblox/assets/lobby/textures/board_grid.png"
+    },
+    "lobby_chair_albedo": {
+      "assetId": 71532932636607,
+      "assetType": "Image",
+      "sha256": "150823d296028e295473b4883f202528fe713ed0c670d23d25e810ab5bdace73",
+      "file": "roblox/assets/lobby/textures/chair_albedo.png"
+    },
+    "lobby_desk_albedo": {
+      "assetId": 98884595903306,
+      "assetType": "Image",
+      "sha256": "69a16f17ac4ab548fd5514646fa5a1420b8bc8968ac2001af30c4e1a6b0cfeef",
+      "file": "roblox/assets/lobby/textures/desk_albedo.png"
+    },
+    "lobby_floor_tile": {
+      "assetId": 96238500725249,
+      "assetType": "Image",
+      "sha256": "14097359adf2859cec42ef704d5cc54fc0f161ab3dbca5225f8705026c42423d",
+      "file": "roblox/assets/lobby/textures/floor_tile.png"
+    },
+    "lobby_pillar_albedo": {
+      "assetId": 97182210436937,
+      "assetType": "Image",
+      "sha256": "8e04b6c9bb10c4f82628c245cef5485fde1ecef5cbfa5b0bbb088cec6587ca5d",
+      "file": "roblox/assets/lobby/textures/pillar_albedo.png"
+    },
+    "lobby_table_sign": {
+      "assetId": 81355261059939,
+      "assetType": "Image",
+      "sha256": "ad1e55c049b3b71341f15db4a98b3cf0f37217bce609065674071f27665eb824",
+      "file": "roblox/assets/lobby/ui/table_sign.png"
+    },
+    "lobby_wall_albedo": {
+      "assetId": 88208802218183,
+      "assetType": "Image",
+      "sha256": "077e33567dd84fb2d25107373414d80ad16818fc336ad94dd532e4c8ba85ab29",
+      "file": "roblox/assets/lobby/textures/wall_albedo.png"
+    },
+    "lobbymesh_board": {
+      "assetId": 71943294672552,
+      "assetType": "Model",
+      "sha256": "8a42d05a6f0ca839740718b4b75022db70cea8647c639c4d9053a129cd27e08e",
+      "file": "roblox/assets/lobby/meshes/board.fbx"
+    },
+    "lobbymesh_chair": {
+      "assetId": 70519125134385,
+      "assetType": "Model",
+      "sha256": "4d2f9003f247a323c8b80a90e131b8428d87a57b2903afd8e7eaaa9658f32e30",
+      "file": "roblox/assets/lobby/meshes/chair.fbx"
+    },
+    "lobbymesh_desk": {
+      "assetId": 103166061512714,
+      "assetType": "Model",
+      "sha256": "0b63f7ab6471aeb0badf904644580ca9f6703c4c0441a11e2fd1baceaf16125d",
+      "file": "roblox/assets/lobby/meshes/desk.fbx"
+    },
+    "lobbymesh_floor": {
+      "assetId": 105321730013376,
+      "assetType": "Model",
+      "sha256": "50e86d21ccf92b22864346516a0d8d17dfade54f3eaf3b9d77f1cfe263991956",
+      "file": "roblox/assets/lobby/meshes/floor.fbx"
+    },
+    "lobbymesh_pillar": {
+      "assetId": 74078970052113,
+      "assetType": "Model",
+      "sha256": "54942bbb1d9d6a157fbade941f6c42d546ceacd38da7818336b833f9028bfcc7",
+      "file": "roblox/assets/lobby/meshes/pillar.fbx"
+    },
+    "lobbymesh_wall": {
+      "assetId": 109668449225498,
+      "assetType": "Model",
+      "sha256": "8511d7cf71451ca9bb4f54b473cf8ada648186aac34397ce63426bc79382fab1",
+      "file": "roblox/assets/lobby/meshes/wall.fbx"
+    },
+    "mesh_unknown": {
+      "assetId": 86271543063492,
+      "assetType": "Model",
+      "sha256": "a78f9c006c4b868088025052ffeeb57c651bccc57c16f1e64afbd9355d027cce",
+      "file": "roblox/assets/tokens/meshes/unknown.fbx"
+    },
     "portrait_fire_atk": {
-      "assetId": 131886833777223,
+      "assetId": 92435878708709,
+      "assetType": "Image",
       "sha256": "4b69ad34522ac76fea690bd2134ffde1cc8e9c23f46b535d3b4447d2e5b8ec9b",
       "file": "roblox/assets/minions/fire_atk/portrait512.png"
     },
     "portrait_fire_def": {
-      "assetId": 104993874047633,
+      "assetId": 119224191721752,
+      "assetType": "Image",
       "sha256": "f38dc4e1f029d9f30c3a7fe41381cdbc5df155422bd5daf9ff9c71c7d3f2e54d",
       "file": "roblox/assets/minions/fire_def/portrait512.png"
     },
     "portrait_fire_std": {
-      "assetId": 120114938053473,
+      "assetId": 133566841160864,
+      "assetType": "Image",
       "sha256": "dbef4cc84db3e0edea96614d378eb2d336a6f0c4a614a032b32bb5005b78f149",
       "file": "roblox/assets/minions/fire_std/portrait512.png"
     },
     "portrait_fire_sustain": {
-      "assetId": 137259837431827,
+      "assetId": 78281255095652,
+      "assetType": "Image",
       "sha256": "3db83be95c85ec3197ab51c63d778ad758cbf48311a62c5e854188fbbb62719c",
       "file": "roblox/assets/minions/fire_sustain/portrait512.png"
     },
     "portrait_fire_swift": {
-      "assetId": 126982118434417,
+      "assetId": 87938200063087,
+      "assetType": "Image",
       "sha256": "b4f3d559cc55421f0681504a2f4071fb82038f25ff3a45d1953bc337d093028b",
       "file": "roblox/assets/minions/fire_swift/portrait512.png"
     },
     "portrait_grass_atk": {
-      "assetId": 103920727436448,
+      "assetId": 95602831034780,
+      "assetType": "Image",
       "sha256": "67bfa9728bdb4174fcfaae62519187324ccab7e5ddd4599f9e9e90067c6b9436",
       "file": "roblox/assets/minions/grass_atk/portrait512.png"
     },
     "portrait_grass_def": {
-      "assetId": 137499158621852,
+      "assetId": 94310575918651,
+      "assetType": "Image",
       "sha256": "76f071af551b4b203f6a14b3c59445a25ad82ba5f792f90e9ef073dd0baf9d97",
       "file": "roblox/assets/minions/grass_def/portrait512.png"
     },
     "portrait_grass_std": {
-      "assetId": 100286508913087,
+      "assetId": 76425632115755,
+      "assetType": "Image",
       "sha256": "bc6842518b07237dcbd3489bda078d3a9931d7bdc663fa886ae27335dc39bf42",
       "file": "roblox/assets/minions/grass_std/portrait512.png"
     },
     "portrait_grass_sustain": {
-      "assetId": 74413001196291,
+      "assetId": 124349955559655,
+      "assetType": "Image",
       "sha256": "5a3d6404bf6e920b626e5bc71c68c65fb4921469a2c2c906f779092eeefee61d",
       "file": "roblox/assets/minions/grass_sustain/portrait512.png"
     },
     "portrait_grass_swift": {
-      "assetId": 113437605529933,
+      "assetId": 131540971370337,
+      "assetType": "Image",
       "sha256": "71ed6bb123e751b382fbb65696302c51caa97811f1a3f524709f6794022a853a",
       "file": "roblox/assets/minions/grass_swift/portrait512.png"
     },
     "portrait_lightning_atk": {
-      "assetId": 128583872508533,
+      "assetId": 115940753934732,
+      "assetType": "Image",
       "sha256": "85d6d69ec76da1e5699db15103814455f12005b4e818cbba1bf981052a373dc0",
       "file": "roblox/assets/minions/lightning_atk/portrait512.png"
     },
     "portrait_lightning_def": {
-      "assetId": 73874971132497,
+      "assetId": 102334081227228,
+      "assetType": "Image",
       "sha256": "f2d10ee5435ab74be0206085fa74c6c877ed4147c3778904a1d5a7d404a07078",
       "file": "roblox/assets/minions/lightning_def/portrait512.png"
     },
     "portrait_lightning_std": {
-      "assetId": 82769764927911,
+      "assetId": 115366952735914,
+      "assetType": "Image",
       "sha256": "fe03a36acb199753a15d157f8eb14144aea538ab84f75be944782d739a787bcb",
       "file": "roblox/assets/minions/lightning_std/portrait512.png"
     },
     "portrait_lightning_sustain": {
-      "assetId": 114677353264143,
+      "assetId": 125986007785812,
+      "assetType": "Image",
       "sha256": "18552a65dd1c514b897b4df6b90327fa920746de283057d9e6a253f0dd265851",
       "file": "roblox/assets/minions/lightning_sustain/portrait512.png"
     },
     "portrait_lightning_swift": {
-      "assetId": 124276790565375,
+      "assetId": 88918398784618,
+      "assetType": "Image",
       "sha256": "9cb3039b37fbd264d7cb16583d3fff7afdf4ccb492e2024c1dcf600182197b7b",
       "file": "roblox/assets/minions/lightning_swift/portrait512.png"
     },
     "portrait_water_atk": {
-      "assetId": 115722318797140,
+      "assetId": 129392390469706,
+      "assetType": "Image",
       "sha256": "84b414f71f6988e2b9fea72e006e8832f41009719f0d257ca95265d8e87f6fcf",
       "file": "roblox/assets/minions/water_atk/portrait512.png"
     },
     "portrait_water_def": {
-      "assetId": 137452839740952,
+      "assetId": 94185664156638,
+      "assetType": "Image",
       "sha256": "56b72aaa27e5d6382775435f026ace4d6cb683b4e9abbcabd3e857df8437b79d",
       "file": "roblox/assets/minions/water_def/portrait512.png"
     },
     "portrait_water_std": {
-      "assetId": 117830669100303,
+      "assetId": 88423498289003,
+      "assetType": "Image",
       "sha256": "28f37ee5de71e5e934258b6d35650a294f1cbdfc9ed9cc27e72339146924d702",
       "file": "roblox/assets/minions/water_std/portrait512.png"
     },
     "portrait_water_sustain": {
-      "assetId": 86576857050220,
+      "assetId": 137969208873970,
+      "assetType": "Image",
       "sha256": "aed064a3e45b6465c4e3446e1f01d6abf99361d218895c6108ff02834d609d41",
       "file": "roblox/assets/minions/water_sustain/portrait512.png"
     },
     "portrait_water_swift": {
-      "assetId": 91798166998145,
+      "assetId": 116705516961600,
+      "assetType": "Image",
       "sha256": "491d20296d5440c2be732b12743e8acb0c97aedf994c0825a5ea2e653f8439f3",
       "file": "roblox/assets/minions/water_swift/portrait512.png"
+    },
+    "token128_ally": {
+      "assetId": 136173347492529,
+      "assetType": "Image",
+      "sha256": "9318c630d17a1c7d3ce030dc1b628fc5ccd00858ceb19b6c3a9e38f441dd1988",
+      "file": "roblox/assets/tokens/ally_128.png"
+    },
+    "token128_bomb": {
+      "assetId": 118562555376601,
+      "assetType": "Image",
+      "sha256": "a8013364c85b0cd2645f5cdae1445095d2a685433cd8e5737a970a24c279f1d8",
+      "file": "roblox/assets/tokens/bomb_128.png"
+    },
+    "token128_king": {
+      "assetId": 84063688062407,
+      "assetType": "Image",
+      "sha256": "55d121037abf6444a6a9520b8035857299ba9fc1fbf9f33b1d21abd0c42808bd",
+      "file": "roblox/assets/tokens/king_128.png"
+    },
+    "token128_trap": {
+      "assetId": 117070771407413,
+      "assetType": "Image",
+      "sha256": "ff2463533736f1cc43a67c89d739715e4013d2920467032e8291fa21784b1dee",
+      "file": "roblox/assets/tokens/trap_128.png"
+    },
+    "token64_ally": {
+      "assetId": 76054273663192,
+      "assetType": "Image",
+      "sha256": "a4f838b9ca8e18f1760c091d602af9955d3642e637a7c48e343ca644433e2b44",
+      "file": "roblox/assets/tokens/ally_64.png"
+    },
+    "token64_bomb": {
+      "assetId": 101634694951621,
+      "assetType": "Image",
+      "sha256": "df2e881e2f4eb70c64e714508290c21d60a43fd10f5497aa7b73903c958c957f",
+      "file": "roblox/assets/tokens/bomb_64.png"
+    },
+    "token64_king": {
+      "assetId": 114816628929782,
+      "assetType": "Image",
+      "sha256": "3b3fb2a0ff9ba054ad0800a025e4bd514cfb6c3a90b06f116f1d2ad1dcd2bb3a",
+      "file": "roblox/assets/tokens/king_64.png"
+    },
+    "token64_trap": {
+      "assetId": 120755404495408,
+      "assetType": "Image",
+      "sha256": "281a314f23db35000f5fd613921f31c0a330dd1d83ef5453ba606b5d7c54169c",
+      "file": "roblox/assets/tokens/trap_64.png"
+    },
+    "token64_unknown": {
+      "assetId": 131950984299832,
+      "assetType": "Image",
+      "sha256": "ff5993fad66bedd116c952cb7075a35f2b6c8801a495c35e05f25eb47e592ab9",
+      "file": "roblox/assets/tokens/unknown_64.png"
     }
   }
 }

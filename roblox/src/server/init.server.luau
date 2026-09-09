@@ -13,7 +13,7 @@ local Engine = require(Shared.Engine)
 local Views = require(Shared.Views)
 local Lobby = require(script:WaitForChild("Lobby"))
 
-local VERSION = "0.5.0-p2a.1"
+local VERSION = "0.5.0-p2b.1"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")
@@ -300,4 +300,4 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-print("[DD] Digit Dual 서버 준비 완료 v" .. VERSION .. " (Phase 2a — 3D 로비 · 테이블 매칭)")
+print("[DD] Digit Dual 서버 준비 완료 v" .. VERSION .. " (Phase 2b — 로비 메시 · 판 위 대국)")

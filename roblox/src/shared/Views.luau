@@ -86,6 +86,13 @@ function Views.forViewer(engine, viewer)
 			table.insert(board, entry)
 		end
 	end
+	-- 정보 은닉: 배열 순서가 생성 순서(종류별 고정)를 따르면 미공개 말의 종류가 순서로 새어 나간다 → 이미 보이는 정보(위치)로만 정렬
+	table.sort(board, function(a, b)
+		if a.r ~= b.r then
+			return a.r < b.r
+		end
+		return a.c < b.c
+	end)
 
 	-- 내 흔적 (탐색 가능 표시) — 이벤트가 아직 살아 있는 칸만
 	local traces = {}
