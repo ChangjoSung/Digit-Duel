@@ -1,0 +1,411 @@
+{
+  "date": "2026-09-09",
+  "source_commit": "bffd5da28fac6279ab9b15f491dbab7c8791bcc0",
+  "source_branch": "feature/118-roblox-port",
+  "files": [
+    {
+      "path": "demo/assets/minions/README.md",
+      "sha256": "d6af54a54bbffff4808a561b99a3e5e80ff7a40853a3c404ff6a391b59a6faa0"
+    },
+    {
+      "path": "demo/assets/minions/fire_atk/battle-grid.png",
+      "sha256": "095e6519ae225795ca2109509f1f953a99ced028bb6c7cf071569bcff0735aad"
+    },
+    {
+      "path": "demo/assets/minions/fire_atk/battle.png",
+      "sha256": "05ba0b5e0864f18f5e29d1437c4d47b833c7e5df5d14afab7336b5bef3d26bf7"
+    },
+    {
+      "path": "demo/assets/minions/fire_atk/icon.png",
+      "sha256": "7d6d6527153921246a0d69ff30570e86c020603affa4cccc65e58c7ca5bf08e9"
+    },
+    {
+      "path": "demo/assets/minions/fire_atk/portrait.png",
+      "sha256": "4b69ad34522ac76fea690bd2134ffde1cc8e9c23f46b535d3b4447d2e5b8ec9b"
+    },
+    {
+      "path": "demo/assets/minions/fire_atk/portrait.webp",
+      "sha256": "5d2f3ca113d5bb33aa128f3a7d2b38840c6dde02ade39400a2bc81c6fae86722"
+    },
+    {
+      "path": "demo/assets/minions/fire_def/battle-grid.png",
+      "sha256": "0f8433dde4b6b1197ae2431366a8fc51bfe9223e90f40b30a878f2ec23842371"
+    },
+    {
+      "path": "demo/assets/minions/fire_def/battle.png",
+      "sha256": "ca949946a26c3c757b7a57cd8729bb75864a027941015569ff6e7dbd87b55050"
+    },
+    {
+      "path": "demo/assets/minions/fire_def/icon.png",
+      "sha256": "bd780d3cd3d0909447771be86b310215e4a674eb5b21bc04f1cbe0f8d6c7ac56"
+    },
+    {
+      "path": "demo/assets/minions/fire_def/portrait.png",
+      "sha256": "f38dc4e1f029d9f30c3a7fe41381cdbc5df155422bd5daf9ff9c71c7d3f2e54d"
+    },
+    {
+      "path": "demo/assets/minions/fire_def/portrait.webp",
+      "sha256": "05b0743a71b76d72c31b9e98ecc342561a3bf5dd190af15e66c1a86b765d7f40"
+    },
+    {
+      "path": "demo/assets/minions/fire_std/battle-grid.png",
+      "sha256": "c4a28434b53d8954e7876865077d82249a0df673c67692f3cf9fb28f3a1d9093"
+    },
+    {
+      "path": "demo/assets/minions/fire_std/battle.png",
+      "sha256": "0b05dae94dafc4fefef3ef6e67bee1689533c86edf3819d6edb76038efb76856"
+    },
+    {
+      "path": "demo/assets/minions/fire_std/icon.png",
+      "sha256": "1780a298d11b8d09aad4ffaa2ca9db28ff6eebaa82456761d911c630b5921feb"
+    },
+    {
+      "path": "demo/assets/minions/fire_std/portrait.png",
+      "sha256": "dbef4cc84db3e0edea96614d378eb2d336a6f0c4a614a032b32bb5005b78f149"
+    },
+    {
+      "path": "demo/assets/minions/fire_std/portrait.webp",
+      "sha256": "3ea042e278bd38e07ed89e10b9217c86bb100bf1bff03237be75a48360c3783b"
+    },
+    {
+      "path": "demo/assets/minions/fire_sustain/battle-grid.png",
+      "sha256": "3b3af4bfe76bc774447043e29c1b54341c22a5f07e243ce853e27dc7eb476e07"
+    },
+    {
+      "path": "demo/assets/minions/fire_sustain/battle.png",
+      "sha256": "55676a3fc3c71cc4913d34a11883367479d345292880c942c1131b59002682b5"
+    },
+    {
+      "path": "demo/assets/minions/fire_sustain/icon.png",
+      "sha256": "20f1822f532e4d44f651d41c6981b537e96061cfee7ced0c7c55e5c7220199bd"
+    },
+    {
+      "path": "demo/assets/minions/fire_sustain/portrait.png",
+      "sha256": "3db83be95c85ec3197ab51c63d778ad758cbf48311a62c5e854188fbbb62719c"
+    },
+    {
+      "path": "demo/assets/minions/fire_sustain/portrait.webp",
+      "sha256": "d159ca9bde36dc19f7d07817c6d2907cfef0077a7c69a7337d464daa4edc77d3"
+    },
+    {
+      "path": "demo/assets/minions/fire_swift/battle-grid.png",
+      "sha256": "7c3d67a0294c1754c209e2fd78c2b2e9d57d1fc811de9329452269d9372057a2"
+    },
+    {
+      "path": "demo/assets/minions/fire_swift/battle.png",
+      "sha256": "7f8d30a5309fe639048c0c55164161b30a3eef2e54f8ed30e3449dbfcc734510"
+    },
+    {
+      "path": "demo/assets/minions/fire_swift/icon.png",
+      "sha256": "c3bfd2ea7ce56a52c9125717cbe501fc38119cabd0cb6d63b4f8cad033f8d91c"
+    },
+    {
+      "path": "demo/assets/minions/fire_swift/portrait.png",
+      "sha256": "b4f3d559cc55421f0681504a2f4071fb82038f25ff3a45d1953bc337d093028b"
+    },
+    {
+      "path": "demo/assets/minions/fire_swift/portrait.webp",
+      "sha256": "d0cd9332abbe131a16505687c136732305aeae8252d5f259ea5857b389d5f384"
+    },
+    {
+      "path": "demo/assets/minions/grass_atk/battle-grid.png",
+      "sha256": "6868e7693b8575ffc50e71347bf9474c6b31021c013cc197ced9346abbaf3a91"
+    },
+    {
+      "path": "demo/assets/minions/grass_atk/battle.png",
+      "sha256": "e664c3fd7e75cd59ff1b8411c61d29c453abee6d776016c2131293c7be2f3e4b"
+    },
+    {
+      "path": "demo/assets/minions/grass_atk/icon.png",
+      "sha256": "1a51f5bd39e1f25cc0fdcd90a9316a43c3f892f4610ecc9f79833015bfaa091e"
+    },
+    {
+      "path": "demo/assets/minions/grass_atk/portrait.png",
+      "sha256": "67bfa9728bdb4174fcfaae62519187324ccab7e5ddd4599f9e9e90067c6b9436"
+    },
+    {
+      "path": "demo/assets/minions/grass_atk/portrait.webp",
+      "sha256": "dd7e3851e144d2bb8e0ce1e4b12c75ff094e9c28411b54194f73bb08163a3695"
+    },
+    {
+      "path": "demo/assets/minions/grass_def/battle-grid.png",
+      "sha256": "fc22b4aca7015081569ccd3677a1644f2badf53a0ff45d16291d4760094e4869"
+    },
+    {
+      "path": "demo/assets/minions/grass_def/battle.png",
+      "sha256": "05689edd168d92b32c3a7531ee985d1a1514c7db59ed3a0e73c7c0df573fd4fe"
+    },
+    {
+      "path": "demo/assets/minions/grass_def/icon.png",
+      "sha256": "674bf6ef3f1facb7e0ab232a2c4000e8cfe93cb06f470171da067687344b0646"
+    },
+    {
+      "path": "demo/assets/minions/grass_def/portrait.png",
+      "sha256": "76f071af551b4b203f6a14b3c59445a25ad82ba5f792f90e9ef073dd0baf9d97"
+    },
+    {
+      "path": "demo/assets/minions/grass_def/portrait.webp",
+      "sha256": "1fc06e30c1cf7e4cf13a0a4b3d510ba434b771b2222bde7c2eaeeb37dd95f379"
+    },
+    {
+      "path": "demo/assets/minions/grass_std/battle-grid.png",
+      "sha256": "2c060586b9af4b21e1887a6b7c196235f7b786a03b45c8ef97364f1b12df7eaf"
+    },
+    {
+      "path": "demo/assets/minions/grass_std/battle.png",
+      "sha256": "43df1d0c64f5b0b3f061f678508db4219758e74216f725af9ef92eb08e36e933"
+    },
+    {
+      "path": "demo/assets/minions/grass_std/icon.png",
+      "sha256": "69f8747354cdbbf3b4834313336cf147ff37accb7b02850735a8b00619e5c3e3"
+    },
+    {
+      "path": "demo/assets/minions/grass_std/portrait.png",
+      "sha256": "bc6842518b07237dcbd3489bda078d3a9931d7bdc663fa886ae27335dc39bf42"
+    },
+    {
+      "path": "demo/assets/minions/grass_std/portrait.webp",
+      "sha256": "f9775d30a93502e23afbca9215af4f96ce46b422e6d9d597a03ce279690a97d7"
+    },
+    {
+      "path": "demo/assets/minions/grass_sustain/battle-grid.png",
+      "sha256": "16a31efa18a5c40b818304fd5e942d0c4ddb9be861b5311fe8612e1f3081a9be"
+    },
+    {
+      "path": "demo/assets/minions/grass_sustain/battle.png",
+      "sha256": "9262cd53c1bcf9cb386fc480e80086426a4cdf667fbc4c1a91c5d0e2c9971f52"
+    },
+    {
+      "path": "demo/assets/minions/grass_sustain/icon.png",
+      "sha256": "10c902466d2c7788e5f8eb8b731571a23b15b9b620336184f968735fd9a470eb"
+    },
+    {
+      "path": "demo/assets/minions/grass_sustain/portrait.png",
+      "sha256": "5a3d6404bf6e920b626e5bc71c68c65fb4921469a2c2c906f779092eeefee61d"
+    },
+    {
+      "path": "demo/assets/minions/grass_sustain/portrait.webp",
+      "sha256": "f433b22e53f75d8b9ebaf98760f5d7e153d5fe645a9fdac64250a5b6bda16bdf"
+    },
+    {
+      "path": "demo/assets/minions/grass_swift/battle-grid.png",
+      "sha256": "fcfe52f27863096cd3728012c4b6e28465a78570934b377757efe77f4d2c6ab7"
+    },
+    {
+      "path": "demo/assets/minions/grass_swift/battle.png",
+      "sha256": "e559aaa17b627b1c0efe6d97def89381a7a81a6f71d8b09ebac24ea83879907e"
+    },
+    {
+      "path": "demo/assets/minions/grass_swift/icon.png",
+      "sha256": "2a577f825bf17ade1b6a63db2a805f35cae3f61b12ec72a1294b48d4839c0820"
+    },
+    {
+      "path": "demo/assets/minions/grass_swift/portrait.png",
+      "sha256": "71ed6bb123e751b382fbb65696302c51caa97811f1a3f524709f6794022a853a"
+    },
+    {
+      "path": "demo/assets/minions/grass_swift/portrait.webp",
+      "sha256": "c9eca57e7b583ec38df23b75eaa7e079322e9bbc59bf19191e52c0c4a361419a"
+    },
+    {
+      "path": "demo/assets/minions/lightning_atk/battle-grid.png",
+      "sha256": "4d46db21c58a7b0292037805cd7af76ff54d1246f558363c3402015510cb45bd"
+    },
+    {
+      "path": "demo/assets/minions/lightning_atk/battle.png",
+      "sha256": "a60551cfd8f2a0db6fdab3b9983c2bde38411e31e156ad3436c157bcaf87701c"
+    },
+    {
+      "path": "demo/assets/minions/lightning_atk/icon.png",
+      "sha256": "63d4b701c7648e12711f496ca52d47847244e3488848636e97198f7b23b23dde"
+    },
+    {
+      "path": "demo/assets/minions/lightning_atk/portrait.png",
+      "sha256": "85d6d69ec76da1e5699db15103814455f12005b4e818cbba1bf981052a373dc0"
+    },
+    {
+      "path": "demo/assets/minions/lightning_atk/portrait.webp",
+      "sha256": "31ee57a71472ce5fa4ba9c31bcfb8685ead029575c96d004ce4d0e181bc9af99"
+    },
+    {
+      "path": "demo/assets/minions/lightning_def/battle-grid.png",
+      "sha256": "6ff96611457bde42ac768afd4fefeff27ceb163947dd9a87055bfe6126f465d4"
+    },
+    {
+      "path": "demo/assets/minions/lightning_def/battle.png",
+      "sha256": "160d2275dc08d5d5e26c958ffc4c177c7b37d16339cd66b858f3a5ca81213cbd"
+    },
+    {
+      "path": "demo/assets/minions/lightning_def/icon.png",
+      "sha256": "05751cadde005fb4537e4299fa2be3c74feadc1e089199ff5725295b5204f315"
+    },
+    {
+      "path": "demo/assets/minions/lightning_def/portrait.png",
+      "sha256": "f2d10ee5435ab74be0206085fa74c6c877ed4147c3778904a1d5a7d404a07078"
+    },
+    {
+      "path": "demo/assets/minions/lightning_def/portrait.webp",
+      "sha256": "205483ec1aaf0b2f239c271e98227bd1f2c71ec9109f6efacfed5cfec9c0f838"
+    },
+    {
+      "path": "demo/assets/minions/lightning_std/battle-grid.png",
+      "sha256": "8a573a45badd0cfdd9335711d06c79839804afcd53243803428a76406f434c76"
+    },
+    {
+      "path": "demo/assets/minions/lightning_std/battle.png",
+      "sha256": "e5c3b8aa678974fff5506c11983d30132328d5506a76b662edd24f7c8e1dd61b"
+    },
+    {
+      "path": "demo/assets/minions/lightning_std/icon.png",
+      "sha256": "f6f2447340dcbe2ded2f5e99b6862a172ab0cdb31b3e9b396a37303d99ff63e8"
+    },
+    {
+      "path": "demo/assets/minions/lightning_std/portrait.png",
+      "sha256": "fe03a36acb199753a15d157f8eb14144aea538ab84f75be944782d739a787bcb"
+    },
+    {
+      "path": "demo/assets/minions/lightning_std/portrait.webp",
+      "sha256": "3caeb0c78f3fffcebf7f2977f9c3ed25053f4fa4afb71ffa3195175d239e0545"
+    },
+    {
+      "path": "demo/assets/minions/lightning_sustain/battle-grid.png",
+      "sha256": "30db0f57df7f807851f5b5b75641d32a320717f6414b5ef0e36157faf88ef5a5"
+    },
+    {
+      "path": "demo/assets/minions/lightning_sustain/battle.png",
+      "sha256": "2ac82f6b94576d4c98156a6b91e13b6251818b650e3e640453bdd5eb72dcbc15"
+    },
+    {
+      "path": "demo/assets/minions/lightning_sustain/icon.png",
+      "sha256": "c844f69522aeda26c15b5c08ebfcf868c293558f2092ea3dfd26ca9253b8d0f0"
+    },
+    {
+      "path": "demo/assets/minions/lightning_sustain/portrait.png",
+      "sha256": "18552a65dd1c514b897b4df6b90327fa920746de283057d9e6a253f0dd265851"
+    },
+    {
+      "path": "demo/assets/minions/lightning_sustain/portrait.webp",
+      "sha256": "ee07e5e46f4eb0953e51cb1fb65caee80ef169072c0cf74d03bc199f7ff1ad4f"
+    },
+    {
+      "path": "demo/assets/minions/lightning_swift/battle-grid.png",
+      "sha256": "30b6c881d6b3ef0022453dc110954008f0337f986a9fbffab3559d9a7150677c"
+    },
+    {
+      "path": "demo/assets/minions/lightning_swift/battle.png",
+      "sha256": "469e5c2f1e5fb0d6594b86d14b5a8bbe2bf4a2d3fd62cd3f3fee1f4dddcfd5b2"
+    },
+    {
+      "path": "demo/assets/minions/lightning_swift/icon.png",
+      "sha256": "054e3d53817c9c2f6fcce61cd223bbc4ed3dda75b7d82c4cac4c6137fc57ae7a"
+    },
+    {
+      "path": "demo/assets/minions/lightning_swift/portrait.png",
+      "sha256": "9cb3039b37fbd264d7cb16583d3fff7afdf4ccb492e2024c1dcf600182197b7b"
+    },
+    {
+      "path": "demo/assets/minions/lightning_swift/portrait.webp",
+      "sha256": "06683ed1f503a907b03d84f40e6a441e8e18179e186650ac1edaf7cbbf57fc0f"
+    },
+    {
+      "path": "demo/assets/minions/water_atk/battle-grid.png",
+      "sha256": "933970cd6d301310d664c38614efc9036cb38854125a734bb410b8da409702a6"
+    },
+    {
+      "path": "demo/assets/minions/water_atk/battle.png",
+      "sha256": "36a35266ec7d5a3db723ded9fa111d2ea6fb8a05f63c1b407c32a55b249dc286"
+    },
+    {
+      "path": "demo/assets/minions/water_atk/icon.png",
+      "sha256": "3fe7b7693704f826fbd84523d6cdad7f40acc715e718e122e10140526befc5b7"
+    },
+    {
+      "path": "demo/assets/minions/water_atk/portrait.png",
+      "sha256": "84b414f71f6988e2b9fea72e006e8832f41009719f0d257ca95265d8e87f6fcf"
+    },
+    {
+      "path": "demo/assets/minions/water_atk/portrait.webp",
+      "sha256": "fb9446c3158a7650bd2cb31e8ea97e6406abbb74afd213673ac34f3556fbbb6a"
+    },
+    {
+      "path": "demo/assets/minions/water_def/battle-grid.png",
+      "sha256": "5cb9578819b09d91ec9ab1b5ba4e904f885aff5411f25170ecbc222d9b495d89"
+    },
+    {
+      "path": "demo/assets/minions/water_def/battle.png",
+      "sha256": "15f57c6feee4408c3a00224405d523f89790c8a84fe198a0e6fa407b9fe5caf2"
+    },
+    {
+      "path": "demo/assets/minions/water_def/icon.png",
+      "sha256": "cd682b263a7165cefb1ac0bfc4fdcb85604d62fb6715abde26665a06f2157de8"
+    },
+    {
+      "path": "demo/assets/minions/water_def/portrait.png",
+      "sha256": "56b72aaa27e5d6382775435f026ace4d6cb683b4e9abbcabd3e857df8437b79d"
+    },
+    {
+      "path": "demo/assets/minions/water_def/portrait.webp",
+      "sha256": "8639106b26af758e7906d901b920ebef746886d99923c012ded2dcbee8575f0e"
+    },
+    {
+      "path": "demo/assets/minions/water_std/battle-grid.png",
+      "sha256": "072c55207a19cea5d360c86122d2e786e2f9ae34d350482ff40ab6d212532ed7"
+    },
+    {
+      "path": "demo/assets/minions/water_std/battle.png",
+      "sha256": "559b9d68b992e4a4d3d2a8031c35541633395ec80d56f7ebabe16155f10635a7"
+    },
+    {
+      "path": "demo/assets/minions/water_std/icon.png",
+      "sha256": "7e95ab2cbd796ad1b7648ec221f1504dbf1408bed07e59a03a92319064555020"
+    },
+    {
+      "path": "demo/assets/minions/water_std/portrait.png",
+      "sha256": "28f37ee5de71e5e934258b6d35650a294f1cbdfc9ed9cc27e72339146924d702"
+    },
+    {
+      "path": "demo/assets/minions/water_std/portrait.webp",
+      "sha256": "625df17b83d5d3411b55e75d8143574e84c443f470c0da35be291e542509bc8e"
+    },
+    {
+      "path": "demo/assets/minions/water_sustain/battle-grid.png",
+      "sha256": "c17ec2b82b536b9473a0f2c878a4e9495736a0ed1ac367af667d712ae24eeb8a"
+    },
+    {
+      "path": "demo/assets/minions/water_sustain/battle.png",
+      "sha256": "22b7977c0f06930ff4ae38e149ba4a10a8a70e0f2ebef3adefc74fcf194d65c6"
+    },
+    {
+      "path": "demo/assets/minions/water_sustain/icon.png",
+      "sha256": "99ee754eb25e64df43f92b1be5f6889e4a9847de0afa7ced2db1c33a3671f236"
+    },
+    {
+      "path": "demo/assets/minions/water_sustain/portrait.png",
+      "sha256": "aed064a3e45b6465c4e3446e1f01d6abf99361d218895c6108ff02834d609d41"
+    },
+    {
+      "path": "demo/assets/minions/water_sustain/portrait.webp",
+      "sha256": "9bfce8db49b5a1c9540d1553d7aaa99fe0ccbd5cb9ebe2fcd9ec574b15b3b9fc"
+    },
+    {
+      "path": "demo/assets/minions/water_swift/battle-grid.png",
+      "sha256": "abcba704371d0cc7b9060c0f57f15f5c75d90c44436751b14668e5ba3fce9337"
+    },
+    {
+      "path": "demo/assets/minions/water_swift/battle.png",
+      "sha256": "2ba2ba89ef30889cd27643011f1f75012fa5360651dd13b4c1f915466377576e"
+    },
+    {
+      "path": "demo/assets/minions/water_swift/icon.png",
+      "sha256": "c2436b71fc00ba37d367de3e861c71f77e25bc4a6b8e3510be7507a7af8477e8"
+    },
+    {
+      "path": "demo/assets/minions/water_swift/portrait.png",
+      "sha256": "491d20296d5440c2be732b12743e8acb0c97aedf994c0825a5ea2e653f8439f3"
+    },
+    {
+      "path": "demo/assets/minions/water_swift/portrait.webp",
+      "sha256": "57c24bf60f806a2a0b68078b20e0eee7a9f7abb40ff7e9dbf23b01765d0d9532"
+    }
+  ]
+}
