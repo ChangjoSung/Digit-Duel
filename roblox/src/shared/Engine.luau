@@ -122,6 +122,17 @@ function Engine.new(seed)
 			table.insert(S.inv[p], ks[1])
 		end
 	end
+	-- 정보 은닉 (인계서 §6): 종류별 고정 순서의 순번 ID 는 미공개 말도 ID 만으로 정체를 역추정하게 한다 (예: 14·28 = 왕).
+	-- 생성 순서(S.pieces 배열)는 유지하되 ID 값만 시드 RNG 로 뒤섞는다 — 클라이언트는 ID 를 불투명 핸들로만 쓴다.
+	local ids = {}
+	for i = 1, #S.pieces do
+		ids[i] = i
+	end
+	self:shuffle(ids)
+	for i, p in S.pieces do
+		p.id = ids[i]
+	end
+	self.nextId = #S.pieces + 1
 	self:genEvents()
 	return self
 end

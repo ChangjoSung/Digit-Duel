@@ -50,8 +50,11 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 
 ## 실행
 
-### 플레이 흐름 (Phase 2a — 3D 로비 · 테이블 매칭, CJ 2026-09-09)
-로비 스폰 → 테이블 의자 앞에서 **[E] 앉기** → 중앙 패널 **[배치 완료]** (지금은 무작위 배치) → 맞은편에 상대가 앉아 배치를 마치면 그 둘만 대전 → 종료 후 [닫기] → 앉은 채 재대전. 대전 중 자리 이탈 = 기권. 설계: [docs/roblox/lobby-design.md](../docs/roblox/lobby-design.md) · 아트 요청: [docs/roblox/earth-lobby-request.md](../docs/roblox/earth-lobby-request.md)
+### 플레이 흐름 (Phase 2b — 3D 로비 · 테이블 매칭 · 판 위 대국, CJ 2026-09-09)
+로비 스폰 → 테이블 의자 앞에서 **[E] 앉기** (카메라가 판을 향함) → 하단 패널 **[배치 완료]** (지금은 무작위 배치) → 맞은편에 상대가 앉아 배치를 마치면 그 둘만 대전 → **판 위의 말을 직접 클릭**해 선택·이동·전투 (오른쪽 패널: 탐색·텔레포트·회복·턴 종료, 전투는 중앙 패널) → 종료 후 [닫기] → 앉은 채 재대전. 대전 중 자리 이탈 = 기권.
+- 판 위 말은 **각 클라이언트가 서버 필터 뷰로 로컬 생성**한다 — 공개 말 = 도트 빌보드, 미공개 말 = 공통 덮개 메시(팀 틴트). 상대 클라이언트에는 아무 인스턴스도 복제되지 않는다.
+- 판 파트가 없거나 HUD [2D 보드] 를 켜면 2D 보드 GUI 로 폴백.
+- 설계: [docs/roblox/lobby-design.md](../docs/roblox/lobby-design.md) · 아트 적용 보고: [docs/roblox/art-apply-report.md](../docs/roblox/art-apply-report.md) · 아트 요청: [earth-art-request.md](../docs/roblox/earth-art-request.md) / [earth-lobby-request.md](../docs/roblox/earth-lobby-request.md)
 
 ### Studio 테스트 (2인 로컬)
 1. `build.bat` 실행 → `build/DigitDual.rbxl` 생성 (rojo.exe 는 `build/` 에 두며 git 에 올리지 않는다 — 없으면 bat 이 다운로드 링크를 안내)
@@ -62,14 +65,14 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 코드를 고친 뒤에는 `build.bat` 을 다시 돌려 rbxl 을 갱신한다. 라이브 동기화가 필요하면 `build\rojo.exe serve` + Studio Rojo 플러그인.
 
 ### 아트 적용 (Earth 납품 → Roblox 업로드)
-Roblox 는 이미지를 Roblox 서버에 올려 `rbxassetid` 를 받아야 쓸 수 있다. `roblox/assets/manifest.csv` 의 PNG 를 한 번에 올리고 ID 표를 생성한다:
+Roblox 는 자산을 Roblox 서버에 올려 `rbxassetid` 를 받아야 쓸 수 있다. `roblox/tools/upload_assets.js` 가 세 manifest 를 읽어 한 번에 올리고 ID 표를 생성한다:
+- `roblox/assets/manifest.csv` (PNG: 하수인·토큰) → **Image** · `roblox/assets/lobby/manifest.csv` (텍스처·UI → Image, FBX → **Model**) · `roblox/assets/tokens/model-manifest.csv` (unknown.fbx → Model)
 
-1. API 키 발급: https://create.roblox.com/dashboard/credentials → **Create API Key** → Access Permissions 에 **Assets API** 추가 (Read + Write) → Save → 키 복사
-2. `roblox\tools\upload.bat` 실행 → API 키와 User ID(roblox.com/users/**숫자**/profile) 입력 → 60장 업로드 (약 2~3분)
-3. 생성된 `roblox/assets/asset-ids.json` 과 `roblox/src/shared/AssetIds.luau` 를 커밋 → `build.bat` → Studio 에서 **Publish to Roblox As…** 로 기존 경험에 덮어쓰기
+1. API 키: https://create.roblox.com/dashboard/credentials → **Create API Key** → **Assets API** Read + Write
+2. `roblox\tools\upload.bat` → API 키·User ID 입력 → 변경된 자산만 업로드 (sha256·타입 비교)
+3. `roblox/assets/asset-ids.json` · `roblox/src/shared/AssetIds.luau` 커밋 → `publish.bat`
 
-재실행하면 파일이 바뀐 것만 다시 올린다. `AssetIds.luau` 가 비어 있으면 클라이언트는 텍스트 표시로 폴백한다 (HTML #89 폴백과 같은 계약).
-업로드 직후 Roblox 이미지 검수(수 분)가 끝날 때까지 빈 이미지로 보일 수 있다.
+메시(Model)는 서버가 `InsertService:LoadAsset` 으로 불러와 로비 시각을 교체한다 (`Lobby.luau`, 실패 시 Part 폴백 · 임포트 축 보정 `MESH_YAW`). `AssetIds.luau` 가 비어 있으면 텍스트·Part 폴백 (HTML #89 계약).
 
 ### Roblox 게시 (실제 다인 플레이)
 Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버 인스턴스를 호스팅하며, 같은 인스턴스에 들어온 플레이어를 `init.server.luau` 가 1:1 로 매칭한다.

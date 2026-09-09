@@ -1,0 +1,50 @@
+{
+  "id": "unknown",
+  "width": 32,
+  "height": 32,
+  "palette": {
+    ".": "#00000000",
+    "W": "#FFFFFF"
+  },
+  "pixels": [
+    "................................",
+    "................................",
+    "................................",
+    "................................",
+    "...........WWWWWWWWW............",
+    "..........WWWWWWWWWWW...........",
+    ".........WWWWWWWWWWWWW..........",
+    "........WWWWWWWWWWWWWWW.........",
+    "........WWWWWWWWWWWWWWWW........",
+    ".......WWW..WWWWWWWW..WW........",
+    ".......WWW..WWWWWWWW..WWW.......",
+    ".......WWW..WWWWWWWW..WWW.......",
+    "......WWWW.WWWWWWWWWW.WWW.......",
+    "......WWW..WWWWWWWWWW..WWW......",
+    "......WWW..WWWWWWWWWW..WWW......",
+    "......WWW..WWWWWWWWWW..WWW......",
+    "......WWW..WWWWWWWWWW..WWW......",
+    "......WWW.WWWWWWWWWWWW.WWW......",
+    "......WW..WWWWWWWWWWWW..WW......",
+    "......WW..WWWWWWWWWWWW..WW......",
+    "......WW..WWWWWWWWWWWW..WW......",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    ".....W..........................",
+    "....WW....................W.....",
+    "...WWWWWWWWWWWWWWWWWWWWWWWWW....",
+    "...WWWWWWWWWWWWWWWWWWWWWWWWWW...",
+    "...WWWWWWWWWWWWWWWWWWWWWWWWWW...",
+    "...WWWWWWWWWWWWWWWWWWWWWWWWWW...",
+    "................................",
+    "................................"
+  ],
+  "notes": "Generic sealed faceted cover; identical for every unrevealed unit; no question-mark glyph and no identity-specific features. Native32 authored for team tint; 2px minimum safe margin; baseline y29. New token vocabulary uses the existing pixel-source data structure; not a minion_art.py roster entry.",
+  "bbox": [
+    3,
+    4,
+    29,
+    30
+  ]
+}

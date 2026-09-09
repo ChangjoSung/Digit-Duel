@@ -1,0 +1,50 @@
+{
+  "id": "bomb",
+  "width": 32,
+  "height": 32,
+  "palette": {
+    ".": "#00000000",
+    "W": "#FFFFFF"
+  },
+  "pixels": [
+    "................................",
+    "................................",
+    "........................WW.WW...",
+    ".......................WWW.WW...",
+    "..................WWWWWWW.......",
+    "................WWWWWWWW........",
+    "...............WWWW........WWW..",
+    "............WWWWWW.........WWW..",
+    "............WWWWWW..............",
+    "...........WWWWWWW..............",
+    ".........WWWWWWWWWWW............",
+    "........WWWWWWWWWWWWW...........",
+    ".......WWWWWWWWWWWWWWW..........",
+    "......WWWWWWWWWWWWWWWWW.........",
+    ".....WWWWWWWWWWWWWWWWWWW........",
+    ".....WWWWWWWWWWWWWWWWWWW........",
+    "....WWWWWWWWWWWWWWWWWWWWW.......",
+    "....WWWWWWWWW..WWWWWWWWWW.......",
+    "....WWWWWWWW....WWWWWWWWW.......",
+    "....WWWWWWW......WWWWWWWW.......",
+    "....WWWWWWW......WWWWWWWW.......",
+    "....WWWWWWWW....WWWWWWWWW.......",
+    "....WWWWWWWWW..WWWWWWWWWW.......",
+    ".....WWWWWWWWWWWWWWWWWWW........",
+    ".....WWWWWWWWWWWWWWWWWWW........",
+    "......WWWWWWWWWWWWWWWWW.........",
+    ".......WWWWWWWWWWWWWWW..........",
+    "........WWWWWWWWWWWWW...........",
+    ".........WWWWWWWWWWW............",
+    "...........WWWWWWW..............",
+    "................................",
+    "................................"
+  ],
+  "notes": "Round sealed fantasy charge with a short fuse and sparse spark; no element-specific emblem. Native32 authored for team tint; 2px minimum safe margin; baseline y29. New token vocabulary uses the existing pixel-source data structure; not a minion_art.py roster entry.",
+  "bbox": [
+    4,
+    2,
+    30,
+    30
+  ]
+}

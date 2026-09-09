@@ -1,0 +1,4 @@
+path,kind,id,format,w,h,depth,tris,pivot,tint,source,notes
+"meshes/unknown.fbx","mesh","unknown","fbx",0.44,0.42,0.44,260,"0,0,0;bottom-center","yes","../../../docs/art/roblox-v0.5.0/token-source/token-set.blend","Primary; Y-up; 1unit=1stud; one closed white mesh; shared across all hidden types; no embedded image or custom properties."
+"meshes/unknown.obj","mesh","unknown","obj",0.44,0.42,0.44,260,"0,0,0;bottom-center","yes","../../../docs/art/roblox-v0.5.0/token-source/token-set.blend","Alternative to FBX; do not instantiate both; matching unknown.mtl."
+"meshes/unknown.mtl","material","unknown","mtl",,,,,,"yes","../../../docs/art/roblox-v0.5.0/token-source/token-set.blend","White Kd; no texture map; colour with MeshPart.Color (Color3 value); not an image for PNG uploader."

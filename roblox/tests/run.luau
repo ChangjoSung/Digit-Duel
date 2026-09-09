@@ -395,6 +395,60 @@ else
 end
 
 --==================================================================
+print("[8] 정보 은닉 — 순번 ID 셔플·뷰 보드 위치순 정렬 (인계서 §6)")
+--==================================================================
+local Views = require("../src/shared/Views")
+local seqLeak = 0
+for seed = 1, 10 do
+	local en = freshPlay(seed * 31337)
+	local king0 = findType(en, 0, "king")
+	local king1 = findType(en, 1, "king")
+	if king0.id == 14 and king1.id == 28 then
+		seqLeak += 1
+	end
+	-- 종류별 ID 구간이 고정이면 누출: 하수인 6개의 ID 가 정확히 {1..6} 인지
+	local mids = {}
+	for _, p in en.S.pieces do
+		if p.owner == 0 and p.type == "minion" then
+			table.insert(mids, p.id)
+		end
+	end
+	table.sort(mids)
+	local isSeq = true
+	for i = 1, 6 do
+		if mids[i] ~= i then
+			isSeq = false
+		end
+	end
+	if isSeq then
+		seqLeak += 1
+	end
+	-- ID 유일성·범위
+	local seen = {}
+	for _, p in en.S.pieces do
+		ok(p.id >= 1 and p.id <= 28 and not seen[p.id], "seed " .. seed .. " ID 유일·범위")
+		seen[p.id] = true
+	end
+	-- 뷰 보드는 위치순 (생성 순서 = 종류 순서가 새지 않는다)
+	local v = Views.forViewer(en, 0)
+	local sorted = true
+	for i = 2, #v.board do
+		local a, b = v.board[i - 1], v.board[i]
+		if a.r > b.r or (a.r == b.r and a.c > b.c) then
+			sorted = false
+		end
+	end
+	ok(sorted, "seed " .. seed .. " 뷰 보드 위치순 정렬")
+	-- 미공개 상대 말에는 정체·HP·rosterId 가 없다
+	for _, e in v.board do
+		if e.owner == 1 and not e.known then
+			ok(e.type == nil and e.hp == nil and e.rosterId == nil and e.name == nil, "seed " .. seed .. " 미공개 말 정체 비전송")
+		end
+	end
+end
+ok(seqLeak == 0, "종류별 고정 순번 ID 없음 (누출 " .. seqLeak .. "/10)")
+
+--==================================================================
 print(("\n결과: %d passed · %d failed"):format(passed, failed))
 if failed > 0 then
 	error("테스트 실패", 0)
