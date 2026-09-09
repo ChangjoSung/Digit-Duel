@@ -45,8 +45,8 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | 역할 | 문서 | 상태 |
 |---|---|---|
 | Venus | [v0.4.7 게임플레이 계약](issues/121/Venus/gameplay-spec.md) — 이벤트 배치·패키지 회계·버프 3종·기술 교체·신규 공용 기술 3종·숲 포획·탐색 종료·연출 템포·온라인/AI | 계약 확정 · PD 해석 정정 2건 반영 |
-| Mars | [통합 구현 보고](issues/121/Mars/report.md) — 구현 범위·변경 파일·검사·롤백 | 제품·18종 회귀·브라우저·튜토리얼 촬영 완료, 최종 보고 정리 중 |
-| Saturn | — | 코드 REVISE 6건 해소 확인 · 최종 문서·증빙 검수 중 |
+| Mars | [통합 구현 보고](issues/121/Mars/report.md) — 구현 범위·변경 파일·검사·롤백 | 제품·18종 회귀·브라우저·튜토리얼 촬영·보고 완료 |
+| Saturn | [독립 QA 보고](issues/121/Saturn/report.md) | PASS · 제품 결함 6건 해소, 코드·문서·증빙 검수 완료 |
 
 진행 상태는 다음과 같다. 승인 범위의 개발 검증과 CJ 플레이 QA·출시를 구분한다.
 
@@ -55,7 +55,7 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | 제품 구현 (`demo/index.html`) | 세 Issue 범위 완료 · 검수 코드 `157026ba617166644ada0686b897d3ae2a166486`, HTML blob `4535791bbefd86ad829cdd436d4957f8a530846b` |
 | 게임 안 튜토리얼 10단계·상황 도움말 | 새 탐색·기술·아이템/버프 규칙으로 갱신 완료 |
 | 새 화면 캡처·manifest | [튜토리얼 10장 기록](issues/121/Mars/artifacts/capture-manifest.json) · [브라우저 검증](issues/121/Mars/artifacts/v047-browser-report.json) · [README 연결](../../../README.md#게임-플레이-사진) |
-| Saturn 독립 QA | 수정 코드 재검증 완료, 최종 문서·증빙 검수 중 |
+| Saturn 독립 QA | PASS — 검수 HEAD `c6b0162`, 후속 변경은 QA 기록·상태·링크 메타데이터 |
 | CJ 플레이 QA | 대기 — 세 Issue OPEN 유지 |
 | 통합 PR·CI | 준비 중 |
 | 릴리스 | 미출시 — 정식 v0.4.5 유지 |

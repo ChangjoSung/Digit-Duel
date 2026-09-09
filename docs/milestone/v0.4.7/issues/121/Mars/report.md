@@ -58,7 +58,7 @@
 | `demo/test/shared/harness.js` | 검사 하네스 | 신규 심볼 노출 (부재 허용 패턴 — 기준판 로드 호환) |
 | `.github/workflows/ci.yml` | CI | 잡 A 에 신규 2스위트 등록 · 잡 C 의 `--manifest` 를 v0.4.5(#114) → **v0.4.7(#121) 촬영본**으로 교체 |
 | `demo/test/README.md` | 문서 | 검사 인덱스 3행 추가(회귀 2 · CDP 1)·개수·cross_skill 설명 갱신 |
-| `docs/milestone/v0.4.7/issues/121/Mars/artifacts/` | 증빙 | 튜토리얼 10장 + 표준 `capture-manifest.json` + 브라우저 보고 JSON + 스크린샷 7장 |
+| `docs/milestone/v0.4.7/issues/121/Mars/artifacts/` | 증빙 | 튜토리얼 10장 + 표준 `capture-manifest.json` + 브라우저 보고 JSON + 스크린샷 8장 |
 | `docs/milestone/v0.4.7/issues/121/Mars/report.md` | 문서 | 이 보고서 |
 
 손대지 않은 것: `server/` · `roblox/` · `tools/` · `.gitattributes`(신규 파일은 기존 미지정 파일 `smoke_cycle5.js` 와 같은 동작) · README·release·milestone·Venus 규격.
