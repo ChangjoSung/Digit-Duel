@@ -265,36 +265,44 @@ function Engine:genEvents()
 	end
 end
 
--- 온라인 사전 배치 적용 (HTML applyNetSetup 포팅) — data = {roster={6 ids}, pos={14×{r,c}}}
+-- 사전 배치 데이터 검증 — data = {roster={6 ids}, pos={14×{r,c}}} (자기 진영 = 11~13행, 클라이언트 공통 좌표)
+-- 서버가 ready 시점에 사유와 함께 거부하는 데 쓰고, applySetup 은 같은 판정으로 무작위 대체 여부를 정한다
+function Engine.validateSetup(data)
+	if type(data) ~= "table" or type(data.roster) ~= "table" or type(data.pos) ~= "table" then
+		return false, "배치 데이터 형식 오류"
+	end
+	if #data.roster ~= 6 then
+		return false, "로스터 6종을 선택하세요 (" .. #data.roster .. "/6)"
+	end
+	local seen = {}
+	for _, rid in data.roster do
+		if type(rid) ~= "string" or not Data.rosterById(rid) or seen[rid] then
+			return false, "로스터에 잘못됐거나 중복된 종이 있습니다"
+		end
+		seen[rid] = true
+	end
+	if #data.pos ~= 14 then
+		return false, "말 14개를 모두 배치하세요 (" .. #data.pos .. "/14)"
+	end
+	local cellSeen = {}
+	for _, rc in data.pos do
+		local r, c = type(rc) == "table" and rc[1] or nil, type(rc) == "table" and rc[2] or nil
+		if type(r) ~= "number" or type(c) ~= "number" or r % 1 ~= 0 or c % 1 ~= 0 or r < 11 or r > 13 or c < 1 or c > COLS then
+			return false, "자기 진영(3행) 밖의 칸이 있습니다"
+		end
+		if cellSeen[r .. "_" .. c] then
+			return false, "같은 칸에 말이 겹쳤습니다"
+		end
+		cellSeen[r .. "_" .. c] = true
+	end
+	return true
+end
+
+-- 온라인 사전 배치 적용 (HTML applyNetSetup 포팅)
 -- p==1 은 행 반사(r → ROWS+1-r), 열 유지. 손상 데이터는 무작위 대체.
 function Engine:applySetup(p, data)
 	local S = self.S
-	local valid = false
-	if type(data) == "table" and type(data.roster) == "table" and type(data.pos) == "table"
-		and #data.roster == 6 and #data.pos == 14 then
-		valid = true
-		local seen = {}
-		for _, rid in data.roster do
-			if type(rid) ~= "string" or not Data.rosterById(rid) or seen[rid] then
-				valid = false
-				break
-			end
-			seen[rid] = true
-		end
-		if valid then
-			local cellSeen = {}
-			for _, rc in data.pos do
-				local r, c = rc[1], rc[2]
-				if type(r) ~= "number" or type(c) ~= "number"
-					or r < 11 or r > 13 or c < 1 or c > COLS
-					or r % 1 ~= 0 or c % 1 ~= 0 or cellSeen[r .. "_" .. c] then
-					valid = false
-					break
-				end
-				cellSeen[r .. "_" .. c] = true
-			end
-		end
-	end
+	local valid = Engine.validateSetup(data)
 	local mine = {}
 	for _, x in S.pieces do
 		if x.owner == p then
@@ -705,6 +713,65 @@ function Engine:anyMainActionLeft()
 			end
 		end
 		if n >= 2 then
+			return true
+		end
+	end
+	return false
+end
+
+--==================================================================
+-- 합법 수 목록 (뷰어 표시용 — 규칙 평가는 서버에서만, 클라이언트는 결과를 그리기만 한다)
+--==================================================================
+
+function Engine:legalMoves(p)
+	local S = self.S
+	local out = {}
+	if S.phase ~= "play" or S.mainUsed or #S.forcedTargets > 0 or p.owner ~= S.current then
+		return out
+	end
+	local ks = self:isBurning() and { 1, 2 } or { 1 }
+	for _, d in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+		for _, k in ks do
+			local r, c = p.r + d[1] * k, p.c + d[2] * k
+			if r >= 1 and r <= ROWS and c >= 1 and c <= COLS and self:canMoveTo(p, r, c) then
+				table.insert(out, { r, c })
+			end
+		end
+	end
+	return out
+end
+
+function Engine:legalAttacks(p)
+	local S = self.S
+	local out = {}
+	if S.phase ~= "play" or p.owner ~= S.current then
+		return out
+	end
+	if #S.forcedTargets > 0 then -- 강제 대상만 (이동한 말 기준)
+		if p == S.movedPiece then
+			for _, e in self:alivePieces() do
+				if table.find(S.forcedTargets, e.id) and self:forcedPickOk(e) then
+					table.insert(out, e.id)
+				end
+			end
+		end
+		return out
+	end
+	for _, e in self:adjEnemies(p) do
+		if self:visibleTo(p.owner, e) and self:canBattle(p, e) then
+			table.insert(out, e.id)
+		end
+	end
+	return out
+end
+
+function Engine:canSearchAt(p)
+	local S = self.S
+	if S.phase ~= "play" or S.mainUsed or #S.forcedTargets > 0 or p.owner ~= S.current or not self:canSearchPiece(p) then
+		return false
+	end
+	for _, e in S.events do
+		if e.r == p.r and e.c == p.c and not e.consumed and S.traces[p.owner][e.r .. "_" .. e.c] then
 			return true
 		end
 	end

@@ -13,7 +13,7 @@ local Engine = require(Shared.Engine)
 local Views = require(Shared.Views)
 local Lobby = require(script:WaitForChild("Lobby"))
 
-local VERSION = "0.5.0-p2b.1"
+local VERSION = "0.5.0-p2c.1"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")
@@ -248,6 +248,11 @@ reAction.OnServerEvent:Connect(function(player, a)
 		end
 		local ts = tableState[at.id]
 		if ts.session then
+			return
+		end
+		local okSetup, why = Engine.validateSetup(a.setup)
+		if not okSetup then
+			reState:FireClient(player, { t = "reject", reason = why })
 			return
 		end
 		ts.ready[at.side] = a.setup

@@ -132,6 +132,23 @@ function Views.forViewer(engine, viewer)
 		view.movedPieceId = S.movedPiece and S.movedPiece.id or nil
 	end
 
+	-- 내 턴의 합법 수 (표시용) — 자기 말에 대해서만. 미공개 적 칸으로의 이동은 규칙상 허용이므로 목록에 있어도 정체는 새지 않는다
+	if S.phase == "play" and viewer == S.current and not S.battle and not S.pending and not S.fleePick then
+		local legal = {}
+		for _, p in engine:alivePieces() do
+			if p.owner == viewer then
+				legal[tostring(p.id)] = {
+					moves = engine:legalMoves(p),
+					attacks = engine:legalAttacks(p),
+					heal = engine:canHeal(p),
+					search = engine:canSearchAt(p),
+				}
+			end
+		end
+		view.legal = legal
+		view.teleAvailable = not S.mainUsed and #S.forcedTargets == 0 and engine:teleportAvailable(viewer) and S.teleUsed[viewer] < Config.BAL.teleMax
+	end
+
 	if S.fleePick then
 		if S.fleePick.owner == viewer then
 			view.fleePick = { pieceId = S.fleePick.pieceId, cands = table.clone(S.fleePick.cands) }

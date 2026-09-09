@@ -449,6 +449,59 @@ end
 ok(seqLeak == 0, "종류별 고정 순번 ID 없음 (누출 " .. seqLeak .. "/10)")
 
 --==================================================================
+print("[9] 배치 검증·합법 수 목록 (Phase 2c)")
+--==================================================================
+local okS, whyS = Engine.validateSetup(fixedSetup())
+ok(okS, "정상 배치 통과")
+ok(not Engine.validateSetup({ roster = { "M-F1" }, pos = {} }), "로스터 부족 거부")
+local dup = fixedSetup()
+dup.roster[2] = "M-F1"
+ok(not Engine.validateSetup(dup), "로스터 중복 거부")
+local outside = fixedSetup()
+outside.pos[1] = { 10, 1 }
+ok(not Engine.validateSetup(outside), "진영 밖 거부")
+local overlap = fixedSetup()
+overlap.pos[2] = { 11, 1 }
+ok(not Engine.validateSetup(overlap), "칸 겹침 거부")
+ok(select(2, Engine.validateSetup(overlap)) ~= nil, "거부 사유 문자열")
+
+local g9 = freshPlay(4242)
+local cur9 = g9.S.current
+local v9 = Views.forViewer(g9, cur9)
+ok(v9.legal ~= nil, "내 턴 뷰에 legal 존재")
+local vOpp = Views.forViewer(g9, 1 - cur9)
+ok(vOpp.legal == nil, "상대 턴 뷰에 legal 없음")
+local movable, trapMoves, anyAttack = 0, 0, 0
+for _, p in g9:alivePieces() do
+	if p.owner == cur9 then
+		local lg = v9.legal[tostring(p.id)]
+		ok(lg ~= nil, "자기 말마다 legal 항목")
+		if lg then
+			if #lg.moves > 0 then
+				movable += 1
+			end
+			if p.type == "trap" then
+				trapMoves += #lg.moves
+			end
+			anyAttack += #lg.attacks
+			for _, rc in lg.moves do
+				ok(g9:canMoveTo(p, rc[1], rc[2]), "legal 이동은 canMoveTo 와 일치")
+			end
+		end
+	end
+end
+ok(movable >= 7, "전열 말 다수 이동 가능 (" .. movable .. ")")
+eq(trapMoves, 0, "함정은 이동 불가")
+eq(anyAttack, 0, "개시 직후 공격 대상 없음")
+-- 상대 말은 legal 에 없다 (자기 말만)
+for _, p in g9:alivePieces() do
+	if p.owner ~= cur9 then
+		ok(v9.legal[tostring(p.id)] == nil, "상대 말 legal 미포함")
+		break
+	end
+end
+
+--==================================================================
 print(("\n결과: %d passed · %d failed"):format(passed, failed))
 if failed > 0 then
 	error("테스트 실패", 0)
