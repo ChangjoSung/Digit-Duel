@@ -20,7 +20,7 @@ PR #133 dev 통합·CI 5개 검사·Saturn PASS 후 CJ의 다음 Comment로 완�
 
 ### [#134](https://github.com/ChangjoSung/Digit-Duel/issues/134) — demo/test·tools 구조 및 일정·개발자 표기 정리
 
-Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 사용하는 도구는 용도별로 정리한다. 실행 경로·동적 검사 검색·CI와 현행 안내를 함께 갱신했다. Mars(Claude)가 구현하고 Saturn(Codex)이 독립 READ_ONLY로 검수한다. 최신 Roblox dev를 포함한 [통합 PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136)의 첫 실제 CI에서 5개 필수 검사가 모두 성공했다. 최종 검수·병합 상태는 해당 PR과 Issue134 기록을 따른다.
+Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 사용하는 도구는 용도별로 정리했다. 실행 경로·동적 검사 검색·CI와 현행 안내를 함께 갱신했다. Mars(Claude) 구현·Saturn 독립 QA·[통합 PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136) dev 병합·필수 CI 5개 성공 뒤 2026-09-09 CJ QA PASS로 #134를 종결했다.
 
 [검사 인덱스](../../../demo/test/README.md) · [도구 인덱스](../../../tools/README.md) · [경로표](issues/134/Mercury/MOVES.csv) · [PD 기록](issues/134/Mercury/report.md)
 
@@ -47,6 +47,7 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | Venus | [v0.4.7 게임플레이 계약](issues/121/Venus/gameplay-spec.md) — 이벤트 배치·패키지 회계·버프 3종·기술 교체·신규 공용 기술 3종·숲 포획·탐색 종료·연출 템포·온라인/AI | 계약 확정 · PD 해석 정정 2건 반영 |
 | Mars | [통합 구현 보고](issues/121/Mars/report.md) — 구현 범위·변경 파일·검사·롤백 | 제품·18종 회귀·브라우저·튜토리얼 촬영·보고 완료 |
 | Saturn | [독립 QA 보고](issues/121/Saturn/report.md) | PASS · 제품 결함 6건 해소, 코드·문서·증빙 검수 완료 |
+| Mercury | [통합 기록](issues/121/Mercury/report.md) | 역할 보고 취합 · PR143 · CJ 플레이 QA 대기 |
 
 진행 상태는 다음과 같다. 승인 범위의 개발 검증과 CJ 플레이 QA·출시를 구분한다.
 
@@ -57,7 +58,7 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | 새 화면 캡처·manifest | [튜토리얼 10장 기록](issues/121/Mars/artifacts/capture-manifest.json) · [브라우저 검증](issues/121/Mars/artifacts/v047-browser-report.json) · [README 연결](../../../README.md#게임-플레이-사진) |
 | Saturn 독립 QA | PASS — 검수 HEAD `c6b0162`, 후속 변경은 QA 기록·상태·링크 메타데이터 |
 | CJ 플레이 QA | 대기 — 세 Issue OPEN 유지 |
-| 통합 PR·CI | 준비 중 |
+| 통합 PR·CI | [PR143](https://github.com/ChangjoSung/Digit-Duel/pull/143) — 최종 head의 필수 5개 검사·dev squash 결과가 원본 |
 | 릴리스 | 미출시 — 정식 v0.4.5 유지 |
 
 사용자용 안내는 [v0.4.7 릴리스 노트(개발 중·미출시)](../../releases/v0.4.7.md)에 있다. **현재 정식 출시본은 여전히 [v0.4.5](../../releases/v0.4.5.md)이며 플레이 기준 규칙도 v0.4.5다.**
