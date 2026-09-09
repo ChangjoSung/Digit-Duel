@@ -71,8 +71,10 @@ Roblox 는 이미지를 Roblox 서버에 올려 `rbxassetid` 를 받아야 쓸 �
 Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버 인스턴스를 호스팅하며, 같은 인스턴스에 들어온 플레이어를 `init.server.luau` 가 1:1 로 매칭한다.
 첫 게시 뒤에는 Game Settings(또는 Creator Hub → Access) 에서 Playability 를 Friends/Public 으로 바꿔야 남이 들어올 수 있다.
 
-**재게시 자동화**: `roblox\tools\publish.bat` — rbxl 을 빌드해 기존 경험에 바로 올린다 (Studio 불필요).
-API 키에 **Universe Places(Place Publishing) → Write** 권한과 대상 경험을 추가하고, Place ID(경험 URL 의 숫자)를 입력한다.
+**재게시 자동화**: `roblox\tools\publish.bat` — rbxl 을 빌드해 기존 경험에 바로 올린다 (Studio 불필요). API 키만 입력하면 된다.
+- 대상 경험은 `roblox/roblox.config.json` (universeId · placeId — 비밀 아님) 에서 읽는다. 다른 경험에 올리려면 `ROBLOX_PLACE_ID` 환경변수(숫자 또는 링크)로 덮어쓴다.
+- API 키에는 **Universe Places(Place Publishing) → Write** 권한과 대상 경험이 추가돼 있어야 한다. 401 이면 키 만료(Regenerate), 403 이면 권한·경험 범위 누락.
+- 경험이 PRIVATE 이면 본인만 접속 가능 — Creator Hub → 경험 → **Access** 에서 공개 범위를 바꾼다.
 
 ### 헤드리스 테스트 (커밋 전 필수)
 ```

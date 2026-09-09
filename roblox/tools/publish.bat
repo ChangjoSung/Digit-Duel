@@ -10,12 +10,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Builds build\DigitDual.rbxl and publishes it to an existing experience.
+echo Builds roblox\build\DigitDual.rbxl and publishes it to the experience in roblox\roblox.config.json.
 echo API key needs: Universe Places (Place Publishing) -^> Write, with the experience selected.
-echo Place ID: the number in https://www.roblox.com/games/NUMBER/...
 echo.
 if "%ROBLOX_API_KEY%"=="" set /p ROBLOX_API_KEY=API Key:
-if "%ROBLOX_PLACE_ID%"=="" set /p ROBLOX_PLACE_ID=Place ID:
 echo.
 if not exist roblox\build\rojo.exe (
     echo [ERROR] roblox\build\rojo.exe not found. See roblox\build.bat
