@@ -19,8 +19,9 @@ local TABLE_COUNT = 4
 local COLS, ROWS = 7, 13
 local TABLE_CENTERS = { { -15, -25 }, { 15, -25 }, { -15, 5 }, { 15, 5 } }
 
--- 임포트 축이 어긋났을 때 조정하는 보정 요(rad). Studio 실반입에서 판 진영 방향·벽 장식면이 뒤집혀 보이면 여기만 고친다
-local MESH_YAW = { desk = 0, chair = 0, board = 0, floor = 0, wall = 0, pillar = 0 }
+-- 임포트 축 보정 요(rad). CJ 실측(2026-09-09): FBX 임포트에서 Z 가 뒤집혀 의자 등받이가 앞(판 쪽)에 놓였다 → 앞뒤가 있는 메시(의자·판·벽)는 π.
+-- 대칭 메시(책상·바닥·기둥)는 0. 판 진영(row1 빨강 = B 쪽)이나 벽 장식면이 반대로 보이면 해당 항목만 0/π 로 바꾼다
+local MESH_YAW = { desk = 0, chair = math.pi, board = math.pi, floor = 0, wall = math.pi, pillar = 0 }
 -- 좌석 방향 보정(rad): Seat 정면(-Z)이 판을 향하도록 lookAt 으로 두었다. 아바타가 판을 등지고 앉으면 math.pi 로 바꾼다
 local SEAT_YAW = 0
 -- 메시 외접 상자 중심 기준 크기 (로비 manifest)
