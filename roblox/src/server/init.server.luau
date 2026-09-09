@@ -11,6 +11,16 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Engine = require(Shared.Engine)
 local Views = require(Shared.Views)
 
+local VERSION = "0.5.0-p1.2"
+
+-- 보드게임이라 아바타가 필요 없다. 맵에 바닥이 없어 캐릭터가 스폰되면 허공으로 떨어져 죽고(빨간 피격 효과) 리스폰을 반복한다
+Players.CharacterAutoLoads = false
+for _, plr in Players:GetPlayers() do
+	if plr.Character then
+		plr.Character:Destroy()
+	end
+end
+
 -- Remotes 생성
 local remotes = Instance.new("Folder")
 remotes.Name = "DDRemotes"
@@ -99,6 +109,11 @@ reAction.OnServerEvent:Connect(function(player, a)
 		return
 	end
 
+	if a.t == "ping" then -- 클라이언트 진단용 핸드셰이크: 서버 생존·버전 표시
+		reState:FireClient(player, { t = "hello", version = VERSION, players = #Players:GetPlayers(), waiting = waiting ~= nil })
+		return
+	end
+
 	if a.t == "queue" then -- 배치 완료 → 매칭 (HTML 사전 배치 플로우와 동일: 배치가 먼저, 매칭이 나중)
 		if sessions[player] then
 			return
@@ -155,4 +170,4 @@ Players.PlayerRemoving:Connect(function(player)
 	leaveSession(player, false)
 end)
 
-print("[DD] Digit Dual 서버 준비 완료 (Phase 1 — 서버 권위 룰 엔진)")
+print("[DD] Digit Dual 서버 준비 완료 v" .. VERSION .. " (Phase 1 — 서버 권위 룰 엔진)")

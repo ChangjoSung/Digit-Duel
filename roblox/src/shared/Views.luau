@@ -8,7 +8,7 @@
 
 local function req(mod)
 	if script then
-		return require(script.Parent[mod])
+		return require(script.Parent:WaitForChild(mod))
 	end
 	return require("./" .. mod)
 end

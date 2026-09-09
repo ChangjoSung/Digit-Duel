@@ -12,7 +12,7 @@
 
 local function req(mod)
 	if script then
-		return require(script.Parent[mod])
+		return require(script.Parent:WaitForChild(mod)) -- 클라이언트 복제 경합 방지 (서버에서는 즉시 반환)
 	end
 	return require("./" .. mod)
 end

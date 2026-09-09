@@ -8,8 +8,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Data = require(Shared.Data)
-local Art = require(Shared.Art) -- #89 하수인 아트 (AssetIds 비어 있으면 전부 nil → 텍스트 폴백)
+local StarterGui = game:GetService("StarterGui")
+
+local CLIENT_VERSION = "0.5.0-p1.2"
 
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
 local reAction = remotes:WaitForChild("Action")
@@ -17,6 +18,50 @@ local reState = remotes:WaitForChild("State")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- 아바타 없는 2D 보드게임: 체력바·가방 등 캐릭터용 기본 UI 숨김 (실패해도 무시)
+task.defer(function()
+	for _, ct in { Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack, Enum.CoreGuiType.EmotesMenu } do
+		pcall(function()
+			StarterGui:SetCoreGuiEnabled(ct, false)
+		end)
+	end
+end)
+
+-- 진단 푸터: 이 스크립트가 여기까지 왔고 서버가 응답하는지 화면에 표시한다.
+-- 아래 UI 구성 중 오류가 나면 이 라벨은 "서버 확인 중…" 또는 "서버 연결됨"에서 멈추고 버튼은 반응하지 않는다 → Output 창 확인
+local diagGui = Instance.new("ScreenGui")
+diagGui.Name = "DigitDualDiag"
+diagGui.ResetOnSpawn = false
+diagGui.DisplayOrder = 10
+diagGui.Parent = playerGui
+local footer = Instance.new("TextLabel")
+footer.Size = UDim2.new(1, 0, 0, 18)
+footer.Position = UDim2.new(0, 0, 1, -18)
+footer.BackgroundTransparency = 1
+footer.TextColor3 = Color3.fromRGB(154, 163, 184)
+footer.TextSize = 12
+footer.Font = Enum.Font.Gotham
+footer.TextXAlignment = Enum.TextXAlignment.Right
+footer.Parent = diagGui
+local DIAG = { server = "서버 확인 중…", modules = false, ui = false }
+local function refreshFooter()
+	footer.Text = ("client v%s · %s%s%s"):format(CLIENT_VERSION, DIAG.server, DIAG.modules and " · 모듈 OK" or "", DIAG.ui and " · UI OK" or "")
+end
+refreshFooter()
+reState.OnClientEvent:Connect(function(msg)
+	if type(msg) == "table" and msg.t == "hello" then
+		DIAG.server = ("server v%s 연결됨 · 접속 %d명%s"):format(tostring(msg.version), msg.players or 0, msg.waiting and " · 대기자 있음" or "")
+		refreshFooter()
+	end
+end)
+reAction:FireServer({ t = "ping" })
+
+-- 모듈은 복제가 끝난 뒤에 읽는다 — 실서버(팀 테스트·라이브)에서는 Shared 폴더가 먼저 오고 자식 모듈이 뒤따를 수 있다 (직접 인덱스는 경합)
+local Data = require(Shared:WaitForChild("Data"))
+local Art = require(Shared:WaitForChild("Art")) -- #89 하수인 아트 (AssetIds 비어 있으면 전부 nil → 텍스트 폴백)
+DIAG.modules = true
+refreshFooter()
 
 local COLS, ROWS = 7, 13
 local CELL = 34
@@ -621,6 +666,8 @@ queueBtn.Activated:Connect(function()
 	menuStatus.Text = "🌐 매칭 대기 중… (상대를 기다립니다)"
 	send({ t = "queue", setup = randomSetup() })
 end)
+DIAG.ui = true -- 여기까지 왔으면 UI·입력 연결 완료
+refreshFooter()
 
 --==================================================================
 -- 서버 수신

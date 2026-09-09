@@ -6,7 +6,7 @@
 
 local function req(mod: string): any
 	if script then
-		return require((script.Parent :: any)[mod])
+		return require((script.Parent :: any):WaitForChild(mod)) -- 클라이언트 복제 경합 방지
 	end
 	return require("./" .. mod)
 end
