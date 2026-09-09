@@ -1583,7 +1583,18 @@ function gameOver(winner,type){
      #121 계약 3.1 "전투가 끝나면 즉시 정리"는 승패·판정·도망·적 포획뿐 아니라 이 경로에도 적용된다.
      **쓰지 않은 패키지 재고(S.pkgs)는 건드리지 않는다** — 그것은 새 게임에서만 초기화된다. */
   if(S.battle){ try{ resetAfter(S.battle.fa); resetAfter(S.battle.fd); }catch(e){}
-    S.battle=null; }
+    S.battle=null;
+    /* Saturn 추가 P2: **살아 있던 전투를 여기서 걷어냈을 때만** 열린 전투 모달을 닫는다.
+       상태만 지우고 화면을 그대로 두면 전투창이 남아 buff-power 같은 CSS 애니메이션이 무한히 돌고,
+       낡은 모달이 계속 입력 면으로 남는다 (계약 3.1 "전투가 끝나면 즉시 정리"는 표시까지 포함한다).
+       정상 승패·판정·도망·적 포획은 이 지점에 오기 전에 이미 S.battle 을 비우고 battleEndFx 가 결과 연출 뒤 닫으므로
+       그 경로의 결과 표시는 건드리지 않는다 — 여기 닫기는 연출 없이 끝난 경로(기권 등) 전용이다. */
+    try{ close(); }catch(e){}
+    /* overlay 의 .hidden 은 display:none !important 라 닫기만 해도 CSS 애니메이션은 멈춘다.
+       그래도 **낡은 전투창 마크업을 남기지 않는다** — 버프 클래스가 DOM 에 남아 있으면 이후 어떤 표시 변경에서
+       되살아날 여지가 생기고, 종료 상태의 화면에 죽은 입력 면이 남는다. 이 경로(연출 없이 끝난 종료)에서만 비운다. */
+    try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
+    try{ fxReleaseAll(); }catch(e){} } // 남은 연출 큐·잠금도 함께 해제 (무한 애니메이션·입력 잠금 잔존 방지)
   S.recruit=null; // 선택 대기 상태도 남기지 않는다
 }
 /* T4 전멸 패배: 하수인 6+동료 2 전원 사망 → 즉시 패배. 말 제거가 발생하는 모든 지점 후 호출 */

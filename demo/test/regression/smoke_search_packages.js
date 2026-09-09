@@ -1027,7 +1027,45 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     ok(Q5.em.powerBuff===false&&Q5.em.fleeFree===false,"J3-"+label+": 상대 전투원도 정리됐다");
     ok(X2.S.pkgs[0].battleBuff===1&&X2.S.pkgs[0].itemGift===2,"J3-"+label+": **미사용 패키지 재고는 보존**된다 (새 게임에서만 초기화)");
     ok(X2.S.recruit===null,"J3-"+label+": 탐색 선택 대기 상태도 남지 않는다");
+    /* Saturn 추가 P2: 상태만이 아니라 **화면**도 정리돼야 한다 — 전투창이 남으면 buff CSS 가 무한히 돌고 낡은 입력 면이 남는다 */
+    ok(hidden(X2),"J3-"+label+": 전투 모달이 **화면에서 닫힌다** (overlay hidden — Saturn 추가 P2)");
+    ok(!/buff-power|buff-escape|buff-time/.test(ob(X2)),"J3-"+label+": 버프 CSS 클래스가 화면에 남지 않는다");
+    ok(!X2.fxLocked(),"J3-"+label+": 연출 잠금도 남지 않는다 (입력이 영구 차단되지 않는다)");
     X2.TQ.length=0;
+  }
+  /* J3b 온라인 **수신** 기권 (applyAction 경로) — Saturn 재현 그대로 */
+  {
+    const X6=load(); fixed(X6); X6.tutSkip();
+    const Q8=setup(X6); giveSpecies(X6,Q8.me,R(X6,"M-F1")); giveSpecies(X6,Q8.em,R(X6,"M-G1"));
+    X6.S.pkgs[0]={itemGift:2,battleBuff:2};
+    openBattle(X6,Q8.me,Q8.em); const B8=X6.S.battle; actAsA(X6); freshModal(X6);
+    X6.__openPkgCore("battleBuff"); click(X6,X6.BUFFS.power.ko);
+    ok(B8.buffA==="power"&&Q8.me.powerBuff===true,"J3b 전제: 버프 적용 · 전투 모달 열림");
+    ok(/buff-power/.test(ob(X6)),"J3b' 전제: 전투 토큰에 buff-power 가 그려져 있다");
+    ok(!hidden(X6),"J3b'' 전제: overlay 가 열려 있다");
+    /* 온라인 수신 경로: 상대(1P)가 기권한 프레임을 재생한다 */
+    X6.NET.mode=true; X6.NET.started=true; X6.NET.me=1;
+    X6.S.current=1;                                   // 기권한 쪽 = 상대
+    X6.applyAction({t:"resign"}); X6.drain(20000);
+    ok(X6.S.phase==="over","J3b1 수신 기권으로 경기가 종료됐다");
+    ok(X6.S.battle===null,"J3b2 전투 객체 정리");
+    ok(Q8.me.powerBuff===false&&Q8.em.powerBuff===false,"J3b3 버프 플래그 정리");
+    ok(hidden(X6),"J3b4 **전투창이 화면에서 닫힌다** (Saturn 재현: 종전에는 overlay.hidden=false 로 남았다)");
+    ok(!/buff-power/.test(ob(X6)),"J3b5 **buff-power CSS 가 화면에 남지 않는다** (무한 애니메이션 제거)");
+    ok(!X6.fxLocked(),"J3b6 연출 잠금 해제");
+    ok(X6.S.pkgs[0].battleBuff===1&&X6.S.pkgs[0].itemGift===2,"J3b7 미사용 패키지 재고는 보존된다");
+    X6.NET.mode=false; X6.NET.me=null; X6.NET.started=false; X6.TQ.length=0;
+  }
+  /* J3c 정상 승패 종료는 결과 연출 계약을 그대로 유지한다 (위 닫기가 그 경로를 앞당기지 않는다) */
+  {
+    const X7=load(); fixed(X7); X7.tutSkip();
+    const Q9=setup(X7); giveSpecies(X7,Q9.me,R(X7,"M-F1")); giveSpecies(X7,Q9.em,R(X7,"M-G1"));
+    openBattle(X7,Q9.me,Q9.em); const B9=X7.S.battle; actAsA(X7);
+    B9.fd.hp=1; X7.setSeed(4); X7.execSlot("A",0); X7.drain(20000);
+    ok(X7.S.battle===null,"J3c 정상 승패로 전투가 끝났다");
+    ok(X7.S.phase==="play"||X7.S.phase==="over","J3c' 경기 상태는 규칙대로 (play 또는 over)");
+    ok(!/buff-power/.test(ob(X7)),"J3c'' 정상 종료 경로에도 버프 CSS 가 남지 않는다");
+    X7.TQ.length=0;
   }
   /* J4 (Saturn 추가 P1) 정상 기본 공격이 미공개 사신을 노출하지 않는다.
      재현: 슬롯0 = 사신(쿨 0이지만 봉인) · 나머지 3슬롯 쿨 → 네 슬롯 모두 불가라 **기본 공격 버튼이 정상 표시**된다.
