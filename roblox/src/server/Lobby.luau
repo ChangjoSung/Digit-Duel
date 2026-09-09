@@ -21,6 +21,8 @@ local TABLE_CENTERS = { { -15, -25 }, { 15, -25 }, { -15, 5 }, { 15, 5 } }
 
 -- 임포트 축이 어긋났을 때 조정하는 보정 요(rad). Studio 실반입에서 판 진영 방향·벽 장식면이 뒤집혀 보이면 여기만 고친다
 local MESH_YAW = { desk = 0, chair = 0, board = 0, floor = 0, wall = 0, pillar = 0 }
+-- 좌석 방향 보정(rad): Seat 정면(-Z)이 판을 향하도록 lookAt 으로 두었다. 아바타가 판을 등지고 앉으면 math.pi 로 바꾼다
+local SEAT_YAW = 0
 -- 메시 외접 상자 중심 기준 크기 (로비 manifest)
 local MESH_SIZE = {
 	desk = Vector3.new(9, 3, 7),
@@ -150,7 +152,7 @@ local function buildSeat(id, side, pos, lookAt, color, parent)
 	seat.Name = "Seat" .. side
 	seat.Size = Vector3.new(2, 0.5, 2)
 	seat.Anchored = true
-	seat.CFrame = CFrame.lookAt(pos, Vector3.new(lookAt.X, pos.Y, lookAt.Z)) -- 앞(-Z 로컬)이 판을 향한다 → 등받이는 +Z 로컬
+	seat.CFrame = CFrame.lookAt(pos, Vector3.new(lookAt.X, pos.Y, lookAt.Z)) * CFrame.Angles(0, SEAT_YAW, 0) -- 앞(-Z 로컬)이 판을 향한다 → 등받이는 +Z 로컬
 	seat.Color = color
 	seat.Material = Enum.Material.Fabric
 	seat.TopSurface = Enum.SurfaceType.Smooth

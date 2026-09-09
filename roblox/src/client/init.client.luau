@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p2d.2"
+local CLIENT_VERSION = "0.5.0-p2d.3"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -252,7 +252,8 @@ local hudLabel = mk("TextLabel", {
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
 }, hud)
-local hudBtns = mk("Frame", { Size = UDim2.new(0, 200, 0, 26), Position = UDim2.new(1, -206, 0, 6), BackgroundTransparency = 1 }, hud)
+local hudBtns = mk("Frame", { Size = UDim2.new(0, 330, 0, 26), Position = UDim2.new(1, -336, 0, 6), BackgroundTransparency = 1 }, hud)
+local lastSetupOpen = false -- 서버 setupOpen 전이 감지 (false→true 면 배치 단계 초기화)
 
 -- 배치 패널
 local setupPanel = mk("Frame", {
@@ -1094,10 +1095,14 @@ local function renderBoard2DSetup()
 end
 
 function renderSetup()
-	if not tableInfo or (view and view.phase ~= "over") or tableInfo.inGame then
+	if not tableInfo or not tableInfo.setupOpen or (view and view.phase ~= "over") or tableInfo.inGame then
 		setupPanel.Visible = false
+		closeDetail()
 		boardFrame.Visible = boardFrame.Visible and view ~= nil
 		boardFrameImg.Visible = boardFrame.Visible
+		if not view then
+			local3d:ClearAllChildren()
+		end
 		return
 	end
 	if tableInfo.myReady then
@@ -1205,8 +1210,17 @@ end
 
 local function renderHudButtons()
 	clearChildren(hudBtns)
-	if findBoardPart() ~= nil and (tableInfo or view) then
-		smallBtn(hudBtns, 0, 0, 78, force2D and "3D 판" or "2D 보드", function()
+	local x = 0
+	local inGame = view ~= nil and view.phase ~= "over"
+	if tableInfo and not tableInfo.setupOpen and not inGame and not tableInfo.inGame then
+		-- 둘 다 앉은 뒤 한 명이 누르면 양측이 배치 단계로 (서버 startGame)
+		smallBtn(hudBtns, x, 0, 110, "▶ 게임 시작", function()
+			send({ t = "startGame" })
+		end, "primary", tableInfo.opp ~= nil, Art.action("fight"), 24)
+		x += 116
+	end
+	if findBoardPart() ~= nil and ((tableInfo and tableInfo.setupOpen) or view) then
+		smallBtn(hudBtns, x, 0, 78, force2D and "3D 판" or "2D 보드", function()
 			force2D = not force2D
 			if view then
 				render()
@@ -1214,16 +1228,18 @@ local function renderHudButtons()
 				renderSetup()
 			end
 		end, "default", true, nil, 24)
+		x += 84
 	end
 	if tableInfo then
-		smallBtn(hudBtns, 84, 0, 116, "자리 떠나기", function()
+		smallBtn(hudBtns, x, 0, 116, "자리 떠나기", function()
 			send({ t = "stand" })
 		end, "danger", true, Art.action("resign"), 24)
 	end
 end
 
 local function renderLobby()
-	setBoardCamera(tableInfo ~= nil)
+	-- 카메라는 배치 단계([게임 시작] 이후) 와 대전 중에만 판을 향한다. 그냥 앉아 있을 때는 자유 시점 (앉은 모습 확인·주변 보기)
+	setBoardCamera((view ~= nil and view.phase ~= "over") or (tableInfo ~= nil and tableInfo.setupOpen == true))
 	renderHudButtons()
 	if view and view.phase ~= "over" then
 		setupPanel.Visible = false
@@ -1242,7 +1258,13 @@ local function renderLobby()
 		return
 	end
 	local ti = tableInfo
-	hudLabel.Text = ("테이블 %d · %s 자리 · %s\n일어나기: Space(점프) 또는 [자리 떠나기]"):format(ti.tableId, ti.side, ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)")
+	if ti.setupOpen then
+		hudLabel.Text = ("테이블 %d · %s 자리 · 상대: %s\n배치 단계 — 로스터 6종 선택 → 판 위에 14개 배치 → [배치 완료 ✔]. 둘 다 완료하면 자동 시작"):format(ti.tableId, ti.side, ti.opp or "?")
+	else
+		hudLabel.Text = ("테이블 %d · %s 자리 · %s\n%s · 일어나기: Space(점프) 또는 [자리 떠나기]"):format(ti.tableId, ti.side,
+			ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)",
+			ti.opp and "둘 다 앉았습니다 — 아무나 [▶ 게임 시작] 을 누르면 배치가 시작됩니다" or "상대가 앉으면 [▶ 게임 시작] 이 활성화됩니다")
+	end
 	renderSetup()
 end
 
@@ -1734,6 +1756,12 @@ refreshFooter()
 reState.OnClientEvent:Connect(function(msg)
 	if msg.t == "table" then
 		tableInfo = msg
+		if msg.setupOpen and not lastSetupOpen then -- [게임 시작] 직후: 배치 단계 초기화 (로스터가 6종이면 바로 배치로)
+			setup.stage = (#setup.roster == 6) and "place" or "roster"
+			setup.tray = nextUnplaced(1)
+			closeDetail()
+		end
+		lastSetupOpen = msg.setupOpen == true
 		if view then
 			render()
 		else
@@ -1742,6 +1770,7 @@ reState.OnClientEvent:Connect(function(msg)
 		return
 	elseif msg.t == "left" then
 		tableInfo = nil
+		lastSetupOpen = false
 		closeDetail()
 		if view then
 			closeGame()
