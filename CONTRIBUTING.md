@@ -43,7 +43,7 @@ because it compares **delivered bytes**. The same `Pillow==12.3.0` pin passed on
 Windows and failed on `ubuntu-24.04` for 14 of the 28 delivered PNGs, so job D
 pins the environment the assets were baked in — `windows-2025`, Python 3.14.3.
 The evidence and what it does and does not establish is in
-[the Mars report, part 4](docs/milestone/v0.4.6/issues/132/Mars/report.md).
+[the Mars report, part 4](docs/milestone/v0.4.7/issues/132/Mars/report.md).
 The authoritative pass/fail for that job stays the byte and manifest comparison:
 do not make a mismatch go away by regenerating approved assets, by comparing
 pixels only, or by skipping files. Investigate the environment first.
@@ -56,12 +56,12 @@ Reproduce a failing job locally with the same command the workflow runs. The
 most common ones:
 
 ```
-node demo/test/smoke_turnflow.js          # and the other demo/test/smoke_*.js suites
-node tools/docs_link_check.js --verbose   # broken links and images in tracked *.md
-node tools/test/docs_link_check_test.js   # the checker's own regression suite
+node demo/test/regression/smoke_turnflow.js          # and the other demo/test/regression/smoke_*.js suites
+node tools/docs/docs_link_check.js --verbose   # broken links and images in tracked *.md
+node tools/docs/test/docs_link_check_test.js   # the checker's own regression suite
 cd server && npm ci && npm test           # relay server
-python tools/minion_art.py --all --check --no-preview   # delivered art, no regeneration
-python -m unittest discover -s tests -v   # art pipeline tool
+python tools/art/minion_art.py --all --check --no-preview   # delivered art, no regeneration
+python -m unittest discover -s tools/art/test -v   # art pipeline tool
 ```
 
 The document checker does not validate external URLs, heading anchors, or all
@@ -78,7 +78,7 @@ Two things to keep in mind when you change what CI covers.
   follow-up.
 - **Do not add exceptions to make a check pass.** If `docs_link_check` reports a
   broken link, fix the link. If a path moved, record the move in
-  [`docs/milestone/MOVES.csv`](docs/milestone/MOVES.csv) and update the
+  [the relevant move table](docs/milestone/MOVES.md) and update the
   clickable links; historical plain-text paths in past reports stay as written.
 
 Branch protection is enabled on `main` and `dev`: pull requests are required,
