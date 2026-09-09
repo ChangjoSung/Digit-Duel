@@ -522,7 +522,10 @@ block("K HP·방어막 단계",()=>{
   // K0 헤드리스(시간 0): 종전처럼 동기 즉시 — 기존 회귀 불변
   T.FX.force=false; reset(); hit();
   ok(sh.style.width==="5%"&&hpb.style.width==="60%"&&ht.textContent===60&&T.TQ.length===0&&writes.map(w=>w[0]).join(",")==="shield,hp","K0 FX 시간 0: 방어막·HP 즉시 동기 쓰기 · 타이머 없음");
-  T.FX.force=true; T.BAL.fx.barStep=600;
+  /* #125: 종전에는 여기서 barStep 을 600 으로 고정했다. 가짜 타이머에서는 값이 아니라 '0 이 아니다'만 의미가 있으므로
+     제품 표의 값을 그대로 쓴다 — 표가 바뀌어도 이 절의 단언(순서·지연·무효화)은 그대로 성립하고 죽은 숫자가 남지 않는다. */
+  T.FX.force=true; const BARSTEP_PROD=T.BAL.fx.barStep;
+  ok(BARSTEP_PROD>0,"K0' 제품 barStep 이 0 보다 크다 — 아래 지연 단계 단언의 전제 (현재 "+BARSTEP_PROD+"ms)");
   // K1 단계 1: 방어막 바만 즉시, HP 바·숫자는 이전 표시 유지, dispHp 는 즉시, 지연 쓰기 1건 대기
   reset(); hit();
   ok(sh.style.width==="5%"&&hpb.style.width==="100%"&&ht.textContent==="100"&&B.dispShD===5&&B.dispHpD===60&&T.TQ.length===1&&writes.length===1,"K1 방어막+HP 동시 감소: 방어막 바 5% 즉시 · HP 바 100%·숫자 100 유지 · dispHpD 60 즉시 · barStep 지연 쓰기 1건 대기");
@@ -554,7 +557,7 @@ block("K HP·방어막 단계",()=>{
   T.drain(); ok(hpb.style.width==="75%"&&ht.textContent===75&&writes.filter(w=>w[0]==="hp").length===1,"K7e 새 전투 정상 경로: HP 바 75% 정확히 1회");
   // K8 barStep 은 BAL.fx 한 곳 — 0 이면 즉시 (계약 3.4: 모든 시간은 표 한 곳에서만)
   T.BAL.fx.barStep=0; B2.dispShD=20; sh.style.width="20%"; hpb.style.width="100%"; T.TQ.length=0; T.applyFx({hp:{side:"D",val:50,max:100},st:{side:"D",text:"-",shield:0,max:100}});
-  ok(hpb.style.width==="50%"&&T.TQ.length===0,"K8 BAL.fx.barStep 0 → 즉시 쓰기"); T.BAL.fx.barStep=600;
+  ok(hpb.style.width==="50%"&&T.TQ.length===0,"K8 BAL.fx.barStep 0 → 즉시 쓰기"); T.BAL.fx.barStep=BARSTEP_PROD;
   T.FX.force=false; sh.style={}; hpb.style={}; T.S.battle=null; T.TQ.length=0; T.close();
 });
 

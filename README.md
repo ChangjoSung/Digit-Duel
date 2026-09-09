@@ -21,6 +21,8 @@
 
 ## 게임 기능
 
+*아래 설명은 지금 내려받아 플레이하는 정식 버전 **v0.4.5** 기준입니다. 개발 중인 다음 버전에서 달라지는 점은 [새로운 기능](#새로운-기능)에 모아 두었습니다.*
+
 - **물음표 뒤를 추리하세요** — 하수인 6 · 동료 2 · 왕 1 · 폭탄 3 · 함정 2, 말 14개를 자기 진영에 비공개로 배치합니다. 상대에게 내 말은 모두 물음표이며, 전투를 치른 말은 정체가 드러납니다. 8종 추측 메모로 상대 말에 나만 보이는 표시를 남겨 두세요.
 - **숲에 숨고 흔적을 쫓으세요** — 7열 × 13행 판 가운데에는 몸을 숨길 수 있는 숲이 흩어져 있습니다. 숲 속의 말은 상대가 바로 옆에 와야만 보입니다. 숲 어딘가에 숨은 선물의 흔적을 찾아 탐색하면 몬스터볼 · 회복약 · 다음 전투 버프 · 공용 하수인을 얻습니다.
 - **옆에 붙으면 시작되는 전투** — 전투 가능한 말이 이동해서 상대 말 옆에 새로 붙으면 전투를 피할 수 없습니다. 전투는 불 → 풀 → 번개 → 물 → 불 순서의 속성 가위바위보입니다. 깎인 HP와 기술 쿨타임은 전투가 끝나도 그대로 남으니, 언제 싸울지 고르는 것도 전략입니다.
@@ -47,27 +49,29 @@
 </table>
 
 <details>
-<summary><b>튜토리얼 10단계 보기</b> — v0.4.5 · 양측 밀어내기와 새 턴 흐름</summary>
+<summary><b>튜토리얼 10단계 보기</b> — v0.4.7 개발판 · 탐색 패키지와 기술 직접 선택</summary>
 <br>
 <table>
   <tr>
-    <td align="center" width="20%"><a href="docs/media/tutorial-01.png"><img src="docs/media/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-02.png"><img src="docs/media/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-03.png"><img src="docs/media/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-04.png"><img src="docs/media/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-05.png"><img src="docs/media/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 전투와 양측 밀어내기" width="100%"></a><br><sub>5. 전투 · 양측 밀어내기</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-01.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-02.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-03.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-04.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-05.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 전투와 양측 밀어내기" width="100%"></a><br><sub>5. 전투 · 양측 밀어내기</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><a href="docs/media/tutorial-06.png"><img src="docs/media/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-07.png"><img src="docs/media/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · 도망 후 후방 말 선택</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-08.png"><img src="docs/media/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 횟수 제한 없는 텔레포트</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-09.png"><img src="docs/media/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
-    <td align="center" width="20%"><a href="docs/media/tutorial-10.png"><img src="docs/media/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 턴 종료 선택</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-06.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-07.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · 도망 후 후방 말 선택</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-08.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 횟수 제한 없는 텔레포트</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-09.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 턴 종료 선택</sub></td>
   </tr>
 </table>
 <sub>튜토리얼은 게임 안에서 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다.</sub>
 
-캡처 출처: v0.4.5 검수 커밋 `5de47a9db4960ae7392e85ed3a811248743d090b` · [10장 캡처 기록과 해시](docs/milestone/v0.4.5/issues/114/Mars/artifacts/capture-manifest.json). 출시본과 같은 게임 코드에서 촬영한 화면입니다.
+캡처 출처: v0.4.7 개발판 검수 커밋 `157026ba617166644ada0686b897d3ae2a166486` · [10장 캡처 기록과 해시](docs/milestone/v0.4.7/issues/121/Mars/artifacts/capture-manifest.json). 아래 안내와 같은 개발판 게임 코드에서 촬영한 화면입니다.
+
+<sub>위 10장은 <b>개발 중인 v0.4.7</b>의 튜토리얼입니다. 숲 선물 패키지·기술 3종 직접 선택·아이템과 버프 제한을 반영했습니다. 정식 다운로드 v0.4.5의 화면과는 일부 다릅니다.</sub>
 </details>
 
 ## 새로운 기능
@@ -85,11 +89,20 @@
 
 이전 버전의 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)과 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다.
 
+### 개발 중 — v0.4.7 (미출시)
+
+다음 버전에서는 숲에서 얻는 보상이 **선물 패키지**로 바뀝니다. 원하는 아이템과 전투 버프를 싸우는 도중에 직접 골라 쓰고, 숲에서 배우는 신규 공용 기술 **🐉 드래곤 숨결 · 🕯 마녀의 장난 · 💀 사신의 낫** 중 하나를 골라 하수인의 기술 4칸 중 아무 곳이나 바꿉니다. 숲에서 포획한 하수인은 로스터 20종 가운데 뽑힌 종의 능력치와 기술을 그대로 가져오고, 연출 템포는 1.2초로 빨라집니다.
+
+바뀌는 내용은 [v0.4.7 릴리스 노트(개발 중)](docs/releases/v0.4.7.md)에, 세부 규칙은 [v0.4.7 게임플레이 계약](docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md)에 있습니다.
+
+**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 v0.4.7 개발판이며, 플레이·전투 사진은 각 이미지에 표시된 이전 버전입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있고, CJ 플레이 QA가 남아 있어 화면·문구·수치가 바뀔 수 있습니다.
+
 ## 게임 정보
 
 | 항목 | 내용 |
 | --- | --- |
-| 현재 버전 | [v0.4.5](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5) |
+| 현재 버전 | [v0.4.5](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5) — 내려받아 플레이하는 정식 버전 |
+| 개발 중 버전 | [v0.4.7](docs/releases/v0.4.7.md) — 미출시 · 다운로드 없음 |
 | 최근 업데이트 | 2026-09-08 |
 | Star · Fork | [![Stars](https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars)](https://github.com/ChangjoSung/Digit-Duel) [![Forks](https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks)](https://github.com/ChangjoSung/Digit-Duel/forks) |
 | 필요한 환경 | 오프라인: 최신 데스크톱 브라우저(Chrome 권장) · 온라인: Windows PC 1대 + [Node.js](https://nodejs.org) |
@@ -121,6 +134,11 @@
 - [참조] 외부 온라인 PVP 매칭 시스템은 추후 개발 예정입니다.
 
 혼자서 온라인 기능을 확인하려면 `server/서버시작.bat`을 켜고 `http://127.0.0.1:8080`을 브라우저 탭 두 개로 여세요. 서버 설정의 자세한 내용은 [`server/README.md`](server/README.md)에 있습니다.
+
+**개발 중인 v0.4.7을 미리 보고 싶다면**
+
+- 위 Releases의 다운로드는 정식 버전 v0.4.5입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에 있으니, 초록색 **Code** 버튼에서 브랜치를 `dev`로 바꿔 받은 뒤 똑같이 `demo/index.html`을 열면 됩니다.
+- 게임 안 튜토리얼과 위 10장 캡처도 개발판 규칙으로 갱신했습니다. CJ 플레이 QA가 남아 있는 개발판이므로, 정식 출시본을 플레이하려면 v0.4.5를 쓰세요.
 
 ## 저장소 구조
 

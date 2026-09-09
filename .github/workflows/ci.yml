@@ -53,6 +53,9 @@ jobs:
 
       # demo/index.html 의 <script> 를 DOM 스텁 위에서 eval 하는 하네스 기반. 외부 패키지 0.
       # 모든 스위트가 **현재 작업 트리**의 demo/index.html 을 검사한다.
+      # smoke_search_packages.js (#121·#129, v0.4.7): 탐색 이벤트 3종 배치·공용 인벤토리·패키지 개봉·전투 버프 3종·
+      # 신규 공용 기술 3종·숲 포획·탐색 완료 턴 종료. 온라인 2인스턴스 락스텝·정보 경계·AI 두 난이도·AI vs AI 완주까지
+      # 같은 파일에서 본다 (브라우저 없음). 옛 smoke_cross_skill 의 보상 전달 절이 이 파일로 이전됐다.
       - name: 턴 흐름·전투·온라인 규칙 회귀
         run: |
           set -e
@@ -67,6 +70,14 @@ jobs:
           node demo/test/regression/smoke_minion_art.js
           node demo/test/regression/smoke_issue114.js
           node demo/test/regression/smoke_tutorial.js
+          node demo/test/regression/smoke_search_packages.js
+
+      # #125 (v0.4.7 CJ 결정) 연출 시간 단축 계약 — 연출 시간표(BAL.fx) · 같은 연출을 그리는 CSS 애니메이션·바 전환의 동기 ·
+      # 실제 타이머로 관측한 1.2초 잠금과 damageFx 안 방어막→HP 2단 여유. 하네스의 가짜 타이머 대신 Node 실 setTimeout 을
+      # 쓰므로 약 10초가 걸린다(브라우저 없음). 음성 대조: 변경 전 소스(2000/600), 표만 1200·CSS 2s 인 반쪽 변경,
+      # barStep 만 600 인 여유 0 변이체 모두 종료 코드 1 로 떨어지는 것을 확인했다.
+      - name: 연출 시간 계약 회귀 (#125 1.2초)
+        run: node demo/test/regression/smoke_fx_timing.js
 
       # v0.4.5 출시본의 밸런스·튜토리얼 계약. 향후 승인된 기획 변경은 같은 PR 에서 이 단언들을 갱신한다.
       - name: 밸런스·튜토리얼 계약 회귀 (v0.4.5 출시 기준)
@@ -164,14 +175,18 @@ jobs:
       - name: README 미디어 도구 자기 검사
         run: node tools/media/readme_media_capture.js selfcheck
 
-      # --manifest 를 명시한다: 도구 기본값은 Issue #105(v0.4.4) 매니페스트라, 현재 README 가
-      # 링크한 v0.4.5 PNG 10장을 옛 SHA 와 대조해 WARN 을 뿜는다(최초 실행에서 관측).
-      # 도구 기본값·경고 정책·테스트는 그대로 두고 CI 인자만 현재 납품본에 맞춘다.
-      # 이 도구의 SHA 불일치는 지금도 WARN 이지 엄격한 해시 게이트가 아니다.
-      - name: README 링크·이미지 오프라인 검증 (현재 v0.4.5 매니페스트)
+      # --manifest 를 명시한다: 도구 기본값은 Issue #105(v0.4.4) 매니페스트다.
+      # #121(v0.4.7)에서 튜토리얼 10장을 다시 촬영하고 README 가 그 경로
+      # (docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-NN.png)를 가리키게 됐으므로,
+      # **매니페스트의 frame 경로·캡션 기준을 현행 README 에 맞춘다** (제품 ref 157026ba · demo/index.html blob 4535791b 로 촬영).
+      # 옛 v0.4.5(#114) 매니페스트를 그대로 두면 frame 경로·캡션이 현행 README 링크와 매칭되지 않아 10장 전부 WARN 이 난다 —
+      # 새 PNG 의 SHA 를 엄격히 대조하는 게이트가 아니다. verify 의 크기·해시 대조는 docs/media 고정 경로를 읽으므로
+      # 새 10장의 해시는 촬영 매니페스트와 별도 수동 검증으로 확인했다(10/10 일치). SHA 불일치 WARN 정책·검사 한계는 그대로 둔다.
+      # 이 매니페스트로는 로컬 실측 WARN 0건이다. 도구 기본값·경고 정책·테스트는 건드리지 않고 CI 인자만 현재 납품본에 맞춘다.
+      - name: README 링크·이미지 오프라인 검증 (v0.4.7 #121 매니페스트)
         run: >-
           node tools/media/readme_media_capture.js verify --read-only --no-gh --no-render
-          --manifest docs/milestone/v0.4.5/issues/114/Mars/artifacts/capture-manifest.json
+          --manifest docs/milestone/v0.4.7/issues/121/Mars/artifacts/capture-manifest.json
 
       # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
       - name: README 도구 READ_ONLY 회귀
