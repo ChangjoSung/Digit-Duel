@@ -15,7 +15,7 @@ const fs=require("fs"), path=require("path"), os=require("os"), {spawn}=require(
 const args=process.argv.slice(2);
 const opt=(k,d)=>{ const i=args.indexOf(k); return i>=0?args[i+1]:d; };
 const ROOT=path.resolve(__dirname,"..","..");
-const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","qa","minion-art-integration")));
+const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","milestone","v0.4.3","issues","89","Mars","artifacts")));
 const READ_ONLY=args.includes("--read-only")||args.includes("--no-write"); // Saturn 독립 재검증용 — 검증 산출물 0(스크린샷·보고서·출력 파일 없음), stdout 만. Chrome 임시 프로필은 부수 생성·정리 (헤더 참조)
 const SHOTS=!args.includes("--no-shots")&&!READ_ONLY;
 const USE_HTTP=!args.includes("--no-http");

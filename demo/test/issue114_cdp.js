@@ -1,12 +1,12 @@
 /* Issue114: real Chrome two-tab + real relay, public setup API, deterministic battle fixtures,
    actual mouse flee/category/candidate/skip/resign clicks. Optional --shots records fixture UI proof, not release capture.
-   node demo/test/issue114_cdp.js [--read-only] [--out docs/qa/issue114-media] [--shots]
+   node demo/test/issue114_cdp.js [--read-only] [--out docs/milestone/v0.4.5/issues/114/Mars/artifacts] [--shots]
    Gameplay fixtures shorten unrelated effects; flee selection/push effects retain 2000ms.
    Only this run's child processes and exact temporary profile are cleaned up. */
 "use strict";
 const fs=require("fs"),path=require("path"),os=require("os"),crypto=require("crypto"),assert=require("assert/strict"),{spawn}=require("child_process");
 const ROOT=path.resolve(__dirname,"../.."),args=process.argv.slice(2),READ=args.includes("--read-only");
-const OUT=path.resolve(args.includes("--out")?args[args.indexOf("--out")+1]:path.join(ROOT,"docs/qa/issue114-media"));
+const OUT=path.resolve(args.includes("--out")?args[args.indexOf("--out")+1]:path.join(ROOT,"docs/milestone/v0.4.5/issues/114/Mars/artifacts"));
 const SHOTS=args.includes("--shots")&&!READ;
 const CHROME=[process.env.CHROME_PATH,"C:/Program Files/Google/Chrome/Application/chrome.exe","C:/Program Files (x86)/Google/Chrome/Application/chrome.exe","/usr/bin/google-chrome","/usr/bin/chromium"].filter(Boolean).find(p=>fs.existsSync(p));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

@@ -5,15 +5,15 @@
 Earth가 작성한 소스 데이터를 읽어 납품 PNG와 검토용 미리보기를 생성·검증만 한다.
 
 입력 (Earth 소유):
-  docs/art/minions-v0.4.3/pixel-sources/<id>.json    32x32 말판 아이콘 원본 데이터
-  docs/art/minions-v0.4.3/battle-patches/<id>.json   64 그리드 국소 보정 패치 (허용 4종만)
+  docs/milestone/v0.4.3/assets/minions/pixel-sources/<id>.json    32x32 말판 아이콘 원본 데이터
+  docs/milestone/v0.4.3/assets/minions/battle-patches/<id>.json   64 그리드 국소 보정 패치 (허용 4종만)
 
 출력 (Mars 소유):
   demo/assets/minions/<id>/icon.png                  32x32 RGBA (전 20종)
   demo/assets/minions/<id>/battle-grid.png           64x64 RGBA (패치 4종만)
   demo/assets/minions/<id>/battle.png                128x128 RGBA, 64의 최근접 정확한 2배
-  docs/art/minions-v0.4.3/review/*.png               검토용 미리보기 시트
-  docs/art/minions-v0.4.3/delivery-manifest.csv      납품 메타데이터
+  docs/milestone/v0.4.3/assets/minions/review/*.png               검토용 미리보기 시트
+  docs/milestone/v0.4.3/assets/minions/delivery-manifest.csv      납품 메타데이터
 
 네트워크·AI 생성 의존성 없음. Python 표준 라이브러리 + Pillow + git 읽기만 사용한다.
 """
@@ -85,10 +85,16 @@ BOARD_BACKGROUNDS: tuple[tuple[str, str], ...] = (
 _ID_RE = re.compile(r"^[a-z]+_[a-z]+$")
 _HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
 
-REL_PIXEL_SOURCES = Path("docs/art/minions-v0.4.3/pixel-sources")
-REL_BATTLE_PATCHES = Path("docs/art/minions-v0.4.3/battle-patches")
-REL_REVIEW = Path("docs/art/minions-v0.4.3/review")
-REL_MANIFEST = Path("docs/art/minions-v0.4.3/delivery-manifest.csv")
+#: 아트 소스·검토 산출물의 보관 위치. Issue #132(2026-09-09)에서 마일스톤 보관 구조로 옮겼다
+#: (docs/art/minions-v0.4.3/ → docs/milestone/v0.4.3/assets/minions/, 전수 대조표는 docs/milestone/MOVES.csv).
+#: 네 경로가 같은 접두사를 공유하므로 base 하나만 두고 파생한다 — 다음 이동 때 이 한 줄만 고치면 된다.
+REL_ART_BASE = Path("docs/milestone/v0.4.3/assets/minions")
+REL_PIXEL_SOURCES = REL_ART_BASE / "pixel-sources"
+REL_BATTLE_PATCHES = REL_ART_BASE / "battle-patches"
+REL_REVIEW = REL_ART_BASE / "review"
+REL_MANIFEST = REL_ART_BASE / "delivery-manifest.csv"
+#: 납품 자산은 게임이 상대경로로 로드하므로 이동 대상이 아니다. BATTLE_BASELINE_COMMIT 기준
+#: git blob 조회(read_baseline_grid 등)도 전부 이 경로만 쓰므로 위 이동의 영향을 받지 않는다.
 REL_ASSETS = Path("demo/assets/minions")
 
 

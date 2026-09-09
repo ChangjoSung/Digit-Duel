@@ -272,7 +272,7 @@ function setup(T,mode,seed){
 
 /* ===== I. 납품 아트 바이트 보존 — 이번 구현은 자산을 만들지도 고치지도 않는다 ===== */
 {
-  const manifest=path.join(ROOT,"docs","art","minions-v0.4.3","delivery-manifest.csv");
+  const manifest=path.join(ROOT,"docs","milestone","v0.4.3","assets","minions","delivery-manifest.csv");
   ok(fs.existsSync(manifest),"I1 납품 매니페스트 존재");
   const rows=fs.readFileSync(manifest,"utf8").trim().split(/\r?\n/);
   const head=rows[0].split(","), iPath=head.indexOf("path"), iSha=head.findIndex(h=>/sha256/i.test(h));

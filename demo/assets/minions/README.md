@@ -16,14 +16,14 @@ CJ 디자인 확인 후 게임 화면의 이미지 로딩·HP 배치를 [PR #90]
 | `battle.png` | 전투 도트, 그리드의 최근접 2배 | 128×128 |
 | `icon.png` | 직접 픽셀 제작 말판 아이콘 | 32×32 |
 
-최초 반입 80파일·7,488,176바이트는 [원본 매니페스트](../../../docs/art/minions-v0.4.3/source-manifest.csv)에 기록했다.
+최초 반입 80파일·7,488,176바이트는 [원본 매니페스트](../../../docs/milestone/v0.4.3/assets/minions/source-manifest.csv)에 기록했다.
 설명창 40파일 및 비대상 전투 32파일은 원본 바이트를 유지한다.
 `fire_sustain`, `water_swift`, `grass_atk`, `lightning_atk`의 전투 4쌍은 승인된 가독성 보완을 적용했다.
-해당 8파일과 신규 아이콘 20파일의 현재 해시는 [납품 매니페스트](../../../docs/art/minions-v0.4.3/delivery-manifest.csv)를 따른다.
+해당 8파일과 신규 아이콘 20파일의 현재 해시는 [납품 매니페스트](../../../docs/milestone/v0.4.3/assets/minions/delivery-manifest.csv)를 따른다.
 `battle-grid.png`는 작업 원고이며 런타임 로딩 대상이 아니다.
 
-로스터 대응·규격·최신 QA는 [외형 규격](../../../docs/minion-visual-spec-v0.4.3.md),
-비교 이미지·제작 근거는 [아트 납품 안내](../../../docs/art/minions-v0.4.3/README.md)를 참조한다.
+로스터 대응·규격·최신 QA는 [외형 규격](../../../docs/milestone/v0.4.3/specs/minion-visual-spec-v0.4.3.md),
+비교 이미지·제작 근거는 [아트 납품 안내](../../../docs/milestone/v0.4.3/assets/minions/README.md)를 참조한다.
 왕·동료·폭탄·함정·원소 기호는 기존 메모 이모지를 재사용한다.
 
 ## 자산 조건
