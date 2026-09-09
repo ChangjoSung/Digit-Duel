@@ -69,6 +69,10 @@ Roblox 는 이미지를 Roblox 서버에 올려 `rbxassetid` 를 받아야 쓸 �
 
 ### Roblox 게시 (실제 다인 플레이)
 Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버 인스턴스를 호스팅하며, 같은 인스턴스에 들어온 플레이어를 `init.server.luau` 가 1:1 로 매칭한다.
+첫 게시 뒤에는 Game Settings(또는 Creator Hub → Access) 에서 Playability 를 Friends/Public 으로 바꿔야 남이 들어올 수 있다.
+
+**재게시 자동화**: `roblox\tools\publish.bat` — rbxl 을 빌드해 기존 경험에 바로 올린다 (Studio 불필요).
+API 키에 **Universe Places(Place Publishing) → Write** 권한과 대상 경험을 추가하고, Place ID(경험 URL 의 숫자)를 입력한다.
 
 ### 헤드리스 테스트 (커밋 전 필수)
 ```
