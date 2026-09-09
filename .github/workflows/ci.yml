@@ -175,14 +175,18 @@ jobs:
       - name: README 미디어 도구 자기 검사
         run: node tools/media/readme_media_capture.js selfcheck
 
-      # --manifest 를 명시한다: 도구 기본값은 Issue #105(v0.4.4) 매니페스트라, 현재 README 가
-      # 링크한 v0.4.5 PNG 10장을 옛 SHA 와 대조해 WARN 을 뿜는다(최초 실행에서 관측).
-      # 도구 기본값·경고 정책·테스트는 그대로 두고 CI 인자만 현재 납품본에 맞춘다.
-      # 이 도구의 SHA 불일치는 지금도 WARN 이지 엄격한 해시 게이트가 아니다.
-      - name: README 링크·이미지 오프라인 검증 (현재 v0.4.5 매니페스트)
+      # --manifest 를 명시한다: 도구 기본값은 Issue #105(v0.4.4) 매니페스트다.
+      # #121(v0.4.7)에서 튜토리얼 10장을 다시 촬영하고 README 가 그 경로
+      # (docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-NN.png)를 가리키게 됐으므로,
+      # **매니페스트의 frame 경로·캡션 기준을 현행 README 에 맞춘다** (제품 ref 157026ba · demo/index.html blob 4535791b 로 촬영).
+      # 옛 v0.4.5(#114) 매니페스트를 그대로 두면 frame 경로·캡션이 현행 README 링크와 매칭되지 않아 10장 전부 WARN 이 난다 —
+      # 새 PNG 의 SHA 를 엄격히 대조하는 게이트가 아니다. verify 의 크기·해시 대조는 docs/media 고정 경로를 읽으므로
+      # 새 10장의 해시는 촬영 매니페스트와 별도 수동 검증으로 확인했다(10/10 일치). SHA 불일치 WARN 정책·검사 한계는 그대로 둔다.
+      # 이 매니페스트로는 로컬 실측 WARN 0건이다. 도구 기본값·경고 정책·테스트는 건드리지 않고 CI 인자만 현재 납품본에 맞춘다.
+      - name: README 링크·이미지 오프라인 검증 (v0.4.7 #121 매니페스트)
         run: >-
           node tools/media/readme_media_capture.js verify --read-only --no-gh --no-render
-          --manifest docs/milestone/v0.4.5/issues/114/Mars/artifacts/capture-manifest.json
+          --manifest docs/milestone/v0.4.7/issues/121/Mars/artifacts/capture-manifest.json
 
       # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
       - name: README 도구 READ_ONLY 회귀

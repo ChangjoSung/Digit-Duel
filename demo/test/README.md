@@ -1,6 +1,6 @@
 # 검사 인덱스 — `demo/test`
 
-이 폴더의 35개 파일은 **성격에 따라 네 폴더**로 나뉜다. 어디에 두느냐가 곧 그 파일의 성격이다.
+이 폴더의 36개 파일은 **성격에 따라 네 폴더**로 나뉜다. 어디에 두느냐가 곧 그 파일의 성격이다.
 
 | 폴더 | 성격 | 지금도 도는가 | 파일 쓰기 |
 |---|---|---|---|
@@ -15,7 +15,7 @@
 
 | 파일 | 버전 | Issue | 하는 일 |
 |---|---|---|---|
-| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. **20개**가 이 로더를 쓴다 — 회귀 17 · `ai_compare` · `attack_balance_compare` · `shock_compare`. CDP 증빙 13종과 `smoke_testclient`는 쓰지 않는다 |
+| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. **20개**가 이 로더를 쓴다 — 회귀 17 · `ai_compare` · `attack_balance_compare` · `shock_compare`. CDP 증빙 14종과 `smoke_testclient`는 쓰지 않는다 |
 
 ## 회귀 게이트 (`regression/`) — CI 잡 A
 
@@ -50,9 +50,9 @@
 
 ## 과거 증빙 (`milestone/<버전>/issues/<번호>/`)
 
-15개가 두 부류다 — **헤드리스 Chrome(CDP) 브라우저 증빙 도구 13개**와 **harness 기반 before/after 비교 리포트 생성기 2개**(`attack_balance_compare` · `shock_compare`). 뒤 둘은 Chrome을 띄우지 않고 어서션을 갖고 있으며 **실패하면 종료 코드 1로 끝난다**(CI 어느 잡에서도 호출되지 않는다).
+16개가 두 부류다 — **헤드리스 Chrome(CDP) 브라우저 증빙 도구 14개**와 **harness 기반 before/after 비교 리포트 생성기 2개**(`attack_balance_compare` · `shock_compare`). 뒤 둘은 Chrome을 띄우지 않고 어서션을 갖고 있으며 **실패하면 종료 코드 1로 끝난다**(CI 어느 잡에서도 호출되지 않는다).
 
-CDP 13개는 그 이슈에서 실제로 돌려 보관소의 증빙을 만든 도구다. 헤드리스 Chrome을 띄우고, 기본 `--out`이 **이미 승인된 보관소 경로**라 인자 없이 돌리면 그 증빙을 덮어쓴다. 재현할 때는 `--read-only`(또는 `--out`으로 자기 소유 경로 지정)를 쓴다.
+CDP 14개는 그 이슈에서 실제로 돌려 보관소의 증빙을 만든 도구다. 헤드리스 Chrome을 띄우고, 기본 `--out`이 **이미 승인된 보관소 경로**라 인자 없이 돌리면 그 증빙을 덮어쓴다. 재현할 때는 `--read-only`(또는 `--out`으로 자기 소유 경로 지정)를 쓴다.
 
 `--read-only`가 뜻하는 것은 **검증 산출물 0건**이지 프로세스 전체의 쓰기 0이 아니다. Chrome이 실제로 렌더하는 경로에서는 그 모드에서도 `os.tmpdir()`에 헤드리스 Chrome 임시 프로필이 생기고(종료 시 자기 것만 정리), 온라인 계열은 검증 전용 릴레이 서버(PORT=0·루프백)를 띄운다. 각 파일이 그 사실을 RESOURCE/CLEANUP 행으로 스스로 보고한다.
 
@@ -73,5 +73,6 @@ CDP 13개는 그 이슈에서 실제로 돌려 보관소의 증빙을 만든 도
 | [`issue106_cdp.js`](milestone/v0.4.4/issues/106/issue106_cdp.js) | v0.4.4 | #106 | 턴 흐름·연출 브라우저 증빙(릴레이 2클라이언트 + PVE 탭) | `…/106/Mars/artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |
 | [`issue106_browser_audit.js`](milestone/v0.4.4/issues/106/issue106_browser_audit.js) | v0.4.4 | #106 | 위 도구가 다루지 않은 수용 기준(핫시트·PVE·온라인) 보완 감사 | `…/106/Mars/browser-artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |
 | [`issue114_cdp.js`](milestone/v0.4.5/issues/114/issue114_cdp.js) | v0.4.5 | #114 | v0.4.5 턴 행동 실제 클릭 증빙(2탭 + 실제 릴레이) | `docs/milestone/v0.4.5/issues/114/Mars/artifacts` · `--read-only` 지원(Chrome 임시 프로필·검증용 릴레이 서버) |
+| [`v047_cdp.js`](milestone/v0.4.7/issues/121/v047_cdp.js) | v0.4.7(미출시) | #121 #125 #129 | 실제 브라우저 규칙·시간·화면 증빙 — `performance.now()` 로 연출 1.2초·보호막→HP 2단, `getComputedStyle` 로 CSS 지속 시간, 실제 마우스 클릭으로 기술 교체 3단계, 버프 CSS, 탐색 완료 턴 종료, 비소유자·PVE AI 차례 비공개 DOM, 튜토리얼 10단계 렌더 계약. `--ref <sha>` 로 커밋 blob 과 대조한다. **README 용 PNG 10장·capture-manifest 는 만들지 않는다**(기존 미디어 도구 소유) | `…/121/Mars/artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |
 
 옛 문서가 인용하는 `node demo/test/<파일>.js` 같은 평문 명령은 **그때의 사실 진술이라 고치지 않았다**. 현재 경로는 위 표와 [#134 MOVES.csv](../../docs/milestone/v0.4.7/issues/134/Mercury/MOVES.csv)에서 찾는다.

@@ -8,7 +8,9 @@
      3. #121 탐색 보상 — 실제 클릭으로 기술 교체 3단계(기술 → 대상 말 → 슬롯)를 완주하고 슬롯·쿨 승계를 확인.
      4. #121 전투 버프 — 가방에서 개봉 → 버프 적용 → **토큰 주변 CSS 효과가 실제로 계산되는지**(getComputedStyle).
      5. #129 — 탐색 완료 뒤 결과 연출 1.2초 끝점에서 턴이 **정확히 한 번** 끝나는지 (추가 1초 유예 없음).
-     6. --tutorial-check: 제품 튜토리얼 10단계를 실제로 넘기며 **렌더 계약만** 확인한다 (카드 수 = 문단 수, 새 규칙 렌더).
+     6. 비공개 DOM — 온라인 비소유자 시점과 PVE AI 차례에서 상대 아이템·볼·패키지가 **실제 DOM 에 없는지** 문자열로 확인한다.
+        한계: 같은 탭에서 NET.me·행동자만 바꿔 **그 시점의 DOM** 을 보는 검사다. 두 기기·실제 릴레이를 통한 온라인 종단간 검증이 아니다.
+     7. --tutorial-check: 제품 튜토리얼 10단계를 실제로 넘기며 **렌더 계약만** 확인한다 (카드 수 = 문단 수, 새 규칙 렌더).
         README 용 PNG 10장과 capture-manifest.json 은 이 도구가 만들지 않는다 — 기존 tools/media/readme_media_capture.js capture
         가 그 형식(env.ref/refSha·frames)을 소유하고 CI 의 verify 가 그 형식을 읽는다. 여기서 중복 캡처하지 않는다.
 
@@ -367,7 +369,63 @@ async function openTab(cdp,url){
       await T.shot("v047-buff-power.png");
     }
 
-    /* ── 7. 튜토리얼 10단계 캡처 (--tutorial) ────────────────────────────── */
+    /* ── 6.5 비공개 DOM — 실제 브라우저에서 상대 자원이 그려지지 않는지 ──────
+       계약 3.1·4.8·10: 재고·개봉 선택·기술·"대상 없음"은 비공개이고 **적용된 효과만** 공개된다.
+       한계(보고에 명시): 같은 탭에서 NET.me·행동자만 바꿔 그 시점의 DOM 을 읽는다 — 두 기기 릴레이 종단간 검증이 아니다. */
+    const priv=await T.ev(`(()=>{
+      fxReleaseAll(); close(); S.battle=null;
+      const mine=rosterMinions(0)[0], opp=S.pieces.filter(p=>p.owner===1&&p.type==="minion")[0];
+      opp.placed=true; opp.r=9; opp.c=2; opp.alive=true; for(const p of [mine,opp]) p.hp=p.maxHp;
+      /* 관측 대상 자원을 눈에 띄는 값으로 — 숫자가 DOM 에 새면 바로 잡힌다 */
+      S.balls=[47,47]; S.pkgs[0]={itemGift:7,battleBuff:8}; S.pkgs[1]={itemGift:7,battleBuff:8};
+      S.inv[0]=["potion","cool","cure"]; S.inv[1]=["potion","cool","cure"];
+      const scan=()=>{ const box=document.getElementById("overlayBox").innerHTML;
+        const plain=box.replace(/title="[^"]*"/g,"");      // title 은 마우스오버 텍스트 — 본문과 분리해 함께 본다
+        return {ball47:/47/.test(plain),gift7:/아이템 선물 7/.test(plain),buff8:/전투 버프 8/.test(plain),
+          itemNames:/회복약|쿨링수|해독제/.test(plain),maskItem:/상대 아이템 비공개/.test(box),maskPkg:/상대 패키지 비공개/.test(box),
+          ballText:(box.match(/볼 [^·<]*/)||[""])[0].trim()}; };
+      const out={};
+      /* (a) 온라인 비소유자: 내가 2P 인데 지금은 1P 차례 */
+      S.battle=null; S.battlesUsed=0; S.current=0; startRounds(mine,opp,mine,opp);
+      NET.mode=true; NET.me=1; NET.started=true; S.battle.menu="bag"; battleModal(); out.onlineBagNonOwner=scan();
+      S.battle.menu="ball"; battleModal(); out.onlineBallNonOwner=scan();
+      /* (b) 온라인 소유자: 내가 1P (내 재고는 보여야 한다 — 과도 마스킹 음성 대조) */
+      NET.me=0; S.battle.menu="bag"; battleModal(); out.onlineBagOwner=scan();
+      S.battle.menu="ball"; battleModal(); out.onlineBallOwner=scan();
+      NET.mode=false; NET.me=null; NET.started=false;
+      /* (c) PVE 에서 AI(1) 차례 — 사람 뷰어(0)에게 AI 자원이 보이면 안 된다 */
+      S.mode="pve"; S.battle=null; S.battlesUsed=0; S.current=1;
+      startRounds(opp,mine,opp,mine);
+      S.battle.menu="bag"; battleModal(); out.pveBagAiTurn=scan();
+      S.battle.menu="ball"; battleModal(); out.pveBallAiTurn=scan();
+      /* (d) PVE 에서 사람(0) 차례 — 내 재고는 보인다 */
+      S.battle=null; S.battlesUsed=0; S.current=0; startRounds(mine,opp,mine,opp);
+      S.battle.menu="bag"; battleModal(); out.pveBagMyTurn=scan();
+      S.battle.menu="ball"; battleModal(); out.pveBallMyTurn=scan();
+      out.actorPve=S.battle?S.battle.attP.owner:null;
+      return JSON.stringify(out);
+    })()`);
+    const PV=JSON.parse(priv);
+    rec("비공개 DOM 스캔",PV);
+    const hidesAll=o=>o&&!o.ball47&&!o.gift7&&!o.buff8;
+    ok(hidesAll(PV.onlineBagNonOwner)&&PV.onlineBagNonOwner.maskItem&&PV.onlineBagNonOwner.maskPkg&&!PV.onlineBagNonOwner.itemNames,
+       "6.5a 온라인 비소유자 가방 DOM: 볼 47·선물 7·버프 8·아이템 이름 모두 없고 비공개 안내만");
+    ok(hidesAll(PV.onlineBallNonOwner)&&PV.onlineBallNonOwner.ballText.indexOf("비공개")>=0,
+       "6.5b 온라인 비소유자 포획 DOM: 볼 보유 수 비공개 ("+(PV.onlineBallNonOwner&&PV.onlineBallNonOwner.ballText)+")");
+    ok(hidesAll(PV.pveBagAiTurn)&&PV.pveBagAiTurn.maskItem&&PV.pveBagAiTurn.maskPkg,
+       "6.5c **PVE AI 차례** 가방 DOM: AI 재고가 사람 화면에 없다 (종전 NET.mode 전용 마스킹의 구멍)");
+    ok(hidesAll(PV.pveBallAiTurn)&&PV.pveBallAiTurn.ballText.indexOf("비공개")>=0,
+       "6.5d PVE AI 차례 포획 DOM: AI 볼 보유 수 비공개");
+    ok(PV.onlineBagOwner&&PV.onlineBagOwner.gift7&&PV.onlineBagOwner.buff8&&PV.onlineBagOwner.itemNames,
+       "6.5e [음성] 온라인 **소유자** 화면에는 내 재고·아이템이 그대로 보인다 (과도 마스킹 아님)");
+    ok(PV.pveBallMyTurn&&PV.pveBallMyTurn.ball47,"6.5f [음성] PVE 내 차례에는 내 볼 보유 수가 보인다");
+    ok(PV.actorPve===0,"6.5g 전제 확인: 마지막 스캔은 사람(0) 차례였다");
+    /* 촬영 시점의 화면은 바로 위 (d) 단계가 그린 **PVE 내 차례(소유자) 대조 화면**이다 —
+       "나의 턴 / 볼 47" 이 보이는 것이 정상이며 비소유자 화면이 아니다. 비소유자·AI 차례의 비공개는
+       같은 실행의 6.5a~6.5d DOM 스캔 값이 근거다 (JSON 의 "비공개 DOM 스캔"). 이름을 그 사실에 맞춘다. */
+    await T.shot("v047-privacy-owner-control.png");
+
+    /* ── 7. 튜토리얼 10단계 렌더 계약 (--tutorial-check) ──────────────────── */
     if(DO_TUT){
       /* 렌더 계약만 본다 — PNG·매니페스트는 만들지 않는다 (기존 미디어 도구 소유) */
       const n=await T.ev(`(()=>{ fxReleaseAll(); close(); TUT.seenThisLoad=false; tutOpen(); return TUT_STEPS.length; })()`);
