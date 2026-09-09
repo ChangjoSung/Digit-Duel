@@ -56,7 +56,17 @@ function searchAt(X,p,kind){
 }
 const ob=X=>X.byId("overlayBox").innerHTML, hidden=X=>X.byId("overlay").classList.contains("hidden");
 const btns=X=>(X.byId("obBtns").children||[]).map(b=>b.textContent);
-const click=(X,txt)=>{ const b=(X.byId("obBtns").children||[]).slice().reverse().find(x=>x.textContent===txt); if(!b) throw new Error("버튼 없음: "+txt+" / "+J(btns(X))); b.onclick(); };
+const findBtn=(X,txt)=>(X.byId("obBtns").children||[]).slice().reverse().find(x=>x.textContent===txt);
+const click=(X,txt)=>{ const b=findBtn(X,txt); if(!b) throw new Error("버튼 없음: "+txt+" / "+J(btns(X)));
+  if(b.disabled||typeof b.onclick!=="function") throw new Error("비활성 버튼을 누를 수 없다: "+txt); b.onclick(); };
+/* 실제 브라우저처럼 "눌릴 수 없음"을 본다 — disabled 이고 핸들러도 없다 (문구만 바뀐 것이 아니다) */
+const isDisabled=(X,txt)=>{ const b=findBtn(X,txt); return !!b&&b.disabled===true&&typeof b.onclick!=="function"; };
+const btnStartingWith=(X,pre)=>(X.byId("obBtns").children||[]).slice().reverse().find(x=>x.textContent.indexOf(pre)===0);
+/* 행동자를 공격측(A)으로 맞춘다 — actorOfPhase() 는 라운드 홀짝과 감전으로 선공이 바뀌므로 phase 를 뒤집어 맞춘다.
+   실제 적용 경로에 "지금 이 side 의 차례인가" 가드가 생겼으므로(Saturn REVISE P1) 테스트도 실제 차례를 맞춰야 한다. */
+const actAsA=X=>{ const B=X.S.battle; if(!B) return false;
+  if(X.actorOfPhase()!=="A") B.phase=B.phase===0?1:0;
+  return X.actorOfPhase()==="A"; };
 const has=(X,txt)=>(X.byId("obBtns").children||[]).some(b=>b.textContent===txt);
 /* 시드 고정 후 fn 을 돌려 rand 소비 횟수를 역산 */
 function randConsumed(X,seed,fn,max){ X.setSeed(seed); const seq=[]; for(let i=0;i<(max||14);i++) seq.push(X.rand()); X.setSeed(seed); fn(); const n=X.rand(); const k=seq.indexOf(n); return k; }
@@ -242,8 +252,11 @@ function swapSkill(X,target,skillIdx,slot){
   B.round=2; B.phase=1; freshModal(T);
   ok(T.actorOfPhase()==="A","C6a 전제: 라운드 2 에서 공격측 행동 차례");
   T.__openPkgCore("battleBuff");
-  const beforeT=B.maxRounds; click(T,"🧭 시간의 수호자 (1R 전용)");
-  ok(B.maxRounds===beforeT&&B.maxRounds===null,"C6b 2라운드에서는 시간의 수호자를 적용할 수 없다 (계약 3.3 R1 한정)");
+  const beforeT=B.maxRounds;
+  ok(isDisabled(T,"🧭 시간의 수호자 (1R 전용)"),"C6b 2라운드에서 시간의 수호자 버튼은 **실제 disabled** (문구만이 아니다 — Saturn REVISE P2)");
+  /* 코어 거부도 함께: UI 를 우회해 직접 호출해도 적용되지 않는다 */
+  T.__pkgPickCore("buff",T.BUFF_KEYS.indexOf("time"));
+  ok(B.maxRounds===beforeT&&B.maxRounds===null,"C6b' 코어를 직접 불러도 2라운드에서는 적용되지 않는다 (계약 3.3 R1 한정)");
   T.close(); B.round=1; B.phase=0; freshModal(T); T.__openPkgCore("battleBuff"); click(T,"🧭 시간의 수호자");
   ok(B.maxRounds===3&&T.battleMaxRounds()===3&&T.BAL.maxRounds===gMax,"C6c R1 적용: 이 전투만 3라운드 · 전역 BAL.maxRounds("+gMax+") 불변");
   ok(/라운드 1\/3/.test(ob(T)),"C6d 전투 화면에 3라운드 표시");
@@ -381,7 +394,13 @@ function swapSkill(X,target,skillIdx,slot){
   ms[2].alive=false; ms[2].placed=false;
   searchAt(T,P.me); click(T,"📘 기술 교체"); click(T,"1. 드래곤 숨결");
   const tb=btns(T);
-  ok(/제거됨 — 선택 불가/.test(ob(T))&&tb.some(x=>/^3\. .*\(불가\)$/.test(x)),"D2b 죽은 말은 목록에 보이되 비활성 "+J(tb.filter(x=>/불가/.test(x))));
+  const deadBtn=btnStartingWith(T,"3. ");
+  ok(/제거됨 — 선택 불가/.test(ob(T))&&!!deadBtn&&deadBtn.disabled===true&&typeof deadBtn.onclick!=="function",
+     "D2b 죽은 말은 목록에 보이되 **실제 disabled** (핸들러 없음) — "+(deadBtn?deadBtn.textContent:"버튼 없음"));
+  /* 코어 거부도 함께: UI 를 우회해 직접 호출해도 대상이 되지 않는다 (Saturn REVISE P2) */
+  const stageBefore=T.S.recruit.stage;
+  T.__recruitCore("target",2);
+  ok(T.S.recruit&&T.S.recruit.stage===stageBefore&&T.S.recruit.targetId===null,"D2b' 코어를 직접 불러도 죽은 말은 대상이 되지 않는다");
   ok(/기술 \? \? \? \?/.test(ob(T)),"D2c 대상을 고르기 전 4슬롯은 ? 로 가린다 (계약 4.2-4)");
   // D3 4슬롯 어디든 · 고른 뒤 기술이 보인다
   const target=ms[0]; target.cds=[2,1,3,0]; target.revealedSkills=[0,1,2,3];
@@ -398,8 +417,13 @@ function swapSkill(X,target,skillIdx,slot){
   ok(target.skills[0]===snapSk[0]&&target.skills[1]===snapSk[1]&&target.skills[3]===snapSk[3],"D4d 나머지 슬롯 불변");
   // D5 중복 금지
   searchAt(T,P.me); click(T,"📘 기술 교체"); click(T,"1. 드래곤 숨결");
-  const dupB=btns(T);
-  ok(dupB.some(x=>x==="1. "+(target.name||"하수인")+" (불가)")&&/이미 이 기술 보유/.test(ob(T)),"D5 이미 그 기술을 가진 말은 비활성 (계약 4.2-5)");
+  const dupName="1. "+(target.name||"하수인")+" (이미 보유)";
+  const dupBtn=findBtn(T,dupName);
+  ok(!!dupBtn&&dupBtn.disabled===true&&typeof dupBtn.onclick!=="function"&&/이미 이 기술 보유/.test(ob(T)),
+     "D5 이미 그 기술을 가진 말은 **실제 disabled** (계약 4.2-5) — "+(dupBtn?dupBtn.textContent:J(btns(T))));
+  const sBefore=T.S.recruit.stage, skBefore=J(target.skills);
+  T.__recruitCore("target",T.rosterMinions(0).findIndex(m=>m.id===target.id));
+  ok(T.S.recruit.stage===sBefore&&J(target.skills)===skBefore,"D5' 코어를 직접 불러도 중복 장착으로 넘어가지 않는다");
   T.close();
   // D6 취소·포기: 슬롯 불변 · 이벤트는 소모
   const snap2=J([target.skills,target.cds,target.revealedSkills]);
@@ -463,15 +487,43 @@ function swapSkill(X,target,skillIdx,slot){
     ok(seq2.indexOf(T.rand())===1,"E2e' 분산을 끄면 조합 추첨 1회만 남는다 (측정이 공허하지 않다)");
     fixed(T);
   }
-  // 풀: 보호막에 전부 흡수되면 회복 0
+  /* 풀 회복의 경계 두 가지 — **grass 효과가 실제로 뽑힌 시드에서만** 판정한다.
+     조합은 `WITCH_COMBOS[floor(rand()*6)]` 이고 분산 rand 가 먼저 1회 소비되므로, 시드에서 두 번째 난수로 조합을 미리 계산해
+     grass(WITCH_EFFECTS 인덱스 3)가 든 시드만 쓴다. 그러지 않으면 "회복 0" 단언이 grass 가 안 뽑힌 시드에서도 통과한다. */
   {
-    const P=setup(T); fixed(T); T.BAL.dmgVar=0; giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[0]="witch_prank"; giveSpecies(T,P.em,R(T,"M-G1"));
-    let found=false;
-    for(let s=1;s<=200&&!found;s++){ openBattle(T,P.me,P.em); P.me.hp=50; P.em.shield=999;
-      T.setSeed(s); T.execSlot("A",0); T.TQ.length=0;
-      const combo=T.WITCH_COMBOS[Math.floor(0)]; // 조합은 내부 결정 — 회복 0 인지만 본다
-      if(P.em.hp===P.em.maxHp){ if(P.me.hp===50) found=true; } }
-    ok(found,"E2f 피해가 보호막에 전부 흡수되면 풀 회복은 0 (실HP 피해 0)");
+    const P=setup(T); fixed(T); T.BAL.dmgVar=0.2; giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[0]="witch_prank"; giveSpecies(T,P.em,R(T,"M-G1"));
+    const gIdx=T.WITCH_EFFECTS.indexOf("grassHeal");
+    ok(gIdx>=0,"E2f0 전제: grassHeal 이 효과 목록에 있다 (index "+gIdx+")");
+    /* 시드별로 조합을 미리 계산한다 — 제품과 같은 순서(분산 1회 → 조합 1회)로 난수를 읽는다 */
+    const comboOf=seed=>{ T.setSeed(seed); T.rand(); return T.WITCH_COMBOS[Math.floor(T.rand()*T.WITCH_COMBOS.length)]; };
+    let grassSeed=-1, plainSeed=-1;
+    for(let s=1;s<=400&&(grassSeed<0||plainSeed<0);s++){ const c=comboOf(s);
+      if(c.includes(gIdx)){ if(grassSeed<0) grassSeed=s; } else if(plainSeed<0) plainSeed=s; }
+    ok(grassSeed>0&&plainSeed>0,"E2f1 grass 포함 시드("+grassSeed+")와 미포함 시드("+plainSeed+")를 모두 확정했다");
+    // (a) 보호막이 전부 흡수 → 실HP 피해 0 → grass 가 뽑혔어도 회복 0
+    openBattle(T,P.me,P.em); P.me.hp=50; T.S.battle.fd.shield=999;
+    T.setSeed(grassSeed); T.execSlot("A",0); T.TQ.length=0;
+    const B1=T.S.battle;
+    ok(B1&&B1.fd.hp===B1.fd.maxHp,"E2f2 전제: 피해가 보호막에 전부 흡수돼 실HP 피해 0");
+    ok(B1&&B1.fa.hp===50,"E2f **grass 조합이 확정된 시드**에서도 실HP 피해 0 이면 회복 0 (보호막 흡수 제외)");
+    // (b) 보호막 없음 → grass 가 뽑히면 실HP 피해만큼 정확히 회복
+    openBattle(T,P.me,P.em); P.me.hp=40; T.S.battle.fd.shield=0;
+    const ehp0=T.S.battle.fd.hp;
+    T.setSeed(grassSeed); T.execSlot("A",0); T.TQ.length=0;
+    const B2=T.S.battle, dealt=ehp0-(B2?B2.fd.hp:ehp0);
+    ok(B2&&dealt>0,"E2f3 전제: 실HP 피해 "+dealt+" 발생");
+    ok(B2&&B2.fa.hp===40+dealt,"E2f4 풀 회복 = 실HP 피해 100% 정확히 ("+40+"+"+dealt+" = "+(B2?B2.fa.hp:"?")+")");
+    // (c) 오버킬 제외 — 상대 HP 보다 큰 피해여도 회복은 실제로 깎인 만큼만
+    openBattle(T,P.me,P.em); P.me.hp=30; T.S.battle.fd.shield=0; T.S.battle.fd.hp=3;
+    T.setSeed(grassSeed); T.execSlot("A",0); T.TQ.length=0;
+    const B3=T.S.battle;
+    ok((B3?B3.fa.hp:(P.me.hp))<=30+3,"E2f5 오버킬 제외 — 회복은 실제 HP 감소분(최대 3)까지 (관측 "+(B3?B3.fa.hp:P.me.hp)+")");
+    // (d) grass 미포함 시드에서는 회복이 없다 (음성 대조 — 검사가 조합을 실제로 보는지)
+    openBattle(T,P.me,P.em); P.me.hp=45; T.S.battle.fd.shield=0;
+    T.setSeed(plainSeed); T.execSlot("A",0); T.TQ.length=0;
+    const B4=T.S.battle;
+    ok(B4&&B4.fa.hp===45,"E2f6 [음성] grass 미포함 조합에서는 회복이 0 — 회복 검사가 조합에 실제로 반응한다");
+    fixed(T);
   }
   /* 재부여는 **누적이 아니라 지속 기간 갱신**이다 (마녀 전용 예외). 일반 효과기의 "이미 걸려 있으면 부여하지 않음"은 그대로다.
      시드마다 전투를 다시 열어 앞 시드의 라운드 진행·전투 종료가 섞이지 않게 한다. */
@@ -505,13 +557,29 @@ function swapSkill(X,target,skillIdx,slot){
     ok(T.reaperWhy("A")!==null,"E3c HP 비율 우세면 사용 불가");
     B.fa.hp=30; B.fd.hp=100;
     ok(T.reaperWhy("A")===null&&T.slotUsable(B.fa,3,"A")===true,"E3d 6라운드 + 내 비율 열세에서만 사용 가능");
-    // 쿨 감소 수단으로 봉인이 풀리지 않는다
-    B.round=5; B.fa.hp=30;
-    B.fa.cds=[0,0,0,0]; T.__useItemCore; // 쿨링수는 cds 를 0 으로 만든다 — 이미 0 이어도 게이트는 그대로
-    ok(T.SKILLS.reaper_scythe.cd===0&&T.reaperWhy("A")!==null&&T.slotUsable(B.fa,3,"A")===false,"E3e 쿨(cds)이 0 이어도 5라운드에서는 여전히 봉인 — 게이트가 CD 와 분리 (쿨링수·냉각으로 조기 해제 불가)");
-    // 즉사: 보호막 무시 · VIP 면역 예외 없음
-    B.round=6; B.fa.hp=30; B.fd.hp=80; B.fd.shield=500;
+    /* 쿨 감소 수단으로 봉인이 풀리지 않는다 — **실제로 쿨링수를 쓴다** (종전 검사는 함수를 참조만 하고 호출하지 않았다).
+       쿨링수는 4슬롯 cds 를 전부 0 으로 만든다. 그래도 5라운드에서는 봉인이 그대로여야 한다. */
+    B.round=5; B.fa.hp=30; B.fd.hp=100; B.fa.cds=[2,2,2,2]; B.itemRoundA=false;
+    T.S.inv[0]=["cool"];
+    if(T.actorOfPhase()!=="A") B.phase=B.phase===0?1:0;
+    T.byId("obBtns").children.length=0; T.battleModal();        // 클로저를 현재 side 로 맞춘다
+    ok(T.actorOfPhase()==="A","E3e0 전제: 공격측 차례 · 쿨 2 · 가방에 쿨링수");
+    T.__useItemCore(0);                                         // 실제 사용
+    ok(J(B.fa.cds)===J([0,0,0,0]),"E3e1 쿨링수가 실제로 적용돼 4슬롯 쿨이 0 이 됐다 (관측 "+J(B.fa.cds)+")");
+    ok(T.SKILLS.reaper_scythe.cd===0&&T.reaperWhy("A")!==null&&T.slotUsable(B.fa,3,"A")===false,"E3e 쿨링수로 쿨을 0 으로 만든 뒤에도 5라운드에서는 **여전히 봉인** — 게이트가 CD 와 분리 (조기 해제 불가)");
+    /* 코어 거부까지: 실제 적용 경로로 불러도 즉사가 나가지 않는다 */
+    const aliveE=P.em.alive, hpE=B.fd.hp;
+    T.execSlot("A",3); T.drain(20000);
+    const blogE=B.blog.join("|");
+    ok(P.em.alive===aliveE&&!/즉사/.test(blogE),"E3e2 봉인 중 실제 호출도 즉사하지 않는다 (기본 공격 폴백)");
+    ok(!/사신의 낫/.test(blogE),"E3e2' 봉인 거부가 공용 로그에 기술 이름을 남기지 않는다");
+    /* 즉사: 보호막 무시 · VIP 면역 예외 없음 — E3e 에서 전투를 다시 열었으므로 **현재 전투 객체를 다시 잡는다** */
+    openBattle(T,P.me,P.em);
+    const B6=T.S.battle;
+    B6.round=6; B6.fa.hp=30; B6.fd.hp=80; B6.fd.shield=500; B6.fa.cds=[0,0,0,0];
     const over0=T.S.phase;
+    ok(actAsA(T),"E3f0 전제: 공격측 행동 차례 (라운드 6 · phase "+B6.phase+")");
+    ok(T.reaperWhy("A")===null&&T.slotUsable(B6.fa,3,"A")===true,"E3f0' 전제: 합법 (봉인 해제 · 쿨 0)");
     T.execSlot("A",3); T.drain(5000);
     ok(P.em.alive===false,"E3f 보호막 500 을 무시하고 상대 즉사 (대상 제거)");
     ok(over0==="play","E3g 전제: 실행 전 플레이 상태");
@@ -520,6 +588,7 @@ function swapSkill(X,target,skillIdx,slot){
   {
     const P=setup(T); fixed(T); giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills=["fire_stable","fire_effect","sup_heal","reaper_scythe"]; giveSpecies(T,P.em,R(T,"M-G1"));
     openBattle(T,P.me,P.em); const B=T.S.battle; B.round=2; B.fa.cds=[1,1,1,0]; B.fa.hp=100; B.fd.hp=100;
+    ok(actAsA(T),"E3h0 전제: 공격측 행동 차례");
     T.battleModal();
     ok(/기본 공격/.test(ob(T)),"E3h 3슬롯 쿨 + 사신 봉인 → 기본 공격 폴백 버튼 노출");
     ok(!T.slotUsable(B.fa,3,"A"),"E3i 사신 슬롯은 쿨 0 이어도 합법이 아니다");
@@ -775,18 +844,44 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     ok(resolved>0,"I1c AI("+lv+") 가 실제로 기술 교체 또는 포획을 수행한다 ("+resolved+"/40)");
     X.TQ.length=0;
   }
-  // I2 AI 전투 중 패키지: 무한 무료 행동 루프가 없다
+  /* I2 AI 전투 중 패키지 — 무한 무료 행동 루프가 없고, AI 차례마다 실제로 진행된다.
+     **양측이 AI 인 sim** 으로 돌린다: PVE 는 방어측이 사람이라 그 차례에 aiBattleAction() 이 (규칙대로) 아무것도 하지 않으며,
+     그것을 "정지"로 읽으면 검사가 거짓 실패한다. 사람 차례 무동작은 I2d 에서 따로 단언한다. */
   {
-    const X=load();
-    const P=setup(X,"pve"); giveSpecies(X,P.me,R(X,"M-F1")); giveSpecies(X,P.em,R(X,"M-W1"));
-    X.S.pkgs[1]={itemGift:3,battleBuff:3};
+    const X=load(); fixed(X);
+    const P=setup(X,"sim"); giveSpecies(X,P.me,R(X,"M-F1")); giveSpecies(X,P.em,R(X,"M-W1"));
+    X.S.pkgs[0]={itemGift:3,battleBuff:3}; X.S.pkgs[1]={itemGift:3,battleBuff:3};
     X.S.current=1; openBattle(X,P.em,P.me);
-    let steps=0; const cap=400;
-    while(X.S.battle&&steps<cap){ const before=J([X.S.pkgs[1],X.S.battle.round,X.S.battle.phase,X.S.battle.fa.hp,X.S.battle.fd.hp]);
+    /* 종전 검사는 "상태가 안 바뀌면 break" 하고 steps<cap 만 보아 **AI 가 정지해도 PASS** 했다.
+       이제 정지(진행 없음)를 명시적으로 stalled 로 기록하고, 전투가 실제로 **종결**됐거나 최소한 라운드가 진행됐는지 단언한다. */
+    let steps=0, stalled=-1; const cap=400;
+    const snap=()=>J([X.S.pkgs,X.S.battle&&X.S.battle.round,X.S.battle&&X.S.battle.phase,
+      X.S.battle&&X.S.battle.fa.hp,X.S.battle&&X.S.battle.fd.hp,X.S.inv.map(v=>v.length),
+      X.S.battle&&X.S.battle.buffA,X.S.battle&&X.S.battle.buffD,X.S.battle&&X.S.battle.itemRoundA,X.S.battle&&X.S.battle.itemRoundD]);
+    const round0=X.S.battle.round;
+    while(X.S.battle&&steps<cap){
+      const before=snap();
       X.aiBattleAction(); X.drain(20000); steps++;
-      if(J([X.S.pkgs[1]&&X.S.pkgs[1],X.S.battle&&X.S.battle.round,X.S.battle&&X.S.battle.phase,X.S.battle&&X.S.battle.fa.hp,X.S.battle&&X.S.battle.fd.hp])===before&&X.S.battle) break; }
-    ok(steps<cap,"I2 AI 전투 중 패키지 사용이 무한 무료 행동 루프를 만들지 않는다 ("+steps+"스텝)");
-    ok(X.S.pkgs[1].battleBuff<3||X.S.pkgs[1].itemGift<3,"I2b AI 가 실제로 패키지를 쓴다 (재고 감소)");
+      if(X.S.battle&&snap()===before){ stalled=steps; break; }   // AI 차례인데 아무것도 진행되지 않았다 = 정지
+    }
+    ok(stalled<0,"I2 AI 전투 행동이 **정지하지 않는다** — 양측 AI(sim)에서 매 호출이 상태를 진행시킨다 ("+steps+"스텝"+(stalled>0?" · "+stalled+"번째에서 정지":"")+")");
+    ok(steps<cap,"I2a 무한 무료 행동 루프가 없다 (스텝 예산 "+cap+" 안 · 실제 "+steps+")");
+    const ended=X.S.battle===null, advanced=!!X.S.battle&&X.S.battle.round>round0;
+    ok(ended||advanced,"I2b 전투가 **실제로 종결**되거나 라운드가 진행됐다 (종결="+ended+" · 라운드 "+round0+"→"+(X.S.battle?X.S.battle.round:"-")+")");
+    const used=(3-X.S.pkgs[0].battleBuff)+(3-X.S.pkgs[1].battleBuff)+(3-X.S.pkgs[0].itemGift)+(3-X.S.pkgs[1].itemGift);
+    ok(used>0,"I2c AI 가 실제로 패키지를 쓴다 (소모 합계 "+used+"개)");
+    /* I2d PVE: 사람 차례에는 AI 가 움직이지 않는다 (위 정지 판정이 이 규칙을 오해하지 않게 명시적으로 고정) */
+    {
+      const Y=load(); fixed(Y);
+      const Q=setup(Y,"pve"); giveSpecies(Y,Q.me,R(Y,"M-F1")); giveSpecies(Y,Q.em,R(Y,"M-W1"));
+      Y.S.current=0; openBattle(Y,Q.me,Q.em);                  // 공격자 = 사람(0)
+      ok(Y.actorOfPhase()==="A"&&Y.S.battle.attP.owner===0,"I2d 전제: PVE 에서 사람(0) 차례");
+      const before=J([Y.S.battle.round,Y.S.battle.phase,Y.S.battle.fa.hp,Y.S.battle.fd.hp]);
+      Y.aiBattleAction(); Y.drain(20000);
+      ok(Y.S.battle&&J([Y.S.battle.round,Y.S.battle.phase,Y.S.battle.fa.hp,Y.S.battle.fd.hp])===before,
+         "I2d 사람 차례에 AI 전투 행동은 아무것도 하지 않는다 (규칙 — 정지가 아니다)");
+      Y.TQ.length=0;
+    }
     X.TQ.length=0;
   }
   // I3 AI vs AI 완주 — recruit 만 있는 판 포함
@@ -812,6 +907,166 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     const r=H.runSim(X,["grade5","dan5"],9911,{check:100,cap:3000000});
     ok(r.phase==="over"&&r.viol.length===0,"I4 기본 배치(3종 혼합) AI vs AI 완주·불변식 0 (턴 "+r.turns+"·스텝 "+r.steps+")");
     X.TQ.length=0;
+  }
+}
+
+/* ===== J. Saturn 독립 QA REVISE 4건 — 승인 AC 누락 수정의 회귀 (msg_0e91b5b70bcf) ===== */
+{
+  /* J1 (P1) 사신의 낫: 봉인 해제만으로는 안 되고 **실제 쿨**과 **자기 차례**까지 만족해야 한다.
+     Saturn 재현: cds=[2,2,2,2] 인데 즉사했고, 상대 차례에 호출해도 즉사했다. */
+  const X=load(); fixed(X); X.tutSkip();
+  const Q=setup(X); giveSpecies(X,Q.me,R(X,"M-F1")); Q.me.skills[3]="reaper_scythe"; giveSpecies(X,Q.em,R(X,"M-G1"));
+  openBattle(X,Q.me,Q.em); const B=X.S.battle;
+  B.round=6; B.fa.hp=10; B.fd.hp=100; B.fd.shield=999; B.fa.cds=[2,2,2,2];
+  ok(actAsA(X),"J1 전제: 라운드 6 · 공격측 차례 · HP 비율 열세 (봉인 조건은 충족)");
+  ok(X.reaperWhy("A")===null,"J1a 봉인 게이트 자체는 열려 있다 (라운드·HP 비율 충족)");
+  ok(X.slotUsable(B.fa,3,"A")===false,"J1b 그러나 쿨 2 라서 지금 쓸 수 있는 슬롯이 아니다");
+  const alive0=Q.em.alive;
+  X.netAction({t:"act",k:3}); X.drain(20000);
+  const blog=B.blog.join("|");
+  ok(Q.em.alive===alive0,"J1c **쿨 중에는 즉사하지 않는다** (실제 적용 경로 CD 가드 — Saturn P1)");
+  ok(!/즉사/.test(blog),"J1c' 전투 로그에 즉사가 없다");
+  ok(!/사신의 낫/.test(blog),"J1d 거부 사유가 **공용 전투 로그에 기술 이름을 남기지 않는다** (Saturn 추가 P1 — 쓰지 않은 미공개 기술 비노출)");
+  ok(/기본 공격/.test(blog),"J1d' 폴백 기본 공격이 실제로 나갔다 (전투가 멈추지 않는다)");
+  ok(!B.fa.revealedSkills.includes(3),"J1d'' 쓰지 않은 사신 슬롯은 공개 기록에도 들어가지 않는다");
+  /* 라운드 6 은 마지막 라운드라 양측 행동 뒤 판정으로 끝난다 — 멈추지 않고 적법하게 종결됐음을 본다 */
+  ok(X.S.phase==="play"||X.S.phase==="over","J1d'' 전투가 적법하게 진행·종결됐다 (프리즈 없음 · phase "+X.S.phase+")");
+  // 상대 차례에 호출 → 아무것도 일어나지 않는다
+  {
+    const Y=load(); fixed(Y); Y.tutSkip();
+    const Q2=setup(Y); giveSpecies(Y,Q2.me,R(Y,"M-F1")); Q2.me.skills[3]="reaper_scythe"; giveSpecies(Y,Q2.em,R(Y,"M-G1"));
+    openBattle(Y,Q2.me,Q2.em); const B2=Y.S.battle;
+    B2.round=6; B2.fa.hp=10; B2.fd.hp=100; B2.fd.shield=999; B2.fa.cds=[0,0,0,0];
+    actAsA(Y); Y.battleModal();                       // A 차례로 모달을 그려 __actCore 클로저를 A 로 만든다
+    B2.phase=B2.phase===0?1:0;                        // 그 뒤 차례가 상대에게 넘어간 상황
+    ok(Y.actorOfPhase()==="D","J1e 전제: 지금은 방어측 차례 (A 의 옛 모달 클로저가 남아 있다)");
+    const snap=J([B2.fd.hp,B2.fd.shield,Q2.em.alive,B2.round,B2.phase]);
+    Y.__actCore(3); Y.drain(20000);
+    ok(J([B2.fd.hp,B2.fd.shield,Q2.em.alive,B2.round,B2.phase])===snap,"J1f **상대 차례에 옛 클로저로 호출해도 아무 일도 없다** (actor 가드 — Saturn P1)");
+    ok(Y.S.battle===B2,"J1g 전투도 그대로 (다른 전투로 새지 않는다)");
+    Y.TQ.length=0;
+  }
+  // 합법 조건(R6·쿨 0·자기 차례)에서는 그대로 즉사한다 — 가드가 기능을 죽이지 않았다
+  {
+    const Z=load(); fixed(Z); Z.tutSkip();
+    const Q3=setup(Z); giveSpecies(Z,Q3.me,R(Z,"M-F1")); Q3.me.skills[3]="reaper_scythe"; giveSpecies(Z,Q3.em,R(Z,"M-G1"));
+    openBattle(Z,Q3.me,Q3.em); const B3=Z.S.battle;
+    B3.round=6; B3.fa.hp=10; B3.fd.hp=100; B3.fd.shield=999; B3.fa.cds=[0,0,0,0];
+    actAsA(Z); Z.battleModal();
+    ok(Z.slotUsable(B3.fa,3,"A")===true,"J1h 전제: 합법 (라운드 6 · 쿨 0 · 자기 차례 · HP 열세)");
+    Z.__actCore(3); Z.drain(20000);
+    ok(Q3.em.alive===false,"J1i 합법 조건에서는 보호막을 무시하고 즉사한다 — 가드가 기능을 죽이지 않았다");
+    Z.TQ.length=0;
+  }
+  // 쿨 감소 수단으로 봉인이 풀리지 않는다 (계약 5.3) — CD 가드 추가와 양립한다
+  {
+    const W=load(); fixed(W); W.tutSkip();
+    const Q4=setup(W); giveSpecies(W,Q4.me,R(W,"M-F1")); Q4.me.skills[3]="reaper_scythe"; giveSpecies(W,Q4.em,R(W,"M-G1"));
+    openBattle(W,Q4.me,Q4.em); const B4=W.S.battle;
+    B4.round=3; B4.fa.hp=10; B4.fd.hp=100; B4.fa.cds=[0,0,0,0]; actAsA(W);
+    ok(W.reaperWhy("A")!==null&&W.slotUsable(B4.fa,3,"A")===false,"J1j 쿨이 0 이어도 3라운드에서는 봉인 — 쿨링수·냉각으로 조기 해제되지 않는다 (계약 5.3 보존)");
+    W.TQ.length=0;
+  }
+  X.TQ.length=0;
+
+  /* J2 (P1 비공개) 상대 자원 노출: 온라인 비소유자 화면과 **PVE 의 AI 차례** 화면 모두에서
+     재고·볼 수·패키지 수가 보이지 않아야 한다. 종전 마스킹은 NET.mode 전용이라 PVE 가 뚫려 있었다. */
+  {
+    // (a) 온라인 비소유자
+    const A=load(); fixed(A); A.tutSkip();
+    const Qa=setup(A); giveSpecies(A,Qa.me,R(A,"M-F1")); giveSpecies(A,Qa.em,R(A,"M-W1"));
+    A.S.balls[0]=47; A.S.pkgs[0]={itemGift:7,battleBuff:8}; A.S.inv[0]=["potion","cool","cure"];
+    openBattle(A,Qa.me,Qa.em); actAsA(A);
+    A.NET.mode=true; A.NET.me=1; A.NET.started=true;     // 나는 2P — 지금 행동자는 1P
+    A.S.battle.menu="ball"; A.battleModal();
+    const hb=ob(A);
+    ok(!/47/.test(hb),"J2a 온라인 비소유자 화면에 상대 볼 보유 수(47)가 없다 (Saturn P1)");
+    ok(!/🎁 아이템 선물 7/.test(hb)&&!/✨ 전투 버프 8/.test(hb),"J2b 비소유자 화면에 상대 패키지 재고(7·8)가 없다");
+    ok(/상대 아이템 비공개/.test(hb)&&/상대 패키지 비공개/.test(hb),"J2c 대신 비공개 안내만 보인다");
+    ok(!/회복약|쿨링수|해독제/.test(hb.replace(/title="[^"]*"/g,"")),"J2d 상대 아이템 종류도 보이지 않는다");
+    A.NET.mode=false; A.NET.me=null; A.NET.started=false; A.TQ.length=0;
+    // (b) PVE 의 AI 차례 — 사람 뷰어(0)는 AI(1) 의 자원을 볼 수 없다
+    const Bv=load(); fixed(Bv); Bv.tutSkip();
+    const Qb=setup(Bv,"pve"); giveSpecies(Bv,Qb.me,R(Bv,"M-F1")); giveSpecies(Bv,Qb.em,R(Bv,"M-W1"));
+    Bv.S.balls[1]=47; Bv.S.pkgs[1]={itemGift:7,battleBuff:8}; Bv.S.inv[1]=["potion","cool","cure"];
+    Bv.S.battle=null; Bv.S.battlesUsed=0; Bv.S.current=1;
+    Bv.startRounds(Qb.em,Qb.me,Qb.em,Qb.me); Bv.TQ.length=0;   // 공격자 = AI
+    Bv.S.battle.menu="ball"; Bv.battleModal();
+    const pb=ob(Bv);
+    ok(Bv.actorOfPhase()==="A"&&Bv.S.battle.attP.owner===1,"J2e 전제: PVE 에서 AI(1) 가 행동자");
+    ok(!/47/.test(pb),"J2f PVE 에서도 AI 의 볼 보유 수가 사람 화면에 보이지 않는다 (Saturn P1 — 종전 NET.mode 전용 마스킹의 구멍)");
+    ok(!/🎁 아이템 선물 7/.test(pb)&&!/✨ 전투 버프 8/.test(pb),"J2g PVE 에서도 AI 패키지 재고가 보이지 않는다");
+    ok(/상대 아이템 비공개/.test(pb)&&/상대 패키지 비공개/.test(pb),"J2h PVE AI 차례에도 비공개 안내");
+    // (c) 내 차례에는 내 재고가 그대로 보인다 (마스킹이 과하지 않다)
+    Bv.S.battle=null; Bv.S.current=0; Bv.S.battlesUsed=0;
+    Bv.S.balls[0]=5; Bv.S.pkgs[0]={itemGift:2,battleBuff:3}; Bv.S.inv[0]=["potion"];
+    Bv.startRounds(Qb.me,Qb.em,Qb.me,Qb.em); Bv.TQ.length=0; actAsA(Bv);
+    Bv.S.battle.menu="ball"; Bv.battleModal();
+    const mb=ob(Bv);
+    ok(/볼 5개/.test(mb)&&/🎁 아이템 선물 2/.test(mb)&&/✨ 전투 버프 3/.test(mb),"J2i 내 차례에는 내 볼·패키지 재고가 그대로 보인다 (과도 마스킹 아님)");
+    Bv.TQ.length=0;
+  }
+
+  /* J3 (P2) 기권·경기 종료 경로에서도 전투 회계·버프가 정리되고 **미사용 패키지는 보존**된다 */
+  for(const [label,end] of [
+    ["기권",(X2)=>{ X2.netAction({t:"resign"}); }],
+    ["왕 제거(경기 종료)",(X2)=>{ X2.gameOver(0,"king"); }],
+  ]){
+    const X2=load(); fixed(X2); X2.tutSkip();
+    const Q5=setup(X2); giveSpecies(X2,Q5.me,R(X2,"M-F1")); giveSpecies(X2,Q5.em,R(X2,"M-G1"));
+    X2.S.pkgs[0]={itemGift:2,battleBuff:2};
+    openBattle(X2,Q5.me,Q5.em); const B5=X2.S.battle; actAsA(X2); freshModal(X2);
+    X2.__openPkgCore("battleBuff"); click(X2,X2.BUFFS.power.ko);
+    ok(B5.buffA==="power"&&Q5.me.powerBuff===true,"J3-"+label+" 전제: 버프 적용 · 패키지 1개 남음");
+    Q5.me.fleeFree=true; // 두 플래그 모두 남아 있는 상태를 만든다
+    X2.S.current=0;
+    end(X2); X2.drain(20000);
+    ok(X2.S.phase==="over","J3-"+label+": 경기가 종료됐다");
+    ok(X2.S.battle===null,"J3-"+label+": **전투 객체가 남지 않는다** (Saturn P2)");
+    ok(Q5.me.powerBuff===false&&Q5.me.fleeFree===false,"J3-"+label+": 전투원 버프 플래그가 정리됐다");
+    ok(Q5.em.powerBuff===false&&Q5.em.fleeFree===false,"J3-"+label+": 상대 전투원도 정리됐다");
+    ok(X2.S.pkgs[0].battleBuff===1&&X2.S.pkgs[0].itemGift===2,"J3-"+label+": **미사용 패키지 재고는 보존**된다 (새 게임에서만 초기화)");
+    ok(X2.S.recruit===null,"J3-"+label+": 탐색 선택 대기 상태도 남지 않는다");
+    X2.TQ.length=0;
+  }
+  /* J4 (Saturn 추가 P1) 정상 기본 공격이 미공개 사신을 노출하지 않는다.
+     재현: 슬롯0 = 사신(쿨 0이지만 봉인) · 나머지 3슬롯 쿨 → 네 슬롯 모두 불가라 **기본 공격 버튼이 정상 표시**된다.
+     그 버튼으로 basic 을 눌렀을 때 (a) 사신 슬롯으로 매핑되지 않고 (b) 공용 로그·공개 기록에 사신 이름이 남지 않아야 한다. */
+  {
+    const X4=load(); fixed(X4); X4.tutSkip();
+    const Q6=setup(X4); giveSpecies(X4,Q6.me,R(X4,"M-F1")); giveSpecies(X4,Q6.em,R(X4,"M-G1"));
+    openBattle(X4,Q6.me,Q6.em); const B6=X4.S.battle;
+    B6.fa.skills=["reaper_scythe","dragon_breath","witch_prank","sup_heal"];
+    B6.fa.cds=[0,2,2,2]; B6.fa.revealedSkills=[];
+    B6.round=1; B6.phase=0; B6.fa.hp=100; B6.fd.hp=100;
+    ok(actAsA(X4),"J4 전제: 라운드 1 · 공격측 차례");
+    ok([0,1,2,3].every(i=>X4.slotUsable(B6.fa,i,"A")===false),"J4a 전제: 네 슬롯 모두 지금 쓸 수 없다 (슬롯0 사신은 쿨 0이지만 봉인)");
+    X4.byId("obBtns").children.length=0; X4.battleModal();
+    ok(/기본 공격/.test(ob(X4)),"J4b 기본 공격 버튼이 정상 표시된다 (계약 5.3 폴백)");
+    const hp0=B6.fd.hp, logLen=X4.S.log.length;
+    X4.netAction({t:"act",k:"basic"}); X4.drain(20000);
+    const blog4=B6.blog.join("|");
+    ok(!/사신의 낫/.test(blog4),"J4c **공용 전투 로그에 사신의 낫이 나오지 않는다** (Saturn 추가 P1 — 쓰지 않은 미공개 기술)");
+    ok(!X4.S.log.slice(logLen).some(l=>/사신/.test(l.msg)),"J4c' 보드 로그에도 없다");
+    ok(!B6.fa.revealedSkills.includes(0),"J4d 사신 슬롯이 공개 기록에 들어가지 않는다 (사용하지 않았다)");
+    ok(B6.fd.hp<hp0||X4.S.battle===null,"J4e 기본 공격의 피해·진행은 정상이다 (HP "+hp0+" → "+(X4.S.battle?B6.fd.hp:"전투 종료")+")");
+    ok(Q6.em.alive===true||X4.S.battle===null,"J4f 즉사가 새지 않았다");
+    /* 음성 대조: 슬롯0 이 합법 기술이면 basic 이 그 슬롯으로 매핑되는 기존 동작은 그대로 (레거시 호환) */
+    const X5=load(); fixed(X5); X5.tutSkip();
+    const Q7=setup(X5); giveSpecies(X5,Q7.me,R(X5,"M-F1")); giveSpecies(X5,Q7.em,R(X5,"M-G1"));
+    openBattle(X5,Q7.me,Q7.em); const B7=X5.S.battle; B7.fa.cds=[0,2,2,2]; B7.fa.revealedSkills=[];
+    actAsA(X5); X5.netAction({t:"act",k:"basic"}); X5.drain(20000);
+    ok(B7.fa.revealedSkills.includes(0),"J4g [대조] 슬롯0 이 합법 기술이면 basic 은 종전처럼 그 슬롯을 쓴다 (레거시 매핑 보존)");
+    X4.TQ.length=0; X5.TQ.length=0;
+  }
+
+  // 새 게임에서만 패키지가 초기화된다
+  {
+    const X3=load(); X3.newGame("pvp"); X3.S.pkgs[0]={itemGift:9,battleBuff:9};
+    X3.gameOver(0,"resign");
+    ok(X3.S.pkgs[0].itemGift===9,"J3' 경기 종료는 패키지를 지우지 않는다");
+    X3.newGame("pvp");
+    ok(X3.S.pkgs[0].itemGift===0,"J3'' 새 게임에서만 패키지가 초기화된다");
   }
 }
 
