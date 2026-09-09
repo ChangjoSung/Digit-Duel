@@ -22,16 +22,19 @@ separate release pull request.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every pull request to `main` or `dev`, on
-every push to those branches, and on manual dispatch. It needs no secrets and
-requests only `contents: read`. Five jobs run in parallel:
+`.github/workflows/ci.yml` defines checks for pull requests to `main` or `dev`
+and pushes to those branches. This rollout integrates the workflow into `dev`;
+the next release PR carries it to `main`. Manual dispatch is also configured,
+but GitHub enables it only after the workflow reaches the default branch,
+`main` ([GitHub documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)).
+It needs no secrets and requests only `contents: read`. Five jobs run in parallel:
 
 | Job id | Name | What it checks |
 | --- | --- | --- |
 | `rules-headless` | A. 규칙 회귀·AI 완주 (헤드리스) | Headless rule regressions over `demo/index.html`, the v0.4.5 balance and tutorial contracts, the fixed-baseline comparison, the board orientation audit, and the AI vs AI completion gate |
 | `server` | B. 서버 (프로토콜·보안·설정) | `npm ci` then `npm test` in `server/` — relay protocol, security, configuration, launcher |
 | `server-launcher-windows` | B2. Windows 실행기 회귀 | `server/test-launcher.js` on a Windows runner, where it is not skipped |
-| `docs-integrity` | C. 문서 링크·이미지 무결성 | The link checker's own regression suite, then every internal link and image in tracked `*.md`, then the README media tool's self-check and offline verification |
+| `docs-integrity` | C. 문서 링크·이미지 무결성 | The link checker's regression suite, supported relative Markdown/HTML links and images in tracked `*.md`, and the README media tool's self-check and offline verification |
 | `assets-integrity` | D. 납품 아트 자산 무결성 | Delivered minion PNGs and manifests match, without regenerating them, plus the art pipeline tool's own tests. Runs on a Windows runner — see below |
 
 Jobs A, B, and C run on `ubuntu-24.04`. B2 and D run on Windows, for different
@@ -61,6 +64,11 @@ python tools/minion_art.py --all --check --no-preview   # delivered art, no rege
 python -m unittest discover -s tests -v   # art pipeline tool
 ```
 
+The document checker does not validate external URLs, heading anchors, or all
+CommonMark syntax. README media verification uses the v0.4.5 manifest; its
+existing checksum mismatch policy is a warning, not a failing check. Delivered
+minion art in job D uses strict byte and manifest comparison.
+
 Two things to keep in mind when you change what CI covers.
 
 - **Approved rule changes update the assertions in the same pull request.**
@@ -73,9 +81,10 @@ Two things to keep in mind when you change what CI covers.
   [`docs/milestone/MOVES.csv`](docs/milestone/MOVES.csv) and update the
   clickable links; historical plain-text paths in past reports stay as written.
 
-Branch protection on `main` and `dev` — required pull requests, no force push
-or deletion, required conversation resolution, and the checks above as required
-status checks — is **planned but not yet applied**. It will be configured once
-these jobs have gone green on a real pull request, and the applied result will
-be recorded on [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132).
-Until then, treat the workflow result as the gate.
+Branch protection is enabled on `main` and `dev`: pull requests are required,
+force pushes and deletion are disabled, conversations must be resolved, and
+all five checks above must pass on an up-to-date branch. Checks are bound to
+the GitHub Actions app (ID 15368), and administrators are subject to the same
+rules. GitHub's required approval count is zero; the independent Saturn review
+and CJ approval contract remain in effect. See [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132)
+for the actual PR run and protection verification.

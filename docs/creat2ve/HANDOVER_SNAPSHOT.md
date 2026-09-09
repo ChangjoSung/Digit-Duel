@@ -1,12 +1,14 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-09 · Mercury(PD, GPT-6 Astra/high). 최신 CJ 지시는 선행 Infra #132 문서 정리·HTML PR Actions 연동이다. 현재 게임 출시는 v0.4.5이며 v0.4.6 게임 Issue는 번호별 착수 지시를 기다린다. 실제 HEAD·PR·검사 상태는 Git/GitHub가 원본이다.
+> 2026-09-09 · Mercury(PD, GPT-6 Astra/high). 선행 Infra #132 문서 정리·HTML PR Actions 구현과 검증을 완료했다. 통합 대상은 [PR #133](https://github.com/ChangjoSung/Digit-Duel/pull/133)의 dev 변경이며, 실제 병합 SHA·최종 검사 상태는 해당 PR과 Git/GitHub가 원본이다. 현재 게임 출시는 v0.4.5, v0.4.6 게임 Issue는 CJ의 번호별 착수 지시를 기다린다.
 
 ## 현재 승인 범위와 상태
 
 - [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132): 기존 문서 자료 342개 중 306개를 버전·Issue·역할/용도별로 이동했다(Markdown 73개, 기타 233개). 36개는 상시 안내·운영 계약·공용 미디어로 유지한다. 고유 측정·REVISE·출처 증거를 보존하기 위해 순수 삭제·통합은 0건으로 판단했다. [전체 경로표](../milestone/MOVES.csv)가 원본 342개를 모두 대응한다.
-- 이동 직후 306/306의 작업 트리 SHA256이 동일했다. 기존 57파일의 명시적 줄바꿈/whitespace 규칙도 새 경로로 옮겼다. 문서 링크·인덱스와 도구 경로·CI 구현, 최종 독립 검수와 실제 PR 실행을 진행 중이다. 검증 전 PASS로 간주하지 않는다.
-- 브랜치 `infra/132-docs-actions`, 분기 기준 `origin/dev 39f022293008d352e4709762af07e42d63fb557e`. PD가 Git·문서 메타데이터, Venus(Claude)가 Markdown, Mars(Claude)가 Actions·도구·테스트를 담당한다. 제품 파일·서버 런타임·승인 아트의 내용을 바꾸지 않는다.
+- 이동 직후 306/306의 작업 트리 SHA256이 동일했다. 기존 57파일의 명시적 줄바꿈/whitespace 규칙도 새 경로로 옮겼다. Saturn 독립 READ_ONLY 검수에서 비 Markdown 250개(이동233+유지17)의 원본 blob, 이동 Markdown73개의 링크 외 본문, 제품·서버·승인 아트 보존을 확인했다. 문서 검사106개·내부 참조332건 문제0, 링크 검사기 회귀34건과 AI 완주13경기·59단언을 검증했다.
+- 개발 브랜치 `infra/132-docs-actions`, 분기 기준 `origin/dev 39f022293008d352e4709762af07e42d63fb557e`. PD는 Git·문서 메타데이터, Venus(Claude)는 Markdown, Mars(Claude)는 Actions·도구·테스트를 담당했다. 통합 PR은 #133 하나이며 제품·서버 런타임·승인 아트의 내용은 동일하다.
+- 실제 [PR CI 실행](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34310450164)(검수 head `c06ee3909d4ad5cbbefb5fc118e4ad5bf36de900`)에서 규칙·AI, Linux 서버, Windows 실행기, 문서, 납품 아트의 **5개 잡 모두 PASS**. D는 Windows2025/Python3.14.3/Pillow12.3.0에서 write0·unchanged29·mismatch0 및 도구68검사 PASS, C는 현재 v0.4.5 매니페스트로 검증했다. 이후 주석·운영 상태 정정 커밋의 최종 실행은 PR의 검사 목록을 따른다. Saturn은 후속 변경과 실제 CI·보호 설정까지 독립 확인했다.
+- main/dev 보호 설정을 적용·readback했다: PR 필수, GitHub Actions 앱15368의 5개 검사 필수, 최신 base 요구, 관리자도 적용, 대화 해결 필수, force push·삭제 금지, 승인 리뷰 수0. 승인 리뷰 수0은 Saturn/CJ 운영 계약을 없애지 않는다. 워크플로는 dev 통합 후 차기 릴리스 PR로 main에 전달하며 수동 실행은 기본 브랜치 main에 파일이 도달한 뒤 가능하다. 이번 실증은 dev PR CI이며 main PR·수동 실행을 실증했다고 주장하지 않는다.
 - [Milestone12 v0.4.6](https://github.com/ChangjoSung/Digit-Duel/milestone/12): 게임 #119–#131의 분석·등록 13건, 기존 #118, 선행 Infra #132를 관리한다. OPEN/CLOSED 수는 실시간 목록을 따른다. #118은 CJ 계정의 연결을 확인해 보존한 별도 Roblox 작업이다. `feature/118-roblox-port`는 이 PD 작업의 변경·정리 대상이 아니다.
 - [GDD17 분석 원장](https://app.notion.com/p/3d61e7f170858126a889e682610ebad7): 기술 23개(정상 도달 22), 20종 80슬롯, 6개 탐색 이벤트의 말별 결과와 근거·미정 정책을 기록했다. #123 공용 아트는 #119 기획 후, #124 동료·왕 아트는 독립 목표다. #131에는 함정 하수인의 텔레포트 선택 차단과 지정 문구가 등록돼 있다. **이 후보들을 현재 규칙으로 적용하거나 게임 구현·아트 제작·외부망 개방·재릴리스를 시작하지 않는다.**
 
@@ -26,12 +28,14 @@
 - [Issue106 절차 위반](../milestone/v0.4.4/issues/106/Mercury/issue106-pd-incident.md): 과거 Worker의 테스트 Git 복원·프로필 접두사 기반 Chrome 종료. 파일은 HEAD와 같고 Saturn 영향은 관찰되지 않았지만 전체 종료 대상의 소유권은 입증되지 않았다. 같은 방식을 반복하지 않는다.
 - #104의 과거 `README.txt`가 가리키는 로그 3개는 작업 트리에 있으나 `*.log` 무시 규칙으로 저장소에 포함되지 않았다. 이 작업에서 재생성·force add·삭제하지 않는다. **추적 문서의 옛 `docs/qa/` 경로를 비웠다는 말은 미추적 로그 폴더까지 제거했다는 뜻이 아니다.**
 - #132 분석 중 Mars가 `du -sh --exclude=.git .`로 전체 폴더 용량을 집계하며 보호 경로 메타데이터도 조회한 1건을 확인했다. 관찰된 명령은 내용 읽기나 수정이 아닌 용량 집계였으며, PD가 즉시 추적 파일·명시적 허용 경로만 조회하도록 정정하고 CJ에게 보고했다.
+- #132 최초 [CI 실행](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34309177070)은 D에서 PNG14장+매니페스트1건 불일치로 실패했다. 승인 파일·비교 기준을 보존하고 납품 환경으로 맞춘 뒤 성공했다. 압축 구현 차이는 강한 추론이며 Linux 생성 PNG의 픽셀을 직접 비교한 것은 아니다. README 미디어 도구의 SHA 불일치는 기존 WARN 정책이며, 문서 검사기도 외부 URL·제목 앵커·모든 CommonMark 구문을 검증하지 않는다. 상세 관측·정정·한계는 [Mars 보고](../milestone/v0.4.6/issues/132/Mars/report.md)에 보존한다.
 
 ## 역할·자원 소유권
 
 - **Mercury = 조정·Git·문서 메타데이터.** 제품·런타임·빌드·도구·테스트는 소규모라도 Mars/Jupiter로 보낸다. 최신 CJ 지시로 **Venus/Mars/Jupiter는 Claude**, Earth/Saturn/Mercury는 Codex다. 과거 Claude quota 대체 이력 때문에 정상 Claude Worker를 계속 Codex로 배치하지 않는다.
 - Saturn은 **READ_ONLY**, 파일·테스트·보고서·임시 파일을 쓰지 않고 inline으로 보고한다. 파일을 변이하는 원본 `smoke_online.js`나 임시 fixture를 만드는 도구 회귀는 Saturn의 직접 READ_ONLY 실행에서 제외하고 구현자/CI 결과와 독립 검토 범위를 구분한다.
 - 필수 dispatch preflight: `required_role · mode · area · mutation · instance_index`. Worker Git/GitHub/Notion 쓰기 금지. 완료 뒤 결과 archive/release, 같은 좁은 범위의 즉시 후속만 기한부 재사용. Task와 정확한 Dispatch를 연결하고 메시지 전체를 처리한 뒤 acknowledge한다.
+- Worker의 메시지 조회는 자신의 `check --terminal <worker-terminal> --json`을 사용한다. coordinator용 `--run`을 붙여 받은 `consumer_fenced`를 메시지 없음으로 해석하지 않는다. PD가 잘못 전달했던 문법은 이 방식으로 정정했다.
 - 현재 유일한 Mercury terminal `term_d2dcbfa3-a932-4ce2-a844-38526dd4975b`, 현재 Infra Run `run_874bb77b02e3`. v0.4.6 등록 Run `run_a9eb05e6575e`의 완료·한도 중단 이력은 보존한다. 현재 Worker 상태는 Orca task/worker list가 원본이다.
 - **사용자 소유 미추적 `art/`·`orca-hook-latency-report.md`는 읽기·수정·스테이징 금지.** Downloads 원본과 승인 아트100파일을 보존한다. 파일 탐색은 이 두 루트 경로를 포함하지 않는 명시적 범위 또는 Git 추적 목록을 사용한다.
 - 기존 Mercury `term_abae9146-14a1-47e9-8e9a-0a6e3c4c041a`, 사용자 소유 `term_f715b1c1-8dc5-438c-b035-540ab8b4082e`, 과거 Saturn `ctx_7587a359d6a6` user_owned, `ctx_bbc10559f749` identity_unproven 및 다른 소유권 불명 자원은 종료·정리하지 않는다. 프로세스·프로필 정리는 해당 실행에서 생성과 소유권을 확인한 정확한 대상에만 한다.
@@ -41,4 +45,4 @@
 
 - [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) DL38 = v0.4.6 분석·등록, DL39 = 선행 Infra132. 현재 규칙 참조 경로는 새 문서 위치로 동기화하고, 과거 Decision Log의 GitHub 링크는 이동 전 SHA에 고정했다. GitHub 과거 Issue/PR 본문·코멘트 13곳의 링크34개도 고정·응답 일치 확인했다. 기존 Release8개는 버전 태그 링크라 그대로 유효하다.
 - Notion System 원문 `3d51e7f1708580b0916ded4bd3d9d06e`의 외부 편집 Summary는 보존한다. Project=Digit Dual, Edit Date=실제 수정일, Editor=실제 사람 성창조(`8e0a8270-d0e3-407e-a7d2-b3f992f1e366`); Agent 이름은 운영 본문에만 기록한다.
-- Infra의 다음 게이트: 문서·툴링 완료 → Saturn 독립 READ_ONLY 검수 → 통합 PR·실제 Actions 성공 → main/dev 필수 검사 보호 설정 확인 → dev squash 통합·전용 브랜치 정리·CJ 보고. main/dev 자체는 삭제하지 않는다. Issue 종결은 CJ PASS 또는 완료 보고 뒤 다음 Comment 무이의 계약을 따른다.
+- Infra 통합은 PR #133의 필수 검사 성공과 Saturn PASS를 전제로 dev squash 및 전용 브랜치 정리 절차를 따른다. main/dev 자체는 삭제하지 않는다. 다음 제품 작업은 CJ의 Issue 번호별 착수 지시를 기다린다. Issue132 종결은 CJ PASS 또는 완료 보고 뒤 다음 Comment 무이의 계약을 따르며, 분석 단계의 보호 경로 메타데이터 조회 예외를 지우거나 무접근 AC를 완전 충족으로 표시하지 않는다.

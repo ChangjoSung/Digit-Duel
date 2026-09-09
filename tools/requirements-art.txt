@@ -3,8 +3,9 @@
 # 인코더가 바뀌면 --check 의 바이트 비교 결과가 흔들린다.
 #
 # 버전 핀만으로는 부족하다. 같은 Pillow 12.3.0 이어도 ubuntu-24.04 + Python 3.12.14 에서는
-# `--all --check --no-preview` 가 14개 파일 불일치로 실패했고(run 34309177070), 납품 바이트를
-# 구운 Windows + Python 3.14.3 환경에서는 통과한다. 그래서 잡 D 는 windows-2025 에서 돈다.
+# `--all --check --no-preview` 가 불일치 15건(PNG 14장 + 매니페스트 1건)으로 실패했고
+# (run 34309177070), 납품 바이트를 구운 Windows + Python 3.14.3 환경에서는 통과한다.
+# 그래서 잡 D 는 windows-2025 에서 돈다.
 # 관측·추론과 근거는 docs/milestone/v0.4.6/issues/132/Mars/report.md 4부에 정리했다.
 #
 # 로컬 실측 설치: 공식 PyPI 휠 cp314-cp314-win_amd64, PIL.features 기준 ZLIB 은
