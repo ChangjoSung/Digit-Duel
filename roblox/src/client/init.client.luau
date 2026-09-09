@@ -21,7 +21,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- 아바타 없는 2D 보드게임: 체력바·가방 등 캐릭터용 기본 UI 숨김 (실패해도 무시)
 task.defer(function()
-	for _, ct in { Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack, Enum.CoreGuiType.EmotesMenu } do
+	for _, ct in { Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack } do -- 채팅·이모트·플레이어 목록은 유지 (로비 상호작용)
 		pcall(function()
 			StarterGui:SetCoreGuiEnabled(ct, false)
 		end)
@@ -87,20 +87,48 @@ end
 
 local gui = mk("ScreenGui", { Name = "DigitDual", ResetOnSpawn = false, IgnoreGuiInset = true }, playerGui)
 
--- 메뉴
-local menu = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(18, 20, 28) }, gui)
+-- 로비 HUD (Phase 2a): 3D 로비는 그대로 보이고, 왼쪽 위에 안내·자리 떠나기만. 대전 중에만 game_ 가 화면을 덮는다
+local hud = mk("Frame", {
+	Size = UDim2.new(0, 460, 0, 92), Position = UDim2.new(0, 12, 0, 12),
+	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.15, BorderSizePixel = 0,
+}, gui)
 mk("TextLabel", {
-	Text = "Digit Dual — Roblox 프로토타입", Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0.25, 0),
-	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 28, Font = Enum.Font.GothamBold,
-}, menu)
-local queueBtn = mk("TextButton", {
-	Text = "🌐 빠른 매칭 (무작위 배치)", Size = UDim2.new(0, 280, 0, 48), Position = UDim2.new(0.5, -140, 0.42, 0),
-	TextColor3 = Color3.new(1, 1, 1), BackgroundColor3 = Color3.fromRGB(91, 140, 255), TextSize = 18, Font = Enum.Font.GothamBold,
-}, menu)
-local menuStatus = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, 0, 0, 30), Position = UDim2.new(0, 0, 0.52, 0),
-	TextColor3 = Color3.fromRGB(154, 163, 184), BackgroundTransparency = 1, TextSize = 15, Font = Enum.Font.Gotham,
-}, menu)
+	Text = "Digit Dual", Size = UDim2.new(1, -16, 0, 24), Position = UDim2.new(0, 8, 0, 4),
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 18, Font = Enum.Font.GothamBold,
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, hud)
+local hudLabel = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -16, 0, 40), Position = UDim2.new(0, 8, 0, 28),
+	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
+	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
+}, hud)
+local standBtn = mk("TextButton", {
+	Text = "🪑 자리 떠나기", Size = UDim2.new(0, 110, 0, 22), Position = UDim2.new(1, -118, 0, 4), Visible = false,
+	TextColor3 = Color3.new(1, 1, 1), BackgroundColor3 = Color3.fromRGB(120, 60, 60), TextSize = 12, Font = Enum.Font.GothamBold,
+}, hud)
+-- 테이블 패널: 앉았을 때 화면 중앙 — 상대·배치 완료. (수동 배치 UI 는 Phase 2b — 지금은 무작위 배치)
+local tablePanel = mk("Frame", {
+	Size = UDim2.new(0, 380, 0, 150), Position = UDim2.new(0.5, -190, 0.5, -75), Visible = false,
+	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BorderSizePixel = 0,
+}, gui)
+local tableTitle = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -16, 0, 26), Position = UDim2.new(0, 8, 0, 6),
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 16, Font = Enum.Font.GothamBold,
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, tablePanel)
+local tableLabel = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -16, 0, 56), Position = UDim2.new(0, 8, 0, 34),
+	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
+	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
+}, tablePanel)
+local readyBtn = mk("TextButton", {
+	Text = "배치 완료 (무작위 배치)", Size = UDim2.new(0, 200, 0, 34), Position = UDim2.new(0, 8, 1, -42),
+	TextColor3 = Color3.new(1, 1, 1), BackgroundColor3 = Color3.fromRGB(91, 140, 255), TextSize = 14, Font = Enum.Font.GothamBold,
+}, tablePanel)
+local unreadyBtn = mk("TextButton", {
+	Text = "배치 취소", Size = UDim2.new(0, 100, 0, 34), Position = UDim2.new(0, 216, 1, -42), Visible = false,
+	TextColor3 = Color3.new(1, 1, 1), BackgroundColor3 = Color3.fromRGB(60, 68, 88), TextSize = 14, Font = Enum.Font.GothamBold,
+}, tablePanel)
 
 -- 게임 화면
 local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(18, 20, 28), Visible = false }, gui)
@@ -198,6 +226,53 @@ local ELEM_COLOR = {
 	grass = Color3.fromRGB(80, 180, 100),
 	lightning = Color3.fromRGB(220, 190, 60),
 }
+
+--==================================================================
+-- 로비 상태 (서버 "table"/"left" 메시지) — 앉은 테이블·자리·상대·배치 완료 여부
+--==================================================================
+local tableInfo = nil
+
+local function renderLobby()
+	if view and view.phase ~= "over" then -- 대전 중: 보드가 덮고 있으므로 패널 숨김
+		tablePanel.Visible = false
+		standBtn.Visible = true
+		hudLabel.Text = tableInfo and ("테이블 %d · ⚔️ 대전 중 (자리 떠나기 = 기권)"):format(tableInfo.tableId) or "⚔️ 대전 중"
+		return
+	end
+	if not tableInfo then
+		hudLabel.Text = "🪑 테이블 의자 앞에서 [E] 앉기 → 배치 완료 → 맞은편 상대도 배치를 마치면 대전 시작"
+		standBtn.Visible = false
+		tablePanel.Visible = false
+		return
+	end
+	local ti = tableInfo
+	standBtn.Visible = true
+	hudLabel.Text = ("테이블 %d · %s 자리 · %s"):format(ti.tableId, ti.side, ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)")
+	if ti.inGame then
+		tablePanel.Visible = false
+		return
+	end
+	tablePanel.Visible = true
+	tableTitle.Text = ("테이블 %d — %s 자리"):format(ti.tableId, ti.side)
+	local oppLine = ti.opp and ("상대: " .. ti.opp .. (ti.oppReady and " (배치 완료)" or " (배치 중)")) or "상대 없음 — 맞은편에 누가 앉으면 시작할 수 있습니다"
+	if ti.myReady then
+		tableLabel.Text = oppLine .. "\n✅ 내 배치 완료 — " .. ((ti.opp and ti.oppReady) and "시작 중…" or "상대를 기다립니다")
+		readyBtn.Visible = false
+		unreadyBtn.Visible = true
+	else
+		tableLabel.Text = oppLine .. "\n배치를 마치면 준비 완료. 둘 다 완료되면 바로 대전이 시작됩니다."
+		readyBtn.Visible = true
+		unreadyBtn.Visible = false
+	end
+end
+
+local function closeGame() -- 종료된 대국 닫기 → 로비 화면 복귀 (앉은 채면 테이블 패널로 재대전 가능)
+	game_.Visible = false
+	view = nil
+	selectedId = nil
+	teleFirst = nil
+	renderLobby()
+end
 
 --==================================================================
 -- 헬퍼
@@ -414,12 +489,7 @@ local function renderButtons()
 	end
 	if not myTurn then
 		if view.phase == "over" then
-			smallBtn(btnRow, 0, 0, 120, "메뉴로", function()
-				game_.Visible = false
-				menu.Visible = true
-				menuStatus.Text = ""
-				view = nil
-			end)
+			smallBtn(btnRow, 0, 0, 150, "닫기 (자리로 돌아가기)", closeGame, Color3.fromRGB(91, 140, 255))
 		end
 		return
 	end
@@ -594,8 +664,9 @@ local function render()
 	if not view then
 		return
 	end
-	menu.Visible = false
+	tablePanel.Visible = false
 	game_.Visible = true
+	renderLobby()
 	renderBoard()
 	renderSide()
 	renderButtons()
@@ -662,10 +733,16 @@ for dr = 1, ROWS do
 	end
 end
 
-queueBtn.Activated:Connect(function()
-	menuStatus.Text = "🌐 매칭 대기 중… (상대를 기다립니다)"
-	send({ t = "queue", setup = randomSetup() })
+readyBtn.Activated:Connect(function()
+	send({ t = "ready", setup = randomSetup() })
 end)
+unreadyBtn.Activated:Connect(function()
+	send({ t = "unready" })
+end)
+standBtn.Activated:Connect(function()
+	send({ t = "stand" }) -- 대전 중이면 서버가 기권 처리 후 기립
+end)
+renderLobby()
 DIAG.ui = true -- 여기까지 왔으면 UI·입력 연결 완료
 refreshFooter()
 
@@ -674,14 +751,23 @@ refreshFooter()
 --==================================================================
 
 reState.OnClientEvent:Connect(function(msg)
-	if msg.t == "queue" then
-		menuStatus.Text = "🌐 매칭 대기 중… (상대를 기다립니다)"
+	if msg.t == "table" then -- 자리 배정·상대·배치 상태 갱신
+		tableInfo = msg
+		renderLobby()
 		return
-	elseif msg.t == "queueCancelled" then
-		menuStatus.Text = "매칭 취소됨"
+	elseif msg.t == "left" then -- 자리에서 일어남 (대전 중이었으면 기권 처리됨)
+		tableInfo = nil
+		if view then
+			closeGame()
+		else
+			renderLobby()
+		end
 		return
 	elseif msg.t == "reject" then
 		addLog("⛔ " .. (msg.reason or "거부됨"))
+		if not view then
+			hudLabel.Text = "⛔ " .. (msg.reason or "거부됨")
+		end
 		return
 	elseif msg.t == "state" then
 		local prevBattle = view and view.battle ~= nil

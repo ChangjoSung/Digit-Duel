@@ -50,10 +50,14 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 
 ## 실행
 
+### 플레이 흐름 (Phase 2a — 3D 로비 · 테이블 매칭, CJ 2026-09-09)
+로비 스폰 → 테이블 의자 앞에서 **[E] 앉기** → 중앙 패널 **[배치 완료]** (지금은 무작위 배치) → 맞은편에 상대가 앉아 배치를 마치면 그 둘만 대전 → 종료 후 [닫기] → 앉은 채 재대전. 대전 중 자리 이탈 = 기권. 설계: [docs/roblox/lobby-design.md](../docs/roblox/lobby-design.md) · 아트 요청: [docs/roblox/earth-lobby-request.md](../docs/roblox/earth-lobby-request.md)
+
 ### Studio 테스트 (2인 로컬)
 1. `build.bat` 실행 → `build/DigitDual.rbxl` 생성 (rojo.exe 는 `build/` 에 두며 git 에 올리지 않는다 — 없으면 bat 이 다운로드 링크를 안내)
 2. Roblox Studio 로 `build/DigitDual.rbxl` 열기 → Test 탭 → **Clients and Servers: 2 Players** → Start
-3. 열린 클라이언트 창 2개에서 각각 [🌐 빠른 매칭] → 자동 매칭 → 대전
+3. 클라이언트 창 2개에서 각각 같은 테이블의 의자에 [E] 앉기 → [배치 완료] → 대전. 화면 하단 진단 푸터에 client/server 버전·모듈·UI 로드 상태가 표시된다
+4. 다른 PC 의 친구와 하려면 게시 후 접속 (아래) — 공개 전이면 Studio 팀 테스트(Team Create + 협업 편집 권한 → Test → Team Test)
 
 코드를 고친 뒤에는 `build.bat` 을 다시 돌려 rbxl 을 갱신한다. 라이브 동기화가 필요하면 `build\rojo.exe serve` + Studio Rojo 플러그인.
 
