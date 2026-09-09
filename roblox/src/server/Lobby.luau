@@ -154,6 +154,9 @@ local function buildSeat(id, side, pos, lookAt, color, parent)
 	seat.Color = color
 	seat.Material = Enum.Material.Fabric
 	seat.TopSurface = Enum.SurfaceType.Smooth
+	-- 접촉 자동 착석 금지: Seat 는 닿기만 해도 앉히고, 점프로 일어나도 아직 닿아 있어 즉시 다시 앉히는 루프가 생긴다.
+	-- 앉기는 아래 ProximityPrompt [E] → seat:Sit() 로만, 일어나기는 점프(Space) 또는 [자리 떠나기]
+	seat.CanTouch = false
 	seat.Parent = parent
 	local back = part({ Name = "Back", Size = Vector3.new(2, 2.2, 0.3), CFrame = seat.CFrame * CFrame.new(0, 1.35, 1.15), Color = color, Material = Enum.Material.Fabric, CanCollide = false }, parent)
 	local legs = part({ Name = "Legs", Size = Vector3.new(1.6, 0.9, 1.6), CFrame = seat.CFrame * CFrame.new(0, -0.7, 0), Color = C.desk, Material = Enum.Material.Wood }, parent)
@@ -168,9 +171,12 @@ local function buildSeat(id, side, pos, lookAt, color, parent)
 	prompt.Triggered:Connect(function(player)
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum and not seat.Occupant and hum.Health > 0 then
+		if hum and not seat.Occupant and hum.Health > 0 and not hum.Sit then
 			seat:Sit(hum)
 		end
+	end)
+	seat:GetPropertyChangedSignal("Occupant"):Connect(function() -- 누가 앉아 있으면 프롬프트 숨김
+		prompt.Enabled = seat.Occupant == nil
 	end)
 	return seat, { back, legs }
 end
@@ -412,15 +418,27 @@ end
 function Lobby.standUp(player)
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if hum then
+	if not hum then
+		return
+	end
+	pcall(function()
+		hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+	end)
+	-- Seat 는 SeatWeld 로 붙잡는다 — Sit=false 로 풀고, 남은 weld 가 있으면 직접 제거한 뒤 살짝 점프시켜 확실히 떼어낸다
+	local seatPart = hum.SeatPart -- SeatWeld 는 의자 파트의 자식으로 생긴다
+	hum.Sit = false
+	if seatPart then
+		local w = seatPart:FindFirstChild("SeatWeld")
+		if w then
+			w:Destroy()
+		end
+	end
+	task.defer(function()
 		pcall(function()
-			hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-		end)
-		hum.Sit = false
-		pcall(function()
+			hum.Jump = true
 			hum:ChangeState(Enum.HumanoidStateType.Jumping)
 		end)
-	end
+	end)
 end
 
 return Lobby

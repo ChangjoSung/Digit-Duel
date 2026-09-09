@@ -13,7 +13,7 @@ local Engine = require(Shared.Engine)
 local Views = require(Shared.Views)
 local Lobby = require(script:WaitForChild("Lobby"))
 
-local VERSION = "0.5.0-p2d.1"
+local VERSION = "0.5.0-p2d.2"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")

@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p2d.1"
+local CLIENT_VERSION = "0.5.0-p2d.2"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -1242,7 +1242,7 @@ local function renderLobby()
 		return
 	end
 	local ti = tableInfo
-	hudLabel.Text = ("테이블 %d · %s 자리 · %s"):format(ti.tableId, ti.side, ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)")
+	hudLabel.Text = ("테이블 %d · %s 자리 · %s\n일어나기: Space(점프) 또는 [자리 떠나기]"):format(ti.tableId, ti.side, ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)")
 	renderSetup()
 end
 
