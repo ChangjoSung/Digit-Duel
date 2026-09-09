@@ -1,12 +1,12 @@
 --!nonstrict
--- init.client.luau — Digit Dual Roblox 클라이언트 (Phase 2b: 판 위 대국 + 납품 아트)
+-- init.client.luau — Digit Dual Roblox 클라이언트 (Phase 2c: 로스터 선택 · 판 위 수동 배치 · 합법 수 표시)
 -- 구조:
---   로비 HUD(왼쪽 위) · 테이블 패널(앉았을 때, 중앙) · 사이드 패널(대전 중, 오른쪽) · 전투 패널(중앙) · 2D 보드(폴백, 왼쪽)
+--   로비 HUD(왼쪽 위) · 배치 패널(앉았을 때, 하단: 로스터 → 배치 → 준비) · 사이드 패널(대전 중, 오른쪽) · 전투 패널(중앙) · 2D 보드(폴백)
 --   판 위 대국: 앉으면 카메라가 판을 향하고, 서버가 보내준 뷰어 필터 상태(view.board)로 **이 클라이언트에만** 말을 로컬 생성한다.
 --     공개 말 = 도트 빌보드(하수인 icon64 / 토큰 64 팀 틴트) · 미공개 말 = 공통 덮개 메시(팀 틴트) · 모든 말 아래 팀 색 받침
---     → 숨은 정보는 서버가 애초에 보내지 않으므로 로컬 인스턴스에 새어 나갈 정체가 없다 (인계서 §6)
---   입력: 판(Board 파트)·로컬 말을 raycast 로 맞혀 셀(r,c) → onCell (2D 보드 클릭과 같은 경로)
---   판 파트가 없거나 [2D 보드] 를 켜면 기존 2D 보드 GUI 로 폴백한다.
+--   배치: 설정 좌표는 HTML 계약대로 "내 진영 = 11~13행". B 자리는 엔진 행 1~3 이 내 진영이므로 화면(엔진) 행 ↔ 설정 행을 14-r 로 변환한다.
+--   합법 수: 서버가 view.legal(내 말별 이동·공격 목록)을 보내고 클라이언트는 그리기만 한다 — 규칙 코드는 클라이언트에 없다.
+--   입력: 판(Board 파트)·로컬 말을 raycast 로 맞혀 셀(r,c). 판 파트가 없거나 [2D 보드] 면 2D 보드 GUI 로 폴백.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p2b.1"
+local CLIENT_VERSION = "0.5.0-p2c.1"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -24,7 +24,6 @@ local reState = remotes:WaitForChild("State")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- 아바타는 로비를 걸어 다니지만 체력바·가방은 게임과 무관 → 숨김. 채팅·이모트·플레이어 목록은 유지 (로비 상호작용)
 task.defer(function()
 	for _, ct in { Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack } do
 		pcall(function()
@@ -34,7 +33,7 @@ task.defer(function()
 end)
 
 --==================================================================
--- 진단 푸터 — 스크립트 진행·서버 응답을 화면에 표시 (팀 테스트 문제 진단용)
+-- 진단 푸터
 --==================================================================
 local diagGui = Instance.new("ScreenGui")
 diagGui.Name = "DigitDualDiag"
@@ -63,7 +62,6 @@ reState.OnClientEvent:Connect(function(msg)
 end)
 reAction:FireServer({ t = "ping" })
 
--- 모듈은 복제가 끝난 뒤에 읽는다 (실서버에서 Shared 자식이 늦게 올 수 있다)
 local Data = require(Shared:WaitForChild("Data"))
 local Art = require(Shared:WaitForChild("Art"))
 DIAG.modules = true
@@ -73,6 +71,7 @@ local COLS, ROWS = 7, 13
 local CELL = 34
 local CELL_STUD = 0.6
 local WHITE = Color3.new(1, 1, 1)
+local SLOT_TYPES = { "minion", "minion", "minion", "minion", "minion", "minion", "bomb", "bomb", "bomb", "ally", "ally", "trap", "trap", "king" }
 
 -- 현재 상태
 local view = nil -- 서버 필터 뷰 (대전 중)
@@ -81,8 +80,11 @@ local selectedId = nil
 local teleFirst = nil
 local logLines = {}
 local force2D = false
-local boardMode = "2d" -- render() 가 판 파트 유무로 결정
-local render -- 전방 선언 (renderButtons 등이 참조)
+local boardMode = "2d"
+local render -- 전방 선언
+local renderSetup -- 전방 선언
+-- 사전 배치: stage roster → place → ready. pos[i] = {설정행, 열} (i = SLOT_TYPES 인덱스, 설정행 11~13)
+local setup = { stage = "roster", roster = {}, pos = {}, tray = nil, detail = nil }
 
 --==================================================================
 -- UI 구성
@@ -99,7 +101,6 @@ end
 
 local gui = mk("ScreenGui", { Name = "DigitDual", ResetOnSpawn = false, IgnoreGuiInset = true }, playerGui)
 
--- 로비 HUD
 local hud = mk("Frame", {
 	Size = UDim2.new(0, 460, 0, 92), Position = UDim2.new(0, 12, 0, 12),
 	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.15, BorderSizePixel = 0,
@@ -123,39 +124,49 @@ local modeBtn = mk("TextButton", {
 	TextColor3 = WHITE, BackgroundColor3 = Color3.fromRGB(60, 68, 88), TextSize = 12, Font = Enum.Font.GothamBold,
 }, hud)
 
--- 테이블 패널 (앉았을 때)
-local tablePanel = mk("Frame", {
-	Size = UDim2.new(0, 380, 0, 150), Position = UDim2.new(0.5, -190, 1, -170), Visible = false,
-	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.1, BorderSizePixel = 0,
+-- 배치 패널 (앉았을 때 · 하단)
+local setupPanel = mk("Frame", {
+	Size = UDim2.new(0, 680, 0, 236), Position = UDim2.new(0.5, -340, 1, -256), Visible = false,
+	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.08, BorderSizePixel = 0,
 }, gui)
-local tableTitle = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 26), Position = UDim2.new(0, 8, 0, 6),
-	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 16, Font = Enum.Font.GothamBold,
+local setupTitle = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -16, 0, 22), Position = UDim2.new(0, 8, 0, 4),
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 15, Font = Enum.Font.GothamBold,
 	TextXAlignment = Enum.TextXAlignment.Left,
-}, tablePanel)
-local tableLabel = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 56), Position = UDim2.new(0, 8, 0, 34),
-	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
-	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
-}, tablePanel)
-local readyBtn = mk("TextButton", {
-	Text = "배치 완료 (무작위 배치)", Size = UDim2.new(0, 200, 0, 34), Position = UDim2.new(0, 8, 1, -42),
-	TextColor3 = WHITE, BackgroundColor3 = Color3.fromRGB(91, 140, 255), TextSize = 14, Font = Enum.Font.GothamBold,
-}, tablePanel)
-local unreadyBtn = mk("TextButton", {
-	Text = "배치 취소", Size = UDim2.new(0, 100, 0, 34), Position = UDim2.new(0, 216, 1, -42), Visible = false,
-	TextColor3 = WHITE, BackgroundColor3 = Color3.fromRGB(60, 68, 88), TextSize = 14, Font = Enum.Font.GothamBold,
-}, tablePanel)
+}, setupPanel)
+local setupHint = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -16, 0, 18), Position = UDim2.new(0, 8, 0, 26),
+	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, setupPanel)
+local setupContent = mk("Frame", { Size = UDim2.new(1, -16, 0, 150), Position = UDim2.new(0, 8, 0, 46), BackgroundTransparency = 1 }, setupPanel)
+local setupBtns = mk("Frame", { Size = UDim2.new(1, -16, 0, 30), Position = UDim2.new(0, 8, 1, -34), BackgroundTransparency = 1 }, setupPanel)
 
--- 대전 화면 (배경 투명 — 3D 판이 보인다)
+-- 로스터 상세 팝업 (초상화 · 스탯 · 기술)
+local rosterDetail = mk("Frame", {
+	Size = UDim2.new(0, 470, 0, 250), Position = UDim2.new(0.5, -235, 0.5, -200), Visible = false, ZIndex = 8,
+	BackgroundColor3 = Color3.fromRGB(28, 32, 44), BorderSizePixel = 0,
+}, gui)
+local detailPortrait = mk("ImageLabel", {
+	Size = UDim2.new(0, 160, 0, 160), Position = UDim2.new(0, 10, 0, 10), BackgroundColor3 = Color3.fromRGB(19, 22, 30),
+	BorderSizePixel = 0, ScaleType = Enum.ScaleType.Fit, ZIndex = 8,
+}, rosterDetail)
+local detailText = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -190, 0, 200), Position = UDim2.new(0, 180, 0, 10), ZIndex = 8,
+	TextColor3 = WHITE, BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham, RichText = true,
+	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
+}, rosterDetail)
+local detailBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 30), Position = UDim2.new(0, 10, 1, -36), BackgroundTransparency = 1, ZIndex = 8 }, rosterDetail)
+
+-- 대전 화면 (배경 투명)
 local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false }, gui)
 
--- 2D 보드 (폴백)
+-- 2D 보드 (폴백 — 대전·배치 공용)
 local boardFrame = mk("Frame", {
 	Size = UDim2.new(0, COLS * CELL, 0, ROWS * CELL), Position = UDim2.new(0, 20, 0, 116),
 	BackgroundColor3 = Color3.fromRGB(30, 34, 46), Visible = false,
-}, game_)
-local cells = {} -- [dispRow][c] = TextButton
+}, gui)
+local cells = {}
 for dr = 1, ROWS do
 	cells[dr] = {}
 	for c = 1, COLS do
@@ -181,7 +192,7 @@ for dr = 1, ROWS do
 	end
 end
 
--- 사이드 패널 (오른쪽)
+-- 사이드 패널 (대전 중 · 오른쪽)
 local side = mk("Frame", {
 	Size = UDim2.new(0, 360, 0, ROWS * CELL), Position = UDim2.new(1, -372, 0, 116),
 	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.08, BorderSizePixel = 0,
@@ -207,7 +218,7 @@ local promptLabel = mk("TextLabel", {
 }, promptFrame)
 local promptBtns = mk("Frame", { Size = UDim2.new(1, -12, 0, 60), Position = UDim2.new(0, 6, 0, 46), BackgroundTransparency = 1 }, promptFrame)
 
--- 전투 패널 (중앙)
+-- 전투 패널
 local battleFrame = mk("Frame", {
 	Size = UDim2.new(0, 380, 0, 430), Position = UDim2.new(0.5, -190, 0.5, -215),
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
@@ -222,7 +233,7 @@ local battleBottom = mk("TextLabel", {
 	TextColor3 = WHITE, BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, RichText = true,
 }, battleFrame)
-local function mkSpriteLabel(y) -- 전투 도트 (battle256 / 토큰128, Pixelated). 아트 없으면 숨김
+local function mkSpriteLabel(y)
 	return mk("ImageLabel", {
 		Size = UDim2.new(0, 96, 0, 96), Position = UDim2.new(1, -104, 0, y), BackgroundTransparency = 1, ZIndex = 6,
 		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false,
@@ -252,9 +263,25 @@ local function addLog(text)
 	logBox.Text = table.concat(logLines, "\n")
 end
 
--- #93 2D 보드용 P2 화면 행 반사 (표시 전용). 3D 판은 물리적으로 각자 자기 쪽에서 보므로 반사 없음
+local function mySide()
+	return tableInfo and tableInfo.side or "A"
+end
+
+local function myOwner()
+	if view then
+		return view.me
+	end
+	return mySide() == "B" and 1 or 0
+end
+
+-- 설정 행(내 진영 = 11~13) ↔ 엔진 행 (B 자리는 대합 14-r). 대합이라 양방향 같은 식
+local function toEngineRow(setupRow)
+	return mySide() == "B" and (ROWS + 1 - setupRow) or setupRow
+end
+
+-- #93 2D 보드용 화면 행 반사 (표시 전용). owner 1 은 자기 진영(1~3행)이 아래로 오도록 뒤집는다
 local function dispRow(r)
-	if view and view.me == 1 then
+	if myOwner() == 1 then
 		return ROWS + 1 - r
 	end
 	return r
@@ -284,7 +311,7 @@ local function pieceById(id)
 	return nil
 end
 
-local function pieceLabel(p) -- 아트 없을 때의 텍스트 폴백
+local function pieceLabel(p)
 	if not p.known then
 		return "?"
 	end
@@ -295,7 +322,6 @@ local function pieceLabel(p) -- 아트 없을 때의 텍스트 폴백
 	return (sym[p.type] or "?") .. (p.hp and ("\n" .. p.hp) or "")
 end
 
--- 말 아이콘·틴트 (2D 칩·3D 빌보드 공용): 공개 하수인 = 도트 무틴트 / 공개 왕·동료·폭탄·덫 = 토큰 팀 틴트 / 미공개 = 공통 덮개 팀 틴트
 local function pieceImage(p, size)
 	local team = Art.TEAM[p.owner]
 	if not p.known then
@@ -314,53 +340,38 @@ local function hpText(p)
 	return nil
 end
 
-local function clearChildrenBtns(parent)
+local function clearChildren(parent)
 	for _, ch in parent:GetChildren() do
 		ch:Destroy()
 	end
 end
 
-local function smallBtn(parent, x, y, w, text, cb, color)
+-- enabled=false 면 흐리게 표시하고 클릭을 무시한다
+local function smallBtn(parent, x, y, w, text, cb, color, enabled)
+	local on = enabled ~= false
 	local b = mk("TextButton", {
 		Size = UDim2.new(0, w, 0, 26), Position = UDim2.new(0, x, 0, y), Text = text, TextSize = 12,
-		Font = Enum.Font.GothamBold, TextColor3 = WHITE,
-		BackgroundColor3 = color or Color3.fromRGB(60, 68, 88), ZIndex = parent.ZIndex,
+		Font = Enum.Font.GothamBold, TextColor3 = on and WHITE or Color3.fromRGB(120, 126, 140),
+		BackgroundColor3 = on and (color or Color3.fromRGB(60, 68, 88)) or Color3.fromRGB(38, 42, 54), ZIndex = parent.ZIndex,
+		AutoButtonColor = on,
 	}, parent)
-	b.Activated:Connect(cb)
+	b.Activated:Connect(function()
+		if on then
+			cb()
+		end
+	end)
 	return b
 end
 
--- 무작위 배치 (수동 배치 UI 는 후속) — 로스터 6종 + 11~13행 14칸
-local function randomSetup()
-	local rng = Random.new()
-	local ids = {}
-	for _, r in Data.ROSTER do
-		table.insert(ids, r.id)
+local function legalOf(id)
+	if not view or not view.legal or not id then
+		return nil
 	end
-	for i = #ids, 2, -1 do
-		local j = rng:NextInteger(1, i)
-		ids[i], ids[j] = ids[j], ids[i]
-	end
-	local roster = { ids[1], ids[2], ids[3], ids[4], ids[5], ids[6] }
-	local cellsList = {}
-	for r = 11, 13 do
-		for c = 1, COLS do
-			table.insert(cellsList, { r, c })
-		end
-	end
-	for i = #cellsList, 2, -1 do
-		local j = rng:NextInteger(1, i)
-		cellsList[i], cellsList[j] = cellsList[j], cellsList[i]
-	end
-	local pos = {}
-	for i = 1, 14 do
-		pos[i] = cellsList[i]
-	end
-	return { roster = roster, pos = pos }
+	return view.legal[tostring(id)]
 end
 
 --==================================================================
--- 3D 판 (로컬 전용 인스턴스 — 이 클라이언트에만 존재)
+-- 3D 판 (로컬 전용 인스턴스)
 --==================================================================
 
 local local3d = Instance.new("Folder")
@@ -376,7 +387,6 @@ local function findBoardPart()
 	return t and t:FindFirstChild("Board") or nil
 end
 
--- 판 로컬 좌표 계약: X=(col-4)×0.6, Z=(row-7)×0.6, 윗면 = 로컬 Y+0.1 (두께 0.2)
 local function cellCFrame(bp, r, c)
 	return bp.CFrame * CFrame.new((c - 4) * CELL_STUD, 0.1, (r - 7) * CELL_STUD)
 end
@@ -392,7 +402,7 @@ local function tagCell(inst, r, c)
 	return inst
 end
 
-local function mkBase(cf, color, r, c) -- 팀 색 받침 (모든 말 공통 — 미공개 말도 같은 받침)
+local function mkBase(cf, color, r, c)
 	local p = Instance.new("Part")
 	p.Name = "Base"
 	p.Size = Vector3.new(0.52, 0.04, 0.52)
@@ -466,7 +476,7 @@ local function mkUnknown(cf, color, r, c)
 	if tpl then
 		local m = tpl:Clone()
 		m.Name = "Piece"
-		m.CFrame = cf * CFrame.new(0, 0.21, 0) -- 외접 상자 중심 = 바닥 +0.21
+		m.CFrame = cf * CFrame.new(0, 0.21, 0)
 		m.Color = color
 		return tagCell(m, r, c)
 	end
@@ -474,7 +484,7 @@ local function mkUnknown(cf, color, r, c)
 	if u then
 		return mkSprite(cf, u, color, nil, r, c)
 	end
-	local p = Instance.new("Part") -- 최종 폴백: 단색 블록
+	local p = Instance.new("Part")
 	p.Name = "Piece"
 	p.Size = Vector3.new(0.44, 0.42, 0.44)
 	p.CFrame = cf * CFrame.new(0, 0.21, 0)
@@ -493,8 +503,15 @@ local function mkHighlight(cf, color, r, c, transparency)
 	return tagCell(p, r, c)
 end
 
-local HL = { sel = Color3.fromRGB(255, 220, 80), forced = Color3.fromRGB(255, 70, 70), flee = Color3.fromRGB(80, 140, 255) }
+local HL = {
+	sel = Color3.fromRGB(255, 220, 80),
+	forced = Color3.fromRGB(255, 70, 70),
+	flee = Color3.fromRGB(80, 140, 255),
+	move = Color3.fromRGB(80, 160, 255),
+	attack = Color3.fromRGB(255, 80, 80),
+}
 
+-- 대전 중 3D 동기화
 local function sync3D()
 	local3d:ClearAllChildren()
 	local bp = findBoardPart()
@@ -502,6 +519,12 @@ local function sync3D()
 		return
 	end
 	local forced = view.forcedTargets or {}
+	local legal = legalOf(selectedId)
+	if legal then -- 이동 가능(파랑)·공격 가능(빨강) 칸 — 서버 계산
+		for _, rc in legal.moves do
+			mkHighlight(cellCFrame(bp, rc[1], rc[2]), HL.move, rc[1], rc[2], 0.5)
+		end
+	end
 	for _, p in view.board do
 		local cf = cellCFrame(bp, p.r, p.c)
 		local team = Art.TEAM[p.owner]
@@ -519,6 +542,9 @@ local function sync3D()
 		if p.id == selectedId or p.id == teleFirst then
 			mkHighlight(cf, HL.sel, p.r, p.c)
 		end
+		if legal and table.find(legal.attacks, p.id) then
+			mkHighlight(cf, HL.attack, p.r, p.c, 0.35)
+		end
 		if table.find(forced, p.id) then
 			mkHighlight(cf, HL.forced, p.r, p.c, 0.3)
 		end
@@ -526,14 +552,153 @@ local function sync3D()
 			mkHighlight(cf, HL.flee, p.r, p.c)
 		end
 	end
-	for _, tr in view.traces do -- 탐색 가능 흔적
+	for _, tr in view.traces do
 		local cf = cellCFrame(bp, tr.r, tr.c)
 		if not pieceAt(tr.r, tr.c) then
-			mkHighlight(cf, Color3.fromRGB(255, 255, 255), tr.r, tr.c, 0.7)
+			mkHighlight(cf, WHITE, tr.r, tr.c, 0.7)
 		end
 		mkTextSprite(cf * CFrame.new(0.18, 0.25, -0.18), "🔍", WHITE, tr.r, tr.c)
 	end
 end
+
+--==================================================================
+-- 사전 배치 — 데이터
+--==================================================================
+
+local function setupPieceAt(sr, c)
+	for i = 1, 14 do
+		local rc = setup.pos[i]
+		if rc and rc[1] == sr and rc[2] == c then
+			return i
+		end
+	end
+	return nil
+end
+
+local function placedCount()
+	local n = 0
+	for i = 1, 14 do
+		if setup.pos[i] then
+			n += 1
+		end
+	end
+	return n
+end
+
+local function nextUnplaced(from)
+	for k = 0, 13 do
+		local i = ((from or 1) - 1 + k) % 14 + 1
+		if not setup.pos[i] then
+			return i
+		end
+	end
+	return nil
+end
+
+local function slotImage(i)
+	local ty = SLOT_TYPES[i]
+	if ty == "minion" then
+		return Art.icon(setup.roster[i]), nil
+	end
+	return Art.token(ty, 64), Art.TEAM[myOwner()]
+end
+
+local function slotLabel(i)
+	local ty = SLOT_TYPES[i]
+	if ty == "minion" then
+		local rd = Data.rosterById(setup.roster[i])
+		return rd and rd.name or "하수인"
+	end
+	return Data.TYPE_KO[ty]
+end
+
+local function rosterFillRandom()
+	local rng = Random.new()
+	local ids = {}
+	for _, r in Data.ROSTER do
+		if not table.find(setup.roster, r.id) then
+			table.insert(ids, r.id)
+		end
+	end
+	while #setup.roster < 6 and #ids > 0 do
+		table.insert(setup.roster, table.remove(ids, rng:NextInteger(1, #ids)))
+	end
+end
+
+local function autoPlace()
+	rosterFillRandom()
+	local rng = Random.new()
+	local free = {}
+	for sr = 11, 13 do
+		for c = 1, COLS do
+			if not setupPieceAt(sr, c) then
+				table.insert(free, { sr, c })
+			end
+		end
+	end
+	for i = 1, 14 do
+		if not setup.pos[i] and #free > 0 then
+			setup.pos[i] = table.remove(free, rng:NextInteger(1, #free))
+		end
+	end
+	setup.tray = nil
+end
+
+local function clearPlace()
+	setup.pos = {}
+	setup.tray = nextUnplaced(1)
+end
+
+local function sendReady()
+	if #setup.roster ~= 6 then
+		hudLabel.Text = "⛔ 로스터 6종을 먼저 선택하세요"
+		return
+	end
+	if placedCount() ~= 14 then
+		hudLabel.Text = "⛔ 말 14개를 모두 배치하세요 (" .. placedCount() .. "/14)"
+		return
+	end
+	local pos = {}
+	for i = 1, 14 do
+		pos[i] = { setup.pos[i][1], setup.pos[i][2] }
+	end
+	send({ t = "ready", setup = { roster = table.clone(setup.roster), pos = pos } })
+end
+
+-- 배치 중 3D 동기화: 내 진영 3행 옅은 표시 · 트레이 선택 시 빈 칸 강조 · 배치된 말
+local function sync3DSetup()
+	local3d:ClearAllChildren()
+	local bp = findBoardPart()
+	if not bp then
+		return
+	end
+	local team = Art.TEAM[myOwner()]
+	for sr = 11, 13 do
+		for c = 1, COLS do
+			local er = toEngineRow(sr)
+			local cf = cellCFrame(bp, er, c)
+			local i = setupPieceAt(sr, c)
+			if i then
+				mkBase(cf, team, er, c)
+				local img, tint = slotImage(i)
+				if img then
+					mkSprite(cf, img, tint, nil, er, c)
+				else
+					mkTextSprite(cf, slotLabel(i), team, er, c)
+				end
+				if i == setup.tray then
+					mkHighlight(cf, HL.sel, er, c)
+				end
+			else
+				mkHighlight(cf, team, er, c, setup.tray and 0.55 or 0.82)
+			end
+		end
+	end
+end
+
+--==================================================================
+-- 카메라·클릭
+--==================================================================
 
 local function setBoardCamera(on)
 	local cam = Workspace.CurrentCamera
@@ -542,7 +707,7 @@ local function setBoardCamera(on)
 	end
 	local bp = on and findBoardPart() or nil
 	if bp and tableInfo then
-		local dir = (tableInfo.side == "A") and 1 or -1 -- A 는 판의 +Z 쪽에 앉는다
+		local dir = (tableInfo.side == "A") and 1 or -1
 		cam.CameraType = Enum.CameraType.Scriptable
 		local eye = (bp.CFrame * CFrame.new(0, 7.4, dir * 6.4)).Position
 		local look = (bp.CFrame * CFrame.new(0, 0, dir * 0.4)).Position
@@ -580,65 +745,321 @@ local function raycastCell(pos)
 end
 
 --==================================================================
+-- 사전 배치 — UI
+--==================================================================
+
+local function closeDetail()
+	setup.detail = nil
+	rosterDetail.Visible = false
+end
+
+local function openDetail(rid)
+	local rd = Data.rosterById(rid)
+	if not rd then
+		return
+	end
+	setup.detail = rid
+	rosterDetail.Visible = true
+	local pu = Art.portrait(rid)
+	detailPortrait.Image = pu or ""
+	local lines = {
+		("<b>%s</b>  %s · %s형"):format(rd.name, Data.ELEM_KO[rd.element], Data.ARCH_KO[rd.arch]),
+		("HP %d · 공격 %d  (기술 위력 = 표기 × 공격/%d)"):format(rd.hp, rd.atk, Data.SKILL_ATK_BASE),
+		"",
+	}
+	for i, sid in Data.archSkills(rd.arch, rd.element) do
+		local sk = Data.SKILLS[sid]
+		local pow = sk.pow and (" 위력 " .. Data.slotPow({ atk = rd.atk }, sk)) or ""
+		table.insert(lines, ("%d. <b>%s</b> [%s]%s%s — %s"):format(i, sk.ko, Data.SKIND_KO[sk.kind], pow, sk.cd > 0 and (" 쿨" .. sk.cd) or "", sk.desc))
+	end
+	detailText.Text = table.concat(lines, "\n")
+	clearChildren(detailBtns)
+	local on = table.find(setup.roster, rid) ~= nil
+	smallBtn(detailBtns, 0, 0, 120, on and "선택 해제" or "선택하기", function()
+		local idx = table.find(setup.roster, rid)
+		if idx then
+			table.remove(setup.roster, idx)
+			setup.pos = {} -- 로스터가 바뀌면 하수인 슬롯이 달라지므로 배치 초기화 (HTML toggleRoster 와 동일)
+		elseif #setup.roster < 6 then
+			table.insert(setup.roster, rid)
+			setup.pos = {}
+		else
+			hudLabel.Text = "⛔ 이미 6종을 선택했습니다 — 다른 종을 해제하세요"
+			return
+		end
+		closeDetail()
+		renderSetup()
+	end, on and Color3.fromRGB(120, 60, 60) or Color3.fromRGB(91, 140, 255), on or #setup.roster < 6)
+	smallBtn(detailBtns, 126, 0, 70, "닫기", closeDetail)
+end
+
+local function renderRosterGrid()
+	clearChildren(setupContent)
+	local row = 0
+	for _, el in Data.ELEMS do
+		local col = 0
+		for _, rd in Data.ROSTER do
+			if rd.element == el then
+				local on = table.find(setup.roster, rd.id) ~= nil
+				local card = mk("TextButton", {
+					Size = UDim2.new(0, 128, 0, 34), Position = UDim2.new(0, col * 133, 0, row * 37), Text = "",
+					BackgroundColor3 = on and Color3.fromRGB(45, 60, 100) or Color3.fromRGB(38, 42, 54), BorderSizePixel = on and 2 or 0,
+					BorderColor3 = Color3.fromRGB(91, 140, 255), AutoButtonColor = true,
+				}, setupContent)
+				local iu = Art.icon(rd.id)
+				if iu then
+					mk("ImageLabel", { Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1, Image = iu, ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated }, card)
+				else
+					mk("TextLabel", { Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1, Text = Data.ELEM_EMO[rd.element] or "", TextSize = 18 }, card)
+				end
+				mk("TextLabel", {
+					Size = UDim2.new(1, -36, 0, 16), Position = UDim2.new(0, 34, 0, 1), BackgroundTransparency = 1, Text = rd.name,
+					TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = on and WHITE or Color3.fromRGB(220, 224, 232), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+				}, card)
+				mk("TextLabel", {
+					Size = UDim2.new(1, -36, 0, 14), Position = UDim2.new(0, 34, 0, 17), BackgroundTransparency = 1,
+					Text = ("%s·%s HP%d 공%d"):format(Data.ELEM_KO[rd.element], Data.ARCH_KO[rd.arch], rd.hp, rd.atk),
+					TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(154, 163, 184), TextXAlignment = Enum.TextXAlignment.Left,
+				}, card)
+				local rid = rd.id
+				card.Activated:Connect(function()
+					openDetail(rid)
+				end)
+				col += 1
+			end
+		end
+		row += 1
+	end
+end
+
+local function renderTray()
+	clearChildren(setupContent)
+	local team = Art.TEAM[myOwner()]
+	for i = 1, 14 do
+		local placed = setup.pos[i] ~= nil
+		local chip = mk("TextButton", {
+			Size = UDim2.new(0, 44, 0, 58), Position = UDim2.new(0, (i - 1) * 47, 0, 4), Text = "",
+			BackgroundColor3 = placed and Color3.fromRGB(30, 33, 42) or Color3.fromRGB(43, 49, 64),
+			BorderSizePixel = (i == setup.tray) and 2 or 0, BorderColor3 = HL.sel, AutoButtonColor = not placed,
+		}, setupContent)
+		local iu, tint = slotImage(i)
+		if iu then
+			mk("ImageLabel", {
+				Size = UDim2.new(0, 36, 0, 36), Position = UDim2.new(0, 4, 0, 2), BackgroundTransparency = 1, Image = iu,
+				ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, ImageColor3 = tint or WHITE, ImageTransparency = placed and 0.65 or 0,
+			}, chip)
+		else
+			mk("TextLabel", { Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 2), BackgroundTransparency = 1, Text = slotLabel(i), TextSize = 10, TextColor3 = team, TextWrapped = true }, chip)
+		end
+		mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 16), Position = UDim2.new(0, 0, 1, -18), BackgroundTransparency = 1,
+			Text = placed and "✔" or slotLabel(i), TextSize = 9, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(180, 188, 205), TextTruncate = Enum.TextTruncate.AtEnd,
+		}, chip)
+		local slot = i
+		chip.Activated:Connect(function()
+			if setup.pos[slot] then -- 배치된 말 클릭 → 회수해서 손에 들기
+				setup.pos[slot] = nil
+			end
+			setup.tray = slot
+			renderSetup()
+		end)
+	end
+	mk("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 70), BackgroundTransparency = 1, TextWrapped = true,
+		Text = setup.tray and ("손에 든 말: " .. slotLabel(setup.tray) .. " — 판의 내 진영(강조된 3행) 빈 칸을 클릭하면 놓입니다. 놓인 말을 클릭하면 회수.") or "모든 말을 배치했습니다 — [배치 완료] 를 누르세요",
+		TextSize = 12, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(180, 188, 205), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+	}, setupContent)
+end
+
+-- 2D 보드로 배치 (판 파트 없을 때)
+local function renderBoard2DSetup()
+	local team = Art.TEAM[myOwner()]
+	for r = 1, ROWS do
+		for c = 1, COLS do
+			local b = cells[dispRow(r)][c]
+			local zone = (r <= 3) and Color3.fromRGB(74, 46, 58) or (r >= 11) and Color3.fromRGB(47, 58, 94)
+				or ((r >= 4 and r <= 5) or (r >= 9 and r <= 10)) and Color3.fromRGB(35, 66, 47) or Color3.fromRGB(43, 49, 64)
+			b.BackgroundColor3 = zone
+			b.Text = ""
+			b.BorderSizePixel = 0
+			b.Icon.Visible = false
+			b.Hp.Visible = false
+			b.Mark.Visible = false
+			local sr = toEngineRow(r) -- 엔진 행 → 설정 행 (대합)
+			if sr >= 11 and sr <= 13 then
+				local i = setupPieceAt(sr, c)
+				if i then
+					local iu, tint = slotImage(i)
+					if iu then
+						b.Icon.Image = iu
+						b.Icon.ImageColor3 = tint or WHITE
+						b.Icon.Visible = true
+					else
+						b.Text = slotLabel(i)
+					end
+					b.BorderSizePixel = 2
+					b.BorderColor3 = (i == setup.tray) and HL.sel or team
+				elseif setup.tray then
+					b.BackgroundColor3 = Color3.fromRGB(60, 80, 130)
+				end
+			end
+		end
+	end
+end
+
+function renderSetup()
+	if not tableInfo or (view and view.phase ~= "over") or tableInfo.inGame then
+		setupPanel.Visible = false
+		boardFrame.Visible = boardFrame.Visible and view ~= nil
+		return
+	end
+	if tableInfo.myReady then
+		setup.stage = "ready"
+	elseif setup.stage == "ready" then
+		setup.stage = "place"
+	end
+	setupPanel.Visible = true
+	clearChildren(setupBtns)
+	local ti = tableInfo
+	local oppLine = ti.opp and ("상대: " .. ti.opp .. (ti.oppReady and " (배치 완료)" or " (배치 중)")) or "상대 없음 — 맞은편에 누가 앉으면 시작"
+	local bp = findBoardPart()
+	local use3D = bp ~= nil and not force2D
+	if setup.stage == "roster" then
+		setupTitle.Text = ("로스터 선택 (%d/6) — 테이블 %d %s 자리"):format(#setup.roster, ti.tableId, ti.side)
+		setupHint.Text = oppLine .. " · 카드를 누르면 상세(초상화·기술)와 선택 버튼"
+		renderRosterGrid()
+		smallBtn(setupBtns, 0, 2, 110, "무작위 6종", function()
+			setup.roster = {}
+			setup.pos = {}
+			rosterFillRandom()
+			renderSetup()
+		end)
+		smallBtn(setupBtns, 116, 2, 120, "배치로 →", function()
+			setup.stage = "place"
+			setup.tray = nextUnplaced(1)
+			closeDetail()
+			renderSetup()
+		end, Color3.fromRGB(91, 140, 255), #setup.roster == 6)
+		smallBtn(setupBtns, 400, 2, 260, "⚡ 전부 무작위로 배치 완료 (빠른 시작)", function()
+			autoPlace()
+			closeDetail()
+			sendReady()
+		end, Color3.fromRGB(70, 100, 70))
+		local3d:ClearAllChildren()
+		boardFrame.Visible = false
+	elseif setup.stage == "place" then
+		setupTitle.Text = ("비공개 배치 (%d/14) — 테이블 %d %s 자리"):format(placedCount(), ti.tableId, ti.side)
+		setupHint.Text = oppLine .. (use3D and " · 손에 든 말을 판의 내 진영 칸에 클릭" or " · 왼쪽 2D 보드의 내 진영 칸을 클릭")
+		renderTray()
+		smallBtn(setupBtns, 0, 2, 90, "← 로스터", function()
+			setup.stage = "roster"
+			renderSetup()
+		end)
+		smallBtn(setupBtns, 96, 2, 110, "남은 말 무작위", function()
+			autoPlace()
+			renderSetup()
+		end)
+		smallBtn(setupBtns, 212, 2, 90, "전체 회수", function()
+			clearPlace()
+			renderSetup()
+		end)
+		smallBtn(setupBtns, 520, 2, 140, "배치 완료 ✔", sendReady, Color3.fromRGB(91, 140, 255), placedCount() == 14)
+		if use3D then
+			boardFrame.Visible = false
+			sync3DSetup()
+		else
+			boardFrame.Visible = true
+			local3d:ClearAllChildren()
+			renderBoard2DSetup()
+		end
+	else -- ready
+		setupTitle.Text = ("✅ 배치 완료 — 테이블 %d %s 자리"):format(ti.tableId, ti.side)
+		setupHint.Text = oppLine .. " · " .. ((ti.opp and ti.oppReady) and "시작 중…" or "상대가 배치를 마치면 시작합니다")
+		clearChildren(setupContent)
+		smallBtn(setupBtns, 0, 2, 110, "배치 취소", function()
+			send({ t = "unready" })
+		end)
+		if use3D then
+			boardFrame.Visible = false
+			sync3DSetup()
+		else
+			boardFrame.Visible = true
+			renderBoard2DSetup()
+		end
+	end
+end
+
+local function onSetupCell(er, c) -- 엔진 좌표 클릭 → 설정 좌표
+	if setup.stage ~= "place" then
+		return
+	end
+	local sr = toEngineRow(er)
+	if sr < 11 or sr > 13 then
+		return
+	end
+	local i = setupPieceAt(sr, c)
+	if i then
+		setup.pos[i] = nil
+		setup.tray = i
+	elseif setup.tray and not setup.pos[setup.tray] then
+		setup.pos[setup.tray] = { sr, c }
+		setup.tray = nextUnplaced(setup.tray)
+	end
+	renderSetup()
+end
+
+--==================================================================
 -- 로비 상태 표시
 --==================================================================
 
 local function renderLobby()
-	setBoardCamera(tableInfo ~= nil) -- 앉아 있으면 판을 바라본다
+	setBoardCamera(tableInfo ~= nil)
 	if view and view.phase ~= "over" then
-		tablePanel.Visible = false
+		setupPanel.Visible = false
 		standBtn.Visible = true
 		hudLabel.Text = tableInfo and ("테이블 %d · ⚔️ 대전 중 (자리 떠나기 = 기권)"):format(tableInfo.tableId) or "⚔️ 대전 중"
 		return
 	end
 	if not tableInfo then
-		hudLabel.Text = "🪑 테이블 의자 앞에서 [E] 앉기 → 배치 완료 → 맞은편 상대도 배치를 마치면 대전 시작"
+		hudLabel.Text = "🪑 테이블 의자 앞에서 [E] 앉기 → 로스터 선택 → 판 위에 배치 → 맞은편 상대도 배치를 마치면 대전 시작"
 		standBtn.Visible = false
 		modeBtn.Visible = false
-		tablePanel.Visible = false
+		setupPanel.Visible = false
+		closeDetail()
+		if not view then
+			boardFrame.Visible = false
+			local3d:ClearAllChildren()
+		end
 		return
 	end
 	local ti = tableInfo
 	standBtn.Visible = true
+	modeBtn.Visible = findBoardPart() ~= nil
+	modeBtn.Text = force2D and "3D 판" or "2D 보드"
 	hudLabel.Text = ("테이블 %d · %s 자리 · %s"):format(ti.tableId, ti.side, ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)")
-	if ti.inGame then
-		tablePanel.Visible = false
-		return
-	end
-	tablePanel.Visible = true
-	tableTitle.Text = ("테이블 %d — %s 자리"):format(ti.tableId, ti.side)
-	local oppLine = ti.opp and ("상대: " .. ti.opp .. (ti.oppReady and " (배치 완료)" or " (배치 중)")) or "상대 없음 — 맞은편에 누가 앉으면 시작할 수 있습니다"
-	if ti.myReady then
-		tableLabel.Text = oppLine .. "\n✅ 내 배치 완료 — " .. ((ti.opp and ti.oppReady) and "시작 중…" or "상대를 기다립니다")
-		readyBtn.Visible = false
-		unreadyBtn.Visible = true
-	else
-		tableLabel.Text = oppLine .. "\n배치를 마치면 준비 완료. 둘 다 완료되면 바로 대전이 시작됩니다."
-		readyBtn.Visible = true
-		unreadyBtn.Visible = false
-	end
+	renderSetup()
 end
 
-local function closeGame() -- 종료된 대국 닫기 → 로비 복귀 (앉은 채면 테이블 패널로 재대전)
+local function closeGame()
 	game_.Visible = false
 	view = nil
 	selectedId = nil
 	teleFirst = nil
 	local3d:ClearAllChildren()
-	modeBtn.Visible = false
+	boardFrame.Visible = false
 	renderLobby()
 end
 
 --==================================================================
--- 렌더 — 2D 보드(폴백)
+-- 렌더 — 대전
 --==================================================================
 
 local function renderBoard2D()
 	local forced = view.forcedTargets or {}
+	local legal = legalOf(selectedId)
 	for r = 1, ROWS do
 		for c = 1, COLS do
-			local dr = dispRow(r)
-			local b = cells[dr][c]
+			local b = cells[dispRow(r)][c]
 			local zone = (r <= 3) and Color3.fromRGB(74, 46, 58) or (r >= 11) and Color3.fromRGB(47, 58, 94)
 				or ((r >= 4 and r <= 5) or (r >= 9 and r <= 10)) and Color3.fromRGB(35, 66, 47)
 				or Color3.fromRGB(43, 49, 64)
@@ -650,6 +1071,13 @@ local function renderBoard2D()
 			icon.Visible = false
 			hpLabel.Visible = false
 			mark.Visible = false
+			if legal then
+				for _, rc in legal.moves do
+					if rc[1] == r and rc[2] == c then
+						b.BackgroundColor3 = Color3.fromRGB(50, 90, 160)
+					end
+				end
+			end
 			local p = pieceAt(r, c)
 			if p then
 				local team = Art.TEAM[p.owner]
@@ -671,6 +1099,9 @@ local function renderBoard2D()
 				end
 				if p.id == selectedId or p.id == teleFirst then
 					b.BackgroundColor3 = Color3.fromRGB(120, 120, 40)
+				end
+				if legal and table.find(legal.attacks, p.id) then
+					b.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
 				end
 				if table.find(forced, p.id) then
 					b.BackgroundColor3 = Color3.fromRGB(160, 50, 50)
@@ -705,7 +1136,12 @@ local function renderSide()
 	end
 	local sel = selectedId and pieceById(selectedId)
 	if sel and sel.known then
-		head ..= ("선택: %s HP %s\n"):format(sel.name or Data.TYPE_KO[sel.type or ""] or "?", tostring(sel.hp or "-"))
+		head ..= ("선택: %s HP %s"):format(sel.name or Data.TYPE_KO[sel.type or ""] or "?", tostring(sel.hp or "-"))
+		local lg = legalOf(selectedId)
+		if lg then
+			head ..= (" · 이동 %d칸%s"):format(#lg.moves, #lg.attacks > 0 and (" · 공격 가능 " .. #lg.attacks) or "")
+		end
+		head ..= "\n"
 	end
 	if teleFirst then
 		head ..= "🌀 텔레포트: 교환할 두 번째 말을 클릭\n"
@@ -722,14 +1158,14 @@ local function renderSide()
 	if view.forcedTargets then
 		head ..= "⚔️ 강제 전투 — 빨간 대상 클릭\n"
 	end
-	if boardMode == "3d" then
-		head ..= "판 위의 말을 클릭해 선택·이동·전투\n"
+	if myTurn and not sel and not view.battle then
+		head ..= "내 말을 클릭하면 이동(파랑)·공격(빨강) 가능 칸이 표시됩니다\n"
 	end
 	infoLabel.Text = head
 end
 
 local function renderButtons()
-	clearChildrenBtns(btnRow)
+	clearChildren(btnRow)
 	local myTurn = view.phase == "play" and view.current == view.me and not view.battle and not view.pending and not view.pendingWait
 	if view.fleePick then
 		smallBtn(btnRow, 0, 0, 170, "교환 생략 (그대로 밀기)", function()
@@ -746,11 +1182,10 @@ local function renderButtons()
 		end
 		return
 	end
+	local lg = legalOf(selectedId)
 	smallBtn(btnRow, 0, 0, 70, "탐색", function()
-		if selectedId then
-			send({ t = "search", id = selectedId })
-		end
-	end)
+		send({ t = "search", id = selectedId })
+	end, nil, lg ~= nil and lg.search)
 	smallBtn(btnRow, 76, 0, 90, teleFirst and "🌀 취소" or "🌀 텔레포트", function()
 		if teleFirst then
 			teleFirst = nil
@@ -758,15 +1193,13 @@ local function renderButtons()
 			teleFirst = selectedId
 		end
 		render()
-	end)
+	end, nil, teleFirst ~= nil or (view.teleAvailable and selectedId ~= nil))
 	smallBtn(btnRow, 172, 0, 70, "🌿 회복", function()
-		if selectedId then
-			send({ t = "heal", id = selectedId })
-		end
-	end)
+		send({ t = "heal", id = selectedId })
+	end, nil, lg ~= nil and lg.heal)
 	smallBtn(btnRow, 0, 32, 100, "주 행동 생략", function()
 		send({ t = "skipMain" })
-	end)
+	end, nil, not view.mainUsed)
 	smallBtn(btnRow, 106, 32, 80, "턴 종료", function()
 		send({ t = "endTurn" })
 	end, Color3.fromRGB(91, 140, 255))
@@ -778,7 +1211,7 @@ end
 local function renderPrompt()
 	local pd = view.pending
 	promptFrame.Visible = pd ~= nil
-	clearChildrenBtns(promptBtns)
+	clearChildren(promptBtns)
 	if not pd then
 		return
 	end
@@ -797,13 +1230,13 @@ local function renderPrompt()
 		promptLabel.Text = ("포획 시도 (몬스터볼 %d) — 공격 포획 실패 시 최대 HP 25%% 피해"):format(pd.balls)
 		smallBtn(promptBtns, 0, 0, 105, "안전 (볼2·100%)", function()
 			send({ t = "capTry", mode = "safe" })
-		end)
+		end, nil, pd.balls >= 2)
 		smallBtn(promptBtns, 110, 0, 100, "위험 (볼1·50%)", function()
 			send({ t = "capTry", mode = "risky" })
-		end)
+		end, nil, pd.balls >= 1)
 		smallBtn(promptBtns, 215, 0, 100, "공격 (볼1·70%)", function()
 			send({ t = "capTry", mode = "attack" })
-		end)
+		end, nil, pd.balls >= 1)
 		smallBtn(promptBtns, 0, 30, 60, "포기", function()
 			send({ t = "capSkip" })
 		end)
@@ -846,7 +1279,6 @@ local function fighterText(fv, label)
 		label, name, fv.owner == view.me and "나" or "상대", fv.hp, fv.maxHp, table.concat(st, " "))
 end
 
--- 전투 도트: 하수인·대리 출전(포획 하수인)은 battle256, 왕·동료 본체는 토큰128 팀 틴트
 local function fighterImage(fv)
 	if fv.isCap or fv.pieceType == "minion" then
 		return Art.battle(fv.artRosterId), nil
@@ -872,12 +1304,13 @@ local function renderBattle()
 		img.ImageColor3 = tint or WHITE
 		img.Visible = u ~= nil
 	end
-	clearChildrenBtns(battleBtns)
+	clearChildren(battleBtns)
 	if not myActing then
 		return
 	end
 	local myF = bt[bt.mySide]
 	if myF.skills then
+		local anyReady = false
 		for i = 1, 4 do
 			local sv = myF.skills[i]
 			local text, enabled
@@ -889,17 +1322,14 @@ local function renderBattle()
 				text = "? " .. (Data.SKIND_KO[sv.kind] or "")
 				enabled = false
 			end
-			local b = smallBtn(battleBtns, ((i - 1) % 2) * 180, math.floor((i - 1) / 2) * 30, 174, text, function()
+			anyReady = anyReady or enabled
+			smallBtn(battleBtns, ((i - 1) % 2) * 180, math.floor((i - 1) / 2) * 30, 174, text, function()
 				send({ t = "act", k = i })
-			end)
-			b.AutoButtonColor = enabled
-			if not enabled then
-				b.BackgroundColor3 = Color3.fromRGB(40, 44, 56)
-			end
+			end, nil, enabled)
 		end
 		smallBtn(battleBtns, 0, 62, 90, "기본 공격", function()
 			send({ t = "act", k = "basic" })
-		end)
+		end, nil, not anyReady)
 	else
 		smallBtn(battleBtns, 0, 0, 120, "기본 공격", function()
 			send({ t = "act", k = "basic" })
@@ -924,7 +1354,8 @@ function render()
 	if not view then
 		return
 	end
-	tablePanel.Visible = false
+	setupPanel.Visible = false
+	closeDetail()
 	game_.Visible = true
 	local bp = findBoardPart()
 	boardMode = (bp and not force2D) and "3d" or "2d"
@@ -996,40 +1427,50 @@ local function onCell(r, c)
 	send({ t = "move", id = sel.id, r = r, c = c })
 end
 
+-- 보드 클릭 라우팅 (엔진 좌표): 대전 중 → onCell, 배치 중 → onSetupCell
+local function onBoardClick(r, c)
+	if view and view.phase == "play" then
+		onCell(r, c)
+	elseif tableInfo and setupPanel.Visible then
+		onSetupCell(r, c)
+	end
+end
+
 for dr = 1, ROWS do
 	for c = 1, COLS do
 		cells[dr][c].Activated:Connect(function()
-			local r = (view and view.me == 1) and (ROWS + 1 - dr) or dr
-			onCell(r, c)
+			local r = (myOwner() == 1) and (ROWS + 1 - dr) or dr
+			onBoardClick(r, c)
 		end)
 	end
 end
 
 UserInputService.InputBegan:Connect(function(input, processed)
-	if processed or boardMode ~= "3d" or not view or not game_.Visible then
+	if processed or force2D then
 		return
 	end
 	if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
 		return
 	end
+	if not ((view and game_.Visible) or (tableInfo and setupPanel.Visible)) then
+		return
+	end
 	local r, c = raycastCell(input.Position)
 	if r then
-		onCell(r, c)
+		onBoardClick(r, c)
 	end
 end)
 
-readyBtn.Activated:Connect(function()
-	send({ t = "ready", setup = randomSetup() })
-end)
-unreadyBtn.Activated:Connect(function()
-	send({ t = "unready" })
-end)
 standBtn.Activated:Connect(function()
-	send({ t = "stand" }) -- 대전 중이면 서버가 기권 처리 후 기립
+	send({ t = "stand" })
 end)
 modeBtn.Activated:Connect(function()
 	force2D = not force2D
-	render()
+	if view then
+		render()
+	else
+		renderLobby()
+	end
 end)
 renderLobby()
 DIAG.ui = true
@@ -1050,6 +1491,7 @@ reState.OnClientEvent:Connect(function(msg)
 		return
 	elseif msg.t == "left" then
 		tableInfo = nil
+		closeDetail()
 		if view then
 			closeGame()
 		else
@@ -1058,9 +1500,7 @@ reState.OnClientEvent:Connect(function(msg)
 		return
 	elseif msg.t == "reject" then
 		addLog("⛔ " .. (msg.reason or "거부됨"))
-		if not view then
-			hudLabel.Text = "⛔ " .. (msg.reason or "거부됨")
-		end
+		hudLabel.Text = "⛔ " .. (msg.reason or "거부됨")
 		return
 	elseif msg.t == "state" then
 		local prevBattle = view and view.battle ~= nil
