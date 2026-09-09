@@ -28,6 +28,12 @@ Orca는 해당 worker_done을 자동 완료로 기록했으나 PD가 `role_scope
 
 ## 검증·완료 상태
 
-경로 수정과 구현자 검증 진행 중이다. 최종 검증 수치·Saturn 독립 판정·실제 PR CI와 통합 결과는 완료 후 아래에 기록한다.
+통합 [PR #136](https://github.com/ChangjoSung/Digit-Duel/pull/136)의 기준 dev는 `4e7adf7745089549c96372c622244cb9d4e18da1`이다. 구현 커밋 `5b151f7` 뒤 최신 Roblox dev를 정상 병합한 검수 head `7b3b0be5f93faaf0c137f948e0534be051d242b7`에서 [실제 PR CI](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34318091150)의 **5개 필수 검사 모두 성공**했다. 규칙·AI, Linux 서버, Windows 실행기, 문서 링크·미디어, 납품 아트를 포함한다. 후속 문서 정정 뒤 최종 head의 검사도 PR에서 확인한다.
 
-CJ는 이동 후 `docs/milestone/v0.4.6`의 잔여 폴더 삭제도 요청했다. 읽기 전용 확인에서 `issues/132/Mars`, `issues/132/Venus`, `issues/132`, `issues`의 빈 폴더4개와 Roblox 안내 README만 남았다. PD의 삭제 명령은 자동 승인 검토의 `blocked by policy`로 실행 전 거부됐고, 확인한 개별 경로의 비재귀 삭제도 거부됐다. Worker나 다른 삭제 도구로 우회하지 않는다. 현재 직접 삭제는 미완료이며 정상 Git 통합 후 작업 트리 상태를 다시 확인한다.
+Mars 로컬 검증은 현행 회귀 16종 전부 성공, 링크 검사기 34개·미디어 READ_ONLY 회귀 17개·Python 68개 성공, 아트 `write=0 unchanged=29 mismatch=0 missing=0 warn=0`이다. `smoke_shock`의 기존 H1/H2를 유지하고 지정 5개 fixture의 존재·설정을 확인하는 H0/H0b를 추가했다. 필수 fixture를 제거한 음성 대조에서는 종료 코드 1을 확인했다. 상세 수치·실행 부수효과·미검증은 [Mars 보고](../Mars/report.md)를 따른다.
+
+독립 Saturn Task `task_6ed70771cf08` / Dispatch `ctx_018aad37d9a1`는 `READ_ONLY_QA / QA / QA / none / instance_index=null`이다. 파일을 쓰는 원본 스모크·도구 fixture 검사는 직접 실행하지 않고 구현자·CI 결과와 독립 소스 검토를 구분한다. 최종 판정과 통합 상태는 Issue134·PR136에 기록한다. Saturn의 직접 검사에서 shock 67/0, 현재 HTML 방향 감사 8914/0, AI 13경기·59/0, 문서 119개·링크 428건·문제0, 미디어 자기 검사·오프라인 검증 문제0/감시26개 불변, Python `-B` 아트 write0/unchanged29/mismatch0을 확인했다. 또한 이동 원본40개, incoming PR135의93개 blob, #132 역할 보고2개, 경로 치환 외 CI 동등성과 실제 main/dev 보호 설정을 독립 대조했다. 방향 감사의 단언 수는 실행 일정에 따라 달라질 수 있어 Mars의 8916과 합산하지 않는다.
+
+이동 전후 비교 후속은 Mars Task `task_b4a8de9fb634` / Dispatch `ctx_0c02ff4afd93`이다. 동일 HTML·고정 ref·기본40경기 조건으로 이동 전 c6dd0a8의 원본 비교기/하네스를 메모리 컴파일해 직접 대조했다. 이동 전후 모두 pass10/fail1(3a), stdout14줄·stderr가 바이트 동일하고 종료 코드는 모두 **1**이었다. 기존 실패임은 확인됐지만 최초 발생 커밋·원인은 추적하지 않았다. 앞선 exit0 보고는 파이프 뒤 tail의 종료 코드를 읽은 측정 오류였으며, PD가 후속 지시에서 재사용한 exit0 설명도 정정한다. 제품·과거 단언을 고치지 않았다. 후속 worker_done은 외부 임시 경로에 러너, 초기 diff용 원본 blob 덤프2개, 전후 출력 및 링크 검사 로그를 썼다고 모두 신고했다. Mars 본문의 “디스크 사본 없이”는 실제 재현에서 소스를 메모리 컴파일했다는 범위로 한정하며 전체 파일 쓰기0으로 해석하지 않는다. 기존 단언 보존과 H0/H0b 추가도 구분한다. CDP 13종은 출력 경로·입력 해석의 정적 검토만 수행하며 옛 브라우저 증빙을 재생성하지 않는다. Roblox PR135의 원래 코드·자산·문서와 기존 HTML 제품·서버·승인 아트는 기준 dev와 동일함을 Git 비교로 확인했다.
+
+CJ는 이동 후 `docs/milestone/v0.4.6`의 잔여 폴더 삭제도 요청했다. 읽기 전용 확인에서 `issues/132/Mars`, `issues/132/Venus`, `issues/132`, `issues`의 빈 폴더4개와 Roblox 안내 README만 남았다. PD의 삭제 명령은 자동 승인 검토의 `blocked by policy`로 실행 전 거부됐고, 확인한 개별 경로의 비재귀 삭제도 거부됐다. Worker나 다른 삭제 도구로 우회하지 않는다. 직접 삭제 명령은 집행되지 않았다. 정상 Git 통합 후 실제 폴더 상태를 다시 확인하며 결과는 Issue134 최종 기록을 따른다.

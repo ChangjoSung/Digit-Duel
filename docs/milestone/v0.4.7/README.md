@@ -20,11 +20,11 @@ PR #133 dev 통합·CI 5개 검사·Saturn PASS 후 CJ의 다음 Comment로 완�
 
 ### [#134](https://github.com/ChangjoSung/Digit-Duel/issues/134) — demo/test·tools 구조 및 일정·개발자 표기 정리
 
-Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 사용하는 도구는 용도별로 정리한다. 실행 경로·동적 검사 검색·CI와 현행 안내를 함께 갱신한다. Mars(Claude) 구현 → Saturn(Codex) 독립 READ_ONLY 검수 → dev PR 통합 순서로 진행 중이다.
+Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 사용하는 도구는 용도별로 정리한다. 실행 경로·동적 검사 검색·CI와 현행 안내를 함께 갱신했다. Mars(Claude)가 구현하고 Saturn(Codex)이 독립 READ_ONLY로 검수한다. 최신 Roblox dev를 포함한 [통합 PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136)의 첫 실제 CI에서 5개 필수 검사가 모두 성공했다. 최종 검수·병합 상태는 해당 PR과 Issue134 기록을 따른다.
 
 [검사 인덱스](../../../demo/test/README.md) · [도구 인덱스](../../../tools/README.md) · [경로표](issues/134/Mercury/MOVES.csv) · [PD 기록](issues/134/Mercury/report.md)
 
-이번 CJ 결정으로 Roblox #118은 [v0.4.6](../v0.4.6/README.md)에 분리됐다. 기존 CJ 게임 이슈와 Infra의 소속·설명·문서 경로를 v0.4.7로 맞추며, README 게임 정보에 Roblox 포팅 담당 이욱채(lee775)를 추가한다.
+이번 CJ 결정으로 Roblox #118은 [v0.4.6](../v0.4.6/README.md)에 분리됐다. 기존 CJ 게임 이슈와 Infra의 소속·설명·문서 경로를 v0.4.7로 맞추며, README 게임 정보에 Roblox 포팅 담당 이욱채(lee775)를 추가했다.
 
 ## 등록된 나머지 범위 (착수 전)
 

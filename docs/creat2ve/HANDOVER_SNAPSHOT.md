@@ -1,13 +1,13 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-09 · Mercury(PD, GPT-6 Astra/high). CJ의 후속 Infra #134에서 demo/test·tools 구조와 일정·개발자 표기를 정리 중이다. v0.4.6은 Roblox 포팅 #118, 기존 CJ 게임 #119–#131 및 Infra #132/#134는 v0.4.7이다. 정식 출시는 v0.4.5이며 게임13건은 번호별 착수 지시를 기다린다.
+> 2026-09-09 · Mercury(PD, GPT-6 Astra/high). CJ의 후속 Infra #134에서 demo/test·tools 구조와 일정·개발자 표기를 정리했다. 통합·검수 원장은 PR136과 Issue134다. v0.4.6은 Roblox 포팅 #118, 기존 CJ 게임 #119–#131 및 Infra #132/#134는 v0.4.7이다. 정식 출시는 v0.4.5이며 게임13건은 번호별 착수 지시를 기다린다.
 
 ## 현재 승인 범위와 상태
 
 - [Issue #134](https://github.com/ChangjoSung/Digit-Duel/issues/134): `demo/test`와 `tools`를 버전·Issue·용도로 정리하고 실행 경로·공통 참조·검사 검색·CI를 유지한다. Mars(Claude) 구현, Saturn(Codex) 독립 READ_ONLY, Mercury Git·문서 메타데이터를 담당한다.
 - [Milestone12 v0.4.6](https://github.com/ChangjoSung/Digit-Duel/milestone/12)은 Roblox #118 전용이다. [이욱채(lee775)](https://github.com/lee775)의 PR135(Phase1·2a·3D로비·아트 연결)가 dev `4e7adf7745089549c96372c622244cb9d4e18da1`에 통합됐음을 CJ 요청으로 확인했다. PR135도 v0.4.6에 연결했다. 작성자 보고 Luau646단언·게시version8과 기존HTML CI5성공을 확인했으나 Roblox 코드 Saturn·CJ2인플레이는 미완료로 기록돼 있다. 코드·자산·문서는 원형을 보존하며 Issue118 OPEN을 유지한다. README 개발자·플랫폼과 일정 설명을 맞춘다.
 - [Milestone13 v0.4.7](https://github.com/ChangjoSung/Digit-Duel/milestone/13)에 게임119–131, 완료 Infra132/PR133, 후속 Infra134를 재배치했다. #132는 완료 보고 뒤 CJ의 후속 Comment에 따라 수락 종결했다. 과거 보고의 당시 v0.4.6·절차 예외·QA 한계를 소급 변경하지 않는다.
-- 작업 브랜치 `infra/134-test-tools-layout`, 분기 기준 dev `c6dd0a8c0d435daea220df0e9c628def0a58c26b`. 제품·서버·승인 아트는 보존하며 기존 5개 CI 필수 검사 이름·main/dev 보호 설정을 유지한다. 실제 완료와 병합은 Issue/PR·GitHub가 원본이다.
+- 작업 브랜치 `infra/134-test-tools-layout`, 최초 분기 기준 dev `c6dd0a8c0d435daea220df0e9c628def0a58c26b`, 최신 Roblox dev `4e7adf7` 통합 완료. [PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136)의 최초 검수 head `7b3b0be`에서 [CI5검사 모두 성공](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34318091150)했다. 제품·서버·승인 아트는 보존하며 기존 5개 CI 필수 검사 이름·main/dev 보호 설정을 유지한다. 실제 완료와 병합은 Issue/PR·GitHub가 원본이다.
 
 ## 완료 이력 — 선행 Infra #132
 
@@ -54,4 +54,4 @@
 
 - [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) DL38 = 최초 v0.4.6 분석·등록 이력, DL39 = 선행 Infra132, DL40 = v0.4.6 Roblox/v0.4.7 재배치·후속 Infra134. 현재 규칙 참조 경로는 새 문서 위치로 동기화하고, 과거 Decision Log의 GitHub 링크는 이동 전 SHA에 고정했다. GitHub 과거 Issue/PR 본문·코멘트 13곳의 링크34개도 고정·응답 일치 확인했다. 기존 Release8개는 버전 태그 링크라 그대로 유효하다.
 - Notion System 원문 `3d51e7f1708580b0916ded4bd3d9d06e`의 외부 편집 Summary는 보존한다. Project=Digit Dual, Edit Date=실제 수정일, Editor=실제 사람 성창조(`8e0a8270-d0e3-407e-a7d2-b3f992f1e366`); Agent 이름은 운영 본문에만 기록한다.
-- 후속 Infra134는 실제 PR의 필수 검사 성공·Saturn PASS 후 dev squash 및 전용 브랜치 정리 절차를 따른다. main/dev 자체는 삭제하지 않는다. 다음 제품 작업은 CJ의 Issue 번호별 착수 지시를 기다린다. Issue132는 수락 종결됐으며 보호 경로 메타데이터 조회 예외를 지우거나 무접근 AC를 완전 충족으로 표시하지 않는다. 새 Issue134도 완료 보고 뒤 CJ 수락 계약에 따라 종결한다.
+- 후속 Infra134의 구현·검수·dev 통합은 [PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136)과 [PD 기록](../milestone/v0.4.7/issues/134/Mercury/report.md)을 따른다. 실제 최종 head의 필수 검사 성공·Saturn PASS가 dev squash의 전제이며 전용 브랜치만 정리한다. main/dev 자체는 삭제하지 않는다. 다음 제품 작업은 CJ의 Issue 번호별 착수 지시를 기다린다. Issue132는 수락 종결됐으며 보호 경로 메타데이터 조회 예외를 지우거나 무접근 AC를 완전 충족으로 표시하지 않는다. 새 Issue134도 완료 보고 뒤 CJ 수락 계약에 따라 종결한다.
