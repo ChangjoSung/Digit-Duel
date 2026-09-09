@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p2d.3"
+local CLIENT_VERSION = "0.5.0-p2d.5"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -1259,11 +1259,11 @@ local function renderLobby()
 	end
 	local ti = tableInfo
 	if ti.setupOpen then
-		hudLabel.Text = ("테이블 %d · %s 자리 · 상대: %s\n배치 단계 — 로스터 6종 선택 → 판 위에 14개 배치 → [배치 완료 ✔]. 둘 다 완료하면 자동 시작"):format(ti.tableId, ti.side, ti.opp or "?")
+		hudLabel.Text = ("테이블 %d · %s 자리 · 상대: %s\n배치 단계 — 로스터 6종 → 판 위에 14개 배치 → [배치 완료 ✔] (Enter 로 다음 단계/완료). 둘 다 완료하면 자동 시작"):format(ti.tableId, ti.side, ti.opp or "?")
 	else
-		hudLabel.Text = ("테이블 %d · %s 자리 · %s\n%s · 일어나기: Space(점프) 또는 [자리 떠나기]"):format(ti.tableId, ti.side,
+		hudLabel.Text = ("테이블 %d · %s 자리 · %s\n%s · 일어나기: Space 또는 [자리 떠나기]"):format(ti.tableId, ti.side,
 			ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)",
-			ti.opp and "둘 다 앉았습니다 — 아무나 [▶ 게임 시작] 을 누르면 배치가 시작됩니다" or "상대가 앉으면 [▶ 게임 시작] 이 활성화됩니다")
+			ti.opp and "둘 다 앉았습니다 — [F] (판 앞 프롬프트) 또는 Enter 또는 [▶ 게임 시작] 버튼" or "상대가 앉으면 [F] 게임 시작이 켜집니다")
 	end
 	renderSetup()
 end
@@ -1728,6 +1728,36 @@ for dr = 1, ROWS do
 		end)
 	end
 end
+
+-- 키 입력: F / Enter = 게임 시작 (둘 다 착석 시) · Enter = 배치 단계 진행(로스터 6종 → 배치, 14개 배치 → 완료)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or input.UserInputType ~= Enum.UserInputType.Keyboard then
+		return
+	end
+	local k = input.KeyCode
+	if k ~= Enum.KeyCode.F and k ~= Enum.KeyCode.Return and k ~= Enum.KeyCode.KeypadEnter then
+		return
+	end
+	if (view and view.phase == "play") or not tableInfo or tableInfo.inGame then
+		return
+	end
+	if not tableInfo.setupOpen then
+		if tableInfo.opp then
+			send({ t = "startGame" }) -- 프롬프트 [F] 와 겹쳐도 서버가 한 번만 처리
+		else
+			hudLabel.Text = "⛔ 맞은편에 상대가 앉아야 시작할 수 있습니다"
+		end
+	elseif k ~= Enum.KeyCode.F then
+		if setup.stage == "roster" and #setup.roster == 6 then
+			setup.stage = "place"
+			setup.tray = nextUnplaced(1)
+			closeDetail()
+			renderSetup()
+		elseif setup.stage == "place" and placedCount() == 14 then
+			sendReady()
+		end
+	end
+end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or force2D then
