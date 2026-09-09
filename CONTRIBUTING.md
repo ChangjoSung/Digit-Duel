@@ -19,3 +19,48 @@ reusing artwork, screenshots, audio, or other media.
 Development changes should be made on an issue branch and merged into `dev`
 through a pull request. Release changes move from `dev` to `main` through a
 separate release pull request.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request to `main` or `dev`, on
+every push to those branches, and on manual dispatch. It needs no secrets and
+requests only `contents: read`. Five jobs run in parallel:
+
+| Job id | Name | What it checks |
+| --- | --- | --- |
+| `rules-headless` | A. 규칙 회귀·AI 완주 (헤드리스) | Headless rule regressions over `demo/index.html`, the v0.4.5 balance and tutorial contracts, the fixed-baseline comparison, the board orientation audit, and the AI vs AI completion gate |
+| `server` | B. 서버 (프로토콜·보안·설정) | `npm ci` then `npm test` in `server/` — relay protocol, security, configuration, launcher |
+| `server-launcher-windows` | B2. Windows 실행기 회귀 | `server/test-launcher.js` on a Windows runner, where it is not skipped |
+| `docs-integrity` | C. 문서 링크·이미지 무결성 | The link checker's own regression suite, then every internal link and image in tracked `*.md`, then the README media tool's self-check and offline verification |
+| `assets-integrity` | D. 납품 아트 자산 무결성 | Delivered minion PNGs and manifests match, without regenerating them, plus the art pipeline tool's own tests |
+
+Reproduce a failing job locally with the same command the workflow runs. The
+most common ones:
+
+```
+node demo/test/smoke_turnflow.js          # and the other demo/test/smoke_*.js suites
+node tools/docs_link_check.js --verbose   # broken links and images in tracked *.md
+node tools/test/docs_link_check_test.js   # the checker's own regression suite
+cd server && npm ci && npm test           # relay server
+python tools/minion_art.py --all --check --no-preview   # delivered art, no regeneration
+python -m unittest discover -s tests -v   # art pipeline tool
+```
+
+Two things to keep in mind when you change what CI covers.
+
+- **Approved rule changes update the assertions in the same pull request.**
+  `smoke_attack_balance.js` and `smoke_shock.js` encode the balance contract of
+  the released version. If an approved planning decision changes those numbers,
+  the test change belongs in the pull request that changes the rules, not in a
+  follow-up.
+- **Do not add exceptions to make a check pass.** If `docs_link_check` reports a
+  broken link, fix the link. If a path moved, record the move in
+  [`docs/milestone/MOVES.csv`](docs/milestone/MOVES.csv) and update the
+  clickable links; historical plain-text paths in past reports stay as written.
+
+Branch protection on `main` and `dev` — required pull requests, no force push
+or deletion, required conversation resolution, and the checks above as required
+status checks — is **planned but not yet applied**. It will be configured once
+these jobs have gone green on a real pull request, and the applied result will
+be recorded on [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132).
+Until then, treat the workflow result as the gate.

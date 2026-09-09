@@ -12,7 +12,7 @@ const fs=require("fs"), path=require("path"), os=require("os"), {spawn}=require(
 const args=process.argv.slice(2);
 const opt=(k,d)=>{ const i=args.indexOf(k); return i>=0?args[i+1]:d; };
 const ROOT=path.resolve(__dirname,"..","..");
-const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","qa","issue95")));
+const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","milestone","v0.4.4","issues","95","Mars","artifacts")));
 const READ_ONLY=args.includes("--read-only");
 const USE_HTTP=!args.includes("--no-http");
 const CHROME=opt("--chrome",[process.env.CHROME_PATH,"C:/Program Files/Google/Chrome/Application/chrome.exe","C:/Program Files (x86)/Google/Chrome/Application/chrome.exe","/usr/bin/google-chrome","/usr/bin/chromium","/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].filter(Boolean).find(p=>fs.existsSync(p)));

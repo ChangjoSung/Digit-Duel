@@ -1,0 +1,8 @@
+# #132 아트 파이프라인(tools/minion_art.py · tests/test_minion_art.py) 실행 의존성.
+# CI 재현성을 위해 정확한 버전으로 고정한다 — 픽셀 데이터에서 PNG 를 굽는 도구라
+# 인코더가 바뀌면 --check 의 바이트 비교 결과가 흔들릴 수 있다.
+#
+# 검증: Pillow 12.3.0 은 requires_python >=3.10 이며 cp312 manylinux x86_64 휠을 배포한다
+#       (pypi.org/pypi/Pillow/12.3.0/json, 2026-09-09 확인). CI 는 Python 3.12 로 고정한다.
+# 로컬 실측 환경: Python 3.14.3 + Pillow 12.3.0 (Windows) — 통과.
+Pillow==12.3.0

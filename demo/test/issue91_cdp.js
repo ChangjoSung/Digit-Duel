@@ -13,7 +13,7 @@ const fs=require("fs"), path=require("path"), os=require("os"), {spawn}=require(
 const args=process.argv.slice(2);
 const opt=(k,d)=>{ const i=args.indexOf(k); return i>=0?args[i+1]:d; };
 const ROOT=path.resolve(__dirname,"..","..");
-const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","qa","issue91")));
+const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","milestone","v0.4.4","issues","91","Mars","artifacts")));
 const READ_ONLY=args.includes("--read-only")||args.includes("--no-write");
 const SHOTS=!args.includes("--no-shots")&&!READ_ONLY;
 const USE_HTTP=!args.includes("--no-http");

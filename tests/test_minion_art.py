@@ -458,8 +458,8 @@ class DriverTest(unittest.TestCase):
         first = ma.run(self.root, PILOT_IDS, check_only=False, make_previews=True)
         self.assertFalse(first.failed, first.problems + first.missing)
         self.assertIn("demo/assets/minions/fire_sustain/icon.png", first.written)
-        self.assertIn("docs/art/minions-v0.4.3/review/icons-contact-sheet.png", first.written)
-        self.assertIn("docs/art/minions-v0.4.3/delivery-manifest.csv", first.written)
+        self.assertIn("docs/milestone/v0.4.3/assets/minions/review/icons-contact-sheet.png", first.written)
+        self.assertIn("docs/milestone/v0.4.3/assets/minions/delivery-manifest.csv", first.written)
         self.assertEqual(first.problems, [])
 
         second = ma.run(self.root, PILOT_IDS, check_only=False, make_previews=True)
@@ -507,14 +507,14 @@ class DriverTest(unittest.TestCase):
     def test_explicitly_requested_missing_icon_source_fails(self):
         out = ma.run(self.root, ["grass_def"], check_only=False, make_previews=False)
         self.assertTrue(out.failed, "요청한 소스가 없는데 성공을 주장했다")
-        self.assertIn("docs/art/minions-v0.4.3/pixel-sources/grass_def.json", out.missing)
+        self.assertIn("docs/milestone/v0.4.3/assets/minions/pixel-sources/grass_def.json", out.missing)
         self.assertTrue(out.wrote_nothing)
         self.assertFalse((self.root / ma.REL_ASSETS / "grass_def" / "icon.png").exists())
 
     def test_allowlisted_id_requires_its_patch(self):
         self.write_source(make_source("fire_sustain"))
         out = ma.run(self.root, ["fire_sustain"], check_only=False, make_previews=False)
-        self.assertIn("docs/art/minions-v0.4.3/battle-patches/fire_sustain.json", out.missing)
+        self.assertIn("docs/milestone/v0.4.3/assets/minions/battle-patches/fire_sustain.json", out.missing)
         self.assertTrue(out.failed)
         self.assertTrue(out.wrote_nothing)
 
@@ -522,7 +522,7 @@ class DriverTest(unittest.TestCase):
         self.seed_pilot()
         out = ma.run(self.root, list(ma.ROSTER_IDS), check_only=False, make_previews=False)
         self.assertTrue(out.failed)
-        self.assertIn("docs/art/minions-v0.4.3/pixel-sources/water_std.json", out.missing)
+        self.assertIn("docs/milestone/v0.4.3/assets/minions/pixel-sources/water_std.json", out.missing)
         self.assertEqual(len(out.missing), len(ma.ROSTER_IDS) - len(PILOT_IDS))
         self.assertTrue(out.wrote_nothing)
 

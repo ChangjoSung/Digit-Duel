@@ -7,8 +7,9 @@
          디스크에 HTML 사본을 만들지 않으며, 실제 자산 상대경로(demo/assets/…)가 출시 상태 그대로 동작한다.
        - 새 프로필(=tutorialSeen 없음)로 열면 게임이 스스로 튜토리얼을 자동 표시한다. 1단계는 그 자동 표시, 2~10단계는 실제 '다음 ▶' 버튼 클릭으로 이동한다.
        - 10단계 모두 #tutBox 의 실측 사각형을 합집합으로 잡아 같은 클립(동일 크기)으로 캡처 → docs/media/tutorial-01.png … tutorial-10.png
-       - 캡처 결과 JSON(단계 제목·클립·해시·환경)은 --manifest <path> 로 저장 (기본: <out>/../qa/issue105-media/capture-manifest.json)
-     node tools/readme_media_capture.js verify [--readme README.md] [--out docs/qa/issue105-media] [--viewport 1100x900] [--no-gh] [--no-render] [--full]
+       - 캡처 결과 JSON(단계 제목·클립·해시·환경)은 --manifest <path> 로 저장
+         (기본: docs/milestone/v0.4.4/issues/105/Mars/artifacts/capture-manifest.json — 저장소 루트 기준 고정 경로이며 --out 을 따라가지 않는다)
+     node tools/readme_media_capture.js verify [--readme README.md] [--out docs/milestone/v0.4.4/issues/105/Mars/artifacts] [--viewport 1100x900] [--no-gh] [--no-render] [--full]
        - README 의 로컬 상대 이미지·링크(마크다운·HTML 양쪽)와 #앵커를 파일 시스템·헤딩 슬러그로 검사한다 (대소문자 정확 일치).
        - tutorial-01..10.png 의 크기가 서로 같은지(IHDR) 검사한다.
        - `gh api markdown --input -` (stdin, 읽기 전용 렌더 요청 — GitHub 쓰기·임시 파일 없음) 로 GitHub 가 실제로 sanitize 한 HTML 을 받아
@@ -33,7 +34,7 @@
      2) 런타임 게이트: fs 의 변경 API(writeFileSync·mkdirSync·mkdtempSync·rmSync·unlinkSync·renameSync·copyFileSync·createWriteStream·promises.* 등)를
         이 프로세스에서 가로채, 이 실행이 만든 Chrome 프로필 경로(os.tmpdir()/readme-media-profile-*) 안이 아니면 예외(코드 3)로 중단한다.
         artifact 쓰기 헬퍼(writeArtifact·ensureDir)는 게이트와 별개로 READ_ONLY 면 항상 거부한다.
-     3) 실행 전후 관측: README·docs/media·docs/qa/issue105-media·tools/readme_media_capture.js 의 크기·mtime·sha256 스냅샷과
+     3) 실행 전후 관측: README·docs/media·docs/milestone/v0.4.4/issues/105/Mars/artifacts·tools/readme_media_capture.js 의 크기·mtime·sha256 스냅샷과
         os.tmpdir() 의 readme-media-* 항목 목록을 비교해 WRITE-CHECK 행으로 보고한다 (변화가 있으면 실패).
      허용되는 유일한 부수 쓰기 = 헤드리스 Chrome 이 쓰는 이 실행 전용 프로필 디렉터리 하나. 종료 시 그 정확한 경로만(다른 프로필·서버 8080 무관) 정리하고 RESOURCE/CLEANUP 행으로 PID·경로를 남긴다.
      gh 는 GH_NO_UPDATE_NOTIFIER=1 로 실행해 갱신 확인 상태 파일 쓰기를 막는다.
@@ -109,7 +110,7 @@ function printSelfcheck(sc){
 }
 
 /* ── 실행 전후 스냅샷 (READ_ONLY 관측) ── */
-const WATCH=()=>[path.join(ROOT,"README.md"),path.join(ROOT,"docs","media"),path.join(ROOT,"docs","qa","issue105-media"),__filename];
+const WATCH=()=>[path.join(ROOT,"README.md"),path.join(ROOT,"docs","media"),path.join(ROOT,"docs","milestone","v0.4.4","issues","105","Mars","artifacts"),__filename];
 function snapshotFiles(){
   const m=new Map(); const add=f=>{ try{ const st=fs.statSync(f); if(st.isDirectory()){ for(const n of fs.readdirSync(f)) add(path.join(f,n)); } else m.set(rel(f),{size:st.size,mtime:st.mtimeMs,sha:sha256(fs.readFileSync(f))}); }catch(e){} };
   for(const f of WATCH()) add(f);
@@ -260,7 +261,7 @@ async function captureTutorial(o){
 
 async function cmdCapture(){
   const o={ref:opt("--ref","v0.4.3"),out:path.resolve(ROOT,opt("--out","docs/media")),viewport:opt("--viewport","1280x900"),dpr:Number(opt("--dpr","2")),margin:Number(opt("--margin","16"))};
-  const manifest=path.resolve(ROOT,opt("--manifest",path.join("docs","qa","issue105-media","capture-manifest.json")));
+  const manifest=path.resolve(ROOT,opt("--manifest",path.join("docs","milestone","v0.4.4","issues","105","Mars","artifacts","capture-manifest.json")));
   const {env,frames,bad}=await captureTutorial(o);
   let fail=bad;
   if(READ_ONLY){ // 파일을 쓰지 않고 기존 docs/media/tutorial-NN.png 와 비교
@@ -405,7 +406,7 @@ async function renderReadme(html,vw,vh,out,suffix){ // GitHub sanitize HTML → 
 
 async function cmdVerify(){
   const readme=path.resolve(ROOT,opt("--readme","README.md"));
-  const out=path.resolve(ROOT,opt("--out","docs/qa/issue105-media"));
+  const out=path.resolve(ROOT,opt("--out","docs/milestone/v0.4.4/issues/105/Mars/artifacts"));
   const [vw,vh]=parseViewport(opt("--viewport","1100x900"),"1100x900"); const suffix=vw===1100?"":`-w${vw}`;
   const doGh=!has("--no-gh"), doRender=!has("--no-render");
   let fail=0;
@@ -420,7 +421,7 @@ async function cmdVerify(){
   for(const f of td.files) log(`${f.ok?"OK  ":"FAIL"} ${f.file} ${f.size?f.size.w+"x"+f.size.h:""} ${f.bytes?f.bytes+"B":""} ${f.sha256?"sha256="+f.sha256:""} ${f.note}`);
   if(!td.ok) fail++;
   /* 2b) README 갤러리 캡션·alt 가 캡처 매니페스트의 실제 단계 제목과 맞는지 (출시 태그 텍스트 ↔ README 문구 어긋남 방지) */
-  const manPath=path.resolve(ROOT,opt("--manifest",path.join("docs","qa","issue105-media","capture-manifest.json")));
+  const manPath=path.resolve(ROOT,opt("--manifest",path.join("docs","milestone","v0.4.4","issues","105","Mars","artifacts","capture-manifest.json")));
   if(fs.existsSync(manPath)){ const man=JSON.parse(fs.readFileSync(manPath,"utf8")); log(`\n== 갤러리 캡션 ↔ 캡처 단계 제목 (${rel(manPath)} · ${man.env.ref}=${man.env.refSha.slice(0,7)})`);
     for(const f of man.frames){ const title=f.title.replace(/^\S+\s/,""); // 앞의 아이콘 제거
       const cell=md.split(/\r?\n/).find(l=>l.includes(f.file)); const alt=cell?(cell.match(/alt="([^"]*)"/)||[])[1]||"":""; const cap=cell?(cell.match(/<sub>([^<]*)<\/sub>/)||[])[1]||"":"";

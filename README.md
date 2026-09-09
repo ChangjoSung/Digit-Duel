@@ -36,11 +36,11 @@
 <table>
   <tr>
     <td align="center" width="50%">
-      <a href="docs/qa/minion-art-integration/file_desktop-1280_3-board.png"><img src="docs/qa/minion-art-integration/file_desktop-1280_3-board.png" alt="플레이 화면 — 왼쪽 말판에 하수인 아이콘과 잔여 HP, 물음표로 남은 상대 말, 오른쪽에 상태 패널과 로그" width="100%"></a>
+      <a href="docs/milestone/v0.4.3/issues/89/Mars/artifacts/file_desktop-1280_3-board.png"><img src="docs/milestone/v0.4.3/issues/89/Mars/artifacts/file_desktop-1280_3-board.png" alt="플레이 화면 — 왼쪽 말판에 하수인 아이콘과 잔여 HP, 물음표로 남은 상대 말, 오른쪽에 상태 패널과 로그" width="100%"></a>
       <br><b>플레이 화면</b><br><sub>내 말과 공개된 상대 말은 아이콘으로, 아직 모르는 상대 말은 물음표로 보입니다.</sub>
     </td>
     <td align="center" width="50%">
-      <a href="docs/qa/issue106-browser/06-b1-menu-root-actor.png"><img src="docs/qa/issue106-browser/06-b1-menu-root-actor.png" alt="v0.4.4 전투 화면 — 양측 하수인 전투 아트와 HP, 싸우기·가방·포획·도망 선택지" width="100%"></a>
+      <a href="docs/milestone/v0.4.4/issues/106/Mars/browser-artifacts/06-b1-menu-root-actor.png"><img src="docs/milestone/v0.4.4/issues/106/Mars/browser-artifacts/06-b1-menu-root-actor.png" alt="v0.4.4 전투 화면 — 양측 하수인 전투 아트와 HP, 싸우기·가방·포획·도망 선택지" width="100%"></a>
       <br><b>전투 화면</b><br><sub>속성 상성과 HP를 보며 기술 · 아이템 · 포획 · 도망 가운데 행동을 고릅니다.</sub>
     </td>
   </tr>
@@ -67,7 +67,7 @@
 </table>
 <sub>튜토리얼은 게임 안에서 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다.</sub>
 
-캡처 출처: v0.4.5 검수 커밋 `5de47a9db4960ae7392e85ed3a811248743d090b` · [10장 캡처 기록과 해시](docs/qa/issue114-media/capture-manifest.json). 출시본과 같은 게임 코드에서 촬영한 화면입니다.
+캡처 출처: v0.4.5 검수 커밋 `5de47a9db4960ae7392e85ed3a811248743d090b` · [10장 캡처 기록과 해시](docs/milestone/v0.4.5/issues/114/Mars/artifacts/capture-manifest.json). 출시본과 같은 게임 코드에서 촬영한 화면입니다.
 </details>
 
 ## 새로운 기능
@@ -81,7 +81,7 @@
 - [개선] 도망에 성공하면 보드에서 후방의 내 말을 골라 교환하거나 생략합니다. 이어서 전선의 말과 상대가 서로 밀려납니다.
 - [개선] 평소 턴 종료 버튼을 없애고 선택 전투가 남을 때만 ‘싸우지 않고 종료’를 표시합니다. HP가 가득 차도 회복 자세를 지정해 기다릴 수 있습니다. 새 규칙과 기술 교체 설명에 맞춰 튜토리얼 10단계와 캡처를 갱신했습니다.
 
-상세 내용은 [v0.4.5 릴리스 노트](docs/releases/v0.4.5.md)와 [v0.4.5 규칙 정리본](docs/v0.4.5-rules-digest.md)을 참고하세요. 세부 규칙과 예외는 [v0.4.5 게임플레이 계약](docs/v0.4.5-gameplay-spec.md)에 정리되어 있습니다.
+상세 내용은 [v0.4.5 릴리스 노트](docs/releases/v0.4.5.md)와 [v0.4.5 규칙 정리본](docs/milestone/v0.4.5/specs/v0.4.5-rules-digest.md)을 참고하세요. 세부 규칙과 예외는 [v0.4.5 게임플레이 계약](docs/milestone/v0.4.5/specs/v0.4.5-gameplay-spec.md)에 정리되어 있습니다.
 
 이전 버전의 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)과 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다.
 
@@ -136,22 +136,24 @@ server/
   test-client.html      릴레이 점검용 최소 클라이언트
   test*.js              서버 테스트 (매칭·보안·설정·실행기)
   README.md             서버 실행 방법과 보안 범위
-tools/  tests/          하수인 아트 제작 도구와 그 테스트 (Python)
+tools/  tests/          하수인 아트 제작 도구·문서 링크 검사기와 그 테스트
+.github/workflows/      PR·push 자동 검사 (CI)
 docs/
   media/                README용 홍보 일러스트·튜토리얼 이미지
   releases/             버전별 패치 노트
   screenshots/          이전 README용 실행 화면
-  qa/                   버전별 구현·독립 QA 보고와 검증 화면
-  art/                  하수인 아트 검토 이미지·제작 기록
-  minion-visual-spec-v0.4.3.md   하수인 이미지 규격
-  v0.4.x-*.md           버전별 게임플레이 계약·규칙 정리본
   creat2ve/             개발 조직·작업 계약 문서
+  milestone/            버전별 규격·구현·독립 QA 기록
+    v0.4.5/specs/       현재 출시본의 게임플레이 계약·규칙 정리본
+    <버전>/issues/<번호>/<역할>/   그 Issue를 누가 무엇으로 납품·검수했는지
 CLAUDE.md               프로젝트 규약 · 기준 문서 링크
-CONTRIBUTING.md         기여 안내
+CONTRIBUTING.md         기여 안내 · PR 검사 항목
 LICENSE · NOTICE · ASSET-LICENSE.md   라이선스와 자산 정책
 ```
 
-문서의 현재 기준과 과거 검수 이력은 [docs 안내](docs/README.md)에서 구분해 볼 수 있습니다.
+문서의 현재 기준과 과거 검수 이력은 [docs 안내](docs/README.md)에서 구분해 볼 수 있습니다. 버전별 기록은 [마일스톤 보관소](docs/milestone/README.md)에서 버전 → Issue → 역할 순으로 찾습니다.
+
+PR과 `main`·`dev` push마다 [GitHub Actions](https://github.com/ChangjoSung/Digit-Duel/actions)가 규칙 회귀·서버·문서 링크·자산 무결성을 검사합니다. 검사 항목과 로컬 재현 명령은 [CONTRIBUTING.md](CONTRIBUTING.md)에 있습니다.
 
 ## 라이선스
 
@@ -160,7 +162,7 @@ LICENSE · NOTICE · ASSET-LICENSE.md   라이선스와 자산 정책
 다음은 Apache-2.0 대상이 **아닙니다**. 범위와 이용 조건은 [`ASSET-LICENSE.md`](ASSET-LICENSE.md)를 따릅니다.
 
 - Digit-Duel / Digit Dual 명칭과 브랜딩
-- 하수인 원본 · 파생 아트(`demo/assets/minions/`, `docs/art/minions-v0.4.3/`)와 이 README의 홍보 일러스트(`docs/media/`)
-- 렌더링된 게임 화면(`docs/screenshots/`, `docs/qa/`, `docs/media/`의 이미지)
+- 하수인 원본 · 파생 아트(`demo/assets/minions/`, `docs/milestone/v0.4.3/assets/minions/`, `docs/milestone/v0.4.3/issues/87/Earth/`의 생성 레퍼런스 이미지)와 이 README의 홍보 일러스트(`docs/media/`)
+- 렌더링된 게임 화면(`docs/screenshots/`, `docs/milestone/`의 검증 캡처 이미지, `docs/media/`의 이미지)
 
 Copyright 2026 Sung Changjo and Digit-Duel contributors.

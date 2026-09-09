@@ -7,10 +7,13 @@ the exclusions below.
 The following material is **not** licensed under Apache-2.0:
 
 - the names **Digit-Duel** and **Digit Dual**, and associated project branding;
-- the rendered gameplay screenshots under `docs/screenshots/` and `docs/qa/`,
-  and the promotional illustration and tutorial screenshots under `docs/media/`;
-- the original and derived minion artwork under `demo/assets/minions/`, and
-  art review images under `docs/art/minions-v0.4.3/`;
+- the rendered gameplay screenshots under `docs/screenshots/` and the
+  verification captures under `docs/milestone/`, and the promotional
+  illustration and tutorial screenshots under `docs/media/`;
+- the original and derived minion artwork under `demo/assets/minions/`, the
+  art review images under `docs/milestone/v0.4.3/assets/minions/`, and the
+  generated art reference images under
+  `docs/milestone/v0.4.3/issues/87/Earth/`;
 - any future original artwork, logos, audio, narrative text, or other media
   that is explicitly marked as excluded from the code license.
 

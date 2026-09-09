@@ -16,8 +16,8 @@ const sha=b=>crypto.createHash("sha256").update(b).digest("hex");
 let failures=0; const check=(ok,msg)=>{ console.log(`${ok?"PASS":"FAIL"} ${msg}`); if(!ok) failures++; return ok; };
 function run(file,a,cwd){ const r=spawnSync(process.execPath,[file,...a],{cwd:cwd||ROOT,encoding:"utf8",maxBuffer:64*1024*1024}); return {code:r.status,out:(r.stdout||"")+(r.stderr||"")}; }
 
-/* 독립 스냅샷: 저장소 감시 대상(README·docs/media·docs/qa/issue105-media·tools/·demo/index.html) + tmp 의 readme-media-* 항목 */
-const WATCH=[path.join(ROOT,"README.md"),path.join(ROOT,"docs","media"),path.join(ROOT,"docs","qa","issue105-media"),path.join(ROOT,"tools"),path.join(ROOT,"demo","index.html")];
+/* 독립 스냅샷: 저장소 감시 대상(README·docs/media·docs/milestone/v0.4.4/issues/105/Mars/artifacts·tools/·demo/index.html) + tmp 의 readme-media-* 항목 */
+const WATCH=[path.join(ROOT,"README.md"),path.join(ROOT,"docs","media"),path.join(ROOT,"docs","milestone","v0.4.4","issues","105","Mars","artifacts"),path.join(ROOT,"tools"),path.join(ROOT,"demo","index.html")];
 function snap(){ const m={}; const add=f=>{ let st; try{ st=fs.statSync(f); }catch(e){ return; } if(st.isDirectory()){ for(const n of fs.readdirSync(f)) if(n!=="__pycache__") add(path.join(f,n)); } else m[rel(f)]=`${st.size}|${st.mtimeMs}|${sha(fs.readFileSync(f))}`; };
   for(const w of WATCH) add(w); let tmp=[]; try{ tmp=fs.readdirSync(os.tmpdir()).filter(n=>n.startsWith("readme-media-")).sort(); }catch(e){} return {files:m,tmp}; }
 function same(a,b){ const ka=Object.keys(a.files).sort(), kb=Object.keys(b.files).sort(); const diffs=[]; for(const k of new Set([...ka,...kb])) if(a.files[k]!==b.files[k]) diffs.push(k); const newTmp=b.tmp.filter(n=>!a.tmp.includes(n)); return {diffs,newTmp,count:ka.length}; }

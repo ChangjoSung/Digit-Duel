@@ -12,7 +12,7 @@
        "픽셀 → 논리 좌표 → 페이로드 → 상대 탭 재생" 사슬을 끝까지 확인한다.
      · 자연 흐름: 서로 다른 로스터(카드 클릭)·서로 다른 수동 배치(트레이→칸 클릭)·실제 서버 매칭 → P1 열 2 / P2 열 6 횡단 말이 **65턴 이전에** 1칸 전·측·후 뒤 중앙 7행·양쪽 숲을 넘어 2행/12행까지
        → 실제 턴 버튼으로 65턴 → 두 번째 하수인(P1 열 4 / P2 열 4… 자동 선택)으로 BT 2칸 전·후 → 65턴 이후 중앙 횡단(상대 숲 5행/9행) → 기권 → 종료 화면. 매 클릭 뒤 양 탭 S 동일 + 양 탭 91칸 픽셀 대조.
-   --read-only: 산출물 0(스크린샷·JSON 없음). 그 외에는 docs/qa/issue104-orientation-audit/ 에 PNG·JSON 을 쓴다 (다른 이슈의 증빙 폴더는 건드리지 않는다).
+   --read-only: 산출물 0(스크린샷·JSON 없음). 그 외에는 docs/milestone/v0.4.4/issues/104/Mars/orientation-artifacts/ 에 PNG·JSON 을 쓴다 (다른 이슈의 증빙 폴더는 건드리지 않는다).
    rev 3 (Saturn_1 REVISE 반영): 매 step 뒤의 91칸 픽셀 대조에서 elementFromPoint(칸 중심)=그 칸 91/91 도 함께 판정한다(이전엔 시작 직후 2d 에서만) ·
      공개 하수인 칩의 아트는 경로만이 아니라 **실제 로드 성공**(img.complete && naturalWidth>0) 을 세어 종료 화면(전체 공개)에서 전부 로드됐는지 판정한다(7).
      CANON 은 위치·표시에 필요한 선택 필드(phase·current·turn·mainUsed·battlesUsed·forced·teleUsed·events·tempReveal·battle·modalSeq·말의 id/owner/type/rosterId/name/element/hp/r/c/alive/placed/revealed/immobile/skills) 이며 S 전체가 아니다(cds·memos·traces·inv·reserve·selected 제외).
@@ -23,7 +23,7 @@ const args=process.argv.slice(2);
 const opt=(k,d)=>{ const i=args.indexOf(k); return i>=0?args[i+1]:d; };
 const ROOT=path.resolve(__dirname,"..","..");
 const REF=opt("--ref","6baa0b5");
-const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","qa","issue104-orientation-audit")));
+const OUT=path.resolve(opt("--out",path.join(ROOT,"docs","milestone","v0.4.4","issues","104","Mars","orientation-artifacts")));
 const READ_ONLY=args.includes("--read-only")||args.includes("--no-write");
 const SHOTS=!args.includes("--no-shots")&&!READ_ONLY;
 const INJECT=!args.includes("--no-inject"); // --no-inject: 서버가 디스크에서 서빙하는 작업 트리 demo/index.html 을 그대로 쓴다 (진단용 — 감사 결과로 쓰지 않는다)
