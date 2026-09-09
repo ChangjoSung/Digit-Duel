@@ -9,7 +9,7 @@
 > **범위 선언**: 제품 `demo/index.html` blob `61a3ce3e5927697ea80ec8ebd379ffb98ebfdb92` 은 **변경하지 않았다**(`git status --porcelain -- demo/index.html` → 0행). `server/` 런타임(`server.js`·`security.js`·`package.json`·`package-lock.json`) 0행 변경. `demo/assets/` 바이너리 0바이트 변경. Git·GitHub·Notion 쓰기 없음. `.gitattributes`·루트 `README.md`·`CLAUDE.md`·`docs/**`(이 보고서 제외)는 내 소관이 아니며 건드리지 않았다 — 작업 중 관측된 그 파일들의 변경은 **동시에 진행된 Venus/PD 세션의 것**이다.
 >
 > **보호 경로 접근 범위 — 정정 (2026-09-09, PD 지적 반영)**: 이 보고서는 1부(사전 분석)와 2·3부(구현)를 함께 담으므로 범위를 시기별로 나눠 적는다.
-> - **1부(사전 분석) 예외 [확정]**: 저장소 규모를 재려고 `du -sh --exclude=.git .` 를 실행했고, 이 집계는 **보호 경로(`art/` 등)의 메타데이터를 포함**했다. 사용자·Issue #132·DL39·스냅샷에 이미 기록된 사실이며 여기에도 명시한다. 내용을 읽거나 변경한 관측은 없다.
+> - **1부(사전 분석) 예외 [확정]**: 저장소 규모를 재려고 `du -sh --exclude=.git .` 를 실행했다(task `task_4fb17d1c8071`). 이 집계는 작업 트리 전체를 훑으므로 **보호 대상인 `art/` 와 루트 `orca-hook-latency-report.md` 의 메타데이터(크기)를 포함**했다. 파일을 열거나 내용을 읽거나 변경한 관측은 없다. 사용자·Issue #132·Decision Log 39·인수인계 스냅샷에 이미 기록된 사실이며, 여기에도 남긴다.
 > - **2·3부(구현 Task) [확정]**: 보호 경로에 대한 접근·탐색·전체 폴더 크기 검색을 하지 않았다. 1부의 예외를 구현 Task 의 준수 주장으로 확장하지 않는다.
 > - 따라서 "`art/` 를 열지도 탐색하지도 않았다"는 **전체 범위 단정은 철회**하고, 위와 같이 시기·행위별로 구분한다.
 >
@@ -337,4 +337,89 @@
 2. **[미확정] 하드 링크·bind mount 는 다루지 않는다.** `realpath` 로 구분되지 않으므로 이 검사기의 경계 판정 밖이다.
 3. **[승계] `smoke_orientation_audit.js` 어서션 수 변동**(8908~8920, `fail` 은 항상 0) — 2-6 참조. 이번 REVISE 범위가 아니라 손대지 않았다.
 4. **[승계] Linux 실제 CI 미실행 · 브라우저 스모크 미포함 · `npm ci` clean install 미재현.**
+5. **Saturn 판정 없음** — 위 전부 Mars 자체 실행이다.
+
+---
+
+# 4부 — CI 최초 실행 후속 (task_f139fa8f3d50, 2026-09-09)
+
+PR #133 의 실제 CI(run `34309177070`)에서 **잡 D 만** 실패했고, 잡 C 는 PASS 지만 경고를 남겼다. 이 두 건이 이번 범위다. 제품 `demo/index.html` blob `61a3ce3` 불변, 승인 아트 100건·문서 증빙 250건 **바이트 0 변경**, Git·GitHub·Notion 쓰기 없음. 변경 파일은 4개(`ci.yml`·`requirements-art.txt`·`CONTRIBUTING.md`·이 보고서).
+
+## 4-1. 2-6·R-7 의 [미확정] 이 해소된 부분
+
+| 그동안의 유보 | 실제 CI 결과 | 근거 |
+|---|---|---|
+| R-7 #1 — 링크 픽스처의 POSIX 심볼릭 링크 경로 미실행 | 잡 C PASS — Linux 에서 **7a·7b·7c 8개 단언 모두 ok, skip 없음** | PD 가 실제 C 로그에서 확인해 전달 |
+| 2-6 #3 — `npm ci` clean install 미재현 | 잡 B PASS — 러너의 clean install 로 실행 | PD 전달 run 결과 |
+| 2-6 #1 — Linux 실행 결과 일반 | 잡 A·B·B2·C 4개 PASS | PD 전달 run 결과 |
+
+내가 **원문 로그를 직접 읽은 것은 잡 D 뿐**이다(`job 102332065379`). 위 3행은 PD 전달 결과에 근거한다.
+
+## 4-2. 잡 D 실패 — 관측과 추론
+
+**관측 [확정]**
+
+1. CI(ubuntu-24.04 · Python 3.12.14 · Pillow 12.3.0): `write=0 unchanged=14 mismatch=15`. 불일치는 PNG 14장 + `delivery-manifest.csv` 1건. 로컬(Windows · Python 3.14.3 · 같은 Pillow 핀): `write=0 unchanged=29 mismatch=0`. 소스·승인 blob 은 양쪽이 같다.
+2. `png_bytes()` 의 `optimize=True` 가 만드는 스트림은 **deflate level 9 · 전략 `Z_FILTERED`** 와 바이트가 같다. 로컬 대조에서 그 조합만 납품 IDAT 을 재현했고 level 6·`DEFAULT`·`RLE`·`FIXED`·`HUFFMAN_ONLY` 는 전부 불일치했다.
+3. 납품 PNG 28장의 IDAT 을 풀어 **같은 설정으로 다시 압축**한 결과:
+
+| 백엔드 | 28장 중 재현 | CI 의 UNCHANGED/MISMATCH 목록과의 대응 |
+|---|---|---|
+| zlib-ng 2.3.3 (로컬 Pillow 12.3.0 휠) | 28/28 | — |
+| 순정 zlib 1.3.1 (Node 24.16.0 번들) | 14/28 | 재현된 14장 = CI 의 UNCHANGED 14장, 재현 안 된 14장 = CI 의 MISMATCH 14장 (**28/28 대응, 예외 0**) |
+
+4. 매니페스트는 각 PNG 의 sha256 을 담으므로, PNG 가 어긋나면 함께 어긋난다(15번째 불일치).
+
+**추론 [강한 추론 — 확정 아님]**
+
+- 실패 원인은 **PNG 인코더가 링크한 zlib 구현의 차이**로 보인다. 위 3의 대응이 28/28 이라는 것이 근거다.
+- **다만 나는 Linux 에서 실제로 생성된 PNG 를 받아 비교하지 않았다.** 내가 한 것은 *납품본의 IDAT 을 재압축*한 것이지 *Linux Pillow 의 출력*을 본 것이 아니다. 따라서 "픽셀은 같고 deflate 만 다르다", "자산·도구 문제가 아니다" 는 **확정으로 주장하지 않는다** — 관측과 정합적인 가장 유력한 설명이다.
+- cp312 manylinux 휠이 순정 zlib 로 빌드됐다는 것도 같은 대응에서 온 추론이며, 휠 내부를 확인하지 않았다.
+
+**[미확정]** zlib 구현별 매치 선택의 알고리즘 세부. 이 수리에 필요하지 않아 파고들지 않았다.
+
+## 4-3. 고친 것 (4파일)
+
+검사를 약하게 만드는 길(자산 재생성 · 픽셀 비교로 하향 · skip)은 쓰지 않았다. **권위 있는 실패 기준은 기존 바이트·매니페스트 대조 그대로**이고, 바꾼 것은 그 검사를 돌리는 환경이다.
+
+| 파일 | 변경 |
+|---|---|
+| `.github/workflows/ci.yml` (D) | `ubuntu-24.04` → **`windows-2025`**, Python `3.12` → **`3.14.3`**, `PYTHONUTF8: '1'`. 바이트 대조 앞에 **출력 전용** 백엔드 기록 단계(Pillow·zlib 버전) 추가 — **판정하지 않는다**. 주석에는 환경 선택 근거만 짧게 두고 상세는 이 절을 가리킨다 |
+| `.github/workflows/ci.yml` (C) | `verify` 에만 `--manifest docs/milestone/v0.4.5/issues/114/Mars/artifacts/capture-manifest.json` 명시. 도구 기본값·경고 정책·테스트는 손대지 않았다 |
+| `tools/requirements-art.txt` | 핀은 `Pillow==12.3.0` 그대로. 주석의 "CI 는 Python 3.12" 를 실제와 맞추고, 핀 상향 시 **먼저 환경·호환성을 조사**하도록 적음 |
+| `CONTRIBUTING.md` | 잡별 러너 OS 와 잡 D 가 Windows 인 이유. 바이트 불일치를 자산 재생성·픽셀 비교로 넘기지 말 것 |
+
+초안에 넣었던 "zlib-ng 가 아니면 `sys.exit`" 게이트는 **PD 지시로 제거**했다. 새 실패 기준을 만들지 않고 정보만 남긴다. "핀 변경 실패 = 아트 재승인 안건" 이라는 초안 문구도 잘못이라 **철회**한다 — 그런 실패의 1차 대응은 환경·호환성 조사다.
+
+**잡 C 경고의 성격 [확정]**: 이 도구의 SHA 불일치는 **WARN 이지 엄격한 해시 게이트가 아니다.** 기본 매니페스트로 돌려도 종료 코드는 0 이고 "문제 0건" 으로 끝난다. 인자를 명시한 것은 실패를 막기 위해서가 아니라, 검사가 **현재 README 가 링크한 v0.4.5 출처**를 보게 하기 위해서다.
+
+## 4-4. 검증 [확정 — 바뀐 설정만]
+
+이미 PASS 한 잡 A·B·B2·C 의 나머지 스위트와 기존 통과 범위는 다시 돌리지 않았다.
+
+| 확인 | 결과 |
+|---|---|
+| `ci.yml` YAML 파싱 · 잡 D 구조 | OK — `runs-on: windows-2025`, `env.PYTHONUTF8='1'`, 단계 6개 |
+| 새 백엔드 기록 단계 (파싱한 `run` 본문 그대로 실행) | exit 0 — `Python 3.14.3 / Pillow 12.3.0 / zlib 1.3.1.zlib-ng / zlib_ng 2.3.3`. 판정 분기 없음 |
+| `PYTHONUTF8=1 python tools/minion_art.py --all --check --no-preview` | exit 0 — `write=0 unchanged=29 mismatch=0` (UTF-8 모드가 바이트를 바꾸지 않음) |
+| `PYTHONUTF8=1 python -m unittest discover -s tests -v` | exit 0 — 68 tests OK |
+| 음성 대조 `PYTHONIOENCODING=cp1252` 로 같은 2개 명령 | 68 tests OK — `unittest` 는 `errors=backslashreplace` 인 stderr 로 쓴다. `PYTHONUTF8` 은 크래시 수리가 아니라 stdout(`errors=strict`) 함정 예방·로그 가독성이다 |
+| C 잡 `verify` — 기본 매니페스트 | exit 0 · **WARN 10건** (v0.4.4 SHA ↔ 현재 v0.4.5 PNG) |
+| C 잡 `verify` — 새 `--manifest` 인자 | exit 0 · **WARN 0건** · "문제 0건 · artifact 쓰기 0" · WRITE-CHECK OK(감시 파일 26개 불변) |
+| 매니페스트 경로 추적 여부 | `git ls-files` 로 확인 — 추적 중 |
+| 설치 Pillow 출처 | dist-info WHEEL 태그 `cp314-cp314-win_amd64` (공식 PyPI 휠) |
+| Windows 체크아웃 CRLF 위험 | 없음 — `.gitattributes` 가 잡 D 의 텍스트 입력(`delivery-manifest.csv`·`pixel-sources/*.json`·허용목록 4종 `battle-patches/*.json`·`tools/minion_art.py`·`tests/test_minion_art.py`)을 전부 `-text` 로 묶는다. PNG 는 바이너리 |
+| 편집한 `*.md` 링크 | `docs_link_check` exit 0 — 문서 106개·내부 링크 332건·문제 0건 |
+| 잔존물 | 저장소에 임시 파일·픽스처 0건(`git status` 신규 없음). 진단 스크립트는 스크래치패드에서만 실행. CI 에는 덤프를 남기는 단계가 없다 |
+
+## 4-5. 보호 경로 접근 — 이 Task 의 기록 [확정]
+
+머리말의 시기별 구분에 이 Task 를 덧붙인다. `art/`·루트 `orca-hook-latency-report.md` 를 **열거나 읽거나 변경하지 않았고 전체 폴더 크기 검색도 하지 않았다.** 다만 작업 초반 저장소 루트 `ls -a` 로 `.gitattributes` 위치를 확인하면서 **루트 항목 이름이 출력에 포함**됐고, 여기에는 위 두 보호 대상의 **이름**이 들어 있다(`git status` 출력에도 같은 두 이름이 나온다). 크기·내용은 조회하지 않았다. 이후 열람은 git 추적 목록(`git ls-files`)과 명시 허용 파일로 한정했다.
+
+## 4-6. 남은 한계
+
+1. **[미확정] windows-2025 러너에서의 실제 실행.** 위는 전부 로컬 Windows 실측이다. 원격 CI 재실행은 PD 의 commit/push 로 이뤄진다.
+2. **[미확정] `python-version: '3.14.3'` 의 러너 매니페스트 가용성.** 없으면 setup 단계가 명시적으로 실패한다. 같은 3.14 계열은 같은 휠을 받으므로 `'3.14'` 로 완화해도 등가다.
+3. **[추론] zlib-ng 의 런타임 CPU 디스패치가 deflate 출력을 바꾸지 않는다**는 전제. 바뀐다면 바이트 대조가 잡아낸다 — 은폐되지 않는다.
+4. **[미해소] 잡 A 의 `smoke_orientation_audit.js` 어서션 수 변동** — 2-6 #2 · R-7 #3 승계. 이번 범위 아님.
 5. **Saturn 판정 없음** — 위 전부 Mars 자체 실행이다.

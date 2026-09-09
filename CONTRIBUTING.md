@@ -32,7 +32,22 @@ requests only `contents: read`. Five jobs run in parallel:
 | `server` | B. 서버 (프로토콜·보안·설정) | `npm ci` then `npm test` in `server/` — relay protocol, security, configuration, launcher |
 | `server-launcher-windows` | B2. Windows 실행기 회귀 | `server/test-launcher.js` on a Windows runner, where it is not skipped |
 | `docs-integrity` | C. 문서 링크·이미지 무결성 | The link checker's own regression suite, then every internal link and image in tracked `*.md`, then the README media tool's self-check and offline verification |
-| `assets-integrity` | D. 납품 아트 자산 무결성 | Delivered minion PNGs and manifests match, without regenerating them, plus the art pipeline tool's own tests |
+| `assets-integrity` | D. 납품 아트 자산 무결성 | Delivered minion PNGs and manifests match, without regenerating them, plus the art pipeline tool's own tests. Runs on a Windows runner — see below |
+
+Jobs A, B, and C run on `ubuntu-24.04`. B2 and D run on Windows, for different
+reasons: B2 because `server/test-launcher.js` skips itself off `win32`, and D
+because it compares **delivered bytes**. The same `Pillow==12.3.0` pin passed on
+Windows and failed on `ubuntu-24.04` for 14 of the 28 delivered PNGs, so job D
+pins the environment the assets were baked in — `windows-2025`, Python 3.14.3.
+The evidence and what it does and does not establish is in
+[the Mars report, part 4](docs/milestone/v0.4.6/issues/132/Mars/report.md).
+The authoritative pass/fail for that job stays the byte and manifest comparison:
+do not make a mismatch go away by regenerating approved assets, by comparing
+pixels only, or by skipping files. Investigate the environment first.
+
+Job C passes `--manifest` to `readme_media_capture.js verify` so the check reads
+the manifest for the media the README currently links, not the tool's older
+default. A manifest SHA mismatch there is a `WARN`, not a gate.
 
 Reproduce a failing job locally with the same command the workflow runs. The
 most common ones:
