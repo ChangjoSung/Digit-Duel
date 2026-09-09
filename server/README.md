@@ -164,7 +164,7 @@ LAN 모드에서는 콘솔이 내부망 주소를 추가로 출력한다. 상대
 - **`test-client.html`**: 주소·접속 코드 분리 입력과 `[digit-duel.v1, code]` 하위 프로토콜 제시로
   갱신했다 (#63). 다만 이 파일은 정적 서빙 루트(`../demo`) 밖에 있어 `file://` 로 열면 Origin 이
   거부된다 — 쓰려면 `demo/` 로 복사해 `http://<서버주소>/test-client.html` 로 연다. 이 파일의 목적지·
-  코드 방어 경계는 `node demo/test/smoke_testclient.js` 가, 서버 쪽 계약은 `npm test` 가 덮는다.
+  코드 방어 경계는 `node demo/test/regression/smoke_testclient.js` 가, 서버 쪽 계약은 `npm test` 가 덮는다.
 
 ## 테스트
 

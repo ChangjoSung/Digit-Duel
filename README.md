@@ -95,9 +95,10 @@
 | 필요한 환경 | 오프라인: 최신 데스크톱 브라우저(Chrome 권장) · 온라인: Windows PC 1대 + [Node.js](https://nodejs.org) |
 | 장르 | 1대1 턴제 전략 보드게임 (숨은 정체 · 속성 배틀) |
 | 플레이 인원 | 1인(AI 대전) · 2인(핫시트 · 같은 공유기 온라인) |
-| 개발자 | 성창조 (Sung Changjo) |
+| 개발자 | 성창조 (Sung Changjo) · [이욱채 (lee775)](https://github.com/lee775) — Roblox 포팅 |
 | 첫 출시일 | 2026-09-02 (v0.3.0) |
-| 플랫폼 | HTML 데모 (브라우저) · Android/Unity 버전은 개발 예정 |
+| 플랫폼 | HTML 데모 (브라우저) · Roblox 포팅 진행 중 · Android/Unity 버전은 개발 예정 |
+| 개발 일정 | [v0.4.6 — Roblox 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [v0.4.7 — 기획·화면·연출·외부망 및 정리](https://github.com/ChangjoSung/Digit-Duel/milestone/13) |
 
 ## 플레이 방법
 

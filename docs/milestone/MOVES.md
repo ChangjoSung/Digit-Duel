@@ -50,4 +50,10 @@ rg -F '"docs/milestone/v0.4.4/issues/106/Mars/issue106-mars.md"' docs/milestone/
 
 ## 검사
 
-`node tools/docs_link_check.js --verbose`가 추적 중인 모든 `*.md`의 내부 상대 링크·이미지를 검사한다. CI의 `docs-integrity` 잡이 매 PR에서 같은 명령을 돌린다.
+`node tools/docs/docs_link_check.js --verbose`가 추적 중인 모든 `*.md`의 내부 상대 링크·이미지를 검사한다. CI의 `docs-integrity` 잡이 매 PR에서 같은 명령을 돌린다.
+
+## 후속 이동 — Issue #134
+
+2026-09-09 CJ의 추가 요청으로 `demo/test`·`tools`·연관 Python 테스트 40개를 정리했다. 코드의 옛 경로는 [#134 MOVES.csv](v0.4.7/issues/134/Mercury/MOVES.csv), 실행 방법은 [검사 인덱스](../../demo/test/README.md)와 [도구 인덱스](../../tools/README.md)에서 찾는다. 위 342행 CSV는 #132 당시의 문서 이동표로 보존하며 새 코드 목록을 섞지 않는다.
+
+CJ의 일정 변경으로 `docs/milestone/v0.4.6/issues/132/Mars/report.md`와 `docs/milestone/v0.4.6/issues/132/Venus/analysis.md`는 같은 하위 경로의 `v0.4.7/`로 옮겼다. [v0.4.6](v0.4.6/README.md)은 Roblox 포팅, [v0.4.7](v0.4.7/README.md)은 기존 CJ 게임·Infra를 안내한다. 당시 버전명·실행 명령·입력 해시·QA 판정이 적힌 역사 본문은 그대로 보존한다.

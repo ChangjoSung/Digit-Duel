@@ -1,28 +1,28 @@
 # Preserve the exact bytes recorded by the v0.4.3 art QA reports.
 # Authors used both LF and CRLF; checkout must not change reviewed hashes.
-/tools/minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
-/tests/test_minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/tools/art/minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/tools/art/test/test_minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
 
 # Keep the runtime QA working-tree hashes stable across checkout platforms.
 /demo/index.html text eol=crlf
-/demo/test/harness.js text eol=crlf
-/demo/test/smoke_memo.js text eol=crlf
-/demo/test/smoke_minion_art.js text eol=lf
-/demo/test/minion_art_cdp.js text eol=lf
-/demo/test/issue91_cdp.js text eol=lf
-/demo/test/smoke_attack_balance.js text eol=lf
-/demo/test/attack_balance_compare.js text eol=lf
-/demo/test/issue95_cdp.js text eol=lf
+/demo/test/shared/harness.js text eol=crlf
+/demo/test/regression/smoke_memo.js text eol=crlf
+/demo/test/regression/smoke_minion_art.js text eol=lf
+/demo/test/milestone/v0.4.3/issues/89/minion_art_cdp.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/91/issue91_cdp.js text eol=lf
+/demo/test/regression/smoke_attack_balance.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/95/attack_balance_compare.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/95/issue95_cdp.js text eol=lf
 
-/demo/test/memo_cdp.js text eol=lf
-/demo/test/smoke_shock.js text eol=lf
-/demo/test/shock_compare.js text eol=lf
-/demo/test/issue96_cdp.js text eol=lf
-/demo/test/smoke_cross_skill.js text eol=lf
-/demo/test/issue92_cdp.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/94/memo_cdp.js text eol=lf
+/demo/test/regression/smoke_shock.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/96/shock_compare.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/96/issue96_cdp.js text eol=lf
+/demo/test/regression/smoke_cross_skill.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/92/issue92_cdp.js text eol=lf
 
-/demo/test/smoke_own_side.js text eol=lf
-/demo/test/issue93_cdp.js text eol=lf
+/demo/test/regression/smoke_own_side.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/93/issue93_cdp.js text eol=lf
 
 # Issue132: preserve relocated documents and data with their original checkout attributes.
 /docs/milestone/v0.4.3/issues/87/Mars/art-pipeline.md -text whitespace=trailing-space,space-before-tab,cr-at-eol
