@@ -35,8 +35,8 @@ local MESH_SIZE = {
 }
 local MESH_TEX = { desk = "desk_albedo", chair = "chair_albedo", board = "board_grid", floor = "floor_tile", wall = "wall_albedo", pillar = "pillar_albedo" }
 
-local tables = {} -- [id] = { model, desk, board, seats = {A=Seat, B=Seat}, status = TextLabel, occupants = {A=Player?, B=Player?}, visuals = {...} }
-local seatedCb, vacatedCb = nil, nil
+local tables = {} -- [id] = { model, desk, board, seats = {A=Seat, B=Seat}, status = TextLabel, occupants = {A=Player?, B=Player?}, startPrompt = ProximityPrompt }
+local seatedCb, vacatedCb, startCb = nil, nil, nil
 local templates = {} -- [name] = MeshPart 템플릿 (로드 성공분)
 
 local C = {
@@ -232,6 +232,22 @@ local function buildTable(id, cx, cz, parent)
 	local board = part({ Name = "Board", Size = MESH_SIZE.board, Position = Vector3.new(cx, 3.1, cz), Color = C.boardBg, Material = Enum.Material.SmoothPlastic, CanCollide = false }, model)
 	board.CanQuery = true
 	buildBoardGui(board)
+	-- 게임 시작 프롬프트 (앉기 [E] 와 같은 방식): 둘 다 앉았을 때만 서버가 켠다. 앉은 두 사람 중 아무나 [F]
+	local startPrompt = Instance.new("ProximityPrompt")
+	startPrompt.Name = "StartPrompt"
+	startPrompt.ActionText = "게임 시작"
+	startPrompt.ObjectText = ("테이블 %d"):format(id)
+	startPrompt.KeyboardKeyCode = Enum.KeyCode.F
+	startPrompt.MaxActivationDistance = 10
+	startPrompt.HoldDuration = 0
+	startPrompt.RequiresLineOfSight = false
+	startPrompt.Enabled = false
+	startPrompt.Parent = board
+	startPrompt.Triggered:Connect(function(player)
+		if startCb then
+			startCb(player, id)
+		end
+	end)
 	local seatA, seatAVis = buildSeat(id, "A", Vector3.new(cx, 1.25, cz + 5.2), board.Position, C.seatA, model)
 	local seatB, seatBVis = buildSeat(id, "B", Vector3.new(cx, 1.25, cz - 5.2), board.Position, C.seatB, model)
 	local status = buildSign(id, desk)
@@ -240,7 +256,7 @@ local function buildTable(id, cx, cz, parent)
 	local t = {
 		id = id, cx = cx, cz = cz, model = model, desk = desk, legs = legs, board = board,
 		seats = { A = seatA, B = seatB }, seatVis = { A = seatAVis, B = seatBVis },
-		status = status, occupants = {},
+		status = status, occupants = {}, startPrompt = startPrompt,
 	}
 	for side, seat in t.seats do
 		seat:GetPropertyChangedSignal("Occupant"):Connect(function()
@@ -389,6 +405,17 @@ end
 
 function Lobby.onVacated(fn)
 	vacatedCb = fn
+end
+
+function Lobby.onStartPrompt(fn) -- fn(player, tableId)
+	startCb = fn
+end
+
+function Lobby.setStartPrompt(id, enabled)
+	local t = tables[id]
+	if t and t.startPrompt then
+		t.startPrompt.Enabled = enabled == true
+	end
 end
 
 function Lobby.setStatus(id, text)

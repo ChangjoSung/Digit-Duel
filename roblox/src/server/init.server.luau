@@ -13,7 +13,7 @@ local Engine = require(Shared.Engine)
 local Views = require(Shared.Views)
 local Lobby = require(script:WaitForChild("Lobby"))
 
-local VERSION = "0.5.0-p2d.4"
+local VERSION = "0.5.0-p2d.5"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")
@@ -58,6 +58,7 @@ local function updateStatus(id)
 		text = ("테이블 %d · 빈 자리 2"):format(id)
 	end
 	Lobby.setStatus(id, text)
+	Lobby.setStartPrompt(id, n == 2 and not ts.setupOpen and not ts.session) -- [F] 게임 시작 프롬프트는 둘 다 앉았을 때만
 end
 
 local function notifyTable(id)
@@ -78,6 +79,36 @@ local function notifyTable(id)
 		end
 	end
 end
+
+-- [▶ 게임 시작] — HUD 버튼·[F] 프롬프트·Enter 공용. 둘 다 앉은 테이블의 착석자만
+local function tryStartSetup(player)
+	local at = seatOf[player]
+	if not at then
+		reState:FireClient(player, { t = "reject", reason = "먼저 테이블 의자에 앉으세요 (의자 앞에서 E)" })
+		return
+	end
+	local ts = tableState[at.id]
+	if ts.session or ts.setupOpen then
+		return
+	end
+	if not (ts.players.A and ts.players.B) then
+		reState:FireClient(player, { t = "reject", reason = "맞은편에 상대가 앉아야 시작할 수 있습니다" })
+		return
+	end
+	ts.setupOpen = true
+	ts.ready = {}
+	notifyTable(at.id)
+	updateStatus(at.id)
+end
+
+Lobby.onStartPrompt(function(player, id)
+	local at = seatOf[player]
+	if at and at.id == id then
+		tryStartSetup(player)
+	else
+		reState:FireClient(player, { t = "reject", reason = "이 테이블에 앉은 사람만 시작할 수 있습니다" })
+	end
+end)
 
 --==================================================================
 -- 세션
@@ -246,24 +277,8 @@ reAction.OnServerEvent:Connect(function(player, a)
 		return
 	end
 
-	if a.t == "startGame" then -- 둘 다 앉은 뒤 한 명이 누르면 양측 배치 단계 진입
-		local at = seatOf[player]
-		if not at then
-			reState:FireClient(player, { t = "reject", reason = "먼저 테이블 의자에 앉으세요 (의자 앞에서 E)" })
-			return
-		end
-		local ts = tableState[at.id]
-		if ts.session or ts.setupOpen then
-			return
-		end
-		if not (ts.players.A and ts.players.B) then
-			reState:FireClient(player, { t = "reject", reason = "맞은편에 상대가 앉아야 시작할 수 있습니다" })
-			return
-		end
-		ts.setupOpen = true
-		ts.ready = {}
-		notifyTable(at.id)
-		updateStatus(at.id)
+	if a.t == "startGame" then -- 둘 다 앉은 뒤 한 명이 누르면 양측 배치 단계 진입 (HUD 버튼·Enter)
+		tryStartSetup(player)
 		return
 	end
 
