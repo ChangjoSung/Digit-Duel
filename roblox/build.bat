@@ -11,6 +11,16 @@ if not exist build\rojo.exe (
     exit /b 1
 )
 
+where node >nul 2>nul
+if not errorlevel 1 (
+    node tools\rbxcheck.js
+    if errorlevel 1 (
+        echo [ERROR] Roblox API check failed - fix the lines above before building.
+        pause
+        exit /b 1
+    )
+)
+
 build\rojo.exe build default.project.json -o build\DigitDual.rbxl
 if errorlevel 1 (
     echo [ERROR] build failed.

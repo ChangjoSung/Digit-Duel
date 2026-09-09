@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p2d.3"
+local CLIENT_VERSION = "0.5.0-p2d.6"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -49,11 +49,37 @@ footer.TextSize = 12
 footer.Font = Enum.Font.Gotham
 footer.TextXAlignment = Enum.TextXAlignment.Right
 footer.Parent = diagGui
-local DIAG = { server = "서버 확인 중…", modules = false, ui = false, board = "" }
+local DIAG = { server = "서버 확인 중…", modules = false, ui = false, board = "", err = nil }
 local function refreshFooter()
+	if DIAG.err then
+		footer.TextColor3 = Color3.fromRGB(255, 90, 100)
+		footer.Text = ("client v%s · ⛔ 오류: %s"):format(CLIENT_VERSION, DIAG.err)
+		return
+	end
+	footer.TextColor3 = Color3.fromRGB(154, 163, 184)
 	footer.Text = ("client v%s · %s%s%s%s"):format(CLIENT_VERSION, DIAG.server, DIAG.modules and " · 모듈 OK" or "", DIAG.ui and " · UI OK" or "", DIAG.board)
 end
 refreshFooter()
+-- 클라이언트 스크립트 오류를 화면에 그대로 보여준다 (원격 진단용). 이 스크립트가 죽어도 이 연결은 살아 있다
+local function reportError(msg)
+	DIAG.err = tostring(msg):sub(1, 160)
+	refreshFooter()
+	warn("[DD client] " .. tostring(msg))
+end
+pcall(function()
+	game:GetService("ScriptContext").Error:Connect(function(message, trace, scr)
+		if scr == script or (typeof(scr) == "Instance" and scr:IsDescendantOf(ReplicatedStorage)) then
+			reportError(message .. "\n" .. tostring(trace):sub(1, 200))
+		end
+	end)
+end)
+local function safe(fn, label)
+	local ok, err = pcall(fn)
+	if not ok then
+		reportError((label or "render") .. ": " .. tostring(err))
+	end
+	return ok
+end
 reState.OnClientEvent:Connect(function(msg)
 	if type(msg) == "table" and msg.t == "hello" then
 		DIAG.server = ("server v%s 연결됨 · 접속 %d명"):format(tostring(msg.version), msg.players or 0)
@@ -113,7 +139,7 @@ local function bgImage(frame, uiKey, sliceKind, scale)
 	end
 	local img = mk("ImageLabel", {
 		Name = "Bg", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Image = u,
-		ResampleMode = Enum.ResampleMode.Pixelated, ZIndex = 0,
+		ResampleMode = Enum.ResamplerMode.Pixelated, ZIndex = 0,
 	}, frame)
 	slice(img, sliceKind, scale)
 	frame.BackgroundTransparency = 1
@@ -123,7 +149,7 @@ end
 local function iconLabel(parent, x, y, size, image, tint, zindex)
 	return mk("ImageLabel", {
 		Size = UDim2.new(0, size, 0, size), Position = UDim2.new(0, x, 0, y), BackgroundTransparency = 1, Image = image,
-		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, ImageColor3 = tint or WHITE, ZIndex = zindex or 2,
+		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ImageColor3 = tint or WHITE, ZIndex = zindex or 2,
 	}, parent)
 end
 
@@ -139,7 +165,7 @@ local function smallBtn(parent, x, y, w, text, cb, kind, enabled, icon, h)
 	local b = mk("ImageButton", {
 		Size = UDim2.new(0, w, 0, h), Position = UDim2.new(0, x, 0, y),
 		BackgroundTransparency = normal and 1 or 0, BackgroundColor3 = on and BTN_FALLBACK[kind] or Color3.fromRGB(38, 42, 54),
-		AutoButtonColor = (normal == nil) and on, Image = (on and normal or disabledImg) or "", ResampleMode = Enum.ResampleMode.Pixelated,
+		AutoButtonColor = (normal == nil) and on, Image = (on and normal or disabledImg) or "", ResampleMode = Enum.ResamplerMode.Pixelated,
 		ZIndex = parent.ZIndex,
 	}, parent)
 	if normal then
@@ -204,7 +230,7 @@ local function mkBar(parent, x, y, w, h, kind, z)
 	local clip = mk("Frame", { Name = "Clip", Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = z + 1 }, f)
 	local fi = mk("ImageLabel", {
 		Name = "Fill", Size = UDim2.new(0, w, 0, h), BackgroundTransparency = fillImg and 1 or 0, BackgroundColor3 = tint,
-		Image = fillImg or "", ImageColor3 = tint, ResampleMode = Enum.ResampleMode.Pixelated, ZIndex = z + 1,
+		Image = fillImg or "", ImageColor3 = tint, ResampleMode = Enum.ResamplerMode.Pixelated, ZIndex = z + 1,
 	}, clip)
 	if fillImg then
 		slice(fi, "bar", 0.5)
@@ -255,24 +281,24 @@ local hudLabel = mk("TextLabel", {
 local hudBtns = mk("Frame", { Size = UDim2.new(0, 330, 0, 26), Position = UDim2.new(1, -336, 0, 6), BackgroundTransparency = 1 }, hud)
 local lastSetupOpen = false -- 서버 setupOpen 전이 감지 (false→true 면 배치 단계 초기화)
 
--- 배치 패널
+-- 배치 패널 (오른쪽 세로 컬럼 — 판 아래쪽 내 진영 칸을 가리지 않도록)
 local setupPanel = mk("Frame", {
-	Size = UDim2.new(0, 680, 0, 236), Position = UDim2.new(0.5, -340, 1, -256), Visible = false,
+	Size = UDim2.new(0, 380, 0, 560), Position = UDim2.new(1, -392, 0.5, -280), Visible = false,
 	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.08, BorderSizePixel = 0,
 }, gui)
 bgImage(setupPanel, "panel_side", "panel", 1)
 local setupTitle = mk("TextLabel", {
 	Text = "", Size = UDim2.new(1, -20, 0, 22), Position = UDim2.new(0, 10, 0, 6),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 15, Font = Enum.Font.GothamBold,
-	TextXAlignment = Enum.TextXAlignment.Left,
+	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 }, setupPanel)
 local setupHint = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -20, 0, 18), Position = UDim2.new(0, 10, 0, 28),
+	Text = "", Size = UDim2.new(1, -20, 0, 34), Position = UDim2.new(0, 10, 0, 30),
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
-	TextXAlignment = Enum.TextXAlignment.Left,
+	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
 }, setupPanel)
-local setupContent = mk("Frame", { Size = UDim2.new(1, -20, 0, 150), Position = UDim2.new(0, 10, 0, 48), BackgroundTransparency = 1 }, setupPanel)
-local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 30), Position = UDim2.new(0, 10, 1, -36), BackgroundTransparency = 1 }, setupPanel)
+local setupContent = mk("Frame", { Size = UDim2.new(1, -20, 0, 400), Position = UDim2.new(0, 10, 0, 68), BackgroundTransparency = 1 }, setupPanel)
+local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 66), Position = UDim2.new(0, 10, 1, -76), BackgroundTransparency = 1 }, setupPanel)
 
 -- 로스터 상세 팝업
 local rosterDetail = mk("Frame", {
@@ -298,7 +324,7 @@ local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency
 -- 2D 보드 (폴백 — 대전·배치 공용). 외곽 프레임(board_frame) + 셀마다 타일·하이라이트 오버레이
 local boardFrameImg = mk("ImageLabel", {
 	Size = UDim2.new(0, COLS * CELL + 32, 0, ROWS * CELL + 32), Position = UDim2.new(0, 4, 0, 100), BackgroundTransparency = 1,
-	Image = Art.board("frame") or "", ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 0,
+	Image = Art.board("frame") or "", ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 0,
 }, gui)
 if Art.board("frame") then
 	slice(boardFrameImg, "hl", 0.5)
@@ -318,11 +344,11 @@ for dr = 1, ROWS do
 		}, boardFrame)
 		mk("ImageLabel", { -- 타일 (128→32 균등 축소)
 			Name = "Tile", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Stretch,
-			ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 0,
+			ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 0,
 		}, b)
 		mk("ImageLabel", {
 			Name = "Icon", Size = UDim2.new(1, -4, 1, -4), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1,
-			ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 2,
+			ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 2,
 		}, b)
 		mk("TextLabel", {
 			Name = "Hp", Size = UDim2.new(1, -2, 0, 12), Position = UDim2.new(0, 0, 1, -12), BackgroundTransparency = 1,
@@ -331,14 +357,14 @@ for dr = 1, ROWS do
 		}, b)
 		local mark = mk("ImageLabel", { -- 흔적 (trace48) — 없으면 텍스트 폴백
 			Name = "Mark", Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 1, 0, 1), BackgroundTransparency = 1,
-			Image = Art.trace() or "", ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 3,
+			Image = Art.trace() or "", ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 3,
 		}, b)
 		mk("TextLabel", {
 			Name = "MarkTxt", Size = UDim2.new(0, 14, 0, 12), Position = UDim2.new(0, 1, 0, 0), BackgroundTransparency = 1,
 			Text = "🔍", TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = WHITE, Visible = false, ZIndex = 3,
 		}, b)
 		local hl = mk("ImageLabel", { -- 하이라이트 오버레이 (128 9-slice, 32px 셀 → SliceScale 0.25)
-			Name = "Hl", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 4,
+			Name = "Hl", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 4,
 		}, b)
 		slice(hl, "hl", 0.25)
 		cells[dr][c] = b
@@ -390,7 +416,7 @@ local fighterBottom = mk("Frame", { Size = UDim2.new(1, -130, 0, 74), Position =
 local function mkSpriteLabel(y)
 	return mk("ImageLabel", {
 		Size = UDim2.new(0, 96, 0, 96), Position = UDim2.new(1, -108, 0, y), BackgroundTransparency = 1, ZIndex = 6,
-		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false,
+		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false,
 	}, battleFrame)
 end
 local spriteTop, spriteBottom = mkSpriteLabel(6), mkSpriteLabel(84)
@@ -620,7 +646,7 @@ local function mkSprite(cf, image, tint, hp, r, c, sizeStud, lift)
 	img.BackgroundTransparency = 1
 	img.Image = image
 	img.ScaleType = Enum.ScaleType.Fit
-	img.ResampleMode = Enum.ResampleMode.Pixelated
+	img.ResampleMode = Enum.ResamplerMode.Pixelated
 	img.ImageColor3 = tint or WHITE
 	img.Parent = bb
 	if hp then
@@ -893,6 +919,40 @@ end
 -- 카메라·클릭
 --==================================================================
 
+-- 판 화면(배치·대전)에서는 모든 캐릭터(나 포함)를 이 클라이언트에서만 숨긴다 — "판만 보이는" 화면
+local charsHidden = false
+local function applyCharVisibility(char)
+	for _, d in char:GetDescendants() do
+		if d:IsA("BasePart") or d:IsA("Decal") then
+			d.LocalTransparencyModifier = charsHidden and 1 or 0
+		elseif d:IsA("Humanoid") then
+			d.DisplayDistanceType = charsHidden and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer
+		end
+	end
+end
+local function applyAllChars()
+	for _, plr in Players:GetPlayers() do
+		if plr.Character then
+			applyCharVisibility(plr.Character)
+		end
+	end
+end
+local function setCharsHidden(on)
+	if charsHidden == on then
+		return
+	end
+	charsHidden = on
+	applyAllChars()
+end
+task.spawn(function() -- 숨김 중 새로 들어온 플레이어·리스폰·액세서리도 계속 숨긴다
+	while true do
+		task.wait(0.5)
+		if charsHidden then
+			applyAllChars()
+		end
+	end
+end)
+
 local function setBoardCamera(on)
 	local cam = Workspace.CurrentCamera
 	if not cam then
@@ -902,11 +962,16 @@ local function setBoardCamera(on)
 	if bp and tableInfo then
 		local dir = (tableInfo.side == "A") and 1 or -1
 		cam.CameraType = Enum.CameraType.Scriptable
-		local eye = (bp.CFrame * CFrame.new(0, 7.4, dir * 6.4)).Position
-		local look = (bp.CFrame * CFrame.new(0, 0, dir * 0.4)).Position
+		-- 오른쪽 패널(배치 380px·대전 360px)이 판을 가리지 않도록 카메라를 내 기준 오른쪽으로 살짝 옮겨 판을 화면 왼쪽-중앙에 둔다
+		local eye = (bp.CFrame * CFrame.new(dir * 1.7, 7.4, dir * 6.4)).Position
+		local look = (bp.CFrame * CFrame.new(dir * 1.7, 0, dir * 0.4)).Position
 		cam.CFrame = CFrame.lookAt(eye, look)
-	elseif cam.CameraType == Enum.CameraType.Scriptable then
-		cam.CameraType = Enum.CameraType.Custom
+		setCharsHidden(true)
+	else
+		setCharsHidden(false)
+		if cam.CameraType == Enum.CameraType.Scriptable then
+			cam.CameraType = Enum.CameraType.Custom
+		end
 	end
 end
 
@@ -991,13 +1056,17 @@ end
 local function renderRosterGrid()
 	clearChildren(setupContent)
 	local row = 0
-	for _, el in Data.ELEMS do
+	for _, el in Data.ELEMS do -- 속성별로 묶어 한 줄에 3장 (5장 → 3+2)
 		local col = 0
 		for _, rd in Data.ROSTER do
 			if rd.element == el then
+				if col == 3 then
+					col = 0
+					row += 1
+				end
 				local on = table.find(setup.roster, rd.id) ~= nil
 				local card = mk("TextButton", {
-					Size = UDim2.new(0, 128, 0, 34), Position = UDim2.new(0, col * 133, 0, row * 37), Text = "",
+					Size = UDim2.new(0, 116, 0, 34), Position = UDim2.new(0, col * 121, 0, row * 37), Text = "",
 					BackgroundColor3 = on and Color3.fromRGB(45, 60, 100) or Color3.fromRGB(38, 42, 54), BorderSizePixel = on and 2 or 0,
 					BorderColor3 = Color3.fromRGB(91, 140, 255), AutoButtonColor = true,
 				}, setupContent)
@@ -1009,7 +1078,7 @@ local function renderRosterGrid()
 				end
 				local eu = Art.element(rd.element)
 				if eu then
-					iconLabel(card, 110, 2, 14, eu)
+					iconLabel(card, 100, 2, 14, eu)
 				end
 				mk("TextLabel", {
 					Size = UDim2.new(1, -52, 0, 16), Position = UDim2.new(0, 34, 0, 1), BackgroundTransparency = 1, Text = rd.name,
@@ -1034,10 +1103,10 @@ end
 local function renderTray()
 	clearChildren(setupContent)
 	local team = Art.TEAM[myOwner()]
-	for i = 1, 14 do
+	for i = 1, 14 do -- 한 줄에 7개 × 2줄
 		local placed = setup.pos[i] ~= nil
 		local chip = mk("TextButton", {
-			Size = UDim2.new(0, 44, 0, 58), Position = UDim2.new(0, (i - 1) * 47, 0, 4), Text = "",
+			Size = UDim2.new(0, 44, 0, 58), Position = UDim2.new(0, ((i - 1) % 7) * 50, 0, 4 + math.floor((i - 1) / 7) * 62), Text = "",
 			BackgroundColor3 = placed and Color3.fromRGB(30, 33, 42) or Color3.fromRGB(43, 49, 64),
 			BorderSizePixel = (i == setup.tray) and 2 or 0, BorderColor3 = HL.sel, AutoButtonColor = not placed,
 		}, setupContent)
@@ -1062,7 +1131,7 @@ local function renderTray()
 		end)
 	end
 	mk("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 70), BackgroundTransparency = 1, TextWrapped = true,
+		Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 0, 134), BackgroundTransparency = 1, TextWrapped = true,
 		Text = setup.tray and ("손에 든 말: " .. slotLabel(setup.tray) .. " — 판의 내 진영(강조된 3행) 빈 칸을 클릭하면 놓입니다. 놓인 말을 클릭하면 회수.") or "모든 말을 배치했습니다 — [배치 완료] 를 누르세요",
 		TextSize = 12, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(180, 188, 205), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
 	}, setupContent)
@@ -1136,7 +1205,7 @@ function renderSetup()
 			closeDetail()
 			renderSetup()
 		end, "primary", #setup.roster == 6)
-		smallBtn(setupBtns, 400, 2, 260, "⚡ 전부 무작위로 배치 완료 (빠른 시작)", function()
+		smallBtn(setupBtns, 0, 36, 260, "⚡ 전부 무작위로 배치 완료 (빠른 시작)", function()
 			autoPlace()
 			closeDetail()
 			sendReady()
@@ -1159,7 +1228,7 @@ function renderSetup()
 			clearPlace()
 			renderSetup()
 		end)
-		smallBtn(setupBtns, 520, 2, 140, "배치 완료 ✔", sendReady, "primary", placedCount() == 14)
+		smallBtn(setupBtns, 0, 36, 140, "배치 완료 ✔", sendReady, "primary", placedCount() == 14)
 		if use3D then
 			show2D(false)
 			sync3DSetup()
@@ -1259,11 +1328,11 @@ local function renderLobby()
 	end
 	local ti = tableInfo
 	if ti.setupOpen then
-		hudLabel.Text = ("테이블 %d · %s 자리 · 상대: %s\n배치 단계 — 로스터 6종 선택 → 판 위에 14개 배치 → [배치 완료 ✔]. 둘 다 완료하면 자동 시작"):format(ti.tableId, ti.side, ti.opp or "?")
+		hudLabel.Text = ("테이블 %d · %s 자리 · 상대: %s\n배치 단계 — 로스터 6종 → 판 위에 14개 배치 → [배치 완료 ✔] (Enter 로 다음 단계/완료). 둘 다 완료하면 자동 시작"):format(ti.tableId, ti.side, ti.opp or "?")
 	else
-		hudLabel.Text = ("테이블 %d · %s 자리 · %s\n%s · 일어나기: Space(점프) 또는 [자리 떠나기]"):format(ti.tableId, ti.side,
+		hudLabel.Text = ("테이블 %d · %s 자리 · %s\n%s · 일어나기: Space 또는 [자리 떠나기]"):format(ti.tableId, ti.side,
 			ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)",
-			ti.opp and "둘 다 앉았습니다 — 아무나 [▶ 게임 시작] 을 누르면 배치가 시작됩니다" or "상대가 앉으면 [▶ 게임 시작] 이 활성화됩니다")
+			ti.opp and "둘 다 앉았습니다 — [F] (판 앞 프롬프트) 또는 Enter 또는 [▶ 게임 시작] 버튼" or "상대가 앉으면 [F] 게임 시작이 켜집니다")
 	end
 	renderSetup()
 end
@@ -1729,6 +1798,36 @@ for dr = 1, ROWS do
 	end
 end
 
+-- 키 입력: F / Enter = 게임 시작 (둘 다 착석 시) · Enter = 배치 단계 진행(로스터 6종 → 배치, 14개 배치 → 완료)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or input.UserInputType ~= Enum.UserInputType.Keyboard then
+		return
+	end
+	local k = input.KeyCode
+	if k ~= Enum.KeyCode.F and k ~= Enum.KeyCode.Return and k ~= Enum.KeyCode.KeypadEnter then
+		return
+	end
+	if (view and view.phase == "play") or not tableInfo or tableInfo.inGame then
+		return
+	end
+	if not tableInfo.setupOpen then
+		if tableInfo.opp then
+			send({ t = "startGame" }) -- 프롬프트 [F] 와 겹쳐도 서버가 한 번만 처리
+		else
+			hudLabel.Text = "⛔ 맞은편에 상대가 앉아야 시작할 수 있습니다"
+		end
+	elseif k ~= Enum.KeyCode.F then
+		if setup.stage == "roster" and #setup.roster == 6 then
+			setup.stage = "place"
+			setup.tray = nextUnplaced(1)
+			closeDetail()
+			renderSetup()
+		elseif setup.stage == "place" and placedCount() == 14 then
+			sendReady()
+		end
+	end
+end)
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed or force2D then
 		return
@@ -1745,7 +1844,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
-renderLobby()
+safe(renderLobby, "renderLobby(init)")
 DIAG.ui = true
 refreshFooter()
 
@@ -1763,9 +1862,9 @@ reState.OnClientEvent:Connect(function(msg)
 		end
 		lastSetupOpen = msg.setupOpen == true
 		if view then
-			render()
+			safe(render, "render(table)")
 		else
-			renderLobby()
+			safe(renderLobby, "renderLobby(table)")
 		end
 		return
 	elseif msg.t == "left" then
@@ -1773,9 +1872,9 @@ reState.OnClientEvent:Connect(function(msg)
 		lastSetupOpen = false
 		closeDetail()
 		if view then
-			closeGame()
+			safe(closeGame, "closeGame")
 		else
-			renderLobby()
+			safe(renderLobby, "renderLobby(left)")
 		end
 		return
 	elseif msg.t == "reject" then
@@ -1807,6 +1906,6 @@ reState.OnClientEvent:Connect(function(msg)
 		if msg.opponentLeft then
 			addLog("🔌 상대의 연결이 끊어졌습니다.")
 		end
-		render()
+		safe(render, "render(state)")
 	end
 end)
