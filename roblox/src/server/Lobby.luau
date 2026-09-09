@@ -21,6 +21,8 @@ local TABLE_CENTERS = { { -15, -25 }, { 15, -25 }, { -15, 5 }, { 15, 5 } }
 
 -- 임포트 축이 어긋났을 때 조정하는 보정 요(rad). Studio 실반입에서 판 진영 방향·벽 장식면이 뒤집혀 보이면 여기만 고친다
 local MESH_YAW = { desk = 0, chair = 0, board = 0, floor = 0, wall = 0, pillar = 0 }
+-- 좌석 방향 보정(rad): Seat 정면(-Z)이 판을 향하도록 lookAt 으로 두었다. 아바타가 판을 등지고 앉으면 math.pi 로 바꾼다
+local SEAT_YAW = 0
 -- 메시 외접 상자 중심 기준 크기 (로비 manifest)
 local MESH_SIZE = {
 	desk = Vector3.new(9, 3, 7),
@@ -150,10 +152,13 @@ local function buildSeat(id, side, pos, lookAt, color, parent)
 	seat.Name = "Seat" .. side
 	seat.Size = Vector3.new(2, 0.5, 2)
 	seat.Anchored = true
-	seat.CFrame = CFrame.lookAt(pos, Vector3.new(lookAt.X, pos.Y, lookAt.Z)) -- 앞(-Z 로컬)이 판을 향한다 → 등받이는 +Z 로컬
+	seat.CFrame = CFrame.lookAt(pos, Vector3.new(lookAt.X, pos.Y, lookAt.Z)) * CFrame.Angles(0, SEAT_YAW, 0) -- 앞(-Z 로컬)이 판을 향한다 → 등받이는 +Z 로컬
 	seat.Color = color
 	seat.Material = Enum.Material.Fabric
 	seat.TopSurface = Enum.SurfaceType.Smooth
+	-- 접촉 자동 착석 금지: Seat 는 닿기만 해도 앉히고, 점프로 일어나도 아직 닿아 있어 즉시 다시 앉히는 루프가 생긴다.
+	-- 앉기는 아래 ProximityPrompt [E] → seat:Sit() 로만, 일어나기는 점프(Space) 또는 [자리 떠나기]
+	seat.CanTouch = false
 	seat.Parent = parent
 	local back = part({ Name = "Back", Size = Vector3.new(2, 2.2, 0.3), CFrame = seat.CFrame * CFrame.new(0, 1.35, 1.15), Color = color, Material = Enum.Material.Fabric, CanCollide = false }, parent)
 	local legs = part({ Name = "Legs", Size = Vector3.new(1.6, 0.9, 1.6), CFrame = seat.CFrame * CFrame.new(0, -0.7, 0), Color = C.desk, Material = Enum.Material.Wood }, parent)
@@ -168,9 +173,12 @@ local function buildSeat(id, side, pos, lookAt, color, parent)
 	prompt.Triggered:Connect(function(player)
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum and not seat.Occupant and hum.Health > 0 then
+		if hum and not seat.Occupant and hum.Health > 0 and not hum.Sit then
 			seat:Sit(hum)
 		end
+	end)
+	seat:GetPropertyChangedSignal("Occupant"):Connect(function() -- 누가 앉아 있으면 프롬프트 숨김
+		prompt.Enabled = seat.Occupant == nil
 	end)
 	return seat, { back, legs }
 end
@@ -412,15 +420,27 @@ end
 function Lobby.standUp(player)
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if hum then
+	if not hum then
+		return
+	end
+	pcall(function()
+		hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+	end)
+	-- Seat 는 SeatWeld 로 붙잡는다 — Sit=false 로 풀고, 남은 weld 가 있으면 직접 제거한 뒤 살짝 점프시켜 확실히 떼어낸다
+	local seatPart = hum.SeatPart -- SeatWeld 는 의자 파트의 자식으로 생긴다
+	hum.Sit = false
+	if seatPart then
+		local w = seatPart:FindFirstChild("SeatWeld")
+		if w then
+			w:Destroy()
+		end
+	end
+	task.defer(function()
 		pcall(function()
-			hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-		end)
-		hum.Sit = false
-		pcall(function()
+			hum.Jump = true
 			hum:ChangeState(Enum.HumanoidStateType.Jumping)
 		end)
-	end
+	end)
 end
 
 return Lobby

@@ -13,7 +13,7 @@ local Engine = require(Shared.Engine)
 local Views = require(Shared.Views)
 local Lobby = require(script:WaitForChild("Lobby"))
 
-local VERSION = "0.5.0-p2d.1"
+local VERSION = "0.5.0-p2d.3"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")
@@ -31,9 +31,10 @@ Lobby.build()
 local seedRandom = Random.new()
 local sessions = {} -- [player] = session
 local seatOf = {} -- [player] = { id, side }
-local tableState = {} -- [id] = { players = {A=?,B=?}, ready = {A=setup?,B=setup?}, session = nil }
+-- setupOpen: 둘 다 앉은 뒤 한 명이 [게임 시작] 을 누르면 true → 양측 배치 단계(카메라 판 고정·로스터/배치 UI). 자리 이탈·대전 종료 시 false
+local tableState = {} -- [id] = { players = {A=?,B=?}, ready = {A=setup?,B=setup?}, session = nil, setupOpen = false }
 for i = 1, Lobby.tableCount() do
-	tableState[i] = { players = {}, ready = {}, session = nil }
+	tableState[i] = { players = {}, ready = {}, session = nil, setupOpen = false }
 end
 local nextRoomId = 1
 
@@ -47,8 +48,10 @@ local function updateStatus(id)
 	local text
 	if ts.session then
 		text = ("테이블 %d · ⚔️ 대전 중"):format(id)
-	elseif n == 2 then
+	elseif n == 2 and ts.setupOpen then
 		text = ("테이블 %d · 배치 중 (%d/2 완료)"):format(id, (ts.ready.A and 1 or 0) + (ts.ready.B and 1 or 0))
+	elseif n == 2 then
+		text = ("테이블 %d · 둘 다 착석 — [게임 시작] 대기"):format(id)
 	elseif n == 1 then
 		text = ("테이블 %d · 상대 기다리는 중 — 맞은편에 앉으세요"):format(id)
 	else
@@ -70,6 +73,7 @@ local function notifyTable(id)
 				myReady = ts.ready[side] ~= nil,
 				oppReady = opp ~= nil and ts.ready[side == "A" and "B" or "A"] ~= nil,
 				inGame = ts.session ~= nil,
+				setupOpen = ts.setupOpen == true,
 			})
 		end
 	end
@@ -112,6 +116,7 @@ local function endSession(session)
 	if ts and ts.session == session then
 		ts.session = nil
 		ts.ready = {}
+		ts.setupOpen = false -- 재대전은 다시 [게임 시작]
 		notifyTable(session.tableId)
 		updateStatus(session.tableId)
 	end
@@ -204,7 +209,8 @@ local function vacate(player)
 	if ts.players[at.side] == player then
 		ts.players[at.side] = nil
 	end
-	ts.ready[at.side] = nil
+	ts.ready = {} -- 한 명이 떠나면 배치 단계 해제 (남은 사람은 다시 [게임 시작] 대기)
+	ts.setupOpen = false
 	if sessions[player] then
 		leaveSession(player, true)
 	end
@@ -240,7 +246,28 @@ reAction.OnServerEvent:Connect(function(player, a)
 		return
 	end
 
-	if a.t == "ready" then -- 배치 완료 (setup = {roster, pos}) — 앉아 있어야 하고 대전 중이 아니어야 한다
+	if a.t == "startGame" then -- 둘 다 앉은 뒤 한 명이 누르면 양측 배치 단계 진입
+		local at = seatOf[player]
+		if not at then
+			reState:FireClient(player, { t = "reject", reason = "먼저 테이블 의자에 앉으세요 (의자 앞에서 E)" })
+			return
+		end
+		local ts = tableState[at.id]
+		if ts.session or ts.setupOpen then
+			return
+		end
+		if not (ts.players.A and ts.players.B) then
+			reState:FireClient(player, { t = "reject", reason = "맞은편에 상대가 앉아야 시작할 수 있습니다" })
+			return
+		end
+		ts.setupOpen = true
+		ts.ready = {}
+		notifyTable(at.id)
+		updateStatus(at.id)
+		return
+	end
+
+	if a.t == "ready" then -- 배치 완료 (setup = {roster, pos}) — 앉아 있어야 하고 배치 단계가 열려 있어야 한다
 		local at = seatOf[player]
 		if not at then
 			reState:FireClient(player, { t = "reject", reason = "먼저 테이블 의자에 앉으세요 (의자 앞에서 E)" })
@@ -248,6 +275,10 @@ reAction.OnServerEvent:Connect(function(player, a)
 		end
 		local ts = tableState[at.id]
 		if ts.session then
+			return
+		end
+		if not ts.setupOpen then
+			reState:FireClient(player, { t = "reject", reason = "먼저 [게임 시작] 을 누르세요 (둘 다 앉은 뒤)" })
 			return
 		end
 		local okSetup, why = Engine.validateSetup(a.setup)
