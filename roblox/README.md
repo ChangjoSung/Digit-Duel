@@ -91,6 +91,13 @@ luau tests/run.luau
 [luau CLI](https://github.com/luau-lang/luau/releases) (luau-windows.zip) 만 있으면 된다. 검증 범위:
 RNG 골든(JS 대조) · 배치·P2 행 반사 · 이동 규칙 · 접촉 6상황 유닛(폭탄·함정·밀기) · 왕 끝줄 승리 · 전투 완주 · 20시드 무작위 완주(룰 데드락·지표 정합·HP 불변식).
 
+### Roblox API 정적 검사 (build.bat 이 자동 실행)
+```
+node tools/rbxcheck.js
+```
+`mk("Class", {…})`·`part({…})` 의 속성 이름, `Enum.X.Y`, 인스턴스 직접 대입을 luau-lsp 의 `globalTypes.d.luau`(첫 실행 시 `build/` 에 내려받음) 와 대조한다.
+헤드리스 테스트로는 잡히지 않는 "Studio 에서만 터지는" 오타(예: 존재하지 않는 `Enum.ResampleMode` → 클라이언트 스크립트가 초기화 중 죽어 UI 전체가 안 뜸)를 커밋 전에 걸러낸다.
+
 ## Phase 1 제외 (후속 이슈)
 
 - PVE AI (grade5/dan5) — 엔진에 관측 데이터(aiSeenMoved)는 유지해 둠
