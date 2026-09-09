@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Data = require(Shared.Data)
+local Art = require(Shared.Art) -- #89 하수인 아트 (AssetIds 비어 있으면 전부 nil → 텍스트 폴백)
 
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
 local reAction = remotes:WaitForChild("Action")
@@ -71,8 +72,22 @@ for dr = 1, ROWS do
 		local b = mk("TextButton", {
 			Size = UDim2.new(0, CELL - 2, 0, CELL - 2), Position = UDim2.new(0, (c - 1) * CELL + 1, 0, (dr - 1) * CELL + 1),
 			Text = "", TextSize = 12, Font = Enum.Font.Gotham, TextColor3 = Color3.new(1, 1, 1),
-			BackgroundColor3 = Color3.fromRGB(43, 49, 64),
+			BackgroundColor3 = Color3.fromRGB(43, 49, 64), BorderSizePixel = 0,
 		}, boardFrame)
+		-- 종 아이콘(icon64 → 셀 크기 정수 배율 아님이라 Fit + Pixelated) · HP 숫자 · 흔적 마커 — 아트 없으면 숨기고 버튼 텍스트로 폴백
+		mk("ImageLabel", {
+			Name = "Icon", Size = UDim2.new(1, -4, 1, -4), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1,
+			ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false, ZIndex = 2,
+		}, b)
+		mk("TextLabel", {
+			Name = "Hp", Size = UDim2.new(1, -2, 0, 12), Position = UDim2.new(0, 0, 1, -12), BackgroundTransparency = 1,
+			Text = "", TextSize = 10, Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.2,
+			TextXAlignment = Enum.TextXAlignment.Right, Visible = false, ZIndex = 3,
+		}, b)
+		mk("TextLabel", {
+			Name = "Mark", Size = UDim2.new(0, 14, 0, 12), Position = UDim2.new(0, 1, 0, 0), BackgroundTransparency = 1,
+			Text = "🔍", TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = Color3.new(1, 1, 1), Visible = false, ZIndex = 3,
+		}, b)
 		cells[dr][c] = b
 	end
 end
@@ -108,15 +123,23 @@ local battleFrame = mk("Frame", {
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
 }, game_)
 local battleTop = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 70), Position = UDim2.new(0, 8, 0, 6), ZIndex = 5,
+	Text = "", Size = UDim2.new(1, -120, 0, 70), Position = UDim2.new(0, 8, 0, 6), ZIndex = 5,
 	TextColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, RichText = true,
 }, battleFrame)
 local battleBottom = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -16, 0, 70), Position = UDim2.new(0, 8, 0, 80), ZIndex = 5,
+	Text = "", Size = UDim2.new(1, -120, 0, 70), Position = UDim2.new(0, 8, 0, 80), ZIndex = 5,
 	TextColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, RichText = true,
 }, battleFrame)
+-- #91 전투 도트 (battle256 → 96px 표시, Pixelated). 왕·동료 본체·업로드 전에는 숨김
+local function mkSprite(y)
+	return mk("ImageLabel", {
+		Size = UDim2.new(0, 96, 0, 96), Position = UDim2.new(1, -104, 0, y), BackgroundTransparency = 1, ZIndex = 6,
+		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResampleMode.Pixelated, Visible = false,
+	}, battleFrame)
+end
+local spriteTop, spriteBottom = mkSprite(2), mkSprite(76)
 local battleMsg = mk("TextLabel", {
 	Text = "", Size = UDim2.new(1, -16, 0, 120), Position = UDim2.new(0, 8, 0, 155), ZIndex = 5,
 	TextColor3 = Color3.fromRGB(255, 224, 150), BackgroundColor3 = Color3.fromRGB(19, 22, 30), TextSize = 12,
@@ -254,11 +277,28 @@ local function renderBoard()
 			b.BackgroundColor3 = zone
 			b.Text = ""
 			b.TextColor3 = Color3.new(1, 1, 1)
+			b.BorderSizePixel = 0
+			local icon, hpLabel, mark = b.Icon, b.Hp, b.Mark
+			icon.Visible = false
+			hpLabel.Visible = false
+			mark.Visible = false
 			local p = pieceAt(r, c)
 			if p then
-				b.Text = pieceLabel(p)
 				local mine = p.owner == view.me
-				b.TextColor3 = mine and Color3.fromRGB(160, 200, 255) or Color3.fromRGB(255, 160, 170)
+				local ownColor = mine and Color3.fromRGB(160, 200, 255) or Color3.fromRGB(255, 160, 170)
+				b.TextColor3 = ownColor
+				b.BorderSizePixel = 2 -- 아군/적군 테두리 (아이콘 표시 시에도 소속이 보이도록)
+				b.BorderColor3 = ownColor
+				-- #89 확정된 하수인만 종 아이콘 — 미공개 말(known=false)은 rosterId 자체가 없어 "?" 텍스트 (정보 은닉은 Views 가 보장)
+				local iconUrl = (p.known and p.type == "minion") and Art.icon(p.rosterId) or nil
+				if iconUrl then
+					icon.Image = iconUrl
+					icon.Visible = true
+					hpLabel.Text = tostring(p.hp or "")
+					hpLabel.Visible = true
+				else
+					b.Text = pieceLabel(p)
+				end
 				if p.id == selectedId or p.id == teleFirst then
 					b.BackgroundColor3 = Color3.fromRGB(120, 120, 40)
 				end
@@ -271,7 +311,7 @@ local function renderBoard()
 			end
 			for _, tr in view.traces do
 				if tr.r == r and tr.c == c then
-					b.Text = (b.Text ~= "" and b.Text or "") .. "🔍"
+					mark.Visible = true
 				end
 			end
 		end
@@ -451,6 +491,12 @@ local function renderBattle()
 	battleTop.Text = fighterText(bt[topSide], topSide == "A" and "[공격]" or "[방어]")
 	battleBottom.Text = fighterText(bt[bt.mySide], bt.mySide == "A" and "[공격]" or "[방어]")
 		.. ("\n라운드 %d/%d — %s"):format(bt.round, bt.maxRounds, myActing and "🟢 나의 행동" or "⏳ 상대 행동")
+	for _, pair in { { spriteTop, bt[topSide] }, { spriteBottom, bt[bt.mySide] } } do
+		local img, fv = pair[1], pair[2]
+		local u = Art.battle(fv.artRosterId) -- 대리 출전(포획 하수인)은 Views 가 artRosterId 로 원래 종을 싣는다
+		img.Image = u or ""
+		img.Visible = u ~= nil
+	end
 	clearChildrenBtns(battleBtns)
 	if not myActing then
 		return

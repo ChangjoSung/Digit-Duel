@@ -57,6 +57,16 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 
 코드를 고친 뒤에는 `build.bat` 을 다시 돌려 rbxl 을 갱신한다. 라이브 동기화가 필요하면 `build\rojo.exe serve` + Studio Rojo 플러그인.
 
+### 아트 적용 (Earth 납품 → Roblox 업로드)
+Roblox 는 이미지를 Roblox 서버에 올려 `rbxassetid` 를 받아야 쓸 수 있다. `roblox/assets/manifest.csv` 의 PNG 를 한 번에 올리고 ID 표를 생성한다:
+
+1. API 키 발급: https://create.roblox.com/dashboard/credentials → **Create API Key** → Access Permissions 에 **Assets API** 추가 (Read + Write) → Save → 키 복사
+2. `roblox\tools\upload.bat` 실행 → API 키와 User ID(roblox.com/users/**숫자**/profile) 입력 → 60장 업로드 (약 2~3분)
+3. 생성된 `roblox/assets/asset-ids.json` 과 `roblox/src/shared/AssetIds.luau` 를 커밋 → `build.bat` → Studio 에서 **Publish to Roblox As…** 로 기존 경험에 덮어쓰기
+
+재실행하면 파일이 바뀐 것만 다시 올린다. `AssetIds.luau` 가 비어 있으면 클라이언트는 텍스트 표시로 폴백한다 (HTML #89 폴백과 같은 계약).
+업로드 직후 Roblox 이미지 검수(수 분)가 끝날 때까지 빈 이미지로 보일 수 있다.
+
 ### Roblox 게시 (실제 다인 플레이)
 Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버 인스턴스를 호스팅하며, 같은 인스턴스에 들어온 플레이어를 `init.server.luau` 가 1:1 로 매칭한다.
 

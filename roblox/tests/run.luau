@@ -374,6 +374,27 @@ ok(finished == 20, "20시드 전체 진행 가능 (룰 데드락 없음)")
 ok(overCount >= 5, "자연 종료 도달 시드 존재 (" .. overCount .. "/20)")
 
 --==================================================================
+print("[7] Art 연결 — 업로드 전 폴백·허용 목록 (#89)")
+--==================================================================
+local Art = require("../src/shared/Art")
+local AssetIds = require("../src/shared/AssetIds")
+eq(Art.dirOf("M-F2"), "fire_atk", "rosterId → 종 폴더")
+eq(Art.dirOf("BAD"), nil, "허용 목록 밖 → nil")
+eq(Art.dirOf(nil), nil, "nil rosterId → nil")
+local n = 0
+for _ in AssetIds do
+	n += 1
+end
+if n == 0 then
+	eq(Art.icon("M-F2"), nil, "ID 없음 → 폴백 nil")
+	eq(Art.battle("M-F2"), nil, "ID 없음 → 폴백 nil")
+else
+	ok(string.find(Art.icon("M-F2") or "", "^rbxassetid://%d+$") ~= nil, "ID 있음 → rbxassetid URL")
+	ok(string.find(Art.battle("M-F2") or "", "^rbxassetid://%d+$") ~= nil, "battle URL")
+	print(("  AssetIds %d개 로드"):format(n))
+end
+
+--==================================================================
 print(("\n결과: %d passed · %d failed"):format(passed, failed))
 if failed > 0 then
 	error("테스트 실패", 0)
