@@ -941,7 +941,7 @@ function Engine:doMove(p, r, c)
 	for _, ev in S.events do
 		if ev.r == r and ev.c == c and not ev.consumed then
 			S.traces[p.owner][ev.r .. "_" .. ev.c] = true
-			self:log("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)", "imp", p.owner)
+			self:log("🔍 탐색 흔적 발견! — 다음 턴에 [탐색] 을 쓸 수 있습니다", "imp", p.owner)
 		end
 	end
 	if self:applyForced(p, beforeAdj) then
@@ -1065,7 +1065,7 @@ function Engine:doTeleportSwap(a, b)
 		for _, ev in S.events do
 			if ev.r == p.r and ev.c == p.c and not ev.consumed then
 				S.traces[p.owner][ev.r .. "_" .. ev.c] = true
-				self:log("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)", "imp", p.owner)
+				self:log("🔍 탐색 흔적 발견! — 다음 턴에 [탐색] 을 쓸 수 있습니다", "imp", p.owner)
 			end
 		end
 	end

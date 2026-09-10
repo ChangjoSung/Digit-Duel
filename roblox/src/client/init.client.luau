@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p4.3"
+local CLIENT_VERSION = "0.5.0-p4.4"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -164,6 +164,7 @@ local gui = mk("ScreenGui", {
 	Name = "DigitDual", ResetOnSpawn = false, IgnoreGuiInset = true,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
+Ui.initTip(gui) -- 마우스를 올리면 뜨는 설명 (기술·아이템)
 
 
 -- 로비 HUD
@@ -1855,10 +1856,10 @@ local function renderBattle()
 	if myF.skills then
 		for i = 1, 4 do
 			local sv = myF.skills[i]
-			local text, kind
+			local text, kind, sk -- sk 는 아래 툴팁에서도 쓴다 (공개된 기술일 때만 채워진다)
 			local enabled = bt.usable ~= nil and bt.usable[i] == true
 			if sv.id then
-				local sk = Data.SKILLS[sv.id]
+				sk = Data.SKILLS[sv.id]
 				local tag = ""
 				if sv.cd > 0 then
 					tag = " (쿨" .. sv.cd .. ")"
@@ -1871,9 +1872,16 @@ local function renderBattle()
 				text = "? " .. (Data.SKIND_KO[sv.kind] or "")
 				kind = sv.kind
 			end
-			smallBtn(battleBtns, ((i - 1) % 2) * 186, math.floor((i - 1) / 2) * 30, 180, text, function()
+			local sb = smallBtn(battleBtns, ((i - 1) % 2) * 186, math.floor((i - 1) / 2) * 30, 180, text, function()
 				send({ t = "act", k = i })
 			end, "default", enabled, Art.skillKind(kind))
+			if sk then -- 정체가 공개된 기술만. sk 가 없으면(미공개) 설명을 붙이지 않는다
+				local pow = sk.pow and ("위력 " .. Data.slotPow(myF, sk)) or "위력 없음"
+				local cd = (sk.cd and sk.cd > 0) and ("쿨 " .. sk.cd .. "R") or "쿨 없음"
+				local now = (sv.cd and sv.cd > 0) and ("\n<font color=\"#ff7a8a\">남은 쿨 " .. sv.cd .. "R</font>") or ""
+				Ui.attachTip(sb, ("<b>%s</b>  [%s]\n%s · %s\n%s%s"):format(
+					sk.ko, Data.SKIND_KO[sk.kind] or sk.kind, pow, cd, sk.desc or "", now))
+			end
 		end
 		if bt.canPass then -- #146 계약 2.1: 기본 공격을 주지 않고 안내 + 명시적 수동 종료만 (누르기 전에는 넘어가지 않는다)
 			smallBtn(battleBtns, 0, 126, 200, "⏭️ 행동 넘기기", function()
@@ -1888,26 +1896,32 @@ local function renderBattle()
 	local shown = 0
 	for i, k in bt.myItems do -- #121 계약 2.3: 라운드 1회만 (전투 횟수·연속 동일 제한 없음)
 		if shown < 3 then
-			smallBtn(battleBtns, 106 + shown * 88, 62, 84, Data.ITEMS[k].ko, function()
+			Ui.attachTip(smallBtn(battleBtns, 106 + shown * 88, 62, 84, Data.ITEMS[k].ko, function()
 				send({ t = "item", i = i })
-			end, "default", not bt.itemRound, Art.item(k))
+			end, "default", not bt.itemRound, Art.item(k)),
+			("<b>%s</b>\n%s\n아이템은 <b>한 라운드에 하나</b>만 쓸 수 있습니다."):format(Data.ITEMS[k].ko, Data.ITEMS[k].desc or ""))
 			shown += 1
 		end
 	end
-	smallBtn(battleBtns, 0, 94, 106, "볼 던지기", function()
+	Ui.attachTip(smallBtn(battleBtns, 0, 94, 106, "볼 던지기", function()
 		send({ t = "ball" })
-	end, "danger", true, Art.item("ball"))
-	smallBtn(battleBtns, 112, 94, 92, ("도망 %d%%"):format(math.floor((bt.fleeProb or 0.3) * 100 + 0.5)), function()
+	end, "danger", true, Art.item("ball")),
+	"<b>몬스터볼</b>\n상대 <b>하수인</b>을 포획합니다. 성공하면 전투가 즉시 끝나고 그 하수인이 내 예비가 됩니다.\n한 라운드에 한 번만 던질 수 있습니다.")
+	Ui.attachTip(smallBtn(battleBtns, 112, 94, 92, ("도망 %d%%"):format(math.floor((bt.fleeProb or 0.3) * 100 + 0.5)), function()
 		send({ t = "flee" })
-	end, "default", bt.canFlee ~= false, Art.action("flee")) -- #146: HP 조건 없음 · 기본 30% · 도망의 수호자 70%
-	smallBtn(battleBtns, 210, 94, 76, "🎁 " .. (view.gifts or 0), function()
+	end, "default", bt.canFlee ~= false, Art.action("flee")), -- #146: HP 조건 없음 · 기본 30% · 도망의 수호자 70%
+	("<b>도망</b>  성공 확률 %d%%\n성공하면 전투가 끝나고 내 말이 물러납니다. <b>실패하면 이번 행동을 잃습니다.</b>\nHP 조건은 없습니다."):format(
+		math.floor((bt.fleeProb or 0.3) * 100 + 0.5)))
+	Ui.attachTip(smallBtn(battleBtns, 210, 94, 76, "🎁 " .. (view.gifts or 0), function()
 		battleSub = "gift"
 		render()
-	end, "default", (view.gifts or 0) > 0)
-	smallBtn(battleBtns, 292, 94, 76, "✨ " .. (view.buffPacks or 0), function()
+	end, "default", (view.gifts or 0) > 0),
+	"<b>선물 상자</b>  보유 " .. (view.gifts or 0) .. "개\n열면 아이템·볼·버프 중 하나가 나옵니다. 탐색으로 얻습니다.")
+	Ui.attachTip(smallBtn(battleBtns, 292, 94, 76, "✨ " .. (view.buffPacks or 0), function()
 		battleSub = "buff"
 		render()
-	end, "default", (view.buffPacks or 0) > 0 and bt.buffUsed == nil)
+	end, "default", (view.buffPacks or 0) > 0 and bt.buffUsed == nil),
+	"<b>전투 버프</b>  보유 " .. (view.buffPacks or 0) .. "개\n<b>한 전투에 하나</b>만 쓸 수 있습니다. 시간의 수호자는 1라운드에만 쓸 수 있습니다.")
 	local hint = (bt.itemRound and "아이템: 이번 라운드 사용함" or "아이템: 라운드 1회") .. " · " .. (bt.buffUsed and ("버프: " .. Data.BUFFS[bt.buffUsed].ko) or "버프: 전투당 1개")
 	if bt.canPass then -- #146 계약 2.1 안내 (소유자 화면에만 — 공용 로그에 사유를 쓰지 않는다)
 		hint = "⚠️ 공격할 것이 없습니다. 턴 종료할까요?\n" .. hint
