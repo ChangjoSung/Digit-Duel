@@ -15,13 +15,22 @@ roblox/
 │  │  ├─ Engine.luau         # 코어 룰 엔진 (보드·턴·이동·접촉·탐색·포획·밀기·도망)
 │  │  ├─ Battle.luau         # 전투 시스템 (Engine 에 부착)
 │  │  ├─ Ai.luau             # PVE AI (5급 휴리스틱 · 5단 탐색) — 봇 배치·턴·전투·보류 선택 정책
-│  │  ├─ Banner.luau         # 엔진 로그 → 중앙 배너 판정 (표시 계층 · 테스트 [12])
+│  │  ├─ Banner.luau         # 엔진 로그 → 중앙 배너·전투 연출 판정 (표시 계층 · 테스트 [12]·[14])
 │  │  └─ Views.luau          # 뷰어별 정보 은닉 직렬화
-│  ├─ server/init.server.luau  # 매치메이킹 + 서버 권위 세션 + 재접속 유예
-│  ├─ server/Stats.luau       # 전적 저장 (DataStore · 실패 시 메모리)
-│  └─ client/init.client.luau  # 최소 UI 스캐폴드 (Phase 2 에서 아트·연출 교체)
+│  ├─ server/
+│  │  ├─ init.server.luau    # 매치메이킹 + 서버 권위 세션 + 재접속 유예
+│  │  └─ Stats.luau          # 전적 저장 (DataStore · 실패 시 메모리)
+│  └─ client/                # StarterPlayerScripts.Client (LocalScript + 자식 ModuleScript)
+│     ├─ init.client.luau    # 본체 — 로비 HUD·보드게임 창·판·전투·서버 메시지 처리
+│     ├─ Ui.luau             # UI 만들기 헬퍼 + 화면 맞춤(UIScale) + 연출 재생기
+│     ├─ BannerUi.luau       # 화면 중앙 배너
+│     ├─ LogUi.luau          # 📜 게임 기록 (사이드 14줄 + 전체 300줄 창)
+│     ├─ MemoUi.luau         # 📝 추측 메모 (내 화면 전용)
+│     └─ RosterDetail.luau   # 로스터 종 상세 팝업
 └─ tests/run.luau            # 헤드리스 테스트 (luau CLI — Roblox 불필요)
 ```
+
+**클라이언트를 왜 나눴나**: Luau 는 **함수 하나가 지역 변수를 200개까지만** 쓸 수 있는데 `init.client.luau` 는 전부 최상위 스코프라 그 예산을 통째로 공유한다. 2026-09-10 전투 연출을 붙이다 한도에 걸려(`Out of local registers`) 빌드가 멈췄고 — 게다가 오류가 **새로 추가한 줄이 아니라 뒤쪽의 아무 함수**를 가리켜 원인을 엉뚱한 데서 찾게 된다 — 자족적인 표시 계층부터 자식 ModuleScript 로 뺐다. 본체 209 → **168개**. `tools/rbxcheck.js` 가 170 을 넘으면 경고하고 190 을 넘으면 실패시켜 다시 벽에 닿기 전에 알린다.
 
 ## 아키텍처: 서버 권위 (HTML 락스텝과 다른 점)
 
@@ -91,12 +100,17 @@ Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버
 - API 키에는 **Universe Places(Place Publishing) → Write** 권한과 대상 경험이 추가돼 있어야 한다. 401 이면 키 만료(Regenerate), 403 이면 권한·경험 범위 누락.
 - 경험이 PRIVATE 이면 본인만 접속 가능 — Creator Hub → 경험 → **Access** 에서 공개 범위를 바꾼다.
 
+### CI (GitHub Actions)
+`roblox/` 는 **잡 E. Roblox 클라이언트·규칙 (Luau)** 가 본다 — Luau 컴파일(지역 변수 한도 포함) · 선언 없는 식별자 · `tests/run.luau` · rbxcheck · uicheck · rojo 빌드. luau 0.737 과 rojo 7.7.0 을 **SHA-256 으로 고정**해 받으므로 로컬과 같은 도구로 검사한다.
+
+2026-09-10 이전에는 CI 5종 어디도 `roblox/` 를 컴파일하지 않아 **두 건이 그대로 새어 나갔다** — 전적 배선 누락(v30 배포)과 Luau 지역 변수 한도 초과. 잡 E 가 그 공백을 메운다.
+
 ### 헤드리스 테스트 (커밋 전 필수)
 ```
 luau tests/run.luau
 ```
 [luau CLI](https://github.com/luau-lang/luau/releases) (luau-windows.zip) 만 있으면 된다. 검증 범위:
-RNG 골든(JS 대조) · 배치·P2 행 반사 · 이동 규칙 · 접촉 6상황 유닛(폭탄·함정·밀기) · 왕 끝줄 승리 · 전투 완주 · 20시드 무작위 완주(룰 데드락·지표 정합·HP 불변식) · **AI [10]**: 자동 배치 유효성 · 5급/5단 AI 대 AI 24판 완주 · 5급 결정성 · #92 교체 정책 · **v0.4.7 [11]** · **중앙 배너 [12]** · **v0.4.7 후속 [13]**(#146·#131·#130).
+RNG 골든(JS 대조) · 배치·P2 행 반사 · 이동 규칙 · 접촉 6상황 유닛(폭탄·함정·밀기) · 왕 끝줄 승리 · 전투 완주 · 20시드 무작위 완주(룰 데드락·지표 정합·HP 불변식) · **AI [10]**: 자동 배치 유효성 · 5급/5단 AI 대 AI 24판 완주 · 5급 결정성 · #92 교체 정책 · **v0.4.7 [11]** · **중앙 배너 [12]** · **v0.4.7 후속 [13]**(#146·#131·#130) · **전투 연출 판정 [14]**(부여/해제·성공/실패 구분).
 
 ### UI 레이아웃 정적 검사 (build.bat 이 자동 실행)
 ```
@@ -105,6 +119,17 @@ node tools/uicheck.js
 `mk(...)` 로 배치한 창·패널의 사각형을 계산해 **자식이 부모 밖으로 나가는지·형제끼리 겹치는지**를 잡는다.
 동시에 보이지 않는 쌍(배치 패널 ↔ 대전 패널 등)은 스크립트 안 `EXCLUSIVE`, 의도적으로 겹쳐 그리는 2D 셀은 `STACK_PARENTS` 로 제외한다.
 화면 크기가 작으면 `autoFit`(UIScale)이 창을 줄이므로, 검사는 기준 화면 1280×720 에서 한다.
+인수 없이 실행하면 `src/client/` 의 `.luau` **전부**를 각각 검사한다 — 새 모듈을 추가해도 목록을 따로 고칠 필요가 없다.
+
+### 선언 없는 식별자 검사 (build.bat · CI 잡 E)
+```
+node tools/globalcheck.js
+```
+Luau 는 선언 없는 이름을 **오류가 아니라 nil 전역**으로 조용히 받아들인다 — `local myStats = nil` 한 줄이 빠져도 대입되고 읽히고, 컴파일·테스트·CI 가 전부 통과한다. **화면에만 아무것도 안 나온다.** 2026-09-10 전적 기능이 정확히 이렇게 죽은 채로 v30 으로 배포됐다(PR #158).
+
+`luau-analyze --mode=strict` 는 선언 없는 이름을 **대입할 때도** 잡아 주는데 파일 첫 줄의 `--!nonstrict` 가 그 모드를 되돌리므로, **임시 사본에서 그 주석만 떼고** 검사한다(저장소 파일은 건드리지 않는다). 허용 목록은 **닫힌 목록**이라 새 Roblox 전역을 쓰기 시작하면 한 번 막힌다 — 이름을 눈으로 확인하고 `tools/globalcheck.js` 의 `ROBLOX_GLOBALS` 에 추가하는 것이 의도된 절차다.
+
+`luau-analyze` 는 PATH · `build/` · `LUAU_ANALYZE` 순으로 찾는다. 없으면 **통과시키지 않고 실패**한다 — 검사를 안 한 것과 통과한 것은 다르다.
 
 ### Roblox API 정적 검사 (build.bat 이 자동 실행)
 ```
@@ -112,6 +137,7 @@ node tools/rbxcheck.js
 ```
 `mk("Class", {…})`·`part({…})` 의 속성 이름, `Enum.X.Y`, 인스턴스 직접 대입을 luau-lsp 의 `globalTypes.d.luau`(첫 실행 시 `build/` 에 내려받음) 와 대조한다.
 헤드리스 테스트로는 잡히지 않는 "Studio 에서만 터지는" 오타(예: 존재하지 않는 `Enum.ResampleMode` → 클라이언트 스크립트가 초기화 중 죽어 UI 전체가 안 뜸)를 커밋 전에 걸러낸다.
+**최상위 지역 변수 예산**도 함께 본다 — 170 초과면 경고, 190 초과면 실패. Luau 한도(200)에 닿으면 오류가 엉뚱한 함수를 가리켜 원인을 찾기 어렵다.
 
 ## Phase 1 제외 (후속 이슈)
 
