@@ -60,6 +60,7 @@ CDP 도구는 해당 이슈의 실제 브라우저 증빙을 만든다. 기본 �
 | 파일 | 버전 | Issue | 하는 일 | 기본 파일 쓰기 |
 |---|---|---|---|---|
 | [`issue122_rules.js`](milestone/v0.4.7/issues/122/issue122_rules.js) | v0.4.7(미출시) | #122 #124 #126 | 세로 화면 상태·같은 문서 로비/재대전·경기 결과 중복 방지·왕/동료 아트와 기존 규칙의 헤드리스 계약 검사 | 없음 |
+| [`back_nav.js`](milestone/v0.4.7/issues/122/back_nav.js) | v0.4.7(미출시) | #122 #124 #126 | CJ REVISE의 좌상단 뒤로가기·준비 보존/취소·입력 소유권·관전 종료 확인과 AI 재개·어두운 배경 계약. CI 잡 A에서 실행 | 없음 |
 | [`ui_cdp.js`](milestone/v0.4.7/issues/122/ui_cdp.js) | v0.4.7(미출시) | #122 #124 #126 | 세로 흐름·실제 보드 범위·로그·전투 배치·수풀 가시성/투명도·왕/동료 아트·승패 효과를 브라우저에서 확인한다 | `…/122/Mars/artifacts` · `--read-only` 시 보고/이미지0건, Chrome 소유 임시 프로필은 생성·정리 |
 | [`tut_layout_cdp.js`](milestone/v0.4.0/issues/42/tut_layout_cdp.js) | v0.4.0 | #42 | 튜토리얼 카드 레이아웃 실측(여러 뷰포트) | `os.tmpdir()` · `--read-only` 지원(Chrome 임시 프로필 생성·정리) |
 | [`minion_art_cdp.js`](milestone/v0.4.3/issues/89/minion_art_cdp.js) | v0.4.3 | #89 | 하수인 아트 게임 적용 실측 + 스크린샷 | `docs/milestone/v0.4.3/issues/89/Mars/artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |

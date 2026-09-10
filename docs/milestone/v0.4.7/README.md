@@ -110,7 +110,7 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 
 ## 진행 중인 범위 — #122 · #124 · #126
 
-CJ 후속 지시로 **세로 화면 · 왕/동료 아트 · 승패 효과**를 하나의 납품으로 구현하고 Saturn 독립 제품·미디어 검수 PASS를 받았다. **CJ 아트·플레이 QA와 출시는 대기다.** 세 Issue 모두 OPEN이다.
+CJ 후속 지시로 **세로 화면 · 왕/동료 아트 · 승패 효과**를 하나의 납품으로 구현하고 Saturn 독립 제품·미디어 검수 PASS를 받았다. **이후 CJ QA REVISE에 따라 좌상단 뒤로가기·어두운 배경을 보완했다. CJ 재검수와 출시는 대기다.** 세 Issue 모두 OPEN이다.
 
 | Issue | 제목 | 소관 |
 |---|---|---|
@@ -118,7 +118,7 @@ CJ 후속 지시로 **세로 화면 · 왕/동료 아트 · 승패 효과**를 �
 | [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124) | 동료·왕 Pixel Dot Design 추가 | Earth(원본) · Mars(게임 파생) |
 | [#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) | 전투 승리·패배 연출 강화 및 화면 흐름 연동 | Earth(스토리보드) · Mars(구현) |
 
-범위 원본은 [CJ 후속 범위](issues/122/Mercury/cj-followup.md)이고, 세 Issue의 자료는 [#122 통합 문서](issues/122/README.md)에 모았다. 작업 브랜치는 `doc/122-art-architecture` · [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)이며 아트 체크포인트는 `dd0d622`다.
+범위 원본은 [CJ 후속 범위](issues/122/Mercury/cj-followup.md)이고, 세 Issue의 자료는 [#122 통합 문서](issues/122/README.md)에 모았다. 첫 납품 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)은 dev `2055d5a`에 통합했다. 최신 CJ QA REVISE의 [뒤로가기·어두운 배경 보완](issues/122/Mercury/revise-back-dark.md)은 `fix/122-back-dark-theme`에서 진행한다. 아래 역할 표·증빙은 PR160 이력이다.
 
 | 역할 | 문서 | 상태 |
 |---|---|---|
@@ -131,10 +131,10 @@ CJ 후속 지시로 **세로 화면 · 왕/동료 아트 · 승패 효과**를 �
 | 단계 | 상태 |
 |---|---|
 | 아트 원고 | v2 보드·전투 SVG/PNG, 왕·동료 원본 2종, 효과 정점 그림 — 제안 상태 |
-| 제품 구현 (`demo/index.html`) | 최종 제품 b3e077b / HTML6bd3bed · 미디어 eeb2d11 |
-| 새 화면 캡처 | [실제 보드·전투·흐름](issues/122/README.md#실제-브라우저-화면) · [튜토리얼10 매니페스트](issues/122/Mars/media/capture-manifest.json) |
-| Saturn 독립 QA · CJ 플레이 QA | Saturn 제품·미디어 PASS · CJ QA 대기 |
-| 통합 PR·CI · 릴리스 | 최종 CI6·dev 통합은 PR160이 원본 · 미출시, 정식 v0.4.5 유지 |
+| 제품 구현 (`demo/index.html`) | REVISE 보완 제품 `21637d1` / HTML `2a2c26d` · 이전 PR160 제품 b3e077b/미디어 eeb2d11은 역사 자료 |
+| 새 화면 캡처 | [실제 보드·전투·흐름](issues/122/README.md#revise-보완--실제-브라우저-화면) · [튜토리얼10 매니페스트](issues/122/Mars/media/capture-manifest.json) |
+| Saturn 독립 QA · CJ 플레이 QA | PR160 Saturn PASS는 이력 · 최신 REVISE 보완 검수는 [PD 원장](issues/122/Mercury/revise-back-dark.md) · CJ 재검수 대기 |
+| 통합 PR·CI · 릴리스 | 최신 CI6·dev 통합은 [REVISE 보완 기록](issues/122/Mercury/revise-back-dark.md) · PR160은 첫 납품 · 미출시, 정식 v0.4.5 유지 |
 
 2026-09-10 CJ 추가 피드백과 명확화: 상대가 근처에 없을 때 수풀 속 말이 보이지 않는 기존 규칙은 유지한다. 수풀에서 보이는 내 말과 상대 말 모두 살짝 반투명하게 그리되 HP·선택 가독성은 유지한다. 현행 `visibleTo`·인접·`tempReveal`·정체·메모 규칙을 바꾸지 않는 표시 개선이다.
 

@@ -89,6 +89,15 @@ jobs:
       - name: 세로 UI·승패 연출·왕/동료 아트 계약 회귀 (#122·#124·#126)
         run: node demo/test/milestone/v0.4.7/issues/122/issue122_rules.js
 
+      # #122 CJ QA REVISE (2026-09-10) — 좌상단 뒤로가기와 어두운 배경 계약 (브라우저 없음).
+      # 화면별 뒤로가기 표시 · 로비→타이틀 / 배치→로스터(선택 보존) / 결과→로비 · 준비 취소 확인과 [계속 준비하기] 보존 ·
+      # 보드에서는 서랍 우선 · 실제 대전은 toLobby 직행 없이 기존 기권 확인으로만 · AI 턴·온라인 상대 차례·열린 모달에서는 무동작 ·
+      # sim 관전 종료 확인 동안 AI 예약 보류와 취소 후 재개 · 옛 확인 버튼이 새 창을 닫지 못하는 소유권 ·
+      # location.reload 부재·#128 자동 표시 플래그·저장소 무변경 · :root 팔레트가 이전 게임 값이고 튜토리얼 잠금 블록이 그대로인 것.
+      # 실제 픽셀·대비는 같은 폴더의 ui_cdp.js 와 실촬영 증빙이 보며 브라우저가 필요해 CI 잡에 넣지 않는다.
+      - name: 뒤로가기·어두운 배경 계약 회귀 (#122 REVISE)
+        run: node demo/test/milestone/v0.4.7/issues/122/back_nav.js
+
       # #125 (v0.4.7 CJ 결정) 연출 시간 단축 계약 — 연출 시간표(BAL.fx) · 같은 연출을 그리는 CSS 애니메이션·바 전환의 동기 ·
       # 실제 타이머로 관측한 1.2초 잠금과 damageFx 안 방어막→HP 2단 여유. 하네스의 가짜 타이머 대신 Node 실 setTimeout 을
       # 쓰므로 약 10초가 걸린다(브라우저 없음). 음성 대조: 변경 전 소스(2000/600), 표만 1200·CSS 2s 인 반쪽 변경,
@@ -200,11 +209,13 @@ jobs:
       # 새 PNG 의 SHA 를 엄격히 대조하는 게이트가 아니다. verify 의 크기·해시 대조는 docs/media 고정 경로를 읽는다.
       # 이 매니페스트로 로컬 실측 문제 0건이다. 도구 기본값·경고 정책·테스트는 건드리지 않고 CI 인자만 현재 납품본에 맞춘다.
       # #122 (v0.4.7): 세로 UI 개편으로 README 게임 화면 기준이 바뀌어 현재 납품본 매니페스트로 옮긴다.
-      # 앞선 #105·#146 매니페스트와 그 PNG 는 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
-      - name: README 링크·이미지 오프라인 검증 (v0.4.7 #122 매니페스트)
+      # #122 CJ QA REVISE (2026-09-10): 어두운 배경 복원으로 튜토리얼 10장을 **새 소스(21637d1)로 다시 촬영**해
+      # README 참조를 revise-back-dark/tutorial 로 옮겼으므로 매니페스트도 그 납품본으로 바꾼다.
+      # 앞선 #105·#146·#122(1차) 매니페스트와 그 PNG 는 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
+      - name: README 링크·이미지 오프라인 검증 (v0.4.7 #122 REVISE 매니페스트)
         run: >-
           node tools/media/readme_media_capture.js verify --read-only --no-gh --no-render
-          --manifest docs/milestone/v0.4.7/issues/122/Mars/media/capture-manifest.json
+          --manifest docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/capture-manifest.json
 
       # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
       - name: README 도구 READ_ONLY 회귀

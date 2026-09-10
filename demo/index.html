@@ -5,16 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Digit Dual — HTML 프로토타입 데모</title>
 <style>
-  /* ===== #122 (v0.4.7) 레트로 세로 UI — 남색 프레임·아이보리 패널 =====
+  /* ===== #122 (v0.4.7) 레트로 세로 UI — 남색 프레임·어두운 패널 =====
      색 토큰 이름은 종전 그대로다: 제품 코드 곳곳의 인라인 style 이 var(--panel2)·var(--dim) 등을 직접 읽으므로
-     토큰을 새로 만들지 않고 **값만** 아이보리 계열로 바꾼다. 속성 4색은 아이보리 위에서 읽히도록 채도를 낮춘 진한 값이다
-     (같은 값이 .btok 원형 배경으로도 쓰이며 그 위에는 흰 글자가 얹힌다). 규칙·수치·난수와 무관한 표시 계층 전용. */
+     토큰을 새로 만들지 않고 **값만** 바꾼다.
+     2026-09-10 CJ QA REVISE: 첫 납품의 아이보리 패널을 **이전 게임과 같은 어두운 계열**로 되돌린다.
+     아래 13개 값은 리스킨 직전 소스(2055d5a~1)의 팔레트 그대로이며, 지금까지 #tutOverlay 안에서만 보존되던 값과 같다 —
+     그래서 승인된 튜토리얼 10단계 화면의 계산 결과가 바뀌지 않는다. 규칙·수치·난수와 무관한 표시 계층 전용. */
   :root{
-    --bg:#0d1524; --panel:#f6f1e5; --panel2:#e7e0cd; --line:#c7bca1;
-    --txt:#17233b; --dim:#6a748d; --accent:#2f62c8; --danger:#c93b49; --ok:#2c8f62;
-    --zoneA:#dde5f4; --zoneB:#f7e2dc; --forest:#8ec98a; --mid:#ece3d2;
-    --fire:#cf5220; --water:#1f6fc4; --grass:#2c8b48; --lightning:#a97d08;
-    --heal:#2c8f62; --guard:#1f6fc4; --buff:#a97d08;
+    --bg:#12151c; --panel:#1c2130; --panel2:#242b3d; --line:#333c52;
+    --txt:#e8ecf5; --dim:#8a93a8; --accent:#5b8cff; --danger:#ff5b6e; --ok:#4fd88a;
+    --zoneA:#2a3350; --zoneB:#502a33; --forest:#1f3a2a; --mid:#2a2f3d;
+    --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d;
+    --heal:#4fd88a; --guard:#4da3ff; --buff:#ffd84d;
+    /* REVISE: --accent(#5b8cff)는 어두운 배경 위 테두리·하이라이트로 쓰기 좋은 밝기지만, 그 위에 흰 글자를 얹으면
+       대비가 3.2:1 로 본문 기준(4.5:1)에 못 미친다. **채우기 버튼 전용**으로 한 단계 짙은 파랑을 따로 둔다 (5.8:1).
+       튜토리얼 안에서는 아래에서 --accent 로 되돌려 승인된 10단계 화면의 색을 바꾸지 않는다. */
+    --accentFill:#2f5fd0;
     /* 프레임·보드 기하 (세로 우선). --bs 는 보드 스케일로 fitBoard() 가 실측해 넣는다 — 기본 1 이면 종전과 같은 52px 칸 */
     --frame:432px; --navy:#132139; --navy2:#1c2f4d; --navyLine:#0a1120; --bs:1;
     --boardW:376px; --boardH:700px; /* 7*52+6*2 · 13*52+12*2 (칸 기하 불변 — 스케일만 얹는다) */
@@ -43,21 +49,22 @@
   /* align-self:flex-start 가 필수다 — 기본 stretch 면 #board 가 래퍼 높이(=700×--bs)로 눌린 뒤 다시 --bs 로 축소돼
      레이아웃 상자와 실제 칸 높이가 어긋난다(컨테이너만 두 번 축소). 그러면 마지막 칸이 상자 밖으로 나가 겹침 계산이 틀린다. */
   #boardWrap>#board{flex:0 0 auto; align-self:flex-start;}
-  /* #122 일반 칸: 깨끗한 탄/석재 톤 — 지형 표현은 실제 수풀 칸에만 (2026-09-10 CJ 정정) */
-  .cell{position:relative; border:1px solid #d9cfb8; border-radius:5px; background:var(--mid);
-    box-shadow:inset 0 -2px 0 #00000008;
+  /* #122 일반 칸: 어두운 석재 톤 — 지형 표현은 실제 수풀 칸에만 (2026-09-10 CJ 정정)
+     REVISE: 테두리·홈 그림자를 어두운 배경 위에서 읽히는 값으로 되돌린다 (칸 크기·간격·반경은 불변) */
+  .cell{position:relative; border:1px solid #39415a; border-radius:5px; background:var(--mid);
+    box-shadow:inset 0 -2px 0 #00000040;
     display:flex; align-items:center; justify-content:center; cursor:pointer;}
-  .cell.zA{background:var(--zoneA); border-color:#c3cee4;} .cell.zB{background:var(--zoneB); border-color:#e6c8bf;}
+  .cell.zA{background:var(--zoneA); border-color:#3c4870;} .cell.zB{background:var(--zoneB); border-color:#6d3a45;}
   /* #122 수풀 칸만 수풀처럼: 겹친 덤불 실루엣 3개 + 짙은 가장자리. 규칙(visibleTo)·좌표·클래스 이름은 그대로다 */
   .cell.forest{background:
-      radial-gradient(circle at 24% 74%,#63a45c 0 30%,transparent 31%),
-      radial-gradient(circle at 66% 66%,#74b268 0 33%,transparent 34%),
-      radial-gradient(circle at 45% 36%,#86c377 0 28%,transparent 29%),
+      radial-gradient(circle at 24% 74%,#3f7a4b 0 30%,transparent 31%),
+      radial-gradient(circle at 66% 66%,#4a8c56 0 33%,transparent 34%),
+      radial-gradient(circle at 45% 36%,#589c60 0 28%,transparent 29%),
       var(--forest);
-    border-color:#6a9f61; box-shadow:inset 0 0 0 1px #ffffff26, inset 0 -3px 6px #00000022;}
+    border-color:#2f5c3c; box-shadow:inset 0 0 0 1px #ffffff14, inset 0 -3px 6px #00000044;}
   .cell.hl-move{outline:2px solid var(--accent); outline-offset:-2px;}
   .cell.hl-attack{outline:2px solid var(--danger); outline-offset:-2px;}
-  .cell.hl-sel{outline:2px solid #1b2a44; outline-offset:-2px;}
+  .cell.hl-sel{outline:2px solid #e8ecf5; outline-offset:-2px;} /* REVISE: 어두운 판 위에서 보이도록 밝은 외곽선 */
   .cell .trace{position:absolute; top:1px; right:2px; font-size:11px;}
   /* #36 추측 이모지: 물음표 자리에 뷰어 전용 반투명 표시 — 실제 공개 말과 구별 (점선 테두리·opacity .5) */
   .pc.memo-guess{border-style:dashed; border-color:#fff8;}
@@ -65,7 +72,7 @@
   .memo-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0;}
   .memo-opt{display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; font-size:12px; min-height:56px;}
   .memo-opt .ico{font-size:22px; line-height:1;}
-  .memo-opt[aria-pressed="true"]{background:var(--accent); border-color:#fff; box-shadow:0 0 0 1px #fff8; color:#fff;}
+  .memo-opt[aria-pressed="true"]{background:var(--accentFill); border-color:#fff; box-shadow:0 0 0 1px #fff8; color:#fff;}
   .memo-opt:focus-visible{outline:2px solid #fff; outline-offset:1px;}
   /* #89 말 컨테이너: 48×48 라운드 사각(내부 44 = 아이콘 32 + 간격 1 + 정보 행 11, 겹침 없음). 칸 52px는 불변이며 각 변 1px 여백이 남는다 */
   .pc{width:48px; height:48px; border-radius:12px; box-sizing:border-box; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
@@ -154,7 +161,7 @@
   button{background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px;}
   button:hover{border-color:var(--accent);}
   button:disabled{opacity:.35; cursor:default;}
-  button.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  button.primary{background:var(--accentFill); border-color:var(--accentFill); color:#fff;}
   button.big{font-size:16px; padding:12px 20px;}
   button.danger{border-color:var(--danger); color:var(--danger);}
   #log{height:170px; overflow-y:auto; font-size:12px; line-height:1.5; color:var(--dim);}
@@ -185,7 +192,11 @@
     background:linear-gradient(160deg,#1a2030,#242b3d); transition:box-shadow .3s;}
   .btok{position:absolute; width:88px; height:88px; border-radius:50%; display:flex; flex-direction:column;
     align-items:center; justify-content:center; font-size:26px; border:3px solid #0006; box-shadow:0 4px 14px #0008; transition:opacity .6s;}
-  .btok small{font-size:12px; color:#fffd; font-weight:bold;}
+  /* REVISE(2026-09-10 CJ QA · Saturn 시각 게이트): 속성 4색이 다시 밝아지면서 원형 폴백 토큰의 바탕이 아주 밝아졌다
+     (번개 #ffd84d 위 흰 글자는 약 1.2:1 로 사실상 읽히지 않는다). 그림자만으로는 모자라므로 **이름표에 어두운 알약 바탕**을
+     깔아 배경색과 무관하게 14:1 대에서 읽히게 한다. 토큰 크기·자리·이모지·불투명도는 그대로다. */
+  .btok{text-shadow:0 1px 2px #0009;}
+  .btok small{font-size:12px; color:#f2f5fb; font-weight:bold; background:#0b0f18e0; border-radius:8px; padding:0 6px; line-height:1.5;}
   .btok.tok-me{bottom:14px; left:30px;} .btok.tok-op{top:14px; right:30px;}
   /* #89 하수인 전투 도트: 원형 배경·테두리를 없애고 128×128 스프라이트 + 아래 그림자만 남긴다 (규격 6.2).
      자산이 없는 왕·동료·포획 하수인은 위의 원형 이모지 토큰을 그대로 쓴다 — 좁은 폭 겹침을 피하려 art 토큰만 안쪽 여백을 줄인다 */
@@ -225,10 +236,12 @@
      연출(applyFx)·온라인 모달 인덱스 중계·비공개 마스킹 경로는 하나도 바뀌지 않는다.
      참고 이미지는 **구성 참고**이며 원작의 캐릭터·이미지·이름을 자산으로 쓰지 않는다. */
   #overlayBox.battleBox{padding:14px; max-width:min(92vw,412px);} /* 세로 프레임과 같은 폭으로 — 넓은 화면에서도 전투 화면이 프레임에서 벗어나 보이지 않는다 */
-  #bstage.scene{background:linear-gradient(180deg,#dcefff 0%,#e9f5e0 52%,#d9ecc9 100%); border:2px solid var(--navyLine); border-radius:10px;}
+  /* REVISE(2026-09-10 CJ): 밝은 하늘 그라데이션을 이전 게임과 같은 어두운 계열로 되돌린다.
+     무대 높이(288px)·전투원 모서리 배치·발판 타원 위치·스프라이트 좌우 반전은 하나도 바뀌지 않는다 */
+  #bstage.scene{background:linear-gradient(180deg,#16203a 0%,#1b2b3c 52%,#1f3a2a 100%); border:2px solid var(--navyLine); border-radius:10px;}
   /* 발판(수풀 지대) — 각 전투원 아래의 타원. 보드의 수풀 칸과 같은 계열이지만 전투 배경 전용 표시다 */
   #bstage.scene::before,#bstage.scene::after{content:""; position:absolute; border-radius:50%; pointer-events:none;
-    background:radial-gradient(ellipse at 50% 36%,#a6d78c 0%,#7fba69 70%,#6ea75c 100%); box-shadow:inset 0 -4px 8px #00000018;}
+    background:radial-gradient(ellipse at 50% 36%,#4b8c58 0%,#356646 70%,#2b5340 100%); box-shadow:inset 0 -4px 8px #00000055;}
   #bstage.scene::before{width:150px; height:42px; right:4px; top:116px;}
   #bstage.scene::after{width:172px; height:50px; left:0; bottom:12px;}
   #bstage.scene .btok{z-index:2;}
@@ -245,8 +258,8 @@
   .bslot{position:absolute; width:min(50%,164px); z-index:3;}
   .bslot.slot-op{top:6px; left:6px;}
   .bslot.slot-me{bottom:6px; right:6px;}
-  .bslot .fighter{margin:0; padding:5px 7px; gap:2px; background:#faf6ecf2; border:2px solid var(--navyLine);
-    border-radius:4px 14px 4px 14px; box-shadow:2px 3px 0 #00000026; font-size:11.5px; color:var(--txt);
+  .bslot .fighter{margin:0; padding:5px 7px; gap:2px; background:#1c2130f2; border:2px solid #0a1120;
+    border-radius:4px 14px 4px 14px; box-shadow:2px 3px 0 #00000066; font-size:11.5px; color:var(--txt);
     flex-direction:column; align-items:stretch; max-height:112px;}
   .bslot .fighter>div{width:100%; min-width:0;}
   .bslot .fhead{flex:0 0 auto;}                        /* 이름·배지·HP/방어막 바·HP 수치 — 언제나 보인다 */
@@ -259,8 +272,12 @@
   /* 명령창 2×2 (기존 싸우기·가방·포획·도망가기 그대로 · 하위 메뉴·취소 보존) */
   .bmenu{grid-template-columns:repeat(2,1fr); gap:8px;}
   .bmenu button{min-height:50px; border-width:2px; border-radius:4px 12px 4px 12px; box-shadow:2px 3px 0 #00000022;}
-  .bsub{border:2px solid var(--navyLine); border-radius:10px; padding:8px; background:var(--panel2);}
-  #battleLog{background:#00000010; color:var(--dim);}
+  .bsub{border:2px solid var(--line); border-radius:10px; padding:8px; background:var(--panel2);}
+  /* REVISE: 전투 패널 머리줄 — 하위 메뉴가 열려 있을 때만 제목 왼쪽에 '← 뒤로'가 선다 (화면 좌상단에서 바로 보인다) */
+  #overlayBox.battleBox .bhead{display:flex; align-items:center; gap:8px; min-width:0;}
+  #overlayBox.battleBox .bhead h2{margin:0; min-width:0; flex:1;}
+  #overlayBox.battleBox .bmenuBack{flex:0 0 auto; font-size:12px; padding:6px 10px; min-height:34px; white-space:nowrap;}
+  #battleLog{background:#00000055; color:var(--dim);}
 
   /* ================= #126 승패 연출 — 짧고 강한 표시 계층 =================
      새 연출 키를 만들지 않고 기존 resultBanner(2500ms) 안에서 재생한다. 실제 움직임은 약 0.9~1.2초이고
@@ -376,7 +393,12 @@
   #appBar #phaseLabel{color:#9fb4d8; font-weight:normal; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   #appBar .tutBtn{background:#25395c; border-color:#3d5580; color:#eef2fb;}
   #appBar .barBtn{background:#25395c; border:1px solid #3d5580; color:#eef2fb; font-size:11.5px; padding:5px 8px; border-radius:6px;}
-  #appBar .barBtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent);}
+  /* #122 REVISE(2026-09-10 CJ QA): 좌상단 뒤로가기. barBtn 과 클래스를 나눈 이유는 서랍 버튼이 보드 화면에서만 보이는 규칙
+     (#app:not([data-screen="board"]) #appBar .barBtn) 에 걸리지 않아야 하기 때문이다 — 뒤로가기는 타이틀을 뺀 모든 화면에 있다 */
+  #appBar .backBtn{flex:0 0 auto; order:-1; background:#25395c; border:1px solid #3d5580; color:#eef2fb;
+    font-size:11.5px; padding:5px 9px; border-radius:6px; min-height:32px; white-space:nowrap;}
+  #appBar .backBtn:hover{border-color:#7fa6ff;}
+  #appBar .barBtn[aria-pressed="true"]{background:var(--accentFill); border-color:var(--accentFill);}
   #app:not([data-screen="board"]) #appBar .barBtn{display:none;} /* 서랍은 보드 화면에서만 의미가 있다 — 다른 화면에서는 내용이 본문에 그대로 있다 */
   #screenBody{flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow-y:auto; overflow-x:hidden; padding:10px; gap:10px;}
   #app[data-screen="board"] #screenBody{overflow-y:hidden; padding:8px 8px 0;}
@@ -455,7 +477,7 @@
   /* 출전 준비 2단계 탭 (로스터 선택 ↔ 비공개 배치) — 두 절 모두 항상 DOM 에 있고 보이기만 바뀐다 */
   .prepTabs{display:flex; gap:6px; margin-bottom:6px;}
   .prepTabs button{flex:1; min-height:38px; font-size:12.5px;}
-  .prepTabs button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .prepTabs button[aria-pressed="true"]{background:var(--accentFill); border-color:var(--accentFill); color:#fff;}
   #app[data-prep="roster"] .prepStep[data-step="place"]{display:none;}
   #app[data-prep="place"] .prepStep[data-step="roster"]{display:none;}
   #app[data-screen="prep"] .tray{position:sticky; bottom:0; background:var(--panel2); padding:6px 4px; margin:6px -4px 0;
@@ -556,27 +578,34 @@
     .tut-nav{gap:14px; margin:8px 0 0;}
   }
 
-  /* ================= #122 어두운 표면 보정 =================
-     본문 색이 아이보리 잉크로 바뀌었으므로, 계속 어두운 배경을 쓰는 표면(배너·토스트·도움말)에는 밝은 글자색을 명시한다.
-     **튜토리얼 모달은 종전 어두운 팔레트를 그대로 유지한다** — 승인된 10단계 화면·기존 촬영 증빙을 이번 리스킨으로 바꾸지 않는다.
-     토큰 이름이 같으므로 #tutOverlay 안에서 값만 되돌리면 .tut-* 규칙 전체가 종전대로 계산된다. */
+  /* ================= #122 어두운 표면 보정 (2026-09-10 CJ QA REVISE) =================
+     :root 팔레트가 이전 게임과 같은 어두운 계열로 돌아왔으므로, 이 절은 "밝은 패널 보정"이 아니라
+     **어두운 표면 위에서 글자·막대·강조가 읽히는지**를 고정한다.
+     #tutOverlay 블록은 값이 :root 와 같아졌지만 그대로 남긴다 — 앞으로 :root 가 다시 바뀌어도
+     승인된 튜토리얼 10단계 화면이 함께 흔들리지 않게 하는 잠금이다 (계산 결과 불변). */
   #tutOverlay{--panel:#1c2130; --panel2:#242b3d; --line:#333c52; --txt:#e8ecf5; --dim:#8a93a8;
     --accent:#5b8cff; --danger:#ff5b6e; --ok:#4fd88a; --mid:#2a2f3d; --zoneA:#2a3350; --zoneB:#502a33; --forest:#1f3a2a;
     --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d; --heal:#4fd88a; --guard:#4da3ff; --buff:#ffd84d;
     color:#e8ecf5;}
+  /* 승인된 튜토리얼 10단계 화면은 종전 --accent 채우기를 그대로 쓴다 (이번 버튼 대비 보정을 적용하지 않는다) */
+  #tutOverlay{--accentFill:#5b8cff;}
   #tutHint{--dim:#8a93a8; color:#eef2fb;}
   #tutHint .tut-hint-ok{background:#25395c; border-color:#3d5580; color:#eef2fb;}
   #fxBanner{color:#f2f5fb;}
   #fxSub{color:#b8c4da;}
   .toast{background:#101c31f2; border-color:#2c4570; color:#f2f5fb;}
   #toasts{top:52px;}
-  /* 밝은 패널 위의 막대·수치 표시 */
-  .hpbar,.shbar,.dmgbar{background:#00000018;}
-  .dmgfloat{text-shadow:0 1px 2px #fffc,0 0 6px #fff9;}
-  #msgBox{background:#fffdf4; border:2px solid var(--navyLine); border-radius:4px 14px 4px 14px; color:var(--txt); box-shadow:2px 3px 0 #00000022;}
-  #bstage.scene .btok.art small{color:var(--txt); text-shadow:0 1px 0 #fff,0 0 4px #fff;}
-  #bstage.scene .btok .dmgfloat{text-shadow:0 1px 2px #fffc,0 0 6px #fff9;}
-  .rosterArt img,.rosterArt.fb{background:#00000010;}
+  /* 어두운 패널 위의 막대·수치 표시 — 빈 구간이 배경보다 더 어두워야 채워진 부분이 읽힌다 */
+  .hpbar,.shbar,.dmgbar{background:#0b0f18;}
+  .dmgfloat{text-shadow:0 1px 2px #000,0 0 6px #000c;}
+  #msgBox{background:#10192b; border:2px solid #0a1120; border-radius:4px 14px 4px 14px; color:var(--txt); box-shadow:2px 3px 0 #00000055;}
+  #bstage.scene .btok.art small{color:#f2f5fb;} /* 128px 스프라이트 이름표도 같은 어두운 알약을 쓴다 (.btok small) */
+  #bstage.scene .btok .dmgfloat{text-shadow:0 1px 2px #000,0 0 6px #000c;}
+  .rosterArt img,.rosterArt.fb{background:#0000004d;}
+  /* 로비 카드 — 패널이 어두워지면서 일반 카드와 온라인 카드가 같은 값이 된다. 온라인 카드만 한 단계 짙게 두어 구분을 유지한다 */
+  .lobbyCard.net{background:#151f34;}
+  /* 강조 토큰이 #2f62c8 → #5b8cff 로 바뀌었으므로 하드코딩된 강조 후광도 같은 색으로 맞춘다 */
+  .rosterCard.on,.trayItem.sel{box-shadow:0 0 0 2px #5b8cff40;}
   /* 로비·결과 화면에서는 기록·지표 서랍을 접어 둔다 (개발용 상시 사이드바 제거) */
   #app[data-screen="lobby"] #drawerLog,#app[data-screen="lobby"] #drawerMetrics,
   #app[data-screen="title"] #drawerLog,#app[data-screen="title"] #drawerMetrics{display:none;}
@@ -595,6 +624,7 @@
     <button class="ghost big" type="button" onclick="tutOpen()">📖 튜토리얼 보기</button>
   </div>
   <div id="appBar">
+    <button id="btnBack" class="backBtn" type="button" onclick="uiBack()">←</button>
     <h1><span class="brand">DIGIT DUEL</span> <small id="phaseLabel"></small></h1>
     <button id="btnDrawerSide" class="barBtn" type="button" onclick="uiDrawer('side')">상세</button>
     <button id="btnDrawerLog" class="barBtn" type="button" onclick="uiDrawer('log')">기록</button>
@@ -1217,7 +1247,12 @@ const $=id=>document.getElementById(id);
    규칙 상태는 종전대로 S.phase 하나뿐이다. 여기서 기억하는 것은 (a) 타이틀 화면을 지났는가 (b) 어떤 서랍이 열려 있는가
    (c) 출전 준비의 어느 단계를 보고 있는가 — 셋 다 표시 상태이고 난수·저장소·네트워크를 건드리지 않는다.
    화면 전환은 같은 문서 안에서 일어나므로 **새 문서 로드가 아니다** — #128 "새 문서 로드당 1회" 튜토리얼 경계는 그대로다. */
-const UI={entered:false,drawer:null,prep:"roster"};
+/* #122 REVISE 추가 필드 —
+   ask: 지금 뒤로가기가 연 확인창의 소유 토큰. modal() 이 다른 창으로 갈아 끼우면 무효가 되어, 남아 있던 옛 버튼이
+        **새 창을 닫지 못한다** (오래된 확인 버튼이 새 게임 모달을 close 하는 사고 방지).
+   hold/holdQ: sim 관전 종료 확인창이 떠 있는 동안 AI **예약 실행**만 잠시 미뤄 두는 표시 제어.
+        AI 판단·난수·승패·시간표를 바꾸지 않는다 — "언제 다음 수를 두는가"만 미루고, 취소하면 그대로 이어진다. */
+const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[]};
 function uiScreenName(){
   if(!UI.entered) return "title";
   if(!S) return "lobby";
@@ -1244,12 +1279,101 @@ function uiApply(){
     const bs=$("btnDrawerSide"), bl=$("btnDrawerLog");
     if(bs&&bs.setAttribute) bs.setAttribute("aria-pressed",UI.drawer==="side"?"true":"false");
     if(bl&&bl.setAttribute) bl.setAttribute("aria-pressed",UI.drawer==="log"?"true":"false");
+    /* #122 REVISE: 좌상단 뒤로가기 — 화면마다 "어디로 가는지"를 문구·설명으로 밝힌다 */
+    const bk=$("btnBack"), spec=uiBackSpec();
+    if(bk){
+      if(!spec){ if(bk.classList) bk.classList.add("hidden"); }
+      else{
+        if(bk.classList) bk.classList.remove("hidden");
+        bk.textContent=spec.label;
+        if(bk.setAttribute){ bk.setAttribute("title",spec.title); bk.setAttribute("aria-label",spec.title); }
+      }
+    }
   }catch(e){}
 }
 window.uiDrawer=function(k){ UI.drawer=(k&&UI.drawer===k)?null:(k||null); uiApply(); try{ fitBoard(); }catch(e){} };
 window.uiStart=function(){ UI.entered=true; uiApply(); try{ render(); }catch(e){} };
 /* 단계를 바꾸면 말판이 보이거나 숨겨지므로 그 자리에서 보드 배율을 다시 잰다 (숨어 있는 동안에는 폭이 0 이라 잴 수 없다) */
 window.uiPrep=function(step){ UI.prep=(step==="place")?"place":"roster"; uiApply(); try{ fitBoard(); }catch(e){} };
+
+/* ===== #122 REVISE (2026-09-10 CJ QA) — 좌상단 뒤로가기 =====
+   원칙 세 가지만 지킨다:
+   1) **되돌리기가 아니다.** 이미 확정된 행동·전투·턴을 무르지 않고, 규칙·난수·저장소·튜토리얼 표시 정책을 건드리지 않는다.
+   2) **주인을 빼앗지 않는다.** 전투 모달·기기 넘김·메모 피커·패키지 선택처럼 지금 화면의 주인이 있는 창이 열려 있으면
+      뒤로가기는 아무 일도 하지 않는다 (열린 창을 덮어쓰지 않는다).
+   3) **경기 중에는 새 출구를 만들지 않는다.** 실제 대전 중의 뒤로가기는 toLobby()·초기화를 직접 부르지 않고,
+      기존 기권 확인(confirmResign)으로만 이어진다 — 소유자·AI 턴·온라인 가드가 그대로 적용된다.
+   전투 화면 안의 '← 뒤로'는 종전대로 window.__menu(null) 시맨틱 핸들러이며(버튼 인덱스 중계 아님) 여기서 바뀌지 않는다. */
+function uiOverlayOpen(){ // 게임 모달(#overlay)·튜토리얼 모달(#tutOverlay) 중 하나라도 열려 있는가
+  try{
+    const o=$("overlay"); if(o&&o.classList&&!o.classList.contains("hidden")) return true;
+    const t=$("tutOverlay"); if(t&&t.classList&&!t.classList.contains("hidden")) return true;
+  }catch(e){}
+  return false;
+}
+/* 이 확인창이 아직 내 것인가 — 다른 modal() 이 오버레이를 가져갔거나(UI.ask 교체) 게임이 바뀌었으면 아니다.
+   아니면 아무것도 하지 않는다: 특히 **close() 도 부르지 않아** 지금 떠 있는 남의 창을 닫아 버리지 않는다. */
+function uiAskMine(tok,game){ return UI.ask===tok&&S===game; }
+function uiBackSpec(){ // null = 이전 화면이 없다(타이틀) → 버튼을 숨긴다
+  const sc=uiScreenName();
+  if(sc==="title") return null;
+  if(sc==="lobby") return {label:"← 타이틀",title:"타이틀 화면으로 돌아갑니다"};
+  if(sc==="prep"){
+    if(NET.queued) return {label:"← 대기 취소",title:"매칭 대기를 취소합니다 (배치는 그대로 유지됩니다)"};
+    if(UI.prep==="place") return {label:"← 로스터",title:"01 로스터 선택으로 돌아갑니다 (고른 로스터와 배치는 그대로 유지됩니다)"};
+    return {label:"← 로비",title:"출전 준비를 그만두고 로비로 돌아갑니다 (준비한 내용이 있으면 먼저 확인을 묻습니다)"};
+  }
+  if(sc==="board"){
+    if(UI.drawer) return {label:"← 닫기",title:"열려 있는 정보 서랍을 닫습니다"};
+    if(S&&S.mode==="sim") return {label:"← 관전 종료",title:"AI vs AI 관전을 끝내고 로비로 돌아갑니다 (먼저 확인을 묻습니다)"};
+    return {label:"←",title:"대전 중에는 기권 확인을 거쳐야 로비로 나갈 수 있습니다"};
+  }
+  return {label:"← 로비",title:"로비로 돌아갑니다"}; // result
+}
+window.uiBack=function(){
+  const sc=uiScreenName();
+  if(sc==="title") return;
+  if(sc==="board"&&UI.drawer){ uiDrawer(null); return; } // 서랍이 열려 있으면 서랍부터 닫는다 (화면은 그대로)
+  if(uiOverlayOpen()){ showToast("진행 중인 창을 먼저 마쳐 주세요."); return; }
+  if(sc==="lobby"){ UI.entered=false; UI.drawer=null; uiApply(); return; }
+  if(sc==="result"){ // #126 종료 연출이 재생 중이면 결과 패널의 [로비로]와 같은 잠금을 따른다
+    if(fxLocked()){ showToast("연출이 끝난 뒤에 눌러 주세요."); return; }
+    toLobby(); return;
+  }
+  if(sc==="prep"){
+    if(NET.queued){ netCancelQueue(); return; }                 // 기존 [매칭 취소 (배치 유지)] 와 같은 경로
+    if(UI.prep==="place"){ uiPrep("roster"); return; }           // 표시 단계만 되돌린다 — 로스터·배치는 S 안에 그대로 남는다
+    /* 로스터 단계에서 나가면 준비가 사라진다. 사라질 것이 있을 때만 확인을 묻는다 */
+    const dirty=!!(NET.preparing||(S&&(S.roster[0].length||S.roster[1].length||S.pieces.some(x=>x.placed))));
+    if(!dirty){ toLobby(); return; }
+    const game=S, tok={};
+    netLocalModal(); // 확인 모달은 로컬 전용 (온라인 중계·seq 제외)
+    modal(`<h2>← 로비로 돌아가기</h2><p>출전 준비를 그만두고 로비로 돌아갈까요?</p>`
+      +`<small>지금까지 고른 로스터와 배치는 사라집니다.${NET.preparing?" 온라인 대전 준비도 함께 취소됩니다.":""}</small>`,
+      [["로비로 돌아가기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; close(); toLobby(); }],
+       ["계속 준비하기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; close(); }]]);
+    UI.ask=tok; // modal() 이 토큰을 비우므로 연 뒤에 세운다
+    return;
+  }
+  /* 실제 대전 중 (board) */
+  if(S&&S.mode==="sim"){ // AI vs AI 관전 — 기권할 주체가 없다. 확인 뒤 관전만 끝낸다 (승패·규칙 무변경)
+    if(fxLocked()){ showToast("연출이 끝난 뒤에 눌러 주세요."); return; }
+    const game=S, tok={};
+    modal(`<h2>← 관전 종료</h2><p>AI vs AI 관전을 끝내고 로비로 돌아갈까요?</p>`
+      +`<small>이 경기의 진행은 저장되지 않습니다. [계속 관전]을 누르면 그대로 이어집니다.</small>`,
+      [["로비로 돌아가기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; close(); toLobby(); }],
+       ["계속 관전",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; close(); aiHoldRelease(); }]]);
+    UI.ask=tok;
+    /* 확인창이 떠 있는 동안에만 AI 예약 실행을 미룬다 — 그러지 않으면 약 simDelay 뒤 AI 가 다음 수를 두면서
+       전투 모달·종료 연출로 이 확인창을 덮어쓴다 (aiStep 은 오버레이를 보지 않는다). 판단·난수는 그대로다. */
+    UI.hold=true;
+    return;
+  }
+  if(!S||S.phase!=="play"||isAI(S.current)||(NET.mode&&S.current!==NET.me)){
+    showToast("내 차례에만 나갈 수 있습니다 (기권 확인)."); return;
+  }
+  confirmResign(); // 기존 기권 확인 — 소유자·AI·온라인 가드는 그 안에 그대로 있다
+};
 /* 보드 스케일 — 칸 기하(7×52px)와 말 규격(48/32/11)은 CSS 에서 불변이고, 세로 화면 맞춤은 이 --bs 하나로만 한다.
    transform 스케일이라 클릭 판정 좌표계도 함께 변형되므로 칸 히트 영역이 어긋나지 않는다.
    실제 DOM 이 있을 때만 측정한다 — 헤드리스 스텁은 기본값 1 그대로다 (기존 회귀의 기하 전제 불변). */
@@ -1716,6 +1840,7 @@ function uiResetScreen(){ // 이전 경기의 연출 큐·모달·토스트 잔�
   try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
   try{ clearToasts(); }catch(e){}
   UI.drawer=null; UI.prep="roster";
+  UI.ask=null; UI.hold=false; UI.holdQ=[]; // #122 REVISE: 확인창 소유권·AI 보류 큐도 함께 정리 (이전 경기 잔존 0)
 }
 window.toLobby=()=>{
   uiResetScreen(); netLeave();
@@ -2787,8 +2912,10 @@ function battleModal(){
   const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
   if(noAtkShow&&!aiActor&&S.mode!=="sim") tutHint("noatk"); // #26·#146 4슬롯 전부 불가가 처음 나올 때 1회 (표시 계층 전용 — 게임 상태·난수·저장소 무변경)
   const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
-  const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}<div class="row"><button onclick="window.__menu(null)">← 뒤로</button></div></div>`;
-  modal(`<h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>
+  /* #122 REVISE(2026-09-10 CJ QA): 하위 메뉴의 '← 뒤로'를 전투 패널 **제목 옆 좌상단**(아래 bhead)으로 올린다.
+     핸들러는 종전 그대로 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */
+  const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}</div>`;
+  modal(`<div class="bhead"><button id="bmenuBack" class="bmenuBack${menu?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2></div>
     <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${battleMaxRounds()}${B.maxRounds?" 🧭":""}</div>
     <div id="bstage" class="scene"><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
     ${buffLine}
@@ -2809,6 +2936,7 @@ function battleModal(){
   try{ const ob=$("overlayBox"); if(ob&&ob.classList) ob.classList.add("battleBox"); }catch(e){} // #122 세로 전투 화면 레이아웃
   window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
     if(S.battle!==B) return; B.menu=key||null;
+    try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(B.menu) bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){} // 상단 '← 뒤로'는 하위 메뉴가 열렸을 때만
     try{ const root=$("bmenu"); if(root){ if(B.menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
       for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===B.menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
   };
@@ -3478,13 +3606,21 @@ function afterBattle(attacker,attackerWonAlive){
 
 /* ===== AI (공정 관측 휴리스틱 — Phase 1) ===== */
 /* #106 6.3: AI 는 사람과 같은 연출을 기다린다 — 잠금 중이면 idle 콜백에 등록되고 idle 뒤 aiDelay 를 기산한다. 판단·정책·난수 순서는 불변 */
+/* #122 REVISE: 관전 종료 확인창이 떠 있는 동안에는 예약된 AI 실행을 큐에 담아 두고, 취소하면 그대로 재개한다.
+   pending 플래그는 세워 둔 채로 미루므로 중복 예약이 생기지 않고, 새 게임(S 교체)이면 큐 항목이 스스로 무효가 된다. */
+function aiHold(fn){ UI.holdQ.push(fn); }
+function aiHoldRelease(){ const q=UI.holdQ; UI.holdQ=[]; UI.hold=false; for(const f of q){ try{ f(); }catch(e){} } }
 function aiSchedule(){
   if(S.aiPending) return; S.aiPending=true;
-  const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return; S.aiPending=false; aiStep(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
+  const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return;
+    if(UI.hold){ aiHold(()=>{ if(S!==G) return; S.aiPending=false; aiSchedule(); }); return; } // pending 유지 → 중복 예약 없음
+    S.aiPending=false; aiStep(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
 }
 function aiScheduleBattle(){
   if(S.aiBattlePending) return; S.aiBattlePending=true;
-  const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return; S.aiBattlePending=false; aiBattleAction(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
+  const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return;
+    if(UI.hold){ aiHold(()=>{ if(S!==G) return; S.aiBattlePending=false; aiScheduleBattle(); }); return; }
+    S.aiBattlePending=false; aiBattleAction(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
 }
 function aiStep(){
   if(!S||S.phase!=="play"||!isAI(S.current)||S.battle||S.fleePick) return; // #114: 상대(사람)의 도망 교환 선택이 끝나야 재개 (fleeResolve → done 이 재스케줄)
@@ -4264,6 +4400,7 @@ function aiPutRandom(x,rows,free,put){
 const MEMO_UI={btns:[],piece:null,token:null,seq:0,overlayOpen:false};
 function modal(html,buttons){
   MEMO_UI.token=null; MEMO_UI.overlayOpen=true; // #94 새 모달이 오버레이를 가져간다 — 열려 있던 메모 피커 콜백은 무효
+  UI.ask=null; if(UI.hold) aiHoldRelease();      // #122 REVISE: 뒤로가기 확인창도 함께 무효 (옛 버튼이 새 창을 닫지 못한다) · 확인창이 사라졌으면 AI 보류도 푼다
   try{ const ob0=$("overlayBox"); if(ob0&&ob0.classList) ob0.classList.remove("battleBox"); }catch(e){} // #122 전투 화면 전용 레이아웃 클래스 해제
   $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
   const ob=$("obBtns");
@@ -4276,7 +4413,8 @@ function modal(html,buttons){
     b.className="primary"; ob.appendChild(b);} // #106: 연출 잠금 중 모달 버튼 무시
   $("overlay").classList.remove("hidden");
 }
-function close(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; $("overlay").classList.add("hidden");}
+function close(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; $("overlay").classList.add("hidden");
+  if(UI.ask){ UI.ask=null; if(UI.hold) aiHoldRelease(); } } // #122 REVISE: 다른 경로로 확인창이 닫혀도 AI 보류가 남지 않는다
 /* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음)
    #94 상대 턴·AI 턴에도 뷰어가 고정된 모드(온라인 NET.me · PVE 0)에서는 로컬로 연다 — 진입은 onCell → memoClickTarget (네트워크·RNG·selected·게임 로그 무변화) */
 function memoSet(v,pid,key){ // key: MEMO_OPTS 키 또는 null(삭제). 그 외 값은 무시 — 상대 말·게임 중에만
