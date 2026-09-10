@@ -22,6 +22,7 @@ Banner.RULES = {
 	{ pat = "^🎁", tone = "good" }, -- 선물 개봉
 	{ pat = "^📘", tone = "good" }, -- 기술 습득
 	{ pat = "^🔴 포획", tone = "good", fx = "capture" }, -- 포획 결과
+	{ pat = "^🔍", tone = "good" }, -- 흔적 발견 (도착한 그 순간 — 실제 탐색은 다음 턴)
 	{ pat = "^🌿 숲에서", tone = "good" }, -- 탐색 발견
 	{ pat = "^🔥 버닝 타임", tone = "warn" },
 	{ pat = "^🏁", tone = "good" }, -- 경기 종료

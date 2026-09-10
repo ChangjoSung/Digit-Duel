@@ -100,6 +100,8 @@ Art.TINT = {
 	hl_attack = rgb(0xff, 0x5b, 0x6e),
 	hl_forced = rgb(0xff, 0x5b, 0x6e),
 	hl_sel = rgb(0xff, 0xd8, 0x4d),
+	hl_trace = rgb(0x4f, 0xd8, 0x8a), -- 탐색 가능 칸 (전용 아트가 없어 흰 알파 원본인 hl_sel 을 초록으로 물들여 쓴다)
+	-- 돋보기 배지(trace48)는 manifest 가 tint=no 다 — 자체 색을 가진 그림이라 곱하지 않는다. 대신 뒤에 어두운 판을 깔아 대비를 준다
 	hpbar_fill = rgb(0x4f, 0xd8, 0x8a),
 	shbar_fill = rgb(0x4d, 0xa3, 0xff),
 }

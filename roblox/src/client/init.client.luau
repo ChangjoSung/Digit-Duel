@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p4.3"
+local CLIENT_VERSION = "0.5.0-p4.5"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -164,6 +164,7 @@ local gui = mk("ScreenGui", {
 	Name = "DigitDual", ResetOnSpawn = false, IgnoreGuiInset = true,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
+Ui.initTip(gui) -- 마우스를 올리면 뜨는 설명 (기술·아이템)
 
 
 -- 로비 HUD
@@ -307,13 +308,19 @@ for dr = 1, ROWS do
 			Text = "", TextSize = 10, Font = Enum.Font.GothamBold, TextColor3 = WHITE, TextStrokeTransparency = 0.2,
 			TextXAlignment = Enum.TextXAlignment.Right, Visible = false, ZIndex = 3,
 		}, b)
-		local mark = mk("ImageLabel", { -- 흔적 (trace48) — 없으면 텍스트 폴백
-			Name = "Mark", Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 1, 0, 1), BackgroundTransparency = 1,
-			Image = Art.trace() or "", ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 3,
+		mk("Frame", { -- 배지 뒤 어두운 판 — 밝은 숲 타일 위에서도 돋보기가 묻히지 않게
+			Name = "MarkBg", Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, 1, 0, 1), BorderSizePixel = 0,
+			BackgroundColor3 = Color3.fromRGB(13, 16, 22), BackgroundTransparency = 0.2, Visible = false, ZIndex = 4,
+		}, b)
+		local mark = mk("ImageLabel", { -- 흔적 (trace48) — 없으면 텍스트 폴백. 38px 칸에서 눈에 띄어야 해 크게·초록으로 (CJ 2026-09-10 "잘 안 보여")
+			Name = "Mark", Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(0, 1, 0, 1), BackgroundTransparency = 1,
+			Image = Art.trace() or "", -- 자체 색을 가진 그림이라 ImageColor3 로 물들이지 않는다 (manifest 참조)
+			ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 5,
 		}, b)
 		mk("TextLabel", {
-			Name = "MarkTxt", Size = UDim2.new(0, 14, 0, 12), Position = UDim2.new(0, 1, 0, 0), BackgroundTransparency = 1,
-			Text = "🔍", TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = WHITE, Visible = false, ZIndex = 3,
+			Name = "MarkTxt", Size = UDim2.new(0, 22, 0, 20), Position = UDim2.new(0, 1, 0, 1), BackgroundTransparency = 1,
+			Text = "🔍", TextSize = 17, Font = Enum.Font.GothamBold, TextColor3 = WHITE,
+			TextStrokeTransparency = 0.2, Visible = false, ZIndex = 5,
 		}, b)
 		mk("TextLabel", { -- #11·#36 추측 메모 (내 화면 전용)
 			Name = "Memo", Size = UDim2.new(1, -2, 0, 14), Position = UDim2.new(0, 1, 1, -15), BackgroundTransparency = 1,
@@ -549,6 +556,7 @@ local function cellReset(b, r)
 	b.Icon.Visible = false
 	b.Hp.Visible = false
 	b.Mark.Visible = false
+	b.MarkBg.Visible = false
 	b.MarkTxt.Visible = false
 	b.Memo.Visible = false
 	b.MemoIcon.Visible = false
@@ -556,8 +564,10 @@ local function cellReset(b, r)
 end
 
 local HL_FALLBACK = { move = Color3.fromRGB(50, 90, 160), flee = Color3.fromRGB(50, 90, 160), sel = Color3.fromRGB(120, 120, 40), attack = Color3.fromRGB(150, 50, 50), forced = Color3.fromRGB(160, 50, 50), memo = Color3.fromRGB(140, 110, 40) }
-local function cellHighlight(b, key) -- key: move|flee|sel|attack|forced|memo
-	local u = Art.board("hl_" .. key)
+-- 전용 아트가 없는 키는 다른 링을 빌려 쓰고 색으로만 구분한다 (Art.TINT 가 색을 준다)
+local HL_ART = { trace = "hl_sel" }
+local function cellHighlight(b, key) -- key: move|flee|sel|attack|forced|memo|trace
+	local u = Art.board(HL_ART[key] or ("hl_" .. key))
 	if u then
 		b.Hl.Image = u
 		b.Hl.ImageColor3 = Art.TINT["hl_" .. key] or WHITE
@@ -569,6 +579,7 @@ local function cellHighlight(b, key) -- key: move|flee|sel|attack|forced|memo
 end
 
 local function cellMark(b)
+	b.MarkBg.Visible = true
 	if Art.trace() then
 		b.Mark.Visible = true
 	else
@@ -1330,7 +1341,9 @@ end
 -- 렌더 — 대전
 --==================================================================
 
+local traceCells = {} -- 이번 렌더에서 탐색 표시가 켜진 칸 (아래 깜빡임 루프가 쓴다)
 local function renderBoard2D()
+	table.clear(traceCells)
 	local forced = view.forcedTargets or {}
 	local legal = legalOf(selectedId)
 	for r = 1, ROWS do
@@ -1394,11 +1407,29 @@ local function renderBoard2D()
 			for _, tr in view.traces do
 				if tr.r == r and tr.c == c then
 					cellMark(b)
+					table.insert(traceCells, b)
+					if not hl then -- 다른 강조(이동·공격·선택)가 없을 때만 링까지 — 링이 겹치면 오히려 안 보인다
+						cellHighlight(b, "trace")
+					end
 				end
 			end
 		end
 	end
 end
+
+task.spawn(function() -- 탐색 배지 깜빡임. 켜진 칸이 없으면 아무 일도 하지 않는다
+	while true do
+		task.wait(0.08)
+		if #traceCells > 0 and game_.Visible then
+			local a = 0.3 + 0.3 * math.sin(os.clock() * 4)
+			for _, b in traceCells do
+				b.Mark.ImageTransparency = a
+				b.MarkTxt.TextTransparency = a
+				b.MarkBg.BackgroundTransparency = 0.2 + a * 0.6
+			end
+		end
+	end
+end)
 
 local function renderSide()
 	local myTurn = view.phase == "play" and view.current == view.me
@@ -1412,6 +1443,9 @@ local function renderSide()
 		if myStats then -- Phase 4 전적 (DataStore)
 			head ..= "\n<font size=\"12\" color=\"#9aa3b8\">🏅 " .. myStats.line .. "</font>"
 		end
+	end
+	if view.traces and #view.traces > 0 and view.phase == "play" then -- 판에서 못 찾아도 글로 알려 준다
+		head ..= ("\n<font color=\"#4fd88a\">🔍 탐색할 수 있는 칸 %d곳 — 그 칸의 내 말을 누르고 [탐색]</font>"):format(#view.traces)
 	end
 	infoHead.Text = head
 	-- 배지 행: 몬스터볼 · 아이템 · 전투 · 예비 하수인
@@ -1490,9 +1524,11 @@ local function renderButtons()
 		return
 	end
 	local lg = legalOf(selectedId)
-	smallBtn(btnRow, 0, 0, 90, "탐색", function()
+	local canSearch = lg ~= nil and lg.search == true
+	Ui.attachTip(smallBtn(btnRow, 0, 0, 90, "탐색", function()
 		send({ t = "search", id = selectedId })
-	end, "default", lg ~= nil and lg.search, Art.action("search"))
+	end, canSearch and "primary" or "default", canSearch, Art.action("search")),
+	"<b>탐색</b>\n🔍 표시가 있는 칸에 선 내 말로 그 자리를 뒤집니다. 아이템·볼·버프·기술 교체·하수인 포획 중 하나가 나옵니다.\n흔적을 발견한 <b>다음 턴</b>부터 쓸 수 있습니다.")
 	smallBtn(btnRow, 96, 0, 112, (teleFirst or teleMode) and "취소" or "텔레포트", function()
 		if teleFirst or teleMode then -- 취소 → 1단계 이전으로 (문구도 함께 돌아온다)
 			teleFirst, teleMode = nil, false
@@ -1855,10 +1891,10 @@ local function renderBattle()
 	if myF.skills then
 		for i = 1, 4 do
 			local sv = myF.skills[i]
-			local text, kind
+			local text, kind, sk -- sk 는 아래 툴팁에서도 쓴다 (공개된 기술일 때만 채워진다)
 			local enabled = bt.usable ~= nil and bt.usable[i] == true
 			if sv.id then
-				local sk = Data.SKILLS[sv.id]
+				sk = Data.SKILLS[sv.id]
 				local tag = ""
 				if sv.cd > 0 then
 					tag = " (쿨" .. sv.cd .. ")"
@@ -1871,9 +1907,16 @@ local function renderBattle()
 				text = "? " .. (Data.SKIND_KO[sv.kind] or "")
 				kind = sv.kind
 			end
-			smallBtn(battleBtns, ((i - 1) % 2) * 186, math.floor((i - 1) / 2) * 30, 180, text, function()
+			local sb = smallBtn(battleBtns, ((i - 1) % 2) * 186, math.floor((i - 1) / 2) * 30, 180, text, function()
 				send({ t = "act", k = i })
 			end, "default", enabled, Art.skillKind(kind))
+			if sk then -- 정체가 공개된 기술만. sk 가 없으면(미공개) 설명을 붙이지 않는다
+				local pow = sk.pow and ("위력 " .. Data.slotPow(myF, sk)) or "위력 없음"
+				local cd = (sk.cd and sk.cd > 0) and ("쿨 " .. sk.cd .. "R") or "쿨 없음"
+				local now = (sv.cd and sv.cd > 0) and ("\n<font color=\"#ff7a8a\">남은 쿨 " .. sv.cd .. "R</font>") or ""
+				Ui.attachTip(sb, ("<b>%s</b>  [%s]\n%s · %s\n%s%s"):format(
+					sk.ko, Data.SKIND_KO[sk.kind] or sk.kind, pow, cd, sk.desc or "", now))
+			end
 		end
 		if bt.canPass then -- #146 계약 2.1: 기본 공격을 주지 않고 안내 + 명시적 수동 종료만 (누르기 전에는 넘어가지 않는다)
 			smallBtn(battleBtns, 0, 126, 200, "⏭️ 행동 넘기기", function()
@@ -1888,26 +1931,32 @@ local function renderBattle()
 	local shown = 0
 	for i, k in bt.myItems do -- #121 계약 2.3: 라운드 1회만 (전투 횟수·연속 동일 제한 없음)
 		if shown < 3 then
-			smallBtn(battleBtns, 106 + shown * 88, 62, 84, Data.ITEMS[k].ko, function()
+			Ui.attachTip(smallBtn(battleBtns, 106 + shown * 88, 62, 84, Data.ITEMS[k].ko, function()
 				send({ t = "item", i = i })
-			end, "default", not bt.itemRound, Art.item(k))
+			end, "default", not bt.itemRound, Art.item(k)),
+			("<b>%s</b>\n%s\n아이템은 <b>한 라운드에 하나</b>만 쓸 수 있습니다."):format(Data.ITEMS[k].ko, Data.ITEMS[k].desc or ""))
 			shown += 1
 		end
 	end
-	smallBtn(battleBtns, 0, 94, 106, "볼 던지기", function()
+	Ui.attachTip(smallBtn(battleBtns, 0, 94, 106, "볼 던지기", function()
 		send({ t = "ball" })
-	end, "danger", true, Art.item("ball"))
-	smallBtn(battleBtns, 112, 94, 92, ("도망 %d%%"):format(math.floor((bt.fleeProb or 0.3) * 100 + 0.5)), function()
+	end, "danger", true, Art.item("ball")),
+	"<b>몬스터볼</b>\n상대 <b>하수인</b>을 포획합니다. 성공하면 전투가 즉시 끝나고 그 하수인이 내 예비가 됩니다.\n한 라운드에 한 번만 던질 수 있습니다.")
+	Ui.attachTip(smallBtn(battleBtns, 112, 94, 92, ("도망 %d%%"):format(math.floor((bt.fleeProb or 0.3) * 100 + 0.5)), function()
 		send({ t = "flee" })
-	end, "default", bt.canFlee ~= false, Art.action("flee")) -- #146: HP 조건 없음 · 기본 30% · 도망의 수호자 70%
-	smallBtn(battleBtns, 210, 94, 76, "🎁 " .. (view.gifts or 0), function()
+	end, "default", bt.canFlee ~= false, Art.action("flee")), -- #146: HP 조건 없음 · 기본 30% · 도망의 수호자 70%
+	("<b>도망</b>  성공 확률 %d%%\n성공하면 전투가 끝나고 내 말이 물러납니다. <b>실패하면 이번 행동을 잃습니다.</b>\nHP 조건은 없습니다."):format(
+		math.floor((bt.fleeProb or 0.3) * 100 + 0.5)))
+	Ui.attachTip(smallBtn(battleBtns, 210, 94, 76, "🎁 " .. (view.gifts or 0), function()
 		battleSub = "gift"
 		render()
-	end, "default", (view.gifts or 0) > 0)
-	smallBtn(battleBtns, 292, 94, 76, "✨ " .. (view.buffPacks or 0), function()
+	end, "default", (view.gifts or 0) > 0),
+	"<b>선물 상자</b>  보유 " .. (view.gifts or 0) .. "개\n열면 아이템·볼·버프 중 하나가 나옵니다. 탐색으로 얻습니다.")
+	Ui.attachTip(smallBtn(battleBtns, 292, 94, 76, "✨ " .. (view.buffPacks or 0), function()
 		battleSub = "buff"
 		render()
-	end, "default", (view.buffPacks or 0) > 0 and bt.buffUsed == nil)
+	end, "default", (view.buffPacks or 0) > 0 and bt.buffUsed == nil),
+	"<b>전투 버프</b>  보유 " .. (view.buffPacks or 0) .. "개\n<b>한 전투에 하나</b>만 쓸 수 있습니다. 시간의 수호자는 1라운드에만 쓸 수 있습니다.")
 	local hint = (bt.itemRound and "아이템: 이번 라운드 사용함" or "아이템: 라운드 1회") .. " · " .. (bt.buffUsed and ("버프: " .. Data.BUFFS[bt.buffUsed].ko) or "버프: 전투당 1개")
 	if bt.canPass then -- #146 계약 2.1 안내 (소유자 화면에만 — 공용 로그에 사유를 쓰지 않는다)
 		hint = "⚠️ 공격할 것이 없습니다. 턴 종료할까요?\n" .. hint
