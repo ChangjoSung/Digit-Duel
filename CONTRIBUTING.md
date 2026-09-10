@@ -16,9 +16,29 @@ The code license does not grant rights to Digit-Duel branding or to excluded
 visual assets. See [`ASSET-LICENSE.md`](ASSET-LICENSE.md) before adding or
 reusing artwork, screenshots, audio, or other media.
 
-Development changes should be made on an issue branch and merged into `dev`
-through a pull request. Release changes move from `dev` to `main` through a
-separate release pull request.
+Development changes should be made on an issue branch and merged into the
+milestone track branch (`milestone/vX.Y.Z`) through a pull request. The track
+branch is cut from `dev` and merges back into `dev` when the milestone is done.
+Release changes move from `dev` to `main` through a separate release pull
+request. Track branches carry the same protection as `main` and `dev`: pull
+request required, all six CI checks, no admin bypass.
+
+```
+issue branch --squash--> milestone/vX.Y.Z --merge--> dev --merge--> main (+tag)
+```
+
+**Hotfixes** are the one exception. A hotfix is an urgent fix to the *released*
+state that does not belong to any milestone. Branch `hotfix/<issue>-<slug>`
+**from `main`** — never from `dev`, because `dev` carries unreleased work and
+merging it into `main` would ship all of it. Label the issue `hotfix` and leave
+it out of every milestone. All six CI checks still apply. After merging into
+`main` and tagging the patch version, **back-merge `main` into `dev`, then sync
+`dev` down into every live track branch** — a hotfix is not finished until it
+reaches the branches people are working on.
+
+```
+main (tag) --> hotfix/<issue> --> main (+patch tag) --> dev --> milestone/vX.Y.Z
+```
 
 ## Continuous integration
 
