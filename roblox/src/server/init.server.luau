@@ -16,8 +16,9 @@ local Rng = require(Shared.Rng)
 local Config = require(Shared.Config)
 local AIC = Config.AI
 local Lobby = require(script:WaitForChild("Lobby"))
+local Stats = require(script:WaitForChild("Stats")) -- Phase 4 전적 (DataStore · 실패 시 메모리)
 
-local VERSION = "0.5.0-p3.7"
+local VERSION = "0.5.0-p3.9"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")
@@ -41,6 +42,17 @@ for i = 1, Lobby.tableCount() do
 	tableState[i] = { players = {}, ready = {}, session = nil, setupOpen = false }
 end
 local nextRoomId = 1
+
+--==================================================================
+-- 재접속 (Phase 4): 대전 중 나가면 바로 기권시키지 않고 일정 시간 자리를 잡아 둔다.
+-- 같은 UserId 로 다시 들어오면 그 자리·세션을 그대로 이어받고, 유예가 지나면 그때 기권 처리한다.
+-- 서버 인스턴스 안에서만 유지된다 (서버가 내려가면 사라진다 — DataStore 로 보존하지 않는다).
+--==================================================================
+local RECONNECT_GRACE = 90 -- 초
+local pending = {} -- [userId] = { session, owner, tableId, side, deadline, name }
+local function pendingKey(player)
+	return player.UserId
+end
 
 --==================================================================
 -- 봇 (PVE — 구조.txt "1인 대전"): 혼자 앉은 사람이 [B] 를 누르면 맞은편에 AI 가 앉는다. 봇은 로스터·배치를 자동으로 마친다
@@ -188,6 +200,28 @@ end
 
 local function endSession(session)
 	session.ended = true
+	if not session.recorded and session.engine.S.phase == "over" then -- 전적은 세션당 1회만
+		session.recorded = true
+		local w = session.engine.S.winner
+		for owner = 0, 1 do
+			local plr = session.players[owner]
+			if plr and not isBot(plr) and plr.Parent then
+				local res = (w == -1) and "draw" or (w == owner) and "win" or "loss"
+				Stats.record(plr, res)
+				reState:FireClient(plr, { t = "stats", rec = Stats.get(plr), line = Stats.line(Stats.get(plr)) })
+			end
+		end
+	end
+	for uid, p in pending do -- 이 세션을 기다리던 재접속 보류는 함께 정리한다 (자리 잠금도 해제)
+		if p.session == session then
+			pending[uid] = nil
+			local pts = tableState[p.tableId]
+			if pts and pts.players[p.side] == nil then
+				pts.ready[p.side] = nil
+			end
+			Lobby.setSeatHold(p.tableId, p.side, false)
+		end
+	end
 	for owner = 0, 1 do
 		local plr = session.players[owner]
 		if plr then
@@ -273,13 +307,62 @@ local function startSession(tableId, pA, sA, pB, sB)
 end
 
 -- 대전 중 이탈(일어남·퇴장·자리 떠나기) = 기권. resigned=true 면 상대에게 "기권", false 면 "연결 끊김"
-local function leaveSession(player, resigned)
+-- hold=true 면 기권시키지 않고 재접속 유예를 건다 (연결 끊김). 자리 떠나기·기권은 hold=false
+local function leaveSession(player, resigned, hold, at)
 	local session = sessions[player]
 	if not session then
 		return
 	end
 	local owner = (session.players[0] == player) and 0 or 1
 	local opp = session.players[1 - owner]
+	if hold and session.engine.S.phase ~= "over" then
+		-- 자리·세션을 그대로 두고 유예만 건다. 상대에게는 "재접속 대기 중" 을 알린다
+		sessions[player] = nil
+		pending[pendingKey(player)] = {
+			session = session, owner = owner, tableId = session.tableId,
+			side = at and at.side or ((owner == 0) and "A" or "B"),
+			deadline = os.clock() + RECONNECT_GRACE, name = player.DisplayName,
+		}
+		session.players[owner] = nil -- 자리는 비우되 세션은 살려 둔다
+		session.waiting = owner
+		session.engine:log(("🔌 상대의 연결이 끊어졌습니다 — %d초 안에 돌아오면 이어서 진행합니다."):format(RECONNECT_GRACE), "imp")
+		if opp and opp.Parent then
+			reState:FireClient(opp, {
+				t = "state", room = session.room,
+				view = Views.forViewer(session.engine, 1 - owner),
+				events = session.engine:drainOutbox(),
+				oppWaiting = RECONNECT_GRACE,
+			})
+		end
+		task.delay(RECONNECT_GRACE + 1, function() -- 유예 만료 → 그때 기권 처리
+			local p = pending[pendingKey(player)]
+			if not p or p.session ~= session then
+				return
+			end
+			pending[pendingKey(player)] = nil
+			Lobby.setSeatHold(p.tableId, p.side, false)
+			local pts = tableState[p.tableId]
+			if pts and pts.players[p.side] == player then
+				pts.players[p.side] = nil
+			end
+			if session.ended or session.engine.S.phase == "over" then
+				return
+			end
+			session.engine:gameOver(1 - owner, "resign")
+			session.engine:log("🔌 재접속 시간이 지났습니다 — P" .. (2 - owner) .. " 승리!", "imp")
+			local o = session.players[1 - owner]
+			if o and o.Parent then
+				reState:FireClient(o, {
+					t = "state", room = session.room,
+					view = Views.forViewer(session.engine, 1 - owner),
+					events = session.engine:drainOutbox(),
+					opponentLeft = true,
+				})
+			end
+			endSession(session)
+		end)
+		return
+	end
 	if session.engine.S.phase ~= "over" then
 		session.engine:gameOver(1 - owner, "resign")
 		session.engine:log(resigned and ("🏳️ 상대가 자리를 떠났습니다 — P" .. (2 - owner) .. " 승리!") or ("🔌 상대의 연결이 끊어졌습니다 — P" .. (2 - owner) .. " 승리!"), "imp")
@@ -307,6 +390,53 @@ end
 --==================================================================
 -- 자리 배정
 --==================================================================
+
+-- 같은 UserId 가 다시 들어오면 자리·세션을 그대로 이어받는다
+local function tryReconnect(player)
+	local p = pending[pendingKey(player)]
+	if not p then
+		return false
+	end
+	pending[pendingKey(player)] = nil
+	local session, owner = p.session, p.owner
+	if session.ended or session.engine.S.phase == "over" then
+		return false
+	end
+	local ts = tableState[p.tableId]
+	if not ts or ts.session ~= session then
+		return false
+	end
+	session.players[owner] = player
+	session.waiting = nil
+	sessions[player] = session
+	seatOf[player] = { id = p.tableId, side = p.side }
+	ts.players[p.side] = player
+	Lobby.setSeatHold(p.tableId, p.side, false)
+	Lobby.sitPlayer(p.tableId, p.side, player)
+	Lobby.lockSeated(player, true)
+	session.engine:log("🔌 상대가 돌아왔습니다 — 대전을 이어서 진행합니다.", "imp")
+	notifyTable(p.tableId)
+	updateStatus(p.tableId)
+	broadcast(session)
+	scheduleBot(session)
+	print(("[DD] room %d 재접속: %s (P%d)"):format(session.room, player.Name, owner + 1))
+	return true
+end
+
+Players.PlayerAdded:Connect(function(player)
+	task.spawn(function() -- 전적 불러오기 (DataStore 는 느릴 수 있어 별도 스레드)
+		local rec = Stats.load(player)
+		if player.Parent then
+			reState:FireClient(player, { t = "stats", rec = rec, line = Stats.line(rec) })
+		end
+	end)
+	player.CharacterAdded:Connect(function()
+		task.wait(0.6) -- 캐릭터가 자리를 잡은 뒤 앉힌다
+		if player.Parent then
+			pcall(tryReconnect, player)
+		end
+	end)
+end)
 
 Lobby.onSeated(function(player, id, side)
 	if seatOf[player] then -- 다른 자리에서 순간이동한 경우 방어
@@ -490,9 +620,17 @@ reAction.OnServerEvent:Connect(function(player, a)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
+	local session = sessions[player]
+	if session and session.engine.S.phase ~= "over" then -- 대전 중 연결 끊김 → 재접속 유예 (자리·세션 보존)
+		local at = seatOf[player]
+		seatOf[player] = nil
+		leaveSession(player, false, true, at)
+		Lobby.setSeatHold(at and at.id, at and at.side, true)
+		return
+	end
 	if seatOf[player] then
 		vacate(player)
-	elseif sessions[player] then
+	elseif session then
 		leaveSession(player, false)
 	end
 end)

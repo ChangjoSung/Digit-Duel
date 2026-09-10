@@ -495,6 +495,42 @@ function Lobby.setBotSeat(id, side, label, level)
 	end
 end
 
+-- 재접속(Phase 4): 끊긴 사람의 자리를 비워 두되 다른 사람이 앉지 못하게 잠근다
+function Lobby.setSeatHold(id, side, held)
+	local t = id and tables[id] or nil
+	if not t or not side then
+		return
+	end
+	local seat = t.seats[side]
+	local prompt = seat and seat:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then
+		prompt.Enabled = not held and seat.Occupant == nil
+	end
+end
+
+-- 재접속한 사람을 그 자리에 다시 앉힌다
+function Lobby.sitPlayer(id, side, player)
+	local t = tables[id]
+	if not t then
+		return false
+	end
+	local seat = t.seats[side]
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (seat and hum and hum.Health > 0) then
+		return false
+	end
+	t.occupants[side] = player -- Occupant 신호로 onSeated 가 다시 불리지 않도록 먼저 채운다
+	pcall(function()
+		seat:Sit(hum)
+	end)
+	local prompt = seat:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then
+		prompt.Enabled = false
+	end
+	return true
+end
+
 function Lobby.setStatus(id, text)
 	local t = tables[id]
 	if t then
