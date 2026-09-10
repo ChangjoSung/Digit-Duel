@@ -1,5 +1,7 @@
 # 마일스톤 보관소
 
+> **2026-09-10 버전 재배번 ([#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · CJ 승인).** 종전 `v0.4.7`(HTML)→**`v0.4.6`**, 종전 `v0.4.6`(Roblox)→**`v0.5.0`**, 종전 `v0.5.0`(Unity)→**`v0.6.0`**. 폴더는 마일스톤 버전을 따라가는 주소라 함께 옮겼고 대조표는 [MOVES.csv](MOVES.csv)에 있다. **옮겨진 기록 본문의 옛 버전 서술은 작성 당시의 판정이라 고치지 않았다.**
+
 버전 → Issue → 작성 역할 순서로 정리한 **과거 시점의 구현·QA 기록**이다. 각 문서는 작성 당시의 판정이며 이후 버전에서 바뀐 규칙을 반영하지 않는다. **지금 통하는 규칙과 실행 방법은 [docs 안내](../README.md)** 에서 본다.
 
 ## 버전 인덱스
@@ -9,8 +11,8 @@
 | v0.4.3 | [Milestone 7](https://github.com/ChangjoSung/Digit-Duel/milestone/7) | 하수인 아트·말판 아이콘 — #81 #83 #87 #89 | 125 (md 19) | [v0.4.3](v0.4.3/README.md) |
 | v0.4.4 | [Milestone 10](https://github.com/ChangjoSung/Digit-Duel/milestone/10) | 전투 변수·온라인 시점·턴 흐름 — #91~#96 #104~#106 | 144 (md 47) | [v0.4.4](v0.4.4/README.md) |
 | v0.4.5 | [Milestone 11](https://github.com/ChangjoSung/Digit-Duel/milestone/11) | 턴 행동 정리·문서·튜토리얼 갱신 — #114 | 37 (md 7) | [v0.4.5](v0.4.5/README.md) |
-| v0.4.6 | [Milestone 12](https://github.com/ChangjoSung/Digit-Duel/milestone/12) | Roblox 포팅 — #118 (별도 작업자 진행 중) | 별도 작업자 관리 | [v0.4.6](v0.4.6/README.md) |
-| v0.4.7 | [Milestone 13](https://github.com/ChangjoSung/Digit-Duel/milestone/13) | #121·#125·#129·#146·#131·#130 CJ QA PASS·CLOSED(미출시) · #128 매 페이지 로드 튜토리얼 표시 2026-09-10 CJ QA PASS·CLOSED · **#122·#124·#126 CJ QA REVISE — 뒤로가기·어두운 배경 보완·CJ 재검수 대기(OPEN)** · 나머지 게임 이슈 착수 대기 · Infra #132/#134 완료 | 진행 중 | [v0.4.7](v0.4.7/README.md) |
+| v0.4.6 | [Milestone 13](https://github.com/ChangjoSung/Digit-Duel/milestone/13) | 탐색 개편·연출 템포·전투 정비·세로 UI — #121·#122·#124·#125·#126·#128·#129·#130·#131·#146 · Infra #132/#134. **열린 이슈 0 · 2026-09-10 CJ QA PASS · 릴리스 대상** | 진행 중 | [v0.4.6](v0.4.6/README.md) |
+| v0.5.0 | [Milestone 12](https://github.com/ChangjoSung/Digit-Duel/milestone/12) | Roblox 포팅 — #118 (별도 작업자 진행 중) | 별도 작업자 관리 | [v0.5.0](v0.5.0/README.md) |
 
 v0.4.2 이하는 이 보관소에 문서가 없다. 그 버전들의 변경 내용은 [릴리스 노트 목록](../releases/README.md)에서 본다.
 

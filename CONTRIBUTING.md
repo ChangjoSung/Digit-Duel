@@ -44,7 +44,7 @@ because it compares **delivered bytes**. The same `Pillow==12.3.0` pin passed on
 Windows and failed on `ubuntu-24.04` for 14 of the 28 delivered PNGs, so job D
 pins the environment the assets were baked in — `windows-2025`, Python 3.14.3.
 The evidence and what it does and does not establish is in
-[the Mars report, part 4](docs/milestone/v0.4.7/issues/132/Mars/report.md).
+[the Mars report, part 4](docs/milestone/v0.4.6/issues/132/Mars/report.md).
 The authoritative pass/fail for that job stays the byte and manifest comparison:
 do not make a mismatch go away by regenerating approved assets, by comparing
 pixels only, or by skipping files. Investigate the environment first.
@@ -93,5 +93,5 @@ the GitHub Actions app (ID 15368), and administrators are subject to the same
 rules. GitHub's required approval count is zero; the independent Saturn review
 and CJ approval contract remain in effect. See [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132)
 for the actual PR run and protection verification. The [2026-09-10 connection
-record](docs/milestone/v0.4.7/issues/132/Mercury/required-checks.md) documents CJ's
+record](docs/milestone/v0.4.6/issues/132/Mercury/required-checks.md) documents CJ's
 approval to add E to both branches and the successful protection readback.

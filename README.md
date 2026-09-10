@@ -33,45 +33,45 @@
 
 ## 게임 플레이 사진
 
-이미지를 클릭하면 원본 크기로 볼 수 있습니다. 아래는 **v0.4.7 개발판**의 실제 브라우저 화면입니다. 정식 다운로드는 v0.4.5이며, 이 개발판의 CJ 플레이 QA는 아직입니다.
+이미지를 클릭하면 원본 크기로 볼 수 있습니다. 아래는 **v0.4.6 개발판**의 실제 브라우저 화면입니다. 정식 다운로드는 v0.4.5이며, v0.4.6은 CJ 플레이 QA를 통과하고 릴리스를 준비 중입니다.
 
 <table>
   <tr>
     <td align="center" width="50%">
-      <a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/media/05-board-390.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/media/05-board-390.png" alt="v0.4.7 세로 전략 보드 — 숲 칸과 왕·동료·하수인, 아래쪽 행동 메뉴" width="78%"></a>
+      <a href="docs/milestone/v0.4.6/issues/122/Mars/revise-back-dark/media/05-board-390.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-back-dark/media/05-board-390.png" alt="v0.4.6 세로 전략 보드 — 숲 칸과 왕·동료·하수인, 아래쪽 행동 메뉴" width="78%"></a>
       <br><b>전략 보드</b><br><sub>실제 숲 칸만 수풀로 그리고, 말의 정체·HP·소유자를 표시합니다. 기록은 아래 메뉴에서 엽니다.</sub>
     </td>
     <td align="center" width="50%">
-      <a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/media/08-battle-390.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/media/08-battle-390.png" alt="v0.4.7 속성 전투 — 오른쪽 위의 상대, 왼쪽 아래의 내 말과 양측 HP, 아래 네 가지 명령" width="78%"></a>
+      <a href="docs/milestone/v0.4.6/issues/122/Mars/revise-back-dark/media/08-battle-390.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-back-dark/media/08-battle-390.png" alt="v0.4.6 속성 전투 — 오른쪽 위의 상대, 왼쪽 아래의 내 말과 양측 HP, 아래 네 가지 명령" width="78%"></a>
       <br><b>속성 전투</b><br><sub>상대는 오른쪽 위, 내 말은 왼쪽 아래. 싸우기 · 가방 · 포획 · 도망 가운데 행동을 고릅니다.</sub>
     </td>
   </tr>
 </table>
 
 <details>
-<summary><b>튜토리얼 10단계 보기</b> — v0.4.7 개발판 · 탐색 패키지와 전투 행동</summary>
+<summary><b>튜토리얼 10단계 보기</b> — v0.4.6 개발판 · 탐색 패키지와 전투 행동</summary>
 <br>
 <table>
   <tr>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 강제 전투와 동료·왕끼리도 전투" width="100%"></a><br><sub>5. 전투 · 동료·왕끼리도 전투<br>수동 대기 · 보호막 합산</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 강제 전투와 동료·왕끼리도 전투" width="100%"></a><br><sub>5. 전투 · 동료·왕끼리도 전투<br>수동 대기 · 보호막 합산</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · HP 제한 없는 도망<br>기본 30% · 실패하면 상대 기본 공격 1번</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 텔레포트 · 함정에 걸린 말 제외</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 보드 턴 종료 선택</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · HP 제한 없는 도망<br>기본 30% · 실패하면 상대 기본 공격 1번</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 텔레포트 · 함정에 걸린 말 제외</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 보드 턴 종료 선택</sub></td>
   </tr>
 </table>
-<sub>튜토리얼은 [건너뛰기]나 <kbd>Esc</kbd>로 곧바로 닫을 수 있고, 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다. 개발 중인 v0.4.7에서는 <b>접속할 때마다 1단계부터 자동으로</b> 열립니다 — <a href="#새로운-기능">새로운 기능</a>에서 설명합니다.</sub>
+<sub>튜토리얼은 [건너뛰기]나 <kbd>Esc</kbd>로 곧바로 닫을 수 있고, 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다. v0.4.6부터는 <b>접속할 때마다 1단계부터 자동으로</b> 열립니다 — <a href="#새로운-기능">새로운 기능</a>에서 설명합니다.</sub>
 
-캡처 출처: [10장 캡처 기록과 소스·이미지 해시](docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json). **접촉·전투 규칙 개편까지 반영한** v0.4.7 개발판에서 다시 촬영했습니다 — 5단계 "동료·왕끼리도 싸워요"와 7단계 "도망 실패"가 새 규칙입니다.
+캡처 출처: [10장 캡처 기록과 소스·이미지 해시](docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json). **접촉·전투 규칙 개편까지 반영한** v0.4.6 개발판에서 다시 촬영했습니다 — 5단계 "동료·왕끼리도 싸워요"와 7단계 "도망 실패"가 새 규칙입니다.
 
-<sub>위 10장은 <b>개발 중인 v0.4.7</b>의 튜토리얼입니다. 숲 선물 패키지·기술 직접 선택·아이템과 버프 제한, 도망·수동 대기·함정 텔레포트·보호막 합산과 <b>접촉·전투 규칙 개편</b>을 반영했습니다. 정식 다운로드 v0.4.5의 화면과는 일부 다릅니다.</sub>
+<sub>위 10장은 <b>v0.4.6</b>의 튜토리얼입니다. 숲 선물 패키지·기술 직접 선택·아이템과 버프 제한, 도망·수동 대기·함정 텔레포트·보호막 합산과 <b>접촉·전투 규칙 개편</b>을 반영했습니다. 정식 다운로드 v0.4.5의 화면과는 일부 다릅니다.</sub>
 
 
 </details>
@@ -91,7 +91,9 @@
 
 이전 버전의 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)과 [GitHub Releases](https://github.com/ChangjoSung/Digit-Duel/releases)에서 볼 수 있습니다.
 
-### 개발 중 — v0.4.7 (미출시)
+### 다음 버전 — v0.4.6 (CJ QA PASS · 릴리스 준비)
+
+> **2026-09-10 버전 재배번** ([#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · CJ 승인). 이 버전은 종전 `v0.4.7`이었습니다. 같은 재편에서 **Roblox 포팅은 `v0.5.0`**, **Unity 포팅은 `v0.6.0`**이 됐습니다.
 
 다음 버전에서는 숲에서 얻는 보상이 **선물 패키지**로 바뀝니다. 원하는 아이템과 전투 버프를 싸우는 도중에 직접 골라 쓰고, 숲에서 배우는 신규 공용 기술 **🐉 드래곤 숨결 · 🕯 마녀의 장난 · 💀 사신의 낫** 중 하나를 골라 하수인의 기술 4칸 중 아무 곳이나 바꿉니다. 숲에서 포획한 하수인은 로스터 20종 가운데 뽑힌 종의 능력치와 기술을 그대로 가져오고, 연출 템포는 1.2초로 빨라집니다. 이 범위(#121 · #125 · #129)는 2026-09-10 **CJ 플레이 QA를 통과**해 개발판에 들어가 있습니다.
 
@@ -108,7 +110,7 @@
 - **같은 게임 화면 안에서는 자동으로 다시 뜨지 않습니다** — 새 게임 · 재대전 · 모드 변경 같은 일에는 재표시가 없습니다.
 - **필요 없으면 [건너뛰기]나 <kbd>Esc</kbd>로 바로 닫으세요** — 10단계 내용과 `?` 버튼의 수동 다시 보기는 그대로입니다.
 
-변경 배경과 검증 기록은 [#128 문서 동기화 보고](docs/milestone/v0.4.7/issues/128/Venus/docs-report.md)에 있습니다.
+변경 배경과 검증 기록은 [#128 문서 동기화 보고](docs/milestone/v0.4.6/issues/128/Venus/docs-report.md)에 있습니다.
 
 #### 붙으면 반드시 싸웁니다 — 접촉·전투 규칙 개편
 
@@ -119,7 +121,7 @@
 - **폭탄끼리, 폭탄과 함정은 그 자리에서 터집니다** — 밀려나는 대신 **둘 다 사라집니다.** 함정 발동이 아니므로 2턴 이동 불가는 붙지 않습니다.
 - **도망에 실패하면 상대의 기본 공격 한 번을 맞습니다** — 맞은 뒤 상대의 정상 차례가 그대로 옵니다. 상대가 **💪 힘의 수호자**를 쓴 상태면 그 기본 공격은 **최대 피해**로 들어갑니다.
 
-이제 붙어도 전투가 없는 조합은 **폭탄·함정이 먼저 부딪혀 간 경우**뿐입니다. 밀어내기는 **도망 성공 뒤의 자리 교환**에 그대로 남습니다. 구현·검증 범위와 한계는 [Mars 보고](docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md)에 있습니다.
+이제 붙어도 전투가 없는 조합은 **폭탄·함정이 먼저 부딪혀 간 경우**뿐입니다. 밀어내기는 **도망 성공 뒤의 자리 교환**에 그대로 남습니다. 구현·검증 범위와 한계는 [Mars 보고](docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/report.md)에 있습니다.
 
 #### 세로 화면 · 왕과 동료 아트 · 승패 효과
 
@@ -137,18 +139,18 @@
 - **왕과 동료에게 각각 새 픽셀 아트**가 생깁니다. 편은 지금처럼 말의 테두리 색으로 구분하고, 정체를 모르는 말은 여전히 물음표입니다.
 - **승리·패배 효과** — 결과를 보여 주는 2.5초는 그대로 두고 그 안에서 강한 효과를 한 번 터뜨립니다. **기다리는 시간이 늘지 않습니다.**
 
-실제 화면과 시안·검증 기록은 [#122 통합 문서](docs/milestone/v0.4.7/issues/122/README.md)와 [GDD21 현재 범위](https://app.notion.com/p/3d71e7f1708581f292ede2ab862e63f5)에 있습니다. 첫 납품은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160), 최신 CJ REVISE 대응은 [뒤로가기·배경 수정 기록](docs/milestone/v0.4.7/issues/122/Mercury/revise-back-dark.md)에서 확인할 수 있습니다.
+실제 화면과 시안·검증 기록은 [#122 통합 문서](docs/milestone/v0.4.6/issues/122/README.md)와 [GDD21 현재 범위](https://app.notion.com/p/3d71e7f1708581f292ede2ab862e63f5)에 있습니다. 첫 납품은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160), 최신 CJ REVISE 대응은 [뒤로가기·배경 수정 기록](docs/milestone/v0.4.6/issues/122/Mercury/revise-back-dark.md)에서 확인할 수 있습니다.
 
-바뀌는 내용은 [v0.4.7 릴리스 노트(개발 중)](docs/releases/v0.4.7.md)에, 세부 규칙은 [#121 게임플레이 계약](docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md)과 [#146 전투 행동 계약](docs/milestone/v0.4.7/issues/146/Venus/gameplay-spec.md)에 있습니다.
+바뀌는 내용은 [v0.4.6 릴리스 노트](docs/releases/v0.4.6.md)에, 세부 규칙은 [#121 게임플레이 계약](docs/milestone/v0.4.6/issues/121/Venus/gameplay-spec.md)과 [#146 전투 행동 계약](docs/milestone/v0.4.6/issues/146/Venus/gameplay-spec.md)에 있습니다.
 
-**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 **위 전투 행동 변경까지 반영해 다시 촬영한 v0.4.7 개발판 화면**입니다. 플레이·전투 사진도 v0.4.7 개발판의 세로 화면입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있습니다. 전투 행동 변경은 2026-09-10 CJ 플레이 QA를 통과했고, 튜토리얼 표시 방식 변경(#128)도 같은 날 CJ 플레이 QA를 통과했습니다. **세로 화면·왕과 동료 아트·승패 효과(#122 · #124 · #126)도 2026-09-10 CJ 플레이 QA를 통과했습니다.** 첫 납품 기록은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160), 접촉·전투 규칙 개편과 준비 탭·전투 뒤로가기를 담은 2차 보완은 [Mars 보고](docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md)에 있습니다.
+**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 **위 전투 행동 변경까지 반영해 다시 촬영한 v0.4.6 개발판 화면**입니다. 플레이·전투 사진도 v0.4.6 개발판의 세로 화면입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있습니다. 전투 행동 변경은 2026-09-10 CJ 플레이 QA를 통과했고, 튜토리얼 표시 방식 변경(#128)도 같은 날 CJ 플레이 QA를 통과했습니다. **세로 화면·왕과 동료 아트·승패 효과(#122 · #124 · #126)도 2026-09-10 CJ 플레이 QA를 통과했습니다.** 첫 납품 기록은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160), 접촉·전투 규칙 개편과 준비 탭·전투 뒤로가기를 담은 2차 보완은 [Mars 보고](docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/report.md)에 있습니다.
 
 ## 게임 정보
 
 | 항목 | 내용 |
 | --- | --- |
 | 현재 버전 | [v0.4.5](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5) — 내려받아 플레이하는 정식 버전 |
-| 개발 중 버전 | [v0.4.7](docs/releases/v0.4.7.md) — 미출시 · 다운로드 없음 |
+| 다음 버전 | [v0.4.6](docs/releases/v0.4.6.md) — CJ QA PASS · 릴리스 준비 · 다운로드 없음 |
 | 최근 업데이트 | 2026-09-08 |
 | Star · Fork | [![Stars](https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars)](https://github.com/ChangjoSung/Digit-Duel) [![Forks](https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks)](https://github.com/ChangjoSung/Digit-Duel/forks) |
 | 필요한 환경 | 오프라인: 최신 데스크톱 브라우저(Chrome 권장) · 온라인: Windows PC 1대 + [Node.js](https://nodejs.org) |
@@ -157,7 +159,7 @@
 | 개발자 | 성창조 (Sung Changjo) · [이욱채 (lee775)](https://github.com/lee775) — Roblox 포팅 |
 | 첫 출시일 | 2026-09-02 (v0.3.0) |
 | 플랫폼 | HTML 데모 (브라우저) · Roblox 포팅 진행 중 · Android/Unity 버전은 개발 예정 |
-| 개발 일정 | [v0.4.6 — Roblox 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [v0.4.7 — 기획·화면·연출·외부망 및 정리](https://github.com/ChangjoSung/Digit-Duel/milestone/13) |
+| 개발 일정 | [v0.4.6 — 탐색 개편·연출·전투 정비·세로 UI](https://github.com/ChangjoSung/Digit-Duel/milestone/13) · [v0.5.0 — Roblox 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [v0.6.0 — Unity 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/4) |
 
 ## 플레이 방법
 
@@ -181,7 +183,7 @@
 
 혼자서 온라인 기능을 확인하려면 `server/서버시작.bat`을 켜고 `http://127.0.0.1:8080`을 브라우저 탭 두 개로 여세요. 서버 설정의 자세한 내용은 [`server/README.md`](server/README.md)에 있습니다.
 
-**개발 중인 v0.4.7을 미리 보고 싶다면**
+**릴리스 준비 중인 v0.4.6을 미리 보고 싶다면**
 
 - 위 Releases의 다운로드는 정식 버전 v0.4.5입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에 있으니, 초록색 **Code** 버튼에서 브랜치를 `dev`로 바꿔 받은 뒤 똑같이 `demo/index.html`을 열면 됩니다.
 - 게임 안 튜토리얼과 위 10장 캡처는 도망·수동 대기·함정 텔레포트·보호막 합산까지 갱신했습니다. #121 · #125 · #129와 #146 · #131 · #130은 2026-09-10 **CJ 플레이 QA를 통과**했고, 접속할 때마다 여는 튜토리얼(#128)도 같은 날 **CJ 플레이 QA를 통과**했습니다. 진행 상태는 [Issue #128](https://github.com/ChangjoSung/Digit-Duel/issues/128)이 원본입니다. 정식 출시본을 플레이하려면 v0.4.5를 쓰세요.
@@ -229,7 +231,7 @@ PR과 `main`·`dev` push마다 [GitHub Actions](https://github.com/ChangjoSung/D
 
 - Digit-Duel / Digit Dual 명칭과 브랜딩
 - 하수인 원본 · 파생 아트(`demo/assets/minions/`, `docs/milestone/v0.4.3/assets/minions/`, `docs/milestone/v0.4.3/issues/87/Earth/`의 생성 레퍼런스 이미지)와 이 README의 홍보 일러스트(`docs/media/`)
-- 왕·동료 원본과 파생 아트(`docs/milestone/v0.4.7/issues/124/Earth/`의 이미지, `demo/assets/leaders/`)와 화면·효과 시안(`#122`·`#126`의 Earth 이미지·벡터 아트)
+- 왕·동료 원본과 파생 아트(`docs/milestone/v0.4.6/issues/124/Earth/`의 이미지, `demo/assets/leaders/`)와 화면·효과 시안(`#122`·`#126`의 Earth 이미지·벡터 아트)
 - 렌더링된 게임 화면(`docs/screenshots/`, `docs/milestone/`의 검증 캡처 이미지, `docs/media/`의 이미지)
 
 Copyright 2026 Sung Changjo and Digit-Duel contributors.

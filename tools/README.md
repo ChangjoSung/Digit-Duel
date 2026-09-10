@@ -7,9 +7,9 @@
 | [`docs/`](docs) | 추적 중인 `*.md`의 내부 링크·이미지 무결성 | C. 문서 링크·이미지 무결성 |
 | [`media/`](media) | README 미디어 캡처와 오프라인 검증 | C. 문서 링크·이미지 무결성 |
 | [`art/`](art) | 하수인·왕·동료 아트 파이프라인(결정적 익스포터·검증기) | D. 납품 아트 자산 무결성 |
-| [`milestone/v0.4.7/issues/122/`](milestone/v0.4.7/issues/122) | 뒤로가기·어두운 배경 브라우저 증빙 | 로컬 Chrome 검수용 |
+| [`milestone/v0.4.6/issues/122/`](milestone/v0.4.6/issues/122) | 뒤로가기·어두운 배경 브라우저 증빙 | 로컬 Chrome 검수용 |
 
-버전 열은 출시된 파일의 최초 태그, Issue 열은 도입 작업을 가리킨다. 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니며**, 해당 Issue에서 추가됐지만 아직 출시 태그에 포함되지 않은 파일임을 뜻한다. 옛 경로 대조는 [#134 MOVES.csv](../docs/milestone/v0.4.7/issues/134/Mercury/MOVES.csv)에서 본다.
+버전 열은 출시된 파일의 최초 태그, Issue 열은 도입 작업을 가리킨다. 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니며**, 해당 Issue에서 추가됐지만 아직 출시 태그에 포함되지 않은 파일임을 뜻한다. 옛 경로 대조는 [#134 MOVES.csv](../docs/milestone/v0.4.6/issues/134/Mercury/MOVES.csv)에서 본다.
 
 ## 문서 무결성 (`docs/`)
 
@@ -29,7 +29,7 @@
 
 ## 이슈 전용 브라우저 증빙 (`milestone/`)
 
-이슈 전용 브라우저 도구 [`back_dark_shots.js`](milestone/v0.4.7/issues/122/back_dark_shots.js)는 실제 클릭·계산색 대비·360/390/데스크톱 화면을 확인한다. 기본 산출물은 `docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/media/`이며 `--out`으로 바꿀 수 있다. `--read-only`도 Chrome 임시 프로필을 만들기 때문에 Saturn의 파일 수정 금지 검수에서는 실행하지 않는다. 기존 도구와 승패·아트 전체 증빙은 보존한다.
+이슈 전용 브라우저 도구 [`back_dark_shots.js`](milestone/v0.4.6/issues/122/back_dark_shots.js)는 실제 클릭·계산색 대비·360/390/데스크톱 화면을 확인한다. 기본 산출물은 `docs/milestone/v0.4.6/issues/122/Mars/revise-back-dark/media/`이며 `--out`으로 바꿀 수 있다. `--read-only`도 Chrome 임시 프로필을 만들기 때문에 Saturn의 파일 수정 금지 검수에서는 실행하지 않는다. 기존 도구와 승패·아트 전체 증빙은 보존한다.
 
 ## 아트 파이프라인 (`art/`)
 

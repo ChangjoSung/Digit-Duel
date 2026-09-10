@@ -12,7 +12,7 @@
      D. #131 텔레포트 — 함정에 걸린 말(immobile>0)은 양끝 모두 거부 · 단계 유지 · 거부 안내 · 실행 직전 재검사 · 거부 시 상태 불변
      E. #128 튜토리얼 — 저장 프로필별 독립 · 단일 키 · origin 밖 공유 경로 없음 · 저장 차단에도 게임 진행 · 수동 재보기 상시
         (실제 두 브라우저 프로필·같은 HTTP origin 의 종단간 확인은 이 파일이 아니라
-         demo/test/milestone/v0.4.7/issues/146/issue146_cdp.js 가 실제 Chrome 으로 수행한다.)
+         demo/test/milestone/v0.4.6/issues/146/issue146_cdp.js 가 실제 Chrome 으로 수행한다.)
 
    저장소에 파일을 쓰지 않는다 (Saturn --read-only 재실행 가능). 종료 코드 1 = 판정 실패, 2 = 예외. */
 "use strict";

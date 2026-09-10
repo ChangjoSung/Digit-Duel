@@ -1,20 +1,23 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED. 정식 v0.4.5, Roblox #118=v0.4.6, HTML 계획=v0.4.7(미출시).
+> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED.
+>
+> **2026-09-10 버전 재배번 ([#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · CJ 승인)**: HTML 완결분 `v0.4.7`→**`v0.4.6`**(Milestone13 · 열린 이슈 0 · 릴리스 대상), Roblox `v0.4.6`→**`v0.5.0`**(Milestone12 · #118 진행 중), Unity `v0.5.0`→**`v0.6.0`**(Milestone4 · 미착수). 버전 키 폴더 5개를 함께 옮겼고 대조는 [MOVES.csv](../milestone/MOVES.csv) 2차 이동 절에 있다. 잔여 기획 #119·#120·#123·#127은 Unity 이후로 보류해 `not planned`로 닫았다(삭제 아님).
+> **브랜치 계약도 바뀌었다**: `이슈 →(squash) dev/vX.Y.Z →(merge) dev →(merge) main`. 트랙 브랜치는 dev에서 분기하고 보호·CI 6개를 함께 적용하며, 마일스톤 완료 시 main 직행은 금지다(hotfix만 예외, 즉시 dev 역병합). 정식 출시는 여전히 v0.4.5다.
 
 ## 마지막 회차 — #122 · #124 · #126 (CJ QA PASS · CLOSED)
 
-- **REVISE 2차 (최종)**: [접촉·전투 규칙 개편](../milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md) — 동료↔동료·동료↔왕·왕↔왕 전투화, 폭탄↔폭탄/함정 동반 제거, 도망 실패 시 상대 기본 공격 1회, 준비 탭 `aria-pressed` 동기화, 전투 '← 뒤로' 행동창 아래. 브랜치 `fix/122-contact-battle-rules`. **Codex 정지로 Saturn 교차 QA 미수행** — Mars 가 백업 QA·Git·문서를 대행했고 CJ 플레이 QA 가 최종 게이트였다. HTML 회귀 19종·CI A/C/E 로컬 재현·Roblox 1922 PASS·변이체 음성 대조 6건·헤드리스 Chrome 실측 6건(콘솔 오류 0).
+- **REVISE 2차 (최종)**: [접촉·전투 규칙 개편](../milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/report.md) — 동료↔동료·동료↔왕·왕↔왕 전투화, 폭탄↔폭탄/함정 동반 제거, 도망 실패 시 상대 기본 공격 1회, 준비 탭 `aria-pressed` 동기화, 전투 '← 뒤로' 행동창 아래. 브랜치 `fix/122-contact-battle-rules`. **Codex 정지로 Saturn 교차 QA 미수행** — Mars 가 백업 QA·Git·문서를 대행했고 CJ 플레이 QA 가 최종 게이트였다. HTML 회귀 19종·CI A/C/E 로컬 재현·Roblox 1922 PASS·변이체 음성 대조 6건·헤드리스 Chrome 실측 6건(콘솔 오류 0).
 - Roblox 미러(Battle·Engine·Ai·client)와 `roblox/tests/run.luau` 도 같은 계약으로 맞췄다 — 두 클라이언트 규칙이 갈리지 않게 한다.
 
 ## REVISE 1차 — #122 · #124 · #126
 
-- [수정 범위·검수 원장](../milestone/v0.4.7/issues/122/Mercury/revise-back-dark.md): dev `2055d5a9344f1476e87c3fb9dd19104a643bfe50` → `fix/122-back-dark-theme`, Run `run_593b37fa6871`. Mars Claude `task_7753c02bba5e` / `ctx_eb4e86fbc67d`가 HTML·툴링을 구현하고 Saturn Codex `task_43c6bf801879` / `ctx_a8c2e0895fd4`가 독립 READ_ONLY 검수했다. Mercury는 조정·Git·문서다. 확정 제품 `21637d1` / HTML blob `2a2c26da1728935ec024253ef9fad44945e3eabf`와 실제 Chrome13장 제품 검수 PASS다. 최종 미디어·CI·통합·자원 정산은 위 원장을 따른다. 아래 과거 PASS를 새 수정에 재사용하지 않는다.
+- [수정 범위·검수 원장](../milestone/v0.4.6/issues/122/Mercury/revise-back-dark.md): dev `2055d5a9344f1476e87c3fb9dd19104a643bfe50` → `fix/122-back-dark-theme`, Run `run_593b37fa6871`. Mars Claude `task_7753c02bba5e` / `ctx_eb4e86fbc67d`가 HTML·툴링을 구현하고 Saturn Codex `task_43c6bf801879` / `ctx_a8c2e0895fd4`가 독립 READ_ONLY 검수했다. Mercury는 조정·Git·문서다. 확정 제품 `21637d1` / HTML blob `2a2c26da1728935ec024253ef9fad44945e3eabf`와 실제 Chrome13장 제품 검수 PASS다. 최종 미디어·CI·통합·자원 정산은 위 원장을 따른다. 아래 과거 PASS를 새 수정에 재사용하지 않는다.
 - GDD13 DL56·GDD21·GitHub #122/#124/#126을 CJ QA REVISE로 기록했다. 좌상단 뒤로가기와 어두운 바탕만 후속 승인 범위이며 다른 Issue·Roblox·릴리스는 착수하지 않는다.
 
 ## 이전 납품 — PR160
 
-- [CJ 후속 범위](../milestone/v0.4.7/issues/122/Mercury/cj-followup.md)에 따른 세로 화면·왕/동료 아트·승패 효과를 구현하고 Saturn 독립 제품·미디어 검수 PASS를 받았다. [통합 기록](../milestone/v0.4.7/issues/122/Mercury/report.md)이 당시 소스·검증·절차 예외의 원본이다. 당시 세 Issue OPEN·CJ 아트/플레이 QA 대기였으며 이후 REVISE는 위 보완 절을 따른다. 정식 v0.4.5·v0.4.7 미출시다.
+- [CJ 후속 범위](../milestone/v0.4.6/issues/122/Mercury/cj-followup.md)에 따른 세로 화면·왕/동료 아트·승패 효과를 구현하고 Saturn 독립 제품·미디어 검수 PASS를 받았다. [통합 기록](../milestone/v0.4.6/issues/122/Mercury/report.md)이 당시 소스·검증·절차 예외의 원본이다. 당시 세 Issue OPEN·CJ 아트/플레이 QA 대기였으며 이후 REVISE는 위 보완 절을 따른다. 정식 v0.4.5·v0.4.7 미출시다.
 - 통합은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)의 최종 필수 CI6·dev squash로 관리한다. 제품 checkpoint `b3e077b654167a31736898224b50d212ce349ac4`, HTML blob `6bd3bed5bcbeda415b7d43591371ab77e5d31045`; 미디어 checkpoint `eeb2d11e03819ae87603584f234c55a79ff1f0b0`. 최종 PR head·CI·dev SHA는 PR160 및 Issue122의 통합 코멘트를 따른다.
 - Roblox PR161–166을 origin/dev `a22b8c8`까지 보존한 뒤 PR160을 통합했다. 마지막 incoming7파일은 Roblox 영역이며 해당 범위의 origin/dev 차이0을 확인했다. 별도 담당자의 구현·Studio QA를 이번 Mercury 납품으로 주장하지 않는다.
 - 은폐·인접·일시 공개·정체·메모 규칙은 유지한다. 비인접 은폐 위치는 DOM 미표시, 수풀에서 보이는 양측 말은 카드50%·본체70%, HP·소속·선택은 선명하게 표시한다. 전투는 적 우상단·아군 좌하단과 고정 HP 머리/스크롤 상태 목록·하단 네 명령이다. 같은 문서 로비/재대전은 #128 튜토리얼을 반복하지 않는다.
@@ -27,29 +30,29 @@
 
 ## #128 완료 이력
 
-- #128 후속 승인: URL 새접속·새탭·새로고침·브라우저 재실행 후 새문서·LAN 서버 재시작 후 새접속마다 1단계 표시. 같은 열린 페이지의 새게임·재대전·모드변경·연결복구·탭/보존 페이지 복귀에는 자동 반복하지 않는다. 완료·건너뛰기·Esc·수동 다시보기·기존10단계·접근성·다른 저장값 보존. 계정/서버/브라우저 저장 전체 삭제는 범위가 아니다. GDD13 본문4.13·DL47, [현재 PD 기록](../milestone/v0.4.7/issues/128/Mercury/report.md) 참조.
+- #128 후속 승인: URL 새접속·새탭·새로고침·브라우저 재실행 후 새문서·LAN 서버 재시작 후 새접속마다 1단계 표시. 같은 열린 페이지의 새게임·재대전·모드변경·연결복구·탭/보존 페이지 복귀에는 자동 반복하지 않는다. 완료·건너뛰기·Esc·수동 다시보기·기존10단계·접근성·다른 저장값 보존. 계정/서버/브라우저 저장 전체 삭제는 범위가 아니다. GDD13 본문4.13·DL47, [현재 PD 기록](../milestone/v0.4.6/issues/128/Mercury/report.md) 참조.
 - 이번 출발: `fix/128-tutorial-every-load`, 원격 dev `bdce124e73fe82534dd1757deef70976e12a7ef5`(Roblox PR153 포함), 이전 HTML blob `2a9b54c769a58fc5c0db9e913ce4421bec6758e3`. Run `run_3b8c920c6131`, Mars/Venus=Claude·Saturn=Codex READ_ONLY·Mercury=조정/Git/문서. 실제 Task/Dispatch·완료 자원 상태는 Orca가 원본이다.
-- 검수 제품: 커밋 `17cdae8c5cabe77c791bc61349cbebb0ecd659cd`, HTML blob `8027cd72d8445c9a7077d0e43b1c5559645ee165`. 원격 Roblox PR154/155(dev `817f79d`)를 먼저 ff했고 incoming은 Roblox 영역뿐이었다. 회귀19종·Chrome26/0·Saturn 독립61/0 및 선택3종465/0, README1100/390 렌더 문제0을 확인했다. 기존10단계는 내용이 같아 #146 촬영본을 보존한다. [이번 검증·한계·정산](../milestone/v0.4.7/issues/128/Mercury/report.md)에 제품/문서 해시와 후속 렌더 누락 정정을 기록한다.
+- 검수 제품: 커밋 `17cdae8c5cabe77c791bc61349cbebb0ecd659cd`, HTML blob `8027cd72d8445c9a7077d0e43b1c5559645ee165`. 원격 Roblox PR154/155(dev `817f79d`)를 먼저 ff했고 incoming은 Roblox 영역뿐이었다. 회귀19종·Chrome26/0·Saturn 독립61/0 및 선택3종465/0, README1100/390 렌더 문제0을 확인했다. 기존10단계는 내용이 같아 #146 촬영본을 보존한다. [이번 검증·한계·정산](../milestone/v0.4.6/issues/128/Mercury/report.md)에 제품/문서 해시와 후속 렌더 누락 정정을 기록한다.
 - 추가 Notion 이관: 같은 페이지 ID/URL로 [README 작성 규격 GDD19](https://app.notion.com/p/3d51e7f1708580f18f2dc4a643721059)·[턴 행동 GDD20](https://app.notion.com/p/3d51e7f1708580b0916ded4bd3d9d06e)을 Game Design Docs 승인 목록에 이동하고 #121 형식으로 정리했다. 원문·이미지4/5개·기존 Summary를 보존했으며 GDD13 DL48에 기록했다.
 
 ## 직전 PR152 완료와 보존 이력
 
-- [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146): HP 제한 없는 도망 기본30%·자기 전투 행동1회. (실패 시 추가 반격 삭제는 같은 날 [#122 CJ QA REVISE 2차](../milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md)로 대체 — 지금은 상대의 기본 공격 1회를 맞는다.) 도망의 수호자는 해당 배틀70%. 4슬롯 전부 불가 시 기본 공격 없이 수동 대기, 왕/동료 본체 기본 공격 유지. [최신 승인 계약](../milestone/v0.4.7/issues/146/Venus/gameplay-spec.md), GDD13 DL45·GDD18 기준.
+- [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146): HP 제한 없는 도망 기본30%·자기 전투 행동1회. (실패 시 추가 반격 삭제는 같은 날 [#122 CJ QA REVISE 2차](../milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/report.md)로 대체 — 지금은 상대의 기본 공격 1회를 맞는다.) 도망의 수호자는 해당 배틀70%. 4슬롯 전부 불가 시 기본 공격 없이 수동 대기, 왕/동료 본체 기본 공격 유지. [최신 승인 계약](../milestone/v0.4.6/issues/146/Venus/gameplay-spec.md), GDD13 DL45·GDD18 기준.
 - [#131](https://github.com/ChangjoSung/Digit-Duel/issues/131): 함정에 걸린 양쪽 대상의 선택·실행 차단과 첫 말→교체할 말 두 단계 안내.
 - [#130](https://github.com/ChangjoSung/Digit-Duel/issues/130): 남은 보호막+이번 기술의 기존 부여량 합산. 신규 수치·상한·기간 없이 기존 흡수·화상 우회·초기화 유지.
 - [#128](https://github.com/ChangjoSung/Digit-Duel/issues/128): 독립 Chrome 프로필/동일 HTTP origin에서 신고 증상 미재현. 최종 증빙은 A·B 탭을 먼저 열고 A 완료 후 B를 관측하며 이후 각 프로필의 미완료 재방문/완료 생략이 독립이다. 첫 navigation 순서를 확대하지 않는다. 저장 로직 무변경·회귀/증빙만 추가했고 CJ 재현 주소·브라우저를 질문했다. 물리 2PC나 신고 증상 해결 PASS가 아니다.
 - 통합 원본은 [PR152](https://github.com/ChangjoSung/Digit-Duel/pull/152)(대상 dev)다. 작업 브랜치 `feature/146-battle-actions`는 출발 dev `33bbc19`에서 Roblox PR151의 `697212e`를 ff-only로 포함했다. 제품·촬영 기준 `aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea`, HTML blob `2a9b54c769a58fc5c0db9e913ce4421bec6758e3`, Windows SHA256 `b1c33ae8ff87e64cb71481714d73966f09e3af5f3b8506d82893dccb77f305de`. 신규 회귀207/0·19종 회귀·Chrome81/0·튜토리얼10장·최종 README1100/390 렌더를 검증했다. 문서 후속 커밋은 제품을 바꾸지 않는다.
-- PR152 Run `run_c784a12efc36`: 최종 head `8023ce2302b4cd32a8622b254089107dc7fb725c`의 필수 CI5 PASS 후 dev `24ebf3644bc990d474ee8b1ae70cd43ebee79b9c`에 squash했고 전체 트리가 같았다. 전용 feature는 삭제했다. Venus/Mars=Claude, Saturn=Codex READ_ONLY, Mercury=조정/Git/문서. [코어 PASS](../milestone/v0.4.7/issues/146/Saturn/core-review.md)와 [미디어/렌더 PASS·보고 정정 REVISE 원문](../milestone/v0.4.7/issues/146/Saturn/delivery-delta.md)을 구분한다. 완료 Worker는 최종 소유자에서 archive/release했고, 같은 Mars 터미널 후속 Task의 아래 절차 위반은 failed로 보존한다. #130·#131·#146은 이후 CJ 명시적 QA PASS로 종결했다.
-- **후속 정리 절차 위반**: Mars `task_c5532cf6d758`/`ctx_7799bd4b330b`가 `%TEMP%/i146cdp-main-*`, `profA-*`, `profB-*` 각8·합24개를 wildcard `rm -rf`로 삭제했다. 개별 절대경로·생성주체/시각 사전 대조가 없었고 같은 접두사 타 주체 자원 가능성을 배제하지 못한다. PD는 추가 수동 정리를 중지했고 후속 Task의 failed 보고를 확인한 뒤 archive/release했다. 제품/미디어 PASS를 절차 준수 PASS로 확대하지 않는다. 보고 문장 정정은 PD가 직접 대조했다. [경위·확인 한계](../milestone/v0.4.7/issues/146/Mercury/report.md).
-- #121·#125·#129는 [PR143](https://github.com/ChangjoSung/Digit-Duel/pull/143) dev `2b47a23` 통합·CI5·Saturn PASS 후 2026-09-10 CJ QA PASS로 CLOSED다. 당시 제품/촬영 checkpoint `157026ba617166644ada0686b897d3ae2a166486`, [Saturn 보고](../milestone/v0.4.7/issues/121/Saturn/report.md)·[PD 보고](../milestone/v0.4.7/issues/121/Mercury/report.md)와 검수 한계는 보존한다. 당시 Worker는 전부 archive/release했다.
+- PR152 Run `run_c784a12efc36`: 최종 head `8023ce2302b4cd32a8622b254089107dc7fb725c`의 필수 CI5 PASS 후 dev `24ebf3644bc990d474ee8b1ae70cd43ebee79b9c`에 squash했고 전체 트리가 같았다. 전용 feature는 삭제했다. Venus/Mars=Claude, Saturn=Codex READ_ONLY, Mercury=조정/Git/문서. [코어 PASS](../milestone/v0.4.6/issues/146/Saturn/core-review.md)와 [미디어/렌더 PASS·보고 정정 REVISE 원문](../milestone/v0.4.6/issues/146/Saturn/delivery-delta.md)을 구분한다. 완료 Worker는 최종 소유자에서 archive/release했고, 같은 Mars 터미널 후속 Task의 아래 절차 위반은 failed로 보존한다. #130·#131·#146은 이후 CJ 명시적 QA PASS로 종결했다.
+- **후속 정리 절차 위반**: Mars `task_c5532cf6d758`/`ctx_7799bd4b330b`가 `%TEMP%/i146cdp-main-*`, `profA-*`, `profB-*` 각8·합24개를 wildcard `rm -rf`로 삭제했다. 개별 절대경로·생성주체/시각 사전 대조가 없었고 같은 접두사 타 주체 자원 가능성을 배제하지 못한다. PD는 추가 수동 정리를 중지했고 후속 Task의 failed 보고를 확인한 뒤 archive/release했다. 제품/미디어 PASS를 절차 준수 PASS로 확대하지 않는다. 보고 문장 정정은 PD가 직접 대조했다. [경위·확인 한계](../milestone/v0.4.6/issues/146/Mercury/report.md).
+- #121·#125·#129는 [PR143](https://github.com/ChangjoSung/Digit-Duel/pull/143) dev `2b47a23` 통합·CI5·Saturn PASS 후 2026-09-10 CJ QA PASS로 CLOSED다. 당시 제품/촬영 checkpoint `157026ba617166644ada0686b897d3ae2a166486`, [Saturn 보고](../milestone/v0.4.6/issues/121/Saturn/report.md)·[PD 보고](../milestone/v0.4.6/issues/121/Mercury/report.md)와 검수 한계는 보존한다. 당시 Worker는 전부 archive/release했다.
 - [Milestone12 v0.4.6](https://github.com/ChangjoSung/Digit-Duel/milestone/12)은 [이욱채(lee775)](https://github.com/lee775)의 Roblox #118 전용이다. 해당 제품 수정·QA 판정·자원 정리를 이 PD가 대신하지 않는다.
-- [Milestone13 v0.4.7](https://github.com/ChangjoSung/Digit-Duel/milestone/13)의 Infra #132/#134는 완료·CLOSED다. #134 [PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136) dev `a073c0c`·CI5·Saturn·CJ QA PASS와 [절차 예외](../milestone/v0.4.7/issues/134/Mercury/report.md)를 보존한다.
+- [Milestone13 v0.4.7](https://github.com/ChangjoSung/Digit-Duel/milestone/13)의 Infra #132/#134는 완료·CLOSED다. #134 [PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136) dev `a073c0c`·CI5·Saturn·CJ QA PASS와 [절차 예외](../milestone/v0.4.6/issues/134/Mercury/report.md)를 보존한다.
 - 실제 Claude 한도 중단 때만 같은 역할 Codex로 이어가는 CJ 승인은 유효하다. 이번 작업에서는 한도 중단이 관찰되지 않았다.
 
 
 ## 완료 이력 — 선행 Infra #132
 
-- **2026-09-10 CJ 추가 승인 완료:** `E. Roblox 클라이언트·규칙 (Luau)`를 dev·main에 여섯 번째 필수 검사로 연결했다. PR163/dev2c04b7f 성공 이력 확인, 두 보호 API 재조회에서 앱15368의6개·strict=true·나머지 보호 설정 동일을 확인했다. [현행 연결 기록](../milestone/v0.4.7/issues/132/Mercury/required-checks.md)·[Issue132](https://github.com/ChangjoSung/Digit-Duel/issues/132#issuecomment-5614971093)·GDD13 DL54를 따른다. 아래5개 기록은 최초 도입 당시 증거이며 현재 필수 목록은6개다.
+- **2026-09-10 CJ 추가 승인 완료:** `E. Roblox 클라이언트·규칙 (Luau)`를 dev·main에 여섯 번째 필수 검사로 연결했다. PR163/dev2c04b7f 성공 이력 확인, 두 보호 API 재조회에서 앱15368의6개·strict=true·나머지 보호 설정 동일을 확인했다. [현행 연결 기록](../milestone/v0.4.6/issues/132/Mercury/required-checks.md)·[Issue132](https://github.com/ChangjoSung/Digit-Duel/issues/132#issuecomment-5614971093)·GDD13 DL54를 따른다. 아래5개 기록은 최초 도입 당시 증거이며 현재 필수 목록은6개다.
 
 - [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132): 기존 문서 자료 342개 중 306개를 버전·Issue·역할/용도별로 이동했다(Markdown 73개, 기타 233개). 36개는 상시 안내·운영 계약·공용 미디어로 유지한다. 고유 측정·REVISE·출처 증거를 보존하기 위해 순수 삭제·통합은 0건으로 판단했다. [전체 경로표](../milestone/MOVES.csv)가 원본 342개를 모두 대응한다.
 - 이동 직후 306/306의 작업 트리 SHA256이 동일했다. 기존 57파일의 명시적 줄바꿈/whitespace 규칙도 새 경로로 옮겼다. Saturn 독립 READ_ONLY 검수에서 비 Markdown 250개(이동233+유지17)의 원본 blob, 이동 Markdown73개의 링크 외 본문, 제품·서버·승인 아트 보존을 확인했다. 문서 검사106개·내부 참조332건 문제0, 링크 검사기 회귀34건과 AI 완주13경기·59단언을 검증했다.
@@ -75,8 +78,8 @@
 - [Issue106 절차 위반](../milestone/v0.4.4/issues/106/Mercury/issue106-pd-incident.md): 과거 Worker의 테스트 Git 복원·프로필 접두사 기반 Chrome 종료. 파일은 HEAD와 같고 Saturn 영향은 관찰되지 않았지만 전체 종료 대상의 소유권은 입증되지 않았다. 같은 방식을 반복하지 않는다.
 - #104의 과거 `README.txt`가 가리키는 로그 3개는 작업 트리에 있으나 `*.log` 무시 규칙으로 저장소에 포함되지 않았다. 이 작업에서 재생성·force add·삭제하지 않는다. **추적 문서의 옛 `docs/qa/` 경로를 비웠다는 말은 미추적 로그 폴더까지 제거했다는 뜻이 아니다.**
 - #132 분석 중 Mars가 `du -sh --exclude=.git .`로 전체 폴더 용량을 집계하며 보호 경로 메타데이터도 조회한 1건을 확인했다. 관찰된 명령은 내용 읽기나 수정이 아닌 용량 집계였으며, PD가 즉시 추적 파일·명시적 허용 경로만 조회하도록 정정하고 CJ에게 보고했다.
-- #132 최초 [CI 실행](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34309177070)은 D에서 PNG14장+매니페스트1건 불일치로 실패했다. 승인 파일·비교 기준을 보존하고 납품 환경으로 맞춘 뒤 성공했다. 압축 구현 차이는 강한 추론이며 Linux 생성 PNG의 픽셀을 직접 비교한 것은 아니다. README 미디어 도구의 SHA 불일치는 기존 WARN 정책이며, 문서 검사기도 외부 URL·제목 앵커·모든 CommonMark 구문을 검증하지 않는다. 상세 관측·정정·한계는 [Mars 보고](../milestone/v0.4.7/issues/132/Mars/report.md)에 보존한다.
-- #134 분석 Worker는 `mutation=none`에서 임시 보고 파일을 실제 작성했다. “파일 쓰기0” 보고를 `role_scope_mismatch`로 수락 거부하고 Task를 failed로 정정했다. 증거를 보존한 채 새 구현 Task의 입력으로만 이어갔다. [정정 기록](../milestone/v0.4.7/issues/134/Mercury/report.md)과 Issue134에 남기며 정상 준수로 소급하지 않는다.
+- #132 최초 [CI 실행](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34309177070)은 D에서 PNG14장+매니페스트1건 불일치로 실패했다. 승인 파일·비교 기준을 보존하고 납품 환경으로 맞춘 뒤 성공했다. 압축 구현 차이는 강한 추론이며 Linux 생성 PNG의 픽셀을 직접 비교한 것은 아니다. README 미디어 도구의 SHA 불일치는 기존 WARN 정책이며, 문서 검사기도 외부 URL·제목 앵커·모든 CommonMark 구문을 검증하지 않는다. 상세 관측·정정·한계는 [Mars 보고](../milestone/v0.4.6/issues/132/Mars/report.md)에 보존한다.
+- #134 분석 Worker는 `mutation=none`에서 임시 보고 파일을 실제 작성했다. “파일 쓰기0” 보고를 `role_scope_mismatch`로 수락 거부하고 Task를 failed로 정정했다. 증거를 보존한 채 새 구현 Task의 입력으로만 이어갔다. [정정 기록](../milestone/v0.4.6/issues/134/Mercury/report.md)과 Issue134에 남기며 정상 준수로 소급하지 않는다.
 
 ## 역할·자원 소유권
 

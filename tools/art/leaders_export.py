@@ -6,8 +6,8 @@ Earth 가 생성한 원본을 읽기 전용으로 열어 게임이 쓰는 크기
 창작적 편집·매트 제거·색 보정·리터칭·합성을 하지 않는다 — 그런 변경이 필요하면 Earth 의 imagegen 으로 되돌린다.
 
 입력 (Earth 소유 · 읽기 전용):
-  docs/milestone/v0.4.7/issues/124/Earth/king-sovereign-source-v1.png       1254x1254 RGBA
-  docs/milestone/v0.4.7/issues/124/Earth/companion-guide-source-v1.png      1254x1254 RGBA
+  docs/milestone/v0.4.6/issues/124/Earth/king-sovereign-source-v1.png       1254x1254 RGBA
+  docs/milestone/v0.4.6/issues/124/Earth/companion-guide-source-v1.png      1254x1254 RGBA
 
 출력 (Mars 소유):
   demo/assets/leaders/king/icon64.png            64x64  RGBA — 보드 말 아이콘 (32 CSS px 에 2x 로 표시)
@@ -53,7 +53,7 @@ except ImportError:  # pragma: no cover - 환경 오류 경로
     raise SystemExit(2)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-REL_SOURCE_DIR = Path("docs/milestone/v0.4.7/issues/124/Earth")
+REL_SOURCE_DIR = Path("docs/milestone/v0.4.6/issues/124/Earth")
 REL_OUT_DIR = Path("demo/assets/leaders")
 REL_MANIFEST = REL_OUT_DIR / "leaders-manifest.json"
 
