@@ -60,6 +60,7 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 - 접촉·폭탄·함정·탐색 발견·획득·전투 개시/종료·턴 전환·경기 결과는 화면 **중앙 배너**(1.2초)로도 알린다 — HTML 데모의 배너 연출과 같은 순간이며, 판정은 `src/shared/Banner.luau`(테스트 [12]). 배너 전용 아트 적용 완료 (`art-apply-report.md` 3d).
 - 판 위 말 정보는 서버 필터 뷰만 내려온다 — 미공개 말은 정체 없이 표시. 봇도 같은 `Engine:apply` 검증을 지나므로 사람보다 더 할 수 있는 일이 없다.
 - UI 아트(P0 129 PNG): 패널·버튼 4상태·배지·HP/방어막 바·상태/아이템/행동/기술 종류/속성/흔적 아이콘 전량 연결 — 계약은 `roblox/assets/ui/README.md`, 적용 위치는 `docs/roblox/art-apply-report.md` 3b. 보드게임 창 프레임·봇 메시·난이도 배지·AI 행동 중 아이콘까지 적용 완료 (`art-apply-report.md` 3c).
+- **기록 보기**: 창 오른쪽 패널에는 최근 14줄만 나온다. **[📜 기록]** 버튼을 누르면 이번 대전의 **전체 기록(최근 300줄)** 이 번호와 함께 스크롤 창으로 열리고, 새 줄이 들어올 때마다 같이 갱신된다 — 내 화면 전용이라 서버로 아무것도 보내지 않는다. 게임 밖 로그(오류·서버 `print`/`warn`)는 **F9 개발자 콘솔**(Studio 는 Output 창)에서 본다.
 - 설계: [docs/roblox/lobby-design.md](../docs/roblox/lobby-design.md) · 아트 적용 보고: [docs/roblox/art-apply-report.md](../docs/roblox/art-apply-report.md) · 아트 요청: [earth-art-request.md](../docs/roblox/earth-art-request.md) / [earth-lobby-request.md](../docs/roblox/earth-lobby-request.md)
 
 ### Studio 테스트 (2인 로컬)
