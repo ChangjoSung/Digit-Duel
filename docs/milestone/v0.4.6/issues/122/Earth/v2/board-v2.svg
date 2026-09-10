@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="420" height="910" viewBox="0 0 420 910">
+<title>Digit Duel board v2 — current pieces, forest rows only</title>
+<defs>
+ <g id="cell"><rect width="52" height="52" rx="4" stroke="#333c52"/></g>
+ <g id="row"><use xlink:href="#cell"/><use xlink:href="#cell" x="54"/><use xlink:href="#cell" x="108"/><use xlink:href="#cell" x="162"/><use xlink:href="#cell" x="216"/><use xlink:href="#cell" x="270"/><use xlink:href="#cell" x="324"/></g>
+ <g id="bush"><path d="M3 46V33H6V28H11V24H19V27H23V21H32V25H37V29H44V33H48V46Z" fill="#315f3e"/><path d="M7 34V30H12V27H18V31H22V36H17V33H12V37H7ZM25 29V25H30V28H35V34H30V31H25ZM34 39V35H40V33H44V39H40V42H34Z" fill="#548452"/><path d="M8 44H20V41H28V45H42" fill="none" stroke="#234a32" stroke-width="3"/></g>
+ <g id="bushrow"><use xlink:href="#row" fill="#1f3a2a"/><use xlink:href="#bush"/><use xlink:href="#bush" x="54"/><use xlink:href="#bush" x="108"/><use xlink:href="#bush" x="162"/><use xlink:href="#bush" x="216"/><use xlink:href="#bush" x="270"/><use xlink:href="#bush" x="324"/></g>
+ <g id="fire"><rect x="2" y="2" width="48" height="48" rx="12" fill="#33406e" stroke="#6c82b1" stroke-width="2"/><image x="10" y="4" width="32" height="32" image-rendering="pixelated" xlink:href="../../../../../../../demo/assets/minions/fire_std/icon.png"/><text x="26" y="47" font-size="10" text-anchor="middle" fill="#e8ecf5">🔥 100</text></g>
+ <g id="fire-bush"><rect x="2" y="2" width="48" height="48" rx="12" fill="#33406e" fill-opacity="0.50" stroke="#6c82b1" stroke-width="2"/><image x="10" y="4" width="32" height="32" opacity="0.70" image-rendering="pixelated" xlink:href="../../../../../../../demo/assets/minions/fire_std/icon.png"/><text x="26" y="47" font-size="10" text-anchor="middle" fill="#e8ecf5">🔥 100</text></g>
+ <g id="water"><rect x="2" y="2" width="48" height="48" rx="12" fill="#6e3340" stroke="#a6697c" stroke-width="2"/><image x="10" y="4" width="32" height="32" image-rendering="pixelated" xlink:href="../../../../../../../demo/assets/minions/water_std/icon.png"/><text x="26" y="47" font-size="10" text-anchor="middle" fill="#e8ecf5">💧 88</text></g>
+</defs>
+<rect width="420" height="910" fill="#12151c"/>
+<g font-family="Malgun Gothic, sans-serif" fill="#e8ecf5">
+<text x="22" y="29" font-size="12" fill="#8a93a8">#122 · EARTH · V2 · 정적 제안</text><text x="22" y="58" font-size="23" font-weight="bold">Digit Duel</text><text x="22" y="84" font-size="13">P1 턴 · 행동을 선택하세요</text>
+<g transform="translate(22 106)">
+ <use xlink:href="#row" fill="#2a3350"/><use xlink:href="#row" y="54" fill="#2a3350"/><use xlink:href="#row" y="108" fill="#2a3350"/>
+ <use xlink:href="#bushrow" y="162"/><use xlink:href="#bushrow" y="216"/>
+ <use xlink:href="#row" y="270" fill="#2a2f3d"/><use xlink:href="#row" y="324" fill="#2a2f3d"/><use xlink:href="#row" y="378" fill="#2a2f3d"/>
+ <use xlink:href="#bushrow" y="432"/><use xlink:href="#bushrow" y="486"/>
+ <use xlink:href="#row" y="540" fill="#502a33"/><use xlink:href="#row" y="594" fill="#502a33"/><use xlink:href="#row" y="648" fill="#502a33"/>
+ <use xlink:href="#water" x="108" y="54"/><use xlink:href="#water" x="270" y="108"/>
+ <use xlink:href="#fire" x="162" y="378"/><rect x="163" y="379" width="50" height="50" rx="4" fill="none" stroke="#fff" stroke-width="2"/>
+ <use xlink:href="#fire-bush" x="270" y="486"/><use xlink:href="#fire" x="54" y="594"/>
+ <rect x="164" y="326" width="48" height="48" rx="4" fill="none" stroke="#5b8cff" stroke-width="2"/>
+ <rect x="110" y="380" width="48" height="48" rx="4" fill="none" stroke="#5b8cff" stroke-width="2"/>
+</g>
+<rect x="22" y="824" width="376" height="42" rx="6" fill="#242b3d" stroke="#333c52"/><text x="210" y="850" text-anchor="middle" font-size="14">탐색　 ·　 회복　 ·　 정보 / 기록</text>
+<text x="22" y="888" font-size="11" fill="#8a93a8">7×13 · 52px 칸 / 48px 말 / 아이콘32 + 속성·HP</text>
+</g></svg>

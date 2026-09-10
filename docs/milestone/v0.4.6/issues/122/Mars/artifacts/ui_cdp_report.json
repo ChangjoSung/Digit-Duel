@@ -1,0 +1,697 @@
+{
+  "source": "demo/index.html",
+  "blobSha1": "6bd3bed5bcbeda415b7d43591371ab77e5d31045",
+  "at": "2026-09-10T08:57:06.492Z",
+  "tool": "demo/test/milestone/v0.4.7/issues/122/ui_cdp.js",
+  "checks": [
+    {
+      "k": "layout.390x844",
+      "v": {
+        "vw": 390,
+        "vh": 844,
+        "docW": 390,
+        "docH": 844,
+        "bodyW": 390,
+        "appW": 390,
+        "bs": "0.901",
+        "boardLeft": 26,
+        "boardRight": 364,
+        "boardTop": 54,
+        "boardBottom": 685,
+        "dockTop": 749,
+        "dockBtns": 4,
+        "btnsOutside": 0,
+        "cellFirstTop": 54,
+        "cellLastBottom": 685,
+        "cellLastRight": 364,
+        "cellFirstLeft": 26,
+        "cellW": 46.85,
+        "cellH": 46.85,
+        "chipW": 43.25,
+        "icoW": 28.83,
+        "screen": "board"
+      }
+    },
+    {
+      "k": "layout.360x844",
+      "v": {
+        "vw": 360,
+        "vh": 844,
+        "docW": 360,
+        "docH": 844,
+        "bodyW": 360,
+        "appW": 360,
+        "bs": "0.901",
+        "boardLeft": 11,
+        "boardRight": 349,
+        "boardTop": 54,
+        "boardBottom": 685,
+        "dockTop": 749,
+        "dockBtns": 4,
+        "btnsOutside": 0,
+        "cellFirstTop": 54,
+        "cellLastBottom": 685,
+        "cellLastRight": 349,
+        "cellFirstLeft": 11,
+        "cellW": 46.85,
+        "cellH": 46.85,
+        "chipW": 43.25,
+        "icoW": 28.83,
+        "screen": "board"
+      }
+    },
+    {
+      "k": "layout.desktop-1280x900",
+      "v": {
+        "vw": 1280,
+        "vh": 900,
+        "docW": 1280,
+        "docH": 900,
+        "bodyW": 1280,
+        "appW": 432,
+        "bs": "0.93",
+        "boardLeft": 465,
+        "boardRight": 815,
+        "boardTop": 72,
+        "boardBottom": 723,
+        "dockTop": 787,
+        "dockBtns": 4,
+        "btnsOutside": 0,
+        "cellFirstTop": 72,
+        "cellLastBottom": 723,
+        "cellLastRight": 815,
+        "cellFirstLeft": 465,
+        "cellW": 48.36,
+        "cellH": 48.36,
+        "chipW": 44.64,
+        "icoW": 29.76,
+        "screen": "board"
+      }
+    },
+    {
+      "k": "battle",
+      "v": {
+        "battleBox": "box battleBox",
+        "scene": "scene",
+        "stage": {
+          "l": 31,
+          "t": 200,
+          "w": 329,
+          "h": 288
+        },
+        "op": {
+          "l": 39,
+          "t": 208,
+          "w": 162,
+          "h": 112
+        },
+        "me": {
+          "l": 189,
+          "t": 368,
+          "w": 162,
+          "h": 112
+        },
+        "tokOp": {
+          "l": 227,
+          "t": 218,
+          "w": 128,
+          "h": 144
+        },
+        "tokMe": {
+          "l": 33,
+          "t": 322,
+          "w": 128,
+          "h": 144
+        },
+        "cols": "160.391px 160.406px",
+        "btns": [
+          "⚔️ 싸우기",
+          "🎒 가방",
+          "🔴 포획",
+          "🏃 도망가기"
+        ],
+        "docW": 390,
+        "vw": 390
+      }
+    },
+    {
+      "k": "battle.overlapPx",
+      "v": {
+        "opPlateVsOpTok": 0,
+        "mePlateVsMeTok": 0,
+        "opPlateVsMeTok": 0,
+        "mePlateVsOpTok": 0
+      }
+    },
+    {
+      "k": "fx.win",
+      "v": {
+        "cls": "result win",
+        "shards": 16,
+        "names": [
+          "fxBurst",
+          "fxFlash",
+          "fxRays",
+          "fxWinIn"
+        ],
+        "maxEnd": 1060,
+        "titleColor": "rgb(255, 223, 122)"
+      }
+    },
+    {
+      "k": "fx.win.parts",
+      "v": [
+        {
+          "el": "fxBox",
+          "anim": "fxWinIn",
+          "dur": 620,
+          "delay": 0,
+          "end": 620
+        },
+        {
+          "el": "fxFx::before",
+          "anim": "fxFlash",
+          "dur": 550,
+          "delay": 0,
+          "end": 550
+        },
+        {
+          "el": "fxFx::after",
+          "anim": "fxRays",
+          "dur": 860,
+          "delay": 0,
+          "end": 860
+        },
+        {
+          "el": "shard[0]",
+          "anim": "fxBurst",
+          "dur": 880,
+          "delay": 0,
+          "end": 880
+        },
+        {
+          "el": "shard[15]",
+          "anim": "fxBurst",
+          "dur": 880,
+          "delay": 180,
+          "end": 1060
+        }
+      ]
+    },
+    {
+      "k": "fx.win.moveMs",
+      "v": 1060
+    },
+    {
+      "k": "fx.lose",
+      "v": {
+        "cls": "result lose",
+        "shards": 16,
+        "names": [
+          "fxCrack",
+          "fxDark",
+          "fxFall",
+          "fxLoseIn"
+        ],
+        "maxEnd": 1080,
+        "titleColor": "rgb(255, 125, 139)"
+      }
+    },
+    {
+      "k": "fx.lose.moveMs",
+      "v": 1080
+    },
+    {
+      "k": "fx.cap",
+      "v": {
+        "cls": "result cap",
+        "names": [
+          "fxCapIn",
+          "fxConverge",
+          "fxRing"
+        ],
+        "maxEnd": 930,
+        "titleColor": "rgb(231, 237, 247)"
+      }
+    },
+    {
+      "k": "fx.draw",
+      "v": {
+        "cls": "result match draw",
+        "names": [
+          "fxCapIn",
+          "fxDrawL",
+          "fxDrawR"
+        ],
+        "maxEnd": 800
+      }
+    },
+    {
+      "k": "capture.endpoint",
+      "v": {
+        "aliveFoeBefore": 8,
+        "aliveFoeAfter": 7,
+        "phase": "play",
+        "matchFxDone": false,
+        "banners": 1,
+        "bannerTitle": "포획 성공! 전투 종료",
+        "bannerKind": "result",
+        "cls": "result cap",
+        "titleText": "포획 성공! 전투 종료",
+        "reserve": true
+      }
+    },
+    {
+      "k": "capture.notOwner",
+      "v": {
+        "cls": "result cap capnot",
+        "names": [
+          "fxCapIn",
+          "fxConverge",
+          "fxRing"
+        ],
+        "maxEnd": 930,
+        "info": {
+          "title": "포획 성공! 전투 종료",
+          "n": 1,
+          "phase": "play",
+          "matchFxDone": false,
+          "titleColor": "rgb(233, 214, 219)",
+          "reserve": true
+        }
+      }
+    },
+    {
+      "k": "fx.match",
+      "v": {
+        "first": 1,
+        "second": 1,
+        "cls": "result match win",
+        "title": "경기 승리!",
+        "sub": "승리 유형: 왕 제거 · 총 0턴",
+        "phase": "over"
+      }
+    },
+    {
+      "k": "lobbyBack",
+      "v": {
+        "screen": "lobby",
+        "tut": false,
+        "overlay": true,
+        "obEmpty": true,
+        "netMode": false,
+        "netStarted": false,
+        "netMe": null,
+        "fxLocked": false,
+        "banner": true
+      }
+    },
+    {
+      "k": "rematch",
+      "v": {
+        "screen": "prep",
+        "tut": false,
+        "matchFxDone": false,
+        "phase": "setup"
+      }
+    },
+    {
+      "k": "bush",
+      "v": {
+        "mineBush": true,
+        "foeBush": true,
+        "foeHidden": true,
+        "foeText": "?",
+        "hiddenCellEmpty": true,
+        "hiddenCellHtml": "",
+        "mineBodyOpacity": "0.7",
+        "foeCardOpacity": "0.5",
+        "mineCardOpacity": "0.5",
+        "mineInfoOpacity": "1",
+        "plainBush": false,
+        "plainBodyOpacity": "1",
+        "plainCardOpacity": "1",
+        "foeSelfOpacity": "1"
+      }
+    },
+    {
+      "k": "leader",
+      "v": {
+        "loaded": [
+          "companion/battle256.png",
+          "companion/icon64.png",
+          "king/battle256.png",
+          "king/icon64.png"
+        ],
+        "failed": [],
+        "kingFace": "<img class=\"icon leader\" src=\"assets/leaders/king/icon64.png\" alt=\"\" aria-hidden=\"true\" width=\"32\" height=\"32\" onerror=\"artFail('king',this)\">",
+        "allyFace": "<img class=\"icon leader\" src=\"assets/leaders/companion/icon64.png\" alt=\"\" aria-hidden=\"true\" width=\"32\" height=\"32\" onerror=\"artFail('companion',this)\">",
+        "hiddenCells": "<div class=\"pc p1 hiddenId\">?</div><div class=\"pc p1 hiddenId\">?</div>",
+        "boardHasLeader": true
+      }
+    },
+    {
+      "k": "leaderTok",
+      "v": {
+        "body": "<div class=\"btok art tok-me\" id=\"tok-A\"><img class=\"bsprite leader\" src=\"assets/leaders/king/battle256.png\" alt=\"왕\" width=\"128\" height=\"128\" onerror=\"",
+        "cap": "<div class=\"btok art tok-me\" id=\"tok-A\"><img class=\"bsprite\" src=\"assets/minions/water_std/battle.png\" alt=\"포획 하수인·물\" width=\"128\" height=\"128\" onerror"
+      }
+    },
+    {
+      "k": "reducedMotion",
+      "v": {
+        "motion": true,
+        "boxAnim": "none",
+        "shardAnim": "none",
+        "title": "전투에서 승리!",
+        "sub": "결과 문구는 남는다",
+        "visible": true,
+        "titleColor": "rgb(255, 223, 122)"
+      }
+    },
+    {
+      "k": "reducedMotion.flee",
+      "v": {
+        "cls": "banner flee",
+        "windAnim": "none",
+        "title": "🛗 도망 성공!",
+        "sub": "후방의 자기 말을 골라 자리를 바꾸거나 생략하세요."
+      }
+    },
+    {
+      "k": "battleStress.390",
+      "v": {
+        "stA": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+        "boxes": {
+          "stage": {
+            "l": 31,
+            "t": 190,
+            "w": 329,
+            "h": 288
+          },
+          "op": {
+            "l": 39,
+            "t": 198,
+            "w": 162,
+            "h": 112
+          },
+          "me": {
+            "l": 189,
+            "t": 358,
+            "w": 162,
+            "h": 112
+          },
+          "tokOp": {
+            "l": 227,
+            "t": 208,
+            "w": 128,
+            "h": 144
+          },
+          "tokMe": {
+            "l": 33,
+            "t": 312,
+            "w": 128,
+            "h": 144
+          },
+          "stTextOp": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+          "docW": 390,
+          "vw": 390,
+          "boxScrollW": 357,
+          "boxClientW": 357,
+          "plates": [
+            {
+              "plateSelfScroll": {
+                "sh": 108,
+                "ch": 108
+              },
+              "headScroll": {
+                "sh": 64,
+                "ch": 64
+              },
+              "listScroll": {
+                "sh": 71,
+                "ch": 32
+              },
+              "nameVisible": true,
+              "hpVisible": true,
+              "statusText": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+              "statusItems": 7
+            },
+            {
+              "plateSelfScroll": {
+                "sh": 108,
+                "ch": 108
+              },
+              "headScroll": {
+                "sh": 64,
+                "ch": 64
+              },
+              "listScroll": {
+                "sh": 71,
+                "ch": 32
+              },
+              "nameVisible": true,
+              "hpVisible": true,
+              "statusText": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+              "statusItems": 7
+            }
+          ]
+        },
+        "overlap": {
+          "opPlateVsOpTok": 0,
+          "mePlateVsMeTok": 0,
+          "opPlateVsMeTok": 0,
+          "mePlateVsOpTok": 0,
+          "plateVsPlate": 0
+        }
+      }
+    },
+    {
+      "k": "battleStress.390.plates",
+      "v": [
+        {
+          "plateSelfScroll": {
+            "sh": 108,
+            "ch": 108
+          },
+          "headScroll": {
+            "sh": 64,
+            "ch": 64
+          },
+          "listScroll": {
+            "sh": 71,
+            "ch": 32
+          },
+          "nameVisible": true,
+          "hpVisible": true,
+          "statusText": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+          "statusItems": 7
+        },
+        {
+          "plateSelfScroll": {
+            "sh": 108,
+            "ch": 108
+          },
+          "headScroll": {
+            "sh": 64,
+            "ch": 64
+          },
+          "listScroll": {
+            "sh": 71,
+            "ch": 32
+          },
+          "nameVisible": true,
+          "hpVisible": true,
+          "statusText": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+          "statusItems": 7
+        }
+      ]
+    },
+    {
+      "k": "battleStress.390.listScroll",
+      "v": [
+        {
+          "overflowY": "auto",
+          "over": true,
+          "sh": 71,
+          "ch": 32,
+          "scrollTop": 39,
+          "lastBefore": false,
+          "lastAfter": true,
+          "headMoved": false,
+          "lastText": "화염탄 · 잔불 표식 · 응급 치유 · 전술 연계"
+        },
+        {
+          "overflowY": "auto",
+          "over": true,
+          "sh": 71,
+          "ch": 32,
+          "scrollTop": 39,
+          "lastBefore": false,
+          "lastAfter": true,
+          "headMoved": false,
+          "lastText": "전기탄 · 감전 침 · 응급 치유 · 전술 연계"
+        }
+      ]
+    },
+    {
+      "k": "battleStress.360",
+      "v": {
+        "stA": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+        "boxes": {
+          "stage": {
+            "l": 29,
+            "t": 190,
+            "w": 301,
+            "h": 288
+          },
+          "op": {
+            "l": 37,
+            "t": 198,
+            "w": 149,
+            "h": 112
+          },
+          "me": {
+            "l": 174,
+            "t": 358,
+            "w": 149,
+            "h": 112
+          },
+          "tokOp": {
+            "l": 199,
+            "t": 208,
+            "w": 128,
+            "h": 144
+          },
+          "tokMe": {
+            "l": 31,
+            "t": 312,
+            "w": 128,
+            "h": 144
+          },
+          "stTextOp": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+          "docW": 360,
+          "vw": 360,
+          "boxScrollW": 329,
+          "boxClientW": 329,
+          "plates": [
+            {
+              "plateSelfScroll": {
+                "sh": 108,
+                "ch": 108
+              },
+              "headScroll": {
+                "sh": 64,
+                "ch": 64
+              },
+              "listScroll": {
+                "sh": 71,
+                "ch": 32
+              },
+              "nameVisible": true,
+              "hpVisible": true,
+              "statusText": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+              "statusItems": 7
+            },
+            {
+              "plateSelfScroll": {
+                "sh": 108,
+                "ch": 108
+              },
+              "headScroll": {
+                "sh": 64,
+                "ch": 64
+              },
+              "listScroll": {
+                "sh": 71,
+                "ch": 32
+              },
+              "nameVisible": true,
+              "hpVisible": true,
+              "statusText": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+              "statusItems": 7
+            }
+          ]
+        },
+        "overlap": {
+          "opPlateVsOpTok": 0,
+          "mePlateVsMeTok": 0,
+          "opPlateVsMeTok": 0,
+          "mePlateVsOpTok": 0,
+          "plateVsPlate": 0
+        }
+      }
+    },
+    {
+      "k": "battleStress.360.plates",
+      "v": [
+        {
+          "plateSelfScroll": {
+            "sh": 108,
+            "ch": 108
+          },
+          "headScroll": {
+            "sh": 64,
+            "ch": 64
+          },
+          "listScroll": {
+            "sh": 71,
+            "ch": 32
+          },
+          "nameVisible": true,
+          "hpVisible": true,
+          "statusText": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+          "statusItems": 7
+        },
+        {
+          "plateSelfScroll": {
+            "sh": 108,
+            "ch": 108
+          },
+          "headScroll": {
+            "sh": 64,
+            "ch": 64
+          },
+          "listScroll": {
+            "sh": 71,
+            "ch": 32
+          },
+          "nameVisible": true,
+          "hpVisible": true,
+          "statusText": "🛡48 🔥화상2R 💧약화2회 ⚡감전2R 🌀감쇠30% 🎯집중 ⚠️피격+15%",
+          "statusItems": 7
+        }
+      ]
+    },
+    {
+      "k": "battleStress.360.listScroll",
+      "v": [
+        {
+          "overflowY": "auto",
+          "over": true,
+          "sh": 71,
+          "ch": 32,
+          "scrollTop": 39,
+          "lastBefore": false,
+          "lastAfter": true,
+          "headMoved": false,
+          "lastText": "화염탄 · 잔불 표식 · 응급 치유 · 전술 연계"
+        },
+        {
+          "overflowY": "auto",
+          "over": true,
+          "sh": 71,
+          "ch": 32,
+          "scrollTop": 39,
+          "lastBefore": false,
+          "lastAfter": true,
+          "headMoved": false,
+          "lastText": "전기탄 · 감전 침 · 응급 치유 · 전술 연계"
+        }
+      ]
+    }
+  ],
+  "pass": 159,
+  "fail": 0,
+  "fails": []
+}

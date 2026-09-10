@@ -1,0 +1,87 @@
+{
+  "geometry": {
+    "verts": 1388,
+    "tris": 2660,
+    "bounds_roblox": [
+      [
+        -0.8999999761581421,
+        -0.9999999403953552,
+        -1.350000023841858
+      ],
+      [
+        0.8999999761581421,
+        2.200000047683716,
+        0.44999998807907104
+      ]
+    ],
+    "size_roblox": [
+      1.7999999523162842,
+      3.199999988079071,
+      1.800000011920929
+    ],
+    "bbox_center_roblox": [
+      0,
+      0.6000000536441803,
+      -0.45000001788139343
+    ],
+    "pivot_roblox": [
+      0,
+      0,
+      0
+    ],
+    "front_roblox": [
+      0,
+      0,
+      -1
+    ],
+    "uv_layers": 1,
+    "materials": 1,
+    "cleanup": "Weld within0.0001stud and dissolve degenerate edges; recalc normals; triangulate; closed shells."
+  },
+  "slice_review": {
+    "schema": "ai-window-slice-proof-v1",
+    "cases": [
+      {
+        "path": "roblox/assets/ui/panel_window.png",
+        "preview": "window-slice-720x592.png",
+        "width": 720,
+        "height": 592,
+        "slice_center": [
+          24,
+          40,
+          232,
+          232
+        ],
+        "slice_scale": 1
+      },
+      {
+        "path": "roblox/assets/ui/panel_window.png",
+        "preview": "window-slice-960x720.png",
+        "width": 960,
+        "height": 720,
+        "slice_center": [
+          24,
+          40,
+          232,
+          232
+        ],
+        "slice_scale": 1
+      }
+    ]
+  },
+  "export": {
+    "author_axes": "Blender (X,-Z,Y) from Roblox (X,Y,Z)",
+    "fbx_axis_forward": "-Z",
+    "fbx_axis_up": "Y",
+    "bake_space_transform": true,
+    "apply_unit_scale": false,
+    "global_scale": 1,
+    "obj_forward": "NEGATIVE_Z",
+    "obj_up": "Y"
+  },
+  "tints": {
+    "grade5": "#8eb2ff",
+    "dan5": "#ffcf82"
+  },
+  "preview": "proof arrows/text/chair are not exported"
+}

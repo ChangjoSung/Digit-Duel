@@ -1,0 +1,370 @@
+# Digit Dual CI — Issue #132
+#
+# 설계 원칙
+#   - 액션은 전부 **전체 커밋 SHA** 로 고정한다. GitHub 보안 지침상 액션을 불변 릴리스로 쓰는 유일한 방법이다.
+#     (docs.github.com/en/actions/reference/security/secure-use — "Pinning an action to a full-length commit SHA
+#      is currently the only way to use an action as an immutable release")
+#     주석의 vX.Y.Z 는 사람이 읽기 위한 표기이며, 실제 확인은 SHA 로 한다.
+#   - 최소 권한: 최상위 `permissions: contents: read` 하나뿐이다. 어떤 잡도 쓰기 권한이나 secret 을 쓰지 않는다.
+#   - `pull_request_target` · `workflow_run` 을 쓰지 않는다. 두 트리거는 privileged 라 포크의 신뢰할 수 없는
+#     코드와 secret 이 만나는 통로가 된다. 이 워크플로의 모든 잡은 secret 없이 성립하므로 일반 `pull_request` 로 충분하다.
+#   - `persist-credentials: false` — 체크아웃 토큰을 .git/config 에 남기지 않는다.
+#   - `fetch-depth: 0` (필수) — smoke_cross_skill.js 가 `git show d614392:demo/index.html`,
+#     tools/art/minion_art.py 가 고정 baseline 커밋을 `git cat-file` 로 읽는다. 얕은 클론이면 이들이 환경 오류로 죽는다.
+#     저장소가 84 커밋 · .git 43MB 라 전체 히스토리 비용은 무시할 수 있다.
+#   - 잡마다 timeout-minutes 를 명시한다 (기본 360분 방치 방지).
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 같은 PR 에 새 커밋이 오면 이전 실행을 취소한다. main·dev 로의 push 는 릴리스 이력이므로 취소하지 않는다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '24'    # Active LTS (2025-10-28 ~ 2026-10-20), EOL 2028-04-30 — nodejs/Release schedule.json
+                        # Node 20 은 2026-04-30 EOL 이라 사용하지 않는다.
+                        # 도구가 요구하는 하한은 Node 22+ (tools/media/readme_media_capture.js 헤더)
+
+jobs:
+  # ── A. 규칙 회귀 + AI vs AI 완주 (헤드리스, 브라우저 없음) ────────────────────
+  rules-headless:
+    name: A. 규칙 회귀·AI 완주 (헤드리스)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # demo/index.html 의 <script> 를 DOM 스텁 위에서 eval 하는 하네스 기반. 외부 패키지 0.
+      # 모든 스위트가 **현재 작업 트리**의 demo/index.html 을 검사한다.
+      # smoke_issue146.js (#146·#131·#130·#128, v0.4.7): 도망 재계약(HP 조건 폐지·30%/70%·실패 반격 삭제)·4슬롯 전부 불가 시
+      # 수동 [턴 종료](기본 공격 없음·비공개·쿨링수 재평가·AI 두 난이도)·보호막 3경로 합산·텔레포트 함정 차단(양끝·재검사)·
+      # 튜토리얼 노출 정책. 변경 전 소스 음성 대조에서 A/B/C/D 절 30건이 떨어지는 것을 확인했다.
+      # E 절은 2026-09-10 CJ 승인으로 **문서 로드당 1회 자동 표시**(#128)를 고정하도록 개정됐다 — 제품이 영구 저장을
+      # 읽지도 쓰지도 않으므로 과거 tutorialSeen 키가 남아 있어도 매 로드 1단계부터 뜬다. 옛 '영구 최초 1회 + 저장
+      # 프로필 독립' 소스에 대한 음성 대조에서 E 절 7건이 떨어지는 것을 확인했다(같은 로드 무재표시 E2b 는 정책과
+      # 무관한 불변식이라 양쪽 통과). 초기 #128 의 두 PC 공유 신고는 그때도 재현되지 않았고 그 이력은 보존한다.
+      # smoke_search_packages.js (#121·#129, v0.4.7): 탐색 이벤트 3종 배치·공용 인벤토리·패키지 개봉·전투 버프 3종·
+      # 신규 공용 기술 3종·숲 포획·탐색 완료 턴 종료. 온라인 2인스턴스 락스텝·정보 경계·AI 두 난이도·AI vs AI 완주까지
+      # 같은 파일에서 본다 (브라우저 없음). 옛 smoke_cross_skill 의 보상 전달 절이 이 파일로 이전됐다.
+      - name: 턴 흐름·전투·온라인 규칙 회귀
+        run: |
+          set -e
+          node demo/test/regression/smoke_cycle5.js
+          node demo/test/regression/smoke_turnflow.js
+          node demo/test/regression/smoke_turnflow_timers.js
+          node demo/test/regression/smoke_memo.js
+          node demo/test/regression/smoke_own_side.js
+          node demo/test/regression/smoke_online.js
+          node demo/test/regression/smoke_online_sync.js
+          node demo/test/regression/smoke_testclient.js
+          node demo/test/regression/smoke_minion_art.js
+          node demo/test/regression/smoke_issue114.js
+          node demo/test/regression/smoke_tutorial.js
+          node demo/test/regression/smoke_search_packages.js
+          node demo/test/regression/smoke_issue146.js
+
+      # #122·#124·#126 (v0.4.7) 세로 UI 셸·왕/동료 아트 훅·승패 연출 계약 (브라우저 없음).
+      # 화면 상태 매핑과 마크업 보존 · 같은 문서 로비/재대전이 location.reload 를 부르지 않고 #128 자동 표시
+      # 플래그·사용자 저장값을 건드리지 않는 것 · 온라인 상태 완전 해제 · 경기 종료 연출이 **경기당 정확히 1회**이고
+      # 전투 결과와 직렬 중복되지 않는 것 · 전투 무승부 갈래 부재(동률=방어자 승) · 수풀 표시가 표시 계층에만 붙고
+      # visibleTo 은폐가 그대로인 것 · 왕/동료 아트가 로드 확인 뒤에만 뜨고 미공개 말에 정체 값을 만들지 않는 것.
+      # 실제 레이아웃·픽셀·타이머는 같은 폴더의 ui_cdp.js 가 보며 브라우저가 필요해 CI 잡에 넣지 않는다.
+      - name: 세로 UI·승패 연출·왕/동료 아트 계약 회귀 (#122·#124·#126)
+        run: node demo/test/milestone/v0.4.6/issues/122/issue122_rules.js
+
+      # #122 CJ QA REVISE (2026-09-10) — 좌상단 뒤로가기와 어두운 배경 계약 (브라우저 없음).
+      # 화면별 뒤로가기 표시 · 로비→타이틀 / 배치→로스터(선택 보존) / 결과→로비 · 준비 취소 확인과 [계속 준비하기] 보존 ·
+      # 보드에서는 서랍 우선 · 실제 대전은 toLobby 직행 없이 기존 기권 확인으로만 · AI 턴·온라인 상대 차례·열린 모달에서는 무동작 ·
+      # sim 관전 종료 확인 동안 AI 예약 보류와 취소 후 재개 · 옛 확인 버튼이 새 창을 닫지 못하는 소유권 ·
+      # location.reload 부재·#128 자동 표시 플래그·저장소 무변경 · :root 팔레트가 이전 게임 값이고 튜토리얼 잠금 블록이 그대로인 것.
+      # 실제 픽셀·대비는 같은 폴더의 ui_cdp.js 와 실촬영 증빙이 보며 브라우저가 필요해 CI 잡에 넣지 않는다.
+      - name: 뒤로가기·어두운 배경 계약 회귀 (#122 REVISE)
+        run: node demo/test/milestone/v0.4.6/issues/122/back_nav.js
+
+      # #125 (v0.4.7 CJ 결정) 연출 시간 단축 계약 — 연출 시간표(BAL.fx) · 같은 연출을 그리는 CSS 애니메이션·바 전환의 동기 ·
+      # 실제 타이머로 관측한 1.2초 잠금과 damageFx 안 방어막→HP 2단 여유. 하네스의 가짜 타이머 대신 Node 실 setTimeout 을
+      # 쓰므로 약 10초가 걸린다(브라우저 없음). 음성 대조: 변경 전 소스(2000/600), 표만 1200·CSS 2s 인 반쪽 변경,
+      # barStep 만 600 인 여유 0 변이체 모두 종료 코드 1 로 떨어지는 것을 확인했다.
+      - name: 연출 시간 계약 회귀 (#125 1.2초)
+        run: node demo/test/regression/smoke_fx_timing.js
+
+      # v0.4.5 출시본의 밸런스·튜토리얼 계약. 향후 승인된 기획 변경은 같은 PR 에서 이 단언들을 갱신한다.
+      - name: 밸런스·튜토리얼 계약 회귀 (v0.4.5 출시 기준)
+        run: |
+          set -e
+          node demo/test/regression/smoke_attack_balance.js
+          node demo/test/regression/smoke_shock.js
+
+      # 기준판(d614392) 대조 — fetch-depth:0 이 필요한 지점
+      - name: 기준판 대조 회귀
+        run: node demo/test/regression/smoke_cross_skill.js
+
+      # 기본 소스가 고정 ref(6baa0b5) 라서 --path 로 **현재 작업 트리**를 명시한다.
+      # 이 인자가 없으면 PR 내용과 무관하게 2026-09-08 판 파일을 검사해 항상 통과한다.
+      - name: 보드 방향 감사 (현재 작업 트리)
+        run: node demo/test/regression/smoke_orientation_audit.js --path demo/index.html
+
+      # AI vs AI 완주 게이트 — 고정 시드·스텝 예산·불변식·종료 상태 적법성.
+      # demo/test/reports/ai_compare.js 는 어서션도 process.exit 도 없는 리포트 생성기라 게이트로 쓰지 않는다.
+      - name: AI vs AI 완주 게이트
+        run: node demo/test/regression/smoke_ai_completion.js
+
+  # ── B. 릴레이 서버 (프로토콜·보안·기동 설정) ──────────────────────────────────
+  server:
+    name: B. 서버 (프로토콜·보안·설정)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false      # 서버 잡은 git 히스토리를 읽지 않는다
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # 락파일 기준 설치 (유일한 런타임 의존성: ws)
+      - name: 의존성 설치 (npm ci)
+        run: npm ci
+        working-directory: server
+
+      # 각 테스트는 PORT=0(임의 포트)·루프백으로 자식 서버를 띄운다 — 러너 포트 충돌 없음.
+      # test-launcher.js 는 Windows 전용이라 여기서는 스스로 SKIP 한다 (실제 검증은 아래 server-launcher-windows).
+      - name: 서버 회귀 (프로토콜·보안·설정·실행기)
+        run: npm test
+        working-directory: server
+
+  # ── B2. Windows 실행기 회귀 ──────────────────────────────────────────────────
+  # server/test-launcher.js 는 `if (process.platform !== 'win32') { SKIP; exit(0) }` 라
+  # Linux 잡에서는 **한 건도 검증하지 않는다**. 배치 실행기(서버시작.bat · LAN서버시작.bat)의
+  # 인자 무시·모드 고정·주입 방지·종료 코드 전파 계약을 실제로 확인하려면 Windows 러너가 필요하다.
+  server-launcher-windows:
+    name: B2. Windows 실행기 회귀
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # 스텁 server.js 로만 돌아가므로 npm install 이 필요 없다 (테스트가 node_modules 를 미리 만든다).
+      - name: 배치 실행기 계약 회귀
+        run: node test-launcher.js
+        working-directory: server
+
+  # ── C. 문서 무결성 (링크·이미지) ──────────────────────────────────────────────
+  docs-integrity:
+    name: C. 문서 링크·이미지 무결성
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # 검사기 자체의 회귀가 먼저다 — 음성 대조(깨진 링크·대소문자·저장소 밖 참조)와
+      # 종료 코드 전파(크래시·타임아웃)를 소유 임시 디렉터리 안에서만 확인한다.
+      - name: 링크 검사기 회귀 (음성 대조 포함)
+        run: node tools/docs/test/docs_link_check_test.js
+
+      # 추적 중인 *.md 의 내부 상대 링크·이미지. 대소문자 정확 일치까지 본다
+      # (Windows·macOS 는 대소문자를 구분하지 않아 로컬에서는 안 보이는 실패가 Linux·github.com 에서 터진다).
+      - name: 문서 링크·이미지 검사
+        run: node tools/docs/docs_link_check.js --verbose
+
+      # README 미디어 도구의 정적 자기 검사 + 오프라인 검증.
+      # --no-gh --no-render 로 gh CLI·Chrome·네트워크·secret 없이 파일시스템 검사만 수행한다.
+      - name: README 미디어 도구 자기 검사
+        run: node tools/media/readme_media_capture.js selfcheck
+
+      # --manifest 를 명시한다: 도구 기본값은 Issue #105(v0.4.4) 매니페스트다.
+      # #146(v0.4.7)에서 도망·수동 대기·보호막·텔레포트 규칙이 튜토리얼 10단계 문안에 들어가 **다시 촬영**했으므로
+      # 매니페스트를 그 납품본으로 바꾼다 (촬영 ref aa6998ae · demo/index.html blob 2a9b54c7 · 뷰포트 1280x900 · dpr 2).
+      # 앞선 #121 매니페스트와 그 PNG 10장은 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
+      # 매니페스트를 옛 것으로 두면 frame 캡션 기준이 현행 문안과 어긋나 WARN 이 난다 —
+      # 새 PNG 의 SHA 를 엄격히 대조하는 게이트가 아니다. verify 의 크기·해시 대조는 docs/media 고정 경로를 읽는다.
+      # 이 매니페스트로 로컬 실측 문제 0건이다. 도구 기본값·경고 정책·테스트는 건드리지 않고 CI 인자만 현재 납품본에 맞춘다.
+      # #122 (v0.4.7): 세로 UI 개편으로 README 게임 화면 기준이 바뀌어 현재 납품본 매니페스트로 옮긴다.
+      # #122 CJ QA REVISE (2026-09-10): 어두운 배경 복원으로 튜토리얼 10장을 **새 소스(21637d1)로 다시 촬영**해
+      # README 참조를 revise-back-dark/tutorial 로 옮겼으므로 매니페스트도 그 납품본으로 바꿨다.
+      # #122 CJ QA REVISE 2차 (2026-09-10, PR#168): 접촉·전투 규칙 개편으로 5·6·7단계 문안이 바뀌어 다시 촬영했고
+      # README 참조가 revise-cjqa-rules/tutorial 로 옮겨갔다. **매니페스트 인자도 함께 옮긴다** —
+      # 옛 매니페스트를 두면 기록된 경로가 README 경로와 겹치지 않아 바이트 대조가 **조용히 건너뛰어진다**
+      # (실패도 WARN 도 없이 가드만 사라진다). PR#168 에서 이 인자를 놓쳤고 #169 에서 교정한다.
+      # 앞선 #105·#146·#122(1차) 매니페스트와 그 PNG 는 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
+      - name: README 링크·이미지 오프라인 검증 (#122 REVISE 2차 매니페스트)
+        run: >-
+          node tools/media/readme_media_capture.js verify --read-only --no-gh --no-render
+          --manifest docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json
+
+      # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
+      - name: README 도구 READ_ONLY 회귀
+        run: node tools/media/test/readme_media_readonly_test.js --quick --no-gh
+
+  # ── D. 납품 아트 자산 무결성 ─────────────────────────────────────────────────
+  # 이 잡은 **납품된 바이트 그대로**를 대조하므로 러너를 그 바이트를 구운 환경에 맞춘다 —
+  # windows-2025 · Python 3.14.3 · Pillow 12.3.0. ubuntu-24.04 + Python 3.12.14 에서는 같은
+  # 핀으로도 unchanged=14 mismatch=15 로 실패했다(run 34309177070 / job 102332065379).
+  # 관측·추론과 근거 데이터는 docs/milestone/v0.4.6/issues/132/Mars/report.md 4부 참조.
+  # 권위 있는 실패 기준은 아래 바이트·매니페스트 대조다 — 자산 재생성·픽셀 비교 하향·skip 로
+  # 통과시키지 않는다.
+  assets-integrity:
+    name: D. 납품 아트 자산 무결성
+    runs-on: windows-2025
+    timeout-minutes: 15
+    # Windows 러너의 stdout 은 파이프라 Python 3.14 가 로케일 인코딩을 쓴다(UTF-8 기본은 3.15부터).
+    # 지금 깨지지는 않지만(로컬 cp1252 음성 대조에서 68 tests OK) stdout 은 errors=strict 라,
+    # 텍스트 취급을 Linux 와 같게 맞춰 둔다. PNG·매니페스트는 바이너리 IO 라 영향 없다.
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0                  # minion_art.py 가 고정 baseline 커밋을 git cat-file 로 읽는다
+          persist-credentials: false
+      # 바이트를 정하는 것은 CPython 패치 버전이 아니라 설치되는 Pillow 휠(cp314 win_amd64)이다.
+      # 로컬 실측과 같게 3.14.3 으로 고정한다. 러너 매니페스트에 없으면 같은 계열 '3.14' 로
+      # 완화해도 같은 휠을 받는다. .gitattributes 가 이 잡의 텍스트 입력을 전부 `-text` 로 묶어
+      # 두어 Windows 체크아웃에서도 CRLF 변환이 없다.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14.3'
+          cache: pip
+          cache-dependency-path: tools/art/requirements-art.txt
+      - name: 의존성 설치 (고정 버전)
+        run: python -m pip install --disable-pip-version-check -r tools/art/requirements-art.txt
+
+      # 진단(출력 전용) — 바이트 대조 앞에 인코더 백엔드를 찍어 둔다. 실패 판정은 하지 않는다.
+      # 대조가 깨졌을 때 환경이 바뀐 것인지 자산이 바뀐 것인지 로그 위쪽에서 바로 구분하기 위한
+      # 정보다. 파일을 만들지 않고 표준 출력만 쓴다.
+      - name: 인코더 백엔드 기록 (판정 없음)
+        shell: python
+        run: |
+          import sys, PIL
+          from PIL import features
+          print("Python ", sys.version.split()[0])
+          print("Pillow ", PIL.__version__)
+          print("zlib   ", features.version("zlib"))
+          print("zlib_ng", features.version("zlib_ng"))
+
+      # --check 는 산출물을 덮어쓰지 않고 일치 여부만 본다 (승인된 자산을 재생성하지 않는다).
+      # --no-preview 로 미리보기 시트를 건너뛴다: 그 시트만 ImageDraw.text 로 글자를 그리므로
+      # 폰트가 다른 환경에서 바이트가 달라진다. 아이콘·전투 PNG 는 픽셀 데이터에서 굽고 글꼴을
+      # 쓰지 않아 **글꼴 영향은 받지 않지만**, 그것만으로 바이트가 재현되지는 않는다 —
+      # 재현에는 같은 PNG 인코더 환경(위에 고정한 러너·Python·Pillow)이 함께 필요하다.
+      - name: 납품 PNG·매니페스트 일치 검사 (재생성 없음)
+        run: python tools/art/minion_art.py --all --check --no-preview
+
+      # #124 왕·동료 납품본. 같은 --check 계약이다 — 산출물을 덮어쓰지 않고 바이트·매니페스트 일치만 본다.
+      # 원본(Earth 소유)은 읽기 전용이고 변환은 LANCZOS 축소뿐이라, 같은 러너·Python·Pillow 에서 바이트가 재현된다.
+      - name: 왕·동료 납품 PNG·매니페스트 일치 검사 (#124, 재생성 없음)
+        run: python tools/art/leaders_export.py --check
+
+      # 도구 자체의 회귀 — 픽스처는 전부 임시 디렉터리에 만든다 (저장소에 쓰지 않는다).
+      # discover 가 test_minion_art.py 와 test_leaders_export.py 를 함께 잡는다 (기존 검사 보존).
+      - name: 아트 파이프라인 도구 회귀
+        run: python -m unittest discover -s tools/art/test -v
+
+  # ── E. Roblox 포팅 (Luau 컴파일·규칙 회귀·정적 검사) ──────────────────────────
+  # 왜 생겼나: A~D 어느 잡도 `roblox/` 를 **컴파일조차 하지 않았다**. 그래서 실제로 두 번 새어 나갔다.
+  #   ① 전적 기능의 클라이언트 배선 3곳이 파일에 들어가지 않은 채 머지·게시(v30) — 화면에 아무것도 안 나왔는데
+  #      CI 5종이 전부 통과했다. 선언 없는 식별자를 Luau 가 nil 전역으로 조용히 받아들이기 때문이다 (PR #158 에서 복구).
+  #   ② Luau 의 "함수당 지역 변수 200개" 한도를 넘겨 빌드가 멈추는 상태 (PR #162 에서 모듈로 분리).
+  # 둘 다 로컬 build.bat 에서만 잡혔다. 이 잡이 그 공백을 메운다.
+  #
+  # 도구는 전부 **버전·SHA-256 으로 고정**해서 받는다 (액션 SHA 고정과 같은 이유 — 조용히 바뀌면 안 된다).
+  # 로컬에서 검증에 쓰는 것과 같은 버전이다: luau 0.737 · rojo 7.7.0.
+  roblox-luau:
+    name: E. Roblox 클라이언트·규칙 (Luau)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: roblox
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false      # 이 잡은 git 히스토리를 읽지 않는다 (fetch-depth 기본 1)
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}   # rbxcheck.js · uicheck.js 용 (외부 패키지 0)
+
+      # luau CLI (luau · luau-analyze · luau-compile). 릴리스 자산을 해시로 검증한 뒤에만 푼다.
+      - name: luau 0.737 설치 (SHA-256 고정)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/luau.zip https://github.com/luau-lang/luau/releases/download/0.737/luau-ubuntu.zip
+          echo "c3f000d0bb190301b9548f50f82ae9e217a8b5ba7b3551b038dbf28cb2e5ed32  /tmp/luau.zip" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          unzip -q -o /tmp/luau.zip -d "$RUNNER_TEMP/bin"
+          chmod +x "$RUNNER_TEMP/bin"/luau*
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: rojo 7.7.0 설치 (SHA-256 고정)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.0/rojo-7.7.0-linux-x86_64.zip
+          echo "22503e5839864f9d7c2171c48b536fc229f2cc4d8774c9cc149f60941d864073  /tmp/rojo.zip" | sha256sum -c -
+          unzip -q -o /tmp/rojo.zip -d "$RUNNER_TEMP/bin"
+          chmod +x "$RUNNER_TEMP/bin/rojo"
+
+      # 1) 문법 + **지역 변수 한도**. Luau 는 함수 하나가 지역 변수를 200개까지만 쓰는데 클라이언트 본체가
+      #    전부 최상위 스코프라 예산을 공유한다. 넘으면 여기서만 터진다 (헤드리스 테스트로는 안 잡힌다).
+      - name: Luau 컴파일 (src 전체)
+        run: |
+          set -euo pipefail
+          n=0
+          while IFS= read -r f; do
+            luau-compile --binary "$f" > /dev/null
+            n=$((n + 1))
+          done < <(find src -name '*.luau' | sort)
+          echo "컴파일 OK — $n 파일"
+
+      # 2) 선언 없는 식별자. Luau 는 이것을 오류가 아니라 **nil 전역**으로 조용히 받아들여서 컴파일도 테스트도
+      #    통과한다 — v30 의 전적 기능이 정확히 이렇게 죽은 채로 배포됐다(PR #158). 검사 로직은 저장소 도구에
+      #    있고 build.bat 도 같은 것을 돌린다 — CI 와 로컬이 다른 코드로 검사하면 한쪽만 통과하는 일이 생긴다.
+      - name: 선언 없는 식별자 검사 (v30 전적 배선 누락 재발 방지)
+        run: node tools/globalcheck.js
+
+      # 3) 규칙 회귀 — HTML 데모와 같은 규칙을 Roblox 엔진에서 다시 검증한다 (Roblox 불필요, 순수 Luau).
+      #    [12] 중앙 배너 · [14] 전투 연출은 표시 계층이지만 "부여/해제"·"성공/실패" 를 섞지 않는지 본다.
+      - name: 규칙·AI·표시 판정 회귀 (tests/run.luau)
+        run: luau tests/run.luau
+
+      # 4) Roblox API 정적 검사 — 속성 이름·Enum 오타. 정의 파일은 luau-lsp 커밋에 고정돼 있고
+      #    받은 뒤 SHA-256 을 확인하므로 저장소를 고치지 않는 한 판정이 바뀌지 않는다.
+      #    최상위 지역 변수 예산(170 경고 · 190 실패)도 여기서 함께 본다.
+      - name: Roblox API·지역 변수 예산 검사
+        run: node tools/rbxcheck.js
+
+      # 5) UI 레이아웃 — 자식이 부모 밖으로 나가는지·형제끼리 겹치는지. src/client 의 .luau 전부를 본다.
+      - name: UI 레이아웃 정적 검사
+        run: node tools/uicheck.js
+
+      # 6) 실제 산출물이 만들어지는지 (project.json 경로·트리 포함).
+      - name: Rojo 빌드
+        run: rojo build default.project.json -o "$RUNNER_TEMP/DigitDual.rbxl"

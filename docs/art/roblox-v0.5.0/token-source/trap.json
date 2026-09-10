@@ -1,0 +1,50 @@
+{
+  "id": "trap",
+  "width": 32,
+  "height": 32,
+  "palette": {
+    ".": "#00000000",
+    "W": "#FFFFFF"
+  },
+  "pixels": [
+    "................................",
+    "................................",
+    "................................",
+    "................................",
+    "................................",
+    "................................",
+    "................................",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    ".....WWWWWWWWWWWWWWWWWWWWWW.....",
+    "....WWWWWWWWWWWWWWWWWWWWWWWW....",
+    "...WWWWWWWWWWWWWWWWWWWWWWWWWW...",
+    "....WWWW.WWWW.WWWW.WWWW.WWWW....",
+    "....WWW..WWW..WWW..WWW..WWW.....",
+    ".....WW...WW...WW...WW...WW.....",
+    "..WWWWW...WW...WW...WW...WWWWW..",
+    "..WWWW....W....W....W....W.WWW..",
+    "..WWW......................WWW..",
+    "..WWW.........WWWW.........WWW..",
+    "..WWW.........WWWW.........WWW..",
+    "..WWW.........WWWW.........WWW..",
+    "..WWWWW...WW..WWWW..WW...WWWWW..",
+    "..WWWWW...WW...WW...WW...WWWWW..",
+    "..WWWWW...WW...WW...WW...WWWWW..",
+    "..WWWWWW.WWWW.WWWW.WWWW.WWWWWW..",
+    "..WWWWWWWWWWWWWWWWWWWWWWWWWWWW..",
+    "....WWWWWWWWWWWWWWWWWWWWWWWW....",
+    "....WWWWWWWWWWWWWWWWWWWWWWWW....",
+    "....WWWW................WWWW....",
+    "....WWWWWWWWWWWWWWWWWWWWWWWW....",
+    ".......WWWWWWWWWWWWWWWWWW.......",
+    "................................",
+    "................................"
+  ],
+  "notes": "Opposed angular steel jaws with five large teeth each, side hinges, pressure plate, and a spring base. Physical trap, not an eye or magic circle. Native32 white tint glyph; 2px safe margin and baseline y29.",
+  "bbox": [
+    2,
+    7,
+    30,
+    30
+  ]
+}

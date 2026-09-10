@@ -1,0 +1,600 @@
+{
+  "source": "demo/index.html",
+  "blobSha1": "2a9b54c769a58fc5c0db9e913ce4421bec6758e3",
+  "ref": null,
+  "refBlobSha1": null,
+  "servedFrom": "작업 트리",
+  "at": "2026-09-10T04:36:08.181Z",
+  "tool": "demo/test/milestone/v0.4.7/issues/146/issue146_cdp.js",
+  "limits": [
+    "#128 절은 같은 머신의 독립 Chrome 프로필 2개다 — 물리적으로 다른 두 PC 의 종단간 검증이 아니다.",
+    "비공개 절은 같은 탭에서 행동자만 바꿔 그 시점 DOM 을 보는 검사다 — 두 기기·실제 릴레이 온라인 종단간 검증이 아니다."
+  ],
+  "checks": [
+    {
+      "k": "BAL.fleeProb/fleeProbGuard",
+      "v": [
+        0.3,
+        0.7
+      ]
+    },
+    {
+      "k": "1 전제",
+      "v": {
+        "actor": "A",
+        "round": 1,
+        "phase": 0
+      }
+    },
+    {
+      "k": "1 도망 패널",
+      "v": {
+        "label": "🏃 도망 (성공 30%)",
+        "disabled": false
+      }
+    },
+    {
+      "k": "1 buff 전제",
+      "v": {
+        "actor": "A",
+        "round": 1,
+        "phase": 0
+      }
+    },
+    {
+      "k": "1 도망 패널(수호자)",
+      "v": {
+        "label": "🏃 도망 (성공 70%)"
+      }
+    },
+    {
+      "k": "1 도망 결과",
+      "v": {
+        "over": false,
+        "fa": 100,
+        "fd": 100,
+        "round": 1,
+        "phase": 1,
+        "tries": 1,
+        "blog": "⚔️ 하수인 vs 하수인 — 전투 개시!|🏃 하수인의 도망 시도!|🏃 도망 실패! 이번 행동을 놓쳤다."
+      }
+    },
+    {
+      "k": "2 전제",
+      "v": {
+        "actor": "A",
+        "round": 1,
+        "phase": 0
+      }
+    },
+    {
+      "k": "2 화면",
+      "v": {
+        "msg": "공격할 것이 없습니다. 턴 종료할까요?",
+        "hasBasic": false,
+        "hasNotice": true,
+        "hasPass": true,
+        "menus": [
+          "⚔️ 싸우기",
+          "🎒 가방",
+          "🔴 포획",
+          "🏃 도망가기",
+          "턴 종료"
+        ]
+      }
+    },
+    {
+      "k": "2 루트 [턴 종료]",
+      "v": {
+        "found": true,
+        "disabled": false,
+        "visible": true,
+        "menuHidden": false
+      }
+    },
+    {
+      "k": "2 루트 턴 종료 전/후",
+      "v": {
+        "before": {
+          "round": 1,
+          "phase": 0,
+          "fa": 100,
+          "fd": 100,
+          "bu": 1,
+          "main": false
+        },
+        "after": {
+          "round": 1,
+          "phase": 1,
+          "fa": 100,
+          "fd": 100,
+          "bu": 1,
+          "main": false
+        }
+      }
+    },
+    {
+      "k": "2 재설정",
+      "v": {
+        "actor": "A",
+        "round": 1,
+        "phase": 0
+      }
+    },
+    {
+      "k": "2 싸우기 패널",
+      "v": [
+        {
+          "t": "💀사신의 낫 (봉인)",
+          "d": true
+        },
+        {
+          "t": "🐉드래곤 숨결 24~36 (쿨2)",
+          "d": true
+        },
+        {
+          "t": "🕯마녀의 장난 14~22 (쿨2)",
+          "d": true
+        },
+        {
+          "t": "응급 치유 (쿨2)",
+          "d": true
+        },
+        {
+          "t": "턴 종료",
+          "d": false
+        },
+        {
+          "t": "← 뒤로",
+          "d": false
+        }
+      ]
+    },
+    {
+      "k": "2 턴 종료 전/후",
+      "v": {
+        "before": {
+          "round": 1,
+          "phase": 0,
+          "fa": 100,
+          "fd": 100,
+          "bu": 1,
+          "main": false,
+          "wk": 0
+        },
+        "after": {
+          "round": 1,
+          "phase": 1,
+          "fa": 100,
+          "fd": 100,
+          "bu": 1,
+          "main": false,
+          "wk": 0
+        }
+      }
+    },
+    {
+      "k": "2 예외 없음 전제",
+      "v": {
+        "actor": "A",
+        "round": 1,
+        "phase": 0
+      }
+    },
+    {
+      "k": "2 합법 슬롯",
+      "v": {
+        "usable": [
+          3
+        ],
+        "notice": false,
+        "pass": false,
+        "basic": false
+      }
+    },
+    {
+      "k": "2 쿨링수 전제",
+      "v": {
+        "notice": true
+      }
+    },
+    {
+      "k": "2 쿨링수 후",
+      "v": {
+        "cds": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "notice": false,
+        "hasSlot0": true
+      }
+    },
+    {
+      "k": "3 행동자/관찰자",
+      "v": {
+        "A": {
+          "actor": "A",
+          "owner": 0,
+          "noAtkSlots": 4,
+          "notice": true,
+          "pass": true,
+          "msg": "⚔️ 하수인 vs 하수인 — 전투 개시!"
+        },
+        "D": {
+          "actor": "D",
+          "owner": 1,
+          "noAtkSlots": 4,
+          "notice": false,
+          "pass": false,
+          "msg": ""
+        }
+      }
+    },
+    {
+      "k": "4 전제",
+      "v": {
+        "available": true,
+        "trapped": {
+          "r": 12,
+          "c": 4
+        },
+        "free1": {
+          "r": 2,
+          "c": 2
+        },
+        "free2": {
+          "r": 12,
+          "c": 6
+        }
+      }
+    },
+    {
+      "k": "4 거부",
+      "v": {
+        "stage": 1,
+        "picked": false,
+        "toast": "🌀 함정에 걸린 하수인은 텔레포트를 사용할 수 없습니다",
+        "log": "PVP — 두 플레이어가 번갈아 비공개 배치합니다.",
+        "state": "[2,2,12,4,false,0,0]"
+      }
+    },
+    {
+      "k": "4 2단계 거부",
+      "v": {
+        "stage": 2,
+        "picked": true,
+        "toast": "🌀 함정에 걸린 하수인은 텔레포트를 사용할 수 없습니다🌀 함정에 걸린 하수인은 텔레포트를 사용할 수 없습니다",
+        "hintOpen": true
+      }
+    },
+    {
+      "k": "4 교환 직전",
+      "v": {
+        "stage": 2,
+        "first": 253,
+        "valid": null,
+        "block": null,
+        "target": {
+          "id": 255,
+          "r": 12,
+          "c": 6,
+          "immobile": 0
+        },
+        "hintOpen": false
+      }
+    },
+    {
+      "k": "4 정상 교환",
+      "v": {
+        "a": [
+          12,
+          6
+        ],
+        "c": [
+          2,
+          2
+        ],
+        "main": true,
+        "tele": 1,
+        "teleUsed": 1,
+        "teleport": null,
+        "cur": 0
+      }
+    },
+    {
+      "k": "4 교환 후 턴 상태",
+      "v": {
+        "main": false,
+        "cur": 1,
+        "turn": 1,
+        "autoEnds": 1
+      }
+    },
+    {
+      "k": "5 보호막 진행",
+      "v": {
+        "maxHp": 100,
+        "steps": [
+          {
+            "label": "초기",
+            "shield": 0
+          },
+          {
+            "label": "수호 자세 1회",
+            "shield": 18
+          },
+          {
+            "label": "수호 자세 2회 (합산)",
+            "shield": 36
+          },
+          {
+            "label": "10 소모",
+            "shield": 26
+          },
+          {
+            "label": "불굴 진형 추가 (합산)",
+            "shield": 48
+          }
+        ],
+        "guardPct": 0.18,
+        "defPct": 0.22,
+        "icons": "🛡48 🌀감쇠15%"
+      }
+    },
+    {
+      "k": "5 누적 초과",
+      "v": {
+        "shield": 102,
+        "maxHp": 100,
+        "icons": "🛡102 🌀감쇠15%",
+        "inlineWidth": "100%",
+        "computedPct": 100
+      }
+    },
+    {
+      "k": "6 A 최초 방문",
+      "v": {
+        "origin": "http://127.0.0.1:58306",
+        "tutKey": "tutorialSeen",
+        "autoOpen": true,
+        "seenThisLoad": false,
+        "overlayHidden": false,
+        "stored": null,
+        "storeErr": null,
+        "manualBtn": true
+      }
+    },
+    {
+      "k": "6 A 완료 직후",
+      "v": {
+        "origin": "http://127.0.0.1:58306",
+        "tutKey": "tutorialSeen",
+        "autoOpen": false,
+        "seenThisLoad": true,
+        "overlayHidden": true,
+        "stored": "1",
+        "storeErr": null,
+        "manualBtn": true
+      }
+    },
+    {
+      "k": "6 B 최초 방문(A 완료 후)",
+      "v": {
+        "origin": "http://127.0.0.1:58306",
+        "tutKey": "tutorialSeen",
+        "autoOpen": true,
+        "seenThisLoad": false,
+        "overlayHidden": false,
+        "stored": null,
+        "storeErr": null,
+        "manualBtn": true
+      }
+    },
+    {
+      "k": "6 B 재방문(미완주)",
+      "v": {
+        "origin": "http://127.0.0.1:58306",
+        "tutKey": "tutorialSeen",
+        "autoOpen": true,
+        "seenThisLoad": false,
+        "overlayHidden": false,
+        "stored": null,
+        "storeErr": null,
+        "manualBtn": true
+      }
+    },
+    {
+      "k": "6 A 재방문(완료 후)",
+      "v": {
+        "origin": "http://127.0.0.1:58306",
+        "tutKey": "tutorialSeen",
+        "autoOpen": false,
+        "seenThisLoad": false,
+        "overlayHidden": true,
+        "stored": "1",
+        "storeErr": null,
+        "manualBtn": true
+      }
+    },
+    {
+      "k": "6 B 완료 후 재방문",
+      "v": {
+        "origin": "http://127.0.0.1:58306",
+        "tutKey": "tutorialSeen",
+        "autoOpen": false,
+        "seenThisLoad": false,
+        "overlayHidden": true,
+        "stored": "1",
+        "storeErr": null,
+        "manualBtn": true
+      }
+    },
+    {
+      "k": "6 B 다른 origin",
+      "v": {
+        "origin": "http://localhost:58306",
+        "tutKey": "tutorialSeen",
+        "autoOpen": true,
+        "seenThisLoad": false,
+        "overlayHidden": false,
+        "stored": null,
+        "storeErr": null,
+        "manualBtn": true
+      }
+    }
+  ],
+  "shots": [
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-flee-30.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-flee-70.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-flee-result.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-noattack-root.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-noattack-fight.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-noattack-bag.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-noattack-after-pass.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-noattack-cool-recheck.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-privacy-observer.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i131-tele-stage1.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i131-tele-reject.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i131-tele-stage2.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i131-tele-swapped.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i130-shield-stacked.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i128-A-first.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i128-A-done.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i128-B-first.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-tutorial-flee-step.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i146-tutorial-battle-step.png",
+    "docs/milestone/v0.4.7/issues/146/Mars/artifacts/i131-tutorial-teleport-step.png"
+  ],
+  "tutorial": {
+    "a1": {
+      "origin": "http://127.0.0.1:58306",
+      "tutKey": "tutorialSeen",
+      "autoOpen": true,
+      "seenThisLoad": false,
+      "overlayHidden": false,
+      "stored": null,
+      "storeErr": null,
+      "manualBtn": true
+    },
+    "a2": {
+      "origin": "http://127.0.0.1:58306",
+      "tutKey": "tutorialSeen",
+      "autoOpen": false,
+      "seenThisLoad": true,
+      "overlayHidden": true,
+      "stored": "1",
+      "storeErr": null,
+      "manualBtn": true
+    },
+    "b1": {
+      "origin": "http://127.0.0.1:58306",
+      "tutKey": "tutorialSeen",
+      "autoOpen": true,
+      "seenThisLoad": false,
+      "overlayHidden": false,
+      "stored": null,
+      "storeErr": null,
+      "manualBtn": true
+    },
+    "b2": {
+      "origin": "http://127.0.0.1:58306",
+      "tutKey": "tutorialSeen",
+      "autoOpen": true,
+      "seenThisLoad": false,
+      "overlayHidden": false,
+      "stored": null,
+      "storeErr": null,
+      "manualBtn": true
+    },
+    "a3": {
+      "origin": "http://127.0.0.1:58306",
+      "tutKey": "tutorialSeen",
+      "autoOpen": false,
+      "seenThisLoad": false,
+      "overlayHidden": true,
+      "stored": "1",
+      "storeErr": null,
+      "manualBtn": true
+    },
+    "b3": {
+      "origin": "http://127.0.0.1:58306",
+      "tutKey": "tutorialSeen",
+      "autoOpen": false,
+      "seenThisLoad": false,
+      "overlayHidden": true,
+      "stored": "1",
+      "storeErr": null,
+      "manualBtn": true
+    },
+    "b4": {
+      "origin": "http://localhost:58306",
+      "tutKey": "tutorialSeen",
+      "autoOpen": true,
+      "seenThisLoad": false,
+      "overlayHidden": false,
+      "stored": null,
+      "storeErr": null,
+      "manualBtn": true
+    }
+  },
+  "tutorialSteps": [
+    {
+      "i": 0,
+      "title": "이기는 법 세 가지",
+      "cards": 3
+    },
+    {
+      "i": 1,
+      "title": "말 5가지와 숨은 정체",
+      "cards": 3
+    },
+    {
+      "i": 2,
+      "title": "움직이기와 숲에 숨기",
+      "cards": 3
+    },
+    {
+      "i": 3,
+      "title": "흔적과 탐색",
+      "cards": 4
+    },
+    {
+      "i": 4,
+      "title": "옆에 붙으면 꼭 싸워요",
+      "cards": 7
+    },
+    {
+      "i": 5,
+      "title": "폭탄과 함정",
+      "cards": 3
+    },
+    {
+      "i": 6,
+      "title": "잡아오기와 도망치기",
+      "cards": 5
+    },
+    {
+      "i": 7,
+      "title": "텔레포트(순간이동)",
+      "cards": 4
+    },
+    {
+      "i": 8,
+      "title": "버닝 타임(불타는 시간)",
+      "cards": 3
+    },
+    {
+      "i": 9,
+      "title": "빠른 복습 — 첫 차례 체크리스트",
+      "cards": 3
+    }
+  ],
+  "pass": 81,
+  "fail": 0,
+  "fails": [],
+  "notes": [
+    "상황 도움말(#tutHint)이 열려 있으면 보드 아래쪽 칸을 덮는다 — 실제 조작에서는 [알겠어요]로 닫고 클릭한다"
+  ]
+}

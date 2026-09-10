@@ -1,54 +1,89 @@
 # Preserve the exact bytes recorded by the v0.4.3 art QA reports.
 # Authors used both LF and CRLF; checkout must not change reviewed hashes.
-/tools/minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
-/tests/test_minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
-/docs/art/minions-v0.4.3/pixel-sources/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
-/docs/art/minions-v0.4.3/battle-patches/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
-/docs/art/minions-v0.4.3/delivery-manifest.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
-/docs/art/minions-v0.4.3/art-pipeline.md -text whitespace=trailing-space,space-before-tab,cr-at-eol
-/docs/art/minions-v0.4.3/mars-pipeline-report.md -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/tools/art/minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/tools/art/test/test_minion_art.py -text whitespace=trailing-space,space-before-tab,cr-at-eol
 
 # Keep the runtime QA working-tree hashes stable across checkout platforms.
 /demo/index.html text eol=crlf
-/demo/test/harness.js text eol=crlf
-/demo/test/smoke_memo.js text eol=crlf
-/demo/test/smoke_minion_art.js text eol=lf
-/demo/test/minion_art_cdp.js text eol=lf
-/docs/qa/minion-art-integration-*.md text eol=lf
-/docs/qa/minion-art-integration/minion_art_cdp_report.json text eol=lf
-/demo/test/issue91_cdp.js text eol=lf
-/docs/qa/issue91-mars.md text eol=lf
-/docs/qa/issue91-saturn.md text eol=lf
-/docs/qa/issue91-saturn-initial.md text eol=lf
-/docs/qa/issue91-mars-revise.md text eol=lf
-/docs/qa/v044-technical-analysis-mars.md text eol=lf
-/docs/qa/issue91/issue91_cdp_report.json text eol=lf
-/demo/test/smoke_attack_balance.js text eol=lf
-/demo/test/attack_balance_compare.js text eol=lf
-/demo/test/issue95_cdp.js text eol=lf
-/docs/qa/issue95-mars.md text eol=lf
-/docs/qa/issue95-saturn.md text eol=lf
-/docs/qa/issue95/*.md text eol=lf
-/docs/qa/issue95/*.json text eol=lf
+/demo/test/shared/harness.js text eol=crlf
+/demo/test/regression/smoke_memo.js text eol=crlf
+/demo/test/regression/smoke_minion_art.js text eol=lf
+/demo/test/milestone/v0.4.3/issues/89/minion_art_cdp.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/91/issue91_cdp.js text eol=lf
+/demo/test/regression/smoke_attack_balance.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/95/attack_balance_compare.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/95/issue95_cdp.js text eol=lf
 
-/demo/test/memo_cdp.js text eol=lf
-/docs/qa/issue94-mars.md text eol=lf
-/docs/qa/issue94-saturn.md text eol=lf
-/docs/qa/issue94/*.json text eol=lf
-/demo/test/smoke_shock.js text eol=lf
-/demo/test/shock_compare.js text eol=lf
-/demo/test/issue96_cdp.js text eol=lf
-/docs/qa/issue96-mars.md text eol=lf
-/docs/qa/issue96-integration.md text eol=lf
-/docs/qa/issue96-saturn.md text eol=lf
-/docs/qa/issue96/*.json text eol=lf
-/demo/test/smoke_cross_skill.js text eol=lf
-/demo/test/issue92_cdp.js text eol=lf
-/docs/qa/issue92*.md text eol=lf
-/docs/qa/issue92/*.json text eol=lf
+/demo/test/milestone/v0.4.4/issues/94/memo_cdp.js text eol=lf
+/demo/test/regression/smoke_shock.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/96/shock_compare.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/96/issue96_cdp.js text eol=lf
+/demo/test/regression/smoke_cross_skill.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/92/issue92_cdp.js text eol=lf
 
-/demo/test/smoke_own_side.js text eol=lf
-/demo/test/issue93_cdp.js text eol=lf
-/docs/qa/issue93-mars.md text eol=lf
-/docs/qa/issue93-saturn.md text eol=lf
-/docs/qa/issue93/*.json text eol=lf
+/demo/test/regression/smoke_own_side.js text eol=lf
+/demo/test/milestone/v0.4.4/issues/93/issue93_cdp.js text eol=lf
+
+# Issue132: preserve relocated documents and data with their original checkout attributes.
+/docs/milestone/v0.4.3/issues/87/Mars/art-pipeline.md -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/battle-patches/fire_sustain.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/battle-patches/grass_atk.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/battle-patches/lightning_atk.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/battle-patches/water_swift.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/delivery-manifest.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
+
+# #124 왕·동료 납품 매니페스트는 tools/art/leaders_export.py --check 가 **바이트로** 대조한다.
+# 익스포터가 굽는 것은 LF JSON 이므로, core.autocrlf 가 켜진 Windows 체크아웃에서 CRLF 로 바뀌면
+# 내용이 같아도 잡 D 에서 불일치로 떨어진다. 작업 트리에서도 LF 로 고정한다.
+/demo/assets/leaders/leaders-manifest.json text eol=lf
+/docs/milestone/v0.4.3/issues/87/Mars/mars-pipeline-report.md -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/fire_atk.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/fire_def.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/fire_std.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/fire_sustain.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/fire_swift.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/grass_atk.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/grass_def.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/grass_std.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/grass_sustain.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/grass_swift.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/lightning_atk.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/lightning_def.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/lightning_std.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/lightning_sustain.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/lightning_swift.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/water_atk.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/water_def.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/water_std.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/water_sustain.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.3/assets/minions/pixel-sources/water_swift.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/docs/milestone/v0.4.4/issues/91/Mars/issue91-mars-revise.md text eol=lf
+/docs/milestone/v0.4.4/issues/91/Mars/issue91-mars.md text eol=lf
+/docs/milestone/v0.4.4/issues/91/Saturn/issue91-saturn-initial.md text eol=lf
+/docs/milestone/v0.4.4/issues/91/Saturn/issue91-saturn.md text eol=lf
+/docs/milestone/v0.4.4/issues/91/Mars/artifacts/issue91_cdp_report.json text eol=lf
+/docs/milestone/v0.4.4/issues/92/Mars/issue92-integration.md text eol=lf
+/docs/milestone/v0.4.4/issues/92/Mars/issue92-mars.md text eol=lf
+/docs/milestone/v0.4.4/issues/92/Saturn/issue92-saturn-browser.md text eol=lf
+/docs/milestone/v0.4.4/issues/92/Saturn/issue92-saturn.md text eol=lf
+/docs/milestone/v0.4.4/issues/92/Mars/artifacts/issue92_cdp_report.json text eol=lf
+/docs/milestone/v0.4.4/issues/93/Mars/issue93-mars.md text eol=lf
+/docs/milestone/v0.4.4/issues/93/Saturn/issue93-saturn.md text eol=lf
+/docs/milestone/v0.4.4/issues/93/Mars/artifacts/issue93_cdp_report.json text eol=lf
+/docs/milestone/v0.4.4/issues/94/Mars/issue94-mars.md text eol=lf
+/docs/milestone/v0.4.4/issues/94/Saturn/issue94-saturn.md text eol=lf
+/docs/milestone/v0.4.4/issues/94/Mars/artifacts/memo_cdp_report.json text eol=lf
+/docs/milestone/v0.4.4/issues/95/Mars/issue95-mars.md text eol=lf
+/docs/milestone/v0.4.4/issues/95/Saturn/issue95-saturn.md text eol=lf
+/docs/milestone/v0.4.4/issues/95/Mars/artifacts/attack_balance_compare.json text eol=lf
+/docs/milestone/v0.4.4/issues/95/Mars/artifacts/attack_balance_compare.md text eol=lf
+/docs/milestone/v0.4.4/issues/95/Mars/artifacts/issue95_cdp_report.json text eol=lf
+/docs/milestone/v0.4.4/issues/96/Mars/issue96-integration.md text eol=lf
+/docs/milestone/v0.4.4/issues/96/Mars/issue96-mars.md text eol=lf
+/docs/milestone/v0.4.4/issues/96/Saturn/issue96-saturn.md text eol=lf
+/docs/milestone/v0.4.4/issues/96/Mars/artifacts/issue96_cdp_report.json text eol=lf
+/docs/milestone/v0.4.3/issues/89/Mars/minion-art-integration-mars.md text eol=lf
+/docs/milestone/v0.4.3/issues/89/Saturn/minion-art-integration-saturn-final.md text eol=lf
+/docs/milestone/v0.4.3/issues/89/Saturn/minion-art-integration-saturn-initial.md text eol=lf
+/docs/milestone/v0.4.3/issues/89/Mars/artifacts/minion_art_cdp_report.json text eol=lf
+/docs/milestone/v0.4.4/reports/Mars/v044-technical-analysis-mars.md text eol=lf

@@ -1,0 +1,50 @@
+{
+  "id": "king",
+  "width": 32,
+  "height": 32,
+  "palette": {
+    ".": "#00000000",
+    "W": "#FFFFFF"
+  },
+  "pixels": [
+    "................................",
+    "................................",
+    "................................",
+    "................................",
+    "...............WW...............",
+    "..............WWWW..............",
+    "..............WWWW..............",
+    ".............WWWWWW.............",
+    ".............WWWWWW.............",
+    "............WWWWWWWW............",
+    "...W.......WWWWWWWWWW.......W...",
+    "...WW......WWWWWWWWWW......WW...",
+    "...WWW....WWWWWWWWWWWW....WW....",
+    "....WWW...WWWWWWWWWWWW...WWW....",
+    "....WWWW.WWWWWWWWWWWWWW.WWWW....",
+    "....WWWWWWWWWWWWWWWWWWWWWWWW....",
+    "....WWWWWWWWWWWWWWWWWWWWWWWW....",
+    "....WWWWWWWWWWWWWWWWWWWWWWW.....",
+    ".....WWWWWWWWWW..WWWWWWWWWW.....",
+    ".....WWWWWWWWW....WWWWWWWWW.....",
+    ".....WWWWWWWWW....WWWWWWWWW.....",
+    ".....WWWWWWWWWW..WWWWWWWWWW.....",
+    ".....WWWWWWWWWWWWWWWWWWWWW......",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    "................................",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    "......WWWWWWWWWWWWWWWWWWWW......",
+    "................................",
+    "................................"
+  ],
+  "notes": "Three-point crown with a single inset jewel; symbolic, no character or type text. Native32 authored for team tint; 2px minimum safe margin; baseline y29. New token vocabulary uses the existing pixel-source data structure; not a minion_art.py roster entry.",
+  "bbox": [
+    3,
+    4,
+    29,
+    30
+  ]
+}
