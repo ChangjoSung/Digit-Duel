@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.4"
+local CLIENT_VERSION = "0.5.0-p3.5"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -156,7 +156,8 @@ local function slice(img, kind, scale) -- SliceCenter 는 원본 중앙 사각�
 	img.SliceScale = scale or 1
 end
 
--- 프레임 뒤에 9-slice 배경을 깔고 프레임 자체 배경은 투명 (ZIndex 0 — 형제 자식들보다 아래)
+-- 프레임 위에 9-slice 배경을 깐다 (ZIndex 0 = 그 프레임 자식 중 맨 아래).
+-- 프레임 자체 배경은 **불투명하게 유지**한다 — 이미지가 아직 안 받아졌거나 9-slice 여백이 생겨도 뒤 화면이 비치면 안 된다 (CJ 2026-09-10)
 local function bgImage(frame, uiKey, sliceKind, scale)
 	local u = Art.ui(uiKey)
 	if not u then
@@ -167,7 +168,7 @@ local function bgImage(frame, uiKey, sliceKind, scale)
 		ResampleMode = Enum.ResamplerMode.Pixelated, ZIndex = 0,
 	}, frame)
 	slice(img, sliceKind, scale)
-	frame.BackgroundTransparency = 1
+	frame.BackgroundTransparency = 0
 	return img
 end
 
@@ -285,14 +286,44 @@ end
 -- UI 구성
 --==================================================================
 
-local gui = mk("ScreenGui", { Name = "DigitDual", ResetOnSpawn = false, IgnoreGuiInset = true }, playerGui)
+-- ZIndexBehavior: 기본값(Global)이면 ZIndex 가 화면 전체에서 비교돼 패널 배경(ZIndex 0)이 다른 패널 아래로 깔린다
+-- → 창이 통째로 투명해 보이고 뒤의 판·다른 창 글씨가 겹쳐 보였다. Sibling 이면 각 창의 자식은 그 창 안에서만 정렬된다 (CJ 2026-09-10)
+local gui = mk("ScreenGui", {
+	Name = "DigitDual", ResetOnSpawn = false, IgnoreGuiInset = true,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, playerGui)
+
+-- 작은 창에서도 팝업이 화면 밖으로 나가지 않도록 창별 축소 배율을 자동 계산한다
+local fitted = {} -- { frame, w, h, marginX, marginY }
+local function applyFit()
+	local cam = Workspace.CurrentCamera
+	local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
+	for _, e in fitted do
+		local sx = (vp.X - e.mx) / e.w
+		local sy = (vp.Y - e.my) / e.h
+		e.scale.Scale = math.clamp(math.min(sx, sy, 1), 0.45, 1)
+	end
+end
+local function autoFit(frame, w, h, mx, my)
+	local sc = mk("UIScale", { Scale = 1 }, frame)
+	table.insert(fitted, { scale = sc, w = w, h = h, mx = mx or 24, my = my or 24 })
+	return frame
+end
+task.defer(function()
+	local cam = Workspace.CurrentCamera
+	if cam then
+		cam:GetPropertyChangedSignal("ViewportSize"):Connect(applyFit)
+	end
+	applyFit()
+end)
 
 -- 로비 HUD
 local hud = mk("Frame", {
-	Size = UDim2.new(0, 660, 0, 92), Position = UDim2.new(0.5, -330, 0, 12), ZIndex = 3, -- 상단 가운데 · 버튼 4개(게임 시작·봇 2·자리 떠나기)가 들어가는 폭 (CJ 2026-09-10)
-	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.15, BorderSizePixel = 0,
+	Size = UDim2.new(0, 660, 0, 92), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), ZIndex = 3, -- 상단 가운데 (CJ 2026-09-10)
+	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BorderSizePixel = 0,
 }, gui)
 bgImage(hud, "panel_side", "panel", 1)
+autoFit(hud, 660, 92, 24, 0)
 mk("TextLabel", {
 	Text = "Digit Dual", Size = UDim2.new(0, 130, 0, 24), Position = UDim2.new(0, 10, 0, 6),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 18, Font = Enum.Font.GothamBold,
@@ -307,29 +338,33 @@ local hudBtns = mk("Frame", { Size = UDim2.new(0, 500, 0, 26), Position = UDim2.
 local lastSetupOpen = false -- 서버 setupOpen 전이 감지 (false→true 면 배치 단계 초기화)
 
 -- 보드게임 창 (구조.txt): 왼쪽 2D 판 · 오른쪽 배치/대전 패널. 배치 단계·대전 중에만 보이고 [나가기] 로만 닫힌다 (그동안 캐릭터 이동 불가)
-local WIN_W, WIN_H = 720, 592
+local WIN_W, WIN_H = 720, 640 -- 제목 띠(0~36) · 본문(36~588) · 상태줄(596~626) 세 구역
 local win = mk("Frame", {
-	Size = UDim2.new(0, WIN_W, 0, WIN_H), Position = UDim2.new(0.5, -WIN_W / 2, 0.5, -WIN_H / 2), Visible = false, ZIndex = 2,
-	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.05, BorderSizePixel = 0,
+	Size = UDim2.new(0, WIN_W, 0, WIN_H), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Visible = false, ZIndex = 2,
+	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BorderSizePixel = 0,
 }, gui)
+autoFit(win, WIN_W, WIN_H, 16, 16)
+win:GetPropertyChangedSignal("Visible"):Connect(function() -- 창이 열리면 HUD 를 숨긴다 (겹침 방지 — 창에 자체 [나가기]·안내가 있다)
+	hud.Visible = not win.Visible
+end)
 if not bgImage(win, "panel_window", "window", 1) then -- 창 전용 프레임(SliceCenter 24,40,232,232) — 없으면 기존 패널로 폴백
 	bgImage(win, "panel_side", "panel", 1)
 end
 local winTitle = mk("TextLabel", {
-	Text = "", Size = UDim2.new(0, 300, 0, 22), Position = UDim2.new(0, 16, 0, 8),
+	Text = "", Size = UDim2.new(0, 248, 0, 22), Position = UDim2.new(0, 16, 0, 8),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 14, Font = Enum.Font.GothamBold,
 	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 }, win)
 local winBadge = mk("ImageLabel", { -- 상대가 봇이면 난이도 배지 (badge48_ai_grade5/dan5)
-	Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(0, 276, 0, 7), BackgroundTransparency = 1, Visible = false,
+	Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(0, 272, 0, 7), BackgroundTransparency = 1, Visible = false,
 	ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ImageColor3 = WHITE,
 }, win)
 local winThinking = mk("ImageLabel", { -- 🤖 AI 행동 중 (status48_thinking)
-	Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(0, 16, 1, -34), BackgroundTransparency = 1, Visible = false,
+	Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(0, 16, 1, -40), BackgroundTransparency = 1, Visible = false,
 	ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ImageColor3 = WHITE,
 }, win)
 local winStatus = mk("TextLabel", { -- 판 아래 한 줄 상태 (🤖 AI 행동 중 등)
-	Text = "", Size = UDim2.new(0, 300, 0, 26), Position = UDim2.new(0, 16, 1, -34),
+	Text = "", Size = UDim2.new(0, 632, 0, 30), Position = UDim2.new(0, 44, 1, -40),
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
 }, win)
@@ -342,14 +377,14 @@ local function setThinking(on)
 	local u = on and Art.status("thinking") or nil
 	winThinking.Image = u or ""
 	winThinking.Visible = u ~= nil
-	winStatus.Position = UDim2.new(0, u and 44 or 16, 1, -34)
+	winStatus.Position = UDim2.new(0, u and 44 or 16, 1, -40) -- 아이콘이 없으면 왼쪽으로 당긴다
 end
 -- 배치 패널 (창 오른쪽 컬럼)
 local setupPanel = mk("Frame", {
-	Size = UDim2.new(0, 388, 0, WIN_H - 16), Position = UDim2.new(0, 316, 0, 8), Visible = false, BackgroundTransparency = 1,
+	Size = UDim2.new(0, 388, 0, WIN_H - 88), Position = UDim2.new(0, 316, 0, 40), Visible = false, BackgroundTransparency = 1,
 }, win)
 local setupTitle = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -130, 0, 22), Position = UDim2.new(0, 10, 0, 0),
+	Text = "", Size = UDim2.new(1, -142, 0, 22), Position = UDim2.new(0, 10, 0, 0),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 15, Font = Enum.Font.GothamBold,
 	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 }, setupPanel)
@@ -363,19 +398,23 @@ local setupContent = mk("Frame", { Size = UDim2.new(1, -20, 0, 400), Position = 
 local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 66), Position = UDim2.new(0, 10, 1, -72), BackgroundTransparency = 1 }, setupPanel)
 
 -- 로스터 상세 팝업
+local detailBack = mk("Frame", { -- 상세 팝업 뒤 암막 — 뒤 카드 글씨가 겹쳐 보이지 않게
+	Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0,
+	Visible = false, ZIndex = 7,
+}, gui)
 local rosterDetail = mk("Frame", {
-	Size = UDim2.new(0, 520, 0, 280), Position = UDim2.new(0.5, -260, 0.5, -150), Visible = false, ZIndex = 8,
+	Size = UDim2.new(0, 520, 0, 300), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Visible = false, ZIndex = 8,
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), BorderSizePixel = 0,
 }, gui)
 bgImage(rosterDetail, "panel_modal", "panel", 1)
-rosterDetail.BackgroundTransparency = 0 -- 9-slice 패널이 반투명이라 뒤의 로스터 카드 글씨가 비친다 → 불투명 배경을 깐다 (CJ 2026-09-10)
+autoFit(rosterDetail, 520, 300)
 local detailPortrait = mk("ImageLabel", {
-	Size = UDim2.new(0, 160, 0, 160), Position = UDim2.new(0, 12, 0, 12), BackgroundColor3 = Color3.fromRGB(19, 22, 30),
+	Size = UDim2.new(0, 168, 0, 168), Position = UDim2.new(0, 14, 0, 14), BackgroundColor3 = Color3.fromRGB(19, 22, 30),
 	BorderSizePixel = 0, ScaleType = Enum.ScaleType.Fit, ZIndex = 8,
 }, rosterDetail)
 local detailElem = iconLabel(rosterDetail, 182, 12, 22, "", nil, 9)
 local detailText = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -220, 0, 200), Position = UDim2.new(0, 208, 0, 12), ZIndex = 8,
+	Text = "", Size = UDim2.new(1, -212, 0, 236), Position = UDim2.new(0, 196, 0, 14), ZIndex = 8,
 	TextColor3 = WHITE, BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham, RichText = true,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
 }, rosterDetail)
@@ -383,17 +422,21 @@ local detailBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 30), Position = UDi
 
 -- 대전 화면 (배경 투명)
 local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 6 }, gui) -- 전투 모달 등 (창 위)
+local modalBack = mk("Frame", { -- 전투·탐색 보상 창 뒤 암막 (뒤의 판·사이드 패널이 겹쳐 보이지 않게)
+	Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0,
+	Visible = false, ZIndex = 4,
+}, game_)
 
 -- 2D 판 (보드게임 창 왼쪽 — 대전·배치 공용). 외곽 프레임(board_frame) + 셀마다 타일·하이라이트 오버레이
 local boardFrameImg = mk("ImageLabel", {
-	Size = UDim2.new(0, COLS * CELL + 32, 0, ROWS * CELL + 32), Position = UDim2.new(0, 0, 0, 18), BackgroundTransparency = 1,
+	Size = UDim2.new(0, COLS * CELL + 32, 0, ROWS * CELL + 32), Position = UDim2.new(0, 0, 0, 36), BackgroundTransparency = 1,
 	Image = Art.board("frame") or "", ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 0,
 }, win)
 if Art.board("frame") then
 	slice(boardFrameImg, "hl", 0.5)
 end
 local boardFrame = mk("Frame", {
-	Size = UDim2.new(0, COLS * CELL, 0, ROWS * CELL), Position = UDim2.new(0, 16, 0, 34),
+	Size = UDim2.new(0, COLS * CELL, 0, ROWS * CELL), Position = UDim2.new(0, 16, 0, 52),
 	BackgroundColor3 = Color3.fromRGB(30, 34, 46), Visible = false,
 }, win)
 local cells = {}
@@ -436,7 +479,7 @@ end
 
 -- 사이드 패널 (대전 중 · 오른쪽)
 local side = mk("Frame", { -- 대전 중 창 오른쪽 컬럼 (배치 패널과 같은 자리)
-	Size = UDim2.new(0, 388, 0, WIN_H - 16), Position = UDim2.new(0, 316, 0, 8), Visible = false, BackgroundTransparency = 1,
+	Size = UDim2.new(0, 388, 0, WIN_H - 88), Position = UDim2.new(0, 316, 0, 40), Visible = false, BackgroundTransparency = 1,
 }, win)
 local infoHead = mk("TextLabel", {
 	Text = "", Size = UDim2.new(1, -20, 0, 44), Position = UDim2.new(0, 10, 0, 8),
@@ -467,47 +510,57 @@ local promptLabel = mk("TextLabel", {
 local promptBtns = mk("Frame", { Size = UDim2.new(1, -16, 0, 60), Position = UDim2.new(0, 8, 0, 46), BackgroundTransparency = 1 }, promptFrame)
 
 -- 전투 패널
+local BF_W, BF_H = 440, 566
 local battleFrame = mk("Frame", {
-	Size = UDim2.new(0, 400, 0, 520), Position = UDim2.new(0.5, -200, 0.5, -260),
+	Size = UDim2.new(0, BF_W, 0, BF_H), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
 }, game_)
 bgImage(battleFrame, "panel_battle", "panel", 1)
-local fighterTop = mk("Frame", { Size = UDim2.new(1, -130, 0, 74), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
-local fighterBottom = mk("Frame", { Size = UDim2.new(1, -130, 0, 74), Position = UDim2.new(0, 12, 0, 88), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
+autoFit(battleFrame, BF_W, BF_H)
+local fighterTop = mk("Frame", { Size = UDim2.new(1, -108, 0, 74), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
+local fighterBottom = mk("Frame", { Size = UDim2.new(1, -108, 0, 74), Position = UDim2.new(0, 12, 0, 88), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
 local function mkSpriteLabel(y)
-	return mk("ImageLabel", {
-		Size = UDim2.new(0, 96, 0, 96), Position = UDim2.new(1, -108, 0, y), BackgroundTransparency = 1, ZIndex = 6,
+	return mk("ImageLabel", { -- 전투원 카드 오른쪽 (카드 폭 밖 — 글씨와 겹치지 않는다)
+		Size = UDim2.new(0, 76, 0, 76), Position = UDim2.new(1, -84, 0, y), BackgroundTransparency = 1, ZIndex = 6,
 		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false,
 	}, battleFrame)
 end
-local spriteTop, spriteBottom = mkSpriteLabel(6), mkSpriteLabel(84)
+local spriteTop, spriteBottom = mkSpriteLabel(10), mkSpriteLabel(88)
 local battleRound = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -24, 0, 18), Position = UDim2.new(0, 12, 0, 164), ZIndex = 5,
-	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
+	Text = "", Size = UDim2.new(1, -24, 0, 34), Position = UDim2.new(0, 12, 0, 168), ZIndex = 5, TextWrapped = true,
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold,
+	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
 }, battleFrame)
 local battleMsg = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -24, 0, 100), Position = UDim2.new(0, 12, 0, 184), ZIndex = 5,
-	TextColor3 = Color3.fromRGB(255, 224, 150), BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.3, TextSize = 12,
+	Text = "", Size = UDim2.new(1, -24, 0, 96), Position = UDim2.new(0, 12, 0, 206), ZIndex = 5,
+	TextColor3 = Color3.fromRGB(255, 224, 150), BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.25, TextSize = 12,
 	Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Bottom, TextWrapped = true,
 }, battleFrame)
-local battleBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 220), Position = UDim2.new(0, 12, 0, 292), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
+local battleBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 244), Position = UDim2.new(0, 12, 0, 310), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
 
 -- #121 계약 4·6: 탐색 보상 선택 창 (기술 교체 3단계 · 포획 2단계 · 포기) — 소유자 화면에만 (서버가 소유자에게만 내려보낸다)
+local RF_W, RF_H = 580, 496
 local recruitFrame = mk("Frame", {
-	Size = UDim2.new(0, 560, 0, 430), Position = UDim2.new(0.5, -280, 0.5, -215),
+	Size = UDim2.new(0, RF_W, 0, RF_H), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
 }, game_)
 bgImage(recruitFrame, "panel_modal", "panel", 1)
+autoFit(recruitFrame, RF_W, RF_H)
 local recruitTitle = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -24, 0, 24), Position = UDim2.new(0, 12, 0, 8), ZIndex = 5,
-	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 16, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
+	Text = "", Size = UDim2.new(1, -28, 0, 24), Position = UDim2.new(0, 14, 0, 10), ZIndex = 5,
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 16, Font = Enum.Font.GothamBold,
+	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+}, recruitFrame)
+local recruitTextBox = mk("Frame", { -- 본문 영역 (버튼과 겹치지 않게 넘치는 글은 잘라 낸다)
+	Size = UDim2.new(1, -28, 0, 172), Position = UDim2.new(0, 14, 0, 38), BackgroundColor3 = Color3.fromRGB(19, 22, 30),
+	BackgroundTransparency = 0.35, BorderSizePixel = 0, ClipsDescendants = true, ZIndex = 5,
 }, recruitFrame)
 local recruitText = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -24, 0, 160), Position = UDim2.new(0, 12, 0, 34), ZIndex = 5, RichText = true,
+	Text = "", Size = UDim2.new(1, -12, 1, -8), Position = UDim2.new(0, 6, 0, 4), ZIndex = 6, RichText = true,
 	TextColor3 = Color3.fromRGB(200, 206, 220), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
-}, recruitFrame)
-local recruitBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 220), Position = UDim2.new(0, 12, 0, 200), BackgroundTransparency = 1, ZIndex = 5 }, recruitFrame)
+}, recruitTextBox)
+local recruitBtns = mk("Frame", { Size = UDim2.new(1, -28, 0, 268), Position = UDim2.new(0, 14, 0, 218), BackgroundTransparency = 1, ZIndex = 5 }, recruitFrame)
 
 --==================================================================
 -- 헬퍼
@@ -1087,6 +1140,7 @@ end
 local function closeDetail()
 	setup.detail = nil
 	rosterDetail.Visible = false
+	detailBack.Visible = false
 end
 
 local function openDetail(rid)
@@ -1096,6 +1150,7 @@ local function openDetail(rid)
 	end
 	setup.detail = rid
 	rosterDetail.Visible = true
+	detailBack.Visible = true
 	detailPortrait.Image = Art.portrait(rid) or ""
 	local eu = Art.element(rd.element)
 	detailElem.Image = eu or ""
@@ -1423,6 +1478,16 @@ local function renderLobby()
 end
 
 function flashHud(text)
+	if win.Visible then -- 창이 떠 있으면 HUD 가 숨겨져 있으므로 창 상태줄에 띄운다
+		local prev = winStatus.Text
+		winStatus.Text = text
+		task.delay(1, function()
+			if winStatus.Text == text then
+				winStatus.Text = prev
+			end
+		end)
+		return
+	end
 	hudLabel.Text = text
 	task.delay(1, function()
 		if hudLabel.Text == text then -- 그 사이 다른 갱신이 없었을 때만 원래 안내문으로
@@ -1629,10 +1694,11 @@ local function renderRecruit(pd)
 		recruitUi = { stage = "root", skill = nil, targetId = nil, recvId = nil, token = token }
 	end
 	recruitFrame.Visible = true
+	modalBack.Visible = true
 	clearChildren(recruitBtns)
 	local n = 0
 	local function rbtn(text, fn, kind, enabled, icon)
-		local b = smallBtn(recruitBtns, (n % 2) * 270, math.floor(n / 2) * 30, 264, text, fn, kind or "default", enabled ~= false, icon)
+		local b = smallBtn(recruitBtns, (n % 2) * 278, math.floor(n / 2) * 32, 272, text, fn, kind or "default", enabled ~= false, icon, 28)
 		n += 1
 		return b
 	end
@@ -1783,6 +1849,7 @@ local function renderPrompt()
 		return
 	end
 	recruitFrame.Visible = false
+	modalBack.Visible = view.battle ~= nil
 	promptFrame.Visible = pd ~= nil
 	clearChildren(promptBtns)
 	if not pd then
@@ -1884,6 +1951,11 @@ end
 local function renderBattle()
 	local bt = view.battle
 	battleFrame.Visible = bt ~= nil
+	if bt then
+		modalBack.Visible = true
+	elseif not recruitFrame.Visible then
+		modalBack.Visible = false
+	end
 	if not bt then
 		battleSub = nil
 		return
