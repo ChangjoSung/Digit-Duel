@@ -10,7 +10,7 @@
 | v0.4.4 | [Milestone 10](https://github.com/ChangjoSung/Digit-Duel/milestone/10) | 전투 변수·온라인 시점·턴 흐름 — #91~#96 #104~#106 | 144 (md 47) | [v0.4.4](v0.4.4/README.md) |
 | v0.4.5 | [Milestone 11](https://github.com/ChangjoSung/Digit-Duel/milestone/11) | 턴 행동 정리·문서·튜토리얼 갱신 — #114 | 37 (md 7) | [v0.4.5](v0.4.5/README.md) |
 | v0.4.6 | [Milestone 12](https://github.com/ChangjoSung/Digit-Duel/milestone/12) | Roblox 포팅 — #118 (별도 작업자 진행 중) | 별도 작업자 관리 | [v0.4.6](v0.4.6/README.md) |
-| v0.4.7 | [Milestone 13](https://github.com/ChangjoSung/Digit-Duel/milestone/13) | #121·#125·#129 CJ QA PASS·CLOSED(미출시) · #146·#131·#130 구현·CJ QA 대기 / #128 신고 미재현·검증 기록 · 나머지 게임 이슈 착수 대기 · Infra #132/#134 완료 | 진행 중 | [v0.4.7](v0.4.7/README.md) |
+| v0.4.7 | [Milestone 13](https://github.com/ChangjoSung/Digit-Duel/milestone/13) | #121·#125·#129·#146·#131·#130 CJ QA PASS·CLOSED(미출시) · #128 매 페이지 로드 튜토리얼 표시 구현·새 CJ QA 대기 · 나머지 게임 이슈 착수 대기 · Infra #132/#134 완료 | 진행 중 | [v0.4.7](v0.4.7/README.md) |
 
 v0.4.2 이하는 이 보관소에 문서가 없다. 그 버전들의 변경 내용은 [릴리스 노트 목록](../releases/README.md)에서 본다.
 

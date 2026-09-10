@@ -1,0 +1,972 @@
+{
+ "tool": "tools/media/readme_media_capture.js",
+ "toolSha256": "6ddba081fbd7d15f808d53ebab62548e286fe3292fcdb333b751fb3648bf5132",
+ "command": "tools/media/readme_media_capture.js verify --readme README.md --out docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final --viewport 390x844",
+ "readme": "README.md",
+ "readmeSha256": "94e09470dd10b0b722daf44fe0a2a0b58eb8e218e17fe0060b1cea6f2dbad446",
+ "at": "2026-09-10T05:49:06.838Z",
+ "viewport": "390x844",
+ "fail": 0,
+ "refs": [
+  {
+   "kind": "image",
+   "target": "docs/media/digit-duel-hero.png",
+   "line": 4,
+   "ok": true,
+   "note": "1672x941"
+  },
+  {
+   "kind": "link",
+   "target": "docs/media/digit-duel-hero.png",
+   "line": 4,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "#게임-플레이-사진",
+   "line": 6,
+   "ok": true,
+   "note": "앵커"
+  },
+  {
+   "kind": "image",
+   "target": "https://img.shields.io/github/v/release/ChangjoSung/Digit-Duel?label=release",
+   "line": 10,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/releases/latest",
+   "line": 10,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "image",
+   "target": "https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat",
+   "line": 11,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel",
+   "line": 11,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "image",
+   "target": "https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat",
+   "line": 12,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/forks",
+   "line": 12,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "image",
+   "target": "https://img.shields.io/badge/code-Apache--2.0-blue",
+   "line": 13,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "LICENSE",
+   "line": 13,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "#새로운-기능",
+   "line": 24,
+   "ok": true,
+   "note": "앵커"
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.3/issues/89/Mars/artifacts/file_desktop-1280_3-board.png",
+   "line": 41,
+   "ok": true,
+   "note": "1280x800"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.3/issues/89/Mars/artifacts/file_desktop-1280_3-board.png",
+   "line": 41,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.4/issues/106/Mars/browser-artifacts/06-b1-menu-root-actor.png",
+   "line": 45,
+   "ok": true,
+   "note": "1280x1000"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.4/issues/106/Mars/browser-artifacts/06-b1-menu-root-actor.png",
+   "line": 45,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-01.png",
+   "line": 56,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-01.png",
+   "line": 56,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-02.png",
+   "line": 57,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-02.png",
+   "line": 57,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-03.png",
+   "line": 58,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-03.png",
+   "line": 58,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-04.png",
+   "line": 59,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-04.png",
+   "line": 59,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-05.png",
+   "line": 60,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-05.png",
+   "line": 60,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-06.png",
+   "line": 63,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-06.png",
+   "line": 63,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-07.png",
+   "line": 64,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-07.png",
+   "line": 64,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-08.png",
+   "line": 65,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-08.png",
+   "line": 65,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-09.png",
+   "line": 66,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-09.png",
+   "line": 66,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "image",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-10.png",
+   "line": 67,
+   "ok": true,
+   "note": "2224x1636"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-10.png",
+   "line": 67,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "#새로운-기능",
+   "line": 70,
+   "ok": true,
+   "note": "앵커"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/capture-manifest.json",
+   "line": 72,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "https://img.shields.io/badge/v0.4.5-release-4c9a2a",
+   "line": 81,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "docs/releases/v0.4.5.md",
+   "line": 90,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.5/specs/v0.4.5-rules-digest.md",
+   "line": 90,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.5/specs/v0.4.5-gameplay-spec.md",
+   "line": 90,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "docs/releases/README.md",
+   "line": 92,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/releases",
+   "line": 92,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/issues/146",
+   "line": 98,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/issues/131",
+   "line": 98,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/issues/130",
+   "line": 98,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/issues/128",
+   "line": 105,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/128/Venus/docs-report.md",
+   "line": 111,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "docs/releases/v0.4.7.md",
+   "line": 113,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md",
+   "line": 113,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/v0.4.7/issues/146/Venus/gameplay-spec.md",
+   "line": 113,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/releases",
+   "line": 115,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.5",
+   "line": 121,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "docs/releases/v0.4.7.md",
+   "line": 122,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars",
+   "line": 124,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks",
+   "line": 124,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://nodejs.org",
+   "line": 125,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/lee775",
+   "line": 128,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/milestone/12",
+   "line": 131,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/milestone/13",
+   "line": 131,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "https://nodejs.org",
+   "line": 143,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "server/README.md",
+   "line": 153,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/issues/128",
+   "line": 158,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "docs/README.md",
+   "line": 190,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "docs/milestone/README.md",
+   "line": 190,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "https://github.com/ChangjoSung/Digit-Duel/actions",
+   "line": 192,
+   "ok": true,
+   "note": "외부"
+  },
+  {
+   "kind": "link",
+   "target": "CONTRIBUTING.md",
+   "line": 192,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "LICENSE",
+   "line": 196,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "NOTICE",
+   "line": 196,
+   "ok": true,
+   "note": ""
+  },
+  {
+   "kind": "link",
+   "target": "ASSET-LICENSE.md",
+   "line": 198,
+   "ok": true,
+   "note": ""
+  }
+ ],
+ "headings": [
+  "digit-duel",
+  "게임-소개",
+  "게임-기능",
+  "게임-플레이-사진",
+  "새로운-기능",
+  "개발-중--v047-미출시",
+  "게임-정보",
+  "플레이-방법",
+  "저장소-구조",
+  "라이선스"
+ ],
+ "tutorial": {
+  "ok": true,
+  "dims": {
+   "w": 2224,
+   "h": 1628
+  },
+  "files": [
+   {
+    "file": "docs/media/tutorial-01.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 197114,
+    "sha256": "fcc234c1eac28f01b48b07203827e042048ebfe7f4903670faaa41a970b2f76f",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-02.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 196970,
+    "sha256": "5be4b02b432e0c80b7e5a62ef260890a5b348caf83ee8c4297946bfa7fe3f55e",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-03.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 198042,
+    "sha256": "5821f7c5ac466da619e5d089b1e7064bc480f22fa90c9c813324c8d15e09d315",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-04.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 211958,
+    "sha256": "81e7e244fa3cac88310cc433ee509542341101e28afaec9abd40a45298a51fce",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-05.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 231808,
+    "sha256": "95210446af4577076ab33791603f6c6c1ac4e62dbe5c132ce3675ffcf2f85fbd",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-06.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 216301,
+    "sha256": "550af4d74d8502e9db8eef269933ba01d2f05974450e268ddebbcb6956acae2d",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-07.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 221876,
+    "sha256": "ff19476d53d4c5d42b4082a6b4a89f29b392f656ac4002d9d4efa175c228ee21",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-08.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 212746,
+    "sha256": "b6d15875c4c6a5a55b4fb8eb997444d4c50f1f57e8dfc6339ffaa62e0cca86c3",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-09.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 176360,
+    "sha256": "28ac171c224b9fd0e8dc338d5d1a595cd81ee7d03eef6007ca7faebd7b8df65e",
+    "note": ""
+   },
+   {
+    "file": "docs/media/tutorial-10.png",
+    "ok": true,
+    "size": {
+     "w": 2224,
+     "h": 1628
+    },
+    "bytes": 210777,
+    "sha256": "8f3913f2c7217e19a9c970e9d2b1675fa2da68560c55913d80701b2a153fe490",
+    "note": ""
+   }
+  ]
+ },
+ "gh": {
+  "bytes": 32877,
+  "sha256": "db8611a82da4d70f716760ec0ad175d9551f5b8851faa90000491eab3c9dcb46",
+  "imgs": 20,
+  "anchors": 63,
+  "details": 1,
+  "dropped": 0,
+  "script": false
+ },
+ "render": {
+  "viewport": "390x844",
+  "cssNote": "approximate GitHub markdown CSS — layout/image/link verification only, not pixel-identical to github.com",
+  "pageHeight": 8444,
+  "pageWidth": 390,
+  "bodyWidth": 390,
+  "sections": [
+   {
+    "tag": "H1",
+    "text": "Digit-Duel",
+    "top": 37
+   },
+   {
+    "tag": "H2",
+    "text": "게임 소개",
+    "top": 443
+   },
+   {
+    "tag": "H2",
+    "text": "게임 기능",
+    "top": 808
+   },
+   {
+    "tag": "H2",
+    "text": "게임 플레이 사진",
+    "top": 2084
+   },
+   {
+    "tag": "H2",
+    "text": "새로운 기능",
+    "top": 2513
+   },
+   {
+    "tag": "H2",
+    "text": "게임 정보",
+    "top": 4793
+   },
+   {
+    "tag": "H2",
+    "text": "플레이 방법",
+    "top": 5634
+   },
+   {
+    "tag": "H2",
+    "text": "저장소 구조",
+    "top": 7082
+   },
+   {
+    "tag": "H2",
+    "text": "라이선스",
+    "top": 7888
+   }
+  ],
+  "tables": [
+   {
+    "index": 0,
+    "display": "table",
+    "rows": 1,
+    "cols": 2,
+    "width": 358,
+    "scrollWidth": 358,
+    "clientWidth": 358,
+    "hscroll": false,
+    "right": 374,
+    "inDetails": false,
+    "firstCell": "플레이 화면내 말과 공개된 상대 말은 아이콘으로, 아직"
+   },
+   {
+    "index": 1,
+    "display": "table",
+    "rows": 2,
+    "cols": 5,
+    "width": 358,
+    "scrollWidth": 358,
+    "clientWidth": 358,
+    "hscroll": false,
+    "right": 374,
+    "inDetails": true,
+    "firstCell": "1. 이기는 법 세 가지"
+   },
+   {
+    "index": 2,
+    "display": "block",
+    "rows": 12,
+    "cols": 2,
+    "width": 358,
+    "scrollWidth": 358,
+    "clientWidth": 358,
+    "hscroll": false,
+    "right": 374,
+    "inDetails": false,
+    "firstCell": "항목"
+   }
+  ],
+  "overflowElements": [
+   {
+    "tag": "code",
+    "cls": "notranslate",
+    "right": 552,
+    "text": "demo/\n  index.html            "
+   }
+  ],
+  "shots": [
+   {
+    "name": "section-00-w390.png",
+    "text": "Digit-Duel",
+    "height": 406,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-00-w390.png",
+    "sha256": "bdc4ecbf8dc006364967438536b9a8b262670011229258fefd089ef406e6846d"
+   },
+   {
+    "name": "section-01-w390.png",
+    "text": "게임 소개",
+    "height": 365,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-01-w390.png",
+    "sha256": "3e6668b7e8ed5257328a2e9c9930110df245cacc2f9a5cab9d56be9bfcb347bd"
+   },
+   {
+    "name": "section-02-w390.png",
+    "text": "게임 기능",
+    "height": 1276,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-02-w390.png",
+    "sha256": "52fe520b0cffb310db9ce525dbf59c6d2b04a234445e1da8c6fb3542ff1d5f3f"
+   },
+   {
+    "name": "section-03-w390.png",
+    "text": "게임 플레이 사진",
+    "height": 429,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-03-w390.png",
+    "sha256": "9c66d97f77888a5d9c46a18c3a24888ed93bd3a58e87d731a672770368fe50d2"
+   },
+   {
+    "name": "section-04-w390.png",
+    "text": "새로운 기능",
+    "height": 2280,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-04-w390.png",
+    "sha256": "9e46718a62560525d159b2a28516e588910a0f7cbe28128fe2612926d4d35a3f"
+   },
+   {
+    "name": "section-05-w390.png",
+    "text": "게임 정보",
+    "height": 841,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-05-w390.png",
+    "sha256": "4c31d61f3c6cc9dfe628f878acf9f01ca6cb873b9da12f9de15f372868c40b8d"
+   },
+   {
+    "name": "section-06-w390.png",
+    "text": "플레이 방법",
+    "height": 1448,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-06-w390.png",
+    "sha256": "beee907c510a7240e28596f09bc83646de6eb60ff879b1d554c38a424b62e9d6"
+   },
+   {
+    "name": "section-07-w390.png",
+    "text": "저장소 구조",
+    "height": 806,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-07-w390.png",
+    "sha256": "a4795c1c12c6764507e1e497bc60da6daa02b5d0c847b70fd5fc85cbda987678"
+   },
+   {
+    "name": "section-08-w390.png",
+    "text": "라이선스",
+    "height": 564,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/section-08-w390.png",
+    "sha256": "382588a67e9a8b5abc2f21c1cdb163507999715b6ced10aad60c0a7892c28e45"
+   },
+   {
+    "name": "gallery-open-w390.png",
+    "text": "details 갤러리(펼침)",
+    "height": 855,
+    "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/gallery-open-w390.png",
+    "sha256": "42d7420e33b9cd2ffb597e31c196073d3a0a3db9dc3d28020d6c37d5cf6ba1eb"
+   }
+  ],
+  "localImgs": [
+   {
+    "src": "docs/media/digit-duel-hero.png",
+    "ok": true,
+    "w": 1672,
+    "h": 941,
+    "disp": 358
+   },
+   {
+    "src": "docs/milestone/v0.4.3/issues/89/Mars/artifacts/file_desktop-1280_3-board.png",
+    "ok": true,
+    "w": 1280,
+    "h": 800,
+    "disp": 152
+   },
+   {
+    "src": "docs/milestone/v0.4.4/issues/106/Mars/browser-artifacts/06-b1-menu-root-actor.png",
+    "ok": true,
+    "w": 1280,
+    "h": 1000,
+    "disp": 152
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-01.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-02.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-03.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-04.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-05.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-06.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-07.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-08.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-09.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   },
+   {
+    "src": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-10.png",
+    "ok": true,
+    "w": 2224,
+    "h": 1636,
+    "disp": 44
+   }
+  ],
+  "localLinks": [
+   "docs/media/digit-duel-hero.png",
+   "LICENSE",
+   "docs/milestone/v0.4.3/issues/89/Mars/artifacts/file_desktop-1280_3-board.png",
+   "docs/milestone/v0.4.4/issues/106/Mars/browser-artifacts/06-b1-menu-root-actor.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-01.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-02.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-03.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-04.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-05.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-06.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-07.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-08.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-09.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-10.png",
+   "docs/milestone/v0.4.7/issues/146/Mars/artifacts/capture-manifest.json",
+   "docs/releases/v0.4.5.md",
+   "docs/milestone/v0.4.5/specs/v0.4.5-rules-digest.md",
+   "docs/milestone/v0.4.5/specs/v0.4.5-gameplay-spec.md",
+   "docs/releases/README.md",
+   "docs/milestone/v0.4.7/issues/128/Venus/docs-report.md",
+   "docs/releases/v0.4.7.md",
+   "docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md",
+   "docs/milestone/v0.4.7/issues/146/Venus/gameplay-spec.md",
+   "docs/releases/v0.4.7.md",
+   "server/README.md",
+   "docs/README.md",
+   "docs/milestone/README.md",
+   "CONTRIBUTING.md",
+   "LICENSE",
+   "NOTICE",
+   "ASSET-LICENSE.md"
+  ],
+  "anchorLinks": [
+   "#게임-플레이-사진",
+   "#%EC%83%88%EB%A1%9C%EC%9A%B4-%EA%B8%B0%EB%8A%A5",
+   "#새로운-기능"
+  ],
+  "gallery": {
+   "rows": 2,
+   "cols": 5,
+   "imgs": 10,
+   "loaded": 10,
+   "thumbWidths": [
+    44
+   ],
+   "clip": {
+    "x": 0,
+    "y": 2433,
+    "width": 390,
+    "height": 855
+   },
+   "saved": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/readme-final/gallery-open-w390.png",
+   "sha256": "42d7420e33b9cd2ffb597e31c196073d3a0a3db9dc3d28020d6c37d5cf6ba1eb"
+  }
+ }
+}

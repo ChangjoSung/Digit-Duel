@@ -1,0 +1,369 @@
+{
+  "issue": "#128",
+  "tool": "demo/test/milestone/v0.4.7/issues/128/issue128_cdp.js",
+  "source": "demo/index.html",
+  "blobSha1": "8027cd72d8445c9a7077d0e43b1c5559645ee165",
+  "sha256": "d253453f121fa151390dcb82ef098f440cf7556d13c4fdec40f5134aaad6686a",
+  "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "when": "2026-09-10T05:39:35.283Z",
+  "viewport": {
+    "width": 1280,
+    "height": 1000
+  },
+  "steps": [
+    {
+      "name": "0 프로필 A 에 과거 저장값 심기",
+      "data": {
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ]
+      }
+    },
+    {
+      "name": "1 저장키 있음 → 새 접속",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": true,
+        "step": 0,
+        "auto": true,
+        "seenThisLoad": true,
+        "overlayHidden": false,
+        "heading": "1 / 10 단계📖 튜토리얼 🏆 이기는 법 세 가지 1상대 왕 잡기⚔👑왕을 잡으면 승리상대 왕을 찾아서",
+        "appInert": true,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": "1",
+        "net": "192.168.0.77:8787",
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "menu"
+      }
+    },
+    {
+      "name": "2 건너뛰기 직후",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": false,
+        "step": 0,
+        "auto": true,
+        "seenThisLoad": true,
+        "overlayHidden": true,
+        "heading": "1 / 10 단계📖 튜토리얼 🏆 이기는 법 세 가지 1상대 왕 잡기⚔👑왕을 잡으면 승리상대 왕을 찾아서",
+        "appInert": false,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": "1",
+        "net": "192.168.0.77:8787",
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "menu"
+      }
+    },
+    {
+      "name": "3 같은 탭 새로고침",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": true,
+        "step": 0,
+        "auto": true,
+        "seenThisLoad": true,
+        "overlayHidden": false,
+        "heading": "1 / 10 단계📖 튜토리얼 🏆 이기는 법 세 가지 1상대 왕 잡기⚔👑왕을 잡으면 승리상대 왕을 찾아서",
+        "appInert": true,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": "1",
+        "net": "192.168.0.77:8787",
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "menu"
+      }
+    },
+    {
+      "name": "4 같은 프로필 새 탭",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": true,
+        "step": 0,
+        "auto": true,
+        "seenThisLoad": true,
+        "overlayHidden": false,
+        "heading": "1 / 10 단계📖 튜토리얼 🏆 이기는 법 세 가지 1상대 왕 잡기⚔👑왕을 잡으면 승리상대 왕을 찾아서",
+        "appInert": true,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": "1",
+        "net": "192.168.0.77:8787",
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "menu"
+      }
+    },
+    {
+      "name": "5 같은 페이지에서 모드 변경·새 게임",
+      "data": [
+        {
+          "mode": "pvp",
+          "phase": "setup",
+          "tutOpen": false
+        },
+        {
+          "mode": "pve",
+          "phase": "setup",
+          "tutOpen": false
+        },
+        {
+          "mode": "pvp",
+          "phase": "setup",
+          "tutOpen": false
+        }
+      ]
+    },
+    {
+      "name": "6 수동 재보기",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": true,
+        "step": 0,
+        "auto": false,
+        "seenThisLoad": true,
+        "overlayHidden": false,
+        "heading": "1 / 10 단계📖 튜토리얼 🏆 이기는 법 세 가지 1상대 왕 잡기⚔👑왕을 잡으면 승리상대 왕을 찾아서",
+        "appInert": true,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": "1",
+        "net": "192.168.0.77:8787",
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "setup"
+      }
+    },
+    {
+      "name": "7 [다음] 2회",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": true,
+        "step": 2,
+        "auto": false,
+        "seenThisLoad": true,
+        "overlayHidden": false,
+        "heading": "3 / 10 단계📖 튜토리얼 🌲 움직이기와 숲에 숨기 1한 칸 이동⚔위·아래·옆만 · 대각선 ✗내 차례에",
+        "appInert": true,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": "1",
+        "net": "192.168.0.77:8787",
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "setup"
+      }
+    },
+    {
+      "name": "8 Esc",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": false,
+        "step": 1,
+        "auto": false,
+        "seenThisLoad": true,
+        "overlayHidden": true,
+        "heading": "2 / 10 단계📖 튜토리얼 🎭 말 5가지와 숨은 정체 1내 눈: 내 말 14개하수인 6⚔⚔⚔⚔⚔⚔동료 ",
+        "appInert": false,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": "1",
+        "net": "192.168.0.77:8787",
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "setup"
+      }
+    },
+    {
+      "name": "9 독립 프로필 B 최초 접속",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": true,
+        "step": 0,
+        "auto": true,
+        "seenThisLoad": true,
+        "overlayHidden": false,
+        "heading": "1 / 10 단계📖 튜토리얼 🏆 이기는 법 세 가지 1상대 왕 잡기⚔👑왕을 잡으면 승리상대 왕을 찾아서",
+        "appInert": true,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": null,
+        "net": null,
+        "keys": [],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "menu"
+      }
+    },
+    {
+      "name": "10 B 새로고침",
+      "data": {
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": true,
+        "step": 0,
+        "auto": true,
+        "seenThisLoad": true,
+        "overlayHidden": false,
+        "heading": "1 / 10 단계📖 튜토리얼 🏆 이기는 법 세 가지 1상대 왕 잡기⚔👑왕을 잡으면 승리상대 왕을 찾아서",
+        "appInert": true,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": null,
+        "net": null,
+        "keys": [],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "menu"
+      }
+    },
+    {
+      "name": "11 서버 재시작 후 새 접속",
+      "data": {
+        "samePort": true,
+        "port": 62868,
+        "href": "http://127.0.0.1:62868/index.html",
+        "origin": "http://127.0.0.1:62868",
+        "open": true,
+        "step": 0,
+        "auto": true,
+        "seenThisLoad": true,
+        "overlayHidden": false,
+        "heading": "1 / 10 단계📖 튜토리얼 🏆 이기는 법 세 가지 1상대 왕 잡기⚔👑왕을 잡으면 승리상대 왕을 찾아서",
+        "appInert": true,
+        "hasTutKey": false,
+        "hasTutStore": false,
+        "stored": "1",
+        "net": "192.168.0.77:8787",
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "storeErr": null,
+        "manualBtn": true,
+        "phase": "menu"
+      }
+    },
+    {
+      "name": "12 전 과정 후 프로필 A 저장소",
+      "data": {
+        "keys": [
+          "netServer",
+          "tutorialSeen"
+        ],
+        "stored": "1",
+        "net": "192.168.0.77:8787"
+      }
+    },
+    {
+      "name": "13 10단계 렌더 텍스트 다이제스트",
+      "data": {
+        "count": 10,
+        "sha256": "315370351ff6cc7a5e99ee4c4d369067b0d586d36e31aaa32feffc788de33b75"
+      }
+    }
+  ],
+  "limits": [
+    "프로필 2개는 같은 머신의 독립 Chrome user-data-dir 이다 — 물리적으로 다른 두 PC 종단간 검증이 아니다.",
+    "BFCache 복원은 이 도구가 유도·주장하지 않는다. 같은 문서 무재표시는 모드 변경·새 게임 조작으로만 확인했다."
+  ],
+  "readOnly": false,
+  "url": "http://127.0.0.1:62868/index.html",
+  "port": 62868,
+  "shots": {
+    "load1": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/i128-01-load-with-legacy-key.png",
+    "closed": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/i128-02-closed-after-skip.png",
+    "reload": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/i128-03-after-reload.png",
+    "newTab": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/i128-04-new-tab.png",
+    "sameTab": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/i128-05-same-tab-mode-change.png",
+    "manual": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/i128-06-manual-reopen-step2.png",
+    "profileB": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/i128-07-second-profile.png",
+    "serverRestart": "docs/milestone/v0.4.7/issues/128/Mars/artifacts/i128-08-after-server-restart.png"
+  },
+  "tutorialSteps": {
+    "count": 10,
+    "renderedDigest": "315370351ff6cc7a5e99ee4c4d369067b0d586d36e31aaa32feffc788de33b75",
+    "titles": [
+      "이기는 법 세 가지",
+      "말 5가지와 숨은 정체",
+      "움직이기와 숲에 숨기",
+      "흔적과 탐색",
+      "옆에 붙으면 꼭 싸워요",
+      "폭탄과 함정",
+      "잡아오기와 도망치기",
+      "텔레포트(순간이동)",
+      "버닝 타임(불타는 시간)",
+      "빠른 복습 — 첫 차례 체크리스트"
+    ]
+  },
+  "pass": 26,
+  "fail": 0,
+  "fails": [],
+  "ownership": {
+    "chromePids": [
+      62304,
+      107860
+    ],
+    "profileDirs": [
+      "C:\\Users\\pc_77\\AppData\\Local\\Temp\\i128cdp-A-hkBSL8",
+      "C:\\Users\\pc_77\\AppData\\Local\\Temp\\i128cdp-B-11wZUC"
+    ],
+    "servers": [
+      "127.0.0.1:62868",
+      "127.0.0.1:62868"
+    ]
+  },
+  "cleanup": {
+    "removedDirs": [
+      "C:\\Users\\pc_77\\AppData\\Local\\Temp\\i128cdp-A-hkBSL8",
+      "C:\\Users\\pc_77\\AppData\\Local\\Temp\\i128cdp-B-11wZUC"
+    ],
+    "leftover": [],
+    "killedPids": [
+      62304,
+      107860
+    ]
+  }
+}
