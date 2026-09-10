@@ -1,5 +1,7 @@
 # [Earth 요청] Digit Dual Roblox — 전투 연출(FX) P1/P2 아트 납품 요청
 
+> **납품 업데이트(2026-09-10)**: P1 FX10 + P2 FX3 + 메모2, 총15PNG 전량 제작. [Earth 납품 보고·프레임 검토·해시](../art/roblox-v0.5.0/earth-fx-report.md) · [Mars 적용 계약](../../roblox/assets/fx/README.md). 시트는768×96/8프레임이며, 코드상 기존 전투원 그림은76×76이므로 실제 표시 크기는 별도 확인한다. 업로드·코드 연결·Studio 검수는 Mars 후속이다.
+
 > **사용법**: `--- PROMPT ---` 이후 전체를 Codex(Earth 역할) 세션에 붙여넣는다.
 > 작성: Mars (Claude Code) 2026-09-10 · Ref #118 (v0.4.6 Roblox 포팅) · 선행 요청서 `earth-art-request.md`(P0 2D) · `earth-lobby-request.md`(3D 로비) · `earth-ai-window-request.md`(AI 창) · `earth-banner-request.md`(배너) 와 별개
 > **선행 납품 현황**: P0 129 PNG · 로비 13 · 가림 1 · AI 창 8 · 배너 1 = **총 152 자산 적용 완료**. 이 요청서는 그때 P1/P2 로 미뤄 둔 **연출용 자산**이다.

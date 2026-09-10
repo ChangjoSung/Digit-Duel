@@ -1,6 +1,6 @@
 --!strict
 -- AssetIds.luau — 생성 파일 (roblox/tools/upload_assets.js). 직접 수정하지 말 것.
--- 생성 2026-09-10T05:06:57.014Z · 업로더 user 11639564357 · 152개
+-- 생성 2026-09-10T06:26:01.251Z · 업로더 user 11639564357 · 169개
 -- 키: icon_/battle_/portrait_<종> · token64_/token128_<토큰> (Image) · lobby_<텍스처> (Image) · lobbymesh_<메시> · mesh_unknown (Model)
 return {
 	action48_bag = 104734828695963, -- Image
@@ -41,6 +41,7 @@ return {
 	board_hl_attack = 78101750992576, -- Image
 	board_hl_flee = 115767073434220, -- Image
 	board_hl_forced = 98930818081953, -- Image
+	board_hl_memo = 78230755077572, -- Image
 	board_hl_move = 136251747804093, -- Image
 	board_hl_sel = 91023999669257, -- Image
 	board_tile_enemy = 95991291066202, -- Image
@@ -51,6 +52,19 @@ return {
 	element64_grass = 129095220032740, -- Image
 	element64_lightning = 110140127392213, -- Image
 	element64_water = 75319975619743, -- Image
+	fx96_burn = 96608508774659, -- Image
+	fx96_capture = 113462002864844, -- Image
+	fx96_dragon = 81814387161842, -- Image
+	fx96_explosion = 110596325310372, -- Image
+	fx96_flee = 96020056919856, -- Image
+	fx96_heal = 117191294992122, -- Image
+	fx96_hit = 95133070980922, -- Image
+	fx96_reaper = 112234848858584, -- Image
+	fx96_shield = 75016854420244, -- Image
+	fx96_shock = 104332602659093, -- Image
+	fx96_trap = 76634054397493, -- Image
+	fx96_weaken = 102791859261927, -- Image
+	fx96_witch = 104573429651582, -- Image
 	icon_fire_atk = 129778993494980, -- Image
 	icon_fire_def = 118200996572569, -- Image
 	icon_fire_std = 86479979242479, -- Image
@@ -130,11 +144,14 @@ return {
 	token64_ally = 76054273663192, -- Image
 	token64_bomb = 101634694951621, -- Image
 	token64_king = 114816628929782, -- Image
+	token64_memo = 107456516895566, -- Image
 	token64_trap = 120755404495408, -- Image
 	token64_unknown = 131950984299832, -- Image
 	trace48_trace = 109936670666420, -- Image
 	ui_badge = 114424112696313, -- Image
 	ui_banner = 121065040826391, -- Image
+	ui_banner_bad = 140301092822805, -- Image
+	ui_banner_good = 107280499054069, -- Image
 	ui_btn_danger_disabled = 72715217889762, -- Image
 	ui_btn_danger_hover = 92437198362280, -- Image
 	ui_btn_danger_normal = 115592574281286, -- Image

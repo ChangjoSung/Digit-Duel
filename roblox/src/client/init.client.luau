@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p4.1"
+local CLIENT_VERSION = "0.5.0-p4.2"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -195,6 +195,57 @@ local function bgImage(frame, uiKey, sliceKind, scale)
 	slice(img, sliceKind, scale)
 	frame.BackgroundTransparency = 0
 	return img
+end
+
+--==================================================================
+-- 전투 연출 스프라이트 (Earth 납품 fx96_* · 768×96 = 96×96 8프레임 가로)
+-- 표시 계층 전용 — 규칙·난수와 무관하고 **입력을 막지 않는다**. earth-fx-p1p2-request.md 6장의 [기획 필요]
+-- (재생 시간·입력 잠금)는 "잠금 없이 표시만" 으로 두고 프레임당 시간만 정했다. 자산이 없으면 조용히 아무것도 안 한다.
+--==================================================================
+-- 최상위 local 은 Luau 한도(200)에 걸리므로 재생기는 테이블 하나에 모은다
+local Fx = {
+	FRAME_S = 0.055, -- 8프레임 ≈ 0.44초 — 배너(1.2초)보다 먼저 끝난다
+	seq = {}, -- [label] = 재생 번호. 새 연출이 끼어들면 이전 타이머를 무효화한다
+}
+
+function Fx.mk(parent, x, y, size, z)
+	return mk("ImageLabel", {
+		Size = UDim2.new(0, size, 0, size), Position = UDim2.new(0, x, 0, y), BackgroundTransparency = 1,
+		ImageRectSize = Vector2.new(Art.FX.size, Art.FX.size), ImageRectOffset = Vector2.new(0, 0),
+		ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = z, Active = false,
+	}, parent)
+end
+
+function Fx.stop(label)
+	Fx.seq[label] = (Fx.seq[label] or 0) + 1
+	label.Visible = false
+end
+
+function Fx.play(label, key) -- key 가 nil 이거나 자산이 없으면 false (호출 측이 신경 쓸 것 없음)
+	local u = Art.fx(key)
+	if not u then
+		return false
+	end
+	local n = (Fx.seq[label] or 0) + 1
+	Fx.seq[label] = n
+	label.Image = u
+	label.ImageColor3 = Art.FX_TINT[key] or WHITE
+	label.ImageRectOffset = Vector2.new(0, 0)
+	label.Visible = true
+	task.spawn(function()
+		for i = 1, Art.FX.frames - 1 do
+			task.wait(Fx.FRAME_S)
+			if Fx.seq[label] ~= n then
+				return -- 다른 연출이 끼어들었다
+			end
+			label.ImageRectOffset = Vector2.new(Art.FX.size * i, 0)
+		end
+		task.wait(Fx.FRAME_S)
+		if Fx.seq[label] == n then
+			label.Visible = false -- 마지막 프레임은 완전 투명이라 사라지는 모습 그대로 끝난다
+		end
+	end)
+	return true
 end
 
 local function iconLabel(parent, x, y, size, image, tint, zindex)
@@ -460,8 +511,14 @@ local bannerFrame = mk("Frame", {
 	Size = UDim2.new(0, 540, 0, 112), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
 	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BorderSizePixel = 0, Visible = false, ZIndex = 9,
 }, gui)
-if not bgImage(bannerFrame, "banner", "panel", 1) then -- 전용 배너 아트가 오면 자동 사용 (Earth 요청)
-	bgImage(bannerFrame, "panel_modal", "panel", 1)
+-- 획득·손실은 배경까지 바꿔 한눈에 구분한다 (Earth earth-banner-variants-report.md — 실루엣·글자 영역은 공통과 동일)
+local bannerArt = { VARIANT = { good = "banner_good", bad = "banner_bad" }, base = "" }
+bannerArt.bg = bgImage(bannerFrame, "banner", "panel", 1) -- 전용 배너 아트 (Earth 납품)
+if not bannerArt.bg then
+	bannerArt.bg = bgImage(bannerFrame, "panel_modal", "panel", 1)
+end
+if bannerArt.bg then
+	bannerArt.base = bannerArt.bg.Image
 end
 autoFit(bannerFrame, 540, 112)
 local bannerTitle = mk("TextLabel", {
@@ -474,6 +531,7 @@ local bannerSub = mk("TextLabel", {
 	BackgroundTransparency = 1, TextSize = 14, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(180, 188, 205),
 	TextWrapped = true,
 }, bannerFrame)
+bannerArt.fx = Fx.mk(bannerFrame, 14, 8, 96, 10) -- 판 위에서 일어난 일(폭탄·함정·포획·도망)은 배너 안에서 보여 준다
 local bannerQ, bannerBusy = {}, false
 local function bannerPump()
 	if bannerBusy then
@@ -485,6 +543,29 @@ local function bannerPump()
 		return
 	end
 	bannerBusy = true
+	if bannerArt.bg then -- 상황별 배경 (없으면 공통 배너 그대로)
+		local key = bannerArt.VARIANT[b.tone or ""]
+		local u = nil
+		if key then
+			u = Art.ui(key)
+		end
+		bannerArt.bg.Image = u or bannerArt.base
+	end
+	local hasFx = false
+	if b.fx then
+		hasFx = Fx.play(bannerArt.fx, b.fx)
+	end
+	if not hasFx then
+		Fx.stop(bannerArt.fx)
+	end
+	local tx = 12 -- 연출이 있으면 글자를 오른쪽으로 밀어 겹치지 않게 한다
+	if hasFx then
+		tx = 116
+	end
+	bannerTitle.Position = UDim2.new(0, tx, 0, 18)
+	bannerTitle.Size = UDim2.new(1, -(tx + 12), 0, 44)
+	bannerSub.Position = UDim2.new(0, tx, 0, 64)
+	bannerSub.Size = UDim2.new(1, -(tx + 12), 0, 34)
 	bannerTitle.Text = b.title
 	bannerTitle.TextColor3 = BANNER_TONE[b.tone or "default"] or BANNER_TONE.default
 	bannerSub.Text = b.sub or ""
@@ -494,11 +575,11 @@ local function bannerPump()
 		bannerPump()
 	end)
 end
-local function banner(title, sub, tone)
+local function banner(title, sub, tone, fx)
 	if #bannerQ >= 4 then -- 몰릴 때는 최신 것만 (연출이 밀려 게임이 답답해지지 않게)
 		table.remove(bannerQ, 1)
 	end
-	table.insert(bannerQ, { title = title, sub = sub, tone = tone })
+	table.insert(bannerQ, { title = title, sub = sub, tone = tone, fx = fx })
 	bannerPump()
 end
 
@@ -599,6 +680,11 @@ for dr = 1, ROWS do
 			Text = "", TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = WHITE, TextStrokeTransparency = 0.2,
 			TextXAlignment = Enum.TextXAlignment.Left, Visible = false, ZIndex = 3,
 		}, b)
+		mk("ImageLabel", { -- 메모가 달린 말 배지 (Earth token64_memo) — 무엇을 적었는지는 왼쪽 아래 이모지가 보여 준다
+			Name = "MemoIcon", Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(1, -15, 0, 1), BackgroundTransparency = 1,
+			Image = Art.memoToken() or "", ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated,
+			Visible = false, ZIndex = 3,
+		}, b)
 		local hl = mk("ImageLabel", { -- 하이라이트 오버레이 (128 9-slice, 32px 셀 → SliceScale 0.25)
 			Name = "Hl", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 4,
 		}, b)
@@ -656,6 +742,9 @@ local function mkSpriteLabel(y)
 	}, battleFrame)
 end
 local spriteTop, spriteBottom = mkSpriteLabel(10), mkSpriteLabel(88)
+-- 전투 연출: 위·아래 전투원 카드가 맞닿는 지점에 한 번 재생한다. 어느 쪽이 맞았는지는 이름 문자열로 가리지 않는다
+-- (오인 표시보다 중앙 1회가 낫다 — 좌우 구분은 서버가 연출 키를 실어 보내게 되면 후속으로 나눈다)
+local battleFx = Fx.mk(battleFrame, math.floor((BF_W - 96) / 2), 40, 96, 7)
 local battleRound = mk("TextLabel", {
 	Text = "", Size = UDim2.new(1, -24, 0, 34), Position = UDim2.new(0, 12, 0, 168), ZIndex = 5, TextWrapped = true,
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold,
@@ -849,11 +938,12 @@ local function cellReset(b, r)
 	b.Mark.Visible = false
 	b.MarkTxt.Visible = false
 	b.Memo.Visible = false
+	b.MemoIcon.Visible = false
 	b.Hl.Visible = false
 end
 
-local HL_FALLBACK = { move = Color3.fromRGB(50, 90, 160), flee = Color3.fromRGB(50, 90, 160), sel = Color3.fromRGB(120, 120, 40), attack = Color3.fromRGB(150, 50, 50), forced = Color3.fromRGB(160, 50, 50) }
-local function cellHighlight(b, key) -- key: move|flee|sel|attack|forced
+local HL_FALLBACK = { move = Color3.fromRGB(50, 90, 160), flee = Color3.fromRGB(50, 90, 160), sel = Color3.fromRGB(120, 120, 40), attack = Color3.fromRGB(150, 50, 50), forced = Color3.fromRGB(160, 50, 50), memo = Color3.fromRGB(140, 110, 40) }
+local function cellHighlight(b, key) -- key: move|flee|sel|attack|forced|memo
 	local u = Art.board("hl_" .. key)
 	if u then
 		b.Hl.Image = u
@@ -1776,9 +1866,10 @@ local function renderBoard2D()
 					if mo then
 						b.Memo.Text = mo.emoji
 						b.Memo.Visible = true
+						b.MemoIcon.Visible = b.MemoIcon.Image ~= ""
 					end
 					if memoMode then
-						hl = hl or "flee" -- 메모를 남길 수 있는 칸 표시
+						hl = hl or "memo" -- 메모를 남길 수 있는 칸 표시 (Earth board_hl_memo — 금색 점선, 이동·도망과 구분)
 					end
 				end
 			end
@@ -2564,18 +2655,20 @@ reState.OnClientEvent:Connect(function(msg)
 		selectedId = selectedId and pieceById(selectedId) and selectedId or nil
 		if view.battle == nil and prevBattle then
 			teleFirst, teleMode = nil, false
+			Fx.stop(battleFx) -- 창이 닫히는데 연출만 남지 않게
 		end
 		for _, ev in msg.events do
 			if ev.t == "log" then
 				addLog(ev.text)
 				local b = bannerFromLog(ev.text)
 				if b then
-					banner(b.title, b.sub, b.tone)
+					banner(b.title, b.sub, b.tone, b.fx) -- 폭탄·함정·포획·도망은 배너 안에서 연출까지 재생한다
 				end
 			elseif ev.t == "bmsg" then
 				if ev.big or string.find(ev.text, "전투 개시!", 1, true) then -- 전투 개시·판정은 중앙 배너로도
 					banner(ev.text, nil, "warn")
 				end
+				Fx.play(battleFx, Banner.fxFromBattle(ev.text)) -- 연출 키가 없으면 아무것도 안 한다
 				battleMsg.Text = (battleMsg.Text ~= "" and battleMsg.Text .. "\n" or "") .. ev.text
 				local lines = string.split(battleMsg.Text, "\n")
 				while #lines > 7 do
