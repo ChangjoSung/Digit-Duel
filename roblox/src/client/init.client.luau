@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p4.2"
+local CLIENT_VERSION = "0.5.0-p4.3"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -126,32 +126,9 @@ local SLOT_TYPES = { "minion", "minion", "minion", "minion", "minion", "minion",
 local view = nil
 local tableInfo = nil
 local selectedId = nil
--- #11·#36 추측 메모 — **내 화면에만** 보이는 표시다. 서버로 보내지 않고 상대는 알 수 없다 (규칙·난수 무관)
-local MEMO_OPTS = {
-	{ key = "king", emoji = "👑", ko = "왕" },
-	{ key = "ally", emoji = "🤝", ko = "동료" },
-	{ key = "minion_fire", emoji = "🔥", ko = "불 하수인" },
-	{ key = "minion_water", emoji = "💧", ko = "물 하수인" },
-	{ key = "minion_grass", emoji = "🌿", ko = "풀 하수인" },
-	{ key = "minion_lightning", emoji = "⚡", ko = "전기 하수인" },
-	{ key = "bomb", emoji = "💣", ko = "폭탄" },
-	{ key = "trap", emoji = "🪤", ko = "함정" },
-}
-local memos = {} -- [pieceId] = key
 local myStats = nil -- Phase 4 전적 (서버 DataStore 에서 받아 표시만 한다)
-local memoMode = false -- 메모 모드: 적 말을 클릭하면 공격이 아니라 메모 선택
-local memoPick = nil -- 메모 선택 중인 말 id
-local function memoOpt(key)
-	for _, o in MEMO_OPTS do
-		if o.key == key then
-			return o
-		end
-	end
-	return nil
-end
 local teleFirst = nil
 local teleMode = false -- #131 계약 3.2: 텔레포트 1단계(첫 말 고르는 중) 표시
-local logLines = {}
 local battleSub = nil -- 전투 창 하위 선택 (gift | buff | nil) — 로컬 표시 상태
 local recruitUi = { stage = "root", skill = nil, targetId = nil, recvId = nil, token = nil } -- #121 기술 교체·포획 선택 단계 (로컬)
 local force2D = true -- 구조.txt: 판은 항상 "보드게임 창"(2D) 으로 본다. 3D 판 클릭은 쓰지 않는다
@@ -162,201 +139,14 @@ local flashHud -- ⛔ 같은 일시 안내를 HUD 에 보여 주고 1초 뒤 원
 local setup = { stage = "roster", roster = {}, pos = {}, tray = nil, detail = nil }
 
 --==================================================================
--- UI 헬퍼 (아트 적용 — 자산 없으면 단색 폴백)
+-- UI 헬퍼 · 배너 · 기록 창은 자식 ModuleScript 로 나눠 뒀다.
+-- Luau 는 함수 하나가 지역 변수를 200개까지만 쓸 수 있는데 이 파일이 전부 최상위 스코프라 그 한도를 공유한다.
+-- 2026-09-10 전투 연출을 붙이다 한도에 걸려(Out of local registers) 빌드가 멈췄고, 그래서 쪼갰다.
+-- 별칭도 지역 변수를 하나씩 먹으므로 **호출이 잦은 4개만** 별칭으로 두고 나머지는 Ui.xxx 로 부른다.
 --==================================================================
+local Ui = require(script:WaitForChild("Ui"))
+local mk, bgImage, smallBtn, clearChildren = Ui.mk, Ui.bgImage, Ui.smallBtn, Ui.clearChildren
 
-local function mk(class, props, parent)
-	local o = Instance.new(class)
-	for k, v in props do
-		o[k] = v
-	end
-	o.Parent = parent
-	return o
-end
-
-local function slice(img, kind, scale) -- SliceCenter 는 원본 중앙 사각형 좌표 (README 계약)
-	local s = Art.SLICE[kind]
-	img.ScaleType = Enum.ScaleType.Slice
-	img.SliceCenter = Rect.new(s[1], s[2], s[3], s[4])
-	img.SliceScale = scale or 1
-end
-
--- 프레임 위에 9-slice 배경을 깐다 (ZIndex 0 = 그 프레임 자식 중 맨 아래).
--- 프레임 자체 배경은 **불투명하게 유지**한다 — 이미지가 아직 안 받아졌거나 9-slice 여백이 생겨도 뒤 화면이 비치면 안 된다 (CJ 2026-09-10)
-local function bgImage(frame, uiKey, sliceKind, scale)
-	local u = Art.ui(uiKey)
-	if not u then
-		return nil
-	end
-	local img = mk("ImageLabel", {
-		Name = "Bg", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Image = u,
-		ResampleMode = Enum.ResamplerMode.Pixelated, ZIndex = 0,
-	}, frame)
-	slice(img, sliceKind, scale)
-	frame.BackgroundTransparency = 0
-	return img
-end
-
---==================================================================
--- 전투 연출 스프라이트 (Earth 납품 fx96_* · 768×96 = 96×96 8프레임 가로)
--- 표시 계층 전용 — 규칙·난수와 무관하고 **입력을 막지 않는다**. earth-fx-p1p2-request.md 6장의 [기획 필요]
--- (재생 시간·입력 잠금)는 "잠금 없이 표시만" 으로 두고 프레임당 시간만 정했다. 자산이 없으면 조용히 아무것도 안 한다.
---==================================================================
--- 최상위 local 은 Luau 한도(200)에 걸리므로 재생기는 테이블 하나에 모은다
-local Fx = {
-	FRAME_S = 0.055, -- 8프레임 ≈ 0.44초 — 배너(1.2초)보다 먼저 끝난다
-	seq = {}, -- [label] = 재생 번호. 새 연출이 끼어들면 이전 타이머를 무효화한다
-}
-
-function Fx.mk(parent, x, y, size, z)
-	return mk("ImageLabel", {
-		Size = UDim2.new(0, size, 0, size), Position = UDim2.new(0, x, 0, y), BackgroundTransparency = 1,
-		ImageRectSize = Vector2.new(Art.FX.size, Art.FX.size), ImageRectOffset = Vector2.new(0, 0),
-		ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = z, Active = false,
-	}, parent)
-end
-
-function Fx.stop(label)
-	Fx.seq[label] = (Fx.seq[label] or 0) + 1
-	label.Visible = false
-end
-
-function Fx.play(label, key) -- key 가 nil 이거나 자산이 없으면 false (호출 측이 신경 쓸 것 없음)
-	local u = Art.fx(key)
-	if not u then
-		return false
-	end
-	local n = (Fx.seq[label] or 0) + 1
-	Fx.seq[label] = n
-	label.Image = u
-	label.ImageColor3 = Art.FX_TINT[key] or WHITE
-	label.ImageRectOffset = Vector2.new(0, 0)
-	label.Visible = true
-	task.spawn(function()
-		for i = 1, Art.FX.frames - 1 do
-			task.wait(Fx.FRAME_S)
-			if Fx.seq[label] ~= n then
-				return -- 다른 연출이 끼어들었다
-			end
-			label.ImageRectOffset = Vector2.new(Art.FX.size * i, 0)
-		end
-		task.wait(Fx.FRAME_S)
-		if Fx.seq[label] == n then
-			label.Visible = false -- 마지막 프레임은 완전 투명이라 사라지는 모습 그대로 끝난다
-		end
-	end)
-	return true
-end
-
-local function iconLabel(parent, x, y, size, image, tint, zindex)
-	return mk("ImageLabel", {
-		Size = UDim2.new(0, size, 0, size), Position = UDim2.new(0, x, 0, y), BackgroundTransparency = 1, Image = image,
-		ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ImageColor3 = tint or WHITE, ZIndex = zindex or 2,
-	}, parent)
-end
-
-local BTN_FALLBACK = { default = Color3.fromRGB(60, 68, 88), primary = Color3.fromRGB(91, 140, 255), danger = Color3.fromRGB(170, 60, 70) }
-
--- 이미지 버튼 (btn_<kind>_<normal|hover|pressed|disabled> 9-slice, SliceScale 0.5). icon = 이미지 URL(선택). enabled=false 면 disabled 이미지 + 입력 무시
-local function smallBtn(parent, x, y, w, text, cb, kind, enabled, icon, h)
-	kind = kind or "default"
-	local on = enabled ~= false
-	h = h or 26
-	local normal = Art.ui("btn_" .. kind .. "_normal")
-	local disabledImg = Art.ui("btn_" .. kind .. "_disabled")
-	local b = mk("ImageButton", {
-		Size = UDim2.new(0, w, 0, h), Position = UDim2.new(0, x, 0, y),
-		BackgroundTransparency = normal and 1 or 0, BackgroundColor3 = on and BTN_FALLBACK[kind] or Color3.fromRGB(38, 42, 54),
-		AutoButtonColor = (normal == nil) and on, Image = (on and normal or disabledImg) or "", ResampleMode = Enum.ResamplerMode.Pixelated,
-		ZIndex = parent.ZIndex,
-	}, parent)
-	if normal then
-		slice(b, "btn", 0.5)
-	end
-	local tx = 2
-	if icon then
-		iconLabel(b, 6, math.floor((h - 18) / 2), 18, icon, nil, b.ZIndex + 1)
-		tx = 26
-	end
-	mk("TextLabel", {
-		Size = UDim2.new(1, -tx - 4, 1, 0), Position = UDim2.new(0, tx, 0, 0), BackgroundTransparency = 1, Text = text,
-		TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = on and WHITE or Color3.fromRGB(120, 126, 140),
-		ZIndex = b.ZIndex + 1, TextTruncate = Enum.TextTruncate.AtEnd,
-	}, b)
-	if on and normal then
-		local hover, pressed = Art.ui("btn_" .. kind .. "_hover"), Art.ui("btn_" .. kind .. "_pressed")
-		b.MouseEnter:Connect(function()
-			b.Image = hover or normal
-		end)
-		b.MouseLeave:Connect(function()
-			b.Image = normal
-		end)
-		b.MouseButton1Down:Connect(function()
-			b.Image = pressed or normal
-		end)
-		b.MouseButton1Up:Connect(function()
-			b.Image = hover or normal
-		end)
-	end
-	b.Activated:Connect(function()
-		if on then
-			cb()
-		end
-	end)
-	return b
-end
-
-local function mkBadge(parent, x, y, w, icon, text, z)
-	z = z or parent.ZIndex
-	local f = mk("Frame", { Size = UDim2.new(0, w, 0, 22), Position = UDim2.new(0, x, 0, y), BackgroundColor3 = Color3.fromRGB(43, 49, 64), BorderSizePixel = 0, ZIndex = z }, parent)
-	bgImage(f, "badge", "badge", 0.5)
-	local tx = 6
-	if icon then
-		iconLabel(f, 4, 3, 16, icon, nil, z + 1)
-		tx = 22
-	end
-	mk("TextLabel", {
-		Size = UDim2.new(1, -tx - 4, 1, 0), Position = UDim2.new(0, tx, 0, 0), BackgroundTransparency = 1, Text = text,
-		TextSize = 11, Font = Enum.Font.GothamBold, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = z + 1, TextTruncate = Enum.TextTruncate.AtEnd,
-	}, f)
-	return f
-end
-
--- HP/방어막 바: 배경 9-slice + 전체 길이 채움을 클립 폭으로 가린다 (캡 압축 금지, 0 이면 숨김)
-local function mkBar(parent, x, y, w, h, kind, z)
-	z = z or parent.ZIndex
-	local fillImg = Art.ui(kind .. "bar_fill")
-	local tint = Art.TINT[kind .. "bar_fill"] or (kind == "hp" and Color3.fromRGB(0x4f, 0xd8, 0x8a) or Color3.fromRGB(0x4d, 0xa3, 0xff))
-	local f = mk("Frame", { Size = UDim2.new(0, w, 0, h), Position = UDim2.new(0, x, 0, y), BackgroundColor3 = Color3.fromRGB(40, 44, 56), BorderSizePixel = 0, ZIndex = z }, parent)
-	bgImage(f, kind .. "bar_bg", "bar", 0.5)
-	local clip = mk("Frame", { Name = "Clip", Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = z + 1 }, f)
-	local fi = mk("ImageLabel", {
-		Name = "Fill", Size = UDim2.new(0, w, 0, h), BackgroundTransparency = fillImg and 1 or 0, BackgroundColor3 = tint,
-		Image = fillImg or "", ImageColor3 = tint, ResampleMode = Enum.ResamplerMode.Pixelated, ZIndex = z + 1,
-	}, clip)
-	if fillImg then
-		slice(fi, "bar", 0.5)
-	end
-	return f
-end
-
-local function setBar(bar, pct)
-	local clip = bar:FindFirstChild("Clip")
-	if not clip then
-		return
-	end
-	pct = math.clamp(pct or 0, 0, 1)
-	clip.Visible = pct > 0
-	clip.Size = UDim2.new(pct, 0, 1, 0)
-end
-
-local function clearChildren(parent, keepName)
-	for _, ch in parent:GetChildren() do
-		if ch.Name ~= keepName then
-			ch:Destroy()
-		end
-	end
-end
 
 --==================================================================
 -- UI 구성
@@ -369,29 +159,6 @@ local gui = mk("ScreenGui", {
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
 
--- 작은 창에서도 팝업이 화면 밖으로 나가지 않도록 창별 축소 배율을 자동 계산한다
-local fitted = {} -- { frame, w, h, marginX, marginY }
-local function applyFit()
-	local cam = Workspace.CurrentCamera
-	local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
-	for _, e in fitted do
-		local sx = (vp.X - e.mx) / e.w
-		local sy = (vp.Y - e.my) / e.h
-		e.scale.Scale = math.clamp(math.min(sx, sy, 1), 0.45, 1)
-	end
-end
-local function autoFit(frame, w, h, mx, my)
-	local sc = mk("UIScale", { Scale = 1 }, frame)
-	table.insert(fitted, { scale = sc, w = w, h = h, mx = mx or 24, my = my or 24 })
-	return frame
-end
-task.defer(function()
-	local cam = Workspace.CurrentCamera
-	if cam then
-		cam:GetPropertyChangedSignal("ViewportSize"):Connect(applyFit)
-	end
-	applyFit()
-end)
 
 -- 로비 HUD
 local hud = mk("Frame", {
@@ -399,7 +166,7 @@ local hud = mk("Frame", {
 	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BorderSizePixel = 0,
 }, gui)
 bgImage(hud, "panel_side", "panel", 1)
-autoFit(hud, 660, 92, 24, 0)
+Ui.autoFit(hud, 660, 92, 24, 0)
 mk("TextLabel", {
 	Text = "Digit Dual", Size = UDim2.new(0, 130, 0, 24), Position = UDim2.new(0, 10, 0, 6),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 18, Font = Enum.Font.GothamBold,
@@ -419,7 +186,7 @@ local win = mk("Frame", {
 	Size = UDim2.new(0, WIN_W, 0, WIN_H), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Visible = false, ZIndex = 2,
 	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BorderSizePixel = 0,
 }, gui)
-autoFit(win, WIN_W, WIN_H, 16, 16)
+Ui.autoFit(win, WIN_W, WIN_H, 16, 16)
 win:GetPropertyChangedSignal("Visible"):Connect(function() -- 창이 열리면 HUD 를 숨긴다 (겹침 방지 — 창에 자체 [나가기]·안내가 있다)
 	hud.Visible = not win.Visible
 end)
@@ -474,157 +241,24 @@ local setupContent = mk("Frame", { Size = UDim2.new(1, -20, 0, 400), Position = 
 local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 66), Position = UDim2.new(0, 10, 1, -72), BackgroundTransparency = 1 }, setupPanel)
 
 -- 로스터 상세 팝업
-local detailBack = mk("Frame", { -- 상세 팝업 뒤 암막 — 뒤 카드 글씨가 겹쳐 보이지 않게
-	Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0,
-	Visible = false, ZIndex = 7,
-}, gui)
-local rosterDetail = mk("Frame", {
-	Size = UDim2.new(0, 520, 0, 300), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Visible = false, ZIndex = 8,
-	BackgroundColor3 = Color3.fromRGB(28, 32, 44), BorderSizePixel = 0,
-}, gui)
-bgImage(rosterDetail, "panel_modal", "panel", 1)
-autoFit(rosterDetail, 520, 300)
-local detailPortrait = mk("ImageLabel", {
-	Size = UDim2.new(0, 168, 0, 168), Position = UDim2.new(0, 14, 0, 14), BackgroundColor3 = Color3.fromRGB(19, 22, 30),
-	BorderSizePixel = 0, ScaleType = Enum.ScaleType.Fit, ZIndex = 8,
-}, rosterDetail)
-local detailElem = iconLabel(rosterDetail, 182, 12, 22, "", nil, 9)
-local detailText = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -212, 0, 236), Position = UDim2.new(0, 196, 0, 14), ZIndex = 8,
-	TextColor3 = WHITE, BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham, RichText = true,
-	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
-}, rosterDetail)
-local detailBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 30), Position = UDim2.new(0, 12, 1, -38), BackgroundTransparency = 1, ZIndex = 8 }, rosterDetail)
 
---==================================================================
--- 중앙 배너 (HTML 데모의 fxPlay{kind="banner"} 대응) — 턴 시작·접촉·폭탄·함정·탐색 결과 등을 화면 중앙에 잠깐 띄운다.
--- 표시 계층 전용: 규칙·난수와 무관하고, 클릭을 가로채지 않는다 (Active=false 기본). 서버가 보낸 이벤트에서 규칙을 그대로 읽어 만든다.
---==================================================================
-local BANNER_MS = 1.2 -- #125 계약과 같은 1.2초
-local BANNER_TONE = {
-	default = Color3.fromRGB(232, 236, 245),
-	good = Color3.fromRGB(0x6f, 0xe0, 0xa0),
-	bad = Color3.fromRGB(0xff, 0x7a, 0x8a),
-	warn = Color3.fromRGB(0xff, 0xd1, 0x6a),
-}
-local bannerFrame = mk("Frame", {
-	Size = UDim2.new(0, 540, 0, 112), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
-	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BorderSizePixel = 0, Visible = false, ZIndex = 9,
-}, gui)
--- 획득·손실은 배경까지 바꿔 한눈에 구분한다 (Earth earth-banner-variants-report.md — 실루엣·글자 영역은 공통과 동일)
-local bannerArt = { VARIANT = { good = "banner_good", bad = "banner_bad" }, base = "" }
-bannerArt.bg = bgImage(bannerFrame, "banner", "panel", 1) -- 전용 배너 아트 (Earth 납품)
-if not bannerArt.bg then
-	bannerArt.bg = bgImage(bannerFrame, "panel_modal", "panel", 1)
-end
-if bannerArt.bg then
-	bannerArt.base = bannerArt.bg.Image
-end
-autoFit(bannerFrame, 540, 112)
-local bannerTitle = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -24, 0, 44), Position = UDim2.new(0, 12, 0, 18), ZIndex = 10,
-	BackgroundTransparency = 1, TextSize = 30, Font = Enum.Font.GothamBold, TextColor3 = WHITE,
-	TextStrokeTransparency = 0.4, TextTruncate = Enum.TextTruncate.AtEnd,
-}, bannerFrame)
-local bannerSub = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -24, 0, 34), Position = UDim2.new(0, 12, 0, 64), ZIndex = 10,
-	BackgroundTransparency = 1, TextSize = 14, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(180, 188, 205),
-	TextWrapped = true,
-}, bannerFrame)
-bannerArt.fx = Fx.mk(bannerFrame, 14, 8, 96, 10) -- 판 위에서 일어난 일(폭탄·함정·포획·도망)은 배너 안에서 보여 준다
-local bannerQ, bannerBusy = {}, false
-local function bannerPump()
-	if bannerBusy then
-		return
-	end
-	local b = table.remove(bannerQ, 1)
-	if not b then
-		bannerFrame.Visible = false
-		return
-	end
-	bannerBusy = true
-	if bannerArt.bg then -- 상황별 배경 (없으면 공통 배너 그대로)
-		local key = bannerArt.VARIANT[b.tone or ""]
-		local u = nil
-		if key then
-			u = Art.ui(key)
-		end
-		bannerArt.bg.Image = u or bannerArt.base
-	end
-	local hasFx = false
-	if b.fx then
-		hasFx = Fx.play(bannerArt.fx, b.fx)
-	end
-	if not hasFx then
-		Fx.stop(bannerArt.fx)
-	end
-	local tx = 12 -- 연출이 있으면 글자를 오른쪽으로 밀어 겹치지 않게 한다
-	if hasFx then
-		tx = 116
-	end
-	bannerTitle.Position = UDim2.new(0, tx, 0, 18)
-	bannerTitle.Size = UDim2.new(1, -(tx + 12), 0, 44)
-	bannerSub.Position = UDim2.new(0, tx, 0, 64)
-	bannerSub.Size = UDim2.new(1, -(tx + 12), 0, 34)
-	bannerTitle.Text = b.title
-	bannerTitle.TextColor3 = BANNER_TONE[b.tone or "default"] or BANNER_TONE.default
-	bannerSub.Text = b.sub or ""
-	bannerFrame.Visible = true
-	task.delay(BANNER_MS, function()
-		bannerBusy = false
-		bannerPump()
-	end)
-end
-local function banner(title, sub, tone, fx)
-	if #bannerQ >= 4 then -- 몰릴 때는 최신 것만 (연출이 밀려 게임이 답답해지지 않게)
-		table.remove(bannerQ, 1)
-	end
-	table.insert(bannerQ, { title = title, sub = sub, tone = tone, fx = fx })
-	bannerPump()
-end
 
--- 서버 로그 한 줄 → 배너 (규칙 문구를 그대로 쓴다). 판정은 공유 모듈 Banner (헤드리스 테스트 [12] 대상)
-local bannerFromLog = Banner.fromLog
 
--- 📜 게임 기록 창 — 사이드 패널의 최근 14줄 말고 **전체 기록**을 스크롤해서 본다 (내 화면 전용)
-local logWin = mk("Frame", {
-	Size = UDim2.new(0, 560, 0, 420), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
-	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BorderSizePixel = 0, Visible = false, ZIndex = 12,
-}, gui)
-bgImage(logWin, "panel_modal", "panel", 1)
-autoFit(logWin, 560, 420)
-mk("TextLabel", {
-	Text = "📜 게임 기록", Size = UDim2.new(1, -120, 0, 24), Position = UDim2.new(0, 14, 0, 10), ZIndex = 12,
-	BackgroundTransparency = 1, TextSize = 15, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(232, 236, 245),
-	TextXAlignment = Enum.TextXAlignment.Left,
-}, logWin)
-local logScroll = mk("ScrollingFrame", {
-	Size = UDim2.new(1, -28, 1, -84), Position = UDim2.new(0, 14, 0, 38), ZIndex = 12,
-	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.25, BorderSizePixel = 0,
-	CanvasSize = UDim2.new(0, 0, 0, 0), ScrollBarThickness = 8, ScrollingDirection = Enum.ScrollingDirection.Y,
-	AutomaticCanvasSize = Enum.AutomaticSize.Y,
-}, logWin)
-local logText = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -12, 0, 0), Position = UDim2.new(0, 6, 0, 4), ZIndex = 13,
-	AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
-	TextColor3 = Color3.fromRGB(200, 206, 220), TextXAlignment = Enum.TextXAlignment.Left,
-	TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
-}, logScroll)
-local logWinBtns = mk("Frame", { Size = UDim2.new(1, -28, 0, 30), Position = UDim2.new(0, 14, 1, -40), BackgroundTransparency = 1, ZIndex = 12 }, logWin)
 
--- #11·#36 추측 메모 선택 팝업 (내 화면 전용 — 서버로 아무것도 보내지 않는다)
-local memoFrame = mk("Frame", {
-	Size = UDim2.new(0, 300, 0, 246), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
-	BackgroundColor3 = Color3.fromRGB(28, 32, 44), BorderSizePixel = 0, Visible = false, ZIndex = 11,
-}, gui)
-bgImage(memoFrame, "panel_modal", "panel", 1)
-autoFit(memoFrame, 300, 246)
-mk("TextLabel", {
-	Text = "📝 이 말은 뭘까? (내 화면에만 보입니다)", Size = UDim2.new(1, -24, 0, 22), Position = UDim2.new(0, 12, 0, 10), ZIndex = 11,
-	BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(232, 236, 245),
-	TextXAlignment = Enum.TextXAlignment.Left,
-}, memoFrame)
-local memoBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 200), Position = UDim2.new(0, 12, 0, 36), BackgroundTransparency = 1, ZIndex = 11 }, memoFrame)
+local Bn = require(script:WaitForChild("BannerUi")).mount(gui, Ui) -- 화면 중앙 배너 (표시 계층 전용)
+local Log = require(script:WaitForChild("LogUi")).mount(gui, Ui) -- 📜 게임 기록 (내 화면 전용)
+local Memo = require(script:WaitForChild("MemoUi")).mount(gui, Ui, function() -- 📝 추측 메모 (내 화면 전용)
+	render()
+end)
+local Detail = require(script:WaitForChild("RosterDetail")).mount(gui, Ui, { -- 로스터 종 상세 팝업
+	setup = setup,
+	flashHud = function(t) -- 전방 선언이라 호출 시점에 풀어야 한다
+		flashHud(t)
+	end,
+	onChanged = function()
+		renderSetup()
+	end,
+})
 
 -- 대전 화면 (배경 투명)
 local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 6 }, gui) -- 전투 모달 등 (창 위)
@@ -639,7 +273,7 @@ local boardFrameImg = mk("ImageLabel", {
 	Image = Art.board("frame") or "", ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 0,
 }, win)
 if Art.board("frame") then
-	slice(boardFrameImg, "hl", 0.5)
+	Ui.slice(boardFrameImg, "hl", 0.5)
 end
 local boardFrame = mk("Frame", {
 	Size = UDim2.new(0, COLS * CELL, 0, ROWS * CELL), Position = UDim2.new(0, 16, 0, 52),
@@ -688,7 +322,7 @@ for dr = 1, ROWS do
 		local hl = mk("ImageLabel", { -- 하이라이트 오버레이 (128 9-slice, 32px 셀 → SliceScale 0.25)
 			Name = "Hl", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 4,
 		}, b)
-		slice(hl, "hl", 0.25)
+		Ui.slice(hl, "hl", 0.25)
 		cells[dr][c] = b
 	end
 end
@@ -714,6 +348,7 @@ local logBox = mk("TextLabel", {
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.3, TextSize = 12,
 	Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Bottom, TextWrapped = true,
 }, side)
+Log.setBox(logBox) -- 최근 14줄은 사이드 패널, 전체 300줄은 [📜 기록] 창
 local promptFrame = mk("Frame", {
 	Size = UDim2.new(1, -20, 0, 110), Position = UDim2.new(0, 10, 1, -118), BackgroundColor3 = Color3.fromRGB(35, 40, 54), Visible = false,
 }, side)
@@ -732,7 +367,7 @@ local battleFrame = mk("Frame", {
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
 }, game_)
 bgImage(battleFrame, "panel_battle", "panel", 1)
-autoFit(battleFrame, BF_W, BF_H)
+Ui.autoFit(battleFrame, BF_W, BF_H)
 local fighterTop = mk("Frame", { Size = UDim2.new(1, -108, 0, 74), Position = UDim2.new(0, 12, 0, 10), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
 local fighterBottom = mk("Frame", { Size = UDim2.new(1, -108, 0, 74), Position = UDim2.new(0, 12, 0, 88), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
 local function mkSpriteLabel(y)
@@ -744,7 +379,7 @@ end
 local spriteTop, spriteBottom = mkSpriteLabel(10), mkSpriteLabel(88)
 -- 전투 연출: 위·아래 전투원 카드가 맞닿는 지점에 한 번 재생한다. 어느 쪽이 맞았는지는 이름 문자열로 가리지 않는다
 -- (오인 표시보다 중앙 1회가 낫다 — 좌우 구분은 서버가 연출 키를 실어 보내게 되면 후속으로 나눈다)
-local battleFx = Fx.mk(battleFrame, math.floor((BF_W - 96) / 2), 40, 96, 7)
+local battleFx = Ui.fxMk(battleFrame, math.floor((BF_W - 96) / 2), 40, 96, 7)
 local battleRound = mk("TextLabel", {
 	Text = "", Size = UDim2.new(1, -24, 0, 34), Position = UDim2.new(0, 12, 0, 168), ZIndex = 5, TextWrapped = true,
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold,
@@ -764,7 +399,7 @@ local recruitFrame = mk("Frame", {
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
 }, game_)
 bgImage(recruitFrame, "panel_modal", "panel", 1)
-autoFit(recruitFrame, RF_W, RF_H)
+Ui.autoFit(recruitFrame, RF_W, RF_H)
 local recruitTitle = mk("TextLabel", {
 	Text = "", Size = UDim2.new(1, -28, 0, 24), Position = UDim2.new(0, 14, 0, 10), ZIndex = 5,
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 16, Font = Enum.Font.GothamBold,
@@ -785,20 +420,6 @@ local recruitBtns = mk("Frame", { Size = UDim2.new(1, -28, 0, 268), Position = U
 -- 헬퍼
 --==================================================================
 
-local logWinOpen = false
-function refreshLogWin()
-	local n = #logLines
-	local lines = {}
-	for i = 1, n do
-		table.insert(lines, ("%3d. %s"):format(i, logLines[i]))
-	end
-	logText.Text = (n > 0) and table.concat(lines, "\n") or "아직 기록이 없습니다."
-	task.defer(function() -- 최신 줄로 내려 준다
-		if logWinOpen then
-			logScroll.CanvasPosition = Vector2.new(0, math.max(0, logScroll.AbsoluteCanvasSize.Y))
-		end
-	end)
-end
 
 local function send(a)
 	reAction:FireServer(a)
@@ -811,20 +432,6 @@ end, "danger", true, Art.action("exit") or Art.action("resign"), 28)
 winExit.Position = UDim2.new(0, WIN_W - 120, 1, -42)
 winExit.ZIndex = 3
 
-local function addLog(text)
-	table.insert(logLines, text)
-	while #logLines > 300 do -- 전체 기록은 [📜 기록] 창에서 본다 (사이드 패널은 최근 14줄만)
-		table.remove(logLines, 1)
-	end
-	local tail = {}
-	for i = math.max(1, #logLines - 13), #logLines do
-		table.insert(tail, logLines[i])
-	end
-	logBox.Text = table.concat(tail, "\n")
-	if logWinOpen then
-		refreshLogWin()
-	end
-end
 
 local function mySide()
 	return tableInfo and tableInfo.side or "A"
@@ -1387,54 +994,6 @@ end
 -- 사전 배치 — UI
 --==================================================================
 
-local function closeDetail()
-	setup.detail = nil
-	rosterDetail.Visible = false
-	detailBack.Visible = false
-end
-
-local function openDetail(rid)
-	local rd = Data.rosterById(rid)
-	if not rd then
-		return
-	end
-	setup.detail = rid
-	rosterDetail.Visible = true
-	detailBack.Visible = true
-	detailPortrait.Image = Art.portrait(rid) or ""
-	local eu = Art.element(rd.element)
-	detailElem.Image = eu or ""
-	detailElem.Visible = eu ~= nil
-	local lines = {
-		("<b>%s</b>  %s · %s형"):format(rd.name, Data.ELEM_KO[rd.element], Data.ARCH_KO[rd.arch]),
-		("HP %d · 공격 %d  (기술 위력 = 표기 × 공격/%d)"):format(rd.hp, rd.atk, Data.SKILL_ATK_BASE),
-		"",
-	}
-	for i, sid in Data.archSkills(rd.arch, rd.element) do
-		local sk = Data.SKILLS[sid]
-		local pow = sk.pow and (" 위력 " .. Data.slotPow({ atk = rd.atk }, sk)) or ""
-		table.insert(lines, ("%d. <b>%s</b> [%s]%s%s — %s"):format(i, sk.ko, Data.SKIND_KO[sk.kind], pow, sk.cd > 0 and (" 쿨" .. sk.cd) or "", sk.desc))
-	end
-	detailText.Text = table.concat(lines, "\n")
-	clearChildren(detailBtns)
-	local on = table.find(setup.roster, rid) ~= nil
-	smallBtn(detailBtns, 0, 0, 120, on and "선택 해제" or "선택하기", function()
-		local idx = table.find(setup.roster, rid)
-		if idx then
-			table.remove(setup.roster, idx)
-			setup.pos = {}
-		elseif #setup.roster < 6 then
-			table.insert(setup.roster, rid)
-			setup.pos = {}
-		else
-			flashHud("⛔ 이미 6종을 선택했습니다 — 다른 종을 해제하세요")
-			return
-		end
-		closeDetail()
-		renderSetup()
-	end, on and "danger" or "primary", on or #setup.roster < 6)
-	smallBtn(detailBtns, 126, 0, 70, "닫기", closeDetail)
-end
 
 local function renderRosterGrid()
 	clearChildren(setupContent)
@@ -1455,13 +1014,13 @@ local function renderRosterGrid()
 				}, setupContent)
 				local iu = Art.icon(rd.id)
 				if iu then
-					iconLabel(card, 2, 2, 30, iu)
+					Ui.iconLabel(card, 2, 2, 30, iu)
 				else
 					mk("TextLabel", { Size = UDim2.new(0, 30, 0, 30), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1, Text = Data.ELEM_EMO[rd.element] or "", TextSize = 18 }, card)
 				end
 				local eu = Art.element(rd.element)
 				if eu then
-					iconLabel(card, 100, 2, 14, eu)
+					Ui.iconLabel(card, 100, 2, 14, eu)
 				end
 				mk("TextLabel", {
 					Size = UDim2.new(1, -52, 0, 16), Position = UDim2.new(0, 34, 0, 1), BackgroundTransparency = 1, Text = rd.name,
@@ -1474,7 +1033,7 @@ local function renderRosterGrid()
 				}, card)
 				local rid = rd.id
 				card.Activated:Connect(function()
-					openDetail(rid)
+					Detail.open(rid)
 				end)
 				col += 1
 			end
@@ -1495,7 +1054,7 @@ local function renderTray()
 		}, setupContent)
 		local iu, tint = slotImage(i)
 		if iu then
-			local il = iconLabel(chip, 4, 2, 36, iu, tint)
+			local il = Ui.iconLabel(chip, 4, 2, 36, iu, tint)
 			il.ImageTransparency = placed and 0.65 or 0
 		else
 			mk("TextLabel", { Size = UDim2.new(1, 0, 0, 36), Position = UDim2.new(0, 0, 0, 2), BackgroundTransparency = 1, Text = slotLabel(i), TextSize = 10, TextColor3 = team, TextWrapped = true }, chip)
@@ -1549,7 +1108,7 @@ end
 function renderSetup()
 	if not tableInfo or not tableInfo.setupOpen or (view and view.phase ~= "over") or tableInfo.inGame then
 		setupPanel.Visible = false
-		closeDetail()
+		Detail.close()
 		if not view then -- 대전 뷰가 없으면 창 자체를 닫는다 (대전 종료 화면은 render 가 유지)
 			win.Visible = false
 			boardFrame.Visible = false
@@ -1596,12 +1155,12 @@ function renderSetup()
 		smallBtn(setupBtns, 116, 2, 120, "배치로 →", function()
 			setup.stage = "place"
 			setup.tray = nextUnplaced(1)
-			closeDetail()
+			Detail.close()
 			renderSetup()
 		end, "primary", #setup.roster == 6)
 		smallBtn(setupBtns, 0, 36, 240, "⚡ 전부 무작위 배치 완료 (빠른 시작)", function()
 			autoPlace()
-			closeDetail()
+			Detail.close()
 			sendReady()
 		end)
 		leaveBtn(246, 36)
@@ -1662,57 +1221,7 @@ end
 -- 로비 상태 표시
 --==================================================================
 
-local function setLogWin(on)
-	logWinOpen = on
-	logWin.Visible = on
-	if on then
-		refreshLogWin()
-	end
-end
-smallBtn(logWinBtns, 0, 0, 100, "닫기", function()
-	setLogWin(false)
-end, "primary")
-mk("TextLabel", {
-	Text = "가장 최근 300줄까지 보관합니다 (내 화면 전용)", Size = UDim2.new(1, -110, 1, 0), Position = UDim2.new(0, 108, 0, 0),
-	BackgroundTransparency = 1, TextSize = 11, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(154, 163, 184),
-	TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 12,
-}, logWinBtns)
 
-local function closeMemo()
-	memoPick = nil
-	memoFrame.Visible = false
-end
-
-local function renderMemo()
-	if not memoPick then
-		memoFrame.Visible = false
-		return
-	end
-	memoFrame.Visible = true
-	clearChildren(memoBtns)
-	local cur = memos[memoPick]
-	for i, o in MEMO_OPTS do
-		local on = cur == o.key
-		smallBtn(memoBtns, ((i - 1) % 2) * 140, math.floor((i - 1) / 2) * 30, 134, o.emoji .. " " .. o.ko, function()
-			if cur == o.key then -- 같은 항목을 다시 누르면 해제
-				memos[memoPick] = nil
-			else
-				memos[memoPick] = o.key
-			end
-			closeMemo()
-			render()
-		end, on and "primary" or "default")
-	end
-	smallBtn(memoBtns, 0, 124, 134, "메모 지우기", function()
-		memos[memoPick] = nil
-		closeMemo()
-		render()
-	end, "danger", cur ~= nil)
-	smallBtn(memoBtns, 140, 124, 134, "닫기", function()
-		closeMemo()
-		render()
-	end)
-end
 
 local function renderHudButtons()
 	clearChildren(hudBtns)
@@ -1756,7 +1265,7 @@ local function renderLobby()
 		hudLabel.Text = "🪑 테이블 의자 앞에서 [E] 앉기 → 둘이 앉으면 [F] 게임 시작 · 혼자면 [B] 5급 봇 / [N] 5단 봇"
 			.. (myStats and ("\n🏅 내 전적: " .. myStats.line) or "")
 		setupPanel.Visible = false
-		closeDetail()
+		Detail.close()
 		if not view then
 			win.Visible = false
 			boardFrame.Visible = false
@@ -1862,13 +1371,13 @@ local function renderBoard2D()
 					hl = "forced"
 				end
 				if not p.known and p.owner ~= view.me then -- #36: 실제 공개(known)면 실제 정체가 우선
-					local mo = memoOpt(memos[p.id])
+					local mo = Memo.opt(Memo.memos[p.id])
 					if mo then
 						b.Memo.Text = mo.emoji
 						b.Memo.Visible = true
 						b.MemoIcon.Visible = b.MemoIcon.Image ~= ""
 					end
-					if memoMode then
+					if Memo.mode then
 						hl = hl or "memo" -- 메모를 남길 수 있는 칸 표시 (Earth board_hl_memo — 금색 점선, 이동·도망과 구분)
 					end
 				end
@@ -1902,15 +1411,15 @@ local function renderSide()
 	-- 배지 행: 몬스터볼 · 아이템 · 전투 · 예비 하수인
 	clearChildren(badgeRow)
 	local x = 0
-	mkBadge(badgeRow, x, 0, 60, Art.item("ball"), "볼 " .. view.balls)
+	Ui.mkBadge(badgeRow, x, 0, 60, Art.item("ball"), "볼 " .. view.balls)
 	x += 64
-	mkBadge(badgeRow, x, 0, 74, Art.action("bag"), "아이템 " .. #view.inv)
+	Ui.mkBadge(badgeRow, x, 0, 74, Art.action("bag"), "아이템 " .. #view.inv)
 	x += 78
-	mkBadge(badgeRow, x, 0, 70, Art.action("fight"), ("전투 %d/2"):format(view.battlesUsed))
+	Ui.mkBadge(badgeRow, x, 0, 70, Art.action("fight"), ("전투 %d/2"):format(view.battlesUsed))
 	x += 74
-	mkBadge(badgeRow, x, 0, 54, nil, "🎁 " .. (view.gifts or 0)) -- #121 미개봉 패키지 (소유자만)
+	Ui.mkBadge(badgeRow, x, 0, 54, nil, "🎁 " .. (view.gifts or 0)) -- #121 미개봉 패키지 (소유자만)
 	x += 58
-	mkBadge(badgeRow, x, 0, 54, nil, "✨ " .. (view.buffPacks or 0))
+	Ui.mkBadge(badgeRow, x, 0, 54, nil, "✨ " .. (view.buffPacks or 0))
 	local info = ""
 	if view.reserve then
 		info ..= ("예비 하수인(%s) HP %d/%d\n"):format(Data.ELEM_KO[view.reserve.element] or "", view.reserve.hp, view.reserve.maxHp)
@@ -1939,7 +1448,7 @@ local function renderSide()
 	if view.forcedTargets then
 		info ..= "⚔️ 강제 전투 — 빨간 대상 클릭\n"
 	end
-	if memoMode then
+	if Memo.mode then
 		info ..= "📝 메모 모드 — 정체가 안 보이는 상대 말을 클릭해 추측을 남기세요 (내 화면에만 보입니다)\n"
 	end
 	if myTurn and not sel and not view.battle and info == "" then
@@ -1964,13 +1473,13 @@ local function renderButtons()
 		if view.phase == "over" then
 			smallBtn(btnRow, 0, 0, 170, "닫기 (자리로 돌아가기)", closeGame, "primary")
 		end
-		smallBtn(btnRow, 0, 32, 130, memoMode and "📝 메모 끄기" or "📝 추측 메모", function()
-			memoMode = not memoMode
-			memoPick = nil
+		smallBtn(btnRow, 0, 32, 130, Memo.mode and "📝 메모 끄기" or "📝 추측 메모", function()
+			Memo.mode = not Memo.mode
+			Memo.pick = nil
 			render()
-		end, memoMode and "primary" or "default")
+		end, Memo.mode and "primary" or "default")
 		smallBtn(btnRow, 136, 32, 100, "📜 기록", function()
-			setLogWin(true)
+			Log.setWin(true)
 		end)
 		return
 	end
@@ -1997,13 +1506,13 @@ local function renderButtons()
 	smallBtn(btnRow, 126, 32, 96, "턴 종료", function()
 		send({ t = "endTurn" })
 	end, "primary", true, Art.action("endturn"))
-	smallBtn(btnRow, 228, 32, 130, memoMode and "📝 메모 끄기" or "📝 추측 메모", function() -- #11·#36 내 화면 전용 추측
-		memoMode = not memoMode
-		memoPick = nil
+	smallBtn(btnRow, 228, 32, 130, Memo.mode and "📝 메모 끄기" or "📝 추측 메모", function() -- #11·#36 내 화면 전용 추측
+		Memo.mode = not Memo.mode
+		Memo.pick = nil
 		render()
-	end, memoMode and "primary" or "default")
+	end, Memo.mode and "primary" or "default")
 	smallBtn(btnRow, 0, 64, 100, "📜 기록", function()
-		setLogWin(true)
+		Log.setWin(true)
 	end)
 end
 
@@ -2203,7 +1712,7 @@ local function renderFighterCard(container, fv, label)
 	local x = 0
 	local eu = Art.element(fv.element)
 	if eu then
-		iconLabel(container, 0, 0, 20, eu, nil, z + 1)
+		Ui.iconLabel(container, 0, 0, 20, eu, nil, z + 1)
 		x = 24
 	end
 	mk("TextLabel", {
@@ -2211,15 +1720,15 @@ local function renderFighterCard(container, fv, label)
 		Text = ("<b>%s</b> %s (%s)"):format(label, name, fv.owner == view.me and "나" or "상대"), TextSize = 13, Font = Enum.Font.Gotham,
 		TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = z + 1, TextTruncate = Enum.TextTruncate.AtEnd,
 	}, container)
-	local hp = mkBar(container, 0, 24, 150, 12, "hp", z + 1)
-	setBar(hp, fv.hp / fv.maxHp)
+	local hp = Ui.mkBar(container, 0, 24, 150, 12, "hp", z + 1)
+	Ui.setBar(hp, fv.hp / fv.maxHp)
 	mk("TextLabel", {
 		Size = UDim2.new(0, 100, 0, 12), Position = UDim2.new(0, 156, 0, 24), BackgroundTransparency = 1,
 		Text = ("HP %d/%d"):format(fv.hp, fv.maxHp), TextSize = 11, Font = Enum.Font.GothamBold, TextColor3 = WHITE,
 		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = z + 1,
 	}, container)
-	local sh = mkBar(container, 0, 39, 150, 8, "sh", z + 1)
-	setBar(sh, fv.shield / fv.maxHp)
+	local sh = Ui.mkBar(container, 0, 39, 150, 8, "sh", z + 1)
+	Ui.setBar(sh, fv.shield / fv.maxHp)
 	if fv.shield > 0 then
 		mk("TextLabel", {
 			Size = UDim2.new(0, 100, 0, 10), Position = UDim2.new(0, 156, 0, 38), BackgroundTransparency = 1,
@@ -2231,7 +1740,7 @@ local function renderFighterCard(container, fv, label)
 	local function st(key, txt, fallback)
 		local u = Art.status(key)
 		if u then
-			iconLabel(container, sx, 52, 18, u, nil, z + 1)
+			Ui.iconLabel(container, sx, 52, 18, u, nil, z + 1)
 			sx += 20
 		else
 			txt = fallback .. (txt or "")
@@ -2416,7 +1925,7 @@ function render()
 		return
 	end
 	setupPanel.Visible = false
-	closeDetail()
+	Detail.close()
 	game_.Visible = true
 	win.Visible = true
 	side.Visible = true
@@ -2440,16 +1949,16 @@ function render()
 		for _, p in view.board do
 			alive[p.id] = true
 		end
-		for id in memos do
+		for id in Memo.memos do
 			if not alive[id] then
-				memos[id] = nil
+				Memo.memos[id] = nil
 			end
 		end
-		if memoPick and not alive[memoPick] then
-			closeMemo()
+		if Memo.pick and not alive[Memo.pick] then
+			Memo.close()
 		end
 	end
-	renderMemo()
+	Memo.render()
 	renderSide()
 	renderButtons()
 	renderPrompt()
@@ -2465,10 +1974,10 @@ local function onCell(r, c)
 		return
 	end
 	local p = pieceAt(r, c)
-	if memoMode then -- #11·#36: 메모 모드에서는 미공개 상대 말을 눌러 추측을 남긴다 (규칙 행동 없음)
+	if Memo.mode then -- #11·#36: 메모 모드에서는 미공개 상대 말을 눌러 추측을 남긴다 (규칙 행동 없음)
 		if p and p.owner ~= view.me and not p.known then
-			memoPick = p.id
-			renderMemo()
+			Memo.pick = p.id
+			Memo.render()
 		else
 			flashHud("📝 메모는 정체가 드러나지 않은 상대 말에만 남길 수 있습니다")
 		end
@@ -2576,7 +2085,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		if setup.stage == "roster" and #setup.roster == 6 then
 			setup.stage = "place"
 			setup.tray = nextUnplaced(1)
-			closeDetail()
+			Detail.close()
 			renderSetup()
 		elseif setup.stage == "place" and placedCount() == 14 then
 			sendReady()
@@ -2614,7 +2123,7 @@ reState.OnClientEvent:Connect(function(msg)
 		if msg.setupOpen and not lastSetupOpen then -- [게임 시작] 직후: 배치 단계 초기화 (로스터가 6종이면 바로 배치로)
 			setup.stage = (#setup.roster == 6) and "place" or "roster"
 			setup.tray = nextUnplaced(1)
-			closeDetail()
+			Detail.close()
 		end
 		lastSetupOpen = msg.setupOpen == true
 		if view then
@@ -2626,7 +2135,7 @@ reState.OnClientEvent:Connect(function(msg)
 	elseif msg.t == "left" then
 		tableInfo = nil
 		lastSetupOpen = false
-		closeDetail()
+		Detail.close()
 		if view then
 			safe(closeGame, "closeGame")
 		else
@@ -2644,7 +2153,7 @@ reState.OnClientEvent:Connect(function(msg)
 		end, "render(stats)")
 		return
 	elseif msg.t == "reject" then
-		addLog("⛔ " .. (msg.reason or "거부됨"))
+		Log.add("⛔ " .. (msg.reason or "거부됨"))
 		flashHud("⛔ " .. (msg.reason or "거부됨"))
 		return
 	elseif msg.t == "state" then
@@ -2655,48 +2164,48 @@ reState.OnClientEvent:Connect(function(msg)
 		selectedId = selectedId and pieceById(selectedId) and selectedId or nil
 		if view.battle == nil and prevBattle then
 			teleFirst, teleMode = nil, false
-			Fx.stop(battleFx) -- 창이 닫히는데 연출만 남지 않게
+			Ui.fxStop(battleFx) -- 창이 닫히는데 연출만 남지 않게
 		end
 		for _, ev in msg.events do
 			if ev.t == "log" then
-				addLog(ev.text)
-				local b = bannerFromLog(ev.text)
+				Log.add(ev.text)
+				local b = Bn.fromLog(ev.text)
 				if b then
-					banner(b.title, b.sub, b.tone, b.fx) -- 폭탄·함정·포획·도망은 배너 안에서 연출까지 재생한다
+					Bn.show(b.title, b.sub, b.tone, b.fx) -- 폭탄·함정·포획·도망은 배너 안에서 연출까지 재생한다
 				end
 			elseif ev.t == "bmsg" then
 				if ev.big or string.find(ev.text, "전투 개시!", 1, true) then -- 전투 개시·판정은 중앙 배너로도
-					banner(ev.text, nil, "warn")
+					Bn.show(ev.text, nil, "warn")
 				end
-				Fx.play(battleFx, Banner.fxFromBattle(ev.text)) -- 연출 키가 없으면 아무것도 안 한다
+				Ui.fxPlay(battleFx, Banner.fxFromBattle(ev.text)) -- 연출 키가 없으면 아무것도 안 한다
 				battleMsg.Text = (battleMsg.Text ~= "" and battleMsg.Text .. "\n" or "") .. ev.text
 				local lines = string.split(battleMsg.Text, "\n")
 				while #lines > 7 do
 					table.remove(lines, 1)
 				end
 				battleMsg.Text = table.concat(lines, "\n")
-				addLog(ev.text)
+				Log.add(ev.text)
 			elseif ev.t == "contact" then
-				addLog("⚠️ 접촉 발생!")
+				Log.add("⚠️ 접촉 발생!")
 				local mineAtt = ev.attOwner == view.me
-				banner("⚠️ 적 발견 — 접촉!", mineAtt and "내 말이 상대 말과 부딪혔습니다" or "상대 말이 내 말과 부딪혔습니다", "warn")
+				Bn.show("⚠️ 적 발견 — 접촉!", mineAtt and "내 말이 상대 말과 부딪혔습니다" or "상대 말이 내 말과 부딪혔습니다", "warn")
 			end
 		end
 		if prevTurn ~= nil and view.phase == "play" and view.turnCount ~= prevTurn then -- 턴 전환
 			local mine = view.current == view.me
-			banner(mine and "🟢 나의 턴" or "⏳ 상대 턴", ("턴 %d%s"):format(view.turnCount + 1, view.burning and " · 🔥 버닝 타임" or ""), mine and "good" or "default")
+			Bn.show(mine and "🟢 나의 턴" or "⏳ 상대 턴", ("턴 %d%s"):format(view.turnCount + 1, view.burning and " · 🔥 버닝 타임" or ""), mine and "good" or "default")
 		end
 		if prevPhase == "play" and view.phase == "over" then -- 경기 결과
 			local w = view.winner
-			banner(w == view.me and "🏆 승리!" or w == -1 and "무승부" or "패배…",
+			Bn.show(w == view.me and "🏆 승리!" or w == -1 and "무승부" or "패배…",
 				view.winType and Data.WINTYPE_KO[view.winType] or nil, w == view.me and "good" or w == -1 and "default" or "bad")
 		end
 		if msg.oppWaiting then -- Phase 4 재접속: 상대가 끊겼지만 자리를 잡아 두고 기다리는 중
-			addLog(("🔌 상대의 연결이 끊어졌습니다 — %d초 안에 돌아오면 이어서 진행합니다."):format(msg.oppWaiting))
-			banner("🔌 상대 접속 끊김", ("%d초 안에 돌아오면 이어서 진행합니다"):format(msg.oppWaiting), "warn")
+			Log.add(("🔌 상대의 연결이 끊어졌습니다 — %d초 안에 돌아오면 이어서 진행합니다."):format(msg.oppWaiting))
+			Bn.show("🔌 상대 접속 끊김", ("%d초 안에 돌아오면 이어서 진행합니다"):format(msg.oppWaiting), "warn")
 		end
 		if msg.opponentLeft then
-			addLog("🔌 상대의 연결이 끊어졌습니다.")
+			Log.add("🔌 상대의 연결이 끊어졌습니다.")
 		end
 		safe(render, "render(state)")
 	end
