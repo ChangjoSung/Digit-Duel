@@ -227,6 +227,80 @@ task.defer(function()
 	applyFit()
 end)
 
+--==================================================================
+-- 툴팁 — 버튼에 마우스를 올리면 설명이 뜬다 (하나만 만들어 돌려 쓴다)
+-- 표시 전용이다. **이미 공개된 정보만** 넘겨야 한다 — 정체가 밝혀지지 않은 기술에는
+-- 호출 측이 붙이지 않는다. 툴팁이 정보 은닉을 깨서는 안 된다.
+--==================================================================
+local TIP_W, TIP_PAD = 260, 6
+local tipFrame, tipLabel, tipOwner = nil, nil, nil
+
+local function initTip(gui) -- gui 가 만들어진 뒤 한 번 부른다
+	if tipFrame then
+		return
+	end
+	tipFrame = mk("Frame", {
+		Name = "Tip", Size = UDim2.new(0, TIP_W, 0, 60), BackgroundColor3 = Color3.fromRGB(16, 18, 26),
+		BackgroundTransparency = 0.05, BorderSizePixel = 0, Visible = false, ZIndex = 20, Active = false,
+	}, gui)
+	mk("UIStroke", { Color = Color3.fromRGB(70, 80, 104), Thickness = 1 }, tipFrame)
+	tipLabel = mk("TextLabel", {
+		Size = UDim2.new(1, -16, 1, -12), Position = UDim2.new(0, 8, 0, 6), BackgroundTransparency = 1, ZIndex = 21,
+		Text = "", TextSize = 12, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(214, 220, 234), RichText = true,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
+	}, tipFrame)
+end
+
+local function hideTip(owner) -- owner 를 주면 그 버튼이 아직 주인일 때만 숨긴다
+	if not tipFrame then
+		return
+	end
+	if owner ~= nil and tipOwner ~= owner then
+		return
+	end
+	tipOwner = nil
+	tipFrame.Visible = false
+end
+
+local function showTip(obj, text)
+	if not tipFrame or type(text) ~= "string" or text == "" then
+		return
+	end
+	tipOwner = obj
+	tipLabel.Text = text
+	-- 줄 수를 어림해 높이를 맞춘다 (TextBounds 는 보이기 전에는 채워지지 않는다)
+	local wrapped = math.floor(#text / 34)
+	local _, breaks = text:gsub("\n", "")
+	local h = math.clamp(18 + (1 + wrapped + breaks) * 15, 34, 170)
+	tipFrame.Size = UDim2.new(0, TIP_W, 0, h)
+	local pos, size = obj.AbsolutePosition, obj.AbsoluteSize
+	local screen = tipFrame.Parent.AbsoluteSize
+	local x = math.clamp(pos.X, 4, math.max(4, screen.X - TIP_W - 4))
+	local y = pos.Y - h - TIP_PAD -- 기본은 버튼 위. 위가 좁으면 아래로 내린다
+	if y < 4 then
+		y = pos.Y + size.Y + TIP_PAD
+	end
+	tipFrame.Position = UDim2.new(0, x, 0, math.clamp(y, 4, math.max(4, screen.Y - h - 4)))
+	tipFrame.Visible = true
+end
+
+-- 버튼(또는 아무 GuiObject)에 설명을 붙인다. text 가 비면 아무것도 하지 않는다
+local function attachTip(obj, text)
+	if not obj or type(text) ~= "string" or text == "" then
+		return obj
+	end
+	obj.MouseEnter:Connect(function()
+		showTip(obj, text)
+	end)
+	obj.MouseLeave:Connect(function()
+		hideTip(obj)
+	end)
+	obj.Destroying:Connect(function() -- 버튼이 지워졌는데 설명만 남지 않게 (렌더마다 다시 그린다)
+		hideTip(obj)
+	end)
+	return obj
+end
+
 local Ui = {
 	WHITE = WHITE,
 	mk = mk,
@@ -243,6 +317,9 @@ local Ui = {
 	fxMk = Fx.mk, -- 연출 라벨 만들기 (부모, x, y, 크기, ZIndex)
 	fxPlay = Fx.play, -- 한 번 재생 (라벨, 키) — 키가 nil 이거나 자산이 없으면 false
 	fxStop = Fx.stop, -- 재생 중이면 끊고 숨긴다
+	initTip = initTip, -- gui 생성 직후 한 번
+	attachTip = attachTip, -- (버튼, 설명) — 마우스를 올리면 뜬다
+	hideTip = hideTip,
 }
 
 return Ui
