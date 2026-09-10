@@ -1,11 +1,13 @@
 --!strict
 -- AssetIds.luau — 생성 파일 (roblox/tools/upload_assets.js). 직접 수정하지 말 것.
--- 생성 2026-09-09T08:24:42.861Z · 업로더 user 11639564357 · 143개
+-- 생성 2026-09-10T02:10:33.018Z · 업로더 user 11639564357 · 151개
 -- 키: icon_/battle_/portrait_<종> · token64_/token128_<토큰> (Image) · lobby_<텍스처> (Image) · lobbymesh_<메시> · mesh_unknown (Model)
 return {
 	action48_bag = 104734828695963, -- Image
+	action48_bot = 101564207467331, -- Image
 	action48_capture = 100653242357356, -- Image
 	action48_endturn = 73985847362542, -- Image
+	action48_exit = 124325953899459, -- Image
 	action48_fight = 129647765749680, -- Image
 	action48_flee = 84921635030604, -- Image
 	action48_heal = 121433949356121, -- Image
@@ -13,6 +15,8 @@ return {
 	action48_search = 124281410081833, -- Image
 	action48_skip = 134544997139837, -- Image
 	action48_teleport = 122706951020833, -- Image
+	badge48_ai_dan5 = 76123924275769, -- Image
+	badge48_ai_grade5 = 120387968087933, -- Image
 	battle_fire_atk = 72987966041483, -- Image
 	battle_fire_def = 99284637270201, -- Image
 	battle_fire_std = 103282407821149, -- Image
@@ -73,6 +77,7 @@ return {
 	item64_potion = 74002672987469, -- Image
 	item64_reserve = 81169495429336, -- Image
 	lobby_board_grid = 130695506858819, -- Image
+	lobby_bot_albedo = 114930353227456, -- Image
 	lobby_chair_albedo = 71532932636607, -- Image
 	lobby_desk_albedo = 98884595903306, -- Image
 	lobby_floor_tile = 96238500725249, -- Image
@@ -80,6 +85,7 @@ return {
 	lobby_table_sign = 81355261059939, -- Image
 	lobby_wall_albedo = 88208802218183, -- Image
 	lobbymesh_board = 71943294672552, -- Model
+	lobbymesh_bot = 83954439794985, -- Model
 	lobbymesh_chair = 70519125134385, -- Model
 	lobbymesh_desk = 103166061512714, -- Model
 	lobbymesh_floor = 105321730013376, -- Model
@@ -114,6 +120,7 @@ return {
 	status48_focus = 106009293142929, -- Image
 	status48_shield = 99491271787460, -- Image
 	status48_shock = 119456211095008, -- Image
+	status48_thinking = 80057980089335, -- Image
 	status48_vuln = 99758702824576, -- Image
 	status48_weaken = 94915629981343, -- Image
 	token128_ally = 136173347492529, -- Image
@@ -144,6 +151,7 @@ return {
 	ui_panel_battle = 127951287913049, -- Image
 	ui_panel_modal = 109202035264232, -- Image
 	ui_panel_side = 85927200121558, -- Image
+	ui_panel_window = 106805303149551, -- Image
 	ui_shbar_bg = 104136907187149, -- Image
 	ui_shbar_fill = 85919091332297, -- Image
 } :: { [string]: number }

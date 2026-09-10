@@ -1,14 +1,17 @@
 # [결정] Roblox 아트 인계 — 기본 P0 완료
 
-2026-09-09 · Ref #118 · **기본 요청 P0 129/129 PNG 납품.** 이 폴더의 v0.5.0은 기존 경로명이며 Roblox #118의 현재 마일스톤은 v0.4.6이다.
+2026-09-10 · Ref #118 · **기본 P0 129/129 + 별도 Phase3 AI 창·봇 납품.** 이 폴더의 v0.5.0은 기존 경로명이며 Roblox #118의 현재 마일스톤은 v0.4.6이다.
 
-- [최신 UI·속성·흔적·보드 납품 보고](earth-ui-report.md): 이번 추가60PNG, 독립 QA, 정확한 변경 파일 목록.
-- [Claude 적용 인계](../../roblox/claude-art-apply-handoff.md): 이미 연결된 자산은 유지하고 신규60개를 추가 연결.
+- [최신 AI 창·봇 납품 보고](earth-ai-window-report.md): UI6PNG·알베도1PNG·앉은 로봇1종(FBX/OBJ/MTL), [Mars 적용 계약](../../../roblox/assets/ai-window-README.md).
+- [AI 창 미리보기](review/ai-window/window-composition.png) · [로봇 착석 미리보기](review/ai-window/bot-chair-fit.png).
+
+- [기본 UI·속성·흔적·보드 납품 보고](earth-ui-report.md): 앞선60PNG 납품 이력과 독립 QA.
+- [기존 Claude 적용 인계](../../roblox/claude-art-apply-handoff.md): 기본 P0 연결 당시 문서. 최신 AI 창·봇은 위 전용 계약을 따른다.
 - [UI 적용 계약·60개 키 전수표](../../../roblox/assets/ui/README.md): 틴트7개, SliceCenter26개, 작은 셀의 SliceScale 주의점.
 - [하수인 납품 보고·전체 진행표](earth-report.md): 최초 P0-A60PNG 제작 이력과 최신 전체 수량.
 - [토큰·공통 가림 모델 보고](earth-token-report.md): 승인 선택3건과 토큰9PNG·가림3D1종.
 - [로비 납품 보고](earth-lobby-report.md): 별도6메시·6알베도·1상태 표지.
-- [PNG manifest](../../../roblox/assets/manifest.csv): 기본 P0 전체129개. [가림 모델 manifest](../../../roblox/assets/tokens/model-manifest.csv)와 [로비 manifest](../../../roblox/assets/lobby/manifest.csv)는 별도.
+- [PNG manifest](../../../roblox/assets/manifest.csv): 기본 P0 129개 + AI UI6개 =135개. [가림 모델 manifest](../../../roblox/assets/tokens/model-manifest.csv)와 [로비 manifest](../../../roblox/assets/lobby/manifest.csv)(봇 포함15행)는 별도.
 - [하수인 원본 보존 기준](source-baseline.json): 최초 하수인 작업 전100개 이미지와 README의 SHA-256.
 - [신규 원고60개](ui-source/native-assets.json) · [Blender 보조 원본](ui-source/p0-ui.blend) · [52개 슬라이스 검토 좌표](ui-source/slice-review-cases.json).
 

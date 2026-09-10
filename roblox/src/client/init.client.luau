@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.1"
+local CLIENT_VERSION = "0.5.0-p3.2"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -289,7 +289,7 @@ local win = mk("Frame", {
 	Size = UDim2.new(0, WIN_W, 0, WIN_H), Position = UDim2.new(0.5, -WIN_W / 2, 0.5, -WIN_H / 2), Visible = false, ZIndex = 2,
 	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.05, BorderSizePixel = 0,
 }, gui)
-if not bgImage(win, "panel_window", "panel", 1) then -- 창 전용 프레임 납품 전 폴백
+if not bgImage(win, "panel_window", "window", 1) then -- 창 전용 프레임(SliceCenter 24,40,232,232) — 없으면 기존 패널로 폴백
 	bgImage(win, "panel_side", "panel", 1)
 end
 local winTitle = mk("TextLabel", {
@@ -297,11 +297,30 @@ local winTitle = mk("TextLabel", {
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 14, Font = Enum.Font.GothamBold,
 	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 }, win)
+local winBadge = mk("ImageLabel", { -- 상대가 봇이면 난이도 배지 (badge48_ai_grade5/dan5)
+	Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(0, 276, 0, 7), BackgroundTransparency = 1, Visible = false,
+	ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ImageColor3 = WHITE,
+}, win)
+local winThinking = mk("ImageLabel", { -- 🤖 AI 행동 중 (status48_thinking)
+	Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(0, 16, 1, -34), BackgroundTransparency = 1, Visible = false,
+	ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ImageColor3 = WHITE,
+}, win)
 local winStatus = mk("TextLabel", { -- 판 아래 한 줄 상태 (🤖 AI 행동 중 등)
 	Text = "", Size = UDim2.new(0, 300, 0, 26), Position = UDim2.new(0, 16, 1, -34),
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
 }, win)
+local function setBotBadge()
+	local u = tableInfo and tableInfo.oppBot and Art.badge(tableInfo.botLevel == "dan5" and "ai_dan5" or "ai_grade5") or nil
+	winBadge.Image = u or ""
+	winBadge.Visible = u ~= nil
+end
+local function setThinking(on)
+	local u = on and Art.status("thinking") or nil
+	winThinking.Image = u or ""
+	winThinking.Visible = u ~= nil
+	winStatus.Position = UDim2.new(0, u and 44 or 16, 1, -34)
+end
 -- 배치 패널 (창 오른쪽 컬럼)
 local setupPanel = mk("Frame", {
 	Size = UDim2.new(0, 388, 0, WIN_H - 16), Position = UDim2.new(0, 316, 0, 8), Visible = false, BackgroundTransparency = 1,
@@ -1226,6 +1245,8 @@ function renderSetup()
 	local oppLine = ti.opp and ("상대: " .. ti.opp .. (ti.oppReady and " (배치 완료)" or " (배치 중)")) or "상대 없음 — 맞은편에 누가 앉으면 시작"
 	winTitle.Text = ("테이블 %d · %s 자리 · %s"):format(ti.tableId, ti.side, oppLine)
 	winStatus.Text = ti.oppBot and "🤖 봇은 로스터·배치를 자동으로 마쳤습니다 — 나만 [배치 완료 ✔] 를 누르면 시작" or "왼쪽 판의 강조된 내 진영 3행에 배치합니다"
+	setBotBadge()
+	setThinking(false)
 	if ti.oppBot then -- 봇 난이도 토글 (배치 완료 전까지)
 		local lv = ti.botLevel or "grade5"
 		smallBtn(setupTop, 0, 0, 116, ("🤖 %s ▸ %s"):format(lv == "dan5" and "5단" or "5급", lv == "dan5" and "5급" or "5단"), function()
@@ -1970,8 +1991,11 @@ function render()
 	renderBoard2D()
 	local3d:ClearAllChildren()
 	winTitle.Text = tableInfo and ("테이블 %d · %s 자리 · 상대: %s"):format(tableInfo.tableId, tableInfo.side, tableInfo.opp or "?") or "대전"
-	winStatus.Text = (tableInfo and tableInfo.oppBot and view.phase == "play" and view.current ~= view.me) and "🤖 AI 행동 중…"
+	local thinking = (tableInfo and tableInfo.oppBot and view.phase == "play" and view.current ~= view.me) == true
+	winStatus.Text = thinking and "🤖 AI 행동 중…"
 		or (view.phase == "over" and "경기가 끝났습니다 — [닫기] 로 자리로 돌아가거나 [나가기]" or "")
+	setBotBadge()
+	setThinking(thinking)
 	renderSide()
 	renderButtons()
 	renderPrompt()

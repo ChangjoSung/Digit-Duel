@@ -4,6 +4,8 @@
 > 작성: Mars (Claude Code) 2026-09-10 · Ref #118 (v0.4.6 Roblox 포팅 Phase 3) · 선행 요청서 `earth-art-request.md`(2D 자산) · `earth-lobby-request.md`(3D 로비) 와 별개
 > 배경 문서: `roblox/구조.txt` (CJ 화면 구조 지시) · `docs/roblox/port-plan.md` Phase 3
 
+> **납품 현황 (2026-09-10):** 필수8종(2D6PNG·알베도1PNG·착석봇1메시)을 제작했다. [납품·검수 보고](../art/roblox-v0.5.0/earth-ai-window-report.md) · [Mars 적용 계약](../../roblox/assets/ai-window-README.md). 선택4프레임 시트는 미제작이며 정적 thinking을 납품한다. 코드 연결은 창 전용 SliceCenter·로봇 hip/bbox 배치·등급 틴트·배지/thinking 호출 보완이 필요하므로 아래의 “키만 있으면 자동 사용”을 전체 적용 완료로 해석하지 않는다.
+
 --- PROMPT ---
 
 ## dispatch preflight
@@ -41,12 +43,12 @@ CJ 지시(`roblox/구조.txt`, 2026-09-10)로 Roblox 화면 구조가 바뀌었�
 3. `roblox/src/server/Lobby.luau` `Lobby.setBotSeat` — 봇 더미 위치·크기 (의자 CFrame 기준 몸통 y+1.2 · 머리 y+2.75)
 4. `roblox/assets/ui/README.md` — UI 9-slice 적용 계약 (SliceCenter 좌표·SliceScale)
 5. `roblox/assets/manifest.csv` · `roblox/assets/lobby/manifest.csv` — 기존 납품 형식 (행을 **추가**한다, 기존 행 수정 금지)
-6. `docs/minion-visual-spec-v0.4.3.md` 7장 — 시각 검수 원칙 (IP 비연상)
+6. `docs/milestone/v0.4.3/specs/minion-visual-spec-v0.4.3.md` 7장 — 시각 검수 원칙 (IP 비연상, 기존 경로 이동 반영)
 7. `ASSET-LICENSE.md`
 
 ## 3. 납품 목록 (코드가 읽는 키 — 파일명·키를 정확히 맞춘다)
 
-업로드 도구(`roblox/tools/upload_assets.js`)는 manifest 의 `kind`,`id` 로 `AssetIds.luau` 키 `<kind>_<id>` 를 만든다. 코드는 **아래 키가 없으면 지금의 임시 그래픽으로 자동 폴백**하므로 일부만 먼저 납품해도 된다.
+루트 PNG 업로드 도구(`roblox/tools/upload_assets.js`)는 manifest의 `kind`,`id`로 `<kind>_<id>` 키를 만든다. **로비는 예외**로 FBX는 `lobbymesh_bot`, 알베도는 `lobby_bot_albedo`다. 일부 요소는 키가 없을 때 임시 그래픽으로 폴백하지만, 배지/thinking의 실제 호출 등은 납품 후 Mars 연결이 필요하다.
 
 ### 3-1. 2D UI (PNG, RGBA, 픽셀 아트 톤 — 기존 UI 자산과 같은 스타일)
 
@@ -74,7 +76,7 @@ CJ 지시(`roblox/구조.txt`, 2026-09-10)로 Roblox 화면 구조가 바뀌었�
 
 ## 4. 납품 형식
 
-1. 파일을 위 경로에 두고 `roblox/assets/manifest.csv`(2D) · `roblox/assets/lobby/manifest.csv`(메시·텍스처)에 **행 추가** (열은 기존 행과 동일, `status=delivered`).
+1. 파일을 위 경로에 두고 `roblox/assets/manifest.csv`(2D) · `roblox/assets/lobby/manifest.csv`(메시·텍스처)에 **행 추가** (기존 헤더/행 보존). 루트는 `status=delivered`, status열이 없는 로비는 신규행 notes에 `status=delivered`를 기록한다.
 2. `docs/art/roblox-v0.5.0/earth-ai-window-report.md` 에 검수 스크린샷·프롬프트·라이선스 출처를 기록한다 (기존 `earth-ui-report.md` 형식).
 3. Mars 적용 절차(참고): `roblox\tools\upload.bat` → `AssetIds.luau` 갱신 → 코드는 키 존재 시 자동 사용. **코드 수정은 Mars 가 한다.**
 4. `worker_done` 보고에 파일 목록·해시·미납품 항목(있으면 사유)을 적는다.

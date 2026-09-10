@@ -1,5 +1,7 @@
 # [결정] P0-B 속성·흔적 / P0-C 보드 / P0-D UI
 
+> 2026-09-10 추가: panel_window 등 AI 전용6PNG는 [AI 창·봇 적용 계약](../ai-window-README.md)을 따른다. 특히256px 창의 SliceCenter는24,40,232,232로, 아래128px 패널3종과 다르다. 아래 수량·표는 최초 기본 P0 납품 이력이다.
+
 2026-09-09 · Ref #118 · Earth 아트 납품. 신규 **60 PNG / 43,786 bytes**.
 기존 하수인60 + 토큰9와 합쳐 기본 요청 **P0 129/129 PNG**가 준비됐다.
 이 문서는 `ui/`뿐 아니라 이번 `elements/tokens/board/status/items/actions/skillkind/` 자산도 설명한다.
