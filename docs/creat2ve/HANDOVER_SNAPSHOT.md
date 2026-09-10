@@ -1,6 +1,6 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #130·#131·#146은 PR152 통합 후 CJ QA PASS로 CLOSED다. [Issue128](https://github.com/ChangjoSung/Digit-Duel/issues/128)의 **매 페이지 로드 튜토리얼 표시**를 구현했고 새 CJ QA 전까지 OPEN이다. 최종 CI·dev 통합 상태는 [PR157](https://github.com/ChangjoSung/Digit-Duel/pull/157)의 마지막 head 검사와 병합 기록이 원본이다. 과거 #128 관측 한계와 후속 정리 절차 위반은 보존한다. 정식 v0.4.5, Roblox #118=v0.4.6, 이번 작업=v0.4.7.
+> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #130·#131·#146은 PR152 통합 후 CJ QA PASS로 CLOSED다. [Issue128](https://github.com/ChangjoSung/Digit-Duel/issues/128)의 **매 페이지 로드 튜토리얼 표시**를 PR157로 dev에 통합했고 2026-09-10 CJ QA PASS로 CLOSED다. 최종 CI·dev 통합 상태는 [PR157](https://github.com/ChangjoSung/Digit-Duel/pull/157)의 마지막 head 검사와 병합 기록이 원본이다. 과거 #128 관측 한계와 후속 정리 절차 위반은 보존한다. 정식 v0.4.5, Roblox #118=v0.4.6, 이번 작업=v0.4.7.
 
 ## 현재 승인 범위와 상태
 
@@ -69,4 +69,4 @@
 
 - [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) DL38 = 최초 v0.4.6 분석·등록 이력, DL39 = 선행 Infra132, DL40 = v0.4.6 Roblox/v0.4.7 재배치·후속 Infra134. 현재 규칙 참조 경로는 새 문서 위치로 동기화하고, 과거 Decision Log의 GitHub 링크는 이동 전 SHA에 고정했다. GitHub 과거 Issue/PR 본문·코멘트 13곳의 링크34개도 고정·응답 일치 확인했다. 기존 Release8개는 버전 태그 링크라 그대로 유효하다.
 - Notion System 원문 `3d51e7f1708580b0916ded4bd3d9d06e`의 외부 편집 Summary는 보존한다. Project=Digit Dual, Edit Date=실제 수정일, Editor=실제 사람 성창조(`8e0a8270-d0e3-407e-a7d2-b3f992f1e366`); Agent 이름은 운영 본문에만 기록한다.
-- GDD13 DL42와 [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c)에 #121·#125·#129 최종 승인 계약을 동기화했다. 현재 코드를 검수한 Saturn PASS와 통합 PR 최종 head의 필수 검사 성공이 dev squash의 전제다. 전용 작업 브랜치만 정리하고 main/dev는 보존한다. 세 Issue는 2026-09-10 CJ QA PASS로 CLOSED다. 후속 네 Issue는 DL45 승인 계약과 PR152의 개발 검증·통합 기록을 따르며 새 CJ QA 전까지 OPEN이다. 과거 PASS를 새 변경의 근거로 재사용하지 않는다.
+- GDD13 DL42와 [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c)에 #121·#125·#129 최종 승인 계약을 동기화했다. 현재 코드를 검수한 Saturn PASS와 통합 PR 최종 head의 필수 검사 성공이 dev squash의 전제다. 전용 작업 브랜치만 정리하고 main/dev는 보존한다. 세 Issue는 2026-09-10 CJ QA PASS로 CLOSED다. 후속 #130·#131·#146(PR152)과 #128(PR157)도 2026-09-10 CJ QA PASS로 CLOSED다. #128 최종 수락은 GDD13 DL50·[CJ 승인 기록](https://github.com/ChangjoSung/Digit-Duel/issues/128#issuecomment-5613962951)을 따른다. 승인된 구현은 모두 완료됐고 나머지 이슈는 번호별 CJ Comment 대기다. 과거 PASS를 새 변경의 근거로 재사용하지 않는다.
