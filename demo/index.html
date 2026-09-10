@@ -90,7 +90,8 @@
   .pc.inbush .icon,.pc.inbush .face{opacity:.7;}
   /* #89 종 아이콘: native 32×32 도트를 1:1 표시 (보간 대신 최근접 확대 요청 — CSS px 정수가 선명도를 보장하지는 않는다) */
   .pc .icon{width:32px; height:32px; object-fit:contain; image-rendering:pixelated; display:block;}
-  /* #124 왕·동료 파생본은 도트가 아니라 축소 일러스트다 — 하수인 32px 도트의 최근접 확대 계약(.pc .icon)은 그대로 두고 이 두 장만 보간으로 그린다 */
+  /* #124 왕·동료 파생본은 1254px 원본을 단순 축소한 픽셀 스타일 아트다 (하수인처럼 32px 도트로 찍은 원본이 아니다).
+     하수인 32px 도트의 최근접 확대 계약(.pc .icon)은 그대로 두고, 이 두 장의 축소 표시에만 브라우저 보간을 쓴다 */
   .pc .icon.leader,.btok .bsprite.leader{image-rendering:auto;}
   .pc .face{width:32px; height:32px; display:flex; align-items:center; justify-content:center; font-size:24px; line-height:1;}
   .pc .face .nm{max-width:32px;}
@@ -233,22 +234,28 @@
   #bstage.scene .btok{z-index:2;}
   #bstage.scene .btok.tok-op{top:34px; right:30px;}
   #bstage.scene .btok.tok-me{bottom:44px; left:30px;}
-  #bstage.scene .btok.art.tok-op{top:12px; right:4px;}
-  #bstage.scene .btok.art.tok-me{bottom:24px; left:2px;}
+  #bstage.scene .btok.art.tok-op{top:16px; right:2px;}
+  #bstage.scene .btok.art.tok-me{bottom:20px; left:0;}
   /* 기존 전면 스프라이트를 그대로 쓰되 아군만 좌우 반전해 서로 마주 보게 한다 (신규 뒷모습 자산을 만들지 않는다) */
   #bstage.scene .btok.art.tok-me .bsprite{transform:scaleX(-1);}
   /* HP 패널: 상대는 왼쪽 위, 아군은 오른쪽 아래 — 각 전투원의 반대편 */
-  .bslot{position:absolute; width:min(56%,186px); z-index:3;}
+  /* 판 크기는 **고정 상한**을 둔다. 보호막 + 상태 이상 7종이 한꺼번에 걸리면 상태줄이 길어지는데,
+     판이 그대로 자라면 좁은 폭에서 상대 몸·내 머리를 덮는다 (Saturn 지적). 폭·높이를 묶고 넘치는 부분은
+     판 안에서 세로로 스크롤한다 — 규칙 정보(기술 4슬롯·상태)를 잘라 버리지 않으면서 배치는 고정된다. */
+  .bslot{position:absolute; width:min(50%,164px); z-index:3;}
   .bslot.slot-op{top:6px; left:6px;}
   .bslot.slot-me{bottom:6px; right:6px;}
-  .bslot .fighter{margin:0; padding:5px 7px; gap:4px; background:#faf6ecf2; border:2px solid var(--navyLine);
-    border-radius:4px 14px 4px 14px; box-shadow:2px 3px 0 #00000026; font-size:11.5px; color:var(--txt);}
+  .bslot .fighter{margin:0; padding:5px 7px; gap:2px; background:#faf6ecf2; border:2px solid var(--navyLine);
+    border-radius:4px 14px 4px 14px; box-shadow:2px 3px 0 #00000026; font-size:11.5px; color:var(--txt);
+    flex-direction:column; align-items:stretch; max-height:112px;}
   .bslot .fighter>div{width:100%; min-width:0;}
-  .bslot .fighter b{font-size:12.5px;}
+  .bslot .fhead{flex:0 0 auto;}                        /* 이름·배지·HP/방어막 바·HP 수치 — 언제나 보인다 */
+  .bslot .fscroll{flex:1 1 auto; min-width:0; min-height:0; overflow-y:auto; overflow-x:hidden;} /* 길어지는 상태·기술 목록만 */
+  .bslot .fighter b{font-size:12px; line-height:1.25;}
   .bslot .fighter small{color:var(--dim);}
   .bslot .hpbar,.bslot .shbar,.bslot .dmgbar{width:100%;}
-  .bslot .status{font-size:10.5px; line-height:1.4; color:var(--dim); overflow-wrap:anywhere;}
-  .bslot .badge{font-size:10px; padding:0 5px; margin:0 1px 0 0;}
+  .bslot .status{font-size:10.5px; line-height:1.35; color:var(--dim); overflow-wrap:anywhere;}
+  .bslot .badge{font-size:10px; padding:0 4px; margin:0 1px 0 0; line-height:1.35;}
   /* 명령창 2×2 (기존 싸우기·가방·포획·도망가기 그대로 · 하위 메뉴·취소 보존) */
   .bmenu{grid-template-columns:repeat(2,1fr); gap:8px;}
   .bmenu button{min-height:50px; border-width:2px; border-radius:4px 12px 4px 12px; box-shadow:2px 3px 0 #00000022;}
@@ -265,20 +272,20 @@
   #fxBanner.result #fxFx i{display:block; position:absolute; left:50%; top:46%; width:7px; height:22px; margin:-11px 0 0 -3.5px;
     border-radius:4px; opacity:0;}
   /* 승리: 흰 섬광 → 방사 파편 확산 */
-  #fxBanner.result.win #fxFx::before,#fxBanner.result.neutral #fxFx::before,#fxBanner.result.cap #fxFx::before{
+  #fxBanner.result.win #fxFx::before,#fxBanner.result.neutral #fxFx::before{
     content:""; position:absolute; inset:0; background:radial-gradient(circle at 50% 46%,#fffef2 0%,#ffe9a8 22%,transparent 62%);
     opacity:0; animation:fxFlash .55s ease-out forwards;}
-  #fxBanner.result.win #fxFx i,#fxBanner.result.neutral #fxFx i,#fxBanner.result.cap #fxFx i{
+  #fxBanner.result.win #fxFx i,#fxBanner.result.neutral #fxFx i{
     background:linear-gradient(180deg,#fffdf2,#ffc93c); box-shadow:0 0 14px #ffd05a,0 0 30px #ffae1a88;
     animation:fxBurst .88s cubic-bezier(.16,.8,.3,1) forwards; animation-delay:calc(var(--i) * 12ms);}
   /* 빛줄기 — 승리 갈래에만. 회전하는 원뿔 그라데이션 한 겹으로 만들고 한 번만 퍼진 뒤 끝난다 (유한 애니메이션) */
-  #fxBanner.result.win #fxFx::after,#fxBanner.result.neutral #fxFx::after,#fxBanner.result.cap #fxFx::after{
+  #fxBanner.result.win #fxFx::after,#fxBanner.result.neutral #fxFx::after{
     content:""; position:absolute; left:50%; top:46%; width:150vmax; height:150vmax; margin:-75vmax 0 0 -75vmax;
     background:repeating-conic-gradient(from 0deg,#ffe89a55 0deg 5deg,transparent 5deg 22deg);
     opacity:0; animation:fxRays .86s ease-out forwards;}
-  #fxBanner.result.win .fxBox,#fxBanner.result.neutral .fxBox,#fxBanner.result.cap .fxBox{
+  #fxBanner.result.win .fxBox,#fxBanner.result.neutral .fxBox{
     animation:fxWinIn .62s cubic-bezier(.2,1.5,.4,1) both; border-color:#ffd05a; box-shadow:0 0 0 2px #ffd05a55,0 12px 44px #000b;}
-  #fxBanner.result.win #fxTitle,#fxBanner.result.neutral #fxTitle,#fxBanner.result.cap #fxTitle{
+  #fxBanner.result.win #fxTitle,#fxBanner.result.neutral #fxTitle{
     color:#ffdf7a; text-shadow:0 0 18px #ffb62e88;}
   /* 패배: 어두운 충격 → 균열이 갈라지고 파편이 아래로 떨어진다 */
   #fxBanner.result.lose #fxFx::before{content:""; position:absolute; inset:0;
@@ -292,10 +299,35 @@
   #fxBanner.result.lose .fxBox{animation:fxLoseIn .72s cubic-bezier(.3,.1,.2,1) both;
     border-color:#7c2733; box-shadow:0 0 0 2px #7c273366,0 12px 44px #000c;}
   #fxBanner.result.lose #fxTitle{color:#ff7d8b; text-shadow:0 0 16px #c9313f88;}
+  /* 포획 성공 — Earth 스토리보드: **경기 승리처럼 화면 전체를 축하하지 않는다.**
+     금빛 섬광·빛줄기·방사 파편·승리 상자를 쓰지 않고, 작은 중립색 링이 포획 지점으로 **수렴**하는 어휘만 쓴다.
+     (전투 중 포획 성공 메시지 연출 captureFx 1200ms 와 바깥 resultBanner 2500ms 상수는 그대로다.) */
+  #fxBanner.result.cap #fxFx::before{content:""; position:absolute; left:50%; top:46%; width:280px; height:280px; margin:-140px 0 0 -140px;
+    border-radius:50%; border:3px solid #cdd7e6cc; box-shadow:0 0 22px #8fa4c366 inset; opacity:0; animation:fxRing .7s ease-out forwards;}
+  #fxBanner.result.cap #fxFx i{background:linear-gradient(180deg,#e7edf7,#9fb0c9); box-shadow:0 0 8px #b9c7dc88;
+    animation:fxConverge .78s cubic-bezier(.3,0,.2,1) forwards; animation-delay:calc(var(--i) * 10ms);}
+  #fxBanner.result.cap .fxBox{animation:fxCapIn .5s ease-out both; border-color:#9fb0c9; box-shadow:0 0 0 2px #9fb0c944,0 10px 36px #000a;}
+  #fxBanner.result.cap #fxTitle{color:#e7edf7; text-shadow:0 0 12px #9fb0c966;}
+  /* 피포획자 시점 — **같은 포획 어휘**를 쓰고 패배의 균열·낙하를 주지 않는다. 색만 가라앉혀 "내게 유리한 결과가 아니다"를 알린다.
+     문구와 승자·소유자 의미는 종전 그대로다 (Saturn: 종전에는 비포획자에게 lose 를 주어 강한 패배 연출이 걸렸다). */
+  #fxBanner.result.cap.capnot #fxFx::before{border-color:#c9a3ad99; box-shadow:0 0 22px #7c273344 inset;}
+  #fxBanner.result.cap.capnot #fxFx i{background:linear-gradient(180deg,#e3d3d7,#9c7e86);}
+  #fxBanner.result.cap.capnot .fxBox{border-color:#a98a92; box-shadow:0 0 0 2px #a98a9244,0 10px 36px #000a;}
+  #fxBanner.result.cap.capnot #fxTitle{color:#e9d6db; text-shadow:0 0 12px #a98a9266;}
   /* 경기 전체 결과는 같은 연출 위에 테두리만 한 겹 더 얹는다 (전투 결과와 문구·부제로 구분) */
   #fxBanner.result.match .fxBox{border-width:2px; padding:26px 38px;}
-  #fxBanner.result.draw .fxBox{border-color:#93a3bb; animation:fxWinIn .62s cubic-bezier(.2,1.5,.4,1) both;}
+  /* 경기 무승부 — 균형 잡힌 청회색 두 선이 가운데에서 만나 멈춘다. 패배 균열·승리 폭발을 쓰지 않는다 */
+  #fxBanner.result.draw #fxFx i{display:none;}
+  #fxBanner.result.draw #fxFx::before{content:""; position:absolute; left:0; right:50%; top:calc(46% - 2px); height:4px;
+    background:linear-gradient(90deg,transparent,#aab8cc); transform-origin:right center; animation:fxDrawL .8s cubic-bezier(.2,.7,.2,1) both;}
+  #fxBanner.result.draw #fxFx::after{content:""; position:absolute; left:50%; right:0; top:calc(46% - 2px); height:4px;
+    background:linear-gradient(270deg,transparent,#aab8cc); transform-origin:left center; animation:fxDrawR .8s cubic-bezier(.2,.7,.2,1) both;}
+  #fxBanner.result.draw .fxBox{border-color:#93a3bb; animation:fxCapIn .5s ease-out both;}
   #fxBanner.result.draw #fxTitle{color:#dbe4f2;}
+  /* 도망 성공 — 결과 배너가 아니라 기존 1200ms fleeFx 배너다. 청회색 가로 바람 한 번만 스치고 금빛 축포는 없다 */
+  #fxBanner.banner.flee .fxBox{border-color:#8fa4c3;}
+  #fxBanner.banner.flee #fxFx::before{content:""; position:absolute; left:-30%; top:40%; width:60%; height:14%;
+    background:linear-gradient(90deg,transparent,#b7c6dc55,transparent); animation:fxWind .8s ease-out forwards;}
   @keyframes fxFlash{0%{opacity:0; transform:scale(.4)}18%{opacity:1; transform:scale(1)}100%{opacity:0; transform:scale(1.35)}}
   @keyframes fxDark{0%{opacity:0}22%{opacity:.95}100%{opacity:.72}}
   @keyframes fxCrack{0%{opacity:0; transform:scale(.86)}20%{opacity:1; transform:scale(1)}100%{opacity:0; transform:scale(1.12)}}
@@ -303,6 +335,14 @@
     12%{opacity:1}
     100%{opacity:0; transform:rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(.3)}}
   @keyframes fxRays{0%{opacity:0; transform:rotate(0) scale(.2)}22%{opacity:.85}100%{opacity:0; transform:rotate(26deg) scale(1)}}
+  @keyframes fxRing{0%{opacity:0; transform:scale(1.5)}30%{opacity:.9}100%{opacity:0; transform:scale(.35)}}
+  @keyframes fxConverge{0%{opacity:0; transform:rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(.5)}
+    18%{opacity:.9}
+    100%{opacity:0; transform:rotate(var(--a)) translateY(0) scale(.2)}}
+  @keyframes fxCapIn{0%{transform:scale(.9); opacity:0}100%{transform:scale(1); opacity:1}}
+  @keyframes fxDrawL{0%{transform:scaleX(0); opacity:0}70%{transform:scaleX(1); opacity:1}100%{transform:scaleX(1); opacity:.9}}
+  @keyframes fxDrawR{0%{transform:scaleX(0); opacity:0}70%{transform:scaleX(1); opacity:1}100%{transform:scaleX(1); opacity:.9}}
+  @keyframes fxWind{0%{opacity:0; transform:translateX(0)}20%{opacity:1}100%{opacity:0; transform:translateX(240%)}}
   /* 패배 파편은 방사가 아니라 **낙하**다 — 좌우로 흩어진 자리에서 아래로 떨어지며 회전한다 (--x 는 인덱스로 정한 가로 자리) */
   @keyframes fxFall{0%{opacity:0; transform:translate(var(--x),-34px) rotate(0) scale(.6)}
     16%{opacity:.95; transform:translate(var(--x),8px) rotate(26deg) scale(1)}
@@ -322,6 +362,8 @@
     #fxBanner.result #fxFx::before{animation:none !important; opacity:.5;}
     #fxBanner.result #fxFx::after{animation:none !important; opacity:.35; transform:none;}
     #fxBanner .fxBox{animation:none !important;}
+    /* 결과 배너 밖에서 새로 추가한 움직임도 함께 끈다 — 도망 성공 배너의 가로 바람. 문구·부제는 그대로 남는다 */
+    #fxBanner.banner.flee #fxFx::before{animation:none !important; opacity:.3; transform:none;}
   }
 
   /* ================= #122 세로 UI 셸 — 화면 전환·헤더·서랍 =================
@@ -976,7 +1018,8 @@ function pcFaceHtml(p){
   const dir=artDirOf(p);
   if(artOk(dir)) return `<img class="icon" src="${artUrl(dir,"icon.png")}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${dir}',this)">`;
   /* #124: 왕·동료도 보드에서 그 정체 역할로 보인다 (Venus 6장 AC-A5 정정). 자산이 로드된 뒤에만 그림이고 그 전에는 아래 이모지 그대로다.
-     원본이 도트가 아닌 일러스트라 32px 표시에는 최근접 확대 대신 브라우저 보간을 쓴다 (.pc .icon.leader) */
+     이 파생본은 1254px 원본을 단순 축소한 **픽셀 스타일 아트**이고 하수인처럼 32px 도트로 그린 원본이 아니다.
+     그래서 32px 표시에는 최근접 확대(pixelated) 대신 브라우저 보간을 쓴다 (.pc .icon.leader) — 하수인 렌더 계약은 그대로다 */
   const ld=leaderArtDir(p);
   if(ld) return `<img class="icon leader" src="${artUrl(ld,LEADER_FILES.icon)}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${ld}',this)">`;
   const key=p.type!=="minion"?pieceMemoKey(p):null;
@@ -2641,12 +2684,18 @@ function battleModal(){
     const rd=pf===piece&&piece.rosterId?ROSTER.find(x=>x.id===piece.rosterId):null;
     const dhp=B["dispHp"+sid]!==undefined?B["dispHp"+sid]:pf.hp; // 표시 HP (메시지 재생과 동기화)
     const dsh=B["dispSh"+sid]!==undefined?B["dispSh"+sid]:(pf.shield||0);
-    return `<div class="fighter"><div>
+    /* #122: 이름·배지·HP/방어막 바·HP 수치는 **고정 머리(.fhead)** 다. 보호막과 상태 이상이 한꺼번에 걸려 길어지는
+       상태 목록과 기술 4슬롯만 **.fscroll** 안에서 세로로 스크롤한다 — 좁은 폭에서도 이름·HP 가 밀려나지 않고
+       7상태를 전부 읽을 수 있으며 판이 자라 전투원 도트를 덮지도 않는다 (Saturn·PD 실측 지적).
+       마크업 조각·id(hpfill-·shfill-·hptxt-·bst-)와 문구는 종전 그대로라 연출(applyFx)·비공개 마스킹 경로는 불변이다. */
+    return `<div class="fighter"><div class="fhead">
       <b>${fighterName(sid)}</b> <small>(${pname(piece.owner)})</small>
       ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
       <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div></div>
       <div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>
-      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp} · <span id="bst-${sid}">${stIcons(pf)}</span></div>
+      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}</div>
+      </div><div class="fscroll">
+      <div class="status"><span id="bst-${sid}">${stIcons(pf)}</span></div>
       ${pf.skills?`<div class="status">${pf.skills.map((sid2,i)=>{
         const sk2=SKILLS[sid2], known=viewer===2||piece.owner===viewer||(pf.revealedSkills&&pf.revealedSkills.includes(i));
         return known?`${skillNameKo(sid2,pf.element)}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:`?${SKIND_KO[sk2.kind]}`;
@@ -3368,7 +3417,9 @@ function finishByCapture(side){
   ENDING_BATTLE=true;
   try{ ended=checkWipe(); } finally{ ENDING_BATTLE=false; } // 제거이므로 전멸 판정 기여
   battleEndFx(q,(ended?matchEndBanner():null)
-    ||{title:"포획 성공! 전투 종료",cls:(viewerIsOwner(p)||(S.mode==="pvp"&&!NET.mode)?"cap":"lose")},()=>{ if(!S.battle) close(); }); // #106 5.6
+    /* #126: 포획은 **양측 모두 포획 갈래**다. 문구와 승자·소유자 의미는 그대로 두고, 비포획자 시점만 가라앉힌 색(capnot)을 쓴다 —
+       종전처럼 lose 를 주면 포획당한 쪽에 경기 패배급 균열·낙하가 걸린다 (Saturn REVISE). */
+    ||{title:"포획 성공! 전투 종료",cls:(viewerIsOwner(p)||(S.mode==="pvp"&&!NET.mode)?"cap":"cap capnot")},()=>{ if(!S.battle) close(); }); // #106 5.6
   if(ended){ render(); return; }
   afterBattle(attacker, side==="A"&&attacker.alive);
   render();

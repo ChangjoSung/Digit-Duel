@@ -22,7 +22,11 @@ let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
 function block(name,fn){ try{ fn(); }catch(e){ fail++; fails.push(name+" — 예외 "+e.message); console.error("FAIL(예외) "+name+": "+e.stack); } }
 
-const T=H.load(htmlPath);
+/* Saturn REVISE: 인수 없는 storageSnapshot() 은 언제나 "none" 이라 아무 변화도 잡지 못한다.
+   사용자 값이 실제로 들어 있는 저장소를 심어 두고 그 **객체**를 넘겨 비교한다. */
+const STORE=H.mkStorage({netServer:"127.0.0.1:8080",tutorialSeen:"1",someUserKey:"keep-me"});
+H.setStorage(STORE);
+const T=H.load(htmlPath,{storage:"inherit"});
 const SRC=T.html;
 const S=()=>T.S;
 const king=o=>T.S.pieces.find(x=>x.owner===o&&x.type==="king");
@@ -65,13 +69,20 @@ block("A 화면 상태",()=>{
 block("B 로비·재대전",()=>{
   board("pve",["grade5","grade5"]);
   T.S.phase="over"; T.S.winner=0;
-  const tutBefore=T.TUT.seenThisLoad, storeBefore=JSON.stringify(H.storageSnapshot());
+  const tutBefore=T.TUT.seenThisLoad, storeBefore=H.storageSnapshot(STORE);
+  ok(storeBefore!=="none"&&/someUserKey/.test(storeBefore),"B0 비교 기준이 실제 저장소 스냅샷이다 (빈 'none' 이 아니다)");
+  const storeWrites=STORE.writes.length;
   const reloads=T.location.reloadCount;
   T.toLobby();
   ok(T.location.reloadCount===reloads,"B1 [로비로]는 문서를 다시 읽지 않는다 (location.reload 호출 0)");
   ok(T.S.phase==="menu"&&T.uiScreenName()==="lobby","B2 같은 문서에서 로비 상태");
   ok(T.TUT.seenThisLoad===tutBefore,"B3 튜토리얼 자동 표시 플래그를 건드리지 않는다 (#128 — 같은 문서에서는 다시 뜨지 않는다)");
-  ok(JSON.stringify(H.storageSnapshot())===storeBefore,"B4 사용자 저장값 무변경");
+  ok(H.storageSnapshot(STORE)===storeBefore&&STORE.writes.length===storeWrites,
+    "B4 사용자 저장값·쓰기 기록 무변경 (실제 저장소 객체 기준)");
+  /* 음성 대조: 같은 검사가 실제 변화를 잡는가 */
+  STORE.setItem("someUserKey","changed");
+  ok(H.storageSnapshot(STORE)!==storeBefore,"B4b 이 검사는 실제 변화를 잡는다 (음성 대조)");
+  STORE.setItem("someUserKey","keep-me");
   ok(T.NET.mode===false&&T.NET.started===false&&T.NET.me===null&&T.NET.code===null&&T.NET.queue.length===0,
     "B5 온라인 상태 완전 해제 (다음 오프라인 경기가 온라인 게이팅·보드 반전·인덱스 중계를 물지 않는다)");
   ok(T.byId("overlay")._cls.has("hidden")&&T.byId("overlayBox").innerHTML==="","B6 이전 경기의 모달 잔존 0 (무한 버프 애니메이션까지 DOM 에서 제거)");
@@ -127,8 +138,11 @@ block("C 경기 종료 연출",()=>{
   T.startRounds(me,ek,me,ek);
   T.S.battle.fd.hp=0; T.execSlot("A",0); T.drain();
   const banners=T.FX.log.filter(x=>x.key==="resultBanner");
-  ok(T.S.phase==="over","C12 왕 제거로 경기 종료");
-  ok(banners.length<=1,`C13 전투 결과 + 경기 결과를 직렬로 두 번 재생하지 않는다 (resultBanner ${banners.length}회)`);
+  ok(T.S.phase==="over"&&T.S.metrics.winType==="king","C12 왕 제거로 경기 종료");
+  ok(banners.length===1,`C13 결과 배너가 **정확히 1회** (0회도 2회도 아니다 — 실제 ${banners.length}회)`);
+  ok(banners.length===1&&banners[0].kind==="result"&&/경기/.test(banners[0].title||""),
+    `C13b 그 한 번이 전투 결과가 아니라 **경기 결과** 문구다 (kind=${banners.length?banners[0].kind:"-"} title="${banners.length?banners[0].title:"-"}")`);
+  ok(banners.length===1&&!/전투에서/.test(banners[0].title||""),"C13c 전투 결과 문구가 직렬로 함께 재생되지 않았다");
   ok(T.S.matchFxDone===true,"C14 그 한 번이 경기 종료 연출로 소비됐다");
 
   /* C15 sim·헤드리스는 0ms 동기 — 규칙 결과·난수 소비 불변 */
@@ -165,7 +179,7 @@ block("D 왕·동료 아트 훅",()=>{
   /* 로드가 확인되면 그때 그림으로 — 보드에서도 그 정체 역할로 보인다 */
   T.ART.loaded.add("king/"+T.LEADER_FILES.icon); T.ART.loaded.add("companion/"+T.LEADER_FILES.icon);
   ok(/assets\/leaders\/king\/icon64\.png/.test(T.pcFaceHtml(k)),"D10 자산이 로드되면 왕이 그 아트로 보인다");
-  ok(/class="icon leader"/.test(T.pcFaceHtml(k)),"D11 도트가 아닌 파생본이라 별도 클래스로 보간 렌더 (하수인 32px 최근접 확대 계약 불변)");
+  ok(/class="icon leader"/.test(T.pcFaceHtml(k)),"D11 1254px 원본을 축소한 픽셀 스타일 아트라 별도 클래스로 보간 렌더 (하수인 32px 최근접 확대 계약 불변)");
   /* 로드 실패는 다시 폴백 */
   T.ART.failed.add("king");
   ok(/👑/.test(T.pcFaceHtml(k))&&!/assets\/leaders/.test(T.pcFaceHtml(k)),"D12 로드 실패 뒤에는 다시 이모지 (재요청 고리 없음)");
