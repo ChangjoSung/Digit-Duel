@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-10T02:10:33.018Z",
+  "generatedAt": "2026-09-10T05:06:57.014Z",
   "creator": {
     "userId": "11639564357"
   },
@@ -789,6 +789,12 @@
       "assetType": "Image",
       "sha256": "5de527525a0aaeb4a99bc4a57037526f1814cae7281c7170929c3cb28fe2f17e",
       "file": "roblox/assets/ui/badge.png"
+    },
+    "ui_banner": {
+      "assetId": 121065040826391,
+      "assetType": "Image",
+      "sha256": "6c3163b026366e67e35d812da54b718cbe53441f2a6f21bcb10acf243bb964fc",
+      "file": "roblox/assets/ui/banner.png"
     },
     "ui_btn_danger_disabled": {
       "assetId": 72715217889762,

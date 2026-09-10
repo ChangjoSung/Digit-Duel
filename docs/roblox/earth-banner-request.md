@@ -4,6 +4,8 @@
 > 작성: Mars (Claude Code) 2026-09-10 · Ref #118 (v0.4.6 Roblox 포팅) · 선행 요청서 `earth-ai-window-request.md` 와 별개
 > **긴급도 낮음**: 코드는 이미 동작한다. 납품 전에는 기존 `ui/panel_modal` 로 폴백하며, 키가 생기면 코드 수정 없이 자동 교체된다.
 
+> **납품 현황 (2026-09-10):** 필수 banner.png1장 제작.256×128 / SliceCenter16,16,112,112 / SliceScale1로 현행 코드와 호환한다. [보고서·검수 이미지·해시](../art/roblox-v0.5.0/earth-banner-report.md). 선택 good/bad 변형은 미제작이며 업로드/실표시는 Mars 작업이다.
+
 --- PROMPT ---
 
 ## dispatch preflight

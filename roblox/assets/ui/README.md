@@ -1,5 +1,7 @@
 # [결정] P0-B 속성·흔적 / P0-C 보드 / P0-D UI
 
+> 중앙 배너 추가(2026-09-10): [banner.png](banner.png)는256×128, ui_banner, **SliceCenter16,16,112,112 / SliceScale1**로 현행 panel 좌표와 호환한다. 실제540×112이며 좌/상/우/하 캡은16/16/144/16이다. [배너 납품·적용 보고](../../../docs/art/roblox-v0.5.0/earth-banner-report.md).
+
 > 2026-09-10 추가: panel_window 등 AI 전용6PNG는 [AI 창·봇 적용 계약](../ai-window-README.md)을 따른다. 특히256px 창의 SliceCenter는24,40,232,232로, 아래128px 패널3종과 다르다. 아래 수량·표는 최초 기본 P0 납품 이력이다.
 
 2026-09-09 · Ref #118 · Earth 아트 납품. 신규 **60 PNG / 43,786 bytes**.
