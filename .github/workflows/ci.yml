@@ -256,3 +256,83 @@ jobs:
       # 도구 자체의 회귀 — 픽스처는 전부 임시 디렉터리에 만든다 (저장소에 쓰지 않는다).
       - name: 아트 파이프라인 도구 회귀
         run: python -m unittest discover -s tools/art/test -v
+
+  # ── E. Roblox 포팅 (Luau 컴파일·규칙 회귀·정적 검사) ──────────────────────────
+  # 왜 생겼나: A~D 어느 잡도 `roblox/` 를 **컴파일조차 하지 않았다**. 그래서 실제로 두 번 새어 나갔다.
+  #   ① 전적 기능의 클라이언트 배선 3곳이 파일에 들어가지 않은 채 머지·게시(v30) — 화면에 아무것도 안 나왔는데
+  #      CI 5종이 전부 통과했다. 선언 없는 식별자를 Luau 가 nil 전역으로 조용히 받아들이기 때문이다 (PR #158 에서 복구).
+  #   ② Luau 의 "함수당 지역 변수 200개" 한도를 넘겨 빌드가 멈추는 상태 (PR #162 에서 모듈로 분리).
+  # 둘 다 로컬 build.bat 에서만 잡혔다. 이 잡이 그 공백을 메운다.
+  #
+  # 도구는 전부 **버전·SHA-256 으로 고정**해서 받는다 (액션 SHA 고정과 같은 이유 — 조용히 바뀌면 안 된다).
+  # 로컬에서 검증에 쓰는 것과 같은 버전이다: luau 0.737 · rojo 7.7.0.
+  roblox-luau:
+    name: E. Roblox 클라이언트·규칙 (Luau)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: roblox
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false      # 이 잡은 git 히스토리를 읽지 않는다 (fetch-depth 기본 1)
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}   # rbxcheck.js · uicheck.js 용 (외부 패키지 0)
+
+      # luau CLI (luau · luau-analyze · luau-compile). 릴리스 자산을 해시로 검증한 뒤에만 푼다.
+      - name: luau 0.737 설치 (SHA-256 고정)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/luau.zip https://github.com/luau-lang/luau/releases/download/0.737/luau-ubuntu.zip
+          echo "c3f000d0bb190301b9548f50f82ae9e217a8b5ba7b3551b038dbf28cb2e5ed32  /tmp/luau.zip" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          unzip -q -o /tmp/luau.zip -d "$RUNNER_TEMP/bin"
+          chmod +x "$RUNNER_TEMP/bin"/luau*
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: rojo 7.7.0 설치 (SHA-256 고정)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.0/rojo-7.7.0-linux-x86_64.zip
+          echo "22503e5839864f9d7c2171c48b536fc229f2cc4d8774c9cc149f60941d864073  /tmp/rojo.zip" | sha256sum -c -
+          unzip -q -o /tmp/rojo.zip -d "$RUNNER_TEMP/bin"
+          chmod +x "$RUNNER_TEMP/bin/rojo"
+
+      # 1) 문법 + **지역 변수 한도**. Luau 는 함수 하나가 지역 변수를 200개까지만 쓰는데 클라이언트 본체가
+      #    전부 최상위 스코프라 예산을 공유한다. 넘으면 여기서만 터진다 (헤드리스 테스트로는 안 잡힌다).
+      - name: Luau 컴파일 (src 전체)
+        run: |
+          set -euo pipefail
+          n=0
+          while IFS= read -r f; do
+            luau-compile --binary "$f" > /dev/null
+            n=$((n + 1))
+          done < <(find src -name '*.luau' | sort)
+          echo "컴파일 OK — $n 파일"
+
+      # 2) 선언 없는 식별자. Luau 는 이것을 오류가 아니라 **nil 전역**으로 조용히 받아들여서 컴파일도 테스트도
+      #    통과한다 — v30 의 전적 기능이 정확히 이렇게 죽은 채로 배포됐다(PR #158). 검사 로직은 저장소 도구에
+      #    있고 build.bat 도 같은 것을 돌린다 — CI 와 로컬이 다른 코드로 검사하면 한쪽만 통과하는 일이 생긴다.
+      - name: 선언 없는 식별자 검사 (v30 전적 배선 누락 재발 방지)
+        run: node tools/globalcheck.js
+
+      # 3) 규칙 회귀 — HTML 데모와 같은 규칙을 Roblox 엔진에서 다시 검증한다 (Roblox 불필요, 순수 Luau).
+      #    [12] 중앙 배너 · [14] 전투 연출은 표시 계층이지만 "부여/해제"·"성공/실패" 를 섞지 않는지 본다.
+      - name: 규칙·AI·표시 판정 회귀 (tests/run.luau)
+        run: luau tests/run.luau
+
+      # 4) Roblox API 정적 검사 — 속성 이름·Enum 오타. 정의 파일은 luau-lsp 커밋에 고정돼 있고
+      #    받은 뒤 SHA-256 을 확인하므로 저장소를 고치지 않는 한 판정이 바뀌지 않는다.
+      #    최상위 지역 변수 예산(170 경고 · 190 실패)도 여기서 함께 본다.
+      - name: Roblox API·지역 변수 예산 검사
+        run: node tools/rbxcheck.js
+
+      # 5) UI 레이아웃 — 자식이 부모 밖으로 나가는지·형제끼리 겹치는지. src/client 의 .luau 전부를 본다.
+      - name: UI 레이아웃 정적 검사
+        run: node tools/uicheck.js
+
+      # 6) 실제 산출물이 만들어지는지 (project.json 경로·트리 포함).
+      - name: Rojo 빌드
+        run: rojo build default.project.json -o "$RUNNER_TEMP/DigitDual.rbxl"

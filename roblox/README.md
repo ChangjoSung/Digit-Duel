@@ -100,6 +100,11 @@ Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버
 - API 키에는 **Universe Places(Place Publishing) → Write** 권한과 대상 경험이 추가돼 있어야 한다. 401 이면 키 만료(Regenerate), 403 이면 권한·경험 범위 누락.
 - 경험이 PRIVATE 이면 본인만 접속 가능 — Creator Hub → 경험 → **Access** 에서 공개 범위를 바꾼다.
 
+### CI (GitHub Actions)
+`roblox/` 는 **잡 E. Roblox 클라이언트·규칙 (Luau)** 가 본다 — Luau 컴파일(지역 변수 한도 포함) · 선언 없는 식별자 · `tests/run.luau` · rbxcheck · uicheck · rojo 빌드. luau 0.737 과 rojo 7.7.0 을 **SHA-256 으로 고정**해 받으므로 로컬과 같은 도구로 검사한다.
+
+2026-09-10 이전에는 CI 5종 어디도 `roblox/` 를 컴파일하지 않아 **두 건이 그대로 새어 나갔다** — 전적 배선 누락(v30 배포)과 Luau 지역 변수 한도 초과. 잡 E 가 그 공백을 메운다.
+
 ### 헤드리스 테스트 (커밋 전 필수)
 ```
 luau tests/run.luau
@@ -115,6 +120,16 @@ node tools/uicheck.js
 동시에 보이지 않는 쌍(배치 패널 ↔ 대전 패널 등)은 스크립트 안 `EXCLUSIVE`, 의도적으로 겹쳐 그리는 2D 셀은 `STACK_PARENTS` 로 제외한다.
 화면 크기가 작으면 `autoFit`(UIScale)이 창을 줄이므로, 검사는 기준 화면 1280×720 에서 한다.
 인수 없이 실행하면 `src/client/` 의 `.luau` **전부**를 각각 검사한다 — 새 모듈을 추가해도 목록을 따로 고칠 필요가 없다.
+
+### 선언 없는 식별자 검사 (build.bat · CI 잡 E)
+```
+node tools/globalcheck.js
+```
+Luau 는 선언 없는 이름을 **오류가 아니라 nil 전역**으로 조용히 받아들인다 — `local myStats = nil` 한 줄이 빠져도 대입되고 읽히고, 컴파일·테스트·CI 가 전부 통과한다. **화면에만 아무것도 안 나온다.** 2026-09-10 전적 기능이 정확히 이렇게 죽은 채로 v30 으로 배포됐다(PR #158).
+
+`luau-analyze --mode=strict` 는 선언 없는 이름을 **대입할 때도** 잡아 주는데 파일 첫 줄의 `--!nonstrict` 가 그 모드를 되돌리므로, **임시 사본에서 그 주석만 떼고** 검사한다(저장소 파일은 건드리지 않는다). 허용 목록은 **닫힌 목록**이라 새 Roblox 전역을 쓰기 시작하면 한 번 막힌다 — 이름을 눈으로 확인하고 `tools/globalcheck.js` 의 `ROBLOX_GLOBALS` 에 추가하는 것이 의도된 절차다.
+
+`luau-analyze` 는 PATH · `build/` · `LUAU_ANALYZE` 순으로 찾는다. 없으면 **통과시키지 않고 실패**한다 — 검사를 안 한 것과 통과한 것은 다르다.
 
 ### Roblox API 정적 검사 (build.bat 이 자동 실행)
 ```
