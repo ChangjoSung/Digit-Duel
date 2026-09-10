@@ -136,7 +136,7 @@ function Art.board(key: string): string? -- tile_own|tile_enemy|tile_forest|tile
 	return url(AssetIds["board_" .. key])
 end
 
-function Art.ui(key: string): string? -- panel_side|panel_battle|panel_modal|panel_window|btn_<default|primary|danger>_<normal|hover|pressed|disabled>|badge|hpbar_bg|hpbar_fill|shbar_bg|shbar_fill
+function Art.ui(key: string): string? -- panel_side|panel_battle|panel_modal|panel_window|banner|btn_<default|primary|danger>_<normal|hover|pressed|disabled>|badge|hpbar_bg|hpbar_fill|shbar_bg|shbar_fill
 	return url(AssetIds["ui_" .. key])
 end
 

@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.5"
+local CLIENT_VERSION = "0.5.0-p3.6"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -90,6 +90,7 @@ reAction:FireServer({ t = "ping" })
 
 local Data = require(Shared:WaitForChild("Data"))
 local Art = require(Shared:WaitForChild("Art"))
+local Banner = require(Shared:WaitForChild("Banner"))
 DIAG.modules = true
 -- 이미지 사전 로드: Roblox 는 rbxassetid 이미지를 처음 그릴 때 내려받아 카드·초상화가 늦게 뜬다 → 접속 직후 백그라운드로 전부 받아 둔다 (메시 제외)
 task.spawn(function()
@@ -419,6 +420,66 @@ local detailText = mk("TextLabel", {
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
 }, rosterDetail)
 local detailBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 30), Position = UDim2.new(0, 12, 1, -38), BackgroundTransparency = 1, ZIndex = 8 }, rosterDetail)
+
+--==================================================================
+-- 중앙 배너 (HTML 데모의 fxPlay{kind="banner"} 대응) — 턴 시작·접촉·폭탄·함정·탐색 결과 등을 화면 중앙에 잠깐 띄운다.
+-- 표시 계층 전용: 규칙·난수와 무관하고, 클릭을 가로채지 않는다 (Active=false 기본). 서버가 보낸 이벤트에서 규칙을 그대로 읽어 만든다.
+--==================================================================
+local BANNER_MS = 1.2 -- #125 계약과 같은 1.2초
+local BANNER_TONE = {
+	default = Color3.fromRGB(232, 236, 245),
+	good = Color3.fromRGB(0x6f, 0xe0, 0xa0),
+	bad = Color3.fromRGB(0xff, 0x7a, 0x8a),
+	warn = Color3.fromRGB(0xff, 0xd1, 0x6a),
+}
+local bannerFrame = mk("Frame", {
+	Size = UDim2.new(0, 540, 0, 112), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
+	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BorderSizePixel = 0, Visible = false, ZIndex = 9,
+}, gui)
+if not bgImage(bannerFrame, "banner", "panel", 1) then -- 전용 배너 아트가 오면 자동 사용 (Earth 요청)
+	bgImage(bannerFrame, "panel_modal", "panel", 1)
+end
+autoFit(bannerFrame, 540, 112)
+local bannerTitle = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -24, 0, 44), Position = UDim2.new(0, 12, 0, 18), ZIndex = 10,
+	BackgroundTransparency = 1, TextSize = 30, Font = Enum.Font.GothamBold, TextColor3 = WHITE,
+	TextStrokeTransparency = 0.4, TextTruncate = Enum.TextTruncate.AtEnd,
+}, bannerFrame)
+local bannerSub = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -24, 0, 34), Position = UDim2.new(0, 12, 0, 64), ZIndex = 10,
+	BackgroundTransparency = 1, TextSize = 14, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(180, 188, 205),
+	TextWrapped = true,
+}, bannerFrame)
+local bannerQ, bannerBusy = {}, false
+local function bannerPump()
+	if bannerBusy then
+		return
+	end
+	local b = table.remove(bannerQ, 1)
+	if not b then
+		bannerFrame.Visible = false
+		return
+	end
+	bannerBusy = true
+	bannerTitle.Text = b.title
+	bannerTitle.TextColor3 = BANNER_TONE[b.tone or "default"] or BANNER_TONE.default
+	bannerSub.Text = b.sub or ""
+	bannerFrame.Visible = true
+	task.delay(BANNER_MS, function()
+		bannerBusy = false
+		bannerPump()
+	end)
+end
+local function banner(title, sub, tone)
+	if #bannerQ >= 4 then -- 몰릴 때는 최신 것만 (연출이 밀려 게임이 답답해지지 않게)
+		table.remove(bannerQ, 1)
+	end
+	table.insert(bannerQ, { title = title, sub = sub, tone = tone })
+	bannerPump()
+end
+
+-- 서버 로그 한 줄 → 배너 (규칙 문구를 그대로 쓴다). 판정은 공유 모듈 Banner (헤드리스 테스트 [12] 대상)
+local bannerFromLog = Banner.fromLog
 
 -- 대전 화면 (배경 투명)
 local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 6 }, gui) -- 전투 모달 등 (창 위)
@@ -2273,6 +2334,8 @@ reState.OnClientEvent:Connect(function(msg)
 		return
 	elseif msg.t == "state" then
 		local prevBattle = view and view.battle ~= nil
+		local prevTurn = view and view.turnCount or nil
+		local prevPhase = view and view.phase or nil
 		view = msg.view
 		selectedId = selectedId and pieceById(selectedId) and selectedId or nil
 		if view.battle == nil and prevBattle then
@@ -2281,7 +2344,14 @@ reState.OnClientEvent:Connect(function(msg)
 		for _, ev in msg.events do
 			if ev.t == "log" then
 				addLog(ev.text)
+				local b = bannerFromLog(ev.text)
+				if b then
+					banner(b.title, b.sub, b.tone)
+				end
 			elseif ev.t == "bmsg" then
+				if ev.big or string.find(ev.text, "전투 개시!", 1, true) then -- 전투 개시·판정은 중앙 배너로도
+					banner(ev.text, nil, "warn")
+				end
 				battleMsg.Text = (battleMsg.Text ~= "" and battleMsg.Text .. "\n" or "") .. ev.text
 				local lines = string.split(battleMsg.Text, "\n")
 				while #lines > 7 do
@@ -2291,7 +2361,18 @@ reState.OnClientEvent:Connect(function(msg)
 				addLog(ev.text)
 			elseif ev.t == "contact" then
 				addLog("⚠️ 접촉 발생!")
+				local mineAtt = ev.attOwner == view.me
+				banner("⚠️ 적 발견 — 접촉!", mineAtt and "내 말이 상대 말과 부딪혔습니다" or "상대 말이 내 말과 부딪혔습니다", "warn")
 			end
+		end
+		if prevTurn ~= nil and view.phase == "play" and view.turnCount ~= prevTurn then -- 턴 전환
+			local mine = view.current == view.me
+			banner(mine and "🟢 나의 턴" or "⏳ 상대 턴", ("턴 %d%s"):format(view.turnCount + 1, view.burning and " · 🔥 버닝 타임" or ""), mine and "good" or "default")
+		end
+		if prevPhase == "play" and view.phase == "over" then -- 경기 결과
+			local w = view.winner
+			banner(w == view.me and "🏆 승리!" or w == -1 and "무승부" or "패배…",
+				view.winType and Data.WINTYPE_KO[view.winType] or nil, w == view.me and "good" or w == -1 and "default" or "bad")
 		end
 		if msg.opponentLeft then
 			addLog("🔌 상대의 연결이 끊어졌습니다.")

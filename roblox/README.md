@@ -15,6 +15,7 @@ roblox/
 │  │  ├─ Engine.luau         # 코어 룰 엔진 (보드·턴·이동·접촉·탐색·포획·밀기·도망)
 │  │  ├─ Battle.luau         # 전투 시스템 (Engine 에 부착)
 │  │  ├─ Ai.luau             # PVE AI (5급 휴리스틱 · 5단 탐색) — 봇 배치·턴·전투·보류 선택 정책
+│  │  ├─ Banner.luau         # 엔진 로그 → 중앙 배너 판정 (표시 계층 · 테스트 [12])
 │  │  └─ Views.luau          # 뷰어별 정보 은닉 직렬화
 │  ├─ server/init.server.luau  # 매치메이킹 + 서버 권위 세션
 │  └─ client/init.client.luau  # 최소 UI 스캐폴드 (Phase 2 에서 아트·연출 교체)
@@ -54,6 +55,7 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 ### 플레이 흐름 (Phase 3 — 보드게임 창 · AI 봇, CJ `roblox/구조.txt` 2026-09-10)
 **2인 대전**: 로비 스폰 → 테이블 의자 앞에서 **[E] 앉기** → 맞은편에 상대가 앉으면 판 앞 **[F] 게임 시작**(Enter · HUD 버튼도 가능) → 화면 중앙에 **보드게임 창**이 뜬다 (캐릭터는 숨고 창이 닫힐 때까지 일어나기 불가). 창 **왼쪽 = 2D 판(7×13)**, **오른쪽 = 로스터 20종 중 6종 선택 → 배치 트레이** (손에 든 말을 판의 강조된 내 진영 3행 칸에 클릭, 회수·남은 말 무작위·전체 회수·⚡ 전부 무작위). 14개를 다 놓으면 **[배치 완료 ✔]** 활성 → 둘 다 완료하면 자동 대전. 대전도 같은 창(왼쪽 판 클릭 이동·공격, 오른쪽 탐색·텔레포트·회복·턴 종료), 전투·출전 선택·포획·기술 교체는 별도 창. 창은 **[나가기]** 로만 닫히며(대전 중이면 기권) 그때 다시 걸어 다닐 수 있다.
 **1인 대전(AI)**: 혼자 앉은 뒤 **[B] 5급 봇 / [N] 5단 봇**(HUD 버튼도 가능) → 맞은편에 로봇이 앉고 로스터·배치를 자동으로 마친다 → 나만 [배치 완료 ✔] 를 누르면 시작. 창 오른쪽 위 토글로 배치 완료 전까지 난이도를 바꿀 수 있다. 봇은 서버에서 `Ai.luau`(HTML 5급 휴리스틱·5단 탐색 AI 그대로, 공정 관측)로 0.65초 간격으로 한 행동씩 진행하며 "🤖 AI 행동 중…" 이 표시된다.
+- 접촉·폭탄·함정·탐색 발견·획득·전투 개시/종료·턴 전환·경기 결과는 화면 **중앙 배너**(1.2초)로도 알린다 — HTML 데모의 배너 연출과 같은 순간이며, 판정은 `src/shared/Banner.luau`(테스트 [12]). 배너 전용 아트는 `docs/roblox/earth-banner-request.md` 납품 전까지 `panel_modal` 폴백.
 - 판 위 말 정보는 서버 필터 뷰만 내려온다 — 미공개 말은 정체 없이 표시. 봇도 같은 `Engine:apply` 검증을 지나므로 사람보다 더 할 수 있는 일이 없다.
 - UI 아트(P0 129 PNG): 패널·버튼 4상태·배지·HP/방어막 바·상태/아이템/행동/기술 종류/속성/흔적 아이콘 전량 연결 — 계약은 `roblox/assets/ui/README.md`, 적용 위치는 `docs/roblox/art-apply-report.md` 3b. 보드게임 창 프레임·봇 메시·난이도 배지·AI 행동 중 아이콘까지 적용 완료 (`art-apply-report.md` 3c).
 - 설계: [docs/roblox/lobby-design.md](../docs/roblox/lobby-design.md) · 아트 적용 보고: [docs/roblox/art-apply-report.md](../docs/roblox/art-apply-report.md) · 아트 요청: [earth-art-request.md](../docs/roblox/earth-art-request.md) / [earth-lobby-request.md](../docs/roblox/earth-lobby-request.md)
@@ -90,7 +92,7 @@ Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버
 luau tests/run.luau
 ```
 [luau CLI](https://github.com/luau-lang/luau/releases) (luau-windows.zip) 만 있으면 된다. 검증 범위:
-RNG 골든(JS 대조) · 배치·P2 행 반사 · 이동 규칙 · 접촉 6상황 유닛(폭탄·함정·밀기) · 왕 끝줄 승리 · 전투 완주 · 20시드 무작위 완주(룰 데드락·지표 정합·HP 불변식) · **AI [10]**: 자동 배치 유효성 · 5급/5단 AI 대 AI 24판 완주 · 5급 결정성 · #92 교체 정책.
+RNG 골든(JS 대조) · 배치·P2 행 반사 · 이동 규칙 · 접촉 6상황 유닛(폭탄·함정·밀기) · 왕 끝줄 승리 · 전투 완주 · 20시드 무작위 완주(룰 데드락·지표 정합·HP 불변식) · **AI [10]**: 자동 배치 유효성 · 5급/5단 AI 대 AI 24판 완주 · 5급 결정성 · #92 교체 정책 · **v0.4.7 [11]** · **중앙 배너 [12]**.
 
 ### UI 레이아웃 정적 검사 (build.bat 이 자동 실행)
 ```
