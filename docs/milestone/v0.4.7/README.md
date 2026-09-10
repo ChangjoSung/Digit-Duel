@@ -67,7 +67,7 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 
 ## 이어서 착수한 범위 — #146 · #131 · #128 · #130
 
-2026-09-10 CJ가 도망 재설계·행동 없음 처리·텔레포트 제외·보호막 합산·튜토리얼 표시 검증을 승인해 네 Issue를 함께 착수했다. 하나의 납품 목표이므로 [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146)을 기준 Issue로 두고 통합 PR 1개로 관리한다. **제품 코어·헤드리스 회귀는 Saturn PASS, 최종 Chrome 검사는 81/0이다.** 미디어·문서의 최종 검수·CI·dev 통합·CJ 플레이 QA는 별도 게이트이며 v0.4.7은 아직 미출시다.
+2026-09-10 CJ가 도망 재설계·행동 없음 처리·텔레포트 제외·보호막 합산·튜토리얼 표시 검증을 승인해 네 Issue를 함께 착수했다. [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146)을 기준으로 [통합 PR152](https://github.com/ChangjoSung/Digit-Duel/pull/152)에서 관리한다. **제품 코어·헤드리스·미디어·최종 README 렌더는 Saturn PASS, Chrome 검사는 81/0이다.** 최종 CI·dev 병합은 PR이 원본이며 새 CJ 플레이 QA 전까지 네 Issue는 OPEN이다. #128 미재현과 후속 Worker 정리 절차 위반은 [PD 기록](issues/146/Mercury/report.md)에 구분해 보존한다. v0.4.7은 아직 미출시다.
 
 | Issue | 제목 | 소관 | 계약 절 |
 |---|---|---|---|
@@ -78,7 +78,7 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 
 주요 계약: 도망은 **HP 무관 · 기본 성공률 30%**이고 실패해도 **상대의 추가 반격이 없다**(자기 전투 행동 1회 소모, 상대는 정상 차례) · **도망의 수호자**는 그 배틀 동안 성공률을 **70%로 치환**한다(가산 아님, 1회 보장 아님. 플레이어별 한 전투 1개·아이템 라운드 1회와 별도 회계는 #121 그대로) · 기술 4슬롯이 **전부** 쿨·봉인·조건 미충족이면 **기본 공격을 주지 않고** 지정 안내와 명시적 수동 대기만 두되 하나라도 합법이면 예외 없이 정상 커맨드이고 **왕·동료 본체의 기본 공격은 유지**하며 아이템·도망 등은 계속 선택 가능 · **함정에 걸린 말**은 텔레포트 양 끝 선택과 실행이 모두 차단되고 지정 2문구를 쓴다 · 보호막은 **남은 값 + 이번 기술의 기존 부여량**으로 합산하며 **새 상한·지속기간을 만들지 않는다**.
 
-**#128 현재 관측**: Mars가 실제 Chrome을 **독립 `user-data-dir` 두 개**로 띄워 **같은 HTTP origin**으로 확인한 결과, A 완료 후 **B에서 자동 표시**되고 A·B 각각의 재방문은 정상이며 `localhost`와 `127.0.0.1`은 독립이었다. **신고된 증상은 미재현이고 원인은 미확인**이다. 따라서 제품의 `localStorage` 로직은 바꾸지 않고 **회귀 검사와 실브라우저 증빙만** 추가한다. 이는 물리 2PC 검증을 마쳤다는 뜻도, 신고 버그가 해결됐다는 뜻도 아니다. **CJ에 접속 주소·브라우저 환경 정보를 [질문]으로 올려 회신을 기다리는 중**이다.
+**#128 현재 관측**: 실제 Chrome의 **독립 `user-data-dir` 두 개·같은 HTTP origin**에서 A·B 재방문과 완료 저장이 독립적으로 동작하고 `localhost`와 `127.0.0.1`도 분리됐다. 최종 증빙의 B 최초 탭은 A 완료 전에 열고 A 완료 뒤 표시를 관측했으므로, 첫 접속 순서까지 확대 해석하지 않는다. **신고된 증상은 미재현이고 원인은 미확인**이다. 제품의 `localStorage` 로직은 바꾸지 않고 **회귀 검사와 실브라우저 증빙만** 추가했다. 물리 2PC 검증이나 신고 버그 해결 PASS가 아니다. **CJ의 접속 주소·브라우저 환경 회신을 기다리는 중**이다.
 
 ### 역할별 문서와 현재 상태
 
@@ -86,7 +86,7 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 |---|---|---|
 | Venus | [v0.4.7 전투 행동 계약](issues/146/Venus/gameplay-spec.md) — 도망·행동 없음 패스·함정 텔레포트·보호막 합산·튜토리얼 독립성 | CJ 승인(2026-09-10) 계약 · 사용자 문서 동기화 완료 |
 | Mars | [구현·검증 보고](issues/146/Mars/report.md) · [브라우저 검증 기록](issues/146/Mars/artifacts/i146-browser-report.json) | 제품·19종 회귀·Chrome81/0·튜토리얼10 촬영 |
-| Saturn | [코어·헤드리스 최종 검수](issues/146/Saturn/core-review.md) · [초기 REVISE](issues/146/Saturn/initial-review.md) | 코어 PASS — 선택8종1062/0·독립63/0, 미디어·문서는 별도 |
+| Saturn | [코어 검수](issues/146/Saturn/core-review.md) · [납품 검수](issues/146/Saturn/delivery-review.md) · [최신 delta](issues/146/Saturn/delivery-delta.md) · [초기 REVISE](issues/146/Saturn/initial-review.md) | 코어·미디어·최종 렌더 PASS, 후속 보고 문장 REVISE와 PD 정정 확인은 통합 기록 참조 |
 | Mercury | [통합 기록](issues/146/Mercury/report.md) | 승인 계약·검수 근거·통합 상태 취합 |
 
 | 단계 | 상태 |
@@ -94,8 +94,8 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | 제품 구현 (`demo/index.html`) | 검수·촬영 기준 `aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea`, HTML blob `2a9b54c769a58fc5c0db9e913ce4421bec6758e3` |
 | 게임 안 튜토리얼 10단계·상황 도움말 | 도망30%/70%·수동 대기·함정 텔레포트·보호막 합산 반영, 실제 브라우저 확인 |
 | 새 화면 캡처·manifest | [튜토리얼10장·촬영 출처/해시](issues/146/Mars/artifacts/capture-manifest.json), 2224×1636·해시10/10 일치. README의 href/src20참조를 새146촬영본으로 갱신, 이전121자료 보존 |
-| Saturn 독립 QA | 코어·헤드리스 PASS, 최종 미디어·문서 검수 대기 |
-| CI | 대기 |
+| Saturn 독립 QA | 코어·헤드리스·미디어·최종 렌더 PASS. 후속 보고 정정과 자원 정리 절차 예외는 별도 기록 |
+| CI·dev 통합 | [PR152](https://github.com/ChangjoSung/Digit-Duel/pull/152)의 최종 필수5검사·squash 병합 상태를 따른다 |
 | CJ 플레이 QA | 대기 — 네 Issue OPEN 유지 |
 | 릴리스 | 미출시 — 정식 v0.4.5 유지 |
 
