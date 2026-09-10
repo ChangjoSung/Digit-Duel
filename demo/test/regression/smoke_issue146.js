@@ -491,64 +491,78 @@ section("D",()=>{
   T.TQ.length=0;
 });
 
-/* ══════════════ E. #128 튜토리얼 프로필 독립 ══════════════ */
+/* ══════════════ E. #128 튜토리얼 노출 정책 — 문서 로드당 1회 ══════════════
+   이력: 이 절은 처음에 "브라우저별 영구 최초 1회 + 저장 프로필 독립"을 고정했다. 초기 #128 의 '두 PC 가 서로 봤음을 공유한다'
+   신고는 그 정책 아래에서 **재현되지 않았고**(같은 프로필·같은 origin 재접속이 원인으로 설명됐다), 그 미재현 이력은 그대로 남는다.
+   2026-09-10 CJ 승인으로 정책 자체가 바뀌었다 — 이제 자동 표시는 **문서 로드당 1회**이고 영구 저장을 아예 보지 않는다.
+   그래서 '프로필이 seen 을 공유하는가'라는 질문은 구조적으로 사라졌다: 읽을 저장값이 없다. 아래는 그 새 정책을 고정한다. */
 section("E",()=>{
-  /* E1 저장 프로필이 다르면 완료 여부가 독립이다 — 같은 코드·같은 주소라도 저장소가 다르면 서로 모른다.
-     (브라우저에서 프로필·기기가 다르면 localStorage 가 다르다. 이 절은 그 전제 위에서 제품이
-      "그 저장소 하나만" 본다는 것을 고정한다. 실제 두 프로필·같은 http origin 확인은 CDP 도구가 한다.) */
-  const A=H.mkStorage(), Bs=H.mkStorage();
-  const TA=H.load(htmlPath,{storage:A,href:"http://127.0.0.1:8080/index.html"});
-  ok(TA.TUT.open===true&&TA.TUT.auto===true,"E1 프로필 A 최초 방문: 튜토리얼 자동 표시");
+  /* E1 저장소에 무엇이 들어 있든 자동 표시된다 — 빈 저장소 · 과거 키가 남은 저장소 · 다른 값만 있는 저장소 모두 같다 */
+  const A=H.mkStorage(), Bs=H.mkStorage({tutorialSeen:"1"}), Cs=H.mkStorage({netServer:"ws://127.0.0.1:8787"});
+  const HREF="http://127.0.0.1:8080/index.html";
+  const TA=H.load(htmlPath,{storage:A,href:HREF});
+  ok(TA.TUT.open===true&&TA.TUT.auto===true&&TA.TUT.step===0,"E1 빈 저장소: 1단계부터 자동 표시");
   TA.tutClose("finish");
-  ok(A.getItem(TA.TUT_KEY)==="1","E1a A 완료 → A 저장소에 기록");
-  const TB=H.load(htmlPath,{storage:Bs,href:"http://127.0.0.1:8080/index.html"});
-  ok(Bs.getItem(TB.TUT_KEY)===null,"E1b **A 가 완료해도 B 저장소는 비어 있다** (프로필 독립)");
-  ok(TB.TUT.open===true&&TB.TUT.auto===true,"E1c 같은 주소라도 B 는 최초 방문으로 자동 표시된다");
-  /* E2 B 가 아직 안 봤으면 재방문에도 계속 보인다 · B 가 보고 나면 그때부터 생략된다 */
-  const TB2=H.load(htmlPath,{storage:Bs,href:"http://127.0.0.1:8080/index.html"});
-  ok(TB2.TUT.open===true,"E2 B 재방문(미완주): 여전히 자동 표시");
-  TB2.tutClose("skip");
-  ok(Bs.getItem(TB2.TUT_KEY)==="1","E2a 건너뛰기도 '봤음'으로 저장된다");
-  const TB3=H.load(htmlPath,{storage:Bs,href:"http://127.0.0.1:8080/index.html"});
-  ok(TB3.TUT.open===false,"E2b B 완료 후 재방문: 생략된다");
-  const TA2=H.load(htmlPath,{storage:A,href:"http://127.0.0.1:8080/index.html"});
-  ok(TA2.TUT.open===false,"E2c A 도 자기 저장소 기준으로 계속 생략된다");
-  /* E3 저장 흔적은 단일 키뿐이고 다른 영구·외부 저장 통로를 쓰지 않는다 */
+  ok(H.storageTrace(A).all.length===0,"E1a 완료해도 저장 흔적 0 — '봤음'을 남기지 않는다 "+J(H.storageTrace(A).all));
+  const TB=H.load(htmlPath,{storage:Bs,href:HREF});
+  ok(TB.TUT.open===true&&TB.TUT.auto===true,"E1b **과거 tutorialSeen=1 이 남아 있어도 자동 표시된다** (과거 키 무시)");
+  TB.tutClose("skip");
+  ok(Bs.getItem("tutorialSeen")==="1"&&Bs.writes.length===0,"E1c 과거 키를 지우거나 다시 쓰지 않는다 (사용자 저장값 보존) "+J(Bs.writes));
+  const TC0=H.load(htmlPath,{storage:Cs,href:HREF});
+  ok(TC0.TUT.open===true&&Cs.getItem("netServer")==="ws://127.0.0.1:8787"&&Cs.writes.length===0,"E1d 다른 저장값(netServer)이 있어도 자동 표시되고 그 값은 그대로다");
+  TC0.tutClose("finish");
+  /* E2 같은 저장소로 몇 번을 다시 로드해도 매번 다시 뜬다 — 새로고침·새 탭·브라우저 재실행·서버 재시작 후 재접속의 헤드리스 등가물.
+     (옛 정책에서는 두 번째 로드부터 생략됐다. 이 절이 그 회귀를 막는다.) */
+  const rep=[];
+  for(let i=0;i<3;i++){ const X=H.load(htmlPath,{storage:Bs,href:HREF}); rep.push(X.TUT.open===true&&X.TUT.step===0&&X.TUT.auto===true); X.tutClose(i%2?"skip":"finish"); }
+  ok(rep.every(Boolean),"E2 앞 로드를 완료/건너뛰기 한 뒤 다시 로드해도 매번 1단계 자동 표시 "+J(rep));
+  ok(Bs.writes.length===0&&H.storageTrace(A).all.length===0,"E2a 반복 로드에도 저장 쓰기 0회");
+  /* E2b 같은 로드 안에서는 추가 표시가 없다 — 새 게임·모드 변경·재대전은 스크립트를 다시 돌리지 않는다.
+     (이 불변식은 #128 변경 전후가 같다. 새 정책이 '로드마다'를 '조작마다'로 번지지 않았음을 고정한다.) */
+  const TL=H.load(htmlPath,{storage:H.mkStorage(),href:HREF});
+  TL.tutClose("finish");
+  TL.startMode("pvp"); TL.startMode("pve"); TL.startMode("pvp");
+  ok(TL.TUT.open===false&&TL.TUT.seenThisLoad===true,"E2b 같은 로드에서 모드 변경·새 게임을 반복해도 튜토리얼이 다시 뜨지 않는다");
+  TL.TQ.length=0;
+  /* E3 어떤 영구·외부 저장 통로도 쓰지 않는다 (sessionStorage 대체도 금지 — '새로고침마다 표시' 요구와 어긋난다) */
   const C=H.mkStorage();
-  const TC=H.load(htmlPath,{storage:C,href:"http://127.0.0.1:8080/index.html"});
+  const TC=H.load(htmlPath,{storage:C,href:HREF});
   TC.tutOpen(); for(let i=0;i<9;i++) TC.tutNext(); TC.tutClose("finish"); TC.tutOpen(); TC.tutSkip();
   const tr=H.storageTrace(C);
-  ok(tr.all.length===1&&tr.all[0]===TC.TUT_KEY,"E3 저장 흔적은 단일 키 '"+TC.TUT_KEY+"' 뿐 — "+J(tr.all));
+  ok(tr.all.length===0,"E3 튜토리얼 전 과정 후 localStorage 흔적 0 — "+J(tr.all));
   ok(H.storageTrace(TC.sessionStorage).all.length===0&&TC.cookieWrites.length===0&&TC.indexedDB.opens.length===0,
-    "E3a sessionStorage·쿠키·indexedDB 무기록 (기기 지문·계정 공유 통로 없음)");
+    "E3a sessionStorage·쿠키·indexedDB 무기록 (기기 지문·계정 공유 통로 없음·sessionStorage 대체 없음)");
   ok(TC.wsLog.length===0,"E3b 튜토리얼 전 과정에서 네트워크(WebSocket) 송신 0 — 서버 전역 seen 이 없다");
   /* E4 서버·전역 공유 경로가 소스에 없다 */
   ok(!/tutorialSeen[^\n]{0,80}(fetch|XMLHttpRequest|netSend|BroadcastChannel)/.test(TC.html),"E4 tutorialSeen 을 서버·탭 간 통로로 보내는 코드가 없다");
   ok(!/\bTUT\b/.test(String(TC.applyAction))&&!/tutorial/i.test(String(TC.applyAction)),"E4a 온라인 액션 재생 경로가 튜토리얼 상태를 다루지 않는다 (S 와 분리)");
-  /* E5 origin 별 저장 — 제품은 window.localStorage 하나만 읽고 쓴다 (브라우저가 origin 별로 분리한다) */
-  ok(/tutStore=\{[\s\S]{0,400}window\.localStorage/.test(TC.html),"E5 튜토리얼 저장은 window.localStorage 단일 경로 (scheme·host·port 별 분리는 브라우저 계약)");
-  /* E6 저장이 막혀도 게임은 진행된다 */
+  /* E5 표시 판단의 유일한 근거는 메모리 플래그다 — 저장 헬퍼가 아예 없다 */
+  ok(TC.TUT_KEY===undefined&&TC.tutStore===undefined&&!/tutStore/.test(TC.html)&&TC.tutSeen()===TC.TUT.seenThisLoad,
+    "E5 TUT_KEY·tutStore 부재 · tutSeen()은 이 로드의 seenThisLoad 그 자체");
+  /* E6 저장이 막힌 환경에서도 동일하다 — 이제는 애초에 저장소를 건드리지 않으므로 환경 차이가 표시를 바꾸지 못한다 */
   {
     const TD=H.load(htmlPath,{storage:H.throwingStorage("SecurityError: denied"),href:"https://example.test/index.html"});
     ok(TD.TUT.open===true,"E6 저장소 접근이 예외인 환경에서도 튜토리얼이 뜬다");
     TD.tutClose("finish");
-    ok(TD.TUT.open===false&&TD.TUT.seenThisLoad===true,"E6a 저장 실패해도 이번 로드에서는 재표시되지 않는다");
+    ok(TD.TUT.open===false&&TD.TUT.seenThisLoad===true,"E6a 그 환경에서도 이번 로드에서는 재표시되지 않는다");
     TD.startMode("pvp");
     ok(TD.S&&TD.S.phase==="setup","E6b 저장이 막혀도 게임은 정상 시작된다");
     TD.TQ.length=0;
   }
   {
-    const TE=H.load(htmlPath,{storage:null,href:"http://127.0.0.1:8080/index.html"});
+    const TE=H.load(htmlPath,{storage:null,href:HREF});
     ok(TE.TUT.open===true,"E6c 웹 스토리지 미지원 환경에서도 튜토리얼이 뜬다");
     TE.startMode("pvp"); ok(TE.S&&TE.S.phase==="setup","E6d 그 환경에서도 게임이 시작된다");
     TE.TQ.length=0;
   }
-  /* E7 수동 재보기는 언제나 유지된다 */
+  /* E7 수동 재보기·건너뛰기·10단계 강제 완주 없음은 그대로 유지된다 */
   ok(/id="tutBtn"[^>]*onclick="tutOpen\(\)"/.test(TC.html),"E7 헤더의 '?' 수동 재보기 버튼은 상시 존재한다");
-  const TF=H.load(htmlPath,{storage:C,href:"http://127.0.0.1:8080/index.html"});
-  ok(TF.TUT.open===false,"E7a 전제: 이 프로필은 이미 봤다 (자동 표시 없음)");
+  const TF=H.load(htmlPath,{storage:C,href:HREF});
+  ok(TF.TUT.open===true&&TF.TUT.auto===true,"E7a 전제: 이 로드에서도 자동으로 떠 있다");
+  TF.tutSkip();
+  ok(TF.TUT.open===false&&TF.TUT.step===0,"E7b 1단계에서 건너뛰기 한 번으로 닫힌다 (10단계 강제 완주 없음)");
   TF.tutOpen();
-  ok(TF.TUT.open===true&&TF.TUT.step===0,"E7b 그래도 수동으로 처음부터 다시 볼 수 있다");
+  ok(TF.TUT.open===true&&TF.TUT.step===0&&TF.TUT.auto===false,"E7c 닫은 뒤에도 수동으로 처음부터 다시 볼 수 있다");
   TF.tutClose("finish");
   H.resetStorage();
 });

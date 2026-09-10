@@ -214,7 +214,9 @@ function load(htmlPath,opts){
   rosterInfo:window.rosterInfo,battleModal,toggleRoster:window.toggleRoster, // #89 하수인 아트 연결 (표시 계층)
   NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
   netServerDefault,netActor,netAction,netPrepare,netConnect,netPump,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
-  TUT,TUT_STEPS,TUT_HINTS,TUT_KEY,tutStore,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
+  TUT,TUT_STEPS,TUT_HINTS,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
+  /* #128: 현행 제품에는 튜토리얼 영구 저장이 없다(TUT_KEY·tutStore 삭제). 고정 ref 기준판(#92 d614392·#93 6baa0b5 등)은 아직 갖고 있으므로 부재를 허용한다 */
+  TUT_KEY:typeof TUT_KEY!=="undefined"?TUT_KEY:undefined, tutStore:typeof tutStore!=="undefined"?tutStore:undefined,
   // #106 턴 흐름·연출 계약 (기준판 로드 호환: 부재 시 undefined)
   FX:typeof FX!=="undefined"?FX:undefined,fxLocked:typeof fxLocked==="function"?fxLocked:undefined,fxPlay:typeof fxPlay==="function"?fxPlay:undefined,fxReleaseAll:typeof fxReleaseAll==="function"?fxReleaseAll:undefined,
   fxLive:typeof fxLive==="function"?fxLive:undefined,fxMs:typeof fxMs==="function"?fxMs:undefined,fxWhenIdle:typeof fxWhenIdle==="function"?fxWhenIdle:undefined,fxIdle:typeof fxIdle==="function"?fxIdle:undefined,

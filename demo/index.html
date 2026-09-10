@@ -3756,10 +3756,13 @@ function handoff(title,after){
     [["확인 — 시작",()=>{close();after();}]]);
 }
 
-/* ===== #26·#32·#42 첫 플레이어용 ELI5 튜토리얼 — 게임 상태 S와 완전 분리 (TUT) · 영구 저장은 localStorage 키 tutorialSeen 하나뿐 ·
+/* ===== #26·#32·#42 첫 플레이어용 ELI5 튜토리얼 — 게임 상태 S와 완전 분리 (TUT) ·
+   #128(2026-09-10 CJ 승인): 자동 표시는 **문서 로드당 1회**다. 영구 저장을 아예 보지 않는다 — 읽지도 쓰지도 않는다.
+   그래서 새 탭·새 창·새로고침·브라우저 재실행·서버 재시작 후 새 접속은 매번 1단계부터 뜨고,
+   같은 문서 안의 새 게임·재대전·모드 변경·WS 재연결·백그라운드 복귀·BFCache 복원은 스크립트를 다시 돌리지 않으므로 추가로 뜨지 않는다.
+   과거 키 "tutorialSeen"은 무시한다 — 남아 있어도 표시 정책에 영향이 없고, 제품이 지우지도 않는다(사용자 저장값 보존).
    게임 내부 모달(#tutOverlay, 외부 서버·창·이미지 없음) · 10단계 한 화면 한 개념 · 단계마다 (1)~(n) 독립 카드(번호·제목·그림·결과·설명, #42 DOM 블록 구조) ·
    상황 도움말(텔레포트·버닝 타임)은 첫 발생 시 1회, 게임 상태 무변경 ===== */
-const TUT_KEY="tutorialSeen";
 /* #42 장면 도우미 — 카드 안의 '그림'만 만든다. 공간 도형(미니 보드·화살표·토큰·HP 막대)은 소형 인라인 SVG, 나머지 텍스트·목록·흐름은 DOM 조각.
    SVG <text>에는 이모지·기호만 넣고(한글·숫자 금지) 모든 문장은 DOM으로 렌더링해 자연 줄바꿈된다. DOM·canvas·네트워크·외부 리소스 없음 */
 const TSV={
@@ -3933,11 +3936,10 @@ const TUT_HINTS={ // 첫 발생 시 1회 짧은 상황 도움말 (게임 상태 
   recruit:{icon:"📘",text:"새 기술을 배우거나 공용 하수인을 잡을 수 있어요! 기술은 🐉 드래곤 숨결·🕯 마녀의 장난·💀 사신의 낫 중에서 직접 고르고, 내 하수인 6개 중 살아 있는 말의 기술 4칸 어디든 바꿀 수 있어요. 같은 기술은 한 말에 두 번 못 넣어요. 잡은 하수인은 동료나 왕이 받고 그 종의 능력 그대로 와요. 포기해도 이 칸은 다시 쓸 수 없어요."}
 };
 const TUT={open:false,step:0,seenThisLoad:false,auto:false,hints:{teleport:false,burning:false,pkg:false,recruit:false,noatk:false,teletrap:false},hintShown:null,restore:null,btns:[]};
-const tutStore={ // localStorage 미지원·접근 예외(SecurityError 등)·쓰기 예외(용량·시크릿 모드) 모두 허용 — 실패 시 false
-  get(){ try{ const ls=window.localStorage; return !!ls&&ls.getItem(TUT_KEY)==="1"; }catch(e){ return false; } },
-  set(){ try{ const ls=window.localStorage; if(!ls) return false; ls.setItem(TUT_KEY,"1"); return true; }catch(e){ return false; } }
-};
-function tutSeen(){ return TUT.seenThisLoad||tutStore.get(); }
+/* #128 seenThisLoad 의 의미: "이 문서 로드에서 튜토리얼을 이미 띄웠다". 그 뿐이고 그 이상이 아니다 —
+   tutOpen 이 (자동·수동 어느 쪽이든) 세우고, tutClose 가 닫힘 경로에서 다시 못박는다. 문서가 새로 로드되면 자연히 false 로 돌아간다.
+   저장소를 읽지 않으므로 localStorage 미지원·SecurityError·시크릿 모드 같은 환경 차이가 표시 여부를 바꾸지 못한다(예외 처리할 것도 없다). */
+function tutSeen(){ return TUT.seenThisLoad; }
 function tutAttr(el,k,v){ try{ if(!el) return; if(v===null){ if(el.removeAttribute) el.removeAttribute(k); } else if(el.setAttribute) el.setAttribute(k,String(v)); }catch(e){} }
 function tutSetInert(on){ // 배경(게임 화면·게임 모달)을 스크린리더·포커스·클릭에서 제외 — 열릴 때만
   for(const id of ["app","overlay","tutHint"]){ const el=$(id); tutAttr(el,"inert",on?"":null); tutAttr(el,"aria-hidden",on?"true":null); }
@@ -3952,6 +3954,7 @@ function tutScrollTop(){ // #42 REVISE: 새로 그린 단계는 언제나 제목
 }
 function tutOpen(opts){
   opts=opts||{};
+  TUT.seenThisLoad=true; // #128 이번 문서 로드에서 표시됨 — 자동 표시는 로드당 1회라는 불변식을 여는 순간 못박는다
   if(TUT.open){ tutGo(0); return; } // 이미 열려 있으면 처음으로
   TUT.open=true; TUT.step=0; TUT.auto=!!opts.auto;
   const ae=document.activeElement;
@@ -3966,7 +3969,7 @@ function tutPrev(){ if(!TUT.open) return; if(TUT.step>0) tutGo(TUT.step-1); }
 function tutSkip(){ if(TUT.open) tutClose("skip"); }
 function tutClose(reason){
   if(!TUT.open) return;
-  TUT.open=false; TUT.seenThisLoad=true; tutStore.set(); // 건너뛰기·완료 모두 '봤음' — 저장 실패해도 이번 로드에서는 재표시 안 함
+  TUT.open=false; TUT.seenThisLoad=true; // #128 건너뛰기·완료·Esc 모두 '이번 로드에서 봤음' — 저장은 하지 않는다(다음 문서 로드에서는 다시 뜬다)
   const ov=$("tutOverlay"); if(ov){ ov.classList.add("hidden"); tutAttr(ov,"aria-hidden","true"); }
   tutSetInert(false);
   TUT.btns=[];
@@ -4423,7 +4426,7 @@ function netStart(seed,setups){
 newGame("pvp"); S.phase="menu";
 artPreload(); // #89 20종 일괄 — 어떤 말이 무엇인지와 무관하게 항상 같은 요청 집합이 나간다 (규격 7.10.3)
 render();
-if(!tutSeen()) tutOpen({auto:true}); // #26 최초 방문 1회 자동 표시 (tutorialSeen 미저장 시)
+if(!tutSeen()) tutOpen({auto:true}); // #26→#128 문서 로드당 1회 자동 표시 — 이 줄은 새 문서 로드에서만 실행된다(BFCache 복원·재대전·모드 변경은 재실행 없음)
 </script>
 </body>
 </html>
