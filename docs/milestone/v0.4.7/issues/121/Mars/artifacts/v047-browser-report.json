@@ -1,0 +1,328 @@
+{
+  "source": "demo/index.html",
+  "blobSha1": "4535791bbefd86ad829cdd436d4957f8a530846b",
+  "ref": "157026ba617166644ada0686b897d3ae2a166486",
+  "refBlobSha1": "4535791bbefd86ad829cdd436d4957f8a530846b",
+  "servedFrom": "작업 트리 (== --ref 157026ba6171 blob, 같은 바이트)",
+  "at": "2026-09-09T11:46:25.175Z",
+  "tool": "demo/test/milestone/v0.4.7/issues/121/v047_cdp.js",
+  "checks": [
+    {
+      "k": "TUT_KEY",
+      "v": "tutorialSeen"
+    },
+    {
+      "k": "BAL.fx",
+      "v": {
+        "turnBanner": 1200,
+        "contactBanner": 1200,
+        "explosion": 1200,
+        "trapFx": 1200,
+        "countStep": 1000,
+        "roundBanner": 1200,
+        "skillFx": 1200,
+        "damageFx": 1200,
+        "itemFx": 1200,
+        "captureFx": 1200,
+        "fleeFx": 1200,
+        "resultBanner": 2500,
+        "judgeBanner": 1200,
+        "pushBanner": 1200,
+        "roundEndFx": 1000,
+        "msgStep": 600,
+        "autoEndGrace": 1000,
+        "watchdog": 1000,
+        "autoEnd": true,
+        "barStep": 350
+      }
+    },
+    {
+      "k": "computed CSS",
+      "v": {
+        "ghost": {
+          "animationName": "ghostBoom",
+          "animationDuration": "1.2s",
+          "transitionProperty": "all",
+          "transitionDuration": "0s"
+        },
+        "boom": {
+          "animationName": "cellBoom",
+          "animationDuration": "1.2s"
+        },
+        "trap": {
+          "animationName": "trapBlink",
+          "animationDuration": "1.2s"
+        },
+        "hp": {
+          "transitionProperty": "width",
+          "transitionDuration": "0.35s"
+        },
+        "sh": {
+          "transitionProperty": "width",
+          "transitionDuration": "0.35s"
+        }
+      }
+    },
+    {
+      "k": "turnBanner lock (performance.now)",
+      "v": {
+        "released": 1230,
+        "samples": 75
+      }
+    },
+    {
+      "k": "shield→HP stage (실측)",
+      "v": {
+        "writes": [
+          {
+            "name": "shield",
+            "v": "0%",
+            "t": 1217
+          },
+          {
+            "name": "hp",
+            "v": "87.5%",
+            "t": 1576
+          }
+        ],
+        "unlocked": 3646,
+        "damageFx": 1200,
+        "barStep": 350,
+        "dSide": "D",
+        "usedSlot": 0,
+        "shieldLeft": 0
+      }
+    },
+    {
+      "k": "기술 선택 버튼",
+      "v": [
+        "1. 드래곤 숨결",
+        "2. 마녀의 장난",
+        "3. 사신의 낫",
+        "← 뒤로",
+        "포기"
+      ]
+    },
+    {
+      "k": "교체 전/후",
+      "v": {
+        "before": {
+          "sk": [
+            "fire_stable",
+            "fire_heavy",
+            "sup_focus",
+            "sig_atk"
+          ],
+          "cds": [
+            2,
+            1,
+            3,
+            0
+          ]
+        },
+        "after": {
+          "sk": [
+            "fire_stable",
+            "fire_heavy",
+            "dragon_breath",
+            "sig_atk"
+          ],
+          "cds": [
+            2,
+            1,
+            3,
+            0
+          ],
+          "rev": [
+            0
+          ]
+        }
+      }
+    },
+    {
+      "k": "#129 탐색 완료 → 종료 (실측)",
+      "v": {
+        "modalOpened": false,
+        "elapsed": 1222,
+        "turnDelta": 1,
+        "endsDelta": 1,
+        "pkgDelta": 1,
+        "grace": 1000,
+        "fxItem": 1200
+      }
+    },
+    {
+      "k": "버프 표시 (계산된 CSS)",
+      "v": {
+        "side": "A",
+        "applied": "power",
+        "tokenFound": true,
+        "animationName": "buffPower",
+        "animationDuration": "1.1s",
+        "boxShadow": "rgb(255, 91, 110) 0px 0px 0px 3.42204px, rgb(255, 91, 110) 0",
+        "beforeContent": "\"💪\"",
+        "uiLine": true,
+        "pkgLeft": 0,
+        "powerFlag": true
+      }
+    },
+    {
+      "k": "비공개 DOM 스캔",
+      "v": {
+        "onlineBagNonOwner": {
+          "ball47": false,
+          "gift7": false,
+          "buff8": false,
+          "itemNames": false,
+          "maskItem": true,
+          "maskPkg": true,
+          "ballText": "볼 비공개"
+        },
+        "onlineBallNonOwner": {
+          "ball47": false,
+          "gift7": false,
+          "buff8": false,
+          "itemNames": false,
+          "maskItem": true,
+          "maskPkg": true,
+          "ballText": "볼 비공개"
+        },
+        "onlineBagOwner": {
+          "ball47": true,
+          "gift7": true,
+          "buff8": true,
+          "itemNames": true,
+          "maskItem": false,
+          "maskPkg": false,
+          "ballText": "볼 중 1개를 받습니다 (행동 미소모)\" onclick=\"window.__openPkg('itemGift')\">🎁 아이템 선물 7"
+        },
+        "onlineBallOwner": {
+          "ball47": true,
+          "gift7": true,
+          "buff8": true,
+          "itemNames": true,
+          "maskItem": false,
+          "maskPkg": false,
+          "ballText": "볼 중 1개를 받습니다 (행동 미소모)\" onclick=\"window.__openPkg('itemGift')\">🎁 아이템 선물 7"
+        },
+        "pveBagAiTurn": {
+          "ball47": false,
+          "gift7": false,
+          "buff8": false,
+          "itemNames": false,
+          "maskItem": true,
+          "maskPkg": true,
+          "ballText": "볼 비공개"
+        },
+        "pveBallAiTurn": {
+          "ball47": false,
+          "gift7": false,
+          "buff8": false,
+          "itemNames": false,
+          "maskItem": true,
+          "maskPkg": true,
+          "ballText": "볼 비공개"
+        },
+        "pveBagMyTurn": {
+          "ball47": true,
+          "gift7": true,
+          "buff8": true,
+          "itemNames": true,
+          "maskItem": false,
+          "maskPkg": false,
+          "ballText": "볼 중 1개를 받습니다 (행동 미소모)\" onclick=\"window.__openPkg('itemGift')\">🎁 아이템 선물 7"
+        },
+        "pveBallMyTurn": {
+          "ball47": true,
+          "gift7": true,
+          "buff8": true,
+          "itemNames": true,
+          "maskItem": false,
+          "maskPkg": false,
+          "ballText": "볼 중 1개를 받습니다 (행동 미소모)\" onclick=\"window.__openPkg('itemGift')\">🎁 아이템 선물 7"
+        },
+        "actorPve": 0
+      }
+    },
+    {
+      "k": "튜토리얼 10단계 제목",
+      "v": [
+        "이기는 법 세 가지",
+        "말 5가지와 숨은 정체",
+        "움직이기와 숲에 숨기",
+        "흔적과 탐색",
+        "옆에 붙으면 꼭 싸워요",
+        "폭탄과 함정",
+        "잡아오기와 도망치기",
+        "텔레포트(순간이동)",
+        "버닝 타임(불타는 시간)",
+        "빠른 복습 — 첫 차례 체크리스트"
+      ]
+    },
+    {
+      "k": "카드 res 길이",
+      "v": [
+        [
+          9,
+          24,
+          22
+        ],
+        [
+          10,
+          11,
+          15
+        ],
+        [
+          15,
+          36,
+          28
+        ],
+        [
+          14,
+          28,
+          11,
+          62
+        ],
+        [
+          16,
+          35,
+          19,
+          28,
+          29
+        ],
+        [
+          32,
+          58,
+          50
+        ],
+        [
+          41,
+          49,
+          18,
+          52
+        ],
+        [
+          19,
+          41,
+          8
+        ],
+        [
+          15,
+          7,
+          38
+        ],
+        [
+          0,
+          62,
+          0
+        ]
+      ]
+    }
+  ],
+  "pass": 57,
+  "fail": 0,
+  "fails": [],
+  "notes": [
+    "7 README 용 튜토리얼 PNG 10장·capture-manifest.json 은 이 도구가 만들지 않는다 — tools/media/readme_media_capture.js capture 담당"
+  ]
+}

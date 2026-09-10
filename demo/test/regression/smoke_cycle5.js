@@ -104,27 +104,33 @@ const realRandom=Math.random;
     const p=T.S.pieces.find(x=>x.owner===0&&x.type===type);
     H.place(T,p,9,3); if(type!=="king") H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1);
     H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
-    T.S.events=[{r:9,c:3,kind:"buff",consumed:false}]; T.S.traces[0].add("9_3");
+    /* #121 계약 1.1 (v0.4.7 승인): 이벤트 종류가 6종 → itemGift·battleBuff·recruit 3종으로 바뀌었다.
+       옛 "buff"(다음 전투 공격 +15%)는 계약 1.3 으로 **대체 보상 없이 폐기**됐다 — 여기서는 현행 종류를 쓴다 */
+    T.S.events=[{r:9,c:3,kind:"battleBuff",consumed:false}]; T.S.traces[0].add("9_3");
     return {p,ev:T.S.events[0]};
   };
   for(const type of ["bomb","trap"]){
     const {p,ev}=setup(type);
     ok(!T.canSearchPiece(p),"D1 canSearchPiece("+type+")=false");
     const r=T.doSearch(p,ev);
-    ok(r===false&&!ev.consumed&&!T.S.mainUsed&&S().metrics.searches===0&&!p.nextBattleBuff,"D2 "+type+" doSearch 거부 (이벤트·주행동·지표·버프 미변경)");
+    ok(r===false&&!ev.consumed&&!T.S.mainUsed&&S().metrics.searches===0&&T.S.pkgs[0].battleBuff===0,"D2 "+type+" doSearch 거부 (이벤트·주행동·지표·패키지 재고 미변경)");
   }
   for(const type of ["minion","ally","king"]){
     const {p,ev}=setup(type);
     ok(T.canSearchPiece(p),"D3 canSearchPiece("+type+")=true");
     T.doSearch(p,ev);
-    ok(ev.consumed&&T.S.mainUsed&&S().metrics.searches===1&&S().metrics.byPlayer[0].searches===1&&p.nextBattleBuff,"D4 "+type+" 탐색 실행·버프 획득·지표");
+    /* #121 계약 1.3: 탐색으로 `nextBattleBuff`(다음 전투 공격 +15%)를 **더 이상 얻을 수 없다**. 대신 계약 2·3 의
+       패키지 재고가 +1 되고, 실제 내용 선택(개봉)은 전투 중 가방에서 한다. 옛 단언보다 약해지지 않도록
+       "폐기된 보상이 켜지지 않는다"까지 함께 본다 (음성 조건). */
+    ok(ev.consumed&&T.S.mainUsed&&S().metrics.searches===1&&S().metrics.byPlayer[0].searches===1
+       &&T.S.pkgs[0].battleBuff===1&&!p.nextBattleBuff,"D4 "+type+" 탐색 실행·전투 버프 패키지 +1·지표 · 폐기된 일시버프 미부여");
     ok(S().metrics.minionSearches===(type==="minion"?1:0),"D5 "+type+" 하수인 탐색 카운트 "+(type==="minion"?"1":"0"));
   }
   // 폭탄이 이벤트 칸에 이동해 흔적 발견은 가능 (탐색 버튼만 불가)
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   const b=T.S.pieces.find(x=>x.owner===0&&x.type==="bomb"); H.place(T,b,11,3);
   H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1); H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
-  T.S.events=[{r:10,c:3,kind:"ball",consumed:false}];
+  T.S.events=[{r:10,c:3,kind:"itemGift",consumed:false}]; // #121 계약 1.1: 옛 "ball" 종류는 폐기 — 흔적 발견은 종류와 무관
   T.doMove(b,10,3);
   ok(T.S.traces[0].has("10_3")&&S().metrics.bombMoves===1&&S().metrics.byPlayer[0].bombMoves===1,"D6 폭탄 이동으로 흔적 발견 가능 + 폭탄 이동 지표");
   T.S.mainUsed=false; T.S.selected=b; T.render(); // 턴바 렌더: 탐색 버튼 비활성
