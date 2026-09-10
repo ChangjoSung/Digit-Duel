@@ -1,14 +1,14 @@
 # 도구 인덱스 — `tools`
 
-도구는 **목적별로 한 폴더**를 쓰고, 그 도구의 회귀 테스트와 의존성은 같은 폴더 안에 둔다. 7개 파일 전부가 아래 표에 있다.
+도구는 **목적별로 한 폴더**를 쓰고, 그 도구의 회귀 테스트와 의존성은 같은 폴더 안에 둔다. 현재 도구는 아래 표에서 찾을 수 있다.
 
 | 폴더 | 목적 | CI 잡 |
 |---|---|---|
 | [`docs/`](docs) | 추적 중인 `*.md`의 내부 링크·이미지 무결성 | C. 문서 링크·이미지 무결성 |
 | [`media/`](media) | README 미디어 캡처와 오프라인 검증 | C. 문서 링크·이미지 무결성 |
-| [`art/`](art) | 하수인 아트 파이프라인(결정적 익스포터·검증기) | D. 납품 아트 자산 무결성 |
+| [`art/`](art) | 하수인·왕·동료 아트 파이프라인(결정적 익스포터·검증기) | D. 납품 아트 자산 무결성 |
 
-버전·Issue 열은 그 파일이 처음 들어온 커밋이 담긴 최초 태그다. 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니고**, 그 표기는 #132에서 들어왔고 아직 어떤 태그에도 담기지 않았다는 뜻이다. 옛 경로 대조는 [#134 MOVES.csv](../docs/milestone/v0.4.7/issues/134/Mercury/MOVES.csv)에서 본다.
+버전 열은 출시된 파일의 최초 태그, Issue 열은 도입 작업을 가리킨다. 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니며**, 해당 Issue에서 추가됐지만 아직 출시 태그에 포함되지 않은 파일임을 뜻한다. 옛 경로 대조는 [#134 MOVES.csv](../docs/milestone/v0.4.7/issues/134/Mercury/MOVES.csv)에서 본다.
 
 ## 문서 무결성 (`docs/`)
 
@@ -31,6 +31,8 @@
 | 파일 | 버전 | Issue | 하는 일 | 파일 쓰기 |
 |---|---|---|---|---|
 | [`minion_art.py`](art/minion_art.py) | v0.4.3 | #87 | Earth가 작성한 픽셀 소스·전투 패치를 읽어 납품 PNG와 매니페스트를 만들고 검증한다. CI는 산출물을 만들지 않는 `--all --check --no-preview`만 돌린다 | `--check`에서는 0건 · 생성 모드에서만 `demo/assets/minions/` |
+| [`leaders_export.py`](art/leaders_export.py) | v0.4.7(미출시) | #124 | Earth 왕·동료 원본의 알파를 보존하며 64px·256px PNG와 매니페스트를 만든다. `--check`는 원본에서 계산한 바이트와 납품본을 대조한다 | `--check`·`--list`에서는 0건 · 생성 모드에서만 `demo/assets/leaders/` |
+| [`test_leaders_export.py`](art/test/test_leaders_export.py) | v0.4.7(미출시) | #124 | 단순 축소·알파·결정성과 정상/누락/변조 납품의 검사 결과·쓰기 방지·원본 보존을 확인한다 | 소유 임시 픽스처 · Python import 시 `__pycache__` 생성 가능 |
 | [`art/test/test_minion_art.py`](art/test/test_minion_art.py) | v0.4.3 | #87 | 위 도구의 회귀. `python -m unittest discover -s tools/art/test -v`로 돈다. 잘못된 입력 검사는 전부 임시 디렉터리에서 하고, 실제 저장소는 읽기 전용(`--check`·git blob)으로만 만진다 | 소유 임시 디렉터리 · 실행 중 `tools/art/__pycache__`와 `tools/art/test/__pycache__` 둘 다 생성(`.gitignore` 대상이라 추적되지 않을 뿐 파일 시스템에는 남는다) |
 | [`art/requirements-art.txt`](art/requirements-art.txt) | v0.4.7(미출시) | #132 | 위 두 파일의 실행 의존성. 픽셀에서 PNG를 굽는 도구라 인코더가 바뀌면 바이트 비교가 흔들려 정확한 버전으로 고정한다 | — |
 

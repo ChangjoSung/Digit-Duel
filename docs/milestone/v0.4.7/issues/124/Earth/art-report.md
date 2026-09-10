@@ -1,5 +1,7 @@
 # [피드백] Earth — #122 / #124 / #126 아트 납품
 
+> **2026-09-10 Mercury 후속 정정:** 아래는 Earth 납품 당시 보고다. 이후 Saturn이 왕 원본 왼쪽 아래 모서리 alpha=1(나머지 파생4개 모서리=0)을 확인했다. 본문의 모든 원본 모서리 alpha0이라는 전달은 정확하지 않았다. 최종 파생은 Mars가 LANCZOS 단순 축소로 납품했으며 원본은 보존했다. 도망은 fleeFx1200ms 뒤 교환 선택으로 이어지고, 적 포획은 captureFx1200ms 메시지 뒤 resultBanner2500ms 결과 단계로 이어진다. 각 상수는 보존한다. [현재 통합 검수 기록](../../122/Mercury/report.md).
+
 2026-09-10 · Run `run_031dae03dc6e` · Task `task_361876d47908` · Dispatch `ctx_b66017b5187b`.
 
 **신규 창작 아트 제안이며 CJ 최종 아트 승인 아님.** Earth / IMPLEMENT / ART / assets·docs / instance null / Codex 계약을 확인했다. 제품·도구·테스트 코드, Git/GitHub/Notion 쓰기는 수행하지 않았다.

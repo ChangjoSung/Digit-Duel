@@ -1,12 +1,25 @@
 # #122 · #124 · #126 — 세로 화면 · 왕/동료 아트 · 승패 효과
 
-> **상태: 제작 중.** CJ 후속 지시에 따라 [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122) 세로 화면, [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124) 왕·동료 픽셀 아트, [#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) 승패 효과를 함께 진행하고 있다. **제품 QA·CJ 아트 승인·병합·릴리스는 아직 없다.** 세 Issue 모두 OPEN이다.
+> **상태: 구현·Saturn 제품 검수 PASS, CJ QA 대기.** CJ 후속 지시에 따라 [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122) 세로 화면, [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124) 왕·동료 픽셀 아트, [#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) 승패 효과를 함께 구현했다. **최종 제품·미디어 검수는 PASS이며 CJ 아트·플레이 QA와 출시는 대기다. CI·dev 통합 상태는 PR160을 따른다.** 세 Issue 모두 OPEN이다.
 >
 > 현재 범위 원본: [CJ 후속 범위](Mercury/cj-followup.md) · [GDD21](https://app.notion.com/p/3d71e7f1708581f292ede2ab862e63f5) · [작업 PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160). 아트 체크포인트 `dd0d622`.
 
 기존 픽셀 하수인을 중심으로 한 **레트로 휴대용 전략 게임** 방향이다. 짙은 남색 프레임·밝은 아이보리 패널·절제한 강조색을 쓰고, 숫자와 상태는 읽기 쉽게, 말판과 전투 캐릭터는 크게 보이도록 구성한다.
 
-## 현재 시안 — v2
+## 실제 브라우저 화면
+
+[구현·검수 통합 기록](Mercury/report.md) · [Mars 구현 보고](Mars/report.md) · [브라우저 검사 결과](Mars/artifacts/ui_cdp_report.json) · [튜토리얼10 출처](Mars/media/capture-manifest.json).
+
+| 화면 | 실제 캡처 |
+|---|---|
+| 시작·로비 | [첫 화면](Mars/artifacts/122-01-title-390.png) · [로비](Mars/artifacts/122-02-lobby-390.png) |
+| 준비·보드 | [로스터](Mars/artifacts/122-03-roster-390.png) · [비공개 배치](Mars/artifacts/122-04-place-390.png) · [전략 보드](Mars/artifacts/122-05-board-390.png) |
+| 공개 기록·수풀 | [기록 서랍](Mars/artifacts/122-06-drawer-log-390.png) · [보이는 양측 말과 은폐 칸](Mars/artifacts/122-13-bush-390.png) |
+| 전투·결과 | [속성 전투](Mars/artifacts/122-07-battle-390.png) · [경기 결과](Mars/artifacts/122-10-result-390.png) |
+
+현재 캡처는 작업 브랜치의 검수 자료다. 물리 휴대폰·실제 두 PC 전체 플레이 검증이나 CJ 수락을 뜻하지 않는다.
+
+## 디자인 시안 — v2
 
 CJ 피드백 세 가지를 반영한 판이다: **실제 숲 칸만 수풀처럼**, **말판 위 말은 현행 HTML 표현 유지**, **속성 전투는 현행 HTML + 휴대용 몬스터 배틀 구도의 결합**.
 
@@ -38,7 +51,7 @@ CJ 피드백 세 가지를 반영한 판이다: **실제 숲 칸만 수풀처럼
 | [크기 비교](../124/Earth/source-use-size-review.png) ([SVG](../124/Earth/source-use-size-review.svg)) | 32 / 128 / 256px 를 밝은·어두운 배경에서 확인한 대조표 |
 | [아트 보고](../124/Earth/art-report.md) · [생성 프롬프트](../124/Earth/prompts.md) | 출처·해시·실측·한계 |
 
-게임 파생본 `demo/assets/leaders/{king,companion}/{icon64,battle256}.png` 는 Mars 소관이며 아직 납품 전이다.
+게임 파생본 `demo/assets/leaders/{king,companion}/{icon64,battle256}.png` 4개와 재생성 매니페스트를 Mars가 납품했다. 1254px 픽셀 스타일 원본을 LANCZOS로 단순 축소한64/256px RGBA이며, 기존 하수인 이미지를 대체하지 않는다.
 
 ## #126 — 승패 효과
 
@@ -49,7 +62,7 @@ CJ 피드백 세 가지를 반영한 판이다: **실제 숲 칸만 수풀처럼
 | [효과 정점 비교](../126/Earth/effect-keyframes.png) ([SVG](../126/Earth/effect-keyframes.svg)) | 승리(금빛 확산) · 패배(어두운 균열) 정점 대조 |
 | [스토리보드](../126/Earth/effect-storyboard.md) | 구간별 시각 어휘 · 도망/포획/동률/경기 무승부 구분 |
 
-전투 판정 동률은 **방어자 승**이고 전투 무승부 화면은 만들지 않는다. 무승부는 경기 무승부에만 쓴다. 도망·포획은 기존 1200ms 경로를 그대로 따른다.
+전투 판정 동률은 **방어자 승**이고 전투 무승부 화면은 만들지 않는다. 무승부는 경기 무승부에만 쓴다. 도망은 기존 fleeFx1200ms 후 교환 선택으로 이어지고, 적 포획은 기존 captureFx1200ms 메시지 뒤 resultBanner2500ms 결과 단계를 거친다. 두 경로의 시간 상수는 그대로다. 포획 결과에는 경기 승리 축하 효과를 쓰지 않는다.
 
 ## 화면 흐름
 
@@ -69,7 +82,9 @@ CJ 피드백 세 가지를 반영한 판이다: **실제 숲 칸만 수풀처럼
 
 | 역할 | 문서 |
 |---|---|
-| Mercury | [CJ 후속 범위](Mercury/cj-followup.md) — 요청 항목·제작 방향·보존 계약 |
+| Mercury | [통합 기록](Mercury/report.md) · [CJ 후속 범위](Mercury/cj-followup.md) — 요청·검수·소스·절차 예외 |
+| Mars | [구현 보고](Mars/report.md) · [효과 검증](../126/Mars/report.md) |
+| Saturn | [PD가 보관한 inline 독립 QA](Mercury/report.md#saturn-독립-read_only-관측) — Saturn 파일 쓰기 없음 |
 | Earth | [v2 시안 보고](Earth/v2/report.md) · [왕·동료 아트 보고](../124/Earth/art-report.md) · [#126 스토리보드](../126/Earth/effect-storyboard.md) |
 | Venus | [흐름 계약과 PD 실행 판단](Venus/implementation-review.md) — 결과 연출 1회성·같은 문서 로비·온라인 불변식·아트 연결 지점과 수용 기준 |
 | Venus | [사용자 문서 동기화 보고](Venus/docs-status-report.md) — 이번 제작 중 상태를 사용자 문서에 반영한 범위 |

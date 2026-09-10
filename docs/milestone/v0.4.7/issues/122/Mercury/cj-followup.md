@@ -29,11 +29,11 @@
 ## 역할과 통합
 
 - Run `run_031dae03dc6e`, 기존 `doc/122-art-architecture` / [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)을 같은 납품의 통합 작업으로 이어간다.
-- 최신 base `fe3d32cd9da9292f0492becd6ca63cfe6f2753f4`의 Roblox PR161은 보존해 포함했다. 시작 제품 HTML blob `8027cd72d8445c9a7077d0e43b1c5559645ee165`.
+- 시작 base `fe3d32cd9da9292f0492becd6ca63cfe6f2753f4`의 Roblox PR161에 이어 dev `2c04b7f4c14c3d6b71902b17b742205136c6ba83`의 PR162·163을 merge `7647114996c9586f422ff6a2ababc5ffdc254e67`로 보존해 포함했다. 시작 제품 HTML blob `8027cd72d8445c9a7077d0e43b1c5559645ee165`. CJ가 추가 승인한 [#132 CI 연결](../../132/Mercury/required-checks.md)에 따라 최종 필수 검사는 Roblox E를 포함한6개다.
 - Earth(Codex): 아트·정적 시안. `task_361876d47908` / `ctx_b66017b5187b`.
 - Earth 수풀 보정(Codex): `task_1326143e959e` / `ctx_9425bcbe8546`. 앞선 아트 Worker는 납품 후 release했고 새 작업은 시안 세 파일만 담당한다.
 - Mars(Claude): HTML·효과·자산 연결·검증 도구/테스트. `task_c76b0350fe8a` / `ctx_55ae89f24c7e`.
 - Venus(Claude): 흐름·결과 계약 분석 문서. `task_bc6d0fb057e4` / `ctx_bee061a6418e`.
 - Venus 문서 후속(Claude): 같은 역할 자원을 `task_edb2dd272361` / `ctx_8ea5fe79675a`로 이어 README·Release Note·Milestone·Issue 문서 상태를 정리한다.
 - Saturn(Codex): 구현 후 독립 READ_ONLY QA. Mercury: 조정·Git·Notion·문서 메타데이터.
-- 세 Issue는 OPEN으로 유지한다. 정식 v0.4.5를 유지하고 v0.4.7은 미출시이며 이번에 릴리스하지 않는다. 실제 납품과 검증 결과는 후속 보고에 기록한다.
+- 세 Issue는 OPEN으로 유지한다. 정식 v0.4.5를 유지하고 v0.4.7은 미출시이며 이번에 릴리스하지 않는다. 최종 제품 b3e077b/6bd·미디어 eeb2d11의 Saturn PASS와 절차 예외는 [통합 기록](report.md)에 보관한다. Roblox PR164도 dev1791651에서 merge dc08c7b로 보존했다.
