@@ -80,9 +80,11 @@ section("A",()=>{
   function seedIn(lo,hi){ const X=load();
     for(let k=1;k<=4000;k++){ X.setSeed(k); const v=X.rand(); if(v>=lo&&v<hi) return {seed:k,v}; }
     return null; }
-  function fleeOnce(seed,boost){
+  function fleeOnce(seed,boost,power){
     const X=load(); const Q=setup(X); giveSpecies(X,Q.me,R(X,"M-F1")); giveSpecies(X,Q.em,R(X,"M-G1"));
-    openBattle(X,Q.me,Q.em); const Bx=X.S.battle; actAsA(X); Bx.fa.fleeBoost=!!boost; freshModal(X);
+    openBattle(X,Q.me,Q.em); const Bx=X.S.battle; actAsA(X); Bx.fa.fleeBoost=!!boost;
+    if(power) Bx.fd.powerBuff=true;   // #122 CJ QA 2: 반격자(D)의 💪 힘의 수호자
+    freshModal(X);
     const tries0=X.S.metrics.fleeTries;
     X.setSeed(seed); X.__fleeCore(); X.drain(20000);
     const r={tries:X.S.metrics.fleeTries-tries0,oks:X.S.metrics.fleeOks,battleOver:X.S.battle===null,X,Bx,Q};
@@ -97,16 +99,27 @@ section("A",()=>{
     ok(fleeOnce(hi.seed,false).oks===0&&fleeOnce(hi.seed,true).oks===0,"A9e r≥0.7: 70% 도 실패한다 — 1회 성공 보장이 아니다");
   }
 
-  /* A10 실패 처리 — 상대의 추가 반격이 없고, 자기 전투 행동 1회만 소모된다 */
+  /* A10 실패 처리 — #122 REVISE(2026-09-10 CJ QA 2): #146 이 지웠던 반격이 **기본 공격 한정**으로 되살아났다.
+     도망을 시도한 A 측만 그 피해를 맞고, 반격한 D 측 HP 는 그대로다. 나머지 #146 계약(자기 전투 행동 1회 · 주 행동 불변)은 유지된다. */
   if(mid){
     const {X,Bx,Q}=fleeOnce(mid.seed,false);
     const blog=Bx.blog.join("|");
     ok(/도망 실패/.test(blog),"A10 전제: 도망이 실패했다");
-    ok(Bx.fa.hp===Bx.fa.maxHp&&Bx.fd.hp===Bx.fd.maxHp,"A10a 실패해도 양측 HP 가 변하지 않는다 (반격 삭제)");
-    ok(!/피해!/.test(blog),"A10b 전투 로그에 반격 피해가 없다");
+    ok(Bx.fa.hp<Bx.fa.maxHp,"A10a 도망 실패 → 도망친 쪽이 상대의 기본 공격 피해를 받는다 (#122 CJ QA 2)");
+    ok(Bx.fd.hp===Bx.fd.maxHp,"A10a2 반격한 상대는 피해를 받지 않는다");
+    ok(/반격 — 기본 공격/.test(blog)&&/피해!/.test(blog),"A10b 전투 로그에 기본 공격 반격이 남는다");
+    ok(!/의 [^|]*탄!|의 [^|]*강타!/.test(blog),"A10b2 반격은 기술이 아니라 기본 공격이다 (기술 이름이 로그에 없다)");
     ok(X.S.battle===Bx&&(Bx.phase===1||Bx.round>1),"A10c 자기 전투 행동 1회만 소모돼 차례가 넘어갔다 (nextPhase)");
     ok(X.S.mainUsed===false,"A10d 보드 주 행동은 소모되지 않는다");
-    ok(Bx.fa.weaken===0&&Bx.fd.weaken===0,"A10e 약화 잔여 횟수도 소모되지 않는다");
+    ok(Bx.fa.weaken===0&&Bx.fd.weaken===0,"A10e 도망 쪽 약화 잔여 횟수는 소모되지 않는다 (반격자는 실제 공격이므로 별도)");
+    /* A10f #122 CJ QA 2: 💪 힘의 수호자를 쓴 반격자는 기본 공격이 **분산 상단 고정** = 최대 피해가 된다.
+       같은 실패 시드 둘에서 피해가 서로 같고(분산이 고정됐다), 버프 없는 같은 시드보다 작지 않다. */
+    const dmgOf=(seed,pw)=>{ const F=fleeOnce(seed,false,pw); return F.Bx.fa.maxHp-F.Bx.fa.hp; };
+    if(hi){
+      const bMid=dmgOf(mid.seed,true), bHi=dmgOf(hi.seed,true);
+      ok(bMid===bHi&&bMid>0,"A10f 힘의 수호자 반격은 시드와 무관하게 같은 피해 — 분산이 상단으로 고정된다 ("+bMid+")");
+      ok(bMid>=dmgOf(mid.seed,false)&&bMid>=dmgOf(hi.seed,false),"A10g 그 값은 버프 없는 같은 시드의 피해보다 작지 않다 (최대 피해)");
+    }
     X.TQ.length=0;
   }
   /* A11 성공 처리 — 전투 즉시 종료 · 판정·제거 없음 · 전투 회계 유지 · **후방 교환 → 밀기**가 실제로 일어난다 (#114 계약) */
@@ -195,7 +208,7 @@ section("B",()=>{
   }
   const {X,Bx,Q}=noAtkFixture();
   ok([0,1,2,3].every(i=>X.slotUsable(Bx.fa,i,"A")===false),"B1 전제: 네 슬롯 모두 지금 쓸 수 없다");
-  ok(!/기본 공격/.test(ob(X)),"B2 기본 공격 버튼이 없다");
+  ok(!/__act\('basic'\)/.test(ob(X))&&!/기본 공격 \d+~\d+/.test(ob(X)),"B2 기본 공격 버튼이 없다");
   ok(ob(X).indexOf(X.NO_ATTACK_MSG)>=0,"B3 안내 문구 '"+X.NO_ATTACK_MSG+"'");
   ok(ob(X).indexOf("__pass()")>=0,"B4 명시적 수동 [턴 종료] 버튼");
   ok(/🎒 가방/.test(ob(X))&&/🔴 포획/.test(ob(X))&&/🏃 도망가기/.test(ob(X)),"B5 아이템·버프·포획·도망 메뉴는 그대로 유지된다");
@@ -226,7 +239,7 @@ section("B",()=>{
     const F=noAtkFixture(); F.Bx.fa.cds[slot]=0; freshModal(F.X);
     ok(F.X.slotUsable(F.Bx.fa,slot,"A")===true,"B9-"+label+" 전제: 그 슬롯이 합법이다");
     ok(ob(F.X).indexOf(F.X.NO_ATTACK_MSG)<0&&ob(F.X).indexOf("__pass()")<0,"B9-"+label+": 안내·[턴 종료]가 나오지 않는다");
-    ok(!/기본 공격/.test(ob(F.X)),"B9-"+label+": 기본 공격도 여전히 없다 (4슬롯 전투원)");
+    ok(!/__act\('basic'\)/.test(ob(F.X))&&!/기본 공격 \d+~\d+/.test(ob(F.X)),"B9-"+label+": 기본 공격도 여전히 없다 (4슬롯 전투원)");
     /* 그 상태에서 __passCore 를 불러도 거부된다 */
     const s0=J([F.Bx.round,F.Bx.phase]); F.X.netAction({t:"pass"}); F.X.drain(20000);
     ok(J([F.Bx.round,F.Bx.phase])===s0,"B9-"+label+": 합법 슬롯이 있으면 [턴 종료] 호출도 거부된다");

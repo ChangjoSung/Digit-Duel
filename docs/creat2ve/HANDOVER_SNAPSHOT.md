@@ -29,7 +29,7 @@
 
 ## 직전 PR152 완료와 보존 이력
 
-- [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146): HP 제한 없는 도망 기본30%·실패 추가 반격 삭제/자기 전투 행동1회. 도망의 수호자는 해당 배틀70%. 4슬롯 전부 불가 시 기본 공격 없이 수동 대기, 왕/동료 본체 기본 공격 유지. [최신 승인 계약](../milestone/v0.4.7/issues/146/Venus/gameplay-spec.md), GDD13 DL45·GDD18 기준.
+- [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146): HP 제한 없는 도망 기본30%·자기 전투 행동1회. (실패 시 추가 반격 삭제는 같은 날 [#122 CJ QA REVISE 2차](../milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md)로 대체 — 지금은 상대의 기본 공격 1회를 맞는다.) 도망의 수호자는 해당 배틀70%. 4슬롯 전부 불가 시 기본 공격 없이 수동 대기, 왕/동료 본체 기본 공격 유지. [최신 승인 계약](../milestone/v0.4.7/issues/146/Venus/gameplay-spec.md), GDD13 DL45·GDD18 기준.
 - [#131](https://github.com/ChangjoSung/Digit-Duel/issues/131): 함정에 걸린 양쪽 대상의 선택·실행 차단과 첫 말→교체할 말 두 단계 안내.
 - [#130](https://github.com/ChangjoSung/Digit-Duel/issues/130): 남은 보호막+이번 기술의 기존 부여량 합산. 신규 수치·상한·기간 없이 기존 흡수·화상 우회·초기화 유지.
 - [#128](https://github.com/ChangjoSung/Digit-Duel/issues/128): 독립 Chrome 프로필/동일 HTTP origin에서 신고 증상 미재현. 최종 증빙은 A·B 탭을 먼저 열고 A 완료 후 B를 관측하며 이후 각 프로필의 미완료 재방문/완료 생략이 독립이다. 첫 navigation 순서를 확대하지 않는다. 저장 로직 무변경·회귀/증빙만 추가했고 CJ 재현 주소·브라우저를 질문했다. 물리 2PC나 신고 증상 해결 PASS가 아니다.

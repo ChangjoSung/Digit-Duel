@@ -48,13 +48,13 @@ const realRandom=Math.random;
   H.place(T,b,7,4); H.place(T,e,6,4); H.place(T,k0,13,1); H.place(T,k1,1,7);
   T.S.mainUsed=true; T.endTurn();
   ok(refusals()===0,"B2 폭탄만 인접 → 회피 미집계");
-  // B3: 왕 vs 왕만 인접(불가침) → 회피 아님 (구 코드는 오탐)
+  // B3: 왕 vs 왕만 인접 → #122 REVISE(2026-09-10 CJ QA 6)로 불가침이 폐지돼 이제 **전투 가능** = 회피로 집계된다
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   k0=T.S.pieces.find(x=>x.owner===0&&x.type==="king"); k1=T.S.pieces.find(x=>x.owner===1&&x.type==="king");
   m=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"); H.place(T,m,13,7);
   H.place(T,k0,7,4); H.place(T,k1,6,4);
   T.S.mainUsed=true; T.endTurn();
-  ok(refusals()===0,"B3 왕 vs 왕 불가침만 인접 → 회피 미집계 (오탐 제거)");
+  ok(refusals()===1,"B3 왕 vs 왕 인접 → 전투 가능(불가침 폐지)이므로 회피 집계 (#122 CJ QA 6)");
   // B4: 전투를 이미 했으면 회피 아님
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   m=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"); e=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
@@ -311,7 +311,7 @@ const realRandom=Math.random;
   ok(!T.canMoveTo(tr,11,2),"J2 함정 이동 불가");
   ok(T.BEATS.fire==="grass"&&T.BEATS.grass==="lightning"&&T.BEATS.lightning==="water"&&T.BEATS.water==="fire","J3 상성 순환");
   const e=T.S.pieces.find(x=>x.owner===1&&x.type==="minion"); H.place(T,e,6,4);
-  ok(T.canBattle(m,e)&&!T.canBattle(k0,k1),"J4 전투 가능·왕 vs 왕 불가침");
+  ok(T.canBattle(m,e)&&T.canBattle(k0,k1),"J4 전투 가능 · 왕 vs 왕도 전투 가능 (#122 CJ QA 6 불가침 폐지)");
   // 폭탄: 하수인 동귀
   const b=T.S.pieces.find(x=>x.owner===1&&x.type==="bomb"); H.place(T,b,7,5);
   T.initBattle(m,b);

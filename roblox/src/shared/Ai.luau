@@ -264,7 +264,8 @@ local function aiUnitValue(x, me)
 	return 20
 end
 
--- #114 AI 밀기 평가 (5급·5단 공용 — def 는 revealed 동료/왕일 때만 호출)
+-- #114 AI 밀기 평가 — #122 REVISE(CJ QA 1·6)로 전투 평가 경로에서는 더 이상 쓰지 않는다.
+-- 밀기 자체는 도망 성공 후 교환·밀기로 살아 있고 기존 검사가 이 함수들을 직접 부르므로 정의는 남긴다.
 local function aiVipPair(att, def)
 	return isVip(att) and def.revealed == true and isVip(def)
 end
@@ -299,9 +300,7 @@ local function aiBattlePairScore(en, me, att, def)
 		else
 			sc = 8 - 18 * risk + pressure
 		end
-	elseif aiVipPair(att, def) then
-		return aiPushScore(att, def)
-	else -- 유닛 (공개)
+	else -- 유닛 (공개) — #122 REVISE(CJ QA 1·6): 동료/왕끼리도 전투다. 종전 aiVipPair→aiPushScore 우회는 제거했다
 		if def.type == "king" then
 			sc = 45
 		elseif def.type == "ally" then
@@ -684,9 +683,7 @@ local function aiBattleEV(en, me, att, def)
 		end
 		return (1 - math.min(1, aiStaticRisk(en, me, th == "unknownMoved"))) * 2
 	end
-	if att.type == "king" and def.type == "king" then
-		return nil
-	end
+	-- #122 REVISE(2026-09-10 CJ QA 6): 왕 vs 왕도 보통 전투로 평가한다 (왕 가치가 양쪽에 걸리므로 승산이 확실할 때만 고른다)
 	local th, va = aiThreatOf(en, me, def), aiUnitValue(att, me)
 	local bombEV = (att.type == "minion") and (-va + 16) or 22
 	local trapEV = -10
@@ -699,9 +696,7 @@ local function aiBattleEV(en, me, att, def)
 	local edgeGuard = (math.abs(def.r - ((me == 0) and ROWS or 1)) <= 1) and 45 or 0
 	local pressure = math.min(1, S.turnCount / BAL.maxTurns) * 8
 	if th == "unit" then
-		if aiVipPair(att, def) then
-			return aiPushScore(att, def)
-		end
+		-- #122 REVISE(CJ QA 1·6): 동료/왕끼리도 보통 전투 EV 로 평가한다 (왕 본체 패배 페널티는 아래 -400 항이 잡는다)
 		local p = aiWinProb(att, def, me)
 		local ev = p * (aiUnitValue(def, me) + ((def.type == "king") and 400 or 0)) - (1 - p) * va
 		if att.type == "king" and not att.cap then
@@ -865,9 +860,8 @@ local function aiWorstReply(en, me, V, deadline)
 	for _, e in V do
 		if not (e.revealed and (e.type == "bomb" or e.type == "trap")) and e.immobile == 0 then
 			for _, x in my do
-				if dist(e, x) == 1 and x.type ~= "bomb" and x.type ~= "trap"
-					and not (e.type == "king" and e.revealed and x.type == "king")
-					and not (e.revealed and isVip(e) and isVip(x)) then
+				-- #122 REVISE(CJ QA 1·6): 공개 동료/왕이 내 동료/왕(왕↔왕 포함)을 치면 이제 실제 전투다 — 손실 응수에서 빼지 않는다
+				if dist(e, x) == 1 and x.type ~= "bomb" and x.type ~= "trap" then
 					local p = 1 - aiWinProb(e.revealed and e or STUB, x, me)
 					local harm = (1 - p) * (aiUnitValue(x, me) + ((x.type == "king") and 400 or 0))
 						- p * (e.revealed and aiUnitValue(e, me) or 28)

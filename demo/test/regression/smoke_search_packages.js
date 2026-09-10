@@ -609,7 +609,7 @@ function swapSkill(X,target,skillIdx,slot){
     openBattle(T,P.me,P.em); const B=T.S.battle; B.round=2; B.fa.cds=[1,1,1,0]; B.fa.hp=100; B.fd.hp=100;
     ok(actAsA(T),"E3h0 전제: 공격측 행동 차례");
     T.battleModal();
-    ok(!/기본 공격/.test(ob(T)),"E3h 3슬롯 쿨 + 사신 봉인 → 기본 공격 버튼이 없다 (#146 폴백 철회)");
+    ok(!/__act\('basic'\)/.test(ob(T))&&!/기본 공격 \d+~\d+/.test(ob(T)),"E3h 3슬롯 쿨 + 사신 봉인 → 기본 공격 버튼이 없다 (#146 폴백 철회)");
     ok(ob(T).indexOf(T.NO_ATTACK_MSG)>=0&&ob(T).indexOf("__pass()")>=0,"E3h2 안내 문구 + 수동 [턴 종료] 버튼만 나온다");
     ok(/🎒 가방/.test(ob(T))&&/🔴 포획/.test(ob(T))&&/🏃 도망가기/.test(ob(T)),"E3h3 가방·포획·도망 메뉴는 그대로 쓸 수 있다");
     ok(!T.slotUsable(B.fa,3,"A"),"E3i 사신 슬롯은 쿨 0 이어도 합법이 아니다");
@@ -1112,7 +1112,7 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     ok([0,1,2,3].every(i=>X4.slotUsable(B6.fa,i,"A")===false),"J4a 전제: 네 슬롯 모두 지금 쓸 수 없다 (슬롯0 사신은 쿨 0이지만 봉인)");
     X4.byId("obBtns").children.length=0; X4.battleModal();
     /* #146: 네 슬롯 모두 불가 → 기본 공격 버튼은 없고 안내 + 수동 [턴 종료]만 나온다 */
-    ok(!/기본 공격/.test(ob(X4)),"J4b 기본 공격 버튼이 없다 (#146 폴백 철회)");
+    ok(!/__act\('basic'\)/.test(ob(X4))&&!/기본 공격 \d+~\d+/.test(ob(X4)),"J4b 기본 공격 버튼이 없다 (#146 폴백 철회)");
     ok(ob(X4).indexOf(X4.NO_ATTACK_MSG)>=0&&ob(X4).indexOf("__pass()")>=0,"J4b2 안내 문구 + 수동 [턴 종료] 버튼");
     const hp0=B6.fd.hp, logLen=X4.S.log.length, ph6=B6.phase, rd6=B6.round;
     X4.netAction({t:"act",k:"basic"}); X4.drain(20000);
