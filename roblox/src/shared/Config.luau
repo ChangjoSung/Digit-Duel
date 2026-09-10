@@ -47,6 +47,16 @@ local Config = {
 		itemHealPct = 0.20,
 		healPostPct = 0.05, -- #106 T2 회복 자세 — 턴 종료마다 최대 HP 5%
 	},
+
+	-- #21 AI (Phase 3 포팅) — HTML BAL.ai* 그대로. delay 는 서버 봇의 행동 간격(초, 표시용)
+	AI = {
+		delay = 0.65, -- HTML aiDelay 650ms
+		battleDelay = 0.45,
+		strongBudgetMs = 120, -- 5단 판단 시간 상한
+		strongTopK = 14, -- 5단 2-ply 후보 상한
+		strongReplyCap = 36, -- 5단 상대 응수 상한
+		simMaxTurns = 500,
+	},
 }
 
 return Config

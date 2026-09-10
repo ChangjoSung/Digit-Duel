@@ -111,7 +111,7 @@ function Art.trace(): string? -- 흔적 (48) — 서버가 허용한 칸에만
 	return url(AssetIds["trace48_trace"])
 end
 
-function Art.status(key: string): string? -- shield|burn|weaken|shock|dmgcut|focus|vuln (48)
+function Art.status(key: string): string? -- shield|burn|weaken|shock|dmgcut|focus|vuln|thinking (48)
 	return url(AssetIds["status48_" .. key])
 end
 
@@ -119,8 +119,12 @@ function Art.item(key: string): string? -- potion|cool|cure|ball|reserve (64)
 	return url(AssetIds["item64_" .. key])
 end
 
-function Art.action(key: string): string? -- search|teleport|heal|skip|endturn|resign|fight|bag|capture|flee (48)
+function Art.action(key: string): string? -- search|teleport|heal|skip|endturn|resign|fight|bag|capture|flee|exit|bot (48)
 	return url(AssetIds["action48_" .. key])
+end
+
+function Art.badge(key: string): string? -- ai_grade5|ai_dan5 (48) — 봇 난이도 배지 (earth-ai-window-request.md)
+	return url(AssetIds["badge48_" .. key])
 end
 
 function Art.skillKind(kind: string): string? -- attack|support|sig (32) — 이미 공개된 종류만
@@ -131,7 +135,7 @@ function Art.board(key: string): string? -- tile_own|tile_enemy|tile_forest|tile
 	return url(AssetIds["board_" .. key])
 end
 
-function Art.ui(key: string): string? -- panel_side|panel_battle|panel_modal|btn_<default|primary|danger>_<normal|hover|pressed|disabled>|badge|hpbar_bg|hpbar_fill|shbar_bg|shbar_fill
+function Art.ui(key: string): string? -- panel_side|panel_battle|panel_modal|panel_window|btn_<default|primary|danger>_<normal|hover|pressed|disabled>|badge|hpbar_bg|hpbar_fill|shbar_bg|shbar_fill
 	return url(AssetIds["ui_" .. key])
 end
 
