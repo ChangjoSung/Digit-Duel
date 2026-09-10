@@ -11,7 +11,7 @@
 | v0.4.3 | [Milestone 7](https://github.com/ChangjoSung/Digit-Duel/milestone/7) | 하수인 아트·말판 아이콘 — #81 #83 #87 #89 | 125 (md 19) | [v0.4.3](v0.4.3/README.md) |
 | v0.4.4 | [Milestone 10](https://github.com/ChangjoSung/Digit-Duel/milestone/10) | 전투 변수·온라인 시점·턴 흐름 — #91~#96 #104~#106 | 144 (md 47) | [v0.4.4](v0.4.4/README.md) |
 | v0.4.5 | [Milestone 11](https://github.com/ChangjoSung/Digit-Duel/milestone/11) | 턴 행동 정리·문서·튜토리얼 갱신 — #114 | 37 (md 7) | [v0.4.5](v0.4.5/README.md) |
-| v0.4.6 | [Milestone 13](https://github.com/ChangjoSung/Digit-Duel/milestone/13) | 탐색 개편·연출 템포·전투 정비·세로 UI — #121·#122·#124·#125·#126·#128·#129·#130·#131·#146 · Infra #132/#134. **열린 이슈 0 · 2026-09-10 CJ QA PASS · 릴리스 대상** | 진행 중 | [v0.4.6](v0.4.6/README.md) |
+| v0.4.6 | [Milestone 13](https://github.com/ChangjoSung/Digit-Duel/milestone/13) | 탐색 개편·연출 템포·전투 정비·세로 UI — #121·#122·#124·#125·#126·#128·#129·#130·#131·#146 · Infra #132/#134·#169. **2026-09-11 출시** | 완료 | [v0.4.6](v0.4.6/README.md) |
 | v0.5.0 | [Milestone 12](https://github.com/ChangjoSung/Digit-Duel/milestone/12) | Roblox 포팅 — #118 (별도 작업자 진행 중) | 별도 작업자 관리 | [v0.5.0](v0.5.0/README.md) |
 
 v0.4.2 이하는 이 보관소에 문서가 없다. 그 버전들의 변경 내용은 [릴리스 노트 목록](../releases/README.md)에서 본다.
