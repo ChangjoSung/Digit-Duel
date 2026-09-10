@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p2d.6"
+local CLIENT_VERSION = "0.5.0-p3.0"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -94,7 +94,7 @@ DIAG.modules = true
 refreshFooter()
 
 local COLS, ROWS = 7, 13
-local CELL = 34
+local CELL = 40 -- 보드게임 창의 2D 판 셀 크기 (7×13 → 280×520)
 local CELL_STUD = 0.6
 local WHITE = Color3.new(1, 1, 1)
 local SLOT_TYPES = { "minion", "minion", "minion", "minion", "minion", "minion", "bomb", "bomb", "bomb", "ally", "ally", "trap", "trap", "king" }
@@ -105,7 +105,7 @@ local tableInfo = nil
 local selectedId = nil
 local teleFirst = nil
 local logLines = {}
-local force2D = false
+local force2D = true -- 구조.txt: 판은 항상 "보드게임 창"(2D) 으로 본다. 3D 판 클릭은 쓰지 않는다
 local boardMode = "2d"
 local render
 local renderSetup
@@ -264,7 +264,7 @@ local gui = mk("ScreenGui", { Name = "DigitDual", ResetOnSpawn = false, IgnoreGu
 
 -- 로비 HUD
 local hud = mk("Frame", {
-	Size = UDim2.new(0, 460, 0, 92), Position = UDim2.new(0, 12, 0, 12),
+	Size = UDim2.new(0, 460, 0, 92), Position = UDim2.new(0, 12, 0, 12), ZIndex = 3,
 	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.15, BorderSizePixel = 0,
 }, gui)
 bgImage(hud, "panel_side", "panel", 1)
@@ -281,24 +281,42 @@ local hudLabel = mk("TextLabel", {
 local hudBtns = mk("Frame", { Size = UDim2.new(0, 330, 0, 26), Position = UDim2.new(1, -336, 0, 6), BackgroundTransparency = 1 }, hud)
 local lastSetupOpen = false -- 서버 setupOpen 전이 감지 (false→true 면 배치 단계 초기화)
 
--- 배치 패널 (오른쪽 세로 컬럼 — 판 아래쪽 내 진영 칸을 가리지 않도록)
-local setupPanel = mk("Frame", {
-	Size = UDim2.new(0, 380, 0, 560), Position = UDim2.new(1, -392, 0.5, -280), Visible = false,
-	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.08, BorderSizePixel = 0,
+-- 보드게임 창 (구조.txt): 왼쪽 2D 판 · 오른쪽 배치/대전 패널. 배치 단계·대전 중에만 보이고 [나가기] 로만 닫힌다 (그동안 캐릭터 이동 불가)
+local WIN_W, WIN_H = 720, 592
+local win = mk("Frame", {
+	Size = UDim2.new(0, WIN_W, 0, WIN_H), Position = UDim2.new(0.5, -WIN_W / 2, 0.5, -WIN_H / 2), Visible = false, ZIndex = 2,
+	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.05, BorderSizePixel = 0,
 }, gui)
-bgImage(setupPanel, "panel_side", "panel", 1)
+if not bgImage(win, "panel_window", "panel", 1) then -- 창 전용 프레임 납품 전 폴백
+	bgImage(win, "panel_side", "panel", 1)
+end
+local winTitle = mk("TextLabel", {
+	Text = "", Size = UDim2.new(0, 300, 0, 22), Position = UDim2.new(0, 16, 0, 8),
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 14, Font = Enum.Font.GothamBold,
+	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+}, win)
+local winStatus = mk("TextLabel", { -- 판 아래 한 줄 상태 (🤖 AI 행동 중 등)
+	Text = "", Size = UDim2.new(0, 300, 0, 26), Position = UDim2.new(0, 16, 1, -34),
+	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
+	TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
+}, win)
+-- 배치 패널 (창 오른쪽 컬럼)
+local setupPanel = mk("Frame", {
+	Size = UDim2.new(0, 388, 0, WIN_H - 16), Position = UDim2.new(0, 316, 0, 8), Visible = false, BackgroundTransparency = 1,
+}, win)
 local setupTitle = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -20, 0, 22), Position = UDim2.new(0, 10, 0, 6),
+	Text = "", Size = UDim2.new(1, -130, 0, 22), Position = UDim2.new(0, 10, 0, 0),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 15, Font = Enum.Font.GothamBold,
 	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 }, setupPanel)
+local setupTop = mk("Frame", { Size = UDim2.new(0, 116, 0, 22), Position = UDim2.new(1, -126, 0, 0), BackgroundTransparency = 1 }, setupPanel) -- 봇 난이도 토글
 local setupHint = mk("TextLabel", {
-	Text = "", Size = UDim2.new(1, -20, 0, 34), Position = UDim2.new(0, 10, 0, 30),
+	Text = "", Size = UDim2.new(1, -20, 0, 34), Position = UDim2.new(0, 10, 0, 24),
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
 }, setupPanel)
-local setupContent = mk("Frame", { Size = UDim2.new(1, -20, 0, 400), Position = UDim2.new(0, 10, 0, 68), BackgroundTransparency = 1 }, setupPanel)
-local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 66), Position = UDim2.new(0, 10, 1, -76), BackgroundTransparency = 1 }, setupPanel)
+local setupContent = mk("Frame", { Size = UDim2.new(1, -20, 0, 400), Position = UDim2.new(0, 10, 0, 62), BackgroundTransparency = 1 }, setupPanel)
+local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 66), Position = UDim2.new(0, 10, 1, -72), BackgroundTransparency = 1 }, setupPanel)
 
 -- 로스터 상세 팝업
 local rosterDetail = mk("Frame", {
@@ -319,20 +337,20 @@ local detailText = mk("TextLabel", {
 local detailBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 30), Position = UDim2.new(0, 12, 1, -38), BackgroundTransparency = 1, ZIndex = 8 }, rosterDetail)
 
 -- 대전 화면 (배경 투명)
-local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false }, gui)
+local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 6 }, gui) -- 전투 모달 등 (창 위)
 
--- 2D 보드 (폴백 — 대전·배치 공용). 외곽 프레임(board_frame) + 셀마다 타일·하이라이트 오버레이
+-- 2D 판 (보드게임 창 왼쪽 — 대전·배치 공용). 외곽 프레임(board_frame) + 셀마다 타일·하이라이트 오버레이
 local boardFrameImg = mk("ImageLabel", {
-	Size = UDim2.new(0, COLS * CELL + 32, 0, ROWS * CELL + 32), Position = UDim2.new(0, 4, 0, 100), BackgroundTransparency = 1,
+	Size = UDim2.new(0, COLS * CELL + 32, 0, ROWS * CELL + 32), Position = UDim2.new(0, 0, 0, 18), BackgroundTransparency = 1,
 	Image = Art.board("frame") or "", ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 0,
-}, gui)
+}, win)
 if Art.board("frame") then
 	slice(boardFrameImg, "hl", 0.5)
 end
 local boardFrame = mk("Frame", {
-	Size = UDim2.new(0, COLS * CELL, 0, ROWS * CELL), Position = UDim2.new(0, 20, 0, 116),
+	Size = UDim2.new(0, COLS * CELL, 0, ROWS * CELL), Position = UDim2.new(0, 16, 0, 34),
 	BackgroundColor3 = Color3.fromRGB(30, 34, 46), Visible = false,
-}, gui)
+}, win)
 local cells = {}
 for dr = 1, ROWS do
 	cells[dr] = {}
@@ -372,11 +390,9 @@ for dr = 1, ROWS do
 end
 
 -- 사이드 패널 (대전 중 · 오른쪽)
-local side = mk("Frame", {
-	Size = UDim2.new(0, 360, 0, ROWS * CELL), Position = UDim2.new(1, -372, 0, 116),
-	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BackgroundTransparency = 0.08, BorderSizePixel = 0,
-}, game_)
-bgImage(side, "panel_side", "panel", 1)
+local side = mk("Frame", { -- 대전 중 창 오른쪽 컬럼 (배치 패널과 같은 자리)
+	Size = UDim2.new(0, 388, 0, WIN_H - 16), Position = UDim2.new(0, 316, 0, 8), Visible = false, BackgroundTransparency = 1,
+}, win)
 local infoHead = mk("TextLabel", {
 	Text = "", Size = UDim2.new(1, -20, 0, 44), Position = UDim2.new(0, 10, 0, 8),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 14, Font = Enum.Font.Gotham,
@@ -1167,9 +1183,10 @@ function renderSetup()
 	if not tableInfo or not tableInfo.setupOpen or (view and view.phase ~= "over") or tableInfo.inGame then
 		setupPanel.Visible = false
 		closeDetail()
-		boardFrame.Visible = boardFrame.Visible and view ~= nil
-		boardFrameImg.Visible = boardFrame.Visible
-		if not view then
+		if not view then -- 대전 뷰가 없으면 창 자체를 닫는다 (대전 종료 화면은 render 가 유지)
+			win.Visible = false
+			boardFrame.Visible = false
+			boardFrameImg.Visible = false
 			local3d:ClearAllChildren()
 		end
 		return
@@ -1180,14 +1197,26 @@ function renderSetup()
 		setup.stage = "place"
 	end
 	setupPanel.Visible = true
+	side.Visible = false
+	win.Visible = true
+	boardFrame.Visible = true
+	boardFrameImg.Visible = true
 	clearChildren(setupBtns)
+	clearChildren(setupTop)
 	local ti = tableInfo
 	local oppLine = ti.opp and ("상대: " .. ti.opp .. (ti.oppReady and " (배치 완료)" or " (배치 중)")) or "상대 없음 — 맞은편에 누가 앉으면 시작"
-	local bp = findBoardPart()
-	local use3D = bp ~= nil and not force2D
-	local function show2D(on)
-		boardFrame.Visible = on
-		boardFrameImg.Visible = on
+	winTitle.Text = ("테이블 %d · %s 자리 · %s"):format(ti.tableId, ti.side, oppLine)
+	winStatus.Text = ti.oppBot and "🤖 봇은 로스터·배치를 자동으로 마쳤습니다 — 나만 [배치 완료 ✔] 를 누르면 시작" or "왼쪽 판의 강조된 내 진영 3행에 배치합니다"
+	if ti.oppBot then -- 봇 난이도 토글 (배치 완료 전까지)
+		local lv = ti.botLevel or "grade5"
+		smallBtn(setupTop, 0, 0, 116, ("🤖 %s ▸ %s"):format(lv == "dan5" and "5단" or "5급", lv == "dan5" and "5급" or "5단"), function()
+			send({ t = "botLevel", level = (lv == "dan5") and "grade5" or "dan5" })
+		end, "default", not ti.myReady, nil, 22)
+	end
+	local function leaveBtn(x, y)
+		smallBtn(setupBtns, x, y, 90, "나가기", function()
+			send({ t = "stand" })
+		end, "danger", true, Art.action("exit") or Art.action("resign"))
 	end
 	if setup.stage == "roster" then
 		setupTitle.Text = ("로스터 선택 (%d/6) — 테이블 %d %s 자리"):format(#setup.roster, ti.tableId, ti.side)
@@ -1205,16 +1234,17 @@ function renderSetup()
 			closeDetail()
 			renderSetup()
 		end, "primary", #setup.roster == 6)
-		smallBtn(setupBtns, 0, 36, 260, "⚡ 전부 무작위로 배치 완료 (빠른 시작)", function()
+		smallBtn(setupBtns, 0, 36, 240, "⚡ 전부 무작위 배치 완료 (빠른 시작)", function()
 			autoPlace()
 			closeDetail()
 			sendReady()
 		end)
+		leaveBtn(246, 36)
 		local3d:ClearAllChildren()
-		show2D(false)
+		renderBoard2DSetup()
 	elseif setup.stage == "place" then
 		setupTitle.Text = ("비공개 배치 (%d/14) — 테이블 %d %s 자리"):format(placedCount(), ti.tableId, ti.side)
-		setupHint.Text = oppLine .. (use3D and " · 손에 든 말을 판의 내 진영 칸에 클릭" or " · 왼쪽 2D 보드의 내 진영 칸을 클릭")
+		setupHint.Text = oppLine .. " · 손에 든 말을 왼쪽 판의 내 진영(강조된 3행) 빈 칸에 클릭"
 		renderTray()
 		smallBtn(setupBtns, 0, 2, 90, "← 로스터", function()
 			setup.stage = "roster"
@@ -1229,14 +1259,9 @@ function renderSetup()
 			renderSetup()
 		end)
 		smallBtn(setupBtns, 0, 36, 140, "배치 완료 ✔", sendReady, "primary", placedCount() == 14)
-		if use3D then
-			show2D(false)
-			sync3DSetup()
-		else
-			show2D(true)
-			local3d:ClearAllChildren()
-			renderBoard2DSetup()
-		end
+		leaveBtn(146, 36)
+		local3d:ClearAllChildren()
+		renderBoard2DSetup()
 	else
 		setupTitle.Text = ("✅ 배치 완료 — 테이블 %d %s 자리"):format(ti.tableId, ti.side)
 		setupHint.Text = oppLine .. " · " .. ((ti.opp and ti.oppReady) and "시작 중…" or "상대가 배치를 마치면 시작합니다")
@@ -1244,13 +1269,8 @@ function renderSetup()
 		smallBtn(setupBtns, 0, 2, 110, "배치 취소", function()
 			send({ t = "unready" })
 		end)
-		if use3D then
-			show2D(false)
-			sync3DSetup()
-		else
-			show2D(true)
-			renderBoard2DSetup()
-		end
+		leaveBtn(0, 36)
+		renderBoard2DSetup()
 	end
 end
 
@@ -1288,16 +1308,16 @@ local function renderHudButtons()
 		end, "primary", tableInfo.opp ~= nil, Art.action("fight"), 24)
 		x += 116
 	end
-	if findBoardPart() ~= nil and ((tableInfo and tableInfo.setupOpen) or view) then
-		smallBtn(hudBtns, x, 0, 78, force2D and "3D 판" or "2D 보드", function()
-			force2D = not force2D
-			if view then
-				render()
-			else
-				renderSetup()
-			end
-		end, "default", true, nil, 24)
-		x += 84
+	if tableInfo and not tableInfo.setupOpen and not inGame and not tableInfo.inGame and not tableInfo.opp then
+		-- 혼자 앉았을 때: AI 대전 ([B] 5급 · [N] 5단 키와 동일)
+		smallBtn(hudBtns, x, 0, 100, "🤖 5급 봇", function()
+			send({ t = "bot", level = "grade5" })
+		end, "primary", true, Art.action("bot"), 24)
+		x += 106
+		smallBtn(hudBtns, x, 0, 100, "🤖 5단 봇", function()
+			send({ t = "bot", level = "dan5" })
+		end, "default", true, Art.action("bot"), 24)
+		x += 106
 	end
 	if tableInfo then
 		smallBtn(hudBtns, x, 0, 116, "자리 떠나기", function()
@@ -1316,10 +1336,11 @@ local function renderLobby()
 		return
 	end
 	if not tableInfo then
-		hudLabel.Text = "🪑 테이블 의자 앞에서 [E] 앉기 → 로스터 선택 → 판 위에 배치 → 맞은편 상대도 배치를 마치면 대전 시작"
+		hudLabel.Text = "🪑 테이블 의자 앞에서 [E] 앉기 → 둘이 앉으면 [F] 게임 시작 · 혼자면 [B] 5급 봇 / [N] 5단 봇"
 		setupPanel.Visible = false
 		closeDetail()
 		if not view then
+			win.Visible = false
 			boardFrame.Visible = false
 			boardFrameImg.Visible = false
 			local3d:ClearAllChildren()
@@ -1328,17 +1349,18 @@ local function renderLobby()
 	end
 	local ti = tableInfo
 	if ti.setupOpen then
-		hudLabel.Text = ("테이블 %d · %s 자리 · 상대: %s\n배치 단계 — 로스터 6종 → 판 위에 14개 배치 → [배치 완료 ✔] (Enter 로 다음 단계/완료). 둘 다 완료하면 자동 시작"):format(ti.tableId, ti.side, ti.opp or "?")
+		hudLabel.Text = ("테이블 %d · %s 자리 · 상대: %s\n배치 단계 — 로스터 6종 → 왼쪽 판에 14개 배치 → [배치 완료 ✔] (Enter 로 다음 단계/완료). 창은 [나가기] 로만 닫힙니다"):format(ti.tableId, ti.side, ti.opp or "?")
 	else
 		hudLabel.Text = ("테이블 %d · %s 자리 · %s\n%s · 일어나기: Space 또는 [자리 떠나기]"):format(ti.tableId, ti.side,
 			ti.opp and ("상대: " .. ti.opp) or "상대 기다리는 중 (맞은편 의자)",
-			ti.opp and "둘 다 앉았습니다 — [F] (판 앞 프롬프트) 또는 Enter 또는 [▶ 게임 시작] 버튼" or "상대가 앉으면 [F] 게임 시작이 켜집니다")
+			ti.opp and "둘 다 앉았습니다 — [F] (판 앞 프롬프트) 또는 Enter 또는 [▶ 게임 시작] 버튼" or "상대가 앉으면 [F] 게임 시작 · 혼자 하려면 [B] 5급 봇 / [N] 5단 봇")
 	end
 	renderSetup()
 end
 
 local function closeGame()
 	game_.Visible = false
+	win.Visible = false
 	view = nil
 	selectedId = nil
 	teleFirst = nil
@@ -1414,7 +1436,7 @@ end
 local function renderSide()
 	local myTurn = view.phase == "play" and view.current == view.me
 	local head = ("<b>%s</b>  턴 %d %s"):format(
-		view.phase == "over" and "경기 종료" or (myTurn and "🟢 나의 턴" or "⏳ 상대 턴"),
+		view.phase == "over" and "경기 종료" or (myTurn and "🟢 나의 턴" or (tableInfo and tableInfo.oppBot) and "🤖 AI 행동 중…" or "⏳ 상대 턴"),
 		view.turnCount + 1, view.burning and "🔥BT" or "")
 	if view.phase == "over" then
 		local w = view.winner
@@ -1475,15 +1497,18 @@ local function renderButtons()
 		smallBtn(btnRow, 0, 0, 190, "교환 생략 (그대로 밀기)", function()
 			send({ t = "fleeSkip" })
 		end, "primary", true, Art.action("skip"))
-		smallBtn(btnRow, 196, 0, 90, "기권", function()
-			send({ t = "resign" })
-		end, "danger", true, Art.action("resign"))
+		smallBtn(btnRow, 196, 0, 90, "나가기", function()
+			send({ t = "stand" })
+		end, "danger", true, Art.action("exit") or Art.action("resign"))
 		return
 	end
 	if not myTurn then
 		if view.phase == "over" then
 			smallBtn(btnRow, 0, 0, 170, "닫기 (자리로 돌아가기)", closeGame, "primary")
 		end
+		smallBtn(btnRow, 0, 32, 90, "나가기", function()
+			send({ t = "stand" })
+		end, "danger", true, Art.action("exit") or Art.action("resign"))
 		return
 	end
 	local lg = legalOf(selectedId)
@@ -1507,9 +1532,9 @@ local function renderButtons()
 	smallBtn(btnRow, 126, 32, 96, "턴 종료", function()
 		send({ t = "endTurn" })
 	end, "primary", true, Art.action("endturn"))
-	smallBtn(btnRow, 228, 32, 80, "기권", function()
-		send({ t = "resign" })
-	end, "danger", true, Art.action("resign"))
+	smallBtn(btnRow, 228, 32, 90, "나가기", function() -- 대전 중 나가기 = 기권 + 자리 떠나기
+		send({ t = "stand" })
+	end, "danger", true, Art.action("exit") or Art.action("resign"))
 end
 
 local function renderPrompt()
@@ -1712,19 +1737,20 @@ function render()
 	setupPanel.Visible = false
 	closeDetail()
 	game_.Visible = true
+	win.Visible = true
+	side.Visible = true
 	local bp = findBoardPart()
-	boardMode = (bp and not force2D) and "3d" or "2d"
-	boardFrame.Visible = boardMode == "2d"
-	boardFrameImg.Visible = boardFrame.Visible
-	DIAG.board = bp and (" · 판 " .. boardMode) or " · 판 없음(2D)"
+	boardMode = "2d"
+	boardFrame.Visible = true
+	boardFrameImg.Visible = true
+	DIAG.board = bp and " · 판 2d" or " · 판 없음(2D)"
 	refreshFooter()
 	renderLobby()
-	if boardMode == "2d" then
-		renderBoard2D()
-		local3d:ClearAllChildren()
-	else
-		sync3D()
-	end
+	renderBoard2D()
+	local3d:ClearAllChildren()
+	winTitle.Text = tableInfo and ("테이블 %d · %s 자리 · 상대: %s"):format(tableInfo.tableId, tableInfo.side, tableInfo.opp or "?") or "대전"
+	winStatus.Text = (tableInfo and tableInfo.oppBot and view.phase == "play" and view.current ~= view.me) and "🤖 AI 행동 중…"
+		or (view.phase == "over" and "경기가 끝났습니다 — [닫기] 로 자리로 돌아가거나 [나가기]" or "")
 	renderSide()
 	renderButtons()
 	renderPrompt()
@@ -1804,6 +1830,16 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 	local k = input.KeyCode
+	if k == Enum.KeyCode.B or k == Enum.KeyCode.N then -- 혼자 앉은 상태에서 AI 대전 (B = 5급, N = 5단)
+		if tableInfo and not tableInfo.setupOpen and not tableInfo.inGame and not view then
+			if tableInfo.opp then
+				hudLabel.Text = "⛔ 맞은편에 상대가 있습니다 — [F] 로 시작하세요"
+			else
+				send({ t = "bot", level = (k == Enum.KeyCode.N) and "dan5" or "grade5" })
+			end
+		end
+		return
+	end
 	if k ~= Enum.KeyCode.F and k ~= Enum.KeyCode.Return and k ~= Enum.KeyCode.KeypadEnter then
 		return
 	end

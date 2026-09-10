@@ -548,6 +548,109 @@ for _, p in g9:alivePieces() do
 end
 
 --==================================================================
+print("[10] AI 포팅 (#21) — 자동 배치·5급/5단 AI 대 AI 완주·결정성")
+--==================================================================
+local Ai = require("../src/shared/Ai")
+for seed = 1, 20 do
+	local setup = Ai.autoSetup(Rng.new(seed * 31))
+	local okS, whyS = Engine.validateSetup(setup)
+	ok(okS, ("autoSetup seed %d 유효: %s"):format(seed, tostring(whyS)))
+	ok(setup.pos[14][1] == 13 or setup.pos[14][1] == 12, "왕은 후열/중열")
+	local guard = 0
+	for i = 7, 9 do -- 폭탄 3개 중 왕 인접이 1개 이상
+		if math.abs(setup.pos[i][1] - setup.pos[14][1]) + math.abs(setup.pos[i][2] - setup.pos[14][2]) == 1 then
+			guard += 1
+		end
+	end
+	ok(guard >= 1, "폭탄 왕 호위 ≥1")
+end
+
+local function aiGame(seed, lvA, lvB)
+	local en = Engine.new(seed)
+	en:applySetup(0, Ai.autoSetup(Rng.new(seed + 1)))
+	en:applySetup(1, Ai.autoSetup(Rng.new(seed + 2)))
+	Ai.setLevel(en, 0, lvA)
+	Ai.setLevel(en, 1, lvB)
+	en:begin()
+	en:drainOutbox()
+	local guard, steps = 0, 0
+	while en.S.phase ~= "over" and guard < 8000 do
+		guard += 1
+		local me = nil
+		for p = 0, 1 do
+			if Ai.needsAct(en, p) then
+				me = p
+			end
+		end
+		if me == nil then
+			return en, false, "누구 차례도 아님 (데드락)"
+		end
+		local okA, why = Ai.act(en, me)
+		if not okA then
+			return en, false, "AI 행동 실패: " .. tostring(why)
+		end
+		steps += 1
+		en:drainOutbox()
+		if en.S.turnCount > Config.AI.simMaxTurns then
+			return en, true, "장기전 컷"
+		end
+	end
+	return en, en.S.phase == "over", ("steps %d"):format(steps)
+end
+
+local t0 = os.clock()
+local combos = { { "grade5", "grade5" }, { "dan5", "grade5" }, { "dan5", "dan5" } }
+local total, finished, overCount = 0, 0, 0
+for _, cb in combos do
+	local tc = os.clock()
+	local wins = { [0] = 0, [1] = 0, [-1] = 0 }
+	for seed = 1, 8 do
+		total += 1
+		local en, okRun, why = aiGame(seed * 7919 + 17, cb[1], cb[2])
+		if not okRun then
+			failed += 1
+			print(("  ❌ %s vs %s seed %d 진행 불가: %s (턴 %d)"):format(cb[1], cb[2], seed, tostring(why), en.S.turnCount))
+		else
+			finished += 1
+			if en.S.phase == "over" then
+				overCount += 1
+				wins[en.S.winner] = (wins[en.S.winner] or 0) + 1
+				ok(en.S.winner == 0 or en.S.winner == 1 or en.S.winner == -1, "AI 대전 승자 유효")
+				ok(en.S.metrics.winType ~= nil, "AI 대전 winType 기록")
+			end
+			for _, p in en.S.pieces do
+				if not (p.hp <= p.maxHp) then
+					failed += 1
+					print("  ❌ HP > maxHp")
+					break
+				end
+			end
+		end
+	end
+	print(("  %s vs %s: 승 P1 %d · P2 %d · 무 %d (%.1fs)"):format(cb[1], cb[2], wins[0], wins[1], wins[-1], os.clock() - tc))
+end
+print(("  완주 %d/%d · 종료 도달 %d/%d (%.1fs)"):format(finished, total, overCount, total, os.clock() - t0))
+ok(finished == total, "AI 대전 전체 진행 가능 (데드락·거부 없음)")
+ok(overCount >= total * 0.8, "AI 대전 대부분 자연 종료 (" .. overCount .. "/" .. total .. ")")
+
+-- 결정성: 같은 시드 → 같은 결과 (5급, 시간 예산 없음)
+local d1 = aiGame(424242, "grade5", "grade5")
+local d2 = aiGame(424242, "grade5", "grade5")
+eq(d1.S.winner, d2.S.winner, "5급 결정성 — 승자")
+eq(d1.S.turnCount, d2.S.turnCount, "5급 결정성 — 턴 수")
+
+-- 교체 정책 (v0.4.4 §2.7): 방어형은 효과기 보존 · 위력 비교
+do
+	local pDef = { rosterId = "M-F3", skills = { "fire_effect", "fire_heavy", "sup_guard", "sig_def" } }
+	eq(Ai.recruitSlot(pDef, "water_heavy"), nil, "방어형: 효과기 제외 → 고위력기(38) 보다 낮은 후보(32) 는 유지")
+	local pDef2 = { rosterId = "M-F3", skills = { "fire_effect", "fire_stable", "sup_guard", "sig_def" } }
+	eq(Ai.recruitSlot(pDef2, "water_heavy"), 2, "방어형: 효과기 제외 → 안정기(2, 26) 를 고위력 후보(32) 로 교체")
+	local pAtk = { rosterId = "M-F2", skills = { "fire_stable", "fire_heavy", "sup_focus", "sig_atk" } }
+	eq(Ai.recruitSlot(pAtk, "water_stable"), 1, "공격형: 위력 최저 슬롯(1) 동률 → 교체")
+	eq(Ai.recruitSlot(pAtk, "grass_effect"), nil, "공격형: 위력 낮으면 유지")
+end
+
+--==================================================================
 print(("\n결과: %d passed · %d failed"):format(passed, failed))
 if failed > 0 then
 	error("테스트 실패", 0)

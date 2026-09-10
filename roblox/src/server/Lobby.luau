@@ -21,7 +21,7 @@ local TABLE_CENTERS = { { -15, -25 }, { 15, -25 }, { -15, 5 }, { 15, 5 } }
 
 -- 임포트 축 보정 요(rad). CJ 실측(2026-09-09): FBX 임포트에서 Z 가 뒤집혀 의자 등받이가 앞(판 쪽)에 놓였다 → 앞뒤가 있는 메시(의자·판·벽)는 π.
 -- 대칭 메시(책상·바닥·기둥)는 0. 판 진영(row1 빨강 = B 쪽)이나 벽 장식면이 반대로 보이면 해당 항목만 0/π 로 바꾼다
-local MESH_YAW = { desk = 0, chair = math.pi, board = math.pi, floor = 0, wall = math.pi, pillar = 0 }
+local MESH_YAW = { desk = 0, chair = math.pi, board = math.pi, floor = 0, wall = math.pi, pillar = 0, bot = 0 } -- bot: Earth 가 -Z 정면으로 납품 (요청서)
 -- 좌석 방향 보정(rad): Seat 정면(-Z)이 판을 향하도록 lookAt 으로 두었다. 아바타가 판을 등지고 앉으면 math.pi 로 바꾼다
 local SEAT_YAW = 0
 -- 메시 외접 상자 중심 기준 크기 (로비 manifest)
@@ -32,8 +32,9 @@ local MESH_SIZE = {
 	floor = Vector3.new(140, 1, 140),
 	wall = Vector3.new(140, 12, 0.89),
 	pillar = Vector3.new(1.2, 12, 1.2),
+	bot = Vector3.new(1.8, 3.2, 1.8), -- 착석 자세 로봇 (earth-ai-window-request.md #7)
 }
-local MESH_TEX = { desk = "desk_albedo", chair = "chair_albedo", board = "board_grid", floor = "floor_tile", wall = "wall_albedo", pillar = "pillar_albedo" }
+local MESH_TEX = { desk = "desk_albedo", chair = "chair_albedo", board = "board_grid", floor = "floor_tile", wall = "wall_albedo", pillar = "pillar_albedo", bot = "bot_albedo" }
 
 local tables = {} -- [id] = { model, desk, board, seats = {A=Seat, B=Seat}, status = TextLabel, occupants = {A=Player?, B=Player?}, startPrompt = ProximityPrompt }
 local seatedCb, vacatedCb, startCb = nil, nil, nil
@@ -378,7 +379,7 @@ function Lobby.build()
 	tplFolder.Parent = ReplicatedStorage
 
 	task.spawn(function()
-		for _, name in { "desk", "chair", "board", "floor", "wall", "pillar" } do
+		for _, name in { "desk", "chair", "board", "floor", "wall", "pillar", "bot" } do
 			templates[name] = loadMeshTemplate(Art.lobbyMeshId(name), name)
 		end
 		local loaded = 0
@@ -415,6 +416,67 @@ function Lobby.setStartPrompt(id, enabled)
 	local t = tables[id]
 	if t and t.startPrompt then
 		t.startPrompt.Enabled = enabled == true
+	end
+end
+
+-- 봇 좌석 표시: label 이 있으면 의자 위에 더미(몸통·머리·이름표)를 세우고 앉기 프롬프트를 끈다. nil 이면 제거
+-- (Earth 봇 메시가 오면 placeMesh 로 교체 — docs/roblox/earth-ai-window-request.md)
+function Lobby.setBotSeat(id, side, label)
+	local t = tables[id]
+	if not t then
+		return
+	end
+	t.bots = t.bots or {}
+	local seat = t.seats[side]
+	local prompt = seat:FindFirstChildOfClass("ProximityPrompt")
+	if t.bots[side] then
+		t.bots[side]:Destroy()
+		t.bots[side] = nil
+	end
+	if label then
+		local m = Instance.new("Model")
+		m.Name = "Bot" .. side
+		local tint = (side == "A") and C.seatA or C.seatB
+		local head
+		if templates.bot then -- Earth 납품 로봇 메시 (피벗 = 엉덩이 바닥 중앙 → 의자 앉는 면)
+			local mesh = placeMesh("bot", seat.CFrame * CFrame.new(0, MESH_SIZE.bot.Y / 2 + 0.25, 0), m, tint)
+			head = mesh
+		else -- 임시 더미: 몸통·머리·네온 눈
+			local body = part({ Name = "Body", Size = Vector3.new(1.6, 1.9, 0.9), CFrame = seat.CFrame * CFrame.new(0, 1.2, 0),
+				Color = tint, Material = Enum.Material.Metal, CanCollide = false }, m)
+			body.CanTouch = false
+			head = part({ Name = "Head", Size = Vector3.new(1.1, 1.1, 1.1), CFrame = seat.CFrame * CFrame.new(0, 2.75, 0),
+				Color = Color3.fromRGB(225, 228, 236), Material = Enum.Material.Metal, CanCollide = false }, m)
+			head.CanTouch = false
+			local eye = part({ Name = "Eye", Size = Vector3.new(0.8, 0.25, 0.1), CFrame = head.CFrame * CFrame.new(0, 0.1, -0.56),
+				Color = Color3.fromRGB(91, 200, 255), Material = Enum.Material.Neon, CanCollide = false }, m)
+			eye.CanTouch = false
+		end
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "Tag"
+		bb.Size = UDim2.new(0, 150, 0, 30)
+		bb.StudsOffset = Vector3.new(0, 1.4, 0)
+		bb.AlwaysOnTop = true
+		bb.MaxDistance = 60
+		bb.Adornee = head
+		local tl = Instance.new("TextLabel")
+		tl.Size = UDim2.fromScale(1, 1)
+		tl.BackgroundColor3 = Color3.fromRGB(19, 22, 30)
+		tl.BackgroundTransparency = 0.25
+		tl.BorderSizePixel = 0
+		tl.TextColor3 = Color3.fromRGB(232, 236, 245)
+		tl.TextSize = 14
+		tl.Font = Enum.Font.GothamBold
+		tl.Text = label
+		tl.Parent = bb
+		bb.Parent = head
+		m.Parent = t.model
+		t.bots[side] = m
+		if prompt then
+			prompt.Enabled = false
+		end
+	elseif prompt then
+		prompt.Enabled = seat.Occupant == nil
 	end
 end
 

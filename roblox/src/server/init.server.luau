@@ -11,9 +11,13 @@ local Players = game:GetService("Players")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Engine = require(Shared.Engine)
 local Views = require(Shared.Views)
+local Ai = require(Shared.Ai)
+local Rng = require(Shared.Rng)
+local Config = require(Shared.Config)
+local AIC = Config.AI
 local Lobby = require(script:WaitForChild("Lobby"))
 
-local VERSION = "0.5.0-p2d.6"
+local VERSION = "0.5.0-p3.0"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")
@@ -39,6 +43,48 @@ end
 local nextRoomId = 1
 
 --==================================================================
+-- 봇 (PVE — 구조.txt "1인 대전"): 혼자 앉은 사람이 [B] 를 누르면 맞은편에 AI 가 앉는다. 봇은 로스터·배치를 자동으로 마친다
+--==================================================================
+local BOT_NAME = { grade5 = "🤖 AI 5급", dan5 = "🤖 AI 5단" }
+local function newBot(level)
+	level = (level == "dan5") and "dan5" or "grade5"
+	return { isBot = true, level = level, Name = "Bot-" .. level, DisplayName = BOT_NAME[level], Parent = nil }
+end
+local function isBot(p)
+	return type(p) == "table" and p.isBot == true
+end
+local function botOf(ts)
+	for side, plr in ts.players do
+		if isBot(plr) then
+			return plr, side
+		end
+	end
+	return nil, nil
+end
+local function botReady(ts) -- 봇 자동 로스터·배치 (사람이 [배치 완료] 를 누르면 바로 시작)
+	local bot, side = botOf(ts)
+	if bot then
+		ts.ready[side] = Ai.autoSetup(Rng.new(seedRandom:NextInteger(1, 2 ^ 31 - 1)))
+	end
+end
+local function removeBot(ts, id)
+	local bot, side = botOf(ts)
+	if bot then
+		ts.players[side] = nil
+		ts.ready[side] = nil
+		Lobby.setBotSeat(id, side, nil)
+	end
+end
+-- 배치·대전 중에는 앉은 사람이 점프로 일어나지 못한다 (구조.txt: 창이 떠 있는 동안 이동 불가 — [나가기] 로만 닫는다)
+local function lockTable(ts, on)
+	for _, plr in ts.players do
+		if not isBot(plr) then
+			Lobby.lockSeated(plr, on)
+		end
+	end
+end
+
+--==================================================================
 -- 테이블 상태 알림
 --==================================================================
 
@@ -46,10 +92,11 @@ local function updateStatus(id)
 	local ts = tableState[id]
 	local n = (ts.players.A and 1 or 0) + (ts.players.B and 1 or 0)
 	local text
+	local botTag = botOf(ts) and "🤖 AI 대전 · " or ""
 	if ts.session then
-		text = ("테이블 %d · ⚔️ 대전 중"):format(id)
+		text = ("테이블 %d · %s⚔️ 대전 중"):format(id, botTag)
 	elseif n == 2 and ts.setupOpen then
-		text = ("테이블 %d · 배치 중 (%d/2 완료)"):format(id, (ts.ready.A and 1 or 0) + (ts.ready.B and 1 or 0))
+		text = ("테이블 %d · %s배치 중 (%d/2 완료)"):format(id, botTag, (ts.ready.A and 1 or 0) + (ts.ready.B and 1 or 0))
 	elseif n == 2 then
 		text = ("테이블 %d · 둘 다 착석 — [게임 시작] 대기"):format(id)
 	elseif n == 1 then
@@ -75,6 +122,8 @@ local function notifyTable(id)
 				oppReady = opp ~= nil and ts.ready[side == "A" and "B" or "A"] ~= nil,
 				inGame = ts.session ~= nil,
 				setupOpen = ts.setupOpen == true,
+				oppBot = (opp ~= nil and isBot(opp)) or false,
+				botLevel = (opp ~= nil and isBot(opp)) and opp.level or nil,
 			})
 		end
 	end
@@ -97,6 +146,8 @@ local function tryStartSetup(player)
 	end
 	ts.setupOpen = true
 	ts.ready = {}
+	botReady(ts)
+	lockTable(ts, true)
 	notifyTable(at.id)
 	updateStatus(at.id)
 end
@@ -136,6 +187,7 @@ local function broadcast(session)
 end
 
 local function endSession(session)
+	session.ended = true
 	for owner = 0, 1 do
 		local plr = session.players[owner]
 		if plr then
@@ -154,11 +206,57 @@ local function endSession(session)
 	print(("[DD] room %d 종료 — 승자: %s"):format(session.room, tostring(session.engine.S.winner)))
 end
 
+-- 봇 턴 진행: 사람 행동·세션 시작 직후 호출. 봇 차례면 AI 딜레이 뒤 한 행동씩 수행하고 브로드캐스트 (사람이 따라볼 수 있게)
+local function botOwnerOf(session)
+	for owner = 0, 1 do
+		if isBot(session.players[owner]) then
+			return owner
+		end
+	end
+	return nil
+end
+local function scheduleBot(session)
+	local owner = botOwnerOf(session)
+	if not owner then
+		return
+	end
+	local en = session.engine
+	if session.ended or session.botPending or en.S.phase ~= "play" or not Ai.needsAct(en, owner) then
+		return
+	end
+	session.botPending = true
+	task.delay(en.S.battle and AIC.battleDelay or AIC.delay, function()
+		session.botPending = false
+		if session.ended or en.S.phase ~= "play" or not Ai.needsAct(en, owner) then
+			return
+		end
+		local ok, why = Ai.act(en, owner)
+		if not ok then -- 방어: AI 가 진행 못 하면 턴 종료 → 그것도 안 되면 봇 기권 (게임이 멈추지 않게)
+			warn(("[DD] 봇 행동 실패 (room %d): %s"):format(session.room, tostring(why)))
+			if not en:apply(owner, { t = "endTurn" }) then
+				en:gameOver(1 - owner, "resign")
+				en:log("🏳️ AI 가 진행할 수 없어 기권합니다.", "imp")
+			end
+		end
+		broadcast(session)
+		if en.S.phase == "over" then
+			endSession(session)
+		else
+			scheduleBot(session)
+		end
+	end)
+end
+
 local function startSession(tableId, pA, sA, pB, sB)
 	local seed = seedRandom:NextInteger(0, 2 ^ 31 - 1)
 	local engine = Engine.new(seed)
 	engine:applySetup(0, sA)
 	engine:applySetup(1, sB)
+	for owner, plr in { [0] = pA, [1] = pB } do
+		if isBot(plr) then
+			Ai.setLevel(engine, owner, plr.level)
+		end
+	end
 	engine:begin()
 	local session = { room = nextRoomId, tableId = tableId, engine = engine, players = { [0] = pA, [1] = pB } }
 	nextRoomId += 1
@@ -171,6 +269,7 @@ local function startSession(tableId, pA, sA, pB, sB)
 	notifyTable(tableId)
 	updateStatus(tableId)
 	broadcast(session)
+	scheduleBot(session)
 end
 
 -- 대전 중 이탈(일어남·퇴장·자리 떠나기) = 기권. resigned=true 면 상대에게 "기권", false 면 "연결 끊김"
@@ -242,6 +341,8 @@ local function vacate(player)
 	end
 	ts.ready = {} -- 한 명이 떠나면 배치 단계 해제 (남은 사람은 다시 [게임 시작] 대기)
 	ts.setupOpen = false
+	removeBot(ts, at.id) -- 사람이 떠나면 봇도 자리를 비운다
+	Lobby.lockSeated(player, false)
 	if sessions[player] then
 		leaveSession(player, true)
 	end
@@ -279,6 +380,49 @@ reAction.OnServerEvent:Connect(function(player, a)
 
 	if a.t == "startGame" then -- 둘 다 앉은 뒤 한 명이 누르면 양측 배치 단계 진입 (HUD 버튼·Enter)
 		tryStartSetup(player)
+		return
+	end
+
+	if a.t == "bot" then -- [B] 혼자 앉은 상태에서 AI 대전 시작 (level: grade5 | dan5)
+		local at = seatOf[player]
+		if not at then
+			reState:FireClient(player, { t = "reject", reason = "먼저 테이블 의자에 앉으세요 (의자 앞에서 E)" })
+			return
+		end
+		local ts = tableState[at.id]
+		if ts.session or ts.setupOpen then
+			return
+		end
+		local oppSide = (at.side == "A") and "B" or "A"
+		if ts.players[oppSide] then
+			reState:FireClient(player, { t = "reject", reason = "맞은편에 이미 상대가 있습니다" })
+			return
+		end
+		local bot = newBot(a.level)
+		ts.players[oppSide] = bot
+		Lobby.setBotSeat(at.id, oppSide, bot.DisplayName)
+		ts.setupOpen = true
+		ts.ready = {}
+		botReady(ts)
+		lockTable(ts, true)
+		notifyTable(at.id)
+		updateStatus(at.id)
+		return
+	end
+
+	if a.t == "botLevel" then -- 배치 중 봇 난이도 변경
+		local at = seatOf[player]
+		local ts = at and tableState[at.id] or nil
+		local bot, side = nil, nil
+		if ts then
+			bot, side = botOf(ts)
+		end
+		if bot and not ts.session then
+			bot.level = (a.level == "dan5") and "dan5" or "grade5"
+			bot.DisplayName = BOT_NAME[bot.level]
+			Lobby.setBotSeat(at.id, side, bot.DisplayName)
+			notifyTable(at.id)
+		end
 		return
 	end
 
@@ -340,6 +484,8 @@ reAction.OnServerEvent:Connect(function(player, a)
 	broadcast(session)
 	if session.engine.S.phase == "over" then
 		endSession(session)
+	else
+		scheduleBot(session)
 	end
 end)
 
@@ -351,4 +497,4 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-print("[DD] Digit Dual 서버 준비 완료 v" .. VERSION .. " (Phase 2b — 로비 메시 · 판 위 대국)")
+print("[DD] Digit Dual 서버 준비 완료 v" .. VERSION .. " (Phase 3 — AI 봇 대전 · 보드게임 창)")
