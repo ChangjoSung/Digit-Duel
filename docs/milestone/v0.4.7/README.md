@@ -108,9 +108,9 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | CJ 플레이 QA | #146 · #131 · #130 · #128 **PASS (2026-09-10)** — 모두 CLOSED |
 | 릴리스 | 미출시 — 정식 v0.4.5 유지 |
 
-## 진행 중인 범위 — #122 · #124 · #126
+## 완료된 범위 — #122 · #124 · #126
 
-CJ 후속 지시로 **세로 화면 · 왕/동료 아트 · 승패 효과**를 하나의 납품으로 구현하고 Saturn 독립 제품·미디어 검수 PASS를 받았다. **이후 CJ QA REVISE에 따라 좌상단 뒤로가기·어두운 배경을 보완했다. CJ 재검수와 출시는 대기다.** 세 Issue 모두 OPEN이다.
+CJ 후속 지시로 **세로 화면 · 왕/동료 아트 · 승패 효과**를 하나의 납품으로 구현하고 Saturn 독립 제품·미디어 검수 PASS를 받았다. 이후 CJ QA REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(**접촉·전투 규칙 4건 · 출전 준비 탭 표시 · 전투 뒤로가기 위치**)를 보완해 2026-09-10 **CJ 플레이 QA PASS 로 세 Issue 를 종결**했다. **출시는 여전히 대기**이며 정식 버전은 v0.4.5 그대로다.
 
 | Issue | 제목 | 소관 |
 |---|---|---|
@@ -118,7 +118,7 @@ CJ 후속 지시로 **세로 화면 · 왕/동료 아트 · 승패 효과**를 �
 | [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124) | 동료·왕 Pixel Dot Design 추가 | Earth(원본) · Mars(게임 파생) |
 | [#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) | 전투 승리·패배 연출 강화 및 화면 흐름 연동 | Earth(스토리보드) · Mars(구현) |
 
-범위 원본은 [CJ 후속 범위](issues/122/Mercury/cj-followup.md)이고, 세 Issue의 자료는 [#122 통합 문서](issues/122/README.md)에 모았다. 첫 납품 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)은 dev `2055d5a`에 통합했다. 최신 CJ QA REVISE의 [뒤로가기·어두운 배경 보완](issues/122/Mercury/revise-back-dark.md)은 `fix/122-back-dark-theme`에서 진행한다. 아래 역할 표·증빙은 PR160 이력이다.
+범위 원본은 [CJ 후속 범위](issues/122/Mercury/cj-followup.md)이고, 세 Issue의 자료는 [#122 통합 문서](issues/122/README.md)에 모았다. 첫 납품 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)은 dev `2055d5a`에 통합했다. REVISE 1차는 [뒤로가기·어두운 배경 보완](issues/122/Mercury/revise-back-dark.md)(`fix/122-back-dark-theme`), 2차는 [접촉·전투 규칙 개편](issues/122/Mars/revise-cjqa-rules/report.md)(`fix/122-contact-battle-rules`)이다. **2차는 Codex 정지로 Saturn 교차 QA 없이 Mars 가 백업 QA·Git·문서를 대행했고 CJ 플레이 QA 가 최종 게이트였다.** 아래 역할 표·증빙은 PR160 이력이다.
 
 | 역할 | 문서 | 상태 |
 |---|---|---|

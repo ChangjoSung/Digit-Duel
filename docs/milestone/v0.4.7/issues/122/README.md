@@ -1,8 +1,8 @@
 # #122 · #124 · #126 — 세로 화면 · 왕/동료 아트 · 승패 효과
 
-> **현재: CJ QA REVISE 2차 — 접촉·전투 규칙 4건 + 준비 탭 표시·전투 뒤로가기 위치.** [Mars 구현·검증 보고](Mars/revise-cjqa-rules/report.md)가 현재 상태의 원본이다.
-> [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124)·[#126](https://github.com/ChangjoSung/Digit-Duel/issues/126)은 2026-09-10 **CJ 플레이 QA PASS**이고, [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)는 이번 2차 보완에 대한 **CJ 재검수 대기**다. 세 Issue 모두 OPEN이며 출시는 대기다.
-> 이번 회차는 **Codex 정지로 Saturn 교차 QA 없이** Mars 가 백업 QA·Git·문서를 대행했다 — 검증 범위와 한계는 위 보고의 "남은 것 · 한계" 절을 따른다.
+> **완료: 2026-09-10 CJ 플레이 QA PASS 로 [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)·[#124](https://github.com/ChangjoSung/Digit-Duel/issues/124)·[#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) 세 Issue 를 종결했다.** 출시는 여전히 대기이며 정식 버전은 v0.4.5 그대로다.
+> 마지막 회차는 **CJ QA REVISE 2차 — 접촉·전투 규칙 4건 + 준비 탭 표시·전투 뒤로가기 위치**이고 [Mars 구현·검증 보고](Mars/revise-cjqa-rules/report.md)가 그 원본이다.
+> 이번 회차는 **Codex 정지로 Saturn 교차 QA 없이** Mars 가 백업 QA·Git·문서를 대행했다 — CJ 플레이 QA 가 최종 게이트였다. 검증 범위와 한계는 위 보고의 "남은 것 · 한계" 절을 따른다.
 >
 > 1차 REVISE(좌상단 뒤로가기·어두운 배경): [수정 범위·검수 기록](Mercury/revise-back-dark.md). PR160의 제품 PASS와 화면은 이전 납품 이력이다.
 > **주의**: 이 문서 아래쪽 화면·설명 중 "전투 도중에는 하위 메뉴에서 명령 선택으로만 돌아간다"는 위치 서술과 좌상단 전투 뒤로가기 캡처는 1차 회차 기준이며, 2차에서 그 버튼이 **행동창 아래**로 옮겨졌다.

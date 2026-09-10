@@ -112,7 +112,7 @@
 
 #### 붙으면 반드시 싸웁니다 — 접촉·전투 규칙 개편
 
-2026-09-10 CJ 플레이 QA 지시로 **붙었을 때 아무 일도 일어나지 않던 조합을 전부 없앴습니다.** 아래 네 가지는 같은 날 앞서 정했던 결정을 **대체**합니다. [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)는 CJ 재검수 대기입니다.
+2026-09-10 CJ 플레이 QA 지시로 **붙었을 때 아무 일도 일어나지 않던 조합을 전부 없앴습니다.** 아래 네 가지는 같은 날 앞서 정했던 결정을 **대체**합니다. 같은 날 **CJ 플레이 QA를 통과**했습니다([#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)).
 
 - **동료끼리, 동료와 왕이 붙으면 싸웁니다** — 서로 밀려나던 규칙이 없어졌습니다. 포획 하수인 대리 출전과 패배 결과는 그대로입니다.
 - **왕과 왕이 붙어도 싸웁니다** — 텔레포트로 두 왕이 맞닿는 상황이 실제로 나와 **왕 불가침을 폐지**했습니다. 왕 본체가 지면 그 자리에서 경기가 끝납니다.
@@ -123,7 +123,7 @@
 
 #### 세로 화면 · 왕과 동료 아트 · 승패 효과
 
-휴대폰 세로 화면 개편([#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)) · 왕과 동료 픽셀 아트([#124](https://github.com/ChangjoSung/Digit-Duel/issues/124)) · 승리와 패배 효과 강화([#126](https://github.com/ChangjoSung/Digit-Duel/issues/126))를 구현했습니다. #124·#126은 2026-09-10 **CJ 플레이 QA를 통과**했습니다. #122는 1차 REVISE(좌상단 뒤로가기·어두운 바탕)에 이어 2차로 위 접촉·전투 규칙과 아래 두 가지를 보완했으며 CJ 재검수와 정식 출시는 남아 있습니다.
+휴대폰 세로 화면 개편([#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)) · 왕과 동료 픽셀 아트([#124](https://github.com/ChangjoSung/Digit-Duel/issues/124)) · 승리와 패배 효과 강화([#126](https://github.com/ChangjoSung/Digit-Duel/issues/126))를 구현했습니다. #122·#124·#126은 1차 REVISE(좌상단 뒤로가기·어두운 바탕)와 2차 REVISE(위 접촉·전투 규칙, 아래 두 가지)를 거쳐 2026-09-10 **CJ 플레이 QA를 통과**했습니다. 정식 출시는 남아 있습니다.
 
 - **출전 준비 탭이 실제로 눌린 것처럼 보입니다** — [02 비공개 배치]를 눌렀을 때 내용만 바뀌고 탭 강조가 01에 남아 있던 문제를 고쳤습니다.
 - **전투 중 [← 뒤로]가 행동 창 아래로 내려왔습니다** — 싸우기·가방·포획·도망 패널을 열었을 때 그 바로 밑에 전체 폭 버튼으로 섭니다.
@@ -141,7 +141,7 @@
 
 바뀌는 내용은 [v0.4.7 릴리스 노트(개발 중)](docs/releases/v0.4.7.md)에, 세부 규칙은 [#121 게임플레이 계약](docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md)과 [#146 전투 행동 계약](docs/milestone/v0.4.7/issues/146/Venus/gameplay-spec.md)에 있습니다.
 
-**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 **위 전투 행동 변경까지 반영해 다시 촬영한 v0.4.7 개발판 화면**입니다. 플레이·전투 사진도 v0.4.7 개발판의 세로 화면입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있습니다. 전투 행동 변경은 2026-09-10 CJ 플레이 QA를 통과했고, 튜토리얼 표시 방식 변경(#128)도 같은 날 CJ 플레이 QA를 통과했습니다. **세로 화면·왕과 동료 아트·승패 효과(#122 · #124 · #126)의 첫 납품 기록은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)에 있습니다. #124·#126은 CJ 플레이 QA를 통과했고, #122는 접촉·전투 규칙 개편과 준비 탭·전투 뒤로가기까지 반영한 [2차 REVISE 보완](docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md) 후 재검수를 기다립니다.**
+**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 **위 전투 행동 변경까지 반영해 다시 촬영한 v0.4.7 개발판 화면**입니다. 플레이·전투 사진도 v0.4.7 개발판의 세로 화면입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있습니다. 전투 행동 변경은 2026-09-10 CJ 플레이 QA를 통과했고, 튜토리얼 표시 방식 변경(#128)도 같은 날 CJ 플레이 QA를 통과했습니다. **세로 화면·왕과 동료 아트·승패 효과(#122 · #124 · #126)도 2026-09-10 CJ 플레이 QA를 통과했습니다.** 첫 납품 기록은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160), 접촉·전투 규칙 개편과 준비 탭·전투 뒤로가기를 담은 2차 보완은 [Mars 보고](docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md)에 있습니다.
 
 ## 게임 정보
 

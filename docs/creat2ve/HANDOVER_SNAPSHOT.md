@@ -1,8 +1,13 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 **CJ QA REVISE의 좌상단 뒤로가기·어두운 배경을 보완했다. CJ 재검수 대기**다. #128·#130·#131·#146은 CJ QA PASS/CLOSED. 정식 v0.4.5, Roblox #118=v0.4.6, HTML 계획=v0.4.7(미출시).
+> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED. 정식 v0.4.5, Roblox #118=v0.4.6, HTML 계획=v0.4.7(미출시).
 
-## 현재 수정 — #122 · #124 · #126
+## 마지막 회차 — #122 · #124 · #126 (CJ QA PASS · CLOSED)
+
+- **REVISE 2차 (최종)**: [접촉·전투 규칙 개편](../milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md) — 동료↔동료·동료↔왕·왕↔왕 전투화, 폭탄↔폭탄/함정 동반 제거, 도망 실패 시 상대 기본 공격 1회, 준비 탭 `aria-pressed` 동기화, 전투 '← 뒤로' 행동창 아래. 브랜치 `fix/122-contact-battle-rules`. **Codex 정지로 Saturn 교차 QA 미수행** — Mars 가 백업 QA·Git·문서를 대행했고 CJ 플레이 QA 가 최종 게이트였다. HTML 회귀 19종·CI A/C/E 로컬 재현·Roblox 1922 PASS·변이체 음성 대조 6건·헤드리스 Chrome 실측 6건(콘솔 오류 0).
+- Roblox 미러(Battle·Engine·Ai·client)와 `roblox/tests/run.luau` 도 같은 계약으로 맞췄다 — 두 클라이언트 규칙이 갈리지 않게 한다.
+
+## REVISE 1차 — #122 · #124 · #126
 
 - [수정 범위·검수 원장](../milestone/v0.4.7/issues/122/Mercury/revise-back-dark.md): dev `2055d5a9344f1476e87c3fb9dd19104a643bfe50` → `fix/122-back-dark-theme`, Run `run_593b37fa6871`. Mars Claude `task_7753c02bba5e` / `ctx_eb4e86fbc67d`가 HTML·툴링을 구현하고 Saturn Codex `task_43c6bf801879` / `ctx_a8c2e0895fd4`가 독립 READ_ONLY 검수했다. Mercury는 조정·Git·문서다. 확정 제품 `21637d1` / HTML blob `2a2c26da1728935ec024253ef9fad44945e3eabf`와 실제 Chrome13장 제품 검수 PASS다. 최종 미디어·CI·통합·자원 정산은 위 원장을 따른다. 아래 과거 PASS를 새 수정에 재사용하지 않는다.
 - GDD13 DL56·GDD21·GitHub #122/#124/#126을 CJ QA REVISE로 기록했다. 좌상단 뒤로가기와 어두운 바탕만 후속 승인 범위이며 다른 Issue·Roblox·릴리스는 착수하지 않는다.
