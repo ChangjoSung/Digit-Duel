@@ -86,9 +86,14 @@ function setupDuel(T,aId,dId){
   T.execSlot("D",3); // 결정타 45
   ok(A.hp===100-88&&A.alive,"C1c R2 선공 결정타 45 (변경 전 52) → 연속 구간 88, 표준형 HP 12 생존");
   ok(D.vulnMark===true,"C1d 결정타 반동(다음 피격 +15%) 유지");
-  // C2: 기본 공격 = atk 25 (전 슬롯 쿨 폴백 경로) — 공격형이 공격측
+  /* C2: 기본 공격 = atk 25. #146 (v0.4.7) 으로 4슬롯 전투원의 폴백 기본 공격이 철회됐으므로,
+     기본 공격을 실제로 갖는 본체 경로(f.skills 없음)에서 같은 수치 계약을 확인한다 (#95 수치는 불변). */
   ({A,D}=setupDuel(T,"M-W2","M-W1"));
-  T.execSlot("A",-1);
+  {
+    const ks=T.S.battle.fa.skills; T.S.battle.fa.skills=undefined;
+    T.execSlot("A",-1);
+    T.S.battle.fa.skills=ks;
+  }
   ok(D.hp===100-25,"C2 공격형 기본 공격 25 (변경 전 26)");
   // C3: 집중(+20%) → 물 heavy 36×1.2 = 43
   ({A,D}=setupDuel(T,"M-W2","M-W1"));
@@ -128,9 +133,14 @@ function setupDuel(T,aId,dId){
   ok(/화염탄 24~36/.test(box)&&/폭염 강타 34~52/.test(box)&&/결정타 36~54/.test(box),"D1 공격형(불) 커맨드 표기 화염탄 24~36 · 폭염 강타 34~52 · 결정타 36~54 (변경 전 25~37 · 36~54 · 42~62)");
   ok(!/결정타 42~62/.test(box)&&!/폭염 강타 36~54/.test(box),"D2 옛 범위 표기 없음");
   ok(/집중/.test(box)&&/title="사용 후 다음 피격 피해 \+15%"/.test(box),"D3 보조기 집중 · 결정타 설명 문구 불변");
-  // 전 슬롯 쿨 → 기본 공격 폴백 버튼 20~30
+  /* #146 (v0.4.7 CJ 2026-09-10): 전 슬롯 불가 시의 기본 공격 폴백이 철회됐다 — 4슬롯 전투원에게는 그 버튼이 나오지 않는다.
+     #95 의 수치 계약(공격형 atk 25 → 20~30)은 그대로이므로, 기본 공격을 실제로 갖는 **왕·동료 본체 경로**로 그 표기를 계속 고정한다. */
   const f=T.S.battle.fa; f.cds=[1,1,1,1]; T.battleModal();
-  ok(/기본 공격 20~30/.test(T.els.overlayBox.innerHTML),"D4 기본 공격 폴백 표기 20~30 (변경 전 21~31)");
+  ok(!/기본 공격/.test(T.els.overlayBox.innerHTML),"D4 4슬롯 전부 쿨 → 기본 공격 폴백 버튼 없음 (#146)");
+  ok(T.els.overlayBox.innerHTML.indexOf(T.NO_ATTACK_MSG)>=0&&T.els.overlayBox.innerHTML.indexOf("__pass()")>=0,"D4b 안내 문구 + 수동 [턴 종료] 버튼");
+  const keepSkills=f.skills; f.skills=undefined; T.battleModal();
+  ok(/기본 공격 20~30/.test(T.els.overlayBox.innerHTML),"D4c 기본 공격을 갖는 본체 경로의 표기는 20~30 유지 (공격형 atk 25 · 변경 전 21~31)");
+  f.skills=keepSkills;
   T.close();
   // 다른 종 표기 불변 — 표준형(불)이 행동자일 때 화염탄 21~31 · 전술 연계 24~36 (커맨드는 현재 행동자 것만 표시된다)
   setupDuel(T,"M-F1","M-F2"); T.S.mode="sim"; T.battleModal();

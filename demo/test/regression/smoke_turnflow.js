@@ -192,7 +192,13 @@ block("B 폭탄 접촉",()=>{
   T.S.battlesUsed=0; T.doTeleportSwap(inv,b); T.drain();
   ok(S().metrics.teleports===1&&(S().battle||S().forcedTargets.length||S().forcedQueue.length||S().metrics.bombContacts===1),"B9d 스왑 실행 — 첫 강제 전투 승격");
   // 첫 항목이 하수인(inv↔e9b 인접) 전투면 종료 후 둘째 폭탄 접촉이 queue 에서 승격되어야 한다
-  let guard=0; while(S().battle&&guard++<40){ global.__act("basic"); T.drain(); }
+  /* #146: 4슬롯 전투원에게 폴백 기본 공격은 더 이상 없다. 전투를 굴리려면 **합법 슬롯**을 골라야 하고,
+     합법 슬롯이 하나도 없으면 수동 [턴 종료](__pass)로 자기 전투 행동을 넘긴다 — 사람 UI 와 같은 경로다. */
+  const drive=()=>{ const B=S().battle, sd=T.actorOfPhase(), f=sd==="A"?B.fa:B.fd;
+    if(!f.skills){ global.__act("basic"); return; }
+    for(let i=0;i<4;i++) if(T.slotUsable(f,i,sd)){ global.__act(i); return; }
+    global.__pass(); };
+  let guard=0; while(S().battle&&guard++<60){ drive(); T.drain(); }
   T.drainForcedQueue(false); if(S().forcedTargets.length&&S().movedPiece&&S().movedPiece.type==="bomb"){ const tgt=T.S.pieces.find(x=>x.id===S().forcedTargets[0]); T.applyAction({t:"cell",r:tgt.r,c:tgt.c}); }
   ok(S().metrics.bombContacts===1&&!b.alive&&!e9.alive,"B9 텔레포트 도착 폭탄의 접촉이 queue 경로로 발동 (bombContacts 1 · 폭탄·하수인 제거)");
   // B10 대칭: 상대 폭탄 → 내 말 (P2 턴)
@@ -246,7 +252,7 @@ block("D 판정",()=>{
   // D6 recA/recD 지표는 계속 기록 (execSlot 경로)
   [a,d]=setup(); T.execSlot("A",0); T.drain(); ok(S().battle&&S().battle.recA>0,"D6 recA 지표 기록 유지 (판정에는 미사용)");
   // D7 6라운드 자연 종료 → judge 경유 배너 메시지 (blog)
-  T.S.battle.round=6; T.S.battle.phase=1; T.execSlot("D",-1); T.drain();
+  T.S.battle.round=6; T.S.battle.phase=1; T.execSlot("D",0); T.drain(); // #146: 4슬롯 전투원의 순수 기본 공격(-1)은 철회 — 합법 슬롯으로 12번째 행동을 낸다
   ok(!S().battle&&S().metrics.judged===1&&T.S.log.some(l=>/판정|동률/.test(l.msg)),"D7 12번째 행동 뒤 판정 경로 (judged 1)");
   T.TQ.length=0; T.close();
 });
@@ -386,7 +392,11 @@ block("G 연출 큐",()=>{
     H.place(T,a,7,4); H.place(T,d,6,4); H.place(T,b2,7,6); H.place(T,e2,6,6); H.place(T,rear,10,4);
     a.hp=20; T.startRounds(a,d,a,d); T.setSeed(null); const rr=global.Math.random; global.Math.random=()=>0.01; // HP<50% 를 전투 개시 전에 두어야 메뉴의 canFlee 가 참이다 · 도망 성공 고정
     T.S.forcedQueue=[{pid:b2.id,targets:[e2.id]}]; // 스왑 둘째 말의 강제 전투가 대기 중
+    /* #146 코어 잠금(Saturn REVISE P1): 도망·패스는 연출·메시지 재생 중에는 코어에서도 거부된다.
+       실제 플레이에서 사람이 버튼을 누를 수 있는 시점 = 개시 연출과 대기 메시지가 끝난 뒤이므로, 그 상태를 만든다. */
+    T.S.battle.intro=true; T.S.battle.msgQ.length=0; T.S.battle.bannerKey=T.S.battle.round+"-"+T.S.battle.phase;
     T.fxReleaseAll(); T.FX.force=true; T.TQ.length=0; // 카운트다운 항목 제거 — 검증 대상은 결과 배너 → 추가 접촉 배너 연쇄
+    T.battleModal(); T.TQ.length=0;                   // 이 렌더가 낸 클로저로 도망을 낸다 (행동 토큰 일치)
     global.__flee(); global.Math.random=rr; // 도망 성공 → 메시지 재생(fleeFx) → 결과 배너
     let n=0; while(T.MSGPLAYING&&n++<10){ const fn=T.TQ.shift(); if(!fn) break; fn(); }
     ok(!T.S.battle&&T.FX.cur&&T.FX.cur.key==="resultBanner","G27a 도망 성공 → 결과 배너 재생 중");
@@ -498,7 +508,11 @@ block("J 전투 메뉴",()=>{
   ok(/class="bsub hidden" id="bsub-fight"/.test(h())&&/class="bsub hidden" id="bsub-bag"/.test(h()),"J3 초기에는 하위 패널 숨김");
   ok(/__act\(0\)/.test(h())&&/__throwBall\(\)/.test(h())&&/__flee\(\)/.test(h()),"J4 기존 규칙 버튼(__act·__throwBall·__flee)이 그대로 존재 (온라인 송신 경로 불변)");
   ok(/<button disabled[^>]*__throwBall/.test(h())&&/상대 HP 100% — 30% 미만/.test(h()),"J5 포획 조건 미충족 사유 표시·비활성");
-  ok(/<button class="danger" disabled[^>]*__flee/.test(h())&&/내 HP 100% — 50% 미만/.test(h()),"J6 도망 조건 미충족 사유 표시·비활성");
+  /* #146 (v0.4.7 CJ 2026-09-10): 도망의 HP 게이트가 폐지됐다 — 만피여도 버튼이 활성이고 조건 미충족 사유 문구 자체가 없다.
+     대신 표기 성공률이 기본 30% 이고, 실패해도 상대의 추가 반격이 없다는 설명이 붙는다. */
+  ok(/<button class="danger" [^>]*__flee/.test(h())&&!/<button class="danger" disabled[^>]*__flee/.test(h()),"J6 도망 버튼은 HP 조건 없이 항상 활성 (#146)");
+  ok(!/50% 미만이어야 합니다/.test(h())&&/HP 조건 없음/.test(h())&&/성공 30%/.test(h()),"J6b 도망 안내: HP 조건 문구 삭제·성공률 30% 표기 (#146)");
+  ok(!/상대 즉시 공격 1회/.test(h())&&/추가 반격은 없고/.test(h()),"J6c 도망 실패 반격 삭제가 안내에 반영 (#146)");
   ok(/id="shfill-A"/.test(h())&&/id="shfill-D"/.test(h())&&!/가한 유효 피해/.test(h()),"J7 방어막 바 신설 · '가한 유효 피해' 게이지 제거");
   // (구 J0 setter 순서 검증은 시간 단계 증거가 아니므로 제거 — 5.5 방어막 → HP 표시 단계는 아래 K 블록이 가짜 타이머로 검증한다. REVISE msg_d847280b3dba 2번)
   const sent0=T.wsLog.length; global.__menu("fight"); ok(T.S.battle.menu==="fight"&&T.wsLog.length===sent0,"J8 하위 메뉴 전환은 로컬(송신 0·규칙 무변경)");

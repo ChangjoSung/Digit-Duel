@@ -1,10 +1,10 @@
 # 검사 인덱스 — `demo/test`
 
-이 폴더의 36개 파일은 **성격에 따라 네 폴더**로 나뉜다. 어디에 두느냐가 곧 그 파일의 성격이다.
+이 폴더의 38개 파일은 **성격에 따라 네 폴더**로 나뉜다. 어디에 두느냐가 곧 그 파일의 성격이다.
 
 | 폴더 | 성격 | 지금도 도는가 | 파일 쓰기 |
 |---|---|---|---|
-| [`regression/`](regression) | 현행 규칙을 지키는 **살아 있는 게이트**. CI 잡 A가 매 PR에서 18개 전부 실행한다 | 예 | 저장소에는 없음 (한 곳만 tmp 음성 대조 사본) |
+| [`regression/`](regression) | 현행 규칙을 지키는 **살아 있는 게이트**. CI 잡 A가 매 PR에서 19개 전부 실행한다 | 예 | 저장소에는 없음 (한 곳만 tmp 음성 대조 사본) |
 | [`reports/`](reports) | 필요할 때 돌려 표를 뽑는 **재사용 리포트 생성기**. 어서션·종료 코드가 없어 게이트가 아니다 | 필요 시 | 인자로 출력 파일을 줄 때만 |
 | [`milestone/`](milestone) | 그 이슈에서 한 번 돌려 증빙을 남긴 **과거 시점의 감사 도구** | 재현용 | 기본값이 보관소 경로인 것이 많다 — 아래 표 참조 |
 | [`shared/`](shared) | 위 셋이 공통으로 쓰는 로더 | — | 없음 |
@@ -15,7 +15,7 @@
 
 | 파일 | 버전 | Issue | 하는 일 |
 |---|---|---|---|
-| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. **20개**가 이 로더를 쓴다 — 회귀 17 · `ai_compare` · `attack_balance_compare` · `shock_compare`. CDP 증빙 14종과 `smoke_testclient`는 쓰지 않는다 |
+| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. **21개**가 이 로더를 쓴다 — 회귀 18 · `ai_compare` · `attack_balance_compare` · `shock_compare`. CDP 증빙 14종과 `smoke_testclient`는 쓰지 않는다 |
 
 ## 회귀 게이트 (`regression/`) — CI 잡 A
 
@@ -40,6 +40,7 @@
 | [`smoke_issue114.js`](regression/smoke_issue114.js) | v0.4.5 | #114 | v0.4.5 턴 행동 규칙 + 격리된 2클라이언트 락스텝 |
 | [`smoke_ai_completion.js`](regression/smoke_ai_completion.js) | v0.4.7(미출시) | #132 | AI vs AI 완주 게이트 — 고정 시드·스텝 예산·불변식·종료 상태 적법성 |
 | [`smoke_fx_timing.js`](regression/smoke_fx_timing.js) | v0.4.7(미출시) | #125 | 연출 시간 단축(2초 → 1.2초) 계약 — 연출 시간표 · 같은 연출의 CSS 애니메이션·바 전환 동기 · 실제 `setTimeout` 으로 관측한 1.2초 잠금과 `damageFx` 안 방어막→HP 2단 여유. **실제 타이머라 약 10초가 걸린다** |
+| [`smoke_issue146.js`](regression/smoke_issue146.js) | v0.4.7(미출시) | #146 #131 #130 #128 | 도망 재계약(HP 조건 폐지·기본 30%·도망의 수호자 70%·경계 난수·실패 반격 삭제) · 4슬롯 전부 불가 시 기본 공격 없음과 수동 [턴 종료](비공개 마스킹·쿨링수 재평가·AI 두 난이도·AI vs AI 완주) · 보호막 3경로 합산과 초과 누적 · 텔레포트 함정 차단(양끝·실행 직전 재검사·거부 시 불변) · 튜토리얼 저장 프로필 독립. F절은 Saturn 1차 독립 검토 REVISE 7건의 **재현 절차를 그대로 돌리는 음성 회귀**다(행동 토큰·순수 기본 공격 차단·중립 공개 로그·코어 잠금·실물 대상 검사·비소유 로그 누출) |
 | [`smoke_search_packages.js`](regression/smoke_search_packages.js) | v0.4.7(미출시) | #121 #129 | 탐색 이벤트 3종 배치·공용 인벤토리·패키지 개봉·전투 버프 3종·신규 공용 기술 3종(드래곤·마녀·사신)·숲 포획·탐색 완료 턴 종료. 온라인 2인스턴스 락스텝·정보 경계·AI 두 난이도·AI vs AI 완주를 같은 파일에서 본다. 옛 `smoke_cross_skill` 의 보상 전달 절(B·C8~C9·G·H·I·J)이 이 파일로 이전됐다 |
 
 ## 리포트 생성기 (`reports/`)
@@ -50,9 +51,9 @@
 
 ## 과거 증빙 (`milestone/<버전>/issues/<번호>/`)
 
-16개가 두 부류다 — **헤드리스 Chrome(CDP) 브라우저 증빙 도구 14개**와 **harness 기반 before/after 비교 리포트 생성기 2개**(`attack_balance_compare` · `shock_compare`). 뒤 둘은 Chrome을 띄우지 않고 어서션을 갖고 있으며 **실패하면 종료 코드 1로 끝난다**(CI 어느 잡에서도 호출되지 않는다).
+17개가 두 부류다 — **헤드리스 Chrome(CDP) 브라우저 증빙 도구 15개**와 **harness 기반 before/after 비교 리포트 생성기 2개**(`attack_balance_compare` · `shock_compare`). 뒤 둘은 Chrome을 띄우지 않고 어서션을 갖고 있으며 **실패하면 종료 코드 1로 끝난다**(CI 어느 잡에서도 호출되지 않는다).
 
-CDP 14개는 그 이슈에서 실제로 돌려 보관소의 증빙을 만든 도구다. 헤드리스 Chrome을 띄우고, 기본 `--out`이 **이미 승인된 보관소 경로**라 인자 없이 돌리면 그 증빙을 덮어쓴다. 재현할 때는 `--read-only`(또는 `--out`으로 자기 소유 경로 지정)를 쓴다.
+CDP 15개는 그 이슈에서 실제로 돌려 보관소의 증빙을 만든 도구다. 헤드리스 Chrome을 띄우고, 기본 `--out`이 **이미 승인된 보관소 경로**라 인자 없이 돌리면 그 증빙을 덮어쓴다. 재현할 때는 `--read-only`(또는 `--out`으로 자기 소유 경로 지정)를 쓴다.
 
 `--read-only`가 뜻하는 것은 **검증 산출물 0건**이지 프로세스 전체의 쓰기 0이 아니다. Chrome이 실제로 렌더하는 경로에서는 그 모드에서도 `os.tmpdir()`에 헤드리스 Chrome 임시 프로필이 생기고(종료 시 자기 것만 정리), 온라인 계열은 검증 전용 릴레이 서버(PORT=0·루프백)를 띄운다. 각 파일이 그 사실을 RESOURCE/CLEANUP 행으로 스스로 보고한다.
 
@@ -73,6 +74,7 @@ CDP 14개는 그 이슈에서 실제로 돌려 보관소의 증빙을 만든 도
 | [`issue106_cdp.js`](milestone/v0.4.4/issues/106/issue106_cdp.js) | v0.4.4 | #106 | 턴 흐름·연출 브라우저 증빙(릴레이 2클라이언트 + PVE 탭) | `…/106/Mars/artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |
 | [`issue106_browser_audit.js`](milestone/v0.4.4/issues/106/issue106_browser_audit.js) | v0.4.4 | #106 | 위 도구가 다루지 않은 수용 기준(핫시트·PVE·온라인) 보완 감사 | `…/106/Mars/browser-artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |
 | [`issue114_cdp.js`](milestone/v0.4.5/issues/114/issue114_cdp.js) | v0.4.5 | #114 | v0.4.5 턴 행동 실제 클릭 증빙(2탭 + 실제 릴레이) | `docs/milestone/v0.4.5/issues/114/Mars/artifacts` · `--read-only` 지원(Chrome 임시 프로필·검증용 릴레이 서버) |
+| [`issue146_cdp.js`](milestone/v0.4.7/issues/146/issue146_cdp.js) | v0.4.7(미출시) | #146 #131 #130 #128 | 실제 브라우저 규칙·화면 증빙 — 개시 연출이 **정상 시간**으로 끝난 뒤 실제 마우스로 도망 메뉴(30%/70%)·수동 [턴 종료]·가방·쿨링수·보드 칸(텔레포트 양끝 거부)을 클릭한다. 행동자/관찰자 DOM 대조로 안내 비공개를 보고, 방어막 바의 계산된 폭으로 초과 누적을 본다. **#128 은 독립 `user-data-dir` 두 개 + 이 실행 소유의 로컬 HTTP(127.0.0.1·PORT=0)** 로 같은 origin 3경로를 재현한다. 한계(같은 머신의 프로필 2개 · 물리 2PC 아님)를 보고서에 남긴다 | `…/146/Mars/artifacts` · `--read-only` 시 산출물 0건. RESOURCE/CLEANUP: 자기가 spawn 한 Chrome PID·mkdtemp 프로필·자기 HTTP 서버만 정리 |
 | [`v047_cdp.js`](milestone/v0.4.7/issues/121/v047_cdp.js) | v0.4.7(미출시) | #121 #125 #129 | 실제 브라우저 규칙·시간·화면 증빙 — `performance.now()` 로 연출 1.2초·보호막→HP 2단, `getComputedStyle` 로 CSS 지속 시간, 실제 마우스 클릭으로 기술 교체 3단계, 버프 CSS, 탐색 완료 턴 종료, 비소유자·PVE AI 차례 비공개 DOM, 튜토리얼 10단계 렌더 계약. `--ref <sha>` 로 커밋 blob 과 대조한다. **README 용 PNG 10장·capture-manifest 는 만들지 않는다**(기존 미디어 도구 소유) | `…/121/Mars/artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |
 
 옛 문서가 인용하는 `node demo/test/<파일>.js` 같은 평문 명령은 **그때의 사실 진술이라 고치지 않았다**. 현재 경로는 위 표와 [#134 MOVES.csv](../../docs/milestone/v0.4.7/issues/134/Mercury/MOVES.csv)에서 찾는다.

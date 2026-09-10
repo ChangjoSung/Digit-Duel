@@ -1,0 +1,286 @@
+{
+ "tool": "tools/media/readme_media_capture.js",
+ "command": "tools/media/readme_media_capture.js capture --ref aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea --out docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial --manifest docs/milestone/v0.4.7/issues/146/Mars/artifacts/capture-manifest.json --viewport 1280x900 --dpr 2",
+ "env": {
+  "ref": "aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea",
+  "refSha": "aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea",
+  "htmlBlob": "2a9b54c769a58fc5c0db9e913ce4421bec6758e3",
+  "url": "http://127.0.0.1:<port>/demo/index.html (git show aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea:demo/* → memory)",
+  "viewport": "1280x900",
+  "dpr": 2,
+  "clip": {
+   "x": 84,
+   "y": 41,
+   "width": 1112,
+   "height": 818
+  },
+  "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "chromeVersion": "152.0.7977.83",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "node": "v24.16.0",
+  "platform": "win32 10.0.19045",
+  "capturedAt": "2026-09-10T04:40:05.896Z"
+ },
+ "frames": [
+  {
+   "file": "tutorial-01.png",
+   "step": 1,
+   "count": "1 / 10 단계",
+   "title": "🏆 이기는 법 세 가지",
+   "cards": 3,
+   "nav": [
+    "◀ 이전(비활성)",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 243,
+    "w": 1080,
+    "h": 414
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "e99c171c72284fc80b7a2e22deb7971444d51cc90c2adfb3e0a80e6893770c09",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-01.png",
+   "bytes": 197576
+  },
+  {
+   "file": "tutorial-02.png",
+   "step": 2,
+   "count": "2 / 10 단계",
+   "title": "🎭 말 5가지와 숨은 정체",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 215,
+    "w": 1080,
+    "h": 471
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "5cd9ccc3281a1708540b66c5637f155775d6da49a91253cf60e14d7c725d353d",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-02.png",
+   "bytes": 197480
+  },
+  {
+   "file": "tutorial-03.png",
+   "step": 3,
+   "count": "3 / 10 단계",
+   "title": "🌲 움직이기와 숲에 숨기",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 234,
+    "w": 1080,
+    "h": 431
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "97900a0b5e2be030e073676292e84727b60090d9e2e0261e992afd80d6920c82",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-03.png",
+   "bytes": 198476
+  },
+  {
+   "file": "tutorial-04.png",
+   "step": 4,
+   "count": "4 / 10 단계",
+   "title": "🔍 흔적과 탐색",
+   "cards": 4,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 214,
+    "w": 1080,
+    "h": 472
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "8d1417d628fd47aad4acd1c116c60be0e9a7746a1b2f7197d7c8d1dc2990f66a",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-04.png",
+   "bytes": 214797
+  },
+  {
+   "file": "tutorial-05.png",
+   "step": 5,
+   "count": "5 / 10 단계",
+   "title": "⚔️ 옆에 붙으면 꼭 싸워요",
+   "cards": 7,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 57,
+    "w": 1080,
+    "h": 785
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "372a6fb69d1b353867ddd4fad788e460d70682650c78d91a6541369b54be3bc1",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-05.png",
+   "bytes": 318489
+  },
+  {
+   "file": "tutorial-06.png",
+   "step": 6,
+   "count": "6 / 10 단계",
+   "title": "💣 폭탄과 함정",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 223,
+    "w": 1080,
+    "h": 454
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "c04aec63463d0d79a1a3f983c5cbe0a892a690be7764c6b4f91476cdef151d1f",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-06.png",
+   "bytes": 216800
+  },
+  {
+   "file": "tutorial-07.png",
+   "step": 7,
+   "count": "7 / 10 단계",
+   "title": "🔴 잡아오기와 도망치기",
+   "cards": 5,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 76,
+    "w": 1080,
+    "h": 747
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "53bdccd267aa9e3438f677b4d488046a040098d6af805ea26bde0877695dda0d",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-07.png",
+   "bytes": 210495
+  },
+  {
+   "file": "tutorial-08.png",
+   "step": 8,
+   "count": "8 / 10 단계",
+   "title": "🌀 텔레포트(순간이동)",
+   "cards": 4,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 205,
+    "w": 1080,
+    "h": 489
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "3c5d54532d35ace3abdd8f9eff90d019dc3dffbed383ffcc047496a332b97e70",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-08.png",
+   "bytes": 238461
+  },
+  {
+   "file": "tutorial-09.png",
+   "step": 9,
+   "count": "9 / 10 단계",
+   "title": "🔥 버닝 타임(불타는 시간)",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 192,
+    "w": 1080,
+    "h": 516
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "f9cc0761d7290abc4ad0ccdbc3b0437a43f96d6393f5f3861250b7b26b66e739",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-09.png",
+   "bytes": 176872
+  },
+  {
+   "file": "tutorial-10.png",
+   "step": 10,
+   "count": "10 / 10 단계",
+   "title": "🏁 빠른 복습 — 첫 차례 체크리스트",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "게임 시작 ▶",
+    "처음부터"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 222,
+    "w": 1080,
+    "h": 456
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "5abb3c022ec9df97911dd60ad81f704de8e0013ee13533abe86f2f30b4ca51f4",
+   "path": "docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-10.png",
+   "bytes": 211336
+  }
+ ]
+}

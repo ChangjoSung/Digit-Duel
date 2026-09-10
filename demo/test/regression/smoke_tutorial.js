@@ -37,9 +37,24 @@ const N=10, LAST=N-1;
   const bt=T.BEATS, cyc=`${{fire:"불",water:"물",grass:"풀",lightning:"번개"}.fire}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt.fire]}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt[bt.fire]]}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt[bt[bt.fire]]]}→불`;
   ok(body[4].includes(cyc)&&/최대 2번/.test(body[4])&&/HP\(체력\)/.test(body[4])&&/쿨타임.*그대로/.test(body[4])&&/상태이상.*사라/.test(body[4]),"A9 강제 전투·최대 2회·상성 순환("+cyc+")이 엔진 BEATS와 일치·HP/쿨 유지·상태이상 해제");
   ok(/폭탄.*한 칸/.test(body[5])&&/2칸/.test(body[5])&&/함정.*못 움직/.test(body[5])&&/둘 다 사라/.test(body[5])&&/동료·왕.*살아남/.test(body[5])&&/2번/.test(body[5]),"A10 폭탄 1칸/BT 2칸·함정 고정·폭탄 vs 하수인 동귀·동료/왕 생존·함정 2턴 정지");
-  ok(/30%/.test(body[6])&&/70%/.test(body[6])&&/70\/100/.test(body[6])&&/볼.*1개.*없어/.test(body[6])&&/50%.*도망/.test(body[6])&&/성공률 ?(은 )?<?b?>?50%/.test(strip(T.TUT_STEPS[6].lines[2]))&&/바로 한 번 더/.test(body[6])&&/뒤에 있는 내 말/.test(body[6]),
-    "A11 포획(HP<30%·70%·예비 70/100·볼 소모)·도망(HP<50%·50%·실패 시 즉시 공격·후방 교환) 수치가 엔진과 일치");
-  ok(Math.round(T.BAL.enemyCapProb*100)===70&&Math.round(T.BAL.fleeProb*100)===50&&T.BAL.enemyCapHp===70&&T.BAL.captured.hp===100,"A11b 엔진 상수 전제 (enemyCapProb .7·fleeProb .5·enemyCapHp 70/100)");
+  /* A11 #146 (v0.4.7 CJ 2026-09-10): 도망 계약이 바뀌어 튜토리얼 문안도 함께 바뀐다 —
+     HP 조건 폐지 · 기본 성공률 30% · 도망의 수호자 70%(치환) · 실패 시 상대의 추가 반격 없음(내 싸움 차례 한 번만 소모).
+     포획(HP<30%·70%·예비 70/100·볼 소모)은 종전 그대로다. */
+  const cap6=T.TUT_STEPS[6].cards.map(c=>strip(c.res||"")).join(" ");
+  ok(/30%/.test(body[6])&&/70%/.test(body[6])&&/70\/100/.test(body[6])&&/볼.*1개.*없어/.test(body[6]),"A11 포획 수치(HP<30%·70%·예비 70/100·볼 소모)가 엔진과 일치");
+  ok(/HP 조건 없이/.test(body[6])&&!/50%/.test(body[6])&&/성공률은 <b>30%<\/b>/.test(T.TUT_STEPS[6].lines[2]),"A11c 도망: HP 조건 폐지·기본 성공률 30% (#146)");
+  ok(/도망의 수호자/.test(cap6)&&/70%/.test(cap6),"A11d 도망의 수호자 = 그 싸움 동안 70% 표기 (#146)");
+  ok(/상대가 더 때리지 않아요/.test(body[6])&&/싸움 차례 한 번/.test(body[6])&&!/바로 한 번 더/.test(body[6]),"A11e 도망 실패 반격 삭제가 문안에 반영 (#146)");
+  ok(/뒤에 있는 내 말/.test(body[6])&&/한 칸씩/.test(body[6]),"A11f 도망 성공 후 후방 교환·밀기는 그대로 (#114)");
+  ok(Math.round(T.BAL.enemyCapProb*100)===70&&Math.round(T.BAL.fleeProb*100)===30&&Math.round(T.BAL.fleeProbGuard*100)===70&&T.BAL.enemyCapHp===70&&T.BAL.captured.hp===100,
+    "A11b 엔진 상수 전제 (enemyCapProb .7 · fleeProb .3 · fleeProbGuard .7 · enemyCapHp 70/100)");
+  /* A11g #146·#130·#131 — 새 규칙 세 가지가 10단계 안에 실제로 들어 있다 */
+  ok(/기본 공격도 나오지 않아요/.test(body[4])&&/턴 종료/.test(body[4])&&/싸움 차례 한 번/.test(body[4]),"A11g 전투 단계에 '4슬롯 전부 불가 → 기본 공격 없음 · 수동 턴 종료' 규칙 (#146)");
+  const cap4=T.TUT_STEPS[4].cards.map(c=>strip(c.res||"")).join(" ");
+  ok(/가방/.test(cap4)&&/포획/.test(cap4)&&/도망/.test(cap4)&&/왕·동료/.test(cap4),"A11h 그 상황에서도 가방·포획·도망은 유지되고 왕·동료 본체는 기본 공격을 갖는다 (#146)");
+  ok(/보호막/.test(body[4])&&/더해져요/.test(body[4])&&/40/.test(body[4]),"A11i 전투 단계에 보호막 합산 규칙 (#130)");
+  const cap7=T.TUT_STEPS[7].cards.map(c=>strip(c.res||"")).join(" ");
+  ok(/함정/.test(body[7])&&/자리를 바꿀 수 없어요/.test(body[7])&&cap7.indexOf(T.TELE_TRAP_MSG)>=0,"A11j 텔레포트 단계에 함정 차단 규칙·거부 안내 문구 (#131)");
   ok(/상대편 땅/.test(body[7])&&/두 개/.test(body[7])&&T.BAL.teleMax===Infinity&&/몇 번이든/.test(body[7])&&/주 행동/.test(body[7])&&/각자 따로/.test(body[7])&&/모자라면 못/.test(body[7]),"A12 #114 텔레포트 무제한·주 행동 소모·양측 독립 강제 전투·슬롯 부족 차단");
   ok(new RegExp(T.BAL.burnStart+"번째 턴").test(body[8])&&/곧게 2칸/.test(body[8])&&/숲.*땅.*1칸/.test(body[8])&&/폭탄.*2칸/.test(body[8])&&/함정.*스스로는.*못 움직/.test(body[8]),"A13 #114 버닝 타임 이동 유지·함정 자발 이동 금지·강제 이동 허용");
   ok(/왕/.test(body[9])&&/끝줄/.test(body[9])&&/전멸/.test(body[9])&&/주 행동 하나/.test(body[9])&&/턴 종료/.test(body[9]),"A14 복습: 승리 3조건·주 행동 1개·강제 전투·턴 종료 체크리스트");
@@ -57,7 +72,10 @@ const N=10, LAST=N-1;
   setLS(memLS());
   const T=H.load(htmlPath);
   const steps=T.TUT_STEPS, cards=steps.map(s=>s.cards);
-  ok(cards.every((cs,i)=>Array.isArray(cs)&&cs.length===steps[i].lines.length&&cs.length>=3&&cs.length<=(i===4?5:4)),"G1 카드 수 = 문단 수 (3~4, #114 접촉 단계에 VIP 밀기 카드 1개 추가) — "+cards.map(c=>c.length).join("/"));
+  /* G1 카드 수 = 문단 수. 단계별 상한은 그 단계가 다루는 개념 수만큼만 늘린다 —
+     4(전투): #114 VIP 밀기 + #146 공격 없음 + #130 보호막 합산 / 6(포획·도망): #146 도망 성공·실패 분리 / 7(텔레포트): #131 함정 차단 */
+  const CARD_MAX=[4,4,4,4,7,4,5,4,4,4];
+  ok(cards.every((cs,i)=>Array.isArray(cs)&&cs.length===steps[i].lines.length&&cs.length>=3&&cs.length<=CARD_MAX[i]),"G1 카드 수 = 문단 수 (단계별 상한 "+CARD_MAX.join("/")+") — "+cards.map(c=>c.length).join("/"));
   ok(cards.every(cs=>cs.every(c=>typeof c.t==="string"&&c.t.length>=2&&c.t.length<=16&&typeof c.vis==="string"&&c.vis.length>20&&(c.res===undefined||typeof c.res==="string"))),"G2 카드 = 제목(2~16자)·그림(vis)·결과(선택) 구조");
   ok(cards.every(cs=>new Set(cs.map(c=>c.t)).size===cs.length),"G3 한 단계 안의 카드 제목은 서로 다름");
   const allVis=cards.flat().map(c=>c.vis), allSvg=allVis.flatMap(v=>v.match(/<svg[\s\S]*?<\/svg>/g)||[]);
@@ -69,7 +87,7 @@ const N=10, LAST=N-1;
   const svgTexts=allSvg.flatMap(sv=>(sv.match(/<text[^>]*>([^<]*)<\/text>/g)||[]).map(m=>m.replace(/<[^>]+>/g,"")));
   ok(svgTexts.length>=40&&svgTexts.every(t=>!/[가-힣A-Za-z0-9%]/.test(t)),"G7 SVG <text>는 이모지·기호 글리프만 (한글·영문·숫자는 전부 DOM 텍스트) — "+svgTexts.length+"개, 위반: "+svgTexts.filter(t=>/[가-힣A-Za-z0-9%]/.test(t)).join(","));
   const domTxt=allVis.map(v=>v.replace(/<svg[\s\S]*?<\/svg>/g,"").replace(/<[^>]+>/g,"").trim()).filter(Boolean);
-  ok(domTxt.length>=14&&domTxt.some(t=>/70%/.test(t))&&domTxt.some(t=>/50%/.test(t))&&domTxt.some(t=>/하수인 6/.test(t))&&domTxt.some(t=>/턴 종료/.test(t)),"G8 수치·이름 라벨(70%·50%·하수인 6·턴 종료 …)은 DOM 텍스트로 렌더 — 카드 그림 DOM 텍스트 "+domTxt.length+"개");
+  ok(domTxt.length>=14&&domTxt.some(t=>/70%/.test(t))&&domTxt.some(t=>/30%/.test(t))&&domTxt.some(t=>/하수인 6/.test(t))&&domTxt.some(t=>/턴 종료/.test(t)),"G8 수치·이름 라벨(70%·30%·하수인 6·턴 종료 …)은 DOM 텍스트로 렌더 — 카드 그림 DOM 텍스트 "+domTxt.length+"개");
   const bad=/<img|<image|<iframe|<video|<audio|<object|<embed|<foreignObject|<use|xlink:href|href=|url\(|https?:|data:|canvas|<script|<style/i;
   ok(allVis.every(v=>!bad.test(v)),"G9 카드 그림에 외부 이미지·URL·iframe·foreignObject·use·canvas·스크립트 없음");
   ok(allVis.every(v=>!/position\s*:|\bleft\s*:|\btop\s*:|transform\s*:/.test(v)),"G10 카드 그림에 절대좌표 인라인 스타일(position/left/top/transform) 없음 — 간격은 CSS gap/padding");
@@ -242,7 +260,8 @@ const N=10, LAST=N-1;
     &&H.storageTrace(T7.sessionStorage).all.length===0&&T7.cookieWrites.length===0&&T7.indexedDB.opens.length===0,
     "F7b 런타임 저장 불변식: 튜토리얼 전 과정 후 저장 흔적은 ["+tr.all.join(",")+"]뿐 · sessionStorage·쿠키·indexedDB 무기록");
   const lines=T.TUT_STEPS.map(s=>s.lines.map(strip));
-  ok(lines.every((ls,i)=>ls.length>=3&&ls.length<=(i===4?5:4)&&ls.every(l=>l.length<=78)),"F8 문단 78자 이하 유지·접촉 단계만 새 VIP 밀기 카드 포함 5문단 ("+lines.map(ls=>ls.map(l=>l.length).join("/")).join(" | ")+")");
+  const LINE_MAX=[4,4,4,4,7,4,5,4,4,4]; // G1 CARD_MAX 와 같은 상한 (카드 1 : 문단 1)
+  ok(lines.every((ls,i)=>ls.length>=3&&ls.length<=LINE_MAX[i]&&ls.every(l=>l.length<=78)),"F8 문단 78자 이하 유지·단계별 문단 수 상한 "+LINE_MAX.join("/")+" ("+lines.map(ls=>ls.map(l=>l.length).join("/")).join(" | ")+")");
   ok(lines.every(ls=>ls.every(l=>/[요!][.!]?\s*$/.test(l.trim()))),"F9 모든 문단이 '~요'/'!'로 끝나는 쉬운 말투");
   const all=lines.flat().join(" ");
   ok(/강제 전투\(무조건 싸움\)/.test(all)&&/HP\(체력\)/.test(all)&&/탐색\(찾아보기\)/.test(all)&&/하수인\(싸우는 말\)/.test(all)&&/텔레포트\(순간이동\)/.test(all)&&/버닝 타임\(불타는 시간\)/.test(all),"F10 전문어 즉시 풀이: 강제 전투·HP·탐색·하수인·텔레포트·버닝 타임");

@@ -304,7 +304,12 @@ const BAL={
   ballMax:Infinity, nextBuffPct:0.15, /* #121 계약 2.1: 볼 보유 상한 해제. nextBuffPct 는 계약 1.3 으로 **탐색에서 더는 얻을 수 없다** —
      상수·계산 경로(f.atkBuff)는 남기고 생성만 끊었다 (지금 이 값을 켜는 경로는 없다) */
   enemyCapProb:0.7, // #12: 적 하수인 포획 성공률
-  fleeProb:0.5, // #13: 도망 성공률 (자기 HP<50% 시 시도 가능)
+  /* #146 (v0.4.7 CJ 최종 승인 2026-09-10) 도망 재계약 — 세 가지가 함께 바뀐다:
+     (1) HP 조건 폐지: 자기 전투 행동 차례면 언제나 시도할 수 있다 (시도 횟수 상한도 신설하지 않는다).
+     (2) 기본 성공률 30%. 🏃 도망의 수호자를 쓴 전투원은 **그 전투 동안 70%** 로 치환된다 (+70%p 가산도, 1회 성공 보장도 아니다).
+     (3) 실패해도 상대의 추가 반격이 없다 — 자기 전투 행동 1회만 소모하고 상대는 정상 차례를 그대로 갖는다.
+     성공 이후(전투 즉시 종료 · 후방 교환 · 밀기 · 전투 회계 유지)는 #114 계약 그대로다. */
+  fleeProb:0.3, fleeProbGuard:0.7,
   teleMax:Infinity, // #14 → #114 (v0.4.5 CJ 원문 "기존 2회 → 무제한"): 경기당 횟수 제한 해제. 사용 위치(상대 진영 진입)·주 행동 1회 소모·강제 접촉·전투 횟수 사전 차단·취소는 그대로. teleUsed 는 지표(teleports)와 함께 계속 기록한다
   enemyCapHp:70, // #20: 전투 중 적 하수인 포획(finishByCapture) 예비 하수인 시작 HP (maxHP 100 유지) — 숲 공용 포획(tryCapture)은 100/100
   itemHealPct:0.20,
@@ -412,6 +417,11 @@ function slotUsable(f,i,side){
 }
 /* 계약 3.3: 이 전투의 최대 라운드 — 전투 인스턴스 값이 있으면 그것, 없으면 전역 BAL.maxRounds (전역 상수는 바꾸지 않는다) */
 function battleMaxRounds(){ const B=S.battle; return (B&&B.maxRounds)||BAL.maxRounds; }
+/* #146 계약: 이 전투원의 도망 성공률 — 🏃 도망의 수호자를 쓴 전투원만 70% 로 **치환**된다 (가산 아님).
+   UI 표기·실제 판정·AI 가 모두 이 한 함수를 본다 (표시와 판정이 갈라지지 않는다). */
+function fleeProbOf(f){ return (f&&f.fleeBoost)?BAL.fleeProbGuard:BAL.fleeProb; }
+/* #146 계약: 4슬롯이 전부 불가할 때의 안내 문구 — 화면 두 곳(메시지 박스·싸우기 패널)이 같은 문자열을 쓴다 */
+const NO_ATTACK_MSG="공격할 것이 없습니다. 턴 종료할까요?";
 /* 종별 장착 템플릿 (GDD-16 4장) — 공격기는 자기 속성 풀, 슬롯2=보조기·슬롯3=시그니처 고정 */
 const ARCH_TMPL={
   std:["stable","effect","sup_heal","sig_std"],
@@ -462,7 +472,7 @@ const GIFT_KO={potion:"회복약",cool:"쿨링수",cure:"해독제",ball:"공용
 const BUFFS={
   power:{ko:"💪 힘의 수호자",desc:"이 전투 동안 내 피해 분산을 최대치로 고정 (상성·약화·보호막 계산은 그대로)"},
   time:{ko:"🧭 시간의 수호자",desc:"이 전투만 양측 최대 3라운드 — 1라운드에만 사용 가능 · 사신의 낫은 발동 불가"},
-  escape:{ko:"🏃 도망의 수호자",desc:"이 전투 동안 도망 HP 50% 조건 해제 (성공률·반격·교환은 그대로)"}
+  escape:{ko:"🏃 도망의 수호자",desc:"이 전투 동안 도망 성공률을 70%로 높입니다"}
 };
 const BUFF_KEYS=["power","time","escape"];
 /* 하수인 로스터 20종 — 아키타입 5종(표준·공격·방어·속공·지속) × 속성 4종 (GDD-13 4.2 개정, T5-B) */
@@ -728,7 +738,7 @@ function mkPiece(owner,type,element){
     focusCharge:false, vulnMark:false, dmgCut:0,
     /* #121 계약 3: 전투 버프 패키지 효과는 **그 전투에만** 산다. 본체 출전이면 f === piece 라 이 필드가 말에 남으므로
        전투 개시(resetBattleTemps)와 전투 종료(resetAfter) 양쪽에서 반드시 지운다 — 계약 3.1 "전투가 끝나면 즉시 정리" */
-    powerBuff:false, fleeFree:false};
+    powerBuff:false, fleeBoost:false};
 }
 /* 선택된 로스터 6종의 스탯을 플레이어 p의 하수인 6기에 주입 (선택 변경 시 재주입) */
 function applyRoster(p){
@@ -1102,7 +1112,12 @@ function renderSide(){
     ${s.skills?`<div class="status">${s.skills.map((id,i)=>skillNameKo(id,s.element)+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
     <small>이동: 파란 칸 · 전투: 빨간 칸 클릭</small>`;
   } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
-  if(S.teleport&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?"교환할 첫 번째 자기 말을 클릭하세요 (이동 불가 말 제외).":"교환할 두 번째 자기 말을 클릭하세요. (첫 말 재클릭 시 선택 취소)"}</small>`;
+  /* #131 (v0.4.7 CJ 2026-09-10): 텔레포트 2단계 안내 문구는 계약 문자열 그대로 쓴다.
+     함정에 걸린 말(immobile>0)은 **양끝 어느 쪽으로도** 고를 수 없고 실행도 되지 않는다 (함정 유닛 자체를 막는 규칙이 아니다 —
+     막히는 것은 "함정에 걸려 이동 불가 상태인 말"이다). 도망 교환·강제 밀기에는 이 제한을 확장하지 않는다. */
+  if(S.teleport&&!isAI(S.current)&&(!NET.mode||S.current===NET.me))
+    h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?TELE_PICK1_MSG:TELE_PICK2_MSG}</small>`
+      +(S.teleport.stage===1?"":`<small>첫 말을 다시 클릭하면 선택이 취소됩니다.</small>`);
   if(S.fleePick) h+=fleePickMine() // #114 도망 교환: 소유자 안내 / 상대 대기 (거울) — 후보·위치는 소유자 화면에만
     ?`<h2>🏃 도망 성공 — 위치 교환</h2><small>${S.mode==="pvp"&&!NET.mode?`🔒 ${pname(S.fleePick.owner)}만 확인 (상대는 시선 회피) · `:""}후방의 자기 말(파란 칸)을 클릭하면 도망친 말과 자리를 바꿉니다. 교환 후 전선의 말과 상대 말을 한 칸씩 밀어냅니다. 생략하면 도망친 말과 상대 말을 밀어냅니다.</small>`
     :`<h2>🛗 도망 성공!</h2><small>상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다.</small>`;
@@ -1406,9 +1421,16 @@ function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell �
   if(isAI(S.current)) return;
   const p=at(r,c);
   if(S.teleport){ // #14 스왑형: 자기 말 2개 선택 → 위치 교환
-    if(S.teleport.stage===1){ if(p&&p.owner===S.current&&p.immobile===0){S.teleport={stage:2,piece:p}; render();} return; }
-    if(p&&p.id===S.teleport.piece.id){ S.teleport={stage:1,piece:null}; render(); } // 첫 말 재클릭 — 선택 취소
-    else if(p&&p.owner===S.current&&p.immobile===0){ doTeleportSwap(S.teleport.piece,p); }
+    /* #131: 함정에 걸린 말(immobile>0)은 **양끝 어느 쪽으로도** 고를 수 없다. 조용히 무시하지 않고 사유를 알린 뒤
+       **현재 단계를 그대로 유지**한다 (1단계에서 거부하면 1단계, 2단계에서 거부하면 2단계 — 첫 말 선택은 살아 있다).
+       안내는 행동자 화면에만 띄운다 — 상대에게는 어떤 말을 눌렀는지도, 그 말이 함정에 걸렸는지도 새지 않는다. */
+    const trapped=p&&p.owner===S.current&&p.immobile>0;
+    /* 사유는 소유자 화면에만 (Saturn REVISE P1) — 공용 보드 로그에 쓰면 온라인 재생에서 상대 화면에 그대로 뜬다 */
+    if(trapped){ if(viewerIsOwner(S.current)){ showToast(`🌀 ${TELE_TRAP_MSG}`); if(S.mode!=="sim") tutHint("teletrap"); } // #26·#131 첫 1회 도움말 (게임 상태 무변경)
+      return; }
+    if(S.teleport.stage===1){ if(p&&p.owner===S.current){S.teleport={stage:2,piece:p}; render();} return; }
+    if(p&&S.teleport.piece&&p.id===S.teleport.piece.id){ S.teleport={stage:1,piece:null}; render(); } // 첫 말 재클릭 — 선택 취소
+    else if(p&&p.owner===S.current){ doTeleportSwap(S.teleport.piece,p); }
     return;
   }
   if(p&&forcedPickOk(p)){ initBattle(S.movedPiece,p); return; } // T1: 강제 대상 직접 클릭 (#106: 이동한 말이 폭탄이어도 대상 선택 가능)
@@ -1499,6 +1521,10 @@ function applyForced(p,beforeAdj,list){
   render();
   return true;
 }
+/* #131 계약 문구 — 화면 안내·거부 안내가 한 곳에서 나온다 (표시와 규칙이 갈라지지 않게) */
+const TELE_PICK1_MSG="먼저 텔레포트를 할 말을 선택해주세요! (함정에 걸린 말은 제외)";
+const TELE_PICK2_MSG="교체할 말을 선택해주세요";
+const TELE_TRAP_MSG="함정에 걸린 하수인은 텔레포트를 사용할 수 없습니다";
 /* #14 텔레포트 스왑형: 자기 말이 상대 진영에 있는 동안, 주 행동으로 자기 말 2개의 위치를 교환 (왕·폭탄·함정 포함).
    경기당 플레이어별 BAL.teleMax(2)회 · 교환된 두 말 모두 신규 인접 검사→강제 전투 · movedPreBT 미기록 유지 */
 function teleportAvailable(p){
@@ -1522,12 +1548,48 @@ function teleportSwapBlock(a,b){
   if(need>remain) return `새 강제 전투 ${need}회 > 남은 전투 ${remain}회 (턴당 최대 2회)`;
   return null;
 }
+/* #131: **실행 직전** 재검사. 화면의 하이라이트·비활성은 표시 계층이라 오래된 클로저·중복 클릭·수신 프레임·
+   선택 이후에 바뀐 상태(함정을 밟아 immobile 이 붙은 경우 등)를 막지 못한다. 아래 조건을 모두 만족할 때만 교환한다:
+     차례·단계 (플레이 중 · 전투/도망 교환 중이 아님 · 주 행동 미사용 · 텔레포트 가용 · 횟수 여유)
+     양끝 각각 (owner=현재 플레이어 · alive · placed · immobile===0) · 두 말이 서로 다름
+   반환: null(가능) 또는 거부 사유 문자열. 이 함수는 어떤 상태도 바꾸지 않고 난수도 쓰지 않는다. */
+function teleportSwapValid(a,b){
+  if(S.phase!=="play"||S.battle||S.fleePick||(S.forcedTargets&&S.forcedTargets.length)) return "지금은 텔레포트를 쓸 수 없습니다";
+  if(S.mainUsed) return "이번 턴의 주 행동을 이미 사용했습니다";
+  if(!teleportAvailable(S.current)) return "상대 진영에 내 말이 있어야 합니다";
+  if(S.teleUsed[S.current]>=BAL.teleMax) return "텔레포트 횟수를 모두 사용했습니다";
+  for(const x of [a,b]){
+    if(!x) return "선택한 말이 유효하지 않습니다";
+    /* Saturn REVISE P2: **지금 보드에 있는 그 말 자체**여야 한다. id 만 보면 복제 객체({...a,id:…})나
+       같은 id 를 가진 두 객체가 통과해 두 말이 한 칸에 겹치고 주 행동만 소모되는 경로가 열린다.
+       살아 있는 말 목록에서 그 id 가 정확히 하나이고 그 객체가 인자와 동일 참조일 때만 통과시킨다. */
+    const same=S.pieces.filter(y=>y&&y.id===x.id);
+    if(same.length!==1||same[0]!==x) return "선택한 말이 유효하지 않습니다";
+    if(x.owner!==S.current||!x.alive||!x.placed) return "선택한 말이 유효하지 않습니다";
+    if(x.immobile>0) return TELE_TRAP_MSG;
+  }
+  if(a===b||a.id===b.id) return "서로 다른 두 말을 골라야 합니다";
+  return null;
+}
 function doTeleportSwap(a,b){
-  if(S.teleUsed[S.current]>=BAL.teleMax) return false; // 2회 제한 방어
+  /* #131: 거부는 **아무것도 소모하지 않는다** — 자원(주 행동·텔레포트 횟수)·좌표·HP·회복 자세·공개 상태·강제 전투 큐·난수가 모두 그대로다.
+     첫 말이 무효가 됐으면 1단계로 되돌리고(단계 일치), 둘째 말만 무효면 1단계 선택은 유지한다. */
+  const bad=teleportSwapValid(a,b);
+  if(bad){
+    /* 비공개(Saturn REVISE P1): 거부 사유를 **공용 보드 로그(addLog)에 쓰지 않는다.** S.log 는 양측이 공유하는
+       상태라 온라인 재생에서 상대 화면에도 그대로 렌더된다 — "함정에 걸렸다"는 내 말의 미공개 상태다.
+       사유는 소유자 화면의 토스트로만 알린다 (표시 계층 · 규칙 상태·난수 불변). */
+    if(viewerIsOwner(S.current)) showToast(`🌀 ${bad}`);
+    if(S.teleport&&(!a||a.owner!==S.current||!a.alive||!a.placed||a.immobile>0)) S.teleport={stage:1,piece:null};
+    render(); return false;
+  }
   const block=teleportSwapBlock(a,b);
   if(block){ // #18: 실행 전 차단 + 이유 안내 (텔레포트 횟수·주 행동 미소모)
-    const bmsg=`🌀 텔레포트 스왑 차단 — ${block}`;
-    addLog(bmsg,"imp"); if(!isAI(S.current)) showToast(bmsg);
+    /* 비공개(Venus 계약 6절 · Saturn REVISE): 차단 사유도 **소유자 화면에만** 알린다.
+       종전에는 공용 보드 로그(addLog)에 남기고 `!isAI(S.current)` 로만 토스트를 걸어, 온라인 상대 클라이언트가
+       같은 셀 프레임을 재생할 때 상대 화면의 로그·토스트에 내 말의 접촉 상황이 그대로 떴다.
+       규칙 상태는 이 분기에서 아무것도 바뀌지 않으므로(자원·좌표·큐·난수 불변) 공개 기록도 남길 것이 없다. */
+    if(viewerIsOwner(S.current)) showToast(`🌀 텔레포트 스왑 차단 — ${block}`);
     if(S.teleport) S.teleport={stage:1,piece:null};
     S.selected=null; render(); return false;
   }
@@ -1579,7 +1641,7 @@ function drainForcedQueue(autoStart){
 function gameOver(winner,type){
   S.phase="over"; S.winner=winner; S.metrics.endTurn=S.turnCount; S.metrics.winType=type; S.metrics.winner=winner;
   /* Saturn REVISE P2: 기권·왕 제거·전멸 등 **경기 종료**는 전투 한가운데서도 일어난다. 그때 전투 객체가 남아 있으면
-     전투 회계(buffA/buffD·maxRounds)와 전투원 버프 플래그(powerBuff·fleeFree)가 그대로 남는다.
+     전투 회계(buffA/buffD·maxRounds)와 전투원 버프 플래그(powerBuff·fleeBoost)가 그대로 남는다.
      #121 계약 3.1 "전투가 끝나면 즉시 정리"는 승패·판정·도망·적 포획뿐 아니라 이 경로에도 적용된다.
      **쓰지 않은 패키지 재고(S.pkgs)는 건드리지 않는다** — 그것은 새 게임에서만 초기화된다. */
   if(S.battle){ try{ resetAfter(S.battle.fa); resetAfter(S.battle.fd); }catch(e){}
@@ -2033,7 +2095,7 @@ function startRounds(attP,defP,fa,fd){
   S.battle={attP,defP,fa,fd,round:1,phase:0,
     recA:0,recD:0, itemsA:0,itemsD:0, itemRoundA:false,itemRoundD:false, lastItemA:null,lastItemD:null,
     ballThrowA:false, ballThrowD:false, // #12: 볼 투척 라운드당 1회
-    blog:[], msgQ:[], dispHpA:fa.hp, dispHpD:fd.hp,
+    blog:[], msgQ:[], actSeq:0, dispHpA:fa.hp, dispHpD:fd.hp, // actSeq: **모든 전투 행동 전환**(nextPhase)마다 1 증가하는 공유 게임 상태 (#146 Saturn REVISE P1 — 아래 actionFresh)
     /* #121 계약 3.1: 버프 회계는 **플레이어별 한 전투 1개**다. 어느 버프를 썼는지(표시·검증용)와 썼는지 여부를 side 별로 둔다.
        계약 3.3: maxRounds 는 **전투 인스턴스 값**이다 — 전역 BAL.maxRounds 는 건드리지 않는다 (null = 전역값 사용) */
     buffA:null, buffD:null, maxRounds:null};
@@ -2045,7 +2107,7 @@ function startRounds(attP,defP,fa,fd){
   battleModal();
 }
 function resetBattleTemps(f){f.burn=0;f.burnBy=null;f.weaken=0;f.shield=0;f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
-  f.powerBuff=false;f.fleeFree=false;} // 쿨(cds)은 전투 간 유지 (HP와 동일) · #121 계약 3.1: 버프는 전투 간 이어지지 않는다
+  f.powerBuff=false;f.fleeBoost=false;} // 쿨(cds)은 전투 간 유지 (HP와 동일) · #121 계약 3.1: 버프는 전투 간 이어지지 않는다
 function actorOfPhase(){
   const B=S.battle;
   let firstIsAtt = B.round%2===1;
@@ -2061,6 +2123,20 @@ function battleModal(){
   const aiActor=isAI(ownerP);
   const viewer=S.mode==="sim"?2:(S.mode==="pve"?0:NET.mode?NET.me:ownerP); // 기술 공개 기준 시점 (핫시트는 행동자·온라인은 내 화면 고정)
   const busy=B.msgQ.length>0||fxLocked(); // 메시지 재생·연출 대기 중 커맨드 비활성 (#106: 배너·카운트다운 잠금 포함)
+  /* #146 Saturn REVISE P1 — 이 렌더가 낸 버튼이 전투 행동을 **정확히 한 번만** 소비하게 하는 가드.
+     `S.battle===B` 와 `actorOfPhase()===side` 만으로는 부족하다: 라운드 경계에서 같은 전투원이 연속으로
+     행동할 차례가 오면(R1 후공 D → R2 선공 D) 옛 모달 클로저 하나가 두 번째 행동까지 그대로 소비한다.
+     그래서 **공유 게임 상태**로 행동 전환을 센다: actSeq 는 `nextPhase()`(= 전투 행동 하나가 끝나고 다음 차례로
+     넘어가는 유일한 지점)마다 1 늘고, 도망·패스 코어가 자기 행동을 확정하는 순간에도 늘린다.
+     여기에 그 시점의 (round, phase) 스냅샷을 함께 가둬, **일반 공격·포획 실패 같은 다른 행동으로 차례가 넘어간
+     뒤에 남아 있던 옛 도망·패스 콜백도** 거부한다. 렌더 횟수가 아니라 게임 상태를 세므로 온라인 양측이
+     서로 다른 횟수로 다시 그려도 판정이 갈리지 않는다.
+     연출·메시지 재생 중에도 거부한다 — 두 번 클릭·늦은 콜백이 재생 중인 행동 위에 겹치지 않게 한다.
+     아이템·패키지 개봉 같은 **행동 내 무료 선택**은 차례를 넘기지 않으므로 이 값이 그대로여서 정상 동작한다.
+     (온라인 수신 재생은 netReady 가 이미 잠금 해제·빈 msgQ 를 기다리므로 이 가드에 걸리지 않는다.) */
+  const actSeq=B.actSeq||0, actRound=B.round, actPhase=B.phase;
+  const actionFresh=()=>S.battle===B&&(B.actSeq||0)===actSeq&&B.round===actRound&&B.phase===actPhase
+    &&actorOfPhase()===side&&!B.msgQ.length&&!fxLocked();
   const mySide=S.mode==="pve"?(B.attP.owner===0?"A":"D"):NET.mode?(B.attP.owner===NET.me?"A":"D"):"A", topSide=mySide==="A"?"D":"A";
   const panel=sid=>{ // 전투원 정보 패널: 이름·아키타입/속성 배지·HP바·방어막 바(#106 5.5)·상태. "가한 유효 피해" 게이지는 HP 비율 판정(H1)과 달라 제거 — recA/recD 는 지표로만 기록
     const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
@@ -2097,8 +2173,15 @@ function battleModal(){
   // #121 계약 2.3: itemRound(라운드 1회)만 실제 게이트다. itemsX·lastItemX 는 기록으로만 남아 더 이상 버튼을 막지 않는다
   const itemRound=side==="A"?B.itemRoundA:B.itemRoundD;
   const dis=aiActor||busy||(NET.mode&&ownerP!==NET.me); // 온라인: 상대 행동 차례엔 조작 불가
+  /* Saturn REVISE P1(비공개): 마스킹 기준은 **소유자 관측**이다 — 온라인·PVE·핫시트를 함께 처리한다 */
+  const mineView=viewerIsOwner(ownerP);
+  /* #146: 지금 이 전투원이 **합법으로 쓸 수 있는 공격 수단이 하나도 없는가**. 왕·동료 본체(skills 없음)는 기본 공격이 있으므로 항상 false.
+     비공개: "공격할 것이 없습니다"는 **상대의 미공개 기술 4칸이 전부 막혀 있다**는 사실을 그대로 알려 주는 정보다.
+     그래서 안내도 [턴 종료] 버튼도 **소유자 화면에만** 그린다 (비소유자에게는 종전처럼 마스킹된 4슬롯 버튼만 보인다). */
+  const noAtk=!!f.skills&&!f.skills.some((sid2,i)=>slotUsable(f,i,side));
+  const noAtkShow=noAtk&&mineView;
   let cmdBtns;
-  if(f.skills){ // 4슬롯 커맨드 — 기본 공격 버튼 제거, 전 슬롯 쿨일 때만 폴백 노출
+  if(f.skills){ // 4슬롯 커맨드 — 기본 공격 버튼 없음. 전부 불가하면 공격 대신 수동 [턴 종료] (#146)
     const maskCmd=viewer!==2&&ownerP!==viewer;
     cmdBtns=f.skills.map((sid2,i)=>{
       const sk2=SKILLS[sid2], onCd=f.cds[i]>0;
@@ -2112,8 +2195,14 @@ function battleModal(){
       const tip=known?sk2.desc+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:"")+(sk2.cls?` · ${SKILL_CLS_KO[sk2.cls]} 분류(상성표 밖)`:"")+(seal?` · ${seal}`:""):"";
       return `<button ${dis||locked?"disabled":""} title="${escAttr(tip)}" onclick="window.__act(${i})">${label}</button>`;
     }).join("");
-    // #121 계약 5.3 폴백: 쿨이든 봉인이든 **지금 쓸 수 있는 슬롯이 하나도 없으면** 기본 공격이 나온다 (전투가 멈추지 않는다)
-    if(!f.skills.some((sid2,i)=>slotUsable(f,i,side))) cmdBtns+=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(f.atk)}</button>`;
+    /* #146 계약 (v0.4.7 CJ 2026-09-10) — #121 계약 5.3 의 "폴백 기본 공격"을 **철회**한다.
+       4슬롯이 전부 쿨·봉인·조건 미충족으로 불가하면 **어떤 공격도 제공하지 않는다**. 안내와 명시적 수동 [턴 종료]만 둔다.
+       · 보조기·시그니처가 하나라도 합법이면 예외 없이 그 슬롯을 쓴다 (여기 오지 않는다).
+       · 왕·동료 본체(f.skills 없음)는 아래 else 분기라 기본 공격을 그대로 유지한다.
+       · [턴 종료]는 **자기 전투 행동 1회**(nextPhase)를 넘기는 것이지 보드 턴이 아니다 — 주 행동·턴당 전투 횟수는 그대로다.
+       · 버튼을 누르기 전에는 아무것도 자동으로 진행하지 않는다. 가방·패키지·포획·도망 메뉴는 그대로 쓸 수 있고,
+         쿨링수로 쿨이 풀리면 다음 렌더에서 이 판정이 다시 계산돼 공격 슬롯이 되살아난다. */
+    if(noAtkShow) cmdBtns+=`<button class="primary" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`;
   } else { // 왕·동료 본체·구형 경로: 기본 공격 유지
     const canSkill=f.skillAtk&&f.cd===0;
     cmdBtns=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(f.atk)}</button>`
@@ -2122,17 +2211,17 @@ function battleModal(){
   // #12 볼 투척: 대상이 적 하수인·HP<30%·볼 보유·예비 슬롯 빈 상태·라운드당 1회 / #13 도망: 자기 HP<50%
   const oppPiece=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
   const canThrow=oppPiece.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown;
-  const canFlee=f.hp<f.maxHp*0.5||!!f.fleeFree; // #121 계약 3.4 도망의 수호자: HP 50% 게이트만 해제 (성공률·시도 횟수·반격·교환은 불변)
+  /* #146 계약: 도망에는 **HP 조건도 시도 횟수 상한도 없다**. 성공률만 전투원별로 다르다 (기본 30% · 도망의 수호자 70%) */
+  const fleeP=fleeProbOf(f);
   const throwWhy=oppPiece.type!=="minion"?"상대가 하수인이 아닙니다":opp.hp>=opp.maxHp*0.3?`상대 HP ${pct(opp.hp/opp.maxHp)} — 30% 미만이어야 합니다`:S.balls[ownerP]<=0?"몬스터볼이 없습니다":S.reserve[ownerP]?"예비 슬롯이 차 있습니다":thrown?"이번 라운드에 이미 던졌습니다":"";
-  const fleeWhy=canFlee?"":`내 HP ${pct(f.hp/f.maxHp)} — 50% 미만이어야 합니다`;
-  const fleeNote=f.fleeFree?" · 🏃 도망의 수호자 — HP 조건 해제":"";
+  const fleeNote=f.fleeBoost?" · 🏃 도망의 수호자 — 이 전투 도망 성공률 70%":"";
   const ballBtn=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
-  const fleeBtn=`<button class="danger" ${dis||!canFlee?"disabled":""} title="자기 HP 50% 미만 시 가능(도망의 수호자는 조건 해제) · 실패 시 상대 즉시 공격 1회" onclick="window.__flee()">🏃 도망 (성공 ${pct(BAL.fleeProb)})</button>`;
+  const fleeBtn=`<button class="danger" ${dis?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패해도 상대의 추가 반격은 없고 내 전투 행동 1회만 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
   /* #121 계약 2.3: 아이템 사용 제한은 **플레이어별 라운드 1회**만 남는다 — 전투당 2회(itemPerBattle)와 연속 동일 금지(lastItem)는 제거됐다.
      두 값은 BAL 에서 Infinity / 미참조가 되었고, 여기서도 더 이상 버튼을 막지 않는다. */
   /* Saturn REVISE P1(비공개): 마스킹 기준을 **소유자 관측**으로 바꾼다. 종전 `NET.mode&&ownerP!==NET.me` 는 온라인만 가려서
-     PVE 의 AI 행동 차례에 AI 의 가방·패키지 재고가 사람 화면에 그대로 보였다. viewerIsOwner() 는 온라인·PVE·핫시트를 함께 처리한다. */
-  const mineView=viewerIsOwner(ownerP);
+     PVE 의 AI 행동 차례에 AI 의 가방·패키지 재고가 사람 화면에 그대로 보였다. viewerIsOwner() 는 온라인·PVE·핫시트를 함께 처리한다.
+     (mineView 는 위 #146 비공개 판정과 같은 값을 쓰도록 전투원 판정 앞에서 한 번만 계산한다.) */
   let itemBtns=!mineView?`<small>상대 아이템 비공개</small>`:S.inv[ownerP].map((k,i)=>
     `<button ${dis||itemRound?"disabled":""} title="${ITEMS[k].desc}" onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
   /* #121 계약 2.2·3.1 패키지: 재고·개봉 선택은 **소유자에게만** 보인다. 개봉·버프 선택은 무료 보너스 행동이라
@@ -2144,6 +2233,7 @@ function battleModal(){
     [`<button ${dis||pk.itemGift<=0?"disabled":""} title="아이템 선물 패키지를 열어 회복약·쿨링수·해독제·공용 볼 중 1개를 받습니다 (행동 미소모)" onclick="window.__openPkg('itemGift')">🎁 아이템 선물 ${pk.itemGift}</button>`,
      `<button ${dis||pk.battleBuff<=0||!!buffUsed?"disabled":""} title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')">✨ 전투 버프 ${pk.battleBuff}</button>`].join("");
   const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
+  if(noAtkShow&&!aiActor&&S.mode!=="sim") tutHint("noatk"); // #26·#146 4슬롯 전부 불가가 처음 나올 때 1회 (표시 계층 전용 — 게임 상태·난수·저장소 무변경)
   const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
   const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}<div class="row"><button onclick="window.__menu(null)">← 뒤로</button></div></div>`;
   modal(`<h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>
@@ -2152,17 +2242,18 @@ function battleModal(){
     <div id="bstage">${token(topSide)}${token(mySide)}</div>
     ${buffLine}
     ${panel(mySide)}
-    <div id="msgBox">${busy?"":`${fighterName(side)}의 행동을 선택하세요.`}</div>
+    <div id="msgBox">${busy?"":(noAtkShow?NO_ATTACK_MSG:`${fighterName(side)}의 행동을 선택하세요.`)}</div>
     <div class="bmenu${menu?" hidden":""}" id="bmenu"><b style="grid-column:1/-1;font-size:12px;color:var(--dim)">${pname(ownerP)}:</b>
       <button ${dis?"disabled":""} onclick="window.__menu('fight')">⚔️ 싸우기</button><button ${dis?"disabled":""} onclick="window.__menu('bag')">🎒 가방</button>
-      <button ${dis?"disabled":""} onclick="window.__menu('ball')">🔴 포획</button><button ${dis?"disabled":""} onclick="window.__menu('flee')">🏃 도망가기</button></div>
-    ${sub("fight",`<small>⚔️ 싸우기 — 기술 4슬롯 (전 슬롯 쿨이면 기본 공격)</small><div class="row">${cmdBtns}</div>`)}
+      <button ${dis?"disabled":""} onclick="window.__menu('ball')">🔴 포획</button><button ${dis?"disabled":""} onclick="window.__menu('flee')">🏃 도망가기</button>
+      ${noAtkShow?`<button class="primary" style="grid-column:1/-1" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`:""}</div>
+    ${sub("fight",`<small>⚔️ 싸우기 — 기술 4슬롯</small>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}<div class="row">${cmdBtns}</div>`)}
     ${sub("bag",`<small>🎒 가방 — 아이템은 보너스 행동 (라운드당 1회, 전투 횟수·연속 동일 제한 없음) · 사용 후 같은 행동자의 메뉴로 복귀${itemRound?" · <b>이번 라운드에 이미 사용</b>":""}</small>
       <div class="row">${itemBtns||"<small>아이템 없음</small>"}</div>
       <small>📦 패키지 — 개봉·버프 적용은 행동·아이템 카운터를 소모하지 않습니다${buffUsed?` · 적용된 버프: <b>${BUFFS[buffUsed].ko}</b>`:""}</small>
       <div class="row">${pkgBtns}</div>`)}
     ${sub("ball",`<small>🔴 포획 — 상대 하수인 HP 30% 미만 · 볼 ${mineView?`${S.balls[ownerP]}개`:"비공개"} · 성공 ${pct(BAL.enemyCapProb)}${mineView&&throwWhy?` · <b>${throwWhy}</b>`:""}</small><div class="row">${ballBtn}</div>`)}
-    ${sub("flee",`<small>🏃 도망가기 — 내 HP 50% 미만 · 성공 ${pct(BAL.fleeProb)} · 실패 시 상대 즉시 공격 1회${fleeNote}${fleeWhy?` · <b>${fleeWhy}</b>`:""}</small><div class="row">${fleeBtn}</div>`)}
+    ${sub("flee",`<small>🏃 도망가기 — HP 조건 없음 · 성공 ${pct(fleeP)} · 실패해도 상대의 추가 반격은 없고 내 전투 행동 1회만 소모${fleeNote}</small><div class="row">${fleeBtn}</div>`)}
     <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
     []);
   window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
@@ -2224,7 +2315,7 @@ function battleModal(){
        "전투가 끝나면 즉시 정리"를 깨뜨린다. 전투 객체가 사라지면 회계도 함께 사라진다. */
     if(side==="A") B.buffA=key; else B.buffD=key;
     if(key==="power") f.powerBuff=true;
-    else if(key==="escape") f.fleeFree=true;
+    else if(key==="escape") f.fleeBoost=true;
     else B.maxRounds=BAL.buffTimeRounds;               // 전투 인스턴스 값만 바꾼다 (BAL.maxRounds 전역 불변)
     close(); B.menu=null;
     bmsg(`${BUFFS[key].ko} — ${fighterName(side)}에게 적용!`,{flash:key==="power"?"buff":"guard",st:stFx(side,f)},{key:"itemFx"});
@@ -2263,12 +2354,17 @@ function battleModal(){
     bmsg(`🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 ${S.balls[ownerP]})`,null,{key:"captureFx"});
     nextPhase();
   };
-  window.__fleeCore=()=>{ // #13 도망: 성공 시 전투 즉시 종료(판정·제거 없음·battlesUsed 유지), 실패 시 행동 소모+상대 즉시 공격 1회
-    if(S.battle!==B||!canFlee) return;
+  /* #13 → #146 도망: 성공 시 전투 즉시 종료(판정·제거 없음·battlesUsed 유지), **실패 시 자기 전투 행동 1회만 소모**한다.
+     실패 반격(fleeCounter)은 #146 계약으로 삭제됐다 — 상대는 자기 정상 차례를 그대로 받는다(nextPhase 가 차례를 넘긴다).
+     Saturn P1 계열 가드와 같은 이유로 (a) 같은 전투인지 (b) 지금이 이 side 의 행동 차례인지를 실행 직전에 다시 본다:
+     도망은 이제 HP 게이트가 없어 disabled 표시만으로는 중복 클릭·늦은 콜백·수신 프레임을 막지 못한다. */
+  window.__fleeCore=()=>{
+    if(!actionFresh()) return;   // 같은 전투·내 차례·아직 이 렌더의 행동을 쓰지 않았고·연출 재생 중이 아닐 때만
+    B.actSeq++;                  // 여기서부터 이 클로저는 무효 — 두 번째 호출은 위 가드에서 걸린다
     met(ownerP,"fleeTries");
     B.menu=null;
     bmsg(`🏃 ${fighterName(side)}의 도망 시도!`,null,{key:"fleeFx"});
-    if(rand()<BAL.fleeProb){
+    if(rand()<fleeProbOf(f)){
       met(ownerP,"fleeOks");
       const piece=side==="A"?B.attP:B.defP, oppPiece=side==="A"?B.defP:B.attP; // #114 전투 상대(former opponent)는 전투 객체가 사라진 뒤에도 교환·밀기 대상으로 보존
       bmsg(`🏃 도망 성공! 전투가 종료되었다.`);
@@ -2279,8 +2375,28 @@ function battleModal(){
       battleEndFx(q,{title:"도망 성공 — 전투 종료",cls:""},()=>{ if(!S.battle){ close(); fleeSwapPrompt(piece,oppPiece); } });
       return;
     }
-    bmsg(`🏃 도망 실패! 상대의 공격이 이어진다.`);
-    fleeCounter(side);
+    /* #146: 실패해도 추가 반격은 없다. 자기 전투 행동 1회만 쓰고 차례가 넘어간다 (약화 횟수·주 행동·전투 횟수 무변경) */
+    bmsg(`🏃 도망 실패! 이번 행동을 놓쳤다.`);
+    nextPhase();
+  };
+  /* #146 계약: 4슬롯이 전부 불가할 때의 **수동** 전투 행동 넘기기. 자동 진행이 아니라 사람이 [턴 종료]를 눌러야 실행된다.
+     차단 대상(전부 조용히 무시 — 상대에게는 아무 안내도 새지 않는다):
+       · 다른 전투 / 지난 렌더의 오래된 클로저 (S.battle!==B)
+       · 지금이 내 전투 행동 차례가 아님 (actorOfPhase)
+       · 사실은 쓸 수 있는 공격이 있음 — 쿨링수·냉각으로 슬롯이 살아난 뒤의 늦은 클릭, 또는 UI 밖에서 온 불법 호출
+       · 왕·동료 본체(f.skills 없음) — 기본 공격이 있으므로 넘기기 대상이 아니다
+     소모하는 것은 **자기 전투 행동 1회**(nextPhase)뿐이다: 보드 주 행동·턴당 전투 횟수·약화 잔여 횟수·난수는 건드리지 않는다. */
+  window.__passCore=()=>{
+    if(!actionFresh()) return;   // 중복 클릭·라운드 경계 연속 행동·연출 재생 중 호출을 모두 막는다
+    if(!f.skills) return;
+    if(f.skills.some((sid2,i)=>slotUsable(f,i,side))) return;
+    B.actSeq++;
+    B.menu=null;
+    /* 비공개: B.blog 는 양측이 공유하는 상태다. **왜** 넘겼는지(= 내 기술 4칸이 전부 막혔다)는
+       상대의 미공개 정보이므로 공개 로그에는 중립적인 결과만 남긴다 (#121 5.3 봉인 사유 비공개와 같은 원칙).
+       사유 안내는 소유자 화면의 모달·도움말에만 있다. */
+    bmsg(`⏭ ${fighterName(side)}는 이번 행동을 넘겼다.`);
+    nextPhase();
   };
   window.__actCore=kind=>{
     /* Saturn REVISE P1: 전투 커맨드의 실제 적용 지점이다. 이 클로저는 렌더 시점의 B·side·f 를 들고 있으므로
@@ -2293,8 +2409,13 @@ function battleModal(){
     let slot=null;
     if(typeof kind==="number"){ if(f.skills&&f.skills[kind]!==undefined) slot=kind; }
     /* Saturn P1: 'basic' 은 **쿨이 아니라 합법성**을 본다. 종전 `f.cds[0]===0` 은 슬롯0 이 봉인된 사신이어도 그 슬롯으로
-       들어가, 계약 5.3 "기본 공격 폴백을 사신으로 강제 매핑하지 않는다" 를 깼다. 합법이 아니면 순수 기본 공격(-1)이다. */
-    else if(kind==="basic") slot=(f.skills&&slotUsable(f,0,side))?0:-1;
+       들어가, 계약 5.3 "기본 공격 폴백을 사신으로 강제 매핑하지 않는다" 를 깼다. 합법이 아니면 순수 기본 공격(-1)이다.
+       #146: 4슬롯 전투원에게 순수 기본 공격(-1)은 더 이상 존재하지 않는다. UI 는 그 버튼을 그리지 않으므로 여기로 들어오는
+       'basic' 은 오래된 클로저·수신 프레임·UI 밖 호출뿐이다 — 조용히 거부한다 (왕·동료 본체는 f.skills 가 없어 해당 없음). */
+    else if(kind==="basic"){
+      if(f.skills&&!slotUsable(f,0,side)) return;
+      slot=f.skills?0:-1;
+    }
     else if(kind==="skill"&&f.skills) slot=1;
     else if(kind==="common"&&f.skills) slot=2;
     if(slot!==null){ execSlot(side,slot); return; }
@@ -2319,7 +2440,7 @@ function battleModal(){
     }
     if(f.element==="grass"){
       dmg=Math.round(dmg*sp.grassDmgMult);
-      if(sp.shieldPct) f.shield=Math.round(f.maxHp*sp.shieldPct);
+      if(sp.shieldPct) f.shield=(f.shield||0)+Math.round(f.maxHp*sp.shieldPct); // #130: 레거시 경로도 합산 (직접 대입 금지)
       const gh=Math.round(f.maxHp*sp.healPct);
       f.hp=Math.min(f.maxHp,f.hp+gh);
       bmsg(sp.shieldPct?`🌿 보호막·회복 획득!`:`🌿 회복 획득!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)});
@@ -2393,11 +2514,19 @@ function witchApply(side,oSide,f,opp,actual){
 function execSlot(side,slot){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A";
+  /* #146 계약 2.4 (Saturn REVISE P1) — **순수 기본 공격(-1)은 4슬롯 전투원에게 존재하지 않는다.**
+     UI 는 그 버튼을 그리지 않지만 execSlot 은 여러 경로의 합류점이다: 레거시 'basic' 별칭, 사신의 낫 거부 폴백,
+     늦은 콜백·수신 프레임, 테스트·콘솔의 직접 호출. 그 전부를 여기 한 곳에서 막는다.
+     거부는 아무것도 바꾸지 않는다 — HP·상태·차례·난수 소비 0. 전투가 멈추지 않게 화면만 다시 그려
+     지금 합법인 메뉴(합법 슬롯이 있으면 그 슬롯, 없으면 안내 + 수동 [턴 종료])로 되돌린다.
+     왕·동료 본체와 구형 경로(f.skills 없음)의 기본 공격은 이 검사에 걸리지 않는다. */
+  if(slot<0&&f.skills){ battleModal(); return; }
   const sk=(slot>=0&&f.skills)?SKILLS[f.skills[slot]]:null;
   const atkEl=atkElOf(f,sk); // #92 판정 속성: 공격기는 기술 속성, 기본 공격·시그니처(잔류장 포함)는 본체 속성 · #121 cls 기술은 null(중립)
   /* #121 계약 5.3 💀 사신의 낫 — 피해 파이프라인을 타지 않는 별도 분기다. **게이트를 여기서 최신 상태로 한 번 더 검사한다**:
-     UI·AI·수신 프레임·늦은 콜백 어느 경로로 불법 슬롯이 들어와도 즉사가 새지 않는다. 불가하면 기본 공격으로 폴백해
-     전투가 멈추지 않게 한다 (계약 5.3 폴백 — 기본 공격을 사신으로 강제 매핑하지 않는다).
+     UI·AI·수신 프레임·늦은 콜백 어느 경로로 불법 슬롯이 들어와도 즉사가 새지 않는다.
+     #146 계약 2.4: 불가할 때의 **기본 공격 폴백은 철회**됐다 — 4슬롯 전투원이면 아래 execSlot(-1) 가드가 잡아
+     피해·행동·난수 없이 화면만 다시 그린다 (다른 슬롯이 합법이어도 기본 공격으로 대신하지 않는다).
      효과: 보호막을 무시하고 즉사. 별도 반동·VIP 면역 예외는 없고, 승패 연쇄(대리 패배 시 동료 동시 제거 · 왕 대리면 경기 패배)는
      기존 checkDeath → finishBattle 경로를 그대로 쓴다. 난수 소비 0. */
   if(sk&&sk.reaper){
@@ -2411,11 +2540,11 @@ function execSlot(side,slot){
     const ownerOf=side==="A"?B.attP.owner:B.defP.owner;
     const tellOwner=msg=>{ try{ if(viewerIsOwner(ownerOf)) showToast(msg); }catch(e){} };
     if(f.cds[slot]>0){ tellOwner(`💀 사신의 낫은 쿨타임입니다 (남은 쿨 ${f.cds[slot]})`);
-      execSlot(side,-1); return; }
+      execSlot(side,-1); return; }   // #146: 4슬롯 전투원이므로 위 -1 가드가 잡아 **아무 피해도 나가지 않고** 메뉴로 돌아간다
     if(actorOfPhase()!==side) return;                       // 남의 차례에는 아무것도 하지 않는다
     const why=reaperWhy(side);
     if(why){ tellOwner(`💀 사신의 낫은 아직 봉인되어 있습니다 — ${why}`);
-      execSlot(side,-1); return; }
+      execSlot(side,-1); return; }   // 같은 이유로 무동작 — 다른 슬롯이 합법이어도 기본 공격으로 대신하지 않는다
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); // 사용 시 공개
     bmsg(`💀 ${fighterName(side)}의 사신의 낫!`,{sig:true},{key:"skillFx"});
     const lethal=opp.hp; opp.shield=0; opp.hp=0; addRec(side,lethal);
@@ -2447,7 +2576,11 @@ function execSlot(side,slot){
     let effKey="damageFx"; const eb=(t,fx)=>{ bmsg(t,fx,effKey?{key:effKey}:null); effKey=null; };
     if(sk.healPct){const h=Math.round(f.maxHp*sk.healPct); f.hp=Math.min(f.maxHp,f.hp+h);
       eb(`💚 HP ${h} 회복!`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
-    if(sk.shieldPct){f.shield=Math.max(f.shield,Math.round(f.maxHp*sk.shieldPct)); // 보호막 중첩: 최대값 갱신 (합산 금지)
+    /* #130 (v0.4.7 CJ 2026-09-10): 보호막은 **남은 보호막 + 이번 기술의 기존 부여량**으로 합산한다 (종전 최대값 갱신 폐기).
+       같은 기술이든 다른 기술이든, 공격 부가든 레거시 경로든 같은 규칙이다. 새 수치·상한·지속 시간은 추가하지 않는다.
+       예: 최대 HP 100 에서 18 → 22 를 이어 쓰면 40. 10 을 소모한 뒤 22 를 더 받으면 30+22=52.
+       누적이 최대 HP 를 넘어도 수치는 손실 없이 그대로 남는다 (막대 폭만 100% 에서 멈춘다). */
+    if(sk.shieldPct){f.shield=(f.shield||0)+Math.round(f.maxHp*sk.shieldPct);
       eb(`🛡 보호막 ${f.shield}!`,{st:stFx(side,f)});}
     if(sk.dmgCut){f.dmgCut=Math.max(f.dmgCut,sk.dmgCut);
       eb(`🌀 다음 피격 ${pct(sk.dmgCut)} 감소!`,{st:stFx(side,f)});}
@@ -2498,7 +2631,7 @@ function execSlot(side,slot){
     if(sk){
       if(sk.drainPct&&actual>0){const gh=Math.round(actual*sk.drainPct); f.hp=Math.min(f.maxHp,f.hp+gh);
         bmsg(`🌿 흡수 — HP ${gh} 회복!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
-      if(sk.selfShieldPct){f.shield=Math.max(f.shield,Math.round(f.maxHp*sk.selfShieldPct));
+      if(sk.selfShieldPct){f.shield=(f.shield||0)+Math.round(f.maxHp*sk.selfShieldPct); // #130: 공격 부가 보호막도 합산
         bmsg(`🌿 보호막 ${f.shield}!`,{st:stFx(side,f)});}
       if(sk.witch) witchApply(side,oSide,f,opp,actual); // #121 계약 5.2 — 피해 확정 뒤(실HP 피해 actual 기준) 2효과를 100% 적용
       if(sk.status) applyStatus(false);
@@ -2607,6 +2740,10 @@ function addRec(side,amount){
 }
 function nextPhase(){
   const B=S.battle;
+  /* #146 Saturn REVISE P1: 전투 행동 하나가 끝나고 차례가 넘어가는 **유일한 지점**이다.
+     여기서 공유 토큰을 올려 두면 그 이전 렌더가 낸 도망·패스 콜백은 어떤 행동(일반 공격·포획 실패 포함)을
+     거쳤든 전부 무효가 된다. 표시 계층이 아니라 게임 상태이므로 온라인 양측이 같은 값을 갖는다. */
+  B.actSeq=(B.actSeq||0)+1;
   if(B.phase===0){B.phase=1; battleModal(); return;}
   for(const [f,side] of [[B.fa,"A"],[B.fd,"D"]]){
     if(f.burn>0){const d=Math.min(f.hp,Math.round(f.maxHp*BAL.burnPct)); f.hp-=d; f.burn--;
@@ -2669,10 +2806,10 @@ function finishBattle(winSide,how){
   render();
 }
 /* 전투 종료 공통 정리 — finishBattle(승패·판정) · __fleeCore(도망 성공) · finishByCapture(적 포획) 세 경로가 모두 이 함수를 부른다.
-   #121 계약 3.1: 버프 플래그(powerBuff·fleeFree)도 여기서 지운다. 본체 출전이면 f === 말 객체라 지우지 않으면 다음 전투로 새어 나간다.
+   #121 계약 3.1: 버프 플래그(powerBuff·fleeBoost)도 여기서 지운다. 본체 출전이면 f === 말 객체라 지우지 않으면 다음 전투로 새어 나간다.
    전투 인스턴스 회계(B.buffA/B.buffD·B.maxRounds)는 S.battle 이 null 이 되면서 함께 사라지고, 쓰지 않은 패키지 재고(S.pkgs)는 보존된다. */
 function resetAfter(f){f.burn=0;f.burnBy=null;f.weaken=0;f.shield=0;f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
-  f.powerBuff=false;f.fleeFree=false;}
+  f.powerBuff=false;f.fleeBoost=false;}
 /* #12 포획 종료: 적 하수인 즉시 제거 + S.reserve 저장 — 누적 판정 없이 전투 즉시 종료 (포획으로 승리) */
 function finishByCapture(side){
   const B=S.battle;
@@ -2696,16 +2833,8 @@ function finishByCapture(side){
   afterBattle(attacker, side==="A"&&attacker.alive);
   render();
 }
-/* #13 도망 실패 반격: 상대의 즉시 공격 1회 — 기본 행동 AI 선택 로직 재사용 (최고 위력 가용 공격 슬롯, 없으면 기본 공격) */
-function fleeCounter(fleeSide){
-  const B=S.battle; if(!B) return;
-  const oSide=fleeSide==="A"?"D":"A", of=oSide==="A"?B.fa:B.fd;
-  let slot=-1;
-  if(of.skills)
-    for(let i=0;i<4;i++){const sk=SKILLS[of.skills[i]];
-      if(of.cds[i]===0&&sk.pow&&(slot<0||sk.pow>SKILLS[of.skills[slot]].pow)) slot=i;}
-  execSlot(oSide,slot); // 도망 측 행동 소모로 처리 (nextPhase는 execSlot이 호출)
-}
+/* #146 (v0.4.7 CJ 2026-09-10): 도망 실패 반격(fleeCounter)은 **계약에서 삭제**됐다.
+   실패는 자기 전투 행동 1회 소모로 끝나고 상대는 정상 차례를 그대로 받는다 — __fleeCore 의 nextPhase 경로 하나뿐이다. */
 /* #13 → #114 도망 성공 후: 보드에서 후방 자기 말을 골라 위치 교환(생략 가능) → 밀기 (docs/v0.4.5-analysis.md 3장 계약 5·6).
    입력 주인은 도망친 말의 소유자(방어자일 수 있어 S.current 와 다름) — 온라인은 netActor() 가 소유자를 돌려주므로 소유자 클라이언트만 cell/fleeSkip 을 송신하고 상대는 대기.
    교환하면 전선으로 들어온 말 ↔ 전투 상대를, 생략하거나 후방 후보가 없으면 도망친 말 ↔ 상대를 민다. 교환·밀기·재배치는 강제 전투·탐색 흔적을 만들지 않는다.
@@ -3076,7 +3205,9 @@ function aiBattleAction(){
      &&rand()<0.4+0.4*prof.capture){ window.__throwBall(); return; }
   // #13 도망: 동료·왕 본체 또는 열세 전투원 (caution 가중)
   const myPc=side==="A"?B.attP:B.defP;
-  if(f.hp<f.maxHp*0.5||f.fleeFree){ // #121 계약 3.4: 도망의 수호자로 HP 조건 해제
+  /* #146: 규칙상 도망은 HP 조건이 없다. 아래 임계는 **AI 의 판단 휴리스틱**이지 규칙 게이트가 아니다
+     (도망의 수호자를 쓴 전투원은 성공률이 70% 라 열세가 아니어도 후보로 본다). */
+  if(f.hp<f.maxHp*0.5||f.fleeBoost){
     const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
     const losing=f.hp/f.maxHp<opp.hp/opp.maxHp-0.15;
     if((vipBody||losing)&&rand()<(vipBody?0.5:0.25)*caut){ window.__flee(); return; }
@@ -3089,7 +3220,7 @@ function aiBattleAction(){
   }
   // #121 계약 5.3: 쿨만이 아니라 **봉인·조건 미충족**도 불법이다. AI 는 slotUsable 로 합법 슬롯만 본다 (불법 선택 금지)
   const usable=f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>slotUsable(f,x.i,side));
-  if(!usable.length){ window.__act("basic"); return; } // 쓸 수 있는 슬롯이 없으면 폴백 기본 공격 (사신으로 강제 매핑하지 않는다)
+  if(!usable.length){ window.__pass(); return; } // #146: 합법 슬롯이 없으면 기본 공격이 아니라 전투 행동을 넘긴다 (사람 UI 와 같은 규칙)
   const multOf=el=>{ // #92 기대 피해 상성은 기술 속성(공격기) 기준 — 기본 공격·시그니처는 본체 속성
     const adv=el&&opp.element&&BEATS[el]===opp.element, disadv=el&&opp.element&&BEATS[opp.element]===el;
     return (adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1); };
@@ -3109,7 +3240,7 @@ function aiBattleAction(){
       sc*=prof.aggression;
     } else { // 보조기·불굴 진형
       if(sk.healPct) sc=lowHp?20+10*caut:2;
-      else if(sk.shieldPct) sc=(lowHp?14:5)*(f.shield>0?0.3:1);
+      else if(sk.shieldPct) sc=lowHp?14:5; // #130: 합산이므로 이미 막이 있어도 새 부여량이 그대로 더해진다 — 중복 감점(×0.3) 폐기
       else if(sk.dmgCut) sc=lowHp?10:3;
       else if(sk.focus) sc=(!f.focusCharge&&!lowHp)?7:1;
       else if(sk.coolAny) sc=f.cds.some((c,j)=>j!==i&&c>=2)?6:0.5;
@@ -3441,12 +3572,12 @@ function aiBattleActionStrong(side){
   const thrown=side==="A"?B.ballThrowA:B.ballThrowD;
   if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown&&(!killNow||f.hp>f.maxHp*0.6)){ window.__throwBall(); return; }
   // 도망: 본체 VIP가 죽을 위기이거나 열세 전투 (확정 킬 가능하면 안 함)
-  if((f.hp<f.maxHp*0.5||f.fleeFree)&&!killNow){ // #121 계약 3.4: 도망의 수호자로 HP 조건이 풀렸으면 그 경로도 본다
+  if((f.hp<f.maxHp*0.5||f.fleeBoost)&&!killNow){ // #146: 규칙 게이트가 아니라 5단 AI 의 휴리스틱 임계 (도망의 수호자는 성공률 70%)
     const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
     if((vipBody&&(losing||toKillMe<=1))||(losing&&toKillMe<=2)){ window.__flee(); return; }
   }
   if(!f.skills){ if(f.skillAtk&&f.cd===0){window.__act("skill");return;} window.__act("basic"); return; }
-  if(!usable.length){ window.__act("basic"); return; }
+  if(!usable.length){ window.__pass(); return; } // #146: 5단도 같은 규칙 — 폴백 기본 공격은 없다
   const lowHp=f.hp<=oppEst*1.5;
   const scored=usable.map(({i,sk})=>{
     let sc=0;
@@ -3465,7 +3596,7 @@ function aiBattleActionStrong(side){
       if(sk.selfVuln&&lowHp) sc-=8;
     } else {
       if(sk.healPct) sc=(lowHp&&toKillOpp>1)?25:1;
-      else if(sk.shieldPct) sc=(lowHp&&toKillOpp>1?16:4)*(f.shield>0?0.3:1);
+      else if(sk.shieldPct) sc=(lowHp&&toKillOpp>1)?16:4; // #130: 합산 — 중복 감점(×0.3) 폐기
       else if(sk.dmgCut) sc=lowHp&&toKillOpp>1?12:2;
       else if(sk.focus) sc=(!f.focusCharge&&toKillOpp>=2&&!lowHp)?8:0.5;
       else if(sk.coolAny) sc=f.cds.some((c,j)=>j!==i&&c>=2)?5:0.3;
@@ -3706,7 +3837,15 @@ const TUT_SCENES={
       {t:"싸움이 끝나면",vis:TSV.stack(TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60 그대로","txt")),TSV.row(TSV.lbl("⏳ 쿨타임 그대로","txt")),TSV.row(`<span class="tut-strike">🔥 화상 · ☠ 약화</span>`,TSV.arr(),TSV.lbl("상태이상은 사라져요 ✓","ok"))),res:"HP·쿨타임 유지 · 상태이상 해제"},
       {t:"6라운드가 끝나면",vis:TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60%","ok"),TSV.lbl("vs"),TSV.dhp(0.4,"bad"),TSV.lbl("HP 40%","bad"),TSV.arr(),TSV.lbl("60% 승 ✓","ok")),res:"남은 HP 비율이 높은 쪽 승리 · 같으면 지킨 쪽",tone:"ok"}, // #106 T6
       {t:"동료·왕끼리는 밀기",vis:TSV.svg(112,44,"내 동료와 상대 동료가 붙자 싸우지 않고 서로 반대쪽으로 한 칸씩 밀려나 사이에 빈 칸 두 개가 생기는 장면",
-        TSV.grid(2,11,5,1)+TSV.tok(35,22,"🤝","ghost")+TSV.tok(57,22,"🤝","opghost")+TSV.arrow(30,6,16,6,C.acc)+TSV.arrow(62,6,76,6,C.bad)+TSV.tok(13,22,"🤝","me")+TSV.tok(79,22,"🤝","op")),res:"싸움 없이 각자 한 칸씩 뒤로 · 정체는 그대로 비밀"}]; }, // #114 상황 8
+        TSV.grid(2,11,5,1)+TSV.tok(35,22,"🤝","ghost")+TSV.tok(57,22,"🤝","opghost")+TSV.arrow(30,6,16,6,C.acc)+TSV.arrow(62,6,76,6,C.bad)+TSV.tok(13,22,"🤝","me")+TSV.tok(79,22,"🤝","op")),res:"싸움 없이 각자 한 칸씩 뒤로 · 정체는 그대로 비밀"}, // #114 상황 8
+      /* #146: 4칸이 전부 못 쓰는 상태이면 기본 공격이 나오지 않는다는 새 규칙 */
+      {t:"공격할 게 없을 때",vis:TSV.stack(TSV.row(TSV.pill("⏳"),TSV.pill("⏳"),TSV.pill("⏳"),TSV.pill("🔒"),TSV.arr(C.bad),TSV.lbl("공격 없음","bad")),
+        TSV.row(TSV.lbl("기본 공격","bad"),TSV.arr(C.bad),TSV.lbl("나오지 않아요","bad")),TSV.row(TSV.pill("턴 종료","acc"),TSV.lbl("직접 눌러요"))),
+       res:"누르기 전에는 저절로 진행되지 않아요 · 🎒 가방·🔴 포획·🏃 도망은 그대로 · 왕·동료 본체는 기본 공격 유지",tone:"bad"},
+      /* #130: 보호막 합산 규칙 */
+      {t:"보호막은 쌓여요",vis:TSV.stack(TSV.row(TSV.pill("🛡 18"),TSV.lbl("+"),TSV.pill("🛡 22"),TSV.arr(),TSV.lbl("🛡 40","ok")),
+        TSV.row(TSV.pill("🛡 40"),TSV.lbl("−10"),TSV.arr(),TSV.pill("🛡 30"),TSV.lbl("+"),TSV.pill("🛡 22"),TSV.arr(),TSV.lbl("🛡 52","ok"))),
+       res:"남은 보호막 + 새로 받은 보호막 · 10을 깎인 뒤 22를 더 받으면 52 · HP보다 먼저 깎여요",tone:"ok"}]; },
   bombtrap(){ const C=TSV.C;
     const g1=TSV.grid(2,2,3,1)+TSV.tok(13,13,"💣","me")+TSV.arrow(24,13,42,13)+TSV.grid(2,34,2,1)+TSV.tok(13,45,"🪤","me")+TSV.g(35,45,"🔒",12);
     const g2=TSV.tok(14,20,"⚔","me")+TSV.arrow(24,20,32,20,C.bad)+TSV.tok(44,20,"💣","op")+TSV.g(29,6,"💥",12)+TSV.x(14,20,7)+TSV.x(44,20,7)
@@ -3725,8 +3864,9 @@ const TUT_SCENES={
        res:"상대 하수인 HP 30% 아래 → 몬스터볼 · 아이템은 한 라운드에 한 번"},
       {t:"결과: 둘 다 볼 −1",vis:TSV.stack(TSV.row(TSV.lbl("✓ 성공","ok"),TSV.pill("예비 HP 70/100","own")),TSV.row(TSV.lbl("✗ 실패","bad"),TSV.lbl("볼이 튕겨요")),TSV.row(TSV.pill("🔴 볼 −1"))),
        res:"성공·실패 모두 볼 1개 소모 · 숲 포획은 그 종 그대로 · ✨ 버프는 한 싸움에 하나"},
-      {t:"도망: 내 HP 50% 아래",vis:TSV.row(TSV.svg(44,44,"HP 막대가 40%까지 줄어든 내 하수인",g3,"tut-ico lg"),TSV.lbl("HP 40%","gold"),`<span class="tut-big">🏃</span>`,TSV.arr(),TSV.lbl("성공률 50%","gold")),res:"내 말 HP 50% 아래 → 도망"},
-      {t:"도망 결과",vis:TSV.stack(TSV.row(TSV.lbl("✓ 성공","ok"),TSV.dtok("⚔","me",1),TSV.lbl("⇄","txt"),TSV.dtok("💣","me",1),TSV.lbl("보드에서 뒷말 클릭 → 교환 → 밀기")),TSV.row(TSV.lbl("✗ 실패","bad"),TSV.dtok("⚔","op",1),TSV.arr(C.bad),TSV.dtok("⚔","me",1),TSV.lbl("⚡ 바로 공격"))),res:"성공: 뒷말 고르기(생략 가능) → 교환 → 한 칸씩 밀기 · 실패: 상대가 한 번 더 때려요"}]; },
+      {t:"도망: 언제든 가능",vis:TSV.row(TSV.svg(44,44,"HP 막대가 40%까지 줄어든 내 하수인",g3,"tut-ico lg"),TSV.lbl("HP 조건 없음","gold"),`<span class="tut-big">🏃</span>`,TSV.arr(),TSV.lbl("성공률 30%","gold"),TSV.lbl("✨ 쓰면 70%","ok")),res:"HP 조건 없음 · 기본 30% · 🏃 도망의 수호자를 쓰면 그 싸움 동안 70%"},
+      {t:"도망 성공",vis:TSV.row(TSV.lbl("✓ 성공","ok"),TSV.dtok("⚔","me",1),TSV.lbl("⇄","txt"),TSV.dtok("💣","me",1),TSV.arr(),TSV.lbl("한 칸씩 밀기","txt")),res:"뒷말 고르기(생략 가능) → 교환 → 한 칸씩 밀기 · 싸움 횟수는 그대로",tone:"ok"},
+      {t:"도망 실패",vis:TSV.row(TSV.lbl("✗ 실패","bad"),TSV.dtok("⚔","op",1),TSV.ico("⚡","op","상대의 추가 공격에 엑스 표시",1),TSV.arr(),TSV.lbl("내 차례 한 번만 지나가요","txt")),res:"상대의 추가 공격은 없어요 · 상대는 자기 차례를 그대로 해요",tone:"bad"}]; },
   teleport(){ const C=TSV.C;
     const g1=TSV.grid(6,2,3,4,r=>r<3?"op":"forest",16)+TSV.tok(30,26,"⚔","me",7);
     const g2=TSV.cell(4,9)+TSV.cell(64,9)+TSV.tok(15,20,"💣","me")+TSV.tok(75,20,"⚔","me")+TSV.arrow(28,16,62,16)+TSV.arrow(62,24,28,24);
@@ -3734,7 +3874,10 @@ const TUT_SCENES={
     return [
       {t:"조건",vis:TSV.svg(60,70,"상대 땅 3줄 안에 내 말이 들어가 있는 장면",g1),res:"상대 땅에 내 말 → 🌀 켜짐 ✓",tone:"ok"},
       {t:"둘 자리 바꾸기",vis:TSV.svg(90,40,"내 폭탄과 내 하수인 두 말의 자리가 양방향 화살표로 바뀌는 장면",g2),res:"왕·폭탄·함정도 OK · 횟수 제한 없음 🌀 (한 차례에 주 행동 1개)"},
-      {t:"각자 싸움",vis:TSV.svg(100,42,"바뀐 두 말이 각각 상대 옆에 붙어 따로 싸우는 장면",'<g transform="translate(0 2)">'+g3+'</g>')+TSV.row(TSV.pill("남은 싸움 부족","op"),TSV.lbl("🌀 ✗ 못 써요","bad")),res:"따로따로 싸워요"}]; },
+      {t:"각자 싸움",vis:TSV.svg(100,42,"바뀐 두 말이 각각 상대 옆에 붙어 따로 싸우는 장면",'<g transform="translate(0 2)">'+g3+'</g>')+TSV.row(TSV.pill("남은 싸움 부족","op"),TSV.lbl("🌀 ✗ 못 써요","bad")),res:"따로따로 싸워요"},
+      /* #131: 함정에 걸려 멈춘 말은 양끝 어느 쪽으로도 고를 수 없다 */
+      {t:"함정에 걸린 말은 ✗",vis:TSV.row(TSV.ico("⚔","me","함정에 걸려 멈춘 내 말 위에 엑스 표시",1),TSV.lbl("🪤 걸림","bad"),TSV.lbl("🌀","txt"),TSV.arr(C.bad),TSV.lbl("못 골라요","bad")),
+       res:"먼저 고르는 말도, 바꿀 상대 말도 ✗ · 「함정에 걸린 하수인은 텔레포트를 사용할 수 없습니다」 · 고르던 단계는 그대로",tone:"bad"}]; },
   burning(){ const C=TSV.C;
     const g1=TSV.grid(2,2,1,3)+TSV.tok(13,57,"⚔","me")+TSV.arrow(13,46,13,8)+TSV.arrow(24,35,44,35,C.dim,2,1)+TSV.x(44,35,5);
     const g2=TSV.grid(2,2,1,3,r=>r===0?"op":r===1?"forest":"mid")+TSV.tok(13,57,"⚔","me")+TSV.arrow(13,46,13,28)+TSV.arrow(13,24,13,8,C.dim,2,1)+TSV.x(13,13,5);
@@ -3763,16 +3906,17 @@ const TUT_STEPS=[
      "탐색은 <b>하수인·동료·왕</b>만 할 수 있어요. <b>폭탄·함정은 못</b> 해요.",
      "선물은 <b>🎁 아이템 선물</b>(회복약·몬스터볼 등)·<b>✨ 전투 버프</b>·<b>📘 기술 교체</b> 셋이에요!"]},
   {icon:"⚔️",title:"옆에 붙으면 꼭 싸워요",cards:TUT_SCENES.battle(),
-   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요.","<b>동료·왕</b>끼리는 포획 하수인이 있어도 싸우지 않고 <b>각자 한 칸씩</b> 밀려요. 막히면 제자리예요. 적과 붙어 있으면 <b>자기 편 땅부터 재배치</b>해요."]},
+   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요.","<b>동료·왕</b>끼리는 포획 하수인이 있어도 싸우지 않고 <b>각자 한 칸씩</b> 밀려요. 막히면 제자리예요. 적과 붙어 있으면 <b>자기 편 땅부터 재배치</b>해요.","기술 <b>4칸</b>이 전부 못 쓰는 상태면 <b>기본 공격도 나오지 않아요</b>. 「턴 종료」를 눌러야 내 <b>싸움 차례 한 번</b>만 넘어가요.","<b>보호막(🛡)</b>은 겹쳐 쓰면 <b>남은 양에 더해져요</b>. 18에 22를 더 받으면 <b>40</b>이에요."]},
   {icon:"💣",title:"폭탄과 함정",cards:TUT_SCENES.bombtrap(),
    lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). 상대 옆에 새로 붙으면 터져요. <b>함정</b>은 <b>스스로 움직일 수 없어요</b>.","<b>하수인</b>이 폭탄을 건드리면 둘 다 사라져요. <b>동료·왕</b>은 살아남아요. 폭탄끼리·폭탄과 함정은 <b>서로 한 칸씩</b> 밀려요. 정체는 비밀이에요.","<b>함정</b>을 건드리면 함정은 사라지고 그 말은 <b>내 차례 2번</b> 못 움직여요. 둘 다 정체가 드러나요. 함정도 <b>밀기·재배치</b>로 옮겨질 수 있어요."]},
   {icon:"🔴",title:"잡아오기와 도망치기",cards:TUT_SCENES.capture(),
    lines:["싸울 때 상대 <b>하수인</b> HP가 <b>30%</b> 아래면 <b>몬스터볼</b>을 던져요. 성공률 <b>70%</b>예요.",
      "성공하면 내 <b>예비 하수인</b>(HP 70/100)이 돼요. 성공·실패 모두 볼 <b>1개</b>가 없어져요.",
-     "내 말 HP가 <b>50%</b> 아래면 <b>도망</b>칠 수 있어요. 성공률 <b>50%</b>예요. 실패하면 상대가 바로 한 번 더 때려요.",
-     "성공하면 <b>보드에서 뒤에 있는 내 말</b>과 교환하거나 생략해요. 전선의 내 말과 상대를 <b>한 칸씩</b> 밀어요."]},
+     "<b>도망</b>은 <b>HP 조건 없이</b> 언제든 칠 수 있어요. 기본 성공률은 <b>30%</b>예요.",
+     "성공하면 <b>뒤에 있는 내 말</b>과 교환하거나 생략하고, 상대를 <b>한 칸씩</b> 밀어요.",
+     "실패해도 <b>상대가 더 때리지 않아요</b>. 내 <b>싸움 차례 한 번</b>만 지나가요."]},
   {icon:"🌀",title:"텔레포트(순간이동)",cards:TUT_SCENES.teleport(),
-   lines:["내 말이 <b>상대편 땅</b>(상대 진영 3줄)에 들어가 있으면 <b>텔레포트</b>(순간이동)를 쓸 수 있어요.","텔레포트는 내 말 <b>두 개</b>의 자리를 서로 바꿔요. 왕·폭탄·함정도 돼요. 한 경기에 <b>몇 번이든</b> 쓸 수 있지만, 한 차례의 <b>주 행동</b>을 써요.","바뀐 두 말이 각각 상대 옆에 새로 붙으면 <b>각자 따로</b> 싸워요. 남은 싸움 횟수가 모자라면 못 써요."]},
+   lines:["내 말이 <b>상대편 땅</b>(상대 진영 3줄)에 들어가 있으면 <b>텔레포트</b>(순간이동)를 쓸 수 있어요.","텔레포트는 내 말 <b>두 개</b>의 자리를 서로 바꿔요. 왕·폭탄·함정도 돼요. 한 경기에 <b>몇 번이든</b> 쓸 수 있지만, 한 차례의 <b>주 행동</b>을 써요.","바뀐 두 말이 각각 상대 옆에 새로 붙으면 <b>각자 따로</b> 싸워요. 남은 싸움 횟수가 모자라면 못 써요.","<b>함정</b>에 걸려 멈춘 말은 텔레포트로 <b>자리를 바꿀 수 없어요</b>. 양쪽 어느 자리든 안 돼요."]},
   {icon:"🔥",title:"버닝 타임(불타는 시간)",cards:TUT_SCENES.burning(),banner:"턴 65부터 🔥 버닝 타임",
    lines:["<b>65번째 턴</b>부터 <b>버닝 타임</b>(불타는 시간)이에요. 말이 <b>곧게 2칸</b>까지 움직일 수 있어요.","상대편 <b>숲</b>이나 상대편 <b>땅</b>에 있거나, 들어가거나, 지나갈 때는 그대로 <b>1칸</b>이에요.","<b>폭탄</b>도 2칸 움직여요. <b>함정</b>은 버닝 타임에도 <b>스스로는</b> 못 움직여요. 밀리면 옮겨져요."]},
   {icon:"🏁",title:"빠른 복습 — 첫 차례 체크리스트",cards:TUT_SCENES.recap(),
@@ -3782,10 +3926,13 @@ const TUT_HINTS={ // 첫 발생 시 1회 짧은 상황 도움말 (게임 상태 
   teleport:{icon:"🌀",text:"텔레포트(순간이동)를 쓸 수 있어요! 내 말이 상대편 땅에 들어가 있으면, 내 말 두 개의 자리를 서로 바꿀 수 있어요. 횟수 제한은 없지만 한 차례의 주 행동을 써요."},
   burning:{icon:"🔥",text:"버닝 타임(불타는 시간)이 시작됐어요! 이제부터 말이 곧게 2칸까지 움직일 수 있어요. 함정은 스스로는 못 움직여요."},
   /* #121 계약 10 — 새 규칙의 첫 발생 지점 2곳. 게임 상태·난수·저장소를 건드리지 않는 표시 계층 전용이다 */
-  pkg:{icon:"📦",text:"상자를 받았어요! 싸울 때 🎒 가방에서 열면 무엇을 받을지 직접 골라요. 🎁 은 회복약·쿨링수·해독제·몬스터볼 중 하나, ✨ 은 💪 힘·🧭 시간(1라운드에만, 그 싸움 3라운드)·🏃 도망(HP 조건 해제) 중 하나예요. 상자를 열고 버프를 쓰는 것은 차례를 쓰지 않고, 버프는 한 싸움에 하나만 쓸 수 있어요. 아이템을 실제로 쓰는 건 한 라운드에 한 번이고 다음 라운드엔 같은 것도 또 써요."},
+  pkg:{icon:"📦",text:"상자를 받았어요! 싸울 때 🎒 가방에서 열면 무엇을 받을지 직접 골라요. 🎁 은 회복약·쿨링수·해독제·몬스터볼 중 하나, ✨ 은 💪 힘·🧭 시간(1라운드에만, 그 싸움 3라운드)·🏃 도망(그 싸움 동안 성공률 70%) 중 하나예요. 상자를 열고 버프를 쓰는 것은 차례를 쓰지 않고, 버프는 한 싸움에 하나만 쓸 수 있어요. 아이템을 실제로 쓰는 건 한 라운드에 한 번이고 다음 라운드엔 같은 것도 또 써요."},
+  /* #146·#131 계약 — 새 규칙의 첫 발생 지점 2곳. 표시 계층 전용이라 게임 상태·난수·저장소를 건드리지 않는다 */
+  noatk:{icon:"⏭",text:"기술 4칸이 전부 쿨타임이거나 못 쓰는 상태예요. 이럴 때는 기본 공격이 나오지 않아요 — 「턴 종료」를 눌러야 내 싸움 차례 한 번만 넘어가요. 누르기 전에는 아무것도 저절로 진행되지 않고, 🎒 가방·🔴 포획·🏃 도망은 그대로 쓸 수 있어요. 쿨링수로 쿨타임을 풀면 다시 공격할 수 있어요."},
+  teletrap:{icon:"🪤",text:"함정에 걸려 멈춘 말은 텔레포트로 자리를 바꿀 수 없어요. 먼저 고르는 말도, 바꿀 상대 말도 안 돼요. 다른 말을 고르거나, 멈춤이 풀릴 때까지 기다려요."},
   recruit:{icon:"📘",text:"새 기술을 배우거나 공용 하수인을 잡을 수 있어요! 기술은 🐉 드래곤 숨결·🕯 마녀의 장난·💀 사신의 낫 중에서 직접 고르고, 내 하수인 6개 중 살아 있는 말의 기술 4칸 어디든 바꿀 수 있어요. 같은 기술은 한 말에 두 번 못 넣어요. 잡은 하수인은 동료나 왕이 받고 그 종의 능력 그대로 와요. 포기해도 이 칸은 다시 쓸 수 없어요."}
 };
-const TUT={open:false,step:0,seenThisLoad:false,auto:false,hints:{teleport:false,burning:false,pkg:false,recruit:false},hintShown:null,restore:null,btns:[]};
+const TUT={open:false,step:0,seenThisLoad:false,auto:false,hints:{teleport:false,burning:false,pkg:false,recruit:false,noatk:false,teletrap:false},hintShown:null,restore:null,btns:[]};
 const tutStore={ // localStorage 미지원·접근 예외(SecurityError 등)·쓰기 예외(용량·시크릿 모드) 모두 허용 — 실패 시 false
   get(){ try{ const ls=window.localStorage; return !!ls&&ls.getItem(TUT_KEY)==="1"; }catch(e){ return false; } },
   set(){ try{ const ls=window.localStorage; if(!ls) return false; ls.setItem(TUT_KEY,"1"); return true; }catch(e){ return false; } }
@@ -3936,6 +4083,7 @@ function applyAction(a){
     case "item": if(window.__useItemCore) window.__useItemCore(a.i); break;
     case "ball": if(window.__throwBallCore) window.__throwBallCore(); break;
     case "flee": if(window.__fleeCore) window.__fleeCore(); break;
+    case "pass": if(window.__passCore) window.__passCore(); break; // #146 수동 전투 행동 넘기기 (rand 소비 0 · 양측 같은 프레임)
     case "pkgOpen": if(window.__openPkgCore) window.__openPkgCore(a.kind); break; // #121 패키지 개봉 화면 (rand 0)
     /* 개봉·버프 확정과 탐색 보상 선택에는 **별도 semantic 액션을 두지 않는다.** 그 선택들은 buttons 를 가진 동기화 모달에서
        일어나므로 modal() 래퍼의 {t:"modal",seq,i} 중계가 이미 단일 경로다. 액션을 하나 더 만들면 이중 적용 통로가 된다. */
@@ -3946,7 +4094,7 @@ function applyAction(a){
 function netReady(a){ // #106 3.1-4: 잠금(배너·연출·메시지 재생) 중에는 큐에 보관만 하고 idle 에 적용 — 드롭·재정렬 없음, 워치독으로 잠금은 반드시 풀린다
   if(!NET.started||!S) return false;
   if(a.t==="modal") return !!NET.syncModal&&NET.syncModal.seq===a.seq&&!fxLocked();
-  if(a.t==="act"||a.t==="item"||a.t==="ball"||a.t==="flee"||a.t==="pkgOpen")
+  if(a.t==="act"||a.t==="item"||a.t==="ball"||a.t==="flee"||a.t==="pass"||a.t==="pkgOpen")
     return !!S.battle&&!fxLocked()&&S.battle.msgQ.length===0&&!!window.__actCore; // #121: 패키지 개봉 화면 열기도 전투 프레임과 같은 준비 조건
   return !fxLocked();
 }
@@ -3971,6 +4119,7 @@ window.__act=k=>netAction({t:"act",k});
 window.__useItem=i=>netAction({t:"item",i});
 window.__throwBall=()=>netAction({t:"ball"});
 window.__flee=()=>netAction({t:"flee"});
+window.__pass=()=>netAction({t:"pass"}); // #146: 4슬롯 전부 불가일 때의 수동 [턴 종료] (자기 전투 행동 1회)
 /* #121 계약 2.2·3·9: 패키지 개봉 화면 열기와 확정 선택도 다른 입력과 같은 단일 경로(netAction)를 탄다 —
    소유자만 보내고, 양측이 같은 순서로 같은 코어를 실행한다. 난수를 쓰지 않으므로 시드 스트림에 영향이 없다 */
 /* 가방의 📦 버튼은 **전투 모달 안의 인라인 버튼**이다. 전투 모달은 buttons 가 비어 있어(syncModal=null) 자동 중계가 없으므로
