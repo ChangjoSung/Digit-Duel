@@ -1,6 +1,6 @@
 # Digit Dual — Roblox 포팅 (Phase 3: 3D 로비 · 보드게임 창 · AI 봇)
 
-HTML 데모(`demo/index.html` v0.4.5)의 Roblox 포팅. CJ 결정(2026-09-09)으로 플랫폼 방향을 Roblox로 전환했다 (Ref #118).
+HTML 데모(`demo/index.html` — 규칙 기준 **v0.4.7** #121·#125·#129 반영)의 Roblox 포팅. CJ 결정(2026-09-09)으로 플랫폼 방향을 Roblox로 전환했다 (Ref #118).
 
 ## 구조
 
@@ -43,8 +43,8 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 | `heal` | `{id}` | #106 회복 주 행동 |
 | `skipMain` / `endTurn` / `resign` | | 동일 |
 | `vipPick` | `{use="body"\|"cap"}` | vipChoice 모달 |
-| `capTry` / `capSkip` | `{mode="safe"\|"risky"\|"attack"}` | captureModal |
-| `recruitSwap` / `recruitKeep` | `{slot=1\|2}` | recruitModal (#92) |
+| `recruitSwap` / `capTry` / `recruitKeep` | `{skill,targetId,slot=1..4}` / `{mode,recvId}` | #121 탐색 보상 선택 (기술 교체 · 숲 포획 · 포기) |
+| `gift` / `buff` | `{pick=potion\|cool\|cure\|ball}` / `{kind=power\|time\|escape}` | #121 패키지 개봉·전투 버프 (무료 보너스 행동) |
 | `act` | `{k=1..4\|"basic"}` | 전투 4슬롯 (JS 0~3 → **1~4**) |
 | `item` / `ball` / `flee` | `{i=인벤 인덱스}` | 전투 보너스 행동 |
 | `fleeSwap` / `fleeSkip` | `{id}` | #114 도망 교환 |

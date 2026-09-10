@@ -45,7 +45,10 @@ function Battle.attach(Engine, deps)
 		f.vulnMark = false
 		f.dmgCut = 0
 		f.atkBuff = false
+		f.powerBuff = false -- #121 계약 3.1: 버프는 전투 간 이어지지 않는다
+		f.fleeFree = false
 	end
+	Engine.resetFighterTemps = resetTemps
 
 	local function addRec(B, side, amount)
 		if side == "A" then
@@ -243,6 +246,7 @@ function Battle.attach(Engine, deps)
 			lastItemA = nil, lastItemD = nil,
 			ballThrowA = false, ballThrowD = false,
 			blog = {},
+			buffA = nil, buffD = nil, maxRounds = nil, -- #121 계약 3: 버프 회계(플레이어별 한 전투 1개)·시간의 수호자 라운드 상한 (전역 불변)
 		}
 		resetTemps(fa)
 		resetTemps(fd)
@@ -273,6 +277,79 @@ function Battle.attach(Engine, deps)
 		return firstIsAtt and "D" or "A"
 	end
 
+	-- #121 계약 3.3: 이 전투의 최대 라운드 — 전투 인스턴스 값이 있으면 그것, 없으면 전역 BAL.maxRounds
+	function Engine:battleMaxRounds()
+		local B = self.S.battle
+		return (B and B.maxRounds) or BAL.maxRounds
+	end
+
+	-- #121 계약 5.3 사신의 낫 사용 자격 — CD 와 분리된 봉인. 매 사용 시점 최신 상태로 검사. nil = 가능, 아니면 사유
+	function Engine:reaperWhy(side)
+		local B = self.S.battle
+		if not B then
+			return "전투 중에만 사용할 수 있습니다"
+		end
+		local f = (side == "A") and B.fa or B.fd
+		local opp = (side == "A") and B.fd or B.fa
+		local cap = self:battleMaxRounds()
+		if cap < BAL.reaperRound then
+			return ("이 전투는 %d라운드까지입니다 — 봉인 해제 불가"):format(cap)
+		end
+		if B.round < BAL.reaperRound then
+			return ("%d라운드부터 (현재 %dR) — 봉인"):format(BAL.reaperRound, B.round)
+		end
+		local mine, theirs = f.hp / f.maxHp, opp.hp / opp.maxHp
+		if not (mine < theirs) then
+			return ("내 HP 비율 %d%% — 상대 %d%% 보다 낮아야 합니다"):format(round(mine * 100), round(theirs * 100))
+		end
+		return nil
+	end
+
+	-- 이 슬롯을 지금 실제로 쓸 수 있는가 — 쿨 + 기술 고유 게이트. 사람 UI·AI·기본 공격 폴백이 모두 이 함수를 본다
+	function Engine:slotUsable(f, i, side)
+		if not f.skills or f.cds[i] > 0 then
+			return false
+		end
+		local sk = Data.SKILLS[f.skills[i]]
+		if sk and sk.reaper then
+			return self:reaperWhy(side) == nil
+		end
+		return true
+	end
+
+	-- #121 계약 5.2 🕯 마녀의 장난 — 4효과 중 서로 다른 2개를 100% 적용 (공유 rand 1회 · 재부여는 지속 갱신 · 풀 = 실HP 피해 100% 즉시 회복)
+	function Engine:witchApply(side, oSide, f, opp, actual)
+		local S = self.S
+		local B = S.battle
+		local combo = Data.WITCH_COMBOS[math.floor(self:rand() * #Data.WITCH_COMBOS) + 1]
+		for _, idx in combo do
+			local eff = Data.WITCH_EFFECTS[idx]
+			if eff == "burn" then
+				opp.burn = BAL.burnRounds
+				opp.burnBy = side
+				S.metrics.statusApplied += 1
+				self:bmsg("🔥 " .. fighterName(B, oSide) .. "는 화상을 입었다! (" .. BAL.burnRounds .. "R)")
+			elseif eff == "weaken" then
+				opp.weaken = BAL.weakenHits
+				S.metrics.statusApplied += 1
+				self:bmsg("💧 " .. fighterName(B, oSide) .. "는 약화되었다! (" .. BAL.weakenHits .. "회)")
+			elseif eff == "shock" then
+				opp.shock = 1
+				opp.shockFresh = true
+				S.metrics.statusApplied += 1
+				self:bmsg("⚡ " .. fighterName(B, oSide) .. "는 감전 — 다음 1라운드 후공!")
+			else
+				local gh = math.min(actual, f.maxHp - f.hp)
+				if gh > 0 then
+					f.hp += gh
+					self:bmsg("🌿 어둠의 덩굴이 생명을 빨아들인다 — HP " .. gh .. " 회복!")
+				else
+					self:bmsg("🌿 어둠의 덩굴 — 빨아들일 생명이 없었다. (회복 0)")
+				end
+			end
+		end
+	end
+
 	--==============================================================
 	-- 4슬롯 실행 엔진 (GDD-16) — slot=nil 은 폴백 기본 공격
 	--==============================================================
@@ -287,7 +364,35 @@ function Battle.attach(Engine, deps)
 		local opp = (side == "A") and B.fd or B.fa
 		local oSide = (side == "A") and "D" or "A"
 		local sk = (slot and f.skills) and Data.SKILLS[f.skills[slot]] or nil
-		local atkEl = Data.atkElOf(f, sk) -- #92 판정 속성
+		local atkEl = Data.atkElOf(f, sk) -- #92 판정 속성 · #121 cls 기술은 nil(중립)
+		-- #121 계약 5.3 💀 사신의 낫 — 피해 파이프라인을 타지 않는 별도 분기. 게이트를 최신 상태로 다시 검사하고, 불가면 기본 공격 폴백
+		if sk and sk.reaper then
+			if f.cds[slot] > 0 then
+				self:execSlot(side, nil)
+				return
+			end
+			if self:actorOfPhase() ~= side then
+				return
+			end
+			if self:reaperWhy(side) then
+				self:execSlot(side, nil)
+				return
+			end
+			if f.revealedSkills and not table.find(f.revealedSkills, slot) then
+				table.insert(f.revealedSkills, slot)
+			end
+			self:bmsg("💀 " .. fighterName(B, side) .. "의 사신의 낫!")
+			local lethal = opp.hp
+			opp.shield = 0
+			opp.hp = 0
+			addRec(B, side, lethal)
+			self:bmsg("💀 " .. fighterName(B, oSide) .. "는 보호막째 베였다 — 즉사!")
+			if self:checkDeath() then
+				return
+			end
+			self:nextPhase()
+			return
+		end
 		if sk then
 			f.cds[slot] = sk.cd
 			if f.revealedSkills and not table.find(f.revealedSkills, slot) then
@@ -392,8 +497,9 @@ function Battle.attach(Engine, deps)
 				f.focusCharge = false
 				self:bmsg("🎯 집중 발동 — 위력 +20%!")
 			end
-			if BAL.dmgVar > 0 then -- D8 피해 분산 ±20%
-				dmg = round(dmg * (1 - BAL.dmgVar + self:rand() * 2 * BAL.dmgVar))
+			if BAL.dmgVar > 0 then -- D8 피해 분산 ±20% · #121 계약 3.2 힘의 수호자: 분산 단계만 상단 고정 (난수는 그대로 뽑아 버린다 — 소비 횟수 불변)
+				local roll = self:rand()
+				dmg = round(dmg * (f.powerBuff and (1 + BAL.dmgVar) or (1 - BAL.dmgVar + roll * 2 * BAL.dmgVar)))
 			end
 			if f.weaken > 0 then
 				dmg = round(dmg * (1 - BAL.weakenPct))
@@ -408,6 +514,10 @@ function Battle.attach(Engine, deps)
 				elseif Data.BEATS[opp.element] == atkEl then
 					dmg = round(dmg * BAL.disMult)
 				end
+			end
+			if sk and sk.dragonMult and opp.element then -- #121 계약 5.1 드래곤 숨결: 속성 있는 상대에게 항상 ×1.3 (무속성 중립)
+				dmg = round(dmg * sk.dragonMult)
+				self:bmsg("🐉 용의 숨결이 속성을 태운다 — ×" .. sk.dragonMult .. "!")
 			end
 			if sk and sk.bonusVsShield and opp.shield > 0 then
 				dmg += sk.bonusVsShield
@@ -447,6 +557,9 @@ function Battle.attach(Engine, deps)
 				if sk.selfShieldPct then
 					f.shield = math.max(f.shield, round(f.maxHp * sk.selfShieldPct))
 					self:bmsg("🌿 보호막 " .. f.shield .. "!")
+				end
+				if sk.witch then -- #121 계약 5.2 — 피해 확정 뒤(실HP 피해 actual 기준) 2효과 100%
+					self:witchApply(side, oSide, f, opp, actual)
 				end
 				if sk.status then
 					applyStatus(false)
@@ -530,7 +643,7 @@ function Battle.attach(Engine, deps)
 		B.ballThrowA = false
 		B.ballThrowD = false
 		B.round += 1
-		if B.round > BAL.maxRounds then
+		if B.round > self:battleMaxRounds() then -- #121 계약 3.3: 시간의 수호자 전투는 3라운드 (전역 불변)
 			self:judge()
 			return
 		end
@@ -682,21 +795,24 @@ function Battle.attach(Engine, deps)
 			if f.skills then
 				local slot = nil
 				if k == "basic" then
-					slot = (f.cds[1] == 0) and 1 or nil -- JS 매핑: basic → 슬롯1(안정기) 또는 순수 기본 공격
+					slot = self:slotUsable(f, 1, side) and 1 or nil -- JS 매핑: basic → 슬롯1(합법일 때) 또는 순수 기본 공격
 					if slot == nil then
-						local anyReady = false
+						local anyUsable = false
 						for i = 1, 4 do
-							if f.cds[i] == 0 then
-								anyReady = true
+							if self:slotUsable(f, i, side) then
+								anyUsable = true
 							end
 						end
-						if anyReady then
+						if anyUsable then
 							return false, "사용 가능한 기술이 있습니다"
 						end
 					end
 				elseif type(k) == "number" and k >= 1 and k <= 4 then
 					if f.cds[k] > 0 then
 						return false, "쿨타임 중인 기술입니다"
+					end
+					if not self:slotUsable(f, k, side) then -- #121 계약 5.3: 봉인된 사신은 거부 (사유 안내)
+						return false, "💀 사신의 낫 봉인 — " .. tostring(self:reaperWhy(side))
 					end
 					slot = k
 				else
@@ -719,14 +835,9 @@ function Battle.attach(Engine, deps)
 			if not k then
 				return false, "해당 아이템이 없습니다"
 			end
-			if usedItems >= BAL.itemPerBattle then
-				return false, "전투당 아이템 사용 횟수(2회)를 모두 사용했습니다"
-			end
+			-- #121 계약 2.3: 플레이어별 라운드 1회만 남는다 (전투당 2회·연속 동일 금지는 제거 — usedItems·lastItem 은 기록만)
 			if itemRound then
 				return false, "이번 라운드에 이미 아이템을 사용했습니다"
-			end
-			if k == lastItem then
-				return false, "같은 아이템을 연속으로 사용할 수 없습니다"
 			end
 			table.remove(S.inv[ownerP], i)
 			if side == "A" then
@@ -789,8 +900,59 @@ function Battle.attach(Engine, deps)
 			self:bmsg("🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 " .. S.balls[ownerP] .. ")")
 			self:nextPhase()
 			return true
+		elseif a.t == "gift" then -- #121 계약 2.2: 아이템 선물 패키지 개봉 (행동·아이템 카운터 미소모 · 확정 순간에만 재고 이동)
+			local pk = S.pkgs[ownerP]
+			if pk.itemGift <= 0 then
+				return false, "아이템 선물 패키지가 없습니다"
+			end
+			local pick = a.pick
+			if not table.find(Data.GIFT_PICKS, pick) then
+				return false, "회복약·쿨링수·해독제·공용 볼 중에서 고르세요"
+			end
+			pk.itemGift -= 1
+			if pick == "ball" then
+				S.balls[ownerP] += 1
+			else
+				table.insert(S.inv[ownerP], pick)
+			end
+			self:bmsg("🎁 P" .. (ownerP + 1) .. "가 선물 상자를 열었다.") -- 종류는 소유자 전용 로그로만 (미사용 자원은 비공개)
+			self:log("🎁 " .. Data.GIFT_KO[pick] .. " 획득", nil, ownerP)
+			return true
+		elseif a.t == "buff" then -- #121 계약 3: 전투 버프 패키지 — 플레이어별 한 전투 1개, 아이템 회계와 별도, 무료
+			local pk = S.pkgs[ownerP]
+			if pk.battleBuff <= 0 then
+				return false, "전투 버프 패키지가 없습니다"
+			end
+			local key = a.kind
+			if not table.find(Data.BUFF_KEYS, key) then
+				return false, "힘·시간·도망 중에서 고르세요"
+			end
+			if (side == "A") and B.buffA or (side == "D") and B.buffD then
+				return false, "이번 전투에 이미 버프를 적용했습니다 (전투당 1개)"
+			end
+			if key == "time" and B.round ~= 1 then
+				return false, "시간의 수호자는 1라운드에만 사용할 수 있습니다"
+			end
+			pk.battleBuff -= 1
+			if side == "A" then
+				B.buffA = key
+			else
+				B.buffD = key
+			end
+			if key == "power" then
+				f.powerBuff = true
+			elseif key == "escape" then
+				f.fleeFree = true
+			else
+				B.maxRounds = BAL.buffTimeRounds -- 전투 인스턴스 값만 (BAL.maxRounds 전역 불변)
+			end
+			self:bmsg(Data.BUFFS[key].ko .. " — " .. fighterName(B, side) .. "에게 적용!")
+			if key == "time" then
+				self:bmsg("🧭 이 전투는 " .. BAL.buffTimeRounds .. "라운드까지 — 사신의 낫은 발동할 수 없다.")
+			end
+			return true
 		elseif a.t == "flee" then
-			if f.hp >= f.maxHp * 0.5 then
+			if f.hp >= f.maxHp * 0.5 and not f.fleeFree then -- #121 계약 3.4: 도망의 수호자는 HP 게이트만 해제
 				return false, "자기 HP가 50% 미만이어야 도망칠 수 있습니다"
 			end
 			self:met(ownerP, "fleeTries")

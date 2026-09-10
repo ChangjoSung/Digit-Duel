@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.0"
+local CLIENT_VERSION = "0.5.0-p3.1"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -105,6 +105,8 @@ local tableInfo = nil
 local selectedId = nil
 local teleFirst = nil
 local logLines = {}
+local battleSub = nil -- 전투 창 하위 선택 (gift | buff | nil) — 로컬 표시 상태
+local recruitUi = { stage = "root", skill = nil, targetId = nil, recvId = nil, token = nil } -- #121 기술 교체·포획 선택 단계 (로컬)
 local force2D = true -- 구조.txt: 판은 항상 "보드게임 창"(2D) 으로 본다. 3D 판 클릭은 쓰지 않는다
 local boardMode = "2d"
 local render
@@ -423,7 +425,7 @@ local promptBtns = mk("Frame", { Size = UDim2.new(1, -16, 0, 60), Position = UDi
 
 -- 전투 패널
 local battleFrame = mk("Frame", {
-	Size = UDim2.new(0, 400, 0, 440), Position = UDim2.new(0.5, -200, 0.5, -220),
+	Size = UDim2.new(0, 400, 0, 520), Position = UDim2.new(0.5, -200, 0.5, -260),
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
 }, game_)
 bgImage(battleFrame, "panel_battle", "panel", 1)
@@ -445,7 +447,24 @@ local battleMsg = mk("TextLabel", {
 	TextColor3 = Color3.fromRGB(255, 224, 150), BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.3, TextSize = 12,
 	Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Bottom, TextWrapped = true,
 }, battleFrame)
-local battleBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 140), Position = UDim2.new(0, 12, 0, 292), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
+local battleBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 220), Position = UDim2.new(0, 12, 0, 292), BackgroundTransparency = 1, ZIndex = 5 }, battleFrame)
+
+-- #121 계약 4·6: 탐색 보상 선택 창 (기술 교체 3단계 · 포획 2단계 · 포기) — 소유자 화면에만 (서버가 소유자에게만 내려보낸다)
+local recruitFrame = mk("Frame", {
+	Size = UDim2.new(0, 560, 0, 430), Position = UDim2.new(0.5, -280, 0.5, -215),
+	BackgroundColor3 = Color3.fromRGB(28, 32, 44), Visible = false, ZIndex = 5,
+}, game_)
+bgImage(recruitFrame, "panel_modal", "panel", 1)
+local recruitTitle = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -24, 0, 24), Position = UDim2.new(0, 12, 0, 8), ZIndex = 5,
+	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 16, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
+}, recruitFrame)
+local recruitText = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -24, 0, 160), Position = UDim2.new(0, 12, 0, 34), ZIndex = 5, RichText = true,
+	TextColor3 = Color3.fromRGB(200, 206, 220), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
+	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
+}, recruitFrame)
+local recruitBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 220), Position = UDim2.new(0, 12, 0, 200), BackgroundTransparency = 1, ZIndex = 5 }, recruitFrame)
 
 --==================================================================
 -- 헬퍼
@@ -1447,16 +1466,19 @@ local function renderSide()
 	-- 배지 행: 몬스터볼 · 아이템 · 전투 · 예비 하수인
 	clearChildren(badgeRow)
 	local x = 0
-	mkBadge(badgeRow, x, 0, 76, Art.item("ball"), "볼 " .. view.balls)
-	x += 80
-	mkBadge(badgeRow, x, 0, 84, Art.action("bag"), "아이템 " .. #view.inv)
-	x += 88
-	mkBadge(badgeRow, x, 0, 76, Art.action("fight"), ("전투 %d/2"):format(view.battlesUsed))
-	x += 80
-	if view.reserve then
-		mkBadge(badgeRow, x, 0, 96, Art.item("reserve"), ("예비 %d/%d"):format(view.reserve.hp, view.reserve.maxHp))
-	end
+	mkBadge(badgeRow, x, 0, 60, Art.item("ball"), "볼 " .. view.balls)
+	x += 64
+	mkBadge(badgeRow, x, 0, 74, Art.action("bag"), "아이템 " .. #view.inv)
+	x += 78
+	mkBadge(badgeRow, x, 0, 70, Art.action("fight"), ("전투 %d/2"):format(view.battlesUsed))
+	x += 74
+	mkBadge(badgeRow, x, 0, 54, nil, "🎁 " .. (view.gifts or 0)) -- #121 미개봉 패키지 (소유자만)
+	x += 58
+	mkBadge(badgeRow, x, 0, 54, nil, "✨ " .. (view.buffPacks or 0))
 	local info = ""
+	if view.reserve then
+		info ..= ("예비 하수인(%s) HP %d/%d\n"):format(Data.ELEM_KO[view.reserve.element] or "", view.reserve.hp, view.reserve.maxHp)
+	end
 	local sel = selectedId and pieceById(selectedId)
 	if sel and sel.known then
 		info ..= ("선택: %s HP %s"):format(sel.name or Data.TYPE_KO[sel.type or ""] or "?", tostring(sel.hp or "-"))
@@ -1537,8 +1559,172 @@ local function renderButtons()
 	end, "danger", true, Art.action("exit") or Art.action("resign"))
 end
 
+-- #121 계약 4·6 탐색 보상 선택 창 — 단계별로 다시 그린다 (확정 전에는 서버에 아무것도 보내지 않는다)
+local function skillLine(sid, head)
+	local sk = Data.SKILLS[sid]
+	local cls = sk.cls and (Data.SKILL_CLS_KO[sk.cls] .. " 분류") or (sk.el and Data.ELEM_KO[sk.el] or (Data.SKIND_KO[sk.kind] or ""))
+	return ("<b>%s %s%s</b>  %s · 위력 %s · 쿨 %s\n<font color=\"#9aa3b8\">%s</font>"):format(head, sk.cls and (Data.SKILL_CLS_EMO[sk.cls] or "") or "", sk.ko, cls, sk.pow and tostring(sk.pow) or "-", sk.reaper and "봉인" or tostring(sk.cd), sk.desc)
+end
+local function renderRecruit(pd)
+	local token = tostring(pd.pieceId) .. ":" .. tostring(view.turnCount)
+	if recruitUi.token ~= token then
+		recruitUi = { stage = "root", skill = nil, targetId = nil, recvId = nil, token = token }
+	end
+	recruitFrame.Visible = true
+	clearChildren(recruitBtns)
+	local n = 0
+	local function rbtn(text, fn, kind, enabled, icon)
+		local b = smallBtn(recruitBtns, (n % 2) * 270, math.floor(n / 2) * 30, 264, text, fn, kind or "default", enabled ~= false, icon)
+		n += 1
+		return b
+	end
+	local function goto_(stage)
+		recruitUi.stage = stage
+		renderRecruit(pd)
+	end
+	local function backBtn(stage)
+		rbtn("← 뒤로", function()
+			if stage == "target" then
+				recruitUi.targetId = nil
+			elseif stage == "skill" then
+				recruitUi.skill = nil
+			elseif stage == "recv" then
+				recruitUi.recvId = nil
+			end
+			goto_(stage)
+		end)
+	end
+	local function giveUpBtn()
+		rbtn("포기 (칸은 소모)", function()
+			send({ t = "recruitKeep" })
+		end, "danger")
+	end
+	local function minionById(id)
+		for _, m in pd.minions do
+			if m.id == id then
+				return m
+			end
+		end
+		return nil
+	end
+	local st = recruitUi.stage
+	if st == "root" then
+		recruitTitle.Text = "🌿 숲에서 무언가를 찾았다"
+		recruitText.Text = ("<b>📘 기술 교체</b> — 신규 공용 기술 3종 중 하나를 직접 골라, 내 최초 하수인 6명 중 살아 있는 말의 4슬롯 어디든 바꿉니다.\n<b>🔴 하수인 포획</b> — %s\n포기해도 이 칸은 다시 쓸 수 없습니다.")
+			:format(#pd.receivers > 0 and ("동료·왕 중 포획 슬롯이 빈 말 " .. #pd.receivers .. "기가 받을 수 있습니다 (보유 볼 " .. pd.balls .. ")") or "<b>포획 슬롯이 빈 동료·왕이 없습니다 — 포획 불가</b>")
+		rbtn("📘 기술 교체", function()
+			goto_("skill")
+		end, "primary", true, Art.skillKind("attack"))
+		rbtn("🔴 하수인 포획", function()
+			goto_("recv")
+		end, "primary", #pd.receivers > 0, Art.item("ball"))
+		giveUpBtn()
+	elseif st == "skill" then
+		recruitTitle.Text = "📘 배울 기술 선택"
+		local lines = {}
+		for i, sid in pd.skills do
+			table.insert(lines, skillLine(sid, i .. "."))
+		end
+		recruitText.Text = table.concat(lines, "\n") .. "\n<font color=\"#9aa3b8\">같은 말에 같은 기술을 두 번 장착할 수 없습니다.</font>"
+		for i, sid in pd.skills do
+			local openFor = false
+			for _, m in pd.minions do
+				if m.alive and m.skills and not table.find(m.skills, sid) then
+					openFor = true
+				end
+			end
+			rbtn(i .. ". " .. Data.SKILLS[sid].ko .. (openFor and "" or " (전원 보유)"), function()
+				recruitUi.skill = sid
+				goto_("target")
+			end, "primary", openFor)
+		end
+		backBtn("root")
+		giveUpBtn()
+	elseif st == "target" then
+		recruitTitle.Text = ("📘 %s — 대상 말"):format(Data.SKILLS[recruitUi.skill].ko)
+		local lines = {}
+		for i, m in pd.minions do
+			local has = m.skills and table.find(m.skills, recruitUi.skill) ~= nil
+			table.insert(lines, ("%d. <b>%s</b> %s · %s"):format(i, m.name or "하수인", m.element and Data.ELEM_KO[m.element] or "", (not m.alive) and "<b>제거됨</b>" or ("HP " .. m.hp .. "/" .. m.maxHp .. " · 공 " .. m.atk .. " · 기술 ? ? ? ?" .. (has and " · <b>이미 보유</b>" or ""))))
+		end
+		recruitText.Text = table.concat(lines, "\n")
+		for i, m in pd.minions do
+			local has = m.skills and table.find(m.skills, recruitUi.skill) ~= nil
+			local sel = m.alive and m.skills ~= nil and not has
+			rbtn(i .. ". " .. (m.name or "하수인") .. (sel and "" or (m.alive and " (보유)" or " (제거됨)")), function()
+				recruitUi.targetId = m.id
+				goto_("slot")
+			end, "primary", sel, Art.icon(m.rosterId))
+		end
+		backBtn("skill")
+		giveUpBtn()
+	elseif st == "slot" then
+		local m = minionById(recruitUi.targetId)
+		if not m or not m.skills then
+			goto_("target")
+			return
+		end
+		recruitTitle.Text = ("📘 %s → %s — 바꿀 슬롯"):format(Data.SKILLS[recruitUi.skill].ko, m.name or "하수인")
+		local lines = { skillLine(recruitUi.skill, "새 기술:") }
+		for i, sid in m.skills do
+			table.insert(lines, ("슬롯 %d: <b>%s</b>%s"):format(i, Data.SKILLS[sid].ko, (m.cds[i] > 0) and (" · 남은 쿨 " .. m.cds[i] .. " (승계)") or ""))
+		end
+		recruitText.Text = table.concat(lines, "\n")
+		for i, sid in m.skills do
+			rbtn(("슬롯 %d 교체 (%s)"):format(i, Data.SKILLS[sid].ko), function()
+				send({ t = "recruitSwap", skill = recruitUi.skill, targetId = m.id, slot = i })
+			end, "primary", true, Art.skillKind(Data.SKILLS[sid].kind))
+		end
+		backBtn("target")
+		giveUpBtn()
+	elseif st == "recv" then
+		recruitTitle.Text = "🔴 포획 하수인을 받을 말"
+		local lines = {}
+		for i, x in pd.receivers do
+			table.insert(lines, ("%d. <b>%s</b> HP %d/%d · 포획 슬롯 비어 있음"):format(i, Data.TYPE_KO[x.type], x.hp, x.maxHp))
+		end
+		recruitText.Text = table.concat(lines, "\n") .. "\n<font color=\"#9aa3b8\">공격 포획이 실패하면 피해는 탐색한 말이 받습니다.</font>"
+		for i, x in pd.receivers do
+			rbtn(i .. ". " .. Data.TYPE_KO[x.type], function()
+				recruitUi.recvId = x.id
+				goto_("mode")
+			end, "primary", true, Art.token(x.type, 64))
+		end
+		backBtn("root")
+		giveUpBtn()
+	elseif st == "mode" then
+		local sp = pd.species
+		recruitTitle.Text = ("🔴 포획 시도 (몬스터볼 %d)"):format(pd.balls)
+		local sks = {}
+		if sp then
+			for _, sid in sp.skills do
+				table.insert(sks, Data.SKILLS[sid].ko)
+			end
+		end
+		recruitText.Text = (sp and ("발견: <b>%s</b> %s · HP %d · 공 %d · 기술 %s\n<font color=\"#9aa3b8\">이 종의 수치·기술 그대로 합류합니다 (방법을 바꿔도 같은 종)</font>\n"):format(sp.name, Data.ELEM_KO[sp.element] or "", sp.hp, sp.atk, table.concat(sks, "·")) or "")
+			.. "안전 포획: 볼 2 · 100%\n위험 포획: 볼 1 · 50% (실패 시 소멸)\n공격 포획: 볼 1 · 70% (실패 시 소멸 + <b>탐색 말</b> HP 25% 피해)"
+		rbtn("안전 포획 (볼 2 · 100%)", function()
+			send({ t = "capTry", mode = "safe", recvId = recruitUi.recvId })
+		end, "primary", pd.balls >= 2, Art.item("ball"))
+		rbtn("위험 포획 (볼 1 · 50%)", function()
+			send({ t = "capTry", mode = "risky", recvId = recruitUi.recvId })
+		end, "default", pd.balls >= 1, Art.item("ball"))
+		rbtn("공격 포획 (볼 1 · 70%)", function()
+			send({ t = "capTry", mode = "attack", recvId = recruitUi.recvId })
+		end, "danger", pd.balls >= 1, Art.item("ball"))
+		backBtn("recv")
+		giveUpBtn()
+	end
+end
+
 local function renderPrompt()
 	local pd = view.pending
+	if pd and pd.kind == "recruit" then -- #121: 전용 창
+		promptFrame.Visible = false
+		renderRecruit(pd)
+		return
+	end
+	recruitFrame.Visible = false
 	promptFrame.Visible = pd ~= nil
 	clearChildren(promptBtns)
 	if not pd then
@@ -1555,36 +1741,9 @@ local function renderPrompt()
 				send({ t = "vipPick", use = "cap" })
 			end, "primary", true, Art.item("reserve"))
 		end
-	elseif pd.kind == "capture" then
-		promptLabel.Text = ("포획 시도 (몬스터볼 %d) — 공격 포획 실패 시 최대 HP 25%% 피해"):format(pd.balls)
-		smallBtn(promptBtns, 0, 0, 105, "안전 (볼2·100%)", function()
-			send({ t = "capTry", mode = "safe" })
-		end, "default", pd.balls >= 2)
-		smallBtn(promptBtns, 110, 0, 100, "위험 (볼1·50%)", function()
-			send({ t = "capTry", mode = "risky" })
-		end, "default", pd.balls >= 1)
-		smallBtn(promptBtns, 215, 0, 100, "공격 (볼1·70%)", function()
-			send({ t = "capTry", mode = "attack" })
-		end, "danger", pd.balls >= 1)
-		smallBtn(promptBtns, 0, 30, 70, "포기", function()
-			send({ t = "capSkip" })
-		end)
-	elseif pd.kind == "recruit" then
-		local alt = Data.SKILLS[pd.alt]
-		promptLabel.Text = ("공용 하수인 — 새 기술 [%s] 을 배우겠습니까? (남은 쿨 승계·재비공개)"):format(alt.ko)
-		local s1 = pd.slots and Data.SKILLS[pd.slots[1]] or nil
-		local s2 = pd.slots and Data.SKILLS[pd.slots[2]] or nil
-		smallBtn(promptBtns, 0, 0, 160, ("공격기1 교체 (%s)"):format(s1 and s1.ko or "?"), function()
-			send({ t = "recruitSwap", slot = 1 })
-		end, "default", true, Art.skillKind("attack"))
-		smallBtn(promptBtns, 166, 0, 160, ("공격기2 교체 (%s)"):format(s2 and s2.ko or "?"), function()
-			send({ t = "recruitSwap", slot = 2 })
-		end, "default", true, Art.skillKind("attack"))
-		smallBtn(promptBtns, 0, 30, 70, "유지", function()
-			send({ t = "recruitKeep" })
-		end)
 	end
 end
+
 
 -- 전투원 카드: 속성 아이콘 · 이름 · HP 바 · 방어막 바 · 상태 아이콘
 local function renderFighterCard(container, fv, label)
@@ -1668,13 +1827,22 @@ local function renderBattle()
 	local bt = view.battle
 	battleFrame.Visible = bt ~= nil
 	if not bt then
+		battleSub = nil
 		return
 	end
 	local myActing = bt.actorOwner == view.me
 	local topSide = (bt.mySide == "A") and "D" or "A"
 	renderFighterCard(fighterTop, bt[topSide], topSide == "A" and "[공격]" or "[방어]")
 	renderFighterCard(fighterBottom, bt[bt.mySide], bt.mySide == "A" and "[공격]" or "[방어]")
-	battleRound.Text = ("⚔️ 라운드 %d/%d — %s"):format(bt.round, bt.maxRounds, myActing and "🟢 나의 행동" or "⏳ 상대 행동")
+	local buffs = {}
+	if bt.buffA then
+		table.insert(buffs, "A " .. Data.BUFFS[bt.buffA].ko)
+	end
+	if bt.buffD then
+		table.insert(buffs, "D " .. Data.BUFFS[bt.buffD].ko)
+	end
+	battleRound.Text = ("⚔️ 라운드 %d/%d%s — %s%s"):format(bt.round, bt.maxRounds, bt.timed and " 🧭" or "", myActing and "🟢 나의 행동" or "⏳ 상대 행동",
+		#buffs > 0 and ("  ✨ " .. table.concat(buffs, " · ")) or "")
 	for _, pair in { { spriteTop, bt[topSide] }, { spriteBottom, bt[bt.mySide] } } do
 		local img, fv = pair[1], pair[2]
 		local u, tint = fighterImage(fv)
@@ -1684,50 +1852,103 @@ local function renderBattle()
 	end
 	clearChildren(battleBtns)
 	if not myActing then
+		battleSub = nil
 		return
 	end
 	local myF = bt[bt.mySide]
+	if battleSub == "gift" then -- #121 계약 2.2: 선물 개봉 — 4종 중 1개, 취소는 무소모
+		for i, k in Data.GIFT_PICKS do
+			smallBtn(battleBtns, ((i - 1) % 2) * 186, math.floor((i - 1) / 2) * 30, 180, "🎁 " .. Data.GIFT_KO[k], function()
+				battleSub = nil
+				send({ t = "gift", pick = k })
+			end, "primary", true, Art.item(k))
+		end
+		smallBtn(battleBtns, 0, 62, 100, "취소", function()
+			battleSub = nil
+			render()
+		end)
+		return
+	elseif battleSub == "buff" then -- #121 계약 3: 버프 3종 중 1개 (시간은 1R 전용) — 전투당 1개
+		for i, k in Data.BUFF_KEYS do
+			local enabled = not (k == "time" and bt.round ~= 1)
+			smallBtn(battleBtns, 0, (i - 1) * 30, 366, Data.BUFFS[k].ko .. (enabled and "" or " (1라운드 전용)"), function()
+				battleSub = nil
+				send({ t = "buff", kind = k })
+			end, "primary", enabled)
+		end
+		smallBtn(battleBtns, 0, 94, 100, "취소", function()
+			battleSub = nil
+			render()
+		end)
+		return
+	end
 	if myF.skills then
-		local anyReady = false
 		for i = 1, 4 do
 			local sv = myF.skills[i]
-			local text, enabled, kind
+			local text, kind
+			local enabled = bt.usable ~= nil and bt.usable[i] == true
 			if sv.id then
 				local sk = Data.SKILLS[sv.id]
-				text = sk.ko .. (sv.cd > 0 and (" (쿨" .. sv.cd .. ")") or "")
-				enabled = sv.cd == 0
+				local tag = ""
+				if sv.cd > 0 then
+					tag = " (쿨" .. sv.cd .. ")"
+				elseif sk.reaper and not enabled then
+					tag = " (봉인)" -- #121 계약 5.3: 쿨이 아니라 봉인
+				end
+				text = (sk.cls and (Data.SKILL_CLS_EMO[sk.cls] or "") or "") .. sk.ko .. tag
 				kind = sk.kind
 			else
 				text = "? " .. (Data.SKIND_KO[sv.kind] or "")
-				enabled = false
 				kind = sv.kind
 			end
-			anyReady = anyReady or enabled
 			smallBtn(battleBtns, ((i - 1) % 2) * 186, math.floor((i - 1) / 2) * 30, 180, text, function()
 				send({ t = "act", k = i })
 			end, "default", enabled, Art.skillKind(kind))
 		end
 		smallBtn(battleBtns, 0, 62, 100, "기본 공격", function()
 			send({ t = "act", k = "basic" })
-		end, "default", not anyReady, Art.action("fight"))
+		end, "default", bt.canBasic ~= false, Art.action("fight")) -- 쓸 수 있는 슬롯이 없을 때만 (폴백)
 	else
 		smallBtn(battleBtns, 0, 0, 120, "기본 공격", function()
 			send({ t = "act", k = "basic" })
 		end, "default", true, Art.action("fight"))
 	end
-	for i, k in bt.myItems do
-		if i <= 3 then
-			smallBtn(battleBtns, 106 + (i - 1) * 88, 62, 84, Data.ITEMS[k].ko, function()
+	local shown = 0
+	for i, k in bt.myItems do -- #121 계약 2.3: 라운드 1회만 (전투 횟수·연속 동일 제한 없음)
+		if shown < 3 then
+			smallBtn(battleBtns, 106 + shown * 88, 62, 84, Data.ITEMS[k].ko, function()
 				send({ t = "item", i = i })
-			end, "default", true, Art.item(k))
+			end, "default", not bt.itemRound, Art.item(k))
+			shown += 1
 		end
 	end
-	smallBtn(battleBtns, 0, 94, 130, "볼 던지기", function()
+	smallBtn(battleBtns, 0, 94, 106, "볼 던지기", function()
 		send({ t = "ball" })
 	end, "danger", true, Art.item("ball"))
-	smallBtn(battleBtns, 136, 94, 100, "도망", function()
+	smallBtn(battleBtns, 112, 94, 92, "도망" .. (bt.fleeFree and " 🏃" or ""), function()
 		send({ t = "flee" })
-	end, "default", true, Art.action("flee"))
+	end, "default", bt.canFlee ~= false, Art.action("flee"))
+	smallBtn(battleBtns, 210, 94, 76, "🎁 " .. (view.gifts or 0), function()
+		battleSub = "gift"
+		render()
+	end, "default", (view.gifts or 0) > 0)
+	smallBtn(battleBtns, 292, 94, 76, "✨ " .. (view.buffPacks or 0), function()
+		battleSub = "buff"
+		render()
+	end, "default", (view.buffPacks or 0) > 0 and bt.buffUsed == nil)
+	local hint = (bt.itemRound and "아이템: 이번 라운드 사용함" or "아이템: 라운드 1회") .. " · " .. (bt.buffUsed and ("버프: " .. Data.BUFFS[bt.buffUsed].ko) or "버프: 전투당 1개")
+	if myF.skills and bt.reaperWhy then
+		for i = 1, 4 do
+			local sv = myF.skills[i]
+			if sv.id and Data.SKILLS[sv.id].reaper then
+				hint ..= "\n💀 " .. bt.reaperWhy
+			end
+		end
+	end
+	mk("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 126), BackgroundTransparency = 1, Text = hint, TextWrapped = true,
+		TextSize = 11, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(154, 163, 184), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 6,
+	}, battleBtns)
 end
 
 function render()
