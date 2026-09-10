@@ -205,7 +205,9 @@ function setup(T,mode,seed){
   ok(st.includes(`src="assets/minions/${dA}/battle.png"`)&&st.includes(`src="assets/minions/${dD}/battle.png"`),"G2 양측 하수인 모두 자기 종 128 battle.png");
   ok(/class="btok art [^"]*" id="tok-A"/.test(st)&&/class="btok art [^"]*" id="tok-D"/.test(st),"G3 토큰 컨테이너 id·클래스 계약 유지 (shake·ko·dmgfloat 경로 보존)");
   ok(/\.btok \.bsprite\{[^}]*width:128px[^}]*height:128px/.test(T.html)&&/\.btok \.bsprite\{[^}]*image-rendering:pixelated/.test(T.html),"G4 전투 스프라이트 128×128 · pixelated");
-  ok(/#bstage\{[^}]*height:200px/.test(T.html),"G5 전투 영역 높이 200px");
+  /* #122 (v0.4.7): 128px 전투 도트 두 개와 양측 HP 패널이 200px 안에서 서로를 덮어, PD 실제 화면 검토 뒤 무대 높이를 288px 로 올렸다.
+     검사 대상은 "무대 높이가 한 곳에서 정해진다"는 계약이고 값은 그 승인된 현행값을 따른다. */
+  ok(/#bstage\{[^}]*height:288px/.test(T.html),"G5 전투 영역 높이 288px (#122 — 종전 200px)");
   T.close(); T.S.battle=null; T.TQ.length=0;
 
   // 왕 본체 전투 — 자산 없음 → 현행 이모지 토큰 보존

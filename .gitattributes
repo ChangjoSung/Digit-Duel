@@ -31,6 +31,11 @@
 /docs/milestone/v0.4.3/assets/minions/battle-patches/lightning_atk.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
 /docs/milestone/v0.4.3/assets/minions/battle-patches/water_swift.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
 /docs/milestone/v0.4.3/assets/minions/delivery-manifest.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
+
+# #124 왕·동료 납품 매니페스트는 tools/art/leaders_export.py --check 가 **바이트로** 대조한다.
+# 익스포터가 굽는 것은 LF JSON 이므로, core.autocrlf 가 켜진 Windows 체크아웃에서 CRLF 로 바뀌면
+# 내용이 같아도 잡 D 에서 불일치로 떨어진다. 작업 트리에서도 LF 로 고정한다.
+/demo/assets/leaders/leaders-manifest.json text eol=lf
 /docs/milestone/v0.4.3/issues/87/Mars/mars-pipeline-report.md -text whitespace=trailing-space,space-before-tab,cr-at-eol
 /docs/milestone/v0.4.3/assets/minions/pixel-sources/fire_atk.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
 /docs/milestone/v0.4.3/assets/minions/pixel-sources/fire_def.json -text whitespace=trailing-space,space-before-tab,cr-at-eol

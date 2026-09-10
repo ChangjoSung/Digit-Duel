@@ -5,16 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Digit Dual — HTML 프로토타입 데모</title>
 <style>
+  /* ===== #122 (v0.4.7) 레트로 세로 UI — 남색 프레임·아이보리 패널 =====
+     색 토큰 이름은 종전 그대로다: 제품 코드 곳곳의 인라인 style 이 var(--panel2)·var(--dim) 등을 직접 읽으므로
+     토큰을 새로 만들지 않고 **값만** 아이보리 계열로 바꾼다. 속성 4색은 아이보리 위에서 읽히도록 채도를 낮춘 진한 값이다
+     (같은 값이 .btok 원형 배경으로도 쓰이며 그 위에는 흰 글자가 얹힌다). 규칙·수치·난수와 무관한 표시 계층 전용. */
   :root{
-    --bg:#12151c; --panel:#1c2130; --panel2:#242b3d; --line:#333c52;
-    --txt:#e8ecf5; --dim:#8a93a8; --accent:#5b8cff; --danger:#ff5b6e; --ok:#4fd88a;
-    --zoneA:#2a3350; --zoneB:#502a33; --forest:#1f3a2a; --mid:#2a2f3d;
-    --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d;
-    --heal:#4fd88a; --guard:#4da3ff; --buff:#ffd84d;
+    --bg:#0d1524; --panel:#f6f1e5; --panel2:#e7e0cd; --line:#c7bca1;
+    --txt:#17233b; --dim:#6a748d; --accent:#2f62c8; --danger:#c93b49; --ok:#2c8f62;
+    --zoneA:#dde5f4; --zoneB:#f7e2dc; --forest:#8ec98a; --mid:#ece3d2;
+    --fire:#cf5220; --water:#1f6fc4; --grass:#2c8b48; --lightning:#a97d08;
+    --heal:#2c8f62; --guard:#1f6fc4; --buff:#a97d08;
+    /* 프레임·보드 기하 (세로 우선). --bs 는 보드 스케일로 fitBoard() 가 실측해 넣는다 — 기본 1 이면 종전과 같은 52px 칸 */
+    --frame:432px; --navy:#132139; --navy2:#1c2f4d; --navyLine:#0a1120; --bs:1;
+    --boardW:376px; --boardH:700px; /* 7*52+6*2 · 13*52+12*2 (칸 기하 불변 — 스케일만 얹는다) */
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{background:var(--bg); color:var(--txt); font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif; font-size:14px;}
-  #app{display:flex; gap:12px; padding:12px; max-width:1200px; margin:0 auto;}
+  body{background:var(--bg); color:var(--txt); font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif; font-size:14px;
+    background-image:radial-gradient(120% 60% at 50% 0%,#1b2c49 0%,transparent 60%); background-attachment:fixed;
+    overflow-x:hidden;} /* 세로 프레임 밖으로 문서가 가로로 넘치지 않는다 (#106 감사 B1j2 의 기존 가로 넘침 대상) */
+  /* 세로 프레임: 모바일은 화면 폭 그대로, PC 는 같은 프레임을 가운데에 (러프 v1 방향) */
+  /* 프레임 높이는 화면에 고정한다 — 스크롤은 프레임 안(#screenBody)에서만 일어나고 상단 바·하단 행동 독은 늘 제자리에 있다 */
+  #app{display:flex; flex-direction:column; gap:0; width:100%; max-width:var(--frame); margin:0 auto; height:100vh; height:100dvh;
+    background:var(--panel); color:var(--txt); box-shadow:0 0 0 2px var(--navyLine),0 18px 60px #0009; position:relative; overflow:hidden;}
   h1{font-size:16px; margin-bottom:6px;}
   h2{font-size:14px; margin:8px 0 4px;}
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px;}
@@ -22,15 +34,30 @@
   #toasts{position:absolute; top:44px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:6px; z-index:40; pointer-events:none; width:max-content; max-width:92%;}
   .toast{background:#000d; border:1px solid var(--line); border-radius:8px; padding:6px 14px; font-size:12px; color:var(--txt); animation:toastFade 2.2s forwards;}
   @keyframes toastFade{0%{opacity:0;transform:translateY(-6px)}8%{opacity:1;transform:translateY(0)}78%{opacity:1}100%{opacity:0}}
-  #right{flex:1; min-width:300px; display:flex; flex-direction:column; gap:10px;}
-  #board{display:grid; grid-template-columns:repeat(7,52px); grid-auto-rows:52px; gap:2px; user-select:none;}
-  .cell{position:relative; border:1px solid #2a3040; border-radius:4px; background:var(--mid);
+  #right{flex:1; min-width:0; display:flex; flex-direction:column; gap:10px;}
+  #board{display:grid; grid-template-columns:repeat(7,52px); grid-auto-rows:52px; gap:2px; user-select:none;
+    transform:scale(var(--bs)); transform-origin:top center;} /* #122: 칸 기하(52px)는 불변 — 세로 화면 맞춤은 래퍼가 준 --bs 스케일로만 한다 */
+  /* #122 보드 래퍼: 스케일된 실제 높이만 자리를 차지한다. --bs 가 아직 계산되지 않은 첫 프레임에도 문서를 가로로 밀지 않도록 자체 스크롤을 둔다 */
+  #boardWrap{width:100%; max-width:100%; overflow-x:auto; overflow-y:hidden; display:flex; justify-content:center;
+    height:calc(var(--boardH) * var(--bs)); flex:0 0 auto;}
+  /* align-self:flex-start 가 필수다 — 기본 stretch 면 #board 가 래퍼 높이(=700×--bs)로 눌린 뒤 다시 --bs 로 축소돼
+     레이아웃 상자와 실제 칸 높이가 어긋난다(컨테이너만 두 번 축소). 그러면 마지막 칸이 상자 밖으로 나가 겹침 계산이 틀린다. */
+  #boardWrap>#board{flex:0 0 auto; align-self:flex-start;}
+  /* #122 일반 칸: 깨끗한 탄/석재 톤 — 지형 표현은 실제 수풀 칸에만 (2026-09-10 CJ 정정) */
+  .cell{position:relative; border:1px solid #d9cfb8; border-radius:5px; background:var(--mid);
+    box-shadow:inset 0 -2px 0 #00000008;
     display:flex; align-items:center; justify-content:center; cursor:pointer;}
-  .cell.zA{background:var(--zoneA);} .cell.zB{background:var(--zoneB);}
-  .cell.forest{background:var(--forest);}
+  .cell.zA{background:var(--zoneA); border-color:#c3cee4;} .cell.zB{background:var(--zoneB); border-color:#e6c8bf;}
+  /* #122 수풀 칸만 수풀처럼: 겹친 덤불 실루엣 3개 + 짙은 가장자리. 규칙(visibleTo)·좌표·클래스 이름은 그대로다 */
+  .cell.forest{background:
+      radial-gradient(circle at 24% 74%,#63a45c 0 30%,transparent 31%),
+      radial-gradient(circle at 66% 66%,#74b268 0 33%,transparent 34%),
+      radial-gradient(circle at 45% 36%,#86c377 0 28%,transparent 29%),
+      var(--forest);
+    border-color:#6a9f61; box-shadow:inset 0 0 0 1px #ffffff26, inset 0 -3px 6px #00000022;}
   .cell.hl-move{outline:2px solid var(--accent); outline-offset:-2px;}
   .cell.hl-attack{outline:2px solid var(--danger); outline-offset:-2px;}
-  .cell.hl-sel{outline:2px solid #fff; outline-offset:-2px;}
+  .cell.hl-sel{outline:2px solid #1b2a44; outline-offset:-2px;}
   .cell .trace{position:absolute; top:1px; right:2px; font-size:11px;}
   /* #36 추측 이모지: 물음표 자리에 뷰어 전용 반투명 표시 — 실제 공개 말과 구별 (점선 테두리·opacity .5) */
   .pc.memo-guess{border-style:dashed; border-color:#fff8;}
@@ -41,13 +68,30 @@
   .memo-opt[aria-pressed="true"]{background:var(--accent); border-color:#fff; box-shadow:0 0 0 1px #fff8; color:#fff;}
   .memo-opt:focus-visible{outline:2px solid #fff; outline-offset:1px;}
   /* #89 말 컨테이너: 48×48 라운드 사각(내부 44 = 아이콘 32 + 간격 1 + 정보 행 11, 겹침 없음). 칸 52px는 불변이며 각 변 1px 여백이 남는다 */
-  .pc{width:48px; height:48px; border-radius:12px; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  .pc{width:48px; height:48px; border-radius:12px; box-sizing:border-box; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
     font-size:11px; font-weight:bold; border:2px solid #0008; line-height:1.05; text-align:center; overflow:hidden;}
-  .pc.own{box-shadow:inset 0 0 0 2px #ffffff33;} /* #89 inset — 48+2+2=52 는 칸 내부 50px 을 넘으므로 바깥 그림자를 쓰지 않는다 */
+  .pc.own{box-shadow:inset 0 0 0 2px #ffffff5c;} /* #89 inset — 48+2+2=52 는 칸 내부 50px 을 넘으므로 바깥 그림자를 쓰지 않는다 */
   .pc.p0{background:#33406e;} .pc.p1{background:#6e3340;}
   .pc.hiddenId{background:#3a4152;}
+  /* #122: 말 카드는 계속 짙은 남색·적갈색이다. 본문 잉크색(아이보리 테마의 --txt)을 상속하면 카드 위 글자가 읽히지 않으므로
+     ?·속성 기호·HP·이름 폴백의 색을 여기서 밝게 고정한다 (CJ·PD 실제 PNG 검토 지적). */
+  .pc{color:#f4f7fd;}
+  .pc .info{color:#e2e9f6;} .pc .info .hp{color:#ffffff; font-weight:bold;}
+  .pc .nm,.pc .face .sym.ng{color:#f4f7fd;}
+  /* #122 (2026-09-10 CJ 추가 피드백): **수풀 칸에서 보이는 말**은 내 말·상대 말 모두 카드 바탕 50% · 본체(아이콘·얼굴) 70% 로
+     낮춰 "수풀 안에 있는" 느낌을 준다 (Earth v2 board-v2 의 fill-opacity 0.50 / opacity 0.70 과 같은 값).
+     소유자 프레임(테두리·own 강조)·속성/HP 정보행·선택 테두리·미공개 ? 는 불투명 1 로 남겨 읽기 쉽게 둔다.
+     **은폐 규칙은 하나도 바뀌지 않는다** — 보이지 않는 말은 애초에 이 칸에 chip 자체가 만들어지지 않는다.
+     visibleTo·known·인접·tempReveal·메모 판정과 좌표 변환은 종전 그대로다. 일반 칸의 말에는 적용하지 않는다. */
+  .pc.inbush{background-color:transparent; isolation:isolate;}
+  .pc.inbush::before{content:""; position:absolute; inset:0; border-radius:10px; opacity:.5; z-index:0;}
+  .pc.p0.inbush::before{background:#33406e;} .pc.p1.inbush::before{background:#6e3340;} .pc.hiddenId.inbush::before{background:#3a4152;}
+  .pc.inbush>*{position:relative; z-index:1;}
+  .pc.inbush .icon,.pc.inbush .face{opacity:.7;}
   /* #89 종 아이콘: native 32×32 도트를 1:1 표시 (보간 대신 최근접 확대 요청 — CSS px 정수가 선명도를 보장하지는 않는다) */
   .pc .icon{width:32px; height:32px; object-fit:contain; image-rendering:pixelated; display:block;}
+  /* #124 왕·동료 파생본은 도트가 아니라 축소 일러스트다 — 하수인 32px 도트의 최근접 확대 계약(.pc .icon)은 그대로 두고 이 두 장만 보간으로 그린다 */
+  .pc .icon.leader,.btok .bsprite.leader{image-rendering:auto;}
   .pc .face{width:32px; height:32px; display:flex; align-items:center; justify-content:center; font-size:24px; line-height:1;}
   .pc .face .nm{max-width:32px;}
   /* #89 글리프 폴백: 플랫폼에 그 이모지 글리프가 없을 때(예: 일부 Windows 의 🪤) 같은 뜻의 짧은 텍스트로 되돌린다 */
@@ -61,7 +105,7 @@
   .rosterCard{display:flex; flex-direction:column; gap:1px; padding:4px 6px; border:1px solid var(--line); border-radius:6px;
     cursor:pointer; font-size:10px; background:var(--panel2); color:var(--dim);}
   .rosterCard b{font-size:12px;}
-  .rosterCard.on{border-color:#fff; box-shadow:0 0 0 1px #fff5;}
+  .rosterCard.on{border-color:var(--accent); box-shadow:0 0 0 2px #2f62c833;}
   /* #89 하수인 설명창 일러스트: 512 원본을 192로 축소 표시 (일반 일러스트이므로 pixelated 미적용 — 브라우저 보간 축소가 정상) */
   .rosterArt{display:flex; justify-content:center; margin:2px 0 8px;}
   .rosterArt img{width:192px; height:192px; object-fit:contain; border-radius:8px; background:#0003;}
@@ -92,7 +136,9 @@
   #fxBanner.count #fxTitle{font-size:84px; line-height:1;} #fxBanner.count .fxBox{background:transparent; border:none; box-shadow:none;}
   #fxBanner.result #fxTitle{font-size:40px; color:var(--buff);} #fxBanner.result.lose #fxTitle{color:var(--danger);}
   #fxBanner.contact #fxTitle{color:var(--danger);} #fxBanner.bt #fxTitle{color:var(--fire);} #fxBanner.mine #fxTitle{color:var(--accent);}
-  body.fx-lock #board, body.fx-lock #turnBar button:not(.danger), body.fx-lock #overlayBox button{pointer-events:none;} /* 잠금 중 클릭 차단 — 기권만 허용 */
+  body.fx-lock #board, body.fx-lock #turnBar button:not(.danger), body.fx-lock #overlayBox button,
+  body.fx-lock #sidePanel button, body.fx-lock #boardInfo button{pointer-events:none;} /* 잠금 중 클릭 차단 — 기권만 허용.
+    #126 R10: 종료 연출 중에는 결과 패널의 [로비로]·[다시 대전]도 눌리지 않는다 (종전에는 #sidePanel 이 잠금 밖이었다) */
   /* 전투 4카테고리 메뉴·HP/방어막 바 */
   .bmenu{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0;}
   .bmenu button{font-size:15px; padding:12px 6px; font-weight:bold;}
@@ -132,7 +178,9 @@
   .status{font-size:11px; color:var(--dim);}
   #battleLog{height:120px; overflow-y:auto; font-size:12px; background:#0006; border-radius:6px; padding:6px; margin:6px 0; line-height:1.5;}
   /* 전투 스테이지 (포켓몬식 개편 — #6) */
-  #bstage{position:relative; height:200px; border-radius:8px; margin:6px 0; overflow:hidden;
+  /* #122 (PD 실제 화면 검토): 128px 전투 도트 두 개와 양측 HP 패널이 200px 안에서 서로를 덮었다.
+     픽셀 아트 크기를 줄이는 대신 무대 높이를 288px 로 올려 상대(우상)·아군(좌하) 도트와 반대편 HP 판이 겹치지 않게 한다. */
+  #bstage{position:relative; height:288px; border-radius:8px; margin:6px 0; overflow:hidden;
     background:linear-gradient(160deg,#1a2030,#242b3d); transition:box-shadow .3s;}
   .btok{position:absolute; width:88px; height:88px; border-radius:50%; display:flex; flex-direction:column;
     align-items:center; justify-content:center; font-size:26px; border:3px solid #0006; box-shadow:0 4px 14px #0008; transition:opacity .6s;}
@@ -153,7 +201,7 @@
   @keyframes buffWind{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
   .btok.buff-escape::before{content:"🏃"; position:absolute; right:-6px; top:-6px; font-size:16px; pointer-events:none; animation:buffWindIco 1.4s linear infinite;}
   @keyframes buffWindIco{0%,100%{opacity:.55}50%{opacity:1}}
-  .btok.buff-time{box-shadow:0 0 0 3px var(--acc), 0 0 16px var(--acc);}
+  .btok.buff-time{box-shadow:0 0 0 3px var(--accent), 0 0 16px var(--accent);} /* #122: 종전 오타 var(--acc)(미정의)로 시간 버프 테두리가 그려지지 않던 표시 결함을 같은 의미의 --accent 로 고쳤다 */
   .btok.buff-time::after{content:"🧭"; position:absolute; right:-6px; bottom:-6px; font-size:16px; pointer-events:none; animation:buffTime 2.4s linear infinite;}
   @keyframes buffTime{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
   .btok.shake{animation:bshake .5s;}
@@ -166,9 +214,223 @@
     font-size:14px; line-height:1.6; margin:6px 0;}
   .tray{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
   .trayItem{display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px; border:1px solid var(--line); border-radius:6px; cursor:pointer;}
-  .trayItem.sel{border-color:#fff;}
+  .trayItem.sel{border-color:var(--accent); box-shadow:0 0 0 2px #2f62c833;}
   small{color:var(--dim);}
   a.simlink{color:var(--dim); font-size:11px; text-decoration:underline; cursor:pointer;}
+
+  /* ================= #122 속성 전투 화면 — 상대 오른쪽 위 · 아군 왼쪽 아래 =================
+     구성만 바꾼다: 두 전투원의 정보 패널(panel())을 각자 **반대편** 모서리에 두고, 명령창을 2×2 로 세운다.
+     panel()·token()·#bstage 의 마크업과 id(hpfill-·shfill-·hptxt-·bst-·tok-A/tok-D)는 그대로이므로
+     연출(applyFx)·온라인 모달 인덱스 중계·비공개 마스킹 경로는 하나도 바뀌지 않는다.
+     참고 이미지는 **구성 참고**이며 원작의 캐릭터·이미지·이름을 자산으로 쓰지 않는다. */
+  #overlayBox.battleBox{padding:14px; max-width:min(92vw,412px);} /* 세로 프레임과 같은 폭으로 — 넓은 화면에서도 전투 화면이 프레임에서 벗어나 보이지 않는다 */
+  #bstage.scene{background:linear-gradient(180deg,#dcefff 0%,#e9f5e0 52%,#d9ecc9 100%); border:2px solid var(--navyLine); border-radius:10px;}
+  /* 발판(수풀 지대) — 각 전투원 아래의 타원. 보드의 수풀 칸과 같은 계열이지만 전투 배경 전용 표시다 */
+  #bstage.scene::before,#bstage.scene::after{content:""; position:absolute; border-radius:50%; pointer-events:none;
+    background:radial-gradient(ellipse at 50% 36%,#a6d78c 0%,#7fba69 70%,#6ea75c 100%); box-shadow:inset 0 -4px 8px #00000018;}
+  #bstage.scene::before{width:150px; height:42px; right:4px; top:116px;}
+  #bstage.scene::after{width:172px; height:50px; left:0; bottom:12px;}
+  #bstage.scene .btok{z-index:2;}
+  #bstage.scene .btok.tok-op{top:34px; right:30px;}
+  #bstage.scene .btok.tok-me{bottom:44px; left:30px;}
+  #bstage.scene .btok.art.tok-op{top:12px; right:4px;}
+  #bstage.scene .btok.art.tok-me{bottom:24px; left:2px;}
+  /* 기존 전면 스프라이트를 그대로 쓰되 아군만 좌우 반전해 서로 마주 보게 한다 (신규 뒷모습 자산을 만들지 않는다) */
+  #bstage.scene .btok.art.tok-me .bsprite{transform:scaleX(-1);}
+  /* HP 패널: 상대는 왼쪽 위, 아군은 오른쪽 아래 — 각 전투원의 반대편 */
+  .bslot{position:absolute; width:min(56%,186px); z-index:3;}
+  .bslot.slot-op{top:6px; left:6px;}
+  .bslot.slot-me{bottom:6px; right:6px;}
+  .bslot .fighter{margin:0; padding:5px 7px; gap:4px; background:#faf6ecf2; border:2px solid var(--navyLine);
+    border-radius:4px 14px 4px 14px; box-shadow:2px 3px 0 #00000026; font-size:11.5px; color:var(--txt);}
+  .bslot .fighter>div{width:100%; min-width:0;}
+  .bslot .fighter b{font-size:12.5px;}
+  .bslot .fighter small{color:var(--dim);}
+  .bslot .hpbar,.bslot .shbar,.bslot .dmgbar{width:100%;}
+  .bslot .status{font-size:10.5px; line-height:1.4; color:var(--dim); overflow-wrap:anywhere;}
+  .bslot .badge{font-size:10px; padding:0 5px; margin:0 1px 0 0;}
+  /* 명령창 2×2 (기존 싸우기·가방·포획·도망가기 그대로 · 하위 메뉴·취소 보존) */
+  .bmenu{grid-template-columns:repeat(2,1fr); gap:8px;}
+  .bmenu button{min-height:50px; border-width:2px; border-radius:4px 12px 4px 12px; box-shadow:2px 3px 0 #00000022;}
+  .bsub{border:2px solid var(--navyLine); border-radius:10px; padding:8px; background:var(--panel2);}
+  #battleLog{background:#00000010; color:var(--dim);}
+
+  /* ================= #126 승패 연출 — 짧고 강한 표시 계층 =================
+     새 연출 키를 만들지 않고 기존 resultBanner(2500ms) 안에서 재생한다. 실제 움직임은 약 0.9~1.2초이고
+     남은 시간은 결과 문구가 정지 상태로 읽히는 구간이다. 이 길이는 이번 제작 선택이며 #125 가 확정한 값이 아니다.
+     난수를 쓰지 않는다 — 파편 각도·지연은 전부 인덱스 계산이라 시드·락스텝에 영향이 없다. */
+  #fxFx{position:absolute; inset:0; pointer-events:none; overflow:hidden;}
+  #fxBanner.nodim #fxFx{display:none;}
+  #fxFx i{display:none;}
+  #fxBanner.result #fxFx i{display:block; position:absolute; left:50%; top:46%; width:7px; height:22px; margin:-11px 0 0 -3.5px;
+    border-radius:4px; opacity:0;}
+  /* 승리: 흰 섬광 → 방사 파편 확산 */
+  #fxBanner.result.win #fxFx::before,#fxBanner.result.neutral #fxFx::before,#fxBanner.result.cap #fxFx::before{
+    content:""; position:absolute; inset:0; background:radial-gradient(circle at 50% 46%,#fffef2 0%,#ffe9a8 22%,transparent 62%);
+    opacity:0; animation:fxFlash .55s ease-out forwards;}
+  #fxBanner.result.win #fxFx i,#fxBanner.result.neutral #fxFx i,#fxBanner.result.cap #fxFx i{
+    background:linear-gradient(180deg,#fffdf2,#ffc93c); box-shadow:0 0 14px #ffd05a,0 0 30px #ffae1a88;
+    animation:fxBurst .88s cubic-bezier(.16,.8,.3,1) forwards; animation-delay:calc(var(--i) * 12ms);}
+  /* 빛줄기 — 승리 갈래에만. 회전하는 원뿔 그라데이션 한 겹으로 만들고 한 번만 퍼진 뒤 끝난다 (유한 애니메이션) */
+  #fxBanner.result.win #fxFx::after,#fxBanner.result.neutral #fxFx::after,#fxBanner.result.cap #fxFx::after{
+    content:""; position:absolute; left:50%; top:46%; width:150vmax; height:150vmax; margin:-75vmax 0 0 -75vmax;
+    background:repeating-conic-gradient(from 0deg,#ffe89a55 0deg 5deg,transparent 5deg 22deg);
+    opacity:0; animation:fxRays .86s ease-out forwards;}
+  #fxBanner.result.win .fxBox,#fxBanner.result.neutral .fxBox,#fxBanner.result.cap .fxBox{
+    animation:fxWinIn .62s cubic-bezier(.2,1.5,.4,1) both; border-color:#ffd05a; box-shadow:0 0 0 2px #ffd05a55,0 12px 44px #000b;}
+  #fxBanner.result.win #fxTitle,#fxBanner.result.neutral #fxTitle,#fxBanner.result.cap #fxTitle{
+    color:#ffdf7a; text-shadow:0 0 18px #ffb62e88;}
+  /* 패배: 어두운 충격 → 균열이 갈라지고 파편이 아래로 떨어진다 */
+  #fxBanner.result.lose #fxFx::before{content:""; position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 46%,#4a0f18 0%,#12060a 46%,#000 100%); opacity:0; animation:fxDark .8s ease-out forwards;}
+  #fxBanner.result.lose #fxFx::after{content:""; position:absolute; inset:-10%;
+    background:repeating-linear-gradient(72deg,transparent 0 46px,#ff5b6e33 46px 47px,transparent 47px 92px),
+               repeating-linear-gradient(-58deg,transparent 0 62px,#ffffff26 62px 63px,transparent 63px 126px);
+    opacity:0; transform:scale(.86); animation:fxCrack .86s ease-out forwards;}
+  #fxBanner.result.lose #fxFx i{background:linear-gradient(180deg,#7c2733,#2a0d13); box-shadow:0 0 8px #00000088;
+    animation:fxFall .9s ease-in forwards; animation-delay:calc(var(--i) * 12ms);}
+  #fxBanner.result.lose .fxBox{animation:fxLoseIn .72s cubic-bezier(.3,.1,.2,1) both;
+    border-color:#7c2733; box-shadow:0 0 0 2px #7c273366,0 12px 44px #000c;}
+  #fxBanner.result.lose #fxTitle{color:#ff7d8b; text-shadow:0 0 16px #c9313f88;}
+  /* 경기 전체 결과는 같은 연출 위에 테두리만 한 겹 더 얹는다 (전투 결과와 문구·부제로 구분) */
+  #fxBanner.result.match .fxBox{border-width:2px; padding:26px 38px;}
+  #fxBanner.result.draw .fxBox{border-color:#93a3bb; animation:fxWinIn .62s cubic-bezier(.2,1.5,.4,1) both;}
+  #fxBanner.result.draw #fxTitle{color:#dbe4f2;}
+  @keyframes fxFlash{0%{opacity:0; transform:scale(.4)}18%{opacity:1; transform:scale(1)}100%{opacity:0; transform:scale(1.35)}}
+  @keyframes fxDark{0%{opacity:0}22%{opacity:.95}100%{opacity:.72}}
+  @keyframes fxCrack{0%{opacity:0; transform:scale(.86)}20%{opacity:1; transform:scale(1)}100%{opacity:0; transform:scale(1.12)}}
+  @keyframes fxBurst{0%{opacity:0; transform:rotate(var(--a)) translateY(0) scale(.4)}
+    12%{opacity:1}
+    100%{opacity:0; transform:rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(.3)}}
+  @keyframes fxRays{0%{opacity:0; transform:rotate(0) scale(.2)}22%{opacity:.85}100%{opacity:0; transform:rotate(26deg) scale(1)}}
+  /* 패배 파편은 방사가 아니라 **낙하**다 — 좌우로 흩어진 자리에서 아래로 떨어지며 회전한다 (--x 는 인덱스로 정한 가로 자리) */
+  @keyframes fxFall{0%{opacity:0; transform:translate(var(--x),-34px) rotate(0) scale(.6)}
+    16%{opacity:.95; transform:translate(var(--x),8px) rotate(26deg) scale(1)}
+    100%{opacity:0; transform:translate(calc(var(--x) * 1.3),240px) rotate(190deg) scale(.72)}}
+  @keyframes fxWinIn{0%{transform:scale(.55) rotate(-3deg); opacity:0}
+    46%{transform:scale(1.09) rotate(1.2deg); opacity:1}
+    62%{transform:scale(.98) rotate(-.8deg)} 78%{transform:scale(1.03) rotate(.5deg)} 100%{transform:scale(1) rotate(0)}}
+  @keyframes fxLoseIn{0%{transform:translateY(-16px) scale(1.16); opacity:0}
+    22%{transform:translateY(6px) scale(.97); opacity:1}
+    38%{transform:translateY(-3px) scale(1.01) rotate(-1.4deg)}
+    56%{transform:translateY(2px) rotate(1deg)} 100%{transform:translateY(0) rotate(0) scale(1)}}
+  /* 움직임을 줄이라는 설정에서는 흔들림·확산만 끄고 색·문구·부제는 그대로 남긴다 (피드백을 잃지 않는다) */
+  @media (prefers-reduced-motion: reduce){
+    /* 갈래별 규칙(#fxBanner.result.win .fxBox 등)이 특이성에서 더 높으므로 여기서는 !important 로 **움직임만** 끈다.
+       색·테두리·문구·부제는 위 규칙이 그대로 적용돼 피드백이 사라지지 않는다. */
+    #fxBanner.result #fxFx i{animation:none !important; opacity:.5; transform:rotate(var(--a)) translateY(calc(var(--d) * -.55));}
+    #fxBanner.result #fxFx::before{animation:none !important; opacity:.5;}
+    #fxBanner.result #fxFx::after{animation:none !important; opacity:.35; transform:none;}
+    #fxBanner .fxBox{animation:none !important;}
+  }
+
+  /* ================= #122 세로 UI 셸 — 화면 전환·헤더·서랍 =================
+     화면은 여전히 한 문서 안의 S.phase 4종 + 공용 오버레이다. 여기서 하는 일은 그 상태를 #app[data-screen] 으로
+     비추고, 어떤 덩어리를 보일지 정하는 것뿐이다 (라우터·새 창·새 문서 없음 — #128 자동 노출 경계 불변). */
+  #appBar{display:flex; align-items:center; gap:6px; padding:8px 10px; background:var(--navy); color:#eef2fb;
+    border-bottom:2px solid var(--navyLine); position:sticky; top:0; z-index:30; flex:0 0 auto;}
+  #appBar h1{font-size:14px; margin:0; letter-spacing:.06em; display:flex; align-items:center; gap:6px; flex:1; min-width:0;}
+  #appBar h1 .brand{font-weight:bold; white-space:nowrap;}
+  #appBar #phaseLabel{color:#9fb4d8; font-weight:normal; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #appBar .tutBtn{background:#25395c; border-color:#3d5580; color:#eef2fb;}
+  #appBar .barBtn{background:#25395c; border:1px solid #3d5580; color:#eef2fb; font-size:11.5px; padding:5px 8px; border-radius:6px;}
+  #appBar .barBtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent);}
+  #app:not([data-screen="board"]) #appBar .barBtn{display:none;} /* 서랍은 보드 화면에서만 의미가 있다 — 다른 화면에서는 내용이 본문에 그대로 있다 */
+  #screenBody{flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow-y:auto; overflow-x:hidden; padding:10px; gap:10px;}
+  #app[data-screen="board"] #screenBody{overflow-y:hidden; padding:8px 8px 0;}
+  /* 화면별 표시 — 어떤 경우에도 마크업을 지우지 않는다 (테스트가 innerHTML 을 읽는다). 보이기만 바꾼다 */
+  #app[data-screen="title"] #screenBody,#app[data-screen="title"] #appBar{display:none;}
+  #app:not([data-screen="title"]) #titleScreen{display:none;}
+  #app[data-screen="lobby"] #left{display:none;}
+  #app[data-screen="result"] #right{order:1;} #app[data-screen="result"] #left{order:2;} #app[data-screen="result"] #boardInfo{order:3;} /* 결과 카드가 먼저, 전체 공개된 말판이 아래 */
+  #app[data-screen="prep"][data-prep="roster"] #left{display:none;}
+  #app[data-screen="board"] #right{display:none;}
+  #boardInfo,#actionDock{display:none;}
+  #app[data-screen="board"] #boardInfo{display:flex;}
+  #app[data-screen="board"] #actionDock{display:block;}
+  #left{display:flex; flex-direction:column; gap:8px; min-height:0; padding:0; background:none; border:none;}
+  #app[data-screen="prep"] #left{flex:0 0 auto;}
+  #right>.panel{background:var(--panel2); border-color:var(--line);}
+  #app[data-screen="lobby"] #right>.panel,#app[data-screen="result"] #right>.panel{background:var(--panel);}
+  /* 서랍(상세·기록·지표·기준) — 보드 화면에서는 바닥 시트로 뜨고, 그 밖 화면에서는 접힌 아코디언이다 */
+  .drawer{border:1px solid var(--line); border-radius:10px; background:var(--panel2); overflow:hidden; padding:0;}
+  .drawer>summary{cursor:pointer; padding:9px 10px; font-size:12.5px; font-weight:bold; color:var(--txt); list-style:none;}
+  .drawer>summary::-webkit-details-marker{display:none;}
+  .drawer>summary::before{content:"\25B8  "; color:var(--dim);}
+  .drawer[open]>summary::before{content:"\25BE  ";}
+  .drawer>.drawerBody{padding:0 10px 10px;}
+  #app[data-screen="board"] #right{position:absolute; inset:auto 0 0 0; max-height:76%; z-index:35;
+    background:var(--panel); border-top:2px solid var(--navyLine); border-radius:14px 14px 0 0; box-shadow:0 -10px 30px #0004;
+    padding:8px; gap:8px; overflow-y:auto;}
+  #app[data-screen="board"][data-drawer] #right{display:flex;}
+  #app[data-screen="board"][data-drawer] #drawerScrim{display:block;}
+  #drawerScrim{display:none; position:absolute; inset:0; background:#0a112066; z-index:34;}
+  #app[data-screen="board"][data-drawer="side"] #right>*:not(#sidePanel):not(#drawerHead),
+  #app[data-screen="board"][data-drawer="log"] #right>*:not(#drawerLog):not(#drawerHead),
+  #app[data-screen="board"][data-drawer="metrics"] #right>*:not(#drawerMetrics):not(#drawerHead){display:none;}
+  #app[data-screen="board"][data-drawer] .drawer>summary{display:none;}
+  #app[data-screen="board"][data-drawer] .drawer{border:none; background:none;}
+  #app[data-screen="board"][data-drawer] .drawer>.drawerBody{padding:0;}
+  #drawerHead{display:none; align-items:center; justify-content:space-between; gap:8px; font-size:13px; font-weight:bold;}
+  #app[data-screen="board"][data-drawer] #drawerHead{display:flex;}
+  /* 보드 화면의 얇은 상태 줄 + 바닥 행동 독 (보드와 겹치지 않게 문서 흐름에 둔다) */
+  #boardInfo{flex:0 0 auto; align-items:center; gap:8px; padding:6px 8px; border-radius:10px;
+    background:var(--panel2); border:1px solid var(--line); font-size:12px; min-height:40px;}
+  #boardInfo .who{font-weight:bold; white-space:nowrap;}
+  #boardInfo .sel{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dim);}
+  #boardInfo .more{flex:0 0 auto; font-size:11.5px; padding:5px 8px;}
+  #boardInfo .more .dot{display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--danger); margin-left:3px; vertical-align:1px;}
+  #actionDock{flex:0 0 auto; padding:6px 8px calc(8px + env(safe-area-inset-bottom)); background:var(--panel); border-top:1px solid var(--line);}
+  #app[data-screen="board"] #turnBar{margin:0; gap:6px;}
+  #app[data-screen="board"] #turnBar button{flex:1 1 auto; min-height:42px; min-width:70px; font-size:13px;}
+  #app[data-screen="board"] #turnBar .badge{flex:1 1 100%; text-align:center; padding:6px;}
+  /* 타이틀 화면 (신규 제안 — 같은 문서 안의 첫 화면) */
+  #titleScreen{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+    padding:24px 18px; background:linear-gradient(180deg,var(--navy) 0%,var(--navy2) 100%); color:#eef2fb; text-align:center;}
+  #titleScreen .kick{font-size:11px; letter-spacing:.28em; color:#8fa8d0;}
+  #titleScreen .logo{font-size:min(19vw,60px); line-height:.98; font-weight:bold; letter-spacing:.02em; color:#f6f1e5; margin:2px 0 4px;}
+  #titleScreen .tag{font-size:13.5px; color:#c6d3ea;}
+  #titleScreen .titleArt{width:min(76%,238px); border-radius:12px; border:2px solid #33507e; background:#101c31;
+    display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:1fr; gap:3px; padding:6px;}
+  #titleScreen .titleArt i{border-radius:3px; background:#182742; aspect-ratio:1/1;}
+  #titleScreen .titleArt i.f{background:#2b5540;}
+  #titleScreen .titleArt i.a{background:#33406e; box-shadow:inset 0 0 0 2px #ffffff33;} #titleScreen .titleArt i.b{background:#6e3340;}
+  #titleScreen .titleArt i.q{background:#3a4152; color:#cdd6e8; font-style:normal; font-size:12px; font-weight:bold; display:grid; place-items:center;}
+  #titleScreen button{min-height:48px; width:min(88%,300px);}
+  #titleScreen .ghost{background:transparent; color:#c6d3ea; border-color:#3d5580;}
+  /* 로비·결과 카드 (renderSide 산출을 그대로 감싸는 표시 계층) */
+  #app[data-screen="lobby"] #sidePanel h2:first-child{font-size:17px;}
+  #app[data-screen="lobby"] #sidePanel button.big,#app[data-screen="result"] #sidePanel button.big{flex:1 1 46%; min-height:48px;}
+  #app[data-screen="lobby"] #sidePanel input{flex:1 1 44%; min-width:130px;}
+  .lobbyCard{border:1px solid var(--line); border-radius:12px; background:var(--panel2); padding:10px 12px; margin:8px 0;}
+  .lobbyCard>h2{margin-top:0;}
+  .lobbyCard.net{background:var(--navy); color:#eef2fb; border-color:var(--navyLine);}
+  .lobbyCard.net small{color:#a9bcdc;}
+  .lobbyCard.net h2{color:#fff;}
+  .lobbyCard.net input{background:#25395c; border-color:#3d5580; color:#eef2fb;}
+  .lobbyCard .tagPill{display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:var(--mid); border:1px solid var(--line); color:var(--dim); margin-bottom:4px;}
+  .lobbyCard.net .tagPill{background:#25395c; border-color:#3d5580; color:#cfe0ff;}
+  /* 출전 준비 2단계 탭 (로스터 선택 ↔ 비공개 배치) — 두 절 모두 항상 DOM 에 있고 보이기만 바뀐다 */
+  .prepTabs{display:flex; gap:6px; margin-bottom:6px;}
+  .prepTabs button{flex:1; min-height:38px; font-size:12.5px;}
+  .prepTabs button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff;}
+  #app[data-prep="roster"] .prepStep[data-step="place"]{display:none;}
+  #app[data-prep="place"] .prepStep[data-step="roster"]{display:none;}
+  #app[data-screen="prep"] .tray{position:sticky; bottom:0; background:var(--panel2); padding:6px 4px; margin:6px -4px 0;
+    border-top:1px solid var(--line); overflow-x:auto; flex-wrap:nowrap; z-index:5;}
+  #app[data-screen="prep"] .trayItem{flex:0 0 auto;}
+  #app[data-screen="prep"] .rosterCard{flex:1 1 46%; min-width:0;}
+  #app[data-screen="result"] #sidePanel{text-align:center;}
+  .resultCrest{margin:8px auto 10px; width:min(66%,210px); aspect-ratio:1/1; border-radius:16px; display:grid; place-items:center;
+    background:linear-gradient(180deg,var(--navy),var(--navy2)); color:#f6f1e5; font-size:24px; font-weight:bold; letter-spacing:.08em;
+    border:2px solid var(--navyLine); text-align:center; line-height:1.3;}
+  .resultCrest.lose{background:linear-gradient(180deg,#2a1220,#3d1c2b);}
+  .resultCrest.draw{background:linear-gradient(180deg,#243040,#33414f);}
+  /* 넓은 화면: 같은 세로 프레임을 가운데 두고 바깥에만 여백을 준다 (러프 v1 방향) */
+  @media (min-width:900px){
+    body{padding:18px 0;}
+    #app{height:min(940px,calc(100vh - 36px)); height:min(940px,calc(100dvh - 36px)); border-radius:18px;}
+  }
   /* ===== #26 튜토리얼 모달·상황 도움말 (게임 모달 #overlay z50 위 z60 · 도움말은 z45로 게임 모달 아래) ===== */
   .tutBtn{width:26px; height:26px; padding:0; border-radius:50%; font-size:14px; font-weight:bold; margin-left:6px; vertical-align:middle; line-height:1;}
   #tutOverlay{position:fixed; inset:0; background:#000d; display:flex; align-items:center; justify-content:center; z-index:60; padding:12px;}
@@ -251,31 +513,77 @@
     #tutTitle{font-size:22px;}
     .tut-nav{gap:14px; margin:8px 0 0;}
   }
+
+  /* ================= #122 어두운 표면 보정 =================
+     본문 색이 아이보리 잉크로 바뀌었으므로, 계속 어두운 배경을 쓰는 표면(배너·토스트·도움말)에는 밝은 글자색을 명시한다.
+     **튜토리얼 모달은 종전 어두운 팔레트를 그대로 유지한다** — 승인된 10단계 화면·기존 촬영 증빙을 이번 리스킨으로 바꾸지 않는다.
+     토큰 이름이 같으므로 #tutOverlay 안에서 값만 되돌리면 .tut-* 규칙 전체가 종전대로 계산된다. */
+  #tutOverlay{--panel:#1c2130; --panel2:#242b3d; --line:#333c52; --txt:#e8ecf5; --dim:#8a93a8;
+    --accent:#5b8cff; --danger:#ff5b6e; --ok:#4fd88a; --mid:#2a2f3d; --zoneA:#2a3350; --zoneB:#502a33; --forest:#1f3a2a;
+    --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d; --heal:#4fd88a; --guard:#4da3ff; --buff:#ffd84d;
+    color:#e8ecf5;}
+  #tutHint{--dim:#8a93a8; color:#eef2fb;}
+  #tutHint .tut-hint-ok{background:#25395c; border-color:#3d5580; color:#eef2fb;}
+  #fxBanner{color:#f2f5fb;}
+  #fxSub{color:#b8c4da;}
+  .toast{background:#101c31f2; border-color:#2c4570; color:#f2f5fb;}
+  #toasts{top:52px;}
+  /* 밝은 패널 위의 막대·수치 표시 */
+  .hpbar,.shbar,.dmgbar{background:#00000018;}
+  .dmgfloat{text-shadow:0 1px 2px #fffc,0 0 6px #fff9;}
+  #msgBox{background:#fffdf4; border:2px solid var(--navyLine); border-radius:4px 14px 4px 14px; color:var(--txt); box-shadow:2px 3px 0 #00000022;}
+  #bstage.scene .btok.art small{color:var(--txt); text-shadow:0 1px 0 #fff,0 0 4px #fff;}
+  #bstage.scene .btok .dmgfloat{text-shadow:0 1px 2px #fffc,0 0 6px #fff9;}
+  .rosterArt img,.rosterArt.fb{background:#00000010;}
+  /* 로비·결과 화면에서는 기록·지표 서랍을 접어 둔다 (개발용 상시 사이드바 제거) */
+  #app[data-screen="lobby"] #drawerLog,#app[data-screen="lobby"] #drawerMetrics,
+  #app[data-screen="title"] #drawerLog,#app[data-screen="title"] #drawerMetrics{display:none;}
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="left" class="panel">
-    <h1>Digit Dual <small id="phaseLabel"></small> <button id="tutBtn" class="tutBtn" type="button" aria-label="튜토리얼 다시 보기" title="튜토리얼 다시 보기" onclick="tutOpen()">?</button></h1>
-    <div id="toasts"></div>
-    <div id="board"></div>
-    <div class="row" id="turnBar"></div>
+<!-- #122 (v0.4.7): 화면은 여전히 이 한 문서다. data-screen 은 S.phase(menu/setup/play/over) 와 타이틀 화면을 비추는 표시 상태이며
+     새 문서·새 창·라우터가 아니다 — #128 "새 문서 로드당 1회" 튜토리얼 경계는 그대로다. -->
+<div id="app" data-screen="title" data-prep="roster">
+  <div id="titleScreen">
+    <div class="kick">POCKET STRATEGY</div>
+    <div class="logo">DIGIT<br>DUEL</div>
+    <div class="titleArt" aria-hidden="true"><i></i><i class="b"></i><i></i><i></i><i></i><i class="q">?</i><i></i><i></i><i></i><i class="f"></i><i></i><i class="f"></i><i></i><i></i><i></i><i class="q">?</i><i></i><i class="a"></i><i></i><i></i><i></i></div>
+    <div class="tag">정체를 숨기고, 한 수 앞을 읽다.</div>
+    <button class="primary big" type="button" onclick="uiStart()">대전 시작 →</button>
+    <button class="ghost big" type="button" onclick="tutOpen()">📖 튜토리얼 보기</button>
   </div>
-  <div id="right">
-    <div class="panel" id="sidePanel"></div>
-    <div class="panel"><h2>로그</h2><div id="log"></div></div>
-    <div class="panel"><h2>지표 (GDD-12 연동 스캐폴드)</h2><div id="metrics" style="font-size:12px;color:var(--dim)"></div></div>
-    <div class="panel" style="font-size:11px;color:var(--dim)">
-      기준: GDD-13 v0.7 확정 규칙 · 수치는 [DATA] 전투 수치 v0.1 제안값(승인 전 임시) ·
-      AI: 공정 관측(플레이어와 동일한 정보 제한, 이동 이력 기반 논리 추론만 사용) ·
-      기술 4슬롯 체계: GDD-16 v1.0 (S1~S3 A안) ·
-      간소화: PVP 대리 출전 순차 블라인드, 후퇴-탐색 금지·제한 시간 미구현, 마지막 목격 칸 미표시(A/B는 v0.3.0)
+  <div id="appBar">
+    <h1><span class="brand">DIGIT DUEL</span> <small id="phaseLabel"></small></h1>
+    <button id="btnDrawerSide" class="barBtn" type="button" onclick="uiDrawer('side')">상세</button>
+    <button id="btnDrawerLog" class="barBtn" type="button" onclick="uiDrawer('log')">기록</button>
+    <button id="tutBtn" class="tutBtn" type="button" aria-label="튜토리얼 다시 보기" title="튜토리얼 다시 보기" onclick="tutOpen()">?</button>
+  </div>
+  <div id="toasts"></div>
+  <div id="screenBody">
+    <div id="left" class="panel">
+      <div id="boardWrap"><div id="board"></div></div>
+    </div>
+    <div id="boardInfo"></div>
+    <div id="right">
+      <div id="drawerHead"><span id="drawerTitle"></span><button type="button" onclick="uiDrawer(null)">닫기</button></div>
+      <div class="panel" id="sidePanel"></div>
+      <details class="drawer" id="drawerLog"><summary>📜 공개 기록</summary><div class="drawerBody"><div id="log"></div></div></details>
+      <details class="drawer" id="drawerMetrics"><summary>📊 지표 (GDD-12 연동 스캐폴드)</summary><div class="drawerBody"><div id="metrics" style="font-size:12px;color:var(--dim)"></div></div></details>
+      <details class="drawer" id="drawerRef"><summary>ℹ️ 기준 문서·간소화 범위</summary><div class="drawerBody" style="font-size:11px;color:var(--dim)">
+        기준: GDD-13 v0.7 확정 규칙 · 수치는 [DATA] 전투 수치 v0.1 제안값(승인 전 임시) ·
+        AI: 공정 관측(플레이어와 동일한 정보 제한, 이동 이력 기반 논리 추론만 사용) ·
+        기술 4슬롯 체계: GDD-16 v1.0 (S1~S3 A안) ·
+        간소화: PVP 대리 출전 순차 블라인드, 후퇴-탐색 금지·제한 시간 미구현, 마지막 목격 칸 미표시(A/B는 v0.3.0)
+      </div></details>
     </div>
   </div>
+  <div id="actionDock"><div class="row" id="turnBar"></div></div>
+  <div id="drawerScrim" onclick="uiDrawer(null)"></div>
 </div>
 <div id="overlay" class="overlay hidden"><div class="box" id="overlayBox"></div></div>
-<!-- #106 연출 배너 오버레이 (게임 모달 z50 위 · 튜토리얼 z60 아래) — 표시 전용, 규칙 상태 무관 -->
-<div id="fxBanner" class="hidden" role="status" aria-live="polite"><div class="fxBox"><div id="fxTitle"></div><div id="fxSub"></div></div></div>
+<!-- #106 연출 배너 오버레이 (게임 모달 z50 위 · 튜토리얼 z60 아래) — 표시 전용, 규칙 상태 무관.
+     #126: 결과 연출의 파편·섬광은 #fxFx 안에서만 만들어지며 난수를 쓰지 않는다 (인덱스 계산 고정). -->
+<div id="fxBanner" class="hidden" role="status" aria-live="polite"><div id="fxFx" aria-hidden="true"></div><div class="fxBox"><div id="fxTitle"></div><div id="fxSub"></div></div></div>
 <!-- #26 상황 도움말(비모달, 1회) · 튜토리얼 모달(게임 내부, 외부 창·서버 없음) -->
 <div id="tutHint" class="hidden" role="status" aria-live="polite"></div>
 <div id="tutOverlay" class="hidden" aria-hidden="true"><div id="tutBox" role="dialog" aria-modal="true" aria-labelledby="tutTitle" aria-describedby="tutBody" tabindex="-1"></div></div>
@@ -505,10 +813,29 @@ const ROSTER=[
    상대경로이므로 file:// 오프라인(index.html 과 assets/ 를 함께 둔 폴더)과 기존 HTTP 서빙 양쪽에서 같은 경로로 읽힌다.
    정보 은닉(규격 7.10.3): 정체를 모르는 말에는 <img>·src·개별 요청·alt/title/aria/data/클래스 어디에도 실제 종 값을 만들지 않는다. */
 const ART_BASE="assets/minions/";
+/* ===== #124 (v0.4.7) 왕·동료 아트 연결 훅 — 표시 계층 전용 =====
+   자산: demo/assets/leaders/<king|companion>/{icon64.png · battle256.png}. 로스터 20종에서 파생되는 ART_DIRS 허용 목록에
+   끼워 넣지 않고 **별도 조회 경로**를 쓴다 (Venus 6장 F14). 아직 납품 전일 수 있으므로 **실제로 불러와진 뒤에만** 그림으로 바꾸고,
+   그 전과 로드 실패 뒤에는 현행 이모지(👑·🤝)로 그대로 되돌아간다 — 새 폴백 규칙을 만들지 않는다.
+   정보 은닉: 하수인과 같은 자리에서만 부른다 — 확정(known)된 말과 실제 출전 중인 본체 전투원뿐이다.
+   미공개 말에는 <img>·src·alt·클래스 어디에도 정체 값이 만들어지지 않는다.
+   폴더 이름에 소유자·진영 정보가 없고 프리로드가 정체와 무관한 고정 집합이라 요청 목록이 상관관계를 만들지 않는다. */
+const LEADER_BASE="assets/leaders/";
+const LEADER_OF={king:"king",ally:"companion"};
+const LEADER_DIRS=["king","companion"], LEADER_DIR_SET=new Set(LEADER_DIRS);
+const LEADER_FILES={icon:"icon64.png",battle:"battle256.png"};
+function leaderDirOf(p){ return (p&&LEADER_OF[p.type])?LEADER_OF[p.type]:null; }
+/* 실제 로드가 확인된 뒤에만 참 — 자산이 없거나 실패하면 null 이라 현행 이모지 경로로 간다 */
+function leaderArtDir(p){ const d=leaderDirOf(p); return (d&&!ART.failed.has(d)&&ART.loaded.has(d+"/"+LEADER_FILES.icon))?d:null; }
+function leaderBattleDir(pf,piece){ // 본체 출전일 때만 — 포획 하수인 대리 출전은 그 하수인 아트를 그대로 쓴다 (#91)
+  if(!pf||!piece||pf!==piece) return null;
+  const d=leaderDirOf(piece);
+  return (d&&!ART.failed.has(d)&&ART.loaded.has(d+"/"+LEADER_FILES.battle))?d:null;
+}
 const ART_DIRS=ROSTER.map(r=>r.element+"_"+r.arch);       // 20종 허용 목록 — 이 목록 밖의 값으로 경로를 만들지 않는다
 const ART_DIR_SET=new Set(ART_DIRS);
 const ART={failed:new Set(),loaded:new Set(),preloaded:false,rerender:null};
-function artUrl(dir,file){return ART_BASE+dir+"/"+file;}
+function artUrl(dir,file){return (LEADER_DIR_SET.has(dir)?LEADER_BASE:ART_BASE)+dir+"/"+file;} // #124: 왕·동료는 별도 폴더
 /* 말 → 종 폴더. rosterId 가 없거나(미배정 하수인) 허용 목록 밖이면 null → 안전 폴백. 포획·예비 하수인(cap)은 type 이 없어 여기서는 항상 null — 전투 토큰은 artDirOfFighter (#91) */
 function artDirOf(p){
   if(!p||p.type!=="minion"||!p.rosterId) return null;
@@ -583,6 +910,20 @@ function artPreload(){
       im.src=artUrl(dir,f);
     }catch(e){}
   }
+  /* #124: 왕·동료 2종도 같은 시점에 같은 고정 집합으로 요청한다 (정체와 무관 — 요청 목록이 상관관계를 만들지 않는다).
+     아직 납품 전이면 여기서 실패해 ART.failed 에 들어가고 화면은 현행 이모지 그대로다. */
+  for(const dir of LEADER_DIRS) for(const f of [LEADER_FILES.icon,LEADER_FILES.battle]){
+    try{
+      const im=document.createElement("img");
+      im.onload=()=>{ART.loaded.add(dir+"/"+f); artLeaderReady();};
+      im.onerror=()=>{if(f===LEADER_FILES.icon) ART.failed.add(dir);};
+      im.src=artUrl(dir,f);
+    }catch(e){}
+  }
+}
+function artLeaderReady(){ // 자산이 늦게 도착했을 때 한 번만 다시 그린다 (artFail 과 같은 1회 예약 자리를 공유한다)
+  if(ART.rerender) return;
+  ART.rerender=setTimeout(()=>{ART.rerender=null; try{ if(S&&S.phase!=="menu") render(); }catch(e){}},0);
 }
 /* 기호 어휘는 MEMO_OPTS 8종 하나뿐이다 — 확정 표시와 추측 메모가 같은 이모지를 쓴다 (규격 7.10.1 · 신규 래스터 0장) */
 function memoEmoji(key){const o=memoOpt(key); return o?o.emoji:"";}
@@ -634,6 +975,10 @@ function pieceMemoKey(p){ return !p?null:(p.type==="minion"?(p.element?"minion_"
 function pcFaceHtml(p){
   const dir=artDirOf(p);
   if(artOk(dir)) return `<img class="icon" src="${artUrl(dir,"icon.png")}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${dir}',this)">`;
+  /* #124: 왕·동료도 보드에서 그 정체 역할로 보인다 (Venus 6장 AC-A5 정정). 자산이 로드된 뒤에만 그림이고 그 전에는 아래 이모지 그대로다.
+     원본이 도트가 아닌 일러스트라 32px 표시에는 최근접 확대 대신 브라우저 보간을 쓴다 (.pc .icon.leader) */
+  const ld=leaderArtDir(p);
+  if(ld) return `<img class="icon leader" src="${artUrl(ld,LEADER_FILES.icon)}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${ld}',this)">`;
   const key=p.type!=="minion"?pieceMemoKey(p):null;
   if(key) return `<span class="face">${glyphSpan(key,"sym")}</span>`;
   return `<span class="face"><span class="nm">${p.type==="minion"&&p.name?p.name:(TYPE_KO[p.type]||"?")}</span></span>`;
@@ -700,6 +1045,7 @@ function newGame(mode,opts){
     battle:null, winner:null, aiPending:false, aiBattlePending:false, aiVanguard:[null,null],
     aiProfile:[null,null],
     healTickTurn:-1, btBannerDue:false, contactKind:"move", // #106: 회복 틱 중복 가드(같은 turn 1회) · 버닝 타임 배너 1회 예약 · 접촉 배너 부제 종류
+    matchFxDone:false, // #126: 경기 종료 연출 1회 보장 (경기 기준 — 새 경기마다 자연히 초기화된다)
     fleePick:null, // #114 도망 후 교환 선택 상태 {owner,pieceId,oppId,cands:[id]} — 소유자(S.current 와 다를 수 있음)만 보드 클릭·생략 입력, 상대는 대기
     metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,heals:0,healHp:0,bombContacts:0,autoEnds:0,relocations:0,fleePushes:0,
              bombHitsMinion:0,bombClearedByVip:0,kingForestTurns:0,battleRefusals:0,
@@ -824,6 +1170,65 @@ function escAttr(v){
 
 const $=id=>document.getElementById(id);
 
+/* ===== #122 (v0.4.7) 세로 UI 셸 — 표시 계층 전용 =====
+   규칙 상태는 종전대로 S.phase 하나뿐이다. 여기서 기억하는 것은 (a) 타이틀 화면을 지났는가 (b) 어떤 서랍이 열려 있는가
+   (c) 출전 준비의 어느 단계를 보고 있는가 — 셋 다 표시 상태이고 난수·저장소·네트워크를 건드리지 않는다.
+   화면 전환은 같은 문서 안에서 일어나므로 **새 문서 로드가 아니다** — #128 "새 문서 로드당 1회" 튜토리얼 경계는 그대로다. */
+const UI={entered:false,drawer:null,prep:"roster"};
+function uiScreenName(){
+  if(!UI.entered) return "title";
+  if(!S) return "lobby";
+  return S.phase==="menu"?"lobby":S.phase==="setup"?"prep":S.phase==="play"?"board":"result";
+}
+function uiApply(){
+  try{
+    const a=$("app"); if(!a||!a.setAttribute) return;
+    const sc=uiScreenName();
+    a.setAttribute("data-screen",sc);
+    a.setAttribute("data-prep",UI.prep);
+    if(sc==="board"&&UI.drawer) a.setAttribute("data-drawer",UI.drawer);
+    else if(a.removeAttribute) a.removeAttribute("data-drawer");
+    const t=$("drawerTitle");
+    if(t) t.textContent=UI.drawer==="log"?"📜 공개 기록":UI.drawer==="metrics"?"📊 지표":"📋 내 정보 · 선택 말 · 추측 메모";
+    /* 기록·지표는 접힌 <details> 다. 서랍으로 열 때는 요약 줄을 감추고 내용을 보여야 하므로 open 을 실제로 세운다
+       (data-drawer 만 바꾸면 제목과 닫기 버튼만 남고 로그 본문이 보이지 않는다 — PD 실제 PNG 검토 지적). */
+    const setOpen=(id,on)=>{ try{ const el=$(id); if(!el) return;
+      if(on){ if(el.setAttribute) el.setAttribute("open",""); }
+      else if(el.removeAttribute) el.removeAttribute("open");
+      try{ el.open=!!on; }catch(e2){} }catch(e){} };
+    setOpen("drawerLog",sc==="board"&&UI.drawer==="log");
+    setOpen("drawerMetrics",sc==="board"&&UI.drawer==="metrics");
+    const bs=$("btnDrawerSide"), bl=$("btnDrawerLog");
+    if(bs&&bs.setAttribute) bs.setAttribute("aria-pressed",UI.drawer==="side"?"true":"false");
+    if(bl&&bl.setAttribute) bl.setAttribute("aria-pressed",UI.drawer==="log"?"true":"false");
+  }catch(e){}
+}
+window.uiDrawer=function(k){ UI.drawer=(k&&UI.drawer===k)?null:(k||null); uiApply(); try{ fitBoard(); }catch(e){} };
+window.uiStart=function(){ UI.entered=true; uiApply(); try{ render(); }catch(e){} };
+/* 단계를 바꾸면 말판이 보이거나 숨겨지므로 그 자리에서 보드 배율을 다시 잰다 (숨어 있는 동안에는 폭이 0 이라 잴 수 없다) */
+window.uiPrep=function(step){ UI.prep=(step==="place")?"place":"roster"; uiApply(); try{ fitBoard(); }catch(e){} };
+/* 보드 스케일 — 칸 기하(7×52px)와 말 규격(48/32/11)은 CSS 에서 불변이고, 세로 화면 맞춤은 이 --bs 하나로만 한다.
+   transform 스케일이라 클릭 판정 좌표계도 함께 변형되므로 칸 히트 영역이 어긋나지 않는다.
+   실제 DOM 이 있을 때만 측정한다 — 헤드리스 스텁은 기본값 1 그대로다 (기존 회귀의 기하 전제 불변). */
+function fitBoard(){
+  try{
+    const w=$("boardWrap"), a=$("app"); if(!w||!w.style||!w.style.setProperty) return;
+    const avail=w.clientWidth||0; if(!avail) return;
+    const bar=$("appBar"), dock=$("actionDock"), info=$("boardInfo");
+    const used=(bar&&bar.offsetHeight||0)+(dock&&dock.offsetHeight||0)+(info&&info.offsetHeight||0);
+    /* 세로 높이는 **뷰포트** 기준으로 잡는다 — #app 은 내용이 넘치면 같이 커지므로 그 값을 쓰면 배율이 수렴하지 않는다.
+       넓은 화면에서 프레임 위아래에 둔 여백(body padding)은 프레임 상단 좌표에서 되읽어 뺀다. */
+    const top=(a&&a.getBoundingClientRect)?Math.max(0,a.getBoundingClientRect().top):0;
+    const vh=((typeof window!=="undefined"&&window.innerHeight)||0)-top*2;
+    const boxH=vh-used-30;
+    let s=Math.min(avail/376,1);
+    if(S&&S.phase==="play"&&boxH>140) s=Math.min(s,boxH/700);
+    if(!(s>0.2)) s=1;
+    w.style.setProperty("--bs",String(Math.round(s*1000)/1000));
+  }catch(e){}
+}
+if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("resize",()=>{try{fitBoard();}catch(e){}});
+
 /* ===== #106 연출 잠금·배너 큐 (turn-flow 계약 3장) =====
    원칙: 규칙 상태(S) 전이는 종전처럼 동기·즉시. 여기 있는 것은 표시 계층(배너 오버레이·입력 잠금·표시 유지)뿐이며 rand() 를 쓰지 않고
    규칙 함수를 부르지 않는다 (예외 두 가지 — 행동자 클라이언트의 자동 턴 종료 '입력 액션' 발생, AI 스케줄 idle 콜백 — 은 계약 3.1-3).
@@ -841,12 +1246,26 @@ function fxLive(){ // 실제 DOM 이 있고 사람이 보는 모드일 때만 �
 function fxMs(key){ return fxLive()?(BAL.fx[key]||0):0; }
 function fxLocked(){ return !!FX.cur||FX.q.length>0||MSGPLAYING; }
 function fxSetLockClass(on){ try{ const b=document.body; if(b&&b.classList){ if(on) b.classList.add("fx-lock"); else b.classList.remove("fx-lock"); } }catch(e){} }
+/* #126 (v0.4.7): 결과 배너의 섬광·파편 레이어. 각도·거리·지연이 전부 **인덱스 계산**이라 rand() 도 Math.random 도 쓰지 않는다
+   — 시드 스트림·락스텝·AI vs AI 완주 결과에 영향이 0 이다. 결과가 아닌 항목에서는 비워 두므로 다른 배너에는 아무것도 얹히지 않는다.
+   CSS 애니메이션은 전부 유한(forwards)이라 배너가 닫힌 뒤 도는 것이 남지 않는다. */
+const FXFX_N=16, FXFX_D=[128,96,152,110];
+function fxFxLayer(item){
+  try{
+    const fl=$("fxFx"); if(!fl) return;
+    if((item.kind||"")!=="result"){ if(fl.innerHTML) fl.innerHTML=""; return; }
+    let h="";
+    for(let i=0;i<FXFX_N;i++) h+=`<i style="--a:${Math.round(i*360/FXFX_N)+(i%2?11:0)}deg;--d:${FXFX_D[i%4]}px;--x:${(i-(FXFX_N-1)/2)*23}px;--i:${i}"></i>`;
+    fl.innerHTML=h;
+  }catch(e){}
+}
 function fxShow(item){
   fxSetLockClass(true);
   try{
     const el=$("fxBanner"); if(!el) return;
     el.className=(item.kind||"banner")+(item.cls?" "+item.cls:"")+(item.dim===false?" nodim":"");
     const t=$("fxTitle"), s=$("fxSub"); if(t) t.textContent=item.title||""; if(s) s.textContent=item.sub||"";
+    fxFxLayer(item); // #126
     el.classList.remove("hidden");
     if(item.cells&&el.nodeType===1) for(const [r,c] of item.cells){ const cell=document.querySelector(`#board .cell[data-r="${r}"][data-c="${c}"]`); if(cell) cell.classList.add(item.cellCls||"fx-boom"); }
   }catch(e){}
@@ -944,6 +1363,7 @@ function render(){
     : S.phase==="setup" ? `— 배치: ${pname(S.setupPlayer)}`
     : S.phase==="play" ? `— ${pname(S.current)} 턴 ${S.turnCount+1}${isBurning()?" 🔥BT":""}` : S.phase==="over"?"— 종료":"";
   renderBoard(); renderSide(); renderTurnBar(); renderMetrics();
+  try{ uiApply(); renderBoardInfo(); fitBoard(); }catch(e){} // #122 표시 계층 — 화면 상태·상태 줄·보드 스케일
   try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
 }
 function renderBoard(){
@@ -964,7 +1384,9 @@ function renderBoard(){
         const chip=document.createElement("div");
         const known = viewer===2||p.owner===viewer||p.revealed;
         const healVis=!!p.healing&&(viewer===2||p.owner===viewer||p.revealed); // #106 H8: 회복 이펙트는 소유자 화면 항상, 상대 화면은 공개 말만
-        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"")+(healVis?" healing":"")+(ghost?" fx-ghost":"");
+        /* #122 (CJ 추가 피드백): 이 칸이 실제 수풀이면 표시만 반투명으로 낮춘다 (inbush). 규칙·가시성 판정은 위에서 이미 끝났고
+           여기서 바뀌는 것은 없다 — 안 보이는 말은 이 분기에 들어오지도 않는다. */
+        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"")+(healVis?" healing":"")+(ghost?" fx-ghost":"")+(inForest({r})?" inbush":"");
         const g=!known&&S.phase==="play"&&viewer!==2?memoOpt(S.memos[viewer][p.id]):null; // #36 뷰어 전용 추측 — 실제 공개(known)면 실제 렌더 우선
         // #89 확정 말은 종 아이콘(하수인) 또는 같은 메모 이모지 + 정보 행. 미공개 말은 현행 그대로 ? 또는 뷰어 자신의 추측 이모지만 — 종 아이콘·경로를 만들지 않는다
         chip.innerHTML = known
@@ -1070,13 +1492,18 @@ function fleePickMine(){
 function renderSide(){
   const sp=$("sidePanel");
   if(S.phase==="menu"){
-    sp.innerHTML=`<h2>Digit Dual — 프로토타입 데모</h2>
-      <p style="margin:8px 0;font-size:13px;color:var(--dim)">7×13 전장에서 정체와 숲 속 위치를 감춘 14개의 말을 운용해 상대 왕을 제거하세요.</p>
+    /* #122: 카드 세 장으로 나눈 세로 로비. 진입점·문구·입력칸(주소/코드 2개)·관전 링크·튜토리얼 버튼은 종전 그대로다 */
+    sp.innerHTML=`<h2>오늘은 누구와 겨룰까요?</h2>
+      <p style="margin:6px 0 8px;font-size:12.5px;color:var(--dim)">7×13 전장에서 정체와 숲 속 위치를 감춘 14개의 말을 운용해 상대 왕을 제거하세요.</p>
+      <div class="lobbyCard"><span class="tagPill">혼자서</span>
       <h2>PVE (AI 대전) — 난이도 선택</h2>
       <div class="row"><button class="primary big" onclick="startMode('pve',{aiLevel:'grade5'})">5급 — 기본 AI</button>
         <button class="primary big" onclick="startMode('pve',{aiLevel:'dan5'})">5단 — 탐색·추론 기반 강AI</button></div>
-      <small>5급: 휴리스틱 기준선 AI · 5단: 공정 관측 아래 2수 앞(상대 최선 응수)까지 평가하는 제한 탐색 AI</small>
-      <div class="row" style="margin-top:10px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button></div>
+      <small>5급: 휴리스틱 기준선 AI · 5단: 공정 관측 아래 2수 앞(상대 최선 응수)까지 평가하는 제한 탐색 AI</small></div>
+      <div class="lobbyCard"><span class="tagPill">한 기기 2인</span>
+      <div class="row" style="margin-top:2px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button></div>
+      <small>기기를 번갈아 건네며 대전합니다. 교대할 때마다 화면이 가려집니다.</small></div>
+      <div class="lobbyCard net"><span class="tagPill">같은 LAN</span>
       <div class="row"><button class="primary big" onclick="netPrepare()">🌐 온라인 PVP (배치 후 자동 매칭)</button>
         <input id="netServer" value="${escAttr(netServerDefault())}" placeholder="서버 주소 (예: 127.0.0.1:8080)"
           style="width:180px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px">
@@ -1084,7 +1511,7 @@ function renderSide(){
           style="width:150px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px">
         <span class="badge" id="netStatus" style="display:none"></span></div>
       <small>같은 PC·같은 공유기 전용 (서버 기본값은 이 PC만 · 다른 기기는 서버를 DD_LAN=1로 켜야 합니다) — 서버 콘솔에 <b>접속 주소</b>와 <b>접속 코드</b>가 서로 다른 줄에 출력됩니다. 주소는 왼쪽 칸, 코드는 오른쪽 칸에 각각 넣으세요(두 값을 한 칸에 합치지 않습니다). 코드는 접속할 때 WebSocket 하위 프로토콜 헤더로만 전송되며, 이 페이지는 코드를 브라우저 저장소·주소창·게임 로그에 기록하지 않고 탭 메모리에만 둡니다. (평문 ws:// 링크에서는 헤더도 평문이라 같은 망의 관찰자에게는 기밀이 아닙니다.)</small>
-      ${location.protocol==="file:"?`<small style="color:var(--buff)">⚠️ 지금은 html 파일을 직접 연 상태(file://)입니다. 서버는 file:// 페이지의 Origin(null)을 거부하므로 이대로는 접속되지 않습니다. 서버가 서빙하는 주소 — 서버를 켠 PC에서는 <b>http://127.0.0.1:8080</b>, 같은 내부망의 다른 기기에서는 <b>http://&lt;서버 IP&gt;:8080</b> — 를 브라우저 주소창에 입력해 여세요.</small>`:""}
+      ${location.protocol==="file:"?`<small style="color:var(--buff)">⚠️ 지금은 html 파일을 직접 연 상태(file://)입니다. 서버는 file:// 페이지의 Origin(null)을 거부하므로 이대로는 접속되지 않습니다. 서버가 서빙하는 주소 — 서버를 켠 PC에서는 <b>http://127.0.0.1:8080</b>, 같은 내부망의 다른 기기에서는 <b>http://&lt;서버 IP&gt;:8080</b> — 를 브라우저 주소창에 입력해 여세요.</small>`:""}</div>
       <div class="row"><a class="simlink" onclick="startMode('sim')">AI vs AI 시뮬레이션(관전 · 5급 vs 5급)</a>
         <a class="simlink" onclick="startMode('sim',{aiLevel:['dan5','grade5']})">5단 vs 5급 관전</a></div>
       <div class="row" style="margin-top:10px"><button type="button" onclick="tutOpen()">📖 튜토리얼 다시 보기</button></div>`;
@@ -1092,10 +1519,23 @@ function renderSide(){
   }
   if(S.phase==="setup"){renderSetup(sp);return;}
   if(S.phase==="over"){
-    sp.innerHTML=`<h2>경기 종료</h2><p style="font-size:18px;margin:8px 0">${S.winner===null?"무승부 (시뮬레이션 턴 상한 도달)":pname(S.winner)+" 승리! 🏆"}</p>
+    /* #122: 경기 결과 화면. 종전의 [처음으로](location.reload)는 **같은 문서 안의** [로비로 돌아가기]·[다시 대전]으로 바뀐다 —
+       #128 자동 튜토리얼은 새 문서 로드에서만 뜨므로, 같은 문서의 로비 복귀·재대전에서는 다시 뜨지 않는다 (정책 그대로).
+       온라인은 매칭·프로토콜을 새로 타야 하므로 재대전 버튼을 만들지 않고 로비 복귀만 둔다 (서버·계정·매칭 무변경). */
+    const draw=S.winner===null;
+    const neutral=S.mode==="sim"||(S.mode==="pvp"&&!NET.mode);
+    const mine=!draw&&!neutral&&viewerIsOwner(S.winner);
+    const crest=draw?"draw":(neutral?"":(mine?"":"lose"));
+    sp.innerHTML=`<small>MATCH COMPLETE</small>
+    <div class="resultCrest ${crest}">${draw?"DRAW":(neutral?"MATCH<br>COMPLETE":(mine?"VICTORY":"DEFEAT"))}</div>
+    <h2>경기 종료</h2><p style="font-size:18px;margin:8px 0">${draw?"무승부 (시뮬레이션 턴 상한 도달)":pname(S.winner)+" 승리! 🏆"}</p>
     ${S.metrics.winType?`<p style="margin:4px 0;color:var(--dim)">승리 유형: ${WINTYPE_KO[S.metrics.winType]}</p>`:""}
+    <p style="margin:4px 0;color:var(--dim)">총 진행 ${S.turnCount}턴</p>
     ${S.mode!=="sim"?`<p style="margin:4px 0;color:var(--dim)">🔍 종료 공개 — 보드의 모든 말 위치·정체가 공개되었습니다.</p>`:""}
-    <button class="primary" onclick="location.reload()">처음으로</button>`;
+    <div class="row" style="margin-top:10px;justify-content:center">
+      <button class="primary big" onclick="toLobby()">로비로 돌아가기</button>
+      ${NET.mode?"":`<button class="big" onclick="rematch()">다시 대전</button>`}</div>
+    ${NET.mode?`<small>온라인 재대전은 로비에서 서버 주소·접속 코드를 넣고 다시 매칭합니다.</small>`:""}`;
     return;
   }
   const p = NET.mode?NET.me:(S.mode==="pvp"?S.current:0); // 온라인: 사이드 패널은 항상 내 정보
@@ -1131,6 +1571,21 @@ function renderSide(){
   }
   sp.innerHTML=h;
 }
+/* #122 보드 화면의 얇은 상태 줄 — 상시 사이드바를 없앤 대신 "지금 누구 차례·무엇을 골랐나"만 남긴다.
+   내용은 전부 renderSide 가 이미 같은 뷰어 기준으로 계산해 둔 값의 요약이라 새 정보를 만들지 않는다 (비공개 경계 동일). */
+function renderBoardInfo(){
+  const el=$("boardInfo"); if(!el) return;
+  if(!S||S.phase!=="play"){ el.innerHTML=""; return; }
+  const p=NET.mode?NET.me:(S.mode==="pvp"?S.current:0);
+  const mineTurn=!isAI(S.current)&&(!NET.mode||S.current===NET.me);
+  const sel=(S.selected&&!S.selected.tray&&mineTurn)?S.selected:null;
+  const who=isAI(S.current)?`🤖 ${pname(S.current)}`:fxTurnLabel(S.current,false);
+  const info=sel?`${idLabel(p,sel)} · HP ${sel.hp}/${sel.maxHp}`
+    :(!mineTurn?"상대가 행동을 선택하고 있습니다":(S.mainUsed?"주 행동 완료":"자기 말을 선택하세요"));
+  el.innerHTML=`<span class="who">${who} · ${S.turnCount+1}턴${isBurning()?" 🔥BT":""}</span>`
+    +`<span class="sel">${info} · 전투 ${S.battlesUsed}/2</span>`
+    +`<button type="button" class="more" onclick="uiDrawer('side')">상세 ›</button>`;
+}
 function renderSetup(sp){
   const p=S.setupPlayer;
   if(NET.queued){ // 온라인: 배치 완료 → 매칭 대기
@@ -1146,7 +1601,14 @@ function renderSetup(sp){
   }
   const sel=S.roster[p], rosterDone=sel.length===6;
   const unplaced=S.pieces.filter(x=>x.owner===p&&!x.placed);
-  let h=`<h2>${NET.preparing?"🌐 온라인 대전 — 내":pname(p)} 로스터 선택 (${sel.length}/6)</h2>
+  /* #122: 출전 준비를 "01 로스터 선택 / 02 비공개 배치" 두 단계로 나눠 보여 준다. 두 절 모두 항상 DOM 에 있고
+     CSS 로 한 쪽만 보인다 — 안내 문구·버튼·트레이 마크업은 종전 그대로다. 배치 단계에서는 트레이가 화면 아래에 고정되어
+     "트레이 말 탭 → 보드 칸 탭" 조작이 스크롤로 끊기지 않는다. */
+  let h=`<div class="prepTabs">
+    <button type="button" aria-pressed="${UI.prep==="roster"}" onclick="uiPrep('roster')">01 로스터 선택 ${sel.length}/6</button>
+    <button type="button" aria-pressed="${UI.prep==="place"}" onclick="uiPrep('place')">02 비공개 배치 ${14-unplaced.length}/14</button></div>
+  <section class="prepStep" data-step="roster">
+  <h2>${NET.preparing?"🌐 온라인 대전 — 내":pname(p)} 로스터 선택 (${sel.length}/6)</h2>
   <small>20종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정.</small>`;
   for(const el of ELEMS){
     h+=`<div class="row">`;
@@ -1156,7 +1618,8 @@ function renderSetup(sp){
         <small>${ELEM_KO[rd.element]}·${ARCH_KO[rd.arch]} · HP${rd.hp} 공${rd.atk} · ${archSkills(rd.arch,rd.element).map(s=>SKILLS[s].ko).join("·")}</small></div>`;
     h+=`</div>`;
   }
-  h+=`<h2>비공개 배치 (${14-unplaced.length}/14)</h2>
+  h+=`</section><section class="prepStep" data-step="place">
+  <h2>비공개 배치 (${14-unplaced.length}/14)</h2>
   <small>말을 클릭 → 자기 진영 칸 클릭. 배치된 말 클릭 시 회수.${rosterDone?"":" <b>하수인은 로스터 6종 선택 후 활성됩니다.</b>"}</small>
   <div class="tray">`;
   for(const x of unplaced){
@@ -1168,7 +1631,7 @@ function renderSetup(sp){
   h+=`</div><div class="row">
     <button onclick="autoPlace()">무작위 배치</button>
     <button onclick="clearPlace()">전체 회수</button>
-    <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>${NET.preparing?"배치 완료 → 매칭 시작":"배치 완료"}</button></div>`;
+    <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>${NET.preparing?"배치 완료 → 매칭 시작":"배치 완료"}</button></div></section>`;
   sp.innerHTML=h;
 }
 function renderLog(){
@@ -1194,9 +1657,40 @@ function metricsSnapshot(){
 }
 window.metricsSnapshot=metricsSnapshot;
 
+/* ===== #122 (v0.4.7) 같은 문서 안의 로비 복귀·재대전 =====
+   location.reload() 를 부르지 않는 출구라 #128 자동 튜토리얼은 다시 뜨지 않는다 (새 문서 로드에서만 뜬다 — 정책 그대로).
+   저장소·상황 도움말 이력·사용자 저장값은 하나도 건드리지 않는다. */
+function netLeave(){ // 온라인 상태 완전 해제 — 이 정리 없이 로비로 가면 다음 오프라인 경기가 온라인 게이팅·보드 반전·인덱스 중계를 그대로 물고 간다
+  try{ if(NET.ws) NET.ws.close(); }catch(e){}
+  NET.mode=false; NET.me=null; NET.ws=null; NET.replaying=false; NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
+  NET.localOpen=false; NET.modalOwner=null; NET.started=false; NET.preparing=false; NET.queued=false;
+  NET.mySetup=null; NET.pendingSeed=null; NET.code=null; // 접속 코드는 탭 메모리에만 있었고 여기서 버린다 (재입력)
+  setSeed(null); // 공유 시드 해제 — 이후 오프라인 경기는 다시 Math.random
+}
+function uiResetScreen(){ // 이전 경기의 연출 큐·모달·토스트 잔존 0 (DOM 을 비워 무한 버프 애니메이션까지 멈춘다)
+  try{ fxReleaseAll(); }catch(e){}
+  try{ close(); }catch(e){}
+  try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
+  try{ clearToasts(); }catch(e){}
+  UI.drawer=null; UI.prep="roster";
+}
+window.toLobby=()=>{
+  uiResetScreen(); netLeave();
+  newGame("pvp"); S.phase="menu"; S.selected=null; UI.entered=true;
+  addLog("🏠 로비로 돌아왔습니다. 모드를 다시 고르세요.","sys");
+  render();
+};
+window.rematch=()=>{
+  if(NET.mode){ showToast("🌐 온라인 재대전은 로비에서 다시 매칭합니다."); return; }
+  const mode=S.mode, lv=S.aiLevel.slice();
+  uiResetScreen();
+  startMode(mode, mode==="pve"?{aiLevel:lv[1]}:(mode==="sim"?{aiLevel:lv}:{}));
+};
+
 /* ===== 모드 시작 ===== */
 window.startMode=(mode,opts)=>{
   opts=opts||{};
+  UI.entered=true; UI.drawer=null; UI.prep="roster"; // #122 표시 상태만 초기화 (규칙·저장소 무관)
   let lv=opts.aiLevel; // #21: 문자열(PVE 상대 난이도) 또는 [p0,p1] 배열(sim)
   if(typeof lv==="string") lv=["grade5",lv];
   newGame(mode,{aiLevel:lv});
@@ -1231,6 +1725,7 @@ window.toggleRosterCore=rid=>{ // 로스터 선택 토글 — 중복 불가·최
   else if(sel.length<6) sel.push(rid);
   else {showToast("이미 6종을 모두 선택했습니다. 다른 종을 해제 후 선택하세요."); return;}
   for(const x of S.pieces.filter(x=>x.owner===p&&x.type==="minion")) x.placed=false;
+  if(sel.length===6&&UI.prep==="roster") UI.prep="place"; // #122 표시 전용: 6종을 다 고르면 배치 단계로 넘어간다 (탭으로 언제든 되돌아간다)
   applyRoster(p); S.selected=null; render();
 };
 window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 해제]는 toggleRoster와 동일 동작 (6/6·중복 불가 유지)
@@ -1658,6 +2153,9 @@ function gameOver(winner,type){
     try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
     try{ fxReleaseAll(); }catch(e){} } // 남은 연출 큐·잠금도 함께 해제 (무한 애니메이션·입력 잠금 잔존 방지)
   S.recruit=null; // 선택 대기 상태도 남기지 않는다
+  /* #126: 전투 종료 시퀀스(finishBattle·finishByCapture) 밖에서 끝난 경기는 여기서 종료 연출을 한 번 낸다.
+     그 두 경로는 남은 전투 메시지 재생 뒤에 같은 배너를 이어 붙여야 하므로 ENDING_BATTLE 로 이 발화를 잠시 막고 직접 고른다. */
+  if(!ENDING_BATTLE) matchEndFx();
 }
 /* T4 전멸 패배: 하수인 6+동료 2 전원 사망 → 즉시 패배. 말 제거가 발생하는 모든 지점 후 호출 */
 function checkWipe(){
@@ -2166,6 +2664,11 @@ function battleModal(){
     const dir=artDirOfFighter(pf,piece);
     if(artOk(dir))
       return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`;
+    /* #124: 왕·동료 **본체** 출전이면 새 아트를 그 정체 역할로 그린다. 대리 출전(포획 하수인)은 위 분기라 여기 오지 않는다.
+       자산이 없거나 실패하면 아래 현행 이모지 토큰으로 그대로 되돌아간다 (artSpriteFail 이 같은 자리를 바꿔 끼운다) */
+    const ld=leaderBattleDir(pf,piece);
+    if(ld)
+      return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite leader" src="${artUrl(ld,LEADER_FILES.battle)}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${ld}',this)"><small>${label}</small></div>`;
     const col=pf.element?`var(--${pf.element})`:"#5a6377";
     const emo=pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
     return `<div class="btok ${pos}${bcls}" id="tok-${sid}" style="background:${col}">${emo}<small>${label}</small></div>`;
@@ -2238,10 +2741,8 @@ function battleModal(){
   const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}<div class="row"><button onclick="window.__menu(null)">← 뒤로</button></div></div>`;
   modal(`<h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>
     <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${battleMaxRounds()}${B.maxRounds?" 🧭":""}</div>
-    ${panel(topSide)}
-    <div id="bstage">${token(topSide)}${token(mySide)}</div>
+    <div id="bstage" class="scene"><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
     ${buffLine}
-    ${panel(mySide)}
     <div id="msgBox">${busy?"":(noAtkShow?NO_ATTACK_MSG:`${fighterName(side)}의 행동을 선택하세요.`)}</div>
     <div class="bmenu${menu?" hidden":""}" id="bmenu"><b style="grid-column:1/-1;font-size:12px;color:var(--dim)">${pname(ownerP)}:</b>
       <button ${dis?"disabled":""} onclick="window.__menu('fight')">⚔️ 싸우기</button><button ${dis?"disabled":""} onclick="window.__menu('bag')">🎒 가방</button>
@@ -2255,7 +2756,8 @@ function battleModal(){
     ${sub("ball",`<small>🔴 포획 — 상대 하수인 HP 30% 미만 · 볼 ${mineView?`${S.balls[ownerP]}개`:"비공개"} · 성공 ${pct(BAL.enemyCapProb)}${mineView&&throwWhy?` · <b>${throwWhy}</b>`:""}</small><div class="row">${ballBtn}</div>`)}
     ${sub("flee",`<small>🏃 도망가기 — HP 조건 없음 · 성공 ${pct(fleeP)} · 실패해도 상대의 추가 반격은 없고 내 전투 행동 1회만 소모${fleeNote}</small><div class="row">${fleeBtn}</div>`)}
     <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
-    []);
+    []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
+  try{ const ob=$("overlayBox"); if(ob&&ob.classList) ob.classList.add("battleBox"); }catch(e){} // #122 세로 전투 화면 레이아웃
   window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
     if(S.battle!==B) return; B.menu=key||null;
     try{ const root=$("bmenu"); if(root){ if(B.menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
@@ -2478,9 +2980,36 @@ function battleEndFx(q,banner,after){
   const run=()=>fxPlay({key:"resultBanner",kind:"result",cls:banner.cls||"",title:banner.title,sub:banner.sub||"",onEnd:after});
   if(liveBattleDom()) playMsgs(q,run); else { MSGQ.length=0; run(); }
 }
+/* ===== #126 (v0.4.7) 경기 종료 표현 — 경기당 정확히 1회 =====
+   왕 제거·전멸처럼 **전투가 곧 경기 종료**인 경우에는 전투 결과 배너 대신 이 경기 결과 배너 하나로 분기하고,
+   전투를 거치지 않는 종료(왕 도달·기권·상대 이탈·sim 턴 상한)는 gameOver 안에서 이 배너 하나만 재생한다.
+   전투 결과 + 경기 결과를 직렬로 두 번 재생하지 않는다. 결과 상수(resultBanner 2500ms)는 그대로다.
+   전투 판정의 동률은 종전대로 **방어자 승**이며 전투 무승부 화면을 만들지 않는다 — 무승부 문구는 경기 무승부에만 쓴다. */
+let ENDING_BATTLE=false; // finishBattle·finishByCapture 가 종료 배너를 직접 고르는 구간 (gameOver 의 자동 재생을 잠시 막는다)
+function matchBannerOf(){
+  const w=S.winner, typeKo=S.metrics.winType?WINTYPE_KO[S.metrics.winType]:"";
+  if(w===null) return {title:"무승부",sub:"경기 무승부 — 시뮬레이션 턴 상한 도달",cls:"match draw"};
+  const sub=(typeKo?`승리 유형: ${typeKo} · `:"")+`총 ${S.turnCount}턴`;
+  if(S.mode==="sim"||(S.mode==="pvp"&&!NET.mode)) return {title:`${pname(w)} 승리!`,sub,cls:"match neutral"}; // 핫시트는 중립 문구 (같은 기기의 두 사람)
+  return viewerIsOwner(w)?{title:"경기 승리!",sub,cls:"match win"}:{title:"경기 패배...",sub,cls:"match lose"};
+}
+function matchEndBanner(){ // 경기당 1회 — 이미 낸 뒤면 null (경기 기준 플래그, newGame 이 새로 만든다)
+  if(!S||S.matchFxDone) return null;
+  S.matchFxDone=true;
+  return matchBannerOf();
+}
+function matchEndFx(){
+  const b=matchEndBanner(); if(!b) return;
+  /* 경기가 끝났으므로 남아 있던 표시 큐(턴 배너·접촉 배너·대기 콜백)는 더 이상 의미가 없다 — 걷어내고 결과 하나만 남긴다.
+     연출이 자기를 넣고 자기를 지우는 순서가 생기지 않도록 **넣기 전에** 정리한다 (Venus 3.2 · L5). */
+  try{ fxReleaseAll(); }catch(e){}
+  fxPlay({key:"resultBanner",kind:"result",cls:b.cls,title:b.title,sub:b.sub});
+}
 function resultBannerOf(winP){ // 사망·판정 결과 문구: 핫시트 중립 "P1 승리!", PVE·온라인 뷰어 기준 "전투에서 승리!/패배,,,"
-  if(S.mode==="pvp"&&!NET.mode) return {title:`${pname(winP.owner)} 승리!`,cls:""};
-  return viewerIsOwner(winP.owner)?{title:"전투에서 승리!",cls:""}:{title:"전투에서 패배,,,",cls:"lose"};
+  /* #126: 문구·뷰어 규약은 종전 그대로이고 cls 만 연출 갈래를 고른다 — 중립(핫시트)은 금빛, 뷰어 승리는 금빛, 패배는 어두운 균열.
+     전투 판정 동률은 방어자 승이라 여기 오는 결과는 언제나 승/패 둘 중 하나다 (전투 무승부 갈래를 만들지 않는다). */
+  if(S.mode==="pvp"&&!NET.mode) return {title:`${pname(winP.owner)} 승리!`,cls:"neutral"};
+  return viewerIsOwner(winP.owner)?{title:"전투에서 승리!",cls:"win"}:{title:"전투에서 패배,,,",cls:"lose"};
 }
 /* ===== 4슬롯 실행 엔진 (GDD-16) — slot -1은 폴백 기본 공격, 로직은 동기 완결 ===== */
 /* #121 계약 5.2 🕯 마녀의 장난 — 화상·약화·감전·풀 회복 4효과 중 **서로 다른 2개**를 100% 적용한다.
@@ -2796,12 +3325,18 @@ function finishBattle(winSide,how){
   const attacker=B.attP;
   const q=B.msgQ.splice(0);
   S.battle=null;
-  // #106 5.6 연출: 남은 메시지 재생 → 결과 배너(뷰어 기준 "전투에서 승리!/패배,,,") → 닫힘 — 헤드리스·sim은 즉시 닫힘
-  battleEndFx(q,resultBannerOf(winP),()=>{ if(!S.battle) close(); });
-  if(loseP.type==="king"){gameOver(winP.owner,"king");
-    const gmsg=`🏁 경기 종료 — ${pname(winP.owner)} 승리!`; addLog(gmsg,"imp"); showToast(gmsg);
-    render(); return;}
-  if(checkWipe()) return; // T4: 전투 제거(대리 동시 제거 포함) 후 전멸 판정
+  /* #126: 이 전투가 곧 경기 종료인지 **먼저** 확정하고 배너를 하나만 고른다 (전투 결과 + 경기 결과 직렬 중복 금지).
+     ENDING_BATTLE 동안에는 gameOver 가 스스로 연출을 내지 않으므로, 아래에서 고른 배너 하나만 남은 메시지 뒤에 붙는다. */
+  let ended=false;
+  ENDING_BATTLE=true;
+  try{
+    if(loseP.type==="king"){ gameOver(winP.owner,"king");
+      const gmsg=`🏁 경기 종료 — ${pname(winP.owner)} 승리!`; addLog(gmsg,"imp"); showToast(gmsg); ended=true; }
+    else if(checkWipe()) ended=true; // T4: 전투 제거(대리 동시 제거 포함) 후 전멸 판정
+  } finally{ ENDING_BATTLE=false; }
+  // #106 5.6 연출: 남은 메시지 재생 → 결과 배너(전투 = 뷰어 기준 "전투에서 승리!/패배,,," · 경기 종료 = 경기 결과) → 닫힘 — 헤드리스·sim은 즉시 닫힘
+  battleEndFx(q,(ended?matchEndBanner():null)||resultBannerOf(winP),()=>{ if(!S.battle) close(); });
+  if(ended){ render(); return; }
   afterBattle(attacker, winSide==="A"&&attacker.alive);
   render();
 }
@@ -2828,8 +3363,13 @@ function finishByCapture(side){
   const attacker=B.attP;
   const q=B.msgQ.splice(0);
   S.battle=null;
-  battleEndFx(q,{title:"포획 성공! 전투 종료",cls:viewerIsOwner(p)||(S.mode==="pvp"&&!NET.mode)?"":"lose"},()=>{ if(!S.battle) close(); }); // #106 5.6
-  if(checkWipe()) return; // 제거이므로 전멸 판정 기여
+  /* #126: 포획도 같은 규칙이다 — 이 제거로 경기가 끝나면(전멸) 포획 배너 대신 경기 결과 배너 하나만 낸다 */
+  let ended=false;
+  ENDING_BATTLE=true;
+  try{ ended=checkWipe(); } finally{ ENDING_BATTLE=false; } // 제거이므로 전멸 판정 기여
+  battleEndFx(q,(ended?matchEndBanner():null)
+    ||{title:"포획 성공! 전투 종료",cls:(viewerIsOwner(p)||(S.mode==="pvp"&&!NET.mode)?"cap":"lose")},()=>{ if(!S.battle) close(); }); // #106 5.6
+  if(ended){ render(); return; }
   afterBattle(attacker, side==="A"&&attacker.alive);
   render();
 }
@@ -2856,7 +3396,7 @@ function fleeSwapPrompt(piece,opp){
   const mine=fleePickMine();
   const m=mine?"🏃 도망 성공 — 후방의 자기 말(파란 칸)을 클릭해 교환하거나 [교환 생략]":"🛗 도망 성공! 상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다.";
   addLog("🏃 도망 성공 — 후방 말 교환 선택 중","imp"); showToast(m);
-  fxPlay({key:"fleeFx",kind:"banner",title:"🛗 도망 성공!",sub:mine?"후방의 자기 말을 골라 자리를 바꾸거나 생략하세요. 교체 후 말을 한칸씩 밀어냅니다.":"상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다."});
+  fxPlay({key:"fleeFx",kind:"banner",cls:"flee",title:"🛗 도망 성공!",sub:mine?"후방의 자기 말을 골라 자리를 바꾸거나 생략하세요. 교체 후 말을 한칸씩 밀어냅니다.":"상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다."});
   render();
 }
 function fleeDone(){ if(S.phase==="play"&&!S.battle) drainForcedQueue(false); render(); if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule(); } // #18: 스왑 둘째 말의 강제 전투는 밀기·재배치 뒤 승격
@@ -3673,6 +4213,7 @@ function aiPutRandom(x,rows,free,put){
 const MEMO_UI={btns:[],piece:null,token:null,seq:0,overlayOpen:false};
 function modal(html,buttons){
   MEMO_UI.token=null; MEMO_UI.overlayOpen=true; // #94 새 모달이 오버레이를 가져간다 — 열려 있던 메모 피커 콜백은 무효
+  try{ const ob0=$("overlayBox"); if(ob0&&ob0.classList) ob0.classList.remove("battleBox"); }catch(e){} // #122 전투 화면 전용 레이아웃 클래스 해제
   $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
   const ob=$("obBtns");
   /* 버튼 튜플은 [문구, 콜백] 또는 [문구, 콜백, disabled] 다. Saturn REVISE P2: "선택 불가"를 문구로만 알리지 않고
