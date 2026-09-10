@@ -53,25 +53,25 @@
 <br>
 <table>
   <tr>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-01.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-02.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-03.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-04.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-05.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 전투와 양측 밀어내기" width="100%"></a><br><sub>5. 전투 · 수동 대기 · 보호막 합산</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 강제 전투와 동료·왕끼리도 전투" width="100%"></a><br><sub>5. 전투 · 동료·왕끼리도 전투<br>수동 대기 · 보호막 합산</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-06.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-07.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · HP 제한 없는 도망<br>기본 30% · 도망의 수호자는 그 전투 70%</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-08.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 텔레포트 · 함정에 걸린 말 제외</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-09.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 보드 턴 종료 선택</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · HP 제한 없는 도망<br>기본 30% · 실패하면 상대 기본 공격 1번</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 텔레포트 · 함정에 걸린 말 제외</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 보드 턴 종료 선택</sub></td>
   </tr>
 </table>
 <sub>튜토리얼은 [건너뛰기]나 <kbd>Esc</kbd>로 곧바로 닫을 수 있고, 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다. 개발 중인 v0.4.7에서는 <b>접속할 때마다 1단계부터 자동으로</b> 열립니다 — <a href="#새로운-기능">새로운 기능</a>에서 설명합니다.</sub>
 
-캡처 출처: [10장 캡처 기록과 소스·이미지 해시](docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/capture-manifest.json). 뒤로가기와 어두운 배경을 보완한 v0.4.7 개발판에서 촬영했으며, 10단계 게임 규칙은 같습니다.
+캡처 출처: [10장 캡처 기록과 소스·이미지 해시](docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json). **접촉·전투 규칙 개편까지 반영한** v0.4.7 개발판에서 다시 촬영했습니다 — 5단계 "동료·왕끼리도 싸워요"와 7단계 "도망 실패"가 새 규칙입니다.
 
-<sub>위 10장은 <b>개발 중인 v0.4.7</b>의 튜토리얼입니다. 숲 선물 패키지·기술 직접 선택·아이템과 버프 제한, 도망·수동 대기·함정 텔레포트·보호막 합산을 반영했습니다. 정식 다운로드 v0.4.5의 화면과는 일부 다릅니다.</sub>
+<sub>위 10장은 <b>개발 중인 v0.4.7</b>의 튜토리얼입니다. 숲 선물 패키지·기술 직접 선택·아이템과 버프 제한, 도망·수동 대기·함정 텔레포트·보호막 합산과 <b>접촉·전투 규칙 개편</b>을 반영했습니다. 정식 다운로드 v0.4.5의 화면과는 일부 다릅니다.</sub>
 
 
 </details>
@@ -141,7 +141,7 @@
 
 바뀌는 내용은 [v0.4.7 릴리스 노트(개발 중)](docs/releases/v0.4.7.md)에, 세부 규칙은 [#121 게임플레이 계약](docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md)과 [#146 전투 행동 계약](docs/milestone/v0.4.7/issues/146/Venus/gameplay-spec.md)에 있습니다.
 
-**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 **위 전투 행동 변경까지 반영해 다시 촬영한 v0.4.7 개발판 화면**입니다. 플레이·전투 사진도 v0.4.7 개발판의 세로 화면입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있습니다. 전투 행동 변경은 2026-09-10 CJ 플레이 QA를 통과했고, 튜토리얼 표시 방식 변경(#128)도 같은 날 CJ 플레이 QA를 통과했습니다. **세로 화면·왕과 동료 아트·승패 효과(#122 · #124 · #126)의 첫 납품 기록은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)에 있습니다. #124·#126은 CJ 플레이 QA를 통과했고, #122는 접촉·전투 규칙 개편과 준비 탭·전투 뒤로가기까지 반영한 [2차 REVISE 보완](docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md) 후 재검수를 기다립니다. 위 튜토리얼 10장은 이 규칙 개편 이전에 촬영한 화면이라 접촉 규칙 설명이 옛 내용입니다.**
+**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 **위 전투 행동 변경까지 반영해 다시 촬영한 v0.4.7 개발판 화면**입니다. 플레이·전투 사진도 v0.4.7 개발판의 세로 화면입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있습니다. 전투 행동 변경은 2026-09-10 CJ 플레이 QA를 통과했고, 튜토리얼 표시 방식 변경(#128)도 같은 날 CJ 플레이 QA를 통과했습니다. **세로 화면·왕과 동료 아트·승패 효과(#122 · #124 · #126)의 첫 납품 기록은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)에 있습니다. #124·#126은 CJ 플레이 QA를 통과했고, #122는 접촉·전투 규칙 개편과 준비 탭·전투 뒤로가기까지 반영한 [2차 REVISE 보완](docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md) 후 재검수를 기다립니다.**
 
 ## 게임 정보
 
