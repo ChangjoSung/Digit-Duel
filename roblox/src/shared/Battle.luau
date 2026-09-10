@@ -564,7 +564,8 @@ function Battle.attach(Engine, deps)
 				if sk.status then
 					applyStatus(false)
 				end
-				if sk.statusSelf then -- 잔류장: 자기 속성 상태효과 100% — 풀은 흡수 회복 임시 대체 [기획 필요]
+				if sk.statusSelf then -- 잔류장: 자기 속성 상태효과 100%. 풀은 대응 상태이상이 없어 **흡수 회복**이다
+				-- (CJ 확정 2026-09-10 "풀속성은 회복이야 그게 맞아" — 임시 구현이 그대로 정식 규칙이 됐다. 수치 40% 는 기존 값 유지)
 					if f.element == "grass" then
 						local gh = round(actual * 0.4)
 						if gh > 0 then
