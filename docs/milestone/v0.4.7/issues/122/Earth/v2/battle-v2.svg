@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="420" height="780" viewBox="0 0 420 780">
+<title>Digit Duel battle v2 — diagonal sprites, opposing HP plates, existing commands</title>
+<rect width="420" height="780" fill="#12151c"/>
+<g font-family="Malgun Gothic, sans-serif" fill="#e8ecf5">
+<text x="20" y="28" fill="#8a93a8" font-size="12">#122 · EARTH · V2 · 정적 제안</text><text x="20" y="62" font-size="23" font-weight="bold">▶ 나의 턴!</text><text x="20" y="88" fill="#8a93a8" font-size="13">전투 · 라운드 2 / 5</text>
+<rect x="16" y="108" width="388" height="346" rx="8" fill="#242b3d" stroke="#333c52"/>
+<path d="M16 330H404M16 334H404" stroke="#303a4e"/>
+<ellipse cx="315" cy="280" rx="69" ry="14" fill="#151d2b"/><ellipse cx="105" cy="422" rx="80" ry="18" fill="#151d2b"/>
+<image x="248" y="154" width="128" height="128" image-rendering="pixelated" xlink:href="../../../../../../../demo/assets/minions/water_std/battle.png"/>
+<image x="36" y="282" width="128" height="128" image-rendering="pixelated" xlink:href="../../../../../../../demo/assets/minions/fire_std/battle.png"/>
+<path d="M28 128H220V206H40L28 194Z" fill="#1c2130" stroke="#758297" stroke-width="2"/>
+<text x="40" y="153" font-size="14" font-weight="bold">물 하수인 · P2</text><text x="40" y="174" font-size="11" fill="#8a93a8">HP　88 / 100</text><rect x="40" y="184" width="164" height="9" rx="3" fill="#333c52"/><rect x="40" y="184" width="144" height="9" rx="3" fill="#4fd88a"/>
+<path d="M198 336H390V428H210L198 416Z" fill="#1c2130" stroke="#758297" stroke-width="2"/>
+<text x="210" y="361" font-size="14" font-weight="bold">불 하수인 · P1</text><text x="210" y="382" font-size="11" fill="#8a93a8">HP　76 / 100</text><rect x="210" y="392" width="164" height="9" rx="3" fill="#333c52"/><rect x="210" y="392" width="125" height="9" rx="3" fill="#4fd88a"/><rect x="210" y="406" width="36" height="5" fill="#4da3ff"/><text x="255" y="414" font-size="10" fill="#8a93a8">보호막 20</text>
+<rect x="16" y="468" width="388" height="62" rx="6" fill="#1c2130" stroke="#758297" stroke-width="2"/><text x="32" y="494" font-size="15">불 하수인의 행동을 선택하세요.</text><text x="32" y="516" font-size="12" fill="#8a93a8">상태 · 공개된 버프는 HP 패널 가까이에</text>
+<rect x="16" y="544" width="190" height="56" rx="6" fill="#5b8cff"/><rect x="214" y="544" width="190" height="56" rx="6" fill="#242b3d" stroke="#758297"/><rect x="16" y="608" width="190" height="56" rx="6" fill="#242b3d" stroke="#758297"/><rect x="214" y="608" width="190" height="56" rx="6" fill="#242b3d" stroke="#758297"/>
+<g text-anchor="middle" font-size="18" font-weight="bold"><text x="111" y="579">싸우기</text><text x="309" y="579">가방</text><text x="111" y="643">포획</text><text x="309" y="643">도망가기</text></g>
+<text x="20" y="698" font-size="13" fill="#8a93a8">▸ 전투 이력　 ·　 싸우기 → 기존 기술 4슬롯</text>
+<text x="20" y="733" font-size="11" fill="#8a93a8">기존 정면 스프라이트를 그대로 사용한 배치 제안</text><text x="20" y="752" font-size="11" fill="#8a93a8">상대 우상단 / 아군 좌하단 · 후면 아트로 주장하지 않음</text>
+</g></svg>

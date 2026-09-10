@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="980" height="730" viewBox="0 0 980 730">
+<title>Original leader sources at actual 32, 128 and 256 pixel display sizes</title>
+<rect width="980" height="730" fill="#12151c"/>
+<g font-family="Malgun Gothic, sans-serif" fill="#e8ecf5" font-size="13">
+<text x="20" y="25">#124 · 원본 표시크기 검토 · 32 / 128 / 256px · game 파생 PNG의 검토와 구분</text>
+<text x="20" y="52">왕 / KING</text><text x="510" y="52">동료 / COMPANION</text>
+<rect x="8" y="65" width="474" height="310" rx="6" fill="#242b3d"/><rect x="498" y="65" width="474" height="310" rx="6" fill="#242b3d"/>
+<rect x="8" y="393" width="474" height="310" rx="6" fill="#eee9d7"/><rect x="498" y="393" width="474" height="310" rx="6" fill="#eee9d7"/>
+<g image-rendering="pixelated">
+<image x="20" y="300" width="32" height="32" xlink:href="king-sovereign-source-v1.png"/><image x="72" y="204" width="128" height="128" xlink:href="king-sovereign-source-v1.png"/><image x="216" y="76" width="256" height="256" xlink:href="king-sovereign-source-v1.png"/>
+<image x="510" y="300" width="32" height="32" xlink:href="companion-guide-source-v1.png"/><image x="562" y="204" width="128" height="128" xlink:href="companion-guide-source-v1.png"/><image x="706" y="76" width="256" height="256" xlink:href="companion-guide-source-v1.png"/>
+<image x="20" y="628" width="32" height="32" xlink:href="king-sovereign-source-v1.png"/><image x="72" y="532" width="128" height="128" xlink:href="king-sovereign-source-v1.png"/><image x="216" y="404" width="256" height="256" xlink:href="king-sovereign-source-v1.png"/>
+<image x="510" y="628" width="32" height="32" xlink:href="companion-guide-source-v1.png"/><image x="562" y="532" width="128" height="128" xlink:href="companion-guide-source-v1.png"/><image x="706" y="404" width="256" height="256" xlink:href="companion-guide-source-v1.png"/>
+</g>
+<text x="20" y="356">32</text><text x="72" y="356">128</text><text x="216" y="356">256</text><text x="510" y="356">32</text><text x="562" y="356">128</text><text x="706" y="356">256</text>
+<g fill="#242b3d"><text x="20" y="684">32</text><text x="72" y="684">128</text><text x="216" y="684">256</text><text x="510" y="684">32</text><text x="562" y="684">128</text><text x="706" y="684">256</text></g>
+<text x="20" y="722" fill="#8a93a8" font-size="11">원본1254×1254 / 실제 alpha (Mars 실측) · 픽셀 경계·배경 매트·축소 실루엣 확인용</text>
+</g></svg>

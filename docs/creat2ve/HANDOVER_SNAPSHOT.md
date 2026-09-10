@@ -1,13 +1,16 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). 현재 #122는 **Art Architecture 정적 러프 설계·CJ 시각 검토** 범위이며 실제 UI 구현은 미승인이다. [검토 자료](../milestone/v0.4.7/issues/122/README.md)를 확인한 뒤 후속 CJ Comment로 제작·적용 범위를 정한다. #128·#130·#131·#146은 CJ QA PASS/CLOSED이며 #128 제품은 PR157, 승인 상태 문서는 PR159로 통합했다. 정식 v0.4.5, Roblox #118=v0.4.6, 현재 HTML 계획=v0.4.7(미출시).
+> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122 러프에 대한 CJ 후속 피드백(실제 수풀만 수풀·현행 보드 말·첨부 전투 구성)을 반영하고 #124 왕·동료 아트와 #126 강한 승패 효과도 함께 제작·검수한다. 최종 CJ 아트/플레이 QA 전이다. #128·#130·#131·#146은 CJ QA PASS/CLOSED. 정식 v0.4.5, Roblox #118=v0.4.6, HTML 계획=v0.4.7(미출시).
 
-## 현재 검토 범위 — #122
+## 현재 제작 범위 — #122 · #124 · #126
 
-- CJ 요청: 'Art Architecture 설계만 대충 설계만 해서 CJ에게 보여줘. 눈으로 확인해서 괜찮으면 UI 제작해서 적용'. 이번에는 기존 픽셀 하수인과 어울리는 레트로 세로 화면의 정적 시안만 납품한다. 제품·규칙·서버·Roblox·새 캐릭터 아트·승패 연출 구현은 범위 밖이다.
-- `doc/122-art-architecture`의 검토용 초안 PR로 자료를 보관한다. Issue122는 OPEN이며 CJ 디자인 검토가 다음 단계다. 화면 구조가 승인되기 전 제품에 적용하거나 출시하지 않는다.
-- Run `run_9c2ce3f4c7e2`: Earth(Codex) 시안 `task_df76fb9960b8`/`ctx_ed7b84e3a70c`, Venus(Claude) 흐름 분석 `task_e971bc474389`/`ctx_252316492274`. 제품 QA 배정은 없으며 Task 완료·자원 상태는 Orca가 원본이다.
-- 타이틀·로비 복귀/재대전·별도 전투 화면은 새 구조 제안이다. #128의 새 문서/같은 문서 경계, 7×13 보드, 정체 비공개, 핫시트 교대·온라인 대기, 보드와 전투의 종료 구분을 보존한다. UI 크기·색감·배치는 확정 규격이나 반응형 검증 결과가 아니다.
+- [CJ 후속 범위](../milestone/v0.4.7/issues/122/Mercury/cj-followup.md)가 현재 입력이다. 이전 정적 러프와 미승인 상태는 최초 납품 당시의 이력이다.
+- 기존 doc/122-art-architecture·PR160에서 같은 납품을 이어간다. 최신 dev fe3d32cd9da9292f0492becd6ca63cfe6f2753f4의 Roblox PR161은 보존해 포함했다. 시작 HTML blob8027cd72. 제품 변경·검수는 진행 중이며 기존 PASS를 재사용하지 않는다.
+- Run run_031dae03dc6e: Earth(Codex) task_361876d47908/ctx_b66017b5187b, Mars(Claude) task_c76b0350fe8a/ctx_55ae89f24c7e, Venus(Claude) task_bc6d0fb057e4/ctx_bee061a6418e. 실제 자원·Task 상태는 Orca가 원본. 구현 후 Saturn 독립 READ_ONLY 검수.
+- 7×13 보드·소유자/HP/속성·미공개 정체·핫시트/온라인 비공개·모든 기존 메뉴를 보존한다. 전투는 상대 오른쪽 위·아군 왼쪽 아래·하단 네 명령 구조。보드/전투 종료와 개별 전투/경기 결과를 구분한다.
+- 같은 문서 로비/재대전은 #128 튜토리얼을 반복하지 않는다. #126의 강한 결과 효과·짧은 타이밍은 이번 제작 선택이며 #125의 기존 단축 대상에 resultBanner2500이 포함됐다고 소급하지 않는다.
+- #124 새 아트는 별도 경로에 만들며 기존 승인 아트·Downloads를 보존한다. root art/·orca-hook-latency-report.md와 구형 Earth/.chrome-render는 접근·정리하지 않는다. #123·서버·Roblox·출시는 범위 밖이다.
+- 최초 러프 Run run_9c2ce3f4c7e2 두 Worker는 archive/release 완료. 당시 임시 Chrome 프로필 삭제 자동거부·보존/납품제외와 PD 문구 정정은 최초 보고/DL51에 보존한다.
 
 ## #128 완료 이력
 
@@ -76,4 +79,4 @@
 
 - [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) DL38 = 최초 v0.4.6 분석·등록 이력, DL39 = 선행 Infra132, DL40 = v0.4.6 Roblox/v0.4.7 재배치·후속 Infra134. 현재 규칙 참조 경로는 새 문서 위치로 동기화하고, 과거 Decision Log의 GitHub 링크는 이동 전 SHA에 고정했다. GitHub 과거 Issue/PR 본문·코멘트 13곳의 링크34개도 고정·응답 일치 확인했다. 기존 Release8개는 버전 태그 링크라 그대로 유효하다.
 - Notion System 원문 `3d51e7f1708580b0916ded4bd3d9d06e`의 외부 편집 Summary는 보존한다. Project=Digit Dual, Edit Date=실제 수정일, Editor=실제 사람 성창조(`8e0a8270-d0e3-407e-a7d2-b3f992f1e366`); Agent 이름은 운영 본문에만 기록한다.
-- GDD13 DL42와 [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c)에 #121·#125·#129 최종 승인 계약을 동기화했다. 현재 코드를 검수한 Saturn PASS와 통합 PR 최종 head의 필수 검사 성공이 dev squash의 전제다. 전용 작업 브랜치만 정리하고 main/dev는 보존한다. 세 Issue는 2026-09-10 CJ QA PASS로 CLOSED다. 후속 #130·#131·#146(PR152)과 #128(PR157)도 2026-09-10 CJ QA PASS로 CLOSED다. #128 최종 수락은 GDD13 DL50·[CJ 승인 기록](https://github.com/ChangjoSung/Digit-Duel/issues/128#issuecomment-5613962951)을 따른다. 승인된 구현은 모두 완료됐고 나머지 이슈는 번호별 CJ Comment 대기다. 과거 PASS를 새 변경의 근거로 재사용하지 않는다.
+- GDD13 DL42와 [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c)에 #121·#125·#129 최종 승인 계약을 동기화했다. 현재 코드를 검수한 Saturn PASS와 통합 PR 최종 head의 필수 검사 성공이 dev squash의 전제다. 전용 작업 브랜치만 정리하고 main/dev는 보존한다. 세 Issue는 2026-09-10 CJ QA PASS로 CLOSED다. 후속 #130·#131·#146(PR152)과 #128(PR157)도 2026-09-10 CJ QA PASS로 CLOSED다. #128 최종 수락은 GDD13 DL50·[CJ 승인 기록](https://github.com/ChangjoSung/Digit-Duel/issues/128#issuecomment-5613962951)을 따른다. 기존 승인 규칙 구현은 완료됐고 현재 #122·#124·#126은 후속 CJ 지시로 제작 중이다. 나머지 이슈는 번호별 CJ Comment 대기다. 과거 PASS를 새 변경의 근거로 재사용하지 않는다.
