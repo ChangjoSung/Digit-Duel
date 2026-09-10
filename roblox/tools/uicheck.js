@@ -3,12 +3,28 @@
 //   · 같은 부모의 형제끼리 사각형이 겹치는가 (동시에 보일 수 있는 것만 — 배타 쌍은 EXCLUSIVE 로 제외)
 //   · 창 자체가 기준 화면(1280×720)보다 큰가
 // 한계: mk(...) 에 숫자 상수로 적힌 정적 배치만 본다. smallBtn 등 런타임 좌표는 대상이 아니다.
-// 사용: node tools/uicheck.js [파일]   (기본 src/client/init.client.luau) — 문제가 있으면 exit 1
+// 사용: node tools/uicheck.js [파일...]   (인수가 없으면 src/client/ 의 .luau 전부) — 문제가 있으면 exit 1
 const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
-const FILE = process.argv[2] ? path.resolve(process.argv[2]) : path.join(ROOT, "src", "client", "init.client.luau");
+
+// 인수가 없으면 클라이언트 파일 전체를 각각 검사한다 (init 을 모듈로 쪼개도 빠지는 파일이 없도록 —
+// 파일 목록을 build.bat 에 적어 두면 새 모듈을 추가할 때마다 같이 고쳐야 하고, 잊으면 조용히 안 걸린다).
+if (process.argv.length <= 2) {
+	const dir = path.join(ROOT, "src", "client");
+	const files = fs.readdirSync(dir).filter((f) => f.endsWith(".luau")).sort();
+	const { spawnSync } = require("child_process");
+	let bad = 0;
+	for (const f of files) {
+		const r = spawnSync(process.execPath, [__filename, path.join(dir, f)], { stdio: "inherit" });
+		if (r.status !== 0) bad++;
+	}
+	console.log(`uicheck: 클라이언트 파일 ${files.length}개 검사 · 실패 ${bad}개`);
+	process.exit(bad ? 1 : 0);
+}
+
+const FILE = path.resolve(process.argv[2]);
 const SCREEN = { w: 1280, h: 720 }; // 기준 화면 (autoFit 이 이보다 작은 화면에서 축소한다)
 
 // 동시에 보이지 않는 형제 쌍 (한쪽이 보이면 다른 쪽은 숨는다) — 겹침 검사 제외

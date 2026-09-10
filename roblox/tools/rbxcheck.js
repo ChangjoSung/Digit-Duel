@@ -110,9 +110,32 @@ async function main() {
 		console.log(`${path.relative(ROOT, f)}:${line}: ${msg}`);
 		problems++;
 	};
+	// Luau 는 함수 하나가 지역 변수를 200개까지만 쓴다. 이 파일들은 전부 최상위 스코프라 한 예산을 공유하고,
+	// 넘으면 "Out of local registers when trying to allocate <아무 함수 이름>" 으로 **엉뚱한 줄**을 가리키며 빌드가 멈춘다.
+	// 그래서 여유가 줄어드는 것을 미리 알린다 (2026-09-10 전투 연출을 붙이다 실제로 걸렸다 → 자식 ModuleScript 로 쪼갰다).
+	const LOCAL_WARN = 170, LOCAL_MAX = 190;
+	const countTopLocals = (text) => {
+		let n = 0;
+		for (const line of text.split("\n")) {
+			if (/^local\s+function\b/.test(line)) {
+				n += 1;
+			} else {
+				const d = /^local\s+([\w\s,]+?)\s*(=|$)/.exec(line);
+				if (d) n += d[1].split(",").length;
+			}
+		}
+		return n;
+	};
+
 	for (const f of files) {
 		const src = fs.readFileSync(f, "utf8");
 		const lineOf = (idx) => src.slice(0, idx).split("\n").length;
+		const nLocals = countTopLocals(src);
+		if (nLocals > LOCAL_MAX) {
+			report(f, 1, `최상위 지역 변수 ${nLocals}개 — Luau 한도 200 에 너무 가깝다. 관련된 것끼리 테이블로 묶거나 자식 ModuleScript 로 나눌 것`);
+		} else if (nLocals > LOCAL_WARN) {
+			console.log(`${path.relative(ROOT, f)}:1: [경고] 최상위 지역 변수 ${nLocals}개 (한도 200) — 새 기능은 테이블로 묶는 편이 안전하다`);
+		}
 		let m;
 		const reMk = /\bmk\(\s*"(\w+)"\s*,\s*\{/g;
 		while ((m = reMk.exec(src))) {
