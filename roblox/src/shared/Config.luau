@@ -41,7 +41,8 @@ local Config = {
 		ballMax = math.huge, -- #121 계약 2.1: 볼 보유 상한 해제
 		nextBuffPct = 0.15, -- #12 일시버프 (다음 전투 공격 +15%)
 		enemyCapProb = 0.7, -- #12 적 하수인 포획 성공률
-		fleeProb = 0.5, -- #13 도망 성공률 (자기 HP<50%)
+		fleeProb = 0.3, -- #146 (v0.4.7 계약 1.1): HP 게이트 폐지 · 기본 성공률 30%
+		fleeProbBuff = 0.7, -- #146 계약 1.4: 도망의 수호자 = 성공률 **치환** 70% (가산·성공 보장 아님)
 		teleMax = math.huge, -- #114 (v0.4.5): 경기당 횟수 무제한 (주 행동 1회 소모는 유지)
 		enemyCapHp = 70, -- #20 전투 중 적 포획 예비 하수인 시작 HP
 		itemHealPct = 0.20,

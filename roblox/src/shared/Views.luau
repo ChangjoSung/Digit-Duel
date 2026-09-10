@@ -224,10 +224,12 @@ function Views.forViewer(engine, viewer)
 			buffD = B.buffD,
 			buffUsed = (mySide == "A") and B.buffA or B.buffD,
 			usable = usable, -- 내 4슬롯 합법 여부 (쿨 + 사신 봉인)
-			canBasic = not anyUsable,
+			canBasic = myF.skills == nil, -- #146 계약 2.2: 기본 공격은 왕·동료 본체(4슬롯 없음)만
 			reaperWhy = engine:reaperWhy(mySide),
-			canFlee = myF.hp < myF.maxHp * 0.5 or myF.fleeFree == true,
+			canFlee = true, -- #146 계약 1.1: HP 게이트 폐지 — 자기 행동 차례면 언제나 시도 가능
+			fleeProb = myF.fleeFree and Config.BAL.fleeProbBuff or Config.BAL.fleeProb, -- 30% · 도망의 수호자 70%
 			fleeFree = myF.fleeFree == true,
+			canPass = myF.skills ~= nil and not anyUsable, -- #146 계약 2.1: 4슬롯 전부 불가 → 기본 공격 대신 수동 넘기기
 			powerBuff = myF.powerBuff == true,
 			blog = table.clone(B.blog),
 		}

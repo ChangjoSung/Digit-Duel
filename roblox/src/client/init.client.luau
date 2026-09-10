@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.6"
+local CLIENT_VERSION = "0.5.0-p3.7"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -127,6 +127,7 @@ local view = nil
 local tableInfo = nil
 local selectedId = nil
 local teleFirst = nil
+local teleMode = false -- #131 계약 3.2: 텔레포트 1단계(첫 말 고르는 중) 표시
 local logLines = {}
 local battleSub = nil -- 전투 창 하위 선택 (gift | buff | nil) — 로컬 표시 상태
 local recruitUi = { stage = "root", skill = nil, targetId = nil, recvId = nil, token = nil } -- #121 기술 교체·포획 선택 단계 (로컬)
@@ -1566,7 +1567,7 @@ local function closeGame()
 	win.Visible = false
 	view = nil
 	selectedId = nil
-	teleFirst = nil
+	teleFirst, teleMode = nil, false
 	local3d:ClearAllChildren()
 	boardFrame.Visible = false
 	boardFrameImg.Visible = false
@@ -1672,8 +1673,8 @@ local function renderSide()
 		end
 		info ..= "\n"
 	end
-	if teleFirst then
-		info ..= "🌀 텔레포트: 교환할 두 번째 말을 클릭\n"
+	if teleFirst or teleMode then -- #131 계약 3.2: CJ 지정 2단계 문구
+		info ..= (teleFirst and "🌀 교체할 말을 선택해주세요\n" or "🌀 먼저 텔레포트를 할 말을 선택해주세요! (함정에 걸린 말은 제외)\n")
 	end
 	if view.fleePick then
 		info ..= "🏃 도망 성공 — 후방 말(파란 표시) 클릭으로 교환 또는 생략\n"
@@ -1721,14 +1722,16 @@ local function renderButtons()
 	smallBtn(btnRow, 0, 0, 90, "탐색", function()
 		send({ t = "search", id = selectedId })
 	end, "default", lg ~= nil and lg.search, Art.action("search"))
-	smallBtn(btnRow, 96, 0, 112, teleFirst and "취소" or "텔레포트", function()
-		if teleFirst then
-			teleFirst = nil
+	smallBtn(btnRow, 96, 0, 112, (teleFirst or teleMode) and "취소" or "텔레포트", function()
+		if teleFirst or teleMode then -- 취소 → 1단계 이전으로 (문구도 함께 돌아온다)
+			teleFirst, teleMode = nil, false
+		elseif selectedId then
+			teleFirst, teleMode = selectedId, true
 		else
-			teleFirst = selectedId
+			teleMode = true -- 아직 말을 안 골랐으면 1단계 안내부터
 		end
 		render()
-	end, "default", teleFirst ~= nil or (view.teleAvailable and selectedId ~= nil), Art.action("teleport"))
+	end, "default", teleFirst ~= nil or teleMode or view.teleAvailable == true, Art.action("teleport"))
 	smallBtn(btnRow, 214, 0, 90, "회복", function()
 		send({ t = "heal", id = selectedId })
 	end, "default", lg ~= nil and lg.heal, Art.action("heal"))
@@ -2096,9 +2099,11 @@ local function renderBattle()
 				send({ t = "act", k = i })
 			end, "default", enabled, Art.skillKind(kind))
 		end
-		smallBtn(battleBtns, 0, 62, 100, "기본 공격", function()
-			send({ t = "act", k = "basic" })
-		end, "default", bt.canBasic ~= false, Art.action("fight")) -- 쓸 수 있는 슬롯이 없을 때만 (폴백)
+		if bt.canPass then -- #146 계약 2.1: 기본 공격을 주지 않고 안내 + 명시적 수동 종료만 (누르기 전에는 넘어가지 않는다)
+			smallBtn(battleBtns, 0, 62, 200, "⏭️ 행동 넘기기", function()
+				send({ t = "pass" })
+			end, "primary", true, Art.action("skip"))
+		end
 	else
 		smallBtn(battleBtns, 0, 0, 120, "기본 공격", function()
 			send({ t = "act", k = "basic" })
@@ -2116,9 +2121,9 @@ local function renderBattle()
 	smallBtn(battleBtns, 0, 94, 106, "볼 던지기", function()
 		send({ t = "ball" })
 	end, "danger", true, Art.item("ball"))
-	smallBtn(battleBtns, 112, 94, 92, "도망" .. (bt.fleeFree and " 🏃" or ""), function()
+	smallBtn(battleBtns, 112, 94, 92, ("도망 %d%%"):format(math.floor((bt.fleeProb or 0.3) * 100 + 0.5)), function()
 		send({ t = "flee" })
-	end, "default", bt.canFlee ~= false, Art.action("flee"))
+	end, "default", bt.canFlee ~= false, Art.action("flee")) -- #146: HP 조건 없음 · 기본 30% · 도망의 수호자 70%
 	smallBtn(battleBtns, 210, 94, 76, "🎁 " .. (view.gifts or 0), function()
 		battleSub = "gift"
 		render()
@@ -2128,6 +2133,9 @@ local function renderBattle()
 		render()
 	end, "default", (view.buffPacks or 0) > 0 and bt.buffUsed == nil)
 	local hint = (bt.itemRound and "아이템: 이번 라운드 사용함" or "아이템: 라운드 1회") .. " · " .. (bt.buffUsed and ("버프: " .. Data.BUFFS[bt.buffUsed].ko) or "버프: 전투당 1개")
+	if bt.canPass then -- #146 계약 2.1 안내 (소유자 화면에만 — 공용 로그에 사유를 쓰지 않는다)
+		hint = "⚠️ 공격할 것이 없습니다. 턴 종료할까요?\n" .. hint
+	end
 	if myF.skills and bt.reaperWhy then
 		for i = 1, 4 do
 			local sv = myF.skills[i]
@@ -2190,12 +2198,21 @@ local function onCell(r, c)
 	if view.current ~= view.me or view.battle or view.pending or view.pendingWait then
 		return
 	end
-	if teleFirst then
-		if p and p.owner == view.me and p.id ~= teleFirst then
-			send({ t = "tele", aId = teleFirst, bId = p.id })
-			teleFirst = nil
-		elseif p and p.id == teleFirst then
-			teleFirst = nil
+	if teleFirst or teleMode then
+		if p and p.owner == view.me and (p.immobile or 0) > 0 then -- #131 계약 3.2: 거부 안내는 소유자 화면에만
+			flashHud("⛔ 함정에 걸린 하수인은 텔레포트를 사용할 수 없습니다")
+			return
+		end
+		if teleFirst then
+			if p and p.owner == view.me and p.id ~= teleFirst then
+				send({ t = "tele", aId = teleFirst, bId = p.id })
+				teleFirst, teleMode = nil, false
+			elseif p and p.id == teleFirst then
+				teleFirst = nil -- 첫 말 재클릭 = 선택 취소 → 1단계로
+				render()
+			end
+		elseif p and p.owner == view.me then
+			teleFirst = p.id
 			render()
 		end
 		return
@@ -2339,7 +2356,7 @@ reState.OnClientEvent:Connect(function(msg)
 		view = msg.view
 		selectedId = selectedId and pieceById(selectedId) and selectedId or nil
 		if view.battle == nil and prevBattle then
-			teleFirst = nil
+			teleFirst, teleMode = nil, false
 		end
 		for _, ev in msg.events do
 			if ev.t == "log" then

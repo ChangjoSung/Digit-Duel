@@ -455,7 +455,7 @@ function Battle.attach(Engine, deps)
 				self:bmsg("💚 HP " .. h .. " 회복!")
 			end
 			if sk.shieldPct then
-				f.shield = math.max(f.shield, round(f.maxHp * sk.shieldPct)) -- 중첩: 최대값 갱신
+				f.shield += round(f.maxHp * sk.shieldPct) -- #130 계약 4: 남은 보호막 + 이번 부여량 (max 갱신 → 합산). 상한·기간 없음
 				self:bmsg("🛡 보호막 " .. f.shield .. "!")
 			end
 			if sk.dmgCut then
@@ -555,7 +555,7 @@ function Battle.attach(Engine, deps)
 					self:bmsg("🌿 흡수 — HP " .. gh .. " 회복!")
 				end
 				if sk.selfShieldPct then
-					f.shield = math.max(f.shield, round(f.maxHp * sk.selfShieldPct))
+					f.shield += round(f.maxHp * sk.selfShieldPct) -- #130 계약 4: 공격 부가 보호막도 합산
 					self:bmsg("🌿 보호막 " .. f.shield .. "!")
 				end
 				if sk.witch then -- #121 계약 5.2 — 피해 확정 뒤(실HP 피해 actual 기준) 2효과 100%
@@ -757,25 +757,6 @@ function Battle.attach(Engine, deps)
 		self:afterBattle(attacker, side == "A" and attacker.alive)
 	end
 
-	-- #13 도망 실패 반격: 상대의 즉시 공격 1회 (최고 위력 가용 슬롯, 없으면 기본 공격)
-	function Engine:fleeCounter(fleeSide)
-		local B = self.S.battle
-		if not B then
-			return
-		end
-		local oSide = (fleeSide == "A") and "D" or "A"
-		local of = (oSide == "A") and B.fa or B.fd
-		local slot = nil
-		if of.skills then
-			for i = 1, 4 do
-				local sk = Data.SKILLS[of.skills[i]]
-				if of.cds[i] == 0 and sk.pow and (not slot or sk.pow > Data.SKILLS[of.skills[slot]].pow) then
-					slot = i
-				end
-			end
-		end
-		self:execSlot(oSide, slot)
-	end
 
 	--==============================================================
 	-- 전투 액션 (act / item / ball / flee)
@@ -790,22 +771,27 @@ function Battle.attach(Engine, deps)
 		local oppPiece = (side == "A") and B.defP or B.attP
 		local myPiece = (side == "A") and B.attP or B.defP
 
-		if a.t == "act" then
+		if a.t == "pass" then -- #146 계약 2.3: 4슬롯 전부 불가일 때의 수동 종료 = 전투 행동 1회 소모 (보드 턴·주 행동·전투 횟수·약화 불변)
+			if not f.skills then
+				return false, "이 전투원은 기본 공격을 쓸 수 있습니다"
+			end
+			for i = 1, 4 do
+				if self:slotUsable(f, i, side) then
+					return false, "사용 가능한 기술이 있습니다"
+				end
+			end
+			self:bmsg("⏭️ " .. fighterName(B, side) .. " — 쓸 수 있는 기술이 없어 이번 행동을 넘겼다.")
+			self:nextPhase()
+			return true
+		elseif a.t == "act" then
 			local k = a.k
 			if f.skills then
 				local slot = nil
 				if k == "basic" then
-					slot = self:slotUsable(f, 1, side) and 1 or nil -- JS 매핑: basic → 슬롯1(합법일 때) 또는 순수 기본 공격
+					-- #146 계약 2.1·2.4: 4슬롯 전투원에게는 기본 공격 폴백을 주지 않는다 (합법 슬롯이 있으면 그 슬롯을, 없으면 수동 패스)
+					slot = self:slotUsable(f, 1, side) and 1 or nil
 					if slot == nil then
-						local anyUsable = false
-						for i = 1, 4 do
-							if self:slotUsable(f, i, side) then
-								anyUsable = true
-							end
-						end
-						if anyUsable then
-							return false, "사용 가능한 기술이 있습니다"
-						end
+						return false, "쓸 수 있는 기술이 없습니다 — [행동 넘기기] 로 이번 행동을 넘기세요"
 					end
 				elseif type(k) == "number" and k >= 1 and k <= 4 then
 					if f.cds[k] > 0 then
@@ -952,12 +938,11 @@ function Battle.attach(Engine, deps)
 			end
 			return true
 		elseif a.t == "flee" then
-			if f.hp >= f.maxHp * 0.5 and not f.fleeFree then -- #121 계약 3.4: 도망의 수호자는 HP 게이트만 해제
-				return false, "자기 HP가 50% 미만이어야 도망칠 수 있습니다"
-			end
+			-- #146 계약 1.1: HP 50% 게이트 폐지 — 자기 전투 행동 차례면 언제나 시도 가능
 			self:met(ownerP, "fleeTries")
 			self:bmsg("🏃 " .. fighterName(B, side) .. "의 도망 시도!")
-			if self:rand() < BAL.fleeProb then
+			local prob = f.fleeFree and BAL.fleeProbBuff or BAL.fleeProb -- #146 계약 1.4: 도망의 수호자 = 성공률 치환 70%
+			if self:rand() < prob then
 				self:met(ownerP, "fleeOks")
 				self:bmsg("🏃 도망 성공! 전투가 종료되었다.")
 				self:log("🏃 P" .. (ownerP + 1) .. " 도망 성공 — 전투 종료 (판정·제거 없음)", "imp")
@@ -967,8 +952,9 @@ function Battle.attach(Engine, deps)
 				self:fleeSwapPrompt(myPiece, oppPiece) -- #114 교환·밀기
 				return true
 			end
-			self:bmsg("🏃 도망 실패! 상대의 공격이 이어진다.")
-			self:fleeCounter(side)
+			-- #146 계약 1.2: 상대의 추가 반격 삭제 — 실패는 도망 측 전투 행동 1회 소모로만 끝나고 상대 정상 차례가 온다
+			self:bmsg("🏃 도망 실패! 이번 행동을 소모했다.")
+			self:nextPhase()
 			return true
 		end
 		return false, "알 수 없는 전투 액션"

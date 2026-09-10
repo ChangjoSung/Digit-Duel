@@ -1255,7 +1255,7 @@ local function aiBattleAction(en, side)
 		and en:rand() < 0.4 + 0.4 * prof.capture then
 		return { t = "ball" }
 	end
-	-- #13 도망: 동료·왕 본체 또는 열세 전투원 (#121 계약 3.4: 도망의 수호자로 HP 조건 해제)
+	-- #13 도망: 동료·왕 본체 또는 열세 전투원 (#146 계약 1.1: HP 게이트 폐지 — 위험할 때만 쓰도록 AI 자체 기준은 유지)
 	if f.hp < f.maxHp * 0.5 or f.fleeFree then
 		local vipBody = isVip(x.myPc) and f == x.myPc
 		local losing = f.hp / f.maxHp < opp.hp / opp.maxHp - 0.15
@@ -1264,11 +1264,11 @@ local function aiBattleAction(en, side)
 		end
 	end
 	if not f.skills then
-		return { t = "act", k = "basic" }
+		return { t = "act", k = "basic" } -- 왕·동료 본체는 기본 공격 유지 (#146 계약 2.2)
 	end
 	local usable = usableSlots(en, f, side)
 	if #usable == 0 then
-		return { t = "act", k = "basic" }
+		return { t = "pass" } -- #146 계약 2.4: 4슬롯 전부 불가 — AI 는 안내를 기다리지 않고 곧바로 넘긴다
 	end
 	local function multOf(el)
 		local advM = el and opp.element and BEATS[el] == opp.element
@@ -1307,7 +1307,7 @@ local function aiBattleAction(en, side)
 			if sk.healPct then
 				sc = lowHp and (20 + 10 * caut) or 2
 			elseif sk.shieldPct then
-				sc = (lowHp and 14 or 5) * ((f.shield > 0) and 0.3 or 1)
+				sc = lowHp and 14 or 5 -- #130 계약 4: 보호막은 합산이라 기존 보유를 이유로 증가량을 깎지 않는다
 			elseif sk.dmgCut then
 				sc = lowHp and 10 or 3
 			elseif sk.focus then
@@ -1399,8 +1399,11 @@ local function aiBattleActionStrong(en, side)
 			return { t = "flee" }
 		end
 	end
-	if not f.skills or #usable == 0 then
+	if not f.skills then
 		return { t = "act", k = "basic" }
+	end
+	if #usable == 0 then
+		return { t = "pass" } -- #146 계약 2.4
 	end
 	local lowHp = f.hp <= oppEst * 1.5
 	local scored = {}
@@ -1442,7 +1445,7 @@ local function aiBattleActionStrong(en, side)
 			if sk.healPct then
 				sc = (lowHp and toKillOpp > 1) and 25 or 1
 			elseif sk.shieldPct then
-				sc = ((lowHp and toKillOpp > 1) and 16 or 4) * ((f.shield > 0) and 0.3 or 1)
+				sc = (lowHp and toKillOpp > 1) and 16 or 4 -- #130 계약 4: 합산이므로 기존 보유로 깎지 않는다
 			elseif sk.dmgCut then
 				sc = (lowHp and toKillOpp > 1) and 12 or 2
 			elseif sk.focus then
@@ -1893,6 +1896,9 @@ function Ai.act(en, me)
 			if tryApply(en, me, { t = "act", k = u.i }) then
 				return true, "🤖 AI 전투 행동"
 			end
+		end
+		if f.skills then -- #146 계약 2.4: 4슬롯 전투원은 기본 공격 폴백이 없다 → 수동 넘기기와 같은 경로
+			return tryApply(en, me, { t = "pass" }), "🤖 AI 행동 넘김"
 		end
 		return tryApply(en, me, { t = "act", k = "basic" }), "🤖 AI 기본 공격"
 	end

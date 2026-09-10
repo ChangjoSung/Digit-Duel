@@ -1,6 +1,6 @@
 # Digit Dual — Roblox 포팅 (Phase 3: 3D 로비 · 보드게임 창 · AI 봇)
 
-HTML 데모(`demo/index.html` — 규칙 기준 **v0.4.7** #121·#125·#129 반영)의 Roblox 포팅. CJ 결정(2026-09-09)으로 플랫폼 방향을 Roblox로 전환했다 (Ref #118).
+HTML 데모(`demo/index.html` — 규칙 기준 **v0.4.7 전량** — #121·#125·#129 + #146·#131·#130 반영)의 Roblox 포팅. CJ 결정(2026-09-09)으로 플랫폼 방향을 Roblox로 전환했다 (Ref #118).
 
 ## 구조
 
@@ -47,7 +47,8 @@ Roblox는 서버가 Luau를 직접 실행하므로 **서버 권위**로 전환�
 | `recruitSwap` / `capTry` / `recruitKeep` | `{skill,targetId,slot=1..4}` / `{mode,recvId}` | #121 탐색 보상 선택 (기술 교체 · 숲 포획 · 포기) |
 | `gift` / `buff` | `{pick=potion\|cool\|cure\|ball}` / `{kind=power\|time\|escape}` | #121 패키지 개봉·전투 버프 (무료 보너스 행동) |
 | `act` | `{k=1..4\|"basic"}` | 전투 4슬롯 (JS 0~3 → **1~4**) |
-| `item` / `ball` / `flee` | `{i=인벤 인덱스}` | 전투 보너스 행동 |
+| `item` / `ball` / `flee` | `{i=인벤 인덱스}` | 전투 보너스 행동 (#146: 도망 HP 조건 없음·기본 30%·수호자 70%) |
+| `pass` | | #146 4슬롯 전부 불가 시 수동 행동 넘기기 (기본 공격 대체) |
 | `fleeSwap` / `fleeSkip` | `{id}` | #114 도망 교환 |
 
 ## 실행
@@ -92,7 +93,7 @@ Studio 에서 File → Publish to Roblox. 별도 서버 없이 Roblox 가 서버
 luau tests/run.luau
 ```
 [luau CLI](https://github.com/luau-lang/luau/releases) (luau-windows.zip) 만 있으면 된다. 검증 범위:
-RNG 골든(JS 대조) · 배치·P2 행 반사 · 이동 규칙 · 접촉 6상황 유닛(폭탄·함정·밀기) · 왕 끝줄 승리 · 전투 완주 · 20시드 무작위 완주(룰 데드락·지표 정합·HP 불변식) · **AI [10]**: 자동 배치 유효성 · 5급/5단 AI 대 AI 24판 완주 · 5급 결정성 · #92 교체 정책 · **v0.4.7 [11]** · **중앙 배너 [12]**.
+RNG 골든(JS 대조) · 배치·P2 행 반사 · 이동 규칙 · 접촉 6상황 유닛(폭탄·함정·밀기) · 왕 끝줄 승리 · 전투 완주 · 20시드 무작위 완주(룰 데드락·지표 정합·HP 불변식) · **AI [10]**: 자동 배치 유효성 · 5급/5단 AI 대 AI 24판 완주 · 5급 결정성 · #92 교체 정책 · **v0.4.7 [11]** · **중앙 배너 [12]** · **v0.4.7 후속 [13]**(#146·#131·#130).
 
 ### UI 레이아웃 정적 검사 (build.bat 이 자동 실행)
 ```
