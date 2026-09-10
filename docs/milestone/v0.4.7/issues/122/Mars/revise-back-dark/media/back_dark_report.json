@@ -1,0 +1,412 @@
+{
+  "tool": "back_dark_shots.js",
+  "when": "2026-09-10T10:33:35.142Z",
+  "source": {
+    "file": "demo/index.html",
+    "blobSha1": "2a2c26da1728935ec024253ef9fad44945e3eabf"
+  },
+  "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "readOnly": false,
+  "shots": [
+    "01-lobby-390.png",
+    "02-prep-place-390.png",
+    "03-prep-roster-390.png",
+    "04-prep-confirm-390.png",
+    "05-board-390.png",
+    "06-board-drawer-390.png",
+    "07-resign-confirm-390.png",
+    "08-battle-390.png",
+    "13-sim-confirm-390.png",
+    "12-battle-fallback-390.png",
+    "11-bush-390.png",
+    "09-result-390.png",
+    "10-board-360.png",
+    "10-board-desktop.png"
+  ],
+  "checks": {
+    "lobbyBack": {
+      "txt": "← 타이틀",
+      "title": "타이틀 화면으로 돌아갑니다",
+      "box": {
+        "l": 10,
+        "t": 8,
+        "w": 66
+      }
+    },
+    "lobbySurfaces": [
+      {
+        "label": "앱 바탕",
+        "found": true,
+        "bg": [
+          28,
+          33,
+          48
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0155,
+        "ratio": 13.55,
+        "big": false,
+        "text": "PVE (AI 대전) — 난이도 선택"
+      },
+      {
+        "label": "로비 카드",
+        "found": true,
+        "bg": [
+          36,
+          43,
+          61
+        ],
+        "fg": [
+          138,
+          147,
+          168
+        ],
+        "bgLum": 0.0244,
+        "ratio": 4.58,
+        "big": false,
+        "text": "5급: 휴리스틱 기준선 AI · 5단: 공정 관측 "
+      },
+      {
+        "label": "기본 버튼",
+        "found": true,
+        "bg": [
+          47,
+          95,
+          208
+        ],
+        "fg": [
+          255,
+          255,
+          255
+        ],
+        "bgLum": 0.1334,
+        "ratio": 5.72,
+        "big": true,
+        "text": "5급 — 기본 AI"
+      }
+    ],
+    "overflow390": {
+      "docW": 390,
+      "vw": 390,
+      "bodyW": 390
+    },
+    "confirmSurfaces": [
+      {
+        "label": "확인창",
+        "found": true,
+        "bg": [
+          28,
+          33,
+          48
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0155,
+        "ratio": 13.55,
+        "big": true,
+        "text": "← 로비로 돌아가기"
+      },
+      {
+        "label": "확인창 본문",
+        "found": true,
+        "bg": [
+          28,
+          33,
+          48
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0155,
+        "ratio": 13.55,
+        "big": false,
+        "text": "출전 준비를 그만두고 로비로 돌아갈까요?"
+      },
+      {
+        "label": "확인 버튼",
+        "found": true,
+        "bg": [
+          47,
+          95,
+          208
+        ],
+        "fg": [
+          255,
+          255,
+          255
+        ],
+        "bgLum": 0.1334,
+        "ratio": 5.72,
+        "big": false,
+        "text": "로비로 돌아가기"
+      }
+    ],
+    "boardSurfaces": [
+      {
+        "label": "상태 줄",
+        "found": true,
+        "bg": [
+          36,
+          43,
+          61
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0244,
+        "ratio": 11.93,
+        "big": false,
+        "text": "나의 턴! · 1턴"
+      },
+      {
+        "label": "하단 행동 독",
+        "found": true,
+        "bg": [
+          28,
+          33,
+          48
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0155,
+        "ratio": 13.55,
+        "big": false,
+        "text": "탐색"
+      },
+      {
+        "label": "일반 칸",
+        "found": true,
+        "bg": [
+          42,
+          51,
+          80
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0344,
+        "ratio": 10.52,
+        "big": false,
+        "text": ""
+      }
+    ],
+    "overflowBoard390": {
+      "docW": 390,
+      "vw": 390,
+      "bodyW": 390
+    },
+    "battleMenuProbe": {
+      "bmenuCls": "bmenu hidden",
+      "body": "",
+      "fx": "banner hidden",
+      "btns": [
+        "⚔️ 싸우기(hidden)",
+        "🎒 가방(hidden)",
+        "🔴 포획(hidden)",
+        "🏃 도망가기(hidden)"
+      ],
+      "locked": false,
+      "menu": "fight"
+    },
+    "battleBack": {
+      "visible": true,
+      "top": 147,
+      "left": 31,
+      "fromBoxTop": 15,
+      "fromBoxLeft": 15,
+      "sub": true
+    },
+    "battleSurfaces": [
+      {
+        "label": "전투 무대",
+        "found": true,
+        "bg": [
+          28,
+          33,
+          48
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0155,
+        "ratio": 13.55,
+        "big": false,
+        "text": "새끼 화룡 (P2(상단·적))\n      표준불\n "
+      },
+      {
+        "label": "전투 HP 판",
+        "found": true,
+        "bg": [
+          28,
+          33,
+          48
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0155,
+        "ratio": 13.55,
+        "big": false,
+        "text": "스파크"
+      },
+      {
+        "label": "전투 메시지",
+        "found": true,
+        "bg": [
+          16,
+          25,
+          43
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0098,
+        "ratio": 14.84,
+        "big": false,
+        "text": "스파크의 행동을 선택하세요."
+      },
+      {
+        "label": "명령 버튼",
+        "found": true,
+        "bg": [
+          36,
+          43,
+          61
+        ],
+        "fg": [
+          232,
+          236,
+          245
+        ],
+        "bgLum": 0.0244,
+        "ratio": 11.93,
+        "big": false,
+        "text": "전기탄 21~31"
+      }
+    ],
+    "overflowBattle390": {
+      "docW": 390,
+      "vw": 390,
+      "bodyW": 390
+    },
+    "fallbackTokens": {
+      "picked": {
+        "me": "lightning",
+        "op": "fire"
+      },
+      "tokens": [
+        {
+          "id": "tok-D",
+          "art": false,
+          "circleBg": "rgb(255, 122, 77)",
+          "label": "불",
+          "labelBg": "rgba(11, 15, 24, 0.88)",
+          "labelBgComposited": [
+            40,
+            28,
+            30
+          ],
+          "ratio": 15.08
+        },
+        {
+          "id": "tok-A",
+          "art": false,
+          "circleBg": "rgb(255, 216, 77)",
+          "label": "번개",
+          "labelBg": "rgba(11, 15, 24, 0.88)",
+          "labelBgComposited": [
+            40,
+            39,
+            30
+          ],
+          "ratio": 13.74
+        }
+      ]
+    },
+    "bush": {
+      "mine": {
+        "inbush": true,
+        "cardOpacity": "0.5",
+        "bodyOpacity": "0.7",
+        "body": "face",
+        "inner": "<span class=\"face\"><span class=\"nm\">스파크</span></span><span class=\"info\"><span cl",
+        "forestBg": "rgb(31, 58, 42)"
+      },
+      "foe": {
+        "inbush": true,
+        "cardOpacity": "0.5",
+        "bodyOpacity": null,
+        "body": null,
+        "inner": "?",
+        "forestBg": "rgb(31, 58, 42)"
+      }
+    },
+    "overflow360": {
+      "lobby": {
+        "docW": 360,
+        "vw": 360,
+        "bodyW": 360
+      },
+      "board": {
+        "docW": 360,
+        "vw": 360,
+        "bodyW": 360
+      },
+      "back": {
+        "txt": "←",
+        "title": "대전 중에는 기권 확인을 거쳐야 로비로 나갈 수 있습니다",
+        "box": {
+          "l": 10,
+          "t": 8,
+          "w": 32
+        }
+      }
+    },
+    "overflowdesktop": {
+      "lobby": {
+        "docW": 1280,
+        "vw": 1280,
+        "bodyW": 1280
+      },
+      "board": {
+        "docW": 1280,
+        "vw": 1280,
+        "bodyW": 1280
+      },
+      "back": {
+        "txt": "←",
+        "title": "대전 중에는 기권 확인을 거쳐야 로비로 나갈 수 있습니다",
+        "box": {
+          "l": 434,
+          "t": 26,
+          "w": 32
+        }
+      }
+    }
+  },
+  "pass": 69,
+  "fail": 0,
+  "fails": []
+}

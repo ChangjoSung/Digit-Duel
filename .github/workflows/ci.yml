@@ -209,11 +209,13 @@ jobs:
       # 새 PNG 의 SHA 를 엄격히 대조하는 게이트가 아니다. verify 의 크기·해시 대조는 docs/media 고정 경로를 읽는다.
       # 이 매니페스트로 로컬 실측 문제 0건이다. 도구 기본값·경고 정책·테스트는 건드리지 않고 CI 인자만 현재 납품본에 맞춘다.
       # #122 (v0.4.7): 세로 UI 개편으로 README 게임 화면 기준이 바뀌어 현재 납품본 매니페스트로 옮긴다.
-      # 앞선 #105·#146 매니페스트와 그 PNG 는 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
-      - name: README 링크·이미지 오프라인 검증 (v0.4.7 #122 매니페스트)
+      # #122 CJ QA REVISE (2026-09-10): 어두운 배경 복원으로 튜토리얼 10장을 **새 소스(21637d1)로 다시 촬영**해
+      # README 참조를 revise-back-dark/tutorial 로 옮겼으므로 매니페스트도 그 납품본으로 바꾼다.
+      # 앞선 #105·#146·#122(1차) 매니페스트와 그 PNG 는 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
+      - name: README 링크·이미지 오프라인 검증 (v0.4.7 #122 REVISE 매니페스트)
         run: >-
           node tools/media/readme_media_capture.js verify --read-only --no-gh --no-render
-          --manifest docs/milestone/v0.4.7/issues/122/Mars/media/capture-manifest.json
+          --manifest docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/capture-manifest.json
 
       # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
       - name: README 도구 READ_ONLY 회귀

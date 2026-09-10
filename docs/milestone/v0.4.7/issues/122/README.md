@@ -1,12 +1,27 @@
 # #122 · #124 · #126 — 세로 화면 · 왕/동료 아트 · 승패 효과
 
-> **상태: 구현·Saturn 제품 검수 PASS, CJ QA 대기.** CJ 후속 지시에 따라 [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122) 세로 화면, [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124) 왕·동료 픽셀 아트, [#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) 승패 효과를 함께 구현했다. **최종 제품·미디어 검수는 PASS이며 CJ 아트·플레이 QA와 출시는 대기다. CI·dev 통합 상태는 PR160을 따른다.** 세 Issue 모두 OPEN이다.
+> **현재: CJ QA REVISE 보완 구현 — 좌상단 뒤로가기·어두운 배경.** [수정 범위·검수 기록](Mercury/revise-back-dark.md)을 따른다. [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)·[#124](https://github.com/ChangjoSung/Digit-Duel/issues/124)·[#126](https://github.com/ChangjoSung/Digit-Duel/issues/126)은 OPEN이며 CJ 재검수와 출시는 대기다. PR160의 제품 PASS와 화면은 이전 납품 이력이다.
 >
 > 현재 범위 원본: [CJ 후속 범위](Mercury/cj-followup.md) · [GDD21](https://app.notion.com/p/3d71e7f1708581f292ede2ab862e63f5) · [작업 PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160). 아트 체크포인트 `dd0d622`.
 
-기존 픽셀 하수인을 중심으로 한 **레트로 휴대용 전략 게임** 방향이다. 짙은 남색 프레임·밝은 아이보리 패널·절제한 강조색을 쓰고, 숫자와 상태는 읽기 쉽게, 말판과 전투 캐릭터는 크게 보이도록 구성한다.
+기존 픽셀 하수인을 중심으로 한 **레트로 휴대용 전략 게임** 방향이다. CJ REVISE에 따라 아이보리 패널을 기존 남색·어두운 회색 계열로 변경한다. 숫자와 상태는 읽기 쉽게, 말판과 전투 캐릭터는 크게 보이도록 구성한다.
 
-## 실제 브라우저 화면
+## REVISE 보완 — 실제 브라우저 화면
+
+제품 커밋 `21637d1720a67c0400a2025ee8dad585d231ba15`의 좌상단 뒤로가기와 기존 어두운 팔레트를 적용한 화면이다. [Mars 보완 보고](Mars/revise-back-dark/report.md) · [브라우저 실측](Mars/revise-back-dark/media/back_dark_report.json) · [현재 튜토리얼10 촬영 기록](Mars/revise-back-dark/tutorial/capture-manifest.json) · [PD 검수 기록](Mercury/revise-back-dark.md).
+
+| 화면 | 실제 캡처 |
+|---|---|
+| 로비·준비 | [로비](Mars/revise-back-dark/media/01-lobby-390.png) · [배치](Mars/revise-back-dark/media/02-prep-place-390.png) · [준비 취소 확인](Mars/revise-back-dark/media/04-prep-confirm-390.png) |
+| 보드·서랍 | [보드](Mars/revise-back-dark/media/05-board-390.png) · [서랍 닫기](Mars/revise-back-dark/media/06-board-drawer-390.png) · [기권 확인](Mars/revise-back-dark/media/07-resign-confirm-390.png) |
+| 전투·결과 | [좌상단 전투 뒤로가기](Mars/revise-back-dark/media/08-battle-390.png) · [이미지 대체 표시](Mars/revise-back-dark/media/12-battle-fallback-390.png) · [결과](Mars/revise-back-dark/media/09-result-390.png) |
+| 화면 폭 | [360px 보드](Mars/revise-back-dark/media/10-board-360.png) · [데스크톱 보드](Mars/revise-back-dark/media/10-board-desktop.png) |
+
+뒤로가기는 화면에 맞춰 타이틀·로스터·명령 선택으로 돌아가거나 서랍을 닫는다. 준비 취소와 경기 기권은 확인을 거치고, 전투 도중에는 하위 메뉴에서 명령 선택으로만 돌아간다. 물리 휴대폰·두 PC 전체 플레이와 CJ 재수락은 남아 있다.
+
+## 이전 납품 — PR160 브라우저 화면
+
+아래는 PR160 첫 납품의 촬영 이력이며 뒤로가기·어두운 배경 수정 후 화면과 구분한다.
 
 [구현·검수 통합 기록](Mercury/report.md) · [Mars 구현 보고](Mars/report.md) · [브라우저 검사 결과](Mars/artifacts/ui_cdp_report.json) · [튜토리얼10 출처](Mars/media/capture-manifest.json).
 
