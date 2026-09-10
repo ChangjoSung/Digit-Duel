@@ -5,12 +5,14 @@
 ## 현재 제작 범위 — #122 · #124 · #126
 
 - [CJ 후속 범위](../milestone/v0.4.7/issues/122/Mercury/cj-followup.md)가 현재 입력이다. 이전 정적 러프와 미승인 상태는 최초 납품 당시의 이력이다.
-- 기존 doc/122-art-architecture·PR160에서 같은 납품을 이어간다. 최신 dev fe3d32cd9da9292f0492becd6ca63cfe6f2753f4의 Roblox PR161은 보존해 포함했다. 시작 HTML blob8027cd72. 제품 변경·검수는 진행 중이며 기존 PASS를 재사용하지 않는다.
-- Run run_031dae03dc6e: Earth(Codex) task_361876d47908/ctx_b66017b5187b, Mars(Claude) task_c76b0350fe8a/ctx_55ae89f24c7e, Venus(Claude) task_bc6d0fb057e4/ctx_bee061a6418e. 실제 자원·Task 상태는 Orca가 원본. 구현 후 Saturn 독립 READ_ONLY 검수.
-- 7×13 보드·소유자/HP/속성·미공개 정체·핫시트/온라인 비공개·모든 기존 메뉴를 보존한다. 전투는 상대 오른쪽 위·아군 왼쪽 아래·하단 네 명령 구조。보드/전투 종료와 개별 전투/경기 결과를 구분한다.
+- 기존 doc/122-art-architecture·PR160에서 같은 납품을 이어간다. 시작 base fe3d32cd9da9292f0492becd6ca63cfe6f2753f4의 Roblox PR161은 보존해 포함했다. 이후 origin/dev 2c04b7f4c14c3d6b71902b17b742205136c6ba83(PR162·163)을 fetch했으며 최종 통합 시 추가 보존한다. PR163은 CI 잡 E를 추가하여 기존5+E=6잡이다. 시작 HTML blob8027cd72. 제품 변경·검수는 진행 중이며 기존 PASS를 재사용하지 않는다.
+- Run run_031dae03dc6e의 현재 구현 Worker는 Mars(Claude) task_c76b0350fe8a/ctx_55ae89f24c7e다. Earth 첫 아트 task_361876d47908/ctx_b66017b5187b와 수풀 보정 task_1326143e959e/ctx_9425bcbe8546은 납품 후 archive/release. Venus 분석 task_bc6d0fb057e4/ctx_bee061a6418e의 자원은 후속 문서 task_edb2dd272361/ctx_8ea5fe79675a로 이전해 납품 후 archive/release했다. 이전 Dispatch의 retained 표기는 별도 살아 있는 자원이 아니다. 실제 상태는 Orca가 원본이며 구현 후 Saturn 독립 READ_ONLY 검수를 진행한다.
+- 7×13 보드·소유자/HP/속성·미공개 정체·핫시트/온라인 비공개·모든 기존 메뉴를 보존한다. 전투는 상대 오른쪽 위·아군 왼쪽 아래·하단 네 명령 구조다. 보드/전투 종료와 개별 전투/경기 결과를 구분한다.
+- CJ 수풀 명확화: 상대가 근처에 없으면 안 보이는 기존 은폐 규칙을 유지한다. 수풀에서 보이는 내 말과 상대 말 모두 바탕·본체를 살짝 반투명하게 하고 HP·소유자·선택은 선명하게 유지한다. 인접·일시 공개·정체·메모 규칙 변경은 없다. 정적 v2의 은폐 위치 물음표 두 개를 제거하고 카드50%·본체70%로 보정했다. 문서·시안 checkpoint389216bf4c4e58ab9fddbb0560b23fd583ad8659는 제품 검수 커밋이 아니다. GDD13 DL53과 GDD21에 반영했다.
 - 같은 문서 로비/재대전은 #128 튜토리얼을 반복하지 않는다. #126의 강한 결과 효과·짧은 타이밍은 이번 제작 선택이며 #125의 기존 단축 대상에 resultBanner2500이 포함됐다고 소급하지 않는다.
 - #124 새 아트는 별도 경로에 만들며 기존 승인 아트·Downloads를 보존한다. root art/·orca-hook-latency-report.md와 구형 Earth/.chrome-render는 접근·정리하지 않는다. #123·서버·Roblox·출시는 범위 밖이다.
 - 최초 러프 Run run_9c2ce3f4c7e2 두 Worker는 archive/release 완료. 당시 임시 Chrome 프로필 삭제 자동거부·보존/납품제외와 PD 문구 정정은 최초 보고/DL51에 보존한다.
+- 이번 Earth의 #124 렌더 프로필 `docs/milestone/v0.4.7/issues/124/Earth/render-profile-ctx-b66017b5187b`와 수풀 보정의 `C:/Users/pc_77/AppData/Local/Temp/earth-122-ctx-9425bcbe8546-render`도 정확 경로 삭제가 자동 승인 검토의 `blocked by policy`로 거부돼 보존·납품 제외했다. 재시도·우회하지 않는다. 자체 Chrome 정상 종료 근거는 해당 아트 보고에 있다. PD의 임시 Orca 브라우저 page e7d14e05-bedc-4853-be75-08b2948da424는 snapshot 연결 오류로 제품 검사 근거가 없으며, 자기 생성 탭임을 대조해 닫았다. 다른 자원은 종료하지 않았다.
 
 ## #128 완료 이력
 
@@ -36,6 +38,7 @@
 
 ## 완료 이력 — 선행 Infra #132
 
+- **2026-09-10 CJ 추가 승인 완료:** `E. Roblox 클라이언트·규칙 (Luau)`를 dev·main에 여섯 번째 필수 검사로 연결했다. PR163/dev2c04b7f 성공 이력 확인, 두 보호 API 재조회에서 앱15368의6개·strict=true·나머지 보호 설정 동일을 확인했다. [현행 연결 기록](../milestone/v0.4.7/issues/132/Mercury/required-checks.md)·[Issue132](https://github.com/ChangjoSung/Digit-Duel/issues/132#issuecomment-5614971093)·GDD13 DL54를 따른다. 아래5개 기록은 최초 도입 당시 증거이며 현재 필수 목록은6개다.
 
 - [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132): 기존 문서 자료 342개 중 306개를 버전·Issue·역할/용도별로 이동했다(Markdown 73개, 기타 233개). 36개는 상시 안내·운영 계약·공용 미디어로 유지한다. 고유 측정·REVISE·출처 증거를 보존하기 위해 순수 삭제·통합은 0건으로 판단했다. [전체 경로표](../milestone/MOVES.csv)가 원본 342개를 모두 대응한다.
 - 이동 직후 306/306의 작업 트리 SHA256이 동일했다. 기존 57파일의 명시적 줄바꿈/whitespace 규칙도 새 경로로 옮겼다. Saturn 독립 READ_ONLY 검수에서 비 Markdown 250개(이동233+유지17)의 원본 blob, 이동 Markdown73개의 링크 외 본문, 제품·서버·승인 아트 보존을 확인했다. 문서 검사106개·내부 참조332건 문제0, 링크 검사기 회귀34건과 AI 완주13경기·59단언을 검증했다.
@@ -70,7 +73,7 @@
 - Saturn은 **READ_ONLY**, 파일·테스트·보고서·임시 파일을 쓰지 않고 inline으로 보고한다. 파일을 변이하는 원본 `smoke_online.js`나 임시 fixture를 만드는 도구 회귀는 Saturn의 직접 READ_ONLY 실행에서 제외하고 구현자/CI 결과와 독립 검토 범위를 구분한다.
 - 필수 dispatch preflight: `required_role · mode · area · mutation · instance_index`. Worker Git/GitHub/Notion 쓰기 금지. 완료 뒤 결과 archive/release, 같은 좁은 범위의 즉시 후속만 기한부 재사용. Task와 정확한 Dispatch를 연결하고 메시지 전체를 처리한 뒤 acknowledge한다.
 - Worker의 메시지 조회는 자신의 `check --terminal <worker-terminal> --json`을 사용한다. coordinator용 `--run`을 붙여 받은 `consumer_fenced`를 메시지 없음으로 해석하지 않는다. PD가 잘못 전달했던 문법은 이 방식으로 정정했다.
-- 현재 유일한 Mercury terminal `term_d2dcbfa3-a932-4ce2-a844-38526dd4975b`, 현재 네 Issue Run `run_c784a12efc36`, 완료 #121·#125·#129 Run `run_a30f84eaadf5`, 완료 분석 Run `run_0542beb5fd69`. 완료 Infra #134 Run `run_748eb7b6a85d`, #132 Run `run_874bb77b02e3`, 최초 등록 Run `run_a9eb05e6575e`의 이력은 보존한다. 현재 Worker 상태는 Orca task/worker list가 원본이다.
+- 현재 유일한 Mercury terminal `term_d2dcbfa3-a932-4ce2-a844-38526dd4975b`, 현재 #122·#124·#126 Run `run_031dae03dc6e`. 완료 #146 등 네 Issue Run `run_c784a12efc36`, 완료 #121·#125·#129 Run `run_a30f84eaadf5`, 완료 분석 Run `run_0542beb5fd69`. 완료 Infra #134 Run `run_748eb7b6a85d`, #132 Run `run_874bb77b02e3`, 최초 등록 Run `run_a9eb05e6575e`의 이력은 보존한다. 현재 Worker 상태는 Orca task/worker list가 원본이다.
 - **사용자 소유 미추적 `art/`·`orca-hook-latency-report.md`는 읽기·수정·스테이징 금지.** Downloads 원본과 승인 아트100파일을 보존한다. 파일 탐색은 이 두 루트 경로를 포함하지 않는 명시적 범위 또는 Git 추적 목록을 사용한다.
 - 기존 Mercury `term_abae9146-14a1-47e9-8e9a-0a6e3c4c041a`, 사용자 소유 `term_f715b1c1-8dc5-438c-b035-540ab8b4082e`, 과거 Saturn `ctx_7587a359d6a6` user_owned, `ctx_bbc10559f749` identity_unproven 및 다른 소유권 불명 자원은 종료·정리하지 않는다. 프로세스·프로필 정리는 해당 실행에서 생성과 소유권을 확인한 정확한 대상에만 한다.
 - 이전 세션 압축15회, 2026-09-08 17:47:40 KST 92,019/258,400·단순 차감64.4% 여유는 **현재 세션의 사용량이 아니며 판단력 저하의 입증도 아니다**. [당시 자가 점검](../milestone/v0.4.4/reports/Mercury/mercury-self-audit-2026-09-08.md). 추가 PD 스폰이나 세션 교대 없이 현재 Mercury가 창구를 유지한다.

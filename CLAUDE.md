@@ -47,7 +47,7 @@ CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.
 - 버전 통제: 계획 버전은 Milestone 하나로만 관리하고, 배포 버전은 main tag·GitHub Release로만 관리한다. 중복되는 `vX.Y.Z` 라벨은 만들지 않는다.
 - 라벨: PR마다 작업 유형 1개(`feature`/`fix`/`infra`/`doc`)와 영역 1개(`html_demo`/`dev_client`/향후 `dev_server`/`design`)를 붙인다. `Release`는 `dev` → `main` 릴리스 PR에만 사용한다.
 - PR 필수 항목: 연결 이슈(`Ref #N`; 기본 브랜치가 main이므로 dev PR에서 자동 종료 키워드 금지), Acceptance Criteria, 변경 파일, 검증 결과, Saturn 판정, UI 변경 시 스크린샷, rollback. `dev` 병합 후 이슈는 검증 근거를 남기고 수동 종료한다.
-- 보호: 현재 공개 저장소이며 branch protection을 지원한다. main/dev에 PR 필수·force push/삭제 금지·대화 해결·필수 HTML PR 검사를 적용한다. 관리자의 우회도 허용하지 않으며, 필요한 승인 리뷰 수는 0으로 두고 Saturn 검수·CJ 승인 계약은 별도로 유지한다. Issue #132에서 실제 CI 성공 후 검사 이름과 GitHub Actions 앱을 연결하고 적용 결과를 기록한다.
+- 보호: 현재 공개 저장소이며 branch protection을 지원한다. main/dev에 PR 필수·force push/삭제 금지·대화 해결·필수 CI 6개(A·B·B2·C·D·E)를 적용한다. 2026-09-10 CJ 승인으로 `E. Roblox 클라이언트·규칙 (Luau)`를 추가했고 모두 GitHub Actions 앱15368·strict=true다. 관리자의 우회도 허용하지 않으며, 필요한 승인 리뷰 수는 0으로 두고 Saturn 검수·CJ 승인 계약은 별도로 유지한다. [Issue #132 연결 기록](docs/milestone/v0.4.7/issues/132/Mercury/required-checks.md)에 실제 성공 이력과 보호 설정 재조회 결과를 보관한다.
 - 모든 작업 결과는 해당 GitHub Issue에 코멘트로 기록 (수정 파일·검증 결과·커밋 해시)
 
 ## HTML 데모 (demo/index.html)
