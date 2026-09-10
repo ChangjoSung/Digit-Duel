@@ -1025,6 +1025,18 @@ function Engine:doTeleportSwap(a, b)
 	if S.teleUsed[S.current] >= BAL.teleMax then
 		return false
 	end
+	-- #131 계약 3.3: 실행 직전 재검사 (늦은 콜백·수신 프레임 방어). 하나라도 어긋나면 자원·좌표·공개 상태·큐·RNG 전부 불변으로 거부
+	if S.phase ~= "play" or S.battle or S.pending or S.fleePick or S.mainUsed then
+		return false
+	end
+	for _, p in { a, b } do
+		if not p or p.owner ~= S.current or not p.alive or not p.placed or p.immobile > 0 then
+			return false -- 함정에 걸린 말(immobile>0)은 양 끝 모두 금지 — trap 유닛 금지가 아니다
+		end
+	end
+	if a == b then
+		return false
+	end
 	local block = self:teleportSwapBlock(a, b)
 	if block then
 		self:log("🌀 텔레포트 스왑 차단 — " .. block, "imp", S.current)
@@ -1452,7 +1464,7 @@ end
 --==================================================================
 
 local BOARD_ACTS = { move = true, battle = true, search = true, tele = true, heal = true, skipMain = true, endTurn = true }
-local BATTLE_ACTS = { act = true, item = true, ball = true, flee = true, gift = true, buff = true } -- #121: 패키지 개봉·버프 적용 (무료 보너스 행동)
+local BATTLE_ACTS = { act = true, item = true, ball = true, flee = true, gift = true, buff = true, pass = true } -- #121 패키지·버프 · #146 pass(쓸 기술 없음 수동 넘기기)
 
 -- apply(actor, a) → true | false, 사유. 상태 전이는 동기 완결, 이벤트는 outbox 에 쌓인다.
 function Engine:apply(actor, a)

@@ -286,8 +286,15 @@ local function randomPolicy(en, rng)
 					end
 				end
 			end
-			local k = (#slots > 0) and slots[rng:NextInteger(1, #slots)] or "basic"
-			local okA, errA = en:apply(owner, { t = "act", k = k })
+			-- #146 계약 2.1: 4슬롯 전투원은 기본 공격 폴백이 없다 — 쓸 슬롯이 없으면 수동 넘기기(pass)
+			local okA, errA
+			if #slots > 0 then
+				okA, errA = en:apply(owner, { t = "act", k = slots[rng:NextInteger(1, #slots)] })
+			elseif f.skills then
+				okA, errA = en:apply(owner, { t = "pass" })
+			else
+				okA, errA = en:apply(owner, { t = "act", k = "basic" })
+			end
 			if not okA then
 				return false, "전투 행동 거부: " .. tostring(errA)
 			end
@@ -779,20 +786,21 @@ do -- 계약 3.1·3.2: 힘의 수호자 — 한 전투 1개 · 분산 상단 고
 	eq(B.phase, phase0, "버프는 행동 미소모")
 	ok(not en:apply(0, { t = "buff", kind = "escape" }), "한 전투 두 번째 버프 → 거부")
 	eq(en.S.pkgs[0].battleBuff, 1, "패키지 1개만 소모 (나머지 보관)")
-	-- 기본 공격 피해 = round(atk × 1.2) → 상성 → (보호막 0) — 결정적
+	-- 슬롯 1(안정 공격기) 피해 = round(slotPow × 1.2) → 상성 → (보호막 0) — 결정적
 	local f, opp = B.fa, B.fd
-	local base = Data.round(f.atk * (1 + BAL.dmgVar))
-	if f.element and opp.element then
-		if Data.BEATS[f.element] == opp.element then
+	B.fa.cds = { 0, 1, 1, 1 }
+	local sk1 = Data.SKILLS[f.skills[1]]
+	local base = Data.round(Data.slotPow(f, sk1) * (1 + BAL.dmgVar))
+	local atkEl = Data.atkElOf(f, sk1)
+	if atkEl and opp.element then
+		if Data.BEATS[atkEl] == opp.element then
 			base = Data.round(base * BAL.advMult)
-		elseif Data.BEATS[opp.element] == f.element then
+		elseif Data.BEATS[opp.element] == atkEl then
 			base = Data.round(base * BAL.disMult)
 		end
 	end
 	local hp0 = opp.hp
-	-- 슬롯이 아닌 순수 기본 공격을 위해 전 슬롯 쿨
-	B.fa.cds = { 1, 1, 1, 1 }
-	ok(en:apply(0, { t = "act", k = "basic" }), "기본 공격")
+	ok(en:apply(0, { t = "act", k = 1 }), "슬롯 1 공격")
 	eq(hp0 - opp.hp, base, "힘: 분산 상단(×1.2) 고정 피해")
 	-- 전투 종료 후 플래그 정리
 	local guard = 0
@@ -830,14 +838,32 @@ do -- 계약 3.3: 시간의 수호자 — R1 한정 · 그 전투만 3라운드 
 	ok(en2:apply(o2, { t = "buff", kind = "power" }), "R2 힘은 가능")
 	eq(en2:battleMaxRounds(), 6, "다른 전투는 6라운드")
 end
-do -- 계약 3.4: 도망의 수호자 — HP 게이트만 해제
+do -- #146 계약 1: 도망 — HP 게이트 폐지 · 기본 30% · 버프 70%(치환) · 실패 시 상대 반격 없음
 	local en = mkBattle(1107)
 	local B = en.S.battle
-	ok(not en:apply(0, { t = "flee" }), "HP 100% 도망 → 거부")
-	en.S.pkgs[0].battleBuff = 1
-	ok(en:apply(0, { t = "buff", kind = "escape" }), "도망의 수호자 적용")
-	ok(B.fa.fleeFree == true, "fleeFree")
-	ok(en:apply(0, { t = "flee" }), "HP 100% 이어도 도망 시도 가능")
+	local myHp, oppHp = B.fa.hp, B.fd.hp
+	en.rand = function()
+		return 0.5 -- 기본 30% 기준 실패 · 버프 70% 기준 성공 (두 규칙을 가르는 값)
+	end
+	eq(B.phase, 0, "행동 전 phase 0")
+	ok(en:apply(0, { t = "flee" }), "HP 100% 에서도 도망 시도 가능 (게이트 폐지)")
+	ok(en.S.battle ~= nil, "기본 30% · roll 0.5 → 실패로 전투 계속")
+	eq(B.fa.hp, myHp, "#146 1.2: 실패해도 상대 추가 반격 없음 (내 HP 불변)")
+	eq(B.fd.hp, oppHp, "실패 시 상대 HP 불변")
+	eq(B.phase, 1, "실패 = 내 전투 행동 1회 소모 (phase 진행)")
+	eq(en.S.metrics.fleeTries, 1, "fleeTries 기록")
+	eq(en.S.metrics.fleeOks, 0, "fleeOks 미기록")
+
+	local en2 = mkBattle(1117)
+	en2.S.pkgs[0].battleBuff = 1
+	ok(en2:apply(0, { t = "buff", kind = "escape" }), "도망의 수호자 적용")
+	ok(en2.S.battle.fa.fleeFree == true, "fleeFree 플래그")
+	en2.rand = function()
+		return 0.5
+	end
+	ok(en2:apply(0, { t = "flee" }), "버프 상태 도망 시도")
+	ok(en2.S.battle == nil, "#146 1.4: 버프 70% → roll 0.5 성공 (기본 30% 였다면 실패)")
+	eq(en2.S.metrics.fleeOks, 1, "fleeOks 기록")
 end
 -- 계약 4: 기술 교체 — 3종 직접 선택 · 최초 6명 생존 · 4슬롯 어디든 · 중복 금지 · 쿨 승계 · 공개 초기화
 do
@@ -970,7 +996,8 @@ do
 	B.fa.cds = { 1, 0, 1, 1 }
 	ok(not en:slotUsable(B.fa, 2, "A"), "R1 봉인")
 	ok(not en:apply(0, { t = "act", k = 2 }), "봉인 슬롯 사용 → 거부")
-	ok(en:apply(0, { t = "act", k = "basic" }), "봉인·쿨뿐이면 기본 공격 폴백 가능")
+	ok(not en:apply(0, { t = "act", k = "basic" }), "#146 계약 2.1: 4슬롯 전투원은 기본 공격 폴백 없음")
+	ok(en:apply(0, { t = "pass" }), "봉인·쿨뿐이면 [행동 넘기기]")
 	-- 6라운드·열세·보호막
 	local en2 = mkBattle(1114)
 	local B2 = en2.S.battle
@@ -1111,6 +1138,141 @@ do -- 제목/설명 분리 — 이모지 바이트가 잘리지 않는다
 	eq(Banner.fromLog(nil), nil, "nil 입력 안전")
 end
 
+
+--==================================================================
+print("[13] v0.4.7 후속 규칙 (#146·#131·#130) — 도망 재설계·행동 없음 패스·함정 텔레포트·보호막 합산")
+--==================================================================
+do -- #146 계약 2: 4슬롯 전부 불가 → 기본 공격 없음 · 수동 패스 · 라운드 경계 정상
+	local en = mkBattle(1301)
+	local B = en.S.battle
+	B.fa.cds = { 1, 1, 1, 1 }
+	ok(not en:apply(0, { t = "act", k = "basic" }), "기본 공격 제공 안 함")
+	ok(not en:apply(0, { t = "act", k = 1 }), "쿨 슬롯 거부")
+	local mainUsed, battlesUsed = en.S.mainUsed, en.S.battlesUsed
+	B.fa.weaken = 2
+	eq(B.phase, 0, "패스 전 phase 0")
+	ok(en:apply(0, { t = "pass" }), "행동 넘기기")
+	eq(B.phase, 1, "#146 2.3: 패스 = 전투 행동 1회 소모")
+	eq(en.S.mainUsed, mainUsed, "보드 주 행동 불변")
+	eq(en.S.battlesUsed, battlesUsed, "전투 횟수 불변")
+	eq(B.fa.weaken, 2, "#146 2.3: 패스로 약화 횟수가 줄지 않는다")
+	-- 슬롯 하나라도 합법이면 패스 거부 (계약 2.2)
+	B.fa.cds = { 0, 1, 1, 1 }
+	ok(not en:apply(0, { t = "pass" }), "합법 슬롯이 있으면 패스 거부")
+end
+do -- #146 계약 2.2: 왕·동료 본체(4슬롯 없음)는 기본 공격 유지
+	local en = mkBattle(1302, "king")
+	local B = en.S.battle
+	ok(B.fd.skills == nil, "왕 본체는 4슬롯 없음")
+	local side = en:actorOfPhase()
+	local owner = (side == "A") and B.attP.owner or B.defP.owner
+	if side == "D" then
+		ok(en:apply(owner, { t = "act", k = "basic" }), "왕 본체 기본 공격 유지")
+		ok(not en:apply(owner, { t = "pass" }), "기본 공격 가능한 전투원은 패스 거부")
+	else
+		ok(en:apply(owner, { t = "act", k = 1 }), "공격자 슬롯 사용")
+	end
+end
+do -- #130 계약 4: 보호막 합산 (max 갱신 아님)
+	local en = mkBattle(1303)
+	local B = en.S.battle
+	local f = B.fa
+	f.skills = { "sup_guard", "sup_guard", "sup_guard", "sup_guard" }
+	f.cds = { 0, 0, 0, 0 }
+	local unit = Data.round(f.maxHp * Data.SKILLS.sup_guard.shieldPct)
+	ok(unit > 0, "보조기 보호막 부여량 > 0")
+	eq(f.shield, 0, "시작 보호막 0")
+	ok(en:apply(0, { t = "act", k = 1 }), "보호막 1회")
+	eq(f.shield, unit, "1회 = 부여량")
+	-- 상대 차례를 넘겨 다시 내 차례로
+	local guard = 0
+	while en.S.battle and en:actorOfPhase() ~= "A" and guard < 6 do
+		guard += 1
+		local side = en:actorOfPhase()
+		local owner = (side == "A") and B.attP.owner or B.defP.owner
+		en:apply(owner, { t = "act", k = 1 })
+	end
+	if en.S.battle and en:actorOfPhase() == "A" then
+		local before = f.shield
+		ok(en:apply(0, { t = "act", k = 2 }), "보호막 2회")
+		eq(f.shield, before + unit, "#130: 같은 기술 2회 → 합산 (max 갱신이면 그대로였다)")
+	end
+end
+do -- #130 계약 4: 예시 수치 — 18 보유 + 22 부여 = 40 · 30 남은 뒤 22 = 52
+	local en = mkBattle(1304)
+	local B = en.S.battle
+	local f = B.fa
+	f.skills = { "sig_def", "sig_def", "sig_def", "sig_def" } -- shieldPct 0.22 → maxHp 100 기준 22
+	f.cds = { 0, 0, 0, 0 }
+	f.maxHp = 100
+	f.shield = 18
+	ok(en:apply(0, { t = "act", k = 1 }), "부여 1")
+	eq(f.shield, 40, "18 + 22 = 40")
+	f.shield = 30
+	local guard = 0
+	while en.S.battle and en:actorOfPhase() ~= "A" and guard < 6 do
+		guard += 1
+		local side = en:actorOfPhase()
+		local owner = (side == "A") and B.attP.owner or B.defP.owner
+		en:apply(owner, { t = "act", k = 1 })
+	end
+	if en.S.battle and en:actorOfPhase() == "A" then
+		f.shield = 30
+		ok(en:apply(0, { t = "act", k = 2 }), "부여 2")
+		eq(f.shield, 52, "30 + 22 = 52")
+	end
+end
+do -- #131 계약 3: 함정에 걸린 말(immobile>0)은 텔레포트 양 끝 모두 금지 · 거부 시 상태·RNG 불변
+	local en = freshPlay(1305)
+	local a, b
+	for _, p in en:alivePieces() do
+		if p.owner == 0 and p.type == "minion" then
+			if not a then
+				a = p
+			elseif not b then
+				b = p
+			end
+		end
+	end
+	a.r, a.c = 2, 4 -- 상대 진영 침투 (텔레포트 자격)
+	en.S.current = 0
+	en.S.mainUsed = false
+	local teleBefore, mainBefore = en.S.teleUsed[0], en.S.mainUsed
+	local ar, ac, br, bc = a.r, a.c, b.r, b.c
+	b.immobile = 2 -- 함정에 걸림
+	local okT = en:apply(0, { t = "tele", aId = a.id, bId = b.id })
+	ok(not okT, "함정에 걸린 말(두 번째)은 텔레포트 거부")
+	eq(en.S.teleUsed[0], teleBefore, "거부 시 teleUsed 불변")
+	eq(en.S.mainUsed, mainBefore, "거부 시 주 행동 불변")
+	ok(a.r == ar and a.c == ac and b.r == br and b.c == bc, "거부 시 좌표 불변")
+	local okT2 = en:apply(0, { t = "tele", aId = b.id, bId = a.id })
+	ok(not okT2, "함정에 걸린 말(첫 번째)도 거부")
+	b.immobile = 0
+	ok(en:apply(0, { t = "tele", aId = a.id, bId = b.id }), "함정이 풀리면 정상 스왑")
+	ok(a.r == br and a.c == bc, "스왑 적용")
+end
+do -- #131 계약 3.3: 주 행동 소모 후 · 남의 차례에는 doTeleportSwap 이 거부된다
+	local en = freshPlay(1306)
+	local a, b
+	for _, p in en:alivePieces() do
+		if p.owner == 0 and p.type == "minion" then
+			if not a then
+				a = p
+			elseif not b then
+				b = p
+			end
+		end
+	end
+	a.r, a.c = 2, 4
+	en.S.current = 0
+	en.S.mainUsed = true -- 주 행동 소모됨
+	ok(not en:doTeleportSwap(a, b), "주 행동 소모 후 거부")
+	en.S.mainUsed = false
+	en.S.current = 1 -- 상대 차례
+	ok(not en:doTeleportSwap(a, b), "남의 차례 거부")
+	en.S.current = 0
+	ok(not en:doTeleportSwap(a, a), "같은 말 두 번 거부")
+end
 
 --==================================================================
 print(("\n결과: %d passed · %d failed"):format(passed, failed))

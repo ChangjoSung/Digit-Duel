@@ -8,7 +8,7 @@
 
 | Phase | 범위 | 상태 |
 |---|---|---|
-| **1** | 코어 룰 엔진 Luau 포팅 + 서버 권위 구조 + 매치메이킹 + 최소 클라 UI + 헤드리스 테스트 | ✅ (규칙 기준: v0.4.5 → **v0.4.7 #121·#129 반영**, 2026-09-10) |
+| **1** | 코어 룰 엔진 Luau 포팅 + 서버 권위 구조 + 매치메이킹 + 최소 클라 UI + 헤드리스 테스트 | ✅ (규칙 기준: **HTML v0.4.7 전량** — #121·#125·#129 + #146·#131·#130, 2026-09-10) |
 | 2 | 클라 본 UI: 수동 배치·로스터 선택·전투 연출(FX 계약 #106)·Earth 아트 적용 · 3D 로비·테이블 매칭 | ✅ dev (PR #141·#142) — FX 연출은 미적용 |
 | 3 | PVE AI 포팅 (grade5·dan5) + 봇 대전 + 보드게임 창(`roblox/구조.txt`) | ✅ dev (2026-09-10) — 튜토리얼·추측 메모는 Phase 4 로 이월 |
 | 4 | 운영: 재접속·관전·랭크/매치메이킹 고도화, DataStore 전적 | 대기 |
@@ -89,6 +89,27 @@ CJ 지시 "dev 풀 받고 바뀐 규칙도 전부 적용" 에 따라 [v0.4.7 게
 | 9 AI 수용 (패키지·직접 선택·4슬롯·사신) | `Ai.luau` `aiPkgAction`·`aiRecruitPlan`·`slotUsable` | [10]·[11] AI 대전 완주 |
 
 프로토콜 추가: 전투 `gift{pick}` · `buff{kind}`, pending recruit 응답 `recruitSwap{skill,targetId,slot}` · `capTry{mode,recvId}` · `recruitKeep`. 뷰: `gifts`·`buffPacks`(소유자만), `battle.usable/canBasic/reaperWhy/canFlee/buffA/buffD/timed/itemRound`, `pending.recruit{skills,minions,receivers,species,balls}`.
+
+## v0.4.7 후속 규칙 반영 (#146·#131·#130 — HTML PR #152 → Roblox, 2026-09-10)
+
+[#146 게임플레이 계약](../milestone/v0.4.7/issues/146/Venus/gameplay-spec.md) 을 같은 수치·판단 순서로 Luau 에 반영했다.
+
+| 계약 | Roblox 구현 | 검증 |
+|---|---|---|
+| C1 도망 HP 게이트 폐지 · 기본 성공률 **30%** | `Config.BAL.fleeProb 0.5→0.3` · `applyBattleAction flee` 게이트 제거 | [13] |
+| C2 도망 실패의 **상대 추가 반격 삭제** — 자기 행동 1회 소모만 | `fleeCounter` 제거 · 실패 시 `nextPhase()` | [13] HP 불변·phase 진행 |
+| C3 성공 처리·시도 상한 무변경 | 기존 `fleeSwapPrompt` 경로 유지 | [11]·[13] |
+| C4 도망의 수호자 = 성공률 **치환 70%** (가산·보장 아님) | `BAL.fleeProbBuff` · `f.fleeFree` 로 확률 선택 | [13] roll 0.5 로 30%/70% 구분 |
+| C5 4슬롯 전부 불가 → **기본 공격 없음** · 안내 + 수동 종료 | 액션 `pass` 신설 · `act basic` 은 4슬롯 전투원에서 거부 | [13] |
+| C6 슬롯 하나라도 합법이면 정상 커맨드 · 왕·동료 본체 기본 공격 유지 | `slotUsable` 단일 판정 · `f.skills == nil` 이면 기본 공격 | [13] |
+| C7 수동 종료 = 전투 행동 1회 (`nextPhase`) — 주 행동·전투 횟수·약화 불변 | `pass` → `nextPhase()` | [13] |
+| C8 함정(`immobile>0`) 말은 텔레포트 **양 끝 금지** | `apply tele` 기존 검사 + `doTeleportSwap` 재검사 | [13] |
+| C9 2단계 안내 문구 · 거부 안내는 소유자만 | 클라 `teleMode`/`teleFirst` 단계 문구 · `flashHud` | 수동 |
+| C10 실행 직전 재검사 · 거부 시 상태·RNG 불변 | `doTeleportSwap` 진입 검사(차례·주 행동·owner·alive·placed·immobile·동일 말) | [13] |
+| C11 보호막 **합산** (`max`·직접 대입 대체) | `f.shield += …` 2경로 · AI 평가에서 기존 보유 감점 제거 | [13] 18+22=40 · 30+22=52 |
+| C12 튜토리얼 저장 독립성 | **해당 없음** — Roblox 판에 튜토리얼 없음 (Phase 4) | — |
+
+프로토콜 추가: 전투 `pass`. 뷰 추가: `battle.canPass`·`battle.fleeProb`, `canBasic` 은 4슬롯 없는 전투원만 true.
 
 ## 구조.txt (CJ 2026-09-10) 대비 구현 현황
 
