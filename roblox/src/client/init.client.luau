@@ -92,6 +92,12 @@ local Data = require(Shared:WaitForChild("Data"))
 local Art = require(Shared:WaitForChild("Art"))
 local Banner = require(Shared:WaitForChild("Banner"))
 DIAG.modules = true
+-- P2 착석 점프 잠금 — 서버는 DigitDualSeatLocked 속성만 복제한다 (SetStateEnabled 는 복제되지 않아
+-- 실제 잠금은 이 클라이언트에서 걸어야 한다). **오류 표시기가 켜진 뒤** safe 로 감싸 부른다 —
+-- 여기서 그냥 죽으면 화면에 아무것도 안 뜨고 원인도 안 보인다 (Enum.ResampleMode 사고와 같은 모양).
+safe(function()
+	require(script:WaitForChild("SeatLock")).start(player)
+end, "SeatLock")
 -- 이미지 사전 로드: Roblox 는 rbxassetid 이미지를 처음 그릴 때 내려받아 카드·초상화가 늦게 뜬다 → 접속 직후 백그라운드로 전부 받아 둔다 (메시 제외)
 task.spawn(function()
 	local okIds, AssetIds = pcall(function()
@@ -1870,7 +1876,7 @@ local function renderBattle()
 			end, "default", enabled, Art.skillKind(kind))
 		end
 		if bt.canPass then -- #146 계약 2.1: 기본 공격을 주지 않고 안내 + 명시적 수동 종료만 (누르기 전에는 넘어가지 않는다)
-			smallBtn(battleBtns, 0, 62, 200, "⏭️ 행동 넘기기", function()
+			smallBtn(battleBtns, 0, 126, 200, "⏭️ 행동 넘기기", function()
 				send({ t = "pass" })
 			end, "primary", true, Art.action("skip"))
 		end
@@ -1915,7 +1921,7 @@ local function renderBattle()
 		end
 	end
 	mk("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 126), BackgroundTransparency = 1, Text = hint, TextWrapped = true,
+		Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 158), BackgroundTransparency = 1, Text = hint, TextWrapped = true,
 		TextSize = 11, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(154, 163, 184), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 6,
 	}, battleBtns)
 end

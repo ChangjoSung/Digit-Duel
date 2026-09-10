@@ -219,10 +219,10 @@ function Views.forViewer(engine, viewer)
 			D = serializeFighter(B.fd, B.defP, viewer, over),
 			myItems = table.clone(S.inv[viewer]),
 			itemsUsed = (mySide == "A") and B.itemsA or B.itemsD,
-			itemRound = (mySide == "A") and B.itemRoundA or B.itemRoundD, -- #121 계약 2.3: 유일한 아이템 게이트
+			itemRound = if mySide == "A" then B.itemRoundA else B.itemRoundD, -- #121 계약 2.3: 유일한 아이템 게이트
 			buffA = B.buffA, -- 적용된 효과는 공개 정보 (재고·선택은 비공개)
 			buffD = B.buffD,
-			buffUsed = (mySide == "A") and B.buffA or B.buffD,
+			buffUsed = if mySide == "A" then B.buffA else B.buffD,
 			usable = usable, -- 내 4슬롯 합법 여부 (쿨 + 사신 봉인)
 			canBasic = myF.skills == nil, -- #146 계약 2.2: 기본 공격은 왕·동료 본체(4슬롯 없음)만
 			reaperWhy = engine:reaperWhy(mySide),

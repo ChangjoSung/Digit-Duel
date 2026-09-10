@@ -1179,9 +1179,9 @@ local function battleCtx(en, side)
 		myPc = (side == "A") and B.attP or B.defP,
 		oppPc = (side == "A") and B.defP or B.attP,
 		usedItems = (side == "A") and B.itemsA or B.itemsD,
-		itemRound = (side == "A") and B.itemRoundA or B.itemRoundD,
-		lastItem = (side == "A") and B.lastItemA or B.lastItemD,
-		thrown = (side == "A") and B.ballThrowA or B.ballThrowD,
+		itemRound = if side == "A" then B.itemRoundA else B.itemRoundD,
+		lastItem = if side == "A" then B.lastItemA else B.lastItemD,
+		thrown = if side == "A" then B.ballThrowA else B.ballThrowD,
 	}
 end
 
@@ -1197,7 +1197,7 @@ local function aiPkgAction(en, side, x)
 	if not pk then
 		return nil
 	end
-	local used = (side == "A") and B.buffA or B.buffD
+	local used = if side == "A" then B.buffA else B.buffD
 	if pk.battleBuff > 0 and not used then -- 1) 전투 버프 — 한 전투 1개. 시간은 R1 에만
 		local vipBody = isVip(x.myPc) and f == x.myPc
 		local losing = f.hp / f.maxHp < opp.hp / opp.maxHp
