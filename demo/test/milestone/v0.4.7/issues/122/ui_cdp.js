@@ -92,6 +92,103 @@ async function openTab(cdp,url,vp,reduceMotion){
   return {S,ev,shot,clickSel,clickText,close};
 }
 
+/* #122 HP 판 스트레스 — 보호막 + 상태 이상 7종을 전부 켜 상태줄을 가장 길게 만든 전투 화면.
+   좁은 폭에서 HP 판이 서로·전투원 도트·무대 밖과 겹치지 않는지 실측한다 (Saturn 요청). */
+const BATTLE_STRESS=`(()=>{
+  fxReleaseAll(); close(); S.battle=null;
+  startMode("pve",{aiLevel:"grade5"}); setSeed(2026);
+  fillRosterRandom(0); fillRosterRandom(1); aiAutoPlace(0); aiAutoPlace(1); beginPlay();
+  fxReleaseAll(); close();
+  const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive);
+  const em=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive);
+  S.current=0; S.mainUsed=false; S.battlesUsed=0;
+  startRounds(me,em,me,em);
+  for(const f of [S.battle.fa,S.battle.fd]){
+    f.shield=48; f.burn=2; f.weaken=2; f.shock=2; f.dmgCut=0.3; f.focusCharge=true; f.vulnMark=true;
+    f.revealedSkills=[0,1,2,3];
+  }
+  S.battle.buffA="power"; S.battle.buffD="time";
+  fxReleaseAll();
+  battleModal();
+  return {stA:stIcons(S.battle.fa), stD:stIcons(S.battle.fd)};
+})()`;
+const BATTLE_BOXES=`(()=>{
+  const st=document.getElementById("bstage");
+  const r=e=>{ if(!e) return null; const b=e.getBoundingClientRect(); return {l:Math.round(b.left),t:Math.round(b.top),w:Math.round(b.width),h:Math.round(b.height)}; };
+  const q=sel=>r(document.querySelector(sel));
+  const ob=document.getElementById("overlayBox");
+  return {stage:r(st), op:q(".bslot.slot-op"), me:q(".bslot.slot-me"),
+    tokOp:q("#bstage .btok.tok-op"), tokMe:q("#bstage .btok.tok-me"),
+    stTextOp:(document.getElementById("bst-"+(document.querySelector(".bslot.slot-op [id^=bst-]")||{id:"bst-A"}).id.slice(4))||{}).textContent||"",
+    docW:document.documentElement.scrollWidth, vw:window.innerWidth,
+    boxScrollW:ob?ob.scrollWidth:0, boxClientW:ob?ob.clientWidth:0,
+    plates:Array.prototype.slice.call(document.querySelectorAll(".bslot .fighter")).map(f=>{
+      const head=f.querySelector(".fhead"), sc=f.querySelector(".fscroll");
+      const b2=f.querySelector("b"), hp=f.querySelector("[id^=hptxt-]"), st=f.querySelector("[id^=bst-]");
+      const inside=(el)=>{ if(!el) return null; const fr=f.getBoundingClientRect(), r2=el.getBoundingClientRect();
+        return r2.top>=fr.top-1&&r2.bottom<=fr.bottom+1&&r2.width>0; };
+      return {plateSelfScroll:{sh:f.scrollHeight,ch:f.clientHeight},
+        headScroll:head?{sh:head.scrollHeight,ch:head.clientHeight}:null,
+        listScroll:sc?{sh:sc.scrollHeight,ch:sc.clientHeight}:null,
+        nameVisible:inside(b2), hpVisible:inside(hp),
+        statusText:st?st.textContent:"", statusItems:st?st.textContent.trim().split(" ").filter(Boolean).length:0}; })};
+})()`;
+
+/* #126 실측: 배너 안에서 **실제로 애니메이션이 걸린 요소·의사요소 전부**의 computed animationDelay + animationDuration 을 읽어
+   가장 늦게 끝나는 시각을 구한다. 스태거 개수·간격을 코드에서 베껴 쓰지 않는다 (Saturn REVISE — 베낀 값은 실제와 어긋났다). */
+const FX_SPAN=`(()=>{
+  const el=document.getElementById("fxBanner"), fl=document.getElementById("fxFx"), box=el.querySelector(".fxBox");
+  const ms=v=>String(v||"0s").split(",").map(x=>{x=x.trim(); return x.endsWith("ms")?parseFloat(x):parseFloat(x)*1000;}).filter(n=>!isNaN(n));
+  const parts=[];
+  const add=(name,cs)=>{ const n=(cs.animationName||"none").split(",").map(x=>x.trim());
+    const d=ms(cs.animationDuration), del=ms(cs.animationDelay);
+    n.forEach((nm,i)=>{ if(nm&&nm!=="none") parts.push({el:name,anim:nm,dur:d[i%d.length]||0,delay:del[i%del.length]||0,end:(d[i%d.length]||0)+(del[i%del.length]||0)}); }); };
+  add("fxBox",getComputedStyle(box));
+  add("fxFx::before",getComputedStyle(fl,"::before"));
+  add("fxFx::after",getComputedStyle(fl,"::after"));
+  add("fxTitle",getComputedStyle(document.getElementById("fxTitle")));
+  const shards=Array.prototype.slice.call(fl.querySelectorAll("i"));
+  shards.forEach((x,i)=>add("shard["+i+"]",getComputedStyle(x)));
+  const ends=parts.map(p=>p.end);
+  return {cls:el.className, shards:shards.length, parts,
+    maxEnd:ends.length?Math.max.apply(null,ends):0,
+    names:[...new Set(parts.map(p=>p.anim))].sort()};
+})()`;
+
+/* 수풀 표시 픽스처 — 내 말과 상대 말을 같은 수풀 줄에 놓고(상대는 인접해 위치만 드러남), 비인접 수풀에 한 마리를 더 둔다.
+   두 폭에서 같은 배치를 촬영하려고 상수로 뺐다. 규칙 함수만 쓰고 표시 상태만 만든다. */
+const BUSH_FIXTURE_FULL=`(()=>{
+      startMode("pvp"); fillRosterRandom(0); fillRosterRandom(1);
+      aiAutoPlace(0); aiAutoPlace(1); beginPlay();
+      // 내 말 하나와 상대 말 하나를 같은 수풀 줄에 놓고, 상대 말은 인접시켜 위치가 드러난 상태로 만든다
+      const mine=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive);
+      const foe=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive);
+      const far=S.pieces.filter(x=>x.owner===1&&x.type==="minion"&&x.alive)[1];
+      for(const x of S.pieces) if(x.placed){ x.placed=false; }
+      mine.r=9; mine.c=4; mine.placed=true;
+      foe.r=9; foe.c=5; foe.placed=true;          // 내 말과 인접 → 위치는 보이고 정체는 미공개
+      far.r=10; far.c=1; far.placed=true;          // 비인접 수풀 → 아예 보이지 않아야 한다
+      S.current=0; S.phase="play"; render();
+      const cell=(r,c)=>document.querySelector('#board .cell[data-r="'+r+'"][data-c="'+c+'"]');
+      const chip=(r,c)=>{const e=cell(r,c); return e?e.querySelector(".pc"):null;};
+      const cs=e=>e?getComputedStyle(e):null;
+      const mc=chip(9,4), fc=chip(9,5), hc=chip(10,1);
+      const k=S.pieces.find(x=>x.owner===0&&x.type==="king"); k.r=13; k.c=1; k.placed=true;
+      fxReleaseAll(); close();   // 핫시트 교대 모달·개시 연출을 걷어 화면이 가려지지 않은 상태에서 촬영·측정한다
+      render();  // 모든 배치를 끝낸 뒤 한 번만 그리고, 그 다음 **살아 있는 노드**에서만 계산값을 읽는다
+      const mc2=chip(9,4), fc2=chip(9,5), plain=chip(13,1);
+      const icoOp=e=>{ const i=e&&e.querySelector(".icon,.face"); return i?getComputedStyle(i).opacity:null; };
+      const bgOp=e=>e?getComputedStyle(e,"::before").opacity:null;
+      return {mineBush:!!mc2&&/inbush/.test(mc2.className), foeBush:!!fc2&&/inbush/.test(fc2.className),
+        foeHidden:!!fc2&&/hiddenId/.test(fc2.className), foeText:fc2?fc2.textContent.trim():null,
+        hiddenCellEmpty:!!cell(10,1)&&cell(10,1).children.length===0, hiddenCellHtml:cell(10,1)?cell(10,1).innerHTML:null,
+        mineBodyOpacity:icoOp(mc2), foeCardOpacity:bgOp(fc2), mineCardOpacity:bgOp(mc2),
+        mineInfoOpacity:mc2&&mc2.querySelector(".info")?getComputedStyle(mc2.querySelector(".info")).opacity:null,
+        plainBush:!!plain&&/inbush/.test(plain.className), plainBodyOpacity:icoOp(plain),
+        plainCardOpacity:bgOp(plain), foeSelfOpacity:fc2?getComputedStyle(fc2).opacity:null};
+    })()`;
+const BUSH_FIXTURE=BUSH_FIXTURE_FULL;
+
 /* 한 뷰포트에서 보는 레이아웃 계약 — 값은 전부 실제 렌더 박스에서 읽는다 */
 const LAYOUT_EXPR=`(()=>{
   const de=document.documentElement, app=document.getElementById("app");
@@ -256,27 +353,18 @@ const LAYOUT_EXPR=`(()=>{
 
     /* 승리 연출 — 전투 결과(뷰어 승리) */
     await T.ev(`(()=>{ fxReleaseAll(); const B=S.battle; if(B){ B.fd.hp=1; } return 1; })()`);
-    const winFx=await T.ev(`(()=>{
-      fxReleaseAll();
-      fxPlay({key:"resultBanner",kind:"result",cls:"win",title:"전투에서 승리!",sub:""});
-      const el=document.getElementById("fxBanner"), fl=document.getElementById("fxFx");
-      const box=el.querySelector(".fxBox"), t=document.getElementById("fxTitle");
-      const shards=fl?fl.querySelectorAll("i").length:0;
-      const cs=getComputedStyle(box), cf=fl?getComputedStyle(fl,"::before"):null;
-      const one=fl&&fl.querySelector("i")?getComputedStyle(fl.querySelector("i")):null;
-      return {cls:el.className, shards, title:t.textContent,
-        boxAnim:cs.animationName, boxDur:cs.animationDuration,
-        flashDur:cf?cf.animationDuration:null, shardDur:one?one.animationDuration:null,
-        titleColor:getComputedStyle(t).color, locked:fxLocked()};
-    })()`);
-    rec("fx.win",winFx);
+    await T.ev(`(()=>{ fxReleaseAll(); fxPlay({key:"resultBanner",kind:"result",cls:"win",title:"전투에서 승리!",sub:""}); return 1; })()`);
+    const winFx=await T.ev(FX_SPAN);
+    const winTitleColor=await T.ev(`getComputedStyle(document.getElementById("fxTitle")).color`);
+    rec("fx.win",{cls:winFx.cls,shards:winFx.shards,names:winFx.names,maxEnd:winFx.maxEnd,titleColor:winTitleColor});
+    rec("fx.win.parts",winFx.parts.filter(p=>!/^shard\[/.test(p.el)||/^shard\[(0|15)\]$/.test(p.el)));
     ok(/\bresult\b/.test(winFx.cls)&&/\bwin\b/.test(winFx.cls),"C8 승리 연출 클래스 result win");
     ok(winFx.shards===16,"C9 파편 16개가 실제로 생성됨 (난수 미사용 · 인덱스 고정)");
-    ok(/fxWinIn/.test(winFx.boxAnim),"C10 승리 배너 임팩트 애니메이션 적용 ("+winFx.boxAnim+")");
-    const durMs=s=>Math.max.apply(null,String(s||"0s").split(",").map(x=>parseFloat(x)*1000||0));
-    const winMove=Math.max(durMs(winFx.boxDur),durMs(winFx.flashDur),durMs(winFx.shardDur)+16*14);
+    ok(winFx.names.indexOf("fxWinIn")>=0&&winFx.names.indexOf("fxRays")>=0&&winFx.names.indexOf("fxBurst")>=0,
+      "C10 승리 어휘: 임팩트·빛줄기·방사 파편 ("+winFx.names.join(",")+")");
+    const winMove=winFx.maxEnd;
     rec("fx.win.moveMs",Math.round(winMove));
-    ok(winMove<=1300,`C11 승리 효과 동작 구간 ${Math.round(winMove)}ms ≤ 1300ms (짧고 강한 구간)`);
+    ok(winMove>0&&winMove<=1200,`C11 승리 효과 동작 구간 ${Math.round(winMove)}ms ≤ 1200ms — 실제 요소별 computed delay+duration 최댓값`);
     await sleep(230); await T.shot("122-08-fx-win-peak-390.png"); // 확산 정점
     await sleep(1100); await T.shot("122-08-fx-win-hold-390.png"); // 동작이 끝난 뒤 문구 홀드
     const winHold=await T.ev(`(()=>{const t=document.getElementById("fxTitle");
@@ -285,27 +373,109 @@ const LAYOUT_EXPR=`(()=>{
     await T.ev(`fxReleaseAll()`); await sleep(100);
 
     /* 패배 연출 */
-    const loseFx=await T.ev(`(()=>{
-      fxReleaseAll();
-      fxPlay({key:"resultBanner",kind:"result",cls:"lose",title:"전투에서 패배,,,",sub:""});
-      const el=document.getElementById("fxBanner"), fl=document.getElementById("fxFx");
-      const box=el.querySelector(".fxBox"), one=fl.querySelector("i");
-      return {cls:el.className, shards:fl.querySelectorAll("i").length,
-        boxAnim:getComputedStyle(box).animationName, boxDur:getComputedStyle(box).animationDuration,
-        crackDur:getComputedStyle(fl,"::after").animationDuration,
-        shardAnim:one?getComputedStyle(one).animationName:null, shardDur:one?getComputedStyle(one).animationDuration:null,
-        titleColor:getComputedStyle(document.getElementById("fxTitle")).color};
-    })()`);
-    rec("fx.lose",loseFx);
-    ok(/\blose\b/.test(loseFx.cls)&&/fxLoseIn/.test(loseFx.boxAnim),"C13 패배 연출 클래스·낙하 임팩트 ("+loseFx.boxAnim+")");
-    ok(/fxFall/.test(loseFx.shardAnim||""),"C14 패배는 파편이 아래로 떨어지는 갈래 ("+loseFx.shardAnim+")");
-    const loseMove=Math.max(durMs(loseFx.boxDur),durMs(loseFx.crackDur),durMs(loseFx.shardDur)+16*18);
+    await T.ev(`(()=>{ fxReleaseAll(); fxPlay({key:"resultBanner",kind:"result",cls:"lose",title:"전투에서 패배,,,",sub:""}); return 1; })()`);
+    const loseFx=await T.ev(FX_SPAN);
+    const loseTitleColor=await T.ev(`getComputedStyle(document.getElementById("fxTitle")).color`);
+    rec("fx.lose",{cls:loseFx.cls,shards:loseFx.shards,names:loseFx.names,maxEnd:loseFx.maxEnd,titleColor:loseTitleColor});
+    ok(/\blose\b/.test(loseFx.cls)&&loseFx.names.indexOf("fxLoseIn")>=0,"C13a 패배 연출 클래스·낙하 임팩트");
+    ok(loseFx.names.indexOf("fxFall")>=0&&loseFx.names.indexOf("fxCrack")>=0,"C14 패배는 균열 + 아래로 떨어지는 파편 ("+loseFx.names.join(",")+")");
+    const loseMove=loseFx.maxEnd;
     rec("fx.lose.moveMs",Math.round(loseMove));
-    ok(loseMove<=1400,`C15 패배 효과 동작 구간 ${Math.round(loseMove)}ms ≤ 1400ms`);
-    ok(loseFx.titleColor!==winFx.titleColor,"C16 승리와 패배의 결과 문구 색이 다르다");
+    ok(loseMove>0&&loseMove<=1200,`C15 패배 효과 동작 구간 ${Math.round(loseMove)}ms ≤ 1200ms — 실제 요소별 computed delay+duration 최댓값`);
+    ok(loseTitleColor!==winTitleColor,"C16 승리와 패배의 결과 문구 색이 다르다");
     await sleep(230); await T.shot("122-09-fx-lose-peak-390.png"); // 균열 정점
     await sleep(1100); await T.shot("122-09-fx-lose-hold-390.png");
     await T.ev(`fxReleaseAll()`); await sleep(100);
+
+    /* ── 포획 갈래: 경기 승리처럼 화면 전체를 축하하지 않는다 (Earth 스토리보드) ───────── */
+    await T.ev(`(()=>{ fxReleaseAll(); fxPlay({key:"resultBanner",kind:"result",cls:"cap",title:"포획 성공! 전투 종료",sub:""}); return 1; })()`);
+    const capFx=await T.ev(FX_SPAN);
+    const capTitleColor=await T.ev(`getComputedStyle(document.getElementById("fxTitle")).color`);
+    rec("fx.cap",{cls:capFx.cls,names:capFx.names,maxEnd:capFx.maxEnd,titleColor:capTitleColor});
+    ok(capFx.names.indexOf("fxRays")<0&&capFx.names.indexOf("fxFlash")<0&&capFx.names.indexOf("fxBurst")<0&&capFx.names.indexOf("fxWinIn")<0,
+      "C16b 포획은 승리의 금빛 섬광·빛줄기·방사 파편·승리 상자를 쓰지 않는다 ("+capFx.names.join(",")+")");
+    ok(capFx.names.indexOf("fxRing")>=0&&capFx.names.indexOf("fxConverge")>=0,"C16c 포획은 중립색 수렴 링 + 모이는 파편 어휘");
+    ok(capTitleColor!==winTitleColor,"C16d 포획 결과 문구 색이 승리와 다르다");
+    ok(capFx.maxEnd>0&&capFx.maxEnd<=1200,`C16e 포획 효과 동작 구간 ${Math.round(capFx.maxEnd)}ms ≤ 1200ms`);
+    /* 포획 배너는 상자·제목이 fxCapIn(0.5s) 으로 들어온다 — CSS 를 읽은 직후 찍으면 아직 거의 투명하다.
+       2500ms 배너 안에서 420ms 를 기다린 뒤 찍어 문구가 읽히는 장면을 남긴다 (제품 시간 상수는 건드리지 않는다). */
+    await sleep(420); await T.shot("122-15-fx-capture-390.png");
+    /* 무승부 갈래 — 패배 균열·승리 폭발이 없다 */
+    await T.ev(`(()=>{ fxReleaseAll(); fxPlay({key:"resultBanner",kind:"result",cls:"match draw",title:"무승부",sub:"경기 무승부"}); return 1; })()`);
+    const drawFx=await T.ev(FX_SPAN);
+    rec("fx.draw",{cls:drawFx.cls,names:drawFx.names,maxEnd:drawFx.maxEnd});
+    ok(drawFx.names.indexOf("fxCrack")<0&&drawFx.names.indexOf("fxBurst")<0&&drawFx.names.indexOf("fxRays")<0,
+      "C16f 경기 무승부에는 패배 균열·승리 폭발이 없다 ("+drawFx.names.join(",")+")");
+    ok(drawFx.names.indexOf("fxDrawL")>=0&&drawFx.names.indexOf("fxDrawR")>=0,"C16g 무승부는 가운데에서 만나는 두 선");
+    await T.ev(`fxReleaseAll()`); await sleep(100);
+
+    /* ── 실제 finishByCapture 종점: 상대 동료·하수인이 살아 있어 경기는 계속된다 ───────── */
+    await T.ev(`(()=>{
+      fxReleaseAll(); close(); S.battle=null;
+      startMode("pve",{aiLevel:"grade5"}); setSeed(777);
+      fillRosterRandom(0); fillRosterRandom(1); aiAutoPlace(0); aiAutoPlace(1); beginPlay();
+      fxReleaseAll(); close();
+      S.matchFxDone=false; FX.log.length=0;
+      const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive);
+      const em=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive);
+      S.current=0; S.mainUsed=false; S.battlesUsed=0;
+      startRounds(me,em,me,em);
+      window.__capBefore=S.pieces.filter(x=>x.owner===1&&x.alive&&x.placed&&(x.type==="minion"||x.type==="ally")).length;
+      return 1;
+    })()`);
+    /* 개시 연출이 끝난 뒤 실제 종점을 부른다 — 그러면 결과 배너가 전투 메시지 재생 뒤로 정상 예약된다 */
+    for(let i=0;i<120&&await T.ev(`fxLocked()`);i++) await sleep(120);
+    await T.ev(`(()=>{ FX.log.length=0; finishByCapture("A"); return 1; })()`);
+    /* 결과 배너가 **현재 항목**이 될 때까지 기다렸다가 그 시점의 클래스를 읽는다 */
+    for(let i=0;i<120&&!(await T.ev(`!!(FX.cur&&FX.cur.key==="resultBanner")`));i++) await sleep(100);
+    const capEnd=await T.ev(`(()=>{
+      const banners=FX.log.filter(x=>x.key==="resultBanner");
+      return {aliveFoeBefore:window.__capBefore,
+        aliveFoeAfter:S.pieces.filter(x=>x.owner===1&&x.alive&&x.placed&&(x.type==="minion"||x.type==="ally")).length,
+        phase:S.phase, matchFxDone:S.matchFxDone, banners:banners.length,
+        bannerTitle:banners.length?banners[banners.length-1].title:null,
+        bannerKind:banners.length?banners[banners.length-1].kind:null,
+        cls:document.getElementById("fxBanner").className,
+        titleText:document.getElementById("fxTitle").textContent, reserve:!!S.reserve[0]};
+    })()`);
+    rec("capture.endpoint",capEnd);
+    ok(capEnd.aliveFoeBefore>=2&&capEnd.aliveFoeAfter>=1,`C16h 상대 동료·하수인이 살아 있는 상태의 포획 (전 ${capEnd.aliveFoeBefore} → 후 ${capEnd.aliveFoeAfter})`);
+    ok(capEnd.phase==="play","C16i 포획으로 전투만 끝나고 경기는 계속된다");
+    ok(capEnd.matchFxDone===false,"C16j 비최종 포획은 경기 종료 연출을 소비하지 않는다");
+    ok(capEnd.banners===1&&/포획 성공/.test(capEnd.bannerTitle||""),`C16k 결과 배너 정확히 1회·포획 문구 (${capEnd.banners}회 "${capEnd.bannerTitle}")`);
+    ok(capEnd.cls.split(" ").indexOf("cap")>=0&&capEnd.cls.split(" ").indexOf("win")<0,"C16l 실제 종점의 배너 클래스가 포획 갈래 ("+capEnd.cls+")");
+    ok(capEnd.reserve===true,"C16m 포획 결과(예비 하수인)는 종전 규칙 그대로");
+    await T.ev(`fxReleaseAll(); close();`); await sleep(100);
+
+    /* ── 포획 비소유자(피포획자) 시점: 같은 포획 갈래이고 패배 균열·낙하가 없다 ─────── */
+    await T.ev(`(()=>{
+      fxReleaseAll(); close(); S.battle=null;
+      startMode("pve",{aiLevel:"grade5"}); setSeed(4242);
+      fillRosterRandom(0); fillRosterRandom(1); aiAutoPlace(0); aiAutoPlace(1); beginPlay();
+      fxReleaseAll(); close(); S.matchFxDone=false; FX.log.length=0;
+      const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive);
+      const em=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive);
+      S.current=0; S.mainUsed=false; S.battlesUsed=0;
+      startRounds(me,em,me,em);
+      return 1; })()`);
+    for(let i=0;i<120&&await T.ev(`fxLocked()`);i++) await sleep(120);
+    await T.ev(`(()=>{ FX.log.length=0; finishByCapture("D"); return 1; })()`); // 방어자(AI, P1)가 내 하수인을 포획 → 뷰어는 피포획자
+    for(let i=0;i<120&&!(await T.ev(`!!(FX.cur&&FX.cur.key==="resultBanner")`));i++) await sleep(100);
+    const capNot=await T.ev(FX_SPAN);
+    const capNotInfo=await T.ev(`(()=>{ const b=FX.log.filter(x=>x.key==="resultBanner");
+      return {title:b.length?b[b.length-1].title:null,n:b.length,phase:S.phase,matchFxDone:S.matchFxDone,
+        titleColor:getComputedStyle(document.getElementById("fxTitle")).color, reserve:!!S.reserve[1]}; })()`);
+    rec("capture.notOwner",{cls:capNot.cls,names:capNot.names,maxEnd:capNot.maxEnd,info:capNotInfo});
+    ok(capNot.cls.split(" ").indexOf("cap")>=0&&capNot.cls.split(" ").indexOf("capnot")>=0&&capNot.cls.split(" ").indexOf("lose")<0,
+      "C16n 피포획자 시점도 포획 갈래이고 lose 가 아니다 ("+capNot.cls+")");
+    ok(capNot.names.indexOf("fxCrack")<0&&capNot.names.indexOf("fxFall")<0&&capNot.names.indexOf("fxLoseIn")<0,
+      "C16o 피포획자에게 패배 균열·낙하가 걸리지 않는다 ("+capNot.names.join(",")+")");
+    ok(capNot.names.indexOf("fxRing")>=0&&capNot.names.indexOf("fxConverge")>=0,"C16p 같은 포획 어휘(수렴 링·모이는 파편)를 쓴다");
+    ok(capNotInfo.n===1&&/포획 성공/.test(capNotInfo.title||""),`C16q 문구는 종전 그대로 · 배너 1회 ("${capNotInfo.title}")`);
+    ok(capNotInfo.phase==="play"&&capNotInfo.matchFxDone===false&&capNotInfo.reserve===true,"C16r 승자·소유자 의미 보존 (상대 예비 슬롯으로 승계 · 경기 계속)");
+    ok(capNotInfo.titleColor!==capTitleColor,"C16s 포획자 시점과 색으로 구분된다");
+    await sleep(420); await T.shot("122-15-fx-capture-notowner-390.png"); // 같은 이유로 420ms 뒤
+    await T.ev(`fxReleaseAll(); close();`); await sleep(100);
 
     /* 경기 종료 — 배너가 정확히 1회, 그리고 결과 화면으로 이어진다 */
     const matchOnce=await T.ev(`(()=>{
@@ -355,36 +525,7 @@ const LAYOUT_EXPR=`(()=>{
     ok(rem.matchFxDone===false,"B16 새 경기에서 종료 연출 플래그가 초기화된다 (다음 경기에도 1회)");
 
     /* ══ A+. 수풀 반투명 — 보이는 말만, 은폐 규칙 무변경 ══════════════════ */
-    const bush=await T.ev(`(()=>{
-      startMode("pvp"); fillRosterRandom(0); fillRosterRandom(1);
-      aiAutoPlace(0); aiAutoPlace(1); beginPlay();
-      // 내 말 하나와 상대 말 하나를 같은 수풀 줄에 놓고, 상대 말은 인접시켜 위치가 드러난 상태로 만든다
-      const mine=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive);
-      const foe=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive);
-      const far=S.pieces.filter(x=>x.owner===1&&x.type==="minion"&&x.alive)[1];
-      for(const x of S.pieces) if(x.placed){ x.placed=false; }
-      mine.r=9; mine.c=4; mine.placed=true;
-      foe.r=9; foe.c=5; foe.placed=true;          // 내 말과 인접 → 위치는 보이고 정체는 미공개
-      far.r=10; far.c=1; far.placed=true;          // 비인접 수풀 → 아예 보이지 않아야 한다
-      S.current=0; S.phase="play"; render();
-      const cell=(r,c)=>document.querySelector('#board .cell[data-r="'+r+'"][data-c="'+c+'"]');
-      const chip=(r,c)=>{const e=cell(r,c); return e?e.querySelector(".pc"):null;};
-      const cs=e=>e?getComputedStyle(e):null;
-      const mc=chip(9,4), fc=chip(9,5), hc=chip(10,1);
-      const k=S.pieces.find(x=>x.owner===0&&x.type==="king"); k.r=13; k.c=1; k.placed=true;
-      fxReleaseAll(); close();   // 핫시트 교대 모달·개시 연출을 걷어 화면이 가려지지 않은 상태에서 촬영·측정한다
-      render();  // 모든 배치를 끝낸 뒤 한 번만 그리고, 그 다음 **살아 있는 노드**에서만 계산값을 읽는다
-      const mc2=chip(9,4), fc2=chip(9,5), plain=chip(13,1);
-      const icoOp=e=>{ const i=e&&e.querySelector(".icon,.face"); return i?getComputedStyle(i).opacity:null; };
-      const bgOp=e=>e?getComputedStyle(e,"::before").opacity:null;
-      return {mineBush:!!mc2&&/inbush/.test(mc2.className), foeBush:!!fc2&&/inbush/.test(fc2.className),
-        foeHidden:!!fc2&&/hiddenId/.test(fc2.className), foeText:fc2?fc2.textContent.trim():null,
-        hiddenCellEmpty:!!cell(10,1)&&cell(10,1).children.length===0, hiddenCellHtml:cell(10,1)?cell(10,1).innerHTML:null,
-        mineBodyOpacity:icoOp(mc2), foeCardOpacity:bgOp(fc2), mineCardOpacity:bgOp(mc2),
-        mineInfoOpacity:mc2&&mc2.querySelector(".info")?getComputedStyle(mc2.querySelector(".info")).opacity:null,
-        plainBush:!!plain&&/inbush/.test(plain.className), plainBodyOpacity:icoOp(plain),
-        plainCardOpacity:bgOp(plain), foeSelfOpacity:fc2?getComputedStyle(fc2).opacity:null};
-    })()`);
+    const bush=await T.ev(BUSH_FIXTURE_FULL);
     rec("bush",bush);
     ok(bush.mineBush===true&&bush.foeBush===true,"A12 수풀에서 보이는 말은 내 말·상대 말 모두 반투명 처리 대상");
     ok(bush.mineBodyOpacity==="0.7","A13 수풀 말의 본체(아이콘) 불투명도 0.7 (Earth v2 값)");
@@ -467,9 +608,88 @@ const LAYOUT_EXPR=`(()=>{
     ok(rm.motion===true,"C20 prefers-reduced-motion: reduce 로 렌더 중");
     ok(rm.boxAnim==="none"&&rm.shardAnim==="none","C21 움직임을 줄이라는 설정에서 배너·파편 애니메이션이 꺼진다");
     ok(rm.visible&&rm.title==="전투에서 승리!"&&rm.sub==="결과 문구는 남는다","C22 그래도 결과 문구·부제는 그대로 읽힌다");
-    ok(rm.titleColor===winFx.titleColor,"C23 색으로 주는 승패 피드백도 유지된다");
-    await R.shot("122-12-fx-win-reduced-390.png");
+    ok(rm.titleColor===winTitleColor,"C23 색으로 주는 승패 피드백도 유지된다");
+    await R.shot("122-12-fx-win-reduced-390.png"); // 승리 화면 — 아래 도망 재생 전에 찍는다 (파일 이름과 내용이 어긋나지 않게)
+    /* 결과 배너 밖에서 새로 넣은 움직임(도망 성공 바람)도 저동작에서 꺼진다 */
+    const rmFlee=await R.ev(`(()=>{
+      fxReleaseAll();
+      fxPlay({key:"fleeFx",kind:"banner",cls:"flee",title:"🛗 도망 성공!",sub:"후방의 자기 말을 골라 자리를 바꾸거나 생략하세요."});
+      const fl=document.getElementById("fxFx");
+      return {cls:document.getElementById("fxBanner").className,
+        windAnim:getComputedStyle(fl,"::before").animationName,
+        title:document.getElementById("fxTitle").textContent, sub:document.getElementById("fxSub").textContent}; })()`);
+    rec("reducedMotion.flee",rmFlee);
+    ok(rmFlee.windAnim==="none","C23b 저동작에서 도망 성공 배너의 가로 바람이 꺼진다 ("+rmFlee.windAnim+")");
+    ok(/도망 성공/.test(rmFlee.title)&&rmFlee.sub.length>0,"C23c 그래도 도망 문구·안내는 그대로 남는다");
+    await R.shot("122-17-fx-flee-reduced-390.png");
     await R.close();
+
+
+    /* ══ C++. HP 판 스트레스 (보호막 + 상태 7종) — 360·390 에서 겹침 실측 ═══════ */
+    const ovl2=(a,b)=>(a&&b)?Math.max(0,Math.min(a.l+a.w,b.l+b.w)-Math.max(a.l,b.l))*Math.max(0,Math.min(a.t+a.h,b.t+b.h)-Math.max(a.t,b.t)):-1;
+    for(const vp of [{name:"390",width:390,height:844,mobile:true},{name:"360",width:360,height:844,mobile:true}]){
+      const W=await openTab(cdp,URL,vp,false);
+      await W.ev(`tutSkip()`);
+      const st=await W.ev(BATTLE_STRESS);
+      for(let i=0;i<120&&await W.ev(`fxLocked()`);i++) await sleep(120);
+      await sleep(200);
+      const b=await W.ev(BATTLE_BOXES);
+      rec("battleStress."+vp.name,{stA:st.stA,boxes:b,
+        overlap:{opPlateVsOpTok:ovl2(b.op,b.tokOp),mePlateVsMeTok:ovl2(b.me,b.tokMe),
+                 opPlateVsMeTok:ovl2(b.op,b.tokMe),mePlateVsOpTok:ovl2(b.me,b.tokOp),plateVsPlate:ovl2(b.op,b.me)}});
+      ok(/🛡/.test(st.stA)&&/화상/.test(st.stA)&&/감전/.test(st.stA)&&/집중/.test(st.stA),
+        `C24.${vp.name} 상태줄에 보호막+상태 이상이 모두 실려 있다: ${st.stA}`);
+      ok(ovl2(b.op,b.tokOp)===0&&ovl2(b.me,b.tokMe)===0&&ovl2(b.op,b.tokMe)===0&&ovl2(b.me,b.tokOp)===0,
+        `C25.${vp.name} 상태줄이 길어져도 HP 판이 어느 전투원 도트도 덮지 않는다`);
+      ok(ovl2(b.op,b.me)===0,`C26.${vp.name} 두 HP 판끼리도 겹치지 않는다`);
+      ok(b.op.t>=b.stage.t-1&&b.op.t+b.op.h<=b.stage.t+b.stage.h+1&&b.me.t>=b.stage.t-1&&b.me.t+b.me.h<=b.stage.t+b.stage.h+1,
+        `C27.${vp.name} 두 HP 판이 무대 세로 범위 안에 있다`);
+      ok(b.docW<=b.vw+1&&b.boxScrollW<=b.boxClientW+1,`C28.${vp.name} 전투 모달·문서에 가로 넘침 없음 (doc ${b.docW}/${b.vw} · box ${b.boxScrollW}/${b.boxClientW})`);
+      rec("battleStress."+vp.name+".plates",b.plates);
+      ok(b.plates.length===2&&b.plates.every(x=>x.nameVisible&&x.hpVisible),
+        `C29.${vp.name} 최악 상태줄에서도 이름·HP 가 판 안에 **고정**돼 보인다`);
+      ok(b.plates.every(x=>x.plateSelfScroll.sh<=x.plateSelfScroll.ch+1),
+        `C29b.${vp.name} 판 전체가 스크롤되지 않는다 (머리는 밀려나지 않는다)`);
+      ok(b.plates.every(x=>x.headScroll&&x.headScroll.sh<=x.headScroll.ch+1),
+        `C29c.${vp.name} 고정 머리 자체도 잘리지 않는다`);
+      ok(b.plates.every(x=>x.statusItems>=7&&/🛡/.test(x.statusText)&&/피격/.test(x.statusText)),
+        `C29d.${vp.name} 상태 7종이 모두 상태줄에 남아 있다 (잘라내지 않는다)`);
+      /* 목록이 넘칠 때 **실제로 끝까지 볼 수 있는가** — computed overflow-y 와 scrollTop 을 끝으로 옮겨 확인한다.
+         동시에 고정 머리(이름·HP)의 화면 좌표가 그 스크롤로 움직이지 않는지도 본다. */
+      const sc=await W.ev(`(()=>{
+        const out=[];
+        for(const f of document.querySelectorAll(".bslot .fighter")){
+          const list=f.querySelector(".fscroll"), b2=f.querySelector("b"), hp=f.querySelector("[id^=hptxt-]");
+          const pos=e=>{ const r=e.getBoundingClientRect(); return Math.round(r.top)+","+Math.round(r.left); };
+          const before={name:pos(b2),hp:pos(hp)};
+          const cs=getComputedStyle(list);
+          const over=list.scrollHeight>list.clientHeight+1;
+          const last=list.lastElementChild;
+          const seen=e=>{ const lr=list.getBoundingClientRect(), er=e.getBoundingClientRect();
+            return er.top>=lr.top-1&&er.bottom<=lr.bottom+1; };
+          const lastBefore=last?seen(last):null;
+          list.scrollTop=list.scrollHeight;                       // 끝까지 스크롤
+          const lastAfter=last?seen(last):null;
+          const after={name:pos(b2),hp:pos(hp)};
+          out.push({overflowY:cs.overflowY,over,sh:list.scrollHeight,ch:list.clientHeight,
+            scrollTop:Math.round(list.scrollTop),lastBefore,lastAfter,
+            headMoved:before.name!==after.name||before.hp!==after.hp,
+            lastText:last?last.textContent.trim().slice(0,40):null});
+          list.scrollTop=0;
+        }
+        return out; })()`);
+      rec("battleStress."+vp.name+".listScroll",sc);
+      ok(sc.length===2&&sc.every(x=>x.overflowY==="auto"||x.overflowY==="scroll"),
+        `C29e.${vp.name} 목록 영역이 실제로 스크롤 가능한 상자다 (overflow-y=${sc.map(x=>x.overflowY).join("/")})`);
+      ok(sc.every(x=>x.lastAfter===true),
+        `C29f.${vp.name} 끝까지 스크롤하면 마지막 줄(기술 4슬롯)이 실제로 보인다 — 정보가 잘리지 않는다`);
+      ok(sc.every(x=>x.over? x.scrollTop>0 : x.scrollTop===0),
+        `C29g.${vp.name} 넘칠 때만 스크롤이 실제로 움직인다 (scrollTop=${sc.map(x=>x.scrollTop).join("/")})`);
+      ok(sc.every(x=>x.headMoved===false),
+        `C29h.${vp.name} 그 스크롤로 이름·HP 의 화면 위치가 움직이지 않는다 (머리는 고정)`);
+      await W.shot(`122-16-battle-stress-${vp.name}.png`);
+      await W.close();
+    }
 
     /* 나머지 폭의 전투·승패·결과 증빙 (판정은 위 390 절이 이미 했다 — 여기서는 같은 화면을 다른 폭에서 촬영만 한다) */
     for(const vp of [{name:"desktop",width:1280,height:900,mobile:false},{name:"360",width:360,height:844,mobile:true}]){
@@ -486,6 +706,9 @@ const LAYOUT_EXPR=`(()=>{
       await sleep(230); await V.shot(`122-09-fx-lose-peak-${vp.name}.png`);
       await V.ev(`(()=>{ fxReleaseAll(); close(); S.battle=null; S.matchFxDone=false; gameOver(0,"king"); render(); return 1; })()`);
       await sleep(2700); await V.shot(`122-10-result-${vp.name}.png`);
+      /* 수풀 양측 표시도 같은 폭에서 한 장 남긴다 (CJ 추가 피드백 증빙 — 판정은 390 절이 이미 했다) */
+      await V.ev(BUSH_FIXTURE); await sleep(250);
+      await V.shot(`122-13-bush-${vp.name}.png`);
       await V.close();
     }
 
