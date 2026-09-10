@@ -14,6 +14,12 @@ The following material is **not** licensed under Apache-2.0:
   art review images under `docs/milestone/v0.4.3/assets/minions/`, and the
   generated art reference images under
   `docs/milestone/v0.4.3/issues/87/Earth/`;
+- the original and derived king and companion artwork under
+  `demo/assets/leaders/` and `docs/milestone/v0.4.7/issues/124/Earth/`, and
+  the visual design images and vector artwork under
+  `docs/milestone/v0.4.7/issues/122/Earth/` and
+  `docs/milestone/v0.4.7/issues/126/Earth/` (the source code, manifests, and
+  Markdown documentation in these folders remain under the code license);
 - any future original artwork, logos, audio, narrative text, or other media
   that is explicitly marked as excluded from the code license.
 

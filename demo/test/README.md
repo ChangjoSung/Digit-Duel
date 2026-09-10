@@ -1,21 +1,21 @@
 # 검사 인덱스 — `demo/test`
 
-이 폴더의 39개 파일은 **성격에 따라 네 폴더**로 나뉜다. 어디에 두느냐가 곧 그 파일의 성격이다.
+이 폴더는 **성격에 따라 네 폴더**로 나뉜다. 파일별 현재 실행 여부와 쓰기 범위는 아래 표를 따른다.
 
 | 폴더 | 성격 | 지금도 도는가 | 파일 쓰기 |
 |---|---|---|---|
 | [`regression/`](regression) | 현행 규칙을 지키는 **살아 있는 게이트**. CI 잡 A가 매 PR에서 19개 전부 실행한다 | 예 | 저장소에는 없음 (한 곳만 tmp 음성 대조 사본) |
 | [`reports/`](reports) | 필요할 때 돌려 표를 뽑는 **재사용 리포트 생성기**. 어서션·종료 코드가 없어 게이트가 아니다 | 필요 시 | 인자로 출력 파일을 줄 때만 |
-| [`milestone/`](milestone) | 그 이슈에서 한 번 돌려 증빙을 남긴 **과거 시점의 감사 도구** | 재현용 | 기본값이 보관소 경로인 것이 많다 — 아래 표 참조 |
+| [`milestone/`](milestone) | 버전·이슈별 계약 검사와 브라우저 증빙 도구 | 파일별 명시: 현행 게이트 또는 과거 재현용 | 기본값이 보관소 경로인 것이 많다 — 아래 표 참조 |
 | [`shared/`](shared) | 위 셋이 공통으로 쓰는 로더 | — | 없음 |
 
-버전·Issue 열은 **그 파일이 처음 들어온 커밋이 담긴 최초 태그**다(실행 이력이 아니라 출처). 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니다** — 그 표기는 #132에서 들어왔고 아직 어떤 태그에도 담기지 않은 파일이라는 뜻이다. 문서 쪽 보관소 규약은 [docs/milestone/README.md](../../docs/milestone/README.md), 옛 코드 경로 대조는 [#134 MOVES.csv](../../docs/milestone/v0.4.7/issues/134/Mercury/MOVES.csv)에서 본다.
+버전 열은 출시된 파일의 최초 태그, Issue 열은 도입 작업과 명시된 후속 변경을 가리킨다. 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니다** — 해당 Issue에서 추가됐지만 아직 출시 태그에 포함되지 않은 파일임을 뜻한다. 문서 쪽 보관소 규약은 [docs/milestone/README.md](../../docs/milestone/README.md), 옛 코드 경로 대조는 [#134 MOVES.csv](../../docs/milestone/v0.4.7/issues/134/Mercury/MOVES.csv)에서 본다.
 
 ## 공용 (`shared/`)
 
 | 파일 | 버전 | Issue | 하는 일 |
 |---|---|---|---|
-| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. **21개**가 이 로더를 쓴다 — 회귀 18 · `ai_compare` · `attack_balance_compare` · `shock_compare`. CDP 증빙 14종과 `smoke_testclient`는 쓰지 않는다 |
+| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 (+#122) | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. 회귀와 비교 도구 및 이슈 전용 헤드리스 검사가 공유한다. 브라우저 CDP 도구와 `smoke_testclient`는 별도 환경을 사용한다 |
 
 ## 회귀 게이트 (`regression/`) — CI 잡 A
 
@@ -49,16 +49,18 @@
 |---|---|---|---|---|
 | [`ai_compare.js`](reports/ai_compare.js) | v0.3.0 | #21 | 시드 고정 다경기 비교표(5단/5급 조합). 어서션도 `process.exit`도 없어 **게이트가 아니다** | 3번째 인자로 `out.md`를 줄 때만 |
 
-## 과거 증빙 (`milestone/<버전>/issues/<번호>/`)
+## 이슈 전용 검사·증빙 (`milestone/<버전>/issues/<번호>/`)
 
-18개가 두 부류다 — **헤드리스 Chrome(CDP) 브라우저 증빙 도구 16개**와 **harness 기반 before/after 비교 리포트 생성기 2개**(`attack_balance_compare` · `shock_compare`). 뒤 둘은 Chrome을 띄우지 않고 어서션을 갖고 있으며 **실패하면 종료 코드 1로 끝난다**(CI 어느 잡에서도 호출되지 않는다).
+헤드리스 계약 검사, Chrome(CDP) 브라우저 증빙 도구, harness 기반 before/after 비교 도구가 있다. `issue122_rules.js`는 현행 계약 게이트다. `attack_balance_compare`·`shock_compare`는 Chrome 없이 비교하며 실패하면 종료 코드1로 끝나지만 CI에서 호출되지 않는다. 과거 규칙을 고정한 도구는 현행 게임에 그대로 적용하지 않는다.
 
-CDP 16개는 그 이슈에서 실제로 돌려 보관소의 증빙을 만든 도구다. 헤드리스 Chrome을 띄우고, 기본 `--out`이 **이미 승인된 보관소 경로**라 인자 없이 돌리면 그 증빙을 덮어쓴다. 재현할 때는 `--read-only`(또는 `--out`으로 자기 소유 경로 지정)를 쓴다.
+CDP 도구는 해당 이슈의 실제 브라우저 증빙을 만든다. 기본 출력이 **기존 증빙 보관소 경로**인 것이 많아 인자 없이 돌리면 과거 파일을 덮어쓸 수 있다. 재현할 때는 파일별 `--read-only` 지원이나 별도의 소유 출력 경로를 확인한다.
 
 `--read-only`가 뜻하는 것은 **검증 산출물 0건**이지 프로세스 전체의 쓰기 0이 아니다. Chrome이 실제로 렌더하는 경로에서는 그 모드에서도 `os.tmpdir()`에 헤드리스 Chrome 임시 프로필이 생기고(종료 시 자기 것만 정리), 온라인 계열은 검증 전용 릴레이 서버(PORT=0·루프백)를 띄운다. 각 파일이 그 사실을 RESOURCE/CLEANUP 행으로 스스로 보고한다.
 
 | 파일 | 버전 | Issue | 하는 일 | 기본 파일 쓰기 |
 |---|---|---|---|---|
+| [`issue122_rules.js`](milestone/v0.4.7/issues/122/issue122_rules.js) | v0.4.7(미출시) | #122 #124 #126 | 세로 화면 상태·같은 문서 로비/재대전·경기 결과 중복 방지·왕/동료 아트와 기존 규칙의 헤드리스 계약 검사 | 없음 |
+| [`ui_cdp.js`](milestone/v0.4.7/issues/122/ui_cdp.js) | v0.4.7(미출시) | #122 #124 #126 | 세로 흐름·실제 보드 범위·로그·전투 배치·수풀 가시성/투명도·왕/동료 아트·승패 효과를 브라우저에서 확인한다 | `…/122/Mars/artifacts` · `--read-only` 시 보고/이미지0건, Chrome 소유 임시 프로필은 생성·정리 |
 | [`tut_layout_cdp.js`](milestone/v0.4.0/issues/42/tut_layout_cdp.js) | v0.4.0 | #42 | 튜토리얼 카드 레이아웃 실측(여러 뷰포트) | `os.tmpdir()` · `--read-only` 지원(Chrome 임시 프로필 생성·정리) |
 | [`minion_art_cdp.js`](milestone/v0.4.3/issues/89/minion_art_cdp.js) | v0.4.3 | #89 | 하수인 아트 게임 적용 실측 + 스크린샷 | `docs/milestone/v0.4.3/issues/89/Mars/artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |
 | [`issue91_cdp.js`](milestone/v0.4.4/issues/91/issue91_cdp.js) | v0.4.4 | #91 | 공용·적 포획 하수인 대리 출전 아트 실측 | `…/91/Mars/artifacts` · `--read-only` 시 산출물 0건(Chrome 임시 프로필은 생성·정리) |

@@ -1,8 +1,21 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #130·#131·#146은 PR152 통합 후 CJ QA PASS로 CLOSED다. [Issue128](https://github.com/ChangjoSung/Digit-Duel/issues/128)의 **매 페이지 로드 튜토리얼 표시**를 PR157로 dev에 통합했고 2026-09-10 CJ QA PASS로 CLOSED다. 최종 CI·dev 통합 상태는 [PR157](https://github.com/ChangjoSung/Digit-Duel/pull/157)의 마지막 head 검사와 병합 기록이 원본이다. 과거 #128 관측 한계와 후속 정리 절차 위반은 보존한다. 정식 v0.4.5, Roblox #118=v0.4.6, 이번 작업=v0.4.7.
+> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122 러프에 대한 CJ 후속 피드백(실제 수풀만 수풀·현행 보드 말·첨부 전투 구성)을 반영하고 #124 왕·동료 아트와 #126 강한 승패 효과도 함께 구현했고 Saturn 독립 제품 검수 PASS다. 최종 CJ 아트/플레이 QA 전이다. #128·#130·#131·#146은 CJ QA PASS/CLOSED. 정식 v0.4.5, Roblox #118=v0.4.6, HTML 계획=v0.4.7(미출시).
 
-## 현재 승인 범위와 상태
+## 현재 납품 — #122 · #124 · #126
+
+- [CJ 후속 범위](../milestone/v0.4.7/issues/122/Mercury/cj-followup.md)에 따른 세로 화면·왕/동료 아트·승패 효과를 구현하고 Saturn 독립 제품·미디어 검수 PASS를 받았다. [통합 기록](../milestone/v0.4.7/issues/122/Mercury/report.md)이 실제 소스·검증·절차 예외의 원본이다. 세 Issue OPEN·CJ 아트/플레이 QA 대기이며 정식 v0.4.5·v0.4.7 미출시다.
+- 통합은 [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)의 최종 필수 CI6·dev squash로 관리한다. 제품 checkpoint `b3e077b654167a31736898224b50d212ce349ac4`, HTML blob `6bd3bed5bcbeda415b7d43591371ab77e5d31045`; 미디어 checkpoint `eeb2d11e03819ae87603584f234c55a79ff1f0b0`. 최종 PR head·CI·dev SHA는 PR160 및 Issue122의 통합 코멘트를 따른다.
+- Roblox PR161–164를 origin/dev `1791651a79f5d730589e5f2e42c9ccc89bac1624`까지 보존했다. PR164 incoming11파일은 roblox·docs/roblox 전용이며 해당 범위의 origin/dev 차이0을 확인했다. 별도 담당자의 구현·Studio QA를 이번 Mercury 납품으로 주장하지 않는다.
+- 은폐·인접·일시 공개·정체·메모 규칙은 유지한다. 비인접 은폐 위치는 DOM 미표시, 수풀에서 보이는 양측 말은 카드50%·본체70%, HP·소속·선택은 선명하게 표시한다. 전투는 적 우상단·아군 좌하단과 고정 HP 머리/스크롤 상태 목록·하단 네 명령이다. 같은 문서 로비/재대전은 #128 튜토리얼을 반복하지 않는다.
+- 결과 배너2500ms를 유지하고 안쪽 효과만 승리1060·패배1080·포획930·경기무승부800ms로 구분한다. 도망은 fleeFx1200ms 뒤 교환 선택, 적 포획은 captureFx1200ms 메시지 뒤 기존 resultBanner2500ms다. 게임 수치·난수·프로토콜 변경은 없다.
+- Mars 회귀19종·신규93/0·Chrome159/0·아트76검사, Saturn 최종93/0·종료큐14/0·포획관측자12/0 및 앞선8종1152/0·AI13경기를 구분해 기록했다. 게임43장·튜토리얼10장·README1100/390 렌더를 보관했고 실제 튜토리얼10해시·README20렌더해시를 독립 확인했다. 실기 모바일/2PC 전체플레이는 미검증이다.
+- Run `run_031dae03dc6e`: Earth 아트와 수풀 보정, Venus 분석→문서, Mars, Saturn 모두 납품 후 archive/release했다. Venus 분석의 옛 retained 표기는 후속 문서 Task로 이전한 자원이며 별도 활성 Worker가 아니다. 회수 대기0, 새 작업 배정 없이 CJ QA를 기다린다.
+- **절차 예외:** Mars가17:10에 저장소에서 `git add -N`·`git reset -q --`를 지정6경로에 실행해 Task failed로 정산했다. 관측된 파일 유실은 없으나 모든 과거 영향 부재의 입증은 아니다. FIFO 미ack로 후속 지시 수신이 지연된 경과와 중간 검증/최종 검증 구분도 통합 기록에 남겼다.
+- **검색 경계 예외:** Saturn과 Mercury의 PowerShell rg 호출에서 지정 파일 밖 결과가 나타났다. 보호 루트 내용은 출력에 없었으나 탐색 부재는 입증하지 못한다. 보호 경로를 사후 조사하지 않았고 정확 LiteralPath로 전환했다. Saturn은 파일 수정0·제품 PASS와 별개로 Task failed이며 Mercury 자신의 예외도 기록했다.
+- Earth의 최초 `.chrome-render/`, #124 `render-profile-ctx-b66017b5187b`, TEMP `earth-122-ctx-9425bcbe8546-render`는 정확 경로 삭제가 자동 승인 검토에서 blocked by policy로 거부돼 보존·납품 제외했다. 우회하지 않았다. Mars는 자기 생성 임시 자원 잔존0을 보고했고 Saturn은 파일·프로필을 생성하지 않았다. 사용자 소유 루트·Downloads·Roblox 담당 자원은 정리 대상이 아니다.
+
+## #128 완료 이력
 
 - #128 후속 승인: URL 새접속·새탭·새로고침·브라우저 재실행 후 새문서·LAN 서버 재시작 후 새접속마다 1단계 표시. 같은 열린 페이지의 새게임·재대전·모드변경·연결복구·탭/보존 페이지 복귀에는 자동 반복하지 않는다. 완료·건너뛰기·Esc·수동 다시보기·기존10단계·접근성·다른 저장값 보존. 계정/서버/브라우저 저장 전체 삭제는 범위가 아니다. GDD13 본문4.13·DL47, [현재 PD 기록](../milestone/v0.4.7/issues/128/Mercury/report.md) 참조.
 - 이번 출발: `fix/128-tutorial-every-load`, 원격 dev `bdce124e73fe82534dd1757deef70976e12a7ef5`(Roblox PR153 포함), 이전 HTML blob `2a9b54c769a58fc5c0db9e913ce4421bec6758e3`. Run `run_3b8c920c6131`, Mars/Venus=Claude·Saturn=Codex READ_ONLY·Mercury=조정/Git/문서. 실제 Task/Dispatch·완료 자원 상태는 Orca가 원본이다.
@@ -26,6 +39,7 @@
 
 ## 완료 이력 — 선행 Infra #132
 
+- **2026-09-10 CJ 추가 승인 완료:** `E. Roblox 클라이언트·규칙 (Luau)`를 dev·main에 여섯 번째 필수 검사로 연결했다. PR163/dev2c04b7f 성공 이력 확인, 두 보호 API 재조회에서 앱15368의6개·strict=true·나머지 보호 설정 동일을 확인했다. [현행 연결 기록](../milestone/v0.4.7/issues/132/Mercury/required-checks.md)·[Issue132](https://github.com/ChangjoSung/Digit-Duel/issues/132#issuecomment-5614971093)·GDD13 DL54를 따른다. 아래5개 기록은 최초 도입 당시 증거이며 현재 필수 목록은6개다.
 
 - [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132): 기존 문서 자료 342개 중 306개를 버전·Issue·역할/용도별로 이동했다(Markdown 73개, 기타 233개). 36개는 상시 안내·운영 계약·공용 미디어로 유지한다. 고유 측정·REVISE·출처 증거를 보존하기 위해 순수 삭제·통합은 0건으로 판단했다. [전체 경로표](../milestone/MOVES.csv)가 원본 342개를 모두 대응한다.
 - 이동 직후 306/306의 작업 트리 SHA256이 동일했다. 기존 57파일의 명시적 줄바꿈/whitespace 규칙도 새 경로로 옮겼다. Saturn 독립 READ_ONLY 검수에서 비 Markdown 250개(이동233+유지17)의 원본 blob, 이동 Markdown73개의 링크 외 본문, 제품·서버·승인 아트 보존을 확인했다. 문서 검사106개·내부 참조332건 문제0, 링크 검사기 회귀34건과 AI 완주13경기·59단언을 검증했다.
@@ -60,7 +74,7 @@
 - Saturn은 **READ_ONLY**, 파일·테스트·보고서·임시 파일을 쓰지 않고 inline으로 보고한다. 파일을 변이하는 원본 `smoke_online.js`나 임시 fixture를 만드는 도구 회귀는 Saturn의 직접 READ_ONLY 실행에서 제외하고 구현자/CI 결과와 독립 검토 범위를 구분한다.
 - 필수 dispatch preflight: `required_role · mode · area · mutation · instance_index`. Worker Git/GitHub/Notion 쓰기 금지. 완료 뒤 결과 archive/release, 같은 좁은 범위의 즉시 후속만 기한부 재사용. Task와 정확한 Dispatch를 연결하고 메시지 전체를 처리한 뒤 acknowledge한다.
 - Worker의 메시지 조회는 자신의 `check --terminal <worker-terminal> --json`을 사용한다. coordinator용 `--run`을 붙여 받은 `consumer_fenced`를 메시지 없음으로 해석하지 않는다. PD가 잘못 전달했던 문법은 이 방식으로 정정했다.
-- 현재 유일한 Mercury terminal `term_d2dcbfa3-a932-4ce2-a844-38526dd4975b`, 현재 네 Issue Run `run_c784a12efc36`, 완료 #121·#125·#129 Run `run_a30f84eaadf5`, 완료 분석 Run `run_0542beb5fd69`. 완료 Infra #134 Run `run_748eb7b6a85d`, #132 Run `run_874bb77b02e3`, 최초 등록 Run `run_a9eb05e6575e`의 이력은 보존한다. 현재 Worker 상태는 Orca task/worker list가 원본이다.
+- 현재 유일한 Mercury terminal `term_d2dcbfa3-a932-4ce2-a844-38526dd4975b`, 현재 #122·#124·#126 Run `run_031dae03dc6e`. 완료 #146 등 네 Issue Run `run_c784a12efc36`, 완료 #121·#125·#129 Run `run_a30f84eaadf5`, 완료 분석 Run `run_0542beb5fd69`. 완료 Infra #134 Run `run_748eb7b6a85d`, #132 Run `run_874bb77b02e3`, 최초 등록 Run `run_a9eb05e6575e`의 이력은 보존한다. 현재 Worker 상태는 Orca task/worker list가 원본이다.
 - **사용자 소유 미추적 `art/`·`orca-hook-latency-report.md`는 읽기·수정·스테이징 금지.** Downloads 원본과 승인 아트100파일을 보존한다. 파일 탐색은 이 두 루트 경로를 포함하지 않는 명시적 범위 또는 Git 추적 목록을 사용한다.
 - 기존 Mercury `term_abae9146-14a1-47e9-8e9a-0a6e3c4c041a`, 사용자 소유 `term_f715b1c1-8dc5-438c-b035-540ab8b4082e`, 과거 Saturn `ctx_7587a359d6a6` user_owned, `ctx_bbc10559f749` identity_unproven 및 다른 소유권 불명 자원은 종료·정리하지 않는다. 프로세스·프로필 정리는 해당 실행에서 생성과 소유권을 확인한 정확한 대상에만 한다.
 - 이전 세션 압축15회, 2026-09-08 17:47:40 KST 92,019/258,400·단순 차감64.4% 여유는 **현재 세션의 사용량이 아니며 판단력 저하의 입증도 아니다**. [당시 자가 점검](../milestone/v0.4.4/reports/Mercury/mercury-self-audit-2026-09-08.md). 추가 PD 스폰이나 세션 교대 없이 현재 Mercury가 창구를 유지한다.
@@ -69,4 +83,4 @@
 
 - [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) DL38 = 최초 v0.4.6 분석·등록 이력, DL39 = 선행 Infra132, DL40 = v0.4.6 Roblox/v0.4.7 재배치·후속 Infra134. 현재 규칙 참조 경로는 새 문서 위치로 동기화하고, 과거 Decision Log의 GitHub 링크는 이동 전 SHA에 고정했다. GitHub 과거 Issue/PR 본문·코멘트 13곳의 링크34개도 고정·응답 일치 확인했다. 기존 Release8개는 버전 태그 링크라 그대로 유효하다.
 - Notion System 원문 `3d51e7f1708580b0916ded4bd3d9d06e`의 외부 편집 Summary는 보존한다. Project=Digit Dual, Edit Date=실제 수정일, Editor=실제 사람 성창조(`8e0a8270-d0e3-407e-a7d2-b3f992f1e366`); Agent 이름은 운영 본문에만 기록한다.
-- GDD13 DL42와 [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c)에 #121·#125·#129 최종 승인 계약을 동기화했다. 현재 코드를 검수한 Saturn PASS와 통합 PR 최종 head의 필수 검사 성공이 dev squash의 전제다. 전용 작업 브랜치만 정리하고 main/dev는 보존한다. 세 Issue는 2026-09-10 CJ QA PASS로 CLOSED다. 후속 #130·#131·#146(PR152)과 #128(PR157)도 2026-09-10 CJ QA PASS로 CLOSED다. #128 최종 수락은 GDD13 DL50·[CJ 승인 기록](https://github.com/ChangjoSung/Digit-Duel/issues/128#issuecomment-5613962951)을 따른다. 승인된 구현은 모두 완료됐고 나머지 이슈는 번호별 CJ Comment 대기다. 과거 PASS를 새 변경의 근거로 재사용하지 않는다.
+- GDD13 DL42와 [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c)에 #121·#125·#129 최종 승인 계약을 동기화했다. 현재 코드를 검수한 Saturn PASS와 통합 PR 최종 head의 필수 검사 성공이 dev squash의 전제다. 전용 작업 브랜치만 정리하고 main/dev는 보존한다. 세 Issue는 2026-09-10 CJ QA PASS로 CLOSED다. 후속 #130·#131·#146(PR152)과 #128(PR157)도 2026-09-10 CJ QA PASS로 CLOSED다. #128 최종 수락은 GDD13 DL50·[CJ 승인 기록](https://github.com/ChangjoSung/Digit-Duel/issues/128#issuecomment-5613962951)을 따른다. 기존 승인 규칙 구현은 완료됐고 #122·#124·#126도 구현·독립 제품 검수 PASS 후 CJ 아트·플레이 QA 대기다. 현재 구현 소스·최종 미디어·절차 예외는 위 통합 기록과 GDD21을 따른다. 나머지 이슈는 번호별 CJ Comment 대기다. 과거 PASS를 새 변경의 근거로 재사용하지 않는다.

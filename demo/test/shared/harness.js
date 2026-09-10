@@ -230,6 +230,18 @@ function load(htmlPath,opts){
   pushResolve:typeof pushResolve==="function"?pushResolve:undefined,pushPair:typeof pushPair==="function"?pushPair:undefined,relocatePair:typeof relocatePair==="function"?relocatePair:undefined,relocCandidates:typeof relocCandidates==="function"?relocCandidates:undefined,relocZone:typeof relocZone==="function"?relocZone:undefined,
   fleeSwapPrompt:typeof fleeSwapPrompt==="function"?fleeSwapPrompt:undefined,fleeResolve:typeof fleeResolve==="function"?fleeResolve:undefined,fleePickMine:typeof fleePickMine==="function"?fleePickMine:undefined,
   aiPushScore:typeof aiPushScore==="function"?aiPushScore:undefined,aiVipPair:typeof aiVipPair==="function"?aiVipPair:undefined,aiTeleportPick:typeof aiTeleportPick==="function"?aiTeleportPick:undefined,aiHistTele:typeof aiHistTele==="function"?aiHistTele:undefined,aiBattlePairScore:typeof aiBattlePairScore==="function"?aiBattlePairScore:undefined,aiWorstReply:typeof aiWorstReply==="function"?aiWorstReply:undefined,netActor:typeof netActor==="function"?netActor:undefined,
+  /* #122 (v0.4.7) 세로 UI 셸 · #126 경기 종료 연출 · #124 왕·동료 아트 훅 (기준판 로드 호환: 부재 시 undefined) */
+  UI:typeof UI!=="undefined"?UI:undefined, uiScreenName:typeof uiScreenName==="function"?uiScreenName:undefined,
+  uiApply:typeof uiApply==="function"?uiApply:undefined, fitBoard:typeof fitBoard==="function"?fitBoard:undefined,
+  renderBoardInfo:typeof renderBoardInfo==="function"?renderBoardInfo:undefined,
+  matchBannerOf:typeof matchBannerOf==="function"?matchBannerOf:undefined, matchEndBanner:typeof matchEndBanner==="function"?matchEndBanner:undefined,
+  matchEndFx:typeof matchEndFx==="function"?matchEndFx:undefined, fxFxLayer:typeof fxFxLayer==="function"?fxFxLayer:undefined,
+  netLeave:typeof netLeave==="function"?netLeave:undefined, uiResetScreen:typeof uiResetScreen==="function"?uiResetScreen:undefined,
+  get toLobby(){return window.toLobby;}, get rematch(){return window.rematch;},
+  get uiDrawer(){return window.uiDrawer;}, get uiPrep(){return window.uiPrep;}, get uiStart(){return window.uiStart;},
+  LEADER_BASE:typeof LEADER_BASE!=="undefined"?LEADER_BASE:undefined, LEADER_DIRS:typeof LEADER_DIRS!=="undefined"?LEADER_DIRS:undefined,
+  LEADER_FILES:typeof LEADER_FILES!=="undefined"?LEADER_FILES:undefined, leaderDirOf:typeof leaderDirOf==="function"?leaderDirOf:undefined,
+  leaderArtDir:typeof leaderArtDir==="function"?leaderArtDir:undefined, leaderBattleDir:typeof leaderBattleDir==="function"?leaderBattleDir:undefined,
   get MSGPLAYING(){return MSGPLAYING;},get MSGQ(){return MSGQ;},
   html:${JSON.stringify(html)}};`;
   eval(code);

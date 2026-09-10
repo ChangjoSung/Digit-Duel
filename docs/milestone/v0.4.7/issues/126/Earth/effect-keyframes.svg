@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="370" viewBox="0 0 840 370">
+<title>Battle result impact keyframes, proposed at 240ms of a 1200ms sequence</title>
+<rect width="840" height="370" fill="#12151c"/>
+<g font-family="Malgun Gothic, sans-serif" text-anchor="middle">
+<text x="420" y="29" fill="#8a93a8" font-size="13">#126 · 정점 240ms / 효과1200ms + 기존 배너2500ms까지 글자 유지</text>
+<rect x="16" y="46" width="396" height="258" rx="8" fill="#242b3d"/><rect x="428" y="46" width="396" height="258" rx="8" fill="#201a2a"/>
+<path d="M206 62L229 120L289 77L271 146L384 144L296 186L373 263L270 230L260 295L216 252L165 287L162 230L53 271L122 198L37 159L151 144L130 77L185 124Z" fill="#ffd84d" opacity=".75"/>
+<ellipse cx="213" cy="196" rx="174" ry="80" fill="none" stroke="#fff2c4" stroke-width="8"/><ellipse cx="213" cy="196" rx="150" ry="65" fill="none" stroke="#ffd84d" stroke-width="3"/>
+<path d="M195 73H230V280H195Z" fill="#fff2c4" opacity=".8"/>
+<g fill="#fff2c4"><rect x="57" y="84" width="9" height="9"/><rect x="334" y="75" width="8" height="8"/><rect x="78" y="231" width="10" height="10"/><rect x="330" y="257" width="9" height="9"/></g>
+<path d="M635 188L466 74L541 163L443 199L563 202L484 288L608 230L643 298L660 221L791 275L701 202L808 129L691 165L738 65Z" fill="#421d35" stroke="#ff5b6e" stroke-width="2"/>
+<path d="M629 176L602 126L618 102L588 53M656 186L714 143L754 145L818 103M638 205L684 241L677 275L711 304M600 201L545 231L523 221L438 270" fill="none" stroke="#0e111c" stroke-width="10"/>
+<path d="M738 226l23 7-9 17Z M521 269l19 3-9 20Z M778 176l16-12 7 17Z" fill="#a94d6d"/>
+<rect x="65" y="158" width="296" height="70" rx="4" fill="#12151c" opacity=".92"/><rect x="477" y="158" width="296" height="70" rx="4" fill="#12151c" opacity=".94"/>
+<text x="214" y="204" fill="#fff2c4" font-size="36" font-weight="bold">전투 승리</text><text x="626" y="204" fill="#ff5b6e" font-size="36" font-weight="bold">전투 패배</text>
+<text x="214" y="335" fill="#e8ecf5" font-size="13">빛 응축 → 충격파 / 빛기둥 → 입자 정리</text><text x="626" y="335" fill="#e8ecf5" font-size="13">암부 응축 → 균열 / 밀림 → 파편 정리</text>
+<text x="420" y="360" fill="#8a93a8" font-size="11">도망·포획·경기 무승부는 중립 표현 / 경기 종료는 별도 결과판</text>
+</g></svg>

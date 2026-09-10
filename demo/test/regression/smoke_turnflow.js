@@ -326,7 +326,12 @@ block("G 연출 큐",()=>{
   T.applyAction({t:"cell",r:10,c:4}); // applyAction 은 가드 없음(수신 재생 경로) — 사람 입력은 onCell/netAction 경유
   T.S.selected=null; T.onCell(10,4); ok(T.S.selected===null,"G3 잠금 중 onCell(사람 클릭) 무시");
   T.netAction({t:"skipMain"}); ok(S().mainUsed===false,"G4 잠금 중 netAction(턴바) 무시");
-  T.netAction({t:"resign"}); ok(S().phase==="over","G5 잠금 중에도 기권은 허용"); T.S.phase="play"; T.S.winner=null;
+  T.netAction({t:"resign"}); ok(S().phase==="over","G5 잠금 중에도 기권은 허용");
+  /* #126 (v0.4.7): 기권도 **경기 종료 연출을 한 번** 낸다. gameOver 가 남아 있던 표시 큐를 먼저 걷으므로
+     결과 배너 하나만 현재 항목으로 남는다 (전투 결과 + 경기 결과 직렬 중복 금지 계약의 다른 쪽 끝).
+     이 절이 고정하는 것은 턴 배너의 타이머·잠금·워치독 계약이므로, 새 계약을 확인한 뒤 같은 전제를 다시 세워 이어 간다. */
+  ok(T.FX.cur&&T.FX.cur.key==="resultBanner"&&T.FX.q.length===0,"G5b 기권 → 경기 종료 연출 1회만 남는다 (#126)");
+  T.S.phase="play"; T.S.winner=null; T.fxReleaseAll(); T.TQ.length=0; T.turnBannerFx();
   T.TQ.shift()(); // 본 타이머
   ok(!T.fxLocked()&&T.els.fxBanner._cls.has("hidden")&&!T.document.body._cls.has("fx-lock"),"G6 시간 경과 → 잠금 해제·배너 숨김·클래스 제거");
   T.TQ.shift()(); ok(!T.fxLocked()&&T.FX.cur===null,"G7 워치독 타이머는 이미 끝난 항목을 건드리지 않는다");
