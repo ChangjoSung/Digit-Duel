@@ -36,9 +36,89 @@ local MESH_SIZE = {
 }
 local MESH_TEX = { desk = "desk_albedo", chair = "chair_albedo", board = "board_grid", floor = "floor_tile", wall = "wall_albedo", pillar = "pillar_albedo", bot = "bot_albedo" }
 
-local tables = {} -- [id] = { model, desk, board, seats = {A=Seat, B=Seat}, status = TextLabel, occupants = {A=Player?, B=Player?}, startPrompt = ProximityPrompt }
+local tables = {} -- [id] = { model, desk, board, seats = {A=Seat,B=Seat}, status, occupants = {A=Player?,B=Player?}, holds = {A=userId|true,..}, bots = {..}, startPrompt }
 local seatedCb, vacatedCb, startCb = nil, nil, nil
 local templates = {} -- [name] = MeshPart 템플릿 (로드 성공분)
+
+--==================================================================
+-- 좌석 권한 상태 (서버 판정)
+-- Occupant 프로퍼티·ProximityPrompt.Enabled 는 근거로 쓰지 않는다: 프롬프트는 클라이언트가 부를 수 있고,
+-- 연결이 끊기면 캐릭터가 사라져 Occupant 가 먼저 nil 이 된다. 자리 상태는 서버가 셋으로 들고 판정한다.
+--   occupants[side] = 서버가 인정한 착석자 · holds[side] = 재접속 예약(UserId · true 면 모두 금지) · bots[side] = AI 더미
+--==================================================================
+local LOCK_ATTR = "DigitDualSeatLocked" -- 점프 잠금 권위 값: 서버 전용 SetStateEnabled 는 복제되지 않아 클라이언트가 이 속성을 보고 로컬 잠금을 건다
+
+local function isPlayer(p)
+	return typeof(p) == "Instance" and p:IsA("Player")
+end
+
+local function promptOf(seat)
+	return seat and seat:FindFirstChildOfClass("ProximityPrompt") or nil
+end
+
+-- 앉기 프롬프트는 자리 상태에서 파생된다 (각 지점에서 직접 켜고 끄지 않는다)
+local function refreshPrompt(t, side)
+	local seat = t and t.seats[side]
+	local prompt = promptOf(seat)
+	if prompt then
+		prompt.Enabled = t.occupants[side] == nil and t.holds[side] == nil and t.bots[side] == nil and seat.Occupant == nil
+	end
+end
+
+-- 이 사람이 자리를 차지할 수 있는가. 예약된 자리는 예약자 본인만 통과한다 (원래 사용자의 재접속은 막지 않는다)
+local function canClaim(t, side, player)
+	if not (t and t.seats[side] and isPlayer(player)) then
+		return false
+	end
+	if t.bots[side] ~= nil then
+		return false
+	end
+	local hold = t.holds[side]
+	if hold ~= nil and hold ~= player.UserId then
+		return false
+	end
+	local occ = t.occupants[side]
+	if occ ~= nil and occ ~= player then
+		return false
+	end
+	local hum = t.seats[side].Occupant
+	if hum and Players:GetPlayerFromCharacter(hum.Parent) ~= player then
+		return false
+	end
+	return true
+end
+
+-- 점프 잠금 적용: 권위 값은 플레이어 속성이고, 서버 쪽 Humanoid 상태도 함께 맞춘다 (양보하지 않는다)
+local function applyJumpLock(player, hum)
+	if not isPlayer(player) then
+		return
+	end
+	local locked = player:GetAttribute(LOCK_ATTR) == true
+	if not hum then
+		local char = player.Character
+		hum = char and char:FindFirstChildOfClass("Humanoid")
+	end
+	if hum then
+		pcall(function()
+			hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, not locked)
+		end)
+	end
+end
+
+local function watchPlayer(player)
+	player.CharacterAdded:Connect(function(char)
+		task.spawn(function() -- 리스폰: Humanoid 가 붙은 뒤 현재 속성 상태를 새 캐릭터에 다시 적용한다
+			local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid", 5)
+			if hum and player.Parent then
+				applyJumpLock(player, hum)
+			end
+		end)
+	end)
+end
+for _, p in Players:GetPlayers() do
+	watchPlayer(p)
+end
+Players.PlayerAdded:Connect(watchPlayer)
 
 local C = {
 	floor = Color3.fromRGB(58, 52, 46),
@@ -173,15 +253,20 @@ local function buildSeat(id, side, pos, lookAt, color, parent)
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = seat
 	prompt.Triggered:Connect(function(player)
+		local t = tables[id] -- prompt.Enabled 가 아니라 서버 자리 상태로 판정한다 (예약·봇 자리 가로채기 차단)
+		if not t or not canClaim(t, side, player) then
+			if t then
+				refreshPrompt(t, side) -- 어긋난 프롬프트 상태를 되돌린다
+			end
+			return
+		end
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum and not seat.Occupant and hum.Health > 0 and not hum.Sit then
-			seat:Sit(hum)
+		if hum and hum.Health > 0 and not hum.Sit then
+			seat:Sit(hum) -- 최종 승인은 buildTable 의 Occupant 감시가 한다
 		end
 	end)
-	seat:GetPropertyChangedSignal("Occupant"):Connect(function() -- 누가 앉아 있으면 프롬프트 숨김
-		prompt.Enabled = seat.Occupant == nil
-	end)
+	-- 프롬프트 표시·착석 승인은 buildTable 의 좌석 감시가 함께 처리한다 (권한 상태 t 가 필요)
 	return seat, { back, legs }
 end
 
@@ -257,7 +342,7 @@ local function buildTable(id, cx, cz, parent)
 	local t = {
 		id = id, cx = cx, cz = cz, model = model, desk = desk, legs = legs, board = board,
 		seats = { A = seatA, B = seatB }, seatVis = { A = seatAVis, B = seatBVis },
-		status = status, occupants = {}, startPrompt = startPrompt,
+		status = status, occupants = {}, holds = {}, bots = {}, startPrompt = startPrompt,
 	}
 	for side, seat in t.seats do
 		seat:GetPropertyChangedSignal("Occupant"):Connect(function()
@@ -265,18 +350,29 @@ local function buildTable(id, cx, cz, parent)
 			local prev = t.occupants[side]
 			if hum then
 				local plr = Players:GetPlayerFromCharacter(hum.Parent)
-				if plr and plr ~= prev then
+				if not (plr and canClaim(t, side, plr)) then -- 예약·봇·타인 자리에 앉으면 즉시 일으켜 세운다 (onSeated 도 알리지 않는다)
+					pcall(function()
+						hum.Sit = false
+					end)
+					refreshPrompt(t, side)
+					return
+				end
+				if plr ~= prev then
 					t.occupants[side] = plr
+					t.holds[side] = nil -- 예약자 본인이 돌아와 앉았다
 					if seatedCb then
 						seatedCb(plr, id, side)
 					end
 				end
 			elseif prev then
 				t.occupants[side] = nil
-				if vacatedCb then
+				-- 연결이 끊기면 캐릭터가 사라져 Occupant 가 nil 이 된다. 이 신호로 자리를 해제하면 재접속 예약이 풀리므로,
+				-- 이미 나간 사람·예약 중인 자리는 PlayerRemoving 쪽 판단에 맡긴다 (오래된 콜백 방어)
+				if t.holds[side] == nil and isPlayer(prev) and prev.Parent ~= nil and vacatedCb then
 					vacatedCb(prev, id, side)
 				end
 			end
+			refreshPrompt(t, side)
 		end)
 	end
 	return t
@@ -424,12 +520,13 @@ end
 local BOT_TINT = { grade5 = Color3.fromRGB(0x8e, 0xb2, 0xff), dan5 = Color3.fromRGB(0xff, 0xcf, 0x82) } -- ai-window-README 예시 색
 function Lobby.setBotSeat(id, side, label, level)
 	local t = tables[id]
-	if not t then
-		return
+	if not t or not t.seats[side] then
+		return false
 	end
-	t.bots = t.bots or {}
+	if label and (t.occupants[side] ~= nil or t.holds[side] ~= nil) then
+		return false -- 사람이 앉아 있거나 재접속 예약된 자리에는 봇을 앉히지 않는다
+	end
 	local seat = t.seats[side]
-	local prompt = seat:FindFirstChildOfClass("ProximityPrompt")
 	if t.bots[side] then
 		t.bots[side]:Destroy()
 		t.bots[side] = nil
@@ -487,28 +584,29 @@ function Lobby.setBotSeat(id, side, label, level)
 		bb.Parent = head
 		m.Parent = t.model
 		t.bots[side] = m
-		if prompt then
-			prompt.Enabled = false
-		end
-	elseif prompt then
-		prompt.Enabled = seat.Occupant == nil
 	end
+	refreshPrompt(t, side)
+	return true
 end
 
--- 재접속(Phase 4): 끊긴 사람의 자리를 비워 두되 다른 사람이 앉지 못하게 잠근다
-function Lobby.setSeatHold(id, side, held)
+-- 재접속(Phase 4): 끊긴 사람의 자리를 비워 두되 다른 사람이 앉지 못하게 잠근다.
+-- userId 를 주면 그 사람만 다시 앉을 수 있다 (원래 사용자의 복귀는 막지 않는다). 없으면 모두 금지
+function Lobby.setSeatHold(id, side, held, userId)
 	local t = id and tables[id] or nil
-	if not t or not side then
-		return
+	if not t or not side or not t.seats[side] then
+		return false
 	end
-	local seat = t.seats[side]
-	local prompt = seat and seat:FindFirstChildOfClass("ProximityPrompt")
-	if prompt then
-		prompt.Enabled = not held and seat.Occupant == nil
+	if held then
+		t.holds[side] = userId or true
+		t.occupants[side] = nil -- 캐릭터가 사라지기 전에 착석자를 지운다 → 뒤늦은 Occupant nil 신호가 자리를 해제하지 못한다
+	else
+		t.holds[side] = nil
 	end
+	refreshPrompt(t, side)
+	return true
 end
 
--- 재접속한 사람을 그 자리에 다시 앉힌다
+-- 재접속한 사람을 그 자리에 다시 앉힌다 (예약자 본인만 통과)
 function Lobby.sitPlayer(id, side, player)
 	local t = tables[id]
 	if not t then
@@ -520,14 +618,22 @@ function Lobby.sitPlayer(id, side, player)
 	if not (seat and hum and hum.Health > 0) then
 		return false
 	end
+	if not canClaim(t, side, player) then -- 그 사이 자리가 넘어갔으면 앉히지 않는다
+		return false
+	end
+	local prevHold, prevOcc = t.holds[side], t.occupants[side] -- 실패하면 되돌릴 이전 상태
+	t.holds[side] = nil
 	t.occupants[side] = player -- Occupant 신호로 onSeated 가 다시 불리지 않도록 먼저 채운다
 	pcall(function()
 		seat:Sit(hum)
 	end)
-	local prompt = seat:FindFirstChildOfClass("ProximityPrompt")
-	if prompt then
-		prompt.Enabled = false
+	if seat.Occupant ~= hum then -- 실제 좌석 점유자가 대상이 아니면 성공이 아니다 (Sit 이 조용히 실패한 경우 포함)
+		t.holds[side] = prevHold -- 예약과 논리적 점유를 원상복구해 제3자가 빈 자리를 채가지 못하게 한다
+		t.occupants[side] = prevOcc
+		refreshPrompt(t, side)
+		return false
 	end
+	refreshPrompt(t, side)
 	return true
 end
 
@@ -547,26 +653,39 @@ function Lobby.occupants(id)
 	return t and t.occupants or {}
 end
 
--- 대전 중 실수로 일어나는 것 방지 (점프 = 기립). 종료 시 해제
-function Lobby.lockSeated(player, locked)
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if hum then
-		pcall(function()
-			hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, not locked)
-		end)
+-- 자리 권한 상태 스냅샷 (진단·회귀 확인용 — 읽기 전용)
+function Lobby.seatInfo(id, side)
+	local t = tables[id]
+	if not t or not t.seats[side] then
+		return nil
 	end
+	return {
+		occupant = t.occupants[side],
+		hold = t.holds[side],
+		bot = t.bots[side] ~= nil,
+		sitting = t.seats[side].Occupant ~= nil,
+		prompt = (promptOf(t.seats[side]) and promptOf(t.seats[side]).Enabled) == true,
+	}
+end
+
+-- 대전 중 실수로 일어나는 것 방지 (점프 = 기립). 종료 시 해제.
+-- 서버에서만 건 SetStateEnabled 는 소유권이 클라이언트에 있는 캐릭터에 복제되지 않는다 →
+-- 권위 값을 플레이어 속성으로 게시하고, 클라이언트가 이 속성을 보고 로컬 점프 잠금을 건다
+function Lobby.lockSeated(player, locked)
+	if not isPlayer(player) then -- 봇(테이블)·nil 방어
+		return
+	end
+	player:SetAttribute(LOCK_ATTR, locked == true)
+	applyJumpLock(player)
 end
 
 function Lobby.standUp(player)
+	Lobby.lockSeated(player, false) -- 속성·서버 상태를 함께 푼다 (점프로 일어날 수 있어야 한다)
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not hum then
 		return
 	end
-	pcall(function()
-		hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-	end)
 	-- Seat 는 SeatWeld 로 붙잡는다 — Sit=false 로 풀고, 남은 weld 가 있으면 직접 제거한 뒤 살짝 점프시켜 확실히 떼어낸다
 	local seatPart = hum.SeatPart -- SeatWeld 는 의자 파트의 자식으로 생긴다
 	hum.Sit = false

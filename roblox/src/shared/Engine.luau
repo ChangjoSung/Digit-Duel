@@ -475,6 +475,9 @@ function Engine:canMoveTo(p, r, c)
 end
 
 function Engine:canBattle(att, def)
+	if not att or not def or not att.alive or not att.placed or not def.alive or not def.placed then
+		return false
+	end
 	local S = self.S
 	if S.phase ~= "play" or att.owner ~= S.current or S.battlesUsed >= 2 then
 		return false
@@ -1560,7 +1563,8 @@ function Engine:apply(actor, a)
 		return true
 	elseif t == "battle" then
 		local att, def = self:pieceById(a.attId), self:pieceById(a.defId)
-		if not att or not def or att.owner ~= actor or def.owner == actor or not def.alive or not def.placed then
+		if not att or not def or att.owner ~= actor or def.owner == actor
+			or not att.alive or not att.placed or not def.alive or not def.placed then
 			return false, "전투 대상이 잘못되었습니다"
 		end
 		if #S.forcedTargets > 0 then
