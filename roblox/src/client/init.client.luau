@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.2"
+local CLIENT_VERSION = "0.5.0-p3.3"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -25,7 +25,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 task.defer(function()
-	for _, ct in { Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack } do
+	for _, ct in { Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack, Enum.CoreGuiType.Chat } do -- Chat: 왼쪽 위 기본 채팅창이 HUD 와 겹쳐 숨김 (CJ 2026-09-10)
 		pcall(function()
 			StarterGui:SetCoreGuiEnabled(ct, false)
 		end)
@@ -91,6 +91,28 @@ reAction:FireServer({ t = "ping" })
 local Data = require(Shared:WaitForChild("Data"))
 local Art = require(Shared:WaitForChild("Art"))
 DIAG.modules = true
+-- 이미지 사전 로드: Roblox 는 rbxassetid 이미지를 처음 그릴 때 내려받아 카드·초상화가 늦게 뜬다 → 접속 직후 백그라운드로 전부 받아 둔다 (메시 제외)
+task.spawn(function()
+	local okIds, AssetIds = pcall(function()
+		return require(Shared:WaitForChild("AssetIds"))
+	end)
+	if not okIds or type(AssetIds) ~= "table" then
+		return
+	end
+	local urls = {}
+	for key, id in AssetIds do
+		if type(id) == "number" and id > 0 and not string.find(key, "^lobbymesh_") and not string.find(key, "^mesh_") then
+			table.insert(urls, "rbxassetid://" .. id)
+		end
+	end
+	table.sort(urls) -- 결정적 순서
+	local n = #urls
+	pcall(function()
+		game:GetService("ContentProvider"):PreloadAsync(urls)
+	end)
+	DIAG.board = DIAG.board .. (" · 이미지 %d 로드"):format(n)
+	refreshFooter()
+end)
 refreshFooter()
 
 local COLS, ROWS = 7, 13
@@ -266,7 +288,7 @@ local gui = mk("ScreenGui", { Name = "DigitDual", ResetOnSpawn = false, IgnoreGu
 
 -- 로비 HUD
 local hud = mk("Frame", {
-	Size = UDim2.new(0, 460, 0, 92), Position = UDim2.new(0, 12, 0, 12), ZIndex = 3,
+	Size = UDim2.new(0, 460, 0, 92), Position = UDim2.new(0.5, -230, 0, 12), ZIndex = 3, -- 상단 가운데 (CJ 2026-09-10)
 	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.15, BorderSizePixel = 0,
 }, gui)
 bgImage(hud, "panel_side", "panel", 1)
