@@ -8,7 +8,7 @@
 
 | Phase | 범위 | 상태 |
 |---|---|---|
-| **1** | 코어 룰 엔진 Luau 포팅 + 서버 권위 구조 + 매치메이킹 + 최소 클라 UI + 헤드리스 테스트 | ✅ 이 브랜치 |
+| **1** | 코어 룰 엔진 Luau 포팅 + 서버 권위 구조 + 매치메이킹 + 최소 클라 UI + 헤드리스 테스트 | ✅ (규칙 기준: v0.4.5 → **v0.4.7 #121·#129 반영**, 2026-09-10) |
 | 2 | 클라 본 UI: 수동 배치·로스터 선택·전투 연출(FX 계약 #106)·Earth 아트 적용 · 3D 로비·테이블 매칭 | ✅ dev (PR #141·#142) — FX 연출은 미적용 |
 | 3 | PVE AI 포팅 (grade5·dan5) + 봇 대전 + 보드게임 창(`roblox/구조.txt`) | ✅ dev (2026-09-10) — 튜토리얼·추측 메모는 Phase 4 로 이월 |
 | 4 | 운영: 재접속·관전·랭크/매치메이킹 고도화, DataStore 전적 | 대기 |
@@ -63,6 +63,32 @@
 - `roblox/tests/run.luau` [10]: **1303 assertions pass** — 자동 배치 유효성 20시드(왕 후열/중열·폭탄 호위) · AI 대 AI 완주 24판(5급×5급 / 5단×5급 / 5단×5단, 데드락·거부 0, 자연 종료 20/24 — 나머지는 500턴 컷) · 5급 결정성(같은 시드 = 같은 결과) · #92 교체 정책 유닛
 - 공정 관측: `Ai.luau` 는 `visibleTo`·`revealed`·공개 잔여 수·`aiSeenMoved` 만 읽는다 (코드 리뷰 기준 — 숨은 말의 `type`/`element` 직접 접근 없음)
 - 봇 행동은 전부 `Engine:apply(botOwner, action)` 를 지나므로 사람보다 더 할 수 있는 일이 없다
+
+## v0.4.7 규칙 반영 (#121·#125·#129 — HTML PR #143 → Roblox, 2026-09-10)
+
+CJ 지시 "dev 풀 받고 바뀐 규칙도 전부 적용" 에 따라 [v0.4.7 게임플레이 계약](../milestone/v0.4.7/issues/121/Venus/gameplay-spec.md) 전 항목을 Luau 엔진에 옮겼다. 규칙 수치·판단 순서·난수 소비 위치는 HTML 구현(`demo/index.html` blob 4535791b)과 같다.
+
+| 계약 | Roblox 구현 | 검증 |
+|---|---|---|
+| 1.1 숲 이벤트 = 구역당 itemGift·battleBuff·recruit 각 1개 (6개, 셔플 1회) | `Engine:genEvents` · `Data.EVENT_KINDS` | [11] 20시드 |
+| 1.3 옛 6종 보상 폐기 (CD 초기화·+15% 버프 소멸) | `doSearch` 재작성 | [11] |
+| 2.1 시작 회복약·쿨링수·해독제 각 1 · 볼 2 · 상한 해제 | `Config.BAL.itemStart/ballStart/invMax/ballMax` | [11] |
+| 2.2 선물 패키지 개봉 4종 (행동·카운터 미소모) | 전투 액션 `gift{pick}` | [11] |
+| 2.3 아이템 라운드 1회만 (전투 2회·연속 동일 제거) | `applyBattleAction item` | [11] |
+| 3 전투 버프 3종 — 한 전투 1개 · 무료 · 종료 시 정리 | 전투 액션 `buff{kind}` · `B.buffA/D` · `resetTemps` · `gameOver` | [11] |
+| 3.2 힘 = 분산 상단 고정(난수는 소비) | `execSlot` | [11] 결정적 피해 |
+| 3.3 시간 = R1 한정 · 그 전투만 3R · 사신 불가 | `B.maxRounds` · `battleMaxRounds()` | [11] |
+| 3.4 도망 = HP 게이트만 해제 | `fleeFree` | [11] |
+| 4 기술 교체: 3종 직접 선택 · 최초 6명 생존 · 4슬롯 · 중복 금지 · 쿨 승계·공개 초기화 | pending `recruit` + `recruitSwap{skill,targetId,slot}` · 클라 선택 창 3단계 | [11] |
+| 5.1 드래곤 30/CD3 · 속성 상대 ×1.3 · 무속성 1.0 | `Data.SKILLS.dragon_breath` · `execSlot` | [11] 하수인·왕 |
+| 5.2 마녀 18/CD3 · 서로 다른 2효과 100% · rand 1회 · 갱신 · 풀 = 실피해 회복 | `Engine:witchApply` | [11] 24시드 |
+| 5.3 사신 6R·strict 열세·봉인(CD 분리)·보호막 무시 즉사·폴백 | `reaperWhy` · `slotUsable` · `execSlot` | [11] |
+| 6 숲 포획 ROSTER 20종 그대로 (rosterId 보존) · 수령 말 · 반동은 탐색 말 | `tryCapture(p,mode,recv,rd)` · `capTry{mode,recvId}` | [11] |
+| 7 (#129) 탐색 후 정확히 한 번 종료 — 단순 획득은 확인 없이, recruit 는 선택 뒤 | `autoStep` (pending 이 종료를 막고, 해소 시 즉시 재평가) | [11] |
+| 8 (#125) 연출 1200ms | 해당 없음 — Roblox 클라는 연출 잠금이 없다 (상태 즉시 반영) | — |
+| 9 AI 수용 (패키지·직접 선택·4슬롯·사신) | `Ai.luau` `aiPkgAction`·`aiRecruitPlan`·`slotUsable` | [10]·[11] AI 대전 완주 |
+
+프로토콜 추가: 전투 `gift{pick}` · `buff{kind}`, pending recruit 응답 `recruitSwap{skill,targetId,slot}` · `capTry{mode,recvId}` · `recruitKeep`. 뷰: `gifts`·`buffPacks`(소유자만), `battle.usable/canBasic/reaperWhy/canFlee/buffA/buffD/timed/itemRound`, `pending.recruit{skills,minions,receivers,species,balls}`.
 
 ## 구조.txt (CJ 2026-09-10) 대비 구현 현황
 

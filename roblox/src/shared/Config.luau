@@ -28,17 +28,17 @@ local Config = {
 		maxTurns = 60,
 		simMaxTurns = 500,
 		dmgVar = 0.2,
-		itemPerBattle = 2,
+		itemPerBattle = math.huge, -- #121 (v0.4.7 계약 2.3): 전투당 2회 제한 제거 — 라운드 1회(itemPerRound)만 남는다
 		itemPerRound = 1,
-		invMax = 5,
-		ballStart = 3,
-		itemStart = 2, -- D11 시작 아이템 수
+		invMax = math.huge, -- #121 계약 2.1: 보유 상한 해제
+		ballStart = 2, -- #121 계약 2.1: 공용 볼 2 로 시작
+		itemStart = { "potion", "cool", "cure" }, -- #121 계약 2.1: 회복약·쿨링수·해독제 각 1 (고정 — 난수 미소비)
 		burnStart = 65, -- 버닝 타임 진입 표시 턴 (GDD-13 4.11)
 		captureAtkFailPct = 0.25,
 		statusProb = 0.7, -- T5-A(D10): 화상·약화 부여 확률 (지속형 100%)
 		shockProb = 0.5, -- #96 (v0.4.4 §4): 감전 부여 확률
 		eventsPerForest = 3, -- 구역당 최소 개수 (3~4개 무작위 — #12)
-		ballMax = 3,
+		ballMax = math.huge, -- #121 계약 2.1: 볼 보유 상한 해제
 		nextBuffPct = 0.15, -- #12 일시버프 (다음 전투 공격 +15%)
 		enemyCapProb = 0.7, -- #12 적 하수인 포획 성공률
 		fleeProb = 0.5, -- #13 도망 성공률 (자기 HP<50%)
@@ -46,6 +46,10 @@ local Config = {
 		enemyCapHp = 70, -- #20 전투 중 적 포획 예비 하수인 시작 HP
 		itemHealPct = 0.20,
 		healPostPct = 0.05, -- #106 T2 회복 자세 — 턴 종료마다 최대 HP 5%
+		-- #121 계약 3·5 (v0.4.7) 전투 버프 패키지·신규 기술
+		buffTimeRounds = 3, -- 🧭 시간의 수호자: 그 전투만 양측 최대 3라운드 (BAL.maxRounds 전역 불변 — S.battle.maxRounds 로만)
+		reaperRound = 6, -- 💀 사신의 낫 봉인 해제 라운드 (자기 행동 차례 · 내 HP 비율 strict 열세와 AND)
+		witchEffects = 2, -- 🕯 마녀의 장난: 4효과 중 서로 다른 2개 (균등 6조합 · 공유 rand 1회)
 	},
 
 	-- #21 AI (Phase 3 포팅) — HTML BAL.ai* 그대로. delay 는 서버 봇의 행동 간격(초, 표시용)

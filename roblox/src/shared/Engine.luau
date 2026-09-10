@@ -63,6 +63,7 @@ function Engine.new(seed)
 		pieces = {},
 		events = {},
 		inv = { [0] = {}, [1] = {} },
+		pkgs = { [0] = { itemGift = 0, battleBuff = 0 }, [1] = { itemGift = 0, battleBuff = 0 } }, -- #121 계약 2·3: 미개봉 패키지 재고 (상한 없음)
 		balls = { [0] = BAL.ballStart, [1] = BAL.ballStart },
 		reserve = { [0] = nil, [1] = nil },
 		teleUsed = { [0] = 0, [1] = 0 },
@@ -116,10 +117,8 @@ function Engine.new(seed)
 			self:mkPiece(p, "trap")
 		end
 		self:mkPiece(p, "king")
-		for _ = 1, BAL.itemStart do -- D11 시작 아이템 (JS: shuffle(keys)[0])
-			local ks = table.clone(Data.ITEM_KEYS)
-			self:shuffle(ks)
-			table.insert(S.inv[p], ks[1])
+		for _, k in BAL.itemStart do -- #121 계약 2.1: 시작 아이템 고정 (회복약·쿨링수·해독제 각 1 — 난수 미소비)
+			table.insert(S.inv[p], k)
 		end
 	end
 	-- 정보 은닉 (인계서 §6): 종류별 고정 순서의 순번 ID 는 미공개 말도 ID 만으로 정체를 역추정하게 한다 (예: 14·28 = 왕).
@@ -175,6 +174,7 @@ function Engine:mkPiece(owner, type)
 		immobile = 0, cap = nil, nextBattleBuff = false, healing = false,
 		burn = 0, burnBy = nil, weaken = 0, shield = 0, absorbed = 0, shock = 0, shockFresh = false,
 		focusCharge = false, vulnMark = false, dmgCut = 0,
+		powerBuff = false, fleeFree = false, -- #121 계약 3: 전투 버프 플래그 (그 전투에만 — 개시·종료 때 지운다)
 	}
 	self.nextId += 1
 	table.insert(self.S.pieces, p)
@@ -253,14 +253,9 @@ function Engine:genEvents()
 				table.insert(cells, { r, c })
 			end
 		end
-		self:shuffle(cells)
-		local n = BAL.eventsPerForest + math.floor(self:rand() * 2)
-		for i = 1, n do
-			table.insert(S.events, {
-				r = cells[i][1], c = cells[i][2],
-				kind = Data.EVENT_POOL[math.floor(self:rand() * #Data.EVENT_POOL) + 1],
-				consumed = false,
-			})
+		self:shuffle(cells) -- #121 계약 1.1: 구역마다 shuffle 1회뿐 — 난수 소비 결정적
+		for i, kind in Data.EVENT_KINDS do -- 각 구역에 itemGift·battleBuff·recruit 정확히 1개 (칸 위치만 무작위)
+			table.insert(S.events, { r = cells[i][1], c = cells[i][2], kind = kind, consumed = false })
 		end
 	end
 end
@@ -814,6 +809,16 @@ function Engine:gameOver(winner, wtype)
 	S.metrics.endTurn = S.turnCount
 	S.metrics.winType = wtype
 	S.metrics.winner = winner
+	-- #121 계약 3.1: 경기 종료가 전투 한가운데서 나도 전투 회계·버프 플래그를 즉시 정리한다 (미개봉 패키지 재고는 보존)
+	if S.battle then
+		if self.resetFighterTemps then
+			self.resetFighterTemps(S.battle.fa)
+			self.resetFighterTemps(S.battle.fd)
+		end
+		S.battle = nil
+	end
+	S.pending = nil
+	S.fleePick = nil
 end
 
 -- T4 전멸 패배
@@ -1139,86 +1144,55 @@ function Engine:doSearch(p, ev)
 	self:met(p.owner, "searches")
 	self:healBreak(p)
 	local own = p.owner
+	-- GDD-13 4.7: 공용 로그에는 종류·보유량을 남기지 않는다 (상대는 "숲 이벤트 발생"만 본다 — #121 계약 4.8·9)
 	self:log("P" .. (own + 1) .. " 숲 이벤트 발생", "imp")
 	if p.type == "minion" then
 		self:met(own, "minionSearches")
 	end
-	if ev.kind == "buff" then -- #12 일시버프
-		p.nextBattleBuff = true
-		self:log("✨ 일시 버프 획득 — 다음 전투 동안 공격 +15% (1회성)", nil, own)
-	elseif ev.kind == "ball" then -- #12·#17 몬스터볼 (상한 3)
-		local gained = S.balls[own] < BAL.ballMax
-		if gained then
-			S.balls[own] += 1
-		end
-		self:log(gained and ("🔴 몬스터볼 +1 (보유 " .. S.balls[own] .. "/" .. BAL.ballMax .. ")")
-			or ("🔴 몬스터볼 상한(" .. BAL.ballMax .. ") — 획득하지 못했습니다."), nil, own)
-	elseif ev.kind ~= "recruit" and p.type == "minion" then -- 하수인 아이템류 대체 보상: 쿨 초기화
-		p.cd = 0
-		if p.skills then
-			p.cds = { 0, 0, 0, 0 }
-		end
-		self:log("하수인은 아이템 대신 자기 기술 쿨타임이 전체 초기화됩니다.", nil, own)
-	elseif ev.kind ~= "recruit" then -- 동료·왕: 아이템 획득
-		if #S.inv[own] < BAL.invMax then
-			table.insert(S.inv[own], ev.kind)
-			self:log("아이템 획득: " .. Data.ITEMS[ev.kind].ko, nil, own)
-		else
-			self:log("인벤토리 가득 — 아이템을 획득하지 못했습니다 (최대 " .. BAL.invMax .. ").", nil, own)
-		end
-	else -- recruit
-		if p.type == "minion" then
-			-- #92 속성 교차 공격기 교체 — 후보 1종을 rand 1회로 결정 후 소유자 선택 대기
-			if p.skills then
-				local cands = Data.recruitCandidates(p)
-				local alt = (#cands > 0) and cands[math.floor(self:rand() * #cands) + 1] or nil
-				if not alt then
-					self:log("공용 하수인 발견 — 배울 수 있는 기술이 없습니다.", nil, own)
-				else
-					S.pending = { kind = "recruit", owner = own, pieceId = p.id, alt = alt }
-					self:log("공용 하수인 발견 — 다른 속성의 공격기를 배울 수 있습니다.", nil, own)
-				end
-			end
-		elseif p.cap then
-			self:log("공용 하수인 발견 — 이미 포획 하수인을 보유 중입니다 (각 1개 제한).", nil, own)
-		else
-			S.pending = { kind = "capture", owner = own, pieceId = p.id }
-			self:log("공용 하수인 발견 — 포획을 시도할 수 있습니다. (몬스터볼 " .. S.balls[own] .. ")", nil, own)
-		end
+	-- #121 계약 1.1 이후 이벤트는 3종뿐. itemGift·battleBuff 는 그 자리에서 재고 +1 로 끝나고(필수 선택 없음), 개봉은 전투 중 가방에서 한다
+	if ev.kind == "itemGift" or ev.kind == "battleBuff" then
+		S.pkgs[own][ev.kind] += 1
+		self:log("📦 " .. Data.EVENT_KO[ev.kind] .. " 획득! (보유 " .. S.pkgs[own][ev.kind] .. "개)", nil, own)
+		return true
 	end
+	if ev.kind ~= "recruit" then -- 폐기된 종류: 보상 없이 칸만 소모
+		self:log("🌿 아무것도 없었다", nil, own)
+		return true
+	end
+	-- #121 계약 4·6 recruit — 기술 교체 / 하수인 포획 / 포기 (소유자 선택 대기). 포획 후보 종은 여기서 rand 1회로 고정
+	local species = Data.ROSTER[math.floor(self:rand() * #Data.ROSTER) + 1].id
+	S.pending = { kind = "recruit", owner = own, pieceId = p.id, species = species }
+	self:log("🌿 숲에서 무언가를 찾았다 — 기술 교체 · 하수인 포획 · 포기 중 선택", nil, own)
 	return true
 end
 
-function Engine:tryCapture(p, mode)
+-- #121 계약 6 숲 포획 — ROSTER 20종 균등으로 뽑힌 종(rd, 탐색 시점에 고정)의 HP·ATK·기술 수치·CD·4기술·아트 정체를 그대로 적용한다.
+-- recv = 포획 슬롯이 빈 동료·왕(수령 말), p = 탐색을 실행한 말. 공격 포획 실패 반동은 p 가 받는다. 난수는 성공 판정 1회뿐.
+-- 전투 중 적 포획(finishByCapture → 예비 70/100 공용 규격)은 범위 밖 — 그대로.
+function Engine:tryCapture(p, mode, recv, rd)
 	local S = self.S
+	local own = p.owner
+	local target = recv or p
 	local cost = (mode == "safe") and 2 or 1
-	S.balls[p.owner] -= cost
+	S.balls[own] -= cost
 	local roll = self:rand()
 	local ok = (mode == "safe") or (mode == "risky" and roll < 0.5) or (mode == "attack" and roll < 0.7)
 	if ok then
-		local els = table.clone(Data.ELEMS)
-		self:shuffle(els)
-		local el = els[1]
-		local cb = BAL.captured
-		local rd = nil -- #91 공용 하수인 = 그 속성 표준형 (표시 전용 외형 정체)
-		for _, r in Data.ROSTER do
-			if r.element == el and r.arch == "std" then
-				rd = r
-			end
-		end
-		p.cap = {
-			element = el, hp = cb.hp, maxHp = cb.hp, atk = cb.atk, skillAtk = cb.skill, cd = 0, cdMax = cb.cd,
-			skills = Data.archSkills("std", el), cds = { 0, 0, 0, 0 }, revealedSkills = {},
-			artRosterId = rd and rd.id or nil,
+		local sp = rd or Data.ROSTER[1]
+		target.cap = {
+			element = sp.element, hp = sp.hp, maxHp = sp.hp, atk = sp.atk, skillAtk = sp.skill, cd = 0, cdMax = sp.cd,
+			skills = Data.archSkills(sp.arch, sp.element), cds = { 0, 0, 0, 0 }, revealedSkills = {},
+			-- "그 종 그대로": 규칙이 읽는 rosterId 까지 유지 (archOf 파생 지속시간·계수도 그 종) · artRosterId 는 표시용
+			rosterId = sp.id, artRosterId = sp.id,
 		}
-		self:met(p.owner, "captures")
-		return { ok = true, el = el }
+		self:met(own, "captures")
+		return { ok = true, el = sp.element, rd = sp, recv = target }
 	end
-	self:met(p.owner, "captureFails")
+	self:met(own, "captureFails")
 	local dmg = 0
 	if mode == "attack" then
 		dmg = round(p.maxHp * BAL.captureAtkFailPct)
-		p.hp = math.max(1, p.hp - dmg)
+		p.hp = math.max(1, p.hp - dmg) -- 반동은 탐색 말 (최소 1 남김)
 	end
 	return { ok = false, dmg = dmg }
 end
@@ -1478,7 +1452,7 @@ end
 --==================================================================
 
 local BOARD_ACTS = { move = true, battle = true, search = true, tele = true, heal = true, skipMain = true, endTurn = true }
-local BATTLE_ACTS = { act = true, item = true, ball = true, flee = true }
+local BATTLE_ACTS = { act = true, item = true, ball = true, flee = true, gift = true, buff = true } -- #121: 패키지 개봉·버프 적용 (무료 보너스 행동)
 
 -- apply(actor, a) → true | false, 사유. 상태 전이는 동기 완결, 이벤트는 outbox 에 쌓인다.
 function Engine:apply(actor, a)
@@ -1510,8 +1484,6 @@ function Engine:apply(actor, a)
 		end
 		if pd.kind == "vip" then
 			return self:applyVipPick(a)
-		elseif pd.kind == "capture" then
-			return self:applyCapture(a)
 		elseif pd.kind == "recruit" then
 			return self:applyRecruit(a)
 		end
@@ -1664,72 +1636,97 @@ function Engine:apply(actor, a)
 	return false, "알 수 없는 액션"
 end
 
--- pending: capture (숲 공용 하수인 포획 — HTML captureModal)
-function Engine:applyCapture(a)
-	local S = self.S
-	local pd = S.pending
-	if a.t == "capSkip" then
-		S.pending = nil
-		self:log("포획 포기", nil, pd.owner)
-		self:autoStep()
-		return true
+
+-- 계약 4.2: 교체 대상은 최초 로스터로 배치된 하수인 6명 (생성 순서). 죽은 말도 목록엔 있되 선택 불가
+function Engine:rosterMinions(own)
+	local out = {}
+	for _, x in self.S.pieces do
+		if x.owner == own and x.type == "minion" then
+			table.insert(out, x)
+		end
 	end
-	if a.t ~= "capTry" then
-		return false, "포획 선택 대기 중"
-	end
-	local mode = a.mode
-	local cost = (mode == "safe") and 2 or (mode == "risky" or mode == "attack") and 1 or nil
-	if not cost then
-		return false, "알 수 없는 포획 방식"
-	end
-	if S.balls[pd.owner] < cost then
-		return false, "몬스터볼이 부족합니다"
-	end
-	local p = self:pieceById(pd.pieceId)
-	S.pending = nil
-	if not p or not p.alive then
-		return false, "대상 말이 사라졌습니다"
-	end
-	local r = self:tryCapture(p, mode)
-	if r.ok then
-		self:log("포획 성공! 포획 하수인(" .. Data.ELEM_KO[r.el] .. ") 확보 — 대리 출전 가능", nil, pd.owner)
-	else
-		self:log("포획 실패 — 공용 하수인이 사라졌습니다." .. (r.dmg > 0 and (" 탐색 말 HP -" .. r.dmg) or ""), nil, pd.owner)
-	end
-	self:autoStep()
-	return true
+	return out
 end
 
--- pending: recruit (#92 속성 교차 공격기 교체)
+-- 계약 6: 포획 수령 말 — 살아 있고 배치된 동료·왕 중 포획 슬롯(cap)이 빈 말
+function Engine:capReceivers(own)
+	local out = {}
+	for _, x in self:alivePieces() do
+		if x.owner == own and (x.type == "ally" or x.type == "king") and not x.cap then
+			table.insert(out, x)
+		end
+	end
+	return out
+end
+
+-- pending: recruit (#121 계약 4·6·7) — recruitSwap{skill,targetId,slot} / capTry{mode,recvId} / recruitKeep(포기)
+-- 확정 전에는 어떤 슬롯도 건드리지 않는다. 이벤트 칸 소모는 되돌리지 않는다. 난수는 포획 판정 1회뿐
 function Engine:applyRecruit(a)
 	local S = self.S
 	local pd = S.pending
+	local own = pd.owner
+	local searcher = self:pieceById(pd.pieceId)
 	if a.t == "recruitKeep" then
 		S.pending = nil
+		self:log("🌿 아무것도 얻지 않았다 — 이벤트 칸은 소모되었습니다", nil, own)
 		self:autoStep()
 		return true
 	end
-	if a.t ~= "recruitSwap" then
-		return false, "기술 교체 선택 대기 중"
-	end
-	local slot = a.slot
-	if slot ~= 1 and slot ~= 2 then
-		return false, "공격기 1·2 슬롯만 교체할 수 있습니다"
-	end
-	S.pending = nil
-	local p = self:pieceById(pd.pieceId)
-	if p and p.skills then
-		p.skills[slot] = pd.alt -- cds[slot] 유지 (남은 쿨 승계)
-		if p.revealedSkills then
-			local i = table.find(p.revealedSkills, slot)
+	if a.t == "recruitSwap" then
+		if not table.find(Data.NEW_SKILLS, a.skill) then
+			return false, "신규 기술 3종 중에서 고르세요"
+		end
+		local m = self:pieceById(a.targetId)
+		if not m or m.owner ~= own or m.type ~= "minion" or not m.alive or not m.placed or not m.skills then
+			return false, "살아 있는 내 최초 하수인만 배울 수 있습니다"
+		end
+		if table.find(m.skills, a.skill) then
+			return false, "이미 그 기술을 가진 말입니다"
+		end
+		local slot = a.slot
+		if type(slot) ~= "number" or slot < 1 or slot > 4 or slot % 1 ~= 0 then
+			return false, "슬롯은 1~4"
+		end
+		S.pending = nil
+		m.skills[slot] = a.skill -- cds[slot] 유지 (남은 쿨 승계)
+		if m.revealedSkills then
+			local i = table.find(m.revealedSkills, slot)
 			if i then
-				table.remove(p.revealedSkills, i) -- 그 슬롯은 다시 비공개
+				table.remove(m.revealedSkills, i) -- 그 슬롯은 다시 비공개
 			end
 		end
-		self:log("기술 교체 완료: " .. Data.SKILLS[pd.alt].ko, nil, pd.owner)
+		self:log(("📘 %s 습득! %s 슬롯 %d (남은 쿨 %d 승계)"):format(Data.SKILLS[a.skill].ko, m.name or "하수인", slot, m.cds[slot]), nil, own)
+		self:autoStep()
+		return true
 	end
-	self:autoStep()
-	return true
+	if a.t == "capTry" then
+		local mode = a.mode
+		if not table.find(Data.CAP_MODES, mode) then
+			return false, "알 수 없는 포획 방식"
+		end
+		local recv = self:pieceById(a.recvId)
+		if not recv or recv.owner ~= own or not recv.alive or not recv.placed or not (recv.type == "ally" or recv.type == "king") or recv.cap then
+			return false, "포획 슬롯이 빈 동료·왕을 고르세요"
+		end
+		local cost = (mode == "safe") and 2 or 1
+		if S.balls[own] < cost then
+			return false, "몬스터볼이 부족합니다"
+		end
+		if not searcher or not searcher.alive then
+			return false, "탐색한 말이 사라졌습니다"
+		end
+		S.pending = nil
+		local rd = Data.rosterById(pd.species)
+		local r = self:tryCapture(searcher, mode, recv, rd)
+		if r.ok then
+			self:log(("🔴 포획 성공! %s — %s의 대리 출전 가능"):format(rd and rd.name or "공용 하수인", Data.TYPE_KO[recv.type]), nil, own)
+		else
+			self:log("🔴 포획 실패 — 공용 하수인이 사라졌습니다." .. (r.dmg > 0 and (" 탐색 말 HP -" .. r.dmg) or ""), nil, own)
+		end
+		self:autoStep()
+		return true
+	end
+	return false, "기술 교체·포획·포기 중 선택 대기 중"
 end
 
 -- 전투 모듈 부착 (initBattle·execSlot·판정 등)

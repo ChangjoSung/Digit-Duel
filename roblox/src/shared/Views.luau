@@ -118,6 +118,8 @@ function Views.forViewer(engine, viewer)
 		oppBalls = S.balls[opp],
 		inv = table.clone(S.inv[viewer]),
 		oppInvCount = #S.inv[opp],
+		gifts = S.pkgs and S.pkgs[viewer].itemGift or 0, -- #121: 미개봉 패키지 재고 (소유자만)
+		buffPacks = S.pkgs and S.pkgs[viewer].battleBuff or 0,
 		reserve = S.reserve[viewer] and {
 			element = S.reserve[viewer].element,
 			hp = S.reserve[viewer].hp,
@@ -169,15 +171,22 @@ function Views.forViewer(engine, viewer)
 					cap = piece.cap and { element = piece.cap.element, hp = piece.cap.hp, maxHp = piece.cap.maxHp } or nil,
 					reserve = res and { element = res.element, hp = res.hp, maxHp = res.maxHp } or nil,
 				}
-			elseif pd.kind == "capture" then
-				view.pending = { kind = "capture", balls = S.balls[viewer] }
-			elseif pd.kind == "recruit" then
-				local piece = engine:pieceById(pd.pieceId)
+			elseif pd.kind == "recruit" then -- #121 계약 4·6: 소유자에게만 후보 종·수령 말·최초 6명(자기 정보)을 내려보낸다
+				local rd = Data.rosterById(pd.species)
+				local minions, receivers = {}, {}
+				for _, x in engine:rosterMinions(viewer) do
+					table.insert(minions, {
+						id = x.id, name = x.name, element = x.element, rosterId = x.rosterId, alive = x.alive and x.placed, hp = x.hp, maxHp = x.maxHp, atk = x.atk,
+						skills = x.skills and table.clone(x.skills) or nil, cds = x.cds and table.clone(x.cds) or nil,
+					})
+				end
+				for _, x in engine:capReceivers(viewer) do
+					table.insert(receivers, { id = x.id, type = x.type, hp = x.hp, maxHp = x.maxHp })
+				end
 				view.pending = {
-					kind = "recruit",
-					alt = pd.alt,
-					slots = piece and piece.skills and { piece.skills[1], piece.skills[2] } or nil,
-					cds = piece and piece.cds and { piece.cds[1], piece.cds[2] } or nil,
+					kind = "recruit", pieceId = pd.pieceId, balls = S.balls[viewer],
+					skills = table.clone(Data.NEW_SKILLS), minions = minions, receivers = receivers,
+					species = rd and { id = rd.id, name = rd.name, element = rd.element, hp = rd.hp, atk = rd.atk, arch = rd.arch, skills = Data.archSkills(rd.arch, rd.element) } or nil,
 				}
 			end
 		else
@@ -189,17 +198,37 @@ function Views.forViewer(engine, viewer)
 		local B = S.battle
 		local side = engine:actorOfPhase()
 		local actorOwner = (side == "A") and B.attP.owner or B.defP.owner
+		local mySide = (B.attP.owner == viewer) and "A" or "D"
+		local myF = (mySide == "A") and B.fa or B.fd
+		local usable, anyUsable = {}, false
+		if myF.skills then
+			for i = 1, 4 do
+				usable[i] = engine:slotUsable(myF, i, mySide)
+				anyUsable = anyUsable or usable[i]
+			end
+		end
 		view.battle = {
 			round = B.round,
-			maxRounds = Config.BAL.maxRounds,
+			maxRounds = engine:battleMaxRounds(), -- #121 계약 3.3: 시간의 수호자면 3
+			timed = B.maxRounds ~= nil,
 			phase = B.phase,
 			actorSide = side,
 			actorOwner = actorOwner,
-			mySide = (B.attP.owner == viewer) and "A" or "D",
+			mySide = mySide,
 			A = serializeFighter(B.fa, B.attP, viewer, over),
 			D = serializeFighter(B.fd, B.defP, viewer, over),
 			myItems = table.clone(S.inv[viewer]),
-			itemsUsed = (B.attP.owner == viewer) and B.itemsA or B.itemsD,
+			itemsUsed = (mySide == "A") and B.itemsA or B.itemsD,
+			itemRound = (mySide == "A") and B.itemRoundA or B.itemRoundD, -- #121 계약 2.3: 유일한 아이템 게이트
+			buffA = B.buffA, -- 적용된 효과는 공개 정보 (재고·선택은 비공개)
+			buffD = B.buffD,
+			buffUsed = (mySide == "A") and B.buffA or B.buffD,
+			usable = usable, -- 내 4슬롯 합법 여부 (쿨 + 사신 봉인)
+			canBasic = not anyUsable,
+			reaperWhy = engine:reaperWhy(mySide),
+			canFlee = myF.hp < myF.maxHp * 0.5 or myF.fleeFree == true,
+			fleeFree = myF.fleeFree == true,
+			powerBuff = myF.powerBuff == true,
 			blog = table.clone(B.blog),
 		}
 	end

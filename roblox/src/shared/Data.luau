@@ -41,6 +41,10 @@ export type Skill = {
 	selfVuln: number?,
 	coolAttackLongest: boolean?,
 	statusSelf: boolean?,
+	cls: string?, -- #121: 기술 전용 분류 (dragon|dark|blood) — 본체 속성·상성표와 무관
+	dragonMult: number?,
+	witch: boolean?,
+	reaper: boolean?,
 	desc: string,
 }
 
@@ -71,7 +75,29 @@ Data.SKILLS = {
 	sig_def = { ko = "불굴 진형", kind = "sig", cd = 4, shieldPct = 0.22, dmgCut = 0.15, desc = "22% 보호막 + 다음 피격 15% 감소" },
 	sig_swift = { ko = "급속 순환", kind = "sig", cd = 2, pow = 22, coolAttackLongest = true, desc = "남은 쿨 최장 공격기 쿨 -1" },
 	sig_sustain = { ko = "잔류장", kind = "sig", cd = 3, pow = 18, statusSelf = true, desc = "자기 속성 상태효과 부여 (100%)" },
+	-- #121 계약 5 — 신규 공용 기술 3종. cls 는 기술 전용 분류다(본체 속성·다섯 번째 상성 아님). cls 기술은 atkElOf 가 nil 을 돌려줘 상성 블록을 타지 않는다
+	dragon_breath = { ko = "드래곤 숨결", kind = "attack", cls = "dragon", cd = 3, pow = 30, dragonMult = 1.3, desc = "용 분류 · 속성이 있는 상대에게 항상 ×1.3 (무속성 왕·동료 본체에는 중립 1.0)" },
+	witch_prank = { ko = "마녀의 장난", kind = "attack", cls = "dark", cd = 3, pow = 18, witch = true, desc = "어둠 분류 · 중립 1.0 · 화상·약화·감전·풀 회복 중 서로 다른 2효과를 100% 적용" },
+	reaper_scythe = { ko = "사신의 낫", kind = "attack", cls = "blood", cd = 0, reaper = true, desc = "핏빛 분류 · 6라운드 · 내 HP 비율이 상대보다 낮을 때만 — 보호막을 무시하고 즉사" },
 } :: { [string]: Skill }
+
+-- #121 (v0.4.7) 상수 — 순서 고정 (표시·AI·프로토콜 공용)
+Data.SKILL_CLS_KO = { dragon = "용", dark = "어둠", blood = "핏빛" }
+Data.SKILL_CLS_EMO = { dragon = "🐉", dark = "🕯", blood = "💀" }
+Data.NEW_SKILLS = { "dragon_breath", "witch_prank", "reaper_scythe" } -- 계약 4.2 제안 목록 (제안 표시에 난수 0)
+Data.GIFT_PICKS = { "potion", "cool", "cure", "ball" } -- 계약 2.2 아이템 선물 패키지 4종
+Data.GIFT_KO = { potion = "회복약", cool = "쿨링수", cure = "해독제", ball = "공용 몬스터볼" }
+Data.BUFFS = { -- 계약 3.2~3.4 전투 버프 3종
+	power = { ko = "💪 힘의 수호자", desc = "이 전투 동안 내 피해 분산을 최대치로 고정 (상성·약화·보호막 계산은 그대로)" },
+	time = { ko = "🧭 시간의 수호자", desc = "이 전투만 양측 최대 3라운드 — 1라운드에만 사용 가능 · 사신의 낫은 발동 불가" },
+	escape = { ko = "🏃 도망의 수호자", desc = "이 전투 동안 도망 HP 50% 조건 해제 (성공률·반격·교환은 그대로)" },
+}
+Data.BUFF_KEYS = { "power", "time", "escape" }
+Data.EVENT_KINDS = { "itemGift", "battleBuff", "recruit" } -- 계약 1.1: 구역마다 각 1개
+Data.EVENT_KO = { itemGift = "아이템 선물 패키지", battleBuff = "전투 버프 패키지", recruit = "기술 교체 / 하수인 포획" }
+Data.CAP_MODES = { "safe", "risky", "attack" }
+Data.WITCH_EFFECTS = { "burn", "weaken", "shock", "grassHeal" } -- 계약 5.2 순서 고정
+Data.WITCH_COMBOS = { { 1, 2 }, { 1, 3 }, { 1, 4 }, { 2, 3 }, { 2, 4 }, { 3, 4 } } -- 4C2 균등 6조합
 
 -- 종별 장착 템플릿 (GDD-16 4장) — 공격기는 자기 속성 풀, 슬롯3=보조기·슬롯4=시그니처 고정 (Luau 1-기준)
 Data.ARCH_TMPL = {
@@ -106,10 +132,10 @@ end
 
 -- #92 판정 속성 — 공격기(el 보유)는 기술 속성, 기본 공격·시그니처·보조기는 본체 속성
 function Data.atkElOf(f: { element: string? }, sk: Skill?): string?
-	if sk and sk.kind == "attack" and sk.el then
-		return sk.el
+	if sk and sk.cls then -- #121 계약 5: cls 기술(용·어둠·핏빛)은 속성 판정에서 빠진다 → 중립
+		return nil
 	end
-	return f.element
+	return (sk and sk.kind == "attack" and sk.el) and sk.el or f.element
 end
 
 Data.ITEMS = {

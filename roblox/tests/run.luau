@@ -250,14 +250,26 @@ local function randomPolicy(en, rng)
 			local pd = S.pending
 			if pd.kind == "vip" then
 				en:apply(pd.owner, { t = "vipPick", use = "body" })
-			elseif pd.kind == "capture" then
-				if S.balls[pd.owner] >= 2 and rng:NextNumber() < 0.7 then
-					en:apply(pd.owner, { t = "capTry", mode = "safe" })
+			else -- #121 recruit: 포획(안전) / 기술 교체 / 포기 를 무작위로
+				local recv = en:capReceivers(pd.owner)
+				local roll = rng:NextNumber()
+				if #recv > 0 and S.balls[pd.owner] >= 2 and roll < 0.4 then
+					en:apply(pd.owner, { t = "capTry", mode = "safe", recvId = recv[1].id })
+				elseif roll < 0.8 then
+					local done = false
+					for _, m in en:rosterMinions(pd.owner) do
+						if m.alive and m.placed and m.skills and not table.find(m.skills, "dragon_breath") then
+							en:apply(pd.owner, { t = "recruitSwap", skill = "dragon_breath", targetId = m.id, slot = rng:NextInteger(1, 4) })
+							done = true
+							break
+						end
+					end
+					if not done then
+						en:apply(pd.owner, { t = "recruitKeep" })
+					end
 				else
-					en:apply(pd.owner, { t = "capSkip" })
+					en:apply(pd.owner, { t = "recruitKeep" })
 				end
-			else
-				en:apply(pd.owner, { t = "recruitKeep" })
 			end
 		elseif S.fleePick then
 			en:apply(S.fleePick.owner, { t = "fleeSkip" })
@@ -648,6 +660,394 @@ do
 	local pAtk = { rosterId = "M-F2", skills = { "fire_stable", "fire_heavy", "sup_focus", "sig_atk" } }
 	eq(Ai.recruitSlot(pAtk, "water_stable"), 1, "공격형: 위력 최저 슬롯(1) 동률 → 교체")
 	eq(Ai.recruitSlot(pAtk, "grass_effect"), nil, "공격형: 위력 낮으면 유지")
+end
+
+--==================================================================
+print("[11] v0.4.7 규칙 (#121·#129) — 이벤트 6개·시작 자원·패키지·버프 3종·신규 기술 3종·기술 교체·숲 포획·탐색 종료")
+--==================================================================
+local BAL = Config.BAL
+for seed = 1, 20 do -- 계약 1.1: 구역마다 3종 각 1개, 전체 6개
+	local en = Engine.new(seed)
+	eq(#en.S.events, 6, "이벤트 6개 seed " .. seed)
+	local per = { A = {}, B = {} }
+	for _, ev in en.S.events do
+		local z = (ev.r <= 5) and "A" or "B"
+		per[z][ev.kind] = (per[z][ev.kind] or 0) + 1
+	end
+	for _, z in { "A", "B" } do
+		for _, k in Data.EVENT_KINDS do
+			eq(per[z][k], 1, z .. " " .. k .. " 1개")
+		end
+	end
+end
+do -- 계약 2.1: 시작 자원 1/1/1 · 볼 2 · 패키지 0
+	local en = freshPlay(1101)
+	for p = 0, 1 do
+		eq(#en.S.inv[p], 3, "시작 아이템 3 (P" .. (p + 1) .. ")")
+		eq(en.S.balls[p], 2, "시작 볼 2")
+		eq(en.S.pkgs[p].itemGift + en.S.pkgs[p].battleBuff, 0, "패키지 0")
+	end
+end
+
+-- 전투 하네스: P1 하수인 vs P2 하수인 (또는 P2 왕) 인접 → 전투 개시
+local function mkBattle(seed, defType)
+	local en = freshPlay(seed)
+	local a, d
+	for _, p in en:alivePieces() do
+		if p.owner == 0 and p.type == "minion" and not a then
+			a = p
+		elseif p.owner == 1 and p.type == (defType or "minion") and not d then
+			d = p
+		end
+	end
+	a.r, a.c = 7, 3
+	d.r, d.c = 7, 4
+	en.S.current = 0
+	en.S.battlesUsed = 0
+	en.S.mainUsed = true
+	local okB = en:apply(0, { t = "battle", attId = a.id, defId = d.id })
+	ok(okB and en.S.battle ~= nil, "전투 개시 (" .. seed .. ")")
+	return en, a, d
+end
+local function actorOwner(en)
+	local side = en:actorOfPhase()
+	return (side == "A") and en.S.battle.attP.owner or en.S.battle.defP.owner, side
+end
+local function actBasic(en)
+	local owner = actorOwner(en)
+	return en:apply(owner, { t = "act", k = "basic" })
+end
+
+do -- 계약 2.2: 선물 개봉 — 행동 미소모 · 상한 없음 · 재고 0 이면 거부
+	local en = mkBattle(1102)
+	local B = en.S.battle
+	en.S.pkgs[0].itemGift = 3
+	local phase0 = B.phase
+	ok(en:apply(0, { t = "gift", pick = "ball" }), "선물 개봉 볼")
+	ok(en:apply(0, { t = "gift", pick = "ball" }), "선물 개봉 볼 2")
+	ok(en:apply(0, { t = "gift", pick = "potion" }), "선물 개봉 회복약")
+	eq(en.S.balls[0], 4, "볼 2+2 (상한 없음)")
+	eq(#en.S.inv[0], 4, "아이템 3+1")
+	eq(en.S.pkgs[0].itemGift, 0, "패키지 소모")
+	eq(B.phase, phase0, "개봉은 행동 미소모")
+	ok(not en:apply(0, { t = "gift", pick = "cure" }), "재고 0 → 거부")
+	ok(not en:apply(1, { t = "gift", pick = "cure" }), "상대 차례 아님 → 거부")
+end
+do -- 계약 2.3: 아이템은 라운드 1회만 · 다음 라운드엔 같은 종류도 가능 · 전투 3회 이상 가능
+	local en = mkBattle(1103)
+	local B = en.S.battle
+	en.S.inv[0] = { "potion", "potion", "potion", "cure" }
+	en.S.inv[1] = { "potion", "potion" }
+	B.fa.hp = 40
+	ok(en:apply(0, { t = "item", i = 1 }), "R1 회복약 1회")
+	ok(not en:apply(0, { t = "item", i = 1 }), "같은 라운드 두 번째 → 거부")
+	local used = 1
+	local guard = 0
+	while en.S.battle and guard < 40 do
+		guard += 1
+		local owner, side = actorOwner(en)
+		local ir = (side == "A") and B.itemRoundA or B.itemRoundD
+		if owner == 0 and not ir and table.find(en.S.inv[0], "potion") then
+			ok(en:apply(0, { t = "item", i = table.find(en.S.inv[0], "potion") }), "다음 라운드 같은 종류(회복약) 재사용")
+			used += 1
+		end
+		actBasic(en)
+	end
+	ok(used >= 3, "한 전투에서 아이템 3회 이상 (" .. used .. ")")
+end
+do -- 계약 3.1·3.2: 힘의 수호자 — 한 전투 1개 · 분산 상단 고정 · 무료
+	local en = mkBattle(1104)
+	local B = en.S.battle
+	en.S.pkgs[0].battleBuff = 2
+	local phase0 = B.phase
+	ok(en:apply(0, { t = "buff", kind = "power" }), "힘 적용")
+	eq(B.buffA, "power", "회계 buffA")
+	ok(B.fa.powerBuff == true, "powerBuff 플래그")
+	eq(B.phase, phase0, "버프는 행동 미소모")
+	ok(not en:apply(0, { t = "buff", kind = "escape" }), "한 전투 두 번째 버프 → 거부")
+	eq(en.S.pkgs[0].battleBuff, 1, "패키지 1개만 소모 (나머지 보관)")
+	-- 기본 공격 피해 = round(atk × 1.2) → 상성 → (보호막 0) — 결정적
+	local f, opp = B.fa, B.fd
+	local base = Data.round(f.atk * (1 + BAL.dmgVar))
+	if f.element and opp.element then
+		if Data.BEATS[f.element] == opp.element then
+			base = Data.round(base * BAL.advMult)
+		elseif Data.BEATS[opp.element] == f.element then
+			base = Data.round(base * BAL.disMult)
+		end
+	end
+	local hp0 = opp.hp
+	-- 슬롯이 아닌 순수 기본 공격을 위해 전 슬롯 쿨
+	B.fa.cds = { 1, 1, 1, 1 }
+	ok(en:apply(0, { t = "act", k = "basic" }), "기본 공격")
+	eq(hp0 - opp.hp, base, "힘: 분산 상단(×1.2) 고정 피해")
+	-- 전투 종료 후 플래그 정리
+	local guard = 0
+	while en.S.battle and guard < 60 do
+		guard += 1
+		actBasic(en)
+	end
+	ok(f.powerBuff == false, "전투 종료 후 powerBuff 정리")
+end
+do -- 계약 3.3: 시간의 수호자 — R1 한정 · 그 전투만 3라운드 · 전역 불변 · 사신 불가 · 판정 동일
+	local en = mkBattle(1105)
+	local B = en.S.battle
+	en.S.pkgs[0].battleBuff = 1
+	ok(en:apply(0, { t = "buff", kind = "time" }), "R1 시간 적용")
+	eq(B.maxRounds, 3, "전투 인스턴스 3라운드")
+	eq(en:battleMaxRounds(), 3, "battleMaxRounds 3")
+	eq(BAL.maxRounds, 6, "전역 maxRounds 불변")
+	ok(en:reaperWhy("A") ~= nil and en:reaperWhy("D") ~= nil, "3라운드 전투는 사신 봉인 해제 불가")
+	local j0 = en.S.metrics.judged
+	local guard = 0
+	while en.S.battle and guard < 40 do
+		guard += 1
+		actBasic(en)
+	end
+	eq(en.S.metrics.judged, j0 + 1, "3라운드 뒤 판정 종료")
+	ok(guard <= 6, "행동 6회(3라운드) 안에 종료 (" .. guard .. ")")
+	local en2 = mkBattle(1106)
+	en2.S.pkgs[0].battleBuff = 1
+	en2.S.pkgs[1].battleBuff = 1
+	actBasic(en2)
+	actBasic(en2) -- 라운드 2 진입
+	eq(en2.S.battle.round, 2, "라운드 2")
+	local o2 = actorOwner(en2)
+	ok(not en2:apply(o2, { t = "buff", kind = "time" }), "R2 시간 → 거부")
+	ok(en2:apply(o2, { t = "buff", kind = "power" }), "R2 힘은 가능")
+	eq(en2:battleMaxRounds(), 6, "다른 전투는 6라운드")
+end
+do -- 계약 3.4: 도망의 수호자 — HP 게이트만 해제
+	local en = mkBattle(1107)
+	local B = en.S.battle
+	ok(not en:apply(0, { t = "flee" }), "HP 100% 도망 → 거부")
+	en.S.pkgs[0].battleBuff = 1
+	ok(en:apply(0, { t = "buff", kind = "escape" }), "도망의 수호자 적용")
+	ok(B.fa.fleeFree == true, "fleeFree")
+	ok(en:apply(0, { t = "flee" }), "HP 100% 이어도 도망 시도 가능")
+end
+-- 계약 4: 기술 교체 — 3종 직접 선택 · 최초 6명 생존 · 4슬롯 어디든 · 중복 금지 · 쿨 승계 · 공개 초기화
+do
+	local en = freshPlay(1108)
+	local m1, m2
+	for _, p in en:rosterMinions(0) do
+		if not m1 then
+			m1 = p
+		elseif not m2 then
+			m2 = p
+		end
+	end
+	en.S.pending = { kind = "recruit", owner = 0, pieceId = m1.id, species = "M-F1" }
+	m1.cds = { 0, 0, 2, 0 }
+	m1.revealedSkills = { 3, 4 }
+	ok(not en:apply(0, { t = "recruitSwap", skill = "fire_heavy", targetId = m1.id, slot = 1 }), "신규 3종 외 → 거부")
+	ok(not en:apply(0, { t = "recruitSwap", skill = "dragon_breath", targetId = m1.id, slot = 5 }), "슬롯 5 → 거부")
+	ok(not en:apply(1, { t = "recruitSwap", skill = "dragon_breath", targetId = m1.id, slot = 3 }), "상대가 대신 선택 → 거부")
+	ok(en:apply(0, { t = "recruitSwap", skill = "dragon_breath", targetId = m1.id, slot = 3 }), "보조기 슬롯(3) 교체")
+	eq(m1.skills[3], "dragon_breath", "슬롯3 = 드래곤")
+	eq(m1.cds[3], 2, "남은 쿨 승계")
+	ok(table.find(m1.revealedSkills, 3) == nil and table.find(m1.revealedSkills, 4) ~= nil, "교체 슬롯만 공개 초기화")
+	ok(en.S.pending == nil, "pending 해소")
+	en.S.pending = { kind = "recruit", owner = 0, pieceId = m1.id, species = "M-F1" }
+	ok(not en:apply(0, { t = "recruitSwap", skill = "dragon_breath", targetId = m1.id, slot = 1 }), "중복 장착 → 거부")
+	m2.alive = false
+	ok(not en:apply(0, { t = "recruitSwap", skill = "witch_prank", targetId = m2.id, slot = 1 }), "죽은 말 → 거부")
+	ok(en:apply(0, { t = "recruitKeep" }), "포기")
+	ok(en.S.pending == nil, "포기 후 pending 없음")
+end
+-- 계약 6: 숲 포획 — ROSTER 20종 그대로(rosterId·스탯·기술) · 수령 말 · 공격 실패 반동은 탐색 말
+do
+	local en = freshPlay(1109)
+	local searcher = en:rosterMinions(0)[1]
+	local recv = en:capReceivers(0)[1]
+	ok(recv ~= nil and (recv.type == "ally" or recv.type == "king"), "수령 후보 존재")
+	en.S.balls[0] = 3
+	en.S.pending = { kind = "recruit", owner = 0, pieceId = searcher.id, species = "M-L2" }
+	ok(not en:apply(0, { t = "capTry", mode = "safe", recvId = searcher.id }), "하수인은 수령 불가")
+	ok(en:apply(0, { t = "capTry", mode = "safe", recvId = recv.id }), "안전 포획")
+	eq(en.S.balls[0], 1, "볼 -2")
+	ok(recv.cap ~= nil, "수령 말에 cap")
+	eq(recv.cap.rosterId, "M-L2", "규칙용 rosterId 보존")
+	eq(recv.cap.hp, 90, "M-L2 HP 90")
+	eq(recv.cap.atk, 25, "M-L2 ATK 25")
+	eq(recv.cap.skills[4], "sig_atk", "공격형 시그니처 그대로")
+	eq(Data.archOf(recv.cap), "atk", "archOf → 그 종의 아키타입")
+	-- 공격 포획 실패 반동 = 탐색 말
+	local en2 = freshPlay(1110)
+	local s2 = en2:rosterMinions(0)[1]
+	local r2 = en2:capReceivers(0)[1]
+	en2.rand = function()
+		return 0.95
+	end
+	local res = en2:tryCapture(s2, "attack", r2, Data.rosterById("M-G3"))
+	ok(not res.ok, "roll 0.95 → 공격 포획 실패")
+	eq(s2.hp, s2.maxHp - Data.round(s2.maxHp * BAL.captureAtkFailPct), "반동은 탐색 말 HP 25%")
+	ok(r2.cap == nil, "수령 말은 무피해·cap 없음")
+end
+-- 계약 5.1 드래곤: 속성 상대 ×1.3 · 무속성(왕) 중립
+do
+	local en = mkBattle(1111)
+	local B = en.S.battle
+	B.fa.skills[1] = "dragon_breath"
+	B.fa.cds = { 0, 1, 1, 1 }
+	B.fa.powerBuff = true -- 분산 고정으로 결정적 비교
+	ok(Data.atkElOf(B.fa, Data.SKILLS.dragon_breath) == nil, "cls 기술은 판정 속성 nil")
+	local hp0 = B.fd.hp
+	local expect = Data.round(Data.round(Data.slotPow(B.fa, Data.SKILLS.dragon_breath) * 1.2) * 1.3)
+	ok(en:apply(0, { t = "act", k = 1 }), "드래곤 사용")
+	eq(hp0 - B.fd.hp, expect, "속성 상대 ×1.3 (상성표 미적용)")
+	local en2 = mkBattle(1112, "king")
+	local B2 = en2.S.battle
+	ok(B2 ~= nil and B2.fd.element == nil, "왕 본체 상대 (무속성)")
+	B2.fa.skills[1] = "dragon_breath"
+	B2.fa.cds = { 0, 1, 1, 1 }
+	B2.fa.powerBuff = true
+	local hp2 = B2.fd.hp
+	local expect2 = Data.round(Data.slotPow(B2.fa, Data.SKILLS.dragon_breath) * 1.2)
+	ok(en2:apply(0, { t = "act", k = 1 }), "드래곤 vs 왕")
+	eq(hp2 - B2.fd.hp, expect2, "무속성 상대 중립 1.0")
+end
+-- 계약 5.2 마녀: 서로 다른 2효과 100% · 풀 = 실피해 즉시 회복 · 재부여 갱신
+do
+	local seen = { burn = 0, weaken = 0, shock = 0, heal = 0 }
+	local combos = {}
+	for seed = 1, 24 do
+		local en = mkBattle(2000 + seed)
+		local B = en.S.battle
+		B.fa.skills[1] = "witch_prank"
+		B.fa.cds = { 0, 1, 1, 1 }
+		B.fa.hp = 50
+		B.fd.burn = 1 -- 재부여 갱신 확인용
+		local hp0, myHp0 = B.fd.hp, B.fa.hp
+		ok(en:apply(0, { t = "act", k = 1 }), "마녀 사용")
+		local n = 0
+		local key = ""
+		if B.fd.burn == BAL.burnRounds then
+			n += 1
+			seen.burn += 1
+			key ..= "b"
+		end
+		if B.fd.weaken > 0 then
+			n += 1
+			seen.weaken += 1
+			key ..= "w"
+		end
+		if B.fd.shock > 0 then
+			n += 1
+			seen.shock += 1
+			key ..= "s"
+		end
+		if B.fa.hp > myHp0 then
+			n += 1
+			seen.heal += 1
+			key ..= "g"
+			eq(B.fa.hp - myHp0, hp0 - B.fd.hp, "풀 회복 = 실HP 피해 100%")
+		end
+		combos[key] = true
+		ok(n == 2 or (n == 1 and B.fa.hp == myHp0 and B.fd.burn ~= BAL.burnRounds and (B.fd.weaken == 0 or B.fd.shock == 0)), "서로 다른 2효과 (seed " .. seed .. ", " .. key .. ")")
+	end
+	ok(seen.burn > 0 and seen.weaken > 0 and seen.shock > 0 and seen.heal > 0, "4효과 모두 등장")
+	ok(seen.burn > 0, "화상 재부여 시 지속 갱신(2R)")
+end
+-- 계약 5.3 사신: 봉인 게이트 · 보호막 무시 즉사 · 폴백
+do
+	local en = mkBattle(1113)
+	local B = en.S.battle
+	B.fa.skills[2] = "reaper_scythe"
+	B.fa.cds = { 1, 0, 1, 1 }
+	ok(not en:slotUsable(B.fa, 2, "A"), "R1 봉인")
+	ok(not en:apply(0, { t = "act", k = 2 }), "봉인 슬롯 사용 → 거부")
+	ok(en:apply(0, { t = "act", k = "basic" }), "봉인·쿨뿐이면 기본 공격 폴백 가능")
+	-- 6라운드·열세·보호막
+	local en2 = mkBattle(1114)
+	local B2 = en2.S.battle
+	B2.fa.skills[2] = "reaper_scythe"
+	B2.fa.cds = { 0, 0, 0, 0 }
+	B2.round = 6
+	B2.phase = 0
+	B2.fa.hp = 50
+	B2.fd.hp = 60
+	B2.fd.shield = 40
+	eq(en2:actorOfPhase(), "D", "6라운드는 방어자 선공")
+	B2.round = 5
+	B2.fa.hp = 60 -- 동률 → 불가
+	B2.fd.hp = 60
+	ok(en2:reaperWhy("A") ~= nil, "5라운드 봉인")
+	B2.round = 7
+	ok(en2:reaperWhy("A") ~= nil, "HP 비율 동률 → 불가")
+	B2.fa.hp = 50
+	ok(en2:reaperWhy("A") == nil, "7라운드·열세 → 가능")
+	eq(en2:actorOfPhase(), "A", "7라운드 공격자 선공")
+	ok(en2:apply(0, { t = "act", k = 2 }), "사신 발동")
+	ok(en2.S.battle == nil, "즉사로 전투 종료")
+	eq(en2.S.metrics.attackerWins, 1, "공격자 승")
+	ok(B2.fd.hp == 0 and B2.fd.shield == 0, "보호막째 즉사")
+end
+-- #129: 탐색 완료 후 턴 종료 — 단순 획득은 확인 없이 종료, recruit 는 선택이 끝나야 종료
+do
+	local en = freshPlay(1115)
+	local m = en:rosterMinions(0)[1]
+	local evG, evR
+	for _, ev in en.S.events do
+		if ev.r >= 9 and ev.kind == "itemGift" then
+			evG = ev
+		elseif ev.r >= 9 and ev.kind == "recruit" then
+			evR = ev
+		end
+	end
+	-- 다른 모든 P1 말을 판에서 멀리 (선택 전투 없음)
+	for _, p in en:alivePieces() do
+		if p.owner == 0 and p ~= m then
+			p.placed = false
+		end
+	end
+	m.r, m.c = evG.r, evG.c
+	en.S.traces[0][evG.r .. "_" .. evG.c] = true
+	en.S.current = 0
+	en.S.mainUsed = false
+	ok(en:apply(0, { t = "search", id = m.id }), "선물 탐색")
+	eq(en.S.pkgs[0].itemGift, 1, "패키지 +1")
+	eq(en.S.current, 1, "단순 획득 → 추가 확인 없이 턴 종료")
+	-- recruit: 선택이 끝날 때까지 종료하지 않는다
+	local en2 = freshPlay(1116)
+	local m2 = en2:rosterMinions(0)[1]
+	local ev2
+	for _, ev in en2.S.events do
+		if ev.r >= 9 and ev.kind == "recruit" then
+			ev2 = ev
+		end
+	end
+	for _, p in en2:alivePieces() do
+		if p.owner == 0 and p ~= m2 then
+			p.placed = false
+		end
+	end
+	m2.r, m2.c = ev2.r, ev2.c
+	en2.S.traces[0][ev2.r .. "_" .. ev2.c] = true
+	en2.S.current = 0
+	en2.S.mainUsed = false
+	ok(en2:apply(0, { t = "search", id = m2.id }), "recruit 탐색")
+	ok(en2.S.pending ~= nil and en2.S.pending.kind == "recruit", "recruit 선택 대기")
+	eq(en2.S.current, 0, "선택 중에는 턴 유지")
+	ok(not en2:apply(0, { t = "endTurn" }), "선택 중 턴 종료 불가")
+	ok(en2:apply(0, { t = "recruitKeep" }), "포기")
+	eq(en2.S.current, 1, "선택 후 정확히 한 번 종료")
+end
+-- AI: 새 규칙 수용 — recruit 계획·패키지 사용이 합법이고 AI 대 AI 가 완주한다
+do
+	local en = freshPlay(1117)
+	local plan = Ai.recruitPlan(en, 0)
+	ok(plan ~= nil and plan.skill == "dragon_breath" and plan.slot >= 1 and plan.slot <= 4, "AI 교체 계획 (드래곤 우선·합법 슬롯)")
+	local done, over = 0, 0
+	for seed = 1, 6 do
+		local g = aiGame(seed * 1301 + 7, (seed % 2 == 0) and "dan5" or "grade5", "grade5")
+		if g.S.phase == "over" then
+			over += 1
+		end
+		done += 1
+	end
+	ok(done == 6, "AI 대전 6판 진행")
+	ok(over >= 4, "AI 대전 대부분 종료 (" .. over .. "/6)")
 end
 
 --==================================================================

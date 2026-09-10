@@ -1156,11 +1156,11 @@ end
 
 local STATUS_KEY = { fire = "burn", water = "weaken", lightning = "shock" }
 
-local function usableSlots(f)
+local function usableSlots(en, f, side) -- #121 계약 5.3: 쿨뿐 아니라 사신 봉인도 불법 — 합법 슬롯만
 	local out = {}
 	if f.skills then
 		for i = 1, 4 do
-			if f.cds[i] == 0 then
+			if en:slotUsable(f, i, side) then
 				table.insert(out, { i = i, sk = SKILLS[f.skills[i]] })
 			end
 		end
@@ -1189,19 +1189,61 @@ local function hasStatus(f)
 	return f.burn > 0 or f.weaken > 0 or f.shock > 0
 end
 
+-- #121 계약 2.2·3·9: AI 전투 중 패키지 사용 — 무료 보너스 행동. 재고가 있고 아직 안 썼을 때 한 번만 전진 (코어가 재고를 줄여 루프 없음). 난수 미소비
+local function aiPkgAction(en, side, x)
+	local S = en.S
+	local B, f, opp, ownerP = x.B, x.f, x.opp, x.ownerP
+	local pk = S.pkgs and S.pkgs[ownerP] or nil
+	if not pk then
+		return nil
+	end
+	local used = (side == "A") and B.buffA or B.buffD
+	if pk.battleBuff > 0 and not used then -- 1) 전투 버프 — 한 전투 1개. 시간은 R1 에만
+		local vipBody = isVip(x.myPc) and f == x.myPc
+		local losing = f.hp / f.maxHp < opp.hp / opp.maxHp
+		local key = "power"
+		if B.round == 1 and losing and vipBody then
+			key = "time"
+		elseif vipBody and f.hp < f.maxHp * 0.5 then
+			key = "escape"
+		end
+		if key == "time" and B.round ~= 1 then
+			key = "power"
+		end
+		return { t = "buff", kind = key }
+	end
+	if pk.itemGift > 0 then -- 2) 아이템 선물 개봉 — 지금 쓸모 있는 자원
+		local usable = usableSlots(en, f, side)
+		local want = "potion"
+		if hasStatus(f) then
+			want = "cure"
+		elseif f.skills and #usable == 0 then
+			want = "cool"
+		elseif f.hp > f.maxHp * 0.7 and opp.hp < opp.maxHp * 0.4 and not S.reserve[ownerP] then
+			want = "ball"
+		end
+		return { t = "gift", pick = want }
+	end
+	return nil
+end
+
 -- 5급 전투 행동 (T6 프로파일·확률 혼합)
 local function aiBattleAction(en, side)
 	local S = en.S
 	local x = battleCtx(en, side)
 	local f, opp, ownerP = x.f, x.opp, x.ownerP
 	local prof, caut = aiProf(en, ownerP), aiCaution(en, ownerP)
-	-- 보너스 아이템 — 신중할수록 일찍 회복
-	if not x.itemRound and x.usedItems < BAL.itemPerBattle then
+	local pkgA = aiPkgAction(en, side, x) -- #121: 무료 패키지 개봉·버프 먼저
+	if pkgA then
+		return pkgA
+	end
+	-- 보너스 아이템 — 신중할수록 일찍 회복 (#121 계약 2.3: 라운드 1회만 — 전투 2회·연속 동일 제한 제거)
+	if not x.itemRound then
 		local inv = S.inv[ownerP]
 		local use = nil
-		if f.hp < f.maxHp * (0.25 + 0.15 * caut) and table.find(inv, "potion") and x.lastItem ~= "potion" then
+		if f.hp < f.maxHp * (0.25 + 0.15 * caut) and table.find(inv, "potion") then
 			use = table.find(inv, "potion")
-		elseif (f.burn > 0 or f.weaken > 0) and table.find(inv, "cure") and x.lastItem ~= "cure" then
+		elseif (f.burn > 0 or f.weaken > 0) and table.find(inv, "cure") then
 			use = table.find(inv, "cure")
 		end
 		if use then
@@ -1213,8 +1255,8 @@ local function aiBattleAction(en, side)
 		and en:rand() < 0.4 + 0.4 * prof.capture then
 		return { t = "ball" }
 	end
-	-- #13 도망: 동료·왕 본체 또는 열세 전투원
-	if f.hp < f.maxHp * 0.5 then
+	-- #13 도망: 동료·왕 본체 또는 열세 전투원 (#121 계약 3.4: 도망의 수호자로 HP 조건 해제)
+	if f.hp < f.maxHp * 0.5 or f.fleeFree then
 		local vipBody = isVip(x.myPc) and f == x.myPc
 		local losing = f.hp / f.maxHp < opp.hp / opp.maxHp - 0.15
 		if (vipBody or losing) and en:rand() < (vipBody and 0.5 or 0.25) * caut then
@@ -1224,7 +1266,7 @@ local function aiBattleAction(en, side)
 	if not f.skills then
 		return { t = "act", k = "basic" }
 	end
-	local usable = usableSlots(f)
+	local usable = usableSlots(en, f, side)
 	if #usable == 0 then
 		return { t = "act", k = "basic" }
 	end
@@ -1312,7 +1354,7 @@ local function aiBattleActionStrong(en, side)
 	local oDis = opp.element and f.element and BEATS[f.element] == opp.element
 	local oppEst = (opp.atk or 16) * (opp.skills and 1.18 or 1) * (oAdv and BAL.advMult or oDis and BAL.disMult or 1)
 		* ((opp.weaken > 0) and (1 - BAL.weakenPct) or 1) * ((f.dmgCut > 0) and (1 - f.dmgCut) or 1)
-	local usable = usableSlots(f)
+	local usable = usableSlots(en, f, side)
 	local function dmgOf(sk)
 		return (sk and Data.slotPow(f, sk) or f.atk) * multOf(Data.atkElOf(f, sk)) * ((f.focusCharge and sk and sk.kind == "attack") and 1.2 or 1)
 	end
@@ -1326,15 +1368,19 @@ local function aiBattleActionStrong(en, side)
 	local toKillMe = math.ceil(math.max(1, f.hp) / math.max(1, oppEst))
 	local toKillOpp = math.ceil((opp.hp + opp.shield) / math.max(1, bestDmg))
 	local losing = toKillMe < toKillOpp
-	-- 아이템: 사망 위기면 회복약, 상태이상이면 해독제, 전 슬롯 쿨이면 쿨링수
-	if not x.itemRound and x.usedItems < BAL.itemPerBattle then
+	local pkgA = aiPkgAction(en, side, x) -- #121: 무료 패키지 개봉·버프 우선
+	if pkgA then
+		return pkgA
+	end
+	-- 아이템: 사망 위기면 회복약, 상태이상이면 해독제, 전 슬롯 쿨이면 쿨링수 (#121 계약 2.3: 라운드 1회만)
+	if not x.itemRound then
 		local inv = S.inv[ownerP]
 		local use = nil
-		if not killNow and f.hp <= oppEst * 1.25 and table.find(inv, "potion") and x.lastItem ~= "potion" then
+		if not killNow and f.hp <= oppEst * 1.25 and table.find(inv, "potion") then
 			use = table.find(inv, "potion")
-		elseif hasStatus(f) and table.find(inv, "cure") and x.lastItem ~= "cure" and toKillOpp > 1 then
+		elseif hasStatus(f) and table.find(inv, "cure") and toKillOpp > 1 then
 			use = table.find(inv, "cure")
-		elseif #usable == 0 and f.skills and table.find(inv, "cool") and x.lastItem ~= "cool" then
+		elseif #usable == 0 and f.skills and table.find(inv, "cool") then
 			use = table.find(inv, "cool")
 		end
 		if use then
@@ -1346,8 +1392,8 @@ local function aiBattleActionStrong(en, side)
 		and (not killNow or f.hp > f.maxHp * 0.6) then
 		return { t = "ball" }
 	end
-	-- 도망
-	if f.hp < f.maxHp * 0.5 and not killNow then
+	-- 도망 (#121 계약 3.4: 도망의 수호자로 HP 조건이 풀렸으면 그 경로도 본다)
+	if (f.hp < f.maxHp * 0.5 or f.fleeFree) and not killNow then
 		local vipBody = isVip(x.myPc) and f == x.myPc
 		if (vipBody and (losing or toKillMe <= 1)) or (losing and toKillMe <= 2) then
 			return { t = "flee" }
@@ -1456,6 +1502,56 @@ local function aiCaptureMode(en, p)
 	end
 	return nil
 end
+
+-- #121 계약 4.2·9: AI 기술 교체 계획 — 4슬롯 어디든, 합법 선택만 (전부 자기 말 정보 · 난수 미소비)
+-- 대상: 최초 6명 중 살아 있고 그 기술이 없는 말, HP 비율 높은 말 우선 · 기술: 드래곤 > 마녀 > 사신 · 슬롯: 위력 최저 공격기, 아니면 쿨 최장 보조기
+local function aiRecruitPlan(en, me)
+	for _, sid in Data.NEW_SKILLS do
+		local cands = {}
+		for _, m in en:rosterMinions(me) do
+			if m.alive and m.placed and m.skills and not table.find(m.skills, sid) then
+				table.insert(cands, m)
+			end
+		end
+		if #cands > 0 then
+			table.sort(cands, function(a, b)
+				local ra, rb = a.hp / a.maxHp, b.hp / b.maxHp
+				if ra ~= rb then
+					return ra > rb
+				end
+				return a.id < b.id
+			end)
+			local m = cands[1]
+			local pow = SKILLS[sid].pow or 0
+			local slot, worst = nil, math.huge
+			for i = 1, 4 do
+				local sk = SKILLS[m.skills[i]]
+				if sk and sk.kind == "attack" and (sk.pow or 0) < worst then
+					worst = sk.pow or 0
+					slot = i
+				end
+			end
+			if not slot or (pow > 0 and pow < worst) then
+				local alt, longest = nil, -1
+				for i = 1, 4 do
+					local sk = SKILLS[m.skills[i]]
+					if sk and sk.kind ~= "attack" and sk.cd > longest then
+						longest = sk.cd
+						alt = i
+					end
+				end
+				if alt then
+					slot = alt
+				end
+			end
+			if slot then
+				return { skill = sid, targetId = m.id, slot = slot }
+			end
+		end
+	end
+	return nil
+end
+Ai.recruitPlan = aiRecruitPlan
 
 -- #114 도망 교환: 폭탄>함정>하수인>동료>왕 순, 동순위는 더 후방 (난수 미소비)
 local FLEE_PRI = { bomb = 0, trap = 1, minion = 2, ally = 3, king = 4 }
@@ -1749,26 +1845,28 @@ function Ai.act(en, me)
 				ok = tryApply(en, me, { t = "vipPick", use = "body" })
 			end
 			return ok, "🤖 AI 출전 선택"
-		elseif pd.kind == "capture" then
+		elseif pd.kind == "recruit" then -- #121 계약 4·6·9: 포획(수령 말·방법) vs 기술 교체(직접 선택) vs 포기 — 사람과 같은 apply 경로
 			local p = en:pieceById(pd.pieceId)
-			local mode = p and aiCaptureMode(en, p) or nil
-			if mode then
-				local ok = tryApply(en, me, { t = "capTry", mode = mode })
-				if ok then
+			local recv = en:capReceivers(me)
+			local mode = (#recv > 0 and p) and aiCaptureMode(en, p) or nil
+			local plan = aiRecruitPlan(en, me)
+			local prof = aiProf(en, me)
+			local wantCap = mode ~= nil and (plan == nil or en:rand() < 0.35 + 0.35 * prof.capture) -- JS 단락 평가와 같은 rand 소비
+			if wantCap then
+				local idx = 1
+				for i, x in recv do -- 왕보다 동료에게 먼저 (왕 위험 분산)
+					if x.type == "ally" and recv[idx].type ~= "ally" then
+						idx = i
+					end
+				end
+				if tryApply(en, me, { t = "capTry", mode = mode, recvId = recv[idx].id }) then
 					return true, "🤖 AI 포획 시도"
 				end
 			end
-			return tryApply(en, me, { t = "capSkip" }), "🤖 AI 포획 포기"
-		elseif pd.kind == "recruit" then
-			local p = en:pieceById(pd.pieceId)
-			local slot = (p and p.skills) and aiRecruitSlot(p, pd.alt) or nil
-			if slot then
-				local ok = tryApply(en, me, { t = "recruitSwap", slot = slot })
-				if ok then
-					return true, "🤖 AI 기술 교체"
-				end
+			if plan and tryApply(en, me, { t = "recruitSwap", skill = plan.skill, targetId = plan.targetId, slot = plan.slot }) then
+				return true, "🤖 AI 기술 교체"
 			end
-			return tryApply(en, me, { t = "recruitKeep" }), "🤖 AI 기술 유지"
+			return tryApply(en, me, { t = "recruitKeep" }), "🤖 AI 포기"
 		end
 		return false, "알 수 없는 대기 상태"
 	end
@@ -1791,7 +1889,7 @@ function Ai.act(en, me)
 		end
 		-- 폴백: 준비된 첫 슬롯 → 기본 공격
 		local f = (side == "A") and S.battle.fa or S.battle.fd
-		for _, u in usableSlots(f) do
+		for _, u in usableSlots(en, f, side) do
 			if tryApply(en, me, { t = "act", k = u.i }) then
 				return true, "🤖 AI 전투 행동"
 			end
