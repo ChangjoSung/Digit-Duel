@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.9"
+local CLIENT_VERSION = "0.5.0-p4.1"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -138,6 +138,7 @@ local MEMO_OPTS = {
 	{ key = "trap", emoji = "🪤", ko = "함정" },
 }
 local memos = {} -- [pieceId] = key
+local myStats = nil -- Phase 4 전적 (서버 DataStore 에서 받아 표시만 한다)
 local memoMode = false -- 메모 모드: 적 말을 클릭하면 공격이 아니라 메모 선택
 local memoPick = nil -- 메모 선택 중인 말 id
 local function memoOpt(key)
@@ -504,6 +505,32 @@ end
 -- 서버 로그 한 줄 → 배너 (규칙 문구를 그대로 쓴다). 판정은 공유 모듈 Banner (헤드리스 테스트 [12] 대상)
 local bannerFromLog = Banner.fromLog
 
+-- 📜 게임 기록 창 — 사이드 패널의 최근 14줄 말고 **전체 기록**을 스크롤해서 본다 (내 화면 전용)
+local logWin = mk("Frame", {
+	Size = UDim2.new(0, 560, 0, 420), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
+	BackgroundColor3 = Color3.fromRGB(24, 27, 37), BorderSizePixel = 0, Visible = false, ZIndex = 12,
+}, gui)
+bgImage(logWin, "panel_modal", "panel", 1)
+autoFit(logWin, 560, 420)
+mk("TextLabel", {
+	Text = "📜 게임 기록", Size = UDim2.new(1, -120, 0, 24), Position = UDim2.new(0, 14, 0, 10), ZIndex = 12,
+	BackgroundTransparency = 1, TextSize = 15, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(232, 236, 245),
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, logWin)
+local logScroll = mk("ScrollingFrame", {
+	Size = UDim2.new(1, -28, 1, -84), Position = UDim2.new(0, 14, 0, 38), ZIndex = 12,
+	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.25, BorderSizePixel = 0,
+	CanvasSize = UDim2.new(0, 0, 0, 0), ScrollBarThickness = 8, ScrollingDirection = Enum.ScrollingDirection.Y,
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+}, logWin)
+local logText = mk("TextLabel", {
+	Text = "", Size = UDim2.new(1, -12, 0, 0), Position = UDim2.new(0, 6, 0, 4), ZIndex = 13,
+	AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
+	TextColor3 = Color3.fromRGB(200, 206, 220), TextXAlignment = Enum.TextXAlignment.Left,
+	TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
+}, logScroll)
+local logWinBtns = mk("Frame", { Size = UDim2.new(1, -28, 0, 30), Position = UDim2.new(0, 14, 1, -40), BackgroundTransparency = 1, ZIndex = 12 }, logWin)
+
 -- #11·#36 추측 메모 선택 팝업 (내 화면 전용 — 서버로 아무것도 보내지 않는다)
 local memoFrame = mk("Frame", {
 	Size = UDim2.new(0, 300, 0, 246), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -669,6 +696,21 @@ local recruitBtns = mk("Frame", { Size = UDim2.new(1, -28, 0, 268), Position = U
 -- 헬퍼
 --==================================================================
 
+local logWinOpen = false
+function refreshLogWin()
+	local n = #logLines
+	local lines = {}
+	for i = 1, n do
+		table.insert(lines, ("%3d. %s"):format(i, logLines[i]))
+	end
+	logText.Text = (n > 0) and table.concat(lines, "\n") or "아직 기록이 없습니다."
+	task.defer(function() -- 최신 줄로 내려 준다
+		if logWinOpen then
+			logScroll.CanvasPosition = Vector2.new(0, math.max(0, logScroll.AbsoluteCanvasSize.Y))
+		end
+	end)
+end
+
 local function send(a)
 	reAction:FireServer(a)
 end
@@ -682,10 +724,17 @@ winExit.ZIndex = 3
 
 local function addLog(text)
 	table.insert(logLines, text)
-	while #logLines > 14 do
+	while #logLines > 300 do -- 전체 기록은 [📜 기록] 창에서 본다 (사이드 패널은 최근 14줄만)
 		table.remove(logLines, 1)
 	end
-	logBox.Text = table.concat(logLines, "\n")
+	local tail = {}
+	for i = math.max(1, #logLines - 13), #logLines do
+		table.insert(tail, logLines[i])
+	end
+	logBox.Text = table.concat(tail, "\n")
+	if logWinOpen then
+		refreshLogWin()
+	end
 end
 
 local function mySide()
@@ -1523,6 +1572,22 @@ end
 -- 로비 상태 표시
 --==================================================================
 
+local function setLogWin(on)
+	logWinOpen = on
+	logWin.Visible = on
+	if on then
+		refreshLogWin()
+	end
+end
+smallBtn(logWinBtns, 0, 0, 100, "닫기", function()
+	setLogWin(false)
+end, "primary")
+mk("TextLabel", {
+	Text = "가장 최근 300줄까지 보관합니다 (내 화면 전용)", Size = UDim2.new(1, -110, 1, 0), Position = UDim2.new(0, 108, 0, 0),
+	BackgroundTransparency = 1, TextSize = 11, Font = Enum.Font.Gotham, TextColor3 = Color3.fromRGB(154, 163, 184),
+	TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 12,
+}, logWinBtns)
+
 local function closeMemo()
 	memoPick = nil
 	memoFrame.Visible = false
@@ -1599,6 +1664,7 @@ local function renderLobby()
 	end
 	if not tableInfo then
 		hudLabel.Text = "🪑 테이블 의자 앞에서 [E] 앉기 → 둘이 앉으면 [F] 게임 시작 · 혼자면 [B] 5급 봇 / [N] 5단 봇"
+			.. (myStats and ("\n🏅 내 전적: " .. myStats.line) or "")
 		setupPanel.Visible = false
 		closeDetail()
 		if not view then
@@ -1812,6 +1878,9 @@ local function renderButtons()
 			memoPick = nil
 			render()
 		end, memoMode and "primary" or "default")
+		smallBtn(btnRow, 136, 32, 100, "📜 기록", function()
+			setLogWin(true)
+		end)
 		return
 	end
 	local lg = legalOf(selectedId)
@@ -1842,6 +1911,9 @@ local function renderButtons()
 		memoPick = nil
 		render()
 	end, memoMode and "primary" or "default")
+	smallBtn(btnRow, 0, 64, 100, "📜 기록", function()
+		setLogWin(true)
+	end)
 end
 
 -- #121 계약 4·6 탐색 보상 선택 창 — 단계별로 다시 그린다 (확정 전에는 서버에 아무것도 보내지 않는다)
@@ -2469,6 +2541,16 @@ reState.OnClientEvent:Connect(function(msg)
 		else
 			safe(renderLobby, "renderLobby(left)")
 		end
+		return
+	elseif msg.t == "stats" then -- Phase 4 전적 (서버가 접속 시·대전 종료 시 보낸다)
+		myStats = msg
+		safe(function()
+			if view then
+				render()
+			else
+				renderLobby()
+			end
+		end, "render(stats)")
 		return
 	elseif msg.t == "reject" then
 		addLog("⛔ " .. (msg.reason or "거부됨"))
