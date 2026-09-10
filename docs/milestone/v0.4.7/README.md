@@ -28,7 +28,7 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 
 ## 착수한 범위 — #121 · #125 · #129
 
-2026-09-09 CJ가 다섯 묶음을 승인하고 **"직접 선택으로 최종 진행. 구현 시작"**을 명시해 세 Issue를 함께 착수했다. 하나의 납품 목표이므로 [#121](https://github.com/ChangjoSung/Digit-Duel/issues/121)을 기준 Issue로 두고 통합 PR 1개로 관리한다. **제품 구현과 튜토리얼 갱신을 마쳤으며 CJ 플레이 QA와 출시는 남아 있다.** 진행 상태는 각 Issue와 통합 PR이 원본이다.
+2026-09-09 CJ가 다섯 묶음을 승인하고 **"직접 선택으로 최종 진행. 구현 시작"**을 명시해 세 Issue를 함께 착수했다. 하나의 납품 목표이므로 [#121](https://github.com/ChangjoSung/Digit-Duel/issues/121)을 기준 Issue로 두고 통합 PR 1개로 관리했다. **통합 PR143이 `dev`(`2b47a23`)에 병합되고 2026-09-10 CJ 플레이 QA PASS를 받아 세 Issue를 CLOSED로 종결했다.** 다만 **릴리스는 아직 없다** — 정식 출시본은 여전히 v0.4.5다. 진행 상태는 각 Issue와 통합 PR이 원본이다.
 
 | Issue | 제목 | 소관 | 계약 절 |
 |---|---|---|---|
@@ -47,7 +47,9 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | Venus | [v0.4.7 게임플레이 계약](issues/121/Venus/gameplay-spec.md) — 이벤트 배치·패키지 회계·버프 3종·기술 교체·신규 공용 기술 3종·숲 포획·탐색 종료·연출 템포·온라인/AI | 계약 확정 · PD 해석 정정 2건 반영 |
 | Mars | [통합 구현 보고](issues/121/Mars/report.md) — 구현 범위·변경 파일·검사·롤백 | 제품·18종 회귀·브라우저·튜토리얼 촬영·보고 완료 |
 | Saturn | [독립 QA 보고](issues/121/Saturn/report.md) | PASS · 제품 결함 6건 해소, 코드·문서·증빙 검수 완료 |
-| Mercury | [통합 기록](issues/121/Mercury/report.md) | 역할 보고 취합 · PR143 · CJ 플레이 QA 대기 |
+| Mercury | [통합 기록](issues/121/Mercury/report.md) | 역할 보고 취합 · PR143 dev 병합 · CJ QA PASS 후 세 Issue CLOSED |
+
+위 표의 각 보고서는 **작성 당시의 기록**이며, 종결 사실을 이유로 본문을 고치지 않는다.
 
 진행 상태는 다음과 같다. 승인 범위의 개발 검증과 CJ 플레이 QA·출시를 구분한다.
 
@@ -57,11 +59,45 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | 게임 안 튜토리얼 10단계·상황 도움말 | 새 탐색·기술·아이템/버프 규칙으로 갱신 완료 |
 | 새 화면 캡처·manifest | [튜토리얼 10장 기록](issues/121/Mars/artifacts/capture-manifest.json) · [브라우저 검증](issues/121/Mars/artifacts/v047-browser-report.json) · [README 연결](../../../README.md#게임-플레이-사진) |
 | Saturn 독립 QA | PASS — 검수 HEAD `c6b0162`, 후속 변경은 QA 기록·상태·링크 메타데이터 |
-| CJ 플레이 QA | 대기 — 세 Issue OPEN 유지 |
-| 통합 PR·CI | [PR143](https://github.com/ChangjoSung/Digit-Duel/pull/143) — 최종 head의 필수 5개 검사·dev squash 결과가 원본 |
+| CJ 플레이 QA | **PASS (2026-09-10)** — 세 Issue CLOSED |
+| 통합 PR·CI | [PR143](https://github.com/ChangjoSung/Digit-Duel/pull/143) — `dev` 병합 결과 `2b47a23`가 원본 |
 | 릴리스 | 미출시 — 정식 v0.4.5 유지 |
 
 사용자용 안내는 [v0.4.7 릴리스 노트(개발 중·미출시)](../../releases/v0.4.7.md)에 있다. **현재 정식 출시본은 여전히 [v0.4.5](../../releases/v0.4.5.md)이며 플레이 기준 규칙도 v0.4.5다.**
+
+## 이어서 착수한 범위 — #146 · #131 · #128 · #130
+
+2026-09-10 CJ가 도망 재설계·행동 없음 처리·텔레포트 제외·보호막 합산·튜토리얼 표시 검증을 승인해 네 Issue를 함께 착수했다. 하나의 납품 목표이므로 [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146)을 기준 Issue로 두고 통합 PR 1개로 관리한다. **제품 코어·헤드리스 회귀는 Saturn PASS, 최종 Chrome 검사는 81/0이다.** 미디어·문서의 최종 검수·CI·dev 통합·CJ 플레이 QA는 별도 게이트이며 v0.4.7은 아직 미출시다.
+
+| Issue | 제목 | 소관 | 계약 절 |
+|---|---|---|---|
+| [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146) | 도망 재설계 · 쓸 수 있는 행동이 없을 때의 처리 | Venus(규격) · Mars(구현) | 1~2 |
+| [#131](https://github.com/ChangjoSung/Digit-Duel/issues/131) | 함정에 걸린 하수인의 텔레포트 선택 차단·안내 | Mars | 3 |
+| [#130](https://github.com/ChangjoSung/Digit-Duel/issues/130) | 연속 보호막 효과가 합산되도록 규칙 변경 | Mars | 4 |
+| [#128](https://github.com/ChangjoSung/Digit-Duel/issues/128) | 최초 튜토리얼 표시를 PC·브라우저별로 검증 및 수정 | Mars | 5 |
+
+주요 계약: 도망은 **HP 무관 · 기본 성공률 30%**이고 실패해도 **상대의 추가 반격이 없다**(자기 전투 행동 1회 소모, 상대는 정상 차례) · **도망의 수호자**는 그 배틀 동안 성공률을 **70%로 치환**한다(가산 아님, 1회 보장 아님. 플레이어별 한 전투 1개·아이템 라운드 1회와 별도 회계는 #121 그대로) · 기술 4슬롯이 **전부** 쿨·봉인·조건 미충족이면 **기본 공격을 주지 않고** 지정 안내와 명시적 수동 대기만 두되 하나라도 합법이면 예외 없이 정상 커맨드이고 **왕·동료 본체의 기본 공격은 유지**하며 아이템·도망 등은 계속 선택 가능 · **함정에 걸린 말**은 텔레포트 양 끝 선택과 실행이 모두 차단되고 지정 2문구를 쓴다 · 보호막은 **남은 값 + 이번 기술의 기존 부여량**으로 합산하며 **새 상한·지속기간을 만들지 않는다**.
+
+**#128 현재 관측**: Mars가 실제 Chrome을 **독립 `user-data-dir` 두 개**로 띄워 **같은 HTTP origin**으로 확인한 결과, A 완료 후 **B에서 자동 표시**되고 A·B 각각의 재방문은 정상이며 `localhost`와 `127.0.0.1`은 독립이었다. **신고된 증상은 미재현이고 원인은 미확인**이다. 따라서 제품의 `localStorage` 로직은 바꾸지 않고 **회귀 검사와 실브라우저 증빙만** 추가한다. 이는 물리 2PC 검증을 마쳤다는 뜻도, 신고 버그가 해결됐다는 뜻도 아니다. **CJ에 접속 주소·브라우저 환경 정보를 [질문]으로 올려 회신을 기다리는 중**이다.
+
+### 역할별 문서와 현재 상태
+
+| 역할 | 문서 | 상태 |
+|---|---|---|
+| Venus | [v0.4.7 전투 행동 계약](issues/146/Venus/gameplay-spec.md) — 도망·행동 없음 패스·함정 텔레포트·보호막 합산·튜토리얼 독립성 | CJ 승인(2026-09-10) 계약 · 사용자 문서 동기화 완료 |
+| Mars | [구현·검증 보고](issues/146/Mars/report.md) · [브라우저 검증 기록](issues/146/Mars/artifacts/i146-browser-report.json) | 제품·19종 회귀·Chrome81/0·튜토리얼10 촬영 |
+| Saturn | [코어·헤드리스 최종 검수](issues/146/Saturn/core-review.md) · [초기 REVISE](issues/146/Saturn/initial-review.md) | 코어 PASS — 선택8종1062/0·독립63/0, 미디어·문서는 별도 |
+| Mercury | [통합 기록](issues/146/Mercury/report.md) | 승인 계약·검수 근거·통합 상태 취합 |
+
+| 단계 | 상태 |
+|---|---|
+| 제품 구현 (`demo/index.html`) | 검수·촬영 기준 `aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea`, HTML blob `2a9b54c769a58fc5c0db9e913ce4421bec6758e3` |
+| 게임 안 튜토리얼 10단계·상황 도움말 | 도망30%/70%·수동 대기·함정 텔레포트·보호막 합산 반영, 실제 브라우저 확인 |
+| 새 화면 캡처·manifest | [튜토리얼10장·촬영 출처/해시](issues/146/Mars/artifacts/capture-manifest.json), 2224×1636·해시10/10 일치. README의 href/src20참조를 새146촬영본으로 갱신, 이전121자료 보존 |
+| Saturn 독립 QA | 코어·헤드리스 PASS, 최종 미디어·문서 검수 대기 |
+| CI | 대기 |
+| CJ 플레이 QA | 대기 — 네 Issue OPEN 유지 |
+| 릴리스 | 미출시 — 정식 v0.4.5 유지 |
 
 ## 등록된 나머지 범위 (착수 전)
 
@@ -74,11 +110,8 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124) | 동료·왕 Pixel Dot Design 추가 | Earth |
 | [#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) | 전투 승리·패배 연출 강화 및 화면 흐름 연동 | Mars |
 | [#127](https://github.com/ChangjoSung/Digit-Duel/issues/127) | 외부망 운영 전환 분석 — ChatGPT Sites·ngrok 비교 | Jupiter |
-| [#128](https://github.com/ChangjoSung/Digit-Duel/issues/128) | 최초 튜토리얼 표시를 PC·브라우저별로 검증 및 수정 | Mars |
-| [#130](https://github.com/ChangjoSung/Digit-Duel/issues/130) | 연속 보호막 효과가 합산되도록 규칙 변경 | Mars |
-| [#131](https://github.com/ChangjoSung/Digit-Duel/issues/131) | 함정에 걸린 하수인의 텔레포트 선택 차단·안내 | Mars |
 
-위 표는 아직 착수하지 않은 Issue만 남긴 것이다. 착수한 #121 · #125 · #129는 위 절에 있다. 소관은 [CLAUDE.md](../../../CLAUDE.md)의 역할 계약(영역 → 역할)에서 따온 것이며, 실제 배치는 PD 라우팅으로 확정된다. 게임 규칙을 바꾸는 나머지 항목(#119 · #120 · #126 · #130 · #131)은 CJ 승인 전까지 규격이 확정되지 않는다.
+위 표는 아직 착수하지 않은 Issue만 남긴 것이다. 종결한 #121 · #125 · #129와 착수한 #146 · #131 · #128 · #130은 위 두 절에 있다. 소관은 [CLAUDE.md](../../../CLAUDE.md)의 역할 계약(영역 → 역할)에서 따온 것이며, 실제 배치는 PD 라우팅으로 확정된다. 게임 규칙을 바꾸는 나머지 항목(#119 · #120 · #126)은 CJ 승인 전까지 규격이 확정되지 않는다.
 
 **아직 정해지지 않은 것**: `#123`·`#124`가 만들 새 아트 데이터를 v0.4.3의 [`assets/minions/`](../v0.4.3/assets/minions/)에 추가할지, v0.4.7에 새 `assets/`를 열지는 아트 범위가 확정된 뒤에 정한다. 지금 결정할 필요가 없어 미뤄 둔 사항이며 이번 Issue의 승인을 막는 항목이 아니다.
 

@@ -9,7 +9,8 @@
 | 게임 소개·실행 방법 | [프로젝트 README](../README.md) |
 | 출시된 규칙을 쉽게 읽기 | [v0.4.5 규칙 정리본](milestone/v0.4.5/specs/v0.4.5-rules-digest.md) |
 | 출시된 규칙의 세부·예외 | [v0.4.5 게임플레이 계약](milestone/v0.4.5/specs/v0.4.5-gameplay-spec.md) |
-| 개발 중인 탐색·기술·연출 규칙 | [v0.4.7 승인 계약](milestone/v0.4.7/issues/121/Venus/gameplay-spec.md) · [변경 안내](releases/v0.4.7.md) — #121·#125·#129, CJ 플레이 QA 대기 |
+| 개발 중인 탐색·기술·연출 규칙 | [v0.4.7 #121 승인 계약](milestone/v0.4.7/issues/121/Venus/gameplay-spec.md) · [변경 안내](releases/v0.4.7.md) — #121·#125·#129, 2026-09-10 CJ QA PASS·CLOSED, 미출시 |
+| 개발 검증을 마친 전투 행동 규칙 | [v0.4.7 #146 승인 계약](milestone/v0.4.7/issues/146/Venus/gameplay-spec.md) — 도망 30%/버프 70%·행동 없음 수동 대기·함정 텔레포트 차단·보호막 합산·튜토리얼 표시(#146·#131·#130·#128, 제품 코어 PASS·CJ QA 대기·#128 신고 미재현) |
 | 버전별 변경 내용 | [릴리스 노트 목록](releases/README.md) |
 | 구현·QA 기준과 최신 CJ 결정 | [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) |
 | 역할·Git·작업 계약 | [CLAUDE.md](../CLAUDE.md), [권위 문서 등록표](creat2ve/AUTHORITY.md) |
@@ -22,8 +23,8 @@
 
 | 버전 | 범위 | 인덱스 |
 |---|---|---|
-| v0.4.6 | Roblox 포팅 — #118 (진행 중) | [v0.4.6](milestone/v0.4.6/README.md) |
-| v0.4.7 | #121·#125·#129 구현·검수, 나머지 게임 이슈 착수 대기 · Infra #132/#134 완료 | [v0.4.7](milestone/v0.4.7/README.md) |
+| v0.4.6 | Roblox 포팅 — #118 (별도 작업자 진행 중) | [v0.4.6](milestone/v0.4.6/README.md) |
+| v0.4.7 | #121·#125·#129 CJ QA PASS·CLOSED(미출시) · #146·#131·#130 구현·CJ QA 대기 / #128 신고 미재현·검증 기록 · 나머지 게임 이슈 착수 대기 · Infra #132/#134 완료 | [v0.4.7](milestone/v0.4.7/README.md) |
 | v0.4.5 | 턴 행동 정리·문서·튜토리얼 갱신 — #114 | [v0.4.5](milestone/v0.4.5/README.md) |
 | v0.4.4 | 전투 변수·온라인 시점·턴 흐름 — #91~#96 #104~#106 | [v0.4.4](milestone/v0.4.4/README.md) |
 | v0.4.3 | 하수인 아트·말판 아이콘 — #81 #83 #87 #89 | [v0.4.3](milestone/v0.4.3/README.md) |
