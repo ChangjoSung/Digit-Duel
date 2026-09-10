@@ -87,7 +87,7 @@ jobs:
       # visibleTo 은폐가 그대로인 것 · 왕/동료 아트가 로드 확인 뒤에만 뜨고 미공개 말에 정체 값을 만들지 않는 것.
       # 실제 레이아웃·픽셀·타이머는 같은 폴더의 ui_cdp.js 가 보며 브라우저가 필요해 CI 잡에 넣지 않는다.
       - name: 세로 UI·승패 연출·왕/동료 아트 계약 회귀 (#122·#124·#126)
-        run: node demo/test/milestone/v0.4.7/issues/122/issue122_rules.js
+        run: node demo/test/milestone/v0.4.6/issues/122/issue122_rules.js
 
       # #122 CJ QA REVISE (2026-09-10) — 좌상단 뒤로가기와 어두운 배경 계약 (브라우저 없음).
       # 화면별 뒤로가기 표시 · 로비→타이틀 / 배치→로스터(선택 보존) / 결과→로비 · 준비 취소 확인과 [계속 준비하기] 보존 ·
@@ -96,7 +96,7 @@ jobs:
       # location.reload 부재·#128 자동 표시 플래그·저장소 무변경 · :root 팔레트가 이전 게임 값이고 튜토리얼 잠금 블록이 그대로인 것.
       # 실제 픽셀·대비는 같은 폴더의 ui_cdp.js 와 실촬영 증빙이 보며 브라우저가 필요해 CI 잡에 넣지 않는다.
       - name: 뒤로가기·어두운 배경 계약 회귀 (#122 REVISE)
-        run: node demo/test/milestone/v0.4.7/issues/122/back_nav.js
+        run: node demo/test/milestone/v0.4.6/issues/122/back_nav.js
 
       # #125 (v0.4.7 CJ 결정) 연출 시간 단축 계약 — 연출 시간표(BAL.fx) · 같은 연출을 그리는 CSS 애니메이션·바 전환의 동기 ·
       # 실제 타이머로 관측한 1.2초 잠금과 damageFx 안 방어막→HP 2단 여유. 하네스의 가짜 타이머 대신 Node 실 setTimeout 을
@@ -210,12 +210,16 @@ jobs:
       # 이 매니페스트로 로컬 실측 문제 0건이다. 도구 기본값·경고 정책·테스트는 건드리지 않고 CI 인자만 현재 납품본에 맞춘다.
       # #122 (v0.4.7): 세로 UI 개편으로 README 게임 화면 기준이 바뀌어 현재 납품본 매니페스트로 옮긴다.
       # #122 CJ QA REVISE (2026-09-10): 어두운 배경 복원으로 튜토리얼 10장을 **새 소스(21637d1)로 다시 촬영**해
-      # README 참조를 revise-back-dark/tutorial 로 옮겼으므로 매니페스트도 그 납품본으로 바꾼다.
+      # README 참조를 revise-back-dark/tutorial 로 옮겼으므로 매니페스트도 그 납품본으로 바꿨다.
+      # #122 CJ QA REVISE 2차 (2026-09-10, PR#168): 접촉·전투 규칙 개편으로 5·6·7단계 문안이 바뀌어 다시 촬영했고
+      # README 참조가 revise-cjqa-rules/tutorial 로 옮겨갔다. **매니페스트 인자도 함께 옮긴다** —
+      # 옛 매니페스트를 두면 기록된 경로가 README 경로와 겹치지 않아 바이트 대조가 **조용히 건너뛰어진다**
+      # (실패도 WARN 도 없이 가드만 사라진다). PR#168 에서 이 인자를 놓쳤고 #169 에서 교정한다.
       # 앞선 #105·#146·#122(1차) 매니페스트와 그 PNG 는 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
-      - name: README 링크·이미지 오프라인 검증 (v0.4.7 #122 REVISE 매니페스트)
+      - name: README 링크·이미지 오프라인 검증 (#122 REVISE 2차 매니페스트)
         run: >-
           node tools/media/readme_media_capture.js verify --read-only --no-gh --no-render
-          --manifest docs/milestone/v0.4.7/issues/122/Mars/revise-back-dark/tutorial/capture-manifest.json
+          --manifest docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json
 
       # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
       - name: README 도구 READ_ONLY 회귀
@@ -225,7 +229,7 @@ jobs:
   # 이 잡은 **납품된 바이트 그대로**를 대조하므로 러너를 그 바이트를 구운 환경에 맞춘다 —
   # windows-2025 · Python 3.14.3 · Pillow 12.3.0. ubuntu-24.04 + Python 3.12.14 에서는 같은
   # 핀으로도 unchanged=14 mismatch=15 로 실패했다(run 34309177070 / job 102332065379).
-  # 관측·추론과 근거 데이터는 docs/milestone/v0.4.7/issues/132/Mars/report.md 4부 참조.
+  # 관측·추론과 근거 데이터는 docs/milestone/v0.4.6/issues/132/Mars/report.md 4부 참조.
   # 권위 있는 실패 기준은 아래 바이트·매니페스트 대조다 — 자산 재생성·픽셀 비교 하향·skip 로
   # 통과시키지 않는다.
   assets-integrity:

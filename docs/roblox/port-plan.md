@@ -66,7 +66,7 @@
 
 ## v0.4.7 규칙 반영 (#121·#125·#129 — HTML PR #143 → Roblox, 2026-09-10)
 
-CJ 지시 "dev 풀 받고 바뀐 규칙도 전부 적용" 에 따라 [v0.4.7 게임플레이 계약](../milestone/v0.4.7/issues/121/Venus/gameplay-spec.md) 전 항목을 Luau 엔진에 옮겼다. 규칙 수치·판단 순서·난수 소비 위치는 HTML 구현(`demo/index.html` blob 4535791b)과 같다.
+CJ 지시 "dev 풀 받고 바뀐 규칙도 전부 적용" 에 따라 [v0.4.7 게임플레이 계약](../milestone/v0.4.6/issues/121/Venus/gameplay-spec.md) 전 항목을 Luau 엔진에 옮겼다. 규칙 수치·판단 순서·난수 소비 위치는 HTML 구현(`demo/index.html` blob 4535791b)과 같다.
 
 | 계약 | Roblox 구현 | 검증 |
 |---|---|---|
@@ -92,7 +92,7 @@ CJ 지시 "dev 풀 받고 바뀐 규칙도 전부 적용" 에 따라 [v0.4.7 게
 
 ## v0.4.7 후속 규칙 반영 (#146·#131·#130 — HTML PR #152 → Roblox, 2026-09-10)
 
-[#146 게임플레이 계약](../milestone/v0.4.7/issues/146/Venus/gameplay-spec.md) 을 같은 수치·판단 순서로 Luau 에 반영했다.
+[#146 게임플레이 계약](../milestone/v0.4.6/issues/146/Venus/gameplay-spec.md) 을 같은 수치·판단 순서로 Luau 에 반영했다.
 
 | 계약 | Roblox 구현 | 검증 |
 |---|---|---|

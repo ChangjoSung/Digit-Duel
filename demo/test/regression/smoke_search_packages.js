@@ -1,7 +1,7 @@
 /* #121 탐색 패키지·신규 공용 기술·숲 포획 + #129 탐색 완료 턴 종료 — 헤드리스 회귀
    사용: node demo/test/regression/smoke_search_packages.js [demo/index.html]
 
-   계약 원본: docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md (Venus 초안 → PD 채택 → CJ 승인, 2026-09-09)
+   계약 원본: docs/milestone/v0.4.6/issues/121/Venus/gameplay-spec.md (Venus 초안 → PD 채택 → CJ 승인, 2026-09-09)
    이 파일은 구현을 베끼지 않고 **계약 원문의 AC** 를 검사한다. 절 구성은 계약 절 번호를 따른다.
 
      A. 계약 1 — 이벤트 배치: 구역마다 3종 각 1개·전체 6개 · 위치만 무작위 · 난수 소비 결정적 · 옛 6종 보상 폐기
