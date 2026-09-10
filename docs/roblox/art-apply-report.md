@@ -112,3 +112,19 @@ worker_done:
     (3) 로비 메시 축·의자 착석 높이·판 진영 방향(row13=A·파랑) (4) 앉은 시점 카메라 91칸 가독성·클릭 정확도 (5) 폴백(메시/이미지 실패)
     CJ: 실플레이 — 로비 → 착석 → 배치 → 대전 → 종료 → 재대전
 ```
+
+## 3c. AI 봇·보드게임 창 자산 (Earth 2026-09-10 납품 → Mars 적용 2026-09-10)
+
+납품 계약: [`roblox/assets/ai-window-README.md`](../../roblox/assets/ai-window-README.md) · 보고서: [`docs/art/roblox-v0.5.0/earth-ai-window-report.md`](../art/roblox-v0.5.0/earth-ai-window-report.md). 업로드 8건 성공(총 ID 151): Image 7 · Model 1.
+
+| 키 | 적용 위치 | 적용 방식 |
+|---|---|---|
+| `ui_panel_window` | 보드게임 창 `win` 배경 | `bgImage(win, "panel_window", "window", 1)` — 신규 `Art.SLICE.window = {24,40,232,232}` (기존 `panel` 좌표 불변) · 없으면 `panel_side` 폴백 |
+| `action48_exit` | 배치·대전·종료 [나가기] 버튼 | `Art.action("exit") or Art.action("resign")` |
+| `action48_bot` | HUD [🤖 5급 봇]·[🤖 5단 봇] | `Art.action("bot")` |
+| `badge48_ai_grade5` / `badge48_ai_dan5` | 창 제목 옆 24px 배지 · 봇 이름표(BillboardGui) 24px | `Art.badge(...)` — 글자 "5급/5단"은 런타임 텍스트로 병기 (배지에 글자 없음) |
+| `status48_thinking` | 창 상태줄 "🤖 AI 행동 중…" 앞 24px | `Art.status("thinking")` — 정적 1장 (4프레임 시트 미납품) |
+| `lobbymesh_bot` + `lobby_bot_albedo` | 봇 착석 더미 대체 | `placeMesh("bot", seat.CFrame * CFrame.new(0, 0.85, -0.45))` — MeshPart 외접 상자 중심 보정(hip +0.25, bbox 중심 (0,0.6,-0.45)) · `MESH_YAW.bot = 0`(정면 -Z) · 틴트 5급 `#8eb2ff` / 5단 `#ffcf82` (좌석 팀색과 분리) · 로드 실패 시 Part 더미 폴백 |
+
+ImageColor3 흰색·`ResampleMode = Pixelated`·SliceScale 1 로 README 규격 준수. 확인 필요(Studio): 봇 얼굴 방향(-Z, MESH_YAW 0 기준)·창 분리선 위치(x≈302~309)·배지 가독성 24px.
+

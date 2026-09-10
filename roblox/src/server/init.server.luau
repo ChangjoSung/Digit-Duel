@@ -17,7 +17,7 @@ local Config = require(Shared.Config)
 local AIC = Config.AI
 local Lobby = require(script:WaitForChild("Lobby"))
 
-local VERSION = "0.5.0-p3.1"
+local VERSION = "0.5.0-p3.2"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")
@@ -400,7 +400,7 @@ reAction.OnServerEvent:Connect(function(player, a)
 		end
 		local bot = newBot(a.level)
 		ts.players[oppSide] = bot
-		Lobby.setBotSeat(at.id, oppSide, bot.DisplayName)
+		Lobby.setBotSeat(at.id, oppSide, bot.DisplayName, bot.level)
 		ts.setupOpen = true
 		ts.ready = {}
 		botReady(ts)
@@ -420,7 +420,7 @@ reAction.OnServerEvent:Connect(function(player, a)
 		if bot and not ts.session then
 			bot.level = (a.level == "dan5") and "dan5" or "grade5"
 			bot.DisplayName = BOT_NAME[bot.level]
-			Lobby.setBotSeat(at.id, side, bot.DisplayName)
+			Lobby.setBotSeat(at.id, side, bot.DisplayName, bot.level)
 			notifyTable(at.id)
 		end
 		return

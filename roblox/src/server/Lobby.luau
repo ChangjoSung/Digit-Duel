@@ -421,7 +421,8 @@ end
 
 -- 봇 좌석 표시: label 이 있으면 의자 위에 더미(몸통·머리·이름표)를 세우고 앉기 프롬프트를 끈다. nil 이면 제거
 -- (Earth 봇 메시가 오면 placeMesh 로 교체 — docs/roblox/earth-ai-window-request.md)
-function Lobby.setBotSeat(id, side, label)
+local BOT_TINT = { grade5 = Color3.fromRGB(0x8e, 0xb2, 0xff), dan5 = Color3.fromRGB(0xff, 0xcf, 0x82) } -- ai-window-README 예시 색
+function Lobby.setBotSeat(id, side, label, level)
 	local t = tables[id]
 	if not t then
 		return
@@ -436,10 +437,11 @@ function Lobby.setBotSeat(id, side, label)
 	if label then
 		local m = Instance.new("Model")
 		m.Name = "Bot" .. side
-		local tint = (side == "A") and C.seatA or C.seatB
+		local tint = BOT_TINT[level or "grade5"] or BOT_TINT.grade5 -- 난이도 색 (좌석 팀색과 별개 — 배지·텍스트 병기)
 		local head
-		if templates.bot then -- Earth 납품 로봇 메시 (피벗 = 엉덩이 바닥 중앙 → 의자 앉는 면)
-			local mesh = placeMesh("bot", seat.CFrame * CFrame.new(0, MESH_SIZE.bot.Y / 2 + 0.25, 0), m, tint)
+		if templates.bot then
+			-- Earth 납품 로봇 메시: MeshPart 는 외접 상자 중심 기준이라 hip 피벗(좌석 윗면 +0.25)에 상자 중심 오프셋 (0,0.6,-0.45) 을 더한다 (ai-window-README)
+			local mesh = placeMesh("bot", seat.CFrame * CFrame.new(0, 0.85, -0.45), m, tint)
 			head = mesh
 		else -- 임시 더미: 몸통·머리·네온 눈
 			local body = part({ Name = "Body", Size = Vector3.new(1.6, 1.9, 0.9), CFrame = seat.CFrame * CFrame.new(0, 1.2, 0),
@@ -454,13 +456,26 @@ function Lobby.setBotSeat(id, side, label)
 		end
 		local bb = Instance.new("BillboardGui")
 		bb.Name = "Tag"
-		bb.Size = UDim2.new(0, 150, 0, 30)
+		bb.Size = UDim2.new(0, 170, 0, 30)
 		bb.StudsOffset = Vector3.new(0, 1.4, 0)
 		bb.AlwaysOnTop = true
 		bb.MaxDistance = 60
 		bb.Adornee = head
+		local badge = Art.badge and Art.badge((level == "dan5") and "ai_dan5" or "ai_grade5") or nil -- 난이도 배지 (글자는 런타임 텍스트로 병기)
+		if badge then
+			local bi = Instance.new("ImageLabel")
+			bi.Size = UDim2.new(0, 24, 0, 24)
+			bi.Position = UDim2.new(0, 3, 0, 3)
+			bi.BackgroundTransparency = 1
+			bi.Image = badge
+			bi.ScaleType = Enum.ScaleType.Fit
+			bi.ResampleMode = Enum.ResamplerMode.Pixelated
+			bi.ZIndex = 2
+			bi.Parent = bb
+		end
 		local tl = Instance.new("TextLabel")
-		tl.Size = UDim2.fromScale(1, 1)
+		tl.Size = UDim2.new(1, badge and -30 or 0, 1, 0)
+		tl.Position = UDim2.new(0, badge and 30 or 0, 0, 0)
 		tl.BackgroundColor3 = Color3.fromRGB(19, 22, 30)
 		tl.BackgroundTransparency = 0.25
 		tl.BorderSizePixel = 0

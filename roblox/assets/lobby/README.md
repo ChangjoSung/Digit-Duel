@@ -1,5 +1,7 @@
 # [결정] Roblox 로비 P0 — Dark board-game cafe
 
+> 2026-09-10 별도 추가: 앉은 bot.fbx(1.8×3.2×1.8stud,2660tri)와 bot_albedo.png를 manifest 뒤에 추가했다(현재15행). [AI 창·봇 전용 계약](../ai-window-README.md)의 엉덩이 피벗·등급 틴트·축 보정을 따른다. 아래6메시·13행·삼각형 합계는 최초 로비 납품 이력이며 새 봇을 포함하지 않는다.
+
 2026-09-09 · Earth · Ref #118. CJ가 카페 테마와 Blender 내부 아트 제작 명령을 승인한 뒤 제작했다.
 이 폴더는 **자산 납품물**이다. Roblox Studio 업로드·게임 코드 교체·콜리전·카메라 적용은 포함하지 않는다.
 
