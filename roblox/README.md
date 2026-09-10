@@ -92,6 +92,14 @@ luau tests/run.luau
 [luau CLI](https://github.com/luau-lang/luau/releases) (luau-windows.zip) 만 있으면 된다. 검증 범위:
 RNG 골든(JS 대조) · 배치·P2 행 반사 · 이동 규칙 · 접촉 6상황 유닛(폭탄·함정·밀기) · 왕 끝줄 승리 · 전투 완주 · 20시드 무작위 완주(룰 데드락·지표 정합·HP 불변식) · **AI [10]**: 자동 배치 유효성 · 5급/5단 AI 대 AI 24판 완주 · 5급 결정성 · #92 교체 정책.
 
+### UI 레이아웃 정적 검사 (build.bat 이 자동 실행)
+```
+node tools/uicheck.js
+```
+`mk(...)` 로 배치한 창·패널의 사각형을 계산해 **자식이 부모 밖으로 나가는지·형제끼리 겹치는지**를 잡는다.
+동시에 보이지 않는 쌍(배치 패널 ↔ 대전 패널 등)은 스크립트 안 `EXCLUSIVE`, 의도적으로 겹쳐 그리는 2D 셀은 `STACK_PARENTS` 로 제외한다.
+화면 크기가 작으면 `autoFit`(UIScale)이 창을 줄이므로, 검사는 기준 화면 1280×720 에서 한다.
+
 ### Roblox API 정적 검사 (build.bat 이 자동 실행)
 ```
 node tools/rbxcheck.js

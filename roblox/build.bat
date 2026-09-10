@@ -19,6 +19,12 @@ if not errorlevel 1 (
         pause
         exit /b 1
     )
+    node tools\uicheck.js
+    if errorlevel 1 (
+        echo [ERROR] UI layout check failed - overlapping/overflowing frames above.
+        pause
+        exit /b 1
+    )
 )
 
 build\rojo.exe build default.project.json -o build\DigitDual.rbxl

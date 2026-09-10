@@ -17,7 +17,7 @@ local Config = require(Shared.Config)
 local AIC = Config.AI
 local Lobby = require(script:WaitForChild("Lobby"))
 
-local VERSION = "0.5.0-p3.4"
+local VERSION = "0.5.0-p3.5"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")
