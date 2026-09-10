@@ -1,8 +1,15 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #130·#131·#146은 PR152 통합 후 CJ QA PASS로 CLOSED다. [Issue128](https://github.com/ChangjoSung/Digit-Duel/issues/128)의 **매 페이지 로드 튜토리얼 표시**를 PR157로 dev에 통합했고 2026-09-10 CJ QA PASS로 CLOSED다. 최종 CI·dev 통합 상태는 [PR157](https://github.com/ChangjoSung/Digit-Duel/pull/157)의 마지막 head 검사와 병합 기록이 원본이다. 과거 #128 관측 한계와 후속 정리 절차 위반은 보존한다. 정식 v0.4.5, Roblox #118=v0.4.6, 이번 작업=v0.4.7.
+> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). 현재 #122는 **Art Architecture 정적 러프 설계·CJ 시각 검토** 범위이며 실제 UI 구현은 미승인이다. [검토 자료](../milestone/v0.4.7/issues/122/README.md)를 확인한 뒤 후속 CJ Comment로 제작·적용 범위를 정한다. #128·#130·#131·#146은 CJ QA PASS/CLOSED이며 #128 제품은 PR157, 승인 상태 문서는 PR159로 통합했다. 정식 v0.4.5, Roblox #118=v0.4.6, 현재 HTML 계획=v0.4.7(미출시).
 
-## 현재 승인 범위와 상태
+## 현재 검토 범위 — #122
+
+- CJ 요청: 'Art Architecture 설계만 대충 설계만 해서 CJ에게 보여줘. 눈으로 확인해서 괜찮으면 UI 제작해서 적용'. 이번에는 기존 픽셀 하수인과 어울리는 레트로 세로 화면의 정적 시안만 납품한다. 제품·규칙·서버·Roblox·새 캐릭터 아트·승패 연출 구현은 범위 밖이다.
+- `doc/122-art-architecture`의 검토용 초안 PR로 자료를 보관한다. Issue122는 OPEN이며 CJ 디자인 검토가 다음 단계다. 화면 구조가 승인되기 전 제품에 적용하거나 출시하지 않는다.
+- Run `run_9c2ce3f4c7e2`: Earth(Codex) 시안 `task_df76fb9960b8`/`ctx_ed7b84e3a70c`, Venus(Claude) 흐름 분석 `task_e971bc474389`/`ctx_252316492274`. 제품 QA 배정은 없으며 Task 완료·자원 상태는 Orca가 원본이다.
+- 타이틀·로비 복귀/재대전·별도 전투 화면은 새 구조 제안이다. #128의 새 문서/같은 문서 경계, 7×13 보드, 정체 비공개, 핫시트 교대·온라인 대기, 보드와 전투의 종료 구분을 보존한다. UI 크기·색감·배치는 확정 규격이나 반응형 검증 결과가 아니다.
+
+## #128 완료 이력
 
 - #128 후속 승인: URL 새접속·새탭·새로고침·브라우저 재실행 후 새문서·LAN 서버 재시작 후 새접속마다 1단계 표시. 같은 열린 페이지의 새게임·재대전·모드변경·연결복구·탭/보존 페이지 복귀에는 자동 반복하지 않는다. 완료·건너뛰기·Esc·수동 다시보기·기존10단계·접근성·다른 저장값 보존. 계정/서버/브라우저 저장 전체 삭제는 범위가 아니다. GDD13 본문4.13·DL47, [현재 PD 기록](../milestone/v0.4.7/issues/128/Mercury/report.md) 참조.
 - 이번 출발: `fix/128-tutorial-every-load`, 원격 dev `bdce124e73fe82534dd1757deef70976e12a7ef5`(Roblox PR153 포함), 이전 HTML blob `2a9b54c769a58fc5c0db9e913ce4421bec6758e3`. Run `run_3b8c920c6131`, Mars/Venus=Claude·Saturn=Codex READ_ONLY·Mercury=조정/Git/문서. 실제 Task/Dispatch·완료 자원 상태는 Orca가 원본이다.
