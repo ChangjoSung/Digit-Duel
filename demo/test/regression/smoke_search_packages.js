@@ -6,7 +6,7 @@
 
      A. 계약 1 — 이벤트 배치: 구역마다 3종 각 1개·전체 6개 · 위치만 무작위 · 난수 소비 결정적 · 옛 6종 보상 폐기
      B. 계약 2 — 공용 인벤토리: 시작 1/1/1·볼 2 · 보유 상한 없음 · 개봉 취소 무소모 · 개봉은 카운터 미소모
-     C. 계약 3 — 전투 버프 3종: 한 전투 1개 · 힘(분산 상단·난수 소비 불변) · 시간(R1 한정·그 전투만 3R) · 도망(HP 게이트만 해제) · 전투 종료 정리
+     C. 계약 3 — 전투 버프 3종: 한 전투 1개 · 힘(분산 상단·난수 소비 불변) · 시간(R1 한정·그 전투만 3R) · 도망(#146 재계약: 그 전투 성공률 70% 치환) · 전투 종료 정리
      D. 계약 4 — 기술 교체: 3종 직접 선택(난수 0) · 살아 있는 최초 6명 · 4슬롯 어디든 · 중복 금지 · 취소 시 슬롯 불변 · 쿨 승계·공개 기록 초기화
      E. 계약 5 — 신규 3종: 드래곤 ×1.3/무속성 1.0 · 마녀 2효과 100%(rand 1회·갱신·풀 회복 실피해 100%) · 사신 봉인·즉사·폴백
      F. 계약 6·10 — 숲 포획 + 온라인 2인스턴스 락스텝(단일 송신·비소유자 마스킹·양측 동일 상태)
@@ -71,7 +71,7 @@ const has=(X,txt)=>(X.byId("obBtns").children||[]).some(b=>b.textContent===txt);
 /* 시드 고정 후 fn 을 돌려 rand 소비 횟수를 역산 */
 function randConsumed(X,seed,fn,max){ X.setSeed(seed); const seq=[]; for(let i=0;i<(max||14);i++) seq.push(X.rand()); X.setSeed(seed); fn(); const n=X.rand(); const k=seq.indexOf(n); return k; }
 function openBattle(X,a,d){ X.S.battle=null; X.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; a.cd=0; d.cd=0;
-  a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0; a.powerBuff=false; d.powerBuff=false; a.fleeFree=false; d.fleeFree=false;
+  a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0; a.powerBuff=false; d.powerBuff=false; a.fleeBoost=false; d.fleeBoost=false;
   X.TQ.length=0; X.startRounds(a,d,a,d); X.TQ.length=0; }
 const fixed=X=>{ X.BAL.dmgVar=0; X.BAL.statusProb=1; X.BAL.shockProb=1; };
 /* 상태 확률만 1로 고정하고 **피해 분산은 살려 둔다** — 힘의 수호자는 분산 단계를 보는 계약이라 dmgVar 를 0 으로 만들면 검사가 공허해진다 */
@@ -266,17 +266,35 @@ function swapSkill(X,target,skillIdx,slot){
   T.nextPhase(); T.drain(2000);
   ok(T.S.metrics.judged===judged0+1,"C6f 3라운드 종료 시 현행 HP 비율 판정이 돈다 (라운드 수만 다르고 규칙 동일)");
   T.S.battle=null; T.close();
-  // C7 도망: HP 게이트만 해제
+  /* C7 도망의 수호자 — #146 (v0.4.7 CJ 2026-09-10) 으로 계약이 바뀌었다.
+     종전(#121 3.4): "HP 50% 게이트만 해제, 성공률 50% 불변".
+     현행(#146): HP 게이트 자체가 폐지됐고, 이 버프는 **그 전투 동안 성공률을 70% 로 치환**한다 (가산도, 성공 보장도 아니다). */
   const Q7=setup(T); giveSpecies(T,Q7.me,R(T,"M-F1")); giveSpecies(T,Q7.em,R(T,"M-G1"));
   openBattle(T,Q7.me,Q7.em); B=T.S.battle; B.fa.hp=B.fa.maxHp;
   T.battleModal();
-  ok(/50% 미만이어야 합니다/.test(ob(T)),"C7 HP 만피에서는 도망 불가 안내");
-  B.fa.fleeFree=true; T.battleModal();
-  ok(/도망의 수호자/.test(ob(T))&&!/50% 미만이어야 합니다/.test(ob(T)),"C7b 도망의 수호자 적용 시 HP 조건 해제 표시");
-  ok(T.BAL.fleeProb===0.5,"C7c 성공률 50% 는 불변");
+  ok(!/50% 미만이어야 합니다/.test(ob(T))&&/HP 조건 없음/.test(ob(T)),"C7 만피여도 도망 가능 — HP 조건 안내 자체가 없다 (#146)");
+  ok(/성공 30%/.test(ob(T))&&T.BAL.fleeProb===0.3&&T.fleeProbOf(B.fa)===0.3,"C7a 기본 성공률 30% (표기·판정 동일 원천)");
+  B.fa.fleeBoost=true; T.battleModal();
+  ok(/도망의 수호자/.test(ob(T))&&/성공 70%/.test(ob(T)),"C7b 도망의 수호자 적용 시 이 전투 성공률 70% 표기");
+  ok(T.BAL.fleeProbGuard===0.7&&T.fleeProbOf(B.fa)===0.7&&T.fleeProbOf(B.fd)===0.3,"C7c 70% 는 치환이다 — 버프를 쓴 전투원만 바뀌고 상대는 30% 그대로 (가산 +70%p 아님)");
   const tries0=T.S.metrics.fleeTries;
   T.setSeed(2); T.__fleeCore(); T.drain(3000);
-  ok(T.S.metrics.fleeTries===tries0+1,"C7d 만피에서도 도망 시도가 실제로 실행된다 (게이트 해제)");
+  ok(T.S.metrics.fleeTries===tries0+1,"C7d 만피에서도 도망 시도가 실제로 실행된다 (게이트 폐지)");
+  /* C7e 70% 는 **1회 성공 보장이 아니다** — 난수가 0.7 이상이면 실패한다. 경계값을 직접 확인한다 */
+  {
+    const X=load(); fixed(X); X.tutSkip();
+    const Q=setup(X); giveSpecies(X,Q.me,R(X,"M-F1")); giveSpecies(X,Q.em,R(X,"M-G1"));
+    let ok70=0,fail70=0;
+    for(let seed=1;seed<=200&&(ok70<1||fail70<1);seed++){
+      const Y=load(); fixed(Y); Y.tutSkip();
+      const Qy=setup(Y); giveSpecies(Y,Qy.me,R(Y,"M-F1")); giveSpecies(Y,Qy.em,R(Y,"M-G1"));
+      openBattle(Y,Qy.me,Qy.em); const By=Y.S.battle; By.fa.fleeBoost=true; freshModal(Y);
+      Y.setSeed(seed); Y.__fleeCore(); Y.drain(20000);
+      if(Y.S.metrics.fleeOks>0) ok70++; else fail70++;
+      Y.TQ.length=0;
+    }
+    ok(ok70>0&&fail70>0,"C7e 70% 는 확률이다 — 같은 버프에서 성공("+ok70+")과 실패("+fail70+")가 모두 나온다 (1회 성공 보장 아님)");
+  }
   /* C8 전투 종료 정리 — **실제 종료 경로**로 검사한다 (helper 직접 호출로 AC 를 대체하지 않는다).
      계약 3.1: 효과는 현재 전투원·그 전투에만 적용되고 전투가 끝나면 즉시 정리된다. 쓰지 않은 패키지는 보관된다.
      버프 회계의 단일 원천은 전투 인스턴스(B.buffA/B.buffD)이므로 S 에 중복 필드를 두지 않는다 — 그 사실도 함께 고정한다. */
@@ -299,18 +317,18 @@ function swapSkill(X,target,skillIdx,slot){
     // 힘 + (R1 이므로) 시간까지는 한 전투 1개 제한으로 하나만 — 힘을 쓰고 도망 경로만 도망 버프를 쓴다
     const key=label==="도망 성공"?"escape":"power";
     X.__openPkgCore("battleBuff"); click(X,X.BUFFS[key].ko);
-    ok((Bx.buffA===key)&&(key==="power"?Q.me.powerBuff===true:Q.me.fleeFree===true),"C8-"+label+" 전제: 버프 적용됨 ("+key+")");
+    ok((Bx.buffA===key)&&(key==="power"?Q.me.powerBuff===true:Q.me.fleeBoost===true),"C8-"+label+" 전제: 버프 적용됨 ("+key+")");
     ok(X.S.pkgs[0].battleBuff===1,"C8-"+label+" 전제: 쓰지 않은 패키지 1개 보관");
     run(X,Q,Bx);
     ok(X.S.battle===null,"C8-"+label+": 전투가 실제로 끝났다");
-    ok(Q.me.powerBuff===false&&Q.me.fleeFree===false,"C8-"+label+": 전투원 버프 플래그가 모두 정리됐다 (본체 출전이라 말에 남아 있으면 다음 전투로 샌다)");
-    ok(Q.em.powerBuff===false&&Q.em.fleeFree===false,"C8-"+label+": 상대 전투원도 정리됐다");
+    ok(Q.me.powerBuff===false&&Q.me.fleeBoost===false,"C8-"+label+": 전투원 버프 플래그가 모두 정리됐다 (본체 출전이라 말에 남아 있으면 다음 전투로 샌다)");
+    ok(Q.em.powerBuff===false&&Q.em.fleeBoost===false,"C8-"+label+": 상대 전투원도 정리됐다");
     ok(X.S.pkgs[0].battleBuff===1&&X.S.pkgs[0].itemGift===2,"C8-"+label+": **쓰지 않은 패키지 재고는 보존**된다 (버프 1·선물 2)");
     // 같은 말이 다음 전투에 들어가면 버프 없는 상태로 시작한다
     if(Q.me.alive&&Q.em.alive){
       openBattle(X,Q.me,Q.em); const B2=X.S.battle;
       ok(B2.buffA===null&&B2.buffD===null&&B2.maxRounds===null,"C8-"+label+": 새 전투의 버프 회계·라운드 상한이 초기 상태");
-      ok(B2.fa.powerBuff===false&&B2.fa.fleeFree===false,"C8-"+label+": 새 전투 개시 시점에도 플래그 0 (resetBattleTemps)");
+      ok(B2.fa.powerBuff===false&&B2.fa.fleeBoost===false,"C8-"+label+": 새 전투 개시 시점에도 플래그 0 (resetBattleTemps)");
     }
     X.TQ.length=0; X.S.battle=null; X.close();
   }
@@ -332,10 +350,10 @@ function swapSkill(X,target,skillIdx,slot){
   {
     const X=load();
     X.newGame("pvp"); X.S.pkgs[0]={itemGift:5,battleBuff:5};
-    const minion=X.S.pieces.find(x=>x.owner===0&&x.type==="minion"); minion.powerBuff=true; minion.fleeFree=true;
+    const minion=X.S.pieces.find(x=>x.owner===0&&x.type==="minion"); minion.powerBuff=true; minion.fleeBoost=true;
     X.newGame("pvp");
     ok(J(X.S.pkgs)===J([{itemGift:0,battleBuff:0},{itemGift:0,battleBuff:0}]),"C8'' 게임 재시작: 패키지 재고 초기화");
-    ok(X.S.pieces.every(x=>x.powerBuff===false&&x.fleeFree===false),"C8''b 게임 재시작: 모든 말의 버프 플래그 초기화 (새 말 객체)");
+    ok(X.S.pieces.every(x=>x.powerBuff===false&&x.fleeBoost===false),"C8''b 게임 재시작: 모든 말의 버프 플래그 초기화 (새 말 객체)");
     ok(X.S.recruit===undefined||X.S.recruit===null,"C8''c 게임 재시작: 탐색 선택 상태 없음");
   }
   /* ===== C9 계약 9 — 버프 3종의 표시: 현재 전투원 주변 CSS 효과 + 한 전투 안 UI ===== */
@@ -584,17 +602,28 @@ function swapSkill(X,target,skillIdx,slot){
     ok(P.em.alive===false,"E3f 보호막 500 을 무시하고 상대 즉사 (대상 제거)");
     ok(over0==="play","E3g 전제: 실행 전 플레이 상태");
   }
-  // E3h 폴백: 모든 슬롯이 쿨·봉인이면 기본 공격
+  /* E3h #146 (v0.4.7 CJ 2026-09-10): #121 계약 5.3 의 "전 슬롯 불가 → 기본 공격 폴백"은 **철회**됐다.
+     4슬롯이 전부 쿨·봉인·조건 미충족이면 어떤 공격도 제공하지 않고 안내 + 수동 [턴 종료]만 나온다. */
   {
     const P=setup(T); fixed(T); giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills=["fire_stable","fire_effect","sup_heal","reaper_scythe"]; giveSpecies(T,P.em,R(T,"M-G1"));
     openBattle(T,P.me,P.em); const B=T.S.battle; B.round=2; B.fa.cds=[1,1,1,0]; B.fa.hp=100; B.fd.hp=100;
     ok(actAsA(T),"E3h0 전제: 공격측 행동 차례");
     T.battleModal();
-    ok(/기본 공격/.test(ob(T)),"E3h 3슬롯 쿨 + 사신 봉인 → 기본 공격 폴백 버튼 노출");
+    ok(!/기본 공격/.test(ob(T)),"E3h 3슬롯 쿨 + 사신 봉인 → 기본 공격 버튼이 없다 (#146 폴백 철회)");
+    ok(ob(T).indexOf(T.NO_ATTACK_MSG)>=0&&ob(T).indexOf("__pass()")>=0,"E3h2 안내 문구 + 수동 [턴 종료] 버튼만 나온다");
+    ok(/🎒 가방/.test(ob(T))&&/🔴 포획/.test(ob(T))&&/🏃 도망가기/.test(ob(T)),"E3h3 가방·포획·도망 메뉴는 그대로 쓸 수 있다");
     ok(!T.slotUsable(B.fa,3,"A"),"E3i 사신 슬롯은 쿨 0 이어도 합법이 아니다");
-    // 불법 슬롯을 강제로 보내도 즉사가 새지 않고 기본 공격으로 폴백한다
-    const hp0=B.fd.hp; T.execSlot("A",3); T.drain(5000);
-    ok(B.fd&&B.fd.hp>0&&B.fd.hp<hp0,"E3j 불법 사신 호출은 즉사하지 않고 기본 공격으로 폴백 (전투가 멈추지 않는다)");
+    /* 불법 슬롯을 강제로 보내도 즉사가 새지 않고, **합법 슬롯이 하나도 없으므로 기본 공격으로도 떨어지지 않는다**.
+       규칙 상태는 그대로이고 화면만 다시 그려져 [턴 종료] 선택지가 남는다 (버튼을 누르기 전에는 강제 진행 없음). */
+    const hp0=B.fd.hp, ph0=B.phase, rd0=B.round;
+    T.execSlot("A",3); T.drain(5000);
+    ok(B.fd&&B.fd.hp===hp0&&P.em.alive===true,"E3j 불법 사신 호출: 즉사도 기본 공격도 없다 (상대 HP 무변화)");
+    ok(T.S.battle===B&&B.phase===ph0&&B.round===rd0,"E3j2 전투 행동도 소모되지 않는다 (phase·round 무변화)");
+    /* 수동 [턴 종료] 를 누르면 그때 자기 전투 행동 1회만 넘어간다 */
+    const bu0=T.S.battlesUsed, main0=T.S.mainUsed, wk0=B.fa.weaken;
+    T.__passCore(); T.drain(5000);
+    ok(B.phase!==ph0||B.round!==rd0,"E3j3 [턴 종료]를 누르면 자기 전투 행동 1회가 넘어간다 (nextPhase)");
+    ok(T.S.battlesUsed===bu0&&T.S.mainUsed===main0&&B.fa.weaken===wk0,"E3j4 보드 주 행동·턴당 전투 횟수·약화 잔여 횟수는 소모되지 않는다");
   }
   T.S.battle=null; T.close(); fixed(T); T.setSeed(null);
 }
@@ -927,7 +956,9 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
   ok(Q.em.alive===alive0,"J1c **쿨 중에는 즉사하지 않는다** (실제 적용 경로 CD 가드 — Saturn P1)");
   ok(!/즉사/.test(blog),"J1c' 전투 로그에 즉사가 없다");
   ok(!/사신의 낫/.test(blog),"J1d 거부 사유가 **공용 전투 로그에 기술 이름을 남기지 않는다** (Saturn 추가 P1 — 쓰지 않은 미공개 기술 비노출)");
-  ok(/기본 공격/.test(blog),"J1d' 폴백 기본 공격이 실제로 나갔다 (전투가 멈추지 않는다)");
+  /* #146: 폴백 기본 공격이 철회됐다. cds=[2,2,2,2] 라 합법 슬롯이 하나도 없으므로 불법 사신 호출은 **아무 행동도 만들지 않는다** */
+  ok(!/기본 공격/.test(blog),"J1d2 합법 슬롯이 하나도 없으면 기본 공격으로도 떨어지지 않는다 (#146 폴백 철회)");
+  ok(X.S.battle===B&&Q.em.alive===alive0&&B.fd.hp===100,"J1d3 규칙 상태가 그대로다 (상대 HP·생존 무변화)");
   ok(!B.fa.revealedSkills.includes(3),"J1d'' 쓰지 않은 사신 슬롯은 공개 기록에도 들어가지 않는다");
   /* 라운드 6 은 마지막 라운드라 양측 행동 뒤 판정으로 끝난다 — 멈추지 않고 적법하게 종결됐음을 본다 */
   ok(X.S.phase==="play"||X.S.phase==="over","J1d'' 전투가 적법하게 진행·종결됐다 (프리즈 없음 · phase "+X.S.phase+")");
@@ -1018,13 +1049,13 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     openBattle(X2,Q5.me,Q5.em); const B5=X2.S.battle; actAsA(X2); freshModal(X2);
     X2.__openPkgCore("battleBuff"); click(X2,X2.BUFFS.power.ko);
     ok(B5.buffA==="power"&&Q5.me.powerBuff===true,"J3-"+label+" 전제: 버프 적용 · 패키지 1개 남음");
-    Q5.me.fleeFree=true; // 두 플래그 모두 남아 있는 상태를 만든다
+    Q5.me.fleeBoost=true; // 두 플래그 모두 남아 있는 상태를 만든다
     X2.S.current=0;
     end(X2); X2.drain(20000);
     ok(X2.S.phase==="over","J3-"+label+": 경기가 종료됐다");
     ok(X2.S.battle===null,"J3-"+label+": **전투 객체가 남지 않는다** (Saturn P2)");
-    ok(Q5.me.powerBuff===false&&Q5.me.fleeFree===false,"J3-"+label+": 전투원 버프 플래그가 정리됐다");
-    ok(Q5.em.powerBuff===false&&Q5.em.fleeFree===false,"J3-"+label+": 상대 전투원도 정리됐다");
+    ok(Q5.me.powerBuff===false&&Q5.me.fleeBoost===false,"J3-"+label+": 전투원 버프 플래그가 정리됐다");
+    ok(Q5.em.powerBuff===false&&Q5.em.fleeBoost===false,"J3-"+label+": 상대 전투원도 정리됐다");
     ok(X2.S.pkgs[0].battleBuff===1&&X2.S.pkgs[0].itemGift===2,"J3-"+label+": **미사용 패키지 재고는 보존**된다 (새 게임에서만 초기화)");
     ok(X2.S.recruit===null,"J3-"+label+": 탐색 선택 대기 상태도 남지 않는다");
     /* Saturn 추가 P2: 상태만이 아니라 **화면**도 정리돼야 한다 — 전투창이 남으면 buff CSS 가 무한히 돌고 낡은 입력 면이 남는다 */
@@ -1080,15 +1111,20 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     ok(actAsA(X4),"J4 전제: 라운드 1 · 공격측 차례");
     ok([0,1,2,3].every(i=>X4.slotUsable(B6.fa,i,"A")===false),"J4a 전제: 네 슬롯 모두 지금 쓸 수 없다 (슬롯0 사신은 쿨 0이지만 봉인)");
     X4.byId("obBtns").children.length=0; X4.battleModal();
-    ok(/기본 공격/.test(ob(X4)),"J4b 기본 공격 버튼이 정상 표시된다 (계약 5.3 폴백)");
-    const hp0=B6.fd.hp, logLen=X4.S.log.length;
+    /* #146: 네 슬롯 모두 불가 → 기본 공격 버튼은 없고 안내 + 수동 [턴 종료]만 나온다 */
+    ok(!/기본 공격/.test(ob(X4)),"J4b 기본 공격 버튼이 없다 (#146 폴백 철회)");
+    ok(ob(X4).indexOf(X4.NO_ATTACK_MSG)>=0&&ob(X4).indexOf("__pass()")>=0,"J4b2 안내 문구 + 수동 [턴 종료] 버튼");
+    const hp0=B6.fd.hp, logLen=X4.S.log.length, ph6=B6.phase, rd6=B6.round;
     X4.netAction({t:"act",k:"basic"}); X4.drain(20000);
     const blog4=B6.blog.join("|");
     ok(!/사신의 낫/.test(blog4),"J4c **공용 전투 로그에 사신의 낫이 나오지 않는다** (Saturn 추가 P1 — 쓰지 않은 미공개 기술)");
-    ok(!X4.S.log.slice(logLen).some(l=>/사신/.test(l.msg)),"J4c' 보드 로그에도 없다");
+    ok(!X4.S.log.slice(logLen).some(l=>/사신/.test(l.msg)),"J4c2 보드 로그에도 없다");
     ok(!B6.fa.revealedSkills.includes(0),"J4d 사신 슬롯이 공개 기록에 들어가지 않는다 (사용하지 않았다)");
-    ok(B6.fd.hp<hp0||X4.S.battle===null,"J4e 기본 공격의 피해·진행은 정상이다 (HP "+hp0+" → "+(X4.S.battle?B6.fd.hp:"전투 종료")+")");
-    ok(Q6.em.alive===true||X4.S.battle===null,"J4f 즉사가 새지 않았다");
+    ok(B6.fd.hp===hp0&&X4.S.battle===B6&&B6.phase===ph6&&B6.round===rd6,"J4e UI 밖에서 온 불법 basic 은 조용히 거부된다 — 피해·전투 행동 모두 0 (#146)");
+    ok(Q6.em.alive===true,"J4f 즉사가 새지 않았다");
+    /* 수동 [턴 종료]만이 이 상황에서 전투 행동을 넘기는 유일한 경로다 */
+    X4.netAction({t:"pass"}); X4.drain(20000);
+    ok(B6.phase!==ph6||B6.round!==rd6||X4.S.battle===null,"J4e2 수동 [턴 종료]로만 자기 전투 행동 1회가 넘어간다");
     /* 음성 대조: 슬롯0 이 합법 기술이면 basic 이 그 슬롯으로 매핑되는 기존 동작은 그대로 (레거시 호환) */
     const X5=load(); fixed(X5); X5.tutSkip();
     const Q7=setup(X5); giveSpecies(X5,Q7.me,R(X5,"M-F1")); giveSpecies(X5,Q7.em,R(X5,"M-G1"));

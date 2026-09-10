@@ -1,14 +1,21 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> 2026-09-09 · Mercury(PD, GPT-6 Astra/high). CJ가 #121·#125·#129의 권고안과 기술 3종 직접 선택을 승인한 구현·독립 QA를 완료했다. 통합 PR143의 필수 CI·dev 병합 결과를 확인하고 CJ 플레이 QA를 기다린다. 마녀 풀 효과도 실제 HP 피해만큼 즉시 회복으로 확정됐으며 답변 대기는 없다. 정식 출시는 v0.4.5, Roblox #118은 v0.4.6, 이번 게임 작업은 v0.4.7이다. 나머지 게임 이슈는 번호별 착수 지시를 기다린다.
+> 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #146·#131·#128·#130의 개발 검증·문서·미디어를 [통합 PR152](https://github.com/ChangjoSung/Digit-Duel/pull/152)에서 관리한다. 최종 필수 CI와 dev 병합 상태는 PR이 원본이며 새 CJ Play QA 전까지 네 Issue는 OPEN이다. #128 신고는 미재현·원인 미확인, 후속 임시자료 정리 절차 위반은 아래에 보존한다. 정식 출시는 v0.4.5, Roblox #118은 v0.4.6, 이번 작업은 v0.4.7이다.
 
 ## 현재 승인 범위와 상태
 
-- [#121](https://github.com/ChangjoSung/Digit-Duel/issues/121)·[#125](https://github.com/ChangjoSung/Digit-Duel/issues/125)·[#129](https://github.com/ChangjoSung/Digit-Duel/issues/129): 숲 패키지·버프·신규 기술 직접 선택·4슬롯 교체·로스터 포획, 연출 1.2초와 탐색 완료 후 추가 유예 제거. [승인 계약](../milestone/v0.4.7/issues/121/Venus/gameplay-spec.md)이 구현 기준이며, [마일스톤 현재 상태](../milestone/v0.4.7/README.md)와 각 Issue가 진행 원장이다.
-- 작업 브랜치 `feature/121-exploration-packages`, 최초 base `57c7cc3`. 후속 Roblox PR141/142의 `origin/dev 68cd825`를 통합했다. 최종 제품·촬영 checkpoint `157026ba617166644ada0686b897d3ae2a166486`, HTML blob `4535791bbefd86ad829cdd436d4957f8a530846b`. 구현자 18종 회귀 PASS, Saturn의 제품 REVISE 6건과 검사 보완 3곳의 재검증 완료. 튜토리얼 10장과 기능 화면 8장·브라우저 JSON57/0·README 연결을 확인했고 [Saturn 최종 PASS](../milestone/v0.4.7/issues/121/Saturn/report.md)와 [PD 통합 기록](../milestone/v0.4.7/issues/121/Mercury/report.md)을 보존했다. [PR143](https://github.com/ChangjoSung/Digit-Duel/pull/143)의 최종 head CI 5개·dev squash 결과가 통합 원본이다. 해당 Worker는 모두 archive/release했다. CJ 플레이 QA와 출시는 아직 완료되지 않았다.
-- Venus(Claude)는 승인 규격·사용자 문서, Mars(Claude)는 제품·테스트·CI·브라우저 증빙, Saturn(Codex)은 전파일 쓰기 0 독립 QA, Mercury는 조정·Git·문서 메타데이터를 담당한다. Claude 사용량 중단은 이번 구현에서 관찰되지 않았다. 실제 한도 중단 때만 같은 역할의 Codex로 이어간다는 CJ 승인을 유지한다.
-- [Milestone12 v0.4.6](https://github.com/ChangjoSung/Digit-Duel/milestone/12)은 [이욱채(lee775)](https://github.com/lee775)의 Roblox #118 전용이다. PR135 이후 PR137–142까지 최신 dev 이력을 확인했으며, 이 PD가 Roblox 제품을 수정하거나 Roblox QA PASS를 판정하지 않는다. 별도 개발자의 작업·자산·브랜치를 보존한다.
-- [Milestone13 v0.4.7](https://github.com/ChangjoSung/Digit-Duel/milestone/13)의 선행 Infra #132와 #134는 완료됐다. #134는 [PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136) dev `a073c0c` 통합·필수 CI 5개·Saturn PASS 뒤 2026-09-09 CJ QA PASS로 CLOSED다. [PD 기록](../milestone/v0.4.7/issues/134/Mercury/report.md)의 절차 예외와 검증 정정을 보존한다. main/dev 보호·5개 필수 검사 이름을 유지한다.
+- [#146](https://github.com/ChangjoSung/Digit-Duel/issues/146): HP 제한 없는 도망 기본30%·실패 추가 반격 삭제/자기 전투 행동1회. 도망의 수호자는 해당 배틀70%. 4슬롯 전부 불가 시 기본 공격 없이 수동 대기, 왕/동료 본체 기본 공격 유지. [최신 승인 계약](../milestone/v0.4.7/issues/146/Venus/gameplay-spec.md), GDD13 DL45·GDD18 기준.
+- [#131](https://github.com/ChangjoSung/Digit-Duel/issues/131): 함정에 걸린 양쪽 대상의 선택·실행 차단과 첫 말→교체할 말 두 단계 안내.
+- [#130](https://github.com/ChangjoSung/Digit-Duel/issues/130): 남은 보호막+이번 기술의 기존 부여량 합산. 신규 수치·상한·기간 없이 기존 흡수·화상 우회·초기화 유지.
+- [#128](https://github.com/ChangjoSung/Digit-Duel/issues/128): 독립 Chrome 프로필/동일 HTTP origin에서 신고 증상 미재현. 최종 증빙은 A·B 탭을 먼저 열고 A 완료 후 B를 관측하며 이후 각 프로필의 미완료 재방문/완료 생략이 독립이다. 첫 navigation 순서를 확대하지 않는다. 저장 로직 무변경·회귀/증빙만 추가했고 CJ 재현 주소·브라우저를 질문했다. 물리 2PC나 신고 증상 해결 PASS가 아니다.
+- 통합 원본은 [PR152](https://github.com/ChangjoSung/Digit-Duel/pull/152)(대상 dev)다. 작업 브랜치 `feature/146-battle-actions`는 출발 dev `33bbc19`에서 Roblox PR151의 `697212e`를 ff-only로 포함했다. 제품·촬영 기준 `aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea`, HTML blob `2a9b54c769a58fc5c0db9e913ce4421bec6758e3`, Windows SHA256 `b1c33ae8ff87e64cb71481714d73966f09e3af5f3b8506d82893dccb77f305de`. 신규 회귀207/0·19종 회귀·Chrome81/0·튜토리얼10장·최종 README1100/390 렌더를 검증했다. 문서 후속 커밋은 제품을 바꾸지 않는다.
+- 이번 Run `run_c784a12efc36`: Venus(Claude) 규격·사용자 문서, Mars(Claude) 제품·테스트·촬영, Saturn(Codex) 전파일 쓰기0 독립 검수, Mercury 조정·Git·문서 메타데이터. [코어 PASS](../milestone/v0.4.7/issues/146/Saturn/core-review.md)와 [미디어/렌더 PASS·보고 정정 REVISE 원문](../milestone/v0.4.7/issues/146/Saturn/delivery-delta.md)을 구분한다. 완료 Worker는 보고 보존 후 release하고, 같은 Mars 터미널의 즉시 README 렌더 후속 Task에서 발생한 아래 절차 예외는 정상 완료로 수락하지 않는다. 실제 Task/Dispatch 상태는 Orca가 원본이다.
+- **후속 정리 절차 위반**: Mars `task_c5532cf6d758`/`ctx_7799bd4b330b`가 `%TEMP%/i146cdp-main-*`, `profA-*`, `profB-*` 각8·합24개를 wildcard `rm -rf`로 삭제했다. 개별 절대경로·생성주체/시각 사전 대조가 없었고 같은 접두사 타 주체 자원 가능성을 배제하지 못한다. PD는 추가 수동 정리를 중지했고 후속 Task의 failed 보고를 확인한 뒤 archive/release했다. 제품/미디어 PASS를 절차 준수 PASS로 확대하지 않는다. 보고 문장 정정은 PD가 직접 대조했다. [경위·확인 한계](../milestone/v0.4.7/issues/146/Mercury/report.md).
+- #121·#125·#129는 [PR143](https://github.com/ChangjoSung/Digit-Duel/pull/143) dev `2b47a23` 통합·CI5·Saturn PASS 후 2026-09-10 CJ QA PASS로 CLOSED다. 당시 제품/촬영 checkpoint `157026ba617166644ada0686b897d3ae2a166486`, [Saturn 보고](../milestone/v0.4.7/issues/121/Saturn/report.md)·[PD 보고](../milestone/v0.4.7/issues/121/Mercury/report.md)와 검수 한계는 보존한다. 당시 Worker는 전부 archive/release했다.
+- [Milestone12 v0.4.6](https://github.com/ChangjoSung/Digit-Duel/milestone/12)은 [이욱채(lee775)](https://github.com/lee775)의 Roblox #118 전용이다. 해당 제품 수정·QA 판정·자원 정리를 이 PD가 대신하지 않는다.
+- [Milestone13 v0.4.7](https://github.com/ChangjoSung/Digit-Duel/milestone/13)의 Infra #132/#134는 완료·CLOSED다. #134 [PR136](https://github.com/ChangjoSung/Digit-Duel/pull/136) dev `a073c0c`·CI5·Saturn·CJ QA PASS와 [절차 예외](../milestone/v0.4.7/issues/134/Mercury/report.md)를 보존한다.
+- 실제 Claude 한도 중단 때만 같은 역할 Codex로 이어가는 CJ 승인은 유효하다. 이번 작업에서는 한도 중단이 관찰되지 않았다.
+
 
 ## 완료 이력 — 선행 Infra #132
 
@@ -19,7 +26,7 @@
 - 실제 [PR CI 실행](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34310450164)(검수 head `c06ee3909d4ad5cbbefb5fc118e4ad5bf36de900`)에서 규칙·AI, Linux 서버, Windows 실행기, 문서, 납품 아트의 **5개 잡 모두 PASS**. D는 Windows2025/Python3.14.3/Pillow12.3.0에서 write0·unchanged29·mismatch0 및 도구68검사 PASS, C는 현재 v0.4.5 매니페스트로 검증했다. 이후 주석·운영 상태 정정 커밋의 최종 실행은 PR의 검사 목록을 따른다. Saturn은 후속 변경과 실제 CI·보호 설정까지 독립 확인했다.
 - main/dev 보호 설정을 적용·readback했다: PR 필수, GitHub Actions 앱15368의 5개 검사 필수, 최신 base 요구, 관리자도 적용, 대화 해결 필수, force push·삭제 금지, 승인 리뷰 수0. 승인 리뷰 수0은 Saturn/CJ 운영 계약을 없애지 않는다. 워크플로는 dev 통합 후 차기 릴리스 PR로 main에 전달하며 수동 실행은 기본 브랜치 main에 파일이 도달한 뒤 가능하다. 이번 실증은 dev PR CI이며 main PR·수동 실행을 실증했다고 주장하지 않는다.
 - 당시 Milestone12(v0.4.6)에 게임119–131·기존118·Infra132가 함께 등록돼 있었다. CJ의 후속 결정에 따라 현재 소속은 위 v0.4.6/v0.4.7로 분리됐다. `feature/118-roblox-port`는 이 PD 작업의 변경·정리 대상이 아니다.
-- [GDD17 분석 원장](https://app.notion.com/p/3d61e7f170858126a889e682610ebad7): 기술 23개(정상 도달 22), 20종 80슬롯, 6개 탐색 이벤트의 말별 결과와 근거·미정 정책을 기록했다. #123 공용 아트는 #119 기획 후, #124 동료·왕 아트는 독립 목표다. #131에는 함정 하수인의 텔레포트 선택 차단과 지정 문구가 등록돼 있다. **이 후보들을 현재 규칙으로 적용하거나 게임 구현·아트 제작·외부망 개방·재릴리스를 시작하지 않는다.**
+- [GDD17 분석 원장](https://app.notion.com/p/3d61e7f170858126a889e682610ebad7): 기술 23개(정상 도달 22), 20종 80슬롯, 6개 탐색 이벤트의 말별 결과와 근거·미정 정책을 기록했다. #123 공용 아트는 #119 기획 후, #124 동료·왕 아트는 독립 목표다. #131에는 함정 하수인의 텔레포트 선택 차단과 지정 문구가 등록돼 있다. **위 후보 중 최신 CJ가 지정한 #121/#125/#129 및 #146/#131/#128/#130만 승인 범위다. 나머지 미지정 기획·아트·외부망·출시는 착수하지 않는다.**
 
 ## 출시와 제품 근거
 
@@ -46,7 +53,7 @@
 - Saturn은 **READ_ONLY**, 파일·테스트·보고서·임시 파일을 쓰지 않고 inline으로 보고한다. 파일을 변이하는 원본 `smoke_online.js`나 임시 fixture를 만드는 도구 회귀는 Saturn의 직접 READ_ONLY 실행에서 제외하고 구현자/CI 결과와 독립 검토 범위를 구분한다.
 - 필수 dispatch preflight: `required_role · mode · area · mutation · instance_index`. Worker Git/GitHub/Notion 쓰기 금지. 완료 뒤 결과 archive/release, 같은 좁은 범위의 즉시 후속만 기한부 재사용. Task와 정확한 Dispatch를 연결하고 메시지 전체를 처리한 뒤 acknowledge한다.
 - Worker의 메시지 조회는 자신의 `check --terminal <worker-terminal> --json`을 사용한다. coordinator용 `--run`을 붙여 받은 `consumer_fenced`를 메시지 없음으로 해석하지 않는다. PD가 잘못 전달했던 문법은 이 방식으로 정정했다.
-- 현재 유일한 Mercury terminal `term_d2dcbfa3-a932-4ce2-a844-38526dd4975b`, 이번 #121·#125·#129 Run `run_a30f84eaadf5`. 완료 Infra #134 Run `run_748eb7b6a85d`, #132 Run `run_874bb77b02e3`, 최초 등록 Run `run_a9eb05e6575e`의 이력은 보존한다. 현재 Worker 상태는 Orca task/worker list가 원본이다.
+- 현재 유일한 Mercury terminal `term_d2dcbfa3-a932-4ce2-a844-38526dd4975b`, 현재 네 Issue Run `run_c784a12efc36`, 완료 #121·#125·#129 Run `run_a30f84eaadf5`, 완료 분석 Run `run_0542beb5fd69`. 완료 Infra #134 Run `run_748eb7b6a85d`, #132 Run `run_874bb77b02e3`, 최초 등록 Run `run_a9eb05e6575e`의 이력은 보존한다. 현재 Worker 상태는 Orca task/worker list가 원본이다.
 - **사용자 소유 미추적 `art/`·`orca-hook-latency-report.md`는 읽기·수정·스테이징 금지.** Downloads 원본과 승인 아트100파일을 보존한다. 파일 탐색은 이 두 루트 경로를 포함하지 않는 명시적 범위 또는 Git 추적 목록을 사용한다.
 - 기존 Mercury `term_abae9146-14a1-47e9-8e9a-0a6e3c4c041a`, 사용자 소유 `term_f715b1c1-8dc5-438c-b035-540ab8b4082e`, 과거 Saturn `ctx_7587a359d6a6` user_owned, `ctx_bbc10559f749` identity_unproven 및 다른 소유권 불명 자원은 종료·정리하지 않는다. 프로세스·프로필 정리는 해당 실행에서 생성과 소유권을 확인한 정확한 대상에만 한다.
 - 이전 세션 압축15회, 2026-09-08 17:47:40 KST 92,019/258,400·단순 차감64.4% 여유는 **현재 세션의 사용량이 아니며 판단력 저하의 입증도 아니다**. [당시 자가 점검](../milestone/v0.4.4/reports/Mercury/mercury-self-audit-2026-09-08.md). 추가 PD 스폰이나 세션 교대 없이 현재 Mercury가 창구를 유지한다.
@@ -55,4 +62,4 @@
 
 - [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) DL38 = 최초 v0.4.6 분석·등록 이력, DL39 = 선행 Infra132, DL40 = v0.4.6 Roblox/v0.4.7 재배치·후속 Infra134. 현재 규칙 참조 경로는 새 문서 위치로 동기화하고, 과거 Decision Log의 GitHub 링크는 이동 전 SHA에 고정했다. GitHub 과거 Issue/PR 본문·코멘트 13곳의 링크34개도 고정·응답 일치 확인했다. 기존 Release8개는 버전 태그 링크라 그대로 유효하다.
 - Notion System 원문 `3d51e7f1708580b0916ded4bd3d9d06e`의 외부 편집 Summary는 보존한다. Project=Digit Dual, Edit Date=실제 수정일, Editor=실제 사람 성창조(`8e0a8270-d0e3-407e-a7d2-b3f992f1e366`); Agent 이름은 운영 본문에만 기록한다.
-- GDD13 DL42와 [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c)에 #121·#125·#129 최종 승인 계약을 동기화했다. 현재 코드를 검수한 Saturn PASS와 통합 PR 최종 head의 필수 검사 성공이 dev squash의 전제다. 전용 작업 브랜치만 정리하고 main/dev는 보존한다. 세 Issue는 이번 변경의 CJ 플레이 QA가 남아 있으므로 OPEN이며, 앞선 버전의 CJ PASS를 재사용하지 않는다.
+- GDD13 DL42와 [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c)에 #121·#125·#129 최종 승인 계약을 동기화했다. 현재 코드를 검수한 Saturn PASS와 통합 PR 최종 head의 필수 검사 성공이 dev squash의 전제다. 전용 작업 브랜치만 정리하고 main/dev는 보존한다. 세 Issue는 2026-09-10 CJ QA PASS로 CLOSED다. 후속 네 Issue는 DL45 승인 계약과 PR152의 개발 검증·통합 기록을 따르며 새 CJ QA 전까지 OPEN이다. 과거 PASS를 새 변경의 근거로 재사용하지 않는다.

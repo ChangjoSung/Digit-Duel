@@ -49,29 +49,31 @@
 </table>
 
 <details>
-<summary><b>튜토리얼 10단계 보기</b> — v0.4.7 개발판 · 탐색 패키지와 기술 직접 선택</summary>
+<summary><b>튜토리얼 10단계 보기</b> — v0.4.7 개발판 · 탐색 패키지와 전투 행동</summary>
 <br>
 <table>
   <tr>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-01.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-02.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-03.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-04.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-05.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 전투와 양측 밀어내기" width="100%"></a><br><sub>5. 전투 · 양측 밀어내기</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-01.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-02.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-03.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-04.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-05.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 전투와 양측 밀어내기" width="100%"></a><br><sub>5. 전투 · 수동 대기 · 보호막 합산</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-06.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-07.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · 도망 후 후방 말 선택</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-08.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 횟수 제한 없는 텔레포트</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-09.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.7/issues/121/Mars/artifacts/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 턴 종료 선택</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-06.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-07.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · HP 제한 없는 도망<br>기본 30% · 도망의 수호자는 그 전투 70%</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-08.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 텔레포트 · 함정에 걸린 말 제외</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-09.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
+    <td align="center" width="20%"><a href="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.7/issues/146/Mars/artifacts/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 보드 턴 종료 선택</sub></td>
   </tr>
 </table>
 <sub>튜토리얼은 게임 안에서 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다.</sub>
 
-캡처 출처: v0.4.7 개발판 검수 커밋 `157026ba617166644ada0686b897d3ae2a166486` · [10장 캡처 기록과 해시](docs/milestone/v0.4.7/issues/121/Mars/artifacts/capture-manifest.json). 아래 안내와 같은 개발판 게임 코드에서 촬영한 화면입니다.
+캡처 출처: v0.4.7 개발판 검수 커밋 `aa6998ae8d2ca8b5fc8136c5fa19bc6aca5c12ea` · [10장 캡처 기록과 해시](docs/milestone/v0.4.7/issues/146/Mars/artifacts/capture-manifest.json). 아래 안내와 같은 개발판 게임 코드에서 촬영한 화면입니다.
 
-<sub>위 10장은 <b>개발 중인 v0.4.7</b>의 튜토리얼입니다. 숲 선물 패키지·기술 3종 직접 선택·아이템과 버프 제한을 반영했습니다. 정식 다운로드 v0.4.5의 화면과는 일부 다릅니다.</sub>
+<sub>위 10장은 <b>개발 중인 v0.4.7</b>의 튜토리얼입니다. 숲 선물 패키지·기술 직접 선택·아이템과 버프 제한, 도망·수동 대기·함정 텔레포트·보호막 합산을 반영했습니다. 정식 다운로드 v0.4.5의 화면과는 일부 다릅니다.</sub>
+
+
 </details>
 
 ## 새로운 기능
@@ -91,11 +93,18 @@
 
 ### 개발 중 — v0.4.7 (미출시)
 
-다음 버전에서는 숲에서 얻는 보상이 **선물 패키지**로 바뀝니다. 원하는 아이템과 전투 버프를 싸우는 도중에 직접 골라 쓰고, 숲에서 배우는 신규 공용 기술 **🐉 드래곤 숨결 · 🕯 마녀의 장난 · 💀 사신의 낫** 중 하나를 골라 하수인의 기술 4칸 중 아무 곳이나 바꿉니다. 숲에서 포획한 하수인은 로스터 20종 가운데 뽑힌 종의 능력치와 기술을 그대로 가져오고, 연출 템포는 1.2초로 빨라집니다.
+다음 버전에서는 숲에서 얻는 보상이 **선물 패키지**로 바뀝니다. 원하는 아이템과 전투 버프를 싸우는 도중에 직접 골라 쓰고, 숲에서 배우는 신규 공용 기술 **🐉 드래곤 숨결 · 🕯 마녀의 장난 · 💀 사신의 낫** 중 하나를 골라 하수인의 기술 4칸 중 아무 곳이나 바꿉니다. 숲에서 포획한 하수인은 로스터 20종 가운데 뽑힌 종의 능력치와 기술을 그대로 가져오고, 연출 템포는 1.2초로 빨라집니다. 이 범위(#121 · #125 · #129)는 2026-09-10 **CJ 플레이 QA를 통과**해 개발판에 들어가 있습니다.
 
-바뀌는 내용은 [v0.4.7 릴리스 노트(개발 중)](docs/releases/v0.4.7.md)에, 세부 규칙은 [v0.4.7 게임플레이 계약](docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md)에 있습니다.
+이어서 승인된 **전투 행동 변경**도 구현했습니다. 이 범위는 **CJ 플레이 QA 대기 중**입니다.
 
-**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 v0.4.7 개발판이며, 플레이·전투 사진은 각 이미지에 표시된 이전 버전입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있고, CJ 플레이 QA가 남아 있어 화면·문구·수치가 바뀔 수 있습니다.
+- **도망** — HP가 얼마든 시도할 수 있고 기본 성공률은 **30%**입니다. **실패해도 상대가 한 대 더 때리지 않고**, 내 전투 행동 한 번을 쓴 것으로 끝나 상대는 자기 차례를 정상적으로 받습니다. **🏃 도망의 수호자** 버프는 그 전투 동안 성공률을 **70%**로 만듭니다(더하기가 아니고, 한 번 보장도 아닙니다).
+- **쓸 수 있는 기술이 하나도 없을 때** — 4칸이 전부 쿨타임·봉인·조건 미충족이면 기본 공격을 주지 않고 **"공격할 것이 없습니다. 턴 종료할까요?"** 안내와 **턴 종료 버튼**만 띄웁니다. 누르기 전에는 넘어가지 않고, 아이템·버프·몬스터볼·도망은 그대로 쓸 수 있습니다. 한 칸이라도 쓸 수 있으면 평소와 같고, 왕·동료 본체는 지금처럼 기본 공격을 씁니다.
+- **텔레포트** — 함정에 걸려 움직이지 못하는 말은 자리 교체의 **양쪽 어느 자리로도 고를 수 없고 실행도 되지 않습니다.**
+- **보호막** — 새로 얻은 보호막이 **남아 있던 값에 더해집니다.** 새 상한이나 지속시간은 만들지 않습니다.
+
+바뀌는 내용은 [v0.4.7 릴리스 노트(개발 중)](docs/releases/v0.4.7.md)에, 세부 규칙은 [#121 게임플레이 계약](docs/milestone/v0.4.7/issues/121/Venus/gameplay-spec.md)과 [#146 전투 행동 계약](docs/milestone/v0.4.7/issues/146/Venus/gameplay-spec.md)에 있습니다.
+
+**이 버전은 아직 릴리스가 없습니다.** 위 배지·다운로드·[Releases](https://github.com/ChangjoSung/Digit-Duel/releases)는 정식 버전 v0.4.5입니다. 위 튜토리얼 10장은 **위 전투 행동 변경까지 반영해 다시 촬영한 v0.4.7 개발판 화면**입니다. 플레이·전투 사진은 각 이미지에 표시된 이전 버전입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에서 미리 볼 수 있고, 새 전투 행동 변경의 CJ 플레이 QA는 대기 중입니다.
 
 ## 게임 정보
 
@@ -138,7 +147,7 @@
 **개발 중인 v0.4.7을 미리 보고 싶다면**
 
 - 위 Releases의 다운로드는 정식 버전 v0.4.5입니다. 개발 중인 규칙은 저장소의 개발 브랜치(`dev`)에 있으니, 초록색 **Code** 버튼에서 브랜치를 `dev`로 바꿔 받은 뒤 똑같이 `demo/index.html`을 열면 됩니다.
-- 게임 안 튜토리얼과 위 10장 캡처도 개발판 규칙으로 갱신했습니다. CJ 플레이 QA가 남아 있는 개발판이므로, 정식 출시본을 플레이하려면 v0.4.5를 쓰세요.
+- 게임 안 튜토리얼과 위 10장 캡처는 도망·수동 대기·함정 텔레포트·보호막 합산까지 갱신했습니다. #121 · #125 · #129는 2026-09-10 CJ 플레이 QA를 통과했고, 새 전투 행동 변경은 **CJ 플레이 QA 대기 중**입니다. 정식 출시본을 플레이하려면 v0.4.5를 쓰세요.
 
 ## 저장소 구조
 

@@ -190,6 +190,12 @@ function load(htmlPath,opts){
   get __openPkg(){return window.__openPkg;}, get __act(){return window.__act;}, get __useItem(){return window.__useItem;}, // netAction 래퍼 (온라인 송신 경로 검증용)
   get __useItemCore(){return window.__useItemCore;}, get __throwBallCore(){return window.__throwBallCore;}, // 전투 모달 클로저 — 매 렌더 교체되므로 getter
   get __fleeCore(){return window.__fleeCore;}, get __actCore(){return window.__actCore;}, get __menu(){return window.__menu;},
+  get __passCore(){return window.__passCore;}, get __pass(){return window.__pass;}, get __flee(){return window.__flee;}, // #146 수동 전투 행동 넘기기 · netAction 래퍼
+  fleeProbOf:typeof fleeProbOf==="function"?fleeProbOf:undefined, // #146 전투원별 도망 성공률 (기준판 로드 호환: 부재 시 undefined)
+  teleportSwapValid:typeof teleportSwapValid==="function"?teleportSwapValid:undefined, // #131 실행 직전 재검사
+  NO_ATTACK_MSG:typeof NO_ATTACK_MSG!=="undefined"?NO_ATTACK_MSG:undefined, // #146 안내 문구
+  TELE_PICK1_MSG:typeof TELE_PICK1_MSG!=="undefined"?TELE_PICK1_MSG:undefined, TELE_PICK2_MSG:typeof TELE_PICK2_MSG!=="undefined"?TELE_PICK2_MSG:undefined,
+  TELE_TRAP_MSG:typeof TELE_TRAP_MSG!=="undefined"?TELE_TRAP_MSG:undefined, // #131 거부 안내
   newGame,genEvents,doSearch,canSearchPiece,applyRoster,aiAutoPlace,startTurn,endTurn,doMove,canMoveTo,canBattle,
   initBattle,startRounds,doTeleportSwap,teleportAvailable,checkWipe,alivePieces,at,fleeSwap,visibleTo,inForest,
   finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,archSkills,isBurning,beginPlay,

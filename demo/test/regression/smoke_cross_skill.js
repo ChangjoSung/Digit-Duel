@@ -122,7 +122,12 @@ const T=H.load(htmlPath);
 /* ===== D. 전투 판정 ===== */
 {
   const P=setup(T); fixed(T);
-  const dmg=(a,d,slot)=>{ openBattle(T,a,d); const h0=d.hp; T.execSlot("A",slot); return h0-d.hp; };
+  /* #146 (v0.4.7): 4슬롯 전투원에게 순수 기본 공격(-1)은 더 이상 없다. 기본 공격의 **판정 속성 계약(#92)**은
+     기본 공격을 실제로 갖는 본체 경로(f.skills 없음)에서 계속 성립하므로, slot<0 검사만 그 경로로 돌린다. */
+  const dmg=(a,d,slot)=>{ openBattle(T,a,d); const h0=d.hp;
+    if(slot<0){ const ks=T.S.battle.fa.skills; T.S.battle.fa.skills=undefined; T.execSlot("A",-1); T.S.battle.fa.skills=ks; }
+    else T.execSlot("A",slot);
+    return h0-d.hp; };
   giveSpecies(T,P.me,R(T,"M-F1")); giveSpecies(T,P.em,R(T,"M-W1"));
   P.me.skills[1]="lightning_effect";
   ok(dmg(P.me,P.em,1)===29&&P.em.shock===1&&P.em.burn===0&&T.S.battle.blog.some(l=>/감전 — 다음 1라운드 후공/.test(l))&&!T.S.battle.blog.some(l=>/화상/.test(l)),"D1 불 본체의 감전 침 → 물 상대: 22×1.3=29 (강상성)·감전 부여·화상 아님 (AC3)");
