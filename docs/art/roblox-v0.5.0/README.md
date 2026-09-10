@@ -1,6 +1,9 @@
 # [결정] Roblox 아트 인계 — 기본 P0 완료
 
-2026-09-10 · Ref #118 · **기본 P0 129/129 + AI 창·봇 + 중앙 배너1종 납품.** 이 폴더의 v0.5.0은 기존 경로명이며 Roblox #118의 현재 마일스톤은 v0.4.6이다.
+2026-09-10 · Ref #118 · **기본 P0 129/129 + AI 창·봇 + 공통 배너 + FX13·메모2·배너 변형2 납품.** 이 폴더의 v0.5.0은 기존 경로명이며 Roblox #118의 현재 마일스톤은 v0.4.6이다.
+
+- [전투 FX P1/P2·메모 납품 보고](earth-fx-report.md): 13개96×96×8프레임 시트 + 메모2. [P1 프레임](review/fx/p1-frames.png) · [P2 프레임](review/fx/p2-frames.png) · [Mars 적용 계약](../../../roblox/assets/fx/README.md).
+- [배너 초록·빨강2종 납품 보고](earth-banner-variants-report.md): 공통 형태 유지·팔레트만 변경. [3종 비교](review/banner-variants/comparison.png).
 
 - [중앙 배너 납품·Mars 적용 보고](earth-banner-report.md):256×128/ui_banner/SliceCenter16,16,112,112. [4색 글자 목업](review/banner/banner-text-tones.png).
 
@@ -13,7 +16,7 @@
 - [하수인 납품 보고·전체 진행표](earth-report.md): 최초 P0-A60PNG 제작 이력과 최신 전체 수량.
 - [토큰·공통 가림 모델 보고](earth-token-report.md): 승인 선택3건과 토큰9PNG·가림3D1종.
 - [로비 납품 보고](earth-lobby-report.md): 별도6메시·6알베도·1상태 표지.
-- [PNG manifest](../../../roblox/assets/manifest.csv): 기본 P0 129개 + AI UI6개 + 배너1개 =136개. [가림 모델 manifest](../../../roblox/assets/tokens/model-manifest.csv)와 [로비 manifest](../../../roblox/assets/lobby/manifest.csv)(봇 포함15행)는 별도.
+- [PNG manifest](../../../roblox/assets/manifest.csv): 기존136개 + FX13·메모2·배너 변형2 =153개. [가림 모델 manifest](../../../roblox/assets/tokens/model-manifest.csv)와 [로비 manifest](../../../roblox/assets/lobby/manifest.csv)(봇 포함15행)는 별도.
 - [하수인 원본 보존 기준](source-baseline.json): 최초 하수인 작업 전100개 이미지와 README의 SHA-256.
 - [신규 원고60개](ui-source/native-assets.json) · [Blender 보조 원본](ui-source/p0-ui.blend) · [52개 슬라이스 검토 좌표](ui-source/slice-review-cases.json).
 
@@ -28,7 +31,7 @@
 
 조합 그림은 아트 배치 검토용이며 실제 게임 화면·규칙·승인된 모바일 레이아웃의 증빙이 아니다.
 48px 계열은 native24여서32px 시트가 비정수 최근접 축소 스트레스 테스트다. 정수 표시는24/48/72px를 사용한다.
-이번 중앙 공통 배너 외의 P1 연출·FX·배너 전체 및 P2 스토어·모바일은 미완료다. 정적 아트 QA와 Studio/실플레이 QA는 구분한다.
+이번 FX P1/P2·메모 및 배너 변형 요청은 전량 납품했다. 다른 P2 스토어·모바일과 실제 연출 구현은 별도다. 정적 아트 QA와 Studio/실플레이 QA는 구분한다.
 
 이 폴더의 원본·파생 시각 아트는 [ASSET-LICENSE.md](../../../ASSET-LICENSE.md)에 따라 Apache-2.0에서 제외된다.
 Copyright 2026 Sung Changjo and the respective contributors. All rights reserved.

@@ -1,5 +1,7 @@
 # [결정] P0-B 속성·흔적 / P0-C 보드 / P0-D UI
 
+> 최신 추가(2026-09-10): [FX13·메모2 적용 계약](../fx/README.md), [배너 초록·빨강2종](../../../docs/art/roblox-v0.5.0/earth-banner-variants-report.md). 변형 배너는 공통과 동일한256×128/SliceCenter16,16,112,112/SliceScale1/tint=no다. 메모는 이번 후속에서 추가했으며, 아래 “메모 미제작” 등은 최초 P0 납품 이력이다. 이번 FX에서 틴트가 가능한 것은 hit·shield·heal3종뿐이다.
+
 > 중앙 배너 추가(2026-09-10): [banner.png](banner.png)는256×128, ui_banner, **SliceCenter16,16,112,112 / SliceScale1**로 현행 panel 좌표와 호환한다. 실제540×112이며 좌/상/우/하 캡은16/16/144/16이다. [배너 납품·적용 보고](../../../docs/art/roblox-v0.5.0/earth-banner-report.md).
 
 > 2026-09-10 추가: panel_window 등 AI 전용6PNG는 [AI 창·봇 적용 계약](../ai-window-README.md)을 따른다. 특히256px 창의 SliceCenter는24,40,232,232로, 아래128px 패널3종과 다르다. 아래 수량·표는 최초 기본 P0 납품 이력이다.

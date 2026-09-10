@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-10T05:06:57.014Z",
+  "generatedAt": "2026-09-10T06:26:01.251Z",
   "creator": {
     "userId": "11639564357"
   },
@@ -232,6 +232,12 @@
       "sha256": "fcf11b909aeb8552560cfd45415526a3f5556d8899aa25f9b219a98c0f454b1a",
       "file": "roblox/assets/board/hl_forced.png"
     },
+    "board_hl_memo": {
+      "assetId": 78230755077572,
+      "assetType": "Image",
+      "sha256": "064c06349397f66d26237a0a626550f77e88d27740b058e108af71635ceca466",
+      "file": "roblox/assets/board/hl_memo.png"
+    },
     "board_hl_move": {
       "assetId": 136251747804093,
       "assetType": "Image",
@@ -291,6 +297,84 @@
       "assetType": "Image",
       "sha256": "9b749265769b5d4bf4247135edeafc43ba1d7cf366d14e534918fc7fdfe509b3",
       "file": "roblox/assets/elements/water_64.png"
+    },
+    "fx96_burn": {
+      "assetId": 96608508774659,
+      "assetType": "Image",
+      "sha256": "04590e7c6e6d68dfbddef35f6a7c9f05f355cad81ed40ca1a19ed6cb28cf38a0",
+      "file": "roblox/assets/fx/burn_96x8.png"
+    },
+    "fx96_capture": {
+      "assetId": 113462002864844,
+      "assetType": "Image",
+      "sha256": "82cf6c05424c52c285c99a4388fc45701a73fd01d22722f31e8f294d43a93d9f",
+      "file": "roblox/assets/fx/capture_96x8.png"
+    },
+    "fx96_dragon": {
+      "assetId": 81814387161842,
+      "assetType": "Image",
+      "sha256": "b2be677928dc73a76d9cef39cc525f8834cf32e686231e7813725cc26974fd39",
+      "file": "roblox/assets/fx/dragon_96x8.png"
+    },
+    "fx96_explosion": {
+      "assetId": 110596325310372,
+      "assetType": "Image",
+      "sha256": "1b48e159310dd274ccd262d21c3c689057ee633851a50414f1ce51cad5219c96",
+      "file": "roblox/assets/fx/explosion_96x8.png"
+    },
+    "fx96_flee": {
+      "assetId": 96020056919856,
+      "assetType": "Image",
+      "sha256": "81c8b44776332ef201d37c2b7b2301fc007720235a220d36d3733051cfe39253",
+      "file": "roblox/assets/fx/flee_96x8.png"
+    },
+    "fx96_heal": {
+      "assetId": 117191294992122,
+      "assetType": "Image",
+      "sha256": "62ec4b1cb186bb321e9d2f12f30659484d37c5337397cee7adf69644022ead7f",
+      "file": "roblox/assets/fx/heal_96x8.png"
+    },
+    "fx96_hit": {
+      "assetId": 95133070980922,
+      "assetType": "Image",
+      "sha256": "1ca38b6bd53bc9c6a8b0ce0dc3c42e5e7ec8fdf124d9a132df894f49566d43ca",
+      "file": "roblox/assets/fx/hit_96x8.png"
+    },
+    "fx96_reaper": {
+      "assetId": 112234848858584,
+      "assetType": "Image",
+      "sha256": "074e516c63bb6992cc0b764bd73111f8d17a44ff07c00d747bff2e7f6725cb3a",
+      "file": "roblox/assets/fx/reaper_96x8.png"
+    },
+    "fx96_shield": {
+      "assetId": 75016854420244,
+      "assetType": "Image",
+      "sha256": "cebed45c080cf75ff76978ff4360264ba87c5e6783aa0841cc7c251e2cb3859d",
+      "file": "roblox/assets/fx/shield_96x8.png"
+    },
+    "fx96_shock": {
+      "assetId": 104332602659093,
+      "assetType": "Image",
+      "sha256": "114d8bf4a82469f9211d5ffc1cabd242be1af3ce775f13b4b9c45188cbbf8aa8",
+      "file": "roblox/assets/fx/shock_96x8.png"
+    },
+    "fx96_trap": {
+      "assetId": 76634054397493,
+      "assetType": "Image",
+      "sha256": "e6aa78dc2483119b879fda9df3d5dc9f11b622c19780f062a04f8fa037eb48d3",
+      "file": "roblox/assets/fx/trap_96x8.png"
+    },
+    "fx96_weaken": {
+      "assetId": 102791859261927,
+      "assetType": "Image",
+      "sha256": "c1b2539a2055850387e1d6c939faa538b77f3277e2a4862b7b18431b27f141db",
+      "file": "roblox/assets/fx/weaken_96x8.png"
+    },
+    "fx96_witch": {
+      "assetId": 104573429651582,
+      "assetType": "Image",
+      "sha256": "43c0e9cf3f7bf01b0b38038ab558387a33a53bbb23ff8c22e927dde632d69c05",
+      "file": "roblox/assets/fx/witch_96x8.png"
     },
     "icon_fire_atk": {
       "assetId": 129778993494980,
@@ -766,6 +850,12 @@
       "sha256": "3b3fb2a0ff9ba054ad0800a025e4bd514cfb6c3a90b06f116f1d2ad1dcd2bb3a",
       "file": "roblox/assets/tokens/king_64.png"
     },
+    "token64_memo": {
+      "assetId": 107456516895566,
+      "assetType": "Image",
+      "sha256": "e35681d9a046fb65b92dfd976e36438a4ba8603b0ce752f6f2d76a1a9905ff37",
+      "file": "roblox/assets/tokens/memo_64.png"
+    },
     "token64_trap": {
       "assetId": 120755404495408,
       "assetType": "Image",
@@ -795,6 +885,18 @@
       "assetType": "Image",
       "sha256": "6c3163b026366e67e35d812da54b718cbe53441f2a6f21bcb10acf243bb964fc",
       "file": "roblox/assets/ui/banner.png"
+    },
+    "ui_banner_bad": {
+      "assetId": 140301092822805,
+      "assetType": "Image",
+      "sha256": "c39449f7169813bf05adfd87d63fa23138d4cf8c75657e764f44d4bc20f2cf3b",
+      "file": "roblox/assets/ui/banner_bad.png"
+    },
+    "ui_banner_good": {
+      "assetId": 107280499054069,
+      "assetType": "Image",
+      "sha256": "7006f8afb207e0d6f63c0adbe06b9d785338f47d8e78b1f807be811ba9bd19d3",
+      "file": "roblox/assets/ui/banner_good.png"
     },
     "ui_btn_danger_disabled": {
       "assetId": 72715217889762,

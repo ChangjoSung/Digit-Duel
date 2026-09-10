@@ -1,5 +1,7 @@
 # [Earth 요청] Digit Dual Roblox — 배너 상황별 변형 2종 납품 요청 (소규모)
 
+> **납품 업데이트(2026-09-10)**: good/bad2PNG 전량 제작. [Earth 납품 보고·3종 비교·4색 대비](../art/roblox-v0.5.0/earth-banner-variants-report.md). 공통 원본 보존,256×128/SliceCenter16,16,112,112/SliceScale1/tint=no, 팔레트만 치환했다. 업로드·상황별 교체·Studio 확인은 Mars 후속이다.
+
 > **사용법**: `--- PROMPT ---` 이후 전체를 Codex(Earth 역할) 세션에 붙여넣는다.
 > 작성: Mars (Claude Code) 2026-09-10 · Ref #118 · 선행 요청서 `earth-banner-request.md` 의 **선택 항목 후속**
 > **선행 납품**: 공통 배너 `ui_banner`(256×128, SliceCenter 16,16,112,112) 적용 완료 — [보고서](../art/roblox-v0.5.0/earth-banner-report.md) · [적용 기록](art-apply-report.md) 3d

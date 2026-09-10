@@ -138,5 +138,39 @@ ImageColor3 흰색·`ResampleMode = Pixelated`·SliceScale 1 로 README 규격 �
 
 납품본 독립 검증(Mars): 1,788 bytes · SHA-256 `6c3163b0…` 보고서와 일치 · 256×128 RGBA8 · 중간 알파 0 · 글자 영역(중앙 20~108) 단색 `#13161e` 평탄 확인. 테스트 [7] 에 Phase 3 자산 키(`panel_window`·`banner`·`exit`·`bot`·배지 2·`thinking`·봇 메시) URL 단언을 추가했다.
 
-미납품(선택): `banner_good`·`banner_bad` 변형 — 공통 배경 + 런타임 제목색 4단계로 충분해 현행 유지. [기획 필요]: 배너 로고·워드마크 여부.
+~~미납품(선택): `banner_good`·`banner_bad` 변형~~ → **3f 에서 납품·적용 완료** (CJ 지시로 제작 범위에 들어왔다). [기획 필요]: 배너 로고·워드마크 여부.
+
+## 3e. 전투 연출 FX·메모 아트 (Earth 2026-09-10 납품 → Mars 적용 2026-09-10)
+
+납품 보고: [`docs/art/roblox-v0.5.0/earth-fx-report.md`](../art/roblox-v0.5.0/earth-fx-report.md) · 요청서: [`docs/roblox/earth-fx-p1p2-request.md`](earth-fx-p1p2-request.md). 업로드 15건 성공.
+
+**시트 규격**: 768×96 = 96×96 프레임 8장 가로. 프레임 n 은 `ImageRectOffset = (96*n, 0)`, `ImageRectSize = (96,96)`. 8번째 프레임은 완전 투명이라 재생이 끝나면 저절로 사라진다. 반복 루프가 아니라 1회 연출이다.
+
+| 키 | 적용 위치 | 적용 방식 |
+|---|---|---|
+| `fx96_*` 13종 | 전투 창 `battleFx`(96×96, 두 전투원 카드가 맞닿는 지점) · 중앙 배너 `bannerArt.fx`(96×96, 배너 왼쪽) | `Fx.play(label, key)` — 프레임당 0.055초 × 8 ≈ 0.44초. 새 연출이 오면 `Fx.seq` 로 이전 타이머를 무효화한다 |
+| `board_hl_memo` | 판 위 메모 가능 칸 강조 | `cellHighlight(b, "memo")` — 지금까지 빌려 쓰던 `hl_flee` 를 대체. 금색 점선이라 이동(파랑)·공격(빨강)과 구분된다 |
+| `token64_memo` | 셀 오른쪽 위 `MemoIcon`(14×14) 배지 | 메모가 달린 말임을 표시. **무엇을 적었는지는** 기존대로 왼쪽 아래 이모지가 보여 준다 (배지 자체는 정체 정보를 담지 않는다) |
+
+**연출 키 판정**은 규칙이 아니라 표시 계층이므로 공유 모듈 `src/shared/Banner.luau` 에 넣고 헤드리스 테스트 [14] 로 회귀를 막는다 (78 단언).
+
+- `Banner.fxFromBattle(text)` — 전투 창 메시지(bmsg) → FX 키. **부여만 잡고 해제·정화는 잡지 않는다**(화상을 입었다 ✔ / 화상이 해제되었다 ✘), **성공만 잡고 시도·실패는 잡지 않는다**(도망 성공 ✔ / 도망 시도·실패 ✘).
+- `Banner.RULES[].fx` — 판 위 사건(로그) → 배너 안에서 재생 (💥 explosion · 🪤 trap · 🔴 capture · 🏃 flee). 연출이 있으면 배너 글자를 오른쪽(x=116)으로 밀어 겹치지 않게 한다.
+
+납품본 독립 검증(Mars): 15 PNG SHA-256 전량 보고서와 일치 · 768×96/128×128/64×64 RGBA8 · **13종 × 8프레임을 직접 디코드**해 프레임별 불투명 픽셀 수가 보고서 표와 일치하고, 알파가 0/255 뿐이며, 8프레임이 서로 다르고 마지막이 완전 투명이고, tint=yes 3종의 불투명 RGB 가 전부 순백임을 확인했다.
+
+**[기획 필요] 유지**: 프레임당 재생 시간은 0.055초로 정했지만 **입력 잠금·화면 흔들림·전체 플래시는 넣지 않았다** (요청서 6장 그대로 "잠금 없이 표시만"). 좌우 전투원 중 누가 맞았는지에 따라 연출 위치를 나누는 것도 후속 — 지금은 이름 문자열로 추측해 오인 표시하느니 중앙 1회로 둔다.
+
+## 3f. 배너 상황별 변형 (Earth 2026-09-10 납품 → Mars 적용 2026-09-10)
+
+납품 보고: [`docs/art/roblox-v0.5.0/earth-banner-variants-report.md`](../art/roblox-v0.5.0/earth-banner-variants-report.md) · 요청서: [`docs/roblox/earth-banner-variants-request.md`](earth-banner-variants-request.md). 업로드 2건 성공.
+
+| 키 | 적용 위치 | 적용 방식 |
+|---|---|---|
+| `ui_banner_good` | 배너 배경 (tone `good`) | `bannerArt.VARIANT.good` — 획득·성공·승리·나의 턴 |
+| `ui_banner_bad` | 배너 배경 (tone `bad`) | `bannerArt.VARIANT.bad` — 폭탄·함정·기권·연결 끊김·패배 |
+
+`default`·`warn` 은 공통 배너를 그대로 쓴다. 실루엣·SliceCenter·글자 영역이 공통과 완전히 같아 **배경 이미지만 갈아 끼운다** — 크기·슬라이스·글자 위치 코드는 건드리지 않았다.
+
+납품본 독립 검증(Mars): 2 PNG SHA-256 보고서와 일치 · 256×128 RGBA8 · 알파 0/255. 공통 배너 `banner.png` 는 변경되지 않았다(기존 해시 유지).
 
