@@ -111,3 +111,10 @@ __pycache__/
 
 # Roblox build output + rojo binary (roblox/build.bat 으로 재생성)
 roblox/build/
+
+# 아트 렌더에 쓰인 Chrome 임시 프로필 — 추적 대상이 아니다.
+# 정확 경로 삭제가 자동 승인 검토에서 blocked by policy 로 거부돼 디스크에는 보존돼 있고,
+# 폴더 이동 때마다 `git add` 에 딸려 들어와 세 번 되돌렸다(#122·#169·#175). 여기서 끊는다.
+**/.chrome-render/
+**/render-profile-ctx-*/
+**/earth-*-render/

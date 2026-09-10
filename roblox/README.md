@@ -6,8 +6,10 @@
 > 이미 병합된 코드는 그대로 살아 있으며 **다시 작업할 것은 없습니다.**
 >
 > 👉 **[Roblox 작업자 안내 — 바뀐 버전·브랜치 정책](../docs/roblox/BRANCH-POLICY.md)** (경위: [#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · 담당 Issue: [#118](https://github.com/ChangjoSung/Digit-Duel/issues/118))
+>
+> 문서에서 `v0.4.7` 을 만나면 두 가지를 구분해 주세요 — **옛 `v0.4.7`** 은 HTML 데모의 계획 단계 이름으로 지금의 `v0.4.6` 이고, **태그 `v0.4.7`** 은 2026-09-11 출시 문서 hotfix 입니다(게임 내용은 v0.4.6 과 동일).
 
-HTML 데모(`demo/index.html` — 규칙 기준 **v0.4.6 전량** — #121·#125·#129 + #146·#131·#130 반영)의 Roblox 포팅. CJ 결정(2026-09-09)으로 플랫폼 방향을 Roblox로 전환했다 (Ref #118).
+HTML 데모(`demo/index.html` — 규칙 기준 **v0.4.6 전량** · 접촉·전투 규칙 개편 포함 — #121·#125·#129 + #146·#131·#130 반영)의 Roblox 포팅. CJ 결정(2026-09-09)으로 플랫폼 방향을 Roblox로 전환했다 (Ref #118).
 
 ## 구조
 
