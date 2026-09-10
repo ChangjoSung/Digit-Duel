@@ -7,10 +7,18 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
+const crypto = require("crypto");
 
 const ROOT = path.resolve(__dirname, "..");
 const DEFS = path.join(ROOT, "build", "globalTypes.d.luau");
-const DEFS_URL = "https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/globalTypes.d.luau";
+// **커밋으로 고정한다.** main 을 가리키면 저장소를 하나도 안 고쳤는데 검사 결과가 바뀐다 —
+// 어제 통과한 코드가 오늘 실패하거나(가짜 실패), 반대로 오타를 잡아 주던 정의가 사라져도 아무도 모른다.
+// 정의를 올릴 때는 아래 두 줄(커밋·해시)을 같이 바꾸고, 그 커밋에서 검사가 통과하는 것을 확인한 뒤 커밋한다.
+const DEFS_COMMIT = "12c95f732f09497d7a5a85e8c448730fd549cebc"; // luau-lsp "Update to latest types dump (#1618)" 2026-09-09
+const DEFS_SHA256 = "84afaa8191701da02cebeacc104178c0e5a6ad2ae6f7bd3c2eef9b160ba5ee9f";
+const DEFS_URL = `https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/${DEFS_COMMIT}/scripts/globalTypes.d.luau`;
+
+const sha256 = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 
 function download(url, dest) {
 	return new Promise((resolve, reject) => {
@@ -91,9 +99,15 @@ function topLevelKeys(body) {
 }
 
 async function main() {
-	if (!fs.existsSync(DEFS)) {
-		console.log(`정의 파일 내려받는 중 → ${path.relative(ROOT, DEFS)}`);
+	// 받아 둔 파일도 해시를 본다 — 예전에 main 에서 받아 둔 것이 남아 있으면 조용히 다른 기준으로 검사하게 된다.
+	if (!fs.existsSync(DEFS) || sha256(DEFS) !== DEFS_SHA256) {
+		console.log(`정의 파일 내려받는 중 (${DEFS_COMMIT.slice(0, 7)}) → ${path.relative(ROOT, DEFS)}`);
 		await download(DEFS_URL, DEFS);
+		const got = sha256(DEFS);
+		if (got !== DEFS_SHA256) {
+			console.error(`정의 파일 해시 불일치 — 기대 ${DEFS_SHA256}\n            받음 ${got}`);
+			process.exit(1);
+		}
 	}
 	const { classes, enums } = parseDefs(fs.readFileSync(DEFS, "utf8"));
 	const hasProp = (cls, prop, depth = 0) => {

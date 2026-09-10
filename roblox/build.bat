@@ -25,6 +25,11 @@ if not errorlevel 1 (
         pause
         exit /b 1
     )
+    REM luau-analyze 가 있을 때만 (PATH / build/ / LUAU_ANALYZE). 없으면 안내만 하고 빌드는 계속한다.
+    node tools\globalcheck.js
+    if errorlevel 1 (
+        echo [WARN] undeclared-identifier check did not pass - see above ^(CI job E runs this too^).
+    )
 )
 
 build\rojo.exe build default.project.json -o build\DigitDual.rbxl
