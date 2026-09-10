@@ -485,9 +485,7 @@ function Engine:canBattle(att, def)
 	if att.type == "bomb" or att.type == "trap" then
 		return false
 	end
-	if att.type == "king" and def.type == "king" then -- 왕 vs 왕 불가침
-		return false
-	end
+	-- #122 REVISE(2026-09-10 CJ QA 6): 왕 vs 왕 불가침 폐지 — 텔레포트로 두 왕이 맞닿으면 전투가 된다
 	if #S.forcedTargets > 0 and (att ~= S.movedPiece or not table.find(S.forcedTargets, def.id)) then
 		return false -- T1: 강제 대상 외 전투 봉쇄
 	end
@@ -991,9 +989,7 @@ local function forcedEligible(att, def)
 	if att.type == "trap" then
 		return false
 	end
-	if att.type == "king" and def.type == "king" then
-		return false
-	end
+	-- #122 REVISE(2026-09-10 CJ QA 6): 왕 vs 왕도 강제 전투 대상이다 (불가침 폐지)
 	return true
 end
 

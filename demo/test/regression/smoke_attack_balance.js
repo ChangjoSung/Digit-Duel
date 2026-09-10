@@ -136,7 +136,10 @@ function setupDuel(T,aId,dId){
   /* #146 (v0.4.7 CJ 2026-09-10): 전 슬롯 불가 시의 기본 공격 폴백이 철회됐다 — 4슬롯 전투원에게는 그 버튼이 나오지 않는다.
      #95 의 수치 계약(공격형 atk 25 → 20~30)은 그대로이므로, 기본 공격을 실제로 갖는 **왕·동료 본체 경로**로 그 표기를 계속 고정한다. */
   const f=T.S.battle.fa; f.cds=[1,1,1,1]; T.battleModal();
-  ok(!/기본 공격/.test(T.els.overlayBox.innerHTML),"D4 4슬롯 전부 쿨 → 기본 공격 폴백 버튼 없음 (#146)");
+  /* #122 REVISE(2026-09-10 CJ QA 2): 도망 하위 패널의 안내 문구가 "상대의 기본 공격 1회"를 설명하므로 innerHTML 에
+     '기본 공격' 이라는 **글자**는 남는다. 이 검사의 원래 의도는 "4슬롯 전투원에게 기본 공격 **버튼**이 없다" 이므로
+     버튼 자체(__act('basic') 핸들러 · 피해 범위 표기)로 좁혀 고정한다 — 느슨해지지 않고 오히려 정확해진다. */
+  ok(!/__act\('basic'\)/.test(T.els.overlayBox.innerHTML)&&!/기본 공격 \d+~\d+/.test(T.els.overlayBox.innerHTML),"D4 4슬롯 전부 쿨 → 기본 공격 폴백 버튼 없음 (#146)");
   ok(T.els.overlayBox.innerHTML.indexOf(T.NO_ATTACK_MSG)>=0&&T.els.overlayBox.innerHTML.indexOf("__pass()")>=0,"D4b 안내 문구 + 수동 [턴 종료] 버튼");
   const keepSkills=f.skills; f.skills=undefined; T.battleModal();
   ok(/기본 공격 20~30/.test(T.els.overlayBox.innerHTML),"D4c 기본 공격을 갖는 본체 경로의 표기는 20~30 유지 (공격형 atk 25 · 변경 전 21~31)");

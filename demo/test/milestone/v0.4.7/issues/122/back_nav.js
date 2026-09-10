@@ -233,10 +233,40 @@ block("F2 확인창 소유권",()=>{
   T.close();
 });
 
+/* ── G0. #122 REVISE(2026-09-10 CJ QA 3) 출전 준비 탭 눌림 표시 ──────
+   CJ 관측: "[02 비공개 배치 0/14] UI 탭 전환 안 됨 — 시스템은 정상, UI 전환만 안 됨".
+   원인은 uiPrep() 이 uiApply() 만 부르고 renderSetup() 을 다시 그리지 않아 aria-pressed 가 01 에 고정된 것이었다
+   (data-prep 은 바뀌어 내용은 실제로 전환됐다). 실제 파랑/회색 전환은 브라우저 실측(ui_cdp.js)이 보고,
+   여기서는 그 계약이 소스와 상태 전이에 남아 있는지 고정한다. */
+block("G0 출전 준비 탭 눌림 표시",()=>{
+  ok(/data-prep-step="roster"[^>]*aria-pressed=/.test(SRC)&&/data-prep-step="place"[^>]*aria-pressed=/.test(SRC),
+    "G0a 두 탭 버튼에 단계 식별자(data-prep-step)가 붙는다");
+  ok(/\.prepTabs button\[data-prep-step\][\s\S]{0,220}aria-pressed[\s\S]{0,80}getAttribute\("data-prep-step"\)===UI\.prep/.test(SRC),
+    "G0b uiApply 가 UI.prep 을 보고 두 탭의 aria-pressed 를 다시 맞춘다 (renderSetup 재렌더에 의존하지 않는다)");
+  ok(/\.prepTabs button\[aria-pressed="true"\]\{background:var\(--accentFill\)/.test(SRC),
+    "G0c 눌린 탭 강조는 계속 aria-pressed 로만 그린다 (별도 상태 클래스를 만들지 않는다)");
+  ok(/#app\[data-prep="roster"\] \.prepStep\[data-step="place"\]\{display:none;\}/.test(SRC)
+   &&/#app\[data-prep="place"\] \.prepStep\[data-step="roster"\]\{display:none;\}/.test(SRC),
+    "G0d 두 절은 항상 DOM 에 있고 data-prep 으로만 보이기가 바뀐다 (기존 계약 보존)");
+  T.UI.entered=true; T.S.phase="setup";
+  T.uiPrep("place");
+  ok(T.els.app.getAttribute("data-prep")==="place"&&T.UI.prep==="place","G0e uiPrep('place') → data-prep=place");
+  T.uiPrep("roster");
+  ok(T.els.app.getAttribute("data-prep")==="roster"&&T.UI.prep==="roster","G0f uiPrep('roster') → data-prep=roster (탭으로 되돌아간다)");
+  ok(!/location\.reload/.test(SRC.slice(SRC.indexOf("window.uiPrep="),SRC.indexOf("window.uiPrep=")+220)),
+    "G0g 탭 전환은 문서를 다시 읽지 않는다 (#128 자동 표시 경계 보존)");
+});
+
 /* ── G. 보존 ─────────────────────────────────────────────────── */
 block("G 보존 계약",()=>{
-  ok(/<div class="bhead"><button id="bmenuBack" class="bmenuBack\$\{menu\?"":" hidden"\}" type="button" onclick="window\.__menu\(null\)">← 뒤로<\/button><h2/.test(SRC),
-    "G1a 전투 하위 메뉴 '← 뒤로'는 전투 패널 제목 왼쪽(좌상단)에 있고 핸들러는 계속 window.__menu(null) 시맨틱 호출");
+  /* #122 REVISE(2026-09-10 CJ QA 4): CJ 지시로 '← 뒤로'가 **행동 공간 아래**로 내려갔다 (직전 REVISE 의 제목 왼쪽 배치를 대체).
+     "플레이할 때 행동 공간 밑에 뒤로가기가 있어야 시야적으로 좋다" — 머리줄에는 제목만 남고, 버튼은 네 하위 패널 다음·전투 이력 앞에 선다. */
+  ok(/<div class="bhead"><h2 style="font-size:22px">/.test(SRC)&&!/<div class="bhead">[\s\S]{0,120}bmenuBack/.test(SRC),
+    "G1a-1 전투 패널 머리줄에는 제목만 남는다 (좌상단 '← 뒤로' 제거)");
+  ok(/\$\{sub\("flee",[\s\S]*?\)\}\s+<button id="bmenuBack" class="bmenuBack\$\{menu\?"":" hidden"\}" type="button" onclick="window\.__menu\(null\)">← 뒤로<\/button>\s+<details>/.test(SRC),
+    "G1a-2 '← 뒤로'는 하위 메뉴 패널 **아래**(전투 이력 위)에 있고 핸들러는 계속 window.__menu(null) 시맨틱 호출");
+  ok(/#overlayBox\.battleBox \.bmenuBack\{[^}]*display:block[^}]*width:100%/.test(SRC)&&/#overlayBox\.battleBox \.bmenuBack\.hidden\{display:none;\}/.test(SRC),
+    "G1a-3 행동창 아래 전체 폭 버튼이며 하위 메뉴가 닫히면 숨는다");
   ok(/const sub=\(key,inner\)=>`<div class="bsub\$\{menu===key\?"":" hidden"\}" id="bsub-\$\{key\}">\$\{inner\}<\/div>`;/.test(SRC),
     "G1b 하위 패널 안에는 중복 뒤로가기를 남기지 않는다");
   ok(/const bb=\$\("bmenuBack"\)[\s\S]{0,160}B\.menu\?bb\.classList\.remove|__menu=key=>\{[\s\S]{0,400}bmenuBack/.test(SRC),

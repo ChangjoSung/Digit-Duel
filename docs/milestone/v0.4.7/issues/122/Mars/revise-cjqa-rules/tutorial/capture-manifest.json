@@ -1,0 +1,286 @@
+{
+ "tool": "tools/media/readme_media_capture.js",
+ "command": "tools/media/readme_media_capture.js capture --ref HEAD --out docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial --manifest docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json",
+ "env": {
+  "ref": "HEAD",
+  "refSha": "1fd3f16acc62161097ff3cbf652c1e0b2d86fa33",
+  "htmlBlob": "476ed2af085ecd5d069d4f260402954339b8192d",
+  "url": "http://127.0.0.1:<port>/demo/index.html (git show HEAD:demo/* → memory)",
+  "viewport": "1280x900",
+  "dpr": 2,
+  "clip": {
+   "x": 84,
+   "y": 41,
+   "width": 1112,
+   "height": 818
+  },
+  "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "chromeVersion": "152.0.7977.83",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "node": "v24.16.0",
+  "platform": "win32 10.0.19045",
+  "capturedAt": "2026-09-10T12:29:47.073Z"
+ },
+ "frames": [
+  {
+   "file": "tutorial-01.png",
+   "step": 1,
+   "count": "1 / 10 단계",
+   "title": "🏆 이기는 법 세 가지",
+   "cards": 3,
+   "nav": [
+    "◀ 이전(비활성)",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 243,
+    "w": 1080,
+    "h": 414
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "139264c7dd743e5a5644e935b00ef4a89e11661fec3bb3a0c13ab6f9cfa1556a",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png",
+   "bytes": 176390
+  },
+  {
+   "file": "tutorial-02.png",
+   "step": 2,
+   "count": "2 / 10 단계",
+   "title": "🎭 말 5가지와 숨은 정체",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 215,
+    "w": 1080,
+    "h": 471
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "4b61685c4219e563a57d081e4e98f0581a0095dd0f51874880f2af1c4d43cd53",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png",
+   "bytes": 171221
+  },
+  {
+   "file": "tutorial-03.png",
+   "step": 3,
+   "count": "3 / 10 단계",
+   "title": "🌲 움직이기와 숲에 숨기",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 234,
+    "w": 1080,
+    "h": 431
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "0c02a39e5d22be22b06f8260403c485037c4253f5236a77ba43585adcb045729",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png",
+   "bytes": 174618
+  },
+  {
+   "file": "tutorial-04.png",
+   "step": 4,
+   "count": "4 / 10 단계",
+   "title": "🔍 흔적과 탐색",
+   "cards": 4,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 214,
+    "w": 1080,
+    "h": 472
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "c7f7e8dbdace09a13938b8b84418a8c9d62b4f3a010552df72c3bd0131b2cc05",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png",
+   "bytes": 188100
+  },
+  {
+   "file": "tutorial-05.png",
+   "step": 5,
+   "count": "5 / 10 단계",
+   "title": "⚔️ 옆에 붙으면 꼭 싸워요",
+   "cards": 7,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 57,
+    "w": 1080,
+    "h": 785
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "99a34f14cca71c4c5e0444f734ec377646a15f2c49cf1d4749f436ba8f83e0eb",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png",
+   "bytes": 297770
+  },
+  {
+   "file": "tutorial-06.png",
+   "step": 6,
+   "count": "6 / 10 단계",
+   "title": "💣 폭탄과 함정",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 223,
+    "w": 1080,
+    "h": 454
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "6e02b2ae1163ec6527e77a794c9589070a16ea86a316de0e538dbb7f7e5012c8",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png",
+   "bytes": 189438
+  },
+  {
+   "file": "tutorial-07.png",
+   "step": 7,
+   "count": "7 / 10 단계",
+   "title": "🔴 잡아오기와 도망치기",
+   "cards": 5,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 76,
+    "w": 1080,
+    "h": 747
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "8eb169b2387565c47232a3eb02eb6caabd61406a6e8709a56756c8b4335cea8a",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png",
+   "bytes": 206677
+  },
+  {
+   "file": "tutorial-08.png",
+   "step": 8,
+   "count": "8 / 10 단계",
+   "title": "🌀 텔레포트(순간이동)",
+   "cards": 4,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 205,
+    "w": 1080,
+    "h": 489
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "6eae0c42df1da52eee66bf6564dae20b1b57f5d43adaa5d830405a4ecd6a0fdf",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png",
+   "bytes": 214049
+  },
+  {
+   "file": "tutorial-09.png",
+   "step": 9,
+   "count": "9 / 10 단계",
+   "title": "🔥 버닝 타임(불타는 시간)",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "다음 ▶",
+    "건너뛰기"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 192,
+    "w": 1080,
+    "h": 516
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "c70297f8cb25c453903cc69a72e6567f59f0459119b97ed4b409954db62c2785",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png",
+   "bytes": 152252
+  },
+  {
+   "file": "tutorial-10.png",
+   "step": 10,
+   "count": "10 / 10 단계",
+   "title": "🏁 빠른 복습 — 첫 차례 체크리스트",
+   "cards": 3,
+   "nav": [
+    "◀ 이전",
+    "게임 시작 ▶",
+    "처음부터"
+   ],
+   "vscroll": false,
+   "box": {
+    "x": 100,
+    "y": 222,
+    "w": 1080,
+    "h": 456
+   },
+   "size": {
+    "w": 2224,
+    "h": 1636
+   },
+   "sha256": "8e87415246925d1fb017d0cac4f16344dc1045b9fce354cf6ab11f0399e4d872",
+   "path": "docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png",
+   "bytes": 184844
+  }
+ ]
+}

@@ -1944,8 +1944,8 @@ local function renderBattle()
 	"<b>몬스터볼</b>\n상대 <b>하수인</b>을 포획합니다. 성공하면 전투가 즉시 끝나고 그 하수인이 내 예비가 됩니다.\n한 라운드에 한 번만 던질 수 있습니다.")
 	Ui.attachTip(smallBtn(battleBtns, 112, 94, 92, ("도망 %d%%"):format(math.floor((bt.fleeProb or 0.3) * 100 + 0.5)), function()
 		send({ t = "flee" })
-	end, "default", bt.canFlee ~= false, Art.action("flee")), -- #146: HP 조건 없음 · 기본 30% · 도망의 수호자 70%
-	("<b>도망</b>  성공 확률 %d%%\n성공하면 전투가 끝나고 내 말이 물러납니다. <b>실패하면 이번 행동을 잃습니다.</b>\nHP 조건은 없습니다."):format(
+	end, "default", bt.canFlee ~= false, Art.action("flee")), -- #146: HP 조건 없음 · 기본 30% · 도망의 수호자 70% · #122 REVISE(CJ QA 2): 실패 시 상대 기본 공격 1회
+	("<b>도망</b>  성공 확률 %d%%\n성공하면 전투가 끝나고 내 말이 물러납니다. <b>실패하면 상대의 기본 공격 1회를 맞고 이번 행동을 잃습니다.</b>\nHP 조건은 없습니다."):format(
 		math.floor((bt.fleeProb or 0.3) * 100 + 0.5)))
 	Ui.attachTip(smallBtn(battleBtns, 210, 94, 76, "🎁 " .. (view.gifts or 0), function()
 		battleSub = "gift"

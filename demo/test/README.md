@@ -23,7 +23,7 @@
 
 | 파일 | 버전 | Issue | 검사 범위 |
 |---|---|---|---|
-| [`smoke_cycle5.js`](regression/smoke_cycle5.js) | v0.3.0 | #19 #20 #21 | 이동·상성·폭탄·함정·밀어내기·왕 불가침·판정 기본 회귀 |
+| [`smoke_cycle5.js`](regression/smoke_cycle5.js) | v0.3.0 | #19 #20 #21 | 이동·상성·폭탄·함정·밀어내기·판정 기본 회귀. 왕 vs 왕은 [#122 CJ QA REVISE 2차](../../docs/milestone/v0.4.7/issues/122/Mars/revise-cjqa-rules/report.md)로 불가침이 폐지돼 **전투 가능**을 고정한다 |
 | [`smoke_tutorial.js`](regression/smoke_tutorial.js) | v0.3.1 | #26 #32 (+#128) | 튜토리얼 10단계 내용·장면 그림·접근성 · **문서 로드당 1회 자동 표시**(#128, 2026-09-10 CJ 승인). 영구 저장을 읽지도 쓰지도 않으므로 과거 `tutorialSeen` 키가 남아 있어도 매 로드 1단계부터 뜬다 — B18·B19·C5 가 그 계약과 사용자 저장값 보존을, F7·F7b 가 "튜토리얼 구간 저장·전송 API 0줄"(sessionStorage 대체 금지 포함)을 고정한다 |
 | [`smoke_memo.js`](regression/smoke_memo.js) | v0.3.1 | #36 #38 (+#94) | 추측 메모 피커·viewer 격리·AI 비관측·상대 턴 로컬 메모 |
 | [`smoke_online.js`](regression/smoke_online.js) | v0.4.0 | #54 #63 | 온라인 PVP 접속 경로·주소 정규화·스킴. **J절 음성 대조만 `os.tmpdir()`에 변이 HTML 사본 1개를 만들고 삭제한다** |

@@ -170,7 +170,7 @@ u3.S.current = 0
 u3:initBattle(m3, trap)
 ok(not trap.alive and m3.immobile == 2 and m3.revealed and trap.revealed, "함정 발동 계약")
 
--- 4d. 동료 ↔ 동료: 전투 없이 밀기 (상황 8)
+-- 4d. 동료 ↔ 동료: #122 REVISE(2026-09-10 CJ QA 1) — 상황 8(밀기) 폐지 → 전투가 된다
 local u4 = freshPlay(103)
 local a4 = findType(u4, 0, "ally")
 local d4 = findType(u4, 1, "ally")
@@ -178,10 +178,50 @@ a4.r, a4.c = 7, 3
 d4.r, d4.c = 7, 4
 u4.S.current = 0
 u4:initBattle(a4, d4)
-ok(a4.alive and d4.alive, "밀기 — 양측 생존")
-ok(not a4.revealed and not d4.revealed, "밀기 — 양측 비공개")
-eq(u4.S.metrics.pushes, 1, "pushes 지표")
-ok(math.abs(a4.r - d4.r) + math.abs(a4.c - d4.c) >= 2 or u4.S.metrics.relocations > 0, "밀기 후 비인접(또는 재배치)")
+eq(u4.S.metrics.pushes, 0, "동료↔동료는 더 이상 밀기가 아니다 (pushes 0)")
+ok(a4.r == 7 and a4.c == 3 and d4.r == 7 and d4.c == 4, "밀려나지 않고 제자리")
+-- 포획 하수인이 없으면 출전 선택이 즉시 확정돼 pending 없이 곧장 전투가 열린다 — 둘 중 하나면 "전투로 갔다"
+ok((u4.S.pending ~= nil and u4.S.pending.kind == "vip") or u4.S.battle ~= nil, "동료↔동료가 전투로 이어진다 (출전 선택 또는 전투 개시)")
+
+-- 4e. 폭탄 ↔ 폭탄 / 폭탄 ↔ 함정: #122 REVISE(CJ QA 5) — 상황 6(밀기) 폐지 → 그 자리에서 둘 다 제거
+local u4b = freshPlay(105)
+local b4b = findType(u4b, 0, "bomb")
+local eb4b = findType(u4b, 1, "bomb")
+b4b.r, b4b.c = 7, 4
+eb4b.r, eb4b.c = 7, 5
+u4b.S.current = 0
+u4b.S.battlesUsed = 0
+u4b:initBattle(b4b, eb4b)
+ok(not b4b.alive and not eb4b.alive, "폭탄↔폭탄 — 둘 다 제거")
+eq(u4b.S.metrics.pushes, 0, "폭탄↔폭탄 — 밀기 아님")
+eq(u4b.S.metrics.bombContacts, 1, "bombContacts 지표")
+
+local u4c = freshPlay(106)
+local b4c = findType(u4c, 0, "bomb")
+local et4c = findType(u4c, 1, "trap")
+b4c.r, b4c.c = 7, 4
+et4c.r, et4c.c = 7, 5
+u4c.S.current = 0
+u4c.S.battlesUsed = 0
+local tt4c = u4c.S.metrics.trapTriggers
+u4c:initBattle(b4c, et4c)
+ok(not b4c.alive and not et4c.alive, "폭탄↔함정 — 둘 다 제거")
+eq(u4c.S.metrics.trapTriggers, tt4c, "함정 발동(trapTriggers)이 아니라 폭탄 폭발이다")
+ok(b4c.immobile == 0, "이동 불가(immobile)도 붙지 않는다")
+
+-- 4f. 왕 ↔ 왕: #122 REVISE(CJ QA 6) — 불가침 폐지 → 능동·강제 전투 모두 가능
+local u4d = freshPlay(107)
+local k4a = findType(u4d, 0, "king")
+local k4b = findType(u4d, 1, "king")
+k4a.r, k4a.c = 7, 3
+k4b.r, k4b.c = 7, 4
+u4d.S.current = 0
+u4d.S.battlesUsed = 0
+k4b.revealed = true
+ok(u4d:canBattle(k4a, k4b), "왕 vs 왕 canBattle true (불가침 폐지)")
+u4d:initBattle(k4a, k4b)
+ok((u4d.S.pending ~= nil and u4d.S.pending.kind == "vip") or u4d.S.battle ~= nil, "왕 vs 왕도 전투로 이어진다")
+eq(u4d.S.metrics.pushes, 0, "왕 vs 왕 — 밀기 아님")
 
 --==================================================================
 print("[5] 왕 끝줄 승리·전투 완주")
@@ -838,7 +878,7 @@ do -- 계약 3.3: 시간의 수호자 — R1 한정 · 그 전투만 3라운드 
 	ok(en2:apply(o2, { t = "buff", kind = "power" }), "R2 힘은 가능")
 	eq(en2:battleMaxRounds(), 6, "다른 전투는 6라운드")
 end
-do -- #146 계약 1: 도망 — HP 게이트 폐지 · 기본 30% · 버프 70%(치환) · 실패 시 상대 반격 없음
+do -- #146 계약 1 + #122 REVISE(2026-09-10 CJ QA 2): 도망 — HP 게이트 폐지 · 기본 30% · 버프 70%(치환) · **실패 = 상대의 기본 공격 1회 반격**
 	local en = mkBattle(1107)
 	local B = en.S.battle
 	local myHp, oppHp = B.fa.hp, B.fd.hp
@@ -848,8 +888,8 @@ do -- #146 계약 1: 도망 — HP 게이트 폐지 · 기본 30% · 버프 70%(
 	eq(B.phase, 0, "행동 전 phase 0")
 	ok(en:apply(0, { t = "flee" }), "HP 100% 에서도 도망 시도 가능 (게이트 폐지)")
 	ok(en.S.battle ~= nil, "기본 30% · roll 0.5 → 실패로 전투 계속")
-	eq(B.fa.hp, myHp, "#146 1.2: 실패해도 상대 추가 반격 없음 (내 HP 불변)")
-	eq(B.fd.hp, oppHp, "실패 시 상대 HP 불변")
+	ok(B.fa.hp < myHp, "#122 CJ QA 2: 도망 실패 → 도망친 쪽이 상대의 기본 공격 피해를 받는다")
+	eq(B.fd.hp, oppHp, "반격한 상대는 피해를 받지 않는다")
 	eq(B.phase, 1, "실패 = 내 전투 행동 1회 소모 (phase 진행)")
 	eq(en.S.metrics.fleeTries, 1, "fleeTries 기록")
 	eq(en.S.metrics.fleeOks, 0, "fleeOks 미기록")
@@ -1311,7 +1351,7 @@ do -- 실제 엔진 문구를 그대로 넣는다 (Battle.luau·Engine.luau 의 
 		{ "🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 2)", nil },
 		{ "🏃 도망 성공! 전투가 종료되었다.", "flee" },
 		{ "🏃 새끼 화룡의 도망 시도!", nil },
-		{ "🏃 도망 실패! 이번 행동을 소모했다.", nil },
+		{ "🏃 도망 실패! 빈틈을 보이고 말았다.", nil }, -- #122 REVISE(CJ QA 2): 문구 개정 · 반격 자체는 기본 공격 줄로 따로 나간다
 		-- 연출 없는 평범한 줄
 		{ "⚔️ 새끼 화룡 vs 물의 정령 — 전투 개시!", nil },
 		{ "⏭️ 새끼 화룡 — 쓸 수 있는 기술이 없어 이번 행동을 넘겼다.", nil },

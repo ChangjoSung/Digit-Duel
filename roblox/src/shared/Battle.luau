@@ -158,10 +158,11 @@ function Battle.attach(Engine, deps)
 			if self:checkWipe() then
 				return
 			end
-		else -- #114 상황 6: 폭탄 → 폭탄/함정 — 제거·공개 없이 양측 한 칸씩 밀기
-			self:log("💣 폭탄이 상대 폭탄·함정과 접촉 — 아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다. (양쪽 유지 · 정체 비공개)", "imp")
-			self:pushResolve(bomb, def, { who = bomb.owner })
-			if S.phase ~= "play" then
+		else -- #122 REVISE(2026-09-10 CJ QA 5): #114 상황 6(밀기·양쪽 유지) 폐지 — 그 자리에서 폭탄 접촉 발동, 둘 다 제거
+			bomb.alive = false
+			def.alive = false
+			self:log("💥 폭탄 접촉 발동! 폭탄과 상대 " .. (Data.TYPE_KO[def.type] or "말") .. "이(가) 함께 제거되었습니다.", "imp")
+			if self:checkWipe() then
 				return
 			end
 		end
@@ -172,13 +173,10 @@ function Battle.attach(Engine, deps)
 	-- 출전 선택 (HTML vipChoice 모달 체인 → pending "vip")
 	--==============================================================
 
+	-- #122 REVISE(2026-09-10 CJ QA 1·6): #114 상황 8(동료/왕 ↔ 동료/왕 = 밀기)과 왕 vs 왕 불가침이 모두 폐지됐다 —
+	-- 동료↔동료·동료↔왕·왕↔왕이 전부 보통 전투로 이어진다. 대리 출전 선택 체인과 패배 결과는 그대로다.
 	function Engine:vipChoice(att, def)
 		local S = self.S
-		if isVip(att) and isVip(def) then -- #114 상황 8: 전투 없이 밀기
-			self:log("🤜 동료·왕끼리 접촉 — 아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다. (양측 정체 비공개)", "imp")
-			self:doPush(att, def)
-			return
-		end
 		S.pending = { kind = "vip", attId = att.id, defId = def.id, choices = {}, stage = nil, owner = nil }
 		self:advanceVip()
 	end
@@ -243,10 +241,7 @@ function Battle.attach(Engine, deps)
 		local fd = (pd.choices.D == "cap") and def.cap or def
 		local aIsBody = isVip(att) and pd.choices.A ~= "cap"
 		local dIsBody = isVip(def) and pd.choices.D ~= "cap"
-		if aIsBody and dIsBody then -- Q2-b C안
-			self:doPush(att, def)
-			return
-		end
+		-- #122 REVISE(2026-09-10 CJ QA 1): 종전 Q2-b C안 "양측 본체 = 밀기"는 폐지 — 본체끼리도 그대로 전투한다
 		self:log("출전 공개 — 공격: " .. ((fa == att) and Data.TYPE_KO[att.type] or ("포획 하수인(" .. Data.ELEM_KO[fa.element] .. ")"))
 			.. " vs 방어: " .. ((fd == def) and Data.TYPE_KO[def.type] or ("포획 하수인(" .. Data.ELEM_KO[fd.element] .. ")")), "imp")
 		self:startRounds(att, def, fa, fd)
@@ -977,9 +972,13 @@ function Battle.attach(Engine, deps)
 				self:fleeSwapPrompt(myPiece, oppPiece) -- #114 교환·밀기
 				return true
 			end
-			-- #146 계약 1.2: 상대의 추가 반격 삭제 — 실패는 도망 측 전투 행동 1회 소모로만 끝나고 상대 정상 차례가 온다
-			self:bmsg("🏃 도망 실패! 이번 행동을 소모했다.")
-			self:nextPhase()
+			-- #122 REVISE(2026-09-10 CJ QA 2): #146 계약 1.2 가 지웠던 실패 반격을 **기본 공격 한정**으로 되살린다.
+			-- 실패 = 상대의 무료 기본 공격 1회 + 자기 전투 행동 1회 소모, 그 뒤 상대의 정상 차례.
+			-- 💪 힘의 수호자는 별도 처리가 없다 — 반격자의 powerBuff 가 기존 피해 분산 상단 고정으로 최대 피해를 만든다.
+			self:bmsg("🏃 도망 실패! 빈틈을 보이고 말았다.")
+			local counterSide = (side == "A") and "D" or "A"
+			self:bmsg("⚔️ " .. fighterName(B, counterSide) .. "의 반격 — 기본 공격!")
+			self:execSlot(counterSide, nil) -- 여기서 checkDeath → finishBattle 또는 nextPhase 까지 끝난다
 			return true
 		end
 		return false, "알 수 없는 전투 액션"

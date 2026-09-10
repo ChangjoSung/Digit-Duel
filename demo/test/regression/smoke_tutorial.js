@@ -45,7 +45,8 @@ const N=10, LAST=N-1;
   ok(/30%/.test(body[6])&&/70%/.test(body[6])&&/70\/100/.test(body[6])&&/볼.*1개.*없어/.test(body[6]),"A11 포획 수치(HP<30%·70%·예비 70/100·볼 소모)가 엔진과 일치");
   ok(/HP 조건 없이/.test(body[6])&&!/50%/.test(body[6])&&/성공률은 <b>30%<\/b>/.test(T.TUT_STEPS[6].lines[2]),"A11c 도망: HP 조건 폐지·기본 성공률 30% (#146)");
   ok(/도망의 수호자/.test(cap6)&&/70%/.test(cap6),"A11d 도망의 수호자 = 그 싸움 동안 70% 표기 (#146)");
-  ok(/상대가 더 때리지 않아요/.test(body[6])&&/싸움 차례 한 번/.test(body[6])&&!/바로 한 번 더/.test(body[6]),"A11e 도망 실패 반격 삭제가 문안에 반영 (#146)");
+  /* #122 REVISE(2026-09-10 CJ QA 2): #146 이 지웠던 실패 반격이 **기본 공격 한정**으로 되살아났다 */
+  ok(/기본 공격 한 번/.test(body[6])&&/싸움 차례 한 번/.test(body[6])&&!/상대가 더 때리지 않아요/.test(body[6]),"A11e 도망 실패 페널티(상대 기본 공격 1회)가 문안에 반영 (#122 CJ QA 2)");
   ok(/뒤에 있는 내 말/.test(body[6])&&/한 칸씩/.test(body[6]),"A11f 도망 성공 후 후방 교환·밀기는 그대로 (#114)");
   ok(Math.round(T.BAL.enemyCapProb*100)===70&&Math.round(T.BAL.fleeProb*100)===30&&Math.round(T.BAL.fleeProbGuard*100)===70&&T.BAL.enemyCapHp===70&&T.BAL.captured.hp===100,
     "A11b 엔진 상수 전제 (enemyCapProb .7 · fleeProb .3 · fleeProbGuard .7 · enemyCapHp 70/100)");

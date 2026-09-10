@@ -155,20 +155,21 @@ block("B 폭탄 접촉",()=>{
   board("pvp"); b=first(0,"bomb"); const ek=king(1); H.place(T,b,3,6); H.place(T,ek,1,7); T.doMove(b,2,6); H.place(T,ek,1,6); // 왕 옆으로
   board("pvp"); b=first(0,"bomb"); H.place(T,b,3,7); T.doMove(b,2,7);
   ok(!b.alive&&king(1).alive&&!king(1).revealed&&S().battlesUsed===1,"B2b 폭탄→왕: 폭탄만 제거·왕 생존·비공개");
-  // B3 폭탄 → 폭탄/함정: 아무 일 없음, 전투 1회 소모, 재선택 없음
+  /* B3 폭탄 → 폭탄/함정 — #122 REVISE(2026-09-10 CJ QA 5): #114 상황 6(밀기·양쪽 유지)을 폐지하고
+     **그 자리에서 폭탄 접촉이 발동해 둘 다 제거**된다. 전투 1회 소모·강제 대상 해소·재선택 없음은 그대로다. */
   board("pvp"); b=first(0,"bomb"); const eb=first(1,"bomb"); H.place(T,b,8,4); H.place(T,eb,6,4); T.doMove(b,7,4);
-  ok(b.alive&&eb.alive&&!b.revealed&&!eb.revealed&&S().battlesUsed===1&&S().forcedTargets.length===0&&S().metrics.bombContacts===1,"B3 폭탄→폭탄: 양쪽 유지·비공개·전투 1회 소모·강제 대상 해소");
-  ok(T.FX.log.some(x=>x.sub==="아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."),"B3b #114 상황 6 밀기 문구");
+  ok(!b.alive&&!eb.alive&&S().battlesUsed===1&&S().forcedTargets.length===0&&S().metrics.bombContacts===1,"B3 폭탄→폭탄: 둘 다 제거·전투 1회 소모·강제 대상 해소 (#122 CJ QA 5)");
+  ok(T.FX.log.some(x=>x.sub==="폭탄이 터져 상대 폭탄·함정과 함께 제거됩니다.")&&T.FX.log.some(x=>x.key==="explosion"),"B3b 상황 6 개정 문구 + 폭발 항목");
   board("pvp"); b=first(0,"bomb"); const et=first(1,"trap"); H.place(T,b,8,4); H.place(T,et,6,4); T.doMove(b,7,4);
-  ok(b.alive&&et.alive&&!et.revealed&&S().battlesUsed===1,"B3c 폭탄→함정: 아무 일 없음 (함정 수동 유지·비공개)");
+  ok(!b.alive&&!et.alive&&S().battlesUsed===1&&S().metrics.trapTriggers===0&&!b.immobile,"B3c 폭탄→함정: 둘 다 제거 · 함정 발동(이동 불가·trapTriggers)은 아님 (#122 CJ QA 5)");
   // B4 복수 대상: 소유자가 하나 선택 → 상황 6(함정) 고르면 아무 일 없고 다른 대상(하수인) 재선택 불가
   board("pvp"); b=first(0,"bomb"); const e4=first(1,"minion"), t4=first(1,"trap"); H.place(T,b,8,4); H.place(T,e4,6,4); H.place(T,t4,7,5); T.doMove(b,7,4);
   ok(S().forcedTargets.length===2&&b.alive&&e4.alive&&!S().battle,"B4a 새로 인접한 대상 2개 → 선택 대기 (즉시 발동 없음)");
   ok(T.forcedPickOk(e4)&&T.forcedPickOk(t4)&&!T.canBattle(b,e4),"B4b 강제 선택은 forcedPickOk 로 가능하지만 canBattle(폭탄 능동)은 여전히 불가");
   T.onCellCore?null:null; T.applyAction({t:"cell",r:7,c:5}); // 함정 클릭
-  ok(S().forcedTargets.length===0&&b.alive&&t4.alive&&e4.alive&&S().battlesUsed===1,"B4c 함정 선택 → 아무 일 없음 · 강제 대상 해소 · 전투 1회 소모");
+  ok(S().forcedTargets.length===0&&!b.alive&&!t4.alive&&e4.alive&&S().battlesUsed===1,"B4c 함정 선택 → 폭탄·함정만 함께 제거 · 강제 대상 해소 · 전투 1회 소모 (#122 CJ QA 5)");
   T.S.selected=b; T.applyAction({t:"cell",r:6,c:4});
-  ok(e4.alive&&b.alive&&S().battlesUsed===1,"B4d 같은 턴에 하수인을 다시 골라도 발동하지 않는다 (재선택 없음)");
+  ok(e4.alive&&!b.alive&&S().battlesUsed===1,"B4d 같은 턴에 하수인을 다시 골라도 발동하지 않는다 (폭탄은 이미 소진)");
   // B5 턴 시작부터 인접했던 상대와는 발동하지 않음 (다른 말 이동)
   board("pvp"); b=first(0,"bomb"); const e5=first(1,"minion"); H.place(T,b,7,4); H.place(T,e5,6,4); const m5=first(0,"minion"); H.place(T,m5,10,1); T.doMove(m5,9,1);
   ok(b.alive&&e5.alive&&S().battlesUsed===0,"B5 기존 인접 폭탄은 발동하지 않는다");
@@ -442,11 +443,11 @@ block("H 문구",()=>{
   const C=(a,d,mine)=>T.contactText(a,d,mine);
   ok(C(mi,em,true)==="배틀을 시작합니다."&&C(mi,ea,true)==="배틀을 시작합니다."&&C(mi,ek,true)==="배틀을 시작합니다.","H1 상황 1 하수인→하수인/동료/왕");
   ok(C(mi,eb,true)==="폭탄이 터져 내 하수인이 제거됩니다."&&C(mi,et,true)==="함정에 걸려 내 하수인의 이동이 2턴간 제한됩니다.","H2·3 상황 2·3");
-  ok(C(bo,em,true)==="폭탄이 터져 상대 하수인과 함께 제거됩니다."&&C(bo,ea,true)==="상대 말이 내 폭탄을 제거하였습니다."&&C(bo,ek,true)==="상대 말이 내 폭탄을 제거하였습니다."&&C(bo,eb,true)==="아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."&&C(bo,et,true)==="아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다.","H4~6 상황 4·5·6");
+  ok(C(bo,em,true)==="폭탄이 터져 상대 하수인과 함께 제거됩니다."&&C(bo,ea,true)==="상대 말이 내 폭탄을 제거하였습니다."&&C(bo,ek,true)==="상대 말이 내 폭탄을 제거하였습니다."&&C(bo,eb,true)==="폭탄이 터져 상대 폭탄·함정과 함께 제거됩니다."&&C(bo,et,true)==="폭탄이 터져 상대 폭탄·함정과 함께 제거됩니다.","H4~6 상황 4·5·6 (#122 CJ QA 5 개정)");
   ok(C(al,em,true)==="배틀을 시작합니다. (출전을 선택하세요)"&&C(kg,eb,true)==="상대 폭탄이 터졌지만 내 말은 생존했습니다."&&C(al,et,true)==="함정에 걸려 내 말의 이동이 2턴간 제한됩니다.","H7 CJ 표 밖 조합 (동료·왕)");
   ok(C(mi,em,false)==="상대가 내 하수인에게 배틀을 걸었습니다."&&C(mi,ea,false)==="상대가 내 동료에게 배틀을 걸었습니다."&&C(mi,ek,false)==="상대가 내 왕에게 배틀을 걸었습니다.","H8 거울 1");
   ok(C(mi,eb,false)==="내 폭탄이 터져 상대 하수인이 제거됩니다."&&C(mi,et,false)==="상대 하수인이 내 함정에 걸렸습니다! (정체 공개 · 2턴 이동 불가)","H9 거울 2·3");
-  ok(C(bo,em,false)==="상대 폭탄이 터져 내 하수인이 제거됩니다."&&C(bo,ea,false)==="내 말이 상대 폭탄을 제거하였습니다."&&C(bo,eb,false)==="아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."&&C(kg,eb,false)==="상대 말이 내 폭탄을 제거하였습니다.","H10 거울 4·5·6·동료→폭탄");
+  ok(C(bo,em,false)==="상대 폭탄이 터져 내 하수인이 제거됩니다."&&C(bo,ea,false)==="내 말이 상대 폭탄을 제거하였습니다."&&C(bo,eb,false)==="상대 폭탄이 터져 내 폭탄·함정과 함께 제거됩니다."&&C(kg,eb,false)==="상대 말이 내 폭탄을 제거하였습니다.","H10 거울 4·5·6·동료→폭탄 (#122 CJ QA 5 개정)");
   // 뷰어 판정: PVE 뷰어 0, 온라인 NET.me, 핫시트 항상 행동자
   T.S.mode="pve"; ok(T.viewerIsOwner(0)&&!T.viewerIsOwner(1)&&T.fxTurnLabel(1,false)==="상대 턴!"&&T.fxTurnLabel(0,true)==="나의 턴!","H11 PVE 뷰어 0 기준");
   T.S.mode="pvp"; ok(T.viewerIsOwner(1)&&T.fxTurnLabel(1,false)==="나의 턴!"&&T.fxTurnLabel(1,true)==="P2 턴!","H12 핫시트: 보드는 항상 '나의 턴!', 전투 라운드는 'P1/P2 턴!'");
@@ -514,10 +515,11 @@ block("J 전투 메뉴",()=>{
   ok(/__act\(0\)/.test(h())&&/__throwBall\(\)/.test(h())&&/__flee\(\)/.test(h()),"J4 기존 규칙 버튼(__act·__throwBall·__flee)이 그대로 존재 (온라인 송신 경로 불변)");
   ok(/<button disabled[^>]*__throwBall/.test(h())&&/상대 HP 100% — 30% 미만/.test(h()),"J5 포획 조건 미충족 사유 표시·비활성");
   /* #146 (v0.4.7 CJ 2026-09-10): 도망의 HP 게이트가 폐지됐다 — 만피여도 버튼이 활성이고 조건 미충족 사유 문구 자체가 없다.
-     대신 표기 성공률이 기본 30% 이고, 실패해도 상대의 추가 반격이 없다는 설명이 붙는다. */
+     대신 표기 성공률이 기본 30% 다. #122 REVISE(2026-09-10 CJ QA 2)로 실패 페널티가 다시 생겨,
+     안내는 "상대의 기본 공격 1회를 맞는다"로 바뀐다 — 종전 #146 의 "추가 반격은 없고" 문구는 더 이상 쓰지 않는다. */
   ok(/<button class="danger" [^>]*__flee/.test(h())&&!/<button class="danger" disabled[^>]*__flee/.test(h()),"J6 도망 버튼은 HP 조건 없이 항상 활성 (#146)");
   ok(!/50% 미만이어야 합니다/.test(h())&&/HP 조건 없음/.test(h())&&/성공 30%/.test(h()),"J6b 도망 안내: HP 조건 문구 삭제·성공률 30% 표기 (#146)");
-  ok(!/상대 즉시 공격 1회/.test(h())&&/추가 반격은 없고/.test(h()),"J6c 도망 실패 반격 삭제가 안내에 반영 (#146)");
+  ok(!/추가 반격은 없고/.test(h())&&/기본 공격 1회/.test(h())&&/전투 행동 1회/.test(h()),"J6c 도망 실패 페널티(상대 기본 공격 1회)가 안내에 반영 (#122 CJ QA 2)");
   ok(/id="shfill-A"/.test(h())&&/id="shfill-D"/.test(h())&&!/가한 유효 피해/.test(h()),"J7 방어막 바 신설 · '가한 유효 피해' 게이지 제거");
   // (구 J0 setter 순서 검증은 시간 단계 증거가 아니므로 제거 — 5.5 방어막 → HP 표시 단계는 아래 K 블록이 가짜 타이머로 검증한다. REVISE msg_d847280b3dba 2번)
   const sent0=T.wsLog.length; global.__menu("fight"); ok(T.S.battle.menu==="fight"&&T.wsLog.length===sent0,"J8 하위 메뉴 전환은 로컬(송신 0·규칙 무변경)");

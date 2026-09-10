@@ -273,10 +273,13 @@
   .bmenu{grid-template-columns:repeat(2,1fr); gap:8px;}
   .bmenu button{min-height:50px; border-width:2px; border-radius:4px 12px 4px 12px; box-shadow:2px 3px 0 #00000022;}
   .bsub{border:2px solid var(--line); border-radius:10px; padding:8px; background:var(--panel2);}
-  /* REVISE: 전투 패널 머리줄 — 하위 메뉴가 열려 있을 때만 제목 왼쪽에 '← 뒤로'가 선다 (화면 좌상단에서 바로 보인다) */
+  /* #122 REVISE(2026-09-10 CJ QA 4): 하위 메뉴의 '← 뒤로'는 **행동 공간 아래**에 둔다 —
+     플레이 중 시선과 엄지가 머무는 곳이 명령창이므로 그 바로 밑에 있어야 읽고 누르기 좋다 (직전 REVISE의 좌상단 배치를 대체).
+     머리줄에는 제목만 남는다. 화면 좌상단의 전역 뒤로가기(#btnBack)와는 별개이며 여기서 전투를 강제로 빠져나가지 않는다. */
   #overlayBox.battleBox .bhead{display:flex; align-items:center; gap:8px; min-width:0;}
   #overlayBox.battleBox .bhead h2{margin:0; min-width:0; flex:1;}
-  #overlayBox.battleBox .bmenuBack{flex:0 0 auto; font-size:12px; padding:6px 10px; min-height:34px; white-space:nowrap;}
+  #overlayBox.battleBox .bmenuBack{display:block; width:100%; margin-top:8px; font-size:13px; padding:8px 10px; min-height:42px; white-space:nowrap;}
+  #overlayBox.battleBox .bmenuBack.hidden{display:none;}
   #battleLog{background:#00000055; color:var(--dim);}
 
   /* ================= #126 승패 연출 — 짧고 강한 표시 계층 =================
@@ -687,7 +690,9 @@ const BAL={
   /* #146 (v0.4.7 CJ 최종 승인 2026-09-10) 도망 재계약 — 세 가지가 함께 바뀐다:
      (1) HP 조건 폐지: 자기 전투 행동 차례면 언제나 시도할 수 있다 (시도 횟수 상한도 신설하지 않는다).
      (2) 기본 성공률 30%. 🏃 도망의 수호자를 쓴 전투원은 **그 전투 동안 70%** 로 치환된다 (+70%p 가산도, 1회 성공 보장도 아니다).
-     (3) 실패해도 상대의 추가 반격이 없다 — 자기 전투 행동 1회만 소모하고 상대는 정상 차례를 그대로 갖는다.
+     (3) 실패는 자기 전투 행동 1회를 소모하고 상대는 정상 차례를 그대로 갖는다.
+         #122 REVISE(2026-09-10 CJ QA 2)로 여기에 페널티 하나가 더해졌다 — 실패하면 **상대의 무료 기본 공격 1회**를 맞는다
+         (기술이 아니라 기본 공격 한정 · 상대의 정상 차례는 그 뒤에 그대로 온다 · 💪 힘의 수호자면 기존 분산 고정으로 최대 피해).
      성공 이후(전투 즉시 종료 · 후방 교환 · 밀기 · 전투 회계 유지)는 #114 계약 그대로다. */
   fleeProb:0.3, fleeProbGuard:0.7,
   teleMax:Infinity, // #14 → #114 (v0.4.5 CJ 원문 "기존 2회 → 무제한"): 경기당 횟수 제한 해제. 사용 위치(상대 진영 진입)·주 행동 1회 소모·강제 접촉·전투 횟수 사전 차단·취소는 그대로. teleUsed 는 지표(teleports)와 함께 계속 기록한다
@@ -1279,6 +1284,12 @@ function uiApply(){
     const bs=$("btnDrawerSide"), bl=$("btnDrawerLog");
     if(bs&&bs.setAttribute) bs.setAttribute("aria-pressed",UI.drawer==="side"?"true":"false");
     if(bl&&bl.setAttribute) bl.setAttribute("aria-pressed",UI.drawer==="log"?"true":"false");
+    /* #122 REVISE(2026-09-10 CJ QA 3): 출전 준비 2단계 탭의 **눌림 표시**를 여기서 함께 맞춘다.
+       종전에는 aria-pressed 를 renderSetup() 만 찍었는데 uiPrep() 는 uiApply() 만 부르고 패널을 다시 그리지 않아
+       (data-prep 은 바뀌어 내용은 전환되는데) '01 로스터 선택' 이 계속 파랗게 눌린 채 남았다 — CJ 관측 "시스템은 정상, UI 전환은 안 됨".
+       탭 줄은 배치 단계에서 말판 아래로 내려가지만 화면 안에 있으므로 스크롤은 건드리지 않는다 (말판이 위에 그대로 보여야 배치할 수 있다). */
+    try{ const tabs=a.querySelectorAll?a.querySelectorAll(".prepTabs button[data-prep-step]"):null;
+      if(tabs) for(const b of tabs) if(b.setAttribute) b.setAttribute("aria-pressed",b.getAttribute("data-prep-step")===UI.prep?"true":"false"); }catch(e){}
     /* #122 REVISE: 좌상단 뒤로가기 — 화면마다 "어디로 가는지"를 문구·설명으로 밝힌다 */
     const bk=$("btnBack"), spec=uiBackSpec();
     if(bk){
@@ -1501,9 +1512,11 @@ function contactText(att,def,mine){
   if(att.type==="bomb"){
     if(def.type==="minion") return mine?"폭탄이 터져 상대 하수인과 함께 제거됩니다.":"상대 폭탄이 터져 내 하수인이 제거됩니다.";
     if(vip(def)) return mine?"상대 말이 내 폭탄을 제거하였습니다.":"내 말이 상대 폭탄을 제거하였습니다.";
-    return "아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."; // #114 상황 6: 폭탄 → 폭탄/함정 — 제거·공개 없이 양측 한 칸씩 밀기
+    return mine?"폭탄이 터져 상대 폭탄·함정과 함께 제거됩니다.":"상대 폭탄이 터져 내 폭탄·함정과 함께 제거됩니다."; // #122 REVISE(2026-09-10 CJ QA 5): #114 상황 6(밀기)을 폐지 — 그 자리에서 폭탄 접촉 발동, 둘 다 제거
   }
-  if(vip(att)&&vip(def)) return "아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다."; // #114 상황 8: 동료/왕 → 동료/왕 — 포획 하수인이 있어도 전투 없이 밀기 (양측 비공개)
+  /* #122 REVISE(2026-09-10 CJ QA 1): #114 상황 8(동료/왕 ↔ 동료/왕 = 전투 없이 밀기)을 **폐지**한다.
+     동료↔동료·동료↔왕은 이제 보통 전투로 이어지므로 아래 공통 "배틀을 시작합니다" 문구를 그대로 탄다.
+     #122 REVISE(2026-09-10 CJ QA 6)로 왕 ↔ 왕 불가침까지 폐지됐으므로 동료·왕의 모든 조합이 같은 문구를 쓴다. */
   if(def.type==="bomb"){
     if(att.type==="minion") return mine?"폭탄이 터져 내 하수인이 제거됩니다.":"내 폭탄이 터져 상대 하수인이 제거됩니다.";
     return mine?"상대 폭탄이 터졌지만 내 말은 생존했습니다.":"상대 말이 내 폭탄을 제거하였습니다.";
@@ -1610,7 +1623,9 @@ function canMoveTo(p,r,c){
 function canBattle(att,def){
   if(S.phase!=="play"||att.owner!==S.current||S.battlesUsed>=2) return false;
   if(att.type==="bomb"||att.type==="trap") return false;
-  if(att.type==="king"&&def.type==="king"){return false;} // 왕 vs 왕 불가침
+  /* #122 REVISE(2026-09-10 CJ QA 6): **왕 vs 왕 불가침을 폐지**한다 — CJ 실플레이에서 텔레포트로 두 왕이
+     맞닿는 상황이 실제로 나왔고, 그때 아무 일도 일어나지 않는 것이 아니라 전투가 되어야 한다는 결정이다.
+     남는 전투 불가 조합은 폭탄·함정이 공격측일 때뿐이다(위 두 줄). 패배 결과는 기존 규칙 그대로 — 왕 본체가 지면 그 즉시 경기 패배다. */
   if(S.forcedTargets&&S.forcedTargets.length&&(att!==S.movedPiece||!S.forcedTargets.includes(def.id))) return false; // T1: 강제 대상 외 전투 봉쇄
   if(S.battlesUsed===1){
     // #14: 텔레포트 스왑 둘째 말의 승계 강제 전투는 연쇄(첫 전투 승리) 조건 면제
@@ -1772,8 +1787,8 @@ function renderSetup(sp){
      CSS 로 한 쪽만 보인다 — 안내 문구·버튼·트레이 마크업은 종전 그대로다. 배치 단계에서는 트레이가 화면 아래에 고정되어
      "트레이 말 탭 → 보드 칸 탭" 조작이 스크롤로 끊기지 않는다. */
   let h=`<div class="prepTabs">
-    <button type="button" aria-pressed="${UI.prep==="roster"}" onclick="uiPrep('roster')">01 로스터 선택 ${sel.length}/6</button>
-    <button type="button" aria-pressed="${UI.prep==="place"}" onclick="uiPrep('place')">02 비공개 배치 ${14-unplaced.length}/14</button></div>
+    <button type="button" data-prep-step="roster" aria-pressed="${UI.prep==="roster"}" onclick="uiPrep('roster')">01 로스터 선택 ${sel.length}/6</button>
+    <button type="button" data-prep-step="place" aria-pressed="${UI.prep==="place"}" onclick="uiPrep('place')">02 비공개 배치 ${14-unplaced.length}/14</button></div>
   <section class="prepStep" data-step="roster">
   <h2>${NET.preparing?"🌐 온라인 대전 — 내":pname(p)} 로스터 선택 (${sel.length}/6)</h2>
   <small>20종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정.</small>`;
@@ -2117,7 +2132,7 @@ function observeMove(p,visBefore){
   if(visBefore||visibleTo(obs,p)) S.aiSeenMoved[obs].add(p.id);
 }
 /* #106 4.4.2 접촉 적격 (applyForced 후보 산출): 이동·텔레포트·숲 충돌로 새로 인접한 상대. 폭탄은 직접 접촉 시 발동(하수인·동료·왕·폭탄·함정 모두 대상),
-   함정은 여전히 수동, 왕 vs 왕 불가침. 그 밖은 canBattle 규칙(전투 횟수 등) 그대로. 능동 클릭 경로(canBattle)는 폭탄 공격 불가를 유지한다 */
+   함정은 여전히 수동. 왕 vs 왕 불가침은 #122 REVISE(CJ QA 6)로 폐지됐다. 그 밖은 canBattle 규칙(전투 횟수 등) 그대로. 능동 클릭 경로(canBattle)는 폭탄 공격 불가를 유지한다 */
 function contactEligible(att,def){
   if(att.type==="trap") return false;
   if(att.type==="bomb") return S.phase==="play"&&att.owner===S.current&&S.battlesUsed<2;
@@ -2162,7 +2177,7 @@ function doMove(p,r,c){
   if(applyForced(p,beforeAdj)) return;
   render();
 }
-/* T1 강제 전투: 이동·텔레포트로 새로 인접한 적과는 반드시 전투 (canBattle 불가 조합 제외 — 왕vs왕 등, 폭탄·함정 포함) */
+/* T1 강제 전투: 이동·텔레포트로 새로 인접한 적과는 반드시 전투 (canBattle 불가 조합 제외 — 폭탄·함정이 공격측일 때. 왕vs왕은 #122 REVISE CJ QA 6 으로 전투 대상이 됐다) */
 function applyForced(p,beforeAdj,list){
   S.forcedTargets=[];
   if(!list) list=adjEnemies(p).filter(e=>!beforeAdj.has(e.id)&&contactEligible(p,e)).map(e=>e.id); // #106: 폭탄 직접 접촉 포함
@@ -2193,10 +2208,10 @@ const TELE_TRAP_MSG="함정에 걸린 하수인은 텔레포트를 사용할 수
 function teleportAvailable(p){
   return S.phase==="play"&&alivePieces().some(x=>x.owner===p&&zoneOf(1-p).includes(x.r));
 }
-/* #18 강제 전투 적격 (연쇄 규칙 무관 — 텔레포트 강제 전투는 첫 전투 승리 조건 면제): 폭탄·함정은 공격 불가, 왕 vs 왕 불가침 */
+/* #18 강제 전투 적격 (연쇄 규칙 무관 — 텔레포트 강제 전투는 첫 전투 승리 조건 면제): 함정은 공격 불가. 왕 vs 왕 불가침은 #122 REVISE(CJ QA 6)로 폐지 */
 function forcedEligible(att,def){
   if(att.type==="trap") return false; // #106: 폭탄은 텔레포트 도착·숲 충돌로 새로 인접해도 발동한다 (스왑 사전 차단 계산에도 포함)
-  if(att.type==="king"&&def.type==="king") return false;
+  // #122 REVISE(2026-09-10 CJ QA 6): 왕 vs 왕도 강제 전투 대상이다 (불가침 폐지) — CJ가 지목한 텔레포트 인접이 바로 이 경로다
   return true;
 }
 /* #18 스왑 후 새로 인접할 적격 적 목록: p가 (r,c)로 이동했을 때, 기존 인접(before)이 아닌 적 */
@@ -2645,19 +2660,23 @@ function bombAttack(bomb,def){
     const m=`💥 폭탄 접촉 발동! 상대 말이 폭탄을 제거했습니다 — 상대 말 생존 (정체 비공개 유지)`; addLog(m,"imp"); showToast(m);
     explosionFx([bomb]);
     if(checkWipe()) return;
-  } else { // #114 상황 6 (CJ 원문): 폭탄 → 폭탄/함정 — 제거·공개 없이 양측 한 칸씩 밀기 (함정도 강제 밀기·재배치 대상, 스스로 이동은 계속 불가)
-    const m=`💣 폭탄이 상대 폭탄·함정과 접촉 — 아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다. (양쪽 유지 · 정체 비공개)`; addLog(m,"imp"); showToast(m);
-    pushResolve(bomb,def,{who:bomb.owner});
-    if(S.phase!=="play") return;
+  } else { /* #122 REVISE(2026-09-10 CJ QA 5): #114 상황 6(밀기·양쪽 유지)을 **폐지**한다 — 폭탄 ↔ 폭탄/함정은
+       그 자리에서 폭탄 접촉이 발동해 **둘 다 제거**된다 (하수인 갈래와 같은 처리). 이동할 수 있는 것은 폭탄뿐이라
+       이 갈래에 오는 조합은 "움직인 폭탄 → 상대 폭탄" 과 "움직인 폭탄 → 상대 함정" 둘뿐이다.
+       함정 발동(2턴 이동 불가·trapTriggers)은 일으키지 않는다 — 함정이 걸린 것이 아니라 폭탄이 터진 것이다. */
+    bomb.alive=false; def.alive=false;
+    const m=`💥 폭탄 접촉 발동! 폭탄과 상대 ${TYPE_KO[def.type]}이(가) 함께 제거되었습니다.`; addLog(m,"imp"); showToast(m);
+    explosionFx([bomb,def]);
+    if(checkWipe()) return;
   }
   afterBattle(bomb,false); render();
 }
+/* #122 REVISE(2026-09-10 CJ QA 1) — 동료↔동료 · 동료↔왕은 **밀기가 아니라 전투**다.
+   폐지된 것: #114 상황 8 의 조기 밀기(vip↔vip 즉시 doPush)와 그 뒤 "양측 본체 선택 = 밀기"(Q2-b C안) 두 갈래.
+   #122 REVISE(CJ QA 6)로 왕 ↔ 왕 불가침도 폐지돼 이제 동료·왕의 모든 조합이 이 함수를 탄다.
+   보존된 것: 대리 출전(포획 하수인) 선택 체인 ·
+   패배 결과(동료 = 동료+포획 하수인 동시 제거 / 왕 = 경기 패배) · 밀기 자체(pushResolve)는 폭탄↔폭탄·도망 후 교환에서 계속 쓴다. */
 function vipChoice(att,def){
-  const vip=x=>x.type==="ally"||x.type==="king";
-  if(vip(att)&&vip(def)){ // #114 상황 8 (CJ 원문): 동료/왕 ↔ 동료/왕은 포획 하수인 보유와 무관하게 전투 없이 밀기 — 출전 선택·정체 공개·제거 없음
-    addLog("🤜 동료·왕끼리 접촉 — 아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다. (양측 정체 비공개)","imp");
-    doPush(att,def); return;
-  }
   const choices={};
   const ask=(side,piece,next)=>{
     const res=(!piece.cap&&S.reserve[piece.owner])?S.reserve[piece.owner]:null; // #12: cap 없고 예비(포획 하수인) 있으면 대리 출전 가능
@@ -2676,7 +2695,7 @@ function vipChoice(att,def){
     const fa=choices.A==="cap"?att.cap:att, fd=choices.D==="cap"?def.cap:def;
     const aIsBody=(att.type==="ally"||att.type==="king")&&choices.A!=="cap";
     const dIsBody=(def.type==="ally"||def.type==="king")&&choices.D!=="cap";
-    if(aIsBody&&dIsBody){ doPush(att,def); return; } // Q2-b C안
+    // #122 REVISE(2026-09-10 CJ QA 1): 종전 Q2-b C안 "양측 본체 = 밀기"는 폐지됐다 — 본체끼리도 그대로 전투한다
     const desc=`공격: ${fa===att?TYPE_KO[att.type]:"포획 하수인("+ELEM_KO[fa.element]+")"} vs 방어: ${fd===def?TYPE_KO[def.type]:"포획 하수인("+ELEM_KO[fd.element]+")"}`;
     if(S.mode==="sim"){ addLog("출전 공개 — "+desc,"ai"); startRounds(att,def,fa,fd); return; }
     modal(`<h2>출전 공개</h2><p>${desc}</p>`,[["전투 시작",()=>{close();startRounds(att,def,fa,fd);}]]);
@@ -2893,7 +2912,7 @@ function battleModal(){
   const throwWhy=oppPiece.type!=="minion"?"상대가 하수인이 아닙니다":opp.hp>=opp.maxHp*0.3?`상대 HP ${pct(opp.hp/opp.maxHp)} — 30% 미만이어야 합니다`:S.balls[ownerP]<=0?"몬스터볼이 없습니다":S.reserve[ownerP]?"예비 슬롯이 차 있습니다":thrown?"이번 라운드에 이미 던졌습니다":"";
   const fleeNote=f.fleeBoost?" · 🏃 도망의 수호자 — 이 전투 도망 성공률 70%":"";
   const ballBtn=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
-  const fleeBtn=`<button class="danger" ${dis?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패해도 상대의 추가 반격은 없고 내 전투 행동 1회만 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
+  const fleeBtn=`<button class="danger" ${dis?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패하면 상대의 기본 공격 1회를 맞고 내 전투 행동 1회를 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
   /* #121 계약 2.3: 아이템 사용 제한은 **플레이어별 라운드 1회**만 남는다 — 전투당 2회(itemPerBattle)와 연속 동일 금지(lastItem)는 제거됐다.
      두 값은 BAL 에서 Infinity / 미참조가 되었고, 여기서도 더 이상 버튼을 막지 않는다. */
   /* Saturn REVISE P1(비공개): 마스킹 기준을 **소유자 관측**으로 바꾼다. 종전 `NET.mode&&ownerP!==NET.me` 는 온라인만 가려서
@@ -2912,10 +2931,10 @@ function battleModal(){
   const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
   if(noAtkShow&&!aiActor&&S.mode!=="sim") tutHint("noatk"); // #26·#146 4슬롯 전부 불가가 처음 나올 때 1회 (표시 계층 전용 — 게임 상태·난수·저장소 무변경)
   const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
-  /* #122 REVISE(2026-09-10 CJ QA): 하위 메뉴의 '← 뒤로'를 전투 패널 **제목 옆 좌상단**(아래 bhead)으로 올린다.
+  /* #122 REVISE(2026-09-10 CJ QA 4): 하위 메뉴의 '← 뒤로'를 **하위 메뉴 패널 바로 아래**로 내린다 (직전 REVISE의 제목 옆 좌상단을 대체).
      핸들러는 종전 그대로 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */
   const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}</div>`;
-  modal(`<div class="bhead"><button id="bmenuBack" class="bmenuBack${menu?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2></div>
+  modal(`<div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2></div>
     <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${battleMaxRounds()}${B.maxRounds?" 🧭":""}</div>
     <div id="bstage" class="scene"><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
     ${buffLine}
@@ -2930,13 +2949,14 @@ function battleModal(){
       <small>📦 패키지 — 개봉·버프 적용은 행동·아이템 카운터를 소모하지 않습니다${buffUsed?` · 적용된 버프: <b>${BUFFS[buffUsed].ko}</b>`:""}</small>
       <div class="row">${pkgBtns}</div>`)}
     ${sub("ball",`<small>🔴 포획 — 상대 하수인 HP 30% 미만 · 볼 ${mineView?`${S.balls[ownerP]}개`:"비공개"} · 성공 ${pct(BAL.enemyCapProb)}${mineView&&throwWhy?` · <b>${throwWhy}</b>`:""}</small><div class="row">${ballBtn}</div>`)}
-    ${sub("flee",`<small>🏃 도망가기 — HP 조건 없음 · 성공 ${pct(fleeP)} · 실패해도 상대의 추가 반격은 없고 내 전투 행동 1회만 소모${fleeNote}</small><div class="row">${fleeBtn}</div>`)}
+    ${sub("flee",`<small>🏃 도망가기 — HP 조건 없음 · 성공 ${pct(fleeP)} · 실패하면 상대의 <b>기본 공격 1회</b>를 맞고 내 전투 행동 1회를 소모${fleeNote}</small><div class="row">${fleeBtn}</div>`)}
+    <button id="bmenuBack" class="bmenuBack${menu?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button>
     <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
   try{ const ob=$("overlayBox"); if(ob&&ob.classList) ob.classList.add("battleBox"); }catch(e){} // #122 세로 전투 화면 레이아웃
   window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
     if(S.battle!==B) return; B.menu=key||null;
-    try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(B.menu) bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){} // 상단 '← 뒤로'는 하위 메뉴가 열렸을 때만
+    try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(B.menu) bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){} // 행동창 아래 '← 뒤로'는 하위 메뉴가 열렸을 때만
     try{ const root=$("bmenu"); if(root){ if(B.menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
       for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===B.menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
   };
@@ -3054,9 +3074,18 @@ function battleModal(){
       battleEndFx(q,{title:"도망 성공 — 전투 종료",cls:""},()=>{ if(!S.battle){ close(); fleeSwapPrompt(piece,oppPiece); } });
       return;
     }
-    /* #146: 실패해도 추가 반격은 없다. 자기 전투 행동 1회만 쓰고 차례가 넘어간다 (약화 횟수·주 행동·전투 횟수 무변경) */
-    bmsg(`🏃 도망 실패! 이번 행동을 놓쳤다.`);
-    nextPhase();
+    /* #122 REVISE(2026-09-10 CJ QA 2) — 도망 실패 페널티: **상대의 무료 기본 공격 1회**를 맞는다.
+       #146 계약 1.2 가 지웠던 실패 반격을 "기본 공격 한정"으로 되살린 것이며, 그 밖은 #146 그대로다:
+         · 도망을 시도한 쪽은 자기 전투 행동 1회를 소모한다 (주 행동·턴당 전투 횟수는 건드리지 않는다).
+         · 반격이 끝나면 execSlot 이 nextPhase() 로 차례를 넘겨 **상대의 정상 차례**가 그대로 온다 (반격은 그 차례를 대신하지 않는다).
+         · 반격은 기술이 아니라 기본 공격이므로 쿨·기술 공개·기술 부가효과가 없다. 상대가 4슬롯 전투원이어도
+           allowBasic 예외로 본체 공격력(f.atk)만큼 때린다.
+       💪 힘의 수호자: 별도 처리가 없다 — 반격자에게 powerBuff 가 걸려 있으면 기존 피해 분산 고정(×1.2)이 그대로 적용돼
+       자동으로 "기본 공격 중 최대 데미지"가 된다 (CJ 지시 그대로, 난수 소비 횟수도 불변이라 온라인 락스텝·AI 시뮬 재현성 유지). */
+    bmsg(`🏃 도망 실패! 빈틈을 보이고 말았다.`);
+    const oSide=side==="A"?"D":"A";
+    bmsg(`⚔️ ${fighterName(oSide)}의 반격 — 기본 공격!`);
+    execSlot(oSide,-1,{allowBasic:true});   // 여기서 checkDeath → finishBattle 또는 nextPhase 까지 끝난다
   };
   /* #146 계약: 4슬롯이 전부 불가할 때의 **수동** 전투 행동 넘기기. 자동 진행이 아니라 사람이 [턴 종료]를 눌러야 실행된다.
      차단 대상(전부 조용히 무시 — 상대에게는 아무 안내도 새지 않는다):
@@ -3217,7 +3246,7 @@ function witchApply(side,oSide,f,opp,actual){
       else bmsg(`🌿 어둠의 덩굴 — 빨아들일 생명이 없었다. (회복 0)`); }
   }
 }
-function execSlot(side,slot){
+function execSlot(side,slot,opts){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A";
   /* #146 계약 2.4 (Saturn REVISE P1) — **순수 기본 공격(-1)은 4슬롯 전투원에게 존재하지 않는다.**
@@ -3225,8 +3254,12 @@ function execSlot(side,slot){
      늦은 콜백·수신 프레임, 테스트·콘솔의 직접 호출. 그 전부를 여기 한 곳에서 막는다.
      거부는 아무것도 바꾸지 않는다 — HP·상태·차례·난수 소비 0. 전투가 멈추지 않게 화면만 다시 그려
      지금 합법인 메뉴(합법 슬롯이 있으면 그 슬롯, 없으면 안내 + 수동 [턴 종료])로 되돌린다.
-     왕·동료 본체와 구형 경로(f.skills 없음)의 기본 공격은 이 검사에 걸리지 않는다. */
-  if(slot<0&&f.skills){ battleModal(); return; }
+     왕·동료 본체와 구형 경로(f.skills 없음)의 기본 공격은 이 검사에 걸리지 않는다.
+     #122 REVISE(2026-09-10 CJ QA 2) 예외 하나: **도망 실패 페널티 반격**만 opts.allowBasic 으로 이 가드를 통과한다.
+     CJ 결정 = "이 경로에만 예외로 부활" — 평시 전투 UI 에는 4슬롯 전투원용 기본 공격 버튼을 만들지 않으므로
+     #146 계약 2.4 의 취지(슬롯이 전부 불가하면 기본 공격이 아니라 수동 [턴 종료])는 그대로 남는다.
+     이 예외는 사람이 고를 수 없는 자동 경로이고, 도망을 **시도한 쪽이 아니라 상대**가 때리는 한 번뿐이다. */
+  if(slot<0&&f.skills&&!(opts&&opts.allowBasic)){ battleModal(); return; }
   const sk=(slot>=0&&f.skills)?SKILLS[f.skills[slot]]:null;
   const atkEl=atkElOf(f,sk); // #92 판정 속성: 공격기는 기술 속성, 기본 공격·시그니처(잔류장 포함)는 본체 속성 · #121 cls 기술은 null(중립)
   /* #121 계약 5.3 💀 사신의 낫 — 피해 파이프라인을 타지 않는 별도 분기다. **게이트를 여기서 최신 상태로 한 번 더 검사한다**:
@@ -3552,8 +3585,9 @@ function finishByCapture(side){
   afterBattle(attacker, side==="A"&&attacker.alive);
   render();
 }
-/* #146 (v0.4.7 CJ 2026-09-10): 도망 실패 반격(fleeCounter)은 **계약에서 삭제**됐다.
-   실패는 자기 전투 행동 1회 소모로 끝나고 상대는 정상 차례를 그대로 받는다 — __fleeCore 의 nextPhase 경로 하나뿐이다. */
+/* #146 (v0.4.7 CJ 2026-09-10) 이 지웠던 도망 실패 반격은 #122 REVISE(2026-09-10 CJ QA 2)로 **기본 공격 한정으로 되살아났다**.
+   실패 = 상대의 무료 기본 공격 1회 + 자기 전투 행동 1회 소모, 그 뒤 상대의 정상 차례. 전용 함수를 새로 두지 않고
+   __fleeCore 가 execSlot(oSide,-1,{allowBasic:true}) 를 직접 부른다 — 피해·상성·보호막·사망 판정은 기존 파이프라인 그대로다. */
 /* #13 → #114 도망 성공 후: 보드에서 후방 자기 말을 골라 위치 교환(생략 가능) → 밀기 (docs/v0.4.5-analysis.md 3장 계약 5·6).
    입력 주인은 도망친 말의 소유자(방어자일 수 있어 S.current 와 다름) — 온라인은 netActor() 가 소유자를 돌려주므로 소유자 클라이언트만 cell/fleeSkip 을 송신하고 상대는 대기.
    교환하면 전선으로 들어온 말 ↔ 전투 상대를, 생략하거나 후방 후보가 없으면 도망친 말 ↔ 상대를 민다. 교환·밀기·재배치는 강제 전투·탐색 흔적을 만들지 않는다.
@@ -3772,7 +3806,7 @@ function aiForcedScore(me,p,r,c){
   for(const e of aiVisible(me)){
     if(Math.abs(e.r-r)+Math.abs(e.c-c)!==1) continue;
     if(adj(p,e)) continue; // 기존 인접은 강제 대상 아님
-    if(p.type==="king"&&e.type==="king") continue; // 왕 vs 왕 불가침 — 강제 미발동
+    // #122 REVISE(2026-09-10 CJ QA 6): 왕 vs 왕도 강제 전투가 걸리므로 예측에서 빼지 않는다
     const s=aiBattlePairScore(me,p,e);
     if(best===null||s>best) best=s;
   }
@@ -3845,9 +3879,7 @@ function aiBattlePairScore(me,att,def){
     sc = att.type==="ally" ? 18+pressure
        : att.type==="king" ? -100
        : 8 - 18*risk + pressure;
-  } else if(aiVipPair(att,def)){ // #114 전투가 아닌 밀기: 중립/왕 손실 평가를 그대로 반환 (전투 HP·공세·끝줄 공격 보너스 제외)
-    return aiPushScore(att,def);
-  } else { // 유닛 (공개)
+  } else { // 유닛 (공개) — #122 REVISE(CJ QA 1·6): 동료/왕끼리도 이제 전투다. 종전 aiVipPair→aiPushScore 우회는 제거했다
     if(def.type==="king") sc=45;
     else if(def.type==="ally") sc=25;
     else { sc=10;
@@ -3866,9 +3898,9 @@ function aiBattlePairScore(me,att,def){
   if(th!=="bomb"&&th!=="trap"&&Math.abs(def.r-(me===0?ROWS:1))<=1) sc+=40;
   return sc;
 }
-/* #114 AI 밀기 평가 (5급·5단 공용, 공정 관측 — def 는 revealed 동료/왕일 때만 호출).
-   새 가중치 없음: 상대 왕 끝줄 승리 위험은 기존 aiUnitValue(king)의 손실, 제거 없는 밀기는 기존 aiBattleEV의 중립값 0.
-   전투용 HP/공세/공격 기회 보너스를 더하지 않는다. */
+/* #114 AI 밀기 평가 — #122 REVISE(CJ QA 1·6)로 동료/왕끼리가 전투가 되면서 **전투 평가 경로에서는 더 이상 쓰지 않는다**.
+   함수는 남겨 둔다: 밀기 자체는 폭탄 접촉 이후 경로가 사라진 지금도 도망 성공 후 교환·밀기(pushResolve)로 살아 있고,
+   기존 회귀 검사가 이 두 함수를 직접 부른다. 새 호출을 추가하지 말 것. */
 function aiVipPair(att,def){ const vip=x=>x.type==="ally"||x.type==="king"; return vip(att)&&def.revealed&&vip(def); }
 function aiPushScore(att,def){
   if(def.type==="king"){ const nr=def.r+Math.sign(def.r-att.r); if(nr===(def.owner===0?1:ROWS)) return -aiUnitValue(def,att.owner); }
@@ -4070,7 +4102,7 @@ function aiBattleEV(me,att,def){
     if(th==="unit") return def.type==="minion"?aiUnitValue(def,me)-18:-18;
     return (1-Math.min(1,aiStaticRisk(me,th==="unknownMoved")))*2; // 미공개: 하수인·동료·왕 혼합 기대치 — 소폭 양수
   }
-  if(att.type==="king"&&def.type==="king") return null; // 불가침
+  // #122 REVISE(2026-09-10 CJ QA 6): 왕 vs 왕도 보통 전투로 평가한다 (왕 가치 200 이 양쪽에 걸리므로 승산이 확실할 때만 고른다)
   const th=aiThreatOf(me,def), va=aiUnitValue(att,me);
   const bombEV=att.type==="minion"?-va+16:22, trapEV=-10;
   if(th==="bomb") return bombEV;
@@ -4078,7 +4110,7 @@ function aiBattleEV(me,att,def){
   const edgeGuard=Math.abs(def.r-(me===0?ROWS:1))<=1?45:0; // 끝줄 저지: 내 최후방 1칸 이내 적은 우선 제거 (왕 끝줄 승리 차단)
   const pressure=Math.min(1,S.turnCount/BAL.maxTurns)*8; // 후반 공세 압력 (무승부 방지)
   if(th==="unit"){
-    if(aiVipPair(att,def)) return aiPushScore(att,def); // #114 동료/왕끼리는 밀기 (전투 없음)
+    // #122 REVISE(CJ QA 1·6): 동료/왕끼리도 보통 전투로 평가한다 (종전 밀기 우회 제거) — 왕 본체 패배 페널티는 아래 -400 항이 그대로 잡는다
     const p=aiWinProb(att,def,me);
     let ev=p*(aiUnitValue(def,me)+(def.type==="king"?400:0))-(1-p)*va;
     if(att.type==="king"&&!att.cap) ev-=(1-p)*400; // 왕 본체 패배 = 경기 패배
@@ -4145,8 +4177,7 @@ function aiWorstReply(me,V,deadline){
     for(const x of my){ // 공격 응수: 내 말 x를 e가 공격 (내 관점 EV 부호 반전은 x가 방어자)
       if(Math.abs(e.r-x.r)+Math.abs(e.c-x.c)!==1) continue;
       if(x.type==="bomb"||x.type==="trap") continue; // 적이 내 폭탄·함정을 치면 나에게 이득 → 최선 응수 아님
-      if(e.type==="king"&&e.revealed&&x.type==="king") continue;
-      if(e.revealed&&(e.type==="ally"||e.type==="king")&&(x.type==="ally"||x.type==="king")) continue; // #114 공개 동료/왕이 내 동료/왕을 치면 전투가 아니라 밀기 — 손실 응수로 세지 않는다
+      // #122 REVISE(CJ QA 1·6): 공개 동료/왕이 내 동료/왕(왕↔왕 포함)을 치면 이제 실제 전투다 — 손실 응수 계산에서 빼지 않는다
       const p=1-aiWinProb(e.revealed?e:{element:null,hp:100,maxHp:100,atk:22,type:"minion"},x,me);
       const harm=(1-p)*(aiUnitValue(x,me)+(x.type==="king"?400:0))-p*(e.revealed?aiUnitValue(e,me):28);
       worst=Math.min(worst,base-harm); n++;
@@ -4569,8 +4600,9 @@ const TUT_SCENES={
       {t:"속성 가위바위보",vis:TSV.svg(130,100,"불, 풀, 번개, 물 네 원이 고리로 이어져 불은 풀을, 풀은 번개를, 번개는 물을, 물은 불을 이기는 화살표",g2),res:"🔥불 → 🌿풀 → ⚡번개 → 💧물 → 🔥불 순서로 이겨요"},
       {t:"싸움이 끝나면",vis:TSV.stack(TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60 그대로","txt")),TSV.row(TSV.lbl("⏳ 쿨타임 그대로","txt")),TSV.row(`<span class="tut-strike">🔥 화상 · ☠ 약화</span>`,TSV.arr(),TSV.lbl("상태이상은 사라져요 ✓","ok"))),res:"HP·쿨타임 유지 · 상태이상 해제"},
       {t:"6라운드가 끝나면",vis:TSV.row(TSV.dhp(0.6),TSV.lbl("HP 60%","ok"),TSV.lbl("vs"),TSV.dhp(0.4,"bad"),TSV.lbl("HP 40%","bad"),TSV.arr(),TSV.lbl("60% 승 ✓","ok")),res:"남은 HP 비율이 높은 쪽 승리 · 같으면 지킨 쪽",tone:"ok"}, // #106 T6
-      {t:"동료·왕끼리는 밀기",vis:TSV.svg(112,44,"내 동료와 상대 동료가 붙자 싸우지 않고 서로 반대쪽으로 한 칸씩 밀려나 사이에 빈 칸 두 개가 생기는 장면",
-        TSV.grid(2,11,5,1)+TSV.tok(35,22,"🤝","ghost")+TSV.tok(57,22,"🤝","opghost")+TSV.arrow(30,6,16,6,C.acc)+TSV.arrow(62,6,76,6,C.bad)+TSV.tok(13,22,"🤝","me")+TSV.tok(79,22,"🤝","op")),res:"싸움 없이 각자 한 칸씩 뒤로 · 정체는 그대로 비밀"}, // #114 상황 8
+      /* #122 REVISE(2026-09-10 CJ QA 1·6): #114 상황 8(동료·왕끼리는 밀기)과 왕 vs 왕 불가침이 **모두 폐지**됐다 */
+      {t:"동료·왕끼리도 싸워요",vis:TSV.row(TSV.dtok("🤝","me",1),TSV.lbl("vs","txt"),TSV.dtok("🤝","op",1),TSV.arr(C.bad),TSV.lbl("배틀!","bad")),
+        res:"동료↔동료 · 동료↔왕 · 왕↔왕 모두 배틀 · 왕 본체가 지면 그 자리에서 경기 패배"},
       /* #146: 4칸이 전부 못 쓰는 상태이면 기본 공격이 나오지 않는다는 새 규칙 */
       {t:"공격할 게 없을 때",vis:TSV.stack(TSV.row(TSV.pill("⏳"),TSV.pill("⏳"),TSV.pill("⏳"),TSV.pill("🔒"),TSV.arr(C.bad),TSV.lbl("공격 없음","bad")),
         TSV.row(TSV.lbl("기본 공격","bad"),TSV.arr(C.bad),TSV.lbl("나오지 않아요","bad")),TSV.row(TSV.pill("턴 종료","acc"),TSV.lbl("직접 눌러요"))),
@@ -4587,7 +4619,7 @@ const TUT_SCENES={
       +TSV.tok(30,52,"⚔","me")+TSV.g(48,44,"🔒",13);
     return [
       {t:"움직임",vis:TSV.svg(70,64,"폭탄은 한 칸 화살표로 움직이고, 함정은 자물쇠로 스스로는 못 움직임",g1),res:"폭탄 1칸 (버닝 땐 2칸) · 함정은 스스로 못 움직여요"},
-      {t:"폭탄을 건드리면",vis:TSV.svg(76,72,"하수인이 폭탄을 건드리면 둘 다 엑스로 사라지고, 왕이 건드리면 폭탄만 사라지고 왕은 살아남는 장면",'<g transform="translate(0 6)">'+g2+'</g>'),res:"하수인 ✗ 둘 다 사라짐 · 동료·왕 ✓ 살아남음 · 내 폭탄이 붙어도 펑 · 폭탄끼리·폭탄↔함정은 밀기"},
+      {t:"폭탄을 건드리면",vis:TSV.svg(76,72,"하수인이 폭탄을 건드리면 둘 다 엑스로 사라지고, 왕이 건드리면 폭탄만 사라지고 왕은 살아남는 장면",'<g transform="translate(0 6)">'+g2+'</g>'),res:"하수인 ✗ 둘 다 사라짐 · 동료·왕 ✓ 살아남음 · 내 폭탄이 붙어도 펑 · 폭탄끼리·폭탄↔함정도 ✗ 둘 다 사라짐"},
       {t:"함정을 밟으면",vis:TSV.svg(76,66,"함정을 밟으면 함정이 사라지고 밟은 말은 자물쇠와 함께 정지하는 장면",g3),res:"함정 ✗ · 밟은 말은 내 차례 2번 정지 · 둘 다 정체 공개 · 밀리면 함정도 옮겨져요"}]; },
   capture(){ const C=TSV.C;
     const g1=TSV.tok(22,16,"⚔","op",11)+TSV.hp(4,32,36,0.25,C.bad);
@@ -4599,7 +4631,8 @@ const TUT_SCENES={
        res:"성공·실패 모두 볼 1개 소모 · 숲 포획은 그 종 그대로 · ✨ 버프는 한 싸움에 하나"},
       {t:"도망: 언제든 가능",vis:TSV.row(TSV.svg(44,44,"HP 막대가 40%까지 줄어든 내 하수인",g3,"tut-ico lg"),TSV.lbl("HP 조건 없음","gold"),`<span class="tut-big">🏃</span>`,TSV.arr(),TSV.lbl("성공률 30%","gold"),TSV.lbl("✨ 쓰면 70%","ok")),res:"HP 조건 없음 · 기본 30% · 🏃 도망의 수호자를 쓰면 그 싸움 동안 70%"},
       {t:"도망 성공",vis:TSV.row(TSV.lbl("✓ 성공","ok"),TSV.dtok("⚔","me",1),TSV.lbl("⇄","txt"),TSV.dtok("💣","me",1),TSV.arr(),TSV.lbl("한 칸씩 밀기","txt")),res:"뒷말 고르기(생략 가능) → 교환 → 한 칸씩 밀기 · 싸움 횟수는 그대로",tone:"ok"},
-      {t:"도망 실패",vis:TSV.row(TSV.lbl("✗ 실패","bad"),TSV.dtok("⚔","op",1),TSV.ico("⚡","op","상대의 추가 공격에 엑스 표시",1),TSV.arr(),TSV.lbl("내 차례 한 번만 지나가요","txt")),res:"상대의 추가 공격은 없어요 · 상대는 자기 차례를 그대로 해요",tone:"bad"}]; },
+      /* #122 REVISE(2026-09-10 CJ QA 2): 실패 페널티가 생겼다 — 상대의 기본 공격 1회 */
+      {t:"도망 실패",vis:TSV.row(TSV.lbl("✗ 실패","bad"),TSV.dtok("⚔","op",1),TSV.arr(C.bad),TSV.lbl("기본 공격 1번","bad"),TSV.arr(),TSV.lbl("내 차례 한 번 지나가요","txt")),res:"상대의 <b>기본 공격 한 번</b>을 맞아요 · 그 뒤 상대는 자기 차례를 그대로 해요",tone:"bad"}]; },
   teleport(){ const C=TSV.C;
     const g1=TSV.grid(6,2,3,4,r=>r<3?"op":"forest",16)+TSV.tok(30,26,"⚔","me",7);
     const g2=TSV.cell(4,9)+TSV.cell(64,9)+TSV.tok(15,20,"💣","me")+TSV.tok(75,20,"⚔","me")+TSV.arrow(28,16,62,16)+TSV.arrow(62,24,28,24);
@@ -4639,15 +4672,15 @@ const TUT_STEPS=[
      "탐색은 <b>하수인·동료·왕</b>만 할 수 있어요. <b>폭탄·함정은 못</b> 해요.",
      "선물은 <b>🎁 아이템 선물</b>(회복약·몬스터볼 등)·<b>✨ 전투 버프</b>·<b>📘 기술 교체</b> 셋이에요!"]},
   {icon:"⚔️",title:"옆에 붙으면 꼭 싸워요",cards:TUT_SCENES.battle(),
-   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요.","<b>동료·왕</b>끼리는 포획 하수인이 있어도 싸우지 않고 <b>각자 한 칸씩</b> 밀려요. 막히면 제자리예요. 적과 붙어 있으면 <b>자기 편 땅부터 재배치</b>해요.","기술 <b>4칸</b>이 전부 못 쓰는 상태면 <b>기본 공격도 나오지 않아요</b>. 「턴 종료」를 눌러야 내 <b>싸움 차례 한 번</b>만 넘어가요.","<b>보호막(🛡)</b>은 겹쳐 쓰면 <b>남은 양에 더해져요</b>. 18에 22를 더 받으면 <b>40</b>이에요."]},
+   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요.","<b>동료·왕</b>끼리도 모두 <b>싸워요</b>(왕↔왕 포함). <b>왕 본체</b>가 지면 그 자리에서 <b>경기 패배</b>예요.","기술 <b>4칸</b>이 전부 못 쓰는 상태면 <b>기본 공격도 나오지 않아요</b>. 「턴 종료」를 눌러야 내 <b>싸움 차례 한 번</b>만 넘어가요.","<b>보호막(🛡)</b>은 겹쳐 쓰면 <b>남은 양에 더해져요</b>. 18에 22를 더 받으면 <b>40</b>이에요."]},
   {icon:"💣",title:"폭탄과 함정",cards:TUT_SCENES.bombtrap(),
-   lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). 상대 옆에 새로 붙으면 터져요. <b>함정</b>은 <b>스스로 움직일 수 없어요</b>.","<b>하수인</b>이 폭탄을 건드리면 둘 다 사라져요. <b>동료·왕</b>은 살아남아요. 폭탄끼리·폭탄과 함정은 <b>서로 한 칸씩</b> 밀려요. 정체는 비밀이에요.","<b>함정</b>을 건드리면 함정은 사라지고 그 말은 <b>내 차례 2번</b> 못 움직여요. 둘 다 정체가 드러나요. 함정도 <b>밀기·재배치</b>로 옮겨질 수 있어요."]},
+   lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). 상대 옆에 새로 붙으면 터져요. <b>함정</b>은 <b>스스로 움직일 수 없어요</b>.","<b>하수인</b>이 폭탄을 건드리면 둘 다 사라져요. <b>동료·왕</b>은 살아남아요. 폭탄끼리·폭탄과 함정은 <b>그 자리에서 터져 둘 다 사라져요</b>.","<b>함정</b>을 건드리면 함정은 사라지고 그 말은 <b>내 차례 2번</b> 못 움직여요. 둘 다 정체가 드러나요. 함정도 <b>밀기·재배치</b>로 옮겨질 수 있어요."]},
   {icon:"🔴",title:"잡아오기와 도망치기",cards:TUT_SCENES.capture(),
    lines:["싸울 때 상대 <b>하수인</b> HP가 <b>30%</b> 아래면 <b>몬스터볼</b>을 던져요. 성공률 <b>70%</b>예요.",
      "성공하면 내 <b>예비 하수인</b>(HP 70/100)이 돼요. 성공·실패 모두 볼 <b>1개</b>가 없어져요.",
      "<b>도망</b>은 <b>HP 조건 없이</b> 언제든 칠 수 있어요. 기본 성공률은 <b>30%</b>예요.",
      "성공하면 <b>뒤에 있는 내 말</b>과 교환하거나 생략하고, 상대를 <b>한 칸씩</b> 밀어요.",
-     "실패해도 <b>상대가 더 때리지 않아요</b>. 내 <b>싸움 차례 한 번</b>만 지나가요."]},
+     "실패하면 <b>상대의 기본 공격 한 번</b>을 맞고, 내 <b>싸움 차례 한 번</b>이 지나가요."]},
   {icon:"🌀",title:"텔레포트(순간이동)",cards:TUT_SCENES.teleport(),
    lines:["내 말이 <b>상대편 땅</b>(상대 진영 3줄)에 들어가 있으면 <b>텔레포트</b>(순간이동)를 쓸 수 있어요.","텔레포트는 내 말 <b>두 개</b>의 자리를 서로 바꿔요. 왕·폭탄·함정도 돼요. 한 경기에 <b>몇 번이든</b> 쓸 수 있지만, 한 차례의 <b>주 행동</b>을 써요.","바뀐 두 말이 각각 상대 옆에 새로 붙으면 <b>각자 따로</b> 싸워요. 남은 싸움 횟수가 모자라면 못 써요.","<b>함정</b>에 걸려 멈춘 말은 텔레포트로 <b>자리를 바꿀 수 없어요</b>. 양쪽 어느 자리든 안 돼요."]},
   {icon:"🔥",title:"버닝 타임(불타는 시간)",cards:TUT_SCENES.burning(),banner:"턴 65부터 🔥 버닝 타임",

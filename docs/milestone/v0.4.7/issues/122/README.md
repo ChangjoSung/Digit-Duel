@@ -1,6 +1,11 @@
 # #122 · #124 · #126 — 세로 화면 · 왕/동료 아트 · 승패 효과
 
-> **현재: CJ QA REVISE 보완 구현 — 좌상단 뒤로가기·어두운 배경.** [수정 범위·검수 기록](Mercury/revise-back-dark.md)을 따른다. [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)·[#124](https://github.com/ChangjoSung/Digit-Duel/issues/124)·[#126](https://github.com/ChangjoSung/Digit-Duel/issues/126)은 OPEN이며 CJ 재검수와 출시는 대기다. PR160의 제품 PASS와 화면은 이전 납품 이력이다.
+> **완료: 2026-09-10 CJ 플레이 QA PASS 로 [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122)·[#124](https://github.com/ChangjoSung/Digit-Duel/issues/124)·[#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) 세 Issue 를 종결했다.** 출시는 여전히 대기이며 정식 버전은 v0.4.5 그대로다.
+> 마지막 회차는 **CJ QA REVISE 2차 — 접촉·전투 규칙 4건 + 준비 탭 표시·전투 뒤로가기 위치**이고 [Mars 구현·검증 보고](Mars/revise-cjqa-rules/report.md)가 그 원본이다.
+> 이번 회차는 **Codex 정지로 Saturn 교차 QA 없이** Mars 가 백업 QA·Git·문서를 대행했다 — CJ 플레이 QA 가 최종 게이트였다. 검증 범위와 한계는 위 보고의 "남은 것 · 한계" 절을 따른다.
+>
+> 1차 REVISE(좌상단 뒤로가기·어두운 배경): [수정 범위·검수 기록](Mercury/revise-back-dark.md). PR160의 제품 PASS와 화면은 이전 납품 이력이다.
+> **주의**: 이 문서 아래쪽 화면·설명 중 "전투 도중에는 하위 메뉴에서 명령 선택으로만 돌아간다"는 위치 서술과 좌상단 전투 뒤로가기 캡처는 1차 회차 기준이며, 2차에서 그 버튼이 **행동창 아래**로 옮겨졌다.
 >
 > 현재 범위 원본: [CJ 후속 범위](Mercury/cj-followup.md) · [GDD21](https://app.notion.com/p/3d71e7f1708581f292ede2ab862e63f5) · [작업 PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160). 아트 체크포인트 `dd0d622`.
 
@@ -119,6 +124,6 @@ CJ 피드백 세 가지를 반영한 판이다: **실제 숲 칸만 수풀처럼
 | [v1 아트 보고](Earth/report.md) | 당시 제작 범위와 한계 |
 | [Venus 흐름 검토 원문](Venus/flow-review.md) | 당시 현행 화면 구조 실측과 함정 8건 |
 
-당시 기록: 기준 dev `52932eddc644764c797f106b8bc1cf6b174fbf9b`, HTML blob `8027cd72d8445c9a7077d0e43b1c5559645ee165`. 초기 취합에서 왕 불가침 범위와 접속 코드 존재에 관한 전달 오류가 있었고 원문 대조로 정정했다 — 왕 대 왕 불가침/왕 제거 승리 가능, 서버 주소와 접속 코드는 별도 입력이다. Earth 가 만든 `Earth/.chrome-render/` 임시 프로필은 정확 경로 삭제가 자동 승인 검토에서 `blocked by policy` 로 거부돼 우회하지 않고 보존했으며 납품 대상에서 제외한다.
+당시 기록: 기준 dev `52932eddc644764c797f106b8bc1cf6b174fbf9b`, HTML blob `8027cd72d8445c9a7077d0e43b1c5559645ee165`. 초기 취합에서 왕 불가침 범위와 접속 코드 존재에 관한 전달 오류가 있었고 원문 대조로 정정했다 — 당시 규칙은 왕 대 왕 불가침/왕 제거 승리 가능이었고, 서버 주소와 접속 코드는 별도 입력이다. (왕 불가침 자체는 2026-09-10 CJ QA REVISE 2차로 폐지됐다 — 이 절은 당시 기록이다.) Earth 가 만든 `Earth/.chrome-render/` 임시 프로필은 정확 경로 삭제가 자동 승인 검토에서 `blocked by policy` 로 거부돼 우회하지 않고 보존했으며 납품 대상에서 제외한다.
 
 </details>
