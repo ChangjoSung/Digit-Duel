@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.7"
+local CLIENT_VERSION = "0.5.0-p3.9"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -126,6 +126,28 @@ local SLOT_TYPES = { "minion", "minion", "minion", "minion", "minion", "minion",
 local view = nil
 local tableInfo = nil
 local selectedId = nil
+-- #11·#36 추측 메모 — **내 화면에만** 보이는 표시다. 서버로 보내지 않고 상대는 알 수 없다 (규칙·난수 무관)
+local MEMO_OPTS = {
+	{ key = "king", emoji = "👑", ko = "왕" },
+	{ key = "ally", emoji = "🤝", ko = "동료" },
+	{ key = "minion_fire", emoji = "🔥", ko = "불 하수인" },
+	{ key = "minion_water", emoji = "💧", ko = "물 하수인" },
+	{ key = "minion_grass", emoji = "🌿", ko = "풀 하수인" },
+	{ key = "minion_lightning", emoji = "⚡", ko = "전기 하수인" },
+	{ key = "bomb", emoji = "💣", ko = "폭탄" },
+	{ key = "trap", emoji = "🪤", ko = "함정" },
+}
+local memos = {} -- [pieceId] = key
+local memoMode = false -- 메모 모드: 적 말을 클릭하면 공격이 아니라 메모 선택
+local memoPick = nil -- 메모 선택 중인 말 id
+local function memoOpt(key)
+	for _, o in MEMO_OPTS do
+		if o.key == key then
+			return o
+		end
+	end
+	return nil
+end
 local teleFirst = nil
 local teleMode = false -- #131 계약 3.2: 텔레포트 1단계(첫 말 고르는 중) 표시
 local logLines = {}
@@ -366,7 +388,7 @@ local winThinking = mk("ImageLabel", { -- 🤖 AI 행동 중 (status48_thinking)
 	ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Pixelated, ImageColor3 = WHITE,
 }, win)
 local winStatus = mk("TextLabel", { -- 판 아래 한 줄 상태 (🤖 AI 행동 중 등)
-	Text = "", Size = UDim2.new(0, 632, 0, 30), Position = UDim2.new(0, 44, 1, -40),
+	Text = "", Size = UDim2.new(0, 540, 0, 30), Position = UDim2.new(0, 44, 1, -40),
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 12, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
 }, win)
@@ -482,6 +504,20 @@ end
 -- 서버 로그 한 줄 → 배너 (규칙 문구를 그대로 쓴다). 판정은 공유 모듈 Banner (헤드리스 테스트 [12] 대상)
 local bannerFromLog = Banner.fromLog
 
+-- #11·#36 추측 메모 선택 팝업 (내 화면 전용 — 서버로 아무것도 보내지 않는다)
+local memoFrame = mk("Frame", {
+	Size = UDim2.new(0, 300, 0, 246), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
+	BackgroundColor3 = Color3.fromRGB(28, 32, 44), BorderSizePixel = 0, Visible = false, ZIndex = 11,
+}, gui)
+bgImage(memoFrame, "panel_modal", "panel", 1)
+autoFit(memoFrame, 300, 246)
+mk("TextLabel", {
+	Text = "📝 이 말은 뭘까? (내 화면에만 보입니다)", Size = UDim2.new(1, -24, 0, 22), Position = UDim2.new(0, 12, 0, 10), ZIndex = 11,
+	BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(232, 236, 245),
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, memoFrame)
+local memoBtns = mk("Frame", { Size = UDim2.new(1, -24, 0, 200), Position = UDim2.new(0, 12, 0, 36), BackgroundTransparency = 1, ZIndex = 11 }, memoFrame)
+
 -- 대전 화면 (배경 투명)
 local game_ = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 6 }, gui) -- 전투 모달 등 (창 위)
 local modalBack = mk("Frame", { -- 전투·탐색 보상 창 뒤 암막 (뒤의 판·사이드 패널이 겹쳐 보이지 않게)
@@ -530,6 +566,11 @@ for dr = 1, ROWS do
 		mk("TextLabel", {
 			Name = "MarkTxt", Size = UDim2.new(0, 14, 0, 12), Position = UDim2.new(0, 1, 0, 0), BackgroundTransparency = 1,
 			Text = "🔍", TextSize = 10, Font = Enum.Font.Gotham, TextColor3 = WHITE, Visible = false, ZIndex = 3,
+		}, b)
+		mk("TextLabel", { -- #11·#36 추측 메모 (내 화면 전용)
+			Name = "Memo", Size = UDim2.new(1, -2, 0, 14), Position = UDim2.new(0, 1, 1, -15), BackgroundTransparency = 1,
+			Text = "", TextSize = 12, Font = Enum.Font.GothamBold, TextColor3 = WHITE, TextStrokeTransparency = 0.2,
+			TextXAlignment = Enum.TextXAlignment.Left, Visible = false, ZIndex = 3,
 		}, b)
 		local hl = mk("ImageLabel", { -- 하이라이트 오버레이 (128 9-slice, 32px 셀 → SliceScale 0.25)
 			Name = "Hl", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ResampleMode = Enum.ResamplerMode.Pixelated, Visible = false, ZIndex = 4,
@@ -631,6 +672,13 @@ local recruitBtns = mk("Frame", { Size = UDim2.new(1, -28, 0, 268), Position = U
 local function send(a)
 	reAction:FireServer(a)
 end
+
+-- 창 오른쪽 맨 아래 [나가기] — 탐색·텔레포트 같은 게임 행동 버튼과 떨어뜨린다 (CJ 2026-09-10)
+local winExit = smallBtn(win, WIN_W - 120, 0, 104, "🚪 나가기", function()
+	send({ t = "stand" })
+end, "danger", true, Art.action("exit") or Art.action("resign"), 28)
+winExit.Position = UDim2.new(0, WIN_W - 120, 1, -42)
+winExit.ZIndex = 3
 
 local function addLog(text)
 	table.insert(logLines, text)
@@ -751,6 +799,7 @@ local function cellReset(b, r)
 	b.Hp.Visible = false
 	b.Mark.Visible = false
 	b.MarkTxt.Visible = false
+	b.Memo.Visible = false
 	b.Hl.Visible = false
 end
 
@@ -1394,11 +1443,7 @@ function renderSetup()
 			send({ t = "botLevel", level = (lv == "dan5") and "grade5" or "dan5" })
 		end, "default", not ti.myReady, nil, 22)
 	end
-	local function leaveBtn(x, y)
-		smallBtn(setupBtns, x, y, 90, "나가기", function()
-			send({ t = "stand" })
-		end, "danger", true, Art.action("exit") or Art.action("resign"))
-	end
+	local function leaveBtn(_, _) end -- [나가기] 는 창 오른쪽 맨 아래로 통합했다 (CJ 2026-09-10)
 	if setup.stage == "roster" then
 		setupTitle.Text = ("로스터 선택 (%d/6) — 테이블 %d %s 자리"):format(#setup.roster, ti.tableId, ti.side)
 		setupHint.Text = oppLine .. " · 카드를 누르면 상세(초상화·기술)와 선택 버튼"
@@ -1477,6 +1522,42 @@ end
 --==================================================================
 -- 로비 상태 표시
 --==================================================================
+
+local function closeMemo()
+	memoPick = nil
+	memoFrame.Visible = false
+end
+
+local function renderMemo()
+	if not memoPick then
+		memoFrame.Visible = false
+		return
+	end
+	memoFrame.Visible = true
+	clearChildren(memoBtns)
+	local cur = memos[memoPick]
+	for i, o in MEMO_OPTS do
+		local on = cur == o.key
+		smallBtn(memoBtns, ((i - 1) % 2) * 140, math.floor((i - 1) / 2) * 30, 134, o.emoji .. " " .. o.ko, function()
+			if cur == o.key then -- 같은 항목을 다시 누르면 해제
+				memos[memoPick] = nil
+			else
+				memos[memoPick] = o.key
+			end
+			closeMemo()
+			render()
+		end, on and "primary" or "default")
+	end
+	smallBtn(memoBtns, 0, 124, 134, "메모 지우기", function()
+		memos[memoPick] = nil
+		closeMemo()
+		render()
+	end, "danger", cur ~= nil)
+	smallBtn(memoBtns, 140, 124, 134, "닫기", function()
+		closeMemo()
+		render()
+	end)
+end
 
 local function renderHudButtons()
 	clearChildren(hudBtns)
@@ -1624,6 +1705,16 @@ local function renderBoard2D()
 				if table.find(forced, p.id) then
 					hl = "forced"
 				end
+				if not p.known and p.owner ~= view.me then -- #36: 실제 공개(known)면 실제 정체가 우선
+					local mo = memoOpt(memos[p.id])
+					if mo then
+						b.Memo.Text = mo.emoji
+						b.Memo.Visible = true
+					end
+					if memoMode then
+						hl = hl or "flee" -- 메모를 남길 수 있는 칸 표시
+					end
+				end
 			end
 			if hl then
 				cellHighlight(b, hl)
@@ -1646,6 +1737,9 @@ local function renderSide()
 		local w = view.winner
 		head ..= "\n" .. (w == view.me and "🏆 승리! " or w == -1 and "무승부 " or "패배… ")
 			.. "(" .. (view.winType and Data.WINTYPE_KO[view.winType] or "") .. ")"
+		if myStats then -- Phase 4 전적 (DataStore)
+			head ..= "\n<font size=\"12\" color=\"#9aa3b8\">🏅 " .. myStats.line .. "</font>"
+		end
 	end
 	infoHead.Text = head
 	-- 배지 행: 몬스터볼 · 아이템 · 전투 · 예비 하수인
@@ -1688,6 +1782,9 @@ local function renderSide()
 	if view.forcedTargets then
 		info ..= "⚔️ 강제 전투 — 빨간 대상 클릭\n"
 	end
+	if memoMode then
+		info ..= "📝 메모 모드 — 정체가 안 보이는 상대 말을 클릭해 추측을 남기세요 (내 화면에만 보입니다)\n"
+	end
 	if myTurn and not sel and not view.battle and info == "" then
 		info ..= "내 말을 클릭하면 이동 가능 칸(파랑)·공격 가능 대상(빨강)이 표시됩니다\n"
 	end
@@ -1704,18 +1801,17 @@ local function renderButtons()
 		smallBtn(btnRow, 0, 0, 190, "교환 생략 (그대로 밀기)", function()
 			send({ t = "fleeSkip" })
 		end, "primary", true, Art.action("skip"))
-		smallBtn(btnRow, 196, 0, 90, "나가기", function()
-			send({ t = "stand" })
-		end, "danger", true, Art.action("exit") or Art.action("resign"))
 		return
 	end
 	if not myTurn then
 		if view.phase == "over" then
 			smallBtn(btnRow, 0, 0, 170, "닫기 (자리로 돌아가기)", closeGame, "primary")
 		end
-		smallBtn(btnRow, 0, 32, 90, "나가기", function()
-			send({ t = "stand" })
-		end, "danger", true, Art.action("exit") or Art.action("resign"))
+		smallBtn(btnRow, 0, 32, 130, memoMode and "📝 메모 끄기" or "📝 추측 메모", function()
+			memoMode = not memoMode
+			memoPick = nil
+			render()
+		end, memoMode and "primary" or "default")
 		return
 	end
 	local lg = legalOf(selectedId)
@@ -1741,9 +1837,11 @@ local function renderButtons()
 	smallBtn(btnRow, 126, 32, 96, "턴 종료", function()
 		send({ t = "endTurn" })
 	end, "primary", true, Art.action("endturn"))
-	smallBtn(btnRow, 228, 32, 90, "나가기", function() -- 대전 중 나가기 = 기권 + 자리 떠나기
-		send({ t = "stand" })
-	end, "danger", true, Art.action("exit") or Art.action("resign"))
+	smallBtn(btnRow, 228, 32, 130, memoMode and "📝 메모 끄기" or "📝 추측 메모", function() -- #11·#36 내 화면 전용 추측
+		memoMode = not memoMode
+		memoPick = nil
+		render()
+	end, memoMode and "primary" or "default")
 end
 
 -- #121 계약 4·6 탐색 보상 선택 창 — 단계별로 다시 그린다 (확정 전에는 서버에 아무것도 보내지 않는다)
@@ -2174,6 +2272,21 @@ function render()
 		or (view.phase == "over" and "경기가 끝났습니다 — [닫기] 로 자리로 돌아가거나 [나가기]" or "")
 	setBotBadge()
 	setThinking(thinking)
+	do -- #11: 보드에서 사라진 말의 메모는 정리한다
+		local alive = {}
+		for _, p in view.board do
+			alive[p.id] = true
+		end
+		for id in memos do
+			if not alive[id] then
+				memos[id] = nil
+			end
+		end
+		if memoPick and not alive[memoPick] then
+			closeMemo()
+		end
+	end
+	renderMemo()
 	renderSide()
 	renderButtons()
 	renderPrompt()
@@ -2185,10 +2298,22 @@ end
 --==================================================================
 
 local function onCell(r, c)
-	if not view or view.phase ~= "play" then
+	if not view then
 		return
 	end
 	local p = pieceAt(r, c)
+	if memoMode then -- #11·#36: 메모 모드에서는 미공개 상대 말을 눌러 추측을 남긴다 (규칙 행동 없음)
+		if p and p.owner ~= view.me and not p.known then
+			memoPick = p.id
+			renderMemo()
+		else
+			flashHud("📝 메모는 정체가 드러나지 않은 상대 말에만 남길 수 있습니다")
+		end
+		return
+	end
+	if view.phase ~= "play" then
+		return
+	end
 	if view.fleePick then
 		if p and table.find(view.fleePick.cands, p.id) then
 			send({ t = "fleeSwap", id = p.id })
@@ -2390,6 +2515,10 @@ reState.OnClientEvent:Connect(function(msg)
 			local w = view.winner
 			banner(w == view.me and "🏆 승리!" or w == -1 and "무승부" or "패배…",
 				view.winType and Data.WINTYPE_KO[view.winType] or nil, w == view.me and "good" or w == -1 and "default" or "bad")
+		end
+		if msg.oppWaiting then -- Phase 4 재접속: 상대가 끊겼지만 자리를 잡아 두고 기다리는 중
+			addLog(("🔌 상대의 연결이 끊어졌습니다 — %d초 안에 돌아오면 이어서 진행합니다."):format(msg.oppWaiting))
+			banner("🔌 상대 접속 끊김", ("%d초 안에 돌아오면 이어서 진행합니다"):format(msg.oppWaiting), "warn")
 		end
 		if msg.opponentLeft then
 			addLog("🔌 상대의 연결이 끊어졌습니다.")
