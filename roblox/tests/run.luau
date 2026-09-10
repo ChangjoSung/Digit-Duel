@@ -1275,6 +1275,84 @@ do -- #131 계약 3.3: 주 행동 소모 후 · 남의 차례에는 doTeleportSw
 end
 
 --==================================================================
+print("[14] 전투 연출 판정 (표시 계층) — 엔진 문구 → FX 키. 부여/해제·성공/실패를 섞지 않는다")
+--==================================================================
+do -- 실제 엔진 문구를 그대로 넣는다 (Battle.luau·Engine.luau 의 bmsg/log 원문)
+	local FX_CASES = {
+		-- 공격·피해
+		{ "24 피해! (흡수 6) · 유효 18", "hit" },
+		{ "🔥 새끼 화룡는 화상 피해 6!", "burn" }, -- "피해" 가 들어 있지만 화상이 먼저 잡혀야 한다
+		-- 상태이상 부여만 (해제·정화는 연출 없음)
+		{ "🔥 물의 정령는 화상을 입었다! (3R)", "burn" },
+		{ "🔥 물의 정령의 화상이 해제되었다.", nil },
+		{ "✨ 화상이 정화되었다!", nil },
+		{ "💧 새끼 화룡는 약화되었다! (2회)", "weaken" },
+		{ "💧 새끼 화룡의 약화가 풀렸다.", nil },
+		{ "⚡ 풀 정령는 감전 — 다음 1라운드 후공!", "shock" },
+		{ "⚡ 풀 정령의 감전이 풀렸다.", nil },
+		{ "⚡ 상태이상 대상 추가 위력 +8!", nil }, -- ⚡ 로 시작하지만 감전 부여가 아니다
+		-- 보호막·회복
+		{ "🛡 보호막 20!", "shield" },
+		{ "🌿 보호막 12!", "shield" },
+		{ "💀 물의 정령는 보호막째 베였다 — 즉사!", "reaper" }, -- "보호막" 뒤에 공백이 없어 shield 로 새지 않는다
+		{ "💚 HP 18 회복!", "heal" },
+		{ "🌿 흡수 — HP 8 회복!", "heal" },
+		{ "🌿 잔류 흡수 — HP 5 회복!", "heal" }, -- CJ 확정: 풀 잔류장 = 회복
+		{ "🧪 회복약! 새끼 화룡의 HP 25 회복.", "heal" },
+		{ "🌿 어둠의 덩굴 — 빨아들일 생명이 없었다. (회복 0)", nil }, -- 회복량 0 이면 연출 없음
+		-- 신규 기술 3종 (기술 사용 줄에서 잡는다)
+		{ "새끼 화룡의 드래곤 숨결!", "dragon" },
+		{ "🐉 용의 숨결이 속성을 태운다 — ×1.3!", "dragon" },
+		{ "물의 정령의 마녀의 장난!", "witch" },
+		{ "💀 풀 정령의 사신의 낫!", "reaper" },
+		-- 포획·도망 (성공만)
+		{ "🔴 몬스터볼 적중! 상대 하수인을 포획했다!", "capture" },
+		{ "🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 2)", nil },
+		{ "🏃 도망 성공! 전투가 종료되었다.", "flee" },
+		{ "🏃 새끼 화룡의 도망 시도!", nil },
+		{ "🏃 도망 실패! 이번 행동을 소모했다.", nil },
+		-- 연출 없는 평범한 줄
+		{ "⚔️ 새끼 화룡 vs 물의 정령 — 전투 개시!", nil },
+		{ "⏭️ 새끼 화룡 — 쓸 수 있는 기술이 없어 이번 행동을 넘겼다.", nil },
+	}
+	for _, c in FX_CASES do
+		local got = Banner.fxFromBattle(c[1])
+		ok(got == c[2], ("fxFromBattle(%s) = %s"):format(c[1], tostring(c[2])))
+	end
+	ok(Banner.fxFromBattle(nil) == nil, "nil 은 연출 없음")
+	ok(Banner.fxFromBattle(123) == nil, "문자열이 아니면 연출 없음")
+end
+
+do -- 판 위 사건은 배너가 연출 키까지 함께 준다 (Banner.RULES 의 fx)
+	local BOARD_FX = {
+		{ "💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.", "explosion" },
+		{ "🪤 함정 발동! 새끼 화룡 정체 공개 · 2턴 이동 불가 (함정 제거)", "trap" },
+		{ "🔴 포획 종료: P1가 적 하수인을 포획 — 전투 즉시 종료 (예비 하수인 HP 30/60)", "capture" },
+		{ "🏃 도망 성공 — 전투가 종료되었습니다", "flee" },
+		{ "📦 패키지 획득!", nil }, -- 배너는 뜨지만 연출 자산은 없다
+		{ "🏁 경기 종료 — P1 승리", nil },
+	}
+	for _, c in BOARD_FX do
+		local b = Banner.fromLog(c[1])
+		ok(b ~= nil, "배너 대상: " .. c[1])
+		ok(b and b.fx == c[2], ("fromLog(%s).fx = %s"):format(c[1], tostring(c[2])))
+	end
+end
+
+do -- 연출 키는 전부 Earth 납품 13종 안에 있어야 한다 (오타로 없는 자산을 부르면 조용히 아무것도 안 나온다)
+	local DELIVERED = {
+		hit = true, explosion = true, trap = true, shield = true, heal = true, burn = true, weaken = true,
+		shock = true, capture = true, flee = true, dragon = true, witch = true, reaper = true,
+	}
+	for _, r in Banner.FX_RULES do
+		ok(DELIVERED[r.fx] == true, "FX_RULES 키 납품됨: " .. tostring(r.fx))
+	end
+	for _, r in Banner.RULES do
+		ok(r.fx == nil or DELIVERED[r.fx] == true, "RULES 키 납품됨: " .. tostring(r.fx))
+	end
+end
+
+--==================================================================
 print(("\n결과: %d passed · %d failed"):format(passed, failed))
 if failed > 0 then
 	error("테스트 실패", 0)

@@ -124,6 +124,27 @@ function Art.action(key: string): string? -- search|teleport|heal|skip|endturn|r
 	return url(AssetIds["action48_" .. key])
 end
 
+-- 전투 연출 스프라이트 시트 (Earth 납품 · docs/art/roblox-v0.5.0/earth-fx-report.md)
+-- 시트 768×96 = 96×96 프레임 8장 가로 배치. 프레임 n 의 ImageRectOffset 은 (96*n, 0) 이고 8번째는 완전 투명이라 저절로 사라진다.
+-- 반복 루프가 아니라 1회 연출이다. 9-slice 를 쓰지 않고 ResamplerMode.Pixelated 로만 그린다.
+Art.FX = { frames = 8, size = 96, sheetW = 768 }
+
+-- manifest tint=yes 인 3종만 흰색 원본이라 상황색을 곱한다. 나머지 10종은 그림에 색이 들어 있어 흰색 유지
+Art.FX_TINT = {
+	hit = rgb(0xff, 0x5b, 0x6e), -- 피해 — 공격 하이라이트와 같은 빨강
+	shield = rgb(0x4d, 0xa3, 0xff), -- 보호막 — 방어막 바와 같은 파랑
+	heal = rgb(0x4f, 0xd8, 0x8a), -- 회복 — HP 바와 같은 초록
+}
+
+function Art.fx(key: string?): string? -- hit|explosion|trap|shield|heal|burn|weaken|shock|capture|flee|dragon|witch|reaper
+	return key and url(AssetIds["fx96_" .. key]) or nil
+end
+
+-- 메모가 달린 말 배지 (내 화면 전용 표시 — 무엇을 적었는지는 담지 않는다)
+function Art.memoToken(): string?
+	return url(AssetIds["token64_memo"])
+end
+
 function Art.badge(key: string): string? -- ai_grade5|ai_dan5 (48) — 봇 난이도 배지 (earth-ai-window-request.md)
 	return url(AssetIds["badge48_" .. key])
 end

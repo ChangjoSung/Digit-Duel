@@ -1,0 +1,79 @@
+{
+  "schema": "earth-imagegen-prompts-v1",
+  "created": "2026-09-10",
+  "mode": "built-in image_gen; no CLI/API fallback",
+  "base_prompt": "Use case: stylized-concept. Production 2D PIXEL ART combat VFX sprite strip for a dark Roblox board game. ONE horizontal row of EXACTLY EIGHT evenly spaced animation frames (including final blank). True transparent RGBA background, no painted checkerboard or black backdrop. Requested final sheet 768x96 pixels, each square frame96x96; if rendered larger preserve exactly 8 equal square logical cells in one horizontal row and center the row vertically. Center effects in cells, shared anchor (48,48) relative each cell. Keep all art within central80x80 of every96x96 cell, with 8px clear margins. Exact crisp square pixel clusters, limited flat palette, 2px output pixel grid. NO antialiasing, NO soft transparency, NO texture noise, NO glow gradients. Frame1 almost empty. Frame8 entirely transparent. Successive frames form one continuous effect, not 8 unrelated icons. No labels, frame numbers, separators, grid lines, watermark, logo, text, scenery or UI panels. The following F1..F8 are instructions only, DO NOT draw labels: ",
+  "assets": [
+    {
+      "id": "hit",
+      "prompt": "White-only sharp impact star and diagonal slash, no gray. F1 tiny glint; F2 short slash; F3 compact angular star; F4 expanding broken star; F5 outward shards; F6 scattered smaller shards; F7 two tiny glints; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/hit.png",
+      "actual_full_prompt": "Use case: stylized-concept. Asset type: production pixel-art Roblox combat VFX sprite strip, one animation 'hit'. Deliver exactly 768x96 RGBA PNG with genuinely transparent background, NOT checkerboard paint. Exactly 8 equal 96x96 frames, one horizontal row no padding or gutters. Frame centers x=48,144,240,336,432,528,624,720 and y=48. White-only pixels #ffffff plus fully transparent alpha0, no gray, no color, no antialiasing, no glow, crisp 2x2 pixel blocks. Original compact angular impact slash / starburst, UI overlay no character no scenery. Frame1 tiny two-pixel glint almost empty; F2 short diagonal spark; F3 bold irregular sharp impact star; F4 expanding broken star and short rays; F5 separated radial shards; F6 smaller scattered shards; F7 only two tiny residual sparks; F8 entirely transparent blank. Each frame stays within 80x80 centered area with 8px clear margin. Clear temporal continuity around same center. No text, no labels, no grid lines, no border, no icons from any franchise. This is a clean usable spritesheet, not a concept art poster. Save to project only after generation."
+    },
+    {
+      "id": "explosion",
+      "prompt": "A compact orange-gold magical explosion, no bomb object. Palette deep purple outline #56345c, burnt red #bb4b3e, orange #ff7a4d, amber #ffb65f, pale yellow #ffdf8e, cream #fff3cf. F1 tiny ember; F2 compact ignition; F3 expanding round-lobed fire cloud; F4 largest fragmented fire cloud and shock ring; F5 separating embers and dark smoke curls; F6 small receding smoke fragments; F7 two dying embers; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/explosion.png"
+    },
+    {
+      "id": "trap",
+      "prompt": "A PHYSICAL STEEL JAW TRAP with zigzag pointed metal teeth, two hinged jaws SNAP SHUT, gray-blue metal #708ba3/#bccddd with small amber impact sparks #ffd16a. NOT a magical circle, not an animal, no victim, no gore. F1 two tiny metallic glints; F2 ghostless open two jaws forming oval; F3 jaws half closing teeth clear; F4 firmly closed jaws with tiny impact sparks; F5 smaller closed trap disassembling visually into fading fragments; F6 few steel shards; F7 two glints; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/trap.png"
+    },
+    {
+      "id": "shield",
+      "prompt": "PURE WHITE #ffffff ONLY visible pixels for runtime tint, no gray, no colors. Hollow angular heraldic shield outline flashes into being, transparent center never solid panel, small star glints outside. F1 tiny glint; F2 short upper shield outline; F3 full compact hollow shield; F4 full larger crisp hollow shield rim with side glints; F5 outline breaks into angular segments; F6 short receding fragments; F7 two tiny glints; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/shield.png"
+    },
+    {
+      "id": "heal",
+      "prompt": "PURE WHITE #ffffff ONLY visible pixels for runtime tint, no gray, no colors. Three small asymmetric four-point sparkle stars rising along curved wisps, restorative magic. NOT red cross/medical logo, no letters, no numbers. F1 one tiny dot; F2 one small low sparkle; F3 two rising starbursts with short curved trails; F4 three clearly separated sparkles at staggered heights; F5 sparks rise and shrink; F6 small top sparkles; F7 two tiny upper dots; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/heal.png"
+    },
+    {
+      "id": "burn",
+      "prompt": "Small twisting orange flame tongues and embers RISING VERTICALLY, not explosion. Palette #8d3844,#dc5541,#ff7a4d,#ffc469,#fff0ac. F1 tiny low ember; F2 tiny licking flame; F3 two low flame tongues; F4 tall twisting main flame and small side flame; F5 rising split flame tips; F6 small upper embers; F7 two sparks; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/burn.png"
+    },
+    {
+      "id": "weaken",
+      "prompt": "Violet descending broken chevrons with a fractured central diamond, a debuff effect, NOT lightning, no skull no creature. Palette #614575,#9671bb,#c4a0df,#ebd4f4. F1 tiny upper violet glint; F2 short down-chevron; F3 two angular downward chevrons plus small diamond; F4 broken chevrons descend and diamond cracks; F5 separated falling purple shards; F6 few lower particles; F7 two dots; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/weaken.png"
+    },
+    {
+      "id": "shock",
+      "prompt": "Jagged golden lightning bolt and branching electric arcs, no fire. Palette #9d732c,#ffd84d,#fff2a8,#fff9df. F1 tiny spark; F2 small zigzag; F3 bold irregular lightning strike; F4 branched lightning arcs across center with hollow gaps; F5 separated smaller arcing branches; F6 tiny zigzag sparks; F7 two glints; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/shock.png"
+    },
+    {
+      "id": "capture",
+      "prompt": "Original capture-magic effect: VIOLET FACETED DIAMOND CAPSULE with oblique diagonal pale band and small diamond core, and inward curving mint violet light ribbons. Not spherical, not red/white hemispheres, no equator belt, no circular button, no franchise design. Palette #654780,#9977c4,#d6b8ee,#91ddc8,#f2ecff. F1 tiny violet center glint; F2 four violet mint inward rays; F3 swirling rays converging toward small faceted diamond; F4 closed faceted diamond capsule with oblique band and diamond core; F5 capsule shrinks with a soft angular sparkle ring; F6 tiny diamond and two sparks; F7 tiny single glint; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/capture.png"
+    },
+    {
+      "id": "flee",
+      "prompt": "Pale blue teal speed swishes and small dust puffs sweeping off toward the right, no figure or feet, no unit identity. Palette #597d99,#8ec4dd,#c3e4eb,#eefaff. F1 two tiny left dots; F2 two short curved speed strokes; F3 long tapering speed wisps sweeping right; F4 separated fast wisps and small lower dust; F5 wisps advance right and break up; F6 tiny rightmost dust curls; F7 two tiny dots; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/flee.png"
+    },
+    {
+      "id": "dragon",
+      "prompt": "DRAGON BREATH VFX only: concentrated violet-orange flame jet from left toward right, serpentine sweep of fire with a forked fiery tip, no dragon head, no creature, no famous characters. Palette #633873,#a3497a,#ee7253,#ffb86b,#ffe5ad. F1 tiny ignition glint; F2 compact flame seed left; F3 short directional flame jet; F4 broad tapering sweeping flame stream with clear dark-violet outer lobes and orange core; F5 split forward curling tongues; F6 few hot fragments; F7 two ember points; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/dragon.png"
+    },
+    {
+      "id": "witch",
+      "prompt": "Witch mischief VFX: tiny ivory candle with an asymmetric violet green alchemical flame and crooked smoke swirl. No witch person or hat, no pentagram, no text, no known franchise. Palette #625078,#a57ecc,#91d1a1,#dfd4b1,#fff0cc. F1 tiny purple glint; F2 small candle stub and sprout flame; F3 candle with violet curling flame; F4 enlarged crooked green-violet smoke swirl rising from candle; F5 candle dissolves into mischievous curl and sparks; F6 two wisps; F7 tiny glint; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/witch.png"
+    },
+    {
+      "id": "reaper",
+      "prompt": "Stylized fantasy SCYTHE SLASH VFX, no gore, no victim no body no skull. Curved silver-violet crescent blade sweep on dark purple short handle silhouette, readable scythe arc. Palette #4b405f,#826d9e,#b6abc9,#e4deed,#faf5ff. F1 tiny glint; F2 short pale crescent; F3 spectral scythe blade with short diagonal handle and open negative space; F4 sweeping large curved silver crescent slash; F5 broken curving arc; F6 small curved fragments; F7 two tiny glints; F8 empty.",
+      "generated_source": "docs/art/roblox-v0.5.0/fx-source/generated/reaper.png"
+    }
+  ],
+  "revision": {
+    "dragon": "Use case: precise-object-edit. Edit target is the dragon-breath sprite reference. Preserve the violet-orange flame art style, but fix the merged central frames by REDRAWING AND ARRANGING as exactly FOUR COLUMNS BY TWO ROWS of separate animation cells, row-major 8 frames. Transparent RGBA canvas, no checkerboard painting. NO borders no labels no text no numbers. Every logical cell has a huge clear margin, flame width at most 65% of its cell; never connect between cells. Row1 F1 tiny ember, F2 small flame seed, F3 short horizontal flame jet, F4 strongest medium-width curling directional flame jet (entirely inside upper-right cell). Row2 F5 two detached forked flame tongues (entirely inside bottom-left cell); F6 three small fire fragments; F7 only two tiny ember glints; F8 BOTTOM-RIGHT CELL COMPLETELY TRANSPARENT EMPTY. Keep same anchor in every cell and temporal progression small-to-large-to-dissipating. Pixel art flat limited #633873,#a3497a,#ee7253,#ffb86b,#ffe5ad palette; no gradients no glow no anti-aliasing. No dragon head no creature no logo.",
+    "note": "Further built-in background-extraction attempt; generated gray backdrop not considered transparency proof. Final delivery requires RGBA validation.",
+    "dragon_background_extraction": "Use case: background-extraction. Edit target: remove ALL gray checkerboard background from this image, replace with genuinely transparent alpha0, NOT a painted checkerboard. Keep the 4-column by 2-row flame sprite layout, exact positions sizes palettes and shapes unchanged, preserve 7 flame effects and completely empty final lower-right cell. Crisp pixel clusters, opaque flame pixels only, no shadows, no gradient, no new details, no labels, no grid lines. Output transparent RGBA PNG. All neutral gray background and gray checker pattern must be removed including gaps around flames; preserve violet/orange/yellow flame pixels. Do not change layout."
+  }
+}
