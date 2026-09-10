@@ -107,21 +107,49 @@ Issue 전용 검증 파일은 버전·Issue별로, 공통 하네스와 지속 �
 | CJ 플레이 QA | #146 · #131 · #130 · #128 **PASS (2026-09-10)** — 모두 CLOSED |
 | 릴리스 | 미출시 — 정식 v0.4.5 유지 |
 
+## 진행 중인 범위 — #122 · #124 · #126
+
+CJ 후속 지시로 **세로 화면 · 왕/동료 아트 · 승패 효과**를 하나의 납품으로 함께 제작하고 있다. **제품 QA·CJ 아트 승인·병합·릴리스는 아직 없다.** 세 Issue 모두 OPEN이다.
+
+| Issue | 제목 | 소관 |
+|---|---|---|
+| [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122) | 휴대폰 세로 화면 기준 HTML Design & Game Flow 개편 | Earth(아트) · Mars(구현) · Venus(흐름) |
+| [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124) | 동료·왕 Pixel Dot Design 추가 | Earth(원본) · Mars(게임 파생) |
+| [#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) | 전투 승리·패배 연출 강화 및 화면 흐름 연동 | Earth(스토리보드) · Mars(구현) |
+
+범위 원본은 [CJ 후속 범위](issues/122/Mercury/cj-followup.md)이고, 세 Issue의 자료는 [#122 통합 문서](issues/122/README.md)에 모았다. 작업 브랜치는 `doc/122-art-architecture` · [PR160](https://github.com/ChangjoSung/Digit-Duel/pull/160)이며 아트 체크포인트는 `dd0d622`다.
+
+| 역할 | 문서 | 상태 |
+|---|---|---|
+| Earth | [#122 v2 시안](issues/122/Earth/v2/report.md) · [#124 왕·동료 아트](issues/124/Earth/art-report.md) · [#126 스토리보드](issues/126/Earth/effect-storyboard.md) | 정적 아트 제안 납품 · CJ 최종 아트 승인 전 |
+| Venus | [흐름 계약과 PD 실행 판단](issues/122/Venus/implementation-review.md) · [사용자 문서 동기화](issues/122/Venus/docs-status-report.md) | 소스 사실·PD 판단·수용 기준 정리 · 문서만 갱신 |
+| Mars | HTML·효과·자산 연결·검증 | 진행 중 — 완료 보고 전 |
+| Saturn | 독립 READ_ONLY QA | 구현 완료 후 |
+
+| 단계 | 상태 |
+|---|---|
+| 아트 원고 | v2 보드·전투 SVG/PNG, 왕·동료 원본 2종, 효과 정점 그림 — 제안 상태 |
+| 제품 구현 (`demo/index.html`) | 진행 중 · 검수 기준 커밋·blob 미확정 |
+| 새 화면 캡처 | **없음** — 검증된 캡처 경로와 상태는 이후 PD가 갱신한다 |
+| Saturn 독립 QA · CJ 플레이 QA | 미실시 |
+| 통합 PR·CI · 릴리스 | 미병합 · 미출시 — 정식 v0.4.5 유지 |
+
+2026-09-10 CJ 추가 피드백과 명확화: 상대가 근처에 없을 때 수풀 속 말이 보이지 않는 기존 규칙은 유지한다. 수풀에서 보이는 내 말과 상대 말 모두 살짝 반투명하게 그리되 HP·선택 가독성은 유지한다. 현행 `visibleTo`·인접·`tempReveal`·정체·메모 규칙을 바꾸지 않는 표시 개선이다.
+
+주요 계약: 전투 결과 배너 2500ms를 유지한 채 그 안에서 강한 효과를 약 1.1–1.2초 배분하고 **추가 대기를 만들지 않는다**. 전투 판정 동률은 방어자 승이며 전투 무승부 화면을 만들지 않는다. 로비 복귀·재대전은 **같은 문서 안**에서 하고 #128 튜토리얼 정책을 그대로 지킨다. 온라인 같은 상대 재대전 프로토콜은 이번 범위가 아니다.
+
 ## 등록된 나머지 범위 (착수 전)
 
 | Issue | 제목 | 소관 |
 |---|---|---|
 | [#119](https://github.com/ChangjoSung/Digit-Duel/issues/119) | 공용 하수인 확장 기획 | Venus |
 | [#120](https://github.com/ChangjoSung/Digit-Duel/issues/120) | 하수인 전체 속성 기술 분석·밸런스 및 기술 재등록 | Venus |
-| [#122](https://github.com/ChangjoSung/Digit-Duel/issues/122) | 휴대폰 세로 화면 기준 HTML Design & Game Flow 개편 | Earth · Mars |
 | [#123](https://github.com/ChangjoSung/Digit-Duel/issues/123) | 공용 하수인 전용 아트 디자인 추가 | Earth |
-| [#124](https://github.com/ChangjoSung/Digit-Duel/issues/124) | 동료·왕 Pixel Dot Design 추가 | Earth |
-| [#126](https://github.com/ChangjoSung/Digit-Duel/issues/126) | 전투 승리·패배 연출 강화 및 화면 흐름 연동 | Mars |
 | [#127](https://github.com/ChangjoSung/Digit-Duel/issues/127) | 외부망 운영 전환 분석 — ChatGPT Sites·ngrok 비교 | Jupiter |
 
-위 표는 아직 착수하지 않은 Issue만 남긴 것이다. 종결한 #121 · #125 · #129 · #146 · #131 · #130 · #128은 위 두 절에 있다. 소관은 [CLAUDE.md](../../../CLAUDE.md)의 역할 계약(영역 → 역할)에서 따온 것이며, 실제 배치는 PD 라우팅으로 확정된다. 게임 규칙을 바꾸는 나머지 항목(#119 · #120 · #126)은 CJ 승인 전까지 규격이 확정되지 않는다.
+위 표는 아직 착수하지 않은 Issue만 남긴 것이다. 진행 중인 #122 · #124 · #126은 바로 위 절에, 종결한 #121 · #125 · #129 · #146 · #131 · #130 · #128은 그 앞 두 절에 있다. 소관은 [CLAUDE.md](../../../CLAUDE.md)의 역할 계약(영역 → 역할)에서 따온 것이며, 실제 배치는 PD 라우팅으로 확정된다. 게임 규칙을 바꾸는 나머지 항목(#119 · #120)은 CJ 승인 전까지 규격이 확정되지 않는다.
 
-**아직 정해지지 않은 것**: `#123`·`#124`가 만들 새 아트 데이터를 v0.4.3의 [`assets/minions/`](../v0.4.3/assets/minions/)에 추가할지, v0.4.7에 새 `assets/`를 열지는 아트 범위가 확정된 뒤에 정한다. 지금 결정할 필요가 없어 미뤄 둔 사항이며 이번 Issue의 승인을 막는 항목이 아니다.
+**아직 정해지지 않은 것**: `#123`이 만들 새 아트 데이터를 v0.4.3의 [`assets/minions/`](../v0.4.3/assets/minions/)에 추가할지, v0.4.7에 새 `assets/`를 열지는 아트 범위가 확정된 뒤에 정한다. #124의 게임 파생본은 `demo/assets/leaders/`를 계획 경로로 잡고 있으며 실제 납품은 Mars 완료 보고에서 확정된다.
 
 ## 폴더 규약
 
