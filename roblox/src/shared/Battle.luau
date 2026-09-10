@@ -58,6 +58,30 @@ function Battle.attach(Engine, deps)
 		end
 	end
 
+	-- P2 선공 순서 확정 — 라운드 시작 시점의 감전 상태로 한 번만 계산한다.
+	-- (라운드 도중 해독제로 감전이 풀려도 이번 라운드 순서는 바뀌지 않는다)
+	local function firstSideOf(B) -- 기존 감전 우선순위·라운드 패리티 그대로
+		local firstIsAtt = B.round % 2 == 1
+		if firstIsAtt and B.fa.shock > 0 then
+			firstIsAtt = false
+		end
+		if not firstIsAtt and B.fd.shock > 0 then
+			firstIsAtt = true
+		end
+		return firstIsAtt and "A" or "D"
+	end
+
+	local function latchOrder(B) -- 원시값만 기록 (AI 의 얕은/깊은 복제가 그대로 보존)
+		B.firstSide = firstSideOf(B)
+		B.orderRound = B.round
+	end
+
+	local function ensureOrder(B) -- 스냅샷 없이 직접 구성된 레거시 픽스처용 지연 확정
+		if B.orderRound ~= B.round then
+			latchOrder(B)
+		end
+	end
+
 	--==============================================================
 	-- 전투 개시
 	--==============================================================
@@ -247,10 +271,12 @@ function Battle.attach(Engine, deps)
 			ballThrowA = false, ballThrowD = false,
 			blog = {},
 			buffA = nil, buffD = nil, maxRounds = nil, -- #121 계약 3: 버프 회계(플레이어별 한 전투 1개)·시간의 수호자 라운드 상한 (전역 불변)
+			orderRound = 0, firstSide = "A", -- P2: 이번 라운드 선공 스냅샷
 		}
 		resetTemps(fa)
 		resetTemps(fd)
 		local B = S.battle
+		latchOrder(B) -- 초기 라운드는 resetTemps 이후 상태로 확정
 		for _, e in { { attP, fa, "A" }, { defP, fd, "D" } } do -- #12 일시버프: 개시 시 소진·전투 내내 유지
 			local piece, f, sd = e[1], e[2], e[3]
 			if piece.nextBattleBuff then
@@ -264,17 +290,12 @@ function Battle.attach(Engine, deps)
 
 	function Engine:actorOfPhase()
 		local B = self.S.battle
-		local firstIsAtt = B.round % 2 == 1
-		if firstIsAtt and B.fa.shock > 0 then
-			firstIsAtt = false
-		end
-		if not firstIsAtt and B.fd.shock > 0 then
-			firstIsAtt = true
-		end
+		-- 읽기 전용 (Views·AI 가 호출) — 스냅샷이 이번 라운드 것이면 그것을, 아니면 즉석 계산
+		local first = (B.orderRound == B.round) and B.firstSide or firstSideOf(B)
 		if B.phase == 0 then
-			return firstIsAtt and "A" or "D"
+			return first
 		end
-		return firstIsAtt and "D" or "A"
+		return (first == "A") and "D" or "A"
 	end
 
 	-- #121 계약 3.3: 이 전투의 최대 라운드 — 전투 인스턴스 값이 있으면 그것, 없으면 전역 BAL.maxRounds
@@ -360,6 +381,7 @@ function Battle.attach(Engine, deps)
 		if not B then
 			return
 		end
+		ensureOrder(B) -- 순서를 바꾸지 않고 현재 값 그대로 확정만 한다
 		local f = (side == "A") and B.fa or B.fd
 		local opp = (side == "A") and B.fd or B.fa
 		local oSide = (side == "A") and "D" or "A"
@@ -649,6 +671,7 @@ function Battle.attach(Engine, deps)
 			return
 		end
 		B.phase = 0
+		latchOrder(B) -- 상태이상 소진이 끝난 뒤 다음 라운드 선공 확정
 	end
 
 	function Engine:checkDeath()
@@ -815,8 +838,8 @@ function Battle.attach(Engine, deps)
 			return true
 		elseif a.t == "item" then
 			local usedItems = (side == "A") and B.itemsA or B.itemsD
-			local itemRound = (side == "A") and B.itemRoundA or B.itemRoundD
-			local lastItem = (side == "A") and B.lastItemA or B.lastItemD
+			local itemRound = if side == "A" then B.itemRoundA else B.itemRoundD
+			local lastItem = if side == "A" then B.lastItemA else B.lastItemD
 			local i = a.i
 			local k = (type(i) == "number") and S.inv[ownerP][i] or nil
 			if not k then
@@ -826,6 +849,7 @@ function Battle.attach(Engine, deps)
 			if itemRound then
 				return false, "이번 라운드에 이미 아이템을 사용했습니다"
 			end
+			ensureOrder(B) -- 상태이상 해제(해독제) 전에 이번 라운드 순서를 먼저 확정
 			table.remove(S.inv[ownerP], i)
 			if side == "A" then
 				B.itemsA += 1
@@ -855,7 +879,7 @@ function Battle.attach(Engine, deps)
 			end
 			return true -- 보너스 행동 — 페이즈 미소모
 		elseif a.t == "ball" then
-			local thrown = (side == "A") and B.ballThrowA or B.ballThrowD
+			local thrown = if side == "A" then B.ballThrowA else B.ballThrowD
 			if oppPiece.type ~= "minion" then
 				return false, "상대가 하수인이 아닙니다"
 			end

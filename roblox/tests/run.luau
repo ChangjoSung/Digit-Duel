@@ -1353,6 +1353,175 @@ do -- 연출 키는 전부 Earth 납품 13종 안에 있어야 한다 (오타로
 end
 
 --==================================================================
+print("[15] battle order snapshot / per-side accounting regressions")
+--==================================================================
+local Views = require("../src/shared/Views")
+local function viewOf(en, viewer)
+	if en.viewFor then
+		return en:viewFor(viewer)
+	end
+	return Views.forViewer(en, viewer)
+end
+-- acting side takes its cheapest legal action (basic -> any open slot -> pass)
+local function actAny(en)
+	local B = en.S.battle
+	local side = en:actorOfPhase()
+	local owner = (side == "A") and B.attP.owner or B.defP.owner
+	local f = (side == "A") and B.fa or B.fd
+	if en:apply(owner, { t = "act", k = "basic" }) then
+		return true
+	end
+	for i = 1, 4 do
+		if en:slotUsable(f, i, side) then
+			return en:apply(owner, { t = "act", k = i })
+		end
+	end
+	return en:apply(owner, { t = "pass" })
+end
+local function tough(B) -- no KO / no judge while we walk real rounds
+	B.fa.maxHp, B.fa.hp, B.fd.maxHp, B.fd.hp = 999, 999, 999, 999
+end
+local function noLuck(en) -- every probability roll fails; damage roll fixed high
+	en.rand = function()
+		return 0.99
+	end
+end
+
+do -- 15a: dead / unplaced attacker cannot open a battle (no side effects)
+	local en = freshPlay(1501)
+	local a, d = findType(en, 0, "minion"), findType(en, 1, "minion")
+	a.r, a.c, d.r, d.c = 7, 3, 7, 4
+	en.S.phase, en.S.current, en.S.mainUsed, en.S.battlesUsed = "play", 0, true, 0
+	local hp0 = d.hp
+	a.alive = false
+	if en.canBattle then
+		ok(not en:canBattle(a, d), "15a canBattle false — dead attacker")
+	end
+	ok(not en:apply(0, { t = "battle", attId = a.id, defId = d.id }), "15a dead attacker rejected")
+	a.alive, a.placed = true, false
+	if en.canBattle then
+		ok(not en:canBattle(a, d), "15a canBattle false — unplaced attacker")
+	end
+	ok(not en:apply(0, { t = "battle", attId = a.id, defId = d.id }), "15a unplaced attacker rejected")
+	ok(en.S.battle == nil, "15a no battle started")
+	eq(d.hp, hp0, "15a defender HP untouched")
+	eq(en.S.battlesUsed, 0, "15a battlesUsed untouched")
+	eq(#en:drainOutbox(), 0, "15a rejected battle emits nothing")
+end
+
+do -- 15b: item gate is per side on a D-first (even) round
+	local en = mkBattle(1502)
+	local B = en.S.battle
+	noLuck(en)
+	tough(B)
+	actAny(en)
+	actAny(en) -- finish round 1 through a genuine round boundary
+	eq(B.round, 2, "15b reached round 2")
+	eq(en:actorOfPhase(), "D", "15b defender leads the even round")
+	local pA, pD = B.attP.owner, B.defP.owner
+	en.S.inv[pA] = { "potion", "potion" }
+	en.S.inv[pD] = { "potion", "potion" }
+	en.S.pkgs[pD].battleBuff = 1
+	ok(en:apply(pD, { t = "item", i = 1 }), "15b D potion allowed")
+	ok(not en:apply(pD, { t = "item", i = 1 }), "15b D second potion blocked")
+	ok(en:apply(pD, { t = "buff", kind = "power" }), "15b D buff applied")
+	local vA, vD = viewOf(en, pA).battle, viewOf(en, pD).battle
+	eq(vA.itemRound, false, "15b A view keeps its own itemRound false")
+	eq(vA.buffUsed, nil, "15b A view keeps its own buffUsed nil")
+	eq(vD.itemRound, true, "15b D view reports its own item use")
+	eq(vD.buffUsed, "power", "15b D view reports its own buff")
+	actAny(en) -- D spends its action -> A acts second
+	eq(en:actorOfPhase(), "A", "15b attacker acts second")
+	ok(en:apply(pA, { t = "item", i = 1 }), "15b A potion allowed after D used one")
+	ok(not en:apply(pA, { t = "item", i = 1 }), "15b A second potion blocked")
+end
+
+do -- 15c: monster ball attempt is counted per side, not shared
+	local en = mkBattle(1503)
+	local B = en.S.battle
+	noLuck(en) -- every capture roll fails
+	tough(B)
+	actAny(en)
+	actAny(en)
+	eq(B.round, 2, "15c reached round 2")
+	eq(en:actorOfPhase(), "D", "15c defender leads the even round")
+	local pA, pD = B.attP.owner, B.defP.owner
+	B.fa.hp, B.fd.hp = 100, 100 -- both under 30% of 999
+	en.S.reserve[pA], en.S.reserve[pD] = nil, nil
+	en.S.balls[pA], en.S.balls[pD] = 2, 2
+	ok(en:apply(pD, { t = "ball" }), "15c D throw accepted")
+	eq(en.S.balls[pD], 1, "15c D ball consumed")
+	eq(B.phase, 1, "15c failed throw spent D's action")
+	eq(en:actorOfPhase(), "A", "15c attacker acts next")
+	ok(en:apply(pA, { t = "ball" }), "15c A throw accepted after D's failure")
+	eq(en.S.balls[pA], 1, "15c A ball consumed")
+	eq(B.round, 3, "15c A's failed throw closed the round")
+end
+
+do -- 15d: shock order snapshot survives a mid-round cure
+	local en = mkBattle(1504)
+	local B = en.S.battle
+	noLuck(en)
+	tough(B)
+	local pA, pD = B.attP.owner, B.defP.owner
+	eq(en:actorOfPhase(), "A", "15d attacker leads the odd round")
+	actAny(en)
+	B.fd.shock, B.fd.shockFresh = 1, true -- defender shocked during round 1
+	actAny(en) -- genuine round boundary
+	eq(B.round, 2, "15d reached round 2")
+	eq(B.fd.shockFresh, false, "15d shock is not spent on the round it landed")
+	eq(B.fd.shock, 1, "15d shock still pending in round 2")
+	eq(en:actorOfPhase(), "A", "15d shocked defender pushed to second on an even round")
+	en.S.inv[pA] = { "potion" }
+	en.S.inv[pD] = { "cure", "cure" }
+	ok(en:apply(pA, { t = "item", i = 1 }), "15d A item allowed this round")
+	actAny(en) -- A spends its action -> D is the actor
+	eq(en:actorOfPhase(), "D", "15d defender is the actor at phase 1")
+	ok(en:apply(pD, { t = "item", i = 1 }), "15d D cure allowed on its own action")
+	eq(B.fd.shock, 0, "15d cure cleared the shock")
+	eq(en:actorOfPhase(), "D", "15d cure does not hand the turn back mid-round")
+	ok(not en:apply(pD, { t = "item", i = 1 }), "15d D second item blocked this round")
+	ok(actAny(en), "15d cured side still takes its normal action")
+	eq(B.round, 3, "15d round advanced once both sides acted")
+	eq(en:actorOfPhase(), "A", "15d parity restored once the shock is gone")
+end
+
+do -- 15e: actorOfPhase / view rendering are read-only
+	local en = mkBattle(1505)
+	local B = en.S.battle
+	B.fa.shock, B.fa.shockFresh = 1, true -- would flip an on-the-fly recompute
+	local side, firstSide, orderRound = en:actorOfPhase(), B.firstSide, B.orderRound
+	eq(side, "A", "15e phase 0 actor comes from the latched order")
+	for _ = 1, 3 do
+		eq(en:actorOfPhase(), side, "15e actorOfPhase stable across calls")
+	end
+	viewOf(en, B.attP.owner)
+	viewOf(en, B.defP.owner)
+	eq(en:actorOfPhase(), side, "15e viewing does not move the actor")
+	eq(B.firstSide, firstSide, "15e snapshot side untouched by reads")
+	eq(B.orderRound, orderRound, "15e snapshot round untouched by reads")
+	eq(B.phase, 0, "15e viewing does not advance the phase")
+end
+
+do -- 15f: legacy battle with no order snapshot — reads stay read-only, item latches
+	local en = mkBattle(1506)
+	local B = en.S.battle
+	B.orderRound, B.firstSide = nil, nil -- fixture built before the snapshot existed
+	B.fa.shock, B.fa.shockFresh = 1, false -- shocked attacker yields the lead
+	B.phase = 1
+	eq(en:actorOfPhase(), "A", "15f fallback puts the shocked attacker second")
+	ok(B.orderRound == nil, "15f reading the actor does not latch")
+	viewOf(en, B.attP.owner)
+	ok(B.orderRound == nil, "15f viewing does not latch")
+	local pA = B.attP.owner
+	en.S.inv[pA] = { "cure" }
+	ok(en:apply(pA, { t = "item", i = 1 }), "15f shocked side may cure on its own action")
+	eq(B.fa.shock, 0, "15f cure cleared the shock")
+	eq(en:actorOfPhase(), "A", "15f accepted item latched the pre-cure order")
+	ok(actAny(en), "15f cured side still takes its action")
+end
+
+--==================================================================
 print(("\n결과: %d passed · %d failed"):format(passed, failed))
 if failed > 0 then
 	error("테스트 실패", 0)
