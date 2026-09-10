@@ -1,7 +1,9 @@
 # #128 매 페이지 로드 튜토리얼 — Mercury 통합 기록
 
 - 작성: 2026-09-10 Mercury(PD, Codex/GPT-6 Astra/high).
-- 상태: 제품·Chrome 증빙·최종 README 렌더의 Saturn 독립 검수 PASS. [Issue128](https://github.com/ChangjoSung/Digit-Duel/issues/128)과 [PR157](https://github.com/ChangjoSung/Digit-Duel/pull/157)의 마지막 head 검사·dev 병합 기록을 최종 통합 원본으로 사용한다. 새 CJ Play QA 전까지 OPEN. 정식 v0.4.5, v0.4.7 미출시.
+- 상태: 제품·Chrome 증빙·최종 README 렌더의 Saturn 독립 검수 PASS. [Issue128](https://github.com/ChangjoSung/Digit-Duel/issues/128)과 [PR157](https://github.com/ChangjoSung/Digit-Duel/pull/157)의 마지막 head 검사·dev 병합 기록을 최종 통합 원본으로 사용한다. 2026-09-10 [CJ QA PASS](https://github.com/ChangjoSung/Digit-Duel/issues/128#issuecomment-5613962951)로 CLOSED. 정식 v0.4.5, v0.4.7 미출시.
+
+2026-09-10 CJ의 “Issue #128 — CJ QA Test : PASS”를 최종 수락 근거로 종결했다. 후속 정리는 승인 상태 문구·메타데이터만 갱신하며 제품·게임 규칙·튜토리얼 이미지·문서 레이아웃은 변경하지 않는다. 아래 README 렌더의 해시·측정값은 PR157 검수 당시 원본이고 이 승인 문구 갱신 후 재촬영한 결과가 아니다. GDD13 DL50에 최종 수락을 기록한다.
 - 출발: `fix/128-tutorial-every-load`, `origin/dev bdce124e73fe82534dd1757deef70976e12a7ef5`(Roblox PR153), HTML blob `2a9b54c769a58fc5c0db9e913ce4421bec6758e3`.
 - 승인: [CJ 승인 기록](https://github.com/ChangjoSung/Digit-Duel/issues/128#issuecomment-5613625598), [GDD13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) 본문4.13·DL47, [GDD18](https://app.notion.com/p/3d61e7f17085809ea410fe6a1431f06c).
 
@@ -38,7 +40,7 @@ CJ는 같은 LAN 주소에서 튜토리얼을 본 뒤 서버를 재시작하고 
 - [Chrome 증빙](../Mars/artifacts/i128-browser-report.json): 26/0, 저장값 있음/없음 두 독립 프로필·실제 새로고침·새탭·건너뛰기·수동재보기·단계이동·Esc, 같은 포트62868의 검증 HTTP 서버 재시작 후 새접속을 확인했다. Saturn이 최종 도구·JSON·대표 이미지3장을 독립 대조해 PASS했다. 모드 전환은 Runtime.evaluate(startMode)로 호출했고 마우스 클릭 검증으로 확대하지 않는다.
 - 실제 동일 프로필 브라우저 재시작·실제 WS 재연결·탭복귀/BFCache·저장 getter 거부·물리2PC/LAN 실행기 재시작은 이 CDP의 측정 범위가 아니다. 코드/헤드리스 근거와 실제 브라우저 측정을 구분한다. 과거 타 PC 공유 신고를 재현/해결했다고 소급하지 않는다.
 - 최종 README SHA256 `94e09470dd10b0b722daf44fe0a2a0b58eb8e218e17fe0060b1cea6f2dbad446`가 [1100px](../Mars/artifacts/readme-final/verify-report.json)·[390px](../Mars/artifacts/readme-final/verify-report-w390.json) 보고의 대상 해시와 일치한다. 두 결과는 문제0, 참조71건·로컬 이미지13/13·갤러리10/10 로드다. Saturn이 대표 화면3장과 JSON/해시를 독립 대조해 PASS했다. 근사 GitHub CSS·외부 링크 미검증·모바일 코드 블록 내부 넘침 관측은 남으며 페이지 폭 넘침은 없다. 미디어 도구의 `tutorial` 정적 항목은 과거 `docs/media` 고정 경로 검사이므로 현행 #146 촬영본의 새로운 바이트 증명으로 취급하지 않는다.
-- [Saturn 최종 원문](../Saturn/report.md)에 제품·브라우저·렌더 PASS, 해시, 음성 대조 및 한계를 보관했다. 제품 커밋 `17cdae8`의 [CI5개](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34442463434)는 PASS이며 문서·증빙 후속 커밋도 PR157의 마지막 head에서 필수 검사를 확인해야 한다. 이전 #146 PASS를 새 #128 정책의 검증으로 재사용하지 않는다.
+- [Saturn 최종 원문](../Saturn/report.md)에 제품·브라우저·렌더 PASS, 해시, 음성 대조 및 한계를 보관했다. PR157 최종 head `e44df95fbe21f57e9f9f06429b3f1baaefeee140`의 [필수 CI5개](https://github.com/ChangjoSung/Digit-Duel/actions/runs/34442894945)가 PASS였고 dev `1ed858b5d34dddca214703eae72b9fad9d46065a`에 squash 통합했다. 최종 head와 통합 트리가 동일하다. 이전 #146 PASS를 새 #128 정책의 검증으로 재사용하지 않는다.
 - 최종 문서 스테이징 후 링크 검사: 문서152개·내부 링크843건, 문제0. 제품·README 해시는 검수 대상과 같으며 나머지 후속 변경은 문서·증빙·Git 통합 메타데이터다.
 
 ### 작업 정산과 후속 기록
