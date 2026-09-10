@@ -1,17 +1,19 @@
 # Digit-Duel 문서 안내
 
-최신 정식 릴리스는 **[v0.4.5](releases/v0.4.5.md)**입니다. 2026-09-08 [Issue #114](https://github.com/ChangjoSung/Digit-Duel/issues/114)의 제품·문서·미디어 독립 QA와 CJ 플레이 QA를 통과했습니다.
+최신 정식 릴리스는 **[v0.4.6](releases/v0.4.6.md)**입니다. 2026-09-10 CJ 플레이 QA를 통과하고 2026-09-11 출시했습니다. 개발 중인 다음 버전은 **v0.5.0 Roblox 포팅**(#118 · 별도 작업자 · [작업자 안내](roblox/BRANCH-POLICY.md))과 **v0.6.0 Unity 포팅**입니다.
 
 ## 지금 읽을 문서
 
 | 목적 | 문서 |
 |---|---|
 | 게임 소개·실행 방법 | [프로젝트 README](../README.md) |
-| 출시된 규칙을 쉽게 읽기 | [v0.4.5 규칙 정리본](milestone/v0.4.5/specs/v0.4.5-rules-digest.md) |
-| 출시된 규칙의 세부·예외 | [v0.4.5 게임플레이 계약](milestone/v0.4.5/specs/v0.4.5-gameplay-spec.md) |
-| 개발 중인 탐색·기술·연출 규칙 | [v0.4.7 #121 승인 계약](milestone/v0.4.6/issues/121/Venus/gameplay-spec.md) · [변경 안내](releases/v0.4.6.md) — #121·#125·#129, 2026-09-10 CJ QA PASS·CLOSED, 미출시 |
-| 개발 중인 전투 행동 규칙 | [v0.4.7 #146 승인 계약](milestone/v0.4.6/issues/146/Venus/gameplay-spec.md) — 도망 30%/버프 70%·행동 없음 수동 대기·함정 텔레포트 차단·보호막 합산(#146·#131·#130, 2026-09-10 CJ QA PASS·CLOSED, 미출시) |
-| 개발 중인 튜토리얼 표시 정책 | [#128 문서 동기화 보고](milestone/v0.4.6/issues/128/Venus/docs-report.md) · [변경 안내](releases/v0.4.6.md) — 새 접속·새로고침마다 자동 표시, **2026-09-10 CJ QA PASS·CLOSED** · [검증·통합 기록](milestone/v0.4.6/issues/128/Mercury/report.md) |
+| 이번 버전에서 바뀐 것 | [v0.4.6 릴리스 노트](releases/v0.4.6.md) — 2026-09-11 출시 |
+| 탐색·기술·연출 규칙 | [#121 승인 계약](milestone/v0.4.6/issues/121/Venus/gameplay-spec.md) (#121·#125·#129) |
+| 전투 행동 규칙 | [#146 승인 계약](milestone/v0.4.6/issues/146/Venus/gameplay-spec.md) — 도망 30%/버프 70%·행동 없음 수동 대기·함정 텔레포트 차단·보호막 합산 (#146·#131·#130) |
+| 접촉·전투 규칙 개편 | [#122 REVISE 2차 보고](milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/report.md) — 동료·왕끼리 전투·왕 불가침 폐지·폭탄 동반 제거·도망 실패 반격 |
+| 튜토리얼 표시 정책 | [#128 문서 동기화 보고](milestone/v0.4.6/issues/128/Venus/docs-report.md) — 새 접속·새로고침마다 자동 표시 |
+| v0.4.5 규칙 정리본 (이전 버전) | [정리본](milestone/v0.4.5/specs/v0.4.5-rules-digest.md) · [게임플레이 계약](milestone/v0.4.5/specs/v0.4.5-gameplay-spec.md) |
+| Roblox 작업자 안내 | [바뀐 버전·브랜치 정책](roblox/BRANCH-POLICY.md) — v0.5.0 · `milestone/v0.5.0` 트랙 |
 | 버전별 변경 내용 | [릴리스 노트 목록](releases/README.md) |
 | 구현·QA 기준과 최신 CJ 결정 | [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) |
 | 역할·Git·작업 계약 | [CLAUDE.md](../CLAUDE.md), [권위 문서 등록표](creat2ve/AUTHORITY.md) |
@@ -24,8 +26,8 @@
 
 | 버전 | 범위 | 인덱스 |
 |---|---|---|
-| v0.4.6 | Roblox 포팅 — #118 (별도 작업자 진행 중) | [v0.4.6](milestone/v0.4.6/README.md) |
-| v0.4.7 | #121·#125·#129·#146·#131·#130 CJ QA PASS·CLOSED(미출시) · #128 매 페이지 로드 튜토리얼 표시 2026-09-10 CJ QA PASS·CLOSED · 나머지 게임 이슈 착수 대기 · Infra #132/#134 완료 | [v0.4.7](milestone/v0.4.6/README.md) |
+| v0.4.6 | 탐색 개편·연출 템포·전투 정비·세로 UI — #121·#122·#124·#125·#126·#128·#129·#130·#131·#146 · Infra #132/#134 · **2026-09-11 출시** | [v0.4.6](milestone/v0.4.6/README.md) |
+| v0.5.0 | Roblox 포팅 — #118 (별도 작업자 진행 중 · 미출시) | [v0.5.0](milestone/v0.5.0/README.md) |
 | v0.4.5 | 턴 행동 정리·문서·튜토리얼 갱신 — #114 | [v0.4.5](milestone/v0.4.5/README.md) |
 | v0.4.4 | 전투 변수·온라인 시점·턴 흐름 — #91~#96 #104~#106 | [v0.4.4](milestone/v0.4.4/README.md) |
 | v0.4.3 | 하수인 아트·말판 아이콘 — #81 #83 #87 #89 | [v0.4.3](milestone/v0.4.3/README.md) |

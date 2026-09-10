@@ -1,6 +1,6 @@
 # v0.4.6 — 탐색 개편·연출 템포·전투 정비·세로 UI
 
-[Milestone 13](https://github.com/ChangjoSung/Digit-Duel/milestone/13) · **열린 이슈 0 · 2026-09-10 CJ QA PASS · 릴리스 대상**
+[Milestone 13](https://github.com/ChangjoSung/Digit-Duel/milestone/13) · **2026-09-11 출시** · [릴리스 노트](../../releases/v0.4.6.md)
 
 > **버전 재배번**: 이 마일스톤은 2026-09-10까지 `v0.4.7`이었고 [#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) CJ 승인으로 **`v0.4.6`**이 됐다. 아래 기록 본문에 남은 `v0.4.7` 서술은 작성 당시의 판정이며 고치지 않는다 ([보관소 규약](../README.md) · [MOVES.csv](../MOVES.csv)).
 > 잔여 기획 이슈 #119·#120·#123·#127은 CJ 판단으로 Unity 개발·플레이테스트 이후로 보류해 `not planned`로 닫았다(삭제하지 않음 — 필요해지면 reopen).

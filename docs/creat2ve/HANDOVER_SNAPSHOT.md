@@ -3,7 +3,7 @@
 > 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED.
 >
 > **2026-09-10 버전 재배번 ([#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · CJ 승인)**: HTML 완결분 `v0.4.7`→**`v0.4.6`**(Milestone13 · 열린 이슈 0 · 릴리스 대상), Roblox `v0.4.6`→**`v0.5.0`**(Milestone12 · #118 진행 중), Unity `v0.5.0`→**`v0.6.0`**(Milestone4 · 미착수). 버전 키 폴더 5개를 함께 옮겼고 대조는 [MOVES.csv](../milestone/MOVES.csv) 2차 이동 절에 있다. 잔여 기획 #119·#120·#123·#127은 Unity 이후로 보류해 `not planned`로 닫았다(삭제 아님).
-> **브랜치 계약도 바뀌었다**: `이슈 →(squash) dev-vX.Y.Z →(merge) dev →(merge) main` (슬래시가 아니라 하이픈 — `refs/heads/dev` 파일이 `refs/heads/dev/…` 디렉터리를 막는 git 제약). 현재 트랙 브랜치는 `dev-v0.5.0`(Roblox #118)이며 보호·필수 CI 6개를 걸어 뒀다. 트랙 브랜치는 dev에서 분기하고 보호·CI 6개를 함께 적용하며, 마일스톤 완료 시 main 직행은 금지다(hotfix만 예외, 즉시 dev 역병합). 정식 출시는 여전히 v0.4.5다.
+> **브랜치 계약도 바뀌었다**: `이슈 →(squash) milestone/vX.Y.Z →(merge) dev →(merge) main`. `dev/vX.Y.Z`는 `refs/heads/dev` 파일이 같은 이름의 디렉터리를 막아 만들 수 없어 2026-09-11 CJ 지정으로 `milestone/` 접두어를 쓴다. 현재 트랙 브랜치는 `milestone/v0.5.0`(Roblox #118)이며 보호·필수 CI 6개를 걸어 뒀다. **Roblox 담당자는 별도 개발자**라 [브랜치·버전 정책 안내](../roblox/BRANCH-POLICY.md)를 따로 두고 Issue #118 에도 공지했다. 트랙 브랜치는 dev에서 분기하고 보호·CI 6개를 함께 적용하며, 마일스톤 완료 시 main 직행은 금지다(hotfix만 예외, 즉시 dev 역병합). **정식 출시는 v0.4.6**(2026-09-11 · 태그 v0.4.6)이다. `roblox/` 소스는 main 에 함께 있지만 출시 기능이 아니며 Roblox 는 v0.5.0 으로 따로 출시한다.
 
 ## 마지막 회차 — #122 · #124 · #126 (CJ QA PASS · CLOSED)
 

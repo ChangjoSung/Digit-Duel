@@ -1,6 +1,13 @@
 # Digit Dual — Roblox 포팅 (Phase 3: 3D 로비 · 보드게임 창 · AI 봇)
 
-HTML 데모(`demo/index.html` — 규칙 기준 **v0.4.7 전량** — #121·#125·#129 + #146·#131·#130 반영)의 Roblox 포팅. CJ 결정(2026-09-09)으로 플랫폼 방향을 Roblox로 전환했다 (Ref #118).
+> ## ⚠️ 2026-09-11 버전·브랜치 정책 변경 — 작업 전에 반드시 읽어 주세요
+>
+> **버전이 `v0.4.6` → `v0.5.0` 으로 바뀌었고, 작업 브랜치는 `dev` 가 아니라 `milestone/v0.5.0` 입니다.**
+> 이미 병합된 코드는 그대로 살아 있으며 **다시 작업할 것은 없습니다.**
+>
+> 👉 **[Roblox 작업자 안내 — 바뀐 버전·브랜치 정책](../docs/roblox/BRANCH-POLICY.md)** (경위: [#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · 담당 Issue: [#118](https://github.com/ChangjoSung/Digit-Duel/issues/118))
+
+HTML 데모(`demo/index.html` — 규칙 기준 **v0.4.6 전량** — #121·#125·#129 + #146·#131·#130 반영)의 Roblox 포팅. CJ 결정(2026-09-09)으로 플랫폼 방향을 Roblox로 전환했다 (Ref #118).
 
 ## 구조
 
