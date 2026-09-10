@@ -8,10 +8,16 @@ const H=require("../shared/harness");
 const htmlPath=process.argv[2];
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
-// #54: 기록형 인메모리 스토리지 — 튜토리얼 자동 표시를 억제(tutorialSeen)하면서 메모가 실제로 무엇을 저장하는지 관찰한다.
+/* #54: 기록형 인메모리 스토리지 — 메모가 실제로 무엇을 저장하는지 관찰한다.
+   #128: 심어 둔 tutorialSeen 은 **더 이상 자동 표시를 억제하지 않는다**(제품이 저장소를 읽지 않는다).
+   이제 이 값은 "사용자 프로필에 과거 키가 남아 있어도 메모 동작이 달라지지 않는다"는 배경일 뿐이고,
+   튜토리얼이 열려 있는 상태는 아래 ovHidden 이 제품의 오버레이 소유 상태로 구분한다. */
 const LS=H.setStorage(H.mkStorage({tutorialSeen:"1"}));
 const WANT=[["king","👑","왕"],["ally","🤝","동료"],["minion_fire","🔥","불 하수인"],["minion_grass","🌿","풀 하수인"],["minion_water","💧","물 하수인"],["minion_lightning","⚡","전기 하수인"],["bomb","💣","폭탄"],["trap","🪤","함정"]];
-function ovHidden(T){ return !T.els.overlay||T.els.overlay.classList.contains("hidden"); } // overlay 미접근 = 열린 적 없음
+/* #128: 튜토리얼이 로드마다 자동으로 뜨면서 배경 inert 처리가 #overlay 엘리먼트를 **먼저 만들어 둔다** —
+   "엘리먼트 미접근 = 열린 적 없음"이라는 옛 heuristic 은 더 이상 성립하지 않는다.
+   대신 제품이 스스로 들고 있는 오버레이 소유 상태를 본다: modal() 이 true, close() 가 false 로 두는 유일한 값이다. */
+function ovHidden(T){ return !T.MEMO_UI.overlayOpen; }
 function cellOf(T,r,c){ return T.els.board.children.find(x=>x.dataset.r===r&&x.dataset.c===c); }
 function chipOf(T,r,c){ const cell=cellOf(T,r,c); return cell&&cell.children.find(x=>/^pc /.test(x.className)); }
 function guessOf(T,r,c){ const ch=chipOf(T,r,c); return ch&&/memo-guess/.test(ch.className)?ch.innerHTML.match(/class="guess"[^>]*>([^<]*)</)[1]:null; }

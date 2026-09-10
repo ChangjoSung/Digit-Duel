@@ -1,6 +1,6 @@
-/* #26·#32 튜토리얼 헤드리스 회귀 — node demo/test/regression/smoke_tutorial.js [demo/index.html]
-   범위: 10단계 내용·규칙 수치 일치·장면 그림(인라인 SVG 10종 고유·접근성 대체 텍스트·문단↔장면 번호 대응)·S 분리·최초 1회 자동 표시·
-   건너뛰기/이전/다음/다시 보기·tutorialSeen 단일 키·localStorage 미지원/예외 허용·텔레포트/버닝 타임 1회 도움말(게임 상태 무변경)·
+/* #26·#32·#128 튜토리얼 헤드리스 회귀 — node demo/test/regression/smoke_tutorial.js [demo/index.html]
+   범위: 10단계 내용·규칙 수치 일치·장면 그림(인라인 SVG 10종 고유·접근성 대체 텍스트·문단↔장면 번호 대응)·S 분리·**문서 로드당 1회 자동 표시(#128)**·
+   건너뛰기/이전/다음/다시 보기·튜토리얼 저장 흔적 0(영구 저장 없음)·localStorage 미지원/예외 무관·텔레포트/버닝 타임 1회 도움말(게임 상태 무변경)·
    키보드/포커스/aria·기존 모달 비충돌·외부 연동 없음·ELI5 문장 규격 ·
    #32 REVISE: 장면 글자 최소 13 viewBox 단위 + CSS에서 유도한 최악 배율(360px 폭 → SVG 314px, 0.981)로 렌더 12 CSS px 이상 · 3단계 방향 라벨 두 줄 분리·안전 좌표 (정적 검증) —
    실제 Chromium 360×640·1280×800 렌더 측정(글자 px·bbox·무스크롤)은 별도 CDP 러너로 수행하며 이 파일에는 포함하지 않는다 */
@@ -15,6 +15,7 @@ function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); consol
 function setLS(obj){ return H.setStorage(obj); } // null → 웹 스토리지 미지원 환경
 function memLS(){ return H.mkStorage(); }        // st·log(setItem 키 목록)·writes 기록형 인메모리 스텁
 function strip(s){return String(s).replace(/<[^>]+>/g,"");}
+function J(v){ return JSON.stringify(v); }
 function sSnap(T){ const s=T.S; return JSON.stringify({mode:s.mode,phase:s.phase,cur:s.current,main:s.mainUsed,tele:s.teleUsed,bu:s.battlesUsed,tp:s.teleport,sel:s.selected&&s.selected.id,
   pcs:s.pieces.map(p=>[p.id,p.r,p.c,p.alive,p.placed,p.hp]),m:T.metricsSnapshot(),log:s.log.length}); }
 const N=10, LAST=N-1;
@@ -127,11 +128,11 @@ const N=10, LAST=N-1;
   T.tutSkip();
 }
 
-/* ===== B. 이전/다음/건너뛰기/다시 보기 · 버튼 구성 · tutorialSeen 단일 키 ===== */
+/* ===== B. 이전/다음/건너뛰기/다시 보기 · 버튼 구성 · #128 저장 흔적 0 · 로드마다 자동 표시 ===== */
 {
   const ls=memLS(); setLS(ls);
   const T=H.load(htmlPath);
-  ok(T.TUT.open===true,"B1 tutorialSeen 없음 → 자동 표시");
+  ok(T.TUT.open===true,"B1 빈 저장소 → 자동 표시");
   const txt=()=>T.TUT.btns.map(b=>b.textContent+(b.disabled?"(x)":"")).join("|");
   ok(/이전\(x\)/.test(txt())&&/다음/.test(txt())&&/건너뛰기/.test(txt()),"B2 1단계 버튼: 이전(비활성)·다음·건너뛰기 ("+txt()+")");
   T.tutPrev(); ok(T.TUT.step===0,"B3 1단계에서 이전은 무동작");
@@ -142,20 +143,31 @@ const N=10, LAST=N-1;
   T.TUT.btns.find(b=>/처음부터/.test(b.textContent)).onclick(); ok(T.TUT.open&&T.TUT.step===0,"B5 '처음부터' → 1단계로 (열린 상태 유지)");
   T.tutGo(LAST); T.TUT.btns.find(b=>/게임 시작/.test(b.textContent)).onclick();
   ok(T.TUT.open===false&&T.els.tutOverlay.classList.contains("hidden")&&T.els.tutOverlay.getAttribute("aria-hidden")==="true","B7 '게임 시작' → 닫힘");
-  ok(ls.st.tutorialSeen==="1"&&Object.keys(ls.st).length===1&&ls.log.every(k=>k==="tutorialSeen"),"B8 저장 키는 tutorialSeen 하나뿐");
+  ok(H.storageTrace(ls).all.length===0,"B8 #128 완료해도 저장 흔적 0 — 영구 저장을 만들지 않는다 ("+J(H.storageTrace(ls).all)+")");
   ok(!T.els.app.hasAttribute("inert")&&T.els.app.getAttribute("aria-hidden")===null,"B9 닫힌 후 게임 화면 inert/aria-hidden 해제");
   T.tutOpen(); ok(T.TUT.open&&T.TUT.step===0&&T.TUT.auto===false,"B10 다시 보기(tutOpen) → 1단계부터 재표시");
-  T.tutSkip(); ok(!T.TUT.open&&ls.st.tutorialSeen==="1","B11 건너뛰기 → 닫힘·seen 유지");
+  T.tutSkip(); ok(!T.TUT.open&&T.TUT.seenThisLoad===true&&H.storageTrace(ls).all.length===0,"B11 건너뛰기 → 닫힘·이번 로드 seen 유지·저장 흔적 여전히 0");
   T.tutOpen(); T.tutNext(); T.tutOpen(); ok(T.TUT.open&&T.TUT.step===0,"B12 열린 상태에서 다시 보기 → 1단계로 리셋"); T.tutSkip();
+  /* #128 핵심 회귀 — 같은 저장소(=같은 브라우저 프로필)로 문서를 다시 로드하면 다시 뜬다.
+     기준판(로드당 1회 이전)에서는 앞선 완료가 tutorialSeen=1 을 남겨 여기서 open===false 가 되어 실패한다. */
   const T2=H.load(htmlPath);
-  ok(T2.TUT.open===false&&T2.TUT.btns.length===0,"B13 tutorialSeen=1 재방문 → 자동 표시 없음");
+  ok(T2.TUT.open===true&&T2.TUT.step===0&&T2.TUT.auto===true,"B13 #128 같은 저장소로 재로드 → 1단계부터 다시 자동 표시");
   ok(/id="tutOverlay" class="hidden" aria-hidden="true"/.test(T2.html)&&/id="tutHint" class="hidden"/.test(T2.html),"B14 초기 마크업은 오버레이·도움말 모두 hidden");
-  T2.tutOpen(); ok(T2.TUT.open&&T2.TUT.step===0,"B15 재방문에서도 다시 보기 가능"); T2.tutSkip();
+  T2.tutSkip(); T2.tutOpen(); ok(T2.TUT.open&&T2.TUT.step===0,"B15 재로드 후에도 수동 다시 보기 가능"); T2.tutSkip();
   ok(/튜토리얼 다시 보기/.test(T2.els.sidePanel.innerHTML)&&/id="tutBtn"/.test(T2.html)&&/onclick="tutOpen\(\)"/.test(T2.html),"B16 메뉴 '튜토리얼 다시 보기' 버튼 + 헤더 ? 버튼");
-  ok(ls.log.every(k=>k==="tutorialSeen")&&ls.log.length>=2,"B17 여러 번 열고 닫아도 저장은 tutorialSeen만 반복 ("+ls.log.length+"회)");
+  ok(H.storageTrace(ls).all.length===0&&ls.log.length===0,"B17 여러 번 열고 닫고 다시 로드해도 저장 쓰기 0회");
+  /* #128 과거 키 무시 + 보존 — tutorialSeen=1 이 이미 있어도 자동 표시되고, 제품이 그 값을 지우거나 바꾸지 않는다 (사용자 저장값 보존) */
+  const legacy=memLS(); legacy.setItem("tutorialSeen","1"); legacy.setItem("netServer","ws://127.0.0.1:8787"); legacy.writes.length=0;
+  const before=H.storageSnapshot(legacy);
+  setLS(legacy);
+  const T3=H.load(htmlPath);
+  ok(T3.TUT.open===true&&T3.TUT.auto===true,"B18 #128 과거 tutorialSeen=1 이 있어도 자동 표시된다 (과거 키 무시)");
+  T3.tutOpen(); for(let i=0;i<LAST;i++) T3.tutNext(); T3.tutNext(); T3.tutOpen(); T3.tutSkip();
+  ok(legacy.getItem("tutorialSeen")==="1"&&legacy.getItem("netServer")==="ws://127.0.0.1:8787"&&H.storageSnapshot(legacy)===before&&legacy.writes.length===0,
+    "B19 #128 과거 키·다른 저장값(netServer)을 읽지도 지우지도 덮어쓰지도 않는다 ("+J(legacy.writes)+")");
 }
 
-/* ===== C. localStorage 접근·쓰기 예외 허용 ===== */
+/* ===== C. #128 저장소 환경과 무관 — 접근 예외·쓰기 예외·미지원 어디서나 같은 표시 정책 ===== */
 {
   setLS(H.throwingStorage("SecurityError: denied")); // 접근 자체가 던지는 환경 (시크릿 모드·정책 차단)
   let T=null, err=null;
@@ -163,10 +175,17 @@ const N=10, LAST=N-1;
   ok(!err&&T&&T.TUT.open===true,"C1 localStorage 접근 자체가 예외를 던져도 로드·자동 표시 정상 ("+(err&&err.message)+")");
   let err2=null; try{ T.tutSkip(); }catch(e){ err2=e; }
   ok(!err2&&!T.TUT.open&&T.tutSeen()===true,"C2 예외 환경에서 건너뛰기 정상 + 이번 로드 내 seen 유지(메모리)");
-  ok(T.tutStore.set()===false&&T.tutStore.get()===false,"C3 tutStore.get/set은 예외를 삼키고 false 반환");
+  /* #128: 영구 저장 자체가 사라졌으므로 예외를 삼킬 저장 헬퍼도 없다 — tutSeen 은 메모리 플래그 그대로다 */
+  ok(T.TUT_KEY===undefined&&T.tutStore===undefined&&T.tutSeen()===T.TUT.seenThisLoad,"C3 튜토리얼 저장 헬퍼(TUT_KEY·tutStore) 부재 · tutSeen()은 seenThisLoad 그 자체");
   const ls=memLS(); ls.setItem=()=>{throw new Error("QuotaExceededError");}; setLS(ls);
   const T3=H.load(htmlPath); let err3=null; try{ T3.tutNext(); T3.tutSkip(); }catch(e){ err3=e; }
-  ok(!err3&&!T3.TUT.open&&T3.TUT.seenThisLoad===true,"C4 setItem 예외(용량·시크릿 모드)에서도 닫힘·메모리 seen 정상");
+  ok(!err3&&!T3.TUT.open&&T3.TUT.seenThisLoad===true,"C4 setItem 이 던지는 환경(용량·시크릿 모드)에서도 닫힘·메모리 seen 정상 — 애초에 쓰지 않는다");
+  /* C5 #128 로드마다 새 판단 — 같은 프로세스에서 세 번 연속 로드해도 매번 1단계 자동 표시 (새 탭·새로고침·재접속의 헤드리스 등가물) */
+  const fresh=memLS(); setLS(fresh);
+  const shown=[]; // 앞 로드를 **완료(finish)한 뒤** 다음 로드 — 새로고침·새 탭의 헤드리스 등가물
+  for(let i=0;i<3;i++){ const x=H.load(htmlPath); shown.push(x.TUT.open===true&&x.TUT.step===0&&x.TUT.auto===true); x.tutClose("finish"); }
+  ok(shown.every(Boolean)&&H.storageTrace(fresh).all.length===0,
+    "C5 #128 앞 로드를 완료한 뒤 다시 로드해도 매번 1단계 자동 표시·저장 흔적 0 ("+J(shown)+")");
 }
 
 /* ===== D. 키보드·포커스 ===== */
@@ -184,7 +203,7 @@ const N=10, LAST=N-1;
   T.els.tutOverlay.dispatch("keydown",ev("ArrowRight").e); ok(T.TUT.step===1,"D6 오버레이 keydown 리스너 등록 (dispatch로 다음 단계)");
   T.tutGo(LAST); a=ev("ArrowRight"); T.tutKeydown(a.e); ok(T.TUT.open&&T.TUT.step===LAST,"D6b 마지막 단계에서 → 키는 닫지 않음 (게임 시작은 버튼으로만)");
   T.tutGo(1);
-  a=ev("Escape"); T.tutKeydown(a.e); ok(!T.TUT.open&&ls.st.tutorialSeen==="1","D7 Esc: 건너뛰기(닫힘·seen)");
+  a=ev("Escape"); T.tutKeydown(a.e); ok(!T.TUT.open&&T.TUT.seenThisLoad===true&&H.storageTrace(ls).all.length===0,"D7 Esc: 건너뛰기(닫힘·이번 로드 seen·저장 흔적 0)");
   ok(T.tutKeydown(ev("ArrowRight").e)===false&&T.TUT.step===1,"D8 닫힌 뒤 키 입력은 무시");
   const x=D.createElement("button"); x.focus(); T.tutOpen(); ok(D.activeElement!==x,"D9 열리면 포커스가 대화상자 안으로 이동");
   T.tutSkip(); ok(D.activeElement===x,"D10 닫히면 원래 요소로 포커스 복원");
@@ -223,7 +242,7 @@ const N=10, LAST=N-1;
   T.TUT.hints.teleport=false; T.TUT.hints.burning=false; T.tutHintClose();
   const r=H.runSim(T,["grade5","grade5"],321);
   ok(r.phase==="over"&&T.TUT.hints.teleport===false&&T.TUT.hints.burning===false&&T.els.tutHint.classList.contains("hidden"),"E10 sim 모드에서는 도움말 미발생 · sim 완주 정상");
-  ok(T.TUT.hints.teleport===false&&H.storageTrace(T.storage).all.every(k=>k==="tutorialSeen")&&T.cookieWrites.length===0,"E11 도움말은 저장하지 않음 (이 로드의 저장 흔적은 tutorialSeen뿐·쿠키 0)");
+  ok(T.TUT.hints.teleport===false&&H.storageTrace(T.storage).all.length===0&&T.cookieWrites.length===0,"E11 도움말은 저장하지 않음 (#128 이 로드의 저장 흔적 0·쿠키 0)");
   T.TQ.length=0;
 }
 
@@ -249,16 +268,16 @@ const N=10, LAST=N-1;
   // src는 구간 머리 주석 안에서 잘려 시작하므로 남은 주석 꼬리(첫 "*/")까지 버리고 코드만 본다
   const tutCode=src.indexOf("*/")>=0?src.slice(src.indexOf("*/")+2):src;
   const tutLines=tutCode.split(/\r?\n/).filter(l=>H.persistApiHits(l).length); // 튜토리얼 구간에서 저장 API 이름이 등장하는 줄
-  ok(T.TUT_KEY==="tutorialSeen"&&tutLines.length>0
-    &&tutLines.every(l=>/localStorage/.test(l)&&/TUT_KEY/.test(l)&&!/sessionStorage|indexedDB|cookie|openDatabase|caches|sendBeacon|XMLHttpRequest|fetch\s*\(/.test(l)),
-    "F7 튜토리얼 구간의 저장 API는 tutStore의 localStorage+TUT_KEY 줄뿐 (다른 저장소·전송 API는 구간 내 직접 금지) — "+tutLines.length+"줄");
-  /* 런타임 불변식: 튜토리얼을 실제로 끝까지 조작해도 저장 흔적은 tutorialSeen 하나. 대괄호·별칭·직접 대입도 여기서 잡힌다. */
+  /* #128: 표시 정책이 문서 로드당 1회가 되면서 튜토리얼 구간에는 영구 저장이 **하나도** 남지 않았다.
+     sessionStorage 로 갈아끼우는 것도 "새로고침마다 표시" 요구와 어긋나므로 여기서 함께 막는다 (구간 내 저장·전송 API 0줄). */
+  ok(tutLines.length===0,"F7 #128 튜토리얼 구간에 저장·전송 API가 0줄 (localStorage·sessionStorage·쿠키·indexedDB·fetch 등 직접 사용 없음) — "+J(tutLines.map(l=>l.trim().slice(0,60))));
+  /* 런타임 불변식: 튜토리얼을 실제로 끝까지 조작해도 어떤 저장소에도 흔적이 남지 않는다. 대괄호·별칭·직접 대입도 여기서 잡힌다. */
   const fresh=H.mkStorage(); const T7=H.load(htmlPath,{storage:fresh});
   T7.tutOpen(); for(let i=0;i<LAST;i++) T7.tutNext(); T7.tutSkip(); T7.tutOpen(); T7.tutSkip(); T7.tutHint("teleport"); T7.tutHintClose();
   const tr=H.storageTrace(fresh);
-  ok(tr.all.length===1&&tr.all[0]===T.TUT_KEY&&tr.extras.length===0
+  ok(tr.all.length===0&&tr.extras.length===0
     &&H.storageTrace(T7.sessionStorage).all.length===0&&T7.cookieWrites.length===0&&T7.indexedDB.opens.length===0,
-    "F7b 런타임 저장 불변식: 튜토리얼 전 과정 후 저장 흔적은 ["+tr.all.join(",")+"]뿐 · sessionStorage·쿠키·indexedDB 무기록");
+    "F7b #128 런타임 저장 불변식: 튜토리얼 전 과정 후 localStorage 흔적 ["+tr.all.join(",")+"] 0건 · sessionStorage·쿠키·indexedDB 무기록");
   const lines=T.TUT_STEPS.map(s=>s.lines.map(strip));
   const LINE_MAX=[4,4,4,4,7,4,5,4,4,4]; // G1 CARD_MAX 와 같은 상한 (카드 1 : 문단 1)
   ok(lines.every((ls,i)=>ls.length>=3&&ls.length<=LINE_MAX[i]&&ls.every(l=>l.length<=78)),"F8 문단 78자 이하 유지·단계별 문단 수 상한 "+LINE_MAX.join("/")+" ("+lines.map(ls=>ls.map(l=>l.length).join("/")).join(" | ")+")");

@@ -448,6 +448,10 @@ function prepared(){ const T=loadAt(FILE_HREF); typeCode(T,CODE); T.netPrepare()
      회귀: mkEl().focus()가 전역 document.activeElement에 썼기 때문에, T2가 로드된 뒤 T1을 조작하면
      T1의 포커스가 T2의 문서에 기록되고 T1.document.activeElement는 그대로였다. */
   const T1=loadAt(FILE_HREF), T2=loadAt(FILE_HREF);
+  /* #128: 튜토리얼은 이제 로드마다 자동으로 뜨고 '다음' 버튼에 포커스를 준다. 이 절이 보려는 것은 그 표시 정책이 아니라
+     포커스가 로드별 문서에 갇히는가이므로, 양쪽을 닫고 포커스를 각자의 body 로 되돌려 전제를 맞춘 뒤 검사한다. */
+  T1.tutSkip(); T2.tutSkip();
+  T1.document.activeElement.blur(); T2.document.activeElement.blur();
   const t1Body=T1.document.body, t2Before=T2.document.activeElement;
   ok(T1.document!==T2.document&&T1.document.activeElement===t1Body,"G11 전제: 두 로드의 문서는 서로 다르고 T1 포커스는 자기 body");
   T1.tutOpen(); // 튜토리얼이 열리면 '다음' 버튼에 포커스가 간다 (T1에서만 조작)
