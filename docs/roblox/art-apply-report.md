@@ -128,3 +128,15 @@ worker_done:
 
 ImageColor3 흰색·`ResampleMode = Pixelated`·SliceScale 1 로 README 규격 준수. 확인 필요(Studio): 봇 얼굴 방향(-Z, MESH_YAW 0 기준)·창 분리선 위치(x≈302~309)·배지 가독성 24px.
 
+## 3d. 중앙 배너 아트 (Earth 2026-09-10 납품 → Mars 적용 2026-09-10)
+
+납품 보고: [`docs/art/roblox-v0.5.0/earth-banner-report.md`](../art/roblox-v0.5.0/earth-banner-report.md) · 요청서: [`docs/roblox/earth-banner-request.md`](earth-banner-request.md). 업로드 1건 성공(총 ID 152).
+
+| 키 | 적용 위치 | 적용 방식 |
+|---|---|---|
+| `ui_banner` | 중앙 배너 `bannerFrame`(540×112) 배경 | `bgImage(bannerFrame, "banner", "panel", 1)` — 납품 SliceCenter (16,16,112,112) 가 기존 `Art.SLICE.panel` 과 같아 **코드 변경 없이** 폴백(`panel_modal`)을 대체 |
+
+납품본 독립 검증(Mars): 1,788 bytes · SHA-256 `6c3163b0…` 보고서와 일치 · 256×128 RGBA8 · 중간 알파 0 · 글자 영역(중앙 20~108) 단색 `#13161e` 평탄 확인. 테스트 [7] 에 Phase 3 자산 키(`panel_window`·`banner`·`exit`·`bot`·배지 2·`thinking`·봇 메시) URL 단언을 추가했다.
+
+미납품(선택): `banner_good`·`banner_bad` 변형 — 공통 배경 + 런타임 제목색 4단계로 충분해 현행 유지. [기획 필요]: 배너 로고·워드마크 여부.
+

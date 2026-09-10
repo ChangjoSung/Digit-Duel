@@ -438,6 +438,19 @@ else
 		for _, k in { "panel_side", "panel_battle", "panel_modal", "badge", "hpbar_bg", "hpbar_fill", "shbar_bg", "shbar_fill" } do
 			ok(isUrl(Art.ui(k)), "ui " .. k)
 		end
+		if n >= 152 then -- Phase 3 납품 (AI 창 8 + 중앙 배너 1) 업로드 후
+			for _, k in { "panel_window", "banner" } do
+				ok(isUrl(Art.ui(k)), "ui " .. k)
+			end
+			for _, k in { "exit", "bot" } do
+				ok(isUrl(Art.action(k)), "action " .. k)
+			end
+			for _, k in { "ai_grade5", "ai_dan5" } do
+				ok(isUrl(Art.badge(k)), "badge " .. k)
+			end
+			ok(isUrl(Art.status("thinking")), "status thinking")
+			ok(type(Art.lobbyMeshId("bot")) == "number", "lobbymesh bot")
+		end
 		for _, k in { "desk", "chair", "board", "floor", "wall", "pillar" } do
 			ok(type(Art.lobbyMeshId(k)) == "number", "lobby mesh " .. k)
 		end

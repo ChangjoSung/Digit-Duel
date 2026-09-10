@@ -1,0 +1,144 @@
+{
+  "schema": "banner-review-v1",
+  "runtime_path": "roblox/assets/ui/banner.png",
+  "slice_center": [
+    16,
+    16,
+    112,
+    112
+  ],
+  "slice_scale": 1,
+  "stretch_cases": [
+    [
+      540,
+      112
+    ],
+    [
+      720,
+      112
+    ]
+  ],
+  "text_mockup": {
+    "path": "banner-text-tones.png",
+    "canvas": [
+      600,
+      528
+    ],
+    "cases": [
+      {
+        "tone": "default",
+        "title": "전투 종료",
+        "subtitle": "전투 결과 안내 문구 예시",
+        "title_color": "#e8ecf5",
+        "banner_rect": [
+          30,
+          16,
+          540,
+          112
+        ],
+        "title_rect_relative": [
+          12,
+          18,
+          528,
+          62
+        ],
+        "subtitle_rect_relative": [
+          12,
+          64,
+          528,
+          98
+        ],
+        "font_size": [
+          30,
+          14
+        ]
+      },
+      {
+        "tone": "good",
+        "title": "패키지 획득",
+        "subtitle": "획득 안내 문구 예시",
+        "title_color": "#6fe0a0",
+        "banner_rect": [
+          30,
+          144,
+          540,
+          112
+        ],
+        "title_rect_relative": [
+          12,
+          18,
+          528,
+          62
+        ],
+        "subtitle_rect_relative": [
+          12,
+          64,
+          528,
+          98
+        ],
+        "font_size": [
+          30,
+          14
+        ]
+      },
+      {
+        "tone": "warn",
+        "title": "접촉 경고",
+        "subtitle": "경고 안내 문구 예시",
+        "title_color": "#ffd16a",
+        "banner_rect": [
+          30,
+          272,
+          540,
+          112
+        ],
+        "title_rect_relative": [
+          12,
+          18,
+          528,
+          62
+        ],
+        "subtitle_rect_relative": [
+          12,
+          64,
+          528,
+          98
+        ],
+        "font_size": [
+          30,
+          14
+        ]
+      },
+      {
+        "tone": "bad",
+        "title": "함정 발동",
+        "subtitle": "손실 안내 문구 예시",
+        "title_color": "#ff7a8a",
+        "banner_rect": [
+          30,
+          400,
+          540,
+          112
+        ],
+        "title_rect_relative": [
+          12,
+          18,
+          528,
+          62
+        ],
+        "subtitle_rect_relative": [
+          12,
+          64,
+          528,
+          98
+        ],
+        "font_size": [
+          30,
+          14
+        ]
+      }
+    ],
+    "fonts": "Windows Malgun Gothic/Malgun Gothic Bold; local installed fonts only, not redistributed; not Roblox Gotham screenshot",
+    "render": "Blender Cycles orthographic emission materials, Standard color transform; mockup only; no runtime text baked"
+  }
+}
