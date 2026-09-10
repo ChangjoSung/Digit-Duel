@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p3.3"
+local CLIENT_VERSION = "0.5.0-p3.4"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -133,6 +133,7 @@ local force2D = true -- 구조.txt: 판은 항상 "보드게임 창"(2D) 으로 
 local boardMode = "2d"
 local render
 local renderSetup
+local flashHud -- ⛔ 같은 일시 안내를 HUD 에 보여 주고 1초 뒤 원래 안내문으로 복구
 local setup = { stage = "roster", roster = {}, pos = {}, tray = nil, detail = nil }
 
 --==================================================================
@@ -288,12 +289,12 @@ local gui = mk("ScreenGui", { Name = "DigitDual", ResetOnSpawn = false, IgnoreGu
 
 -- 로비 HUD
 local hud = mk("Frame", {
-	Size = UDim2.new(0, 460, 0, 92), Position = UDim2.new(0.5, -230, 0, 12), ZIndex = 3, -- 상단 가운데 (CJ 2026-09-10)
+	Size = UDim2.new(0, 660, 0, 92), Position = UDim2.new(0.5, -330, 0, 12), ZIndex = 3, -- 상단 가운데 · 버튼 4개(게임 시작·봇 2·자리 떠나기)가 들어가는 폭 (CJ 2026-09-10)
 	BackgroundColor3 = Color3.fromRGB(19, 22, 30), BackgroundTransparency = 0.15, BorderSizePixel = 0,
 }, gui)
 bgImage(hud, "panel_side", "panel", 1)
 mk("TextLabel", {
-	Text = "Digit Dual", Size = UDim2.new(1, -16, 0, 24), Position = UDim2.new(0, 10, 0, 6),
+	Text = "Digit Dual", Size = UDim2.new(0, 130, 0, 24), Position = UDim2.new(0, 10, 0, 6),
 	TextColor3 = Color3.fromRGB(232, 236, 245), BackgroundTransparency = 1, TextSize = 18, Font = Enum.Font.GothamBold,
 	TextXAlignment = Enum.TextXAlignment.Left,
 }, hud)
@@ -302,7 +303,7 @@ local hudLabel = mk("TextLabel", {
 	TextColor3 = Color3.fromRGB(180, 188, 205), BackgroundTransparency = 1, TextSize = 13, Font = Enum.Font.Gotham,
 	TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true,
 }, hud)
-local hudBtns = mk("Frame", { Size = UDim2.new(0, 330, 0, 26), Position = UDim2.new(1, -336, 0, 6), BackgroundTransparency = 1 }, hud)
+local hudBtns = mk("Frame", { Size = UDim2.new(0, 500, 0, 26), Position = UDim2.new(1, -508, 0, 6), BackgroundTransparency = 1 }, hud)
 local lastSetupOpen = false -- 서버 setupOpen 전이 감지 (false→true 면 배치 단계 초기화)
 
 -- 보드게임 창 (구조.txt): 왼쪽 2D 판 · 오른쪽 배치/대전 패널. 배치 단계·대전 중에만 보이고 [나가기] 로만 닫힌다 (그동안 캐릭터 이동 불가)
@@ -363,10 +364,11 @@ local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 66), Position = UDim
 
 -- 로스터 상세 팝업
 local rosterDetail = mk("Frame", {
-	Size = UDim2.new(0, 480, 0, 250), Position = UDim2.new(0.5, -240, 0.5, -200), Visible = false, ZIndex = 8,
+	Size = UDim2.new(0, 520, 0, 280), Position = UDim2.new(0.5, -260, 0.5, -150), Visible = false, ZIndex = 8,
 	BackgroundColor3 = Color3.fromRGB(28, 32, 44), BorderSizePixel = 0,
 }, gui)
 bgImage(rosterDetail, "panel_modal", "panel", 1)
+rosterDetail.BackgroundTransparency = 0 -- 9-slice 패널이 반투명이라 뒤의 로스터 카드 글씨가 비친다 → 불투명 배경을 깐다 (CJ 2026-09-10)
 local detailPortrait = mk("ImageLabel", {
 	Size = UDim2.new(0, 160, 0, 160), Position = UDim2.new(0, 12, 0, 12), BackgroundColor3 = Color3.fromRGB(19, 22, 30),
 	BorderSizePixel = 0, ScaleType = Enum.ScaleType.Fit, ZIndex = 8,
@@ -947,11 +949,11 @@ end
 
 local function sendReady()
 	if #setup.roster ~= 6 then
-		hudLabel.Text = "⛔ 로스터 6종을 먼저 선택하세요"
+		flashHud("⛔ 로스터 6종을 먼저 선택하세요")
 		return
 	end
 	if placedCount() ~= 14 then
-		hudLabel.Text = "⛔ 말 14개를 모두 배치하세요 (" .. placedCount() .. "/14)"
+		flashHud("⛔ 말 14개를 모두 배치하세요 (" .. placedCount() .. "/14)")
 		return
 	end
 	local pos = {}
@@ -1120,7 +1122,7 @@ local function openDetail(rid)
 			table.insert(setup.roster, rid)
 			setup.pos = {}
 		else
-			hudLabel.Text = "⛔ 이미 6종을 선택했습니다 — 다른 종을 해제하세요"
+			flashHud("⛔ 이미 6종을 선택했습니다 — 다른 종을 해제하세요")
 			return
 		end
 		closeDetail()
@@ -1418,6 +1420,19 @@ local function renderLobby()
 			ti.opp and "둘 다 앉았습니다 — [F] (판 앞 프롬프트) 또는 Enter 또는 [▶ 게임 시작] 버튼" or "상대가 앉으면 [F] 게임 시작 · 혼자 하려면 [B] 5급 봇 / [N] 5단 봇")
 	end
 	renderSetup()
+end
+
+function flashHud(text)
+	hudLabel.Text = text
+	task.delay(1, function()
+		if hudLabel.Text == text then -- 그 사이 다른 갱신이 없었을 때만 원래 안내문으로
+			if view then
+				safe(render, "render(flash)")
+			else
+				safe(renderLobby, "renderLobby(flash)")
+			end
+		end
+	end)
 end
 
 local function closeGame()
@@ -2100,7 +2115,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if k == Enum.KeyCode.B or k == Enum.KeyCode.N then -- 혼자 앉은 상태에서 AI 대전 (B = 5급, N = 5단)
 		if tableInfo and not tableInfo.setupOpen and not tableInfo.inGame and not view then
 			if tableInfo.opp then
-				hudLabel.Text = "⛔ 맞은편에 상대가 있습니다 — [F] 로 시작하세요"
+				flashHud("⛔ 맞은편에 상대가 있습니다 — [F] 로 시작하세요")
 			else
 				send({ t = "bot", level = (k == Enum.KeyCode.N) and "dan5" or "grade5" })
 			end
@@ -2117,7 +2132,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		if tableInfo.opp then
 			send({ t = "startGame" }) -- 프롬프트 [F] 와 겹쳐도 서버가 한 번만 처리
 		else
-			hudLabel.Text = "⛔ 맞은편에 상대가 앉아야 시작할 수 있습니다"
+			flashHud("⛔ 맞은편에 상대가 앉아야 시작할 수 있습니다")
 		end
 	elseif k ~= Enum.KeyCode.F then
 		if setup.stage == "roster" and #setup.roster == 6 then
@@ -2182,7 +2197,7 @@ reState.OnClientEvent:Connect(function(msg)
 		return
 	elseif msg.t == "reject" then
 		addLog("⛔ " .. (msg.reason or "거부됨"))
-		hudLabel.Text = "⛔ " .. (msg.reason or "거부됨")
+		flashHud("⛔ " .. (msg.reason or "거부됨"))
 		return
 	elseif msg.t == "state" then
 		local prevBattle = view and view.battle ~= nil
