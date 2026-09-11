@@ -18,7 +18,7 @@ local AIC = Config.AI
 local Lobby = require(script:WaitForChild("Lobby"))
 local Stats = require(script:WaitForChild("Stats")) -- Phase 4 전적 (DataStore · 실패 시 메모리)
 
-local VERSION = "0.5.0-p4.5"
+local VERSION = "0.5.0-p4.6"
 
 -- Remotes 생성
 local remotes = Instance.new("Folder")

@@ -39,7 +39,6 @@ local Config = {
 		shockProb = 0.5, -- #96 (v0.4.4 §4): 감전 부여 확률
 		eventsPerForest = 3, -- 구역당 최소 개수 (3~4개 무작위 — #12)
 		ballMax = math.huge, -- #121 계약 2.1: 볼 보유 상한 해제
-		nextBuffPct = 0.15, -- #12 일시버프 (다음 전투 공격 +15%)
 		enemyCapProb = 0.7, -- #12 적 하수인 포획 성공률
 		fleeProb = 0.3, -- #146 (v0.4.7 계약 1.1): HP 게이트 폐지 · 기본 성공률 30%
 		fleeProbBuff = 0.7, -- #146 계약 1.4: 도망의 수호자 = 성공률 **치환** 70% (가산·성공 보장 아님)

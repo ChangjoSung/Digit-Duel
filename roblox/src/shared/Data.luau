@@ -146,7 +146,6 @@ Data.ITEMS = {
 Data.ITEM_KEYS = { "potion", "cool", "cure" } -- 순회 순서 고정 (JS Object.keys(ITEMS) 등가)
 
 -- #12 숲 이벤트 풀 6종 완전 랜덤
-Data.EVENT_POOL = { "potion", "cool", "cure", "ball", "buff", "recruit" }
 
 export type RosterDef = {
 	id: string,

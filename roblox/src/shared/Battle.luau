@@ -44,7 +44,6 @@ function Battle.attach(Engine, deps)
 		f.focusCharge = false
 		f.vulnMark = false
 		f.dmgCut = 0
-		f.atkBuff = false
 		f.powerBuff = false -- #121 계약 3.1: 버프는 전투 간 이어지지 않는다
 		f.fleeFree = false
 	end
@@ -272,14 +271,6 @@ function Battle.attach(Engine, deps)
 		resetTemps(fd)
 		local B = S.battle
 		latchOrder(B) -- 초기 라운드는 resetTemps 이후 상태로 확정
-		for _, e in { { attP, fa, "A" }, { defP, fd, "D" } } do -- #12 일시버프: 개시 시 소진·전투 내내 유지
-			local piece, f, sd = e[1], e[2], e[3]
-			if piece.nextBattleBuff then
-				piece.nextBattleBuff = false
-				f.atkBuff = true
-				self:bmsg("✨ " .. fighterName(B, sd) .. " 일시 버프 — 이번 전투 공격 +15%!")
-			end
-		end
 		self:bmsg("⚔️ " .. fighterName(B, "A") .. " vs " .. fighterName(B, "D") .. " — 전투 개시!")
 	end
 
@@ -506,9 +497,6 @@ function Battle.attach(Engine, deps)
 			end
 		else -- 피해 기술: 공격기·시그니처·기본 공격
 			local dmg = sk and Data.slotPow(f, sk) or f.atk
-			if f.atkBuff then
-				dmg = round(dmg * (1 + BAL.nextBuffPct)) -- #12 일시버프
-			end
 			if f.focusCharge and sk and sk.kind == "attack" then
 				dmg = round(dmg * 1.2)
 				f.focusCharge = false
