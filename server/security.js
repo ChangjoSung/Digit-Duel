@@ -378,6 +378,14 @@ function validateRelayMessage(raw, isBinary, limitsOverride) {
 
 /* ===== 속도 제한 ===== */
 
+/* #201 정적 서빙 요청 예산. 고정값이며 env override 는 두지 않는다.
+ * 자산이 늘면 같이 커져야 하는 계약이라 순수 상수로 내놓는다 — 회귀 테스트가 실제 자산 수와 대조한다.
+ */
+const STATIC_BUDGET = {
+  pageLoadRequests: 48,    // index.html 1 + 하수인 20×2 + 리더 2×2 = 45, 부수 요청 여유 3
+  concurrentPageLoads: 6,  // 같은 IP 에서 겹칠 수 있는 로드 수
+};
+
 // 초당 refillPerSec 만큼 회복되는 토큰 버킷. 메시지 수·바이트 수 양쪽에 쓴다.
 class TokenBucket {
   constructor(capacity, refillPerSec, now) {
@@ -483,6 +491,7 @@ module.exports = {
   validateRelayMessage,
   TokenBucket,
   AttemptLimiter,
+  STATIC_BUDGET,
   MIME,
   ALLOWED_METHODS,
   RELAY_LIMITS,

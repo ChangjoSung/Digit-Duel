@@ -1,0 +1,356 @@
+{
+  "issue": 201,
+  "startedAt": "2026-09-11T09:41:26.512Z",
+  "checks": [
+    {
+      "name": "1A 두 클라이언트가 실제 인증·매칭을 거쳐 보드까지 갔다",
+      "pass": true
+    },
+    {
+      "name": "1B 서로 다른 진영을 받았다 (P1=1 P2=0)",
+      "pass": true
+    },
+    {
+      "name": "1C P1 냉시작에서 자연 발생한 자산 실패 0건 (관측 0)",
+      "pass": true
+    },
+    {
+      "name": "1D P1 고정 44 집합을 빠짐없이 요청했다 (누락 0 · 그 밖 6건은 내가 누른 로스터 카드의 설명창 일러스트)",
+      "pass": true
+    },
+    {
+      "name": "1C P2 냉시작에서 자연 발생한 자산 실패 0건 (관측 0)",
+      "pass": true
+    },
+    {
+      "name": "1D P2 고정 44 집합을 빠짐없이 요청했다 (누락 0 · 그 밖 6건은 내가 누른 로스터 카드의 설명창 일러스트)",
+      "pass": true
+    },
+    {
+      "name": "2A P1 실패한 종 0건 (관측 [])",
+      "pass": true
+    },
+    {
+      "name": "2B P1 왕이 실제 아트로 보인다",
+      "pass": true
+    },
+    {
+      "name": "2C P1 동료가 실제 아트로 보인다",
+      "pass": true
+    },
+    {
+      "name": "2D P1 하수인 전원이 실제 아트로 보인다 (6/6)",
+      "pass": true
+    },
+    {
+      "name": "2E P1 미공개 상대 말 칸에 <img>·자산 경로가 없다 (정상 은폐 ? 유지)",
+      "pass": true
+    },
+    {
+      "name": "2A P2 실패한 종 0건 (관측 [])",
+      "pass": true
+    },
+    {
+      "name": "2B P2 왕이 실제 아트로 보인다",
+      "pass": true
+    },
+    {
+      "name": "2C P2 동료가 실제 아트로 보인다",
+      "pass": true
+    },
+    {
+      "name": "2D P2 하수인 전원이 실제 아트로 보인다 (6/6)",
+      "pass": true
+    },
+    {
+      "name": "2E P2 미공개 상대 말 칸에 <img>·자산 경로가 없다 (정상 은폐 ? 유지)",
+      "pass": true
+    },
+    {
+      "name": "2F 좌석 P2 촬영 전에 턴 배너·연출·토스트가 모두 걷혔다 (탭 P1)",
+      "pass": true
+    },
+    {
+      "name": "2F 좌석 P1 촬영 전에 턴 배너·연출·토스트가 모두 걷혔다 (탭 P2)",
+      "pass": true
+    },
+    {
+      "name": "3A no-store 재요청 측정 완료 (12 렌더 후 추가 응답 0건) — 판정이 아니라 관측값",
+      "pass": true
+    },
+    {
+      "name": "4A 실제 합법 이동을 한 수 두었다",
+      "pass": true
+    },
+    {
+      "name": "4B 두 클라이언트의 **모든 말 논리 좌표·HP·생존**이 정확히 같다 (말 28개)",
+      "pass": true
+    },
+    {
+      "name": "4C 움직인 그 말이 양쪽에서 같은 칸에 있다 [{\"id\":57,\"r\":11,\"c\":7},{\"id\":57,\"r\":11,\"c\":7}]",
+      "pass": true
+    },
+    {
+      "name": "5C 전투 픽스처가 배치 완료된 정상 플레이 상태다 (화면 board · 미배치 0)",
+      "pass": true
+    },
+    {
+      "name": "5A 전투 화면이 열렸다 (fixture-offline)",
+      "pass": true
+    },
+    {
+      "name": "5B 전투 도트가 실제 아트다 (fixture-offline)",
+      "pass": true
+    },
+    {
+      "name": "6A 유도 429 가 실제로 아트를 떨어뜨렸다 ([\"king\",\"lightning_sustain\"])",
+      "pass": true
+    },
+    {
+      "name": "6B 현행 소스는 유도 429 에서 스스로 복구한다 (남은 실패 [])",
+      "pass": true
+    },
+    {
+      "name": "6C 복구 후 왕이 다시 아트다",
+      "pass": true
+    },
+    {
+      "name": "6D 이 실행에서 자연 발생한 자산 실패는 0건이다 (유도 2건과 구분)",
+      "pass": true
+    },
+    {
+      "name": "7A 기준판 소스가 실제로 올라갔다 (복구 예산 심볼 부재)",
+      "pass": true
+    },
+    {
+      "name": "7B 기준판은 같은 유도 429 에서 실패가 남는다 ([\"king\",\"lightning_sustain\"]) — #201 증상 재현",
+      "pass": true
+    },
+    {
+      "name": "7C 기준판에서는 왕이 이모지로 남는다 (스크린샷의 증상)",
+      "pass": true
+    },
+    {
+      "name": "8A 연속 새로고침 4회에서 자산 실패 응답 0건 (관측 0)",
+      "pass": true
+    },
+    {
+      "name": "8B 연속 새로고침 뒤에도 실패한 종 0건 ([])",
+      "pass": true
+    }
+  ],
+  "data": {
+    "server": {
+      "origin": "http://127.0.0.1:58226",
+      "root": "C:\\Users\\pc_77\\orca\\workspaces\\Digit-Duel\\hotfix-201-online-art\\demo",
+      "note": "접속 코드는 이 실행 전용이며 산출물에 남기지 않는다"
+    },
+    "source": {
+      "file": "demo/index.html",
+      "sha256": "4c45389f7b98c3b07b2cbf53c9ffbdf687d549c71248c08a72c737ab840d5bc1"
+    },
+    "cold.P1": {
+      "requests": 50,
+      "unique": 50,
+      "failed": 0,
+      "corpus": 44,
+      "statuses": [
+        200
+      ],
+      "missing": [],
+      "extra": [
+        "/assets/minions/fire_std/portrait.webp",
+        "/assets/minions/fire_atk/portrait.webp",
+        "/assets/minions/fire_def/portrait.webp",
+        "/assets/minions/water_std/portrait.webp",
+        "/assets/minions/water_atk/portrait.webp",
+        "/assets/minions/water_def/portrait.webp"
+      ],
+      "extraNote": "고정 44 집합 밖의 자산 요청 — 로스터 카드를 눌러 연 설명창 일러스트(portrait)다. 말의 정체와 무관하게 내가 누른 카드에서만 나간다."
+    },
+    "cold.P2": {
+      "requests": 50,
+      "unique": 50,
+      "failed": 0,
+      "corpus": 44,
+      "statuses": [
+        200
+      ],
+      "missing": [],
+      "extra": [
+        "/assets/minions/fire_std/portrait.webp",
+        "/assets/minions/fire_atk/portrait.webp",
+        "/assets/minions/fire_def/portrait.webp",
+        "/assets/minions/water_std/portrait.webp",
+        "/assets/minions/water_atk/portrait.webp",
+        "/assets/minions/water_def/portrait.webp"
+      ],
+      "extraNote": "고정 44 집합 밖의 자산 요청 — 로스터 카드를 눌러 연 설명창 일러스트(portrait)다. 말의 정체와 무관하게 내가 누른 카드에서만 나간다."
+    },
+    "board.art": [
+      {
+        "me": 1,
+        "failed": [],
+        "settled": [],
+        "loaded": 44,
+        "kingArt": true,
+        "allyArt": true,
+        "minionArt": 6,
+        "minions": 6,
+        "foeHiddenQ": 14,
+        "foeCellsHaveImg": false,
+        "foeCellsHaveAsset": false,
+        "boardLeaderArt": true
+      },
+      {
+        "me": 0,
+        "failed": [],
+        "settled": [],
+        "loaded": 44,
+        "kingArt": true,
+        "allyArt": true,
+        "minionArt": 6,
+        "minions": 6,
+        "foeHiddenQ": 14,
+        "foeCellsHaveImg": false,
+        "foeCellsHaveAsset": false,
+        "boardLeaderArt": true
+      }
+    ],
+    "settle.seatP2": {
+      "overlaysCleared": true,
+      "tab": "P1"
+    },
+    "settle.seatP1": {
+      "overlaysCleared": true,
+      "tab": "P2"
+    },
+    "noStore": {
+      "url": "/assets/minions/fire_std/icon.png",
+      "before": 1,
+      "after": 1,
+      "delta": 0,
+      "note": "12회 render() 뒤 같은 자산 URL 의 추가 HTTP 응답 수. 0 이면 브라우저가 재요청하지 않은 것이다."
+    },
+    "realMove": {
+      "moverTab": "P2",
+      "moverSeat": 1,
+      "moved": {
+        "id": 57,
+        "r": 11,
+        "c": 7
+      },
+      "movedSeen": [
+        {
+          "id": 57,
+          "r": 11,
+          "c": 7
+        },
+        {
+          "id": 57,
+          "r": 11,
+          "c": 7
+        }
+      ],
+      "sync": [
+        {
+          "turn": 1,
+          "cur": 1,
+          "phase": "play",
+          "n": 28
+        },
+        {
+          "turn": 1,
+          "cur": 1,
+          "phase": "play",
+          "n": 28
+        }
+      ],
+      "digestEqual": true
+    },
+    "battleFixture.state": {
+      "screen": "board",
+      "phase": "play",
+      "unplaced": 0,
+      "cells": 91
+    },
+    "battle": {
+      "kind": "fixture-offline",
+      "dom": {
+        "open": true,
+        "hasSprite": true,
+        "tokA": "btok art tok-me",
+        "tokD": "btok art tok-op"
+      }
+    },
+    "induced429.fixed.immediate": {
+      "failed": [
+        "king",
+        "lightning_sustain"
+      ]
+    },
+    "induced429.fixed.after": {
+      "failed": [],
+      "settled": [
+        "lightning_sustain",
+        "king"
+      ],
+      "kingArt": true,
+      "lsArt": true
+    },
+    "induced429.fixed.counts": {
+      "induced": 2,
+      "naturalFailures": 0,
+      "totalAssetReq": 46
+    },
+    "baseline": {
+      "ref": "ff6e87a0c028ae39725d5bb5971052a84410f328",
+      "sha256OfOverlayBytes": "0b0da016d4de4121e9eafdc369dbe265960e08c78892cc57ba9622a62acbb88a",
+      "note": "저장소 파일을 바꾸지 않고 CDP Fetch 로 문서 본문만 기준판으로 바꿔 끼웠다"
+    },
+    "induced429.baseline.after": {
+      "failed": [
+        "king",
+        "lightning_sustain"
+      ],
+      "kingArt": false,
+      "kingEmoji": true,
+      "lsArt": null
+    },
+    "reload": {
+      "rounds": 4,
+      "art": {
+        "failed": [],
+        "loaded": 44
+      },
+      "failedResponses": 0,
+      "assetReqs": 176
+    },
+    "screenshots": [
+      {
+        "file": "201-02-online-board-seat-P2.png",
+        "sha256": "e4b634dbe368123d0238ef6dc46d9786041ba61bf7d10ee8c31ae1ce672579d9"
+      },
+      {
+        "file": "201-01-online-board-seat-P1.png",
+        "sha256": "ead262ad2bd9fc14f15ad178c4f5c82fbd056b7f3bc6c9ea2a95b678c0b247fe"
+      },
+      {
+        "file": "201-03-battle-FIXTURE-offline.png",
+        "sha256": "477f6bb62a25855b6c3264c68d3ec12a063a3663f94eab5f9ce52d4ca72e13ef"
+      },
+      {
+        "file": "201-04-induced429-FIXED-recovered.png",
+        "sha256": "569a777b601e149eccb577abf0c6df625a4f965633e693ab5a05c61726e5a88f"
+      },
+      {
+        "file": "201-05-induced429-BASELINE-broken.png",
+        "sha256": "d718b0534453d9e8704a23103ab4c48698176127dd81e5c596cec9013b6d5406"
+      }
+    ]
+  },
+  "pass": 34,
+  "fail": 0,
+  "fails": [],
+  "finishedAt": "2026-09-11T09:43:51.875Z"
+}

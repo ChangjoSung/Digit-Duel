@@ -60,6 +60,18 @@ const ACCESS_CODE = (() => {
   return checked.code;
 })();
 
+/* ===== #201 정적 서빙 요청 예산 =====
+ * 예산은 "몇 건이면 수상한가"가 아니라 "정상 클라이언트 한 명이 몇 건을 내보내는가"에서 역산한다.
+ * demo/index.html 의 artPreload 는 페이지를 열 때마다 정체와 무관한 고정 집합을 한꺼번에 요청한다 —
+ * index.html 1 + 하수인 20종 × {icon,battle} 40 + 왕·동료 2종 × {icon64,battle256} 4 = 45 건.
+ * 종전 값(버스트 60 · 초당 30)은 그 45 건을 겨우 담아, 같은 IP 에서 두 번째 로드가 겹치면 절반 가까이가
+ * 429 로 떨어졌다. 클라이언트는 그 실패를 그 종의 영구 실패로 기록하므로 "부분 아트 손실"로 보인다.
+ * 이 버킷은 인증 경계가 아니다 — 업그레이드는 별도 버킷(upgradeBuckets)과 AttemptLimiter 가 막으므로
+ * 예산을 넓혀도 무차별 대입 노출면은 넓어지지 않는다. 실측 수치는 server/README.md #201 절.
+ */
+const PAGE_LOAD_REQUESTS = S.STATIC_BUDGET.pageLoadRequests;       // 45 + 부수 요청 여유
+const CONCURRENT_PAGE_LOADS = S.STATIC_BUDGET.concurrentPageLoads; // 같은 IP 에서 겹칠 수 있는 로드 수
+
 const LIMITS = {
   maxUrlLength: 2048,
   maxConnections: Number(process.env.DD_MAX_CONNECTIONS || 16),
@@ -69,8 +81,9 @@ const LIMITS = {
   msgBurst: 80,
   bytesPerSec: 128 * 1024,
   bytesBurst: 256 * 1024,
-  httpReqPerSec: 30,
-  httpBurst: 60,
+  // 회복은 전량 로드 2회분/초, 버스트는 겹치는 로드 수만큼. 둘 다 고정값이다 (env override 없음).
+  httpReqPerSec: PAGE_LOAD_REQUESTS * 2,
+  httpBurst: PAGE_LOAD_REQUESTS * CONCURRENT_PAGE_LOADS,
   upgradePerMin: 60,
   authFailures: 10,
   authWindowMs: 5 * 60 * 1000,
@@ -123,7 +136,7 @@ const server = http.createServer((req, res) => {
   // 1) 피어 주소 — 기본 루프백 전용, LAN 옵트인 시 사설 대역까지
   if (!peerAllowed(ip)) return deny(res, 403, LAN_OPT_IN ? 'LAN only' : 'localhost only');
 
-  // 2) 요청 속도 제한
+  // 2) 요청 속도 제한 — 예산은 클라이언트의 고정 프리로드 집합에서 역산한다 (위 #201 주석)
   if (!bucketFor(httpBuckets, ip, LIMITS.httpBurst, LIMITS.httpReqPerSec).take(1)) {
     return deny(res, 429, 'too many requests');
   }

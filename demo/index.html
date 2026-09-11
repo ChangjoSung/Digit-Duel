@@ -902,16 +902,24 @@ const LEADER_OF={king:"king",ally:"companion"};
 const LEADER_DIRS=["king","companion"], LEADER_DIR_SET=new Set(LEADER_DIRS);
 const LEADER_FILES={icon:"icon64.png",battle:"battle256.png"};
 function leaderDirOf(p){ return (p&&LEADER_OF[p.type])?LEADER_OF[p.type]:null; }
-/* 실제 로드가 확인된 뒤에만 참 — 자산이 없거나 실패하면 null 이라 현행 이모지 경로로 간다 */
-function leaderArtDir(p){ const d=leaderDirOf(p); return (d&&!ART.failed.has(d)&&ART.loaded.has(d+"/"+LEADER_FILES.icon))?d:null; }
+/* 실제 로드가 확인된 뒤에만 참 — 자산이 없거나 실패하면 null 이라 현행 이모지 경로로 간다.
+   #201: ART.loaded 는 "언젠가 받은 적이 있다"는 과거 기록이다. 그 뒤 그 파일이 영구 결손으로 판정되면(artGone)
+   여기서도 손을 떼야 한다 — 그러지 않으면 없는 파일을 화면이 열릴 때마다 다시 요청한다 (하수인 쪽 artBattleOk 와 같은 이유). */
+function leaderArtDir(p){ const d=leaderDirOf(p);
+  return (d&&!ART.failed.has(d)&&!artGone(d,LEADER_FILES.icon)&&ART.loaded.has(d+"/"+LEADER_FILES.icon))?d:null; }
 function leaderBattleDir(pf,piece){ // 본체 출전일 때만 — 포획 하수인 대리 출전은 그 하수인 아트를 그대로 쓴다 (#91)
   if(!pf||!piece||pf!==piece) return null;
   const d=leaderDirOf(piece);
-  return (d&&!ART.failed.has(d)&&ART.loaded.has(d+"/"+LEADER_FILES.battle))?d:null;
+  return (d&&!ART.failed.has(d)&&!artGone(d,LEADER_FILES.battle)&&ART.loaded.has(d+"/"+LEADER_FILES.battle))?d:null;
 }
 const ART_DIRS=ROSTER.map(r=>r.element+"_"+r.arch);       // 20종 허용 목록 — 이 목록 밖의 값으로 경로를 만들지 않는다
 const ART_DIR_SET=new Set(ART_DIRS);
-const ART={failed:new Set(),loaded:new Set(),preloaded:false,rerender:null};
+/* #201 (v0.4.8) retry·gone·settled 는 일시적 로드 실패 복구 전용 칸이다 — 규칙·수치·정보 경계와 무관한 표시 계층 상태다.
+   예산은 **파일 단위**다 ("종/파일" 키). 전투 도트 하나가 영영 없다고 해서 멀쩡한 보드 아이콘까지 막히면 안 되기 때문이다.
+     retry:   "종/파일" → {n:연속 실패 횟수, total:누적 조회 횟수, timer:예약, busy:조회 중, dl:마감 타이머}
+     gone:    "종/파일" — 예산을 다 쓴 파일. 다시는 조회하지 않는다 (영구 결손)
+     settled: 종 — 그 종의 모든 파일이 loaded 이거나 gone 이라 더 할 일이 없는 상태 */
+const ART={failed:new Set(),loaded:new Set(),preloaded:false,rerender:null,retry:new Map(),gone:new Set(),settled:new Set()};
 function artUrl(dir,file){return (LEADER_DIR_SET.has(dir)?LEADER_BASE:ART_BASE)+dir+"/"+file;} // #124: 왕·동료는 별도 폴더
 /* 말 → 종 폴더. rosterId 가 없거나(미배정 하수인) 허용 목록 밖이면 null → 안전 폴백. 포획·예비 하수인(cap)은 type 이 없어 여기서는 항상 null — 전투 토큰은 artDirOfFighter (#91) */
 function artDirOf(p){
@@ -935,19 +943,123 @@ function artDirOfFighter(pf,piece){
   return ART_DIR_SET.has(dir)?dir:null;
 }
 function artOk(dir){return !!dir&&!ART.failed.has(dir);}
-/* 로드 실패: 그 종만 텍스트·기호 폴백으로 되돌리고 한 번만 다시 그린다. onerror 를 즉시 끊어 재요청 고리를 만들지 않는다 */
-window.artFail=function(dir,el){
-  if(el) try{el.onerror=null;}catch(e){}
-  if(!dir||ART.failed.has(dir)) return;
-  ART.failed.add(dir);
+/* 한 번만 예약되는 재그리기 — artFail·artLeaderReady·#201 복구 성공이 이 한 자리를 함께 쓴다.
+   전투 모달을 다시 부르지 않으므로 메시지 재생·FX·전투 타이밍에 재진입하지 않는다 */
+function artRerender(){
   if(ART.rerender) return;
   ART.rerender=setTimeout(()=>{ART.rerender=null; try{if(S&&S.phase!=="menu") render();}catch(e){}},0);
+}
+/* ===== #201 (v0.4.8) 일시적 로드 실패 복구 — 표시 계층 전용 =====
+   배경: 온라인(HTTP)에서는 자산이 멀쩡히 있어도 서버 요청 한도·순간 혼잡으로 개별 이미지가 한 번 실패할 수 있다.
+   종전에는 그 한 번이 ART.failed 에 영구히 남아 그 종만 끝까지 이모지·텍스트로 남았고(왕·동료는 ART.loaded 확인이
+   프리로드 1회뿐이라 더 심했다), 페이지를 새로 열기 전에는 되돌아올 길이 없었다.
+   계약:
+     - 유한: 파일마다 연속 실패 ART_RETRY.max 회, 누적 ART_RETRY.hardMax 회가 상한이다. 정말 없는 파일은
+       gone 으로 굳어 다시는 조회하지도, 다시 그리지도 않는다 — 무한 재시도·재그리기·요청 폭주가 생기지 않는다.
+     - 능동 마감: 조회마다 스스로 시한(deadlineMs)을 건다. onload·onerror 어느 쪽도 오지 않는 요청에 갇히지 않고,
+       끝낼 때 마감 타이머를 끄고 핸들러를 떼어 뒤늦은 이벤트가 상태를 다시 건드리지 못하게 한다.
+     - 중복 제거: 파일당 예약 1개·조회 1개. 같은 종의 <img> 가 여러 칸에서 동시에 실패해도 조회는 한 벌뿐이다.
+     - 파일 단위 책임: 전투 도트가 영영 없다고 해서 멀쩡한 보드 아이콘까지 막히지 않는다. 반대로 없는 전투 파일은
+       artBattleOk 가 걸러 다음 전투창에서 다시 요청되지 않는다.
+     - 요청 경계 불변: 조회 대상은 프리로드가 쓰는 바로 그 파일이다 — 새 URL 도, 새 종류의 요청도 만들지 않는다.
+       촉발 지점도 종전과 같다: 정체와 무관한 고정 프리로드 집합, 그리고 **이미 공개된 말이 이미 내보내던 <img>** 뿐이다.
+       미공개 말에는 여전히 <img>·src·alt·클래스 어디에도 정체 값이 생기지 않는다.
+     - 표시 전용: 규칙·수치·RNG·온라인 프로토콜·전투 연출 타이밍을 하나도 건드리지 않는다. */
+/* max: 한 파일이 연속으로 몇 번 떨어지면 포기하는가 (성공하면 0 으로 돌아간다 — 그 파일이 있다는 증거이므로)
+   hardMax: 그 파일에 페이지 수명 동안 허용하는 조회 총량. 성공/실패를 오가는 병적인 경우에도 요청이 늘어나지 않게 막는 절대 상한
+   delays: 점점 긴 간격 — 혼잡이 가라앉을 시간을 주고 스스로 혼잡을 만들지 않는다
+   deadlineMs: **능동 마감**. 응답이 오지도 끊기지도 않는 요청(onload·onerror 어느 쪽도 오지 않는 경우)에 갇히지 않도록
+               조회마다 스스로 시한을 걸고 끝낸다. 이것이 없으면 진행 중 표시가 영원히 남아 다음 예약이 서지 않는다. */
+const ART_RETRY={max:3,hardMax:8,delays:[400,1200,3600],deadlineMs:5000};
+/* 그 종이 프리로드에서 쓰는 고정 파일 쌍. 첫 번째가 아이콘(보드 얼굴), 두 번째가 전투 도트다 */
+function artFilesOf(dir){ return LEADER_DIR_SET.has(dir)?[LEADER_FILES.icon,LEADER_FILES.battle]:["icon.png","battle.png"]; }
+function artIconFile(dir){ return artFilesOf(dir)[0]; }
+function artBattleFile(dir){ return artFilesOf(dir)[1]; }
+/* 그 파일이 영영 없다고 판정됐는가 — 이 판정을 그린 자리에서 바로 읽어, 없는 파일을 다시 <img> 로 내보내지 않는다 */
+function artGone(dir,f){ return !!dir&&ART.gone.has(dir+"/"+f); }
+/* 전투 도트를 그려도 되는가: 그 종이 폴백이 아니고, 전투 파일이 영구 결손으로 판정되지 않았을 때만.
+   이 확인이 없으면 "아이콘은 살아 있고 전투 파일만 없는" 종에서 전투창을 열 때마다 없는 파일을 다시 요청하고,
+   그 실패가 다시 종 전체를 폴백으로 내리는 왕복이 생긴다 (#201 Saturn 지적). */
+function artBattleOk(dir){ return artOk(dir)&&!artGone(dir,artBattleFile(dir)); }
+/* 그 종에 더 할 일이 남았는가 — 모든 파일이 loaded 이거나 gone 이면 굳는다 */
+function artMarkSettled(dir){
+  const done=artFilesOf(dir).every(f=>ART.loaded.has(dir+"/"+f)||ART.gone.has(dir+"/"+f));
+  if(done) ART.settled.add(dir); else ART.settled.delete(dir);
+}
+/* force = 방금 실제로 실패한 파일. 그 파일은 이미 로드된 적이 있어도 다시 확인한다.
+   나머지 파일은 "아직 확인되지 않은 것"만 부른다 — 멀쩡한 파일을 덤으로 다시 요청하지 않는다.
+   예외 하나: 그 종이 폴백으로 내려가 있으면(ART.failed) 아이콘은 다시 확인한다. 보드 얼굴을 되돌릴 유일한 근거이기 때문이다. */
+function artScheduleRecovery(dir,force){
+  if(!dir) return;
+  if(!ART_DIR_SET.has(dir)&&!LEADER_DIR_SET.has(dir)) return;   // 허용 목록 밖 값으로는 경로를 만들지 않는다
+  for(const f of artFilesOf(dir)){
+    if(f!==force&&ART.loaded.has(dir+"/"+f)&&!(f===artIconFile(dir)&&ART.failed.has(dir))) continue;
+    artScheduleFile(dir,f);
+  }
+}
+function artScheduleFile(dir,f){
+  const k=dir+"/"+f;
+  if(ART.gone.has(k)) return;                                   // 영구 결손 — 다시 조회하지 않는다
+  let st=ART.retry.get(k); if(!st){st={n:0,total:0,timer:null,busy:false,dl:null}; ART.retry.set(k,st);}
+  if(st.timer||st.busy) return;                                 // 예약됐거나 조회 중 — 파일당 한 벌 (능동 마감이 busy 를 반드시 푼다)
+  if(st.n>=ART_RETRY.max||st.total>=ART_RETRY.hardMax){ ART.gone.add(k); artMarkSettled(dir); return; }
+  const wait=ART_RETRY.delays[Math.min(st.n,ART_RETRY.delays.length-1)];
+  st.n++; st.total++;
+  st.timer=setTimeout(()=>{ st.timer=null; artProbeFile(dir,f,st); },wait);
+}
+/* 판정은 전부 **이번 조회의 결과**로만 한다 — 지난 프리로드가 남긴 ART.loaded 를 "지금 성공"으로 오해하면
+   실패한 자산을 복구했다고 착각하거나(ART.failed 오삭제), 반대로 폴백을 못 걷어내고 굳는다.
+   끝날 때는 반드시 마감 타이머를 끄고 핸들러를 떼어, 뒤늦게 도착한 이벤트가 상태를 다시 건드리지 못하게 한다. */
+function artProbeFile(dir,f,st){
+  const k=dir+"/"+f;
+  let im=null, fin=false;
+  const finish=loaded=>{
+    if(fin) return; fin=true;
+    st.busy=false;
+    if(st.dl){ try{clearTimeout(st.dl);}catch(e){} st.dl=null; }
+    if(im) try{ im.onload=null; im.onerror=null; }catch(e){}    // 늦게 오는 이벤트를 안전하게 끊는다
+    if(loaded){
+      const isNew=!ART.loaded.has(k);
+      ART.loaded.add(k); st.n=0;                                 // 있다는 것이 확인됐으니 연속 실패 기록을 지운다
+      const wasFailed=ART.failed.has(dir);
+      if(f===artIconFile(dir)&&wasFailed) ART.failed.delete(dir); // 아이콘이 살아났다 → 그 종을 다시 그림으로 돌린다
+      if(isNew||(f===artIconFile(dir)&&wasFailed)) artRerender(); // 얻은 게 있을 때만 다시 그린다 (재그리기 고리 없음)
+      artMarkSettled(dir);
+      return;
+    }
+    if(st.n>=ART_RETRY.max||st.total>=ART_RETRY.hardMax){ ART.gone.add(k); artMarkSettled(dir); return; } // 유한 종료
+    artScheduleFile(dir,f);
+  };
+  st.busy=true;
+  st.dl=setTimeout(()=>{ st.dl=null; finish(false); },ART_RETRY.deadlineMs); // 능동 마감 — 아무 이벤트도 오지 않아도 끝난다
+  try{
+    im=document.createElement("img");
+    im.onload=()=>finish(true);
+    im.onerror=()=>finish(false);
+    im.src=artUrl(dir,f);
+  }catch(e){ finish(false); }
+}
+/* 로드 실패: 그 종만 텍스트·기호 폴백으로 되돌리고 한 번만 다시 그린다. onerror 를 즉시 끊어 재요청 고리를 만들지 않는다.
+   #201: 화면은 종전과 똑같이 즉시 안전 폴백으로 가고, 그와 **별도로** 유한 복구 조회를 예약한다 */
+window.artFail=function(dir,el){
+  if(el) try{el.onerror=null;}catch(e){}
+  if(!dir) return;
+  const first=!ART.failed.has(dir);
+  ART.failed.add(dir);
+  /* 이미 실패로 기록된 종이어도 복구 예약은 매번 시도한다 — 겹침은 예약·진행 중 검사가 걸러낸다.
+     여기서 일찍 빠져나가면 "조회가 끝난 뒤 다시 실패한" 종이 다시 예약될 기회를 영영 잃는다.
+     실패한 것은 보드 아이콘이므로 그 파일을 지목해 확인한다. */
+  artScheduleRecovery(dir,artIconFile(dir));
+  if(first) artRerender();   // 재그리기는 종전대로 상태가 바뀔 때 한 번만
 };
 /* 전투 도트 실패: 지금 보고 있는 전투에서도 즉시 현행 이모지 토큰으로 바꿔 끼운다 — 전투원 자리가 비어 보이지 않는다.
    battleModal() 을 다시 부르지 않으므로 메시지 재생·FX 에 재진입하지 않고, 토큰의 id·위치 클래스는 그대로라 shake·ko·dmgfloat 경로가 유지된다 */
 window.artSpriteFail=function(dir,el){
   if(el) try{el.onerror=null;}catch(e){}
-  if(dir) ART.failed.add(dir);
+  /* #201: 지금 이 전투의 토큰은 아래에서 즉시 이모지로 바뀌고(연출 타이밍 불변), 복구는 다음 렌더부터 반영된다.
+     전투 파일만 영영 없는 종이면 아이콘 조회가 성공해 보드 얼굴은 곧 아트로 돌아오고, 전투 파일은 gone 으로 굳어
+     다음 전투창이 그 파일을 다시 요청하지 않는다 — 실패→종 폴백→재요청의 왕복이 생기지 않는다. */
+  if(dir){ ART.failed.add(dir); artScheduleRecovery(dir,artBattleFile(dir)); }
   const tok=el&&el.parentNode;
   try{
     const B=S&&S.battle;
@@ -983,7 +1095,7 @@ function artPreload(){
     try{
       const im=document.createElement("img");
       im.onload=()=>{ART.loaded.add(dir+"/"+f);};
-      im.onerror=()=>{if(f==="icon.png") ART.failed.add(dir);};
+      im.onerror=()=>{if(f==="icon.png") ART.failed.add(dir); artScheduleRecovery(dir,f);}; // #201 유한 복구 — 떨어진 그 파일만
       im.src=artUrl(dir,f);
     }catch(e){}
   }
@@ -993,15 +1105,13 @@ function artPreload(){
     try{
       const im=document.createElement("img");
       im.onload=()=>{ART.loaded.add(dir+"/"+f); artLeaderReady();};
-      im.onerror=()=>{if(f===LEADER_FILES.icon) ART.failed.add(dir);};
+      /* #201: 왕·동료는 ART.loaded 확인 경로가 프리로드뿐이라, 여기서 한 번 놓치면 종전에는 영원히 이모지였다 */
+      im.onerror=()=>{if(f===LEADER_FILES.icon) ART.failed.add(dir); artScheduleRecovery(dir,f);};
       im.src=artUrl(dir,f);
     }catch(e){}
   }
 }
-function artLeaderReady(){ // 자산이 늦게 도착했을 때 한 번만 다시 그린다 (artFail 과 같은 1회 예약 자리를 공유한다)
-  if(ART.rerender) return;
-  ART.rerender=setTimeout(()=>{ART.rerender=null; try{ if(S&&S.phase!=="menu") render(); }catch(e){}},0);
-}
+function artLeaderReady(){ artRerender(); } // 자산이 늦게 도착했을 때 한 번만 다시 그린다 (artFail 과 같은 1회 예약 자리를 공유한다)
 /* 기호 어휘는 MEMO_OPTS 8종 하나뿐이다 — 확정 표시와 추측 메모가 같은 이모지를 쓴다 (규격 7.10.1 · 신규 래스터 0장) */
 function memoEmoji(key){const o=memoOpt(key); return o?o.emoji:"";}
 function memoShort(key){ // 기호를 그릴 수 없을 때 쓰는 같은 뜻의 짧은 현행 라벨 (왕·동료·폭탄·함정·불·물·풀·번개)
@@ -2855,7 +2965,7 @@ function battleModal(){
     const pos=sid===mySide?"tok-me":"tok-op", label=pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type];
     // #89/#91 지금 실제로 싸우는 전투원 기준: 본체면 그 말의 종, 대리 출전(포획·예비 하수인)이면 cap 에 기록된 종. 왕·동료 본체 그림은 없으므로 null → 이모지
     const dir=artDirOfFighter(pf,piece);
-    if(artOk(dir))
+    if(artBattleOk(dir))   // #201: 전투 파일이 영구 결손으로 판정되면 다시 내보내지 않는다 (요청 왕복·보드 아이콘 억제 방지)
       return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`;
     /* #124: 왕·동료 **본체** 출전이면 새 아트를 그 정체 역할로 그린다. 대리 출전(포획 하수인)은 위 분기라 여기 오지 않는다.
        자산이 없거나 실패하면 아래 현행 이모지 토큰으로 그대로 되돌아간다 (artSpriteFail 이 같은 자리를 바꿔 끼운다) */

@@ -1,5 +1,7 @@
 # Digit-Duel — 인수인계 스냅샷
 
+> **2026-09-11 · #201 온라인 아트 HotFix:** 출시 main에서 분기한 `hotfix/201-online-art`에서 HTTP 요청 예산·파일별 일시 실패 복구와 README 플레이 사진을 수정했다. 클라이언트 회귀101·브라우저34·Saturn 제품/미디어 PASS. 패치는 v0.4.8이며, [납품·운영](../hotfix/201/Mercury/delivery.md)과 [Issue201](https://github.com/ChangjoSung/Digit-Duel/issues/201)이 최신 CI·출시·역병합 상태 원본이다. main→dev→활성 Roblox/Unity 트랙 동기화까지 수행하며, 아래 이전 회차의 판정을 이번 수정의 검수 결과로 사용하지 않는다. Unity의 #182·#183은 CJ QA PASS, #195 CI7 기술 납품은 Unity 트랙에 있으며 미출시 기능을 이 hotfix에 섞지 않는다.
+
 > 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED.
 >
 > **2026-09-10 버전 재배번 ([#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · CJ 승인)**: HTML 완결분 `v0.4.7`→**`v0.4.6`**(Milestone13 · 열린 이슈 0 · 릴리스 대상), Roblox `v0.4.6`→**`v0.5.0`**(Milestone12 · #118 진행 중), Unity `v0.5.0`→**`v0.6.0`**(Milestone4 · 미착수). 버전 키 폴더 5개를 함께 옮겼고 대조는 [MOVES.csv](../milestone/MOVES.csv) 2차 이동 절에 있다. 잔여 기획 #119·#120·#123·#127은 Unity 이후로 보류해 `not planned`로 닫았다(삭제 아님).
