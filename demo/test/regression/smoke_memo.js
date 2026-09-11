@@ -14,13 +14,20 @@ function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); consol
    튜토리얼이 열려 있는 상태는 아래 ovHidden 이 제품의 오버레이 소유 상태로 구분한다. */
 const LS=H.setStorage(H.mkStorage({tutorialSeen:"1"}));
 const WANT=[["king","👑","왕"],["ally","🤝","동료"],["minion_fire","🔥","불 하수인"],["minion_grass","🌿","풀 하수인"],["minion_water","💧","물 하수인"],["minion_lightning","⚡","전기 하수인"],["bomb","💣","폭탄"],["trap","🪤","함정"]];
+/* #201 후속(2026-09-11): 보드·격자에 실제로 그려지는 모양. 함정만 폰트 독립 전용 도형(SYM_SVG)이고 나머지 7종은 종전 이모지 그대로다.
+   MEMO_OPTS 의 emoji 계약(WANT[i][1])은 바뀌지 않았다 — 바뀐 것은 그 기호를 무엇으로 그리는가뿐이다. */
+const SHAPE=WANT.map(w=>w[0]==="trap"?"sym:trap":w[1]);
 /* #128: 튜토리얼이 로드마다 자동으로 뜨면서 배경 inert 처리가 #overlay 엘리먼트를 **먼저 만들어 둔다** —
    "엘리먼트 미접근 = 열린 적 없음"이라는 옛 heuristic 은 더 이상 성립하지 않는다.
    대신 제품이 스스로 들고 있는 오버레이 소유 상태를 본다: modal() 이 true, close() 가 false 로 두는 유일한 값이다. */
 function ovHidden(T){ return !T.MEMO_UI.overlayOpen; }
 function cellOf(T,r,c){ return T.els.board.children.find(x=>x.dataset.r===r&&x.dataset.c===c); }
 function chipOf(T,r,c){ const cell=cellOf(T,r,c); return cell&&cell.children.find(x=>/^pc /.test(x.className)); }
-function guessOf(T,r,c){ const ch=chipOf(T,r,c); return ch&&/memo-guess/.test(ch.className)?ch.innerHTML.match(/class="guess"[^>]*>([^<]*)</)[1]:null; }
+/* #201 후속: 추측 자리는 이모지 글자이거나 전용 도형(SYM_SVG)이다. 도형이면 그 기호 키를 "sym:<키>" 로 돌려준다 —
+   어느 쪽이든 "무엇으로 보이는가"를 하나의 값으로 비교한다 (도형의 경우 폰트와 무관하다는 사실 자체가 판정 대상). */
+function guessOf(T,r,c){ const ch=chipOf(T,r,c); if(!ch||!/memo-guess/.test(ch.className)) return null;
+  const m=ch.innerHTML.match(/class="guess(?: sv)?"[^>]*>([\s\S]*?)<\/span>/); if(!m) return null;
+  const sv=m[1].match(/<svg class="symv" data-sym="([a-z_]+)"/); return sv?"sym:"+sv[1]:m[1]; }
 function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 · 폭탄 5,4[숲, 인접으로 보임] · 하수인 11,4 인접)
   H.freshPlay(T,mode); H.clearBoard(T);
   const me=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), king0=T.S.pieces.find(x=>x.owner===0&&x.type==="king");
@@ -39,7 +46,7 @@ function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 �
   ok(guessOf(T,2,4)===null&&chipOf(T,2,4).innerHTML==="?","A3 메모 없는 상대 말은 물음표");
   T.onCell(2,4);
   ok(!ovHidden(T)&&/정체 추측/.test(T.els.overlayBox.innerHTML)&&/role="group" aria-label="정체 추측 선택"/.test(T.els.overlayBox.innerHTML),"A4 물음표 상대 말 클릭 → 피커 팝업 (role=group·이름)");
-  ok(T.MEMO_UI.btns.length===8&&T.MEMO_UI.btns.every((b,i)=>b.dataset.key===WANT[i][0]&&b.getAttribute("type")==="button"&&b.getAttribute("aria-pressed")==="false"&&b.getAttribute("aria-label")===`${WANT[i][2]} ${WANT[i][1]} 추측`&&b.innerHTML.includes(WANT[i][1])&&b.innerHTML.includes(WANT[i][2])),"A5 버튼 8개: type·aria-label·aria-pressed=false·이모지+라벨");
+  ok(T.MEMO_UI.btns.length===8&&T.MEMO_UI.btns.every((b,i)=>b.dataset.key===WANT[i][0]&&b.getAttribute("type")==="button"&&b.getAttribute("aria-pressed")==="false"&&b.getAttribute("aria-label")===`${WANT[i][2]} ${WANT[i][1]} 추측`&&(WANT[i][0]==="trap"?/<svg class="symv" data-sym="trap"/.test(b.innerHTML):b.innerHTML.includes(WANT[i][1]))&&b.innerHTML.includes(WANT[i][2])),"A5 버튼 8개: type·aria-label·aria-pressed=false·기호(함정은 전용 도형)+라벨");
   ok(!/memoIn|<input/.test(T.els.overlayBox.innerHTML),"A6 자유 텍스트 input 없음");
   const ob=T.els.obBtns.children; ok(ob.length===2&&ob[0].textContent==="추측 삭제"&&ob[0].disabled===true&&ob[1].textContent==="닫기","A7 하단 버튼: 추측 삭제(메모 없으면 비활성)·닫기");
   ok(global.document.activeElement===T.MEMO_UI.btns[0],"A8 열리면 첫 선택지(또는 현재 선택)에 포커스");
@@ -52,7 +59,7 @@ function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 �
   T.onCell(2,4);
   ok(T.MEMO_UI.btns[6].getAttribute("aria-pressed")==="true"&&T.MEMO_UI.btns.filter(b=>b.getAttribute("aria-pressed")==="true").length===1&&T.els.obBtns.children[0].disabled===false&&global.document.activeElement===T.MEMO_UI.btns[6],"A13 다시 클릭: 현재 선택 aria-pressed=true·삭제 활성·현재 선택에 포커스");
   T.MEMO_UI.btns[0].onclick(); ok(T.S.memos[0][P.ek.id]==="king"&&guessOf(T,2,4)==="👑","A14 변경: 👑");
-  for(let i=0;i<8;i++){ T.onCell(2,4); T.MEMO_UI.btns[i].onclick(); ok(T.S.memos[0][P.ek.id]===WANT[i][0]&&guessOf(T,2,4)===WANT[i][1],"A15."+(i+1)+" 8종 각각 선택→보드 표시 "+WANT[i][1]); }
+  for(let i=0;i<8;i++){ T.onCell(2,4); T.MEMO_UI.btns[i].onclick(); ok(T.S.memos[0][P.ek.id]===WANT[i][0]&&guessOf(T,2,4)===SHAPE[i],"A15."+(i+1)+" 8종 각각 선택→보드 표시 "+SHAPE[i]); }
   /* #94: 현재 피커의 버튼 행(rowBtns)을 누른다 — 스텁 obBtns 는 이전 모달의 버튼을 지우지 않으므로 children[0/1] 은 첫 피커의 오래된 버튼이고,
      오래된 피커 콜백은 #94 계약상 무효(D7b)라 실제 브라우저처럼 "지금 열린 피커의 버튼"을 눌러야 한다. */
   T.onCell(2,4); rowBtns(T)[1].onclick(); ok(T.S.memos[0][P.ek.id]==="trap"&&ovHidden(T),"A16 닫기는 변경 없음");
@@ -136,7 +143,7 @@ function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 �
   ok(!/memo-guess/.test(JSON.stringify(T.els.board.children.map(c=>c.children.map(x=>x.className)))),"C3 P2 시점 보드에 memo-guess 클래스 0");
   T.onCell(11,4); ok(T.S.selected&&T.S.selected.id===P.em.id&&ovHidden(T),"C4 P2가 자기 말 클릭 → 선택 (피커 없음)");
   T.S.selected=null; T.onCell(12,4); T.MEMO_UI.btns[7].onclick();
-  ok(T.S.memos[1][P.me.id]==="trap"&&T.S.memos[0][P.ek.id]==="bomb"&&guessOf(T,12,4)==="🪤","C5 P2가 P1 하수인에 🪤 추측 — 각자 저장, P1 메모 유지");
+  ok(T.S.memos[1][P.me.id]==="trap"&&T.S.memos[0][P.ek.id]==="bomb"&&guessOf(T,12,4)==="sym:trap","C5 P2가 P1 하수인에 함정 도형 추측 — 각자 저장, P1 메모 유지");
   T.S.current=0; T.S.selected=null; T.render();
   ok(guessOf(T,2,4)==="💣"&&guessOf(T,12,4)===null&&/폭탄 추측/.test(T.els.sidePanel.innerHTML)&&!/함정 추측/.test(T.els.sidePanel.innerHTML),"C6 P1 시점 복귀: 자기 추측만 보임");
   ok(T.S.log.every(l=>!/추측|💣|🪤|👑|폭탄 추측/.test(l.msg))&&!/추측/.test(T.els.log?T.els.log.innerHTML:""),"C7 공용 로그에 추측 흔적 없음");

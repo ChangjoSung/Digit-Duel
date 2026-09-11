@@ -102,6 +102,15 @@
   .pc .icon.leader,.btok .bsprite.leader{image-rendering:auto;}
   .pc .face{width:32px; height:32px; display:flex; align-items:center; justify-content:center; font-size:24px; line-height:1;}
   .pc .face .nm{max-width:32px;}
+  /* #201 후속(2026-09-11): 전용 기호 도형(SYM_SVG) 자리. 글자가 아니라 벡터라 폰트 커버리지와 무관하고,
+     크기는 담는 자리가 정한다 — 보드 얼굴 32px · 정보 행 10px · 추측 격자 22px 로 기존 이모지와 같은 자리를 차지한다 */
+  .sym.sv,.guess.sv,.memo-opt .ico.sv{display:inline-flex; align-items:center; justify-content:center; line-height:0;}
+  .symv{display:block; width:100%; height:100%;}
+  .pc .face .sym.sv{width:32px; height:32px;}
+  .pc .info .sym.sv{width:10px; height:10px;}
+  .pc.memo-guess .guess.sv{width:22px; height:22px;} /* 반투명(.5)은 기존 .pc.memo-guess .guess 규칙이 그대로 적용한다 */
+  .memo-opt .ico.sv{width:22px; height:22px;}
+  .status .guess.sv{width:14px; height:14px; vertical-align:-2px;} /* 사이드 패널 추측 목록 — 한 줄 글자 높이에 맞춘다 */
   /* #89 글리프 폴백: 플랫폼에 그 이모지 글리프가 없을 때(예: 일부 Windows 의 🪤) 같은 뜻의 짧은 텍스트로 되돌린다 */
   .pc .face .sym.ng{font-size:11px; font-weight:bold; line-height:1.05;}
   .pc .info .sym.ng{font-size:9px;}
@@ -1146,9 +1155,34 @@ function glyphOk(ch){
   }catch(e){ ok=true; } // 측정 불가 환경에서는 기본 계약(이모지)을 유지한다
   GLYPH.cache[ch]=ok; return ok;
 }
-/* 기호 1개를 그린다 — 그릴 수 있으면 계약대로 이모지, 없으면 같은 뜻의 짧은 텍스트. 확정·추측이 같은 규칙을 쓴다 */
+/* #201 후속(2026-09-11 CJ 지시): 전용 기호 도형 — 폰트가 아니라 벡터로 그린다.
+   🪤(U+1FAA4)는 설치 폰트에 글리프가 없는 환경이 있어 종전에는 "함정" 글자로 되돌아갔다(위 glyphOk).
+   그 글자 폴백 대신 같은 뜻의 도형을 문서 안에 직접 그려 **어떤 폰트에도 의존하지 않는다**.
+   원본 자산은 Earth 납품 demo/assets/symbols/trap.svg 이고 아래 geometry 는 그 파일의 도형을 그대로 옮긴 사본이다
+   (인라인이라 HTTP 요청·캐시·실패 경로가 새로 생기지 않는다 — 미공개 말의 요청 목록과 상관관계를 만들지 않는다).
+   demo/test/hotfix/201/trap_icon_cdp.js 가 두 곳이 같은 도형인지 매 실행 대조한다. */
+const SYM_SVG={
+  trap:'<path d="M7 13h18v9H7z" fill="#87633e" stroke="#171e2b" stroke-width="1.5" stroke-linejoin="round"/>'
+      +'<path d="M3 14C3 7 8 3 16 3s13 4 13 11h-4l-1-4-3 3-2-5-3 4-3-4-2 5-3-3-1 4Z" fill="#d7e1e5" stroke="#171e2b" stroke-width="1.5" stroke-linejoin="round"/>'
+      +'<path d="M3 19c0 7 5 10 13 10s13-3 13-10h-4l-1 4-3-3-2 5-3-4-3 4-2-5-3 3-1-4Z" fill="#a9bec8" stroke="#171e2b" stroke-width="1.5" stroke-linejoin="round"/>'
+      +'<path d="M7 8c4-4 14-4 18 0M8 26c5 2 11 2 16 0" fill="none" stroke="#f3f5eb" stroke-width="1.25" stroke-linecap="round"/>'
+      +'<path d="M16 16h12" fill="none" stroke="#171e2b" stroke-width="3" stroke-linecap="round"/>'
+      +'<circle cx="15" cy="16.5" r="4" fill="#c99b58" stroke="#171e2b" stroke-width="1.5"/>'
+      +'<path d="M13 15h3" fill="none" stroke="#f0cf8b" stroke-width="1.5" stroke-linecap="round"/>'
+      +'<path d="M22 14v5m3-5v5m3-5v5" fill="none" stroke="#d7e1e5" stroke-width="1.5" stroke-linecap="round"/>'
+      +'<circle cx="4" cy="16.5" r="2" fill="#a9bec8" stroke="#171e2b" stroke-width="1.5"/>'};
+/* 기호 도형 1개. 크기는 담는 자리(.sym·.guess·.ico)의 CSS 가 정한다 — 보드 32px, 정보 행·메모 격자는 그 자리 크기 그대로 */
+function symSvgHtml(key){
+  const g=SYM_SVG[key]; if(!g) return "";
+  /* data-sym 은 **이미 정해진 그 기호가 무엇인가**만 적는다 — 이 함수는 정체가 공개됐거나(known) 뷰어가 스스로 적은 추측일 때만 불린다.
+     미공개 상대 말은 애초에 호출 경로에 들어오지 않으므로 이 속성이 새 정보를 새게 하지 않는다 (테스트·QA 의 식별자). */
+  return `<svg class="symv" data-sym="${key}" viewBox="0 0 32 32" focusable="false" aria-hidden="true" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+}
+/* 기호 1개를 그린다 — 전용 도형이 있으면 도형(폰트 무관), 없으면 그릴 수 있는 이모지, 그것도 없으면 같은 뜻의 짧은 텍스트.
+   확정·추측이 같은 규칙을 쓴다: 정체를 밝히는 것은 호출 여부이지 이 함수가 아니다 (미공개 말은 애초에 호출되지 않는다). */
 function glyphSpan(key,cls){
   const o=memoOpt(key); if(!o) return "";
+  if(SYM_SVG[key]) return `<span class="${cls} sv" aria-hidden="true">${symSvgHtml(key)}</span>`;
   return glyphOk(o.emoji)?`<span class="${cls}" aria-hidden="true">${o.emoji}</span>`
                          :`<span class="${cls} ng">${memoShort(key)}</span>`;
 }
@@ -1857,7 +1891,9 @@ function renderSide(){
   if(!isAI(S.current)||NET.mode||S.mode==="pve"){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기 · #94 온라인·PVE는 상대 턴·AI 턴에도 표시(메모 편집 가능)
     const mm=Object.entries(S.memos[p]).map(([id,k])=>{
       const x=S.pieces.find(z=>z.id===Number(id)), o=memoOpt(k);
-      return x&&x.alive&&x.placed&&o?`<div class="status"><span class="guess" aria-hidden="true">${o.emoji}</span> ${x.r}행 ${x.c}열 — ${o.ko} 추측${x.revealed?` (공개됨: ${idLabel(p,x)})`:""}</div>`:"";
+      /* #201 후속: 보드·추측 격자와 같은 도형을 이 목록에서도 쓴다 (전용 도형이 있는 기호만 · 뒤따르는 "— 함정 추측" 문구는 그대로) */
+      const sym=o&&SYM_SVG[k]?`<span class="guess sv" aria-hidden="true">${symSvgHtml(k)}</span>`:`<span class="guess" aria-hidden="true">${o?o.emoji:""}</span>`;
+      return x&&x.alive&&x.placed&&o?`<div class="status">${sym} ${x.r}행 ${x.c}열 — ${o.ko} 추측${x.revealed?` (공개됨: ${idLabel(p,x)})`:""}</div>`:"";
     }).filter(Boolean).join("");
     if(mm) h+=`<h2>📝 추측 메모</h2>${mm}<small>물음표 말 클릭으로 변경·삭제</small>`;
   }
@@ -4612,7 +4648,9 @@ function memoModal(pc){
   MEMO_UI.token=tk; // modal()이 토큰을 비운 뒤에 이 피커가 오버레이를 소유한다
   const grid=$("memoOpts"); MEMO_UI.btns=[]; MEMO_UI.piece=pc.id;
   for(const o of MEMO_OPTS){
-    const b=document.createElement("button"); b.className="memo-opt"; b.innerHTML=`<span class="ico" aria-hidden="true">${o.emoji}</span><span>${o.ko}</span>`;
+    /* #201 후속: 추측 격자의 기호도 보드와 **같은 도형**을 쓴다 — 한쪽만 이모지/글자로 갈라지지 않는다 (기존 aria-label 문구는 그대로) */
+    const b=document.createElement("button"); b.className="memo-opt";
+    b.innerHTML=`<span class="ico${SYM_SVG[o.key]?" sv":""}" aria-hidden="true">${SYM_SVG[o.key]?symSvgHtml(o.key):o.emoji}</span><span>${o.ko}</span>`;
     b.setAttribute("type","button"); b.setAttribute("aria-label",`${o.ko} ${o.emoji} 추측`); b.setAttribute("aria-pressed",o.key===cur?"true":"false"); b.dataset.key=o.key;
     b.onclick=()=>commit(o.key);
     grid.appendChild(b); MEMO_UI.btns.push(b);
