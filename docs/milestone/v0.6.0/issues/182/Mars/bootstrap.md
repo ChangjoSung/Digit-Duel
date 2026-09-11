@@ -1,7 +1,7 @@
 # #182 — Unity 최소 프로젝트 부트스트랩 (Mars_1)
 2026-09-11 · Mars_1(Claude Code) · Task `task_3b3b0acd5248` / Dispatch `ctx_f74c9bd47fde` / Run `run_e7acdb9f7900`
 
-**이 문서의 범위**: CJ 승인 순서 중 2단계(최소 프로젝트)까지의 실측 기록이다. **#182 전체 환경 준비 완료도, 이슈 종결 근거도 아니다.** Android 모듈·참조 구조 적용·APK 검증은 다음 Task다. 연결(#183) 결과는 [별도 보고](https://github.com/ChangjoSung/Digit-Duel/issues/183#issuecomment-5630340391)에 있다.
+**이 문서의 범위**: CJ 승인 순서 중 2단계(최소 프로젝트)까지의 실측 기록이다. **#182 전체 환경 준비 완료도, 이슈 종결 근거도 아니다.** Android 모듈·참조 구조 적용·APK 검증은 다음 Task다. 연결(#183) 결과는 [별도 보고](../../183/Mars/report.md)에 있다.
 
 ## 1. 확정 — 설치·버전
 
