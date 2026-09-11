@@ -12,10 +12,10 @@ Mercury는 임시 index/commit-tree로 Unity145파일+최종 빌드 래퍼 snaps
 
 Mars_2 최종 완료 `msg_41ae3fd6af94`는 기술 증거를 수락하고 release했다. 완료 metadata가 일부 폴더를 묶어 표기해 개별 파일 목록으로는 불충분하다. 실제 납품 파일은 Mercury의 정확한 Git staging/PR diff를 기준으로 삼는다. Worker의 'Saturn QA 대기' 문구는 앞서 완료된 독립 검수보다 오래된 인식이므로 현재 상태로 채택하지 않는다. [작업별 결과·자원 정산](orchestration-summary.md)에 정상 완료와 예외를 구분한다.
 
-초기 Hub DB 수동 열 추가는 남아 있다. [설치 후 Saturn 검수](https://github.com/ChangjoSung/Digit-Duel/issues/183#issuecomment-5630340391)에서 quick_check=ok를 확인했으나 안전한 사전 백업은 입증하지 못해 복원하지 않았다. 아래 설치 이력은 이 예외를 지우지 않는다.
+초기 Hub DB 수동 열 추가는 남아 있다. [설치 후 Saturn 검수](../../../issues/183/Mercury/saturn-mcp-review.md)에서 quick_check=ok를 확인했으나 안전한 사전 백업은 입증하지 못해 복원하지 않았다. 아래 설치 이력은 이 예외를 지우지 않는다.
 
 ## Bootstrap 재시도 인계 이력
-06:16 UTC: 새 Codex의 실제 MCP4콜 성공은 [독립 검수 기록](https://github.com/ChangjoSung/Digit-Duel/issues/183#issuecomment-5630340391)에 보관했다. 기본 사용자 설정까지 정상 CLI로 Unity 항목을 추가한 뒤 세 번째 새 세션에서 등록 유지·149도구 노출·실제 호출을 확인했다. 아래 기본/runtime 원본 가설은 조사 당시 관측이며 내부 복사 구현 전체를 확정하지 않는다.
+06:16 UTC: 새 Codex의 실제 MCP4콜 성공은 [독립 검수 기록](../../../issues/183/Mercury/codex-mcp-verification.md)에 보관했다. 기본 사용자 설정까지 정상 CLI로 Unity 항목을 추가한 뒤 세 번째 새 세션에서 등록 유지·149도구 노출·실제 호출을 확인했다. 아래 기본/runtime 원본 가설은 조사 당시 관측이며 내부 복사 구현 전체를 확정하지 않는다.
 
 Bootstrap 재시도 완료 보고 `msg_0764f3914dd3`의 filesModified에는 설명문과 저장소 밖 설정 경로가 섞였다. CLAUDE의 workspace 상대경로 계약에 따라 worker_done을 role_scope_mismatch로 수락 거부하고 PD가 Task 상태·result를 failed로 정정했다. 승인된 실제 파일·설정 변경은 보존하고 신규 Mars_2 `task_6152d4dd2b92`/`ctx_ffc9dbb61059`의 입력으로 이관한다. 기존 `ctx_f74c9bd47fde`의 release는 Orca `user_takeover`로 retained·processAction none이므로 강제 종료하지 않았다. 원본 보고와 Task 상태를 구분하며 정상 완료로 소급하지 않는다. 새로운 Mars_2에 Editor PID20300과 프로젝트 단일 writer를 명시적으로 이관했다.
 

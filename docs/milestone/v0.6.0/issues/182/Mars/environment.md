@@ -2,7 +2,7 @@
 
 2026-09-11 · Mars_2(Claude Code) · Task `task_6152d4dd2b92` / Dispatch `ctx_ffc9dbb61059` / Run `run_e7acdb9f7900`
 
-**선행**: [최소 프로젝트 부트스트랩](bootstrap.md) · [#183 연결 실측](https://github.com/ChangjoSung/Digit-Duel/issues/183#issuecomment-5630340391) · [PD 인계서](../Mercury/implementation-handoff.md)
+**선행**: [최소 프로젝트 부트스트랩](bootstrap.md) · [#183 연결 실측](../../183/Mars/report.md) · [PD 인계서](../Mercury/implementation-handoff.md)
 **대상**: `C:\Users\pc_77\orca\Digit-Duel\unity` · Editor `6000.6.0f1` · 브랜치 `infra/182-unity-environment`
 
 > 이 문서는 Mars_2가 실제로 실행해 관측한 것만 담는다. Saturn 독립 QA와 CJ 플레이 QA는 아직이며,
