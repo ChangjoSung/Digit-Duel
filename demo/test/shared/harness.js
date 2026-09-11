@@ -211,6 +211,12 @@ function load(htmlPath,opts){
   ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artDirOfFighter:typeof artDirOfFighter==="function"?artDirOfFighter:undefined,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
   GLYPH,glyphOk,glyphSpan,memoShort,pieceMemoKey,
   artFail:window.artFail,artSpriteFail:window.artSpriteFail,artPortraitFail:window.artPortraitFail,
+  /* #201 (v0.4.8) 일시적 로드 실패의 유한 복구 (기준판 로드 호환: 부재 시 undefined) */
+  ART_RETRY:typeof ART_RETRY!=="undefined"?ART_RETRY:undefined, artFilesOf:typeof artFilesOf==="function"?artFilesOf:undefined,
+  artScheduleFile:typeof artScheduleFile==="function"?artScheduleFile:undefined, artProbeFile:typeof artProbeFile==="function"?artProbeFile:undefined,
+  artBattleOk:typeof artBattleOk==="function"?artBattleOk:undefined, artGone:typeof artGone==="function"?artGone:undefined, artMarkSettled:typeof artMarkSettled==="function"?artMarkSettled:undefined,
+  artScheduleRecovery:typeof artScheduleRecovery==="function"?artScheduleRecovery:undefined, artProbe:typeof artProbe==="function"?artProbe:undefined,
+  artRerender:typeof artRerender==="function"?artRerender:undefined, artLeaderReady:typeof artLeaderReady==="function"?artLeaderReady:undefined,
   rosterInfo:window.rosterInfo,battleModal,toggleRoster:window.toggleRoster, // #89 하수인 아트 연결 (표시 계층)
   NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
   netServerDefault,netActor,netAction,netPrepare,netConnect,netPump,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
