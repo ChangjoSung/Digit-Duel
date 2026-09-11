@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-10T06:26:01.251Z",
+  "generatedAt": "2026-09-11T07:33:58.801Z",
   "creator": {
     "userId": "11639564357"
   },
@@ -51,6 +51,12 @@
       "assetType": "Image",
       "sha256": "fdfb88e307ab61f02fffc55a5cd3a10366dfdb09ed6749df06d3870843a5ca51",
       "file": "roblox/assets/actions/heal_48.png"
+    },
+    "action48_help": {
+      "assetId": 117686468357006,
+      "assetType": "Image",
+      "sha256": "7eb9947cbff04dd5c7f8ecfca87dfc4f3e84783fe7da5a3266a65e122c4782a3",
+      "file": "roblox/assets/actions/help_48.png"
     },
     "action48_resign": {
       "assetId": 89858284434955,
@@ -562,6 +568,12 @@
       "sha256": "8e04b6c9bb10c4f82628c245cef5485fde1ecef5cbfa5b0bbb088cec6587ca5d",
       "file": "roblox/assets/lobby/textures/pillar_albedo.png"
     },
+    "lobby_signpost_albedo": {
+      "assetId": 130203639199563,
+      "assetType": "Image",
+      "sha256": "f9c7006e1382a03a2a9980b81f0392c2a8a485058012b430d34963632f3172ab",
+      "file": "roblox/assets/lobby/textures/signpost_albedo.png"
+    },
     "lobby_table_sign": {
       "assetId": 81355261059939,
       "assetType": "Image",
@@ -609,6 +621,12 @@
       "assetType": "Model",
       "sha256": "54942bbb1d9d6a157fbade941f6c42d546ceacd38da7818336b833f9028bfcc7",
       "file": "roblox/assets/lobby/meshes/pillar.fbx"
+    },
+    "lobbymesh_signpost": {
+      "assetId": 87905334493844,
+      "assetType": "Model",
+      "sha256": "aaa27fd16193d5333b8e658b1301309cbe77e52705dab7bca713abe5f31fa8df",
+      "file": "roblox/assets/lobby/meshes/signpost.fbx"
     },
     "lobbymesh_wall": {
       "assetId": 109668449225498,
@@ -874,6 +892,66 @@
       "sha256": "263e9f8c36e5c68c0d8f0c6ad3b59360aa6f5b1fdcb3da6d2a2ce0544577ab55",
       "file": "roblox/assets/tokens/trace_48.png"
     },
+    "tut512_battle": {
+      "assetId": 107551497939012,
+      "assetType": "Image",
+      "sha256": "efad49b1ba0cc5204747310714df75c2ff631b1f829007a55cbc7e0188116687",
+      "file": "roblox/assets/tutorial/tut_battle.png"
+    },
+    "tut512_bomb": {
+      "assetId": 71613150167702,
+      "assetType": "Image",
+      "sha256": "a169212dead98a8427039a2bbd66d982f163b7a69de886a211992355e47daee2",
+      "file": "roblox/assets/tutorial/tut_bomb.png"
+    },
+    "tut512_burn": {
+      "assetId": 111006186931337,
+      "assetType": "Image",
+      "sha256": "6da90c70111abd867d717dccddb1510d9715239c2e4696fbd6cf60982e735075",
+      "file": "roblox/assets/tutorial/tut_burn.png"
+    },
+    "tut512_capture": {
+      "assetId": 96520938335000,
+      "assetType": "Image",
+      "sha256": "f73683066b3c8afce2437737d5178fafc16649dedd0fec0c82f5ef587cab27fc",
+      "file": "roblox/assets/tutorial/tut_capture.png"
+    },
+    "tut512_check": {
+      "assetId": 131254450915809,
+      "assetType": "Image",
+      "sha256": "053d456017fec0282436c76ccc5e14b4b430ee6fac3128a9ffe98fc29c259f75",
+      "file": "roblox/assets/tutorial/tut_check.png"
+    },
+    "tut512_move": {
+      "assetId": 116388449676696,
+      "assetType": "Image",
+      "sha256": "e637bad99b00a6f92a43e4b9e8a244d48540a2fc063981e401aa5eddc2c0a84b",
+      "file": "roblox/assets/tutorial/tut_move.png"
+    },
+    "tut512_pieces": {
+      "assetId": 137069102752869,
+      "assetType": "Image",
+      "sha256": "a5322b2d50c6addd76129f68b981998bd0cffd6977f37d22cf9fb1981b57980d",
+      "file": "roblox/assets/tutorial/tut_pieces.png"
+    },
+    "tut512_search": {
+      "assetId": 72344709271479,
+      "assetType": "Image",
+      "sha256": "58014cfe08622c6cf5d1306e9ef8f97332d2baf797bc021ae9511f2f887519de",
+      "file": "roblox/assets/tutorial/tut_search.png"
+    },
+    "tut512_tele": {
+      "assetId": 113885481593268,
+      "assetType": "Image",
+      "sha256": "cfb535875471458c22c158a42cd8d5868d9ea2dd50defd4c8020ead18c7b2bde",
+      "file": "roblox/assets/tutorial/tut_tele.png"
+    },
+    "tut512_win": {
+      "assetId": 112717667930533,
+      "assetType": "Image",
+      "sha256": "2ecbd0748f978ce09e756a9f9c18918c3a7dbb9fac458662e9d7782b1855d15c",
+      "file": "roblox/assets/tutorial/tut_win.png"
+    },
     "ui_badge": {
       "assetId": 114424112696313,
       "assetType": "Image",
@@ -999,6 +1077,12 @@
       "assetType": "Image",
       "sha256": "a5c5da6f668b9d6eef14e132458b264b3fb0a97fbce4075471020139c2f7516b",
       "file": "roblox/assets/ui/panel_side.png"
+    },
+    "ui_panel_sign": {
+      "assetId": 124420212383362,
+      "assetType": "Image",
+      "sha256": "60c898402f0ae233bf65d10f4b2bb1f9cb00e8995d2078d9f75f5e9a5ee43c23",
+      "file": "roblox/assets/ui/panel_sign.png"
     },
     "ui_panel_window": {
       "assetId": 106805303149551,

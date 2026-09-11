@@ -21,7 +21,9 @@ local TABLE_CENTERS = { { -15, -25 }, { 15, -25 }, { -15, 5 }, { 15, 5 } }
 
 -- 임포트 축 보정 요(rad). CJ 실측(2026-09-09): FBX 임포트에서 Z 가 뒤집혀 의자 등받이가 앞(판 쪽)에 놓였다 → 앞뒤가 있는 메시(의자·판·벽)는 π.
 -- 대칭 메시(책상·바닥·기둥)는 0. 판 진영(row1 빨강 = B 쪽)이나 벽 장식면이 반대로 보이면 해당 항목만 0/π 로 바꾼다
-local MESH_YAW = { desk = 0, chair = math.pi, board = math.pi, floor = 0, wall = math.pi, pillar = 0, bot = 0 } -- bot: Earth 가 -Z 정면으로 납품 (요청서)
+-- signpost: Earth 가 앞면 -Z 로 납품했고 배치 CFrame 이 이미 스폰을 향하므로 보정 0.
+-- (Earth 인계서 4장: 의자의 180도 보정을 간판에 그대로 복사하지 말 것 — Studio 에서 정면을 확인한다)
+local MESH_YAW = { desk = 0, chair = math.pi, board = math.pi, floor = 0, wall = math.pi, pillar = 0, bot = 0, signpost = 0 }
 -- 좌석 방향 보정(rad): Seat 정면(-Z)이 판을 향하도록 lookAt 으로 두었다. 아바타가 판을 등지고 앉으면 math.pi 로 바꾼다
 local SEAT_YAW = 0
 -- 메시 외접 상자 중심 기준 크기 (로비 manifest)
@@ -33,8 +35,9 @@ local MESH_SIZE = {
 	wall = Vector3.new(140, 12, 0.89),
 	pillar = Vector3.new(1.2, 12, 1.2),
 	bot = Vector3.new(1.8, 3.2, 1.8), -- 착석 자세 로봇 (earth-ai-window-request.md #7)
+	signpost = Vector3.new(4, 4.6, 0.35), -- 튜토리얼 간판 (earth-tutorial-request.md · 밑단 피벗 · bbox 중심 (0,2.3,0))
 }
-local MESH_TEX = { desk = "desk_albedo", chair = "chair_albedo", board = "board_grid", floor = "floor_tile", wall = "wall_albedo", pillar = "pillar_albedo", bot = "bot_albedo" }
+local MESH_TEX = { desk = "desk_albedo", chair = "chair_albedo", board = "board_grid", floor = "floor_tile", wall = "wall_albedo", pillar = "pillar_albedo", bot = "bot_albedo", signpost = "signpost_albedo" }
 
 local tables = {} -- [id] = { model, desk, board, seats = {A=Seat,B=Seat}, status, occupants = {A=Player?,B=Player?}, holds = {A=userId|true,..}, bots = {..}, startPrompt }
 local seatedCb, vacatedCb, startCb = nil, nil, nil
@@ -270,6 +273,8 @@ local function buildSeat(id, side, pos, lookAt, color, parent)
 	return seat, { back, legs }
 end
 
+-- 테이블 머리 위 상태 팻말(BillboardGui). 로비 튜토리얼 간판은 buildTutorialSign 이다 — 이름을 겹치지 말 것.
+-- (2026-09-11: 겹쳤다가 아래 호출이 나중 선언을 집어 model.Parent 에 숫자가 들어갔다 — 로비가 통째로 죽는다)
 local function buildSign(id, desk)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Sign"
@@ -308,7 +313,8 @@ end
 -- 메시(signpost)는 Earth 납품 대기 — 없으면 아래 Part 조합(판 + 기둥)이 그대로 쓰인다. 판 앞면은 글자를 굽지 않고
 -- SurfaceGui 로 띄운다 — 나중에 문구를 바꾸거나 번역할 수 있어야 한다 (earth-tutorial-request.md).
 local SIGN_POS = Vector3.new(0, 0, 40)
-local function buildSign(parent)
+local signParts = nil -- buildTutorialSign 이 채우고 applyLobbyMeshes 가 메시로 바꿔 끼운다
+local function buildTutorialSign(parent)
 	local model = Instance.new("Model")
 	model.Name = "TutorialSign"
 	local face = CFrame.lookAt(SIGN_POS, SIGN_POS + Vector3.new(0, 0, 1)) -- 스폰(+Z) 쪽을 바라본다
@@ -322,18 +328,36 @@ local function buildSign(parent)
 	}, model)
 	post.CanCollide = true
 	board.CanCollide = true
+	-- 보이는 몸통(메시)과 **글자를 받는 판**을 나눈다. 간판 전체 MeshPart 에 SurfaceGui 를 붙이면
+	-- 글자가 기둥까지 포함한 bbox 에 펼쳐진다 (Earth 인계서 4장). Board 는 프롬프트·글자 캐리어로 남긴다.
+	signParts = { model = model, post = post, board = board, face = face }
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = Enum.NormalId.Front -- 판의 +Z 면. face 가 이미 스폰을 향하게 돌려 뒀다
 	sg.CanvasSize = Vector2.new(400, 220)
 	sg.AlwaysOnTop = false
 	sg.Parent = board
+	local panel = Art.ui("panel_sign") -- 있으면 글자 바탕을 깔아 나무결 위에서도 읽히게 한다
+	if panel then
+		local bg = Instance.new("ImageLabel")
+		bg.Size = UDim2.fromScale(1, 1)
+		bg.BackgroundTransparency = 1
+		bg.Image = panel
+		bg.ScaleType = Enum.ScaleType.Slice
+		bg.SliceCenter = Rect.new(12, 12, 116, 52) -- 원본 중앙 사각형 좌표 (여백값이 아니다)
+		bg.SliceScale = 1
+		bg.ResampleMode = Enum.ResamplerMode.Pixelated
+		bg.Parent = sg
+	end
 	local txt = Instance.new("TextLabel")
-	txt.Size = UDim2.fromScale(1, 1)
+	txt.Size = UDim2.new(1, -28, 1, -24)
+	txt.Position = UDim2.new(0, 14, 0, 12)
 	txt.BackgroundTransparency = 1
 	txt.Text = "📖 게임 방법\n\n[E] 눌러서 보기"
 	txt.TextScaled = true
 	txt.Font = Enum.Font.GothamBold
-	txt.TextColor3 = Color3.fromRGB(40, 26, 14)
+	-- 패널 중앙이 어두워 검은 글씨는 묻힌다 (Earth 인계서 3장) — 밝은 색으로 둔다
+	txt.TextColor3 = Color3.fromRGB(232, 236, 245)
+	txt.TextStrokeTransparency = 0.4
 	txt.Parent = sg
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "튜토리얼 보기"
@@ -468,6 +492,14 @@ local function applyLobbyMeshes(folder, floorPart, wallParts)
 		{ CFrame.new(70, 6, 0), math.pi / 2 }, -- 동: 안쪽 = -X
 		{ CFrame.new(-70, 6, 0), -math.pi / 2 }, -- 서: 안쪽 = +X
 	}
+	if signParts then -- 튜토리얼 간판: 몸통만 메시로 바꾸고 글자·프롬프트 캐리어(Board)는 그대로 둔다
+		-- MeshPart 의 CFrame 은 **bbox 중심**이다. 밑단 피벗 기준 (0,2.3,0) 만큼 올려 바닥에 세운다
+		if placeMesh("signpost", signParts.face * CFrame.new(0, 2.3, 0), signParts.model) then
+			hide(signParts.post)
+			hide(signParts.board)
+			signParts.post.CanCollide = false -- 충돌은 Board 하나로 (메시와 이중으로 두지 않는다)
+		end
+	end
 	local anyWall = false
 	for _, w in walls do
 		if placeMesh("wall", w[1] * CFrame.Angles(0, w[2], 0) * CFrame.new(0, 0, -0.055), folder) then
@@ -496,7 +528,7 @@ function Lobby.build()
 	for _, w in { { 0, 70, 140, 1 }, { 0, -70, 140, 1 }, { 70, 0, 1, 140 }, { -70, 0, 1, 140 } } do
 		table.insert(wallParts, part({ Name = "Wall", Size = Vector3.new(w[3], 12, w[4]), Position = Vector3.new(w[1], 6, w[2]), Color = Color3.fromRGB(40, 42, 52), Material = Enum.Material.Concrete }, folder))
 	end
-	buildSign(folder)
+	buildTutorialSign(folder)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Size = Vector3.new(10, 1, 10)
 	spawn.Position = Vector3.new(0, 0.5, 48)
@@ -518,7 +550,7 @@ function Lobby.build()
 	tplFolder.Parent = ReplicatedStorage
 
 	task.spawn(function()
-		for _, name in { "desk", "chair", "board", "floor", "wall", "pillar", "bot" } do
+		for _, name in { "desk", "chair", "board", "floor", "wall", "pillar", "bot", "signpost" } do
 			templates[name] = loadMeshTemplate(Art.lobbyMeshId(name), name)
 		end
 		local loaded = 0

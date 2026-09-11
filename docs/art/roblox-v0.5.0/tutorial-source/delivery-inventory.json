@@ -1,0 +1,282 @@
+{
+  "schema": "earth-tutorial-delivery-v1",
+  "date": "2026-09-11",
+  "role": "Earth",
+  "source_head": "678586e7276996cd81c56ad462671b6904167972",
+  "runtime_assets": 14,
+  "runtime_bytes": 134605,
+  "source_format": "Native pixel palette/rows JSON and packed Blender images; Blender internal art commands authorized by user; no game/tool scripts",
+  "mesh": {
+    "id": "signpost",
+    "tris": 88,
+    "objects": 1,
+    "size_stud": [
+      4,
+      4.6,
+      0.35
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ],
+    "bounds_min": [
+      -2,
+      0,
+      -0.175
+    ],
+    "bounds_max": [
+      2,
+      4.6,
+      0.175
+    ],
+    "bbox_center": [
+      0,
+      2.3,
+      0
+    ],
+    "up": "Y",
+    "front": "-Z",
+    "bake_space_transform": true,
+    "custom_properties": [],
+    "front_face_count": 1,
+    "front_face_vertices": 4,
+    "front_uv_blender": [
+      [
+        0.019984375685453415,
+        0.4574715793132782
+      ],
+      [
+        0.019984375685453415,
+        0.9800283908843994
+      ],
+      [
+        0.9800156354904175,
+        0.9800283908843994
+      ],
+      [
+        0.9800156354904175,
+        0.4574715793132782
+      ]
+    ],
+    "fbx_roundtrip": "88 triangles; origin0; Blender dimensions4x0.35x4.6; one UV and one material; no custom properties",
+    "proof_avatar_height_stud": 5
+  },
+  "texture": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA8",
+    "alpha": [
+      0,
+      255
+    ],
+    "lighting_baked": false,
+    "source": "roblox/assets/lobby/textures/desk_albedo.png",
+    "source_sha256": "69a16f17ac4ab548fd5514646fa5a1420b8bc8968ac2001af30c4e1a6b0cfeef",
+    "method": "Original project walnut patch sampled on 4px blocks; horizontal plank joints; opaque UV islands with external transparent padding; front/back island intentionally shared"
+  },
+  "files": [
+    {
+      "path": "roblox/assets/tutorial/tut_win.png",
+      "bytes": 6991,
+      "sha256": "2ecbd0748f978ce09e756a9f9c18918c3a7dbb9fac458662e9d7782b1855d15c"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_pieces.png",
+      "bytes": 7120,
+      "sha256": "a5322b2d50c6addd76129f68b981998bd0cffd6977f37d22cf9fb1981b57980d"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_move.png",
+      "bytes": 7052,
+      "sha256": "e637bad99b00a6f92a43e4b9e8a244d48540a2fc063981e401aa5eddc2c0a84b"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_search.png",
+      "bytes": 7533,
+      "sha256": "58014cfe08622c6cf5d1306e9ef8f97332d2baf797bc021ae9511f2f887519de"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_battle.png",
+      "bytes": 7091,
+      "sha256": "efad49b1ba0cc5204747310714df75c2ff631b1f829007a55cbc7e0188116687"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_bomb.png",
+      "bytes": 8809,
+      "sha256": "a169212dead98a8427039a2bbd66d982f163b7a69de886a211992355e47daee2"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_capture.png",
+      "bytes": 6426,
+      "sha256": "f73683066b3c8afce2437737d5178fafc16649dedd0fec0c82f5ef587cab27fc"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_tele.png",
+      "bytes": 6972,
+      "sha256": "cfb535875471458c22c158a42cd8d5868d9ea2dd50defd4c8020ead18c7b2bde"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_burn.png",
+      "bytes": 7245,
+      "sha256": "6da90c70111abd867d717dccddb1510d9715239c2e4696fbd6cf60982e735075"
+    },
+    {
+      "path": "roblox/assets/tutorial/tut_check.png",
+      "bytes": 5935,
+      "sha256": "053d456017fec0282436c76ccc5e14b4b430ee6fac3128a9ffe98fc29c259f75"
+    },
+    {
+      "path": "roblox/assets/actions/help_48.png",
+      "bytes": 625,
+      "sha256": "7eb9947cbff04dd5c7f8ecfca87dfc4f3e84783fe7da5a3266a65e122c4782a3"
+    },
+    {
+      "path": "roblox/assets/ui/panel_sign.png",
+      "bytes": 798,
+      "sha256": "60c898402f0ae233bf65d10f4b2bb1f9cb00e8995d2078d9f75f5e9a5ee43c23"
+    },
+    {
+      "path": "roblox/assets/lobby/meshes/signpost.fbx",
+      "bytes": 19900,
+      "sha256": "aaa27fd16193d5333b8e658b1301309cbe77e52705dab7bca713abe5f31fa8df"
+    },
+    {
+      "path": "roblox/assets/lobby/textures/signpost_albedo.png",
+      "bytes": 42108,
+      "sha256": "f9c7006e1382a03a2a9980b81f0392c2a8a485058012b430d34963632f3172ab"
+    },
+    {
+      "path": "roblox/assets/lobby/meshes/signpost.obj",
+      "bytes": 5557,
+      "sha256": "2e3621ffc1c62050ddaacd25166b3a13e724b4b29b89d29c08083f7ddc1a64d8"
+    },
+    {
+      "path": "roblox/assets/lobby/meshes/signpost.mtl",
+      "bytes": 266,
+      "sha256": "024a05751b5d9af6caa96cd20be118bb22658ab3f6126d0dbe63156f8cb957d8"
+    },
+    {
+      "path": "docs/art/roblox-v0.5.0/tutorial-source/native-assets.json",
+      "bytes": 397249,
+      "sha256": "ed71da110976cf5f9df3154b6c2bc29d60386419e7a93be00f80acc84af10660"
+    },
+    {
+      "path": "docs/art/roblox-v0.5.0/tutorial-source/tutorial-art.blend",
+      "bytes": 302059,
+      "sha256": "a0773d3aa4fd3b17c1c5e58d70d77856dcc5c1a41a6c48c7d1c8b7fe4af3f3d8"
+    }
+  ],
+  "thumbnail": {
+    "path": "roblox/assets/marketing/digit-duel-thumbnail-v1.png",
+    "size": [
+      1672,
+      941
+    ],
+    "bytes": 2678576,
+    "sha256": "b3730ea4b50aa841784a4ed18a30a1b36eba5222debba3c500f6aa0cd449171c",
+    "runtime_manifest": false,
+    "uploaded": false
+  },
+  "scope": {
+    "code_modified": false,
+    "git_writes": false,
+    "upload": false,
+    "studio_test": false
+  },
+  "supporting_art": [
+    {
+      "path": "docs/art/roblox-v0.5.0/review/tutorial-actions-compare.png",
+      "bytes": 6111,
+      "sha256": "bfd636bc234b7f6f5649d6037281e63c2e1215ced3182f5e57a1047ff1138cbe"
+    },
+    {
+      "path": "docs/art/roblox-v0.5.0/review/tutorial-color-proof.png",
+      "bytes": 263,
+      "sha256": "445dd972d792606bb0ccb60f117782d902feba247797af4eb8922829dc2a8655"
+    },
+    {
+      "path": "docs/art/roblox-v0.5.0/review/tutorial-panels-contact.png",
+      "bytes": 66144,
+      "sha256": "c6ed811d23f4af3d68a9b81befde1c55617c17da57b34ad34b770261d999f378"
+    },
+    {
+      "path": "docs/art/roblox-v0.5.0/review/tutorial-sign-angle.png",
+      "bytes": 458919,
+      "sha256": "3f10b095690ee5de041ba12f027ce0682435a3d85566f65f52ab39acddaaa2df"
+    },
+    {
+      "path": "docs/art/roblox-v0.5.0/review/tutorial-sign-front.png",
+      "bytes": 413330,
+      "sha256": "01898c3b523bd3b70352d2f8a15144da4d5fd61e26c3738170a09e53ecc5b232"
+    },
+    {
+      "path": "docs/art/roblox-v0.5.0/review/tutorial-sign-scale.png",
+      "bytes": 671037,
+      "sha256": "a7f6dc9be86576272e968d9fe31fa7ffba85e0b13a04292d0a5600c60e0ef661"
+    },
+    {
+      "path": "docs/art/roblox-v0.5.0/review/tutorial-sign-side.png",
+      "bytes": 348249,
+      "sha256": "ae29616f26aee32e5e252996286adf3edca9b8833937931e8e95409804faea80"
+    },
+    {
+      "path": "roblox/assets/marketing/digit-duel-thumbnail-v1.png",
+      "bytes": 2678576,
+      "sha256": "b3730ea4b50aa841784a4ed18a30a1b36eba5222debba3c500f6aa0cd449171c"
+    }
+  ],
+  "files_modified": [
+    "roblox/assets/lobby/manifest.csv",
+    "roblox/assets/manifest.csv",
+    "docs/art/roblox-v0.5.0/earth-tutorial-report.md",
+    "docs/art/roblox-v0.5.0/review/tutorial-actions-compare.png",
+    "docs/art/roblox-v0.5.0/review/tutorial-color-proof.png",
+    "docs/art/roblox-v0.5.0/review/tutorial-panels-contact.png",
+    "docs/art/roblox-v0.5.0/review/tutorial-sign-angle.png",
+    "docs/art/roblox-v0.5.0/review/tutorial-sign-front.png",
+    "docs/art/roblox-v0.5.0/review/tutorial-sign-scale.png",
+    "docs/art/roblox-v0.5.0/review/tutorial-sign-side.png",
+    "docs/art/roblox-v0.5.0/thumbnail-source/README.md",
+    "docs/art/roblox-v0.5.0/tutorial-source/README.md",
+    "docs/art/roblox-v0.5.0/tutorial-source/delivery-inventory.json",
+    "docs/art/roblox-v0.5.0/tutorial-source/native-assets.json",
+    "docs/art/roblox-v0.5.0/tutorial-source/tutorial-art.blend",
+    "docs/roblox/claude-tutorial-thumbnail-handoff.md",
+    "roblox/assets/actions/help_48.png",
+    "roblox/assets/lobby/meshes/signpost.fbx",
+    "roblox/assets/lobby/meshes/signpost.mtl",
+    "roblox/assets/lobby/meshes/signpost.obj",
+    "roblox/assets/lobby/textures/signpost_albedo.png",
+    "roblox/assets/marketing/digit-duel-thumbnail-v1.png",
+    "roblox/assets/tutorial/README.md",
+    "roblox/assets/tutorial/tut_battle.png",
+    "roblox/assets/tutorial/tut_bomb.png",
+    "roblox/assets/tutorial/tut_burn.png",
+    "roblox/assets/tutorial/tut_capture.png",
+    "roblox/assets/tutorial/tut_check.png",
+    "roblox/assets/tutorial/tut_move.png",
+    "roblox/assets/tutorial/tut_pieces.png",
+    "roblox/assets/tutorial/tut_search.png",
+    "roblox/assets/tutorial/tut_tele.png",
+    "roblox/assets/tutorial/tut_win.png",
+    "roblox/assets/ui/panel_sign.png"
+  ],
+  "qa": {
+    "verdict": "PASS",
+    "reviewer": "Saturn",
+    "files_modified_by_reviewer": [],
+    "png_source_channels_compared": 5940224,
+    "png_source_channel_mismatches": 0,
+    "root_manifest_old_rows_preserved": 153,
+    "lobby_manifest_old_rows_preserved": 15,
+    "root_manifest_added": 12,
+    "lobby_manifest_added": 2,
+    "fbx_independent_reimport": "PASS",
+    "studio": "not_run",
+    "markdown_local_links_checked": 77,
+    "markdown_broken_links": 0
+  }
+}
