@@ -142,6 +142,16 @@ function Art.fx(key: string?): string? -- hit|explosion|trap|shield|heal|burn|we
 	return key and url(AssetIds["fx96_" .. key]) or nil
 end
 
+-- #124 왕·동료 픽셀 아트 (HTML 데모 납품본 미러) — kind = king|ally, size = 64|256.
+-- 하수인과 달리 **자체 색을 가진 그림**이라 팀 틴트를 곱하지 않는다. 판 위 말은 여전히 흰 토큰 + 팀 색이다
+-- (판에서는 색이 편을 가르는 유일한 단서라 바꾸면 안 된다).
+function Art.leader(kind: string?, size: number): string?
+	if kind ~= "king" and kind ~= "ally" then
+		return nil
+	end
+	return url(AssetIds["leader" .. size .. "_" .. kind])
+end
+
 -- 튜토리얼 단계 삽화 (512×288) — key = win|pieces|move|search|battle|bomb|capture|tele|burn|check
 -- 납품 전에는 nil 이고 창이 그림 칸을 숨긴 채 글만 보여 준다 (earth-tutorial-request.md)
 function Art.tut(key: string?): string?

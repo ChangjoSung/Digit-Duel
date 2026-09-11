@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T07:33:58.801Z",
+  "generatedAt": "2026-09-11T08:53:33.853Z",
   "creator": {
     "userId": "11639564357"
   },
@@ -531,6 +531,30 @@
       "assetType": "Image",
       "sha256": "cc9d76e42a09f00d14225584539fb44a800e02f407e580635215c7bb3d684c36",
       "file": "roblox/assets/items/reserve_64.png"
+    },
+    "leader256_ally": {
+      "assetId": 83036389618783,
+      "assetType": "Image",
+      "sha256": "ae79061fb79664f0b2eb60969ed1be06badd8bf49a56b825db4bcb88e5aed900",
+      "file": "roblox/assets/leaders/ally/battle256.png"
+    },
+    "leader256_king": {
+      "assetId": 124961360575282,
+      "assetType": "Image",
+      "sha256": "6574a91ad61e36e6b350a180b5f9be4343ccfd4f6a3201642d13af98cd7f3b0f",
+      "file": "roblox/assets/leaders/king/battle256.png"
+    },
+    "leader64_ally": {
+      "assetId": 79680120582187,
+      "assetType": "Image",
+      "sha256": "8da97f28aae44ba9139cfd7deff2ae43db51983db1db6d15250ee78512c37dd5",
+      "file": "roblox/assets/leaders/ally/icon64.png"
+    },
+    "leader64_king": {
+      "assetId": 79471336307127,
+      "assetType": "Image",
+      "sha256": "3058c20a691ced2d9bd5d944e0465f35a9b176285097cc4eb5f50affedf6d4da",
+      "file": "roblox/assets/leaders/king/icon64.png"
     },
     "lobby_board_grid": {
       "assetId": 130695506858819,

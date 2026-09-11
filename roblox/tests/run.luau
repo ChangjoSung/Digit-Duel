@@ -458,6 +458,13 @@ else
 		for _, k in { "king", "ally", "bomb", "trap", "unknown" } do
 			ok(isUrl(Art.token(k, 64)), "token64 " .. k)
 		end
+		-- #124 왕·동료 전용 아트 (전투 카드·포획 수령 목록). 판 위 말은 여전히 흰 토큰 + 팀 색이다
+		for _, k in { "king", "ally" } do
+			ok(isUrl(Art.leader(k, 256)), "leader256 " .. k)
+			ok(isUrl(Art.leader(k, 64)), "leader64 " .. k)
+		end
+		eq(Art.leader("bomb", 256), nil, "왕·동료가 아니면 전용 아트 없음")
+		eq(Art.leader(nil, 256), nil, "nil 종류 → nil")
 		for _, el in Data.ELEMS do
 			ok(isUrl(Art.element(el)), "element " .. el)
 		end
