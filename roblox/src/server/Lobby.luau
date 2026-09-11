@@ -304,6 +304,48 @@ local function buildSign(id, desk)
 	return status
 end
 
+-- 📖 튜토리얼 간판 — 스폰(0,·,48)에서 테이블(z ≤ 5)로 걸어가는 길목에 세워 **입장하자마자 보이게** 한다 (CJ 2026-09-11).
+-- 메시(signpost)는 Earth 납품 대기 — 없으면 아래 Part 조합(판 + 기둥)이 그대로 쓰인다. 판 앞면은 글자를 굽지 않고
+-- SurfaceGui 로 띄운다 — 나중에 문구를 바꾸거나 번역할 수 있어야 한다 (earth-tutorial-request.md).
+local SIGN_POS = Vector3.new(0, 0, 40)
+local function buildSign(parent)
+	local model = Instance.new("Model")
+	model.Name = "TutorialSign"
+	local face = CFrame.lookAt(SIGN_POS, SIGN_POS + Vector3.new(0, 0, 1)) -- 스폰(+Z) 쪽을 바라본다
+	local post = part({
+		Name = "Post", Size = Vector3.new(0.35, 2.4, 0.35), Color = Color3.fromRGB(96, 68, 44),
+		Material = Enum.Material.Wood, CFrame = face * CFrame.new(0, 1.2, 0),
+	}, model)
+	local board = part({
+		Name = "Board", Size = Vector3.new(4, 2.2, 0.25), Color = Color3.fromRGB(140, 104, 66),
+		Material = Enum.Material.WoodPlanks, CFrame = face * CFrame.new(0, 3.5, 0),
+	}, model)
+	post.CanCollide = true
+	board.CanCollide = true
+	local sg = Instance.new("SurfaceGui")
+	sg.Face = Enum.NormalId.Front -- 판의 +Z 면. face 가 이미 스폰을 향하게 돌려 뒀다
+	sg.CanvasSize = Vector2.new(400, 220)
+	sg.AlwaysOnTop = false
+	sg.Parent = board
+	local txt = Instance.new("TextLabel")
+	txt.Size = UDim2.fromScale(1, 1)
+	txt.BackgroundTransparency = 1
+	txt.Text = "📖 게임 방법\n\n[E] 눌러서 보기"
+	txt.TextScaled = true
+	txt.Font = Enum.Font.GothamBold
+	txt.TextColor3 = Color3.fromRGB(40, 26, 14)
+	txt.Parent = sg
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "튜토리얼 보기"
+	prompt.ObjectText = "게임 방법"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = board
+	model.Parent = parent
+	return model
+end
+
 local function buildTable(id, cx, cz, parent)
 	local model = Instance.new("Model")
 	model.Name = "Table" .. id
@@ -454,6 +496,7 @@ function Lobby.build()
 	for _, w in { { 0, 70, 140, 1 }, { 0, -70, 140, 1 }, { 70, 0, 1, 140 }, { -70, 0, 1, 140 } } do
 		table.insert(wallParts, part({ Name = "Wall", Size = Vector3.new(w[3], 12, w[4]), Position = Vector3.new(w[1], 6, w[2]), Color = Color3.fromRGB(40, 42, 52), Material = Enum.Material.Concrete }, folder))
 	end
+	buildSign(folder)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Size = Vector3.new(10, 1, 10)
 	spawn.Position = Vector3.new(0, 0.5, 48)

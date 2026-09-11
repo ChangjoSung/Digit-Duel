@@ -142,6 +142,12 @@ function Art.fx(key: string?): string? -- hit|explosion|trap|shield|heal|burn|we
 	return key and url(AssetIds["fx96_" .. key]) or nil
 end
 
+-- 튜토리얼 단계 삽화 (512×288) — key = win|pieces|move|search|battle|bomb|capture|tele|burn|check
+-- 납품 전에는 nil 이고 창이 그림 칸을 숨긴 채 글만 보여 준다 (earth-tutorial-request.md)
+function Art.tut(key: string?): string?
+	return key and url(AssetIds["tut512_" .. key]) or nil
+end
+
 -- 메모가 달린 말 배지 (내 화면 전용 표시 — 무엇을 적었는지는 담지 않는다)
 function Art.memoToken(): string?
 	return url(AssetIds["token64_memo"])
