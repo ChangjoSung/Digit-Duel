@@ -13,7 +13,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p5.0"
+local CLIENT_VERSION = "0.5.0-p5.1"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -1746,7 +1746,7 @@ local function renderRecruit(pd)
 			rbtn(i .. ". " .. Data.TYPE_KO[x.type], function()
 				recruitUi.recvId = x.id
 				goto_("mode")
-			end, "primary", true, Art.token(x.type, 64))
+			end, "primary", true, Art.leader(x.type, 64) or Art.token(x.type, 64)) -- #124 왕·동료 전용 그림 (내 말만 나오는 목록이라 팀 색이 필요 없다)
 		end
 		backBtn("root")
 		giveUpBtn()
@@ -1878,6 +1878,11 @@ end
 local function fighterImage(fv)
 	if fv.isCap or fv.pieceType == "minion" then
 		return Art.battle(fv.artRosterId), nil
+	end
+	-- #124 왕·동료는 전용 그림이 있으면 그걸 쓴다. 없으면 종전대로 팀 색 토큰
+	local lead = Art.leader(fv.pieceType, 256)
+	if lead then
+		return lead, nil
 	end
 	return Art.token(fv.pieceType, 128), Art.TEAM[fv.owner]
 end

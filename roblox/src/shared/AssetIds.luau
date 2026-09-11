@@ -1,6 +1,6 @@
 --!strict
 -- AssetIds.luau — 생성 파일 (roblox/tools/upload_assets.js). 직접 수정하지 말 것.
--- 생성 2026-09-11T07:33:58.801Z · 업로더 user 11639564357 · 183개
+-- 생성 2026-09-11T08:53:33.853Z · 업로더 user 11639564357 · 187개
 -- 키: icon_/battle_/portrait_<종> · token64_/token128_<토큰> (Image) · lobby_<텍스처> (Image) · lobbymesh_<메시> · mesh_unknown (Model)
 return {
 	action48_bag = 104734828695963, -- Image
@@ -91,6 +91,10 @@ return {
 	item64_cure = 103715538259962, -- Image
 	item64_potion = 74002672987469, -- Image
 	item64_reserve = 81169495429336, -- Image
+	leader256_ally = 83036389618783, -- Image
+	leader256_king = 124961360575282, -- Image
+	leader64_ally = 79680120582187, -- Image
+	leader64_king = 79471336307127, -- Image
 	lobby_board_grid = 130695506858819, -- Image
 	lobby_bot_albedo = 114930353227456, -- Image
 	lobby_chair_albedo = 71532932636607, -- Image
