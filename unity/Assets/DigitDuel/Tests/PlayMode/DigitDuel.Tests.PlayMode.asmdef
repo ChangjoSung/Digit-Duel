@@ -1,0 +1,27 @@
+{
+    "name": "DigitDuel.Tests.PlayMode",
+    "rootNamespace": "DigitDuel.Tests.PlayMode",
+    "references": [
+        "DigitDuel.Core",
+        "DigitDuel.Application",
+        "DigitDuel.Infrastructure",
+        "DigitDuel.Presentation",
+        "UnityEngine.TestRunner",
+        "Unity.InputSystem",
+        "UnityEngine.UI",
+        "Unity.InputSystem.TestFramework"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

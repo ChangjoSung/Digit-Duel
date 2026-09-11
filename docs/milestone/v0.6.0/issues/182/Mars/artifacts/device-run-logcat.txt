@@ -1,0 +1,16 @@
+﻿# #182 실기 실행 로그 발췌 (com.creat2ve.digitduel.dev)
+# 기기: Samsung SM_S948N / Android 16 (API 36) / arm64-v8a
+# 일련번호와 계정 값은 싣지 않는다. 앱 PID 로만 필터링한 앱 자신의 로그다.
+
+09-11 15:50:32.192 27787 27816 I Unity   : ApplicationInfo 'com.creat2ve.digitduel.dev', Version '1.0', Min API Level '26', Target API Level '36'
+09-11 15:50:35.065 27787 27816 I Unity   : [DigitDuel.Boot] awake screen=1440x3120 orientation=Portrait portrait=True safeArea=(x:0.00, y:0.00, width:1440.00, height:2981.00) applied=True anchors=(x:0.00, y:0.00, width:1.00, height:0.96) pause=0 resume=0 focusLost=0 focusGained=0 pointerPress=0
+09-11 15:50:35.068 27787 27816 I Unity   : [DigitDuel.Boot] pause=False screen=1440x3120 orientation=Portrait portrait=True safeArea=(x:0.00, y:0.00, width:1440.00, height:2981.00) applied=True anchors=(x:0.00, y:0.00, width:1.00, height:0.96) pause=0 resume=1 focusLost=0 focusGained=0 pointerPress=0
+09-11 15:50:35.068 27787 27816 I Unity   : [DigitDuel.Boot] focus=True focusGained=1 focusLost=0
+09-11 15:50:35.105 27787 27816 I Unity   : [DigitDuel.Boot] start screen=1440x3120 orientation=Portrait portrait=True safeArea=(x:0.00, y:0.00, width:1440.00, height:2981.00) applied=True anchors=(x:0.00, y:0.00, width:1.00, height:0.96) pause=0 resume=1 focusLost=0 focusGained=1 pointerPress=0
+09-11 15:50:35.218 27787 27816 I Unity   : [DigitDuel.Boot] asset loaded key=BootProbe/BootProbeSprite sprite=BootProbeSprite texture=sactx-0-64x64-ETC2-BootProbeAtlas-cead4da9 liveHandles=1
+09-11 15:51:11.969 27787 27816 I Unity   : [DigitDuel.Boot] pointer press #1 at (720.00, 1620.00) device=Touchscreen2
+09-11 15:51:13.001 27787 27816 I Unity   : [DigitDuel.Boot] pointer press #2 at (400.00, 2220.00) device=Touchscreen2
+09-11 15:51:15.109 27787 27816 I Unity   : [DigitDuel.Boot] focus=False focusGained=1 focusLost=1
+09-11 15:51:15.931 27787 27816 I Unity   : [DigitDuel.Boot] pause=True screen=1440x3120 orientation=Portrait portrait=True safeArea=(x:0.00, y:0.00, width:1440.00, height:2981.00) applied=True anchors=(x:0.00, y:0.00, width:1.00, height:0.96) pause=1 resume=1 focusLost=1 focusGained=1 pointerPress=2
+09-11 15:51:19.189 27787 27816 I Unity   : [DigitDuel.Boot] pause=False screen=1440x3120 orientation=Portrait portrait=True safeArea=(x:0.00, y:0.00, width:1440.00, height:2981.00) applied=True anchors=(x:0.00, y:0.00, width:1.00, height:0.96) pause=1 resume=2 focusLost=1 focusGained=1 pointerPress=2
+09-11 15:51:19.330 27787 27816 I Unity   : [DigitDuel.Boot] focus=True focusGained=2 focusLost=1

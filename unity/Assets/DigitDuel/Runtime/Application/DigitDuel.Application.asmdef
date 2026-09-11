@@ -1,0 +1,16 @@
+{
+    "name": "DigitDuel.Application",
+    "rootNamespace": "DigitDuel.Application",
+    "references": [
+        "DigitDuel.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

@@ -1,6 +1,6 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> **현재 Unity 준비 상태 · 2026-09-11:** CJ의 v0.6.0 요청을 분석해 [Milestone4](https://github.com/ChangjoSung/Digit-Duel/milestone/4)에 #182 환경·#183 MCP·#184 온라인·#185 데이터·#186 Core·#187 UI를 OPEN으로 등록했다. `milestone/v0.6.0`은 dev에서 분기하고 필수 CI6·PR 보호를 적용했다. [현재 분석·등록 기록](../milestone/v0.6.0/reports/Mercury/registration.md)과 [인덱스](../milestone/v0.6.0/README.md)가 Unity 인수인계 원본이다. GDD13 본문9·DL60 반영. Unity 설치·실연결·게임 포팅 완료가 아니며 UI Toolkit/서버 스택/추가 아트는 미확정이다. 아래 기록의 Unity 미착수는 제품 구현 기준으로 유지하며, 당시 버전·검증 이력은 소급 변경하지 않는다.
+> **현재 Unity 실행 상태 · 2026-09-11:** #182 Unity6000.6.0f1·Android 모듈11개·min26/target36 ARM64 IL2CPP 개발 기반과 #183 로컬 stdio MCP의 기술 검증을 완료했다. 새 Codex/Claude 실제 호출·임시 scene 변경/복구·다중 Editor 선택, Unity Edit19/Play21, MCP 회귀46개, Saturn 독립 최종 검수 PASS. 삼성 Android16 기기에 APK를 설치해 세로/safe area·터치·홈 복귀·Atlas를 확인했고, 캐시 없는 짧은 공백 경로 Git checkout에서 재검사·최종 래퍼 APK 빌드도 성공했다. [납품·실행 안내](../milestone/v0.6.0/issues/182/Mercury/delivery.md), [작업별 정산](../milestone/v0.6.0/issues/182/Mercury/orchestration-summary.md)을 따른다. 통합 PR·필수 CI6·CJ 수락 상태의 원본은 [Issue182](https://github.com/ChangjoSung/Digit-Duel/issues/182)·[Issue183](https://github.com/ChangjoSung/Digit-Duel/issues/183)다. CJ QA 전 이슈를 닫지 않으며 #185 이후 게임/UI/서버 구현은 별도다. 초기 Hub DB 수동 변경은 보존 중이고 무결성 검사만 통과했다. bootstrap metadata failed/user_takeover retained와 최초 소스 QA release_unknown 예외도 남긴다. 아래 과거 기록은 당시 상태다.
 
 > 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED.
 >
