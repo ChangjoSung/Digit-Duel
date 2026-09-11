@@ -1,0 +1,70 @@
+<!--
+  DigitDuel.Core 의 **실제 소스**를 Unity 없이 컴파일하는 CI 전용 섀도 프로젝트다 (#195).
+
+  왜 unity/ 밖에 있나
+    unity/.gitignore 가 *.csproj 를 무시하고, Unity 는 프로젝트 폴더 안의 csproj 를 자기가 만든
+    것으로 취급한다. 여기 두면 Unity 는 이 파일을 보지 않고 우리는 추적할 수 있다.
+    (저장소 루트 .gitignore 도 *.csproj 를 무시하므로 compile/.gitignore 가 되살린다.)
+
+  왜 프로젝트마다 폴더가 따로인가
+    두 csproj 를 한 폴더에 두면 obj/project.assets.json 을 공유한다. 마지막에 restore 한 쪽의
+    그래프가 남아 다른 쪽 빌드가 간헐적으로 깨진다(실측). 폴더를 나눠 각자 bin·obj 를 갖는다.
+
+  무엇을 증명하나
+    Core 는 asmdef 에서 noEngineReferences: true 로 선언된 순수 C# 층이다. 그 선언이 사실인지
+    **실제 컴파일로** 확인한다 — UnityEngine 타입이 하나라도 들어오면 여기서 깨진다.
+    문법·타입 오류, C# 9 를 넘는 문법, .NET Standard 2.1 에 없는 BCL API 도 함께 잡힌다.
+
+  외부 컴파일러의 한계 — 정확히 읽을 것
+    · 이것은 **Unity 컴파일이 아니다**. Roslyn 버전과 참조 어셈블리가 Unity 번들과 같지 않다.
+      실패는 거의 항상 진짜지만, **통과가 Unity 컴파일을 보장하지 않는다**.
+    · Unity 의 조건부 심볼(UNITY_EDITOR·UNITY_ANDROID 등)이 정의되지 않는다. 그 심볼로 갈라지는
+      코드는 여기서 다른 가지를 탄다.
+    · 직렬화·IL2CPP·스트리핑·도메인 리로드 동작은 전혀 검증하지 않는다.
+    · Infrastructure·Presentation·Editor·Tests 는 엔진·에디터 참조가 있어 **대상이 아니다**.
+      스텁이나 가짜 UnityEngine.dll 로 흉내내지 않는다 — 거짓 초록을 만드는 짓이다.
+
+  언어 수준: Unity 6000.6 공식 C# 문서가 C# 9 를 명시한다. 그보다 새 문법이 들어오면 Unity 에서
+  깨지므로 여기서 먼저 깨지게 둔다.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <AssemblyName>DigitDuel.Core</AssemblyName>
+    <RootNamespace>DigitDuel.Core</RootNamespace>
+
+    <!-- 소스는 아래에서 명시적으로만 넣는다. 기본 glob 은 이 폴더를 훑어 엉뚱한 것을 잡는다. -->
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+
+    <!-- 패키지 의존성 0. 참조 어셈블리는 SDK 에 동봉된 netstandard2.1 타기팅 팩뿐이다. -->
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 실제 Unity 소스. 복사본이 아니라 그 파일 자체를 컴파일한다. -->
+    <UnitySource Include="$(MSBuildThisFileDirectory)../../../../../unity/Assets/DigitDuel/Runtime/Core/**/*.cs" />
+    <Compile Include="@(UnitySource)" />
+  </ItemGroup>
+
+  <!--
+    소스가 0개면 MSBuild 는 조용히 **빈 어셈블리**를 만들고 초록으로 끝난다. 폴더가 옮겨지거나
+    이름이 바뀌었을 때 가드만 사라지고 아무도 모르는 상태가 된다. 그래서 명시적으로 떨어뜨린다.
+  -->
+  <PropertyGroup>
+    <UnitySourceRoot>$(MSBuildThisFileDirectory)../../../../../unity/Assets/DigitDuel/Runtime/Core</UnitySourceRoot>
+  </PropertyGroup>
+
+  <Target Name="FailOnEmptyUnitySourceSet" BeforeTargets="CoreCompile">
+    <Error Condition=" !Exists('$(UnitySourceRoot)') "
+           Text="소스 폴더가 없다: $(UnitySourceRoot). unity/Assets/DigitDuel/Runtime/Core 가 옮겨졌거나 이름이 바뀌었다." />
+    <Error Condition=" '@(UnitySource)' == '' "
+           Text="폴더는 있는데 컴파일 대상 .cs 가 하나도 없다: $(UnitySourceRoot). 빈 어셈블리로 통과시키지 않는다." />
+  </Target>
+
+</Project>

@@ -1,5 +1,7 @@
 # #183 로컬 Unity MCP 사용과 검증
 
+> 2026-09-11 후속 수락: CJ가 #182·#183 QA Test PASS를 명시해 두 이슈를 종결했다. 아래 검증 당시의 대기·미실시 기록은 이력이며 시험을 추가 실행했다고 소급하지 않는다. Unity 전용 CI 후속은 [#195](https://github.com/ChangjoSung/Digit-Duel/issues/195)다.
+
 2026-09-11 · Mercury. 현재 PC에서 새 Codex·Claude 세션의 실제 Unity MCP 호출을 확인했다. 기존에 실행 중이던 에이전트의 도구 목록이 자동 갱신된다고 보장하지 않으므로 **새 세션에서 사용한다.**
 
 ## 사용

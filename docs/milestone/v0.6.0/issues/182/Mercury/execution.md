@@ -1,5 +1,7 @@
 # #182·#183 실행 순서·진행 원장
 
+> 2026-09-11 후속 수락: CJ가 #182·#183 QA Test PASS를 명시해 두 이슈를 종결했다. 아래 검증 당시의 대기·미실시 기록은 이력이며 시험을 추가 실행했다고 소급하지 않는다. Unity 전용 CI 후속은 [#195](https://github.com/ChangjoSung/Digit-Duel/issues/195)다.
+
 ## 최종 기술 검증 상태 — 2026-09-11
 
 [납품·실행 안내](delivery.md)에 원본 실기 APK와 새 체크아웃 APK를 구분해 기록했다. Unity6000.6.0f1·Android 공식 모듈11개, 새 Codex/Claude 실제 로컬 MCP, 임시 scene 생성/복구와 동시 Editor 프로젝트 지정 검증을 완료했다. Unity Edit19/19·Play21/21과 [Saturn 최종 소스 검수](saturn-source-review.md) PASS, MCP 회귀46/46·독립 최종 검수 PASS를 확인했다. 통합 PR·CI·CJ 수락의 최신 상태는 [Issue182](https://github.com/ChangjoSung/Digit-Duel/issues/182)·[Issue183](https://github.com/ChangjoSung/Digit-Duel/issues/183)에 기록한다. CJ 수락 전 이슈를 닫지 않는다.

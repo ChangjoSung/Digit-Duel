@@ -372,3 +372,80 @@ jobs:
       # 6) 실제 산출물이 만들어지는지 (project.json 경로·트리 포함).
       - name: Rojo 빌드
         run: rojo build default.project.json -o "$RUNNER_TEMP/DigitDual.rbxl"
+
+  # ── F. Unity 구조·순수 C#·MCP ────────────────────────────────────────────────
+  # 무엇을 하는가 / 무엇을 하지 않는가 — 이름을 잘못 읽지 않도록 먼저 적는다.
+  #   하는 것: ① unity/ 추적 파일의 정적 정합성 ② Core·Application **실제 소스**를 두 어셈블리로
+  #            진짜 컴파일 ③ MCP 스모크 도구(tools/unity/mcp_smoke.js)의 회귀.
+  #   하지 않는 것: Unity Editor 를 열지 않는다. EditMode·PlayMode 를 돌리지 않는다. APK 를 만들지
+  #            않는다. 라이브 Editor·MCP 서버에 붙지 않는다. **라이선스도 secret 도 쓰지 않는다.**
+  #   그래서 이 잡이 초록이어도 "Unity 프로젝트가 컴파일된다"는 보장은 **없다**. Roblox 의 E 가
+  #   luau-compile 로 전 소스를 컴파일하는 것과 같은 수준이 아니다 — Luau 는 컴파일러가 오프라인
+  #   바이너리지만 Unity 의 C# 컴파일에는 Editor 설치와 인증이 필요하다. 실제 Editor 검사는
+  #   인증·실행 환경을 따로 입증한 뒤 별도로 활성화한다 (#195 분석).
+  #
+  # 왜 조건부 실행이 없는가: `paths:` 필터나 잡 수준 `if:` 로 건너뛰지 않는다. 이 workflow 가 있는
+  #   곳에서는 **항상** 돈다. unity/ 가 없거나 필수 파일이 지워지면 성공이 아니라 **실패**다 —
+  #   프로젝트가 사라진 것을 초록으로 넘기면 게이트가 아니라 장식이다.
+  #   (GitHub 문서: 워크플로가 path/branch 필터로 건너뛰어지면 그 검사는 Pending 으로 남아 PR 이
+  #    영영 머지되지 않는다. 그래서 필터 자체를 쓰지 않는다.)
+  unity-structure-csharp-mcp:
+    name: F. Unity 구조·순수 C#·MCP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false      # 이 잡은 git 히스토리를 읽지 않는다 (fetch-depth 기본 1).
+                                          # 검사기는 `git ls-files` 로 **추적 목록**만 보므로 얕은 클론으로 충분하다.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}   # 검사기·MCP 테스트용 (외부 패키지 0)
+      # .NET SDK 10 (stable). Core·Application 두 어셈블리를 netstandard2.1 / C# 9 로 컴파일하는
+      # 용도뿐이다. NuGet 패키지를 하나도 받지 않는다 — 참조는 SDK 동봉 타기팅 팩뿐이다.
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      # 검사기 자체의 회귀가 먼저다 — 각 규칙이 막아야 할 회귀를 임시 디렉터리 픽스처에 실제로
+      # 넣고 떨어지는지 본다(음성 대조). 오탐 방지 사례(빈 폴더 meta·점이 든 폴더 이름·
+      # Editor/Build 아래 정상 소스·#if UNITY_EDITOR 보호)도 같은 파일에서 확인한다.
+      # 저장소에 쓰지 않는다.
+      - name: Unity 구조 검사기 회귀 (음성 대조 포함)
+        run: node --test tools/unity/ci/unity_project_check.test.js
+
+      # 추적 파일 정적 정합성. 기대값은 tools/unity/ci/project-contract.json 이 원본이고
+      # Android Player 값의 원본은 AndroidPlayerConfigurator.cs 의 const 다 (검사기가 파싱한다).
+      - name: Unity 프로젝트 구조 검사
+        run: node tools/unity/ci/unity_project_check.js --verbose
+
+      # 실제 C# 컴파일. **어셈블리를 둘로 나눠** Application → Core 한 방향만 참조하게 두었으므로,
+      # Core 가 Application 을 쓰기 시작하면 Core 빌드가 깨진다 — asmdef 정적 검사(C7)가 보는
+      # "선언" 과 달리 이쪽은 컴파일 결과로 같은 경계를 확인한다.
+      # 대상은 noEngineReferences: true 인 두 층뿐이다. Infrastructure·Presentation·Editor·Tests 는
+      # 엔진·에디터 참조가 있어 Unity 없이 컴파일할 수 없고, 가짜 UnityEngine 스텁으로 흉내내지 않는다.
+      - name: 순수 C# 컴파일 — DigitDuel.Core (netstandard2.1 · C# 9)
+        run: dotnet build tools/unity/ci/compile/DigitDuel.Core/DigitDuel.Core.csproj -c Release --nologo
+      - name: 순수 C# 컴파일 — DigitDuel.Application (Core 참조)
+        run: dotnet build tools/unity/ci/compile/DigitDuel.Application/DigitDuel.Application.csproj -c Release --nologo
+
+      # 산출물이 실제로 나왔는지 확인한다. csproj 의 FailOnEmptyUnitySourceSet 가 빈 소스 집합을
+      # 막지만, 두 DLL 이 모두 생겼는지까지 봐야 "두 어셈블리를 컴파일했다" 가 사실이 된다.
+      - name: 두 어셈블리 산출 확인
+        run: |
+          set -euo pipefail
+          core=tools/unity/ci/compile/DigitDuel.Core/bin/Release/netstandard2.1/DigitDuel.Core.dll
+          app=tools/unity/ci/compile/DigitDuel.Application/bin/Release/netstandard2.1/DigitDuel.Application.dll
+          for dll in "$core" "$app"; do
+            test -s "$dll" || { echo "산출물이 없다: $dll"; exit 1; }
+            echo "OK $dll ($(stat -c%s "$dll") bytes)"
+          done
+
+      # MCP 점검 도구의 회귀 (#183). 라이브 Editor·Unity CLI·MCP 서버를 쓰지 않는다 —
+      # 가짜 자식 프로세스를 주입해 JSON-RPC 계약만 본다.
+      - name: MCP 스모크 도구 회귀 (Editor 없이)
+        run: node --test tools/unity/mcp_smoke.test.js

@@ -1,5 +1,5 @@
 # #183 — Unity CLI·MCP와 Codex·Claude 연결
-2026-09-11 · Mercury(PD) · 기술 검증 완료, 통합·CJ 수락 상태는 아래 GitHub Issue를 따른다.
+2026-09-11 · Mercury(PD) · CJ QA Test PASS로 수락·CLOSED. 실제 미실시 시험·설치 예외 이력은 보존한다.
 
 - [GitHub Issue](https://github.com/ChangjoSung/Digit-Duel/issues/183)가 범위·AC·현재 상태의 원본이다.
 - 순서: CLI·에이전트 설정 준비를 먼저 수행하고 #182 최소 프로젝트 이후 실제 Editor 호출을 검증한다. #182 전체 완료를 기다리지 않는다. 직접 CLI 경로를 기본으로 확보하며 MCP도 별도 검증한다.

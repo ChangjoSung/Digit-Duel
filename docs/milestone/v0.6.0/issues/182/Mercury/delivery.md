@@ -1,5 +1,7 @@
 # #182 Unity·Android 개발 기반 검증
 
+> 2026-09-11 후속 수락: CJ가 #182·#183 QA Test PASS를 명시해 두 이슈를 종결했다. 아래 검증 당시의 대기·미실시 기록은 이력이며 시험을 추가 실행했다고 소급하지 않는다. Unity 전용 CI 후속은 [#195](https://github.com/ChangjoSung/Digit-Duel/issues/195)다.
+
 2026-09-11 · Mercury. 개발 기반 납품이며 게임 포팅과 CJ 수락은 별도다. 새 체크아웃 import·40개 검사·최종 래퍼 APK 빌드를 통과했다. 통합 PR·필수 CI6·CJ 수락의 최신 상태는 [Issue182](https://github.com/ChangjoSung/Digit-Duel/issues/182)에 기록한다.
 
 ## 구성과 실행
