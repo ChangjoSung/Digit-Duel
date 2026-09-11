@@ -1,5 +1,5 @@
 # #182 — Unity 6·Android 기본 환경
-2026-09-11 · Mercury(PD) · 기술 검증 완료, 통합·CJ 수락 상태는 아래 GitHub Issue를 따른다.
+2026-09-11 · Mercury(PD) · CJ QA Test PASS로 수락·CLOSED. 실제 미실시 시험·설치 예외 이력은 보존한다.
 
 - [GitHub Issue](https://github.com/ChangjoSung/Digit-Duel/issues/182)가 범위·AC·현재 상태의 원본이다.
 - 순서: #183 CLI 준비 → #182 최소 프로젝트 → #183 실제 연결 → #182 본구성·Android 검증. 직접 CLI와 MCP 연결을 APK 검증과 구분한다.

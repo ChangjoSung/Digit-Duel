@@ -1,5 +1,5 @@
 # v0.6.0 — Unity 포팅
-[Milestone 4](https://github.com/ChangjoSung/Digit-Duel/milestone/4) · **2026-09-11 #182·#183 기술 검증 완료·CJ 수락 대기 / Unity 제품 미출시**
+[Milestone 4](https://github.com/ChangjoSung/Digit-Duel/milestone/4) · **2026-09-11 #182·#183 CJ QA PASS·CLOSED / #195 Unity CI 적용 / Unity 제품 미출시**
 
 CJ의 네 안건(MCP·환경·HTML 포팅·온라인)을 독립 검증 가능한 여섯 목표로 정리했다. 테이블과 Android UI를 분리해 데이터 오류와 화면 적합성을 각자 검증한다. 서버는 **등록만**이며 담당자를 임의로 지정하지 않았다.
 
@@ -7,6 +7,7 @@ CJ의 네 안건(MCP·환경·HTML 포팅·온라인)을 독립 검증 가능한
 |---|---|---|---|
 | [#182](https://github.com/ChangjoSung/Digit-Duel/issues/182) | Unity 6·Android 기본 환경 | 최초 준비 | Mars |
 | [#183](https://github.com/ChangjoSung/Digit-Duel/issues/183) | Unity CLI·MCP와 Codex·Claude 연결 | CLI 준비 병행 / Editor 시험은 #182 최소 프로젝트 이후 | Mars |
+| [#195](https://github.com/ChangjoSung/Digit-Duel/issues/195) | Unity 전용 CI·트랙 병합 검사 | #182·#183 CJ PASS | Mars |
 | [#185](https://github.com/ChangjoSung/Digit-Duel/issues/185) | 정적 TSV·타입 생성·데이터 검증 | #182 / 스키마 분석은 선행 가능 | Mars |
 | [#186](https://github.com/ChangjoSung/Digit-Duel/issues/186) | 순수 C# 규칙·AI·로컬 세션 | #182·#185 | Mars |
 | [#187](https://github.com/ChangjoSung/Digit-Duel/issues/187) | Android UI Toolkit 검증·화면·자산 | #182 이후 PoC / 전체 통합은 #185·#186 | Mars |
@@ -29,7 +30,7 @@ CJ의 네 안건(MCP·환경·HTML 포팅·온라인)을 독립 검증 가능한
 
 ## 브랜치
 트랙 `milestone/v0.6.0`은 dev `f6bbc7a`에서 분기했다. `이슈 브랜치 →(squash) 트랙 →(merge) dev →(merge) main` 정책을 따른다.
-트랙은 필수 CI6·strict·PR 필수·관리자 적용·force push/삭제 금지다. 첫 준비 PR에서 #181의 milestone/** workflow 변경을 연결한다. 기존 CI6는 Unity 제품 빌드 검증이 아니다.
+트랙은 strict·PR 필수·관리자 적용·force push/삭제 금지를 유지한다. #181의 `milestone/**` workflow 트리거는 연결됐다. #195에서 기존 A/B/B2/C/D/E에 `F. Unity 구조·순수 C#·MCP`를 추가한다. F는 구조 정합성·Core/Application 두 어셈블리의 실제 C# 컴파일·MCP 회귀를 검사한다. 실제 Unity Editor 테스트나 Android APK 빌드를 자동 실행하는 것은 아니다. [분석·한계](issues/195/Mercury/analysis.md), [적용 결과](https://github.com/ChangjoSung/Digit-Duel/issues/195)를 따른다. F의 실제 PR 성공을 확인한 뒤 Unity 트랙만 필수 7개로 확장하며, main/dev/Roblox 트랙의 기존 필수 6개는 보존한다.
 
 ## 기록
 - [Mercury 전체 분석·공식 출처](reports/Mercury/unity-port-analysis.md)

@@ -1,0 +1,49 @@
+<!--
+  DigitDuel.Application 의 **실제 소스**를 Unity 없이 컴파일하는 CI 전용 섀도 프로젝트다 (#195).
+  전제·한계·폴더 구조의 이유는 ../DigitDuel.Core/DigitDuel.Core.csproj 머리말과 동일하다.
+
+  왜 어셈블리를 둘로 나누나
+    한 프로젝트에 두 층을 합쳐 넣으면 Application → Core 방향만 있는지 **컴파일러가 확인하지
+    못한다**. 따로 컴파일하고 ProjectReference 를 한쪽에만 걸어야, Core 가 Application 의 타입을
+    쓰는 순간 Core 빌드가 깨진다. asmdef 정적 검사(C7)가 선언을 보는 데 비해 이쪽은 실제
+    컴파일 결과로 같은 경계를 확인한다 — 두 검사는 서로를 대체하지 않는다.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <AssemblyName>DigitDuel.Application</AssemblyName>
+    <RootNamespace>DigitDuel.Application</RootNamespace>
+
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <UnitySource Include="$(MSBuildThisFileDirectory)../../../../../unity/Assets/DigitDuel/Runtime/Application/**/*.cs" />
+    <Compile Include="@(UnitySource)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 이 방향만 존재한다. Core 쪽에는 Application 참조가 없다. -->
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../DigitDuel.Core/DigitDuel.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <UnitySourceRoot>$(MSBuildThisFileDirectory)../../../../../unity/Assets/DigitDuel/Runtime/Application</UnitySourceRoot>
+  </PropertyGroup>
+
+  <Target Name="FailOnEmptyUnitySourceSet" BeforeTargets="CoreCompile">
+    <Error Condition=" !Exists('$(UnitySourceRoot)') "
+           Text="소스 폴더가 없다: $(UnitySourceRoot). unity/Assets/DigitDuel/Runtime/Application 가 옮겨졌거나 이름이 바뀌었다." />
+    <Error Condition=" '@(UnitySource)' == '' "
+           Text="폴더는 있는데 컴파일 대상 .cs 가 하나도 없다: $(UnitySourceRoot). 빈 어셈블리로 통과시키지 않는다." />
+  </Target>
+
+</Project>
