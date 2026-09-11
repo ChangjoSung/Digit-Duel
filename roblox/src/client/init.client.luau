@@ -10,11 +10,10 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p4.9"
+local CLIENT_VERSION = "0.5.0-p5.0"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -24,12 +23,29 @@ local reState = remotes:WaitForChild("State")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- 💬 채팅 켜고 끄기 (CJ 2026-09-11 "채팅창 온 오프 기능"). 2026-09-10 에 HUD 와 겹쳐 껐던 것을
+-- 아주 없애지 말고 **끈 상태로 시작하되 언제든 켤 수 있게** 한다.
+-- 상태는 로블록스가 들고 있으므로 따로 변수를 두지 않는다 (읽을 때마다 물어본다).
+local Chat = { gui = game:GetService("StarterGui") } -- StarterGui 는 코어GUI 토글에만 쓴다 (최상위 local 절약)
+function Chat.isOn()
+	local ok, on = pcall(function()
+		return Chat.gui:GetCoreGuiEnabled(Enum.CoreGuiType.Chat)
+	end)
+	return ok and on == true
+end
+function Chat.set(on)
+	pcall(function()
+		Chat.gui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, on == true)
+	end)
+end
+
 task.defer(function()
-	for _, ct in { Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack, Enum.CoreGuiType.Chat } do -- Chat: 왼쪽 위 기본 채팅창이 HUD 와 겹쳐 숨김 (CJ 2026-09-10)
+	for _, ct in { Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack } do
 		pcall(function()
-			StarterGui:SetCoreGuiEnabled(ct, false)
+			Chat.gui:SetCoreGuiEnabled(ct, false)
 		end)
 	end
+	Chat.set(false) -- 시작은 꺼짐 (HUD 를 가리지 않게) — [T] 나 💬 버튼으로 켠다
 end)
 
 --==================================================================
@@ -466,6 +482,12 @@ do -- 창 오른쪽 맨 아래 두 버튼. do 블록이라 만든 뒤 지역 변
 		Tut.open()
 	end, "default", true, Art.action("help"), 28)
 	b.Position = UDim2.new(0, WIN_W - 232, 1, -42)
+	b.ZIndex = 3
+	-- 대전 중에는 HUD 가 숨으므로(hud.Visible = not win.Visible) 채팅 토글을 창에도 둔다
+	b = smallBtn(win, 0, 0, 92, "💬 채팅", function()
+		Chat.set(not Chat.isOn())
+	end, "default", true, nil, 28)
+	b.Position = UDim2.new(0, WIN_W - 332, 1, -42)
 	b.ZIndex = 3
 end
 
@@ -1271,6 +1293,12 @@ local function renderHudButtons()
 		Tut.open()
 	end, "default", true, Art.action("help"), 24),
 	"게임 방법을 10단계로 알려 줍니다. <b>[H]</b> 키로도 열 수 있고, 로비의 나무 간판 앞에서 <b>[E]</b> 를 눌러도 열립니다.")
+	x += 110
+	Ui.attachTip(smallBtn(hudBtns, x, 0, 104, Chat.isOn() and "💬 채팅 끄기" or "💬 채팅 켜기", function()
+		Chat.set(not Chat.isOn())
+		renderHudButtons()
+	end, Chat.isOn() and "primary" or "default", true, nil, 24),
+	"로블록스 기본 채팅창을 켜고 끕니다. <b>[T]</b> 키로도 됩니다.\n켜면 왼쪽 위에 나타나고 <b>/</b> 를 눌러 입력합니다. HUD 를 가리면 다시 끄세요.")
 	x += 110
 	local inGame = view ~= nil and view.phase ~= "over"
 	if tableInfo and not tableInfo.setupOpen and not inGame and not tableInfo.inGame then
@@ -2163,6 +2191,11 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 	local k = input.KeyCode
+	if k == Enum.KeyCode.T then -- 💬 채팅 켜고 끄기 (채팅 입력 중에는 processed 가드가 막는다)
+		Chat.set(not Chat.isOn())
+		safe(renderHudButtons, "renderHudButtons(chat)")
+		return
+	end
 	if k == Enum.KeyCode.H then -- 📖 튜토리얼 (로비·대전 어디서나)
 		Tut.toggle()
 		return
