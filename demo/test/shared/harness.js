@@ -210,6 +210,8 @@ function load(htmlPath,opts){
   memoClickTarget:typeof memoClickTarget==="function"?memoClickTarget:undefined, memoTargetOk:typeof memoTargetOk==="function"?memoTargetOk:undefined, // #94 로컬 메모 분기 (변경 전 소스로 음성 대조를 돌릴 수 있게 부재 허용)
   ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artDirOfFighter:typeof artDirOfFighter==="function"?artDirOfFighter:undefined,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
   GLYPH,glyphOk,glyphSpan,memoShort,pieceMemoKey,
+  /* #201 후속(2026-09-11) 함정 전용 도형 (기준판 로드 호환: 부재 시 undefined) */
+  SYM_SVG:typeof SYM_SVG!=="undefined"?SYM_SVG:undefined, symSvgHtml:typeof symSvgHtml==="function"?symSvgHtml:undefined,
   artFail:window.artFail,artSpriteFail:window.artSpriteFail,artPortraitFail:window.artPortraitFail,
   /* #201 (v0.4.8) 일시적 로드 실패의 유한 복구 (기준판 로드 호환: 부재 시 undefined) */
   ART_RETRY:typeof ART_RETRY!=="undefined"?ART_RETRY:undefined, artFilesOf:typeof artFilesOf==="function"?artFilesOf:undefined,

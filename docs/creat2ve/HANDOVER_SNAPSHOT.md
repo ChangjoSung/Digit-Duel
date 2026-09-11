@@ -1,6 +1,6 @@
 # Digit-Duel — 인수인계 스냅샷
 
-> **2026-09-11 · #201 온라인 아트 HotFix:** 출시 main에서 분기한 `hotfix/201-online-art`에서 HTTP 요청 예산·파일별 일시 실패 복구와 README 플레이 사진을 수정했다. 클라이언트 회귀101·브라우저34·Saturn 제품/미디어 PASS. 패치는 v0.4.8이며, [납품·운영](../hotfix/201/Mercury/delivery.md)과 [Issue201](https://github.com/ChangjoSung/Digit-Duel/issues/201)이 최신 CI·출시·역병합 상태 원본이다. main→dev→활성 Roblox/Unity 트랙 동기화까지 수행하며, 아래 이전 회차의 판정을 이번 수정의 검수 결과로 사용하지 않는다. Unity의 #182·#183은 CJ QA PASS, #195 CI7 기술 납품은 Unity 트랙에 있으며 미출시 기능을 이 hotfix에 섞지 않는다.
+> **2026-09-11 · #201 함정 아이콘 후속 HotFix:** CJ가 실제 게임 함정 아이콘 제작·적용과 README 재촬영을 지시했다. Earth 원본 SVG, Mars 공통 표시·회귀·실제 온라인 보드 촬영, Saturn 독립 READ_ONLY QA를 한 제품 PR으로 묶는다. v0.4.8 태그는 보존하고 다음 패치는 v0.4.9다. [이번 검증·납품 기록](../hotfix/201/Mercury/trap-icon.md)과 [Issue201](https://github.com/ChangjoSung/Digit-Duel/issues/201)이 최신 PR·CI·출시·역병합 상태 원본이다. 기존 온라인 아트 복구는 [v0.4.8 납품](../hotfix/201/Mercury/delivery.md)에 보존한다. #201은 CJ 최종 플레이 확인 전 OPEN이며, Unity #182·#183은 CJ QA PASS·#195 CI는 Unity 트랙의 미출시 작업이다.
 
 > 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED.
 >
