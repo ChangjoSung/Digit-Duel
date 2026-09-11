@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p4.6"
+local CLIENT_VERSION = "0.5.0-p4.7"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -135,7 +135,11 @@ local selectedId = nil
 local myStats = nil -- Phase 4 전적 (서버 DataStore 에서 받아 표시만 한다)
 local teleFirst = nil
 local teleMode = false -- #131 계약 3.2: 텔레포트 1단계(첫 말 고르는 중) 표시
-local battleSub = nil -- 전투 창 하위 선택 (gift | buff | nil) — 로컬 표시 상태
+-- 전투 창의 로컬 표시 상태 (서버 상태가 아니다): sub = 하위 선택(gift|buff|nil) · hold = 종료 후 붙잡기
+-- 전투가 끝나면 창이 즉시 사라져 무슨 일이 있었는지 볼 틈이 없었다 (CJ 2026-09-11).
+-- 서버 상태(view.battle=nil)는 그대로 두고 **화면만** 붙잡아 [확인] 을 누를 때까지 마지막 장면을 보여 준다.
+-- 규칙·프로토콜은 건드리지 않는다 — 상대를 기다리게 하지 않으려면 서버를 멈출 수 없다.
+local battleEnd = { hold = false, sub = nil }
 local recruitUi = { stage = "root", skill = nil, targetId = nil, recvId = nil, token = nil } -- #121 기술 교체·포획 선택 단계 (로컬)
 local force2D = true -- 구조.txt: 판은 항상 "보드게임 창"(2D) 으로 본다. 3D 판 클릭은 쓰지 않는다
 local boardMode = "2d"
@@ -1328,6 +1332,7 @@ end
 local function closeGame()
 	game_.Visible = false
 	win.Visible = false
+	battleEnd.hold = false
 	view = nil
 	selectedId = nil
 	teleFirst, teleMode = nil, false
@@ -1826,6 +1831,25 @@ end
 
 local function renderBattle()
 	local bt = view.battle
+	if not bt and battleEnd.hold then -- 전투는 끝났지만 아직 [확인] 전 — 마지막 화면 그대로 붙잡는다
+		battleFrame.Visible = true
+		modalBack.Visible = true
+		battleRound.Text = "⚔️ 전투 종료 — 아래 내용을 확인하고 [확인] 을 누르세요"
+		clearChildren(battleBtns)
+		Ui.attachTip(smallBtn(battleBtns, 0, 0, 200, "확인", function()
+			battleEnd.hold = false
+			render()
+		end, "primary", true, Art.action("endturn")),
+		"전투 결과를 다 보셨으면 누르세요.\n<b>누르기 전에도 판은 이미 갱신돼 있습니다</b> — 이 창은 보여 주기만 합니다.")
+		mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 34), BackgroundTransparency = 1, TextWrapped = true,
+			Text = "위 전투 기록은 [📜 기록] 창에도 남습니다.", TextSize = 11, Font = Enum.Font.Gotham,
+			TextColor3 = Color3.fromRGB(154, 163, 184), TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 6,
+		}, battleBtns)
+		battleEnd.sub = nil
+		return
+	end
 	battleFrame.Visible = bt ~= nil
 	if bt then
 		modalBack.Visible = true
@@ -1833,7 +1857,7 @@ local function renderBattle()
 		modalBack.Visible = false
 	end
 	if not bt then
-		battleSub = nil
+		battleEnd.sub = nil
 		return
 	end
 	local myActing = bt.actorOwner == view.me
@@ -1858,32 +1882,32 @@ local function renderBattle()
 	end
 	clearChildren(battleBtns)
 	if not myActing then
-		battleSub = nil
+		battleEnd.sub = nil
 		return
 	end
 	local myF = bt[bt.mySide]
-	if battleSub == "gift" then -- #121 계약 2.2: 선물 개봉 — 4종 중 1개, 취소는 무소모
+	if battleEnd.sub == "gift" then -- #121 계약 2.2: 선물 개봉 — 4종 중 1개, 취소는 무소모
 		for i, k in Data.GIFT_PICKS do
 			smallBtn(battleBtns, ((i - 1) % 2) * 186, math.floor((i - 1) / 2) * 30, 180, "🎁 " .. Data.GIFT_KO[k], function()
-				battleSub = nil
+				battleEnd.sub = nil
 				send({ t = "gift", pick = k })
 			end, "primary", true, Art.item(k))
 		end
 		smallBtn(battleBtns, 0, 62, 100, "취소", function()
-			battleSub = nil
+			battleEnd.sub = nil
 			render()
 		end)
 		return
-	elseif battleSub == "buff" then -- #121 계약 3: 버프 3종 중 1개 (시간은 1R 전용) — 전투당 1개
+	elseif battleEnd.sub == "buff" then -- #121 계약 3: 버프 3종 중 1개 (시간은 1R 전용) — 전투당 1개
 		for i, k in Data.BUFF_KEYS do
 			local enabled = not (k == "time" and bt.round ~= 1)
 			smallBtn(battleBtns, 0, (i - 1) * 30, 366, Data.BUFFS[k].ko .. (enabled and "" or " (1라운드 전용)"), function()
-				battleSub = nil
+				battleEnd.sub = nil
 				send({ t = "buff", kind = k })
 			end, "primary", enabled)
 		end
 		smallBtn(battleBtns, 0, 94, 100, "취소", function()
-			battleSub = nil
+			battleEnd.sub = nil
 			render()
 		end)
 		return
@@ -1948,12 +1972,12 @@ local function renderBattle()
 	("<b>도망</b>  성공 확률 %d%%\n성공하면 전투가 끝나고 내 말이 물러납니다. <b>실패하면 상대의 기본 공격 1회를 맞고 이번 행동을 잃습니다.</b>\nHP 조건은 없습니다."):format(
 		math.floor((bt.fleeProb or 0.3) * 100 + 0.5)))
 	Ui.attachTip(smallBtn(battleBtns, 210, 94, 76, "🎁 " .. (view.gifts or 0), function()
-		battleSub = "gift"
+		battleEnd.sub = "gift"
 		render()
 	end, "default", (view.gifts or 0) > 0),
 	"<b>선물 상자</b>  보유 " .. (view.gifts or 0) .. "개\n열면 아이템·볼·버프 중 하나가 나옵니다. 탐색으로 얻습니다.")
 	Ui.attachTip(smallBtn(battleBtns, 292, 94, 76, "✨ " .. (view.buffPacks or 0), function()
-		battleSub = "buff"
+		battleEnd.sub = "buff"
 		render()
 	end, "default", (view.buffPacks or 0) > 0 and bt.buffUsed == nil),
 	"<b>전투 버프</b>  보유 " .. (view.buffPacks or 0) .. "개\n<b>한 전투에 하나</b>만 쓸 수 있습니다. 시간의 수호자는 1라운드에만 쓸 수 있습니다.")
@@ -2217,9 +2241,14 @@ reState.OnClientEvent:Connect(function(msg)
 		local prevPhase = view and view.phase or nil
 		view = msg.view
 		selectedId = selectedId and pieceById(selectedId) and selectedId or nil
+		if view.battle ~= nil and not prevBattle then -- 새 전투 시작 — 지난 전투 줄이 섞이지 않게 비운다
+			battleMsg.Text = ""
+			battleEnd.hold = false
+		end
 		if view.battle == nil and prevBattle then
 			teleFirst, teleMode = nil, false
 			Ui.fxStop(battleFx) -- 창이 닫히는데 연출만 남지 않게
+			battleEnd.hold = true -- 여기서 창을 붙잡는다. 아래 events 루프가 마지막 판정 줄을 채운 뒤 render 된다
 		end
 		for _, ev in msg.events do
 			if ev.t == "log" then
