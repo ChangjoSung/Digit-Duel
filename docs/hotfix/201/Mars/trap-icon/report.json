@@ -1,0 +1,335 @@
+{
+  "issue": 201,
+  "topic": "trap-icon",
+  "startedAt": "2026-09-11T10:31:00.729Z",
+  "checks": [
+    {
+      "name": "1A 두 클라이언트가 실제 인증·매칭을 거쳐 보드까지 갔다",
+      "pass": true
+    },
+    {
+      "name": "1B 서로 다른 진영을 받았다 (P1=1 P2=0)",
+      "pass": true
+    },
+    {
+      "name": "2A 이 브라우저에는 🪤 글리프가 실제로 없다 (#89 관측 재확인 · 측정값 false) — 이번 보완의 전제",
+      "pass": true
+    },
+    {
+      "name": "2B 💣·👑 는 있다 — 문제는 폰트 전반이 아니라 🪤 하나다 (측정 💣 true · 👑 true)",
+      "pass": true
+    },
+    {
+      "name": "3A 좌석 P2 내 함정 2개가 판에 있다 (관측 2)",
+      "pass": true
+    },
+    {
+      "name": "3B 좌석 P2 내 함정이 전부 전용 도형으로 그려졌다",
+      "pass": true
+    },
+    {
+      "name": "3C 좌석 P2 도형의 CSS 상자가 계약값 32×32 다 ([\"32px×32px\",\"32px×32px\"])",
+      "pass": true
+    },
+    {
+      "name": "3C2 좌석 P2 실제 그려진 크기가 같은 보드의 하수인 아이콘과 같다 — 함정만 크거나 작게 튀지 않는다 (함정 [\"29×29\",\"29×29\"] · 하수인 29×29 · 보드 축소 matrix(0.896, 0, 0, 0.896, 0, 0))",
+      "pass": true
+    },
+    {
+      "name": "3D 좌석 P2 도형이 실제로 보이는 상태다 (display·visibility·opacity)",
+      "pass": true
+    },
+    {
+      "name": "3E 좌석 P2 도형이 실제로 그려졌다 — getBBox 가 0 이 아니고 도형 요소가 남김없이 있다 ([\"9요소 27×26\",\"9요소 27×26\"])",
+      "pass": true
+    },
+    {
+      "name": "3F 좌석 P2 함정 자리에 '함정' 텍스트 폴백도 <img> 자산도 없다",
+      "pass": true
+    },
+    {
+      "name": "3G 좌석 P2 하수인 아트 회귀 없음 (6/6) — #201 복구분 보존",
+      "pass": true
+    },
+    {
+      "name": "3A 좌석 P1 내 함정 2개가 판에 있다 (관측 2)",
+      "pass": true
+    },
+    {
+      "name": "3B 좌석 P1 내 함정이 전부 전용 도형으로 그려졌다",
+      "pass": true
+    },
+    {
+      "name": "3C 좌석 P1 도형의 CSS 상자가 계약값 32×32 다 ([\"32px×32px\",\"32px×32px\"])",
+      "pass": true
+    },
+    {
+      "name": "3C2 좌석 P1 실제 그려진 크기가 같은 보드의 하수인 아이콘과 같다 — 함정만 크거나 작게 튀지 않는다 (함정 [\"30×30\",\"30×30\"] · 하수인 30×30 · 보드 축소 matrix(0.95, 0, 0, 0.95, 0, 0))",
+      "pass": true
+    },
+    {
+      "name": "3D 좌석 P1 도형이 실제로 보이는 상태다 (display·visibility·opacity)",
+      "pass": true
+    },
+    {
+      "name": "3E 좌석 P1 도형이 실제로 그려졌다 — getBBox 가 0 이 아니고 도형 요소가 남김없이 있다 ([\"9요소 27×26\",\"9요소 27×26\"])",
+      "pass": true
+    },
+    {
+      "name": "3F 좌석 P1 함정 자리에 '함정' 텍스트 폴백도 <img> 자산도 없다",
+      "pass": true
+    },
+    {
+      "name": "3G 좌석 P1 하수인 아트 회귀 없음 (6/6) — #201 복구분 보존",
+      "pass": true
+    },
+    {
+      "name": "4A 좌석 P2 상대의 미공개 함정이 실제로 판에 있다 (관측 2) — 4B~4E 가 공허하지 않다",
+      "pass": true
+    },
+    {
+      "name": "4B 좌석 P2 상대 말 칸 어디에도 기호 도형이 없다",
+      "pass": true
+    },
+    {
+      "name": "4C 좌석 P2 정체 식별자(data-sym)가 상대 말 칸에 새지 않는다",
+      "pass": true
+    },
+    {
+      "name": "4D 좌석 P2 상대 말 칸에 자산 경로도 '함정'이라는 말도 없다",
+      "pass": true
+    },
+    {
+      "name": "4E 좌석 P2 보이는 상대 말은 전부 물음표다 (14/14)",
+      "pass": true
+    },
+    {
+      "name": "4F 양성 대조: 같은 보드에 **내** 함정 도형은 있다 (2개) — 4B 가 '아무것도 안 그려서' 통과한 것이 아니다",
+      "pass": true
+    },
+    {
+      "name": "4A 좌석 P1 상대의 미공개 함정이 실제로 판에 있다 (관측 2) — 4B~4E 가 공허하지 않다",
+      "pass": true
+    },
+    {
+      "name": "4B 좌석 P1 상대 말 칸 어디에도 기호 도형이 없다",
+      "pass": true
+    },
+    {
+      "name": "4C 좌석 P1 정체 식별자(data-sym)가 상대 말 칸에 새지 않는다",
+      "pass": true
+    },
+    {
+      "name": "4D 좌석 P1 상대 말 칸에 자산 경로도 '함정'이라는 말도 없다",
+      "pass": true
+    },
+    {
+      "name": "4E 좌석 P1 보이는 상대 말은 전부 물음표다 (14/14)",
+      "pass": true
+    },
+    {
+      "name": "4F 양성 대조: 같은 보드에 **내** 함정 도형은 있다 (2개) — 4B 가 '아무것도 안 그려서' 통과한 것이 아니다",
+      "pass": true
+    },
+    {
+      "name": "5A 좌석 P2 기호 자산(.svg·/symbols/) HTTP 요청 0건 (관측 0)",
+      "pass": true
+    },
+    {
+      "name": "5B 좌석 P2 자연 발생한 자산 실패 0건 (관측 0) — 기존 아트 로드 회귀 없음",
+      "pass": true
+    },
+    {
+      "name": "5A 좌석 P1 기호 자산(.svg·/symbols/) HTTP 요청 0건 (관측 0)",
+      "pass": true
+    },
+    {
+      "name": "5B 좌석 P1 자연 발생한 자산 실패 0건 (관측 0) — 기존 아트 로드 회귀 없음",
+      "pass": true
+    },
+    {
+      "name": "6A 좌석 P2 촬영 전에 턴 배너·연출·토스트가 모두 걷혔다 (탭 P1)",
+      "pass": true
+    },
+    {
+      "name": "6A 좌석 P1 촬영 전에 턴 배너·연출·토스트가 모두 걷혔다 (탭 P2)",
+      "pass": true
+    }
+  ],
+  "data": {
+    "server": {
+      "origin": "http://127.0.0.1:63018",
+      "note": "접속 코드는 이 실행 전용이며 산출물에 남기지 않는다"
+    },
+    "source": {
+      "file": "demo/index.html",
+      "sha256": "cc82867b3abc4b578009def2adbc88d5b3f5600e1f91970a2479b716d1d6e70d",
+      "asset": "demo/assets/symbols/trap.svg",
+      "assetSha256": "fcb2cdcb13e330dc33eab1f48041c27a27fdaa9abe1f6bc995de5e6d04f5ed0f"
+    },
+    "glyph": {
+      "trap": false,
+      "bomb": true,
+      "king": true,
+      "note": "제품 자신의 측정기(캔버스 픽셀 대조)로 이 브라우저에서 실측한 값"
+    },
+    "trap.seatP2": {
+      "traps": 2,
+      "out": [
+        {
+          "id": 82,
+          "found": true,
+          "boxW": 29,
+          "boxH": 29,
+          "cssW": "32px",
+          "cssH": "32px",
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "paths": 9,
+          "bbW": 27,
+          "bbH": 26,
+          "hasImg": false,
+          "textFallback": false
+        },
+        {
+          "id": 83,
+          "found": true,
+          "boxW": 29,
+          "boxH": 29,
+          "cssW": "32px",
+          "cssH": "32px",
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "paths": 9,
+          "bbW": 27,
+          "bbH": 26,
+          "hasImg": false,
+          "textFallback": false
+        }
+      ],
+      "scale": "matrix(0.896, 0, 0, 0.896, 0, 0)",
+      "refIcon": {
+        "w": 29,
+        "h": 29,
+        "cssW": "32px"
+      },
+      "minionArt": 6,
+      "minions": 6
+    },
+    "trap.seatP1": {
+      "traps": 2,
+      "out": [
+        {
+          "id": 68,
+          "found": true,
+          "boxW": 30,
+          "boxH": 30,
+          "cssW": "32px",
+          "cssH": "32px",
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "paths": 9,
+          "bbW": 27,
+          "bbH": 26,
+          "hasImg": false,
+          "textFallback": false
+        },
+        {
+          "id": 69,
+          "found": true,
+          "boxW": 30,
+          "boxH": 30,
+          "cssW": "32px",
+          "cssH": "32px",
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "paths": 9,
+          "bbW": 27,
+          "bbH": 26,
+          "hasImg": false,
+          "textFallback": false
+        }
+      ],
+      "scale": "matrix(0.95, 0, 0, 0.95, 0, 0)",
+      "refIcon": {
+        "w": 30,
+        "h": 30,
+        "cssW": "32px"
+      },
+      "minionArt": 6,
+      "minions": 6
+    },
+    "conceal.seatP2": {
+      "foe": 14,
+      "cellsRendered": 14,
+      "questionMarks": 14,
+      "hiddenTraps": 2,
+      "anyTrapSvg": false,
+      "anySymSvg": false,
+      "anyDataSym": false,
+      "anyAsset": false,
+      "anyTrapWord": false,
+      "boardHasTrapSvgAnywhere": true,
+      "myTrapCount": 2
+    },
+    "conceal.seatP1": {
+      "foe": 14,
+      "cellsRendered": 14,
+      "questionMarks": 14,
+      "hiddenTraps": 2,
+      "anyTrapSvg": false,
+      "anySymSvg": false,
+      "anyDataSym": false,
+      "anyAsset": false,
+      "anyTrapWord": false,
+      "boardHasTrapSvgAnywhere": true,
+      "myTrapCount": 2
+    },
+    "net.seatP2": {
+      "assetRequests": 50,
+      "symbolRequests": 0,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "note": "도형은 문서에 인라인이라 자기 파일을 부르지 않는다 — 요청 목록이 정체와 상관관계를 만들지 않는다"
+    },
+    "net.seatP1": {
+      "assetRequests": 50,
+      "symbolRequests": 0,
+      "failed": 0,
+      "statuses": [
+        200
+      ],
+      "note": "도형은 문서에 인라인이라 자기 파일을 부르지 않는다 — 요청 목록이 정체와 상관관계를 만들지 않는다"
+    },
+    "settle.seatP2": {
+      "overlaysCleared": true,
+      "tab": "P1"
+    },
+    "settle.seatP1": {
+      "overlaysCleared": true,
+      "tab": "P2"
+    },
+    "screenshots": [
+      {
+        "file": "201-trap-02-online-board-seat-P2.png",
+        "sha256": "422a15bd1c345022ea590d907ed16116618d4f1d9b91b35b52ad7e42b55ea5bd",
+        "caption": "실제 온라인 매칭 두 클라이언트 중 한 좌석의 보드 — 내 함정은 전용 도형, 상대 미공개 말은 물음표"
+      },
+      {
+        "file": "201-trap-01-online-board-seat-P1.png",
+        "sha256": "8e1d3aa444090b2b2c84f643fe54f54a2b2e40aae064a6679d1a348331426fa3",
+        "caption": "실제 온라인 매칭 두 클라이언트 중 한 좌석의 보드 — 내 함정은 전용 도형, 상대 미공개 말은 물음표"
+      }
+    ]
+  },
+  "pass": 38,
+  "fail": 0,
+  "fails": [],
+  "finishedAt": "2026-09-11T10:32:32.564Z"
+}
