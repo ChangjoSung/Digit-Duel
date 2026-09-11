@@ -1,6 +1,6 @@
 --!strict
 -- AssetIds.luau — 생성 파일 (roblox/tools/upload_assets.js). 직접 수정하지 말 것.
--- 생성 2026-09-10T06:26:01.251Z · 업로더 user 11639564357 · 169개
+-- 생성 2026-09-11T07:33:58.801Z · 업로더 user 11639564357 · 183개
 -- 키: icon_/battle_/portrait_<종> · token64_/token128_<토큰> (Image) · lobby_<텍스처> (Image) · lobbymesh_<메시> · mesh_unknown (Model)
 return {
 	action48_bag = 104734828695963, -- Image
@@ -11,6 +11,7 @@ return {
 	action48_fight = 129647765749680, -- Image
 	action48_flee = 84921635030604, -- Image
 	action48_heal = 121433949356121, -- Image
+	action48_help = 117686468357006, -- Image
 	action48_resign = 89858284434955, -- Image
 	action48_search = 124281410081833, -- Image
 	action48_skip = 134544997139837, -- Image
@@ -96,6 +97,7 @@ return {
 	lobby_desk_albedo = 98884595903306, -- Image
 	lobby_floor_tile = 96238500725249, -- Image
 	lobby_pillar_albedo = 97182210436937, -- Image
+	lobby_signpost_albedo = 130203639199563, -- Image
 	lobby_table_sign = 81355261059939, -- Image
 	lobby_wall_albedo = 88208802218183, -- Image
 	lobbymesh_board = 71943294672552, -- Model
@@ -104,6 +106,7 @@ return {
 	lobbymesh_desk = 103166061512714, -- Model
 	lobbymesh_floor = 105321730013376, -- Model
 	lobbymesh_pillar = 74078970052113, -- Model
+	lobbymesh_signpost = 87905334493844, -- Model
 	lobbymesh_wall = 109668449225498, -- Model
 	mesh_unknown = 86271543063492, -- Model
 	portrait_fire_atk = 92435878708709, -- Image
@@ -148,6 +151,16 @@ return {
 	token64_trap = 120755404495408, -- Image
 	token64_unknown = 131950984299832, -- Image
 	trace48_trace = 109936670666420, -- Image
+	tut512_battle = 107551497939012, -- Image
+	tut512_bomb = 71613150167702, -- Image
+	tut512_burn = 111006186931337, -- Image
+	tut512_capture = 96520938335000, -- Image
+	tut512_check = 131254450915809, -- Image
+	tut512_move = 116388449676696, -- Image
+	tut512_pieces = 137069102752869, -- Image
+	tut512_search = 72344709271479, -- Image
+	tut512_tele = 113885481593268, -- Image
+	tut512_win = 112717667930533, -- Image
 	ui_badge = 114424112696313, -- Image
 	ui_banner = 121065040826391, -- Image
 	ui_banner_bad = 140301092822805, -- Image
@@ -169,6 +182,7 @@ return {
 	ui_panel_battle = 127951287913049, -- Image
 	ui_panel_modal = 109202035264232, -- Image
 	ui_panel_side = 85927200121558, -- Image
+	ui_panel_sign = 124420212383362, -- Image
 	ui_panel_window = 106805303149551, -- Image
 	ui_shbar_bg = 104136907187149, -- Image
 	ui_shbar_fill = 85919091332297, -- Image
