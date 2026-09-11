@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p4.5"
+local CLIENT_VERSION = "0.5.0-p4.6"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")

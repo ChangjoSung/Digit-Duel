@@ -171,7 +171,7 @@ function Engine:mkPiece(owner, type)
 		rosterId = nil, name = nil, cdMax = b.cd or 0,
 		cd = 0, skills = nil, cds = { 0, 0, 0, 0 }, revealedSkills = nil,
 		r = 0, c = 0, placed = false, revealed = false, alive = true, movedEver = false, movedPreBT = false,
-		immobile = 0, cap = nil, nextBattleBuff = false, healing = false,
+		immobile = 0, cap = nil, healing = false,
 		burn = 0, burnBy = nil, weaken = 0, shield = 0, absorbed = 0, shock = 0, shockFresh = false,
 		focusCharge = false, vulnMark = false, dmgCut = 0,
 		powerBuff = false, fleeFree = false, -- #121 계약 3: 전투 버프 플래그 (그 전투에만 — 개시·종료 때 지운다)

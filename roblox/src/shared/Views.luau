@@ -43,7 +43,6 @@ local function serializeFighter(pf, piece, viewer, over)
 		dmgCut = pf.dmgCut,
 		focusCharge = pf.focusCharge,
 		vulnMark = pf.vulnMark,
-		atkBuff = pf.atkBuff,
 		atk = pf.atk,
 		skills = skills,
 		owner = piece.owner,
@@ -77,7 +76,6 @@ function Views.forViewer(engine, viewer)
 				if p.owner == viewer then -- 자기 말 상세 (skills·cap·버프)
 					entry.skills = p.skills
 					entry.cds = p.cds
-					entry.nextBattleBuff = p.nextBattleBuff or nil
 					if p.cap then
 						entry.cap = { element = p.cap.element, hp = p.cap.hp, maxHp = p.cap.maxHp }
 					end

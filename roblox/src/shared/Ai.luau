@@ -661,9 +661,6 @@ local function aiWinProb(att, def, me)
 	if not fd.skills and (def.type == "king" or def.type == "ally") then
 		p += 0.1
 	end
-	if att.nextBattleBuff then
-		p += 0.05
-	end
 	return math.max(0.08, math.min(0.92, p))
 end
 
@@ -1342,7 +1339,6 @@ local function aiBattleActionStrong(en, side)
 		local advM = el and opp.element and BEATS[el] == opp.element
 		local disM = el and opp.element and BEATS[opp.element] == el
 		return (advM and BAL.advMult or disM and BAL.disMult or 1) * ((f.weaken > 0) and (1 - BAL.weakenPct) or 1)
-			* (f.atkBuff and (1 + BAL.nextBuffPct) or 1)
 	end
 	local oAdv = opp.element and f.element and BEATS[opp.element] == f.element
 	local oDis = opp.element and f.element and BEATS[f.element] == opp.element
