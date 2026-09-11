@@ -52,7 +52,7 @@ const STACK_PARENTS = new Set(["b"]);
 const isExclusive = (a, b) => EXCLUSIVE.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
 
 // 전체 화면 컨테이너 · 잠깐 떴다 사라지는 오버레이 — 넘침·겹침 기준에서 제외
-const FULLSCREEN = new Set(["game_", "modalBack", "detailBack", "bannerFrame", "memoFrame", "logWin"]);
+const FULLSCREEN = new Set(["game_", "modalBack", "detailBack", "tutBack", "bannerFrame", "memoFrame", "logWin"]);
 
 const src = fs.readFileSync(FILE, "utf8");
 const lineOf = (idx) => src.slice(0, idx).split("\n").length;

@@ -14,7 +14,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local CLIENT_VERSION = "0.5.0-p4.7"
+local CLIENT_VERSION = "0.5.0-p4.8"
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local remotes = ReplicatedStorage:WaitForChild("DDRemotes")
@@ -258,6 +258,18 @@ local setupBtns = mk("Frame", { Size = UDim2.new(1, -20, 0, 66), Position = UDim
 
 local Bn = require(script:WaitForChild("BannerUi")).mount(gui, Ui) -- 화면 중앙 배너 (표시 계층 전용)
 local Log = require(script:WaitForChild("LogUi")).mount(gui, Ui) -- 📜 게임 기록 (내 화면 전용)
+local Tut = require(script:WaitForChild("TutorialUi")).mount(gui, Ui) -- 📖 튜토리얼 (CJ: 자동 표시 없음 · 대전 중에도 열림)
+task.spawn(function() -- 로비 간판의 [E] — ProximityPrompt.Triggered 는 이 클라이언트에서도 울리므로 서버 왕복이 필요 없다
+	local lobby = Workspace:WaitForChild("Lobby", 30)
+	local sign = lobby and lobby:WaitForChild("TutorialSign", 30)
+	local board = sign and sign:WaitForChild("Board", 10)
+	local prompt = board and board:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then
+		prompt.Triggered:Connect(function()
+			Tut.open(1)
+		end)
+	end
+end)
 local Memo = require(script:WaitForChild("MemoUi")).mount(gui, Ui, function() -- 📝 추측 메모 (내 화면 전용)
 	render()
 end)
@@ -443,11 +455,19 @@ local function send(a)
 end
 
 -- 창 오른쪽 맨 아래 [나가기] — 탐색·텔레포트 같은 게임 행동 버튼과 떨어뜨린다 (CJ 2026-09-10)
-local winExit = smallBtn(win, WIN_W - 120, 0, 104, "🚪 나가기", function()
-	send({ t = "stand" })
-end, "danger", true, Art.action("exit") or Art.action("resign"), 28)
-winExit.Position = UDim2.new(0, WIN_W - 120, 1, -42)
-winExit.ZIndex = 3
+do -- 창 오른쪽 맨 아래 두 버튼. do 블록이라 만든 뒤 지역 변수를 돌려준다 (Luau 200개 한도)
+	local b = smallBtn(win, WIN_W - 120, 0, 104, "🚪 나가기", function()
+		send({ t = "stand" })
+	end, "danger", true, Art.action("exit") or Art.action("resign"), 28)
+	b.Position = UDim2.new(0, WIN_W - 120, 1, -42)
+	b.ZIndex = 3
+	-- CJ 결정(2026-09-11): 튜토리얼은 대전 중에도 열 수 있다. [나가기] 왼쪽에 떨어뜨려 기권과 헷갈리지 않게 한다
+	b = smallBtn(win, 0, 0, 96, "📖 도움말", function()
+		Tut.open()
+	end, "default", true, Art.action("help"), 28)
+	b.Position = UDim2.new(0, WIN_W - 232, 1, -42)
+	b.ZIndex = 3
+end
 
 
 local function mySide()
@@ -1247,6 +1267,11 @@ end
 local function renderHudButtons()
 	clearChildren(hudBtns)
 	local x = 0
+	Ui.attachTip(smallBtn(hudBtns, x, 0, 104, "📖 도움말", function()
+		Tut.open()
+	end, "default", true, Art.action("help"), 24),
+	"게임 방법을 10단계로 알려 줍니다. <b>[H]</b> 키로도 열 수 있고, 로비의 나무 간판 앞에서 <b>[E]</b> 를 눌러도 열립니다.")
+	x += 110
 	local inGame = view ~= nil and view.phase ~= "over"
 	if tableInfo and not tableInfo.setupOpen and not inGame and not tableInfo.inGame then
 		-- 둘 다 앉은 뒤 한 명이 누르면 양측이 배치 단계로 (서버 startGame)
@@ -2138,6 +2163,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 	local k = input.KeyCode
+	if k == Enum.KeyCode.H then -- 📖 튜토리얼 (로비·대전 어디서나)
+		Tut.toggle()
+		return
+	end
 	if k == Enum.KeyCode.B or k == Enum.KeyCode.N then -- 혼자 앉은 상태에서 AI 대전 (B = 5급, N = 5단)
 		if tableInfo and not tableInfo.setupOpen and not tableInfo.inGame and not view then
 			if tableInfo.opp then
