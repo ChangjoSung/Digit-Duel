@@ -333,6 +333,67 @@ test('C7 Editor 어셈블리가 전 플랫폼으로 풀리면 잡는다', () => 
   expectFailure(dir, 'C7');
 });
 
+// 런타임 어셈블리가 Player 에서 사라지는 세 가지 길. Unity 는 어느 쪽에도 에러를 내지 않는다 —
+// 씬이 참조하던 컴포넌트가 기기에서 Missing script 가 될 뿐이다. includePlatforms 만 보던
+// 검사는 아래 둘(excludePlatforms·defineConstraints)을 통과시켰다.
+const RUNTIME_ASMDEFS = {
+  Presentation: 'unity/Assets/DigitDuel/Runtime/Presentation/DigitDuel.Presentation.asmdef',
+  Core: 'unity/Assets/DigitDuel/Runtime/Core/DigitDuel.Core.asmdef',
+};
+
+function patchAsmdef(dir, file, patch) {
+  const definition = JSON.parse(readFixture(dir, file));
+  writeFixture(dir, file, JSON.stringify({ ...definition, ...patch }, null, 4));
+}
+
+test('C7 런타임 어셈블리의 excludePlatforms 를 잡는다 — Android Player 에서 통째로 빠진다', () => {
+  const dir = cloneFixture();
+  patchAsmdef(dir, RUNTIME_ASMDEFS.Presentation, { excludePlatforms: ['Android'] });
+  const result = expectFailure(dir, 'C7');
+  assert.ok(result.stderr.includes('excludePlatforms'), result.stderr);
+});
+
+test('C7 런타임 어셈블리의 includePlatforms 를 잡는다 — 지정한 플랫폼 밖에서 빠진다', () => {
+  const dir = cloneFixture();
+  patchAsmdef(dir, RUNTIME_ASMDEFS.Presentation, { includePlatforms: ['Editor'] });
+  const result = expectFailure(dir, 'C7');
+  assert.ok(result.stderr.includes('includePlatforms'), result.stderr);
+});
+
+test('C7 런타임 어셈블리의 defineConstraints UNITY_EDITOR 를 잡는다 — Player 빌드에서만 사라진다', () => {
+  // Editor 에서는 전부 컴파일되고 돌아간다. 사라지는 것은 기기 빌드뿐이라 로컬에서는 보이지 않는다.
+  const dir = cloneFixture();
+  patchAsmdef(dir, RUNTIME_ASMDEFS.Core, { defineConstraints: ['UNITY_EDITOR'] });
+  const result = expectFailure(dir, 'C7');
+  assert.ok(result.stderr.includes('defineConstraints'), result.stderr);
+});
+
+test('C7 두 플랫폼 목록이 동시에 채워지면 잡는다 — 무엇이 남는지 asmdef 만 봐서는 읽히지 않는다', () => {
+  const dir = cloneFixture();
+  patchAsmdef(dir, 'unity/Assets/DigitDuel/Editor/DigitDuel.Editor.asmdef',
+    { includePlatforms: ['Editor'], excludePlatforms: ['Android'] });
+  expectFailure(dir, 'C7');
+});
+
+test('C7 배열이어야 할 자리의 문자열을 잡는다 — 부분 문자열로 규칙이 우회된다', () => {
+  // "UNITY_INCLUDE_TESTS".includes('UNITY_INCLUDE_TESTS') 는 참이다. 타입을 보지 않으면
+  // Unity 가 읽지도 못하는 asmdef 가 테스트 격리 검사를 통과한다.
+  const dir = cloneFixture();
+  patchAsmdef(dir, 'unity/Assets/DigitDuel/Tests/PlayMode/DigitDuel.Tests.PlayMode.asmdef',
+    { defineConstraints: 'UNITY_INCLUDE_TESTS' });
+  const result = expectFailure(dir, 'C7');
+  assert.ok(result.stderr.includes('배열이 아니다'), result.stderr);
+});
+
+test('C7 테스트 어셈블리의 플랫폼 제한은 통과한다 — 새 규칙이 Editor·Test 를 오탐하지 않는다', () => {
+  // 런타임 전 플랫폼 규칙은 Editor·Test 어셈블리의 대상이 아니다. 테스트가 특정 플랫폼을
+  // 빼는 것은 정상이고, EditMode 의 includePlatforms:["Editor"] 도 그대로 유지돼야 한다.
+  const dir = cloneFixture();
+  patchAsmdef(dir, 'unity/Assets/DigitDuel/Tests/PlayMode/DigitDuel.Tests.PlayMode.asmdef',
+    { excludePlatforms: ['WebGL'] });
+  expectPass(dir);
+});
+
 test('C7 순수 C# 층의 엔진 참조를 잡는다 — 전역 external 목록이었다면 통과했을 것', () => {
   const dir = cloneFixture();
   const file = 'unity/Assets/DigitDuel/Runtime/Core/DigitDuel.Core.asmdef';

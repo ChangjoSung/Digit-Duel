@@ -15,7 +15,9 @@
  *   C4 manifest 직접 의존성 ↔ packages-lock 고정·레지스트리
  *   C5 meta 짝 (Assets 루트 제외 · 빈 폴더의 folderAsset meta 허용)
  *   C6 GUID 중복
- *   C7 asmdef 그래프·경계 · Editor/Test 격리 · asmdef 밖 .cs · 런타임의 UnityEditor 누출
+ *   C7 asmdef 그래프·경계 · Editor/Test 격리 · 런타임 어셈블리의 플랫폼·define 제약
+ *      (includePlatforms·excludePlatforms·defineConstraints 를 함께 본다) · asmdef 밖 .cs ·
+ *      런타임의 UnityEditor 누출
  *   C8 활성 빌드 씬의 파일·GUID 무결성
  *   C9 잘못 추적된 캐시·산출물·자격증명
  *
@@ -391,16 +393,60 @@ function check(opts) {
           fail('C7', `계약 오류: ${name} 은 engineFree 인데 externals 가 비어 있지 않다. 계약을 고친다.`);
         }
       }
-      const platforms = definition.includePlatforms || [];
+      // ── 어셈블리가 어떤 빌드에 들어가는가 ──────────────────────────────────
+      // 세 필드를 **함께** 본다. includePlatforms 만 보면 excludePlatforms: ["Android"] 이나
+      // defineConstraints: ["UNITY_EDITOR"] 로 Android Player 에서 어셈블리가 통째로 빠져도 초록이다.
+      // Unity 는 그 상태에서 에러를 내지 않는다 — 참조하던 씬의 컴포넌트가 기기에서 Missing script 가
+      // 될 뿐이라 CI 가 잡지 못하면 실기에서만 드러난다.
+      // 타입도 함께 본다: 배열이어야 할 자리에 문자열이 오면 Unity 가 asmdef 를 읽지 못하고,
+      // 검사 쪽에서도 `"UNITY_INCLUDE_TESTS".includes('UNITY_INCLUDE_TESTS')` 가 참이라 규칙이 우회된다.
+      const lists = {};
+      for (const field of ['includePlatforms', 'excludePlatforms', 'defineConstraints']) {
+        const value = definition[field];
+        if (value === undefined || value === null) {
+          lists[field] = [];
+        } else if (!Array.isArray(value)) {
+          fail('C7', `${name} 의 ${field} 가 배열이 아니다: ${JSON.stringify(value)} (${file}). ` +
+            `Unity 가 읽지 못하는 asmdef 이고, 문자열이면 이 검사도 우회된다.`);
+          lists[field] = null;   // 값을 신뢰할 수 없다 — 이 필드의 내용 검사는 건너뛴다
+        } else if (value.some((entry) => typeof entry !== 'string')) {
+          fail('C7', `${name} 의 ${field} 에 문자열이 아닌 항목이 있다: ${JSON.stringify(value)} (${file}).`);
+          lists[field] = null;
+        } else {
+          lists[field] = value;
+        }
+      }
+      const { includePlatforms, excludePlatforms, defineConstraints } = lists;
+
+      // Unity 의 Inspector 는 둘 중 하나만 채우게 한다. 손으로 편집하면 둘 다 채울 수 있고
+      // 그때 실제로 어떤 플랫폼이 남는지는 asmdef 만 봐서는 읽히지 않는다.
+      if (includePlatforms?.length > 0 && excludePlatforms?.length > 0) {
+        fail('C7', `${name} 에 includePlatforms 와 excludePlatforms 가 둘 다 지정돼 있다: ` +
+          `[${includePlatforms.join(', ')}] · [${excludePlatforms.join(', ')}] (${file}).`);
+      }
+
       if (rule.editorOnly) {
-        if (platforms.length !== 1 || platforms[0] !== 'Editor') {
-          fail('C7', `${name} 은 Editor 전용이어야 한다 — includePlatforms 가 [${platforms.join(', ')}] 이다. ` +
+        if (includePlatforms && (includePlatforms.length !== 1 || includePlatforms[0] !== 'Editor')) {
+          fail('C7', `${name} 은 Editor 전용이어야 한다 — includePlatforms 가 [${includePlatforms.join(', ')}] 이다. ` +
             `Player 빌드에 Editor 코드가 섞인다.`);
         }
-      } else if (platforms.length > 0 && !rule.test) {
-        fail('C7', `${name} 에 includePlatforms 가 지정돼 있다: [${platforms.join(', ')}]. 런타임 어셈블리는 전 플랫폼이어야 한다.`);
+      } else if (!rule.test) {
+        // 런타임 어셈블리(Core·Application·Infrastructure·Presentation)는 **전 플랫폼·무조건 컴파일**이다.
+        // 세 필드 중 하나라도 채워지면 어떤 빌드에서는 이 어셈블리가 사라진다.
+        // Editor·Test 어셈블리는 이 규칙의 대상이 아니다 — 거기서는 플랫폼 제한이 정상이다.
+        if (includePlatforms?.length > 0) {
+          fail('C7', `${name} 에 includePlatforms 가 지정돼 있다: [${includePlatforms.join(', ')}]. 런타임 어셈블리는 전 플랫폼이어야 한다.`);
+        }
+        if (excludePlatforms?.length > 0) {
+          fail('C7', `${name} 에 excludePlatforms 가 지정돼 있다: [${excludePlatforms.join(', ')}]. ` +
+            `그 플랫폼 Player 에서 이 어셈블리가 통째로 빠진다 — 런타임 어셈블리는 전 플랫폼이어야 한다 (${file}).`);
+        }
+        if (defineConstraints?.length > 0) {
+          fail('C7', `${name} 에 defineConstraints 가 지정돼 있다: [${defineConstraints.join(', ')}]. ` +
+            `그 심볼이 없는 빌드에서 이 어셈블리가 통째로 빠진다 — 런타임 어셈블리는 무조건 컴파일돼야 한다 (${file}).`);
+        }
       }
-      if (rule.test && !(definition.defineConstraints || []).includes('UNITY_INCLUDE_TESTS')) {
+      if (rule.test && defineConstraints && !defineConstraints.includes('UNITY_INCLUDE_TESTS')) {
         fail('C7', `${name} 에 defineConstraints UNITY_INCLUDE_TESTS 가 없다. 테스트 어셈블리가 Player 빌드에 섞인다 (${file}).`);
       }
       if (!rule.test) {
