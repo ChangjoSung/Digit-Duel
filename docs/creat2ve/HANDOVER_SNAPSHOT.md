@@ -1,5 +1,7 @@
 # Digit-Duel — 인수인계 스냅샷
 
+> **현재 Unity 준비 상태 · 2026-09-11:** CJ의 v0.6.0 요청을 분석해 [Milestone4](https://github.com/ChangjoSung/Digit-Duel/milestone/4)에 #182 환경·#183 MCP·#184 온라인·#185 데이터·#186 Core·#187 UI를 OPEN으로 등록했다. `milestone/v0.6.0`은 dev에서 분기하고 필수 CI6·PR 보호를 적용했다. [현재 분석·등록 기록](../milestone/v0.6.0/reports/Mercury/registration.md)과 [인덱스](../milestone/v0.6.0/README.md)가 Unity 인수인계 원본이다. GDD13 본문9·DL60 반영. Unity 설치·실연결·게임 포팅 완료가 아니며 UI Toolkit/서버 스택/추가 아트는 미확정이다. 아래 기록의 Unity 미착수는 제품 구현 기준으로 유지하며, 당시 버전·검증 이력은 소급 변경하지 않는다.
+
 > 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED.
 >
 > **2026-09-10 버전 재배번 ([#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · CJ 승인)**: HTML 완결분 `v0.4.7`→**`v0.4.6`**(Milestone13 · 열린 이슈 0 · 릴리스 대상), Roblox `v0.4.6`→**`v0.5.0`**(Milestone12 · #118 진행 중), Unity `v0.5.0`→**`v0.6.0`**(Milestone4 · 미착수). 버전 키 폴더 5개를 함께 옮겼고 대조는 [MOVES.csv](../milestone/MOVES.csv) 2차 이동 절에 있다. 잔여 기획 #119·#120·#123·#127은 Unity 이후로 보류해 `not planned`로 닫았다(삭제 아님).

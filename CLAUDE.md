@@ -57,10 +57,12 @@ CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.
 - 커밋 전 검증 필수: Node 헤드리스 스모크 테스트 — `<script>` 블록을 추출해 DOM 스텁으로 eval 후 규칙 회귀(이동·상성·폭탄·함정·밀어내기·판정) + AI vs AI 완주 확인. 테스트 예시는 GitHub Issue #2·#3 코멘트 참조.
 - 수치 상수(BAL)는 [DATA] 문서의 초기값이며 일반 밸런싱 백로그는 유지한다. **2026-09-07 CJ의 v0.4.4 분석 후 구현 지시**로 탐색 기술 교체·공격형 위력 완화·일반 감전 확률 하향은 착수 범위다(Issue #92·#95·#96). Venus 권고를 PD가 채택한 구체 계약은 [v0.4.4 게임플레이 규격](docs/milestone/v0.4.4/specs/v0.4.4-gameplay-spec.md)과 GDD-13·14·15·16을 따른다. 동일 구현 승인을 재질문하지 않는다.
 
-## Unity (v0.5.0 예정)
-- 기본 구조는 MyFundManager 저장소 벤치마킹 (Table·Folder·Assembly·Addressable 등).
-- audition_Idol 참조 구조 검토: 로컬 저장소 `C:\WORK\Client\audition_idol\Client_Idol`
-- Unity 본개발은 Heavy 오케스트레이션 프롬프트([Content] Orca Orchestration Prompt) 사용 예정.
+## Unity (v0.6.0 · 2026-09-11 CJ 분석·이슈 등록)
+- [v0.6.0 인덱스](docs/milestone/v0.6.0/README.md)와 [사전 분석](docs/milestone/v0.6.0/reports/Mercury/unity-port-analysis.md)이 준비 범위·의존성의 원본이다. 현재는 계획 등록이며 Unity 제품 구현·MCP 연결 완료가 아니다.
+- 최신 정식 Unity와 Android APK를 목표로 한다. 조사 버전은 Unity 6.6 `6000.6.0f1`; 설치 때 최신 정식 패치를 재확인하고 고정한다. UI Toolkit은 실기 검증 후 채택할 후보이며 확정하지 않았다.
+- 기본 구조는 MyFundManager Unity를 우선 참조하고 `C:\WORK\Client\audition_idol`의 Client_Idol·DataGenerator·Tools를 보완 후보로 검토한다. Sprite·GlobalUtil·Table·gRPC·Util Tool은 의존성·호환성·권리를 대조해 선별한다.
+- 정적 TSV 테이블, 경기 런타임 상태, 향후 플레이어 DB를 분리한다. gRPC·MongoDB는 서버 담당과 계약을 정할 때 검증할 예상 방향이며 서버 상세 설계·구현은 아직 착수하지 않는다.
+- 트랙은 `milestone/v0.6.0`(dev에서 분기), 이슈 PR base도 이 트랙이다. 본개발은 기존 역할별 분석→구현→Saturn 독립 QA→CJ 플레이 QA 계약을 따른다.
 
 <!-- creat2ve:begin -->
 ## 조직 구조 — Creat2ve Vibe Coding Structure rev 6 (release 0.3.0, 2026-09-02)
