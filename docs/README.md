@@ -19,6 +19,7 @@
 | 역할·Git·작업 계약 | [CLAUDE.md](../CLAUDE.md), [권위 문서 등록표](creat2ve/AUTHORITY.md) |
 | 기여·PR·CI 사용법 | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Mercury 인수·현재 상태 | [인수인계 스냅샷](creat2ve/HANDOVER_SNAPSHOT.md) |
+| Unity Android 포팅 준비 | [v0.6.0 계획·이슈 인덱스](milestone/v0.6.0/README.md) — 환경·MCP·테이블·Core·UI·온라인의 선행 조건과 검증 기준 |
 
 ## 버전별 기록
 

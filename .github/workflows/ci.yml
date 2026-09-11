@@ -17,10 +17,14 @@
 name: CI
 
 on:
+  # 트랙 브랜치(milestone/vX.Y.Z)도 포함한다. 2026-09-11 브랜치 정책으로 이슈 브랜치는 dev 가 아니라
+  # 트랙으로 PR 하는데, 트리거가 [main, dev] 뿐이면 그 PR 에는 검사가 **하나도 붙지 않는다** —
+  # 그런데 트랙 보호 규칙은 6개를 필수로 요구하므로 PR 이 영원히 머지되지 않는다.
+  # (dev → 트랙 동기화 PR 만 예외적으로 통과한 것은 head 가 dev 라서 push 이벤트 검사가 재사용됐기 때문이다.)
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, 'milestone/**']
   push:
-    branches: [main, dev]
+    branches: [main, dev, 'milestone/**']
   workflow_dispatch:
 
 permissions:
