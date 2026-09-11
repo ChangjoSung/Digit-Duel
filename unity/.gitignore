@@ -1,0 +1,95 @@
+# Unity 프로젝트용 중첩 .gitignore — 이 파일의 루트 앵커(/…)는 unity/ 기준이다.
+# 저장소 루트 .gitignore 의 `/[Ll]ibrary/` 같은 규칙은 저장소 루트에만 적용돼
+# unity/Library/ 를 덮지 못한다(#182 실측: NOT-IGNORED). 그래서 여기에 다시 둔다.
+# 원본: https://github.com/github/gitignore/blob/main/Unity.gitignore
+
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+
+# Blender 중간 파일
+*.blend1
+*.blend1.meta
+
+# MemoryCaptures 는 크고 민감한 데이터를 담을 수 있다.
+/[Mm]emoryCaptures/
+
+# Recordings 는 크기가 과도해질 수 있다.
+/[Rr]ecordings/
+
+# Rider 자동 생성 플러그인 / 개인 설정
+/[Aa]ssets/Plugins/Editor/JetBrains*
+*.DotSettings.user
+
+# Visual Studio 캐시
+.vs/
+
+# Gradle 캐시 (Android 빌드)
+.gradle/
+
+# 자동 생성 솔루션·프로젝트 파일
+ExportedObj/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity 생성 meta
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# 크래시 리포트
+sysinfo.txt
+mono_crash.*
+
+# 빌드 산출물
+*.apk
+*.aab
+*.unitypackage
+*.unitypackage.meta
+*.app
+
+# Crashlytics
+crashlytics-build.properties
+
+# TestRunner 생성물
+InitTestScene*.unity*
+
+# Addressables 기본 무시 규칙
+/ServerData
+/[Aa]ssets/StreamingAssets/aa*
+/[Aa]ssets/AddressableAssetsData/link.xml*
+/[Aa]ssets/Addressables_Temp*
+/[Aa]ssets/AddressableAssetsData/*/*.bin*
+
+# Visual Scripting 자동 생성물
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Flow/UnitOptions.db
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Flow/UnitOptions.db.meta
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers.meta
+
+# 플레이 모드 테스트 자동 생성 씬
+/[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Assets 내 자동 생성 캐시
+/[Aa]ssets/[Ss]ceneDependencyCache*
+
+# #183 MCP·CLI 연결 검증 전용 임시 씬 — 검증 후 삭제하며 추적하지 않는다.
+/[Aa]ssets/_CliSmoke/

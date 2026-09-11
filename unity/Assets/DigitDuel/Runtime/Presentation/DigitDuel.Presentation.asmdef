@@ -1,0 +1,20 @@
+{
+    "name": "DigitDuel.Presentation",
+    "rootNamespace": "DigitDuel.Presentation",
+    "references": [
+        "DigitDuel.Core",
+        "DigitDuel.Application",
+        "DigitDuel.Infrastructure",
+        "Unity.InputSystem",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

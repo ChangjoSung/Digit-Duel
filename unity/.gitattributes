@@ -1,0 +1,72 @@
+# Unity 전용 줄바꿈·바이너리 규칙 — unity/ 하위에만 적용된다(저장소 루트 .gitattributes 는 건드리지 않는다).
+# 이 PC 의 git 은 core.autocrlf=true 다(실측). Unity 는 YAML 자산·meta 를 항상 LF 로 다시 쓰므로
+# 체크아웃이 CRLF 로 바꾸면 Editor 가 열릴 때마다 전 파일이 수정된 것처럼 보인다. 그래서 LF 로 고정한다.
+
+* text=auto eol=lf
+
+# Unity 직렬화 자산 — 반드시 LF
+*.meta            text eol=lf
+*.unity           text eol=lf
+*.prefab          text eol=lf
+*.asset           text eol=lf
+*.mat             text eol=lf
+*.anim            text eol=lf
+*.controller      text eol=lf
+*.overrideController text eol=lf
+*.physicMaterial  text eol=lf
+*.physicsMaterial2D text eol=lf
+*.playable        text eol=lf
+*.mask            text eol=lf
+*.brush           text eol=lf
+*.flare           text eol=lf
+*.fontsettings    text eol=lf
+*.guiskin         text eol=lf
+*.giparams        text eol=lf
+*.renderTexture   text eol=lf
+*.spriteatlas     text eol=lf
+*.spriteatlasv2   text eol=lf
+*.terrainlayer    text eol=lf
+*.mixer           text eol=lf
+*.shadervariants  text eol=lf
+*.preset          text eol=lf
+*.scenetemplate   text eol=lf
+*.signal          text eol=lf
+*.asmdef          text eol=lf
+*.asmref          text eol=lf
+*.inputactions    text eol=lf
+*.uxml            text eol=lf
+*.uss             text eol=lf
+*.tss             text eol=lf
+*.cs              text eol=lf diff=csharp
+*.shader          text eol=lf
+*.hlsl            text eol=lf
+*.cginc           text eol=lf
+*.compute         text eol=lf
+*.json            text eol=lf
+*.tsv             text eol=lf
+
+# 바이너리 — 변환 금지
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.psd   binary
+*.aseprite binary
+*.ase   binary
+*.tga   binary
+*.gif   binary
+*.exr   binary
+*.tif   binary
+*.tiff  binary
+*.fbx   binary
+*.blend binary
+*.wav   binary
+*.mp3   binary
+*.ogg   binary
+*.ttf   binary
+*.otf   binary
+*.dll   binary
+*.so    binary
+*.a     binary
+*.aar   binary
+*.jar   binary
+*.unitypackage binary
