@@ -15,6 +15,10 @@ const adf=(T,pf,piece)=>typeof T.artDirOfFighter==="function"?T.artDirOfFighter(
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
 
 const MEMO8=[["king","👑"],["ally","🤝"],["minion_fire","🔥"],["minion_grass","🌿"],["minion_water","💧"],["minion_lightning","⚡"],["bomb","💣"],["trap","🪤"]];
+/* #201 후속: 보드·트레이·추측에 실제로 그려지는 모양. 함정은 전용 도형, 나머지 7종은 종전 이모지 그대로다 */
+const TRAPSVG=/<svg class="symv" data-sym="trap"/;
+const shapeOk=(html,key,emoji)=>key==="trap"?(TRAPSVG.test(html)&&!html.includes(emoji)):html.includes(emoji);
+
 function cellOf(T,r,c){ return T.els.board.children.find(x=>x.dataset.r===r&&x.dataset.c===c); }
 function chipOf(T,r,c){ const cell=cellOf(T,r,c); return cell&&cell.children.find(x=>/^pc /.test(x.className)); }
 function boardDump(T){ return JSON.stringify(T.els.board.children.map(c=>c.children.map(x=>[x.className,x.innerHTML,x.getAttribute("title"),x.getAttribute("aria-label"),JSON.stringify(x.dataset)]))); }
@@ -71,7 +75,8 @@ function setup(T,mode,seed){
   ok(/👑/.test(emo(13,1))&&!/<img/.test(emo(13,1)),"B5 내 왕 = 👑 (종 이미지 없음)");
   ok(/🤝/.test(emo(13,4))&&!/<img/.test(emo(13,4)),"B6 내 동료 = 🤝");
   ok(/💣/.test(emo(13,2))&&!/<img/.test(emo(13,2)),"B7 내 폭탄 = 💣");
-  ok(/🪤/.test(emo(13,3))&&!/<img/.test(emo(13,3)),"B8 내 함정 = 🪤");
+  /* #201 후속(2026-09-11): 함정만 폰트가 아니라 전용 도형(SYM_SVG)으로 그린다. 나머지 7종의 이모지 계약은 그대로다. */
+  ok(TRAPSVG.test(emo(13,3))&&!/<img/.test(emo(13,3))&&!/🪤/.test(emo(13,3)),"B8 내 함정 = 전용 함정 도형 (이모지 글자 아님 · 종 이미지 없음)");
   ok(/💣/.test(emo(11,5))&&!/<img/.test(emo(11,5)),"B9 공개된 상대 폭탄 = 같은 💣");
   // 기호 어휘가 MEMO_OPTS 하나뿐임을 코드 사실로 확인
   ok(T.MEMO_OPTS.length===8&&MEMO8.every(([k,e])=>T.memoEmoji(k)===e),"B10 기호 어휘 = 기존 MEMO_OPTS 8종 그대로 (신규 래스터 0장)");
@@ -111,10 +116,10 @@ function setup(T,mode,seed){
   for(const [k,e] of MEMO8){
     T.memoSet(0,P.em.id,k); T.render();
     const ch=chipOf(T,11,4), h=chipDump(ch);
-    ok(/memo-guess/.test(ch.className)&&ch.innerHTML.includes(e)&&!/<img/.test(ch.innerHTML)
+    ok(/memo-guess/.test(ch.className)&&shapeOk(ch.innerHTML,k,e)&&!/<img/.test(ch.innerHTML)
       &&T.ART_DIRS.every(d=>h.indexOf(d)<0)&&h.indexOf(P.em.name)<0&&!/class="hp"/.test(ch.innerHTML)
       &&/추측/.test(ch.getAttribute("aria-label")||""),
-      "C8."+k+" 메모 "+e+" = 뷰어 이모지만 (종 아이콘·경로·실제 이름·HP 없음 · 점선 반투명 유지)");
+      "C8."+k+" 메모 "+(k==="trap"?"함정 도형":e)+" = 뷰어 표시만 (종 아이콘·경로·실제 이름·HP 없음 · 점선 반투명 유지)");
   }
   T.memoSet(0,P.em.id,null); T.render();
   ok(chipOf(T,11,4).innerHTML==="?","C9 메모 삭제 → ? 복귀");
@@ -157,7 +162,7 @@ function setup(T,mode,seed){
   const tray=T.els.sidePanel.innerHTML;
   ok(/class="trayItem/.test(tray),"E1 전제: 배치 트레이 렌더됨");
   ok(/<div class="pc p0"[^>]*><img class="icon" src="assets\/minions\/[a-z_]+\/icon\.png"/.test(tray),"E2 트레이 하수인도 같은 종 아이콘 (말판만 바뀌는 불일치 없음)");
-  ok(/👑/.test(tray)&&/🤝/.test(tray)&&/💣/.test(tray)&&/🪤/.test(tray),"E3 트레이 왕·동료·폭탄·함정도 같은 메모 이모지");
+  ok(/👑/.test(tray)&&/🤝/.test(tray)&&/💣/.test(tray)&&TRAPSVG.test(tray),"E3 트레이 왕·동료·폭탄은 같은 메모 이모지, 함정은 보드와 같은 전용 도형 (한쪽만 갈라지지 않는다)");
   ok(/class="info"/.test(tray)&&/class="hp"/.test(tray),"E4 트레이도 같은 정보 행 규격");
   ok(!/class="el el-/.test(tray),"E5 구 3단 텍스트(이름·속성 span) 잔재 없음");
 }
@@ -301,18 +306,24 @@ function setup(T,mode,seed){
      구현이 실제 렌더 픽셀 비교로 확증하는지 코드 사실로 확인한다 (실브라우저 오탐 검사는 minion_art_cdp.js 의 falsePos). */
   ok(/getImageData/.test(T.html)&&/measureText/.test(T.html),"J1b 글리프 판정은 폭 비교로 거르고 실제 렌더 픽셀로 확증한다 (폭 동일 = 미지원 단정 아님)");
   ok(/GLYPH\.NOTDEF/.test(T.html),"J1c 비교 기준은 고정된 미지원 코드포인트 하나뿐 (임의 문자 비교 아님)");
-  ok(/class="sym" aria-hidden="true">🪤</.test(T.pcFaceHtml({type:"trap"})),"J2 글리프가 있으면 함정 = 🪤 (기호 계약 그대로)");
+  ok(/class="sym sv" aria-hidden="true"><svg class="symv" data-sym="trap"/.test(T.pcFaceHtml({type:"trap"}))
+     &&!/🪤/.test(T.pcFaceHtml({type:"trap"})),"J2 함정은 폰트를 보지 않고 전용 도형으로 그린다");
   // 글리프가 없는 플랫폼을 흉내 낸다 — 같은 뜻의 짧은 현행 텍스트로 되돌아가고, 기호 어휘를 새로 만들지 않는다
   T.GLYPH.cache["🪤"]=false; T.GLYPH.cache["👑"]=false;
   const f=T.pcFaceHtml({type:"trap"});
-  ok(/class="sym ng">함정</.test(f)&&!/🪤/.test(f),"J3 글리프가 없으면 함정 = '함정' 텍스트 (두부 네모 대신 식별 가능)");
+  /* #201 후속: 함정은 글리프 지원 여부와 **무관하게** 같은 도형이다 — 글리프 폴백 경로를 아예 타지 않는다.
+     종전 계약(글리프 없으면 '함정' 텍스트)은 도형이 없는 나머지 7종에만 남는다 (바로 아래 J4 가 그것을 지킨다). */
+  ok(TRAPSVG.test(f)&&!/class="sym ng"/.test(f)&&!/🪤/.test(f),"J3 글리프가 없다고 해도 함정은 같은 도형 그대로 (텍스트 폴백을 타지 않는다)");
+  ok(T.glyphOk("🪤")===false&&TRAPSVG.test(T.glyphSpan("trap","sym")),"J3b 음성 대조: glyphOk 가 거짓이어도 함정 도형은 바뀌지 않는다 (판정 근거가 폰트가 아님)");
   ok(/class="sym ng">왕</.test(T.pcFaceHtml({type:"king",hp:100})),"J4 왕도 같은 규칙");
   ok(/class="sym" aria-hidden="true">💣</.test(T.pcFaceHtml({type:"bomb"})),"J5 글리프가 있는 기호는 영향 없음 (필요한 것만 되돌린다)");
   ok(/\.pc \.face \.sym\.ng\{/.test(T.html)&&/\.pc\.memo-guess \.guess\.ng\{/.test(T.html),"J6 폴백 텍스트 전용 크기 CSS 존재 (32px 박스·추측 표식 안에서 넘치지 않음)");
+  ok(/\.pc \.face \.sym\.sv\{width:32px; height:32px;\}/.test(T.html)&&/\.symv\{[^}]*width:100%/.test(T.html),"J6b 도형 전용 크기 CSS — 보드 얼굴에서 32px 로 그려진다");
   // 추측 메모도 같은 규칙 — 확정은 텍스트, 추측은 두부가 되는 불일치를 만들지 않는다
   const P=setup(T,"pve"); T.memoSet(0,P.em.id,"trap"); T.render();
   const ch=chipOf(T,11,4);
-  ok(/memo-guess/.test(ch.className)&&/class="guess ng">함정</.test(ch.innerHTML)&&!/🪤/.test(ch.innerHTML),"J7 추측 메모도 같은 폴백 (확정·추측 표기 일관)");
+  ok(/memo-guess/.test(ch.className)&&TRAPSVG.test(ch.innerHTML)&&!/class="guess ng"/.test(ch.innerHTML)&&!/🪤/.test(ch.innerHTML),"J7 추측 메모도 확정과 같은 도형 (확정·추측 표기 일관)");
+  ok(/class="sym ng">왕</.test(T.pcFaceHtml({type:"king",hp:100})),"J7b 도형이 없는 기호의 종전 텍스트 폴백은 그대로 살아 있다 (함정만 예외로 두지 않았는지 확인)");
   ok(T.MEMO_OPTS.length===8,"J8 폴백은 표시 방법일 뿐 — 메모 선택지 8종은 그대로");
   T.GLYPH.cache["🪤"]=true; T.GLYPH.cache["👑"]=true; T.TQ.length=0;
 
