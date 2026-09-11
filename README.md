@@ -21,7 +21,7 @@
 
 ## 게임 기능
 
-*아래 설명은 정식 버전 **v0.4.8** 기준입니다. 최신 수정 내용은 [새로운 기능](#새로운-기능)에서 확인하세요.*
+*아래 설명은 정식 버전 **v0.4.9** 기준입니다. 최신 수정 내용은 [새로운 기능](#새로운-기능)에서 확인하세요.*
 
 - **물음표 뒤를 추리하세요** — 하수인 6 · 동료 2 · 왕 1 · 폭탄 3 · 함정 2, 말 14개를 자기 진영에 비공개로 배치합니다. 상대에게 내 말은 모두 물음표이며, 전투를 치른 말은 정체가 드러납니다. 8종 추측 메모로 상대 말에 나만 보이는 표시를 남겨 두세요.
 - **숲에 숨고 흔적을 쫓으세요** — 7열 × 13행 판 가운데에는 몸을 숨길 수 있는 숲이 흩어져 있습니다. 숲 속의 말은 상대가 바로 옆에 와야만 보입니다. 숲 어딘가에 숨은 선물의 흔적을 찾아 탐색하면 몬스터볼 · 회복약 · 다음 전투 버프 · 공용 하수인을 얻습니다.
@@ -33,13 +33,13 @@
 
 ## 게임 플레이 사진
 
-이미지를 클릭하면 원본 크기로 볼 수 있습니다. 아래는 **v0.4.8**의 실제 브라우저 화면입니다. 보드는 온라인 대전에서, 전투는 화면 확인용 오프라인 대전에서 촬영했습니다.
+이미지를 클릭하면 원본 크기로 볼 수 있습니다. 전략 보드는 **v0.4.9 온라인 대전**, 전투는 **v0.4.8 화면 확인용 오프라인 대전**에서 촬영한 실제 브라우저 화면입니다.
 
 <table>
   <tr>
     <td align="center" width="50%">
-      <a href="docs/hotfix/201/Mars/artifacts/201-01-online-board-seat-P1.png"><img src="docs/hotfix/201/Mars/artifacts/201-01-online-board-seat-P1.png" alt="v0.4.8 온라인 전략 보드 — 숲 칸과 왕·동료·하수인, 아래쪽 행동 메뉴" width="78%"></a>
-      <br><b>전략 보드</b><br><sub>온라인 대전의 왕·동료·하수인 아트입니다. 상대의 미공개 말은 물음표로 표시합니다.</sub>
+      <a href="docs/hotfix/201/Mars/trap-icon/201-trap-01-online-board-seat-P1.png"><img src="docs/hotfix/201/Mars/trap-icon/201-trap-01-online-board-seat-P1.png" alt="v0.4.9 온라인 전략 보드 — 전용 함정 아이콘과 왕·동료·하수인, 숲 칸과 아래쪽 행동 메뉴" width="78%"></a>
+      <br><b>전략 보드</b><br><sub>전용 함정 아이콘과 왕·동료·하수인 아트입니다. 상대의 미공개 말은 물음표로 표시합니다.</sub>
     </td>
     <td align="center" width="50%">
       <a href="docs/hotfix/201/Mars/artifacts/201-03-battle-FIXTURE-offline.png"><img src="docs/hotfix/201/Mars/artifacts/201-03-battle-FIXTURE-offline.png" alt="v0.4.8 속성 전투 — 오른쪽 위의 상대, 왼쪽 아래의 내 말과 양측 HP, 아래 네 가지 명령" width="78%"></a>
@@ -78,6 +78,12 @@
 
 ## 새로운 기능
 
+[![v0.4.9](https://img.shields.io/badge/v0.4.9-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.9) 함정을 글자 대신 그림으로 표시하고 온라인 보드 사진을 갱신했습니다. 폰트 설치 여부와 관계없이 같은 아이콘이 보입니다.
+
+자세한 내용은 [v0.4.9 릴리스 노트](docs/releases/v0.4.9.md)를 참고하세요.
+
+### 이전 업데이트 — v0.4.8
+
 [![v0.4.8](https://img.shields.io/badge/v0.4.8-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.8) 온라인 대전에서 왕·동료·일부 하수인의 아트가 이름이나 이모지로 표시되는 문제를 고쳤습니다.
 
 **v0.4.8 Patch Note** (2026-09-11)
@@ -112,7 +118,7 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 현재 버전 | [v0.4.8](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.8) — 온라인 아트 hotfix ([패치 노트](docs/releases/v0.4.8.md)) |
+| 현재 버전 | [v0.4.9](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.9) — 함정 아이콘 수정 ([패치 노트](docs/releases/v0.4.9.md)) |
 | 다음 버전 | v0.5.0 Roblox 포팅 · v0.6.0 Unity 포팅 (개발 중) |
 | 최근 업데이트 | 2026-09-11 |
 | Star · Fork | [![Stars](https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars)](https://github.com/ChangjoSung/Digit-Duel) [![Forks](https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks)](https://github.com/ChangjoSung/Digit-Duel/forks) |
@@ -148,7 +154,7 @@
 
 **개발 중인 다음 버전을 미리 보고 싶다면**
 
-위 Releases의 다운로드는 정식 버전 **v0.4.8**입니다. 아직 출시되지 않은 작업을 보려면 초록색 **Code** 버튼에서 브랜치를 `dev`로 바꿔 받은 뒤 똑같이 `demo/index.html`을 열면 됩니다.
+위 Releases의 다운로드는 정식 버전 **v0.4.9**입니다. 아직 출시되지 않은 작업을 보려면 초록색 **Code** 버튼에서 브랜치를 `dev`로 바꿔 받은 뒤 똑같이 `demo/index.html`을 열면 됩니다.
 
 ## 저장소 구조
 
