@@ -10,6 +10,15 @@
 
 규칙: 기획에 없는 내용은 임의 구현하지 않고 [기획 필요]로 보고한다. CJ 결정은 GDD-13 Decision Log에 날짜와 함께 기록한다. 모든 보고는 확정/추론/미확정을 구분한다.
 
+## 현재 부서·모델 운영 (2026-09-13 CJ 승인 · #211)
+
+- 적용 범위는 Digit-Duel 프로젝트뿐이다. 계정 전역 기본값을 수정하지 않는다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
+- 신규 Worker는 [WORKER_MODELS.md](docs/creat2ve/WORKER_MODELS.md)와 [worker-models.json](docs/creat2ve/worker-models.json)의 agent/model/effort를 명시해 시작한다. 계정 기본값만으로 부서별 실행값을 추정하지 않는다. 시작 영수증 requested/effective와 실제 응답을 확인한다.
+- Mercury_PD=Terra low, Venus_Plan/Mars_Client/Jupiter_Server=Sonnet 5 medium, Saturn_QA=Sol medium. Earth_Art는 신규 창작 Astra medium / 기존 자산 수정 Terra medium.
+- Venus가 Notion 기획서 작성·관리를 맡는다(eli_adult). Mercury는 GitHub·Orca 조정·운영 보고와 메타데이터를 관리한다. 아래 과거 계약의 Worker Notion 직접 쓰기 금지는 Venus의 승인된 기획 문서 관리에는 적용하지 않는다. 다른 Worker의 GitHub/Notion 쓰기와 모든 Worker의 Git 쓰기 금지는 유지한다.
+- Earth는 도트·리소스·UI 시각/전환 설계, Mars는 UI 실행 코드, Jupiter는 서버·DB·Table 스키마/검증, Venus/CJ는 Table 의미/수치를 맡는다. 기존 TSV의 일괄 CSV 변환은 승인되지 않았다.
+- 이번 범위는 infra 역할·모델 설정이다. 외부 서버 및 Lobby/System Flow 작업은 별도 CJ 요청 전 착수하지 않는다. 아래 과거 부서 단계·관리 주체와 충돌하면 이 최신 계약을 우선한다.
+
 ## 조직 구조 — Creat2ve Vibe Coding Structure release 0.2.0 / rev 5 (2026-09-02)
 태양계 명명 부서제. 정의 원본: Notion "Creat2ve Vibe Coding Structure" (https://app.notion.com/p/3ce1e7f17085818c82c5dd886149ad5b). 범용 핸드북·승인형 bootstrap 원본: [creat2ve-structure](https://github.com/ChangjoSung/creat2ve-structure).
 - ☀️ **CJ (CEO/SUN)**: 방향성 제시(CJ Comment)·최종 승인
