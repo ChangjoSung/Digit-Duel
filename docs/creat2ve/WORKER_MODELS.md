@@ -18,7 +18,7 @@
 2. JSON의 해당 작업 유형을 선택하고 새 Worker에 `--agent`, `--model`, `--effort`를 명시한다. 예: `orca orchestration worker-start --spec "자기완결적 작업 명세" --worktree current --agent claude --model claude-sonnet-5 --effort medium --json`.
 3. 시작 영수증의 launch.requested와 launch.effective를 대조하고 실제 응답 성공도 별도로 확인한다. 설정 저장, 실행값 전달, 제공자의 응답 성공을 구분한다. 모델 접근 오류는 자동으로 다른 모델에 넘기지 않고 보고한다.
 4. 기존 터미널 재사용에는 모델/effort 인수를 조합하지 않는다. 모델 변경이 필요하면 정리된 인계문으로 같은 역할의 새 Worker를 시작한다. 현재 PD 대화의 모델은 계정 설정 파일 저장만으로 바뀌지 않는다.
-5. 완료 후 worker_done 검증 → archive/release. 불필요한 Worker나 모델별 단순 인사 테스트를 반복 기동하지 않는다.
+5. 완료 후 worker_done을 검증하고 `orca orchestration worker-release --dispatch <id>`를 실행한다. release가 출력 보관과 자원 정리를 수행하며 별도 archive 명령을 사용하지 않는다. 불필요한 Worker나 모델별 단순 인사 테스트를 반복 기동하지 않는다.
 
 ## 상향 및 토큰 운영
 
@@ -39,7 +39,7 @@ Venus는 Notion 기획서를 eli_adult 방식으로 작성·관리한다. 목적
 
 ## 적용 범위 — Digit-Duel 전용
 
-CJ의 2026-09-13 추가 지시에 따라 계정 전역 기본값은 유지한다. 최초 작업 중 전역값을 변경했으나 즉시 Codex Astra medium/priority, Claude opus[1m]/effort 미지정으로 복원했다. 백업은 각 설정 파일 옆 `.before-211-20260913`에 보존한다. 인증·MCP·권한과 다른 설정은 변경 대상이 아니다.
+CJ의 2026-09-13 추가 지시에 따라 계정 전역 기본값은 유지한다. 최초 작업 중 전역값을 변경했으나 즉시 Codex Astra medium/priority, Claude opus[1m]/effort 미지정으로 복원했다. 백업은 각 설정 파일 옆 `.before-211-20260913`에 보존한다. 인증·MCP·권한과 다른 설정은 변경 대상이 아니다. 독립 비교에서 Codex TUI가 생성한 `tui.model_availability_nux.gpt-6-astra=1` 안내 확인 메타데이터만 추가됐음을 확인했다. 이 UI 메타데이터는 모델/effort 기본값이 아니므로 유지하며, 그 외 설정은 백업과 의미상 동일하다.
 
 Digit-Duel의 신규 Worker에만 위 모델·effort를 CLI 인수로 적용한다. 다른 프로젝트나 연결 계정의 기본 모델은 변경하지 않는다. 현재 PD 대화는 기존 실행값을 유지하고, 다음 Digit-Duel PD 세션은 프로젝트 Codex 설정 또는 명시적 Terra low 실행 인수로 시작한다. Orca UI에서 명시적으로 선택한 모델은 프로젝트 기본값보다 우선할 수 있으므로 시작 영수증을 확인한다.
 근거: [OpenAI 설정](https://learn.chatgpt.com/docs/config-file/config-reference), [Claude 모델 설정](https://code.claude.com/docs/en/model-config), 설치된 Orca 1.4.200의 worker-start 도움말.
