@@ -19,7 +19,59 @@ Windows 는 실행기를 더블클릭한다. 모드는 실행기가 결정하고
 
 최초 실행 시 의존성은 자동 설치되고, 설치가 실패하면 서버를 띄우지 않는다.
 
-터미널에서 직접 실행하려면: `npm install` 후 `npm start` (로컬 전용) · `npm run start:lan` (LAN 공개).
+터미널에서 직접 실행하려면(코드 접속 릴레이): `npm install` 후 `npm run start:relay` (로컬 전용) · `npm run start:relay:lan` (LAN 공개).
+
+### 공개 대전 서버 (#217 서버 권위, 기본 8081)
+
+공개 로비·서버 권위 대전은 별도 서버 `authoritative/server.js` 가 맡는다. 게임 페이지도 이 서버가 직접 서빙하므로
+**`http://127.0.0.1:8081` 을 브라우저로 열면** 페이지의 기본 접속 주소가 곧 이 서버다(접속 코드 없음).
+
+| 실행 | 모드 |
+| --- | --- |
+| `공개서버시작.bat` · `npm start` | 공개 대전 — 로컬 전용 |
+| `공개LAN서버시작.bat` · `npm run start:lan` | 공개 대전 — LAN 공개(사설 대역만) |
+
+두 서버는 포트가 달라(릴레이 8080 · 공개 8081) 동시에 켤 수 있다. 프로토콜·검증 범위는
+`docs/milestone/v0.4.10/issues/217/Jupiter/protocol.md` 가 원본이다.
+
+#### 공개 배포(WAN) 옵트인 — Render 등 리버스 프록시 뒤 (#217 deploy-readiness)
+
+기본(미설정)은 위 로컬/LAN 동작 그대로다. 아래 옵트인은 `authoritative/server.js` 전용이며 코드 접속
+릴레이(`server.js`)에는 영향이 없다.
+
+| 변수 | 기본값 | 설명 |
+| --- | --- | --- |
+| `PORT` | (없음) | 플랫폼(Render 등)이 주입하는 포트. `DD_AUTH_PORT` 가 없을 때만 쓴다 |
+| `DD_AUTH_PORT` | `8081` | 명시하면 `PORT` 보다 우선(기존 로컬/LAN 실행기·문서 그대로) |
+| `DD_AUTH_PUBLIC_DEPLOY` | (없음) | `1` 이면 리버스 프록시 뒤 배포 모드. 소켓 피어 IP 검사를 건너뛰고 Host·Origin·좌석 토큰만으로 막는다. `DD_AUTH_PUBLIC_HOST` 없이 켜면 기동을 중단한다 |
+| `DD_AUTH_PUBLIC_HOST` | (없음) | 배포 도메인. 스킴·포트·경로 없이 호스트명만(`my-service.onrender.com`). 형식이 어긋나거나 사설/루프백 주소면 기동을 중단한다 |
+| `DD_AUTH_BIND` | 옵트인별 기본값 | 명시 지정 시 IP 리터럴만(위 릴레이 규칙과 동일 판정 함수 공유) |
+
+```
+DD_AUTH_PUBLIC_DEPLOY=1 DD_AUTH_PUBLIC_HOST=<배정된 도메인> npm start
+# 저장소 루트에서 그대로 실행하려면(Render Start Command와 같은 형태): npm start --prefix server
+```
+
+`DD_AUTH_PUBLIC_DEPLOY=1` 인 배포에서는 소켓의 직접 피어(`creatorIp` 포함)가 항상 리버스 프록시이지
+실제 클라이언트가 아니므로, `httpBuckets`·`upgradeBuckets`·`connectionsByIp`·`authLimiter`·
+`Lobby.maxOpenPublicPerIp` 의 "IP당" 한도가 실제로는 이 인스턴스 전체가 나눠 쓰는 **공유 한도**가
+된다(가용성 저하일 뿐 인증 우회는 아니다). 런타임 임의 완화 없이 현재 코드 기본값을 그대로 적으면:
+동시에 열려 있는(대기 중) 공개 방은 **인스턴스 전체 통틀어 2개**(`maxOpenPublicPerIp`, 기본값 — 서로
+다른 사용자 둘이 각자 방을 열면 셋째 사용자의 "새 방 만들기"부터 거부된다), WebSocket 동시 연결 전체
+64·공유 한도당 8(`DD_AUTH_MAX_CONNECTIONS`/`_PER_IP`), 정적 HTTP 버스트 288 토큰(초당 96 회복),
+WS 업그레이드 분당 60회, 인증 실패 5분에 10회로 차단. `X-Forwarded-For` 로 원 클라이언트 IP를 복원해
+이 한도들을 사람 단위로 세분화하는 방식은 프록시가 그 헤더를 조작 불가하게 덮어쓰는지 이 프로젝트가
+검증하지 못했으므로 **임의로 신뢰하지 않는다.**
+
+**클라이언트 주소 판정 재확인(정정)**: 공개 방(생성·목록·참가·재개)은 전부 `netOpenCredentialSocket()`
+한 곳만 거치며(`demo/index.html`), 이 함수는 `netPublicAddr()`(= `location.host`)에 `location.protocol`
+기준으로 `ws:`/`wss:`를 붙일 뿐 도메인 이름을 거부하는 판정(`netParseAddr`)을 전혀 거치지 않는다. 그
+판정은 위 "클라이언트 쪽 목적지 제한 (#63)"에 적힌 **구 코드 접속 릴레이**(수동 주소 입력, `server.js`
+8080 전용) UI에만 쓰인다 — 의도된 설계이고 이 공개 배포 경로와는 무관하다. 즉 **공개 방 기능은 도메인
+배포 자체로 막히지 않으며, 이를 풀기 위한 별도 클라이언트 수정이나 CJ 승인은 필요하지 않다.** 다만 이
+경로가 실제 인터넷 클라이언트 ↔ Render 배포 사이에서 브라우저로 끝까지 검증된 적은 이 세션에서 없다 —
+실배포 후 실제 접속 확인이 남은 항목이다. 전체 근거는
+[`docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md`](../docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md)에 있다.
 
 기동하면 콘솔에 **접속 주소**와 **접속 코드**가 서로 다른 줄에 따로 출력된다.
 
@@ -72,7 +124,7 @@ new WebSocket('ws://<서버주소>/', ['digit-duel.v1', accessCode]);
 | `DD_LAN=1` | `0.0.0.0` | 같은 공유기의 사설 대역만 (10.x · 172.16~31.x · 192.168.x · 링크 로컬) |
 
 ```
-npm run start:lan          # 또는  node server.js --lan  /  DD_LAN=1 npm start
+npm run start:relay:lan    # 또는  node server.js --lan  /  DD_LAN=1 npm run start:relay
 ```
 
 Windows 에서는 `LAN서버시작.bat` 더블클릭이 위 `node server.js --lan` 과 같은 경로다.
