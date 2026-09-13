@@ -3,14 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "node server.js",
-    "start:lan": "node server.js --lan",
-    "test": "node test.js && node test-security.js && node test-config.js && node test-launcher.js && node test-static-load.js",
+    "start": "node authoritative/server.js",
+    "start:lan": "node authoritative/server.js --lan",
+    "start:relay": "node server.js",
+    "start:relay:lan": "node server.js --lan",
+    "test": "node test.js && node test-security.js && node test-config.js && node test-launcher.js && node test-static-load.js && npm run test:authoritative",
     "test:protocol": "node test.js",
     "test:security": "node test-security.js",
     "test:config": "node test-config.js",
     "test:launcher": "node test-launcher.js",
-    "test:static": "node test-static-load.js"
+    "test:static": "node test-static-load.js",
+    "test:authoritative": "node authoritative/test/test-scheduler.js && node authoritative/test/test-engine-isolation.js && node authoritative/test/test-room.js && node authoritative/test/test-security-gaps.js && node authoritative/test/test-authority-rules.js && node authoritative/test/test-battle-fx.js && node authoritative/test/test-public-authority-delta.js && node authoritative/test/test-match-fuzz.js && node authoritative/test/test-authoritative.js && node authoritative/test/test-http-static.js && node authoritative/test/test-launcher-authoritative.js && node authoritative/test/test-public-deploy.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
