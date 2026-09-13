@@ -1,0 +1,52 @@
+{
+    "schema_version":  1,
+    "approved_on":  "2026-09-13",
+    "consumer":  "Mercury: explicit orca worker-start arguments",
+    "workers":  [
+                    {
+                        "agent":  "codex",
+                        "effort":  "low",
+                        "model":  "gpt-5.6-terra",
+                        "role":  "Mercury"
+                    },
+                    {
+                        "agent":  "claude",
+                        "effort":  "medium",
+                        "model":  "claude-sonnet-5",
+                        "role":  "Venus"
+                    },
+                    {
+                        "agent":  "codex",
+                        "effort":  "medium",
+                        "model":  "gpt-6-astra",
+                        "task_kind":  "new_asset",
+                        "role":  "Earth"
+                    },
+                    {
+                        "agent":  "codex",
+                        "effort":  "medium",
+                        "model":  "gpt-5.6-terra",
+                        "task_kind":  "existing_asset",
+                        "role":  "Earth"
+                    },
+                    {
+                        "agent":  "claude",
+                        "effort":  "medium",
+                        "model":  "claude-sonnet-5",
+                        "role":  "Mars"
+                    },
+                    {
+                        "agent":  "claude",
+                        "effort":  "medium",
+                        "model":  "claude-sonnet-5",
+                        "role":  "Jupiter"
+                    },
+                    {
+                        "agent":  "codex",
+                        "effort":  "medium",
+                        "model":  "gpt-5.6-sol",
+                        "role":  "Saturn"
+                    }
+                ],
+    "issue":  211
+}

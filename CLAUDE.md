@@ -10,6 +10,15 @@
 
 규칙: 기획에 없는 내용은 임의 구현하지 않고 [기획 필요]로 보고한다. CJ 결정은 GDD-13 Decision Log에 날짜와 함께 기록한다. 모든 보고는 확정/추론/미확정을 구분한다.
 
+## 현재 부서·모델 운영 (2026-09-13 CJ 승인 · #211)
+
+- 적용 범위는 Digit-Duel 프로젝트뿐이다. 계정 전역 기본값을 수정하지 않는다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
+- 신규 Worker는 [WORKER_MODELS.md](docs/creat2ve/WORKER_MODELS.md)와 [worker-models.json](docs/creat2ve/worker-models.json)의 agent/model/effort를 명시해 시작한다. 계정 기본값만으로 부서별 실행값을 추정하지 않는다. 시작 영수증 requested/effective와 실제 응답을 확인한다.
+- Mercury_PD=Terra low, Venus_Plan/Mars_Client/Jupiter_Server=Sonnet 5 medium, Saturn_QA=Sol medium. Earth_Art는 신규 창작 Astra medium / 기존 자산 수정 Terra medium.
+- Venus가 Notion 기획서 작성·관리를 맡는다(eli_adult). Mercury는 GitHub·Orca 조정·운영 보고와 메타데이터를 관리한다. 아래 과거 계약의 Worker Notion 직접 쓰기 금지는 Venus의 승인된 기획 문서 관리에는 적용하지 않는다. 다른 Worker의 GitHub/Notion 쓰기와 모든 Worker의 Git 쓰기 금지는 유지한다.
+- Earth는 도트·리소스·UI 시각/전환 설계, Mars는 UI 실행 코드, Jupiter는 서버·DB·Table 스키마/검증, Venus/CJ는 Table 의미/수치를 맡는다. 기존 TSV의 일괄 CSV 변환은 승인되지 않았다.
+- 이번 범위는 infra 역할·모델 설정이다. 외부 서버 및 Lobby/System Flow 작업은 별도 CJ 요청 전 착수하지 않는다. 아래 과거 부서 단계·관리 주체와 충돌하면 이 최신 계약을 우선한다.
+
 ## 조직 구조 — Creat2ve Vibe Coding Structure release 0.2.0 / rev 5 (2026-09-02)
 태양계 명명 부서제. 정의 원본: Notion "Creat2ve Vibe Coding Structure" (https://app.notion.com/p/3ce1e7f17085818c82c5dd886149ad5b). 범용 핸드북·승인형 bootstrap 원본: [creat2ve-structure](https://github.com/ChangjoSung/creat2ve-structure).
 - ☀️ **CJ (CEO/SUN)**: 방향성 제시(CJ Comment)·최종 승인
@@ -38,7 +47,8 @@ CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 �
 CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.com/p/3cd1e7f17085810e9514e5773757bbe3)
 
 ## Git / GitHub 컨벤션 (MyFundManager 벤치마킹)
-- 브랜치 (2026-09-10 CJ 승인 · Issue #169): `main`(릴리스 전용) / `dev`(통합) / `milestone/vX.Y.Z`(마일스톤 트랙 · 2026-09-11 CJ 지정). **main·dev·트랙 브랜치 직접 커밋 금지.** 흐름은 `이슈 브랜치 →(squash) milestone/vX.Y.Z →(merge commit) dev →(merge commit) main(+tag)` 이다. 이름이 `dev/vX.Y.Z`가 **아닌** 이유는 git 제약이다 — ref 는 파일 경로라 `refs/heads/dev`(파일)가 있으면 `refs/heads/dev/…`(디렉터리)를 만들 수 없다(`cannot lock ref … 'refs/heads/dev' exists`). 그래서 접두어를 `milestone/`으로 둔다. **트랙 브랜치**는 마일스톤마다 하나이고 **`dev`에서 분기**해 마일스톤 종료까지 유지한다(`main`에서 자르지 않는다 — 미출시 통합분을 잃는다). **이슈 브랜치**는 그 트랙 브랜치에서 `feature/<issue>-<slug>` · `fix/<issue>-<slug>` · `infra/<issue>-<slug>` · `doc/<issue>-<slug>` 로 분기하고, 트랙이 없는 저장소 전반 작업만 `dev`에서 직접 분기한다. **트랙 브랜치에도 PR 필수 + 필수 CI 6개를 적용한다** — 안 걸면 무검증 구간이 생긴다. **dev 변경을 트랙 브랜치로 주기적으로 내려받는다** — Roblox·Unity는 HTML 규칙을 미러링하므로 하지 않으면 규칙이 갈린다. **마일스톤 완료 시 `main` 직행은 금지다**: 통합 브랜치는 항상 배포된 모든 것을 포함해야 하고, 건너뛰면 `dev < main`이 되어 다음 개발이 배포본을 덮어쓰는 회귀가 난다. 유일한 예외는 **hotfix**로 `main`에서 분기·`main`에 병합한 뒤 **즉시 `dev`로 역병합**한다. 과거 `dev_html` 라인은 PR #22로 `dev`에 병합하고 2026-09-02 폐기했다.
+- 브랜치 (2026-09-10 CJ 승인 · Issue #169): `main`(릴리스 전용) / `dev`(통합) / `milestone/vX.Y.Z`(마일스톤 트랙 · 2026-09-11 CJ 지정). **main·dev·트랙 브랜치 직접 커밋 금지.** 흐름은 `이슈 브랜치 →(squash) milestone/vX.Y.Z →(merge commit) dev →(merge commit) main(+tag)` 이다. 이름이 `dev/vX.Y.Z`가 **아닌** 이유는 git 제약이다 — ref 는 파일 경로라 `refs/heads/dev`(파일)가 있으면 `refs/heads/dev/…`(디렉터리)를 만들 수 없다(`cannot lock ref … 'refs/heads/dev' exists`). 그래서 접두어를 `milestone/`으로 둔다. **트랙 브랜치**는 마일스톤마다 하나이고 **`dev`에서 분기**해 마일스톤 종료까지 유지한다(`main`에서 자르지 않는다 — 미출시 통합분을 잃는다). **이슈 브랜치**는 그 트랙 브랜치에서 `feature/<issue>-<slug>` · `fix/<issue>-<slug>` · `infra/<issue>-<slug>` · `doc/<issue>-<slug>` 로 분기하고, 트랙이 없는 저장소 전반 작업만 `dev`에서 직접 분기한다. **트랙 브랜치에도 PR 필수 + 필수 CI 6개를 적용한다** — 안 걸면 무검증 구간이 생긴다. **dev 변경을 트랙 브랜치로 주기적으로 내려받는다** — Roblox·Unity는 HTML 규칙을 미러링하므로 하지 않으면 규칙이 갈린다. **마일스톤 완료 시 `main` 직행은 금지다**: 통합 브랜치는 항상 배포된 모든 것을 포함해야 하고, 건너뛰면 `dev < main`이 되어 다음 개발이 배포본을 덮어쓰는 회귀가 난다. 유일한 예외는 **hotfix**다 (아래 별도 항목). 과거 `dev_html` 라인은 PR #22로 `dev`에 병합하고 2026-09-02 폐기했다.
+- **hotfix (2026-09-11 CJ 승인 · #175에서 첫 적용)**: 마일스톤에 속하지 않으면서 **현재 출시본에 즉시 반영해야 하는** 수정. 흐름은 `hotfix/<이슈>-<slug>` **`main`에서 분기** →(squash) `main` + 패치 태그 →(merge commit) `dev` 역병합 →(merge commit) 살아 있는 트랙 브랜치 동기화. **`dev`에서 분기하지 않는다** — `dev`에는 미출시 작업이 섞여 있어 `dev → main` 병합은 그 전부를 배포한다(#169 착수 직전 실측: `dev`가 `main`보다 37커밋·1,027파일·+71,815줄 앞섰고 그중 235파일·+29,260줄이 미완성 Roblox였다). 이슈는 `hotfix` 라벨을 달고 **마일스톤에 넣지 않는다**(마일스톤=계획, hotfix=계획 밖). **필수 CI 6개를 우회하지 않는다** — 문서 전용이어도 3분이면 끝난다. **역병합과 트랙 동기화까지가 완료다**: `main`에만 병합하고 멈추면 `dev`·트랙이 옛 상태로 남는다(#175 실측: 역병합 전 `dev`가 9파일·+110/−157을 놓쳤고, 트랙에는 별도 개발자용 안내 문서 자체가 없었다). 검사 자체가 고장 나 hotfix가 막히는 진짜 긴급 상황에서는 **CJ만** `enforce_admins`를 일시 해제할 수 있고, 끈 사실·이유·되돌린 시각을 그 이슈에 남긴다.
 - 병합: 이슈 브랜치 → 트랙 브랜치(트랙이 없으면 `dev`)는 원칙적으로 squash merge 후 Mercury가 해당 로컬·원격 브랜치를 명시적으로 삭제한다. **트랙 브랜치 → `dev`는 merge commit**을 쓴다 — squash 하면 마일스톤 안의 개별 이슈 이력이 뭉개진다. GitHub의 전역 `delete_branch_on_merge`는 릴리스 PR의 장수 `dev`까지 삭제하므로 사용하지 않는다. `main`·`dev`는 삭제 대상이 아니다. 여러 마일스톤을 보존하는 이관 PR과 `dev` → `main` 릴리스 PR만 merge commit을 사용한다. rebase merge는 사용하지 않는다.
 - 릴리스: 마일스톤의 승인 범위가 완료됐을 때만 `dev` → `main` 릴리스 PR을 연다. 병합된 main SHA에 annotated tag `vX.Y.Z`와 동일 버전 GitHub Release를 생성한다. 과거 버전을 현재 `dev` 상태로 소급 릴리스하지 않는다.
 - 이슈·PR·커밋 제목: `[scope] 제목 (#이슈번호)` — scope: `[infra]` `[demo]` `[client]` `[design]`
