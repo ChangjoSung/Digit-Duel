@@ -35,13 +35,17 @@ function freePort(){ return new Promise((res,rej)=>{ const s=require("net").crea
 function getHealth(port){ return new Promise(res=>{ http.get({host:"127.0.0.1",port,path:"/healthz"},r=>{ r.resume(); res(r.statusCode===200); }).on("error",()=>res(false)); }); }
 let DUMP=null;
 async function waitFor(fn,ms,label){ const end=Date.now()+ms; while(Date.now()<end){ try{ if(fn()) return true; }catch(e){} await sleep(15); } if(DUMP) try{ DUMP(); }catch(e){} throw new Error("timeout: "+label); }
-function dumpClients(clients){ for(const c of clients){ const N=c.T.NET, S=c.T.S; console.error(c.name, JSON.stringify({state:N.roomState,ready:[N.myReady,N.peerReady],want:N.readyWanted,rev:N.revision,started:N.started,phase:S&&S.phase,cur:S&&S.current,battle:!!(S&&S.battle),modal:S&&S._pendingModal,flee:!!(S&&S.fleePick),fxQ:N.fxQueue.length,fxPlaying:N.fxPlaying,stage:N.stageBid,resuming:N.resuming,ws:N.ws&&N.ws.readyState,mainUsed:S&&S.mainUsed,toasts:(c.T.byId("toasts").children||[]).map(x=>x.textContent),errors:c.errors.slice(0,2)})); } }
+function dumpClients(clients){ for(const c of clients){ const N=c.T.NET, S=c.T.S; console.error(c.name, JSON.stringify({state:N.roomState,ready:[N.myReady,N.peerReady],want:N.readyWanted,rev:N.revision,started:N.started,phase:S&&S.phase,cur:S&&S.current,battle:!!(S&&S.battle),modal:S&&S._pendingModal,flee:!!(S&&S.fleePick),fxQ:N.fxQueue.length,fxPlaying:N.fxPlaying,stage:N.stageBid,resuming:N.resuming,ws:N.ws&&N.ws.readyState,mainUsed:S&&S.mainUsed,battlesUsed:S&&S.battlesUsed,forced:S&&S.forcedTargets,moved:S&&S.movedPiece&&[S.movedPiece.id,S.movedPiece.type,S.movedPiece.owner],chainWon:S&&S.firstBattleWonByMover,tele:S&&S.teleport&&[S.teleport.stage,S.teleport.piece&&S.teleport.piece.id],sel:S&&S.selected&&S.selected.id,sent:c.ctor.sent,rejects:c.ctor.rejects,toasts:(c.T.byId("toasts").children||[]).map(x=>x.textContent),errors:c.errors.slice(0,2)})); } }
 
 /* 하네스 WebSocket 자리에 진짜 ws 를 끼운다 — 브라우저 WebSocket 과 같은 onopen/onmessage/onclose/protocol/readyState 인터페이스. */
 function mkCtor(tag){
   const log=[];
-  const F=function(url,protocols){ const w=new WS(url,protocols); w.__tag=tag; log.push(w); F.last=w; return w; };
-  F.log=log; return F;
+  const F=function(url,protocols){ const w=new WS(url,protocols); w.__tag=tag; log.push(w); F.last=w;
+    // 진단 전용: 이 좌석 소켓이 보낸 action 과 받은 error 만 기록한다(응답 변경 없음)
+    const send=w.send.bind(w); w.send=(d,...r)=>{ try{ const m=JSON.parse(d); if(m.t==="action"){ F.sent.push(JSON.stringify(m.action).slice(0,120)); if(F.sent.length>6) F.sent.shift(); } }catch(e){} return send(d,...r); };
+    w.on("message",d=>{ try{ const m=JSON.parse(String(d)); if(m.type==="error"){ F.rejects.push(m.code+"@"+(F.sent[F.sent.length-1]||"")); if(F.rejects.length>6) F.rejects.shift(); } }catch(e){} });
+    return w; };
+  F.log=log; F.sent=[]; F.rejects=[]; return F;
 }
 
 function mkClient(name,port){
@@ -66,7 +70,7 @@ let lastSendAt=new Map();
 function throttle(c){ const t=lastSendAt.get(c.name)||0; if(Date.now()-t<25) return false; lastSendAt.set(c.name,Date.now()); return true; }
 /* CJ v0.4.10 QA: 도망 교환·텔레포트 위치 변경 직후 턴 종료 동기화 결함이 main 에 있었다 — 그 입력을 보낸 순간을 적어 두고
    양측이 같은 revision 으로 수렴한 뒤 current·turnCount 를 비교하고, 이후 대국이 실제로 계속되는지(교착 없음) 본다. */
-let SYNC=null; const SYNCSTAT={fleeSwap:0,fleeSkip:0,teleSwap:0,compared:0,progressed:0};
+let SYNC=null; const SYNCSTAT={fleeSwap:0,fleeSkip:0,teleOpened:0,teleSwap:0,compared:0,progressed:0};
 function markSync(c,kind){ SYNCSTAT[kind]++; if(!SYNC) SYNC={kind,rev:c.T.NET.revision,t:Date.now(),by:c.name}; }
 function botStep(c){
   const T=c.T, S=T.S, NET=T.NET, me=NET.me;
@@ -99,30 +103,40 @@ function botStep(c){
      단정하지 않는다 — mainUsed+강제·연쇄 대상 없음일 때 endTurn 을 우선하도록만 바꿨다. */
   const forced=S.forcedTargets&&S.forcedTargets.length>0;
   const chaining=S.battlesUsed===1&&S.firstBattleWonByMover&&S.movedPiece&&S.movedPiece.alive;
+  /* 강제 전투 대기: UI 는 강제 대상 적을 직접 클릭하면 forcedPickOk 로 전투를 연다(index.html onCellCore — 이동 말이
+     폭탄이면 canBattle 대신 contactEligible). 아래 선제 전투 루프는 canBattle·비폭탄만 보므로 폭탄 강제 접촉을 이행하지
+     못했고, 서버는 강제 대기 중 endTurn 을 거부해(room.js endTurn forcedPending) 대국이 멈췄다. 같은 직접 클릭을 쓴다. */
+  if(forced){ const e=foes.find(x=>S.forcedTargets.includes(x.id)&&T.forcedPickOk(x)); if(e){ T.onCell(e.r,e.c); return; } }
+  // 텔레포트(스왑) 진행 중 — 서버 data.turn.teleport 단계를 따라 1단계·2단계 말을 고른다(선제 전투 클릭과 섞지 않는다)
+  if(S.teleport){ const movable=mine.filter(p=>p.immobile===0&&p.type!=="trap");
+    if(S.teleport.stage===1){ const p=movable[Math.floor(rnd()*movable.length)]; if(p){ T.onCell(p.r,p.c); return; } }
+    else { const first=S.teleport.piece; const q=movable.filter(p=>!first||p.id!==first.id); const p=q[Math.floor(rnd()*q.length)]; if(p){ T.onCell(p.r,p.c); markSync(c,"teleSwap"); return; } }
+    T.netAction({t:"tele"}); return; }
+  /* T3 커버리지: 텔레포트는 teleportAvailable(내 말이 상대 setup 진 zoneOf(1-me)=3줄 안에 있음)이 선 뒤 {t:"tele"}
+     합법 입력으로만 연다. CI 34747682221(teleSwap 0): 선제 전투 루프가 이 게이트보다 먼저 돌아, 적 말이 밀집한
+     적진에 닿은 말은 매 턴 인접 적과 싸우느라 tele 까지 가지 못했다. 스왑 미관측이고 강제·연쇄 대상이 없으면
+     선제 전투보다 먼저 연다. 관측 후엔 선제 전투 뒤 기존 확률 게이트로 섞는다. */
+  // battlesUsed===0: 스왑 사전 차단(teleportSwapBlock, 새 강제 전투 수 > 남은 전투)이 생길 수 없는 턴에만 연다
+  const teleOk=!forced&&!chaining&&!S.mainUsed&&S.battlesUsed===0&&T.teleportAvailable(me)&&(S.teleUsed[me]||0)<T.BAL.teleMax;
+  if(teleOk&&SYNCSTAT.teleSwap===0){ T.netAction({t:"tele"}); c.seen.tele=(c.seen.tele||0)+1; SYNCSTAT.teleOpened++; return; }
   if(forced||chaining||!S.mainUsed){
     for(const p of mine) for(const e of foes){ if(Math.abs(p.r-e.r)+Math.abs(p.c-e.c)===1&&T.canBattle(p,e)&&p.type!=="bomb"&&p.type!=="trap"){
       if(!S.selected||S.selected.id!==p.id){ T.onCell(p.r,p.c); return; } T.onCell(e.r,e.c); return; } }
   }
   if(S.mainUsed){ T.netAction({t:"endTurn"}); return; }
-  // 텔레포트(스왑) — 서버 data.turn.teleport 단계를 따라 1단계·2단계 말을 고른다
-  if(S.teleport){ const movable=mine.filter(p=>p.immobile===0&&p.type!=="trap");
-    if(S.teleport.stage===1){ const p=movable[Math.floor(rnd()*movable.length)]; if(p){ T.onCell(p.r,p.c); return; } }
-    else { const first=S.teleport.piece; const q=movable.filter(p=>!first||p.id!==first.id); const p=q[Math.floor(rnd()*q.length)]; if(p){ T.onCell(p.r,p.c); markSync(c,"teleSwap"); return; } }
-    T.netAction({t:"tele"}); return; }
-  /* T3 커버리지: 텔레스왑은 합법 행동(실제 teleportAvailable 조건 충족)으로만 시도한다 — 상태를 직접
-     조작하지 않고 클라이언트가 실제로 보낼 수 있는 {t:"tele"} 입력만 쓴다. 아직 한 번도 성사되지 않았다면
-     (SYNCSTAT.teleSwap===0) 확률 게이트를 생략해 기회가 있을 때 시도하지만, teleportAvailable 자체가 그
-     게임에서 한 번도 서지 않을 수 있어 최소 1회 발생을 단언하지 않는다. 이미 한 번 관측됐다면 기존처럼
-     가끔만 시도해 다른 행동과 섞인 자연스러운 진행을 유지한다. */
-  if(!S.teleport&&!S.mainUsed&&T.teleportAvailable(me)&&(S.teleUsed[me]||0)<T.BAL.teleMax&&!(S.forcedTargets&&S.forcedTargets.length)&&(SYNCSTAT.teleSwap===0||rnd()<0.35)){ T.netAction({t:"tele"}); c.seen.tele=(c.seen.tele||0)+1; return; }
-  // 탐색 가능하면 가끔 탐색
+  if(teleOk&&rnd()<0.35){ T.netAction({t:"tele"}); c.seen.tele=(c.seen.tele||0)+1; SYNCSTAT.teleOpened++; return; }
+  /* T3 보강: 스왑 미관측(teleSwap===0) 동안은 탐색·회복을 건너뛰고 가장 전진한 비왕 말을 계속 밀어 적진 진입
+     기회를 만든다(왕은 가중 제외). 관측 후엔 기존 행동 혼합으로 돌아간다. */
+  const rushing=SYNCSTAT.teleSwap===0;
+  // 탐색 가능하면 가끔 탐색 (rush 중엔 생략)
   const sel=S.selected&&!S.selected.tray?S.selected:null;
-  if(sel&&S.events.some(ev=>ev.r===sel.r&&ev.c===sel.c)&&rnd()<0.8){ T.netAction({t:"search"}); c.seen.searches++; return; }
-  if(sel&&T.canHeal(sel)&&sel.hp<sel.maxHp*0.5&&rnd()<0.5){ T.netAction({t:"heal",id:sel.id}); c.seen.heals++; return; }
+  if(!rushing&&sel&&S.events.some(ev=>ev.r===sel.r&&ev.c===sel.c)&&rnd()<0.8){ T.netAction({t:"search"}); c.seen.searches++; return; }
+  if(!rushing&&sel&&T.canHeal(sel)&&sel.hp<sel.maxHp*0.5&&rnd()<0.5){ T.netAction({t:"heal",id:sel.id}); c.seen.heals++; return; }
   // 전진: 상대 진영 쪽으로 움직일 수 있는 말
   const dir=me===0?-1:1; const cand=[];
+  const adv=p=>me===0?(13-p.r):(p.r-1);
   for(const p of mine){ for(const [dr,dc] of [[dir,0],[0,1],[0,-1],[dir*2,0]]){ const r=p.r+dr,cc=p.c+dc; if(r<1||r>13||cc<1||cc>7) continue;
-    if(T.canMoveTo(p,r,cc)) cand.push({p,r,c:cc,score:(dr===dir||dr===dir*2?3:0)+(p.type==="minion"?2:p.type==="bomb"?1:0)+rnd()}); } }
+    if(T.canMoveTo(p,r,cc)) cand.push({p,r,c:cc,score:(dr===dir||dr===dir*2?3:0)+(p.type==="minion"?2:p.type==="bomb"?1:0)+adv(p)*(rushing&&p.type!=="king"?50:2)+rnd()}); } }
   if(!cand.length){ T.netAction({t:"skipMain"}); return; }
   cand.sort((a,b)=>b.score-a.score); const mv=cand[0];
   if(!sel||sel.id!==mv.p.id){ T.onCell(mv.p.r,mv.p.c); return; }
