@@ -22,9 +22,9 @@ on:
   # 그런데 트랙 보호 규칙은 6개를 필수로 요구하므로 PR 이 영원히 머지되지 않는다.
   # (dev → 트랙 동기화 PR 만 예외적으로 통과한 것은 head 가 dev 라서 push 이벤트 검사가 재사용됐기 때문이다.)
   pull_request:
-    branches: [main, dev, 'milestone/**']
+    branches: [main, dev, 'milestone/v*']
   push:
-    branches: [main, dev, 'milestone/**']
+    branches: [main, dev, 'milestone/v*']
   workflow_dispatch:
 
 permissions:
@@ -67,6 +67,13 @@ jobs:
       # smoke_search_packages.js (#121·#129, v0.4.7): 탐색 이벤트 3종 배치·공용 인벤토리·패키지 개봉·전투 버프 3종·
       # 신규 공용 기술 3종·숲 포획·탐색 완료 턴 종료. 온라인 2인스턴스 락스텝·정보 경계·AI 두 난이도·AI vs AI 완주까지
       # 같은 파일에서 본다 (브라우저 없음). 옛 smoke_cross_skill 의 보상 전달 절이 이 파일로 이전됐다.
+      # smoke_public_rooms.js (#217/#218, v0.4.10): 초대 코드 없는 공개 방 목록·생성·참가·오류·준비(ready)·나가기·
+      # 재접속·행동 전송·전투/모달 오버레이 계약. Jupiter_Server 룸 프로토콜 v4(server/authoritative)로 확정되었고,
+      # 여기서 검증하는 메시지 형식은 실제 서버 응답 형식이다(헤드리스: 실제 엔진을 하네스로 구동한 픽스처 기준).
+      # smoke_fx_consumer.js (#217): 공개 방 표시 계층 — 서버 fx 이벤트를 원본과 같은 순서·시간(BAL.fx·msg 그룹)으로 재생하고,
+      # 전투 무대는 재생 중 이벤트의 battleId 가 소유한다(battle=null·다음 전투 스냅샷이 먼저 와도 옛 무대 유지 → 끝나면 닫힘/교체/선택창).
+      # 실제 디스패처 → render 래퍼 → 원본 battleModal() 경로로만 검증한다(S.battle 직접 대입 지름길 없음).
+      # 실서버 2클라이언트 통합은 B 잡의 smoke_public_live.js, 실브라우저 증빙은 docs/milestone/v0.4.10/issues/217/Mars/report.md.
       - name: 턴 흐름·전투·온라인 규칙 회귀
         run: |
           set -e
@@ -83,6 +90,8 @@ jobs:
           node demo/test/regression/smoke_tutorial.js
           node demo/test/regression/smoke_search_packages.js
           node demo/test/regression/smoke_issue146.js
+          node demo/test/regression/smoke_public_rooms.js
+          node demo/test/regression/smoke_fx_consumer.js
       # smoke_online_art.js (#201, v0.4.8 HotFix): 온라인에서 개별 이미지가 한 번 실패해도 그 자산이 영구히
       # 이모지·텍스트로 남지 않는다. 예산은 **파일 단위**다 — 연속 실패 3회 또는 수명 누적 8회에서 영구 결손으로
       # 굳고, 백오프로 간격을 늘리며, 파일당 예약·조회는 각각 1개다. 응답이 오지도 끊기지도 않는 요청은
@@ -154,7 +163,7 @@ jobs:
   server:
     name: B. 서버 (프로토콜·보안·설정)
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -175,6 +184,13 @@ jobs:
       - name: 서버 회귀 (프로토콜·보안·설정·실행기)
         run: npm test
         working-directory: server
+
+      # #217/#218 공개 방 실서버 통합 — 실제 server/authoritative 를 임의 포트로 띄우고 demo/index.html 클라이언트 두 개
+      # (각자 독립 V8 컨텍스트 · 진짜 ws · 진짜 타이머)가 로비→생성/참가→배치→준비→대국→전투·선택창·도망 교환→결과를 2게임 완주한다.
+      # 대국 중 소켓을 실제로 파괴해 같은 방·같은 좌석 재개와 이후 진행을 확인하고, 미공개 상대 정체 누출·클라이언트 예외 0 을 본다.
+      # 서버 의존성(ws)이 필요해 A 잡이 아니라 npm ci 뒤인 여기서 돈다.
+      - name: 공개 방 실서버 2클라이언트 통합 (#217)
+        run: node demo/test/integration/smoke_public_live.js 2
 
   # ── B2. Windows 실행기 회귀 ──────────────────────────────────────────────────
   # server/test-launcher.js 는 `if (process.platform !== 'win32') { SKIP; exit(0) }` 라

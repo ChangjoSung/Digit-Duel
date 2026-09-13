@@ -45,10 +45,12 @@ function typeCode(T,code){ $el(T,"netCode").value=(code===undefined?CODE:code); 
   ok(T.netServerDefault()===T.NET_LOCAL_DEFAULT&&T.NET_LOCAL_DEFAULT==="127.0.0.1:8080",
     "A1 file:// 실행(host 없음)은 이 PC 기본값 "+T.NET_LOCAL_DEFAULT);
   ok(T.location.protocol==="file:"&&T.location.host==="","A2 하네스 location 스텁은 실제 file:// 처럼 protocol·host를 갖는다 (없으면 로드 즉시 예외)");
-  ok($el(T,"sidePanel").innerHTML.indexOf(T.NET_LOCAL_DEFAULT)>=0,"A3 메뉴 서버 주소 입력칸에 기본값이 채워진다 (렌더가 예외 없이 완주)");
+  /* #217 CJ 승인: 온라인 진입은 공개 방뿐이다 — 코드 접속의 주소·코드 입력칸은 메뉴에 노출하지 않는다(코드 접속 함수는
+     서버 엔진 락스텝·이 파일의 계약 검증용으로 코드에만 남는다). 공개 방 서버 주소는 페이지를 서빙한 서버다. */
   const menu=$el(T,"sidePanel").innerHTML;
-  ok(/file:\/\//.test(menu)&&/Origin/.test(menu)&&/http:\/\/127\.0\.0\.1:8080/.test(menu),
-    "A3b file:// 로 열면 '서버가 Origin을 거부한다 + 서버가 서빙하는 주소로 열어라' 안내가 메뉴에 뜬다");
+  ok(/공개 대전/.test(menu)&&!/id="netServer"/.test(menu)&&!/id="netCode"/.test(menu),"A3 메뉴는 공개 대전 카드만 — 주소·접속 코드 입력칸이 없다 (렌더가 예외 없이 완주)");
+  ok(/file:\/\//.test(menu)&&/공개 방 서버가 서빙하는 주소/.test(menu),
+    "A3b file:// 로 열면 '공개 방 서버가 서빙하는 주소로 열어라' 안내가 메뉴에 뜬다");
 }
 {
   const T=loadAt("http://192.168.0.7:8080/demo/index.html");
@@ -214,12 +216,13 @@ function connectWith(href,input,st,code){
 /* ===== C. 접속 코드 — 분리 입력 · 검증 · 하위 프로토콜 계약 ===== */
 {
   const T=loadAt(FILE_HREF);
+  T.netUiTab("code"); T.render(); // #217: 코드 탭은 없어졌다 — 어떤 탭 값을 주어도 공개 방 카드만 그린다
   const menu=$el(T,"sidePanel").innerHTML;
-  const codeTag=(menu.match(/<input id="netCode"[^>]*>/)||[""])[0];
-  ok(/id="netServer"/.test(menu)&&!!codeTag,"C1 메뉴에 서버 주소 칸과 접속 코드 칸이 따로 있다");
-  ok(/type="password"/.test(codeTag)&&/autocomplete="off"/.test(codeTag)&&/maxlength="64"/.test(codeTag),
-    "C2 코드 칸은 password 타입 · 자동완성 off · 64자 상한");
-  ok(!/value=/.test(codeTag),"C3 코드 칸에는 value 속성이 없다 (렌더가 코드를 HTML로 되돌려 쓰지 않는다)");
+  ok(T.NET.uiTab==="public"&&!/id="netCode"/.test(menu)&&!/id="netServer"/.test(menu)&&!/코드로 참가/.test(menu),"C1 메뉴에는 주소·접속 코드 입력칸도 코드 탭도 없다 (공개 방이 유일한 온라인 진입)");
+  const retry=T.html.match(/<input id="netCodeRetry"[^>]*>/)||[""];
+  ok(/type="password"/.test(retry[0])&&/autocomplete="off"/.test(retry[0])&&/maxlength="64"/.test(retry[0]),
+    "C2 (코드 접속 함수 계약) 재입력 모달의 코드 칸은 password 타입 · 자동완성 off · 64자 상한 (정적)");
+  ok(!/value=/.test(retry[0]),"C3 코드 칸에는 value 속성이 없다 (렌더가 코드를 HTML로 되돌려 쓰지 않는다)");
   ok(T.NET_PROTOCOL_MARKER===MARKER&&T.NET_CODE_MIN===8&&T.NET_CODE_MAX===64,
     "C4 공개 마커·길이 경계가 서버 계약(digit-duel.v1 · 8~64)과 같다");
 }
@@ -286,8 +289,17 @@ function connectWith(href,input,st,code){
 {
   const T=loadAt(FILE_HREF);
   const src=T.html;
-  ok(/new WebSocket\(url,\[NET_PROTOCOL_MARKER,NET\.code\]\)/.test(src),"C25 WebSocket 생성은 [마커, 코드] 2토큰 형태 한 곳뿐 (정적)");
-  ok((src.match(/new WebSocket\(/g)||[]).length===1,"C26 소켓 생성 지점이 하나뿐이다 (코드 없는 우회 접속 경로 없음)");
+  ok(/new WebSocket\(url,\[NET_PROTOCOL_MARKER,NET\.code\]\)/.test(src),"C25 코드 접속(netConnect)의 WebSocket 생성은 [마커, 코드] 2토큰 형태 한 곳뿐 (정적)");
+  /* #217/#218 v2(CJ 승인 · 공개 방 목록·자유 참가, Jupiter protocol.md v2): 초대 코드 없는 참가 경로가 요구사항
+     자체이므로, 두 번째 소켓 생성 지점(netOpenCredentialSocket)이 의도적으로 존재한다 — "코드 없는 우회"가 아니라
+     "코드 없는 공식 경로"다. 그 경로도 credential(l-/cp-/p-/r-<epoch>.<seatToken>)을 하위 프로토콜에 싣지만,
+     그 값은 사용자가 입력·공유하는 초대 코드(NET.code)가 아니라 서버가 발급하거나 클라이언트가 스스로 만든
+     1회성 nonce·좌석 토큰이다 — 지켜야 할 불변은 개수(정확히 둘)와 "그 두 곳 중 어느 것도 NET.code를
+     credential 자리에 쓰지 않는다"는 것이다. */
+  ok((src.match(/new WebSocket\(/g)||[]).length===2,"C26 소켓 생성 지점은 정확히 둘 — 코드 접속(netConnect)·공개/인증 접속(netOpenCredentialSocket), 그 밖의 우회 경로 없음");
+  ok(/new WebSocket\(url,\[NET_PROTOCOL_MARKER,credential\]\)/.test(src),"C26b 공개/인증 접속의 WebSocket 생성은 [마커, credential] 2토큰 형태(netOpenCredentialSocket 한 곳뿐, 정적)");
+  const credFnBody=(src.match(/function netOpenCredentialSocket\([\s\S]*?\n}/)||[""])[0];
+  ok(credFnBody.length>0&&!/NET\.code/.test(credFnBody),"C26c 공개/인증 접속 함수는 NET.code(사용자 입력 초대 코드)를 credential 자리에 전혀 쓰지 않는다");
 }
 
 /* ===== D. 코드 비노출 — 저장소·쿠키·URL·토스트·상태·로그·콘솔·예외 ===== */
@@ -332,7 +344,7 @@ function connectWith(href,input,st,code){
     "D8 코드 심볼이 등장하는 줄에 저장·주소·콘솔·게임 로그 API가 하나도 없다"+(persistNear.length?" — "+persistNear[0].trim():""));
   ok(!/setItem\(\s*["'][^"']*[Cc]ode/.test(src),"D9 'code' 이름의 저장 키를 쓰지 않는다");
   ok(/localStorage\.setItem\("netServer"/.test(src)&&(src.match(/localStorage\.setItem\(/g)||[]).length===2,
-    "D10 localStorage.setItem 호출은 주소 저장 두 곳(netPrepare·netConnect)뿐");
+    "D10 localStorage.setItem 호출은 코드 접속 주소 저장 두 곳(netPrepare·netConnect)뿐 — 공개 방은 주소를 저장하지 않는다(페이지를 서빙한 서버)");
 }
 
 /* ===== E. 저장값 마크업 주입 방어 — 저장된 주소가 곧 스크립트가 되지 않는다 ===== */
@@ -342,17 +354,16 @@ function connectWith(href,input,st,code){
   const menu=$el(T,"sidePanel").innerHTML;
   ok(menu.indexOf(EVIL)<0,"E1 저장된 주소가 원문 그대로 마크업에 들어가지 않는다");
   ok(menu.indexOf("onerror=alert(1)>")<0&&!/<img src=x/.test(menu),"E2 따옴표 탈출로 태그·이벤트 핸들러가 생기지 않는다");
-  const tag=(menu.match(/<input id="netServer"[^>]*>/)||[""])[0];
-  ok(/value="&quot;&gt;&lt;img src=x onerror=alert\(1\)&gt;"/.test(tag),"E3 value 속성은 이스케이프되어 한 개의 속성으로 닫힌다");
-  ok((tag.match(/id="netServer"/g)||[]).length===1&&(menu.match(/<input /g)||[]).length===2,
-    "E4 입력 태그 수가 늘지 않는다 (주소 칸 + 코드 칸 2개)");
+  ok(!/id="netServer"/.test(menu)&&(menu.match(/<input /g)||[]).length===0,"E3 #217 메뉴는 저장된 주소를 어떤 입력칸에도 되쓰지 않는다 (공개 방 카드에는 입력칸이 없다)");
+  T.netListRooms();
+  ok(T.wsLog.length===1&&T.wsLog[0].url==="ws://127.0.0.1:8081","E4 공개 방 접속은 저장된(악성) 주소를 따라가지 않는다 — file:// 는 공개 방 서버 기본 주소 ("+(T.wsLog[0]&&T.wsLog[0].url)+")");
 }
 {
   const T=loadAt(FILE_HREF);
   ok(T.escAttr('<a href="x">&\'`')==="&lt;a href=&quot;x&quot;&gt;&amp;&#39;&#96;","E5 escAttr: < > \" ' ` & 를 모두 실체 참조로 바꾼다");
   ok(T.escAttr("&amp;")==="&amp;amp;","E6 & 를 먼저 바꿔 이미 이스케이프된 값을 두 번 감싸지 않는다(멱등 아님 — 원문만 넣는다)");
   ok(T.escAttr(null)===""&&T.escAttr(undefined)===""&&T.escAttr(0)==="0","E7 null·undefined는 빈 문자열, 그 밖은 문자열화");
-  ok(/value="\$\{escAttr\(netServerDefault\(\)\)\}"/.test(T.html),"E8 주소 value 보간은 escAttr를 거친다 (정적)");
+  ok(!/value="\$\{netServerDefault\(\)\}"/.test(T.html)&&!/id="netServer" value=/.test(T.html),"E8 주소를 이스케이프 없이 value 로 보간하는 입력칸이 소스에 없다 (정적)");
 }
 {
   // 저장된 악성 주소는 렌더에서 이스케이프되고, 접속 단계에서는 아예 목적지로 인정되지 않는다
@@ -440,8 +451,8 @@ function prepared(){ const T=loadAt(FILE_HREF); typeCode(T,CODE); T.netPrepare()
   ok(T1.location.protocol==="file:"&&T1.netServerDefault()==="192.168.1.11:1111","G4 앞선 T의 location·저장소는 나중 load의 https/다른 주소에 끌려가지 않는다");
   ok(T2.netServerDefault()==="10.2.2.2:2222"&&T2.wsLog[0].url==="wss://10.2.2.2:2222","G5 나중 T는 자기 페이지 프로토콜(https→wss)과 자기 저장값을 쓴다");
   ok(T1.NET.code===CODE&&T2.NET.code===CODE&&T1.NET!==T2.NET,"G6 코드도 로드별 메모리에 따로 산다");
-  T1.render();
-  ok($el(T1,"sidePanel").innerHTML.indexOf("192.168.1.11:1111")>=0,"G7 앞선 T의 render()는 자기 문서에 그린다 (나중 load의 document로 새지 않음)");
+  T1.NET.rooms=[{roomId:"G7ROOM",label:"방 #G7ROOM",seats:"1/2",ageSec:3}]; T1.render();
+  ok($el(T1,"sidePanel").innerHTML.indexOf("G7ROOM")>=0&&$el(T2,"sidePanel").innerHTML.indexOf("G7ROOM")<0,"G7 앞선 T의 render()는 자기 문서에 그린다 (나중 load의 document로 새지 않음)");
 }
 {
   /* #54 REVISE(Saturn_3): 포커스 추적도 로드별로 갈린다.

@@ -1,0 +1,353 @@
+{
+  "startedAt": "2026-09-13T06:46:04.013Z",
+  "checks": [
+    {
+      "name": "L1 로비 카드: 공개 대전·초대 코드 안내, 코드/주소 입력칸 없음",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "L2 320px 로비 가로 스크롤 없음",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "L3 320px 주요 버튼 높이 ≥44px",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "R1 호스트: 상대 입장 전 \"상대를 기다리는 중…\"·내 준비 미확정 표시",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "L4 게스트 목록에 \"방 #… · 1/2 · 경과\" 행",
+      "ok": true,
+      "detail": "방 #1 · 1/2 · 방금 전"
+    },
+    {
+      "name": "R2 게스트 입장 알림 뒤 호스트 준비가 서버에서 확정되고 \"상대의 준비를 기다리는 중…\"",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "P1 양측 서버 스냅샷으로 대국 시작",
+      "ok": true,
+      "detail": {
+        "host": {
+          "roomId": 1,
+          "me": 0,
+          "revision": 5,
+          "state": "IN_PROGRESS",
+          "started": true,
+          "resuming": false,
+          "phase": "play",
+          "turn": 0,
+          "current": 0,
+          "winner": null,
+          "battle": false,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": true
+        },
+        "guest": {
+          "roomId": 1,
+          "me": 1,
+          "revision": 5,
+          "state": "IN_PROGRESS",
+          "started": true,
+          "resuming": false,
+          "phase": "play",
+          "turn": 0,
+          "current": 0,
+          "winner": null,
+          "battle": false,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": true
+        }
+      }
+    },
+    {
+      "name": "H1 게스트 화면: 미공개 상대 칩에 이미지·자산 경로·정체 라벨 없음",
+      "ok": true,
+      "detail": {
+        "opponentChips": 14,
+        "hiddenChips": 14,
+        "leaks": 0,
+        "ownImgs": 9
+      }
+    },
+    {
+      "name": "E1 양측 결과 화면·승자·revision 일치",
+      "ok": true,
+      "detail": {
+        "host": {
+          "roomId": 1,
+          "me": 0,
+          "revision": 183,
+          "state": "FINISHED",
+          "started": true,
+          "resuming": false,
+          "phase": "over",
+          "turn": 42,
+          "current": 0,
+          "winner": 1,
+          "battle": false,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": false
+        },
+        "guest": {
+          "roomId": 1,
+          "me": 1,
+          "revision": 183,
+          "state": "FINISHED",
+          "started": true,
+          "resuming": false,
+          "phase": "over",
+          "turn": 42,
+          "current": 0,
+          "winner": 1,
+          "battle": false,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": false
+        }
+      }
+    },
+    {
+      "name": "E2 결과 화면 문구(VICTORY/DEFEAT·공개 방 안내)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "E3 종료 공개: 결과 화면에서 상대 말 정체가 모두 보인다(미공개 칩 0)",
+      "ok": true,
+      "detail": {
+        "opponentChips": 25,
+        "hiddenChips": 0,
+        "leaks": 0,
+        "ownImgs": 0
+      }
+    },
+    {
+      "name": "S1 도망 교환·텔레포트 스왑 실제 클릭 직후 양측 current·turn·revision 일치, 이후 진행(교착 0)",
+      "ok": true,
+      "detail": {
+        "fleeSwap": 8,
+        "fleeSkip": 5,
+        "teleSwap": 1,
+        "compared": 14,
+        "progressed": 14,
+        "mismatches": []
+      }
+    },
+    {
+      "name": "B2 전투 무대 스크린샷 확보",
+      "ok": true,
+      "detail": 6
+    },
+    {
+      "name": "M1 reduced-motion 창의 실제 연출 요소 computed animation-name",
+      "ok": true,
+      "detail": {
+        ".btok.shake": "none",
+        ".dmgfloat": "none",
+        "#board .cell.fx-boom": "none"
+      }
+    },
+    {
+      "name": "X1 브라우저 예외/console.error 0",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "E4 결과 → 로비 복귀 시 공개 방 목록을 다시 불러온다",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "screenshots": [
+    "guest_01_lobby_432.png",
+    "guest_01_lobby_320.png",
+    "host_01_lobby_desktop.png",
+    "host_02_placed_host.png",
+    "host_03_waiting_guest_host.png",
+    "guest_04_room_list_guest.png",
+    "host_05_waiting_ready_host.png",
+    "guest_05_placed_guest.png",
+    "host_06_play_host.png",
+    "guest_06_play_guest.png",
+    "guest_09_banner_guest_1.png",
+    "host_09_banner_host_2.png",
+    "guest_09_banner_guest_3.png",
+    "host_09_banner_host_4.png",
+    "guest_09_banner_guest_5.png",
+    "host_09_banner_host_6.png",
+    "guest_09_banner_guest_7.png",
+    "host_09_banner_host_8.png",
+    "host_08_modal_owner_host_1.png",
+    "guest_07_battle_guest_1.png",
+    "host_07_battle_host_2.png",
+    "guest_07_battle_guest_3.png",
+    "host_07_battle_host_4.png",
+    "guest_07_battle_guest_5.png",
+    "host_07_battle_host_6.png",
+    "host_08_modal_owner_host_2.png",
+    "host_08_modal_owner_host_3.png",
+    "host_09_ko_msg_host.png",
+    "host_12_result_host.png",
+    "guest_12_result_guest.png",
+    "host_13_back_to_lobby_host.png"
+  ],
+  "notes": [
+    "host: prefers-reduced-motion=reduce 에뮬레이트, 창 1200px · guest: 432px 창, TCP 중계 경유(재접속 단절용)",
+    "swap 시나리오: 텔레포트 스왑·도망 교환 비교를 마쳐 기권으로 종료",
+    "시간 상한 안에 자연 종료되지 않아 현재 차례 좌석이 기권 버튼으로 종료했다(기권도 실제 클릭).",
+    "swap 시나리오는 전투에서 도망만 누른다 — B1(기술 클릭)은 전체 실행(run_pub6/7)이 증빙"
+  ],
+  "actions": {
+    "host": [
+      "modal:전투 시작",
+      "menu:flee",
+      "flee",
+      "select-lead",
+      "move-lead",
+      "modal:전투 시작",
+      "menu:flee",
+      "flee",
+      "select-lead",
+      "move-lead",
+      "modal:전투 시작",
+      "menu:flee",
+      "flee",
+      "fleeSwap",
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "fleeSwap",
+      "select-lead",
+      "move-lead",
+      "modal:전투 시작",
+      "menu:flee",
+      "flee",
+      "fleeSkip",
+      "select-lead",
+      "move-lead",
+      "modal:전투 시작",
+      "menu:flee",
+      "flee",
+      "fleeSkip",
+      "select-lead",
+      "move-lead",
+      "modal:전투 시작",
+      "menu:flee",
+      "flee",
+      "select-lead",
+      "move-lead",
+      "modal:전투 시작",
+      "menu:flee",
+      "flee",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "fleeSwap",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead"
+    ],
+    "guest": [
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "menu:flee",
+      "flee",
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "menu:flee",
+      "flee",
+      "fleeSwap",
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "fleeSkip",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "menu:flee",
+      "flee",
+      "fleeSwap",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "fleeSkip",
+      "select-lead",
+      "move-lead",
+      "select-lead",
+      "move-lead",
+      "menu:flee",
+      "flee",
+      "fleeSkip",
+      "tele",
+      "tele1",
+      "tele2"
+    ],
+    "counts": {
+      "host": {
+        "battleClicks": 0,
+        "modalClicks": 9,
+        "moves": 22,
+        "fleeClicks": 14
+      },
+      "guest": {
+        "battleClicks": 0,
+        "modalClicks": 0,
+        "moves": 20,
+        "fleeClicks": 12
+      }
+    }
+  },
+  "finishedAt": "2026-09-13T06:52:53.764Z",
+  "serverLogTail": "Digit Dual 공개 대전 서버(#217 서버 권위) listening on 127.0.0.1:54065 (루프백 전용, epoch e906260c)\n  클라이언트: C:\\Users\\pc_77\\orca\\workspaces\\Digit-Duel\\feature-217-public-authority\\demo\n  접속 주소: http://127.0.0.1:54065\n  LAN 공개가 필요하면 --lan (또는 DD_LAN=1) 로 기동하세요 (기본은 이 PC 전용).\n  헬스체크: http://127.0.0.1:54065/healthz\n  코드 접속(기존 릴레이)은 별도 서버입니다: npm run start:relay (기본 8080).\n"
+}
