@@ -394,6 +394,7 @@ function hookFxLog(T) {
           turn: typeof it.turn === 'number' ? it.turn : null,
           key, kind: it.kind || 'banner',
           title: typeof it.title === 'string' ? it.title : '', sub: typeof it.sub === 'string' ? it.sub : '',
+          cls: typeof it.cls === 'string' ? it.cls : undefined,
           scene: (key === 'resultBanner' && battleId != null) ? (T.__fx.lastScene || null) : undefined,
         });
       } catch (e) { /* 캡처 실패는 표시 계층 손실일 뿐 — 게임 진행을 막지 않는다 */ }

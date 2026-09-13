@@ -1635,7 +1635,7 @@ function fxHide(){
 /* item: {key, title, sub, kind:"banner"|"count"|"result"|"contact"|"bt"|"boom"|"trap", cls, dim:false→투명, cells:[[r,c]], cellCls, hold:[{piece,r,c}], onStart, onEnd, ms(선택 — 기본은 BAL.fx[key])} */
 function fxPlay(item){
   const ms=item.ms!==undefined?item.ms:fxMs(item.key);
-  const entry={key:item.key,title:item.title||"",sub:item.sub||"",kind:item.kind||"banner",turn:S?S.turnCount:-1,ms,t:Date.now(),shown:0}; FX.log.push(entry); item._log=entry; // 진단 기록 (테스트·리포트용, 규칙 무관)
+  const entry={key:item.key,title:item.title||"",sub:item.sub||"",kind:item.kind||"banner",cls:item.cls,turn:S?S.turnCount:-1,ms,t:Date.now(),shown:0}; FX.log.push(entry); item._log=entry; // 진단 기록(테스트·리포트용, 규칙 무관) — #217 공개 방 서버가 이 FX.log 항목을 그대로 후킹해 resultBanner 등의 cls를 wire 이벤트로 넘긴다(battle-fx-protocol.md §6). cls 를 빠뜨리면 roundBanner처럼 서버가 따로 재계산해 주는 것 말고는 전부 결과 배너 기본색(노랑)·이펙트 없음으로 떨어진다.
   if(ms<=0){ try{ if(item.onStart) item.onStart(); }catch(e){} try{ if(item.onEnd) item.onEnd(); }catch(e){} return; }
   FX.q.push(Object.assign({},item,{ms}));
   if(!FX.cur) fxNext();
