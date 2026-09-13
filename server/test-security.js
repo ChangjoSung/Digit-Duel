@@ -36,6 +36,19 @@ function unitTests() {
   ok(S.isPrivateIp('10.0.0.1') && S.isPrivateIp('172.16.0.1') && S.isPrivateIp('192.168.1.9'), '사설 대역 허용');
   ok(!S.isPrivateIp('8.8.8.8') && !S.isPrivateIp('172.32.0.1'), '공인 IP 거부');
 
+  section('공개 배포 Host 검증 (#217 DD_AUTH_PUBLIC_HOST — authoritative 서버 전용 옵트인)');
+  ok(S.validatePublicHost('my-service.onrender.com').ok, '정상 호스트명 통과');
+  rejects(S.validatePublicHost(''), 'absent', '빈 값');
+  rejects(S.validatePublicHost('https://my-service.onrender.com'), 'has_scheme', '스킴 포함');
+  rejects(S.validatePublicHost('my-service.onrender.com/'), 'has_path', '경로 포함');
+  rejects(S.validatePublicHost('my-service.onrender.com:443'), 'has_port', '포트 포함 — Host 헤더 비교는 포트 없는 호스트명 기준');
+  rejects(S.validatePublicHost('localhost'), 'localhost_not_public', 'localhost는 공개 배포 호스트가 아님');
+  rejects(S.validatePublicHost('192.168.0.5'), 'private_address', '사설 주소 — 설정 실수 방지');
+  rejects(S.validatePublicHost('127.0.0.1'), 'private_address', '루프백 주소');
+  rejects(S.validatePublicHost(' my-service.onrender.com'), 'whitespace', '앞뒤 공백');
+  rejects(S.validatePublicHost('-bad.example.com'), 'bad_hostname', '레이블이 하이픈으로 시작');
+  ok(S.validatePublicHost('8.8.8.8').ok, '공인 IP 리터럴은 형식상 허용(Let\'s Encrypt IP 인증서 경로)');
+
   section('접근 코드 비교');
   ok(S.safeEqual(CODE, CODE) && !S.safeEqual(CODE, CODE + 'X') && !S.safeEqual(CODE, null), '상수시간 비교 판정');
   ok(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{10}$/.test(S.generateAccessCode()), '생성 코드 알파벳·길이');

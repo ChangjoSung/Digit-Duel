@@ -6,6 +6,41 @@ const fs=require("fs"), path=require("path");
 /* #54 REVISE(Saturn_3): 요소는 자기를 만든 문서(ownerDocument)를 들고 다닌다.
    포커스/블러가 전역 document를 건드리면, 나중 load()가 전역을 갈아끼운 뒤 앞선 T의 포커스가
    "가장 최근 로드"의 문서에 기록된다. doc를 인자로 받아 그 문서에만 쓴다. */
+/* #217 최소 querySelector 지원 — 실제 제품 코드가 쓰는 패턴("#id .cls[data-x=\"v\"][data-y=\"v2\"]",
+   공백=후손 결합자, 조각당 태그?·.클래스*·[attr=val]*)만 지원한다. doc.querySelector*와 el.querySelector*가
+   함께 쓴다(모듈 top-level — mkEl보다 먼저 정의되어야 요소 메서드에서 바로 참조할 수 있다). */
+function parseSimple(part){
+  let tag=null,id=null; const classes=[],attrs=[];
+  const re=/#[\w-]+|\.[\w-]+|\[[\w-]+(=("[^"]*"|'[^']*'))?\]|^[a-zA-Z][\w-]*/g;
+  let m; while((m=re.exec(part))){ const t=m[0];
+    if(t[0]==="#") id=t.slice(1);
+    else if(t[0]===".") classes.push(t.slice(1));
+    else if(t[0]==="["){ const mm=/\[([\w-]+)(?:=("[^"]*"|'[^']*'))?\]/.exec(t); attrs.push({name:mm[1],val:mm[2]!==undefined?mm[2].slice(1,-1):undefined}); }
+    else tag=t; }
+  return {tag,id,classes,attrs};
+}
+function elClasses(el){ // 제품 코드는 classList.add()도 cell.className="a b"(문자열 대입)도 둘 다 쓴다 — 합쳐서 본다
+  const set=new Set(el._cls?Array.from(el._cls):[]);
+  if(el.className) String(el.className).split(/\s+/).filter(Boolean).forEach(c=>set.add(c));
+  return set;
+}
+function matchesSimple(el,sel){
+  if(sel.id&&el.id!==sel.id) return false;
+  if(sel.classes.length){ const cls=elClasses(el); for(const c of sel.classes) if(!cls.has(c)) return false; }
+  for(const a of sel.attrs){
+    const v=a.name.indexOf("data-")===0?(el.dataset&&el.dataset[a.name.slice(5)]):el.getAttribute(a.name);
+    if(a.val===undefined){ if(v===undefined||v===null) return false; }
+    else if(String(v)!==a.val) return false;
+  }
+  return true;
+}
+function descendants(root){ const out=[]; (function walk(e){ for(const c of (e.children||[])){ out.push(c); walk(c); } })(root); return out; }
+function queryAllFrom(root,selector){ // el.querySelector*: root 자신은 제외하고 후손만 본다(실제 DOM과 동일)
+  const parts=String(selector).trim().split(/\s+/).map(parseSimple);
+  let pool=[root];
+  for(const sel of parts){ const next=[]; for(const base of pool) for(const d of descendants(base)) if(matchesSimple(d,sel)) next.push(d); pool=next; }
+  return pool;
+}
 function mkEl(doc){const el={ownerDocument:doc||null,_html:"",textContent:"",style:{},className:"",dataset:{},value:"",disabled:false,
   scrollTop:0,scrollHeight:0,clientHeight:0,scrollWidth:0,clientWidth:0,offsetWidth:0,children:[],onclick:null,parentNode:null,isConnected:true,
   get innerHTML(){return this._html;}, set innerHTML(v){this._html=v; this.children.length=0;}, // 실제 DOM처럼 innerHTML 대입 시 자식 제거 (다경기 실행 시 누수 방지)
@@ -16,6 +51,7 @@ function mkEl(doc){const el={ownerDocument:doc||null,_html:"",textContent:"",sty
   _listeners:{}, addEventListener(t,fn){(this._listeners[t]=this._listeners[t]||[]).push(fn);},
   dispatch(t,ev){for(const fn of (this._listeners[t]||[])) fn(ev);}, // 테스트용: 등록된 리스너 직접 호출
   contains(n){for(let x=n;x;x=x.parentNode) if(x===this) return true; return false;},
+  querySelectorAll(sel){ return queryAllFrom(this,sel); }, querySelector(sel){ return queryAllFrom(this,sel)[0]||null; },
   appendChild(c){c.parentNode=this;this.children.push(c);},
   removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);},
   focusOpts:undefined,focusCount:0,
@@ -125,6 +161,24 @@ function load(htmlPath,opts){
   // doc를 먼저 만들고 모든 요소를 mkEl(doc)로 생성한다 — 포커스는 이 로드의 문서에만 기록된다
   const doc={getElementById:id=>els[id]||(els[id]=mkEl(doc)),createElement:()=>mkEl(doc),body:null,activeElement:null,
     contains(n){return !!n&&n.isConnected!==false;}}; // #26: 포커스 추적·속성 스텁
+  /* #217 최소 querySelector(doc 레벨) — 실제 제품 코드가 쓰는 유일한 패턴 "#id .cls[data-x=\"v\"]..."만 지원한다.
+     조각 파서·매칭기(parseSimple/matchesSimple/descendants)는 모듈 top-level에 있다(el.querySelector와 공유). */
+  function queryAll(selector){
+    const parts=String(selector).trim().split(/\s+/).map(parseSimple);
+    if(!parts.length) return [];
+    let candidates;
+    if(parts[0].id){ const start=els[parts[0].id]; candidates=start?[start]:[]; }
+    else candidates=descendants(doc.body||{children:Object.values(els)});
+    let pool=candidates;
+    for(let i=(parts[0].id?1:0);i<parts.length;i++){
+      const sel=parts[i]; const next=[];
+      for(const base of pool) for(const d of descendants(base)) if(matchesSimple(d,sel)) next.push(d);
+      pool=next;
+    }
+    return pool;
+  }
+  doc.querySelectorAll=selector=>queryAll(selector);
+  doc.querySelector=selector=>queryAll(selector)[0]||null;
   doc.body=mkEl(doc); doc.activeElement=doc.body;
   Object.defineProperty(doc,"cookie",{configurable:true,enumerable:true,
     get(){return "";},set(v){cookieWrites.push(String(v));}}); // 쿠키 저장도 런타임으로 잡는다
@@ -136,7 +190,10 @@ function load(htmlPath,opts){
      (window는 전역 그대로 두되 저장소·location·WebSocket 읽기만 얇은 프록시로 이 로드의 것을 돌려준다 — 최소 침습.) */
   const loc=mkLocation(opts.href);
   const wsLog=[];
-  const WebSocketCtor=mkWebSocket(wsLog);
+  /* opts.WebSocketCtor: 실제 WebSocket 생성자(전역 네이티브 WebSocket 또는 ws 패키지)를 주입하는 탈출구 —
+     헤드리스 스모크(회귀)는 여전히 기본 스텁(mkWebSocket)을 쓴다. #217 실서버 통합 검증(진짜 소켓)에서만
+     쓰는 선택 사항이며, 생략하면 기존 동작과 완전히 같다. */
+  const WebSocketCtor=opts.WebSocketCtor||mkWebSocket(wsLog);
   const storage=resolveStorage(opts);
   const sessionStorage=opts.sessionStorage!==undefined?opts.sessionStorage:mkStorage();
   const indexedDB={opens:[],open(){this.opens.push(Array.prototype.slice.call(arguments));return {};}};
@@ -162,11 +219,11 @@ function load(htmlPath,opts){
   global.sessionStorage=sessionStorage; global.indexedDB=indexedDB;
   defineStorage(global,storage);
 
-  // 가짜 타이머
+  // 가짜 타이머 — opts.realTimers: #217 실서버 통합 검증에서만 진짜 setTimeout/setInterval을 쓴다(생략 시 기존 그대로 스텁)
   const TQ=[];
   const ownSetTimeout=fn=>{TQ.push(fn);return 0;};
-  global.setTimeout=ownSetTimeout;
-  global.setInterval=()=>0; global.clearInterval=()=>{}; // #41 온라인 PVP 수신 펌프(setInterval) — 헤드리스에서는 무동작 (Node 이벤트 루프 유지로 프로세스가 안 끝나던 회귀 방지)
+  if(opts.realTimers){ global.setTimeout=setTimeout; global.setInterval=setInterval; global.clearInterval=clearInterval; }
+  else { global.setTimeout=ownSetTimeout; global.setInterval=()=>0; global.clearInterval=()=>{}; } // #41: 헤드리스에서는 무동작 (프로세스가 안 끝나던 회귀 방지)
   const drain=(cap)=>{cap=cap||5000000; let n=0; while(TQ.length&&n<cap){TQ.shift()();n++;} return n;};
   const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win};
   /* 렉시컬 캡처 — 이 줄은 제품 코드 1행과 같은 줄에 이어 붙지 않도록 개행 없이 앞에 둔다 (에러 행 번호 보존) */
@@ -222,6 +279,21 @@ function load(htmlPath,opts){
   rosterInfo:window.rosterInfo,battleModal,toggleRoster:window.toggleRoster, // #89 하수인 아트 연결 (표시 계층)
   NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
   netServerDefault,netActor,netAction,netPrepare,netConnect,netPump,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
+  netUiTab:typeof netUiTab==="function"?netUiTab:undefined, netRoomsHtml:typeof netRoomsHtml==="function"?netRoomsHtml:undefined, // #217/#218 공개 방(초대 코드 없는 목록·참가)
+  netListRooms:typeof netListRooms==="function"?netListRooms:undefined, netCreatePublicRoom:typeof netCreatePublicRoom==="function"?netCreatePublicRoom:undefined,
+  netJoinPublicRoom:typeof netJoinPublicRoom==="function"?netJoinPublicRoom:undefined, netRoomReady:typeof netRoomReady==="function"?netRoomReady:undefined,
+  netLeaveRoom:typeof netLeaveRoom==="function"?netLeaveRoom:undefined, netHandlePublicMessage:typeof netHandlePublicMessage==="function"?netHandlePublicMessage:undefined,
+  /* #217 재접속(bounded resume) — setInterval이 헤드리스에서 무동작이므로 tick을 직접 호출해 검증한다 */
+  netResumeTick:typeof netResumeTick==="function"?netResumeTick:undefined, netResumeAttempt:typeof netResumeAttempt==="function"?netResumeAttempt:undefined,
+  netBeginResume:typeof netBeginResume==="function"?netBeginResume:undefined, netClearResume:typeof netClearResume==="function"?netClearResume:undefined,
+  netCancelResume:typeof netCancelResume==="function"?netCancelResume:undefined, netHandlePublicSocketClosed:typeof netHandlePublicSocketClosed==="function"?netHandlePublicSocketClosed:undefined,
+  /* #217 공개 방 표시 계층 — fx 재생 큐·battleId 무대 소유·원본 전투 화면 재사용 검증용 */
+  netApplyRoomState:typeof netApplyRoomState==="function"?netApplyRoomState:undefined, netFxIngest:typeof netFxIngest==="function"?netFxIngest:undefined,
+  netFxPump:typeof netFxPump==="function"?netFxPump:undefined, netSyncOverlays:typeof netSyncOverlays==="function"?netSyncOverlays:undefined,
+  netSynthBattle:typeof netSynthBattle==="function"?netSynthBattle:undefined, netRenderBattleStage:typeof netRenderBattleStage==="function"?netRenderBattleStage:undefined,
+  netFlushSetupReady:typeof netFlushSetupReady==="function"?netFlushSetupReady:undefined, netSendAction:typeof netSendAction==="function"?netSendAction:undefined,
+  autoEndReady:typeof autoEndReady==="function"?autoEndReady:undefined, toLobby:typeof toLobby==="function"?toLobby:undefined,
+  NET_RESUME_GRACE_MS:typeof NET_RESUME_GRACE_MS!=="undefined"?NET_RESUME_GRACE_MS:undefined, NET_RESUME_RETRY_MS:typeof NET_RESUME_RETRY_MS!=="undefined"?NET_RESUME_RETRY_MS:undefined,
   TUT,TUT_STEPS,TUT_HINTS,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
   /* #128: 현행 제품에는 튜토리얼 영구 저장이 없다(TUT_KEY·tutStore 삭제). 고정 ref 기준판(#92 d614392·#93 6baa0b5 등)은 아직 갖고 있으므로 부재를 허용한다 */
   TUT_KEY:typeof TUT_KEY!=="undefined"?TUT_KEY:undefined, tutStore:typeof tutStore!=="undefined"?tutStore:undefined,

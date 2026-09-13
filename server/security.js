@@ -265,6 +265,32 @@ function resolveStaticPath(root, rawUrl) {
   return { ok: true, file: real, mime, size: st.size };
 }
 
+/* ===== 공개 배포 호스트 (#217 WAN 준비) =====
+ * DD_AUTH_PUBLIC_HOST 는 Host 허용 목록에 그대로 더해진다(isAllowedHost). 형식이 어긋나면
+ * "설정은 했는데 모든 요청이 400(bad host)로 막히는" 조용한 고장이 된다 — 예: 스킴·포트·경로가
+ * 섞여 들어오면 실제 Host 헤더(호스트명만)와 절대 문자열이 일치하지 않는다. 그래서 기동 전에
+ * 형식을 검증하고 어긋나면 fail-closed 한다(resolveBindAddress와 같은 원칙).
+ */
+function validatePublicHost(raw) {
+  if (typeof raw !== 'string' || raw === '') return { ok: false, reason: 'absent' };
+  if (/\s/.test(raw)) return { ok: false, reason: 'whitespace' };
+  if (raw.includes('://')) return { ok: false, reason: 'has_scheme' };
+  if (/[\/\\?#]/.test(raw)) return { ok: false, reason: 'has_path' };
+  if (raw.includes('@')) return { ok: false, reason: 'has_userinfo' };
+  if (raw.includes(':')) return { ok: false, reason: 'has_port' };
+  const lower = raw.toLowerCase();
+  if (lower === 'localhost') return { ok: false, reason: 'localhost_not_public' };
+  if (isLoopbackIp(lower) || isPrivateIp(lower)) return { ok: false, reason: 'private_address' };
+  if (lower.length > 253) return { ok: false, reason: 'too_long' };
+  const labels = lower.split('.');
+  if (labels.length < 2) return { ok: false, reason: 'bad_hostname' };
+  const LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+  for (const label of labels) {
+    if (!LABEL.test(label)) return { ok: false, reason: 'bad_hostname' };
+  }
+  return { ok: true, host: lower };
+}
+
 /* ===== Origin / Host ===== */
 
 // 브라우저가 보낸 Origin 이 이 서버 자신인지 확인한다 (CSRF·WebSocket 하이재킹 방지).
@@ -488,6 +514,7 @@ module.exports = {
   selectProtocol,
   isSameOrigin,
   isAllowedHost,
+  validatePublicHost,
   validateRelayMessage,
   TokenBucket,
   AttemptLimiter,
