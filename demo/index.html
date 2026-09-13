@@ -5602,8 +5602,13 @@ function netBuildAuthoritativeBoard(data){
     S.battle=netSynthBattle(data.battle,you);
     NET.fxLiveBid=bid;
     NET.fxBattleSnaps[bid]={battle:data.battle,you:{pieces:you.pieces,reserve:you.reserve},rev:NET.revision};
-    const keys=Object.keys(NET.fxBattleSnaps).filter(k=>/^d+$/.test(k)).map(Number).sort((x,y)=>x-y);
-    while(keys.length>4){ const k=keys.shift(); if(k!==NET.stageBid) delete NET.fxBattleSnaps[k]; } // 최근 전투 4개만 — 재생 중인 무대는 지우지 않는다
+    const keys=Object.keys(NET.fxBattleSnaps).filter(k=>/^\d+$/.test(k)).map(Number).sort((x,y)=>x-y);
+    /* 최근 전투 4개만 보관 — 재생 중 무대·재생 대기 이벤트(이번 프레임의 새 이벤트 포함)가 가리키는 전투는 지우지 않고 그다음 오래된 것을 지운다 */
+    const keep=new Set([NET.stageBid]);
+    for(const e of NET.fxQueue) keep.add(e.battleId);
+    if(data.fx&&Array.isArray(data.fx.events)) for(const e of data.fx.events) if(typeof e.seq==="number"&&e.seq>NET.fxEnqueuedSeq) keep.add(e.battleId);
+    let extra=keys.length-4;
+    for(const k of keys){ if(extra<=0) break; if(keep.has(k)) continue; delete NET.fxBattleSnaps[k]; extra--; }
     if(!NET.fxDisp[bid]) NET.fxDisp[bid]={A:{hp:S.battle.fa.hp,sh:S.battle.fa.shield||0},D:{hp:S.battle.fd.hp,sh:S.battle.fd.shield||0}};
   } else { S.battle=null; NET.fxLiveBid=null; }
   S._pendingModal=data.modal||null; // #217 v3 — 2차 선택 화면(탐색 보상·패키지 개봉 등), netSyncOverlays()가 그린다

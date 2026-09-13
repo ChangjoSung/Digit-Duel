@@ -184,6 +184,16 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   ok(/<span id="hptxt-D">40<\/span>/.test(ovHtml(T))&&/상대 턴!/.test(ovHtml(T)),"E4b 재생이 끝나면 최신 스냅샷(40)과 다음 차례로 다시 그린다");
 }
 
+{
+  // E5 전투 스냅샷 보관은 최근 4개로 제한된다 — 6개 전투를 차례로 지나도 오래된 것부터 지워지고 재생 중 무대는 남는다 (Saturn REVISE 회귀)
+  const T=seated(0);
+  for(let id=1;id<=6;id++){ msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(id,{owner:0},{owner:1,type:"ally"}),fx:fx([])})}); T.drain(); }
+  const keys=Object.keys(T.NET.fxBattleSnaps).sort();
+  ok(keys.length===4&&JSON.stringify(keys)===JSON.stringify(["3","4","5","6"]),"E5 battleId 스냅샷 보관은 최근 4개(3~6)만: "+JSON.stringify(keys));
+  msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(7,{owner:0},{owner:1,type:"ally"}),fx:fx([{seq:1,src:"msg",battleId:3,round:1,actSeq:1,key:"damageFx",big:false,txt:"옛 전투",fx:null}])})});
+  ok(T.NET.stageBid===3&&T.NET.fxBattleSnaps[3]&&!T.NET.fxBattleSnaps[4]&&Object.keys(T.NET.fxBattleSnaps).length===4,"E5b 재생 중 무대(3)는 가장 오래돼도 지우지 않고 그다음 오래된 것(4)을 지운다: "+JSON.stringify(Object.keys(T.NET.fxBattleSnaps)));
+}
+
 /* ===== F. room_resumed baseline ===== */
 {
   const T=seated(0);

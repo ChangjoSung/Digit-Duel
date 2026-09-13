@@ -22,6 +22,8 @@ const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : d; };
 const OUT = arg('--out', 'C:/dd_cdp/out_pub');
 const MINUTES = Number(arg('--minutes', '25'));
+// --scenario swap: 도망 교환·텔레포트 스왑 동기화만 표적 재현(전투에서는 도망 우선, 텔레포트 가능하면 즉시 사용) — 두 조건 비교가 끝나면 기권으로 마친다
+const SCENARIO = arg('--scenario', 'full');
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 fs.mkdirSync(OUT, { recursive: true });
 const LOG = [];
@@ -128,7 +130,7 @@ async function screenState(b) {
       waitingModal:vis(ov)&&/상대 선택 대기 중|상대가 행동을 선택하고 있습니다/.test(box.textContent) }; })()`);
 }
 const STATS = { host: { battleClicks: 0, modalClicks: 0, moves: 0, fleeClicks: 0 }, guest: { battleClicks: 0, modalClicks: 0, moves: 0, fleeClicks: 0 } };
-const INFO = { done: false }, TELE = { count: 0 }; let SYNC = null; const SYNCSTAT = { fleeSwap: 0, fleeSkip: 0, teleSwap: 0, compared: 0, progressed: 0, mismatches: [] };
+const INFO = { done: false }, TELE = { count: 0, blocked: new Set() }; let SYNC = null; const SYNCSTAT = { fleeSwap: 0, fleeSkip: 0, teleSwap: 0, compared: 0, progressed: 0, mismatches: [] };
 function markSync(b, kind) { SYNCSTAT[kind]++; if (!SYNC) SYNC = { kind, by: b.name, at: Date.now(), rev: null }; }
 async function skillInfoProbe(b) {
   INFO.done = true;
@@ -146,6 +148,10 @@ async function botTurn(b, st, role, rnd) {
   const S = STATS[role];
   if (st.locked) return 'locked';
   if (st.battle) {
+    if (SCENARIO === 'swap') { // 도망 우선 — 성공하면 교환 선택(fleePick)으로 간다
+      if (st.flee.length) { await b.clickWhere('#bsub-flee button', st.flee[0], { exact: true }); S.fleeClicks++; return 'flee'; }
+      if (st.bmenu.includes('🏃 도망가기')) { await b.clickWhere('#bmenu button', '🏃 도망가기', { exact: true }); return 'menu:flee'; }
+    }
     if (st.fight.length) {
       if (role === 'guest' && !INFO.done && st.infoBtns > 0) return await skillInfoProbe(b); // CJ 모바일 QA — 432px 창에서 ⓘ 설명 실제 클릭
       const skill = st.fight[Math.floor(rnd() * st.fight.length)]; await b.clickWhere('#bsub-fight button:not(.skillInfoBtn):not(.skillInfoClose)', skill, { exact: true }); S.battleClicks++; return 'skill:' + skill; }
@@ -173,7 +179,7 @@ async function botTurn(b, st, role, rnd) {
   if (st.hlAttack) { await b.clickWhere('#board .cell.hl-attack', null); return 'attack'; }
   if (st.turnBar.some((t) => /싸우지 않고 종료/.test(t))) { await b.clickWhere('#turnBar button', '싸우지 않고 종료'); return 'endNoFight'; }
   if (/주 행동 완료/.test(st.side)) return 'await-auto-end';
-  if (TELE.count < 4 && st.turnBar.some((t) => /텔레포트/.test(t) && !/취소/.test(t)) && rnd() < 0.3) { if (await b.clickWhere('#turnBar button', '🌀 텔레포트')) { TELE.count++; return 'tele'; } }
+  if (TELE.count < (SCENARIO === 'swap' ? 8 : 4) && st.turnBar.some((t) => /텔레포트/.test(t) && !/취소/.test(t)) && (SCENARIO === 'swap' || rnd() < 0.3)) { if (await b.clickWhere('#turnBar button', '🌀 텔레포트')) { TELE.count++; return 'tele'; } }
   // 내 말 중 가장 전진한 하수인/폭탄을 골라 선택 → 전진 칸 클릭
   const plan = await b.ev(`(()=>{ const me=NET.me, fwd=me===0?-1:1; const cells=[...document.querySelectorAll('#board .cell')];
     const own=cells.filter(c=>c.querySelector('.pc.own')).map(c=>({r:+c.dataset.r,c:+c.dataset.c}));
@@ -182,6 +188,13 @@ async function botTurn(b, st, role, rnd) {
     const moves=cells.filter(c=>c.classList.contains('hl-move')).map(c=>({r:+c.dataset.r,c:+c.dataset.c}));
     return {own,foes,sel:sel?{r:+sel.dataset.r,c:+sel.dataset.c}:null,moves,fwd}; })()`);
   const cellXY = (r, c) => b.ev(`(()=>{ const e=document.querySelector('#board .cell[data-r="${r}"][data-c="${c}"]'); if(!e) return null; e.scrollIntoView({block:'center'}); const x=e.getBoundingClientRect(); return {x:x.left+x.width/2,y:x.top+x.height/2}; })()`);
+  if (SCENARIO === 'swap') { // 가장 전진한 말 하나를 계속 곧게 민다 — 상대 진영 진입이 텔레포트 사용 조건이다
+    const key = (p) => p.r + ',' + p.c + '@' + st.who; // 이번 차례에 막힌 선두 말은 건너뛴다
+    if (plan.sel && !plan.moves.length) TELE.blocked.add(key(plan.sel));
+    const lead = plan.own.slice().sort((a, c) => (c.r - a.r) * plan.fwd).find((p) => !TELE.blocked.has(key(p)));
+    if (lead && !(plan.sel && plan.sel.r === lead.r && plan.sel.c === lead.c)) { const xy = await cellXY(lead.r, lead.c); if (xy) { await b.click(xy.x, xy.y); return 'select-lead'; } }
+    if (plan.sel && plan.moves.length) { const fwdMoves = plan.moves.filter((m) => (m.r - plan.sel.r) * plan.fwd > 0).sort((a, c) => (c.r - a.r) * plan.fwd); const m = fwdMoves[0] || plan.moves[0]; const xy = await cellXY(m.r, m.c); if (xy) { await b.click(xy.x, xy.y); S.moves++; return 'move-lead'; } }
+  }
   if (plan.sel && plan.moves.length) {
     const best = plan.moves.sort((a, c) => (c.r - plan.sel.r) * plan.fwd - (a.r - plan.sel.r) * plan.fwd + (rnd() - 0.5))[0];
     const xy = await cellXY(best.r, best.c); if (xy) { await b.click(xy.x, xy.y); S.moves++; return 'move'; }
@@ -286,7 +299,8 @@ async function noHScroll(b) { return b.ev(`document.documentElement.scrollWidth<
       }
       if (Date.now() - lastHideAudit > 20000 && hn.phase === 'play') { lastHideAudit = Date.now(); const au = await hidingAudit(host); if (au.leaks) check('H2 진행 중 호스트 화면 정보 은닉', false, au); }
       // 전투가 진행 중일 때(전투 행동 2회 이상 뒤) 게스트 네트워크를 실제로 끊었다가 복구 — 같은 경기·같은 전투로 돌아오는지 본다
-      if (!reconnected && hn.phase === 'play' && (STATS.host.battleClicks + STATS.guest.battleClicks) >= 2 && gn.battle) {
+      if (SCENARIO === 'swap' && hn.phase === 'play' && !SYNC && SYNCSTAT.teleSwap > 0 && (SYNCSTAT.fleeSwap + SYNCSTAT.fleeSkip) > 0 && SYNCSTAT.progressed >= 2) { RESULT.notes.push('swap 시나리오: 텔레포트 스왑·도망 교환 비교를 마쳐 기권으로 종료'); break; }
+      if (SCENARIO !== 'swap' && !reconnected && hn.phase === 'play' && (STATS.host.battleClicks + STATS.guest.battleClicks) >= 2 && gn.battle) {
         const pre = await guest.net();
         log('reconnect: dropping guest TCP', pre);
         proxy.drop(4500);
@@ -314,7 +328,7 @@ async function noHScroll(b) { return b.ev(`document.documentElement.scrollWidth<
     }
     if (!resultShot) {
       RESULT.notes.push('시간 상한 안에 자연 종료되지 않아 현재 차례 좌석이 기권 버튼으로 종료했다(기권도 실제 클릭).');
-      for (const b of browsers) { const st = await screenState(b); if (/나의 턴/.test(st.who) && !st.overlay) { await b.clickWhere('#turnBar button', '기권'); await sleep(400); await b.clickWhere('#obBtns button', '기권 확정'); break; } }
+      await waitFor(async () => { if ((await host.ev(`S.phase==='over'`))) return true; for (const b of browsers) { const st = await screenState(b); if (/나의 턴/.test(st.who) && !st.overlay && !st.locked) { if (await b.clickWhere('#turnBar button', '기권')) { await sleep(500); await b.clickWhere('#obBtns button', '기권 확정'); } } else if (st.battle || (st.overlay && st.obBtns.length) || st.fleeMine || st.teleStage) { await botTurn(b, st, b.name, () => 0.5); } } await sleep(400); return false; }, 120000, 'resign', 300);
       await waitFor(async () => (await host.ev(`S.phase==='over'`)) && (await guest.ev(`S.phase==='over'`)), 20000, 'over after resign');
       await sleep(3500); await host.shot('12_result_host'); await guest.shot('12_result_guest');
     }
@@ -322,10 +336,10 @@ async function noHScroll(b) { return b.ev(`document.documentElement.scrollWidth<
     check('E1 양측 결과 화면·승자·revision 일치', hn.phase === 'over' && gn.phase === 'over' && hn.winner === gn.winner && hn.revision === gn.revision, { host: hn, guest: gn });
     check('E2 결과 화면 문구(VICTORY/DEFEAT·공개 방 안내)', await host.ev(`/VICTORY|DEFEAT/.test(document.getElementById('sidePanel').textContent)&&/공개 방 목록/.test(document.getElementById('sidePanel').textContent)`));
     check('E3 종료 공개: 결과 화면에서 상대 말 정체가 모두 보인다(미공개 칩 0)', (await hidingAudit(host)).hiddenChips === 0, await hidingAudit(host));
-    if (!INFO.done) check('I1 모바일(432px) 전투 기술 ⓘ 실제 클릭', false, '게스트 전투 차례에 도달하지 못해 검증하지 못함');
-    check('S1 도망 교환·텔레포트 스왑 실제 클릭 직후 양측 current·turn·revision 일치, 이후 진행(교착 0)', SYNCSTAT.compared > 0 && SYNCSTAT.teleSwap > 0 && SYNCSTAT.mismatches.length === 0 && SYNCSTAT.progressed >= SYNCSTAT.compared - (SYNC ? 1 : 0), SYNCSTAT);
+    if (!INFO.done && SCENARIO !== 'swap') check('I1 모바일(432px) 전투 기술 ⓘ 실제 클릭', false, '게스트 전투 차례에 도달하지 못해 검증하지 못함');
+    check('S1 도망 교환·텔레포트 스왑 실제 클릭 직후 양측 current·turn·revision 일치, 이후 진행(교착 0)', SYNCSTAT.compared > 0 && SYNCSTAT.teleSwap > 0 && (SCENARIO !== 'swap' || SYNCSTAT.fleeSwap + SYNCSTAT.fleeSkip > 0) && SYNCSTAT.mismatches.length === 0 && SYNCSTAT.progressed >= SYNCSTAT.compared - (SYNC ? 1 : 0), SYNCSTAT);
     if (!(SYNCSTAT.fleeSwap + SYNCSTAT.fleeSkip)) RESULT.notes.push('S1: 이번 실행에서 도망 성공(교환 선택)은 브라우저에서 발생하지 않았다 — 교환 동기화는 실서버 2클라이언트 통합(smoke_public_live T3)이 증빙.');
-    check('B1 실제 전투 행동 클릭이 서버에 수락되어 진행', STATS.host.battleClicks + STATS.guest.battleClicks > 0, STATS);
+    if (SCENARIO === 'swap') RESULT.notes.push('swap 시나리오는 전투에서 도망만 누른다 — B1(기술 클릭)은 전체 실행(run_pub6/7)이 증빙'); else check('B1 실제 전투 행동 클릭이 서버에 수락되어 진행', STATS.host.battleClicks + STATS.guest.battleClicks > 0, STATS);
     check('B2 전투 무대 스크린샷 확보', battleShots > 0, battleShots);
     check('M1 reduced-motion 창의 실제 연출 요소 computed animation-name', Object.keys(motion).length === 0 ? null : Object.values(motion).every((v) => v === 'none'), motion);
     if (Object.keys(motion).length === 0) RESULT.notes.push('M1: 관측 구간에 fx-boom/shake 등 연출 요소가 떠 있는 순간을 잡지 못했다 — 판정 보류(PASS로 기재하지 않음).');
