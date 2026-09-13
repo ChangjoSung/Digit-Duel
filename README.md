@@ -7,11 +7,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ChangjoSung/Digit-Duel/releases/latest"><img src="https://img.shields.io/github/v/release/ChangjoSung/Digit-Duel?label=release" alt="최신 릴리스"></a>
+  <a href="https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10"><img src="https://img.shields.io/badge/release-v0.4.10-4c9a2a" alt="정식 릴리스 v0.4.10"></a>
   <a href="https://github.com/ChangjoSung/Digit-Duel"><img src="https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat" alt="GitHub Stars"></a>
   <a href="https://github.com/ChangjoSung/Digit-Duel/forks"><img src="https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat" alt="GitHub Forks"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-Apache--2.0-blue" alt="코드 라이선스 Apache-2.0"></a>
 </p>
+
+**[▶ 웹에서 바로 플레이 — digit-duel-mipa.onrender.com](https://digit-duel-mipa.onrender.com)**
+
+현재 정식 버전은 **[v0.4.10](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10)**입니다. PC·휴대폰 브라우저에서 접속해 공개 방 1대1 대전을 즐길 수 있습니다.
 
 ## 게임 소개
 
@@ -67,7 +71,7 @@
     <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 보드 턴 종료 선택</sub></td>
   </tr>
 </table>
-<sub>튜토리얼은 [건너뛰기]나 <kbd>Esc</kbd>로 곧바로 닫을 수 있고, 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다. v0.4.6부터는 <b>접속할 때마다 1단계부터 자동으로</b> 열립니다 — <a href="#새로운-기능">새로운 기능</a>에서 설명합니다.</sub>
+<sub>튜토리얼은 [건너뛰기]나 <kbd>Esc</kbd>로 곧바로 닫을 수 있고, 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다. v0.4.6부터는 <b>접속할 때마다 1단계부터 자동으로</b> 열립니다.</sub>
 
 캡처 출처: [10장 캡처 기록과 소스·이미지 해시](docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json). **접촉·전투 규칙 개편까지 반영한** v0.4.6 개발판에서 다시 촬영했습니다 — 5단계 "동료·왕끼리도 싸워요"와 7단계 "도망 실패"가 새 규칙입니다.
 
@@ -95,13 +99,13 @@
 
 [![v0.4.6](https://img.shields.io/badge/v0.4.6-release-4c9a2a)](docs/releases/v0.4.6.md) 탐색 선물·접촉 전투·세로 화면을 적용했습니다.
 
-이전 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)에서 볼 수 있습니다. **v0.5.0 Roblox 포팅**과 **v0.6.0 Unity 포팅**은 개발 중이며 아직 출시되지 않았습니다.
+이전 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)에서 볼 수 있습니다. 다음 개발 트랙인 **v0.5.0 Roblox 포팅**과 **v0.6.0 Unity 포팅**은 아직 출시되지 않았습니다.
 ## 게임 정보
 
 | 항목 | 내용 |
 | --- | --- |
 | 현재 버전 | [v0.4.10](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10) — 공개 방 온라인 대전 ([패치 노트](docs/releases/v0.4.10.md)) |
-| 다음 버전 | v0.5.0 Roblox 포팅 · v0.6.0 Unity 포팅 (개발 중) |
+| 다음 버전 | v0.5.0 Roblox 포팅 · v0.6.0 Unity 포팅 (미출시) |
 | 최근 업데이트 | 2026-09-13 |
 | Star · Fork | [![Stars](https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars)](https://github.com/ChangjoSung/Digit-Duel) [![Forks](https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks)](https://github.com/ChangjoSung/Digit-Duel/forks) |
 | 필요한 환경 | 공개 온라인: PC·휴대폰 브라우저와 인터넷 · 오프라인: 데스크톱 브라우저 · 직접 LAN 서버 운영: [Node.js](https://nodejs.org) |
@@ -109,7 +113,7 @@
 | 플레이 인원 | 1인(AI 대전) · 2인(핫시트 · 공개 방 온라인 · 같은 공유기 온라인) |
 | 개발자 | 성창조 (Sung Changjo) · [이욱채 (lee775)](https://github.com/lee775) — Roblox 포팅 |
 | 첫 출시일 | 2026-09-02 (v0.3.0) |
-| 플랫폼 | HTML 데모 (브라우저) · Roblox 포팅 진행 중 · Android/Unity 버전은 개발 예정 |
+| 플랫폼 | HTML 웹 게임 (PC·휴대폰 브라우저) · Roblox 및 Android/Unity 포팅은 미출시 |
 | 개발 일정 | [v0.4.10 — HTML 외부망 서버·System Flow](https://github.com/ChangjoSung/Digit-Duel/milestone/14) · [v0.5.0 — Roblox 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [v0.6.0 — Unity 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/4) |
 
 ## 플레이 방법
@@ -156,7 +160,8 @@ demo/
   assets/leaders/       왕·동료 말판·전투 이미지 (index.html과 함께 필요)
   test/                 데모 회귀 테스트 (Node)
 server/
-  server.js             공개 방 판정 서버·LAN 릴레이 + demo/ 정적 서빙
+  server.js             LAN 릴레이 + demo/ 정적 서빙
+  authoritative/        공개 방·대전 판정 서버
   security.js           접속 코드·바인드·경로·메시지 검증
   서버시작.bat           Windows 원클릭 실행 — 이 PC 전용
   LAN서버시작.bat        Windows 원클릭 실행 — 같은 공유기 공개
@@ -171,7 +176,7 @@ docs/
   screenshots/          이전 README용 실행 화면
   creat2ve/             개발 조직·작업 계약 문서
   milestone/            버전별 규격·구현·독립 QA 기록
-    v0.4.6/             현재 출시본의 규격·구현·QA 기록
+    v0.4.10/            현재 출시본의 공개 방·System Flow·QA 기록
     <버전>/issues/<번호>/<역할>/   그 Issue를 누가 무엇으로 납품·검수했는지
 CLAUDE.md               프로젝트 규약 · 기준 문서 링크
 CONTRIBUTING.md         기여 안내 · PR 검사 항목
