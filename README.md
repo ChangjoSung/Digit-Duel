@@ -15,7 +15,7 @@
 
 **[▶ 웹에서 바로 플레이 — digit-duel-mipa.onrender.com](https://digit-duel-mipa.onrender.com)**
 
-현재 정식 버전은 **[v0.4.10](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10)**입니다. PC·휴대폰 브라우저에서 접속해 공개 방 1대1 대전을 즐길 수 있습니다.
+현재 정식 버전은 [**v0.4.10**](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10)입니다. PC·휴대폰 브라우저에서 접속해 공개 방 1대1 대전을 즐길 수 있습니다.
 
 ## 게임 소개
 
@@ -37,7 +37,7 @@
 
 ## 게임 플레이 사진
 
-이미지를 클릭하면 원본 크기로 볼 수 있습니다. 전략 보드는 **v0.4.9 온라인 대전**, 전투는 **v0.4.8 화면 확인용 오프라인 대전**에서 촬영한 실제 브라우저 화면입니다.
+이미지를 클릭하면 원본 크기로 볼 수 있습니다. 이미지는 실제 게임 화면을 촬영한 것 입니다.
 
 <table>
   <tr>
@@ -53,7 +53,7 @@
 </table>
 
 <details>
-<summary><b>튜토리얼 10단계 보기</b> — v0.4.6 개발판 · 탐색 패키지와 전투 행동</summary>
+<summary><b>튜토리얼 10단계 보기</b></summary>
 <br>
 <table>
   <tr>
@@ -71,11 +71,7 @@
     <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 보드 턴 종료 선택</sub></td>
   </tr>
 </table>
-<sub>튜토리얼은 [건너뛰기]나 <kbd>Esc</kbd>로 곧바로 닫을 수 있고, 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다. v0.4.6부터는 <b>접속할 때마다 1단계부터 자동으로</b> 열립니다.</sub>
-
-캡처 출처: [10장 캡처 기록과 소스·이미지 해시](docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json). **접촉·전투 규칙 개편까지 반영한** v0.4.6 개발판에서 다시 촬영했습니다 — 5단계 "동료·왕끼리도 싸워요"와 7단계 "도망 실패"가 새 규칙입니다.
-
-<sub>위 10장은 정식 버전 <b>v0.4.6</b>의 튜토리얼입니다. 숲 선물 패키지·기술 직접 선택·아이템과 버프 제한, 도망·수동 대기·함정 텔레포트·보호막 합산과 <b>접촉·전투 규칙 개편</b>을 반영했습니다.</sub>
+<sub>튜토리얼은 [건너뛰기]나 <kbd>Esc</kbd>로 곧바로 닫을 수 있고, 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다. 
 
 
 </details>
@@ -114,7 +110,7 @@
 | 개발자 | 성창조 (Sung Changjo) · [이욱채 (lee775)](https://github.com/lee775) — Roblox 포팅 |
 | 첫 출시일 | 2026-09-02 (v0.3.0) |
 | 플랫폼 | HTML 웹 게임 (PC·휴대폰 브라우저) · Roblox 및 Android/Unity 포팅은 미출시 |
-| 개발 일정 | [v0.4.10 — HTML 외부망 서버·System Flow](https://github.com/ChangjoSung/Digit-Duel/milestone/14) · [v0.5.0 — Roblox 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [v0.6.0 — Unity 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/4) |
+| 개발 일정 | [v0.5.0 — Roblox 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [v0.6.0 — Unity 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/4) |
 
 ## 플레이 방법
 
