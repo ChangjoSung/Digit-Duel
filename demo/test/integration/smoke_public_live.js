@@ -91,16 +91,30 @@ function botStep(c){
     c.seen.acts++; return; }
   if(S.current!==me) return;
   const mine=S.pieces.filter(p=>p.owner===me&&p.alive), foes=S.pieces.filter(p=>p.owner!==me&&p.alive);
-  // 강제 전투 대기·선택 전투: 보이는 인접 적과 싸울 수 있으면 싸운다(원본 canBattle)
-  for(const p of mine) for(const e of foes){ if(Math.abs(p.r-e.r)+Math.abs(p.c-e.c)===1&&T.canBattle(p,e)&&p.type!=="bomb"&&p.type!=="trap"){
-    if(!S.selected||S.selected.id!==p.id){ T.onCell(p.r,p.c); return; } T.onCell(e.r,e.c); return; } }
+  /* 강제 전투 대기·연쇄 전투(이미 싸워 이긴 말의 접촉 후속)만 mainUsed 와 무관하게 최우선 이행한다. 주 행동을
+     아직 안 썼다면(!mainUsed) 선제 전투도 허용한다. 그 밖(주 행동 완료 + 강제·연쇄 대상 없음)은 canBattle 이
+     단독으로 true 를 돌려줘도(#122 접촉 전투는 언제나 선택 가능) 시도하지 않고 endTurn 을 우선한다 — 실제
+     사용자도 이 경로에선 "싸우지 않고 종료"를 고를 수 있다(줄 1844). #217 실패1(rev 386, mainUsed=true, 진행
+     0)의 정확한 인접 대상 원인은 Saturn 진단대로 로그 부족으로 미확정이며, 이 수정이 그 근본 원인이라고
+     단정하지 않는다 — mainUsed+강제·연쇄 대상 없음일 때 endTurn 을 우선하도록만 바꿨다. */
+  const forced=S.forcedTargets&&S.forcedTargets.length>0;
+  const chaining=S.battlesUsed===1&&S.firstBattleWonByMover&&S.movedPiece&&S.movedPiece.alive;
+  if(forced||chaining||!S.mainUsed){
+    for(const p of mine) for(const e of foes){ if(Math.abs(p.r-e.r)+Math.abs(p.c-e.c)===1&&T.canBattle(p,e)&&p.type!=="bomb"&&p.type!=="trap"){
+      if(!S.selected||S.selected.id!==p.id){ T.onCell(p.r,p.c); return; } T.onCell(e.r,e.c); return; } }
+  }
   if(S.mainUsed){ T.netAction({t:"endTurn"}); return; }
   // 텔레포트(스왑) — 서버 data.turn.teleport 단계를 따라 1단계·2단계 말을 고른다
   if(S.teleport){ const movable=mine.filter(p=>p.immobile===0&&p.type!=="trap");
     if(S.teleport.stage===1){ const p=movable[Math.floor(rnd()*movable.length)]; if(p){ T.onCell(p.r,p.c); return; } }
     else { const first=S.teleport.piece; const q=movable.filter(p=>!first||p.id!==first.id); const p=q[Math.floor(rnd()*q.length)]; if(p){ T.onCell(p.r,p.c); markSync(c,"teleSwap"); return; } }
     T.netAction({t:"tele"}); return; }
-  if(!S.teleport&&!S.mainUsed&&T.teleportAvailable(me)&&(S.teleUsed[me]||0)<T.BAL.teleMax&&!(S.forcedTargets&&S.forcedTargets.length)&&rnd()<0.35){ T.netAction({t:"tele"}); c.seen.tele=(c.seen.tele||0)+1; return; }
+  /* T3 커버리지: 텔레스왑은 합법 행동(실제 teleportAvailable 조건 충족)으로만 시도한다 — 상태를 직접
+     조작하지 않고 클라이언트가 실제로 보낼 수 있는 {t:"tele"} 입력만 쓴다. 아직 한 번도 성사되지 않았다면
+     (SYNCSTAT.teleSwap===0) 확률 게이트를 생략해 기회가 있을 때 시도하지만, teleportAvailable 자체가 그
+     게임에서 한 번도 서지 않을 수 있어 최소 1회 발생을 단언하지 않는다. 이미 한 번 관측됐다면 기존처럼
+     가끔만 시도해 다른 행동과 섞인 자연스러운 진행을 유지한다. */
+  if(!S.teleport&&!S.mainUsed&&T.teleportAvailable(me)&&(S.teleUsed[me]||0)<T.BAL.teleMax&&!(S.forcedTargets&&S.forcedTargets.length)&&(SYNCSTAT.teleSwap===0||rnd()<0.35)){ T.netAction({t:"tele"}); c.seen.tele=(c.seen.tele||0)+1; return; }
   // 탐색 가능하면 가끔 탐색
   const sel=S.selected&&!S.selected.tray?S.selected:null;
   if(sel&&S.events.some(ev=>ev.r===sel.r&&ev.c===sel.c)&&rnd()<0.8){ T.netAction({t:"search"}); c.seen.searches++; return; }
