@@ -1,0 +1,472 @@
+{
+  "startedAt": "2026-09-13T06:29:27.224Z",
+  "checks": [
+    {
+      "name": "L1 로비 카드: 공개 대전·초대 코드 안내, 코드/주소 입력칸 없음",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "L2 320px 로비 가로 스크롤 없음",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "L3 320px 주요 버튼 높이 ≥44px",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "R1 호스트: 상대 입장 전 \"상대를 기다리는 중…\"·내 준비 미확정 표시",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "L4 게스트 목록에 \"방 #… · 1/2 · 경과\" 행",
+      "ok": true,
+      "detail": "방 #1 · 1/2 · 방금 전"
+    },
+    {
+      "name": "R2 게스트 입장 알림 뒤 호스트 준비가 서버에서 확정되고 \"상대의 준비를 기다리는 중…\"",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "P1 양측 서버 스냅샷으로 대국 시작",
+      "ok": true,
+      "detail": {
+        "host": {
+          "roomId": 1,
+          "me": 0,
+          "revision": 5,
+          "state": "IN_PROGRESS",
+          "started": true,
+          "resuming": false,
+          "phase": "play",
+          "turn": 0,
+          "current": 1,
+          "winner": null,
+          "battle": false,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": true
+        },
+        "guest": {
+          "roomId": 1,
+          "me": 1,
+          "revision": 5,
+          "state": "IN_PROGRESS",
+          "started": true,
+          "resuming": false,
+          "phase": "play",
+          "turn": 0,
+          "current": 1,
+          "winner": null,
+          "battle": false,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": true
+        }
+      }
+    },
+    {
+      "name": "H1 게스트 화면: 미공개 상대 칩에 이미지·자산 경로·정체 라벨 없음",
+      "ok": true,
+      "detail": {
+        "opponentChips": 14,
+        "hiddenChips": 14,
+        "leaks": 0,
+        "ownImgs": 9
+      }
+    },
+    {
+      "name": "C1 실제 TCP 단절 → 전투 화면 위에도 보이는 고정 \"재접속 중…\" 상태 줄(남은 시간·포기 버튼)·전투 버튼 잠금",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "C2b 재개 직후 진행 중이던 전투 무대가 서버 스냅샷으로 다시 그려진다",
+      "ok": true,
+      "detail": {
+        "battle": true
+      }
+    },
+    {
+      "name": "C2 같은 방·같은 좌석으로 재개, revision 역행 없음·호스트와 수렴",
+      "ok": true,
+      "detail": {
+        "pre": {
+          "roomId": 1,
+          "me": 1,
+          "revision": 67,
+          "state": "IN_PROGRESS",
+          "started": true,
+          "resuming": false,
+          "phase": "play",
+          "turn": 19,
+          "current": 0,
+          "winner": null,
+          "battle": true,
+          "stageBid": 1,
+          "fxQ": 2,
+          "fxPlaying": true
+        },
+        "post": {
+          "roomId": 1,
+          "me": 1,
+          "revision": 67,
+          "state": "IN_PROGRESS",
+          "started": true,
+          "resuming": false,
+          "phase": "play",
+          "turn": 19,
+          "current": 0,
+          "winner": null,
+          "battle": true,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": false
+        },
+        "host": {
+          "roomId": 1,
+          "me": 0,
+          "revision": 67,
+          "state": "IN_PROGRESS",
+          "started": true,
+          "resuming": false,
+          "phase": "play",
+          "turn": 19,
+          "current": 0,
+          "winner": null,
+          "battle": true,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": false
+        },
+        "proxy": {
+          "accepted": 23,
+          "refused": 2,
+          "dropped": 1
+        }
+      }
+    },
+    {
+      "name": "C3 재개 뒤 대국이 계속 진행된다(새 행동 수락)",
+      "ok": true,
+      "detail": {
+        "from": 67,
+        "to": 70
+      }
+    },
+    {
+      "name": "I1 모바일(432px) 전투 기술 ⓘ 실제 클릭 → 설명 상자 열림·aria-expanded·44px 이상, 전송/턴 소비 없음(revision 불변)",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "text": "물대포 21~31안정 공격기닫기",
+        "rev": 245,
+        "expanded": true,
+        "btnH": 44
+      }
+    },
+    {
+      "name": "I2 [닫기]로 설명 상자가 닫힌다",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "E1 양측 결과 화면·승자·revision 일치",
+      "ok": true,
+      "detail": {
+        "host": {
+          "roomId": 1,
+          "me": 0,
+          "revision": 268,
+          "state": "FINISHED",
+          "started": true,
+          "resuming": false,
+          "phase": "over",
+          "turn": 68,
+          "current": 1,
+          "winner": 1,
+          "battle": false,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": false
+        },
+        "guest": {
+          "roomId": 1,
+          "me": 1,
+          "revision": 268,
+          "state": "FINISHED",
+          "started": true,
+          "resuming": false,
+          "phase": "over",
+          "turn": 68,
+          "current": 1,
+          "winner": 1,
+          "battle": false,
+          "stageBid": null,
+          "fxQ": 0,
+          "fxPlaying": false
+        }
+      }
+    },
+    {
+      "name": "E2 결과 화면 문구(VICTORY/DEFEAT·공개 방 안내)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "E3 종료 공개: 결과 화면에서 상대 말 정체가 모두 보인다(미공개 칩 0)",
+      "ok": true,
+      "detail": {
+        "opponentChips": 17,
+        "hiddenChips": 0,
+        "leaks": 0,
+        "ownImgs": 0
+      }
+    },
+    {
+      "name": "S1 도망 교환·텔레포트 스왑 실제 클릭 직후 양측 current·turn·revision 일치, 이후 진행(교착 0)",
+      "ok": false,
+      "detail": {
+        "fleeSwap": 0,
+        "fleeSkip": 0,
+        "teleSwap": 0,
+        "compared": 0,
+        "progressed": 0,
+        "mismatches": []
+      }
+    },
+    {
+      "name": "B1 실제 전투 행동 클릭이 서버에 수락되어 진행",
+      "ok": true,
+      "detail": {
+        "host": {
+          "battleClicks": 18,
+          "modalClicks": 2,
+          "moves": 34,
+          "fleeClicks": 3
+        },
+        "guest": {
+          "battleClicks": 17,
+          "modalClicks": 1,
+          "moves": 35,
+          "fleeClicks": 2
+        }
+      }
+    },
+    {
+      "name": "B2 전투 무대 스크린샷 확보",
+      "ok": true,
+      "detail": 6
+    },
+    {
+      "name": "M1 reduced-motion 창의 실제 연출 요소 computed animation-name",
+      "ok": true,
+      "detail": {
+        "#board .cell.fx-boom": "none",
+        ".btok.shake": "none",
+        ".dmgfloat": "none",
+        "#bstage.sigblink": "none"
+      }
+    },
+    {
+      "name": "X1 브라우저 예외/console.error 0",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "E4 결과 → 로비 복귀 시 공개 방 목록을 다시 불러온다",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "screenshots": [
+    "guest_01_lobby_432.png",
+    "guest_01_lobby_320.png",
+    "host_01_lobby_desktop.png",
+    "host_02_placed_host.png",
+    "host_03_waiting_guest_host.png",
+    "guest_04_room_list_guest.png",
+    "host_05_waiting_ready_host.png",
+    "guest_05_placed_guest.png",
+    "host_06_play_host.png",
+    "guest_06_play_guest.png",
+    "host_09_banner_host_1.png",
+    "guest_09_banner_guest_2.png",
+    "host_09_banner_host_3.png",
+    "guest_09_banner_guest_4.png",
+    "host_09_banner_host_5.png",
+    "guest_09_banner_guest_6.png",
+    "host_09_banner_host_7.png",
+    "guest_09_banner_guest_8.png",
+    "host_08_modal_owner_host_1.png",
+    "host_07_battle_host_1.png",
+    "guest_07_battle_guest_2.png",
+    "host_07_battle_host_3.png",
+    "guest_07_battle_guest_4.png",
+    "host_07_battle_host_5.png",
+    "guest_07_battle_guest_6.png",
+    "guest_10_reconnecting_guest.png",
+    "guest_11_reconnected_guest.png",
+    "host_11_after_guest_reconnect_host.png",
+    "host_09_ko_msg_host.png",
+    "host_08_modal_owner_host_2.png",
+    "guest_14_skill_info_open_guest_432.png",
+    "host_08_modal_wait_host_1.png",
+    "guest_08_modal_owner_guest_3.png",
+    "host_12_result_host.png",
+    "guest_12_result_guest.png",
+    "host_13_back_to_lobby_host.png"
+  ],
+  "notes": [
+    "host: prefers-reduced-motion=reduce 에뮬레이트, 창 1200px · guest: 432px 창, TCP 중계 경유(재접속 단절용)",
+    "S1: 이번 실행에서 도망 성공(교환 선택)은 브라우저에서 발생하지 않았다 — 교환 동기화는 실서버 2클라이언트 통합(smoke_public_live T3)이 증빙."
+  ],
+  "reconnectRevisionAtResume": 67,
+  "progressAfterResume": 70,
+  "actions": {
+    "host": [
+      "skill:기본 공격 13~19",
+      "select",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "attack",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "menu:fight",
+      "skill:잔불 표식 14~22",
+      "menu:flee",
+      "flee",
+      "menu:fight",
+      "skill:폭염 강타 25~37",
+      "menu:flee",
+      "flee",
+      "select",
+      "move",
+      "menu:fight",
+      "skill:기본 공격 13~19",
+      "menu:fight",
+      "skill:기본 공격 13~19",
+      "menu:fight",
+      "skill:기본 공격 13~19",
+      "menu:fight",
+      "skill:기본 공격 13~19",
+      "menu:fight",
+      "skill:기본 공격 13~19",
+      "menu:fight",
+      "skill:기본 공격 13~19"
+    ],
+    "guest": [
+      "select",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "select",
+      "move",
+      "select",
+      "move",
+      "select",
+      "move",
+      "menu:flee",
+      "flee",
+      "menu:fight",
+      "skillInfo",
+      "skill:전술 연계 24~36",
+      "menu:fight",
+      "skill:물대포 21~31",
+      "select",
+      "move",
+      "modal:전투 시작",
+      "menu:fight",
+      "skill:수호 자세",
+      "menu:fight",
+      "skill:불굴 진형",
+      "menu:fight",
+      "skill:잔불 표식 14~22",
+      "menu:flee",
+      "flee",
+      "menu:fight",
+      "skill:폭염 강타 25~37",
+      "menu:fight",
+      "skill:잔불 표식 14~22"
+    ],
+    "counts": {
+      "host": {
+        "battleClicks": 18,
+        "modalClicks": 2,
+        "moves": 34,
+        "fleeClicks": 3
+      },
+      "guest": {
+        "battleClicks": 17,
+        "modalClicks": 1,
+        "moves": 35,
+        "fleeClicks": 2
+      }
+    }
+  },
+  "finishedAt": "2026-09-13T06:36:45.240Z",
+  "serverLogTail": "Digit Dual 공개 대전 서버(#217 서버 권위) listening on 127.0.0.1:50706 (루프백 전용, epoch ece713c9)\n  클라이언트: C:\\Users\\pc_77\\orca\\workspaces\\Digit-Duel\\feature-217-public-authority\\demo\n  접속 주소: http://127.0.0.1:50706\n  LAN 공개가 필요하면 --lan (또는 DD_LAN=1) 로 기동하세요 (기본은 이 PC 전용).\n  헬스체크: http://127.0.0.1:50706/healthz\n  코드 접속(기존 릴레이)은 별도 서버입니다: npm run start:relay (기본 8080).\n"
+}
