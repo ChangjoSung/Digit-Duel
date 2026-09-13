@@ -1,0 +1,66 @@
+# #217 Render Web Service 배포 설계도(Blueprint) — 검토·참고용.
+#
+# **Blueprint(이 파일) vs 실제 UI 증거**: root(Mercury/CJ 세션)는 이미 Render 대시보드에 로그인해
+# GitHub 소스를 연결했고, 저장소 루트를 그대로 두고 `npm ci --prefix server` / `npm start --prefix server`
+# 명령으로 서비스를 준비 중이라고 보고했다(2026-09-13, root). 그것은 대시보드에서 서비스를 직접
+# 만드는 경로이고, 이 파일(Blueprint)을 그대로 쓴다는 보고는 아니다 — 아래는 그 실제 접근과 같은
+# 결과가 나오도록 이 파일의 rootDir/명령을 맞춘 것이지, "이 파일이 실행됐다"는 증거가 아니다.
+# Jupiter(이 작업)는 Render 계정 로그인·서비스 생성·구매·GitHub 연동을 하지 않았다.
+#
+# 전제(server/authoritative/server.js 가 실제로 요구하는 것):
+#   - server/authoritative/engine.js 가 런타임에 demo/test/shared/harness.js 를 require() 하므로
+#     (상대경로 ../../demo/test/shared/harness.js), 저장소 전체(특히 demo/)가 함께 체크아웃돼 있어야
+#     한다. **Root Directory는 반드시 저장소 루트여야 한다 — server/ 로 좁히면 안 된다.** Render 공식
+#     monorepo 문서 기준으로 Root Directory 밖의 파일은 빌드/런타임에서 이용할 수 없으므로, rootDir를
+#     server/ 로 두면 demo/ 가 보이지 않아 위 require()가 ENOENT로 죽는다(이전 버전이 "결과는 같다"고
+#     적었던 것은 오판이었다 — 정정). 그래서 Root Directory는 그대로 두고 build/start 명령에만
+#     `--prefix server`를 붙인다(root의 실제 대시보드 설정과 동일한 형태). server/ 만 있는 별도 저장소
+#     (서브트리·서브모듈 추출본)로 배포해도 마찬가지로 기동 즉시 깨진다 — 반드시 이 모노레포 전체를
+#     연결해야 한다.
+#   - 헬스체크 경로는 /healthz (인증 없음, 200 "ok").
+#   - DD_AUTH_PUBLIC_DEPLOY=1 로 옵트인해야 리버스 프록시 뒤 배포 모드가 켜진다(피어 IP 미검사 —
+#     Host/Origin/좌석 토큰이 경계). 켜지 않으면 이 서비스는 기존 로컬 전용 기본값 그대로 뜬다.
+#   - DD_AUTH_PUBLIC_HOST 는 Render가 실제로 배정한 도메인이어야 한다. 서비스 이름을 digit-duel로
+#     신청해도 이미 다른 사용자가 그 이름을 쓰고 있으면 Render가 접미사를 붙인 다른 onrender.com
+#     서브도메인을 배정할 수 있다 — 아래 값은 후보일 뿐이며, root는 실제 배정된 주소를 확인한 뒤
+#     이 값을 그 주소로 맞춰야 한다(다르면 모든 페이지 요청이 400 bad host로 막힌다).
+#   - PORT는 Render가 자동 주입한다고 공식 문서가 설명한다 — 이 서비스에는 값을 설정하지 않는다.
+#     서버 코드(authoritative/server.js)는 DD_AUTH_PORT가 없으면 PORT를 그대로 듣도록만 돼 있고,
+#     "직접 PORT를 지정하면 Render가 그것을 무시/override 하는지"는 이 저장소가 검증하지 않았다 —
+#     그 동작을 단정하지 않는다. 애초에 여기서 PORT를 지정하지 않으므로 그 질문 자체가 발생하지 않는다.
+#
+# 알려진 트레이드오프(요약 — 전체 근거는 docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md):
+#   - 무료 인스턴스 1개, 인메모리 방 상태 — 프로세스 재시작·재배포·(관측된) 휴면 재개 시 진행 중이던
+#     경기가 전부 사라진다. 이 번들은 영속화·수평 확장을 구현하지 않는다(범위 밖으로 확정).
+#   - 리버스 프록시 뒤에서는 소켓 피어(creatorIp 포함)가 항상 프록시 주소이므로, 아래 "IP당" 한도가
+#     전부 이 인스턴스에 붙는 모든 실제 사용자가 나눠 쓰는 **공유** 한도가 된다 — 인증 우회는 아니고
+#     가용성 트레이드오프다. 현재 설정값(런타임 임의 완화 없이 그대로 명시):
+#     동시 열린 공개 방(대기 중) 전체 인스턴스당 **2개**(Lobby maxOpenPublicPerIp, 기본값) — 한 사람이
+#     아니라 실제로는 서로 다른 사용자 둘이 각각 방을 열면 셋째 사용자의 "새 방 만들기"부터 거부된다.
+#     그 밖에 WebSocket 동시 연결 전체 64 · 공유 한도당 8(DD_AUTH_MAX_CONNECTIONS/_PER_IP), 정적 HTTP
+#     버스트 288 토큰(초당 96 회복), WS 업그레이드 분당 60회, 인증 실패 5분에 10회로 차단 — 전부 코드
+#     기본값이며 이번 배포 준비에서 바꾸지 않았다.
+#   - **클라이언트 주소 판정 재확인(정정)**: 공개 방(생성/목록/참가/재개)은 전부 netOpenCredentialSocket()
+#     한 곳만 거치고(demo/index.html), 그 함수는 netPublicAddr() = location.host 에 location.protocol
+#     기준 ws/wss를 붙일 뿐 도메인 이름을 거부하는 판정(netParseAddr)을 전혀 거치지 않는다. 그 판정은
+#     구 코드 접속 릴레이(수동 주소 입력, server/server.js 8080 전용) UI에만 쓰인다 — 의도된 설계이고
+#     이 서비스와 무관하다. 즉 **공개 방 기능은 도메인 배포 자체로 막히지 않으며 별도 CJ 승인·클라이언트
+#     수정을 요구하지 않는다.** 다만 이 코드 경로가 실제 인터넷 클라이언트↔Render 배포 간에 브라우저로
+#     끝까지 검증된 적은 이 세션에서 없다 — 실배포 후 실제 접속 확인이 남은 항목이다.
+
+services:
+  - type: web
+    name: digit-duel
+    runtime: node
+    plan: free
+    region: singapore  # [추론] 한국 사용자 지연을 노려 선택 — 실측 없음(Mercury hosting-evidence.md 미확인 항목). root가 필요하면 바꾼다.
+    buildCommand: npm ci --prefix server
+    startCommand: npm start --prefix server
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass  # root 보고: CI 통과 후 배포("after-CI-pass")
+    envVars:
+      - key: DD_AUTH_PUBLIC_DEPLOY
+        value: "1"
+      # root: Render가 실제로 배정한 도메인으로 교체할 것. 후보값일 뿐 확정 아님.
+      - key: DD_AUTH_PUBLIC_HOST
+        value: digit-duel.onrender.com
