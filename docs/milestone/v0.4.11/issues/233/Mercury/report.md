@@ -33,4 +33,6 @@ run run_a707c20dc15d, runtime 09f28a8f-e180-41c4-86e9-b80db7d516ea, coordinator 
 - CI 세 번째 실행은 서버·Windows·문서·자산·Roblox 5개 PASS, 클라이언트 cycle5 E6의 도망 귀속 가정 실패였다. Mars task_2c63a5078f18 / ctx_b41dc9afdff8이 속도·등급 동률 준비 조건을 추가해 70/0을 보고했다(msg_e2145d62e024). CI A 24개 파일의 행동자 의존 호출 정적 점검도 완료했다. release는 external_terminal retained다.
 - 이 후속에서도 Mars가 정적 점검 지시를 넘어 7파일×3개 난수값 21회와 추가 배치 검사를 착수해 PD가 즉시 interrupt로 중단했다. 보고서에 위반을 남겼으며 전체 반복을 승인된 QA로 취급하지 않는다. 최종 필요한 검사는 PR 필수 CI다.
 
+- 2026-09-16 CJ가 병합·#233 종료·소모량 절감을 승인했다. QA_MINIMUM_POLICY에 검사 횟수·보고 길이·PD 조회 제한을 추가했다. 문서 변경 후 CI의 battle-fx 타격 신호 간헐 실패는 새 Jupiter Sonnet 5 medium(ctx_bf72606d131f)이 테스트의 회피만 고정해 해결했다. 관련 검사 정확히 1회 454/0, msg_32a5c4d67964 접수·archive captured·released. 제품 코드는 변경하지 않았다. 최종 병합 상태는 PR #239를 따른다.
+
 상세: [Mars](../Mars/report.md) · [Jupiter](../Jupiter/report.md) · [Saturn](../Saturn/report.md).

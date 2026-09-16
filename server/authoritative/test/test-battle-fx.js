@@ -105,6 +105,12 @@ function assertEventShape(evt, label) {
 {
   const room = H.startedRoom(950);
   const cur = startBattle(room);
+  // PR239 CI battle-fx447pass1fail — 이 절은 "실제 타격(damageFx+float)이 만들어진다"만 보고 회피·치명타
+  // 자체는 다루지 않는다(그건 다른 스위트 소관). rand() 기반 회피(①, 상한 40%)가 기본 아키타입 dodge(5~10%)
+  // 확률로 이번 첫 공격을 회피로 만들면 fx.float가 아예 생기지 않아 간헐적으로 실패했다. 두 전투원의
+  // dodge/evadeBuff를 0으로 고정해 회피 판정(rand()<0)이 항상 거짓이 되게 해 첫 공격이 반드시 명중하게
+  // 만든다 — 피해량 자체(치명타 여부·분산 roll)는 그대로 rand()에 맡겨 이 절이 검증하는 것 이상을 고정하지 않는다.
+  both(room, (E) => { const B = E.S.battle; B.fa.dodge = 0; B.fa.evadeBuff = 0; B.fd.dodge = 0; B.fd.evadeBuff = 0; });
   const r = act(room, cur, { t: 'act', k: 0 });
   ok(r.ok, '공격 행동 수락: ' + JSON.stringify(r.reason));
   const fx = room.toSeatView(cur).fx;
