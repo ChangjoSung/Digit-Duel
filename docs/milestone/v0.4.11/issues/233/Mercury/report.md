@@ -27,4 +27,7 @@ run run_a707c20dc15d, runtime 09f28a8f-e180-41c4-86e9-b80db7d516ea, coordinator 
 - PR CI 후속: Mars task_6dbcb77b8c4c / ctx_2d8c814c4ffe, Jupiter task_a17fbc018df9 / ctx_d44e5b5a957e. 같은 부서 터미널에 새 작업을 배정했다. 두 시작 영수증은 turn_start_unobserved였으나 실제 새 작업 응답·검사 수행을 확인했다. 재시도나 중복 Worker는 만들지 않았다.
 - 후속 완료: Mars msg_1155d678f850(회귀 203/0·82/0·36/0), Jupiter msg_1533de283b51(서버 전체 PASS). 제품 변경 없이 테스트 준비 조건만 수정했고 두 release는 external_terminal retained로 존중했다. Jupiter가 종료 코드 확인만을 위해 서버 전체 검사를 2회 실행한 것은 중복 검사로 기록하고 추가 실행을 금지했다.
 
+- CI 두 번째 실행의 추가 실패: Mars task_98222cb5a9bb / ctx_f0661d5f2be7은 레거시 기술 테스트의 선턴을 고정해 86/0(msg_ea1c5321df2a). Jupiter task_6df1d82033f3 / ctx_0b4b0e0b229c는 이벤트 40개 보관 한도에 걸리던 연속 전투 테스트의 시드를 고정해 최종 454/0(msg_973b37c95175). 제품 코드는 유지했다. 두 작업 모두 succeeded, release는 external_terminal retained다.
+- Jupiter가 변경 테스트 1회 지시를 어기고 6회 실행한 사실을 07:34 UTC에 interrupt로 중단시켰다. 부서 보고서의 실제 실행 횟수를 보존하며 이를 필수 QA로 간주하지 않는다.
+
 상세: [Mars](../Mars/report.md) · [Jupiter](../Jupiter/report.md) · [Saturn](../Saturn/report.md).

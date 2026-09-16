@@ -246,6 +246,10 @@ function resolveSyncModals(room, seatHint, maxSteps) {
 // ===== 9) 연속 전투 — battleId가 매번 새로 발급되고, 새 전투 이후 이벤트에 옛 battleId가 다시 붙지 않는다 =====
 {
   const room = H.startedRoom(958);
+  // 서버 엔진 rand()는 기본 미시드(Math.random)라 첫 전투 길이가 매번 다르다. 길어지면 fx 유한 보관
+  // (engine.js FX_RETAIN=40)이 첫 battleStart를 밀어내 starts.length가 1이 된다(PR239 CI B 실패, 로컬 약 2.7%).
+  // 이 절은 battleId 단조성만 보므로 시드를 고정해 전투 길이를 결정적으로 만든다(고정 시 fx 32개 < 40).
+  both(room, (E) => { E.setSeed(12345); });
   startBattle(room);
   driveBattleToEnd(room, 60);
   const before = room.toSeatView(0).fx;

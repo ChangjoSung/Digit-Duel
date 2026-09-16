@@ -46,8 +46,11 @@ const click=(T,txt)=>{ const b=(T.byId("obBtns").children||[]).slice().reverse()
 /* rand 소비 횟수 — 시드 고정 후 fn 실행, 다음 rand 가 몇 번째 값인지로 역산 */
 function randConsumed(T,seed,fn,max){ T.setSeed(seed); const seq=[]; for(let i=0;i<(max||12);i++) seq.push(T.rand()); T.setSeed(seed); fn(); const n=T.rand(); const k=seq.indexOf(n); T.setSeed(null); return k; }
 function openBattle(T,a,d){ T.S.battle=null; T.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; a.cd=0; d.cd=0; a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0;
-  // #233 (GDD-23 4.2 ①⑦): 이 파일은 교차 속성 판정을 보는 것이지 신규 회피·치명타를 보는 것이 아니다 — 0으로 고정한다.
+  /* #233 (GDD-23 4.2 ①⑦ · 4.4): 이 파일은 교차 속성 판정을 보는 것이지 신규 회피·치명타·선턴을 보는 것이 아니다.
+     회피·치명은 0, 속도·등급은 동률로 고정해 접촉 개시자(A)를 선턴으로 굳힌다 — 레거시 말은 아키타입이 무작위
+     배정돼 속도가 흔들리면 __actCore 가 D 로 실행되어 D10 이 약 40% 확률로 떨어졌다(보고서 §11). */
   if(a.dodge!==undefined){a.dodge=0; a.crit=0;} if(d.dodge!==undefined){d.dodge=0; d.crit=0;}
+  if(a.spd!==undefined&&d.spd!==undefined){d.spd=a.spd; d.grade=a.grade;}
   T.TQ.length=0; T.startRounds(a,d,a,d); T.TQ.length=0; }
 /* 하네스는 load()마다 전역 setTimeout 을 그 로드의 TQ 로 갈아끼운다 — 여러 로드가 살아 있을 때 시뮬을 돌릴 로드로 타이머를 되돌린다 */
 const useTimers=X=>{ global.setTimeout=fn=>{ X.TQ.push(fn); return 0; }; };
