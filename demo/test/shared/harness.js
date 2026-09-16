@@ -229,6 +229,22 @@ function load(htmlPath,opts){
   /* 렉시컬 캡처 — 이 줄은 제품 코드 1행과 같은 줄에 이어 붙지 않도록 개행 없이 앞에 둔다 (에러 행 번호 보존) */
   const code=`const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window}=__ENV;`+m[1]+`
 ;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
+  /* #233 (GDD-23 3-4장) 8스탯 전투 엔진 계약 — 기준판 로드 호환을 위해 typeof 가드를 둔다(부재 시 undefined) */
+  ARCHETYPE_BASE:typeof ARCHETYPE_BASE!=="undefined"?ARCHETYPE_BASE:undefined, KING_BASE:typeof KING_BASE!=="undefined"?KING_BASE:undefined,
+  ALLY_BASE:typeof ALLY_BASE!=="undefined"?ALLY_BASE:undefined, LEGEND_BASE:typeof LEGEND_BASE!=="undefined"?LEGEND_BASE:undefined,
+  gradeHp:typeof gradeHp==="function"?gradeHp:undefined, gradeAtk:typeof gradeAtk==="function"?gradeAtk:undefined,
+  applyArchStats:typeof applyArchStats==="function"?applyArchStats:undefined, applyFixedStats:typeof applyFixedStats==="function"?applyFixedStats:undefined,
+  shieldAdd:typeof shieldAdd==="function"?shieldAdd:undefined, shieldConsume:typeof shieldConsume==="function"?shieldConsume:undefined, shieldClearAll:typeof shieldClearAll==="function"?shieldClearAll:undefined,
+  resolveHit:typeof resolveHit==="function"?resolveHit:undefined, resolveReflect:typeof resolveReflect==="function"?resolveReflect:undefined,
+  resolveCounter:typeof resolveCounter==="function"?resolveCounter:undefined, instaKill:typeof instaKill==="function"?instaKill:undefined,
+  scheduleDelayed:typeof scheduleDelayed==="function"?scheduleDelayed:undefined, tickDelayed:typeof tickDelayed==="function"?tickDelayed:undefined,
+  resolveTyped:typeof resolveTyped==="function"?resolveTyped:undefined, // 4.3 타입별 피해 공통 진입점(연쇄 금지 chainLock 포함)
+  applyTimedFx:typeof applyTimedFx==="function"?applyTimedFx:undefined, // 5.6 중첩·재부여·지속
+  applyCrack:typeof applyCrack==="function"?applyCrack:undefined, applyHarden:typeof applyHarden==="function"?applyHarden:undefined,
+  applyEvadeBuff:typeof applyEvadeBuff==="function"?applyEvadeBuff:undefined, applyDmgUpBuff:typeof applyDmgUpBuff==="function"?applyDmgUpBuff:undefined,
+  decideFirstSide:typeof decideFirstSide==="function"?decideFirstSide:undefined, // 4.4 선턴 확정
+  fighterOrderCat:typeof fighterOrderCat==="function"?fighterOrderCat:undefined, // 4.4 순서 효과 분류(0=선턴 1=기본 2=후턴)
+  finishBattle:typeof finishBattle==="function"?finishBattle:undefined, // 4.6 전투 종료 경로(HP만 유지 검증용)
   EVENT_POOL:typeof EVENT_POOL!=="undefined"?EVENT_POOL:undefined, // v0.4.6 이하 기준판 호환 (v0.4.7 에서 EVENT_KINDS 로 대체)
   EVENT_KINDS:typeof EVENT_KINDS!=="undefined"?EVENT_KINDS:undefined, EVENT_KO:typeof EVENT_KO!=="undefined"?EVENT_KO:undefined, // #121 계약 1.1
   ITEMS:typeof ITEMS!=="undefined"?ITEMS:undefined,

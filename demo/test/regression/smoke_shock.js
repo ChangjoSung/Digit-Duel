@@ -9,9 +9,17 @@ const T=H.load(htmlPath);
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
 const ROS=id=>T.ROSTER.find(r=>r.id===id);
-function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
+function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; if(T.applyArchStats) T.applyArchStats(m,r.arch,m.grade||1); } // #233 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
 /* 레거시(로스터 미적용) 하수인: skills=null · element/skillAtk 직접 — 제품 플레이에서는 도달하지 않는 테스트 호환 경로 */
-function giveLegacy(T,m,el,rosterId){ m.rosterId=rosterId||null; m.name=null; m.element=el; m.hp=100; m.maxHp=100; m.atk=20; m.skillAtk=35; m.cdMax=2; m.cd=0; m.skills=null; m.cds=[0,0,0,0]; m.revealedSkills=null; }
+function giveLegacy(T,m,el,rosterId){ m.rosterId=rosterId||null; m.name=null; m.element=el; m.hp=100; m.maxHp=100; m.atk=20; m.skillAtk=35; m.cdMax=2; m.cd=0; m.skills=null; m.cds=[0,0,0,0]; m.revealedSkills=null;
+  /* #233 (GDD-23 3.2 💫): 이 파일은 shockProb·statusProb 를 격리해 보므로 상태이상 부여 확률 스킬을 0 으로 고정한다.
+     이걸 빼면 새 게임 시작 시 무작위 배정된 아키타입의 💫 (지속형 +10%p)가 남아 부여율이 시드마다 흔든다
+     (openBattle 이 같은 이유로 dodge·crit 을 0 으로 고정하는 것과 같은 조치). 레거시 경로의 💫 가산 자체는
+     smoke_issue233.js J9~J12 가 따로 검증한다. */
+  /* #233 (GDD-23 4.4): 구형 경로 검사는 __actCore("skill") 로 **그 라운드의 행동자** 가 치게 하므로
+     선턴이 갈리면 공격자가 바뀜어 부여율이 0% 로 보이는 오진이 난다. m·e 둘 다 같은 속도·등급을 갖게 해
+     동률 → 접촉 개시자(A) 가 항상 선턴이 되도록 고정한다 (무작위 배정된 아키타입 속도 제거). */
+  m.statusPct=0; m.spd=10; m.grade=1; }
 /* 1:1 전투 장면 — 공격측 m(A) vs 방어측 e(D). 왕은 구석, 전멸 방지 하수인 1기. 반환: {m,e} */
 function arena(T,mode){
   H.freshPlay(T,mode||"pvp"); H.clearBoard(T);
@@ -28,7 +36,10 @@ function randConsumed(T,seed,fn){
   T.setSeed(seed); let k=0; while(k<200){ if(T.rand()===nxt) break; k++; } return k;
 }
 /* 전투 1회 준비 — 같은 두 말로 startRounds 를 다시 연다 (S.battle 교체·상태 초기화·쿨 0) */
-function openBattle(T,m,e){ T.S.battle=null; T.S.battlesUsed=0; m.hp=m.maxHp; e.hp=e.maxHp; m.cds=[0,0,0,0]; e.cds=[0,0,0,0]; m.cd=0; e.cd=0; T.TQ.length=0; T.startRounds(m,e,m,e); T.TQ.length=0; }
+function openBattle(T,m,e){ T.S.battle=null; T.S.battlesUsed=0; m.hp=m.maxHp; e.hp=e.maxHp; m.cds=[0,0,0,0]; e.cds=[0,0,0,0]; m.cd=0; e.cd=0;
+  // #233 (GDD-23 4.2 ①⑦): 이 파일은 상태이상 부여 확률·rand 소비 횟수를 보는 것이지 신규 회피·치명타를 보는 것이 아니다 — 0으로 고정한다.
+  if(m.dodge!==undefined){m.dodge=0; m.crit=0;} if(e.dodge!==undefined){e.dodge=0; e.crit=0;}
+  T.TQ.length=0; T.startRounds(m,e,m,e); T.TQ.length=0; }
 /* N회 시행: 매회 새 전투·시드 base+i → A 가 slot 실행 → 판정자 pred(opp) 참/거짓 집계 + rand 소비 분포 */
 function trials(T,m,e,N,base,act,pred){
   let hit=0; const consumed={};
@@ -59,7 +70,7 @@ let B_RATE=null;
   ok(m.skills[1]==="lightning_effect"&&T.SKILLS[m.skills[1]].status===true,"B0 표준형 번개 슬롯1 = 감전 침(status)");
   const r=shockPct(T,m,e,1000,96000,1); B_RATE=r;
   ok(r.rate>=0.45&&r.rate<=0.55,"B1 감전 침 1000회 부여율 45~55% [실측 "+r.hit+"/1000 = "+(r.rate*100).toFixed(1)+"%]");
-  ok(Object.keys(r.consumed).join(",")==="2","B2 매 시행 rand 소비 2회(분산 1 + 감전 판정 1) — 새 RNG 소비 없음 ["+JSON.stringify(r.consumed)+"]");
+  ok(Object.keys(r.consumed).join(",")==="4","B2 매 시행 rand 소비 4회(회피+분산+치명타+감전 판정) — #233 GDD-23 4.2①⑦ 신규 판정 추가 (def 도입 전 2회) ["+JSON.stringify(r.consumed)+"]");
   const met=T.S.metrics; ok(met.statusApplied+met.statusFailed>=1000,"B3 statusApplied+statusFailed 집계 유지 ("+met.statusApplied+"+"+met.statusFailed+")");
   // 결정론: 같은 시드 → 같은 결과
   const r2=shockPct(T,m,e,200,96000,1);
@@ -89,7 +100,7 @@ let B_RATE=null;
   ok(rates["화상"].rate>=0.65&&rates["화상"].rate<=0.75,"C1 화상 1000회 부여율 65~75% (statusProb 0.7) [실측 "+(rates["화상"].rate*100).toFixed(1)+"%]");
   ok(rates["약화"].rate>=0.65&&rates["약화"].rate<=0.75,"C2 약화 1000회 부여율 65~75% (statusProb 0.7) [실측 "+(rates["약화"].rate*100).toFixed(1)+"%]");
   ok(rates["감전"].rate>=0.45&&rates["감전"].rate<=0.55,"C3 감전 1000회 부여율 45~55% (shockProb 0.5) [실측 "+(rates["감전"].rate*100).toFixed(1)+"%]");
-  ok([rates["화상"],rates["약화"],rates["감전"]].every(r=>Object.keys(r.consumed).join(",")==="2"),"C4 세 상태 모두 rand 소비 2회 (판정 1회) — 소비 순서·횟수 동일");
+  ok([rates["화상"],rates["약화"],rates["감전"]].every(r=>Object.keys(r.consumed).join(",")==="4"),"C4 세 상태 모두 rand 소비 4회(회피+분산+치명타+판정) — 소비 순서·횟수 동일 — #233 GDD-23 4.2①⑦ (def 도입 전 2회)");
   // 같은 시드에서 화상·약화·감전의 판정 난수는 같은 값이므로: 감전 성공 집합 ⊂ 화상 성공 집합 (0.5 < 0.7 — 같은 rand 를 다른 문턱으로 봄)
   let subset=true, shockHits=0, burnHits=0;
   for(let i=0;i<300;i++){ giveSpecies(T,m,ROS("M-L1")); openBattle(T,m,e); T.setSeed(96000+i); T.execSlot("A",1); const s=e.shock===1;
@@ -120,18 +131,23 @@ let B_RATE=null;
   ok(m.skills[3]==="sig_sustain"&&m.skills[0]==="lightning_effect","D0 지속형 번개: 슬롯3 잔류장 · 슬롯0 감전 침");
   const sv=T.BAL.statusProb, sh=T.BAL.shockProb;
   const r=shockPct(T,m,e,300,7000,3);
-  ok(r.rate===1&&Object.keys(r.consumed).join(",")==="1","D1 잔류장 300회 감전 100% · rand 소비 1회(분산만 — 판정 난수 없음) ["+JSON.stringify(r.consumed)+"]");
+  ok(r.rate===1&&Object.keys(r.consumed).join(",")==="3","D1 잔류장 300회 감전 100% · rand 소비 3회(회피+분산+치명타 — 상태 판정 난수는 없음) — #233 GDD-23 4.2①⑦ (def 도입 전 1회) ["+JSON.stringify(r.consumed)+"]");
   T.BAL.shockProb=0; T.BAL.statusProb=0;
   const r0=shockPct(T,m,e,100,7000,3);
-  ok(r0.rate===1&&Object.keys(r0.consumed).join(",")==="1","D2 shockProb=0·statusProb=0 이어도 잔류장 감전 100% · rand 소비 1회 (확률 키를 읽지 않는다)");
+  ok(r0.rate===1&&Object.keys(r0.consumed).join(",")==="3","D2 shockProb=0·statusProb=0 이어도 잔류장 감전 100% · rand 소비 3회(회피+분산+치명타) — 확률 키(상태 판정)를 읽지 않는다 — #233 GDD-23 4.2①⑦ (def 도입 전 1회)");
   const r1=shockPct(T,m,e,300,7000,0);
-  ok(r1.rate===0,"D3 shockProb=0 → 지속형 본체의 감전 침(효과기 경로)은 0% — 잔류장과 분리");
+  /* #233 (GDD-23 3.2·3.3): 지속형은 💫 +10%p 를 갖는다. shockProb=0 이어도 최종 확률은 0+0.10 = **10%** 이므로
+     예전의 "아키타입 무관 0%" 계약은 이 Issue 가 의도적으로 바꿨 것이다. 그래도 잔류장(100% 보장 경로)과는
+     여전히 분리된다 — D1·D2 가 100% 임을 고정하므로 이 절은 "확률 경로가 💫 만큼만 올라간다" 를 본다.
+     300회 이항분포 p=0.10 → 표준편차 1.7%p 이므로 ±3σ 여유를 둔다. */
+  ok(r1.rate>=0.05&&r1.rate<=0.16,"D3 shockProb=0 여도 지속형 본체는 💫 +10%p 로 10% 부근 — 잔류장(100%)과는 여전히 분리 (GDD-23 3.2·3.3) [실측 "+(r1.rate*100).toFixed(1)+"%]");
   T.BAL.shockProb=sh; T.BAL.statusProb=sv;
   const r2=shockPct(T,m,e,1000,7000,0);
-  ok(r2.rate>=0.45&&r2.rate<=0.55,"D4 지속형 번개의 감전 침 1000회도 45~55% (아키타입 무관 — 효과기 경로) [실측 "+(r2.rate*100).toFixed(1)+"%]");
+  /* shockProb 0.5 + 지속형 💫 0.10 = **60%**. 1000회 p=0.6 → 표준편차 1.55%p, ±3σ 여유. */
+  ok(r2.rate>=0.55&&r2.rate<=0.65,"D4 지속형 번개의 감전 침 1000회 = shockProb 50% + 💫 10%p = 60% 부근 (아키타입이 이제 영향을 준다 — GDD-23 3.3) [실측 "+(r2.rate*100).toFixed(1)+"%]");
   // 불 지속형 잔류장(화상 100%)도 rand 1회 — 보장 경로 공통
   giveSpecies(T,m,ROS("M-F5")); const fb=trials(T,m,e,100,7000,T2=>T2.execSlot("A",3),o=>o.burn>0);
-  ok(fb.rate===1&&Object.keys(fb.consumed).join(",")==="1","D5 불 잔류장 화상 100% · rand 소비 1회 (보장 경로 변경 없음)");
+  ok(fb.rate===1&&Object.keys(fb.consumed).join(",")==="3","D5 불 잔류장 화상 100% · rand 소비 3회(회피+분산+치명타 — 보장 경로 자체는 변경 없음) — #233 GDD-23 4.2①⑦ (def 도입 전 1회)");
   // 잔류장 감전 후 지속 1R (부채 (b): 잔류장·감전 침 shock=1 — 이번 범위에서 고치지 않음)
   giveSpecies(T,m,ROS("M-L5")); openBattle(T,m,e); T.setSeed(7000); T.execSlot("A",3);
   ok(e.shock===1&&e.shockFresh===true,"D6 잔류장 감전 = shock 1 · fresh (현행 유지 — 부채 (b) 기록만)");
@@ -143,7 +159,7 @@ let B_RATE=null;
   const legacyAct=T2=>{ if(typeof global.__actCore!=="function") throw new Error("__actCore 미노출"); global.__actCore("skill"); };
   openBattle(T,m,e); ok(m.skills===null&&T.archOf(m)===null&&typeof global.__actCore==="function","E0 레거시 하수인(skills null·archOf null)·__actCore 노출");
   const r=trials(T,m,e,1000,96000,legacyAct,o=>o.shock===1&&o.shockFresh===true);
-  ok(r.rate>=0.45&&r.rate<=0.55&&Object.keys(r.consumed).join(",")==="2","E1 레거시 비지속형 번개 1000회 감전 45~55% · rand 2회 [실측 "+(r.rate*100).toFixed(1)+"% "+JSON.stringify(r.consumed)+"]");
+  ok(r.rate>=0.45&&r.rate<=0.55&&Object.keys(r.consumed).join(",")==="4","E1 레거시 비지속형 번개 1000회 감전 45~55% · rand 4회(회피+분산+치명타+판정) — #233 GDD-23 4.2①⑦ (def 도입 전 2회) [실측 "+(r.rate*100).toFixed(1)+"% "+JSON.stringify(r.consumed)+"]");
   const sv=T.BAL.statusProb, sh=T.BAL.shockProb;
   T.BAL.statusProb=1; T.BAL.shockProb=0; const l0=trials(T,m,e,100,500,legacyAct,o=>o.shock>0).rate;
   T.BAL.statusProb=0; T.BAL.shockProb=1; const l1=trials(T,m,e,100,500,legacyAct,o=>o.shock>0).rate;
@@ -157,7 +173,7 @@ let B_RATE=null;
   giveLegacy(T,m,"lightning","M-L5"); ok(T.archOf(m)==="sustain"&&m.skills===null,"E5 레거시 지속형 구성 (rosterId M-L5 · skills null)");
   T.BAL.shockProb=0; T.BAL.statusProb=0;
   const rs=trials(T,m,e,200,7000,legacyAct,o=>o.shock===2&&o.shockFresh===true);
-  ok(rs.rate===1&&Object.keys(rs.consumed).join(",")==="1","E6 레거시 지속형 번개 200회 감전 100%(확률 키 0 이어도) · 2R · rand 1회 (판정 난수 없음)");
+  ok(rs.rate===1&&Object.keys(rs.consumed).join(",")==="3","E6 레거시 지속형 번개 200회 감전 100%(확률 키 0 이어도) · 2R · rand 3회(회피+분산+치명타, 상태 판정 난수는 없음) — #233 GDD-23 4.2①⑦ (def 도입 전 1회)");
   T.BAL.shockProb=sh; T.BAL.statusProb=sv;
   ok(T.S.battle.blog.some(l=>/감전 — 다음 2라운드 후공/.test(l)),"E7 레거시 지속형 로그 '다음 2라운드 후공' (부채 (b): 4슬롯 1R 와의 차이는 기록만)");
 }
@@ -226,10 +242,10 @@ let B_RATE=null;
   let v=mut("effect-ignores-shockProb","gate(force,BAL.shockProb)","gate(force)");
   if(v.M){ const r=rateOf(v.M,"M-L1",1,o=>o.shock===1); ok(r.rate>0.55,"J1 [음성] 효과기가 shockProb 를 무시하면 부여율 "+(r.rate*100).toFixed(1)+"% → 45~55% 검사기가 잡는다"); } else ok(false,"J1 "+v.error);
   // J2: 잔류장이 확률을 굴리게 되면(force 무시) D1 의 100%·rand 1회 검사기가 잡는다
-  v=mut("sig-rolls","if(force||rand()<(prob===undefined?BAL.statusProb:prob))","if(rand()<(prob===undefined?BAL.statusProb:prob))");
+  v=mut("sig-rolls","if(force||rand()<p){S.metrics.statusApplied++; return true;}","if(rand()<p){S.metrics.statusApplied++; return true;}");
   if(v.M){ const r=rateOf(v.M,"M-L5",3,o=>o.shock===1); ok(r.rate<1&&Object.keys(r.consumed).join(",")!=="1","J2 [음성] 보장 경로가 난수를 굴리면 100%·rand 1회 검사기가 잡는다 ("+(r.rate*100).toFixed(1)+"% "+JSON.stringify(r.consumed)+")"); } else ok(false,"J2 "+v.error);
   // J3: 화상까지 shockProb 로 내려가면(전역 하향 — Venus 모형과 같은 실수) C1 의 65~75% 검사기가 잡는다
-  v=mut("burn-uses-shockProb",'if(atkEl==="fire"&&!opp.burn&&gate(force))','if(atkEl==="fire"&&!opp.burn&&gate(force,BAL.shockProb))'); // #92: 상태 분기는 판정 속성 atkEl 기준
+  v=mut("burn-uses-shockProb",'if(atkEl==="fire"&&gate(force))','if(atkEl==="fire"&&gate(force,BAL.shockProb))'); // #92: 상태 분기는 판정 속성 atkEl 기준 · #233: !opp.burn 가드는 5.6 재부여 갱신 규칙으로 제거됐다
   if(v.M){ const r=rateOf(v.M,"M-F1",1,o=>o.burn>0,1000); ok(r.rate<0.65,"J3 [음성] 화상이 shockProb 를 읽으면 부여율 "+(r.rate*100).toFixed(1)+"% → 65~75% 검사기가 잡는다"); } else ok(false,"J3 "+v.error);
   // J4: 레거시 번개가 statusProb 로 되돌아가면 E1 이 잡는다
   v=mut("legacy-ignores-shockProb","tryStatus(BAL.shockProb)","tryStatus()");
@@ -239,7 +255,7 @@ let B_RATE=null;
   v=mut("desc-70",'desc:"50% 확률 감전(후공 1회)"','desc:"70% 확률 감전(후공 1회)"');
   if(v.M){ ok(v.M.SKILLS.lightning_effect.desc!=="50% 확률 감전(후공 1회)"&&/70% 확률 감전/.test(v.M.html),"J5 [음성] 문구 70% 복귀는 A3/A6 검사기가 잡는다"); } else ok(false,"J5 "+v.error);
   // J6: 보장 경로에서 새 난수를 소비하는 변형(force 여도 rand 호출) → D1/D5 rand 1회 검사기가 잡는다
-  v=mut("force-consumes-rand","if(force||rand()<(prob===undefined?BAL.statusProb:prob))","if((rand(),force)||rand()<(prob===undefined?BAL.statusProb:prob))");
+  v=mut("force-consumes-rand","if(force||rand()<p){S.metrics.statusApplied++; return true;}","if((rand(),force)||rand()<p){S.metrics.statusApplied++; return true;}");
   if(v.M){ const r=rateOf(v.M,"M-L5",3,o=>o.shock===1,100); ok(r.rate===1&&Object.keys(r.consumed).join(",")!=="1","J6 [음성] 보장 경로가 난수를 추가 소비하면 rand 1회 검사기가 잡는다 ("+JSON.stringify(r.consumed)+")"); } else ok(false,"J6 "+v.error);
   H.load(htmlPath); // 전역 __act* 를 현행 제품으로 되돌린다
 }

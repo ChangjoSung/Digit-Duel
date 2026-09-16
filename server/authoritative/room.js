@@ -79,14 +79,69 @@ function catalog() {
 // ===== 락스텝 규칙 상태 요약 — 시점(NET.me)과 무관해야 하는 필드만 =====
 // smoke_online_sync.js gameCanon/canon을 기준으로 전투원·패키지·텔레포트 횟수·도망 선택까지 넓혔다.
 // 로그(S.log·B.blog)·연출·메모 같은 시점 의존 표시 상태는 넣지 않는다.
+//
+// #233 (GDD-23 3·4장) — 이 요약은 **서버 안에서만** 쓰이고 어떤 좌석 프레임에도 실리지 않는다(정보 경계 무관).
+// 그래서 새 전투 계약이 만든 규칙 상태는 빠짐없이 넣는다. 특히 resolveHit 가 이제 한 타격에 rand() 를 최대 3회
+// (① 회피 · ③ 분산 · ⑦ 치명) 소비하므로, 두 좌석 엔진의 난수 소비가 한 번이라도 어긋나면 이후 모든 판정이 갈린다 —
+// 그 어긋남이 상태에 드러나는 지점(방어막 층 순서 · 균열/경화 잔여 · 예고 피해 대기열)을 전부 덮지 않으면
+// fail-closed VOID 가 발동하지 못하고 두 좌석이 조용히 다른 경기를 보게 된다.
 function lockstepDigest(T) {
   const S = T.S;
   const B = S.battle;
   const sm = T.NET.syncModal;
+  // #233 — 전투원이 지니는 8스탯(3.2·3.3·3.5). 등급 성장(3.4)과 포획·예비 승계로 값이 갈릴 수 있어 함께 본다.
+  const stats = (f) => [f.def || 0, f.spd || 0, f.dodge || 0, f.crit || 0, f.statusPct || 0,
+    f.grade === undefined ? null : f.grade];
   const fighter = (f) => (f ? {
     hp: f.hp, maxHp: f.maxHp, shield: f.shield || 0, burn: f.burn || 0, weaken: f.weaken || 0, shock: f.shock || 0,
     cd: f.cd || 0, cds: f.cds || null, dmgCut: f.dmgCut || 0, focusCharge: !!f.focusCharge, vulnMark: !!f.vulnMark,
     powerBuff: !!f.powerBuff, fleeBoost: !!f.fleeBoost, revealedSkills: f.revealedSkills || null,
+    // #233 4.5 — 균열·경화·회피 증가·가하는 피해 증가. 뷰에 싣는 범위와 무관하게 전부 본다.
+    // **세기(값)와 남은 지속(R)은 따로 본다** — 엔진은 지속이 0이 될 때 비로소 세기를 0으로 내린다
+    // (nextPhase: evadeBuffR-- → 0 이면 evadeBuff=0). 세기만 보면 "회피 +10% 가 1R 남음"과 "3R 남음"이
+    // 같은 상태로 읽혀 다음 라운드부터 갈라지는 두 엔진을 잡지 못한다.
+    crack: f.crack || 0, harden: f.harden || 0, hardenPct: f.hardenPct || 0,
+    evadeBuff: f.evadeBuff || 0, evadeBuffR: f.evadeBuffR || 0,
+    dmgUpBuff: f.dmgUpBuff || 0, dmgUpBuffR: f.dmgUpBuffR || 0,
+    /* #233 (GDD-23 5.6 적용·지속) — "부여된 라운드는 세지 않는다"를 구현하는 1회용 게이트.
+       엔진 nextPhase 는 `if(f.XFresh) f.XFresh=false; else if(f.X>0) f.X--;` 로 감쇠를 한 라운드 미룬다.
+       잔여 라운드가 같아도 게이트가 서 있는 쪽과 아닌 쪽은 **다음 라운드 종료에서 값이 갈린다** — 게이트를
+       빼면 그 한 라운드 차이를 요약이 못 본다. shockFresh 는 #233 이전부터 있었으나 요약에 없었고(좌석
+       프레임에는 이미 실린다), #233 이 같은 모양의 게이트를 넷으로 늘려 구조적 구멍이 커져 함께 메운다. */
+    shockFresh: !!f.shockFresh, crackFresh: !!f.crackFresh, hardenFresh: !!f.hardenFresh,
+    evadeBuffRFresh: !!f.evadeBuffRFresh, dmgUpBuffRFresh: !!f.dmgUpBuffRFresh,
+    /* 화상 게이트 (GDD-23 4.7 "부여된 라운드를 세지 않으므로 **다음 2개 라운드의 종료 시에 각 5**").
+       화상은 위 넷과 **모양이 다르다** — 라운드 종료에 감소만 하는 것이 아니라 **피해도 준다**. 그래서 게이트는
+       부여 라운드의 피해와 감소를 **둘 다** 건너뛰어야 R1 부여 → R2·R3 종료 피해가 나온다(감소에만 걸면 R1·R2·R3
+       3회 피해가 된다). 게이트가 한쪽 좌석에만 서 있으면 **그 라운드에 HP 가 갈린다** — 다른 게이트들은 잔여
+       라운드만 어긋나지만 이쪽은 곧바로 피해 유무가 달라지므로 요약에서 빠지면 손해가 더 크다.
+       PD 결정으로 Mars 가 엔진에 구현 중이고(이 워크트리 시점 미반영), 이름은 다른 넷과 같은 모양을 제안해
+       확정 요청했다(msg_90869a03d08d). 엔진에 아직 없으면 항상 false 로 떨어져 종전과 같은 감지력을 유지할
+       뿐 깨지지 않는다 — 서버는 없는 필드를 만들지 않고, 붙는 순간 감지력만 올라간다. */
+    burnFresh: !!f.burnFresh,
+    /* #233 (GDD-23 3.2) 확정 효과 — 이 둘은 **난수 소비 자체를 바꾼다.** resolveHit 는 ① 회피와 ⑦ 치명에서
+       각각 rand() 를 쓰는데, dodgeForce/critForce 가 서 있으면 그 판정을 건너뛰고 플래그를 소모한다
+       (demo/index.html resolveHit: `if(opp.dodgeForce){evaded=true; opp.dodgeForce=false;}`).
+       한쪽 좌석에만 플래그가 남아 있으면 그 타격에서 rand() 호출 수가 어긋나 **이후 모든 판정이 갈린다** —
+       요약에서 가장 빠뜨리면 안 되는 두 필드다. */
+    critForce: !!f.critForce, dodgeForce: !!f.dodgeForce,
+    // #233 (GDD-23 4.4) 순서 효과 — decideFirstSide 가 fighterOrderCat 으로 읽어 선턴을 가른다.
+    // #234 전까지 이를 켜는 기술은 없지만 엔진 계약이 이미 읽고 있으므로 요약도 함께 덮는다.
+    vanguardTurn: !!f.vanguardTurn,
+    // #233 3.2 — 방어막 "층". 합계(f.shield)만 보면 층 경계가 다른 두 상태를 같다고 판정한다: 다음 타격이 깎는
+    // 층 수(깨짐 판정)와 남는 잔량이 달라지므로 순서와 획득원을 그대로 넣는다.
+    shieldLayers: (f.shieldLayers || []).map((l) => [l.amt, l.src]),
+    /* #233 4.3 — 예고·지연 피해 대기열. 콜백(run)은 직렬화할 수 없다.
+       남은 라운드만 보면 **같은 라운드에 예약된 서로 다른 예고 피해 둘을 구분하지 못한다** — 한쪽 좌석이
+       '해일 예고'를, 다른 쪽이 다른 지연 피해를 2R 뒤로 걸어 두면 요약이 같게 나오고 발동 라운드에 가서야
+       갈린다(그때는 이미 요약으로 잡을 수 없는 HP 차이다). 그래서 항목의 안정 식별자(tag)를 함께 읽는다.
+       tag 는 **엔진이 붙여 주는 값**이고(Mars 소유 계약, msg_dd8111ac4d2c 로 제안·조회) 아직 없으면 null 로
+       떨어져 종전과 같은 감지력을 유지한다 — 서버는 없는 필드를 만들지 않고, 붙는 순간 감지력만 올라간다. */
+    pendingFx: (f.pendingFx || []).map((e) => [e.roundsLeft, e.tag === undefined ? null : e.tag]),
+    // 전투 판정용 유효 피해 흡수 누계(BAL.absorbCapPct). 규칙 자체는 현행이지만 #233의 층 소모가 이 값의 증가
+    // 경로를 바꿨고, 원래도 요약에서 빠져 있어 누적 차이를 못 잡았다 — 여기서 함께 메운다.
+    absorbed: f.absorbed || 0,
+    stats: stats(f),
   } : null);
   return JSON.stringify({
     phase: S.phase, current: S.current, turn: S.turnCount, mainUsed: S.mainUsed, battlesUsed: S.battlesUsed,
@@ -96,17 +151,28 @@ function lockstepDigest(T) {
     moved: S.movedPiece ? S.movedPiece.id : null,
     battle: B ? {
       att: B.attP.id, def: B.defP.id, round: B.round, phase: B.phase, actSeq: B.actSeq || 0, maxRounds: B.maxRounds || null,
+      /* #233 (GDD-23 4.4) — 선턴은 이제 **라운드 시작 시 한 번 굳는 저장 상태**다(B.firstSide, startRounds·nextPhase).
+         종전에는 순서가 round·phase·양쪽 shock 로 매 호출 재계산되는 파생값이라 요약에 따로 넣을 게 없었지만,
+         지금은 굳은 시점의 spd·grade·순서 효과를 담은 상태라서 **두 좌석이 서로 다른 선턴을 굳혀도 다른 필드는
+         전부 같을 수 있다.** 그러면 그 라운드부터 양쪽이 서로 다른 행위자에게 행동권을 주는데 요약이 같게 나온다. */
+      firstSide: B.firstSide || null,
       fa: fighter(B.fa), fd: fighter(B.fd), itemRoundA: !!B.itemRoundA, itemRoundD: !!B.itemRoundD,
       ballThrowA: !!B.ballThrowA, ballThrowD: !!B.ballThrowD, buffA: B.buffA || null, buffD: B.buffD || null,
     } : null,
     fleePick: S.fleePick ? { owner: S.fleePick.owner, cands: S.fleePick.cands.slice(), token: S.fleePick.token } : null,
     events: (S.events || []).map((e) => [e.r, e.c, e.kind, !!e.consumed]),
-    balls: S.balls.slice(), inv: S.inv.map((a) => a.slice()), reserve: S.reserve.map((x) => (x ? [x.element, x.hp] : null)),
+    // #233 — 예비(포획) 하수인도 승계한 아키타입 8스탯을 지니고 그대로 대리 출전한다(3.3). element/hp만 보면
+    // 스탯 주입이 갈린 상태를 놓친다.
+    balls: S.balls.slice(), inv: S.inv.map((a) => a.slice()),
+    reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x)] : null)),
     pkgs: S.pkgs.map((p) => Object.assign({}, p)), teleUsed: (S.teleUsed || []).slice(),
     traces: S.traces.map((t) => [...t].sort()), tempReveal: [...(S.tempReveal || [])].sort(), winner: S.winner,
     modalSeq: T.NET.modalSeq, sync: sm ? { seq: sm.seq, owner: sm.owner, n: sm.fns ? sm.fns.length : 0 } : null,
+    // #233 — 본체 출전이면 말 자체가 전투원이라 8스탯(3.3·3.5)과 등급이 말에 남는다. 포획 하수인(cap)도 같은
+    // 스탯을 승계해 대리 출전하므로(3.3) cap 튜플도 함께 넓힌다.
     pieces: S.pieces.map((p) => [p.id, p.owner, p.type, p.rosterId, p.element, p.hp, p.maxHp, p.r, p.c, p.placed, p.alive,
-      !!p.revealed, p.immobile, !!p.healing, p.skills || null, p.cds || null, p.cap ? [p.cap.element, p.cap.hp] : null]),
+      !!p.revealed, p.immobile, !!p.healing, p.skills || null, p.cds || null,
+      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap)] : null, ...stats(p)]),
   });
 }
 
@@ -872,10 +938,33 @@ class Room {
       healing: p.healing, alive: p.alive, placed: p.placed, movedEver: p.movedEver, revealed: p.revealed,
       burn: p.burn, weaken: p.weaken, shield: p.shield, shock: p.shock, dmgCut: p.dmgCut,
       focusCharge: p.focusCharge, vulnMark: p.vulnMark, powerBuff: p.powerBuff, fleeBoost: p.fleeBoost,
+      /* #233 (GDD-23 3.2·3.3·3.5·4.5) — 자기 말의 8스탯과 새 지속 상태. 등급 A(자기 좌석)는 이미 type·element·
+         skills·cds·cap·atk·skillAtk 까지 전부 받으므로(§2.6.1) 정보 경계는 그대로다.
+         여섯 개(def·spd·dodge·crit·statusPct·grade)는 **한 묶음**이다 — 클라이언트 netStubStats(demo/index.html)가
+         `typeof u.def==="number"` 하나로 분기해 나머지를 함께 읽기 때문에, def만 보내면 grade가 null로 덮여
+         자기 ⭐1 하수인의 등급이 사라진다.
+         이 묶음이 고치는 실제 버그: 엔진은 동료의 암살자/방패병 구분을 mkPiece 의 allyIdx 로만 쓰고 말에는 남기지
+         않는다(demo/index.html mkPiece). 그래서 클라이언트 폴백은 자기 동료 둘을 모두 암살자(def5·spd12)로 본다 —
+         서버가 실제 값을 보내면 방패병이 제 블록(def20·spd6)을 되찾는다. 동료 subtype 키를 새로 만들지 않고
+         **주입된 값 자체**를 보내므로 엔진 계약(Mars 소유)을 건드리지 않는다.
+         shieldStartPct 는 보내지 않는다 — netStubStats 가 읽지 않고 그리는 곳도 없다(전투 시작 방어막은 서버가
+         계산해 shield 합계로 내려간다). shieldLayers 도 보내지 않는다(아래 _serializeBattle 주석과 같은 이유). */
+      def: p.def, spd: p.spd, dodge: p.dodge, crit: p.crit, statusPct: p.statusPct,
+      grade: p.grade === undefined ? null : p.grade,
+      crack: p.crack, harden: p.harden, hardenPct: p.hardenPct, evadeBuff: p.evadeBuff, dmgUpBuff: p.dmgUpBuff,
     };
   }
 
-  // 등급 C-2 (공개된 상대): 정체·HP까지만. skills/cds/cap/전투 버프는 없다(§2.6.1).
+  /* 등급 C-2 (공개된 상대): 정체·HP까지만. skills/cds/cap/전투 버프는 없다(§2.6.1).
+     #233 — 8스탯·등급·새 지속 상태를 **여기에는 넣지 않는다**(의도적 보류):
+     ① 보드 뷰에는 이 값들을 그리는 경로가 자체가 없다 — 상태 아이콘(stIcons)은 전투 화면 전용이다.
+     ② 공개된 상대 하수인·왕은 이미 보내는 rosterId/type 으로 ROSTER→ARCHETYPE_BASE·KING_BASE 를 찾아
+        클라이언트가 **같은 값을 스스로 유도**한다(netStubStats). 보내도 정보량이 늘지 않는다.
+     ③ 유일하게 유도 불가인 것은 상대 동료의 암살자/방패병 구분이다. 엔진이 말에 subtype 을 남기지 않으므로
+        서버가 그 스탯을 보내면 **새 노출**이 되는데, 이를 소비하는 표시가 없다 — GDD-23 7.9(등급·미사용
+        스킬·집계 비공개)의 최소 공개 원칙대로 경계를 유지한다.
+     ④ 등급(grade)은 7.9·8.1⑦이 소유자 전용으로 못박은 값이라 공개 상대 뷰에 실을 수 없다.
+     상대 동료 스탯이 정말 필요해지면 두 전투원이 서로 공개된 **전투 뷰**에서 다시 합의해 내보낸다. */
   _serializeKnownOpponent(p) {
     return {
       id: this._alias(p.id), r: p.r, c: p.c, owner: p.owner, alive: p.alive, immobile: p.immobile,
@@ -911,6 +1000,23 @@ class Room {
       return {
         owner, hp: f.hp, maxHp: f.maxHp, shield: f.shield || 0, burn: f.burn || 0, weaken: f.weaken || 0,
         shock: f.shock || 0, shockFresh: !!f.shockFresh, dmgCut: f.dmgCut || 0, focusCharge: !!f.focusCharge,
+        /* #233 (GDD-23 4.5) 균열·경화 — 이미 내려보내는 burn/weaken/shock/dmgCut/vulnMark 와 **같은 등급**이다.
+           원본 stIcons(f)(demo/index.html)가 두 전투원 패널 모두에 뷰어 분기 없이 이 셋을 그리고, #121 계약
+           3.1·9 가 "적용된 효과는 상대에게도 공개(재고·선택만 비공개)"로 이미 확정한 범위다. 그래서 전투 문맥
+           공개(§2.6.2)에 그대로 들어간다 — 전투가 끝나 battle 객체가 사라지면 이 필드도 함께 사라진다.
+           hardenPct 는 stIcons 가 감소율을 숫자로 찍으므로(🛡경화 N%·NR) 잔여 라운드만으로는 복원되지 않는다. */
+        crack: f.crack || 0, harden: f.harden || 0, hardenPct: f.hardenPct || 0,
+        /* 전투 뷰에 **넣지 않는 것** (#233 최소 공개):
+           · evadeBuff·dmgUpBuff — stIcons 목록에 없고 어떤 뷰도 읽지 않는다. 공개 방 클라이언트는 피해를
+             계산하지 않으므로(서버 권위) 표시에 필요 없다.
+           · shieldLayers — 화면은 층 합계 하나(f.shield·shbar)만 그린다(3.2 "층 합계를 방어막 바 1개로 표시").
+             층 배열은 획득원 태그(guardStart·selfSkill·grassLegacy·기술 이름)를 달고 다녀 상대의 아키타입과
+             아직 쓰지 않은 기술을 역산하게 해 준다 — 표시에 불필요하면서 §2.6.2 의 기술 은닉을 우회하는 값이라
+             내보내지 않는다. 락스텝 요약(lockstepDigest)에는 서버 안에서만 들어간다.
+           · def/spd/dodge/crit/statusPct/grade — 전투 화면에 렌더 경로가 없다. 기술 위력 표기(dmgRange·slotPow)는
+             atk 만 쓰고, atk/skillAtk 자체도 #217 에서 "유도 가능·표시 불필요"로 철회한 선례를 그대로 따른다.
+             grade 는 GDD-23 7.9·8.1⑦이 소유자 전용으로 못박았다.
+           · absorbed·pendingFx — 서버 판정용 내부 상태이고 표시 대상이 아니다. */
         // 기존 버그: 대리 출전이면 실제 싸우는 건 f(cap)인데 piece(왕/동료 본체, skills:null)를 읽어 항상 null이 됐다.
         vulnMark: !!f.vulnMark, skills: this._skillsFor(T, f, owner === seatIndex),
         // #217 Mars ctx_75a85d4c58fb 델타 — cd/atk/skillAtk는 제안 후 Mars가 철회했다(msg_db7a8fa06aee):

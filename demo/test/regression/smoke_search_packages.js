@@ -35,7 +35,7 @@ function load(){ const X=H.load(htmlPath);
 const T=load();
 
 /* ── 공통 픽스처 ─────────────────────────────────────────────────────────── */
-function giveSpecies(X,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=X.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
+function giveSpecies(X,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=X.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; if(X.applyArchStats) X.applyArchStats(m,r.arch,m.grade||1); } // #233 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
 const R=(X,id)=>X.ROSTER.find(r=>r.id===id);
 /* 내 하수인(12,4)·상대 하수인(11,4)·왕 둘·동료 하나 — 볼 3·예비 없음 */
 function setup(X,mode){
@@ -72,6 +72,8 @@ const has=(X,txt)=>(X.byId("obBtns").children||[]).some(b=>b.textContent===txt);
 function randConsumed(X,seed,fn,max){ X.setSeed(seed); const seq=[]; for(let i=0;i<(max||14);i++) seq.push(X.rand()); X.setSeed(seed); fn(); const n=X.rand(); const k=seq.indexOf(n); return k; }
 function openBattle(X,a,d){ X.S.battle=null; X.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; a.cd=0; d.cd=0;
   a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0; a.powerBuff=false; d.powerBuff=false; a.fleeBoost=false; d.fleeBoost=false;
+  // #233 (GDD-23 4.2 ①⑦): 이 파일은 시너지·패키지·버프 규칙을 보는 것이지 신규 회피·치명타를 보는 것이 아니다 — 0으로 고정한다.
+  if(a.dodge!==undefined){a.dodge=0; a.crit=0;} if(d.dodge!==undefined){d.dodge=0; d.crit=0;}
   X.TQ.length=0; X.startRounds(a,d,a,d); X.TQ.length=0; }
 const fixed=X=>{ X.BAL.dmgVar=0; X.BAL.statusProb=1; X.BAL.shockProb=1; };
 /* 상태 확률만 1로 고정하고 **피해 분산은 살려 둔다** — 힘의 수호자는 분산 단계를 보는 계약이라 dmgVar 를 0 으로 만들면 검사가 공허해진다 */
@@ -229,8 +231,8 @@ function swapSkill(X,target,skillIdx,slot){
   const dmgOf=buff=>{ openBattle(T,Q5.me,Q5.em); Q5.me.powerBuff=!!buff; T.setSeed(31); T.execSlot("A",0); T.TQ.length=0; return Q5.em.maxHp-Q5.em.hp; };
   const plain=dmgOf(false), powered=dmgOf(true);
   ok(powered>=plain,"C5 힘의 수호자: 피해가 분산 상단으로 고정 (기본 "+plain+" → 버프 "+powered+")");
-  ok(powered===Math.round(Math.round(basePow*(1+T.BAL.dmgVar))*T.BAL.advMult),
-     "C5b 분산 단계만 ×"+(1+T.BAL.dmgVar)+" 로 고정되고 상성(불→풀 ×"+T.BAL.advMult+")은 그대로 통과 — 위력 "+basePow+" → "+powered);
+  ok(powered===Math.round(basePow*(1+T.BAL.dmgVar)*T.BAL.advMult*(1-Q5.em.def/100)),
+     "C5b 분산 단계만 ×"+(1+T.BAL.dmgVar)+" 로 고정되고 상성(불→풀 ×"+T.BAL.advMult+")·방어력(1-"+Q5.em.def+"%)은 그대로 통과, 정수 반올림은 마지막 1회뿐 — 위력 "+basePow+" → "+powered+" — #233 GDD-23 4.2⑧⑩");
   // rand 소비: 전투 개시·배치가 아니라 **execSlot 한 번**만 격리해 센다
   const consumeOf=buff=>{ openBattle(T,Q5.me,Q5.em); Q5.me.powerBuff=!!buff;
     T.setSeed(31); const seq=[]; for(let i=0;i<12;i++) seq.push(T.rand());
@@ -247,9 +249,10 @@ function swapSkill(X,target,skillIdx,slot){
   T.S.pkgs[0]={itemGift:0,battleBuff:3};
   openBattle(T,Q6.me,Q6.em); B=T.S.battle;
   ok(T.battleMaxRounds()===gMax,"C6 기본 최대 라운드는 전역값 "+gMax);
-  /* 라운드 2 의 선공은 방어측이다(actorOfPhase) — 공격측이 행동하는 차례는 phase 1 이다.
-     "사용자 자기 행동의 1라운드에만"을 검사하려면 행동자를 공격측으로 맞춰야 한다. */
-  B.round=2; B.phase=1; freshModal(T);
+  /* #233 (GDD-23 4.4): 행동 순서는 더 이상 라운드 홀짝이 아니라 **선턴(B.firstSide)** 로 정해진다.
+     이 절은 "사용자 자기 행동의 1라운드에만" 을 보므로 행동자를 공격측(A)으로 맞춰야 한다 —
+     선턴이 누구든 A 가 행동하는 phase 를 계산해 고른다(선턴이 A 면 phase 0, 아니면 phase 1). */
+  B.round=2; B.phase=(B.firstSide==="A")?0:1; freshModal(T);
   ok(T.actorOfPhase()==="A","C6a 전제: 라운드 2 에서 공격측 행동 차례");
   T.__openPkgCore("battleBuff");
   const beforeT=B.maxRounds;
@@ -469,8 +472,8 @@ function swapSkill(X,target,skillIdx,slot){
     openBattle(T,P.me,d); T.setSeed(9); T.execSlot("A",0); T.TQ.length=0; return {dmg:(d.maxHp)-d.hp,P}; };
   const pow=T.slotPow({atk:22},T.SKILLS.dragon_breath);
   const vsGrass=mk("M-G1").dmg, vsWater=mk("M-W1").dmg, vsKing=mk(null,"king").dmg;
-  ok(vsGrass===Math.round(pow*1.3)&&vsWater===Math.round(pow*1.3),"E1 드래곤 숨결: 속성 있는 상대에게 **항상** ×1.3 — 풀 "+vsGrass+" · 물 "+vsWater+" (불→풀 우위·물 열위와 무관하게 동일)");
-  ok(vsKing===pow,"E1b 무속성 왕 본체에는 중립 1.0 — "+vsKing);
+  ok(vsGrass===Math.round(pow*1.3*0.9)&&vsWater===Math.round(pow*1.3*0.9),"E1 드래곤 숨결: 속성 있는 상대에게 **항상** ×1.3, 표준형 방어력 10%는 그대로 통과 — 풀 "+vsGrass+" · 물 "+vsWater+" (불→풀 우위·물 열위와 무관하게 동일) — #233 GDD-23 4.2⑧ (def 도입 전 "+Math.round(pow*1.3)+")");
+  ok(vsKing===Math.round(pow*0.9),"E1b 무속성 왕 본체에는 중립 1.0, 왕의 방어력 10%는 적용된다 — "+vsKing+" — #233 GDD-23 3.5·4.2⑧ (def 도입 전 "+pow+")");
   ok(T.SKILLS.dragon_breath.el===undefined&&T.atkElOf({element:"fire"},T.SKILLS.dragon_breath)===null,"E1c 드래곤은 속성 판정에서 빠진다 (상성표 4종 불변)");
   // E2 마녀: 서로 다른 2효과 100% · rand 1회 · 풀 회복 실피해 100%
   ok(J(T.WITCH_COMBOS)===J([[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]])&&T.WITCH_EFFECTS.length===4,"E2 마녀 조합표: 4효과 중 2개 = 6조합 균등");
@@ -497,12 +500,12 @@ function swapSkill(X,target,skillIdx,slot){
     openBattle(T,P.me,P.em);
     T.setSeed(55); T.execSlot("A",0); T.TQ.length=0;
     const kW=seq.indexOf(T.rand());
-    ok(kW===2,"E2e 마녀 1회 사용의 rand 소비는 피해 분산 1 + 조합 추첨 1 = 2회 (효과 적용에 확률 게이트 rand 없음) — 관측 "+kW);
-    // 음성 대조: 분산이 없으면 조합 추첨 1회만 남는다
+    ok(kW===4,"E2e 마녀 1회 사용의 rand 소비는 회피+분산+치명타+조합 추첨 = 4회 (효과 적용에 확률 게이트 rand 없음) — #233 GDD-23 4.2①⑦ (def 도입 전 2회) 관측 "+kW);
+    // 음성 대조(#233 갱신): 회피·치명타 판정은 dmgVar 값과 무관하게 항상 뽑히므로, 분산을 꺼도 소비 횟수는 그대로 4다 (측정이 공허하지 않다 — 값이 바뀌면 잡는다)
     T.BAL.dmgVar=0; openBattle(T,P.me,P.em);
     T.setSeed(55); const seq2=[]; for(let i=0;i<12;i++) seq2.push(T.rand());
     openBattle(T,P.me,P.em); T.setSeed(55); T.execSlot("A",0); T.TQ.length=0;
-    ok(seq2.indexOf(T.rand())===1,"E2e' 분산을 끄면 조합 추첨 1회만 남는다 (측정이 공허하지 않다)");
+    ok(seq2.indexOf(T.rand())===4,"E2e' [#233 갱신] 분산을 꺼도 회피·치명타 판정은 그대로 뽑히므로 소비 횟수는 4 그대로다 (def 도입 전 결정: 분산 draw 자체가 생략돼 1회였다)");
     fixed(T);
   }
   /* 풀 회복의 경계 두 가지 — **grass 효과가 실제로 뽑힌 시드에서만** 판정한다.
@@ -513,7 +516,8 @@ function swapSkill(X,target,skillIdx,slot){
     const gIdx=T.WITCH_EFFECTS.indexOf("grassHeal");
     ok(gIdx>=0,"E2f0 전제: grassHeal 이 효과 목록에 있다 (index "+gIdx+")");
     /* 시드별로 조합을 미리 계산한다 — 제품과 같은 순서(분산 1회 → 조합 1회)로 난수를 읽는다 */
-    const comboOf=seed=>{ T.setSeed(seed); T.rand(); return T.WITCH_COMBOS[Math.floor(T.rand()*T.WITCH_COMBOS.length)]; };
+    // #233 (GDD-23 4.2①③⑦): 조합 추첨 전에 회피·분산·치명타 판정 3회가 먼저 rand 를 소비한다 (def 도입 전엔 분산 1회뿐이었다)
+    const comboOf=seed=>{ T.setSeed(seed); T.rand(); T.rand(); T.rand(); return T.WITCH_COMBOS[Math.floor(T.rand()*T.WITCH_COMBOS.length)]; };
     let grassSeed=-1, plainSeed=-1;
     for(let s=1;s<=400&&(grassSeed<0||plainSeed<0);s++){ const c=comboOf(s);
       if(c.includes(gIdx)){ if(grassSeed<0) grassSeed=s; } else if(plainSeed<0) plainSeed=s; }
@@ -557,11 +561,16 @@ function swapSkill(X,target,skillIdx,slot){
     }
     ok(refreshed,"E2g 마녀 재부여는 지속 기간 갱신 — 이미 화상 1R 인 상대에게 "+T.BAL.burnRounds+"R 로 덮어쓴다 ("+tried+"시드 시도)");
     ok(everBurn>0,"E2g' 갱신이 실제로 관측된다 (1R 초과로 올라간 횟수 "+everBurn+")");
-    // 일반 효과기(잔불 표식): 이미 화상이면 부여하지 않는다 — 마녀 예외가 일반 규칙으로 번지지 않았다
+    /* #233 (GDD-23 5.6 중첩·재부여, 2026-09-16 PD 코드 검토): 종전에는 일반 효과기가 !opp.burn 가드로
+       재부여 자체를 거부했고 마녀만 갱신하는 예외였다. 5.6 은 "같은 종류의 효과는 이미 걸려 있어도
+       수치는 큰 값·남은 지속은 긴 값으로 갱신" 을 **모든 경로에** 요구하므로, 이제 마녀 예외가 아니라
+       일반 효과기도 같은 규칙을 따른다. 단, **합산이 아니라 갱신**이라 지속은 burnRounds 를 넘지 않는다. */
     giveSpecies(T,P.me,R(T,"M-F1")); T.BAL.statusProb=1; T.BAL.shockProb=1; // #96 계약: 두 확률은 같은 줄에서 함께 고정한다 (감전 결정론)
     openBattle(T,P.me,P.em); T.S.battle.fd.burn=1;
     const applied0=T.S.metrics.statusApplied; T.setSeed(3); T.execSlot("A",1); T.TQ.length=0;
-    ok(T.S.battle&&T.S.battle.fd.burn===1&&T.S.metrics.statusApplied===applied0,"E2h 일반 효과기의 '이미 걸려 있으면 부여 안 함'은 그대로 (마녀 전용 예외)");
+    ok(T.S.battle&&T.S.battle.fd.burn===T.BAL.burnRounds&&T.S.metrics.statusApplied===applied0+1,
+      "E2h 일반 효과기도 이미 걸린 화상을 "+T.BAL.burnRounds+"R 로 **갱신**한다 — 5.6 공통 규칙이라 마녀 전용 예외가 아니다 (#233)");
+    ok(T.S.battle&&T.S.battle.fd.burnFresh===true,"E2h' 갱신도 부여 라운드 제외 가드를 다시 세운다 (4.7)");
   }
   // E3 사신: 봉인 게이트
   {

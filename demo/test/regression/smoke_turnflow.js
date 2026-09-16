@@ -396,6 +396,10 @@ block("G 연출 큐",()=>{
   { board("pve"); T.FX.force=true; T.els.msgBox.nodeType=1; T.TQ.length=0;
     const a=first(0,"minion"), d=first(1,"minion"), b2=first(0,"minion",1), e2=first(1,"minion",1), rear=first(0,"minion",2);
     H.place(T,a,7,4); H.place(T,d,6,4); H.place(T,b2,7,6); H.place(T,e2,6,6); H.place(T,rear,10,4);
+    /* #233 (GDD-23 4.4): 선턴이 속도로 갈리므로 이 절도 순서를 전투 시작 전에 고정한다 —
+       검증 대상은 사람(A) 이 낸 도망의 배너 연쇄이라 A 가 선턴이어야 그 렌더의 클로저로 도망을 낼 수 있다.
+       무작위 배정된 아키타입 속도로 D 가 선턴이 되면 거울 사본이 그려져 검사가 실행마다 붙다 떨어졌다. */
+    d.spd=a.spd; d.grade=a.grade;
     a.hp=20; T.startRounds(a,d,a,d); T.setSeed(null); const rr=global.Math.random; global.Math.random=()=>0.01; // HP<50% 를 전투 개시 전에 두어야 메뉴의 canFlee 가 참이다 · 도망 성공 고정
     T.S.forcedQueue=[{pid:b2.id,targets:[e2.id]}]; // 스왑 둘째 말의 강제 전투가 대기 중
     /* #146 코어 잠금(Saturn REVISE P1): 도망·패스는 연출·메시지 재생 중에는 코어에서도 거부된다.
@@ -507,6 +511,13 @@ block("I 온라인",()=>{
 /* ===== J. 전투 4카테고리 DOM ===== */
 block("J 전투 메뉴",()=>{
   board("pve"); const m=first(0,"minion"), e=first(1,"minion"); H.place(T,m,7,4); H.place(T,e,6,4); T.S.selected=null;
+  /* #233 (GDD-23 4.4): 선턴은 이제 속도·등급·접촉 개시자로 정해진다. 이 절은 사람(A) 화면의 4카테고리 DOM 을
+     보므로 phase 0 이 사람 차례여야 한다 — 새 게임마다 무작위로 배정되는 아키타입 속도로 순서가
+     뒤집히면 "상대 턴" 거울 사본이 그려져 J5·J6 이 보려는 버튼 자체가 없어진다(실제로 이 절은
+     엔진 변경으로 난수 소비가 밀릴 때마다 붙다 떨어졌다). 속도·등급을 **전투 시작 전에** 동률로
+     맞춰 접촉 개시자(A)가 선턴이 되게 고정한다(4.4 3항-3). J9 는 그 반대편(phase 1 = 상대 차례)을
+     보므로 같은 고정에 의존한다. */
+  e.spd=m.spd; e.grade=m.grade;
   T.startRounds(m,e,m,e); T.drain();
   const h=()=>T.els.overlayBox.innerHTML;
   ok(/id="bmenu"/.test(h())&&/⚔️ 싸우기/.test(h())&&/🎒 가방/.test(h())&&/🔴 포획/.test(h())&&/🏃 도망가기/.test(h()),"J1 루트 4카테고리");

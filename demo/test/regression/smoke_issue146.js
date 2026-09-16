@@ -35,7 +35,7 @@ const ob=X=>X.byId("overlayBox").innerHTML;
 const toasts=X=>((X.byId("toasts").children)||[]).map(c=>c.textContent).join(" | ");
 const boardLog=X=>X.S.log.map(l=>l.msg).join(" | ");
 
-function giveSpecies(X,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=X.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
+function giveSpecies(X,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=X.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; if(X.applyArchStats) X.applyArchStats(m,r.arch,m.grade||1); } // #233 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
 const R=(X,id)=>X.ROSTER.find(r=>r.id===id);
 /* 내 하수인(12,4)·상대 하수인(11,4)·왕 둘·동료 하나 */
 function setup(X,mode){
@@ -53,6 +53,14 @@ function openBattle(X,a,d){ X.S.battle=null; X.S.battlesUsed=0; a.hp=a.maxHp; d.
   a.powerBuff=false; d.powerBuff=false; a.fleeBoost=false; d.fleeBoost=false;
   X.TQ.length=0; X.startRounds(a,d,a,d); X.TQ.length=0; }
 /* 공격측(A) 이 행동 차례가 되도록 맞춘다 */
+/* #233 (GDD-23 4.4) — F 절은 "R1 후턴으로 행동한 전투원이 R2 선턴으로 바로 또 행동한다" 는 위험 상황을
+   만들어 **옥 클로저가 그 두 번째 행동까지 소비하는지**를 본다. 종전에는 행동 순서가 라운드 홀짝이라
+   그냥 성립했지만, 이제 선턴은 매 라운드 시작에 순서 효과·속도로 다시 확정된다. 같은 상황을 만들려면
+   라운드 사이에 순서가 뒤집혔야 하므로 R1 선턴 쪽에 감전(후턴 효과)을 건다 — shockFresh=true 라
+   부여 라운드 종료에는 소모되지 않고 R2 진입 판정에 그대로 반영된다.
+   검사의 초점(행동 전환 토큰)은 그대로고, 전제를 새 규칙으로 다시 세우는 것뿐이다. 반환값 = R2 선턴. */
+function flipOrderNextRound(X){ const B=X.S.battle; const first=B.firstSide||"A";
+  const ff=first==="A"?B.fa:B.fd; ff.shock=1; ff.shockFresh=true; return first==="A"?"D":"A"; }
 function actAsA(X){ const B=X.S.battle; for(let i=0;i<2;i++){ if(X.actorOfPhase()==="A") return true; B.phase=B.phase===0?1:0; } return X.actorOfPhase()==="A"; }
 function freshModal(X){ X.byId("obBtns").children.length=0; X.battleModal(); }
 
@@ -84,6 +92,9 @@ section("A",()=>{
     const X=load(); const Q=setup(X); giveSpecies(X,Q.me,R(X,"M-F1")); giveSpecies(X,Q.em,R(X,"M-G1"));
     openBattle(X,Q.me,Q.em); const Bx=X.S.battle; actAsA(X); Bx.fa.fleeBoost=!!boost;
     if(power) Bx.fd.powerBuff=true;   // #122 CJ QA 2: 반격자(D)의 💪 힘의 수호자
+    // #233 (GDD-23 4.2 ①⑦): 이 절은 도망 실패 반격의 존재·분산 고정을 보는 것이지 신규 회피·치명타를 보는 것이 아니다 —
+    // 두 확률원을 0으로 고정해 A10 계열이 회피·치명타 변동에 얽히지 않게 한다(의도된 불변식만 검사, 새 RNG 소비 순서 문제 아님).
+    Bx.fa.dodge=0; Bx.fd.crit=0;
     freshModal(X);
     const tries0=X.S.metrics.fleeTries;
     X.setSeed(seed); X.__fleeCore(); X.drain(20000);
@@ -392,7 +403,7 @@ section("C",()=>{
   {
     const X=load(); const Q=setup(X); giveSpecies(X,Q.me,R(X,"M-F1")); giveSpecies(X,Q.em,R(X,"M-G1"));
     openBattle(X,Q.me,Q.em); const Bx=X.S.battle;
-    Bx.fa.shield=500; Bx.fd.shield=0; Bx.fd.hp=1; actAsA(X); Bx.fa.cds=[0,0,0,0];
+    Bx.fa.shield=500; Bx.fd.shield=0; Bx.fd.hp=1; Bx.fd.dodge=0; actAsA(X); Bx.fa.cds=[0,0,0,0]; // #233: 이 절은 전투 종료 후 초기화를 보는 것 — 회피(4.2 ①)에 얽히지 않게 고정
     X.setSeed(7); X.execSlot("A",0); X.drain(20000);
     ok(X.S.battle===null,"C7 전제: 전투가 끝났다");
     ok(Q.me.shield===0,"C7a 전투 종료 시 보호막이 초기화된다 (본체 출전이라 말에 남으면 다음 전투로 샌다)");
@@ -618,6 +629,7 @@ section("F",()=>{
     openBattle(X,Q.me,Q.em); const Bx=X.S.battle;
     Bx.round=1; Bx.phase=1; freshModal(X);
     ok(X.actorOfPhase()==="D","F2 전제: R1 후공은 방어측 — 다음 라운드 선공도 같은 방어측이다");
+    ok(flipOrderNextRound(X)==="D","F2' 전제: R1 선턴(A)에 감전을 걸어 R2 선턴을 D 로 뒤집는다 — 같은 전투원이 라운드 경계를 넘어 연속 행동하는 위험 상황 (4.4)");
     const old=X.__fleeCore;
     X.setSeed(failSeed); old(); X.drain(20000);   // 실패하는 시드 → nextPhase 로 라운드 경계를 넘는다
     const t1=X.S.metrics.fleeTries;
@@ -708,6 +720,7 @@ section("F",()=>{
     openBattle(X,Q.me,Q.em); const Bx=X.S.battle;
     Bx.round=1; Bx.phase=1; freshModal(X);
     ok(X.actorOfPhase()==="D","F9 전제: R1 후공은 방어측 D");
+    ok(flipOrderNextRound(X)==="D","F9' 전제: R2 선턴도 D 가 되도록 순서를 뒤집는다 (4.4)");
     const oldFlee=X.__fleeCore, oldPass=X.__passCore;
     X.setSeed(77); X.execSlot("D",0); X.drain(20000);        // D 가 **일반 공격**으로 자기 행동을 소모
     ok(X.S.battle===Bx&&X.actorOfPhase()==="D","F9a 전제: 라운드 경계를 넘었는데 행동자는 여전히 D (round "+Bx.round+" phase "+Bx.phase+")");
@@ -733,6 +746,7 @@ section("F",()=>{
     Bx.round=1; Bx.phase=1; freshModal(X);
     const side0=X.actorOfPhase();
     ok([0,1,2,3].every(i=>X.slotUsable(side0==="A"?Bx.fa:Bx.fd,i,side0)===false),"F9e 전제: 행동자의 네 슬롯이 전부 쿨 — 패스가 원래 합법이다");
+    ok(flipOrderNextRound(X)===side0,"F9e' 전제: R1 선턴 쪽에 감전을 걸어 R2 선턴도 같은 행동자("+side0+")가 되게 한다 (4.4)");
     const oldPass2=X.__passCore;
     /* 포획 실패로 차례를 넘긴다 (도망·패스가 아닌 정상 전투 행동) */
     const oppSide=side0==="A"?"D":"A", oppF=oppSide==="A"?Bx.fa:Bx.fd, ownerP=side0==="A"?Bx.attP.owner:Bx.defP.owner;
