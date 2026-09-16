@@ -180,6 +180,13 @@ function firstOf(T, owner, type) {
   const reveal = room._pendingModal();
   ok(!!reveal && reveal.owner === cur && /출전 공개/.test(reveal.html), '왕 출전 공개 모달은 공격자 소유: ' + JSON.stringify(reveal && reveal.owner));
   if (reveal) ok(act(room, cur, { t: 'modal', seq: reveal.seq, i: 0 }).ok, '공격자 "전투 시작" 수락');
+  /* #233 (GDD-23 4.4): 선턴은 속도로 갈린다 — 왕(spd 8)은 표준형 하수인(spd 10)보다 느려 방어자가 선턴이다.
+     이 절의 목적은 왕 본체의 행동 어휘이므로 순서를 가정하지 않고 실제 행위자를 따라가 왕의 차례까지 진행시킨다.
+     (진단 상세는 Jupiter 보고서 8장) */
+  if (T.S.battle && T.actorOfPhase() === 'D') {
+    const dSlot = T.S.battle.fd.skills.findIndex((_, i) => T.slotUsable(T.S.battle.fd, i, 'D'));
+    ok(act(room, def, { t: 'act', k: dSlot }).ok, '방어자가 선턴을 소비(속도 10 > 왕 8, GDD-23 4.4)');
+  }
   ok(!!T.S.battle && !T.S.battle.fa.skills && T.actorOfPhase() === 'A', '픽스처: 왕 본체(기술 슬롯 없음) 공격 차례, 모달 없음: ' + JSON.stringify(room._pendingModal()));
   for (const a of [{ t: 'act', k: 0 }, { t: 'act', k: 'common' }, { t: 'pass' }]) {
     const before = snap(room);

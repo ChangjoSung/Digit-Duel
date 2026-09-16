@@ -441,3 +441,92 @@ PD 지시대로 **이미 통과한 광범위 회귀는 반복하지 않았다.**
   유지분 `B.firstSide`·`shockFresh`·`critForce`·`dodgeForce`·`vanguardTurn`)이 서버 요약의 12필드와 **정확히
   일치**한다.
 - **자기 QA 판정 없음.** 판정은 Saturn 독립 READ_ONLY QA와 CJ 플레이 QA의 몫이다.
+
+---
+
+## 8. PR239 CI B 실패 대응 (`ctx_d44e5b5a957e`, 2026-09-16) — 낡은 픽스처 가정 1건
+
+- 대상: CI run `35067901329` · job `104702301911` · 커밋 `9336afd` · `test-authority-rules.js` **170 passed, 6 failed**
+- 결론: **서버 결함이 아니다.** 승인된 새 행동 순서(GDD-23 4.4)가 정확히 동작한 결과이고, 실패한 것은
+  종전 규칙을 굳혀 둔 **테스트 픽스처의 낡은 가정**이다. 엔진·서버 구현은 고치지 않았다.
+
+### 8.1 진단 — 왜 왕만 깨졌나
+
+실패 6건은 전부 P1 절("왕/동료 본체 act 'basic'") 하나에서 나왔고, 첫 실패가 나머지를 연쇄로 끌고 갔다.
+
+```
+FAIL: 픽스처: 왕 본체(기술 슬롯 없음) 공격 차례, 모달 없음: null
+FAIL: 왕 본체의 {"t":"act","k":0} 거부·불변          ← 이하 5건은 위 가정이 깨진 뒤의 연쇄
+FAIL: 왕 본체 기본 공격 act k='basic' 수락: "E_NOT_ACTOR"
+```
+
+픽스처를 실제로 돌려 값을 찍어 확인했다(추정이 아니다):
+
+| 값 | 실측 |
+|---|---|
+| 공격자 = 왕 | `spd 8` (`KING_BASE`, GDD-23 3.5) · `grade null` · 순서 효과 없음 |
+| 방어자 = 하수인 `M-F1`(표준형) | `spd 10` (`ARCHETYPE_BASE.std`) · `grade 1` |
+| 결과 | `firstSide = 'D'` · `actorOfPhase() = 'D'` |
+
+GDD-23 4.4의 순서는 `순서 효과 → 속도 → (양쪽 다 등급이 있을 때만) 낮은 등급 → 접촉 개시자`다.
+속도 8 < 10 이므로 **방어자가 선턴**이고, 그 차례에 공격자(왕)가 낸 행동이 `E_NOT_ACTOR` 로 거부된 것은
+권한 검사가 **제대로 동작한** 것이다. 픽스처는 종전 라운드 패리티 규칙(공격자가 늘 먼저)을 전제로
+`actorOfPhase() === 'A'` 를 상수처럼 박아 두었다.
+
+**왜 다른 절은 안 깨졌나 (같은 가정의 잔존 여부 확인).** `P0-2`(:129)와 `test-security-gaps`(:65)도
+`actorOfPhase() === 'A'` 를 단언하지만 **하수인 대 하수인**이라 속도가 10 대 10 으로 같고, 등급도 둘 다 ⭐1 로
+비겨 마지막 접촉 개시자 규칙에서 `'A'` 로 떨어진다 — 우연이 아니라 4.4의 동률 경로다. 왕은 속도가 실제로 느려
+그 경로를 타지 않는다. 즉 **이 낡은 가정이 실제로 깨지는 곳은 왕/동료가 끼는 이 한 절뿐**이다.
+
+### 8.2 고친 것 — `server/authoritative/test/test-authority-rules.js` 1곳
+
+순서를 가정하지 않고 **실제 행위자를 따라가** 왕의 차례까지 진행시킨다. 방어자가 선턴이면 그 선턴을 먼저
+소비시키고, 그다음 왕이 행위자임을 확인한다.
+
+```js
+if (T.S.battle && T.actorOfPhase() === 'D') {
+  const dSlot = T.S.battle.fd.skills.findIndex((_, i) => T.slotUsable(T.S.battle.fd, i, 'D'));
+  ok(act(room, def, { t: 'act', k: dSlot }).ok, '방어자가 선턴을 소비(속도 10 > 왕 8, GDD-23 4.4)');
+}
+ok(!!T.S.battle && !T.S.battle.fa.skills && T.actorOfPhase() === 'A', /* 원문 그대로 */);
+```
+
+코드 주석은 PD 요청(`msg` 인박스)대로 2~3줄로 줄였고, 진단 상세는 이 8장이 보관한다.
+
+**보존한 것:** 원래 단언은 **한 줄도 지우거나 약화하지 않았다.** 이 절의 목적인 왕 본체 행동 어휘
+(`k:0`·`'common'`·`pass` → `E_ILLEGAL_ACTION` 불변 / `k:'basic'` 수락 / 기본 공격 실제 적용)와 권한·보안 단언이
+그대로 살아 있다. 공격자가 방어자 차례에 막히는 것은 `P0-2` 가 이미 따로 고정하므로 여기서 잃는 검증이 없다.
+
+**왜 픽스처 스탯을 주입하지 않았나.** `fd.spd` 를 낮춰 왕을 선턴으로 만드는 방법도 있었지만, 그러면 검사가
+**실제 순서 규칙을 우회**해 4.4가 바뀌어도 초록으로 남는다. 행위자를 따라가는 방식은 속도 상수가 앞으로 또
+바뀌어도 깨지지 않는다.
+
+### 8.3 검사 결과
+
+`server` 에서 `npm ci` 후 필수 서버 스위트 `npm test` 를 돌렸다 — **전체 통과, 종료 코드 0.**
+
+| 스위트 | 결과 |
+|---|---|
+| `authority-rules` | **177 passed, 0 failed** (수정 전 170 passed · 6 failed) |
+| `scheduler` / `engine-isolation` / `room` / `security-gaps` | 32 / 18 / 57 / 61 — 전부 0 failed |
+| `battle-fx` / `public-authority-delta` / `match-fuzz` | 448 / 37 / 16 — 전부 0 failed (fuzz 6,510 accepted 입력, 락스텝 분기 0) |
+| `authoritative` / `http-static` / `launcher-authoritative` / `public-deploy` | 50 / 24 / 47 / 통과 |
+| `combat-stats-boundary` | 547 passed, 0 failed |
+| `test:config` · `test:launcher` · `test:static` | 전부 통과 |
+
+`177 = 176(종전 총 단언) + 1(추가한 선턴 소비 단언)`이다. 통과 수가 는 것은 단언을 지워서가 아니다.
+
+전체 스위트에서 **같은 낡은 가정으로 깨지는 다른 검사는 없었다** — grep 정적 조사에 더해 전 스위트 실행으로
+경험적으로 확인했다.
+
+**정직한 표기:** `npm test` 를 2회 실행했다. 1회차는 출력 확인용, 2회차는 종료 코드 확인용이었다 — 2회차는
+불필요한 중복이었고 결과는 동일(exit 0)했다. 실패 후 재실행이 아니다.
+
+### 8.4 범위 준수
+
+- 수정: `server/authoritative/test/test-authority-rules.js` **1파일 1곳** + 이 보고서.
+  서버 구현(`room.js`)은 **건드리지 않았다** — 고칠 결함이 없었다.
+- `demo/**` 미변경(`smoke_turnflow.js` 의 변경은 Mars 작업분이고 내가 건드리지 않았다). `original art/`·
+  `orca-hook-latency-report.md` 접근 없음. Git 커밋·푸시 없음. 원본 워크스페이스 미접근.
+- 브라우저·수동 네트워크 검증 없음. 실패 진단에 필요한 픽스처 1회 실측 외 반복 루프 없음.
+- **자기 QA 판정 없음.** 판정은 Saturn 독립 READ_ONLY QA와 CJ 플레이 QA의 몫이다.

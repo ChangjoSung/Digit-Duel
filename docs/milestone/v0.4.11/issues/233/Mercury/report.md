@@ -1,6 +1,6 @@
 # #233 전투 엔진 — Mercury 운영 기록
 
-2026-09-16 CJ 구현 지시. 엔진 구현과 Saturn 독립 QA PASS, Mars 구현 완료 보고를 접수했다(msg_584d3d95d65b). Mars release는 external_terminal retained로 강제 종료하지 않았다. PR 필수 CI는 아직 미실행이다. CJ QA 전 병합·배포·Issue 종료는 진행하지 않는다.
+2026-09-16 CJ 구현 지시. 엔진 구현과 Saturn 독립 QA PASS 후 [PR #239](https://github.com/ChangjoSung/Digit-Duel/pull/239)를 생성했다(최초 커밋 9336afd). 최초 CI에서 기존 회귀의 회피·행동 순서 가정이 실패해 담당 부서가 보완한다. 최종 필수 CI 결과는 PR Checks를 따른다. CJ QA 전 병합·배포·Issue 종료는 진행하지 않는다.
 
 ## 범위·검증
 
@@ -23,5 +23,8 @@ run run_a707c20dc15d, runtime 09f28a8f-e180-41c4-86e9-b80db7d516ea, coordinator 
 - Jupiter 후속도 succeeded(msg_782e1662bb6c), 경계 547/0. release는 external_terminal retained/processAction none으로 강제 종료하지 않았다. 성공 후 같은 범위의 통합이며 실패 복구 재시도가 아니다.
 - Saturn 초기 정적 ctx_11f0d6e840da는 REVISE 후 archive captured/released. 최종 Sol high ctx_2bdec95d000a는 capacity 오류로 중단됐다. CJ의 Sol 대기 지시는 뒤의 “5.6 terra 로 QA 진행”으로 대체됐다.
 - 같은 QA task_6f904a39ad59를 Terra high ctx_d4c8497de7b7 / term_271f6e15-a13a-4736-8c7e-5920e192b87c로 이어받았다. requested/effective 일치·turn_start observed·실제 응답 확인. PASS msg_73f58ec0f838 후 archive captured/released. Sol은 stopped/released(archive unavailable), 수신 지적 보존. 프로젝트/계정 기본 모델은 변경하지 않았다.
+
+- PR CI 후속: Mars task_6dbcb77b8c4c / ctx_2d8c814c4ffe, Jupiter task_a17fbc018df9 / ctx_d44e5b5a957e. 같은 부서 터미널에 새 작업을 배정했다. 두 시작 영수증은 turn_start_unobserved였으나 실제 새 작업 응답·검사 수행을 확인했다. 재시도나 중복 Worker는 만들지 않았다.
+- 후속 완료: Mars msg_1155d678f850(회귀 203/0·82/0·36/0), Jupiter msg_1533de283b51(서버 전체 PASS). 제품 변경 없이 테스트 준비 조건만 수정했고 두 release는 external_terminal retained로 존중했다. Jupiter가 종료 코드 확인만을 위해 서버 전체 검사를 2회 실행한 것은 중복 검사로 기록하고 추가 실행을 금지했다.
 
 상세: [Mars](../Mars/report.md) · [Jupiter](../Jupiter/report.md) · [Saturn](../Saturn/report.md).

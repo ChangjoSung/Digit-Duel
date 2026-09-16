@@ -251,7 +251,10 @@ block("D 판정",()=>{
   T.startRounds(al,m2,al.cap,m2); T.drain(); T.judge(); T.drain();
   ok(!al.alive&&m2.alive&&S().metrics.defenderWins===1,"D5 예비 하수인(70/100) 대리 출전은 무피해 판정에서 70% < 100% 로 패배 — 알려진 트레이드오프(보정 없음)");
   // D6 recA/recD 지표는 계속 기록 (execSlot 경로)
-  [a,d]=setup(); T.execSlot("A",0); T.drain(); ok(S().battle&&S().battle.recA>0,"D6 recA 지표 기록 유지 (판정에는 미사용)");
+    /* #233 (GDD-23 4.2 ①) 결정론 픽스처: 회피가 실제 스탯이 된 뒤로 무작위 배정된 아키타입의 회피율이
+     걸리면 resolveHit 이 ① 에서 조기 반환해 addRec 가 불리지 않아 recA 가 0 으로 남는다(CI 간헐 실패).
+     회피율을 0 으로 고정해 타격이 반드시 적중하게 한다. 단언(recA>0)은 그대로다. 상세는 Mars 보고서 §10. */
+  [a,d]=setup(); d.dodge=0; T.execSlot("A",0); T.drain(); ok(S().battle&&S().battle.recA>0,"D6 recA 지표 기록 유지 (판정에는 미사용)");
   // D7 6라운드 자연 종료 → judge 경유 배너 메시지 (blog)
   T.S.battle.round=6; T.S.battle.phase=1; T.execSlot("D",0); T.drain(); // #146: 4슬롯 전투원의 순수 기본 공격(-1)은 철회 — 합법 슬롯으로 12번째 행동을 낸다
   ok(!S().battle&&S().metrics.judged===1&&T.S.log.some(l=>/판정|동률/.test(l.msg)),"D7 12번째 행동 뒤 판정 경로 (judged 1)");
@@ -349,7 +352,9 @@ block("G 연출 큐",()=>{
   ok(T.FX.cur&&T.FX.cur.title==="new","G13 이전 게임의 타이머는 새 게임 항목을 끝내지 못한다 (세대 토큰)"); T.TQ.length=0; T.fxReleaseAll();
   // 순서: 접촉 배너 → 상황 문구 → (전투) 카운트다운 4 → 개시 메시지 → 라운드 배너
   board("pvp"); T.FX.force=true; T.TQ.length=0; T.els.msgBox.nodeType=1; // 메시지 재생 경로도 켠다
-  const a=first(0,"minion"), d=first(1,"minion"); H.place(T,a,8,4); H.place(T,d,6,4); T.doMove(a,7,4);
+    /* #233 (GDD-23 4.2 ①) 결정론 픽스처: 회피되면 "회피했다!" 만 나와 G19 의 피해 그룹이 생기지 않는다.
+     누가 선턴인지는 속도로 갈리므로 양쪽 회피율을 0 으로 고정한다. 순서 단언은 그대로다. 보고서 §10. */
+  const a=first(0,"minion"), d=first(1,"minion"); a.dodge=0; d.dodge=0; H.place(T,a,8,4); H.place(T,d,6,4); T.doMove(a,7,4);
   const titles=()=>T.FX.log.map(x=>x.kind+":"+(x.title||x.sub||x.key));
   ok(S().battle&&T.FX.log[0].title==="⚠️ 상대 말 접촉!"&&T.FX.log[1].sub==="배틀을 시작합니다."&&T.FX.log.slice(2,6).map(x=>x.title).join(",")==="3,2,1,배틀 시작!","G14 순서: 접촉 배너 → 상황 문구 → 3·2·1·배틀 시작! ("+titles().slice(0,6).join(" | ")+")");
   ok(T.fxLocked()&&T.netReady({t:"act",k:0})===false,"G15 카운트다운 중 잠금 · 수신 전투 프레임 보류(netReady false)");

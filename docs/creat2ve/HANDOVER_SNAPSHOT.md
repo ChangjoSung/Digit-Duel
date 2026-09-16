@@ -2,7 +2,7 @@
 
 ## 현재 작업 — 2026-09-16 Issue #233
 
-CJ 승인 범위인 v0.4.11 #233 전투 엔진 구현 완료, Saturn 독립 QA PASS. 작업 브랜치 feature/233-combat-engine, PR base milestone/v0.4.11. 커밋/PR 필수 CI 진행 전이며 CJ QA 전 병합·배포·Issue 종료는 하지 않는다. #234~#238은 별도 지시 대기다.
+CJ 승인 범위인 v0.4.11 #233 전투 엔진 구현 완료, Saturn 독립 QA PASS. 작업 브랜치 feature/233-combat-engine, [PR #239](https://github.com/ChangjoSung/Digit-Duel/pull/239) base milestone/v0.4.11. 필수 CI 최초 실행에서 발견된 기존 테스트의 회피·행동 순서 가정을 담당 부서가 보완한다. 최종 CI 결과는 PR Checks를 따른다. CJ QA 전 병합·배포·Issue 종료는 하지 않는다. #234~#238은 별도 지시 대기다.
 
 Mars는 Opus 5 high로 교체해 완료했고 Jupiter의 CJ 승인 복구도 성공했다. Saturn은 Sol capacity 오류 후 CJ의 명시 지시로 gpt-5.6-terra high에 인계해 클라이언트 309/0·서버 경계 547/0을 각각 1회 통과했다. 파일 쓰기 없는 검토이며 최종 Worker는 released했다. 실행 이력·보존된 터미널·범위 제한은 [Mercury 기록](../milestone/v0.4.11/issues/233/Mercury/report.md)과 [Saturn 결과](../milestone/v0.4.11/issues/233/Saturn/report.md)를 따른다.
 
