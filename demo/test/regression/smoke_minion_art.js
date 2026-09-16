@@ -405,7 +405,7 @@ const capSpecies=(T,c,rd)=>c&&rd&&c.element===rd.element&&c.hp===rd.hp&&c.maxHp=
 const capStatsLegacy=(T,c,hp)=>c&&c.hp===hp&&c.maxHp===T.BAL.captured.hp&&c.atk===T.BAL.captured.atk&&c.skillAtk===T.BAL.captured.skill&&c.cd===0&&c.cdMax===T.BAL.captured.cd
   &&JSON.stringify(c.cds)==="[0,0,0,0]"&&JSON.stringify(c.revealedSkills)==="[]";
 /* 하수인 말에 로스터 종 r 을 주입 (applyRoster 와 같은 필드) */
-function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
+function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; if(T.applyArchStats) T.applyArchStats(m,r.arch,m.grade||1); } // #233 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
 const tokOf=(T,sid)=>{ const m=T.byId("overlayBox").innerHTML.match(new RegExp('<div class="btok[^"]*" id="tok-'+sid+'"[^>]*>[\\s\\S]*?<\\/div>')); return m?m[0]:""; };
 const srcOf=t=>(tokImg(t)||{}).src;
 const tokImg=t=>{ const m=t.match(/<img class="bsprite" src="([^"]+)" alt="([^"]*)"/); return m?{src:m[1],alt:m[2]}:null; };

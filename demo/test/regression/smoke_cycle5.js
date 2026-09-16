@@ -167,12 +167,17 @@ const realRandom=Math.random;
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   const m2=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), e2=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
   H.place(T,m2,7,4); H.place(T,e2,6,4); H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1); H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
-  T.S.balls[0]=2; e2.hp=20; T.startRounds(m2,e2,m2,e2);
+  /* #233 (GDD-23 4.4): 선턴은 **startRounds 시점에 한 번만 확정**된다. 이 절은 포획 확률만 보므로
+     A가 선턴이 되도록 속도를 **전투 시작 전에** 맞춤다(동률 → 등급 동률 → 접촉 개시자=A).
+     전투 시작 뒤에 spd 를 바꿔도 이미 굳은 firstSide 는 바뀌지 않는다. */
+  T.S.balls[0]=2; e2.hp=20; e2.spd=m2.spd; e2.grade=m2.grade;
+  T.startRounds(m2,e2,m2,e2);
+  ok(T.actorOfPhase()==="A","E4 전제: 선턴은 A(속도·등급 동률 → 접촉 개시자)");
   T.setSeed(null); global.Math.random=()=>0.99; window.__throwBall(); // 실패
   ok(S().metrics.enemyCapTries===1&&S().metrics.enemyCapFails===1&&S().metrics.enemyCaptures===0&&S().metrics.byPlayer[0].enemyCapTries===1,"E4 적 포획 시도 1·실패 1");
   T.S.battle=null; T.TQ.length=0; // 새 전투로 성공 케이스
   H.place(T,T.S.pieces.filter(x=>x.owner===1&&x.type==="minion")[1],2,1);
-  T.S.battlesUsed=0; e2.hp=20; T.startRounds(m2,e2,m2,e2);
+  T.S.battlesUsed=0; e2.hp=20; e2.spd=m2.spd; e2.grade=m2.grade; T.startRounds(m2,e2,m2,e2);
   global.Math.random=()=>0.01; window.__throwBall(); // 성공
   ok(S().metrics.enemyCapTries===2&&S().metrics.enemyCapFails===1&&S().metrics.enemyCaptures===1&&T.S.reserve[0].hp===70,"E5 적 포획 시도 2·성공 1·예비 HP 70");
   global.Math.random=realRandom;
@@ -180,6 +185,9 @@ const realRandom=Math.random;
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   const m3=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), e3=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
   H.place(T,m3,7,4); H.place(T,e3,6,4); H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1); H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
+  /* #233 (GDD-23 4.4): __flee 는 **그 라운드 행동자**의 클로저라 선턴이 D 면 도망이 P2 에 귀속된다.
+     속도·등급을 전투 시작 전에 동률로 맞춰 접촉 개시자(A=P1)를 선턴으로 굳힌다. 귀속 단언은 그대로다. */
+  e3.spd=m3.spd; e3.grade=m3.grade;
   m3.hp=30; T.startRounds(m3,e3,m3,e3);
   global.Math.random=()=>0.01; window.__flee();
   ok(S().metrics.fleeTries===1&&S().metrics.fleeOks===1&&S().metrics.byPlayer[0].fleeTries===1&&S().metrics.byPlayer[0].fleeOks===1&&!T.S.battle,"E6 도망 시도·성공 P1 귀속");
@@ -309,7 +317,9 @@ const realRandom=Math.random;
   H.place(T,m,7,4); H.place(T,k0,13,1); H.place(T,k1,1,7); H.place(T,tr,12,2);
   ok(T.canMoveTo(m,6,4)&&T.canMoveTo(m,7,5)&&!T.canMoveTo(m,5,4)&&!T.canMoveTo(m,6,5),"J1 1칸 직교 이동만");
   ok(!T.canMoveTo(tr,11,2),"J2 함정 이동 불가");
-  ok(T.BEATS.fire==="grass"&&T.BEATS.grass==="lightning"&&T.BEATS.lightning==="water"&&T.BEATS.water==="fire","J3 상성 순환");
+  // #233 (GDD-23 4.1, 2026-09-16 CJ 승인): 4각 순환(불→풀→번개→물→불)을 5각 순환(불→풀→땅→번개→물→불)으로 대체.
+  // 그래스는 더 이상 라이트닝을 직접 이기지 않는다(그 유리는 이제 땅을 거친다) — land는 상성표에만 있고 로스터 종은 #234 전까지 없다.
+  ok(T.BEATS.fire==="grass"&&T.BEATS.grass==="land"&&T.BEATS.land==="lightning"&&T.BEATS.lightning==="water"&&T.BEATS.water==="fire","J3 상성 순환(5속성)");
   const e=T.S.pieces.find(x=>x.owner===1&&x.type==="minion"); H.place(T,e,6,4);
   ok(T.canBattle(m,e)&&T.canBattle(k0,k1),"J4 전투 가능 · 왕 vs 왕도 전투 가능 (#122 CJ QA 6 불가침 폐지)");
   // 폭탄: 하수인 동귀

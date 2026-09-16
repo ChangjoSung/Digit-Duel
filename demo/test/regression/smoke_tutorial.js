@@ -35,8 +35,13 @@ const N=10, LAST=N-1;
   ok(/왕/.test(body[0])&&/끝줄/.test(body[0])&&/하수인.*6개/.test(body[0])&&/동료.*2개/.test(body[0])&&/모두 없애/.test(body[0]),"A6 1단계에 승리 조건 3가지 모두(왕 제거·끝줄·전멸) — 마지막 복습과 범위 동일");
   ok(/한 칸/.test(body[2])&&/대각선/.test(body[2])&&/바로 옆/.test(body[2])&&/다시 숨/.test(body[2])&&/앞 칸에 멈추/.test(body[2]),"A7 이동 1칸 직교·숲 은폐/공개/재은폐·숨은 말 충돌 정지 규칙");
   ok(/다음 차례/.test(body[3])&&/하수인·동료·왕/.test(body[3])&&/폭탄·함정은 못/.test(body[3])&&/몬스터볼/.test(body[3])&&/버프/.test(body[3]),"A8 흔적→다음 턴 탐색·탐색 가능 말(하수인·동료·왕)·보상 요약");
-  const bt=T.BEATS, cyc=`${{fire:"불",water:"물",grass:"풀",lightning:"번개"}.fire}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt.fire]}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt[bt.fire]]}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt[bt[bt.fire]]]}→불`;
-  ok(body[4].includes(cyc)&&/최대 2번/.test(body[4])&&/HP\(체력\)/.test(body[4])&&/쿨타임.*그대로/.test(body[4])&&/상태이상.*사라/.test(body[4]),"A9 강제 전투·최대 2회·상성 순환("+cyc+")이 엔진 BEATS와 일치·HP/쿨 유지·상태이상 해제");
+  /* #233 (GDD-23 4.1): 5속성 순환(불→풀→땅→번개→물→불)이 도입되며 땅은 #234 전까지 실제 플레이 속성이 아니다(ELEMS 밖).
+     튜토리얼 문구는 지금 실제로 보이는 4종 사이의 관계만 말하므로, 사이클 전체를 한 문자열로 재구성하는 대신
+     BEATS 의 개별 링크 3개(불→풀·번개→물·물→불)와 "더는 서로 안 물리는" 풀↔번개 관계를 각각 대조한다. */
+  const bt=T.BEATS;
+  ok(bt.fire==="grass"&&bt.lightning==="water"&&bt.water==="fire"&&bt.grass!=="lightning"&&bt.lightning!=="grass",
+     "A9 상성 링크가 엔진 BEATS와 일치 (불→풀·번개→물·물→불, 풀↔번개는 더는 서로 안 물림)");
+  ok(body[4].includes("불→풀")&&body[4].includes("번개→물→불")&&/서로 상성이 없어요/.test(body[4])&&/최대 2번/.test(body[4])&&/HP\(체력\)/.test(body[4])&&/쿨타임.*그대로/.test(body[4])&&/상태이상.*사라/.test(body[4]),"A9b 강제 전투·최대 2회·상성 링크 문구·HP/쿨 유지·상태이상 해제 — #233 GDD-23 4.1 (구 4각 순환 문구 대체)");
   ok(/폭탄.*한 칸/.test(body[5])&&/2칸/.test(body[5])&&/함정.*못 움직/.test(body[5])&&/둘 다 사라/.test(body[5])&&/동료·왕.*살아남/.test(body[5])&&/2번/.test(body[5]),"A10 폭탄 1칸/BT 2칸·함정 고정·폭탄 vs 하수인 동귀·동료/왕 생존·함정 2턴 정지");
   /* A11 #146 (v0.4.7 CJ 2026-09-10): 도망 계약이 바뀌어 튜토리얼 문안도 함께 바뀐다 —
      HP 조건 폐지 · 기본 성공률 30% · 도망의 수호자 70%(치환) · 실패 시 상대의 추가 반격 없음(내 싸움 차례 한 번만 소모).

@@ -769,9 +769,15 @@ function setSeed(seed){RNG=(seed===null||seed===undefined)?null:mulberry32(Numbe
 window.setSeed=setSeed;
 /* ===== #21 AI 난이도: grade5(5급 — 휴리스틱 기준선) / dan5(5단 — 탐색·추론 기반 강AI) ===== */
 const AI_LEVEL_KO={grade5:"5급",dan5:"5단"};
+/* #233 (GDD-23 4.1): 실제 플레이 가능 속성은 여전히 4종이다 — 땅(land)은 상성 순환표에는 들어가지만
+   실제로 그 속성을 쓰는 로스터 종·기술은 #234(로스터 확장) 전까지 없다. ELEMS는 스킬·모집·AI 후보 생성 등
+   "지금 실제로 고를 수 있는 속성" 루프가 쓰는 배열이라 4종 그대로 둔다. */
 const ELEMS=["fire","water","grass","lightning"];
-const ELEM_KO={fire:"불",water:"물",grass:"풀",lightning:"번개"};
-const BEATS={fire:"grass",grass:"lightning",lightning:"water",water:"fire"}; // D1 제안: 불→풀→번개→물→불
+const ELEM_KO={fire:"불",water:"물",grass:"풀",lightning:"번개",land:"땅"};
+/* #233 GDD-23 4.1: 5속성 순환 불→풀→땅→번개→물→불(유리 ×1.3/불리 ×0.75/중립 ×1.0).
+   구 4각형 순환(그래스가 라이트닝을 직접 이김)은 폐기 — 그 유리는 이제 땅을 거쳐야 한다.
+   land는 상성표에만 존재하고 실제 로스터 종은 #234 전까지 없다(BEATS.land만 참조된다, ELEMS에는 없음). */
+const BEATS={fire:"grass",grass:"land",land:"lightning",lightning:"water",water:"fire"};
 const TYPE_KO={minion:"하수인",bomb:"폭탄",ally:"동료",trap:"함정",king:"왕",captured:"포획"};
 const WINTYPE_KO={king:"왕 제거",edge:"끝줄 승리",resign:"기권",draw:"무승부",wipe:"전멸"};
 /* #36 추측 메모 선택지 — 저장은 key(안정 문자열)만, 표시는 emoji·ko. 순서 = 팝업 표시 순서 */
@@ -860,7 +866,13 @@ const ARCH_TMPL={
   sustain:["effect","heavy","sup_cleanse","sig_sustain"]
 };
 function archSkills(arch,el){return ARCH_TMPL[arch].map(t=>(t==="stable"||t==="effect"||t==="heavy")?el+"_"+t:t);}
-function slotPow(f,sk){return Math.round(sk.pow*f.atk/SKILL_ATK_BASE);} // 위력 스케일 (사사오입)
+/* GDD-23 4.2 ⑪ "정수 반올림 1회" — 피해 파이프라인에 들어가는 값은 **미리 반올림하지 않는다**.
+   종전에는 여기서 한 번, resolveHit ⑪ 에서 또 한 번 반올려 **이중 반올림**이었다(PD diff 지적).
+   slotPow 는 이제 표시용이다 — 기술 라벨의 예상 피해 폭(dmgRange)과 AI 휴리스틱 추정처럼
+   사람에게 정수로 보여 주거나 비교만 하는 곳이 쓴다. 실제 타격은 slotPowRaw 로 소수를 그대로 ②에 넣고
+   ⑪ 에서 딱 한 번만 반올림한다. */
+function slotPowRaw(f,sk){return sk.pow*f.atk/SKILL_ATK_BASE;}
+function slotPow(f,sk){return Math.round(slotPowRaw(f,sk));} // 표시용 위력 스케일 (사사오입)
 /* #92 기술 속성 판정 — 공격기(el 보유)는 기술 속성, 기본 공격·시그니처·보조기·레거시 경로는 본체 속성 그대로 */
 const SKILL_TIER_KO={stable:"안정",effect:"효과",heavy:"고위력"};
 /* #121 계약 5: cls 기술(용·어둠·핏빛)은 **속성 판정에서 빠진다** → null. 호출자의 `if(atkEl&&opp.element)` 상성 블록과
@@ -904,8 +916,45 @@ const BUFFS={
   escape:{ko:"🏃 도망의 수호자",desc:"이 전투 동안 도망 성공률을 70%로 높입니다"}
 };
 const BUFF_KEYS=["power","time","escape"];
+/* ===== #233 (GDD-23 3장) 8스탯 전투 엔진 계약 — 순수 데이터·헬퍼. 보호형(guard)·땅속성 종은 #234 전까지 로스터에 없다.
+   여기 실린 표는 GDD-23 3.3·3.4·3.5·3.6 을 그대로 옮긴 것이며, 실제 라이브 로스터(ROSTER·king·ally)는
+   아래에서 이 표를 읽어 8스탯을 주입한다(hp·atk 외 def·spd·dodge·crit·statusPct·shieldStartPct). */
+const ARCH_KO={std:"표준",atk:"공격",def:"방어",swift:"속공",sustain:"지속",guard:"보호"};
+/* 3.3 아키타입 기본 스탯(⭐1). dodge·crit·statusPct는 확률(0~1), shieldStartPct는 전투 시작 시 부여되는 최대 HP 비율 */
+const ARCHETYPE_BASE={
+  std:    {hp:100,atk:22,def:10,spd:10,dodge:0.05,crit:0.05,statusPct:0,   shieldStartPct:0},
+  atk:    {hp:90, atk:25,def:5, spd:10,dodge:0,    crit:0.10,statusPct:0,   shieldStartPct:0},
+  def:    {hp:120,atk:18,def:20,spd:6, dodge:0,    crit:0,   statusPct:0,   shieldStartPct:0},
+  swift:  {hp:85, atk:24,def:5, spd:14,dodge:0.10, crit:0.05,statusPct:0,   shieldStartPct:0},
+  sustain:{hp:95, atk:20,def:10,spd:8, dodge:0.05, crit:0,   statusPct:0.10,shieldStartPct:0},
+  guard:  {hp:110,atk:19,def:10,spd:7, dodge:0,    crit:0,   statusPct:0,   shieldStartPct:0.10} // #234 전까지 실제 종 없음
+};
+/* 3.5 왕·동료 고정 스탯(등급 없음, grade=null) */
+const KING_BASE={hp:100,atk:16,def:10,spd:8,dodge:0,crit:0,statusPct:0};
+const ALLY_BASE={
+  assassin:{hp:100,atk:18,def:5, spd:12,dodge:0.10,crit:0.10,statusPct:0}, // 동료1 — 암살자
+  shield:  {hp:100,atk:14,def:20,spd:6, dodge:0,    crit:0,   statusPct:0}  // 동료2 — 방패병
+};
+/* 3.6 전설 하수인 고정 스탯(등급 없음, grade=5로 취급 — 등급 비교에서는 최고 등급으로 참여). #234 전까지 로스터에 없다. */
+const LEGEND_BASE={
+  dragon:{hp:175,atk:35,def:15,spd:11,dodge:0.05,crit:0.10,statusPct:0},
+  witch: {hp:165,atk:32,def:12,spd:13,dodge:0.10,crit:0.05,statusPct:0.25},
+  reaper:{hp:158,atk:40,def:8, spd:14,dodge:0.15,crit:0.20,statusPct:0}
+};
+/* 3.4 등급 성장 — ❤️ HP ×(1+0.15×(등급-1)), 💪 공격력 ×(1+0.10×(등급-1)), 정수 반올림. 등급 없음(null/undefined)·1급은 성장 없음. */
+function gradeHp(base,grade){ return (!grade||grade<=1)?Math.round(base):Math.round(base*(1+0.15*(grade-1))); }
+function gradeAtk(base,grade){ return (!grade||grade<=1)?Math.round(base):Math.round(base*(1+0.10*(grade-1))); }
+/* def·spd·dodge·crit·statusPct는 등급으로 바뀌지 않는다(3.4) — 아키타입 표 값을 그대로 대상 전투원에 주입 */
+function applyArchStats(f,arch,grade){
+  const b=ARCHETYPE_BASE[arch]; if(!b) return;
+  f.def=b.def; f.spd=b.spd; f.dodge=b.dodge; f.crit=b.crit; f.statusPct=b.statusPct; f.shieldStartPct=b.shieldStartPct;
+  f.grade=(grade===undefined)?1:grade;
+}
+function applyFixedStats(f,base,grade){ // 왕·동료·전설처럼 등급이 없는(또는 5급 고정) 전투원
+  f.def=base.def; f.spd=base.spd; f.dodge=base.dodge; f.crit=base.crit; f.statusPct=base.statusPct; f.shieldStartPct=0;
+  f.grade=(grade===undefined)?null:grade;
+}
 /* 하수인 로스터 20종 — 아키타입 5종(표준·공격·방어·속공·지속) × 속성 4종 (GDD-13 4.2 개정, T5-B) */
-const ARCH_KO={std:"표준",atk:"공격",def:"방어",swift:"속공",sustain:"지속"};
 const ROSTER=[
   {id:"M-F1",name:"새끼 화룡",element:"fire",arch:"std",hp:100,atk:22,skill:35,cd:2},
   {id:"M-F2",name:"화염 투사",element:"fire",arch:"atk",hp:90,atk:25,skill:40,cd:3},
@@ -1319,7 +1368,7 @@ function newGame(mode,opts){
     for(let i=0;i<6;i++) S.pieces.push(mkPiece(p,"minion")); // 속성·스탯은 로스터 선택 시 주입
 
     for(let i=0;i<3;i++) S.pieces.push(mkPiece(p,"bomb"));
-    for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"ally"));
+    for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"ally",null,i)); // i=0 암살자·1 방패병 (3.5)
     for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"trap"));
     S.pieces.push(mkPiece(p,"king"));
     /* #121 계약 2.1: 시작 아이템은 회복약·쿨링수·해독제 각 1 (고정). 종전 D11 은 무작위 2개였고 shuffle 로 rand 를
@@ -1329,19 +1378,27 @@ function newGame(mode,opts){
   genEvents();
 }
 let PID=1;
-function mkPiece(owner,type,element){
+function mkPiece(owner,type,element,allyIdx){
   const b = BAL[type]||{};
-  return {id:PID++, owner, type, element:element||null,
+  const f={id:PID++, owner, type, element:element||null,
     hp:b.hp||1, maxHp:b.hp||1, atk:b.atk||0, skillAtk:b.skill||0,
     rosterId:null, name:null, cdMax:b.cd||0,
     cd:0, skills:null, cds:[0,0,0,0], revealedSkills:null,
     r:0,c:0, placed:false, revealed:false, alive:true, movedEver:false, movedPreBT:false,
     immobile:0, cap:null, nextBattleBuff:false, healing:false, // #106 healing: 회복 자세(지속형) — 소유자·공개 말만 표시, AI 는 미공개 상대 말의 값을 읽지 않는다
-    burn:0, burnBy:null, weaken:0, shield:0, absorbed:0, shock:0, shockFresh:false,
+    burn:0,burnFresh:false, burnBy:null, weaken:0, shield:0, shieldLayers:[], absorbed:0, shock:0, shockFresh:false,
+    crack:0,crackFresh:false, harden:0,hardenFresh:false,hardenPct:0, evadeBuff:0,evadeBuffR:0, dmgUpBuff:0,dmgUpBuffR:0, // #233 (GDD-23 4.5): 균열·경화·회피 증가·가하는 피해 증가 지속 버프/상태
     focusCharge:false, vulnMark:false, dmgCut:0,
     /* #121 계약 3: 전투 버프 패키지 효과는 **그 전투에만** 산다. 본체 출전이면 f === piece 라 이 필드가 말에 남으므로
        전투 개시(resetBattleTemps)와 전투 종료(resetAfter) 양쪽에서 반드시 지운다 — 계약 3.1 "전투가 끝나면 즉시 정리" */
     powerBuff:false, fleeBoost:false};
+  /* #233 (GDD-23 3.3·3.5) 8스탯 주입 — minion 은 로스터 선택 전 기본값으로 표준형(std) 블록을 쓰고
+     applyRoster()가 실제 종의 아키타입으로 다시 주입한다. 왕·동료는 등급 없음(grade:null, 3.5). */
+  if(type==="minion") applyArchStats(f,"std",1);
+  else if(type==="king") applyFixedStats(f,KING_BASE,null);
+  else if(type==="ally") applyFixedStats(f,allyIdx===1?ALLY_BASE.shield:ALLY_BASE.assassin,null);
+  else { f.def=0; f.spd=0; f.dodge=0; f.crit=0; f.statusPct=0; f.shieldStartPct=0; f.grade=null; } // bomb·trap: 전투원이 아니므로 미사용
+  return f;
 }
 /* 선택된 로스터 6종의 스탯을 플레이어 p의 하수인 6기에 주입 (선택 변경 시 재주입) */
 function applyRoster(p){
@@ -1349,10 +1406,13 @@ function applyRoster(p){
   ms.forEach((m,i)=>{
     const rd=S.roster[p][i]?ROSTER.find(r=>r.id===S.roster[p][i]):null;
     if(rd){m.rosterId=rd.id; m.name=rd.name; m.element=rd.element;
-      m.hp=rd.hp; m.maxHp=rd.hp; m.atk=rd.atk; m.skillAtk=rd.skill; m.cdMax=rd.cd;
+      const grade=m.grade||1; // #233 (GDD-23 3.4): 상점·등급 성장은 #234/#236 전까지 없으므로 항상 ⭐1로 주입
+      m.hp=gradeHp(rd.hp,grade); m.maxHp=m.hp; m.atk=gradeAtk(rd.atk,grade); m.skillAtk=rd.skill; m.cdMax=rd.cd;
+      applyArchStats(m,rd.arch,grade);
       m.skills=archSkills(rd.arch,rd.element); m.cds=[0,0,0,0]; m.revealedSkills=[];}
     else {m.rosterId=null; m.name=null; m.element=null;
       m.hp=BAL.minion.hp; m.maxHp=BAL.minion.hp; m.atk=BAL.minion.atk; m.skillAtk=BAL.minion.skill; m.cdMax=BAL.minion.cd;
+      applyArchStats(m,"std",1);
       m.skills=null; m.cds=[0,0,0,0]; m.revealedSkills=null;}
   });
 }
@@ -2810,6 +2870,9 @@ function tryCapture(p,mode,recv,rd){
     const sp=rd||ROSTER[0];
     target.cap={element:sp.element,hp:sp.hp,maxHp:sp.hp,atk:sp.atk,skillAtk:sp.skill,cd:0,cdMax:sp.cd,
       skills:archSkills(sp.arch,sp.element),cds:[0,0,0,0],revealedSkills:[],
+      /* #233 (GDD-23 3.3): 대리 출전 포획 하수인도 그 종의 아키타입 8스탯을 그대로 받는다(⭐1 고정 — 등급 성장은 #234/#236 전까지 없음) */
+      def:ARCHETYPE_BASE[sp.arch].def, spd:ARCHETYPE_BASE[sp.arch].spd, dodge:ARCHETYPE_BASE[sp.arch].dodge,
+      crit:ARCHETYPE_BASE[sp.arch].crit, statusPct:ARCHETYPE_BASE[sp.arch].statusPct, shieldStartPct:ARCHETYPE_BASE[sp.arch].shieldStartPct, grade:1,
       /* #121 계약 6 "그 종 그대로" — **rosterId 까지 유지한다** (PD 정정 msg_e29871f3b018).
          기술 ID 만 같고 실제 동작이 표준형으로 바뀌면 "그대로"가 아니다. rosterId 가 있으면 archOf(f) 가 그 종의 아키타입을
          돌려주므로, 엔진이 아키타입을 읽는 모든 지점(skillParamsOf 파생 지속시간·계수, 레거시 상태 부여의 지속형 100%,
@@ -3017,17 +3080,39 @@ function startRounds(attP,defP,fa,fd){
   for(const [piece,f,sd] of [[attP,fa,"A"],[defP,fd,"D"]]) // #12 일시버프: 다음 전투 개시 시 소진·전투 내내 유지
     if(piece.nextBattleBuff){piece.nextBattleBuff=false; f.atkBuff=true;
       bmsg(`✨ ${fighterName(sd)} 일시 버프 — 이번 전투 공격 +${pct(BAL.nextBuffPct)}!`);}
+  S.battle.firstSide=decideFirstSide(S.battle); // #233 (GDD-23 4.4): 1라운드의 선턴을 전투 개시 시 한 번만 고정한다
   bmsg(`⚔️ ${fighterName("A")} vs ${fighterName("D")} — 전투 개시!`);
   battleModal();
 }
-function resetBattleTemps(f){f.burn=0;f.burnBy=null;f.weaken=0;f.shield=0;f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
-  f.powerBuff=false;f.fleeBoost=false;} // 쿨(cds)은 전투 간 유지 (HP와 동일) · #121 계약 3.1: 버프는 전투 간 이어지지 않는다
+/* #233 (GDD-23 4.6): "전투 사이에는 HP만 유지하며 상태이상·버프·방어막·쿨타임을 초기화한다. 새 전투의 모든 스킬
+   쿨타임은 0이다." — 종전 #92/#121/#146 시절의 "쿨은 전투 간 유지" 계약을 **이 Issue의 명시적 승인 범위 안에서 대체**한다
+   (오늘 CJ가 그 변경을 직접 지시했다). f.skills가 있는 전투원만 cds 배열을 갖는다. */
+function resetBattleTemps(f){f.burn=0;f.burnFresh=false;f.burnBy=null;f.weaken=0;f.shield=0;f.shieldLayers=[];f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
+  f.crack=0;f.crackFresh=false;f.harden=0;f.hardenFresh=false;f.hardenPct=0;f.evadeBuff=0;f.evadeBuffR=0;f.evadeBuffRFresh=false;f.dmgUpBuff=0;f.dmgUpBuffR=0;f.dmgUpBuffRFresh=false;f.critForce=false;f.dodgeForce=false;
+  f.pendingFx=[]; // #233 (GDD-23 4.6): 예고·지연 효과는 발동 전에 전투가 끝나면 취소된다 — 새 전투로 넘어오지 않는다
+  if(f.skills){ f.cds=[0,0,0,0]; } f.cd=0; // #233 (GDD-23 4.6): 레거시 스칼라 쿨(f.cd)도 새 전투는 0에서 시작한다
+  if(f.shieldStartPct){ shieldAdd(f,Math.round(f.maxHp*f.shieldStartPct),"guardStart"); } // 3.3 보호형 기본값: 전투 시작 시 최대 HP 10% 방어막
+  f.powerBuff=false;f.fleeBoost=false;}
+/* #233 (GDD-23 4.4) 선턴·후턴 — 라운드 시작 시 확정.
+   1) 순서 효과: 감전(f.shock)=후턴, f.vanguardTurn=선턴(#234 전까지 실제 소스 없음 — 엔진 계약만 존재). 둘 다 있으면 후턴 우선(rearward 체크가 먼저).
+   2) 순서 효과가 갈리면 그것으로 끝. 같으면(둘 다 기본, 또는 둘 다 같은 order 효과) 3) 속도 → 4) [설계 보완] 양쪽 모두 ⭐ 등급을 가졌을 때만 낮은 등급 → 5) 접촉 개시자.
+   이 엔진에서 접촉 개시자는 startRounds(attP,defP,fa,fd) 호출 계약상 **항상 side A**다(다른 규칙 파일이 접촉을 건 쪽을 attP 로 넘긴다). */
+function fighterOrderCat(f){ return f.shock?2:(f.vanguardTurn?0:1); } // 0=선턴 1=기본 2=후턴
+function decideFirstSide(B){
+  const fa=B.fa, fd=B.fd;
+  const ca=fighterOrderCat(fa), cd=fighterOrderCat(fd);
+  if(ca!==cd) return ca<cd?"A":"D";
+  const sa=fa.spd||0, sd=fd.spd||0;
+  if(sa!==sd) return sa>sd?"A":"D";
+  if(fa.grade!=null&&fd.grade!=null&&fa.grade!==fd.grade) return fa.grade<fd.grade?"A":"D"; // 낮은 등급 우선 (등급 없는 왕·동료가 끼면 여기를 건너뛰어 이미 위에서 A로 떨어진다)
+  return "A";
+}
 function actorOfPhase(){
   const B=S.battle;
-  let firstIsAtt = B.round%2===1;
-  if(firstIsAtt && B.fa.shock) firstIsAtt=false;
-  if(!firstIsAtt && B.fd.shock) firstIsAtt=true;
-  return B.phase===0 ? (firstIsAtt?"A":"D") : (firstIsAtt?"D":"A");
+  // #233 (GDD-23 4.4): "라운드 시작 시 확정" — B.firstSide는 startRounds·nextPhase의 라운드 진입 시점에 한 번만 굳는다.
+  // 스냅샷 기반 표시 경로(netSynthBattle 등)가 firstSide 없이 넘어오면 방어적으로 그 자리에서 계산한다(라이브 판정에는 쓰이지 않는다).
+  const firstSide=B.firstSide||decideFirstSide(B);
+  return B.phase===0 ? firstSide : (firstSide==="A"?"D":"A");
 }
 function stFx(side,f){ return {side,text:stIcons(f),shield:f.shield||0,max:f.maxHp}; } // #106 5.5: 상태 아이콘 + 방어막 바 값을 함께 실어 재생과 동기화
 function battleModal(){
@@ -3279,7 +3364,7 @@ function battleModal(){
     if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
       bmsg(`🧪 회복약! ${fighterName(side)}의 HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}},{key:"itemFx"});}
     if(k==="cool"){f.cd=0; if(f.skills)f.cds=[0,0,0,0]; bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!",null,{key:"itemFx"});} // 4슬롯 전체 초기화 (아이템 설명 문언 준용 — [기획 필요] 후보)
-    if(k==="cure"){f.burn=0;f.weaken=0;f.shock=0;f.shockFresh=false; bmsg("🧪 해독제 — 상태이상 해제!",{st:stFx(side,f)},{key:"itemFx"});}
+    if(k==="cure"){f.burn=0;f.burnFresh=false;f.weaken=0;f.shock=0;f.shockFresh=false;f.crack=0;f.crackFresh=false; bmsg("🧪 해독제 — 상태이상 해제!",{st:stFx(side,f)},{key:"itemFx"});} // #233 (GDD-23 4.5): 균열도 상태이상 — 경화·흡수·방어막 같은 버프는 그대로 둔다
     B.menu=null; // 사용 연출 뒤 같은 행동자의 메뉴(루트)로 복귀 — 행동 미소모 (GDD 4.6 보너스 행동)
     battleModal();
   };
@@ -3373,43 +3458,32 @@ function battleModal(){
     // ===== 구형 속성 스킬 경로 (로스터 미적용 하수인 전용 — 레거시 테스트 호환) =====
     const oSide=side==="A"?"D":"A", sp=skillParamsOf(f);
     const tryStatus=prob=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb (#96: 감전은 shockProb)
-      if(archOf(f)==="sustain"||rand()<(prob===undefined?BAL.statusProb:prob)){S.metrics.statusApplied++; return true;}
+      // #233 (GDD-23 3.2 💫): 스탯 상태이상 부여 확률을 %p로 가산, 상한 100%
+      const p=Math.min(1,(prob===undefined?BAL.statusProb:prob)+(f.statusPct||0));
+      if(archOf(f)==="sustain"||rand()<p){S.metrics.statusApplied++; return true;}
       S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
     };
     bmsg(`${fighterName(side)}의 ${f.element?SKILL_KO[f.element]:"스킬"}!`,null,{key:"skillFx"});
-    let dmg=f.skillAtk;
-    if(f.atkBuff) dmg=Math.round(dmg*(1+BAL.nextBuffPct)); // #12 일시버프 (레거시 경로)
-    if(BAL.dmgVar){ const roll=rand(); // #121 계약 3.2: 레거시 경로도 같은 전투원이므로 같은 분산 고정 (rand 소비 횟수 불변)
-      dmg=Math.round(dmg*(f.powerBuff?(1+BAL.dmgVar):(1-BAL.dmgVar+roll*2*BAL.dmgVar))); }
     f.cd=f.cdMax||BAL.minion.cd;
-    if(f.weaken>0){dmg=Math.round(dmg*(1-BAL.weakenPct)); f.weaken--;
-      if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:stFx(side,f)});}
-    if(f.element&&opp.element){
-      if(BEATS[f.element]===opp.element) dmg=Math.round(dmg*BAL.advMult);
-      else if(BEATS[opp.element]===f.element) dmg=Math.round(dmg*BAL.disMult);
-    }
-    if(f.element==="grass"){
-      dmg=Math.round(dmg*sp.grassDmgMult);
-      if(sp.shieldPct) f.shield=(f.shield||0)+Math.round(f.maxHp*sp.shieldPct); // #130: 레거시 경로도 합산 (직접 대입 금지)
+    // #233 (GDD-23 4.2): 풀 속성 레거시 스킬은 자체 위력 배율(grassDmgMult)을 ②의 기본 피해에 접어 넣는다
+    const base=f.skillAtk*(f.element==="grass"?sp.grassDmgMult:1);
+    const res=resolveHit(side,f,opp,oSide,base,0,f.element,null);
+    if(f.element==="grass"){ // 자기 대상 효과 — 회피 여부와 무관하게 유지(4.2 ① 주석)
+      if(sp.shieldPct) shieldAdd(f,Math.round(f.maxHp*sp.shieldPct),"grassLegacy");
       const gh=Math.round(f.maxHp*sp.healPct);
       f.hp=Math.min(f.maxHp,f.hp+gh);
       bmsg(sp.shieldPct?`🌿 보호막·회복 획득!`:`🌿 회복 획득!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)});
     }
-    if(opp.dmgCut>0){dmg=Math.round(dmg*(1-opp.dmgCut)); opp.dmgCut=0; bmsg("상대는 자세를 낮춰 피해를 흘렸다!",{st:stFx(oSide,opp)});}
-    if(opp.vulnMark){dmg=Math.round(dmg*1.15); opp.vulnMark=false; bmsg(`⚠️ 결정타의 반동 — 피격 +15%!`);}
-    let absorbed=Math.min(dmg,opp.shield); opp.shield-=absorbed;
-    let hpDmg=dmg-absorbed;
-    const actual=Math.min(hpDmg,opp.hp); opp.hp-=actual;
-    const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed);
-    const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
-    const counted=actual+(absorbed-freeAbsorb);
-    addRec(side,counted);
-    bmsg(`${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
-      {shake:oSide,flash:f.element||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
-       hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
-    if(f.element==="fire"&&!opp.burn&&tryStatus()){opp.burn=sp.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${sp.burnRounds}R)`,{st:stFx(oSide,opp)});}
-    if(f.element==="water"&&!opp.weaken&&tryStatus()){opp.weaken=sp.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${sp.weakenHits}회)`,{st:stFx(oSide,opp)});}
-    if(f.element==="lightning"&&!opp.shock&&tryStatus(BAL.shockProb)){opp.shock=sp.shockRounds; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${sp.shockRounds}라운드 후공!`,{st:stFx(oSide,opp)});}
+    if(!res.evaded){ // 대상 지정 효과 — 회피하면 걸리지 않는다
+      /* GDD-23 5.6 중첩·재부여 — 위 execSlot 경로와 같은 규칙을 구형 경로에도 같이 적용한다
+         (한쪽만 고치면 다른 쪽이 조용히 옛 규칙으로 남는다). */
+      if(f.element==="fire"&&tryStatus()){const had=opp.burn>0; applyTimedFx(opp,"burn",sp.burnRounds); opp.burnBy=side;
+        bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다!${had?" (갱신)":""} (${opp.burn}R)`,{st:stFx(oSide,opp)});}
+      if(f.element==="water"&&tryStatus()){const had=opp.weaken>0; opp.weaken=Math.max(opp.weaken||0,sp.weakenHits);
+        bmsg(`💧 ${fighterName(oSide)}는 약화되었다!${had?" (갱신)":""} (${opp.weaken}회)`,{st:stFx(oSide,opp)});}
+      if(f.element==="lightning"&&tryStatus(BAL.shockProb)){applyTimedFx(opp,"shock",sp.shockRounds);
+        bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${opp.shock}라운드 후공!`,{st:stFx(oSide,opp)});}
+    }
     if(checkDeath()) return;
     nextPhase();
   };
@@ -3476,17 +3550,171 @@ function witchApply(side,oSide,f,opp,actual){
   const combo=WITCH_COMBOS[Math.floor(rand()*WITCH_COMBOS.length)]; // 공유 rand 1회
   for(const idx of combo){
     const eff=WITCH_EFFECTS[idx];
-    if(eff==="burn"){ opp.burn=BAL.burnRounds; opp.burnBy=side; S.metrics.statusApplied++; // 갱신(누적 금지)
-      bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${BAL.burnRounds}R)`,{st:stFx(oSide,opp)}); }
-    else if(eff==="weaken"){ opp.weaken=BAL.weakenHits; S.metrics.statusApplied++;
-      bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${BAL.weakenHits}회)`,{st:stFx(oSide,opp)}); }
-    else if(eff==="shock"){ opp.shock=1; opp.shockFresh=true; S.metrics.statusApplied++; // 부여 라운드는 소진하지 않는다 (현행 shockFresh 규칙)
-      bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:stFx(oSide,opp)}); }
+    /* GDD-23 5.6 — 같은 종류는 더하지 않고 수치는 큰 값·남은 지속은 긴 값으로 갱신한다.
+       마녀 콤보도 같은 공용 헬퍼를 써 부여 라운드 제외 가드까지 똑같이 따른다. */
+    if(eff==="burn"){ applyTimedFx(opp,"burn",BAL.burnRounds); opp.burnBy=side; S.metrics.statusApplied++;
+      bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${opp.burn}R)`,{st:stFx(oSide,opp)}); }
+    else if(eff==="weaken"){ opp.weaken=Math.max(opp.weaken||0,BAL.weakenHits); S.metrics.statusApplied++; // 약화만 횟수제
+      bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${opp.weaken}회)`,{st:stFx(oSide,opp)}); }
+    else if(eff==="shock"){ applyTimedFx(opp,"shock",1); S.metrics.statusApplied++;
+      bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${opp.shock}라운드 후공!`,{st:stFx(oSide,opp)}); }
     else { const gh=Math.min(actual,f.maxHp-f.hp); // 풀: 실HP 피해 100% 즉시 회복 (maxHp 상한)
       if(gh>0){ f.hp+=gh;
         bmsg(`🌿 어둠의 덩굴이 생명을 빨아들인다 — HP ${gh} 회복!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp}}); }
       else bmsg(`🌿 어둠의 덩굴 — 빨아들일 생명이 없었다. (회복 0)`); }
   }
+}
+/* ===== #233 (GDD-23 4.5·5.6) 상태이상·버프의 중첩·재부여·지속 계약 =====
+   5.6: "같은 종류의 효과는 한 대상에 1개만 존재한다. 이미 걸린 효과에 다시 당첨되면 수치는 둘 중 **큰 값**,
+   남은 지속도 둘 중 **긴 값**으로 갱신하고 더하지 않는다. **방어막만 예외**로 층으로 쌌아 합산한다(shieldAdd)."
+   또 "N 라운드" 지속은 **부여된 라운드를 세지 않고** 다음 라운드부터 센다(4.7 화상 예시와 현행 감전 방식).
+   그래서 부여·재부여마다 fresh 가드를 세워 그 라운드 종료의 1 소모를 건너뛴다.
+   재부여 비교는 **이번 라운드 종료에 어차피 빠질 1을 먼저 반영한 잔여**로 한다 — 그래야
+   "지금 새로 거는 NR"과 "이미 걸린 것을 NR로 갱신"이 같은 라운드에 끝난다. */
+function applyTimedFx(f,key,rounds,magKey,mag){
+  const freshKey=key+"Fresh";
+  const cur=f[key]||0;
+  const pending=cur>0?Math.max(0,cur-(f[freshKey]?0:1)):0; // 이번 라운드 종료 소모를 반영한 잔여 지속
+  f[key]=Math.max(pending,rounds||0);
+  if(magKey) f[magKey]=Math.max(cur>0?(f[magKey]||0):0,mag||0); // 수치는 둘 중 큰 값 (꺼진 효과의 잔류 수치는 상속하지 않는다)
+  f[freshKey]=true;
+  return f[key];
+}
+/* 4.5 사전의 개별 효과 진입점 — #234 로스터 전까지 실제 호출자는 없고 엔진 계약만 완결한다. */
+function applyCrack(f,rounds){ return applyTimedFx(f,"crack",rounds===undefined?2:rounds); }          // 균열(땅): 받는 피해 +10%, 2R
+function applyHarden(f,pct,rounds){ return applyTimedFx(f,"harden",rounds,"hardenPct",pct); }         // 경화: 받는 피해 −X%, 표기된 지속
+function applyEvadeBuff(f,pct,rounds){ return applyTimedFx(f,"evadeBuffR",rounds,"evadeBuff",pct); }  // 회피 증가
+function applyDmgUpBuff(f,pct,rounds){ return applyTimedFx(f,"dmgUpBuffR",rounds,"dmgUpBuff",pct); }  // 가하는 피해 증가
+/* ===== #233 (GDD-23 3.2·4.2·4.3) 방어막 층·피해 계산 파이프라인 — 엔진 계약 본체 =====
+   방어막은 "얻을 때마다 획득원이 붙은 층"으로 쌓이고, 피해는 **가장 나중에 얻은 층부터** 깎인다(LIFO).
+   f.shield 는 종전과 같은 표시용 합계 필드로 계속 유지한다(패널·stFx·연출이 그대로 읽는다). */
+function shieldAdd(f,amount,src){
+  if(!amount) return;
+  f.shieldLayers=f.shieldLayers||[];
+  f.shieldLayers.push({amt:amount,src:src||"?"});
+  f.shield=(f.shield||0)+amount;
+}
+function shieldConsume(f,dmg){ // 반환 {absorbed,breaks} — breaks: 이 타격으로 남은 양이 0이 된 층 수(3.2 "깨짐")
+  f.shieldLayers=f.shieldLayers||[];
+  /* 하위 호환 — f.shield 를 (테스트·레거시 경로가) shieldAdd 를 거치지 않고 직접 바꿨다면, 층 합계와 어긋난 차액을
+     "가장 나중에 얻은 층"으로 흡수해 둔다. shieldAdd 를 거친 정상 경로는 항상 층 합계 == f.shield 라 여기서 아무 일도 없다. */
+  const layerSum=f.shieldLayers.reduce((s,l)=>s+l.amt,0);
+  if((f.shield||0)>layerSum) f.shieldLayers.push({amt:(f.shield-layerSum),src:"legacy"});
+  let remain=Math.max(0,dmg), absorbed=0, breaks=0;
+  while(remain>0&&f.shieldLayers.length){
+    const top=f.shieldLayers[f.shieldLayers.length-1];
+    const take=Math.min(top.amt,remain);
+    top.amt-=take; remain-=take; absorbed+=take;
+    if(top.amt<=0){ f.shieldLayers.pop(); breaks++; }
+  }
+  f.shield=Math.max(0,(f.shield||0)-absorbed);
+  return {absorbed,breaks};
+}
+function shieldClearAll(f){ // 버프 제거류 — 모든 층을 한꺼번에 지우며 "방어막 1개"로 센다(3.2). 깨짐이 아니다.
+  const had=(f.shieldLayers&&f.shieldLayers.length>0)||f.shield>0;
+  f.shieldLayers=[]; f.shield=0; return had;
+}
+/* GDD-23 4.2 일반 피해 계산 ①~⑪ — base=②의 곱셈부(공격력×위력%), flatBonus=②의 스킬 고정 피해,
+   atkEl=판정 속성(null=중립), dragonMult가 있으면 ④를 상성표 대신 이 고유 배율로 대체한다(드래곤 숨결, 5.1).
+   상대가 회피하면(①) 피해·대상 지정 효과가 전부 사라지고 자기 대상 효과만 남는다 — 호출부가 evaded로 분기한다. */
+function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp){
+  /* 약화(4.5) = "가하는 피해 -20%, 대상의 공격 2회" — 소모형 카운터라 회피 여부와 무관하게 이번 공격 행동으로 1회 줄어든다.
+     그래서 회피 조기 반환보다 먼저 처리한다(자기 상태 소모는 "대상 지정 효과"가 아니라 회피의 면제 대상이 아니다). */
+  const weakened=f.weaken>0;
+  if(weakened){ f.weaken--; if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:stFx(side,f)}); }
+  /* ① 회피 판정, 상한 40% (3.2). "확정 회피" 효과(opp.dodgeForce)는 확률 판정을 건너뛰고 상한보다 우선하며 rand 를 쓰지 않는다
+     (3.2 "확정 효과는 확률 판정을 건너뛰므로 상한보다 우선합니다" — #234 전까지 이 플래그를 켜는 스킬은 없다). */
+  let evaded;
+  if(opp.dodgeForce){ evaded=true; opp.dodgeForce=false; }
+  else evaded=rand()<Math.min(0.40,(opp.dodge||0)+(opp.evadeBuff||0));
+  if(evaded){
+    bmsg(`💨 ${fighterName(oSide)}는 회피했다!`,{st:stFx(oSide,opp)});
+    return {evaded:true,dmg:0,crit:false,absorbed:0,actual:0,counted:0};
+  }
+  let dmg=(base||0)+(flatBonus||0); // ② 기본 피해 = 공격력×위력% + 고정 피해
+  const roll=rand(); // ③ 피해 분산 0.8~1.2 (힘의 수호자면 1.2 고정)
+  dmg=dmg*(f.powerBuff?(1+BAL.dmgVar):(1-BAL.dmgVar+roll*2*BAL.dmgVar));
+  if(dragonMult!==undefined&&dragonMult!==null){ if(opp.element) dmg=dmg*dragonMult; } // ④ 속성 상성(드래곤 고유 배율로 대체)
+  else if(atkEl&&opp.element){
+    if(BEATS[atkEl]===opp.element) dmg=dmg*BAL.advMult;
+    else if(BEATS[opp.element]===atkEl) dmg=dmg*BAL.disMult;
+  }
+  const dmgUp=Math.min(0.5,(f.atkBuff?BAL.nextBuffPct:0)+(f.dmgUpBuff||0)+(extraDmgUp||0)); // ⑤ 가하는 피해 증가, 상한 +50%
+  dmg=dmg*(1+dmgUp);
+  if(weakened) dmg=dmg*(1-BAL.weakenPct); // ⑥ 약화 감소율 (카운터는 함수 시작에서 이미 소모)
+  /* ⑦ 치명타 판정, 상한 50% (3.2). "치명타 확정" 효과(f.critForce)는 확률 판정을 건너뛰고 상한보다 우선하며 rand 를 쓰지 않고,
+     다음 피해 스킬 1회에 소모된다(3.2 — #234 전까지 이 플래그를 켜는 스킬은 없다). */
+  let crit;
+  if(f.critForce){ crit=true; f.critForce=false; }
+  else crit=rand()<Math.min(0.5,f.crit||0);
+  if(crit) dmg=dmg*1.5;
+  const dmgDown=Math.min(0.5,((opp.def||0)/100)+(opp.hardenPct||0)+(opp.dmgCut||0)); // ⑧ 받는 피해 감소 = 방어력+경화+"다음 피격 감소"류, 상한 50%
+  dmg=dmg*(1-dmgDown);
+  if(opp.dmgCut>0) bmsg(`${fighterName(oSide)}는 자세를 낮춰 피해를 흘렸다!`,{st:stFx(oSide,opp)});
+  opp.dmgCut=0;
+  const dmgTakeUp=Math.min(0.5,(opp.crack?0.10:0)+(opp.vulnMark?0.15:0)); // ⑨ 받는 피해 증가 = 균열 등, 상한 +50%
+  dmg=dmg*(1+dmgTakeUp);
+  if(opp.vulnMark) bmsg(`⚠️ 결정타의 반동 — 피격 +15%!`);
+  opp.vulnMark=false;
+  const raw=dmg; dmg=Math.round(dmg); if(raw>0&&dmg<1) dmg=1; if(dmg<0) dmg=0; // ⑩ 정수 반올림 1회, 0보다 크면 최소 1
+  const {absorbed,breaks}=shieldConsume(opp,dmg); // ⑪ 방어막 우선 소모 후 HP
+  const hpDmg=dmg-absorbed;
+  const actual=Math.min(hpDmg,opp.hp); opp.hp-=actual;
+  const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed); // 전투 판정용 유효 피해 흡수 상한 — 현행 그대로 (변경 대상 아님)
+  const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
+  const counted=actual+(absorbed-freeAbsorb);
+  addRec(side,counted);
+  bmsg(`${dmg} 피해!${crit?" (치명타)":""}${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
+    {shake:oSide,flash:atkEl||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
+     hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
+  return {evaded:false,dmg,crit,absorbed,breaks,actual,counted}; // breaks(3.2 "깨짐"): 이 타격으로 남은 양이 0이 된 방어막 층 수
+}
+/* GDD-23 4.3 반사·반격 — 일반 파이프라인의 부분집합만 탄다(회피·분산·상성 판정 없음: 반사는 상성도 없다, 반격은 ④만 탄다).
+   #234 전까지 이 둘을 실제로 발동하는 기술·왕국 시너지가 없어 라이브 호출부는 아직 없지만, 엔진 계약은 여기서 완결하고
+   전용 회귀가 이 실제 함수를 직접 호출해 검증한다(4.6 연쇄 금지: 반사·반격 피해 자체는 다시 반사·반격을 만들지 않는다 — 호출부가 재귀하지 않으면 자동 성립). */
+/* #233 (GDD-23 4.6) 연쇄 금지 — "추가 사용·반사·반격은 한 행동에 1회까지이고, 그 피해가 다시 반사·반격을 일으키지 않는다."
+   호출자 주의가 아니라 엔진이 직접 막는다: resolveTyped 실행 중에는 S.battle.chainLock 이 서고, 그 안에서 resolveTyped 가
+   다시 불리면(반사가 반사를 부르는 등) 아무것도 하지 않고 조용히 무효 반환한다 — HP·난수 변화 0. */
+function resolveTyped(side,f,opp,oSide,dmgRaw,useElement,label,emoji){
+  const B=S.battle;
+  if(B&&B.chainLock) return {dmg:0,absorbed:0,breaks:0,actual:0,counted:0,blocked:true};
+  if(B) B.chainLock=true;
+  try{ return resolveTypedInner(side,f,opp,oSide,dmgRaw,useElement,label,emoji); }
+  finally{ if(B) B.chainLock=false; }
+}
+function resolveTypedInner(side,f,opp,oSide,dmgRaw,useElement,label,emoji){
+  let dmg=dmgRaw;
+  if(useElement&&f.element&&opp.element){ if(BEATS[f.element]===opp.element) dmg=dmg*BAL.advMult; else if(BEATS[opp.element]===f.element) dmg=dmg*BAL.disMult; }
+  const dmgDown=Math.min(0.5,((opp.def||0)/100)+(opp.hardenPct||0)+(opp.dmgCut||0)); opp.dmgCut=0;
+  dmg=dmg*(1-dmgDown);
+  const dmgTakeUp=Math.min(0.5,(opp.crack?0.10:0)+(opp.vulnMark?0.15:0)); opp.vulnMark=false;
+  dmg=dmg*(1+dmgTakeUp);
+  const raw=dmg; dmg=Math.round(dmg); if(raw>0&&dmg<1) dmg=1; if(dmg<0) dmg=0;
+  const {absorbed,breaks}=shieldConsume(opp,dmg);
+  const actual=Math.min(dmg-absorbed,opp.hp); opp.hp-=actual;
+  const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed);
+  const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
+  const counted=actual+(absorbed-freeAbsorb);
+  addRec(side,counted);
+  bmsg(`${emoji} ${fighterName(side)}의 ${label} — ${fighterName(oSide)}에게 ${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""}`,
+    {shake:oSide,hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
+  return {dmg,absorbed,breaks,actual,counted};
+}
+function resolveReflect(side,f,opp,oSide,incomingDmg,pct){ return resolveTyped(side,f,opp,oSide,incomingDmg*pct,false,"반사","🪞"); } // 상성 판정 없음
+function resolveCounter(side,f,opp,oSide,pct){ return resolveTyped(side,f,opp,oSide,(f.atk||0)*pct,true,"반격","🦀"); } // ④ 상성만 탄다
+function instaKill(opp){ opp.shieldLayers=[]; opp.shield=0; opp.hp=0; } // 4.3 즉사 — 단계 없음, 방어막 무시
+/* GDD-23 4.3 예고 피해(해일 예고 등) — 발동 시점에 일반 피해 ①~⑪을 그대로 태운다. 발동 전에 전투가 끝나면 취소된다
+   (tickDelayed가 라운드 종료마다 불리고, S.battle이 이미 없으면 run()을 부르지 않는다 → 자동 취소, 4.6). */
+/* tag 는 서버 락스텝 요약이 같은 라운드에 예약된 서로 다른 예고 피해를 구분하기 위한 **안정된 문자열**이다
+   (기술 id 등). 콜백은 직렬화할 수 없어 서버는 [roundsLeft, tag||null] 로만 요약한다 — tag 가 없으면
+   두 좌석 엔진이 갈려도 VOID 가 뜨지 않는다. #234 전까지 예고 피해 기술이 없어 호출처는 0건이고
+   여기서는 계약만 완결한다 — 앞으로 예고 기술을 붙이는 호출처는 반드시 tag 를 넘겨야 한다. */
+function scheduleDelayed(f,delayRounds,run,tag){ f.pendingFx=f.pendingFx||[]; f.pendingFx.push({roundsLeft:delayRounds,tag:tag!==undefined?tag:null,run}); }
+function tickDelayed(f){
+  if(!f.pendingFx||!f.pendingFx.length) return;
+  const keep=[];
+  for(const ev of f.pendingFx){ ev.roundsLeft--; if(ev.roundsLeft<=0){ if(S.battle) ev.run(); } else keep.push(ev); }
+  f.pendingFx=keep;
 }
 function execSlot(side,slot,opts){
   const B=S.battle; if(!B) return;
@@ -3528,7 +3756,7 @@ function execSlot(side,slot,opts){
       execSlot(side,-1); return; }   // 같은 이유로 무동작 — 다른 슬롯이 합법이어도 기본 공격으로 대신하지 않는다
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); // 사용 시 공개
     bmsg(`💀 ${fighterName(side)}의 사신의 낫!`,{sig:true},{key:"skillFx"});
-    const lethal=opp.hp; opp.shield=0; opp.hp=0; addRec(side,lethal);
+    const lethal=opp.hp; instaKill(opp); addRec(side,lethal); // #233 (GDD-23 4.3): 즉사 — 단계 없음, 방어막 무시
     bmsg(`💀 ${fighterName(oSide)}는 보호막째 베였다 — 즉사!`,
       {shake:oSide,float:{side:oSide,html:`<span class="neg">즉사</span>`},hp:{side:oSide,val:0,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
     if(checkDeath()) return;
@@ -3537,13 +3765,20 @@ function execSlot(side,slot,opts){
   if(sk){ f.cds[slot]=sk.cd;
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
   const gate=(force,prob)=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기: 화상·약화 statusProb 70% · 감전 shockProb 50% (#96) · 잔류장 100% — force는 rand 미소비)
-    if(force||rand()<(prob===undefined?BAL.statusProb:prob)){S.metrics.statusApplied++; return true;}
+    // #233 (GDD-23 3.2 💫): 스탯 상태이상 부여 확률을 %p로 가산, 상한 100% (force 경로는 확률 판정 자체가 없으므로 영향 없음)
+    const p=Math.min(1,(prob===undefined?BAL.statusProb:prob)+(f.statusPct||0));
+    if(force||rand()<p){S.metrics.statusApplied++; return true;}
     S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
   };
   const applyStatus=force=>{ // 상태 종류는 판정 속성(atkEl) 기준 — 불 본체가 배운 감전 침은 감전이지 화상이 아니다 (#92)
-    if(atkEl==="fire"&&!opp.burn&&gate(force)){opp.burn=BAL.burnRounds; opp.burnBy=side; bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다! (${BAL.burnRounds}R)`,{st:stFx(oSide,opp)});}
-    else if(atkEl==="water"&&!opp.weaken&&gate(force)){opp.weaken=BAL.weakenHits; bmsg(`💧 ${fighterName(oSide)}는 약화되었다! (${BAL.weakenHits}회)`,{st:stFx(oSide,opp)});}
-    else if(atkEl==="lightning"&&!opp.shock&&gate(force,BAL.shockProb)){opp.shock=1; opp.shockFresh=true; bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 1라운드 후공!`,{st:stFx(oSide,opp)});}
+    /* GDD-23 5.6 중첩·재부여: 같은 종류는 1개만 존재하되, 이미 걸려 있어도 **재부여 자체를 막지 않고**
+       수치는 큰 값·남은 지속은 긴 값으로 갱신한다(더하지 않는다). 종전의 !opp.burn 같은 가드는 남은 1R 화상을
+       2R 로 갱신하는 경로를 통째로 막아 그 규칙을 깨고 있었다(PD 코드 검토 지적). 확률 판정은 그대로 한다. */
+    if(atkEl==="fire"&&gate(force)){const had=opp.burn>0; applyTimedFx(opp,"burn",BAL.burnRounds); opp.burnBy=side;
+      bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다!${had?" (갱신)":""} (${opp.burn}R)`,{st:stFx(oSide,opp)});}
+    else if(atkEl==="water"&&gate(force)){const had=opp.weaken>0; opp.weaken=Math.max(opp.weaken||0,BAL.weakenHits); // 약화만 횟수제(5.6) — 라운드 가드 없이 큰 횟수로 갱신
+      bmsg(`💧 ${fighterName(oSide)}는 약화되었다!${had?" (갱신)":""} (${opp.weaken}회)`,{st:stFx(oSide,opp)});}
+    else if(atkEl==="lightning"&&gate(force,BAL.shockProb)){applyTimedFx(opp,"shock",1); bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${opp.shock}라운드 후공!`,{st:stFx(oSide,opp)});}
   };
   const coolReduce=(filter,label)=>{ // 쿨 감소류: 조건 내 남은 쿨 최장 기술 1개 쿨 -1
     let pick=-1;
@@ -3561,66 +3796,46 @@ function execSlot(side,slot,opts){
        같은 기술이든 다른 기술이든, 공격 부가든 레거시 경로든 같은 규칙이다. 새 수치·상한·지속 시간은 추가하지 않는다.
        예: 최대 HP 100 에서 18 → 22 를 이어 쓰면 40. 10 을 소모한 뒤 22 를 더 받으면 30+22=52.
        누적이 최대 HP 를 넘어도 수치는 손실 없이 그대로 남는다 (막대 폭만 100% 에서 멈춘다). */
-    if(sk.shieldPct){f.shield=(f.shield||0)+Math.round(f.maxHp*sk.shieldPct);
+    if(sk.shieldPct){shieldAdd(f,Math.round(f.maxHp*sk.shieldPct),"supportSkill");
       eb(`🛡 보호막 ${f.shield}!`,{st:stFx(side,f)});}
     if(sk.dmgCut){f.dmgCut=Math.max(f.dmgCut,sk.dmgCut);
       eb(`🌀 다음 피격 ${pct(sk.dmgCut)} 감소!`,{st:stFx(side,f)});}
     if(sk.focus){f.focusCharge=true; eb(`🎯 집중 — 다음 공격기 위력 +20%!`,{st:stFx(side,f)});}
     if(sk.coolAny) coolReduce(i=>i!==slot,"냉각"); // 냉각 결과 줄은 기술 그룹에 덧붙는다 (메시지 수 불변)
     if(sk.cleanse){
-      if(f.burn){f.burn=0;f.burnBy=null;eb(`✨ 화상이 정화되었다!`,{st:stFx(side,f)});}
+      if(f.burn){f.burn=0;f.burnFresh=false;f.burnBy=null;eb(`✨ 화상이 정화되었다!`,{st:stFx(side,f)});}
       else if(f.weaken){f.weaken=0;eb(`✨ 약화가 정화되었다!`,{st:stFx(side,f)});}
       else if(f.shock){f.shock=0;f.shockFresh=false;eb(`✨ 감전이 정화되었다!`,{st:stFx(side,f)});}
+      else if(f.crack){f.crack=0;f.crackFresh=false;eb(`✨ 균열이 정화되었다!`,{st:stFx(side,f)});} // #233 (GDD-23 4.5): 균열도 상태이상 분류 — 경화·방어막 같은 버프는 정화 대상이 아니다
       else eb(`정화 — 제거할 상태이상이 없다.`);
     }
-  } else { // 피해 기술: 공격기·시그니처·기본 공격 — 스케일 후 기존 파이프라인(분산·상성) 그대로
-    let dmg=sk?slotPow(f,sk):f.atk;
-    if(f.atkBuff) dmg=Math.round(dmg*(1+BAL.nextBuffPct)); // #12 일시버프
-    if(f.focusCharge&&sk&&sk.kind==="attack"){dmg=Math.round(dmg*1.2); f.focusCharge=false;
+  } else { // 피해 기술: 공격기·시그니처·기본 공격 — #233 (GDD-23 4.2) 공용 파이프라인(resolveHit)을 탄다
+    let extraDmgUp=0;
+    if(f.focusCharge&&sk&&sk.kind==="attack"){extraDmgUp=0.2; f.focusCharge=false;
       bmsg(`🎯 집중 발동 — 위력 +20%!`,{st:stFx(side,f)});}
-    /* D8 피해 분산 ±20% · #121 계약 3.2 힘의 수호자: **분산 단계만** 상단 고정(×(1+dmgVar) = ×1.2).
-       난수는 그대로 뽑아 버린다 — 버프 유무로 rand 소비 횟수가 달라지지 않아야 공유 시드 재현과 AI 시뮬이 어긋나지 않는다
-       (계약 3.2 [추론] "양쪽 클라이언트와 AI 시뮬에서 동일"을 소비 횟수 불변으로 만족한다).
-       상성·약화·감소·취약·보호막 흡수·반올림은 그대로 통과하므로 최종 실HP 피해가 항상 정확히 +20% 가 되지는 않는다. */
-    if(BAL.dmgVar){ const roll=rand();
-      dmg=Math.round(dmg*(f.powerBuff?(1+BAL.dmgVar):(1-BAL.dmgVar+roll*2*BAL.dmgVar))); }
-    if(f.weaken>0){dmg=Math.round(dmg*(1-BAL.weakenPct)); f.weaken--;
-      if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:stFx(side,f)});}
-    if(atkEl&&opp.element){ // #92 공격 상성은 판정 속성(기술 속성) vs 상대 본체 속성 — 방어 상성은 본체 속성 그대로
-      if(BEATS[atkEl]===opp.element) dmg=Math.round(dmg*BAL.advMult);
-      else if(BEATS[opp.element]===atkEl) dmg=Math.round(dmg*BAL.disMult);
-    }
-    /* #121 계약 5.1 드래곤 숨결: 상성표가 아니라 기술 고유 배율이다. 속성이 **있는** 상대에게 항상 ×1.3,
-       무속성(왕·동료 본체)에는 중립 1.0 — 현행 "상대 속성이 없으면 배율 없음" 동작을 그대로 쓴다.
-       cls 기술이라 atkEl 은 null 이므로 위 상성 블록은 타지 않고, 이 한 줄만 적용된다 (난수 소비 0). */
-    if(sk&&sk.dragonMult&&opp.element){ dmg=Math.round(dmg*sk.dragonMult);
-      bmsg(`🐉 용의 숨결이 속성을 태운다 — ×${sk.dragonMult}!`); }
-    if(sk&&sk.bonusVsShield&&opp.shield>0){dmg+=sk.bonusVsShield; bmsg(`🌊 보호막 대상 추가 위력 +${sk.bonusVsShield}!`);}
-    if(sk&&sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock)){dmg+=sk.bonusVsStatus; bmsg(`⚡ 상태이상 대상 추가 위력 +${sk.bonusVsStatus}!`);}
-    if(opp.dmgCut>0){dmg=Math.round(dmg*(1-opp.dmgCut)); bmsg(`${fighterName(oSide)}는 자세를 낮춰 피해 ${pct(opp.dmgCut)} 감소!`); opp.dmgCut=0;}
-    if(opp.vulnMark){dmg=Math.round(dmg*1.15); opp.vulnMark=false; bmsg(`⚠️ 결정타의 반동 — 피격 +15%!`);}
-    let absorbed=Math.min(dmg,opp.shield); opp.shield-=absorbed;
-    let hpDmg=dmg-absorbed;
-    const actual=Math.min(hpDmg,opp.hp); opp.hp-=actual;
-    const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed);
-    const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
-    const counted=actual+(absorbed-freeAbsorb);
-    addRec(side,counted);
-    bmsg(`${dmg} 피해!${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
-      {shake:oSide,flash:atkEl||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`}, // #92 속성 플래시도 판정 속성
-       hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"}); // #106 5.4 그룹2 피 깎임 연출
-    if(sk){
+    const base=sk?slotPowRaw(f,sk):f.atk; // ⑪ 단일 반올림 — 여기서 반올림하지 않고 resolveHit 에 소수를 그대로 넘긴다
+    /* #121 계약 5.1 드래곤 숨결: 상성표가 아니라 기술 고유 배율(④를 대체) — 속성이 있는 상대에게만 적용, 무속성 중립 1.0.
+       cls 기술이라 atkEl 은 null 이므로 resolveHit 안에서 일반 상성 블록은 타지 않는다(난수 소비 0). */
+    if(sk&&sk.dragonMult&&opp.element) bmsg(`🐉 용의 숨결이 속성을 태운다 — ×${sk.dragonMult}!`);
+    let flatBonus=0;
+    if(sk&&sk.bonusVsShield&&opp.shield>0){flatBonus+=sk.bonusVsShield; bmsg(`🌊 보호막 대상 추가 위력 +${sk.bonusVsShield}!`);}
+    /* #233 (GDD-23 4.5): 균열도 **상태이상** 분류다 — 경화·흡수·방어막같은 버프는 여기 해당 없다. */
+    if(sk&&sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock||opp.crack)){flatBonus+=sk.bonusVsStatus; bmsg(`⚡ 상태이상 대상 추가 위력 +${sk.bonusVsStatus}!`);}
+    const res=resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,(sk&&sk.dragonMult)?sk.dragonMult:null,extraDmgUp);
+    const actual=res.actual;
+    if(sk&&!res.evaded){
       if(sk.drainPct&&actual>0){const gh=Math.round(actual*sk.drainPct); f.hp=Math.min(f.maxHp,f.hp+gh);
         bmsg(`🌿 흡수 — HP ${gh} 회복!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}
-      if(sk.selfShieldPct){f.shield=(f.shield||0)+Math.round(f.maxHp*sk.selfShieldPct); // #130: 공격 부가 보호막도 합산
-        bmsg(`🌿 보호막 ${f.shield}!`,{st:stFx(side,f)});}
       if(sk.witch) witchApply(side,oSide,f,opp,actual); // #121 계약 5.2 — 피해 확정 뒤(실HP 피해 actual 기준) 2효과를 100% 적용
       if(sk.status) applyStatus(false);
-      if(sk.statusSelf){ // 잔류장: 자기 속성 상태효과 100% — 풀은 대응 상태이상 부재로 흡수 회복(실피해 40%) 임시 대체 [기획 필요]
-        if(f.element==="grass"){const gh=Math.round(actual*0.4); if(gh>0){f.hp=Math.min(f.maxHp,f.hp+gh);
+      if(sk.statusSelf&&f.element!=="grass") applyStatus(true); // 잔류장: 자기 속성 상태효과 100% — 풀은 아래 자기 대상 분기에서 처리
+    }
+    if(sk){ // 자기 대상 효과 — 회피 여부와 무관하게 유지(4.2 ① 주석)
+      if(sk.selfShieldPct){shieldAdd(f,Math.round(f.maxHp*sk.selfShieldPct),"selfSkill"); // #130: 공격 부가 보호막도 합산
+        bmsg(`🌿 보호막 ${f.shield}!`,{st:stFx(side,f)});}
+      if(sk.statusSelf&&f.element==="grass"){ // 잔류장: 대응 상태이상 부재로 흡수 회복(실피해 40%) 임시 대체 [기획 필요]
+        const gh=Math.round(actual*0.4); if(gh>0){f.hp=Math.min(f.maxHp,f.hp+gh);
           bmsg(`🌿 잔류 흡수 — HP ${gh} 회복!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp}});}}
-        else applyStatus(true);
-      }
       if(sk.selfVuln){f.vulnMark=true; bmsg(`⚠️ ${fighterName(side)}의 자세가 무너졌다 — 다음 피격 +15%!`,{st:stFx(side,f)});}
       if(sk.coolAttack) coolReduce(i=>i!==slot&&SKILLS[f.skills[i]].kind==="attack",null); // 전술 연계
       if(sk.coolAttackLongest) coolReduce(i=>SKILLS[f.skills[i]].kind==="attack",null);   // 급속 순환
@@ -3651,6 +3866,7 @@ function fighterName(sid){
 }
 function stIcons(f){
   return [f.shield?`🛡${f.shield}`:"",f.burn?`🔥화상${f.burn}R`:"",f.weaken?`💧약화${f.weaken}회`:"",f.shock?`⚡감전${f.shock}R`:"",
+    f.crack?`🗻균열${f.crack}R`:"",f.harden?`🛡경화${pct(f.hardenPct)}·${f.harden}R`:"",
     f.dmgCut?`🌀감쇠${pct(f.dmgCut)}`:"",f.focusCharge?"🎯집중":"",f.vulnMark?"⚠️피격+15%":""].filter(Boolean).join(" ")||"-";
 }
 /* 전투 메시지 시퀀스 — 로직은 동기 완결, 표시 계층만 타이머 재생 (헤드리스: 큐만 적재 후 즉시 소진) */
@@ -3727,7 +3943,13 @@ function nextPhase(){
   B.actSeq=(B.actSeq||0)+1;
   if(B.phase===0){B.phase=1; battleModal(); return;}
   for(const [f,side] of [[B.fa,"A"],[B.fd,"D"]]){
-    if(f.burn>0){const d=Math.min(f.hp,Math.round(f.maxHp*BAL.burnPct)); f.hp-=d; f.burn--;
+    /* #233 (GDD-23 4.7·5.6, 2026-09-16 PD 결정): 화상은 **부여된 라운드를 세지 않는다** —
+       "화상은 부여된 라운드를 세지 않으므로 다음 2개 라운드의 종료 시에 각 5"(4.7).
+       감전·균열·경화의 fresh 가드와 달리 화상은 라운드 종료에 **피해도** 준다. 그래서 가드가
+       부여 라운드의 **피해와 감소를 둘 다** 건너뛰어야 R2·R3 종료 2회가 된다 — 감소에만 걸면
+       R1·R2·R3 3회가 되어 총량이 늘어난다. 재부여 시에도 감전처럼 가드를 다시 세운다. */
+    if(f.burnFresh){ f.burnFresh=false; }
+    else if(f.burn>0){const d=Math.min(f.hp,Math.round(f.maxHp*BAL.burnPct)); f.hp-=d; f.burn--;
       addRec(f.burnBy,d);
       bmsg(`🔥 ${fighterName(side)}는 화상 피해 ${d}!`,{shake:side,float:{side,html:`<span class="neg">-${d}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)},{key:"roundEndFx"}); // #106 5.4 라운드 종료 처리 그룹(1초)
       if(!f.burn) bmsg(`🔥 ${fighterName(side)}의 화상이 해제되었다.`,{st:stFx(side,f)});
@@ -3735,12 +3957,28 @@ function nextPhase(){
     if(f.cd>0)f.cd--; if(f.skills)for(let i=0;i<4;i++)if(f.cds[i]>0)f.cds[i]--; // 슬롯별 개별 쿨 감소 (라운드 종료 시)
     if(f.shockFresh) f.shockFresh=false; // 감전은 부여 라운드가 아닌 다음 라운드부터 소진
     else if(f.shock>0){f.shock--; if(!f.shock) bmsg(`⚡ ${fighterName(side)}의 감전이 풀렸다.`,{st:stFx(side,f)});}
+    /* #233 (GDD-23 4.5): 균열(받는 피해 +10%, 2R)·경화(자신이 받는 피해 −X%, 표기된 지속) 라운드 종료 감소.
+       #234 전까지 이 둘을 실제로 거는 기술이 없어 값은 항상 0이지만, 엔진 계약(4.5)은 여기서 완결한다. */
+    /* GDD-23 5.6 적용·지속: "N 라운드" 지속은 **부여된 라운드를 세지 않고** 다음 라운드부터 N라운드가
+       끝날 때 해제된다(현행 감전과 같은 방식). 그래서 감전의 shockFresh 와 같은 가드를 둔다 —
+       이것이 없으면 부여한 라운드 종료에 바로 1이 줄어 2R 효과가 실질 1.5R 로 짧아진다. */
+    if(f.crackFresh) f.crackFresh=false;
+    else if(f.crack>0){f.crack--; if(!f.crack) bmsg(`🗻 ${fighterName(side)}의 균열이 풀렸다.`,{st:stFx(side,f)});}
+    if(f.hardenFresh) f.hardenFresh=false;
+    else if(f.harden>0){f.harden--; if(!f.harden){f.hardenPct=0; bmsg(`${fighterName(side)}의 경화가 풀렸다.`,{st:stFx(side,f)});}}
+    /* 4.5 회피 증가·가하는 피해 증가도 "표기된 값 · 지속"이라 같은 라운드 종료 감쇠를 탄다. */
+    if(f.evadeBuffRFresh) f.evadeBuffRFresh=false;
+    else if(f.evadeBuffR>0){f.evadeBuffR--; if(!f.evadeBuffR){f.evadeBuff=0; bmsg(`💨 ${fighterName(side)}의 회피 증가가 풀렸다.`,{st:stFx(side,f)});}}
+    if(f.dmgUpBuffRFresh) f.dmgUpBuffRFresh=false;
+    else if(f.dmgUpBuffR>0){f.dmgUpBuffR--; if(!f.dmgUpBuffR){f.dmgUpBuff=0; bmsg(`💪 ${fighterName(side)}의 가하는 피해 증가가 풀렸다.`,{st:stFx(side,f)});}}
+    tickDelayed(f); // #233 (GDD-23 4.3) 예고·지연 피해 — 라운드 종료마다 카운트, 발동 시 전투가 살아 있을 때만 실행
+    if(S.battle!==B) return; // tickDelayed가 발동시킨 피해로 전투가 끝났으면 여기서 멈춘다(checkDeath는 run() 안에서 이미 처리)
   }
   B.itemRoundA=false; B.itemRoundD=false;
   B.ballThrowA=false; B.ballThrowD=false; // #12: 볼 투척 라운드당 1회 리셋
   B.round++;
   if(B.round>battleMaxRounds()){judge(); return;} // #121 계약 3.3: 시간의 수호자가 걸린 전투는 3라운드 (전역 BAL.maxRounds 불변)
-  B.phase=0; battleModal();
+  B.phase=0; B.firstSide=decideFirstSide(B); battleModal(); // #233 (GDD-23 4.4): "라운드 시작 시 확정" — 이 라운드의 선턴을 여기서 한 번만 고정한다
 }
 function checkDeath(){
   const B=S.battle;
@@ -3795,7 +4033,9 @@ function finishBattle(winSide,how){
 /* 전투 종료 공통 정리 — finishBattle(승패·판정) · __fleeCore(도망 성공) · finishByCapture(적 포획) 세 경로가 모두 이 함수를 부른다.
    #121 계약 3.1: 버프 플래그(powerBuff·fleeBoost)도 여기서 지운다. 본체 출전이면 f === 말 객체라 지우지 않으면 다음 전투로 새어 나간다.
    전투 인스턴스 회계(B.buffA/B.buffD·B.maxRounds)는 S.battle 이 null 이 되면서 함께 사라지고, 쓰지 않은 패키지 재고(S.pkgs)는 보존된다. */
-function resetAfter(f){f.burn=0;f.burnBy=null;f.weaken=0;f.shield=0;f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
+function resetAfter(f){f.burn=0;f.burnFresh=false;f.burnBy=null;f.weaken=0;f.shield=0;f.shieldLayers=[];f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
+  f.crack=0;f.crackFresh=false;f.harden=0;f.hardenFresh=false;f.hardenPct=0;f.evadeBuff=0;f.evadeBuffR=0;f.evadeBuffRFresh=false;f.dmgUpBuff=0;f.dmgUpBuffR=0;f.dmgUpBuffRFresh=false;f.critForce=false;f.dodgeForce=false;f.pendingFx=[];
+  if(f.skills){ f.cds=[0,0,0,0]; } f.cd=0; // #233 (GDD-23 4.6): 전투 사이 HP만 유지 — 쿨타임(레거시 스칼라 포함)·예고 효과는 다음 전투 전에 초기화
   f.powerBuff=false;f.fleeBoost=false;}
 /* #12 포획 종료: 적 하수인 즉시 제거 + S.reserve 저장 — 누적 판정 없이 전투 즉시 종료 (포획으로 승리) */
 function finishByCapture(side){
@@ -3805,7 +4045,10 @@ function finishByCapture(side){
   const el=loseP.element||shuffle(ELEMS.slice())[0], arch=archOf(loseP)||"std";
   const rd=loseP.rosterId?ROSTER.find(r=>r.id===loseP.rosterId):null; // #91 원래 종 외형 정체 보존(표시 전용 artRosterId) — 로스터 정체가 없던 하수인은 null (임의 종으로 가장하지 않는다)
   S.reserve[p]={element:el,hp:BAL.enemyCapHp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // #20: 전투 중 적 포획만 HP 70/maxHP 100
-    skills:loseP.skills?loseP.skills.slice():archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null}; // #92 (GDD-13 4.8): 대상의 현재 장착 기술 4슬롯을 복사 승계(탐색 교체 기술 포함, 참조 비공유) · 기술 배열이 없는 레거시 대상만 아키타입 템플릿 폴백 · 쿨 0·공개 기록 []·수치는 공용 규격
+    skills:loseP.skills?loseP.skills.slice():archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null, // #92 (GDD-13 4.8): 대상의 현재 장착 기술 4슬롯을 복사 승계(탐색 교체 기술 포함, 참조 비공유) · 기술 배열이 없는 레거시 대상만 아키타입 템플릿 폴백 · 쿨 0·공개 기록 []·수치는 공용 규격
+    /* #233 (GDD-23 3.3): 예비 하수인도 승계한 아키타입의 def·spd·dodge·crit·statusPct 를 받는다(공용 HP·ATK 규격은 그대로) */
+    def:ARCHETYPE_BASE[arch].def, spd:ARCHETYPE_BASE[arch].spd, dodge:ARCHETYPE_BASE[arch].dodge,
+    crit:ARCHETYPE_BASE[arch].crit, statusPct:ARCHETYPE_BASE[arch].statusPct, shieldStartPct:0, grade:1};
   met(p,"enemyCaptures");
   loseP.alive=false;
   bmsg(`🔴 몬스터볼 적중! ${fighterName(loseSide)}를(을) 포획했다!`,{ko:loseSide},{key:"captureFx"}); // #106 5.4 성공 연출
@@ -4236,7 +4479,7 @@ function aiBattleAction(){
       else if(sk.kind==="sig") sc+=5;
       if(sk.status&&statusKey&&!opp[statusKey]) sc+=4;
       if(sk.bonusVsShield&&opp.shield>0) sc+=3;
-      if(sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock)) sc+=3;
+      if(sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock||opp.crack)) sc+=3; // #233 (4.5) 균열 포함 — 라이브 규칙과 같은 조건
       if(sk.selfVuln&&lowHp) sc-=6; // 저HP에 결정타 반동 위험
       sc*=prof.aggression;
     } else { // 보조기·불굴 진형
@@ -4592,7 +4835,7 @@ function aiBattleActionStrong(side){
       if(sk.drainPct&&lowHp) sc+=4;
       if(sk.selfShieldPct&&lowHp) sc+=3;
       if(sk.bonusVsShield&&opp.shield>0) sc+=2;
-      if(sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock)) sc+=2;
+      if(sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock||opp.crack)) sc+=2; // #233 (4.5) 균열 포함 — 라이브 규칙과 같은 조건
       if(sk.selfVuln&&lowHp) sc-=8;
     } else {
       if(sk.healPct) sc=(lowHp&&toKillOpp>1)?25:1;
@@ -4916,7 +5159,9 @@ const TUT_STEPS=[
      "탐색은 <b>하수인·동료·왕</b>만 할 수 있어요. <b>폭탄·함정은 못</b> 해요.",
      "선물은 <b>🎁 아이템 선물</b>(회복약·몬스터볼 등)·<b>✨ 전투 버프</b>·<b>📘 기술 교체</b> 셋이에요!"]},
   {icon:"⚔️",title:"옆에 붙으면 꼭 싸워요",cards:TUT_SCENES.battle(),
-   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.","싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀→번개→물→불</b> 순서로 이겨요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요.","<b>동료·왕</b>끼리도 모두 <b>싸워요</b>(왕↔왕 포함). <b>왕 본체</b>가 지면 그 자리에서 <b>경기 패배</b>예요.","기술 <b>4칸</b>이 전부 못 쓰는 상태면 <b>기본 공격도 나오지 않아요</b>. 「턴 종료」를 눌러야 내 <b>싸움 차례 한 번</b>만 넘어가요.","<b>보호막(🛡)</b>은 겹쳐 쓰면 <b>남은 양에 더해져요</b>. 18에 22를 더 받으면 <b>40</b>이에요."]},
+   lines:["내 말이 움직여서 상대 말 <b>바로 옆</b>에 새로 붙으면 꼭 싸워요. 이게 <b>강제 전투</b>(무조건 싸움)예요. 한 차례에 싸움은 <b>최대 2번</b>이에요.",/* #233 (GDD-23 4.1, 2026-09-16 CJ 승인): 5속성 순환 불→풀→땅→번개→물→불로 개편 — 땅은 #234 전까지 실제로 고를 수 있는 속성이
+   아니므로(ELEMS 밖), 지금 플레이에서 실제로 보이는 4종 사이의 관계만 문장으로 남긴다. 풀·번개는 땅을 거치므로 더는 서로 안 물린다. */
+"싸움은 불·물·풀·번개 <b>가위바위보</b>예요. <b>불→풀</b>, <b>번개→물→불</b> 순서로 이겨요. 풀과 번개는 서로 상성이 없어요.","싸움이 끝나도 <b>HP</b>(체력)와 기술 <b>쿨타임</b>은 그대로예요. 화상 같은 <b>상태이상</b>은 사라져요.","싸움은 최대 <b>6라운드</b>예요. 끝까지 가면 <b>남은 HP 비율</b>이 높은 쪽이 이겨요. 같으면 지킨 쪽이 이겨요.","<b>동료·왕</b>끼리도 모두 <b>싸워요</b>(왕↔왕 포함). <b>왕 본체</b>가 지면 그 자리에서 <b>경기 패배</b>예요.","기술 <b>4칸</b>이 전부 못 쓰는 상태면 <b>기본 공격도 나오지 않아요</b>. 「턴 종료」를 눌러야 내 <b>싸움 차례 한 번</b>만 넘어가요.","<b>보호막(🛡)</b>은 겹쳐 쓰면 <b>남은 양에 더해져요</b>. 18에 22를 더 받으면 <b>40</b>이에요."]},
   {icon:"💣",title:"폭탄과 함정",cards:TUT_SCENES.bombtrap(),
    lines:["<b>폭탄</b>은 한 칸씩 움직일 수 있어요(버닝 타임엔 2칸). 상대 옆에 새로 붙으면 터져요. <b>함정</b>은 <b>스스로 움직일 수 없어요</b>.","<b>하수인</b>이 폭탄을 건드리면 둘 다 사라져요. <b>동료·왕</b>은 살아남아요. 폭탄끼리·폭탄과 함정은 <b>그 자리에서 터져 둘 다 사라져요</b>.","<b>함정</b>을 건드리면 함정은 사라지고 그 말은 <b>내 차례 2번</b> 못 움직여요. 둘 다 정체가 드러나요. 함정도 <b>밀기·재배치</b>로 옮겨질 수 있어요."]},
   {icon:"🔴",title:"잡아오기와 도망치기",cards:TUT_SCENES.capture(),
@@ -5538,9 +5783,22 @@ function netStubPiece(u){
     /* 등급 C-2(공개된 상대)는 서버가 revealed 필드 없이 정체(type·name·element)를 보낸다 — 정체가 왔다는 것 자체가 공개다.
        등급 B(미공개)는 type 필드 자체가 없다. 자기 말은 서버 revealed 값을 그대로 쓴다. */
     revealed:u.revealed!==undefined?!!u.revealed:(u.type!==undefined&&u.type!==null),
-    burn:u.burn||0, burnBy:null, weaken:u.weaken||0, shield:u.shield||0, absorbed:0,
+    burn:u.burn||0, burnBy:null, weaken:u.weaken||0, shield:u.shield||0, shieldLayers:[], absorbed:0,
     shock:u.shock||0, shockFresh:!!u.shockFresh, focusCharge:!!u.focusCharge, vulnMark:!!u.vulnMark,
-    dmgCut:u.dmgCut||0, powerBuff:!!u.powerBuff, fleeBoost:!!u.fleeBoost};
+    crack:u.crack||0, harden:u.harden||0, hardenPct:u.hardenPct||0, evadeBuff:u.evadeBuff||0, dmgUpBuff:u.dmgUpBuff||0,
+    dmgCut:u.dmgCut||0, powerBuff:!!u.powerBuff, fleeBoost:!!u.fleeBoost,
+    ...netStubStats(u)};
+}
+/* #233: Jupiter의 room.js 패치가 you.pieces[](자기 말)에 def·spd·dodge·crit·statusPct·grade 를 함께 보낸다(6필드 한 묶음 —
+   u.def 가 오면 나머지 5개도 왔다고 가정한다). 아직 이 필드가 없는 대상(공개된 상대 말·기준판 서버 등)은 공개된
+   rosterId·type 만으로 클라이언트가 같은 8스탯 표를 다시 찾아 채운다. */
+function netStubStats(u){
+  if(u&&typeof u.def==="number") return {def:u.def,spd:u.spd||0,dodge:u.dodge||0,crit:u.crit||0,statusPct:u.statusPct||0,grade:u.grade!==undefined?u.grade:null};
+  const rd=u&&u.rosterId!==undefined&&u.rosterId!==null?ROSTER.find(r=>r.id===u.rosterId):null;
+  if(rd){ const b=ARCHETYPE_BASE[rd.arch]; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:1}; }
+  if(u&&u.type==="king") return {def:KING_BASE.def,spd:KING_BASE.spd,dodge:KING_BASE.dodge,crit:KING_BASE.crit,statusPct:KING_BASE.statusPct,grade:null};
+  if(u&&u.type==="ally"){ const b=ALLY_BASE.assassin; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:null}; }
+  const std=ARCHETYPE_BASE.std; return {def:std.def,spd:std.spd,dodge:std.dodge,crit:std.crit,statusPct:std.statusPct,grade:1};
 }
 function netApplyRoomState(data,isResumeFrame){
   if(!data) return;
@@ -5892,6 +6150,7 @@ function netSynthFighter(sd,you){
   const f=body?piece:{};
   Object.assign(f,{element:sd.element||null,hp:sd.hp,maxHp:sd.maxHp,shield:sd.shield||0,burn:sd.burn||0,weaken:sd.weaken||0,
     shock:sd.shock||0,shockFresh:!!sd.shockFresh,dmgCut:sd.dmgCut||0,focusCharge:!!sd.focusCharge,vulnMark:!!sd.vulnMark,
+    crack:sd.crack||0,harden:sd.harden||0,hardenPct:sd.hardenPct||0, // #233: Jupiter room.js 가 battle.a/d 에 함께 보낸다(stIcons 표시용)
     skills:ad.skills,cds:ad.cds,revealedSkills:ad.revealedSkills,atk:atk,skillAtk:skillAtk||0,cd:typeof sd.cd==="number"?sd.cd:0,
     powerBuff:sd.buff==="power",fleeBoost:sd.buff==="escape",artRosterId:body?null:(sd.artRosterId||null)});
   if(!body) piece.cap=f;
@@ -5906,6 +6165,12 @@ function netSynthBattle(bd,you){
     itemRoundA:!!a.itemRound,itemRoundD:!!d.itemRound,lastItemA:a.lastItem!=null?a.lastItem:null,lastItemD:d.lastItem!=null?d.lastItem:null,
     ballThrowA:!!a.ballThrow,ballThrowD:!!d.ballThrow,buffA:a.buff||null,buffD:d.buff||null,
     blog:Array.isArray(bd.log)?bd.log.slice():[],msgQ:[],menu:null};
+  /* #233 (GDD-23 4.4·7.9): 공개 방 전투 화면은 선턴을 **다시 계산하지 않고 서버가 보낸 actor 에서 복원**한다.
+     decideFirstSide 는 spd·grade·vanguardTurn 을 읽는데 그 셋은 상대 전투 뷰에 없고(7.9 등급은 소유자 전용),
+     앞으로도 보낼 수 없다. 그대로 두면 spd 0·0·grade null 로 떨어져 항상 "A" 가 되어 battleModal 이
+     틀린 패널·행동 메뉴를 그린다(Jupiter Q2). actor 와 phase 만으로 선턴이 완전히 유도되므로
+     서버 필드를 늘리지 않고 여기서 되돌린다: phase 0 의 행위자가 곳 선턴이다. */
+  if(bd.actor==="A"||bd.actor==="D") B.firstSide=(B.phase===0)?bd.actor:(bd.actor==="A"?"D":"A");
   B.intro=true; B.bannerKey=B.round+"-"+B.phase; // 진입 카운트다운·행동 배너는 서버 fx가 재생한다 — 원본의 로컬 재생 분기를 타지 않는다
   B.actorOwner=bd.actor==="A"?a.owner:bd.actor==="D"?d.owner:(actorOfPhaseOf(B)==="A"?a.owner:d.owner); // 서버가 계산한 행위자
   B.mySide=a.owner===NET.me?"A":"D";

@@ -3,6 +3,7 @@
 숫자 장기 × 속성 배틀 결합 1vs1 턴제 전략 보드게임. 최종 타깃 Android/Unity, 기획 검증용 HTML 데모 선행(2트랙).
 
 ## 기준 문서 (Notion — 구현·QA의 진실 원본)
+- 필수 QA 운영: [QA_MINIMUM_POLICY.md](docs/creat2ve/QA_MINIMUM_POLICY.md) — 2026-09-16 CJ 지시. 변경에 필요한 자동 검증 우선, 브라우저 수동·네트워크 반복 QA 축소. 필수 CI 유지.
 - Game Overview (GDD-13, 기준 문서): https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38
 - 전투 수치 v0.1 (보류 백로그 D1~D8): https://app.notion.com/p/3cd1e7f170858116bbdbd60e98cc6924
 - 검증 지표·상호작용표 (GDD-12): https://app.notion.com/p/3ca1e7f170858183beddfb1e8ecbbfe7

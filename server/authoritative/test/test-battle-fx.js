@@ -105,6 +105,12 @@ function assertEventShape(evt, label) {
 {
   const room = H.startedRoom(950);
   const cur = startBattle(room);
+  // PR239 CI battle-fx447pass1fail — 이 절은 "실제 타격(damageFx+float)이 만들어진다"만 보고 회피·치명타
+  // 자체는 다루지 않는다(그건 다른 스위트 소관). rand() 기반 회피(①, 상한 40%)가 기본 아키타입 dodge(5~10%)
+  // 확률로 이번 첫 공격을 회피로 만들면 fx.float가 아예 생기지 않아 간헐적으로 실패했다. 두 전투원의
+  // dodge/evadeBuff를 0으로 고정해 회피 판정(rand()<0)이 항상 거짓이 되게 해 첫 공격이 반드시 명중하게
+  // 만든다 — 피해량 자체(치명타 여부·분산 roll)는 그대로 rand()에 맡겨 이 절이 검증하는 것 이상을 고정하지 않는다.
+  both(room, (E) => { const B = E.S.battle; B.fa.dodge = 0; B.fa.evadeBuff = 0; B.fd.dodge = 0; B.fd.evadeBuff = 0; });
   const r = act(room, cur, { t: 'act', k: 0 });
   ok(r.ok, '공격 행동 수락: ' + JSON.stringify(r.reason));
   const fx = room.toSeatView(cur).fx;
@@ -246,6 +252,10 @@ function resolveSyncModals(room, seatHint, maxSteps) {
 // ===== 9) 연속 전투 — battleId가 매번 새로 발급되고, 새 전투 이후 이벤트에 옛 battleId가 다시 붙지 않는다 =====
 {
   const room = H.startedRoom(958);
+  // 서버 엔진 rand()는 기본 미시드(Math.random)라 첫 전투 길이가 매번 다르다. 길어지면 fx 유한 보관
+  // (engine.js FX_RETAIN=40)이 첫 battleStart를 밀어내 starts.length가 1이 된다(PR239 CI B 실패, 로컬 약 2.7%).
+  // 이 절은 battleId 단조성만 보므로 시드를 고정해 전투 길이를 결정적으로 만든다(고정 시 fx 32개 < 40).
+  both(room, (E) => { E.setSeed(12345); });
   startBattle(room);
   driveBattleToEnd(room, 60);
   const before = room.toSeatView(0).fx;

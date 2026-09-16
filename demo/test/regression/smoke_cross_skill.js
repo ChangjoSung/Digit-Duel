@@ -21,7 +21,7 @@ const BASE_REF=process.env.BASE_REF||"d614392";
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
 const J=x=>JSON.stringify(x);
-function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
+function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; if(T.applyArchStats) T.applyArchStats(m,r.arch,m.grade||1); } // #233 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
 const R=(T,id)=>T.ROSTER.find(r=>r.id===id);
 /* 표준 판: 내 하수인(12,4)·상대 하수인(11,4)·왕 둘, 볼 3·예비 없음 */
 function setup(T,mode){
@@ -45,7 +45,13 @@ const btns=T=>(T.byId("obBtns").children||[]).map(b=>b.textContent);
 const click=(T,txt)=>{ const b=(T.byId("obBtns").children||[]).slice().reverse().find(x=>x.textContent===txt); if(!b) throw new Error("버튼 없음: "+txt+" / "+J(btns(T))); b.onclick(); };
 /* rand 소비 횟수 — 시드 고정 후 fn 실행, 다음 rand 가 몇 번째 값인지로 역산 */
 function randConsumed(T,seed,fn,max){ T.setSeed(seed); const seq=[]; for(let i=0;i<(max||12);i++) seq.push(T.rand()); T.setSeed(seed); fn(); const n=T.rand(); const k=seq.indexOf(n); T.setSeed(null); return k; }
-function openBattle(T,a,d){ T.S.battle=null; T.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; a.cd=0; d.cd=0; a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0; T.TQ.length=0; T.startRounds(a,d,a,d); T.TQ.length=0; }
+function openBattle(T,a,d){ T.S.battle=null; T.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; a.cd=0; d.cd=0; a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0;
+  /* #233 (GDD-23 4.2 ①⑦ · 4.4): 이 파일은 교차 속성 판정을 보는 것이지 신규 회피·치명타·선턴을 보는 것이 아니다.
+     회피·치명은 0, 속도·등급은 동률로 고정해 접촉 개시자(A)를 선턴으로 굳힌다 — 레거시 말은 아키타입이 무작위
+     배정돼 속도가 흔들리면 __actCore 가 D 로 실행되어 D10 이 약 40% 확률로 떨어졌다(보고서 §11). */
+  if(a.dodge!==undefined){a.dodge=0; a.crit=0;} if(d.dodge!==undefined){d.dodge=0; d.crit=0;}
+  if(a.spd!==undefined&&d.spd!==undefined){d.spd=a.spd; d.grade=a.grade;}
+  T.TQ.length=0; T.startRounds(a,d,a,d); T.TQ.length=0; }
 /* 하네스는 load()마다 전역 setTimeout 을 그 로드의 TQ 로 갈아끼운다 — 여러 로드가 살아 있을 때 시뮬을 돌릴 로드로 타이머를 되돌린다 */
 const useTimers=X=>{ global.setTimeout=fn=>{ X.TQ.push(fn); return 0; }; };
 const fixed=(T,v)=>{ T.BAL.dmgVar=0; T.BAL.statusProb=v===undefined?1:v; T.BAL.shockProb=v===undefined?1:v; };
@@ -130,16 +136,16 @@ const T=H.load(htmlPath);
     return h0-d.hp; };
   giveSpecies(T,P.me,R(T,"M-F1")); giveSpecies(T,P.em,R(T,"M-W1"));
   P.me.skills[1]="lightning_effect";
-  ok(dmg(P.me,P.em,1)===29&&P.em.shock===1&&P.em.burn===0&&T.S.battle.blog.some(l=>/감전 — 다음 1라운드 후공/.test(l))&&!T.S.battle.blog.some(l=>/화상/.test(l)),"D1 불 본체의 감전 침 → 물 상대: 22×1.3=29 (강상성)·감전 부여·화상 아님 (AC3)");
+  ok(dmg(P.me,P.em,1)===26&&P.em.shock===1&&P.em.burn===0&&T.S.battle.blog.some(l=>/감전 — 다음 1라운드 후공/.test(l))&&!T.S.battle.blog.some(l=>/화상/.test(l)),"D1 불 본체의 감전 침 → 물 상대: 26 = round(22×1.3×(1-방어력10%)) (강상성)·감전 부여·화상 아님 — #233 GDD-23 4.2⑧ (def 도입 전 29) (AC3)");
   P.me.skills[1]="fire_effect";
-  ok(dmg(P.me,P.em,1)===17&&P.em.burn===T.BAL.burnRounds&&P.em.shock===0,"D1b 대조: 같은 불 본체의 잔불 표식 → 물: 22×0.75=17 (약상성)·화상");
+  ok(dmg(P.me,P.em,1)===15&&P.em.burn===T.BAL.burnRounds&&P.em.shock===0,"D1b 대조: 같은 불 본체의 잔불 표식 → 물: 15 = round(22×0.75×(1-방어력10%)) (약상성)·화상 — #233 GDD-23 4.2⑧ (def 도입 전 17)");
   giveSpecies(T,P.em,R(T,"M-G1")); P.me.skills[1]="lightning_effect";
-  ok(dmg(P.me,P.em,1)===17&&P.em.shock===1,"D2 불 본체의 감전 침 → 풀 상대: 번개는 풀에 약상성 17 (본체 불이면 29였을 값)");
+  ok(dmg(P.me,P.em,1)===20&&P.em.shock===1,"D2 불 본체의 감전 침 → 풀 상대: 20 = round(22×(1-방어력10%)) — 번개-풀은 5속성 순환에서 땅을 거쳐 더는 직접 물리지 않아 중립이다 — #233 GDD-23 4.1 (구 4각 순환에서는 약상성 17, 본체 불이면 26이었을 값)");
   // 방어 상성은 본체 속성: 물 상대가 (번개 기술을 배운) 불 본체를 때리면 ×1.3
   giveSpecies(T,P.em,R(T,"M-W1"));
-  ok(dmg(P.em,P.me,0)===34,"D3 물대포(26) → 번개 기술 배운 불 본체: 26×1.3=34 — 방어는 본체 속성 (AC3 후반)");
+  ok(dmg(P.em,P.me,0)===30,"D3 물대포(26) → 번개 기술 배운 불 본체: 30 = round(26×1.3×(1-방어력10%)) — 방어는 본체 속성 — #233 GDD-23 4.2⑧ (def 도입 전 34) (AC3 후반)");
   giveSpecies(T,P.em,R(T,"M-G1"));
-  ok(dmg(P.em,P.me,0)===20,"D3b 덩굴 채찍(26) → 불 본체: 26×0.75=20");
+  ok(dmg(P.em,P.me,0)===18,"D3b 덩굴 채찍(26) → 불 본체: 18 = round(26×0.75×(1-방어력10%)) — #233 GDD-23 4.2⑧ (def 도입 전 20)");
   // 상태 확률: 배운 감전 침은 shockProb, 배운 잔불 표식은 statusProb
   giveSpecies(T,P.em,R(T,"M-W1"));
   Object.assign(T.BAL,{statusProb:1,shockProb:0}); dmg(P.me,P.em,1); // 확률 경로 분리 검사 (감전만 0) — 결정론 고정이 아님
@@ -156,7 +162,7 @@ const T=H.load(htmlPath);
   const rate=(a,d,slot,N,base,pred)=>{ let hit=0, cons={}; for(let i=0;i<N;i++){ openBattle(T,a,d); const k=randConsumed(T,base+i,()=>T.execSlot("A",slot)); cons[k]=(cons[k]||0)+1; if(pred(d)) hit++; } return {rate:hit/N,cons}; };
   giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[1]="lightning_effect"; giveSpecies(T,P.em,R(T,"M-W1"));
   let r=rate(P.me,P.em,1,1000,50000,o=>o.shock===1);
-  ok(r.rate>=0.45&&r.rate<=0.55&&Object.keys(r.cons).join(",")==="2","D5 배운 감전 침 1000회 부여율 "+(r.rate*100).toFixed(1)+"% (45~55%) · rand 2회(분산+판정)");
+  ok(r.rate>=0.45&&r.rate<=0.55&&Object.keys(r.cons).join(",")==="4","D5 배운 감전 침 1000회 부여율 "+(r.rate*100).toFixed(1)+"% (45~55%) · rand 4회(회피+분산+치명타+판정) — #233 GDD-23 4.2①⑦ 신규 회피·치명타 판정 추가 (def 도입 전 2회)");
   giveSpecies(T,P.me,R(T,"M-L1")); P.me.skills[1]="fire_effect"; giveSpecies(T,P.em,R(T,"M-G1"));
   r=rate(P.me,P.em,1,1000,60000,o=>o.burn>0);
   ok(r.rate>=0.65&&r.rate<=0.75,"D5b 번개 본체가 배운 잔불 표식 1000회 화상 "+(r.rate*100).toFixed(1)+"% (65~75%)");
@@ -164,27 +170,27 @@ const T=H.load(htmlPath);
   fixed(T,0);
   giveSpecies(T,P.me,R(T,"M-F5")); P.me.skills[0]="water_effect"; P.me.skills[1]="lightning_heavy"; giveSpecies(T,P.em,R(T,"M-G1"));
   const k5=randConsumed(T,777,()=>{ openBattle(T,P.me,P.em); T.execSlot("A",3); });
-  ok(P.em.burn===T.BAL.burnRounds&&k5===0,"D6 불 지속형 잔류장: 공격 슬롯이 물·번개여도 본체 속성 화상 100%·판정 난수 0 (확률 키 0)");
+  ok(P.em.burn===T.BAL.burnRounds&&k5===3,"D6 불 지속형 잔류장: 공격 슬롯이 물·번개여도 본체 속성 화상 100%·상태 판정 난수 0(확률 키 0)이지만 회피+분산+치명타로 3회 소비 — #233 GDD-23 4.2①③⑦ (def 도입 전 0회)");
   giveSpecies(T,P.me,R(T,"M-L5")); P.me.skills[0]="fire_effect"; openBattle(T,P.me,P.em); T.execSlot("A",3);
   ok(P.em.shock===1&&P.em.burn===0,"D6b 번개 지속형 잔류장: 슬롯0이 잔불 표식이어도 감전 100%");
   // 배운 공격기의 부가효과 유지
   fixed(T);
   giveSpecies(T,P.me,R(T,"M-F1")); giveSpecies(T,P.em,R(T,"M-W1"));
   P.me.skills[0]="grass_effect"; openBattle(T,P.me,P.em); P.me.hp=50; T.execSlot("A",0);
-  ok(P.em.hp===100-20&&P.me.hp===58,"D7a 불 본체가 배운 흡수 새싹 → 물: 20(무상성)·실피해 40% 회복 8");
+  ok(P.em.hp===100-18&&P.me.hp===57,"D7a 불 본체가 배운 흡수 새싹 → 물: 18 = round(20×(1-방어력10%))(무상성)·실피해 40% 회복 7 — #233 GDD-23 4.2⑧ (def 도입 전 20·회복 8)");
   P.me.skills[0]="grass_heavy"; openBattle(T,P.me,P.em); T.execSlot("A",0);
-  ok(P.em.hp===100-34&&P.me.shield===10,"D7b 배운 가시 폭발: 34·자기 보호막 10");
+  ok(P.em.hp===100-31&&P.me.shield===10,"D7b 배운 가시 폭발: 31 = round(34×(1-방어력10%))·자기 보호막 10 — #233 GDD-23 4.2⑧ (def 도입 전 34)");
   giveSpecies(T,P.em,R(T,"M-G1")); P.me.skills[0]="water_heavy"; openBattle(T,P.me,P.em); P.em.shield=20; T.execSlot("A",0);
-  ok(P.em.hp===100-18&&P.em.shield===0&&T.S.battle.blog.some(l=>/보호막 대상 추가 위력 \+6/.test(l)),"D7c 배운 쇄도 파도 → 보호막 풀: 32+6=38, 흡수 20·HP 18");
+  ok(P.em.hp===100-14&&P.em.shield===0&&T.S.battle.blog.some(l=>/보호막 대상 추가 위력 \+6/.test(l)),"D7c 배운 쇄도 파도 → 보호막 풀: round((32+6)×(1-방어력10%))=34, 흡수 20·HP 14 — #233 GDD-23 4.2②⑧ (def 도입 전 흡수 20·HP 18)");
   P.me.skills[0]="lightning_heavy"; openBattle(T,P.me,P.em); P.em.burn=2; T.execSlot("A",0);
-  ok(P.em.hp===100-(Math.round(34*0.75)+6),"D7d 배운 연쇄 번개 → 화상 풀: 34×0.75=26 +6 = 32 (상성은 번개 기준)");
+  ok(P.em.hp===100-36,"D7d 배운 연쇄 번개 → 화상 풀: 36 = round((34+6)×(1-방어력10%)) — 번개-풀은 5속성 순환에서 중립(D2와 같은 사유) — #233 GDD-23 4.1·4.2②⑧ (구 4각 순환+def 도입 전 32)");
   // 기본 공격·시그니처는 본체 속성
   giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[0]="water_stable"; P.me.skills[1]="lightning_effect"; giveSpecies(T,P.em,R(T,"M-G1"));
-  ok(dmg(P.me,P.em,-1)===29,"D8a 기본 공격(폴백)은 본체 불 기준: 22×1.3=29 (공격 슬롯이 물·번개여도)");
+  ok(dmg(P.me,P.em,-1)===26,"D8a 기본 공격(폴백)은 본체 불 기준: 26 = round(22×1.3×(1-방어력10%)) — #233 GDD-23 4.2⑧ (def 도입 전 29) (공격 슬롯이 물·번개여도)");
   giveSpecies(T,P.me,R(T,"M-F2")); P.me.skills[0]="water_stable"; P.me.skills[1]="lightning_heavy";
-  ok(dmg(P.me,P.em,3)===59,"D8b 결정타(시그니처 40, atk25→45)는 본체 불 기준 45×1.3=59");
+  ok(dmg(P.me,P.em,3)===53,"D8b 결정타(시그니처 40, atk25→45)는 본체 불 기준 53 = round(45×1.3×(1-방어력10%)) — #233 GDD-23 4.2⑧ (def 도입 전 59)");
   giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[0]="water_stable"; openBattle(T,P.me,P.em); T.execSlot("A",3);
-  ok(P.em.hp===100-Math.round(30*1.3),"D8c 전술 연계(30)도 본체 불 기준 39");
+  ok(P.em.hp===100-35,"D8c 전술 연계(30)도 본체 불 기준 35 = round(30×1.3×(1-방어력10%)) — #233 GDD-23 4.2⑧ (def 도입 전 39)");
   // 플래시(속성 이펙트)는 판정 속성 — 실제 재생 환경을 흉내(msgBox nodeType) 내 boxShadow 기록
   const flashes=[]; const st=T.byId("bstage"); st.style=new Proxy({},{set(t,k,v){ if(k==="boxShadow"&&v) flashes.push(v); t[k]=v; return true; }}); T.byId("msgBox").nodeType=1;
   const liveOpen=(a,d)=>{ T.S.battle=null; T.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; d.burn=0; d.shock=0; T.TQ.length=0; T.startRounds(a,d,a,d); T.drain(); flashes.length=0; }; // 재생 환경에서는 큐를 비우지 않고 끝까지 재생
@@ -196,7 +202,7 @@ const T=H.load(htmlPath);
   // 레거시(기술 배열 없음) 경로 불변: 본체 속성 스킬
   const L=setup(T); fixed(T); L.me.skills=null; L.me.rosterId=null; L.me.element="fire"; L.me.skillAtk=35; L.me.cd=0; L.me.revealedSkills=null; giveSpecies(T,L.em,R(T,"M-G1"));
   openBattle(T,L.me,L.em); global.__actCore("skill");
-  ok(L.em.hp===100-46&&L.em.burn===T.BAL.burnRounds,"D10 레거시 속성 스킬 경로: 35×1.3=46·화상 — 본체 속성 그대로");
+  ok(L.em.hp===100-41&&L.em.burn===T.BAL.burnRounds,"D10 레거시 속성 스킬 경로: 41 = round(35×1.3×(1-방어력10%))·화상 — 본체 속성 그대로 — #233 GDD-23 4.2⑧ (def 도입 전 46)");
   // 사용 시 공개
   const Q=setup(T); giveSpecies(T,Q.me,R(T,"M-F1")); Q.me.skills[0]="water_stable"; giveSpecies(T,Q.em,R(T,"M-G1"));
   openBattle(T,Q.me,Q.em); T.execSlot("A",0);
@@ -259,8 +265,9 @@ const T=H.load(htmlPath);
   T.S.current=1; openBattle(T,U.em,U.me); T.finishByCapture("A"); T.TQ.length=0;
   const em2=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x!==U.me); giveSpecies(T,em2,R(T,"M-F1")); H.place(T,em2,10,4);
   const ally1=T.S.pieces.find(x=>x.owner===1&&x.type==="ally"); H.place(T,ally1,9,4); ally1.cap=T.S.reserve[1]; T.S.reserve[1]=null;
+  ally1.cap.dodge=0; ally1.cap.crit=0; em2.dodge=0; em2.crit=0; // #233 (GDD-23 4.2 ①⑦): 이 절은 교차 속성 판정을 보는 것 — 회피·치명타 미고정 시 setSeed(null) 구간이라 비결정적이었다
   T.S.battle=null; T.S.battlesUsed=0; T.startRounds(ally1,em2,ally1.cap,em2); T.TQ.length=0; T.execSlot("A",0);
-  ok(em2.hp===100-Math.round(Math.round(26*20/22)*1.3)&&ally1.cap.revealedSkills.includes(0),"F8 대리 출전한 예비 하수인의 물대포 → 불 상대: 물 판정 ×1.3 (24→31)");
+  ok(em2.hp===100-28&&ally1.cap.revealedSkills.includes(0),"F8 대리 출전한 예비 하수인의 물대포 → 불 상대: 28 = round(round(26×20/22)×1.3×(1-방어력10%)) — #233 GDD-23 4.2④⑧ (def 도입 전 31)");
   fixed(T,0.7); T.BAL.shockProb=0.5; T.BAL.dmgVar=0.2; T.setSeed(null);
 }
 
@@ -348,7 +355,7 @@ const T=H.load(htmlPath);
     return {cds:P.me.cds.slice(),rev:P.me.revealedSkills.slice(),sk:P.me.skills.slice()}; };
   let v=mut("no-skill-element",'function atkElOf(f,sk){ if(sk&&sk.cls) return null; return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element; }','function atkElOf(f,sk){ if(sk&&sk.cls) return null; return f.element; }');
   if(v.M){ const P=setup(v.M); fixed(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); giveSpecies(v.M,P.em,R(v.M,"M-W1")); P.me.skills[1]="lightning_effect"; openBattle(v.M,P.me,P.em); v.M.execSlot("A",1);
-    ok(P.em.hp===100-17&&P.em.burn>0&&P.em.shock===0,"L1 [음성] 판정 속성을 본체로 되돌리면 D1(29·감전) 검사기가 잡는다 (관측 "+(100-P.em.hp)+"·화상)"); } else ok(false,"L1 "+v.error);
+    ok(P.em.hp===100-15&&P.em.burn>0&&P.em.shock===0,"L1 [음성] 판정 속성을 본체로 되돌리면 D1(26·감전) 검사기가 잡는다 (관측 "+(100-P.em.hp)+"·화상) — #233 GDD-23 4.2⑧ (def 도입 전 17)"); } else ok(false,"L1 "+v.error);
   v=mut("cd-reset","    m.skills[i]=R.skill;","    m.skills[i]=R.skill; m.cds[i]=0;"); // 한 줄 앵커 (원문은 CRLF 이므로 개행을 앵커에 넣지 않는다)
   if(v.M){ const r=swapCheck(v.M); ok(r.cds[0]===0,"L2 [음성] 확정 시 쿨을 초기화하는 변형은 쿨 승계 검사기(신규 suite D절)가 잡는다");
     ok(r.sk[0]==="dragon_breath","L2b 변형판에서도 교체 자체는 일어난다 (검사기가 쿨만 본다는 확인)"); } else ok(false,"L2 "+v.error);

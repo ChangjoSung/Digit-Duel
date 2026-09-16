@@ -1,5 +1,13 @@
 # Digit-Duel — 인수인계 스냅샷
 
+## 현재 작업 — 2026-09-16 Issue #233
+
+CJ 승인 범위인 v0.4.11 #233 전투 엔진 구현 완료, Saturn 독립 QA PASS. 작업 브랜치 feature/233-combat-engine, [PR #239](https://github.com/ChangjoSung/Digit-Duel/pull/239) base milestone/v0.4.11. 필수 CI 최초 실행에서 발견된 기존 테스트의 회피·행동 순서 가정을 담당 부서가 보완한다. 최종 CI 결과는 PR Checks를 따른다. CJ QA 전 병합·배포·Issue 종료는 하지 않는다. #234~#238은 별도 지시 대기다.
+
+Mars는 Opus 5 high로 교체해 완료했고 Jupiter의 CJ 승인 복구도 성공했다. Saturn은 Sol capacity 오류 후 CJ의 명시 지시로 gpt-5.6-terra high에 인계해 클라이언트 309/0·서버 경계 547/0을 각각 1회 통과했다. 파일 쓰기 없는 검토이며 최종 Worker는 released했다. 실행 이력·보존된 터미널·범위 제한은 [Mercury 기록](../milestone/v0.4.11/issues/233/Mercury/report.md)과 [Saturn 결과](../milestone/v0.4.11/issues/233/Saturn/report.md)를 따른다.
+
+[필수 QA 운영 원칙](QA_MINIMUM_POLICY.md): 변경에 필요한 자동·헤드리스 우선, 무관한 수동 네트워크/Computer Use 반복 금지, 관련 수정·실패 없이 통과 검사 반복 금지, 필수 CI 유지. 원본 작업공간과 사용자 미커밋 파일·보호 경로·백업은 보존한다. 아래는 이전 이력이다.
+
 > **2026-09-11 · #201 함정 아이콘 후속 HotFix:** CJ가 실제 게임 함정 아이콘 제작·적용과 README 재촬영을 지시했다. Earth 원본 SVG, Mars 공통 표시·회귀·실제 온라인 보드 촬영, Saturn 독립 READ_ONLY QA를 한 제품 PR으로 묶는다. v0.4.8 태그는 보존하고 다음 패치는 v0.4.9다. [이번 검증·납품 기록](../hotfix/201/Mercury/trap-icon.md)과 [Issue201](https://github.com/ChangjoSung/Digit-Duel/issues/201)이 최신 PR·CI·출시·역병합 상태 원본이다. 기존 온라인 아트 복구는 [v0.4.8 납품](../hotfix/201/Mercury/delivery.md)에 보존한다. #201은 CJ 최종 플레이 확인 전 OPEN이며, Unity #182·#183은 CJ QA PASS·#195 CI는 Unity 트랙의 미출시 작업이다.
 
 > 2026-09-10 · Mercury(PD, GPT-6 Astra/high). #122·#124·#126은 PR160 통합 후 REVISE 1차(좌상단 뒤로가기·어두운 배경)와 2차(접촉·전투 규칙 4건·준비 탭·전투 뒤로가기)를 보완해 **CJ QA PASS/CLOSED**. #128·#130·#131·#146도 CJ QA PASS/CLOSED.

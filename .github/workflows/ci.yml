@@ -70,6 +70,13 @@ jobs:
       # 전투 무대는 재생 중 이벤트의 battleId 가 소유한다(battle=null·다음 전투 스냅샷이 먼저 와도 옛 무대 유지 → 끝나면 닫힘/교체/선택창).
       # 실제 디스패처 → render 래퍼 → 원본 battleModal() 경로로만 검증한다(S.battle 직접 대입 지름길 없음).
       # 실서버 2클라이언트 통합은 B 잡의 smoke_public_live.js, 실브라우저 증빙은 docs/milestone/v0.4.10/issues/217/Mars/report.md.
+      # smoke_issue233.js (#233, v0.4.11): 새 전투 엔진 집중 회귀 (GDD-23 3·4장 + 5.6 공통 규칙).
+      # 8스태·등급 성장·5속성 순환·피해 계산 ①~⑪(단일 반올림·상한)·방어막 층과 깨짐·반사/반격/지속/예고/즉사·
+      # 라운드 시작 시 확정되는 선턴·상태/버프 중첩과 지속·HP만 유지+⌛0 초기화·💫 가산·확정 효과를 본다.
+      # 실제 엔진 함수를 직접 부르거나 실제 전투 경로로 몰아서 본다 — 헬퍼 전용 대체물이 아니다.
+      # 검사의 유효성은 음성 대조로 확인했다: 메모리 밖 변형판 11종(균열 fresh 가드 제거·이중 반올림·
+      # 선턴 재계산·등급 계수 변경·회피 상한 제거·💫 가산 제거(gate 구현 2곳 각각)·방어막 FIFO 반전·
+      # 확정 치명 제거·쿨 초기화 제거·연쇄 금지 해제)을 모두 검출한다.
       - name: 턴 흐름·전투·온라인 규칙 회귀
         run: |
           set -e
@@ -88,6 +95,7 @@ jobs:
           node demo/test/regression/smoke_issue146.js
           node demo/test/regression/smoke_public_rooms.js
           node demo/test/regression/smoke_fx_consumer.js
+          node demo/test/regression/smoke_issue233.js
       # smoke_online_art.js (#201, v0.4.8 HotFix): 온라인에서 개별 이미지가 한 번 실패해도 그 자산이 영구히
       # 이모지·텍스트로 남지 않는다. 예산은 **파일 단위**다 — 연속 실패 3회 또는 수명 누적 8회에서 영구 결손으로
       # 굳고, 백오프로 간격을 늘리며, 파일당 예약·조회는 각각 1개다. 응답이 오지도 끊기지도 않는 요청은

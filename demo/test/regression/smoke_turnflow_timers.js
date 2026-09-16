@@ -49,7 +49,11 @@ const mbLog=[]; { const mb=T.byId("msgBox"); let v=""; Object.defineProperty(mb,
   ok(T.FX.cur&&T.FX.cur.title==="new","2e 옛 게임 타이머가 새 게임 항목을 끝내지 않는다 (세대 토큰)");
   await untilUnlocked(MS+WD+500); ok(!T.fxLocked(),"2f 새 항목은 제 시간에 해제");
   /* 3. 접촉 → 전투 전체 타임라인 */
+    /* #233 (GDD-23 4.2 ① · 4.4) 결정론 픽스처: 이 파일은 시드가 없어 선턴(속도)과 적중(회피)이 실행마다
+     달라진다. 속도·등급을 전투 시작 전에 동률로 맞춰 A 를 선턴으로 굳히고 방어측 회피율을 0 으로 둔다.
+     회피율 0 은 ① 의 rand() 소비를 바꾸지 않는다. 측정·순서 단언은 그대로다. 보고서 §10. */
   board("pvp"); const a=first(0,"minion"), d=first(1,"minion"); H.place(T,a,8,4); H.place(T,d,6,4); mbLog.length=0;
+  d.spd=a.spd; d.grade=a.grade; d.dodge=0;
   const t3=now(); T.doMove(a,7,4);
   ok(!!T.S.battle&&T.fxLocked(),"3a 이동 → 접촉 → 전투 진입 (규칙 즉시) · 잠금");
   let n=0; while(T.fxLocked()&&n++<200) await sleep(10);
@@ -95,7 +99,11 @@ const mbLog=[]; { const mb=T.byId("msgBox"); let v=""; Object.defineProperty(mb,
   /* 7. 5.5 방어막 → HP 표시 단계 (실제 타이머): 실제 전투 행동에서 방어막 바 쓰기 시각 < HP 바 쓰기 시각, 간격 ≥ barStep, HP 쓰기는 피해 그룹(damageFx) 안에서 1회 */
   T.BAL.fx.barStep=30; // damageFx(70ms) 안에서 끝나도록 (#125 제품 값 barStep 350 < damageFx 1200 과 같은 비율 조건).
   // 이 절은 축소한 시간으로 2단 표시의 **관계**만 본다. 제품 값(1200/350) 자체의 사이 여유는 smoke_fx_timing.js D절이 실제 타이머로 찍는다.
+    /* #233 (GDD-23 4.2 ① · 4.4) 결정론 픽스처: 이 파일은 시드가 없어 선턴(속도)과 적중(회피)이 실행마다
+     달라진다. 속도·등급을 전투 시작 전에 동률로 맞춰 A 를 선턴으로 굳히고 방어측 회피율을 0 으로 둔다.
+     회피율 0 은 ① 의 rand() 소비를 바꾸지 않는다. 측정·순서 단언은 그대로다. 보고서 §10. */
   board("pvp"); const a7=first(0,"minion"), d7=first(1,"minion"); H.place(T,a7,8,4); H.place(T,d7,6,4);
+  d7.spd=a7.spd; d7.grade=a7.grade; d7.dodge=0;
   T.doMove(a7,7,4); n=0; while(T.fxLocked()&&n++<200) await sleep(10); // 접촉 → 카운트다운 → 라운드 배너 → 메뉴
   const B7=T.S.battle; ok(!!B7&&!T.fxLocked()&&B7.phase===0,"7a 전투 메뉴 활성 (공격자 A 행동)");
   B7.fd.shield=10; B7.dispShD=10; // 방어자에게 방어막 10 (표시 기준값도 함께 — 실제 경로에서는 방어막 획득 메시지의 applyFx 가 채운다)
