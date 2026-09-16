@@ -238,3 +238,20 @@ CI run 35068734897 / job 104704970948, head `4dcbcc1`, 85 pass 1 fail. **로컬�
 - **같은 파일의 다른 무작위 전제 점검**: 순서에 기대는 곳은 D10(`__actCore`)과 `pick5`(line 380, `aiBattleAction()` 이 actorOfPhase 소유자로 행동) 둘뿐이다. `pick5` 는 양측이 M-F1·M-W1 로 **둘 다 std(spd 10)** 이라 이미 동률·결정론이어서 손대지 않았다. 나머지 17개 `openBattle` 호출은 `execSlot("A",…)` 로 측을 명시해 순서와 무관하다.
 - **검증**: `node demo/test/regression/smoke_cross_skill.js` → **exit 0 · 86 pass / 0 fail** (수정 후 1회, 출력·종료코드 동시 캡처). 전체 스위트·반복·브라우저는 하지 않았다.
 - **제품 코드 무변경** — 픽스처 전제 문제이며 클라이언트 결함이 아니다. Git·서버·아트·지연 보고서 미접촉.
+
+
+---
+
+## 12. 후속 — PR239 CI A `smoke_cycle5` E6 + 정적 감사 (2026-09-16, `ctx_b41dc9afdff8`)
+
+run 35069283855 / job 104706717322, head `9aa219d`, 69 pass 1 fail.
+
+- **E6 원인**: `window.__flee()` 는 **그 라운드 행동자**의 클로저다. 공격자 `m3` 의 속도는 무작위 로스터 추첨에서 오므로 방어자보다 느리면 선턴이 D 가 되고, 도망이 P2 에 귀속돼 `byPlayer[0].fleeTries` 가 0 이 된다. E4·E5 는 앞선 dispatch 에서 이미 같은 방식으로 고쳤고 E6 만 남아 있었다.
+- **수정**: `e3.spd=m3.spd; e3.grade=m3.grade;` 를 `startRounds` **앞에** 추가해 동률 → 접촉 개시자(A=P1) 선턴으로 굳혔다. 귀속 단언은 그대로 두었고 전역 난수를 고정하거나 단언을 약화하지 않았다.
+- **정적 감사 (CI A 24파일)**: 행동자 의존 진입점(`__flee`/`__pass`/`__throwBall`/`__actCore`/`__act`/`aiBattleAction`) 호출부를 전수 조사했다.
+  · `attack_balance`·`memo`·`own_side` 의 매치는 **문자열 리터럴이지 호출이 아니다**(HTML 단언·소스 검사·키 목록).
+  · `minion_art` 는 `setup()` 이 `freshPlay` **이전에** `setSeed(20260907)` 을 걸어 로스터 추첨까지 결정론이다.
+  · `cross_skill`·`turnflow`·`turnflow_timers`·`fx_timing`·`shock`·`issue233`·`issue146`·`search_packages` 는 앞선 dispatch 에서 이미 회피·치명 0 고정 또는 속도·등급 동률 고정이 들어가 있다.
+  · 나머지 17개 `openBattle` 류 호출은 `execSlot("A",…)` 로 **측을 명시**해 순서와 무관하다.
+- **실제 실행 기록(정직하게)**: 진단 목적으로 전역 PRNG 시드를 바꿔 로스터 추첨을 달리한 래퍼로 `cycle5·issue146·search_packages·online_sync·orientation_audit·public_rooms·minion_art` 7파일 × 시드 3종 = **21회**를 돌렸고 전부 통과했다. 그 뒤 PD 지시로 추가 배치·반복 실행을 즉시 중단했다. 변경 파일 최종 검증은 `node demo/test/regression/smoke_cycle5.js` **1회 · exit 0 · 70 pass / 0 fail**.
+- **제품 무변경** — 픽스처 전제 문제이며 클라이언트 결함이 아니다. Git·서버·아트·지연 보고서 미접촉.

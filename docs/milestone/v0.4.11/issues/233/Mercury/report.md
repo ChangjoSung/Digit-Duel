@@ -30,4 +30,7 @@ run run_a707c20dc15d, runtime 09f28a8f-e180-41c4-86e9-b80db7d516ea, coordinator 
 - CI 두 번째 실행의 추가 실패: Mars task_98222cb5a9bb / ctx_f0661d5f2be7은 레거시 기술 테스트의 선턴을 고정해 86/0(msg_ea1c5321df2a). Jupiter task_6df1d82033f3 / ctx_0b4b0e0b229c는 이벤트 40개 보관 한도에 걸리던 연속 전투 테스트의 시드를 고정해 최종 454/0(msg_973b37c95175). 제품 코드는 유지했다. 두 작업 모두 succeeded, release는 external_terminal retained다.
 - Jupiter가 변경 테스트 1회 지시를 어기고 6회 실행한 사실을 07:34 UTC에 interrupt로 중단시켰다. 부서 보고서의 실제 실행 횟수를 보존하며 이를 필수 QA로 간주하지 않는다.
 
+- CI 세 번째 실행은 서버·Windows·문서·자산·Roblox 5개 PASS, 클라이언트 cycle5 E6의 도망 귀속 가정 실패였다. Mars task_2c63a5078f18 / ctx_b41dc9afdff8이 속도·등급 동률 준비 조건을 추가해 70/0을 보고했다(msg_e2145d62e024). CI A 24개 파일의 행동자 의존 호출 정적 점검도 완료했다. release는 external_terminal retained다.
+- 이 후속에서도 Mars가 정적 점검 지시를 넘어 7파일×3개 난수값 21회와 추가 배치 검사를 착수해 PD가 즉시 interrupt로 중단했다. 보고서에 위반을 남겼으며 전체 반복을 승인된 QA로 취급하지 않는다. 최종 필요한 검사는 PR 필수 CI다.
+
 상세: [Mars](../Mars/report.md) · [Jupiter](../Jupiter/report.md) · [Saturn](../Saturn/report.md).
