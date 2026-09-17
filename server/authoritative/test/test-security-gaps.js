@@ -179,7 +179,9 @@ function resolveSyncModals(room, seatHint, maxSteps) {
     '전투 중인 상대 하수인의 type/rosterId — 이미 units 등급 C-2(name이 종을 유일 특정)로 나가는 값과 동치라 새 노출이 아님');
 }
 
-// 왕 vs 왕 본체 전투(실제 "출전 공개" 동기화 모달 경유) — rosterId/artRosterId 둘 다 null, skills=null 유지(회귀 없음)
+// 왕 vs 왕 본체 전투(실제 "출전 공개" 동기화 모달 경유) — rosterId/artRosterId 둘 다 null.
+// #234 (GDD-23 3.5·6.2): 왕·동료 본체도 스킬 칸을 가진다(왕 1차 기본기 + 2차 속성 스킬 = 2칸, 동료 사망 시 🪄 추가).
+// 종전 "skills=null(기본 공격 경로)" 단언은 규칙 변경으로 대체한다 — 기대값을 낮춘 것이 아니라 GDD 6.2 의 칸 구성을 고정한다.
 {
   const room = H.startedRoom(21);
   const T = room.engine;
@@ -191,7 +193,14 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   ok(!!v.battle, '왕 vs 왕: 동기화 모달(출전 공개) 확인 후 battle 시작');
   ok(v.battle.a.bodyFight === true && v.battle.a.type === 'king' && v.battle.a.rosterId === null && v.battle.a.artRosterId === null,
     '왕 본체: bodyFight=true, rosterId/artRosterId 둘 다 null: ' + JSON.stringify(v.battle.a));
-  ok(v.battle.a.skills === null, '왕 본체 skills=null(기본 공격 경로, 회귀 없음)');
+  const kingEl = byId(T, king0.id).element;
+  ok(Array.isArray(v.battle.a.skills) && v.battle.a.skills.length === 2 && v.battle.a.skills.every((s) => s.revealed === true)
+    && v.battle.a.skills[0].id === 'K-1' && v.battle.a.skills[1].id === 'K-2-' + kingEl,
+    '#234 6.2 왕 본체 자기 뷰: 2칸 [K-1, K-2-속성] 전부 공개: ' + JSON.stringify(v.battle.a.skills));
+  const vo = room.toSeatView(1);
+  ok(Array.isArray(vo.battle.a.skills) && vo.battle.a.skills.length === 1 && vo.battle.a.skills[0].revealed === false
+    && Object.keys(vo.battle.a.skills[0]).join() === 'revealed',
+    '#234 7.9 상대 왕 본체(아직 스킬 미사용): 칸 수·종류 없이 자리표시 하나: ' + JSON.stringify(vo.battle.a.skills));
 }
 
 // 포획 하수인 대리 출전(vipChoice 실제 모달 경유) — bodyFight=false, artRosterId만 노출, 대리 출전 skills 버그 수정 확인

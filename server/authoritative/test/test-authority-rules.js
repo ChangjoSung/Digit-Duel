@@ -155,7 +155,14 @@ function firstOf(T, owner, type) {
   const T = room.engine;
   const cur = T.S.current, def = 1 - cur;
   const attId = firstOf(T, cur, 'minion').id, dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.initBattle(byId(E, attId), byId(E, dId)); E.S.battle.fa.cds = [2, 0, 0, 0]; E.S.inv[cur] = []; E.S.balls[cur] = 0; E.S.pkgs[cur].itemGift = 0; E.battleModal(); });
+  /* #234 (GDD-23 3.4·6장): 경기 시작 하수인은 ⭐1 = 스킬 1칸이다. 이 절은 "4칸 전투원의 쿨 슬롯·레거시 kind 매핑" 합법성을
+     보므로, 종전 암묵 전제(모든 하수인 4칸)를 픽스처에 명시한다 — 1칸 그대로 슬롯0 을 쿨로 막으면 합법 칸이 없어 pass 가
+     정당하게 수락된다(규칙 변경이지 서버 결함이 아니다). 사용 조건이 없는 레거시 4칸 키트(포획 픽스처와 같은 archSkills)를 쓴다. */
+  both(room, (E) => {
+    E.initBattle(byId(E, attId), byId(E, dId));
+    const fa = E.S.battle.fa; fa.skills = E.archSkills('std', fa.element); fa.cds = [2, 0, 0, 0]; fa.revealedSkills = [];
+    E.S.inv[cur] = []; E.S.balls[cur] = 0; E.S.pkgs[cur].itemGift = 0; E.battleModal();
+  });
   for (const a of [{ t: 'act', k: 0 }, { t: 'act', k: 7 }, { t: 'act', k: 'basic' }, { t: 'item', i: 0 }, { t: 'ball' }, { t: 'pass' }, { t: 'pkgOpen', kind: 'itemGift' }, { t: 'pkgOpen', kind: 'nope' }]) {
     const before = snap(room);
     const res = act(room, cur, a);
@@ -169,7 +176,10 @@ function firstOf(T, owner, type) {
   ok(res.ok && !res.noop, "4슬롯 전투원의 레거시 'skill'(슬롯1)은 수락");
 }
 
-// ===== P1 왕/동료 본체 act 'basic' — v3: _sanitizeAction이 문자열 k를 E_BAD_ENVELOPE로 거부 =====
+// ===== P1 왕/동료 본체 act — v3: _sanitizeAction이 문자열 k를 E_BAD_ENVELOPE로 거부 =====
+// #234 (GDD-23 3.5·6.2): 왕 본체는 이제 스킬 2칸(K-1 기본기 · K-2-속성)을 가진다(전투 개시 syncLeaderSkills).
+// 종전 "기술 슬롯 없음 → 숫자 슬롯·'common' 거부, 'basic' 은 순수 기본 공격" 기대는 규칙 변경으로 다음으로 대체한다:
+// 숫자 슬롯 0 수락 · 없는 칸(2·'common') 거부 · 합법 칸이 있으므로 pass 거부 · 레거시 'basic' = 슬롯0 수락.
 {
   const room = H.startedRoom(106);
   const T = room.engine;
@@ -181,28 +191,24 @@ function firstOf(T, owner, type) {
   ok(!!reveal && reveal.owner === cur && /출전 공개/.test(reveal.html), '왕 출전 공개 모달은 공격자 소유: ' + JSON.stringify(reveal && reveal.owner));
   if (reveal) ok(act(room, cur, { t: 'modal', seq: reveal.seq, i: 0 }).ok, '공격자 "전투 시작" 수락');
   /* #233 (GDD-23 4.4): 선턴은 속도로 갈린다 — 왕(spd 8)은 표준형 하수인(spd 10)보다 느려 방어자가 선턴이다.
-     이 절의 목적은 왕 본체의 행동 어휘이므로 순서를 가정하지 않고 실제 행위자를 따라가 왕의 차례까지 진행시킨다.
-     (진단 상세는 Jupiter 보고서 8장) */
+     이 절의 목적은 왕 본체의 행동 어휘이므로 순서를 가정하지 않고 실제 행위자를 따라가 왕의 차례까지 진행시킨다. */
   if (T.S.battle && T.actorOfPhase() === 'D') {
     const dSlot = T.S.battle.fd.skills.findIndex((_, i) => T.slotUsable(T.S.battle.fd, i, 'D'));
     ok(act(room, def, { t: 'act', k: dSlot }).ok, '방어자가 선턴을 소비(속도 10 > 왕 8, GDD-23 4.4)');
   }
-  ok(!!T.S.battle && !T.S.battle.fa.skills && T.actorOfPhase() === 'A', '픽스처: 왕 본체(기술 슬롯 없음) 공격 차례, 모달 없음: ' + JSON.stringify(room._pendingModal()));
-  for (const a of [{ t: 'act', k: 0 }, { t: 'act', k: 'common' }, { t: 'pass' }]) {
+  const fa = T.S.battle && T.S.battle.fa;
+  ok(!!fa && Array.isArray(fa.skills) && fa.skills.length === 2 && T.actorOfPhase() === 'A' && !room._pendingModal(),
+    '픽스처: 왕 본체(스킬 2칸, GDD-23 6.2) 공격 차례, 모달 없음: ' + JSON.stringify(fa && fa.skills));
+  for (const a of [{ t: 'act', k: 2 }, { t: 'act', k: 3 }, { t: 'act', k: 'common' }, { t: 'pass' }]) {
     const before = snap(room);
     const res = act(room, cur, a);
-    ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, `왕 본체의 ${JSON.stringify(a)} 거부·불변`);
-  }
-  if (!T.S.battle.fa.skillAtk) {
-    const before = snap(room);
-    const res = act(room, cur, { t: 'act', k: 'skill' });
-    ok(!res.ok && snap(room) === before, "skillAtk 없는 왕의 'skill' 거부·불변");
+    ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, `2칸 왕 본체의 ${JSON.stringify(a)} 거부·불변(없는 칸·합법 칸 보유)`);
   }
   const hpBefore = T.S.battle.fd.hp, seqBefore = T.S.battle.actSeq || 0, rev = room.revision;
   const res = act(room, cur, { t: 'act', k: 'basic' });
-  ok(res.ok && !res.noop && room.revision === rev + 1, "왕 본체 기본 공격 act k='basic' 수락: " + JSON.stringify(res.reason));
+  ok(res.ok && !res.noop && room.revision === rev + 1, "왕 본체 레거시 act k='basic'(= 슬롯0 K-1) 수락: " + JSON.stringify(res.reason));
   const B = room.engine.S.battle;
-  ok(!B || B.fd.hp < hpBefore || (B.actSeq || 0) > seqBefore, '기본 공격이 실제로 적용됨(피해 또는 차례 진행)');
+  ok(!B || B.fd.hp < hpBefore || (B.actSeq || 0) > seqBefore, '슬롯0 기본기가 실제로 적용됨(피해 또는 차례 진행)');
 }
 
 // ===== P1 배치 검증 — v3: 중복/미지 로스터·말 수 불일치를 수락하고 applyNetSetup이 무작위 대체해 경기 시작 =====

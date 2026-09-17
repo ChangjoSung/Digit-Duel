@@ -53,6 +53,7 @@ const ACTION_TYPES = new Set([
 const SETUP_ONLY_ACTIONS = new Set(['auto', 'clear', 'roster', 'setupDone', 'selTray']);
 const ACT_KINDS = new Set(['basic', 'skill', 'common']); // __actCore의 레거시 문자열 kind (왕·동료 본체 UI가 'basic'/'skill'을 보낸다)
 const PKG_KINDS = new Set(['itemGift', 'battleBuff']);
+const RECRUIT_SWAP_STAGES = new Set(['skill', 'target', 'slot']); // demo/index.html recruitModal 의 기술 교체 단계 (#234 닫힘)
 const ROSTER_SIZE = 6; // applyNetSetup: data.roster.length===6
 
 function now() { return Date.now(); }
@@ -85,6 +86,10 @@ function catalog() {
 // (① 회피 · ③ 분산 · ⑦ 치명) 소비하므로, 두 좌석 엔진의 난수 소비가 한 번이라도 어긋나면 이후 모든 판정이 갈린다 —
 // 그 어긋남이 상태에 드러나는 지점(방어막 층 순서 · 균열/경화 잔여 · 예고 피해 대기열)을 전부 덮지 않으면
 // fail-closed VOID 가 발동하지 못하고 두 좌석이 조용히 다른 경기를 보게 된다.
+// #234 — demo/index.html V2_TIMED 와 같은 목록(harness 가 노출하지 않아 사본을 둔다. 드리프트는 경계 검사가 잡는다).
+const V2_TIMED_KEYS = Object.freeze(['absorbR', 'spdBuffR', 'spdDownR', 'healCutR', 'vanguardTurn', 'retaliateBurnR', 'mirrorR',
+  'reflectR', 'counterR', 'overloadR', 'nullHitR', 'burrowR', 'sandStormR', 'ringR', 'enduredR', 'breedR', 'fortressR',
+  'immuneShockR', 'mossR']);
 function lockstepDigest(T) {
   const S = T.S;
   const B = S.battle;
@@ -92,6 +97,31 @@ function lockstepDigest(T) {
   // #233 — 전투원이 지니는 8스탯(3.2·3.3·3.5). 등급 성장(3.4)과 포획·예비 승계로 값이 갈릴 수 있어 함께 본다.
   const stats = (f) => [f.def || 0, f.spd || 0, f.dodge || 0, f.crit || 0, f.statusPct || 0,
     f.grade === undefined ? null : f.grade];
+  /* #234 (GDD-23 6장 스킬 64종) — 새 전투 상태. Mars 보고서 11.1 목록 전부. 뷰에는 싣지 않는다(서버 내부 전용).
+     · 난수 소비를 바꾸는 것(최우선): nextShockForce(감전 판정 rand 생략) · sandStormR(부여 확률 절반) · onceUsed(전투당 1회 —
+       합법 슬롯 집합이 바뀌어 선택 분기) · sleepNext · nullifyNext(행동 전체 무효). 한쪽 좌석에만 남으면 그 행동의 rand() 호출
+       수가 어긋나 이후 모든 판정이 갈린다.
+     · 지속 카운터는 X 와 XFresh(5.6 부여 라운드 제외 게이트)를 **둘 다** 본다 — #233 의 다른 게이트와 같은 이유.
+     · 세기·소유자는 지속과 따로 본다(지속이 0 이 될 때 세기를 내리는 엔진 모양이 같다).
+     · mitigated 는 소수 누계라 반올림하지 않고 원값 그대로 넣는다 — 두 엔진은 같은 연산 순서로 같은 double 을 만든다.
+     엔진에 필드가 없으면(초기화 전 픽스처) 0/false/null 로 떨어진다 — 서버는 없는 필드를 만들지 않는다.
+     목록 누락은 test-issue234-boundary.js 가 demo/index.html 의 V2_TIMED·V2_TIMED_MAG·resetV2 본문을 읽어 잡는다. */
+  const num = (v) => (typeof v === 'number' ? v : (v ? 1 : 0));
+  const timed = (f) => V2_TIMED_KEYS.map((k) => [num(f[k]), !!f[k + 'Fresh']]);
+  const v2 = (f) => [
+    timed(f),
+    // 세기·소유자
+    num(f.absorbPct), num(f.spdBuff), num(f.spdDown), num(f.healCut), num(f.nullHitN), num(f.mossPct),
+    f.mossBy === undefined ? null : f.mossBy, f.breedBy === undefined ? null : f.breedBy, num(f.counterRound),
+    num(f.burnMag), num(f.burnBonus), !!f.burnNoCure, num(f.weakenMag),
+    // 다음 피해 스킬 1회성 (critForce 는 위에서 따로 본다)
+    num(f.nextDmgUp), num(f.nextPowUp), num(f.nextFlat), !!f.nextShockForce, !!f.sandWind,
+    // 난수·행동 분기
+    !!f.sleepNext, !!f.nullifyNext, f.onceUsed ? Object.keys(f.onceUsed).filter((k) => f.onceUsed[k]).sort() : [],
+    // 전투 누계(위력에 들어감)
+    num(f.shocksDealt), num(f.mitigated), num(f.healTotal), num(f.sporePending), num(f.burrowRound), !!f.enduredUsed,
+    !!f.fleeLock, num(f.permShockR), f.permShockBy === undefined ? null : f.permShockBy,
+  ];
   const fighter = (f) => (f ? {
     hp: f.hp, maxHp: f.maxHp, shield: f.shield || 0, burn: f.burn || 0, weaken: f.weaken || 0, shock: f.shock || 0,
     cd: f.cd || 0, cds: f.cds || null, dmgCut: f.dmgCut || 0, focusCharge: !!f.focusCharge, vulnMark: !!f.vulnMark,
@@ -127,7 +157,8 @@ function lockstepDigest(T) {
     critForce: !!f.critForce, dodgeForce: !!f.dodgeForce,
     // #233 (GDD-23 4.4) 순서 효과 — decideFirstSide 가 fighterOrderCat 으로 읽어 선턴을 가른다.
     // #234 전까지 이를 켜는 기술은 없지만 엔진 계약이 이미 읽고 있으므로 요약도 함께 덮는다.
-    vanguardTurn: !!f.vanguardTurn,
+    // #234 — vanguardTurn 은 boolean → **남은 라운드 숫자**(V2_TIMED)로 바뀌었다. `!!` 로 접으면 1R 과 2R 이 같게 읽힌다.
+    vanguardTurn: typeof f.vanguardTurn === 'number' ? f.vanguardTurn : (f.vanguardTurn ? 1 : 0),
     // #233 3.2 — 방어막 "층". 합계(f.shield)만 보면 층 경계가 다른 두 상태를 같다고 판정한다: 다음 타격이 깎는
     // 층 수(깨짐 판정)와 남는 잔량이 달라지므로 순서와 획득원을 그대로 넣는다.
     shieldLayers: (f.shieldLayers || []).map((l) => [l.amt, l.src]),
@@ -137,10 +168,14 @@ function lockstepDigest(T) {
        갈린다(그때는 이미 요약으로 잡을 수 없는 HP 차이다). 그래서 항목의 안정 식별자(tag)를 함께 읽는다.
        tag 는 **엔진이 붙여 주는 값**이고(Mars 소유 계약, msg_dd8111ac4d2c 로 제안·조회) 아직 없으면 null 로
        떨어져 종전과 같은 감지력을 유지한다 — 서버는 없는 필드를 만들지 않고, 붙는 순간 감지력만 올라간다. */
-    pendingFx: (f.pendingFx || []).map((e) => [e.roundsLeft, e.tag === undefined ? null : e.tag]),
+    // #234 — atStart(해일 예고): 0 이 되어도 다음 라운드 시작까지 남는 항목. 같은 roundsLeft·tag 라도 발동 시점이 다르다.
+    pendingFx: (f.pendingFx || []).map((e) => [e.roundsLeft, e.tag === undefined ? null : e.tag, !!e.atStart]),
     // 전투 판정용 유효 피해 흡수 누계(BAL.absorbCapPct). 규칙 자체는 현행이지만 #233의 층 소모가 이 값의 증가
     // 경로를 바꿨고, 원래도 요약에서 빠져 있어 누적 차이를 못 잡았다 — 여기서 함께 메운다.
     absorbed: f.absorbed || 0,
+    // 화상 부여자(속성 반격·왕국 효과가 읽는다)·전투 버프 — #234 이전부터 규칙 상태였으나 요약에 없었다.
+    burnBy: f.burnBy === undefined ? null : f.burnBy, atkBuff: !!f.atkBuff,
+    v2: v2(f),
     stats: stats(f),
   } : null);
   return JSON.stringify({
@@ -158,6 +193,8 @@ function lockstepDigest(T) {
       firstSide: B.firstSide || null,
       fa: fighter(B.fa), fd: fighter(B.fd), itemRoundA: !!B.itemRoundA, itemRoundD: !!B.itemRoundD,
       ballThrowA: !!B.ballThrowA, ballThrowD: !!B.ballThrowD, buffA: B.buffA || null, buffD: B.buffD || null,
+      // #234 4.3 반사·반격 "한 행동 1회" 게이트 — 마지막으로 발동한 actSeq. 한쪽만 서 있으면 같은 행동의 두 번째 반사가 갈린다.
+      reflectSeq: B.reflectSeq === undefined ? null : B.reflectSeq, counterSeq: B.counterSeq === undefined ? null : B.counterSeq,
     } : null,
     fleePick: S.fleePick ? { owner: S.fleePick.owner, cands: S.fleePick.cands.slice(), token: S.fleePick.token } : null,
     events: (S.events || []).map((e) => [e.r, e.c, e.kind, !!e.consumed]),
@@ -172,7 +209,11 @@ function lockstepDigest(T) {
     // 스탯을 승계해 대리 출전하므로(3.3) cap 튜플도 함께 넓힌다.
     pieces: S.pieces.map((p) => [p.id, p.owner, p.type, p.rosterId, p.element, p.hp, p.maxHp, p.r, p.c, p.placed, p.alive,
       !!p.revealed, p.immobile, !!p.healing, p.skills || null, p.cds || null,
-      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap)] : null, ...stats(p)]),
+      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap)] : null, ...stats(p),
+      // #234 6.2·6.4 — 동료 종류는 스킬 세트(AS/SH)를, 속성 선택 여부는 미선택 규칙 재적용을, legend 는 전설 스킬·아키타입을 가른다.
+      // 공개 기록(revealedSkills)은 syncLeaderSkills 가 칸 교체 때 걸러 내는 말 단위 상태라 함께 본다.
+      p.allyKind === undefined ? null : p.allyKind, !!p.leaderElChosen, p.legend === undefined ? null : p.legend,
+      p.revealedSkills || null]),
   });
 }
 
@@ -548,6 +589,12 @@ class Room {
       if (seatIndex !== pm.owner) return err('E_NOT_ACTOR');
       if (a.t !== 'modal') return err('E_ILLEGAL_ACTION');
       if (a.seq !== pm.seq || a.i < 0 || a.i >= pm.count || pm.disabled[a.i]) return err('E_ILLEGAL_ACTION');
+      /* #234 (CJ 결정 2026-09-17 · GDD-23 8.1③) 탐색 recruit 의 '기술 교체'는 닫혔다(V2_INTERP.recruitSkillSwap=false).
+         루트 화면의 그 버튼은 disabled 로 그려져 위에서 이미 거부된다. 여기서는 기술 교체 단계(skill·target·slot)가 어떤
+         경로로든 열려 있으면 그 화면의 응답 전체를 거부한다 — 코어(__recruitCore)는 그 step 을 조용히 무시하므로 수락하면
+         상태 불변 noop 이 되고, 규칙상 존재하지 않는 선택지를 서버가 판정 통과시키는 셈이 된다. */
+      const R = S.recruit;
+      if (R && T.V2_INTERP && T.V2_INTERP.recruitSkillSwap === false && RECRUIT_SWAP_STAGES.has(R.stage)) return err('E_ILLEGAL_ACTION');
       return { ok: true, action: { t: 'modal', seq: a.seq, i: a.i } };
     }
     if (a.t === 'modal') return err(seatIndex === T.netActor() ? 'E_ILLEGAL_ACTION' : 'E_NOT_ACTOR');
@@ -594,6 +641,9 @@ class Room {
           return canThrow ? { ok: true, action: { t: 'ball' } } : err('E_ILLEGAL_ACTION');
         }
         case 'flee':
+          // #234 가시 덩굴 3차 '뿌리 고정' — 이 전투에서는 도망칠 수 없다(__fleeCore 가 조용히 무시하고 UI 버튼도 비활성).
+          // 서버가 먼저 거부해 판정 통과·상태 불변 noop 프레임이 생기지 않게 한다.
+          if (f.fleeLock) return err('E_ILLEGAL_ACTION');
           return { ok: true, action: { t: 'flee' } };
         case 'pass': {
           const allLocked = !!f.skills && !f.skills.some((_, i) => T.slotUsable(f, i, side));
@@ -651,13 +701,16 @@ class Room {
   }
 
   // 전투 기술 입력의 합법성 — __actCore의 kind 해석(숫자 슬롯 / 'basic'·'skill'·'common')과 UI 버튼 활성 조건을 함께 본다.
+  /* #234 (GDD-23 3.5·6.2) — 왕·동료 본체도 스킬 칸을 가진다(왕 2칸 + 🪄, 동료 2칸 + 🪄; 전투 개시 syncLeaderSkills).
+     칸 수는 전투원마다 1~4 로 가변이므로 **모든 경로에서 칸 범위를 먼저 본다**: T.slotUsable 은 없는 칸(skills[i]===undefined)을
+     막지 않아 2칸 왕의 'common'(슬롯2)을 합법으로 읽었다 — 수락하면 코어가 빈 슬롯을 실행한다.
+     f.skills 가 없는 전투원(레거시 픽스처 전용 — 라이브 경기의 왕·동료는 개시 시 칸이 채워진다)은 코어 폴백과 같게 둔다. */
   _legalAct(T, f, side, k) {
-    if (typeof k === 'number') {
-      return !!f.skills && Number.isInteger(k) && k >= 0 && k < f.skills.length && T.slotUsable(f, k, side);
-    }
-    if (k === 'basic') return f.skills ? T.slotUsable(f, 0, side) : true; // 왕·동료 본체: 기본 공격은 항상 가능
-    if (k === 'skill') return f.skills ? T.slotUsable(f, 1, side) : (!!f.skillAtk && !f.cd);
-    if (k === 'common') return !!f.skills && T.slotUsable(f, 2, side);
+    const slotOk = (i) => !!f.skills && i < f.skills.length && T.slotUsable(f, i, side);
+    if (typeof k === 'number') return Number.isInteger(k) && k >= 0 && slotOk(k);
+    if (k === 'basic') return f.skills ? slotOk(0) : true;
+    if (k === 'skill') return f.skills ? slotOk(1) : (!!f.skillAtk && !f.cd);
+    if (k === 'common') return slotOk(2);
     return false;
   }
 
@@ -982,15 +1035,24 @@ class Room {
   }
 
   // 자기 전투원의 기술은 전부, 상대 전투원의 기술은 revealedSkills에 있는 인덱스만 이름·쿨을 싣는다 (§2.6.2).
+  /* #234 (GDD-23 7.9 "등급 · 쓰지 않은 스킬은 소유자 화면에만") — 스킬 칸 수가 곧 등급(⭐N = N칸)이 됐다.
+     종전처럼 상대 칸마다 {i,revealed:false,kind} 를 보내면 배열 길이로 등급이, kind 로 미사용 스킬 종류가 드러난다.
+     그래서 상대에게는 **공개된 칸만** 원래 인덱스 i 와 함께 보내고, 미공개 칸이 하나라도 남아 있으면 개수·종류 없는
+     자리표시 {revealed:false} **하나**만 덧붙인다. 클라이언트 표시(battleModal 패널·커맨드)가 이미 미공개 칸을 개수 없이
+     "? 미공개" 하나로 접으므로 화면은 같다(netAdaptSkills 는 위치로 읽고 i 를 쓰지 않는다).
+     남는 한계: "미공개 칸이 남았는가" 1비트는 그 화면 표시와 같은 양으로 나간다(보고서 11.3). 공개된 스킬 이름은 종의 ⭐ 순서를
+     따르므로 공개 자체가 등급 하한을 알려 주는 것은 규칙상 공개 범위다. */
   _skillsFor(T, p, mine) {
     if (!p.skills) return null;
-    return p.skills.map((sid, i) => {
-      const sk = T.SKILLS && T.SKILLS[sid];
+    const out = [];
+    let hidden = false;
+    p.skills.forEach((sid, i) => {
       if (mine || (p.revealedSkills && p.revealedSkills.includes(i))) {
-        return { i, revealed: true, id: sid, name: T.skillNameKo ? T.skillNameKo(sid, p.element) : sid, cd: p.cds ? p.cds[i] : 0 };
-      }
-      return { i, revealed: false, kind: sk ? sk.kind : null };
+        out.push({ i, revealed: true, id: sid, name: T.skillNameKo ? T.skillNameKo(sid, p.element) : sid, cd: p.cds ? p.cds[i] : 0 });
+      } else hidden = true;
     });
+    if (hidden) out.push({ revealed: false });
+    return out;
   }
 
   // 전투 문맥 공개 (§2.6.2) — 그 전투 동안 양쪽이 이미 보는 hp/shield/상태·이 전투에서 쓴 아이템/볼/버프 기록.

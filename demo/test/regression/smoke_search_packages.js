@@ -28,7 +28,9 @@ const J=x=>JSON.stringify(x);
    하네스 스텁은 id 캐시라 모달마다 버튼이 누적되고, 그러면 (a) 텍스트로 버튼을 찾을 때 옛 모달의 버튼이 잡히고
    (b) 동기화 모달 래퍼가 children 을 인덱스로 재배선해 새 버튼에 엉뚱한 콜백이 붙는다.
    이 계약은 4단계 모달을 연달아 쓰므로 smoke_online_sync.js 와 같은 방식으로 스텁을 실제 DOM 에 맞춘다. */
-function load(){ const X=H.load(htmlPath);
+/* #234 [CJ 결정 2026-09-17]: 탐색 '기술 교체'는 v0.4.11 에서 없어질 시스템이라 제품 기본값은 비활성(V2_INTERP.recruitSkillSwap=false,
+   smoke_issue234 E1~E3 가 고정)이다. 코드는 비활성 분기로 보존됐으므로, 이 파일은 그 보존 분기의 #121 계약 회귀를 계속 보기 위해 로드마다 분기를 켠다. */
+function load(){ const X=H.load(htmlPath); if(X.V2_INTERP) X.V2_INTERP.recruitSkillSwap=true;
   const box=X.byId("overlayBox"), ob=X.byId("obBtns");
   Object.defineProperty(box,"innerHTML",{configurable:true,get(){return this._html;},set(v){this._html=v; this.children.length=0; ob.children.length=0;}});
   return X; }
@@ -473,7 +475,9 @@ function swapSkill(X,target,skillIdx,slot){
   const pow=T.slotPow({atk:22},T.SKILLS.dragon_breath);
   const vsGrass=mk("M-G1").dmg, vsWater=mk("M-W1").dmg, vsKing=mk(null,"king").dmg;
   ok(vsGrass===Math.round(pow*1.3*0.9)&&vsWater===Math.round(pow*1.3*0.9),"E1 드래곤 숨결: 속성 있는 상대에게 **항상** ×1.3, 표준형 방어력 10%는 그대로 통과 — 풀 "+vsGrass+" · 물 "+vsWater+" (불→풀 우위·물 열위와 무관하게 동일) — #233 GDD-23 4.2⑧ (def 도입 전 "+Math.round(pow*1.3)+")");
-  ok(vsKing===Math.round(pow*0.9),"E1b 무속성 왕 본체에는 중립 1.0, 왕의 방어력 10%는 적용된다 — "+vsKing+" — #233 GDD-23 3.5·4.2⑧ (def 도입 전 "+pow+")");
+  /* #234 (GDD-23 6.4 드래곤 숨결 주석 · 2.2): "현행 왕·동료 본체는 무속성이었지만, 이번 개편에서는 속성을 가지므로 ×1.3 대상" —
+     왕은 경기 시작(미선택 규칙)으로 속성을 가지므로 중립 1.0 기대를 ×1.3 으로 갱신한다. 방어력 10% 적용은 그대로 */
+  ok(vsKing===Math.round(pow*1.3*0.9),"E1b 속성을 가진 왕 본체에도 ×1.3, 왕의 방어력 10%는 적용된다 — "+vsKing+" — #234 GDD-23 6.4 · #233 3.5·4.2⑧");
   ok(T.SKILLS.dragon_breath.el===undefined&&T.atkElOf({element:"fire"},T.SKILLS.dragon_breath)===null,"E1c 드래곤은 속성 판정에서 빠진다 (상성표 4종 불변)");
   // E2 마녀: 서로 다른 2효과 100% · rand 1회 · 풀 회복 실피해 100%
   ok(J(T.WITCH_COMBOS)===J([[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]])&&T.WITCH_EFFECTS.length===4,"E2 마녀 조합표: 4효과 중 2개 = 6조합 균등");
@@ -662,7 +666,7 @@ const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMini
   ok(has(T,"안전 포획 (볼 2)")&&has(T,"위험 포획 (볼 1)")&&has(T,"공격 포획 (볼 1)"),"F1d 세 방법 제시");
   const b0=T.S.balls[0];
   click(T,"안전 포획 (볼 2)");
-  ok(recv0.cap&&recv0.cap.rosterId===sp.id&&recv0.cap.hp===sp.hp&&recv0.cap.atk===sp.atk&&J(recv0.cap.skills)===J(T.archSkills(sp.arch,sp.element)),"F1e 수령 말이 그 종 그대로 받는다 (HP "+sp.hp+"·ATK "+sp.atk+"·4기술)");
+  ok(recv0.cap&&recv0.cap.rosterId===sp.id&&recv0.cap.hp===sp.hp&&recv0.cap.atk===sp.atk&&J(recv0.cap.skills)===J(T.speciesSkills(sp.id,1)),"F1e 수령 말이 그 종 그대로 받는다 (HP "+sp.hp+"·ATK "+sp.atk+"·⭐1 스킬 — #234 명세 3장)");
   ok(T.S.balls[0]===b0-2,"F1f 안전 포획 비용 볼 2");
   ok(T.archOf(recv0.cap)===sp.arch,"F1g archOf(cap)=그 종의 아키타입 — 기술 실제 동작 보존 (계약 6 '그 종 그대로')");
   // F2 공격 포획 실패 반동은 탐색 말 (수령 말이 아니다)

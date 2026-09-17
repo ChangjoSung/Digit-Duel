@@ -15,7 +15,7 @@
     --bg:#12151c; --panel:#1c2130; --panel2:#242b3d; --line:#333c52;
     --txt:#e8ecf5; --dim:#8a93a8; --accent:#5b8cff; --danger:#ff5b6e; --ok:#4fd88a;
     --zoneA:#2a3350; --zoneB:#502a33; --forest:#1f3a2a; --mid:#2a2f3d;
-    --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d;
+    --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d; --land:#c49a6c;
     --heal:#4fd88a; --guard:#4da3ff; --buff:#ffd84d;
     /* REVISE: --accent(#5b8cff)는 어두운 배경 위 테두리·하이라이트로 쓰기 좋은 밝기지만, 그 위에 흰 글자를 얹으면
        대비가 3.2:1 로 본문 기준(4.5:1)에 못 미친다. **채우기 버튼 전용**으로 한 단계 짙은 파랑을 따로 둔다 (5.8:1).
@@ -131,7 +131,7 @@
   /* 규격 5.1: 화면 높이가 부족하면 128~160px. Saturn 1차 QA(#89) 수정 — 이 @media 규칙은 반드시 .rosterArt.fb 뒤에 온다:
      .rosterArt.fb 와 @media 안의 .rosterArt.fb 는 특이성이 같아(0,2,0) 소스 순서로 승자가 정해진다. 앞에 두면 짧은 화면에서 대체상자가 192로 커지고 버튼이 밀린다 */
   @media (max-height:700px){ .rosterArt img,.rosterArt.fb{width:128px; height:128px;} }
-  .el-fire{color:var(--fire);} .el-water{color:var(--water);} .el-grass{color:var(--grass);} .el-lightning{color:var(--lightning);}
+  .el-fire{color:var(--fire);} .el-water{color:var(--water);} .el-grass{color:var(--grass);} .el-lightning{color:var(--lightning);} .el-land{color:var(--land);}
   .pc.immob{border-color:var(--danger);}
   /* ===== #106 턴 흐름·연출 (v0.4.4 turn-flow 계약 3·4·5장) — 표시 계층 전용 ===== */
   .pc.healing{box-shadow:0 0 0 2px var(--heal), 0 0 12px var(--heal); animation:healPulse 1.6s ease-in-out infinite;} /* 회복 자세: 소유자 화면 항상, 상대 화면은 공개 말만 (H8) */
@@ -632,7 +632,7 @@
      승인된 튜토리얼 10단계 화면이 함께 흔들리지 않게 하는 잠금이다 (계산 결과 불변). */
   #tutOverlay{--panel:#1c2130; --panel2:#242b3d; --line:#333c52; --txt:#e8ecf5; --dim:#8a93a8;
     --accent:#5b8cff; --danger:#ff5b6e; --ok:#4fd88a; --mid:#2a2f3d; --zoneA:#2a3350; --zoneB:#502a33; --forest:#1f3a2a;
-    --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d; --heal:#4fd88a; --guard:#4da3ff; --buff:#ffd84d;
+    --fire:#ff7a4d; --water:#4da3ff; --grass:#5fd06b; --lightning:#ffd84d; --land:#c49a6c; --heal:#4fd88a; --guard:#4da3ff; --buff:#ffd84d;
     color:#e8ecf5;}
   /* 승인된 튜토리얼 10단계 화면은 종전 --accent 채우기를 그대로 쓴다 (이번 버튼 대비 보정을 적용하지 않는다) */
   #tutOverlay{--accentFill:#5b8cff;}
@@ -787,7 +787,7 @@ const memoOpt=key=>MEMO_OPTS.find(o=>o.key===key)||null;
 const SKILL_KO={fire:"화염탄",water:"물대포",grass:"넝쿨 흡수",lightning:"낙뢰"};
 /* ===== 기술 4슬롯 체계 (GDD-16 v1.0 3장) — 속성 공격기 12종 + 공용 보조기 6종 + 시그니처 5종 ===== */
 const SKILL_ATK_BASE=22; // 위력 스케일 기준: 최종 위력 = 기술 위력 × (종 atk / 22), 사사오입
-const SKIND_KO={attack:"공격기",support:"보조기",sig:"시그니처"};
+const SKIND_KO={attack:"공격기",support:"보조기",sig:"시그니처",basic:"기본기"};
 const SKILLS={
   // 속성 공격기 — tier: stable(안정)/effect(효과)/heavy(고위력) · el: 기술 속성 (#92 v0.4.4 §2.4 — 공격 상성·상태 종류·이펙트·전투 AI 판단은 기술 속성, 방어 상성은 본체 속성)
   fire_stable:{ko:"화염탄",kind:"attack",el:"fire",tier:"stable",cd:0,pow:26,desc:"안정 공격기"},
@@ -847,6 +847,9 @@ function reaperWhy(side){
 function slotUsable(f,i,side){
   if(!f.skills||f.cds[i]>0) return false;
   const sk=SKILLS[f.skills[i]];
+  if(sk&&sk.v2){ // #234: 수면 포자(기본기만) · 전투당 1회 · 사용 조건(번개 발도·지하 매복·태고의 각성)
+    if(f.sleepNext&&sk.kind!=="basic") return false;
+    if(!v2ReqOk(f,sk,side)) return false; }
   if(sk&&sk.reaper) return reaperWhy(side)===null;
   return true;
 }
@@ -877,7 +880,8 @@ function slotPow(f,sk){return Math.round(slotPowRaw(f,sk));} // 표시용 위력
 const SKILL_TIER_KO={stable:"안정",effect:"효과",heavy:"고위력"};
 /* #121 계약 5: cls 기술(용·어둠·핏빛)은 **속성 판정에서 빠진다** → null. 호출자의 `if(atkEl&&opp.element)` 상성 블록과
    상태 종류 매핑·속성 플래시가 모두 자동으로 중립이 된다. 드래곤의 ×1.3 은 속성이 아니라 기술 플래그로 따로 적용한다. */
-function atkElOf(f,sk){ if(sk&&sk.cls) return null; return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element; }
+function atkElOf(f,sk){ if(sk&&(sk.cls||sk.neutral)) return null; // #234: 전설 스킬은 중립(4.1)
+   return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element; }
 function skillNameKo(sid,bodyEl){const sk=SKILLS[sid];
   if(sk.cls) return `${SKILL_CLS_EMO[sk.cls]||""}${sk.ko}`; // #121: 신규 3종은 기술 전용 분류 이모지 (속성 아님)
   return (sk.el&&bodyEl&&sk.el!==bodyEl)?`${ELEM_EMO[sk.el]}${sk.ko}`:sk.ko;} // 본체와 다른 속성의 공격기는 속성 이모지를 앞에 붙여 구분 (소유자 화면 전용)
@@ -954,14 +958,16 @@ function applyFixedStats(f,base,grade){ // 왕·동료·전설처럼 등급이 �
   f.def=base.def; f.spd=base.spd; f.dodge=base.dodge; f.crit=base.crit; f.statusPct=base.statusPct; f.shieldStartPct=0;
   f.grade=(grade===undefined)?null:grade;
 }
-/* 하수인 로스터 20종 — 아키타입 5종(표준·공격·방어·속공·지속) × 속성 4종 (GDD-13 4.2 개정, T5-B) */
+/* 하수인 로스터 30종 — GDD-23 6.3 (속성 5 × 아키타입 6). 기존 20종의 id·아트 폴더는 그대로 두고, 이름이 6.3 표와 다른 두 종(M-W3·M-G5)만
+   6.3 이름으로 바꿨다(속성·아키타입이 같아 아트 폴더 재사용). 보호형 4종·땅 6종은 뒤에 붙인다 — 전용 아트가 없어 이모지 폴백.
+   hp·atk 는 3.3 아키타입 ⭐1 값. skill·cd 는 #92 이전 레거시 스칼라 필드로, 라이브 스킬(v2)이 쓰지 않는다(새 종은 0). */
 const ROSTER=[
   {id:"M-F1",name:"새끼 화룡",element:"fire",arch:"std",hp:100,atk:22,skill:35,cd:2},
   {id:"M-F2",name:"화염 투사",element:"fire",arch:"atk",hp:90,atk:25,skill:40,cd:3},
   {id:"M-F3",name:"용암 거북",element:"fire",arch:"def",hp:120,atk:18,skill:30,cd:2},
   {id:"M-W1",name:"물방울 요정",element:"water",arch:"std",hp:100,atk:22,skill:35,cd:2},
   {id:"M-W2",name:"심해 사냥꾼",element:"water",arch:"atk",hp:90,atk:25,skill:40,cd:3},
-  {id:"M-W3",name:"산호 수호자",element:"water",arch:"def",hp:120,atk:18,skill:30,cd:2},
+  {id:"M-W3",name:"빙벽 정령",element:"water",arch:"def",hp:120,atk:18,skill:30,cd:2},
   {id:"M-G1",name:"새싹 파수꾼",element:"grass",arch:"std",hp:100,atk:22,skill:35,cd:2},
   {id:"M-G2",name:"가시 덩굴",element:"grass",arch:"atk",hp:90,atk:25,skill:40,cd:3},
   {id:"M-G3",name:"고목 수호자",element:"grass",arch:"def",hp:120,atk:18,skill:30,cd:2},
@@ -974,9 +980,616 @@ const ROSTER=[
   {id:"M-L4",name:"번개 여우",element:"lightning",arch:"swift",hp:85,atk:24,skill:30,cd:1},
   {id:"M-F5",name:"재의 주술사",element:"fire",arch:"sustain",hp:95,atk:20,skill:28,cd:2},
   {id:"M-W5",name:"파도 술사",element:"water",arch:"sustain",hp:95,atk:20,skill:28,cd:2},
-  {id:"M-G5",name:"숲의 현자",element:"grass",arch:"sustain",hp:95,atk:20,skill:28,cd:2},
-  {id:"M-L5",name:"전자기 술사",element:"lightning",arch:"sustain",hp:95,atk:20,skill:28,cd:2}
+  {id:"M-G5",name:"이끼 거인",element:"grass",arch:"sustain",hp:95,atk:20,skill:28,cd:2},
+  {id:"M-L5",name:"전자기 술사",element:"lightning",arch:"sustain",hp:95,atk:20,skill:28,cd:2},
+  {id:"M-F6",name:"화산 딱정벌레",element:"fire",arch:"guard",hp:110,atk:19,skill:0,cd:0},
+  {id:"M-W6",name:"방패 게",element:"water",arch:"guard",hp:110,atk:19,skill:0,cd:0},
+  {id:"M-L6",name:"축전 해파리",element:"lightning",arch:"guard",hp:110,atk:19,skill:0,cd:0},
+  {id:"M-G6",name:"방패 버섯",element:"grass",arch:"guard",hp:110,atk:19,skill:0,cd:0},
+  {id:"M-E1",name:"바위 두더지",element:"land",arch:"std",hp:100,atk:22,skill:0,cd:0},
+  {id:"M-E2",name:"돌창 거인",element:"land",arch:"atk",hp:90,atk:25,skill:0,cd:0},
+  {id:"M-E3",name:"철갑 코뿔소",element:"land",arch:"def",hp:120,atk:18,skill:0,cd:0},
+  {id:"M-E4",name:"모래 여우",element:"land",arch:"swift",hp:85,atk:24,skill:0,cd:0},
+  {id:"M-E5",name:"고대 골렘",element:"land",arch:"sustain",hp:95,atk:20,skill:0,cd:0},
+  {id:"M-E6",name:"황토 아르마딜로",element:"land",arch:"guard",hp:110,atk:19,skill:0,cd:0}
 ];
+/* ===== #234 (GDD-23 6장) 하수인 30종 · 전설 3종 · 왕 · 동료 스킬 — 데이터와 실행기 =====
+   · 모든 공격은 스킬이다(6.1). 1차는 기본기 💪100% · ⌛0 · 조건·HP 소모 없음. 2차는 아키타입 골격 + 속성 효과.
+   · 스킬은 SKILLS 레지스트리에 v2:true 로 함께 등록한다 — 전투 UI·쿨·공개 기록·AI 가 같은 슬롯 경로를 그대로 쓴다.
+     종전 #92/#121 기술(fire_stable 등)은 레거시 회귀가 직접 부르는 계약이라 지우지 않았고, 라이브 로스터는 더 이상 쓰지 않는다.
+   · pct = 스킬 위력 💪N%. pow 는 표시·AI 추정 호환용 파생값(pct×22/100 → slotPowRaw 가 공격력×N% 를 돌려준다).
+   · 시너지(#235)·상점/전설 획득(#236)·서버(#237)·UI 개편(#238)은 이 블록 범위가 아니다. */
+
+/* #234 구현 해석 11건 — 바꿀 때 이 한 곳만 고친다. 판정 원본: docs/milestone/v0.4.11/issues/234/Venus/interpretation.md
+   분류: Q1 = CJ 결정(2026-09-17) · Q2·Q9·Q11 굴 파기 = 확정(GDD 문언) · 나머지 = [설계 보완 — CJ 승인 대기](Venus 권고). */
+const V2_INTERP={
+  recruitSkillSwap:false,        // Q1 [CJ 결정 2026-09-17] 탐색 '기술 교체'(#121)는 v0.4.11 에서 없어질 시스템 — 비활성(코드는 분기로 보존), 하수인 포획만 유지
+  brandByTurnOrder:true,         // Q2 [확정] 천둥 낙인 — '대상이 이번 라운드 후턴' = 사용자가 이번 라운드 선턴(4.4 행동 순서, 라운드 시작 시 확정)
+  tailPickOrder:"slot",          // Q3 [설계 보완] 번개 꼬리 후보 = ⌛0 이면서 사용 조건 충족 피해 스킬, 슬롯 순서(2차→3차)
+  buffRemoveOrder:["shield","harden","absorb","evade","dmgUp","spdUp"],               // Q4 [설계 보완] 변덕 주문 제거 순서 — 스킬 고유 예약 효과(선턴·확정 치명·굴 파기·과부하·철벽·천년목·면역)는 대상 아님
+  cleanseOrder:["burn","weaken","shock","crack","spdDown","healCut","moss"],          // Q4 [설계 보완] 자기 상태이상 1개 해제 순서 (모래바람 −30%는 [기획 필요] — 해제 대상에서 뺀다)
+  permShockFreshRule:true,       // Q5 [설계 보완] 영구 자기장 — 사용 다음 2개 라운드의 시작, 선턴 확정 전 부여. 5.6 1R 감전 규칙 그대로(최대 3라운드 연속 후턴 → 8.4 관찰)
+  retaliateOncePerSkill:true,    // Q6 [설계 보완] 달궈진 껍질·열기 축적 — 상대 피해 스킬 적중(방어막에 막혀도)마다가 아니라 스킬 사용 1회당 1번. 페널티·반사·반격·지속·예고 발동은 제외
+  endureAllDamage:true,          // Q7 [설계 보완 — Venus 대안] 천년목 — 일반·예고·반사·반격·지속·도망 실패 페널티·사신의 낫 즉사 모두에 적용
+  capAppliesToDot:false,         // Q8 [설계 보완] 과부하 방벽·철벽 돌파 — 타격 1회 단위, 일반·예고·반사·반격·페널티 공격. 지속 피해·즉사 제외
+  absorbFromGrantingHit:true,    // Q9 [확정] 흡수 — 확률(+💫) 당첨 시 그 공격부터 1R, HP 에 준 피해의 20% · 자기 대상이라 회피돼도 부여 유지
+  onlySkillUseIsAction:true,     // Q10 [설계 보완] 환영 무도·수면 포자 — 상대의 다음 스킬 사용 1회에만(도망·아이템·패키지·볼 제외)
+  sandWindStage:"6"              // Q11 모래바람 [설계 보완] ⑥ 별도 곱 ×0.7, 그 스킬 사용의 모든 타격 · 굴 파기 [확정] ⑧ 합산(상한 50%)
+};
+/* GDD 4.4 · 2.2 동률 순서 🔥 → 💧 → ⚡ → 🗻 → 🌿 — 왕·동료 속성 기본값 판정에 쓴다 */
+const V2_ELEM_ORDER=["fire","water","lightning","land","grass"];
+/* 4.5 속성 효과 — 🔥 화상 · 💧 약화 · ⚡ 감전 · 🗻 균열은 대상, 🌿 흡수는 자신 */
+const V2_ELEM_FX={fire:"burn",water:"weaken",lightning:"shock",land:"crack",grass:"absorb"};
+/* 5.3 동료의 복수·왕의 분노 — "그 왕국의 현재 최고 달성 단계 값, (2)도 달성하지 못했다면 (2) 값".
+   왕국 집계는 #235 전이라 항상 (2) 값을 쓴다. #235 가 이 함수의 반환만 단계별 값으로 바꾸면 된다(연결점). */
+const V2_KINGDOM_STAGE2={fire:{kind:"burn",mag:0.02,rounds:1},water:{kind:"weaken",mag:0.04,hits:1},lightning:{kind:"shock",rounds:1},
+  land:{kind:"harden",mag:0.03,rounds:1},grass:{kind:"absorb",mag:0.10,rounds:1}};
+function v2KingdomEffectOf(owner,el){ return V2_KINGDOM_STAGE2[el]||null; } // #235 연결점: 최고 달성 단계 조회로 교체
+/* 6.1 2차 아키타입 골격 — 감전만 예외(표준 50 · 지속 100 · 그 밖 30) */
+const V2_SKELETON={
+  std:{pct:140,p:0.70,shock:0.50,cd:2}, atk:{pct:170,p:0.50,shock:0.30,cd:3},
+  def:{pct:120,p:0.40,shock:0.30,cd:2,harden:0.10}, swift:{pct:120,p:0.40,shock:0.30,cd:1},
+  sustain:{pct:110,p:1.00,shock:1.00,cd:2}, guard:{pct:110,p:0.40,shock:0.30,cd:2,shield:0.12}
+};
+function v2Reg(id,o){ o.id=id; o.v2=true; if(o.pct){ o.pow=o.pct*SKILL_ATK_BASE/100; } if(!o.kind) o.kind=o.pct?"attack":"support";
+  if(o.st) o.status=true; SKILLS[id]=o; return id; }
+function v2Basic(id,ko){ return v2Reg(id,{ko,kind:"basic",pct:100,cd:0,desc:"기본기 · 💪🏻 100% / ⌛0"}); }
+function v2Second(id,ko,arch,el){ const s=V2_SKELETON[arch], fx=V2_ELEM_FX[el], p=fx==="shock"?s.shock:s.p;
+  const o={ko,pct:s.pct,cd:s.cd};
+  if(fx==="absorb") o.selfAbsorb=p; else o.st={k:fx,p};
+  if(s.harden) o.selfHarden={pct:s.harden,r:1};
+  if(s.shield) o.selfShield=s.shield;
+  const fxKo={burn:"화상",weaken:"약화",shock:"감전",crack:"균열",absorb:"자신에게 흡수"}[fx];
+  o.desc=`💪🏻 ${s.pct}%${s.shield?` · 자기 방어막 최대 HP ${Math.round(s.shield*100)}%`:""} · ${fxKo} ${Math.round(p*100)}%${s.harden?` · 자기 경화 ${Math.round(s.harden*100)}%(1R)`:""} / ⌛${s.cd}`;
+  return v2Reg(id,o); }
+/* 6.3 일반 하수인 30종 — [종 id, 이름, 속성, 아키타입, 1차, 2차, 3차 {정의}, 4차 {정의}]. 3·4차 desc 는 GDD 6.3 문구 그대로. */
+const V2_SPECIES_DEF=[
+  ["M-F1","새끼 화룡","fire","std","불씨 할퀴기","불씨 브레스",
+    {ko:"달군 비늘",cd:3,fx:"emberScale",desc:"자기 방어막 최대 HP 10% · 다음 피해 스킬 가하는 피해 +20% / ⌛3"},
+    {ko:"성룡의 포효",cd:4,pct:100,fx:"dragonRoar",desc:"💪🏻 (100% + 현재 라운드 × 20%) · 화상 100% / ⌛4"}],
+  ["M-F2","화염 투사","fire","atk","불꽃 주먹","화염 방사",
+    {ko:"조준 사격",cd:2,pct:120,fx:"aimShot",desc:"💪🏻 120%, 대상이 화상이면 치명타 확정 / ⌛2"},
+    {ko:"폭발 연소",cd:4,pct:120,fx:"burnBurst",desc:"대상 화상의 남은 피해 전부(남은 라운드 × 1회 피해) × 1.5를 즉시 주고 화상 해제, 화상이 없으면 💪🏻 120% / ⌛4"}],
+  ["M-F3","용암 거북","fire","def","등껍질 박치기","용암 박치기",
+    {ko:"달궈진 껍질",cd:3,fx:"heatShell",desc:"경화 20%(1R) · 그동안 자신을 공격한 상대에게 화상 100% / ⌛3"},
+    {ko:"분화",cd:4,pct:80,fx:"eruption",desc:"💪🏻 80% + 이번 전투에서 방어력 · 경화로 줄인 피해 총량(최대 40)을 고정 피해로 추가 / ⌛4"}],
+  ["M-F4","불티 정령","fire","swift","불티 튀기기","스치는 열기",
+    {ko:"불꽃 표식",cd:2,pct:60,fx:"flameMark",desc:"💪🏻 60%, 대상이 화상이면 화상 피해 1회를 즉시 발생(지속은 줄지 않음) / ⌛2"},
+    {ko:"꺼지지 않는 불티",cd:3,pct:130,fx:"undyingEmber",desc:"💪🏻 130% · 대상이 화상이면 지속 +1R(최대 3R) · 다음 라운드 선턴 효과 / ⌛3"}],
+  ["M-F5","재의 주술사","fire","sustain","재 뿌리기","재의 저주",
+    {ko:"잿불 심기",cd:2,fx:"emberPlant",desc:"대상 화상 피해율 +3%p(그 화상 한정, 최대 +6%p) · 자기 최대 HP 5% 회복 / ⌛2"},
+    {ko:"영겁의 재",cd:0,once:true,fx:"eternalAsh",desc:"대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 화상은 해독제로 해제되지 않음 / 전투당 1회"}],
+  ["M-F6","화산 딱정벌레","fire","guard","딱지 들이받기","용암 껍질",
+    {ko:"열기 축적",cd:3,fx:"heatStore",desc:"자기 방어막 최대 HP 15%, 이 방어막이 남은 동안 자신을 공격한 상대에게 화상 70% / ⌛3"},
+    {ko:"화산 폭발",cd:4,pct:100,fx:"volcano",desc:"자기 방어막을 전부 소모해 💪🏻 100% + 소모량 × 150% 고정 피해 · 화상 100% / ⌛4"}],
+  ["M-W1","물방울 요정","water","std","물방울 톡","물방울 탄",
+    {ko:"맑은 물",cd:3,fx:"clearWater",desc:"자기 상태이상 1개 해제 · 최대 HP 8% 회복 / ⌛3"},
+    {ko:"거울 수면",cd:4,pct:80,fx:"mirrorSurface",desc:"💪🏻 80% · 1R 동안 자신에게 걸리는 상태이상을 건 상대에게 되돌림 / ⌛4"}],
+  ["M-W2","심해 사냥꾼","water","atk","작살 찌르기","심해 작살",
+    {ko:"잠영",cd:3,fx:"dive",desc:"회피율 +20%(1R) · 다음 라운드 선턴 효과 / ⌛3"},
+    {ko:"심연의 일격",cd:4,pct:150,fx:"abyssStrike",desc:"💪🏻 150%, 대상의 약화를 소모(해제)하면 💪🏻 250% / ⌛4"}],
+  ["M-W3","빙벽 정령","water","def","서리 조각","빙결 강타",
+    {ko:"동결",cd:3,pct:60,fx:"freeze",desc:"💪🏻 60% · 대상의 기본기 외 스킬 1개 ⌛ +1(자동 선정) / ⌛3"},
+    {ko:"빙벽 반사",cd:4,fx:"iceReflect",desc:"2R 동안 받은 HP 피해의 30%를 공격자에게 되돌림 / ⌛4"}],
+  ["M-W4","안개 무희","water","swift","물보라 발차기","물보라 스텝",
+    {ko:"안개 걸음",cd:3,fx:"mistStep",desc:"회피율 +30%(1R) / ⌛3"},
+    {ko:"환영 무도",cd:0,once:true,fx:"phantomDance",desc:"상대의 다음 행동 1회를 무효(피해 · 효과 0, 상대 ⌛는 정상 소모) / 전투당 1회"}],
+  ["M-W5","파도 술사","water","sustain","물결 치기","파도의 저주",
+    {ko:"밀물",cd:2,pct:60,fx:"floodTide",desc:"💪🏻 60% · 대상 약화 남은 횟수 +1(최대 4) / ⌛2"},
+    {ko:"해일 예고",cd:0,once:true,fx:"tsunami",desc:"2라운드 뒤 라운드 시작 시 💪🏻 (120% + 대상 약화 남은 횟수 × 30%) 피해 / 전투당 1회"}],
+  ["M-W6","방패 게","water","guard","집게 찍기","거품 방패",
+    {ko:"껍질 닫기",cd:3,fx:"shellClose",desc:"자기 방어막 최대 HP 18% / ⌛3"},
+    {ko:"집게 반격",cd:4,fx:"clawCounter",desc:"2R 동안 자기 방어막이 공격을 막을 때마다 공격자에게 💪🏻 50% 반격(라운드당 1회) / ⌛4"}],
+  ["M-L1","스파크","lightning","std","찌릿 박치기","스파크 샷",
+    {ko:"충전",cd:3,fx:"charge",desc:"다음 피해 스킬의 감전 확률 100% · 속도 +3(2R) / ⌛3"},
+    {ko:"연쇄 번개",cd:4,pct:100,fx:"chainLightning",desc:"💪🏻 (100% + 이번 전투에서 감전을 건 횟수 × 30%, 최대 220%) / ⌛4"}],
+  ["M-L2","뇌격수","lightning","atk","번개 주먹","뇌격 일섬",
+    {ko:"번개 발도",cd:2,pct:160,req:"vanguardOnly",desc:"이번 라운드 선턴일 때만 사용, 💪🏻 160% / ⌛2"},
+    {ko:"천둥 낙인",cd:4,pct:130,fx:"thunderBrand",desc:"대상이 이번 라운드 후턴이면 💪🏻 260%, 아니면 130% / ⌛4"}],
+  ["M-L3","피뢰 골렘","lightning","def","피뢰 주먹","피뢰 강타",
+    {ko:"접지",cd:3,fx:"grounding",desc:"자기 감전 해제 · 2R 동안 감전 면역 · 경화 15%(1R) / ⌛3"},
+    {ko:"과부하 방벽",cd:0,once:true,fx:"overloadWall",desc:"2R 동안 한 번에 받는 피해가 최대 HP 15%를 넘지 않음 / 전투당 1회"}],
+  ["M-L4","번개 여우","lightning","swift","번개 할퀴기","스파크 스침",
+    {ko:"전광석화",cd:2,pct:70,fx:"flashStep",desc:"💪🏻 70% · 자기 다른 스킬 중 남은 ⌛가 가장 긴 1개 ⌛ −1 / ⌛2"},
+    {ko:"번개 꼬리",cd:4,pct:100,fx:"lightningTail",desc:"💪🏻 100% 후, ⌛0인 다른 피해 스킬 1개(기본기 제외)를 위력 · 효과 60%로 이어서 사용. 이어 쓴 스킬의 ⌛는 정상 적용, 없으면 첫 타격만 / ⌛4"}],
+  ["M-L5","전자기 술사","lightning","sustain","자력 튕기기","전자기 저주",
+    {ko:"자기장",cd:2,pct:50,fx:"magField",desc:"💪🏻 50% · 대상이 감전이면 대상의 기본기 외 스킬 1개 ⌛ +1(자동 선정) / ⌛2"},
+    {ko:"영구 자기장",cd:0,once:true,fx:"permField",desc:"2R 동안 매 라운드 시작 시 대상에게 감전 100% 재부여 / 전투당 1회"}],
+  ["M-L6","축전 해파리","lightning","guard","촉수 쏘기","전류막",
+    {ko:"축전",cd:3,fx:"capacitor",desc:"자기 방어막 최대 HP 15%, 이 방어막이 막아낸 피해만큼 다음 피해 스킬에 고정 피해 추가(최대 30) / ⌛3"},
+    {ko:"방전",cd:4,pct:120,fx:"discharge",desc:"💪🏻 120% + 현재 자기 방어막의 50%를 고정 피해로 추가(방어막은 유지) · 감전 100% / ⌛4"}],
+  ["M-E1","바위 두더지","land","std","흙 할퀴기","록 태클",
+    {ko:"굴 파기",cd:3,fx:"burrow",desc:"이번 행동은 공격 없음, 다음 라운드가 끝날 때까지 받는 피해 −40% / ⌛3"},
+    {ko:"지하 매복",cd:4,pct:230,req:"afterBurrow",ignoreShield:true,desc:"굴 파기를 쓴 다음 라운드에만 사용, 💪🏻 230% · 방어막 무시 / ⌛4"}],
+  ["M-E2","돌창 거인","land","atk","돌 주먹","돌창 투척",
+    {ko:"창 박기",cd:2,pct:110,ignoreShield:true,desc:"💪🏻 110%, 방어막 무시 / ⌛2"},
+    {ko:"대지 관통",cd:4,pct:180,ignoreDef:true,desc:"💪🏻 180%, 대상의 방어력 · 받는 피해 감소 효과(경화 · 방어형 시너지 등) 전부 무시 / ⌛4"}],
+  ["M-E3","철갑 코뿔소","land","def","뿔 들이받기","철갑 돌진",
+    {ko:"강철 가죽",cd:3,fx:"steelHide",desc:"경화 30%(1R) / ⌛3"},
+    {ko:"철벽 돌파",cd:4,fx:"ironBreak",desc:"다음 라운드가 끝날 때까지 받는 피해 1회 무효 · 다음 피해 스킬 위력 +80%p / ⌛4"}],
+  ["M-E4","모래 여우","land","swift","모래 할퀴기","모래 스침",
+    {ko:"모래바람",cd:2,fx:"sandWind",desc:"대상의 다음 피해 스킬 가하는 피해 −30% · 자기 회피율 +10%(1R) / ⌛2"},
+    {ko:"모래 폭풍",cd:4,fx:"sandStorm",desc:"2R 동안 대상의 상태이상 부여 확률 절반 · 대상 속도 −5 / ⌛4"}],
+  ["M-E5","고대 골렘","land","sustain","돌덩이 내려치기","태고의 저주",
+    {ko:"풍화",cd:2,fx:"weathering",desc:"대상 균열 지속 +1R(최대 3R) · 자기 경화 10%(1R) / ⌛2"},
+    {ko:"태고의 각성",cd:0,once:true,req:"round4",fx:"ancientAwaken",desc:"4라운드부터 사용, 최대 HP 30% 회복 · 경화 20%(2R) / 전투당 1회"}],
+  ["M-E6","황토 아르마딜로","land","guard","몸통 굴리기","황토 껍질",
+    {ko:"웅크린 공",cd:3,fx:"curlBall",desc:"이번 행동은 공격 없음, 자기 방어막 최대 HP 25% / ⌛3"},
+    {ko:"요새 전환",cd:4,fx:"fortress",desc:"2R 동안 자기 방어막이 막는 피해를 절반만 소모(방어막 내구 2배) · 자기 방어막 최대 HP 10% / ⌛4"}],
+  ["M-G1","새싹 파수꾼","grass","std","새싹 치기","잎날 베기",
+    {ko:"광합성",cd:3,fx:"photosynthesis",desc:"최대 HP 10% 회복, 이번 라운드 선턴이면 15% / ⌛3"},
+    {ko:"성장 매듭",cd:4,pct:100,fx:"growthKnot",desc:"💪🏻 100% + 이번 전투 회복 총량의 50%(최대 40)를 고정 피해로 추가 / ⌛4"}],
+  ["M-G2","가시 덩굴","grass","atk","가시 찌르기","가시 채찍",
+    {ko:"뿌리 고정",cd:3,pct:100,fx:"rootBind",desc:"💪🏻 100% · 이 전투 동안 대상 도망 불가 · 2R 동안 대상 회복량 −50% / ⌛3"},
+    {ko:"포식",cd:4,pct:160,fx:"devour",desc:"💪🏻 160%, 대상 HP 30% 이하면 💪🏻 260% · 이 공격으로 쓰러뜨리면 자기 최대 HP 20% 회복 / ⌛4"}],
+  ["M-G3","고목 수호자","grass","def","가지 휘두르기","뿌리 강타",
+    {ko:"나이테",cd:3,fx:"treeRing",desc:"2R 동안 라운드 종료 시 최대 HP 6% 회복 / ⌛3"},
+    {ko:"천년목",cd:0,once:true,fx:"millennium",desc:"사용 후 2R 안에 HP를 0으로 만드는 첫 피해를 받으면 최대 HP 15%로 버팀(부활이 아니며 1회만 발동) / 전투당 1회"}],
+  ["M-G4","포자 요정","grass","swift","포자 뿌리기","포자 스침",
+    {ko:"수면 포자",cd:3,fx:"sleepSpore",desc:"대상의 다음 행동은 기본기만 가능 / ⌛3"},
+    {ko:"번식 포자",cd:4,fx:"breedSpore",desc:"2R 동안 대상이 기본기가 아닌 스킬을 쓸 때마다 대상에게 최대 HP 5% 피해 · 같은 양 자기 회복 / ⌛4"}],
+  ["M-G5","이끼 거인","grass","sustain","이끼 주먹","이끼 덮기",
+    {ko:"이끼 흡혈",cd:3,pct:90,fx:"mossDrain",desc:"💪🏻 90% · 이 공격이 HP에 준 피해의 50% 회복 / ⌛3"},
+    {ko:"이끼 잠식",cd:4,fx:"mossRot",desc:"3R 동안 라운드 종료 시 대상 최대 HP 4% 피해 · 같은 양 자기 회복(상태이상, 해독제로 해제) / ⌛4"}],
+  ["M-G6","방패 버섯","grass","guard","갓 부딪기","버섯갓 방패",
+    {ko:"포자 막",cd:3,fx:"sporeFilm",desc:"자기 방어막 최대 HP 15%, 이 방어막이 막아낸 피해의 50%만큼 라운드 종료 시 회복 / ⌛3"},
+    {ko:"균사 전환",cd:4,fx:"mycelium",desc:"현재 자기 방어막을 전부 HP 회복으로 전환(최대 HP 30% 한도) · 2R 동안 흡수 30% / ⌛4"}]
+];
+/* 종 id → 4스킬 id. 등급 N 은 앞에서 N개(3.4 · 6.1: ⭐1=1차, ⭐2=1~2차, ⭐3=1~3차, ⭐4=1~4차) */
+const V2_SPECIES={};
+for(const [sid,name,el,arch,s1,s2,s3,s4] of V2_SPECIES_DEF){
+  V2_SPECIES[sid]=[v2Basic(sid+"-1",s1),v2Second(sid+"-2",s2,arch,el),v2Reg(sid+"-3",Object.assign({},s3)),v2Reg(sid+"-4",Object.assign({},s4))];
+}
+function speciesSkills(rosterId,grade){ const all=V2_SPECIES[rosterId]; if(!all) return null;
+  const g=Math.max(1,Math.min(4,grade||1)); return all.slice(0,g); }
+/* 6.4 전설 3종 — ⭐5 고정 · 스킬 4개 전부 · 속성 없음(스킬도 중립) · 아키타입 있음 (용=표준형 · 마녀=지속형 · 사신=공격형) */
+const LEGEND_ROSTER=[
+  {id:"L-DRAGON",key:"dragon",name:"용",emo:"🐉",arch:"std",skills:[
+    v2Reg("L-DRAGON-1",{ko:"용 발톱",kind:"basic",pct:100,cd:0,neutral:true,desc:"기본기 · 💪🏻 100% / ⌛0"}),
+    v2Reg("L-DRAGON-2",{ko:"비늘 세우기",cd:3,neutral:true,fx:"scaleUp",desc:"자기 방어막 최대 HP 15% · 경화 15%(1R) / ⌛3"}),
+    v2Reg("L-DRAGON-3",{ko:"날개 강타",cd:2,pct:140,neutral:true,fx:"wingStrike",desc:"💪🏻 140% · 대상 속도 −4(2R) / ⌛2"}),
+    v2Reg("L-DRAGON-4",{ko:"드래곤 숨결",cd:3,pct:140,neutral:true,dragonMult:1.3,desc:"💪🏻 140% · 속성이 있는 상대에게 항상 ×1.3, 무속성 상대(전설)에게 ×1.0 / ⌛3"})]},
+  {id:"L-WITCH",key:"witch",name:"마녀",emo:"🕯",arch:"sustain",skills:[
+    v2Reg("L-WITCH-1",{ko:"저주 손짓",kind:"basic",pct:100,cd:0,neutral:true,desc:"기본기 · 💪🏻 100% / ⌛0"}),
+    v2Reg("L-WITCH-2",{ko:"독약 병",cd:2,pct:110,neutral:true,fx:"poisonBottle",desc:"💪🏻 110% · 대상에게 화상 · 약화 중 걸려 있지 않은 것 1개를 70%로 부여(둘 다 없으면 무작위 1개, 둘 다 있으면 남은 지속이 짧은 쪽을 70%로 기본 지속까지 갱신, 같으면 화상) / ⌛2"}),
+    v2Reg("L-WITCH-3",{ko:"변덕 주문",cd:3,neutral:true,fx:"whimSpell",desc:"대상 버프 1개 제거 · 자기 상태이상 1개 해제 / ⌛3"}),
+    v2Reg("L-WITCH-4",{ko:"마녀의 장난",cd:3,pct:80,neutral:true,witch:true,desc:"💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP에 준 피해의 100% 즉시 회복) 중 서로 다른 2개를 확률 판정 없이 적용 / ⌛3"})]},
+  {id:"L-REAPER",key:"reaper",name:"사신",emo:"💀",arch:"atk",skills:[
+    v2Reg("L-REAPER-1",{ko:"낫 베기",kind:"basic",pct:100,cd:0,neutral:true,desc:"기본기 · 💪🏻 100% / ⌛0"}),
+    v2Reg("L-REAPER-2",{ko:"영혼 수확",cd:2,pct:130,neutral:true,fx:"soulHarvest",desc:"💪🏻 130% · 이 공격이 HP에 준 피해의 30% 회복 / ⌛2"}),
+    v2Reg("L-REAPER-3",{ko:"죽음의 그림자",cd:3,neutral:true,fx:"deathShadow",desc:"회피율 +25%(1R) · 다음 피해 스킬 치명타 확정 / ⌛3"}),
+    /* 봉인형 — ⌛와 별개인 사용 조건(reaperWhy). 실행은 execSlot 의 기존 사신의 낫 분기(sk.reaper)를 그대로 탄다 */
+    v2Reg("L-REAPER-4",{ko:"사신의 낫",kind:"attack",cd:0,neutral:true,reaper:true,desc:"6라운드부터, 자기 차례에, 내 HP 비율이 상대보다 낮을 때만 — 방어막을 무시하고 즉사(회피 판정 없음) / 봉인형"})]}
+];
+/* 6.2 왕 · 동료 스킬 */
+const V2_LEADER_EL_KO={
+  king:{fire:"파이어 볼",water:"물방울 던지기",lightning:"스파크 볼트",land:"락 스매시",grass:"리프 커터"},
+  assassin:{fire:"화염 단검",water:"급류 베기",lightning:"전격 찌르기",land:"암석 관통",grass:"맹독 가시"},
+  shield:{fire:"인화 방패",water:"조류 방패",lightning:"절연 방패",land:"대지 방패",grass:"가시 방패"}
+};
+v2Basic("K-1","왕의 일격"); v2Basic("AS-1","단검 찌르기"); v2Basic("SH-1","방패 치기");
+for(const el of V2_ELEM_ORDER){
+  const fx=V2_ELEM_FX[el], fxKo={burn:"화상",weaken:"약화",shock:"감전",crack:"균열",absorb:"자신에게 흡수"}[fx];
+  const mk=(id,ko,pct,cd,p,extra)=>{ const o=Object.assign({ko,pct,cd},extra||{}); if(fx==="absorb") o.selfAbsorb=p; else o.st={k:fx,p};
+    o.desc=`💪🏻 ${pct}%${o.selfShield?` · 자기 방어막 최대 HP ${Math.round(o.selfShield*100)}%`:""} / ⌛${cd} · ${fxKo} ${Math.round(p*100)}%`; return v2Reg(id,o); };
+  mk("K-2-"+el,V2_LEADER_EL_KO.king[el],180,3,fx==="shock"?0.50:0.70);
+  mk("AS-2-"+el,V2_LEADER_EL_KO.assassin[el],200,3,0.30);
+  mk("SH-2-"+el,V2_LEADER_EL_KO.shield[el],120,2,fx==="shock"?0.30:0.40,{selfShield:0.15});
+}
+v2Reg("LD-REVENGE",{ko:"🪄 동료의 복수",pct:220,cd:2,fx:"revenge",desc:"💪🏻 220% / ⌛2 · 사용자 속성 왕국의 효과를 확률 판정 없이 100% 부여 (수치 · 지속은 그 왕국의 현재 최고 달성 단계, (2) 미달이면 (2) 값)"});
+v2Reg("LD-WRATH",{ko:"🪄 왕의 분노",pct:280,cd:2,fx:"wrath",desc:"💪🏻 280% / ⌛2 · 동료의 복수와 같은 효과 · 대상을 100% 부여하고 지속(🧭)을 +1라운드 연장"});
+/* 3.5·6.2: 왕 최대 4칸 · 동료 최대 3칸. 동료 1명 사망 → 살아 있는 남은 동료와 왕이 3번째 칸(동료의 복수), 2명 사망 → 왕 4번째 칸(왕의 분노) */
+function leaderSkillIds(p){
+  if(!p||(p.type!=="king"&&p.type!=="ally")) return null;
+  const el=p.element||"fire";
+  const dead=S&&S.pieces?S.pieces.filter(x=>x.owner===p.owner&&x.type==="ally"&&!x.alive).length:0;
+  if(p.type==="king"){ const ids=["K-1","K-2-"+el]; if(dead>=1) ids.push("LD-REVENGE"); if(dead>=2) ids.push("LD-WRATH"); return ids; }
+  const kind=p.allyKind==="shield"?"SH":"AS";
+  const ids=[kind+"-1",kind+"-2-"+el]; if(dead>=1&&p.alive!==false) ids.push("LD-REVENGE"); return ids;
+}
+/* 슬롯을 늘리기만 한다 — 기존 칸의 남은 ⌛·공개 기록은 그대로 두고, 속성이 바뀐 2차만 새 id 로 바꾼다 */
+function syncLeaderSkills(p){
+  const ids=leaderSkillIds(p); if(!ids) return;
+  const old=p.skills||[], cds=p.cds||[];
+  p.skills=ids; p.cds=ids.map((id,i)=>(old[i]===id||(i===1&&old[i]))?(cds[i]||0):0);
+  if(!p.revealedSkills) p.revealedSkills=[];
+  p.revealedSkills=p.revealedSkills.filter(i=>i<ids.length&&old[i]===ids[i]);
+}
+function syncOwnerLeaders(owner){ if(!S||!S.pieces) return; for(const x of S.pieces) if(x.owner===owner&&(x.type==="king"||x.type==="ally")) syncLeaderSkills(x); }
+/* 2.2 왕·동료 속성 미선택 규칙 — 필드 하수인에 가장 많은 속성, 동률이면 🔥 → 💧 → ⚡ → 🗻 → 🌿. 선택 UI 는 #236/#238 */
+function leaderDefaultElement(owner){
+  const cnt={}; for(const el of V2_ELEM_ORDER) cnt[el]=0;
+  for(const x of S.pieces) if(x.owner===owner&&x.type==="minion"&&x.element&&cnt[x.element]!==undefined) cnt[x.element]++;
+  let best=V2_ELEM_ORDER[0]; for(const el of V2_ELEM_ORDER) if(cnt[el]>cnt[best]) best=el;
+  return best;
+}
+function assignLeaderElements(owner){
+  const el=leaderDefaultElement(owner);
+  for(const x of S.pieces) if(x.owner===owner&&(x.type==="king"||x.type==="ally")&&!x.leaderElChosen){ x.element=el; }
+  syncOwnerLeaders(owner);
+}
+/* 일반 하수인 · 전설 주입 (3.3 · 3.4 · 3.6) — applyRoster·포획·검사가 같은 한 함수를 쓴다 */
+function applySpecies(m,rd,grade){
+  const g=Math.max(1,Math.min(4,grade||1));
+  m.rosterId=rd.id; m.name=rd.name; m.element=rd.element; m.legend=null;
+  m.hp=gradeHp(rd.hp,g); m.maxHp=m.hp; m.atk=gradeAtk(rd.atk,g); m.skillAtk=rd.skill; m.cdMax=rd.cd;
+  applyArchStats(m,rd.arch,g);
+  m.skills=speciesSkills(rd.id,g); m.cds=m.skills.map(()=>0); m.revealedSkills=[];
+  return m;
+}
+function applyLegend(m,key){
+  const L=LEGEND_ROSTER.find(x=>x.key===key||x.id===key); if(!L) return null; const b=LEGEND_BASE[L.key];
+  m.rosterId=null; m.legend=L.key; m.name=L.name; m.element=null;
+  m.hp=b.hp; m.maxHp=b.hp; m.atk=b.atk;
+  applyFixedStats(m,b,5); // 3.6 · 4.4 [설계 보완] 전설은 ⭐5 로 등급 비교에 참여
+  m.skills=L.skills.slice(); m.cds=m.skills.map(()=>0); m.revealedSkills=[];
+  return m;
+}
+function legendArchOf(f){ const L=f&&f.legend?LEGEND_ROSTER.find(x=>x.key===f.legend):null; return L?L.arch:null; }
+
+/* ===== 전투 상태 — 전투가 끝나면 전부 해제 (5.6: 전투를 넘어 유지되는 것은 HP 뿐) ===== */
+const V2_TIMED=["absorbR","spdBuffR","spdDownR","healCutR","vanguardTurn","retaliateBurnR","mirrorR","reflectR","counterR","overloadR",
+  "nullHitR","burrowR","sandStormR","ringR","enduredR","breedR","fortressR","immuneShockR","mossR"];
+const V2_TIMED_MAG={absorbR:["absorbPct"],spdBuffR:["spdBuff"],spdDownR:["spdDown"],healCutR:["healCut"],nullHitR:["nullHitN"],
+  mossR:["mossPct","mossBy"],breedR:["breedBy"],counterR:["counterRound"]};
+function resetV2(f){
+  for(const k of V2_TIMED){ f[k]=0; f[k+"Fresh"]=false; }
+  f.absorbPct=0; f.spdBuff=0; f.spdDown=0; f.healCut=0; f.nullHitN=0; f.mossPct=0; f.mossBy=null; f.breedBy=null; f.counterRound=0;
+  f.burnMag=0; f.burnBonus=0; f.burnNoCure=false; f.weakenMag=0;
+  f.nextDmgUp=0; f.nextPowUp=0; f.nextFlat=0; f.nextShockForce=false; f.sandWind=false;
+  f.fleeLock=false; f.sleepNext=false; f.nullifyNext=false; f.permShockR=0; f.permShockBy=null;
+  f.burrowRound=0; f.enduredUsed=false; f.sporePending=0; f.shocksDealt=0; f.mitigated=0; f.healTotal=0; f.onceUsed={};
+  if(f.skills) f.cds=f.skills.map(()=>0);
+}
+function effSpd(f){ return (f.spd||0)+(f.spdBuff||0)-(f.spdDown||0); } // 4.4 순서 판정용 유효 속도
+function v2IsStatus(k){ return k==="burn"||k==="weaken"||k==="shock"||k==="crack"||k==="spdDown"||k==="healCut"||k==="moss"; }
+/* 회복 — 회복 감소 적용 후 한 번 반올림, 최대 HP 상한, 실제로 오른 양만 "회복 총량"에 더한다(4.6) */
+function v2Heal(side,f,amount,label){
+  let a=amount*(f.healCutR>0?(1-(f.healCut||0)):1); a=Math.round(a); if(a<0) a=0;
+  const gain=Math.min(a,Math.max(0,f.maxHp-f.hp)); f.hp+=gain; f.healTotal=(f.healTotal||0)+gain;
+  if(S.battle) bmsg(`💚 ${fighterName(side)}${label?` ${label}`:""} — HP ${gain} 회복!`,{float:{side,html:`<span class="pos">+${gain}</span>`},hp:{side,val:f.hp,max:f.maxHp}});
+  return gain;
+}
+/* 천년목(4차) — HP 를 0 으로 만드는 첫 피해를 최대 HP 15% 로 버틴다. 반환: 실제로 깎을 HP */
+function v2Endure(f,actual){
+  if(!(f.enduredR>0)||f.enduredUsed||actual<f.hp) return actual;
+  f.enduredUsed=true; const keep=Math.max(1,Math.min(f.hp,Math.round(f.maxHp*0.15)));
+  if(S.battle) bmsg(`🌳 천년목 — 쓰러지지 않고 버텼다! (HP ${keep})`);
+  return f.hp-keep;
+}
+/* 과부하 방벽 · 철벽 돌파 — 일반·예고·반사·반격 피해 1회에 적용(V2_INTERP.capAppliesToDot=false 면 지속 피해 제외) */
+function v2IncomingCap(f,dmg){
+  if(f.nullHitR>0&&f.nullHitN>0&&dmg>0){ f.nullHitN=0; if(S.battle) bmsg(`🛡 철벽 — 피해 1회 무효!`); return 0; }
+  if(f.overloadR>0){ const cap=Math.round(f.maxHp*0.15); if(dmg>cap){ if(S.battle) bmsg(`⚡ 과부하 방벽 — 피해 ${dmg} → ${cap}`); return cap; } }
+  return dmg;
+}
+/* 상태이상 · 버프 부여 — 확률 = 표기 + 💫(상한 100%) · 모래 폭풍이면 절반. force 는 판정·난수 없음(확정 효과 · 확률 100% 효과).
+   거울 수면(자기 대상 1R)은 **상태이상만** 건 상대에게 되돌린다. 접지(감전 면역)는 감전만 막는다. */
+function v2Apply(cSide,caster,tSide,target,kind,prob,o){
+  o=o||{};
+  if(!o.force){ let p=Math.min(1,(prob||0)+(caster.statusPct||0)); if(caster.sandStormR>0) p*=0.5;
+    if(!(rand()<p)){ S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false; } }
+  if(v2IsStatus(kind)&&target!==caster&&target.mirrorR>0){ bmsg(`🪞 거울 수면 — ${fighterName(tSide)}에게 걸린 효과가 되돌아간다!`);
+    const t=target; target=caster; caster=t; const s=tSide; tSide=cSide; cSide=s; }
+  if(kind==="shock"&&target.immuneShockR>0){ bmsg(`⚡ ${fighterName(tSide)}는 감전 면역이다.`); return false; }
+  S.metrics.statusApplied++;
+  if(kind==="burn"){ const had=target.burn>0; if(!had){ target.burnBonus=0; target.burnNoCure=false; }
+    applyTimedFx(target,"burn",o.rounds||BAL.burnRounds,"burnMag",o.mag||BAL.burnPct); target.burnBy=cSide;
+    bmsg(`🔥 ${fighterName(tSide)}는 화상을 입었다!${had?" (갱신)":""} (${target.burn}R)`,{st:stFx(tSide,target)}); }
+  else if(kind==="weaken"){ const had=target.weaken>0; target.weaken=Math.max(target.weaken||0,o.hits||BAL.weakenHits);
+    target.weakenMag=Math.max(had?(target.weakenMag||0):0,o.mag||BAL.weakenPct);
+    bmsg(`💧 ${fighterName(tSide)}는 약화되었다!${had?" (갱신)":""} (${target.weaken}회)`,{st:stFx(tSide,target)}); }
+  else if(kind==="shock"){ applyTimedFx(target,"shock",o.rounds||1); if(target!==caster) caster.shocksDealt=(caster.shocksDealt||0)+1;
+    bmsg(`⚡ ${fighterName(tSide)}는 감전 — 다음 ${target.shock}라운드 후턴!`,{st:stFx(tSide,target)}); }
+  else if(kind==="crack"){ applyCrack(target,o.rounds||2); bmsg(`🗻 ${fighterName(tSide)}에게 균열! (${target.crack}R)`,{st:stFx(tSide,target)}); }
+  else if(kind==="absorb"){ applyTimedFx(target,"absorbR",o.rounds||1,"absorbPct",o.mag||0.20); bmsg(`🌿 ${fighterName(tSide)} 흡수 ${pct(target.absorbPct)} (${target.absorbR}R)`,{st:stFx(tSide,target)}); }
+  else if(kind==="harden"){ applyHarden(target,o.mag,o.rounds||1); bmsg(`🛡 ${fighterName(tSide)} 경화 ${pct(target.hardenPct)} (${target.harden}R)`,{st:stFx(tSide,target)}); }
+  else if(kind==="spdDown"){ applyTimedFx(target,"spdDownR",o.rounds||2,"spdDown",o.mag||0); bmsg(`🐌 ${fighterName(tSide)} 속도 −${target.spdDown} (${target.spdDownR}R)`,{st:stFx(tSide,target)}); }
+  else if(kind==="healCut"){ applyTimedFx(target,"healCutR",o.rounds||2,"healCut",o.mag||0.5); bmsg(`🥀 ${fighterName(tSide)} 회복량 −${pct(target.healCut)} (${target.healCutR}R)`,{st:stFx(tSide,target)}); }
+  else if(kind==="moss"){ const had=target.mossR>0; applyTimedFx(target,"mossR",o.rounds||3,"mossPct",o.mag||0.04); target.mossBy=cSide;
+    bmsg(`🍄 ${fighterName(tSide)}에게 이끼 잠식!${had?" (갱신)":""} (${target.mossR}R)`,{st:stFx(tSide,target)}); }
+  return true;
+}
+/* 자기 상태이상 1개 해제 (맑은 물 · 변덕 주문) — V2_INTERP.cleanseOrder */
+function v2CleanseOne(side,f){
+  for(const k of V2_INTERP.cleanseOrder){
+    if(k==="burn"&&f.burn>0){ f.burn=0; f.burnFresh=false; f.burnBy=null; f.burnMag=0; f.burnBonus=0; f.burnNoCure=false; }
+    else if(k==="weaken"&&f.weaken>0){ f.weaken=0; f.weakenMag=0; }
+    else if(k==="shock"&&f.shock>0){ f.shock=0; f.shockFresh=false; }
+    else if(k==="crack"&&f.crack>0){ f.crack=0; f.crackFresh=false; }
+    else if(k==="spdDown"&&f.spdDownR>0){ f.spdDownR=0; f.spdDownRFresh=false; f.spdDown=0; }
+    else if(k==="healCut"&&f.healCutR>0){ f.healCutR=0; f.healCutRFresh=false; f.healCut=0; }
+    else if(k==="moss"&&f.mossR>0){ f.mossR=0; f.mossRFresh=false; f.mossPct=0; f.mossBy=null; }
+    else continue;
+    bmsg(`✨ ${fighterName(side)}의 상태이상 1개가 해제되었다.`,{st:stFx(side,f)}); return k;
+  }
+  bmsg(`✨ 해제할 상태이상이 없다.`); return null;
+}
+/* 대상 버프 1개 제거 (변덕 주문) — 방어막은 모든 층을 한꺼번에 지우며 '방어막 1개'(3.2, 깨짐 아님) */
+function v2RemoveBuff(side,f){
+  for(const k of V2_INTERP.buffRemoveOrder){
+    if(k==="shield"&&((f.shieldLayers&&f.shieldLayers.length)||f.shield>0)){ shieldClearAll(f); }
+    else if(k==="harden"&&f.harden>0){ f.harden=0; f.hardenFresh=false; f.hardenPct=0; }
+    else if(k==="absorb"&&f.absorbR>0){ f.absorbR=0; f.absorbRFresh=false; f.absorbPct=0; }
+    else if(k==="evade"&&f.evadeBuffR>0){ f.evadeBuffR=0; f.evadeBuffRFresh=false; f.evadeBuff=0; }
+    else if(k==="dmgUp"&&f.dmgUpBuffR>0){ f.dmgUpBuffR=0; f.dmgUpBuffRFresh=false; f.dmgUpBuff=0; }
+    else if(k==="spdUp"&&f.spdBuffR>0){ f.spdBuffR=0; f.spdBuffRFresh=false; f.spdBuff=0; }
+    else continue;
+    bmsg(`🕯 ${fighterName(side)}의 버프 1개가 사라졌다.`,{st:stFx(side,f)}); return k;
+  }
+  bmsg(`🕯 제거할 버프가 없다.`); return null;
+}
+/* ⌛ 증가 효과(동결 · 자기장) — 기본기를 뺀 스킬 중 남은 ⌛가 가장 짧은 것, 같으면 슬롯 순서(4.6). 기본기는 대상이 아니다(6.1) */
+function v2CdUpTarget(f){
+  let pick=-1;
+  if(!f.skills) return -1;
+  for(let i=0;i<f.skills.length;i++){ const sk=SKILLS[f.skills[i]]; if(!sk||sk.kind==="basic") continue;
+    if(pick<0||f.cds[i]<f.cds[pick]) pick=i; }
+  return pick;
+}
+/* 지속 피해(4.3) — 계산값을 ⑩ 반올림만 하고 방어막을 무시해 HP 로 직행. 회피·방어력·균열·치명·시너지 없음 */
+function v2Dot(side,f,raw,label,bySide){
+  let d=Math.round(raw); if(raw>0&&d<1) d=1;
+  if(V2_INTERP.capAppliesToDot) d=v2IncomingCap(f,d);
+  let actual=Math.min(d,f.hp); actual=v2Endure(f,actual); f.hp-=actual;
+  if(bySide) addRec(bySide,actual);
+  bmsg(`${label} ${fighterName(side)}에게 ${actual} 피해!`,{shake:side,float:{side,html:`<span class="neg">-${actual}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)});
+  return actual;
+}
+/* 층별 막아낸 피해 — 축전(다음 피해 스킬 고정 피해 +, 최대 30) · 포자 막(라운드 종료 회복 50%) */
+function v2ShieldSrcGain(f,bySrc){
+  if(!bySrc) return;
+  if(bySrc.charge) f.nextFlat=Math.min(30,(f.nextFlat||0)+bySrc.charge);
+  if(bySrc.spore) f.sporePending=(f.sporePending||0)+bySrc.spore;
+}
+/* 적중 뒤 반응 — 반사 · 반격(4.3, 한 행동 1회 · 연쇄 금지) · 달궈진 껍질 · 열기 축적(Q6) */
+function v2AfterHit(side,f,opp,oSide,res,heat,ctx){
+  const B=S.battle; if(!B||res.evaded) return;
+  const once=!ctx||!ctx.retaliated; // Q6: 스킬 사용 1회당 1번 (여러 타격·이어 쓰기 포함)
+  if(once&&(opp.retaliateBurnR>0||heat)&&ctx) ctx.retaliated=true;
+  if(once&&opp.retaliateBurnR>0) v2Apply(oSide,opp,side,f,"burn",1);
+  if(once&&heat) v2Apply(oSide,opp,side,f,"burn",0.70);
+  if(!S.battle) return;
+  if(opp.reflectR>0&&res.actual>0&&B.reflectSeq!==B.actSeq){ B.reflectSeq=B.actSeq; resolveReflect(oSide,opp,f,side,res.actual,0.30); }
+  if(opp.counterR>0&&res.absorbed>0&&opp.counterRound!==B.round&&B.counterSeq!==B.actSeq){ opp.counterRound=B.round; B.counterSeq=B.actSeq;
+    resolveCounter(oSide,opp,f,side,0.50); }
+}
+/* 사용 조건 (slotUsable 이 본다) */
+function v2ReqOk(f,sk,side){
+  const B=S.battle;
+  if(sk.once&&f.onceUsed&&f.onceUsed[sk.id]) return false;
+  if(sk.req==="vanguardOnly") return !!B&&B.firstSide===side;
+  if(sk.req==="afterBurrow") return !!B&&f.burrowRound>0&&B.round===f.burrowRound+1;
+  if(sk.req==="round4") return !!B&&B.round>=4;
+  return true;
+}
+/* ===== 스킬 실행기 — execSlot 이 v2 스킬을 여기로 넘긴다 ===== */
+function execV2(side,slot,sk){
+  const B=S.battle, f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A";
+  f.cds[slot]=sk.cd||0;
+  if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot);
+  if(sk.once){ f.onceUsed=f.onceUsed||{}; f.onceUsed[sk.id]=true; }
+  const supFlash=!sk.pct?"buff":null;
+  bmsg(`${fighterName(side)}의 ${sk.ko}!`,supFlash?{flash:supFlash}:null,{key:"skillFx"});
+  const dmgSkill=!!sk.pct;
+  if(f.sleepNext) f.sleepNext=false; // 수면 포자 — 다음 스킬 사용 1회에 소모(Q10)
+  if(f.nullifyNext){ f.nullifyNext=false; bmsg(`🌫 환영 무도 — ${fighterName(side)}의 행동이 무효가 되었다!`,{st:stFx(side,f)}); return finishV2(side); }
+  if(sk.kind!=="basic"&&f.breedR>0){ // 번식 포자 — 지속 피해(최대 HP 5%) · 같은 양 시전자 회복
+    const d=v2Dot(side,f,f.maxHp*0.05,"🍄 번식 포자 —",f.breedBy);
+    const bySide=f.breedBy, by=bySide==="A"?B.fa:B.fd; if(by&&d>0) v2Heal(bySide,by,d,"번식 포자");
+    if(checkDeath()) return; }
+  const ctx={side,f,opp,oSide,sk,slot,hits:[],shockForce:false,outMult:1,retaliated:false};
+  if(dmgSkill){ ctx.shockForce=!!f.nextShockForce; f.nextShockForce=false;
+    if(f.sandWind){ ctx.outMult=0.7; f.sandWind=false; } }
+  ctx.hit=(pct,o)=>v2Hit(ctx,pct,o||{});
+  ctx.st=(kind,p,o)=>v2Apply(side,f,oSide,opp,kind,p,Object.assign({force:kind==="shock"&&ctx.shockForce},o||{}));
+  const run=V2_FX[sk.fx]||v2Default;
+  run(ctx);
+  if(!S.battle) return;
+  /* 흡수(4.5) — 이번 스킬의 적중이 HP 에 준 피해 기준, 당첨된 그 공격부터(Q9) */
+  if(f.absorbR>0){ const got=ctx.hits.reduce((s,r)=>s+(r.evaded?0:r.actual),0); if(got>0) v2Heal(side,f,got*(f.absorbPct||0),"흡수"); }
+  finishV2(side);
+}
+function finishV2(side){ if(!S.battle) return; if(checkDeath()) return; nextPhase(); }
+function v2Hit(ctx,pct,o){
+  const {side,f,opp,oSide,sk}=ctx, B=S.battle;
+  /* '다음 피해 스킬' 1회성 효과는 스킬 적중 경로에서만 소모한다 — 예고 피해 발동(raw)은 소모하지 않는다 */
+  const one=!o.raw;
+  let p=pct; if(one&&f.nextPowUp){ p+=f.nextPowUp*100; f.nextPowUp=0; }
+  const scale=o.scale||1;
+  let flat=(o.flat||0); if(one&&f.nextFlat>0){ flat+=f.nextFlat; f.nextFlat=0; }
+  let extra=0; if(one&&f.nextDmgUp){ extra+=f.nextDmgUp; f.nextDmgUp=0; }
+  const outMult=one?(ctx.outMult||1):1; // Q11: 모래바람은 그 스킬 사용의 모든 타격에 (execV2 가 사용 시점에 소모)
+  if(o.critForce) f.critForce=true;
+  const heat=(opp.shieldLayers||[]).some(l=>l.src==="heatStore"&&l.amt>0);
+  const res=resolveHit(side,f,opp,oSide,f.atk*p/100*scale,flat*scale,sk.neutral?null:f.element,sk.dragonMult||null,extra,
+    {ignoreShield:!!(o.ignoreShield||sk.ignoreShield),ignoreDef:!!(o.ignoreDef||sk.ignoreDef),outMult});
+  ctx.hits.push(res);
+  if(S.battle===B&&one) v2AfterHit(side,f,opp,oSide,res,heat,ctx); // 예고 피해 발동(raw)은 반응 효과를 부르지 않는다(Q6)
+  return res;
+}
+/* 기본 동작 — 피해(있으면) → 대상 효과(회피면 없음) → 자기 효과(회피와 무관) */
+function v2Default(ctx,o){
+  o=o||{}; const {sk,f,side}=ctx; let res=null;
+  if(sk.pct){ res=ctx.hit(o.pct||sk.pct,o); if(!S.battle) return res;
+    if(!res.evaded&&sk.st&&S.battle) ctx.st(sk.st.k,sk.st.p*(o.effScale||1)); }
+  v2Self(ctx,o);
+  return res;
+}
+function v2Self(ctx,o){
+  const {sk,f,side}=ctx; if(!S.battle) return;
+  if(sk.selfShield){ shieldAdd(f,Math.round(f.maxHp*sk.selfShield),sk.id); bmsg(`🫧 방어막 ${f.shield}!`,{st:stFx(side,f)}); }
+  if(sk.selfHarden) v2Apply(side,f,side,f,"harden",1,{force:true,mag:sk.selfHarden.pct,rounds:sk.selfHarden.r});
+  if(sk.selfAbsorb) v2Apply(side,f,side,f,"absorb",sk.selfAbsorb*((o&&o.effScale)||1),{rounds:1,mag:0.20});
+}
+const V2_FX={
+  /* 🔥 불 */
+  emberScale(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.10),c.sk.id); c.f.nextDmgUp=0.20; bmsg(`🫧 방어막 ${c.f.shield} · 다음 피해 스킬 +20%`,{st:stFx(c.side,c.f)}); },
+  dragonRoar(c){ const r=c.hit(100+S.battle.round*20,{}); if(S.battle&&!r.evaded) c.st("burn",1); },
+  aimShot(c){ const r=c.hit(120,{critForce:c.opp.burn>0}); },
+  burnBurst(c){ const o=c.opp;
+    if(o.burn>0){ const tick=o.maxHp*((o.burnMag||BAL.burnPct)+(o.burnBonus||0)), left=o.burn;
+      o.burn=0; o.burnFresh=false; o.burnMag=0; o.burnBonus=0; o.burnNoCure=false; const by=o.burnBy; o.burnBy=null;
+      // 4.3 지속 피해 계열 — 회피·방어력·방어막 없이 ⑩ 반올림 한 번 (남은 라운드 × 1회 피해 × 1.5)
+      c.hits.push({evaded:false,actual:v2Dot(c.oSide,o,tick*left*1.5,"💥 폭발 연소 —",c.side)}); }
+    else c.hit(120,{}); },
+  heatShell(c){ v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.20,rounds:1}); applyTimedFx(c.f,"retaliateBurnR",1); },
+  eruption(c){ c.hit(80,{flat:Math.min(40,c.f.mitigated||0)}); },
+  flameMark(c){ const r=c.hit(60,{}); if(S.battle&&!r.evaded&&c.opp.burn>0){ const o=c.opp;
+      v2Dot(c.oSide,o,o.maxHp*((o.burnMag||BAL.burnPct)+(o.burnBonus||0)),"🔥 불꽃 표식 —",c.side); } },
+  undyingEmber(c){ const r=c.hit(130,{}); if(S.battle&&!r.evaded&&c.opp.burn>0){ c.opp.burn=Math.min(3,c.opp.burn+1); bmsg(`🔥 화상 지속 +1R (${c.opp.burn}R)`,{st:stFx(c.oSide,c.opp)}); }
+    if(S.battle){ applyTimedFx(c.f,"vanguardTurn",1); bmsg(`🏃 ${fighterName(c.side)} — 다음 라운드 선턴`,{st:stFx(c.side,c.f)}); } },
+  emberPlant(c){ if(c.opp.burn>0){ c.opp.burnBonus=Math.min(0.06,(c.opp.burnBonus||0)+0.03); bmsg(`🔥 화상 피해율 +3%p (+${Math.round(c.opp.burnBonus*100)}%p)`,{st:stFx(c.oSide,c.opp)}); }
+    v2Heal(c.side,c.f,c.f.maxHp*0.05,"잿불 심기"); },
+  eternalAsh(c){ if(c.st("burn",1)){ c.opp.burn+=2; c.opp.burnNoCure=true; bmsg(`🔥 영겁의 재 — 화상 지속 +2R (${c.opp.burn}R) · 해독제로 해제되지 않음`,{st:stFx(c.oSide,c.opp)}); } },
+  heatStore(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.15),"heatStore"); bmsg(`🫧 열기 축적 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
+  volcano(c){ const used=c.f.shield||0; c.f.shieldLayers=[]; c.f.shield=0; // 소모는 깨짐이 아니다(3.2)
+    bmsg(`🌋 방어막 ${used} 소모!`,{st:stFx(c.side,c.f)});
+    const r=c.hit(100,{flat:used*1.5}); if(S.battle&&!r.evaded) c.st("burn",1); },
+  /* 💧 물 */
+  clearWater(c){ v2CleanseOne(c.side,c.f); v2Heal(c.side,c.f,c.f.maxHp*0.08,"맑은 물"); },
+  mirrorSurface(c){ c.hit(80,{}); if(S.battle){ applyTimedFx(c.f,"mirrorR",1); bmsg(`🪞 거울 수면 (1R)`,{st:stFx(c.side,c.f)}); } },
+  dive(c){ applyEvadeBuff(c.f,0.20,1); applyTimedFx(c.f,"vanguardTurn",1); bmsg(`💨 회피 +20% · 다음 라운드 선턴`,{st:stFx(c.side,c.f)}); },
+  abyssStrike(c){ const had=c.opp.weaken>0; const r=c.hit(had?250:150,{});
+    if(S.battle&&had&&!r.evaded){ c.opp.weaken=0; c.opp.weakenMag=0; bmsg(`💧 약화 소모!`,{st:stFx(c.oSide,c.opp)}); } },
+  freeze(c){ const r=c.hit(60,{}); if(S.battle&&!r.evaded) v2CdUp(c.oSide,c.opp); },
+  iceReflect(c){ applyTimedFx(c.f,"reflectR",2); bmsg(`🧊 빙벽 반사 (2R)`,{st:stFx(c.side,c.f)}); },
+  mistStep(c){ applyEvadeBuff(c.f,0.30,1); bmsg(`💨 회피 +30% (1R)`,{st:stFx(c.side,c.f)}); },
+  phantomDance(c){ c.opp.nullifyNext=true; bmsg(`🌫 ${fighterName(c.oSide)}의 다음 행동이 무효가 된다!`,{st:stFx(c.oSide,c.opp)}); },
+  floodTide(c){ const r=c.hit(60,{}); if(S.battle&&!r.evaded&&c.opp.weaken>0){ c.opp.weaken=Math.min(4,c.opp.weaken+1); bmsg(`💧 약화 +1회 (${c.opp.weaken}회)`,{st:stFx(c.oSide,c.opp)}); } },
+  tsunami(c){ const side=c.side, B=S.battle;
+    /* 4.3 예고 피해 — 발동 시점에 ①~⑪. 2라운드 뒤 라운드 시작 시(atStart), 발동 전에 전투가 끝나면 취소(4.6). tag 는 서버 락스텝 식별자 */
+    scheduleDelayed(c.f,2,()=>{ const B2=S.battle; if(!B2) return; const f=side==="A"?B2.fa:B2.fd, o=side==="A"?B2.fd:B2.fa;
+      bmsg(`🌊 해일이 덮친다!`,null,{key:"skillFx"});
+      const fake={side,f,opp:o,oSide:side==="A"?"D":"A",sk:SKILLS["M-W5-4"],hits:[]};
+      v2Hit(fake,120+(o.weaken||0)*30,{raw:true}); },"M-W5-4:tsunami");
+    const ev=c.f.pendingFx[c.f.pendingFx.length-1]; ev.atStart=true;
+    bmsg(`🌊 해일 예고 — 2라운드 뒤!`); },
+  shellClose(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.18),c.sk.id); bmsg(`🫧 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
+  clawCounter(c){ applyTimedFx(c.f,"counterR",2); c.f.counterRound=0; bmsg(`🦀 집게 반격 (2R)`,{st:stFx(c.side,c.f)}); },
+  /* ⚡ 번개 */
+  charge(c){ c.f.nextShockForce=true; applyTimedFx(c.f,"spdBuffR",2,"spdBuff",3); bmsg(`⚡ 충전 — 다음 피해 스킬 감전 100% · 속도 +3 (2R)`,{st:stFx(c.side,c.f)}); },
+  chainLightning(c){ c.hit(Math.min(220,100+(c.f.shocksDealt||0)*30),{}); },
+  thunderBrand(c){ const late=V2_INTERP.brandByTurnOrder?S.battle.firstSide===c.side:c.opp.shock>0; c.hit(late?260:130,{}); },
+  grounding(c){ if(c.f.shock>0){ c.f.shock=0; c.f.shockFresh=false; } applyTimedFx(c.f,"immuneShockR",2);
+    v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.15,rounds:1}); bmsg(`⚡ 접지 — 감전 해제 · 2R 감전 면역`,{st:stFx(c.side,c.f)}); },
+  overloadWall(c){ applyTimedFx(c.f,"overloadR",2); bmsg(`⚡ 과부하 방벽 (2R)`,{st:stFx(c.side,c.f)}); },
+  flashStep(c){ c.hit(70,{}); if(!S.battle) return; let pick=-1;
+    for(let i=0;i<c.f.skills.length;i++) if(i!==c.slot&&c.f.cds[i]>0&&(pick<0||c.f.cds[i]>c.f.cds[pick])) pick=i;
+    if(pick>=0){ c.f.cds[pick]--; bmsg(`🔄 ${SKILLS[c.f.skills[pick]].ko} ⌛ −1 (남은 ⌛${c.f.cds[pick]})`); } },
+  lightningTail(c){ c.hit(100,{}); if(!S.battle) return;
+    let pick=-1; for(let i=0;i<c.f.skills.length;i++){ if(i===c.slot) continue; const s=SKILLS[c.f.skills[i]];
+      if(!s||s.kind==="basic"||!s.pct||s.reaper||c.f.cds[i]>0||!v2ReqOk(c.f,s,c.side)) continue; pick=i; break; }
+    if(pick<0){ bmsg(`⚡ 이어 쓸 스킬이 없다.`); return; }
+    const s2=SKILLS[c.f.skills[pick]]; c.f.cds[pick]=s2.cd||0; if(c.f.revealedSkills&&!c.f.revealedSkills.includes(pick)) c.f.revealedSkills.push(pick);
+    bmsg(`⚡ 번개 꼬리 — ${s2.ko} 연계 (위력·효과 60%)`);
+    /* 이어 쓰기 = '추가 사용'(4.6 한 행동 1회) — 위력·효과 확률 모두 60%. c2.hits 는 c.hits 와 같은 배열이라 흡수 집계에 함께 들어간다 */
+    const c2=Object.assign({},c,{sk:s2,slot:pick}); c2.hit=(p,o)=>{ c2.retaliated=c.retaliated; const r=v2Hit(c2,p,Object.assign({scale:0.6},o||{})); c.retaliated=c2.retaliated; return r; }; c2.st=(k,p,o)=>c.st(k,p*0.6,o);
+    (V2_FX[s2.fx]||v2Default)(c2); },
+  magField(c){ const r=c.hit(50,{}); if(S.battle&&!r.evaded&&c.opp.shock>0) v2CdUp(c.oSide,c.opp); },
+  permField(c){ c.opp.permShockR=2; c.opp.permShockBy=c.side; bmsg(`🧲 영구 자기장 — 다음 2라운드 시작마다 감전`,{st:stFx(c.oSide,c.opp)}); },
+  capacitor(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.15),"charge"); bmsg(`🫧 축전 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
+  discharge(c){ const r=c.hit(120,{flat:(c.f.shield||0)*0.5}); if(S.battle&&!r.evaded) c.st("shock",1); },
+  /* 🗻 땅 */
+  burrow(c){ applyTimedFx(c.f,"burrowR",1); c.f.burrowRound=S.battle.round; bmsg(`🕳 굴 파기 — 다음 라운드가 끝날 때까지 받는 피해 −40%`,{st:stFx(c.side,c.f)}); },
+  steelHide(c){ v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.30,rounds:1}); },
+  ironBreak(c){ applyTimedFx(c.f,"nullHitR",1,"nullHitN",1); c.f.nextPowUp=0.80; bmsg(`🦏 철벽 돌파 — 피해 1회 무효 · 다음 피해 스킬 +80%p`,{st:stFx(c.side,c.f)}); },
+  sandWind(c){ c.opp.sandWind=true; applyEvadeBuff(c.f,0.10,1); bmsg(`🌪 모래바람 — 상대 다음 피해 스킬 −30% · 회피 +10%`,{st:stFx(c.oSide,c.opp)}); },
+  sandStorm(c){ applyTimedFx(c.opp,"sandStormR",2); v2Apply(c.side,c.f,c.oSide,c.opp,"spdDown",1,{force:true,mag:5,rounds:2}); bmsg(`🌪 모래 폭풍 — 상태이상 부여 확률 절반 (2R)`,{st:stFx(c.oSide,c.opp)}); },
+  weathering(c){ if(c.opp.crack>0){ c.opp.crack=Math.min(3,c.opp.crack+1); bmsg(`🗻 균열 지속 +1R (${c.opp.crack}R)`,{st:stFx(c.oSide,c.opp)}); }
+    v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.10,rounds:1}); },
+  ancientAwaken(c){ v2Heal(c.side,c.f,c.f.maxHp*0.30,"태고의 각성"); v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.20,rounds:2}); },
+  curlBall(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.25),c.sk.id); bmsg(`🫧 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
+  fortress(c){ applyTimedFx(c.f,"fortressR",2); shieldAdd(c.f,Math.round(c.f.maxHp*0.10),c.sk.id); bmsg(`🏰 요새 전환 (2R) · 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
+  /* 🌿 풀 */
+  photosynthesis(c){ v2Heal(c.side,c.f,c.f.maxHp*(S.battle.firstSide===c.side?0.15:0.10),"광합성"); },
+  growthKnot(c){ c.hit(100,{flat:Math.min(40,(c.f.healTotal||0)*0.5)}); },
+  rootBind(c){ const r=c.hit(100,{}); if(S.battle&&!r.evaded){ c.opp.fleeLock=true; v2Apply(c.side,c.f,c.oSide,c.opp,"healCut",1,{force:true,mag:0.5,rounds:2});
+      bmsg(`🌿 뿌리 고정 — 이 전투 동안 도망 불가`,{st:stFx(c.oSide,c.opp)}); } },
+  devour(c){ const low=c.opp.hp<=c.opp.maxHp*0.30; const r=c.hit(low?260:160,{});
+    if(!r.evaded&&c.opp.hp<=0&&S.battle){ const gain=Math.round(c.f.maxHp*0.20); v2Heal(c.side,c.f,gain,"포식"); } },
+  treeRing(c){ applyTimedFx(c.f,"ringR",2); bmsg(`🌳 나이테 (2R)`,{st:stFx(c.side,c.f)}); },
+  millennium(c){ applyTimedFx(c.f,"enduredR",2); c.f.enduredUsed=false; bmsg(`🌳 천년목 (2R)`,{st:stFx(c.side,c.f)}); },
+  sleepSpore(c){ c.opp.sleepNext=true; bmsg(`💤 ${fighterName(c.oSide)}의 다음 행동은 기본기만 가능`,{st:stFx(c.oSide,c.opp)}); },
+  breedSpore(c){ applyTimedFx(c.opp,"breedR",2); c.opp.breedBy=c.side; bmsg(`🍄 번식 포자 (2R)`,{st:stFx(c.oSide,c.opp)}); },
+  mossDrain(c){ const r=c.hit(90,{}); if(S.battle&&!r.evaded&&r.actual>0) v2Heal(c.side,c.f,r.actual*0.5,"이끼 흡혈"); },
+  mossRot(c){ v2Apply(c.side,c.f,c.oSide,c.opp,"moss",1,{force:true,mag:0.04,rounds:3}); },
+  sporeFilm(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.15),"spore"); bmsg(`🫧 포자 막 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
+  mycelium(c){ const conv=Math.min(c.f.shield||0,Math.round(c.f.maxHp*0.30)); c.f.shieldLayers=[]; c.f.shield=0; // 전환은 깨짐이 아니다(3.2)
+    v2Heal(c.side,c.f,conv,"균사 전환"); v2Apply(c.side,c.f,c.side,c.f,"absorb",1,{force:true,mag:0.30,rounds:2}); },
+  /* 전설 */
+  scaleUp(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.15),c.sk.id); v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.15,rounds:1}); },
+  wingStrike(c){ const r=c.hit(140,{}); if(S.battle&&!r.evaded) v2Apply(c.side,c.f,c.oSide,c.opp,"spdDown",1,{force:true,mag:4,rounds:2}); },
+  poisonBottle(c){ const r=c.hit(110,{}); if(!S.battle||r.evaded) return; const o=c.opp, hb=o.burn>0, hw=o.weaken>0;
+    let k; if(!hb&&!hw) k=rand()<0.5?"burn":"weaken"; else if(!hb) k="burn"; else if(!hw) k="weaken"; else k=(o.weaken<o.burn)?"weaken":"burn";
+    c.st(k,0.70); },
+  whimSpell(c){ v2RemoveBuff(c.oSide,c.opp); v2CleanseOne(c.side,c.f); },
+  soulHarvest(c){ const r=c.hit(130,{}); if(S.battle&&!r.evaded&&r.actual>0) v2Heal(c.side,c.f,r.actual*0.30,"영혼 수확"); },
+  deathShadow(c){ applyEvadeBuff(c.f,0.25,1); c.f.critForce=true; bmsg(`💀 회피 +25% · 다음 피해 스킬 치명타 확정`,{st:stFx(c.side,c.f)}); },
+  /* 왕 · 동료 시너지 스킬 (5.3) */
+  revenge(c){ v2Revenge(c,0); },
+  wrath(c){ v2Revenge(c,1); }
+};
+function v2Revenge(c,extend){
+  const r=c.hit(c.sk.pct,{}); if(!S.battle) return;
+  const e=v2KingdomEffectOf(c.f.owner!==undefined?c.f.owner:null,c.f.element); if(!e) return;
+  if(e.kind==="harden"||e.kind==="absorb"){ v2Apply(c.side,c.f,c.side,c.f,e.kind,1,{force:true,mag:e.mag,rounds:e.rounds+extend}); return; }
+  if(r.evaded) return;
+  if(e.kind==="weaken") c.st("weaken",1,{force:true,mag:e.mag,hits:e.hits+extend});
+  else c.st(e.kind,1,{force:true,mag:e.mag,rounds:e.rounds+extend});
+}
+function v2CdUp(tSide,t){ const i=v2CdUpTarget(t); if(i<0){ bmsg(`❄ 늘릴 ⌛가 없다.`); return; }
+  t.cds[i]=(t.cds[i]||0)+1; bmsg(`❄ ${fighterName(tSide)}의 스킬 1개 ⌛ +1`,{st:stFx(tSide,t)}); }
+/* 라운드 종료 처리 — 화상 다음 · 지속 감소 전에 nextPhase 가 부른다. 반환 true = 전투 종료 */
+function v2RoundEnd(f,side){
+  const B=S.battle;
+  if(f.mossRFresh){ /* 부여 라운드는 세지 않는다 (5.6) */ }
+  else if(f.mossR>0){ const d=v2Dot(side,f,f.maxHp*(f.mossPct||0.04),"🍄 이끼 잠식 —",f.mossBy);
+    const by=f.mossBy==="A"?B.fa:f.mossBy==="D"?B.fd:null; if(by&&d>0) v2Heal(f.mossBy,by,d,"이끼 잠식");
+    if(checkDeath()) return true; }
+  if(!f.ringRFresh&&f.ringR>0) v2Heal(side,f,f.maxHp*0.06,"나이테");
+  if(f.sporePending>0){ const h=f.sporePending*0.5; f.sporePending=0; v2Heal(side,f,h,"포자 막"); }
+  return false;
+}
+function v2RoundDecay(f,side){
+  for(const k of V2_TIMED){
+    if(f[k+"Fresh"]){ f[k+"Fresh"]=false; continue; }
+    if(f[k]>0){ f[k]--; if(!f[k]){ for(const m of (V2_TIMED_MAG[k]||[])) f[m]=(m==="mossBy"||m==="breedBy")?null:0; } }
+  }
+}
+/* 라운드 시작 처리 — 영구 자기장(Q5)·예고 피해(atStart). 선턴 확정 **전에** 부른다. 반환 true = 전투 종료 */
+function v2RoundStart(){
+  const B=S.battle; if(!B) return true;
+  for(const [f,side] of [[B.fa,"A"],[B.fd,"D"]]){
+    if(f.permShockR>0){ f.permShockR--; const bySide=f.permShockBy, by=bySide==="A"?B.fa:B.fd;
+      v2Apply(bySide,by,side,f,"shock",1,{force:true}); } // Q5: 5.6 1R 감전 그대로(부여 라운드 남은 행동 + 다음 1라운드)
+  }
+  for(const f of [B.fa,B.fd]){
+    if(!f.pendingFx||!f.pendingFx.length) continue;
+    const due=f.pendingFx.filter(ev=>ev.atStart&&ev.roundsLeft<=0);
+    if(!due.length) continue;
+    f.pendingFx=f.pendingFx.filter(ev=>!due.includes(ev));
+    for(const ev of due){ if(S.battle!==B) return true; ev.run(); if(S.battle!==B) return true; if(checkDeath()) return true; }
+  }
+  return S.battle!==B;
+}
+/* AI 판단 힌트 (자기 스킬 정보만 — 공정 관측과 무관) */
+const V2_AI_HINT={
+  def:["emberScale","heatShell","heatStore","iceReflect","mistStep","dive","shellClose","clawCounter","grounding","overloadWall","capacitor",
+       "burrow","steelHide","ironBreak","curlBall","fortress","millennium","sporeFilm","scaleUp","deathShadow"],
+  heal:["clearWater","photosynthesis","treeRing","mycelium","ancientAwaken","emberPlant"],
+  debuff:["eternalAsh","phantomDance","tsunami","permField","sandWind","sandStorm","weathering","sleepSpore","breedSpore","mossRot","whimSpell"],
+  buff:["charge"]
+};
+for(const k of Object.keys(V2_AI_HINT)) for(const fx of V2_AI_HINT[k]) for(const id of Object.keys(SKILLS)) if(SKILLS[id].v2&&SKILLS[id].fx===fx&&!SKILLS[id].pct) SKILLS[id].ai=k;
+function aiV2SupportScore(f,sk,lowHp){
+  const k=sk.ai||"buff";
+  if(k==="heal") return f.hp<f.maxHp*0.6?(lowHp?20:9):1;
+  if(k==="def") return lowHp?14:5;
+  if(k==="debuff") return 7;
+  return 6;
+}
+
 
 /* ===== #89 하수인 아트 연결 — 표시 계층 전용. 규칙·수치·AI 공정 관측은 하나도 바뀌지 않는다 =====
    자산: demo/assets/minions/<속성>_<아키타입>/{icon.png 32 · battle.png 128 · portrait.webp 512}.
@@ -1005,7 +1618,7 @@ function leaderBattleDir(pf,piece){ // 본체 출전일 때만 — 포획 하수
   const d=leaderDirOf(piece);
   return (d&&!ART.failed.has(d)&&!artGone(d,LEADER_FILES.battle)&&ART.loaded.has(d+"/"+LEADER_FILES.battle))?d:null;
 }
-const ART_DIRS=ROSTER.map(r=>r.element+"_"+r.arch);       // 20종 허용 목록 — 이 목록 밖의 값으로 경로를 만들지 않는다
+const ART_DIRS=ROSTER.filter(r=>ELEMS.includes(r.element)&&ARCH_TMPL[r.arch]).map(r=>r.element+"_"+r.arch); // 기존 20종 폴더 허용 목록 — #234 의 보호형·땅 10종은 폴더가 없어 목록 밖(이모지 폴백, 새 경로 생성 금지)
 const ART_DIR_SET=new Set(ART_DIRS);
 /* #201 (v0.4.8) retry·gone·settled 는 일시적 로드 실패 복구 전용 칸이다 — 규칙·수치·정보 경계와 무관한 표시 계층 상태다.
    예산은 **파일 단위**다 ("종/파일" 키). 전투 도트 하나가 영영 없다고 해서 멀쩡한 보드 아이콘까지 막히면 안 되기 때문이다.
@@ -1159,9 +1772,10 @@ window.artSpriteFail=function(dir,el){
     if(tok&&tok.classList&&B&&(tok.id==="tok-A"||tok.id==="tok-D")){
       const sid=tok.id==="tok-A"?"A":"D", pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
       tok.classList.remove("art");
-      tok.style.background=pf.element?`var(--${pf.element})`:"#5a6377";
-      const emo=pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
-      tok.innerHTML=`${emo}<small>${pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type]}</small>`;
+      const lb=pf===piece&&(piece.type==="king"||piece.type==="ally"); // #234: 왕·동료 본체는 속성을 가져도 현행 이모지 토큰 유지(표시 개편은 #238) — 속성은 패널 배지로 보인다
+      tok.style.background=pf.element&&!lb?`var(--${pf.element})`:"#5a6377";
+      const emo=lb?(piece.type==="king"?"👑":"🤝"):pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
+      tok.innerHTML=`${emo}<small>${pf.element&&!lb?ELEM_KO[pf.element]:TYPE_KO[piece.type]}</small>`;
       return;
     }
   }catch(e){}
@@ -1391,7 +2005,8 @@ function mkPiece(owner,type,element,allyIdx){
     focusCharge:false, vulnMark:false, dmgCut:0,
     /* #121 계약 3: 전투 버프 패키지 효과는 **그 전투에만** 산다. 본체 출전이면 f === piece 라 이 필드가 말에 남으므로
        전투 개시(resetBattleTemps)와 전투 종료(resetAfter) 양쪽에서 반드시 지운다 — 계약 3.1 "전투가 끝나면 즉시 정리" */
-    powerBuff:false, fleeBoost:false};
+    powerBuff:false, fleeBoost:false,
+    allyKind:type==="ally"?(allyIdx===1?"shield":"assassin"):null, leaderElChosen:false, legend:null}; // #234 6.2: 동료 종류(스킬 세트) · 속성 선택 여부(선택 UI 는 #236/#238)
   /* #233 (GDD-23 3.3·3.5) 8스탯 주입 — minion 은 로스터 선택 전 기본값으로 표준형(std) 블록을 쓰고
      applyRoster()가 실제 종의 아키타입으로 다시 주입한다. 왕·동료는 등급 없음(grade:null, 3.5). */
   if(type==="minion") applyArchStats(f,"std",1);
@@ -1405,16 +2020,13 @@ function applyRoster(p){
   const ms=S.pieces.filter(x=>x.owner===p&&x.type==="minion");
   ms.forEach((m,i)=>{
     const rd=S.roster[p][i]?ROSTER.find(r=>r.id===S.roster[p][i]):null;
-    if(rd){m.rosterId=rd.id; m.name=rd.name; m.element=rd.element;
-      const grade=m.grade||1; // #233 (GDD-23 3.4): 상점·등급 성장은 #234/#236 전까지 없으므로 항상 ⭐1로 주입
-      m.hp=gradeHp(rd.hp,grade); m.maxHp=m.hp; m.atk=gradeAtk(rd.atk,grade); m.skillAtk=rd.skill; m.cdMax=rd.cd;
-      applyArchStats(m,rd.arch,grade);
-      m.skills=archSkills(rd.arch,rd.element); m.cds=[0,0,0,0]; m.revealedSkills=[];}
+    if(rd){ applySpecies(m,rd,1); } // #234 (GDD-23 2.2 · 3.4 · 6.1): 경기 시작 하수인은 ⭐1 — 1차 기본기 1개. ⭐2~4 는 상점(#236) 전까지 검사·AI 경로에서만 구성
     else {m.rosterId=null; m.name=null; m.element=null;
       m.hp=BAL.minion.hp; m.maxHp=BAL.minion.hp; m.atk=BAL.minion.atk; m.skillAtk=BAL.minion.skill; m.cdMax=BAL.minion.cd;
       applyArchStats(m,"std",1);
       m.skills=null; m.cds=[0,0,0,0]; m.revealedSkills=null;}
   });
+  assignLeaderElements(p); // #234 (GDD-23 2.2): 왕·동료 속성 미선택 규칙 — 필드 하수인 최다 속성(동률 🔥→💧→⚡→🗻→🌿), 스킬 칸 동기화
 }
 /* #121 계약 1.1 (v0.4.7) 숲 이벤트 개편 — 종전 #12 의 "구역당 3~4개 · 6종 칸마다 독립 추첨"을 대체한다.
    각 구역(4·5행 / 9·10행)에 itemGift·battleBuff·recruit 를 **각 정확히 1개**, 보드 전체 6개. 종류별 개수는 고정이고 칸 위치만 무작위다.
@@ -2057,13 +2669,13 @@ function renderSetup(sp){
     <button type="button" data-prep-step="place" aria-pressed="${UI.prep==="place"}" onclick="uiPrep('place')">02 비공개 배치 ${14-unplaced.length}/14</button></div>
   <section class="prepStep" data-step="roster">
   <h2>${NET.preparing?"🌐 온라인 대전 — 내":pname(p)} 로스터 선택 (${sel.length}/6)</h2>
-  <small>20종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정.</small>`;
-  for(const el of ELEMS){
+  <small>30종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정 · 경기 시작은 모두 ⭐1(1차 기본기).</small>`;
+  for(const el of V2_ELEM_ORDER){ // #234 (GDD-23 6.3): 5속성 × 6아키타입
     h+=`<div class="row">`;
     for(const rd of ROSTER.filter(r=>r.element===el))
       h+=`<div class="rosterCard ${sel.includes(rd.id)?"on":""}" onclick="rosterInfo('${rd.id}')">
         <b class="el-${rd.element}">${rd.name}</b>
-        <small>${ELEM_KO[rd.element]}·${ARCH_KO[rd.arch]} · HP${rd.hp} 공${rd.atk} · ${archSkills(rd.arch,rd.element).map(s=>SKILLS[s].ko).join("·")}</small></div>`;
+        <small>${ELEM_KO[rd.element]}·${ARCH_KO[rd.arch]} · HP${rd.hp} 공${rd.atk} · ${speciesSkills(rd.id,4).map(s=>SKILLS[s].ko).join("·")}</small></div>`;
     h+=`</div>`;
   }
   h+=`</section><section class="prepStep" data-step="place">
@@ -2190,10 +2802,9 @@ window.toggleRosterCore=rid=>{ // 로스터 선택 토글 — 중복 불가·최
 window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 해제]는 toggleRoster와 동일 동작 (6/6·중복 불가 유지)
   const rd=ROSTER.find(r=>r.id===rid); if(!rd) return;
   const on=S.roster[S.setupPlayer].includes(rid);
-  const slots=archSkills(rd.arch,rd.element);
+  const slots=speciesSkills(rd.id,4); // #234 (GDD-23 6.1): ⭐N 은 1~N차 보유 — 4칸 모두 보여 주고 열리는 등급을 표시
   const rows=slots.map((sid,i)=>{const sk=SKILLS[sid];
-    const p=sk.pow?Math.round(sk.pow*rd.atk/SKILL_ATK_BASE):0;
-    return `<div style="font-size:13px;margin:3px 0"><span class="badge">${i+1}</span> <b>${sk.ko}</b> <small>[${SKIND_KO[sk.kind]}]${p?` 위력 ${p}`:""}${sk.cd?` · 쿨 ${sk.cd}`:""} — ${sk.desc}</small></div>`;
+    return `<div style="font-size:13px;margin:3px 0"><span class="badge">${i+1}차 · ⭐${i+1}</span> <b>${sk.ko}</b> <small>[${SKIND_KO[sk.kind]}] — ${sk.desc}</small></div>`;
   }).join("");
   netLocalModal(); // 로스터 정보 팝업은 로컬 전용 — 선택 확정(toggleRoster)만 동기화
   // #89 설명창 일러스트: 자기 로스터를 고르는 화면이므로 정보 은닉 대상이 아니다 (규격 5.3). 512 원본을 192로 축소 표시하고 실패 시 png → 숨김
@@ -2201,7 +2812,7 @@ window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 �
   const rart=ART_DIR_SET.has(rdir)?`<div class="rosterArt"><img src="${artUrl(rdir,"portrait.webp")}" alt="${rd.name} 일러스트" width="192" height="192" onerror="artPortraitFail(this,'${rdir}')"></div>`:"";
   modal(`<h2 class="el-${rd.element}">${rd.name}</h2>${rart}
     <div class="row"><span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span><span class="badge">${ARCH_KO[rd.arch]}형</span>${on?`<span class="badge">✔ 선택됨</span>`:""}</div>
-    <div class="status" style="margin:6px 0">HP ${rd.hp} · 공격 ${rd.atk} (기술 위력 = 표기 위력 × 공격/${SKILL_ATK_BASE})</div>
+    <div class="status" style="margin:6px 0">⭐1 HP ${rd.hp} · 공격 ${rd.atk} (스킬 위력 💪N% = 공격력 × N%)</div>
     ${rows}`,
     [[on?"선택 해제":"선택하기",()=>{close(); toggleRoster(rid);}],["닫기",close]]);
 };
@@ -2710,7 +3321,7 @@ function recruitModal(){
     modal(`<h2>🌿 숲에서 무언가를 찾았다</h2><p>기술을 배우거나, 공용 하수인을 포획할 수 있습니다.<br><small>포기해도 이 칸은 다시 쓸 수 없습니다.</small></p>
       <div class="fighter"><b>📘 기술 교체</b><small>신규 공용 기술 3종 중 하나를 직접 골라, 내 최초 하수인 6명 중 살아 있는 말의 4슬롯 어디든 바꿉니다.</small></div>
       <div class="fighter"><b>🔴 하수인 포획</b><small>${recv.length?`동료·왕 중 포획 슬롯이 빈 말 ${recv.length}기가 받을 수 있습니다 (보유 볼 ${S.balls[own]})`:"<b>포획 슬롯이 빈 동료·왕이 없습니다 — 포획 불가</b>"}</small></div>`,
-      [btn("📘 기술 교체","skills",0)].concat(recv.length?[btn("🔴 하수인 포획","cap",0)]:[]).concat([btn("포기","giveup",0)]));
+      (V2_INTERP.recruitSkillSwap?[btn("📘 기술 교체","skills",0)]:[["📘 기술 교체 (v0.4.11 과도기 — 닫힘)",null,true]]).concat(recv.length?[btn("🔴 하수인 포획","cap",0)]:[]).concat([btn("포기","giveup",0)]));
     return;
   }
   if(R.stage==="skill"){
@@ -2763,7 +3374,7 @@ function recruitModal(){
     const opt=(name,cost,rate,risk)=>`<div class="fighter"><b>${name}</b><small>볼 ${cost} · 성공 ${rate}${risk?" · "+risk:""}</small></div>`;
     modal(`<h2>🔴 포획 시도 (몬스터볼 ${b})</h2>
       <div class="fighter"><b>발견: ${rd?rd.name:"공용 하수인"}${rd?` <span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span>`:""}</b>
-        <small>${rd?`HP ${rd.hp} · 공 ${rd.atk} · 기술 ${archSkills(rd.arch,rd.element).map(s=>SKILLS[s].ko).join("·")} — 이 종의 수치·기술 그대로 합류합니다`:""}<br>받을 말: ${recv?TYPE_KO[recv.type]:"-"}</small></div>
+        <small>${rd?`HP ${rd.hp} · 공 ${rd.atk} · ⭐1 스킬 ${speciesSkills(rd.id,1).map(s=>SKILLS[s].ko).join("·")} — 이 종의 ⭐1 수치·스킬로 합류합니다`:""}<br>받을 말: ${recv?TYPE_KO[recv.type]:"-"}</small></div>
       <small>공격 포획 실패 시 <b>탐색 말</b>이 최대 HP 25% 피해!</small>
       ${opt("안전 포획",2,"100%","")}${opt("위험 포획",1,"50%","실패 시 소멸")}${opt("공격 포획",1,"70%","실패 시 소멸 + 탐색 말 HP 25% 피해")}`,
       [["안전 포획 (볼 2)",b>=2?()=>window.__recruitCore("mode",0):null,b<2],
@@ -2787,6 +3398,9 @@ window.__recruitCore=(step,i)=>{
     if(R.stage==="target") R.targetId=null; if(R.stage==="skill") R.skill=null; if(R.stage==="capRecv") R.recvId=null;
     recruitModal(); return;
   }
+  /* #234 (V2_INTERP.recruitSkillSwap · PD msg): 새 스킬 체계(⭐1 = 기본기 1칸, 전설 스킬은 전설 전용)와 충돌해 과도기에는 기술 교체를 닫는다.
+     코드는 지우지 않고 비활성 분기로 둔다 — 포획·포기는 그대로다. */
+  if(!V2_INTERP.recruitSkillSwap&&(step==="skills"||step==="skill"||step==="target"||step==="slot")) return;
   if(step==="skills"){ R.stage="skill"; recruitModal(); return; }
   if(step==="cap"){ if(!capReceivers(own).length) return; R.stage="capRecv"; recruitModal(); return; }
   if(step==="skill"){ const sid=NEW_SKILLS[i]; if(!sid) return; R.skill=sid; R.stage="target"; recruitModal(); return; }
@@ -2868,8 +3482,9 @@ function tryCapture(p,mode,recv,rd){
   const ok= mode==="safe" || (mode==="risky"&&roll<0.5) || (mode==="attack"&&roll<0.7);
   if(ok){
     const sp=rd||ROSTER[0];
+    const capSk=speciesSkills(sp.id,1); // #234: 포획 말은 ⭐1 — 그 종의 1차 기본기
     target.cap={element:sp.element,hp:sp.hp,maxHp:sp.hp,atk:sp.atk,skillAtk:sp.skill,cd:0,cdMax:sp.cd,
-      skills:archSkills(sp.arch,sp.element),cds:[0,0,0,0],revealedSkills:[],
+      skills:capSk,cds:capSk.map(()=>0),revealedSkills:[],
       /* #233 (GDD-23 3.3): 대리 출전 포획 하수인도 그 종의 아키타입 8스탯을 그대로 받는다(⭐1 고정 — 등급 성장은 #234/#236 전까지 없음) */
       def:ARCHETYPE_BASE[sp.arch].def, spd:ARCHETYPE_BASE[sp.arch].spd, dodge:ARCHETYPE_BASE[sp.arch].dodge,
       crit:ARCHETYPE_BASE[sp.arch].crit, statusPct:ARCHETYPE_BASE[sp.arch].statusPct, shieldStartPct:ARCHETYPE_BASE[sp.arch].shieldStartPct, grade:1,
@@ -3069,6 +3684,9 @@ function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; met(attP.owner,"battles");
   attP.revealed=true; defP.revealed=true;
   healBreak(attP); healBreak(defP); // #106: 전투 참여 해제 (initBattle 경유가 아닌 직접 호출도 동일)
+  /* #234 (GDD-23 6.2 · 5.3 · 5.6 스냅샷): 참전 확정 순간 왕·동료 스킬 칸(동료 사망 수에 따른 🪄 칸)을 맞춘다.
+     속성이 아직 없으면(로스터 전 직접 호출) 2.2 미선택 규칙으로 정한다. */
+  for(const pc of [attP,defP]) if(pc.type==="king"||pc.type==="ally"){ if(!pc.element) assignLeaderElements(pc.owner); else syncOwnerLeaders(pc.owner); }
   S.battle={attP,defP,fa,fd,round:1,phase:0,
     recA:0,recD:0, itemsA:0,itemsD:0, itemRoundA:false,itemRoundD:false, lastItemA:null,lastItemD:null,
     ballThrowA:false, ballThrowD:false, // #12: 볼 투척 라운드당 1회
@@ -3087,10 +3705,10 @@ function startRounds(attP,defP,fa,fd){
 /* #233 (GDD-23 4.6): "전투 사이에는 HP만 유지하며 상태이상·버프·방어막·쿨타임을 초기화한다. 새 전투의 모든 스킬
    쿨타임은 0이다." — 종전 #92/#121/#146 시절의 "쿨은 전투 간 유지" 계약을 **이 Issue의 명시적 승인 범위 안에서 대체**한다
    (오늘 CJ가 그 변경을 직접 지시했다). f.skills가 있는 전투원만 cds 배열을 갖는다. */
-function resetBattleTemps(f){f.burn=0;f.burnFresh=false;f.burnBy=null;f.weaken=0;f.shield=0;f.shieldLayers=[];f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
+function resetBattleTemps(f){resetV2(f); f.burn=0;f.burnFresh=false;f.burnBy=null;f.weaken=0;f.shield=0;f.shieldLayers=[];f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
   f.crack=0;f.crackFresh=false;f.harden=0;f.hardenFresh=false;f.hardenPct=0;f.evadeBuff=0;f.evadeBuffR=0;f.evadeBuffRFresh=false;f.dmgUpBuff=0;f.dmgUpBuffR=0;f.dmgUpBuffRFresh=false;f.critForce=false;f.dodgeForce=false;
   f.pendingFx=[]; // #233 (GDD-23 4.6): 예고·지연 효과는 발동 전에 전투가 끝나면 취소된다 — 새 전투로 넘어오지 않는다
-  if(f.skills){ f.cds=[0,0,0,0]; } f.cd=0; // #233 (GDD-23 4.6): 레거시 스칼라 쿨(f.cd)도 새 전투는 0에서 시작한다
+  if(f.skills){ f.cds=f.skills.map(()=>0); } f.cd=0; // #233 (GDD-23 4.6): 레거시 스칼라 쿨(f.cd)도 새 전투는 0에서 시작한다
   if(f.shieldStartPct){ shieldAdd(f,Math.round(f.maxHp*f.shieldStartPct),"guardStart"); } // 3.3 보호형 기본값: 전투 시작 시 최대 HP 10% 방어막
   f.powerBuff=false;f.fleeBoost=false;}
 /* #233 (GDD-23 4.4) 선턴·후턴 — 라운드 시작 시 확정.
@@ -3102,7 +3720,7 @@ function decideFirstSide(B){
   const fa=B.fa, fd=B.fd;
   const ca=fighterOrderCat(fa), cd=fighterOrderCat(fd);
   if(ca!==cd) return ca<cd?"A":"D";
-  const sa=fa.spd||0, sd=fd.spd||0;
+  const sa=effSpd(fa), sd=effSpd(fd); // #234: 속도 증가(충전)·속도 감소(날개 강타·모래 폭풍) 반영
   if(sa!==sd) return sa>sd?"A":"D";
   if(fa.grade!=null&&fd.grade!=null&&fa.grade!==fd.grade) return fa.grade<fd.grade?"A":"D"; // 낮은 등급 우선 (등급 없는 왕·동료가 끼면 여기를 건너뛰어 이미 위에서 A로 떨어진다)
   return "A";
@@ -3154,10 +3772,14 @@ function battleModal(){
       <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}</div>
       </div><div class="fscroll">
       <div class="status"><span id="bst-${sid}">${stIcons(pf)}</span></div>
-      ${pf.skills?`<div class="status">${pf.skills.map((sid2,i)=>{
-        const sk2=SKILLS[sid2], known=viewer===2||piece.owner===viewer||(pf.revealedSkills&&pf.revealedSkills.includes(i));
-        return known?`${skillNameKo(sid2,pf.element)}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:`?${SKIND_KO[sk2.kind]}`;
-      }).join(" · ")}</div>`:""}
+      ${pf.skills?`<div class="status">${(()=>{
+        /* #234 (GDD-23 7.9): 등급·미사용 스킬은 비공개 — 보유 칸 수가 곧 등급이므로 상대 화면에는 공개된 스킬만 이름으로 쓰고
+           나머지는 개수 없이 "?" 하나로 묶는다. 소유자·관전(sim)은 전부 본다. */
+        const all=viewer===2||piece.owner===viewer;
+        const parts=pf.skills.map((sid2,i)=>(all||(pf.revealedSkills&&pf.revealedSkills.includes(i)))?`${skillNameKo(sid2,pf.element)}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:null);
+        const shown=parts.filter(x=>x!==null); if(!all&&shown.length<parts.length) shown.push("? 미공개");
+        return shown.join(" · ");
+      })()}</div>`:""}
     </div></div>`;
   };
   const token=sid=>{ // 스테이지 토큰: 하수인 본체·대리 출전 포획 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료 본체는 현행 속성색 원형 + 이모지 유지 (규격 6.3 · #91)
@@ -3166,7 +3788,8 @@ function battleModal(){
        시간의 수호자는 전투 전체에 걸리므로 그 버프를 쓴 side 의 토큰에 붙인다. */
     const bkey=sid==="A"?B.buffA:B.buffD;
     const bcls=bkey?" buff-"+bkey:"";
-    const pos=sid===mySide?"tok-me":"tok-op", label=pf.element?ELEM_KO[pf.element]:TYPE_KO[piece.type];
+    const lb=pf===piece&&(piece.type==="king"||piece.type==="ally"); // #234: 왕·동료 본체 토큰은 현행 이모지·라벨 유지(속성은 패널 배지) — 표시 개편은 #238
+    const pos=sid===mySide?"tok-me":"tok-op", label=pf.element&&!lb?ELEM_KO[pf.element]:TYPE_KO[piece.type];
     // #89/#91 지금 실제로 싸우는 전투원 기준: 본체면 그 말의 종, 대리 출전(포획·예비 하수인)이면 cap 에 기록된 종. 왕·동료 본체 그림은 없으므로 null → 이모지
     const dir=artDirOfFighter(pf,piece);
     if(artBattleOk(dir))   // #201: 전투 파일이 영구 결손으로 판정되면 다시 내보내지 않는다 (요청 왕복·보드 아이콘 억제 방지)
@@ -3176,8 +3799,8 @@ function battleModal(){
     const ld=leaderBattleDir(pf,piece);
     if(ld)
       return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite leader" src="${artUrl(ld,LEADER_FILES.battle)}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${ld}',this)"><small>${label}</small></div>`;
-    const col=pf.element?`var(--${pf.element})`:"#5a6377";
-    const emo=pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
+    const col=pf.element&&!lb?`var(--${pf.element})`:"#5a6377";
+    const emo=lb?(piece.type==="king"?"👑":"🤝"):pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
     return `<div class="btok ${pos}${bcls}" id="tok-${sid}" style="background:${col}">${emo}<small>${label}</small></div>`;
   };
   // #121 계약 2.3: itemRound(라운드 1회)만 실제 게이트다. itemsX·lastItemX 는 기록으로만 남아 더 이상 버튼을 막지 않는다
@@ -3196,11 +3819,13 @@ function battleModal(){
     cmdBtns=f.skills.map((sid2,i)=>{
       const sk2=SKILLS[sid2], onCd=f.cds[i]>0;
       const known=!maskCmd||(f.revealedSkills&&f.revealedSkills.includes(i));
+      if(!known) return ""; // #234 (7.9): 상대 화면에는 미공개 칸을 칸 수만큼 그리지 않는다(아래에서 "?" 하나로 묶는다)
       /* #121 계약 5.3: 사신의 낫은 쿨이 아니라 **봉인**으로 막힌다. 표시도 "봉인"이고 사유를 그대로 보여 준다
          (쿨링수·냉각·전술 연계·급속 순환으로는 풀리지 않는다 — 게이트가 cds[] 와 분리되어 있다) */
       const seal=sk2.reaper?reaperWhy(side):null;
-      const locked=onCd||!!seal;
-      const label=known?`${skillNameKo(sid2,f.element)}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:seal?" (봉인)":""}`:`? ${SKIND_KO[sk2.kind]}`;
+      const cond=!onCd&&!seal&&!slotUsable(f,i,side); // #234: 전투당 1회 사용 · 사용 조건 미충족 · 수면 포자(기본기만)
+      const locked=onCd||!!seal||cond;
+      const label=known?`${skillNameKo(sid2,f.element)}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:seal?" (봉인)":cond?" (불가)":""}`:`? ${SKIND_KO[sk2.kind]}`;
       const cross=known&&sk2.el&&f.element&&sk2.el!==f.element; // #92 본체와 다른 속성의 공격기 — 판정 속성을 설명에 덧붙여 비교 가능하게
       const tip=known?sk2.desc+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:"")+(sk2.cls?` · ${SKILL_CLS_KO[sk2.cls]} 분류(상성표 밖)`:"")+(seal?` · ${seal}`:""):"";
       skillTips[i]=known&&tip?{label,tip}:null;
@@ -3209,6 +3834,7 @@ function battleModal(){
          정체를 모르는 기술(비공개 "? 종류")에는 설명 버튼을 만들지 않는다(tip 이 비어 있다). PC hover(title)는 그대로다. */
       return `<span class="skillCmd"><button ${dis||locked?"disabled":""} title="${escAttr(tip)}" onclick="window.__act(${i})">${label}</button>${skillTips[i]?`<button type="button" class="skillInfoBtn" aria-label="${escAttr(label)} 설명 보기" aria-controls="skillInfoBox" aria-expanded="false" onclick="window.__skillInfo(${i})">ⓘ</button>`:""}</span>`;
     }).join("");
+    if(maskCmd&&f.skills.some((x,i)=>!(f.revealedSkills&&f.revealedSkills.includes(i)))) cmdBtns+=`<span class="skillCmd"><button disabled>? 미공개</button></span>`;
     /* #146 계약 (v0.4.7 CJ 2026-09-10) — #121 계약 5.3 의 "폴백 기본 공격"을 **철회**한다.
        4슬롯이 전부 쿨·봉인·조건 미충족으로 불가하면 **어떤 공격도 제공하지 않는다**. 안내와 명시적 수동 [턴 종료]만 둔다.
        · 보조기·시그니처가 하나라도 합법이면 예외 없이 그 슬롯을 쓴다 (여기 오지 않는다).
@@ -3230,7 +3856,7 @@ function battleModal(){
   const throwWhy=oppPiece.type!=="minion"?"상대가 하수인이 아닙니다":opp.hp>=opp.maxHp*0.3?`상대 HP ${pct(opp.hp/opp.maxHp)} — 30% 미만이어야 합니다`:S.balls[ownerP]<=0?"몬스터볼이 없습니다":S.reserve[ownerP]?"예비 슬롯이 차 있습니다":thrown?"이번 라운드에 이미 던졌습니다":"";
   const fleeNote=f.fleeBoost?" · 🏃 도망의 수호자 — 이 전투 도망 성공률 70%":"";
   const ballBtn=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
-  const fleeBtn=`<button class="danger" ${dis?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패하면 상대의 기본 공격 1회를 맞고 내 전투 행동 1회를 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
+  const fleeBtn=`<button class="danger" ${dis||f.fleeLock?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패하면 상대의 기본 공격 1회를 맞고 내 전투 행동 1회를 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
   /* #121 계약 2.3: 아이템 사용 제한은 **플레이어별 라운드 1회**만 남는다 — 전투당 2회(itemPerBattle)와 연속 동일 금지(lastItem)는 제거됐다.
      두 값은 BAL 에서 Infinity / 미참조가 되었고, 여기서도 더 이상 버튼을 막지 않는다. */
   /* Saturn REVISE P1(비공개): 마스킹 기준을 **소유자 관측**으로 바꾼다. 종전 `NET.mode&&ownerP!==NET.me` 는 온라인만 가려서
@@ -3363,8 +3989,10 @@ function battleModal(){
     if(side==="A"){B.itemsA++;B.itemRoundA=true;B.lastItemA=k;} else {B.itemsD++;B.itemRoundD=true;B.lastItemD=k;}
     if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
       bmsg(`🧪 회복약! ${fighterName(side)}의 HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}},{key:"itemFx"});}
-    if(k==="cool"){f.cd=0; if(f.skills)f.cds=[0,0,0,0]; bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!",null,{key:"itemFx"});} // 4슬롯 전체 초기화 (아이템 설명 문언 준용 — [기획 필요] 후보)
-    if(k==="cure"){f.burn=0;f.burnFresh=false;f.weaken=0;f.shock=0;f.shockFresh=false;f.crack=0;f.crackFresh=false; bmsg("🧪 해독제 — 상태이상 해제!",{st:stFx(side,f)},{key:"itemFx"});} // #233 (GDD-23 4.5): 균열도 상태이상 — 경화·흡수·방어막 같은 버프는 그대로 둔다
+    if(k==="cool"){f.cd=0; if(f.skills)f.cds=f.skills.map(()=>0); bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!",null,{key:"itemFx"});} // 4슬롯 전체 초기화 (아이템 설명 문언 준용 — [기획 필요] 후보)
+    if(k==="cure"){ if(!f.burnNoCure){f.burn=0;f.burnFresh=false;f.burnMag=0;f.burnBonus=0;} f.weaken=0;f.weakenMag=0;f.shock=0;f.shockFresh=false;f.crack=0;f.crackFresh=false;
+      /* #234 (4.5): 속도 감소·회복 감소·이끼 잠식도 상태이상 — 영겁의 재 화상(burnNoCure)만 해독제로 풀리지 않는다 */
+      f.spdDownR=0;f.spdDownRFresh=false;f.spdDown=0;f.healCutR=0;f.healCutRFresh=false;f.healCut=0;f.mossR=0;f.mossRFresh=false;f.mossPct=0;f.mossBy=null; bmsg("🧪 해독제 — 상태이상 해제!",{st:stFx(side,f)},{key:"itemFx"});} // #233 (GDD-23 4.5): 균열도 상태이상 — 경화·흡수·방어막 같은 버프는 그대로 둔다
     B.menu=null; // 사용 연출 뒤 같은 행동자의 메뉴(루트)로 복귀 — 행동 미소모 (GDD 4.6 보너스 행동)
     battleModal();
   };
@@ -3386,6 +4014,7 @@ function battleModal(){
      도망은 이제 HP 게이트가 없어 disabled 표시만으로는 중복 클릭·늦은 콜백·수신 프레임을 막지 못한다. */
   window.__fleeCore=()=>{
     if(!actionFresh()) return;   // 같은 전투·내 차례·아직 이 렌더의 행동을 쓰지 않았고·연출 재생 중이 아닐 때만
+    if(f.fleeLock){ try{ if(viewerIsOwner(ownerP)) showToast("🌿 뿌리 고정 — 이 전투에서는 도망칠 수 없습니다"); }catch(e){} return; } // #234 가시 덩굴 3차
     B.actSeq++;                  // 여기서부터 이 클로저는 무효 — 두 번째 호출은 위 가드에서 걸린다
     met(ownerP,"fleeTries");
     B.menu=null;
@@ -3600,15 +4229,19 @@ function shieldConsume(f,dmg){ // 반환 {absorbed,breaks} — breaks: 이 타�
      "가장 나중에 얻은 층"으로 흡수해 둔다. shieldAdd 를 거친 정상 경로는 항상 층 합계 == f.shield 라 여기서 아무 일도 없다. */
   const layerSum=f.shieldLayers.reduce((s,l)=>s+l.amt,0);
   if((f.shield||0)>layerSum) f.shieldLayers.push({amt:(f.shield-layerSum),src:"legacy"});
-  let remain=Math.max(0,dmg), absorbed=0, breaks=0;
+  let remain=Math.max(0,dmg), absorbed=0, breaks=0, used=0; const bySrc={};
+  /* #234 요새 전환(황토 아르마딜로 4차): 지속 중에는 막는 피해의 절반만 층에서 소모한다(내구 2배). 소모량은 올림 정수 */
+  const fort=f.fortressR>0;
   while(remain>0&&f.shieldLayers.length){
     const top=f.shieldLayers[f.shieldLayers.length-1];
-    const take=Math.min(top.amt,remain);
-    top.amt-=take; remain-=take; absorbed+=take;
+    const take=Math.min(fort?top.amt*2:top.amt,remain);
+    const cost=Math.min(top.amt,fort?Math.ceil(take/2):take);
+    top.amt-=cost; remain-=take; absorbed+=take; used+=cost;
+    bySrc[top.src]=(bySrc[top.src]||0)+take; // 층별 '막아낸 피해'(3.2) — 축전·포자 막이 읽는다
     if(top.amt<=0){ f.shieldLayers.pop(); breaks++; }
   }
-  f.shield=Math.max(0,(f.shield||0)-absorbed);
-  return {absorbed,breaks};
+  f.shield=Math.max(0,(f.shield||0)-used);
+  return {absorbed,breaks,bySrc};
 }
 function shieldClearAll(f){ // 버프 제거류 — 모든 층을 한꺼번에 지우며 "방어막 1개"로 센다(3.2). 깨짐이 아니다.
   const had=(f.shieldLayers&&f.shieldLayers.length>0)||f.shield>0;
@@ -3617,11 +4250,14 @@ function shieldClearAll(f){ // 버프 제거류 — 모든 층을 한꺼번에 �
 /* GDD-23 4.2 일반 피해 계산 ①~⑪ — base=②의 곱셈부(공격력×위력%), flatBonus=②의 스킬 고정 피해,
    atkEl=판정 속성(null=중립), dragonMult가 있으면 ④를 상성표 대신 이 고유 배율로 대체한다(드래곤 숨결, 5.1).
    상대가 회피하면(①) 피해·대상 지정 효과가 전부 사라지고 자기 대상 효과만 남는다 — 호출부가 evaded로 분기한다. */
-function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp){
+function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp,hopts){
+  /* #234 hopts: penalty(도망 실패 페널티 — 확정 치명 미소모) · ignoreShield(방어막 무시) · ignoreDef(⑧ 전부 무시 — 대지 관통) · outMult(모래바람 ⑥ 별도 곱) */
+  hopts=hopts||{};
   /* 약화(4.5) = "가하는 피해 -20%, 대상의 공격 2회" — 소모형 카운터라 회피 여부와 무관하게 이번 공격 행동으로 1회 줄어든다.
      그래서 회피 조기 반환보다 먼저 처리한다(자기 상태 소모는 "대상 지정 효과"가 아니라 회피의 면제 대상이 아니다). */
   const weakened=f.weaken>0;
-  if(weakened){ f.weaken--; if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:stFx(side,f)}); }
+  const weakenPctNow=f.weakenMag||BAL.weakenPct; // #234: 약화 수치(기술 −20% · 동료의 복수 등 왕국 값) — 큰 값으로 합쳐진 현재 값
+  if(weakened){ f.weaken--; if(!f.weaken) f.weakenMag=0; if(!f.weaken) bmsg(`💧 ${fighterName(side)}의 약화가 풀렸다.`,{st:stFx(side,f)}); }
   /* ① 회피 판정, 상한 40% (3.2). "확정 회피" 효과(opp.dodgeForce)는 확률 판정을 건너뛰고 상한보다 우선하며 rand 를 쓰지 않는다
      (3.2 "확정 효과는 확률 판정을 건너뛰므로 상한보다 우선합니다" — #234 전까지 이 플래그를 켜는 스킬은 없다). */
   let evaded;
@@ -3641,15 +4277,19 @@ function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp)
   }
   const dmgUp=Math.min(0.5,(f.atkBuff?BAL.nextBuffPct:0)+(f.dmgUpBuff||0)+(extraDmgUp||0)); // ⑤ 가하는 피해 증가, 상한 +50%
   dmg=dmg*(1+dmgUp);
-  if(weakened) dmg=dmg*(1-BAL.weakenPct); // ⑥ 약화 감소율 (카운터는 함수 시작에서 이미 소모)
+  if(weakened) dmg=dmg*(1-weakenPctNow); // ⑥ 약화 감소율 (카운터는 함수 시작에서 이미 소모)
+  if(hopts.outMult&&hopts.outMult!==1) dmg=dmg*hopts.outMult; // #234 모래바람 — 대상의 다음 피해 스킬 가하는 피해 −30% (V2_INTERP.sandWindStage)
   /* ⑦ 치명타 판정, 상한 50% (3.2). "치명타 확정" 효과(f.critForce)는 확률 판정을 건너뛰고 상한보다 우선하며 rand 를 쓰지 않고,
      다음 피해 스킬 1회에 소모된다(3.2 — #234 전까지 이 플래그를 켜는 스킬은 없다). */
   let crit;
-  if(f.critForce){ crit=true; f.critForce=false; }
+  if(f.critForce&&!hopts.penalty){ crit=true; f.critForce=false; }
   else crit=rand()<Math.min(0.5,f.crit||0);
   if(crit) dmg=dmg*1.5;
-  const dmgDown=Math.min(0.5,((opp.def||0)/100)+(opp.hardenPct||0)+(opp.dmgCut||0)); // ⑧ 받는 피해 감소 = 방어력+경화+"다음 피격 감소"류, 상한 50%
+  if(!hopts.ignoreDef){
+  const dmgDown=Math.min(0.5,((opp.def||0)/100)+(opp.hardenPct||0)+(opp.dmgCut||0)+(opp.burrowR>0?0.40:0)); // ⑧ 받는 피해 감소 = 방어력+경화+"다음 피격 감소"류(+굴 파기 −40%), 상한 50%
+  opp.mitigated=(opp.mitigated||0)+dmg*Math.min(dmgDown,((opp.def||0)/100)+(opp.hardenPct||0)); // #234 분화: 방어력·경화로 줄인 피해 총량
   dmg=dmg*(1-dmgDown);
+  }
   if(opp.dmgCut>0) bmsg(`${fighterName(oSide)}는 자세를 낮춰 피해를 흘렸다!`,{st:stFx(oSide,opp)});
   opp.dmgCut=0;
   const dmgTakeUp=Math.min(0.5,(opp.crack?0.10:0)+(opp.vulnMark?0.15:0)); // ⑨ 받는 피해 증가 = 균열 등, 상한 +50%
@@ -3657,9 +4297,11 @@ function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp)
   if(opp.vulnMark) bmsg(`⚠️ 결정타의 반동 — 피격 +15%!`);
   opp.vulnMark=false;
   const raw=dmg; dmg=Math.round(dmg); if(raw>0&&dmg<1) dmg=1; if(dmg<0) dmg=0; // ⑩ 정수 반올림 1회, 0보다 크면 최소 1
-  const {absorbed,breaks}=shieldConsume(opp,dmg); // ⑪ 방어막 우선 소모 후 HP
+  dmg=v2IncomingCap(opp,dmg); // #234 철벽 돌파(1회 무효) · 과부하 방벽(1회 상한 최대 HP 15%)
+  const {absorbed,breaks,bySrc}=hopts.ignoreShield?{absorbed:0,breaks:0,bySrc:{}}:shieldConsume(opp,dmg); // ⑪ 방어막 우선 소모 후 HP (방어막 무시 스킬은 층을 깎지 않는다)
+  v2ShieldSrcGain(opp,bySrc);
   const hpDmg=dmg-absorbed;
-  const actual=Math.min(hpDmg,opp.hp); opp.hp-=actual;
+  let actual=Math.min(hpDmg,opp.hp); actual=v2Endure(opp,actual); opp.hp-=actual;
   const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed); // 전투 판정용 유효 피해 흡수 상한 — 현행 그대로 (변경 대상 아님)
   const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
   const counted=actual+(absorbed-freeAbsorb);
@@ -3667,7 +4309,7 @@ function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp)
   bmsg(`${dmg} 피해!${crit?" (치명타)":""}${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
     {shake:oSide,flash:atkEl||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
      hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
-  return {evaded:false,dmg,crit,absorbed,breaks,actual,counted}; // breaks(3.2 "깨짐"): 이 타격으로 남은 양이 0이 된 방어막 층 수
+  return {evaded:false,dmg,crit,absorbed,breaks,actual,counted,bySrc}; // breaks(3.2 "깨짐"): 이 타격으로 남은 양이 0이 된 방어막 층 수
 }
 /* GDD-23 4.3 반사·반격 — 일반 파이프라인의 부분집합만 탄다(회피·분산·상성 판정 없음: 반사는 상성도 없다, 반격은 ④만 탄다).
    #234 전까지 이 둘을 실제로 발동하는 기술·왕국 시너지가 없어 라이브 호출부는 아직 없지만, 엔진 계약은 여기서 완결하고
@@ -3685,13 +4327,16 @@ function resolveTyped(side,f,opp,oSide,dmgRaw,useElement,label,emoji){
 function resolveTypedInner(side,f,opp,oSide,dmgRaw,useElement,label,emoji){
   let dmg=dmgRaw;
   if(useElement&&f.element&&opp.element){ if(BEATS[f.element]===opp.element) dmg=dmg*BAL.advMult; else if(BEATS[opp.element]===f.element) dmg=dmg*BAL.disMult; }
-  const dmgDown=Math.min(0.5,((opp.def||0)/100)+(opp.hardenPct||0)+(opp.dmgCut||0)); opp.dmgCut=0;
+  const dmgDown=Math.min(0.5,((opp.def||0)/100)+(opp.hardenPct||0)+(opp.dmgCut||0)+(opp.burrowR>0?0.40:0)); opp.dmgCut=0;
+  opp.mitigated=(opp.mitigated||0)+dmg*Math.min(dmgDown,((opp.def||0)/100)+(opp.hardenPct||0));
   dmg=dmg*(1-dmgDown);
   const dmgTakeUp=Math.min(0.5,(opp.crack?0.10:0)+(opp.vulnMark?0.15:0)); opp.vulnMark=false;
   dmg=dmg*(1+dmgTakeUp);
   const raw=dmg; dmg=Math.round(dmg); if(raw>0&&dmg<1) dmg=1; if(dmg<0) dmg=0;
-  const {absorbed,breaks}=shieldConsume(opp,dmg);
-  const actual=Math.min(dmg-absorbed,opp.hp); opp.hp-=actual;
+  dmg=v2IncomingCap(opp,dmg);
+  const {absorbed,breaks,bySrc}=shieldConsume(opp,dmg);
+  v2ShieldSrcGain(opp,bySrc);
+  let actual=Math.min(dmg-absorbed,opp.hp); actual=v2Endure(opp,actual); opp.hp-=actual;
   const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed);
   const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
   const counted=actual+(absorbed-freeAbsorb);
@@ -3713,7 +4358,9 @@ function scheduleDelayed(f,delayRounds,run,tag){ f.pendingFx=f.pendingFx||[]; f.
 function tickDelayed(f){
   if(!f.pendingFx||!f.pendingFx.length) return;
   const keep=[];
-  for(const ev of f.pendingFx){ ev.roundsLeft--; if(ev.roundsLeft<=0){ if(S.battle) ev.run(); } else keep.push(ev); }
+  for(const ev of f.pendingFx){ ev.roundsLeft--;
+    if(ev.roundsLeft<=0&&!ev.atStart){ if(S.battle) ev.run(); }
+    else keep.push(ev); } // #234 해일 예고: atStart 효과는 0 이 되어도 남겨 두었다가 다음 라운드 시작(v2RoundStart)에 발동 — 그 전에 전투가 끝나면 취소
   f.pendingFx=keep;
 }
 function execSlot(side,slot,opts){
@@ -3756,12 +4403,15 @@ function execSlot(side,slot,opts){
       execSlot(side,-1); return; }   // 같은 이유로 무동작 — 다른 슬롯이 합법이어도 기본 공격으로 대신하지 않는다
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); // 사용 시 공개
     bmsg(`💀 ${fighterName(side)}의 사신의 낫!`,{sig:true},{key:"skillFx"});
-    const lethal=opp.hp; instaKill(opp); addRec(side,lethal); // #233 (GDD-23 4.3): 즉사 — 단계 없음, 방어막 무시
-    bmsg(`💀 ${fighterName(oSide)}는 보호막째 베였다 — 즉사!`,
+    const lethal=opp.hp, cut=V2_INTERP.endureAllDamage?v2Endure(opp,opp.hp):opp.hp; // #234 Q7: 천년목은 즉사에도 버팀(HP 0 결과 트리거)
+    if(cut<lethal){ opp.hp-=cut; addRec(side,cut); } else { instaKill(opp); addRec(side,lethal); } // #233 (GDD-23 4.3): 즉사 — 단계 없음, 방어막 무시
+    if(opp.hp>0) bmsg(`💀 ${fighterName(oSide)}는 낫을 버텨 냈다! (HP ${opp.hp})`,{shake:oSide,hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
+    else bmsg(`💀 ${fighterName(oSide)}는 보호막째 베였다 — 즉사!`,
       {shake:oSide,float:{side:oSide,html:`<span class="neg">즉사</span>`},hp:{side:oSide,val:0,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
     if(checkDeath()) return;
     nextPhase(); return;
   }
+  if(sk&&sk.v2){ execV2(side,slot,sk); return; } // #234 (GDD-23 6장): 하수인 30종·전설·왕·동료 스킬 실행기
   if(sk){ f.cds[slot]=sk.cd;
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
   const gate=(force,prob)=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기: 화상·약화 statusProb 70% · 감전 shockProb 50% (#96) · 잔류장 100% — force는 rand 미소비)
@@ -3782,7 +4432,7 @@ function execSlot(side,slot,opts){
   };
   const coolReduce=(filter,label)=>{ // 쿨 감소류: 조건 내 남은 쿨 최장 기술 1개 쿨 -1
     let pick=-1;
-    for(let i=0;i<4;i++) if(f.cds[i]>0&&filter(i)&&(pick<0||f.cds[i]>f.cds[pick])) pick=i;
+    for(let i=0;i<f.skills.length;i++) if(f.cds[i]>0&&filter(i)&&(pick<0||f.cds[i]>f.cds[pick])) pick=i;
     if(pick<0){ if(label) bmsg(`${label} — 단축할 쿨이 없다.`); return; }
     f.cds[pick]--; bmsg(`🔄 ${SKILLS[f.skills[pick]].ko} 쿨 -1 (남은 쿨 ${f.cds[pick]})`);
   };
@@ -3821,7 +4471,9 @@ function execSlot(side,slot,opts){
     if(sk&&sk.bonusVsShield&&opp.shield>0){flatBonus+=sk.bonusVsShield; bmsg(`🌊 보호막 대상 추가 위력 +${sk.bonusVsShield}!`);}
     /* #233 (GDD-23 4.5): 균열도 **상태이상** 분류다 — 경화·흡수·방어막같은 버프는 여기 해당 없다. */
     if(sk&&sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock||opp.crack)){flatBonus+=sk.bonusVsStatus; bmsg(`⚡ 상태이상 대상 추가 위력 +${sk.bonusVsStatus}!`);}
-    const res=resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,(sk&&sk.dragonMult)?sk.dragonMult:null,extraDmgUp);
+    /* #234 (GDD-23 6.1): 도망 실패 페널티 기본 공격만 **스킬 밖 예외** — 상대 공격력 100%·피해 계산 순서는 따르되
+       스킬 효과(확정 치명 등 1회성 효과 소모 포함)·⌛·시너지 판정이 없다. v2 실행기를 타지 않으므로 반사·반격·흡수도 없다. */
+    const res=resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,(sk&&sk.dragonMult)?sk.dragonMult:null,extraDmgUp,{penalty:slot<0&&!!(opts&&opts.allowBasic)});
     const actual=res.actual;
     if(sk&&!res.evaded){
       if(sk.drainPct&&actual>0){const gh=Math.round(actual*sk.drainPct); f.hp=Math.min(f.maxHp,f.hp+gh);
@@ -3847,7 +4499,7 @@ function execSlot(side,slot,opts){
 function sideName(s){return s==="A"?"공격측":"방어측";}
 function dmgRange(v){if(typeof v!=="number"||!isFinite(v)) return "?"; return BAL.dmgVar?Math.round(v*(1-BAL.dmgVar))+"~"+Math.round(v*(1+BAL.dmgVar)):v;} // T7: 분산 반영 표기
 /* T5-B 아키타입별 스킬 파라미터: 지속형 강화(화상3R·약화3회·풀15%/15%·감전2R), 풀 속공 변형(회복 8%·보호막 없음) */
-function archOf(f){const rd=f.rosterId?ROSTER.find(r=>r.id===f.rosterId):null; return rd?rd.arch:null;}
+function archOf(f){const rd=f.rosterId?ROSTER.find(r=>r.id===f.rosterId):null; return rd?rd.arch:legendArchOf(f);}
 function skillParamsOf(f){
   const a=archOf(f);
   return {
@@ -3859,7 +4511,7 @@ function skillParamsOf(f){
     grassDmgMult:(f.element==="grass"&&a==="swift")?1:0.6
   };
 }
-const ELEM_EMO={fire:"🔥",water:"💧",grass:"🌿",lightning:"⚡"};
+const ELEM_EMO={fire:"🔥",water:"💧",grass:"🌿",lightning:"⚡",land:"🗻"};
 function fighterName(sid){
   const B=S.battle, pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
   return pf===piece?(piece.type==="minion"&&piece.name?piece.name:TYPE_KO[piece.type]):"포획 하수인·"+ELEM_KO[pf.element];
@@ -3949,12 +4601,13 @@ function nextPhase(){
        부여 라운드의 **피해와 감소를 둘 다** 건너뛰어야 R2·R3 종료 2회가 된다 — 감소에만 걸면
        R1·R2·R3 3회가 되어 총량이 늘어난다. 재부여 시에도 감전처럼 가드를 다시 세운다. */
     if(f.burnFresh){ f.burnFresh=false; }
-    else if(f.burn>0){const d=Math.min(f.hp,Math.round(f.maxHp*BAL.burnPct)); f.hp-=d; f.burn--;
+    else if(f.burn>0){let d=Math.min(f.hp,Math.round(f.maxHp*((f.burnMag||BAL.burnPct)+(f.burnBonus||0)))); d=v2Endure(f,d); f.hp-=d; f.burn--; if(!f.burn){f.burnMag=0;f.burnBonus=0;f.burnNoCure=false;} // #234: 화상 수치(왕국 값·잿불 심기 +%p) · 천년목
       addRec(f.burnBy,d);
       bmsg(`🔥 ${fighterName(side)}는 화상 피해 ${d}!`,{shake:side,float:{side,html:`<span class="neg">-${d}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)},{key:"roundEndFx"}); // #106 5.4 라운드 종료 처리 그룹(1초)
       if(!f.burn) bmsg(`🔥 ${fighterName(side)}의 화상이 해제되었다.`,{st:stFx(side,f)});
       if(checkDeath()) return;}
-    if(f.cd>0)f.cd--; if(f.skills)for(let i=0;i<4;i++)if(f.cds[i]>0)f.cds[i]--; // 슬롯별 개별 쿨 감소 (라운드 종료 시)
+    if(v2RoundEnd(f,side)) return; // #234 이끼 잠식·나이테·포자 막 (라운드 종료 효과)
+    if(f.cd>0)f.cd--; if(f.skills)for(let i=0;i<f.skills.length;i++)if(f.cds[i]>0)f.cds[i]--; // 슬롯별 개별 쿨 감소 (라운드 종료 시)
     if(f.shockFresh) f.shockFresh=false; // 감전은 부여 라운드가 아닌 다음 라운드부터 소진
     else if(f.shock>0){f.shock--; if(!f.shock) bmsg(`⚡ ${fighterName(side)}의 감전이 풀렸다.`,{st:stFx(side,f)});}
     /* #233 (GDD-23 4.5): 균열(받는 피해 +10%, 2R)·경화(자신이 받는 피해 −X%, 표기된 지속) 라운드 종료 감소.
@@ -3971,6 +4624,7 @@ function nextPhase(){
     else if(f.evadeBuffR>0){f.evadeBuffR--; if(!f.evadeBuffR){f.evadeBuff=0; bmsg(`💨 ${fighterName(side)}의 회피 증가가 풀렸다.`,{st:stFx(side,f)});}}
     if(f.dmgUpBuffRFresh) f.dmgUpBuffRFresh=false;
     else if(f.dmgUpBuffR>0){f.dmgUpBuffR--; if(!f.dmgUpBuffR){f.dmgUpBuff=0; bmsg(`💪 ${fighterName(side)}의 가하는 피해 증가가 풀렸다.`,{st:stFx(side,f)});}}
+    v2RoundDecay(f,side); // #234 스킬 지속 효과 — 부여 라운드는 세지 않는다(5.6)
     tickDelayed(f); // #233 (GDD-23 4.3) 예고·지연 피해 — 라운드 종료마다 카운트, 발동 시 전투가 살아 있을 때만 실행
     if(S.battle!==B) return; // tickDelayed가 발동시킨 피해로 전투가 끝났으면 여기서 멈춘다(checkDeath는 run() 안에서 이미 처리)
   }
@@ -3978,7 +4632,7 @@ function nextPhase(){
   B.ballThrowA=false; B.ballThrowD=false; // #12: 볼 투척 라운드당 1회 리셋
   B.round++;
   if(B.round>battleMaxRounds()){judge(); return;} // #121 계약 3.3: 시간의 수호자가 걸린 전투는 3라운드 (전역 BAL.maxRounds 불변)
-  B.phase=0; B.firstSide=decideFirstSide(B); battleModal(); // #233 (GDD-23 4.4): "라운드 시작 시 확정" — 이 라운드의 선턴을 여기서 한 번만 고정한다
+  B.phase=0; if(v2RoundStart()) return; B.firstSide=decideFirstSide(B); battleModal(); // #234: 영구 자기장·해일 예고는 선턴 확정 전 // #233 (GDD-23 4.4): "라운드 시작 시 확정" — 이 라운드의 선턴을 여기서 한 번만 고정한다
 }
 function checkDeath(){
   const B=S.battle;
@@ -4009,6 +4663,7 @@ function finishBattle(winSide,how){
   if(loseF===loseP){ loseP.alive=false; msg=`${TYPE_KO[loseP.type]} 패배(${how}) — 제거`; }
   else { loseP.cap=null; loseP.alive=false;
     msg=`포획 하수인 패배(${how}) — ${TYPE_KO[loseP.type]} 동시 ${loseP.type==="king"?"패배":"제거"}`; }
+  if(loseP.type==="ally"){ syncOwnerLeaders(loseP.owner); } // #234 (5.3): 동료 사망 → 살아 있는 왕·동료에 🪄 칸 추가
   addLog(`⚔️ 전투 종료: ${pname(winP.owner)} 승 — ${msg}`,"imp");
   showToast(`⚔️ 전투 종료: ${pname(winP.owner)} 승 — ${msg}`);
   resetAfter(B.fa); resetAfter(B.fd);
@@ -4033,9 +4688,9 @@ function finishBattle(winSide,how){
 /* 전투 종료 공통 정리 — finishBattle(승패·판정) · __fleeCore(도망 성공) · finishByCapture(적 포획) 세 경로가 모두 이 함수를 부른다.
    #121 계약 3.1: 버프 플래그(powerBuff·fleeBoost)도 여기서 지운다. 본체 출전이면 f === 말 객체라 지우지 않으면 다음 전투로 새어 나간다.
    전투 인스턴스 회계(B.buffA/B.buffD·B.maxRounds)는 S.battle 이 null 이 되면서 함께 사라지고, 쓰지 않은 패키지 재고(S.pkgs)는 보존된다. */
-function resetAfter(f){f.burn=0;f.burnFresh=false;f.burnBy=null;f.weaken=0;f.shield=0;f.shieldLayers=[];f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
+function resetAfter(f){resetV2(f); f.burn=0;f.burnFresh=false;f.burnBy=null;f.weaken=0;f.shield=0;f.shieldLayers=[];f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
   f.crack=0;f.crackFresh=false;f.harden=0;f.hardenFresh=false;f.hardenPct=0;f.evadeBuff=0;f.evadeBuffR=0;f.evadeBuffRFresh=false;f.dmgUpBuff=0;f.dmgUpBuffR=0;f.dmgUpBuffRFresh=false;f.critForce=false;f.dodgeForce=false;f.pendingFx=[];
-  if(f.skills){ f.cds=[0,0,0,0]; } f.cd=0; // #233 (GDD-23 4.6): 전투 사이 HP만 유지 — 쿨타임(레거시 스칼라 포함)·예고 효과는 다음 전투 전에 초기화
+  if(f.skills){ f.cds=f.skills.map(()=>0); } f.cd=0; // #233 (GDD-23 4.6): 전투 사이 HP만 유지 — 쿨타임(레거시 스칼라 포함)·예고 효과는 다음 전투 전에 초기화
   f.powerBuff=false;f.fleeBoost=false;}
 /* #12 포획 종료: 적 하수인 즉시 제거 + S.reserve 저장 — 누적 판정 없이 전투 즉시 종료 (포획으로 승리) */
 function finishByCapture(side){
@@ -4045,10 +4700,11 @@ function finishByCapture(side){
   const el=loseP.element||shuffle(ELEMS.slice())[0], arch=archOf(loseP)||"std";
   const rd=loseP.rosterId?ROSTER.find(r=>r.id===loseP.rosterId):null; // #91 원래 종 외형 정체 보존(표시 전용 artRosterId) — 로스터 정체가 없던 하수인은 null (임의 종으로 가장하지 않는다)
   S.reserve[p]={element:el,hp:BAL.enemyCapHp,maxHp:cb.hp,atk:cb.atk,skillAtk:cb.skill,cd:0,cdMax:cb.cd, // #20: 전투 중 적 포획만 HP 70/maxHP 100
-    skills:loseP.skills?loseP.skills.slice():archSkills(arch,el),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd?rd.id:null, // #92 (GDD-13 4.8): 대상의 현재 장착 기술 4슬롯을 복사 승계(탐색 교체 기술 포함, 참조 비공유) · 기술 배열이 없는 레거시 대상만 아키타입 템플릿 폴백 · 쿨 0·공개 기록 []·수치는 공용 규격
+    skills:loseP.skills?loseP.skills.slice():(speciesSkills(loseP.rosterId,1)||archSkills(ARCH_TMPL[arch]?arch:"std",el)),cds:null,revealedSkills:[],artRosterId:rd?rd.id:null, // #92 (GDD-13 4.8): 대상의 현재 장착 기술 4슬롯을 복사 승계(탐색 교체 기술 포함, 참조 비공유) · 기술 배열이 없는 레거시 대상만 아키타입 템플릿 폴백 · 쿨 0·공개 기록 []·수치는 공용 규격
     /* #233 (GDD-23 3.3): 예비 하수인도 승계한 아키타입의 def·spd·dodge·crit·statusPct 를 받는다(공용 HP·ATK 규격은 그대로) */
     def:ARCHETYPE_BASE[arch].def, spd:ARCHETYPE_BASE[arch].spd, dodge:ARCHETYPE_BASE[arch].dodge,
     crit:ARCHETYPE_BASE[arch].crit, statusPct:ARCHETYPE_BASE[arch].statusPct, shieldStartPct:0, grade:1};
+  S.reserve[p].cds=S.reserve[p].skills.map(()=>0); // #234: 슬롯 수는 승계한 스킬 수(등급)만큼
   met(p,"enemyCaptures");
   loseP.alive=false;
   bmsg(`🔴 몬스터볼 적중! ${fighterName(loseSide)}를(을) 포획했다!`,{ko:loseSide},{key:"captureFx"}); // #106 5.4 성공 연출
@@ -4451,7 +5107,7 @@ function aiBattleAction(){
   const myPc=side==="A"?B.attP:B.defP;
   /* #146: 규칙상 도망은 HP 조건이 없다. 아래 임계는 **AI 의 판단 휴리스틱**이지 규칙 게이트가 아니다
      (도망의 수호자를 쓴 전투원은 성공률이 70% 라 열세가 아니어도 후보로 본다). */
-  if(f.hp<f.maxHp*0.5||f.fleeBoost){
+  if((f.hp<f.maxHp*0.5||f.fleeBoost)&&!f.fleeLock){ // #234 뿌리 고정이면 도망 후보에서 뺀다 (불법 선택 금지)
     const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
     const losing=f.hp/f.maxHp<opp.hp/opp.maxHp-0.15;
     if((vipBody||losing)&&rand()<(vipBody?0.5:0.25)*caut){ window.__flee(); return; }
@@ -4471,7 +5127,7 @@ function aiBattleAction(){
   const lowHp=f.hp<f.maxHp*(0.3+0.15*caut);
   const scored=usable.map(({i,sk})=>{
     let sc=0;
-    const atkEl=atkElOf(f,sk), statusKey={fire:"burn",water:"weaken",lightning:"shock"}[atkEl]; // 상태 키도 기술 속성 (#92)
+    const atkEl=atkElOf(f,sk), statusKey={fire:"burn",water:"weaken",lightning:"shock",land:"crack"}[atkEl]; // 상태 키도 기술 속성 (#92) · #234 땅=균열
     if(sk.pow){ // 피해 기술
       const est=slotPow(f,sk)*multOf(atkEl)*(f.focusCharge&&sk.kind==="attack"?1.2:1);
       sc=6+est/4;
@@ -4482,6 +5138,7 @@ function aiBattleAction(){
       if(sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock||opp.crack)) sc+=3; // #233 (4.5) 균열 포함 — 라이브 규칙과 같은 조건
       if(sk.selfVuln&&lowHp) sc-=6; // 저HP에 결정타 반동 위험
       sc*=prof.aggression;
+    } else if(sk.v2){ sc=aiV2SupportScore(f,sk,lowHp); if(lowHp) sc*=caut; // #234 비피해 스킬 — 자기 스킬 힌트만 본다
     } else { // 보조기·불굴 진형
       if(sk.healPct) sc=lowHp?20+10*caut:2;
       else if(sk.shieldPct) sc=lowHp?14:5; // #130: 합산이므로 이미 막이 있어도 새 부여량이 그대로 더해진다 — 중복 감점(×0.3) 폐기
@@ -4533,7 +5190,7 @@ function aiRecruitPlan(own){
    무한 무료 행동 루프가 생기지 않도록 각 단계를 한 번씩만 전진시키고, 불법 선택은 코어가 이미 거부한다. */
 function aiRecruitResolve(own,p){
   const recv=capReceivers(own), mode=recv.length?aiCapMode(own,p):null;
-  const plan=aiRecruitPlan(own);
+  const plan=V2_INTERP.recruitSkillSwap?aiRecruitPlan(own):null; // #234: 기술 교체가 닫힌 동안 AI 도 계획하지 않는다
   const prof=aiProf(own);
   /* 포획과 기술 교체가 모두 가능하면 capture 성향으로 고른다. 포획은 예비 전력이고 기술 교체는 지속 강화라 둘 다 가치가 있다 */
   const wantCap=!!mode&&(!plan||rand()<0.35+0.35*prof.capture);
@@ -4573,8 +5230,7 @@ function aiWinProb(att,def,me){ // 공개 스탯 기반 승률 추정 — 포획
   if(fa.element&&fd.element){ if(BEATS[fa.element]===fd.element) p+=0.18; else if(BEATS[fd.element]===fa.element) p-=0.18; }
   p+=((fa.hp/fa.maxHp)-(fd.hp/fd.maxHp))*0.3;
   p+=((fa.atk||0)-(fd.atk||0))/60;
-  if(!fa.skills&&(att.type==="king"||att.type==="ally")) p-=0.1; // 본체 출전은 기술 없음
-  if(!fd.skills&&(def.type==="king"||def.type==="ally")) p+=0.1;
+  /* #234: 왕·동료도 스킬을 가진다 — 종전 "본체 출전은 기술 없음" 보정은 대상이 없어 제거. 상대 스킬 배열은 읽지 않는다 */
   if(att.nextBattleBuff) p+=0.05;
   return Math.max(0.08,Math.min(0.92,p));
 }
@@ -4793,7 +5449,7 @@ function aiBattleActionStrong(side){
     return (adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1)*(f.atkBuff?1+BAL.nextBuffPct:1); };
   // 상대 기대 피해: 상대 미공개 기술은 참조하지 않으므로(공정 관측) 상대 본체 속성 vs 내 본체 속성(방어 상성)으로 추정 — 현행 유지
   const oAdv=opp.element&&f.element&&BEATS[opp.element]===f.element, oDis=opp.element&&f.element&&BEATS[f.element]===opp.element;
-  const oppEst=(opp.atk||16)*(opp.skills?1.18:1)*(oAdv?BAL.advMult:oDis?BAL.disMult:1)*(opp.weaken>0?(1-BAL.weakenPct):1)*(f.dmgCut?1-f.dmgCut:1);
+  const oppEst=(opp.atk||16)*1.18*(oAdv?BAL.advMult:oDis?BAL.disMult:1)*(opp.weaken>0?(1-BAL.weakenPct):1)*(f.dmgCut?1-f.dmgCut:1);
   const usable=f.skills?f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>slotUsable(f,x.i,side)):[]; // #121 계약 5.3: 봉인 포함 합법 슬롯만
   const dmgOf=sk=>(sk?slotPow(f,sk):f.atk)*multOf(atkElOf(f,sk))*(f.focusCharge&&sk&&sk.kind==="attack"?1.2:1);
   let bestDmg=f.atk*multOf(f.element), bestSlot=-1;
@@ -4815,7 +5471,7 @@ function aiBattleActionStrong(side){
   const thrown=side==="A"?B.ballThrowA:B.ballThrowD;
   if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown&&(!killNow||f.hp>f.maxHp*0.6)){ window.__throwBall(); return; }
   // 도망: 본체 VIP가 죽을 위기이거나 열세 전투 (확정 킬 가능하면 안 함)
-  if((f.hp<f.maxHp*0.5||f.fleeBoost)&&!killNow){ // #146: 규칙 게이트가 아니라 5단 AI 의 휴리스틱 임계 (도망의 수호자는 성공률 70%)
+  if((f.hp<f.maxHp*0.5||f.fleeBoost)&&!killNow&&!f.fleeLock){ // #146: 규칙 게이트가 아니라 5단 AI 의 휴리스틱 임계 (도망의 수호자는 성공률 70%)
     const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
     if((vipBody&&(losing||toKillMe<=1))||(losing&&toKillMe<=2)){ window.__flee(); return; }
   }
@@ -4824,7 +5480,7 @@ function aiBattleActionStrong(side){
   const lowHp=f.hp<=oppEst*1.5;
   const scored=usable.map(({i,sk})=>{
     let sc=0;
-    const statusKey={fire:"burn",water:"weaken",lightning:"shock"}[atkElOf(f,sk)]; // 상태 키는 기술 속성 (#92)
+    const statusKey={fire:"burn",water:"weaken",lightning:"shock",land:"crack"}[atkElOf(f,sk)]; // 상태 키는 기술 속성 (#92)
     if(sk.pow){
       const est=dmgOf(sk);
       sc=est/3;
@@ -4837,6 +5493,7 @@ function aiBattleActionStrong(side){
       if(sk.bonusVsShield&&opp.shield>0) sc+=2;
       if(sk.bonusVsStatus&&(opp.burn||opp.weaken||opp.shock||opp.crack)) sc+=2; // #233 (4.5) 균열 포함 — 라이브 규칙과 같은 조건
       if(sk.selfVuln&&lowHp) sc-=8;
+    } else if(sk.v2){ sc=aiV2SupportScore(f,sk,lowHp);
     } else {
       if(sk.healPct) sc=(lowHp&&toKillOpp>1)?25:1;
       else if(sk.shieldPct) sc=(lowHp&&toKillOpp>1)?16:4; // #130: 합산 — 중복 감점(×0.3) 폐기
@@ -4850,17 +5507,17 @@ function aiBattleActionStrong(side){
   scored.sort((a,b)=>b.sc-a.sc);
   window.__act(scored[0].i);
 }
-/* AI 로스터 선택: 4속성 각 1종 이상 + 나머지 2종 무작위 (중복 없음, 아키타입 혼합 선호) */
+/* AI 로스터 선택: 5속성 각 1종 + 나머지 1종 무작위 (중복 없음, 아키타입 혼합 선호) — #234 30종 후보 · 모두 ⭐1 */
 function aiPickRoster(p){
   if(S.roster[p].length===6) return;
   S.roster[p]=[];
-  const archs=shuffle(["std","atk","def"]);
-  shuffle(ELEMS.slice()).forEach((el,i)=>{
+  const archs=shuffle(["std","atk","def","swift","sustain","guard"]);
+  shuffle(V2_ELEM_ORDER.slice()).forEach((el,i)=>{
     const pool=ROSTER.filter(r=>r.element===el);
-    S.roster[p].push((pool.find(r=>r.arch===archs[i%3])||pool[0]).id);
+    S.roster[p].push((pool.find(r=>r.arch===archs[i%archs.length])||pool[0]).id);
   });
   const rest=shuffle(ROSTER.filter(r=>!S.roster[p].includes(r.id)).map(r=>r.id));
-  S.roster[p].push(rest[0],rest[1]);
+  S.roster[p].push(rest[0]);
   shuffle(S.roster[p]);
   applyRoster(p);
 }

@@ -56,11 +56,14 @@ function openBattle(T,a,d){ T.S.battle=null; T.S.battlesUsed=0; a.hp=a.maxHp; d.
 const useTimers=X=>{ global.setTimeout=fn=>{ X.TQ.push(fn); return 0; }; };
 const fixed=(T,v)=>{ T.BAL.dmgVar=0; T.BAL.statusProb=v===undefined?1:v; T.BAL.shockProb=v===undefined?1:v; };
 
-const T=H.load(htmlPath);
+/* #234 [CJ 결정 2026-09-17]: 탐색 '기술 교체'는 제품 기본값 비활성(smoke_issue234 E1~E3). 이 파일은 코드로 보존된 비활성 분기의
+   #92/#121 계약 회귀를 계속 보기 위해 로드마다 분기를 켠다(기준판 로드에는 이 객체가 없어 영향 없음). */
+function loadH(p,o){ const X=H.load(p,o); if(X.V2_INTERP) X.V2_INTERP.recruitSkillSwap=true; return X; }
+const T=loadH(htmlPath);
 
 /* ===== A. 데이터 ===== */
 {
-  const atk=Object.keys(T.SKILLS).filter(k=>T.SKILLS[k].kind==="attack");
+  const atk=Object.keys(T.SKILLS).filter(k=>T.SKILLS[k].kind==="attack"&&!T.SKILLS[k].v2); // #234: GDD-23 6장 스킬(v2)은 별도 레지스트리 항목 — 레거시 기술 집합 계약은 그대로
   /* #121 계약 5 (v0.4.7 승인): 공격기가 12 → 15 종이 됐다. 늘어난 3종은 **속성 공격기가 아니라 기술 전용 분류(cls)** 라
      el·tier 를 갖지 않는다 — 속성 12종의 "el=키 접두사·tier=키 접미사" 규칙은 그대로 두고 두 집합을 나눠 본다. */
   const elemAtk=atk.filter(k=>!T.SKILLS[k].cls), clsAtk=atk.filter(k=>T.SKILLS[k].cls);
@@ -221,16 +224,18 @@ const T=H.load(htmlPath);
   const Q=setup(T,"pve"); giveSpecies(T,Q.em,R(T,"M-W1")); Q.em.skills[1]="lightning_effect"; giveSpecies(T,Q.me,R(T,"M-G1"));
   T.S.current=1; openBattle(T,Q.em,Q.me); h=ob(T);
   const qb=(h.match(/<button[^>]*>\? [^<]+<\/button>/g)||[]).map(x=>x.replace(/<[^>]+>/g,""));
-  ok(J(qb)===J(["? 공격기","? 공격기","? 보조기","? 시그니처"])&&!h.includes("감전 침")&&!h.includes("⚡감전")&&h.includes("?공격기 · ?공격기"),"E2 상대 화면: 배운 기술도 사용 전에는 '? 공격기'·패널 '?공격기'·이름 없음 (AC4)");
+  /* #234 (GDD-23 7.9 등급·미사용 스킬 비공개): 보유 칸 수가 곧 등급이므로 상대 화면은 미공개 칸을 칸 수만큼 그리지 않고 "? 미공개" 하나로 묶는다 */
+  ok(J(qb)===J(["? 미공개"])&&!h.includes("감전 침")&&!h.includes("⚡감전")&&h.includes("? 미공개")&&!h.includes("?공격기"),"E2 상대 화면: 배운 기술도 사용 전에는 '? 공격기'·패널 '?공격기'·이름 없음 (AC4)");
   ok(!/title="[^"]*감전/.test(h),"E2b 상대 화면 버튼 title 에도 설명 없음");
   T.execSlot("A",1); T.TQ.length=0; h=ob(T);
-  ok(J(Q.em.revealedSkills)===J([1])&&h.includes("⚡감전 침")&&h.includes("?공격기 · ⚡감전 침"),"E3 상대가 사용한 뒤에만 그 슬롯이 공개되어 이름·속성 표시 (슬롯0은 여전히 ?공격기)");
+  ok(J(Q.em.revealedSkills)===J([1])&&h.includes("⚡감전 침")&&h.includes("⚡감전 침(쿨2) · ? 미공개"),"E3 상대가 사용한 뒤에만 그 슬롯이 공개되어 이름·속성 표시 (슬롯0은 여전히 ?공격기)");
   // 사이드 패널(자기 말 선택)
   T.S.battle=null; T.S.current=0; T.S.selected=Q.me; Q.me.skills[0]="fire_heavy"; T.render();
   ok(T.byId("sidePanel").innerHTML.includes("🔥폭염 강타 · 흡수 새싹"),"E4 사이드 패널 자기 말 기술 목록에 속성 표시");
   // 로스터 팝업은 템플릿 그대로
   T.rosterInfo("M-F1"); h=ob(T);
-  ok(h.includes("화염탄")&&h.includes("잔불 표식")&&!h.includes("💧")&&!h.includes("⚡감전"),"E5 로스터 정보 팝업은 종 템플릿 그대로");
+  /* #234 (GDD-23 6.3): 로스터 팝업은 종별 스킬 4칸(새끼 화룡)을 보여 준다 — 교체 학습이 팝업에 섞이지 않는 성질은 그대로 */
+  ok(h.includes("불씨 할퀴기")&&h.includes("불씨 브레스")&&h.includes("성룡의 포효")&&!h.includes("💧")&&!h.includes("⚡감전")&&!h.includes("폭염 강타"),"E5 로스터 정보 팝업은 종 스킬 그대로 (학습 기술 미혼입)");
   // 제품 문구에 개발 용어 없음
   /* #121 계약 4 의 새 선택 화면. 제품 문구에 개발 용어가 없어야 하는 계약은 그대로다. */
   const W=setup(T,"pvp"); giveSpecies(T,W.me,R(T,"M-F1")); T.setSeed(5); recruitAt(T,W.me); h=ob(T);
@@ -259,7 +264,8 @@ const T=H.load(htmlPath);
   ok(J(r3.skills)===J(T.archSkills("std","fire"))&&r3.artRosterId===null,"F6 기술 배열 없는 레거시 대상은 표준형 템플릿 폴백·정체 null");
   // 중립 숲 포획 불변
   const N=setup(T); T.setSeed(4242); N.k0.cap=null; T.tryCapture(N.k0,"safe");
-  ok(!!N.k0.cap&&J(N.k0.cap.skills)===J(T.archSkills("std",N.k0.cap.element))&&N.k0.cap.hp===100,"F7 숲 공용 포획은 속성 표준형 세트·100/100 그대로");
+  /* #234 (명세 3장): 숲 포획 말은 ⭐1 — 그 종의 1차 기본기 1칸. 종 미지정 호출은 종전대로 ROSTER[0](새끼 화룡 100/100) */
+  ok(!!N.k0.cap&&J(N.k0.cap.skills)===J(T.speciesSkills(N.k0.cap.rosterId,1))&&N.k0.cap.hp===100,"F7 숲 공용 포획은 종 ⭐1 스킬·100/100");
   // 예비 → 대리 출전: 승계한 물대포는 물 속성으로 판정
   const U=setup(T); fixed(T); giveSpecies(T,U.me,R(T,"M-F1")); U.me.skills[0]="water_stable"; giveSpecies(T,U.em,R(T,"M-W1"));
   T.S.current=1; openBattle(T,U.em,U.me); T.finishByCapture("A"); T.TQ.length=0;
@@ -311,7 +317,7 @@ const T=H.load(htmlPath);
   try{ baseHtml=execFileSync("git",["show",BASE_REF+":demo/index.html"],{cwd:path.resolve(__dirname,"..","..",".."),maxBuffer:1<<26}).toString("utf8"); }catch(e){ err=e; }
   ok(!!baseHtml&&!err,"K0 기준판 "+BASE_REF+" 소스 로드 (git 읽기만)");
   if(baseHtml){
-    const Tb=H.load(htmlPath,{html:baseHtml});
+    const Tb=loadH(htmlPath,{html:baseHtml});
     ok(!/el:"fire",tier:"stable"/.test(Tb.html)&&Tb.recruitCandidates===undefined&&/\[임시 대체 — 기획 확정 전\]/.test(Tb.html),"K1 기준판에는 기술 속성·후보 함수가 없고 임시 보조기 교체가 있다 (대조가 공허하지 않음)");
     const play=(X,seed)=>{ useTimers(X); X.setSeed(seed); X.TQ.length=0; X.startMode("sim",{aiLevel:["grade5","grade5"]}); for(const e of X.S.events) if(e.kind==="recruit") e.kind=(X.EVENT_KINDS?"itemGift":"potion"); // #121: 현행은 itemGift, 기준판은 옛 potion — 양쪽 모두 "선택 학습이 없는 경기"
       let n=0; while(X.TQ.length&&n<3000000){ X.TQ.shift()(); n++; } return J({w:X.S.winner,t:X.S.turnCount,wt:X.S.metrics.winType,log:X.S.log.map(l=>l.msg),m:X.metricsSnapshot()}); };
@@ -344,7 +350,7 @@ const T=H.load(htmlPath);
 /* ===== L. 메모리 변형 음성 대조 — 계약을 어기는 변형을 메모리에서 로드해 위 검사기가 잡는지 ===== */
 {
   const src=T.html;
-  const mut=(name,from,to)=>{ if(!src.includes(from)) return {name,error:"변형 앵커 없음: "+from}; const M=H.load(htmlPath,{html:src.replace(from,to)}); M.BAL.aiDelay=0; return {name,M}; };
+  const mut=(name,from,to)=>{ if(!src.includes(from)) return {name,error:"변형 앵커 없음: "+from}; const M=loadH(htmlPath,{html:src.replace(from,to)}); M.BAL.aiDelay=0; return {name,M}; };
   /* #121 계약 4.2-7 확정 경로의 변형을 잡는다 — 신규 3종 선택 → 대상 말 → 슬롯 확정까지 실제로 눌러 본다.
      (옛 L2·L3 은 #92 의 swap 클로저를 앵커로 썼고 그 코드는 계약 4 로 대체됐다.) */
   const swapCheck=M=>{ const P=setup(M); giveSpecies(M,P.me,R(M,"M-F1")); P.me.cds=[2,1,0,0]; P.me.revealedSkills=[0,1]; M.setSeed(92001);
@@ -353,7 +359,8 @@ const T=H.load(htmlPath);
     click(M,(idx+1)+". "+(P.me.name||"하수인"));
     click(M,"슬롯 1 교체 ("+M.SKILLS[P.me.skills[0]].ko+")");
     return {cds:P.me.cds.slice(),rev:P.me.revealedSkills.slice(),sk:P.me.skills.slice()}; };
-  let v=mut("no-skill-element",'function atkElOf(f,sk){ if(sk&&sk.cls) return null; return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element; }','function atkElOf(f,sk){ if(sk&&sk.cls) return null; return f.element; }');
+  // #234: atkElOf 에 전설 중립(sk.neutral) 조건이 더해져 앵커 문자열만 바뀌었다 — 변형 내용(판정 속성을 본체로 되돌림)은 같다
+  let v=mut("no-skill-element",'  return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element; }','  return f.element; }');
   if(v.M){ const P=setup(v.M); fixed(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); giveSpecies(v.M,P.em,R(v.M,"M-W1")); P.me.skills[1]="lightning_effect"; openBattle(v.M,P.me,P.em); v.M.execSlot("A",1);
     ok(P.em.hp===100-15&&P.em.burn>0&&P.em.shock===0,"L1 [음성] 판정 속성을 본체로 되돌리면 D1(26·감전) 검사기가 잡는다 (관측 "+(100-P.em.hp)+"·화상) — #233 GDD-23 4.2⑧ (def 도입 전 17)"); } else ok(false,"L1 "+v.error);
   v=mut("cd-reset","    m.skills[i]=R.skill;","    m.skills[i]=R.skill; m.cds[i]=0;"); // 한 줄 앵커 (원문은 CRLF 이므로 개행을 앵커에 넣지 않는다)
@@ -364,24 +371,25 @@ const T=H.load(htmlPath);
   v=mut("species-reroll",'species:ROSTER[Math.floor(rand()*ROSTER.length)].id','species:shuffle(ROSTER.slice())[0].id');
   if(v.M){ const P=setup(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); v.M.setSeed(92001); v.M.rand(); const next=v.M.rand(); v.M.setSeed(92001); recruitAt(v.M,P.me);
     ok(v.M.rand()!==next,"L4 [음성] 후보 종을 shuffle 로 여러 번 굴리는 변형은 rand 1회 검사기(신규 suite B절·smoke_minion_art K1d)가 잡는다"); v.M.close(); } else ok(false,"L4 "+v.error);
-  v=mut("capture-template",'skills:loseP.skills?loseP.skills.slice():archSkills(arch,el)','skills:archSkills(arch,el)');
+  // #234: 적 포획 폴백이 종 ⭐1 스킬 → 레거시 템플릿 순으로 바뀌어 앵커 문자열만 갱신했다 — 변형 내용(승계 대신 재생성)은 같다
+  v=mut("capture-template",'skills:loseP.skills?loseP.skills.slice():(speciesSkills(loseP.rosterId,1)||archSkills(ARCH_TMPL[arch]?arch:"std",el))','skills:archSkills(ARCH_TMPL[arch]?arch:"std",el)');
   if(v.M){ const P=setup(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); giveSpecies(v.M,P.em,R(v.M,"M-W1")); P.me.skills[0]="water_stable"; v.M.S.current=1; openBattle(v.M,P.em,P.me); v.M.finishByCapture("A"); v.M.TQ.length=0;
     ok(v.M.S.reserve[1].skills[0]==="fire_stable","L5 [음성] 템플릿 재생성 변형은 F1(교체 기술 승계) 검사기가 잡는다"); } else ok(false,"L5 "+v.error);
-  v=mut("capture-alias",'skills:loseP.skills?loseP.skills.slice():archSkills(arch,el)','skills:loseP.skills?loseP.skills:archSkills(arch,el)');
+  v=mut("capture-alias",'skills:loseP.skills?loseP.skills.slice():(speciesSkills(loseP.rosterId,1)||archSkills(ARCH_TMPL[arch]?arch:"std",el))','skills:loseP.skills?loseP.skills:(speciesSkills(loseP.rosterId,1)||archSkills(ARCH_TMPL[arch]?arch:"std",el))');
   if(v.M){ const P=setup(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); giveSpecies(v.M,P.em,R(v.M,"M-W1")); v.M.S.current=1; openBattle(v.M,P.em,P.me); v.M.finishByCapture("A"); v.M.TQ.length=0;
     ok(v.M.S.reserve[1].skills===P.me.skills,"L6 [음성] 참조 공유 변형은 F3(비공유) 검사기가 잡는다"); } else ok(false,"L6 "+v.error);
   v=mut("ai-ignore-pow",'return SKILLS[alt].pow>=SKILLS[p.skills[pick]].pow?pick:-1;','return 0;');
   if(v.M){ const P=setup(v.M,"sim"); giveSpecies(v.M,P.me,R(v.M,"M-F3")); ok(v.M.aiRecruitSlot(P.me,"water_stable")===0,"L7 [음성] 위력·보존 룰을 무시하는 AI 변형은 C2 검사기가 잡는다"); } else ok(false,"L7 "+v.error);
   // 전투 AI: 상태 키·기대 피해가 본체 속성으로 되돌아가면 5단 선택이 바뀐다 (결정론적 케이스)
   const aiPick=(M,skills,oppId,pre)=>{ const P=setup(M,"pve"); giveSpecies(M,P.me,R(M,"M-F1")); P.me.skills=skills; giveSpecies(M,P.em,R(M,oppId)); M.S.current=0; openBattle(M,P.me,P.em); if(pre) pre(P); M.setSeed(3); M.aiBattleActionStrong("A"); M.TQ.length=0; return P.me.revealedSkills[0]; };
-  ok(aiPick(H.load(htmlPath),["fire_stable","lightning_effect","sup_heal","sig_def"],"M-F1",P=>{P.em.burn=2;})===1,"L8a 5단 AI: 불 본체 vs 불(화상 중) — 상태 키를 기술 속성(감전)으로 보면 감전 침 +4 로 슬롯1 선택");
+  ok(aiPick(loadH(htmlPath),["fire_stable","lightning_effect","sup_heal","sig_def"],"M-F1",P=>{P.em.burn=2;})===1,"L8a 5단 AI: 불 본체 vs 불(화상 중) — 상태 키를 기술 속성(감전)으로 보면 감전 침 +4 로 슬롯1 선택");
   v=mut("ai-statuskey-body",'[atkElOf(f,sk)]; // 상태 키는 기술 속성 (#92)','[f.element];');
   if(v.M){ ok(aiPick(v.M,["fire_stable","lightning_effect","sup_heal","sig_def"],"M-F1",P=>{P.em.burn=2;})===0,"L8b [음성] 상태 키를 본체 속성으로 되돌리면 (이미 화상) +4 가 사라져 화염탄(슬롯0)을 고른다 — L8a 검사기가 잡는다"); } else ok(false,"L8b "+v.error);
-  ok(aiPick(H.load(htmlPath),["fire_heavy","lightning_stable","sup_heal","sig_def"],"M-W1")===1,"L9a 5단 AI: 불 본체 vs 물 — 기대 피해를 기술 속성으로 보면 전기탄(26×1.3) > 폭염 강타(38×0.75) 로 슬롯1");
+  ok(aiPick(loadH(htmlPath),["fire_heavy","lightning_stable","sup_heal","sig_def"],"M-W1")===1,"L9a 5단 AI: 불 본체 vs 물 — 기대 피해를 기술 속성으로 보면 전기탄(26×1.3) > 폭염 강타(38×0.75) 로 슬롯1");
   v=mut("ai-mult-body",'multOf(atkElOf(f,sk))*(f.focusCharge','multOf(f.element)*(f.focusCharge');
   if(v.M){ ok(aiPick(v.M,["fire_heavy","lightning_stable","sup_heal","sig_def"],"M-W1")===0,"L9b [음성] 기대 피해를 본체 속성으로 계산하면 폭염 강타(슬롯0)를 고른다 — L9a 검사기가 잡는다"); } else ok(false,"L9b "+v.error);
   const pick5=(M,seeds)=>{ let s1=0; for(const sd of seeds){ const P=setup(M,"sim"); /* 5급 aiBattleAction() 은 인자 없이 actorOfPhase 의 소유자가 AI 일 때만 행동 → sim */ giveSpecies(M,P.me,R(M,"M-F1")); P.me.skills=["fire_heavy","lightning_stable","sup_heal","sig_def"]; giveSpecies(M,P.em,R(M,"M-W1")); M.S.current=0; openBattle(M,P.me,P.em); M.setSeed(sd); M.aiBattleAction(); M.TQ.length=0; if(P.me.revealedSkills[0]===1) s1++; } return s1/seeds.length; };
-  const seeds=Array.from({length:60},(_,i)=>500+i); const r5=pick5(H.load(htmlPath),seeds);
+  const seeds=Array.from({length:60},(_,i)=>500+i); const r5=pick5(loadH(htmlPath),seeds);
   ok(r5>=0.6,"L9c 5급 AI(확률 혼합 포함) 60시드: 전기탄(기술 속성 ×1.3) 선택률 "+(r5*100).toFixed(0)+"% ≥ 60%");
   v=mut("ai5-mult-body",'const est=slotPow(f,sk)*multOf(atkEl)*(f.focusCharge','const est=slotPow(f,sk)*multOf(f.element)*(f.focusCharge');
   if(v.M){ const rm=pick5(v.M,seeds); ok(rm<=0.3,"L9d [음성] 5급 기대 피해를 본체 속성으로 되돌리면 전기탄 선택률 "+(rm*100).toFixed(0)+"% ≤ 30% — L9c 검사기가 잡는다"); } else ok(false,"L9d "+v.error);

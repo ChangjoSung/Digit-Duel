@@ -367,6 +367,9 @@ section("C",()=>{
     const X=load(); const Q=setup(X);
     const ally=Q.ally0; ally.skills=undefined; ally.cds=undefined; ally.element="grass"; ally.skillAtk=20; ally.cd=0; ally.atk=20; ally.rosterId=null;
     openBattle(X,ally,Q.em); const Bx=X.S.battle; actAsA(X);
+    /* #234 (GDD-23 6.2): 왕·동료는 전투 개시(startRounds) 때 스킬 칸이 동기화된다 — 이 절이 보는 **레거시 본체 경로**(스킬 배열 없음)를
+       계속 밟으려면 개시 뒤에 배열을 비운다. 검사 대상(방어막 합산)은 그대로다. */
+    Bx.fa.skills=undefined; Bx.fa.cds=undefined; X.battleModal();
     const want=Math.round(Bx.fa.maxHp*X.BAL.shieldPct);
     Bx.fa.shield=7; X.setSeed(5); X.__actCore("skill"); X.drain(20000);
     ok(Bx.fa.shield===7+want,"C4 레거시 풀 경로도 합산: 7+"+want+"="+Bx.fa.shield+" (직접 대입이면 "+want+")");
