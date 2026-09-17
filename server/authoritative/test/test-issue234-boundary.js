@@ -46,7 +46,9 @@ function diverges(room, fn, undo) {
   const mag = [...magSrc.matchAll(/"(\w+)"/g)].map((m) => m[1]);
   const resetSrc = (/function\s+resetV2\(f\)\{([\s\S]*?)\n\}/.exec(html) || [])[1] || '';
   const reset = [...resetSrc.matchAll(/\bf\.(\w+)\s*=/g)].map((m) => m[1]).filter((k) => k !== 'cds');
-  ok(timed.length >= 19 && mag.length >= 8 && reset.length >= 25,
+  // #241 (CJ 승인 2026-09-17) V2_TIMED 19 → 16: spdDownR→evadeDownR 교체 · mirrorR(R3 거울 수면)·burrowR·fortressR(단순화) 삭제.
+  // resetV2 는 삭제 9 · 추가 4(tideMark·tideBy·tideHeld·cdUpFresh)로 25. 필드 전수 분기 감지는 아래에서 그대로 본다.
+  ok(timed.length >= 16 && mag.length >= 8 && reset.length >= 25,
     '엔진 원본에서 V2_TIMED·V2_TIMED_MAG·resetV2 필드 목록을 읽음: ' + JSON.stringify([timed.length, mag.length, reset.length]));
   const fields = [...new Set([...timed, ...timed.map((k) => k + 'Fresh'), ...mag, ...reset])];
   const missed = [];
@@ -66,13 +68,14 @@ function diverges(room, fn, undo) {
   }
   ok(missed.length === 0, '새 전투 상태 한 좌석 분기 → 요약 분기 (' + fields.length + '필드 × 2전투원): 놓친 필드 ' + JSON.stringify(missed));
 
-  // 개별 모양 — 숫자 카운터로 바뀐 vanguardTurn(1R vs 2R), 소수 누계 mitigated, 해일 예고 atStart, 한 행동 1회 게이트
+  // 개별 모양 — 숫자 카운터로 바뀐 vanguardTurn(1R vs 2R), 소수 누계 mitigated, 한 행동 1회 게이트
+  // (#241 R2: 해일 예고가 조건 표식으로 바뀌어 pendingFx.atStart 는 엔진에서 폐지 — 표식 분기는 test-issue241-boundary.js 가 본다)
   both(room, (E) => { E.S.battle.fa.vanguardTurn = 1; E.S.battle.fa.mitigated = 0.25; });
   ok(diverges(room, (E) => { E.S.battle.fa.vanguardTurn = 2; }, (E) => { E.S.battle.fa.vanguardTurn = 1; }), 'vanguardTurn 1R vs 2R (boolean 접기 금지)');
   ok(diverges(room, (E) => { E.S.battle.fa.mitigated = 0.5; }, (E) => { E.S.battle.fa.mitigated = 0.25; }), 'mitigated 소수 누계 0.25 vs 0.5');
-  both(room, (E) => { E.S.battle.fd.pendingFx.push({ roundsLeft: 0, tag: 'M-W5-4:tsunami', atStart: false, run() {} }); });
-  ok(diverges(room, (E) => { E.S.battle.fd.pendingFx[E.S.battle.fd.pendingFx.length - 1].atStart = true; },
-    (E) => { E.S.battle.fd.pendingFx[E.S.battle.fd.pendingFx.length - 1].atStart = false; }), 'pendingFx 같은 roundsLeft·tag 의 atStart 차이');
+  both(room, (E) => { E.S.battle.fd.pendingFx.push({ roundsLeft: 1, tag: 'fixture:delayed', run() {} }); });
+  ok(diverges(room, (E) => { E.S.battle.fd.pendingFx[E.S.battle.fd.pendingFx.length - 1].roundsLeft = 2; },
+    (E) => { E.S.battle.fd.pendingFx[E.S.battle.fd.pendingFx.length - 1].roundsLeft = 1; }), 'pendingFx 같은 tag 의 roundsLeft 차이 (#233 대기열 계약 유지)');
   for (const k of ['reflectSeq', 'counterSeq']) {
     ok(diverges(room, (E) => { E.S.battle[k] = 7; }, (E) => { delete E.S.battle[k]; }), '전투 객체 B.' + k + ' 분기');
   }
@@ -83,7 +86,7 @@ function diverges(room, fn, undo) {
   const m = T.S.pieces.find((p) => p.type === 'minion' && !p.legend);
   ok(diverges(room, (E) => { byId(E, m.id).legend = 'X'; }, (E) => { byId(E, m.id).legend = m.legend; }), '말 legend 분기');
   // 한 좌석 분기가 실제 명령 경로에서 fail-closed VOID 로 이어지는지 (요약이 서버 판정에 쓰인다).
-  // 행동으로 소모되지 않는 필드를 고른다 — nextShockForce 같은 1회성은 피해 스킬 사용 시 양쪽 모두 false 로 돌아가
+  // 행동으로 소모되지 않는 필드를 고른다 — 다음 피해 스킬 1회성(nextPowUp 등)은 피해 스킬 사용 시 양쪽 모두 0 으로 돌아가
   // (demo/index.html execV2) 정당하게 다시 수렴한다(1회차 실행에서 확인한 검사 설계 오류).
   withEngine(room.engines[1], () => { byId(room.engines[1], king.id).leaderElChosen = !king.leaderElChosen; });
   const side = T.actorOfPhase();

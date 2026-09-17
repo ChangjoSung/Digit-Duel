@@ -87,9 +87,9 @@ function catalog() {
 // 그 어긋남이 상태에 드러나는 지점(방어막 층 순서 · 균열/경화 잔여 · 예고 피해 대기열)을 전부 덮지 않으면
 // fail-closed VOID 가 발동하지 못하고 두 좌석이 조용히 다른 경기를 보게 된다.
 // #234 — demo/index.html V2_TIMED 와 같은 목록(harness 가 노출하지 않아 사본을 둔다. 드리프트는 경계 검사가 잡는다).
-const V2_TIMED_KEYS = Object.freeze(['absorbR', 'spdBuffR', 'spdDownR', 'healCutR', 'vanguardTurn', 'retaliateBurnR', 'mirrorR',
-  'reflectR', 'counterR', 'overloadR', 'nullHitR', 'burrowR', 'sandStormR', 'ringR', 'enduredR', 'breedR', 'fortressR',
-  'immuneShockR', 'mossR']);
+// #241 (CJ 승인 2026-09-17 스킬 정리) — spdDownR→evadeDownR(V1 회피율 감소) · mirrorR(R3)·burrowR·fortressR(단순화) 삭제. 순서도 엔진과 같다.
+const V2_TIMED_KEYS = Object.freeze(['absorbR', 'spdBuffR', 'evadeDownR', 'healCutR', 'vanguardTurn', 'retaliateBurnR',
+  'reflectR', 'counterR', 'overloadR', 'nullHitR', 'sandStormR', 'ringR', 'enduredR', 'breedR', 'immuneShockR', 'mossR']);
 function lockstepDigest(T) {
   const S = T.S;
   const B = S.battle;
@@ -98,29 +98,39 @@ function lockstepDigest(T) {
   const stats = (f) => [f.def || 0, f.spd || 0, f.dodge || 0, f.crit || 0, f.statusPct || 0,
     f.grade === undefined ? null : f.grade];
   /* #234 (GDD-23 6장 스킬 64종) — 새 전투 상태. Mars 보고서 11.1 목록 전부. 뷰에는 싣지 않는다(서버 내부 전용).
-     · 난수 소비를 바꾸는 것(최우선): nextShockForce(감전 판정 rand 생략) · sandStormR(부여 확률 절반) · onceUsed(전투당 1회 —
+     · 난수 소비를 바꾸는 것(최우선): sandStormR(부여 확률 절반) · onceUsed(전투당 1회 —
        합법 슬롯 집합이 바뀌어 선택 분기) · sleepNext · nullifyNext(행동 전체 무효). 한쪽 좌석에만 남으면 그 행동의 rand() 호출
        수가 어긋나 이후 모든 판정이 갈린다.
      · 지속 카운터는 X 와 XFresh(5.6 부여 라운드 제외 게이트)를 **둘 다** 본다 — #233 의 다른 게이트와 같은 이유.
      · 세기·소유자는 지속과 따로 본다(지속이 0 이 될 때 세기를 내리는 엔진 모양이 같다).
      · mitigated 는 소수 누계라 반올림하지 않고 원값 그대로 넣는다 — 두 엔진은 같은 연산 순서로 같은 double 을 만든다.
      엔진에 필드가 없으면(초기화 전 픽스처) 0/false/null 로 떨어진다 — 서버는 없는 필드를 만들지 않는다.
-     목록 누락은 test-issue234-boundary.js 가 demo/index.html 의 V2_TIMED·V2_TIMED_MAG·resetV2 본문을 읽어 잡는다. */
+     목록 누락은 test-issue234-boundary.js 가 demo/index.html 의 V2_TIMED·V2_TIMED_MAG·resetV2 본문을 읽어 잡는다.
+     #241 (CJ 승인 2026-09-17) — 엔진에서 삭제된 필드는 요약에서도 뺀다(counterRound·burnBonus·nextDmgUp·nextFlat·nextShockForce·
+     sandWind·sporePending·permShockR·permShockBy). 남겨 두면 항상 0 이라 해롭지는 않지만, 목록이 엔진과 1:1 이어야 드리프트 검사가
+     "요약에 있는데 엔진에 없는 키"를 설명 없이 끌고 다니지 않는다. 새로 넣는 것:
+     · 해일 예고 표식(R2): tideMark(사용 순간 확정한 X) · tideBy(부여자 — 발동 시 유효 피해 기록 대상) · tideHeld(방어 효과로 보류 중).
+       판정은 결정론이지만 X 가 한 좌석만 다르면 "HP+방어막 ≤ X" 성립 행동이 갈려 즉사 여부가 바로 갈린다.
+     · cdUpFresh(Q3): 이번 라운드에 ⌛0 에서 +1 된 슬롯 집합. 라운드 종료 감소가 이 슬롯을 1 아래로 내리지 않으므로 한 좌석에만
+       서 있으면 다음 라운드의 합법 슬롯 집합이 갈린다 — XFresh 게이트와 같은 이유로 본다. */
+  const flags = (o) => (o && typeof o === 'object' ? Object.keys(o).filter((k) => o[k]).sort() : []);
   const num = (v) => (typeof v === 'number' ? v : (v ? 1 : 0));
   const timed = (f) => V2_TIMED_KEYS.map((k) => [num(f[k]), !!f[k + 'Fresh']]);
   const v2 = (f) => [
     timed(f),
     // 세기·소유자
-    num(f.absorbPct), num(f.spdBuff), num(f.spdDown), num(f.healCut), num(f.nullHitN), num(f.mossPct),
-    f.mossBy === undefined ? null : f.mossBy, f.breedBy === undefined ? null : f.breedBy, num(f.counterRound),
-    num(f.burnMag), num(f.burnBonus), !!f.burnNoCure, num(f.weakenMag),
+    num(f.absorbPct), num(f.spdBuff), num(f.evadeDown), num(f.healCut), num(f.nullHitN), num(f.mossPct),
+    f.mossBy === undefined ? null : f.mossBy, f.breedBy === undefined ? null : f.breedBy,
+    num(f.burnMag), !!f.burnNoCure, num(f.weakenMag),
     // 다음 피해 스킬 1회성 (critForce 는 위에서 따로 본다)
-    num(f.nextDmgUp), num(f.nextPowUp), num(f.nextFlat), !!f.nextShockForce, !!f.sandWind,
+    num(f.nextPowUp),
     // 난수·행동 분기
-    !!f.sleepNext, !!f.nullifyNext, f.onceUsed ? Object.keys(f.onceUsed).filter((k) => f.onceUsed[k]).sort() : [],
-    // 전투 누계(위력에 들어감)
-    num(f.shocksDealt), num(f.mitigated), num(f.healTotal), num(f.sporePending), num(f.burrowRound), !!f.enduredUsed,
-    !!f.fleeLock, num(f.permShockR), f.permShockBy === undefined ? null : f.permShockBy,
+    !!f.sleepNext, !!f.nullifyNext, flags(f.onceUsed),
+    // 전투 누계(위력에 들어감) · 지하 매복 조건
+    num(f.shocksDealt), num(f.mitigated), num(f.healTotal), num(f.burrowRound), !!f.enduredUsed,
+    !!f.fleeLock,
+    // #241 R2 해일 예고 표식 · Q3 ⌛ 증가 Fresh 슬롯
+    num(f.tideMark), f.tideBy === undefined ? null : f.tideBy, !!f.tideHeld, flags(f.cdUpFresh),
   ];
   const fighter = (f) => (f ? {
     hp: f.hp, maxHp: f.maxHp, shield: f.shield || 0, burn: f.burn || 0, weaken: f.weaken || 0, shock: f.shock || 0,
@@ -168,8 +178,9 @@ function lockstepDigest(T) {
        갈린다(그때는 이미 요약으로 잡을 수 없는 HP 차이다). 그래서 항목의 안정 식별자(tag)를 함께 읽는다.
        tag 는 **엔진이 붙여 주는 값**이고(Mars 소유 계약, msg_dd8111ac4d2c 로 제안·조회) 아직 없으면 null 로
        떨어져 종전과 같은 감지력을 유지한다 — 서버는 없는 필드를 만들지 않고, 붙는 순간 감지력만 올라간다. */
-    // #234 — atStart(해일 예고): 0 이 되어도 다음 라운드 시작까지 남는 항목. 같은 roundsLeft·tag 라도 발동 시점이 다르다.
-    pendingFx: (f.pendingFx || []).map((e) => [e.roundsLeft, e.tag === undefined ? null : e.tag, !!e.atStart]),
+    // #241 R2 — 해일 예고가 시간 예약(atStart)에서 조건 표식(v2.tideMark)으로 바뀌어 atStart 는 엔진에서 폐지됐다(호출처 0).
+    // 대기열 자체는 #233 계약(scheduleDelayed/tickDelayed)으로 남으므로 roundsLeft·tag 는 계속 본다.
+    pendingFx: (f.pendingFx || []).map((e) => [e.roundsLeft, e.tag === undefined ? null : e.tag]),
     // 전투 판정용 유효 피해 흡수 누계(BAL.absorbCapPct). 규칙 자체는 현행이지만 #233의 층 소모가 이 값의 증가
     // 경로를 바꿨고, 원래도 요약에서 빠져 있어 누적 차이를 못 잡았다 — 여기서 함께 메운다.
     absorbed: f.absorbed || 0,
@@ -202,6 +213,11 @@ function lockstepDigest(T) {
       ballThrowA: !!B.ballThrowA, ballThrowD: !!B.ballThrowD, buffA: B.buffA || null, buffD: B.buffD || null,
       // #234 4.3 반사·반격 "한 행동 1회" 게이트 — 마지막으로 발동한 actSeq. 한쪽만 서 있으면 같은 행동의 두 번째 반사가 갈린다.
       reflectSeq: B.reflectSeq === undefined ? null : B.reflectSeq, counterSeq: B.counterSeq === undefined ? null : B.counterSeq,
+      /* #241 R1 (CJ 설계) 번개 꼬리 추가 공격 단계 — 같은 행동자가 한 번 더 고르는 상태. 한 좌석만 서 있으면 그 좌석은 차례를 넘기지
+         않고 다른 좌석은 넘겨 행위자 자체가 갈린다. allowed(합법 슬롯)·saved(턴 끝에 되돌릴 2·3차 ⌛ 사본)·tailSlot 모두 규칙 상태다.
+         B.actSeq 는 추가 공격 시작에도 오르며 위 actSeq 가 이미 본다. */
+      bonus: B.bonus ? [B.bonus.side, B.bonus.stage, (B.bonus.allowed || []).slice(),
+        Object.keys(B.bonus.saved || {}).sort().map((k) => [k, B.bonus.saved[k]]), B.bonus.tailSlot === undefined ? null : B.bonus.tailSlot] : null,
     } : null,
     fleePick: S.fleePick ? { owner: S.fleePick.owner, cands: S.fleePick.cands.slice(), token: S.fleePick.token } : null,
     events: (S.events || []).map((e) => [e.r, e.c, e.kind, !!e.consumed]),
@@ -635,6 +651,12 @@ class Room {
       if (seatIndex !== ownerP) return err('E_NOT_ACTOR');
       const f = side === 'A' ? B.fa : B.fd;
       const opp = side === 'A' ? B.fd : B.fa;
+      /* #241 R1 (CJ 설계) 번개 꼬리 추가 공격 단계 — 스킬 선택만 합법이다(L5·L17: 포기·도망·볼·아이템·패키지·패스 불가).
+         합법 슬롯(allowed = 기본기·2차·3차 중 실제 칸)은 _legalAct 가 쓰는 T.slotUsable 이 이미 거른다. 나머지 어휘는 클라이언트
+         코어(__itemCore·__ballCore·__fleeCore·__passCore·패키지)가 조용히 무시하므로(상태 불변 noop) 서버가 먼저 거부한다.
+         조건은 코어와 같은 모양(stage==="active", side 무관)이다 — 추가 공격 단계의 행위자는 항상 그 side 다. */
+      const inBonus = !!(B.bonus && B.bonus.stage === 'active');
+      if (inBonus && a.t !== 'act') return err('E_ILLEGAL_ACTION');
       switch (a.t) {
         case 'act':
           return this._legalAct(T, f, side, a.k) ? { ok: true, action: { t: 'act', k: a.k } } : err('E_ILLEGAL_ACTION');
@@ -1127,8 +1149,21 @@ class Room {
         artRosterId: bodyFight ? null : (f.artRosterId || null),
         // #234 REVISE 2차 — 사신의 낫 봉인은 자기 전투원에만(키 자체를 상대 쪽에 만들지 않는다 · _serializeOwn 주석).
         ...(owner === seatIndex ? { reaperSeal: f.reaperSeal || 0 } : {}),
+        /* #241 V1·R2 (CJ 승인 2026-09-17) — 적용된 효과라 두 전투원 패널 모두에 그려진다(stIcons 💨회피−N%p·NR · 🌊해일≤X(보류) ·
+           HP 바 X 선). burn/shock/crack 과 같은 등급(#121 계약 "적용된 효과는 상대에게도 공개")이므로 뷰어 분기 없이 싣는다.
+           해일 X 는 시전자의 공격 계산 결과지만 기획 기본값이 "사용 시 UI 표시(양쪽)"다 — 기술 이름은 이미 사용 순간 공개된다.
+           tideBy 는 싣지 않는다: 표식 대상의 반대편으로 항상 유도되고 표시가 읽지 않는다. cdUpFresh(Q3)도 싣지 않는다 —
+           ⌛ 값 자체가 미공개 칸 은닉(_skillsFor) 대상이고 표시 경로가 없다. */
+        evadeDown: f.evadeDown || 0, evadeDownR: f.evadeDownR || 0,
+        tideMark: f.tideMark || 0, tideHeld: !!f.tideHeld,
       };
     };
+    /* #241 R1 번개 꼬리 추가 공격 단계 — 양 좌석에 side 만 공개(행동 중인 쪽 · 상대 화면의 대기 표시). allowed 는 소유자 좌석에만:
+       allowed = 기본기·2차·3차 중 i < skills.length 로 걸러져 **칸 수(= 등급, GDD-23 7.9 소유자 전용)** 를 드러낸다.
+       saved(2·3차 ⌛ 사본)·tailSlot 은 어느 좌석에도 싣지 않는다 — ⌛ 복원은 서버 엔진이 하고 클라이언트는 표시에 쓰지 않는다. */
+    const bn = battle.bonus && battle.bonus.stage === 'active' && (battle.bonus.side === 'A' || battle.bonus.side === 'D') ? battle.bonus : null;
+    const bnOwner = bn ? (bn.side === 'A' ? battle.attP.owner : battle.defP.owner) : null;
+    const bonus = bn ? (bnOwner === seatIndex ? { side: bn.side, allowed: (bn.allowed || []).slice() } : { side: bn.side }) : null;
     return {
       round: battle.round,
       phase: battle.phase,
@@ -1142,6 +1177,7 @@ class Room {
       battleId: T.__fx && Number.isInteger(T.__fx.lastBattleId) ? T.__fx.lastBattleId : null,
       a: side(battle.attP.owner, battle.fa, battle.attP, 'A'),
       d: side(battle.defP.owner, battle.fd, battle.defP, 'D'),
+      bonus,
       log: (battle.blog || []).slice(-40), // 이 좌석 시점 엔진의 전투 로그
     };
   }
