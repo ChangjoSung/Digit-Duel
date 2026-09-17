@@ -478,7 +478,14 @@ function resolveSyncModals(room, seatHint, maxSteps) {
 {
   const room = H.startedRoom(1874204);
   const cur = startBattle(room);
-  act(room, cur, { t: 'act', k: 0 });
+  // #241 CI B(PR240 1e29f44) 간헐 실패 — 이 절은 "반환값 변조가 내부 저장소를 오염시키지 않는다"만 보고 회피는
+  // 다루지 않는다. 첫 공격이 rand() 회피(기본 dodge·evadeBuff, 상한 40%)에 걸리면 엔진은 "회피했다!" msg만
+  // 내고 hp 필드를 싣지 않아 전제(hp가 실린 msg)가 없어지고 이후 hpEvt.fx 접근이 TypeError로 죽었다.
+  // T1(PR239)과 같은 방식으로 두 전투원의 dodge/evadeBuff를 0으로 고정해 회피 판정(rand()<0)을 항상 거짓으로
+  // 만든다 — 명중 시 damageFx에 hp가 항상 실린다. 피해량·치명타는 rand()에 그대로 맡기고 전제 단언은 유지한다.
+  both(room, (E) => { const B = E.S.battle; B.fa.dodge = 0; B.fa.evadeBuff = 0; B.fd.dodge = 0; B.fd.evadeBuff = 0; });
+  const r17 = act(room, cur, { t: 'act', k: 0 });
+  ok(r17.ok, 'T17 전제: 공격 행동 수락: ' + JSON.stringify(r17.reason));
   const v0 = room.toSeatView(cur);
   const hpEvt = v0.fx.events.find((e) => e.src === 'msg' && e.fx && e.fx.hp);
   ok(!!hpEvt, 'T17 전제: hp 표시가 실린 msg 이벤트 존재');
