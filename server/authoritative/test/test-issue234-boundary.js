@@ -6,6 +6,7 @@
 //   2) 좌석 프레임: 상대의 미공개 스킬 칸 수(= 등급, 7.9)와 종류가 나가지 않는다. 미공개 상대 왕·동료의 element 와
 //      새 말 필드(allyKind·leaderElChosen·legend)가 상대 프레임에 없다.
 //   3) 합법성: 뿌리 고정(fleeLock) 도망 거부, 탐색 recruit 기술 교체 단계 거부(CJ 결정 2026-09-17).
+//   4) REVISE 2차 사신의 낫(CJ 결정 2026-09-17): reaperSeal 요약 분기·소유자 전용 프레임·4R/봉인/수면 포자 합법성.
 const { withEngine } = require('../engine');
 const H = require('./helpers');
 const { both, byId, snap, act, lockstepDigest } = H;
@@ -194,6 +195,103 @@ function diverges(room, fn, undo) {
   const give = pm ? pm.buttons.findIndex((b) => b.text === '포기') : -1;
   res = give >= 0 ? act(room, cur, { t: 'modal', seq: pm.seq, i: give }) : { ok: false };
   ok(res.ok && !res.noop, '대조: 루트 화면 포기는 수락: ' + JSON.stringify(res.reason));
+}
+
+// ===== 4) REVISE 2차 (CJ 결정 2026-09-17) 사신의 낫 — reaperSeal 요약·좌석 프레임·합법성 =====
+// 결정: 절대 판정 즉사 · 4라운드부터 · 전투를 넘는 봉인(말 단위 reaperSeal 0/1/2, 전투 종료 초기화 밖).
+{
+  const { room, T, cur, ids } = battleRoom(2346);
+  // 4a) 요약 분기 — 전투원(fa/fd)·전투 밖 말·포획(cap)·예비(reserve) 네 위치 모두
+  for (const side of ['fa', 'fd']) {
+    ok(diverges(room, (E) => { E.S.battle[side].reaperSeal = 1; }, (E) => { delete E.S.battle[side].reaperSeal; }),
+      `전투원 ${side}.reaperSeal 한 좌석 분기 → 요약 분기`);
+  }
+  const idle = T.S.pieces.find((p) => p.alive && p.id !== ids.att && p.id !== ids.def);
+  for (const v of [1, 2]) {
+    ok(diverges(room, (E) => { byId(E, idle.id).reaperSeal = v; }, (E) => { delete byId(E, idle.id).reaperSeal; }),
+      `전투 밖 말 reaperSeal=${v} 한 좌석 분기 → 요약 분기`);
+  }
+  both(room, (E) => { byId(E, idle.id).reaperSeal = 1; });
+  ok(diverges(room, (E) => { byId(E, idle.id).reaperSeal = 2; }, (E) => { byId(E, idle.id).reaperSeal = 1; }),
+    '전투 밖 말 reaperSeal 1 vs 2 (접기 금지)');
+  both(room, (E) => { delete byId(E, idle.id).reaperSeal; });
+  const leader = T.S.pieces.find((p) => p.alive && (p.type === 'king' || p.type === 'ally') && p.id !== ids.att && p.id !== ids.def);
+  both(room, (E) => { byId(E, leader.id).cap = { element: 'fire', hp: 50, maxHp: 50 }; });
+  ok(diverges(room, (E) => { byId(E, leader.id).cap.reaperSeal = 1; }, (E) => { delete byId(E, leader.id).cap.reaperSeal; }),
+    '포획 하수인(cap) reaperSeal 한 좌석 분기 → 요약 분기');
+  both(room, (E) => { byId(E, leader.id).cap = null; E.S.reserve[0] = { element: 'water', hp: 40, maxHp: 40 }; });
+  ok(diverges(room, (E) => { E.S.reserve[0].reaperSeal = 1; }, (E) => { delete E.S.reserve[0].reaperSeal; }),
+    '예비 하수인 reaperSeal 한 좌석 분기 → 요약 분기');
+  both(room, (E) => { E.S.reserve[0] = null; });
+
+  // 4b) 좌석 프레임 — 소유자 좌석에만. 상대가 공개된 말이거나 지금 싸우는 상대 전투원이어도 키 자체가 없다.
+  both(room, (E) => {
+    for (const p of E.S.pieces) { p.reaperSeal = 1; p.revealed = true; }
+    E.S.battle.fa.reaperSeal = 1; E.S.battle.fd.reaperSeal = 2;
+  });
+  for (const seat of [0, 1]) {
+    const v = room.toSeatView(seat);
+    const oppRaw = JSON.stringify([v.units, v.battle[T.S.battle.attP.owner === seat ? 'd' : 'a']]);
+    ok(!/reaperSeal/.test(oppRaw), `좌석${seat}: 상대 말(공개 포함)·상대 전투원 뷰에 reaperSeal 없음`);
+    // 본체 출전 전투원은 말 객체 자체라 fd 쪽 말은 2 가 된다 — 엔진 말 값과 그대로 대조한다.
+    const want = T.S.pieces.filter((p) => p.owner === seat && p.alive && p.placed).map((p) => p.reaperSeal).sort();
+    const got = v.you.pieces.map((u) => u.reaperSeal).sort();
+    ok(want.length > 0 && want.every((x) => x >= 1) && JSON.stringify(got) === JSON.stringify(want),
+      `좌석${seat}: 자기 말 reaperSeal 이 엔진 값 그대로 포함(재연결 복원): ` + JSON.stringify(got));
+    const ownSide = v.battle[T.S.battle.attP.owner === seat ? 'a' : 'd'];
+    const wantF = T.S.battle.attP.owner === seat ? 1 : 2;
+    ok(ownSide.reaperSeal === wantF, `좌석${seat}: 자기 전투원 뷰 reaperSeal=${wantF}: ` + ownSide.reaperSeal);
+  }
+  both(room, (E) => { E.S.reserve[cur] = { element: 'water', hp: 40, maxHp: 40, reaperSeal: 2 }; });
+  ok(room.toSeatView(cur).you.reserve.reaperSeal === 2 && !/reaperSeal/.test(JSON.stringify(room.toSeatView(1 - cur).units)),
+    '예비 하수인 reaperSeal 은 소유자 you.reserve 에만');
+}
+
+// ===== 4c) 합법성 — 서버 _legalAct 가 T.slotUsable→reaperWhy 를 그대로 쓴다 (4R · 봉인 · 수면 포자 무시) =====
+function reaperRoom(seed, setup) {
+  const { room, T } = battleRoom(seed);
+  const side = T.actorOfPhase();
+  const key = side === 'A' ? 'fa' : 'fd';
+  const seat = side === 'A' ? T.S.battle.attP.owner : T.S.battle.defP.owner;
+  both(room, (E) => {
+    const B = E.S.battle, f = B[key];
+    f.skills = f.skills.slice(); f.cds = f.skills.map(() => 0);
+    f.skills[1] = 'L-REAPER-4';
+    f.hp = 1; // 내 HP 비율 strict 열세
+    B.round = 4;
+    setup(E, f, B);
+  });
+  return { room, T, seat, key };
+}
+{
+  ok(H.startedRoom(2350).engine.BAL.reaperRound === 4, '전제: 엔진 BAL.reaperRound=4 (CJ 결정 2026-09-17, 종전 6)');
+  const cases = [
+    ['3라운드 불법', (E, f, B) => { B.round = 3; }, false],
+    ['봉인 1(지난 전투 사용) 불법', (E, f) => { f.reaperSeal = 1; }, false],
+    ['봉인 2(이번 전투 사용) 불법', (E, f) => { f.reaperSeal = 2; }, false],
+  ];
+  let seed = 2347;
+  for (const [label, setup] of cases) {
+    const { room, seat } = reaperRoom(seed++, setup);
+    const before = snap(room);
+    const res = act(room, seat, { t: 'act', k: 1 });
+    ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, `사신의 낫 ${label}·불변: ` + JSON.stringify(res.reason));
+  }
+  for (const [label, setup] of [['4라운드 합법', () => {}], ['수면 포자 상태에서도 합법', (E, f) => { f.sleepNext = true; }]]) {
+    const { room, T, seat, key } = reaperRoom(seed++, setup);
+    const opp = key === 'fa' ? T.S.battle.defP : T.S.battle.attP;
+    const res = act(room, seat, { t: 'act', k: 1 });
+    ok(res.ok && !res.noop && !opp.alive && room.state !== H.STATES.VOID, `사신의 낫 ${label} → 즉사: ` + JSON.stringify([res.reason, opp.alive, room.state]));
+  }
+  // 대조: 수면 포자는 다른 비기본 스킬은 계속 막는다(예외는 사신의 낫만)
+  const { room, T, seat, key } = reaperRoom(seed++, (E, f) => { f.sleepNext = true; });
+  const f = T.S.battle[key];
+  const other = f.skills.findIndex((sid, i) => i !== 1 && T.SKILLS[sid] && T.SKILLS[sid].v2 && T.SKILLS[sid].kind !== 'basic');
+  if (other >= 0) {
+    const before = snap(room);
+    const res = act(room, seat, { t: 'act', k: other });
+    ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, '대조: 수면 포자 상태 다른 비기본 스킬 거부');
+  } else ok(true, '대조 생략: 픽스처에 다른 v2 비기본 스킬 칸 없음(' + JSON.stringify(f.skills) + ')');
 }
 
 process.exitCode = done() > 0 ? 1 : 0;

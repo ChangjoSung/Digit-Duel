@@ -81,10 +81,10 @@ GDD 6.3 · 6.4 · 6.2 표는 **검사 파일 안에 따로 옮겨 적고** 제�
 | 4 | 변덕 주문 제거 · 상태이상 해제 순서 | [설계 보완 — CJ 승인 대기] | 방어막(전 층)→경화→흡수→회피↑→피해↑→속도↑ / 화상→약화→감전→균열→속도↓→회복↓→이끼 잠식. 스킬 고유 예약 효과는 대상 아님 |
 | 5 | 영구 자기장 재부여 시점 | [설계 보완 — CJ 승인 대기] | 사용 다음 2개 라운드의 시작, 선턴 확정 전. 5.6 1R 감전 그대로(최대 3라운드 연속 후턴 가능 → 8.4 관찰) |
 | 6 | 달궈진 껍질 · 열기 축적 | [설계 보완 — CJ 승인 대기] | 상대 피해 스킬 적중(방어막에 막혀도) · **스킬 사용 1회당 1번** · 페널티·반사·반격·지속·예고 발동 제외 · 열기 축적은 타격 직전 층 존재 기준 · 💫 가산 |
-| 7 | 천년목 적용 범위 | [설계 보완 — CJ 승인 대기] (**Venus 대안, Mars 제안과 다름**) | 일반·예고·반사·반격·지속·도망 실패 페널티·**사신의 낫 즉사** 모두에 적용 |
+| 7 | 천년목 적용 범위 | [설계 보완 — CJ 승인 대기] (**Venus 대안, Mars 제안과 다름**) · 사신의 낫 제외는 **CJ 결정 2026-09-17** | 일반·예고·반사·반격·지속·도망 실패 페널티에 적용. **사신의 낫 즉사는 제외**(절대 판정 — REVISE 2차) |
 | 8 | 과부하 방벽 · 철벽 돌파 | [설계 보완 — CJ 승인 대기] | 타격 1회 단위 · 일반·예고·반사·반격·페널티. 지속·즉사 제외. 과부하 상한은 ⑩ 뒤 ⑪ 전 · 철벽은 회피된 타격에 소모 안 됨 |
 | 9 | 스킬 흡수 버프 | **확정** | 확률(+💫) 당첨 시 그 공격부터 1R, HP 피해 20% · 자기 대상이라 회피돼도 부여 |
-| 10 | 환영 무도 · 수면 포자 '다음 행동' | [설계 보완 — CJ 승인 대기] | 상대의 다음 **스킬 사용** 1회에만(도망·아이템·패키지·볼 제외). 무효된 스킬도 ⌛ 소모 |
+| 10 | 환영 무도 · 수면 포자 '다음 행동' | [설계 보완 — CJ 승인 대기] | 상대의 다음 **스킬 사용** 1회에만(도망·아이템·패키지·볼 제외). 무효된 스킬도 ⌛ 소모· 사신의 낫은 두 효과를 무시(**CJ 결정 2026-09-17**, REVISE 2차) |
 | 11 | 모래바람 · 굴 파기 | 모래바람 [설계 보완 — CJ 승인 대기] / 굴 파기 **확정** | 모래바람 ⑥ 별도 곱 ×0.7(그 스킬 사용의 모든 타격) · 굴 파기 ⑧ 합산(상한 50%) |
 
 ---
@@ -255,3 +255,59 @@ GDD 6.3 · 6.4 · 6.2 표는 **검사 파일 안에 따로 옮겨 적고** 제�
 - `demo/index.html` (+22 / −7)
 - `demo/test/regression/smoke_issue234.js` (RV1·RV2 6건 추가)
 - `docs/milestone/v0.4.11/issues/234/Mars/report.md` (이 절)
+
+## REVISE 2차 (2026-09-17 · CJ 결정 — 사신의 낫)
+
+근거: CJ 결정 2026-09-17(명세 `C:/dd_cdp/issue-234-mars-revise2-spec.md`). 대상 HEAD da724da 위 작업 트리 변경(커밋은 Mercury). Mars는 QA 판정을 선언하지 않는다.
+
+### 수정 (`demo/index.html`)
+| 결정 | 구현 |
+|---|---|
+| 1. 절대 판정 즉사 | `execSlot` reaper 분기에서 REVISE 1차의 `v2PreUse` 호출과 Q7 `v2Endure` 호출을 제거 → 방어막·철벽 돌파·과부하 방벽·천년목·환영 무도·수면 포자를 모두 무시하고 `instaKill`. `slotUsable`의 수면 포자 차단에서 `sk.reaper` 제외(UI·AI 모두 이 함수를 쓴다). `V2_INTERP.endureAllDamage` 주석·`v2PreUse` 주석을 결정에 맞게 갱신 |
+| 2. 봉인 해제 6R → 4R | `BAL.reaperRound:4`. HP 비율 strict 비교·시간의 수호자 3R 전투 불가는 현행 유지. 사신의 낫 설명 문구(`L-REAPER-4`·레거시 `reaper_scythe`) 갱신 |
+| 3. 전투를 넘는 봉인 | 말(전투원 객체) 단위 `f.reaperSeal`: 사용 즉시 2 → `startRounds`가 참전 전투원마다 1 감소(2→1 이번 전투 봉인, 1→0 해제). `resetV2`/`resetAfter`/`resetBattleTemps`는 건드리지 않아 전투 종료 초기화로 지워지지 않는다. `reaperWhy`가 1이면 "지난 전투에서 사용 — 이번 전투는 봉인" 사유 반환(소유자 화면 tip·토스트만, 공용 로그 없음). 쿨(`cds`)과 무관해 쿨링수로 풀리지 않음 |
+
+- [추론·PD] '전투' = 그 전투원이 `startRounds`로 참전한 라운드 전투. 대리 출전이면 전투원 객체가 `piece.cap`이라 그 객체에 기록된다(본체와 별개). 밀어내기(`doPush`)·폭탄·함정 접촉은 라운드 전투가 아니라 봉인 카운트에 들어가지 않는다.
+- [추론·PD] 즉사가 반드시 성립해 전투가 끝나므로 번식 포자 피해는 적용되지 않고, 남은 nullifyNext·sleepNext·breedR은 `resetAfter`로 정리된다.
+
+### 기대값 변경 (CJ 결정 근거)
+| 파일 | 단언 | 종전 → 변경 |
+|---|---|---|
+| smoke_issue234.js | MG3e | 천년목이 즉사를 버팀 → 버티지 못함(결정 1) · 6R → 4R |
+| smoke_issue234.js | RV2a·RV2b·RV2c | 환영 무도 무효/번식 포자 피해/동시 조건 비즉사 → 모두 즉사·포자 피해 없음(결정 1) · 6R → 4R |
+| smoke_search_packages.js | E3·E3d·E3e | 5R 봉인/6R 해제 → 3R 봉인/4R 해제(결정 2). 조건·거부·비공개 단언은 불변 |
+
+라운드 6 전제 정적 점검: `smoke_cross_skill.js`·`smoke_attack_balance.js`(분류·cd 0만), `smoke_issue146.js`(1R 봉인 픽스처)는 영향 없음 · `smoke_search_packages.js` J1 계열(6R, 3R 봉인)은 4R 기준에서도 같은 판정이라 불변 · `smoke_issue233.js`에는 사신의 낫 단언 없음.
+
+### 신규 검사 (smoke_issue234.js)
+① RV2f(방어막 500·철벽 돌파·과부하·천년목 전부 무시) · MG3e(천년목) / ② RV2g(일반 치명 피해 90→15 버팀) / ③ RV2a·RV2c(환영 무도) · RV2d·RV2e(수면 포자 상태 합법·즉사) / ④ RV2h(3R 봉인)·RV2i(4R 가능) / ⑤ RV2j(전투 1 사용·기록) · RV2k·RV2k2(전투 2 봉인·소유자 화면 사유) · RV2l(봉인 호출 무효·로그 무노출) · RV2n(봉인 전투 판정 종료 후 유지) · RV2o·RV2p(전투 3 사용·재봉인) / ⑥ RV2q·RV2r(미사용 전투 뒤 봉인 없음) / ⑦ RV2m(쿨링수 실제 사용 후에도 봉인)
+
+### 검사
+| 명령 | 실행 | 결과 |
+|---|---|---|
+| `node demo/test/regression/smoke_issue234.js` | 2회 | 1회차 311 / 1 fail — RV2f가 전투 종료 초기화(`resetV2`)로 0이 되는 `nullHitN===1`을 단언한 테스트 입력 오류(제품 동작 무관). 그 조건만 빼고 재실행 → **312 pass / 0 fail, exit 0** |
+| `node demo/test/regression/smoke_search_packages.js` | 1회 | **300 pass / 0 fail, exit 0** |
+
+참고: 레거시 `reaper_scythe` 설명 문구(6라운드→4라운드·봉인 안내) 수정은 위 두 실행 뒤에 했다. 표시 문자열만이고 이 문구를 단언하는 테스트는 정적 검색상 없다(재실행하지 않음).
+
+미실행(예산 밖): smoke_issue233·smoke_issue146·smoke_cross_skill·smoke_attack_balance 등 수정하지 않은 회귀, 서버 검사(`server/`), 브라우저. PR CI 잡 A·B가 확인 대상이다.
+
+### 서버 영향 목록 (Jupiter 후속 — Mars는 서버를 수정하지 않았다)
+| 항목 | 위치 | 필요 조치 |
+|---|---|---|
+| 말 단위 봉인 필드 `reaperSeal`(0/1/2) | 전투원 객체(본체 말 `S.pieces[i]` 또는 대리 출전 `piece.cap`/`S.reserve[p]`) · 쓰기: `execSlot` reaper 분기(=2) · `startRounds`(참전 시 −1) | `server/authoritative/room.js` `lockstepDigest`의 전투원 요약(`v2`/`fighter`)과 **말(piece)·예비(reserve) 요약**에 추가 — 전투 밖에서도 유지되므로 전투 요약만으로는 부족. 한 좌석에만 남으면 다음 전투의 합법 슬롯 집합이 갈린다 |
+| 합법성 | `slotUsable`·`reaperWhy` (봉인 1/2 · 4R · 수면 포자 무시) | 서버가 입력 합법성을 따로 판정하면 `reaperRound` 4·수면 포자 예외·전투 간 봉인을 같은 규칙으로 반영(엔진 eval을 쓰면 자동) |
+| 좌석 프레임·재연결 | 말 상태 스냅샷 | `reaperSeal`을 소유자 좌석 상태에 포함해야 재연결 뒤 봉인 표시가 유지된다. 상대 좌석에는 불필요(사유는 소유자 전용 · 미공개 기술 비노출 원칙) — [추론] 공개 여부는 Jupiter·PD 확인 |
+| 난수 | reaper 분기 | 변화 없음(즉사 경로 rand 0). REVISE 1차의 `v2PreUse` 경로 제거로 번식 포자 피해·환영 무도 소모가 reaper 사용에서 사라짐 |
+| 경계 검사 | `test-issue234-boundary.js`의 V2_TIMED·resetV2 대조 | `resetV2`·`V2_TIMED`는 바꾸지 않았다(`reaperSeal`은 의도적으로 초기화 목록 밖) |
+
+### 온라인 수신 경로 후속 (Jupiter 보고서 REVISE 2차 6-1)
+- `netStubPiece`: `reaperSeal:u.reaperSeal||0` (you.pieces·you.reserve) · `netSynthFighter`: `reaperSeal:sd.reaperSeal||0` (자기 전투원). `cap`은 기존대로 서버 객체 그대로라 cap 봉인도 소유자에게 전달된다. 상대 말·상대 전투원은 서버가 키를 보내지 않아 0 — 추측으로 채우지 않는다.
+- 신규 검사 NR1~NR3(`smoke_issue234.js` N절, 실제 `netApplyRoomState` 경로): 소유자 프레임 1 → 말·예비·자기 전투원 복사·봉인 사유·슬롯 비활성 / 상대 0 / 키 없음 → 0·사용 가능.
+- 검사: `smoke_issue234.js` 1회 **315 pass / 0 fail** · `smoke_fx_consumer.js` 1회 **52 pass / 0 fail**. 서버·브라우저 미실행.
+
+### 변경 파일
+- `demo/index.html`
+- `demo/test/regression/smoke_issue234.js`
+- `demo/test/regression/smoke_search_packages.js`
+- `docs/milestone/v0.4.11/issues/234/Mars/report.md` (4장 Q7·Q10 행, 이 절)

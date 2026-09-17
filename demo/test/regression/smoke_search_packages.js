@@ -580,24 +580,25 @@ function swapSkill(X,target,skillIdx,slot){
   {
     const P=setup(T); fixed(T); giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[3]="reaper_scythe"; giveSpecies(T,P.em,R(T,"M-G1"));
     openBattle(T,P.me,P.em); const B=T.S.battle;
-    B.round=5; B.fa.hp=10; B.fd.hp=100;
-    ok(T.reaperWhy("A")!==null&&/라운드부터/.test(T.reaperWhy("A")),"E3 5라운드에서는 봉인 ("+T.reaperWhy("A")+")");
-    B.round=6; B.fa.hp=100; B.fd.hp=100;
+    /* #234 REVISE 2차 CJ 결정(2026-09-17): 봉인 해제 라운드 6 → 4 — 종전 5R 봉인/6R 해제 단언을 3R/4R 로 옮긴다 */
+    B.round=3; B.fa.hp=10; B.fd.hp=100;
+    ok(T.reaperWhy("A")!==null&&/라운드부터/.test(T.reaperWhy("A")),"E3 3라운드에서는 봉인 ("+T.reaperWhy("A")+")");
+    B.round=4; B.fa.hp=100; B.fd.hp=100;
     ok(T.reaperWhy("A")!==null&&/낮아야/.test(T.reaperWhy("A")),"E3b HP 비율 동률이면 사용 불가 (strict)");
     B.fa.hp=100; B.fd.hp=50;
     ok(T.reaperWhy("A")!==null,"E3c HP 비율 우세면 사용 불가");
     B.fa.hp=30; B.fd.hp=100;
-    ok(T.reaperWhy("A")===null&&T.slotUsable(B.fa,3,"A")===true,"E3d 6라운드 + 내 비율 열세에서만 사용 가능");
+    ok(T.reaperWhy("A")===null&&T.slotUsable(B.fa,3,"A")===true,"E3d 4라운드 + 내 비율 열세에서만 사용 가능 (#234 CJ 결정 6→4)");
     /* 쿨 감소 수단으로 봉인이 풀리지 않는다 — **실제로 쿨링수를 쓴다** (종전 검사는 함수를 참조만 하고 호출하지 않았다).
-       쿨링수는 4슬롯 cds 를 전부 0 으로 만든다. 그래도 5라운드에서는 봉인이 그대로여야 한다. */
-    B.round=5; B.fa.hp=30; B.fd.hp=100; B.fa.cds=[2,2,2,2]; B.itemRoundA=false;
+       쿨링수는 4슬롯 cds 를 전부 0 으로 만든다. 그래도 3라운드에서는 봉인이 그대로여야 한다 (#234 CJ 결정 6→4). */
+    B.round=3; B.fa.hp=30; B.fd.hp=100; B.fa.cds=[2,2,2,2]; B.itemRoundA=false;
     T.S.inv[0]=["cool"];
     if(T.actorOfPhase()!=="A") B.phase=B.phase===0?1:0;
     T.byId("obBtns").children.length=0; T.battleModal();        // 클로저를 현재 side 로 맞춘다
     ok(T.actorOfPhase()==="A","E3e0 전제: 공격측 차례 · 쿨 2 · 가방에 쿨링수");
     T.__useItemCore(0);                                         // 실제 사용
     ok(J(B.fa.cds)===J([0,0,0,0]),"E3e1 쿨링수가 실제로 적용돼 4슬롯 쿨이 0 이 됐다 (관측 "+J(B.fa.cds)+")");
-    ok(T.SKILLS.reaper_scythe.cd===0&&T.reaperWhy("A")!==null&&T.slotUsable(B.fa,3,"A")===false,"E3e 쿨링수로 쿨을 0 으로 만든 뒤에도 5라운드에서는 **여전히 봉인** — 게이트가 CD 와 분리 (조기 해제 불가)");
+    ok(T.SKILLS.reaper_scythe.cd===0&&T.reaperWhy("A")!==null&&T.slotUsable(B.fa,3,"A")===false,"E3e 쿨링수로 쿨을 0 으로 만든 뒤에도 3라운드에서는 **여전히 봉인** — 게이트가 CD 와 분리 (조기 해제 불가)");
     /* 코어 거부까지: 실제 적용 경로로 불러도 즉사가 나가지 않는다 */
     const aliveE=P.em.alive, hpE=B.fd.hp;
     T.execSlot("A",3); T.drain(20000);

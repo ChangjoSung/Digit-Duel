@@ -508,8 +508,9 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   ok(T.S.battle&&t.a.hp===10&&t.a.enduredUsed,"MG3c 천년목 — HP 0 이 될 피해를 최대 HP 15%로 버팀(현재 HP 가 더 낮으면 그대로)");
   t=openBattle({skills:["M-G3-1","M-G3-4"],hp:90},{skills:["M-F1-1"],atk:200}); act("A",1); act("D",0); eq(t.a.hp,15,"MG3d 천년목 — 90 에서 치명 피해 → 15");
   t=openBattle({skills:["M-G3-1","M-G3-4"],hp:30},{skills:T.LEGEND_ROSTER[2].skills.slice(),hp:10,legend:"reaper"});
-  act("A",1); t.B.round=6; t.d.cds=[0,0,0,0]; t.B.phase=1; T.execSlot("D",3); T.TQ.length=0;
-  ok(t.a.hp===15&&t.a.alive!==false&&t.B.blog.some(x=>/천년목 — 쓰러지지 않고/.test(x))&&t.B.blog.some(x=>/낫을 버텨/.test(x)),"MG3e 천년목은 사신의 낫 즉사도 버틴다 (Q7 Venus 대안 · 이후 6R 판정)");
+  act("A",1); t.B.round=4; t.d.cds=[0,0,0,0]; t.B.phase=1; T.execSlot("D",3); T.TQ.length=0;
+  /* REVISE 2차 CJ 결정(2026-09-17): 사신의 낫은 절대 판정 즉사 — 종전 MG3e(천년목이 즉사를 버팀, Q7 Venus 대안)의 기대값을 뒤집는다 */
+  ok(t.a.hp===0&&!T.S.battle&&!t.a.enduredUsed&&!t.B.blog.some(x=>/천년목 — 쓰러지지 않고|낫을 버텨/.test(x)),"MG3e ① 천년목은 사신의 낫 즉사를 버티지 못한다 (CJ 결정 2026-09-17 · 4R)");
   t=openBattle({skills:["M-G4-1","M-G4-4"]},{skills:["M-F1-1","M-F1-2"],hp:100});
   act("A",1); act("D",1); ok(t.d.hp<=95&&t.a.healTotal>=0,"MG4a 번식 포자 — 기본기가 아닌 스킬 사용 시 대상 최대 HP 5% 피해");
   t=openBattle({skills:["M-G4-1","M-G4-4"],hp:50},{skills:["M-F1-1"]}); act("A",1); act("D",0); ok(t.a.hp===30,"MG4b 기본기 사용에는 번식 포자 피해 없음");
@@ -556,13 +557,51 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   /* 결함 2: 사신의 낫이 execV2 앞 분기라 환영 무도 · 번식 포자를 우회 */
   { const R=T.LEGEND_ROSTER[2].skills.slice();
     const reap=o=>{ const t2=openBattle({skills:R,legend:"reaper",hp:10,maxHp:100},{skills:["M-F1-1"],hp:100,maxHp:100});
-      t2.B.round=6; t2.a.cds=[0,0,0,0]; Object.assign(t2.a,o); return t2; };
+      t2.B.round=4; t2.a.cds=[0,0,0,0]; Object.assign(t2.a,o); return t2; };
+    /* REVISE 2차 CJ 결정(2026-09-17): 사신의 낫은 행동 차단(환영 무도·수면 포자)도 무시하는 절대 판정 — REVISE 1차 RV2a~c 기대값을 뒤집는다.
+       즉사가 반드시 성립해 전투가 끝나므로 번식 포자 피해는 적용할 틈이 없다 [추론·PD] */
     t=reap({nullifyNext:true}); act("A",3);
-    ok(!!T.S.battle&&t.d.hp===100&&t.a.nullifyNext===false&&t.B.blog.some(x=>/환영 무도 — .*무효/.test(x)),"RV2a 사신의 낫도 환영 무도로 1회 무효 — 즉사하지 않고 소모");
+    ok(!T.S.battle&&t.d.hp===0&&!t.B.blog.some(x=>/환영 무도 — .*무효/.test(x)),"RV2a ③ 환영 무도가 걸려 있어도 사신의 낫은 즉사 (CJ 결정)");
     t=reap({breedR:2,breedBy:"D"}); act("A",3);
-    ok(t.a.hp===5&&t.d.hp===0&&t.B.blog.some(x=>/번식 포자 —/.test(x)),"RV2b 사신의 낫 사용에도 번식 포자 피해(최대 HP 5%) — 그 뒤 즉사 판정");
+    ok(t.a.hp===10&&t.d.hp===0&&!t.B.blog.some(x=>/번식 포자 —/.test(x)),"RV2b 번식 포자 피해 없이 즉사 — 전투 종료로 정리 (CJ 결정 · [추론·PD])");
     t=reap({nullifyNext:true,breedR:2,breedBy:"D"}); act("A",3);
-    ok(!!T.S.battle&&t.d.hp===100&&t.a.nullifyNext===false,"RV2c QA 재현 — round 6 · 낮은 HP 비율 · 환영 무도 + 번식 포자에서 즉사하지 않는다 (무효·포자 순서는 execV2 와 같음)");
+    ok(!T.S.battle&&t.d.hp===0&&t.a.hp===10,"RV2c QA 재현 조합(4R · 낮은 HP 비율 · 환영 무도 + 번식 포자)에서도 즉사 (CJ 결정)");
+    t=reap({sleepNext:true});
+    ok(t.a.sleepNext===true&&T.slotUsable(t.a,3,"A")===true,"RV2d ③ 수면 포자(기본기만) 상태에서도 사신의 낫은 합법 슬롯 (UI·AI 공통 slotUsable)");
+    act("A",3); ok(!T.S.battle&&t.d.hp===0,"RV2e ③ 수면 포자 상태에서 사신의 낫 즉사");
+    /* ① 결과 경감 효과 전부 — 방어막 · 철벽 돌파 1회 무효 · 과부하 방벽 · 천년목 */
+    t=reap({}); Object.assign(t.d,{shield:500,nullHitR:1,nullHitN:1,overloadR:1,enduredR:1,enduredUsed:false}); act("A",3);
+    ok(!T.S.battle&&t.d.hp===0&&!t.B.blog.some(x=>/철벽 — 피해 1회 무효|천년목 — 쓰러지지 않고/.test(x)),"RV2f ① 방어막·철벽 돌파·과부하·천년목을 모두 무시하고 즉사");
+    /* ② 천년목은 일반 피해에는 계속 버틴다 (Q7 사신의 낫만 제외) */
+    t=openBattle({skills:["M-G3-1","M-G3-4"],hp:90},{skills:["M-F1-1"],atk:200}); act("A",1); act("D",0);
+    ok(!!T.S.battle&&t.a.hp===15&&t.a.enduredUsed,"RV2g ② 천년목은 일반 치명 피해를 계속 버틴다 (90 → 15)");
+    /* ④ 봉인 해제 라운드 6 → 4 (CJ 결정) */
+    t=reap({}); t.B.round=3;
+    ok(T.BAL.reaperRound===4&&/4라운드부터/.test(T.reaperWhy("A")||"")&&T.slotUsable(t.a,3,"A")===false,"RV2h ④ 3라운드는 봉인 ("+T.reaperWhy("A")+")");
+    t.B.round=4; ok(T.reaperWhy("A")===null&&T.slotUsable(t.a,3,"A")===true,"RV2i ④ 4라운드부터 사용 가능");
+    /* ⑤⑥⑦ 전투를 넘는 봉인 — 같은 말(전투원 객체)로 전투를 이어 연다. 판정 종료는 실제 nextPhase 경로 */
+    const judgeEnd=tt=>{ const Bx=T.S.battle; Bx.round=T.battleMaxRounds(); Bx.phase=1; tt.a.hp=90; tt.d.hp=30; T.nextPhase(); T.drain(20000); T.TQ.length=0; };
+    const again=tt=>{ Object.assign(tt.d,{alive:true,hp:100,maxHp:100}); tt.a.alive=true; tt.a.hp=10; T.S.phase="play"; T.S.battle=null;
+      T.startRounds(tt.a,tt.d,tt.a,tt.d); T.TQ.length=0; const Bx=T.S.battle; Bx.msgQ.length=0; Bx.round=4; tt.a.cds=tt.a.skills.map(()=>0); tt.B=Bx; return Bx; };
+    t=reap({}); act("A",3);
+    ok(!T.S.battle&&t.d.hp===0&&t.a.reaperSeal===2,"RV2j ⑤ 전투 1 사용 → 말에 봉인 기록(전투 종료 초기화 뒤에도 유지)");
+    again(t);
+    ok(t.a.reaperSeal===1&&/지난 전투에서 사용/.test(T.reaperWhy("A")||"")&&T.slotUsable(t.a,3,"A")===false,"RV2k ⑤ 전투 2 는 봉인 — 사유 표시 ("+T.reaperWhy("A")+")");
+    T.byId("obBtns").children.length=0; T.battleModal();
+    ok(/사신의 낫 \(봉인\)/.test(T.byId("overlayBox").innerHTML)&&/지난 전투에서 사용/.test(T.byId("overlayBox").innerHTML),"RV2k2 ⑤ 소유자 전투 화면에 (봉인)·사유가 보인다");
+    act("A",3); ok(!!T.S.battle&&t.d.hp===100&&!t.B.blog.some(x=>/사신의 낫/.test(x)),"RV2l ⑤ 봉인 중 호출은 즉사 없음 · 공용 로그에 이름 없음");
+    /* ⑦ 쿨링수로 봉인이 풀리지 않는다 */
+    t.a.cds=t.a.skills.map(()=>2); t.B.itemRoundA=false; T.S.inv[0]=["cool"];
+    t.B.phase=(t.B.firstSide==="A")?0:1; T.byId("obBtns").children.length=0; T.battleModal(); T.__useItemCore(0); T.TQ.length=0;
+    ok(t.a.cds.every(c=>c===0)&&t.a.reaperSeal===1&&/지난 전투에서 사용/.test(T.reaperWhy("A")||"")&&T.slotUsable(t.a,3,"A")===false,"RV2m ⑦ 쿨링수로 쿨 0 이 돼도 전투 간 봉인은 유지 (cds "+JSON.stringify(t.a.cds)+")");
+    judgeEnd(t); ok(!T.S.battle&&t.a.reaperSeal===1,"RV2n ⑤ 봉인 전투 종료 뒤에도 말 상태 유지 (다음 참전 시 해제)");
+    again(t);
+    ok(t.a.reaperSeal===0&&T.reaperWhy("A")===null&&T.slotUsable(t.a,3,"A")===true,"RV2o ⑤ 전투 3 사용 가능");
+    act("A",3); ok(!T.S.battle&&t.d.hp===0&&t.a.reaperSeal===2,"RV2p ⑤ 전투 3 즉사 → 다시 봉인 기록");
+    /* ⑥ 사용하지 않은 전투 뒤에는 봉인되지 않는다 */
+    t=reap({}); judgeEnd(t);
+    ok(!T.S.battle&&!(t.a.reaperSeal>0),"RV2q ⑥ 사용하지 않은 전투 종료 — 봉인 없음");
+    again(t); ok(T.reaperWhy("A")===null&&T.slotUsable(t.a,3,"A")===true,"RV2r ⑥ 다음 전투 4R 에서 바로 사용 가능");
   }
   /* 흡수 · 회피(자기 대상) */
   t=openBattle({skills:["M-G1-1","M-G1-2"],statusPct:1,hp:50},{hp:300,maxHp:300}); act("A",1);
@@ -587,6 +626,32 @@ unfix();
   ok(recv.cap&&recv.cap.rosterId==="M-E3"&&recv.cap.grade===1&&recv.cap.skills.length===1&&recv.cap.skills[0]==="M-E3-1"&&recv.cap.cds.length===1,"E4 하수인 포획은 유지 — 30종 후보(땅 포함) · ⭐1 · 1차 기본기");
   const ks=T.S.pieces.filter(x=>x.type==="minion"&&x.owner===1);
   ok(ks.every(m=>!T.SKILLS[m.skills[0]].reaper),"E5 일반 하수인에 전설 스킬 없음");
+}
+
+/* ===================== N. 공개 방 수신 경로 — reaperSeal (REVISE 2차 Mars 후속) =====================
+   서버는 소유자 좌석 프레임(you.pieces·you.reserve·자기 전투원)에만 reaperSeal 을 보낸다(Jupiter 보고서 REVISE 2차 2절).
+   실제 netApplyRoomState → netBuildAuthoritativeBoard → netStubPiece/netSynthBattle 경로로 받은 뒤 로컬과 같은 reaperWhy·slotUsable 을 본다. */
+{
+  const N=H.load(htmlPath); N.NET.me=0;
+  const R=N.LEGEND_ROSTER[2].skills.map(id=>({id,revealed:true,cd:0}));
+  const side=o=>Object.assign({owner:0,hp:10,maxHp:100,shield:0,burn:0,weaken:0,shock:0,shockFresh:false,dmgCut:0,focusCharge:false,vulnMark:false,
+    skills:null,rec:0,items:0,itemRound:false,lastItem:null,ballThrow:false,buff:null,type:"ally",element:null,bodyFight:true,rosterId:null,artRosterId:null,atk:10,skillAtk:10},o);
+  const own=o=>Object.assign({id:"u-m1",r:10,c:4,owner:0,type:"ally",element:null,name:null,hp:10,maxHp:100,atk:10,skillAtk:10,rosterId:null,skills:R,cdMax:0,immobile:0,cap:null,alive:true,placed:true,movedEver:true,revealed:true},o);
+  const frame=(sealA,sealD)=>{ const a=side({owner:0,skills:R}), d=side({owner:1,hp:100}), me=own({});
+    if(sealA!==undefined){ a.reaperSeal=sealA; me.reaperSeal=sealA; }
+    if(sealD!==undefined) d.reaperSeal=sealD;
+    return {seat:0,state:"IN_PROGRESS",phase:"play",revision:1,turnCount:9,current:0,mainUsed:false,battlesUsed:0,seats:{ready:[true,true]},
+      units:[{id:"u-o1",r:4,c:4,owner:1,alive:true,immobile:0}],
+      you:{pieces:[me],inv:[],balls:0,reserve:own({id:"u-r1",r:-1,c:-1,reaperSeal:sealA}),pkgs:{itemGift:0,battleBuff:0},selected:null,placed:true,teleUsed:0},
+      battle:{battleId:1,round:4,phase:0,actor:"A",actSeq:0,maxRounds:null,log:[],a,d},fleePick:null,modal:null,log:[],events:[],result:null,turn:null,fx:{firstSeq:null,lastSeq:0,events:[]}}; };
+  N.netApplyRoomState(frame(1),false);
+  const mine=N.S.pieces.find(p=>p.id==="u-m1"), opp=N.S.pieces.find(p=>p.id==="u-o1");
+  ok(mine.reaperSeal===1&&N.S.reserve[0].reaperSeal===1&&N.S.battle.fa.reaperSeal===1&&/지난 전투에서 사용/.test(N.reaperWhy("A")||"")&&N.slotUsable(N.S.battle.fa,3,"A")===false,
+    "NR1 소유자 프레임 reaperSeal=1 → 말·예비·자기 전투원에 복사 · 봉인 사유 · 슬롯 비활성 ("+N.reaperWhy("A")+")");
+  ok(opp.reaperSeal===0&&N.S.battle.fd.reaperSeal===0,"NR2 상대 말·상대 전투원은 키가 없어 0");
+  N.netApplyRoomState(frame(undefined),false);
+  ok(N.S.pieces.find(p=>p.id==="u-m1").reaperSeal===0&&N.S.battle.fa.reaperSeal===0&&N.reaperWhy("A")===null&&N.slotUsable(N.S.battle.fa,3,"A")===true,
+    "NR3 키가 없으면 0 — 4R · HP 비율 낮음 조건에서 사용 가능");
 }
 
 console.log(`smoke_issue234: ${pass} pass / ${fail} fail`);

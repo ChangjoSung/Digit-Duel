@@ -117,3 +117,53 @@ Git·GitHub·Notion 쓰기 없음. `demo/**` 수정 없음.
 | 항목 | 현재 처리 | 출처 |
 | --- | --- | --- |
 | 상대 스킬 칸이 **전부 공개**됐을 때 "미공개 남음" 표식을 없앨지(= 칸 수가 드러남) 항상 둘지 | 없앤다 — Mars 화면 표시와 동일 | GDD 7.9 · §5.3 |
+
+---
+
+## REVISE 2차 (2026-09-17 · CJ 결정 — 사신의 낫)
+
+근거: CJ 결정 2026-09-17 — 절대 판정 즉사 · 4라운드부터 · 전투를 넘는 봉인. 클라이언트 구현은 Mars REVISE 2차(말 단위 `reaperSeal` 0/1/2, `resetV2` 밖). preflight: Jupiter · IMPLEMENT · SERVER · code · null. Jupiter는 QA 판정을 선언하지 않는다.
+
+### 변경 파일
+- `server/authoritative/room.js`
+- `server/authoritative/test/test-issue234-boundary.js`
+- 이 보고서(이 절)
+
+### 1. 락스텝 요약 (`lockstepDigest`)
+| 위치 | 추가 | 이유 |
+|---|---|---|
+| 전투원 `fighter(f)` | `reaperSeal: num(f.reaperSeal)` | `slotUsable→reaperWhy`가 읽어 합법 슬롯 집합이 갈린다. 1과 2도 구분(숫자 그대로) |
+| 말 `pieces[]` 튜플 끝 | `num(p.reaperSeal)` | 전투 종료 초기화 밖이라 보드에서도 남는다 — 전투 요약만으로는 다음 참전 전투 전까지 분기를 못 본다 |
+| 포획 `p.cap` 튜플 | `num(p.cap.reaperSeal)` | 대리 출전이면 전투원 객체가 cap이라 봉인이 cap에 기록된다(Mars 추론·PD) |
+| 예비 `reserve[]` 튜플 | `num(x.reaperSeal)` | 예비도 대리 출전 전투원 객체 |
+
+### 2. 좌석 프레임 노출
+| 경로 | 변경 | 등급 |
+|---|---|---|
+| `_serializeOwn` (you.pieces · you.reserve) | `reaperSeal` 추가 (`cap`은 원래 원객체 그대로라 cap 봉인도 소유자에게만 간다) | 소유자 전용(등급 A) — 재연결 뒤 봉인 사유 복원 |
+| `_serializeBattle` side | 자기 전투원(`owner===seatIndex`)에만 `reaperSeal` 키 추가 · 상대 쪽은 키 자체 없음 | 소유자 전용 |
+| `_serializeKnownOpponent` · `_serializeUnknownOpponent` · 상대 전투원 | **추가 없음** — 공개된 사신이라도 봉인 상태는 보내지 않는다 | "지난 전투에서 사신의 낫을 썼다"는 미공개 기술 정보 |
+
+### 3. 합법성 — 확인 결과 (코드 변경 없음)
+- 전투 `act`는 `_legalAct`가 모든 칸 경로(숫자·basic·skill·common)에서 `T.slotUsable(f,i,side)`를 쓰고, 그 함수가 `sk.reaper`면 `reaperWhy(side)===null`을 반환한다. 서버에 별도 판정 경로 없음 → `BAL.reaperRound` 4, 봉인 1/2, 수면 포자 예외(`!sk.reaper`)가 엔진 원본 그대로 반영된다.
+- `pass`(전 칸 잠김)도 같은 `slotUsable`을 쓴다.
+- 라운드 6 전제 서버 검사: 정적 검색(`reaper`·`reaperRound`)으로 `server/**` 검사 파일에 없음 — 갱신 대상 없음.
+
+### 4. 신규 검사 (`test-issue234-boundary.js` 절 4 · 4c)
+| 검사 | 내용 |
+|---|---|
+| 4a 요약 분기 | fa/fd 전투원 · 전투 밖 말(=1, =2, 1 vs 2) · cap · reserve 한 좌석 분기 → 요약 분기, 되돌리면 수렴 |
+| 4b 프레임 | 양 좌석: 상대 units(전부 공개 상태)·상대 전투원 뷰에 `reaperSeal` 문자열 없음 · 자기 말 값이 엔진 값과 일치 · 자기 전투원 뷰 1/2 · you.reserve 포함 |
+| 4c 합법성 (실제 `act`) | 전제 `BAL.reaperRound===4` · 3R 거부·불변 · 봉인 1 거부 · 봉인 2 거부 · 4R 수락→상대 즉사 · 수면 포자 상태 수락→즉사 · 대조: 수면 포자 상태 다른 v2 비기본 스킬 거부(픽스처에 칸이 없으면 생략 기록) |
+
+### 5. 검사 실행 (횟수 정확히)
+| 명령 | 실행 | 결과 |
+|---|---|---|
+| `node server/authoritative/test/test-issue234-boundary.js` | 2회 | 1회차 67/1 — 검사 작성 오류: 본체 출전 수비 전투원은 말 객체 자체라 `fd.reaperSeal=2`가 그 말을 2로 바꿨는데 "자기 말 전부 1"을 단언. 엔진 말 값과 대조하도록 수정 → 2회차 **68/0, exit 0** |
+| `npm test --prefix server` | 1회 | **exit 0** (issue234-boundary 68/0 · combat-stats-boundary 547/0 · authority-rules 177/0 등 전부 fail 0) |
+| `node demo/test/integration/smoke_public_live.js 2` | 1회 | **pass 23 / fail 0, exit 0** |
+
+### 6. 미검증 한계 · Mars 후속 필요
+1. **[Mars 후속 필요] 클라이언트가 `reaperSeal`을 읽지 않는다.** `demo/index.html` `netStubPiece`는 서버 뷰의 필드를 화이트리스트로 복사하는데 `reaperSeal`이 없다. 그래서 공개 방(재연결 포함)에서 서버는 봉인을 정확히 판정·거부하지만, 클라이언트 스텁의 `reaperWhy` 사유 tip·버튼 비활성은 봉인을 모른다(버튼이 눌리고 서버가 `E_ILLEGAL_ACTION`으로 거부할 수 있음). 필요 조치: `netStubPiece`(및 전투 뷰 대입 경로)에서 `reaperSeal:u.reaperSeal||0` 복사. 서버는 이미 보낸다.
+2. 공개 방 실서버 스모크는 AI 경기 흐름이라 사신의 낫 사용·봉인 전투를 실제로 밟았는지는 확인하지 않았다. 봉인 경계는 4c의 결정론 검사가 맡는다.
+3. [추론·PD] '전투' 단위·대리 출전 cap 기록은 Mars 보고서 추론을 그대로 따랐다(서버는 엔진 상태를 요약·전송만 한다).

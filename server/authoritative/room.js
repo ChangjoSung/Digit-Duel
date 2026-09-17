@@ -175,6 +175,9 @@ function lockstepDigest(T) {
     absorbed: f.absorbed || 0,
     // 화상 부여자(속성 반격·왕국 효과가 읽는다)·전투 버프 — #234 이전부터 규칙 상태였으나 요약에 없었다.
     burnBy: f.burnBy === undefined ? null : f.burnBy, atkBuff: !!f.atkBuff,
+    /* #234 REVISE 2차 (CJ 결정 2026-09-17) 사신의 낫 전투를 넘는 봉인 — 전투원 객체 단위 0/1/2. slotUsable→reaperWhy 가
+       읽어 합법 슬롯 집합을 가른다. resetV2 목록 밖이라 전투가 끝나도 남으므로 아래 말·예비 요약에도 따로 넣는다. */
+    reaperSeal: num(f.reaperSeal),
     v2: v2(f),
     stats: stats(f),
   } : null);
@@ -201,7 +204,8 @@ function lockstepDigest(T) {
     // #233 — 예비(포획) 하수인도 승계한 아키타입 8스탯을 지니고 그대로 대리 출전한다(3.3). element/hp만 보면
     // 스탯 주입이 갈린 상태를 놓친다.
     balls: S.balls.slice(), inv: S.inv.map((a) => a.slice()),
-    reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x)] : null)),
+    // #234 REVISE 2차 — 예비 하수인도 대리 출전 전투원 객체라 사신의 낫 봉인(reaperSeal)을 지닌다.
+    reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x), num(x.reaperSeal)] : null)),
     pkgs: S.pkgs.map((p) => Object.assign({}, p)), teleUsed: (S.teleUsed || []).slice(),
     traces: S.traces.map((t) => [...t].sort()), tempReveal: [...(S.tempReveal || [])].sort(), winner: S.winner,
     modalSeq: T.NET.modalSeq, sync: sm ? { seq: sm.seq, owner: sm.owner, n: sm.fns ? sm.fns.length : 0 } : null,
@@ -209,11 +213,13 @@ function lockstepDigest(T) {
     // 스탯을 승계해 대리 출전하므로(3.3) cap 튜플도 함께 넓힌다.
     pieces: S.pieces.map((p) => [p.id, p.owner, p.type, p.rosterId, p.element, p.hp, p.maxHp, p.r, p.c, p.placed, p.alive,
       !!p.revealed, p.immobile, !!p.healing, p.skills || null, p.cds || null,
-      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap)] : null, ...stats(p),
+      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap), num(p.cap.reaperSeal)] : null, ...stats(p),
       // #234 6.2·6.4 — 동료 종류는 스킬 세트(AS/SH)를, 속성 선택 여부는 미선택 규칙 재적용을, legend 는 전설 스킬·아키타입을 가른다.
       // 공개 기록(revealedSkills)은 syncLeaderSkills 가 칸 교체 때 걸러 내는 말 단위 상태라 함께 본다.
       p.allyKind === undefined ? null : p.allyKind, !!p.leaderElChosen, p.legend === undefined ? null : p.legend,
-      p.revealedSkills || null]),
+      p.revealedSkills || null,
+      // #234 REVISE 2차 — 본체 출전 말의 사신의 낫 봉인. 전투 밖(보드)에서도 유지되어 다음 참전 전투의 합법 슬롯을 가른다.
+      num(p.reaperSeal)]),
   });
 }
 
@@ -1005,6 +1011,10 @@ class Room {
       def: p.def, spd: p.spd, dodge: p.dodge, crit: p.crit, statusPct: p.statusPct,
       grade: p.grade === undefined ? null : p.grade,
       crack: p.crack, harden: p.harden, hardenPct: p.hardenPct, evadeBuff: p.evadeBuff, dmgUpBuff: p.dmgUpBuff,
+      /* #234 REVISE 2차 (CJ 결정 2026-09-17) 사신의 낫 전투를 넘는 봉인 0/1/2 — 소유자 전용(등급 A). 재연결 뒤에도 봉인 사유
+         (reaperWhy)를 되살리는 데 필요하다. 상대 뷰(_serializeKnownOpponent·_serializeUnknownOpponent)와 상대 전투원
+         뷰에는 싣지 않는다: 봉인은 "그 말이 지난 전투에서 사신의 낫을 썼다/가졌다"를 알려 주는 미공개 기술 정보다. */
+      reaperSeal: p.reaperSeal || 0,
     };
   }
 
@@ -1111,6 +1121,8 @@ class Room {
         type: piece.type, element: f.element || null, bodyFight,
         rosterId: bodyFight && piece.type === 'minion' ? (piece.rosterId || null) : null,
         artRosterId: bodyFight ? null : (f.artRosterId || null),
+        // #234 REVISE 2차 — 사신의 낫 봉인은 자기 전투원에만(키 자체를 상대 쪽에 만들지 않는다 · _serializeOwn 주석).
+        ...(owner === seatIndex ? { reaperSeal: f.reaperSeal || 0 } : {}),
       };
     };
     return {
