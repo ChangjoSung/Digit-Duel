@@ -47,7 +47,7 @@ const GDD_SK={
   "안개 무희":["물보라 발차기","물보라 스텝",["안개 걸음",null,3],["환영 무도",null,"once"]],
   "파도 술사":["물결 치기","파도의 저주",["밀물",60,2],["해일 예고",null,"once"]],
   "방패 게":["집게 찍기","거품 방패",["껍질 닫기",null,3],["집게 반격",null,4]],
-  "스파크":["찌릿 박치기","스파크 샷",["충전",null,3],["연쇄 번개",100,4]],
+  "스파크":["찌릿 박치기","스파크 샷",["충전",60,3],["연쇄 번개",100,4]], // #241 CJ 승인 Q1 충전 수정안: 💪🏻 60% · 감전 100% · 가하는 피해 +10%(2R)
   "뇌격수":["번개 주먹","뇌격 일섬",["번개 발도",160,2],["천둥 낙인",130,4]],
   "피뢰 골렘":["피뢰 주먹","피뢰 강타",["접지",null,3],["과부하 방벽",null,"once"]],
   "번개 여우":["번개 할퀴기","스파크 스침",["전광석화",70,2],["번개 꼬리",100,4]],
@@ -56,7 +56,7 @@ const GDD_SK={
   "바위 두더지":["흙 할퀴기","록 태클",["굴 파기",null,3],["지하 매복",230,4]],
   "돌창 거인":["돌 주먹","돌창 투척",["창 박기",110,2],["대지 관통",180,4]],
   "철갑 코뿔소":["뿔 들이받기","철갑 돌진",["강철 가죽",null,3],["철벽 돌파",null,4]],
-  "모래 여우":["모래 할퀴기","모래 스침",["모래바람",null,2],["모래 폭풍",null,4]],
+  "모래 여우":["모래 할퀴기","모래 스침",["모래바람",60,2],["모래 폭풍",null,4]], // #241 CJ 결정 R4 모래바람: 💪🏻 60% · 회피율 −10%p(2R) · 자기 회피 +10%(1R)
   "고대 골렘":["돌덩이 내려치기","태고의 저주",["풍화",null,2],["태고의 각성",null,"once"]],
   "황토 아르마딜로":["몸통 굴리기","황토 껍질",["웅크린 공",null,3],["요새 전환",null,4]],
   "새싹 파수꾼":["새싹 치기","잎날 베기",["광합성",null,3],["성장 매듭",100,4]],
@@ -191,6 +191,8 @@ function idx(f,id){ return f.skills.indexOf(id); }
       if(x.reaper){ B.round=6; a.hp=10; }
       const before=d.hp+(d.shield||0), aHp=a.hp, cdBefore=a.cds[1];
       act("A",1);
+      /* #241 CJ 설계 R1: 번개 꼬리는 같은 턴 추가 공격 단계를 연다 — 차례 진행은 추가 공격(허용 슬롯 기본기)까지 끝나야 본다 */
+      if(T.S.battle&&T.S.battle.bonus&&T.S.battle.bonus.stage==="active"){ act("A",0); }
       const moved=!T.S.battle||T.S.battle.phase===1||T.S.battle.round>B.round;
       const touched=(d.hp+(d.shield||0))!==before||a.hp!==aHp||(a.shield||0)>0||a.cds[1]!==cdBefore||JSON.stringify(a.onceUsed||{})!=="{}";
       if(moved&&touched) ran++; else errs.push(id+(moved?" 효과 흔적 없음":" 차례 미진행"));
@@ -302,7 +304,8 @@ function idx(f,id){ return f.skills.indexOf(id); }
   const t=openBattle({skills:["M-F1-1","M-F1-2"],atk:20},{skills:["M-F1-1","M-F1-2","M-F1-3","M-F1-4"],atk:20,statusPct:1});
   const B=t.B;
   /* 반격자 D 에게 스킬용 1회성 효과·흡수를 심어 둔다 — 페널티는 하나도 쓰거나 발동시키면 안 된다 */
-  Object.assign(t.d,{critForce:true,nextDmgUp:0.2,nextPowUp:0.8,nextFlat:10,sandWind:true,nextShockForce:true,absorbR:1,absorbPct:0.5});
+  /* #241: 달군 비늘·축전·모래바람·충전의 1회성 필드는 단순화·교체로 삭제 — 남은 1회성(확정 치명·위력+)만 심는다 */
+  Object.assign(t.d,{critForce:true,nextPowUp:0.8,absorbR:1,absorbPct:0.5});
   t.d.cds=[0,1,2,3]; t.a.reflectR=2; t.d.hp=50;
   T.battleModal();
   const log0=B.blog.length;
@@ -311,7 +314,7 @@ function idx(f,id){ return f.skills.indexOf(id); }
   const dmg=100-t.a.hp;
   eq(dmg,20,"C6a 페널티 = 상대 공격력 100% (20 · 분산 1.0 · 치명 없음 · 방어 0)");
   ok(JSON.stringify(t.d.cds)==="[0,1,2,3]","C6b 페널티는 ⌛를 바꾸지 않는다");
-  ok(t.d.critForce===true&&t.d.nextDmgUp===0.2&&t.d.nextPowUp===0.8&&t.d.nextFlat===10&&t.d.sandWind===true&&t.d.nextShockForce===true,"C6c 스킬용 1회성 효과(확정 치명·피해+·위력+·고정 피해·모래바람·감전 확정)를 소모하지 않는다");
+  ok(t.d.critForce===true&&t.d.nextPowUp===0.8,"C6c 스킬용 1회성 효과(확정 치명·위력+)를 소모하지 않는다");
   ok(t.d.hp===50,"C6d 흡수 회복 없음 (스킬 효과 아님)");
   ok(t.a.burn===0&&t.a.shock===0&&t.a.weaken===0&&t.a.crack===0,"C6e 상태이상 부여 없음");
   ok(t.d.hp===50&&!B.blog.slice(log0).some(x=>/반사/.test(x)),"C6f 반사 반응도 일으키지 않는다");
@@ -377,9 +380,10 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   let t;
   /* 🔥 */
   t=openBattle({skills:["M-F1-1","M-F1-3","M-F1-4"]},{hp:300,maxHp:300});
-  act("A",1); ok(t.a.shield===10&&t.a.nextDmgUp===0.2,"MF1a 달군 비늘 — 방어막 10% · 다음 피해 스킬 +20%");
-  act("D",0); t.B.round=3; act("A",2); eq(300-t.d.hp,Math.round(20*1.6*1.2),"MF1b 성룡의 포효 R3 = 💪(100+3×20)% × 1.2(달군 비늘) — 1회성 소모");
-  ok(t.a.nextDmgUp===0&&t.d.burn>0,"MF1c 성룡의 포효 화상 100% · 달군 비늘 소모");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 9: 달군 비늘 = 가하는 피해 +20%(1R) 버프 — 1회성 소모 → 1R 지속 */
+  act("A",1); ok(t.a.shield===10&&t.a.dmgUpBuff===0.2&&t.a.dmgUpBuffR===1,"MF1a 달군 비늘 — 방어막 10% · 가하는 피해 +20%(1R)");
+  act("D",0); t.B.round=3; act("A",2); eq(300-t.d.hp,Math.round(20*1.6*1.2),"MF1b 성룡의 포효 R3 = 💪(100+3×20)% × 1.2(달군 비늘 ⑤)");
+  ok(t.d.burn>0,"MF1c 성룡의 포효 화상 100% (달군 비늘 버프는 1회성 소모가 아니라 1R 지속 — MF1b 타격에 적용)");
   t=openBattle({skills:["M-F2-1","M-F2-3"]},{hp:300,maxHp:300}); t.d.burn=2;
   const blog0=t.B.blog.length; act("A",1); ok(t.B.blog.slice(blog0).some(x=>/치명타/.test(x))&&300-t.d.hp===36,"MF2a 조준 사격 — 화상 대상이면 치명타 확정 (20×1.2×1.5=36)");
   t=openBattle({skills:["M-F2-1","M-F2-4"]},{hp:200,maxHp:200}); t.d.burn=2; t.d.burnMag=0.05;
@@ -400,21 +404,24 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   act("A",1); ok(t.d.burn===3&&t.a.vanguardTurn>0,"MF4b 꺼지지 않는 불티 — 화상 +1R 최대 3R · 다음 라운드 선턴 효과");
   t.a.spd=1; endRound(); eq(t.B.firstSide,"A","MF4c 다음 라운드 선턴 (속도가 낮아도)");
   t=openBattle({skills:["M-F5-1","M-F5-3","M-F5-4"],hp:50},{}); t.d.burn=2; t.d.burnMag=0.05;
-  act("A",1); ok(t.d.burnBonus===0.03&&t.a.hp===55,"MF5a 잿불 심기 — 화상 피해율 +3%p · 최대 HP 5% 회복");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 10: 잿불 심기 = 화상 수치 8% 갱신(큰 값) — +3%p·최대 +6%p 보너스 필드 삭제 */
+  act("A",1); ok(t.d.burnMag===0.08&&t.a.hp===55,"MF5a 잿불 심기 — 화상 수치 5% → 8% · 최대 HP 5% 회복");
   act("D",0); ok(t.a.cds[1]===1&&!T.slotUsable(t.a,1,"A"),"MF5b 잿불 심기 ⌛2 — 다음 라운드에는 아직 쓸 수 없다");
-  t=openBattle({skills:["M-F5-1","M-F5-3"]},{}); t.d.burn=2; t.d.burnMag=0.05; t.d.burnBonus=0.06; t.a.cds[1]=0; act("A",1); eq(t.d.burnBonus,0.06,"MF5c 잿불 심기 최대 +6%p");
+  t=openBattle({skills:["M-F5-1","M-F5-3"]},{}); t.d.burn=2; t.d.burnMag=0.10; act("A",1); eq(t.d.burnMag,0.10,"MF5c 잿불 심기 — 더 큰 화상 수치(10%)는 유지(큰 값)");
   t=openBattle({skills:["M-F5-1","M-F5-4"],statusPct:0},{});
   act("A",1); ok(t.d.burn===4&&t.d.burnNoCure===true&&t.a.onceUsed["M-F5-4"]&&!T.slotUsable(t.a,1,"A"),"MF5d 영겁의 재 — 화상 2R +2R · 해독제 불가 · 전투당 1회");
   t.B.phase=1; T.S.inv[1]=["cure"]; T.battleModal(); window.__useItemCore(0); T.TQ.length=0; ok(t.d.burn===4,"MF5e 해독제로 영겁의 재 화상이 풀리지 않는다");
   t=openBattle({skills:["M-F6-1","M-F6-3","M-F6-4"]},{skills:["M-F1-1"],hp:300,maxHp:300});
-  act("A",1); ok(t.a.shield===15,"MF6a 열기 축적 방어막 15%"); act("D",0); ok(t.d.burn>0||t.B.blog.some(x=>/부여 실패/.test(x)),"MF6b 이 방어막이 남은 동안 공격자에게 화상 70% 판정");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 7: 열기 축적 = 방어막 15% · 사용 시 대상 화상 70% (반격 화상 삭제) — 난수 0.5 < 0.70 이면 부여 */
+  act("A",1); ok(t.a.shield===15&&t.d.burn>0,"MF6a 열기 축적 — 방어막 15% · 대상 화상 70%(사용 시)"); const bl6=t.B.blog.length; act("D",0); ok(!t.B.blog.slice(bl6).some(x=>/화상을 입었다/.test(x)),"MF6b 공격한 상대에게 반격 화상은 더 이상 없다");
   t=openBattle({skills:["M-F6-1","M-F6-4"]},{hp:300,maxHp:300}); T.shieldAdd(t.a,20,"x");
   act("A",1); ok(t.a.shield===0&&300-t.d.hp===20+30&&t.d.burn>0,"MF6c 화산 폭발 — 방어막 20 소모 → 💪100% + 20×150% · 화상 100%");
   /* 💧 */
   t=openBattle({skills:["M-W1-1","M-W1-3"],hp:50},{}); t.a.burn=2; t.a.weaken=2;
   act("A",1); ok(t.a.burn===0&&t.a.weaken===2&&t.a.hp===58,"MW1a 맑은 물 — 상태이상 1개(화상 먼저) 해제 · 8% 회복");
-  t=openBattle({skills:["M-W1-1","M-W1-4"]},{skills:["M-F1-1","M-F1-2"],statusPct:1});
-  act("A",1); ok(t.a.mirrorR>0,"MW1b 거울 수면 1R"); act("D",1); ok(t.a.burn===0&&t.d.burn>0,"MW1c 걸리는 상태이상을 건 상대에게 되돌림");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — R3 거울 수면 = 자기 상태이상 1개를 대상에게 옮김 (1R 되돌림 mirrorR 삭제) — 세부는 smoke_issue241 */
+  t=openBattle({skills:["M-W1-1","M-W1-4"]},{skills:["M-F1-1","M-F1-2"],hp:300,maxHp:300}); t.a.burn=2; t.a.burnMag=0.05;
+  act("A",1); ok(t.a.burn===0&&t.d.burn===2&&300-t.d.hp===16,"MW1b 거울 수면 — 💪80% · 자기 화상 2R 을 대상에게 옮김"); ok(!(t.a.mirrorR>0),"MW1c 되돌림 필드 없음");
   t=openBattle({skills:["M-W2-1","M-W2-3"]},{}); act("A",1); ok(t.a.evadeBuff===0.2&&t.a.vanguardTurn>0,"MW2a 잠영 — 회피 +20%(1R) · 다음 라운드 선턴");
   t=openBattle({skills:["M-W2-1","M-W2-4"]},{hp:300,maxHp:300}); t.d.weaken=2;
   act("A",1); ok(300-t.d.hp===50&&t.d.weaken===0,"MW2b 심연의 일격 — 약화 소모 시 💪250%");
@@ -426,20 +433,22 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   act("A",1); act("D",1); ok(t.a.hp===100&&t.d.cds[1]===1&&t.a.burn===0&&t.d.revealedSkills.includes(1),"MW4b 환영 무도 — 상대 다음 행동 피해·효과 0, ⌛는 정상 소모(⌛2 → 라운드 종료 1)");
   t=openBattle({skills:["M-W5-1","M-W5-3"]},{}); t.d.weaken=4; act("A",1); eq(t.d.weaken,4,"MW5a 밀물 — 약화 +1 최대 4");
   t=openBattle({skills:["M-W5-1","M-W5-3"]},{}); t.d.weaken=2; act("A",1); eq(t.d.weaken,3,"MW5b 밀물 +1");
-  t=openBattle({skills:["M-W5-1","M-W5-4"]},{hp:400,maxHp:400}); act("A",1);
-  const ev=t.a.pendingFx[0]; ok(ev&&ev.tag==="M-W5-4:tsunami"&&ev.roundsLeft===2,"MW5c 해일 예고 — 안정 tag 로 2라운드 예약");
-  const hp0=t.d.hp; act("D",0); ok(t.d.hp===hp0&&t.B.round===2,"MW5d R2 시작 — 아직 발동 안 함");
-  t.d.weaken=2; endRound(); ok(t.B.round===3,"MW5d2 R3 진입"); eq(hp0-t.d.hp,Math.round(20*(1.2+0.6)),"MW5e 사용 R1 → R3 시작에 💪(120% + 약화 2 × 30%) = 36");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — R2 해일 예고 = 사용 시 X 확정 표식 · HP+방어막 ≤ X 면 사망 (2라운드 뒤 예고 피해 · pendingFx 삭제) — 세부는 smoke_issue241 */
+  t=openBattle({skills:["M-W5-1","M-W5-4"]},{hp:400,maxHp:400}); t.d.weaken=2; act("A",1);
+  ok(!(t.a.pendingFx&&t.a.pendingFx.length)&&t.d.tideMark===Math.round(20*(1.2+0.6))&&t.d.hp===400,"MW5c 해일 예고 — 예약 없이 표식 X = 💪(120% + 약화 2 × 30%) = 36 · 즉시 피해 없음");
+  t.d.hp=30; act("D",0); ok(!T.S.battle,"MW5d HP+방어막 ≤ X 가 되면 행동 뒤 발동 · 사망");
   t=openBattle({skills:["M-W5-1","M-W5-4"]},{hp:400,maxHp:400}); act("A",1); t.B.round=6; endRound();
-  ok(!T.S.battle,"MW5f 발동 전에 전투가 끝나면 취소(판정으로 종료)");
+  ok(!T.S.battle&&t.d.hp===400,"MW5f 조건이 끝내 안 맞으면 피해 없이 전투 종료(T15)");
   t=openBattle({skills:["M-W6-1","M-W6-3","M-W6-4"]},{skills:["M-F1-1"],hp:300,maxHp:300});
   act("A",1); eq(t.a.shield,18,"MW6a 껍질 닫기 방어막 18%"); act("D",0); endRound();
-  T.shieldAdd(t.a,30,"x"); act("A",2); act("D",0); ok(300-t.d.hp===10,"MW6b 집게 반격 — 방어막이 막으면 공격자에게 💪50% 반격(10)");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 6: 집게 반격 = 방어막이 막은 피해의 50% 반사 (💪50% 반격 · 라운드당 1회 삭제) — 막은 20 × 50% = 10 */
+  T.shieldAdd(t.a,30,"x"); act("A",2); act("D",0); ok(300-t.d.hp===10&&t.B.blog.some(x=>/반사/.test(x)),"MW6b 집게 반격 — 방어막이 막은 피해 20 의 50% 반사(10)");
   /* ⚡ */
   t=openBattle({skills:["M-L1-1","M-L1-3","M-F1-2"],statusPct:0},{skills:["M-L1-1","M-L1-2"]});
   t.a.skills=["M-L1-1","M-L1-3","M-L1-2"]; t.a.cds=[0,0,0];
-  act("A",1); ok(t.a.nextShockForce&&t.a.spdBuff===3,"ML1a 충전 — 다음 피해 스킬 감전 100% · 속도 +3");
-  act("D",0); fixRand(0.99); act("A",2); fixRand(0.5); ok(t.d.shock>0&&!t.a.nextShockForce,"ML1b 충전 뒤 스파크 샷 — 확률 판정 없이 감전(난수 0.99)");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 2 수정안: 충전 = 💪🏻 60% · 감전 100% · 가하는 피해 +10%(2R) (다음 스킬 감전 확정 · 속도 +3 삭제) */
+  const d0=t.d.hp; act("A",1); ok(d0-t.d.hp===12&&t.d.shock>0&&t.a.dmgUpBuff===0.1&&t.a.dmgUpBuffR===2&&!(t.a.spdBuff>0),"ML1a 충전 — 💪60%(12) · 감전 · 가하는 피해 +10%(2R)");
+  act("D",0); ok(t.a.dmgUpBuffR===2,"ML1b 충전 버프 — 부여 라운드는 세지 않는다(5.6)");
   t=openBattle({skills:["M-L1-1","M-L1-4"]},{hp:400,maxHp:400}); t.a.shocksDealt=3; act("A",1); eq(400-t.d.hp,38,"ML1c 연쇄 번개 — 💪(100+3×30)%");
   t=openBattle({skills:["M-L1-1","M-L1-4"]},{hp:400,maxHp:400}); t.a.shocksDealt=9; act("A",1); eq(400-t.d.hp,44,"ML1d 연쇄 번개 최대 220%");
   t=openBattle({skills:["M-L2-1","M-L2-3"]},{}); ok(T.slotUsable(t.a,1,"A")&&!T.slotUsable(t.d,0,"D")===false,"ML2a 번개 발도 — 선턴이면 사용 가능");
@@ -455,16 +464,18 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   t=openBattle({skills:["M-L4-1","M-L4-2","M-L4-3"]},{hp:300,maxHp:300}); t.a.cds=[0,1,0]; t.a.skills=["M-L4-1","M-L4-2","M-L4-3"];
   t.a.cds=[0,0,0]; t.a.cds[1]=1; act("A",2); eq(t.a.cds[1],0,"ML4a 전광석화 — 다른 스킬 중 남은 ⌛ 최장 1개 −1");
   t=openBattle({skills:["M-L4-1","M-L4-2","M-L4-3","M-L4-4"],statusPct:0},{hp:300,maxHp:300});
-  act("A",3); ok(300-t.d.hp===20+Math.round(20*1.2*0.6)&&t.a.cds[1]===1&&t.a.cds[2]===0,"ML4b 번개 꼬리 — 💪100% 후 ⌛0 2차를 위력 60%로 연계(슬롯 순서) · 연계 스킬 ⌛ 적용");
-  t=openBattle({skills:["M-L4-1","M-L4-2","M-L4-3","M-L4-4"]},{hp:300,maxHp:300}); t.a.cds=[0,1,2,0];
-  act("A",3); eq(300-t.d.hp,20,"ML4c 연계 후보가 없으면 첫 타격만");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — R1 번개 꼬리 = 같은 턴 추가 공격(플레이어 선택) — 자동 연계(첫 ⌛0 2차) 삭제 · 세부는 smoke_issue241 */
+  act("A",3); ok(300-t.d.hp===20&&t.B.bonus&&t.B.bonus.stage==="active"&&t.B.phase===0,"ML4b 번개 꼬리 — 💪100% 뒤 추가 공격 단계(차례 유지)");
+  act("A",1); ok(300-t.d.hp===20+Math.round(20*1.2*0.6)&&t.a.cds[1]===0&&!t.B.bonus,"ML4c 추가 공격 스파크 스침 60% · 2차 ⌛ 사본 복원(0)");
   t=openBattle({skills:["M-L5-1","M-L5-4"]},{});
-  act("A",1); ok(t.d.permShockR===2,"ML5a 영구 자기장 2R"); act("D",0); t.d.spd=99; endRound();
-  ok(t.d.shock>0&&t.B.firstSide==="A","ML5b 다음 라운드 시작 — 선턴 확정 전에 감전 → 상대 후턴 (Q5)");
-  endRound(); ok(t.d.shock>0&&t.d.permShockR===0,"ML5c 두 번째 라운드 시작에도 재부여");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 1: 영구 자기장 = 사용 시 감전 3R 확정 (라운드 시작 재부여 삭제) */
+  act("A",1); ok(t.d.shock===3&&t.d.shockFresh===true,"ML5a 영구 자기장 — 감전 3R(부여 라운드 제외)"); act("D",0);
+  ok(t.d.shock>0&&t.B.round===2&&t.B.firstSide==="A","ML5b R2 — 예정 선턴 D 가 감전이라 A 선턴");
+  endRound(); endRound(); ok(t.B.round===4&&t.d.shock>0,"ML5c R4 까지 감전 유지(3라운드)"); endRound(); ok(!(t.d.shock>0),"ML5d R4 종료에 해제");
   t=openBattle({skills:["M-L6-1","M-L6-3","M-L6-4"]},{skills:["M-F1-1"],hp:300,maxHp:300});
-  act("A",1); act("D",0); ok(t.a.nextFlat===15,"ML6a 축전 — 이 방어막이 막은 피해 15 만큼 다음 피해 스킬 고정 피해(최대 30)");
-  endRound(); act("A",0); eq(300-t.d.hp,35,"ML6b 다음 피해 스킬(기본기)에 +15");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 3: 축전 = 방어막 20% (막은 피해 → 다음 스킬 고정 피해 삭제) */
+  act("A",1); ok(t.a.shield===20,"ML6a 축전 — 방어막 20%"); act("D",0);
+  endRound(); act("A",0); eq(300-t.d.hp,20,"ML6b 다음 기본기에 고정 피해 추가 없음");
   t=openBattle({skills:["M-L6-1","M-L6-4"],statusPct:0},{hp:300,maxHp:300}); T.shieldAdd(t.a,40,"x");
   act("A",1); ok(300-t.d.hp===24+20&&t.a.shield===40&&t.d.shock>0,"ML6c 방전 — 💪120% + 방어막 50% 고정 · 방어막 유지 · 감전 100%");
   /* 🗻 */
@@ -482,17 +493,21 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   act("A",1); act("D",0); ok(t.a.hp===100&&t.a.nullHitN===0,"ME3b 철벽 돌파 — 받는 피해 1회 무효");
   endRound(); act("A",0); eq(300-t.d.hp,36,"ME3c 다음 피해 스킬 위력 +80%p (기본기 180%)");
   t=openBattle({skills:["M-E4-1","M-E4-3"]},{skills:["M-F1-1"]});
-  act("A",1); ok(t.d.sandWind&&t.a.evadeBuff===0.1,"ME4a 모래바람 — 상대 다음 피해 스킬 −30% · 자기 회피 +10%");
-  t.a.evadeBuff=0; act("D",0); eq(100-t.a.hp,14,"ME4b 다음 피해 스킬 20 → 14 (⑥ ×0.7)");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — R4 모래바람 교체 · V1 회피율 감소 전환 */
+  act("A",1); ok(100-t.d.hp===12&&t.d.evadeDown===0.1&&t.d.evadeDownR===2&&t.a.evadeBuff===0.1,"ME4a 모래바람 — 💪60%(12) · 대상 회피율 −10%p(2R) · 자기 회피 +10%");
+  t.a.evadeBuff=0; act("D",0); eq(100-t.a.hp,20,"ME4b 상대의 다음 피해 스킬은 줄지 않는다(−30% 삭제)");
   t=openBattle({skills:["M-E4-1","M-E4-4"]},{skills:["M-F1-1","M-F1-2"],statusPct:0});
-  act("A",1); ok(t.d.sandStormR>0&&t.d.spdDown===5,"ME4c 모래 폭풍 — 상태이상 부여 확률 절반 · 속도 −5");
+  act("A",1); ok(t.d.sandStormR>0&&t.d.evadeDown===0.2&&t.d.evadeDownR===2,"ME4c 모래 폭풍 — 상태이상 부여 확률 절반 · 회피율 −20%p(2R)");
   fixRand(0.4); act("D",1); fixRand(0.5); eq(t.a.burn,0,"ME4d 화상 70% → 35%: 난수 0.4 는 실패");
   t=openBattle({skills:["M-E5-1","M-E5-3"]},{}); t.d.crack=3; act("A",1); ok(t.d.crack===3&&t.a.hardenPct===0.1,"ME5a 풍화 — 균열 +1R 최대 3R · 경화 10%");
   t=openBattle({skills:["M-E5-1","M-E5-4"],hp:40},{}); ok(!T.slotUsable(t.a,1,"A"),"ME5b 태고의 각성 — 4라운드 전에는 불가");
   t.B.round=4; ok(T.slotUsable(t.a,1,"A"),"ME5c 4라운드부터 가능"); act("A",1); ok(t.a.hp===70&&t.a.hardenPct===0.2&&t.a.harden===2,"ME5d 30% 회복 · 경화 20%(2R)");
   t=openBattle({skills:["M-E6-1","M-E6-3"]},{}); act("A",1); eq(t.a.shield,25,"ME6a 웅크린 공 방어막 25%");
   t=openBattle({skills:["M-E6-1","M-E6-4"]},{skills:["M-F1-1"],atk:20});
-  act("A",1); eq(t.a.shield,10,"ME6b 요새 전환 방어막 10%"); act("D",0); ok(t.a.hp===100&&t.a.shield===0,"ME6c 방어막 10 으로 피해 20 을 전부 막음(내구 2배)");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 11: 요새 전환 = 현재 방어막만큼 추가(최대 HP 20% 한도) · 방어막 10% (내구 2배 삭제) */
+  act("A",1); eq(t.a.shield,10,"ME6b 요새 전환 — 방어막이 없으면 10% 만"); act("D",0); ok(t.a.hp===90&&t.a.shield===0,"ME6c 방어막 10 은 피해 10 만 막는다(내구 2배 없음)");
+  t=openBattle({skills:["M-E6-1","M-E6-4"]},{}); T.shieldAdd(t.a,15,"x"); act("A",1); eq(t.a.shield,15+15+10,"ME6d 현재 방어막 15 만큼 추가 + 10%");
+  t=openBattle({skills:["M-E6-1","M-E6-4"]},{}); T.shieldAdd(t.a,50,"x"); act("A",1); eq(t.a.shield,50+20+10,"ME6e 추가분은 최대 HP 20% 한도");
   /* 🌿 */
   t=openBattle({skills:["M-G1-1","M-G1-3"],hp:50},{}); act("A",1); eq(t.a.hp,65,"MG1a 광합성 — 선턴이면 15%");
   t=openBattle({skills:["M-G1-1","M-G1-3"],hp:50},{skills:["M-G1-1","M-G1-3"],hp:50}); act("A",1); act("D",1); eq(t.d.hp,60,"MG1b 후턴이면 10%");
@@ -519,13 +534,14 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   t=openBattle({skills:["M-G5-1","M-G5-4"],hp:50},{skills:["M-F1-1"],hp:100}); act("A",1); act("D",0);
   ok(t.d.hp===100&&t.a.hp===30,"MG5b 이끼 잠식 — 부여 라운드 종료에는 없음"); /* REVISE 4차: R2 는 D 먼저 */ act("D",0); act("A",0); ok(t.d.hp===100-20-4&&t.a.hp===30-20+4,"MG5c 다음 라운드 종료 대상 4% 피해 · 같은 양 회복");
   t.B.phase=1; T.S.inv[1]=["cure"]; T.battleModal(); window.__useItemCore(0); T.TQ.length=0; eq(t.d.mossR,0,"MG5d 이끼 잠식은 해독제로 해제");
-  t=openBattle({skills:["M-G6-1","M-G6-3"],hp:50},{skills:["M-F1-1"]}); act("A",1); act("D",0); eq(t.a.hp,50-5+8,"MG6a 포자 막 — 방어막 15 가 막은 15 의 50%(7.5→8)를 라운드 종료에 회복");
+/* #241 CJ 승인(2026-09-17 스킬 정리) — 단순화 12: 포자 막 = 방어막 15% · 즉시 최대 HP 6% 회복 (막은 피해 50% 라운드 종료 회복 삭제) */
+  t=openBattle({skills:["M-G6-1","M-G6-3"],hp:50},{skills:["M-F1-1"]}); act("A",1); ok(t.a.hp===56&&t.a.shield===15,"MG6a 포자 막 — 방어막 15 · 6 회복"); act("D",0); eq(t.a.hp,56-5,"MG6a2 라운드 종료 추가 회복 없음");
   t=openBattle({skills:["M-G6-1","M-G6-4"],hp:50},{}); T.shieldAdd(t.a,40,"x"); act("A",1);
   ok(t.a.hp===80&&t.a.shield===0&&t.a.absorbPct===0.3&&t.a.absorbR===2,"MG6b 균사 전환 — 방어막 → HP(최대 30%) · 2R 흡수 30%");
   /* 전설 */
   t=openBattle({skills:T.LEGEND_ROSTER[0].skills.slice(),legend:"dragon"},{hp:300,maxHp:300,element:"fire"});
   act("A",1); ok(t.a.shield===15&&t.a.hardenPct===0.15,"ML-D2 비늘 세우기 — 방어막 15% · 경화 15%");
-  act("D",0); endRound(); act("A",2); ok(t.d.spdDown===4,"ML-D3 날개 강타 — 대상 속도 −4(2R)");
+  act("D",0); endRound(); act("A",2); ok(t.d.evadeDown===0.15&&t.d.evadeDownR===2,"ML-D3 날개 강타 — 대상 회피율 −15%p(2R) (#241 V1 CJ 승인 Q2 · 속도 −4 대체)");
   act("D",0); endRound(); endRound(); const hpD=t.d.hp; act("A",3); eq(hpD-t.d.hp,Math.round(20*1.4*1.3),"ML-D4 드래곤 숨결 — 속성 있는 상대 ×1.3");
   t=openBattle({skills:T.LEGEND_ROSTER[0].skills.slice(),legend:"dragon"},{hp:300,maxHp:300,element:null,legend:"witch"}); act("A",3); eq(300-t.d.hp,28,"ML-D5 무속성(전설) 상대 ×1.0");
   t=openBattle({skills:T.LEGEND_ROSTER[1].skills.slice(),legend:"witch",statusPct:1},{hp:300,maxHp:300}); t.d.burn=2;
@@ -679,8 +695,9 @@ unfix();
   ok(t.d.hp===300&&t.a.nextPowUp===0,"P14c 철벽 돌파 +80%p — 회피돼도 소모");
   act("D",0); endRound(); act("A",0); eq(300-t.d.hp,20,"P14d 다음 기본기는 💪100% 그대로");
   t=openBattle({skills:["M-F1-1"]},{hp:300,maxHp:300});
-  Object.assign(t.a,{nextDmgUp:0.2,nextFlat:10,sandWind:true,nextShockForce:true}); t.d.dodgeForce=true; act("A",0);
-  ok(t.d.hp===300&&t.a.nextDmgUp===0&&t.a.nextFlat===0&&t.a.sandWind===false&&t.a.nextShockForce===false,"P14e 달군 비늘 피해+ · 축전 고정 피해 · 모래바람 · 충전 감전 확정 — 회피돼도 모두 소모");
+  /* #241: 달군 비늘·축전·모래바람·충전 1회성 필드는 단순화·교체로 삭제 — P14e 는 남은 위력+ 로 본다 */
+  Object.assign(t.a,{nextPowUp:0.5}); t.d.dodgeForce=true; act("A",0);
+  ok(t.d.hp===300&&t.a.nextPowUp===0,"P14e 위력+ 1회성 — 회피돼도 소모");
   /* I1 조준 사격 확정 치명은 그 타격 한정 */
   t=openBattle({skills:["M-F2-1","M-F2-3"]},{hp:300,maxHp:300}); t.d.burn=2; t.d.dodgeForce=true;
   act("A",1); ok(t.d.hp===300&&t.a.critForce===false,"I1a 조준 사격 회피 — 확정 치명 플래그가 남지 않는다");
@@ -709,8 +726,9 @@ unfix();
   endRound(); ok(t.B.round===3&&t.B.firstSide==="D","O4 R3 — 다시 R1 선턴 측 D");
   /* 속도 증가·감소는 R2 이후 순서를 바꾸지 않는다 (모래바람·모래 폭풍·날개 강타·충전) */
   t=openBattle({spd:14},{spd:6});
-  t.d.spdBuff=50; t.a.spdDown=20; endRound(); eq(t.B.firstSide,"D","O5 R2 — 속도 증감과 무관하게 기준 교대 D");
-  t.a.spdBuff=90; t.d.spdDown=90; endRound(); eq(t.B.firstSide,"A","O6 R3 — 속도 증감과 무관하게 R1 측 A");
+  /* #241 V1: 속도 감소는 폐지(회피율 감소로) — 남은 속도 증가 버프로 본다 */
+  t.d.spdBuff=50; endRound(); eq(t.B.firstSide,"D","O5 R2 — 속도 증가와 무관하게 기준 교대 D");
+  t.d.spdBuff=90; endRound(); eq(t.B.firstSide,"A","O6 R3 — 속도 증가와 무관하게 R1 측 A");
   /* 감전이 기준 선순 쪽에 걸리면 그 라운드만 뒤집힌다 */
   t=openBattle({spd:14},{spd:6});
   t.d.shock=1; t.d.shockFresh=true; endRound();

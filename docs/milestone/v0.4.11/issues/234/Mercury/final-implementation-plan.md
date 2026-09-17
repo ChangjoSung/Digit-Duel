@@ -1,6 +1,6 @@
-# #234 후속 — 스킬 정리·전투 순서·회피율 감소 최종 구현 기획서 (CJ 승인 대기)
+# #234 후속 — 스킬 정리·전투 순서·회피율 감소 최종 구현 기획서 (CJ 승인 2026-09-17)
 
-2026-09-17 Mercury PD 취합. 원본 분석은 [Venus 최종 검토](../Venus/final-plan-review.md) · [Venus 정리안](../Venus/skill-cut-review.md) · [Mars_2 타당성](../Mars/cleanup-feasibility.md) · [Mars 구조](../Mars/skill-module-analysis.md) · [Jupiter 서버](../Jupiter/skill-module-server-impact.md)이다. 이 문서는 **CJ 최종 승인 뒤 각 부서에 그대로 전달하는 구현 입력**이다. 승인 전에는 구현하지 않는다.
+2026-09-17 Mercury PD 취합. 원본 분석은 [Venus 최종 검토](../Venus/final-plan-review.md) · [Venus 정리안](../Venus/skill-cut-review.md) · [Mars_2 타당성](../Mars/cleanup-feasibility.md) · [Mars 구조](../Mars/skill-module-analysis.md) · [Jupiter 서버](../Jupiter/skill-module-server-impact.md)이다. 이 문서는 각 부서에 그대로 전달하는 구현 입력이다. **2026-09-17 CJ "스킬 정리 승인"으로 2장 Q1~Q4를 PD 권고대로 확정했고, [#241](https://github.com/ChangjoSung/Digit-Duel/issues/241)로 착수했다.**
 
 ## 1. 확정된 CJ 결정 (2026-09-17)
 | # | 결정 | 반영 상태 |
@@ -19,7 +19,7 @@
 | V1 | 속도 감소는 모든 스킬에서 제외하고 회피율 감소로(최소 0) | 후속 Issue ② |
 
 ## 2. CJ 승인 요청 항목
-| # | 항목 | PD 권고 |
+| # | 항목 | 결정(CJ 승인 = PD 권고) |
 |---|---|---|
 | Q1 | 단순화 13개: 승인 11 · 수정 1(충전: 속도 +3 → 자기 가하는 피해 +10% 2R) · 보류 1(수면 포자 현행 유지). 기본값 7개: 승인 5 · 수정 2(P2 이름 교체 · P6 문장) | 승인 |
 | Q2 | 회피율 감소 수치: 모래바람 −10%p · 날개 강타 −15%p · 모래 폭풍 −20%p, 모두 2R · 적중 시 확정 부여 · 최종 회피 = 기본 + 증가 − 감소를 0~40%로 자름 · 상태이상(해제·옮기기 대상) · 상태 아이콘 표시 | 승인 |
