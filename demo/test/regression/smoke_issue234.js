@@ -536,14 +536,16 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   t=openBattle({skills:T.LEGEND_ROSTER[2].skills.slice(),legend:"reaper"},{hp:300,maxHp:300});
   act("A",2); ok(t.a.evadeBuff===0.25&&t.a.critForce,"ML-R3 죽음의 그림자 — 회피 +25% · 다음 피해 스킬 치명 확정");
   act("D",0); endRound(); act("A",0); ok(t.a.critForce===false,"ML-R3b 다음 피해 스킬에 소모");
-  /* 왕 · 동료 시너지 스킬 (5.3 — 왕국 (2) 값) */
+  /* 왕 · 동료 시너지 스킬 (5.3) — #234 REVISE 3차 CJ 결정(2026-09-17 D4): 왕국 (2) 미달성이면 (2) 값을 쓰지 않는다 → 효과 없이 위력만.
+     #235 전에는 왕국 집계가 없어 항상 미달성이다. 종전 MK1~MK5 는 (2) 값 효과를 기대했다(GDD 5.3 구 문언) — 결정에 따라 기대값을 바꾼다 */
   t=openBattle({skills:["K-1","K-2-fire","LD-REVENGE","LD-WRATH"],element:"fire"},{hp:600,maxHp:600});
-  act("A",2); ok(t.d.burn===1&&t.d.burnMag===0.02&&600-t.d.hp===44,"MK1 동료의 복수 🔥 — 💪220% · 화상 100%(판정 없음) · (2) 값 2%/1R");
-  act("D",0); endRound(); endRound(); endRound(); act("A",3); ok(t.d.burn===2,"MK2 왕의 분노 — 💪280% · 지속 +1R");
+  act("A",2); ok(!(t.d.burn>0)&&!(t.d.burnMag>0)&&600-t.d.hp===44,"MK1 동료의 복수 🔥 — 왕국 미달성: 💪220% 피해만 · 화상 없음");
+  act("D",0); endRound(); endRound(); endRound(); const hpMK2=t.d.hp; act("A",3); ok(!(t.d.burn>0)&&hpMK2-t.d.hp===56,"MK2 왕의 분노 — 왕국 미달성: 💪280% 피해만 · 화상·지속 연장 없음");
   t=openBattle({skills:["K-1","K-2-water","LD-REVENGE","LD-WRATH"],element:"water"},{hp:600,maxHp:600});
-  act("A",3); ok(t.d.weaken===2&&t.d.weakenMag===0.04,"MK3 왕의 분노 💧 — 약화 −4% · 1회 +1 = 2회");
-  t=openBattle({skills:["K-1","K-2-land","LD-REVENGE"],element:"land"},{hp:600,maxHp:600}); act("A",2); ok(t.a.hardenPct===0.03&&t.a.harden===1,"MK4 동료의 복수 🗻 — 자신 경화 3% 1R");
-  t=openBattle({skills:["K-1","K-2-grass","LD-REVENGE"],element:"grass",hp:50},{hp:600,maxHp:600}); act("A",2); ok(t.a.absorbPct===0.1&&t.a.hp===50+Math.round(44*0.1),"MK5 동료의 복수 🌿 — 흡수 10% · 그 공격부터 회복");
+  act("A",3); ok(!(t.d.weaken>0)&&!(t.d.weakenMag>0)&&600-t.d.hp===56,"MK3 왕의 분노 💧 — 왕국 미달성: 약화 없음 · 피해만");
+  t=openBattle({skills:["K-1","K-2-land","LD-REVENGE"],element:"land"},{hp:600,maxHp:600}); act("A",2); ok(!(t.a.hardenPct>0)&&!(t.a.harden>0)&&600-t.d.hp===44,"MK4 동료의 복수 🗻 — 왕국 미달성: 자신 경화 없음 · 피해만");
+  t=openBattle({skills:["K-1","K-2-grass","LD-REVENGE"],element:"grass",hp:50},{hp:600,maxHp:600}); act("A",2); ok(!(t.a.absorbPct>0)&&t.a.hp===50&&600-t.d.hp===44,"MK5 동료의 복수 🌿 — 왕국 미달성: 흡수·회복 없음 · 피해만");
+  t=openBattle({skills:["K-1","K-2-lightning","LD-REVENGE"],element:"lightning"},{hp:600,maxHp:600}); act("A",2); ok(!(t.d.shock>0)&&600-t.d.hp===44,"MK1b 동료의 복수 ⚡ — 왕국 미달성: 감전 없음 · 피해만");
   t=openBattle({skills:["SH-1","SH-2-fire"],element:"fire",statusPct:1},{hp:600,maxHp:600}); act("A",1); ok(t.a.shield===15&&t.d.burn>0,"MK6 방패병 속성 스킬 — 💪120% · 방어막 15% · 효과");
   /* REVISE 1차 (Saturn 백업 QA 2026-09-17) — 결함 1: 마녀의 장난이 v2 실행기로 가면서 효과 0 */
   { const W=T.LEGEND_ROSTER[1].skills.slice();
@@ -652,6 +654,42 @@ unfix();
   N.netApplyRoomState(frame(undefined),false);
   ok(N.S.pieces.find(p=>p.id==="u-m1").reaperSeal===0&&N.S.battle.fa.reaperSeal===0&&N.reaperWhy("A")===null&&N.slotUsable(N.S.battle.fa,3,"A")===true,
     "NR3 키가 없으면 0 — 4R · HP 비율 낮음 조건에서 사용 가능");
+}
+
+/* ===== REVISE 3차 — CJ 결정 2026-09-17 (P13 · P14 · I1) ===== */
+{ fixRand(0.5); // 분산 1.0 · 치명 0% · 회피 0%
+  const R=T.LEGEND_ROSTER[2].skills; // [낫 베기, 영혼 수확, 죽음의 그림자, 사신의 낫]
+  const reaperD=()=>({skills:[R[0],R[3],R[1]],hp:300,maxHp:300,legend:"reaper"}); // 사신의 낫을 ⌛0 · 앞 슬롯에 둔다 — 종전 규칙이면 동결 대상
+  /* P13 사신의 낫은 어떤 스킬로도 막을 수 없다 — ⌛ 증가 대상 제외 */
+  let t=openBattle({skills:["M-W3-1","M-W3-3"]},reaperD());
+  act("A",1); ok(t.d.cds[1]===0&&t.d.cds[2]===1&&t.d.cds[0]===0,"P13a 동결 — 사신의 낫(⌛0·앞 슬롯) 제외 · 다음 후보(영혼 수확) ⌛ +1");
+  t.B.round=4; t.d.hp=10; ok(T.slotUsable(t.d,1,"D"),"P13b 동결 뒤에도 4R · HP 열세면 사신의 낫 사용 가능");
+  t=openBattle({skills:["M-W3-1","M-W3-3"]},{skills:[R[0],R[3]],hp:300,maxHp:300,legend:"reaper"});
+  act("A",1); ok(t.d.cds[0]===0&&t.d.cds[1]===0,"P13c 기본기 · 사신의 낫뿐이면 동결은 아무 ⌛도 늘리지 않는다");
+  t=openBattle({skills:["M-L5-1","M-L5-3"]},reaperD()); t.d.shock=1;
+  act("A",1); ok(t.d.cds[1]===0&&t.d.cds[2]===1,"P13d 자기장 — 감전 대상이어도 사신의 낫 제외 · 다음 후보 ⌛ +1");
+  /* P14 '다음 피해 스킬' 1회성 효과는 회피돼도 소모 */
+  t=openBattle({skills:R.slice(),legend:"reaper"},{hp:300,maxHp:300});
+  act("A",2); act("D",0); endRound(); t.d.dodgeForce=true; act("A",0);
+  ok(t.d.hp===300&&t.a.critForce===false,"P14a 죽음의 그림자 확정 치명 — 회피된 타격에서 소모");
+  act("D",0); endRound(); act("A",0); eq(300-t.d.hp,20,"P14b 소모 뒤 다음 피해 스킬(기본기)은 치명 확정 아님 (20)");
+  t=openBattle({skills:["M-E3-1","M-E3-4"]},{hp:300,maxHp:300});
+  act("A",1); act("D",0); endRound(); t.d.dodgeForce=true; act("A",0);
+  ok(t.d.hp===300&&t.a.nextPowUp===0,"P14c 철벽 돌파 +80%p — 회피돼도 소모");
+  act("D",0); endRound(); act("A",0); eq(300-t.d.hp,20,"P14d 다음 기본기는 💪100% 그대로");
+  t=openBattle({skills:["M-F1-1"]},{hp:300,maxHp:300});
+  Object.assign(t.a,{nextDmgUp:0.2,nextFlat:10,sandWind:true,nextShockForce:true}); t.d.dodgeForce=true; act("A",0);
+  ok(t.d.hp===300&&t.a.nextDmgUp===0&&t.a.nextFlat===0&&t.a.sandWind===false&&t.a.nextShockForce===false,"P14e 달군 비늘 피해+ · 축전 고정 피해 · 모래바람 · 충전 감전 확정 — 회피돼도 모두 소모");
+  /* I1 조준 사격 확정 치명은 그 타격 한정 */
+  t=openBattle({skills:["M-F2-1","M-F2-3"]},{hp:300,maxHp:300}); t.d.burn=2; t.d.dodgeForce=true;
+  act("A",1); ok(t.d.hp===300&&t.a.critForce===false,"I1a 조준 사격 회피 — 확정 치명 플래그가 남지 않는다");
+  act("D",0); endRound(); let hp0=t.d.hp; act("A",0); eq(hp0-t.d.hp,20,"I1b 회피된 조준 사격 뒤 기본기는 치명 확정 아님 (20)");
+  t=openBattle({skills:["M-F2-1","M-F2-3"]},{hp:300,maxHp:300}); t.d.burn=2;
+  act("A",1); ok(300-t.d.hp===36&&t.a.critForce===false,"I1c 적중 — 그 타격만 치명 (36) · 플래그 없음");
+  act("D",0); endRound(); hp0=t.d.hp; act("A",0); eq(hp0-t.d.hp,20,"I1d 적중한 조준 사격 뒤 기본기도 치명 확정 아님");
+  t=openBattle({skills:["M-F2-1","M-F2-3"]},{hp:300,maxHp:300}); t.a.critForce=true;
+  act("A",1); ok(300-t.d.hp===36&&t.a.critForce===false,"I1e 죽음의 그림자 확정 치명은 화상 아닌 대상의 조준 사격에서도 1회 소모 (섞이지 않음)");
+  unfix();
 }
 
 console.log(`smoke_issue234: ${pass} pass / ${fail} fail`);
