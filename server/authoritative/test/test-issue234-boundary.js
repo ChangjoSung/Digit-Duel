@@ -7,6 +7,7 @@
 //      새 말 필드(allyKind·leaderElChosen·legend)가 상대 프레임에 없다.
 //   3) 합법성: 뿌리 고정(fleeLock) 도망 거부, 탐색 recruit 기술 교체 단계 거부(CJ 결정 2026-09-17).
 //   4) REVISE 2차 사신의 낫(CJ 결정 2026-09-17): reaperSeal 요약 분기·소유자 전용 프레임·4R/봉인/수면 포자 합법성.
+//   5) REVISE 4차 전투 순서(CJ 결정 2026-09-17): B.firstSideR1 요약 분기·좌석 프레임 비노출·R2 기준 교대와 actor+phase 복원 정합.
 const { withEngine } = require('../engine');
 const H = require('./helpers');
 const { both, byId, snap, act, lockstepDigest } = H;
@@ -292,6 +293,76 @@ function reaperRoom(seed, setup) {
     const res = act(room, seat, { t: 'act', k: other });
     ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, '대조: 수면 포자 상태 다른 비기본 스킬 거부');
   } else ok(true, '대조 생략: 픽스처에 다른 v2 비기본 스킬 칸 없음(' + JSON.stringify(f.skills) + ')');
+}
+
+// ===== 5) REVISE 4차 (CJ 결정 2026-09-17 "속도는 첫 라운드 선턴 판별만, 나머지는 기존 전투 방식대로") =====
+//   B.firstSideR1 — 2라운드부터 교대 기준. 요약 분기 감지·좌석 프레임 비노출·서버 행위자(actor+phase) 복원 정합.
+{
+  const { room, T } = battleRoom(2360);
+  ok(typeof T.decideFirstSide === 'function', '전제: 엔진이 decideFirstSide 를 노출');
+  const B0 = T.S.battle;
+  ok((B0.firstSideR1 === 'A' || B0.firstSideR1 === 'D') && B0.firstSideR1 === B0.firstSide,
+    'initBattle 이 1라운드 선턴을 B.firstSideR1 로 기록: ' + JSON.stringify([B0.firstSideR1, B0.firstSide]));
+  const flip = (s) => (s === 'A' ? 'D' : 'A');
+
+  // 5a) 요약 분기 — R1 한 좌석만 firstSideR1 이 갈려도 요약이 갈린다.
+  let saved;
+  ok(diverges(room, (E) => { saved = E.S.battle.firstSideR1; E.S.battle.firstSideR1 = flip(saved); },
+    (E) => { E.S.battle.firstSideR1 = saved; }), '락스텝 감지: B.firstSideR1 한 좌석 분기(R1)');
+  // 5a') 위험 구간 재현 — R2 진입 직전, firstSide·round·순서 효과가 양쪽에서 같고 firstSideR1 만 다르다.
+  //      엔진 판정 결과가 실제로 갈리는 상태이며(아래 전제), 요약이 그것을 잡아야 한다.
+  both(room, (E) => { const B = E.S.battle; B.round = 2; B.fa.shock = 0; B.fd.shock = 0; B.fa.vanguardTurn = 0; B.fd.vanguardTurn = 0; });
+  let seat0Decision;
+  withEngine(room.engines[0], () => { seat0Decision = room.engines[0].decideFirstSide(room.engines[0].S.battle); });
+  ok(diverges(room, (E) => {
+    saved = E.S.battle.firstSideR1; E.S.battle.firstSideR1 = flip(saved);
+    ok(seat0Decision !== E.decideFirstSide(E.S.battle), '전제: firstSideR1 차이만으로 R2 선턴 판정이 갈림');
+  }, (E) => { E.S.battle.firstSideR1 = saved; }), '락스텝 감지: R2 진입 직전 firstSideR1 만 다른 두 좌석');
+
+  // 5b) 좌석 프레임 — firstSideR1 은 요약 전용. 1라운드 행위자(actor)로 이미 공개된 1비트라 새 정보는 아니지만,
+  //     표시·복원 경로(netSynthBattle)가 쓰지 않으므로 싣지 않는다(좌석 프레임 추가 0 원칙).
+  for (const seat of [0, 1]) {
+    const raw = JSON.stringify(room.toSeatView(seat));
+    ok(raw.indexOf('"firstSideR1"') === -1 && raw.indexOf('"firstSide"') === -1, `좌석${seat} 프레임에 firstSideR1·firstSide 없음`);
+  }
+}
+{
+  // 5c) 실제 명령 경로 — D 가 훨씬 빠르면 R1 은 D 선턴, R2 는 속도와 무관하게 A 선턴(순서 효과 없음).
+  //     서버가 내려보내는 actor+phase 로 공개 방 클라이언트가 복원하는 firstSide 가 엔진 값과 같아야 한다.
+  const { room, T } = battleRoom(2361);
+  both(room, (E) => {
+    const B = E.S.battle;
+    for (const f of [B.fa, B.fd]) { f.maxHp = 9999; f.hp = 9999; f.shock = 0; f.vanguardTurn = 0; }
+    B.fa.spd = 1; B.fd.spd = 99;
+    B.firstSide = E.decideFirstSide(B); B.firstSideR1 = B.firstSide;
+    E.battleModal(); // 선턴을 바꿨으면 행동 메뉴를 새 행위자로 다시 그린다(test-authority-rules P0-1c 선례) — 없으면 act 가 noop
+  });
+  ok(T.S.battle.firstSideR1 === 'D', '전제: R1 선턴은 빠른 D: ' + T.S.battle.firstSideR1);
+  const restored = (seat) => { const b = room.toSeatView(seat).battle; return b.phase === 0 ? b.actor : flip(b.actor); };
+  const actOnce = () => {
+    const B = T.S.battle, side = T.actorOfPhase();
+    const f = side === 'A' ? B.fa : B.fd;
+    const seat = side === 'A' ? B.attP.owner : B.defP.owner;
+    const k = f.skills.findIndex((_, i) => T.slotUsable(f, i, side));
+    return act(room, seat, { t: 'act', k });
+  };
+  const flip = (s) => (s === 'A' ? 'D' : 'A');
+  ok([0, 1].every((s) => restored(s) === 'D'), 'R1 phase0: 두 좌석 actor 복원 = D');
+  const r1 = [actOnce(), actOnce()];
+  const B = T.S.battle;
+  ok(r1.every((r) => r.ok && !r.noop) && !!B && B.round === 2 && room.state !== H.STATES.VOID, 'R1 두 행동 수락 → R2 진입: ' + JSON.stringify([r1.map((r) => r.reason), B && B.round, room.state]));
+  if (B && B.round === 2) {
+    const cat = (f) => (f.shock ? 2 : (f.vanguardTurn ? 0 : 1));
+    const ca = cat(B.fa), cd = cat(B.fd);
+    const want = ca !== cd ? (ca < cd ? 'A' : 'D') : 'A'; // 순서 효과가 같으면 기준 교대: 짝수 라운드 = R1 반대 측(A)
+    ok(B.fd.spd > B.fa.spd && room.engines.every((E) => E.S.battle.firstSide === want),
+      `R2 선턴 = ${want} (분류 ${ca}/${cd}; 속도 99 인 D 도 기준 교대로 후순) — 두 좌석 엔진 일치`);
+    ok([0, 1].every((s) => restored(s) === want), 'R2 phase0: 공개 방 actor+phase 복원 = 엔진 firstSide');
+    const r2 = actOnce();
+    ok(r2.ok && !r2.noop && T.S.battle && T.S.battle.phase === 1 && [0, 1].every((s) => restored(s) === want),
+      'R2 phase1: actor 가 뒤집혀도 복원 firstSide 불변 = ' + want);
+    ok(lockstepDigest(room.engines[0]) === lockstepDigest(room.engines[1]), 'R2 진행 후 두 좌석 요약 일치(firstSideR1 포함)');
+  }
 }
 
 process.exitCode = done() > 0 ? 1 : 0;

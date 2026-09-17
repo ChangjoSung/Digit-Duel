@@ -194,6 +194,10 @@ function lockstepDigest(T) {
          지금은 굳은 시점의 spd·grade·순서 효과를 담은 상태라서 **두 좌석이 서로 다른 선턴을 굳혀도 다른 필드는
          전부 같을 수 있다.** 그러면 그 라운드부터 양쪽이 서로 다른 행위자에게 행동권을 주는데 요약이 같게 나온다. */
       firstSide: B.firstSide || null,
+      /* #234 REVISE 4차 (CJ 결정 2026-09-17 "속도는 첫 라운드 선턴 판별만") — 2라운드부터 decideFirstSide 는 속도를 다시
+         보지 않고 B.firstSideR1(1라운드 선턴 측)·round 홀짝·순서 효과로만 교대 순서를 정한다. 그래서 R1 기록이 좌석마다
+         갈리면 R2 진입 전까지 firstSide 를 포함한 다른 필드가 전부 같을 수 있다 — 교대 기준 자체를 요약에 넣는다. */
+      firstSideR1: B.firstSideR1 || null,
       fa: fighter(B.fa), fd: fighter(B.fd), itemRoundA: !!B.itemRoundA, itemRoundD: !!B.itemRoundD,
       ballThrowA: !!B.ballThrowA, ballThrowD: !!B.ballThrowD, buffA: B.buffA || null, buffD: B.buffD || null,
       // #234 4.3 반사·반격 "한 행동 1회" 게이트 — 마지막으로 발동한 actSeq. 한쪽만 서 있으면 같은 행동의 두 번째 반사가 갈린다.

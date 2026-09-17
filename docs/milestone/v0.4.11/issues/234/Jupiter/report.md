@@ -167,3 +167,53 @@ Git·GitHub·Notion 쓰기 없음. `demo/**` 수정 없음.
 1. **[Mars 후속 필요] 클라이언트가 `reaperSeal`을 읽지 않는다.** `demo/index.html` `netStubPiece`는 서버 뷰의 필드를 화이트리스트로 복사하는데 `reaperSeal`이 없다. 그래서 공개 방(재연결 포함)에서 서버는 봉인을 정확히 판정·거부하지만, 클라이언트 스텁의 `reaperWhy` 사유 tip·버튼 비활성은 봉인을 모른다(버튼이 눌리고 서버가 `E_ILLEGAL_ACTION`으로 거부할 수 있음). 필요 조치: `netStubPiece`(및 전투 뷰 대입 경로)에서 `reaperSeal:u.reaperSeal||0` 복사. 서버는 이미 보낸다.
 2. 공개 방 실서버 스모크는 AI 경기 흐름이라 사신의 낫 사용·봉인 전투를 실제로 밟았는지는 확인하지 않았다. 봉인 경계는 4c의 결정론 검사가 맡는다.
 3. [추론·PD] '전투' 단위·대리 출전 cap 기록은 Mars 보고서 추론을 그대로 따랐다(서버는 엔진 상태를 요약·전송만 한다).
+
+## REVISE 4차 (2026-09-17 · CJ 결정 — 속도는 1라운드 선턴 판별만)
+
+근거: CJ 결정 2026-09-17 "속도는 첫 라운드 선턴 판별만 진행하고, 나머지는 전부 기존 전투 방식대로"(`C:/dd_cdp/issue-234-mars-revise4-spec.md`). 입력: Mars 보고서 'REVISE 4차' 서버 영향 목록. 대상 HEAD e65da79 위 작업 트리 변경(커밋은 Mercury). Jupiter는 QA 판정을 선언하지 않는다.
+
+### 1. 락스텝 요약 (`server/authoritative/room.js` `lockstepDigest`)
+| 필드 | 변경 | 이유 |
+|---|---|---|
+| `battle.firstSideR1` | 추가 (`B.firstSideR1 \|\| null`) | [확정 — 코드] 2라운드부터 `decideFirstSide`는 속도를 보지 않고 `firstSideR1`·round 홀짝·순서 효과로 교대한다. R1 기록만 좌석마다 갈리면 R2 진입 직전까지 `firstSide`를 포함한 다른 필드가 전부 같을 수 있어, 교대 기준 자체를 요약에 넣었다(검사 5a'가 그 상태를 재현해 판정이 실제로 갈리는 것을 전제로 확인) |
+
+### 2. 좌석 프레임 정보 경계 — 추가·제거 없음
+| 필드 | 판정 |
+|---|---|
+| `firstSideR1` | **싣지 않는다(금지 키로 고정).** [추론 — 정적] 값 자체는 1라운드 `battle.actor`로 이미 공개된 1비트라 비공개 속도·등급을 새로 역산하게 하지는 않는다(R1 선턴이 속도·등급으로 정해졌다는 사실은 R1 행위자로 이미 드러남). 다만 표시·복원 경로(`netSynthBattle`)가 쓰지 않아 좌석 프레임 추가 0 원칙(#233 Jupiter 0·7장)에 따라 요약 전용으로 둔다 |
+| 공개 방 선턴 복원(actor+phase) | **유지.** 서버 `battle.actor`는 엔진 `actorOfPhase()`(= 이미 굳은 `B.firstSide`)를 그대로 보내므로 라운드 규칙과 무관하게 `phase 0 → actor`, `phase 1 → 반대`로 복원된다. 검사 5c가 R1(D)·R2 phase0/phase1(A)에서 두 좌석 복원값 = 엔진 `firstSide`를 실제 명령 경로로 확인 |
+
+### 3. 2라운드 이후 행위자·합법성 전제 서버 검사 — 정적 점검 결과 (기대값 수정 없음)
+| 파일 | 점검 | 결과 |
+|---|---|---|
+| test-authority-rules.js P0-1c | `B.round=3` 직접 대입 후 `battleModal()` — 선턴을 다시 판정하지 않으므로 행위자는 initBattle 시점 R1 값 그대로 | 충돌 없음 |
+| test-issue234-boundary.js 4c | `B.round=4/3` 직접 대입 · 행위자는 `T.actorOfPhase()`로 동적 산출 | 충돌 없음 |
+| test-security-gaps.js | R1 A→D phase 전환만 | 충돌 없음(R1 규칙 불변) |
+| test-battle-fx.js T6·T8 | 행위자 동적 · T8은 R1 두 행동 후 R2 배너 개수만 | 충돌 없음 |
+| test-match-fuzz.js | 행위자 `actorOfPhase()` 동적 | 충돌 없음 |
+| test-combat-stats-boundary.js | `firstSide` 요약·프레임 검사(R1) | 충돌 없음. `"firstSide"` 금지 키 검사는 `"firstSideR1"`와 문자열이 달라(닫는 따옴표) 새 키를 잡지 못함 → 금지 검사는 issue234-boundary 5b에 추가 |
+
+서버 행위자·합법성 코드(`room.js` `T.actorOfPhase()`·`_legalAct`)는 엔진을 그대로 구동하므로 수정 불필요 [확정 — 코드 · 5c 실행].
+
+### 4. 신규 검사 (`test-issue234-boundary.js` 절 5)
+| 검사 | 내용 |
+|---|---|
+| 전제 | initBattle 이 `B.firstSideR1 === B.firstSide` 기록 |
+| 5a | R1 한 좌석 `firstSideR1` 분기 → 요약 분기, 되돌리면 수렴 |
+| 5a' | R2 진입 직전·양측 순서 효과 없음·`firstSide` 동일, `firstSideR1`만 다름 → 전제: `decideFirstSide` 결과가 실제로 갈림 · 요약 분기 |
+| 5b | 두 좌석 프레임 JSON 어디에도 `"firstSideR1"`·`"firstSide"` 없음 |
+| 5c | 실제 `act` 경로: D spd 99 / A spd 1 → R1 D 선턴 → R2 A 선턴(속도 빠른 D도 후순, 순서 효과 분류가 다르면 낮은 분류 측) 두 좌석 엔진 일치 · R2 phase0/1 actor+phase 복원 = 엔진값 · R2 진행 후 두 좌석 요약 일치 |
+
+### 5. 검사 실행 (횟수 정확히)
+| 명령 | 실행 | 결과 |
+|---|---|---|
+| `node server/authoritative/test/test-issue234-boundary.js` | 2회 | 1회차 77/1 — 검사 작성 오류: 픽스처가 선턴을 D로 바꾼 뒤 행동 메뉴를 다시 그리지 않아 `act`가 noop(R2 미진입). `E.battleModal()` 추가(P0-1c 선례)·`!noop` 단언 추가 → 2회차 **82/0** |
+| (진단) 스크래치패드 1회용 스크립트 | 2회 | 위 noop 원인 확인용(검사 파일 아님, 저장소 밖) |
+| `npm test --prefix server` (CI B `npm test`와 동일) | 1회 | **exit 0** — issue234-boundary 82/0 · combat-stats-boundary 547/0 · authority-rules 177/0 · battle-fx 451/0 · match-fuzz 16/0 · security-gaps 62/0 등 전부 fail 0 |
+| `node demo/test/integration/smoke_public_live.js 2` | 1회 | **pass 23 / fail 0, exit 0** |
+| `node demo/test/regression/smoke_issue146.js` (B11b 확인만) | 1회 | **215 / 0 — B11b 통과.** Mars 실행(214/1)과 코드 동일 조건에서 결과가 달라 시드 없는 확률성 실패라는 Mars 추론과 부합 [추론 — 1회 관측, 원인 확정 아님] |
+
+### 6. 미검증 한계 · Mars 후속
+1. `demo/**` 수정 없음. Mars 후속 필요 항목 **없음**.
+2. 5b는 R1 시점 프레임만 본다. 선턴 효과(`vanguardTurn`) 기반 R2 순서는 5c에서 분류 비교 분기로만 다루며, 실제 선턴 효과 스킬로 R2를 앞당기는 명령 경로는 서버에서 따로 밟지 않았다(클라이언트 O9에서 검사).
+3. B11b 확률성은 1회 관측이다. 근본 수정(시드 고정)은 클라이언트 검사 소관이라 하지 않았다.
