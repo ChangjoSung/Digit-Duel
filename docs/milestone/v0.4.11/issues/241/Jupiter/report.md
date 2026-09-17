@@ -86,3 +86,12 @@
 ## 8. Mars 후속 필요
 
 - 없음. 클라이언트 수신 코드(`netSynthFighter` 의 `evadeDown`·`evadeDownR`·`tideMark`·`tideHeld`, `netSynthBattle` 의 `bonus.side`·`bonus.allowed` 기본값)가 이 프레임과 이름·모양이 맞는다 [확정 코드 대조]. 상대 좌석은 `allowed` 가 없어 기본값 `[0,1,2]` 로 합성되지만 상대 행동 메뉴는 그리지 않으므로 표시 영향 없음 [추론].
+
+## battle-fx T17 간헐 실패
+
+- 작성: 2026-09-17 · Jupiter(Server, claude-opus-5) · task `task_1125aaf49349` · dispatch `ctx_41ff1d5970bd` · preflight Jupiter/IMPLEMENT/SERVER/code/null
+- 증상 [확정 CI 로그]: PR #240 커밋 `1e29f44` CI B에서 `FAIL: T17 전제: hp 표시가 실린 msg 이벤트 존재` 직후 `TypeError: Cannot read properties of undefined (reading 'fx')`. 같은 제품 코드의 `eead75c`에서는 통과.
+- 원인 [확정 코드 · 발생 경로는 추론]: T17은 `startedRoom(1874204)`에서 첫 기본 공격 1회 뒤 `hp`가 실린 msg를 찾는다. 엔진 공격 판정 ①(`demo/index.html` `evaded=rand()<effEvade(opp)`)은 미시드 `rand()`이고, 회피 시 `💨 회피했다!` msg(`st`만, `hp` 없음)만 내고 반환한다. 이번 1회 공격이 회피되면 전제가 없어지고 `hpEvt.fx` 접근이 TypeError로 죽는다. PR239에서 T1에 고친 것과 같은 패턴이다.
+- 수정 (`server/authoritative/test/test-battle-fx.js` T17 준비 조건만): initBattle 뒤 두 전투원 `dodge`·`evadeBuff`를 0으로 고정 → `effEvade`=0 → `rand()<0`은 항상 거짓이라 첫 공격이 명중해 `damageFx`에 `hp`가 실린다. 공격 수락 전제 단언(`r17.ok`)을 추가했다. 피해량·치명타는 `rand()`에 그대로 맡긴다. 기존 전제·기대 단언은 지우거나 조건부로 건너뛰지 않았다. 제품 코드(`room.js`·`demo/**`) 수정 없음.
+- 같은 파일 정적 점검 [추론]: T3·T4·T5·T8은 공격 1회 뒤 이벤트 존재·turnBanner·roundBanner만 보므로 회피해도 성립한다. T2·T10·T16은 `driveBattleToEnd`(상한 60)로 끝까지 가므로 명중 1회에 의존하지 않는다. T6은 전투 최대 12회로 lastSeq>40을 만든다. T9는 이미 시드를 고정했다. T13~T15는 합성 큐·폭탄·함정 경로라 회피 판정이 없다. 따라서 명중 1회를 전제로 하는 곳은 T1(고정 완료)과 T17(이번 수정)뿐이라 추가 수정은 하지 않았다.
+- 검사: `node server/authoritative/test/test-battle-fx.js` 1회(수정 후) → `battle-fx: 452 passed, 0 failed`, exit 0. 반복 실행으로 간헐성을 확인하지는 않았다. 수정 전 실행은 하지 않았다(CI 로그로 증상 확정).
