@@ -33,6 +33,8 @@ function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 �
   const me=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), king0=T.S.pieces.find(x=>x.owner===0&&x.type==="king");
   const ek=T.S.pieces.find(x=>x.owner===1&&x.type==="king"), eb=T.S.pieces.find(x=>x.owner===1&&x.type==="bomb"), em=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
   H.place(T,me,12,4); H.place(T,king0,13,1); H.place(T,ek,2,4); H.place(T,eb,5,7); H.place(T,em,11,4);
+  /* #234: 30종 중 보호형·땅 10종은 전용 아트가 없어(이모지 폴백) 공개 시 종 아이콘 계약(B2)의 전제가 되지 않는다 — 무작위로 그런 종이 뽑히면 아트가 있는 종으로 바꿔 둔다 */
+  for(const m of [me,em]) if(!T.artDirOf(m)) T.applySpecies(m,T.ROSTER.find(r=>r.id==="M-G3"),1);
   for(const x of [ek,eb,em]) x.revealed=false;
   T.S.selected=null; T.render();
   return {me,king0,ek,eb,em};

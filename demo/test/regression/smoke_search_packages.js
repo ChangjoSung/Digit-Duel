@@ -28,7 +28,9 @@ const J=x=>JSON.stringify(x);
    하네스 스텁은 id 캐시라 모달마다 버튼이 누적되고, 그러면 (a) 텍스트로 버튼을 찾을 때 옛 모달의 버튼이 잡히고
    (b) 동기화 모달 래퍼가 children 을 인덱스로 재배선해 새 버튼에 엉뚱한 콜백이 붙는다.
    이 계약은 4단계 모달을 연달아 쓰므로 smoke_online_sync.js 와 같은 방식으로 스텁을 실제 DOM 에 맞춘다. */
-function load(){ const X=H.load(htmlPath);
+/* #234 [CJ 결정 2026-09-17]: 탐색 '기술 교체'는 v0.4.11 에서 없어질 시스템이라 제품 기본값은 비활성(V2_INTERP.recruitSkillSwap=false,
+   smoke_issue234 E1~E3 가 고정)이다. 코드는 비활성 분기로 보존됐으므로, 이 파일은 그 보존 분기의 #121 계약 회귀를 계속 보기 위해 로드마다 분기를 켠다. */
+function load(){ const X=H.load(htmlPath); if(X.V2_INTERP) X.V2_INTERP.recruitSkillSwap=true;
   const box=X.byId("overlayBox"), ob=X.byId("obBtns");
   Object.defineProperty(box,"innerHTML",{configurable:true,get(){return this._html;},set(v){this._html=v; this.children.length=0; ob.children.length=0;}});
   return X; }
@@ -473,7 +475,9 @@ function swapSkill(X,target,skillIdx,slot){
   const pow=T.slotPow({atk:22},T.SKILLS.dragon_breath);
   const vsGrass=mk("M-G1").dmg, vsWater=mk("M-W1").dmg, vsKing=mk(null,"king").dmg;
   ok(vsGrass===Math.round(pow*1.3*0.9)&&vsWater===Math.round(pow*1.3*0.9),"E1 드래곤 숨결: 속성 있는 상대에게 **항상** ×1.3, 표준형 방어력 10%는 그대로 통과 — 풀 "+vsGrass+" · 물 "+vsWater+" (불→풀 우위·물 열위와 무관하게 동일) — #233 GDD-23 4.2⑧ (def 도입 전 "+Math.round(pow*1.3)+")");
-  ok(vsKing===Math.round(pow*0.9),"E1b 무속성 왕 본체에는 중립 1.0, 왕의 방어력 10%는 적용된다 — "+vsKing+" — #233 GDD-23 3.5·4.2⑧ (def 도입 전 "+pow+")");
+  /* #234 (GDD-23 6.4 드래곤 숨결 주석 · 2.2): "현행 왕·동료 본체는 무속성이었지만, 이번 개편에서는 속성을 가지므로 ×1.3 대상" —
+     왕은 경기 시작(미선택 규칙)으로 속성을 가지므로 중립 1.0 기대를 ×1.3 으로 갱신한다. 방어력 10% 적용은 그대로 */
+  ok(vsKing===Math.round(pow*1.3*0.9),"E1b 속성을 가진 왕 본체에도 ×1.3, 왕의 방어력 10%는 적용된다 — "+vsKing+" — #234 GDD-23 6.4 · #233 3.5·4.2⑧");
   ok(T.SKILLS.dragon_breath.el===undefined&&T.atkElOf({element:"fire"},T.SKILLS.dragon_breath)===null,"E1c 드래곤은 속성 판정에서 빠진다 (상성표 4종 불변)");
   // E2 마녀: 서로 다른 2효과 100% · rand 1회 · 풀 회복 실피해 100%
   ok(J(T.WITCH_COMBOS)===J([[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]])&&T.WITCH_EFFECTS.length===4,"E2 마녀 조합표: 4효과 중 2개 = 6조합 균등");
@@ -576,24 +580,25 @@ function swapSkill(X,target,skillIdx,slot){
   {
     const P=setup(T); fixed(T); giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[3]="reaper_scythe"; giveSpecies(T,P.em,R(T,"M-G1"));
     openBattle(T,P.me,P.em); const B=T.S.battle;
-    B.round=5; B.fa.hp=10; B.fd.hp=100;
-    ok(T.reaperWhy("A")!==null&&/라운드부터/.test(T.reaperWhy("A")),"E3 5라운드에서는 봉인 ("+T.reaperWhy("A")+")");
-    B.round=6; B.fa.hp=100; B.fd.hp=100;
+    /* #234 REVISE 2차 CJ 결정(2026-09-17): 봉인 해제 라운드 6 → 4 — 종전 5R 봉인/6R 해제 단언을 3R/4R 로 옮긴다 */
+    B.round=3; B.fa.hp=10; B.fd.hp=100;
+    ok(T.reaperWhy("A")!==null&&/라운드부터/.test(T.reaperWhy("A")),"E3 3라운드에서는 봉인 ("+T.reaperWhy("A")+")");
+    B.round=4; B.fa.hp=100; B.fd.hp=100;
     ok(T.reaperWhy("A")!==null&&/낮아야/.test(T.reaperWhy("A")),"E3b HP 비율 동률이면 사용 불가 (strict)");
     B.fa.hp=100; B.fd.hp=50;
     ok(T.reaperWhy("A")!==null,"E3c HP 비율 우세면 사용 불가");
     B.fa.hp=30; B.fd.hp=100;
-    ok(T.reaperWhy("A")===null&&T.slotUsable(B.fa,3,"A")===true,"E3d 6라운드 + 내 비율 열세에서만 사용 가능");
+    ok(T.reaperWhy("A")===null&&T.slotUsable(B.fa,3,"A")===true,"E3d 4라운드 + 내 비율 열세에서만 사용 가능 (#234 CJ 결정 6→4)");
     /* 쿨 감소 수단으로 봉인이 풀리지 않는다 — **실제로 쿨링수를 쓴다** (종전 검사는 함수를 참조만 하고 호출하지 않았다).
-       쿨링수는 4슬롯 cds 를 전부 0 으로 만든다. 그래도 5라운드에서는 봉인이 그대로여야 한다. */
-    B.round=5; B.fa.hp=30; B.fd.hp=100; B.fa.cds=[2,2,2,2]; B.itemRoundA=false;
+       쿨링수는 4슬롯 cds 를 전부 0 으로 만든다. 그래도 3라운드에서는 봉인이 그대로여야 한다 (#234 CJ 결정 6→4). */
+    B.round=3; B.fa.hp=30; B.fd.hp=100; B.fa.cds=[2,2,2,2]; B.itemRoundA=false;
     T.S.inv[0]=["cool"];
     if(T.actorOfPhase()!=="A") B.phase=B.phase===0?1:0;
     T.byId("obBtns").children.length=0; T.battleModal();        // 클로저를 현재 side 로 맞춘다
     ok(T.actorOfPhase()==="A","E3e0 전제: 공격측 차례 · 쿨 2 · 가방에 쿨링수");
     T.__useItemCore(0);                                         // 실제 사용
     ok(J(B.fa.cds)===J([0,0,0,0]),"E3e1 쿨링수가 실제로 적용돼 4슬롯 쿨이 0 이 됐다 (관측 "+J(B.fa.cds)+")");
-    ok(T.SKILLS.reaper_scythe.cd===0&&T.reaperWhy("A")!==null&&T.slotUsable(B.fa,3,"A")===false,"E3e 쿨링수로 쿨을 0 으로 만든 뒤에도 5라운드에서는 **여전히 봉인** — 게이트가 CD 와 분리 (조기 해제 불가)");
+    ok(T.SKILLS.reaper_scythe.cd===0&&T.reaperWhy("A")!==null&&T.slotUsable(B.fa,3,"A")===false,"E3e 쿨링수로 쿨을 0 으로 만든 뒤에도 3라운드에서는 **여전히 봉인** — 게이트가 CD 와 분리 (조기 해제 불가)");
     /* 코어 거부까지: 실제 적용 경로로 불러도 즉사가 나가지 않는다 */
     const aliveE=P.em.alive, hpE=B.fd.hp;
     T.execSlot("A",3); T.drain(20000);
@@ -662,7 +667,7 @@ const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMini
   ok(has(T,"안전 포획 (볼 2)")&&has(T,"위험 포획 (볼 1)")&&has(T,"공격 포획 (볼 1)"),"F1d 세 방법 제시");
   const b0=T.S.balls[0];
   click(T,"안전 포획 (볼 2)");
-  ok(recv0.cap&&recv0.cap.rosterId===sp.id&&recv0.cap.hp===sp.hp&&recv0.cap.atk===sp.atk&&J(recv0.cap.skills)===J(T.archSkills(sp.arch,sp.element)),"F1e 수령 말이 그 종 그대로 받는다 (HP "+sp.hp+"·ATK "+sp.atk+"·4기술)");
+  ok(recv0.cap&&recv0.cap.rosterId===sp.id&&recv0.cap.hp===sp.hp&&recv0.cap.atk===sp.atk&&J(recv0.cap.skills)===J(T.speciesSkills(sp.id,1)),"F1e 수령 말이 그 종 그대로 받는다 (HP "+sp.hp+"·ATK "+sp.atk+"·⭐1 스킬 — #234 명세 3장)");
   ok(T.S.balls[0]===b0-2,"F1f 안전 포획 비용 볼 2");
   ok(T.archOf(recv0.cap)===sp.arch,"F1g archOf(cap)=그 종의 아키타입 — 기술 실제 동작 보존 (계약 6 '그 종 그대로')");
   // F2 공격 포획 실패 반동은 탐색 말 (수령 말이 아니다)

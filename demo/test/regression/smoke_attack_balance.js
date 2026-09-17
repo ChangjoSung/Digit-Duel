@@ -11,7 +11,10 @@ function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); consol
 /* ===== A. 상수 — 변경 2개 + 나머지 전부 불변 (eff5c16 스냅샷) ===== */
 {
   const T=H.load(htmlPath);
-  const atk=T.ROSTER.filter(r=>r.arch==="atk");
+  /* #234 (GDD-23 6.3): 로스터가 30종(보호형 4 · 땅 6 추가)이 됐다. #95 계약은 **기존 20종**(id 불변)의 수치 계약이라
+     이 절은 그 20종으로 범위를 명시해 그대로 본다 — 새 10종의 ⭐1 스탯(3.3)은 smoke_issue234 A3 가 고정한다. */
+  const LEGACY20=new Set(["M-F1","M-F2","M-F3","M-W1","M-W2","M-W3","M-G1","M-G2","M-G3","M-L1","M-L2","M-L3","M-F4","M-W4","M-G4","M-L4","M-F5","M-W5","M-G5","M-L5"]);
+  const atk=T.ROSTER.filter(r=>r.arch==="atk"&&LEGACY20.has(r.id));
   ok(atk.length===4&&atk.map(r=>r.id).join()==="M-F2,M-W2,M-G2,M-L2","A1 공격형 4종 M-F2/W2/G2/L2");
   ok(atk.every(r=>r.atk===25),"A2 공격형 atk 26→25 (4종 모두)");
   ok(atk.every(r=>r.hp===90&&r.skill===40&&r.cd===3),"A3 공격형 HP 90 · skill 40 · cd 3 불변");
@@ -21,9 +24,9 @@ function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); consol
   const OTHER={"M-F1":[100,22,35,2],"M-F3":[120,18,30,2],"M-W1":[100,22,35,2],"M-W3":[120,18,30,2],"M-G1":[100,22,35,2],"M-G3":[120,18,30,2],
     "M-L1":[100,22,35,2],"M-L3":[120,18,30,2],"M-F4":[85,24,30,1],"M-W4":[85,24,30,1],"M-G4":[85,24,30,1],"M-L4":[85,24,30,1],
     "M-F5":[95,20,28,2],"M-W5":[95,20,28,2],"M-G5":[95,20,28,2],"M-L5":[95,20,28,2]};
-  const others=T.ROSTER.filter(r=>r.arch!=="atk");
+  const others=T.ROSTER.filter(r=>r.arch!=="atk"&&LEGACY20.has(r.id));
   ok(others.length===16&&others.every(r=>{const e=OTHER[r.id]; return e&&r.hp===e[0]&&r.atk===e[1]&&r.skill===e[2]&&r.cd===e[3];}),"A6 다른 16종 hp/atk/skill/cd 불변 (eff5c16 스냅샷)");
-  ok(T.ROSTER.length===20&&T.ROSTER.filter(r=>r.arch==="swift").every(r=>r.atk===24)&&atk.every(r=>r.atk>24),"A7 공격형 atk 25 > 속공형 24 서열 유지");
+  ok(T.ROSTER.length===30&&T.ROSTER.filter(r=>r.arch==="swift").every(r=>r.atk===24)&&T.ROSTER.filter(r=>r.arch==="atk").every(r=>r.atk===25),"A7 공격형 atk 25 > 속공형 24 서열 유지 (#234 30종 전체 — 땅 공격형·속공형 포함)");
   const POW={fire_stable:26,fire_effect:22,fire_heavy:38,water_stable:26,water_effect:22,water_heavy:32,grass_stable:26,grass_effect:20,grass_heavy:34,
     lightning_stable:26,lightning_effect:22,lightning_heavy:34,sig_std:30,sig_swift:22,sig_sustain:18};
   ok(Object.entries(POW).every(([k,p])=>T.SKILLS[k]&&T.SKILLS[k].pow===p),"A8 다른 피해 기술 15종 pow 불변");
@@ -34,7 +37,8 @@ function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); consol
      승인 수치(위력 30/18 · 쿨 3/3 · 사신은 쿨이 아니라 봉인이라 cd 0)를 같은 자리에서 함께 고정한다.
      사신의 cd 0 은 "쿨이 없다"가 아니라 **게이트가 CD 와 분리됐다**는 뜻이다 — 쿨 감소 수단으로 봉인이 풀리지 않게 하려고
      cds[] 를 줄이는 경로가 이 슬롯을 아예 집지 않도록 0 으로 둔다 (계약 5.3). */
-  ok(Object.keys(T.SKILLS).length===26&&Object.entries(CD).every(([k,c])=>T.SKILLS[k].cd===c),"A9 기존 23종 쿨 불변 · 신규 3종 추가로 총 26종");
+  /* #234: SKILLS 레지스트리에 GDD-23 6장 스킬(v2:true)이 함께 등록된다 — 레거시 기술 26종의 개수·쿨 계약은 v2 를 뺀 집합으로 그대로 본다 */
+  ok(Object.keys(T.SKILLS).filter(k=>!T.SKILLS[k].v2&&k.indexOf("__hidden_")!==0).length===26&&Object.entries(CD).every(([k,c])=>T.SKILLS[k].cd===c),"A9 기존 23종 쿨 불변 · 신규 3종 추가로 총 26종 (#234 v2 스킬 제외)");
   const NEW={dragon_breath:{pow:30,cd:3,cls:"dragon"},witch_prank:{pow:18,cd:3,cls:"dark"},reaper_scythe:{pow:undefined,cd:0,cls:"blood"}};
   ok(Object.entries(NEW).every(([k,v])=>{const sk=T.SKILLS[k]; return sk&&sk.pow===v.pow&&sk.cd===v.cd&&sk.cls===v.cls&&sk.kind==="attack";}),
      "A9b 신규 3종 승인 수치 — 드래곤 30/쿨3 · 마녀 18/쿨3 · 사신 위력 없음/쿨 0(봉인 게이트 분리) · 모두 기술 전용 분류(cls)");
@@ -59,7 +63,8 @@ function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); consol
   T.newGame("pvp"); T.S.roster[0]=["M-F2","M-W2","M-G2","M-L2","M-F1","M-F4"]; T.applyRoster(0);
   const ms=T.S.pieces.filter(x=>x.owner===0&&x.type==="minion");
   ok(ms.slice(0,4).every(m=>m.atk===25&&m.hp===90&&m.maxHp===90&&m.skillAtk===40&&m.cdMax===3)&&ms[4].atk===22&&ms[5].atk===24,"B5 applyRoster 주입: 공격형 atk 25 / HP 90 · 표준 22 · 속공 24");
-  ok(ms[0].skills.join()==="fire_stable,fire_heavy,sup_focus,sig_atk","B6 공격형 슬롯 템플릿 stable/heavy/집중/결정타 불변");
+  /* #234 (GDD-23 2.2·6.1): 라이브 로스터는 이제 종별 스킬 ⭐1(1차 기본기)로 주입된다. 레거시 템플릿 함수 자체는 코드에 남아 C·D 절이 명시적으로 쓴다 */
+  ok(T.archSkills("atk","fire").join()==="fire_stable,fire_heavy,sup_focus,sig_atk"&&ms[0].skills.join()==="M-F2-1","B6 공격형 레거시 템플릿 stable/heavy/집중/결정타 불변 · 라이브 주입은 GDD 6.3 ⭐1 불꽃 주먹");
 }
 
 /* ===== C. 실제 execSlot — 연속 구간·기본 공격·집중·상성 (분산 0 고정) ===== */
@@ -68,6 +73,8 @@ function setupDuel(T,aId,dId){
   S.roster[0]=[aId]; S.roster[1]=[dId]; T.applyRoster(0); T.applyRoster(1);
   S.inv=[[],[]]; S.balls=[0,0];
   const A=S.pieces.find(x=>x.owner===0&&x.type==="minion"), D=S.pieces.find(x=>x.owner===1&&x.type==="minion");
+  /* #234: 이 파일은 #95 레거시 4슬롯 템플릿의 수치 계약을 본다 — 라이브 로스터가 GDD 6장 스킬로 바뀌었으므로 레거시 템플릿을 명시 주입한다 */
+  for(const m of [A,D]){ const rd=T.ROSTER.find(r=>r.id===m.rosterId); m.skills=T.archSkills(rd.arch,rd.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
   const k0=S.pieces.find(x=>x.owner===0&&x.type==="king"), k1=S.pieces.find(x=>x.owner===1&&x.type==="king");
   H.place(T,A,7,4); H.place(T,D,6,4); H.place(T,k0,13,1); H.place(T,k1,1,7);
   S.phase="play"; S.current=0; S.mainUsed=true; S.battlesUsed=0; T.TQ.length=0;
@@ -160,17 +167,19 @@ function setupDuel(T,aId,dId){
   T.close();
 }
 
-/* ===== E. 로스터 팝업 (rosterInfo) 스탯·위력 표기 ===== */
+/* ===== E. 로스터 팝업 (rosterInfo) 스탯·위력 표기 =====
+   #234 (GDD-23 6.1·6.3): 팝업은 레거시 4슬롯 템플릿 대신 종별 스킬 4칸(1~4차 · ⭐ 개방 등급)과 💪% 표기를 보여 준다.
+   #95 의 공격력 25 계약은 그대로 보고, 위력 표기는 GDD 6.1 공격형 골격(💪170% · ⌛3)으로 대조한다. */
 {
   const T=H.load(htmlPath);
   T.newGame("pvp"); T.S.phase="setup"; T.S.setupPlayer=0; T.render();
-  for(const [id,heavy] of [["M-F2",43],["M-W2",36],["M-G2",39],["M-L2",39]]){
+  for(const [id,s2,s4] of [["M-F2","화염 방사","폭발 연소"],["M-W2","심해 작살","심연의 일격"],["M-G2","가시 채찍","포식"],["M-L2","뇌격 일섬","천둥 낙인"]]){
     T.rosterInfo(id); const box=T.els.overlayBox.innerHTML;
-    ok(/HP 90 · 공격 25 \(기술 위력 = 표기 위력 × 공격\/22\)/.test(box),`E1 ${id} 팝업 HP 90 · 공격 25`);
-    ok(new RegExp(`\\[공격기\\] 위력 ${heavy} · 쿨 3`).test(box)&&/\[공격기\] 위력 30 —/.test(box)&&/결정타<\/b> <small>\[시그니처\] 위력 45 · 쿨 4/.test(box),`E2 ${id} 팝업 위력 stable 30 · heavy ${heavy} · 결정타 45`);
+    ok(/⭐1 HP 90 · 공격 25 \(스킬 위력 💪N% = 공격력 × N%\)/.test(box),`E1 ${id} 팝업 HP 90 · 공격 25`);
+    ok(new RegExp(`2차 · ⭐2</span> <b>${s2}</b> <small>\\[공격기\\] — 💪🏻 170%`).test(box)&&/⌛3/.test(box)&&new RegExp(`4차 · ⭐4</span> <b>${s4}</b>`).test(box),`E2 ${id} 팝업 2차 ${s2} 💪170%·⌛3 · 4차 ${s4}`);
     T.close();
   }
-  T.rosterInfo("M-F1"); ok(/HP 100 · 공격 22/.test(T.els.overlayBox.innerHTML)&&/위력 26 —/.test(T.els.overlayBox.innerHTML)&&/전술 연계<\/b> <small>\[시그니처\] 위력 30/.test(T.els.overlayBox.innerHTML),"E3 표준형 팝업 불변 (공격 22 · 26 · 30)"); T.close();
+  T.rosterInfo("M-F1"); ok(/HP 100 · 공격 22/.test(T.els.overlayBox.innerHTML)&&/불씨 브레스<\/b> <small>\[공격기\] — 💪🏻 140%/.test(T.els.overlayBox.innerHTML),"E3 표준형 팝업 (공격 22 · 2차 💪140%)"); T.close();
   T.rosterInfo("M-F4"); ok(/HP 85 · 공격 24/.test(T.els.overlayBox.innerHTML),"E4 속공형 팝업 불변 (공격 24)"); T.close();
 }
 

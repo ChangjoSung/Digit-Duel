@@ -196,8 +196,9 @@ let B_RATE=null;
 /* ===== G. AI: 상태 미부여 상대 +4 가산 유지 · 확률 미반영 (계약: AI 가산 유지) ===== */
 {
   const src5=String(T.aiBattleAction), srcD=String(T.aiBattleActionStrong);
-  ok(/statusKey=\{fire:"burn",water:"weaken",lightning:"shock"\}/.test(src5)&&/sk\.status&&statusKey&&!opp\[statusKey\]\) sc\+=4/.test(src5),"G1 5급 전투 AI: 상태 키 매핑·미부여 상대 +4 가산 그대로");
-  ok(/statusKey=\{fire:"burn",water:"weaken",lightning:"shock"\}/.test(srcD)&&/sk\.status&&statusKey&&!opp\[statusKey\]\) sc\+=4/.test(srcD),"G2 5단 전투 AI: 상태 키 매핑·+4 가산 그대로");
+  /* #234 (GDD-23 4.1·4.5): 땅 속성의 상태이상 균열이 매핑에 더해졌다 — 기존 세 쌍과 +4 가산은 그대로다 */
+  ok(/statusKey=\{fire:"burn",water:"weaken",lightning:"shock",land:"crack"\}/.test(src5)&&/sk\.status&&statusKey&&!opp\[statusKey\]\) sc\+=4/.test(src5),"G1 5급 전투 AI: 상태 키 매핑·미부여 상대 +4 가산 그대로");
+  ok(/statusKey=\{fire:"burn",water:"weaken",lightning:"shock",land:"crack"\}/.test(srcD)&&/sk\.status&&statusKey&&!opp\[statusKey\]\) sc\+=4/.test(srcD),"G2 5단 전투 AI: 상태 키 매핑·+4 가산 그대로");
   ok(!/shockProb/.test(src5)&&!/shockProb/.test(srcD)&&!/statusProb/.test(src5)&&!/statusProb/.test(srcD),"G3 전투 AI 는 shockProb·statusProb 를 읽지 않는다 (확률 미반영 유지)");
   // 같은 시드 AI 대전 완주 (기본 확률 그대로) — 감전 변경이 게임 루프를 깨지 않는다
   const r=H.runSim(T,["grade5","grade5"],9601,{check:50});
@@ -229,7 +230,8 @@ let B_RATE=null;
   ok(/title="50% 확률 감전\(후공 1회\)"/.test(all)&&!/70% 확률 감전/.test(all),"I1 전투 커맨드 버튼 title '50% 확률 감전(후공 1회)' · 70% 없음");
   ok(/title="70% 확률 화상 2R"|title="70% 확률 약화 2회"|title="안정 공격기"/.test(all),"I2 다른 버튼 title 은 기존 desc 그대로");
   T.S.battle=null; if(typeof T.rosterInfo==="function"){ T.rosterInfo("M-L1"); const pop=Object.values(T.els).map(x=>x._html||"").join("\n");
-    ok(/감전 침/.test(pop)&&/50% 확률 감전\(후공 1회\)/.test(pop)&&!/70% 확률 감전/.test(pop),"I3 로스터 정보 팝업(M-L1) 감전 침 설명 50%"); }
+    /* #234 (GDD-23 6.1·6.3): 팝업은 종별 스킬을 보여 준다 — 스파크 2차 스파크 샷의 감전은 표준형 예외값 50% (70% 아님) */
+    ok(/스파크 샷/.test(pop)&&/감전 50%/.test(pop)&&!/감전 70%/.test(pop),"I3 로스터 정보 팝업(M-L1) 스파크 샷 감전 50%"); }
   else ok(false,"I3 rosterInfo 미노출");
 }
 

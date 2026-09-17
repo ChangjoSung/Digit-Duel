@@ -13,7 +13,7 @@
     "test:config": "node test-config.js",
     "test:launcher": "node test-launcher.js",
     "test:static": "node test-static-load.js",
-    "test:authoritative": "node authoritative/test/test-scheduler.js && node authoritative/test/test-engine-isolation.js && node authoritative/test/test-room.js && node authoritative/test/test-security-gaps.js && node authoritative/test/test-authority-rules.js && node authoritative/test/test-battle-fx.js && node authoritative/test/test-public-authority-delta.js && node authoritative/test/test-match-fuzz.js && node authoritative/test/test-authoritative.js && node authoritative/test/test-http-static.js && node authoritative/test/test-launcher-authoritative.js && node authoritative/test/test-public-deploy.js && node authoritative/test/test-combat-stats-boundary.js"
+    "test:authoritative": "node authoritative/test/test-scheduler.js && node authoritative/test/test-engine-isolation.js && node authoritative/test/test-room.js && node authoritative/test/test-security-gaps.js && node authoritative/test/test-authority-rules.js && node authoritative/test/test-battle-fx.js && node authoritative/test/test-public-authority-delta.js && node authoritative/test/test-match-fuzz.js && node authoritative/test/test-authoritative.js && node authoritative/test/test-http-static.js && node authoritative/test/test-launcher-authoritative.js && node authoritative/test/test-public-deploy.js && node authoritative/test/test-combat-stats-boundary.js && node authoritative/test/test-issue234-boundary.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

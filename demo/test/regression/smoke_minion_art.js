@@ -33,6 +33,9 @@ function setup(T,mode,seed){
   P.ek=T.S.pieces.find(x=>x.owner===1&&x.type==="king");
   P.em=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
   P.eb=T.S.pieces.find(x=>x.owner===1&&x.type==="bomb");
+  /* #234: 로스터 후보가 30종(AI 선택 규칙도 5속성)으로 바뀌어 같은 시드가 다른 종을 뽑는다. 이 파일의 절들은 #234 이전 이 시드가 만든
+     무대(내 M-G2 풀 공격형 · 상대 M-G3 풀 방어형 — 둘 다 아트 폴더 보유, A 선턴)를 전제로 쓰였으므로 그 두 종을 명시 주입해 무대를 그대로 복원한다 */
+  T.applySpecies(P.me,T.ROSTER.find(r=>r.id==="M-G2"),1); T.applySpecies(P.em,T.ROSTER.find(r=>r.id==="M-G3"),1);
   H.place(T,P.me,12,4); H.place(T,P.king0,13,1); H.place(T,P.bomb0,13,2); H.place(T,P.trap0,13,3); H.place(T,P.ally0,13,4);
   H.place(T,P.ek,2,4); H.place(T,P.em,11,4); H.place(T,P.eb,11,5);
   for(const x of [P.ek,P.em,P.eb]) x.revealed=false;
@@ -46,7 +49,8 @@ function setup(T,mode,seed){
   ok(T.ART_DIRS.length===20&&new Set(T.ART_DIRS).size===20,"A1 종 폴더 허용 목록 20개·중복 없음");
   ok(T.ART_DIRS.every(d=>/^(fire|water|grass|lightning)_(std|atk|def|swift|sustain)$/.test(d)),"A2 폴더명은 속성_아키타입 형식만");
   ok(T.ART_DIRS.every(d=>fs.existsSync(path.join(ASSETS,d,"icon.png"))&&fs.existsSync(path.join(ASSETS,d,"battle.png"))&&fs.existsSync(path.join(ASSETS,d,"portrait.webp"))),"A3 20종 모두 icon.png·battle.png·portrait.webp 실제 존재");
-  ok(T.ROSTER.length===20&&T.ROSTER.every(r=>T.ART_DIR_SET.has(r.element+"_"+r.arch)),"A4 ROSTER 20종이 모두 허용 목록에 대응 (누락 0)");
+  /* #234 (GDD-23 6.3 · 명세 3장): 30종 중 기존 20종만 폴더가 있고, 보호형·땅 10종은 전용 아트가 없어 허용 목록 밖(이모지 폴백)이다 */
+  ok(T.ROSTER.length===30&&T.ROSTER.filter(r=>T.ART_DIR_SET.has(r.element+"_"+r.arch)).length===20&&T.ROSTER.filter(r=>r.arch==="guard"||r.element==="land").every(r=>!T.ART_DIR_SET.has(r.element+"_"+r.arch)),"A4 ROSTER 30종 중 기존 20종이 허용 목록에 대응 (누락 0) · 새 10종은 목록 밖");
   ok(T.artUrl("fire_std","icon.png")==="assets/minions/fire_std/icon.png"&&!/^\/|^[a-z]+:/i.test(T.artUrl("fire_std","icon.png")),
     "A5 자산 경로는 상대경로 — file:// 오프라인과 기존 HTTP 서빙에서 같은 문자열이 쓰인다");
   // rosterId 없음 / 오염된 ID / 목록 밖 값은 전부 null → 안전 폴백
@@ -400,12 +404,12 @@ const stdOf=(T,el)=>T.ROSTER.find(r=>r.element===el&&r.arch==="std");
    전투 중 적 포획(finishByCapture → 예비)의 HP 70/최대 100 규격은 계약 6 "범위 밖"이라 그대로이며 아래 capStatsLegacy 로 계속 검사한다. */
 const capSpecies=(T,c,rd)=>c&&rd&&c.element===rd.element&&c.hp===rd.hp&&c.maxHp===rd.hp&&c.atk===rd.atk&&c.skillAtk===rd.skill&&c.cd===0&&c.cdMax===rd.cd
   &&c.artRosterId===rd.id&&c.rosterId===rd.id
-  &&JSON.stringify(c.skills)===JSON.stringify(T.archSkills(rd.arch,rd.element))
-  &&JSON.stringify(c.cds)==="[0,0,0,0]"&&JSON.stringify(c.revealedSkills)==="[]";
+  &&JSON.stringify(c.skills)===JSON.stringify(T.speciesSkills(rd.id,1)) // #234 (명세 3장): 포획 말은 ⭐1 — 그 종의 1차 기본기
+  &&JSON.stringify(c.cds)==="[0]"&&JSON.stringify(c.revealedSkills)==="[]";
 const capStatsLegacy=(T,c,hp)=>c&&c.hp===hp&&c.maxHp===T.BAL.captured.hp&&c.atk===T.BAL.captured.atk&&c.skillAtk===T.BAL.captured.skill&&c.cd===0&&c.cdMax===T.BAL.captured.cd
   &&JSON.stringify(c.cds)==="[0,0,0,0]"&&JSON.stringify(c.revealedSkills)==="[]";
 /* 하수인 말에 로스터 종 r 을 주입 (applyRoster 와 같은 필드) */
-function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; if(T.applyArchStats) T.applyArchStats(m,r.arch,m.grade||1); } // #233 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
+function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=["std","atk","def","swift","sustain"].includes(r.arch)?T.archSkills(r.arch,r.element):T.speciesSkills(r.id,4); m.cds=m.skills.map(()=>0); m.revealedSkills=[]; if(T.applyArchStats) T.applyArchStats(m,r.arch,m.grade||1); } // #2 · #234: 레거시 템플릿이 없는 보호형은 종 스킬 4칸33 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
 const tokOf=(T,sid)=>{ const m=T.byId("overlayBox").innerHTML.match(new RegExp('<div class="btok[^"]*" id="tok-'+sid+'"[^>]*>[\\s\\S]*?<\\/div>')); return m?m[0]:""; };
 const srcOf=t=>(tokImg(t)||{}).src;
 const tokImg=t=>{ const m=t.match(/<img class="bsprite" src="([^"]+)" alt="([^"]*)"/); return m?{src:m[1],alt:m[2]}:null; };
@@ -436,7 +440,7 @@ function proxyBattle(T,att,def,pickA,pickD){
     const res=T.tryCapture(P.ally0,"safe",P.ally0,rd); const c=P.ally0.cap;
     if(!res.ok||!capSpecies(T,c,rd)||res.el!==rd.element) allGood=false; else seenSp[rd.id]=c.hp+"/"+c.atk;
   }
-  ok(allGood&&Object.keys(seenSp).length===20,"K1a 숲 포획 cap 은 ROSTER 20종 각각의 HP·최대HP·ATK·기술 수치·CD·4기술·정체(rosterId·artRosterId)를 그대로 갖는다 — 계약 6 \"그 종 그대로\"는 기술 ID 뿐 아니라 archOf 파생 동작까지 보존한다 (cds 0 · 공개 기록 [])");
+  ok(allGood&&Object.keys(seenSp).length===T.ROSTER.length&&T.ROSTER.length===30,"K1a 숲 포획 cap 은 ROSTER 30종(#234) 각각의 HP·최대HP·ATK·기술 수치·CD·4기술·정체(rosterId·artRosterId)를 그대로 갖는다 — 계약 6 \"그 종 그대로\"는 기술 ID 뿐 아니라 archOf 파생 동작까지 보존한다 (cds 0 · 공개 기록 [])");
   const hps=new Set(T.ROSTER.map(r=>r.hp)), atks=new Set(T.ROSTER.map(r=>r.atk));
   ok(hps.size>1&&atks.size>1&&Math.min(...hps)===85&&Math.max(...hps)===120&&Math.min(...atks)===18&&Math.max(...atks)===25,
      "K1a' 종별 편차가 실제로 생긴다 — HP 85~120 · ATK 18~25 (공용 템플릿 100/20 단일값이 아니다)");
@@ -474,7 +478,7 @@ function proxyBattle(T,att,def,pickA,pickD){
       if(U.rand()!==ref[1]) drawGood=false;               // 종 추첨은 rand 1회
       U.close();
     }
-    ok(drawGood&&Object.keys(hit).length===20,"K1d 탐색 시 후보 종은 ROSTER 20종 전체에서 나오고 추첨에 rand 를 딱 1회 쓴다 (관측 "+Object.keys(hit).length+"종/400시드)");
+    ok(drawGood&&Object.keys(hit).length===30,"K1d 탐색 시 후보 종은 ROSTER 30종(#234 — 수풀 포획 후보 풀만 30종 데이터로) 전체에서 나오고 추첨에 rand 를 딱 1회 쓴다 (관측 "+Object.keys(hit).length+"종/400시드)");
   }
   T.setSeed(7); T.S.balls[0]=5; P.ally0.cap=null; P.ally0.hp=P.ally0.maxHp;
   let fails=0, okc=0; for(let i=0;i<40;i++){ P.ally0.cap=null; const r=T.tryCapture(P.ally0,"risky"); if(r.ok) okc++; else fails++; }
@@ -485,7 +489,7 @@ function proxyBattle(T,att,def,pickA,pickD){
   // K2 적 하수인 포획(전투 중 볼 적중): 원래 종 rosterId·arch 를 보존 — 20종 전부 · HP 70/최대 100 · 공용 스탯 · 기술 템플릿은 원래 아키타입
   const T=H.load(htmlPath);
   let good=0, dirs=new Set(), filesOk=true, detail=[];
-  for(const r of T.ROSTER){
+  for(const r of T.ROSTER.filter(x=>T.ART_DIR_SET.has(x.element+"_"+x.arch))){ // #234: 아트 폴더가 있는 기존 20종이 이 절(외형 정체·폴더 대응)의 대상 — 새 10종은 폴더 없음(A4)
     const P=setup(T,"pvp"); giveSpecies(T,P.em,r);
     T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.reserve[0]=null;
     T.initBattle(P.me,P.em); T.drain(500);

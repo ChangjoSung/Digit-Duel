@@ -129,8 +129,9 @@ function endRound(B){ B.phase=1; T.nextPhase(); T.TQ.length=0; if(B.msgQ) B.msgQ
   const lf={}; T.applyFixedStats(lf,GB.dragon,5);
   eq(lf.grade,5,"B15 전설은 ⭐5 고정 등급으로 비교에 참여 (4.4 [설계 보완])");
   /* #234 전까지 라이브 로스터는 20종 그대로다 — 30종·전설·보호형 종을 이 Issue에서 심지 않는다 */
-  eq(T.ROSTER.length,20,"B16 로스터는 기존 20종 그대로 (30종·전설 추가는 #234)");
-  ok(T.ROSTER.every(r=>["std","atk","def","swift","sustain"].indexOf(r.arch)>=0),"B17 현행 로스터에 보호형 종은 아직 없다 (#234)");
+  /* #234 (GDD-23 6.3)이 병합되며 30종이 됐다 — 이 두 줄은 #233 시점의 "아직 없음" 기록이었으므로 #234 계약으로 바꾼다 */
+  eq(T.ROSTER.length,30,"B16 로스터 30종 (#234 GDD-23 6.3)");
+  ok(T.ROSTER.filter(r=>r.arch==="guard").length===5&&T.ROSTER.every(r=>T.ARCHETYPE_BASE[r.arch]),"B17 보호형 5종 포함 · 모든 종이 3.3 아키타입 표에 대응 (#234)");
 }
 
 /* ===== C. 4.1 5속성 상성 순환 ===== */
