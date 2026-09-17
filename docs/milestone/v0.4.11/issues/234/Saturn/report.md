@@ -44,3 +44,23 @@ run `run_8d0a50871c21` / task `task_d0d4ad0d879f` / dispatch `ctx_7495f6bf1e63`.
 
 실행 검사(1회): `smoke_issue234.js` 296 pass / 0 fail, exit 0.
 미검증: 서버 락스텝·경계(난수 소비 변화 — PR CI B가 확인), 브라우저 실플레이.
+
+---
+
+# REVISE 2차(CJ 결정 — 사신의 낫) 백업 QA — PASS
+
+2026-09-17. 이번에는 새 Claude Opus 5 high 인스턴스로 검수했다(task `task_14e7b2797b9f` / dispatch `ctx_d2ee255cd0e8`). 대상은 `da724da` → `a067270`, READ_ONLY이며 파일 수정 0이다.
+
+1. **절대 판정(확정·코드)**: 사신의 낫 분기가 v2PreUse·v2Endure·v2IncomingCap을 거치지 않고, instaKill(방어막 제거·HP 0) 뒤 checkDeath로 전투를 끝낸다. 회피 판정은 없다. 수면 포자 예외는 사신의 낫에만 적용되며, UI·AI·서버 `_legalAct`가 모두 slotUsable을 쓴다. 천년목은 일반 피해 경로에서 계속 동작한다(RV2g).
+2. **사용 조건(확정)**: `BAL.reaperRound=4`. 시간의 수호자 3R 전투, 3라운드 이하, HP 비율 strict 조건을 유지한다. 차례·쿨타임도 다시 검사한다.
+3. **봉인(확정)**: 사용하면 `reaperSeal=2`가 되고, 참전 전투원만 startRounds에서 1 줄어든다(2→1 봉인→0). 전투 종료 초기화 목록 밖이라 판정·도망·포획 종료 뒤에도 남는다. 대리 출전도 같은 객체라 똑같이 동작한다. 쿨링수와 무관하다(RV2m).
+4. **서버(확정)**: 락스텝 요약의 전투원·말·cap·reserve 네 위치에 반영됐다. 소유자 좌석에만 실린다. 클라이언트 수신 경로는 키가 없으면 0으로 받아 서버와 일치한다(NR1~3·서버 4b).
+5. **뒤집은 단언(확정)**: RV2a~c·MG3e·E3는 CJ 결정 근거를 주석에 남겼고, 강도는 유지됐다. RV2d~r로 결정 7항목이 추가됐다.
+
+실행(각 1회):
+- `smoke_issue234.js`: exit 0. 출력을 버린 채 실행해 통과 개수는 기록하지 않았고, 재실행하지 않았다.
+- `test-issue234-boundary.js`: 68 passed / 0 failed.
+
+[기획 필요 → PD 판단: 해당 없음] QA는 사신의 낫을 쓴 말이 봉인 중에 포획되면 새 reserve 객체가 되어 봉인이 사라진다고 지적했다. 사신의 낫은 전설 전용 스킬이고 GDD 7.7에 따라 전설은 포획 대상이 아니며, 하수인에게 기술을 옮기던 수풀 기술 교체는 CJ 결정으로 비활성이다. 따라서 라이브에서 생길 수 없는 경로다.
+[참고] Roblox `Config.luau`의 reaperRound=6 등 #234 전체가 Roblox에 미러링되지 않았다. Roblox 포팅은 v0.5.0의 별도 범위다.
+미검증: 브라우저·온라인 실연결·전체 회귀는 PR CI와 CJ 플레이 QA가 맡는다.

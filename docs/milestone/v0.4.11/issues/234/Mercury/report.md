@@ -12,8 +12,11 @@
 | 수풀 탐색 기술 교체 비활성(코드 보존) | **CJ 결정 2026-09-17** | Q1 |
 | 천둥 낙인·흡수·굴 파기 | 확정(GDD 정의와 일치) | Venus Q2·Q9·Q11 |
 | Q3~Q8·Q10·모래바람 | Venus 권고 적용 · CJ 승인 대기 | [interpretation.md](../Venus/interpretation.md) |
-| Q7 천년목이 즉사에도 발동 | Venus 권고 적용(Mars 원안과 다름) · CJ 확인 필요 | 4.3 |
-| [기획 필요] 8건 | CJ 판단 대기 | Mars 보고서 10장 6건, Jupiter 칸 수 1비트, 환영 무도+번식 포자 동시 |
+| 사신의 낫은 절대 판정 즉사(천년목·철벽·방어막·환영 무도·수면 포자 무시) | **CJ 결정 2026-09-17** | Q7 대체 |
+| 사신의 낫 4라운드부터 · 전투를 넘는 봉인(사용 → 다음 참전 전투 봉인 → 그다음 전투 해제) | **CJ 결정 2026-09-17** | [추론·PD] 그 사신의 참전 전투로 센다 |
+| 환영 무도+번식 포자 동시 → 무효 우선 | **CJ 결정: 현행 유지** | — |
+| 전투 성사 후 등급·스킬 칸 수 노출 | **CJ 결정: 시스템 기획 의도** | [기획 필요]에서 제외 |
+| [기획 필요] 6건 | CJ 판단 대기 | Mars 보고서 10장 |
 
 Notion GDD-23·Decision Log 반영은 CJ 확인 뒤 PD가 진행한다.
 
@@ -28,6 +31,10 @@ run `run_8d0a50871c21`. 모든 Worker는 Claude Opus 5 high이고, 시작 영수
 | Saturn 백업 QA 1차 | task_d0d4ad0d879f / ctx_7495f6bf1e63 | **REVISE** — 결함 2(마녀의 장난 효과 0, 사신의 낫 전처리 우회) · 델타 재검수용으로 retain |
 | Mars REVISE 1차 | task_35351a53ca36 / ctx_c56295af025f | succeeded · 296/0 · issue233 309 · cross_skill 86 · attack_balance 54 · released |
 | Saturn 델타 재검수 | task_3d5a1d3e8061 / ctx_1a4b71a06ce9(같은 터미널) | **PASS** · released |
+| Mars REVISE 2차(CJ 결정) | task_fab014027cdb / ctx_f6366a27695b | succeeded · 312/0 · search_packages 300/0 · released |
+| Jupiter reaperSeal | task_2552349d6e73 / ctx_294068d38e54 | succeeded · boundary 68/0 · npm test exit 0 · public_live 23/0 · released |
+| Mars 온라인 수신 후속 | task_4068c69685cf / ctx_206cc611326c | succeeded · 315/0 · fx_consumer 52/0 · released |
+| Saturn REVISE 2차(새 인스턴스) | task_14e7b2797b9f / ctx_d2ee255cd0e8 | **PASS** · released |
 
 ## 검사 예산 이탈 (기록 보존)
 - Mars 1차: 신규 검사 6회(제품 결함 1건과 검사 오류 수정마다 재실행), 잡 A 실패분 재실행 2회, 디버깅 `node -e` 5회.
@@ -39,6 +46,8 @@ run `run_8d0a50871c21`. 모든 Worker는 Claude Opus 5 high이고, 시작 영수
 - 브랜치 `feature/234-roster-skills` ← `milestone/v0.4.11` `33490f9`. Orca가 자동으로 붙인 브랜치 이름 `ChangjoSung/feature-234-roster-skills`를 저장소 규칙에 맞게 바꿨다.
 - `60319fa` 구현 → 필수 CI 6/6 PASS([run 35179305716](https://github.com/ChangjoSung/Digit-Duel/actions/runs/35179305716)).
 - `df10bcd` REVISE 수정 → 필수 CI 6/6 PASS([run 35179876695](https://github.com/ChangjoSung/Digit-Duel/actions/runs/35179876695)).
+- `da724da` 문서 → 필수 CI 6/6 PASS([run 35180065811](https://github.com/ChangjoSung/Digit-Duel/actions/runs/35180065811)).
+- `a067270` REVISE 2차 → 필수 CI 6/6 PASS([run 35188047882](https://github.com/ChangjoSung/Digit-Duel/actions/runs/35188047882)).
 - 이 문서 커밋의 CI는 PR Checks를 따른다.
 
 ## CJ 플레이 QA 확인 범위
