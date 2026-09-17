@@ -219,3 +219,39 @@ GDD 6.3 · 6.4 · 6.2 표는 **검사 파일 안에 따로 옮겨 적고** 제�
 - `demo/test/regression/smoke_attack_balance.js` · `smoke_cross_skill.js` · `smoke_issue146.js` · `smoke_issue233.js` · `smoke_memo.js` · `smoke_minion_art.js` · `smoke_search_packages.js` · `smoke_shock.js`
 - `.github/workflows/ci.yml` (잡 A 1줄 + 주석)
 - `docs/milestone/v0.4.11/issues/234/Mars/report.md` (이 파일)
+
+---
+
+## REVISE 1차 (2026-09-17 · Saturn 백업 QA 결함 2건)
+
+근거: `docs/milestone/v0.4.11/issues/234/Saturn/report.md`. 대상 커밋 60319fa 위 작업 트리 변경(커밋은 Mercury). Mars는 QA 판정을 선언하지 않는다.
+
+### 수정
+| 결함 | 원인 | 수정 (`demo/index.html`) |
+|---|---|---|
+| 1. 마녀의 장난 효과 0 | `L-WITCH-4`가 v2 등록(fx 없음 → `v2Default`)이라 레거시 전용 `witchApply`에 도달하지 않음 | `V2_FX.witchPrank` 추가 · `L-WITCH-4`에 `fx:"witchPrank"`. 💪80% 적중 뒤 화상·약화·감전은 `v2Apply(force)`(확률 판정·난수 없음, 거울 수면·감전 면역 적용), 풀 회복은 이번 적중 HP 피해 100%를 `v2Heal`(회복 감소 적용). 회피면 대상 효과·회복 없음(v2Default와 같음) |
+| 2. 사신의 낫이 환영 무도·번식 포자 우회 | `execSlot`의 reaper 분기가 `execV2`보다 앞이라 전처리(1376~1377)를 건너뜀 | 전처리를 `v2PreUse(side,f,sk)`로 추출해 `execV2`와 reaper 분기가 함께 호출. reaper는 게이트(⌛·차례·봉인) 통과·공개 뒤, 즉사 판정 전에 호출 → 환영 무도면 무효·차례 종료, 번식 포자면 최대 HP 5% 피해(사망 시 종료) 뒤 즉사 판정. 수면 포자 플래그도 같이 소모 |
+
+- [추론] 두 효과의 조합 선택은 GDD 6.4에 방식이 없어 기존 승인 계약 #121 5.2의 균등 6조합(`WITCH_COMBOS`, 공유 rand 1회)을 재사용했다. 적용 자체에는 확률 판정이 없다.
+- [확정·기존 동작 유지] 환영 무도와 번식 포자가 동시에 걸리면 `execV2`와 같은 순서(무효가 먼저 → 번식 포자 피해 없음)다. QA 재현 문장 "즉사하지 않고 번식 포자 피해 발생"은 두 조건을 따로 검사(RV2a·RV2b)하고, 동시 조건은 즉사하지 않음만 확인(RV2c)했다. 동시 조건에서도 번식 포자 피해가 나야 한다면 execV2 전체 순서 변경이라 [기획 필요].
+- 난수 소비 변화: 마녀의 장난이 이제 적중 시 조합 rand 1회를 더 쓴다(종전 v2Default는 0). 서버 락스텝·경계 검사는 PR CI B·Jupiter 확인 대상.
+
+### 같은 우회 패턴 정적 점검 (실행 없음)
+- v2 등록 스킬 정의에서 레거시 실행기 전용 키(`drainPct`·`statusSelf`·`selfShieldPct`·`selfVuln`·`coolAttack*`·`bonusVs*`·`healPct`·`shieldPct`·`dmgCut`·`focus`·`coolAny`·`cleanse`·`witch`·`reaper`)를 검색: `witch`(결함 1, 수정)·`reaper`(결함 2, 수정)만 존재. `dragonMult`는 `v2Hit`이 처리.
+- v2 정의가 쓰는 `fx:` 이름 전부가 `V2_FX`에 정의돼 있음(누락 0).
+- `execSlot`에서 `execV2` 앞에 끼어든 특수 분기는 reaper 하나뿐. 추가 결함 없음.
+
+### 검사 (각 명령 1회 원칙)
+| 명령 | 실행 | 결과 |
+|---|---|---|
+| `node demo/test/regression/smoke_issue234.js` | 2회 | 1회차 294 pass / 2 fail — RV1a·RV1b가 `fixRand(0)/(0.99)`로 분산 roll까지 고정해 피해가 16이 아니었음(테스트 입력 오류, 기대값 불변). roll 0.55/0.45(피해 16 유지, 조합 3/2)로 입력만 고쳐 그 파일만 재실행 → **296 pass / 0 fail, exit 0** |
+| `smoke_issue233.js` | 1회 | 309 / 0, exit 0 |
+| `smoke_cross_skill.js` | 1회 | 86 / 0, exit 0 |
+| `smoke_attack_balance.js` | 1회 | 54 / 0, exit 0 |
+
+신규 검사: RV1a [약화·감전] · RV1b [화상·풀 회복 16] · RV1c 회피 시 효과 없음 · RV2a 사신의 낫 환영 무도 무효 · RV2b 사신의 낫 번식 포자 피해 후 즉사 · RV2c QA 재현 조건에서 즉사 안 함. 서버 검사·브라우저 확인은 실행하지 않았다.
+
+### 변경 파일
+- `demo/index.html` (+22 / −7)
+- `demo/test/regression/smoke_issue234.js` (RV1·RV2 6건 추가)
+- `docs/milestone/v0.4.11/issues/234/Mars/report.md` (이 절)

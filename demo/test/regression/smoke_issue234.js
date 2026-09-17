@@ -544,6 +544,26 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   t=openBattle({skills:["K-1","K-2-land","LD-REVENGE"],element:"land"},{hp:600,maxHp:600}); act("A",2); ok(t.a.hardenPct===0.03&&t.a.harden===1,"MK4 동료의 복수 🗻 — 자신 경화 3% 1R");
   t=openBattle({skills:["K-1","K-2-grass","LD-REVENGE"],element:"grass",hp:50},{hp:600,maxHp:600}); act("A",2); ok(t.a.absorbPct===0.1&&t.a.hp===50+Math.round(44*0.1),"MK5 동료의 복수 🌿 — 흡수 10% · 그 공격부터 회복");
   t=openBattle({skills:["SH-1","SH-2-fire"],element:"fire",statusPct:1},{hp:600,maxHp:600}); act("A",1); ok(t.a.shield===15&&t.d.burn>0,"MK6 방패병 속성 스킬 — 💪120% · 방어막 15% · 효과");
+  /* REVISE 1차 (Saturn 백업 QA 2026-09-17) — 결함 1: 마녀의 장난이 v2 실행기로 가면서 효과 0 */
+  { const W=T.LEGEND_ROSTER[1].skills.slice();
+    t=openBattle({skills:W,legend:"witch",hp:50,statusPct:0},{hp:300,maxHp:300}); fixRand(0.55); act("A",3); fixRand(0.5); // 분산 roll 0.55 → 16×0.98 반올림 16 · 조합 floor(0.55×6)=3 [약화·감전]
+    ok(300-t.d.hp===16&&t.d.weaken>0&&t.d.shock>0&&!(t.d.burn>0)&&t.a.hp===50,"RV1a 마녀의 장난 — 💪80% · 조합 [약화·감전] 확률 판정 없이 둘 다 적용 (💫0)");
+    t=openBattle({skills:W,legend:"witch",hp:50,statusPct:0},{hp:300,maxHp:300}); fixRand(0.45); act("A",3); fixRand(0.5); // 분산 roll 0.45 → 16×0.98 반올림 16 · 조합 floor(0.45×6)=2 [화상·풀 회복]
+    ok(300-t.d.hp===16&&t.d.burn>0&&!(t.d.weaken>0)&&!(t.d.shock>0)&&t.a.hp===50+16,"RV1b 마녀의 장난 — 조합 [화상·풀 회복] · 이번 HP 피해 16 의 100% 회복");
+    t=openBattle({skills:W,legend:"witch",hp:50,statusPct:0},{hp:300,maxHp:300,dodge:0.4}); T.S.battle.fd.dodgeForce=true; act("A",3);
+    ok(t.d.hp===300&&!(t.d.burn>0)&&!(t.d.weaken>0)&&!(t.d.shock>0)&&t.a.hp===50,"RV1c 마녀의 장난 — 회피되면 대상 효과·회복 없음");
+  }
+  /* 결함 2: 사신의 낫이 execV2 앞 분기라 환영 무도 · 번식 포자를 우회 */
+  { const R=T.LEGEND_ROSTER[2].skills.slice();
+    const reap=o=>{ const t2=openBattle({skills:R,legend:"reaper",hp:10,maxHp:100},{skills:["M-F1-1"],hp:100,maxHp:100});
+      t2.B.round=6; t2.a.cds=[0,0,0,0]; Object.assign(t2.a,o); return t2; };
+    t=reap({nullifyNext:true}); act("A",3);
+    ok(!!T.S.battle&&t.d.hp===100&&t.a.nullifyNext===false&&t.B.blog.some(x=>/환영 무도 — .*무효/.test(x)),"RV2a 사신의 낫도 환영 무도로 1회 무효 — 즉사하지 않고 소모");
+    t=reap({breedR:2,breedBy:"D"}); act("A",3);
+    ok(t.a.hp===5&&t.d.hp===0&&t.B.blog.some(x=>/번식 포자 —/.test(x)),"RV2b 사신의 낫 사용에도 번식 포자 피해(최대 HP 5%) — 그 뒤 즉사 판정");
+    t=reap({nullifyNext:true,breedR:2,breedBy:"D"}); act("A",3);
+    ok(!!T.S.battle&&t.d.hp===100&&t.a.nullifyNext===false,"RV2c QA 재현 — round 6 · 낮은 HP 비율 · 환영 무도 + 번식 포자에서 즉사하지 않는다 (무효·포자 순서는 execV2 와 같음)");
+  }
   /* 흡수 · 회피(자기 대상) */
   t=openBattle({skills:["M-G1-1","M-G1-2"],statusPct:1,hp:50},{hp:300,maxHp:300}); act("A",1);
   ok(t.a.absorbR===1&&t.a.hp===50+Math.round(28*0.2),"MX1 흡수 70% 당첨 — 그 공격 HP 피해 20% 회복 (Q9 확정)");

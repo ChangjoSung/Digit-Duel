@@ -1153,7 +1153,7 @@ const LEGEND_ROSTER=[
     v2Reg("L-WITCH-1",{ko:"저주 손짓",kind:"basic",pct:100,cd:0,neutral:true,desc:"기본기 · 💪🏻 100% / ⌛0"}),
     v2Reg("L-WITCH-2",{ko:"독약 병",cd:2,pct:110,neutral:true,fx:"poisonBottle",desc:"💪🏻 110% · 대상에게 화상 · 약화 중 걸려 있지 않은 것 1개를 70%로 부여(둘 다 없으면 무작위 1개, 둘 다 있으면 남은 지속이 짧은 쪽을 70%로 기본 지속까지 갱신, 같으면 화상) / ⌛2"}),
     v2Reg("L-WITCH-3",{ko:"변덕 주문",cd:3,neutral:true,fx:"whimSpell",desc:"대상 버프 1개 제거 · 자기 상태이상 1개 해제 / ⌛3"}),
-    v2Reg("L-WITCH-4",{ko:"마녀의 장난",cd:3,pct:80,neutral:true,witch:true,desc:"💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP에 준 피해의 100% 즉시 회복) 중 서로 다른 2개를 확률 판정 없이 적용 / ⌛3"})]},
+    v2Reg("L-WITCH-4",{ko:"마녀의 장난",cd:3,pct:80,neutral:true,witch:true,fx:"witchPrank",desc:"💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP에 준 피해의 100% 즉시 회복) 중 서로 다른 2개를 확률 판정 없이 적용 / ⌛3"})]},
   {id:"L-REAPER",key:"reaper",name:"사신",emo:"💀",arch:"atk",skills:[
     v2Reg("L-REAPER-1",{ko:"낫 베기",kind:"basic",pct:100,cd:0,neutral:true,desc:"기본기 · 💪🏻 100% / ⌛0"}),
     v2Reg("L-REAPER-2",{ko:"영혼 수확",cd:2,pct:130,neutral:true,fx:"soulHarvest",desc:"💪🏻 130% · 이 공격이 HP에 준 피해의 30% 회복 / ⌛2"}),
@@ -1372,12 +1372,7 @@ function execV2(side,slot,sk){
   const supFlash=!sk.pct?"buff":null;
   bmsg(`${fighterName(side)}의 ${sk.ko}!`,supFlash?{flash:supFlash}:null,{key:"skillFx"});
   const dmgSkill=!!sk.pct;
-  if(f.sleepNext) f.sleepNext=false; // 수면 포자 — 다음 스킬 사용 1회에 소모(Q10)
-  if(f.nullifyNext){ f.nullifyNext=false; bmsg(`🌫 환영 무도 — ${fighterName(side)}의 행동이 무효가 되었다!`,{st:stFx(side,f)}); return finishV2(side); }
-  if(sk.kind!=="basic"&&f.breedR>0){ // 번식 포자 — 지속 피해(최대 HP 5%) · 같은 양 시전자 회복
-    const d=v2Dot(side,f,f.maxHp*0.05,"🍄 번식 포자 —",f.breedBy);
-    const bySide=f.breedBy, by=bySide==="A"?B.fa:B.fd; if(by&&d>0) v2Heal(bySide,by,d,"번식 포자");
-    if(checkDeath()) return; }
+  if(v2PreUse(side,f,sk)) return;
   const ctx={side,f,opp,oSide,sk,slot,hits:[],shockForce:false,outMult:1,retaliated:false};
   if(dmgSkill){ ctx.shockForce=!!f.nextShockForce; f.nextShockForce=false;
     if(f.sandWind){ ctx.outMult=0.7; f.sandWind=false; } }
@@ -1389,6 +1384,18 @@ function execV2(side,slot,sk){
   /* 흡수(4.5) — 이번 스킬의 적중이 HP 에 준 피해 기준, 당첨된 그 공격부터(Q9) */
   if(f.absorbR>0){ const got=ctx.hits.reduce((s,r)=>s+(r.evaded?0:r.actual),0); if(got>0) v2Heal(side,f,got*(f.absorbPct||0),"흡수"); }
   finishV2(side);
+}
+/* 스킬 사용 전처리(Q10) — 수면 포자 소모 · 환영 무도 무효 · 번식 포자 피해. execV2 와 사신의 낫 분기가 함께 부른다
+   (REVISE 1차: 사신의 낫이 execV2 앞의 별도 분기라 이 처리를 건너뛰던 결함). 반환 true = 이 행동은 여기서 끝났다 */
+function v2PreUse(side,f,sk){
+  const B=S.battle;
+  if(f.sleepNext) f.sleepNext=false; // 수면 포자 — 다음 스킬 사용 1회에 소모(Q10)
+  if(f.nullifyNext){ f.nullifyNext=false; bmsg(`🌫 환영 무도 — ${fighterName(side)}의 행동이 무효가 되었다!`,{st:stFx(side,f)}); finishV2(side); return true; }
+  if(sk.kind!=="basic"&&f.breedR>0){ // 번식 포자 — 지속 피해(최대 HP 5%) · 같은 양 시전자 회복
+    const d=v2Dot(side,f,f.maxHp*0.05,"🍄 번식 포자 —",f.breedBy);
+    const bySide=f.breedBy, by=bySide==="A"?B.fa:B.fd; if(by&&d>0) v2Heal(bySide,by,d,"번식 포자");
+    if(checkDeath()) return true; }
+  return false;
 }
 function finishV2(side){ if(!S.battle) return; if(checkDeath()) return; nextPhase(); }
 function v2Hit(ctx,pct,o){
@@ -1525,6 +1532,13 @@ const V2_FX={
     c.st(k,0.70); },
   whimSpell(c){ v2RemoveBuff(c.oSide,c.opp); v2CleanseOne(c.side,c.f); },
   soulHarvest(c){ const r=c.hit(130,{}); if(S.battle&&!r.evaded&&r.actual>0) v2Heal(c.side,c.f,r.actual*0.30,"영혼 수확"); },
+  /* 마녀의 장난(6.4) — 💪🏻 80% 뒤 화상·약화·감전·풀 회복 중 서로 다른 2개를 확률 판정 없이 적용. 회피면 대상 효과 없음(v2Default 와 같음).
+     조합 선택은 #121 계약 5.2 의 균등 6조합(공유 rand 1회)을 그대로 쓴다. 상태는 v2Apply force(거울 수면·감전 면역 적용), 회복은 v2Heal(회복 감소 적용) */
+  witchPrank(c){ const r=c.hit(80,{}); if(!S.battle||r.evaded) return;
+    const combo=WITCH_COMBOS[Math.floor(rand()*WITCH_COMBOS.length)];
+    for(const idx of combo){ if(!S.battle) return; const eff=WITCH_EFFECTS[idx];
+      if(eff==="grassHeal"){ if(r.actual>0) v2Heal(c.side,c.f,r.actual,"마녀의 장난"); else bmsg(`🌿 마녀의 장난 — 빨아들일 생명이 없었다. (회복 0)`); }
+      else c.st(eff,1,{force:true}); } },
   deathShadow(c){ applyEvadeBuff(c.f,0.25,1); c.f.critForce=true; bmsg(`💀 회피 +25% · 다음 피해 스킬 치명타 확정`,{st:stFx(c.side,c.f)}); },
   /* 왕 · 동료 시너지 스킬 (5.3) */
   revenge(c){ v2Revenge(c,0); },
@@ -4403,6 +4417,7 @@ function execSlot(side,slot,opts){
       execSlot(side,-1); return; }   // 같은 이유로 무동작 — 다른 슬롯이 합법이어도 기본 공격으로 대신하지 않는다
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); // 사용 시 공개
     bmsg(`💀 ${fighterName(side)}의 사신의 낫!`,{sig:true},{key:"skillFx"});
+    if(sk.v2&&v2PreUse(side,f,sk)) return; // #234 REVISE 1차 (Q10): 환영 무도 무효 · 번식 포자 피해 · 수면 포자 소모를 다른 스킬과 똑같이 받는다
     const lethal=opp.hp, cut=V2_INTERP.endureAllDamage?v2Endure(opp,opp.hp):opp.hp; // #234 Q7: 천년목은 즉사에도 버팀(HP 0 결과 트리거)
     if(cut<lethal){ opp.hp-=cut; addRec(side,cut); } else { instaKill(opp); addRec(side,lethal); } // #233 (GDD-23 4.3): 즉사 — 단계 없음, 방어막 무시
     if(opp.hp>0) bmsg(`💀 ${fighterName(oSide)}는 낫을 버텨 냈다! (HP ${opp.hp})`,{shake:oSide,hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
