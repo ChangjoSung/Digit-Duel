@@ -364,3 +364,65 @@ P13 다른 차단 경로 정적 점검 [확정 — 코드]: ⌛ 조작은 `v2CdU
 - `demo/index.html`
 - `demo/test/regression/smoke_issue234.js`
 - `docs/milestone/v0.4.11/issues/234/Mars/report.md` (10장 P9 · D4 행, 이 절)
+
+## REVISE 4차 (2026-09-17 · CJ 결정 — 속도는 1라운드 선턴 판별만)
+
+근거: CJ 결정 2026-09-17 "속도는 첫 라운드 선턴 판별만 진행하고, 나머지는 전부 기존 전투 방식대로 진행해야 돼"(명세 `C:/dd_cdp/issue-234-mars-revise4-spec.md`). 기존 방식 원본: v0.4.10 `actorOfPhase`(`C:/dd_cdp/index-v0410.html` 3025). 대상 HEAD 88ddbff 위 작업 트리 변경(커밋은 Mercury). Mars는 QA 판정을 선언하지 않는다. 스킬 교체·회피율 전환은 하지 않았다.
+
+### 수정 (`demo/index.html`)
+| 규칙 | 구현 [확정 — 코드] |
+|---|---|
+| 1라운드 = GDD 4.4(순서 효과 > 속도 > 낮은 등급 > 접촉) | `decideFirstSide`(3749) 기존 1)~5) 그대로. `startRounds`(3727)가 결과를 `B.firstSideR1` 에 기록 |
+| 2라운드부터 교대 | `decideFirstSide` 3753: `B.round>1` 이고 `firstSideR1` 이 있으면 홀수 라운드 = R1 선턴 측, 짝수 = 반대 측. 속도·등급·접촉 단계에 도달하지 않는다 |
+| 순서 효과는 그 라운드만 뒤집음 | 교대 분기 **앞의** 분류 비교(선턴 0 · 기본 1 · 후턴 2, 둘 다면 후턴)가 갈리면 낮은 분류가 먼저. 같으면(양측 감전 포함) 기준 교대. 감전만 있을 때 v0.4.10 코드와 결과 동일 [확정 — 대조], 선턴 효과는 그 대칭 [추론·PD] |
+| 라운드 시작 시 확정 | 호출 지점 불변: `startRounds`(3726) · `nextPhase` 라운드 진입(4671, `v2RoundStart` 뒤) |
+| 선턴을 읽는 스킬 | 번개 발도(`vanguardOnly`) · 천둥 낙인 · 광합성은 `B.firstSide` 를 읽으므로 코드 불변으로 새 순서를 쓴다 |
+| 공개 방 복원 | `netSynthBattle`(6869)은 서버 `actor`·`phase` 로 `firstSide` 를 복원 — 규칙과 무관하게 정확. `firstSideR1` 은 복원하지 않는다(표시 경로는 `nextPhase` 를 돌리지 않음) [추론 — 정적] |
+| 표시 문구·AI 순서 예측 | "속도가 빠른 쪽이 먼저" 류 문구, AI의 선턴 예측 코드 없음 [확정 — grep] → 변경 없음 |
+
+`effSpd` 주석에 "1라운드 판정에만 영향" 추가. 전투 중 속도 증감(모래바람·모래 폭풍·날개 강타·충전)은 2라운드 이후 순서에 영향이 없어졌다(결정의 결과 — 회피율 전환은 별도 Issue).
+
+### 기대값 변경 (CJ 결정 근거)
+| 파일 | 단언 | 종전 → 변경 |
+|---|---|---|
+| smoke_issue234.js | MG3b · MG5c (507 · 520) | 기대값 불변. R2 행동 순서 픽스처만 `act("A") → act("D")` 에서 `act("D") → act("A")` 로(R2 는 R1 반대 측 D 가 먼저). 종전 순서로는 A 가 R2 후순으로 행동해 라운드가 넘어가 3건 실패(MG3b · MG5c · MG5d) |
+
+`smoke_issue233` G18~G27 은 새 규칙과 충돌하지 않아 수정하지 않았다: G5~G17 은 `round` 없는 순수 입력(=1라운드 판정), G23 은 R2 기준 D + A 감전 → D 로 결과 동일, G26·G27 은 R1 [확정 — 실행 통과]. MF4c(선턴 효과) · ML5b(영구 자기장 감전) 도 R2 기준 D 를 뒤집는 형태라 그대로 통과.
+
+### 신규 검사 (smoke_issue234.js `REVISE 4차` 절, 696~)
+- O1~O1d: 순수 판정 — R1 속도 · R2 속도 무관 반대 측 · R3 R1 측 · R2 등급·접촉 무시
+- O2~O4: 실제 전투 R1 빠른 D → R2 A(빠른 D 도 후순) → R3 D
+- O5·O6: R2·R3 속도 증가·감소(`spdBuff`·`spdDown`)가 순서를 바꾸지 않음
+- O7~O7c: 기준 선순(D) 감전 → R2 만 A, R3 기준 A, R4 기준 D 복귀
+- O8: 양측 감전 → 기준 교대
+- O9·O9b: 꺼지지 않는 불티 선턴 효과 → R2 기준 후순 A 를 앞당김
+- O10·O10b: 번개 발도 — R1 선턴 사용 가능, R2 교대 후순이면 불가(속도가 빨라도)
+- O11·O11b: 시간의 수호자 3R(`maxRounds=3`) — D·A·D, 3R 뒤 판정 종료
+
+### 검사
+| 명령 | 실행 | 결과 |
+|---|---|---|
+| `node demo/test/regression/smoke_issue234.js` | 2회 (1회차 실패 수정 후 1회) | 1회차 346 / 3 fail(MG3b · MG5c · MG5d — 위 픽스처 순서) → 수정 후 **349 pass / 0 fail** |
+| `node demo/test/regression/smoke_issue233.js` | 1회 | **309 / 0** |
+| `node demo/test/regression/smoke_issue146.js` | 1회 | 214 / **1 fail — B11b** "본체 기본 공격은 정상 동작한다" (아래) |
+| `node demo/test/regression/smoke_shock.js` | 1회 | **67 / 0** |
+| `node demo/test/regression/smoke_turnflow.js` | 1회 | **203 / 0** |
+| `node demo/test/regression/smoke_online_sync.js` | 1회 | **23 / 0** |
+
+선정 이유(선턴 순서 의존, 최대 5개): smoke_issue233 = G절 4.4 선턴 계약 원본 · smoke_issue146 = F절 라운드 경계 연속 행동(`flipOrderNextRound`) · smoke_shock = B7~B9 다라운드 감전 순서(v0.4.10 공식 사본) · smoke_turnflow = `actorOfPhase` 로 다라운드 전투 구동 · smoke_online_sync = 189행 `round%2` 행위자 공식으로 온라인 전투 구동. 나머지(smoke_cycle5 · smoke_fx_timing · smoke_search_packages · smoke_cross_skill · smoke_orientation_audit 등)는 미실행 — PR CI 잡 A 확인 대상.
+
+**B11b 실패 [추론 — 정적, 재실행하지 않음]**: B11 은 `H.freshPlay` 무작위 배정 상대(`em`)에 시드 없이 **1라운드** 동료 본체 기본 공격 1회 후 `fd.hp<hp0` 를 본다. 이번 변경은 `B.round>1` 분기만 바꾸고, pvp 모드라 공격 뒤 AI 행동이 없으며, 라운드 종료 처리(회복·상태 감소)는 새 선턴 계산 **전에** 끝난다 → 이 단언의 HP 값에 닿는 경로가 없다. 상대 아키타입 회피율(시드 없음)로 빗나간 확률성 실패로 판단한다. 예산상 재실행·HEAD 대조는 하지 않았으므로 **미확정**이다. PR CI 잡 A 결과 또는 PD 승인 시 1회 대조로 확인 필요.
+
+### 서버 영향 목록 (Jupiter 후속 — Mars는 서버를 수정하지 않았다)
+| 항목 | 위치 | 영향 · 필요 조치 |
+|---|---|---|
+| 새 전투 상태 `B.firstSideR1` | `demo/index.html` `startRounds` ↔ `server/authoritative/room.js` `lockstepDigest` `battle.firstSide`(196) | R2 이후 선턴이 `firstSideR1`·`round`·순서 효과로 정해지는 **저장 상태**가 됐다. 요약에 `firstSide` 는 있지만 `firstSideR1` 이 없으면 두 좌석의 R1 기록이 갈려도 그 라운드 요약이 같을 수 있다(R1 요약의 `firstSide` 로 간접 검출은 됨) → `battle.firstSideR1: B.firstSideR1 \|\| null` 추가 권고 [추론] |
+| 좌석 프레임 | `room.js` `toSeatView` · `test-combat-stats-boundary.js` 306 금지 키 목록 | `firstSideR1` 은 프레임에 싣지 않는다(`firstSide` 와 같은 요약 전용). 금지 키 목록에 `"firstSideR1"` 추가 권고 |
+| 행위자 · 합법성 | `room.js` 629 · 1131 `T.actorOfPhase()` · `engine.js` 427 | 서버는 엔진으로 `index.html` 을 직접 구동 → 코드 수정 불필요 [추론]. 행위자 결과가 R2 부터 달라지므로 R2+ 행위자를 전제로 한 서버 테스트(`test-authority-rules.js` · `test-issue234-boundary.js` 의 다라운드 픽스처, 골든 대조) 기대값 점검 필요 |
+| 공개 방 선턴 복원 (Jupiter 7장) | `netSynthBattle` 6869 | `actor`+`phase` 로 `firstSide` 복원 — 규칙 무관하게 유지. 서버 필드 추가 불필요 |
+| 초기화 목록 | `resetBattleTemps` · `resetV2` · `V2_TIMED` | 불변(`firstSideR1` 은 전투 객체 필드, 전투마다 `startRounds` 에서 새로 기록) → 경계 검사 영향 없음 [추론 — 정적] |
+
+### 변경 파일
+- `demo/index.html`
+- `demo/test/regression/smoke_issue234.js`
+- `docs/milestone/v0.4.11/issues/234/Mars/report.md` (이 절)

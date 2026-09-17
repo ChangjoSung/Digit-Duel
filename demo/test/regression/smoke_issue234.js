@@ -503,7 +503,8 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   t=openBattle({skills:["M-G2-1","M-G2-4"]},{hp:30}); act("A",1); ok(!T.S.battle,"MG2c 포식 — HP 30% 이하 💪260% (52) 로 쓰러뜨림");
   t=openBattle({skills:["M-G2-1","M-G2-4"]},{hp:300,maxHp:300}); act("A",1); eq(300-t.d.hp,32,"MG2d 포식 💪160%");
   t=openBattle({skills:["M-G3-1","M-G3-3"],hp:50},{skills:["M-F1-1"]}); act("A",1); act("D",0); ok(t.a.hp===30,"MG3a 나이테 — 부여 라운드 종료에는 회복 없음");
-  act("A",0); act("D",0); ok(t.a.hp===30-20+6,"MG3b 다음 라운드 종료에 6% 회복");
+  /* REVISE 4차 CJ 결정(2026-09-17): R2 는 R1 반대 측(D)이 먼저 — 행동 순서만 바꾼다, 기대값 불변 */
+  act("D",0); act("A",0); ok(t.a.hp===30-20+6,"MG3b 다음 라운드 종료에 6% 회복");
   t=openBattle({skills:["M-G3-1","M-G3-4"],hp:10},{skills:["M-F1-1"]}); act("A",1); act("D",0);
   ok(T.S.battle&&t.a.hp===10&&t.a.enduredUsed,"MG3c 천년목 — HP 0 이 될 피해를 최대 HP 15%로 버팀(현재 HP 가 더 낮으면 그대로)");
   t=openBattle({skills:["M-G3-1","M-G3-4"],hp:90},{skills:["M-F1-1"],atk:200}); act("A",1); act("D",0); eq(t.a.hp,15,"MG3d 천년목 — 90 에서 치명 피해 → 15");
@@ -516,7 +517,7 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
   t=openBattle({skills:["M-G4-1","M-G4-4"],hp:50},{skills:["M-F1-1"]}); act("A",1); act("D",0); ok(t.a.hp===30,"MG4b 기본기 사용에는 번식 포자 피해 없음");
   t=openBattle({skills:["M-G5-1","M-G5-3"],hp:50},{hp:300,maxHp:300}); act("A",1); ok(300-t.d.hp===18&&t.a.hp===59,"MG5a 이끼 흡혈 — 💪90% · HP 피해의 50% 회복");
   t=openBattle({skills:["M-G5-1","M-G5-4"],hp:50},{skills:["M-F1-1"],hp:100}); act("A",1); act("D",0);
-  ok(t.d.hp===100&&t.a.hp===30,"MG5b 이끼 잠식 — 부여 라운드 종료에는 없음"); act("A",0); act("D",0); ok(t.d.hp===100-20-4&&t.a.hp===30-20+4,"MG5c 다음 라운드 종료 대상 4% 피해 · 같은 양 회복");
+  ok(t.d.hp===100&&t.a.hp===30,"MG5b 이끼 잠식 — 부여 라운드 종료에는 없음"); /* REVISE 4차: R2 는 D 먼저 */ act("D",0); act("A",0); ok(t.d.hp===100-20-4&&t.a.hp===30-20+4,"MG5c 다음 라운드 종료 대상 4% 피해 · 같은 양 회복");
   t.B.phase=1; T.S.inv[1]=["cure"]; T.battleModal(); window.__useItemCore(0); T.TQ.length=0; eq(t.d.mossR,0,"MG5d 이끼 잠식은 해독제로 해제");
   t=openBattle({skills:["M-G6-1","M-G6-3"],hp:50},{skills:["M-F1-1"]}); act("A",1); act("D",0); eq(t.a.hp,50-5+8,"MG6a 포자 막 — 방어막 15 가 막은 15 의 50%(7.5→8)를 라운드 종료에 회복");
   t=openBattle({skills:["M-G6-1","M-G6-4"],hp:50},{}); T.shieldAdd(t.a,40,"x"); act("A",1);
@@ -689,6 +690,50 @@ unfix();
   act("D",0); endRound(); hp0=t.d.hp; act("A",0); eq(hp0-t.d.hp,20,"I1d 적중한 조준 사격 뒤 기본기도 치명 확정 아님");
   t=openBattle({skills:["M-F2-1","M-F2-3"]},{hp:300,maxHp:300}); t.a.critForce=true;
   act("A",1); ok(300-t.d.hp===36&&t.a.critForce===false,"I1e 죽음의 그림자 확정 치명은 화상 아닌 대상의 조준 사격에서도 1회 소모 (섞이지 않음)");
+  unfix();
+}
+
+/* ===== REVISE 4차 — CJ 결정 2026-09-17: 속도는 1라운드 선턴 판별에만, 2라운드부터 기존(v0.4.10) 교대 =====
+   원문: "속도는 첫 라운드 선턴 판별만 진행하고, 나머지는 전부 기존 전투 방식대로 진행해야 돼."
+   홀수 라운드 = R1 선턴 측 · 짝수 라운드 = 반대 측. 감전·선턴 효과는 그 라운드 순서만 뒤집는다. */
+{
+  fixRand(0.5);
+  const fs=B=>T.decideFirstSide(B);
+  eq(fs({round:1,fa:{spd:6},fd:{spd:14}}),"D","O1 R1 은 속도로 판정 (빠른 D 선턴)");
+  eq(fs({round:2,firstSideR1:"A",fa:{spd:1},fd:{spd:99}}),"D","O1b R2 는 속도와 무관하게 R1 반대 측");
+  eq(fs({round:3,firstSideR1:"A",fa:{spd:1},fd:{spd:99}}),"A","O1c R3 은 R1 선턴 측");
+  eq(fs({round:2,firstSideR1:"A",fa:{spd:1,grade:1},fd:{spd:1,grade:4}}),"D","O1d R2 는 등급·접촉도 다시 보지 않는다");
+  let t=openBattle({spd:6},{spd:14});
+  ok(t.B.firstSide==="D"&&t.B.firstSideR1==="D"&&T.actorOfPhase()==="D","O2 실제 전투 R1 — 빠른 D 선턴 · R1 기준 기록");
+  endRound(); ok(t.B.round===2&&t.B.firstSide==="A"&&T.actorOfPhase()==="A","O3 R2 — 속도가 더 빠른 D 도 후순 (교대)");
+  endRound(); ok(t.B.round===3&&t.B.firstSide==="D","O4 R3 — 다시 R1 선턴 측 D");
+  /* 속도 증가·감소는 R2 이후 순서를 바꾸지 않는다 (모래바람·모래 폭풍·날개 강타·충전) */
+  t=openBattle({spd:14},{spd:6});
+  t.d.spdBuff=50; t.a.spdDown=20; endRound(); eq(t.B.firstSide,"D","O5 R2 — 속도 증감과 무관하게 기준 교대 D");
+  t.a.spdBuff=90; t.d.spdDown=90; endRound(); eq(t.B.firstSide,"A","O6 R3 — 속도 증감과 무관하게 R1 측 A");
+  /* 감전이 기준 선순 쪽에 걸리면 그 라운드만 뒤집힌다 */
+  t=openBattle({spd:14},{spd:6});
+  t.d.shock=1; t.d.shockFresh=true; endRound();
+  ok(t.B.round===2&&t.d.shock>0&&t.B.firstSide==="A","O7 R2 기준 선순 D 가 감전 → A 가 먼저");
+  endRound(); ok(!(t.d.shock>0)&&t.B.firstSide==="A","O7b R3 감전 해제 — 기준 A");
+  endRound(); eq(t.B.firstSide,"D","O7c R4 — 기준 D 로 복귀 (뒤집힘은 그 라운드만)");
+  /* 양측 모두 감전이면 기준을 따른다 */
+  t=openBattle({spd:14},{spd:6});
+  t.a.shock=1; t.a.shockFresh=true; t.d.shock=1; t.d.shockFresh=true; endRound();
+  ok(t.a.shock>0&&t.d.shock>0&&t.B.firstSide==="D","O8 R2 양측 감전 → 기준 교대 D");
+  /* 선턴 효과가 기준 후순 쪽에 있으면 앞당긴다 (꺼지지 않는 불티) */
+  t=openBattle({skills:["M-F4-1","M-F4-4"],spd:14},{hp:300,maxHp:300,spd:6}); t.d.burn=3;
+  act("A",1); ok(t.a.vanguardTurn>0,"O9 전제: 꺼지지 않는 불티 — 다음 라운드 선턴 효과");
+  endRound(); ok(t.B.round===2&&t.B.firstSide==="A","O9b R2 기준 후순 A 가 선턴 효과로 먼저");
+  /* 선턴 결과를 읽는 스킬은 새 순서를 쓴다 — 번개 발도(선턴일 때만) */
+  t=openBattle({skills:["M-L2-1","M-L2-3"],spd:14},{spd:6});
+  ok(T.slotUsable(t.a,1,"A"),"O10 R1 선턴 A — 번개 발도 사용 가능");
+  endRound(); ok(t.B.firstSide==="D"&&!T.slotUsable(t.a,1,"A"),"O10b R2 교대로 후순 — 번개 발도 불가 (속도가 빨라도)");
+  /* 시간의 수호자 3R 전투에서도 같은 규칙 */
+  t=openBattle({spd:6},{spd:14}); t.B.maxRounds=3;
+  const order=[t.B.firstSide]; endRound(); order.push(t.B.firstSide); endRound(); order.push(t.B.firstSide);
+  eq(order.join(""),"DAD","O11 시간의 수호자 3R — R1 속도(D) · R2 교대(A) · R3 R1 측(D)");
+  endRound(); ok(T.S.battle!==t.B,"O11b 3R 종료 후 판정으로 전투 종료");
   unfix();
 }
 
