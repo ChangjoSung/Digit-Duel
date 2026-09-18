@@ -11,11 +11,13 @@
 
 규칙: 기획에 없는 내용은 임의 구현하지 않고 [기획 필요]로 보고한다. CJ 결정은 GDD-13 Decision Log에 날짜와 함께 기록한다. 모든 보고는 확정/추론/미확정을 구분한다.
 
-## 현재 부서·모델 운영 (2026-09-13 CJ 승인 · #211)
+## 현재 부서·모델·Ponytail 운영 (2026-09-18 CJ 승인 · #243·#244)
 
-- 적용 범위는 Digit-Duel 프로젝트뿐이다. 계정 전역 기본값을 수정하지 않는다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
+- 적용 범위는 Digit-Duel 프로젝트뿐이다. 모델·effort의 계정 전역 기본값을 수정하지 않는다. 단, CJ가 지시한 Codex·Claude Ponytail 설치는 제공된 설치 명령에 따른 user scope 예외다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
+- 다음 Mercury_PD 인수인계 세션만 CJ의 명시적 지시에 따라 `danger-full-access`와 approval `never`로 시작한다. 이 승인은 다른 Worker·다른 프로젝트·managed/host 정책 우회로 확장하지 않는다.
 - 신규 Worker는 [WORKER_MODELS.md](docs/creat2ve/WORKER_MODELS.md)와 [worker-models.json](docs/creat2ve/worker-models.json)의 agent/model/effort를 명시해 시작한다. 계정 기본값만으로 부서별 실행값을 추정하지 않는다. 시작 영수증 requested/effective와 실제 응답을 확인한다.
-- Mercury_PD=Terra low, Venus_Plan/Mars_Client/Jupiter_Server=Sonnet 5 medium, Saturn_QA=Sol medium. Earth_Art는 신규 창작 Astra medium / 기존 자산 수정 Terra medium.
+- Mercury_PD=Codex Sol high·No Fast, Venus_Plan/Mars_Client/Jupiter_Server=Opus 5 high, Saturn_QA=Codex Sol high·No Fast. Earth_Art는 신규 창작 Astra medium / 기존 자산 수정 Terra high. `No Fast`는 `service_tier=default`다.
+- Mercury·Mars·Jupiter·Saturn은 모든 작업에서 Ponytail `full`을 필수 적용한다. Venus는 `eli-adult`를 계속 필수 적용하고 기술 기획의 YAGNI 검토에만 Ponytail `lite`를 병행한다. Earth의 순수 아트 제작에는 적용하지 않으며 코드·도구 작업은 Mars로 라우팅한다. 역할 경계·필수 QA·입력 검증·보안·접근성 요구는 줄이지 않는다.
 - Venus가 Notion 기획서 작성·관리를 맡는다(eli_adult). Mercury는 GitHub·Orca 조정·운영 보고와 메타데이터를 관리한다. 아래 과거 계약의 Worker Notion 직접 쓰기 금지는 Venus의 승인된 기획 문서 관리에는 적용하지 않는다. 다른 Worker의 GitHub/Notion 쓰기와 모든 Worker의 Git 쓰기 금지는 유지한다.
 - Earth는 도트·리소스·UI 시각/전환 설계, Mars는 UI 실행 코드, Jupiter는 서버·DB·Table 스키마/검증, Venus/CJ는 Table 의미/수치를 맡는다. 기존 TSV의 일괄 CSV 변환은 승인되지 않았다.
 - 이번 범위는 infra 역할·모델 설정이다. 외부 서버 및 Lobby/System Flow 작업은 별도 CJ 요청 전 착수하지 않는다. 아래 과거 부서 단계·관리 주체와 충돌하면 이 최신 계약을 우선한다.

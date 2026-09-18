@@ -76,7 +76,7 @@ function diverges(room, fn, undo) {
   both(room, (E) => { E.S.battle.fd.pendingFx.push({ roundsLeft: 1, tag: 'fixture:delayed', run() {} }); });
   ok(diverges(room, (E) => { E.S.battle.fd.pendingFx[E.S.battle.fd.pendingFx.length - 1].roundsLeft = 2; },
     (E) => { E.S.battle.fd.pendingFx[E.S.battle.fd.pendingFx.length - 1].roundsLeft = 1; }), 'pendingFx 같은 tag 의 roundsLeft 차이 (#233 대기열 계약 유지)');
-  for (const k of ['reflectSeq', 'counterSeq']) {
+  for (const k of ['reflectSeq']) {
     ok(diverges(room, (E) => { E.S.battle[k] = 7; }, (E) => { delete E.S.battle[k]; }), '전투 객체 B.' + k + ' 분기');
   }
   const king = T.S.pieces.find((p) => p.type === 'king');

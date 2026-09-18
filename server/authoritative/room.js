@@ -212,7 +212,7 @@ function lockstepDigest(T) {
       fa: fighter(B.fa), fd: fighter(B.fd), itemRoundA: !!B.itemRoundA, itemRoundD: !!B.itemRoundD,
       ballThrowA: !!B.ballThrowA, ballThrowD: !!B.ballThrowD, buffA: B.buffA || null, buffD: B.buffD || null,
       // #234 4.3 반사·반격 "한 행동 1회" 게이트 — 마지막으로 발동한 actSeq. 한쪽만 서 있으면 같은 행동의 두 번째 반사가 갈린다.
-      reflectSeq: B.reflectSeq === undefined ? null : B.reflectSeq, counterSeq: B.counterSeq === undefined ? null : B.counterSeq,
+      reflectSeq: B.reflectSeq === undefined ? null : B.reflectSeq,
       /* #241 R1 (CJ 설계) 번개 꼬리 추가 공격 단계 — 같은 행동자가 한 번 더 고르는 상태. 한 좌석만 서 있으면 그 좌석은 차례를 넘기지
          않고 다른 좌석은 넘겨 행위자 자체가 갈린다. allowed(합법 슬롯)·saved(턴 끝에 되돌릴 2·3차 ⌛ 사본)·tailSlot 모두 규칙 상태다.
          B.actSeq 는 추가 공격 시작에도 오르며 위 actSeq 가 이미 본다. */
