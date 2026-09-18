@@ -1470,7 +1470,7 @@ const V2_FX={
   /* #241 단순화 9: 다음 피해 스킬 +20%(1회성 필드) → 가하는 피해 +20%(1R) 버프 */
   emberScale(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.10),c.sk.id); applyDmgUpBuff(c.f,0.20,1); bmsg(`🫧 방어막 ${c.f.shield} · 가하는 피해 +20% (1R)`,{st:stFx(c.side,c.f)}); },
   dragonRoar(c){ const r=c.hit(100+S.battle.round*20,{}); if(S.battle&&!r.evaded) c.st("burn",1); },
-  aimShot(c){ const r=c.hit(120,{critForce:c.opp.burn>0}); },
+  aimShot(c){ c.hit(120,{critForce:c.opp.burn>0}); },
   burnBurst(c){ const o=c.opp;
     if(o.burn>0){ const tick=o.maxHp*(o.burnMag||BAL.burnPct), left=o.burn;
       o.burn=0; o.burnFresh=false; o.burnMag=0; o.burnNoCure=false; const by=o.burnBy; o.burnBy=null;
@@ -1627,7 +1627,7 @@ function v2RoundEnd(f,side){
   if(!f.ringRFresh&&f.ringR>0) v2Heal(side,f,f.maxHp*0.06,"나이테");
   return false; // #241 단순화 12: 포자 막 라운드 종료 회복(sporePending) 삭제 — 사용 시 즉시 회복
 }
-function v2RoundDecay(f,side){
+function v2RoundDecay(f){
   for(const k of V2_TIMED){
     if(f[k+"Fresh"]){ f[k+"Fresh"]=false; continue; }
     if(f[k]>0){ f[k]--; if(!f[k]){ for(const m of (V2_TIMED_MAG[k]||[])) f[m]=(m==="mossBy"||m==="breedBy")?null:0; } }
@@ -3818,7 +3818,7 @@ function startRounds(attP,defP,fa,fd){
 function resetBattleTemps(f){resetV2(f); f.burn=0;f.burnFresh=false;f.burnBy=null;f.weaken=0;f.shield=0;f.shieldLayers=[];f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
   f.crack=0;f.crackFresh=false;f.harden=0;f.hardenFresh=false;f.hardenPct=0;f.evadeBuff=0;f.evadeBuffR=0;f.evadeBuffRFresh=false;f.dmgUpBuff=0;f.dmgUpBuffR=0;f.dmgUpBuffRFresh=false;f.critForce=false;f.dodgeForce=false;
   f.pendingFx=[]; // #233 (GDD-23 4.6): 예고·지연 효과는 발동 전에 전투가 끝나면 취소된다 — 새 전투로 넘어오지 않는다
-  if(f.skills){ f.cds=f.skills.map(()=>0); } f.cd=0; // #233 (GDD-23 4.6): 레거시 스칼라 쿨(f.cd)도 새 전투는 0에서 시작한다
+  f.cd=0; // #233 (GDD-23 4.6): 레거시 스칼라 쿨(f.cd)도 새 전투는 0에서 시작한다
   if(f.shieldStartPct){ shieldAdd(f,Math.round(f.maxHp*f.shieldStartPct),"guardStart"); } // 3.3 보호형 기본값: 전투 시작 시 최대 HP 10% 방어막
   f.powerBuff=false;f.fleeBoost=false;}
 /* #233 (GDD-23 4.4) 선턴·후턴 — 라운드 시작 시 확정.
@@ -4753,7 +4753,7 @@ function nextPhase(){
     else if(f.evadeBuffR>0){f.evadeBuffR--; if(!f.evadeBuffR){f.evadeBuff=0; bmsg(`💨 ${fighterName(side)}의 회피 증가가 풀렸다.`,{st:stFx(side,f)});}}
     if(f.dmgUpBuffRFresh) f.dmgUpBuffRFresh=false;
     else if(f.dmgUpBuffR>0){f.dmgUpBuffR--; if(!f.dmgUpBuffR){f.dmgUpBuff=0; bmsg(`💪 ${fighterName(side)}의 가하는 피해 증가가 풀렸다.`,{st:stFx(side,f)});}}
-    v2RoundDecay(f,side); // #234 스킬 지속 효과 — 부여 라운드는 세지 않는다(5.6)
+    v2RoundDecay(f); // #234 스킬 지속 효과 — 부여 라운드는 세지 않는다(5.6)
     tickDelayed(f); // #233 (GDD-23 4.3) 예고·지연 피해 — 라운드 종료마다 카운트, 발동 시 전투가 살아 있을 때만 실행
     if(S.battle!==B) return; // tickDelayed가 발동시킨 피해로 전투가 끝났으면 여기서 멈춘다(checkDeath는 run() 안에서 이미 처리)
   }
@@ -4820,7 +4820,7 @@ function finishBattle(winSide,how){
    전투 인스턴스 회계(B.buffA/B.buffD·B.maxRounds)는 S.battle 이 null 이 되면서 함께 사라지고, 쓰지 않은 패키지 재고(S.pkgs)는 보존된다. */
 function resetAfter(f){resetV2(f); f.burn=0;f.burnFresh=false;f.burnBy=null;f.weaken=0;f.shield=0;f.shieldLayers=[];f.absorbed=0;f.shock=0;f.shockFresh=false;f.focusCharge=false;f.vulnMark=false;f.dmgCut=0;f.atkBuff=false;
   f.crack=0;f.crackFresh=false;f.harden=0;f.hardenFresh=false;f.hardenPct=0;f.evadeBuff=0;f.evadeBuffR=0;f.evadeBuffRFresh=false;f.dmgUpBuff=0;f.dmgUpBuffR=0;f.dmgUpBuffRFresh=false;f.critForce=false;f.dodgeForce=false;f.pendingFx=[];
-  if(f.skills){ f.cds=f.skills.map(()=>0); } f.cd=0; // #233 (GDD-23 4.6): 전투 사이 HP만 유지 — 쿨타임(레거시 스칼라 포함)·예고 효과는 다음 전투 전에 초기화
+  f.cd=0; // #233 (GDD-23 4.6): 전투 사이 HP만 유지 — 쿨타임(레거시 스칼라 포함)·예고 효과는 다음 전투 전에 초기화
   f.powerBuff=false;f.fleeBoost=false;}
 /* #12 포획 종료: 적 하수인 즉시 제거 + S.reserve 저장 — 누적 판정 없이 전투 즉시 종료 (포획으로 승리) */
 function finishByCapture(side){
