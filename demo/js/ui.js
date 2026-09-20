@@ -781,16 +781,7 @@ function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중
   while(S.roster[p].length<6) S.roster[p].push(rest.pop());
   applyRoster(p);
 }
-window.autoPlaceCore=()=>{
-  const p=S.setupPlayer, rows=zoneOf(p);
-  if(S.roster[p].length<6) fillRosterRandom(p);
-  const cells=[]; for(const r of rows) for(let c=1;c<=COLS;c++) cells.push([r,c]);
-  shuffle(cells);
-  for(const x of S.pieces.filter(x=>x.owner===p&&!x.placed)){
-    const cell=cells.find(([r,c])=>!at(r,c)); x.r=cell[0];x.c=cell[1];x.placed=true;
-  }
-  S.selected=null; render();
-};
+window.autoPlaceCore=()=>dispatchCoreAction({t:"auto"});
 window.clearPlaceCore=()=>dispatchCoreAction({t:"clear"});
 window.setupDoneCore=()=>{
   const p=S.setupPlayer;

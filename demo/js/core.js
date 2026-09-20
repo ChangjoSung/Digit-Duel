@@ -1,6 +1,23 @@
 "use strict";
 /* #245 점진 Core 경계: reducer는 입력 상태를 바꾸지 않고 다음 상태와 표시 event만 돌려준다.
    레거시 예약 콜백이 S 객체 정체성을 검사하므로 commit은 같은 S에 얕게 반영한다. */
+function resolveCoreAction(state,action){
+  if(action.t!=="auto") return action;
+  const player=state.setupPlayer, roster=state.roster[player].slice();
+  if(roster.length<6){
+    const rest=shuffle(ROSTER.filter(item=>!roster.includes(item.id)).map(item=>item.id));
+    while(roster.length<6) roster.push(rest.pop());
+  }
+  const rows=player===0?[11,12,13]:[1,2,3], cells=[];
+  for(const row of rows) for(let column=1;column<=COLS;column++) cells.push([row,column]);
+  shuffle(cells);
+  const occupied=new Set(state.pieces.filter(piece=>piece.alive&&piece.placed).map(piece=>piece.r+"_"+piece.c)), positions=[];
+  for(const piece of state.pieces.filter(piece=>piece.owner===player&&!piece.placed)){
+    const cell=cells.find(([row,column])=>!occupied.has(row+"_"+column));
+    positions.push({id:piece.id,r:cell[0],c:cell[1]}); occupied.add(cell[0]+"_"+cell[1]);
+  }
+  return {t:"setupAuto",player,roster,positions};
+}
 function reduceCoreAction(state,action){
   switch(action.t){
     case "selTray": return {state:Object.assign({},state,{selected:{tray:true,id:action.id}}),events:[{type:"render"}]};
@@ -17,13 +34,19 @@ function reduceCoreAction(state,action){
       const player=state.setupPlayer, pieces=state.pieces.map(piece=>piece.owner===player?Object.assign({},piece,{placed:false}):piece);
       return {state:Object.assign({},state,{pieces,selected:null}),events:[{type:"render"}]};
     }
+    case "setupAuto": {
+      const next=Object.assign({},state,{roster:state.roster.map(x=>x.slice()),pieces:state.pieces.map(x=>Object.assign({},x)),selected:null});
+      next.roster[action.player]=action.roster.slice(); applyRoster(action.player,next);
+      for(const position of action.positions){ const piece=next.pieces.find(x=>x.id===position.id); piece.r=position.r; piece.c=position.c; piece.placed=true; }
+      return {state:next,events:[{type:"render"}]};
+    }
     case "tele": return {state:Object.assign({},state,{teleport:state.teleport?null:{stage:1,piece:null},selected:null}),events:[{type:"render"}]};
     case "skipMain": return {state:Object.assign({},state,{mainUsed:true}),events:[{type:"mainSkipped",player:state.current,origin:action.origin,toast:action.toast}]};
     default: return null;
   }
 }
 function dispatchCoreAction(action){
-  const result=reduceCoreAction(S,action);
+  const result=reduceCoreAction(S,resolveCoreAction(S,action));
   if(!result) return false;
   Object.assign(S,result.state);
   applyUiEvents(result.events);
