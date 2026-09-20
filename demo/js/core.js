@@ -1,4 +1,21 @@
 "use strict";
+/* #245 점진 Core 경계: reducer는 입력 상태를 바꾸지 않고 다음 상태와 표시 event만 돌려준다.
+   레거시 예약 콜백이 S 객체 정체성을 검사하므로 commit은 같은 S에 얕게 반영한다. */
+function reduceCoreAction(state,action){
+  switch(action.t){
+    case "selTray": return {state:Object.assign({},state,{selected:{tray:true,id:action.id}}),events:[{type:"render"}]};
+    case "tele": return {state:Object.assign({},state,{teleport:state.teleport?null:{stage:1,piece:null},selected:null}),events:[{type:"render"}]};
+    case "skipMain": return {state:Object.assign({},state,{mainUsed:true}),events:[{type:"mainSkipped",player:state.current,origin:action.origin,toast:action.toast}]};
+    default: return null;
+  }
+}
+function dispatchCoreAction(action){
+  const result=reduceCoreAction(S,action);
+  if(!result) return false;
+  Object.assign(S,result.state);
+  applyUiEvents(result.events);
+  return true;
+}
 /* ===== 턴 진행 ===== */
 function startTurn(){
   S.mainUsed=false; S.battlesUsed=0; S.movedPiece=null; S.contactSet=[]; S.firstBattleWonByMover=false;

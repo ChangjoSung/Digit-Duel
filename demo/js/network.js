@@ -52,20 +52,18 @@ function netAction(a){ // 모든 상태 변경 입력의 단일 경로 — 오�
 function applyAction(a){
   if(a.pick&&(!S.fleePick||a.pick!==S.fleePick.token)) return;
   if(S.fleePick&&(!["cell","fleeSwap","fleeSkip","resign"].includes(a.t)||(["cell","fleeSwap","fleeSkip"].includes(a.t)&&a.pick!==S.fleePick.token))) return;
+  if(dispatchCoreAction(a)) return;
   switch(a.t){
     case "cell": onCellCore(a.r,a.c); break;
-    case "selTray": window.selTrayCore(a.id); break;
     case "roster": window.toggleRosterCore(a.rid); break;
     case "auto": window.autoPlaceCore(); break;
     case "clear": window.clearPlaceCore(); break;
     case "setupDone": window.setupDoneCore(); break;
-    case "skipMain": S.mainUsed=true; addLog(`${pname(S.current)} 주 행동 생략`); render(); break;
     case "search": {
       const sel=S.selected&&!S.selected.tray?S.selected:null;
       const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
       if(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel)) doSearch(sel,ev);
       break; }
-    case "tele": S.teleport=S.teleport?null:{stage:1,piece:null}; S.selected=null; render(); break;
     case "endTurn": if(a.auto) met(S.current,"autoEnds"); endTurn(); break; // #106 T7: 자동 종료 표식은 프레임에 실려 양측 지표 동일
     case "heal": { const p=S.pieces.find(x=>x.id===a.id); if(p) doHeal(p); break; } // #106 T2 회복 주 행동 (lockstep 액션 — rand 소비 0)
     case "fleeSwap": if(S.fleePick&&S.fleePick.cands.includes(a.id)) fleeResolve(a.id); break; // #114 도망 후 교환 (소유자 입력, rand 소비 0)

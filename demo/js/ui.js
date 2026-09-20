@@ -37,6 +37,17 @@ function showToast(msg,kind){
     setTimeout(()=>{if(t.parentNode)t.parentNode.removeChild(t);},2300);
   }catch(e){}
 }
+function applyUiEvents(events){
+  for(const event of events||[]){
+    if(event.type==="render"){ render(); continue; }
+    if(event.type==="mainSkipped"){
+      const ai=event.origin==="ai", msg=ai?"🤖 AI 주 행동 생략":`${pname(event.player)} 주 행동 생략`;
+      addLog(msg,ai?"ai":"");
+      if(ai&&event.toast!==false) showToast(msg);
+      render();
+    }
+  }
+}
 function clearToasts(){try{const box=$("toasts"); if(box) box.innerHTML="";}catch(e){}}
 function pct(n){return Math.round(n*100)+"%";}
 /* HTML 속성값 이스케이프 — innerHTML 템플릿에 "밖에서 온 값"을 넣을 때만 쓴다.
@@ -741,7 +752,7 @@ function afterStartTurn(){
 }
 
 /* ===== 배치 ===== */
-window.selTrayCore=id=>{S.selected={tray:true,id}; render();};
+window.selTrayCore=id=>dispatchCoreAction({t:"selTray",id});
 window.toggleRosterCore=rid=>{ // 로스터 선택 토글 — 중복 불가·최대 6종, 변경 시 하수인 회수 후 스탯 재주입
   const p=S.setupPlayer, sel=S.roster[p], i=sel.indexOf(rid);
   if(i>=0) sel.splice(i,1);

@@ -100,7 +100,7 @@ function aiMain(me){
   }
   // 3. 강한 전투 기회가 있으면 주 행동 생략(위치 보존)
   const pick=aiEvalBattles(me,true);
-  if(pick&&pick.score>=18){ S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략"); return; }
+  if(pick&&pick.score>=18){ netAction({t:"skipMain",origin:"ai"}); return; }
   // 4. 목적 이동: 동료·왕(볼 보유·포획 미보유) → 숲 / 하수인 → 전진 (공개된 적 왕은 추격)
   // 선봉 집중: 하수인 1기를 지정해 지속 전진 (이동권 분산으로 전선이 형성되지 않는 문제 방지)
   let vg=S.aiVanguard[me];
@@ -149,7 +149,7 @@ function aiMain(me){
   if(hl&&hl.sc>(cands.length?cands[0].sc:0)&&(!tp||hl.sc>tp.sc)&&doHeal(hl.p)){ addLog("🤖 AI 회복 행동","ai"); showToast("🤖 AI 회복 행동"); return; }
   if(tp&&tp.sc>(cands.length?cands[0].sc:0)&&doTeleportSwap(tp.a,tp.b)){ addLog("🤖 AI 주 행동","ai"); return; } // #18: 차단 시 일반 이동으로 대체
   if(cands.length){ const t=cands[0]; doMove(t.p,t.r,t.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
-  S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략");
+  netAction({t:"skipMain",origin:"ai"});
 }
 /* #106 5급 회복 후보: 가시 인접 적이 없고 HP<60% 인 자기 하수인·동료·왕 중 손실 비율이 가장 큰 말 (공정 관측 — 자기 말 정보만, 난수 미소비) */
 function aiHealPick(me){
@@ -648,9 +648,9 @@ function aiMainStrong(me){
     if(c.kind==="move"){ hist.push({id:c.p.id,r:c.p.r,c:c.p.c}); if(hist.length>6) hist.shift();
       doMove(c.p,c.r,c.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
     if(c.kind==="tele"){ if(doTeleportSwap(c.a,c.b)){ addLog("🤖 AI 주 행동","ai"); return; } continue; }
-    S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai"); showToast("🤖 AI 주 행동 생략"); return;
+    netAction({t:"skipMain",origin:"ai"}); return;
   }
-  S.mainUsed=true; addLog("🤖 AI 주 행동 생략","ai");
+  netAction({t:"skipMain",origin:"ai",toast:false});
 }
 /* 5단 전투 개시 선택: 기대치 기반 (canBattle·가시 대상만) */
 function aiEvalBattlesStrong(me){
