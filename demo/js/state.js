@@ -98,17 +98,17 @@ function mkPiece(owner,type,element,allyIdx){
   return f;
 }
 /* 선택된 로스터 6종의 스탯을 플레이어 p의 하수인 6기에 주입 (선택 변경 시 재주입) */
-function applyRoster(p){
-  const ms=S.pieces.filter(x=>x.owner===p&&x.type==="minion");
+function applyRoster(p,state){
+  const game=state||S, ms=game.pieces.filter(x=>x.owner===p&&x.type==="minion");
   ms.forEach((m,i)=>{
-    const rd=S.roster[p][i]?ROSTER.find(r=>r.id===S.roster[p][i]):null;
+    const rd=game.roster[p][i]?ROSTER.find(r=>r.id===game.roster[p][i]):null;
     if(rd){ applySpecies(m,rd,1); } // #234 (GDD-23 2.2 · 3.4 · 6.1): 경기 시작 하수인은 ⭐1 — 1차 기본기 1개. ⭐2~4 는 상점(#236) 전까지 검사·AI 경로에서만 구성
     else {m.rosterId=null; m.name=null; m.element=null;
       m.hp=BAL.minion.hp; m.maxHp=BAL.minion.hp; m.atk=BAL.minion.atk; m.skillAtk=BAL.minion.skill; m.cdMax=BAL.minion.cd;
       applyArchStats(m,"std",1);
       m.skills=null; m.cds=[0,0,0,0]; m.revealedSkills=null;}
   });
-  assignLeaderElements(p); // #234 (GDD-23 2.2): 왕·동료 속성 미선택 규칙 — 필드 하수인 최다 속성(동률 🔥→💧→⚡→🗻→🌿), 스킬 칸 동기화
+  assignLeaderElements(p,game); // #234 (GDD-23 2.2): 왕·동료 속성 미선택 규칙 — 필드 하수인 최다 속성(동률 🔥→💧→⚡→🗻→🌿), 스킬 칸 동기화
 }
 /* #121 계약 1.1 (v0.4.7) 숲 이벤트 개편 — 종전 #12 의 "구역당 3~4개 · 6종 칸마다 독립 추첨"을 대체한다.
    각 구역(4·5행 / 9·10행)에 itemGift·battleBuff·recruit 를 **각 정확히 1개**, 보드 전체 6개. 종류별 개수는 고정이고 칸 위치만 무작위다.

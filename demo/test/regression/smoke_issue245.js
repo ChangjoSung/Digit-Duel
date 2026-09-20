@@ -25,6 +25,10 @@ ok(typeof T.reduceCoreAction==="function"&&typeof T.dispatchCoreAction==="functi
 const input={current:1,mainUsed:false,selected:{id:7},teleport:null};
 const reduced=T.reduceCoreAction(input,{t:"skipMain",origin:"ai"});
 ok(input.mainUsed===false&&reduced.state!==input&&reduced.state.mainUsed===true&&reduced.events[0].type==="mainSkipped","Core reducer is pure and returns a semantic event");
+T.newGame("pvp");
+const rosterBefore=T.S.roster[0].slice(), piecesBefore=T.S.pieces.map(piece=>({placed:piece.placed,rosterId:piece.rosterId}));
+const rosterResult=T.reduceCoreAction(T.S,{t:"roster",rid:"M-F1"});
+ok(JSON.stringify(T.S.roster[0])===JSON.stringify(rosterBefore)&&JSON.stringify(T.S.pieces.map(piece=>({placed:piece.placed,rosterId:piece.rosterId})))===JSON.stringify(piecesBefore)&&rosterResult.state.roster[0][0]==="M-F1","setup roster reducer leaves its nested input unchanged");
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
 ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");
 let blocked=false;

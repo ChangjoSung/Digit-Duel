@@ -55,9 +55,7 @@ function applyAction(a){
   if(dispatchCoreAction(a)) return;
   switch(a.t){
     case "cell": onCellCore(a.r,a.c); break;
-    case "roster": window.toggleRosterCore(a.rid); break;
     case "auto": window.autoPlaceCore(); break;
-    case "clear": window.clearPlaceCore(); break;
     case "setupDone": window.setupDoneCore(); break;
     case "search": {
       const sel=S.selected&&!S.selected.tray?S.selected:null;

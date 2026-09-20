@@ -4,6 +4,19 @@
 function reduceCoreAction(state,action){
   switch(action.t){
     case "selTray": return {state:Object.assign({},state,{selected:{tray:true,id:action.id}}),events:[{type:"render"}]};
+    case "roster": {
+      const player=state.setupPlayer, selected=state.roster[player], index=selected.indexOf(action.rid);
+      if(index<0&&selected.length>=6) return {state,events:[{type:"toast",message:"이미 6종을 모두 선택했습니다. 다른 종을 해제 후 선택하세요."}]};
+      const next=Object.assign({},state,{roster:state.roster.map(x=>x.slice()),pieces:state.pieces.map(x=>Object.assign({},x)),selected:null});
+      if(index>=0) next.roster[player].splice(index,1); else next.roster[player].push(action.rid);
+      for(const piece of next.pieces) if(piece.owner===player&&piece.type==="minion") piece.placed=false;
+      applyRoster(player,next);
+      return {state:next,events:[{type:"setupRosterChanged",complete:next.roster[player].length===6}]};
+    }
+    case "clear": {
+      const player=state.setupPlayer, pieces=state.pieces.map(piece=>piece.owner===player?Object.assign({},piece,{placed:false}):piece);
+      return {state:Object.assign({},state,{pieces,selected:null}),events:[{type:"render"}]};
+    }
     case "tele": return {state:Object.assign({},state,{teleport:state.teleport?null:{stage:1,piece:null},selected:null}),events:[{type:"render"}]};
     case "skipMain": return {state:Object.assign({},state,{mainUsed:true}),events:[{type:"mainSkipped",player:state.current,origin:action.origin,toast:action.toast}]};
     default: return null;

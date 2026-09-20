@@ -40,6 +40,11 @@ function showToast(msg,kind){
 function applyUiEvents(events){
   for(const event of events||[]){
     if(event.type==="render"){ render(); continue; }
+    if(event.type==="toast"){ showToast(event.message); continue; }
+    if(event.type==="setupRosterChanged"){
+      if(event.complete&&UI.prep==="roster") UI.prep="place";
+      render(); continue;
+    }
     if(event.type==="mainSkipped"){
       const ai=event.origin==="ai", msg=ai?"🤖 AI 주 행동 생략":`${pname(event.player)} 주 행동 생략`;
       addLog(msg,ai?"ai":"");
@@ -753,15 +758,7 @@ function afterStartTurn(){
 
 /* ===== 배치 ===== */
 window.selTrayCore=id=>dispatchCoreAction({t:"selTray",id});
-window.toggleRosterCore=rid=>{ // 로스터 선택 토글 — 중복 불가·최대 6종, 변경 시 하수인 회수 후 스탯 재주입
-  const p=S.setupPlayer, sel=S.roster[p], i=sel.indexOf(rid);
-  if(i>=0) sel.splice(i,1);
-  else if(sel.length<6) sel.push(rid);
-  else {showToast("이미 6종을 모두 선택했습니다. 다른 종을 해제 후 선택하세요."); return;}
-  for(const x of S.pieces.filter(x=>x.owner===p&&x.type==="minion")) x.placed=false;
-  if(sel.length===6&&UI.prep==="roster") UI.prep="place"; // #122 표시 전용: 6종을 다 고르면 배치 단계로 넘어간다 (탭으로 언제든 되돌아간다)
-  applyRoster(p); S.selected=null; render();
-};
+window.toggleRosterCore=rid=>dispatchCoreAction({t:"roster",rid});
 window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 해제]는 toggleRoster와 동일 동작 (6/6·중복 불가 유지)
   const rd=ROSTER.find(r=>r.id===rid); if(!rd) return;
   const on=S.roster[S.setupPlayer].includes(rid);
@@ -794,7 +791,7 @@ window.autoPlaceCore=()=>{
   }
   S.selected=null; render();
 };
-window.clearPlaceCore=()=>{for(const x of S.pieces.filter(x=>x.owner===S.setupPlayer)){x.placed=false;} S.selected=null; render();};
+window.clearPlaceCore=()=>dispatchCoreAction({t:"clear"});
 window.setupDoneCore=()=>{
   const p=S.setupPlayer;
   if(S.roster[p].length!==6||S.pieces.some(x=>x.owner===p&&!x.placed)){

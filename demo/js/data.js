@@ -478,34 +478,35 @@ for(const el of V2_ELEM_ORDER){
 v2Reg("LD-REVENGE",{ko:"🪄 동료의 복수",pct:220,cd:2,fx:"revenge",desc:"💪🏻 220% / ⌛2 · 사용자 속성 왕국의 효과를 확률 판정 없이 100% 부여 (수치 · 지속은 그 왕국의 현재 최고 달성 단계 · 왕국 (2) 미달성이면 효과 없이 위력만)"});
 v2Reg("LD-WRATH",{ko:"🪄 왕의 분노",pct:280,cd:2,fx:"wrath",desc:"💪🏻 280% / ⌛2 · 동료의 복수와 같은 효과 · 지속(🧭)을 +1라운드 연장 · 왕국 (2) 미달성이면 효과 없이 위력만"});
 /* 3.5·6.2: 왕 최대 4칸 · 동료 최대 3칸. 동료 1명 사망 → 살아 있는 남은 동료와 왕이 3번째 칸(동료의 복수), 2명 사망 → 왕 4번째 칸(왕의 분노) */
-function leaderSkillIds(p){
+function leaderSkillIds(p,state){
   if(!p||(p.type!=="king"&&p.type!=="ally")) return null;
   const el=p.element||"fire";
-  const dead=S&&S.pieces?S.pieces.filter(x=>x.owner===p.owner&&x.type==="ally"&&!x.alive).length:0;
+  const game=state||S, dead=game&&game.pieces?game.pieces.filter(x=>x.owner===p.owner&&x.type==="ally"&&!x.alive).length:0;
   if(p.type==="king"){ const ids=["K-1","K-2-"+el]; if(dead>=1) ids.push("LD-REVENGE"); if(dead>=2) ids.push("LD-WRATH"); return ids; }
   const kind=p.allyKind==="shield"?"SH":"AS";
   const ids=[kind+"-1",kind+"-2-"+el]; if(dead>=1&&p.alive!==false) ids.push("LD-REVENGE"); return ids;
 }
 /* 슬롯을 늘리기만 한다 — 기존 칸의 남은 ⌛·공개 기록은 그대로 두고, 속성이 바뀐 2차만 새 id 로 바꾼다 */
-function syncLeaderSkills(p){
-  const ids=leaderSkillIds(p); if(!ids) return;
+function syncLeaderSkills(p,state){
+  const ids=leaderSkillIds(p,state); if(!ids) return;
   const old=p.skills||[], cds=p.cds||[];
   p.skills=ids; p.cds=ids.map((id,i)=>(old[i]===id||(i===1&&old[i]))?(cds[i]||0):0);
   if(!p.revealedSkills) p.revealedSkills=[];
   p.revealedSkills=p.revealedSkills.filter(i=>i<ids.length&&old[i]===ids[i]);
 }
-function syncOwnerLeaders(owner){ if(!S||!S.pieces) return; for(const x of S.pieces) if(x.owner===owner&&(x.type==="king"||x.type==="ally")) syncLeaderSkills(x); }
+function syncOwnerLeaders(owner,state){ const game=state||S; if(!game||!game.pieces) return; for(const x of game.pieces) if(x.owner===owner&&(x.type==="king"||x.type==="ally")) syncLeaderSkills(x,game); }
 /* 2.2 왕·동료 속성 미선택 규칙 — 필드 하수인에 가장 많은 속성, 동률이면 🔥 → 💧 → ⚡ → 🗻 → 🌿. 선택 UI 는 #236/#238 */
-function leaderDefaultElement(owner){
+function leaderDefaultElement(owner,state){
+  const game=state||S;
   const cnt={}; for(const el of V2_ELEM_ORDER) cnt[el]=0;
-  for(const x of S.pieces) if(x.owner===owner&&x.type==="minion"&&x.element&&cnt[x.element]!==undefined) cnt[x.element]++;
+  for(const x of game.pieces) if(x.owner===owner&&x.type==="minion"&&x.element&&cnt[x.element]!==undefined) cnt[x.element]++;
   let best=V2_ELEM_ORDER[0]; for(const el of V2_ELEM_ORDER) if(cnt[el]>cnt[best]) best=el;
   return best;
 }
-function assignLeaderElements(owner){
-  const el=leaderDefaultElement(owner);
-  for(const x of S.pieces) if(x.owner===owner&&(x.type==="king"||x.type==="ally")&&!x.leaderElChosen){ x.element=el; }
-  syncOwnerLeaders(owner);
+function assignLeaderElements(owner,state){
+  const game=state||S, el=leaderDefaultElement(owner,game);
+  for(const x of game.pieces) if(x.owner===owner&&(x.type==="king"||x.type==="ally")&&!x.leaderElChosen){ x.element=el; }
+  syncOwnerLeaders(owner,game);
 }
 /* 일반 하수인 · 전설 주입 (3.3 · 3.4 · 3.6) — applyRoster·포획·검사가 같은 한 함수를 쓴다 */
 function applySpecies(m,rd,grade){
