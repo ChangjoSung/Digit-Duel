@@ -129,6 +129,30 @@ ok(mover.r===11&&mover.c===4&&T.at(11,4)===mover&&T.S.contactKind==="collision"&
 T.S.turnCount=0; T.S.battle=null; T.S.battlesUsed=0; foe.placed=false;
 ok((T.html.match(/이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다\./g)||[]).length===1&&/if\(event\.collision\) collisionLog\(event\.piece\)/.test(T.html)&&/^\s*collisionLog\(p\);$/m.test(T.html),"the collision notice lives in one helper shared by the Core event and the legacy path");
 ok(/forcedContactStart\(event\.piece,event\.forced\)/.test(T.html)&&(T.html.match(/신규 인접 — 강제 전투/g)||[]).length===1&&(T.html.match(/initBattle\(p,def\)/g)||[]).length===1,"forced contact display and battle initiation stay in one helper shared by the Core event and the legacy path");
+/* #245 상태 순수성(이동): 위 단언들은 moveState 가 T.S 그 자체라 둘이 같을 때만 본다.
+   여기서는 말 객체까지 전역 S 와 완전히 분리한 보드를 넘기고 S 만 적대적으로 어긋나게 둔다 — 온라인 재생·AI 탐색 경로 */
+const purePieces=[{id:901,owner:0,type:"minion",alive:true,placed:true,r:12,c:4,immobile:0,movedEver:false,movedPreBT:false,healing:false,revealed:false},
+  {id:902,owner:1,type:"minion",alive:true,placed:true,r:10,c:4,immobile:0,movedEver:false,movedPreBT:false,healing:false,revealed:false}];
+const pureState={phase:"play",mode:"pvp",current:0,mainUsed:false,battle:null,teleport:null,fleePick:null,battlesUsed:0,firstBattleWonByMover:false,
+  forcedTargets:[],forcedQueue:[],turnCount:0,selected:purePieces[0],movedPiece:null,contactSet:[],contactKind:null,pieces:purePieces,
+  events:[],tempReveal:new Set(),traces:[new Set(),new Set()],aiSeenMoved:[new Set(),new Set()],metrics:{minionInvades:0,byPlayer:[{},{}]}};
+const moveDigest=r=>JSON.stringify(r&&{ev:r.events.map(e=>e.type),forced:r.events[0].forced,collision:r.events[0].collision,trace:r.events[0].trace,
+  healBroken:r.events[0].healBroken,main:r.state.mainUsed,kind:r.state.contactKind,targets:r.state.forcedTargets,contact:r.state.contactSet,
+  sel:r.state.selected&&r.state.selected.id,same:r.state.selected===r.state.movedPiece,reveal:[...r.state.tempReveal],
+  seen:r.state.aiSeenMoved.map(x=>[...x]),traces:r.state.traces.map(x=>[...x]),metrics:r.state.metrics,
+  where:r.state.pieces.map(piece=>[piece.id,piece.r,piece.c,piece.movedEver,piece.movedPreBT,piece.healing])});
+const moveAgreed=moveDigest(T.reduceCoreAction(pureState,{t:"move",id:901,r:11,c:4}));
+const liveMove={pieces:T.S.pieces,phase:T.S.phase,current:T.S.current,mainUsed:T.S.mainUsed,turnCount:T.S.turnCount,
+  battlesUsed:T.S.battlesUsed,forcedTargets:T.S.forcedTargets,movedPiece:T.S.movedPiece,contactSet:T.S.contactSet,tempReveal:T.S.tempReveal};
+T.S.pieces=purePieces.map(piece=>Object.assign({},piece,{r:11,c:4,owner:1})); T.S.phase="setup"; T.S.current=1; T.S.mainUsed=true;
+T.S.turnCount=T.BAL.burnStart; T.S.battlesUsed=2; T.S.forcedTargets=[999]; T.S.movedPiece=null; T.S.contactSet=[]; T.S.tempReveal=new Set([901,902]);
+const moveHostile=T.reduceCoreAction(pureState,{t:"move",id:901,r:11,c:4}), hostileDigest=moveDigest(moveHostile);
+Object.assign(T.S,liveMove);
+const purePiece=moveHostile&&moveHostile.state.pieces.find(piece=>piece.id===901);
+ok(hostileDigest===moveAgreed&&!!moveHostile&&purePiece!==purePieces[0]&&purePiece.r===11&&purePiece.c===4&&purePiece.movedEver===true&&purePiece.movedPreBT===true&&moveHostile.state.pieces[1]===purePieces[1],"move reducer reads the board, turn and burning time from its state argument only, so a hostile global S still produces the same step");
+ok(!!moveHostile&&moveHostile.state.mainUsed===true&&moveHostile.state.contactKind==="move"&&moveHostile.state.selected===purePiece&&moveHostile.state.movedPiece===purePiece&&JSON.stringify(moveHostile.state.forcedTargets)===JSON.stringify([902])&&JSON.stringify(moveHostile.state.contactSet)===JSON.stringify([902])&&moveHostile.state.tempReveal===pureState.tempReveal&&moveHostile.state.metrics===pureState.metrics&&moveHostile.state.traces===pureState.traces,"the hostile-S step keeps the contact, selection, reveal, metric and trace contract of the given state");
+ok(!!moveHostile&&moveHostile.state.aiSeenMoved!==pureState.aiSeenMoved&&moveHostile.state.aiSeenMoved[1].has(901)&&pureState.aiSeenMoved[1].size===0&&moveHostile.events.length===1&&moveHostile.events[0].type==="moved"&&moveHostile.events[0].collision===false&&moveHostile.events[0].trace===false&&JSON.stringify(moveHostile.events[0].forced)===JSON.stringify([902]),"the hostile-S observation is recorded on a cloned set and one moved event carries the new contact");
+ok(pureState.mainUsed===false&&pureState.selected===purePieces[0]&&pureState.movedPiece===null&&pureState.contactSet.length===0&&pureState.forcedTargets.length===0&&purePieces[0].r===12&&purePieces[0].c===4&&purePieces[0].movedEver===false,"the independent input state and its piece graph stay untouched under a hostile global S");
 /* #245 텔레포트 스왑: 재검사·차단·위치 교환·자원·지표·흔적·회복 자세와 교환 직후의 강제 전투 큐 적재·첫 항목 승격까지 Core 가 소유하고,
    문구·배너·전투 개시는 teleSwapped 이벤트가 레거시 헬퍼(forcedContactStart)로 넘긴다. 왕이 섞인 교환만 레거시(끝줄 도달 즉시 승리)다 */
 const swapState=H.freshPlay(T,"pvp"); H.clearBoard(T);

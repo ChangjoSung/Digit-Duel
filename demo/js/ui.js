@@ -8,20 +8,21 @@ const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?
    종료(over) 화면도 같은 방향을 유지한다. 핫시트 PVP·PVE·sim 은 NET.mode=false 라 무변경. */
 const boardFlipped=()=> NET.mode&&NET.me===1;
 const alivePieces=(state)=>(state||S).pieces.filter(p=>p.alive&&p.placed); // #245: 인자를 주면 그 상태의 보드를 본다 (기본은 현재 S)
-const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
+const at=(r,c,state)=>alivePieces(state).find(p=>p.r===r&&p.c===c); // #245: 인자를 주면 그 상태의 보드를 본다 (기본은 현재 S)
 const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
 const zoneOf=p=> p===0 ? [11,12,13] : [1,2,3];
 const adj=(a,b)=>Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1;
 /* 버닝 타임 (GDD-13 4.11): 표시 턴 65부터 직선 2칸 이동 강화 (폭탄 포함·함정 제외) */
-const isBurning=()=>S.turnCount+1>=BAL.burnStart;
+const isBurning=(state)=>(state||S).turnCount+1>=BAL.burnStart; // #245: 인자를 주면 그 상태의 턴 수를 본다 (기본은 현재 S)
 /* 원정 구역 = 자기 기준 상대 측 숲+상대 진영 (BT 2칸 이동 불가 구역) */
 const expedZone=(owner,r)=> owner===0 ? r<=5 : r>=9;
 function adjEnemies(p,state){return alivePieces(state).filter(e=>e.owner!==p.owner&&adj(p,e));}
-function visibleTo(viewer,e){
+function visibleTo(viewer,e,state){
+  state=state||S; // #245: reducer 가 받은 상태의 보드·일시 공개만 본다 (기본은 현재 S)
   if(e.owner===viewer) return true;
   if(!inForest(e)) return true;
-  if(S.tempReveal.has(e.id)) return true;
-  return alivePieces().some(m=>m.owner===viewer&&adj(m,e));
+  if(state.tempReveal.has(e.id)) return true;
+  return alivePieces(state).some(m=>m.owner===viewer&&adj(m,e));
 }
 function idLabel(viewer,p){
   if(p.owner===viewer||p.revealed||viewer===2) return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.element?"·"+ELEM_KO[p.element]:"");
@@ -467,36 +468,38 @@ function renderBoard(){
     bd.appendChild(cell);
   }
 }
-function canMoveTo(p,r,c){
-  if(S.phase!=="play"||S.mainUsed||p.owner!==S.current) return false;
+function canMoveTo(p,r,c,state){
+  state=state||S; // #245: reducer 가 받은 상태로 같은 판정을 돌린다 (기본은 현재 S)
+  if(state.phase!=="play"||state.mainUsed||p.owner!==state.current) return false;
   if(p.type==="trap") return false; // 함정은 상시 고정 (GDD-13 4.5 개정 — 폭탄만 이동 상시화)
   if(p.immobile>0) return false;
   const d=Math.abs(p.r-r)+Math.abs(p.c-c);
   if(d!==1){
     // BT 이동 강화: 직선 2칸 (폭탄 포함·함정 제외, 출발·경유·도착이 원정 구역이면 불가)
-    if(d!==2||(p.r!==r&&p.c!==c)||!isBurning()) return false;
+    if(d!==2||(p.r!==r&&p.c!==c)||!isBurning(state)) return false;
     if(expedZone(p.owner,p.r)||expedZone(p.owner,(p.r+r)/2)||expedZone(p.owner,r)) return false;
-    const m=at((p.r+r)/2,(p.c+c)/2);
-    if(m&&visibleTo(p.owner,m)) return false; // 경유 칸의 보이는 말 차단 (숨은 적 충돌은 doMove가 해석)
+    const m=at((p.r+r)/2,(p.c+c)/2,state);
+    if(m&&visibleTo(p.owner,m,state)) return false; // 경유 칸의 보이는 말 차단 (숨은 적 충돌은 doMove가 해석)
   }
-  const o=at(r,c);
+  const o=at(r,c,state);
   if(o&&o.owner===p.owner) return false;
-  if(o&&visibleTo(p.owner,o)) return false;
+  if(o&&visibleTo(p.owner,o,state)) return false;
   return true;
 }
-function canBattle(att,def){
-  if(S.phase!=="play"||att.owner!==S.current||S.battlesUsed>=2) return false;
+function canBattle(att,def,state){
+  state=state||S; // #245: reducer 가 받은 상태로 같은 판정을 돌린다 (기본은 현재 S)
+  if(state.phase!=="play"||att.owner!==state.current||state.battlesUsed>=2) return false;
   if(att.type==="bomb"||att.type==="trap") return false;
   /* #122 REVISE(2026-09-10 CJ QA 6): **왕 vs 왕 불가침을 폐지**한다 — CJ 실플레이에서 텔레포트로 두 왕이
      맞닿는 상황이 실제로 나왔고, 그때 아무 일도 일어나지 않는 것이 아니라 전투가 되어야 한다는 결정이다.
      남는 전투 불가 조합은 폭탄·함정이 공격측일 때뿐이다(위 두 줄). 패배 결과는 기존 규칙 그대로 — 왕 본체가 지면 그 즉시 경기 패배다. */
-  if(S.forcedTargets&&S.forcedTargets.length&&(att!==S.movedPiece||!S.forcedTargets.includes(def.id))) return false; // T1: 강제 대상 외 전투 봉쇄
-  if(S.battlesUsed===1){
+  if(state.forcedTargets&&state.forcedTargets.length&&(att!==state.movedPiece||!state.forcedTargets.includes(def.id))) return false; // T1: 강제 대상 외 전투 봉쇄
+  if(state.battlesUsed===1){
     // #14: 텔레포트 스왑 둘째 말의 승계 강제 전투는 연쇄(첫 전투 승리) 조건 면제
-    const forcedOk=S.forcedTargets&&S.forcedTargets.length&&att===S.movedPiece&&S.forcedTargets.includes(def.id);
+    const forcedOk=state.forcedTargets&&state.forcedTargets.length&&att===state.movedPiece&&state.forcedTargets.includes(def.id);
     if(!forcedOk){
-      if(!S.firstBattleWonByMover||!att.alive||att!==S.movedPiece) return false;
-      if(!S.contactSet.includes(def.id)) return false;
+      if(!state.firstBattleWonByMover||!att.alive||att!==state.movedPiece) return false;
+      if(!state.contactSet.includes(def.id)) return false;
     }
   }
   return true;

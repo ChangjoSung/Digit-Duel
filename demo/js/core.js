@@ -111,24 +111,25 @@ function reduceCoreAction(state,action){
        충돌 문구·전투 개시(initBattle)·배너·로그는 moved 이벤트의 표시 단계(collisionLog·forcedContactStart)에 그대로 남는다.
        reducer 계약대로 입력 상태는 건드리지 않는다 — 움직이는 말과 실제로 바뀌는
        metrics·traces·aiSeenMoved 칸만 복제하고 나머지 참조는 그대로 둔다.
-       판정 헬퍼(canMoveTo·at·adjEnemies·contactEligible·visibleTo)는 레거시와 똑같이 현재 S 를 읽는다 — dispatchCoreAction 이
-       항상 S 를 넘기므로 같은 사실을 보며, 판정을 다시 쓰지 않는다(중복 검증 없음). */
+       판정 헬퍼(canMoveTo·at·isBurning·adjEnemies·contactEligible·visibleTo)는 **인자로 받은 state 의 보드만** 읽는다 — teleSwap 과 같은
+       선택적 말미 state 인자 규약이고, 기본값 S 라 reducer 밖 호출자(UI·AI·온라인 재생)는 종전 그대로다. 전역 S 를 읽으면 같은 입력에
+       다른 결과가 나온다(온라인 재생·AI 탐색처럼 S 와 reducer 상태가 갈리는 호출). 판정을 다시 쓰지 않는다(중복 검증 없음). */
     case "move": {
       const target=state.pieces.find(x=>x.id===action.id);
       if(!target||state.battle||state.teleport||state.fleePick) return null;
       if(state.battlesUsed||(state.forcedTargets&&state.forcedTargets.length)) return null; // 전투 슬롯이 이미 걸린 턴의 canBattle 승계 판정은 레거시 그대로
       if(target.type==="king") return null; // 왕 끝줄 도달 즉시 승리 경로(checkKingReach)는 레거시
-      if(!canMoveTo(target,action.r,action.c)) return null; // 합법성 판정은 레거시와 같은 한 곳(canMoveTo)뿐이다
+      if(!canMoveTo(target,action.r,action.c,state)) return null; // 합법성 판정은 레거시와 같은 한 곳(canMoveTo)뿐이다
       let dr=action.r, dc=action.c, stopR=target.r, stopC=target.c; // 충돌 시 정지 위치 — 기본값은 출발 칸
       if(Math.abs(target.r-dr)+Math.abs(target.c-dc)===2){ // BT 2칸: 1칸째부터 단계 해석 → 충돌 규칙 자연 적용
         const mr=(target.r+dr)/2, mc=(target.c+dc)/2;
-        if(at(mr,mc)){ dr=mr; dc=mc; } else { stopR=mr; stopC=mc; } // 경유 칸의 숨은 말 → 그 칸 진입 시도(정지=출발 칸) · 통과하면 경유 칸이 정지 위치
+        if(at(mr,mc,state)){ dr=mr; dc=mc; } else { stopR=mr; stopC=mc; } // 경유 칸의 숨은 말 → 그 칸 진입 시도(정지=출발 칸) · 통과하면 경유 칸이 정지 위치
       }
-      const hidden=at(dr,dc); // 도착 칸의 숨은 말 = 숲 충돌 (보이는 말·같은 편은 canMoveTo 가 이미 막았다)
+      const hidden=at(dr,dc,state); // 도착 칸의 숨은 말 = 숲 충돌 (보이는 말·같은 편은 canMoveTo 가 이미 막았다)
       const moved=Object.assign({},target,{r:hidden?stopR:dr,c:hidden?stopC:dc,movedEver:true,healing:false}); // #106: 이동은 회복 자세 해제 (숲 충돌 정지 포함)
-      if(!isBurning()) moved.movedPreBT=true; // 엔진 내부 이동 이력 (#21 누수 제거 — AI 는 aiSeenMoved 만 본다)
-      const beforeAdj=new Set(adjEnemies(target).map(e=>e.id)), after=adjEnemies(moved); // T1: 이동 전/후 인접 집합
-      const forced=after.filter(e=>!beforeAdj.has(e.id)&&contactEligible(moved,e)).map(e=>e.id); // 신규 인접 = 강제 전투·폭탄 접촉 (applyForced 와 같은 판정)
+      if(!isBurning(state)) moved.movedPreBT=true; // 엔진 내부 이동 이력 (#21 누수 제거 — AI 는 aiSeenMoved 만 본다)
+      const beforeAdj=new Set(adjEnemies(target,state).map(e=>e.id)), after=adjEnemies(moved,state); // T1: 이동 전/후 인접 집합
+      const forced=after.filter(e=>!beforeAdj.has(e.id)&&contactEligible(moved,e,state)).map(e=>e.id); // 신규 인접 = 강제 전투·폭탄 접촉 (applyForced 와 같은 판정)
       const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===target?moved:x),mainUsed:true,contactKind:hidden?"collision":"move",
         movedPiece:moved,contactSet:after.map(e=>e.id),forcedTargets:forced.length?forced:state.forcedTargets,
         selected:forced.length>1?moved:(state.selected===target?moved:state.selected)}); // 대상 2개 이상이면 레거시와 같이 이동한 말을 선택 상태로 둔다
@@ -139,7 +140,7 @@ function reduceCoreAction(state,action){
         met(target.owner,metric,1,next);
       }
       const obs=1-target.owner;
-      if(!isBurning()&&(hidden||visibleTo(obs,target)||visibleTo(obs,moved))){ // observeMove 와 같은 판정 — 이동 전후 어느 쪽이든 보이면 목격 (충돌은 일시 공개라 항상 목격)
+      if(!isBurning(state)&&(hidden||visibleTo(obs,target,state)||visibleTo(obs,moved,state))){ // observeMove 와 같은 판정 — 이동 전후 어느 쪽이든 보이면 목격 (충돌은 일시 공개라 항상 목격)
         next.aiSeenMoved=state.aiSeenMoved.slice(); next.aiSeenMoved[obs]=new Set(state.aiSeenMoved[obs]).add(target.id);
       }
       const ev=hidden?null:state.events.find(e=>e.r===dr&&e.c===dc&&!e.consumed); // 충돌로 멈춘 칸은 흔적을 발견하지 않는다 (레거시 그대로)
@@ -374,10 +375,11 @@ function observeMove(p,visBefore){
 }
 /* #106 4.4.2 접촉 적격 (applyForced 후보 산출): 이동·텔레포트·숲 충돌로 새로 인접한 상대. 폭탄은 직접 접촉 시 발동(하수인·동료·왕·폭탄·함정 모두 대상),
    함정은 여전히 수동. 왕 vs 왕 불가침은 #122 REVISE(CJ QA 6)로 폐지됐다. 그 밖은 canBattle 규칙(전투 횟수 등) 그대로. 능동 클릭 경로(canBattle)는 폭탄 공격 불가를 유지한다 */
-function contactEligible(att,def){
+function contactEligible(att,def,state){
+  state=state||S; // #245: reducer 가 받은 상태로 같은 판정을 돌린다 (기본은 현재 S)
   if(att.type==="trap") return false;
-  if(att.type==="bomb") return S.phase==="play"&&att.owner===S.current&&S.battlesUsed<2;
-  return canBattle(att,def);
+  if(att.type==="bomb") return state.phase==="play"&&att.owner===state.current&&state.battlesUsed<2;
+  return canBattle(att,def,state);
 }
 function forcedPickOk(def){ // 강제 대상 클릭·AI 이행: 이동한 말이 폭탄이면 canBattle 대신 접촉 적격으로 판정
   if(!(S.forcedTargets&&S.forcedTargets.length&&S.movedPiece&&S.forcedTargets.includes(def.id))) return false;
