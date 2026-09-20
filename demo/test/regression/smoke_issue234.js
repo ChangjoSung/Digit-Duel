@@ -366,7 +366,7 @@ function idx(f,id){ return f.skills.indexOf(id); }
   eq(done,2,"D3b ⭐4 뇌격수 vs 전설 사신 AI 전투가 끝까지 진행된다");
 }
 { /* D4 AI 코드가 상대 전투원의 grade·skills·cds·revealedSkills 를 읽지 않는다 — 정적 대조(보조) */
-  const src=require("fs").readFileSync(htmlPath,"utf8");
+  const src=T.html;
   const body=name=>{ const i=src.indexOf("function "+name+"("); const j=src.indexOf("\nfunction ",i+10); return src.slice(i,j); };
   for(const fn of ["aiBattleAction","aiBattleActionStrong","aiBattleEV","aiWinProb","aiBattlePairScore"]){
     const b=body(fn);

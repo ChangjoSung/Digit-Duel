@@ -42,11 +42,9 @@ main (tag) --> hotfix/<issue> --> main (+patch tag) --> dev --> milestone/vX.Y.Z
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` defines checks for pull requests to `main` or `dev`
-and pushes to those branches. This rollout integrates the workflow into `dev`;
-the next release PR carries it to `main`. Manual dispatch is also configured,
-but GitHub enables it only after the workflow reaches the default branch,
-`main` ([GitHub documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)).
+`.github/workflows/ci.yml` defines checks for pull requests and pushes to
+`main`, `dev`, and `milestone/v*`. Manual dispatch is also configured from the
+default branch, `main` ([GitHub documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)).
 It needs no secrets and requests only `contents: read`. Six jobs run in parallel:
 
 | Job id | Name | What it checks |
@@ -106,9 +104,10 @@ Two things to keep in mind when you change what CI covers.
   [the relevant move table](docs/milestone/MOVES.md) and update the
   clickable links; historical plain-text paths in past reports stay as written.
 
-Branch protection is enabled on `main` and `dev`: pull requests are required,
+Branch protection is enabled on `main`, `dev`, and the active milestone branches: pull requests are required,
 force pushes and deletion are disabled, conversations must be resolved, and
-all six checks above must pass on an up-to-date branch. Checks are bound to
+the six checks above must pass on an up-to-date branch. `milestone/v0.6.0` also
+requires its Unity check (F). Checks are bound to
 the GitHub Actions app (ID 15368), and administrators are subject to the same
 rules. GitHub's required approval count is zero; the independent Saturn review
 and CJ approval contract remain in effect. See [Issue #132](https://github.com/ChangjoSung/Digit-Duel/issues/132)

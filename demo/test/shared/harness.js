@@ -150,12 +150,39 @@ const PERSIST_API=[/\blocalStorage\b/,/\bsessionStorage\b/,/\bindexedDB\b/,/\bop
   /\bcaches\b/,/navigator\s*\.\s*storage/,/\bXMLHttpRequest\b/,/\bfetch\s*\(/,/\bsendBeacon\b/,/\bBroadcastChannel\b/];
 function persistApiHits(src){ return PERSIST_API.filter(re=>re.test(String(src))).map(re=>re.source); }
 
+function localAsset(htmlPath,ref){
+  const clean=String(ref).split(/[?#]/,1)[0];
+  if(!clean||/^(?:[a-z]+:|\/|\\)/i.test(clean)) throw new Error("external asset is not local: "+ref);
+  const root=path.dirname(path.resolve(htmlPath));
+  const file=path.resolve(root,clean);
+  if(file!==root&&!file.startsWith(root+path.sep)) throw new Error("external asset escapes demo root: "+ref);
+  return fs.readFileSync(file,"utf8");
+}
+function inlineAssets(source,htmlPath){
+  let html=String(source).replace(/<link\b([^>]*)>/gi,(tag,attrs)=>{
+    const rel=/\brel\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    if(!rel||rel[2].toLowerCase()!=="stylesheet") return tag;
+    const href=/\bhref\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    if(!href) return tag;
+    return "<style>"+localAsset(htmlPath,href[2])+"</style>";
+  });
+  const scripts=[];
+  const marker="<!-- harness-script -->";
+  html=html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi,(tag,attrs,body)=>{
+    const src=/\bsrc\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    scripts.push(src?localAsset(htmlPath,src[2]):body);
+    return scripts.length===1?marker:"";
+  });
+  if(!scripts.length) throw new Error("script block not found");
+  const script=scripts.join("\n");
+  return {html:html.replace(marker,"<script>"+script+"</script>"),script};
+}
+
 function load(htmlPath,opts){
   opts=opts||{};
   htmlPath=htmlPath||path.join(__dirname,"..","..","index.html");
-  const html=opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"); // #94·#96 opts.html: 파일을 쓰지 않고 메모리 HTML을 로드 — #94 변이본 음성 대조, #96 git show 기준판 before/after 대조용
-  const m=html.match(/<script>([\s\S]*)<\/script>/);
-  if(!m) throw new Error("script block not found");
+  const loaded=inlineAssets(opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"),htmlPath); // #94·#96 메모리 HTML과 #245 외부 정적 파일을 같은 실행 소스로 정규화
+  const html=loaded.html;
   const els={};
   const cookieWrites=[];
   // doc를 먼저 만들고 모든 요소를 mkEl(doc)로 생성한다 — 포커스는 이 로드의 문서에만 기록된다
@@ -227,7 +254,7 @@ function load(htmlPath,opts){
   const drain=(cap)=>{cap=cap||5000000; let n=0; while(TQ.length&&n<cap){TQ.shift()();n++;} return n;};
   const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win};
   /* 렉시컬 캡처 — 이 줄은 제품 코드 1행과 같은 줄에 이어 붙지 않도록 개행 없이 앞에 둔다 (에러 행 번호 보존) */
-  const code=`const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window}=__ENV;`+m[1]+`
+  const code=`"use strict";const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window}=__ENV;`+loaded.script+`
 ;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
   /* #233 (GDD-23 3-4장) 8스탯 전투 엔진 계약 — 기준판 로드 호환을 위해 typeof 가드를 둔다(부재 시 undefined) */
   ARCHETYPE_BASE:typeof ARCHETYPE_BASE!=="undefined"?ARCHETYPE_BASE:undefined, KING_BASE:typeof KING_BASE!=="undefined"?KING_BASE:undefined,

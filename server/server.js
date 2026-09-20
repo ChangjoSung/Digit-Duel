@@ -63,13 +63,13 @@ const ACCESS_CODE = (() => {
 /* ===== #201 정적 서빙 요청 예산 =====
  * 예산은 "몇 건이면 수상한가"가 아니라 "정상 클라이언트 한 명이 몇 건을 내보내는가"에서 역산한다.
  * demo/index.html 의 artPreload 는 페이지를 열 때마다 정체와 무관한 고정 집합을 한꺼번에 요청한다 —
- * index.html 1 + 하수인 20종 × {icon,battle} 40 + 왕·동료 2종 × {icon64,battle256} 4 = 45 건.
- * 종전 값(버스트 60 · 초당 30)은 그 45 건을 겨우 담아, 같은 IP 에서 두 번째 로드가 겹치면 절반 가까이가
+ * index.html 1 + CSS/JS 9 + 하수인 20종 × {icon,battle} 40 + 왕·동료 2종 × {icon64,battle256} 4 = 54 건.
+ * 종전 값(버스트 60 · 초당 30)은 자산 요청을 겨우 담아, 같은 IP 에서 두 번째 로드가 겹치면 절반 가까이가
  * 429 로 떨어졌다. 클라이언트는 그 실패를 그 종의 영구 실패로 기록하므로 "부분 아트 손실"로 보인다.
  * 이 버킷은 인증 경계가 아니다 — 업그레이드는 별도 버킷(upgradeBuckets)과 AttemptLimiter 가 막으므로
  * 예산을 넓혀도 무차별 대입 노출면은 넓어지지 않는다. 실측 수치는 server/README.md #201 절.
  */
-const PAGE_LOAD_REQUESTS = S.STATIC_BUDGET.pageLoadRequests;       // 45 + 부수 요청 여유
+const PAGE_LOAD_REQUESTS = S.STATIC_BUDGET.pageLoadRequests;       // 54 + 부수 요청 여유
 const CONCURRENT_PAGE_LOADS = S.STATIC_BUDGET.concurrentPageLoads; // 같은 IP 에서 겹칠 수 있는 로드 수
 
 const LIMITS = {

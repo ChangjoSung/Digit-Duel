@@ -1,7 +1,7 @@
 // #201 정적 서빙 부하 회귀 — "온라인에서 아트가 일부만 안 나온다"의 서버측 원인을 잡아 둔다.
 //
 // 무엇을 지키는가: 클라이언트(demo/index.html artPreload)는 페이지를 열 때마다 정체와 무관한
-// **고정 집합**(index.html + 하수인 20종 × {icon,battle} + 왕·동료 2종 × {icon64,battle256} = 45건)을
+// **고정 집합**(index.html + CSS/JS 9 + 하수인 20종 × {icon,battle} + 왕·동료 2종 × {icon64,battle256} = 54건)을
 // 한꺼번에 요청한다. 이 집합이 HTTP 요청 속도 제한에 걸리면 클라이언트는 그 실패를 그 종의
 // **영구 실패로 기록**한다(icon.png 실패 → ART.failed → 세션 내내 이모지 폴백). 그래서 "늦게 요청된
 // 것만 빠진 부분 아트 손실"로 보인다.
@@ -46,7 +46,8 @@ const section = (name) => console.log('-', name);
 function pageLoadCorpus() {
   const dirs = fs.readdirSync(path.join(DEMO, 'assets', 'minions'), { withFileTypes: true })
     .filter((e) => e.isDirectory()).map((e) => e.name).sort();
-  const corpus = ['/'];
+  const html = fs.readFileSync(path.join(DEMO, 'index.html'), 'utf8');
+  const corpus = ['/'].concat([...html.matchAll(/\b(?:src|href)="((?:js|css)\/[^"]+)"/g)].map((m) => '/' + m[1]));
   for (const d of dirs) for (const f of ['icon.png', 'battle.png']) corpus.push(`/assets/minions/${d}/${f}`);
   for (const d of ['companion', 'king']) for (const f of ['icon64.png', 'battle256.png']) corpus.push(`/assets/leaders/${d}/${f}`);
   return corpus;

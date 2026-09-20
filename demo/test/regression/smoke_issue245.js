@@ -1,0 +1,29 @@
+"use strict";
+const fs=require("fs");
+const path=require("path");
+const H=require("../shared/harness");
+
+const demo=path.join(__dirname,"..","..");
+const index=path.join(demo,"index.html");
+const html=fs.readFileSync(index,"utf8");
+const expected=["data.js","state.js","ui.js","core.js","ai.js","ui-overlays.js","network.js","bootstrap.js"];
+let pass=0,fail=0;
+function ok(value,name){ if(value) pass++; else { fail++; console.error("FAIL: "+name); } }
+
+const scripts=[...html.matchAll(/<script\s+src="js\/([^"]+)"\s*><\/script>/g)].map(match=>match[1]);
+ok(JSON.stringify(scripts)===JSON.stringify(expected),"scripts load once in dependency order");
+ok(/<link rel="stylesheet" href="css\/game\.css">/.test(html),"stylesheet is external");
+ok(!/<style>|<script>(?![\s\S]*src=)/.test(html),"entry document has no inline CSS or JavaScript");
+ok(expected.every(name=>fs.existsSync(path.join(demo,"js",name))),"all JavaScript files exist");
+ok(fs.existsSync(path.join(demo,"css","game.css")),"stylesheet exists");
+
+const T=H.load(index);
+ok(typeof T.newGame==="function"&&typeof T.netConnect==="function","combined source executes in the test harness");
+ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
+ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");
+let blocked=false;
+try { H.load(index,{html:'<script src="../package.json"></script>'}); } catch(error) { blocked=/escapes demo root/.test(error.message); }
+ok(blocked,"harness rejects asset traversal");
+
+console.log(`\n=== smoke_issue245: pass ${pass} / fail ${fail} ===`);
+if(fail) process.exit(1);
