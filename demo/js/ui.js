@@ -45,6 +45,15 @@ function applyUiEvents(events){
       if(event.complete&&UI.prep==="roster") UI.prep="place";
       render(); continue;
     }
+    if(event.type==="setupNetworkReady"){
+      NET.mySetup=event.setup;
+      if(event.publicMode) netRoomReady(true);
+      else { NET.queued=true; render(); netConnect(); }
+      continue;
+    }
+    if(event.type==="setupHandoff"){ handoff(pname(event.player)+" 배치",render); continue; }
+    if(event.type==="setupBegin"){ beginPlay(); continue; }
+    if(event.type==="setupAiBegin"){ aiAutoPlace(1); addLog("AI 배치 완료.","ai"); beginPlay(); continue; }
     if(event.type==="mainSkipped"){
       const ai=event.origin==="ai", msg=ai?"🤖 AI 주 행동 생략":`${pname(event.player)} 주 행동 생략`;
       addLog(msg,ai?"ai":"");
@@ -783,25 +792,4 @@ function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중
 }
 window.autoPlaceCore=()=>dispatchCoreAction({t:"auto"});
 window.clearPlaceCore=()=>dispatchCoreAction({t:"clear"});
-window.setupDoneCore=()=>{
-  const p=S.setupPlayer;
-  if(S.roster[p].length!==6||S.pieces.some(x=>x.owner===p&&!x.placed)){
-    showToast("로스터 6종 선택과 14개 배치를 모두 완료하세요."); return;}
-  S.selected=null;
-  if(NET.preparing&&NET.publicMode){ // #217/#218 공개 방: 배치 캡처 → 서버에 배치·준비 통지 (이미 접속·좌석 배정된 상태)
-    NET.mySetup={roster:S.roster[0].slice(), pos:S.pieces.filter(x=>x.owner===0).map(x=>[x.r,x.c])};
-    netRoomReady(true); return; // 준비 의사만 세운다 — 전송은 두 좌석이 찬 SETUP에서만(netFlushSetupReady), 표시는 서버 확정값만
-  }
-  if(NET.preparing){ // 온라인: 내 배치 캡처 → 매칭 큐 진입 (게임은 매칭 후 공유 시드로 재생성)
-    NET.mySetup={roster:S.roster[0].slice(), pos:S.pieces.filter(x=>x.owner===0).map(x=>[x.r,x.c])};
-    NET.queued=true; render(); netConnect(); return;
-  }
-  if(S.mode==="pvp"){
-    if(p===0){S.setupPlayer=1; handoff(pname(1)+" 배치", render);}
-    else beginPlay();
-  } else { // pve: 인간(0) 배치 완료 → AI 배치
-    aiAutoPlace(1);
-    addLog("AI 배치 완료.","ai");
-    beginPlay();
-  }
-};
+window.setupDoneCore=()=>dispatchCoreAction({t:"setupConfirm",preparing:NET.preparing,publicMode:NET.publicMode});

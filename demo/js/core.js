@@ -23,8 +23,11 @@ function reduceCoreAction(state,action){
     case "cell": {
       if(state.phase!=="setup") return null;
       const occupant=state.pieces.find(piece=>piece.alive&&piece.placed&&piece.r===action.r&&piece.c===action.c);
-      if(state.selected&&state.selected.tray&&((state.setupPlayer===0&&action.r>=11&&action.r<=13)||(state.setupPlayer===1&&action.r>=1&&action.r<=3))&&!occupant){
-        const pieces=state.pieces.map(piece=>piece.id===state.selected.id?Object.assign({},piece,{r:action.r,c:action.c,placed:true}):piece);
+      /* #245: 좌표·대상 계약은 pre-split 과 같다 — 행은 zoneOf().includes 의 strict 일치(문자열 "11"·소수 11.5 불통과),
+         열은 1..COLS 정수, 말은 실재하는 id. 이 액션은 netAction 으로 원격에서도 들어오므로 검증 전 값은 상태에 넣지 않는다. */
+      const target=state.selected&&state.selected.tray?state.pieces.find(piece=>piece.id===state.selected.id):null;
+      if(target&&zoneOf(state.setupPlayer).includes(action.r)&&Number.isInteger(action.c)&&action.c>=1&&action.c<=COLS&&!occupant){
+        const pieces=state.pieces.map(piece=>piece===target?Object.assign({},piece,{r:action.r,c:action.c,placed:true}):piece);
         return {state:Object.assign({},state,{pieces,selected:null}),events:[{type:"render"}]};
       }
       if(occupant&&occupant.owner===state.setupPlayer){
@@ -52,6 +55,18 @@ function reduceCoreAction(state,action){
       next.roster[action.player]=action.roster.slice(); applyRoster(action.player,next);
       for(const position of action.positions){ const piece=next.pieces.find(x=>x.id===position.id); piece.r=position.r; piece.c=position.c; piece.placed=true; }
       return {state:next,events:[{type:"render"}]};
+    }
+    case "setupConfirm": {
+      const player=state.setupPlayer;
+      if(state.roster[player].length!==6||state.pieces.some(piece=>piece.owner===player&&!piece.placed))
+        return {state,events:[{type:"toast",message:"로스터 6종 선택과 14개 배치를 모두 완료하세요."}]};
+      const next=Object.assign({},state,{selected:null});
+      if(action.preparing){
+        const setup={roster:state.roster[0].slice(),pos:state.pieces.filter(piece=>piece.owner===0).map(piece=>[piece.r,piece.c])};
+        return {state:next,events:[{type:"setupNetworkReady",setup,publicMode:action.publicMode}]};
+      }
+      if(state.mode==="pvp"&&player===0){ next.setupPlayer=1; return {state:next,events:[{type:"setupHandoff",player:1}]}; }
+      return {state:next,events:[{type:state.mode==="pvp"?"setupBegin":"setupAiBegin"}]};
     }
     case "tele": return {state:Object.assign({},state,{teleport:state.teleport?null:{stage:1,piece:null},selected:null}),events:[{type:"render"}]};
     case "skipMain": return {state:Object.assign({},state,{mainUsed:true}),events:[{type:"mainSkipped",player:state.current,origin:action.origin,toast:action.toast}]};
