@@ -101,6 +101,22 @@ function applyUiEvents(events){
       contactBannerFx(event.piece,viewerIsOwner(event.piece.owner)?"남은 말의 접촉 대상(빨간 표시)을 클릭하세요":"상대가 남은 접촉 대상을 고르고 있습니다"); // #106 4.5 "추가 접촉" 배너 (보드 복귀 뒤 순서 · render 는 호출처가 한다)
       continue;
     }
+    if(event.type==="matchEnded"){ // #245 경기 종료 — 상태(phase·승자·지표·전투원 정리·battle/recruit)는 Core 가 끝냈고 여기는 화면 정리·결과 연출·기권 문구만
+      if(event.interrupted){
+        /* Saturn 추가 P2: **살아 있던 전투를 걷어냈을 때만** 열린 전투 모달을 닫고 낡은 마크업·연출 큐를 비운다.
+           상태만 지우고 화면을 두면 buff-power 같은 CSS 애니메이션이 무한히 돌고 낡은 모달이 입력 면으로 남는다 (계약 3.1 은 표시까지 포함).
+           정상 승패·판정·도망·적 포획은 이 지점 전에 이미 전투를 비웠고 battleEndFx 가 결과 연출 뒤 닫으므로 건드리지 않는다. */
+        try{ close(); }catch(e){}
+        try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
+        try{ fxReleaseAll(); }catch(e){} // 남은 연출 큐·잠금도 함께 해제 (무한 애니메이션·입력 잠금 잔존 방지)
+      }
+      if(event.banner) matchEndFx(); // #126: 전투 종료 시퀀스 밖에서 끝난 경기만 — 그 안은 남은 전투 메시지 뒤에 같은 배너를 직접 이어 붙인다
+      if(event.resignLoser!=null){ // 기권 문구는 종전 그대로 표시 계층 소유 (gameOver → 로그·토스트·렌더 순서 유지)
+        const msg=`🏳️ ${pname(event.resignLoser)} 기권 — ${pname(event.winner)} 승리!`;
+        addLog(msg,"imp"); showToast(msg); render();
+      }
+      continue;
+    }
     if(event.type==="turnEnded"){ // #245 턴 종료 — 상태(지표·회복 틱·turnCount·교대·턴 초기화)는 Core 가 끝냈고 여기는 로그·배너·렌더·AI 스케줄만
       healLogs(event.healed,humanViewer(event.player)); // 회복 틱 로그는 **교대 전** 뷰어 시점 (핫시트 PVP 는 턴을 마친 쪽이 본다)
       if(event.simDraw){ // sim 무승부 — gameOver 는 전투 회계 정리를 포함한 경기 종료 경로라 종전 그대로 표시 계층이 부른다

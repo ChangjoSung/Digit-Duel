@@ -266,6 +266,39 @@ function reduceCoreAction(state,action){
       const started=startTurnState(Object.assign({},next,{current:1-me}));
       return {state:started.state,events:events.concat([{type:"turnEnded",player:me,healed,bt:started.bt}])};
     }
+    /* #245 경기 종료: phase·winner·지표(endTurn·winType·winner) · 전투 한가운데 끝났을 때의 전투원 정리(resetAfter) ·
+       battle=null · recruit=null 까지의 **상태 전이**를 Core 가 소유한다. 특히 쓰지 않은 패키지 재고(pkgs)는 건드리지
+       않는다 — 그것은 새 게임에서만 초기화된다 (Saturn REVISE P2).
+       화면 정리(전투 모달 닫기·낡은 마크업 비우기·fxReleaseAll)와 #126 경기 결과 배너는 matchEnded 이벤트 하나로
+       종전 표시 계층에 그대로 넘긴다 — 문구·순서가 갈라지지 않게. 전투 종료 시퀀스가 배너를 직접 고르는 구간은
+       전역 ENDING_BATTLE 이 아니라 action.endingBattle 로 **경계에서 명시해 받는다** — reducer 는 S·DOM·NET 을 읽지 않는다. */
+    case "gameOver": {
+      const metrics=Object.assign({},state.metrics,{endTurn:state.turnCount,winType:action.winType,winner:action.winner});
+      const B=state.battle, clones=new Map();
+      /* #121 계약 3.1: 살아 있는 전투 한가운데 경기가 끝나면(기권·상대 이탈 등) 전투원 버프·상태이상을 그 자리에서 걷는다.
+         전투원은 말 자신(본체 출전)이거나 말에 매달린 포획 하수인(대리 출전 — piece.cap)이라 둘 다 복제본에만 쓴다.
+         레거시가 try/catch 로 감싸 정리 실패에도 종료 전이를 계속했으므로 여기도 같은 회복력을 지킨다. */
+      if(B) try{
+        for(const [piece,f] of [[B.attP,B.fa],[B.defP,B.fd]]){
+          if(!piece||!f) continue;
+          let c=clones.get(piece); if(!c){ c=Object.assign({},piece); clones.set(piece,c); }
+          if(f===piece) resetAfter(c);
+          else if(piece.cap===f) resetAfter(c.cap=Object.assign({},f));
+        }
+      }catch(e){}
+      const next=Object.assign({},state,{phase:"over",winner:action.winner,metrics,battle:null,recruit:null});
+      if(clones.size) next.pieces=state.pieces.map(x=>clones.get(x)||x);
+      return {state:next,events:[{type:"matchEnded",winner:action.winner,winType:action.winType,
+        interrupted:!!B,banner:!action.endingBattle}]};
+    }
+    /* #245 기권: 경기 종료의 한 갈래다 — 같은 종료 전이를 그대로 쓴다 (레거시 별도 경로를 두지 않는다).
+       권한 검사(자기 턴·AI 아님·연출 잠금 예외)는 netAction · confirmResign 이 그대로 맡고, 패자는 그 프레임의 current 다.
+       문구·로그·렌더는 호출처 소유이므로 resignLoser 로 표시 계층에 넘긴다. */
+    case "resign": {
+      const result=reduceCoreAction(state,{t:"gameOver",winner:1-state.current,winType:"resign"});
+      result.events[0].resignLoser=state.current;
+      return result;
+    }
     default: return null;
   }
 }
@@ -283,7 +316,13 @@ function dispatchCoreAction(action){
 function commitCoreState(next,events){
   const live=new Set(S.pieces); // 이미 S.pieces 안의 그 객체면 그대로 통과 — id 가 중복돼도 원본을 잃거나 겹치지 않는다 (거부 결과는 S.pieces 를 그대로 되돌린다)
   const canon=new Map(S.pieces.map(piece=>[piece.id,piece]));
-  const keep=x=>{ if(!x||x.tray||live.has(x)) return x; const origin=canon.get(x.id); return origin?Object.assign(origin,x):x; };
+  /* 포획 하수인(piece.cap)은 id 가 없어 canon 으로 되돌릴 수 없다 — 복제본 cap 을 그대로 얹으면 cap 참조를 들고 있던
+     호출처(전투 전투원 fa/fd·AI·예약 콜백)가 낡은 객체를 계속 본다. 원본 cap 객체 정체성은 유지하고 값만 얹는다.
+     cap 이 null 로 바뀌거나(해제) 없던 자리에 새로 붙는 경우(포획)는 그대로 통과 — 그때는 낡은 참조가 끊기는 게 맞다. */
+  const keep=x=>{ if(!x||x.tray||live.has(x)) return x; const origin=canon.get(x.id); if(!origin) return x;
+    const cap=origin.cap; Object.assign(origin,x);
+    if(cap&&x.cap&&x.cap!==cap) origin.cap=Object.assign(cap,x.cap);
+    return origin; };
   next.pieces=next.pieces.map(keep);
   next.selected=keep(next.selected);
   next.movedPiece=keep(next.movedPiece);
@@ -633,31 +672,10 @@ function drainForcedQueue(autoStart){
   const result=dispatchCoreAction({t:"drainForced",autoStart:!!autoStart});
   return !!result&&result.events.some(event=>event.type==="forcedPromoted");
 }
-/* #20 경기 종료 공통: 승자(null=무승부)·승리 유형·종료 턴을 지표에 저장 */
-function gameOver(winner,type){
-  S.phase="over"; S.winner=winner; S.metrics.endTurn=S.turnCount; S.metrics.winType=type; S.metrics.winner=winner;
-  /* Saturn REVISE P2: 기권·왕 제거·전멸 등 **경기 종료**는 전투 한가운데서도 일어난다. 그때 전투 객체가 남아 있으면
-     전투 회계(buffA/buffD·maxRounds)와 전투원 버프 플래그(powerBuff·fleeBoost)가 그대로 남는다.
-     #121 계약 3.1 "전투가 끝나면 즉시 정리"는 승패·판정·도망·적 포획뿐 아니라 이 경로에도 적용된다.
-     **쓰지 않은 패키지 재고(S.pkgs)는 건드리지 않는다** — 그것은 새 게임에서만 초기화된다. */
-  if(S.battle){ try{ resetAfter(S.battle.fa); resetAfter(S.battle.fd); }catch(e){}
-    S.battle=null;
-    /* Saturn 추가 P2: **살아 있던 전투를 여기서 걷어냈을 때만** 열린 전투 모달을 닫는다.
-       상태만 지우고 화면을 그대로 두면 전투창이 남아 buff-power 같은 CSS 애니메이션이 무한히 돌고,
-       낡은 모달이 계속 입력 면으로 남는다 (계약 3.1 "전투가 끝나면 즉시 정리"는 표시까지 포함한다).
-       정상 승패·판정·도망·적 포획은 이 지점에 오기 전에 이미 S.battle 을 비우고 battleEndFx 가 결과 연출 뒤 닫으므로
-       그 경로의 결과 표시는 건드리지 않는다 — 여기 닫기는 연출 없이 끝난 경로(기권 등) 전용이다. */
-    try{ close(); }catch(e){}
-    /* overlay 의 .hidden 은 display:none !important 라 닫기만 해도 CSS 애니메이션은 멈춘다.
-       그래도 **낡은 전투창 마크업을 남기지 않는다** — 버프 클래스가 DOM 에 남아 있으면 이후 어떤 표시 변경에서
-       되살아날 여지가 생기고, 종료 상태의 화면에 죽은 입력 면이 남는다. 이 경로(연출 없이 끝난 종료)에서만 비운다. */
-    try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
-    try{ fxReleaseAll(); }catch(e){} } // 남은 연출 큐·잠금도 함께 해제 (무한 애니메이션·입력 잠금 잔존 방지)
-  S.recruit=null; // 선택 대기 상태도 남기지 않는다
-  /* #126: 전투 종료 시퀀스(finishBattle·finishByCapture) 밖에서 끝난 경기는 여기서 종료 연출을 한 번 낸다.
-     그 두 경로는 남은 전투 메시지 재생 뒤에 같은 배너를 이어 붙여야 하므로 ENDING_BATTLE 로 이 발화를 잠시 막고 직접 고른다. */
-  if(!ENDING_BATTLE) matchEndFx();
-}
+/* #20 경기 종료 공통: 승자(null=무승부)·승리 유형·종료 턴을 지표에 저장 — #245: 상태 전이는 Core reducer(gameOver),
+   화면 정리·결과 연출은 matchEnded 이벤트가 맡는다. 전투 종료 시퀀스(finishBattle·finishByCapture)가 배너를 직접
+   고르는 구간인지는 여기서 읽어 액션에 실어 넘긴다 — reducer 가 전역 ENDING_BATTLE 을 읽지 않게. */
+function gameOver(winner,type){ dispatchCoreAction({t:"gameOver",winner,winType:type,endingBattle:ENDING_BATTLE}); }
 /* T4 전멸 패배: 하수인 6+동료 2 전원 사망 → 즉시 패배. 말 제거가 발생하는 모든 지점 후 호출 */
 function checkWipe(){
   if(S.phase!=="play") return false;

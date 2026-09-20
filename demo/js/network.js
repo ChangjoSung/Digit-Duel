@@ -63,9 +63,6 @@ function applyAction(a){
       break; }
     case "fleeSwap": if(S.fleePick&&S.fleePick.cands.includes(a.id)) fleeResolve(a.id); break; // #114 도망 후 교환 (소유자 입력, rand 소비 0)
     case "fleeSkip": if(S.fleePick) fleeResolve(null); break; // #114 교환 생략 → 도망친 말 ↔ 상대 밀기
-    case "resign": { const loser=S.current; gameOver(1-loser,"resign");
-      const msg=`🏳️ ${pname(loser)} 기권 — ${pname(S.winner)} 승리!`;
-      addLog(msg,"imp"); showToast(msg); render(); break; }
     case "act": if(window.__actCore) window.__actCore(a.k); break;
     case "item": if(window.__useItemCore) window.__useItemCore(a.i); break;
     case "ball": if(window.__throwBallCore) window.__throwBallCore(); break;

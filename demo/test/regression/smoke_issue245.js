@@ -327,6 +327,61 @@ T.applyAction({t:"endTurn",auto:true});
 ok(T.S.metrics.autoEnds===etAutoBefore+1&&T.S.metrics.byPlayer[0].autoEnds===etAutoBefore+1&&T.S.turnCount===5&&T.S.current===1,"the online replay frame routes through the same Core action and records the auto marker exactly once");
 ok(/function endTurn\(\)\{ return dispatchCoreAction\(\{t:"endTurn"\}\); \}/.test(T.html)&&!/case "endTurn"\s*:/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8"))&&(T.html.match(/startTurnMessages\(/g)||[]).length===3&&(T.html.match(/healLogs\(/g)||[]).length===3,"turn bar, AI and network replay share one Core end-turn entry point, and the turn banner and heal-tick logs keep a single display helper each");
 
+/* ===== #245 경기 종료(gameOver·기권) — 규칙 상태는 Core reducer, 화면 정리·배너·문구는 matchEnded 이벤트 ===== */
+const goPieces=[{id:801,owner:0,type:"minion",alive:true,placed:true,r:12,c:4,hp:30,maxHp:40,burn:4,shield:6,powerBuff:true,fleeBoost:true,cd:3,skills:null},
+  {id:802,owner:1,type:"minion",alive:true,placed:true,r:11,c:4,hp:20,maxHp:40,burn:2,shield:7,powerBuff:true,cd:1,skills:null}];
+const goState={phase:"play",mode:"pvp",current:0,turnCount:9,winner:null,battle:null,recruit:{pick:1},pieces:goPieces,
+  pkgs:[{itemGift:2,battleBuff:1},{itemGift:0,battleBuff:0}],metrics:{endTurn:0,winType:null,winner:null,byPlayer:[{},{}]}};
+const resign=T.reduceCoreAction(goState,{t:"resign"});
+ok(resign.state!==goState&&resign.state.phase==="over"&&resign.state.winner===1&&resign.state.metrics!==goState.metrics&&resign.state.metrics.winner===1&&resign.state.metrics.winType==="resign"&&resign.state.metrics.endTurn===9&&resign.state.battle===null&&resign.state.recruit===null&&goState.phase==="play"&&goState.winner===null&&goState.recruit!==null&&goState.metrics.winType===null,"resign reducer ends the match on a cloned state and leaves its input state untouched");
+ok(resign.events.length===1&&resign.events[0].type==="matchEnded"&&resign.events[0].resignLoser===0&&resign.events[0].winner===1&&resign.events[0].winType==="resign"&&resign.events[0].interrupted===false&&resign.events[0].banner===true&&resign.state.pieces===goPieces&&resign.state.pkgs===goState.pkgs,"an ordinary resign emits one matchEnded naming the loser, moves no piece and keeps the unused package stock");
+const draw=T.reduceCoreAction(goState,{t:"gameOver",winner:null,winType:"draw"});
+ok(draw.state.winner===null&&draw.state.metrics.winner===null&&draw.state.metrics.winType==="draw"&&draw.state.metrics.endTurn===9&&draw.events[0].winner===null&&draw.events[0].resignLoser===undefined&&draw.events[0].banner===true,"a null winner draw keeps the null through state, metrics and the event");
+ok(T.reduceCoreAction(goState,{t:"gameOver",winner:0,winType:"king",endingBattle:true}).events[0].banner===false&&T.reduceCoreAction(goState,{t:"gameOver",winner:0,winType:"king",endingBattle:false}).events[0].banner===true,"the battle-ending window arrives in the action, not from a global, and only it suppresses the match banner");
+/* 전투 한가운데 종료: 본체 출전(말 자신)과 대리 출전(말에 매달린 포획 하수인) 둘 다 복제본에서만 정리된다 */
+const goCap={hp:10,maxHp:20,burn:3,shield:9,cd:2,powerBuff:true,fleeBoost:true,skills:null,onceUsed:{used:1}};
+const iPieces=[Object.assign({},goPieces[0]),Object.assign({},goPieces[1],{cap:goCap})];
+const iState=Object.assign({},goState,{pieces:iPieces,battle:{attP:iPieces[0],defP:iPieces[1],fa:iPieces[0],fd:goCap,buffA:"power",maxRounds:9}});
+const inter=T.reduceCoreAction(iState,{t:"gameOver",winner:1,winType:"resign"});
+const iA=inter.state.pieces[0], iD=inter.state.pieces[1];
+ok(inter.state.battle===null&&iA!==iPieces[0]&&iA.powerBuff===false&&iA.fleeBoost===false&&iA.burn===0&&iA.shield===0&&iA.cd===0&&iA.hp===30&&iD!==iPieces[1]&&iD.cap!==goCap&&iD.cap.powerBuff===false&&iD.cap.fleeBoost===false&&iD.cap.burn===0&&iD.cap.shield===0&&iD.cap.hp===10,"a game over inside a live battle clears both fighters — body and stand-in alike — on clones, keeping their HP");
+ok(iPieces[0].powerBuff===true&&iPieces[0].burn===4&&iPieces[1].cap===goCap&&goCap.powerBuff===true&&goCap.burn===3&&iState.battle!==null&&iState.pieces===iPieces&&inter.events[0].interrupted===true&&inter.events[0].banner===true,"the input battle and its fighter graph stay untouched and the event marks the interrupted cleanup for the display layer");
+/* 상태 순수성: 리듀서 상태와 전역 S 가 갈려도 결과는 **받은 상태만** 따른다 (온라인 재생·AI 탐색 경로) */
+const goDigest=r=>JSON.stringify({ev:r.events,phase:r.state.phase,winner:r.state.winner,metrics:r.state.metrics,
+  where:r.state.pieces.map(piece=>[piece.id,piece.powerBuff,piece.burn,piece.shield,piece.cap?piece.cap.burn:null])});
+const goAgreed=goDigest(T.reduceCoreAction(iState,{t:"gameOver",winner:1,winType:"resign"}));
+const liveOver={phase:T.S.phase,current:T.S.current,turnCount:T.S.turnCount,winner:T.S.winner,battle:T.S.battle,pieces:T.S.pieces};
+Object.assign(T.S,{phase:"over",current:1,turnCount:999,winner:0,battle:null,pieces:[]});
+const goHostile=goDigest(T.reduceCoreAction(iState,{t:"gameOver",winner:1,winType:"resign"})), resignHostile=T.reduceCoreAction(goState,{t:"resign"});
+Object.assign(T.S,liveOver);
+ok(goHostile===goAgreed&&resignHostile.state.winner===1&&resignHostile.events[0].resignLoser===0&&resignHostile.state.metrics.endTurn===9,"the match-end reducer reads the board, turn count and current player from its state argument only, so a hostile global S changes nothing");
+/* end-to-end: 오프라인 기권 — 상태·로그·배너가 각각 정확히 한 번 */
+H.freshPlay(T,"pvp"); T.S.turnCount=7; T.S.matchFxDone=false; T.FX.log.length=0;
+T.applyAction({t:"resign"});
+ok(T.S.phase==="over"&&T.S.winner===1&&T.S.metrics.winType==="resign"&&T.S.metrics.winner===1&&T.S.metrics.endTurn===7&&T.S.log.filter(line=>/기권 —/.test(line.msg)).length===1&&T.FX.log.filter(x=>x.key==="resultBanner").length===1,"an offline resign applies once through the Core boundary: one match end, one resign log and exactly one match banner");
+T.FX.log.length=0; T.applyAction({t:"resign"});
+ok(T.S.matchFxDone===true&&T.FX.log.filter(x=>x.key==="resultBanner").length===0,"a repeated match end plays no second banner (the match-level flag stays consumed)");
+/* end-to-end: 수신한 온라인 기권 프레임도 같은 Core 액션 하나를 지난다 */
+H.freshPlay(T,"pvp"); T.S.current=1; T.S.matchFxDone=false; T.FX.log.length=0;
+T.NET.mode=true; T.NET.me=0; T.NET.replaying=true;
+T.netAction({t:"resign"});
+T.NET.replaying=false; T.NET.mode=false; T.NET.me=null;
+ok(T.S.phase==="over"&&T.S.winner===0&&T.S.metrics.winType==="resign"&&T.S.log.filter(line=>/기권 —/.test(line.msg)).length===1&&T.FX.log.filter(x=>x.key==="resultBanner").length===1,"a received network resign frame routes through the same Core action and ends the match exactly once");
+/* end-to-end: 살아 있는 전투 중 기권 — 본체 출전(공격)·대리 출전(방어, piece.cap) 둘 다 호출처가 들고 있는 그 객체에서 정리되고, 낡은 전투창 마크업은 비워진다 */
+H.freshPlay(T,"pvp"); T.S.matchFxDone=false; T.FX.log.length=0;
+const bAtt=H.mine(T,0,"minion")[0], bDef=H.mine(T,1,"ally")[0];
+H.place(T,bAtt,12,4); H.place(T,bDef,11,4);
+bDef.cap={element:"fire",hp:40,maxHp:60,atk:10,skillAtk:12,cd:0,cdMax:3,skills:null,cds:null,revealedSkills:[],artRosterId:null};
+const heldCap=bDef.cap; // 전투원 fa/fd·전투 UI·AI·예약 콜백이 들고 있는 바로 그 참조
+T.startRounds(bAtt,bDef,bAtt,heldCap);
+bAtt.powerBuff=true; bAtt.shield=8; heldCap.burn=3; heldCap.shield=5; heldCap.powerBuff=true; heldCap.fleeBoost=true;
+T.applyAction({t:"resign"});
+const liveDef=T.S.pieces.find(x=>x.id===bDef.id);
+ok(T.S.battle===null&&T.S.recruit===null&&T.S.pieces.includes(bAtt)&&liveDef===bDef&&bAtt.powerBuff===false&&bAtt.shield===0&&(T.byId("overlayBox")?T.byId("overlayBox").innerHTML==="":true)&&T.S.phase==="over","a resign during a live battle clears the battle on the very piece objects the callers hold and empties the stale battle markup");
+ok(liveDef.cap===heldCap&&heldCap.powerBuff===false&&heldCap.fleeBoost===false&&heldCap.burn===0&&heldCap.shield===0&&heldCap.cd===0&&heldCap.hp===40,"commit keeps the canonical stand-in fighter object identity, so the cap reference the callers hold is still exactly S.pieces[i].cap and carries the reset battle flags");
+/* 단일 경로: 정규 래퍼 하나가 Core 로 들어가고 레거시 종료 변이 경로는 남지 않는다 */
+ok(/function gameOver\(winner,type\)\{ dispatchCoreAction\(\{t:"gameOver",winner,winType:type,endingBattle:ENDING_BATTLE\}\); \}/.test(T.html)&&!/case "resign"\s*:/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8"))&&(T.html.match(/type:"matchEnded"/g)||[]).length===1&&(T.html.match(/matchEndFx\(\);/g)||[]).length===1&&!/S\.phase="over"; *S\.winner=/.test(T.html),"one canonical gameOver wrapper dispatches the Core action, and no legacy match-end mutation or duplicate resign path survives");
+
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
 ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");
 let blocked=false;
