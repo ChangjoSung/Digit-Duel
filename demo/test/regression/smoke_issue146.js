@@ -268,7 +268,7 @@ section("B",()=>{
   {
     const F=load(); const Q3=setup(F);
     const ally=Q3.ally0; ally.skills=undefined; ally.cds=undefined; ally.skillAtk=0; ally.cd=0;
-    openBattle(F,ally,Q3.em); const B3=F.S.battle; actAsA(F); freshModal(F);
+    openBattle(F,ally,Q3.em); const B3=F.S.battle; B3.fd.dodge=0; actAsA(F); freshModal(F);
     ok(/기본 공격/.test(ob(F)),"B11 동료 본체(4슬롯 없음)는 기본 공격 버튼을 유지한다");
     ok(ob(F).indexOf(F.NO_ATTACK_MSG)<0&&ob(F).indexOf("__pass()")<0,"B11a 그 경로에는 안내·[턴 종료]가 없다");
     const hp0=B3.fd.hp; F.netAction({t:"act",k:"basic"}); F.drain(20000);
