@@ -51,6 +51,10 @@ function applyUiEvents(events){
       else { NET.queued=true; render(); netConnect(); }
       continue;
     }
+    if(event.type==="teleTrapped"){ // #131·#245 텔레포트 함정 거부 — 사유는 소유자 화면에만 (공용 로그·렌더 없음)
+      if(viewerIsOwner(event.player)){ showToast(event.message); if(S.mode!=="sim") tutHint("teletrap"); } // #26 첫 1회 도움말 (게임 상태 무변경)
+      continue;
+    }
     if(event.type==="setupHandoff"){ handoff(pname(event.player)+" 배치",render); continue; }
     if(event.type==="setupBegin"){ beginPlay(); continue; }
     if(event.type==="setupAiBegin"){ aiAutoPlace(1); addLog("AI 배치 완료.","ai"); beginPlay(); continue; }

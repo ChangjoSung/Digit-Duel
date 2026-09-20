@@ -44,6 +44,14 @@ ok(T.reduceCoreAction(Object.assign({},autoResult.state,{mode:"pve"}),{t:"setupC
 const netEvent=T.reduceCoreAction(autoResult.state,{t:"setupConfirm",preparing:true,publicMode:true}).events[0];
 ok(netEvent.type==="setupNetworkReady"&&netEvent.publicMode===true&&netEvent.setup.roster.length===6&&netEvent.setup.pos.length===14&&T.reduceCoreAction(autoResult.state,{t:"setupConfirm",preparing:true,publicMode:false}).events[0].publicMode===false,"network confirmation captures the setup once for both public and matchmaking rooms");
 ok(T.reduceCoreAction(T.S,{t:"setupConfirm",preparing:false,publicMode:false}).events[0].type==="toast","incomplete setup confirmation only warns");
+/* #245 텔레포트 대상 선택: 단계 전이·함정 거부는 Core 가 소유하고, 둘째 말(스왑 실행)만 onCellCore 로 떨어진다 */
+const teleBase={phase:"play",mode:"pvp",current:0,battle:null,fleePick:null,teleport:{stage:1,piece:null},
+  pieces:[{id:1,owner:0,alive:true,placed:true,r:7,c:4,immobile:0},{id:2,owner:0,alive:true,placed:true,r:7,c:5,immobile:2},{id:3,owner:0,alive:true,placed:true,r:7,c:6,immobile:0}]};
+const telePick=T.reduceCoreAction(teleBase,{t:"cell",r:7,c:4}), teleStage2=Object.assign({},teleBase,{teleport:{stage:2,piece:teleBase.pieces[0]}});
+ok(teleBase.teleport.stage===1&&telePick.state.teleport.stage===2&&telePick.state.teleport.piece===teleBase.pieces[0]&&T.reduceCoreAction(teleStage2,{t:"cell",r:7,c:4}).state.teleport.stage===1,"teleport pick reducer advances and cancels the stage without mutating its input");
+const teleTrapped=T.reduceCoreAction(teleStage2,{t:"cell",r:7,c:5});
+ok(teleTrapped.state===teleStage2&&teleTrapped.events[0].type==="teleTrapped"&&T.reduceCoreAction(teleStage2,{t:"cell",r:7,c:6})===null,"a trapped piece is refused in Core with the stage kept, and only the swap click falls through");
+ok(!/S\.teleport\s*=/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"onCellCore no longer assigns the teleport pick state directly");
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
 ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");
 let blocked=false;

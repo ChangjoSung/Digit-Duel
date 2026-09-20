@@ -21,6 +21,22 @@ function resolveCoreAction(state,action){
 function reduceCoreAction(state,action){
   switch(action.t){
     case "cell": {
+      /* #245: 플레이 중 셀 클릭 중 **텔레포트 대상 선택(단계 전이)만** Core 가 소유한다 — tele 토글과 같은 도메인.
+         스왑 실행·이동·전투·도망 교환은 null 로 떨어뜨려 onCellCore 가 종전대로 처리한다. */
+      if(state.phase==="play"){
+        if(state.battle||state.fleePick||!state.teleport) return null;
+        if((state.mode==="pve"&&state.current===1)||state.mode==="sim") return null; // isAI(S.current) 가드 — 상태 기준
+        const picked=state.pieces.find(piece=>piece.alive&&piece.placed&&piece.r===action.r&&piece.c===action.c);
+        const mine=!!picked&&picked.owner===state.current;
+        /* #131: 함정에 걸린 말(immobile>0)은 양끝 어느 쪽으로도 고를 수 없다. 사유를 알리고 **현재 단계를 그대로 유지**한다.
+           안내 문구는 소유자 화면에만 — 상대에게는 어떤 말을 눌렀는지도, 함정 여부도 새지 않는다 (표시 계층에서 게이팅). */
+        if(mine&&picked.immobile>0) return {state,events:[{type:"teleTrapped",player:state.current,message:`🌀 ${TELE_TRAP_MSG}`}]};
+        if(state.teleport.stage===1)
+          return mine?{state:Object.assign({},state,{teleport:{stage:2,piece:picked}}),events:[{type:"render"}]}:{state,events:[]};
+        if(picked&&state.teleport.piece&&picked.id===state.teleport.piece.id) // 첫 말 재클릭 — 선택 취소
+          return {state:Object.assign({},state,{teleport:{stage:1,piece:null}}),events:[{type:"render"}]};
+        return null; // 둘째 말 선택 = 스왑 실행 (onCellCore)
+      }
       if(state.phase!=="setup") return null;
       const occupant=state.pieces.find(piece=>piece.alive&&piece.placed&&piece.r===action.r&&piece.c===action.c);
       /* #245: 좌표·대상 계약은 pre-split 과 같다 — 행은 zoneOf().includes 의 strict 일치(문자열 "11"·소수 11.5 불통과),
@@ -208,16 +224,9 @@ function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell �
   if(isAI(S.current)) return;
   const p=at(r,c);
   if(S.teleport){ // #14 스왑형: 자기 말 2개 선택 → 위치 교환
-    /* #131: 함정에 걸린 말(immobile>0)은 **양끝 어느 쪽으로도** 고를 수 없다. 조용히 무시하지 않고 사유를 알린 뒤
-       **현재 단계를 그대로 유지**한다 (1단계에서 거부하면 1단계, 2단계에서 거부하면 2단계 — 첫 말 선택은 살아 있다).
-       안내는 행동자 화면에만 띄운다 — 상대에게는 어떤 말을 눌렀는지도, 그 말이 함정에 걸렸는지도 새지 않는다. */
-    const trapped=p&&p.owner===S.current&&p.immobile>0;
-    /* 사유는 소유자 화면에만 (Saturn REVISE P1) — 공용 보드 로그에 쓰면 온라인 재생에서 상대 화면에 그대로 뜬다 */
-    if(trapped){ if(viewerIsOwner(S.current)){ showToast(`🌀 ${TELE_TRAP_MSG}`); if(S.mode!=="sim") tutHint("teletrap"); } // #26·#131 첫 1회 도움말 (게임 상태 무변경)
-      return; }
-    if(S.teleport.stage===1){ if(p&&p.owner===S.current){S.teleport={stage:2,piece:p}; render();} return; }
-    if(p&&S.teleport.piece&&p.id===S.teleport.piece.id){ S.teleport={stage:1,piece:null}; render(); } // 첫 말 재클릭 — 선택 취소
-    else if(p&&p.owner===S.current){ doTeleportSwap(S.teleport.piece,p); }
+    /* #245: 단계 전이(1단계 선택·재클릭 취소)와 #131 함정 거부는 Core reducer(cell)가 소유한다 — 여기로 내려오는 것은
+       둘째 말 선택뿐이다. 스왑 실행은 doTeleportSwap 이 실행 직전 재검사(차례·함정·횟수·전투 슬롯)를 다시 한다. */
+    if(S.teleport.stage!==1&&p&&p.owner===S.current&&!(S.teleport.piece&&p.id===S.teleport.piece.id)) doTeleportSwap(S.teleport.piece,p);
     return;
   }
   if(p&&forcedPickOk(p)){ initBattle(S.movedPiece,p); return; } // T1: 강제 대상 직접 클릭 (#106: 이동한 말이 폭탄이어도 대상 선택 가능)
