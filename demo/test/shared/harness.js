@@ -448,6 +448,7 @@ function runSim(T,levels,seed,opts){
   while(T.TQ.length&&n<opts.cap||5000000){
     if(!T.TQ.length) break;
     T.TQ.shift()(); n++;
+    if(opts.trace) opts.trace(T,n);
     if(opts.check&&(n%opts.check===0)){ const v=invariants(T); if(v.length){viol.push(...v.map(x=>"t"+T.S.turnCount+" "+x));} }
     if(T.S.aiLastThinkMs!==undefined){think.push(T.S.aiLastThinkMs); T.S.aiLastThinkMs=undefined;}
     if(n>=(opts.cap||5000000)) break;

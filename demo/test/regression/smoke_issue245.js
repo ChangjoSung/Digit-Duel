@@ -37,8 +37,9 @@ catch(error) { console.error(error.message); }
 ok(!!baseHtml,"pre-split baseline source is available");
 if(baseHtml){
   const trace=(opts,seed)=>{
-    const X=H.load(index,opts), result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000});
-    return JSON.stringify({digest:lockstepDigest(X),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
+    const X=H.load(index,opts), stateTrace=[];
+    const result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000,trace:Y=>stateTrace.push(lockstepDigest(Y))});
+    return JSON.stringify({stateTrace,digest:lockstepDigest(X),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
   };
   for(const seed of [24501,24502]) ok(trace({html:baseHtml},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner matches the pre-split baseline");
 }
