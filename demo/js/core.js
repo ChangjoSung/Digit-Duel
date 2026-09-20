@@ -103,10 +103,12 @@ function reduceCoreAction(state,action){
       met(piece.owner,"heals",1,next);
       return {state:next,events:[{type:"healStarted",piece}]};
     }
-    /* #245 평이동: **빈 칸으로의 합법 1칸 이동**과 그 이동이 만든 **신규 접촉(강제 전투 대상 확정)**까지 Core 가 소유한다.
+    /* #245 이동: **합법 이동 전부** — 1칸·BT 직선 2칸·숨은 말 충돌 정지 — 과 그 이동이 만든 **신규 접촉(강제 전투 대상 확정)**까지 Core 가 소유한다.
        검증은 기존 canMoveTo 하나뿐이고(중복 판정 없음), 대상 목록도 applyForced 와 같은 한 줄(contactEligible)이다.
-       BT 2칸·목적지의 숨은 말 충돌·왕 끝줄 도달·전투 슬롯이 걸린 턴은 null 로 떨어뜨려 doMoveLegacy 가 종전대로 처리하고,
-       전투 개시(initBattle)·배너·로그는 moved 이벤트의 표시 단계(forcedContactStart)에 그대로 남는다.
+       BT 2칸의 단계 해석은 레거시와 같다 — 경유 칸에 숨은 말이 있으면 그 칸 진입 시도로 바꾸고(정지 = 출발 칸), 비어 있으면
+       통과한다(정지 = 경유 칸). 도착 칸에 숨은 말이 있으면 그 정지 위치에서 멈추고 양측을 일시 공개한다(숲 충돌).
+       왕 끝줄 도달·전투 슬롯이 걸린 턴은 null 로 떨어뜨려 doMoveLegacy 가 종전대로 처리하고,
+       충돌 문구·전투 개시(initBattle)·배너·로그는 moved 이벤트의 표시 단계(collisionLog·forcedContactStart)에 그대로 남는다.
        reducer 계약대로 입력 상태는 건드리지 않는다 — 움직이는 말과 실제로 바뀌는
        metrics·traces·aiSeenMoved 칸만 복제하고 나머지 참조는 그대로 둔다.
        판정 헬퍼(canMoveTo·at·adjEnemies·contactEligible·visibleTo)는 레거시와 똑같이 현재 S 를 읽는다 — dispatchCoreAction 이
@@ -116,27 +118,33 @@ function reduceCoreAction(state,action){
       if(!target||state.battle||state.teleport||state.fleePick) return null;
       if(state.battlesUsed||(state.forcedTargets&&state.forcedTargets.length)) return null; // 전투 슬롯이 이미 걸린 턴의 canBattle 승계 판정은 레거시 그대로
       if(target.type==="king") return null; // 왕 끝줄 도달 즉시 승리 경로(checkKingReach)는 레거시
-      if(Math.abs(target.r-action.r)+Math.abs(target.c-action.c)!==1) return null; // BT 2칸(경유 칸 해석)은 레거시
-      if(!canMoveTo(target,action.r,action.c)||at(action.r,action.c)) return null; // 목적지의 숨은 말 = 숲 충돌(레거시)
-      const moved=Object.assign({},target,{r:action.r,c:action.c,movedEver:true,healing:false}); // #106: 이동은 회복 자세 해제
+      if(!canMoveTo(target,action.r,action.c)) return null; // 합법성 판정은 레거시와 같은 한 곳(canMoveTo)뿐이다
+      let dr=action.r, dc=action.c, stopR=target.r, stopC=target.c; // 충돌 시 정지 위치 — 기본값은 출발 칸
+      if(Math.abs(target.r-dr)+Math.abs(target.c-dc)===2){ // BT 2칸: 1칸째부터 단계 해석 → 충돌 규칙 자연 적용
+        const mr=(target.r+dr)/2, mc=(target.c+dc)/2;
+        if(at(mr,mc)){ dr=mr; dc=mc; } else { stopR=mr; stopC=mc; } // 경유 칸의 숨은 말 → 그 칸 진입 시도(정지=출발 칸) · 통과하면 경유 칸이 정지 위치
+      }
+      const hidden=at(dr,dc); // 도착 칸의 숨은 말 = 숲 충돌 (보이는 말·같은 편은 canMoveTo 가 이미 막았다)
+      const moved=Object.assign({},target,{r:hidden?stopR:dr,c:hidden?stopC:dc,movedEver:true,healing:false}); // #106: 이동은 회복 자세 해제 (숲 충돌 정지 포함)
       if(!isBurning()) moved.movedPreBT=true; // 엔진 내부 이동 이력 (#21 누수 제거 — AI 는 aiSeenMoved 만 본다)
       const beforeAdj=new Set(adjEnemies(target).map(e=>e.id)), after=adjEnemies(moved); // T1: 이동 전/후 인접 집합
       const forced=after.filter(e=>!beforeAdj.has(e.id)&&contactEligible(moved,e)).map(e=>e.id); // 신규 인접 = 강제 전투·폭탄 접촉 (applyForced 와 같은 판정)
-      const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===target?moved:x),mainUsed:true,contactKind:"move",
+      const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===target?moved:x),mainUsed:true,contactKind:hidden?"collision":"move",
         movedPiece:moved,contactSet:after.map(e=>e.id),forcedTargets:forced.length?forced:state.forcedTargets,
         selected:forced.length>1?moved:(state.selected===target?moved:state.selected)}); // 대상 2개 이상이면 레거시와 같이 이동한 말을 선택 상태로 둔다
-      const metric=target.type==="bomb"?"bombMoves":(target.type==="minion"&&zoneOf(1-target.owner).includes(action.r)&&!zoneOf(1-target.owner).includes(target.r)?"minionInvades":null);
+      if(hidden) next.tempReveal=new Set(state.tempReveal).add(hidden.id).add(moved.id); // 숲 충돌: 양측 일시 공개 (입력 집합은 그대로 두고 복제)
+      const metric=target.type==="bomb"?"bombMoves":(target.type==="minion"&&zoneOf(1-target.owner).includes(moved.r)&&!zoneOf(1-target.owner).includes(target.r)?"minionInvades":null);
       if(metric){ // #20 폭탄 이동 카운터 · 하수인 적진 진입 지표
         next.metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
         met(target.owner,metric,1,next);
       }
       const obs=1-target.owner;
-      if(!isBurning()&&(visibleTo(obs,target)||visibleTo(obs,moved))){ // observeMove 와 같은 판정 — 이동 전후 어느 쪽이든 보이면 목격
+      if(!isBurning()&&(hidden||visibleTo(obs,target)||visibleTo(obs,moved))){ // observeMove 와 같은 판정 — 이동 전후 어느 쪽이든 보이면 목격 (충돌은 일시 공개라 항상 목격)
         next.aiSeenMoved=state.aiSeenMoved.slice(); next.aiSeenMoved[obs]=new Set(state.aiSeenMoved[obs]).add(target.id);
       }
-      const ev=state.events.find(e=>e.r===action.r&&e.c===action.c&&!e.consumed);
+      const ev=hidden?null:state.events.find(e=>e.r===dr&&e.c===dc&&!e.consumed); // 충돌로 멈춘 칸은 흔적을 발견하지 않는다 (레거시 그대로)
       if(ev){ next.traces=state.traces.slice(); next.traces[target.owner]=new Set(state.traces[target.owner]).add(ev.r+"_"+ev.c); }
-      return {state:next,events:[{type:"moved",piece:moved,healBroken:!!target.healing,trace:!!ev,forced:forced.length?forced:null}]};
+      return {state:next,events:[{type:"moved",piece:moved,healBroken:!!target.healing,trace:!!ev,collision:!!hidden,forced:forced.length?forced:null}]};
     }
     default: return null;
   }
@@ -318,6 +326,10 @@ function forcedPickOk(def){ // 강제 대상 클릭·AI 이행: 이동한 말이
   return S.movedPiece.type==="bomb"?contactEligible(S.movedPiece,def):canBattle(S.movedPiece,def);
 }
 const TRACE_FOUND_MSG="탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)"; // #245: 레거시와 moved 이벤트가 같은 문구를 쓴다
+function collisionLog(p){ // #245 숲 충돌 표시 한 곳 — 레거시와 moved 이벤트가 같은 문구를 쓴다
+  const cmsg=`${pname(p.owner)} 이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다.`;
+  addLog(cmsg,"imp"); showToast(cmsg);
+}
 function doMove(p,r,c){ if(p&&dispatchCoreAction({t:"move",id:p.id,r,c})) return; doMoveLegacy(p,r,c); } // #245: 이동의 단일 Core 진입점 (UI·AI·온라인 재생 공통) — Core 가 맡지 않는 분기만 레거시로
 function doMoveLegacy(p,r,c){
   S.mainUsed=true; p.movedEver=true; healBreak(p); // #106: 이동은 회복 자세 해제 (숲 충돌 정지 포함)
@@ -336,8 +348,7 @@ function doMoveLegacy(p,r,c){
     S.tempReveal.add(hidden.id); S.tempReveal.add(p.id);
     observeMove(p,visBefore); // 충돌 공개 → 이동 목격
     S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id); S.contactKind="collision";
-    const cmsg=`${pname(p.owner)} 이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다.`;
-    addLog(cmsg,"imp"); showToast(cmsg);
+    collisionLog(p);
     if(p.type==="minion"&&zoneOf(1-p.owner).includes(p.r)&&!zoneOf(1-p.owner).includes(pr)) met(p.owner,"minionInvades");
     if(applyForced(p,beforeAdj)) return;
     render(); return;

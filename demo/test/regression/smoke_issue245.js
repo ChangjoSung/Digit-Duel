@@ -83,7 +83,8 @@ const bombResult=T.reduceCoreAction(moveState,{t:"move",id:bomb.id,r:11,c:2});
 ok(moveState.metrics.bombMoves===0&&bombResult.state.metrics!==moveState.metrics&&bombResult.state.metrics.bombMoves===1&&bombResult.state.metrics.byPlayer[0].bombMoves===1,"move reducer counts a bomb step on cloned metrics only");
 ok(T.reduceCoreAction(moveState,{t:"move",id:myKing.id,r:12,c:1})===null,"a king step stays on the legacy path (edge-reach win)");
 moveState.turnCount=T.BAL.burnStart-1;
-ok(T.isBurning()&&T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:10,c:4})===null,"a burning-time two-step stays on the legacy path (midpoint collision)");
+const twoStep=T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:10,c:4}), twoStepPiece=twoStep&&twoStep.state.pieces.find(piece=>piece.id===mover.id);
+ok(T.isBurning()&&mover.r===12&&mover.c===4&&twoStepPiece!==mover&&twoStepPiece.r===10&&twoStepPiece.c===4&&twoStep.state.contactKind==="move"&&twoStep.state.tempReveal===moveState.tempReveal&&twoStep.events[0].collision===false,"a burning-time two-step over an empty midpoint lands on the endpoint in Core without touching its input");
 moveState.turnCount=0;
 moveState.battlesUsed=1; ok(T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:11,c:4})===null,"a step in a turn that already spent a battle slot stays on the legacy path"); moveState.battlesUsed=0;
 /* #245 신규 접촉: 강제 전투 대상 확정까지 Core 가 소유하고, 전투 개시만 표시 단계(forcedContactStart)에 남는다 */
@@ -94,9 +95,13 @@ ok(JSON.stringify(contact.state.forcedTargets)===JSON.stringify([foe.id])&&conta
 const foe2=T.S.pieces.filter(piece=>piece.owner===1&&piece.type==="minion")[1]; H.place(T,foe2,11,5);
 const multi=T.reduceCoreAction(Object.assign({},moveState,{selected:null}),{t:"move",id:mover.id,r:11,c:4});
 ok(multi.state.forcedTargets.length===2&&multi.state.selected===multi.state.pieces.find(piece=>piece.id===mover.id)&&multi.events[0].forced.length===2,"two new contacts keep the moved piece selected for the pick, as the legacy path did");
+/* #245 숲 충돌: 도착 칸의 숨은 말 → 경유 칸 정지 · 양측 일시 공개 · 신규 접촉까지 Core 가 소유한다 (#104 D2 와 같은 상황) */
 foe2.placed=false;
 moveState.turnCount=T.BAL.burnStart-1;
-ok(T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:10,c:4})===null,"a two-step onto the hidden enemy still stays on the legacy path (forest collision)");
+const collide=T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:10,c:4}), collidePiece=collide&&collide.state.pieces.find(piece=>piece.id===mover.id);
+ok(mover.r===12&&mover.c===4&&mover.movedEver===false&&moveState.tempReveal.size===0&&moveState.contactKind==="move"&&moveState.forcedTargets.length===0,"forest collision reducer leaves the input piece, temporary reveal set and contact record untouched");
+ok(collidePiece.r===11&&collidePiece.c===4&&collidePiece.movedEver===true&&collide.state.mainUsed===true&&collide.state.contactKind==="collision"&&collide.state.tempReveal!==moveState.tempReveal&&collide.state.tempReveal.has(foe.id)&&collide.state.tempReveal.has(mover.id),"forest collision stops on the midpoint and temporarily reveals both pieces on a cloned set");
+ok(collide.events.length===1&&collide.events[0].collision===true&&collide.events[0].trace===false&&JSON.stringify(collide.events[0].forced)===JSON.stringify([foe.id])&&JSON.stringify(collide.state.forcedTargets)===JSON.stringify([foe.id])&&collide.state.contactSet.includes(foe.id),"the collision emits one moved event carrying the collision flag and the new forced contact");
 moveState.turnCount=0;
 moveState.mainUsed=true;
 ok(T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:12,c:5})===null,"move reducer refuses a step once the main action is spent (canMoveTo stays the only gate)");
@@ -116,7 +121,13 @@ T.S.mainUsed=false; T.S.battlesUsed=0; T.S.forcedTargets=[]; T.S.movedPiece=null
 H.place(T,mover,12,4); H.place(T,foe,10,4); T.S.selected=mover;
 T.doMove(mover,11,4);
 ok(mover.r===11&&T.S.movedPiece===mover&&T.S.contactSet.includes(foe.id)&&!!T.S.battle&&T.S.battle.attP===mover&&T.S.battle.defP===foe&&T.S.forcedTargets.length===0&&T.S.metrics.forcedBattles===1,"doMove commits the forced contact and the legacy battle initiation still consumes it on the same piece objects");
-T.S.battle=null; T.S.battlesUsed=0; foe.placed=false;
+/* #245 숲 충돌 end-to-end: 정지 위치·일시 공개까지 Core 가 commit 하고 문구·전투 개시는 표시 단계가 그대로 한다 */
+T.S.battle=null; T.S.battlesUsed=0; T.S.mainUsed=false; T.S.forcedTargets=[]; T.S.movedPiece=null; T.S.tempReveal.clear(); T.S.turnCount=T.BAL.burnStart-1;
+H.place(T,mover,12,4); H.place(T,foe,10,4); T.S.selected=mover; mover.healing=false;
+T.doMove(mover,10,4);
+ok(mover.r===11&&mover.c===4&&T.at(11,4)===mover&&T.S.contactKind==="collision"&&T.S.tempReveal.has(foe.id)&&T.S.tempReveal.has(mover.id)&&T.S.movedPiece===mover&&!!T.S.battle&&T.S.battle.defP===foe,"doMove commits the collision stop, the temporary reveal and the forced battle on the same piece objects");
+T.S.turnCount=0; T.S.battle=null; T.S.battlesUsed=0; foe.placed=false;
+ok((T.html.match(/이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다\./g)||[]).length===1&&/if\(event\.collision\) collisionLog\(event\.piece\)/.test(T.html)&&/^\s*collisionLog\(p\);$/m.test(T.html),"the collision notice lives in one helper shared by the Core event and the legacy path");
 ok(/forcedContactStart\(event\.piece,event\.forced\)/.test(T.html)&&(T.html.match(/신규 인접 — 강제 전투/g)||[]).length===1&&(T.html.match(/initBattle\(p,def\)/g)||[]).length===1,"forced contact display and battle initiation stay in one helper shared by the Core event and the legacy path");
 ok(/function doMove\(p,r,c\)\{ if\(p&&dispatchCoreAction\(\{t:"move",id:p\.id,r,c\}\)\) return; doMoveLegacy\(p,r,c\); \}/.test(T.html),"UI, AI and network replay share one canonical move entry point");
 ok(!/S\.(teleport|selected)\s*=/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"onCellCore no longer assigns the teleport pick or selection state directly");
