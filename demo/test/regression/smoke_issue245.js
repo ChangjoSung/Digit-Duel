@@ -64,7 +64,7 @@ ok(healResult.state.mainUsed===true&&healResult.state.selected===null&&healPiece
 ok(healResult.events.length===1&&healResult.events[0].type==="healStarted"&&healResult.events[0].piece===healPiece,"heal reducer emits one healStarted carrying the piece that lives in the returned state");
 ok(T.reduceCoreAction(healResult.state,{t:"heal",id:1})===null&&T.reduceCoreAction(healBase,{t:"heal",id:2})===null&&T.reduceCoreAction(healBase,{t:"heal",id:99})===null&&T.reduceCoreAction(Object.assign({},healBase,{battle:{}}),{t:"heal",id:1})===null,"heal reducer refuses a spent main action, an opponent piece, an unknown id and a battle in progress");
 ok(!/case\s*"heal"/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8")),"network replay has no second heal path");
-/* #245 평이동: 빈 칸으로의 합법 1칸 이동만 Core 가 소유하고, 왕 끝줄·BT 2칸·신규 접촉·전투 슬롯은 레거시로 떨어진다 */
+/* #245 이동: 합법 이동(1칸·BT 직선 2칸·숲 충돌 정지)과 그 이동이 만든 신규 접촉까지 Core 가 소유하고, 왕 끝줄 도달·전투 슬롯이 걸린 턴만 레거시로 떨어진다 */
 const moveState=H.freshPlay(T,"pvp"); H.clearBoard(T);
 const mover=T.S.pieces.find(piece=>piece.owner===0&&piece.type==="minion"), foe=T.S.pieces.find(piece=>piece.owner===1&&piece.type==="minion");
 const myKing=T.S.pieces.find(piece=>piece.owner===0&&piece.type==="king"), foeKing=T.S.pieces.find(piece=>piece.owner===1&&piece.type==="king");
@@ -129,6 +129,58 @@ ok(mover.r===11&&mover.c===4&&T.at(11,4)===mover&&T.S.contactKind==="collision"&
 T.S.turnCount=0; T.S.battle=null; T.S.battlesUsed=0; foe.placed=false;
 ok((T.html.match(/이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다\./g)||[]).length===1&&/if\(event\.collision\) collisionLog\(event\.piece\)/.test(T.html)&&/^\s*collisionLog\(p\);$/m.test(T.html),"the collision notice lives in one helper shared by the Core event and the legacy path");
 ok(/forcedContactStart\(event\.piece,event\.forced\)/.test(T.html)&&(T.html.match(/신규 인접 — 강제 전투/g)||[]).length===1&&(T.html.match(/initBattle\(p,def\)/g)||[]).length===1,"forced contact display and battle initiation stay in one helper shared by the Core event and the legacy path");
+/* #245 텔레포트 스왑: 재검사·차단·위치 교환·자원·지표·흔적·회복 자세와 교환 직후의 강제 전투 큐 적재·첫 항목 승격까지 Core 가 소유하고,
+   문구·배너·전투 개시는 teleSwapped 이벤트가 레거시 헬퍼(forcedContactStart)로 넘긴다. 왕이 섞인 교환만 레거시(끝줄 도달 즉시 승리)다 */
+const swapState=H.freshPlay(T,"pvp"); H.clearBoard(T);
+const sMine=T.S.pieces.filter(piece=>piece.owner===0&&piece.type==="minion"), sFoe=T.S.pieces.filter(piece=>piece.owner===1&&piece.type==="minion");
+const sa=sMine[0], sb=sMine[1], sd=sFoe[0], se=sFoe[1], sf=sFoe[2];
+const sKing=T.S.pieces.find(piece=>piece.owner===0&&piece.type==="king");
+H.place(T,sKing,13,1); H.place(T,T.S.pieces.find(piece=>piece.owner===1&&piece.type==="king"),1,7);
+H.place(T,sa,2,2); H.place(T,sb,12,4); // sa 가 상대 진영(1~3행)에 있어야 텔레포트가 가용하다
+swapState.current=0; swapState.mainUsed=false; swapState.battlesUsed=0; swapState.teleport={stage:2,piece:sa}; swapState.events=[];
+const swapNone=T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:sb});
+ok(sa.r===2&&sa.c===2&&sb.r===12&&sb.c===4&&swapState.mainUsed===false&&swapState.teleUsed[0]===0&&swapState.metrics.teleports===0&&swapState.teleport.stage===2&&swapState.pieces.includes(sa),"teleport swap reducer leaves the input pieces, resources, metrics and pick stage untouched");
+const na=swapNone.state.pieces.find(piece=>piece.id===sa.id), nb=swapNone.state.pieces.find(piece=>piece.id===sb.id);
+ok(na!==sa&&nb!==sb&&na.r===12&&na.c===4&&nb.r===2&&nb.c===2&&na.movedEver===sa.movedEver&&na.healing===false&&swapNone.state.mainUsed===true&&swapNone.state.teleport===null&&swapNone.state.selected===null&&swapNone.state.contactKind==="tele"&&swapNone.state.teleUsed!==swapState.teleUsed&&swapNone.state.teleUsed[0]===1&&swapNone.state.metrics.teleports===1&&swapNone.state.metrics.byPlayer[0].teleports===1,"teleport swap reducer returns the exact swapped coordinates, resources and metrics on cloned pieces without marking a walked move");
+ok(swapNone.state.forcedQueue.length===0&&swapNone.events.length===1&&swapNone.events[0].type==="teleSwapped"&&swapNone.events[0].forced===null&&swapNone.events[0].pieces[0]===na&&swapNone.events[0].pieces[1]===nb&&swapNone.events[0].traces===0,"a swap with no new contact emits one teleSwapped carrying the pieces that live in the returned state");
+H.place(T,sd,2,3); // 교환 뒤 sb 가 (2,2)로 오면서 새로 인접 — sa 는 이미 인접이라 신규가 아니다
+const swapOne=T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:sb});
+ok(JSON.stringify(swapOne.state.forcedQueue)==="[]"&&JSON.stringify(swapOne.state.forcedTargets)===JSON.stringify([sd.id])&&swapOne.state.movedPiece===swapOne.state.pieces.find(piece=>piece.id===sb.id)&&swapOne.state.contactSet.includes(sd.id)&&swapOne.state.selected===null&&swapOne.events[0].forced.id===sb.id&&swapState.forcedTargets.length===0&&swapState.movedPiece===null,"one new contact is promoted out of the queue inside Core with the pre-existing adjacency exempt");
+H.place(T,se,12,5); // sa 도 (12,4)에서 새로 인접 — 두 항목이 순서대로 적재되고 첫 항목만 승격된다
+const swapTwo=T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:sb});
+ok(swapTwo.state.forcedQueue.length===1&&swapTwo.state.forcedQueue[0].pid===sb.id&&JSON.stringify(swapTwo.state.forcedQueue[0].targets)===JSON.stringify([sd.id])&&JSON.stringify(swapTwo.state.forcedTargets)===JSON.stringify([se.id])&&swapTwo.state.movedPiece.id===sa.id&&swapTwo.events[0].forced.id===sa.id&&swapState.forcedQueue.length===0,"two new contacts queue in swapped-piece order and only the first is promoted, leaving the second for drainForcedQueue");
+/* #245 상태 순수성: 리듀서 상태와 전역 S 가 갈려도 결과는 **받은 상태만** 따른다 (온라인 재생·AI 탐색 경로).
+   swapState 는 T.S 그 자체라 기존 단언들은 둘이 같을 때만 본다 — 여기서는 별개 상태를 넘기고 S 만 어긋나게 둔다 */
+const swapPure=Object.assign({},swapState,{pieces:swapState.pieces.slice()});
+const swapDigest=r=>JSON.stringify({ev:r.events.map(e=>e.type),forced:r.events[0].forced,queue:r.state.forcedQueue,
+  targets:r.state.forcedTargets,contact:r.state.contactSet,moved:r.state.movedPiece&&r.state.movedPiece.id,
+  main:r.state.mainUsed,tele:r.state.teleUsed,where:r.state.pieces.filter(p=>p.id===sa.id||p.id===sb.id).map(p=>[p.id,p.r,p.c])});
+const swapAgreed=swapDigest(T.reduceCoreAction(swapPure,{t:"teleSwap",a:sa,b:sb}));
+const liveP=T.S.pieces, livePhase=T.S.phase, liveCur=T.S.current, liveMain=T.S.mainUsed, liveTele=T.S.teleUsed;
+T.S.pieces=[sa,sb]; T.S.phase="setup"; T.S.current=1; T.S.mainUsed=true; T.S.teleUsed=[T.BAL.teleMax,T.BAL.teleMax]; // 전역 S 만 어긋나게 (말 객체는 그대로)
+const swapDisagreed=swapDigest(T.reduceCoreAction(swapPure,{t:"teleSwap",a:sa,b:sb}));
+T.S.pieces=liveP; T.S.phase=livePhase; T.S.current=liveCur; T.S.mainUsed=liveMain; T.S.teleUsed=liveTele;
+ok(swapDisagreed===swapAgreed&&swapPure.mainUsed===false&&swapPure.teleUsed[0]===0&&sa.r===2&&sa.c===2&&sb.r===12&&sb.c===4,"teleport swap reducer reads the board, teleport availability and forced contacts from its state argument only, so a disagreeing global S changes nothing");
+const swapBlocked=T.reduceCoreAction(Object.assign({},swapState,{battlesUsed:1,selected:sa}),{t:"teleSwap",a:sa,b:sb});
+ok(swapBlocked.events[0].type==="teleRefused"&&/차단/.test(swapBlocked.events[0].message)&&swapBlocked.state.teleport.stage===1&&swapBlocked.state.selected===null&&swapBlocked.state.mainUsed===false&&swapBlocked.state.teleUsed[0]===0&&swapBlocked.state.pieces===swapState.pieces&&swapBlocked.state.forcedQueue.length===0,"a swap blocked by the battle budget only rewinds the pick and selection, consuming no resource and moving no piece");
+se.placed=false; sa.immobile=2;
+const swapRefused=T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:sb});
+ok(swapRefused.events[0].type==="teleRefused"&&swapRefused.events[0].message.indexOf(T.TELE_TRAP_MSG)>=0&&swapRefused.state.teleport.stage===1&&swapRefused.state.mainUsed===false&&swapRefused.state.pieces===swapState.pieces,"a trapped piece rewinds the pick in Core and consumes nothing");
+sa.immobile=0;
+ok(T.reduceCoreAction(swapState,{t:"teleSwap",a:sKing,b:sb})===null&&T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:Object.assign({},sb)})!==null&&T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:Object.assign({},sb)}).events[0].type==="teleRefused","a king swap falls through to the legacy edge-reach path and a cloned piece object is still refused");
+/* #245 end-to-end: 승격된 강제 전투의 개시는 레거시 initBattle 이 같은 말 객체로 그대로 한다 */
+const forcedBefore=T.S.metrics.forcedBattles;
+ok(T.doTeleportSwap(sa,sb)===true&&sa.r===12&&sa.c===4&&sb.r===2&&sb.c===2&&T.at(2,2)===sb&&T.at(12,4)===sa&&T.S.teleport===null&&T.S.mainUsed===true&&T.S.teleUsed[0]===1&&T.S.movedPiece===sb&&!!T.S.battle&&T.S.battle.attP===sb&&T.S.battle.defP===sd&&T.S.forcedTargets.length===0&&T.S.metrics.forcedBattles===forcedBefore+1,"doTeleportSwap commits the swap on the same piece objects and the legacy battle initiation consumes the promoted contact");
+T.S.battle=null; T.S.battlesUsed=0; T.S.forcedTargets=[]; T.S.forcedQueue=[]; T.S.movedPiece=null; T.S.mainUsed=false;
+ok(T.doTeleportSwap(sa,Object.assign({},sb))===false&&T.S.mainUsed===false&&T.S.teleUsed[0]===1,"a refused swap still returns false through the single Core entry point without consuming a resource");
+/* #245: 거부 결과도 commitCoreState 를 지난다 — S.pieces 에 같은 id 가 둘이어도 원본 말이 사라지거나 한 객체로 겹치면 안 된다 */
+const dupBefore=T.S.pieces, dupGhost=Object.assign({},sf,{hp:1}); // 같은 id 두 개 (손상 상태 재현)
+T.S.pieces=dupBefore.concat([dupGhost]);
+const dupRefs=T.S.pieces.slice(), dupBytes=JSON.stringify(dupRefs), dupTele=JSON.stringify(T.S.teleUsed);
+const dupRefused=T.doTeleportSwap(sa,Object.assign({},sb));
+ok(dupRefused===false&&T.S.pieces.length===dupRefs.length&&T.S.pieces.every((piece,i)=>piece===dupRefs[i])&&JSON.stringify(T.S.pieces)===dupBytes&&T.S.mainUsed===false&&JSON.stringify(T.S.teleUsed)===dupTele,"a refused swap mutates no piece and drops no object reference even when S.pieces holds duplicate ids");
+T.S.pieces=dupBefore;
+ok(/const result=dispatchCoreAction\(\{t:"teleSwap",a,b\}\);/.test(T.html)&&/return doTeleportSwapLegacy\(a,b\);/.test(T.html)&&/forcedContactStart\(event\.pieces\.find\(/.test(T.html)&&(T.html.match(/S\.teleUsed\[S\.current\]\+\+/g)||[]).length===1,"UI, AI and network replay share one teleport swap entry point and the promoted contact reuses the shared display helper");
 ok(/function doMove\(p,r,c\)\{ if\(p&&dispatchCoreAction\(\{t:"move",id:p\.id,r,c\}\)\) return; doMoveLegacy\(p,r,c\); \}/.test(T.html),"UI, AI and network replay share one canonical move entry point");
 ok(!/S\.(teleport|selected)\s*=/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"onCellCore no longer assigns the teleport pick or selection state directly");
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
@@ -152,7 +204,8 @@ if(baseHtml){
     const result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000,trace:Y=>stateTrace.push(lockstepDigest(Y))});
     return JSON.stringify({stateTrace,digest:lockstepDigest(X),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
   };
-  for(const seed of [24501,24502]) ok(trace({html:baseHtml},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner matches the pre-split baseline");
+  // 24511 은 텔레포트 스왑 3회, 24512 는 2회 + 왕 끝줄 도달(edge) 승리 — Core 로 옮긴 스왑과 레거시로 남긴 왕 경로를 둘 다 지난다
+  for(const seed of [24501,24502,24511,24512]) ok(trace({html:baseHtml},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner matches the pre-split baseline");
 }
 
 console.log(`\n=== smoke_issue245: pass ${pass} / fail ${fail} ===`);

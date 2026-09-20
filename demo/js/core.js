@@ -146,25 +146,83 @@ function reduceCoreAction(state,action){
       if(ev){ next.traces=state.traces.slice(); next.traces[target.owner]=new Set(state.traces[target.owner]).add(ev.r+"_"+ev.c); }
       return {state:next,events:[{type:"moved",piece:moved,healBroken:!!target.healing,trace:!!ev,collision:!!hidden,forced:forced.length?forced:null}]};
     }
+    /* #245 텔레포트 스왑: 실행 직전 재검사·사전 차단·위치 교환과 그 교환이 소모하는 자원(주 행동·횟수·지표),
+       도착 칸 흔적, 두 말의 회복 자세 해제, 그리고 교환 직후의 **강제 전투 큐 적재와 첫 항목 승격**까지 Core 가 소유한다.
+       표시(거부 사유 토스트·로그·배너·render)와 전투 개시(initBattle)는 teleRefused·teleSwapped 이벤트가 종전 헬퍼
+       (forcedContactStart)로 그대로 넘긴다 — 문구·순서가 갈라지지 않게.
+       왕이 섞인 교환은 끝줄 도달 즉시 승리(checkKingReach) 경로라 null 로 떨어뜨려 doTeleportSwapLegacy 가 종전대로 처리한다 (move 와 같은 경계).
+       거부·차단은 **아무것도 소모하지 않는다** — 단계 되돌림(과 차단의 selected 해제)만 상태에 남고 좌표·자원·큐·난수는 그대로다.
+       말은 **id 가 아니라 객체 정체성**으로 받는다 (Saturn REVISE P2): state.pieces 안의 그 말 자체여야 통과하므로
+       복제 객체·같은 id 두 개·원격 프레임이 되살린 객체는 여기서 거부된다.
+       판정 헬퍼(teleportAvailable·adjEnemies·newAdjAt·forcedEligible)는 **인자로 받은 state 의 보드만** 읽는다 — 전역 S 를 읽으면
+       같은 입력에 다른 결과가 나온다(온라인 재생·AI 탐색처럼 S 와 reducer 상태가 갈리는 호출). 양끝 모두 내 말이라
+       스왑 전 보드로 계산한 신규 인접 집합은 스왑 후와 같다(움직인 두 말은 서로의 적이 아니다). */
+    case "teleSwap": {
+      const a=action.a, b=action.b;
+      if((a&&a.type==="king")||(b&&b.type==="king")) return null; // 왕 끝줄 도달 즉시 승리 경로(checkKingReach)는 레거시
+      const bad=teleportSwapValid(a,b,state);
+      if(bad){ // 첫 말이 무효가 됐으면 1단계로 되돌리고(단계 일치), 둘째 말만 무효면 1단계 선택은 유지한다
+        const reset=state.teleport&&(!a||a.owner!==state.current||!a.alive||!a.placed||a.immobile>0);
+        return {state:reset?Object.assign({},state,{teleport:{stage:1,piece:null}}):state,
+          events:[{type:"teleRefused",player:state.current,message:`🌀 ${bad}`}]};
+      }
+      const block=teleportSwapBlock(a,b,state);
+      if(block) return {state:Object.assign({},state,{selected:null,teleport:state.teleport?{stage:1,piece:null}:state.teleport}),
+        events:[{type:"teleRefused",player:state.current,message:`🌀 텔레포트 스왑 차단 — ${block}`}]};
+      const beforeA=new Set(adjEnemies(a,state).map(e=>e.id)), beforeB=new Set(adjEnemies(b,state).map(e=>e.id));
+      const pa=Object.assign({},a,{r:b.r,c:b.c,healing:false}), pb=Object.assign({},b,{r:a.r,c:a.c,healing:false}); // movedEver/movedPreBT 미설정 — 걷는 이동이 아님 (폭탄 재배치 위장 유지) · #106: 교환은 두 말의 회복 자세 해제
+      const metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+      const teleUsed=state.teleUsed.slice(); teleUsed[state.current]++;
+      const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===a?pa:(x===b?pb:x)),metrics,teleUsed,
+        mainUsed:true,teleport:null,selected:null,contactKind:"tele"});
+      met(state.current,"teleports",1,next);
+      let traces=0;
+      for(const p of [pa,pb]){ // 도착 칸 이벤트 흔적 (입력 집합은 그대로 두고 복제)
+        const ev=state.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed);
+        if(!ev) continue;
+        if(next.traces===state.traces) next.traces=state.traces.slice();
+        next.traces[p.owner]=new Set(next.traces[p.owner]).add(ev.r+"_"+ev.c); traces++;
+      }
+      // #18: 두 말의 강제 전투를 독립 queue에 적재 — 첫 전투의 결과(승·패·도주)와 무관하게 게임이 끝나지 않으면 둘째 실행
+      const queue=[];
+      for(const [p,list] of [[pa,newAdjAt(a,b.r,b.c,beforeA,state)],[pb,newAdjAt(b,a.r,a.c,beforeB,state)]]) if(list.length) queue.push({pid:p.id,targets:list});
+      next.forcedQueue=queue;
+      let forced=null;
+      if(queue.length){ /* drainForcedQueue(true) 와 같은 승격. 스왑 직후에는 면제 분기(말 소멸·전투 횟수 소진·대상 소멸·도망 교환)가
+           teleportSwapValid·teleportSwapBlock 으로 이미 배제돼 있어 첫 항목이 반드시 승격된다 — 남은 항목은 종전대로 전투 종료 지점의 drainForcedQueue 가 꺼낸다. */
+        const n=queue.shift(), p=n.pid===pa.id?pa:pb;
+        next.movedPiece=p; next.contactSet=adjEnemies(p,next).map(e=>e.id); next.forcedTargets=n.targets; // 접촉 집합은 교환이 끝난 보드(next) 기준 — 레거시와 같다
+        if(n.targets.length>1) next.selected=p; // 대상 2개 이상이면 레거시(applyForced)와 같이 승격된 말을 선택 상태로 둔다
+        forced={id:p.id,list:n.targets};
+      }
+      return {state:next,events:[{type:"teleSwapped",player:state.current,pieces:[pa,pb],
+        healBroken:[!!a.healing,!!b.healing],traces,forced}]};
+    }
     default: return null;
   }
 }
+/* 반환: Core 가 맡지 않은 액션이면 false, 맡았으면 커밋된 결과({state,events}) — 호출처는 종전처럼 truthy 검사만 하면 되고,
+   결과의 세부 판정(예: 스왑이 실제로 일어났는지)이 필요한 래퍼만 events 를 읽는다. */
 function dispatchCoreAction(action){
   const result=reduceCoreAction(S,resolveCoreAction(S,action));
   if(!result) return false;
   commitCoreState(result.state,result.events);
   applyUiEvents(result.events);
-  return true;
+  return result;
 }
 /* #245 commit: reducer 가 순수하므로 바뀐 말은 복제본으로 돌아온다. 레거시 경로·AI·예약 콜백·테스트가 말 객체 참조를
    그대로 들고 있으므로, 복제본의 값을 같은 id 의 원본 말에 얹고 참조를 원본으로 되돌린다 — S 객체 정체성을 유지하는 것과 같은 이유다. */
 function commitCoreState(next,events){
+  const live=new Set(S.pieces); // 이미 S.pieces 안의 그 객체면 그대로 통과 — id 가 중복돼도 원본을 잃거나 겹치지 않는다 (거부 결과는 S.pieces 를 그대로 되돌린다)
   const canon=new Map(S.pieces.map(piece=>[piece.id,piece]));
-  const keep=x=>{ const origin=x&&!x.tray&&canon.get(x.id); return origin&&origin!==x?Object.assign(origin,x):x; };
+  const keep=x=>{ if(!x||x.tray||live.has(x)) return x; const origin=canon.get(x.id); return origin?Object.assign(origin,x):x; };
   next.pieces=next.pieces.map(keep);
   next.selected=keep(next.selected);
   next.movedPiece=keep(next.movedPiece);
-  for(const event of events||[]) if(event.piece) event.piece=keep(event.piece); // healStarted·moved 등 말을 실은 이벤트도 같은 정규화를 받는다 — UI 핸들러가 떨어진 복제본을 보지 않게 여기서 한 번만
+  for(const event of events||[]){ // healStarted·moved·teleSwapped 등 말을 실은 이벤트도 같은 정규화를 받는다 — UI 핸들러가 떨어진 복제본을 보지 않게 여기서 한 번만
+    if(event.piece) event.piece=keep(event.piece);
+    if(event.pieces) event.pieces=event.pieces.map(keep);
+  }
   Object.assign(S,next);
 }
 /* ===== 턴 진행 ===== */
@@ -396,8 +454,9 @@ const TELE_PICK2_MSG="교체할 말을 선택해주세요";
 const TELE_TRAP_MSG="함정에 걸린 하수인은 텔레포트를 사용할 수 없습니다";
 /* #14 텔레포트 스왑형: 자기 말이 상대 진영에 있는 동안, 주 행동으로 자기 말 2개의 위치를 교환 (왕·폭탄·함정 포함).
    경기당 플레이어별 BAL.teleMax(2)회 · 교환된 두 말 모두 신규 인접 검사→강제 전투 · movedPreBT 미기록 유지 */
-function teleportAvailable(p){
-  return S.phase==="play"&&alivePieces().some(x=>x.owner===p&&zoneOf(1-p).includes(x.r));
+function teleportAvailable(p,state){
+  state=state||S; // #245: reducer 가 받은 상태로 같은 판정을 돌린다 (기본은 현재 S)
+  return state.phase==="play"&&alivePieces(state).some(x=>x.owner===p&&zoneOf(1-p).includes(x.r));
 }
 /* #18 강제 전투 적격 (연쇄 규칙 무관 — 텔레포트 강제 전투는 첫 전투 승리 조건 면제): 함정은 공격 불가. 왕 vs 왕 불가침은 #122 REVISE(CJ QA 6)로 폐지 */
 function forcedEligible(att,def){
@@ -406,14 +465,15 @@ function forcedEligible(att,def){
   return true;
 }
 /* #18 스왑 후 새로 인접할 적격 적 목록: p가 (r,c)로 이동했을 때, 기존 인접(before)이 아닌 적 */
-function newAdjAt(p,r,c,before){
-  return alivePieces().filter(e=>e.owner!==p.owner&&adj({r,c},e)&&!before.has(e.id)&&forcedEligible(p,e)).map(e=>e.id);
+function newAdjAt(p,r,c,before,state){
+  return alivePieces(state).filter(e=>e.owner!==p.owner&&adj({r,c},e)&&!before.has(e.id)&&forcedEligible(p,e)).map(e=>e.id);
 }
 /* #18 스왑 사전 검사: 새 강제 전투 수가 남은 전투 슬롯(턴당 2회)을 초과하면 실행 전에 차단 (조용한 누락 금지) */
-function teleportSwapBlock(a,b){
-  const beforeA=new Set(adjEnemies(a).map(e=>e.id)), beforeB=new Set(adjEnemies(b).map(e=>e.id));
-  const need=(newAdjAt(a,b.r,b.c,beforeA).length?1:0)+(newAdjAt(b,a.r,a.c,beforeB).length?1:0);
-  const remain=Math.max(0,2-S.battlesUsed);
+function teleportSwapBlock(a,b,state){
+  state=state||S; // #245: reducer 가 받은 상태로 같은 판정을 돌린다 (기본은 현재 S)
+  const beforeA=new Set(adjEnemies(a,state).map(e=>e.id)), beforeB=new Set(adjEnemies(b,state).map(e=>e.id));
+  const need=(newAdjAt(a,b.r,b.c,beforeA,state).length?1:0)+(newAdjAt(b,a.r,a.c,beforeB,state).length?1:0);
+  const remain=Math.max(0,2-state.battlesUsed);
   if(need>remain) return `새 강제 전투 ${need}회 > 남은 전투 ${remain}회 (턴당 최대 2회)`;
   return null;
 }
@@ -422,25 +482,33 @@ function teleportSwapBlock(a,b){
      차례·단계 (플레이 중 · 전투/도망 교환 중이 아님 · 주 행동 미사용 · 텔레포트 가용 · 횟수 여유)
      양끝 각각 (owner=현재 플레이어 · alive · placed · immobile===0) · 두 말이 서로 다름
    반환: null(가능) 또는 거부 사유 문자열. 이 함수는 어떤 상태도 바꾸지 않고 난수도 쓰지 않는다. */
-function teleportSwapValid(a,b){
-  if(S.phase!=="play"||S.battle||S.fleePick||(S.forcedTargets&&S.forcedTargets.length)) return "지금은 텔레포트를 쓸 수 없습니다";
-  if(S.mainUsed) return "이번 턴의 주 행동을 이미 사용했습니다";
-  if(!teleportAvailable(S.current)) return "상대 진영에 내 말이 있어야 합니다";
-  if(S.teleUsed[S.current]>=BAL.teleMax) return "텔레포트 횟수를 모두 사용했습니다";
+function teleportSwapValid(a,b,state){
+  state=state||S; // #245: reducer 가 받은 상태로 같은 판정을 돌린다 (기본은 현재 S)
+  if(state.phase!=="play"||state.battle||state.fleePick||(state.forcedTargets&&state.forcedTargets.length)) return "지금은 텔레포트를 쓸 수 없습니다";
+  if(state.mainUsed) return "이번 턴의 주 행동을 이미 사용했습니다";
+  if(!teleportAvailable(state.current,state)) return "상대 진영에 내 말이 있어야 합니다";
+  if(state.teleUsed[state.current]>=BAL.teleMax) return "텔레포트 횟수를 모두 사용했습니다";
   for(const x of [a,b]){
     if(!x) return "선택한 말이 유효하지 않습니다";
     /* Saturn REVISE P2: **지금 보드에 있는 그 말 자체**여야 한다. id 만 보면 복제 객체({...a,id:…})나
        같은 id 를 가진 두 객체가 통과해 두 말이 한 칸에 겹치고 주 행동만 소모되는 경로가 열린다.
        살아 있는 말 목록에서 그 id 가 정확히 하나이고 그 객체가 인자와 동일 참조일 때만 통과시킨다. */
-    const same=S.pieces.filter(y=>y&&y.id===x.id);
+    const same=state.pieces.filter(y=>y&&y.id===x.id);
     if(same.length!==1||same[0]!==x) return "선택한 말이 유효하지 않습니다";
-    if(x.owner!==S.current||!x.alive||!x.placed) return "선택한 말이 유효하지 않습니다";
+    if(x.owner!==state.current||!x.alive||!x.placed) return "선택한 말이 유효하지 않습니다";
     if(x.immobile>0) return TELE_TRAP_MSG;
   }
   if(a===b||a.id===b.id) return "서로 다른 두 말을 골라야 합니다";
   return null;
 }
+/* #245 텔레포트 스왑의 단일 Core 진입점 (UI 둘째 말 선택·AI·온라인 셀 재생 공통) — 왕이 섞인 교환만 레거시(끝줄 도달 즉시 승리)로 떨어진다.
+   반환 계약은 종전과 같다: 실제로 교환됐으면 true, 재검사 거부·사전 차단이면 false. */
 function doTeleportSwap(a,b){
+  const result=dispatchCoreAction({t:"teleSwap",a,b});
+  if(result) return result.events[0].type==="teleSwapped";
+  return doTeleportSwapLegacy(a,b);
+}
+function doTeleportSwapLegacy(a,b){
   /* #131: 거부는 **아무것도 소모하지 않는다** — 자원(주 행동·텔레포트 횟수)·좌표·HP·회복 자세·공개 상태·강제 전투 큐·난수가 모두 그대로다.
      첫 말이 무효가 됐으면 1단계로 되돌리고(단계 일치), 둘째 말만 무효면 1단계 선택은 유지한다. */
   const bad=teleportSwapValid(a,b);
@@ -471,7 +539,7 @@ function doTeleportSwap(a,b){
   for(const p of [a,b]){ // 도착 칸 이벤트 흔적
     const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed);
     if(ev){S.traces[p.owner].add(ev.r+"_"+ev.c);
-      if(!isAI(p.owner)){addLog("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)","imp");}}
+      if(!isAI(p.owner)){addLog(TRACE_FOUND_MSG,"imp");}} // #245: 문구는 이동·스왑이 같은 상수를 쓴다 (토스트는 스왑에 없다 — 레거시 그대로)
   }
   if(checkKingReach()) return true; // 왕 포함 스왑 — 끝줄 도달 즉시 승리
   // #18: 두 말의 강제 전투를 독립 queue에 적재 — 첫 전투의 결과(승·패·도주)와 무관하게 게임이 끝나지 않으면 둘째 실행

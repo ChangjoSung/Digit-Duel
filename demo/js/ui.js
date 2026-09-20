@@ -7,7 +7,7 @@ const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?
    matched 로 NET.me=1 이 정해진 뒤에도 뒤집지 않는다 — netStart 의 applyNetSetup 이 P2 말을 1~3행으로 옮긴 뒤부터만 반사한다(이중 반전 방지).
    종료(over) 화면도 같은 방향을 유지한다. 핫시트 PVP·PVE·sim 은 NET.mode=false 라 무변경. */
 const boardFlipped=()=> NET.mode&&NET.me===1;
-const alivePieces=()=>S.pieces.filter(p=>p.alive&&p.placed);
+const alivePieces=(state)=>(state||S).pieces.filter(p=>p.alive&&p.placed); // #245: 인자를 주면 그 상태의 보드를 본다 (기본은 현재 S)
 const at=(r,c)=>alivePieces().find(p=>p.r===r&&p.c===c);
 const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
 const zoneOf=p=> p===0 ? [11,12,13] : [1,2,3];
@@ -16,7 +16,7 @@ const adj=(a,b)=>Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1;
 const isBurning=()=>S.turnCount+1>=BAL.burnStart;
 /* 원정 구역 = 자기 기준 상대 측 숲+상대 진영 (BT 2칸 이동 불가 구역) */
 const expedZone=(owner,r)=> owner===0 ? r<=5 : r>=9;
-function adjEnemies(p){return alivePieces().filter(e=>e.owner!==p.owner&&adj(p,e));}
+function adjEnemies(p,state){return alivePieces(state).filter(e=>e.owner!==p.owner&&adj(p,e));}
 function visibleTo(viewer,e){
   if(e.owner===viewer) return true;
   if(!inForest(e)) return true;
@@ -72,6 +72,21 @@ function applyUiEvents(events){
       if(event.collision) collisionLog(event.piece); // 숲 충돌 문구는 레거시와 같은 순서(자세 해제 다음, 강제 전투 앞)
       if(event.trace&&!isAI(event.piece.owner)){ addLog(TRACE_FOUND_MSG,"imp"); showToast(TRACE_FOUND_MSG); }
       if(event.forced) forcedContactStart(event.piece,event.forced); else render();
+      continue;
+    }
+    if(event.type==="teleRefused"){ // #131·#245 텔레포트 재검사 거부·사전 차단 — 사유는 소유자 화면의 토스트로만 (공용 로그 금지: S.log 는 상대 화면에도 그대로 렌더된다). 단계 되돌림은 Core 가 이미 끝냈다
+      if(viewerIsOwner(event.player)) showToast(event.message);
+      render(); continue;
+    }
+    if(event.type==="teleSwapped"){ // #14·#18·#245 텔레포트 스왑 — 좌표·자원·흔적·강제 전투 큐는 Core 가 끝냈고 여기는 로그·재렌더·전투 개시만
+      const pa=event.pieces[0], pb=event.pieces[1];
+      if(event.healBroken[0]) healBreakLog(pa);
+      if(event.healBroken[1]) healBreakLog(pb);
+      if(S.mode==="pve"&&pa.owner===0){ addLog(`🌀 텔레포트 스왑: ${idLabel(0,pa)} ↔ ${idLabel(0,pb)}`,"imp"); showToast("🌀 텔레포트 완료"); }
+      else { addLog("상대가 텔레포트를 사용했습니다","imp"); showToast("상대가 텔레포트를 사용했습니다"); } // 대상·위치 비공개 (중립 문구)
+      if(!isAI(event.player)) for(let i=0;i<event.traces;i++) addLog(TRACE_FOUND_MSG,"imp"); // 도착 칸 흔적 발견 (스왑에는 토스트 없음 — 레거시 그대로)
+      if(event.forced) forcedContactStart(event.pieces.find(p=>p.id===event.forced.id),event.forced.list); // 승격된 강제 전투: 문구·배너·initBattle 은 이동과 같은 헬퍼
+      else render();
       continue;
     }
     if(event.type==="mainSkipped"){
