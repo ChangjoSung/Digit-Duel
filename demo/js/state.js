@@ -18,11 +18,12 @@ const PLAYER_METRIC_KO={battles:"전투",forcedBattles:"강제 전투",teleports
   fleeTries:"도망 시도",fleeOks:"도망 성공",bombMoves:"폭탄 이동",trapTriggers:"함정 발동(자기 함정)",kingForestTurns:"왕 숲 체류(턴)",
   battleRefusals:"전투 회피",pushes:"밀어내기",bombHitsMinion:"자기 폭탄에 적 하수인 소모",bombClearedByVip:"자기 폭탄 VIP 제거",minionInvades:"적진 진입",
   heals:"회복 지정",healHp:"회복량",bombContacts:"폭탄 접촉 발동",autoEnds:"자동 턴 종료",relocations:"재배치",fleePushes:"도망 후 밀기"};
-function met(p,key,n){ // 합산 + 플레이어별 동시 증가 (p: 행동 주체 플레이어)
+function met(p,key,n,st){ // 합산 + 플레이어별 동시 증가 (p: 행동 주체 플레이어 · st: #245 reducer 가 받은 상태, 기본 S)
   n=n===undefined?1:n;
-  if(S.metrics[key]===undefined) S.metrics[key]=0;
-  S.metrics[key]+=n;
-  if(p===0||p===1) S.metrics.byPlayer[p][key]=(S.metrics.byPlayer[p][key]||0)+n;
+  const M=(st||S).metrics;
+  if(M[key]===undefined) M[key]=0;
+  M[key]+=n;
+  if(p===0||p===1) M.byPlayer[p][key]=(M.byPlayer[p][key]||0)+n;
 }
 function newPlayerMetrics(){const o={}; for(const k of PLAYER_METRIC_KEYS) o[k]=0; return o;}
 function newGame(mode,opts){

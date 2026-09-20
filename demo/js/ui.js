@@ -58,6 +58,15 @@ function applyUiEvents(events){
     if(event.type==="setupHandoff"){ handoff(pname(event.player)+" 배치",render); continue; }
     if(event.type==="setupBegin"){ beginPlay(); continue; }
     if(event.type==="setupAiBegin"){ aiAutoPlace(1); addLog("AI 배치 완료.","ai"); beginPlay(); continue; }
+    if(event.type==="healStarted"){ // #106 T2 · #245 회복 자세 시작 — H8: 미공개 상대 말은 중립 문구로만
+      const piece=event.piece, viewer=humanViewer();
+      if(S.mode==="sim"||healVisibleTo(viewer,piece)){
+        const message=`🌿 ${idLabel(viewer,piece)} 회복 자세 시작 (턴마다 최대 HP ${pct(BAL.healPostPct)})`;
+        addLog(message,"imp"); if(!isAI(piece.owner)) showToast(message);
+      }
+      else addLog("상대가 말 회복 행동을 했습니다.","imp"); // 미공개 말: 대상·위치 비공개 (중립 문구)
+      render(); continue;
+    }
     if(event.type==="mainSkipped"){
       const ai=event.origin==="ai", msg=ai?"🤖 AI 주 행동 생략":`${pname(event.player)} 주 행동 생략`;
       addLog(msg,ai?"ai":"");

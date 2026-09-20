@@ -76,7 +76,8 @@ test("king reaches enemy edge before relocation even adjacent to another enemy",
   T.pushResolve(a,b);assert.equal(s.winner,0);assert.equal(s.phase,"over");assert.equal(s.metrics.relocations,0);assert.deepEqual(pos(a),[1,4]);
 });
 test("full HP healing consumes action, zero HP tick, existing pose cannot repeat",()=>{
-  const s=board(T),a=piece(T,0,"minion");H.place(T,a,10,4);assert(T.canHeal(a));assert(T.doHeal(a));assert(s.mainUsed&&a.healing);assert(!T.canHeal(a));T.healTick();assert.equal(s.metrics.healHp,0);assert(a.healing);
+  const s=board(T);let a=piece(T,0,"minion");H.place(T,a,10,4);assert(T.canHeal(a));assert(T.doHeal(a));a=s.pieces.find(x=>x.id===a.id); // #245: heal 은 대상 말을 복제한다
+  assert(s.mainUsed&&a.healing);assert(!T.canHeal(a));T.healTick();assert.equal(s.metrics.healHp,0);assert(a.healing);
 });
 test("end button hidden for queue, teleport, modal and FX, restored at idle",()=>{
   const s=board(T),a=piece(T,0,"minion"),b=piece(T,1,"minion");H.place(T,a,7,4);H.place(T,b,6,4);s.mainUsed=true;

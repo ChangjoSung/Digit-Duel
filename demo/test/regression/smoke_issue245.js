@@ -54,6 +54,16 @@ ok(teleTrapped.state===teleStage2&&teleTrapped.events[0].type==="teleTrapped"&&T
 /* #245 자기 말 선택: Core 가 소유하고, 강제 전투 대상·상대 말·빈 칸 클릭만 onCellCore 로 떨어진다 */
 const selBase=Object.assign({},teleBase,{teleport:null,selected:null,forcedTargets:[]}), selPick=T.reduceCoreAction(selBase,{t:"cell",r:7,c:4});
 ok(selBase.selected===null&&selPick.state.selected===selBase.pieces[0]&&selPick.events[0].type==="render"&&T.reduceCoreAction(selBase,{t:"cell",r:9,c:9})===null,"own-piece selection reducer keeps its input and drops non-own and empty clicks");
+/* #245 회복 주 행동: 검증·자세·지표는 Core 가 소유하고 표시는 healStarted 이벤트로만 나간다 */
+const healBase={phase:"play",mode:"pvp",current:0,mainUsed:false,teleport:null,fleePick:null,forcedTargets:[],metrics:{heals:0,byPlayer:[{},{}]},
+  pieces:[{id:1,owner:0,alive:true,placed:true,type:"minion",healing:false},{id:2,owner:1,alive:true,placed:true,type:"minion",healing:false}]};
+healBase.selected=healBase.pieces[0];
+const healResult=T.reduceCoreAction(healBase,{t:"heal",id:1}), healPiece=healResult.state.pieces[0];
+ok(healBase.mainUsed===false&&healBase.selected===healBase.pieces[0]&&healBase.pieces[0].healing===false&&healBase.metrics.heals===0&&healBase.metrics.byPlayer[0].heals===undefined,"heal reducer leaves the input piece, metrics, selection and main-action flag untouched");
+ok(healResult.state.mainUsed===true&&healResult.state.selected===null&&healPiece.healing===true&&healPiece!==healBase.pieces[0]&&healResult.state.pieces[1]===healBase.pieces[1]&&healResult.state.metrics.heals===1&&healResult.state.metrics.byPlayer[0].heals===1&&healResult.state.metrics.byPlayer[1]!==healBase.metrics.byPlayer[1],"heal reducer returns the posture, metric and scalar updates on cloned pieces and metrics only");
+ok(healResult.events.length===1&&healResult.events[0].type==="healStarted"&&healResult.events[0].piece===healPiece,"heal reducer emits one healStarted carrying the piece that lives in the returned state");
+ok(T.reduceCoreAction(healResult.state,{t:"heal",id:1})===null&&T.reduceCoreAction(healBase,{t:"heal",id:2})===null&&T.reduceCoreAction(healBase,{t:"heal",id:99})===null&&T.reduceCoreAction(Object.assign({},healBase,{battle:{}}),{t:"heal",id:1})===null,"heal reducer refuses a spent main action, an opponent piece, an unknown id and a battle in progress");
+ok(!/case\s*"heal"/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8")),"network replay has no second heal path");
 ok(!/S\.(teleport|selected)\s*=/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"onCellCore no longer assigns the teleport pick or selection state directly");
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
 ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");

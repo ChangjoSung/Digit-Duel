@@ -21,6 +21,7 @@ T.BAL.dmgVar=0; T.BAL.statusProb=1; T.BAL.shockProb=1;
 const S=()=>T.S;
 const king=(o)=>T.S.pieces.find(x=>x.owner===o&&x.type==="king");
 const first=(o,type,i)=>T.S.pieces.filter(x=>x.owner===o&&x.type===type)[i||0];
+const cur=p=>T.S.pieces.find(x=>x.id===p.id); // #245: heal reducer 는 대상 말을 복제한다 — 성공 직후 현재 S.pieces 객체로 재조회
 /* 보드 초기화: 양 왕을 구석에, 나머지 전부 회수 (전멸 방지용 하수인 1기씩 뒤에 배치) */
 function board(mode,lv){
   H.freshPlay(T,mode||"pvp",lv); H.clearBoard(T);
@@ -38,14 +39,14 @@ function randUsed(fn){ T.setSeed(4242); const seq=[]; for(let i=0;i<60;i++) seq.
 /* ===== A. 회복 주 행동 ===== */
 block("A 회복",()=>{
   board("pvp");
-  const m=first(0,"minion"), e=first(1,"minion"), a=first(0,"ally"), b=first(0,"bomb"), t=first(0,"trap");
+  let m=first(0,"minion"), e=first(1,"minion"), a=first(0,"ally"); const b=first(0,"bomb"), t=first(0,"trap");
   H.place(T,m,10,4); H.place(T,e,3,4); H.place(T,a,12,4); H.place(T,b,12,2); H.place(T,t,13,3);
   m.hp=50; a.hp=80;
   ok(!T.canHeal(m)===false&&T.canHeal(m)&&T.canHeal(a),"A1 HP<최대 하수인·동료는 회복 지정 가능");
   ok(!T.canHeal(b)&&!T.canHeal(t),"A2 폭탄·함정은 회복 대상이 아니다");
   const full=first(0,"minion",1); H.place(T,full,11,1); ok(T.canHeal(full),"A3 #114 만피 말도 기다리기로 회복 지정 가능");
   ok(!T.canHeal(e),"A4 상대 말은 지정 불가 (자기 턴·자기 말만)");
-  const used=randUsed(()=>{ T.applyAction({t:"heal",id:m.id}); });
+  const used=randUsed(()=>{ T.applyAction({t:"heal",id:m.id}); }); m=cur(m);
   ok(m.healing===true&&S().mainUsed===true&&m.hp===50&&used===0,"A5 지정 → mainUsed·자세 시작·즉시 회복 없음·rand 소비 0 (hp "+m.hp+", rand "+used+")");
   ok(!T.canHeal(a),"A6 주 행동을 썼으므로 같은 턴 두 번째 지정 불가");
   ok(S().metrics.heals===1&&S().metrics.byPlayer[0].heals===1,"A7 지표 heals P1 귀속");
@@ -53,7 +54,7 @@ block("A 회복",()=>{
   ok(m.hp===55&&S().metrics.healHp===5&&rt===0,"A8 지정한 플레이어의 턴 종료에 +round(100×5%)=5 (rand 0)");
   ok(S().current===1,"A8b 턴 교대");
   // 상대 턴: 상대도 회복 지정 → 양측 자세 말이 같은 경계에서 함께 틱
-  e.hp=40; T.S.selected=e; T.applyAction({t:"heal",id:e.id});
+  e.hp=40; T.S.selected=e; T.applyAction({t:"heal",id:e.id}); e=cur(e);
   ok(e.healing&&S().mainUsed,"A9 상대(P2)도 회복 지정");
   T.endTurn();
   ok(m.hp===60&&e.hp===45,"A10 상대 턴 종료에 양 플레이어 자세 말 모두 +5 (m 60 · e 45) — 한 쌍 = 10%");
@@ -66,7 +67,7 @@ block("A 회복",()=>{
   T.S.mainUsed=true; T.endTurn();
   // 복수 자세: 다른 말도 다른 턴에 지정 가능
   ok(S().current===0,"A14 P1 턴");
-  a.hp=80; T.S.selected=a; T.applyAction({t:"heal",id:a.id});
+  a.hp=80; T.S.selected=a; T.applyAction({t:"heal",id:a.id}); a=cur(a);
   ok(a.healing&&m.healing&&e.healing,"A15 여러 말이 동시에 자세 (각각 주 행동 1턴 소모)");
   m.hp=90; const e1=e.hp; T.endTurn(); ok(m.hp===95&&a.hp===85&&e.hp===e1+5,"A16 세 말 모두 같은 경계에서 틱 (m 95 · a 85 · e +5)");
   // 해제: 이동
@@ -108,7 +109,7 @@ block("A 회복",()=>{
 /* A' 회복 표시·비노출 (H8) */
 block("A' 회복 표시",()=>{
   board("pve");
-  const m=first(0,"minion"), e=first(1,"minion"); H.place(T,m,10,4); H.place(T,e,4,4); m.hp=50; e.hp=50;
+  const m=first(0,"minion"); let e=first(1,"minion"); H.place(T,m,10,4); H.place(T,e,4,4); m.hp=50; e.hp=50;
   m.healing=true; e.healing=true; T.S.tempReveal.add(e.id); // e 는 숲(4행)이지만 일시 공개로 칩이 그려짐 — 정체(revealed)는 비공개
   T.render();
   const cells=T.els.board.children;
@@ -118,7 +119,7 @@ block("A' 회복 표시",()=>{
   e.revealed=true; T.render(); ok(/\bhealing\b/.test(chipAt(4,4).className),"A'3 공개(revealed)된 상대 말은 회복 효과 표시");
   // 로그: 미공개 상대(AI) 말의 지정은 중립 문구, 공개 말은 이름 포함
   e.revealed=false; e.healing=false; T.S.current=1; T.S.mainUsed=false; T.S.selected=null; const n0=T.S.log.length;
-  T.doHeal(e); const l1=T.S.log.slice(n0).map(x=>x.msg).join("|");
+  T.doHeal(e); e=cur(e); const l1=T.S.log.slice(n0).map(x=>x.msg).join("|");
   ok(/상대가 말 회복 행동을 했습니다/.test(l1)&&!/회복 자세 시작/.test(l1),"A'4 미공개 상대 말 회복 지정 로그는 대상·위치 비공개 중립 문구");
   e.healing=false; e.revealed=true; T.S.mainUsed=false; const n1=T.S.log.length; T.doHeal(e); const l2=T.S.log.slice(n1).map(x=>x.msg).join("|");
   ok(/회복 자세 시작/.test(l2),"A'5 공개 말의 회복 지정은 이름 포함 로그");

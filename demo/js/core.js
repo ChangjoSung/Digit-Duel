@@ -92,6 +92,17 @@ function reduceCoreAction(state,action){
     }
     case "tele": return {state:Object.assign({},state,{teleport:state.teleport?null:{stage:1,piece:null},selected:null}),events:[{type:"render"}]};
     case "skipMain": return {state:Object.assign({},state,{mainUsed:true}),events:[{type:"mainSkipped",player:state.current,origin:action.origin,toast:action.toast}]};
+    /* #245 회복 주 행동: 검증·자세·지표를 Core 가 소유하고 표시는 healStarted 이벤트로만 내보낸다.
+       reducer 계약대로 입력 상태는 건드리지 않는다 — 대상 말·pieces·metrics·byPlayer 두 칸만 복제하고 나머지 참조는 그대로 둔다. */
+    case "heal": {
+      const target=state.pieces.find(x=>x.id===action.id);
+      if(!healActionOk(state,target)) return null;
+      const piece=Object.assign({},target,{healing:true});
+      const metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+      const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===target?piece:x),metrics,mainUsed:true,selected:null});
+      met(piece.owner,"heals",1,next);
+      return {state:next,events:[{type:"healStarted",piece}]};
+    }
     default: return null;
   }
 }
@@ -124,21 +135,14 @@ function startTurn(){
    상한 maxHp, 같은 turn 이중 틱 방지(S.healTickTurn). 지정 시점 즉시 회복 없음. 그 말의 이동·탐색·텔레포트·전투(공격·방어·폭탄·함정·밀어내기)·도망 교환은 자세를 해제한다.
    만피 도달은 자세를 풀지 않는다(회복량 0). 대상은 보드의 하수인·동료·왕(예비·폭탄·함정 제외), 지정 가능 조건은 현재 HP < 최대 HP. rand() 소비 없음 */
 function healTargetOk(p){ return !!p&&p.alive&&p.placed&&(p.type==="minion"||p.type==="ally"||p.type==="king"); }
-function canHeal(p){
-  if(S.phase!=="play"||S.mainUsed||!p||p.owner!==S.current||!healTargetOk(p)) return false;
-  if(S.teleport||S.fleePick||(S.forcedTargets&&S.forcedTargets.length)) return false;
+function healActionOk(state,p){ // #245: canHeal 와 reducer 가 같은 판정을 쓴다 (상태만 갈아끼움)
+  if(state.phase!=="play"||state.mainUsed||!p||p.owner!==state.current||!healTargetOk(p)) return false;
+  if(state.battle||state.teleport||state.fleePick||(state.forcedTargets&&state.forcedTargets.length)) return false; // #245: battle 가드 추가 — 전투 중에는 주 행동 입력을 받지 않는다
   return !p.healing; // #114 (CJ 선택 A 동반 제안): 만피 말도 회복 자세 지정 가능 — "움직이지 않고 기다리기" 수단. 만피 틱은 회복량 0 (자세 유지)
 }
+function canHeal(p){ return healActionOk(S,p); }
 function healVisibleTo(viewer,p){ return viewer===2||p.owner===viewer||p.revealed; } // H8: 미공개 상대 말의 회복은 표시·로그에 싣지 않는다
-function doHeal(p){
-  if(!canHeal(p)) return false;
-  S.mainUsed=true; p.healing=true; met(p.owner,"heals"); S.selected=null;
-  const v=humanViewer();
-  if(S.mode==="sim"||healVisibleTo(v,p)){ const m=`🌿 ${idLabel(v,p)} 회복 자세 시작 (턴마다 최대 HP ${pct(BAL.healPostPct)})`; addLog(m,"imp"); if(!isAI(p.owner)) showToast(m); }
-  else addLog("상대가 말 회복 행동을 했습니다.","imp"); // 미공개 말: 대상·위치 비공개 (중립 문구)
-  render();
-  return true;
-}
+function doHeal(p){ return dispatchCoreAction({t:"heal",id:p?p.id:null}); } // #245: 회복의 단일 Core 진입점 (AI·테스트 호환 래퍼)
 function healBreak(p){ if(p&&p.healing){ p.healing=false; const v=humanViewer(); if(S.mode==="sim"||healVisibleTo(v,p)) addLog(`🌿 ${idLabel(v,p)} 회복 자세 해제`); } }
 function healTick(){ // endTurn 에서 turn++ 직전 1회 — 양 플레이어의 자세 말 전부
   if(S.healTickTurn===S.turnCount) return; S.healTickTurn=S.turnCount;
