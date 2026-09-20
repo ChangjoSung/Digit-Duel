@@ -307,7 +307,7 @@ function load(htmlPath,opts){
   finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,archSkills,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,aiUnitValue,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
-  applyAction,resolveCoreAction:typeof resolveCoreAction==="function"?resolveCoreAction:undefined,reduceCoreAction:typeof reduceCoreAction==="function"?reduceCoreAction:undefined,dispatchCoreAction:typeof dispatchCoreAction==="function"?dispatchCoreAction:undefined,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼 · #245 점진 Core 경계
+  applyAction,resolveCoreAction:typeof resolveCoreAction==="function"?resolveCoreAction:undefined,reduceCoreAction:typeof reduceCoreAction==="function"?reduceCoreAction:undefined,dispatchCoreAction:typeof dispatchCoreAction==="function"?dispatchCoreAction:undefined,commitCoreState:typeof commitCoreState==="function"?commitCoreState:undefined,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼 · #245 점진 Core 경계
   recruitCandidates:typeof recruitCandidates==="function"?recruitCandidates:undefined,aiRecruitSlot:typeof aiRecruitSlot==="function"?aiRecruitSlot:undefined, // #92 (기준판 로드 호환: 없으면 undefined)
   atkElOf:typeof atkElOf==="function"?atkElOf:undefined,skillNameKo:typeof skillNameKo==="function"?skillNameKo:undefined,recruitModal:typeof recruitModal==="function"?recruitModal:undefined,
   SKILL_TIER_KO:typeof SKILL_TIER_KO!=="undefined"?SKILL_TIER_KO:undefined,

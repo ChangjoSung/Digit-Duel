@@ -103,15 +103,58 @@ function reduceCoreAction(state,action){
       met(piece.owner,"heals",1,next);
       return {state:next,events:[{type:"healStarted",piece}]};
     }
+    /* #245 평이동: **빈 칸으로의 합법 1칸 이동**만 Core 가 소유한다. 검증은 기존 canMoveTo 하나뿐이고(중복 판정 없음),
+       BT 2칸·목적지의 숨은 말 충돌·왕 끝줄 도달·신규 접촉(강제 전투)·전투 슬롯이 걸린 턴은 null 로 떨어뜨려
+       doMoveLegacy 가 종전대로 처리한다. reducer 계약대로 입력 상태는 건드리지 않는다 — 움직이는 말과 실제로 바뀌는
+       metrics·traces·aiSeenMoved 칸만 복제하고 나머지 참조는 그대로 둔다.
+       판정 헬퍼(canMoveTo·at·adjEnemies·contactEligible·visibleTo)는 레거시와 똑같이 현재 S 를 읽는다 — dispatchCoreAction 이
+       항상 S 를 넘기므로 같은 사실을 보며, 판정을 다시 쓰지 않는다(중복 검증 없음). */
+    case "move": {
+      const target=state.pieces.find(x=>x.id===action.id);
+      if(!target||state.battle||state.teleport||state.fleePick) return null;
+      if(state.battlesUsed||(state.forcedTargets&&state.forcedTargets.length)) return null; // 전투 슬롯이 이미 걸린 턴의 canBattle 승계 판정은 레거시 그대로
+      if(target.type==="king") return null; // 왕 끝줄 도달 즉시 승리 경로(checkKingReach)는 레거시
+      if(Math.abs(target.r-action.r)+Math.abs(target.c-action.c)!==1) return null; // BT 2칸(경유 칸 해석)은 레거시
+      if(!canMoveTo(target,action.r,action.c)||at(action.r,action.c)) return null; // 목적지의 숨은 말 = 숲 충돌(레거시)
+      const moved=Object.assign({},target,{r:action.r,c:action.c,movedEver:true,healing:false}); // #106: 이동은 회복 자세 해제
+      if(!isBurning()) moved.movedPreBT=true; // 엔진 내부 이동 이력 (#21 누수 제거 — AI 는 aiSeenMoved 만 본다)
+      const beforeAdj=new Set(adjEnemies(target).map(e=>e.id)), after=adjEnemies(moved); // T1: 이동 전/후 인접 집합
+      if(after.some(e=>!beforeAdj.has(e.id)&&contactEligible(moved,e))) return null; // 신규 인접 = 강제 전투·폭탄 접촉(레거시)
+      const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===target?moved:x),mainUsed:true,contactKind:"move",
+        movedPiece:moved,contactSet:after.map(e=>e.id),selected:state.selected===target?moved:state.selected});
+      const metric=target.type==="bomb"?"bombMoves":(target.type==="minion"&&zoneOf(1-target.owner).includes(action.r)&&!zoneOf(1-target.owner).includes(target.r)?"minionInvades":null);
+      if(metric){ // #20 폭탄 이동 카운터 · 하수인 적진 진입 지표
+        next.metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+        met(target.owner,metric,1,next);
+      }
+      const obs=1-target.owner;
+      if(!isBurning()&&(visibleTo(obs,target)||visibleTo(obs,moved))){ // observeMove 와 같은 판정 — 이동 전후 어느 쪽이든 보이면 목격
+        next.aiSeenMoved=state.aiSeenMoved.slice(); next.aiSeenMoved[obs]=new Set(state.aiSeenMoved[obs]).add(target.id);
+      }
+      const ev=state.events.find(e=>e.r===action.r&&e.c===action.c&&!e.consumed);
+      if(ev){ next.traces=state.traces.slice(); next.traces[target.owner]=new Set(state.traces[target.owner]).add(ev.r+"_"+ev.c); }
+      return {state:next,events:[{type:"moved",piece:moved,healBroken:!!target.healing,trace:!!ev}]};
+    }
     default: return null;
   }
 }
 function dispatchCoreAction(action){
   const result=reduceCoreAction(S,resolveCoreAction(S,action));
   if(!result) return false;
-  Object.assign(S,result.state);
+  commitCoreState(result.state,result.events);
   applyUiEvents(result.events);
   return true;
+}
+/* #245 commit: reducer 가 순수하므로 바뀐 말은 복제본으로 돌아온다. 레거시 경로·AI·예약 콜백·테스트가 말 객체 참조를
+   그대로 들고 있으므로, 복제본의 값을 같은 id 의 원본 말에 얹고 참조를 원본으로 되돌린다 — S 객체 정체성을 유지하는 것과 같은 이유다. */
+function commitCoreState(next,events){
+  const canon=new Map(S.pieces.map(piece=>[piece.id,piece]));
+  const keep=x=>{ const origin=x&&!x.tray&&canon.get(x.id); return origin&&origin!==x?Object.assign(origin,x):x; };
+  next.pieces=next.pieces.map(keep);
+  next.selected=keep(next.selected);
+  next.movedPiece=keep(next.movedPiece);
+  for(const event of events||[]) if(event.piece) event.piece=keep(event.piece); // healStarted·moved 등 말을 실은 이벤트도 같은 정규화를 받는다 — UI 핸들러가 떨어진 복제본을 보지 않게 여기서 한 번만
+  Object.assign(S,next);
 }
 /* ===== 턴 진행 ===== */
 function startTurn(){
@@ -143,7 +186,8 @@ function healActionOk(state,p){ // #245: canHeal 와 reducer 가 같은 판정�
 function canHeal(p){ return healActionOk(S,p); }
 function healVisibleTo(viewer,p){ return viewer===2||p.owner===viewer||p.revealed; } // H8: 미공개 상대 말의 회복은 표시·로그에 싣지 않는다
 function doHeal(p){ return dispatchCoreAction({t:"heal",id:p?p.id:null}); } // #245: 회복의 단일 Core 진입점 (AI·테스트 호환 래퍼)
-function healBreak(p){ if(p&&p.healing){ p.healing=false; const v=humanViewer(); if(S.mode==="sim"||healVisibleTo(v,p)) addLog(`🌿 ${idLabel(v,p)} 회복 자세 해제`); } }
+function healBreakLog(p){ const v=humanViewer(); if(S.mode==="sim"||healVisibleTo(v,p)) addLog(`🌿 ${idLabel(v,p)} 회복 자세 해제`); } // #245: 해제 표시만 따로 — Core 가 자세를 이미 내린 이동(moved 이벤트)에서 같은 문구를 쓴다
+function healBreak(p){ if(p&&p.healing){ p.healing=false; healBreakLog(p); } }
 function healTick(){ // endTurn 에서 turn++ 직전 1회 — 양 플레이어의 자세 말 전부
   if(S.healTickTurn===S.turnCount) return; S.healTickTurn=S.turnCount;
   const v=humanViewer();
@@ -270,7 +314,9 @@ function forcedPickOk(def){ // 강제 대상 클릭·AI 이행: 이동한 말이
   if(!(S.forcedTargets&&S.forcedTargets.length&&S.movedPiece&&S.forcedTargets.includes(def.id))) return false;
   return S.movedPiece.type==="bomb"?contactEligible(S.movedPiece,def):canBattle(S.movedPiece,def);
 }
-function doMove(p,r,c){
+const TRACE_FOUND_MSG="탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)"; // #245: 레거시와 moved 이벤트가 같은 문구를 쓴다
+function doMove(p,r,c){ if(p&&dispatchCoreAction({t:"move",id:p.id,r,c})) return; doMoveLegacy(p,r,c); } // #245: 이동의 단일 Core 진입점 (UI·AI·온라인 재생 공통) — Core 가 맡지 않는 분기만 레거시로
+function doMoveLegacy(p,r,c){
   S.mainUsed=true; p.movedEver=true; healBreak(p); // #106: 이동은 회복 자세 해제 (숲 충돌 정지 포함)
   S.contactKind="move";
   if(!isBurning()) p.movedPreBT=true; // 실제 이동 이력(엔진 내부 사실) — AI 추론은 공개 관측 기억(aiSeenMoved)만 사용 (#21 누수 제거)
@@ -300,8 +346,7 @@ function doMove(p,r,c){
   if(checkKingReach()) return;
   const ev=S.events.find(e=>e.r===r&&e.c===c&&!e.consumed);
   if(ev){S.traces[p.owner].add(ev.r+"_"+ev.c);
-    if(!isAI(p.owner)){addLog("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)","imp");
-      showToast("탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)");}}
+    if(!isAI(p.owner)){addLog(TRACE_FOUND_MSG,"imp"); showToast(TRACE_FOUND_MSG);}}
   if(applyForced(p,beforeAdj)) return;
   render();
 }
