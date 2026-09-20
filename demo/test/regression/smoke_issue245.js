@@ -86,8 +86,18 @@ moveState.turnCount=T.BAL.burnStart-1;
 ok(T.isBurning()&&T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:10,c:4})===null,"a burning-time two-step stays on the legacy path (midpoint collision)");
 moveState.turnCount=0;
 moveState.battlesUsed=1; ok(T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:11,c:4})===null,"a step in a turn that already spent a battle slot stays on the legacy path"); moveState.battlesUsed=0;
-H.place(T,foe,10,4);
-ok(T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:11,c:4})===null,"a step that newly touches an enemy stays on the legacy path (forced battle)");
+/* #245 신규 접촉: 강제 전투 대상 확정까지 Core 가 소유하고, 전투 개시만 표시 단계(forcedContactStart)에 남는다 */
+H.place(T,foe,10,4); moveState.selected=mover;
+const contact=T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:11,c:4}), contactPiece=contact&&contact.state.pieces.find(piece=>piece.id===mover.id);
+ok(moveState.forcedTargets.length===0&&moveState.selected===mover&&mover.r===12&&foe.r===10,"contact move reducer leaves the input forced targets, selection and pieces untouched");
+ok(JSON.stringify(contact.state.forcedTargets)===JSON.stringify([foe.id])&&contact.state.movedPiece===contactPiece&&contact.state.selected===contactPiece&&contact.state.contactSet.includes(foe.id)&&JSON.stringify(contact.events[0].forced)===JSON.stringify([foe.id]),"contact move reducer returns the forced target on the cloned state and carries it on the moved event");
+const foe2=T.S.pieces.filter(piece=>piece.owner===1&&piece.type==="minion")[1]; H.place(T,foe2,11,5);
+const multi=T.reduceCoreAction(Object.assign({},moveState,{selected:null}),{t:"move",id:mover.id,r:11,c:4});
+ok(multi.state.forcedTargets.length===2&&multi.state.selected===multi.state.pieces.find(piece=>piece.id===mover.id)&&multi.events[0].forced.length===2,"two new contacts keep the moved piece selected for the pick, as the legacy path did");
+foe2.placed=false;
+moveState.turnCount=T.BAL.burnStart-1;
+ok(T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:10,c:4})===null,"a two-step onto the hidden enemy still stays on the legacy path (forest collision)");
+moveState.turnCount=0;
 moveState.mainUsed=true;
 ok(T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:12,c:5})===null,"move reducer refuses a step once the main action is spent (canMoveTo stays the only gate)");
 moveState.mainUsed=false;
@@ -101,6 +111,13 @@ T.S.mainUsed=false; const commitHeal=T.reduceCoreAction(T.S,{t:"heal",id:mover.i
 ok(commitMove.events[0].piece===mover&&commitHeal.events[0].piece===mover&&T.S.pieces.includes(mover)&&T.S.movedPiece===mover&&mover.r===10&&mover.healing===true,"commit canonicalizes the piece carried by the moved and healStarted events onto the S.pieces object");
 T.S.mainUsed=false; T.doMove(myKing,12,1);
 ok(myKing.r===12&&myKing.c===1&&T.at(12,1)===myKing&&T.S.movedPiece===myKing&&T.S.mainUsed===true,"a king step still resolves through the legacy path with the same piece object");
+/* #245 신규 접촉 end-to-end: 대상은 Core 가 commit 하고 전투 개시는 표시 단계의 레거시 initBattle 이 그대로 한다 */
+T.S.mainUsed=false; T.S.battlesUsed=0; T.S.forcedTargets=[]; T.S.movedPiece=null; T.S.battle=null; T.S.current=0; mover.healing=false;
+H.place(T,mover,12,4); H.place(T,foe,10,4); T.S.selected=mover;
+T.doMove(mover,11,4);
+ok(mover.r===11&&T.S.movedPiece===mover&&T.S.contactSet.includes(foe.id)&&!!T.S.battle&&T.S.battle.attP===mover&&T.S.battle.defP===foe&&T.S.forcedTargets.length===0&&T.S.metrics.forcedBattles===1,"doMove commits the forced contact and the legacy battle initiation still consumes it on the same piece objects");
+T.S.battle=null; T.S.battlesUsed=0; foe.placed=false;
+ok(/forcedContactStart\(event\.piece,event\.forced\)/.test(T.html)&&(T.html.match(/신규 인접 — 강제 전투/g)||[]).length===1&&(T.html.match(/initBattle\(p,def\)/g)||[]).length===1,"forced contact display and battle initiation stay in one helper shared by the Core event and the legacy path");
 ok(/function doMove\(p,r,c\)\{ if\(p&&dispatchCoreAction\(\{t:"move",id:p\.id,r,c\}\)\) return; doMoveLegacy\(p,r,c\); \}/.test(T.html),"UI, AI and network replay share one canonical move entry point");
 ok(!/S\.(teleport|selected)\s*=/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"onCellCore no longer assigns the teleport pick or selection state directly");
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");

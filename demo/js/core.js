@@ -103,9 +103,11 @@ function reduceCoreAction(state,action){
       met(piece.owner,"heals",1,next);
       return {state:next,events:[{type:"healStarted",piece}]};
     }
-    /* #245 평이동: **빈 칸으로의 합법 1칸 이동**만 Core 가 소유한다. 검증은 기존 canMoveTo 하나뿐이고(중복 판정 없음),
-       BT 2칸·목적지의 숨은 말 충돌·왕 끝줄 도달·신규 접촉(강제 전투)·전투 슬롯이 걸린 턴은 null 로 떨어뜨려
-       doMoveLegacy 가 종전대로 처리한다. reducer 계약대로 입력 상태는 건드리지 않는다 — 움직이는 말과 실제로 바뀌는
+    /* #245 평이동: **빈 칸으로의 합법 1칸 이동**과 그 이동이 만든 **신규 접촉(강제 전투 대상 확정)**까지 Core 가 소유한다.
+       검증은 기존 canMoveTo 하나뿐이고(중복 판정 없음), 대상 목록도 applyForced 와 같은 한 줄(contactEligible)이다.
+       BT 2칸·목적지의 숨은 말 충돌·왕 끝줄 도달·전투 슬롯이 걸린 턴은 null 로 떨어뜨려 doMoveLegacy 가 종전대로 처리하고,
+       전투 개시(initBattle)·배너·로그는 moved 이벤트의 표시 단계(forcedContactStart)에 그대로 남는다.
+       reducer 계약대로 입력 상태는 건드리지 않는다 — 움직이는 말과 실제로 바뀌는
        metrics·traces·aiSeenMoved 칸만 복제하고 나머지 참조는 그대로 둔다.
        판정 헬퍼(canMoveTo·at·adjEnemies·contactEligible·visibleTo)는 레거시와 똑같이 현재 S 를 읽는다 — dispatchCoreAction 이
        항상 S 를 넘기므로 같은 사실을 보며, 판정을 다시 쓰지 않는다(중복 검증 없음). */
@@ -119,9 +121,10 @@ function reduceCoreAction(state,action){
       const moved=Object.assign({},target,{r:action.r,c:action.c,movedEver:true,healing:false}); // #106: 이동은 회복 자세 해제
       if(!isBurning()) moved.movedPreBT=true; // 엔진 내부 이동 이력 (#21 누수 제거 — AI 는 aiSeenMoved 만 본다)
       const beforeAdj=new Set(adjEnemies(target).map(e=>e.id)), after=adjEnemies(moved); // T1: 이동 전/후 인접 집합
-      if(after.some(e=>!beforeAdj.has(e.id)&&contactEligible(moved,e))) return null; // 신규 인접 = 강제 전투·폭탄 접촉(레거시)
+      const forced=after.filter(e=>!beforeAdj.has(e.id)&&contactEligible(moved,e)).map(e=>e.id); // 신규 인접 = 강제 전투·폭탄 접촉 (applyForced 와 같은 판정)
       const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===target?moved:x),mainUsed:true,contactKind:"move",
-        movedPiece:moved,contactSet:after.map(e=>e.id),selected:state.selected===target?moved:state.selected});
+        movedPiece:moved,contactSet:after.map(e=>e.id),forcedTargets:forced.length?forced:state.forcedTargets,
+        selected:forced.length>1?moved:(state.selected===target?moved:state.selected)}); // 대상 2개 이상이면 레거시와 같이 이동한 말을 선택 상태로 둔다
       const metric=target.type==="bomb"?"bombMoves":(target.type==="minion"&&zoneOf(1-target.owner).includes(action.r)&&!zoneOf(1-target.owner).includes(target.r)?"minionInvades":null);
       if(metric){ // #20 폭탄 이동 카운터 · 하수인 적진 진입 지표
         next.metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
@@ -133,7 +136,7 @@ function reduceCoreAction(state,action){
       }
       const ev=state.events.find(e=>e.r===action.r&&e.c===action.c&&!e.consumed);
       if(ev){ next.traces=state.traces.slice(); next.traces[target.owner]=new Set(state.traces[target.owner]).add(ev.r+"_"+ev.c); }
-      return {state:next,events:[{type:"moved",piece:moved,healBroken:!!target.healing,trace:!!ev}]};
+      return {state:next,events:[{type:"moved",piece:moved,healBroken:!!target.healing,trace:!!ev,forced:forced.length?forced:null}]};
     }
     default: return null;
   }
@@ -351,25 +354,29 @@ function doMoveLegacy(p,r,c){
   render();
 }
 /* T1 강제 전투: 이동·텔레포트로 새로 인접한 적과는 반드시 전투 (canBattle 불가 조합 제외 — 폭탄·함정이 공격측일 때. 왕vs왕은 #122 REVISE CJ QA 6 으로 전투 대상이 됐다) */
+/* #245 강제 접촉의 표시·개시 한 곳: 상태(forcedTargets·selected·contactSet)는 부르기 전에 이미 확정돼 있다.
+   레거시 applyForced 와 Core 의 moved 이벤트가 같은 문구·배너·render·initBattle 순서를 쓴다 (표시 진실이 갈라지지 않게). */
+function forcedContactStart(p,list){
+  const def=list.length===1?alivePieces().find(e=>e.id===list[0]):null;
+  if(list.length===1){
+    const fmsg=p.type==="bomb"?"💣 신규 인접 — 폭탄 접촉 발동!":"⚔️ 신규 인접 — 강제 전투!";
+    addLog(fmsg,"imp"); showToast(fmsg);
+    contactBannerFx(p,null); // #106 4.3.1: 접촉 배너 (상황 문구는 initBattle 이 이어 붙인다)
+  }else{
+    const fmsg=`⚔️ 강제 전투 — 신규 인접 대상 ${list.length}개 중 하나를 선택하세요.`;
+    addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
+    contactBannerFx(p,viewerIsOwner(p.owner)?"여러 말과 접촉하였습니다. 어떤 말을 선택하시겠습니까?":"상대가 접촉한 말 중 하나를 고르고 있습니다"); // 상황 1 — 배너 뒤 잠금 해제, 클릭 선택(시간 제한 없음)
+  }
+  render();
+  if(!isAI(p.owner)&&def) initBattle(p,def); // 사람: 확인 없이 즉시 개시 (왕·동료는 기존 모달 흐름) · AI: aiStep이 최우선 개시
+}
 function applyForced(p,beforeAdj,list){
   S.forcedTargets=[];
   if(!list) list=adjEnemies(p).filter(e=>!beforeAdj.has(e.id)&&contactEligible(p,e)).map(e=>e.id); // #106: 폭탄 직접 접촉 포함
   if(!list.length) return false;
   S.forcedTargets=list;
-  if(list.length===1){
-    const def=alivePieces().find(e=>e.id===list[0]);
-    const fmsg=p.type==="bomb"?"💣 신규 인접 — 폭탄 접촉 발동!":"⚔️ 신규 인접 — 강제 전투!";
-    addLog(fmsg,"imp"); showToast(fmsg);
-    contactBannerFx(p,null); // #106 4.3.1: 접촉 배너 (상황 문구는 initBattle 이 이어 붙인다)
-    render();
-    if(!isAI(p.owner)&&def) initBattle(p,def); // 사람: 확인 없이 즉시 개시 (왕·동료는 기존 모달 흐름) · AI: aiStep이 최우선 개시
-    return true;
-  }
-  S.selected=p;
-  const fmsg=`⚔️ 강제 전투 — 신규 인접 대상 ${list.length}개 중 하나를 선택하세요.`;
-  addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
-  contactBannerFx(p,viewerIsOwner(p.owner)?"여러 말과 접촉하였습니다. 어떤 말을 선택하시겠습니까?":"상대가 접촉한 말 중 하나를 고르고 있습니다"); // 상황 1 — 배너 뒤 잠금 해제, 클릭 선택(시간 제한 없음)
-  render();
+  if(list.length>1) S.selected=p;
+  forcedContactStart(p,list);
   return true;
 }
 /* #131 계약 문구 — 화면 안내·거부 안내가 한 곳에서 나온다 (표시와 규칙이 갈라지지 않게) */

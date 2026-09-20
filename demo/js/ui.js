@@ -67,10 +67,11 @@ function applyUiEvents(events){
       else addLog("상대가 말 회복 행동을 했습니다.","imp"); // 미공개 말: 대상·위치 비공개 (중립 문구)
       render(); continue;
     }
-    if(event.type==="moved"){ // #245 평이동 — 상태는 Core 가 끝냈고 여기는 로그·재렌더만
+    if(event.type==="moved"){ // #245 평이동 — 상태(강제 전투 대상 포함)는 Core 가 끝냈고 여기는 로그·재렌더·전투 개시만
       if(event.healBroken) healBreakLog(event.piece);
       if(event.trace&&!isAI(event.piece.owner)){ addLog(TRACE_FOUND_MSG,"imp"); showToast(TRACE_FOUND_MSG); }
-      render(); continue;
+      if(event.forced) forcedContactStart(event.piece,event.forced); else render();
+      continue;
     }
     if(event.type==="mainSkipped"){
       const ai=event.origin==="ai", msg=ai?"🤖 AI 주 행동 생략":`${pname(event.player)} 주 행동 생략`;
