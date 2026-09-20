@@ -29,6 +29,8 @@ T.newGame("pvp");
 const rosterBefore=T.S.roster[0].slice(), piecesBefore=T.S.pieces.map(piece=>({placed:piece.placed,rosterId:piece.rosterId}));
 const rosterResult=T.reduceCoreAction(T.S,{t:"roster",rid:"M-F1"});
 ok(JSON.stringify(T.S.roster[0])===JSON.stringify(rosterBefore)&&JSON.stringify(T.S.pieces.map(piece=>({placed:piece.placed,rosterId:piece.rosterId})))===JSON.stringify(piecesBefore)&&rosterResult.state.roster[0][0]==="M-F1","setup roster reducer leaves its nested input unchanged");
+const setupState=Object.assign({},T.S,{selected:{tray:true,id:T.S.pieces[0].id}}), cellResult=T.reduceCoreAction(setupState,{t:"cell",r:11,c:1});
+ok(!setupState.pieces[0].placed&&cellResult.state.pieces[0].placed&&cellResult.state.pieces[0].r===11&&cellResult.state.selected===null,"setup cell reducer places a cloned piece without mutating its input");
 T.setSeed(245); const autoAction=T.resolveCoreAction(T.S,{t:"auto"}), autoResult=T.reduceCoreAction(T.S,autoAction);
 ok(T.S.roster[0].length===0&&T.S.pieces.every(piece=>!piece.placed)&&autoResult.state.roster[0].length===6&&autoResult.state.pieces.filter(piece=>piece.owner===0&&piece.placed).length===14,"resolved auto-placement action is applied without mutating its input");
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");

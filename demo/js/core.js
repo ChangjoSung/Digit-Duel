@@ -20,6 +20,19 @@ function resolveCoreAction(state,action){
 }
 function reduceCoreAction(state,action){
   switch(action.t){
+    case "cell": {
+      if(state.phase!=="setup") return null;
+      const occupant=state.pieces.find(piece=>piece.alive&&piece.placed&&piece.r===action.r&&piece.c===action.c);
+      if(state.selected&&state.selected.tray&&((state.setupPlayer===0&&action.r>=11&&action.r<=13)||(state.setupPlayer===1&&action.r>=1&&action.r<=3))&&!occupant){
+        const pieces=state.pieces.map(piece=>piece.id===state.selected.id?Object.assign({},piece,{r:action.r,c:action.c,placed:true}):piece);
+        return {state:Object.assign({},state,{pieces,selected:null}),events:[{type:"render"}]};
+      }
+      if(occupant&&occupant.owner===state.setupPlayer){
+        const pieces=state.pieces.map(piece=>piece.id===occupant.id?Object.assign({},piece,{placed:false}):piece);
+        return {state:Object.assign({},state,{pieces,selected:null}),events:[{type:"render"}]};
+      }
+      return {state,events:[]};
+    }
     case "selTray": return {state:Object.assign({},state,{selected:{tray:true,id:action.id}}),events:[{type:"render"}]};
     case "roster": {
       const player=state.setupPlayer, selected=state.roster[player], index=selected.indexOf(action.rid);
@@ -172,14 +185,6 @@ function confirmResign(){
      ["취소",close]]);
 }
 function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell 래퍼가 동기화 후 호출
-  if(S.phase==="setup"){
-    const p=at(r,c);
-    if(S.selected&&S.selected.tray&&zoneOf(S.setupPlayer).includes(r)&&!p){
-      const x=S.pieces.find(z=>z.id===S.selected.id); x.r=r;x.c=c;x.placed=true; S.selected=null; render(); return;
-    }
-    if(p&&p.owner===S.setupPlayer){p.placed=false; S.selected=null; render();}
-    return;
-  }
   if(S.phase!=="play"||S.battle) return;
   if(S.fleePick){ // #114 도망 교환: 소유자(S.current 와 다를 수 있음)의 후방 후보 클릭 → 교환 → 밀기. 그 외 클릭은 무시 (온라인은 netAction 이 소유자 외 입력을 이미 거부)
     const q=at(r,c); if(q&&S.fleePick.cands.includes(q.id)&&!isAI(S.fleePick.owner)) fleeResolve(q.id);
