@@ -259,6 +259,74 @@ ok(/function drainForcedQueue\(autoStart\)\{\s*const result=dispatchCoreAction\(
 ok(/const result=dispatchCoreAction\(\{t:"teleSwap",a,b\}\);/.test(T.html)&&/return doTeleportSwapLegacy\(a,b\);/.test(T.html)&&/forcedContactStart\(event\.pieces\.find\(/.test(T.html)&&(T.html.match(/S\.teleUsed\[S\.current\]\+\+/g)||[]).length===1,"UI, AI and network replay share one teleport swap entry point and the promoted contact reuses the shared display helper");
 ok(/function doMove\(p,r,c\)\{ if\(p&&dispatchCoreAction\(\{t:"move",id:p\.id,r,c\}\)\) return; doMoveLegacy\(p,r,c\); \}/.test(T.html),"UI, AI and network replay share one canonical move entry point");
 ok(!/S\.(teleport|selected)\s*=/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"onCellCore no longer assigns the teleport pick or selection state directly");
+/* #245 턴 종료: 강제 전투 잔여 확인 → immobile 감소 → 지표 → 회복 틱 → turnCount++ → 교대(플립·턴 초기화·메모 정리)까지 Core 가 소유하고,
+   회복 로그·턴 배너·핫시트 넘김·AI 스케줄·sim 무승부 gameOver 는 turnEnded 이벤트가 표시 계층으로 넘긴다 */
+H.freshPlay(T,"pvp"); H.clearBoard(T);
+const eMine=T.S.pieces.filter(piece=>piece.owner===0&&piece.type==="minion"), eFoes=T.S.pieces.filter(piece=>piece.owner===1&&piece.type==="minion");
+const eStuck=eMine[0], eNear=eMine[1], eHeal=eMine[2], eKing=T.S.pieces.find(piece=>piece.owner===0&&piece.type==="king");
+const eFoe=eFoes[0], eGone=eFoes[1];
+H.place(T,eStuck,7,2); H.place(T,eNear,7,4); H.place(T,eFoe,7,5); H.place(T,eHeal,11,2); H.place(T,eKing,9,4); // eKing 은 숲(9행)·eNear 는 보이는 적과 인접
+eStuck.immobile=2; eHeal.healing=true; eHeal.hp=10;
+const eGain=Math.round(eHeal.maxHp*T.BAL.healPostPct);
+const etBase=Object.assign({},T.S,{current:0,phase:"play",battle:null,fleePick:null,teleport:null,battlesUsed:0,mainUsed:true,
+  forcedTargets:[],forcedQueue:[],contactSet:[eFoe.id],movedPiece:eNear,selected:eNear,turnCount:4,healTickTurn:-1,
+  memos:[{[eGone.id]:"bomb",[eFoe.id]:"trap"},{}],
+  metrics:Object.assign({},T.S.metrics,{byPlayer:T.S.metrics.byPlayer.map(x=>Object.assign({},x))})});
+const etResult=T.reduceCoreAction(etBase,{t:"endTurn"});
+ok(etBase.turnCount===4&&etBase.current===0&&etBase.mainUsed===true&&etBase.selected===eNear&&eStuck.immobile===2&&eHeal.hp===10&&etBase.pieces.includes(eStuck)&&etBase.metrics.kingForestTurns===0&&etBase.metrics.battleRefusals===0&&etBase.metrics.healHp===0&&etBase.memos[0][eGone.id]==="bomb"&&etBase.tempReveal.size===0,"end turn reducer leaves the input turn counter, action flags, pieces, metrics and memos untouched");
+const etStuck=etResult.state.pieces.find(piece=>piece.id===eStuck.id), etHealed=etResult.state.pieces.find(piece=>piece.id===eHeal.id);
+ok(etStuck!==eStuck&&etStuck.immobile===1&&etHealed!==eHeal&&etHealed.hp===10+eGain&&etResult.state.pieces.find(piece=>piece.id===eNear.id)===eNear,"end turn reducer decrements the immobile counter and applies the heal tick on cloned pieces only");
+ok(etResult.state.metrics!==etBase.metrics&&etResult.state.metrics.kingForestTurns===1&&etResult.state.metrics.byPlayer[0].kingForestTurns===1&&etResult.state.metrics.battleRefusals===1&&etResult.state.metrics.byPlayer[0].battleRefusals===1&&etResult.state.metrics.healHp===eGain&&etResult.state.metrics.byPlayer[0].healHp===eGain,"the king forest stay, the refused battle and the healed HP are counted once for the ending player on cloned metrics");
+ok(etResult.state.turnCount===5&&etResult.state.healTickTurn===4&&etResult.state.current===1&&etResult.state.mainUsed===false&&etResult.state.battlesUsed===0&&etResult.state.movedPiece===null&&etResult.state.selected===null&&etResult.state.contactSet.length===0&&etResult.state.forcedTargets.length===0&&etResult.state.forcedQueue.length===0&&etResult.state.teleport===null&&etResult.state.tempReveal!==etBase.tempReveal,"the turn counter, heal-tick guard, player flip and the start-of-turn reset all land in one returned state");
+ok(etResult.state.memos!==etBase.memos&&etResult.state.memos[0][eGone.id]===undefined&&etResult.state.memos[0][eFoe.id]==="trap","the memo of a piece that left the board is cleaned on a cloned memo map only");
+ok(etResult.events.length===1&&etResult.events[0].type==="turnEnded"&&etResult.events[0].player===0&&etResult.events[0].bt===false&&JSON.stringify(etResult.events[0].healed)===JSON.stringify([{id:eHeal.id,gain:eGain}]),"end turn emits one turnEnded carrying the ending player and the heal-tick log rows");
+/* 강제 전투 잔여: 사람은 턴을 마칠 수 없고(토스트만·상태 전이 없음) AI 는 이행 불가 상태를 해소하고 진행한다 */
+const etForced=Object.assign({},etBase,{forcedTargets:[eFoe.id]});
+const etBlock=T.reduceCoreAction(etForced,{t:"endTurn"});
+ok(etBlock.state.turnCount===4&&etBlock.state.current===0&&etBlock.state.mainUsed===true&&JSON.stringify(etBlock.state.forcedTargets)===JSON.stringify([eFoe.id])&&etBlock.events.length===1&&etBlock.events[0].type==="toast"&&/강제 전투 대상과 전투해야/.test(etBlock.events[0].message),"an unfulfilled forced battle blocks a human turn end with a toast and no state transition");
+const etAiClear=T.reduceCoreAction(Object.assign({},etForced,{mode:"sim"}),{t:"endTurn"});
+const etAiPve=T.reduceCoreAction(Object.assign({},etForced,{mode:"pve",current:1}),{t:"endTurn"});
+ok(etAiClear.state.forcedTargets.length===0&&etAiClear.state.turnCount===5&&etAiClear.state.current===1&&etAiClear.events[0].type==="turnEnded"&&etAiPve.state.forcedTargets.length===0&&etAiPve.state.turnCount===5&&etAiPve.state.current===0&&etForced.forcedTargets.length===1,"an AI clears an unfulfillable forced battle and finishes the turn, leaving the input targets whole");
+/* 대기 큐는 같은 reducer 의 drainForced 로 먼저 꺼내고, 승격되면 그 턴은 끝나지 않는다 */
+const etQueued=Object.assign({},etBase,{forcedQueue:[{pid:eNear.id,targets:[eFoe.id]}]});
+const etDrain=T.reduceCoreAction(etQueued,{t:"endTurn"});
+ok(etDrain.events.length===2&&etDrain.events[0].type==="forcedPromoted"&&etDrain.events[0].piece===eNear&&etDrain.events[1].type==="toast"&&etDrain.state.turnCount===4&&JSON.stringify(etDrain.state.forcedTargets)===JSON.stringify([eFoe.id])&&etDrain.state.forcedQueue.length===0&&etQueued.forcedQueue.length===1,"a queued forced battle is drained through the same reducer before the turn can end, and then blocks it");
+/* sim 무승부: turnCount 까지가 Core 이고 gameOver·문구·렌더는 표시 계층이 맡는다 (전투 회계 정리를 포함한 경기 종료 경로) */
+const etDraw=T.reduceCoreAction(Object.assign({},etBase,{mode:"sim",turnCount:T.BAL.simMaxTurns-1}),{t:"endTurn"});
+ok(etDraw.state.turnCount===T.BAL.simMaxTurns&&etDraw.state.current===0&&etDraw.state.phase==="play"&&etDraw.state.winner===null&&etDraw.events.length===1&&etDraw.events[0].simDraw===true&&etDraw.events[0].bt===undefined,"the simulation draw stops at the turn counter without flipping the player and hands gameOver to the display layer");
+/* BT 진입 1회 고지는 교대 시점의 상태에서 결정된다 (배너 예약·지표 모두 복제본에만) */
+const etBt=T.reduceCoreAction(Object.assign({},etBase,{turnCount:T.BAL.burnStart-2}),{t:"endTurn"});
+ok(etBt.events[0].bt===true&&etBt.state.btBannerDue===true&&etBt.state.metrics.btReached===true&&etBt.state.metrics.btEnterTurn===T.BAL.burnStart&&etBase.btBannerDue===false&&etBase.metrics.btReached===false&&T.reduceCoreAction(etBt.state,{t:"endTurn"}).events[0].bt===false,"burning time is announced exactly once at the flip, on cloned banner and metric fields only");
+/* 가드로 막힌 프레임도 auto 표식은 기록한다 — 레거시 applyAction 이 met() 를 endTurn() 앞에서 불렀다 */
+const etGuards=[{battle:{}},{fleePick:{owner:0}},{teleport:{stage:1,piece:null}},{phase:"over"}];
+ok(etGuards.every(guard=>{ const r=T.reduceCoreAction(Object.assign({},etBase,guard),{t:"endTurn",auto:true});
+  return r.events.length===0&&r.state.turnCount===4&&r.state.current===0&&r.state.metrics.autoEnds===1&&r.state.metrics.byPlayer[0].autoEnds===1; })
+  &&etGuards.every(guard=>T.reduceCoreAction(Object.assign({},etBase,guard),{t:"endTurn"}).state.metrics.autoEnds===0)
+  &&T.reduceCoreAction(etBase,{t:"endTurn",auto:true}).state.metrics.autoEnds===1&&etBase.metrics.autoEnds===0,"a blocked end turn changes nothing but still records the auto marker on cloned metrics, exactly where the legacy replay counted it");
+/* 상태 순수성: 전역 S 가 적대적으로 어긋나도 결과는 받은 상태만 따른다 (온라인 재생·AI 탐색 경로) */
+const etDigest=r=>JSON.stringify({ev:r.events.map(e=>[e.type,e.player,e.bt,e.simDraw,e.healed,e.message]),turn:r.state.turnCount,cur:r.state.current,
+  tick:r.state.healTickTurn,metrics:r.state.metrics,memos:r.state.memos,pieces:r.state.pieces.map(x=>[x.id,x.hp,x.immobile])});
+const etAgreed=etDigest(T.reduceCoreAction(etBase,{t:"endTurn"}));
+const etLive={pieces:T.S.pieces,phase:T.S.phase,mode:T.S.mode,current:T.S.current,turnCount:T.S.turnCount,battle:T.S.battle,battlesUsed:T.S.battlesUsed,
+  fleePick:T.S.fleePick,teleport:T.S.teleport,forcedTargets:T.S.forcedTargets,forcedQueue:T.S.forcedQueue,healTickTurn:T.S.healTickTurn,metrics:T.S.metrics,memos:T.S.memos};
+T.S.pieces=[]; T.S.phase="over"; T.S.mode="sim"; T.S.current=1; T.S.turnCount=999; T.S.battle={}; T.S.battlesUsed=2; T.S.fleePick={owner:1};
+T.S.teleport={stage:1,piece:null}; T.S.forcedTargets=[999]; T.S.forcedQueue=[]; T.S.healTickTurn=999; T.S.memos=[{},{}];
+const etDisagreed=etDigest(T.reduceCoreAction(etBase,{t:"endTurn"}));
+Object.assign(T.S,etLive);
+ok(etDisagreed===etAgreed&&etBase.turnCount===4&&eStuck.immobile===2&&eHeal.hp===10,"end turn reducer reads the board, phase, mode, budget and heal-tick guard from its state argument only, so a hostile global S changes nothing");
+/* end-to-end: 사람 턴바·AI·온라인 재생이 같은 Core 진입점을 쓰고, 커밋은 호출처가 들고 있는 말 객체 그대로다 */
+Object.assign(T.S,{mode:"pve",current:0,phase:"play",battle:null,fleePick:null,teleport:null,battlesUsed:0,mainUsed:true,
+  forcedTargets:[],forcedQueue:[],contactSet:[eFoe.id],movedPiece:eNear,selected:eNear,turnCount:4,healTickTurn:-1});
+eStuck.immobile=2; eHeal.hp=10; eHeal.healing=true;
+const etRefusalsBefore=T.S.metrics.battleRefusals;
+T.endTurn();
+ok(T.S.turnCount===5&&T.S.current===1&&T.S.mainUsed===false&&T.S.selected===null&&T.S.pieces.includes(eStuck)&&eStuck.immobile===1&&T.S.pieces.includes(eHeal)&&eHeal.hp===10+eGain&&T.S.metrics.battleRefusals===etRefusalsBefore+1,"endTurn() commits the transition onto the same piece objects the UI, AI and replay callers hold");
+Object.assign(T.S,{current:0,turnCount:4,mainUsed:true,healTickTurn:-1,forcedTargets:[],forcedQueue:[],battle:null,teleport:null,fleePick:null,phase:"play"});
+const etAutoBefore=T.S.metrics.autoEnds;
+T.applyAction({t:"endTurn",auto:true});
+ok(T.S.metrics.autoEnds===etAutoBefore+1&&T.S.metrics.byPlayer[0].autoEnds===etAutoBefore+1&&T.S.turnCount===5&&T.S.current===1,"the online replay frame routes through the same Core action and records the auto marker exactly once");
+ok(/function endTurn\(\)\{ return dispatchCoreAction\(\{t:"endTurn"\}\); \}/.test(T.html)&&!/case "endTurn"\s*:/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8"))&&(T.html.match(/startTurnMessages\(/g)||[]).length===3&&(T.html.match(/healLogs\(/g)||[]).length===3,"turn bar, AI and network replay share one Core end-turn entry point, and the turn banner and heal-tick logs keep a single display helper each");
+
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
 ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");
 let blocked=false;

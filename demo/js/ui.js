@@ -1,7 +1,7 @@
 "use strict";
 /* ===== 유틸 ===== */
 const isAI=p=>(S.mode==="pve"&&p===1)||S.mode==="sim";
-const humanViewer=()=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:(S.fleePick?S.fleePick.owner:S.current)) : 0); // 온라인: 항상 내 시점 고정 · 핫시트: 도망 교환 선택 중에는 도망친 말의 소유자 시점(기기 공유 — 상대는 시선 회피)
+const humanViewer=(cur)=> NET.mode ? NET.me : (S.mode==="pvp" ? (S.phase==="setup"?S.setupPlayer:(S.fleePick?S.fleePick.owner:(cur===undefined?S.current:cur))) : 0); // 온라인: 항상 내 시점 고정 · 핫시트: 도망 교환 선택 중에는 도망친 말의 소유자 시점(기기 공유 — 상대는 시선 회피) · #245 cur: 턴 교대가 이미 커밋된 뒤 **교대 전** 시점으로 판정할 때만 넘긴다 (회복 틱 로그)
 /* #93 온라인 P2 화면 행 반사 — 표시 전용. 논리 좌표(S·dataset.r/c·클릭·통신·로그)는 불변이고 열 순서도 그대로다.
    조건은 NET.mode(=netStart 이후)이지 NET.me 단독이 아니다: 사전 배치·매칭 대기는 NET.mode=false 인 로컬 P0 배치(11~13행 = 이미 하단)라
    matched 로 NET.me=1 이 정해진 뒤에도 뒤집지 않는다 — netStart 의 applyNetSetup 이 P2 말을 1~3행으로 옮긴 뒤부터만 반사한다(이중 반전 방지).
@@ -99,6 +99,16 @@ function applyUiEvents(events){
       const fmsg=event.list.length===1?"⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! (빨간 표시 대상을 클릭)":`⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! 대상 ${event.list.length}개 중 하나를 선택하세요.`;
       addLog(fmsg,"imp"); if(!isAI(event.piece.owner)) showToast(fmsg);
       contactBannerFx(event.piece,viewerIsOwner(event.piece.owner)?"남은 말의 접촉 대상(빨간 표시)을 클릭하세요":"상대가 남은 접촉 대상을 고르고 있습니다"); // #106 4.5 "추가 접촉" 배너 (보드 복귀 뒤 순서 · render 는 호출처가 한다)
+      continue;
+    }
+    if(event.type==="turnEnded"){ // #245 턴 종료 — 상태(지표·회복 틱·turnCount·교대·턴 초기화)는 Core 가 끝냈고 여기는 로그·배너·렌더·AI 스케줄만
+      healLogs(event.healed,humanViewer(event.player)); // 회복 틱 로그는 **교대 전** 뷰어 시점 (핫시트 PVP 는 턴을 마친 쪽이 본다)
+      if(event.simDraw){ // sim 무승부 — gameOver 는 전투 회계 정리를 포함한 경기 종료 경로라 종전 그대로 표시 계층이 부른다
+        gameOver(null,"draw");
+        const dmsg=`${BAL.simMaxTurns}턴 도달 — 무승부`; addLog(dmsg,"imp"); showToast(dmsg); render(); continue;
+      }
+      startTurnMessages(event.bt); // 턴 배너·BT 고지 — 레거시 startTurn 과 같은 한 곳
+      afterStartTurn();
       continue;
     }
     if(event.type==="mainSkipped"){

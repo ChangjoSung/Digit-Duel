@@ -227,6 +227,45 @@ function reduceCoreAction(state,action){
       }
       return {state:next,events};
     }
+    /* #245 턴 종료: 강제 전투 잔여 확인 → immobile 감소 → 지표(왕 숲 체류·전투 회피) → 회복 틱 → turnCount++ → 교대
+       (current 플립 + 턴 시작 초기화·메모 정리·BT 진입 플래그)까지의 **상태 전이**를 Core 가 소유한다 (#106 4.2.2 순서 그대로).
+       표시(강제 전투 미이행 토스트·회복 로그·턴 배너·BT 고지·핫시트 넘김·렌더·AI 스케줄)와 sim 무승부 종료(gameOver — 전투 회계
+       정리를 포함한 **경기 종료** 경로라 이번 범위 밖)는 turnEnded 이벤트가 종전 표시 계층으로 그대로 넘긴다.
+       auto 표식(#106 T7)은 **가드보다 앞**에서 집계한다 — 레거시 applyAction 이 `if(a.auto) met(...); endTurn();` 순서라
+       가드에 막힌 프레임도 양 클라이언트가 같은 autoEnds 를 기록했다.
+       대기 중인 강제 전투는 같은 reducer 의 drainForced 를 그대로 호출해 꺼낸다 — 판정·면제 문구가 갈라지지 않게.
+       판정 헬퍼(alivePieces·inForest·adjEnemies·visibleTo·canBattle·isBurning)는 **인자로 받은 state 의 보드만** 읽는다.
+       말은 immobile 감소와 회복 틱이 **같은 복제본 하나**를 공유하고(clone), 복제되지 않은 말·metrics 밖 참조는 그대로 둔다. */
+    case "endTurn": {
+      const metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+      let next=Object.assign({},state,{metrics});
+      if(action.auto) met(state.current,"autoEnds",1,next); // #106 T7: 자동 종료 표식은 액션 프레임에 실려 양 클라이언트가 같은 지표를 기록
+      if(state.phase!=="play"||state.battle||state.fleePick||state.teleport) return {state:next,events:[]};
+      let events=[];
+      if(!(next.forcedTargets&&next.forcedTargets.length)){ // #18: 대기 중인 강제 전투가 있으면 먼저 꺼냄
+        const drained=reduceCoreAction(next,{t:"drainForced",autoStart:false});
+        next=drained.state; events=drained.events.slice();
+      }
+      if(next.forcedTargets&&next.forcedTargets.length){ // T1: 강제 전투 미이행 시 턴 종료 불가
+        if(!((next.mode==="pve"&&next.current===1)||next.mode==="sim")) // isAI(S.current) 가드 — 상태 기준
+          return {state:next,events:events.concat([{type:"toast",message:"⚔️ 강제 전투 대상과 전투해야 턴을 마칠 수 있습니다."}])};
+        next=Object.assign({},next,{forcedTargets:[],forcedQueue:[]}); // AI 안전장치 (이행 불가 상태 해소)
+      }
+      const clones=new Map(), clone=x=>{ let c=clones.get(x); if(!c){ c=Object.assign({},x); clones.set(x,c); } return c; };
+      const me=next.current, board=alivePieces(next);
+      for(const x of board) if(x.owner===me&&x.immobile>0) clone(x).immobile--;
+      // #20 정확도: 왕 숲 체류는 자기 턴 종료 시 자기 왕만 1회 집계 (양측 턴마다 이중 집계하던 오류 수정)
+      for(const k of board) if(k.owner===me&&k.type==="king"&&inForest(k)) met(me,"kingForestTurns",1,next);
+      // #20 오탐 제거: 실제 canBattle 가능(보이는 대상·전투 규칙 충족)한 인접 대상이 있었는데 전투하지 않은 경우만 회피로 집계
+      if(next.battlesUsed===0 && board.some(x=>x.owner===me&&adjEnemies(x,next).some(e=>visibleTo(me,e,next)&&canBattle(x,e,next)))) met(me,"battleRefusals",1,next);
+      const healed=healTickGains(next,clone)||[];
+      next=Object.assign({},next,{pieces:clones.size?next.pieces.map(x=>clones.get(x)||x):next.pieces,
+        healTickTurn:next.turnCount,turnCount:next.turnCount+1});
+      if(next.mode==="sim"&&next.turnCount>=BAL.simMaxTurns) // sim 무승부: turnCount 까지가 Core, gameOver·문구·렌더는 표시 계층
+        return {state:next,events:events.concat([{type:"turnEnded",player:me,healed,simDraw:true}])};
+      const started=startTurnState(Object.assign({},next,{current:1-me}));
+      return {state:started.state,events:events.concat([{type:"turnEnded",player:me,healed,bt:started.bt}])};
+    }
     default: return null;
   }
 }
@@ -255,22 +294,30 @@ function commitCoreState(next,events){
   Object.assign(S,next);
 }
 /* ===== 턴 진행 ===== */
-function startTurn(){
-  S.mainUsed=false; S.battlesUsed=0; S.movedPiece=null; S.contactSet=[]; S.firstBattleWonByMover=false;
-  S.forcedTargets=[]; S.teleport=null; S.forcedQueue=[];
-  S.selected=null; S.tempReveal.clear();
-  for(const v of [0,1]) for(const id in S.memos[v]) // #11: 제거된 말의 메모 정리
-    if(!S.pieces.some(x=>x.id===Number(id)&&x.alive&&x.placed)) delete S.memos[v][id];
+/* #245 턴 시작 **상태**(행동 초기화·메모 정리·BT 진입 플래그)만 계산한다 — 입력 상태는 건드리지 않는다.
+   문구·배너·렌더는 startTurnMessages 가 맡아 레거시 startTurn() 과 turnEnded 이벤트가 같은 한 곳을 쓴다. */
+function startTurnState(state){
+  const next=Object.assign({},state,{mainUsed:false,battlesUsed:0,movedPiece:null,contactSet:[],firstBattleWonByMover:false,
+    forcedTargets:[],teleport:null,forcedQueue:[],selected:null,tempReveal:new Set(),
+    memos:state.memos.map(m=>{ const kept={}; // #11: 제거된 말의 메모 정리 (입력 메모는 그대로 두고 복제)
+      for(const id in m) if(state.pieces.some(x=>x.id===Number(id)&&x.alive&&x.placed)) kept[id]=m[id];
+      return kept; })});
+  const bt=isBurning(next)&&!next.metrics.btReached; // BT 진입 1회 고지
+  if(bt){
+    next.metrics=Object.assign({},state.metrics,{btReached:true,btEnterTurn:next.turnCount+1,byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+    next.btBannerDue=true; // #106 T9: "버닝타임입니다!" 배너를 턴 배너보다 먼저 1회 (turnBannerFx 가 소비 — 표시 전용·송신 없음)
+  }
+  return {state:next,bt};
+}
+function startTurnMessages(bt){ // #245 턴 시작 표시 전용 — commit 된 S 기준
   const tmsg=`— ${pname(S.current)} 턴 ${S.turnCount+1} —`;
   addLog(tmsg,"sys"); showToast(tmsg,"sys");
-  if(isBurning()&&!S.metrics.btReached){ // BT 진입 1회 고지
-    S.metrics.btReached=true; S.metrics.btEnterTurn=S.turnCount+1;
-    S.btBannerDue=true; // #106 T9: "버닝타임입니다!" 배너를 턴 배너보다 먼저 1회 (turnBannerFx 가 소비 — 표시 전용·송신 없음)
-    const bt="🔥 버닝 타임! 직선 2칸 이동 강화 개시 (폭탄 포함·함정 제외)";
-    addLog(bt,"imp"); showToast(bt);
-    if(S.mode!=="sim") tutHint("burning"); // #26 버닝 타임 첫 진입 1회 도움말 (게임 상태 무변경)
-  }
+  if(!bt) return;
+  const msg="🔥 버닝 타임! 직선 2칸 이동 강화 개시 (폭탄 포함·함정 제외)";
+  addLog(msg,"imp"); showToast(msg);
+  if(S.mode!=="sim") tutHint("burning"); // #26 버닝 타임 첫 진입 1회 도움말 (게임 상태 무변경)
 }
+function startTurn(){ const r=startTurnState(S); Object.assign(S,r.state); startTurnMessages(r.bt); } // beginPlay 전용 래퍼 (턴 교대는 Core 의 endTurn)
 /* ===== #106 T2 회복 주 행동 (CJ 최종 2026-09-08) =====
    지정 = 주 행동 소모, 자세는 재지정 없이 지속. 틱은 전역 플레이어 턴 종료(endTurn) 한 곳에서 양 플레이어의 자세 말 전부에 +round(maxHp×5%),
    상한 maxHp, 같은 turn 이중 틱 방지(S.healTickTurn). 지정 시점 즉시 회복 없음. 그 말의 이동·탐색·텔레포트·전투(공격·방어·폭탄·함정·밀어내기)·도망 교환은 자세를 해제한다.
@@ -286,34 +333,30 @@ function healVisibleTo(viewer,p){ return viewer===2||p.owner===viewer||p.reveale
 function doHeal(p){ return dispatchCoreAction({t:"heal",id:p?p.id:null}); } // #245: 회복의 단일 Core 진입점 (AI·테스트 호환 래퍼)
 function healBreakLog(p){ const v=humanViewer(); if(S.mode==="sim"||healVisibleTo(v,p)) addLog(`🌿 ${idLabel(v,p)} 회복 자세 해제`); } // #245: 해제 표시만 따로 — Core 가 자세를 이미 내린 이동(moved 이벤트)에서 같은 문구를 쓴다
 function healBreak(p){ if(p&&p.healing){ p.healing=false; healBreakLog(p); } }
-function healTick(){ // endTurn 에서 turn++ 직전 1회 — 양 플레이어의 자세 말 전부
-  if(S.healTickTurn===S.turnCount) return; S.healTickTurn=S.turnCount;
-  const v=humanViewer();
-  for(const p of alivePieces()){ if(!p.healing||!healTargetOk(p)) continue;
+/* #245 회복 틱 **상태**: 같은 turn 이중 틱 가드 → 자세 말의 회복량·지표. 말 복제는 호출처가 준 clone 으로 하고
+   (턴 종료의 immobile 감소와 같은 복제본을 공유한다), 지표는 인자로 받은 상태의 metrics 에 쓴다 — 호출처가 이미 복제해 둔 칸이다.
+   로그는 healed 목록으로 healLogs 가 만든다 — 레거시 healTick() 과 turnEnded 이벤트가 같은 한 곳을 쓴다. */
+function healTickGains(state,clone){
+  if(state.healTickTurn===state.turnCount) return null;
+  const healed=[];
+  for(const p of alivePieces(state)){ if(!p.healing||!healTargetOk(p)) continue;
     const gain=Math.min(Math.round(p.maxHp*BAL.healPostPct),p.maxHp-p.hp);
-    if(gain>0){ p.hp+=gain; met(p.owner,"healHp",gain); }
-    if(S.mode==="sim"||healVisibleTo(v,p)) addLog(gain>0?`🌿 ${idLabel(v,p)} HP +${gain} (회복 자세)`:`🌿 ${idLabel(v,p)} 최대 HP — 회복 자세 유지`);
+    if(gain>0){ clone(p).hp+=gain; met(p.owner,"healHp",gain,state); }
+    healed.push({id:p.id,gain});
+  }
+  return healed;
+}
+function healLogs(healed,viewer){ // #245 회복 틱 표시 전용 — H8: 미공개 상대 말은 로그에 싣지 않는다 (commit 된 S 기준)
+  for(const h of healed){ const p=S.pieces.find(x=>x.id===h.id); if(!p) continue;
+    if(S.mode==="sim"||healVisibleTo(viewer,p)) addLog(h.gain>0?`🌿 ${idLabel(viewer,p)} HP +${h.gain} (회복 자세)`:`🌿 ${idLabel(viewer,p)} 최대 HP — 회복 자세 유지`);
   }
 }
-function endTurn(){
-  if(S.phase!=="play"||S.battle||S.fleePick||S.teleport) return;
-  if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18: 대기 중인 강제 전투가 있으면 먼저 꺼냄
-  if(S.forcedTargets&&S.forcedTargets.length){ // T1: 강제 전투 미이행 시 턴 종료 불가
-    if(!isAI(S.current)){showToast("⚔️ 강제 전투 대상과 전투해야 턴을 마칠 수 있습니다."); return;}
-    S.forcedTargets=[]; S.forcedQueue=[]; // AI 안전장치 (이행 불가 상태 해소)
-  }
-  for(const x of alivePieces()) if(x.owner===S.current&&x.immobile>0) x.immobile--;
-  // #20 정확도: 왕 숲 체류는 자기 턴 종료 시 자기 왕만 1회 집계 (양측 턴마다 이중 집계하던 오류 수정)
-  for(const k of alivePieces()) if(k.owner===S.current&&k.type==="king"&&inForest(k)) met(S.current,"kingForestTurns");
-  // #20 오탐 제거: 실제 canBattle 가능(보이는 대상·전투 규칙 충족)한 인접 대상이 있었는데 전투하지 않은 경우만 회피로 집계
-  if(S.battlesUsed===0 && alivePieces().some(x=>x.owner===S.current&&adjEnemies(x).some(e=>visibleTo(S.current,e)&&canBattle(x,e)))) met(S.current,"battleRefusals");
-  healTick(); // #106 4.2.2: 강제 전투 잔여 확인 → immobile 감소 → 지표 → 회복 틱 → turn++ → 교대
-  S.turnCount++;
-  if(S.mode==="sim"&&S.turnCount>=BAL.simMaxTurns){gameOver(null,"draw");
-    const dmsg=`${BAL.simMaxTurns}턴 도달 — 무승부`; addLog(dmsg,"imp"); showToast(dmsg); render(); return;}
-  S.current=1-S.current; startTurn();
-  afterStartTurn();
+function healTick(){ // endTurn 에서 turn++ 직전 1회 — 양 플레이어의 자세 말 전부 (레거시·테스트 직접 호출용)
+  const healed=healTickGains(S,p=>p); if(!healed) return;
+  S.healTickTurn=S.turnCount;
+  healLogs(healed,humanViewer());
 }
+function endTurn(){ return dispatchCoreAction({t:"endTurn"}); } // #245: 턴 종료의 단일 Core 진입점 (UI·AI·온라인 재생 공통)
 /* ===== #106 T7 자동 턴 종료 (4.6) — 행동자 클라이언트만 발화하는 '입력 액션'. 조건: 플레이 중·전투 없음·모달/오버레이 없음·텔레포트 선택 아님·
    강제 대상/queue 없음·주 행동 완료·canBattle 가능한 가시 인접 적 없음·연출 idle. 주 행동 전 특례: 가능한 주 행동이 하나도 없으면 생략을 자동 적용 후 재평가.
    BAL.fx.autoEndGrace 뒤 발화하며 그 사이 입력(FX.inputSeq)이 있으면 재평가. 수신 측(온라인 비행동자)·AI 턴은 절대 발화하지 않는다 */

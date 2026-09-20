@@ -61,7 +61,6 @@ function applyAction(a){
       const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
       if(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel)) doSearch(sel,ev);
       break; }
-    case "endTurn": if(a.auto) met(S.current,"autoEnds"); endTurn(); break; // #106 T7: 자동 종료 표식은 프레임에 실려 양측 지표 동일
     case "fleeSwap": if(S.fleePick&&S.fleePick.cands.includes(a.id)) fleeResolve(a.id); break; // #114 도망 후 교환 (소유자 입력, rand 소비 0)
     case "fleeSkip": if(S.fleePick) fleeResolve(null); break; // #114 교환 생략 → 도망친 말 ↔ 상대 밀기
     case "resign": { const loser=S.current; gameOver(1-loser,"resign");
