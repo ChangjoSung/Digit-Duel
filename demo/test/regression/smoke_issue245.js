@@ -204,6 +204,58 @@ const dupRefs=T.S.pieces.slice(), dupBytes=JSON.stringify(dupRefs), dupTele=JSON
 const dupRefused=T.doTeleportSwap(sa,Object.assign({},sb));
 ok(dupRefused===false&&T.S.pieces.length===dupRefs.length&&T.S.pieces.every((piece,i)=>piece===dupRefs[i])&&JSON.stringify(T.S.pieces)===dupBytes&&T.S.mainUsed===false&&JSON.stringify(T.S.teleUsed)===dupTele,"a refused swap mutates no piece and drops no object reference even when S.pieces holds duplicate ids");
 T.S.pieces=dupBefore;
+/* #245 강제 전투 큐 소비(drainForced): 큐 꺼내기·면제 판정·승격(movedPiece·contactSet·forcedTargets·selected·contactKind)은 Core 가 소유하고,
+   면제 사유 로그·토스트, "추가 접촉" 배너, 전투 개시(forcedContactStart→initBattle)는 forcedExempt·forcedPromoted 이벤트가 표시 계층으로 넘긴다 */
+const dq=H.freshPlay(T,"pvp"); H.clearBoard(T);
+const dMine=T.S.pieces.filter(piece=>piece.owner===0&&piece.type==="minion"), dFoe=T.S.pieces.filter(piece=>piece.owner===1&&piece.type==="minion");
+const dA=dMine[0], dB=dMine[1], dC=dMine[2], dX=dFoe[0], dY=dFoe[1], dZ=dFoe[2], dW=dFoe[3];
+const dBomb=T.S.pieces.find(piece=>piece.owner===0&&piece.type==="bomb"), dTrap=T.S.pieces.find(piece=>piece.owner===0&&piece.type==="trap");
+H.place(T,dA,7,2); H.place(T,dX,7,3); H.place(T,dZ,6,2); // dA 는 두 적과 인접
+H.place(T,dB,9,2); H.place(T,dY,9,3); H.place(T,dC,11,2); // dC 는 고립 — 대상 재검사로 면제된다
+H.place(T,dBomb,12,2); H.place(T,dW,12,3); H.place(T,dTrap,13,3); // 폭탄은 강제 접촉 적격, 함정은 공격 불가
+dq.current=0; dq.battlesUsed=0; dq.battle=null; dq.fleePick=null; dq.forcedTargets=[]; dq.movedPiece=null; dq.contactSet=[]; dq.selected=null; dq.contactKind="tele";
+dq.forcedQueue=[{pid:dA.id,targets:[dX.id]},{pid:dB.id,targets:[dY.id]}];
+const drainPick=T.reduceCoreAction(dq,{t:"drainForced",autoStart:false});
+ok(dq.forcedQueue.length===2&&dq.forcedTargets.length===0&&dq.movedPiece===null&&dq.selected===null&&dq.contactKind==="tele","drain reducer leaves the input queue, forced targets, mover, selection and banner kind untouched");
+ok(drainPick.state.forcedQueue.length===1&&drainPick.state.forcedQueue[0].pid===dB.id&&JSON.stringify(drainPick.state.forcedTargets)===JSON.stringify([dX.id])&&drainPick.state.movedPiece===dA&&drainPick.state.selected===dA&&drainPick.state.contactSet.length===2&&drainPick.state.contactSet.includes(dX.id)&&drainPick.state.contactSet.includes(dZ.id)&&drainPick.state.contactKind==="again","FIFO: the first entry is promoted with the full contact set, the click selection and the additional-contact banner kind, leaving the rest queued");
+ok(drainPick.events.length===1&&drainPick.events[0].type==="forcedPromoted"&&drainPick.events[0].autoStart===false&&drainPick.events[0].piece===dA&&JSON.stringify(drainPick.events[0].list)===JSON.stringify([dX.id]),"the click promotion emits exactly one forcedPromoted carrying the piece and the revalidated target list");
+const drainAuto=T.reduceCoreAction(dq,{t:"drainForced",autoStart:true});
+ok(JSON.stringify(drainAuto.state.forcedTargets)===JSON.stringify([dX.id])&&drainAuto.state.movedPiece===dA&&drainAuto.state.selected===null&&drainAuto.state.contactKind==="tele"&&drainAuto.events[0].autoStart===true&&drainAuto.state.forcedQueue.length===1,"autoStart promotes the same single target but leaves the selection and banner kind alone for the immediate start");
+const drainAutoMulti=T.reduceCoreAction(Object.assign({},dq,{forcedQueue:[{pid:dA.id,targets:[dX.id,dZ.id]}]}),{t:"drainForced",autoStart:true});
+ok(drainAutoMulti.state.forcedTargets.length===2&&drainAutoMulti.state.selected===dA&&drainAutoMulti.events[0].list.length===2,"autoStart with two targets keeps the promoted piece selected for the pick, as applyForced did");
+/* 면제: 말 소멸(원격 재생의 pid:null 포함)·대상 재검사 실패·함정 공격 불가를 연달아 건너뛰고 유효 항목까지 간다 — 건너뛴 항목도 큐에서 빠진다 */
+const drainSkip=T.reduceCoreAction(Object.assign({},dq,{forcedQueue:[{pid:null,targets:[dX.id]},{pid:dC.id,targets:[dY.id]},{pid:dTrap.id,targets:[dW.id]},{pid:dA.id,targets:[dX.id]}]}),{t:"drainForced",autoStart:false});
+ok(drainSkip.events.length===4&&drainSkip.events.slice(0,3).every(event=>event.type==="forcedExempt")&&/제거되었습니다/.test(drainSkip.events[0].message)&&/사라졌습니다/.test(drainSkip.events[1].message)&&/사라졌습니다/.test(drainSkip.events[2].message)&&drainSkip.events[3].piece===dA&&drainSkip.state.forcedQueue.length===0,"three exempt entries (missing piece, target no longer adjacent, trap attacker) are logged and dropped before the valid entry is promoted");
+const drainBomb=T.reduceCoreAction(Object.assign({},dq,{forcedQueue:[{pid:dBomb.id,targets:[dW.id]}]}),{t:"drainForced",autoStart:true});
+ok(drainBomb.events[0].type==="forcedPromoted"&&drainBomb.events[0].piece===dBomb&&JSON.stringify(drainBomb.state.forcedTargets)===JSON.stringify([dW.id]),"a bomb stays forced-contact eligible on promotion");
+const drainBudget=T.reduceCoreAction(Object.assign({},dq,{battlesUsed:2}),{t:"drainForced",autoStart:false});
+ok(drainBudget.events.length===2&&drainBudget.events.every(event=>event.type==="forcedExempt"&&event.owner===0&&/전투 횟수 소진/.test(event.toast))&&drainBudget.state.forcedQueue.length===0&&drainBudget.state.forcedTargets.length===0&&drainBudget.state.movedPiece===null,"an exhausted battle budget exempts every queued entry with an owner-gated toast and promotes nothing");
+/* 무동작 계약: 큐 없음·전투 중·플레이 단계 아님·이미 걸린 강제 전투는 아무것도 꺼내지 않는다 (도망 교환 중은 큐 정규화도 하지 않는다) */
+const drainNoops=[Object.assign({},dq,{forcedQueue:[]}),Object.assign({},dq,{battle:{}}),Object.assign({},dq,{phase:"over"}),Object.assign({},dq,{forcedTargets:[dX.id]})];
+ok(drainNoops.every(state=>{ const r=T.reduceCoreAction(state,{t:"drainForced",autoStart:false}); return r.events.length===0&&r.state.forcedQueue.length===state.forcedQueue.length&&r.state.movedPiece===state.movedPiece&&r.state.selected===state.selected&&r.state.contactKind===state.contactKind&&r.state.forcedTargets===state.forcedTargets; })&&dq.forcedQueue.length===2,"no queue, an open battle, a finished match and an already-active forced battle all consume nothing");
+const drainFlee=Object.assign({},dq,{fleePick:{owner:0},forcedQueue:null});
+const drainFleeResult=T.reduceCoreAction(drainFlee,{t:"drainForced",autoStart:true});
+ok(drainFleeResult.state===drainFlee&&drainFleeResult.events.length===0&&drainFleeResult.state.forcedQueue===null,"a pending flee swap returns the state untouched without even normalising a missing queue");
+ok(JSON.stringify(T.reduceCoreAction(Object.assign({},dq,{forcedQueue:null}),{t:"drainForced",autoStart:false}).state.forcedQueue)==="[]","a missing queue is normalised to an empty array, as the legacy guard did");
+/* 상태 순수성: 전역 S 가 적대적으로 어긋나도 결과는 받은 상태만 따른다 (온라인 재생·AI 탐색 경로) */
+const drainDigest=r=>JSON.stringify({ev:r.events.map(e=>[e.type,e.autoStart,e.owner,e.message]),queue:r.state.forcedQueue,targets:r.state.forcedTargets,
+  moved:r.state.movedPiece&&r.state.movedPiece.id,sel:r.state.selected&&r.state.selected.id,contact:r.state.contactSet,kind:r.state.contactKind});
+const drainPure=Object.assign({},dq,{forcedQueue:[{pid:dA.id,targets:[dX.id]},{pid:dB.id,targets:[dY.id]}],pieces:dq.pieces.slice()});
+const drainAgreed=drainDigest(T.reduceCoreAction(drainPure,{t:"drainForced",autoStart:false}));
+const liveDrain={pieces:T.S.pieces,phase:T.S.phase,battle:T.S.battle,battlesUsed:T.S.battlesUsed,forcedTargets:T.S.forcedTargets,fleePick:T.S.fleePick,forcedQueue:T.S.forcedQueue};
+T.S.pieces=[]; T.S.phase="over"; T.S.battle={}; T.S.battlesUsed=2; T.S.forcedTargets=[999]; T.S.fleePick={owner:1}; T.S.forcedQueue=[];
+const drainDisagreed=drainDigest(T.reduceCoreAction(drainPure,{t:"drainForced",autoStart:false}));
+Object.assign(T.S,liveDrain);
+ok(drainDisagreed===drainAgreed&&drainPure.forcedQueue.length===2&&drainPure.forcedTargets.length===0&&drainPure.movedPiece===null,"drain reducer reads the board, phase, battle and budget from its state argument only, so a hostile global S changes nothing and the input queue stays whole");
+/* end-to-end: 단일 진입점 drainForcedQueue 는 종전 반환 계약(승격했으면 true)을 지키고, 승격은 같은 말 객체로 커밋된다 */
+T.S.forcedQueue=[{pid:dA.id,targets:[dX.id]},{pid:dB.id,targets:[dY.id]}]; T.S.forcedTargets=[]; T.S.movedPiece=null; T.S.selected=null; T.S.battle=null; T.S.battlesUsed=0; T.S.current=0; T.S.contactKind="tele";
+ok(T.drainForcedQueue(false)===true&&T.S.movedPiece===dA&&T.S.selected===dA&&JSON.stringify(T.S.forcedTargets)===JSON.stringify([dX.id])&&T.S.contactKind==="again"&&T.S.forcedQueue.length===1&&T.S.forcedQueue[0].pid===dB.id&&!T.S.battle,"drainForcedQueue commits the click promotion onto the same piece objects the UI, AI and replay callers hold and returns true");
+ok(T.drainForcedQueue(false)===false&&T.S.forcedQueue.length===1&&T.S.movedPiece===dA,"a second drain with an active forced battle promotes nothing and returns false");
+T.S.forcedTargets=[]; T.S.movedPiece=null; T.S.selected=null; T.S.forcedQueue=[{pid:dB.id,targets:[dY.id]}];
+ok(T.drainForcedQueue(true)===true&&T.S.movedPiece===dB&&!!T.S.battle&&T.S.battle.attP===dB&&T.S.battle.defP===dY&&T.S.forcedTargets.length===0&&T.S.forcedQueue.length===0,"drainForcedQueue(true) hands the promoted contact to the legacy battle initiation on the same piece objects");
+T.S.battle=null; T.S.forcedTargets=[]; T.S.movedPiece=null; T.S.forcedQueue=[];
+ok(T.drainForcedQueue(false)===false&&T.drainForcedQueue(true)===false,"an empty queue promotes nothing for either start mode");
+ok(/function drainForcedQueue\(autoStart\)\{\s*const result=dispatchCoreAction\(\{t:"drainForced",autoStart:!!autoStart\}\);/.test(T.html)&&(T.html.match(/type:"forcedExempt"/g)||[]).length===3&&(T.html.match(/forcedContactStart\(event\.piece,event\.list\)/g)||[]).length===1,"AI, end turn, flee and battle completion share one Core drain entry point and the promoted battle reuses the shared display helper");
 ok(/const result=dispatchCoreAction\(\{t:"teleSwap",a,b\}\);/.test(T.html)&&/return doTeleportSwapLegacy\(a,b\);/.test(T.html)&&/forcedContactStart\(event\.pieces\.find\(/.test(T.html)&&(T.html.match(/S\.teleUsed\[S\.current\]\+\+/g)||[]).length===1,"UI, AI and network replay share one teleport swap entry point and the promoted contact reuses the shared display helper");
 ok(/function doMove\(p,r,c\)\{ if\(p&&dispatchCoreAction\(\{t:"move",id:p\.id,r,c\}\)\) return; doMoveLegacy\(p,r,c\); \}/.test(T.html),"UI, AI and network replay share one canonical move entry point");
 ok(!/S\.(teleport|selected)\s*=/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"onCellCore no longer assigns the teleport pick or selection state directly");

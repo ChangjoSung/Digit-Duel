@@ -199,6 +199,34 @@ function reduceCoreAction(state,action){
       return {state:next,events:[{type:"teleSwapped",player:state.current,pieces:[pa,pb],
         healBroken:[!!a.healing,!!b.healing],traces,forced}]};
     }
+    /* #245 강제 전투 큐 소비: 큐에서 항목 하나를 꺼내 movedPiece·contactSet·forcedTargets·selected(·contactKind)로 승격하는
+       상태 전이를 Core 가 소유한다. 면제 사유 로그·토스트, "추가 접촉" 배너, render, 전투 개시(forcedContactStart→initBattle)는
+       forcedExempt·forcedPromoted 이벤트가 종전 표시 계층으로 그대로 넘긴다 — 문구·순서가 갈라지지 않게.
+       면제로 버린 항목도 큐에서는 빠진다 — 승격이 없어도(이벤트만 나가도) 큐는 줄어든 상태로 돌아간다 (레거시 shift 와 같다).
+       도망 교환 선택 중(fleePick)에는 아무것도 꺼내지 않고 없던 큐의 정규화도 하지 않는다 (레거시 조기 반환 그대로).
+       판정 헬퍼(alivePieces·adjEnemies·forcedEligible)는 **인자로 받은 state 의 보드만** 읽는다 — 전역 S 를 읽으면 같은 입력에
+       다른 결과가 나온다(온라인 재생·AI 탐색처럼 S 와 reducer 상태가 갈리는 호출). */
+    case "drainForced": {
+      if(state.fleePick) return {state,events:[]};
+      const queue=state.forcedQueue?state.forcedQueue.slice():[], events=[];
+      let promoted=null;
+      while(queue.length&&!promoted&&state.phase==="play"&&!state.battle&&!(state.forcedTargets&&state.forcedTargets.length)){
+        const n=queue.shift(), p=alivePieces(state).find(x=>x.id===n.pid);
+        if(!p){ events.push({type:"forcedExempt",message:"⚔️ 강제 전투 면제 — 해당 말이 제거되었습니다."}); continue; }
+        if(state.battlesUsed>=2){ events.push({type:"forcedExempt",owner:p.owner,message:"⚔️ 강제 전투 면제 — 이번 턴 전투 횟수(2회)를 모두 사용했습니다.",toast:"⚔️ 강제 전투 면제 — 전투 횟수 소진"}); continue; }
+        const list=adjEnemies(p,state).filter(e=>n.targets.includes(e.id)&&forcedEligible(p,e)).map(e=>e.id); // 승격 시 인접·적격 재검사 (밀려나거나 죽은 대상은 여기서 빠진다)
+        if(!list.length){ events.push({type:"forcedExempt",message:"⚔️ 강제 전투 면제 — 신규 인접 대상이 사라졌습니다."}); continue; }
+        promoted={piece:p,list};
+      }
+      const next=Object.assign({},state,{forcedQueue:queue});
+      if(promoted){
+        next.movedPiece=promoted.piece; next.contactSet=adjEnemies(promoted.piece,state).map(e=>e.id); next.forcedTargets=promoted.list;
+        if(action.autoStart){ if(promoted.list.length>1) next.selected=promoted.piece; } // 즉시 개시: applyForced 와 같이 대상 2개 이상일 때만 선택 상태로 둔다
+        else { next.selected=promoted.piece; next.contactKind="again"; } // 대상 표시만: 클릭 개시라 항상 선택 · "추가 접촉" 배너 종류
+        events.push({type:"forcedPromoted",piece:promoted.piece,list:promoted.list,autoStart:!!action.autoStart});
+      }
+      return {state:next,events};
+    }
     default: return null;
   }
 }
@@ -555,26 +583,12 @@ function doTeleportSwapLegacy(a,b){
 }
 /* #18 강제 전투 queue 소비: 대기 항목 하나를 꺼내 forcedTargets로 승격. 전투 종료 지점(승·패·포획·도주·폭탄·함정·밀어내기)마다 호출.
    autoStart: 사람·단일 대상이면 즉시 개시(스왑 직후) / false면 대상 표시만(전투 연출 종료 직후 — 클릭으로 개시).
-   대상·말 소멸이나 전투 횟수 소진으로 이행 불가하면 반드시 로그로 면제 사유를 남긴다 (조용한 누락 금지). */
+   대상·말 소멸이나 전투 횟수 소진으로 이행 불가하면 반드시 로그로 면제 사유를 남긴다 (조용한 누락 금지 — forcedExempt 이벤트).
+   #245: 큐 소비·면제 판정·승격은 Core reducer(drainForced)가 소유하고, 여기는 AI·턴 종료·도망·전투 종료 호출처가 쓰는
+   종전 반환 계약(실제로 승격했으면 true)만 지킨다. */
 function drainForcedQueue(autoStart){
-  if(S.fleePick) return false;
-  if(!S.forcedQueue) S.forcedQueue=[];
-  while(S.forcedQueue.length&&S.phase==="play"&&!S.battle&&!(S.forcedTargets&&S.forcedTargets.length)){
-    const n=S.forcedQueue.shift();
-    const p=alivePieces().find(x=>x.id===n.pid);
-    if(!p){ addLog("⚔️ 강제 전투 면제 — 해당 말이 제거되었습니다.","imp"); continue; }
-    if(S.battlesUsed>=2){ addLog("⚔️ 강제 전투 면제 — 이번 턴 전투 횟수(2회)를 모두 사용했습니다.","imp"); if(!isAI(p.owner)) showToast("⚔️ 강제 전투 면제 — 전투 횟수 소진"); continue; }
-    const list=adjEnemies(p).filter(e=>n.targets.includes(e.id)&&forcedEligible(p,e)).map(e=>e.id);
-    if(!list.length){ addLog("⚔️ 강제 전투 면제 — 신규 인접 대상이 사라졌습니다.","imp"); continue; }
-    S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
-    if(autoStart){ applyForced(p,null,list); return true; }
-    S.forcedTargets=list; S.selected=p;
-    const fmsg=list.length===1?"⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! (빨간 표시 대상을 클릭)":`⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! 대상 ${list.length}개 중 하나를 선택하세요.`;
-    addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
-    S.contactKind="again"; contactBannerFx(p,viewerIsOwner(p.owner)?"남은 말의 접촉 대상(빨간 표시)을 클릭하세요":"상대가 남은 접촉 대상을 고르고 있습니다"); // #106 4.5 "추가 접촉" 배너 (보드 복귀 뒤 순서)
-    return true;
-  }
-  return false;
+  const result=dispatchCoreAction({t:"drainForced",autoStart:!!autoStart});
+  return !!result&&result.events.some(event=>event.type==="forcedPromoted");
 }
 /* #20 경기 종료 공통: 승자(null=무승부)·승리 유형·종료 턴을 지표에 저장 */
 function gameOver(winner,type){

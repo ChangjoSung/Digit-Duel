@@ -90,6 +90,17 @@ function applyUiEvents(events){
       else render();
       continue;
     }
+    if(event.type==="forcedExempt"){ // #18·#245 강제 전투 면제 — 큐 소비는 Core 가 끝냈고 여기는 사유 기록·안내만 (조용한 누락 금지)
+      addLog(event.message,"imp"); if(event.toast&&!isAI(event.owner)) showToast(event.toast);
+      continue;
+    }
+    if(event.type==="forcedPromoted"){ // #18·#245 큐에서 승격된 강제 전투 — 대상·선택·배너 종류는 Core 가 확정했고 여기는 문구·배너·전투 개시만
+      if(event.autoStart){ forcedContactStart(event.piece,event.list); continue; } // 스왑 직후 즉시 개시 — 이동·스왑과 같은 헬퍼(render·initBattle 포함)
+      const fmsg=event.list.length===1?"⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! (빨간 표시 대상을 클릭)":`⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! 대상 ${event.list.length}개 중 하나를 선택하세요.`;
+      addLog(fmsg,"imp"); if(!isAI(event.piece.owner)) showToast(fmsg);
+      contactBannerFx(event.piece,viewerIsOwner(event.piece.owner)?"남은 말의 접촉 대상(빨간 표시)을 클릭하세요":"상대가 남은 접촉 대상을 고르고 있습니다"); // #106 4.5 "추가 접촉" 배너 (보드 복귀 뒤 순서 · render 는 호출처가 한다)
+      continue;
+    }
     if(event.type==="mainSkipped"){
       const ai=event.origin==="ai", msg=ai?"🤖 AI 주 행동 생략":`${pname(event.player)} 주 행동 생략`;
       addLog(msg,ai?"ai":"");
