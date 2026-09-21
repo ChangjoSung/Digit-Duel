@@ -1238,5 +1238,138 @@ if(baseHtml){
   for(const seed of [24501,24502,24511,24512]) ok(trace({html:baseHtml},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner matches the pre-split baseline");
 }
 
+/* ===== #245 반복 스킬 선언 표 — 데이터 한 곳 · 예외만 좁은 hook =====
+   표로 옮긴 15종은 V2_FX 손글씨 구현이 없고 스킬 데이터의 self* 필드만으로 돈다.
+   달궈진 껍질만 좁은 hook 으로 남는다 — 경화 → 반격 표식 순서를 표의 고정 순서로 낼 수 없어서다. 아래 (3b) 가 그 순서를 본다.
+   검사는 실제 엔진 경로(execSlot → execV2 → v2Default → v2Self)로 몰아서 전환 전과 같은 **로그 전문과 상태**를 본다.
+   기대값은 전환 전 손글씨 구현을 같은 무대에서 돌려 받은 실측이다. 끝에 음성 대조 둘이 붙는다. */
+{
+  const realRandom=Math.random;
+  /* 무대: 내 HP 60/120 · 자기 화상 1개(정화가 보이게) · 방어막 10 · 상대 HP 300. 난수 0.5 = 회피·치명 없음 */
+  const tableArena=(skillId,probe)=>{
+    H.freshPlay(T,"pvp"); H.clearBoard(T);
+    const mine=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), foe=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
+    H.place(T,mine,7,4); H.place(T,foe,6,4);
+    H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1);
+    H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
+    const set=(piece,o)=>{ piece.hp=o.hp; piece.maxHp=o.maxHp; piece.atk=20; piece.def=0; piece.spd=10; piece.dodge=0; piece.crit=0;
+      piece.statusPct=0; piece.grade=1; piece.element=o.element; piece.shieldStartPct=0; piece.skills=o.skills; piece.revealedSkills=[]; piece.legend=null;
+      piece.name=o.name; }; // 종 이름은 무작위 배치를 타므로 로그 대조를 위해 고정한다
+    set(mine,{hp:60,maxHp:120,element:"fire",skills:["M-F1-1",skillId],name:"새끼 화룡"});
+    set(foe,{hp:300,maxHp:300,element:"grass",skills:["M-F1-1"],name:"상대"});
+    T.S.battle=null; T.S.battlesUsed=0; T.TQ.length=0;
+    T.startRounds(mine,foe,mine,foe); T.TQ.length=0;
+    const B=T.S.battle;
+    T.applyTimedFx(B.fa,"burn",2,"burnMag",0.05); B.fa.burnBy="D";
+    T.shieldAdd(B.fa,10,"test");
+    B.blog.length=0; B.msgQ.length=0;
+    B.phase=(B.firstSide==="A")?0:1;
+    T.setSeed(null); Math.random=()=>0.5;
+    if(probe) probe(B.fa);
+    T.execSlot("A",1); T.TQ.length=0;
+    Math.random=realRandom; T.setSeed(null);
+    const f=T.S.battle?T.S.battle.fa:B.fa;
+    const state={};
+    for(const key of ["hp","shield","harden","hardenPct","evadeBuff","evadeBuffR","dmgUpBuff","dmgUpBuffR","vanguardTurn",
+      "retaliateBurnR","reflectR","counterR","overloadR","ringR","burn","absorbR"]) if(f[key]) state[key]=f[key];
+    return {blog:B.blog.slice(),state};
+  };
+  /* [스킬 id, 전환 전 로그 전문, 전환 전 자기 상태] */
+  const TABLE=[
+    ["M-F1-3",["새끼 화룡의 달군 비늘!","🫧 방어막 22 · 가하는 피해 +20% (1R)"],{hp:60,shield:22,dmgUpBuff:0.2,dmgUpBuffR:1,burn:2}],
+    ["M-W1-3",["새끼 화룡의 맑은 물!","✨ 새끼 화룡의 상태이상 1개가 해제되었다.","💚 새끼 화룡 맑은 물 — HP 10 회복!"],{hp:70,shield:10}],
+    ["M-W2-3",["새끼 화룡의 잠영!","💨 회피 +20% · 다음 라운드 선턴"],{hp:60,shield:10,evadeBuff:0.2,evadeBuffR:1,vanguardTurn:1,burn:2}],
+    ["M-W3-4",["새끼 화룡의 빙벽 반사!","🧊 빙벽 반사 (2R)"],{hp:60,shield:10,reflectR:2,burn:2}],
+    ["M-W4-3",["새끼 화룡의 안개 걸음!","💨 회피 +30% (1R)"],{hp:60,shield:10,evadeBuff:0.3,evadeBuffR:1,burn:2}],
+    ["M-W6-3",["새끼 화룡의 껍질 닫기!","🫧 방어막 32"],{hp:60,shield:32,burn:2}],
+    ["M-W6-4",["새끼 화룡의 집게 반격!","🦀 집게 반격 (2R) — 방어막이 막은 피해 50% 반사"],{hp:60,shield:10,counterR:2,burn:2}],
+    ["M-L3-4",["새끼 화룡의 과부하 방벽!","⚡ 과부하 방벽 (2R)"],{hp:60,shield:10,overloadR:2,burn:2}],
+    ["M-L6-3",["새끼 화룡의 축전!","🫧 축전 방어막 34"],{hp:60,shield:34,burn:2}],
+    ["M-E3-3",["새끼 화룡의 강철 가죽!","🛡 새끼 화룡 경화 30% (1R)"],{hp:60,shield:10,harden:1,hardenPct:0.3,burn:2}],
+    ["M-E5-4",["새끼 화룡의 태고의 각성!","💚 새끼 화룡 태고의 각성 — HP 36 회복!","🛡 새끼 화룡 경화 20% (2R)"],{hp:96,shield:10,harden:2,hardenPct:0.2,burn:2}],
+    ["M-E6-3",["새끼 화룡의 웅크린 공!","🫧 방어막 40"],{hp:60,shield:40,burn:2}],
+    ["M-G3-3",["새끼 화룡의 나이테!","🌳 나이테 (2R)"],{hp:60,shield:10,ringR:2,burn:2}],
+    ["M-G6-3",["새끼 화룡의 포자 막!","🫧 포자 막 방어막 28","💚 새끼 화룡 포자 막 — HP 7 회복!"],{hp:67,shield:28,burn:2}],
+    ["L-DRAGON-2",["새끼 화룡의 비늘 세우기!","🛡 새끼 화룡 경화 15% (1R)"],{hp:60,shield:28,harden:1,hardenPct:0.15,burn:2}]
+  ];
+  const SELF_FIELDS=["selfShield","selfHarden","selfAbsorb","selfEvade","selfDmgUp","selfTimed","selfCleanse","selfHealPct"];
+  /* (1) 구조 — 표로 옮긴 15종에는 손글씨 hook 이 없고, 동작은 전부 선언 필드로 적혀 있다 */
+  ok(TABLE.every(([id])=>!Object.prototype.hasOwnProperty.call(T.V2_FX,T.SKILLS[id].fx)),
+     "표로 옮긴 15종은 V2_FX 손글씨 구현을 하나도 갖지 않는다");
+  ok(TABLE.every(([id])=>SELF_FIELDS.some(key=>T.SKILLS[id][key]!==undefined)),
+     "표로 옮긴 15종은 전부 선언 필드(self*)로 동작을 적는다");
+  /* fx 이름은 남는다 — V2_AI_HINT 표가 그 이름으로 def·heal·debuff 를 붙이고 AI 가 그대로 읽는다.
+     이름과 힌트 값을 스킬마다 **정확히** 대조한다(있다/없다가 아니라 무엇인지) — 전환 전 V2_AI_HINT 분류 그대로다 */
+  const AI_HINT={"M-F1-3":["emberScale","def"],"M-W1-3":["clearWater","heal"],"M-W2-3":["dive","def"],
+    "M-W3-4":["iceReflect","def"],"M-W4-3":["mistStep","def"],"M-W6-3":["shellClose","def"],"M-W6-4":["clawCounter","def"],
+    "M-L3-4":["overloadWall","def"],"M-L6-3":["capacitor","def"],"M-E3-3":["steelHide","def"],"M-E5-4":["ancientAwaken","heal"],
+    "M-E6-3":["curlBall","def"],"M-G3-3":["treeRing","heal"],"M-G6-3":["sporeFilm","def"],"L-DRAGON-2":["scaleUp","def"]};
+  const hintOk=()=>TABLE.every(([id])=>AI_HINT[id]&&T.SKILLS[id].fx===AI_HINT[id][0]&&T.SKILLS[id].ai===AI_HINT[id][1]);
+  ok(Object.keys(AI_HINT).length===TABLE.length&&hintOk(),
+     "표로 옮긴 15종은 fx 이름과 AI 힌트 값(def·heal·debuff)이 전환 전과 글자 그대로 같다");
+  ok(T.SKILLS["M-F3-3"].fx==="heatShell"&&T.SKILLS["M-F3-3"].ai==="def","hook 으로 남은 달궈진 껍질도 fx 이름·AI 힌트가 그대로다");
+  /* 음성 대조 — 힌트 값이 한 칸만 달라도(heal → def) 위 검사가 잡는다 */
+  const hintSkill=T.SKILLS["M-G3-3"], keepAi=hintSkill.ai;
+  hintSkill.ai="def"; const hintCaught=!hintOk(); hintSkill.ai=keepAi;
+  ok(hintCaught&&hintOk(),"음성 대조 — 나이테의 AI 힌트를 heal → def 로 바꾸면 같은 검사가 잡아낸다");
+  /* 남은 hook 은 전부 살아 있는 스킬이 쓴다 — 죽은 hook 이 남지 않는다 */
+  const usedFx=new Set(Object.keys(T.SKILLS).map(id=>T.SKILLS[id].fx).filter(Boolean));
+  ok(Object.keys(T.V2_FX).every(key=>usedFx.has(key)),"남은 V2_FX hook 은 전부 실제 스킬이 쓰는 것뿐이다 (죽은 hook 없음)");
+  /* (2) 동작 동등성 — 실제 엔진 경로가 전환 전과 같은 로그 전문·같은 상태를 낸다 */
+  let same=0;
+  for(const [id,blog,state] of TABLE){
+    const got=tableArena(id);
+    if(JSON.stringify(got.blog)===JSON.stringify(blog)&&JSON.stringify(got.state)===JSON.stringify(state)) same++;
+    else console.error("  선언 표 불일치 "+id+" | 기대 "+JSON.stringify([blog,state])+" | 실측 "+JSON.stringify([got.blog,got.state]));
+  }
+  ok(same===TABLE.length,"선언 표 15종이 전환 전과 같은 로그 전문·자기 상태를 낸다 ("+same+"/"+TABLE.length+")");
+  /* (3) 고정 순서 — 방어막 문구가 회복보다 먼저, 회복이 경화보다 먼저 (전환 전 손글씨 순서) */
+  const film=tableArena("M-G6-3").blog, awaken=tableArena("M-E5-4").blog;
+  ok(film.findIndex(line=>line.indexOf("방어막")>=0)<film.findIndex(line=>line.indexOf("회복")>=0)
+    &&awaken.findIndex(line=>line.indexOf("회복")>=0)<awaken.findIndex(line=>line.indexOf("경화")>=0),
+     "선언 표는 방어막 → 회복 → 경화 고정 순서로 적용한다");
+  /* (3b) 달궈진 껍질 — 경화 → 반격 화상 표식. 두 적용은 서로 독립이라 최종 상태·로그가 순서를 드러내지 않는다.
+     그래서 전투원 필드의 **쓰기 순서**를 직접 본다 (접근자로 바꿔 기록 — 값은 그대로 흐른다). */
+  const writeOrder=(f,keys)=>{ const seen=[],val={};
+    for(const key of keys){ val[key]=f[key];
+      Object.defineProperty(f,key,{configurable:true,enumerable:true,
+        get(){return val[key];},set(v){ if(seen[seen.length-1]!==key) seen.push(key); val[key]=v; }}); }
+    return seen; };
+  const shell=tableArena("M-F3-3");
+  ok(JSON.stringify(shell.blog)===JSON.stringify(["새끼 화룡의 달궈진 껍질!","🛡 새끼 화룡 경화 20% (1R)"])
+    &&JSON.stringify(shell.state)===JSON.stringify({hp:60,shield:10,harden:1,hardenPct:0.2,retaliateBurnR:1,burn:2}),
+     "달궈진 껍질은 전환 전과 같은 로그 전문·자기 상태를 낸다");
+  let shellOrder=null;
+  tableArena("M-F3-3",f=>{ shellOrder=writeOrder(f,["harden","retaliateBurnR"]); });
+  ok(JSON.stringify(shellOrder)===JSON.stringify(["harden","retaliateBurnR"]),
+     "달궈진 껍질은 경화를 먼저 적용하고 반격 화상 표식을 뒤에 적용한다 (전환 전 순서)");
+  /* 음성 대조 — 두 적용을 뒤바꾸면 같은 검사가 쓰기 순서에서 잡는다 (최종 상태는 같다) */
+  const keepHeat=T.V2_FX.heatShell;
+  T.V2_FX.heatShell=c=>{ T.applyTimedFx(c.f,"retaliateBurnR",1); T.applyTimedFx(c.f,"harden",1,"hardenPct",0.20); };
+  let flipped=null;
+  const flippedRun=tableArena("M-F3-3",f=>{ flipped=writeOrder(f,["harden","retaliateBurnR"]); });
+  T.V2_FX.heatShell=keepHeat;
+  ok(JSON.stringify(flipped)===JSON.stringify(["retaliateBurnR","harden"])
+    &&flippedRun.state.harden===1&&flippedRun.state.retaliateBurnR===1,
+     "음성 대조 — 경화와 반격 표식의 적용 순서를 뒤바꾸면 같은 상태가 나와도 쓰기 순서에서 잡아낸다");
+  /* (4) 음성 대조 A — 표 값 한 칸(방어막 18% → 19%)만 틀려도 위 검사가 잡는다 */
+  const shellSkill=T.SKILLS["M-W6-3"], keepShield=shellSkill.selfShield;
+  shellSkill.selfShield=0.19;
+  const perturbed=tableArena("M-W6-3");
+  shellSkill.selfShield=keepShield;
+  ok(JSON.stringify(perturbed.blog)!==JSON.stringify(TABLE.find(row=>row[0]==="M-W6-3")[1])&&perturbed.state.shield===33,
+     "음성 대조 — 표의 방어막 값을 18% → 19% 로 한 칸 틀리면 같은 검사가 로그·상태에서 잡아낸다 (32 → 33)");
+  ok(JSON.stringify(tableArena("M-W6-3").blog)===JSON.stringify(TABLE.find(row=>row[0]==="M-W6-3")[1]),
+     "음성 대조를 되돌리면 다시 기준값과 같다");
+  /* (5) 음성 대조 B — 문구도 표가 낸다. selfMsg 를 지우면 방어막 기본 문구로 바뀐다 */
+  const filmSkill=T.SKILLS["M-G6-3"], keepMsg=filmSkill.selfMsg;
+  delete filmSkill.selfMsg;
+  const noMsg=tableArena("M-G6-3").blog;
+  filmSkill.selfMsg=keepMsg;
+  ok(noMsg[1]==="🫧 방어막 28!"&&noMsg.length===film.length,
+     "음성 대조 — selfMsg 를 지우면 표의 방어막 기본 문구가 대신 나온다 (문구도 손글씨가 아니라 표가 낸다)");
+  Math.random=realRandom; T.setSeed(null);
+}
+
 console.log(`\n=== smoke_issue245: pass ${pass} / fail ${fail} ===`);
 if(fail) process.exit(1);

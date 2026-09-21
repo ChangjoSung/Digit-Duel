@@ -344,7 +344,7 @@ function v2Second(id,ko,arch,el){ const s=V2_SKELETON[arch], fx=V2_ELEM_FX[el], 
 /* 6.3 일반 하수인 30종 — [종 id, 이름, 속성, 아키타입, 1차, 2차, 3차 {정의}, 4차 {정의}]. 3·4차 desc 는 GDD 6.3 문구 그대로. */
 const V2_SPECIES_DEF=[
   ["M-F1","새끼 화룡","fire","std","불씨 할퀴기","불씨 브레스",
-    {ko:"달군 비늘",cd:3,fx:"emberScale",desc:"자기 방어막 최대 HP 10% · 가하는 피해 +20%(1R) / ⌛3"},
+    {ko:"달군 비늘",cd:3,fx:"emberScale",selfShield:0.10,selfDmgUp:{pct:0.20,r:1},selfMsg:"🫧 방어막 {shield} · 가하는 피해 +20% (1R)",desc:"자기 방어막 최대 HP 10% · 가하는 피해 +20%(1R) / ⌛3"},
     {ko:"성룡의 포효",cd:4,pct:100,fx:"dragonRoar",desc:"💪🏻 (100% + 현재 라운드 × 20%) · 화상 100% / ⌛4"}],
   ["M-F2","화염 투사","fire","atk","불꽃 주먹","화염 방사",
     {ko:"조준 사격",cd:2,pct:120,fx:"aimShot",desc:"💪🏻 120%, 대상이 화상이면 치명타 확정 / ⌛2"},
@@ -362,23 +362,23 @@ const V2_SPECIES_DEF=[
     {ko:"열기 축적",cd:3,fx:"heatStore",desc:"자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3"},
     {ko:"화산 폭발",cd:4,pct:100,fx:"volcano",desc:"자기 방어막을 전부 소모해 💪🏻 100% + 소모량 × 150% 고정 피해 · 화상 100% / ⌛4"}],
   ["M-W1","물방울 요정","water","std","물방울 톡","물방울 탄",
-    {ko:"맑은 물",cd:3,fx:"clearWater",desc:"자기 상태이상 1개 해제 · 최대 HP 8% 회복 / ⌛3"},
+    {ko:"맑은 물",cd:3,fx:"clearWater",selfCleanse:true,selfHealPct:0.08,desc:"자기 상태이상 1개 해제 · 최대 HP 8% 회복 / ⌛3"},
     {ko:"거울 수면",cd:4,pct:80,fx:"mirrorSurface",desc:"💪🏻 80% · 자기 상태이상 1개를 해제해 대상에게 그대로 옮김(확률 판정 없이 · 수치와 남은 지속 유지) / ⌛4"}],
   ["M-W2","심해 사냥꾼","water","atk","작살 찌르기","심해 작살",
-    {ko:"잠영",cd:3,fx:"dive",desc:"회피율 +20%(1R) · 다음 라운드 선턴 효과 / ⌛3"},
+    {ko:"잠영",cd:3,fx:"dive",selfEvade:{pct:0.20,r:1},selfTimed:[["vanguardTurn",1]],selfMsg:"💨 회피 +20% · 다음 라운드 선턴",desc:"회피율 +20%(1R) · 다음 라운드 선턴 효과 / ⌛3"},
     {ko:"심연의 일격",cd:4,pct:150,fx:"abyssStrike",desc:"💪🏻 150%, 대상의 약화를 소모(해제)하면 💪🏻 250% / ⌛4"}],
   ["M-W3","빙벽 정령","water","def","서리 조각","빙결 강타",
     {ko:"동결",cd:3,pct:60,fx:"freeze",desc:"💪🏻 60% · 대상의 기본기 외 스킬 1개 ⌛ +1(자동 선정) / ⌛3"},
-    {ko:"빙벽 반사",cd:4,fx:"iceReflect",desc:"2R 동안 받은 HP 피해의 30%를 공격자에게 되돌림 / ⌛4"}],
+    {ko:"빙벽 반사",cd:4,fx:"iceReflect",selfTimed:[["reflectR",2]],selfMsg:"🧊 빙벽 반사 (2R)",desc:"2R 동안 받은 HP 피해의 30%를 공격자에게 되돌림 / ⌛4"}],
   ["M-W4","안개 무희","water","swift","물보라 발차기","물보라 스텝",
-    {ko:"안개 걸음",cd:3,fx:"mistStep",desc:"회피율 +30%(1R) / ⌛3"},
+    {ko:"안개 걸음",cd:3,fx:"mistStep",selfEvade:{pct:0.30,r:1},selfMsg:"💨 회피 +30% (1R)",desc:"회피율 +30%(1R) / ⌛3"},
     {ko:"환영 무도",cd:0,once:true,fx:"phantomDance",desc:"상대의 다음 행동 1회를 무효(피해 · 효과 0, 상대 ⌛는 정상 소모) / 전투당 1회"}],
   ["M-W5","파도 술사","water","sustain","물결 치기","파도의 저주",
     {ko:"밀물",cd:2,pct:60,fx:"floodTide",desc:"💪🏻 60% · 대상 약화 남은 횟수 +1(최대 4) / ⌛2"},
     {ko:"해일 예고",cd:0,once:true,fx:"tsunami",desc:"💪🏻 (120% + 대상 약화 남은 횟수 × 30%)의 예약 피해 X를 사용할 때 확정(회피 판정 포함)해 표식 — 대상의 HP + 방어막 ≤ X 가 되는 순간 사망(천년목 · 철벽 돌파 · 과부하 방벽이 켜진 동안은 보류) · 전투 끝까지 / 전투당 1회"}],
   ["M-W6","방패 게","water","guard","집게 찍기","거품 방패",
-    {ko:"껍질 닫기",cd:3,fx:"shellClose",desc:"자기 방어막 최대 HP 18% / ⌛3"},
-    {ko:"집게 반격",cd:4,fx:"clawCounter",desc:"2R 동안 자기 방어막이 막아낸 피해의 50%를 공격자에게 되돌림(반사) / ⌛4"}],
+    {ko:"껍질 닫기",cd:3,fx:"shellClose",selfShield:0.18,selfMsg:"🫧 방어막 {shield}",desc:"자기 방어막 최대 HP 18% / ⌛3"},
+    {ko:"집게 반격",cd:4,fx:"clawCounter",selfTimed:[["counterR",2]],selfMsg:"🦀 집게 반격 (2R) — 방어막이 막은 피해 50% 반사",desc:"2R 동안 자기 방어막이 막아낸 피해의 50%를 공격자에게 되돌림(반사) / ⌛4"}],
   ["M-L1","스파크","lightning","std","찌릿 박치기","스파크 샷",
     {ko:"충전",cd:3,pct:60,fx:"charge",desc:"💪🏻 60% · 감전 100% · 자기 가하는 피해 +10%(2R) / ⌛3"},
     {ko:"연쇄 번개",cd:4,pct:100,fx:"chainLightning",desc:"💪🏻 (100% + 이번 전투에서 감전을 건 횟수 × 30%, 최대 220%) / ⌛4"}],
@@ -387,7 +387,7 @@ const V2_SPECIES_DEF=[
     {ko:"천둥 낙인",cd:4,pct:130,fx:"thunderBrand",desc:"대상이 이번 라운드 후턴이면 💪🏻 260%, 아니면 130% / ⌛4"}],
   ["M-L3","피뢰 골렘","lightning","def","피뢰 주먹","피뢰 강타",
     {ko:"접지",cd:3,fx:"grounding",desc:"자기 감전 해제 · 2R 동안 감전 면역 · 경화 15%(1R) / ⌛3"},
-    {ko:"과부하 방벽",cd:0,once:true,fx:"overloadWall",desc:"2R 동안 한 번에 받는 피해가 최대 HP 15%를 넘지 않음 / 전투당 1회"}],
+    {ko:"과부하 방벽",cd:0,once:true,fx:"overloadWall",selfTimed:[["overloadR",2]],selfMsg:"⚡ 과부하 방벽 (2R)",desc:"2R 동안 한 번에 받는 피해가 최대 HP 15%를 넘지 않음 / 전투당 1회"}],
   ["M-L4","번개 여우","lightning","swift","번개 할퀴기","스파크 스침",
     {ko:"전광석화",cd:2,pct:70,fx:"flashStep",desc:"💪🏻 70% · 자기 다른 스킬 중 남은 ⌛가 가장 긴 1개 ⌛ −1 / ⌛2"},
     {ko:"번개 꼬리",cd:4,pct:100,fx:"lightningTail",desc:"💪🏻 100% 뒤 같은 턴에 추가 공격 1회 — 이번 턴만 2 · 3차 ⌛0, 스파크 스침 · 전광석화 · 기본기 중 선택, 피해 60%(도망 · 볼 · 아이템 · 패스 불가). 턴이 끝나면 2 · 3차 ⌛를 원래대로 되돌림 / ⌛4"}],
@@ -395,7 +395,7 @@ const V2_SPECIES_DEF=[
     {ko:"자기장",cd:2,pct:50,fx:"magField",desc:"💪🏻 50% · 대상이 감전이면 대상의 기본기 외 스킬 1개 ⌛ +1(자동 선정) / ⌛2"},
     {ko:"영구 자기장",cd:0,once:true,fx:"permField",desc:"대상에게 감전 3R(확률 판정 없이) / 전투당 1회"}],
   ["M-L6","축전 해파리","lightning","guard","촉수 쏘기","전류막",
-    {ko:"축전",cd:3,fx:"capacitor",desc:"자기 방어막 최대 HP 20% / ⌛3"},
+    {ko:"축전",cd:3,fx:"capacitor",selfShield:0.20,selfMsg:"🫧 축전 방어막 {shield}",desc:"자기 방어막 최대 HP 20% / ⌛3"},
     {ko:"방전",cd:4,pct:120,fx:"discharge",desc:"💪🏻 120% + 현재 자기 방어막의 50%를 고정 피해로 추가(방어막은 유지) · 감전 100% / ⌛4"}],
   ["M-E1","바위 두더지","land","std","흙 할퀴기","록 태클",
     {ko:"굴 파기",cd:3,fx:"burrow",desc:"이번 행동은 공격 없음 · 경화 40%(1R) / ⌛3"},
@@ -404,16 +404,16 @@ const V2_SPECIES_DEF=[
     {ko:"창 박기",cd:2,pct:110,ignoreShield:true,desc:"💪🏻 110%, 방어막 무시 / ⌛2"},
     {ko:"대지 관통",cd:4,pct:180,ignoreDef:true,desc:"💪🏻 180%, 대상의 방어력 · 받는 피해 감소 효과(경화 · 방어형 시너지 등) 전부 무시 / ⌛4"}],
   ["M-E3","철갑 코뿔소","land","def","뿔 들이받기","철갑 돌진",
-    {ko:"강철 가죽",cd:3,fx:"steelHide",desc:"경화 30%(1R) / ⌛3"},
+    {ko:"강철 가죽",cd:3,fx:"steelHide",selfHarden:{pct:0.30,r:1},desc:"경화 30%(1R) / ⌛3"},
     {ko:"철벽 돌파",cd:4,fx:"ironBreak",desc:"다음 라운드가 끝날 때까지 받는 피해 1회 무효 · 다음 피해 스킬 위력 +80%p / ⌛4"}],
   ["M-E4","모래 여우","land","swift","모래 할퀴기","모래 스침",
     {ko:"모래바람",cd:2,pct:60,fx:"sandWind",desc:"💪🏻 60% · 대상 회피율 −10%p(2R) · 자기 회피율 +10%(1R) / ⌛2"},
     {ko:"모래 폭풍",cd:4,fx:"sandStorm",desc:"2R 동안 대상의 상태이상 부여 확률 절반 · 대상 회피율 −20%p(2R) / ⌛4"}],
   ["M-E5","고대 골렘","land","sustain","돌덩이 내려치기","태고의 저주",
     {ko:"풍화",cd:2,fx:"weathering",desc:"대상 균열 지속 +1R(최대 3R) · 자기 경화 10%(1R) / ⌛2"},
-    {ko:"태고의 각성",cd:0,once:true,req:"round4",fx:"ancientAwaken",desc:"4라운드부터 사용, 최대 HP 30% 회복 · 경화 20%(2R) / 전투당 1회"}],
+    {ko:"태고의 각성",cd:0,once:true,req:"round4",fx:"ancientAwaken",selfHealPct:0.30,selfHarden:{pct:0.20,r:2},desc:"4라운드부터 사용, 최대 HP 30% 회복 · 경화 20%(2R) / 전투당 1회"}],
   ["M-E6","황토 아르마딜로","land","guard","몸통 굴리기","황토 껍질",
-    {ko:"웅크린 공",cd:3,fx:"curlBall",desc:"이번 행동은 공격 없음, 자기 방어막 최대 HP 25% / ⌛3"},
+    {ko:"웅크린 공",cd:3,fx:"curlBall",selfShield:0.25,selfMsg:"🫧 방어막 {shield}",desc:"이번 행동은 공격 없음, 자기 방어막 최대 HP 25% / ⌛3"},
     {ko:"요새 전환",cd:4,fx:"fortress",desc:"현재 자기 방어막만큼 방어막 추가(최대 HP 20% 한도) · 자기 방어막 최대 HP 10% / ⌛4"}],
   ["M-G1","새싹 파수꾼","grass","std","새싹 치기","잎날 베기",
     {ko:"광합성",cd:3,fx:"photosynthesis",desc:"최대 HP 10% 회복, 이번 라운드 선턴이면 15% / ⌛3"},
@@ -422,7 +422,7 @@ const V2_SPECIES_DEF=[
     {ko:"뿌리 고정",cd:3,pct:100,fx:"rootBind",desc:"💪🏻 100% · 이 전투 동안 대상 도망 불가 · 2R 동안 대상 회복량 −50% / ⌛3"},
     {ko:"포식",cd:4,pct:160,fx:"devour",desc:"💪🏻 160%, 대상 HP 30% 이하면 💪🏻 260% · 이 공격으로 쓰러뜨리면 자기 최대 HP 20% 회복 / ⌛4"}],
   ["M-G3","고목 수호자","grass","def","가지 휘두르기","뿌리 강타",
-    {ko:"나이테",cd:3,fx:"treeRing",desc:"2R 동안 라운드 종료 시 최대 HP 6% 회복 / ⌛3"},
+    {ko:"나이테",cd:3,fx:"treeRing",selfTimed:[["ringR",2]],selfMsg:"🌳 나이테 (2R)",desc:"2R 동안 라운드 종료 시 최대 HP 6% 회복 / ⌛3"},
     {ko:"천년목",cd:0,once:true,fx:"millennium",desc:"사용 후 2R 안에 HP를 0으로 만드는 첫 피해를 받으면 최대 HP 15%로 버팀(부활이 아니며 1회만 발동) / 전투당 1회"}],
   ["M-G4","포자 요정","grass","swift","포자 뿌리기","포자 스침",
     {ko:"수면 포자",cd:3,fx:"sleepSpore",desc:"대상의 다음 행동은 기본기만 가능 / ⌛3"},
@@ -431,7 +431,7 @@ const V2_SPECIES_DEF=[
     {ko:"이끼 흡혈",cd:3,pct:90,fx:"mossDrain",desc:"💪🏻 90% · 이 공격이 HP에 준 피해의 50% 회복 / ⌛3"},
     {ko:"이끼 잠식",cd:4,fx:"mossRot",desc:"3R 동안 라운드 종료 시 대상 최대 HP 4% 피해 · 같은 양 자기 회복(상태이상, 해독제로 해제) / ⌛4"}],
   ["M-G6","방패 버섯","grass","guard","갓 부딪기","버섯갓 방패",
-    {ko:"포자 막",cd:3,fx:"sporeFilm",desc:"자기 방어막 최대 HP 15% · 자기 최대 HP 6% 회복 / ⌛3"},
+    {ko:"포자 막",cd:3,fx:"sporeFilm",selfShield:0.15,selfMsg:"🫧 포자 막 방어막 {shield}",selfHealPct:0.06,desc:"자기 방어막 최대 HP 15% · 자기 최대 HP 6% 회복 / ⌛3"},
     {ko:"균사 전환",cd:4,fx:"mycelium",desc:"현재 자기 방어막을 전부 HP 회복으로 전환(최대 HP 30% 한도) · 2R 동안 흡수 30% / ⌛4"}]
 ];
 /* 종 id → 4스킬 id. 등급 N 은 앞에서 N개(3.4 · 6.1: ⭐1=1차, ⭐2=1~2차, ⭐3=1~3차, ⭐4=1~4차) */
@@ -445,7 +445,7 @@ function speciesSkills(rosterId,grade){ const all=V2_SPECIES[rosterId]; if(!all)
 const LEGEND_ROSTER=[
   {id:"L-DRAGON",key:"dragon",name:"용",emo:"🐉",arch:"std",skills:[
     v2Reg("L-DRAGON-1",{ko:"용 발톱",kind:"basic",pct:100,cd:0,neutral:true,desc:"기본기 · 💪🏻 100% / ⌛0"}),
-    v2Reg("L-DRAGON-2",{ko:"비늘 세우기",cd:3,neutral:true,fx:"scaleUp",desc:"자기 방어막 최대 HP 15% · 경화 15%(1R) / ⌛3"}),
+    v2Reg("L-DRAGON-2",{ko:"비늘 세우기",cd:3,neutral:true,fx:"scaleUp",selfShield:0.15,selfMsg:"",selfHarden:{pct:0.15,r:1},desc:"자기 방어막 최대 HP 15% · 경화 15%(1R) / ⌛3"}),
     v2Reg("L-DRAGON-3",{ko:"날개 강타",cd:2,pct:140,neutral:true,fx:"wingStrike",desc:"💪🏻 140% · 대상 회피율 −15%p(2R) / ⌛2"}),
     v2Reg("L-DRAGON-4",{ko:"드래곤 숨결",cd:3,pct:140,neutral:true,dragonMult:1.3,desc:"💪🏻 140% · 속성이 있는 상대에게 항상 ×1.3, 무속성 상대(전설)에게 ×1.0 / ⌛3"})]},
   {id:"L-WITCH",key:"witch",name:"마녀",emo:"🕯",arch:"sustain",skills:[
@@ -749,16 +749,31 @@ function v2Default(ctx,o){
   v2Self(ctx,o);
   return res;
 }
+/* #245 반복 자기 효과는 선언 표다 — 스킬 데이터의 self* 필드만 읽어 **고정 순서**로 적용한다.
+   순서: 방어막 · 회피 · 가하는 피해 · 지속 플래그(여기까지는 문구 없음) → selfMsg → 정화 → 회복 → 경화 → 흡수.
+   이 순서는 전환 전 손글씨 V2_FX 구현의 로그 순서 그대로다 (방어막→회복 · 정화→회복 · 회복→경화).
+   selfMsg: 있으면 방어막 기본 문구 대신 이 한 줄만 내보내고 `{shield}` 는 합계로 바뀐다. `""` 는 문구 없음(비늘 세우기).
+   조건 분기 · 1회성 플래그 · 상대 효과처럼 종별로 다른 동작만 V2_FX 에 좁은 hook 으로 남긴다.
+   표로 옮긴 15종: 달군 비늘 · 맑은 물 · 잠영 · 빙벽 반사 · 안개 걸음 · 껍질 닫기 · 집게 반격 ·
+   과부하 방벽 · 축전 · 강철 가죽 · 태고의 각성 · 웅크린 공 · 나이테 · 포자 막 · 비늘 세우기.
+   달궈진 껍질은 이 고정 순서로 옛 순서를 낼 수 없어 좁은 hook 으로 남는다 (V2_FX.heatShell 주석).
+   이 중 #241 단순화로 지금 모습이 된 것(9 달군 비늘 · 6 집게 반격 · 3 축전 · 12 포자 막)은 그때의 계약 그대로이며
+   수치·문구·적용 순서는 하나도 바뀌지 않았다 — 손글씨 구현이 데이터로 옮겨졌을 뿐이다.
+   fx 이름은 지우지 않는다: V2_AI_HINT 가 그 이름으로 def·heal·debuff 를 붙이고 AI 가 그대로 읽는다. */
 function v2Self(ctx,o){
   const {sk,f,side}=ctx; if(!S.battle) return;
-  if(sk.selfShield){ shieldAdd(f,Math.round(f.maxHp*sk.selfShield),sk.id); bmsg(`🫧 방어막 ${f.shield}!`,{st:stFx(side,f)}); }
+  if(sk.selfShield){ shieldAdd(f,Math.round(f.maxHp*sk.selfShield),sk.id); if(sk.selfMsg===undefined) bmsg(`🫧 방어막 ${f.shield}!`,{st:stFx(side,f)}); }
+  if(sk.selfEvade) applyEvadeBuff(f,sk.selfEvade.pct,sk.selfEvade.r);
+  if(sk.selfDmgUp) applyDmgUpBuff(f,sk.selfDmgUp.pct,sk.selfDmgUp.r);
+  if(sk.selfTimed) for(const t of sk.selfTimed) applyTimedFx(f,t[0],t[1]);
+  if(sk.selfMsg) bmsg(sk.selfMsg.replace("{shield}",f.shield),{st:stFx(side,f)});
+  if(sk.selfCleanse) v2CleanseOne(side,f);
+  if(sk.selfHealPct) v2Heal(side,f,f.maxHp*sk.selfHealPct,sk.ko);
   if(sk.selfHarden) v2Apply(side,f,side,f,"harden",1,{force:true,mag:sk.selfHarden.pct,rounds:sk.selfHarden.r});
   if(sk.selfAbsorb) v2Apply(side,f,side,f,"absorb",sk.selfAbsorb*((o&&o.effScale)||1),{rounds:1,mag:0.20});
 }
 const V2_FX={
   /* 🔥 불 */
-  /* #241 단순화 9: 다음 피해 스킬 +20%(1회성 필드) → 가하는 피해 +20%(1R) 버프 */
-  emberScale(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.10),c.sk.id); applyDmgUpBuff(c.f,0.20,1); bmsg(`🫧 방어막 ${c.f.shield} · 가하는 피해 +20% (1R)`,{st:stFx(c.side,c.f)}); },
   dragonRoar(c){ const r=c.hit(100+S.battle.round*20,{}); if(S.battle&&!r.evaded) c.st("burn",1); },
   aimShot(c){ c.hit(120,{critForce:c.opp.burn>0}); },
   burnBurst(c){ const o=c.opp;
@@ -767,6 +782,8 @@ const V2_FX={
       // 4.3 지속 피해 계열 — 회피·방어력·방어막 없이 ⑩ 반올림 한 번 (남은 라운드 × 1회 피해 × 1.5)
       c.hits.push({evaded:false,actual:v2Dot(c.oSide,o,tick*left*1.5,"💥 폭발 연소 —",c.side)}); }
     else c.hit(120,{}); },
+  /* #245 표로 옮기지 않는다 — 경화가 반격 표식보다 **먼저** 와야 하는데 선언 표의 고정 순서는 지속 플래그를 경화보다 앞에 둔다.
+     (태고의 각성은 회복 → 경화, 나이테 등은 지속 플래그 → 문구라서 한 순서로 둘 다 만족시킬 수 없다.) */
   heatShell(c){ v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.20,rounds:1}); applyTimedFx(c.f,"retaliateBurnR",1); },
   eruption(c){ c.hit(80,{flat:Math.min(40,c.f.mitigated||0)}); },
   flameMark(c){ const r=c.hit(60,{}); if(S.battle&&!r.evaded&&c.opp.burn>0){ const o=c.opp;
@@ -783,7 +800,6 @@ const V2_FX={
     bmsg(`🌋 방어막 ${used} 소모!`,{st:stFx(c.side,c.f)});
     const r=c.hit(100,{flat:used*1.5}); if(S.battle&&!r.evaded) c.st("burn",1); },
   /* 💧 물 */
-  clearWater(c){ v2CleanseOne(c.side,c.f); v2Heal(c.side,c.f,c.f.maxHp*0.08,"맑은 물"); },
   /* #241 R3 [CJ 결정] 거울 수면 — 자기 상태이상 1개를 해제해 대상에게 그대로 옮긴다(Venus 3.1 기본값 5개):
      순서 = 자기 해제 → 💪🏻 80% → 적중 시 확정 부여 · 회피면 해제만 · 수치와 남은 지속 숫자 그대로(대상에게는 새 부여 — 5.6 Fresh) ·
      부여자 = 거울 사용자 · 영겁의 재 화상은 건너뜀(N1) · 대상이 면역이면 해제만(v2Apply 가 거부) */
@@ -791,12 +807,9 @@ const V2_FX={
     if(st){ v2ClearStatus(c.f,st.k); bmsg(`🪞 거울 수면 — ${fighterName(c.side)}의 상태이상을 걷어냈다`,{st:stFx(c.side,c.f)}); }
     const r=c.hit(80,{}); if(!S.battle||!st||r.evaded) return;
     v2Apply(c.side,c.f,c.oSide,c.opp,st.k,1,{force:true,rounds:st.rounds,hits:st.hits,mag:st.mag}); },
-  dive(c){ applyEvadeBuff(c.f,0.20,1); applyTimedFx(c.f,"vanguardTurn",1); bmsg(`💨 회피 +20% · 다음 라운드 선턴`,{st:stFx(c.side,c.f)}); },
   abyssStrike(c){ const had=c.opp.weaken>0; const r=c.hit(had?250:150,{});
     if(S.battle&&had&&!r.evaded){ c.opp.weaken=0; c.opp.weakenMag=0; bmsg(`💧 약화 소모!`,{st:stFx(c.oSide,c.opp)}); } },
   freeze(c){ const r=c.hit(60,{}); if(S.battle&&!r.evaded) v2CdUp(c.oSide,c.opp); },
-  iceReflect(c){ applyTimedFx(c.f,"reflectR",2); bmsg(`🧊 빙벽 반사 (2R)`,{st:stFx(c.side,c.f)}); },
-  mistStep(c){ applyEvadeBuff(c.f,0.30,1); bmsg(`💨 회피 +30% (1R)`,{st:stFx(c.side,c.f)}); },
   phantomDance(c){ c.opp.nullifyNext=true; bmsg(`🌫 ${fighterName(c.oSide)}의 다음 행동이 무효가 된다!`,{st:stFx(c.oSide,c.opp)}); },
   floodTide(c){ const r=c.hit(60,{}); if(S.battle&&!r.evaded&&c.opp.weaken>0){ c.opp.weaken=Math.min(4,c.opp.weaken+1); bmsg(`💧 약화 +1회 (${c.opp.weaken}회)`,{st:stFx(c.oSide,c.opp)}); } },
   /* #241 R2 [CJ 설계] 해일 예고 — 시간 예약(pendingFx·atStart)이 아니라 조건 표식이다. 사용 순간 ①~⑩(회피 · 분산 · 상성 · 가하는 피해 ·
@@ -809,9 +822,6 @@ const V2_FX={
     if(pre.evaded){ bmsg(`🌊 해일 예고가 빗나갔다 — 표식 없음`); return; }
     o.tideMark=pre.dmg; o.tideBy=c.side; o.tideHeld=false;
     bmsg(`🌊 해일 예고 — ${fighterName(c.oSide)}에게 표식 ${pre.dmg} (HP + 방어막 ≤ ${pre.dmg} 이면 발동)`,{st:stFx(c.oSide,o)}); },
-  shellClose(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.18),c.sk.id); bmsg(`🫧 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
-  /* #241 단순화 6: 💪🏻 50% 반격(라운드당 1회) → 2R 동안 방어막이 막아낸 피해의 50% 반사 (v2AfterHit · 반사 한 행동 1회) */
-  clawCounter(c){ applyTimedFx(c.f,"counterR",2); bmsg(`🦀 집게 반격 (2R) — 방어막이 막은 피해 50% 반사`,{st:stFx(c.side,c.f)}); },
   /* ⚡ 번개 */
   /* #241 단순화 2(CJ 승인 수정안): 💪🏻 60% · 감전 100%(적중 시 · 방전과 같은 확률 100% 경로) · 자기 가하는 피해 +10%(2R, 자기 효과라 회피와 무관) */
   charge(c){ const r=c.hit(60,{}); if(!S.battle) return; if(!r.evaded) c.st("shock",1); if(!S.battle) return;
@@ -820,7 +830,6 @@ const V2_FX={
   thunderBrand(c){ const late=V2_INTERP.brandByTurnOrder?S.battle.firstSide===c.side:c.opp.shock>0; c.hit(late?260:130,{}); },
   grounding(c){ if(c.f.shock>0){ c.f.shock=0; c.f.shockFresh=false; } applyTimedFx(c.f,"immuneShockR",2);
     v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.15,rounds:1}); bmsg(`⚡ 접지 — 감전 해제 · 2R 감전 면역`,{st:stFx(c.side,c.f)}); },
-  overloadWall(c){ applyTimedFx(c.f,"overloadR",2); bmsg(`⚡ 과부하 방벽 (2R)`,{st:stFx(c.side,c.f)}); },
   flashStep(c){ c.hit(70,{}); if(!S.battle) return; let pick=-1;
     for(let i=0;i<c.f.skills.length;i++) if(i!==c.slot&&c.f.cds[i]>0&&(pick<0||c.f.cds[i]>c.f.cds[pick])) pick=i;
     if(pick>=0){ c.f.cds[pick]--; bmsg(`🔄 ${SKILLS[c.f.skills[pick]].ko} ⌛ −1 (남은 ⌛${c.f.cds[pick]})`); } },
@@ -837,13 +846,10 @@ const V2_FX={
   magField(c){ const r=c.hit(50,{}); if(S.battle&&!r.evaded&&c.opp.shock>0) v2CdUp(c.oSide,c.opp); },
   /* #241 단순화 1: 라운드 시작마다 재부여(permShockR · 라운드 시작 훅) → 사용 시 감전 3R 확정 부여(5.6 부여 라운드 제외 · 접지 면역이면 거부) */
   permField(c){ v2Apply(c.side,c.f,c.oSide,c.opp,"shock",1,{force:true,rounds:3}); },
-  /* #241 단순화 3: 막아낸 피해만큼 다음 피해 스킬 고정 피해(nextFlat · 층 출처) → 방어막 20% */
-  capacitor(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.20),c.sk.id); bmsg(`🫧 축전 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
   discharge(c){ const r=c.hit(120,{flat:(c.f.shield||0)*0.5}); if(S.battle&&!r.evaded) c.st("shock",1); },
   /* 🗻 땅 */
   /* #241 단순화 4: 전용 −40%(burrowR · ⑧ 전용 분기) → 경화 40%(1R). burrowRound 는 지하 매복 사용 조건으로 남는다 */
   burrow(c){ c.f.burrowRound=S.battle.round; bmsg(`🕳 굴 파기`); v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.40,rounds:1}); },
-  steelHide(c){ v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.30,rounds:1}); },
   ironBreak(c){ applyTimedFx(c.f,"nullHitR",1,"nullHitN",1); c.f.nextPowUp=0.80; bmsg(`🦏 철벽 돌파 — 피해 1회 무효 · 다음 피해 스킬 +80%p`,{st:stFx(c.side,c.f)}); },
   /* #241 R4 [CJ 결정] 모래바람 — 💪🏻 60% · 적중 시 대상 회피율 −10%p(2R, 확정) · 자기 회피 +10%(1R, 회피와 무관). 종전 sandWind 1회성 필드 · ⑥ outMult 삭제 */
   sandWind(c){ const r=c.hit(60,{}); if(!S.battle) return;
@@ -853,8 +859,6 @@ const V2_FX={
   sandStorm(c){ applyTimedFx(c.opp,"sandStormR",2); bmsg(`🌪 모래 폭풍 — 상태이상 부여 확률 절반 (2R)`,{st:stFx(c.oSide,c.opp)}); v2Apply(c.side,c.f,c.oSide,c.opp,"evadeDown",1,{force:true,mag:0.20,rounds:2}); },
   weathering(c){ if(c.opp.crack>0){ c.opp.crack=Math.min(3,c.opp.crack+1); bmsg(`🗻 균열 지속 +1R (${c.opp.crack}R)`,{st:stFx(c.oSide,c.opp)}); }
     v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.10,rounds:1}); },
-  ancientAwaken(c){ v2Heal(c.side,c.f,c.f.maxHp*0.30,"태고의 각성"); v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.20,rounds:2}); },
-  curlBall(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.25),c.sk.id); bmsg(`🫧 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
   /* #241 단순화 11: 2R 절반 소모(fortressR · shieldConsume 분기) → 현재 방어막만큼 추가(최대 HP 20% 한도) 뒤 방어막 10% */
   fortress(c){ const dup=Math.min(c.f.shield||0,Math.round(c.f.maxHp*0.20)); if(dup>0) shieldAdd(c.f,dup,c.sk.id);
     shieldAdd(c.f,Math.round(c.f.maxHp*0.10),c.sk.id); bmsg(`🏰 요새 전환 · 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); },
@@ -865,18 +869,14 @@ const V2_FX={
       bmsg(`🌿 뿌리 고정 — 이 전투 동안 도망 불가`,{st:stFx(c.oSide,c.opp)}); } },
   devour(c){ const low=c.opp.hp<=c.opp.maxHp*0.30; const r=c.hit(low?260:160,{});
     if(!r.evaded&&c.opp.hp<=0&&S.battle){ const gain=Math.round(c.f.maxHp*0.20); v2Heal(c.side,c.f,gain,"포식"); } },
-  treeRing(c){ applyTimedFx(c.f,"ringR",2); bmsg(`🌳 나이테 (2R)`,{st:stFx(c.side,c.f)}); },
   millennium(c){ applyTimedFx(c.f,"enduredR",2); c.f.enduredUsed=false; bmsg(`🌳 천년목 (2R)`,{st:stFx(c.side,c.f)}); },
   sleepSpore(c){ c.opp.sleepNext=true; bmsg(`💤 ${fighterName(c.oSide)}의 다음 행동은 기본기만 가능`,{st:stFx(c.oSide,c.opp)}); },
   breedSpore(c){ applyTimedFx(c.opp,"breedR",2); c.opp.breedBy=c.side; bmsg(`🍄 번식 포자 (2R)`,{st:stFx(c.oSide,c.opp)}); },
   mossDrain(c){ const r=c.hit(90,{}); if(S.battle&&!r.evaded&&r.actual>0) v2Heal(c.side,c.f,r.actual*0.5,"이끼 흡혈"); },
   mossRot(c){ v2Apply(c.side,c.f,c.oSide,c.opp,"moss",1,{force:true,mag:0.04,rounds:3}); },
-  /* #241 단순화 12: 막아낸 피해 50% 라운드 종료 회복(sporePending · 층 출처) → 방어막 15% · 즉시 최대 HP 6% 회복 */
-  sporeFilm(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.15),c.sk.id); bmsg(`🫧 포자 막 방어막 ${c.f.shield}`,{st:stFx(c.side,c.f)}); v2Heal(c.side,c.f,c.f.maxHp*0.06,"포자 막"); },
   mycelium(c){ const conv=Math.min(c.f.shield||0,Math.round(c.f.maxHp*0.30)); c.f.shieldLayers=[]; c.f.shield=0; // 전환은 깨짐이 아니다(3.2)
     v2Heal(c.side,c.f,conv,"균사 전환"); v2Apply(c.side,c.f,c.side,c.f,"absorb",1,{force:true,mag:0.30,rounds:2}); },
   /* 전설 */
-  scaleUp(c){ shieldAdd(c.f,Math.round(c.f.maxHp*0.15),c.sk.id); v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.15,rounds:1}); },
   /* #241 V1 [CJ 승인 Q2]: 속도 −4 → 적중 시 회피율 −15%p(2R) 확정 */
   wingStrike(c){ const r=c.hit(140,{}); if(S.battle&&!r.evaded) v2Apply(c.side,c.f,c.oSide,c.opp,"evadeDown",1,{force:true,mag:0.15,rounds:2}); },
   /* #241 단순화 13: 걸려 있지 않은 것 1개 선택 로직 → 화상 50% · 약화 50% 각각 판정(💫 가산) */
