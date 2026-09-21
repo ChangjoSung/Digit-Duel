@@ -637,11 +637,13 @@ unfix();
   eq(T.V2_INTERP.recruitSkillSwap,false,"E1 [CJ 결정 2026-09-17] 탐색 기술 교체 비활성");
   H.freshPlay(T,"pvp");
   const own=0, p=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.placed);
-  T.S.recruit={owner:own,pieceId:p.id,species:"M-E3",stage:"root",skill:null,targetId:null,recvId:null,token:1};
-  window.__recruitCore("skills",0); eq(T.S.recruit&&T.S.recruit.stage,"root","E2 '기술 교체' 단계로 진입하지 않는다 (코어 거부)");
-  window.__recruitCore("skill",0); ok(T.S.recruit&&T.S.recruit.skill===null,"E3 기술 선택도 거부");
+  T.S.recruit={owner:own,pieceId:p.id,species:"M-E3",stage:"root",skill:null,targetId:null,recvId:null,token:p.id+"#1"};
+  const tk234=T.S.recruit.token; // #245: recruit step 은 모두 토큰 필수 — 거부 사유가 토큰 누락이 아니라 과도기 게이트임을 지키려고 실어 준다.
+                                 // 토큰은 발급형("말id#발급번호")이어야 한다 — 임의 값이면 기록 자체가 손상으로 거부돼 E4 가 과도기 게이트를 못 본다
+  window.__recruitCore("skills",0,tk234); eq(T.S.recruit&&T.S.recruit.stage,"root","E2 '기술 교체' 단계로 진입하지 않는다 (코어 거부)");
+  window.__recruitCore("skill",0,tk234); ok(T.S.recruit&&T.S.recruit.skill===null,"E3 기술 선택도 거부");
   const recv=T.capReceivers(own)[0]; T.S.balls[own]=2;
-  window.__recruitCore("cap",0); window.__recruitCore("recv",0); window.__recruitCore("mode",0); T.TQ.length=0;
+  window.__recruitCore("cap",0,tk234); window.__recruitCore("recv",0,tk234); window.__recruitCore("mode",0,tk234); T.TQ.length=0;
   ok(recv.cap&&recv.cap.rosterId==="M-E3"&&recv.cap.grade===1&&recv.cap.skills.length===1&&recv.cap.skills[0]==="M-E3-1"&&recv.cap.cds.length===1,"E4 하수인 포획은 유지 — 30종 후보(땅 포함) · ⭐1 · 1차 기본기");
   const ks=T.S.pieces.filter(x=>x.type==="minion"&&x.owner===1);
   ok(ks.every(m=>!T.SKILLS[m.skills[0]].reaper),"E5 일반 하수인에 전설 스킬 없음");

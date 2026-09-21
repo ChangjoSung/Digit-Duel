@@ -363,10 +363,10 @@ const T=loadH(htmlPath);
   let v=mut("no-skill-element",'  return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element; }','  return f.element; }');
   if(v.M){ const P=setup(v.M); fixed(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); giveSpecies(v.M,P.em,R(v.M,"M-W1")); P.me.skills[1]="lightning_effect"; openBattle(v.M,P.me,P.em); v.M.execSlot("A",1);
     ok(P.em.hp===100-15&&P.em.burn>0&&P.em.shock===0,"L1 [음성] 판정 속성을 본체로 되돌리면 D1(26·감전) 검사기가 잡는다 (관측 "+(100-P.em.hp)+"·화상) — #233 GDD-23 4.2⑧ (def 도입 전 17)"); } else ok(false,"L1 "+v.error);
-  v=mut("cd-reset","    m.skills[i]=R.skill;","    m.skills[i]=R.skill; m.cds[i]=0;"); // 한 줄 앵커 (원문은 CRLF 이므로 개행을 앵커에 넣지 않는다)
+  v=mut("cd-reset","nm.skills[i]=R.skill;","nm.skills[i]=R.skill; nm.cds[i]=0;"); // 한 줄 앵커 (원문은 CRLF 이므로 개행을 앵커에 넣지 않는다) · #245: 확정이 reducer 의 복제 말(nm)로 옮겨져 앵커 이름만 갱신 — 변형 내용(쿨 초기화)은 같다
   if(v.M){ const r=swapCheck(v.M); ok(r.cds[0]===0,"L2 [음성] 확정 시 쿨을 초기화하는 변형은 쿨 승계 검사기(신규 suite D절)가 잡는다");
     ok(r.sk[0]==="dragon_breath","L2b 변형판에서도 교체 자체는 일어난다 (검사기가 쿨만 본다는 확인)"); } else ok(false,"L2 "+v.error);
-  v=mut("keep-revealed",'if(m.revealedSkills) m.revealedSkills=m.revealedSkills.filter(x=>x!==i);','');
+  v=mut("keep-revealed",'if(nm.revealedSkills) nm.revealedSkills=nm.revealedSkills.filter(x=>x!==i);',''); // #245: 같은 이유로 앵커 이름만 갱신
   if(v.M){ const r=swapCheck(v.M); ok(J(r.rev)===J([0,1]),"L3 [음성] 공개 기록을 지우지 않는 변형은 비공개 복귀 검사기(신규 suite D절)가 잡는다"); } else ok(false,"L3 "+v.error);
   v=mut("species-reroll",'species:ROSTER[Math.floor(rand()*ROSTER.length)].id','species:shuffle(ROSTER.slice())[0].id');
   if(v.M){ const P=setup(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); v.M.setSeed(92001); v.M.rand(); const next=v.M.rand(); v.M.setSeed(92001); recruitAt(v.M,P.me);

@@ -288,7 +288,7 @@ function load(htmlPath,opts){
   witchApply:typeof witchApply==="function"?witchApply:undefined, reaperWhy:typeof reaperWhy==="function"?reaperWhy:undefined,
   slotUsable:typeof slotUsable==="function"?slotUsable:undefined, battleMaxRounds:typeof battleMaxRounds==="function"?battleMaxRounds:undefined,
   resetAfter:typeof resetAfter==="function"?resetAfter:undefined, resetBattleTemps:typeof resetBattleTemps==="function"?resetBattleTemps:undefined, // #121 계약 3.1 전투 종료 정리 검증용
-  recruitState:typeof recruitState==="function"?recruitState:undefined, searchFinalize:typeof searchFinalize==="function"?searchFinalize:undefined, // #121 계약 4·6 · #129 계약 7
+  recruitState:typeof recruitState==="function"?recruitState:undefined, searchFinalizeFx:typeof searchFinalizeFx==="function"?searchFinalizeFx:undefined, // #121 계약 4·6 · #129 계약 7 (#245: 상태는 reducer, 이 이름은 표시 전용)
   searchEndCheck:typeof searchEndCheck==="function"?searchEndCheck:undefined, rosterMinions:typeof rosterMinions==="function"?rosterMinions:undefined,
   capReceivers:typeof capReceivers==="function"?capReceivers:undefined,
   get __openPkgCore(){return window.__openPkgCore;}, get __pkgPickCore(){return window.__pkgPickCore;}, // #121 전투 중 패키지 (battleModal 클로저 — 매 렌더 교체되므로 getter)

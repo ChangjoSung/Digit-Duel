@@ -171,7 +171,7 @@ function diverges(room, fn, undo) {
   const pid = T.S.pieces.find((p) => p.owner === cur && p.type === 'minion' && p.alive && p.placed).id;
   const openRecruit = (stage) => both(room, (E) => {
     E.S.recruit = { owner: cur, pieceId: pid, species: E.ROSTER[0].id, stage, skill: stage === 'target' || stage === 'slot' ? E.NEW_SKILLS[0] : null,
-      targetId: stage === 'slot' ? pid : null, recvId: null, token: 1 };
+      targetId: stage === 'slot' ? pid : null, recvId: null, token: pid + '#1' };  // #245: 토큰은 발급형("말id#발급번호")이어야 한다
     E.recruitModal();
   });
   openRecruit('root');

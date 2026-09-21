@@ -1,7 +1,22 @@
 "use strict";
 /* #245 점진 Core 경계: reducer는 입력 상태를 바꾸지 않고 다음 상태와 표시 event만 돌려준다.
    레거시 예약 콜백이 S 객체 정체성을 검사하므로 commit은 같은 S에 얕게 반영한다. */
+/* #245 Saturn REVISE: "실리지 않았다"와 "실렸는데 값이 못 쓴다"를 가르는 한 곳. 참/거짓으로 보면 null·0·""·undefined 가
+   모두 "생략"으로 둔갑해 조작된·손상된 프레임이 기본값 해석을 얻는다 — 오직 자기 속성 유무만 본다. */
+function ownProp(o,k){return !!o&&Object.prototype.hasOwnProperty.call(o,k);}
 function resolveCoreAction(state,action){
+  /* #245 턴바 [탐색]·온라인 재생 프레임은 좌표를 싣지 않는다 — 선택 말과 그 칸의 **발견된** 흔적을 여기서 한 번만 해석한다.
+     판정은 searchLegalIndex 한 곳뿐이고(좌표를 실은 직접 호출도 같은 게이트를 지난다), 고른 흔적은 좌표가 아니라 **자리(ei)** 로
+     실어 보낸다 — Saturn REVISE: 같은 칸을 가리키는 항목이 둘이면 좌표만으로는 어느 쪽을 소모할지 정해지지 않는다.
+     자리는 상태에서만 계산하므로 양 피어·재생·스냅샷이 같은 항목을 고른다. 어긋나면 id:null 로 내려 보내 reducer 가 조용히 거부한다.
+     Saturn REVISE 5차: "좌표 없는 프레임"은 id·r·c·ei 가 **모두** 생략됐을 때뿐이다. 하나라도 실려 있으면 — null·undefined·문자열·
+     소수·반쪽 좌표 무엇이든 — 그대로 통과시켜 reducer 의 엄격 검증이 거부하게 둔다. id 만 보던 종전 조건은 {t:"search",ei:null} 같은
+     프레임의 ei 를 버리고 ei=0 을 재구성해, 요청하지 않은 첫 흔적을 대신 소모했다. */
+  if(action.t==="search"&&!["id","r","c","ei"].some(k=>ownProp(action,k))){
+    const sel=state.selected&&!state.selected.tray?state.selected:null;
+    const ei=searchLegalIndex(state,sel);                              // 자리를 건네지 않은 해석은 여기 한 번뿐이다
+    return ei<0?{t:"search",id:null}:{t:"search",id:sel.id,r:sel.r,c:sel.c,ei};
+  }
   if(action.t!=="auto") return action;
   const player=state.setupPlayer, roster=state.roster[player].slice();
   if(roster.length<6){
@@ -299,8 +314,125 @@ function reduceCoreAction(state,action){
       result.events[0].resignLoser=state.current;
       return result;
     }
+    /* #245 탐색: 실행 가능 판정 → 주 행동·이벤트 칸 소모·지표·회복 자세 해제 → 보상 확정(패키지 재고 +1 또는 recruit 개시)
+       까지의 **상태 전이**를 Core 가 소유한다. 표시(거부 토스트·공용 로그·튜토리얼·결과 연출·모달·AI 해결 호출)는
+       searchRefused·searched·searchDone·recruitOpened 이벤트가 종전 표시 계층으로 그대로 넘긴다 — 문구·순서가 갈라지지 않게.
+       난수는 recruit 후보 종 추첨 **1회**뿐이고 그 자리도 레거시와 같다 (계약 6 "후보 고정").
+       공용 로그에는 종류·보유량을 싣지 않는다 (GDD-13 4.7 · #121 계약 4.8) — 상세는 소유자 전용 이벤트 필드로만 나간다.
+       reducer 계약대로 입력 상태는 건드리지 않는다 — 탐색 말·events·metrics·pkgs 칸만 복제하고 나머지 참조는 그대로 둔다. */
+    case "search": {
+      const p=state.pieces.find(x=>x.id===action.id);
+      if(!p||action.r!==p.r||action.c!==p.c) return {state,events:[]};                       // 흔적은 말이 선 칸의 것이어야 한다
+      /* Saturn REVISE: ei 를 **실었는가**로 갈린다. 없으면(좌표 없는 caller) 여기서 한 번 결정적으로 고르고, 실었으면
+         그 값이 null·undefined·문자열·소수·음수·범위 밖이어도 봐주지 않고 그대로 거부로 떨어진다. */
+      const ei=ownProp(action,"ei")?searchLegalIndex(state,p,action.ei):searchLegalIndex(state,p); // 단계·차례·주 행동·생사·배치·발견 여부와 **요청한 자리**의 미소모 흔적까지 같은 게이트
+      if(ei<0) return {state,events:[]};
+      /* Saturn REVISE: 종류 거부는 공용 게이트 **뒤**다 — 그러지 않으면 단계·차례·주 행동이 틀린 시도까지 폭탄 사유 토스트를 띄워
+         "지금 폭탄이 그 칸을 탐색할 수 있었다"는 정보가 샌다. 다른 모든 조건을 통과한 시도에만 사유를 알린다. */
+      if(!canSearchPiece(p)) return {state,events:[{type:"searchRefused",owner:p.owner}]};   // #20 폭탄·함정은 탐색 실행 불가
+      const ev=state.events[ei];
+      const own=p.owner, piece=Object.assign({},p,{healing:false}); // #106: 탐색은 회복 자세 해제
+      const metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+      const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===p?piece:x),metrics,mainUsed:true,
+        events:state.events.map((e,idx)=>idx===ei?Object.assign({},e,{consumed:true}):e)});  // 요청한 그 자리만 소모한다 (좌표가 겹쳐도)
+      met(own,"searches",1,next);
+      if(p.type==="minion") met(own,"minionSearches",1,next); // #12·#20 하수인 탐색 (구 '하수인 이벤트')
+      const searched={type:"searched",owner:own,piece,healBroken:!!p.healing};
+      /* #121 계약 1.1 이후 이벤트는 3종뿐이다. itemGift·battleBuff 는 **그 자리에서 재고 +1** 로 끝나고(필수 선택 없음),
+         개봉(내용 선택)은 전투 중 가방에서 한다(계약 2.2·3.1). recruit 만 탐색 자리에서 필수 선택이 이어진다. */
+      if(ev.kind==="itemGift"||ev.kind==="battleBuff"){
+        next.pkgs=state.pkgs.map((x,i)=>i===own?Object.assign({},x):x);
+        next.pkgs[own][ev.kind]++; // 보유 상한 없음 (계약 2.1)
+        return searchDoneResult(next,[searched],own,`📦 ${EVENT_KO[ev.kind]} 획득!`,`보유 ${next.pkgs[own][ev.kind]}개`,null,"pkg");
+      }
+      /* 알 수 없는 종류(옛 저장 상태·테스트 픽스처의 폐기된 kind)는 **아무 보상 없이** 칸만 소모하고 종료 경로로 보낸다 */
+      if(ev.kind!=="recruit") return searchDoneResult(next,[searched],own,"🌿 아무것도 없었다","");
+      /* 계약 6 "후보 고정": 포획 후보 종은 탐색 중 한 번 ROSTER 20종 균등으로 뽑고, 모달 재렌더·방법 변경으로 재추첨하지 않는다 */
+      /* Saturn REVISE: 토큰은 **게임을 가로질러** 이 recruit 하나만 가리켜야 한다. 게임마다 다시 1부터인 숫자였을 때는
+         앞 게임의 첫 recruit 버튼을 들고 있던 콜백이 새 게임의 첫 recruit 을 그대로 전진시켰다. 말 id(PID)는 게임이 바뀌어도
+         다시 쓰이지 않으므로 "탐색한 말 # 이 게임의 몇 번째 recruit" 이면 충분하고, 값이 전부 상태에서 나오므로
+         양 피어·재생·스냅샷이 같은 토큰을 얻는다 (프로세스 전역 난수·카운터를 쓰지 않는다). */
+      next.recruitToken=(state.recruitToken||0)+1;
+      next.recruit={owner:own,pieceId:p.id,species:ROSTER[Math.floor(rand()*ROSTER.length)].id,
+        stage:"root",skill:null,targetId:null,recvId:null,token:p.id+"#"+next.recruitToken};
+      return {state:next,events:[searched,{type:"recruitOpened",owner:own,piece}]};
+    }
+    /* #245 탐색 보상 선택(#121 계약 4·6): 단계 전이·선택 값·기술 교체 확정·포획 판정·포기까지의 **상태 전이**를 Core 가 소유한다.
+       화면(단계별 모달 재렌더·닫기·결과 연출)은 recruitStage·recruitClosed·searchDone 이벤트가 표시 계층으로 넘긴다.
+       늦은 콜백·새 게임·턴 교대·말 사망 방어는 종전과 같은 한 곳(recruitState)이고 상태만 갈아끼운다.
+       난수는 포획 판정(tryCapture) 1회뿐이다 — 후보 종은 탐색 시점에 고정, 제안 3종은 고정 목록.
+       reducer 계약대로 입력 상태는 건드리지 않는다 — recruit·바뀌는 말·balls·metrics 칸만 복제한다. */
+    case "recruit": {
+      const st=recruitState(state); if(!st) return {state,events:[{type:"recruitClosed"}]};
+      const {R,p,rd}=st, own=R.owner, step=action.step, i=action.i;
+      const stage=patch=>({state:Object.assign({},state,{recruit:Object.assign({},R,patch)}),events:[{type:"recruitStage"}]});
+      /* Saturn REVISE: 토큰은 **모든** step 에 필수다 (back·giveup 포함). 실리지 않은 호출을 봐주면 늦은 콜백·AI·되돌림이
+         그 구멍으로 현재 recruit 을 전진시킨다 — 호출처는 자기가 본 recruit 의 토큰을 실어야 한다. 토큰은 탐색한 말 id 를
+         담고 있어 게임이 바뀌면 값이 달라지므로 앞 게임의 버튼이 새 게임의 첫 recruit 을 건드리지 못한다. */
+      if(action.token!==R.token) return {state,events:[]};
+      /* 단계 전이도 합법성 판정이다 — 각 step 은 **자기 단계에서만** 통한다. 없으면 호출처가 root → recv → capMode
+         처럼 화면에 없는 단계를 건너뛰어 수령 말·비용 검사를 통과시킬 수 있다. 늦은 버튼 콜백(같은 step 두 번)도 여기서 걸린다. */
+      if(RECRUIT_STEP_STAGE[step]&&RECRUIT_STEP_STAGE[step]!==R.stage) return {state,events:[]};
+      // 인덱스는 **그 step 의** 버튼 자리다 — 정수·음수 아님(findIndex 의 -1 · 소수 · 문자열 거부)에 더해 선택이 아닌 명령은 sentinel 0 만 받는다
+      if(!Number.isInteger(i)||i<0||(!RECRUIT_CHOICE_STEPS.has(step)&&i!==0)) return {state,events:[]};
+      // #129 계약 8: 포기도 "선택이 끝난" 상태다 — 같은 종료 경로를 탄다 (이벤트 소모는 되돌리지 않는다)
+      if(step==="giveup") return searchDoneResult(state,[],own,"🌿 아무것도 얻지 않았다","이벤트 칸은 소모되었습니다");
+      if(step==="back"){
+        const to=RECRUIT_BACK[R.stage]; if(!to) return {state,events:[]}; // root 에는 뒤로가 없다 — 단계 밖 되돌림은 거부
+        const patch={stage:to};
+        if(to==="target") patch.targetId=null; if(to==="skill") patch.skill=null; if(to==="capRecv") patch.recvId=null;
+        return stage(patch);
+      }
+      /* #234 (V2_INTERP.recruitSkillSwap · PD msg): 새 스킬 체계(⭐1 = 기본기 1칸, 전설 스킬은 전설 전용)와 충돌해 과도기에는
+         기술 교체를 닫는다. 코드는 지우지 않고 비활성 분기로 둔다 — 포획·포기는 그대로다. */
+      if(!V2_INTERP.recruitSkillSwap&&(step==="skills"||step==="skill"||step==="target"||step==="slot")) return {state,events:[]};
+      if(step==="skills") return stage({stage:"skill"});
+      if(step==="cap") return capReceivers(own,state).length?stage({stage:"capRecv"}):{state,events:[]};
+      if(step==="skill"){ const sid=NEW_SKILLS[i]; return sid?stage({skill:sid,stage:"target"}):{state,events:[]}; }
+      if(step==="target"){
+        const m=rosterMinions(own,state)[i];
+        if(!m||!m.alive||!m.placed||!m.skills||!NEW_SKILLS.includes(R.skill)||m.skills.includes(R.skill)) return {state,events:[]}; // 불법 선택 차단 (늦은 콜백·수신 프레임 포함)
+        return stage({targetId:m.id,stage:"slot"});
+      }
+      if(step==="recv"){ const recv=capReceivers(own,state)[i]; return recv?stage({recvId:recv.id,stage:"capMode"}):{state,events:[]}; }
+      if(step==="slot"){
+        /* Saturn REVISE: 대상은 **내** 로스터 하수인이어야 한다 — 보드 전체에서 id 로 찾으면 조작된 targetId 가 상대 말·예비 말을 가리킬 수 있다.
+           고른 기술도 제안 3종 안이어야 한다 (조작된 skill 로 아무 기술이나 장착하지 못하게). */
+        const m=rosterMinions(own,state).find(x=>x.id===R.targetId);
+        // Saturn REVISE: 슬롯 범위는 그 말의 **실제 기술 칸 수**로 본다 (상수 4 로 두면 칸 수가 다른 손상·승계 기록을 그대로 통과시킨다)
+        if(!m||!m.alive||!m.placed||!Array.isArray(m.skills)||i>=m.skills.length||!NEW_SKILLS.includes(R.skill)||m.skills.includes(R.skill)) return {state,events:[]};
+        /* 계약 4.2-7 확정: 남은 쿨(cds[i])은 **그대로 승계**하고(초기화 금지), 그 슬롯의 공개 기록만 지운다 → 다시 비공개 */
+        const nm=Object.assign({},m,{skills:m.skills.slice()});
+        nm.skills[i]=R.skill;
+        if(nm.revealedSkills) nm.revealedSkills=nm.revealedSkills.filter(x=>x!==i);
+        return searchDoneResult(Object.assign({},state,{pieces:state.pieces.map(x=>x===m?nm:x)}),[],own,
+          `📘 ${SKILLS[R.skill].ko} 습득!`,`${m.name||"하수인"} 슬롯 ${i+1} (남은 쿨 ${m.cds[i]} 승계)`);
+      }
+      if(step==="mode"){
+        const mode=CAP_MODES[i]; if(!mode) return {state,events:[]};
+        const recv=capReceivers(own,state).find(x=>x.id===R.recvId);
+        if(!recv) return {state,events:[]};                                        // 수령 자격 재검사 — 살아 있고 배치된 **내** 동료·왕 중 포획 슬롯이 빈 말
+        if(state.balls[own]<(mode==="safe"?2:1)) return {state,events:[]};          // 비용 재검사
+        /* 판정은 레거시와 같은 한 곳(tryCapture)이다 — 복제해 둔 next 와 그 안의 복제 말만 주면 rand 소비 순서·횟수가 그대로다 */
+        const cp=Object.assign({},p), crecv=recv===p?cp:Object.assign({},recv);
+        const metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+        const next=Object.assign({},state,{balls:state.balls.slice(),metrics,
+          pieces:state.pieces.map(x=>x===p?cp:(x===recv?crecv:x))});
+        const r=tryCapture(cp,mode,crecv,rd,next);
+        return r.ok
+          ? searchDoneResult(next,[],own,"🔴 포획 성공!",`${rd.name} — ${TYPE_KO[crecv.type]}의 대리 출전 가능`,"captureFx")
+          : searchDoneResult(next,[],own,"🔴 포획 실패",r.dmg?`공용 하수인 소멸 · 탐색 말 HP ${r.dmg} 피해 (HP ${cp.hp})`:"공용 하수인이 사라졌다","captureFx");
+      }
+      return {state,events:[]};
+    }
     default: return null;
   }
+}
+/* #129 계약 7 탐색 완료 **상태** — recruit 해제와 완료 토큰 발급까지다. 결과 연출·토스트·턴 종료 재평가는
+   searchDone 이벤트가 표시 계층(searchFinalizeFx)으로 넘긴다. 쓰지 않은 재고·이벤트 소모는 되돌리지 않는다. */
+function searchDoneResult(state,before,owner,title,sub,fxKey,tut){
+  const next=Object.assign({},state,{recruit:null,searchEndSeq:(state.searchEndSeq||0)+1});
+  return {state:next,events:before.concat([{type:"searchDone",owner,title,sub,fxKey,tut,seq:next.searchEndSeq}])};
 }
 /* 반환: Core 가 맡지 않은 액션이면 false, 맡았으면 커밋된 결과({state,events}) — 호출처는 종전처럼 truthy 검사만 하면 되고,
    결과의 세부 판정(예: 스왑이 실제로 일어났는지)이 필요한 래퍼만 events 를 읽는다. */
@@ -326,6 +458,13 @@ function commitCoreState(next,events){
   next.pieces=next.pieces.map(keep);
   next.selected=keep(next.selected);
   next.movedPiece=keep(next.movedPiece);
+  /* 보드 이벤트 칸도 말과 같은 이유로 원본 객체 정체성을 지킨다 — 레거시 경로·AI·테스트가 ev 참조를 들고 탐색을 부른다.
+     Saturn REVISE: 대조는 **자리(index)** 로 한다. reducer 는 events 를 1:1 map 으로만 만들므로 자리가 곧 원본이고,
+     좌표로 찾으면 같은 칸을 공유하는 항목 둘이 모두 첫 원본 하나에 얹혀 나머지 원본과 순서를 잃는다
+     (칸 좌표 유일성은 genEvents 의 성질일 뿐 불변식이 강제하지 않는다 — 저장 상태·테스트 픽스처는 겹칠 수 있다).
+     자리가 어긋났거나(길이 변화·재정렬) 좌표가 다르면 그대로 새 객체를 쓴다. */
+  if(next.events!==S.events) next.events=next.events.map((e,idx)=>{ const origin=S.events[idx];
+    return origin&&origin!==e&&origin.r===e.r&&origin.c===e.c?Object.assign(origin,e):e; });
   for(const event of events||[]){ // healStarted·moved·teleSwapped 등 말을 실은 이벤트도 같은 정규화를 받는다 — UI 핸들러가 떨어진 복제본을 보지 않게 여기서 한 번만
     if(event.piece) event.piece=keep(event.piece);
     if(event.pieces) event.pieces=event.pieces.map(keep);
@@ -410,8 +549,7 @@ function anyMainActionLeft(){
   const me=S.current;
   for(const p of alivePieces().filter(x=>x.owner===me)){
     if(canHeal(p)) return true;
-    const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
-    if(ev&&canSearchPiece(p)) return true;
+    if(canSearchPiece(p)&&searchLegalIndex(S,p)>=0) return true; // 탐색 가능 여부는 실행 게이트와 같은 한 곳에서 본다
     if(p.type!=="trap"&&p.immobile===0) for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]) for(const k of (isBurning()?[1,2]:[1])){
       const r=p.r+dr*k, c=p.c+dc*k; if(r<1||r>ROWS||c<1||c>COLS) continue; if(canMoveTo(p,r,c)) return true; }
   }
@@ -704,50 +842,52 @@ function checkKingReach(){
 /* ===== 탐색·이벤트·포획 ===== */
 /* #20 탐색 실행 가능 말 — GDD 역할대로 하수인·동료·왕만. 폭탄·함정은 흔적 발견·칸 점유는 가능하나 탐색 실행 불가 (cap·버프 사장 방지) */
 function canSearchPiece(p){return !!p&&(p.type==="minion"||p.type==="ally"||p.type==="king");}
+/* #245 탐색 합법성의 **단일 판정** — 좌표 없는 턴바·재생 프레임이든 좌표를 실은 직접 호출(doSearch·AI)이든 같은 게이트를 지난다.
+   종전 두 곳(applyAction("search") 게이트 + doSearch 검사)의 합집합이다: 플레이 단계 · 자기 턴 · 주 행동 미사용 ·
+   살아 있고 배치된 자기 말 · 그 말이 선 칸의 **발견된** 미소모 흔적. 통과하면 그 흔적의 **자리**를, 아니면 -1.
+   Saturn REVISE ①: 종류(폭탄·함정) 검사는 여기 없다 — 호출처가 이 게이트를 먼저 통과한 시도에만 사유를 알리게 하려는 것이다.
+   Saturn REVISE ②: 돌려주는 값이 객체가 아니라 자리다 — 같은 칸을 가리키는 항목이 둘이면 어느 쪽을 요청했는지가 답의 일부다.
+     ei 를 실어 오면 **그 자리만** 검사하고(요청한 항목이 불법이면 -1), 없으면 상태 순서대로 첫 합법 자리를 고른다(결정적).
+   상태만 읽고 아무것도 바꾸지 않는다 (난수·이벤트 없음) — resolve·reducer 양쪽이 커밋 전에 같은 답을 얻는다. */
+function searchLegalIndex(state,p,ei){
+  if(!p||p.tray||state.phase!=="play"||state.mainUsed||!p.alive||!p.placed||p.owner!==state.current) return -1;
+  const seen=state.traces&&state.traces[state.current];
+  if(!seen) return -1;
+  const legal=e=>!!e&&e.r===p.r&&e.c===p.c&&!e.consumed&&seen.has(e.r+"_"+e.c);
+  /* Saturn REVISE: **자리를 건네지 않은** 호출만 첫 합법 자리로 해석한다 — 판단 기준은 인수를 실었는지(arguments.length)이고
+     값의 참/거짓이 아니다. 명시적으로 실은 값이면 null·undefined 도 "그 자리를 요청했다"이므로 정수·범위·합법성 검사를
+     그대로 받고 어긋나면 -1 이다. 종전 `ei===undefined||ei===null` 은 조작된·손상된 프레임의 null 을 좌표 없는 프레임으로
+     둔갑시켜 첫 항목을 대신 소모했다. */
+  if(arguments.length<3) return state.events.findIndex(legal);
+  return Number.isInteger(ei)&&ei>=0&&legal(state.events[ei])?ei:-1;
+}
+/* #245 탐색의 단일 Core 진입점 (UI·AI·온라인 재생 공통). 반환은 종전 계약 그대로 — 실행했으면 true, 거부면 false.
+   Saturn REVISE: 호출처가 **어느 흔적을** 요청했는지까지 싣는다 (좌표가 겹치는 항목이 있어도 요청한 그 항목만 소모되게). */
 function doSearch(p,ev){
-  if(!canSearchPiece(p)){ if(!isAI(p.owner)) showToast("폭탄·함정은 탐색할 수 없습니다."); return false; }
-  if(!ev||ev.consumed||ev.r!==p.r||ev.c!==p.c) return false;
-  S.mainUsed=true; ev.consumed=true; met(p.owner,"searches"); healBreak(p); // #106: 탐색은 회복 자세 해제
-  const ai=isAI(p.owner), own=p.owner;
-  /* GDD-13 4.7 그대로: 공용 로그에는 **종류·보유량을 남기지 않는다**. 어떤 패키지가 나왔는지는 소유자 전용 모달·토스트로만 알린다
-     (#121 계약 4.8·9 비공개 — 상대는 "숲 이벤트 발생"만 본다) */
-  const smsg=ai?`상대가 숲 이벤트를 발생시켰습니다.`:`${pname(own)} 숲 이벤트 발생`;
-  addLog(smsg, ai?"":"imp"); showToast(smsg);
-  if(p.type==="minion") met(own,"minionSearches"); // #12·#20: 하수인 탐색 (구 '하수인 이벤트')
-  /* #121 계약 1.1 이후 이벤트는 3종뿐이다. itemGift·battleBuff 는 **그 자리에서 재고 +1** 로 끝나고(필수 선택 없음),
-     개봉(내용 선택)은 전투 중 가방에서 한다(계약 2.2·3.1). recruit 만 탐색 자리에서 필수 선택이 이어진다. */
-  if(ev.kind==="itemGift"||ev.kind==="battleBuff"){
-    S.pkgs[own][ev.kind]++; // 보유 상한 없음 (계약 2.1)
-    /* #129 계약 8: itemGift·battleBuff 는 **필수 선택이 없다** → 확인 클릭을 한 번 더 요구하지 않는다.
-       결과 연출 1.2초를 보여 주고 그 끝점에서 종료 조건을 재평가한다. 내용 선택(개봉)은 전투 중 가방에서 따로 한다. */
-    const ko=EVENT_KO[ev.kind];
-    if(!ai&&S.mode!=="sim"&&viewerIsOwner(own)) tutHint("pkg"); // #26·#121: 패키지를 처음 받을 때 1회 (소유자 화면만)
-    searchFinalize(own,`📦 ${ko} 획득!`,`보유 ${S.pkgs[own][ev.kind]}개`);
-    return true;
-  }
-  /* 알 수 없는 종류(옛 저장 상태·테스트 픽스처의 폐기된 kind)는 **아무 보상 없이** 칸만 소모하고 종료 경로로 보낸다.
-     else 로 흘려보내면 폐기된 종류가 포획·교체 화면을 열어 계약 1.1 의 "3종뿐"을 깨뜨린다. */
-  if(ev.kind!=="recruit"){ searchFinalize(own,"🌿 아무것도 없었다",""); return true; }
-  /* #121 계약 4·6 recruit — 기술 교체 / 하수인 포획 / 포기.
-     계약 6 "후보 고정": 포획 후보 종은 **탐색 중 한 번** ROSTER 20종 균등으로 뽑고, 모달을 다시 그리거나 포획 방법을 바꿔도
-     재추첨하지 않는다. 그래서 여기서 rand 를 **딱 1회** 쓴다 (계약 4.2 "제안 표시 자체는 난수를 쓰지 않는다" — 제안 3종은 고정 목록). */
-  S.recruit={owner:own,pieceId:p.id,species:ROSTER[Math.floor(rand()*ROSTER.length)].id,
-    stage:"root",skill:null,targetId:null,recvId:null,token:(S.recruitToken=(S.recruitToken||0)+1)};
-  if(ai){ aiRecruitResolve(own,p); return true; }
-  if(S.mode!=="sim"&&viewerIsOwner(own)) tutHint("recruit"); // #26·#121: 기술 교체·포획 화면이 처음 열릴 때 1회
-  recruitModal(); render(); return true;
+  const result=dispatchCoreAction({t:"search",id:p?p.id:null,r:ev?ev.r:null,c:ev?ev.c:null,ei:ev?S.events.indexOf(ev):-1});
+  return !!result&&result.events.some(e=>e.type==="searched");
 }
 /* #121 계약 4.2: 교체 대상은 **최초 로스터로 배치된 보드 위 하수인 6명**이다. 개인 포획(cap)·예비(reserve)는 이 화면의 대상이 아니다.
    죽은 말도 목록에 보이되 비활성이므로 살아 있는지는 걸러내지 않고 그대로 돌려준다 (순서 = 생성 순서로 안정적). */
-function rosterMinions(own){ return S.pieces.filter(x=>x.owner===own&&x.type==="minion"); }
+function rosterMinions(own,state){ return (state||S).pieces.filter(x=>x.owner===own&&x.type==="minion"); }
 /* #121 계약 6: 포획 수령 말 — 살아 있고 배치된 동료·왕 중 포획 슬롯(cap)이 빈 말. 탐색한 말이 하수인이어도 된다 */
-function capReceivers(own){ return alivePieces().filter(x=>x.owner===own&&(x.type==="ally"||x.type==="king")&&!x.cap); }
+function capReceivers(own,state){ return alivePieces(state).filter(x=>x.owner===own&&(x.type==="ally"||x.type==="king")&&!x.cap); }
 /* 현재 recruit 상태가 아직 유효한가 — 늦은 콜백·새 게임·턴 교대·말 사망 방어 */
-function recruitState(){
-  const R=S&&S.recruit; if(!R) return null;
-  const p=S.pieces.find(x=>x.id===R.pieceId);
-  if(!p||!p.alive||!p.placed||R.owner!==S.current) return null;
-  return {R,p,rd:ROSTER.find(r=>r.id===R.species)};
+function recruitState(state){
+  const T=state||S, R=T&&T.recruit; if(!R) return null;
+  if((R.owner!==0&&R.owner!==1)||R.owner!==T.current) return null;   // 소유자는 두 플레이어 중 하나이고 지금 차례여야 한다
+  if(!RECRUIT_STAGES.has(R.stage)) return null;                      // #245 Saturn REVISE: 화면에 없는 단계의 기록은 되돌림·포기 대상도 아니다
+  const p=T.pieces.find(x=>x.id===R.pieceId);
+  if(!p||!p.alive||!p.placed||p.owner!==R.owner) return null;        // 탐색을 연 말이 살아서 보드에 있고 그 소유자의 말이어야 한다
+  /* #245 Saturn REVISE: 탐색을 **실행할 수 없는** 말(폭탄·함정)의 기록은 처음부터 성립하지 않는다 — 탐색 게이트가 그런 말을
+     통과시키지 않으므로 여기 있다면 손상·조작된 기록이고, 그 말로 보상(기술 교체·포획 수령·반동 피해)을 확정할 수 없다. */
+  if(!canSearchPiece(p)) return null;
+  /* #245 Saturn REVISE(LOW): 토큰은 기록 **자신**도 발급 형식이어야 한다 — 비거나 손상된 토큰은 같은 값을 실은 호출과
+     !== 비교를 통과해(undefined!==undefined 가 거짓) 그 기록으로 보상을 확정한다. 발급형은 "탐색한 말 id#발급번호"뿐이다. */
+  const tk=R.token, h=typeof tk==="string"?tk.indexOf("#"):-1;
+  if(h<0||tk.slice(0,h)!==String(R.pieceId)||!/^[1-9][0-9]*$/.test(tk.slice(h+1))) return null;
+  const rd=ROSTER.find(r=>r.id===R.species);
+  return rd?{R,p,rd}:null;                                           // 후보 종을 모르면 보상을 확정할 수 없다 (공용 하수인 대체 없음)
 }
 /* #121 계약 4·6 탐색 보상 선택 화면 — 단계별로 다시 그린다. 온라인은 modal() 래퍼가 소유자만 조작하게 하고
    버튼 인덱스를 중계하며, 비소유자에게는 원문을 **한 번도 쓰지 않고** 대기 화면만 그린다(계약 4.8 비공개).
@@ -757,7 +897,8 @@ function recruitModal(){
   const {R,p,rd}=st, own=R.owner;
   /* 동기화 모달의 버튼은 modal() 래퍼가 {t:"modal",seq,i} 로 이미 중계한다 — 콜백에서 netAction 을 겹쳐 부르면
      로컬이 두 프레임을 보내고 원격이 같은 선택을 두 번 적용한다. 그래서 **코어를 직접** 부른다 (PD 검토 3). */
-  const btn=(label,step,i)=>[label,()=>window.__recruitCore(step,i)];
+  const tk=R.token; // #245 Saturn REVISE: 이 화면이 연 recruit 의 토큰을 버튼에 고정 — 새 탐색이 열린 뒤의 늦은 클릭은 코어가 거부한다
+  const btn=(label,step,i)=>[label,()=>window.__recruitCore(step,i,tk)];
   const skCard=(sid,head,extra)=>{ const sk=SKILLS[sid];
     return `<div class="fighter"><b>${head} ${skillNameKo(sid,null)}</b><small>${sk.cls?`<span class="badge">${SKILL_CLS_KO[sk.cls]} 분류</span> `:sk.el?`<span class="badge el-${sk.el}">${ELEM_KO[sk.el]}</span> `:""}${SKILL_TIER_KO[sk.tier]||SKIND_KO[sk.kind]} · 위력 ${sk.pow?sk.pow:"-"} · 쿨 ${sk.reaper?"봉인":sk.cd}<br>${sk.desc}${extra||""}</small></div>`; };
   if(R.stage==="root"){
@@ -795,7 +936,7 @@ function recruitModal(){
   }
   if(R.stage==="slot"){
     const m=S.pieces.find(x=>x.id===R.targetId);
-    if(!m||!m.alive||!m.skills){ R.stage="target"; recruitModal(); return; }
+    if(!m||!m.alive||!m.skills){ window.__recruitCore("back",0,tk); return; } // #245 되돌림도 Core 가 소유한다 (표시 계층은 단계를 쓰지 않는다)
     modal(`<h2>📘 ${SKILLS[R.skill].ko} → ${m.name||"하수인"}</h2><p>바꿀 슬롯을 고르세요.<br><small>새 기술은 그 자리의 남은 쿨타임을 이어받습니다.</small></p>
       ${skCard(R.skill,"새 기술:")}
       <p style="margin:6px 0 2px"><small>${m.name||"하수인"}의 현재 4슬롯</small></p>
@@ -806,7 +947,7 @@ function recruitModal(){
   }
   if(R.stage==="capRecv"){
     const recv=capReceivers(own);
-    if(!recv.length){ R.stage="root"; recruitModal(); return; }
+    if(!recv.length){ window.__recruitCore("back",0,tk); return; } // #245 되돌림도 Core 가 소유한다 (capRecv → root)
     modal(`<h2>🔴 포획 하수인을 받을 말</h2><p>받을 말을 고르세요.<br><small>공격 포획이 실패하면 피해는 탐색한 ${idLabel(own,p)}가 받습니다.</small></p>
       ${recv.map((x,i)=>`<div class="fighter"><b>${i+1}. ${TYPE_KO[x.type]}</b><small>HP ${x.hp}/${x.maxHp} · 포획 슬롯 비어 있음</small></div>`).join("")}`,
       recv.map((x,i)=>btn(`${i+1}. ${TYPE_KO[x.type]}`,"recv",i)).concat([btn("← 뒤로","back",0),btn("포기","giveup",0)]));
@@ -817,67 +958,31 @@ function recruitModal(){
     const b=S.balls[own], recv=S.pieces.find(x=>x.id===R.recvId);
     const opt=(name,cost,rate,risk)=>`<div class="fighter"><b>${name}</b><small>볼 ${cost} · 성공 ${rate}${risk?" · "+risk:""}</small></div>`;
     modal(`<h2>🔴 포획 시도 (몬스터볼 ${b})</h2>
-      <div class="fighter"><b>발견: ${rd?rd.name:"공용 하수인"}${rd?` <span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span>`:""}</b>
-        <small>${rd?`HP ${rd.hp} · 공 ${rd.atk} · ⭐1 스킬 ${speciesSkills(rd.id,1).map(s=>SKILLS[s].ko).join("·")} — 이 종의 ⭐1 수치·스킬로 합류합니다`:""}<br>받을 말: ${recv?TYPE_KO[recv.type]:"-"}</small></div>
+      <div class="fighter"><b>발견: ${rd.name} <span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span></b>
+        <small>HP ${rd.hp} · 공 ${rd.atk} · ⭐1 스킬 ${speciesSkills(rd.id,1).map(s=>SKILLS[s].ko).join("·")} — 이 종의 ⭐1 수치·스킬로 합류합니다<br>받을 말: ${recv?TYPE_KO[recv.type]:"-"}</small></div>
       <small>공격 포획 실패 시 <b>탐색 말</b>이 최대 HP 25% 피해!</small>
       ${opt("안전 포획",2,"100%","")}${opt("위험 포획",1,"50%","실패 시 소멸")}${opt("공격 포획",1,"70%","실패 시 소멸 + 탐색 말 HP 25% 피해")}`,
-      [["안전 포획 (볼 2)",b>=2?()=>window.__recruitCore("mode",0):null,b<2],
-       ["위험 포획 (볼 1)",b>=1?()=>window.__recruitCore("mode",1):null,b<1],
-       ["공격 포획 (볼 1)",b>=1?()=>window.__recruitCore("mode",2):null,b<1],
+      [["안전 포획 (볼 2)",b>=2?()=>window.__recruitCore("mode",0,tk):null,b<2],
+       ["위험 포획 (볼 1)",b>=1?()=>window.__recruitCore("mode",1,tk):null,b<1],
+       ["공격 포획 (볼 1)",b>=1?()=>window.__recruitCore("mode",2,tk):null,b<1],
        btn("← 뒤로","back",0),btn("포기","giveup",0)]);
     return;
   }
   close();
 }
+/* #245 Saturn REVISE: 탐색 보상 선택의 단계 계약 — step 은 이 단계에서만 합법이다 (back·giveup 은 어느 단계에서나 가능).
+   root ─cap→ capRecv ─recv→ capMode ─mode→ 완료 / root ─skills→ skill ─skill→ target ─target→ slot ─slot→ 완료 */
+const RECRUIT_STEP_STAGE={skills:"root",cap:"root",skill:"skill",target:"target",slot:"slot",recv:"capRecv",mode:"capMode"};
+const RECRUIT_BACK={skill:"root",target:"skill",slot:"target",capRecv:"root",capMode:"capRecv"}; // 뒤로 갈 단계 (root 에는 뒤로가 없다)
+const RECRUIT_STAGES=new Set(["root"].concat(Object.keys(RECRUIT_BACK))); // #245 recruitModal 이 그리는 단계 전부 (root + 뒤로가 있는 단계들) — RECRUIT_BACK 과 한 원본
+/* #245 Saturn REVISE: **선택** step 만 0 이 아닌 자리를 받는다. 나머지(루트 두 갈래·뒤로·포기, 그리고 알 수 없는 step)의
+   버튼은 UI 에 하나뿐이라 실제 sentinel 인 0 만 합법이다 — 아무 정수나 받아 주면 조작된 프레임·늦은 콜백이 같은 명령을
+   다른 자리처럼 실어 이 검사를 그냥 지나간다. 선택 step 의 범위·멤버 정체성은 아래 각 분기가 목록으로 정확히 본다. */
+const RECRUIT_CHOICE_STEPS=new Set(["skill","target","slot","recv","mode"]);
 const CAP_MODES=["safe","risky","attack"]; // 순서 고정 — UI·AI·온라인 인덱스 중계 공용
 /* 탐색 보상 선택의 단일 적용기 — 온라인은 netAction("recruit") 으로 양측이 같은 순서로 이 함수를 탄다.
    난수는 쓰지 않는다(후보 종은 탐색 시점에 고정, 제안 3종은 고정 목록) — 단 포획 판정(tryCapture)만 rand 1회를 쓴다. */
-window.__recruitCore=(step,i)=>{
-  const st=recruitState(); if(!st){ close(); return; }
-  const {R,p,rd}=st, own=R.owner;
-  // #129 계약 8: 포기도 "선택이 끝난" 상태다 — 결과 연출 1.2초 뒤 같은 종료 경로를 탄다 (이벤트 소모는 되돌리지 않는다)
-  if(step==="giveup"){ searchFinalize(own,"🌿 아무것도 얻지 않았다","이벤트 칸은 소모되었습니다"); return; }
-  if(step==="back"){
-    R.stage=(R.stage==="slot")?"target":(R.stage==="target")?"skill":(R.stage==="capMode")?"capRecv":"root";
-    if(R.stage==="target") R.targetId=null; if(R.stage==="skill") R.skill=null; if(R.stage==="capRecv") R.recvId=null;
-    recruitModal(); return;
-  }
-  /* #234 (V2_INTERP.recruitSkillSwap · PD msg): 새 스킬 체계(⭐1 = 기본기 1칸, 전설 스킬은 전설 전용)와 충돌해 과도기에는 기술 교체를 닫는다.
-     코드는 지우지 않고 비활성 분기로 둔다 — 포획·포기는 그대로다. */
-  if(!V2_INTERP.recruitSkillSwap&&(step==="skills"||step==="skill"||step==="target"||step==="slot")) return;
-  if(step==="skills"){ R.stage="skill"; recruitModal(); return; }
-  if(step==="cap"){ if(!capReceivers(own).length) return; R.stage="capRecv"; recruitModal(); return; }
-  if(step==="skill"){ const sid=NEW_SKILLS[i]; if(!sid) return; R.skill=sid; R.stage="target"; recruitModal(); return; }
-  if(step==="target"){
-    const ms=rosterMinions(own), m=ms[i];
-    if(!m||!m.alive||!m.placed||!m.skills||!R.skill||m.skills.includes(R.skill)) return; // 불법 선택 차단 (늦은 콜백·수신 프레임 포함)
-    R.targetId=m.id; R.stage="slot"; recruitModal(); return;
-  }
-  if(step==="slot"){
-    const m=S.pieces.find(x=>x.id===R.targetId);
-    if(!m||!m.alive||!m.skills||i<0||i>3||!R.skill||m.skills.includes(R.skill)) return;
-    /* 계약 4.2-7 확정: 남은 쿨(cds[i])은 **그대로 승계**하고(초기화 금지), 그 슬롯의 공개 기록만 지운다 → 다시 비공개 */
-    m.skills[i]=R.skill;
-    if(m.revealedSkills) m.revealedSkills=m.revealedSkills.filter(x=>x!==i);
-    const ko=SKILLS[R.skill].ko;
-    searchFinalize(own,`📘 ${ko} 습득!`,`${m.name||"하수인"} 슬롯 ${i+1} (남은 쿨 ${m.cds[i]} 승계)`);
-    return;
-  }
-  if(step==="recv"){
-    const recv=capReceivers(own)[i]; if(!recv) return;
-    R.recvId=recv.id; R.stage="capMode"; recruitModal(); return;
-  }
-  if(step==="mode"){
-    const mode=CAP_MODES[i]; if(!mode) return;
-    const recv=S.pieces.find(x=>x.id===R.recvId);
-    if(!recv||!recv.alive||recv.cap) return;                       // 수령 자격 재검사
-    if(S.balls[own]<(mode==="safe"?2:1)) return;                   // 비용 재검사
-    const r=tryCapture(p,mode,recv,rd);
-    if(r.ok) searchFinalize(own,`🔴 포획 성공!`,`${rd?rd.name:"공용 하수인"} — ${TYPE_KO[recv.type]}의 대리 출전 가능`,"captureFx");
-    else searchFinalize(own,`🔴 포획 실패`,r.dmg?`공용 하수인 소멸 · 탐색 말 HP ${r.dmg} 피해 (HP ${p.hp})`:"공용 하수인이 사라졌다","captureFx");
-    return;
-  }
-};
+window.__recruitCore=(step,i,token)=>{ dispatchCoreAction({t:"recruit",step,i,token}); };
 /* #129 계약 7 — 탐색 완료 전용 종료 경로.
    1) 탐색 시점에 mainUsed·consumed 는 이미 세웠지만 **필수 선택이 끝날 때까지** 턴을 종료하지 않는다 (위 분기들이 모달을 띄운 채 기다린다).
    2) 선택이 끝나면 결과·획득 연출을 1.2초(계약 8의 itemFx·captureFx) 보여 주고 **그 끝점에서** 종료 조건을 다시 평가한다.
@@ -889,12 +994,16 @@ window.__recruitCore=(step,i)=>{
    owner 전용 내용(획득 종류·습득 기술·대상 말·포획 종·수령 말)은 **소유자 화면에만** 그린다. 상대 화면에는 같은 길이의
    중립 배너를 띄운다 — 연출 시간·규칙 상태·난수는 양측 동일하고 달라지는 것은 표시 문구뿐이다(표시 계층 전용).
    온라인 비소유자는 물론 PVE 의 AI 탐색에서도 사람 화면에 종류가 새지 않는다 (viewerIsOwner 가 둘을 함께 처리한다). */
-function searchFinalize(owner,title,sub,fxKey){
-  const tk={gen:FX.gen,game:S,turn:S.turnCount,cur:S.current,seq:(S.searchEndSeq=(S.searchEndSeq||0)+1)};
-  S.recruit=null; close();
+/* Saturn REVISE: 같은 완료 토큰으로 두 번 발화하지 않기 위한 **표시 전용** 래치. 게임 객체를 키로 둔다 —
+   프로세스 전역 숫자였을 때는 새 게임(newGame 이 S 를 새 객체로 갈아끼우고 searchEndSeq 는 다시 1부터다)의
+   첫 탐색이 앞 게임의 래치 값과 겹쳐 searchEndCheck 가 통째로 묻혔다. 규칙 상태(S)에는 아무것도 쓰지 않는다. */
+const searchEndFired=new WeakMap();
+function searchFinalizeFx(owner,title,sub,fxKey,seq){
+  const tk={gen:FX.gen,game:S,turn:S.turnCount,cur:S.current,seq};
+  close();
   const done=()=>{ if(FX.gen!==tk.gen||S!==tk.game||S.turnCount!==tk.turn||S.current!==tk.cur) return; // 새 게임·턴 교대·행동자 교대 → 무효
-    if(S.searchEndSeq!==tk.seq) return;           // 더 최신 탐색 완료가 있다 — 이 콜백은 버린다 (정확히 한 번)
-    S.searchEndSeq=tk.seq+0.5;                    // 같은 완료로 두 번 발화하지 않는다
+    if(S.searchEndSeq!==tk.seq||searchEndFired.get(S)===tk.seq) return; // 더 최신 탐색 완료가 있거나 이미 발화했다 — 이 콜백은 버린다 (정확히 한 번)
+    searchEndFired.set(S,tk.seq);
     searchEndCheck(); };
   const mine=owner===null||owner===undefined||viewerIsOwner(owner);
   if(title) fxPlay({key:fxKey||"itemFx",kind:"banner",
@@ -903,7 +1012,6 @@ function searchFinalize(owner,title,sub,fxKey){
   if(mine&&title) showToast(title+(sub?` · ${sub}`:""));   // 상세는 소유자 전용 토스트로만
   fxWhenIdle(done);
   render();
-  return true;
 }
 function searchEndCheck(){
   if(!BAL.fx.autoEnd) return;                 // 자동 턴 종료 스위치가 꺼진 환경(기존 헤드리스 회귀)은 종전 동작 유지
@@ -919,9 +1027,9 @@ function searchEndCheck(){
    · 기술 배열은 복사본으로 만든다 (archSkills 가 새 배열을 돌려주므로 원본 공유가 없다). cds 는 0, 공개 기록은 빈 배열.
    · 난수는 성공 판정 roll 1회뿐이다 (종 추첨은 탐색 시점에 이미 소비).
    · 전투 중 적 포획(finishByCapture → 예비)의 HP 70/최대 100·장착 기술 승계 규격은 **이번 요청 밖이라 그대로** 둔다. */
-function tryCapture(p,mode,recv,rd){
-  const own=p.owner, target=recv||p;
-  const cost=mode==="safe"?2:1; S.balls[own]-=cost;
+function tryCapture(p,mode,recv,rd,state){
+  const st=state||S, own=p.owner, target=recv||p;
+  const cost=mode==="safe"?2:1; st.balls[own]-=cost;
   const roll=rand();
   const ok= mode==="safe" || (mode==="risky"&&roll<0.5) || (mode==="attack"&&roll<0.7);
   if(ok){
@@ -939,10 +1047,10 @@ function tryCapture(p,mode,recv,rd){
          artRosterId 는 아트 정체(표시)용으로 그대로 둔다 — 두 필드의 역할을 합치지 않는다.
          전투 중 적 포획(finishByCapture → 예비)은 계약 6 "범위 밖"이므로 종전대로 rosterId 를 붙이지 않고 공용 규격 70/100 을 쓴다. */
       rosterId:sp.id,artRosterId:sp.id};
-    met(own,"captures");
+    met(own,"captures",1,st);
     return {ok:true,el:sp.element,rd:sp,recv:target};
   }
-  met(own,"captureFails");
+  met(own,"captureFails",1,st);
   let dmg=0;
   if(mode==="attack"){dmg=Math.round(p.maxHp*BAL.captureAtkFailPct); p.hp=Math.max(1,p.hp-dmg);} // 반동은 탐색 말 p (최소 1 남김)
   return {ok:false,dmg};

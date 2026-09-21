@@ -413,27 +413,30 @@ function aiRecruitPlan(own){
 /* #121 계약 4·6·9: AI 탐색 보상 해결 — 사람과 **같은 코어**(window.__recruitCore)를 타서 규칙·검사·순서가 한 곳에만 있다.
    무한 무료 행동 루프가 생기지 않도록 각 단계를 한 번씩만 전진시키고, 불법 선택은 코어가 이미 거부한다. */
 function aiRecruitResolve(own,p){
+  /* #245 Saturn REVISE: 토큰은 모든 step 에 필수다 — 지금 열린 recruit 의 것을 한 번 읽어 단계마다 그대로 싣는다.
+     그 사이 recruit 이 갈리면(새 탐색·새 게임·턴 교대) 남은 단계는 코어가 거부한다. */
+  const tk=S.recruit&&S.recruit.token, rc=(step,i)=>window.__recruitCore(step,i,tk);
   const recv=capReceivers(own), mode=recv.length?aiCapMode(own,p):null;
   const plan=V2_INTERP.recruitSkillSwap?aiRecruitPlan(own):null; // #234: 기술 교체가 닫힌 동안 AI 도 계획하지 않는다
   const prof=aiProf(own);
   /* 포획과 기술 교체가 모두 가능하면 capture 성향으로 고른다. 포획은 예비 전력이고 기술 교체는 지속 강화라 둘 다 가치가 있다 */
   const wantCap=!!mode&&(!plan||rand()<0.35+0.35*prof.capture);
   if(wantCap){
-    window.__recruitCore("cap",0);
+    rc("cap",0);
     const idx=recv.reduce((best,x,i)=>(x.type==="ally"&&recv[best].type!=="ally")?i:best,0); // 왕보다 동료에게 먼저 (왕 위험 분산)
-    window.__recruitCore("recv",idx);
-    window.__recruitCore("mode",CAP_MODES.indexOf(mode));
+    rc("recv",idx);
+    rc("mode",CAP_MODES.indexOf(mode));
     return;
   }
   if(plan){
-    window.__recruitCore("skills",0);
-    window.__recruitCore("skill",NEW_SKILLS.indexOf(plan.skill));
+    rc("skills",0);
+    rc("skill",NEW_SKILLS.indexOf(plan.skill));
     const ms=rosterMinions(own);
-    window.__recruitCore("target",ms.findIndex(m=>m.id===plan.targetId));
-    window.__recruitCore("slot",plan.slot);
+    rc("target",ms.findIndex(m=>m.id===plan.targetId));
+    rc("slot",plan.slot);
     return;
   }
-  window.__recruitCore("giveup",0); // 둘 다 불가 — 이벤트는 이미 소모됐고 턴 종료 판정으로 넘어간다
+  rc("giveup",0); // 둘 다 불가 — 이벤트는 이미 소모됐고 턴 종료 판정으로 넘어간다
 }
 /* ===== #21 5단 — 탐색·추론 기반 강AI (공정 관측: 결정 시점에 고정한 가시 적 집합 V·revealed·공개 제거 집계·목격 이동 기억만 사용) =====
    구조: 후보 행동(이동·텔레포트 스왑·탐색·생략) → 1-ply 위치 평가(+강제 전투 기대치·공격 기회) → 상위 K 후보에 대해

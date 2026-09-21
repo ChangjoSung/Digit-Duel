@@ -221,6 +221,18 @@ function lockstepDigest(T) {
     } : null,
     fleePick: S.fleePick ? { owner: S.fleePick.owner, cands: S.fleePick.cands.slice(), token: S.fleePick.token } : null,
     events: (S.events || []).map((e) => [e.r, e.c, e.kind, !!e.consumed]),
+    /* #245 (Saturn REVISE) 탐색 보상 선택의 **진행 중** 규칙 상태. 좌석별 엔진이 같은 프레임을 같은 순서로 적용하면
+       전부 같아야 하는 결정론적 값이고(후보 종은 탐색 시점의 rand 1회, 토큰은 말 id + 게임 내 recruit 순번), 뷰에는
+       싣지 않는 서버 내부 비교 전용이라 비공개 내용을 어디로도 내보내지 않는다.
+       빠져 있으면 한 좌석만 단계를 전진했거나 다른 후보 종·다른 수령 말·다른 토큰을 들고 있어도 요약이 같게 나온다 —
+       그 좌석의 다음 선택만 합법이 되거나(단계·토큰) 포획 결과가 곧바로 갈린다(종·수령 말·비용).
+       searchEndSeq 는 완료 토큰이라 한쪽만 올라가면 종료 연출·턴 종료 재평가가 한 번 더 또는 덜 발화한다. */
+    recruit: S.recruit ? [S.recruit.owner, S.recruit.pieceId, S.recruit.species, S.recruit.stage,
+      S.recruit.skill === undefined ? null : S.recruit.skill,
+      S.recruit.targetId === undefined ? null : S.recruit.targetId,
+      S.recruit.recvId === undefined ? null : S.recruit.recvId,
+      S.recruit.token === undefined ? null : S.recruit.token] : null,
+    searchEndSeq: S.searchEndSeq || 0,
     // #233 — 예비(포획) 하수인도 승계한 아키타입 8스탯을 지니고 그대로 대리 출전한다(3.3). element/hp만 보면
     // 스탯 주입이 갈린 상태를 놓친다.
     balls: S.balls.slice(), inv: S.inv.map((a) => a.slice()),

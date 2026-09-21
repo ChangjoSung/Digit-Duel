@@ -100,7 +100,7 @@ function battlePair(T, cur) {
   const own = T.S.current;
   const p = T.S.pieces.find((x) => x.owner === own && x.type === 'minion' && x.alive && x.placed);
   both(room, (E) => {
-    E.S.recruit = { owner: own, pieceId: p.id, species: E.ROSTER[0].id, stage: 'root', skill: null, targetId: null, recvId: null, token: 1 };
+    E.S.recruit = { owner: own, pieceId: p.id, species: E.ROSTER[0].id, stage: 'root', skill: null, targetId: null, recvId: null, token: p.id + '#1' };  // #245: 토큰은 발급형("말id#발급번호")이어야 한다 — 임의 값이면 손상 기록으로 거부된다
     E.recruitModal();
   });
   const viewOwner = room.toSeatView(own);

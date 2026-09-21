@@ -382,6 +382,431 @@ ok(liveDef.cap===heldCap&&heldCap.powerBuff===false&&heldCap.fleeBoost===false&&
 /* 단일 경로: 정규 래퍼 하나가 Core 로 들어가고 레거시 종료 변이 경로는 남지 않는다 */
 ok(/function gameOver\(winner,type\)\{ dispatchCoreAction\(\{t:"gameOver",winner,winType:type,endingBattle:ENDING_BATTLE\}\); \}/.test(T.html)&&!/case "resign"\s*:/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8"))&&(T.html.match(/type:"matchEnded"/g)||[]).length===1&&(T.html.match(/matchEndFx\(\);/g)||[]).length===1&&!/S\.phase="over"; *S\.winner=/.test(T.html),"one canonical gameOver wrapper dispatches the Core action, and no legacy match-end mutation or duplicate resign path survives");
 
+/* ===== #245 탐색·보상 선택 — 규칙 상태는 Core reducer, 모달·로그·토스트·튜토리얼·연출은 이벤트 ===== */
+const J245=JSON.stringify;
+/* #245 Saturn REVISE: recruit 액션은 모든 step 에 토큰이 필수다. 픽스처의 토큰 형식도 코어와 같다 — "탐색한 말 id#이 게임의 몇 번째 recruit" */
+const RTOK="901#1";
+const RC=(step,i)=>T.__recruitCore(step,i,T.S.recruit&&T.S.recruit.token); // 살아 있는 recruit 의 토큰을 실어 주는 테스트 호출기
+const srchPieces=[{id:901,owner:0,type:"minion",alive:true,placed:true,r:9,c:3,hp:50,maxHp:50,healing:true,skills:["s0","s1","s2","s3"],cds:[2,1,0,0],revealedSkills:[0,1]},
+  {id:902,owner:0,type:"ally",alive:true,placed:true,r:9,c:4,hp:40,maxHp:40,cap:null}];
+const srchState={phase:"play",mode:"pvp",current:0,mainUsed:false,selected:null,recruit:null,balls:[3,3],pieces:srchPieces,
+  events:[{r:9,c:3,kind:"battleBuff",consumed:false}],pkgs:[{itemGift:0,battleBuff:0},{itemGift:0,battleBuff:0}],
+  traces:[new Set(["9_3"]),new Set()],metrics:{searches:0,minionSearches:0,byPlayer:[{},{}]}};
+const pkgR=T.reduceCoreAction(srchState,{t:"search",id:901,r:9,c:3});
+ok(srchState.mainUsed===false&&srchState.recruit===null&&srchState.searchEndSeq===undefined&&srchPieces[0].healing===true&&srchState.events[0].consumed===false&&srchState.pkgs[0].battleBuff===0&&srchState.metrics.searches===0&&srchState.metrics.byPlayer[0].searches===undefined,"search reducer leaves the input piece, event cell, package stock, metrics and main-action flag untouched");
+ok(pkgR.state!==srchState&&pkgR.state.mainUsed===true&&pkgR.state.events!==srchState.events&&pkgR.state.events[0]!==srchState.events[0]&&pkgR.state.events[0].consumed===true&&pkgR.state.pieces[0]!==srchPieces[0]&&pkgR.state.pieces[0].healing===false&&pkgR.state.pieces[1]===srchPieces[1]&&pkgR.state.pkgs[0].battleBuff===1&&pkgR.state.pkgs[1]===srchState.pkgs[1]&&pkgR.state.metrics.searches===1&&pkgR.state.metrics.minionSearches===1&&pkgR.state.metrics.byPlayer[0].searches===1&&pkgR.state.recruit===null&&pkgR.state.searchEndSeq===1,"search reducer returns the spent main action, consumed cell, broken heal posture, package grant and metrics on cloned state only");
+ok(J245(pkgR.events.map(e=>e.type))===J245(["searched","searchDone"])&&pkgR.events[0].piece===pkgR.state.pieces[0]&&pkgR.events[0].owner===0&&pkgR.events[0].healBroken===true&&pkgR.events[1].tut==="pkg"&&pkgR.events[1].seq===1&&/보유 1개/.test(pkgR.events[1].sub),"search reducer emits the public-log event then the owner-only completion event carrying the piece that lives in the returned state");
+ok(T.reduceCoreAction(Object.assign({},srchState,{pieces:[Object.assign({},srchPieces[0],{type:"bomb"})]}),{t:"search",id:901,r:9,c:3}).events[0].type==="searchRefused"&&T.reduceCoreAction(srchState,{t:"search",id:901,r:9,c:4}).events.length===0&&T.reduceCoreAction(srchState,{t:"search",id:999,r:9,c:3}).events.length===0&&T.reduceCoreAction(Object.assign({},srchState,{events:[{r:9,c:3,kind:"battleBuff",consumed:true}]}),{t:"search",id:901,r:9,c:3}).events.length===0,"search reducer refuses a bomb with a reason, and silently drops a mismatched cell, an unknown id and an already consumed cell");
+ok(T.reduceCoreAction(Object.assign({},srchState,{events:[{r:9,c:3,kind:"potion",consumed:false}]}),{t:"search",id:901,r:9,c:3}).state.pkgs[0].battleBuff===0,"a discarded legacy event kind consumes the cell with no reward");
+/* recruit 개시: 후보 종 추첨에 rand 를 **정확히 1회**만 쓴다 (계약 6 후보 고정) */
+const recState=Object.assign({},srchState,{events:[{r:9,c:3,kind:"recruit",consumed:false}]});
+T.setSeed(245); const randSeq=[T.rand(),T.rand()];
+T.setSeed(245); const recR=T.reduceCoreAction(recState,{t:"search",id:901,r:9,c:3});
+ok(T.rand()===randSeq[1]&&recState.recruit===null&&recState.recruitToken===undefined&&recR.state.recruit.owner===0&&recR.state.recruit.pieceId===901&&recR.state.recruit.stage==="root"&&recR.state.recruit.token===RTOK&&recR.state.recruitToken===1&&recR.state.searchEndSeq===undefined&&J245(recR.events.map(e=>e.type))===J245(["searched","recruitOpened"]),"recruit search draws the candidate species with exactly one rand and opens the choice without finishing the search");
+/* 단계 전이·선택 값은 전부 복제본에만 쓴다 */
+const rootState=Object.assign({},recState,{recruit:{owner:0,pieceId:901,species:T.ROSTER[0].id,stage:"root",skill:null,targetId:null,recvId:null,token:RTOK}});
+const capR=T.reduceCoreAction(rootState,{t:"recruit",step:"cap",i:0,token:RTOK});
+ok(rootState.recruit.stage==="root"&&capR.state!==rootState&&capR.state.recruit!==rootState.recruit&&capR.state.recruit.stage==="capRecv"&&capR.state.recruit.species===rootState.recruit.species&&capR.events[0].type==="recruitStage","recruit stage reducer advances on a cloned recruit record and keeps the fixed candidate species");
+const recvR=T.reduceCoreAction(capR.state,{t:"recruit",step:"recv",i:0,token:RTOK});
+const backR=T.reduceCoreAction(recvR.state,{t:"recruit",step:"back",i:0,token:RTOK});
+ok(recvR.state.recruit.recvId===902&&recvR.state.recruit.stage==="capMode"&&capR.state.recruit.recvId===null&&backR.state.recruit.stage==="capRecv"&&backR.state.recruit.recvId===null&&recvR.state.recruit.recvId===902,"the receiver pick and the step back each return a fresh recruit record, clearing only the field that step drops");
+T.setSeed(7);
+const modeR=T.reduceCoreAction(recvR.state,{t:"recruit",step:"mode",i:0,token:RTOK}); // 안전 포획 (볼 2 · 100%)
+const capPiece=modeR.state.pieces[1];
+ok(srchPieces[1].cap===null&&srchState.balls[0]===3&&srchState.metrics.captures===undefined&&capPiece!==srchPieces[1]&&capPiece.cap&&capPiece.cap.rosterId===T.ROSTER[0].id&&modeR.state.balls!==srchState.balls&&modeR.state.balls[0]===1&&modeR.state.metrics.captures===1&&modeR.state.pieces[0]!==srchPieces[0]&&modeR.state.pieces[0].hp===50&&srchPieces[0].hp===50&&modeR.state.recruit===null&&modeR.state.searchEndSeq===1,"capture reducer spends the balls, attaches the stand-in and records the metric on clones only — the searcher that takes the attack-capture recoil is cloned too and keeps its HP on a safe capture");
+/* 공격 포획 실패: 반동은 **탐색 말**이 받고(수령 말이 아니다) 그것도 복제본에만 쓴다 */
+T.setSeed(2);
+const failR=T.reduceCoreAction(Object.assign({},recvR.state,{balls:[1,3]}),{t:"recruit",step:"mode",i:2,token:RTOK});
+ok(srchPieces[0].hp===50&&srchPieces[1].cap===null&&failR.state.pieces[0]!==srchPieces[0]&&failR.state.pieces[0].hp<50&&failR.state.pieces[1].cap===null&&failR.state.balls[0]===0&&failR.state.metrics.captureFails===1&&failR.state.metrics.captures===undefined&&/포획 실패/.test(failR.events[0].title)&&/탐색 말 HP/.test(failR.events[0].sub),"a failed attack capture puts the recoil on the cloned searcher, not the receiver, and leaves the input board whole");
+ok(J245(modeR.events.map(e=>e.type))===J245(["searchDone"])&&modeR.events[0].fxKey==="captureFx"&&modeR.events[0].owner===0&&modeR.events[0].tut===undefined&&/포획 성공/.test(modeR.events[0].title),"a finished capture emits one owner-scoped searchDone with the capture effect key");
+ok(T.reduceCoreAction(Object.assign({},recvR.state,{balls:[1,3]}),{t:"recruit",step:"mode",i:0,token:RTOK}).events.length===0&&T.reduceCoreAction(recvR.state,{t:"recruit",step:"mode",i:9,token:RTOK}).events.length===0&&T.reduceCoreAction(Object.assign({},rootState,{recruit:null}),{t:"recruit",step:"cap",i:0,token:RTOK}).events[0].type==="recruitClosed"&&T.reduceCoreAction(Object.assign({},rootState,{current:1}),{t:"recruit",step:"cap",i:0,token:RTOK}).events[0].type==="recruitClosed","the capture cost, an unknown method and a stale callback after a turn handover are all refused in Core, not in the modal");
+const giveR=T.reduceCoreAction(rootState,{t:"recruit",step:"giveup",i:0,token:RTOK});
+ok(giveR.state.recruit===null&&giveR.state.searchEndSeq===1&&giveR.state.events===rootState.events&&giveR.state.pkgs===rootState.pkgs&&giveR.state.balls===rootState.balls&&rootState.recruit!==null&&giveR.events[0].type==="searchDone","giving up clears the recruit record and issues the completion token without refunding the cell, the stock or the balls");
+/* 기술 교체 확정 (#234 로 기본 비활성 — 분기는 보존되므로 켜서 계약을 확인한다) */
+T.V2_INTERP.recruitSkillSwap=true;
+const slotState=Object.assign({},recState,{recruit:{owner:0,pieceId:901,species:T.ROSTER[0].id,stage:"slot",skill:T.NEW_SKILLS[0],targetId:901,recvId:null,token:RTOK}});
+const slotR=T.reduceCoreAction(slotState,{t:"recruit",step:"slot",i:0,token:RTOK});
+const swapped=slotR.state.pieces[0];
+ok(srchPieces[0].skills[0]==="s0"&&J245(srchPieces[0].revealedSkills)===J245([0,1])&&swapped!==srchPieces[0]&&swapped.skills!==srchPieces[0].skills&&swapped.skills[0]===T.NEW_SKILLS[0]&&J245(swapped.cds)===J245([2,1,0,0])&&J245(swapped.revealedSkills)===J245([1])&&slotR.state.recruit===null&&slotR.events[0].type==="searchDone","skill replacement writes the new skill and the re-hidden slot onto a cloned piece and skill list, inheriting the remaining cooldown");
+ok(T.reduceCoreAction(slotState,{t:"recruit",step:"slot",i:4,token:RTOK}).events.length===0&&T.reduceCoreAction(Object.assign({},slotState,{recruit:Object.assign({},slotState.recruit,{skill:"s1"})}),{t:"recruit",step:"slot",i:0,token:RTOK}).events.length===0,"an out-of-range slot and a skill the target already carries are both refused in Core");
+T.V2_INTERP.recruitSkillSwap=false;
+ok(T.reduceCoreAction(slotState,{t:"recruit",step:"slot",i:0,token:RTOK}).events.length===0&&T.reduceCoreAction(rootState,{t:"recruit",step:"skills",i:0,token:RTOK}).events.length===0&&T.reduceCoreAction(rootState,{t:"recruit",step:"cap",i:0,token:RTOK}).events[0].type==="recruitStage","the #234 transitional switch closes the skill-swap steps in Core while capture and give-up stay open");
+/* 상태 순수성: 리듀서 상태와 전역 S 가 갈려도 결과는 받은 상태만 따른다 (온라인 재생·AI 탐색 경로) */
+const srchDigest=r=>J245({ev:r.events.map(e=>[e.type,e.owner,e.title||null]),main:r.state.mainUsed,pkg:r.state.pkgs,rec:r.state.recruit});
+const srchAgreed=srchDigest(T.reduceCoreAction(srchState,{t:"search",id:901,r:9,c:3}));
+const liveSearch={phase:T.S.phase,current:T.S.current,mainUsed:T.S.mainUsed,pieces:T.S.pieces,events:T.S.events,recruit:T.S.recruit};
+Object.assign(T.S,{phase:"over",current:1,mainUsed:true,pieces:[],events:[],recruit:{owner:1,pieceId:1,stage:"capMode"}});
+const srchHostile=srchDigest(T.reduceCoreAction(srchState,{t:"search",id:901,r:9,c:3})), capHostile=T.reduceCoreAction(rootState,{t:"recruit",step:"cap",i:0,token:RTOK});
+Object.assign(T.S,liveSearch);
+ok(srchHostile===srchAgreed&&capHostile.state.recruit.stage==="capRecv"&&capHostile.events[0].type==="recruitStage","the search and recruit reducers read the board, event cells, stock and recruit record from their state argument only, so a hostile global S changes nothing");
+/* end-to-end: 턴바 [탐색] 한 번이 Core 를 정확히 한 번 지난다 — 주 행동·칸 소모·재고·회복 해제·공용 로그 */
+H.freshPlay(T,"pvp");
+const seeker=H.mine(T,0,"minion")[0];
+T.S.current=0; T.S.mainUsed=false; T.S.selected=seeker; seeker.healing=true;
+T.S.events=[{r:seeker.r,c:seeker.c,kind:"itemGift",consumed:false}]; T.S.traces[0].add(seeker.r+"_"+seeker.c);
+const heldEv=T.S.events[0];
+T.netAction({t:"search"});
+ok(T.S.mainUsed===true&&heldEv.consumed===true&&T.S.events[0]===heldEv&&T.S.pkgs[0].itemGift===1&&T.S.pieces.includes(seeker)&&seeker.healing===false&&T.S.metrics.searches===1&&T.S.metrics.byPlayer[0].searches===1&&T.S.recruit===null&&T.S.log.filter(line=>/숲 이벤트 발생/.test(line.msg)).length===1&&T.S.log.filter(line=>/회복 자세 해제/.test(line.msg)).length===1,"an offline turn-bar search applies once through the Core boundary and commits onto the very event cell and piece the callers hold");
+ok(!T.S.log.some(line=>/아이템 선물|전투 버프|보유 1개/.test(line.msg)),"the public log names neither the package kind nor the stock (GDD-13 4.7)");
+T.netAction({t:"search"});
+ok(T.S.pkgs[0].itemGift===1&&T.S.metrics.searches===1,"a second turn-bar search with the main action spent grants nothing");
+/* end-to-end: recruit → 포획. 후보 종은 단계를 오가도 고정이고, 늦은 콜백은 아무것도 소모하지 않는다 */
+H.freshPlay(T,"pvp");
+const rSeeker=H.mine(T,0,"minion")[0], rRecv=H.mine(T,0,"ally")[0];
+rRecv.cap=null; T.S.balls=[3,3]; T.S.current=0; T.S.mainUsed=false; T.S.selected=rSeeker;
+T.S.events=[{r:rSeeker.r,c:rSeeker.c,kind:"recruit",consumed:false}]; T.S.traces[0].add(rSeeker.r+"_"+rSeeker.c);
+T.setSeed(245); T.netAction({t:"search"});
+const species=T.S.recruit&&T.S.recruit.species;
+ok(!!species&&T.S.recruit.stage==="root"&&T.S.recruit.owner===0&&T.S.mainUsed===true&&T.S.events[0].consumed===true,"a recruit search opens the choice in Core while the cell and the main action are already spent");
+RC("cap",0);
+const recvIdx=T.capReceivers(0).findIndex(x=>x.id===rRecv.id);
+RC("recv",recvIdx); RC("back",0); RC("recv",recvIdx);
+ok(T.S.recruit.stage==="capMode"&&T.S.recruit.recvId===rRecv.id&&T.S.recruit.species===species&&T.S.balls[0]===3,"walking the capture stages back and forth re-draws no candidate species and spends nothing");
+RC("mode",0);
+ok(T.S.recruit===null&&T.S.pieces.includes(rRecv)&&rRecv.cap&&rRecv.cap.rosterId===species&&T.S.balls[0]===1&&T.S.metrics.captures===1,"the safe capture commits onto the very receiver object the callers hold and spends two balls");
+RC("mode",0);
+ok(T.S.balls[0]===1&&T.S.metrics.captures===1&&T.S.recruit===null,"a late duplicate capture callback after the recruit record is cleared changes nothing");
+/* end-to-end: 포기도 칸·주 행동을 되돌리지 않는다 */
+H.freshPlay(T,"pvp");
+const gSeeker=H.mine(T,0,"minion")[0];
+T.S.current=0; T.S.mainUsed=false; T.S.selected=gSeeker;
+T.S.events=[{r:gSeeker.r,c:gSeeker.c,kind:"recruit",consumed:false}]; T.S.traces[0].add(gSeeker.r+"_"+gSeeker.c);
+T.setSeed(9); T.netAction({t:"search"}); RC("giveup",0);
+ok(T.S.recruit===null&&T.S.mainUsed===true&&T.S.events[0].consumed===true&&T.S.pkgs[0].itemGift===0&&T.S.pkgs[0].battleBuff===0,"giving up ends the search without refunding the cell or the main action");
+/* 단일 경로: UI·AI·Network 는 탐색·보상 상태를 직접 쓰지 않는다 */
+const aiSrc=fs.readFileSync(path.join(demo,"js","ai.js"),"utf8");
+const netSrc=fs.readFileSync(path.join(demo,"js","network.js"),"utf8");
+const uiSrc=fs.readFileSync(path.join(demo,"js","ui.js"),"utf8");
+const coreSrc=fs.readFileSync(path.join(demo,"js","core.js"),"utf8");
+const mutates=/S\.recruit\s*=[^=]|S\.recruitToken\s*=|S\.searchEndSeq\s*=|R\.stage\s*=[^=]|\.consumed\s*=[^=]|S\.pkgs\[[^\]]*\]\[[^\]]*\]\s*\+\+/;
+ok(!/case "search"\s*:/.test(netSrc)&&!mutates.test(netSrc)&&!mutates.test(aiSrc)&&!mutates.test(uiSrc),"no UI, AI or network path writes the search, package or recruit state — network replay has no second search path either");
+ok(!/R\.stage\s*=[^=]/.test(coreSrc)&&/window\.__recruitCore=\(step,i,token\)=>\{ dispatchCoreAction\(\{t:"recruit",step,i,token\}\); \};/.test(coreSrc)&&(coreSrc.match(/type:"searchDone"/g)||[]).length===1&&(coreSrc.match(/\[ev\.kind\]\+\+/g)||[]).length===1&&(coreSrc.match(/searchFinalizeFx\(/g)||[]).length===1,"the recruit modal only renders, one Core entry point applies every reward choice, and the package grant and completion display each live in a single place");
+ok(/function doSearch\(p,ev\)\{\r?\n  const result=dispatchCoreAction\(\{t:"search"/.test(coreSrc)&&(T.html.match(/tryCapture\(/g)||[]).length===2,"the search wrapper is a thin Core entry point and the capture roll keeps its single implementation");
+
+/* ===== Saturn REVISE 회귀 — 세 수정이 각각 없으면 떨어지는 최소 probe ===== */
+/* (1) 좌표를 실은 직접 액션도 좌표 없는 턴바 프레임과 **같은** 합법성 게이트를 지난다 (searchLegalEvent 한 곳) */
+{
+  const bad=patch=>T.reduceCoreAction(Object.assign({},srchState,patch),{t:"search",id:901,r:9,c:3});
+  const noTrace=bad({traces:[new Set(),new Set()]});
+  ok(bad({mainUsed:true}).events.length===0&&bad({current:1}).events.length===0&&bad({phase:"setup"}).events.length===0
+     &&noTrace.events.length===0
+     &&bad({pieces:[Object.assign({},srchPieces[0],{alive:false})]}).events.length===0
+     &&bad({pieces:[Object.assign({},srchPieces[0],{placed:false})]}).events.length===0
+     &&bad({pieces:[Object.assign({},srchPieces[0],{owner:1})]}).events.length===0
+     &&srchState.mainUsed===false&&srchState.events[0].consumed===false&&srchState.pkgs[0].battleBuff===0,
+     "a coordinate-bearing search is refused without mutation when the main action is spent, it is not that owner's turn, the phase is not play, the trace was never found, or the piece is dead, unplaced or not the caller's");
+  /* 같은 게이트가 레거시 래퍼(doSearch — AI·테스트의 직접 진입점)에도 걸린다 */
+  H.freshPlay(T,"pvp");
+  const gateSeeker=H.mine(T,0,"minion")[0];
+  T.S.events=[{r:gateSeeker.r,c:gateSeeker.c,kind:"itemGift",consumed:false}]; T.S.traces[0].add(gateSeeker.r+"_"+gateSeeker.c);
+  T.S.current=0; T.S.mainUsed=true;
+  const spentEv=T.S.events[0];
+  ok(T.doSearch(gateSeeker,spentEv)===false&&spentEv.consumed===false&&T.S.pkgs[0].itemGift===0&&T.S.metrics.searches===0,
+     "doSearch refuses a direct search once the main action is spent, exactly like the turn-bar frame (the legacy wrapper checked neither)");
+  T.S.mainUsed=false; T.S.traces[0].delete(gateSeeker.r+"_"+gateSeeker.c);
+  ok(T.doSearch(gateSeeker,spentEv)===false&&spentEv.consumed===false&&T.S.metrics.searches===0,
+     "doSearch refuses a cell whose trace was never found");
+}
+/* (2) recruit step 은 자기 단계에서만 합법이다 — 단계를 건너뛰면 수령 말·비용 검사 앞에서 멈춘다 */
+{
+  const jump=step=>T.reduceCoreAction(rootState,{t:"recruit",step,i:0,token:RTOK});
+  ok(jump("recv").events.length===0&&jump("mode").events.length===0&&jump("slot").events.length===0
+     &&jump("skill").events.length===0&&jump("target").events.length===0
+     &&rootState.recruit.stage==="root"&&rootState.recruit.recvId===null&&rootState.balls[0]===3,
+     "recruit steps that do not belong to the current stage are refused without mutation — root can no longer jump straight to recv, mode or slot");
+  ok(T.reduceCoreAction(rootState,{t:"recruit",step:"cap",i:0,token:99}).events.length===0
+     &&T.reduceCoreAction(rootState,{t:"recruit",step:"cap",i:0,token:rootState.recruit.token}).events[0].type==="recruitStage",
+     "a button carrying another recruit record's token is refused, while the current record's token passes");
+  ok(T.reduceCoreAction(capR.state,{t:"recruit",step:"cap",i:0,token:RTOK}).events.length===0,
+     "a late duplicate click on the stage that already advanced is refused (the stage contract, not the modal, catches it)");
+}
+/* (3) 완료 래치는 게임별이다 — 새 게임의 첫 탐색도 searchEndCheck 를 탄다 (프로세스 전역 숫자였을 때는 묻혔다) */
+{
+  const Z=H.load(index); Z.BAL.fx.autoEnd=true; Z.tutSkip();
+  const play=()=>{ H.freshPlay(Z,"pvp"); Z.tutSkip(); Z.byId("overlay").classList.add("hidden");
+    const me=H.mine(Z,0,"minion")[0];
+    for(const x of Z.S.pieces) if(x.owner===1) x.placed=false;          // 남은 선택 전투를 없앤다 (autoEndReady 전제)
+    Z.S.events=[{r:me.r,c:me.c,kind:"itemGift",consumed:false}]; Z.S.traces[0].add(me.r+"_"+me.c);
+    Z.S.current=0; Z.S.mainUsed=false; Z.S.selected=me;
+    const t=Z.S.turnCount, e=Z.S.metrics.autoEnds;
+    Z.netAction({t:"search"});
+    Z.drain(1);                                        // 결과 연출 끝점(탐색 완료 콜백) 하나만 실행
+    const own=Z.S.turnCount===t+1;                     // 계약 7-3: 전역 1000ms 유예를 더 기다리지 않고 searchEndCheck 가 끝낸다
+    Z.drain(20000);
+    return {own,ended:Z.S.turnCount===t+1,auto:Z.S.metrics.autoEnds===e+1,seq:Z.S.searchEndSeq}; };
+  const g1=play(), g2=play();
+  ok(g1.own&&g1.ended&&g1.auto&&g1.seq===1,"game 1: the search completion callback itself ends the turn exactly once");
+  ok(g2.own&&g2.ended&&g2.auto&&g2.seq===1,"game 2 reuses completion sequence 1 and its own callback still ends the turn — the display latch is per game, not per process (a process-global latch swallowed it and left the generic grace timer to finish the turn a step later)");
+  Z.TQ.length=0;
+}
+/* (4) 이벤트 칸 대조는 자리로 한다 — 좌표가 겹치는 항목 둘이 첫 원본 하나로 뭉치지 않는다 */
+{
+  H.freshPlay(T,"pvp");
+  const dupSeeker=H.mine(T,0,"minion")[0];
+  T.S.events=[{r:dupSeeker.r,c:dupSeeker.c,kind:"itemGift",consumed:false},
+              {r:dupSeeker.r,c:dupSeeker.c,kind:"battleBuff",consumed:false}]; // 같은 칸을 가리키는 두 항목 (저장 상태·픽스처)
+  T.S.traces[0].add(dupSeeker.r+"_"+dupSeeker.c);
+  T.S.current=0; T.S.mainUsed=false; T.S.selected=dupSeeker;
+  const e0=T.S.events[0], e1=T.S.events[1];
+  T.netAction({t:"search"});
+  ok(T.S.events.length===2&&T.S.events[0]===e0&&T.S.events[1]===e1&&e0!==e1
+     &&e0.consumed===true&&e0.kind==="itemGift"&&e1.consumed===false&&e1.kind==="battleBuff"
+     &&T.S.pkgs[0].itemGift===1&&T.S.pkgs[0].battleBuff===0,
+     "duplicate-coordinate event cells keep their own object identity and order through the commit — only the searched entry is consumed and only its reward is granted");
+}
+/* (5) Saturn REVISE — recruit 검증 엄격화: 토큰은 모든 step 에 필수이고, 위조된 소유자·말·종·대상·수령 말·인덱스는 전부 거부된다 */
+{
+  const capRecvState=T.reduceCoreAction(rootState,{t:"recruit",step:"cap",i:0,token:RTOK}).state;
+  const noTok=step=>T.reduceCoreAction(capRecvState,{t:"recruit",step,i:0});
+  ok(noTok("recv").events.length===0&&noTok("back").events.length===0&&noTok("giveup").events.length===0&&noTok("mode").events.length===0
+     &&capRecvState.recruit.stage==="capRecv"&&capRecvState.recruit.recvId===null&&capRecvState.searchEndSeq===undefined&&capRecvState.balls[0]===3,
+     "every recruit step refuses a frame that carries no token — back and give-up included (the omitted-token escape let any late callback advance the live record)");
+  ok(T.reduceCoreAction(capRecvState,{t:"recruit",step:"back",i:0,token:RTOK}).state.recruit.stage==="root"
+     &&T.reduceCoreAction(capRecvState,{t:"recruit",step:"giveup",i:0,token:RTOK}).events[0].type==="searchDone",
+     "negative control: the same back and give-up frames carrying the live token still pass");
+  ok(T.reduceCoreAction(rootState,{t:"recruit",step:"back",i:0,token:RTOK}).events.length===0&&rootState.recruit.stage==="root",
+     "there is no step back out of the root stage");
+  /* 기록 자신의 토큰도 발급 형식이어야 한다 — 손상된 토큰은 같은 값을 실은 호출과 비교를 통과해 버린다 */
+  const badTok=t=>Object.assign({},rootState,{recruit:Object.assign({},rootState.recruit,{token:t})});
+  const BADS=[undefined,null,"",0,1,"901#","#1","901#0","901#1x","902#1","901",{},["901#1"],NaN,true];
+  ok(BADS.every(t=>{ const st=badTok(t), keep=JSON.stringify(st);
+       return ["cap","recv","back","giveup","mode","skills","skill","target","slot"].every(step=>{
+         const r=T.reduceCoreAction(st,{t:"recruit",step,i:0,token:t});
+         return r.state===st&&J245(r.events.map(e=>e.type))===J245(["recruitClosed"])&&JSON.stringify(st)===keep; }); })
+     &&BADS.every(t=>T.reduceCoreAction(badTok(t),{t:"recruit",step:"cap",i:0}).events[0].type==="recruitClosed"),
+     "a recruit record whose own token is missing, null, empty or malformed executes no step — even when the frame carries the very same malformed token — and leaves the input state byte-identical with a display-only recruitClosed");
+  ok(T.reduceCoreAction(badTok(RTOK),{t:"recruit",step:"cap",i:0,token:RTOK}).events[0].type==="recruitStage"
+     &&T.reduceCoreAction(badTok("901#2"),{t:"recruit",step:"cap",i:0,token:"901#2"}).events[0].type==="recruitStage",
+     "negative control: a record carrying a properly generated token still advances on that token");
+  /* 위조 recruit 기록 — 소유자·탐색 말·후보 종 */
+  const foreign=[{id:903,owner:1,type:"minion",alive:true,placed:true,r:2,c:2,hp:50,maxHp:50,skills:["s0","s1","s2","s3"],cds:[0,0,0,0]},
+                 {id:904,owner:1,type:"ally",alive:true,placed:true,r:2,c:3,hp:40,maxHp:40,cap:null}];
+  const forged=patch=>T.reduceCoreAction(Object.assign({},rootState,{pieces:srchPieces.concat(foreign),recruit:Object.assign({},rootState.recruit,patch)}),
+    {t:"recruit",step:"cap",i:0,token:RTOK});
+  const closed=r=>r.events.length===1&&r.events[0].type==="recruitClosed"&&r.state.recruit!==null;
+  ok(closed(forged({owner:1}))&&closed(forged({owner:"0"}))&&closed(forged({owner:2}))
+     &&closed(forged({pieceId:903}))&&closed(forged({pieceId:999}))
+     &&closed(forged({pieceId:901,species:"__no_such_species"}))
+     &&forged({}).events[0].type==="recruitStage",
+     "a recruit record whose owner is not the player to move, whose searching piece is missing or belongs to the opponent, or whose candidate species is unknown is closed instead of being played out (no shared-minion fallback)");
+  /* 수령 말: 살아 있고 배치된 **내** 동료·왕 중 포획 슬롯이 빈 말만 */
+  const recvForge=patch=>T.reduceCoreAction(Object.assign({},recvR.state,{pieces:srchPieces.concat(foreign),recruit:Object.assign({},recvR.state.recruit,patch)}),
+    {t:"recruit",step:"mode",i:0,token:RTOK});
+  ok(recvForge({recvId:901}).events.length===0&&recvForge({recvId:904}).events.length===0&&recvForge({recvId:999}).events.length===0
+     &&recvForge({}).events[0].type==="searchDone"&&srchPieces[1].cap===null&&foreign[1].cap===null&&srchState.balls[0]===3,
+     "a forged receiver — the searching minion itself, the opponent's ally or a missing id — is refused before the balls are spent, while the legitimate receiver still goes through");
+  /* 인덱스는 정수·음수 아님 */
+  const idx=(step,i)=>T.reduceCoreAction(capRecvState,{t:"recruit",step,i,token:RTOK});
+  ok(idx("recv",0.5).events.length===0&&idx("recv",-1).events.length===0&&idx("recv","0").events.length===0&&idx("recv",NaN).events.length===0
+     &&idx("recv",0).events[0].type==="recruitStage",
+     "fractional, negative, string and NaN button indices are refused while the integer index passes (AI findIndex misses hand over -1)");
+  /* 기술 교체 대상·기술도 같은 잣대 (#234 로 기본 닫힘이라 켜서 확인한다) */
+  T.V2_INTERP.recruitSkillSwap=true;
+  const slotForge=patch=>T.reduceCoreAction(Object.assign({},slotState,{pieces:srchPieces.concat(foreign),recruit:Object.assign({},slotState.recruit,patch)}),
+    {t:"recruit",step:"slot",i:0,token:RTOK});
+  ok(slotForge({targetId:903}).events.length===0&&slotForge({targetId:902}).events.length===0&&slotForge({targetId:999}).events.length===0
+     &&slotForge({skill:"__no_such_skill"}).events.length===0
+     &&T.reduceCoreAction(Object.assign({},slotState,{pieces:srchPieces.concat(foreign)}),{t:"recruit",step:"slot",i:1.5,token:RTOK}).events.length===0
+     &&slotForge({}).events[0].type==="searchDone"&&srchPieces[0].skills[0]==="s0"&&foreign[0].skills[0]==="s0",
+     "a forged skill-swap target — the opponent's minion, my own ally, a missing id — and a skill outside the three offers are all refused, and so is a fractional slot");
+  const tgtForge=patch=>T.reduceCoreAction(Object.assign({},recState,{pieces:srchPieces.concat(foreign),
+    recruit:Object.assign({},rootState.recruit,{stage:"target",skill:T.NEW_SKILLS[0]},patch)}),{t:"recruit",step:"target",i:0,token:RTOK});
+  ok(tgtForge({skill:"__no_such_skill"}).events.length===0&&tgtForge({}).events[0].type==="recruitStage"&&tgtForge({}).state.recruit.targetId===901,
+     "the target step refuses a skill outside the three offers too, and otherwise picks my own roster minion");
+  T.V2_INTERP.recruitSkillSwap=false;
+}
+/* (6) Saturn REVISE — 좌표가 겹치는 흔적은 **요청한 자리**만 소모한다 */
+{
+  const dup=Object.assign({},srchState,{events:[{r:9,c:3,kind:"itemGift",consumed:false},{r:9,c:3,kind:"battleBuff",consumed:false}]});
+  const second=T.reduceCoreAction(dup,{t:"search",id:901,r:9,c:3,ei:1});
+  const first=T.reduceCoreAction(dup,{t:"search",id:901,r:9,c:3,ei:0});
+  const free=T.reduceCoreAction(dup,{t:"search",id:901,r:9,c:3});
+  /* 좌표 없는 턴바·재생 프레임은 resolve 에서 **자리**로 해석된다 — 양 피어가 같은 항목을 고른다 */
+  const resolved=T.resolveCoreAction(Object.assign({},dup,{selected:srchPieces[0]}),{t:"search"});
+  ok(second.state.events[0].consumed===false&&second.state.events[1].consumed===true&&second.state.pkgs[0].battleBuff===1&&second.state.pkgs[0].itemGift===0
+     &&first.state.events[0].consumed===true&&first.state.events[1].consumed===false&&first.state.pkgs[0].itemGift===1
+     &&free.state.events[0].consumed===true&&free.state.events[1].consumed===false&&free.state.pkgs[0].itemGift===1
+     &&resolved.ei===0&&resolved.id===901&&resolved.r===9&&resolved.c===3
+     &&dup.events[0].consumed===false&&dup.events[1].consumed===false,
+     "a direct search that asks for the second entry of a shared cell consumes exactly that entry and grants its reward, while the coordinate-free frame resolves to the first entry's index deterministically");
+  ok(T.reduceCoreAction(dup,{t:"search",id:901,r:9,c:3,ei:5}).events.length===0
+     &&T.reduceCoreAction(dup,{t:"search",id:901,r:9,c:3,ei:0.5}).events.length===0
+     &&T.reduceCoreAction(dup,{t:"search",id:901,r:9,c:3,ei:-1}).events.length===0
+     &&T.reduceCoreAction(dup,{t:"search",id:901,r:9,c:3,ei:1}).events.length===2,
+     "an out-of-range, fractional or negative entry index is refused while the real one passes");
+  /* 실제 호출처(doSearch)도 자기가 건넨 그 항목을 소모한다 */
+  H.freshPlay(T,"pvp");
+  const dSeeker=H.mine(T,0,"minion")[0];
+  T.S.events=[{r:dSeeker.r,c:dSeeker.c,kind:"itemGift",consumed:false},{r:dSeeker.r,c:dSeeker.c,kind:"battleBuff",consumed:false}];
+  T.S.traces[0].add(dSeeker.r+"_"+dSeeker.c); T.S.current=0; T.S.mainUsed=false; T.S.selected=dSeeker;
+  const d0=T.S.events[0], d1=T.S.events[1];
+  ok(T.doSearch(dSeeker,d1)===true&&d0.consumed===false&&d1.consumed===true&&T.S.events[0]===d0&&T.S.events[1]===d1
+     &&T.S.pkgs[0].battleBuff===1&&T.S.pkgs[0].itemGift===0,
+     "doSearch consumes the very event object the caller handed it, not the first entry that happens to share its coordinates");
+}
+/* (7) Saturn REVISE — 폭탄·함정 사유는 다른 모든 게이트를 통과한 시도에만 나간다 */
+{
+  const bombPiece=extra=>[Object.assign({},srchPieces[0],{type:"bomb"},extra||{})];
+  const bomb=patch=>T.reduceCoreAction(Object.assign({},srchState,{pieces:bombPiece()},patch||{}),{t:"search",id:901,r:9,c:3});
+  ok(bomb({mainUsed:true}).events.length===0&&bomb({current:1}).events.length===0&&bomb({phase:"setup"}).events.length===0
+     &&bomb({traces:[new Set(),new Set()]}).events.length===0
+     &&bomb({events:[{r:9,c:3,kind:"battleBuff",consumed:true}]}).events.length===0
+     &&bomb({events:[]}).events.length===0
+     &&bomb({pieces:bombPiece({alive:false})}).events.length===0
+     &&bomb({pieces:bombPiece({placed:false})}).events.length===0
+     &&bomb({pieces:bombPiece({owner:1})}).events.length===0
+     &&T.reduceCoreAction(Object.assign({},srchState,{pieces:bombPiece()}),{t:"search",id:901,r:9,c:4}).events.length===0,
+     "an out-of-turn, spent, wrong-phase, unseen, consumed, event-free, dead, unplaced or foreign bomb search says nothing — the refusal itself would have told the player that cell held a discovered event");
+  ok(bomb().events.length===1&&bomb().events[0].type==="searchRefused"&&bomb().events[0].owner===0,
+     "negative control: a bomb standing on its own discovered, unspent event cell on its own turn still hears the type refusal");
+  ok(bomb().state.mainUsed===false&&bomb().state.events[0].consumed===false&&bomb().state.pkgs[0].battleBuff===0,
+     "the refused bomb search changes nothing — the cell, the main action and the stock all stay as they were");
+}
+/* (8) Saturn REVISE — recruit 토큰은 게임을 가로질러 유일하다 */
+{
+  const Z=H.load(index); Z.tutSkip();
+  const openRecruit=()=>{ H.freshPlay(Z,"pvp"); Z.tutSkip();
+    const me=H.mine(Z,0,"minion")[0], recv=H.mine(Z,0,"ally")[0];
+    recv.cap=null; Z.S.balls=[3,3]; Z.S.current=0; Z.S.mainUsed=false; Z.S.selected=me;
+    Z.S.events=[{r:me.r,c:me.c,kind:"recruit",consumed:false}]; Z.S.traces[0].add(me.r+"_"+me.c);
+    Z.setSeed(245); Z.netAction({t:"search"});
+    return Z.S.recruit.token; };
+  const t1=openRecruit();          // 게임 1 의 첫 recruit — 버튼 콜백이 이 토큰을 들고 있다
+  const t2=openRecruit();          // 게임 2 의 첫 recruit (게임별 카운터로는 둘 다 "1번째")
+  Z.__recruitCore("cap",0,t1);     // 앞 게임의 버튼을 지금 누른 격
+  ok(t1!==t2&&Z.S.recruit&&Z.S.recruit.stage==="root"&&Z.S.recruit.token===t2&&Z.S.recruitToken===1,
+     "a held button from the previous game cannot advance the new game's first recruit — the token carries the searching piece id, so the per-game counter alone no longer collides");
+  Z.__recruitCore("cap",0,t2);
+  ok(Z.S.recruit.stage==="capRecv","negative control: the live game's own token advances the very same step");
+  Z.TQ.length=0;
+}
+/* (9) Saturn REVISE 4차 — ei 는 **생략만** 기본 해석을 얻는다. 명시적으로 실린 값은 모양이 어떻든 엄격 거부다.
+   종전 `ei===undefined||ei===null` 은 조작된·손상된 프레임의 null 을 "좌표 없는 프레임"으로 둔갑시켜 첫 항목을
+   대신 소모했다 — 요청하지 않은 흔적이 사라지고 그 보상이 나갔다. */
+{
+  const explicit=v=>T.reduceCoreAction(srchState,{t:"search",id:901,r:9,c:3,ei:v});
+  T.setSeed(2451); const nextRand=T.rand(); T.setSeed(2451);
+  const badEi=[null,undefined,"0","1","","0.0",0.5,1.5,-1,-0.5,NaN,Infinity,-Infinity,1,5,99,true,false,[0],[],{}];
+  const refusedExact=badEi.every(v=>{ const r=explicit(v); return r.events.length===0&&r.state===srchState; });
+  ok(refusedExact&&srchState.mainUsed===false&&srchState.events[0].consumed===false&&srchState.pkgs[0].battleBuff===0
+     &&srchState.metrics.searches===0&&srchPieces[0].healing===true&&T.rand()===nextRand,
+     "an explicitly supplied entry index is refused for every unusable shape — null, undefined, string, fractional, negative, NaN, infinite, out-of-range, boolean, array and object — and each refusal returns the very input state with no event cell spent and no rand drawn");
+  T.setSeed(2451);
+  const omitted=T.reduceCoreAction(srchState,{t:"search",id:901,r:9,c:3});
+  const zero=T.reduceCoreAction(srchState,{t:"search",id:901,r:9,c:3,ei:0});
+  ok(omitted.events.length===2&&omitted.state.events[0].consumed===true&&omitted.state.pkgs[0].battleBuff===1
+     &&zero.events.length===2&&zero.state.events[0].consumed===true&&zero.state.pkgs[0].battleBuff===1,
+     "negative control: the same frame with the ei property omitted resolves once to the deterministic first legal index, and the real index 0 supplied explicitly passes too");
+  /* 같은 잣대가 id 에도 걸린다 — 명시적 undefined 는 좌표 없는 프레임이 아니다 */
+  const selState=Object.assign({},srchState,{selected:srchPieces[0]});
+  const resolvedFree=T.resolveCoreAction(selState,{t:"search"});
+  const resolvedUndef=T.resolveCoreAction(selState,{t:"search",id:undefined});
+  const undefResult=T.reduceCoreAction(selState,{t:"search",id:undefined,r:9,c:3,ei:0});
+  ok(resolvedFree.id===901&&resolvedFree.ei===0&&resolvedUndef.id===undefined&&resolvedUndef.ei===undefined
+     &&undefResult.events.length===0&&undefResult.state===selState,
+     "resolve treats only an omitted id as the coordinate-free turn-bar frame — an explicit id:undefined is passed through and rejected instead of being re-resolved to whatever piece happens to be selected");
+  ok(T.doSearch(srchPieces[0],undefined)===false,"doSearch with no event object hands the reducer an explicit -1 and is refused rather than falling back to the first legal entry");
+  /* Saturn REVISE 5차 — 좌표 없는 프레임은 id·r·c·ei 가 **모두** 생략된 것뿐이다. 하나라도 실려 있으면 resolve 가 그 값을
+     버리고 ei=0 을 재구성하지 않고 그대로 넘겨, reducer 의 엄격 검증이 거부한다 (resolve→reduce→commit 전 경로). */
+  H.freshPlay(T,"pvp"); T.tutSkip();
+  const fSeek=H.mine(T,0,"minion")[0];
+  const arm=()=>{ T.S.events=[{r:fSeek.r,c:fSeek.c,kind:"itemGift",consumed:false},{r:fSeek.r,c:fSeek.c,kind:"battleBuff",consumed:false}];
+    T.S.traces[0].add(fSeek.r+"_"+fSeek.c); T.S.current=0; T.S.mainUsed=false; T.S.selected=fSeek;
+    T.S.pkgs=[{itemGift:0,battleBuff:0},{itemGift:0,battleBuff:0}]; };
+  const untouched=()=>T.S.events.every(e=>!e.consumed)&&T.S.mainUsed===false&&T.S.pkgs[0].itemGift===0&&T.S.pkgs[0].battleBuff===0;
+  const forged=[{ei:null},{ei:undefined},{ei:1},{ei:"1"},{ei:0.5},{ei:0},{id:fSeek.id},{r:fSeek.r},{c:fSeek.c},
+                {r:fSeek.r,c:fSeek.c},{id:fSeek.id,r:fSeek.r},{id:undefined,c:fSeek.c}];
+  const forgedRefused=forged.every(patch=>{ arm();
+    const res=T.dispatchCoreAction(Object.assign({t:"search"},patch));
+    return !!res&&res.events.length===0&&untouched(); });
+  arm(); const bare=T.dispatchCoreAction({t:"search"});
+  ok(forgedRefused&&bare.events.some(e=>e.type==="searched")&&T.S.events[0].consumed===true&&T.S.events[1].consumed===false
+     &&T.S.pkgs[0].itemGift===1&&T.S.pkgs[0].battleBuff===0&&T.S.mainUsed===true,
+     "a search frame carrying id, r, c or ei — null, undefined, a string, a fraction or half the coordinates — goes to the strict reducer untouched and is refused, so a supplied entry index can no longer be discarded and re-resolved into spending the first trace, while the wholly coordinate-free turn-bar frame still resolves and spends entry 0");
+  T.TQ.length=0;
+}
+/* (10) Saturn REVISE 4차 — recruit 기록·단계·인덱스 엄격화 */
+{
+  const STAGES=["root","skill","target","slot","capRecv","capMode"]; // recruitModal 이 그리는 단계 전부 (이 목록을 못 박는다)
+  const ALL_STEPS=["skills","cap","skill","target","slot","recv","mode","back","giveup"];
+  const staged=stage=>Object.assign({},rootState,{recruit:Object.assign({},rootState.recruit,{stage})});
+  const closedAt=(stage,step)=>{ const st=staged(stage);
+    const r=T.reduceCoreAction(st,{t:"recruit",step,i:0,token:RTOK});
+    return r.state===st&&r.events.length===1&&r.events[0].type==="recruitClosed"&&st.recruit.stage===stage&&st.balls[0]===3; };
+  ok(["__nope","","ROOT","capmode","root ",null,undefined,0,1,{}].every(s=>ALL_STEPS.every(p=>closedAt(s,p))),
+     "a recruit record parked on a stage the modal never renders is closed for every step — give-up and back included, so an unknown stage can no longer be cashed out as a finished choice");
+  ok(STAGES.every(s=>{ const st=staged(s); return T.reduceCoreAction(st,{t:"recruit",step:"giveup",i:0,token:RTOK}).events[0].type==="searchDone"; })
+     &&STAGES.filter(s=>s!=="root").every(s=>{ const st=staged(s);
+        const r=T.reduceCoreAction(st,{t:"recruit",step:"back",i:0,token:RTOK});
+        return r.events[0].type==="recruitStage"&&r.state.recruit.stage!==s; })
+     &&T.reduceCoreAction(staged("root"),{t:"recruit",step:"back",i:0,token:RTOK}).events.length===0,
+     "negative control: give-up passes from every stage the modal renders, back passes from every non-root stage and only root has no step back");
+  /* 탐색을 실행할 수 없는 말의 기록은 성립하지 않는다 (#20 폭탄·함정) */
+  const asType=type=>{ const st=Object.assign({},rootState,{pieces:[Object.assign({},srchPieces[0],{type}),srchPieces[1]]});
+    return {st,r:T.reduceCoreAction(st,{t:"recruit",step:"cap",i:0,token:RTOK})}; };
+  ok(["bomb","trap","","minion ",null,undefined,0].every(t=>{ const {st,r}=asType(t);
+       return r.state===st&&r.events.length===1&&r.events[0].type==="recruitClosed"&&srchPieces[1].cap===null; })
+     &&["minion","ally","king"].every(t=>asType(t).r.events[0].type==="recruitStage"),
+     "a recruit record whose searching piece is a bomb, a trap or any type that cannot run a search is closed instead of being played out, while the three types that can search still advance");
+  /* 선택이 아닌 명령은 실제 UI sentinel 인 0 만 받는다 */
+  const capRecv=T.reduceCoreAction(rootState,{t:"recruit",step:"cap",i:0,token:RTOK}).state;
+  const cmd=(state,step,i)=>T.reduceCoreAction(state,{t:"recruit",step,i,token:RTOK});
+  ok([1,2,3,99].every(i=>cmd(rootState,"skills",i).events.length===0&&cmd(rootState,"cap",i).events.length===0
+       &&cmd(rootState,"giveup",i).events.length===0&&cmd(capRecv,"back",i).events.length===0
+       &&cmd(capRecv,"giveup",i).events.length===0&&cmd(rootState,"__unknown_step",i).events.length===0)
+     &&rootState.recruit.stage==="root"&&rootState.balls[0]===3&&capRecv.recruit.stage==="capRecv"&&capRecv.searchEndSeq===undefined,
+     "the root branches, back and give-up carry a single UI button each, so any index other than the real sentinel 0 is refused — a forged frame can no longer smuggle the same command in at another slot");
+  ok(cmd(rootState,"cap",0).events[0].type==="recruitStage"&&cmd(capRecv,"back",0).events[0].type==="recruitStage"
+     &&cmd(capRecv,"giveup",0).events[0].type==="searchDone",
+     "negative control: the same commands at index 0 still pass");
+  /* 선택 step 의 범위는 그 화면 목록으로 정확히 본다 — 경계 바로 밖까지 */
+  T.V2_INTERP.recruitSkillSwap=true;
+  const tgtState=Object.assign({},recState,{recruit:Object.assign({},rootState.recruit,{stage:"target",skill:T.NEW_SKILLS[0]})});
+  const skillState=Object.assign({},recState,{recruit:Object.assign({},rootState.recruit,{stage:"skill"})});
+  const nMin=T.rosterMinions(0,srchState).length, nRecv=T.capReceivers(0,srchState).length, nSlot=srchPieces[0].skills.length;
+  const nMode=3; // CAP_MODES 는 안전·위험·공격 셋이다 (UI·AI·온라인 중계 공용 순서 — 여기에 기대값으로 못 박는다)
+  ok(cmd(skillState,"skill",T.NEW_SKILLS.length).events.length===0&&cmd(skillState,"skill",T.NEW_SKILLS.length-1).events[0].type==="recruitStage"
+     &&cmd(tgtState,"target",nMin).events.length===0&&cmd(tgtState,"target",nMin-1).events[0].type==="recruitStage"
+     &&cmd(capRecv,"recv",nRecv).events.length===0&&cmd(capRecv,"recv",nRecv-1).events[0].type==="recruitStage"
+     &&cmd(recvR.state,"mode",nMode).events.length===0&&cmd(recvR.state,"mode",nMode-1).events[0].type==="searchDone"
+     &&cmd(slotState,"slot",nSlot).events.length===0&&cmd(slotState,"slot",nSlot-1).events[0].type==="searchDone",
+     "every choice step stops exactly at the length of the list its own screen shows — offered skills, my roster minions, the eligible receivers, the three capture methods and the target's real skill slots");
+  /* 슬롯 상한은 상수 4 가 아니라 **그 말의 실제 칸 수**다 — 칸이 덜 달린 손상·승계 기록에 없는 슬롯을 쓰지 않는다 */
+  const shortM=Object.assign({},srchPieces[0],{skills:["s0","s1"],cds:[0,0],revealedSkills:[]});
+  const shortState=Object.assign({},slotState,{pieces:[shortM,srchPieces[1]]});
+  const shortSlot=i=>T.reduceCoreAction(shortState,{t:"recruit",step:"slot",i,token:RTOK});
+  ok(shortSlot(2).events.length===0&&shortSlot(3).events.length===0&&shortSlot(2).state===shortState
+     &&shortSlot(1).events[0].type==="searchDone"&&J245(shortSlot(1).state.pieces[0].skills)===J245(["s0",T.NEW_SKILLS[0]])
+     &&J245(shortM.skills)===J245(["s0","s1"]),
+     "the slot bound follows the target's own skill list, so a two-slot record refuses slots 2 and 3 instead of letting a fixed bound of four write past the end — and its real slot 1 still passes");
+  T.V2_INTERP.recruitSkillSwap=false;
+}
+/* (11) Saturn REVISE 4차 — 진행 중 보상 선택은 락스텝 요약에 실린다 (온라인 갈라짐을 그 자리에서 잡는다) */
+{
+  const X=H.load(index); X.tutSkip(); H.freshPlay(X,"pvp"); X.tutSkip();
+  const me=H.mine(X,0,"minion")[0], recv=H.mine(X,0,"ally")[0];
+  recv.cap=null; X.S.balls=[3,3]; X.S.current=0; X.S.mainUsed=false; X.S.selected=me;
+  X.S.events=[{r:me.r,c:me.c,kind:"recruit",consumed:false}]; X.S.traces[0].add(me.r+"_"+me.c);
+  X.setSeed(245); X.netAction({t:"search"});
+  const R=X.S.recruit, base=lockstepDigest(X);
+  ok(!!R&&!!R.token,"a recruit search opens a live record carrying a token");
+  const swap=(k,v)=>{ const old=R[k]; R[k]=v; const moved=lockstepDigest(X)!==base; R[k]=old; return moved&&lockstepDigest(X)===base; };
+  ok(swap("owner",1)&&swap("pieceId",recv.id)&&swap("species",X.ROSTER.find(r=>r.id!==R.species).id)
+     &&swap("stage","capRecv")&&swap("skill",X.NEW_SKILLS[0])&&swap("targetId",me.id)&&swap("recvId",recv.id)
+     &&swap("token",R.token+"x"),
+     "the lockstep digest separates two seats that disagree on the recruit owner, searching piece, candidate species, stage, chosen skill, target, receiver or token — every field a later step reads back");
+  const seq0=X.S.searchEndSeq||0; X.S.searchEndSeq=seq0+1; const seqMoved=lockstepDigest(X)!==base; X.S.searchEndSeq=seq0;
+  X.S.recruit=null; const goneMoved=lockstepDigest(X)!==base; X.S.recruit=R;
+  ok(seqMoved&&goneMoved&&lockstepDigest(X)===base,
+     "the digest also separates a diverged search-completion sequence and a record that only one seat still holds, and restoring the state restores the digest");
+  const bare={owner:R.owner,pieceId:R.pieceId,species:R.species,stage:R.stage};
+  X.S.recruit=bare; const dBare=lockstepDigest(X);
+  X.S.recruit=Object.assign({},bare,{skill:null,targetId:null,recvId:null,token:null}); const dNull=lockstepDigest(X);
+  X.S.recruit=R;
+  ok(dBare===dNull&&lockstepDigest(X)===base,
+     "the digest canonicalises the optional recruit fields — an absent skill, target, receiver or token reads the same as an explicit null, so a peer that stores the defaults differently is not reported as a divergence");
+  X.TQ.length=0;
+}
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
 ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");
 let blocked=false;
@@ -398,10 +823,16 @@ if(baseHtml){
     return JSON.stringify({roster:X.S.roster,pieces:X.S.pieces.map(piece=>[piece.id,piece.r,piece.c,piece.placed,piece.rosterId,piece.element,piece.hp,piece.atk])});
   };
   ok(setupTrace({html:baseHtml})===setupTrace({}),"resolved auto-placement matches the pre-split setup state");
+  /* #245: 요약에 새로 들어간 항목 중 searchEndSeq 만 **버전 사이에 표현이 다르다.** 분리 전 원본은 표시 전용 래치를
+     규칙 상태에 되써서(`S.searchEndSeq=tk.seq+0.5`) 완료마다 1.5 씩 올랐고, 래치를 게임별 WeakMap 으로 옮긴 지금은
+     완료 횟수 그대로다(1,2,3…). 규칙·난수·승패에는 쓰이지 않는 완료 토큰이라 값이 다를 뿐 동작은 같으므로, **버전
+     대조에서만** 이 항목을 걷어낸다 — 같은 엔진 두 좌석을 보는 락스텝 대조에는 그대로 남아 감지력이 줄지 않는다.
+     정수 완료 횟수라는 사실 자체는 위 (3) 절의 seq===1 과 아래 (9) 절이 따로 본다. */
+  const sameVer=d=>{ const o=JSON.parse(d); delete o.searchEndSeq; return JSON.stringify(o); };
   const trace=(opts,seed)=>{
     const X=H.load(index,opts), stateTrace=[];
-    const result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000,trace:Y=>stateTrace.push(lockstepDigest(Y))});
-    return JSON.stringify({stateTrace,digest:lockstepDigest(X),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
+    const result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000,trace:Y=>stateTrace.push(sameVer(lockstepDigest(Y)))});
+    return JSON.stringify({stateTrace,digest:sameVer(lockstepDigest(X)),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
   };
   // 24511 은 텔레포트 스왑 3회, 24512 는 2회 + 왕 끝줄 도달(edge) 승리 — Core 로 옮긴 스왑과 레거시로 남긴 왕 경로를 둘 다 지난다
   for(const seed of [24501,24502,24511,24512]) ok(trace({html:baseHtml},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner matches the pre-split baseline");

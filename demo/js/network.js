@@ -56,11 +56,6 @@ function applyAction(a){
   switch(a.t){
     case "cell": onCellCore(a.r,a.c); break;
     case "setupDone": window.setupDoneCore(); break;
-    case "search": {
-      const sel=S.selected&&!S.selected.tray?S.selected:null;
-      const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
-      if(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel)) doSearch(sel,ev);
-      break; }
     case "fleeSwap": if(S.fleePick&&S.fleePick.cands.includes(a.id)) fleeResolve(a.id); break; // #114 도망 후 교환 (소유자 입력, rand 소비 0)
     case "fleeSkip": if(S.fleePick) fleeResolve(null); break; // #114 교환 생략 → 도망친 말 ↔ 상대 밀기
     case "act": if(window.__actCore) window.__actCore(a.k); break;

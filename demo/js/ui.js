@@ -101,6 +101,26 @@ function applyUiEvents(events){
       contactBannerFx(event.piece,viewerIsOwner(event.piece.owner)?"남은 말의 접촉 대상(빨간 표시)을 클릭하세요":"상대가 남은 접촉 대상을 고르고 있습니다"); // #106 4.5 "추가 접촉" 배너 (보드 복귀 뒤 순서 · render 는 호출처가 한다)
       continue;
     }
+    if(event.type==="searchRefused"){ if(!isAI(event.owner)) showToast("폭탄·함정은 탐색할 수 없습니다."); continue; } // #20
+    if(event.type==="searched"){ // #245 탐색 — 주 행동·이벤트 칸·지표·회복 자세는 Core 가 끝냈고 여기는 공용 로그·토스트만
+      if(event.healBroken) healBreakLog(event.piece); // #106: 탐색은 회복 자세 해제 (문구는 숲 이벤트 고지 앞 — 레거시 순서)
+      /* GDD-13 4.7 · #121 계약 4.8·9: 공용 로그에는 종류·보유량을 남기지 않는다 — 상대는 "숲 이벤트 발생"만 본다 */
+      const ai=isAI(event.owner), smsg=ai?"상대가 숲 이벤트를 발생시켰습니다.":`${pname(event.owner)} 숲 이벤트 발생`;
+      addLog(smsg,ai?"":"imp"); showToast(smsg);
+      continue;
+    }
+    if(event.type==="recruitOpened"){ // #121 계약 4·6 — recruit 상태는 Core 가 열었고 여기는 AI 해결 호출·튜토리얼·모달만
+      if(isAI(event.owner)){ aiRecruitResolve(event.owner,event.piece); continue; }
+      if(S.mode!=="sim"&&viewerIsOwner(event.owner)) tutHint("recruit"); // #26·#121: 기술 교체·포획 화면이 처음 열릴 때 1회
+      recruitModal(); render(); continue;
+    }
+    if(event.type==="recruitStage"){ recruitModal(); continue; } // 단계 전이는 Core 가 끝냈고 여기는 그 단계의 화면만
+    if(event.type==="recruitClosed"){ close(); continue; }        // 늦은 콜백·새 게임·턴 교대·말 사망 — 화면만 닫는다
+    if(event.type==="searchDone"){ // #129 계약 7·8 — recruit 해제·완료 토큰은 Core 가 끝냈고 여기는 튜토리얼·결과 연출·종료 재평가만
+      if(event.tut&&!isAI(event.owner)&&S.mode!=="sim"&&viewerIsOwner(event.owner)) tutHint(event.tut); // #26·#121: 패키지를 처음 받을 때 1회 (소유자 화면만)
+      searchFinalizeFx(event.owner,event.title,event.sub,event.fxKey,event.seq);
+      continue;
+    }
     if(event.type==="matchEnded"){ // #245 경기 종료 — 상태(phase·승자·지표·전투원 정리·battle/recruit)는 Core 가 끝냈고 여기는 화면 정리·결과 연출·기권 문구만
       if(event.interrupted){
         /* Saturn 추가 P2: **살아 있던 전투를 걷어냈을 때만** 열린 전투 모달을 닫고 낡은 마크업·연출 큐를 비운다.

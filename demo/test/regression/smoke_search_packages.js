@@ -422,7 +422,7 @@ function swapSkill(X,target,skillIdx,slot){
      "D2b 죽은 말은 목록에 보이되 **실제 disabled** (핸들러 없음) — "+(deadBtn?deadBtn.textContent:"버튼 없음"));
   /* 코어 거부도 함께: UI 를 우회해 직접 호출해도 대상이 되지 않는다 (Saturn REVISE P2) */
   const stageBefore=T.S.recruit.stage;
-  T.__recruitCore("target",2);
+  T.__recruitCore("target",2,T.S.recruit.token); // #245: 토큰을 실어야 거부 사유가 "죽은 말"로 남는다 (누락 토큰이 아니라)
   ok(T.S.recruit&&T.S.recruit.stage===stageBefore&&T.S.recruit.targetId===null,"D2b' 코어를 직접 불러도 죽은 말은 대상이 되지 않는다");
   ok(/기술 \? \? \? \?/.test(ob(T)),"D2c 대상을 고르기 전 4슬롯은 ? 로 가린다 (계약 4.2-4)");
   // D3 4슬롯 어디든 · 고른 뒤 기술이 보인다
@@ -445,7 +445,7 @@ function swapSkill(X,target,skillIdx,slot){
   ok(!!dupBtn&&dupBtn.disabled===true&&typeof dupBtn.onclick!=="function"&&/이미 이 기술 보유/.test(ob(T)),
      "D5 이미 그 기술을 가진 말은 **실제 disabled** (계약 4.2-5) — "+(dupBtn?dupBtn.textContent:J(btns(T))));
   const sBefore=T.S.recruit.stage, skBefore=J(target.skills);
-  T.__recruitCore("target",T.rosterMinions(0).findIndex(m=>m.id===target.id));
+  T.__recruitCore("target",T.rosterMinions(0).findIndex(m=>m.id===target.id),T.S.recruit.token); // #245: 같은 이유로 토큰을 싣는다
   ok(T.S.recruit.stage===sBefore&&J(target.skills)===skBefore,"D5' 코어를 직접 불러도 중복 장착으로 넘어가지 않는다");
   T.close();
   // D6 취소·포기: 슬롯 불변 · 이벤트는 소모
@@ -652,7 +652,13 @@ const recv=(X,a)=>{ X.T.NET.queue.push(a); X.T.netPump(); };
 const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMinions(0).map(m=>m.cds),
   rev:X.T.rosterMinions(0).map(m=>m.revealedSkills),pkg:X.T.S.pkgs,balls:X.T.S.balls,inv:X.T.S.inv,
   cap:X.T.S.pieces.filter(p=>p.cap).map(p=>[p.id,p.cap.rosterId]),seq:X.T.NET.modalSeq,
-  sync:X.T.NET.syncModal?X.T.NET.syncModal.seq:null,ev:X.T.S.events[0]&&X.T.S.events[0].consumed,main:X.T.S.mainUsed,hidden:hidden(X.T)});
+  sync:X.T.NET.syncModal?X.T.NET.syncModal.seq:null,ev:X.T.S.events[0]&&X.T.S.events[0].consumed,main:X.T.S.mainUsed,hidden:hidden(X.T),
+  /* #245 Saturn REVISE: 진행 중 보상 선택도 락스텝 대조에 넣는다 — 단계·후보 종·대상·수령 말·토큰·완료 순번이 한쪽만
+     달라도 예전 요약(확정된 기술·쿨·볼·가방만 보는)은 같게 나왔고, 갈라짐은 다음 선택의 합법성에서야 드러났다. */
+  rec:X.T.S.recruit?[X.T.S.recruit.owner,X.T.S.recruit.pieceId,X.T.S.recruit.species,X.T.S.recruit.stage,
+    X.T.S.recruit.skill===undefined?null:X.T.S.recruit.skill,X.T.S.recruit.targetId===undefined?null:X.T.S.recruit.targetId,
+    X.T.S.recruit.recvId===undefined?null:X.T.S.recruit.recvId,X.T.S.recruit.token===undefined?null:X.T.S.recruit.token]:null,
+  endSeq:X.T.S.searchEndSeq||0});
 {
   // F1 숲 포획 기본 계약
   const P=setup(T); giveSpecies(T,P.me,R(T,"M-F1")); T.S.balls[0]=5;
@@ -723,6 +729,17 @@ const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMini
   ok(netState(A2)!==netState(B2),"F9 [음성] 선택 프레임을 재생하지 않은 2P 는 상태가 달라 검사기가 잡는다");
   for(const fr of A2.ws.sent.slice(1).map(x=>JSON.parse(x).a)) recv(B2,fr);
   ok(netState(A2)===netState(B2),"F9b 프레임을 모두 재생하면 다시 일치");
+  /* F9c #245 Saturn REVISE — **진행 중** 보상 선택도 대조에 들어간다. 확정된 기술·쿨·볼·가방과 모달 seq 가 모두 같아도
+     한쪽만 다른 단계·다른 후보 종·다른 토큰에 서 있으면 그 좌석부터 다음 선택의 합법성이 갈린다 (종전 요약은 못 봤다). */
+  {
+    const r2=B2.T.S.recruit;
+    const drift=(k,v)=>{ const keep=r2[k]; r2[k]=v; const moved=netState(A2)!==netState(B2); r2[k]=keep; return moved&&netState(A2)===netState(B2); };
+    ok(!!r2&&drift("stage","capRecv")&&drift("species",B2.T.ROSTER.find(x=>x.id!==r2.species).id)&&drift("token",r2.token+"x")
+       &&drift("skill",B2.T.NEW_SKILLS[1])&&drift("targetId",-1)&&drift("recvId",-1)&&drift("owner",1)&&drift("pieceId",-1),
+       "F9c 진행 중 recruit 기록(단계·후보 종·토큰·기술·대상·수령 말·소유자·탐색 말)이 한쪽만 달라도 검사기가 잡고, 되돌리면 다시 일치한다");
+    const s2=B2.T.S.searchEndSeq||0; B2.T.S.searchEndSeq=s2+1; const seqMoved=netState(A2)!==netState(B2); B2.T.S.searchEndSeq=s2;
+    ok(seqMoved&&netState(A2)===netState(B2),"F9d 탐색 완료 순번이 한쪽만 올라가도 검사기가 잡는다 (완료 연출·턴 종료 재평가가 한 번 더 또는 덜 발화한다)");
+  }
   // F10 전투 중 패키지 개봉도 같은 단일 경로
   {
     const A3=mkNet(0), B3=mkNet(1);
