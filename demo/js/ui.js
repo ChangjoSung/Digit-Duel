@@ -147,6 +147,18 @@ function applyUiEvents(events){
       afterStartTurn();
       continue;
     }
+    /* #245 전투 커맨드 — 합법성·자원 회계·난수는 Core 가 끝냈고 여기는 화면과 실행 엔진 호출만 한다
+       (moved → forcedContactStart → initBattle 와 같은 경계). */
+    if(event.type==="pkgOpenModal"){ pkgOpenModal(event.kind,event.owner,event.round,event.id); continue; }      // #121 개봉 선택 화면 (재고는 확정에서만 움직인다)
+    if(event.type==="pkgPicked"){ close(); if(event.toast&&viewerIsOwner(event.owner)) showToast(event.toast); battleModal(); render(); continue; } // 획득 종류는 소유자 화면에만
+    if(event.type==="battleItemUsed"){ battleModal(); continue; }                                        // 행동 미소모 — 같은 행동자의 메뉴로 복귀
+    if(event.type==="battleSlot"){ execSlot(event.side,event.slot); continue; }
+    if(event.type==="battleLegacySkill"){ legacySkillAct(event.side); continue; }
+    if(event.type==="battleBasicCounter"){ execSlot(event.side,-1,{allowBasic:true}); continue; }        // #122 도망 실패 페널티 — 상대의 무료 기본 공격 1회
+    if(event.type==="battleCaptured"){ finishByCapture(event.side); continue; }
+    if(event.type==="battleNextPhase"){ nextPhase(); continue; }
+    if(event.type==="battleFleeLocked"){ try{ if(viewerIsOwner(event.owner)) showToast("🌿 뿌리 고정 — 이 전투에서는 도망칠 수 없습니다"); }catch(e){} continue; } // #234 가시 덩굴 3차 — 사유는 소유자 화면에만
+    if(event.type==="battleFled"){ battleFleeFx(event.owner,event.piece,event.oppPiece,event.queue); continue; }
     if(event.type==="mainSkipped"){
       const ai=event.origin==="ai", msg=ai?"🤖 AI 주 행동 생략":`${pname(event.player)} 주 행동 생략`;
       addLog(msg,ai?"ai":"");

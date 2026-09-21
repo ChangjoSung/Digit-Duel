@@ -2,7 +2,7 @@
 // #217 서버 테스트 공용 픽스처 — Saturn 최소 재현 픽스처(msg_9a62b8728ecf)를 그대로 따른다:
 // roster=T.ROSTER.slice(0,6).map(x=>x.id), pos=T.zoneOf(0)의 첫 14칸, Room openHostSeat/joinGuestSeat(OPEN 가짜 소켓),
 // 양 좌석 _handleSetup, 양 좌석 _handleReady.
-const { Room, STATES, lockstepDigest } = require('../room');
+const { Room, STATES, lockstepDigest, BATTLE_CMDS, battleFrame } = require('../room');
 const { createEngine, withEngine } = require('../engine');
 
 function makeCounter(name) {
@@ -66,8 +66,16 @@ function snap(room) {
   return JSON.stringify({ rev: room.revision, state: room.state, ready: room.seats.map((s) => s.ready), placed: room.seats.map((s) => s.placed), raw: room.seats.map((s) => s.rawSetup) }) + eng;
 }
 
-function act(room, seat, action) {
-  return room._handleAction(seat, { baseRevision: room.revision, action });
+/* #245 — 클라이언트 netAction 과 같은 자리에서 전투 어휘에 겨냥 프레임(bf)을 붙인다: 전투가 살아 있고
+   bf 를 명시하지 않은 전투 명령만. bf 를 직접 실은(또는 일부러 뺀) 액션은 그대로 보낸다 — 거부 검증용이다. */
+function withFrame(room, action) {
+  if (!room.engines || !BATTLE_CMDS.has(action.t) || 'bf' in action) return action;
+  const bf = battleFrame(room.engines[0]);
+  return bf ? Object.assign({}, action, { bf }) : action;
 }
 
-module.exports = { makeCounter, fakeWs, makeSetup, setupRoom, startedRoom, both, byId, snap, act, Room, STATES, createEngine, withEngine, lockstepDigest };
+function act(room, seat, action) {
+  return room._handleAction(seat, { baseRevision: room.revision, action: withFrame(room, action) });
+}
+
+module.exports = { makeCounter, fakeWs, makeSetup, setupRoom, startedRoom, both, byId, snap, act, withFrame, Room, STATES, createEngine, withEngine, lockstepDigest, battleFrame };

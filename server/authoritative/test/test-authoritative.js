@@ -6,6 +6,7 @@
 const WebSocket = require('ws');
 const { server, EPOCH, lobby } = require('../server');
 const { createEngine } = require('../engine');
+const { battleFrame } = require('../room'); // #245 전투 어휘는 겨냥 프레임(bf)을 함께 실어야 서버가 받는다
 
 let pass = 0, fail = 0;
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; console.error('FAIL: ' + msg); } }
@@ -288,7 +289,7 @@ async function main() {
     const attId = E0.S.pieces.find((p) => p.owner === cur && p.type === 'minion').id;
     const dId = E0.S.pieces.find((p) => p.owner === def && p.type === 'minion').id;
     for (const E of room14.engines) { E.initBattle(E.S.pieces.find((p) => p.id === attId), E.S.pieces.find((p) => p.id === dId)); E.drain(); }
-    send(socks[cur], toks[cur].seatToken, toks[cur].tokenGen, { requestId: 'atk', t: 'action', baseRevision: room14.revision, action: { t: 'act', k: 0 } });
+    send(socks[cur], toks[cur].seatToken, toks[cur].tokenGen, { requestId: 'atk', t: 'action', baseRevision: room14.revision, action: { t: 'act', k: 0, bf: battleFrame(E0) } });
     const atk = await qs[cur].withRequestId('atk');
     ok(atk.type === 'room_state' && room14.state === 'IN_PROGRESS', '공격자 act k0 수락(실소켓): ' + JSON.stringify(atk.code));
     if (room14.engine && room14.engine.S.battle) {

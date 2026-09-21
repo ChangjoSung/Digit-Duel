@@ -260,7 +260,7 @@ function swapSkill(X,target,skillIdx,slot){
   const beforeT=B.maxRounds;
   ok(isDisabled(T,"🧭 시간의 수호자 (1R 전용)"),"C6b 2라운드에서 시간의 수호자 버튼은 **실제 disabled** (문구만이 아니다 — Saturn REVISE P2)");
   /* 코어 거부도 함께: UI 를 우회해 직접 호출해도 적용되지 않는다 */
-  T.__pkgPickCore("buff",T.BUFF_KEYS.indexOf("time"));
+  T.__pkgPickCore("buff",T.BUFF_KEYS.indexOf("time"),B.pkgSel&&B.pkgSel.id);
   ok(B.maxRounds===beforeT&&B.maxRounds===null,"C6b' 코어를 직접 불러도 2라운드에서는 적용되지 않는다 (계약 3.3 R1 한정)");
   T.close(); B.round=1; B.phase=0; freshModal(T); T.__openPkgCore("battleBuff"); click(T,"🧭 시간의 수호자");
   ok(B.maxRounds===3&&T.battleMaxRounds()===3&&T.BAL.maxRounds===gMax,"C6c R1 적용: 이 전투만 3라운드 · 전역 BAL.maxRounds("+gMax+") 불변");
@@ -747,7 +747,15 @@ const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMini
     const n0=A3.ws.sent.length;
     A3.T.byId("obBtns").children.length=0; B3.T.byId("obBtns").children.length=0;
     A3.T.__openPkg("itemGift");
-    ok(A3.ws.sent.length===n0+1&&J(lastFrame(A3).a)===J({t:"pkgOpen",kind:"itemGift"}),"F10 전투 중 개봉 화면 열기는 pkgOpen semantic 액션 1프레임 (전투 모달은 buttons 가 없어 중계가 없다)");
+    /* #245 Saturn REVISE: 전투 어휘는 **보낸 쪽이 겨냥한 행동자·전투 진행 지점**(bf)을 함께 싣는다 — 받는 쪽 진입점이
+       자기 렌더의 프레임을 붙이므로 이 값이 없으면 늦게·다시 도착한 프레임이 지금 차례인 다른 행동자에게 다시 묶인다.
+       프레임 **개수**와 semantic 어휘(모달 중계 아님)라는 F10 의 계약은 그대로다. */
+    {
+      const fr=lastFrame(A3).a, B0=A3.T.S.battle;
+      ok(A3.ws.sent.length===n0+1&&fr.t==="pkgOpen"&&fr.kind==="itemGift"&&J(Object.keys(fr).sort())===J(["bf","kind","t"])
+         &&J(fr.bf)===J({side:A3.T.actorOfPhase(),seq:B0.actSeq||0,round:B0.round,phase:B0.phase}),
+         "F10 전투 중 개봉 화면 열기는 pkgOpen semantic 액션 1프레임 (전투 모달은 buttons 가 없어 중계가 없다) + 보낸 시점의 행동자 정체성");
+    }
     recv(B3,lastFrame(A3).a);
     ok(/아이템 선물 패키지/.test(ob(A3.T))&&/상대 선택 대기/.test(ob(B3.T)),"F10b 1P 는 개봉 화면, 2P 는 대기 화면");
     const n1=A3.ws.sent.length; click(A3.T,"회복약");

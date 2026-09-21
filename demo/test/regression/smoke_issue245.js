@@ -807,6 +807,357 @@ ok(/function doSearch\(p,ev\)\{\r?\n  const result=dispatchCoreAction\(\{t:"sear
      "the digest canonicalises the optional recruit fields — an absent skill, target, receiver or token reads the same as an explicit null, so a peer that stores the defaults differently is not reported as a divergence");
   X.TQ.length=0;
 }
+/* (12) #245 전투 커맨드 — 가방·패키지·포획·도망·넘기기·기술 선택이 **전부** 단일 Core 경계를 지난다.
+   종전에는 같은 규칙이 battleModal() 렌더 클로저 안에 있었고 네트워크 재생이 그 전역 클로저를 다시 불렀다. */
+{
+  const X=H.load(index); X.tutSkip(); H.freshPlay(X,"pvp"); X.tutSkip(); X.BAL.dmgVar=0;
+  H.clearBoard(X);
+  const me=X.S.pieces.find(x=>x.owner===0&&x.type==="minion"), em=X.S.pieces.find(x=>x.owner===1&&x.type==="minion");
+  H.place(X,me,12,4); H.place(X,em,11,4);
+  H.place(X,X.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1);
+  H.place(X,X.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
+  X.S.balls=[3,3]; X.S.reserve=[null,null]; X.S.inv=[["potion","cool"],["potion","cool"]];
+  X.S.pkgs=[{itemGift:1,battleBuff:1},{itemGift:1,battleBuff:1}];
+  X.S.battle=null; X.S.battlesUsed=0; X.TQ.length=0;
+  X.setSeed(24521); X.startRounds(me,em,me,em); X.drain(20000);
+  const B=X.S.battle, dg=()=>lockstepDigest(X), owner=()=>((X.actorOfPhase()==="A")?B.attP:B.defP).owner;
+  ok(!!B,"전투 커맨드 절 전제: 실제 전투가 열렸다");
+
+  /* 12-1 Core 소유: 전투 어휘는 reduceCoreAction 의 케이스다. 프레임(그 렌더의 전투·행동자·행동 토큰)이 없는
+     호출은 Core 가 맡지 않고(null) 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다 — 프레임은 회선에 실리지 않는다. */
+  const VERBS=["act","item","ball","flee","pass","pkgOpen","pkgPick"];
+  const before=dg();
+  ok(VERBS.every(t=>X.reduceCoreAction(X.S,{t})===null),"전투 어휘 7종은 프레임 없이는 Core 가 맡지 않는다 (진입점이 붙여 다시 부른다)");
+  ok(VERBS.every(t=>X.dispatchCoreAction({t})===false)&&dg()===before,"프레임 없는 직접 dispatch 는 아무것도 커밋하지 않는다");
+  const coreSrc=fs.readFileSync(path.join(demo,"js","core.js"),"utf8");
+  const entries=coreSrc.match(/window\.__(?:openPkgCore|pkgPickCore|pkgCancelCore|useItemCore|throwBallCore|fleeCore|passCore|actCore)=[^\n]*/g)||[];
+  ok(entries.length===8&&entries.every(line=>/dispatchCoreAction\(\{t:"/.test(line)),
+     "전투 커맨드 진입점 8종(개봉 취소 포함)은 전부 한 줄로 Core 액션만 보낸다 — 규칙·자원 회계가 렌더 안에 남아 있지 않다");
+  /* 취소는 **표시 계층의 일**이 아니다: 개봉 화면의 [취소] 버튼이 B 를 직접 고치거나 화면만 닫고 끝내면
+     발급된 표가 살아남아 뒤늦은 확정을 인가한다 (아래 12-13). 버튼은 Core 경계만 부른다. */
+  ok(!/\[\"취소\",\(\)=>\{close\(\); battleModal\(\);\}\]/.test(coreSrc)&&(coreSrc.match(/\["취소",\(\)=>window\.__pkgCancelCore\(id\)\]/g)||[]).length===2,
+     "개봉 화면의 취소 버튼 2곳은 UI 가 전투 상태를 직접 고치지 않고 Core 취소 액션을 부른다");
+
+  /* 12-2 커밋은 **바뀐 칸만** 옮긴다. 같은 전투 객체를 다시 대입하면 S.battle 에 접근자를 건 관찰자(공개 방 서버
+     엔진)가 그때마다 '새 전투 시작'으로 읽어 battleId·표시 이벤트를 새로 발급한다. */
+  let backing=X.S.battle, reassigned=0;
+  Object.defineProperty(X.S,"battle",{configurable:true,enumerable:true,get(){return backing;},set(v){reassigned++;backing=v;}});
+  const own=owner(), invBefore=X.S.inv[own].slice();
+  X.__useItemCore(0); X.drain(20000);
+  ok(X.S.inv[own].length===invBefore.length-1,"12-2 전제: 아이템 사용이 Core 를 지나 재고를 하나 줄였다");
+  ok(reassigned===0,"전투 중 커밋은 같은 S.battle 을 다시 대입하지 않는다 (재대입은 관찰자에게 새 전투다)");
+
+  /* 12-3 중복·재생 입력 안전: 같은 진입점을 다시 불러도 라운드 1회 게이트가 재고를 더 쓰지 않는다 */
+  const useAgain=X.__useItemCore, invAfter=X.S.inv[own].slice();
+  useAgain(0); X.drain(20000);
+  ok(JSON.stringify(X.S.inv[own])===JSON.stringify(invAfter),"같은 아이템 진입점의 두 번째 호출은 재고를 더 쓰지 않는다 (라운드 1회)");
+
+  /* 12-4 손상된 프레임·인덱스는 난수도 상태도 건드리지 않는다 (Core 가 값 자체를 본다 — 참/거짓이 아니라) */
+  X.setSeed(24522); const r0=X.rand(); X.setSeed(24522);
+  const d0=dg();
+  for(const a of [{t:"item",i:"0"},{t:"item",i:-1},{t:"item",i:1.5},{t:"item",i:99},{t:"act",k:{}},{t:"pkgOpen",kind:"__proto__"},{t:"pkgOpen",kind:"toString"},{t:"ball"}]) X.applyAction(a);
+  for(const a of [["gift","0"],["gift",-1],["gift",1.5],["gift",99],["__proto__",0],["buff",99]]) X.__pkgPickCore(a[0],a[1]);
+  X.drain(20000);
+  ok(dg()===d0,"손상된 전투 프레임(문자열·음수·소수·범위 밖 인덱스, 원형 오염 종류)은 상태를 바꾸지 않는다");
+  ok(X.rand()===r0,"그 거부들은 난수를 하나도 소비하지 않는다 (락스텝·재현성 보존)");
+
+  /* 12-5 낡은 진입점: 차례가 넘어간 뒤의 옛 렌더 호출은 새 행동자를 대신 쓰지 않는다 (#146 Saturn REVISE P1 계약) */
+  const staleFlee=X.__fleeCore, staleItem=X.__useItemCore;
+  X.applyAction({t:"act",k:0}); X.drain(20000);
+  ok(!!X.S.battle,"12-5 전제: 한 번의 기술 행동으로는 전투가 끝나지 않았다");
+  X.setSeed(24523); const r1=X.rand(); X.setSeed(24523);
+  const d1=dg(), tries=X.S.metrics.byPlayer[0].fleeTries+X.S.metrics.byPlayer[1].fleeTries;
+  staleFlee(); staleItem(0); X.drain(20000);
+  ok(dg()===d1&&X.S.metrics.byPlayer[0].fleeTries+X.S.metrics.byPlayer[1].fleeTries===tries,
+     "차례가 넘어간 뒤의 옛 도망·아이템 진입점은 상태도 지표도 바꾸지 않는다");
+  ok(X.rand()===r1,"그 거부도 난수를 소비하지 않는다 — 도망 판정이 몰래 굴러가지 않는다");
+  /* 12-6 규칙 본체가 정말 reducer 에 있다: 프레임을 직접 지어 넣으면 reducer 하나가 판정·재고·이벤트를 다 낸다.
+     소유자 재고(inv)는 reducer 계약대로 복제되고, 전투 인스턴스(B)는 이 tranche 가 명시한 예외로 제자리에서 고쳐 쓴다. */
+  const B2=X.S.battle, side2=X.actorOfPhase(), own2=(side2==="A"?B2.attP:B2.defP).owner;
+  X.S.inv[own2]=["potion","cool"]; B2.itemRoundA=false; B2.itemRoundD=false;
+  const invRef=X.S.inv[own2];
+  const probe=X.reduceCoreAction(X.S,{t:"item",i:0,frame:{B:B2,side:side2,seq:B2.actSeq||0,round:B2.round,phase:B2.phase}});
+  ok(!!probe&&probe.events[0].type==="battleItemUsed"&&probe.state.inv[own2].length===1&&probe.state.inv!==X.S.inv,
+     "아이템 사용의 판정·재고·이벤트가 reduceCoreAction 한 곳에서 나온다");
+  ok(X.S.inv[own2]===invRef&&invRef.length===2,"소유자 재고 배열은 그대로 두고 복제본에만 쓴다 (reducer 계약)");
+  ok((side2==="A"?B2.itemRoundA:B2.itemRoundD)===true,"전투 인스턴스의 라운드 게이트는 제자리에서 바뀐다 (이 tranche 가 명시한 예외 — 복제 전환은 스케줄러 tranche)");
+
+  /* 12-7 Saturn REVISE — 회선·재생 프레임의 정체성. 받는 쪽 진입점은 **자기 렌더의** 프레임을 붙이므로, 보낸 쪽이
+     겨냥한 행동자·전투 진행 지점을 함께 싣지 않으면 늦게·다시 도착한 프레임이 지금 차례인 다른 행동자를 대신 쓴다. */
+  X.battleModal();
+  const B3=X.S.battle, side3=X.actorOfPhase(), f3=side3==="A"?B3.fa:B3.fd;
+  const slotOk=f3.skills?f3.skills.findIndex((s,i)=>X.slotUsable(f3,i,side3)):-1;
+  ok(slotOk>=0,"12-7 전제: 지금 행동자에게 실제로 쓸 수 있는 기술 슬롯이 있다");
+  const liveBf=()=>({side:side3,seq:B3.actSeq||0,round:B3.round,phase:B3.phase});
+  const d7=dg(); X.setSeed(24530); const r7=X.rand(); X.setSeed(24530);
+  for(const bf of [Object.assign(liveBf(),{seq:(B3.actSeq||0)+1}),Object.assign(liveBf(),{round:B3.round+1}),
+                   Object.assign(liveBf(),{phase:B3.phase+1}),Object.assign(liveBf(),{side:side3==="A"?"D":"A"}),{}])
+    X.applyAction({t:"act",k:slotOk,bf});
+  X.drain(20000);
+  ok(dg()===d7,"낡은·재생된·부분적인 회선 프레임(행동 토큰·라운드·단계·행동자 불일치, 정체성 없음)은 지금 행동자를 대신 쓰지 않는다");
+  ok(X.rand()===r7,"그 거부들도 난수를 하나도 소비하지 않는다");
+
+  /* 12-8 쓸 수 없는 슬롯은 내보내지 않는다 — execSlot 은 사신의 낫만 다시 검사하므로 여기가 유일한 합법성 게이트다 */
+  f3.cds[slotOk]=2;
+  const d8=dg(); X.setSeed(24531); const r8=X.rand(); X.setSeed(24531);
+  X.applyAction({t:"act",k:slotOk}); X.drain(20000);
+  ok(dg()===d8&&X.rand()===r8,"쿨타임 중인 슬롯 번호는 battleSlot 로 나가지 않는다 (상태·난수 무변경)");
+  f3.cds[slotOk]=0;
+
+  /* 12-9 패키지 확정은 **살아 있는 개봉 표**에서만 나온다: 표 없이·다른 종류로·이미 쓴 표로 온 확정은 재고를 움직이지 않는다.
+     성공한 확정은 말을 건드리지 않으므로 S.pieces 배열 정체성도 그대로여야 한다. */
+  X.battleModal();
+  const own9=((X.actorOfPhase()==="A")?X.S.battle.attP:X.S.battle.defP).owner, B9=X.S.battle;
+  X.S.pkgs[own9]={itemGift:2,battleBuff:1}; B9.pkgSel=null; B9.buffA=null; B9.buffD=null;
+  X.__pkgPickCore("gift",0,1); X.drain(20000);
+  ok(X.S.pkgs[own9].itemGift===2,"개봉 없이 온 확정(표 없음)은 재고를 움직이지 않는다");
+  X.__openPkgCore("itemGift"); const tk9=B9.pkgSel.id;
+  X.__pkgPickCore("buff",0,tk9); X.drain(20000);
+  ok(X.S.pkgs[own9].battleBuff===1&&!B9.buffA&&!B9.buffD,"선물 상자 표로 버프를 확정하는 남의 선택(종류 불일치)은 거부된다");
+  const pieces9=X.S.pieces, invLen9=X.S.inv[own9].length;
+  X.__pkgPickCore("gift",0,tk9); X.drain(20000);
+  ok(X.S.pkgs[own9].itemGift===1&&X.S.inv[own9].length+X.S.balls[own9]>=invLen9,"표가 있는 확정은 정상 동작한다 (재고 1 소모)");
+  ok(X.S.pieces===pieces9,"말을 건드리지 않는 전투 커맨드는 S.pieces 배열 정체성을 갈아 치우지 않는다");
+  X.__pkgPickCore("gift",0,tk9); X.drain(20000);
+  ok(X.S.pkgs[own9].itemGift===1,"이미 쓴 표로 다시 온 확정(재생·중복 클릭)은 한 번 더 적용되지 않는다");
+
+  /* 12-10 거부된 no-op 은 값도 참조도 그대로 둔다 — 커밋이 배열 정체성을 갈아 치우면 그 참조를 들고 있던 호출처·관찰자가 끊긴다 */
+  const pieces10=X.S.pieces, sel10=X.S.selected, moved10=X.S.movedPiece, ev10=X.S.events, d10=dg();
+  X.applyAction({t:"act",k:99}); X.applyAction({t:"item",i:99}); X.dispatchCoreAction({t:"heal",id:-1}); X.drain(20000);
+  ok(X.S.pieces===pieces10&&X.S.selected===sel10&&X.S.movedPiece===moved10&&X.S.events===ev10&&dg()===d10,
+     "거부된 no-op 은 S.pieces·selected·movedPiece·events 의 참조와 값을 그대로 둔다");
+
+  /* 12-11 Saturn REVISE 2차 — **회선에서 온 전투 프레임은 bf 없이는 재생되지 않는다.** 받는 쪽 진입점은 자기 렌더의
+     프레임을 붙이므로, 이 관문이 없으면 bf 를 뺀 프레임이 "지금 차례인 누군가"에 그대로 다시 묶인다.
+     버림은 조용하고 **뒤 프레임을 막지 않는다** — 유효한 프레임은 같은 pump 에서 그대로 재생된다. */
+  X.battleModal();
+  const B11=X.S.battle, side11=X.actorOfPhase(), f11=side11==="A"?B11.fa:B11.fd;
+  const slot11=f11.skills?f11.skills.findIndex((s,i)=>X.slotUsable(f11,i,side11)):-1;
+  ok(slot11>=0,"12-11 전제: 지금 행동자에게 쓸 수 있는 기술 슬롯이 있다");
+  X.NET.mode="host"; X.NET.me=B11[side11==="A"?"attP":"defP"].owner; X.NET.started=true;
+  const d11=dg(); X.setSeed(24540); const r11=X.rand(); X.setSeed(24540);
+  for(const a of [{t:"act",k:slot11},{t:"item",i:0},{t:"ball"},{t:"flee"},{t:"pass"},{t:"pkgOpen",kind:"itemGift"}]){
+    X.NET.queue.push(a); X.netPump(); X.drain(20000); }
+  ok(X.NET.queue.length===0&&dg()===d11&&X.rand()===r11,
+     "bf 없는 수신 전투 프레임 6종은 큐에서 조용히 버려진다 — 상태·참조·난수 무변경");
+  const bf11=X.battleActionFrame(X.S), hp11=(side11==="A"?B11.fd:B11.fa).hp;
+  X.NET.queue.push({t:"act",k:slot11}); X.NET.queue.push({t:"act",k:slot11,bf:bf11}); X.netPump(); X.drain(20000);
+  ok(X.NET.queue.length===0&&dg()!==d11,"앞의 bf 없는 프레임이 뒤의 정상 프레임을 막지 않는다 (큐 정체 없음)");
+  X.NET.mode=null; X.NET.me=0; X.NET.started=false;
+
+  /* 12-11' Saturn REVISE 3차 — bf 는 **온전하고 정확해야** 한다. 네 값이 다 맞아도 여분 키가 붙어 있으면 거부다
+     (서버 room.js frameMatches 와 같은 판정). 여분 키를 흘려 보내면 조작 프레임이 문맥만 맞춰 놓고 소비자마다
+     다르게 읽히는 필드를 함께 싣는다. 부분·빈 객체·배열·원시값·다른 값도 같은 자리에서 떨어진다.
+     거부는 상태·참조·난수를 하나도 건드리지 않는다. */
+  X.battleModal();
+  if(X.S.battle){
+    const good=X.battleActionFrame(X.S);
+    const bads=[Object.assign({},good,{x:1}),                        // 여분 키 1개 (네 값은 정확)
+                Object.assign({},good,{B:X.S.battle}),               // 렌더 프레임 흉내
+                {side:good.side,seq:good.seq,round:good.round},      // 부분 (키 3개)
+                {side:good.side,seq:good.seq,round:good.round,phase:good.phase,extra:undefined}, // 값이 undefined 여도 키는 키다
+                {},[good.side,good.seq,good.round,good.phase],       // 빈 객체 · 배열
+                Object.assign({},good,{seq:good.seq+1}),             // 낡은/앞선 행동 토큰
+                Object.assign({},good,{side:good.side==="A"?"D":"A"})]; // 다른 행동자
+    const B11b=X.S.battle, side11b=X.actorOfPhase(), f11b=side11b==="A"?B11b.fa:B11b.fd;
+    const slot11b=f11b.skills?f11b.skills.findIndex((sk,i)=>X.slotUsable(f11b,i,side11b)):-1;
+    const pcs=X.S.pieces, ev=X.S.events, dB=dg(); X.setSeed(24542); const rB=X.rand(); X.setSeed(24542);
+    for(const bf of bads){
+      if(slot11b>=0) X.applyAction({t:"act",k:slot11b,bf});
+      X.applyAction({t:"pkgOpen",kind:"itemGift",bf}); X.applyAction({t:"pass",bf}); X.drain(20000); }
+    ok(dg()===dB&&X.rand()===rB&&X.S.pieces===pcs&&X.S.events===ev&&!X.S.battle.pkgSel,
+       "여분 키·부분·빈 객체·배열·낡은 값의 bf 는 전부 거부된다 — 상태·참조·난수·표 무변경");
+    /* 대조: 같은 자리의 **온전한** bf 는 그대로 통한다 (가드가 기능을 죽이지 않았다) */
+    X.applyAction({t:"pkgOpen",kind:"itemGift",bf:X.battleActionFrame(X.S)}); X.drain(20000);
+    ok(!!X.S.battle.pkgSel&&X.S.battle.pkgSel.kind==="itemGift","온전한 bf(정확히 네 키)는 그대로 통한다");
+    X.__pkgCancelCore(X.S.battle.pkgSel.id); X.drain(20000);
+  } else ok(true,"12-11' 생략: 전투가 이미 끝났다");
+
+  /* 12-12 같은 행동자의 **재생(replay)** — 한 번 적용된 bf 를 그대로 다시 보내도 두 번 쓰이지 않는다.
+     행동 토큰(actSeq)이 이미 올라갔으므로 같은 프레임은 자기 문맥과 어긋난다. */
+  X.battleModal();
+  if(X.S.battle){
+    const B12=X.S.battle, bf12=X.battleActionFrame(X.S), side12=X.actorOfPhase(), f12=side12==="A"?B12.fa:B12.fd;
+    const slot12=f12.skills?f12.skills.findIndex((s,i)=>X.slotUsable(f12,i,side12)):-1;
+    if(slot12>=0){
+      X.applyAction({t:"act",k:slot12,bf:bf12}); X.drain(20000);
+      const d12=dg(); X.setSeed(24541); const r12=X.rand(); X.setSeed(24541);
+      X.applyAction({t:"act",k:slot12,bf:bf12}); X.drain(20000);   // 같은 side·같은 프레임의 재생
+      ok(dg()===d12&&X.rand()===r12,"같은 행동자의 재생 프레임(이미 쓴 행동 토큰)은 상태도 난수도 바꾸지 않는다");
+    } else ok(true,"12-12 생략: 이 시점 행동자에게 합법 슬롯이 없다");
+  } else ok(true,"12-12 생략: 전투가 이미 끝났다");
+
+  /* 12-13 Saturn MEDIUM — 레거시 별칭(k='skill'·'common')도 **실제 기술 칸**을 가리켜야 한다. slotUsable 은 없는 칸
+     (skills[i]===undefined)을 막지 않아 1칸 전투원의 'skill'(슬롯1)·'common'(슬롯2)이 합법으로 읽혔고 execSlot 이 그 자리를
+     기본 공격으로 대신 내보냈다. 권위 서버(room.js _legalAct 의 slotOk)와 같은 경계다 — 없는 별칭은 정확한 무동작이다.
+     프레임을 직접 지어 reducer 만 부른다(커밋 없음): 거부는 받은 상태 **그 객체**를 이벤트 없이 돌려주고 행동 토큰도 그대로다. */
+  {
+    const mkB=n=>({phase:0,round:1,actSeq:7,firstSide:"A",menu:{open:true},bonus:null,msgQ:[],
+      attP:{owner:0},defP:{owner:1},
+      fa:{skills:["s0","s1","s2","s3"].slice(0,n),cds:[0,0,0,0].slice(0,n),skillAtk:9,cd:0},
+      fd:{skills:["s0"],cds:[0],skillAtk:9,cd:0}});
+    const hit=(B,k)=>{ const st={battle:B};
+      return {st,r:X.reduceCoreAction(st,{t:"act",k,frame:{B,side:"A",seq:B.actSeq,round:B.round,phase:B.phase}})}; };
+    const one=mkB(1); X.setSeed(24560); const rL=X.rand(); X.setSeed(24560);
+    const noop=["skill","common"].map(k=>hit(one,k));
+    ok(noop.every(x=>x.r.events.length===0&&x.r.state===x.st)&&one.actSeq===7&&one.menu&&one.menu.open===true&&X.rand()===rL,
+       "1칸 전투원의 레거시 별칭 'skill'·'common' 은 없는 칸이므로 정확한 무동작이다 — 상태 참조·이벤트·메뉴·행동 토큰·난수 무변경, 기본 공격으로 대체되지 않는다");
+    ok(hit(one,1).r.events.length===0&&hit(one,2).r.events.length===0&&hit(one,"__nope").r.events.length===0,
+       "같은 전투원의 없는 슬롯 번호 1·2 와 알 수 없는 종류도 종전대로 거부된다");
+    const four=mkB(4);
+    ok(J245(["basic","skill","common",3].map(k=>hit(four,k).r.events[0]))===J245([{type:"battleSlot",side:"A",slot:0},
+       {type:"battleSlot",side:"A",slot:1},{type:"battleSlot",side:"A",slot:2},{type:"battleSlot",side:"A",slot:3}]),
+       "대조: 칸이 실제로 있는 전투원의 'basic'·'skill'·'common' 과 슬롯 번호는 종전대로 슬롯 0·1·2·3 으로 나간다");
+    const legacy=mkB(0); legacy.fa.skills=null; legacy.fa.cds=null;
+    ok(hit(legacy,"basic").r.events[0].slot===-1&&hit(legacy,"skill").r.events[0].type==="battleLegacySkill"
+       &&hit(legacy,"common").r.events.length===0,
+       "대조: skills 없는 구형 전투원의 'basic'·'skill' 은 그대로 살아 있고, 슬롯2 를 가리키는 'common' 만 서버와 같이 거부된다");
+    const cooled=mkB(0); cooled.fa.skills=null; cooled.fa.cds=null; cooled.fa.cd=2;
+    const noSkill=mkB(0); noSkill.fa.skills=null; noSkill.fa.cds=null; noSkill.fa.skillAtk=0;
+    /* Saturn MEDIUM(#245): 종전 검사는 이벤트만 봤다 — 거부가 B.menu 를 이미 지운 뒤였어도 통과했다.
+       가용성 게이트를 B.menu=null 앞으로 옮겼으므로 거부는 **메뉴까지 포함해** 정확한 무동작이다. */
+    X.setSeed(24561); const rL2=X.rand(); X.setSeed(24561);
+    const badLegacy=[hit(cooled,"skill"),hit(noSkill,"skill")];
+    ok(badLegacy.every(x=>x.r.events.length===0&&x.r.state===x.st&&x.st.battle===x.r.state.battle)
+       &&cooled.menu&&cooled.menu.open===true&&noSkill.menu&&noSkill.menu.open===true
+       &&cooled.actSeq===7&&noSkill.actSeq===7&&cooled.fa.cd===2&&noSkill.fa.skillAtk===0&&X.rand()===rL2,
+       "쿨 중이거나 속성 스킬이 없는 구형 전투원의 'skill' 도 정확한 무동작이다 — 상태·전투 참조·이벤트·메뉴·행동 토큰·난수 무변경 (서버 _legalAct·UI canSkill 과 같은 조건)");
+    const okLegacy=mkB(0); okLegacy.fa.skills=null; okLegacy.fa.cds=null;
+    ok(hit(okLegacy,"skill").r.events[0].type==="battleLegacySkill"&&okLegacy.menu===null,
+       "대조: 합법한 구형 'skill' 은 종전대로 발동하고 그때만 메뉴가 닫힌다");
+  }
+  X.TQ.length=0;
+}
+/* (12b) #245 개봉 표(pkgSel)의 수명 — 취소·교체·행동 전환에서 회수된다.
+   표는 확정(pkgPick)의 겨냥 문맥이자 일회용 인가다: 살아남으면 늦게 온 확정이 재고를 움직인다. */
+{
+  const X=H.load(index); X.tutSkip(); H.freshPlay(X,"pvp"); X.tutSkip(); X.BAL.dmgVar=0;
+  H.clearBoard(X);
+  const me=X.S.pieces.find(x=>x.owner===0&&x.type==="minion"), em=X.S.pieces.find(x=>x.owner===1&&x.type==="minion");
+  H.place(X,me,12,4); H.place(X,em,11,4);
+  H.place(X,X.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1);
+  H.place(X,X.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
+  X.S.balls=[3,3]; X.S.reserve=[null,null]; X.S.inv=[[],[]];
+  X.S.battle=null; X.S.battlesUsed=0; X.TQ.length=0;
+  X.setSeed(24550); X.startRounds(me,em,me,em); X.drain(20000);
+  const B=X.S.battle, dg2=()=>lockstepDigest(X);
+  ok(!!B,"12b 전제: 전투가 열렸다");
+  const own=()=>((X.actorOfPhase()==="A")?B.attP:B.defP).owner;
+
+  /* 12b-1 취소 — 표를 회수한다. 취소 뒤의 확정은 인가받지 못한다 (재고·난수 무변경) */
+  X.battleModal(); const o1=own(); X.S.pkgs[o1]={itemGift:2,battleBuff:1}; B.pkgSel=null; B.buffA=null; B.buffD=null;
+  X.__openPkgCore("itemGift"); X.drain(20000);
+  ok(!!B.pkgSel&&B.pkgSel.kind==="itemGift"&&B.pkgSel.owner===o1&&B.pkgSel.side===X.actorOfPhase()
+     &&B.pkgSel.seq===(B.actSeq||0)&&B.pkgSel.round===B.round&&B.pkgSel.phase===B.phase
+     &&Number.isInteger(B.pkgSel.id),
+     "개봉이 발급한 표는 종류·소유자·겨냥 문맥 4필드와 **발급 번호(id)** 를 싣는다");
+  const tk1=B.pkgSel.id;
+  X.__pkgCancelCore(tk1); X.drain(20000);
+  ok(B.pkgSel===null,"취소는 표를 회수한다 (표시 계층이 아니라 Core 가)");
+  const dC=dg2(); X.setSeed(24551); const rC=X.rand(); X.setSeed(24551);
+  X.__pkgPickCore("gift",0,tk1); X.drain(20000);
+  ok(X.S.pkgs[o1].itemGift===2&&dg2()===dC&&X.rand()===rC,"취소된 표로는 확정이 인가되지 않는다 — 재고·상태·난수 무변경");
+
+  /* 12b-2 교체 — 새 개봉이 앞의 표를 대신한다. 앞 종류의 확정은 더 이상 인가되지 않는다 */
+  X.battleModal(); X.__openPkgCore("itemGift"); X.drain(20000); const tk2a=B.pkgSel.id;
+  X.battleModal(); X.__openPkgCore("battleBuff"); X.drain(20000);
+  ok(B.pkgSel&&B.pkgSel.kind==="battleBuff"&&B.pkgSel.id!==tk2a,"두 번째 개봉이 표를 교체하고 새 번호를 발급한다");
+  const giftBefore=X.S.pkgs[o1].itemGift;
+  X.__pkgPickCore("gift",0,tk2a); X.drain(20000);
+  ok(X.S.pkgs[o1].itemGift===giftBefore,"교체된 앞 표(선물)로는 확정이 인가되지 않는다");
+  /* 12b-2' **같은 종류**의 재개봉 — 종류·소유자·겨냥 문맥 4필드가 글자 그대로 같아 표 내용만으로는 구별되지 않는다.
+     남은 근거는 발급 번호뿐이다: 앞 개봉의 살아 있는 모달 콜백이 뒤 개봉의 표(와 재고)를 소모하면 안 된다. */
+  X.__pkgCancelCore(B.pkgSel.id); X.drain(20000);
+  X.battleModal(); const o2=own(); X.S.pkgs[o2]={itemGift:2,battleBuff:1}; X.S.inv[o2]=[]; B.pkgSel=null;
+  X.__openPkgCore("itemGift"); X.drain(20000); const tkA=B.pkgSel.id;
+  X.battleModal(); X.__openPkgCore("itemGift"); X.drain(20000); const tkB=B.pkgSel.id;
+  ok(tkA!==tkB&&B.pkgSel.kind==="itemGift"&&B.pkgSel.owner===o2&&B.pkgSel.side===X.actorOfPhase()
+     &&B.pkgSel.seq===(B.actSeq||0)&&B.pkgSel.round===B.round&&B.pkgSel.phase===B.phase,
+     "같은 종류·같은 문맥의 재개봉도 **다른 번호**의 새 표를 발급한다");
+  const dR=dg2(); X.setSeed(24554); const rR=X.rand(); X.setSeed(24554);
+  X.__pkgPickCore("gift",0,tkA); X.drain(20000);
+  ok(X.S.pkgs[o2].itemGift===2&&X.S.inv[o2].length===0&&B.pkgSel&&B.pkgSel.id===tkB&&dg2()===dR&&X.rand()===rR,
+     "앞 개봉의 남은 콜백은 같은 종류로 재발급된 표·재고를 소모하지 못한다 — 표·재고·상태·난수 무변경");
+  X.__pkgCancelCore(tkA); X.drain(20000);
+  ok(B.pkgSel&&B.pkgSel.id===tkB,"앞 개봉의 [취소] 콜백도 재발급된 표를 회수하지 못한다");
+  X.__pkgPickCore("gift",0,tkB); X.drain(20000);
+  ok(X.S.pkgs[o2].itemGift===1&&B.pkgSel===null,"지금 살아 있는 표(뒤 개봉)의 확정은 정상 동작한다");
+  X.__pkgCancelCore(tkB); X.drain(20000);
+
+  /* 12b-3 행동 전환 — 차례가 넘어가면 열려 있던 표가 만료된다 (nextPhase 가 표 자체를 회수한다) */
+  X.battleModal(); const o3=own(); X.S.pkgs[o3]={itemGift:2,battleBuff:1};
+  X.__openPkgCore("itemGift"); X.drain(20000);
+  ok(!!B.pkgSel,"12b-3 전제: 표가 발급됐다");
+  const tk3=B.pkgSel.id;
+  X.nextPhase(); X.drain(20000);
+  ok(B.pkgSel===null,"행동 전환(nextPhase)은 열려 있던 개봉 표를 만료시킨다");
+  const dT=dg2(); X.setSeed(24552); const rT=X.rand(); X.setSeed(24552);
+  X.__pkgPickCore("gift",0,tk3); X.drain(20000);
+  ok(X.S.pkgs[o3].itemGift===2&&dg2()===dT&&X.rand()===rT,"차례가 넘어간 뒤의 늦은 확정은 인가되지 않는다 — 재고·상태·난수 무변경");
+
+  /* 12b-4 대조: 가드가 기능을 죽이지 않았다 — 같은 렌더의 정상 개봉→확정은 정확히 한 번 통한다 */
+  X.battleModal(); const o4=own(); X.S.pkgs[o4]={itemGift:1,battleBuff:0}; X.S.inv[o4]=[]; B.pkgSel=null;
+  X.__openPkgCore("itemGift"); X.drain(20000);
+  X.__pkgPickCore("gift",0,B.pkgSel&&B.pkgSel.id); X.drain(20000);
+  ok(X.S.pkgs[o4].itemGift===0&&B.pkgSel===null,"정상 개봉→확정은 한 번 통하고 표는 그 자리에서 소모된다");
+
+  /* 12b-5 **같은 행동자**의 라운드 경계 뒤 옛 진입점·재생 프레임 (#146 F9 계열의 비-strict 판).
+     side 가 그대로라 '행동자 불일치'로는 걸리지 않는다 — 남는 근거는 겨냥 문맥의 행동 토큰(actSeq)뿐이고,
+     종전에는 그 토큰을 도망·넘기기(strict)에서만 봤다. 가방·패키지·기술도 같은 게이트를 지나야 한다. */
+  X.battleModal();
+  const side5=X.actorOfPhase(), bf5=X.battleActionFrame(X.S);
+  const staleItem5=X.__useItemCore, staleOpen5=X.__openPkgCore, staleAct5=X.__actCore;
+  X.nextPhase(); X.drain(20000);
+  if(X.S.battle&&X.actorOfPhase()!==side5){ X.nextPhase(); X.drain(20000); }
+  /* #233 (GDD-23 4.4) 라운드 경계에서 선턴이 같은 쪽으로 굳은 판을 만든다 (smoke_issue146 F9 와 같은 상황) —
+     행동자는 그대로이고 행동 토큰·라운드만 올라간 상태다. 옛 진입점은 다시 그리지 않는다. */
+  if(X.S.battle&&X.S.battle.phase===0) B.firstSide=side5;
+  if(X.S.battle&&X.actorOfPhase()===side5&&(B.actSeq||0)!==bf5.seq){
+    const o5=own(); X.S.pkgs[o5]={itemGift:1,battleBuff:1}; X.S.inv[o5]=["potion"];
+    B.itemRoundA=false; B.itemRoundD=false; B.pkgSel=null;
+    const d5=dg2(); X.setSeed(24553); const r5=X.rand(); X.setSeed(24553);
+    staleItem5(0); staleOpen5("itemGift"); staleAct5(0);      // 옛 렌더의 진입점(회선 문맥 없음 — 그 렌더의 프레임을 쓴다)
+    X.applyAction({t:"item",i:0,bf:bf5});                     // 재생된 회선 프레임도 같은 근거로 떨어진다
+    X.drain(20000);
+    ok(dg2()===d5&&X.rand()===r5&&B.pkgSel===null&&X.S.inv[o5].length===1&&X.S.pkgs[o5].itemGift===1,
+       "라운드 경계를 넘은 뒤 같은 행동자의 옛 진입점·재생 프레임(가방·패키지·기술)은 행동 토큰만으로 거부된다 — 상태·재고·난수 무변경");
+    /* 대조: 지금 렌더의 같은 입력은 정상 동작한다 (가드가 기능을 죽이지 않았다) */
+    X.battleModal(); X.__useItemCore(0); X.drain(20000);
+    ok(X.S.inv[o5].length===0,"같은 자리의 **지금 렌더** 아이템 사용은 정상 동작한다");
+  } else ok(true,"12b-5 생략: 라운드 경계에서 행동자가 바뀌었거나 전투가 끝났다");
+
+  /* 12b-6 **전투를 넘는** 표 번호 (Saturn REVISE 4차). 발급 카운터가 전투 인스턴스 안에 있으면 전투마다 0 으로
+     돌아가 두 번째 전투의 첫 표가 첫 전투의 첫 표와 같은 번호를 받는다 — 그러면 앞 전투에 남은 모달 콜백이
+     지금 살아 있는 표를 회수하거나(취소) 재고를 움직인다(확정). 번호는 **경기 안에서** 유일해야 한다. */
+  const staleTickets=[tk1,tk2a,tkA,tkB,tk3];                                 // 첫 전투가 발급한 번호들 (1 부터 시작한다)
+  const staleCancel6=X.__pkgCancelCore, stalePick6=X.__pkgPickCore;          // 첫 전투의 개봉 화면에 남은 콜백 (그 렌더의 프레임을 든다)
+  X.S.battle=null; X.setSeed(24556); X.startRounds(me,em,me,em); X.drain(20000);
+  const B6=X.S.battle;
+  ok(!!B6,"12b-6 전제: 같은 경기에서 두 번째 전투가 열렸다");
+  const o6=((X.actorOfPhase()==="A")?B6.attP:B6.defP).owner;
+  X.battleModal(); X.S.pkgs[o6]={itemGift:2,battleBuff:1}; X.S.inv[o6]=[]; B6.pkgSel=null;
+  X.__openPkgCore("itemGift"); X.drain(20000);
+  const tk6=B6.pkgSel&&B6.pkgSel.id;
+  ok(Number.isInteger(tk6)&&!staleTickets.includes(tk6),
+     "새 전투의 표는 앞 전투가 쓴 어떤 번호와도 겹치지 않는다 (발급 카운터가 전투가 아니라 경기 단위)");
+  const d6=dg2(); X.setSeed(24557); const r6=X.rand(); X.setSeed(24557);
+  staleCancel6(staleTickets[0]); X.__pkgCancelCore(staleTickets[0]); X.drain(20000);   // 앞 전투의 [취소] 콜백 · 같은 번호를 든 지금 렌더의 취소
+  ok(B6.pkgSel&&B6.pkgSel.id===tk6,"앞 전투의 취소 콜백은 새 전투의 살아 있는 표를 회수하지 못한다");
+  stalePick6("gift",0,staleTickets[0]); X.__pkgPickCore("gift",0,staleTickets[0]); X.drain(20000);
+  ok(X.S.pkgs[o6].itemGift===2&&X.S.inv[o6].length===0&&B6.pkgSel&&B6.pkgSel.id===tk6&&dg2()===d6&&X.rand()===r6,
+     "앞 전투의 확정 콜백도 새 전투의 재고를 움직이지 못한다 — 표·재고·상태·난수 무변경");
+  X.__pkgPickCore("gift",0,tk6); X.drain(20000);
+  ok(X.S.pkgs[o6].itemGift===1&&B6.pkgSel===null,"대조: 새 전투의 살아 있는 표는 정상 동작한다");
+  X.TQ.length=0;
+}
+/* (13) #245 전투 규칙의 사본이 표시·네트워크·AI 계층에 남아 있지 않다 */
+{
+  const netSrc=fs.readFileSync(path.join(demo,"js","network.js"),"utf8");
+  const aiSrc=fs.readFileSync(path.join(demo,"js","ai.js"),"utf8");
+  ok(!/\b(execSlot|nextPhase|finishBattle|finishByCapture|bmsg)\s*\(/.test(netSrc),"네트워크 계층은 전투 엔진을 직접 부르지 않는다 (프로토콜·중계만)");
+  ok(!/\b(execSlot|nextPhase|finishBattle|finishByCapture|bmsg)\s*\(/.test(aiSrc)&&!/S\.battle\.[A-Za-z]+\s*=[^=]/.test(aiSrc),
+     "AI 는 전투 상태를 직접 바꾸지 않는다 — 액션만 돌려준다");
+}
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
 ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");
 let blocked=false;

@@ -285,7 +285,7 @@ function aiPkgAction(side){
     else if(vipBody&&f.hp<f.maxHp*0.5) key="escape";        // 본체 VIP 가 위험하면 도망 조건 해제
     if(key==="time"&&B.round!==1) key="power";              // 계약 3.3 R1 한정 — 불법 선택을 만들지 않는다
     window.__openPkgCore("battleBuff");
-    window.__pkgPickCore("buff",BUFF_KEYS.indexOf(key));
+    window.__pkgPickCore("buff",BUFF_KEYS.indexOf(key),B.pkgSel&&B.pkgSel.id); // 방금 개봉이 발급한 표 번호 — 사람 모달 버튼과 같은 인가를 지난다
     return true;
   }
   /* 2) 아이템 선물 개봉 — 지금 쓸모 있는 자원을 고른다. 라운드 1회 제한에 막혀도 개봉 자체는 이득이다 */
@@ -296,7 +296,7 @@ function aiPkgAction(side){
     else if(f.skills&&!usable.length) want="cool";
     else if(f.hp>f.maxHp*0.7&&opp.hp<opp.maxHp*0.4&&!S.reserve[ownerP]) want="ball"; // 포획 기회가 가까우면 볼
     window.__openPkgCore("itemGift");
-    window.__pkgPickCore("gift",GIFT_PICKS.indexOf(want));
+    window.__pkgPickCore("gift",GIFT_PICKS.indexOf(want),B.pkgSel&&B.pkgSel.id);
     return true;
   }
   return false;

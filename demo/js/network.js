@@ -37,9 +37,18 @@ function netActor(){ // 지금 게임이 입력을 기다리는 플레이어
 function netLocalModal(){NET.localOpen=true;}   // 다음 modal()을 로컬 전용으로 (동기화·seq 제외)
 function netModalOwner(p){NET.modalOwner=p;}    // 다음 modal()의 소유자 명시 (기본: netActor())
 function netSend(m){ try{ if(NET.ws&&NET.ws.readyState===1) NET.ws.send(JSON.stringify(m)); }catch(e){} }
+const BATTLE_CMDS=["act","item","ball","flee","pass","pkgOpen"]; // 회선을 타는 전투 어휘 (확정 pkgPick 은 모달 중계 — 개봉이 발급한 표가 문맥을 싣는다)
 function netAction(a){ // 모든 상태 변경 입력의 단일 경로 — 오프라인은 즉시 적용, 온라인은 검증·송신 후 적용
   if(S.fleePick&&!["cell","fleeSwap","fleeSkip","resign"].includes(a.t)) return;
   if(!NET.replaying&&["cell","fleeSwap","fleeSkip"].includes(a.t)&&S.fleePick) a=Object.assign({},a,{pick:S.fleePick.token});
+  /* #245 Saturn REVISE: 전투 어휘는 **보낸 시점의 행동자·전투 진행 지점**을 함께 싣는다(fleePick 토큰과 같은 자리·같은 방식).
+     받는 쪽 진입점은 자기 렌더의 프레임을 붙이므로 이 값이 없으면 늦게·다시 도착한 프레임이 지금 차례인 다른 행동자에게
+     그대로 다시 묶인다. 대조는 Core(battleCmdCtx)가 한다 — 네트워크 계층은 규칙을 다시 갖지 않는다.
+     2차: 공개 방(서버 권위)에도 **같이 싣는다** — 봉투는 action.t 만 화이트리스트로 보므로 프로토콜은 그대로다.
+     room.js _authorize 는 좌석·차례 판정 뒤 이 bf 를 자기 battleFrame 과 대조하고(frameMatches — 어긋나면
+     E_ILLEGAL_ACTION), 다시 짓는 최소 필드 액션에도 bf 를 그대로 실어 두 좌석 엔진에 넘긴다. 그래서 좌석 엔진도
+     같은 대조를 받는다 (room.js _authorize 의 여섯 어휘가 전부 bf 를 다시 싣는다 — 이 파일은 실어 보내기만 하고 판정하지 않는다). */
+  if(!NET.replaying&&S.battle&&BATTLE_CMDS.includes(a.t)) a=Object.assign({},a,{bf:battleActionFrame(S)});
   if(!NET.replaying){ FX.inputSeq++; // #106 3.2 입력 잠금: 연출 중 사람 입력(셀·턴바·전투 커맨드)은 무시 — 기권만 허용, AI·수신 재생·자동 종료(idle 뒤)는 해당 없음
     if(fxLocked()&&a.t!=="resign"&&!isAI(netActor())) return; }
   if(NET.mode&&!NET.replaying){
@@ -58,12 +67,16 @@ function applyAction(a){
     case "setupDone": window.setupDoneCore(); break;
     case "fleeSwap": if(S.fleePick&&S.fleePick.cands.includes(a.id)) fleeResolve(a.id); break; // #114 도망 후 교환 (소유자 입력, rand 소비 0)
     case "fleeSkip": if(S.fleePick) fleeResolve(null); break; // #114 교환 생략 → 도망친 말 ↔ 상대 밀기
-    case "act": if(window.__actCore) window.__actCore(a.k); break;
-    case "item": if(window.__useItemCore) window.__useItemCore(a.i); break;
-    case "ball": if(window.__throwBallCore) window.__throwBallCore(); break;
-    case "flee": if(window.__fleeCore) window.__fleeCore(); break;
-    case "pass": if(window.__passCore) window.__passCore(); break; // #146 수동 전투 행동 넘기기 (rand 소비 0 · 양측 같은 프레임)
-    case "pkgOpen": if(window.__openPkgCore) window.__openPkgCore(a.kind); break; // #121 패키지 개봉 화면 (rand 0)
+    /* #245: 전투 어휘의 규칙·자원 회계는 전부 Core reducer 가 소유한다. 네트워크 계층은 프로토콜만 중계하고
+       규칙을 다시 갖지 않는다 — 아래 호출은 **받는 쪽 전투 화면의 진입점**이라 그 렌더의 프레임(전투 인스턴스·행동자·
+       행동 토큰)을 붙여 Core 로 보낸다. 전투 인스턴스 객체는 회선에 싣지 않으므로 프로토콜은 그대로다(모달 중계와 같은 방식).
+       함께 넘기는 a.bf 는 **보낸 쪽이 겨냥한** 행동자·전투 진행 지점이다 — 대조는 Core 가 하고 여기는 전달만 한다. */
+    case "act": if(window.__actCore) window.__actCore(a.k,a.bf); break;
+    case "item": if(window.__useItemCore) window.__useItemCore(a.i,a.bf); break;
+    case "ball": if(window.__throwBallCore) window.__throwBallCore(a.bf); break;
+    case "flee": if(window.__fleeCore) window.__fleeCore(a.bf); break;
+    case "pass": if(window.__passCore) window.__passCore(a.bf); break; // #146 수동 전투 행동 넘기기 (rand 소비 0 · 양측 같은 프레임)
+    case "pkgOpen": if(window.__openPkgCore) window.__openPkgCore(a.kind,a.bf); break; // #121 패키지 개봉 화면 (rand 0)
     /* 개봉·버프 확정과 탐색 보상 선택에는 **별도 semantic 액션을 두지 않는다.** 그 선택들은 buttons 를 가진 동기화 모달에서
        일어나므로 modal() 래퍼의 {t:"modal",seq,i} 중계가 이미 단일 경로다. 액션을 하나 더 만들면 이중 적용 통로가 된다. */
     case "modal": if(NET.syncModal&&NET.syncModal.seq===a.seq&&NET.syncModal.fns[a.i]) NET.syncModal.fns[a.i](); break;
@@ -73,14 +86,23 @@ function applyAction(a){
 function netReady(a){ // #106 3.1-4: 잠금(배너·연출·메시지 재생) 중에는 큐에 보관만 하고 idle 에 적용 — 드롭·재정렬 없음, 워치독으로 잠금은 반드시 풀린다
   if(!NET.started||!S) return false;
   if(a.t==="modal") return !!NET.syncModal&&NET.syncModal.seq===a.seq&&!fxLocked();
-  if(a.t==="act"||a.t==="item"||a.t==="ball"||a.t==="flee"||a.t==="pass"||a.t==="pkgOpen")
+  if(BATTLE_CMDS.includes(a.t))
     return !!S.battle&&!fxLocked()&&S.battle.msgQ.length===0&&!!window.__actCore; // #121: 패키지 개봉 화면 열기도 전투 프레임과 같은 준비 조건
   return !fxLocked();
 }
+/* #245 Saturn REVISE 2차 — **회선에서 들어온** 전투 어휘는 보낸 쪽이 겨냥한 문맥(bf) 없이는 재생하지 않는다.
+   받는 쪽 진입점은 자기 렌더의 프레임을 붙이므로, bf 가 없으면 늦게·다시 도착한·남의 프레임이 "지금 차례인
+   누군가"에 그대로 다시 묶인다. NET.queue 는 **소켓에서 온 프레임만** 담기므로(채우는 곳은 ws.onmessage 한 곳)
+   여기가 프로세스 밖 전투 입력의 유일한 관문이다 — 사람 UI·AI·모달 중계 콜백과 공개 방 좌석 엔진(room.js 가
+   좌석·baseRevision·합법성을 먼저 판정하고 applyAction 을 직접 부른다)은 자기 렌더의 프레임을 들고 있는
+   프로세스 안 호출자라 이 관문을 지나지 않는다. 문맥이 맞는지는 Core(battleCmdCtx)가 다시 본다.
+   버림은 조용하다: 규칙 상태·참조·난수를 하나도 건드리지 않고 큐에서만 빠진다(뒤 프레임을 막지 않는다). */
+function netDropsFrame(a){ return !!(a&&BATTLE_CMDS.includes(a.t)&&!a.bf); }
 function netPump(){
   if(NET.replaying) return;
-  while(NET.queue.length&&netReady(NET.queue[0])){
+  while(NET.queue.length&&(netDropsFrame(NET.queue[0])||netReady(NET.queue[0]))){
     const a=NET.queue.shift();
+    if(netDropsFrame(a)) continue; // 큐에서만 빠진다 — 뒤 프레임을 막지 않는다
     NET.replaying=true;
     try{ applyAction(a); }catch(e){ try{console.error("net replay error",e,a);}catch(_){} }
     NET.replaying=false;

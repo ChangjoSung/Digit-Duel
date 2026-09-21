@@ -716,7 +716,7 @@ function finishV2(side){ if(!S.battle) return; if(checkDeath()) return; if(v2Tid
   const B=S.battle;
   /* #241 R1 [CJ 설계] 번개 꼬리: 턴이 넘어가지 않고 같은 전투원이 한 번 더 고른다(방식 A). nextPhase 를 부르지 않고 actSeq 만 올려
      이전 렌더의 콜백을 무효로 만든 뒤 같은 행동자의 메뉴를 다시 그린다 — 추가 공격은 두 번째 행동(L15)이다 */
-  if(B.bonus&&B.bonus.side===side&&B.bonus.stage==="pending"){ B.bonus.stage="active"; B.actSeq=(B.actSeq||0)+1; B.menu=null; battleModal(); return; }
+  if(B.bonus&&B.bonus.side===side&&B.bonus.stage==="pending"){ B.bonus.stage="active"; B.actSeq=(B.actSeq||0)+1; B.pkgSel=null; B.menu=null; battleModal(); return; } // #245 Saturn REVISE 3차: 여기도 행동 토큰이 올라가는 지점이다 — nextPhase 와 같이 열려 있던 개봉 표를 회수한다
   nextPhase(); }
 /* 번개 꼬리 추가 공격 끝(= 번개 여우의 턴 끝, L8) — 2·3차 ⌛를 사본으로 되돌린다(추가 공격에 쓴 스킬 ⌛ · 쿨타임 디버프 포함 L7·L10·L11) */
 function v2BonusEnd(B){

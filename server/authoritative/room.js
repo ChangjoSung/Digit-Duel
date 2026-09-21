@@ -53,11 +53,26 @@ const ACTION_TYPES = new Set([
 const SETUP_ONLY_ACTIONS = new Set(['auto', 'clear', 'roster', 'setupDone', 'selTray']);
 const ACT_KINDS = new Set(['basic', 'skill', 'common']); // __actCore의 레거시 문자열 kind (왕·동료 본체 UI가 'basic'/'skill'을 보낸다)
 const PKG_KINDS = new Set(['itemGift', 'battleBuff']);
+/* #245 회선을 타는 전투 어휘 — demo/js/network.js BATTLE_CMDS 와 같은 목록이다. 확정(pkgPick)은 모달 중계를 타므로 여기 없다. */
+const BATTLE_CMDS = new Set(['act', 'item', 'ball', 'flee', 'pass', 'pkgOpen']);
+const BF_KEYS = ['side', 'seq', 'round', 'phase'];
 const RECRUIT_SWAP_STAGES = new Set(['skill', 'target', 'slot']); // demo/index.html recruitModal 의 기술 교체 단계 (#234 닫힘)
 const ROSTER_SIZE = 6; // applyNetSetup: data.roster.length===6
 
 function now() { return Date.now(); }
 function err(reason) { return { ok: false, reason }; }
+
+/* 겨냥 프레임 — 클라이언트가 전투 어휘에 싣는 값과 같은 모양(demo/js/core.js battleActionFrame). 상태만 읽는다. */
+function battleFrame(T) {
+  const B = T.S && T.S.battle;
+  return B ? { side: T.actorOfPhase(), seq: B.actSeq || 0, round: B.round, phase: B.phase } : null;
+}
+/* 회선에서 온 프레임은 **온전하고 정확해야** 한다 — 없음·부분·여분 키·배열·문자열 숫자는 나머지 값이 맞아도 거부다
+   (demo/js/core.js bfShapeOk + battleCmdCtx 와 같은 판정). 네 값을 === 로만 보므로 재귀·형변환이 없다. */
+function frameMatches(w, want) {
+  return !!want && !!w && typeof w === 'object' && !Array.isArray(w)
+    && Object.keys(w).length === BF_KEYS.length && BF_KEYS.every((k) => w[k] === want[k]);
+}
 
 // ===== 배치 검증용 카탈로그 — 엔진 하나를 프로세스당 한 번만 띄워 상수만 읽는다 =====
 let CATALOG = null;
@@ -218,6 +233,15 @@ function lockstepDigest(T) {
          B.actSeq 는 추가 공격 시작에도 오르며 위 actSeq 가 이미 본다. */
       bonus: B.bonus ? [B.bonus.side, B.bonus.stage, (B.bonus.allowed || []).slice(),
         Object.keys(B.bonus.saved || {}).sort().map((k) => [k, B.bonus.saved[k]]), B.bonus.tailSlot === undefined ? null : B.bonus.tailSlot] : null,
+      /* #245 패키지 개봉 인가 표 — 확정(pkgPick)은 모달 중계라 회선 프레임이 없고 이 표가 곧 그 확정의 겨냥 문맥이자
+         재고를 움직일 권한이다. 발급 번호(id)까지 본다: 같은 종류를 같은 문맥에서 다시 열면 나머지 여섯 값이 전부 같아
+         id 가 빠지면 서로 다른 두 표를 같은 상태로 읽는다. 요약에 없으면 fail-closed VOID 가 발동하지 못한다.
+         발급 카운터(S.pkgSeq — #245 REVISE 4차로 전투가 아니라 **경기 단위**가 됐다)는 **넣지 않는다** — 표 없이
+         카운터만 갈린 상태는 아직 아무 인가도 아니고, 그 차이는 다음 개봉이 발급하는 id 에서 곧바로 드러나 위
+         pkgSel 이 잡는다. 분리 전 원본에 없는 필드인 것도 그대로라, 넣으면 smoke_issue245 의 버전 대조가 — 이제는
+         전투가 끝나도 경기 내내 남는 값이라 더 넓게 — 동작은 같은데 값만 다르다고 어긋난다. */
+      pkgSel: B.pkgSel ? [B.pkgSel.kind, B.pkgSel.owner, B.pkgSel.side, B.pkgSel.seq, B.pkgSel.round, B.pkgSel.phase,
+        B.pkgSel.id === undefined ? null : B.pkgSel.id] : null,
     } : null,
     fleePick: S.fleePick ? { owner: S.fleePick.owner, cands: S.fleePick.cands.slice(), token: S.fleePick.token } : null,
     events: (S.events || []).map((e) => [e.r, e.c, e.kind, !!e.consumed]),
@@ -661,6 +685,11 @@ class Room {
       const side = T.actorOfPhase();
       const ownerP = side === 'A' ? B.attP.owner : B.defP.owner;
       if (seatIndex !== ownerP) return err('E_NOT_ACTOR');
+      /* #245 겨냥 프레임(bf) — 클라이언트 netAction 이 **보낸 시점의** 행동자·전투 진행 지점을 싣는다. 좌석·차례 판정 바로 뒤,
+         어휘별 합법성과 Core 보다 **먼저** 통째로 대조한다: 없음·부분·여분 키·배열·낡음/재생·앞선 seq·다른 행동자/라운드/단계는
+         전부 여기서 떨어져 규칙 상태·난수·revision 을 하나도 건드리지 않는다. 통과한 값은 아래에서 좌석 엔진까지 그대로 실려
+         가고(엔진 battleCmdCtx 가 같은 대조를 다시 한다) 서버가 최소 필드로 다시 짓는 경계에서 버려지지 않는다. */
+      if (BATTLE_CMDS.has(a.t) && !frameMatches(a.bf, battleFrame(T))) return err('E_ILLEGAL_ACTION');
       const f = side === 'A' ? B.fa : B.fd;
       const opp = side === 'A' ? B.fd : B.fa;
       /* #241 R1 (CJ 설계) 번개 꼬리 추가 공격 단계 — 스킬 선택만 합법이다(L5·L17: 포기·도망·볼·아이템·패키지·패스 불가).
@@ -671,34 +700,34 @@ class Room {
       if (inBonus && a.t !== 'act') return err('E_ILLEGAL_ACTION');
       switch (a.t) {
         case 'act':
-          return this._legalAct(T, f, side, a.k) ? { ok: true, action: { t: 'act', k: a.k } } : err('E_ILLEGAL_ACTION');
+          return this._legalAct(T, f, side, a.k) ? { ok: true, action: { t: 'act', k: a.k, bf: a.bf } } : err('E_ILLEGAL_ACTION');
         case 'item': {
           const k = (S.inv[ownerP] || [])[a.i];
           if (a.i < 0 || k === undefined || !T.ITEMS || !T.ITEMS[k]) return err('E_ILLEGAL_ACTION');
           if (side === 'A' ? B.itemRoundA : B.itemRoundD) return err('E_ILLEGAL_ACTION'); // 라운드 1회
-          return { ok: true, action: { t: 'item', i: a.i } };
+          return { ok: true, action: { t: 'item', i: a.i, bf: a.bf } };
         }
         case 'ball': {
           const oppPiece = side === 'A' ? B.defP : B.attP;
           const thrown = side === 'A' ? B.ballThrowA : B.ballThrowD;
           const canThrow = oppPiece.type === 'minion' && opp.hp < opp.maxHp * 0.3 && S.balls[ownerP] > 0 && !S.reserve[ownerP] && !thrown;
-          return canThrow ? { ok: true, action: { t: 'ball' } } : err('E_ILLEGAL_ACTION');
+          return canThrow ? { ok: true, action: { t: 'ball', bf: a.bf } } : err('E_ILLEGAL_ACTION');
         }
         case 'flee':
           // #234 가시 덩굴 3차 '뿌리 고정' — 이 전투에서는 도망칠 수 없다(__fleeCore 가 조용히 무시하고 UI 버튼도 비활성).
           // 서버가 먼저 거부해 판정 통과·상태 불변 noop 프레임이 생기지 않게 한다.
           if (f.fleeLock) return err('E_ILLEGAL_ACTION');
-          return { ok: true, action: { t: 'flee' } };
+          return { ok: true, action: { t: 'flee', bf: a.bf } };
         case 'pass': {
           const allLocked = !!f.skills && !f.skills.some((_, i) => T.slotUsable(f, i, side));
-          return allLocked ? { ok: true, action: { t: 'pass' } } : err('E_ILLEGAL_ACTION');
+          return allLocked ? { ok: true, action: { t: 'pass', bf: a.bf } } : err('E_ILLEGAL_ACTION');
         }
         case 'pkgOpen': {
           if (!PKG_KINDS.has(a.kind)) return err('E_ILLEGAL_ACTION');
           const pk = S.pkgs[ownerP];
           if (!pk || !(pk[a.kind] > 0)) return err('E_ILLEGAL_ACTION');
           if (a.kind === 'battleBuff' && (side === 'A' ? B.buffA : B.buffD)) return err('E_ILLEGAL_ACTION');
-          return { ok: true, action: { t: 'pkgOpen', kind: a.kind } };
+          return { ok: true, action: { t: 'pkgOpen', kind: a.kind, bf: a.bf } };
         }
         default:
           return err('E_ILLEGAL_ACTION'); // skipMain·tele·endTurn·heal·search·cell·fleeSwap … 전투 중 보드 입력 금지
@@ -1201,4 +1230,4 @@ class Room {
   isListable() { return this.isPublic && this.state === STATES.OPEN; }
 }
 
-module.exports = { Room, STATES, DISCONNECT_GRACE_MS, ACTION_TYPES, lockstepDigest, catalog };
+module.exports = { Room, STATES, DISCONNECT_GRACE_MS, ACTION_TYPES, BATTLE_CMDS, battleFrame, lockstepDigest, catalog };

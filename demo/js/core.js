@@ -425,6 +425,232 @@ function reduceCoreAction(state,action){
       }
       return {state,events:[]};
     }
+    /* #245 전투 커맨드(#121·#146·#241): 가방·패키지·포획·도망·넘기기·기술 선택의 **합법성과 자원 회계**를 Core 가 소유한다.
+       종전에는 같은 판정이 battleModal() 렌더 클로저 안에 있었고(렌더 시점의 B·side·f·행동 토큰을 들고 다녔다)
+       네트워크 재생·AI 가 그 전역 클로저를 다시 불렀다 — 규칙이 표시 계층의 렌더 주기에 매여 있었다.
+       여기로 옮기면 판정이 **상태만** 읽으므로 '옛 클로저'라는 것 자체가 없고(#146 Saturn REVISE P1 의 actSeq
+       스냅샷 가드가 방어하던 경로가 구조적으로 사라진다), 사람·AI·수신 프레임·테스트가 같은 게이트를 지난다.
+       판정은 종전과 같은 한 곳을 쓴다 — 투척 가능(canThrow)·슬롯 합법(slotUsable)·도망 성공률(fleeProbOf)을
+       다시 쓰지 않는다. 난수는 포획 판정과 도망 판정 각 1회뿐이고 그 자리도 레거시와 같다.
+       이 tranche 에서 전투 인스턴스(state.battle)와 전투원 객체는 **복제하지 않고 값만 고쳐 쓴다** — B 의 정체성을
+       예약 콜백(pendingFx)·msgQ·`S.battle===B` 검사·진행 중 연출이 붙잡고 있어 복제하면 엔진이 끊긴다
+       (파일 머리의 "S 객체 정체성" 과 같은 이유다). 복제 전환은 지연 효과·스케줄러 tranche 의 몫이다.
+       플레이어 소유 재고(balls·inv·pkgs·metrics)는 reducer 계약대로 복제한다.
+       실행 엔진(execSlot·nextPhase·finishByCapture·battleEndFx·모달)은 커밋 뒤 이벤트로 넘긴다 — moved →
+       forcedContactStart 와 같은 경계다. */
+    case "pkgOpen": { // #121 계약 2.2·3 개봉 화면 열기 — 재고는 확정(pkgPick)에서만 움직인다. 난수 0
+      if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
+      const ctx=battleCmdCtx(state,action); if(!ctx) return {state,events:[]};
+      const {B,side,ownerP}=ctx;
+      if(B.bonus&&B.bonus.stage==="active") return {state,events:[]};                        // #241 R1 추가 공격 중 불가(L17)
+      if(action.kind!=="itemGift"&&action.kind!=="battleBuff") return {state,events:[]};     // 알 수 없는 종류는 조용히 거부
+      const pk=state.pkgs[ownerP]; if(!pk||!(pk[action.kind]>0)) return {state,events:[]};
+      if(action.kind==="battleBuff"&&(side==="A"?B.buffA:B.buffD)) return {state,events:[]}; // 계약 3.1: 플레이어별 한 전투 1개
+      B.menu=null;
+      /* Saturn REVISE: 확정(pkgPick)은 **살아 있는 개봉 화면**에서만 나올 수 있다. 개봉이 발급한 이 표가 유일한 증거다 —
+         종류·소유자와 **겨냥 문맥 4필드(side·seq·round·phase)** 를 함께 담아 두고 확정이 정확히 한 번 소모한다.
+         확정은 모달 중계를 타서 회선 프레임이 없으므로(버튼 인덱스만 간다) 이 표가 곧 확정의 wire 다 — 개봉이
+         자기 문맥 대조를 통과한 뒤에만 발급되기 때문이다. 없는 표(개봉 없이 온 확정)·다른 종류·다른 소유자·
+         행동이 넘어간 뒤의 늦은 표·취소된 표·이미 쓴 표(재생)는 전부 거부된다. 난수·규칙 상태는 건드리지 않는다.
+         Saturn REVISE 3차: 같은 종류를 같은 문맥에서 다시 열면 종전 표와 **글자 그대로 같은 값**이 나왔다 — 두 표가
+         구별되지 않으니 앞 개봉의 남은 모달 콜백이 뒤 개봉의 표로 재고를 움직였다. 개봉마다 단조 증가하는 발급
+         번호(id)를 붙여 표를 유일하게 만들고, 확정·취소는 **자기가 받은 그 번호**를 제시해야 한다.
+         번호는 상태에서만 올라가므로(난수 0) 양 피어·재생·좌석 엔진이 같은 값을 얻는다 — 락스텝 그대로다.
+         Saturn REVISE 4차: 발급 카운터가 전투 인스턴스 안에 있어 **전투마다 0 으로 돌아갔다** — 한 경기의 두 번째
+         전투가 첫 전투와 같은 번호(1,2,…)를 다시 발급하니 앞 전투에 남은 모달 콜백이 새 전투의 표를 회수하거나
+         재고를 움직일 수 있었다. 카운터를 **경기 단위(S.pkgSeq)** 로 올려 번호가 경기 안에서 유일해진다.
+         소유자 재고와 같은 S 값이므로 reducer 계약대로 복제해 돌려준다. */
+      const id=(state.pkgSeq||0)+1;
+      B.pkgSel={kind:action.kind,owner:ownerP,side,seq:B.actSeq||0,round:B.round,phase:B.phase,id};
+      return {state:Object.assign({},state,{pkgSeq:id}),events:[{type:"pkgOpenModal",kind:action.kind,owner:ownerP,round:B.round,id}]};
+    }
+    /* #121 확정 — 여기서만 재고가 줄고 효과가 적용된다. 온라인은 modal 래퍼가 이 호출을 인덱스로 중계하므로 양측이 같은 분기를 탄다.
+       중계는 버튼 인덱스만 나르므로 확정에는 회선 프레임이 없다 — 겨냥 문맥은 개봉이 발급한 표(B.pkgSel)가 대신 싣는다. */
+    case "pkgPick": {
+      if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
+      const sel=state.battle&&state.battle.pkgSel;   // 개봉이 발급한 표가 곧 이 확정의 wire — 없으면 확정 자체가 없다
+      const ctx=sel?battleCmdCtx(state,{frame:action.frame,wire:{side:sel.side,seq:sel.seq,round:sel.round,phase:sel.phase}}):null;
+      if(!ctx) return {state,events:[]};
+      const {B,side,f,ownerP}=ctx;
+      if(B.bonus&&B.bonus.stage==="active") return {state,events:[]};                        // #241 R1 추가 공격 중 불가(L17)
+      const i=action.i; if(!Number.isInteger(i)||i<0) return {state,events:[]};              // 버튼 자리는 정수여야 한다 (늦은 콜백·조작 프레임)
+      const want=action.what==="gift"?"itemGift":(action.what==="buff"?"battleBuff":null);
+      if(!want||sel.kind!==want||sel.owner!==ownerP) return {state,events:[]};               // 종류·소유자까지 그 표가 발급된 그대로여야 한다
+      if(action.id!==sel.id) return {state,events:[]};                                       // **그 개봉이 발급한 바로 그 번호** — 교체된 앞 표의 남은 콜백은 여기서 떨어진다
+      const pkgs=state.pkgs.map((x,idx)=>idx===ownerP?Object.assign({},x):x), pk=pkgs[ownerP];
+      const next=Object.assign({},state,{pkgs});
+      if(action.what==="gift"){
+        if(!(pk.itemGift>0)) return {state,events:[]};
+        const k=GIFT_PICKS[i]; if(!k) return {state,events:[]};
+        pk.itemGift--; B.pkgSel=null;                    // 확정 순간에만 −1 · 표도 같은 자리에서 정확히 한 번 소모한다
+        if(k==="ball"){ next.balls=state.balls.slice(); next.balls[ownerP]++; } // 계약 2.1: 보유 상한 없음
+        else next.inv=state.inv.map((x,idx)=>idx===ownerP?x.concat([k]):x);
+        B.menu=null;
+        /* 계약 3.1·10 비공개: **아직 쓰지 않은** 획득 종류는 상대에게 공개하지 않는다. B.blog 는 양측이 공유하는 상태라
+           텍스트를 시점별로 바꿀 수 없으므로 **로그에는 중립 문구만** 쓰고, 종류는 소유자 전용 토스트로만 알린다. */
+        bmsg(`🎁 ${pname(ownerP)}가 선물 상자를 열었다.`,null,{key:"itemFx"},B); // 계약 9: 획득 연출도 1.2초(itemFx)
+        return {state:next,events:[{type:"pkgPicked",owner:ownerP,toast:`🎁 ${GIFT_KO[k]} 획득`}]};
+      }
+      if(action.what!=="buff"||!(pk.battleBuff>0)) return {state,events:[]};
+      const key=BUFF_KEYS[i]; if(!key) return {state,events:[]};
+      if(side==="A"?B.buffA:B.buffD) return {state,events:[]};                               // 한 전투 1개
+      if(key==="time"&&B.round!==1) return {state,events:[]};                                // 계약 3.3 R1 한정 (늦은 콜백 방어)
+      pk.battleBuff--; B.pkgSel=null;
+      /* 버프 회계의 **단일 원천은 전투 인스턴스**다 (B.buffA/B.buffD). S 에 같은 값을 또 두지 않는다 —
+         중복 필드는 여러 종료 경로 중 하나만 빠져도 드리프트가 되고, 계약 3.1 의 "전투가 끝나면 즉시 정리"를 깨뜨린다. */
+      if(side==="A") B.buffA=key; else B.buffD=key;
+      if(key==="power") f.powerBuff=true;
+      else if(key==="escape") f.fleeBoost=true;
+      else B.maxRounds=BAL.buffTimeRounds;               // 전투 인스턴스 값만 바꾼다 (BAL.maxRounds 전역 불변)
+      B.menu=null;
+      bmsg(`${BUFFS[key].ko} — ${fighterName(side)}에게 적용!`,{flash:key==="power"?"buff":"guard",st:stFx(side,f)},{key:"itemFx"},B);
+      if(key==="time") bmsg(`🧭 이 전투는 ${BAL.buffTimeRounds}라운드까지 — 사신의 낫은 발동할 수 없다.`,null,null,B);
+      return {state:next,events:[{type:"pkgPicked",owner:ownerP}]};
+    }
+    /* #121 개봉 취소 — 아무것도 소모하지 않지만 **표는 회수한다**. 종전에는 취소가 표시 계층에서 화면만 닫아
+       (close(); battleModal()) 발급된 표가 그대로 살아 있었다: 그 뒤에 늦게·다시 도착한 확정이 그 표로 재고를
+       움직일 수 있었다. 취소도 다른 전투 어휘와 같은 Core 경계를 지나고, 모달 중계를 타므로 양측이 같이 회수한다.
+       난수 0 · 규칙 상태 무변경 — 표 하나만 비운다. */
+    case "pkgCancel": {
+      if(!action.frame) return null;
+      const B=state.battle;
+      /* 자기 번호의 표만 회수한다. Saturn REVISE 4차: 번호가 어긋난 취소는 **이벤트도 내지 않는다** — 종전에는
+         화면만 닫는다며 pkgPicked 를 그대로 냈고, 그 이벤트가 지금 살아 있는 **교체·새 전투의 개봉 화면**을 닫았다.
+         늦은 취소(중복 클릭·재생·앞 개봉이나 앞 전투의 남은 콜백)는 표도 화면도 건드리지 않는 완전한 no-op 이다. */
+      if(!B||!B.pkgSel||B.pkgSel.id!==action.id) return {state,events:[]};
+      B.pkgSel=null;
+      return {state,events:[{type:"pkgPicked",owner:null}]};
+    }
+    /* #121 계약 2.3 — 유일하게 남은 제한(플레이어별 라운드 1회)을 **규칙 경로에서** 집행한다.
+       버튼 disabled 는 표시 계층이라 중복 클릭·수신 프레임·늦은 콜백을 막지 못한다. 아래 검사가 모두 통과해야 재고가 움직인다:
+       전투가 살아 있는가 · 지금 이 side 의 행동 차례인가 · 그 칸에 실제 아이템이 있는가 · 이번 라운드에 아직 안 썼는가.
+       (전투당 2회·연속 동일 금지는 계약으로 제거됐으므로 여기서 막지 않는다.) */
+    case "item": {
+      if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
+      const ctx=battleCmdCtx(state,action); if(!ctx) return {state,events:[]};
+      const {B,side,f,ownerP}=ctx;
+      if(B.bonus&&B.bonus.stage==="active") return {state,events:[]};                        // #241 R1 추가 공격 중 불가(L17)
+      if(side==="A"?B.itemRoundA:B.itemRoundD) return {state,events:[]};                     // 라운드 1회
+      const i=action.i; if(!Number.isInteger(i)||i<0) return {state,events:[]};
+      const k=state.inv[ownerP][i];
+      if(k===undefined||!ITEMS[k]) return {state,events:[]};                                 // 유효하지 않은 인덱스
+      const inv=state.inv.map((x,idx)=>idx===ownerP?x.slice():x); inv[ownerP].splice(i,1);
+      const next=Object.assign({},state,{inv});
+      // #121 계약 2.3: itemsX·lastItemX 는 **기록**으로만 남는다. itemRoundX 만 실제 게이트다
+      if(side==="A"){B.itemsA++;B.itemRoundA=true;B.lastItemA=k;} else {B.itemsD++;B.itemRoundD=true;B.lastItemD=k;}
+      if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
+        bmsg(`🧪 회복약! ${fighterName(side)}의 HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}},{key:"itemFx"},B);}
+      if(k==="cool"){f.cd=0; if(f.skills)f.cds=f.skills.map(()=>0); f.cdUpFresh=[]; bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!",null,{key:"itemFx"},B);} // 4슬롯 전체 초기화 (아이템 설명 문언 준용 — [기획 필요] 후보)
+      if(k==="cure"){ if(!f.burnNoCure){f.burn=0;f.burnFresh=false;f.burnMag=0;} f.weaken=0;f.weakenMag=0;f.shock=0;f.shockFresh=false;f.crack=0;f.crackFresh=false;
+        /* #234 (4.5): 회복 감소·이끼 잠식도 상태이상 — 영겁의 재 화상(burnNoCure)은 해제되지 않는다. #241 V1: 속도 감소 → 회피율 감소 */
+        f.evadeDownR=0;f.evadeDownRFresh=false;f.evadeDown=0;f.healCutR=0;f.healCutRFresh=false;f.healCut=0;f.mossR=0;f.mossRFresh=false;f.mossPct=0;f.mossBy=null;
+        bmsg("🧪 해독제 — 상태이상 해제!",{st:stFx(side,f)},{key:"itemFx"},B);} // #233 (GDD-23 4.5): 균열도 상태이상 — 경화·흡수·방어막 같은 버프는 그대로 둔다
+      B.menu=null; // 사용 연출 뒤 같은 행동자의 메뉴(루트)로 복귀 — 행동 미소모 (GDD 4.6 보너스 행동)
+      return {state:next,events:[{type:"battleItemUsed"}]};
+    }
+    /* #12 적 하수인 포획: 볼 소모(성공·실패 공통) — 성공 시 포획 종료, 실패 시 행동 소모.
+       투척 가능 판정(상대 종·HP 30%·볼 보유·예비 슬롯·라운드 1회)은 종전 battleModal 의 canThrow 를 **그대로 옮겨 온 것**이다 —
+       렌더가 계산한 값을 규칙이 받아 쓰던 구조를 끊는다 (서버 _authorize 와 같은 판정). */
+    case "ball": {
+      if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
+      const ctx=battleCmdCtx(state,action); if(!ctx) return {state,events:[]};
+      const {B,side,opp,ownerP,oppPiece}=ctx;
+      if(B.bonus&&B.bonus.stage==="active") return {state,events:[]};                        // #241 R1 추가 공격 중 불가(L17)
+      const thrown=side==="A"?B.ballThrowA:B.ballThrowD;
+      if(!(oppPiece.type==="minion"&&opp.hp<opp.maxHp*0.3&&state.balls[ownerP]>0&&!state.reserve[ownerP]&&!thrown)) return {state,events:[]};
+      const balls=state.balls.slice(); balls[ownerP]--;
+      const metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+      const next=Object.assign({},state,{balls,metrics});
+      if(side==="A")B.ballThrowA=true; else B.ballThrowD=true;
+      met(ownerP,"enemyCapTries",1,next); // #20 적 포획 시도
+      B.menu=null;
+      bmsg(`🔴 ${pname(ownerP)}의 몬스터볼 투척!`,null,{key:"captureFx"},B);
+      if(rand()<BAL.enemyCapProb) return {state:next,events:[{type:"battleCaptured",side}]};
+      met(ownerP,"enemyCapFails",1,next); // #20 적 포획 실패
+      bmsg(`🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 ${balls[ownerP]})`,null,{key:"captureFx"},B);
+      return {state:next,events:[{type:"battleNextPhase"}]};
+    }
+    /* #13 → #146 도망: 성공 시 전투 즉시 종료(판정·제거 없음·battlesUsed 유지), **실패 시 자기 전투 행동 1회만 소모**한다.
+       #122 REVISE(2026-09-10 CJ QA 2) — 도망 실패 페널티: **상대의 무료 기본 공격 1회**를 맞는다. 반격이 끝나면 execSlot 이
+       nextPhase() 로 차례를 넘겨 상대의 정상 차례가 그대로 온다. 반격은 기술이 아니라 기본 공격이므로 쿨·기술 공개·부가효과가 없다
+       (💪 힘의 수호자는 반격자에게 걸려 있으면 기존 피해 분산 고정이 그대로 적용된다 — 별도 처리 없음).
+       재생 중(msgQ 잔여) 호출은 거부한다 — 종전 actionFresh() 의 같은 조건이며 **상태로만** 본다
+       (연출 잠금은 입력 경계 netAction·수신 경계 netReady·AI 의 fxWhenIdle 이 그대로 맡는다). */
+    case "flee": {
+      if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
+      const ctx=battleCmdCtx(state,action,true); if(!ctx) return {state,events:[]};
+      const {B,side,oSide,f,ownerP,piece,oppPiece}=ctx;
+      if(B.bonus&&B.bonus.stage==="active") return {state,events:[]};                        // #241 R1 추가 공격 중 불가(L17)
+      if(f.fleeLock) return {state,events:[{type:"battleFleeLocked",owner:ownerP}]};         // #234 가시 덩굴 3차
+      const metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+      const next=Object.assign({},state,{metrics});
+      B.actSeq++;
+      met(ownerP,"fleeTries",1,next);
+      B.menu=null;
+      bmsg(`🏃 ${fighterName(side)}의 도망 시도!`,null,{key:"fleeFx"},B);
+      if(rand()<fleeProbOf(f)){
+        met(ownerP,"fleeOks",1,next);
+        bmsg(`🏃 도망 성공! 전투가 종료되었다.`,null,null,B);
+        resetAfter(B.fa); resetAfter(B.fd);
+        const queue=B.msgQ.splice(0); // 남은 메시지는 종료 연출(battleEndFx)이 재생한다
+        // #114 전투 상대(former opponent)는 전투 객체가 사라진 뒤에도 교환·밀기 대상으로 보존
+        return {state:Object.assign({},next,{battle:null}),events:[{type:"battleFled",owner:ownerP,piece,oppPiece,queue}]};
+      }
+      bmsg(`🏃 도망 실패! 빈틈을 보이고 말았다.`,null,null,B);
+      bmsg(`⚔️ ${fighterName(oSide)}의 반격 — 기본 공격!`,null,null,B);
+      return {state:next,events:[{type:"battleBasicCounter",side:oSide}]};
+    }
+    /* #146 계약: 4슬롯이 전부 불가할 때의 **수동** 전투 행동 넘기기. 자동 진행이 아니라 사람이 [턴 종료]를 눌러야 실행된다.
+       차단 대상(전부 조용히 무시 — 상대에게는 아무 안내도 새지 않는다): 전투 밖 · 내 차례 아님 · 사실은 쓸 수 있는 공격이 있음 ·
+       왕·동료 본체(f.skills 없음 — 기본 공격이 있으므로 넘기기 대상이 아니다).
+       소모하는 것은 **자기 전투 행동 1회**(nextPhase)뿐이다: 보드 주 행동·턴당 전투 횟수·약화 잔여 횟수·난수는 건드리지 않는다. */
+    case "pass": {
+      if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
+      const ctx=battleCmdCtx(state,action,true); if(!ctx) return {state,events:[]};
+      const {B,side,f}=ctx;
+      if(B.bonus&&B.bonus.stage==="active") return {state,events:[]};                        // #241 R1 추가 공격 중 불가(L17)
+      if(!f.skills||f.skills.some((sid,i)=>slotUsable(f,i,side))) return {state,events:[]};
+      B.actSeq++;
+      B.menu=null;
+      /* 비공개: B.blog 는 양측이 공유하는 상태다. **왜** 넘겼는지(= 내 기술 4칸이 전부 막혔다)는 상대의 미공개 정보이므로
+         공개 로그에는 중립적인 결과만 남긴다 (#121 5.3 봉인 사유 비공개와 같은 원칙). */
+      bmsg(`⏭ ${fighterName(side)}는 이번 행동을 넘겼다.`,null,null,B);
+      return {state,events:[{type:"battleNextPhase"}]};
+    }
+    /* 전투 커맨드의 실제 적용 지점 — 슬롯 인덱스(0~3) + 레거시 매핑: 'basic'→슬롯0(합법이 아니면 거부), 'skill'→슬롯1, 'common'→슬롯2.
+       Saturn P1: 'basic' 은 **쿨이 아니라 합법성**을 본다 (계약 5.3 "기본 공격 폴백을 사신으로 강제 매핑하지 않는다").
+       #146: 4슬롯 전투원에게 순수 기본 공격(-1)은 존재하지 않는다 — UI 는 그 버튼을 그리지 않으므로 여기로 들어오는 'basic' 은
+       수신 프레임·UI 밖 호출뿐이고 조용히 거부한다 (왕·동료 본체는 f.skills 가 없어 해당 없음). */
+    case "act": {
+      if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
+      const ctx=battleCmdCtx(state,action); if(!ctx) return {state,events:[]};
+      const {B,side,f}=ctx, kind=action.k;
+      if(B.bonus&&B.bonus.stage==="active"&&(B.actSeq||0)!==action.frame.seq) return {state,events:[]}; // #241 R1: 번개 꼬리 이전 렌더의 늦은 콜백이 추가 공격을 대신 쓰지 않게
+      /* Saturn REVISE: 슬롯을 내보내기 전에 **쓸 수 있는 칸인지**를 본다. execSlot 은 사신의 낫만 다시 검사하므로
+         쿨·봉인·조건 미충족 슬롯이 여기를 지나면 그대로 발동한다. 합법성의 단일 원천은 slotUsable 하나다 —
+         사람 UI(버튼 disabled)·AI(합법 슬롯만 후보)·수신 프레임·테스트가 같은 게이트를 지난다.
+         칸 번호는 실제 기술 칸을 가리키는 정수여야 한다(문자열·소수·음수·범위 밖 거부). 알 수 없는 종류도 조용히 거부한다 —
+         거부는 아무것도 바꾸지 않는다(B.menu 도 그대로, 난수 0). */
+      /* Saturn MEDIUM(#245): 레거시 별칭도 **실제 기술 칸**을 가리켜야 한다 — slotUsable 은 없는 칸(skills[i]===undefined)을
+         막지 않아 1칸 전투원의 'skill'(슬롯1)·'common'(슬롯2)이 합법으로 읽혔고, execSlot 이 그 자리를 기본 공격으로 대신 내보냈다.
+         칸 범위 검사를 한 곳(slotLegal)으로 모아 숫자 슬롯·레거시 별칭이 같이 지난다 — 권위 서버의 경계(room.js _legalAct 의 slotOk)와
+         같은 판정이다. 없는 별칭은 정확한 무동작이다: 상태·참조·이벤트·난수·actSeq 를 하나도 건드리지 않는다. */
+      const slotLegal=i=>!!f.skills&&i<f.skills.length&&slotUsable(f,i,side);
+      let slot=null;
+      if(typeof kind==="number"){
+        if(!Number.isInteger(kind)||kind<0||!slotLegal(kind)) return {state,events:[]};
+        slot=kind;
+      }
+      else if(kind==="basic"){ if(f.skills&&!slotLegal(0)) return {state,events:[]}; slot=f.skills?0:-1; }
+      else if(kind==="skill"&&f.skills){ if(!slotLegal(1)) return {state,events:[]}; slot=1; }
+      else if(kind==="common"){ if(!slotLegal(2)) return {state,events:[]}; slot=2; }          // 슬롯2 가 없는 전투원(왕·동료 본체 포함)은 서버와 같이 거부 — 기본 공격으로 대신하지 않는다
+      else if(kind!=="skill"||!f.skillAtk||f.cd) return {state,events:[]};                                        // 'basic'·'skill'·'common' 과 슬롯 번호 외에는 전투 커맨드가 아니다
+      /* Saturn MEDIUM(#245): f.skills 가 없는 구형 'skill' 의 가용성(속성 스킬 없음·쿨)도 **B.menu 를 건드리기 전에** 본다 —
+         거부는 서버(_legalAct)·UI(canSkill)와 같은 판정이고, 늦은·잘못된 입력은 메뉴를 포함해 아무것도 바꾸지 않는 정확한 무동작이다. */
+      B.menu=null;
+      if(slot!==null) return {state,events:[{type:"battleSlot",side,slot}]};
+      return {state,events:[{type:"battleLegacySkill",side}]};                                  // 구형 속성 스킬 경로
+    }
     default: return null;
   }
 }
@@ -455,21 +681,27 @@ function commitCoreState(next,events){
     const cap=origin.cap; Object.assign(origin,x);
     if(cap&&x.cap&&x.cap!==cap) origin.cap=Object.assign(cap,x.cap);
     return origin; };
-  next.pieces=next.pieces.map(keep);
-  next.selected=keep(next.selected);
-  next.movedPiece=keep(next.movedPiece);
+  /* Saturn REVISE: map 은 **언제나** 새 배열을 만든다. 거부된 no-op(reducer 가 받은 state 를 그대로 돌려준 결과)이나
+     말을 건드리지 않은 액션에서도 그 배열이 아래 '바뀐 칸만' 대입을 통과해 S.pieces 의 정체성을 갈아 치우고,
+     S.pieces 참조를 들고 있던 호출처·관찰자가 끊긴다. 실제로 바뀐 항목이 하나도 없으면 원본 배열을 그대로 쓴다. */
+  const keepAll=arr=>{ const out=arr.map(keep); return out.some((x,i)=>x!==arr[i])?out:arr; };
+  const norm={pieces:keepAll(next.pieces),selected:keep(next.selected),movedPiece:keep(next.movedPiece)};
   /* 보드 이벤트 칸도 말과 같은 이유로 원본 객체 정체성을 지킨다 — 레거시 경로·AI·테스트가 ev 참조를 들고 탐색을 부른다.
      Saturn REVISE: 대조는 **자리(index)** 로 한다. reducer 는 events 를 1:1 map 으로만 만들므로 자리가 곧 원본이고,
      좌표로 찾으면 같은 칸을 공유하는 항목 둘이 모두 첫 원본 하나에 얹혀 나머지 원본과 순서를 잃는다
      (칸 좌표 유일성은 genEvents 의 성질일 뿐 불변식이 강제하지 않는다 — 저장 상태·테스트 픽스처는 겹칠 수 있다).
      자리가 어긋났거나(길이 변화·재정렬) 좌표가 다르면 그대로 새 객체를 쓴다. */
-  if(next.events!==S.events) next.events=next.events.map((e,idx)=>{ const origin=S.events[idx];
+  if(next.events!==S.events) norm.events=next.events.map((e,idx)=>{ const origin=S.events[idx];
     return origin&&origin!==e&&origin.r===e.r&&origin.c===e.c?Object.assign(origin,e):e; });
   for(const event of events||[]){ // healStarted·moved·teleSwapped 등 말을 실은 이벤트도 같은 정규화를 받는다 — UI 핸들러가 떨어진 복제본을 보지 않게 여기서 한 번만
     if(event.piece) event.piece=keep(event.piece);
     if(event.pieces) event.pieces=event.pieces.map(keep);
   }
-  Object.assign(S,next);
+  /* #245: **실제로 바뀐 칸만** 옮긴다. 같은 값을 다시 대입해도 보통은 무해하지만, 관찰자가 붙은 칸(공개 방
+     서버 엔진이 `S.battle` 에 건 접근자 — 대입을 곧 '새 전투 시작'으로 읽고 battleId 와 표시 이벤트를 발급한다)에는
+     무해하지 않다: 전투 커맨드처럼 전투 도중 커밋되는 액션마다 전투가 새로 열린 것처럼 보인다.
+     커밋은 상태 전이를 반영하는 일이지 바뀌지 않은 값을 다시 쓰는 일이 아니다. */
+  for(const key of Object.keys(next)){ const v=norm.hasOwnProperty(key)?norm[key]:next[key]; if(v!==S[key]) S[key]=v; }
 }
 /* ===== 턴 진행 ===== */
 /* #245 턴 시작 **상태**(행동 초기화·메모 정리·BT 진입 플래그)만 계산한다 — 입력 상태는 건드리지 않는다.
@@ -1287,14 +1519,125 @@ function decideFirstSide(B){
   if(fa.grade!=null&&fd.grade!=null&&fa.grade!==fd.grade) return fa.grade<fd.grade?"A":"D"; // 낮은 등급 우선 (등급 없는 왕·동료가 끼면 여기를 건너뛰어 이미 위에서 A로 떨어진다)
   return "A";
 }
-function actorOfPhase(){
-  const B=S.battle;
+function actorOfPhase(state){ // #245: 다른 판정 헬퍼와 같은 선택적 말미 state 인자 규약 (기본 S) — reducer 는 자기가 받은 보드만 읽는다
+  const B=(state||S).battle;
   // #233 (GDD-23 4.4): "라운드 시작 시 확정" — B.firstSide는 startRounds·nextPhase의 라운드 진입 시점에 한 번만 굳는다.
   // 스냅샷 기반 표시 경로(netSynthBattle 등)가 firstSide 없이 넘어오면 방어적으로 그 자리에서 계산한다(라이브 판정에는 쓰이지 않는다).
   const firstSide=B.firstSide||decideFirstSide(B);
   return B.phase===0 ? firstSide : (firstSide==="A"?"D":"A");
 }
 function stFx(side,f){ return {side,text:stIcons(f),shield:f.shield||0,max:f.maxHp}; } // #106 5.5: 상태 아이콘 + 방어막 바 값을 함께 실어 재생과 동기화
+/* #245 전투 커맨드 문맥 — 전투원·차례·소유자를 **상태에서** 뽑고, 그 액션이 실어 온 **프레임**과 대조한다.
+   프레임은 recruit 의 token 과 같은 역할이다: 전투 화면이 자기 렌더의 전투 인스턴스·행동자·행동 토큰을 담아 액션에 싣고
+   여기서 지금 상태와 맞춰 본다 — 옛 렌더의 커맨드가 남의 차례나 다음 행동을 대신 쓰는 길을 끊는다 (#146 Saturn REVISE P1).
+   **렌더 프레임(fr) 자체는 회선에 실리지 않는다** — 전투 인스턴스 객체를 직렬화할 수 없기 때문이다. 받는 쪽 전투 화면의
+   진입점이 자기 렌더의 프레임을 붙여 다시 부른다(모달 중계와 같은 방식). 회선에 실리는 것은 보낸 쪽이 겨냥한 값 네 개
+   (action.wire = netAction 의 bf)이고, 서버 권위 방에서는 room.js 가 그 값을 자기 battleFrame 과 대조한 뒤 좌석 엔진까지
+   그대로 날라 준다(room.js _authorize · frameMatches). 봉투는 action.t 만 화이트리스트로 보므로 프로토콜은 그대로다.
+   대조는 **모든** 전투 어휘에 걸린다: 행동자·행동 토큰(actSeq)은 언제나 보고, 라운드·단계는 회선 문맥(wire)이 실려 오면 언제나
+   본다 — 무료 보너스 행동(가방·패키지·포획)도 예외가 아니다(행동자만 보던 종전 계약에서 올라왔다).
+   strict: 행동을 소모하는 커맨드(도망·넘기기)만 — 렌더 프레임에도 라운드·단계를 걸고 메시지 큐 정지까지 더해 그 렌더의
+   행동을 **정확히 한 번**만 쓰게 한다. */
+const BF_KEYS=["side","seq","round","phase"];
+function bfShapeOk(w){ return !!w&&typeof w==="object"&&!Array.isArray(w)
+  &&Object.keys(w).length===BF_KEYS.length&&BF_KEYS.every(k=>ownProp(w,k)); }
+function battleCmdCtx(state,action,strict){
+  const fr=action&&action.frame, B=state.battle;
+  if(!fr||!B||B.phase===undefined||fr.B!==B) return null;
+  const side=actorOfPhase(state); if(fr.side!==side) return null;
+  /* Saturn REVISE 2차: 겨냥 문맥 대조가 **모든** 전투 어휘에 걸린다 — 종전에는 wire 가 있을 때만 봤고(선택적),
+     행동 토큰·라운드·단계는 strict(도망·넘기기)에서만 봤다. 그래서 wire 없이 온 비-strict 어휘(기술·가방·포획·개봉)는
+     "지금 차례인 누군가"에 그대로 묶였다.
+     문맥의 출처는 둘뿐이고 **어느 쪽도 지금 상태에서 다시 짓지 않는다**:
+       · action.wire — 보낸 쪽이 실어 온 겨냥 문맥(netAction 의 bf). 회선을 타고 온 어휘는 이 값뿐이고,
+         수신 경계가 bf 없는 전투 프레임을 아예 큐에 넣지 않으므로 아래 폴백으로 새지 않는다.
+       · fr — 그 전투 화면 **렌더 시점에 굳은** 프레임(recruit 의 token 과 같은 역할). 같은 프로세스 안의 호출자
+         (사람 UI 버튼·AI·모달 중계 콜백·공개 방 좌석 엔진)에게는 이것이 곧 자기가 겨냥한 문맥이다.
+     어긋난 문맥은 규칙 상태·참조·난수를 하나도 건드리지 않고 떨어진다. */
+  /* Saturn REVISE 3차: 회선에서 온 문맥은 **온전하고 정확해야** 한다 — 없음·부분·배열·여분 키는 값이 맞아도 거부다
+     (서버 room.js frameMatches 와 같은 판정). 여분 키를 통과시키면 조작 프레임이 네 값만 맞춰 놓고 소비자마다
+     다르게 읽히는 필드를 함께 실어 보낸다. 렌더 프레임(fr)은 이 코어가 만든 것이라 대상이 아니다. */
+  if(action.wire&&!bfShapeOk(action.wire)) return null;
+  const w=action.wire||fr;
+  if(w.side!==side||w.seq!==(B.actSeq||0)) return null;                            // 행동자 + 행동 토큰 — 이제 **모든** 전투 어휘가 지난다
+  /* 라운드·단계는 actSeq 와 같은 지점(nextPhase·추가 공격 개시)에서만 움직이므로 라이브에서는 위 토큰이 이미 덮는다.
+     회선 문맥에는 네 값이 다 실려 오므로 전부 대조하고(조작·재생 프레임의 자체 모순까지 잡는다), 행동을 소모하는
+     커맨드(strict)에는 종전 계약 그대로 렌더 프레임에도 건다. */
+  if((action.wire||strict)&&(w.round!==B.round||w.phase!==B.phase)) return null;
+  if(strict&&B.msgQ.length) return null;
+  const piece=side==="A"?B.attP:B.defP;
+  return {B,side,oSide:side==="A"?"D":"A",f:side==="A"?B.fa:B.fd,opp:side==="A"?B.fd:B.fa,
+    piece,oppPiece:side==="A"?B.defP:B.attP,ownerP:piece.owner};
+}
+/* #245 Saturn REVISE — 회선·재생을 타는 전투 액션이 싣는 **보낸 시점의 정체성**. 입력의 단일 경로(netAction)가 붙이고
+   battleCmdCtx 가 대조한다. 전투 인스턴스 객체는 직렬화할 수 없으므로 행동자·행동 토큰·라운드·단계 값만 쓴다.
+   공개 방(서버 권위)에도 **같이 싣는다**: 클라이언트는 로컬 판정 없이 의도만 보내지만, room.js 가 그 bf 를 자기
+   battleFrame 과 대조해(frameMatches) 어긋나면 E_ILLEGAL_ACTION 으로 떨어뜨리고, 수락한 액션에는 bf 를 그대로
+   보존해 두 좌석 엔진에 넘긴다 — 그래서 좌석 엔진도 같은 대조를 받는다. 봉투·화이트리스트는 action.t 만 보므로 그대로다. */
+function battleActionFrame(state){ const st=state||S, B=st.battle;
+  return B?{side:actorOfPhase(st),seq:B.actSeq||0,round:B.round,phase:B.phase}:null; }
+/* #121 계약 2.2·3 패키지 개봉 선택 화면 — **표시 전용**이다. modal() 래퍼가 온라인 동기화를 맡으므로(소유자만 조작·
+   버튼 인덱스 중계, 비소유자에게는 "상대 선택 대기 중" 마스킹) 여기서 별도 송신을 하지 않는다. 재고·선택 내용은
+   소유자에게만 보인다. 개봉 자체는 난수를 쓰지 않는다 — 플레이어 선택이다 (계약 2.2 [추론]).
+   취소는 아무것도 소모하지 않는다: 재고는 **확정 분기(pkgPick reducer)에서만** 움직인다. */
+function pkgOpenModal(kind,ownerP,round,id){
+  if(kind==="itemGift"){
+    const row=k=>`<div class="fighter"><b>${GIFT_KO[k]}</b><small>${k==="ball"?`보유 ${S.balls[ownerP]} → ${S.balls[ownerP]+1}`:ITEMS[k].desc}</small></div>`;
+    modal(`<h2>🎁 아이템 선물 패키지</h2><p>하나를 골라 지금 받습니다. 취소하면 패키지는 그대로 남습니다.</p>
+      ${GIFT_PICKS.map(row).join("")}`,
+      GIFT_PICKS.map((k,i)=>[GIFT_KO[k],()=>window.__pkgPickCore("gift",i,id)]).concat([["취소",()=>window.__pkgCancelCore(id)]]));
+    return;
+  }
+  const r1=round===1; // 계약 3.3: 시간의 수호자는 사용자 자기 행동의 1라운드에만
+  const row=key=>`<div class="fighter"><b>${BUFFS[key].ko}</b><small>${BUFFS[key].desc}${key==="time"&&!r1?" · <b>1라운드에만 선택 가능</b>":""}</small></div>`;
+  modal(`<h2>✨ 전투 버프 패키지</h2><p>하나를 골라 이번 전투에만 적용합니다. 전투당 1개이며 취소하면 패키지는 그대로 남습니다.</p>
+    ${BUFF_KEYS.map(row).join("")}`,
+    BUFF_KEYS.map((key,i)=>{ const no=key==="time"&&!r1; // 계약 3.3: 시간은 1라운드에만 — 문구가 아니라 실제 disabled
+      return [BUFFS[key].ko+(no?" (1R 전용)":""),no?null:()=>window.__pkgPickCore("buff",i,id),no]; })
+      .concat([["취소",()=>window.__pkgCancelCore(id)]]));
+}
+/* ===== 구형 속성 스킬 경로 (로스터 미적용 하수인 전용 — 레거시 테스트 호환) =====
+   #245: 종전 __actCore 렌더 클로저 안에 있던 그대로다. Core 의 act 액션이 이 경로를 고르면 battleLegacySkill
+   이벤트로 넘어와 커밋된 상태 위에서 실행된다 (execSlot 경로와 같은 경계). */
+function legacySkillAct(side){
+  const B=S.battle; if(!B) return;
+  const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A", sp=skillParamsOf(f);
+  const tryStatus=prob=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb (#96: 감전은 shockProb)
+    // #233 (GDD-23 3.2 💫): 스탯 상태이상 부여 확률을 %p로 가산, 상한 100%
+    const p=Math.min(1,(prob===undefined?BAL.statusProb:prob)+(f.statusPct||0));
+    if(archOf(f)==="sustain"||rand()<p){S.metrics.statusApplied++; return true;}
+    S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
+  };
+  bmsg(`${fighterName(side)}의 ${f.element?SKILL_KO[f.element]:"스킬"}!`,null,{key:"skillFx"});
+  f.cd=f.cdMax||BAL.minion.cd;
+  // #233 (GDD-23 4.2): 풀 속성 레거시 스킬은 자체 위력 배율(grassDmgMult)을 ②의 기본 피해에 접어 넣는다
+  const base=f.skillAtk*(f.element==="grass"?sp.grassDmgMult:1);
+  const res=resolveHit(side,f,opp,oSide,base,0,f.element,null);
+  if(f.element==="grass"){ // 자기 대상 효과 — 회피 여부와 무관하게 유지(4.2 ① 주석)
+    if(sp.shieldPct) shieldAdd(f,Math.round(f.maxHp*sp.shieldPct),"grassLegacy");
+    const gh=Math.round(f.maxHp*sp.healPct);
+    f.hp=Math.min(f.maxHp,f.hp+gh);
+    bmsg(sp.shieldPct?`🌿 보호막·회복 획득!`:`🌿 회복 획득!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)});
+  }
+  if(!res.evaded){ // 대상 지정 효과 — 회피하면 걸리지 않는다
+    /* GDD-23 5.6 중첩·재부여 — 위 execSlot 경로와 같은 규칙을 구형 경로에도 같이 적용한다
+       (한쪽만 고치면 다른 쪽이 조용히 옛 규칙으로 남는다). */
+    if(f.element==="fire"&&tryStatus()){const had=opp.burn>0; applyTimedFx(opp,"burn",sp.burnRounds); opp.burnBy=side;
+      bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다!${had?" (갱신)":""} (${opp.burn}R)`,{st:stFx(oSide,opp)});}
+    if(f.element==="water"&&tryStatus()){const had=opp.weaken>0; opp.weaken=Math.max(opp.weaken||0,sp.weakenHits);
+      bmsg(`💧 ${fighterName(oSide)}는 약화되었다!${had?" (갱신)":""} (${opp.weaken}회)`,{st:stFx(oSide,opp)});}
+    if(f.element==="lightning"&&tryStatus(BAL.shockProb)){applyTimedFx(opp,"shock",sp.shockRounds);
+      bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${opp.shock}라운드 후공!`,{st:stFx(oSide,opp)});}
+  }
+  if(checkDeath()) return;
+  nextPhase();
+}
+/* #245 도망 성공 종료 연출 — 전투 해체(자세 정리·battle=null)는 Core 의 flee 액션이 이미 끝냈고 여기는 남은
+   메시지 재생·결과 배너·후방 말 교환 화면뿐이다 (#114). */
+function battleFleeFx(owner,piece,oppPiece,queue){
+  addLog(`🏃 ${pname(owner)} 도망 성공 — 전투 종료 (판정·제거 없음)`,"imp"); showToast("🏃 도망 성공 — 전투 종료");
+  battleEndFx(queue,{title:"도망 성공 — 전투 종료",cls:""},()=>{ if(!S.battle){ close(); fleeSwapPrompt(piece,oppPiece); } });
+}
 function battleModal(){
   const B=S.battle; if(!B) return;
   const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
@@ -1313,10 +1656,9 @@ function battleModal(){
      연출·메시지 재생 중에도 거부한다 — 두 번 클릭·늦은 콜백이 재생 중인 행동 위에 겹치지 않게 한다.
      아이템·패키지 개봉 같은 **행동 내 무료 선택**은 차례를 넘기지 않으므로 이 값이 그대로여서 정상 동작한다.
      (온라인 수신 재생은 netReady 가 이미 잠금 해제·빈 msgQ 를 기다리므로 이 가드에 걸리지 않는다.) */
-  const actSeq=B.actSeq||0, actRound=B.round, actPhase=B.phase;
+  /* #245 전투 커맨드 프레임 — 이 렌더의 전투 인스턴스·행동자·행동 토큰(recruit 의 token 과 같은 역할, 회선 미전송) */
+  const frame={B,side,seq:B.actSeq||0,round:B.round,phase:B.phase};
   const inBonus=!!(B.bonus&&B.bonus.stage==="active"&&B.bonus.side===side); // #241 R1 번개 꼬리 추가 공격 단계 — 스킬 선택만 (도망 · 볼 · 아이템 · 패키지 · 패스 불가 L17)
-  const actionFresh=()=>S.battle===B&&(B.actSeq||0)===actSeq&&B.round===actRound&&B.phase===actPhase
-    &&actorOfPhase()===side&&!B.msgQ.length&&!fxLocked();
   const mySide=S.mode==="pve"?(B.attP.owner===0?"A":"D"):NET.mode?(B.attP.owner===NET.me?"A":"D"):"A", topSide=mySide==="A"?"D":"A";
   const panel=sid=>{ // 전투원 정보 패널: 이름·아키타입/속성 배지·HP바·방어막 바(#106 5.5)·상태. "가한 유효 피해" 게이지는 HP 비율 판정(H1)과 달라 제거 — recA/recD 는 지표로만 기록
     const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
@@ -1476,212 +1818,20 @@ function battleModal(){
     try{ const root=$("bmenu"); if(root){ if(B.menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
       for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===B.menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
   };
-  /* #121 계약 2.2·3 — 패키지 개봉 선택 화면. modal() 래퍼가 온라인 동기화를 맡으므로(소유자만 조작·버튼 인덱스 중계,
-     비소유자에게는 "상대 선택 대기 중" 마스킹) 여기서 별도 송신을 하지 않는다. 재고·선택 내용은 소유자에게만 보인다.
-     개봉 자체는 난수를 쓰지 않는다 — 플레이어 선택이다 (계약 2.2 [추론]).
-     취소는 아무것도 소모하지 않는다: 재고는 **확정 분기에서만** 움직인다. */
-  window.__openPkgCore=kind=>{
-    if(S.battle!==B||S.battle.phase===undefined) return; if(S.battle===B&&B.bonus&&B.bonus.stage==="active") return; // #241 R1 추가 공격 중 불가(L17)
-    if(actorOfPhase()!==side) return;                       // 내 전투 행동 차례에만
-    const pk=S.pkgs[ownerP]; if(!pk||pk[kind]<=0) return;
-    if(kind==="battleBuff"&&(side==="A"?B.buffA:B.buffD)) return; // 계약 3.1: 플레이어별 한 전투 1개
-    B.menu=null;
-    if(kind==="itemGift"){
-      const row=k=>`<div class="fighter"><b>${GIFT_KO[k]}</b><small>${k==="ball"?`보유 ${S.balls[ownerP]} → ${S.balls[ownerP]+1}`:ITEMS[k].desc}</small></div>`;
-      modal(`<h2>🎁 아이템 선물 패키지</h2><p>하나를 골라 지금 받습니다. 취소하면 패키지는 그대로 남습니다.</p>
-        ${GIFT_PICKS.map(row).join("")}`,
-        GIFT_PICKS.map((k,i)=>[GIFT_KO[k],()=>window.__pkgPickCore("gift",i)]).concat([["취소",()=>{close(); battleModal();}]]));
-      return;
-    }
-    const r1=B.round===1; // 계약 3.3: 시간의 수호자는 사용자 자기 행동의 1라운드에만
-    const row=key=>`<div class="fighter"><b>${BUFFS[key].ko}</b><small>${BUFFS[key].desc}${key==="time"&&!r1?" · <b>1라운드에만 선택 가능</b>":""}</small></div>`;
-    modal(`<h2>✨ 전투 버프 패키지</h2><p>하나를 골라 이번 전투에만 적용합니다. 전투당 1개이며 취소하면 패키지는 그대로 남습니다.</p>
-      ${BUFF_KEYS.map(row).join("")}`,
-      BUFF_KEYS.map((key,i)=>{ const no=key==="time"&&!r1; // 계약 3.3: 시간은 1라운드에만 — 문구가 아니라 실제 disabled
-        return [BUFFS[key].ko+(no?" (1R 전용)":""),no?null:()=>window.__pkgPickCore("buff",i),no]; })
-        .concat([["취소",()=>{close(); battleModal();}]]));
-  };
-  /* 확정 — 여기서만 재고가 줄고 효과가 적용된다. 온라인은 modal 래퍼가 이 콜백을 인덱스로 중계하므로 양측이 같은 분기를 탄다 */
-  window.__pkgPickCore=(what,i)=>{
-    if(S.battle!==B) return; if(S.battle===B&&B.bonus&&B.bonus.stage==="active") return; // #241 R1 추가 공격 중 불가(L17)
-    if(actorOfPhase()!==side) return;
-    const pk=S.pkgs[ownerP];
-    if(what==="gift"){
-      if(pk.itemGift<=0) return;
-      const k=GIFT_PICKS[i]; if(!k) return;
-      pk.itemGift--;                                   // 확정 순간에만 −1
-      if(k==="ball") S.balls[ownerP]++;                 // 계약 2.1: 보유 상한 없음
-      else S.inv[ownerP].push(k);
-      close(); B.menu=null;
-      /* 계약 3.1·10 비공개: **아직 쓰지 않은** 획득 종류는 상대에게 공개하지 않는다. B.blog 는 양측이 공유하는 상태라
-         텍스트를 시점별로 바꿀 수 없으므로 **로그에는 중립 문구만** 쓰고, 종류는 소유자 전용 토스트로만 알린다.
-         (버프 적용과 아이템 실제 사용은 "적용된 효과"라 종전처럼 공개한다.) */
-      bmsg(`🎁 ${pname(ownerP)}가 선물 상자를 열었다.`,null,{key:"itemFx"}); // 계약 9: 획득 연출도 1.2초(itemFx)
-      if(viewerIsOwner(ownerP)) showToast(`🎁 ${GIFT_KO[k]} 획득`);
-      battleModal(); render(); return;
-    }
-    if(pk.battleBuff<=0) return;
-    const key=BUFF_KEYS[i]; if(!key) return;
-    if(side==="A"?B.buffA:B.buffD) return;              // 한 전투 1개
-    if(key==="time"&&B.round!==1) return;               // 계약 3.3 R1 한정 (늦은 콜백 방어)
-    pk.battleBuff--;
-    /* 버프 회계의 **단일 원천은 전투 인스턴스**다 (B.buffA/B.buffD). S 에 같은 값을 또 두지 않는다 —
-       중복 필드는 승패·도망·적 포획·판정 등 여러 종료 경로 중 하나만 빠져도 드리프트가 되고, 계약 3.1 의
-       "전투가 끝나면 즉시 정리"를 깨뜨린다. 전투 객체가 사라지면 회계도 함께 사라진다. */
-    if(side==="A") B.buffA=key; else B.buffD=key;
-    if(key==="power") f.powerBuff=true;
-    else if(key==="escape") f.fleeBoost=true;
-    else B.maxRounds=BAL.buffTimeRounds;               // 전투 인스턴스 값만 바꾼다 (BAL.maxRounds 전역 불변)
-    close(); B.menu=null;
-    bmsg(`${BUFFS[key].ko} — ${fighterName(side)}에게 적용!`,{flash:key==="power"?"buff":"guard",st:stFx(side,f)},{key:"itemFx"});
-    if(key==="time") bmsg(`🧭 이 전투는 ${BAL.buffTimeRounds}라운드까지 — 사신의 낫은 발동할 수 없다.`);
-    battleModal(); render();
-  };
-  window.__useItemCore=i=>{
-    /* #121 계약 2.3 — 유일하게 남은 제한(플레이어별 라운드 1회)을 **규칙 경로에서** 집행한다.
-       버튼 disabled 는 표시 계층이라 중복 클릭·수신 프레임·늦은 콜백을 막지 못한다. 아래 네 검사가 모두 통과해야 재고가 움직인다:
-       같은 전투인가 · 지금 이 side 의 행동 차례인가 · 그 칸에 실제 아이템이 있는가 · 이번 라운드에 아직 안 썼는가.
-       (전투당 2회·연속 동일 금지는 계약으로 제거됐으므로 여기서 막지 않는다.) */
-    if(S.battle!==B) return; if(S.battle===B&&B.bonus&&B.bonus.stage==="active") return; // #241 R1 추가 공격 중 불가(L17)
-    if(actorOfPhase()!==side) return;
-    if(side==="A"?B.itemRoundA:B.itemRoundD) return;     // 라운드 1회
-    const k=S.inv[ownerP][i];
-    if(k===undefined||!ITEMS[k]) return;                  // 유효하지 않은 인덱스
-    S.inv[ownerP].splice(i,1);
-    // #121 계약 2.3: itemsX·lastItemX 는 **기록**으로만 남는다 (전투당 2회·연속 동일 금지 제한은 제거). itemRoundX 만 실제 게이트다
-    if(side==="A"){B.itemsA++;B.itemRoundA=true;B.lastItemA=k;} else {B.itemsD++;B.itemRoundD=true;B.lastItemD=k;}
-    if(k==="potion"){const h=Math.round(f.maxHp*BAL.itemHealPct); f.hp=Math.min(f.maxHp,f.hp+h);
-      bmsg(`🧪 회복약! ${fighterName(side)}의 HP ${h} 회복.`,{float:{side,html:`<span class="pos">+${h}</span>`},hp:{side,val:f.hp,max:f.maxHp}},{key:"itemFx"});}
-    if(k==="cool"){f.cd=0; if(f.skills)f.cds=f.skills.map(()=>0); f.cdUpFresh=[]; bmsg("🧪 쿨링수 — 스킬 쿨타임 초기화!",null,{key:"itemFx"});} // 4슬롯 전체 초기화 (아이템 설명 문언 준용 — [기획 필요] 후보)
-    if(k==="cure"){ if(!f.burnNoCure){f.burn=0;f.burnFresh=false;f.burnMag=0;} f.weaken=0;f.weakenMag=0;f.shock=0;f.shockFresh=false;f.crack=0;f.crackFresh=false;
-      /* #234 (4.5): 회복 감소·이끼 잠식도 상태이상 — 영겁의 재 화상(burnNoCure)은 해제되지 않는다. #241 V1: 속도 감소 → 회피율 감소 */
-      f.evadeDownR=0;f.evadeDownRFresh=false;f.evadeDown=0;f.healCutR=0;f.healCutRFresh=false;f.healCut=0;f.mossR=0;f.mossRFresh=false;f.mossPct=0;f.mossBy=null; bmsg("🧪 해독제 — 상태이상 해제!",{st:stFx(side,f)},{key:"itemFx"});} // #233 (GDD-23 4.5): 균열도 상태이상 — 경화·흡수·방어막 같은 버프는 그대로 둔다
-    B.menu=null; // 사용 연출 뒤 같은 행동자의 메뉴(루트)로 복귀 — 행동 미소모 (GDD 4.6 보너스 행동)
-    battleModal();
-  };
-  window.__throwBallCore=()=>{ // #12 적 하수인 포획: 볼 소모(성공·실패 공통) — 성공 시 포획 종료, 실패 시 행동 소모
-    if(S.battle!==B||!canThrow) return; if(S.battle===B&&B.bonus&&B.bonus.stage==="active") return; // #241 R1 추가 공격 중 불가(L17)
-    S.balls[ownerP]--;
-    if(side==="A")B.ballThrowA=true; else B.ballThrowD=true;
-    met(ownerP,"enemyCapTries"); // #20 적 포획 시도
-    B.menu=null;
-    bmsg(`🔴 ${pname(ownerP)}의 몬스터볼 투척!`,null,{key:"captureFx"});
-    if(rand()<BAL.enemyCapProb){ finishByCapture(side); return; }
-    met(ownerP,"enemyCapFails"); // #20 적 포획 실패
-    bmsg(`🔴 포획 실패! 볼이 튕겨나왔다. (남은 볼 ${S.balls[ownerP]})`,null,{key:"captureFx"});
-    nextPhase();
-  };
-  /* #13 → #146 도망: 성공 시 전투 즉시 종료(판정·제거 없음·battlesUsed 유지), **실패 시 자기 전투 행동 1회만 소모**한다.
-     실패 반격(fleeCounter)은 #146 계약으로 삭제됐다 — 상대는 자기 정상 차례를 그대로 받는다(nextPhase 가 차례를 넘긴다).
-     Saturn P1 계열 가드와 같은 이유로 (a) 같은 전투인지 (b) 지금이 이 side 의 행동 차례인지를 실행 직전에 다시 본다:
-     도망은 이제 HP 게이트가 없어 disabled 표시만으로는 중복 클릭·늦은 콜백·수신 프레임을 막지 못한다. */
-  window.__fleeCore=()=>{
-    if(!actionFresh()) return;   // 같은 전투·내 차례·아직 이 렌더의 행동을 쓰지 않았고·연출 재생 중이 아닐 때만
-    if(S.battle===B&&B.bonus&&B.bonus.stage==="active") return; // #241 R1 추가 공격 중 불가(L17)
-    if(f.fleeLock){ try{ if(viewerIsOwner(ownerP)) showToast("🌿 뿌리 고정 — 이 전투에서는 도망칠 수 없습니다"); }catch(e){} return; } // #234 가시 덩굴 3차
-    B.actSeq++;                  // 여기서부터 이 클로저는 무효 — 두 번째 호출은 위 가드에서 걸린다
-    met(ownerP,"fleeTries");
-    B.menu=null;
-    bmsg(`🏃 ${fighterName(side)}의 도망 시도!`,null,{key:"fleeFx"});
-    if(rand()<fleeProbOf(f)){
-      met(ownerP,"fleeOks");
-      const piece=side==="A"?B.attP:B.defP, oppPiece=side==="A"?B.defP:B.attP; // #114 전투 상대(former opponent)는 전투 객체가 사라진 뒤에도 교환·밀기 대상으로 보존
-      bmsg(`🏃 도망 성공! 전투가 종료되었다.`);
-      addLog(`🏃 ${pname(ownerP)} 도망 성공 — 전투 종료 (판정·제거 없음)`,"imp"); showToast("🏃 도망 성공 — 전투 종료");
-      resetAfter(B.fa); resetAfter(B.fd);
-      const q=B.msgQ.splice(0);
-      S.battle=null;
-      battleEndFx(q,{title:"도망 성공 — 전투 종료",cls:""},()=>{ if(!S.battle){ close(); fleeSwapPrompt(piece,oppPiece); } });
-      return;
-    }
-    /* #122 REVISE(2026-09-10 CJ QA 2) — 도망 실패 페널티: **상대의 무료 기본 공격 1회**를 맞는다.
-       #146 계약 1.2 가 지웠던 실패 반격을 "기본 공격 한정"으로 되살린 것이며, 그 밖은 #146 그대로다:
-         · 도망을 시도한 쪽은 자기 전투 행동 1회를 소모한다 (주 행동·턴당 전투 횟수는 건드리지 않는다).
-         · 반격이 끝나면 execSlot 이 nextPhase() 로 차례를 넘겨 **상대의 정상 차례**가 그대로 온다 (반격은 그 차례를 대신하지 않는다).
-         · 반격은 기술이 아니라 기본 공격이므로 쿨·기술 공개·기술 부가효과가 없다. 상대가 4슬롯 전투원이어도
-           allowBasic 예외로 본체 공격력(f.atk)만큼 때린다.
-       💪 힘의 수호자: 별도 처리가 없다 — 반격자에게 powerBuff 가 걸려 있으면 기존 피해 분산 고정(×1.2)이 그대로 적용돼
-       자동으로 "기본 공격 중 최대 데미지"가 된다 (CJ 지시 그대로, 난수 소비 횟수도 불변이라 온라인 락스텝·AI 시뮬 재현성 유지). */
-    bmsg(`🏃 도망 실패! 빈틈을 보이고 말았다.`);
-    const oSide=side==="A"?"D":"A";
-    bmsg(`⚔️ ${fighterName(oSide)}의 반격 — 기본 공격!`);
-    execSlot(oSide,-1,{allowBasic:true});   // 여기서 checkDeath → finishBattle 또는 nextPhase 까지 끝난다
-  };
-  /* #146 계약: 4슬롯이 전부 불가할 때의 **수동** 전투 행동 넘기기. 자동 진행이 아니라 사람이 [턴 종료]를 눌러야 실행된다.
-     차단 대상(전부 조용히 무시 — 상대에게는 아무 안내도 새지 않는다):
-       · 다른 전투 / 지난 렌더의 오래된 클로저 (S.battle!==B)
-       · 지금이 내 전투 행동 차례가 아님 (actorOfPhase)
-       · 사실은 쓸 수 있는 공격이 있음 — 쿨링수·냉각으로 슬롯이 살아난 뒤의 늦은 클릭, 또는 UI 밖에서 온 불법 호출
-       · 왕·동료 본체(f.skills 없음) — 기본 공격이 있으므로 넘기기 대상이 아니다
-     소모하는 것은 **자기 전투 행동 1회**(nextPhase)뿐이다: 보드 주 행동·턴당 전투 횟수·약화 잔여 횟수·난수는 건드리지 않는다. */
-  window.__passCore=()=>{
-    if(!actionFresh()) return;   // 중복 클릭·라운드 경계 연속 행동·연출 재생 중 호출을 모두 막는다
-    if(S.battle===B&&B.bonus&&B.bonus.stage==="active") return; // #241 R1 추가 공격 중 불가(L17)
-    if(!f.skills) return;
-    if(f.skills.some((sid2,i)=>slotUsable(f,i,side))) return;
-    B.actSeq++;
-    B.menu=null;
-    /* 비공개: B.blog 는 양측이 공유하는 상태다. **왜** 넘겼는지(= 내 기술 4칸이 전부 막혔다)는
-       상대의 미공개 정보이므로 공개 로그에는 중립적인 결과만 남긴다 (#121 5.3 봉인 사유 비공개와 같은 원칙).
-       사유 안내는 소유자 화면의 모달·도움말에만 있다. */
-    bmsg(`⏭ ${fighterName(side)}는 이번 행동을 넘겼다.`);
-    nextPhase();
-  };
-  window.__actCore=kind=>{
-    /* Saturn REVISE P1: 전투 커맨드의 실제 적용 지점이다. 이 클로저는 렌더 시점의 B·side·f 를 들고 있으므로
-       (a) 그 전투가 아직 진행 중이고 (b) 지금이 그 side 의 행동 차례일 때만 실행한다.
-       중복 클릭·늦은 콜백·수신 프레임이 다른 전투/다른 차례에 행동을 밀어 넣는 경로를 막는다. */
-    if(S.battle!==B) return;
-    if(actorOfPhase()!==side) return;
-    if(B.bonus&&B.bonus.stage==="active"&&(B.actSeq||0)!==actSeq) return; // #241 R1: 번개 꼬리 이전 렌더의 늦은 콜백이 추가 공격을 대신 쓰지 않게
-    // 슬롯 인덱스(0~3) + 레거시 매핑: 'basic'→슬롯0(쿨이면 순수 기본 공격 폴백), 'skill'→슬롯1, 'common'→슬롯2
-    B.menu=null;
-    let slot=null;
-    if(typeof kind==="number"){ if(f.skills&&f.skills[kind]!==undefined) slot=kind; }
-    /* Saturn P1: 'basic' 은 **쿨이 아니라 합법성**을 본다. 종전 `f.cds[0]===0` 은 슬롯0 이 봉인된 사신이어도 그 슬롯으로
-       들어가, 계약 5.3 "기본 공격 폴백을 사신으로 강제 매핑하지 않는다" 를 깼다. 합법이 아니면 순수 기본 공격(-1)이다.
-       #146: 4슬롯 전투원에게 순수 기본 공격(-1)은 더 이상 존재하지 않는다. UI 는 그 버튼을 그리지 않으므로 여기로 들어오는
-       'basic' 은 오래된 클로저·수신 프레임·UI 밖 호출뿐이다 — 조용히 거부한다 (왕·동료 본체는 f.skills 가 없어 해당 없음). */
-    else if(kind==="basic"){
-      if(f.skills&&!slotUsable(f,0,side)) return;
-      slot=f.skills?0:-1;
-    }
-    else if(kind==="skill"&&f.skills) slot=1;
-    else if(kind==="common"&&f.skills) slot=2;
-    if(slot!==null){ execSlot(side,slot); return; }
-    if(kind!=="skill"||!f.skillAtk){ execSlot(side,-1); return; } // 왕·동료 본체: 기본 공격
-    // ===== 구형 속성 스킬 경로 (로스터 미적용 하수인 전용 — 레거시 테스트 호환) =====
-    const oSide=side==="A"?"D":"A", sp=skillParamsOf(f);
-    const tryStatus=prob=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb (#96: 감전은 shockProb)
-      // #233 (GDD-23 3.2 💫): 스탯 상태이상 부여 확률을 %p로 가산, 상한 100%
-      const p=Math.min(1,(prob===undefined?BAL.statusProb:prob)+(f.statusPct||0));
-      if(archOf(f)==="sustain"||rand()<p){S.metrics.statusApplied++; return true;}
-      S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
-    };
-    bmsg(`${fighterName(side)}의 ${f.element?SKILL_KO[f.element]:"스킬"}!`,null,{key:"skillFx"});
-    f.cd=f.cdMax||BAL.minion.cd;
-    // #233 (GDD-23 4.2): 풀 속성 레거시 스킬은 자체 위력 배율(grassDmgMult)을 ②의 기본 피해에 접어 넣는다
-    const base=f.skillAtk*(f.element==="grass"?sp.grassDmgMult:1);
-    const res=resolveHit(side,f,opp,oSide,base,0,f.element,null);
-    if(f.element==="grass"){ // 자기 대상 효과 — 회피 여부와 무관하게 유지(4.2 ① 주석)
-      if(sp.shieldPct) shieldAdd(f,Math.round(f.maxHp*sp.shieldPct),"grassLegacy");
-      const gh=Math.round(f.maxHp*sp.healPct);
-      f.hp=Math.min(f.maxHp,f.hp+gh);
-      bmsg(sp.shieldPct?`🌿 보호막·회복 획득!`:`🌿 회복 획득!`,{float:{side,html:`<span class="pos">+${gh}</span>`},hp:{side,val:f.hp,max:f.maxHp},st:stFx(side,f)});
-    }
-    if(!res.evaded){ // 대상 지정 효과 — 회피하면 걸리지 않는다
-      /* GDD-23 5.6 중첩·재부여 — 위 execSlot 경로와 같은 규칙을 구형 경로에도 같이 적용한다
-         (한쪽만 고치면 다른 쪽이 조용히 옛 규칙으로 남는다). */
-      if(f.element==="fire"&&tryStatus()){const had=opp.burn>0; applyTimedFx(opp,"burn",sp.burnRounds); opp.burnBy=side;
-        bmsg(`🔥 ${fighterName(oSide)}는 화상을 입었다!${had?" (갱신)":""} (${opp.burn}R)`,{st:stFx(oSide,opp)});}
-      if(f.element==="water"&&tryStatus()){const had=opp.weaken>0; opp.weaken=Math.max(opp.weaken||0,sp.weakenHits);
-        bmsg(`💧 ${fighterName(oSide)}는 약화되었다!${had?" (갱신)":""} (${opp.weaken}회)`,{st:stFx(oSide,opp)});}
-      if(f.element==="lightning"&&tryStatus(BAL.shockProb)){applyTimedFx(opp,"shock",sp.shockRounds);
-        bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${opp.shock}라운드 후공!`,{st:stFx(oSide,opp)});}
-    }
-    if(checkDeath()) return;
-    nextPhase();
-  };
+  /* #245 전투 커맨드 진입점 — 규칙·자원 회계는 전부 Core reducer(pkgOpen·pkgPick·item·ball·flee·pass·act)가 소유한다.
+     여기 남는 것은 **버튼 이름과 액션을 잇는 한 줄**뿐이다: 렌더가 전투원·차례·행동 토큰을 들고 다니던 구조가 사라져
+     늦은 콜백이 다른 차례를 대신 쓰는 경로 자체가 없어진다 (#146 Saturn REVISE P1 의 actSeq 스냅샷 가드가 막던 것).
+     이름과 배치는 그대로 둔다 — AI(패키지)·패키지 모달 버튼·netReady 의 전투 화면 준비 판정이 이 이름을 쓴다. */
+  window.__openPkgCore=(kind,wire)=>dispatchCoreAction({t:"pkgOpen",kind,frame,wire});
+  window.__pkgPickCore=(what,i,id)=>dispatchCoreAction({t:"pkgPick",what,i,id,frame});                 // id = 그 개봉 화면이 받은 표 번호 (없으면 인가되지 않는다)
+  window.__pkgCancelCore=id=>dispatchCoreAction({t:"pkgCancel",id,frame}); // 취소도 표시 계층이 아니라 Core 경계가 처리한다 — 자기 번호의 표만 회수한다
+  window.__useItemCore=(i,wire)=>dispatchCoreAction({t:"item",i,frame,wire});
+  window.__throwBallCore=wire=>dispatchCoreAction({t:"ball",frame,wire});
+  /* 도망·넘기기는 자기 전투 행동 1회를 소모한다 — 연출 재생 중(표시 잠금)에는 받지 않는다. 잠금은 표시 계층의 사실이라
+     여기서 보고, 같은 렌더의 행동을 두 번 쓰지 못하게 하는 규칙 대조는 Core 의 strict 프레임 검사가 맡는다. */
+  window.__fleeCore=wire=>{ if(fxLocked()) return; dispatchCoreAction({t:"flee",frame,wire}); };
+  window.__passCore=wire=>{ if(fxLocked()) return; dispatchCoreAction({t:"pass",frame,wire}); };
+  window.__actCore=(kind,wire)=>dispatchCoreAction({t:"act",k:kind,frame,wire});
   /* #106 5.1·5.2 표시 순서: (1) 진입 카운트다운 3·2·1·배틀 시작! (1회) → (2) 남은 메시지 재생 → (3) 행동(phase) 배너 "나의 턴!/상대 턴!" (행동마다 1회) → (4) 메뉴 활성 / AI 스케줄.
      각 단계는 끝나면 battleModal 을 다시 그려 다음 단계로 간다 — 플래그(intro·bannerKey)로 같은 단계를 두 번 재생하지 않는다. 헤드리스·sim 은 (1)(3) 이 0ms 라 종전 흐름과 같다 */
   if(!B.intro){ B.intro=true;
@@ -2095,7 +2245,7 @@ function stIcons(f){
 /* 전투 메시지 시퀀스 — 로직은 동기 완결, 표시 계층만 타이머 재생 (헤드리스: 큐만 적재 후 즉시 소진) */
 /* #106 5.4: opts.key 가 있는 메시지는 새 표시 그룹을 연다(그룹 시간 = BAL.fx[key] — skillFx·damageFx·itemFx·captureFx·fleeFx·judgeBanner·roundEndFx).
    key 없는 메시지는 직전 그룹에 줄로 덧붙는다(쿨 감소·상태 부여·약화 해제 등). 재생 시작 시점에 그룹이 없으면 msgStep(0.6초) 단독 그룹. opts.big: 큰 글씨 */
-function bmsg(txt,fx,opts){const B=S.battle; if(!B) return; B.blog.push(txt); B.msgQ.push({txt,fx:fx||null,key:opts&&opts.key||null,big:!!(opts&&opts.big)});}
+function bmsg(txt,fx,opts,to){const B=to||S.battle; if(!B) return; B.blog.push(txt); B.msgQ.push({txt,fx:fx||null,key:opts&&opts.key||null,big:!!(opts&&opts.big)});}
 let MSGQ=[], MSGPLAYING=false, MSGAFTER=null;
 function liveBattleDom(){ // 실제 DOM에 msgBox가 있을 때만 재생 (sim·헤드리스 스텁 제외)
   try{const mb=$("msgBox"); return S.mode!=="sim"&&!!mb&&mb.nodeType===1;}catch(e){return false;}
@@ -2164,6 +2314,7 @@ function nextPhase(){
      여기서 공유 토큰을 올려 두면 그 이전 렌더가 낸 도망·패스 콜백은 어떤 행동(일반 공격·포획 실패 포함)을
      거쳤든 전부 무효가 된다. 표시 계층이 아니라 게임 상태이므로 온라인 양측이 같은 값을 갖는다. */
   B.actSeq=(B.actSeq||0)+1;
+  B.pkgSel=null; // #121: 행동·라운드가 넘어가면 열려 있던 개봉 표도 함께 만료된다 (표 자체를 회수 — 토큰 대조에만 기대지 않는다)
   if(B.bonus) v2BonusEnd(B); // #241 R1 번개 꼬리 추가 공격이 끝났다(= 번개 여우의 턴 끝) — 2·3차 ⌛ 복원 (L8)
   if(v2TideCheck()) return;  // #241 R2 매 행동 뒤 해일 예고 판정
   if(B.phase===0){B.phase=1; battleModal(); return;}

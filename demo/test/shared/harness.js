@@ -291,7 +291,7 @@ function load(htmlPath,opts){
   recruitState:typeof recruitState==="function"?recruitState:undefined, searchFinalizeFx:typeof searchFinalizeFx==="function"?searchFinalizeFx:undefined, // #121 계약 4·6 · #129 계약 7 (#245: 상태는 reducer, 이 이름은 표시 전용)
   searchEndCheck:typeof searchEndCheck==="function"?searchEndCheck:undefined, rosterMinions:typeof rosterMinions==="function"?rosterMinions:undefined,
   capReceivers:typeof capReceivers==="function"?capReceivers:undefined,
-  get __openPkgCore(){return window.__openPkgCore;}, get __pkgPickCore(){return window.__pkgPickCore;}, // #121 전투 중 패키지 (battleModal 클로저 — 매 렌더 교체되므로 getter)
+  get __openPkgCore(){return window.__openPkgCore;}, get __pkgPickCore(){return window.__pkgPickCore;}, get __pkgCancelCore(){return window.__pkgCancelCore;}, // #245 취소도 Core 경계 // #121 전투 중 패키지 (battleModal 클로저 — 매 렌더 교체되므로 getter)
   get __recruitCore(){return window.__recruitCore;},
   get __openPkg(){return window.__openPkg;}, get __act(){return window.__act;}, get __useItem(){return window.__useItem;}, // netAction 래퍼 (온라인 송신 경로 검증용)
   get __useItemCore(){return window.__useItemCore;}, get __throwBallCore(){return window.__throwBallCore;}, // 전투 모달 클로저 — 매 렌더 교체되므로 getter
@@ -354,7 +354,7 @@ function load(htmlPath,opts){
   autoEndCheck:typeof autoEndCheck==="function"?autoEndCheck:undefined,autoEndReady:typeof autoEndReady==="function"?autoEndReady:undefined,anyMainActionLeft:typeof anyMainActionLeft==="function"?anyMainActionLeft:undefined,optionalBattleLeft:typeof optionalBattleLeft==="function"?optionalBattleLeft:undefined,
   turnBannerFx:typeof turnBannerFx==="function"?turnBannerFx:undefined,viewerIsOwner:typeof viewerIsOwner==="function"?viewerIsOwner:undefined,fxTurnLabel:typeof fxTurnLabel==="function"?fxTurnLabel:undefined,resultBannerOf:typeof resultBannerOf==="function"?resultBannerOf:undefined,
   renderTurnBar,renderBoard,netReady,netAction,onCellCore,execSlot,aiSchedule,aiScheduleBattle,
-  playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,fighterName,
+  playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,battleActionFrame:typeof battleActionFrame==="function"?battleActionFrame:undefined,fighterName, // #245 bf — 수신 프레임 재생 검증용 (기준판 대조 로드에는 없다)
   // #114 v0.4.5 (기준판 로드 호환: 부재 시 undefined) — 양측 밀기·재배치·도망 보드 교환·AI 밀기 평가
   pushResolve:typeof pushResolve==="function"?pushResolve:undefined,pushPair:typeof pushPair==="function"?pushPair:undefined,relocatePair:typeof relocatePair==="function"?relocatePair:undefined,relocCandidates:typeof relocCandidates==="function"?relocCandidates:undefined,relocZone:typeof relocZone==="function"?relocZone:undefined,
   fleeSwapPrompt:typeof fleeSwapPrompt==="function"?fleeSwapPrompt:undefined,fleeResolve:typeof fleeResolve==="function"?fleeResolve:undefined,fleePickMine:typeof fleePickMine==="function"?fleePickMine:undefined,

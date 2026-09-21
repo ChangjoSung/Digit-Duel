@@ -141,7 +141,7 @@ function equipActor(room, sp) {
       const E0 = room.engines[0];
       for (const a of [{ t: 'item', i: 0 }, { t: 'flee' }, { t: 'pkgOpen', kind: 'itemGift' }]) {
         const keep = E0.S.battle.bonus; E0.S.battle.bonus = null;
-        const ctl = room._authorize(seat, a);
+        const ctl = room._authorize(seat, H.withFrame(room, a)); // #245 _authorize 직접 호출은 겨냥 프레임(bf)을 스스로 붙인다
         E0.S.battle.bonus = keep;
         ok(ctl.ok === true, `대조: 추가 공격 단계가 아니면 ${a.t} 합법`);
       }

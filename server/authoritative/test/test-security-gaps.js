@@ -285,4 +285,86 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   ok((cur === 0 ? last0 : last1).indexOf(mineLabel) !== -1 && (cur === 0 ? last1 : last0).indexOf(theirLabel) !== -1, '주 행동 생략 로그의 인칭이 좌석마다 올바름("나"/"상대"): ' + JSON.stringify([last0, last1]));
 }
 
+/* ===== #245 전투 어휘의 겨냥 프레임(bf) — Battle→Core 경계 =====
+   클라이언트(demo/js/network.js netAction)는 전투 어휘에 보낸 시점의 행동자·전투 진행 지점을 싣는다.
+   서버는 그 값을 자기 상태에서 뽑은 프레임과 통째로 대조해 **Core 에 닿기 전에** 거부하고, 통과한 값은
+   좌석 엔진까지 그대로 실어 보낸다(엔진 battleCmdCtx 가 같은 대조를 다시 한다). */
+{
+  const room = H.startedRoom(18);
+  const T = room.engine;
+  const cur = T.S.current;
+  const ids = battlePair(T, cur);
+  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  const want = H.battleFrame(T);
+  ok(want && want.side === T.actorOfPhase() && want.seq === (T.S.battle.actSeq || 0)
+    && want.round === T.S.battle.round && want.phase === T.S.battle.phase, '전제: 서버 겨냥 프레임 = side·seq·round·phase: ' + JSON.stringify(want));
+
+  const bad = [
+    ['없음', undefined],
+    ['null', null],
+    ['부분(phase 누락)', { side: want.side, seq: want.seq, round: want.round }],
+    ['여분 키', Object.assign({}, want, { extra: 1 })],
+    ['배열', [want.side, want.seq, want.round, want.phase]],
+    ['낡음/재생(seq-1)', Object.assign({}, want, { seq: want.seq - 1 })],
+    ['앞선 seq', Object.assign({}, want, { seq: want.seq + 1 })],
+    ['다른 행동자(side)', Object.assign({}, want, { side: want.side === 'A' ? 'D' : 'A' })],
+    ['다른 라운드', Object.assign({}, want, { round: want.round + 1 })],
+    ['다른 단계', Object.assign({}, want, { phase: want.phase + 1 })],
+    ['문자열 seq', Object.assign({}, want, { seq: String(want.seq) })],
+  ];
+  for (const [label, bf] of bad) {
+    const before = snap(room);
+    const res = act(room, cur, { t: 'act', k: 0, bf });
+    ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION', `겨냥 프레임 ${label} → E_ILLEGAL_ACTION: ` + JSON.stringify(res.reason));
+    ok(snap(room) === before, `겨냥 프레임 ${label} 거부는 두 엔진 상태·revision 불변(Core 미도달)`);
+  }
+  // 좌석·차례 판정이 프레임 검사보다 먼저다 — 상대 좌석은 프레임이 정확해도 E_NOT_ACTOR 다
+  ok(act(room, 1 - cur, { t: 'act', k: 0, bf: want }).reason === 'E_NOT_ACTOR', '정확한 프레임이어도 비행위자 좌석은 E_NOT_ACTOR');
+
+  // 통과한 프레임은 좌석 엔진에 넘길 액션에 그대로 실린다(최소 필드로 다시 지으면서 버리지 않는다)
+  for (const a of [{ t: 'act', k: 0 }, { t: 'flee' }, { t: 'pkgOpen', kind: 'itemGift' }]) {
+    both(room, (E) => { E.S.pkgs[cur] = Object.assign({}, E.S.pkgs[cur], { itemGift: 1 }); E.S.battle[T.actorOfPhase() === 'A' ? 'fa' : 'fd'].fleeLock = false; });
+    const auth = room._authorize(cur, Object.assign({ bf: want }, a));
+    ok(auth.ok && auth.action.bf === want, `수락된 ${a.t} 액션이 bf 를 보존: ` + JSON.stringify([auth.ok, auth.reason, auth.action && auth.action.bf]));
+  }
+
+  const before = snap(room);
+  const good = act(room, cur, { t: 'act', k: 0, bf: want });
+  ok(good.ok && !good.noop && snap(room) !== before && room.state === STATES.IN_PROGRESS, '정확한 겨냥 프레임은 수락·상태 전진: ' + JSON.stringify(good.reason));
+  // 같은 프레임을 다시 보내면(재생) 행동 토큰이 이미 넘어가 거부된다
+  if (room.engines && room.engine.S.battle) {
+    const b2 = snap(room);
+    const replay = act(room, cur, { t: 'act', k: 0, bf: want });
+    ok(!replay.ok && snap(room) === b2, '소모된 프레임 재전송(재생)은 거부·불변: ' + JSON.stringify(replay.reason));
+  }
+}
+
+/* ===== #245 패키지 개봉 인가 표(B.pkgSel)는 락스텝 요약에 들어간다 =====
+   확정(pkgPick)은 모달 중계를 타서 회선 프레임이 없고, 이 표가 곧 그 확정의 겨냥 문맥이자 재고를 움직일 권한이다.
+   요약에 없으면 두 좌석이 서로 다른 표를 들고 있어도 같은 상태로 읽혀 fail-closed VOID 가 발동하지 못한다. */
+{
+  const room = H.startedRoom(19);
+  const T = room.engine;
+  const cur = T.S.current;
+  const ids = battlePair(T, cur);
+  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); E.S.pkgs[cur] = Object.assign({}, E.S.pkgs[cur], { itemGift: 1, battleBuff: 1 }); });
+  const d0 = H.lockstepDigest(room.engines[0]);
+  const res = act(room, cur, { t: 'pkgOpen', kind: 'itemGift' });
+  ok(res.ok && room.state === STATES.IN_PROGRESS, '개봉 수락(락스텝 유지): ' + JSON.stringify([res.reason, room.state]));
+  const sel = room.engines.map((E) => E.S.battle && E.S.battle.pkgSel);
+  ok(sel[0] && sel[1] && JSON.stringify(sel[0]) === JSON.stringify(sel[1]) && sel[0].kind === 'itemGift' && sel[0].owner === cur,
+    '두 좌석 엔진이 같은 인가 표를 발급: ' + JSON.stringify(sel));
+  ok(H.lockstepDigest(room.engines[0]) !== d0, '발급된 표가 요약을 바꾼다(요약이 표를 본다)');
+  // 한 좌석만 **다른** 표를 들면 요약이 갈린다 — 종류·소유자·문맥 네 값 각각
+  const base = sel[0];
+  for (const [label, patch] of [['종류', { kind: 'battleBuff' }], ['소유자', { owner: 1 - base.owner }],
+    ['side', { side: base.side === 'A' ? 'D' : 'A' }], ['seq', { seq: base.seq + 1 }],
+    ['round', { round: base.round + 1 }], ['phase', { phase: base.phase + 1 }], ['회수(null)', null]]) {
+    room.engines[0].S.battle.pkgSel = patch && Object.assign({}, base, patch);
+    ok(H.lockstepDigest(room.engines[0]) !== H.lockstepDigest(room.engines[1]), `표의 ${label} 가 한 좌석만 다르면 요약이 갈린다`);
+    room.engines[0].S.battle.pkgSel = base;
+  }
+  ok(H.lockstepDigest(room.engines[0]) === H.lockstepDigest(room.engines[1]), '복원하면 다시 일치(요약이 표 내용만 본다)');
+}
+
 done();
