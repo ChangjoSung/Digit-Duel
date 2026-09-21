@@ -1,9 +1,29 @@
 "use strict";
 /* ===== 상태 ===== */
+/* ===== #245 Saturn REVISE(M1·M2·M3·M6) 호스트 어댑터 포트 — Data·State·Core 가 바깥을 부르는 **유일한 통로** =====
+   Jupiter 가 소비할 계약이 이것이다. data.js·state.js·core.js 세 파일만 빈 VM(document·window·timer·UI 소스 없음)에
+   실어도 규칙이 전부 돈다 — 기본 구현이 "화면 없음·사람 없음" 런타임의 올바른 동작을 그대로 담고 있기 때문이다.
+   · 화면은 여기 없다. Core 는 **표시 이벤트**를 event() 하나로 내보내고, 그 이벤트를 HTML 로 바꾸는 일은 ui.js 소유다.
+   · 여기 남은 것은 (a) 이어지는 실행(continuation)을 들고 있어 기본 동작이 반드시 필요한 효과 포트,
+     (b) 호스트에게 묻는 질의(seat·replaying), (c) AI 어댑터뿐이다.
+   · 규칙 판정·상태 전이·난수는 어느 구현에서도 이 경계를 넘어오지 않는다. */
+const UI_PORT={
+  /* 표시·연출·AI 어댑터가 받는 **의미 이벤트 한 건**. 실리는 값은 전부 직렬화 가능한 데이터다 — 함수·콜백은 없다.
+     화면도 AI 도 없는 런타임은 이 기본 구현처럼 그냥 버리면 되고, 규칙 상태 전이는 그 전에 이미 끝나 있다. */
+  event(ev){},
+  /* 규칙을 잇는 다음 액션(직렬화 가능한 값 한 건)을 **연출 뒤로 미룰 자리**. 기본은 "미루지 않는다"(false)이고,
+     그러면 Core 가 그 자리에서 곧장 실행한다 — 화면이 없어도 도망 교환·탐색 완료 래치가 멈추지 않는다.
+     표시 계층만 true 를 돌려주고 자기 연출이 끝난 자리에서 같은 액션을 되돌려 보낸다. 콜백은 이 경계를 건너지 않는다. */
+  defer(action){ return false; },
+  /* 호스트 질의 — 값을 돌려줄 뿐 아무것도 실행하지 않는다 */
+  seat(){ return null; },            // 온라인 좌석 번호. null = 오프라인(핫시트·PVE·sim)
+  replaying(){ return false; }       // 수신 프레임 재생 중인가
+};
 /** @type {GameState} */
 let S=null;
 function pname(p){
-  if(NET.mode) return (p===NET.me?"나":"상대")+"(P"+(p+1)+")";
+  const seat=UI_PORT.seat();
+  if(seat!==null) return (p===seat?"나":"상대")+"(P"+(p+1)+")"; // #245: 좌석은 포트가 준다 — state.js 는 네트워크 계층을 모른다
   if(S.mode==="pve") return p===0?"플레이어":"AI("+(AI_LEVEL_KO[S.aiLevel[1]]||"5급")+")";
   if(S.mode==="sim") return (p===0?"AI-1":"AI-2")+"("+(AI_LEVEL_KO[S.aiLevel[p]]||"5급")+")";
   return p===0?"P1(하단·청)":"P2(상단·적)";
@@ -38,13 +58,12 @@ function newPlayerMetrics(){
    널·빈 배열처럼 리터럴만으로는 좁게 추론되는 칸에만 `@type` 을 적는다 — 그 주석이 곧 그 칸의 계약이다. */
 function newGameState(mode,opts){
   return {
-    mode, phase:"setup", setupPlayer:0, current:0, turnCount:0,
+    mode, phase:opts.phase||"setup", setupPlayer:0, current:0, turnCount:0, // #245 phase: 로비 복귀는 "menu" 로 새 판을 만든다 (호출처가 만든 뒤 덮어쓰지 않는다)
     /** @type {string[]} */
     aiLevel:opts.aiLevel||["grade5","grade5"], // #21 플레이어별 AI 난이도 (PVE는 [1]만 의미)
     /** @type {Set<number>[]} */
-    aiSeenMoved:[new Set(),new Set()], // #21 공개 관측 기억: [관측자][적 말 id] — 관측자에게 보이는 상태에서 BT 이전 이동이 목격된 적 말 (숨은 숲 내부 이동은 미기록)
-    /** @type {{id:number,r:number,c:number}[][]} */
-    aiHist:[[],[]], // #21 5단 반복 패턴 완화용 최근 이동 이력 [{id,r,c}]
+    aiSeenMoved:[new Set(),new Set()], // #21 공개 관측 기억: [관측자][적 말 id] — 관측자에게 보이는 상태에서 BT 이전 이동이 목격된 적 말 (숨은 숲 내부 이동은 미기록).
+                                       // #245 M2: 이 칸만 게임 상태로 남는다 — 규칙(move reducer)이 만들고 reducer 가 쓴다. AI 의 판단 메모(프로파일·선봉·이력·예약)는 ai.js 의 AI 로 옮겼다
     /** @type {BoardPiece[]} */
     pieces:[],
     /** @type {BoardEvent[]} */
@@ -73,7 +92,7 @@ function newGameState(mode,opts){
     /** @type {BoardPiece[]} */
     contactSet:[],
     firstBattleWonByMover:false,
-    /** @type {BoardPiece[]} */
+    /** @type {number[]} */ // #245 M4: 이 칸이 담는 것은 말이 아니라 **말 id** 다 (move·teleSwap reducer 가 e.id 로 채운다) — 종전 표기가 실제와 어긋나 있었다
     forcedTargets:[],
     /** @type {{stage:number,piece:BoardPiece|null}|null} */
     teleport:null,
@@ -83,11 +102,9 @@ function newGameState(mode,opts){
     battle:null,
     /** @type {number|null} */
     winner:null,
-    aiPending:false, aiBattlePending:false,
-    /** @type {(number|null)[]} */ // 말이 아니라 **말 id** 를 든다 (ai.js aiVanguard[me]=vcands[0].id)
-    aiVanguard:[null,null],
-    /** @type {any[]} */
-    aiProfile:[null,null],
+    /* #245 Saturn REVISE(M2): 종전 aiPending·aiBattlePending·aiVanguard·aiProfile·aiHist 는 여기 있었지만
+       규칙·승패·회선 프레임 어디에도 쓰이지 않는 **판단하는 쪽의 메모**였다 (Core 가 한 번도 읽지 않는다).
+       ai.js 의 AI 기록으로 옮겼다 — 게임 상태는 규칙이 읽고 쓰는 것만 담는다. 값·수명·난수 소비 순서는 그대로다. */
     healTickTurn:-1, btBannerDue:false, contactKind:"move", // #106: 회복 틱 중복 가드(같은 turn 1회) · 버닝 타임 배너 1회 예약 · 접촉 배너 부제 종류
     matchFxDone:false, // #126: 경기 종료 연출 1회 보장 (경기 기준 — 새 경기마다 자연히 초기화된다)
     /** @type {{owner:number,pieceId:number|null,oppId?:number|null,cands:number[],token:string|number}|null} */
@@ -117,17 +134,25 @@ function newGameState(mode,opts){
 /** @typedef {Sealed<ReturnType<typeof newGameState>> & {
       recruit?:RecruitState|null, // 탐색 보상 선택 상태 (core.js recruit reducer) — #245 MEDIUM: 닫힌 계약
       recruitToken?:number,  // 그 선택창의 결정적 토큰 **발급 번호**(숫자). recruit.token 은 이 숫자를 담은 문자열이다 — 둘은 다른 것이다
-      aiLastThinkMs?:number, // 강AI 사고 시간 (표시 전용)
+      entryPick?:{attId:number,defId:number,stage:"A"|"D"|"reveal",A:string|null,D:string|null}|null, // #245 M3 출전 선택의 보류 결정 (답은 battleEntryPick·battleEntryGo 액션)
       pkgSeq?:number,        // 패키지 개봉 표 번호
-      searchEndSeq?:number,  // 탐색 종료 재평가 순번
+      searchEndSeq?:number,  // 탐색 종료 재평가 순번 — 완료마다 +1, 완료 연출이 끝나면 래치가 +0.5 (분리 전 원본과 같은 값)
       __ddFxCells?:any,      // 연출 칸 임시 보관
       _pendingModal?:any     // 재접속 중 보류된 동기화 모달
     }} GameState */
 /** @typedef {Sealed<ReturnType<typeof mkPiece>>} Piece */
+/* #245 Saturn REVISE(M3) 새 경기의 **단일 커밋 경계**. 전역 S 에 대입하는 자리는 이 함수 하나뿐이고(다른 어떤 파일에도 없다),
+   그 대입과 "이전 경기 무효" 고지가 한 줄기로 붙어 있다 — 경기 교체가 반쯤 일어난 중간 상태를 누구도 보지 못한다.
+   새 경기는 옛 상태 위에 얹는 전이가 아니라 **교체**라 reducer 를 거치지 않는다: 진행 중 연출·예약 콜백이
+   `S!==G` 로 세대를 구분하므로 객체 정체성이 새로 만들어져야 한다 (같은 객체에 덮어쓰면 옛 콜백이 새 경기를 건드린다). */
+function commitNewGame(game){
+  UI_PORT.event({type:"gameReset"}); // #106: 새 게임 — 이전 게임의 연출 잠금·타이머·대기 콜백 전부 무효 (불변식 2)
+  S=game;
+  return S;
+}
 function newGame(mode,opts){
   opts=opts||{};
-  fxReleaseAll(); // #106: 새 게임 — 이전 게임의 연출 잠금·타이머·대기 콜백 전부 무효 (불변식 2)
-  S=newGameState(mode,opts);
+  commitNewGame(newGameState(mode,opts));
   for(const p of [0,1]){
     for(let i=0;i<6;i++) S.pieces.push(mkPiece(p,"minion")); // 속성·스탯은 로스터 선택 시 주입
 

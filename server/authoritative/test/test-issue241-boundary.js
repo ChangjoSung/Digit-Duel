@@ -17,10 +17,8 @@ function battleRoom(seed) {
   const room = H.startedRoom(seed);
   const T = room.engine;
   const cur = T.S.current;
-  const att = T.S.pieces.find((p) => p.owner === cur && p.type === 'minion' && p.alive).id;
-  const def = T.S.pieces.find((p) => p.owner === 1 - cur && p.type === 'minion' && p.alive).id;
-  both(room, (E) => { E.initBattle(byId(E, att), byId(E, def)); });
-  if (!T.S.battle || room._pendingModal()) throw new Error('fixture: minion battle did not open directly');
+  H.openBattle(room); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다(helpers.openBattle)
+  if (room._pendingModal()) throw new Error('fixture: minion battle did not open directly');
   return { room, T, cur };
 }
 function diverges(room, fn, undo) {
@@ -49,7 +47,7 @@ function equipActor(room, sp) {
     const B = E.S.battle, f = B[key], o = B[okey];
     f.skills = sp.skills.slice(); f.cds = f.skills.map(() => 0);
     o.maxHp = 9999; o.hp = 9999; o.dodge = 0; o.evadeBuff = 0; o.dodgeForce = false; o.shield = 0; o.shieldLayers = [];
-    E.battleModal(); // 칸을 바꿨으면 행동 메뉴를 다시 그린다(test-issue234-boundary 5c 선례)
+    // #245 행동 메뉴 재렌더가 필요 없다 — 전투 명령의 슬롯 합법성은 Core 가 상태에서 직접 본다
   });
   return { side, key, okey, seat };
 }
@@ -120,7 +118,7 @@ function equipActor(room, sp) {
     const { side, key, seat } = equipActor(room, sp);
     // 2·3차 ⌛ 를 실제 값으로 걸어 두어 사본·복원을 본다(tail 자신의 칸은 제외)
     const pre = {};
-    both(room, (E) => { const f = E.S.battle[key]; for (const i of [1, 2]) if (i !== sp.idx) { f.cds[i] = 2; pre[i] = 2; } E.battleModal(); });
+    both(room, (E) => { const f = E.S.battle[key]; for (const i of [1, 2]) if (i !== sp.idx) { f.cds[i] = 2; pre[i] = 2; } });
     const r0 = act(room, seat, { t: 'act', k: sp.idx });
     const B = T.S.battle;
     ok(r0.ok && !r0.noop && !!B && room.state !== H.STATES.VOID, '번개 꼬리 사용 수락: ' + JSON.stringify([r0.reason, room.state]));
@@ -151,7 +149,7 @@ function equipActor(room, sp) {
         ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, `추가 공격 중 ${a.t} 거부·불변: ` + JSON.stringify(res.reason));
       }
       // 허용 밖 칸 — ⌛0 으로 만들어도(쿨이 아니라 단계 규칙으로) 거부. 번개 꼬리 자신의 칸과 legacy 'basic'/'skill'/'common' 매핑 대조.
-      both(room, (E) => { E.S.battle[key].cds[sp.idx] = 0; E.battleModal(); });
+      both(room, (E) => { E.S.battle[key].cds[sp.idx] = 0; });
       let before = snap(room);
       let res = act(room, seat, { t: 'act', k: sp.idx });
       ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, '추가 공격 중 허용 밖 칸(번개 꼬리, ⌛0) 거부·불변');

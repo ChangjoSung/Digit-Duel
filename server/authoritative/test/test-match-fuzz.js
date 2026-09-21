@@ -146,7 +146,7 @@ function run(seed) {
       const other = 1 - choice.seat;
       const before = H.snap(room);
       const noise = pick([{ t: 'skipMain' }, { t: 'endTurn' }, { t: 'act', k: 0 }, { t: 'act', k: 'basic' }, { t: 'tele' }, { t: 'cell', r: 7, c: 4 },
-        { t: 'flee' }, { t: 'fleeSkip' }, { t: 'pass' }, { t: 'modal', seq: room.engine.NET.modalSeq, i: 0 }, { t: 'heal', id: 'u-x' }]);
+        { t: 'flee' }, { t: 'fleeSkip' }, { t: 'pass' }, { t: 'modal', seq: room.engine.__modal.seq, i: 0 }, { t: 'heal', id: 'u-x' }]);
       const res = H.act(room, other, noise);
       if (res.ok) { stat.err = `step ${i}: non-actor seat ${other} ${JSON.stringify(noise)} accepted (actor ${choice.seat})`; break; }
       if (H.snap(room) !== before) { stat.err = `step ${i}: rejected noise changed state`; break; }

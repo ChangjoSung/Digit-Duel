@@ -61,7 +61,7 @@ function battlePair(T, cur) {
   const T = room.engine;
   const cur = T.S.current, other = 1 - cur;
   const ids = battlePair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  H.openBattle(room, ids); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
   ok(!!T.S.battle && T.actorOfPhase() === 'A' && T.netActor() === cur, '전투 A-phase 행위자는 공격자');
   {
     const before = snap(room);
@@ -86,7 +86,7 @@ function battlePair(T, cur) {
   const T = room.engine;
   const cur = T.S.current;
   const ids = battlePair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  H.openBattle(room, ids); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
   const before = snap(room);
   const res = room._handleAction(cur, { baseRevision: room.revision - 1, action: { t: 'act', k: 0 } });
   ok(res.reason === 'E_STALE_REVISION', '전투 중 낡은 baseRevision도 거부: ' + JSON.stringify(res.reason));
@@ -101,7 +101,7 @@ function battlePair(T, cur) {
   const p = T.S.pieces.find((x) => x.owner === own && x.type === 'minion' && x.alive && x.placed);
   both(room, (E) => {
     E.S.recruit = { owner: own, pieceId: p.id, species: E.ROSTER[0].id, stage: 'root', skill: null, targetId: null, recvId: null, token: p.id + '#1' };  // #245: 토큰은 발급형("말id#발급번호")이어야 한다 — 임의 값이면 손상 기록으로 거부된다
-    E.recruitModal();
+    // #245 화면을 따로 열지 않는다 — 동기화 모달은 이 Core 결정 상태에서 그대로 파생된다
   });
   const viewOwner = room.toSeatView(own);
   const viewOther = room.toSeatView(1 - own);
@@ -111,13 +111,21 @@ function battlePair(T, cur) {
   ok(!!viewOther.modal && viewOther.modal.owner === own, '비소유 좌석도 누가 응답 대기 중인지는 안다(seq/owner)');
   ok(!('html' in viewOther.modal) && !('buttons' in viewOther.modal), '비소유 좌석 뷰에는 실제 문구·버튼이 전혀 없음');
   ok(viewOwner.modal.seq === viewOther.modal.seq, '양쪽이 같은 seq를 봄');
-  // 비소유 좌석 엔진의 DOM은 원본 modal 래퍼가 마스킹했다 — 서버가 그 좌석에 원문을 만들지 않는다는 교차 확인
-  const otherBox = room.engines[1 - own].byId('overlayBox').innerHTML;
-  ok(/상대 선택 대기 중/.test(otherBox) && room.engines[1 - own].byId('obBtns').children.length === 0, '비소유 좌석 엔진 화면은 원본 마스킹("상대 선택 대기 중")·버튼 0개');
-  // 두 번째 모달이 열려도 버튼이 누적되지 않는다 (하네스 스텁의 obBtns 누적 복원)
-  both(room, (E) => { E.recruitModal(); });
+  /* #245 — 종전에는 비소유 좌석 **엔진의 DOM**이 원본 modal 래퍼로 마스킹됐는지 봤다(서버가 그 좌석에 원문을
+     만들지 않는다는 교차 확인). 화면이 없어진 지금 그 경계는 직렬화에 있다: 소유자 전용 문구가 비소유 좌석
+     프레임에 **한 조각도** 실리지 않아야 한다. 프레임 전체를 훑어 확인한다 — 키 이름만 보는 것보다 강하다. */
+  const otherFrame = JSON.stringify(viewOther);
+  ok(!/기술 교체|하수인 포획|숲에서 무언가를 찾았다/.test(otherFrame), '비소유 좌석 프레임에는 소유자 전용 문구가 전혀 없음');
+  ok(viewOwner.modal.buttons.some((b) => /기술 교체/.test(b.text)), '대조: 그 문구는 소유 좌석 프레임에는 실제로 있다');
+  /* 같은 화면을 다시 파생해도 seq 는 오르지 않는다 — seq 는 "화면이 바뀐 횟수"이지 렌더 횟수가 아니다.
+     (종전 modal() 래퍼는 재호출마다 NET.modalSeq 를 올렸다. 화면이 상태에서 파생되는 지금은 같은 결정 상태가
+     같은 seq 를 내는 편이 더 안전하다 — 답을 이미 소비한 seq 가 재렌더로 되살아나지 않는다.) */
+  both(room, (E) => { E.S.recruit = Object.assign({}, E.S.recruit); });
   const again = room.toSeatView(own).modal;
-  ok(again && again.seq === viewOwner.modal.seq + 1 && again.buttons.length === again.count, '재오픈된 모달의 버튼 수가 누적 없이 count와 일치: ' + JSON.stringify(again && [again.count, again.buttons.length]));
+  ok(again && again.seq === viewOwner.modal.seq && again.buttons.length === again.count, '같은 결정 상태를 다시 파생해도 같은 seq·누적 없는 버튼 수: ' + JSON.stringify(again && [again.seq, again.count, again.buttons.length]));
+  both(room, (E) => { E.S.recruit = Object.assign({}, E.S.recruit, { stage: 'capRecv' }); });
+  const moved = room.toSeatView(own).modal;
+  ok(moved && moved.seq === viewOwner.modal.seq + 1, '단계가 실제로 바뀌면 새 seq: ' + JSON.stringify(moved && moved.seq));
 }
 
 // ===== 좌석 뷰 — battleModal()이 실제로 쓰는 필드가 빠짐없이 나간다 (Mars 조율 msg_e1b20ffcddd6) =====
@@ -126,7 +134,7 @@ function battlePair(T, cur) {
   const T = room.engine;
   const cur = T.S.current;
   const ids = battlePair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  H.openBattle(room, ids); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
   const v = room.toSeatView(cur);
   ok(v.battle && 'phase' in v.battle && 'maxRounds' in v.battle && 'actSeq' in v.battle && v.battle.actor === 'A', 'battle에 phase·maxRounds·actSeq·actor');
   for (const side of [v.battle.a, v.battle.d]) {
@@ -170,7 +178,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const T = room.engine;
   const cur = T.S.current;
   const ids = battlePair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  H.openBattle(room, ids); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
   const v = room.toSeatView(cur);
   ok(v.battle.a.bodyFight === true && v.battle.d.bodyFight === true, '하수인 vs 하수인: 양쪽 bodyFight=true');
   ok(typeof v.battle.a.rosterId === 'string' && v.battle.a.artRosterId === null, '본체 출전 a측: rosterId 있음·artRosterId 없음: ' + JSON.stringify([v.battle.a.rosterId, v.battle.a.artRosterId]));
@@ -187,7 +195,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const T = room.engine;
   const king0 = T.S.pieces.find((p) => p.owner === 0 && p.type === 'king');
   const king1 = T.S.pieces.find((p) => p.owner === 1 && p.type === 'king');
-  both(room, (E) => { E.initBattle(byId(E, king0.id), byId(E, king1.id)); });
+  H.openBattle(room, { att: king0.id, def: king1.id });
   resolveSyncModals(room, 0);
   const v = room.toSeatView(0);
   ok(!!v.battle, '왕 vs 왕: 동기화 모달(출전 공개) 확인 후 battle 시작');
@@ -215,7 +223,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
     a0.cap = { element: rd.element, hp: rd.hp, maxHp: rd.hp, atk: rd.atk, skillAtk: rd.skill, cd: 0, cdMax: rd.cd,
       skills: E.archSkills(rd.arch, rd.element), cds: [0, 0, 0, 0], revealedSkills: [], rosterId: rd.id, artRosterId: rd.id };
   });
-  both(room, (E) => { E.initBattle(byId(E, ally0.id), byId(E, king1.id)); });
+  H.openBattle(room, { att: ally0.id, def: king1.id });
   let v = room.toSeatView(0);
   ok(v.modal && v.modal.owner === 0 && v.modal.count === 2, '동료+포획 하수인 보유: 소유자에게만 본체/대리 2지선다 모달');
   act(room, v.modal.owner, { t: 'modal', seq: v.modal.seq, i: 1 }); // "포획 하수인 … 출전" 선택
@@ -250,7 +258,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   ok(before && !('rosterId' in before) && !('name' in before) && !('type' in before), '공개 전 상대 하수인: rosterId/name/type 필드 자체 없음(등급 B): ' + JSON.stringify(before));
 
   // 전투 진입 — startRounds가 양쪽 piece.revealed=true를 세운다(art-restore-fields.md 전제)
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  H.openBattle(room, ids); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
   ok(defPiece.revealed === true, '전투 진입으로 상대 하수인이 revealed=true');
 
   // 전투 종료 후에도 board 표시(C-2)는 남는다 — 라운드 RNG로 실제 전투를 완주시키지 않고, "전투는 끝났지만
@@ -294,7 +302,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const T = room.engine;
   const cur = T.S.current;
   const ids = battlePair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  H.openBattle(room, ids); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
   const want = H.battleFrame(T);
   ok(want && want.side === T.actorOfPhase() && want.seq === (T.S.battle.actSeq || 0)
     && want.round === T.S.battle.round && want.phase === T.S.battle.phase, '전제: 서버 겨냥 프레임 = side·seq·round·phase: ' + JSON.stringify(want));
@@ -347,7 +355,8 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const T = room.engine;
   const cur = T.S.current;
   const ids = battlePair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); E.S.pkgs[cur] = Object.assign({}, E.S.pkgs[cur], { itemGift: 1, battleBuff: 1 }); });
+  H.openBattle(room, ids);
+  both(room, (E) => { E.S.pkgs[cur] = Object.assign({}, E.S.pkgs[cur], { itemGift: 1, battleBuff: 1 }); });
   const d0 = H.lockstepDigest(room.engines[0]);
   const res = act(room, cur, { t: 'pkgOpen', kind: 'itemGift' });
   ok(res.ok && room.state === STATES.IN_PROGRESS, '개봉 수락(락스텝 유지): ' + JSON.stringify([res.reason, room.state]));

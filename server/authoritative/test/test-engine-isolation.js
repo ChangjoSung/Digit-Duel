@@ -30,12 +30,14 @@ async function main() {
   ok(global.clearTimeout === realClearTimeout, '엔진 3개 로드 후에도 진짜 global.clearTimeout 정체성 불변');
   ok(global.document === realDocument, '엔진 3개 로드 후에도 진짜 global.document 정체성 불변 (보통 undefined)');
 
-  withEngine(T1, () => { T1.setSeed(1); T1.startMode('pvp'); });
-  withEngine(T2, () => { T2.setSeed(2); T2.startMode('pvp'); });
-  withEngine(T3, () => { T3.setSeed(3); T3.startMode('pvp'); });
+  // #245 — 종전 `startMode('pvp')`(ui.js)는 newGame 에 표시 초기화·렌더를 덧붙인 래퍼였다. 규칙 3종만 싣는
+  // 권위 런타임에서 새 경기를 만드는 자리는 state.js 의 newGame 하나다(그 래퍼가 부르던 것도 이것이다).
+  withEngine(T1, () => { T1.setSeed(1); T1.newGame('pvp', {}); });
+  withEngine(T2, () => { T2.setSeed(2); T2.newGame('pvp', {}); });
+  withEngine(T3, () => { T3.setSeed(3); T3.newGame('pvp', {}); });
 
-  ok(global.setTimeout === realSetTimeout, 'startMode 실행 후에도 진짜 global.setTimeout 정체성 불변');
-  ok(global.setInterval === realSetInterval, 'startMode 실행 후에도 진짜 global.setInterval 정체성 불변');
+  ok(global.setTimeout === realSetTimeout, '새 경기 생성 후에도 진짜 global.setTimeout 정체성 불변');
+  ok(global.setInterval === realSetInterval, '새 경기 생성 후에도 진짜 global.setInterval 정체성 불변');
 
   // ===== (2) 네이티브 setInterval이 엔진 사용 중에도 실제로 흐른다 =====
   let ticks = 0;
@@ -49,15 +51,16 @@ async function main() {
   realClearInterval(iv);
   ok(ticks > 0, '엔진들을 번갈아 구동하는 동안 진짜 setInterval이 실제로 발화함 (콜백 소비 " + ticks + "회) — v2였다면 0');
 
-  // ===== (3) 룸 간 완전 격리 — 상태·NET·타이머 큐 =====
+  // ===== (3) 룸 간 완전 격리 — 상태·호스트 포트·타이머 큐 =====
   ok(T1.S !== T2.S && T2.S !== T3.S, '세 엔진의 S가 서로 다른 객체');
-  ok(T1.NET !== T2.NET, '세 엔진의 NET이 서로 다른 객체');
+  // #245 — 종전 NET 자리. 좌석·재생 질의를 담는 호스트 포트도 엔진마다 독립이어야 한다(UI_PORT 자체도 컨텍스트마다 새 객체).
+  ok(T1.host !== T2.host && T1.UI_PORT !== T2.UI_PORT, '세 엔진의 호스트 포트가 서로 다른 객체');
   ok(T1.scheduler !== T2.scheduler && T2.scheduler !== T3.scheduler, '세 엔진의 서버 스케줄러(타이머 큐)가 서로 다른 인스턴스');
   T1.scheduler.setTimeout(() => {}, 100);
   ok(T1.scheduler.pending() === 1 && T2.scheduler.pending() === 0, 'T1에 예약한 타이머는 T2 큐에 보이지 않음');
   T1.drain();
-  T1.NET.mode = true; T1.NET.me = 0;
-  ok(T2.NET.mode === false, 'T1.NET을 건드려도 T2.NET은 무영향');
+  T1.host.seat = 0;
+  ok(T2.host.seat === null && T2.UI_PORT.seat() === null, 'T1의 좌석을 건드려도 T2의 좌석 시점은 무영향');
   T1.S.turnCount = 999;
   ok(T2.S.turnCount !== 999, 'T1.S를 건드려도 T2.S는 무영향');
 

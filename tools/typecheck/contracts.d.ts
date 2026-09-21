@@ -31,14 +31,16 @@ type CoreAction =
   | { t: "setupConfirm"; preparing: boolean; publicMode: boolean }
   | { t: "tele" }
   | { t: "skipMain"; origin?: string; toast?: string | false }
-  | { t: "heal"; id: number | null }
-  | { t: "move"; id: number; r: number; c: number }
-  | { t: "teleSwap"; a: any; b: any }
+  /* #245 Saturn REVISE(M2): AI 가 고른 행동은 origin 표식을 달고 들어온다 — "🤖 …" 기록·안내를 Core 가 내기 위한
+     **데이터 한 칸**이고(함수 아님), 규칙 판정에는 쓰이지 않는다. toast 는 종전 호출처의 안내 유무를 그대로 옮긴 것이다. */
+  | { t: "heal"; id: number | null; origin?: "ai"; toast?: boolean }
+  | { t: "move"; id: number; r: number; c: number; origin?: "ai" }
+  | { t: "teleSwap"; a: any; b: any; origin?: "ai" }
   | { t: "drainForced"; autoStart: boolean }
   | { t: "endTurn" }
   | { t: "gameOver"; winner: number | null; winType: string | null; endingBattle?: any }
   | { t: "resign" }
-  | { t: "search"; id?: number | null; r?: any; c?: any; ei?: any }
+  | { t: "search"; id?: number | null; r?: any; c?: any; ei?: any; origin?: "ai" }
   /* #245 Saturn REVISE(HIGH 2): recruit 액션이 싣는 token 은 **문자열**이다 — reducer 가 발급하는 값이
      `말id + "#" + 발급번호`(core.js:363)이고 recruitState() 가 그 형식을 다시 검사한다. 상태의 숫자
      카운터(GameState.recruitToken)와는 다른 것이라 타입도 다르게 둔다. 섞으면 `action.token!==R.token` 이
@@ -52,8 +54,24 @@ type CoreAction =
   | { t: "flee"; frame?: any; wire?: BattleWire }
   | { t: "pass"; frame?: any; wire?: BattleWire }
   | { t: "act"; k: string; frame?: any; wire?: BattleWire }
-  | { t: "delaySchedule"; f: any; delayRounds: number; run: any; tag?: any }
-  | { t: "delayTick"; f: any };
+  | { t: "netSetup"; player: number; data: any }
+  | { t: "hydrate"; seat: number; view: any }
+  | { t: "beginPlay" }
+  | { t: "startTurn" }
+  | { t: "forcedClear" }
+  | { t: "btBannerShown" }
+  | { t: "searchEndLatch"; seq: number; turn?: number; cur?: number } // #245 M3: 늦은 재개를 거르는 대조값을 액션이 들고 온다
+  /* #245 Saturn REVISE(M3): 예약·카운트다운은 전투원 객체가 아니라 **상태 안의 자리(side)** 를 싣는다 —
+     액션이 상태를 우회해 남의 객체를 건네는 통로가 없다. side 가 null 이면 가리킬 자리가 없다는 뜻(무동작). */
+  | { t: "delaySchedule"; side: BattleSide | null; delayRounds: number; run: any; tag?: any }
+  | { t: "delayTick"; side: BattleSide | null }
+  /* #245 Saturn REVISE(M3): 전투 개시와 출전 선택 — 어느 것도 함수·말 객체를 싣지 않는다 (id·자리·선택지뿐). */
+  | { t: "battleStart"; attId: number; defId: number }
+  | { t: "battleEntryBegin"; attId: number; defId: number }
+  | { t: "battleEntryPick"; side?: "A" | "D"; what: "body" | "cap" }
+  | { t: "battleEntryGo" }
+  | { t: "battleEntryAbort" }
+  | { t: "fleeSwapResume"; pieceId: number | null; oppId: number | null };
 
 /** reduceCoreAction 이 실제로 받는 t 값. 서버 protocol.js ACTION_TYPES 와의 대조는 tools/typecheck/test 가 본다. */
 type CoreActionType = CoreAction["t"];
@@ -69,7 +87,39 @@ type CoreActionType = CoreAction["t"];
    종전 목록에 있던 `minion` 은 emit 지점도 소비 지점도 없어 삭제했다 (실측: demo/js 전체에서 0건). */
 type CoreEvent =
   | { type: "render" }
-  | { type: "toast"; message: string }
+  | { type: "toast"; message: string; kind?: string }
+  /* ── #245 Saturn REVISE(M1) Core 가 화면에 말을 거는 의미 이벤트 ──
+     Core 에는 HTML 도 window 콜백도 없다. 아래는 전부 **값만** 싣는다 (함수 없음) — ui.js 가 그것을 화면으로 바꾼다. */
+  | { type: "logAppended" }                                   // 공개 기록에 줄이 붙었다 (S.log 는 Core 가 쓴다)
+  | { type: "battleRedraw" }                                  // 전투 행동 화면 다시 그리기
+  | { type: "closeOverlay" }                                  // 열린 창 닫기
+  | { type: "gameReset" }                                     // 새 게임 — 남은 연출·대기 콜백 무효
+  | { type: "tutHint"; key: string }                          // 첫 1회 도움말 (게임 상태 무변경)
+  | { type: "memoPick"; piece: BoardPiece }                   // 추측 메모 피커
+  | { type: "contactSituation"; att: BoardPiece; def: BoardPiece }
+  | { type: "contactBanner"; piece: BoardPiece; sub: string | null }
+  | { type: "matchBanner"; banner: { title: string; sub?: string; cls: string } }
+  | { type: "searchBanner"; owner: number | null; mine: boolean; fxKey: string; title: string; sub: string }
+  | { type: "searchEndLatched" }                              // 완료 래치가 올라갔다 → 사람 클라이언트의 자동 턴 종료 재평가
+  | { type: "turnReady"; player: number; handoff: boolean }   // 핫시트는 기기 넘김 뒤 배너
+  | { type: "resignPrompt"; player: number; turn: number }    // 확인 창은 표시 계층 소유. 확정은 사람 입력 경로로 돌아온다
+  /* 출전 선택(보류 결정)의 두 단계 — 답은 battleEntryPick·battleEntryGo 액션으로만 돌아온다 */
+  | { type: "battleEntryPrompt"; side: "A" | "D"; owner: number; pieceId: number; pieceType: string;
+      reserve: { element: string | null; hp: number; maxHp: number } | null;
+      cap: { element: string | null; hp: number; maxHp: number } | null }
+  | { type: "battleEntryReveal"; desc: string }
+  | { type: "battleEntryStep" }                               // 보류 결정을 상태에서 다시 읽어 한 걸음 (Core 전용)
+  | { type: "battleEntryStart"; attId: number; defId: number; A: string | null; D: string | null }
+  | { type: "battleBegan"; attId: number; defId: number }     // 전투 개시 실행 (Core 전용)
+  | { type: "fleeSwapPromptRun"; pieceId: number | null; oppId: number | null }
+  /* 연출·AI 어댑터가 받는 이벤트 — 실리는 것은 전부 값이다 (함수 없음).
+     규칙을 잇는 다음 액션은 이벤트가 아니라 UI_PORT.defer(action) 로 건너간다 (기본 구현은 거절하고 Core 가 즉시 실행). */
+  | { type: "fx"; item: any }                                 // 연출 큐 항목 (배너·폭발·함정 — 표시 값만)
+  | { type: "battleEndFx"; queue: any[]; banner: { title: string; sub?: string; cls: string } }
+  | { type: "aiTurn"; player: number }                        // AI 다음 수 예약
+  | { type: "aiSetupTurn"; player: number }                   // AI 배치 단계 자동 진행
+  | { type: "aiRecruitTurn"; owner: number; pieceId: number } // AI 탐색 보상 선택 자동 진행
+  | { type: "aiActed"; kind?: string }                        // (예비) AI 행동 고지 — 현재는 Core 가 직접 기록한다
   | { type: "setupRosterChanged"; complete: boolean }
   | { type: "setupNetworkReady"; setup: { roster: string[]; pos: number[][] }; publicMode: boolean }
   | { type: "setupHandoff"; player: number }
@@ -77,10 +127,10 @@ type CoreEvent =
   | { type: "setupAiBegin" }
   | { type: "teleTrapped"; player: number; message: string }
   | { type: "teleRefused"; player: number; message: string }
-  | { type: "teleSwapped"; player: number; pieces: BoardPiece[]; healBroken: boolean[]; traces: number; forced: { id: number; list: number[] } | null }
+  | { type: "teleSwapped"; player: number; pieces: BoardPiece[]; healBroken: boolean[]; traces: number; forced: { id: number; list: number[] } | null; kingReach?: boolean } // kingReach 갈래만 — 화면 갱신을 matchEnded·kingReached 에 넘긴다
   | { type: "healStarted"; piece: BoardPiece }
   | { type: "mainSkipped"; player: number; origin?: string; toast?: string | false } // AI 자동 생략은 toast:false 로 토스트를 끈다 (실측)
-  | { type: "moved"; piece: BoardPiece; trace: boolean; healBroken: boolean; collision: boolean; forced: number[] | null }
+  | { type: "moved"; piece: BoardPiece; trace: boolean; healBroken: boolean; collision: boolean; forced: number[] | null; kingReach?: boolean } // kingReach 갈래만 — 화면 갱신을 matchEnded·kingReached 에 넘긴다
   | { type: "forcedExempt"; owner?: number; message: string; toast?: string } // 대상이 사라진 면제는 owner 를 싣지 않는다 (실측)
   | { type: "forcedPromoted"; piece: BoardPiece; list: number[]; autoStart: boolean }
   | { type: "searchRefused"; owner: number }
@@ -89,11 +139,15 @@ type CoreEvent =
   | { type: "recruitOpened"; owner: number; piece: BoardPiece }
   | { type: "recruitStage" }
   | { type: "recruitClosed" }
+  | { type: "kingReached"; owner: number }
+  | { type: "netSetupCorrupt"; player: number }
+  | { type: "playBegan"; player: number; bt: boolean }
+  | { type: "turnStarted"; bt: boolean }
   | { type: "turnEnded"; player: number; healed: any[]; simDraw?: boolean; bt?: boolean } // sim 무승부 갈래만 simDraw, 정상 교대 갈래만 bt (실측: emit 지점 2곳)
   | { type: "matchEnded"; winner: number | null; winType: string | null; interrupted: boolean; banner: boolean; resignLoser?: number } // resignLoser 는 resign 갈래만 덧붙인다
   | { type: "pkgOpenModal"; kind: string; owner: number; round: number; id: number }
   | { type: "pkgPicked"; owner: number | null; toast?: string }
-  | { type: "delayedFired"; fired: BattleDelayedFx[] }
+  | { type: "delayedFired"; side: BattleSide | null; fired: BattleDelayedFx[] }
   | { type: "battleSlot"; side: BattleSide; slot: number }
   | { type: "battleNextPhase" }
   | { type: "battleBasicCounter"; side: BattleSide }
@@ -107,7 +161,9 @@ type CoreEvent =
 type CoreEventOf<T extends CoreEvent["type"]> = Extract<CoreEvent, { type: T }>;
 
 /** reducer 반환 계약 — 거부는 null 이다 (다음 상태도 이벤트도 없다는 뜻). */
-type CoreResult = { state: GameState; events: CoreEvent[] } | null;
+/* replaceBoard: 그 액션이 보드를 통째로 갈아끼운다고 선언한 경우에만 실린다 (공개 방 권위 스냅샷 재수화).
+   commitCoreState 가 말 객체 정체성 보존을 건너뛸지 여기서만 정해진다 — 임의의 액션이 켤 수 있는 스위치가 아니다. */
+type CoreResult = { state: GameState; events: CoreEvent[]; replaceBoard?: boolean } | null;
 
 // ── 프로토콜 계약 ────────────────────────────────────────────────────────────
 // 회선을 타는 프레임. 릴레이(P2P 코드 방)와 권위 서버(공개 방) 두 갈래가 같은 소켓 어휘를 쓴다.

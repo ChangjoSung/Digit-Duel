@@ -51,8 +51,7 @@ function battlePair(T, cur) {
 function startBattle(room) {
   const T = room.engine;
   const cur = T.S.current;
-  const ids = battlePair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  H.openBattle(room, battlePair(T, cur)); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다(helpers.openBattle)
   return cur;
 }
 
@@ -193,7 +192,7 @@ function assertEventShape(evt, label) {
     const alive = T.S.pieces.filter((p) => p.alive && p.placed && p.type === 'minion');
     const mine = alive.find((p) => p.owner === 0), theirs = alive.find((p) => p.owner === 1);
     if (!mine || !theirs) break; // 한쪽 하수인이 전멸 — 더 전투를 못 만든다(아래에서 lastSeq 전제로 감지)
-    both(room, (E) => { E.initBattle(byId(E, mine.id), byId(E, theirs.id)); });
+    H.openBattle(room, { att: mine.id, def: theirs.id });
     driveBattleToEnd(room, 60);
     fx = room.toSeatView(0).fx;
     if (fx.lastSeq > 40) break;
@@ -263,7 +262,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const remaining = T.S.pieces.filter((p) => p.alive && p.placed && p.type === 'minion');
   const byOwner = { 0: remaining.filter((p) => p.owner === 0), 1: remaining.filter((p) => p.owner === 1) };
   ok(byOwner[0].length && byOwner[1].length, '두 번째 전투를 시작할 살아있는 하수인이 양쪽에 남아 있음(픽스처 전제)');
-  both(room, (E) => { E.initBattle(byId(E, byOwner[0][0].id), byId(E, byOwner[1][0].id)); });
+  H.openBattle(room, { att: byOwner[0][0].id, def: byOwner[1][0].id });
   const afterStart = room.toSeatView(0).fx;
   const starts = afterStart.events.filter((e) => e.key === 'battleStart');
   ok(starts.length === 2, '두 번째 initBattle로 battleStart가 하나 더 생김: ' + starts.length);
@@ -298,7 +297,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
     a0.cap = { element: rd.element, hp: rd.hp, maxHp: rd.hp, atk: rd.atk, skillAtk: rd.skill, cd: 0, cdMax: rd.cd,
       skills: E.archSkills(rd.arch, rd.element), cds: [0, 0, 0, 0], revealedSkills: [], rosterId: rd.id, artRosterId: rd.id };
   });
-  both(room, (E) => { E.initBattle(byId(E, ally0.id), byId(E, king1.id)); });
+  H.openBattle(room, { att: ally0.id, def: king1.id });
   const v0Pre = room.toSeatView(0);
   ok(v0Pre.modal && v0Pre.modal.owner === 0 && v0Pre.modal.count === 2, '동료+포획 하수인 보유: 본체/대리 2지선다 모달(전제)');
   act(room, v0Pre.modal.owner, { t: 'modal', seq: v0Pre.modal.seq, i: 1 }); // "포획 하수인 … 출전" 선택
@@ -341,7 +340,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const hiddenOriginalId = hidden.id;
   const HIDDEN_ID_SENTINEL = 900000001; // 정상 게임에서 나올 수 없는 자리수 — hp/seq/round/cells와 값으로도 절대 겹치지 않음
   both(room, (E) => { const h = E.S.pieces.find((p) => p.id === hiddenOriginalId); if (h) h.id = HIDDEN_ID_SENTINEL; });
-  both(room, (E) => { E.initBattle(byId(E, myMinion.id), byId(E, fighter.id)); });
+  H.openBattle(room, { att: myMinion.id, def: fighter.id });
   driveBattleToEnd(room, 60);
   const v0 = room.toSeatView(0);
   const rawFx0 = JSON.stringify(v0.fx);
@@ -404,7 +403,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const bomb = T.S.pieces.find((p) => p.type === 'bomb' && p.owner === 0);
   const enemyMinion = T.S.pieces.find((p) => p.type === 'minion' && p.owner === 1);
   ok(!!bomb && !!enemyMinion, 'T14 전제: 좌석0 폭탄·좌석1 하수인 존재');
-  both(room, (E) => { E.initBattle(byId(E, bomb.id), byId(E, enemyMinion.id)); });
+  H.openBattle(room, { att: bomb.id, def: enemyMinion.id });
   const fx = room.toSeatView(0).fx;
   const explosions = fx.events.filter((e) => e.key === 'explosion');
   ok(explosions.length === 1, 'T14: 실제 폭탄 접촉 1회 = explosion 이벤트 정확히 1개(FX.log 경로와 cells 큐 경로가 중복 생성하지 않음): ' + explosions.length);
@@ -418,7 +417,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const trap = T.S.pieces.find((p) => p.type === 'trap' && p.owner === 0);
   const enemyMinion = T.S.pieces.find((p) => p.type === 'minion' && p.owner === 1);
   ok(!!trap && !!enemyMinion, 'T14 전제: 좌석0 함정·좌석1 하수인 존재');
-  both(room, (E) => { E.initBattle(byId(E, enemyMinion.id), byId(E, trap.id)); });
+  H.openBattle(room, { att: enemyMinion.id, def: trap.id });
   const fx = room.toSeatView(0).fx;
   const traps = fx.events.filter((e) => e.key === 'trapFx');
   ok(traps.length === 1, 'T14: 실제 함정 발동 1회 = trapFx 이벤트 정확히 1개(중복 없음): ' + traps.length);
@@ -442,7 +441,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
       if (p.owner === 1 && p.alive && p.placed && (p.type === 'minion' || p.type === 'ally') && p.id !== victim.id) p.alive = false;
     }
   });
-  both(room, (E) => { E.initBattle(byId(E, bomb.id), byId(E, victim.id)); });
+  H.openBattle(room, { att: bomb.id, def: victim.id });
   const fx = room.toSeatView(0).fx;
   const explosion = fx.events.find((e) => e.key === 'explosion');
   const result = fx.events.find((e) => e.key === 'resultBanner');

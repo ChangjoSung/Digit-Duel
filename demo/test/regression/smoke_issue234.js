@@ -256,8 +256,9 @@ function idx(f,id){ return f.skills.indexOf(id); }
   king.element="grass"; T.syncLeaderSkills(king); eq(king.skills[1],"K-2-grass","B13 왕 속성 변경 → 2차 스킬도 리프 커터로");
 }
 { /* B14 AI 로스터: 30종 중 6종 · 5속성 전부 · 모두 ⭐1 */
-  T.newGame("pve",{}); T.S.roster[1]=[]; T.aiPickRoster(1);
-  const r=T.S.roster[1];
+  T.newGame("pve",{}); T.S.roster[1]=[];
+  const r=T.aiPickRoster(1); // #245: 고르기만 하고 상태는 쓰지 않는다 (적용은 Core setupAuto)
+  ok(T.S.roster[1].length===0,"B14 AI 로스터 선택은 상태를 쓰지 않는다 — 적용은 Core 액션 한 곳");
   ok(r.length===6&&new Set(r).size===6&&r.every(id=>T.ROSTER.some(x=>x.id===id)),"B14a AI 로스터 6종 중복 없음");
   ok(new Set(r.map(id=>T.ROSTER.find(x=>x.id===id).element)).size===5,"B14b 5속성을 모두 포함");
 }

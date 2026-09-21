@@ -677,19 +677,54 @@ section("F",()=>{
     ok(blog.indexOf(X.NO_ATTACK_MSG)<0,"F5b 안내 문구 자체도 공용 로그에 없다");
     X.TQ.length=0;
   }
-  /* F6 (P1) 입력 잠금 — 연출·메시지 재생 중에는 코어에서도 거부된다 (온라인 재생은 netReady 가 idle 을 기다린다) */
+  /* F6 (P1 → #245 Saturn REVISE MEDIUM) 입력 잠금의 **자리**: 메시지 재생 큐(msgQ)는 표시 계층이 소유한다.
+     종전에는 Core 의 합법성 게이트가 그 큐를 직접 읽어 "재생 중이면 거부"했는데, 그러면 화면이 없는 런타임
+     (헤드리스·서버 좌석 엔진·AI)이 연출 큐를 손으로 비워야 규칙이 나아간다 — 규칙이 표시 계층에 묶인다.
+     이제 Core 는 프레임(행동자·행동 토큰·라운드·단계)만 보고, **연출 중 사람 입력 차단은 경계가 맡는다**:
+     UI 의 busy(커맨드 비활성) · 입력 단일 경로 netAction/진입점의 fxLocked() · 수신 경계 netReady 의 빈 msgQ 대기.
+     같은 행동을 두 번 쓰는 길은 행동 토큰(actSeq)+라운드·단계 대조가 그대로 막는다(F1·F2). */
   {
     const {X,Bx}=noAtkFix();
     Bx.msgQ.push({txt:"재생 대기",fx:null,key:null,big:false});   // 재생 대기 상태 재현
     const before=J([Bx.round,Bx.phase]);
     X.netAction({t:"pass"}); X.drain(20000);
-    ok(J([Bx.round,Bx.phase])===before,"F6 msgQ 재생 대기 중 pass 는 거부된다 (코어 잠금)");
+    ok(J([Bx.round,Bx.phase])!==before,"F6 재생 대기(msgQ 잔여) 중에도 **코어는 프레임만 보고** pass 를 처리한다 — 표시 큐는 규칙 입력이 아니다");
+    X.TQ.length=0;
+  }
+  {
+    const {X,Bx}=noAtkFix();                                     // 도망도 같다 (fresh 픽스처 — 위 pass 가 토큰을 쓴 뒤가 아니다)
+    Bx.msgQ.push({txt:"재생 대기",fx:null,key:null,big:false});
     const t0=X.S.metrics.fleeTries;
     X.setSeed(2); X.__fleeCore(); X.drain(20000);
-    ok(X.S.metrics.fleeTries===t0,"F6a 같은 상태에서 도망도 거부된다");
-    Bx.msgQ.length=0; freshModal(X);
+    ok(X.S.metrics.fleeTries===t0+1,"F6a 같은 상태에서 도망도 그 자리에서 진행된다 (연출 큐를 비워 줄 화면이 없어도 규칙이 멈추지 않는다)");
+    X.TQ.length=0;
+  }
+  {
+    /* F6b·F6c 차단은 **경계**에 남아 있다 — 사람 UI 는 재생 중 커맨드를 비활성화하고, 수신 경계는 빈 큐를 기다린다. */
+    const {X,Bx}=noAtkFix();
+    /* 렌더를 **차례대로** 받아 둔다: battleModal 은 재생 대기 상태로 한 번 그린 뒤 큐를 재생하고, 재생이 끝나면 다시 그린다.
+       헤드리스는 재생이 즉시 끝나므로 마지막 innerHTML 만 보면 busy 렌더를 놓친다. */
+    const box=X.byId("overlayBox"), obb=X.byId("obBtns"), renders=[];
+    Object.defineProperty(box,"innerHTML",{configurable:true,get(){return this._html;},
+      set(v){this._html=v; this.children.length=0; obb.children.length=0; renders.push(v);}});
+    Bx.msgQ.push({txt:"재생 대기",fx:null,key:null,big:false});
+    obb.children.length=0; X.battleModal(); X.drain(20000);
+    const busyHtml=renders[0]||"", freeHtml=renders[renders.length-1]||"";
+    ok(/<button disabled onclick="window\.__menu\('fight'\)">/.test(busyHtml)&&/<button [^>]*\bdisabled\b[^>]*onclick="window\.__pass\(\)"/.test(busyHtml),
+       "F6b 재생 대기 중 사람 UI 는 전투 커맨드를 **비활성화**해서 그린다 (표시 계층이 잠금을 소유한다)");
+    ok(renders.length>1&&/<button  onclick="window\.__menu\('fight'\)">/.test(freeHtml),
+       "F6b2 재생이 끝난 뒤 다시 그린 화면에서는 같은 커맨드가 활성이다 (잠금은 재생 구간에만 걸린다)");
+    Bx.msgQ.push({txt:"재생 대기",fx:null,key:null,big:false});
+    X.NET.started=true;                                          // 수신 경계만 보려고 잠시 켠다 (송신·소켓은 그대로 없다)
+    const notReady=X.netReady({t:"pass",bf:X.battleActionFrame()});
+    Bx.msgQ.length=0;
+    const ready=X.netReady({t:"pass",bf:X.battleActionFrame()});
+    X.NET.started=false;
+    ok(notReady===false&&ready===true,"F6c 수신 경계(netReady)는 재생 중 전투 어휘를 큐에 보관하고 빈 큐에서만 재생한다 — 온라인 순서·결정성 불변");
+    freshModal(X);
+    const before2=J([Bx.round,Bx.phase]);
     X.netAction({t:"pass"}); X.drain(20000);
-    ok(J([Bx.round,Bx.phase])!==before,"F6b 재생이 끝나면 정상적으로 넘어간다 (잠금이 기능을 죽이지 않았다)");
+    ok(J([Bx.round,Bx.phase])!==before2,"F6d 재생이 끝나면 정상적으로 넘어간다 (잠금이 기능을 죽이지 않았다)");
     X.TQ.length=0;
   }
   /* F7 (P2 :1556) 복제 객체·중복 id 로 실행하면 두 말이 한 칸에 겹치고 주 행동만 소모되던 결함 */

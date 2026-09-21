@@ -183,26 +183,9 @@ window.netCancelQueue=function(){
   showToast("🌐 매칭을 취소했습니다. 배치는 유지됩니다.");
   render();
 };
-/* 사전 배치 적용 — 데이터는 항상 플레이어 0 진영(11~13행) 기준, p=1이면 행 미러링(r→14−r).
-   손상 데이터는 무작위 대체(양측 동일 데이터·동일 시드 → 동일 결과, 락스텝 유지) */
-function applyNetSetup(p,data){
-  const mine=S.pieces.filter(x=>x.owner===p);
-  const ok=data&&Array.isArray(data.roster)&&data.roster.length===6
-    &&new Set(data.roster).size===6&&data.roster.every(id=>ROSTER.some(r=>r.id===id))
-    &&Array.isArray(data.pos)&&data.pos.length===mine.length
-    &&data.pos.every(q=>Array.isArray(q)&&zoneOf(0).includes(q[0])&&q[1]>=1&&q[1]<=COLS)
-    &&new Set(data.pos.map(q=>q[0]+"_"+q[1])).size===data.pos.length;
-  if(!ok){
-    S.roster[p]=[]; fillRosterRandom(p);
-    const cells=[]; for(const r of zoneOf(p)) for(let c=1;c<=COLS;c++) cells.push([r,c]);
-    shuffle(cells);
-    mine.forEach((x,i)=>{x.r=cells[i][0]; x.c=cells[i][1]; x.placed=true;});
-    addLog(`🌐 ${pname(p)} 배치 데이터 손상 — 무작위 배치로 대체`,"sys");
-    return;
-  }
-  S.roster[p]=data.roster.slice(); applyRoster(p);
-  mine.forEach((x,i)=>{ x.r=(p===1)?(ROWS+1-data.pos[i][0]):data.pos[i][0]; x.c=data.pos[i][1]; x.placed=true; });
-}
+/* 사전 배치 적용 — #245: 검증·적용·손상 대체는 전부 Core 의 netSetup 액션이 소유한다 (회선 값의 신뢰 경계 한 곳).
+   네트워크 계층에 남는 것은 "받은 것을 그대로 넘긴다"는 한 줄뿐이다. */
+function applyNetSetup(p,data){ return dispatchCoreAction({t:"netSetup",player:p,data}); }
 /* 접속·매칭·시작 — 내부망(LAN) 전용 구성 (#63 안전 접속)
    기본 주소: 서버가 서빙한 페이지(http/https)라면 그 host가 곧 릴레이 서버다. html 파일을 직접 연
    경우(file://)에는 알 수 있는 주소가 없으므로 "이 PC"(127.0.0.1:8080)만 가정한다 — 특정 개발 PC의
@@ -584,38 +567,39 @@ function netApplyRoomState(data,isResumeFrame){
 }
 function netBuildAuthoritativeBoard(data){
   NET.mode=true; NET.started=true; NET.preparing=false; // #217 온라인 마스킹·netActor·modal 동기화 배선을 켠다 — 레거시 hello/hello2 브리지는 공개 방 경로에서 쓰지 않는다
-  S.mode="pvp"; S.phase=(data.phase==="over")?"over":"play";
-  if(typeof data.current==="number") S.current=data.current;
-  if(typeof data.turnCount==="number") S.turnCount=data.turnCount;
-  S.mainUsed=!!data.mainUsed; S.battlesUsed=data.battlesUsed||0;
   const you=data.you||{};
   const units=Array.isArray(data.units)?data.units:[];
-  S.pieces=(Array.isArray(you.pieces)?you.pieces:[]).map(netStubPiece).concat(units.map(netStubPiece));
-  /* 서버가 보낸 상대 말은 전부 이 좌석에게 보이는 말이다(등급 A는 레코드 자체가 없다). 원본 visibleTo()가 모르는
-     일시 공개(숲 충돌 tempReveal 등)도 서버 판정을 그대로 따르도록, 받은 상대 말 id를 일시 공개 집합으로 둔다. */
-  S.tempReveal=new Set(units.map(u=>u.id));
-  S.inv[NET.me]=Array.isArray(you.inv)?you.inv.slice():[];
-  S.balls[NET.me]=typeof you.balls==="number"?you.balls:0;
-  S.reserve[NET.me]=you.reserve?netStubPiece(you.reserve):null;
-  if(you.pkgs) S.pkgs[NET.me]=Object.assign({itemGift:0,battleBuff:0},you.pkgs);
-  if(typeof you.teleUsed==="number") S.teleUsed[NET.me]=you.teleUsed;
-  const byId=id=>id==null?null:(S.pieces.find(p=>p.id===id)||null);
-  S.selected=byId(you.selected);
-  /* 행동 좌석 전용 턴 결정 상태(텔레포트 단계·강제 전투 대상·이동한 말·접촉 집합) — 서버가 data.turn으로 줄 때만 반영한다.
-     없으면 원본 기본값(없음)으로 둔다. */
-  const turn=data.turn&&typeof data.turn==="object"?data.turn:null;
-  S.teleport=turn&&turn.teleport?{stage:turn.teleport.stage===2?2:1,piece:byId(turn.teleport.piece)}:null;
-  S.forcedTargets=turn&&Array.isArray(turn.forcedTargets)?turn.forcedTargets.slice():[];
-  S.forcedQueue=turn&&typeof turn.forcedQueue==="number"&&turn.forcedQueue>0?Array.from({length:turn.forcedQueue},()=>({pid:null})):[];
-  S.movedPiece=turn?byId(turn.movedPiece):null;
-  S.firstBattleWonByMover=!!(turn&&turn.firstBattleWonByMover);
-  S.contactSet=turn&&Array.isArray(turn.contactSet)?turn.contactSet.slice():[];
-  S.events=(Array.isArray(data.events)?data.events:[]).map(e=>({r:e.r,c:e.c,kind:e.kind,consumed:false}));
-  S.traces[NET.me]=new Set((Array.isArray(data.events)?data.events:[]).map(e=>e.r+"_"+e.c));
-  S.fleePick=data.fleePick?{owner:data.fleePick.owner,cands:Array.isArray(data.fleePick.cands)?data.fleePick.cands:[],token:0,pieceId:data.fleePick.pieceId!=null?data.fleePick.pieceId:null}:null;
+  /* #245 재수화의 경계: 회선 레코드 → 게임 객체 **해독**은 프로토콜이라 여기 남고(netStubPiece·netSynthBattle),
+     그 결과가 **상태가 되는 자리**는 Core 의 hydrate 액션 하나다. 어떤 칸을 덮어쓸 수 있는지는 reducer 가 정하므로
+     네트워크 계층이 임의의 상태 칸을 쓰는 경로가 없다. */
+  const view={
+    phase:(data.phase==="over")?"over":"play",
+    current:typeof data.current==="number"?data.current:null,
+    turnCount:typeof data.turnCount==="number"?data.turnCount:null,
+    mainUsed:!!data.mainUsed, battlesUsed:data.battlesUsed||0,
+    pieces:(Array.isArray(you.pieces)?you.pieces:[]).map(netStubPiece).concat(units.map(netStubPiece)),
+    /* 서버가 보낸 상대 말은 전부 이 좌석에게 보이는 말이다(등급 A는 레코드 자체가 없다). 원본 visibleTo()가 모르는
+       일시 공개(숲 충돌 tempReveal 등)도 서버 판정을 그대로 따르도록, 받은 상대 말 id를 일시 공개 집합으로 둔다. */
+    tempReveal:units.map(u=>u.id),
+    inv:Array.isArray(you.inv)?you.inv.slice():[],
+    balls:typeof you.balls==="number"?you.balls:0,
+    reserve:you.reserve?netStubPiece(you.reserve):null,
+    pkgs:you.pkgs?Object.assign({itemGift:0,battleBuff:0},you.pkgs):null,
+    teleUsed:typeof you.teleUsed==="number"?you.teleUsed:null,
+    selected:you.selected,
+    /* 행동 좌석 전용 턴 결정 상태(텔레포트 단계·강제 전투 대상·이동한 말·접촉 집합) — 서버가 data.turn으로 줄 때만 반영한다.
+       없으면 원본 기본값(없음)으로 둔다. */
+    turn:data.turn&&typeof data.turn==="object"?data.turn:null,
+    events:(Array.isArray(data.events)?data.events:[]).map(e=>({r:e.r,c:e.c,kind:e.kind,consumed:false})),
+    fleePick:data.fleePick?{owner:data.fleePick.owner,cands:Array.isArray(data.fleePick.cands)?data.fleePick.cands:[],token:0,pieceId:data.fleePick.pieceId!=null?data.fleePick.pieceId:null}:null,
+    battle:data.battle?netSynthBattle(data.battle,you):null,
+    modal:data.modal||null,
+    log:Array.isArray(data.log)?data.log.map(l=>({msg:l.msg,cls:l.cls})):null, // 이 좌석 시점 엔진의 보드 로그(protocol v4 §7)
+    result:data.result?{winner:data.result.winner!=null?data.result.winner:null,
+      winType:data.result.winType||(data.result.type==="FORFEIT"?"forfeit":data.result.type==="NO_CONTEST"?"nocontest":null)}:null};
+  dispatchCoreAction({t:"hydrate",seat:NET.me,view});
   if(data.battle){
     const bid=typeof data.battle.battleId==="number"?data.battle.battleId:"live"; // public-view-delta §3 확정 계약: battle.battleId 가 fx battleId 와 같다 (없으면 무대 연결 없는 라이브 표시)
-    S.battle=netSynthBattle(data.battle,you);
     NET.fxLiveBid=bid;
     NET.fxBattleSnaps[bid]={battle:data.battle,you:{pieces:you.pieces,reserve:you.reserve},rev:NET.revision};
     const keys=Object.keys(NET.fxBattleSnaps).filter(k=>/^\d+$/.test(k)).map(Number).sort((x,y)=>x-y);
@@ -626,16 +610,11 @@ function netBuildAuthoritativeBoard(data){
     let extra=keys.length-4;
     for(const k of keys){ if(extra<=0) break; if(keep.has(k)) continue; delete NET.fxBattleSnaps[k]; extra--; }
     if(!NET.fxDisp[bid]) NET.fxDisp[bid]={A:{hp:S.battle.fa.hp,sh:S.battle.fa.shield||0},D:{hp:S.battle.fd.hp,sh:S.battle.fd.shield||0}};
-  } else { S.battle=null; NET.fxLiveBid=null; }
-  S._pendingModal=data.modal||null; // #217 v3 — 2차 선택 화면(탐색 보상·패키지 개봉 등), netSyncOverlays()가 그린다
-  if(Array.isArray(data.log)) S.log=data.log.map(l=>({msg:l.msg,cls:l.cls})); // 이 좌석 시점 엔진의 보드 로그(protocol v4 §7)
+  } else NET.fxLiveBid=null;
   NET.finalReveal=data.state==="FINISHED"; // public-view-delta §5: FINISHED 뷰는 살아 있는 모든 상대 말을 위치·정체까지 보낸다(#11 종료 공개)
-  if(data.result){
-    S.winner=data.result.winner!=null?data.result.winner:null;
-    S.metrics.winType=data.result.winType||(data.result.type==="FORFEIT"?"forfeit":data.result.type==="NO_CONTEST"?"nocontest":null);
-    NET.result=data.result;
-  } else NET.result=null;
+  NET.result=data.result||null;
 }
+
 /* ===== #217 공개 방 표시 계층 — 서버 fx 이벤트 재생(Jupiter/battle-fx-protocol.md v3 §6·§7) =====
    규칙 판정은 서버만 한다. 이 계층은 서버가 보낸 표시 이벤트를 원본 로컬 연출과 **같은 순서·같은 시간**으로 재생한다.
    · 무대 수명(visible stage) — 전투 오버레이는 "최신 스냅샷"이 아니라 **지금 재생 중인 이벤트의 battleId**가 소유한다.
@@ -835,7 +814,7 @@ window.netRoomReady=function(flag){
   if(NET.roomState==="SETUP") netSendCmd("unready");
   render();
 };
-window.netLeaveRoom=function(){ NET.explicitLeave=true; netClearResume(); if(NET.roomId) netSendCmd("leave"); netLeave(); newGame("pvp"); S.phase="menu"; render(); netListRooms(); };
+window.netLeaveRoom=function(){ NET.explicitLeave=true; netClearResume(); if(NET.roomId) netSendCmd("leave"); netLeave(); newGame("pvp",{phase:"menu"}); render(); netListRooms(); };
 /* ===== #217 재접속(bounded resume) — Venus 구현 승인(implementation-approval.md "재접속 유예(60초)")에 따른 자동 재개.
    대상은 명시적 leave가 아닌 소켓 단절(비의사)뿐이다. 유예 60초 안에서 3초 간격으로 재시도하고, 회복 불가능한
    서버 오류나 유예 만료 시 방 목록으로 돌아간다. 재개는 credential(r-<epoch>.<seatToken>, protocol.md v2 §1)
@@ -846,7 +825,7 @@ function netClearResume(){
   NET.resuming=false; NET.resumeDeadline=0; NET.resumeAttempts=0; NET.resumeTimer=null; NET.resumeLastAttempt=0;
 }
 function netBeginResume(){
-  if(!NET.roomId||!NET.seatToken||!NET.epoch){ netLeave(); newGame("pvp"); S.phase="menu"; render(); return; } // 재개할 좌석 정보가 없으면 조용히 방 목록으로
+  if(!NET.roomId||!NET.seatToken||!NET.epoch){ netLeave(); newGame("pvp",{phase:"menu"}); render(); return; } // 재개할 좌석 정보가 없으면 조용히 방 목록으로
   NET.resuming=true; NET.resumeDeadline=Date.now()+NET_RESUME_GRACE_MS; NET.resumeAttempts=0; NET.resumeLastAttempt=0;
   render();
   netResumeAttempt();
@@ -877,7 +856,7 @@ function netResumeAttempt(){
 function netAbandonResume(msg){
   netClearResume();
   showToast(msg);
-  netLeave(); newGame("pvp"); S.phase="menu"; render();
+  netLeave(); newGame("pvp",{phase:"menu"}); render();
 }
 function netResumeExpire(){ netAbandonResume("🌐 연결이 끊겼습니다. 방 목록으로 돌아가 다시 참가해 주세요."); netListRooms(); }
 window.netCancelResume=function(){ netAbandonResume("🌐 재접속을 취소했습니다."); netListRooms(); };
@@ -938,7 +917,7 @@ function netSynthBattle(bd,you){
   B.mySide=a.owner===NET.me?"A":"D";
   return B;
 }
-function actorOfPhaseOf(B){ const s=S.battle; S.battle=B; try{ return actorOfPhase(); } finally{ S.battle=s; } }
+function actorOfPhaseOf(B){ return actorOfPhase(Object.assign({},S,{battle:B})); } // #245: 전역 S 를 잠시 갈아끼우지 않고 판정 보드를 인자로 넘긴다
 /* 무대 렌더 — bid가 진행 중 전투면 S.battle(라이브)로, 지난 전투면 그 전투의 마지막 스냅샷으로 그린다. 그릴 스냅샷이 없으면 false. */
 function netRenderBattleStage(bid){
   const live=!!S.battle&&bid===NET.fxLiveBid;
@@ -950,8 +929,10 @@ function netRenderBattleStage(bid){
   if(dd){ if(dd.A&&dd.A.hp!==undefined){ B.dispHpA=dd.A.hp; B.dispShA=dd.A.sh||0; } if(dd.D&&dd.D.hp!==undefined){ B.dispHpD=dd.D.hp; B.dispShD=dd.D.sh||0; } }
   const m=NET.battleMenu;
   B.menu=(live&&m&&m.bid===bid&&m.actSeq===B.actSeq&&m.round===B.round&&m.phase===B.phase)?m.menu:null; // 같은 행동 차례 안에서만 하위 메뉴 유지
-  const saved=S.battle; S.battle=B;
-  try{ battleModal(); } finally{ if(!live) S.battle=saved; }
+  /* #245 Saturn REVISE(M2): 지난 전투 스냅샷을 그리려고 전역 S.battle 을 잠시 갈아끼우던 자리.
+     그 대입은 공개 방 엔진의 S.battle 접근자에 '새 전투 시작'으로 읽혀 battleId·표시 이벤트를 발급했고,
+     되돌리는 사이에 끼어든 어떤 관찰도 거짓 상태를 봤다. 이제 그릴 보드를 인자로 넘긴다 — 권위 상태는 움직이지 않는다. */
+  battleModal(B);
   const core=window.__menu;
   window.__menu=key=>{ if(live) NET.battleMenu={bid,actSeq:B.actSeq,round:B.round,phase:B.phase,menu:key||null}; if(core) core(key); };
   if(!live){ try{ const ob=$("overlayBox"); if(ob&&ob.querySelectorAll) Array.prototype.forEach.call(ob.querySelectorAll("button"),b=>{ if(b.id!=="bmenuBack") b.disabled=true; }); }catch(e){} }
@@ -1105,7 +1086,6 @@ function netStart(seed,setups){
   startMode("pvp"); // 공유 시드로 게임 재생성
   applyNetSetup(0,setups[0]); // 양측 사전 배치 적용 (setups: [P1, P2] — 양쪽 동일 순서)
   applyNetSetup(1,setups[1]);
-  S.selected=null;
   addLog(`🌐 온라인 매치 시작 — 당신은 P${NET.me+1}입니다 (자기 진영이 화면 아래). 양측 사전 배치가 적용되었습니다.`,"sys"); // #93 양측 모두 자기 진영 하단
   showToast(`🌐 매칭 완료! 당신은 P${NET.me+1} — 자기 진영이 화면 아래입니다`);
   beginPlay(); // 무작위 선공(시드) → 바로 플레이 시작

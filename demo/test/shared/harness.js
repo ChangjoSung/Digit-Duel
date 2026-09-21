@@ -307,7 +307,13 @@ function load(htmlPath,opts){
   finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,archSkills,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,aiUnitValue,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
-  applyAction,resolveCoreAction:typeof resolveCoreAction==="function"?resolveCoreAction:undefined,reduceCoreAction:typeof reduceCoreAction==="function"?reduceCoreAction:undefined,dispatchCoreAction:typeof dispatchCoreAction==="function"?dispatchCoreAction:undefined,commitCoreState:typeof commitCoreState==="function"?commitCoreState:undefined,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼 · #245 점진 Core 경계
+  applyAction,resolveCoreAction:typeof resolveCoreAction==="function"?resolveCoreAction:undefined,reduceCoreAction:typeof reduceCoreAction==="function"?reduceCoreAction:undefined,dispatchCoreAction:typeof dispatchCoreAction==="function"?dispatchCoreAction:undefined,commitCoreState:typeof commitCoreState==="function"?commitCoreState:undefined,
+  /* #245 Saturn REVISE(M3): 규칙 이벤트의 소유자(Core)와 그 소비 루프 — 화면 없이 규칙 진행을 검증하는 경로 */
+  applyCoreEffects:typeof applyCoreEffects==="function"?applyCoreEffects:undefined,runCoreEvents:typeof runCoreEvents==="function"?runCoreEvents:undefined,
+  emitCore:typeof emitCore==="function"?emitCore:undefined,UI_PORT:typeof UI_PORT!=="undefined"?UI_PORT:undefined,
+  battleSideOf:typeof battleSideOf==="function"?battleSideOf:undefined,entryStep:typeof entryStep==="function"?entryStep:undefined,
+  AI:typeof AI!=="undefined"?AI:undefined,aiMem:typeof aiMem==="function"?aiMem:undefined,aiCloneBoard:typeof aiCloneBoard==="function"?aiCloneBoard:undefined, // #245 M2 AI 어댑터 기록·사본 보드
+  boardCellOk:typeof boardCellOk==="function"?boardCellOk:undefined,movablePiece:typeof movablePiece==="function"?movablePiece:undefined,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼 · #245 점진 Core 경계
   recruitCandidates:typeof recruitCandidates==="function"?recruitCandidates:undefined,aiRecruitSlot:typeof aiRecruitSlot==="function"?aiRecruitSlot:undefined, // #92 (기준판 로드 호환: 없으면 undefined)
   atkElOf:typeof atkElOf==="function"?atkElOf:undefined,skillNameKo:typeof skillNameKo==="function"?skillNameKo:undefined,recruitModal:typeof recruitModal==="function"?recruitModal:undefined,
   SKILL_TIER_KO:typeof SKILL_TIER_KO!=="undefined"?SKILL_TIER_KO:undefined,
@@ -450,7 +456,8 @@ function runSim(T,levels,seed,opts){
     T.TQ.shift()(); n++;
     if(opts.trace) opts.trace(T,n);
     if(opts.check&&(n%opts.check===0)){ const v=invariants(T); if(v.length){viol.push(...v.map(x=>"t"+T.S.turnCount+" "+x));} }
-    if(T.S.aiLastThinkMs!==undefined){think.push(T.S.aiLastThinkMs); T.S.aiLastThinkMs=undefined;}
+    /* #245 M2: 사고 시간은 게임 상태가 아니라 AI 어댑터 기록이다 (AI.lastThinkMs) */
+    const mem=T.AI; if(mem&&mem.lastThinkMs){ think.push(mem.lastThinkMs); mem.lastThinkMs=0; }
     if(n>=(opts.cap||5000000)) break;
   }
   const v=invariants(T); if(v.length) viol.push(...v);

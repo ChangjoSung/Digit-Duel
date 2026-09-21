@@ -111,7 +111,12 @@ const V2_TIMED_KEYS = Object.freeze(['absorbR', 'spdBuffR', 'evadeDownR', 'healC
 function lockstepDigest(T) {
   const S = T.S;
   const B = S.battle;
-  const sm = T.NET.syncModal;
+  /* #245 의도적 digest 스키마 변경 — 종전 `modalSeq`/`sync`는 ui.js·network.js 가 서버에 실려 있을 때의
+     **표시 계층 부산물**(NET.modalSeq 와 NET.syncModal.fns 개수)이었다. 그 두 파일이 권위 런타임에서 빠지면서
+     같은 사실을 Core 결정 상태가 직접 들고 있다: 출전 보류 결정(S.entryPick) · 패키지 표(S.battle.pkgSel) ·
+     탐색 보상 단계(S.recruit). 요약이 덮는 범위는 **넓어졌다** — 종전에는 버튼 개수만 봤지만 이제 어느 단계·
+     어느 표인지까지 본다. 두 좌석 엔진이 다른 화면에 서 있으면 그 자리에서 갈린다(fail-closed VOID). */
+  const EP = S.entryPick, PS = B && B.pkgSel;
   // #233 — 전투원이 지니는 8스탯(3.2·3.3·3.5). 등급 성장(3.4)과 포획·예비 승계로 값이 갈릴 수 있어 함께 본다.
   const stats = (f) => [f.def || 0, f.spd || 0, f.dodge || 0, f.crit || 0, f.statusPct || 0,
     f.grade === undefined ? null : f.grade];
@@ -267,7 +272,9 @@ function lockstepDigest(T) {
     reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x), num(x.reaperSeal)] : null)),
     pkgs: S.pkgs.map((p) => Object.assign({}, p)), teleUsed: (S.teleUsed || []).slice(),
     traces: S.traces.map((t) => [...t].sort()), tempReveal: [...(S.tempReveal || [])].sort(), winner: S.winner,
-    modalSeq: T.NET.modalSeq, sync: sm ? { seq: sm.seq, owner: sm.owner, n: sm.fns ? sm.fns.length : 0 } : null,
+    modalSeq: T.__modal ? T.__modal.seq : 0,
+    entryPick: EP ? [EP.attId, EP.defId, EP.stage, EP.A, EP.D] : null,
+    pkgSel: PS ? [PS.kind, PS.owner, PS.id, PS.round, PS.side, PS.seq, PS.phase] : null,
     // #233 — 본체 출전이면 말 자체가 전투원이라 8스탯(3.3·3.5)과 등급이 말에 남는다. 포획 하수인(cap)도 같은
     // 스탯을 승계해 대리 출전하므로(3.3) cap 튜플도 함께 넓힌다.
     pieces: S.pieces.map((p) => [p.id, p.owner, p.type, p.rosterId, p.element, p.hp, p.maxHp, p.r, p.c, p.placed, p.alive,
@@ -547,7 +554,7 @@ class Room {
     try {
       engines = [createEngine(), createEngine()];
       engines.forEach((T, seat) => {
-        withEngine(T, () => { T.NET.me = seat; T.netStart(seed, setups); });
+        withEngine(T, () => { T.host.seat = seat; T.netStart(seed, setups); }); // #245 좌석 시점은 호스트 포트가 준다(종전 NET.me)
         this._assertSetupApplied(T, setups);
       });
       const d0 = lockstepDigest(engines[0]), d1 = lockstepDigest(engines[1]);
@@ -608,29 +615,27 @@ class Room {
     }
   }
 
-  // 지금 입력을 기다리는 동기화 모달(버튼이 있는 2차 선택 화면). 소유자 좌석의 엔진 DOM에서 실제로 떠 있는지 확인한다:
-  // syncModal이 남아 있어도 (a) 이미 그 seq를 처리했거나 (b) 오버레이가 닫혔거나 (c) 다른 모달이 버튼을 교체했으면
-  // 대기 중이 아니다(close()는 NET.syncModal을 지우지 않는다).
+  // 지금 입력을 기다리는 동기화 모달(버튼이 있는 2차 선택 화면). 이미 그 seq를 처리했으면 대기 중이 아니다.
+  // #245 — 종전에는 소유자 좌석 엔진의 **DOM**(overlay/obBtns/overlayBox)을 긁어 이 값을 만들었다. 권위 런타임이
+  // 규칙 3종만 싣게 되면서 그 DOM 이 사라졌고, 같은 값을 engine.js 의 호환 직렬화(uicompat.pendingModal)가 Core
+  // 결정 상태(S.entryPick · S.battle.pkgSel · S.recruit)에서 만든다. 회선 모양·좌석 경계는 그대로다:
+  // 두 좌석 엔진이 같은 화면을 같은 seq 로 들고 있을 때만 대기 중으로 보고, 문구·버튼은 소유자에게만 나간다.
   _pendingModal() {
     if (!this.engines) return null;
-    const sm0 = this.engines[0].NET.syncModal;
-    if (!sm0 || !sm0.fns || !sm0.fns.length) return null;
-    if (this._consumedModalSeq === sm0.seq) return null;
-    const owner = sm0.owner;
+    const M0 = this.engines[0].__modal;
+    if (!M0 || !M0.view) return null;
+    if (this._consumedModalSeq === M0.seq) return null;
+    const owner = M0.view.owner;
     if (owner !== 0 && owner !== 1) return null;
-    const To = this.engines[owner];
-    const sm = To.NET.syncModal;
-    if (!sm || sm.seq !== sm0.seq || !sm.fns || sm.fns.length !== sm0.fns.length) return null;
-    const overlay = To.byId('overlay');
-    if (!overlay || overlay.classList.contains('hidden')) return null;
-    const kids = To.byId('obBtns').children;
-    if (kids.length !== sm.fns.length) return null;
-    const box = To.byId('overlayBox');
+    const Mo = this.engines[owner].__modal;
+    // 좌석 엔진이 갈리면(같은 입력에 다른 화면) 대기 중으로 보지 않는다 — 종전 sm.seq/길이 대조와 같은 자리.
+    if (!Mo || !Mo.view || Mo.seq !== M0.seq || Mo.view.buttons.length !== M0.view.buttons.length) return null;
+    const btns = Mo.view.buttons;
     return {
-      seq: sm.seq, owner, count: sm.fns.length,
-      disabled: kids.map((b) => !!b.disabled),
-      html: box ? String(box.innerHTML).replace(/<div class="row" id="obBtns"><\/div>\s*$/, '') : '',
-      buttons: kids.map((b) => ({ text: b.textContent, disabled: !!b.disabled })),
+      seq: Mo.seq, owner, count: btns.length,
+      disabled: btns.map((b) => !!b.disabled),
+      html: Mo.view.html,
+      buttons: btns.map((b) => ({ text: b.text, disabled: !!b.disabled })),
     };
   }
 
@@ -794,15 +799,15 @@ class Room {
     return this.engines.map((T) => JSON.stringify(T.S) + '#' + lockstepDigest(T)).join('|');
   }
 
-  // 판정을 통과한 입력을 두 좌석 엔진에 같은 순서로 적용한다(락스텝). NET.replaying=true는 원본 수신측 재생과 같은
-  // 모드 — 행동자 화면 전용 로컬 팝업(메모 피커)을 열지 않는다.
+  // 판정을 통과한 입력을 두 좌석 엔진에 같은 순서로 적용한다(락스텝). replaying=true는 원본 수신측 재생과 같은
+  // 모드 — 행동자 화면 전용 로컬 팝업(메모 피커)을 열지 않는다. (#245: 종전 NET.replaying 자리, 호스트 포트로 이동)
   _apply(seatIndex, action) {
     const before = this._stateFingerprint();
     try {
       for (const T of this.engines) {
         withEngine(T, () => {
-          T.NET.replaying = true;
-          try { T.applyAction(action); } finally { T.NET.replaying = false; }
+          T.host.replaying = true;
+          try { T.applyAction(action); } finally { T.host.replaying = false; }
         });
       }
       if (action.t === 'modal') this._consumedModalSeq = action.seq;

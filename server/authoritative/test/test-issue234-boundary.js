@@ -13,19 +13,12 @@ const H = require('./helpers');
 const { both, byId, snap, act, lockstepDigest } = H;
 const { ok, done } = H.makeCounter('issue234-boundary');
 
-function minionPair(T, cur) {
-  return {
-    att: T.S.pieces.find((p) => p.owner === cur && p.type === 'minion' && p.alive).id,
-    def: T.S.pieces.find((p) => p.owner === 1 - cur && p.type === 'minion' && p.alive).id,
-  };
-}
 function battleRoom(seed) {
   const room = H.startedRoom(seed);
   const T = room.engine;
   const cur = T.S.current;
-  const ids = minionPair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
-  if (!T.S.battle || room._pendingModal()) throw new Error('fixture: minion battle did not open directly');
+  const ids = H.openBattle(room); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다(helpers.openBattle)
+  if (room._pendingModal()) throw new Error('fixture: minion battle did not open directly');
   return { room, T, cur, ids };
 }
 // 좌석1 엔진에서만 fn 을 적용하고 두 요약이 갈리는지 본 뒤, undo 로 되돌려 다시 같아지는지 확인한다.
@@ -172,7 +165,7 @@ function diverges(room, fn, undo) {
   const openRecruit = (stage) => both(room, (E) => {
     E.S.recruit = { owner: cur, pieceId: pid, species: E.ROSTER[0].id, stage, skill: stage === 'target' || stage === 'slot' ? E.NEW_SKILLS[0] : null,
       targetId: stage === 'slot' ? pid : null, recvId: null, token: pid + '#1' };  // #245: 토큰은 발급형("말id#발급번호")이어야 한다
-    E.recruitModal();
+    // #245 화면을 따로 열지 않는다 — 동기화 모달은 이 Core 결정 상태에서 그대로 파생된다(withEngine 끝의 refreshModal).
   });
   openRecruit('root');
   let pm = room._pendingModal();
@@ -338,7 +331,7 @@ function reaperRoom(seed, setup) {
     for (const f of [B.fa, B.fd]) { f.maxHp = 9999; f.hp = 9999; f.shock = 0; f.vanguardTurn = 0; }
     B.fa.spd = 1; B.fd.spd = 99;
     B.firstSide = E.decideFirstSide(B); B.firstSideR1 = B.firstSide;
-    E.battleModal(); // 선턴을 바꿨으면 행동 메뉴를 새 행위자로 다시 그린다(test-authority-rules P0-1c 선례) — 없으면 act 가 noop
+    // #245 행동 메뉴를 다시 그릴 필요가 없다 — 전투 명령은 Core 가 상태에서 직접 판정한다(렌더된 버튼 경유 아님)
   });
   ok(T.S.battle.firstSideR1 === 'D', '전제: R1 선턴은 빠른 D: ' + T.S.battle.firstSideR1);
   const restored = (seat) => { const b = room.toSeatView(seat).battle; return b.phase === 0 ? b.actor : flip(b.actor); };

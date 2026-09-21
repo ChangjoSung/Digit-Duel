@@ -56,7 +56,8 @@ let RNG=null; // null → Math.random (테스트 하네스의 Math.random 오버
 function rand(){return RNG?RNG():Math.random();}
 function mulberry32(a){return function(){a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296;};}
 function setSeed(seed){RNG=(seed===null||seed===undefined)?null:mulberry32(Number(seed)>>>0); return RNG;}
-window.setSeed=setSeed;
+/* #245 Saturn REVISE(M1): 종전 window.setSeed 미러는 지웠다 — classic script 최상위 함수 선언은 이미 전역이라
+   같은 이름을 가리키는 중복이었고, 그 한 줄 때문에 data.js 가 빈 VM 에서 ReferenceError 로 죽었다. */
 /* ===== #21 AI 난이도: grade5(5급 — 휴리스틱 기준선) / dan5(5단 — 탐색·추론 기반 강AI) ===== */
 const AI_LEVEL_KO={grade5:"5급",dan5:"5단"};
 /* #233 (GDD-23 4.1): 실제 플레이 가능 속성은 여전히 4종이다 — 땅(land)은 상성 순환표에는 들어가지만
@@ -123,14 +124,15 @@ const NEW_SKILLS=["dragon_breath","witch_prank","reaper_scythe"]; // 계약 4.2 
    이 게이트를 풀지 못한다. cd:0 으로 등록해 쿨 감소 경로가 이 슬롯을 아예 집지 않게 하고, 게이트만 단일 조건으로 둔다.
    조건: (1) 전투가 그 라운드에 도달했다 (2) 시간의 수호자로 3라운드가 된 전투가 아니다 (3) 내 HP 비율 < 상대 HP 비율 (strict).
    매 사용 시점에 최신 상태로 다시 검사한다 — 반환값을 캐시하지 않는다. 반환: null(가능) 또는 불가 이유 문자열. */
-function reaperWhy(side){
-  const B=S.battle; if(!B) return "전투 중에만 사용할 수 있습니다";
+/** @param {BattleSide} side @param {GameState} [state] @returns {string|null} */
+function reaperWhy(side,state){ // #245: 선택적 말미 state 인자 (기본 S) — 지난 전투 스냅샷 렌더가 전역 S.battle 을 읽지 않게
+  const ST=state||S, B=ST.battle; if(!B) return "전투 중에만 사용할 수 있습니다";
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   /* #234 REVISE 2차 CJ 결정(2026-09-17) 전투를 넘는 봉인 — 말(전투원 객체) 단위 f.reaperSeal: 2=이번 전투에서 사용(다음 참전 전투 봉인) ·
      1=지난 참전 전투에서 사용해 이번 전투 봉인 · 0=없음. startRounds 가 참전 시 1 씩 줄인다. 쿨링수·⌛ 감소와 무관하다 */
   if(f.reaperSeal===1) return "지난 전투에서 사용 — 이번 전투는 봉인 (다음 전투부터 사용 가능)";
   if(f.reaperSeal===2) return "이번 전투에서 이미 사용했습니다";
-  const cap=battleMaxRounds();
+  const cap=battleMaxRounds(ST);
   if(cap<BAL.reaperRound) return `이 전투는 ${cap}라운드까지입니다 — 봉인 해제 불가`; // 시간의 수호자 3R 전투
   if(B.round<BAL.reaperRound) return `${BAL.reaperRound}라운드부터 (현재 ${B.round}R) — 봉인`;
   const mine=f.hp/f.maxHp, theirs=opp.hp/opp.maxHp;
@@ -138,19 +140,21 @@ function reaperWhy(side){
   return null;
 }
 /* 이 슬롯을 지금 실제로 쓸 수 있는가 — 쿨 + 기술 고유 게이트. 사람 UI·AI·기본 공격 폴백이 모두 이 한 함수를 본다 */
-function slotUsable(f,i,side){
+/** @param {any} f @param {number} i @param {BattleSide=} side @param {GameState} [state] @returns {boolean} */
+function slotUsable(f,i,side,state){ // #245: 선택적 말미 state 인자 (기본 S)
   if(!f.skills||f.cds[i]>0) return false;
-  const B0=S.battle; // #241 R1 번개 꼬리 추가 공격 중 — 허용 슬롯(기본기 · 2차 · 3차)만 합법 (사람 UI · AI · 서버가 같은 함수를 본다)
+  const B0=(state||S).battle; // #241 R1 번개 꼬리 추가 공격 중 — 허용 슬롯(기본기 · 2차 · 3차)만 합법 (사람 UI · AI · 서버가 같은 함수를 본다)
   if(B0&&B0.bonus&&B0.bonus.stage==="active"&&(side===B0.bonus.side||(side===undefined&&f===(B0.bonus.side==="A"?B0.fa:B0.fd)))&&!B0.bonus.allowed.includes(i)) return false;
   const sk=SKILLS[f.skills[i]];
   if(sk&&sk.v2){ // #234: 수면 포자(기본기만) · 전투당 1회 · 사용 조건(번개 발도·지하 매복·태고의 각성)
     if(f.sleepNext&&sk.kind!=="basic"&&!sk.reaper) return false; // #234 REVISE 2차 CJ 결정: 사신의 낫은 행동 차단(수면 포자)도 무시
-    if(!v2ReqOk(f,sk,side)) return false; }
-  if(sk&&sk.reaper) return reaperWhy(side)===null;
+    if(!v2ReqOk(f,sk,side,state)) return false; }
+  if(sk&&sk.reaper) return reaperWhy(side,state)===null;
   return true;
 }
 /* 계약 3.3: 이 전투의 최대 라운드 — 전투 인스턴스 값이 있으면 그것, 없으면 전역 BAL.maxRounds (전역 상수는 바꾸지 않는다) */
-function battleMaxRounds(){ const B=S.battle; return (B&&B.maxRounds)||BAL.maxRounds; }
+/** @param {GameState} [state] @returns {number} */
+function battleMaxRounds(state){ const B=(state||S).battle; return (B&&B.maxRounds)||BAL.maxRounds; }
 /* #146 계약: 이 전투원의 도망 성공률 — 🏃 도망의 수호자를 쓴 전투원만 70% 로 **치환**된다 (가산 아님).
    UI 표기·실제 판정·AI 가 모두 이 한 함수를 본다 (표시와 판정이 갈라지지 않는다). */
 function fleeProbOf(f){ return (f&&f.fleeBoost)?BAL.fleeProbGuard:BAL.fleeProb; }
@@ -669,8 +673,9 @@ function v2AfterHit(side,f,opp,oSide,res,ctx){
   if(opp.counterR>0&&res.absorbed>0&&B.reflectSeq!==B.actSeq){ B.reflectSeq=B.actSeq; resolveReflect(oSide,opp,f,side,res.absorbed,0.50); }
 }
 /* 사용 조건 (slotUsable 이 본다) */
-function v2ReqOk(f,sk,side){
-  const B=S.battle;
+/** @param {any} f @param {any} sk @param {BattleSide=} side @param {GameState} [state] @returns {boolean} */
+function v2ReqOk(f,sk,side,state){ // #245: 선택적 말미 state 인자 (기본 S) — slotUsable 이 그리는 보드를 그대로 넘긴다
+  const B=(state||S).battle;
   if(sk.once&&f.onceUsed&&f.onceUsed[sk.id]) return false;
   if(sk.req==="vanguardOnly") return !!B&&B.firstSide===side;
   if(sk.req==="afterBurrow") return !!B&&f.burrowRound>0&&B.round===f.burrowRound+1;
@@ -711,13 +716,8 @@ function v2PreUse(side,f,sk){
     if(checkDeath()) return true; }
   return false;
 }
-/* 스킬 사용 1회 마무리 — 사망 → 해일 예고 검사 → (번개 꼬리) 추가 공격 단계 → 차례 전환 */
-function finishV2(side){ if(!S.battle) return; if(checkDeath()) return; if(v2TideCheck()) return;
-  const B=S.battle;
-  /* #241 R1 [CJ 설계] 번개 꼬리: 턴이 넘어가지 않고 같은 전투원이 한 번 더 고른다(방식 A). nextPhase 를 부르지 않고 actSeq 만 올려
-     이전 렌더의 콜백을 무효로 만든 뒤 같은 행동자의 메뉴를 다시 그린다 — 추가 공격은 두 번째 행동(L15)이다 */
-  if(B.bonus&&B.bonus.side===side&&B.bonus.stage==="pending"){ B.bonus.stage="active"; B.actSeq=(B.actSeq||0)+1; B.pkgSel=null; B.menu=null; battleModal(); return; } // #245 Saturn REVISE 3차: 여기도 행동 토큰이 올라가는 지점이다 — nextPhase 와 같이 열려 있던 개봉 표를 회수한다
-  nextPhase(); }
+/* #245 Saturn REVISE(M1): finishV2 는 전투 상태(B.bonus·actSeq·pkgSel·menu)를 바꾸고 전투 화면을 다시 부르는
+   **규칙 전이**라 Data 가 아니라 Core 가 소유한다 — core.js 로 옮겼다. Data 에는 정의·효과 표만 남는다. */
 /* 번개 꼬리 추가 공격 끝(= 번개 여우의 턴 끝, L8) — 2·3차 ⌛를 사본으로 되돌린다(추가 공격에 쓴 스킬 ⌛ · 쿨타임 디버프 포함 L7·L10·L11) */
 function v2BonusEnd(B){
   const bn=B.bonus; B.bonus=null; if(!bn||bn.stage!=="active") return;
@@ -1045,12 +1045,6 @@ function artDirOfFighter(pf,piece){
   return ART_DIR_SET.has(dir)?dir:null;
 }
 function artOk(dir){return !!dir&&!ART.failed.has(dir);}
-/* 한 번만 예약되는 재그리기 — artFail·artLeaderReady·#201 복구 성공이 이 한 자리를 함께 쓴다.
-   전투 모달을 다시 부르지 않으므로 메시지 재생·FX·전투 타이밍에 재진입하지 않는다 */
-function artRerender(){
-  if(ART.rerender) return;
-  ART.rerender=setTimeout(()=>{ART.rerender=null; try{if(S&&S.phase!=="menu") render();}catch(e){}},0);
-}
 /* ===== #201 (v0.4.8) 일시적 로드 실패 복구 — 표시 계층 전용 =====
    배경: 온라인(HTTP)에서는 자산이 멀쩡히 있어도 서버 요청 한도·순간 혼잡으로 개별 이미지가 한 번 실패할 수 있다.
    종전에는 그 한 번이 ART.failed 에 영구히 남아 그 종만 끝까지 이모지·텍스트로 남았고(왕·동료는 ART.loaded 확인이
@@ -1083,171 +1077,10 @@ function artGone(dir,f){ return !!dir&&ART.gone.has(dir+"/"+f); }
    이 확인이 없으면 "아이콘은 살아 있고 전투 파일만 없는" 종에서 전투창을 열 때마다 없는 파일을 다시 요청하고,
    그 실패가 다시 종 전체를 폴백으로 내리는 왕복이 생긴다 (#201 Saturn 지적). */
 function artBattleOk(dir){ return artOk(dir)&&!artGone(dir,artBattleFile(dir)); }
-/* 그 종에 더 할 일이 남았는가 — 모든 파일이 loaded 이거나 gone 이면 굳는다 */
-function artMarkSettled(dir){
-  const done=artFilesOf(dir).every(f=>ART.loaded.has(dir+"/"+f)||ART.gone.has(dir+"/"+f));
-  if(done) ART.settled.add(dir); else ART.settled.delete(dir);
-}
-/* force = 방금 실제로 실패한 파일. 그 파일은 이미 로드된 적이 있어도 다시 확인한다.
-   나머지 파일은 "아직 확인되지 않은 것"만 부른다 — 멀쩡한 파일을 덤으로 다시 요청하지 않는다.
-   예외 하나: 그 종이 폴백으로 내려가 있으면(ART.failed) 아이콘은 다시 확인한다. 보드 얼굴을 되돌릴 유일한 근거이기 때문이다. */
-function artScheduleRecovery(dir,force){
-  if(!dir) return;
-  if(!ART_DIR_SET.has(dir)&&!LEADER_DIR_SET.has(dir)) return;   // 허용 목록 밖 값으로는 경로를 만들지 않는다
-  for(const f of artFilesOf(dir)){
-    if(f!==force&&ART.loaded.has(dir+"/"+f)&&!(f===artIconFile(dir)&&ART.failed.has(dir))) continue;
-    artScheduleFile(dir,f);
-  }
-}
-function artScheduleFile(dir,f){
-  const k=dir+"/"+f;
-  if(ART.gone.has(k)) return;                                   // 영구 결손 — 다시 조회하지 않는다
-  let st=ART.retry.get(k); if(!st){st={n:0,total:0,timer:null,busy:false,dl:null}; ART.retry.set(k,st);}
-  if(st.timer||st.busy) return;                                 // 예약됐거나 조회 중 — 파일당 한 벌 (능동 마감이 busy 를 반드시 푼다)
-  if(st.n>=ART_RETRY.max||st.total>=ART_RETRY.hardMax){ ART.gone.add(k); artMarkSettled(dir); return; }
-  const wait=ART_RETRY.delays[Math.min(st.n,ART_RETRY.delays.length-1)];
-  st.n++; st.total++;
-  st.timer=setTimeout(()=>{ st.timer=null; artProbeFile(dir,f,st); },wait);
-}
-/* 판정은 전부 **이번 조회의 결과**로만 한다 — 지난 프리로드가 남긴 ART.loaded 를 "지금 성공"으로 오해하면
-   실패한 자산을 복구했다고 착각하거나(ART.failed 오삭제), 반대로 폴백을 못 걷어내고 굳는다.
-   끝날 때는 반드시 마감 타이머를 끄고 핸들러를 떼어, 뒤늦게 도착한 이벤트가 상태를 다시 건드리지 못하게 한다. */
-function artProbeFile(dir,f,st){
-  const k=dir+"/"+f;
-  let im=null, fin=false;
-  const finish=loaded=>{
-    if(fin) return; fin=true;
-    st.busy=false;
-    if(st.dl){ try{clearTimeout(st.dl);}catch(e){} st.dl=null; }
-    if(im) try{ im.onload=null; im.onerror=null; }catch(e){}    // 늦게 오는 이벤트를 안전하게 끊는다
-    if(loaded){
-      const isNew=!ART.loaded.has(k);
-      ART.loaded.add(k); st.n=0;                                 // 있다는 것이 확인됐으니 연속 실패 기록을 지운다
-      const wasFailed=ART.failed.has(dir);
-      if(f===artIconFile(dir)&&wasFailed) ART.failed.delete(dir); // 아이콘이 살아났다 → 그 종을 다시 그림으로 돌린다
-      if(isNew||(f===artIconFile(dir)&&wasFailed)) artRerender(); // 얻은 게 있을 때만 다시 그린다 (재그리기 고리 없음)
-      artMarkSettled(dir);
-      return;
-    }
-    if(st.n>=ART_RETRY.max||st.total>=ART_RETRY.hardMax){ ART.gone.add(k); artMarkSettled(dir); return; } // 유한 종료
-    artScheduleFile(dir,f);
-  };
-  st.busy=true;
-  st.dl=setTimeout(()=>{ st.dl=null; finish(false); },ART_RETRY.deadlineMs); // 능동 마감 — 아무 이벤트도 오지 않아도 끝난다
-  try{
-    im=document.createElement("img");
-    im.onload=()=>finish(true);
-    im.onerror=()=>finish(false);
-    im.src=artUrl(dir,f);
-  }catch(e){ finish(false); }
-}
-/* 로드 실패: 그 종만 텍스트·기호 폴백으로 되돌리고 한 번만 다시 그린다. onerror 를 즉시 끊어 재요청 고리를 만들지 않는다.
-   #201: 화면은 종전과 똑같이 즉시 안전 폴백으로 가고, 그와 **별도로** 유한 복구 조회를 예약한다 */
-window.artFail=function(dir,el){
-  if(el) try{el.onerror=null;}catch(e){}
-  if(!dir) return;
-  const first=!ART.failed.has(dir);
-  ART.failed.add(dir);
-  /* 이미 실패로 기록된 종이어도 복구 예약은 매번 시도한다 — 겹침은 예약·진행 중 검사가 걸러낸다.
-     여기서 일찍 빠져나가면 "조회가 끝난 뒤 다시 실패한" 종이 다시 예약될 기회를 영영 잃는다.
-     실패한 것은 보드 아이콘이므로 그 파일을 지목해 확인한다. */
-  artScheduleRecovery(dir,artIconFile(dir));
-  if(first) artRerender();   // 재그리기는 종전대로 상태가 바뀔 때 한 번만
-};
-/* 전투 도트 실패: 지금 보고 있는 전투에서도 즉시 현행 이모지 토큰으로 바꿔 끼운다 — 전투원 자리가 비어 보이지 않는다.
-   battleModal() 을 다시 부르지 않으므로 메시지 재생·FX 에 재진입하지 않고, 토큰의 id·위치 클래스는 그대로라 shake·ko·dmgfloat 경로가 유지된다 */
-window.artSpriteFail=function(dir,el){
-  if(el) try{el.onerror=null;}catch(e){}
-  /* #201: 지금 이 전투의 토큰은 아래에서 즉시 이모지로 바뀌고(연출 타이밍 불변), 복구는 다음 렌더부터 반영된다.
-     전투 파일만 영영 없는 종이면 아이콘 조회가 성공해 보드 얼굴은 곧 아트로 돌아오고, 전투 파일은 gone 으로 굳어
-     다음 전투창이 그 파일을 다시 요청하지 않는다 — 실패→종 폴백→재요청의 왕복이 생기지 않는다. */
-  if(dir){ ART.failed.add(dir); artScheduleRecovery(dir,artBattleFile(dir)); }
-  const tok=el&&el.parentNode;
-  try{
-    const B=S&&S.battle;
-    if(tok&&tok.classList&&B&&(tok.id==="tok-A"||tok.id==="tok-D")){
-      const sid=tok.id==="tok-A"?"A":"D", pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
-      tok.classList.remove("art");
-      const lb=pf===piece&&(piece.type==="king"||piece.type==="ally"); // #234: 왕·동료 본체는 속성을 가져도 현행 이모지 토큰 유지(표시 개편은 #238) — 속성은 패널 배지로 보인다
-      tok.style.background=pf.element&&!lb?`var(--${pf.element})`:"#5a6377";
-      const emo=lb?(piece.type==="king"?"👑":"🤝"):pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
-      tok.innerHTML=`${emo}<small>${pf.element&&!lb?ELEM_KO[pf.element]:TYPE_KO[piece.type]}</small>`;
-      return;
-    }
-  }catch(e){}
-  try{el.style.display="none";}catch(e){}
-};
-/* 설명창 일러스트: webp(배포본) → png(원본) → 숨김. 각 단계에서 onerror 를 끊으므로 고리가 생기지 않는다 */
-window.artPortraitFail=function(el,dir){
-  if(!el) return;
-  try{el.onerror=null;}catch(e){}
-  const stage=(el._artStage||1)+1; el._artStage=stage;
-  if(stage===2&&ART_DIR_SET.has(dir)){ el.onerror=function(){artPortraitFail(el,dir);}; el.src=artUrl(dir,"portrait.png"); return; }
-  // 둘 다 실패: 자리를 유지한 채 대체 표시로 바꾼다 — 이미지를 지워 모달 레이아웃이 튀지 않게 한다
-  try{
-    const box=el.parentNode;
-    if(box&&box.classList&&box.classList.contains("rosterArt")){ box.classList.add("fb"); box.innerHTML=`<span>이미지를 불러오지 못했습니다</span>`; return; }
-  }catch(e){}
-  try{el.style.display="none";}catch(e){}
-};
-/* 프리로드는 페이지 로드 시 20종 일괄이다 — 개별 말이 개별 파일을 요청하지 않으므로 요청 목록이 정체와 상관관계를 만들지 않는다.
-   설명창 원본(portrait 20종 약 3.1MB)은 여기서 받지 않고 설명창을 열 때만 받는다 */
-function artPreload(){
-  if(ART.preloaded) return; ART.preloaded=true;
-  for(const dir of ART_DIRS) for(const f of ["icon.png","battle.png"]){
-    try{
-      const im=document.createElement("img");
-      im.onload=()=>{ART.loaded.add(dir+"/"+f);};
-      im.onerror=()=>{if(f==="icon.png") ART.failed.add(dir); artScheduleRecovery(dir,f);}; // #201 유한 복구 — 떨어진 그 파일만
-      im.src=artUrl(dir,f);
-    }catch(e){}
-  }
-  /* #124: 왕·동료 2종도 같은 시점에 같은 고정 집합으로 요청한다 (정체와 무관 — 요청 목록이 상관관계를 만들지 않는다).
-     아직 납품 전이면 여기서 실패해 ART.failed 에 들어가고 화면은 현행 이모지 그대로다. */
-  for(const dir of LEADER_DIRS) for(const f of [LEADER_FILES.icon,LEADER_FILES.battle]){
-    try{
-      const im=document.createElement("img");
-      im.onload=()=>{ART.loaded.add(dir+"/"+f); artLeaderReady();};
-      /* #201: 왕·동료는 ART.loaded 확인 경로가 프리로드뿐이라, 여기서 한 번 놓치면 종전에는 영원히 이모지였다 */
-      im.onerror=()=>{if(f===LEADER_FILES.icon) ART.failed.add(dir); artScheduleRecovery(dir,f);};
-      im.src=artUrl(dir,f);
-    }catch(e){}
-  }
-}
-function artLeaderReady(){ artRerender(); } // 자산이 늦게 도착했을 때 한 번만 다시 그린다 (artFail 과 같은 1회 예약 자리를 공유한다)
 /* 기호 어휘는 MEMO_OPTS 8종 하나뿐이다 — 확정 표시와 추측 메모가 같은 이모지를 쓴다 (규격 7.10.1 · 신규 래스터 0장) */
 function memoEmoji(key){const o=memoOpt(key); return o?o.emoji:"";}
 function memoShort(key){ // 기호를 그릴 수 없을 때 쓰는 같은 뜻의 짧은 현행 라벨 (왕·동료·폭탄·함정·불·물·풀·번개)
   return key&&key.indexOf("minion_")===0?(ELEM_KO[key.slice(7)]||""):((memoOpt(key)||{}).ko||"");
-}
-/* 플랫폼 글리프 지원 확인 — 일부 환경에는 최신 이모지 글리프가 어떤 설치 폰트에도 없어 빈 네모(두부)로 그려진다.
-   실측(Windows 10 19045 · Chrome): 🪤(U+1FAA4)는 sans-serif · "Segoe UI Emoji" · Apple/Noto 를 모두 얹은 스택에서 폭이 두부와 같다 —
-   즉 CSS 폰트 스택으로는 해결되지 않는 폰트 커버리지 문제다. 기호 계약은 그대로 두고, 그릴 수 없는 기호만 현행 텍스트 라벨로 되돌린다.
-   측정이 불가능한 환경(canvas 없음)에서는 "지원함"으로 본다 — 기본 계약은 이모지다. */
-const GLYPH={cache:{},font:'16px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji","Segoe UI Symbol",sans-serif',NOTDEF:"\u{10FFFD}"};
-function glyphOk(ch){
-  if(!ch) return false;
-  if(ch in GLYPH.cache) return GLYPH.cache[ch];
-  let ok=true;
-  try{
-    const cv=document.createElement("canvas"), c=cv.getContext&&cv.getContext("2d");
-    if(c&&c.measureText&&c.getImageData){
-      cv.width=28; cv.height=28; // 캔버스 크기를 먼저 정하고(상태 초기화) 폰트를 건다
-      c.font=GLYPH.font;
-      const w=c.measureText(ch).width, tw=c.measureText(GLYPH.NOTDEF).width;
-      /* 폭이 같다는 사실만으로 "글리프 없음"이라고 단정하지 않는다 — 정상 글리프도 같은 advance 를 가질 수 있다.
-         폭 일치는 값싼 1차 거름이고, 확증은 실제로 그려 본 픽셀이 "그리지 못한 그림"과 완전히 같은지로 한다. */
-      if(w>0&&tw>0&&Math.abs(w-tw)<0.01){
-        const px=s=>{ c.clearRect(0,0,cv.width,cv.height); c.fillStyle="#fff"; c.textBaseline="top"; c.font=GLYPH.font;
-                      c.fillText(s,2,2); return c.getImageData(0,0,cv.width,cv.height).data; };
-        const a=px(ch), b=px(GLYPH.NOTDEF);
-        let same=a.length===b.length;
-        for(let i=0;same&&i<a.length;i++) if(a[i]!==b[i]) same=false;
-        ok=!same;
-      }
-    }
-  }catch(e){ ok=true; } // 측정 불가 환경에서는 기본 계약(이모지)을 유지한다
-  GLYPH.cache[ch]=ok; return ok;
 }
 /* #201 후속(2026-09-11 CJ 지시): 전용 기호 도형 — 폰트가 아니라 벡터로 그린다.
    🪤(U+1FAA4)는 설치 폰트에 글리프가 없는 환경이 있어 종전에는 "함정" 글자로 되돌아갔다(위 glyphOk).
@@ -1266,49 +1099,8 @@ const SYM_SVG={
       +'<path d="M22 14v5m3-5v5m3-5v5" fill="none" stroke="#d7e1e5" stroke-width="1.5" stroke-linecap="round"/>'
       +'<circle cx="4" cy="16.5" r="2" fill="#a9bec8" stroke="#171e2b" stroke-width="1.5"/>'};
 /* 기호 도형 1개. 크기는 담는 자리(.sym·.guess·.ico)의 CSS 가 정한다 — 보드 32px, 정보 행·메모 격자는 그 자리 크기 그대로 */
-function symSvgHtml(key){
-  const g=SYM_SVG[key]; if(!g) return "";
-  /* data-sym 은 **이미 정해진 그 기호가 무엇인가**만 적는다 — 이 함수는 정체가 공개됐거나(known) 뷰어가 스스로 적은 추측일 때만 불린다.
-     미공개 상대 말은 애초에 호출 경로에 들어오지 않으므로 이 속성이 새 정보를 새게 하지 않는다 (테스트·QA 의 식별자). */
-  return `<svg class="symv" data-sym="${key}" viewBox="0 0 32 32" focusable="false" aria-hidden="true" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
-}
 /* 기호 1개를 그린다 — 전용 도형이 있으면 도형(폰트 무관), 없으면 그릴 수 있는 이모지, 그것도 없으면 같은 뜻의 짧은 텍스트.
    확정·추측이 같은 규칙을 쓴다: 정체를 밝히는 것은 호출 여부이지 이 함수가 아니다 (미공개 말은 애초에 호출되지 않는다). */
-function glyphSpan(key,cls){
-  const o=memoOpt(key); if(!o) return "";
-  if(SYM_SVG[key]) return `<span class="${cls} sv" aria-hidden="true">${symSvgHtml(key)}</span>`;
-  return glyphOk(o.emoji)?`<span class="${cls}" aria-hidden="true">${o.emoji}</span>`
-                         :`<span class="${cls} ng">${memoShort(key)}</span>`;
-}
-function pieceEmoji(p){ // 기호 문자 자체 (테스트·라벨용)
-  if(!p) return "";
-  if(p.type==="minion") return p.element?memoEmoji("minion_"+p.element):"";
-  return memoEmoji(p.type); // king·ally·bomb·trap 는 MEMO_OPTS 키와 이름이 같다
-}
-function pieceMemoKey(p){ return !p?null:(p.type==="minion"?(p.element?"minion_"+p.element:null):(memoOpt(p.type)?p.type:null)); }
 /* 확정(known) 말의 얼굴 — 하수인은 종 아이콘, 그 외는 같은 메모 기호. 자산이 없거나 실패하면 현행 텍스트로 복귀한다 (규격 14.6.4) */
-function pcFaceHtml(p){
-  const dir=artDirOf(p);
-  if(artOk(dir)) return `<img class="icon" src="${artUrl(dir,"icon.png")}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${dir}',this)">`;
-  /* #124: 왕·동료도 보드에서 그 정체 역할로 보인다 (Venus 6장 AC-A5 정정). 자산이 로드된 뒤에만 그림이고 그 전에는 아래 이모지 그대로다.
-     이 파생본은 1254px 원본을 단순 축소한 **픽셀 스타일 아트**이고 하수인처럼 32px 도트로 그린 원본이 아니다.
-     그래서 32px 표시에는 최근접 확대(pixelated) 대신 브라우저 보간을 쓴다 (.pc .icon.leader) — 하수인 렌더 계약은 그대로다 */
-  const ld=leaderArtDir(p);
-  if(ld) return `<img class="icon leader" src="${artUrl(ld,LEADER_FILES.icon)}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${ld}',this)">`;
-  const key=p.type!=="minion"?pieceMemoKey(p):null;
-  if(key) return `<span class="face">${glyphSpan(key,"sym")}</span>`;
-  return `<span class="face"><span class="nm">${p.type==="minion"&&p.name?p.name:(TYPE_KO[p.type]||"?")}</span></span>`;
-}
 /* 정보 행 — 원소 기호(하수인만) + 현재 HP(하수인·동료·왕만). 폭탄·함정은 전체 공개에서도 HP 를 표시하지 않는다 (규격 7.8·7.9) */
-function pcInfoHtml(p){
-  const key=p.type==="minion"?pieceMemoKey(p):null;
-  const hp=(p.type==="minion"||p.type==="ally"||p.type==="king")?String(p.hp):"";
-  if(!key&&!hp) return "";
-  return `<span class="info">${key?glyphSpan(key,"sym"):""}${hp?`<span class="hp">${hp}</span>`:""}</span>`;
-}
 /* 말판과 배치 트레이가 같은 함수를 쓴다 — 한쪽만 아이콘으로 바뀌는 불일치가 생기지 않는다 (규격 7.10.4) */
-function pcBodyHtml(p){return pcFaceHtml(p)+pcInfoHtml(p);}
-function pcLabel(p){ // 확정 말의 접근성 문구 — 이미 공개된 값만 쓴다
-  return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.type==="minion"&&p.element?" · "+ELEM_KO[p.element]:"")
-    +((p.type==="minion"||p.type==="ally"||p.type==="king")?" · HP "+p.hp:"");
-}

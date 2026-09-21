@@ -81,12 +81,36 @@ moveState.events=[];
 const bomb=T.S.pieces.find(piece=>piece.owner===0&&piece.type==="bomb"); H.place(T,bomb,12,2);
 const bombResult=T.reduceCoreAction(moveState,{t:"move",id:bomb.id,r:11,c:2});
 ok(moveState.metrics.bombMoves===0&&bombResult.state.metrics!==moveState.metrics&&bombResult.state.metrics.bombMoves===1&&bombResult.state.metrics.byPlayer[0].bombMoves===1,"move reducer counts a bomb step on cloned metrics only");
-ok(T.reduceCoreAction(moveState,{t:"move",id:myKing.id,r:12,c:1})===null,"a king step stays on the legacy path (edge-reach win)");
+{ /* 왕 이동도 다른 말과 같은 reducer 를 지난다. 끝줄에 닿지 않는 걸음은 보통 이동이고, 닿는 걸음은
+     **같은 reducer 안에서** 공개 → 경기 종료(gameOver) → kingReached 표시 이벤트까지 끝낸다 (레거시 checkKingReach 대체). */
+  const kingStep=T.reduceCoreAction(moveState,{t:"move",id:myKing.id,r:12,c:1});
+  ok(kingStep!==null&&kingStep.events.length===1&&kingStep.events[0].type==="moved"&&kingStep.state.phase==="play"
+     &&kingStep.state.pieces.find(x=>x.id===myKing.id).r===12&&myKing.r===13,
+     "a king step that does not reach the far row is an ordinary Core move (no legacy path left)");
+  const edgeState=Object.assign({},moveState,{pieces:moveState.pieces.map(x=>x.id===myKing.id?Object.assign({},x,{r:2,c:1}):x)});
+  const reached=T.reduceCoreAction(edgeState,{t:"move",id:myKing.id,r:1,c:1});
+  const reachedKing=reached.state.pieces.find(x=>x.id===myKing.id);
+  ok(reached.state.phase==="over"&&reached.state.winner===0&&reached.state.metrics.winType==="edge"
+     &&reachedKing.r===1&&reachedKing.revealed===true&&edgeState.phase==="play"
+     &&JSON.stringify(reached.events.map(e=>e.type))===JSON.stringify(["moved","matchEnded","kingReached"])
+     &&reached.events[0].kingReach===true&&reached.events[0].piece===reachedKing&&reached.events[2].owner===0,
+     "a king step onto the far row finishes the match inside the same reducer — the king is revealed, the win is recorded and the display order stays moved -> matchEnded -> kingReached");
+}
 moveState.turnCount=T.BAL.burnStart-1;
 const twoStep=T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:10,c:4}), twoStepPiece=twoStep&&twoStep.state.pieces.find(piece=>piece.id===mover.id);
 ok(T.isBurning()&&mover.r===12&&mover.c===4&&twoStepPiece!==mover&&twoStepPiece.r===10&&twoStepPiece.c===4&&twoStep.state.contactKind==="move"&&twoStep.state.tempReveal===moveState.tempReveal&&twoStep.events[0].collision===false,"a burning-time two-step over an empty midpoint lands on the endpoint in Core without touching its input");
 moveState.turnCount=0;
-moveState.battlesUsed=1; ok(T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:11,c:4})===null,"a step in a turn that already spent a battle slot stays on the legacy path"); moveState.battlesUsed=0;
+{ /* 전투 슬롯이 이미 하나 걸린 턴·앞선 강제 전투 표식이 남은 상태의 이동도 같은 reducer 가 맡는다.
+     신규 접촉 판정은 **이동이 끝난 보드**에서 하므로 레거시 applyForced(=S.forcedTargets 를 비우고 S.movedPiece 를 세운 뒤 판정)와 같은 값을 낸다. */
+  moveState.battlesUsed=1;
+  const spent=T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:11,c:4});
+  ok(spent!==null&&spent.state.pieces.find(x=>x.id===mover.id).r===11&&spent.state.battlesUsed===1&&spent.state.forcedTargets.length===0,
+     "a step in a turn that already spent a battle slot resolves in Core with no new forced target");
+  const stale=T.reduceCoreAction(Object.assign({},moveState,{battlesUsed:0,forcedTargets:[9998]}),{t:"move",id:mover.id,r:11,c:4});
+  ok(stale!==null&&JSON.stringify(stale.state.forcedTargets)==="[]",
+     "a move recomputes the forced-target list from scratch — a stale marker is cleared exactly as the legacy applyForced did");
+  moveState.battlesUsed=0;
+}
 /* #245 신규 접촉: 강제 전투 대상 확정까지 Core 가 소유하고, 전투 개시만 표시 단계(forcedContactStart)에 남는다 */
 H.place(T,foe,10,4); moveState.selected=mover;
 const contact=T.reduceCoreAction(moveState,{t:"move",id:mover.id,r:11,c:4}), contactPiece=contact&&contact.state.pieces.find(piece=>piece.id===mover.id);
@@ -115,7 +139,7 @@ T.S.mainUsed=false; const commitMove=T.reduceCoreAction(T.S,{t:"move",id:mover.i
 T.S.mainUsed=false; const commitHeal=T.reduceCoreAction(T.S,{t:"heal",id:mover.id}); T.commitCoreState(commitHeal.state,commitHeal.events);
 ok(commitMove.events[0].piece===mover&&commitHeal.events[0].piece===mover&&T.S.pieces.includes(mover)&&T.S.movedPiece===mover&&mover.r===10&&mover.healing===true,"commit canonicalizes the piece carried by the moved and healStarted events onto the S.pieces object");
 T.S.mainUsed=false; T.doMove(myKing,12,1);
-ok(myKing.r===12&&myKing.c===1&&T.at(12,1)===myKing&&T.S.movedPiece===myKing&&T.S.mainUsed===true,"a king step still resolves through the legacy path with the same piece object");
+ok(myKing.r===12&&myKing.c===1&&T.at(12,1)===myKing&&T.S.movedPiece===myKing&&T.S.mainUsed===true,"a king step resolves through the single Core entry point onto the same piece object");
 /* #245 신규 접촉 end-to-end: 대상은 Core 가 commit 하고 전투 개시는 표시 단계의 레거시 initBattle 이 그대로 한다 */
 T.S.mainUsed=false; T.S.battlesUsed=0; T.S.forcedTargets=[]; T.S.movedPiece=null; T.S.battle=null; T.S.current=0; mover.healing=false;
 H.place(T,mover,12,4); H.place(T,foe,10,4); T.S.selected=mover;
@@ -127,8 +151,8 @@ H.place(T,mover,12,4); H.place(T,foe,10,4); T.S.selected=mover; mover.healing=fa
 T.doMove(mover,10,4);
 ok(mover.r===11&&mover.c===4&&T.at(11,4)===mover&&T.S.contactKind==="collision"&&T.S.tempReveal.has(foe.id)&&T.S.tempReveal.has(mover.id)&&T.S.movedPiece===mover&&!!T.S.battle&&T.S.battle.defP===foe,"doMove commits the collision stop, the temporary reveal and the forced battle on the same piece objects");
 T.S.turnCount=0; T.S.battle=null; T.S.battlesUsed=0; foe.placed=false;
-ok((T.html.match(/이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다\./g)||[]).length===1&&/if\(event\.collision\) collisionLog\(event\.piece\)/.test(T.html)&&/^\s*collisionLog\(p\);$/m.test(T.html),"the collision notice lives in one helper shared by the Core event and the legacy path");
-ok(/forcedContactStart\(event\.piece,event\.forced\)/.test(T.html)&&(T.html.match(/신규 인접 — 강제 전투/g)||[]).length===1&&(T.html.match(/initBattle\(p,def\)/g)||[]).length===1,"forced contact display and battle initiation stay in one helper shared by the Core event and the legacy path");
+ok((T.html.match(/이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다\./g)||[]).length===1&&/if\(event\.collision\) collisionLog\(event\.piece\)/.test(T.html)&&(T.html.match(/collisionLog\(/g)||[]).length===2,"the collision notice lives in one helper with exactly one call site — the moved event (the legacy caller is gone)");
+ok(/forcedContactStart\(event\.piece,event\.forced\)/.test(T.html)&&(T.html.match(/신규 인접 — 강제 전투/g)||[]).length===1&&(T.html.match(/initBattle\(p,def\)/g)||[]).length===1,"forced contact display and battle initiation stay in one helper that every Core event reuses");
 /* #245 상태 순수성(이동): 위 단언들은 moveState 가 T.S 그 자체라 둘이 같을 때만 본다.
    여기서는 말 객체까지 전역 S 와 완전히 분리한 보드를 넘기고 S 만 적대적으로 어긋나게 둔다 — 온라인 재생·AI 탐색 경로 */
 const purePieces=[{id:901,owner:0,type:"minion",alive:true,placed:true,r:12,c:4,immobile:0,movedEver:false,movedPreBT:false,healing:false,revealed:false},
@@ -153,6 +177,52 @@ ok(hostileDigest===moveAgreed&&!!moveHostile&&purePiece!==purePieces[0]&&purePie
 ok(!!moveHostile&&moveHostile.state.mainUsed===true&&moveHostile.state.contactKind==="move"&&moveHostile.state.selected===purePiece&&moveHostile.state.movedPiece===purePiece&&JSON.stringify(moveHostile.state.forcedTargets)===JSON.stringify([902])&&JSON.stringify(moveHostile.state.contactSet)===JSON.stringify([902])&&moveHostile.state.tempReveal===pureState.tempReveal&&moveHostile.state.metrics===pureState.metrics&&moveHostile.state.traces===pureState.traces,"the hostile-S step keeps the contact, selection, reveal, metric and trace contract of the given state");
 ok(!!moveHostile&&moveHostile.state.aiSeenMoved!==pureState.aiSeenMoved&&moveHostile.state.aiSeenMoved[1].has(901)&&pureState.aiSeenMoved[1].size===0&&moveHostile.events.length===1&&moveHostile.events[0].type==="moved"&&moveHostile.events[0].collision===false&&moveHostile.events[0].trace===false&&JSON.stringify(moveHostile.events[0].forced)===JSON.stringify([902]),"the hostile-S observation is recorded on a cloned set and one moved event carries the new contact");
 ok(pureState.mainUsed===false&&pureState.selected===purePieces[0]&&pureState.movedPiece===null&&pureState.contactSet.length===0&&pureState.forcedTargets.length===0&&purePieces[0].r===12&&purePieces[0].c===4&&purePieces[0].movedEver===false,"the independent input state and its piece graph stay untouched under a hostile global S");
+/* ===== #245 Saturn REVISE(M4) 이동 좌표·말 형태 검증 — **행동으로** 확인한다 =====
+   Saturn 이 실측한 세 통과 사례(소수 좌표·문자열 좌표·보드 밖 행)와 죽은·미배치 말을 같은 자리에서 막는다.
+   기대는 "거부"가 아니라 **완전한 무변경**이다: reducer 는 null 을 돌려주고, 같은 액션을 dispatch 해도
+   상태 다이제스트가 한 글자도 움직이지 않는다 (아무 칸도 반쯤 바뀌지 않는다). */
+{
+  const snap=st=>JSON.stringify({main:st.mainUsed,cur:st.current,turn:st.turnCount,sel:st.selected&&st.selected.id,
+    moved:st.movedPiece&&st.movedPiece.id,contact:st.contactSet,targets:st.forcedTargets,reveal:[...st.tempReveal],
+    seen:st.aiSeenMoved.map(x=>[...x]),traces:st.traces.map(x=>[...x]),metrics:st.metrics,
+    where:st.pieces.map(p=>[p.id,p.r,p.c,p.alive,p.placed,p.movedEver,p.movedPreBT])});
+  const base=snap(pureState);
+  const BAD=[
+    {why:"칸 사이 소수 좌표 (맨해튼 거리는 1 이지만 칸이 아니다)",a:{t:"move",id:901,r:11.5,c:4.5}},
+    {why:"저장된 문자열 좌표 (산술 비교만으로는 통과했다)",a:{t:"move",id:901,r:"11",c:4}},
+    {why:"보드 밖 행 (13→14)",a:{t:"move",id:901,r:14,c:4}},
+    {why:"보드 밖 열 (0)",a:{t:"move",id:901,r:12,c:0}},
+    {why:"NaN 좌표",a:{t:"move",id:901,r:NaN,c:4}},
+    {why:"좌표 생략",a:{t:"move",id:901}}];
+  let rejected=0, frozen=0;
+  for(const b of BAD){
+    const r=T.reduceCoreAction(pureState,b.a);
+    if(r===null) rejected++;
+    if(snap(pureState)===base) frozen++;
+  }
+  ok(rejected===BAD.length&&frozen===BAD.length,"malformed move coordinates are rejected at the shared selector boundary and leave the state digest byte-identical ("+BAD.length+" cases)");
+  /* 보드 밖 행 14 는 종전에 canMoveTo 가 거리 1 로 통과시켰다 — selector 자체가 막는지 직접 본다 */
+  ok(T.canMoveTo(purePieces[0],14,4,pureState)===false&&T.canMoveTo(purePieces[0],11.5,4.5,pureState)===false
+     &&T.canMoveTo(purePieces[0],"11",4,pureState)===false&&T.canMoveTo(purePieces[0],11,4,pureState)===true,
+     "canMoveTo itself rejects off-board, fractional and string coordinates while the one legal step still passes");
+  /* 죽은·미배치 말과 그 상태에 속하지 않는 복제 말 */
+  const dead=Object.assign({},purePieces[0],{alive:false}), unplaced=Object.assign({},purePieces[0],{placed:false});
+  const alien=Object.assign({},purePieces[0]); // 같은 id·같은 값이지만 이 보드의 그 말이 아니다
+  ok(T.canMoveTo(dead,11,4,pureState)===false&&T.canMoveTo(unplaced,11,4,pureState)===false&&T.canMoveTo(alien,11,4,pureState)===false,
+     "dead, unplaced and foreign piece objects are refused by the same selector");
+  /* 공개(서버 권위) 프레임과 같은 모양의 입력도 같은 게이트를 지난다 — 회선에서 온 값이 우회로를 갖지 않는다 */
+  H.freshPlay(T,"pvp"); H.clearBoard(T);
+  const mover=T.S.pieces.find(p=>p.owner===0&&p.type==="minion"); H.place(T,mover,12,4);
+  H.place(T,T.S.pieces.find(p=>p.owner===0&&p.type==="king"),13,1);
+  H.place(T,T.S.pieces.find(p=>p.owner===1&&p.type==="king"),1,7);
+  T.S.current=0; T.S.mainUsed=false;
+  const before=lockstepDigest(T), at0=[mover.r,mover.c];
+  T.netAction({t:"cell",r:11.5,c:4.5});               // 사람 입력·회선 재생이 함께 쓰는 공개 경로
+  T.applyAction({t:"move",id:mover.id,r:"11",c:4});   // 회선 프레임 모양 그대로
+  T.applyAction({t:"move",id:mover.id,r:14,c:4});
+  ok(lockstepDigest(T)===before&&mover.r===at0[0]&&mover.c===at0[1]&&T.S.mainUsed===false,
+     "the public action path (netAction cell and replayed move frames) rejects the same malformed coordinates with an exact no-op on the lockstep digest");
+}
 /* #245 텔레포트 스왑: 재검사·차단·위치 교환·자원·지표·흔적·회복 자세와 교환 직후의 강제 전투 큐 적재·첫 항목 승격까지 Core 가 소유하고,
    문구·배너·전투 개시는 teleSwapped 이벤트가 레거시 헬퍼(forcedContactStart)로 넘긴다. 왕이 섞인 교환만 레거시(끝줄 도달 즉시 승리)다 */
 const swapState=H.freshPlay(T,"pvp"); H.clearBoard(T);
@@ -191,7 +261,24 @@ se.placed=false; sa.immobile=2;
 const swapRefused=T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:sb});
 ok(swapRefused.events[0].type==="teleRefused"&&swapRefused.events[0].message.indexOf(T.TELE_TRAP_MSG)>=0&&swapRefused.state.teleport.stage===1&&swapRefused.state.mainUsed===false&&swapRefused.state.pieces===swapState.pieces,"a trapped piece rewinds the pick in Core and consumes nothing");
 sa.immobile=0;
-ok(T.reduceCoreAction(swapState,{t:"teleSwap",a:sKing,b:sb})===null&&T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:Object.assign({},sb)})!==null&&T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:Object.assign({},sb)}).events[0].type==="teleRefused","a king swap falls through to the legacy edge-reach path and a cloned piece object is still refused");
+{ /* 왕이 섞인 교환도 같은 reducer 가 맡는다 (레거시 분기 없음). 끝줄에 닿지 않으면 보통 교환이고,
+     닿으면 이동과 같은 kingReachResult 로 경기가 그 자리에서 끝난다. 복제 객체 거부(P2)는 그대로다. */
+  const kingSwap=T.reduceCoreAction(swapState,{t:"teleSwap",a:sKing,b:sb});
+  ok(kingSwap!==null&&kingSwap.events[0].type==="teleSwapped"&&kingSwap.state.phase==="play"
+     &&kingSwap.state.pieces.find(x=>x.id===sKing.id).r===12&&sKing.r===13,
+     "a king swap that lands off the far row is an ordinary Core swap (no legacy path left)");
+  const edgeSwap=Object.assign({},swapState,{pieces:swapState.pieces.map(x=>x.id===sb.id?Object.assign({},x,{r:1,c:5}):x)});
+  const eb=edgeSwap.pieces.find(x=>x.id===sb.id);
+  const swapWin=T.reduceCoreAction(edgeSwap,{t:"teleSwap",a:eb,b:sKing});
+  ok(swapWin.state.phase==="over"&&swapWin.state.winner===0&&swapWin.state.metrics.winType==="edge"
+     &&swapWin.state.pieces.find(x=>x.id===sKing.id).revealed===true
+     &&JSON.stringify(swapWin.events.map(e=>e.type))===JSON.stringify(["teleSwapped","matchEnded","kingReached"])
+     &&swapWin.events[0].kingReach===true&&edgeSwap.phase==="play",
+     "a swap that carries the king onto the far row finishes the match inside the same reducer, in the legacy display order");
+  ok(T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:Object.assign({},sb)})!==null
+     &&T.reduceCoreAction(swapState,{t:"teleSwap",a:sa,b:Object.assign({},sb)}).events[0].type==="teleRefused",
+     "a cloned piece object is still refused by object identity");
+}
 /* #245 end-to-end: 승격된 강제 전투의 개시는 레거시 initBattle 이 같은 말 객체로 그대로 한다 */
 const forcedBefore=T.S.metrics.forcedBattles;
 ok(T.doTeleportSwap(sa,sb)===true&&sa.r===12&&sa.c===4&&sb.r===2&&sb.c===2&&T.at(2,2)===sb&&T.at(12,4)===sa&&T.S.teleport===null&&T.S.mainUsed===true&&T.S.teleUsed[0]===1&&T.S.movedPiece===sb&&!!T.S.battle&&T.S.battle.attP===sb&&T.S.battle.defP===sd&&T.S.forcedTargets.length===0&&T.S.metrics.forcedBattles===forcedBefore+1,"doTeleportSwap commits the swap on the same piece objects and the legacy battle initiation consumes the promoted contact");
@@ -256,8 +343,10 @@ ok(T.drainForcedQueue(true)===true&&T.S.movedPiece===dB&&!!T.S.battle&&T.S.battl
 T.S.battle=null; T.S.forcedTargets=[]; T.S.movedPiece=null; T.S.forcedQueue=[];
 ok(T.drainForcedQueue(false)===false&&T.drainForcedQueue(true)===false,"an empty queue promotes nothing for either start mode");
 ok(/function drainForcedQueue\(autoStart\)\{\s*const result=dispatchCoreAction\(\{t:"drainForced",autoStart:!!autoStart\}\);/.test(T.html)&&(T.html.match(/type:"forcedExempt"/g)||[]).length===3&&(T.html.match(/forcedContactStart\(event\.piece,event\.list\)/g)||[]).length===1,"AI, end turn, flee and battle completion share one Core drain entry point and the promoted battle reuses the shared display helper");
-ok(/const result=dispatchCoreAction\(\{t:"teleSwap",a,b\}\);/.test(T.html)&&/return doTeleportSwapLegacy\(a,b\);/.test(T.html)&&/forcedContactStart\(event\.pieces\.find\(/.test(T.html)&&(T.html.match(/S\.teleUsed\[S\.current\]\+\+/g)||[]).length===1,"UI, AI and network replay share one teleport swap entry point and the promoted contact reuses the shared display helper");
-ok(/function doMove\(p,r,c\)\{ if\(p&&dispatchCoreAction\(\{t:"move",id:p\.id,r,c\}\)\) return; doMoveLegacy\(p,r,c\); \}/.test(T.html),"UI, AI and network replay share one canonical move entry point");
+ok(/const result=dispatchCoreAction\(\{t:"teleSwap",a,b\}\);/.test(T.html)&&!/doTeleportSwapLegacy/.test(T.html)&&/forcedContactStart\(event\.pieces\.find\(/.test(T.html)&&!/S\.teleUsed\[S\.current\]\+\+/.test(T.html)&&(T.html.match(/teleUsed\[state\.current\]\+\+/g)||[]).length===1,"UI, AI and network replay share one teleport swap entry point, the legacy swap path is gone and the teleport counter moves in the reducer only");
+ok(/function doMove\(p,r,c\)\{ if\(p\) dispatchCoreAction\(\{t:"move",id:p\.id,r,c\}\); \}/.test(T.html)&&!/doMoveLegacy/.test(T.html),"UI, AI and network replay share one canonical move entry point and no legacy move path survives");
+/* 끝줄 도달 판정은 레거시 래퍼(checkKingReach)와 reducer 가 같은 한 줄을 본다 — 판정이 두 벌이 되지 않는다 */
+ok((T.html.match(/p\.type==="king"&&\(\(p\.owner===0&&p\.r===1\)\|\|\(p\.owner===1&&p\.r===ROWS\)\)/g)||[]).length===1&&(T.html.match(/kingAtEdge\(/g)||[]).length===4&&(T.html.match(/왕이 적진 최후방에 도달/g)||[]).length===2,"the edge-reach predicate has a single implementation that the legacy wrapper and both reducers share");
 ok(!/S\.(teleport|selected)\s*=/.test(T.html.slice(T.html.indexOf("function onCellCore"),T.html.indexOf("function observeMove"))),"onCellCore no longer assigns the teleport pick or selection state directly");
 /* #245 턴 종료: 강제 전투 잔여 확인 → immobile 감소 → 지표 → 회복 틱 → turnCount++ → 교대(플립·턴 초기화·메모 정리)까지 Core 가 소유하고,
    회복 로그·턴 배너·핫시트 넘김·AI 스케줄·sim 무승부 gameOver 는 turnEnded 이벤트가 표시 계층으로 넘긴다 */
@@ -325,7 +414,55 @@ Object.assign(T.S,{current:0,turnCount:4,mainUsed:true,healTickTurn:-1,forcedTar
 const etAutoBefore=T.S.metrics.autoEnds;
 T.applyAction({t:"endTurn",auto:true});
 ok(T.S.metrics.autoEnds===etAutoBefore+1&&T.S.metrics.byPlayer[0].autoEnds===etAutoBefore+1&&T.S.turnCount===5&&T.S.current===1,"the online replay frame routes through the same Core action and records the auto marker exactly once");
-ok(/function endTurn\(\)\{ return dispatchCoreAction\(\{t:"endTurn"\}\); \}/.test(T.html)&&!/case "endTurn"\s*:/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8"))&&(T.html.match(/startTurnMessages\(/g)||[]).length===3&&(T.html.match(/healLogs\(/g)||[]).length===3,"turn bar, AI and network replay share one Core end-turn entry point, and the turn banner and heal-tick logs keep a single display helper each");
+ok(/function endTurn\(\)\{ return dispatchCoreAction\(\{t:"endTurn"\}\); \}/.test(T.html)&&!/case "endTurn"\s*:/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8"))&&(T.html.match(/startTurnMessages\(/g)||[]).length===4&&(T.html.match(/healLogs\(/g)||[]).length===3,"turn bar, AI and network replay share one Core end-turn entry point, and the turn banner and heal-tick logs keep a single display helper each (the banner helper is now called from its definition plus the three turn-start events — playBegan, turnStarted, turnEnded — and from nowhere that writes state)");
+
+/* #245 경기 개시·턴 시작도 커밋 경계를 지난다 — 표시 계층에 S.phase·S.current·metrics.firstPlayer 직접 쓰기가 남지 않는다 */
+ok(/function beginPlay\(\)\{ dispatchCoreAction\(\{t:"beginPlay"\}\); \}/.test(T.html)
+  &&/function startTurn\(\)\{ dispatchCoreAction\(\{t:"startTurn"\}\); \}/.test(T.html)
+  &&!/Object\.assign\(S,/.test(T.html)
+  &&!/S\.phase="play"/.test(T.html)
+  &&!/S\.metrics\.firstPlayer\s*=/.test(T.html),
+  "match start and turn-start initialisation go through Core actions — no display path assigns the phase, the first player or the turn-start reset onto S");
+{ // 선공은 rand 1회로 뽑히고 지표에 남는다 (같은 시드 → 같은 선공)
+  const seat=seed=>{ const X=H.load(index); X.setSeed(seed); X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1);
+    const before=X.S.metrics; X.beginPlay();
+    return {cur:X.S.current,first:X.S.metrics.firstPlayer,phase:X.S.phase,fresh:X.S.metrics!==before,used:X.S.mainUsed,turn:X.S.turnCount}; };
+  const a=seat(2450), b=seat(2450), c=seat(2451);
+  ok(a.phase==="play"&&a.cur===a.first&&(a.cur===0||a.cur===1)&&a.used===false&&a.turn===0&&a.fresh,
+     "beginPlay leaves the board in play with the drawn first player recorded in a cloned metrics object and the turn reset");
+  ok(JSON.stringify(a)===JSON.stringify(b),"the same seed draws the same first player (one rand, same place as before the split)");
+  ok(c.cur===0||c.cur===1,"another seed still draws a legal seat");
+}
+
+/* ===== #245 회선 사전 배치의 신뢰 경계 — 정수가 아닌 좌표는 보드에 앉지 못한다 =====
+   기존 락스텝(hello/hello2)의 setup 은 **상대가 보낸 값**이다. 행은 zoneOf 목록 일치라 소수가 통과할 수 없었지만
+   열은 `q[1]>=1&&q[1]<=COLS` 범위 검사뿐이라 3.5 같은 값이 그대로 말의 c 가 됐다 — 그 자리는 클릭·인접·이동 판정
+   어디에도 존재하지 않는 칸이라 두 좌석의 보드가 갈리고(락스텝 파괴) 그 말은 영영 접촉되지 않는다.
+   아래는 그 한 칸을 실제 진입점(applyNetSetup)으로 넣어 본다: 거부되면 종전 손상 데이터와 같은 결정적 무작위 배치로
+   대체되고, 통과하면 좌표가 그대로 남는다. 양성 대조(정수 열)가 함께 있어 "아무것도 안 받아서 통과"가 아니다. */
+{
+  const setupOf=pos=>{ const X=H.load(index); X.setSeed(24540); X.newGame("pvp");
+    const roster=X.ROSTER.slice(0,6).map(r=>r.id);
+    X.applyNetSetup(0,{roster,pos});
+    const mine=X.S.pieces.filter(x=>x.owner===0);
+    return {cells:mine.map(x=>[x.r,x.c]),placed:mine.every(x=>x.placed),log:X.S.log.map(l=>l.msg).join("|")}; };
+  const good=[]; for(const r of [11,12,13]) for(let c=1;c<=7&&good.length<14;c++) good.push([r,c]);
+  const frac=good.map((q,i)=>i===3?[q[0],3.5]:q.slice());          // 열만 소수 — 종전 검증을 그대로 통과하던 값
+  const fracRow=good.map((q,i)=>i===3?[11.5,q[1]]:q.slice());      // 행 소수 — 종전에도 거부됐다 (대조군)
+  const strCol=good.map((q,i)=>i===3?[q[0],"3"]:q.slice());        // 문자열 열 — 범위 비교는 통과하지만 정수가 아니다
+  const ok0=setupOf(good), bad=setupOf(frac), badRow=setupOf(fracRow), badStr=setupOf(strCol);
+  ok(JSON.stringify(ok0.cells)===JSON.stringify(good)&&ok0.placed&&ok0.log.indexOf("배치 데이터 손상")<0,
+     "a well-formed peer setup is applied verbatim (positive control — the guard does not reject good data)");
+  ok(bad.placed&&bad.cells.every(([r,c])=>Number.isInteger(r)&&Number.isInteger(c)&&[11,12,13].includes(r)&&c>=1&&c<=7)
+     &&JSON.stringify(bad.cells)!==JSON.stringify(good)&&bad.log.indexOf("배치 데이터 손상")>=0,
+     "a peer setup carrying a fractional column is rejected at the network trust boundary and replaced by the deterministic fallback placement");
+  ok(badRow.log.indexOf("배치 데이터 손상")>=0&&badStr.log.indexOf("배치 데이터 손상")>=0
+     &&badRow.cells.every(([r,c])=>Number.isInteger(r)&&Number.isInteger(c))
+     &&badStr.cells.every(([r,c])=>Number.isInteger(r)&&Number.isInteger(c)),
+     "a fractional row and a string column are rejected by the same gate");
+  ok(JSON.stringify(setupOf(frac).cells)===JSON.stringify(bad.cells),
+     "the fallback placement is deterministic for the same seed — both seats replace corrupt data the same way (lockstep holds)");
+}
 
 /* ===== #245 경기 종료(gameOver·기권) — 규칙 상태는 Core reducer, 화면 정리·배너·문구는 matchEnded 이벤트 ===== */
 const goPieces=[{id:801,owner:0,type:"minion",alive:true,placed:true,r:12,c:4,hp:30,maxHp:40,burn:4,shield:6,powerBuff:true,fleeBoost:true,cd:3,skills:null},
@@ -379,9 +516,264 @@ T.applyAction({t:"resign"});
 const liveDef=T.S.pieces.find(x=>x.id===bDef.id);
 ok(T.S.battle===null&&T.S.recruit===null&&T.S.pieces.includes(bAtt)&&liveDef===bDef&&bAtt.powerBuff===false&&bAtt.shield===0&&(T.byId("overlayBox")?T.byId("overlayBox").innerHTML==="":true)&&T.S.phase==="over","a resign during a live battle clears the battle on the very piece objects the callers hold and empties the stale battle markup");
 ok(liveDef.cap===heldCap&&heldCap.powerBuff===false&&heldCap.fleeBoost===false&&heldCap.burn===0&&heldCap.shield===0&&heldCap.cd===0&&heldCap.hp===40,"commit keeps the canonical stand-in fighter object identity, so the cap reference the callers hold is still exactly S.pieces[i].cap and carries the reset battle flags");
+/* Saturn M2 회귀: 중단된 전투의 화면 정리(fxReleaseAll)와 경기 결과 배너의 **순서**. 정리가 배너 뒤에 오면 방금 시작한
+   resultBanner 가 큐·기록과 함께 지워지는데, 1회 보장 플래그(matchFxDone)는 이미 소비돼 배너가 영영 다시 나오지 않는다.
+   연출 시간이 실제로 흐르는 화면(FX.force)에서 배너가 **살아 있는 현재 항목**으로 남는지까지 본다 — 0ms 헤드리스만 보면
+   "즉시 끝난 배너"와 "지워진 배너"가 구분되지 않는다. */
+{
+  H.freshPlay(T,"pvp"); T.S.matchFxDone=false; T.FX.log.length=0;
+  const mAtt=H.mine(T,0,"minion")[0], mDef=H.mine(T,1,"minion")[0];
+  H.place(T,mAtt,12,4); H.place(T,mDef,11,4);
+  T.startRounds(mAtt,mDef,mAtt,mDef);
+  T.FX.force=true; T.FX.log.length=0; T.TQ.length=0;   // 여기부터만 사람 화면과 같은 시간 — 전투 준비는 종전과 같은 0ms 경로
+  T.applyAction({t:"resign"});
+  const live=T.FX.cur, banners=T.FX.log.filter(x=>x.key==="resultBanner");
+  T.FX.force=false; T.FX.q.length=0; T.FX.cur=null; T.TQ.length=0;
+  ok(T.S.phase==="over"&&T.S.battle===null&&T.S.matchFxDone===true,"resigning inside a live battle still ends the match and consumes the once-per-match banner latch");
+  ok(banners.length===1&&!!live&&live.key==="resultBanner"&&/match/.test(live.cls||""),
+     `the interrupted-battle cleanup reaches the display layer before the match banner, so the banner survives as the live FX item instead of being erased by fxReleaseAll (live=${live?live.key+"/"+(live.cls||""):"none"}, logged=${banners.length})`);
+}
 /* 단일 경로: 정규 래퍼 하나가 Core 로 들어가고 레거시 종료 변이 경로는 남지 않는다 */
-ok(/function gameOver\(winner,type\)\{ dispatchCoreAction\(\{t:"gameOver",winner,winType:type,endingBattle:ENDING_BATTLE\}\); \}/.test(T.html)&&!/case "resign"\s*:/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8"))&&(T.html.match(/type:"matchEnded"/g)||[]).length===1&&(T.html.match(/matchEndFx\(\);/g)||[]).length===1&&!/S\.phase="over"; *S\.winner=/.test(T.html),"one canonical gameOver wrapper dispatches the Core action, and no legacy match-end mutation or duplicate resign path survives");
+ok(/function gameOver\(winner,type\)\{ dispatchCoreAction\(\{t:"gameOver",winner,winType:type,endingBattle:ENDING_BATTLE\}\); \}/.test(T.html)&&!/case "resign"\s*:/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8"))&&(T.html.match(/type:"matchEnded"/g)||[]).length===1&&!/S\.phase="over"; *S\.winner=/.test(T.html),"one canonical gameOver wrapper dispatches the Core action, and no legacy match-end mutation or duplicate resign path survives");
+/* #245 Saturn REVISE(M3) 행동 검증: 경기 결과 배너의 **1회 보장**은 규칙 상태(S.matchFxDone)이고 Core 가 소유한다.
+   화면이 그 배너를 그리든 말든 두 번째 경기 종료는 배너를 다시 내지 않는다 — 표시 계층을 거치지 않고 확인한다. */
+{
+  const X=H.load();
+  H.freshPlay(X,"pvp");
+  ok(X.S.matchFxDone===false&&typeof X.matchEndBanner==="function","match banner latch starts down on a fresh game");
+  const first=X.matchEndBanner();
+  ok(!!first&&typeof first.title==="string"&&X.S.matchFxDone===true,"the first match-end banner is issued by Core and raises the once-per-match latch in game state");
+  ok(X.matchEndBanner()===null,"a second request in the same match returns nothing — the guarantee is rule state, not a display flag");
+}
 
+/* ===== #245 Saturn REVISE(M1·M2·M3·M4) 최종 경계 — **행동으로** 확인한다 =====
+   (a) 어댑터 포트는 데이터 싱크와 값 질의뿐이다 (콜백 계약 없음)
+   (b) 화면·AI 어댑터가 하나도 없어도 규칙은 끝까지 진행된다
+   (c) 전투 개시는 신뢰 경계를 지난다 (떨어진 말·죽은 말·같은 편·형태 위반은 정확한 무변경)
+   (d) 새 경기는 단일 커밋 경계를 지난다 */
+{
+  const X=H.load();
+  /* (a) 포트에 남은 것은 event/seat/replaying 셋뿐이고, 기본 구현은 어느 것도 콜백을 실행하지 않는다 */
+  const stateSrc=fs.readFileSync(path.join(demo,"js","state.js"),"utf8");
+  const portBody=stateSrc.slice(stateSrc.indexOf("const UI_PORT={"),stateSrc.indexOf("/** @type {GameState} */"));
+  ok(/event\(ev\)\{\}/.test(portBody)&&/defer\(action\)\{ return false; \}/.test(portBody)
+     &&!/onStart|onEnd|aiSchedule|aiSetup|aiRecruit|whenIdle|battleEndFx|fx\(/.test(portBody),
+     "어댑터 포트 기본 구현에는 콜백 실행도 AI 훅도 없다 — 데이터 싱크(event)·값 질의(seat·replaying)·지연 거절(defer→false)뿐이다");
+  const coreSrc245=fs.readFileSync(path.join(demo,"js","core.js"),"utf8");
+  const portCalls=(coreSrc245.match(/UI_PORT\.[a-zA-Z]+\(/g)||[]).map(s=>s.slice(8,-1));
+  ok(portCalls.every(n=>n==="event"||n==="seat"||n==="replaying"||n==="defer"),
+     "Core 가 부르는 포트는 event·seat·replaying·defer 뿐이다 (실측: "+[...new Set(portCalls)].join(",")+")");
+  /* #245 Saturn REVISE(M2): defer 로 건너가는 것도 **직렬화 가능한 액션 값** 하나뿐이다 — 콜백은 경계를 넘지 않는다 */
+  ok(/function resumeCoreAction\(action\)\{ if\(!UI_PORT\.defer\(action\)\) dispatchCoreAction\(action\); \}/.test(coreSrc245)
+     &&!/type:"whenIdle"/.test(coreSrc245)&&!/resume:\{/.test(coreSrc245),
+     "규칙을 잇는 다음 액션은 Core 가 소유한다 — 미루지 않으면 그 자리에서 실행하고, whenIdle·resume 이벤트는 남아 있지 않다");
+  /* (a2) **결정적 증거**: data.js·state.js·core.js 만 완전히 빈 VM 에 실어도 규칙이 끝까지 돈다.
+     이 VM 에는 window·document·타이머·ui.js·network.js·ai.js·bootstrap.js 가 하나도 없다 — Jupiter 가 소비할 경계 그대로다.
+     소스 문자열 검사가 아니라 **실제로 돌려 본 결과**로 본다 (합법 이동 커밋 · 형태 위반 거부 · 턴 종료). */
+  {
+    const vm=require("vm");
+    const ctx=vm.createContext(Object.create(null));
+    vm.runInContext("var globalThis=this;",ctx);
+    for(const n of ["data.js","state.js","core.js"]) vm.runInContext(fs.readFileSync(path.join(demo,"js",n),"utf8"),ctx,{filename:n});
+    const r=JSON.parse(vm.runInContext(`(function(){
+      newGame("pvp",{});
+      const rows0=[11,12,13], rows1=[1,2,3];
+      S.pieces.filter(x=>x.owner===0).forEach((x,i)=>{x.r=rows0[i%3];x.c=(i%7)+1;x.placed=true;});
+      S.pieces.filter(x=>x.owner===1).forEach((x,i)=>{x.r=rows1[i%3];x.c=(i%7)+1;x.placed=true;});
+      S.phase="play"; S.current=0; S.mainUsed=false;
+      const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"); m.r=7; m.c=4;
+      const moved=!!dispatchCoreAction({t:"move",id:m.id,r:6,c:4});
+      const at=[m.r,m.c];
+      const bad=[{r:5.5,c:4},{r:"5",c:4},{r:14,c:4},{r:6,c:0}]
+        .map(q=>dispatchCoreAction({t:"move",id:m.id,r:q.r,c:q.c}));
+      const still=[m.r,m.c];
+      const ended=!!dispatchCoreAction({t:"endTurn"});
+      return JSON.stringify({moved,at,badRejected:bad.every(x=>x===false),still,ended,turn:S.turnCount,log:S.log.length});
+    })()`,ctx));
+    ok(r.moved===true&&r.at[0]===6&&r.at[1]===4,"빈 VM(data+state+core 만): 합법 이동이 실제로 커밋된다 — 화면·AI·네트워크 없이 규칙이 돈다");
+    ok(r.badRejected===true&&r.still[0]===6&&r.still[1]===4,"빈 VM: 소수·문자열·보드 밖 좌표는 전부 거부되고 말은 제자리다");
+    ok(r.ended===true&&r.turn===1&&r.log>0,"빈 VM: 턴 종료까지 진행되고 공개 기록도 Core 가 쓴다");
+    /* #245 Saturn REVISE(M2): 규칙을 **잇는 다음 단계**도 같은 VM 에서 끝난다. 종전에는 도망 성공 뒤 교환 화면과
+       탐색 완료 래치가 whenIdle·battleEndFx.resume 이벤트로만 나가서, ui.js 가 없으면 규칙이 그 자리에 멈췄다. */
+    const c=JSON.parse(vm.runInContext(`(function(){
+      newGame("pvp",{});
+      const rows0=[11,12,13], rows1=[1,2,3];
+      S.pieces.filter(x=>x.owner===0).forEach((x,i)=>{x.r=rows0[i%3];x.c=(i%7)+1;x.placed=true;});
+      S.pieces.filter(x=>x.owner===1).forEach((x,i)=>{x.r=rows1[i%3];x.c=(i%7)+1;x.placed=true;});
+      S.phase="play"; S.current=0; S.mainUsed=false;
+      const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"), e=S.pieces.find(x=>x.owner===1&&x.type==="minion");
+      m.r=7; m.c=4; e.r=6; e.c=4;                       // 나머지 말은 양쪽 자기 진영에 남아 후방 후보가 된다
+      const opened=!!dispatchCoreAction({t:"battleStart",attId:m.id,defId:e.id})&&!!S.battle;
+      const qPending=S.battle.msgQ.length;              // 개시 메시지가 **쌓인 채로** 둔다 — 규칙은 표시 큐를 보지 않는다
+      BAL.fleeProb=1;                                   // 도망 성공을 확정해 **연속만** 본다
+      const oks0=S.metrics.fleeOks;
+      dispatchCoreAction({t:"flee",frame:battleCmdFrame()});
+      const swap=S.fleePick?{owner:S.fleePick.owner,cands:S.fleePick.cands.length}:null;
+      S.searchEndSeq=5;                                 // 탐색 완료 토큰 — searchDone 이 그 자리에서 래치해야 한다
+      applyCoreEffects({type:"searchDone",owner:0,seq:5,title:"",sub:"",fxKey:"itemFx"});
+      return JSON.stringify({opened,qPending,fled:S.metrics.fleeOks-oks0,battle:!!S.battle,swap,latch:S.searchEndSeq});
+    })()`,ctx));
+    ok(c.opened&&c.fled===1&&!c.battle&&!!c.swap&&c.swap.cands>0,
+       "빈 VM: 도망 성공의 **다음 단계**(후방 말 교환 화면)가 화면 없이 그 자리에서 열린다 (후보 "+(c.swap?c.swap.cands:"없음")+")");
+    ok(c.qPending>0,"빈 VM 전제: 전투 개시로 표시 큐에 메시지가 "+c.qPending+"개 쌓여 있었다 (손으로 비우지 않았다)");
+    ok(c.latch===5.5,"빈 VM: 탐색 완료 래치도 연출을 기다리지 않고 그 자리에서 올라간다 (실측 "+c.latch+")");
+  }
+  /* (a3) #245 Saturn REVISE(M2) **결정적 증거**: data·state·core·**ai** 만 빈 VM 에 실어도 AI 가 전투와 탐색 보상을 끝낸다.
+     이 VM 에는 window·document·타이머·netAction·ui.js 가 하나도 없다 — 종전 AI 는 window.__act/__flee/__useItem/
+     __recruitCore 와 netAction 을 지나 **표시 계층이 자기 렌더에 굳혀 둔 프레임**을 빌려 썼기 때문에 여기서 한 수도 두지 못했다. */
+  {
+    const vm=require("vm");
+    const ctx=vm.createContext(Object.create(null));
+    vm.runInContext("var globalThis=this;",ctx);
+    for(const n of ["data.js","state.js","core.js","ai.js"]) vm.runInContext(fs.readFileSync(path.join(demo,"js",n),"utf8"),ctx,{filename:n});
+    const r=JSON.parse(vm.runInContext(`(function(){
+      setSeed(245);
+      newGame("sim",{});                               // 양측 AI — 전투 행동을 고르는 쪽이 둘 다 어댑터다
+      const rows0=[11,12,13], rows1=[1,2,3];
+      S.pieces.filter(x=>x.owner===0).forEach((x,i)=>{x.r=rows0[i%3];x.c=(i%7)+1;x.placed=true;});
+      S.pieces.filter(x=>x.owner===1).forEach((x,i)=>{x.r=rows1[i%3];x.c=(i%7)+1;x.placed=true;});
+      S.phase="play"; S.current=1; S.mainUsed=true;    // 주 행동은 끝난 자리 — 여기서는 전투 경로만 본다
+      const att=S.pieces.find(x=>x.owner===1&&x.type==="minion"), def=S.pieces.find(x=>x.owner===0&&x.type==="minion");
+      att.r=7; att.c=4; def.r=6; def.c=4;
+      const opened=!!dispatchCoreAction({t:"battleStart",attId:att.id,defId:def.id})&&!!S.battle;
+      let acts=0, guard=0, qMax=0;                     // 표시 큐는 **한 번도 비우지 않는다** — 아무도 재생하지 않으니 계속 쌓인다
+      while(S.battle&&guard++<400){
+        const B=S.battle, seq=B.actSeq, blen=B.blog.length; // 아이템·패키지는 **행동 미소모**라 토큰이 아니라 전투 이력이 는다
+        aiBattleAction();
+        qMax=Math.max(qMax,(S.battle===B?B.msgQ.length:0));
+        if(B.actSeq===seq&&B.blog.length===blen&&S.battle===B) break; // 한 수도 두지 못했다 — 아래 단언이 잡는다
+        acts++;
+      }
+      const battleDone=!S.battle&&acts>0;
+      /* 탐색 보상: recruit 을 규칙 경로로 열고 AI 가 같은 Core 액션(recruit)으로 끝낸다 */
+      S.battle=null; S.fleePick=null; S.mainUsed=false; S.current=1; S.forcedTargets=[]; S.movedPiece=null;
+      const p=alivePieces().find(x=>x.owner===1&&x.type==="minion");
+      p.r=4; p.c=4; S.events=[{r:4,c:4,kind:"recruit",consumed:false}]; S.traces[1].add("4_4");
+      const searched=!!dispatchCoreAction({t:"search",id:p.id,r:4,c:4,ei:0});
+      const recruitOpen=!!S.recruit;
+      if(S.recruit) aiRecruitResolve(1,p);
+      return JSON.stringify({opened,acts,qMax,battleDone,searched,recruitOpen,recruitLeft:!!S.recruit});
+    })()`,ctx));
+    ok(r.opened&&r.battleDone,"빈 VM(data+state+core+ai): AI 가 window·netAction·표시 계층 없이 전투를 끝까지 둔다 (AI 전투 행동 "+r.acts+"회)");
+    ok(r.qMax>0,"빈 VM: 표시 큐를 손으로 비우지 않아도(잔여 최대 "+r.qMax+"개) 규칙이 끝까지 나아간다 — Core 합법성이 msgQ 를 보지 않는다");
+    ok(r.searched&&r.recruitOpen&&!r.recruitLeft,"빈 VM: AI 탐색 보상 선택도 같은 Core 액션(recruit)으로 그 자리에서 끝난다");
+  }
+  /* (b) 화면도 AI 도 없는 런타임: 포트를 데이터 싱크로 갈아 끼우고 같은 seed 로 진행해도 규칙 상태가 그대로 나아간다 */
+  {
+    const Y=H.load();
+    H.freshPlay(Y,"pvp"); H.clearBoard(Y);
+    const mover=Y.S.pieces.find(p=>p.owner===0&&p.type==="minion");
+    H.place(Y,mover,12,4);
+    H.place(Y,Y.S.pieces.find(p=>p.owner===0&&p.type==="king"),13,1);
+    H.place(Y,Y.S.pieces.find(p=>p.owner===1&&p.type==="king"),1,7);
+    Y.S.current=0; Y.S.mainUsed=false;
+    const seen=[];
+    Y.UI_PORT.event=ev=>{ seen.push(ev.type); };   // 화면 없음 — 이벤트를 받아 버리기만 한다
+    const moved=Y.dispatchCoreAction({t:"move",id:mover.id,r:11,c:4});
+    ok(!!moved&&mover.r===11&&mover.c===4&&Y.S.mainUsed===true&&seen.length>0,
+       "화면이 이벤트를 버리기만 해도 이동 규칙은 dispatch 안에서 끝난다 (상태 전이가 화면 소비에 매달려 있지 않다)");
+    const endOk=Y.dispatchCoreAction({t:"endTurn"});
+    ok(!!endOk&&Y.S.turnCount===1&&Y.S.mainUsed===false,"턴 종료도 같다 — 규칙 진행에 표시 계층이 필요 없다");
+  }
+  /* (b2) Core → 어댑터로 나가는 이벤트에는 **함수가 하나도 실리지 않는다**. 소스 검사가 아니라 실제 한 판을 끝까지 돌려
+     포트를 지나간 모든 이벤트를 깊이 훑는다 (규칙 실행 이벤트는 Core 가 먼저 소비하므로 여기 오지 않는다). */
+  {
+    const W=H.load();
+    const fnHits=[];
+    const scan=(v,p,seen)=>{ if(v===null||typeof v!=="object"){ if(typeof v==="function") fnHits.push(p); return; }
+      if(seen.has(v)) return; seen.add(v);
+      if(v instanceof Set||v instanceof Map) return;
+      for(const k of Object.keys(v)){ const x=v[k];
+        if(typeof x==="function"){ fnHits.push(p+"."+k); continue; }
+        if(x&&typeof x==="object") scan(x,p+"."+k,seen); } };
+    const base=W.UI_PORT.event;
+    let count=0;
+    W.UI_PORT.event=ev=>{ count++; scan(ev,ev.type,new Set()); return base(ev); };
+    const sim=H.runSim(W,["grade5","grade5"],4245);
+    ok(count>50&&!!sim,"한 판을 끝까지 돌려 포트를 지나간 이벤트를 전부 검사했다 (이벤트 "+count+"건)");
+    ok(fnHits.length===0,"Core 가 어댑터로 내보내는 이벤트에는 함수가 한 칸도 없다 — 전부 직렬화 가능한 값이다"+(fnHits.length?" (실측: "+fnHits.slice(0,5).join(",")+")":""));
+  }
+  /* (c) 전투 개시의 신뢰 경계 */
+  {
+    H.freshPlay(X,"pvp"); H.clearBoard(X);
+    const a=X.S.pieces.find(p=>p.owner===0&&p.type==="minion");
+    const foes=X.S.pieces.filter(p=>p.owner===1&&p.type==="minion");
+    const d=foes[0], far=foes[1], mate=X.S.pieces.filter(p=>p.owner===0&&p.type==="minion")[1];
+    H.place(X,a,7,4); H.place(X,d,6,4); H.place(X,far,3,1); H.place(X,mate,7,5);
+    H.place(X,X.S.pieces.find(p=>p.owner===0&&p.type==="king"),13,1);
+    H.place(X,X.S.pieces.find(p=>p.owner===1&&p.type==="king"),1,7);
+    X.S.current=0; X.S.battlesUsed=0; X.S.battle=null;
+    const snap=()=>JSON.stringify([X.S.battlesUsed,X.S.metrics.forcedBattles,X.S.forcedTargets,
+      X.S.pieces.map(p=>[p.id,p.alive,p.immobile,p.revealed])]);
+    const before=snap();
+    const BAD=[
+      {why:"보드에서 떨어져 있는 적",a:{t:"battleStart",attId:a.id,defId:far.id}},
+      {why:"같은 편",a:{t:"battleStart",attId:a.id,defId:mate.id}},
+      {why:"같은 말",a:{t:"battleStart",attId:a.id,defId:a.id}},
+      {why:"없는 말 id",a:{t:"battleStart",attId:a.id,defId:999999}},
+      {why:"정수가 아닌 id",a:{t:"battleStart",attId:a.id,defId:"6"}}];
+    let rej=0, frozen=0;
+    for(const b of BAD){ if(X.reduceCoreAction(X.S,b.a)===null) rej++; if(snap()===before) frozen++; }
+    ok(rej===BAD.length&&frozen===BAD.length&&X.S.battle===null,
+       "전투 개시는 신뢰 경계를 지난다 — 떨어진 말·같은 편·같은 말·없는 id·형태 위반은 전부 정확한 무변경 ("+BAD.length+" 사례)");
+    const dead=X.S.pieces.find(p=>p.owner===1&&p.type==="minion"&&p!==d&&p!==far);
+    H.place(X,dead,8,4); dead.alive=false;
+    const before2=snap();
+    ok(X.reduceCoreAction(X.S,{t:"battleStart",attId:a.id,defId:dead.id})===null,"제거된 말로는 전투가 열리지 않는다");
+    /* 대조: 인접한 살아 있는 적과는 정상적으로 열린다 (개시 실행은 dispatch 안에서 끝난다) */
+    const okStart=X.reduceCoreAction(X.S,{t:"battleStart",attId:a.id,defId:d.id});
+    ok(!!okStart&&okStart.events.length===1&&okStart.events[0].type==="battleBegan",
+       "대조: 인접한 적과의 개시는 battleBegan 이벤트 하나로 나간다 (reducer 는 말을 건드리지 않는다)");
+    ok(snap()===before2,"거부·수락 어느 쪽도 reducer 단계에서는 말·전투 회계를 건드리지 않는다");
+    /* #245 Saturn REVISE(M4 후속): **세부 합법성도** 같은 경계에서 본다. 종전에는 canBattle·forcedPickOk 를
+       부르는 쪽(클릭 경로·AI)에만 맡겨 두어, 그 게이트를 지나지 않은 호출이 남의 차례·세 번째 전투·강제 표식 밖
+       대상·도망 교환 중에도 전투를 열 수 있었다. 네 갈래 전부 정확한 무변경(null)이어야 한다. */
+    {
+      const probe=(why,mut,undo)=>{ mut(); const b=snap();          // 기준선은 **그 불법 상황 그대로**의 상태다
+        const r=X.reduceCoreAction(X.S,{t:"battleStart",attId:a.id,defId:d.id});
+        const frozen=snap()===b; undo(); return {why,rejected:r===null,frozen}; };
+      const P=[
+        probe("남의 차례(공격측이 행동자가 아니다)",()=>{X.S.current=1;},()=>{X.S.current=0;}),
+        probe("전투 횟수 소진(세 번째 전투)",()=>{X.S.battlesUsed=2;},()=>{X.S.battlesUsed=0;}),
+        probe("강제 표식 밖 대상",()=>{X.S.movedPiece=a; X.S.forcedTargets=[far.id];},()=>{X.S.movedPiece=null; X.S.forcedTargets=[];}),
+        probe("강제 표식의 공격측이 아닌 말",()=>{X.S.movedPiece=mate; X.S.forcedTargets=[d.id];},()=>{X.S.movedPiece=null; X.S.forcedTargets=[];}),
+        probe("도망 교환 선택 중",()=>{X.S.fleePick={owner:0,cands:[],token:"t"};},()=>{X.S.fleePick=null;})];
+      ok(P.every(x=>x.rejected&&x.frozen)&&X.S.battle===null,
+         "전투 개시는 canBattle·forcedPickOk 계약도 지난다 — "+P.map(x=>x.why).join(" · ")+" 는 전부 정확한 무변경"
+         +(P.every(x=>x.rejected&&x.frozen)?"":" (실패: "+P.filter(x=>!(x.rejected&&x.frozen)).map(x=>x.why).join(",")+")"));
+      /* 대조 1: 합법 강제 전투는 그대로 열리고 표식·지표만 reducer 가 순수하게 정리한다 */
+      X.S.movedPiece=a; X.S.forcedTargets=[d.id];
+      const forcedOk=X.reduceCoreAction(X.S,{t:"battleStart",attId:a.id,defId:d.id});
+      ok(!!forcedOk&&forcedOk.events[0].type==="battleBegan"&&forcedOk.state.forcedTargets.length===0
+         &&forcedOk.state.metrics.forcedBattles===X.S.metrics.forcedBattles+1,
+         "대조: 합법 강제 전투는 열리고 표식 회수·forcedBattles 만 reducer 안에서 끝난다");
+      /* 대조 2: 폭탄은 **강제 접촉일 때만** 공격측이 된다 (능동 클릭 경로의 폭탄 공격 불가는 그대로) */
+      const bomb=X.S.pieces.find(p=>p.owner===0&&p.type==="bomb");
+      H.place(X,bomb,7,3); H.place(X,d,6,3);
+      X.S.movedPiece=bomb; X.S.forcedTargets=[];
+      ok(X.reduceCoreAction(X.S,{t:"battleStart",attId:bomb.id,defId:d.id})===null,
+         "강제 표식 없는 폭탄 공격은 종전대로 열리지 않는다 (canBattle 의 폭탄 제외)");
+      X.S.forcedTargets=[d.id];
+      const bombOk=X.reduceCoreAction(X.S,{t:"battleStart",attId:bomb.id,defId:d.id});
+      ok(!!bombOk&&bombOk.events[0].type==="battleBegan",
+         "대조: 강제 접촉의 폭탄 갈래(contactEligible)는 그대로 열린다");
+      X.S.movedPiece=null; X.S.forcedTargets=[];
+    }
+  }
+  /* (d) 새 경기 단일 커밋 경계 — 전역 S 대입은 state.js 의 commitNewGame 한 곳뿐이다 */
+  {
+    const assigns=["data.js","state.js","ui.js","core.js","ai.js","ui-overlays.js","network.js","bootstrap.js"]
+      .map(n=>{ const src=fs.readFileSync(path.join(demo,"js",n),"utf8").replace(/\blet\s+S\s*=\s*null;/,""); // 선언은 대입이 아니다
+        return [n,(src.match(/(^|[^.$\w])S\s*=[^=]/gm)||[]).length]; });
+    const total=assigns.reduce((n,[,k])=>n+k,0);
+    ok(total===1&&assigns.find(([n])=>n==="state.js")[1]===1,
+       "전역 S 에 대입하는 자리는 state.js 한 곳뿐이다 (실측 "+total+"곳: "+assigns.filter(([,k])=>k).map(([n,k])=>n+"×"+k).join(",")+")");
+    ok(/function commitNewGame\(game\)\{[\s\S]*?S=game;/.test(stateSrc)&&/commitNewGame\(newGameState\(mode,opts\)\);/.test(stateSrc),
+       "새 경기는 commitNewGame 한 곳에서 교체되고 '이전 경기 무효' 고지가 같은 자리에 붙어 있다");
+    const Z=H.load(); const g1=Z.S; Z.newGame("pvp",{});
+    ok(Z.S!==g1&&Z.S.turnCount===0&&Z.S.phase==="setup","새 경기는 같은 객체를 덮어쓰지 않고 새 정체성으로 교체된다 (옛 예약 콜백의 세대 구분이 살아 있다)");
+  }
+}
 /* ===== #245 탐색·보상 선택 — 규칙 상태는 Core reducer, 모달·로그·토스트·튜토리얼·연출은 이벤트 ===== */
 const J245=JSON.stringify;
 /* #245 Saturn REVISE: recruit 액션은 모든 step 에 토큰이 필수다. 픽스처의 토큰 형식도 코어와 같다 — "탐색한 말 id#이 게임의 몇 번째 recruit" */
@@ -480,7 +872,12 @@ const uiSrc=fs.readFileSync(path.join(demo,"js","ui.js"),"utf8");
 const coreSrc=fs.readFileSync(path.join(demo,"js","core.js"),"utf8");
 const mutates=/S\.recruit\s*=[^=]|S\.recruitToken\s*=|S\.searchEndSeq\s*=|R\.stage\s*=[^=]|\.consumed\s*=[^=]|S\.pkgs\[[^\]]*\]\[[^\]]*\]\s*\+\+/;
 ok(!/case "search"\s*:/.test(netSrc)&&!mutates.test(netSrc)&&!mutates.test(aiSrc)&&!mutates.test(uiSrc),"no UI, AI or network path writes the search, package or recruit state — network replay has no second search path either");
-ok(!/R\.stage\s*=[^=]/.test(coreSrc)&&/window\.__recruitCore=\(step,i,token\)=>\{ dispatchCoreAction\(\{t:"recruit",step,i,token\}\); \};/.test(coreSrc)&&(coreSrc.match(/type:"searchDone"/g)||[]).length===1&&(coreSrc.match(/\[ev\.kind\]\+\+/g)||[]).length===1&&(coreSrc.match(/searchFinalizeFx\(/g)||[]).length===1,"the recruit modal only renders, one Core entry point applies every reward choice, and the package grant and completion display each live in a single place");
+/* #245 Saturn REVISE(M1): 선택 창의 HTML·window 콜백은 표시 계층(ui.js)이 소유하고 Core 에는 한 줄도 없다.
+   Core 쪽은 "보상 적용·완료 토큰이 한 곳뿐"이라는 사실만 본다 (단계 변이 R.stage 는 reducer 밖에 없다). */
+ok(!/R\.stage\s*=[^=]/.test(coreSrc)&&!/window\./.test(coreSrc)&&!/<h2>|<div |<button /.test(coreSrc)
+   &&/window\.__recruitCore=\(step,i,token\)=>\{ dispatchCoreAction\(\{t:"recruit",step,i,token\}\); \};/.test(uiSrc)
+   &&(coreSrc.match(/type:"searchDone"/g)||[]).length===1&&(coreSrc.match(/\[ev\.kind\]\+\+/g)||[]).length===1,
+   "Core carries no window hook and no modal markup; the recruit entry point and every reward screen live in the display layer while the grant and completion token each keep one Core home");
 ok(/function doSearch\(p,ev\)\{\r?\n  const result=dispatchCoreAction\(\{t:"search"/.test(coreSrc)&&(T.html.match(/tryCapture\(/g)||[]).length===2,"the search wrapper is a thin Core entry point and the capture roll keeps its single implementation");
 
 /* ===== Saturn REVISE 회귀 — 세 수정이 각각 없으면 떨어지는 최소 probe ===== */
@@ -535,8 +932,8 @@ ok(/function doSearch\(p,ev\)\{\r?\n  const result=dispatchCoreAction\(\{t:"sear
     Z.drain(20000);
     return {own,ended:Z.S.turnCount===t+1,auto:Z.S.metrics.autoEnds===e+1,seq:Z.S.searchEndSeq}; };
   const g1=play(), g2=play();
-  ok(g1.own&&g1.ended&&g1.auto&&g1.seq===1,"game 1: the search completion callback itself ends the turn exactly once");
-  ok(g2.own&&g2.ended&&g2.auto&&g2.seq===1,"game 2 reuses completion sequence 1 and its own callback still ends the turn — the display latch is per game, not per process (a process-global latch swallowed it and left the generic grace timer to finish the turn a step later)");
+  ok(g1.own&&g1.ended&&g1.auto&&g1.seq===1.5,"game 1: the search completion callback itself ends the turn exactly once and leaves the spent-token latch (1 → 1.5, the pre-split value)");
+  ok(g2.own&&g2.ended&&g2.auto&&g2.seq===1.5,"game 2 reuses completion sequence 1 and its own callback still ends the turn — the latch lives in that game's own state, not in a process-global number (a process-global latch swallowed it and left the generic grace timer to finish the turn a step later)");
   Z.TQ.length=0;
 }
 /* (4) 이벤트 칸 대조는 자리로 한다 — 좌표가 겹치는 항목 둘이 첫 원본 하나로 뭉치지 않는다 */
@@ -830,12 +1227,23 @@ ok(/function doSearch\(p,ev\)\{\r?\n  const result=dispatchCoreAction\(\{t:"sear
   ok(VERBS.every(t=>X.reduceCoreAction(X.S,{t})===null),"전투 어휘 7종은 프레임 없이는 Core 가 맡지 않는다 (진입점이 붙여 다시 부른다)");
   ok(VERBS.every(t=>X.dispatchCoreAction({t})===false)&&dg()===before,"프레임 없는 직접 dispatch 는 아무것도 커밋하지 않는다");
   const coreSrc=fs.readFileSync(path.join(demo,"js","core.js"),"utf8");
-  const entries=coreSrc.match(/window\.__(?:openPkgCore|pkgPickCore|pkgCancelCore|useItemCore|throwBallCore|fleeCore|passCore|actCore)=[^\n]*/g)||[];
-  ok(entries.length===8&&entries.every(line=>/dispatchCoreAction\(\{t:"/.test(line)),
-     "전투 커맨드 진입점 8종(개봉 취소 포함)은 전부 한 줄로 Core 액션만 보낸다 — 규칙·자원 회계가 렌더 안에 남아 있지 않다");
+  const uiSrc12=fs.readFileSync(path.join(demo,"js","ui.js"),"utf8");
+  const entries=uiSrc12.match(/window\.__(?:openPkgCore|pkgPickCore|pkgCancelCore|useItemCore|throwBallCore|fleeCore|passCore|actCore)=[^\n]*/g)||[];
+  ok(entries.length===8&&entries.every(line=>/dispatchCoreAction\(\{t:"/.test(line))&&!/window\.__/.test(coreSrc),
+     "전투 커맨드 진입점 8종(개봉 취소 포함)은 **표시 계층에서** 전부 한 줄로 Core 액션만 보낸다 — Core 에는 window 콜백이 한 줄도 없다");
+  /* 12-1b #245 Saturn REVISE(MEDIUM): 합법성 판정은 **표시 큐(B.msgQ)** 를 읽지 않는다 — 그건 UI 가 소유한 재생 큐이지 규칙 상태가 아니다.
+     Core 가 그걸 보면 화면 없는 런타임(헤드리스·서버 좌석 엔진·AI)이 연출 큐를 손으로 비워야 합법 행동을 이어갈 수 있다.
+     연출 중 입력 차단은 그대로 **경계**가 맡는다: UI 의 busy·입력 경계 netAction(fxLocked)·수신 경계 netReady(빈 msgQ). */
+  const cmdCtxSrc=coreSrc.slice(coreSrc.indexOf("function battleCmdCtx("),coreSrc.indexOf("function battleActionFrame("));
+  ok(cmdCtxSrc.length>0&&cmdCtxSrc.indexOf("msgQ")<0,
+     "12-1b 전투 합법성 게이트(battleCmdCtx)에 표시 큐(msgQ) 참조가 한 줄도 없다 — 규칙이 연출 큐에 묶이지 않는다");
+  ok(/const busy=B\.msgQ\.length>0\|\|fxLocked\(\);/.test(uiSrc12)&&/const dis=aiActor\|\|busy\|\|/.test(uiSrc12),
+     "12-1c 대신 **표시 계층**이 재생·연출 중 전투 커맨드를 비활성화한다 (battleModal 의 busy → dis)");
+  ok(/S\.battle\.msgQ\.length===0/.test(fs.readFileSync(path.join(demo,"js","network.js"),"utf8")),
+     "12-1d 수신 경계(netReady)도 빈 msgQ 를 그대로 기다린다 — 온라인 재생 순서·결정성은 바뀌지 않는다");
   /* 취소는 **표시 계층의 일**이 아니다: 개봉 화면의 [취소] 버튼이 B 를 직접 고치거나 화면만 닫고 끝내면
      발급된 표가 살아남아 뒤늦은 확정을 인가한다 (아래 12-13). 버튼은 Core 경계만 부른다. */
-  ok(!/\[\"취소\",\(\)=>\{close\(\); battleModal\(\);\}\]/.test(coreSrc)&&(coreSrc.match(/\["취소",\(\)=>window\.__pkgCancelCore\(id\)\]/g)||[]).length===2,
+  ok(!/\[\"취소\",\(\)=>\{close\(\); battleModal\(\);\}\]/.test(uiSrc12)&&(uiSrc12.match(/\["취소",\(\)=>window\.__pkgCancelCore\(id\)\]/g)||[]).length===2,
      "개봉 화면의 취소 버튼 2곳은 UI 가 전투 상태를 직접 고치지 않고 Core 취소 액션을 부른다");
 
   /* 12-2 커밋은 **바뀐 칸만** 옮긴다. 같은 전투 객체를 다시 대입하면 S.battle 에 접근자를 건 관찰자(공개 방 서버
@@ -1157,52 +1565,80 @@ ok(/function doSearch\(p,ev\)\{\r?\n  const result=dispatchCoreAction\(\{t:"sear
   ok(!/\b(execSlot|nextPhase|finishBattle|finishByCapture|bmsg)\s*\(/.test(netSrc),"네트워크 계층은 전투 엔진을 직접 부르지 않는다 (프로토콜·중계만)");
   ok(!/\b(execSlot|nextPhase|finishBattle|finishByCapture|bmsg)\s*\(/.test(aiSrc)&&!/S\.battle\.[A-Za-z]+\s*=[^=]/.test(aiSrc),
      "AI 는 전투 상태를 직접 바꾸지 않는다 — 액션만 돌려준다");
+  /* #245 Saturn REVISE(M2): AI 에는 **표시·네트워크 진입점이 한 칸도 남지 않는다**. 종전에는 window.__act/__flee/
+     __useItem/__throwBall/__pass/__openPkgCore/__pkgPickCore/__recruitCore 와 netAction 을 지나, 표시 계층이 자기
+     렌더에 굳혀 둔 프레임을 빌려 썼다 — 화면이 없으면 AI 가 전투에서 한 수도 두지 못했다. */
+  const aiCode=aiSrc.replace(/\/\*[\s\S]*?\*\//g,"").replace(/^\s*\/\/.*$/gm,"").replace(/([^:"'])\/\/.*$/gm,"$1"); // 주석(이력 서술)은 제외하고 실제 호출만 본다
+  ok(!/\bwindow\b/.test(aiCode)&&!/\bnetAction\s*\(/.test(aiCode)&&!/\bdocument\b/.test(aiCode),
+     "AI 코드에는 window·document·netAction 이 하나도 없다 — 고른 행동을 Core 액션으로 직접 보낸다");
+  ok(/const aiCmd=a=>dispatchCoreAction\(Object\.assign\(\{frame:battleCmdFrame\(\)\},a\)\);/.test(aiSrc)
+     &&/function battleCmdFrame\(state\)/.test(fs.readFileSync(path.join(demo,"js","core.js"),"utf8")),
+     "전투 커맨드의 겨냥 문맥은 **지금 상태에서** Core 가 짓는다 (렌더가 굳혀 둔 프레임을 빌리지 않는다)");
+  /* 표시 계층의 예약·잠금·보류는 있으면 쓰고 없으면 그 자리에서 실행한다 — ai.js 가 그 자리의 존재를 전제하지 않는다 */
+  ok(/typeof fxWhenIdle==="function"/.test(aiSrc)&&/typeof setTimeout==="function"/.test(aiSrc)&&/typeof UI!=="undefined"/.test(aiSrc)
+     &&!/(^|[^.\w])render\(\)/.test(aiCode),
+     "AI 의 예약·보류는 표시 계층이 없으면 즉시 실행으로 떨어지고, 화면 갱신도 render() 직접 호출이 아니라 Core 이벤트다");
 }
 /* ===== (14) #245 예고·지연 효과 스케줄러(#233 GDD-23 4.3·4.6) — 예약·카운트는 Core reducer, 발동은 delayedFired 이벤트 ===== */
 {
-  const liveBattle=T.S.battle, fired=[], st={phase:"play"};
-  /* 예약: #233 요약 계약(roundsLeft·tag·run)은 그대로고, 대기열을 고치는 자리만 Core 안으로 모였다 */
-  const f1={pendingFx:[]};
-  const sched=T.reduceCoreAction(st,{t:"delaySchedule",f:f1,delayRounds:2,run:()=>{},tag:"tide_warning"});
-  ok(sched.state===st&&sched.events.length===0&&f1.pendingFx.length===1&&f1.pendingFx[0].roundsLeft===2&&f1.pendingFx[0].tag==="tide_warning"&&typeof f1.pendingFx[0].run==="function",
-     "예약은 Core 액션 하나로 들어가고 서버 락스텝 요약이 읽는 roundsLeft·tag·run 을 그대로 보존한다");
-  T.reduceCoreAction(st,{t:"delaySchedule",f:f1,delayRounds:1,run:()=>{}});
-  ok(f1.pendingFx[1].tag===null&&T.reduceCoreAction(st,{t:"delaySchedule",f:null,delayRounds:1,run:()=>{}}).events.length===0,
-     "tag 없는 예약은 null 로 떨어지고(서버 요약 역호환) 대상 없는 예약은 조용한 무동작이다");
-  /* 카운트만 내리고 콜백은 부르지 않는다 — 분리 전에는 같은 함수가 전역 S.battle 을 읽고 그 자리에서 실행했다 */
-  const f2={pendingFx:[{roundsLeft:1,tag:"a",run:()=>fired.push("a")}]};
-  T.S.battle={};
-  const tick=T.reduceCoreAction({},{t:"delayTick",f:f2});
-  ok(fired.length===0&&f2.pendingFx.length===0&&tick.events.length===1&&tick.events[0].type==="delayedFired"&&tick.events[0].fired.length===1&&tick.events[0].fired[0].tag==="a",
-     "reducer 는 카운트만 내리고 콜백을 부르지 않는다 — 발동은 delayedFired 이벤트로만 나간다 (전역 S 없이 빈 상태로도 같은 결과)");
-  const f3={pendingFx:[{roundsLeft:2,tag:null,run:()=>fired.push("b")}]};
-  const wait=T.reduceCoreAction({},{t:"delayTick",f:f3});
-  ok(wait.events.length===0&&f3.pendingFx.length===1&&f3.pendingFx[0].roundsLeft===1&&T.reduceCoreAction({},{t:"delayTick",f:{pendingFx:[]}}).events.length===0,
+  const liveBattle=T.S.battle, fired=[];
+  /* #245 Saturn REVISE(M3): 액션은 **전투원을 싣지 않는다** — 상태 안의 자리(side)만 싣고 reducer 가 그 자리의
+     살아 있는 전투원을 찾아 대기열을 고친다. 전투원을 복제하지 않으므로 #233 의 run 훅·execSlot 이 붙잡은 정체성은 그대로다. */
+  const mkSide=()=>{ const B={fa:{pendingFx:[]},fd:{pendingFx:[]},msgQ:[]}; T.S.battle=B; return B; };
+  const B1=mkSide();
+  const sched=T.reduceCoreAction(T.S,{t:"delaySchedule",side:"A",delayRounds:2,run:()=>{},tag:"tide_warning"});
+  const f1=B1.fa;
+  ok(sched.state===T.S&&sched.events.length===0&&f1.pendingFx.length===1&&f1.pendingFx[0].roundsLeft===2&&f1.pendingFx[0].tag==="tide_warning"&&typeof f1.pendingFx[0].run==="function"&&f1===T.S.battle.fa,
+     "예약은 Core 액션 하나로 들어가고 서버 락스텝 요약이 읽는 roundsLeft·tag·run 을 그대로 보존한다 (전투원 객체는 복제되지 않는다)");
+  T.reduceCoreAction(T.S,{t:"delaySchedule",side:"A",delayRounds:1,run:()=>{}});
+  ok(f1.pendingFx[1].tag===null&&T.reduceCoreAction(T.S,{t:"delaySchedule",side:null,delayRounds:1,run:()=>{}}).events.length===0,
+     "tag 없는 예약은 null 로 떨어지고(서버 요약 역호환) 가리킬 자리가 없는 예약은 조용한 무동작이다");
+  /* 액션에는 전투원이 없다 — 상태를 우회해 남의 객체를 건네는 통로가 없다 */
+  const actions=[{t:"delaySchedule",side:"A",delayRounds:1,run:()=>{},tag:"x"},{t:"delayTick",side:"A"}];
+  ok(actions.every(a=>Object.keys(a).every(k=>typeof a[k]!=="object"||a[k]===null)&&!("f" in a)),
+     "예약·카운트 액션은 전투원 객체를 싣지 않는다 — 자리(side)와 값만 싣는다 (상태 우회 통로 없음)");
+  /* 카운트는 reducer 가 내리고 콜백은 그 **다음**에 — 커밋된 대기열을 보고 도는지 훅 안에서 직접 확인한다 */
+  const B2=mkSide();
+  let seenQueue=null;
+  B2.fa.pendingFx=[{roundsLeft:1,tag:"a",run:()=>{ seenQueue=T.S.battle.fa.pendingFx.slice(); fired.push("a"); }},
+                   {roundsLeft:5,tag:"later",run:()=>fired.push("never")}];
+  const tick=T.reduceCoreAction(T.S,{t:"delayTick",side:"A"});
+  ok(fired.length===0&&B2.fa.pendingFx.length===1&&B2.fa.pendingFx[0].tag==="later"&&tick.events.length===1&&tick.events[0].type==="delayedFired"&&tick.events[0].side==="A"&&tick.events[0].fired.length===1&&tick.events[0].fired[0].tag==="a",
+     "reducer 가 대기열을 확정하고 콜백은 부르지 않는다 — 발동은 delayedFired 이벤트로만 나간다");
+  T.applyCoreEffects(tick.events[0]);
+  ok(fired.length===1&&!!seenQueue&&seenQueue.length===1&&seenQueue[0].tag==="later"&&seenQueue[0].roundsLeft===4,
+     "실행 훅은 **대기열이 커밋된 뒤에만** 돈다 — 훅 안에서 본 대기열은 이미 발동 항목이 빠지고 카운트가 내려간 상태다");
+  const B3=mkSide();
+  B3.fa.pendingFx=[{roundsLeft:2,tag:null,run:()=>fired.push("b")}];
+  const wait=T.reduceCoreAction(T.S,{t:"delayTick",side:"A"});
+  ok(wait.events.length===0&&B3.fa.pendingFx.length===1&&B3.fa.pendingFx[0].roundsLeft===1&&T.reduceCoreAction(T.S,{t:"delayTick",side:"D"}).events.length===0,
      "대기 중인 예약은 카운트만 내려가고 빈 대기열은 이벤트를 내지 않는다");
   /* 4.6 취소 규칙은 항목마다 다시 본다 — tickDelayed() 래퍼는 종전과 같은 결과를 낸다 */
-  const f4={pendingFx:[{roundsLeft:1,tag:null,run:()=>fired.push("c")}]};
+  const B4=mkSide(); const f4=B4.fa;
+  f4.pendingFx=[{roundsLeft:1,tag:null,run:()=>fired.push("c")}];
   T.S.battle=null; T.tickDelayed(f4);
-  ok(fired.indexOf("c")<0&&f4.pendingFx.length===0,"전투가 이미 끝난 뒤에는 발동하지 않고 대기열에서만 빠진다 (4.6 취소)");
-  const f5={pendingFx:[{roundsLeft:1,tag:null,run:()=>fired.push("d")}]};
-  T.S.battle={}; T.tickDelayed(f5);
-  ok(fired.filter(x=>x==="d").length===1&&f5.pendingFx.length===0,"전투가 살아 있으면 tickDelayed() 한 번에 정확히 한 번 발동한다");
+  ok(fired.indexOf("c")<0&&f4.pendingFx.length===1,"전투가 없으면 가리킬 자리가 없어 대기열도 콜백도 움직이지 않는다 (4.6 취소 경로는 resetAfter 가 비운다)");
+  const B5=mkSide();
+  B5.fa.pendingFx=[{roundsLeft:1,tag:null,run:()=>fired.push("d")}];
+  T.tickDelayed(B5.fa);
+  ok(fired.filter(x=>x==="d").length===1&&B5.fa.pendingFx.length===0,"전투가 살아 있으면 tickDelayed() 한 번에 정확히 한 번 발동한다");
   /* 음성 대조: 발동한 효과가 전투를 끝내면(resetAfter 가 대기열을 비운다) 남은 예약은 되살아나지 않는다.
      분리 전은 콜백을 먼저 돌리고 **그 뒤에** 남은 목록을 다시 대입해, 이미 취소된 예약이 다음 전투로 살아서 넘어갔다. */
-  const f6={pendingFx:[]};
-  f6.pendingFx.push({roundsLeft:1,tag:"end",run:()=>{ T.S.battle=null; T.resetAfter(f6); fired.push("e"); }});
-  f6.pendingFx.push({roundsLeft:3,tag:"later",run:()=>fired.push("f")});
-  T.S.battle={}; T.tickDelayed(f6);
+  const B6=mkSide(); const f6=B6.fa;
+  f6.pendingFx=[{roundsLeft:1,tag:"end",run:()=>{ T.S.battle=null; T.resetAfter(f6); fired.push("e"); }},
+                {roundsLeft:1,tag:"later2",run:()=>fired.push("f")}];
+  T.tickDelayed(f6);
   ok(fired.indexOf("e")>=0&&fired.indexOf("f")<0&&(!f6.pendingFx||f6.pendingFx.length===0),
      "발동한 효과가 전투를 끝내면 남은 예약은 되살아나지 않는다 (4.6) — 종전은 실행 뒤에 대기열을 다시 대입해 취소된 예약을 부활시켰다");
   T.S.battle=liveBattle;
   /* 단일 경로: 래퍼 둘은 Core 액션 호출뿐이고, 표시·AI·네트워크 계층은 대기열을 직접 건드리지 않는다 */
   const coreSrc=fs.readFileSync(path.join(demo,"js","core.js"),"utf8");
-  ok(/function scheduleDelayed\(f,delayRounds,run,tag\)\{ dispatchCoreAction\(\{t:"delaySchedule",f,delayRounds,run,tag\}\); \}/.test(coreSrc)
-    &&/function tickDelayed\(f\)\{ dispatchCoreAction\(\{t:"delayTick",f\}\); \}/.test(coreSrc),
-     "#233 래퍼 둘은 Core 액션 하나를 부르는 줄만 남긴다 (계약은 그대로, 대기열 변이는 reducer 한 곳)");
+  ok(/function scheduleDelayed\(f,delayRounds,run,tag\)\{ return dispatchCoreAction\(\{t:"delaySchedule",side:battleSideOf\(f\),delayRounds,run,tag\}\); \}/.test(coreSrc)
+    &&/function tickDelayed\(f\)\{ return dispatchCoreAction\(\{t:"delayTick",side:battleSideOf\(f\)\}\); \}/.test(coreSrc),
+     "#233 래퍼 둘은 Core 액션 하나를 부르는 줄만 남기고 전투원 대신 그 자리(side)를 싣는다 (계약은 그대로, 대기열 변이는 reducer 한 곳)");
   const delayCase=coreSrc.slice(coreSrc.indexOf('case "delayTick"'),coreSrc.indexOf("default: return null;"));
-  ok(delayCase.length>0&&!/\.run\(\)/.test(delayCase)&&delayCase.indexOf("S.")<0,
-     "delayTick reducer 안에는 콜백 실행도 전역 S 참조도 없다");
+  ok(delayCase.length>0&&!/\.run\(\)/.test(delayCase)&&delayCase.indexOf("S.")<0&&!/action\.f\b/.test(delayCase),
+     "delayTick reducer 안에는 콜백 실행도 전역 S 참조도 액션이 실어 온 전투원도 없다");
   ok(["ui.js","ui-overlays.js","ai.js","network.js","state.js","data.js"].every(name=>
       !/pendingFx\s*(?:=[^=]|\.(?:push|splice|pop|shift|unshift))/.test(fs.readFileSync(path.join(demo,"js",name),"utf8"))),
      "표시·AI·네트워크·데이터 계층은 예약 대기열을 직접 변이하지 않는다");
@@ -1223,18 +1659,17 @@ if(baseHtml){
     return JSON.stringify({roster:X.S.roster,pieces:X.S.pieces.map(piece=>[piece.id,piece.r,piece.c,piece.placed,piece.rosterId,piece.element,piece.hp,piece.atk])});
   };
   ok(setupTrace({html:baseHtml})===setupTrace({}),"resolved auto-placement matches the pre-split setup state");
-  /* #245: 요약에 새로 들어간 항목 중 searchEndSeq 만 **버전 사이에 표현이 다르다.** 분리 전 원본은 표시 전용 래치를
-     규칙 상태에 되써서(`S.searchEndSeq=tk.seq+0.5`) 완료마다 1.5 씩 올랐고, 래치를 게임별 WeakMap 으로 옮긴 지금은
-     완료 횟수 그대로다(1,2,3…). 규칙·난수·승패에는 쓰이지 않는 완료 토큰이라 값이 다를 뿐 동작은 같으므로, **버전
-     대조에서만** 이 항목을 걷어낸다 — 같은 엔진 두 좌석을 보는 락스텝 대조에는 그대로 남아 감지력이 줄지 않는다.
-     정수 완료 횟수라는 사실 자체는 위 (3) 절의 seq===1 과 아래 (9) 절이 따로 본다. */
-  const sameVer=d=>{ const o=JSON.parse(d); delete o.searchEndSeq; return JSON.stringify(o); };
+  /* #245: 요약은 **원본 그대로** 대조한다 — 걷어내는 항목도, 값을 맞춰 주는 정규화도 없다.
+     종전에는 searchEndSeq 만 표현이 달라(분리 전은 래치가 `S.searchEndSeq=tk.seq+0.5` 로 되써서 완료마다 1.5 씩
+     올랐고, 래치를 게임별 WeakMap 으로 옮긴 판은 완료 횟수 그대로였다) 이 항목을 대조에서 지웠지만, 그것은 실제
+     동작 차이를 검사에서 가린 것이었다. 래치를 분리 전과 같은 값·같은 경로(Core searchEndLatch 액션)로 되돌렸으므로
+     지금은 두 판의 요약이 글자 하나까지 같다. */
   const trace=(opts,seed)=>{
     const X=H.load(index,opts), stateTrace=[];
-    const result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000,trace:Y=>stateTrace.push(sameVer(lockstepDigest(Y)))});
-    return JSON.stringify({stateTrace,digest:sameVer(lockstepDigest(X)),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
+    const result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000,trace:Y=>stateTrace.push(lockstepDigest(Y))});
+    return JSON.stringify({stateTrace,digest:lockstepDigest(X),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
   };
-  // 24511 은 텔레포트 스왑 3회, 24512 는 2회 + 왕 끝줄 도달(edge) 승리 — Core 로 옮긴 스왑과 레거시로 남긴 왕 경로를 둘 다 지난다
+  // 24511 은 텔레포트 스왑 3회, 24512 는 2회 + 왕 끝줄 도달(edge) 승리 — Core 로 옮긴 스왑과 왕 끝줄 승리 경로를 둘 다 지난다 (레거시 분기는 남아 있지 않다)
   for(const seed of [24501,24502,24511,24512]) ok(trace({html:baseHtml},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner matches the pre-split baseline");
 }
 
@@ -1369,6 +1804,84 @@ if(baseHtml){
   ok(noMsg[1]==="🫧 방어막 28!"&&noMsg.length===film.length,
      "음성 대조 — selfMsg 를 지우면 표의 방어막 기본 문구가 대신 나온다 (문구도 손글씨가 아니라 표가 낸다)");
   Math.random=realRandom; T.setSeed(null);
+}
+
+/* ===== #245 Saturn REVISE 출전 선택(entryPick)의 수명 — 보류 결정은 **이미 열린 전투 하나**이고, 경기 종료는 그것을 거둔다 =====
+   1) 보류 중에는 독립된 전투가 겹쳐 열리지 않는다 2) 늦게 돌아온 답은 살아 있는 전투를 갈아치우지 못한다
+   3) 기권·경기 종료는 보류 결정을 그 자리에서 무효로 만든다 — 끝난 경기 위에 전투가 되살아나지 않는다 */
+{
+  const X=H.load();
+  /* 동료(ally)가 상대 하수인과 붙으면 출전 선택이 열리고, 사람 차례라 reveal 단계에서 답을 기다린다 */
+  const openEntry=()=>{
+    H.freshPlay(X,"pvp"); H.clearBoard(X);
+    const att=X.S.pieces.find(piece=>piece.owner===0&&piece.type==="ally");
+    const def=X.S.pieces.filter(piece=>piece.owner===1&&piece.type==="minion")[0];
+    const spare=X.S.pieces.filter(piece=>piece.owner===0&&piece.type==="minion")[0];
+    const spareFoe=X.S.pieces.filter(piece=>piece.owner===1&&piece.type==="minion")[1];
+    const k0=X.S.pieces.find(piece=>piece.owner===0&&piece.type==="king"), k1=X.S.pieces.find(piece=>piece.owner===1&&piece.type==="king");
+    H.place(X,att,7,4); H.place(X,def,7,5); H.place(X,spare,10,4); H.place(X,spareFoe,10,5);
+    H.place(X,k0,13,1); H.place(X,k1,1,7);
+    X.S.current=0; X.S.mainUsed=true; X.S.battlesUsed=0; X.TQ.length=0;
+    X.dispatchCoreAction({t:"battleStart",attId:att.id,defId:def.id});
+    return {att,def,spare,spareFoe};
+  };
+  const first=openEntry();
+  ok(!!X.S.entryPick&&X.S.entryPick.stage==="reveal"&&X.S.entryPick.attId===first.att.id&&X.S.battle===null,
+     "a VIP entry stays as a pending decision in game state and opens no battle until the answer arrives");
+  ok(X.dispatchCoreAction({t:"battleStart",attId:first.spare.id,defId:first.spareFoe.id})===false&&X.S.battle===null&&X.S.entryPick.attId===first.att.id,
+     "no independent battle opens on top of a pending VIP entry — the pending decision is already one open battle");
+  /* 그 사이 전투가 열린 상황(늦은 프레임·재생 경로)을 세워 두고, 옛 답이 그것을 갈아치우지 못하는지 본다 */
+  X.startRounds(first.spare,first.spareFoe,first.spare,first.spareFoe);
+  const live=X.S.battle;
+  ok(X.dispatchCoreAction({t:"battleEntryGo"})===false&&X.S.battle===live&&first.att.revealed===false,
+     "a late entry answer cannot replace a live battle — no new battle, no revealed piece");
+  /* 기권 — 보류 결정이 함께 거둬지고, 그 뒤 도착한 답은 아무것도 열지 못한다 */
+  openEntry();
+  ok(!!X.dispatchCoreAction({t:"resign"})&&X.S.phase==="over"&&X.S.entryPick===null&&X.S.battle===null,
+     "a resign clears the pending VIP entry along with the battle and recruit state");
+  ok(X.dispatchCoreAction({t:"battleEntryGo"})===false&&X.S.battle===null&&X.S.phase==="over",
+     "an entry answer arriving after a resign cannot revive a battle in the ended match");
+  openEntry();
+  X.dispatchCoreAction({t:"gameOver",winner:0,winType:"edge"});
+  ok(X.S.entryPick===null&&X.dispatchCoreAction({t:"battleEntryGo"})===false&&X.S.battle===null,
+     "a game over outside battle (king edge) invalidates the pending entry at the same place and refuses the late answer");
+  /* 음성 대조 — 거부 조건은 좁다: 진행 중인 경기에서 전투 자리가 비어 있으면 같은 답이 그대로 전투를 연다 */
+  const goodGo=openEntry();
+  ok(!!X.dispatchCoreAction({t:"battleEntryGo"})&&X.S.entryPick===null&&!!X.S.battle&&X.S.battle.attP.id===goodGo.att.id,
+     "negative control — in a live match with no battle open, the very same answer still starts the battle");
+}
+
+/* ===== #245 Saturn REVISE 지난 전투 스냅샷 렌더 — 최대 라운드·슬롯·사신 판정은 **넘겨받은 보드**를 읽는다 ===== */
+{
+  const X=H.load();
+  H.freshPlay(X,"pvp"); H.clearBoard(X);
+  const att=X.S.pieces.filter(piece=>piece.owner===0&&piece.type==="minion")[0];
+  const def=X.S.pieces.filter(piece=>piece.owner===1&&piece.type==="minion")[0];
+  const k0=X.S.pieces.find(piece=>piece.owner===0&&piece.type==="king"), k1=X.S.pieces.find(piece=>piece.owner===1&&piece.type==="king");
+  H.place(X,att,7,4); H.place(X,def,7,5); H.place(X,k0,13,1); H.place(X,k1,1,7);
+  X.S.current=0; X.S.mainUsed=true; X.TQ.length=0;
+  X.startRounds(att,def,att,def);
+  const live=X.S.battle;
+  /* 서버가 보낸 지난 전투 스냅샷 — 그 전투만 3라운드(🧭 시간의 수호자)였고 2라운드까지 갔다 (netSynthBattle 이 만드는 모양) */
+  const snap=Object.assign({},live,{maxRounds:3,round:2,msgQ:[],menu:null,intro:true});
+  snap.bannerKey=snap.round+"-"+snap.phase;
+  const roundLabel=()=>((X.byId("overlayBox").innerHTML.match(/라운드 \d+\/\d+/)||[])[0]||null);
+  ok(live.maxRounds===null&&X.BAL.maxRounds===6,"premise: the live battle carries no instance cap and uses the global 6 rounds");
+  X.S.battle=null; X.battleModal(snap);
+  ok(roundLabel()==="라운드 2/3","a historical snapshot renders 2/3 from its own maxRounds even with no live battle in S");
+  X.S.battle=live; X.battleModal(snap);
+  ok(roundLabel()==="라운드 2/3"&&X.S.battle===live,"the same snapshot still renders 2/3 while a different battle is live, and the authoritative state never moves");
+  X.battleModal();
+  ok(roundLabel()==="라운드 1/6","the same render draws the live battle with its own cap (1/6)");
+  /* 판정 헬퍼도 같은 규약이다 — 인자로 받은 보드를 읽고, 인자가 없을 때만 전역을 본다 */
+  ok(X.battleMaxRounds({battle:snap})===3&&X.battleMaxRounds()===6,"battleMaxRounds reads the supplied board and falls back to the global only without one");
+  ok(/3라운드까지/.test(X.reaperWhy("A",{battle:snap})||"")&&!/3라운드까지/.test(X.reaperWhy("A")||""),
+     "the reaper seal reason splits on the supplied board's round cap, not on the global battle");
+  const slot=live.fa.skills?live.fa.skills.findIndex((sid,i)=>X.slotUsable(live.fa,i,"A")):-1;
+  ok(slot>=0,"premise: the live fighter has one legal slot right now");
+  const bonusSnap=Object.assign({},snap,{bonus:{side:"A",stage:"active",allowed:[slot===0?1:0],saved:{}}});
+  ok(X.slotUsable(live.fa,slot,"A")===true&&X.slotUsable(live.fa,slot,"A",{battle:bonusSnap})===false,
+     "slotUsable reads the supplied board's bonus-attack stage as well (argument, not global)");
 }
 
 console.log(`\n=== smoke_issue245: pass ${pass} / fail ${fail} ===`);

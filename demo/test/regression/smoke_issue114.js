@@ -37,11 +37,15 @@ test("VIP pair now battles: no push, proxy-choice chain opens, no random or reve
 test("bomb to trap detonates on the spot and removes both",()=>{
   const s=board(T),a=piece(T,0,"bomb"),b=piece(T,1,"trap");H.place(T,a,7,4);H.place(T,b,6,4);
   const tt=s.metrics.trapTriggers;
+  /* #245 Saturn REVISE: 폭탄이 공격측인 전투는 **강제 접촉으로만** 열린다 (능동 클릭 경로는 canBattle 이 계속 막는다).
+     라이브 경로(applyForced → forcedContactStart)가 세우는 표식을 그대로 세워 같은 조합을 검사한다. */
+  s.movedPiece=a; s.forcedTargets=[b.id];
   T.initBattle(a,b);assert(!a.alive&&!b.alive&&!b.movedEver);assert.equal(s.battlesUsed,1);
   assert.equal(s.metrics.trapTriggers,tt);assert.equal(s.metrics.bombContacts,1);assert(!a.immobile&&!b.immobile);
 });
 test("bomb to bomb detonates on the spot and removes both",()=>{
   const s=board(T),a=piece(T,0,"bomb"),b=piece(T,1,"bomb");H.place(T,a,7,4);H.place(T,b,6,4);
+  s.movedPiece=a; s.forcedTargets=[b.id]; // 위와 같다 — 폭탄 공격측은 강제 접촉 경로뿐이다
   T.initBattle(a,b);assert(!a.alive&&!b.alive);assert.equal(s.battlesUsed,1);assert.equal(s.metrics.pushes,0);
 });
 test("blocked side stays, possible side moves",()=>{

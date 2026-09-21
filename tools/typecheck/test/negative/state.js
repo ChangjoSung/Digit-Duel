@@ -4,6 +4,6 @@
 (function negState(){
   S.mainUsedd = true;                    // 오타난 상태 칸
   S.pieces = "not an array";             // 상태 칸의 타입 위반
-  S.aiVanguard[0] = S.pieces[0];         // 선봉은 말이 아니라 말 id 다
+  S.aiVanguard = [null, null];           // #245 M2: AI 판단 메모는 게임 상태가 아니다 (ai.js 의 AI 로 옮겼다)
   S.metrics.byPlayer = 5;                // 중첩 상태 칸의 타입 위반
 })();

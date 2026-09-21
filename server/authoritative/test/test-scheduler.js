@@ -116,31 +116,31 @@ async function main() {
   const T2 = createEngine();
   ok(global.setTimeout === nativeSetTimeout && global.clearTimeout === nativeClearTimeout && global.setInterval === nativeSetInterval && global.clearInterval === nativeClearInterval, '엔진 생성 후 프로세스 타이머 전역 정체성 불변');
   const ctx1 = T1.__vmContext;
-  ok(ctx1.setTimeout === T1.scheduler.setTimeout && ctx1.clearTimeout === T1.scheduler.clearTimeout && ctx1.setInterval === T1.scheduler.setInterval, '엔진 컨텍스트의 setTimeout/clearTimeout/setInterval은 그 엔진의 스케줄러');
-  ok(T1.scheduler !== T2.scheduler && ctx1.setTimeout !== T2.__vmContext.setTimeout, '엔진마다 독립 스케줄러');
-  ok(T1.TQ === undefined, '#245: harness 가짜 큐(TQ)가 런타임에 아예 없다 — 로드 중 예약도 처음부터 스케줄러가 받는다');
-  // #245: 제품 스크립트 자체가 로드 중 netPump(80ms) 인터벌을 건다 — 이제 그것도 이 스케줄러가 받는다(발화는 여전히 없다).
-  const iv0 = T1.scheduler.intervalCount();
-  ok(iv0 >= 1, '제품 로드 중 등록된 setInterval도 스케줄러가 기록(발화 없음): ' + iv0);
-  const ivId = ctx1.setInterval(() => {}, 80);
-  ok(Number.isInteger(ivId) && ivId > 0 && T1.scheduler.intervalCount() === iv0 + 1, '엔진 컨텍스트 setInterval은 발화하지 않는 기록으로 등록(양의 id)');
-  ctx1.clearInterval(ivId);
-  ok(T1.scheduler.intervalCount() === iv0, 'clearInterval로 기록 제거');
-  ok(typeof ctx1.clearTimeout === 'function', 'v3 결함: 엔진 컨텍스트에 clearTimeout이 존재');
+  /* #245 — 계약이 뒤집혔다. 종전에는 "엔진 컨텍스트의 타이머 전역이 그 엔진의 스케줄러로 교체돼 있다"를 봤다.
+     그때는 권위 런타임이 표시 계층(ui.js·network.js)까지 실어서 제품이 실제로 타이머를 걸었기 때문이다.
+     이제 런타임이 싣는 것은 규칙 3종뿐이고 그 셋은 타이머를 **하나도** 쓰지 않는다(UI_PORT.defer 기본값이
+     false 라 Core 가 이어지는 액션을 그 자리에서 실행한다). 그래서 더 강한 것을 본다: 컨텍스트에 타이머
+     전역이 **아예 없다**. 있으면 표시 계층이 다시 딸려 들어온 것이다. */
+  for (const k of ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'document', 'window', 'location', 'localStorage', 'WebSocket', 'fetch', 'XMLHttpRequest']) {
+    ok(ctx1[k] === undefined, '권위 런타임 컨텍스트에 브라우저/타이머 전역이 없다: ' + k);
+  }
+  ok(T1.scheduler !== T2.scheduler, '엔진마다 독립 스케줄러');
+  ok(T1.TQ === undefined, '#245: harness 가짜 큐(TQ)가 런타임에 아예 없다');
+  ok(T1.scheduler.intervalCount() === 0 && T1.scheduler.pending() === 0 && T1.scheduler.stats.scheduled === 0,
+    '규칙 3종은 로드 중에도 타이머를 하나도 걸지 않는다: ' + JSON.stringify(T1.scheduler.stats));
 
-  // 실제 게임 코드의 지연 타이머가 스케줄러로 실행된다 — 헤드리스는 fxLive()=false라 연출 지연은 0(동기)이고,
-  // 남는 실제 지연은 토스트 자동 제거(2300ms) 같은 표시 타이머다. 회복 지정은 소유자 토스트를 띄운다.
+  /* 서버 스케줄러는 그대로 남는다 — room.js 의 clear()/drain() 계약과 fail-closed 경계가 그 위에 서 있다.
+     제품이 예약하지 않으므로 평시에는 빈 채로 돌고, drain()은 언제나 0을 돌려준다. */
   {
     const room = H.startedRoom(301);
     const cur = room.engine.S.current;
     const E = room.engines[cur];
     const own = room.toSeatView(cur).you.pieces.find((p) => p.type === 'minion');
-    const sched0 = E.scheduler.stats.scheduled, fired0 = E.scheduler.stats.fired;
     const res = H.act(room, cur, { t: 'heal', id: own.id });
-    const toasts = E.byId('toasts').children.length;
-    ok(res.ok && E.scheduler.stats.scheduled > sched0 && E.scheduler.stats.fired > fired0, '회복 토스트의 2300ms 제거 타이머가 스케줄러에 예약·실행됨: ' + JSON.stringify(E.scheduler.stats));
-    ok(E.scheduler.pending() === 0 && toasts === 0, 'drain 뒤 남는 예약 없음·토스트 제거 콜백이 실제로 돌아 DOM에서 빠짐: toasts=' + toasts);
-    ok(E.scheduler.now() >= 2300, '가상 시계가 토스트 지연만큼 전진: ' + E.scheduler.now());
+    ok(res.ok, '회복 지정 수락: ' + JSON.stringify(res.reason));
+    ok(E.scheduler.stats.scheduled === 0 && E.scheduler.pending() === 0 && E.scheduler.now() === 0,
+      '규칙만 도는 런타임은 예약을 만들지 않는다(가상 시계도 전진하지 않음): ' + JSON.stringify(E.scheduler.stats));
+    ok(E.drain() === 0, 'drain 은 빈 큐를 돌려준다');
     ok(E.TQ === undefined, '#245: harness 가짜 큐가 존재하지 않음');
   }
 

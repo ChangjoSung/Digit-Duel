@@ -5,44 +5,80 @@
    pending 플래그는 세워 둔 채로 미루므로 중복 예약이 생기지 않고, 새 게임(S 교체)이면 큐 항목이 스스로 무효가 된다. */
 function aiHold(fn){ UI.holdQ.push(fn); }
 function aiHoldRelease(){ const q=UI.holdQ; UI.holdQ=[]; UI.hold=false; for(const f of q){ try{ f(); }catch(e){} } }
+/* #245 Saturn REVISE(M2): 예약은 표시 계층의 사실(연출 잠금·관전 확인창·사고 지연)에 얹히지만, 그 자리가 **없는
+   런타임**(data·state·core·ai 만 적재)에서는 미룰 것이 없다는 뜻이므로 그 자리에서 바로 실행한다.
+   판단·정책·난수 순서는 어느 쪽에서도 같다 — 바뀌는 것은 "언제 부르는가"뿐이다. */
+const aiIdle=fn=>{ if(typeof fxWhenIdle==="function") fxWhenIdle(fn); else fn(); };
+const aiDelay=(fn,ms)=>{ if(typeof setTimeout==="function") setTimeout(fn,ms); else fn(); };
+const aiHeldNow=()=>typeof UI!=="undefined"&&!!UI.hold;
+/* ===== #245 Saturn REVISE(M2) AI 어댑터가 자기만 쓰는 기록 — 게임 상태(S)가 아니다 =====
+   종전에는 예약 플래그·성격 프로파일·선봉·최근 이동 이력·사고 시간을 전부 S 에 직접 썼다. 그중 어느 것도
+   규칙 판정·승패·회선 프레임에 들어가지 않고 Core 는 한 번도 읽지 않는다 — 판단하는 쪽의 메모일 뿐이다.
+   게임 정체성(S 객체)으로 수명을 맞추므로 새 경기가 시작되면 종전 newGameState() 가 주던 초기값과 **같은 값**에서 다시 시작한다:
+   pending=false · profile [null,null] · vanguard [null,null] · hist [[],[]]. 난수 소비 순서도 그대로다.
+   관측 기억(aiSeenMoved)만은 규칙이 만들고 reducer 가 쓰므로 S 에 남는다. */
+const AI={game:null,pending:false,battlePending:false,
+  /** @type {any[]} */ profile:[null,null],
+  /** @type {(number|null)[]} */ vanguard:[null,null],
+  /** @type {{id:number,r:number,c:number}[][]} */ hist:[[],[]],
+  lastThinkMs:0};
+function aiMem(){
+  if(AI.game!==S){ AI.game=S; AI.pending=false; AI.battlePending=false; AI.profile=[null,null]; AI.vanguard=[null,null]; AI.hist=[[],[]]; AI.lastThinkMs=0; }
+  return AI;
+}
 function aiSchedule(){
-  if(S.aiPending) return; S.aiPending=true;
-  const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return;
-    if(UI.hold){ aiHold(()=>{ if(S!==G) return; S.aiPending=false; aiSchedule(); }); return; } // pending 유지 → 중복 예약 없음
-    S.aiPending=false; aiStep(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
+  const M=aiMem();
+  if(M.pending) return; M.pending=true;
+  const G=S; aiIdle(()=>{ if(S!==G){ return; } aiDelay(()=>{ if(S!==G) return;
+    if(aiHeldNow()){ aiHold(()=>{ if(S!==G) return; aiMem().pending=false; aiSchedule(); }); return; } // pending 유지 → 중복 예약 없음
+    aiMem().pending=false; aiStep(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
 }
 function aiScheduleBattle(){
-  if(S.aiBattlePending) return; S.aiBattlePending=true;
-  const G=S; fxWhenIdle(()=>{ if(S!==G){ return; } setTimeout(()=>{ if(S!==G) return;
-    if(UI.hold){ aiHold(()=>{ if(S!==G) return; S.aiBattlePending=false; aiScheduleBattle(); }); return; }
-    S.aiBattlePending=false; aiBattleAction(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
+  const M=aiMem();
+  if(M.battlePending) return; M.battlePending=true;
+  const G=S; aiIdle(()=>{ if(S!==G){ return; } aiDelay(()=>{ if(S!==G) return;
+    if(aiHeldNow()){ aiHold(()=>{ if(S!==G) return; aiMem().battlePending=false; aiScheduleBattle(); }); return; }
+    aiMem().battlePending=false; aiBattleAction(); }, S.mode==="sim"?BAL.simDelay:BAL.aiDelay); });
 }
+/* ===== #245 Saturn REVISE(M2) AI 는 **고르고 보낼** 뿐이다 =====
+   규칙 상태를 직접 바꾸지 않고, 공개 기록(addLog)·안내(showToast)도 쓰지 않는다 — 고른 행동을 Core 액션으로 보내면
+   문구는 Core 가 같은 dispatch 안에서 낸다(origin:"ai"). 아래 네 래퍼가 ai.js 의 유일한 상태 접촉면이다. */
+const aiMove=(p,r,c)=>dispatchCoreAction({t:"move",id:p.id,r,c,origin:"ai"});
+const aiSearch=(p,ev)=>dispatchCoreAction({t:"search",id:p?p.id:null,r:ev?ev.r:null,c:ev?ev.c:null,ei:ev?S.events.indexOf(ev):-1,origin:"ai"});
+const aiHeal=(p,toast)=>dispatchCoreAction({t:"heal",id:p?p.id:null,origin:"ai",toast:!!toast});
+const aiTele=(a,b)=>{ const r=dispatchCoreAction({t:"teleSwap",a,b,origin:"ai"}); return !!r&&r.events[0]&&r.events[0].type==="teleSwapped"; };
+const aiBattle=(att,def)=>dispatchCoreAction({t:"battleStart",attId:att.id,defId:def.id}); // 전투 개시도 액션 하나다
+/* 전투 커맨드·탐색 보상도 같다. 종전에는 window.__act/__flee/__useItem/__recruitCore 를 지나 netAction →
+   표시 계층이 **자기 렌더에 굳혀 둔 프레임**을 빌려 썼다 — 화면이 없으면 AI 가 전투에서 한 수도 두지 못했다.
+   겨냥 문맥은 지금 상태에서 짓고(battleCmdFrame), 인가·합법성 판정은 종전과 같은 한 곳(battleCmdCtx)이 한다. */
+const aiCmd=a=>dispatchCoreAction(Object.assign({frame:battleCmdFrame()},a));
+const aiSkip=toast=>dispatchCoreAction(toast===false?{t:"skipMain",origin:"ai",toast:false}:{t:"skipMain",origin:"ai"});
 function aiStep(){
   if(!S||S.phase!=="play"||!isAI(S.current)||S.battle||S.fleePick) return; // #114: 상대(사람)의 도망 교환 선택이 끝나야 재개 (fleeResolve → done 이 재스케줄)
   const me=S.current;
-  if(!S.mainUsed){ if(aiLevelOf(me)==="dan5") aiMainStrong(me); else aiMain(me); render(); aiSchedule(); return; } // #21 난이도 분기
-  if(!(S.forcedTargets&&S.forcedTargets.length)) drainForcedQueue(false); // #18 안전장치
+  if(!S.mainUsed){ if(aiLevelOf(me)==="dan5") aiMainStrong(me); else aiMain(me); emitCore({type:"render"}); aiSchedule(); return; } // #21 난이도 분기
+  if(!(S.forcedTargets&&S.forcedTargets.length)) dispatchCoreAction({t:"drainForced",autoStart:false}); // #18 안전장치
   if(S.forcedTargets&&S.forcedTargets.length){ // T1: 강제 전투 최우선 이행 (aiEvalBattles보다 우선)
     const att=S.movedPiece, def=att?alivePieces().find(e=>forcedPickOk(e)):null; // #106: 폭탄 접촉 대상도 이행
-    if(att&&def){ initBattle(att,def); return; }
-    S.forcedTargets=[]; // 이행 불가 조합 방어 (크래시 방지)
+    if(att&&def){ aiBattle(att,def); return; }
+    dispatchCoreAction({t:"forcedClear"}); // 이행 불가 조합 방어 (크래시 방지) — 상태 변경은 Core 경계를 지난다
     if(S.forcedQueue.length){ aiSchedule(); return; } // 다음 대기 항목 처리
   }
   const pick=aiLevelOf(me)==="dan5"?aiEvalBattlesStrong(me):aiEvalBattles(me);
-  if(pick){ initBattle(pick.att,pick.def); if(!S.battle) return; return; } // 동기 해결은 afterBattle 훅이 재개
-  endTurn();
+  if(pick){ aiBattle(pick.att,pick.def); if(!S.battle) return; return; } // 동기 해결은 afterBattle 훅이 재개
+  dispatchCoreAction({t:"endTurn"});
 }
 /* T6 성격 프로파일: AI별 랜덤 가중치(0.6~1.4)·ε(0.05~0.15) — 게임당 고정, sim 양측 독립 생성 */
 function aiProf(me){
-  if(!S.aiProfile) S.aiProfile=[null,null];
-  if(!S.aiProfile[me]){
-    if(aiLevelOf(me)==="dan5") S.aiProfile[me]={aggression:1,capture:1,kingRush:1,caution:1,eps:0}; // #21 5단: 고정 프로파일·ε 무작위 없음
+  const P=aiMem().profile;
+  if(!P[me]){
+    if(aiLevelOf(me)==="dan5") P[me]={aggression:1,capture:1,kingRush:1,caution:1,eps:0}; // #21 5단: 고정 프로파일·ε 무작위 없음
     else {
       const r=()=>0.6+rand()*0.8;
-      S.aiProfile[me]={aggression:r(),capture:r(),kingRush:r(),caution:r(),eps:0.05+rand()*0.10};
+      P[me]={aggression:r(),capture:r(),kingRush:r(),caution:r(),eps:0.05+rand()*0.10}; // 난수 소비 순서·횟수는 종전과 같다
     }
   }
-  return S.aiProfile[me];
+  return P[me];
 }
 /* T6 전멸 회피: 전투 가능 말(하수인+동료) 2 이하면 신중 가중 강화 */
 function aiCaution(me){
@@ -78,7 +114,7 @@ function aiMain(me){
   // 1. 흔적 위 말이 있으면 탐색 (#20: 하수인·동료·왕만 — 폭탄·함정은 탐색 실행 불가)
   for(const p of alivePieces().filter(p=>p.owner===me&&canSearchPiece(p))){
     const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
-    if(ev){ doSearch(p,ev); addLog("🤖 AI 탐색 행동","ai"); return; }
+    if(ev){ aiSearch(p,ev); return; }   // 기록은 Core 가 낸다 (origin:"ai")
   }
   // 2. 왕 안전: 인접 적 있으면 회피 이동
   const king=alivePieces().find(p=>p.owner===me&&p.type==="king");
@@ -86,7 +122,7 @@ function aiMain(me){
     const opts=aiMoveOptions(king).filter(([r,c])=>!at(r,c))
       .sort((a,b)=>aiCellDanger(me,a)-aiCellDanger(me,b));
     if(opts.length&&aiCellDanger(me,[king.r,king.c])>aiCellDanger(me,opts[0])){
-      doMove(king,opts[0][0],opts[0][1]); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return;
+      aiMove(king,opts[0][0],opts[0][1]); return;
     }
   }
   // 2.5 폭탄 이동 활용(간단 휴리스틱): BT 중 왕 비인접 폭탄을 왕 인접 빈 칸으로 호위 재배치
@@ -96,18 +132,19 @@ function aiMain(me){
     const vipAdj=(r,c)=>aiVisible(me).some(e=>e.revealed&&(e.type==="ally"||e.type==="king")&&Math.abs(e.r-r)+Math.abs(e.c-c)===1); // #106: 폭탄이 공개 동료·왕과 새로 인접하면 폭탄만 잃는다 — 회피
     for(const b of alivePieces().filter(x=>x.owner===me&&x.type==="bomb"&&x.immobile===0&&!adj(x,king)))
       for(const [r,c] of holes)
-        if(canMoveTo(b,r,c)&&!vipAdj(r,c)){ doMove(b,r,c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
+        if(canMoveTo(b,r,c)&&!vipAdj(r,c)){ aiMove(b,r,c); return; }
   }
   // 3. 강한 전투 기회가 있으면 주 행동 생략(위치 보존)
   const pick=aiEvalBattles(me,true);
-  if(pick&&pick.score>=18){ netAction({t:"skipMain",origin:"ai"}); return; }
+  if(pick&&pick.score>=18){ aiSkip(); return; }
   // 4. 목적 이동: 동료·왕(볼 보유·포획 미보유) → 숲 / 하수인 → 전진 (공개된 적 왕은 추격)
   // 선봉 집중: 하수인 1기를 지정해 지속 전진 (이동권 분산으로 전선이 형성되지 않는 문제 방지)
-  let vg=S.aiVanguard[me];
+  const VG=aiMem().vanguard;                 // #245 M2: 선봉 지정은 판단하는 쪽의 메모다 (규칙·회선·승패와 무관)
+  let vg=VG[me];
   if(!vg||!S.pieces.find(p=>p.id===vg&&p.alive&&p.immobile===0)){
     const vcands=alivePieces().filter(p=>p.owner===me&&p.type==="minion"&&p.immobile===0);
     vcands.sort((a,b)=>((me===1?b.r-a.r:a.r-b.r)*10+Math.abs(a.c-4)-Math.abs(b.c-4)));
-    vg=S.aiVanguard[me]=vcands.length?vcands[0].id:null;
+    vg=VG[me]=vcands.length?vcands[0].id:null;
   }
   const hunt=aiVisible(me).find(e=>e.type==="king"&&e.revealed);
   const cands=[];
@@ -146,10 +183,10 @@ function aiMain(me){
   cands.sort((a,b)=>b.sc-a.sc);
   const tp=aiTeleportPick(me); // #14 텔레포트 스왑: 점수 기반으로 일반 이동과 경쟁 (남용 방지)
   const hl=aiHealPick(me); // #106 6.3 권고: 가시 인접 적 없고 HP<60% 인 자기 말 — 다른 후보 점수가 낮을 때만 (난수 미소비)
-  if(hl&&hl.sc>(cands.length?cands[0].sc:0)&&(!tp||hl.sc>tp.sc)&&doHeal(hl.p)){ addLog("🤖 AI 회복 행동","ai"); showToast("🤖 AI 회복 행동"); return; }
-  if(tp&&tp.sc>(cands.length?cands[0].sc:0)&&doTeleportSwap(tp.a,tp.b)){ addLog("🤖 AI 주 행동","ai"); return; } // #18: 차단 시 일반 이동으로 대체
-  if(cands.length){ const t=cands[0]; doMove(t.p,t.r,t.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
-  netAction({t:"skipMain",origin:"ai"});
+  if(hl&&hl.sc>(cands.length?cands[0].sc:0)&&(!tp||hl.sc>tp.sc)&&aiHeal(hl.p,true)){ return; } // 5급 회복은 종전대로 토스트까지 (Core 가 낸다)
+  if(tp&&tp.sc>(cands.length?cands[0].sc:0)&&aiTele(tp.a,tp.b)){ return; } // #18: 차단 시 일반 이동으로 대체
+  if(cands.length){ const t=cands[0]; aiMove(t.p,t.r,t.c); return; }
+  aiSkip();
 }
 /* #106 5급 회복 후보: 가시 인접 적이 없고 HP<60% 인 자기 하수인·동료·왕 중 손실 비율이 가장 큰 말 (공정 관측 — 자기 말 정보만, 난수 미소비) */
 function aiHealPick(me){
@@ -195,13 +232,14 @@ function aiTeleportPick(me){
   }
   return best;
 }
-function aiMoveOptions(p){
+function aiMoveOptions(p,state){
+  const st=state||S; // #245 M2: 5단 탐색은 사본 보드를 넘긴다 (기본은 현재 S — 5급 경로는 종전 그대로)
   const out=[];
   for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]])
-    for(const k of (isBurning()?[1,2]:[1])){ // BT 중 직선 2칸 후보 포함
+    for(const k of (isBurning(st)?[1,2]:[1])){ // BT 중 직선 2칸 후보 포함
       const r=p.r+dr*k,c=p.c+dc*k;
       if(r<1||r>ROWS||c<1||c>COLS) continue;
-      if(canMoveTo(p,r,c)) out.push([r,c]);
+      if(canMoveTo(p,r,c,st)) out.push([r,c]);
     }
   return out;
 }
@@ -211,7 +249,7 @@ function aiCellDanger(me,cell){ const [r,c]=cell; // 그 칸에 인접한 (보�
 }
 function aiRandomMove(me){
   const ps=shuffle(alivePieces().filter(p=>p.owner===me&&p.immobile===0&&p.type!=="bomb"&&p.type!=="trap"));
-  for(const p of ps){ const o=aiMoveOptions(p); if(o.length){const [r,c]=o[Math.floor(rand()*o.length)]; doMove(p,r,c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return true;} }
+  for(const p of ps){ const o=aiMoveOptions(p); if(o.length){const [r,c]=o[Math.floor(rand()*o.length)]; aiMove(p,r,c); return true;} }
   return false;
 }
 function aiEvalBattles(me,peek){
@@ -276,7 +314,6 @@ function aiPkgAction(side){
   const B=S.battle; if(!B) return false;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner, f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const pk=S.pkgs[ownerP]; if(!pk) return false;
-  if(!window.__openPkgCore||!window.__pkgPickCore) return false;
   /* 1) 전투 버프 — 한 전투 1개. 시간은 R1 에만 고를 수 있으니 가장 먼저 판단한다 */
   if(pk.battleBuff>0&&!(side==="A"?B.buffA:B.buffD)){
     const myPc=side==="A"?B.attP:B.defP, vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
@@ -285,8 +322,8 @@ function aiPkgAction(side){
     if(B.round===1&&losing&&vipBody) key="time";            // 본체 VIP 가 밀리면 3라운드로 끊어 판정 승부로
     else if(vipBody&&f.hp<f.maxHp*0.5) key="escape";        // 본체 VIP 가 위험하면 도망 조건 해제
     if(key==="time"&&B.round!==1) key="power";              // 계약 3.3 R1 한정 — 불법 선택을 만들지 않는다
-    window.__openPkgCore("battleBuff");
-    window.__pkgPickCore("buff",BUFF_KEYS.indexOf(key),B.pkgSel&&B.pkgSel.id); // 방금 개봉이 발급한 표 번호 — 사람 모달 버튼과 같은 인가를 지난다
+    aiCmd({t:"pkgOpen",kind:"battleBuff"});
+    aiCmd({t:"pkgPick",what:"buff",i:BUFF_KEYS.indexOf(key),id:B.pkgSel&&B.pkgSel.id}); // 방금 개봉이 발급한 표 번호 — 사람 모달 버튼과 같은 인가를 지난다
     return true;
   }
   /* 2) 아이템 선물 개봉 — 지금 쓸모 있는 자원을 고른다. 라운드 1회 제한에 막혀도 개봉 자체는 이득이다 */
@@ -296,8 +333,8 @@ function aiPkgAction(side){
     if(f.burn||f.weaken||f.shock) want="cure";
     else if(f.skills&&!usable.length) want="cool";
     else if(f.hp>f.maxHp*0.7&&opp.hp<opp.maxHp*0.4&&!S.reserve[ownerP]) want="ball"; // 포획 기회가 가까우면 볼
-    window.__openPkgCore("itemGift");
-    window.__pkgPickCore("gift",GIFT_PICKS.indexOf(want),B.pkgSel&&B.pkgSel.id);
+    aiCmd({t:"pkgOpen",kind:"itemGift"});
+    aiCmd({t:"pkgPick",what:"gift",i:GIFT_PICKS.indexOf(want),id:B.pkgSel&&B.pkgSel.id});
     return true;
   }
   return false;
@@ -320,12 +357,12 @@ function aiBattleAction(){
     let use=-1;
     if(f.hp<f.maxHp*(0.25+0.15*caut)&&inv.includes("potion")) use=inv.indexOf("potion");
     else if((f.burn||f.weaken)&&inv.includes("cure")) use=inv.indexOf("cure");
-    if(use>=0){ window.__useItem(use); return; } // 모달 재렌더 → 재스케줄
+    if(use>=0){ aiCmd({t:"item",i:use}); return; } // 모달 재렌더 → 재스케줄
   }
   // #12 적 하수인 포획: 게이트 충족 시 확률적 투척 (capture 프로파일 가중)
   const oppPc=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
   if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown
-     &&rand()<0.4+0.4*prof.capture){ window.__throwBall(); return; }
+     &&rand()<0.4+0.4*prof.capture){ aiCmd({t:"ball"}); return; }
   // #13 도망: 동료·왕 본체 또는 열세 전투원 (caution 가중)
   const myPc=side==="A"?B.attP:B.defP;
   /* #146: 규칙상 도망은 HP 조건이 없다. 아래 임계는 **AI 의 판단 휴리스틱**이지 규칙 게이트가 아니다
@@ -333,18 +370,18 @@ function aiBattleAction(){
   if((f.hp<f.maxHp*0.5||f.fleeBoost)&&!f.fleeLock){ // #234 뿌리 고정이면 도망 후보에서 뺀다 (불법 선택 금지)
     const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
     const losing=f.hp/f.maxHp<opp.hp/opp.maxHp-0.15;
-    if((vipBody||losing)&&rand()<(vipBody?0.5:0.25)*caut){ window.__flee(); return; }
+    if((vipBody||losing)&&rand()<(vipBody?0.5:0.25)*caut){ aiCmd({t:"flee"}); return; }
   }
   } // !inBonus
   // 행동 선택 — 4슬롯 점수화 (킬 가능>시그니처>효과기>안정기, 저HP 시 회복/방어) + T6 프로파일 가중·확률 혼합
   // 공정 관측: 자기 기술·상대의 공개 전투 정보(HP·보호막·상태·속성)만 사용, 상대 미공개 기술 미참조
   if(!f.skills){
-    if(f.skillAtk&&f.cd===0&&rand()<0.5){ window.__act("skill"); return; } // 구형 경로 잔여
-    window.__act("basic"); return;
+    if(f.skillAtk&&f.cd===0&&rand()<0.5){ aiCmd({t:"act",k:"skill"}); return; } // 구형 경로 잔여
+    aiCmd({t:"act",k:"basic"}); return;
   }
   // #121 계약 5.3: 쿨만이 아니라 **봉인·조건 미충족**도 불법이다. AI 는 slotUsable 로 합법 슬롯만 본다 (불법 선택 금지)
   const usable=f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>slotUsable(f,x.i,side));
-  if(!usable.length){ window.__pass(); return; } // #146: 합법 슬롯이 없으면 기본 공격이 아니라 전투 행동을 넘긴다 (사람 UI 와 같은 규칙)
+  if(!usable.length){ aiCmd({t:"pass"}); return; } // #146: 합법 슬롯이 없으면 기본 공격이 아니라 전투 행동을 넘긴다 (사람 UI 와 같은 규칙)
   const multOf=el=>{ // #92 기대 피해 상성은 기술 속성(공격기) 기준 — 기본 공격·시그니처는 본체 속성
     const adv=el&&opp.element&&BEATS[el]===opp.element, disadv=el&&opp.element&&BEATS[opp.element]===el;
     return (adv?BAL.advMult:disadv?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1); };
@@ -377,7 +414,7 @@ function aiBattleAction(){
   });
   scored.sort((a,b)=>b.sc-a.sc);
   const pick=(scored.length>1&&rand()<0.10)?scored[1]:scored[0]; // ε 차선 혼합
-  window.__act(pick.i);
+  aiCmd({t:"act",k:pick.i});
 }
 /* #121 계약 6·9: AI 포획 방법 선택 — 볼 보유량과 신중함(T6)만 본다. 수령 말·후보 종은 호출자가 정한다 */
 function aiCapMode(own,p){
@@ -411,12 +448,12 @@ function aiRecruitPlan(own){
   }
   return null;
 }
-/* #121 계약 4·6·9: AI 탐색 보상 해결 — 사람과 **같은 코어**(window.__recruitCore)를 타서 규칙·검사·순서가 한 곳에만 있다.
+/* #121 계약 4·6·9: AI 탐색 보상 해결 — 사람과 **같은 Core 액션**(recruit)을 타서 규칙·검사·순서가 한 곳에만 있다.
    무한 무료 행동 루프가 생기지 않도록 각 단계를 한 번씩만 전진시키고, 불법 선택은 코어가 이미 거부한다. */
 function aiRecruitResolve(own,p){
   /* #245 Saturn REVISE: 토큰은 모든 step 에 필수다 — 지금 열린 recruit 의 것을 한 번 읽어 단계마다 그대로 싣는다.
      그 사이 recruit 이 갈리면(새 탐색·새 게임·턴 교대) 남은 단계는 코어가 거부한다. */
-  const tk=S.recruit&&S.recruit.token, rc=(step,i)=>window.__recruitCore(step,i,tk);
+  const tk=S.recruit&&S.recruit.token, rc=(step,i)=>dispatchCoreAction({t:"recruit",step,i,token:tk});
   const recv=capReceivers(own), mode=recv.length?aiCapMode(own,p):null;
   const plan=V2_INTERP.recruitSkillSwap?aiRecruitPlan(own):null; // #234: 기술 교체가 닫힌 동안 AI 도 계획하지 않는다
   const prof=aiProf(own);
@@ -492,15 +529,18 @@ function aiBattleEV(me,att,def){
   if(att.type==="king"&&!att.cap) unitEV-=(1-p)*400;
   return r*(bombEV*(1-trapShare)+trapEV*trapShare)+(1-r)*unitEV+edgeGuard*(att.type==="king"?0:1)+pressure;
 }
-/* 위치 평가 — V: 결정 시점 고정 가시 적 목록 (가상 이동 중 새로 인접해도 숨은 말은 절대 참조하지 않음) */
-function aiEvalPos(me,V){
-  const my=alivePieces().filter(x=>x.owner===me);
+/* 위치 평가 — V: 결정 시점 고정 가시 적 목록 (가상 이동 중 새로 인접해도 숨은 말은 절대 참조하지 않음).
+   #245 Saturn REVISE(M2): 말미 state 인자는 다른 판정 헬퍼와 같은 규약이다 (기본 S). 5단 탐색은 **사본 보드**를 넘겨
+   실제 말의 r/c 를 잠시 고쳤다 되돌리는 일을 없앤다 — 평가 중 어떤 관찰자도 거짓 위치를 보지 않는다. 계산식은 그대로다. */
+function aiEvalPos(me,V,state){
+  const st=state||S;
+  const my=alivePieces(st).filter(x=>x.owner===me);
   const king=my.find(x=>x.type==="king");
   const units=V.filter(e=>!(e.revealed&&(e.type==="bomb"||e.type==="trap")));
   const dist=(a,b)=>Math.abs(a.r-b.r)+Math.abs(a.c-b.c);
   let v=0;
   for(const x of my) v+=aiUnitValue(x,me);
-  for(const e of S.pieces.filter(e=>e.owner!==me&&e.alive&&e.placed)) v-=e.revealed?aiUnitValue(e,me):28; // 잔여 수는 공개 정보(제거 공개), 정체는 공개 시만
+  for(const e of st.pieces.filter(e=>e.owner!==me&&e.alive&&e.placed)) v-=e.revealed?aiUnitValue(e,me):28; // 잔여 수는 공개 정보(제거 공개), 정체는 공개 시만
   const goal=me===0?1:ROWS, last=me===0?ROWS:1;
   if(king){
     const danger=units.filter(e=>dist(e,king)===1).length, near=units.filter(e=>dist(e,king)===2).length;
@@ -521,9 +561,9 @@ function aiEvalPos(me,V){
     if(x.type==="minion"){ v+=(me===1?x.r:ROWS+1-x.r)*1.2+(4-Math.abs(x.c-4))*0.5; if(eking) v+=(10-Math.min(10,dist(x,eking)))*3; }
     if(x.type==="ally"){ if(eking) v+=(10-Math.min(10,dist(x,eking)))*2; }
     if(canSearchPiece(x)){
-      const ev=S.events.find(e=>e.r===x.r&&e.c===x.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
+      const ev=st.events.find(e=>e.r===x.r&&e.c===x.c&&!e.consumed&&st.traces[me].has(e.r+"_"+e.c));
       if(ev) v+=10;
-      if((x.type==="ally"||x.type==="king")&&S.balls[me]>0&&!x.cap&&!S.reserve[me]){
+      if((x.type==="ally"||x.type==="king")&&st.balls[me]>0&&!x.cap&&!st.reserve[me]){
         const df=Math.min(...(me===1?[4,5]:[9,10]).map(tr=>Math.abs(x.r-tr)));
         v+=(5-Math.min(5,df))*(x.type==="king"?0.8:2);
       }
@@ -532,13 +572,14 @@ function aiEvalPos(me,V){
     if(x.type!=="bomb"&&x.type!=="trap"&&x.type!=="king") // 접촉 압력(불리한 인접은 감점) — 상세 응수는 2-ply가 처리
       for(const e of units) if(dist(x,e)===1){ const p=aiWinProb(x,e.revealed?e:{element:null,hp:100,maxHp:100,atk:22,type:"minion"},me); v+=(p-0.5)*10; }
   }
-  v+=S.balls[me]*3+(S.reserve[me]?15:0)+S.inv[me].length*2;
+  v+=st.balls[me]*3+(st.reserve[me]?15:0)+st.inv[me].length*2;
   return v;
 }
 /* 2-ply: 보이는 적의 최선 응수(내 말 공격 또는 1칸 이동) 후 내 평가의 최악값 */
-function aiWorstReply(me,V,deadline){
-  const my=alivePieces().filter(x=>x.owner===me), occ=(r,c)=>my.some(x=>x.r===r&&x.c===c)||V.some(e=>e.r===r&&e.c===c);
-  const base=aiEvalPos(me,V);
+function aiWorstReply(me,V,deadline,state){
+  const st=state||S; // #245 M2: V 도 이 보드의 말이다 — 아래 이동 응수는 **사본 말**의 r/c 만 잠시 바꾼다
+  const my=alivePieces(st).filter(x=>x.owner===me), occ=(r,c)=>my.some(x=>x.r===r&&x.c===c)||V.some(e=>e.r===r&&e.c===c);
+  const base=aiEvalPos(me,V,st);
   let worst=base, n=0;
   for(const e of V){
     if(e.revealed&&(e.type==="bomb"||e.type==="trap")) continue;
@@ -554,22 +595,30 @@ function aiWorstReply(me,V,deadline){
     for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){ // 이동 응수
       const r=e.r+dr,c=e.c+dc; if(r<1||r>ROWS||c<1||c>COLS||occ(r,c)) continue;
       const or=e.r,oc=e.c; e.r=r;e.c=c;
-      worst=Math.min(worst,aiEvalPos(me,V)); n++;
+      worst=Math.min(worst,aiEvalPos(me,V,st)); n++;
       e.r=or;e.c=oc;
       if(n>=BAL.aiStrongReplyCap||Date.now()>deadline) return worst;
     }
   }
   return worst;
 }
+/* #245 Saturn REVISE(M2): 5단 탐색이 쓰는 **사본 보드**. 상태는 얕게, 말만 복제한다 —
+   판정에 쓰는 것은 말의 r/c 뿐이고 events·traces·balls·reserve·inv 는 탐색 중 바뀌지 않으므로 원본을 공유한다
+   (그래서 고른 흔적 ev 가 실제 S.events 의 그 객체다 — 실행 시 되찾을 필요가 없다).
+   이 사본 위에서만 가상 이동을 하므로 실제 말의 좌표는 평가 내내 한 번도 움직이지 않는다. */
+function aiCloneBoard(){ return Object.assign({},S,{pieces:S.pieces.map(p=>Object.assign({},p))}); }
 function aiMainStrong(me){
   const t0=Date.now(), deadline=t0+BAL.aiStrongBudgetMs;
-  const V=aiVisible(me); // 결정 시점 고정 가시 집합
-  const my=alivePieces().filter(x=>x.owner===me);
-  const hist=S.aiHist[me]||(S.aiHist[me]=[]);
+  const sim=aiCloneBoard();                                   // 평가 전용 사본 — 실제 보드는 건드리지 않는다
+  const byId=new Map(sim.pieces.map(p=>[p.id,p]));
+  const V=aiVisible(me).map(e=>byId.get(e.id)||e);            // 결정 시점 고정 가시 집합 (사본 말로)
+  const my=alivePieces(sim).filter(x=>x.owner===me);
+  const real=id=>S.pieces.find(p=>p.id===id);                 // 실행할 때만 실제 말로 되돌린다
+  const hist=aiMem().hist[me];
   /** @type {any[]} */ const cands=[]; // 후보는 종류마다 필드가 다르고 2-ply 점수(s2)가 나중에 붙는다
-  const virt=(fn)=>{ // 가상 적용 → 평가 → 복원
+  const virt=(fn)=>{ // 가상 적용 → 평가 → 복원 (전부 사본 말 위에서)
     const snap=my.map(x=>[x,x.r,x.c]); fn();
-    const s=aiEvalPos(me,V);
+    const s=aiEvalPos(me,V,sim);
     for(const [x,r,c] of snap){x.r=r;x.c=c;}
     return s;
   };
@@ -586,7 +635,7 @@ function aiMainStrong(me){
     return best*0.8;
   };
   const adjIds=p=>new Set(V.filter(e=>Math.abs(e.r-p.r)+Math.abs(e.c-p.c)===1).map(e=>e.id));
-  const hiddenLeft=S.pieces.filter(e=>e.owner!==me&&e.alive&&e.placed).length-V.length; // 아직 보이지 않는 적 말 수 (공개 정보: 총 잔여 − 가시)
+  const hiddenLeft=sim.pieces.filter(e=>e.owner!==me&&e.alive&&e.placed).length-V.length; // 아직 보이지 않는 적 말 수 (공개 정보: 총 잔여 − 가시)
   const unseenForestAdj=(r,c,mover)=>{ // (r,c)에 인접한 숲 칸 중 내 다른 말이 인접하지 않아 관측되지 않는 칸 수
     let n=0;
     for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){ const fr=r+dr,fc=c+dc;
@@ -597,15 +646,15 @@ function aiMainStrong(me){
   };
   // 후보 1: 탐색
   for(const p of my.filter(canSearchPiece)){
-    const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&S.traces[me].has(e.r+"_"+e.c));
-    if(ev) cands.push({kind:"search",p,ev,s1:aiEvalPos(me,V)+14+attackOpp(),desc:"탐색"});
+    const ev=sim.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed&&sim.traces[me].has(e.r+"_"+e.c));
+    if(ev) cands.push({kind:"search",p,ev,s1:aiEvalPos(me,V,sim)+14+attackOpp(),desc:"탐색"});
   }
   // 후보 1b (#106 6.3 권고): 회복 — 가시 인접 적이 없고 HP<60% 인 자기 말. 타이브레이크 난수를 쓰지 않아 기존 rand 소비 순서를 바꾸지 않는다
   for(const p of my.filter(x=>canHeal(x)&&x.hp<x.maxHp*0.6&&!V.some(e=>Math.abs(e.r-x.r)+Math.abs(e.c-x.c)===1)))
-    cands.push({kind:"heal",p,s1:aiEvalPos(me,V)+(1-p.hp/p.maxHp)*24+(p.type==="king"?8:0)+attackOpp(),desc:"회복",noTie:true});
+    cands.push({kind:"heal",p,s1:aiEvalPos(me,V,sim)+(1-p.hp/p.maxHp)*24+(p.type==="king"?8:0)+attackOpp(),desc:"회복",noTie:true});
   // 후보 2: 이동 (폭탄 포함·함정 제외 — canMoveTo가 규칙 처리)
   for(const p of my.filter(x=>x.immobile===0&&x.type!=="trap")){
-    for(const [r,c] of aiMoveOptions(p)){
+    for(const [r,c] of aiMoveOptions(p,sim)){
       const before=adjIds(p);
       let s1=virt(()=>{p.r=r;p.c=c;});
       { const or=p.r,oc=p.c; p.r=r;p.c=c; s1+=forcedGain(p,before)+attackOpp(); p.r=or;p.c=oc; } // 강제 전투 기대치·공격 기회
@@ -630,7 +679,7 @@ function aiMainStrong(me){
     }
   }
   // 후보 4: 생략 (위치 보존)
-  cands.push({kind:"skip",s1:aiEvalPos(me,V)+attackOpp()-2,desc:"생략"});
+  cands.push({kind:"skip",s1:aiEvalPos(me,V,sim)+attackOpp()-2,desc:"생략"});
   for(const c of cands) if(!c.noTie) c.s1+=rand()*0.5; // 동점 타이브레이크 (시드 재현 가능) — 회복 후보는 제외(난수 소비 불변)
   cands.sort((a,b)=>b.s1-a.s1);
   // 2-ply: 상위 K 후보에 대해 최악 응수 반영
@@ -640,21 +689,22 @@ function aiMainStrong(me){
     const snap=my.map(x=>[x,x.r,x.c]);
     if(c.kind==="move"){c.p.r=c.r;c.p.c=c.c;}
     else if(c.kind==="tele"){const ar=c.a.r,ac=c.a.c; c.a.r=c.b.r;c.a.c=c.b.c; c.b.r=ar;c.b.c=ac;}
-    const worst=aiWorstReply(me,V,deadline);
+    const worst=aiWorstReply(me,V,deadline,sim);
     for(const [x,r,c2] of snap){x.r=r;x.c=c2;}
-    c.s2=0.4*c.s1+0.6*(worst+(c.s1-aiEvalPos(me,V))); // 최악 응수 후 평가에 내 행동의 즉시 이득(강제 전투·공격 기회)을 유지
+    c.s2=0.4*c.s1+0.6*(worst+(c.s1-aiEvalPos(me,V,sim))); // 최악 응수 후 평가에 내 행동의 즉시 이득(강제 전투·공격 기회)을 유지
   }
   top.sort((a,b)=>b.s2-a.s2);
-  S.aiLastThinkMs=Date.now()-t0;
-  for(const c of top){ // 실행 (텔레포트 차단 시 다음 후보)
-    if(c.kind==="search"){ doSearch(c.p,c.ev); addLog("🤖 AI 탐색 행동","ai"); return; }
-    if(c.kind==="heal"){ if(doHeal(c.p)){ addLog("🤖 AI 회복 행동","ai"); return; } continue; }
+  aiMem().lastThinkMs=Date.now()-t0; // #245 M2: 사고 시간은 표시 전용 어댑터 기록 (게임 상태가 아니다)
+  /* 실행은 **실제 보드의 말**로 한다 — 위 평가는 전부 사본 위에서 끝났다 (텔레포트 차단 시 다음 후보) */
+  for(const c of top){
+    if(c.kind==="search"){ aiSearch(real(c.p.id),c.ev); return; }
+    if(c.kind==="heal"){ if(aiHeal(real(c.p.id),false)){ return; } continue; } // 5단 회복은 종전대로 기록만 (토스트 없음)
     if(c.kind==="move"){ hist.push({id:c.p.id,r:c.p.r,c:c.p.c}); if(hist.length>6) hist.shift();
-      doMove(c.p,c.r,c.c); addLog("🤖 AI 이동","ai"); showToast("🤖 AI 이동"); return; }
-    if(c.kind==="tele"){ if(doTeleportSwap(c.a,c.b)){ addLog("🤖 AI 주 행동","ai"); return; } continue; }
-    netAction({t:"skipMain",origin:"ai"}); return;
+      aiMove(real(c.p.id),c.r,c.c); return; }
+    if(c.kind==="tele"){ if(aiTele(real(c.a.id),real(c.b.id))){ return; } continue; }
+    aiSkip(); return;
   }
-  netAction({t:"skipMain",origin:"ai",toast:false});
+  aiSkip(false);
 }
 /* 5단 전투 개시 선택: 기대치 기반 (canBattle·가시 대상만) */
 function aiEvalBattlesStrong(me){
@@ -695,19 +745,19 @@ function aiBattleActionStrong(side){
     if(!killNow&&f.hp<=oppEst*1.25&&inv.includes("potion")) use=inv.indexOf("potion");
     else if((f.burn||f.weaken||f.shock)&&inv.includes("cure")&&toKillOpp>1) use=inv.indexOf("cure");
     else if(!usable.length&&f.skills&&inv.includes("cool")) use=inv.indexOf("cool");
-    if(use>=0){ window.__useItem(use); return; }
+    if(use>=0){ aiCmd({t:"item",i:use}); return; }
   }
   // 볼 투척: 게이트 충족 시 포획(제거+예비 확보)이 킬보다 가치 큼 — 확정 킬이고 내 HP가 위험할 때만 킬 우선
   const thrown=side==="A"?B.ballThrowA:B.ballThrowD;
-  if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown&&(!killNow||f.hp>f.maxHp*0.6)){ window.__throwBall(); return; }
+  if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown&&(!killNow||f.hp>f.maxHp*0.6)){ aiCmd({t:"ball"}); return; }
   // 도망: 본체 VIP가 죽을 위기이거나 열세 전투 (확정 킬 가능하면 안 함)
   if((f.hp<f.maxHp*0.5||f.fleeBoost)&&!killNow&&!f.fleeLock){ // #146: 규칙 게이트가 아니라 5단 AI 의 휴리스틱 임계 (도망의 수호자는 성공률 70%)
     const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
-    if((vipBody&&(losing||toKillMe<=1))||(losing&&toKillMe<=2)){ window.__flee(); return; }
+    if((vipBody&&(losing||toKillMe<=1))||(losing&&toKillMe<=2)){ aiCmd({t:"flee"}); return; }
   }
   } // !inBonus
-  if(!f.skills){ if(f.skillAtk&&f.cd===0){window.__act("skill");return;} window.__act("basic"); return; }
-  if(!usable.length){ window.__pass(); return; } // #146: 5단도 같은 규칙 — 폴백 기본 공격은 없다
+  if(!f.skills){ if(f.skillAtk&&f.cd===0){aiCmd({t:"act",k:"skill"});return;} aiCmd({t:"act",k:"basic"}); return; }
+  if(!usable.length){ aiCmd({t:"pass"}); return; } // #146: 5단도 같은 규칙 — 폴백 기본 공격은 없다
   const lowHp=f.hp<=oppEst*1.5;
   const scored=usable.map(({i,sk})=>{
     let sc=0;
@@ -737,41 +787,47 @@ function aiBattleActionStrong(side){
     return {i,sc:sc+rand()*0.3};
   });
   scored.sort((a,b)=>b.sc-a.sc);
-  window.__act(scored[0].i);
+  aiCmd({t:"act",k:scored[0].i});
 }
-/* AI 로스터 선택: 5속성 각 1종 + 나머지 1종 무작위 (중복 없음, 아키타입 혼합 선호) — #234 30종 후보 · 모두 ⭐1 */
+/* AI 로스터 선택: 5속성 각 1종 + 나머지 1종 무작위 (중복 없음, 아키타입 혼합 선호) — #234 30종 후보 · 모두 ⭐1.
+   #245: 상태를 쓰지 않고 **고른 6종을 돌려주기만** 한다 — 적용(roster 대입·applyRoster)은 Core 의 setupAuto 가 한다.
+   난수 소비 순서·횟수는 분리 전과 같다 (아키타입 셔플 → 속성 셔플 → 나머지 셔플 → 최종 셔플). */
 function aiPickRoster(p){
-  if(S.roster[p].length===6) return;
-  S.roster[p]=[];
+  if(S.roster[p].length===6) return S.roster[p].slice();
+  const picked=[];
   const archs=shuffle(["std","atk","def","swift","sustain","guard"]);
   shuffle(V2_ELEM_ORDER.slice()).forEach((el,i)=>{
     const pool=ROSTER.filter(r=>r.element===el);
-    S.roster[p].push((pool.find(r=>r.arch===archs[i%archs.length])||pool[0]).id);
+    picked.push((pool.find(r=>r.arch===archs[i%archs.length])||pool[0]).id);
   });
-  const rest=shuffle(ROSTER.filter(r=>!S.roster[p].includes(r.id)).map(r=>r.id));
-  S.roster[p].push(rest[0]);
-  shuffle(S.roster[p]);
-  applyRoster(p);
+  const rest=shuffle(ROSTER.filter(r=>!picked.includes(r.id)).map(r=>r.id));
+  picked.push(rest[0]);
+  shuffle(picked);
+  return picked;
 }
-/* AI 휴리스틱 배치 */
+/* AI 휴리스틱 배치 — #245: 말을 직접 옮기지 않고 좌표 목록만 만들어 Core 의 setupAuto 액션으로 넘긴다.
+   판정에 쓰는 보드는 **지금 놓인 말 + 이번에 놓기로 한 자리**다 (종전에는 말을 바로 옮겨 at() 가 그 사실을 보았다) —
+   같은 순서·같은 난수·같은 결과이며, 배치가 실제로 상태가 되는 자리는 reducer 한 곳뿐이다. */
 function aiAutoPlace(p){
-  aiPickRoster(p);
+  const roster=aiPickRoster(p);
   const rows=zoneOf(p);
   const back = p===1?rows[0]:rows[2];     // 후열
   const mid  = rows[1];
   const front= p===1?rows[2]:rows[0];     // 전열
-  const free=(r,c)=>r>=1&&r<=ROWS&&c>=1&&c<=COLS&&rows.includes(r)&&!at(r,c);
-  const put=(x,r,c)=>{x.r=r;x.c=c;x.placed=true;};
+  const taken=new Set(alivePieces().map(x=>x.r+"_"+x.c)), spot=new Map(), positions=[];
+  const free=(r,c)=>r>=1&&r<=ROWS&&c>=1&&c<=COLS&&rows.includes(r)&&!taken.has(r+"_"+c);
+  const put=(x,r,c)=>{positions.push({id:x.id,r,c}); taken.add(r+"_"+c); spot.set(x.id,{r,c});};
   const mine=t=>S.pieces.filter(x=>x.owner===p&&x.type===t&&!x.placed);
   // 왕: 후열(80%) 또는 중열(20% 블러핑), 무작위 열
   const king=mine("king")[0];
   {const kr=rand()<0.8?back:mid; const cols=shuffle([1,2,3,4,5,6,7]);
    put(king,kr,cols.find(c=>free(kr,c)));}
+  const kp=spot.get(king.id); // 방금 정한 왕의 자리 (종전에는 king.r/king.c 가 이미 그 값이었다)
   // 폭탄: 1~2개 왕 인접 호위, 나머지 무작위
   const bombs=mine("bomb"); let guard=0;
   for(const b of bombs){
     if(guard<2){
-      const spots=shuffle([[king.r+1,king.c],[king.r-1,king.c],[king.r,king.c+1],[king.r,king.c-1]]).filter(([r,c])=>free(r,c));
+      const spots=shuffle([[kp.r+1,kp.c],[kp.r-1,kp.c],[kp.r,kp.c+1],[kp.r,kp.c-1]]).filter(([r,c])=>free(r,c));
       if(spots.length){put(b,spots[0][0],spots[0][1]);guard++;continue;}
     }
     aiPutRandom(b,rows,free,put);
@@ -793,6 +849,7 @@ function aiAutoPlace(p){
     for(const c of shuffle([1,2,3,4,5,6,7])){ if(free(mid,c)) spots.push([mid,c]); }
     if(spots.length) put(m,spots[0][0],spots[0][1]); else aiPutRandom(m,rows,free,put);
   }
+  dispatchCoreAction({t:"setupAuto",player:p,roster,positions}); // #245: 로스터·좌표가 상태가 되는 자리는 Core 한 곳뿐이다
 }
 function aiPutRandom(x,rows,free,put){
   const cells=[]; for(const r of rows) for(let c=1;c<=COLS;c++) if(free(r,c)) cells.push([r,c]);

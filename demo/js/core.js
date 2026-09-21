@@ -4,6 +4,99 @@
 /* #245 Saturn REVISE: "실리지 않았다"와 "실렸는데 값이 못 쓴다"를 가르는 한 곳. 참/거짓으로 보면 null·0·""·undefined 가
    모두 "생략"으로 둔갑해 조작된·손상된 프레임이 기본값 해석을 얻는다 — 오직 자기 속성 유무만 본다. */
 function ownProp(o,k){return !!o&&Object.prototype.hasOwnProperty.call(o,k);}
+/* ===== #245 상태 selector — Core 소유 =====
+   보드·가시성·합법성 판정은 규칙이다. 분리 전에는 표시 계층(ui.js)에 있어 Core 가 화면 파일에 의존했다.
+   구현은 글자 단위로 그대로 옮겼고, 말미 state 인자 규약(기본 S)도 같다 — reducer 는 받은 보드만 읽는다.
+   화면 배치(boardFlipped)만 ui.js 에 남는다. */
+const isAI=p=>(S.mode==="pve"&&p===1)||S.mode==="sim";
+/* #245 Saturn REVISE(M2): 공개 기록은 **권위 상태**(S.log)다 — 쓰는 자리는 Core 한 곳이고 표시 계층은 그린 결과만 받는다.
+   종전 ui.js addLog 의 직접 S.log.push 는 없어졌다. */
+function addLog(msg,cls){ S.log.push({msg,cls:cls||""}); emitCore({type:"logAppended"}); }
+/* #245 Saturn REVISE(M1): Core 가 화면에 말을 거는 방식은 **의미 이벤트 하나**뿐이다 — HTML·콜백·DOM 은 ui.js 소유다.
+   emitCore 는 reducer 가 돌려주는 이벤트 목록과 **같은 계약·같은 소비기**(runCoreEvents)를 쓰므로,
+   규칙 실행은 언제나 여기서 끝나고 화면은 남은 것만 받는다 (포트가 무동작이어도 규칙 진행은 완결된다). */
+function emitToast(message,kind){ emitCore({type:"toast",message,kind}); }
+function emitContactBanner(piece,sub){ emitCore({type:"contactBanner",piece,sub}); }
+/* ===== #245 Saturn REVISE(M1) 시점 판정 — Core 소유 =====
+   무엇을 로그·문구에 싣는가는 숨은 정보 규칙이라 표시 계층이 아니라 규칙이 정한다. 온라인 좌석만 포트에서 온다
+   (UI_PORT.seat(): 오프라인은 null). 종전 ui.js 구현과 값이 같다: 온라인=내 좌석 · PVE=사람(0) · 핫시트·sim=행동자 시점. */
+function offlinePvp(){ return S.mode==="pvp"&&UI_PORT.seat()===null; } // 같은 기기의 두 사람 — 중립 문구를 쓰는 유일한 경우
+function viewerIsOwner(p){ const seat=UI_PORT.seat(); if(seat!==null) return p===seat; if(S.mode==="pve") return p===0; return true; }
+/* cur: 턴 교대가 이미 커밋된 뒤 **교대 전** 시점으로 판정할 때만 넘긴다 (회복 틱 로그) */
+function humanViewer(cur){
+  const seat=UI_PORT.seat(); if(seat!==null) return seat;                       // 온라인: 항상 내 시점 고정
+  if(S.mode!=="pvp") return 0;
+  if(S.phase==="setup") return S.setupPlayer;
+  if(S.fleePick) return S.fleePick.owner;                                        // 핫시트: 도망 교환 선택 중에는 도망친 말의 소유자 시점 (기기 공유 — 상대는 시선 회피)
+  return cur===undefined?S.current:cur;
+}
+/* #114 도망 교환 선택의 입력 주인이 이 화면의 사람인가 — PVE: 사람(0) · 핫시트: 기기 공유(소유자 시점) · 온라인: 내 좌석 */
+function fleePickMine(){ return !!S&&!!S.fleePick&&!isAI(S.fleePick.owner)&&viewerIsOwner(S.fleePick.owner); }
+const alivePieces=(state)=>(state||S).pieces.filter(p=>p.alive&&p.placed); // #245: 인자를 주면 그 상태의 보드를 본다 (기본은 현재 S)
+const at=(r,c,state)=>alivePieces(state).find(p=>p.r===r&&p.c===c); // #245: 인자를 주면 그 상태의 보드를 본다 (기본은 현재 S)
+const inForest=p=>(p.r>=4&&p.r<=5)||(p.r>=9&&p.r<=10);
+const zoneOf=p=> p===0 ? [11,12,13] : [1,2,3];
+const adj=(a,b)=>Math.abs(a.r-b.r)+Math.abs(a.c-b.c)===1;
+/* 버닝 타임 (GDD-13 4.11): 표시 턴 65부터 직선 2칸 이동 강화 (폭탄 포함·함정 제외) */
+const isBurning=(state)=>(state||S).turnCount+1>=BAL.burnStart; // #245: 인자를 주면 그 상태의 턴 수를 본다 (기본은 현재 S)
+/* 원정 구역 = 자기 기준 상대 측 숲+상대 진영 (BT 2칸 이동 불가 구역) */
+const expedZone=(owner,r)=> owner===0 ? r<=5 : r>=9;
+function adjEnemies(p,state){return alivePieces(state).filter(e=>e.owner!==p.owner&&adj(p,e));}
+function visibleTo(viewer,e,state){
+  state=state||S; // #245: reducer 가 받은 상태의 보드·일시 공개만 본다 (기본은 현재 S)
+  if(e.owner===viewer) return true;
+  if(!inForest(e)) return true;
+  if(state.tempReveal.has(e.id)) return true;
+  return alivePieces(state).some(m=>m.owner===viewer&&adj(m,e));
+}
+function idLabel(viewer,p){
+  if(p.owner===viewer||p.revealed||viewer===2) return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.element?"·"+ELEM_KO[p.element]:"");
+  return "?";
+}
+/* #245 Saturn REVISE(M4) 좌표·말의 형태 검증 — **합법성 판정보다 먼저** 본다.
+   종전에는 맨해튼 거리만 봤기 때문에 (12,4)→(11.5,4.5) 같은 소수 좌표는 거리 1 로 계산되어 통과했고,
+   문자열 "11" 은 산술 비교를 지나 보드 밖 행 14 도 거리 1 이면 통과했다. 조작된·손상된 프레임이
+   보드 밖·칸 사이로 말을 옮기는 경로였다. 판정은 이 공용 selector 한 곳에 둔다 — reducer(move)도,
+   AI·UI·온라인 재생도 전부 여기를 지나므로 호출처마다 따로 막을 필요가 없다. */
+function boardCellOk(r,c){ return Number.isInteger(r)&&Number.isInteger(c)&&r>=1&&r<=ROWS&&c>=1&&c<=COLS; }
+function movablePiece(p,state){ return !!p&&p.alive===true&&p.placed===true&&boardCellOk(p.r,p.c)&&(state||S).pieces.indexOf(p)>=0; }
+function canMoveTo(p,r,c,state){
+  state=state||S; // #245: reducer 가 받은 상태로 같은 판정을 돌린다 (기본은 현재 S)
+  if(!movablePiece(p,state)||!boardCellOk(r,c)) return false; // #245 M4: 죽은·미배치·보드 밖 말과 정수 아닌·보드 밖 목적 칸은 여기서 끝난다
+  if(state.phase!=="play"||state.mainUsed||p.owner!==state.current) return false;
+  if(p.type==="trap") return false; // 함정은 상시 고정 (GDD-13 4.5 개정 — 폭탄만 이동 상시화)
+  if(p.immobile>0) return false;
+  const d=Math.abs(p.r-r)+Math.abs(p.c-c);
+  if(d!==1){
+    // BT 이동 강화: 직선 2칸 (폭탄 포함·함정 제외, 출발·경유·도착이 원정 구역이면 불가)
+    if(d!==2||(p.r!==r&&p.c!==c)||!isBurning(state)) return false;
+    if(expedZone(p.owner,p.r)||expedZone(p.owner,(p.r+r)/2)||expedZone(p.owner,r)) return false;
+    const m=at((p.r+r)/2,(p.c+c)/2,state);
+    if(m&&visibleTo(p.owner,m,state)) return false; // 경유 칸의 보이는 말 차단 (숨은 적 충돌은 doMove가 해석)
+  }
+  const o=at(r,c,state);
+  if(o&&o.owner===p.owner) return false;
+  if(o&&visibleTo(p.owner,o,state)) return false;
+  return true;
+}
+function canBattle(att,def,state){
+  state=state||S; // #245: reducer 가 받은 상태로 같은 판정을 돌린다 (기본은 현재 S)
+  if(state.phase!=="play"||att.owner!==state.current||state.battlesUsed>=2) return false;
+  if(att.type==="bomb"||att.type==="trap") return false;
+  /* #122 REVISE(2026-09-10 CJ QA 6): **왕 vs 왕 불가침을 폐지**한다 — CJ 실플레이에서 텔레포트로 두 왕이
+     맞닿는 상황이 실제로 나왔고, 그때 아무 일도 일어나지 않는 것이 아니라 전투가 되어야 한다는 결정이다.
+     남는 전투 불가 조합은 폭탄·함정이 공격측일 때뿐이다(위 두 줄). 패배 결과는 기존 규칙 그대로 — 왕 본체가 지면 그 즉시 경기 패배다. */
+  if(state.forcedTargets&&state.forcedTargets.length&&(att!==state.movedPiece||!state.forcedTargets.includes(def.id))) return false; // T1: 강제 대상 외 전투 봉쇄
+  if(state.battlesUsed===1){
+    // #14: 텔레포트 스왑 둘째 말의 승계 강제 전투는 연쇄(첫 전투 승리) 조건 면제
+    const forcedOk=state.forcedTargets&&state.forcedTargets.length&&att===state.movedPiece&&state.forcedTargets.includes(def.id);
+    if(!forcedOk){
+      if(!state.firstBattleWonByMover||!att.alive||att!==state.movedPiece) return false;
+      if(!state.contactSet.includes(def.id)) return false;
+    }
+  }
+  return true;
+}
 /** #245 액션 계약: 들어온 액션을 reducer 가 받는 모양으로 **한 번만** 해석한다.
     @param {GameState} state @param {ReducerAction} action @returns {ReducerAction} */
 function resolveCoreAction(state,action){
@@ -126,7 +219,7 @@ function reduceCoreAction(state,action){
        검증은 기존 canMoveTo 하나뿐이고(중복 판정 없음), 대상 목록도 applyForced 와 같은 한 줄(contactEligible)이다.
        BT 2칸의 단계 해석은 레거시와 같다 — 경유 칸에 숨은 말이 있으면 그 칸 진입 시도로 바꾸고(정지 = 출발 칸), 비어 있으면
        통과한다(정지 = 경유 칸). 도착 칸에 숨은 말이 있으면 그 정지 위치에서 멈추고 양측을 일시 공개한다(숲 충돌).
-       왕 끝줄 도달·전투 슬롯이 걸린 턴은 null 로 떨어뜨려 doMoveLegacy 가 종전대로 처리하고,
+       왕 끝줄 도달(즉시 승리)과 전투 슬롯이 이미 걸린 턴의 승계 판정도 여기서 끝난다 — 레거시 이동 경로는 남아 있지 않다.
        충돌 문구·전투 개시(initBattle)·배너·로그는 moved 이벤트의 표시 단계(collisionLog·forcedContactStart)에 그대로 남는다.
        reducer 계약대로 입력 상태는 건드리지 않는다 — 움직이는 말과 실제로 바뀌는
        metrics·traces·aiSeenMoved 칸만 복제하고 나머지 참조는 그대로 둔다.
@@ -135,9 +228,7 @@ function reduceCoreAction(state,action){
        다른 결과가 나온다(온라인 재생·AI 탐색처럼 S 와 reducer 상태가 갈리는 호출). 판정을 다시 쓰지 않는다(중복 검증 없음). */
     case "move": {
       const target=state.pieces.find(x=>x.id===action.id);
-      if(!target||state.battle||state.teleport||state.fleePick) return null;
-      if(state.battlesUsed||(state.forcedTargets&&state.forcedTargets.length)) return null; // 전투 슬롯이 이미 걸린 턴의 canBattle 승계 판정은 레거시 그대로
-      if(target.type==="king") return null; // 왕 끝줄 도달 즉시 승리 경로(checkKingReach)는 레거시
+      if(!target||state.battle||state.teleport||state.fleePick) return null; // 전투·텔레포트 단계·도망 교환 중에는 이동 입력을 받지 않는다 (호출처도 같은 자리에서 이미 막는다)
       if(!canMoveTo(target,action.r,action.c,state)) return null; // 합법성 판정은 레거시와 같은 한 곳(canMoveTo)뿐이다
       let dr=action.r, dc=action.c, stopR=target.r, stopC=target.c; // 충돌 시 정지 위치 — 기본값은 출발 칸
       if(Math.abs(target.r-dr)+Math.abs(target.c-dc)===2){ // BT 2칸: 1칸째부터 단계 해석 → 충돌 규칙 자연 적용
@@ -148,9 +239,15 @@ function reduceCoreAction(state,action){
       const moved=Object.assign({},target,{r:hidden?stopR:dr,c:hidden?stopC:dc,movedEver:true,healing:false}); // #106: 이동은 회복 자세 해제 (숲 충돌 정지 포함)
       if(!isBurning(state)) moved.movedPreBT=true; // 엔진 내부 이동 이력 (#21 누수 제거 — AI 는 aiSeenMoved 만 본다)
       const beforeAdj=new Set(adjEnemies(target,state).map(e=>e.id)), after=adjEnemies(moved,state); // T1: 이동 전/후 인접 집합
-      const forced=after.filter(e=>!beforeAdj.has(e.id)&&contactEligible(moved,e,state)).map(e=>e.id); // 신규 인접 = 강제 전투·폭탄 접촉 (applyForced 와 같은 판정)
-      const next=Object.assign({},state,{pieces:state.pieces.map(x=>x===target?moved:x),mainUsed:true,contactKind:hidden?"collision":"move",
-        movedPiece:moved,contactSet:after.map(e=>e.id),forcedTargets:forced.length?forced:state.forcedTargets,
+      /* 신규 인접 = 강제 전투·폭탄 접촉. 판정 보드는 **이동이 끝난 뒤의 보드**다 — 레거시 applyForced 가 S.movedPiece·
+         S.contactSet 을 먼저 세우고 S.forcedTargets 를 비운 다음 contactEligible 을 불렀기 때문이다. 전투 슬롯이 이미
+         하나 걸린 턴(battlesUsed===1)의 승계 판정(canBattle 의 movedPiece·contactSet 분기)과, 앞선 강제 전투 표식이
+         남아 있는 상태의 재계산이 모두 이 보드 위에서 레거시와 같은 값을 낸다. */
+      const afterIds=after.map(e=>e.id);
+      const board=Object.assign({},state,{pieces:state.pieces.map(x=>x===target?moved:x),mainUsed:true,
+        contactKind:hidden?"collision":"move",movedPiece:moved,contactSet:afterIds,forcedTargets:[]});
+      const forced=after.filter(e=>!beforeAdj.has(e.id)&&contactEligible(moved,e,board)).map(e=>e.id);
+      const next=Object.assign({},board,{forcedTargets:forced,
         selected:forced.length>1?moved:(state.selected===target?moved:state.selected)}); // 대상 2개 이상이면 레거시와 같이 이동한 말을 선택 상태로 둔다
       if(hidden) next.tempReveal=new Set(state.tempReveal).add(hidden.id).add(moved.id); // 숲 충돌: 양측 일시 공개 (입력 집합은 그대로 두고 복제)
       const metric=target.type==="bomb"?"bombMoves":(target.type==="minion"&&zoneOf(1-target.owner).includes(moved.r)&&!zoneOf(1-target.owner).includes(target.r)?"minionInvades":null);
@@ -162,6 +259,10 @@ function reduceCoreAction(state,action){
       if(!isBurning(state)&&(hidden||visibleTo(obs,target,state)||visibleTo(obs,moved,state))){ // observeMove 와 같은 판정 — 이동 전후 어느 쪽이든 보이면 목격 (충돌은 일시 공개라 항상 목격)
         next.aiSeenMoved=state.aiSeenMoved.slice(); next.aiSeenMoved[obs]=new Set(state.aiSeenMoved[obs]).add(target.id);
       }
+      /* 왕 끝줄 도달 즉시 승리 (GDD-13 4.1) — 분리 전 이동 경로가 흔적 조회 **앞**에서 checkKingReach 로 보던 자리다.
+         숲 충돌로 멈춘 이동은 레거시도 이 지점에 오지 않으므로 검사하지 않는다. */
+      const reach=hidden?null:kingAtEdge(next);
+      if(reach) return kingReachResult(next,reach,{type:"moved",piece:moved,healBroken:!!target.healing,trace:false,collision:false,forced:null,kingReach:true});
       const ev=hidden?null:state.events.find(e=>e.r===dr&&e.c===dc&&!e.consumed); // 충돌로 멈춘 칸은 흔적을 발견하지 않는다 (레거시 그대로)
       if(ev){ next.traces=state.traces.slice(); next.traces[target.owner]=new Set(state.traces[target.owner]).add(ev.r+"_"+ev.c); }
       return {state:next,events:[{type:"moved",piece:moved,healBroken:!!target.healing,trace:!!ev,collision:!!hidden,forced:forced.length?forced:null}]};
@@ -170,7 +271,7 @@ function reduceCoreAction(state,action){
        도착 칸 흔적, 두 말의 회복 자세 해제, 그리고 교환 직후의 **강제 전투 큐 적재와 첫 항목 승격**까지 Core 가 소유한다.
        표시(거부 사유 토스트·로그·배너·render)와 전투 개시(initBattle)는 teleRefused·teleSwapped 이벤트가 종전 헬퍼
        (forcedContactStart)로 그대로 넘긴다 — 문구·순서가 갈라지지 않게.
-       왕이 섞인 교환은 끝줄 도달 즉시 승리(checkKingReach) 경로라 null 로 떨어뜨려 doTeleportSwapLegacy 가 종전대로 처리한다 (move 와 같은 경계).
+       왕이 섞인 교환의 끝줄 도달 즉시 승리도 여기서 끝난다 (move 와 같은 경계) — 레거시 스왑 경로는 남아 있지 않다.
        거부·차단은 **아무것도 소모하지 않는다** — 단계 되돌림(과 차단의 selected 해제)만 상태에 남고 좌표·자원·큐·난수는 그대로다.
        말은 **id 가 아니라 객체 정체성**으로 받는다 (Saturn REVISE P2): state.pieces 안의 그 말 자체여야 통과하므로
        복제 객체·같은 id 두 개·원격 프레임이 되살린 객체는 여기서 거부된다.
@@ -179,7 +280,6 @@ function reduceCoreAction(state,action){
        스왑 전 보드로 계산한 신규 인접 집합은 스왑 후와 같다(움직인 두 말은 서로의 적이 아니다). */
     case "teleSwap": {
       const a=action.a, b=action.b;
-      if((a&&a.type==="king")||(b&&b.type==="king")) return null; // 왕 끝줄 도달 즉시 승리 경로(checkKingReach)는 레거시
       const bad=teleportSwapValid(a,b,state);
       if(bad){ // 첫 말이 무효가 됐으면 1단계로 되돌리고(단계 일치), 둘째 말만 무효면 1단계 선택은 유지한다
         const reset=state.teleport&&(!a||a.owner!==state.current||!a.alive||!a.placed||a.immobile>0);
@@ -203,6 +303,11 @@ function reduceCoreAction(state,action){
         if(next.traces===state.traces) next.traces=state.traces.slice();
         next.traces[p.owner]=new Set(next.traces[p.owner]).add(ev.r+"_"+ev.c); traces++;
       }
+      /* 왕이 섞인 교환의 끝줄 도달 즉시 승리 — 분리 전 스왑 경로가 흔적 기록 **뒤**, 강제 전투 큐 적재 **앞**에서
+         checkKingReach 로 보던 자리다. 큐는 그 경로에서 종전처럼 손대지 않는다. */
+      const reach=kingAtEdge(next);
+      if(reach) return kingReachResult(next,reach,{type:"teleSwapped",player:state.current,pieces:[pa,pb],
+        healBroken:[!!a.healing,!!b.healing],traces,forced:null,kingReach:true});
       // #18: 두 말의 강제 전투를 독립 queue에 적재 — 첫 전투의 결과(승·패·도주)와 무관하게 게임이 끝나지 않으면 둘째 실행
       const queue=[];
       for(const [p,list] of [[pa,newAdjAt(a,b.r,b.c,beforeA,state)],[pb,newAdjAt(b,a.r,a.c,beforeB,state)]]) if(list.length) queue.push({pid:p.id,targets:list});
@@ -306,7 +411,9 @@ function reduceCoreAction(state,action){
           else if(piece.cap===f) resetAfter(c.cap=Object.assign({},f));
         }
       }catch(e){}
-      const next=Object.assign({},state,{phase:"over",winner:action.winner,metrics,battle:null,recruit:null});
+      /* entryPick(보류 중인 출전 선택)도 battle·recruit 과 같이 거둔다 — 종료 전이에서 남겨 두면 그 뒤에 도착한
+         답(battleEntryGo)이 끝난 경기 위에 전투를 다시 연다 (기권·왕 도달 등 전투 밖 종료에서 실제로 열린 통로). */
+      const next=Object.assign({},state,{phase:"over",winner:action.winner,metrics,battle:null,recruit:null,entryPick:null});
       if(clones.size) next.pieces=state.pieces.map(x=>clones.get(x)||x);
       return {state:next,events:[{type:"matchEnded",winner:action.winner,winType:action.winType,
         interrupted:!!B,banner:!action.endingBattle}]};
@@ -581,8 +688,8 @@ function reduceCoreAction(state,action){
        #122 REVISE(2026-09-10 CJ QA 2) — 도망 실패 페널티: **상대의 무료 기본 공격 1회**를 맞는다. 반격이 끝나면 execSlot 이
        nextPhase() 로 차례를 넘겨 상대의 정상 차례가 그대로 온다. 반격은 기술이 아니라 기본 공격이므로 쿨·기술 공개·부가효과가 없다
        (💪 힘의 수호자는 반격자에게 걸려 있으면 기존 피해 분산 고정이 그대로 적용된다 — 별도 처리 없음).
-       재생 중(msgQ 잔여) 호출은 거부한다 — 종전 actionFresh() 의 같은 조건이며 **상태로만** 본다
-       (연출 잠금은 입력 경계 netAction·수신 경계 netReady·AI 의 fxWhenIdle 이 그대로 맡는다). */
+       합법성은 프레임 신선도(행동자·행동 토큰·라운드·단계)로만 본다 — 재생 중 여부(msgQ)는 여기서 보지 않는다.
+       연출 잠금은 입력 경계 netAction·수신 경계 netReady·UI 의 busy·AI 의 fxWhenIdle 이 그대로 맡는다. */
     case "flee": {
       if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
       const ctx=battleCmdCtx(state,action,true); if(!ctx) return {state,events:[]};
@@ -665,21 +772,194 @@ function reduceCoreAction(state,action){
        delayedFired 로 넘긴다. 발동 시 전투가 살아 있을 때만 실행하는 4.6 취소 규칙은 그 핸들러가 항목마다 그대로 검사한다.
        전투원(f)은 전투 커맨드 tranche 와 같은 이유로 복제하지 않고 값만 고쳐 쓴다(예약 항목·msgQ 가 정체성을 붙잡고 있다).
        대상은 teleSwap 처럼 참조로 실려 온다 — 서버 요약은 [roundsLeft, tag] 만 읽고(#233 계약) 이 어휘는 회선을 타지 않는다. */
+    /* #245 공개 방 재수화: 서버가 이미 판정한 좌석 뷰를 클라이언트 상태로 앉히는 **유일한** 자리.
+       로컬 액션을 다시 판정하지 않으므로 규칙 분기는 없지만, 그렇다고 네트워크 계층이 S 를 직접 써도 되는 것은 아니다 —
+       어떤 칸이 뷰로 덮이는지(그리고 어떤 칸은 덮이지 않는지)를 여기서 한 번만 정하고, 같은 commit 경계를 지난다.
+       말은 서버 스텁으로 **통째로 갈아끼운다**(replaceBoard) — 이전 스냅샷의 잔여 칸이 섞이면 서버 판정과 화면이 갈린다. */
+    case "hydrate": {
+      const v=action.view, seat=action.seat;
+      const byId=id=>id==null?null:(v.pieces.find(p=>p.id===id)||null);
+      const turn=v.turn;
+      const next=Object.assign({},state,{
+        mode:"pvp", phase:v.phase,
+        current:v.current!==null?v.current:state.current,
+        turnCount:v.turnCount!==null?v.turnCount:state.turnCount,
+        mainUsed:v.mainUsed, battlesUsed:v.battlesUsed,
+        pieces:v.pieces, tempReveal:new Set(v.tempReveal),
+        inv:state.inv.slice(), balls:state.balls.slice(), reserve:state.reserve.slice(),
+        pkgs:state.pkgs.slice(), teleUsed:state.teleUsed.slice(), traces:state.traces.slice(),
+        selected:byId(v.selected),
+        teleport:turn&&turn.teleport?{stage:turn.teleport.stage===2?2:1,piece:byId(turn.teleport.piece)}:null,
+        forcedTargets:turn&&Array.isArray(turn.forcedTargets)?turn.forcedTargets.slice():[],
+        forcedQueue:turn&&typeof turn.forcedQueue==="number"&&turn.forcedQueue>0?Array.from({length:turn.forcedQueue},()=>({pid:null})):[],
+        movedPiece:turn?byId(turn.movedPiece):null,
+        firstBattleWonByMover:!!(turn&&turn.firstBattleWonByMover),
+        contactSet:turn&&Array.isArray(turn.contactSet)?turn.contactSet.slice():[],
+        events:v.events, fleePick:v.fleePick, battle:v.battle, _pendingModal:v.modal});
+      next.inv[seat]=v.inv; next.balls[seat]=v.balls; next.reserve[seat]=v.reserve;
+      if(v.pkgs) next.pkgs[seat]=v.pkgs;
+      if(v.teleUsed!==null) next.teleUsed[seat]=v.teleUsed;
+      next.traces[seat]=new Set(v.events.map(e=>e.r+"_"+e.c));
+      if(v.log) next.log=v.log;
+      if(v.result){ next.winner=v.result.winner; next.metrics=Object.assign({},state.metrics,{winType:v.result.winType,byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))}); }
+      return {state:next,events:[],replaceBoard:true};
+    }
+    /* #245 기존 락스텝(hello/hello2)의 상대 사전 배치 적용 — 종전에는 network.js 가 검증한 뒤 말을 직접 옮겼다.
+       회선에서 온 값이므로 **신뢰 경계**다: 로스터 6종(중복 없음·실재 종)·좌표 개수·행(자기 진영 3행)·
+       **열이 1..COLS 의 정수**·칸 중복 없음을 모두 통과해야 한다. 열 정수 검사가 없으면 `[11, 3.5]` 같은
+       소수 좌표가 그대로 보드에 앉아 두 좌석의 at()/adj() 판정이 갈린다(락스텝 파괴).
+       손상 데이터는 종전과 같이 결정적 무작위 배치로 대체한다 — 양측이 같은 데이터·같은 시드를 보므로 결과도 같다.
+       데이터는 항상 플레이어 0 진영(11~13행) 기준이고 p=1 이면 행만 미러링(r→14−r), 열은 그대로다. */
+    case "netSetup": {
+      const p=action.player, data=action.data;
+      const next=Object.assign({},state,{roster:state.roster.map(x=>x.slice()),pieces:state.pieces.map(x=>Object.assign({},x))});
+      const mine=next.pieces.filter(x=>x.owner===p);
+      const ok=data&&Array.isArray(data.roster)&&data.roster.length===6
+        &&new Set(data.roster).size===6&&data.roster.every(id=>ROSTER.some(r=>r.id===id))
+        &&Array.isArray(data.pos)&&data.pos.length===mine.length
+        &&data.pos.every(q=>Array.isArray(q)&&Number.isInteger(q[0])&&zoneOf(0).includes(q[0])&&Number.isInteger(q[1])&&q[1]>=1&&q[1]<=COLS)
+        &&new Set(data.pos.map(q=>q[0]+"_"+q[1])).size===data.pos.length;
+      if(!ok){
+        next.roster[p]=[];
+        const rest=shuffle(ROSTER.map(r=>r.id));                       // fillRosterRandom 과 같은 소비 (빈 로스터 → 30종 셔플 후 뒤에서 6개)
+        while(next.roster[p].length<6) next.roster[p].push(rest.pop());
+        applyRoster(p,next);
+        const cells=[]; for(const r of zoneOf(p)) for(let c=1;c<=COLS;c++) cells.push([r,c]);
+        shuffle(cells);
+        mine.forEach((x,i)=>{x.r=cells[i][0]; x.c=cells[i][1]; x.placed=true;});
+        next.selected=null;
+        return {state:next,events:[{type:"netSetupCorrupt",player:p}]};
+      }
+      next.roster[p]=data.roster.slice(); applyRoster(p,next);
+      mine.forEach((x,i)=>{ x.r=(p===1)?(ROWS+1-data.pos[i][0]):data.pos[i][0]; x.c=data.pos[i][1]; x.placed=true; });
+      next.selected=null;                                              // setupAuto 와 같은 자리 정리 (배치 적용은 선택을 남기지 않는다)
+      return {state:next,events:[]};
+    }
+    /* #245 경기 개시: 배치가 끝난 판을 플레이 단계로 올리고 **무작위 선공**(rand 1회)을 뽑아 지표에 남긴 뒤
+       첫 턴 초기화(startTurnState)까지 한 번에 끝낸다. 종전에는 ui.js beginPlay() 가 S.phase·S.current·
+       metrics.firstPlayer 를 직접 쓰고 startTurn() 이 다시 Object.assign 으로 얹었다 — 같은 경기 시작이
+       커밋 경계를 두 번 우회했다. 표시(선공 로그·턴 배너·BT 고지·핫시트 넘김·렌더·AI 스케줄)는 playBegan 이벤트다. */
+    case "beginPlay": {
+      const current=Math.floor(rand()*2);                       // 무작위 선공 (Q6 확정) — 난수 소비 1회, 종전과 같은 자리
+      const metrics=Object.assign({},state.metrics,{firstPlayer:current,byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+      const started=startTurnState(Object.assign({},state,{phase:"play",current,metrics}));
+      return {state:started.state,events:[{type:"playBegan",player:current,bt:started.bt}]};
+    }
+    /* #245 턴 시작 초기화만 따로 — 종전 startTurn() 래퍼가 startTurnState 의 결과를 Object.assign 으로 S 에 직접 얹던 자리다.
+       같은 상태 계산(startTurnState)을 쓰고 표시는 turnStarted 이벤트로만 나간다. */
+    case "startTurn": { const r=startTurnState(state); return {state:r.state,events:[{type:"turnStarted",bt:r.bt}]}; }
+    /* #245 버닝타임 배너 예약 소비 — 표시 전용 래치이지만 규칙 상태의 칸이라 같은 commit 경계를 지난다
+       (표시 계층이 S 를 직접 쓰지 않는다). 예약은 startTurnState 가 세우고 여기서만 내린다. */
+    case "btBannerShown":
+      return state.btBannerDue?{state:Object.assign({},state,{btBannerDue:false}),events:[]}:{state,events:[]};
+    /* #245 강제 전투 대상 비우기 — AI 가 이행할 수 없는 조합(대상이 사라진 뒤 남은 표식)에서 쓰는 방어 경로.
+       종전에는 ai.js 가 S.forcedTargets 를 직접 비웠다. 판정은 부르는 쪽이 이미 했고 여기는 그 한 칸만 지운다. */
+    case "forcedClear":
+      return (state.forcedTargets&&state.forcedTargets.length)?{state:Object.assign({},state,{forcedTargets:[]}),events:[]}:{state,events:[]};
+    /* #245 Saturn REVISE(M3) 전투 개시 — 강제 전투 표식 회수와 그 지표는 **reducer 안에서** 순수하게 끝난다.
+       나머지 개시 실행(상황 문구·회복 자세 해제·폭탄/함정 갈래·출전 선택·라운드 시작)은 battleBegan 효과가 맡는다. */
+    case "battleStart": {
+      if(!Number.isInteger(action.attId)||!Number.isInteger(action.defId)||action.attId===action.defId) return null; // #245 M4: 조작된·손상된 프레임의 형태 검사
+      const att=state.pieces.find(x=>x.id===action.attId), def=state.pieces.find(x=>x.id===action.defId);
+      if(!att||!def||att===def) return null;
+      /* #245 Saturn REVISE(M4) 신뢰 경계: 개시 대상은 **이 보드에 실제로 서 있는 서로 다른 편의 인접한 두 말**이어야 하고,
+         플레이 중이면서 다른 전투가 열려 있지 않아야 한다. 종전 initBattle 은 넘어온 말을 그대로 믿고 곧장
+         alive·immobile·battlesUsed 를 고쳤다 — 규칙 게이트를 지나지 않은 호출(늦은 콜백·재생 프레임·조작된 입력)이
+         제거된 말, 이 보드에 없는 복제 말, 보드 반대편에 있는 말로도 전투를 열 수 있었다.
+         접촉은 전투의 전제이므로 여기서 본다. */
+      if(!movablePiece(att,state)||!movablePiece(def,state)) return null;
+      if(att.owner===def.owner||!adj(att,def)) return null;
+      /* #245 Saturn REVISE: 보류 중인 출전 선택(entryPick)도 **이미 열린 전투**다 — 그 자리에 다른 전투를 겹쳐 열면
+         늦게 돌아온 옛 출전 답(battleEntryGo)이 살아 있는 전투를 갈아치운다. 도망 교환과 같은 이유로 여기서 막는다. */
+      if(state.phase!=="play"||state.battle||state.fleePick||state.entryPick) return null; // 도망 교환·보류 출전 선택이 열려 있는 동안에는 새 전투를 열지 않는다
+      const forced=!!(state.forcedTargets&&state.forcedTargets.length&&att===state.movedPiece&&state.forcedTargets.includes(def.id)); // T1: 강제 이행
+      /* #245 Saturn REVISE 신뢰 경계 2차: 세부 합법성도 **여기서** 본다 — 종전에는 부르는 쪽(클릭 경로·AI)의
+         canBattle·forcedPickOk 에 맡겨 두어, 그 게이트를 지나지 않은 호출(늦은 콜백·재생 프레임·조작된 입력)이
+         남의 차례·세 번째 전투·강제 표식 밖 대상으로 전투를 열 수 있었다. 판정은 같은 두 함수를 **이 상태로**
+         돌려 쓰므로 규칙이 두 벌이 되지 않고, 강제 접촉의 폭탄 갈래(forcedPickOk 와 같은 분기)도 그대로 남는다. */
+      if(!(forced&&att.type==="bomb"?contactEligible(att,def,state):canBattle(att,def,state))) return null;
+      if(!forced) return {state,events:[{type:"battleBegan",attId:att.id,defId:def.id}]};
+      const metrics=Object.assign({},state.metrics,{byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
+      const next=Object.assign({},state,{forcedTargets:[],metrics});
+      met(att.owner,"forcedBattles",1,next);
+      return {state:next,events:[{type:"battleBegan",attId:att.id,defId:def.id}]};
+    }
+    /* ===== #245 Saturn REVISE(M1·M3) 출전 선택 — 상태로 남는 보류 결정 =====
+       종전에는 modal 버튼이 든 **콜백 사슬**이 전투 개시를 이어받아, 화면이 없으면 규칙이 멈추고 Core 가
+       표시 계층의 콜백에 의존했다. 이제 단계가 state.entryPick 에 남고 답은 직렬화 가능한 액션으로 들어온다:
+       battleEntryBegin → (A 선택) → (D 선택) → reveal → battleEntryGo → battleEntryStart 이벤트가 전투를 연다.
+       예비(포획 하수인) 소모도 여기서 순수하게 일어난다 — 복제본에 얹고 reserve 를 비운다. */
+    case "battleEntryBegin": {
+      if(state.entryPick||state.battle) return null;                          // 이미 열린 보류 결정·진행 중 전투에는 겹쳐 열지 않는다
+      const att=state.pieces.find(x=>x.id===action.attId), def=state.pieces.find(x=>x.id===action.defId);
+      if(!att||!def) return null;
+      return {state:Object.assign({},state,{entryPick:{attId:att.id,defId:def.id,stage:"A",A:null,D:null}}),
+              events:[{type:"battleEntryStep"}]};
+    }
+    case "battleEntryPick": {
+      const EP=state.entryPick;
+      if(!EP||(EP.stage!=="A"&&EP.stage!=="D")) return null;                  // 늦은·중복 응답은 조용히 거부된다 (단계가 이미 지나갔다)
+      if(action.side!==undefined&&action.side!==EP.stage) return null;        // 다른 단계를 겨냥한 응답도 받지 않는다
+      if(action.what!=="body"&&action.what!=="cap") return null;
+      const piece=state.pieces.find(x=>x.id===(EP.stage==="A"?EP.attId:EP.defId));
+      if(!piece) return null;
+      const ep=Object.assign({},EP); ep[EP.stage]=action.what; ep.stage=(EP.stage==="A")?"D":"reveal";
+      const next=Object.assign({},state,{entryPick:ep});
+      const res=(!piece.cap&&state.reserve[piece.owner])?state.reserve[piece.owner]:null;
+      if(action.what==="cap"&&res){                                           // 예비를 꺼내 쓰는 유일한 자리 — 꺼낸 뒤 예비 칸은 빈다
+        const worn=Object.assign({},piece,{cap:res});
+        next.pieces=state.pieces.map(x=>x===piece?worn:x);
+        next.reserve=state.reserve.slice(); next.reserve[piece.owner]=null;
+      }
+      else if(action.what==="cap"&&!piece.cap) return null;                   // 낼 수 있는 대리가 없다 — 그 선택은 성립하지 않는다
+      return {state:next,events:[{type:"battleEntryStep"}]};
+    }
+    case "battleEntryGo": {
+      const EP=state.entryPick;
+      /* 늦은·중복 답(stage 가 이미 지나갔다)뿐 아니라 **끝난 경기**와 **그 사이 열린 전투**도 여기서 거부한다 —
+         그러지 않으면 옛 보류 결정이 살아 있는 전투를 갈아치우거나 종료된 경기에서 전투를 다시 연다. */
+      if(!EP||EP.stage!=="reveal"||state.battle||state.phase!=="play") return null;
+      const att=state.pieces.find(x=>x.id===EP.attId), def=state.pieces.find(x=>x.id===EP.defId);
+      if(!att||!def) return {state:Object.assign({},state,{entryPick:null}),events:[]};
+      const a2=Object.assign({},att,{revealed:true}), d2=Object.assign({},def,{revealed:true}); // 출전 공개
+      const next=Object.assign({},state,{entryPick:null,pieces:state.pieces.map(x=>x===att?a2:(x===def?d2:x))});
+      return {state:next,events:[{type:"battleEntryStart",attId:EP.attId,defId:EP.defId,A:EP.A,D:EP.D}]};
+    }
+    case "battleEntryAbort":
+      return state.entryPick?{state:Object.assign({},state,{entryPick:null}),events:[]}:{state,events:[]};
+    /* #245 탐색 완료 래치 — 완료 토큰을 반 칸 올려 같은 토큰의 늦은 콜백을 걸러낸다 (분리 전 원본과 같은 값).
+       규칙 판정·난수에는 쓰이지 않는 표시 순번이지만 규칙 상태의 칸이므로 같은 commit 경계를 지난다. */
+    case "searchEndLatch": {
+      /* #245 Saturn REVISE(M3): 늦은 재개를 거르는 대조는 **액션이 들고 온 값**으로 여기서 한다 (종전에는 표시 계층의
+         클로저가 들고 있었다). 새 게임은 searchEndSeq 가 없어지므로 첫 조건이 그대로 잡는다. */
+      if(state.searchEndSeq!==action.seq) return {state,events:[]};
+      if(action.turn!==undefined&&action.turn!==state.turnCount) return {state,events:[]};
+      if(action.cur!==undefined&&action.cur!==state.current) return {state,events:[]};
+      return {state:Object.assign({},state,{searchEndSeq:action.seq+0.5}),events:[{type:"searchEndLatched"}]};
+    }
+    /* #245 Saturn REVISE(M3) 도망 성공 종료 연출이 끝난 자리 — 후방 말 교환 화면은 규칙 상태(S.fleePick)를 열므로 Core 가 연다 */
+    case "fleeSwapResume":
+      return {state,events:[{type:"fleeSwapPromptRun",pieceId:action.pieceId,oppId:action.oppId}]};
+    /* #245 Saturn REVISE(M3): 예약·카운트다운 액션은 **전투원 객체를 싣지 않는다** — 의미 있는 자리(side)만 싣고,
+       reducer 가 그 자리의 살아 있는 전투원을 상태에서 찾아 대기열을 고친다. 종전에는 action.f 로 건네진 남의 객체를
+       reducer 가 그 자리에서 줄였다(독립 probe 가 roundsLeft 2 → 1 을 실측했다) — 액션이 상태를 우회해 들어오는 통로였다.
+       전투원은 복제하지 않는다: #233 의 run 훅·execSlot·resolveHit 이 이 객체 정체성을 붙잡고 있기 때문이다(계약 그대로).
+       실행 훅은 여기서 돌지 않는다 — 대기열이 커밋된 **뒤** delayedFired 효과에서만 돈다. */
     case "delaySchedule": {
-      const f=action.f; if(!f) return {state,events:[]};
+      const f=delayFighterOf(state,action.side); if(!f) return {state,events:[]};
       f.pendingFx=f.pendingFx||[];
       f.pendingFx.push({roundsLeft:action.delayRounds,tag:action.tag!==undefined?action.tag:null,run:action.run});
       return {state,events:[]};
     }
     case "delayTick": {
-      const f=action.f;
+      const f=delayFighterOf(state,action.side);
       if(!f||!f.pendingFx||!f.pendingFx.length) return {state,events:[]};
       const keep=[],fired=[];
       for(const ev of f.pendingFx){ ev.roundsLeft--; if(ev.roundsLeft<=0) fired.push(ev); else keep.push(ev); }
       /* 남은 목록은 **발동 전에** 확정한다. 종전은 콜백을 먼저 돌리고 끝난 뒤에 그 목록을 대입해,
          발동한 효과가 전투를 끝내 resetAfter 가 이미 비운 대기열을 다시 살려 놓았다(4.6 "전투가 끝나면 취소" 위반). */
       f.pendingFx=keep;
-      return {state,events:fired.length?[{type:"delayedFired",fired}]:[]};
+      return {state,events:fired.length?[{type:"delayedFired",side:action.side,fired}]:[]};
     }
     default: return null;
   }
@@ -696,20 +976,242 @@ function searchDoneResult(state,before,owner,title,sub,fxKey,tut){
 function dispatchCoreAction(action){
   const result=reduceCoreAction(S,resolveCoreAction(S,action));
   if(!result) return false;
-  commitCoreState(result.state,result.events);
-  applyUiEvents(result.events);
+  commitCoreState(result.state,result.events,result.replaceBoard);
+  runCoreEvents(result.events);
+  aiActedNote(action,result);
   return result;
+}
+/* #245 Saturn REVISE(M2): AI 가 고른 행동의 "🤖 …" 기록·안내는 **Core 가** 낸다 — 어댑터는 로그도 토스트도 쓰지 않는다.
+   액션이 든 origin 표식만 보고, 그 행동이 실제로 받아들여진 뒤 **맨 마지막에** 한 번 낸다 (종전 ai.js 의 순서 그대로:
+   doMove/doSearch/doHeal/doTeleportSwap 이 돌아온 다음 줄이었다). 토스트 유무도 종전 호출처와 같다 —
+   이동은 언제나, 회복은 5급 경로만(action.toast), 탐색·텔레포트는 기록만. */
+const AI_ACT_MSG={move:"🤖 AI 이동",search:"🤖 AI 탐색 행동",heal:"🤖 AI 회복 행동",teleSwap:"🤖 AI 주 행동"};
+function aiActedNote(action,result){
+  if(!action||action.origin!=="ai") return;
+  const msg=AI_ACT_MSG[action.t]; if(!msg) return;
+  if(action.t==="teleSwap"&&!(result.events[0]&&result.events[0].type==="teleSwapped")) return; // 차단된 스왑은 알리지 않는다 (종전 doTeleportSwap 반환 계약)
+  addLog(msg,"ai");
+  if(action.t==="move"||(action.t==="heal"&&action.toast)) emitToast(msg);
+}
+/** #245 Saturn REVISE(M3): 이벤트 소비의 **소유자는 Core** 다. 종전에는 표시 계층(applyUiEvents)이 목록을 돌며
+    규칙 실행 이벤트를 applyCoreEffects 로 넘겼기 때문에, 화면이 없으면 규칙 실행 자체가 일어나지 않았다.
+    이제 dispatch 안에서 Core 가 같은 목록을 같은 순서로 지나며 규칙을 먼저 실행하고, 규칙이 아닌 이벤트만
+    포트로 흘려보낸다 — 한 줄기 순서(규칙·표시가 섞인 그대로)는 그대로이고 화면 의존만 사라진다.
+    @param {CoreEvent[]} events */
+function runCoreEvents(events){
+  for(const event of events||[]){
+    if(applyCoreEffects(event)) continue; // 규칙 실행 이벤트는 Core 가 소유한다 (순서는 한 줄기 그대로)
+    UI_PORT.event(event);
+  }
+}
+/** #245 Core 가 reducer 밖(전투 실행 엔진·레거시 경로)에서 내는 이벤트 한 건 — reducer 가 돌려주는 목록과
+    **같은 계약·같은 소비기**를 쓴다. 동기 호출이라 종전 직접 호출과 순서가 같다.
+    @param {CoreEvent} event */
+function emitCore(event){ runCoreEvents([event]); }
+/** #245 Saturn REVISE(M2): 규칙을 잇는 다음 액션은 **Core 가 소유한다**. 표시 계층이 연출 뒤로 미루겠다고 하면
+    (defer→true) 그쪽이 같은 액션을 되돌려 보내고, 미루지 않으면(기본값 — 화면 없는 런타임) 여기서 그 자리에서
+    실행한다. 종전에는 이 두 자리가 whenIdle·battleEndFx.resume 이벤트로만 나가서, ui.js 가 없으면 도망 교환과
+    탐색 완료 래치가 통째로 멈췄다. 경계를 건너는 값은 직렬화 가능한 Core 액션 하나뿐이다.
+    @param {ReducerAction} action */
+function resumeCoreAction(action){ if(!UI_PORT.defer(action)) dispatchCoreAction(action); }
+/* #245 왕 끝줄 도달 판정의 단일 원본 — 레거시 checkKingReach() 와 reducer(move·teleSwap)가 같은 한 줄을 본다.
+   "살아 있는 어느 왕이든 상대 끝줄에 서 있는가" 라는 종전 의미를 그대로 유지한다 (움직인 말만 보지 않는다). */
+function kingAtEdge(state){
+  const st=state||S;
+  if(st.phase!=="play") return null;
+  return alivePieces(st).find(p=>p.type==="king"&&((p.owner===0&&p.r===1)||(p.owner===1&&p.r===ROWS)))||null;
+}
+/* #245 끝줄 도달 승리를 reducer 안에서 끝낸다 — 왕을 공개하고 같은 reducer 의 gameOver 로 종료 전이를 이어 붙인다.
+   표시 순서는 레거시와 같다: 이동/교환 이벤트(화면 갱신은 미룬다) → 경기 종료 연출(matchEnded) → 승리 문구·렌더(kingReached). */
+function kingReachResult(next,reach,event){
+  const king=Object.assign({},reach,{revealed:true});
+  const board=Object.assign({},next,{pieces:next.pieces.map(x=>x===reach?king:x)});
+  if(next.movedPiece===reach) board.movedPiece=king;
+  if(next.selected===reach) board.selected=king;
+  if(event.piece===reach) event.piece=king;                       // commit 의 정체성 복원이 revealed 를 되돌리지 않게 공개된 복제본을 싣는다
+  if(event.pieces) event.pieces=event.pieces.map(x=>x===reach?king:x);
+  const over=reduceCoreAction(board,{t:"gameOver",winner:king.owner,winType:"edge",endingBattle:ENDING_BATTLE});
+  return {state:over.state,events:[event].concat(over.events,[{type:"kingReached",owner:king.owner}])};
+}
+/** #245 규칙 실행 이벤트의 **단일 소유자**. reducer 가 순수하게 낼 수 없는 전이(전투 슬롯 해결·다음 단계·포획 종료·
+   예약 효과 발동)는 상태가 아니라 이벤트로 나오지만, 그것을 실제로 실행하는 일은 여전히 규칙이다 — 표시 계층이
+   이벤트 이름을 규칙 호출로 번역하지 않는다. applyUiEvents 가 같은 목록을 같은 순서로 지나며 이 함수에 먼저 묻는다.
+   반환: 이 이벤트를 규칙으로 소비했으면 true (표시 계층은 건너뛴다).
+   @param {CoreEvent} event @returns {boolean} */
+function applyCoreEffects(event){
+  if(!event) return false;
+  switch(event.type){
+    case "battleSlot": execSlot(event.side,event.slot); return true;
+    case "battleLegacySkill": legacySkillAct(event.side); return true;
+    case "battleBasicCounter": execSlot(event.side,-1,{allowBasic:true}); return true;   // #122 도망 실패 페널티 — 상대의 무료 기본 공격 1회
+    case "battleCaptured": finishByCapture(event.side); return true;
+    case "battleNextPhase": nextPhase(); return true;
+    /* #245 Saturn REVISE(M1·M3) 출전 선택 진행 — 보류 결정을 상태에서 다시 읽어 한 걸음 나아간다.
+       화면이 이 이벤트를 보지 않아도 규칙은 여기서 끝난다. */
+    case "battleEntryStep": entryStep(); return true;
+    case "battleBegan": {                                                            // 전투 개시 실행 — 커밋된 보드 위에서
+      const att=S.pieces.find(x=>x.id===event.attId), def=S.pieces.find(x=>x.id===event.defId);
+      if(att&&def) initBattleRun(att,def);
+      return true;
+    }
+    /* #245 Saturn REVISE(M2·M3) 규칙을 이어받던 표시 이벤트들 — 종전에는 ui.js 의 소비기가 이 호출들을 들고 있어서
+       화면이 없으면 전투 개시·경기 개시·탐색 완료·도망 교환이 통째로 멈췄다. 규칙은 여기서 끝나고 화면은 남은 것만 받는다.
+       순서는 한 줄기 그대로다: 이 함수가 먼저 규칙을 실행하고, 이어 같은 이벤트가 표시 계층으로 흘러간다. */
+    case "fleeSwapPromptRun": {
+      if(S.battle) return true;                                    // 그 사이 새 전투가 열렸다 — 옛 도망의 교환 화면은 열지 않는다 (종전 가드와 같은 조건)
+      const piece=S.pieces.find(x=>x.id===event.pieceId), opp=event.oppId!=null?S.pieces.find(x=>x.id===event.oppId):null;
+      emitCore({type:"closeOverlay"});
+      if(piece) fleeSwapPrompt(piece,opp||null);
+      return true;
+    }
+    case "battleFled": {
+      addLog(`🏃 ${pname(event.owner)} 도망 성공 — 전투 종료 (판정·제거 없음)`,"imp"); emitToast("🏃 도망 성공 — 전투 종료");
+      emitCore({type:"battleEndFx",queue:event.queue,banner:{title:"도망 성공 — 전투 종료",cls:""}});
+      resumeCoreAction({t:"fleeSwapResume",pieceId:event.piece?event.piece.id:null,oppId:event.oppPiece?event.oppPiece.id:null});
+      return true;
+    }
+    case "setupBegin": beginPlay(); return true;                                    // 배치 완료 → 경기 개시 (Core 액션)
+    case "setupAiBegin": emitCore({type:"aiSetupTurn",player:1}); addLog("AI 배치 완료.","ai"); beginPlay(); return true;
+    case "moved": {                                                                 // 이동 — 상태는 reducer 가 끝냈고 여기는 문구·배너·전투 개시
+      if(event.healBroken) healBreakLog(event.piece);
+      if(event.collision) collisionLog(event.piece);                                // 숲 충돌 문구는 종전 순서(자세 해제 다음, 강제 전투 앞)
+      if(event.trace&&!isAI(event.piece.owner)){ addLog(TRACE_FOUND_MSG,"imp"); emitToast(TRACE_FOUND_MSG); }
+      if(event.forced) forcedContactStart(event.piece,event.forced);
+      else if(!event.kingReach) emitCore({type:"render"});                           // 끝줄 도달 승리는 matchEnded·kingReached 가 화면을 맡는다
+      return true;
+    }
+    case "teleSwapped": {
+      const pa=event.pieces[0], pb=event.pieces[1];
+      if(event.healBroken[0]) healBreakLog(pa);
+      if(event.healBroken[1]) healBreakLog(pb);
+      if(S.mode==="pve"&&pa.owner===0){ addLog(`🌀 텔레포트 스왑: ${idLabel(0,pa)} ↔ ${idLabel(0,pb)}`,"imp"); emitToast("🌀 텔레포트 완료"); }
+      else { addLog("상대가 텔레포트를 사용했습니다","imp"); emitToast("상대가 텔레포트를 사용했습니다"); } // 대상·위치 비공개 (중립 문구)
+      if(!isAI(event.player)) for(let i=0;i<event.traces;i++) addLog(TRACE_FOUND_MSG,"imp"); // 도착 칸 흔적 발견 (스왑에는 토스트 없음 — 종전 그대로)
+      if(event.forced) forcedContactStart(event.pieces.find(p=>p.id===event.forced.id),event.forced.list);
+      else if(!event.kingReach) emitCore({type:"render"});
+      return true;
+    }
+    case "forcedPromoted": {
+      if(event.autoStart){ forcedContactStart(event.piece,event.list); return true; } // 스왑 직후 즉시 개시 — 이동·스왑과 같은 헬퍼
+      const fmsg=event.list.length===1?"⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! (빨간 표시 대상을 클릭)":`⚔️ 텔레포트 스왑 — 남은 말도 강제 전투! 대상 ${event.list.length}개 중 하나를 선택하세요.`;
+      addLog(fmsg,"imp"); if(!isAI(event.piece.owner)) emitToast(fmsg);
+      emitContactBanner(event.piece,viewerIsOwner(event.piece.owner)?"남은 말의 접촉 대상(빨간 표시)을 클릭하세요":"상대가 남은 접촉 대상을 고르고 있습니다"); // #106 4.5 "추가 접촉" 배너 (render 는 호출처가 한다)
+      return true;
+    }
+    case "recruitOpened": {                                                          // #121 계약 4·6 — recruit 상태는 reducer 가 열었다
+      if(isAI(event.owner)){ emitCore({type:"aiRecruitTurn",owner:event.owner,pieceId:event.piece.id}); return true; }
+      if(S.mode!=="sim"&&viewerIsOwner(event.owner)) emitCore({type:"tutHint",key:"recruit"}); // #26·#121 첫 1회 도움말
+      return false;                                                                  // 화면(선택 창)은 표시 계층이 그린다
+    }
+    case "searchDone": {                                                             // #129 계약 7·8 — 완료 토큰·자동 종료 재평가는 규칙 상태다
+      if(event.tut&&!isAI(event.owner)&&S.mode!=="sim"&&viewerIsOwner(event.owner)) emitCore({type:"tutHint",key:event.tut});
+      const mine=event.owner===null||event.owner===undefined||viewerIsOwner(event.owner);
+      emitCore({type:"searchBanner",owner:event.owner,mine,fxKey:event.fxKey||"itemFx",
+        title:mine?event.title:"🌿 숲 이벤트",                                        // 비소유자: 종류·대상·기술을 말하지 않는 중립 문구
+        sub:mine?(event.sub||""):"상대가 숲에서 무언가를 마쳤습니다."});              // 계약 9: 결과·획득 연출도 1.2초 (양측 같은 길이)
+      if(mine&&event.title) emitToast(event.title+(event.sub?` · ${event.sub}`:""));  // 상세는 소유자 전용 토스트로만
+      resumeCoreAction({t:"searchEndLatch",seq:event.seq,turn:S.turnCount,cur:S.current}); // 연출이 있으면 그 뒤에서, 없으면 여기서 곧장
+      emitCore({type:"render"});
+      return true;
+    }
+    case "turnEnded": {                                                              // 지표·회복 틱·turnCount·교대는 reducer 가 끝냈다
+      healLogs(event.healed,humanViewer(event.player));                               // 회복 틱 로그는 **교대 전** 뷰어 시점
+      if(event.simDraw){                                                              // sim 무승부 — 경기 종료 경로(전투 회계 정리 포함)
+        gameOver(null,"draw");
+        const dmsg=`${BAL.simMaxTurns}턴 도달 — 무승부`; addLog(dmsg,"imp"); emitToast(dmsg); emitCore({type:"render"}); return true;
+      }
+      startTurnMessages(event.bt);
+      afterTurnStart();
+      return true;
+    }
+    case "playBegan": {
+      addLog(`무작위 선공: ${pname(event.player)}`,"sys");
+      startTurnMessages(event.bt);
+      afterTurnStart();
+      return true;
+    }
+    case "kingReached": {
+      const msg=`👑 왕이 적진 최후방에 도달 — ${pname(event.owner)} 승리!`;
+      addLog(msg,"imp"); emitToast(msg); emitCore({type:"render"});
+      return true;
+    }
+    case "matchEnded": {
+      if(event.resignLoser!=null){
+        const msg=`🏳️ ${pname(event.resignLoser)} 기권 — ${pname(event.winner)} 승리!`;
+        addLog(msg,"imp"); emitToast(msg); emitCore({type:"render"});
+      }
+      /* Saturn M2: 남은 화면 정리(열린 전투 창·연출 큐)는 표시 계층이 하되 **결과 배너보다 먼저** 받아야 한다.
+         전투 한가운데 끝난 경기(기권 등)에서 배너를 먼저 내면 그 정리의 fxReleaseAll 이 방금 재생을 시작한
+         resultBanner 를 지우고, 1회 보장 플래그(matchFxDone)는 이미 소비돼 다시 나오지 않는다. */
+      UI_PORT.event(event);
+      if(event.banner){ const b=matchEndBanner(); if(b) emitCore({type:"matchBanner",banner:b}); } // 1회 보장 플래그는 규칙 상태다
+      return true;                                                               // 표시 계층에는 위에서 이미 같은 이벤트를 한 번 넘겼다
+    }
+    case "healStarted": {                                                            // #106 T2 — H8: 미공개 상대 말은 중립 문구로만
+      const piece=event.piece, viewer=humanViewer();
+      if(S.mode==="sim"||healVisibleTo(viewer,piece)){
+        const message=`🌿 ${idLabel(viewer,piece)} 회복 자세 시작 (턴마다 최대 HP ${pct(BAL.healPostPct)})`;
+        addLog(message,"imp"); if(!isAI(piece.owner)) emitToast(message);
+      }
+      else addLog("상대가 말 회복 행동을 했습니다.","imp");                            // 미공개 말: 대상·위치 비공개
+      emitCore({type:"render"});
+      return true;
+    }
+    case "searched": {                                                                // GDD-13 4.7 · #121 계약 4.8·9: 공용 로그에 종류·보유량을 남기지 않는다
+      if(event.healBroken) healBreakLog(event.piece);
+      const ai=isAI(event.owner), smsg=ai?"상대가 숲 이벤트를 발생시켰습니다.":`${pname(event.owner)} 숲 이벤트 발생`;
+      addLog(smsg,ai?"":"imp"); emitToast(smsg);
+      return true;
+    }
+    case "searchRefused": if(!isAI(event.owner)) emitToast("폭탄·함정은 탐색할 수 없습니다."); return true; // #20
+    case "forcedExempt":                                                              // #18 면제 사유는 조용히 누락하지 않는다
+      addLog(event.message,"imp"); if(event.toast&&!isAI(event.owner)) emitToast(event.toast); return true;
+    case "netSetupCorrupt": addLog(`🌐 ${pname(event.player)} 배치 데이터 손상 — 무작위 배치로 대체`,"sys"); return true;
+    case "turnStarted": startTurnMessages(event.bt); return true;
+    case "mainSkipped": {
+      const ai=event.origin==="ai", msg=ai?"🤖 AI 주 행동 생략":`${pname(event.player)} 주 행동 생략`;
+      addLog(msg,ai?"ai":"");
+      if(ai&&event.toast!==false) emitToast(msg);
+      emitCore({type:"render"});
+      return true;
+    }
+    case "teleRefused":                                                               // #131 사유는 소유자 화면의 토스트로만 (공용 로그 금지)
+      if(viewerIsOwner(event.player)) emitToast(event.message);
+      emitCore({type:"render"}); return true;
+    case "teleTrapped":                                                               // #131 함정 거부 — 공용 로그·렌더 없음
+      if(viewerIsOwner(event.player)){ emitToast(event.message); if(S.mode!=="sim") emitCore({type:"tutHint",key:"teletrap"}); }
+      return true;
+    case "battleFleeLocked":                                                          // #234 가시 덩굴 3차 — 사유는 소유자 화면에만
+      if(viewerIsOwner(event.owner)) emitToast("🌿 뿌리 고정 — 이 전투에서는 도망칠 수 없습니다"); return true;
+    case "pkgPicked":                                                                 // 획득 종류는 소유자 화면에만
+      emitCore({type:"closeOverlay"});
+      if(event.toast&&viewerIsOwner(event.owner)) emitToast(event.toast);
+      emitCore({type:"battleRedraw"}); emitCore({type:"render"}); return true;
+    case "battleItemUsed": emitCore({type:"battleRedraw"}); return true;               // 행동 미소모 — 같은 행동자의 메뉴로 복귀
+    case "battleEntryStart": {
+      const att=S.pieces.find(x=>x.id===event.attId), def=S.pieces.find(x=>x.id===event.defId);
+      if(att&&def) startRounds(att,def,event.A==="cap"?att.cap:att,event.D==="cap"?def.cap:def);
+      return true;
+    }
+    /* #233 (GDD-23 4.3·4.6) 예고·지연 효과 발동 — 대기열은 reducer 가 이미 고쳤고 그 상태가 커밋된 **뒤**라
+       여기서는 실행만 한다. 항목마다 다시 본다: 앞 효과가 전투를 끝냈으면 뒤는 발동하지 않는다(4.6 취소).
+       checkDeath 는 run() 안에서 이미 처리된다. */
+    case "delayedFired": for(const ev of event.fired) if(S.battle) ev.run(); return true;
+    default: return false;
+  }
 }
 /* #245 commit: reducer 가 순수하므로 바뀐 말은 복제본으로 돌아온다. 레거시 경로·AI·예약 콜백·테스트가 말 객체 참조를
    그대로 들고 있으므로, 복제본의 값을 같은 id 의 원본 말에 얹고 참조를 원본으로 되돌린다 — S 객체 정체성을 유지하는 것과 같은 이유다. */
-/** @param {GameState} next @param {CoreEvent[]} events */
-function commitCoreState(next,events){
+/* replaceBoard: 이 액션이 보드를 **통째로 갈아끼운다**고 선언한 경우(공개 방 권위 스냅샷 재수화)에는 아래 정체성
+   보존을 건너뛴다 — 옛 말 객체에 새 레코드를 얹으면 스텁이 싣지 않는 칸이 이전 스냅샷 값으로 살아남는다. */
+/** @param {GameState} next @param {CoreEvent[]} events @param {boolean=} replaceBoard */
+function commitCoreState(next,events,replaceBoard){
   const live=new Set(S.pieces); // 이미 S.pieces 안의 그 객체면 그대로 통과 — id 가 중복돼도 원본을 잃거나 겹치지 않는다 (거부 결과는 S.pieces 를 그대로 되돌린다)
   const canon=new Map(S.pieces.map(piece=>[piece.id,piece]));
   /* 포획 하수인(piece.cap)은 id 가 없어 canon 으로 되돌릴 수 없다 — 복제본 cap 을 그대로 얹으면 cap 참조를 들고 있던
      호출처(전투 전투원 fa/fd·AI·예약 콜백)가 낡은 객체를 계속 본다. 원본 cap 객체 정체성은 유지하고 값만 얹는다.
      cap 이 null 로 바뀌거나(해제) 없던 자리에 새로 붙는 경우(포획)는 그대로 통과 — 그때는 낡은 참조가 끊기는 게 맞다. */
-  const keep=x=>{ if(!x||x.tray||live.has(x)) return x; const origin=canon.get(x.id); if(!origin) return x;
+  const keep=x=>{ if(replaceBoard||!x||x.tray||live.has(x)) return x; const origin=canon.get(x.id); if(!origin) return x;
     const cap=origin.cap; Object.assign(origin,x);
     if(cap&&x.cap&&x.cap!==cap) origin.cap=Object.assign(cap,x.cap);
     return origin; };
@@ -723,7 +1225,7 @@ function commitCoreState(next,events){
      좌표로 찾으면 같은 칸을 공유하는 항목 둘이 모두 첫 원본 하나에 얹혀 나머지 원본과 순서를 잃는다
      (칸 좌표 유일성은 genEvents 의 성질일 뿐 불변식이 강제하지 않는다 — 저장 상태·테스트 픽스처는 겹칠 수 있다).
      자리가 어긋났거나(길이 변화·재정렬) 좌표가 다르면 그대로 새 객체를 쓴다. */
-  if(next.events!==S.events) norm.events=next.events.map((e,idx)=>{ const origin=S.events[idx];
+  if(!replaceBoard&&next.events!==S.events) norm.events=next.events.map((e,idx)=>{ const origin=S.events[idx];
     return origin&&origin!==e&&origin.r===e.r&&origin.c===e.c?Object.assign(origin,e):e; });
   for(const event of /** @type {any[]} */(events||[])){ // healStarted·moved·teleSwapped 등 말을 실은 이벤트도 같은 정규화를 받는다 — UI 핸들러가 떨어진 복제본을 보지 않게 여기서 한 번만
     if(event.piece) event.piece=keep(event.piece);
@@ -753,13 +1255,22 @@ function startTurnState(state){
 }
 function startTurnMessages(bt){ // #245 턴 시작 표시 전용 — commit 된 S 기준
   const tmsg=`— ${pname(S.current)} 턴 ${S.turnCount+1} —`;
-  addLog(tmsg,"sys"); showToast(tmsg,"sys");
+  addLog(tmsg,"sys"); emitToast(tmsg,"sys");
   if(!bt) return;
   const msg="🔥 버닝 타임! 직선 2칸 이동 강화 개시 (폭탄 포함·함정 제외)";
-  addLog(msg,"imp"); showToast(msg);
-  if(S.mode!=="sim") tutHint("burning"); // #26 버닝 타임 첫 진입 1회 도움말 (게임 상태 무변경)
+  addLog(msg,"imp"); emitToast(msg);
+  if(S.mode!=="sim") emitCore({type:"tutHint",key:"burning"}); // #26 버닝 타임 첫 진입 1회 도움말 (게임 상태 무변경)
 }
-function startTurn(){ const r=startTurnState(S); Object.assign(S,r.state); startTurnMessages(r.bt); } // beginPlay 전용 래퍼 (턴 교대는 Core 의 endTurn)
+function startTurn(){ dispatchCoreAction({t:"startTurn"}); } // #245: 턴 시작 초기화의 단일 Core 진입점 (턴 교대는 endTurn 안에서 같은 startTurnState 를 쓴다)
+function beginPlay(){ dispatchCoreAction({t:"beginPlay"}); } // #245: 경기 개시의 단일 Core 진입점 (로컬·PVE·sim·온라인 공통)
+/* #106 턴 시작 공통 후처리 — 화면(기기 넘김 확인·턴 배너·렌더)은 turnReady 이벤트가 맡고,
+   AI 예약은 규칙 진행이라 Core 가 직접 한다. 핫시트(offlinePvp)는 기기를 넘긴 뒤에 배너가 서고 AI 가 없다. */
+function afterTurnStart(){
+  const handoff=offlinePvp();
+  emitCore({type:"turnReady",player:S.current,handoff});
+  if(!handoff&&isAI(S.current)) emitCore({type:"aiTurn",player:S.current});
+}
+function pct(n){return Math.round(n*100)+"%";} // #245: 문구 조립에 쓰는 순수 포맷터 — Core 가 로그를 쓰므로 Core 소유다
 /* ===== #106 T2 회복 주 행동 (CJ 최종 2026-09-08) =====
    지정 = 주 행동 소모, 자세는 재지정 없이 지속. 틱은 전역 플레이어 턴 종료(endTurn) 한 곳에서 양 플레이어의 자세 말 전부에 +round(maxHp×5%),
    상한 maxHp, 같은 turn 이중 틱 방지(S.healTickTurn). 지정 시점 즉시 회복 없음. 그 말의 이동·탐색·텔레포트·전투(공격·방어·폭탄·함정·밀어내기)·도망 교환은 자세를 해제한다.
@@ -804,7 +1315,8 @@ function endTurn(){ return dispatchCoreAction({t:"endTurn"}); } // #245: 턴 종
    BAL.fx.autoEndGrace 뒤 발화하며 그 사이 입력(FX.inputSeq)이 있으면 재평가. 수신 측(온라인 비행동자)·AI 턴은 절대 발화하지 않는다 */
 function humanActorNow(){
   if(!S||S.phase!=="play"||S.battle||S.fleePick||isAI(S.current)) return false; // #114: 도망 교환 선택 중(소유자가 상대일 수 있음)에는 행동자도 자동 종료하지 않는다
-  if(NET.mode&&(S.current!==NET.me||NET.replaying)) return false;
+  const seat=UI_PORT.seat();
+  if(seat!==null&&(S.current!==seat||UI_PORT.replaying())) return false;
   return true;
 }
 function optionalBattleLeft(){ return alivePieces().some(x=>x.owner===S.current&&adjEnemies(x).some(e=>visibleTo(S.current,e)&&canBattle(x,e))); }
@@ -820,36 +1332,15 @@ function anyMainActionLeft(){
   if(teleportAvailable(me)&&S.teleUsed[me]<BAL.teleMax&&alivePieces().filter(x=>x.owner===me&&x.immobile===0).length>=2) return true;
   return false;
 }
-function autoEndReady(){
-  if(!BAL.fx.autoEnd||!humanActorNow()||fxLocked()) return null;
-  if(TUT.open||S.teleport||(S.forcedTargets&&S.forcedTargets.length)||(S.forcedQueue&&S.forcedQueue.length)) return null;
-  if(NET.publicMode&&NET.autoEndBlockRev!=null&&NET.autoEndBlockRev===NET.revision) return null; // #217 서버가 같은 상태에서 자동 입력을 거부했다 — 상태가 바뀔 때까지 다시 보내지 않는다
-  try{ if(!$("overlay").classList.contains("hidden")) return null; }catch(e){ return null; }
-  if(!S.mainUsed) return anyMainActionLeft()?null:"skip";
-  return optionalBattleLeft()?null:"end";
-}
-function autoEndCheck(){
-  const what=autoEndReady(); if(!what){ FX.auto=null; return; }
-  if(FX.auto&&FX.auto.turn===S.turnCount&&FX.auto.gen===FX.gen&&FX.auto.what===what) return; // 이미 예약됨
-  const tk={gen:FX.gen,turn:S.turnCount,what,input:FX.inputSeq,game:S}; FX.auto=tk;
-  setTimeout(()=>{
-    if(FX.auto!==tk||FX.gen!==tk.gen||S!==tk.game||S.turnCount!==tk.turn) return; // 오래된 예약
-    FX.auto=null;
-    if(FX.inputSeq!==tk.input){ autoEndCheck(); return; } // 그 사이 입력이 있었으면 재평가
-    if(autoEndReady()!==what) { autoEndCheck(); return; }
-    if(what==="skip"){ showToast("가능한 주 행동이 없습니다 — 주 행동을 생략합니다."); NET.autoSending=true; try{ netAction({t:"skipMain"}); } finally{ NET.autoSending=false; } return; }
-    showToast("할 수 있는 행동이 없어 턴을 종료합니다.");
-    netAction({t:"endTurn",auto:true}); // auto 표식은 액션 프레임에 실려 양 클라이언트가 같은 지표(autoEnds)를 기록한다
-  }, fxLive()?(BAL.fx.autoEndGrace||0):0);
-}
 function confirmResign(){
   if(S.phase!=="play"||isAI(S.current)) return;
-  if(NET.mode&&S.current!==NET.me) return; // 온라인: 자기 턴에만 기권
-  const game=S, turn=S.turnCount;
-  netLocalModal(); // 확인 모달은 로컬 전용 — 확정만 동기화
-  modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,
-    [["기권 확정",()=>{if(S!==game||S.turnCount!==turn) return; close(); netAction({t:"resign"});}],
-     ["취소",close]]);
+  const seat=UI_PORT.seat();
+  if(seat!==null&&S.current!==seat) return; // 온라인: 자기 턴에만 기권
+  /* #245 Saturn REVISE(M1): Core 는 "무엇을 묻는가"만 내보낸다 — 확인 창의 HTML·버튼·취소는 ui.js 소유다.
+     실린 값은 전부 숫자·문자열이다(함수 없음). turn 은 늦은 확인이 **다음 턴**을 기권시키지 않게 하는 대조값이고,
+     확정은 종전처럼 사람 입력 경로({t:"resign"})로 되돌아온다. 화면이 없는 런타임에서는 아무 일도 일어나지 않는다 —
+     사람 없이 기권이 일어나서는 안 되므로 Core 는 기본값을 보내지 않고 그대로 돌아간다. */
+  emitCore({type:"resignPrompt",player:S.current,turn:S.turnCount});
 }
 function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell 래퍼가 동기화 후 호출
   if(S.phase!=="play"||S.battle) return;
@@ -874,7 +1365,7 @@ function onCellCore(r,c){ // 원본 셀 클릭 로직 — 온라인은 onCell �
      빠져 적용되지 않아 양측 S 가 영구 분기했다. 행위자 클라이언트·핫시트·PVE 는 humanViewer()===S.current 라 동작이 같다. */
   if(p&&p.owner!==S.current&&visibleTo(S.current,p)){
     if(s&&adj(s,p)&&canBattle(s,p)){ initBattle(s,p); return; } // 전투 대상 지정 경로
-    memoModal(p); return; // #11: 그 외 상대 말 클릭 — 추측 메모
+    emitCore({type:"memoPick",piece:p}); return; // #11: 그 외 상대 말 클릭 — 추측 메모
   }
   if(!s) return;
   if(canMoveTo(s,r,c)) doMove(s,r,c);
@@ -900,42 +1391,9 @@ function forcedPickOk(def){ // 강제 대상 클릭·AI 이행: 이동한 말이
 const TRACE_FOUND_MSG="탐색 가능한 흔적을 발견했습니다. (다음 턴에 탐색 가능)"; // #245: 레거시와 moved 이벤트가 같은 문구를 쓴다
 function collisionLog(p){ // #245 숲 충돌 표시 한 곳 — 레거시와 moved 이벤트가 같은 문구를 쓴다
   const cmsg=`${pname(p.owner)} 이동 중 숨은 말과 충돌! 위치가 일시 공개되었습니다.`;
-  addLog(cmsg,"imp"); showToast(cmsg);
+  addLog(cmsg,"imp"); emitToast(cmsg);
 }
-function doMove(p,r,c){ if(p&&dispatchCoreAction({t:"move",id:p.id,r,c})) return; doMoveLegacy(p,r,c); } // #245: 이동의 단일 Core 진입점 (UI·AI·온라인 재생 공통) — Core 가 맡지 않는 분기만 레거시로
-function doMoveLegacy(p,r,c){
-  S.mainUsed=true; p.movedEver=true; healBreak(p); // #106: 이동은 회복 자세 해제 (숲 충돌 정지 포함)
-  S.contactKind="move";
-  if(!isBurning()) p.movedPreBT=true; // 실제 이동 이력(엔진 내부 사실) — AI 추론은 공개 관측 기억(aiSeenMoved)만 사용 (#21 누수 제거)
-  if(p.type==="bomb") met(p.owner,"bombMoves"); // #20 폭탄 이동 카운터
-  const visBefore=visibleTo(1-p.owner,p); // #21 이동 전 관측 가능 여부
-  const pr=p.r, beforeAdj=new Set(adjEnemies(p).map(e=>e.id)); // T1: 이동 전 인접 집합
-  if(Math.abs(p.r-r)+Math.abs(p.c-c)===2){ // BT 2칸: 1칸째부터 단계 해석 → 충돌 규칙 자연 적용
-    const mr=(p.r+r)/2, mc=(p.c+c)/2;
-    if(at(mr,mc)){ r=mr; c=mc; } // 경유 칸의 숨은 말 → 그 칸 진입 시도로 전환
-    else { p.r=mr; p.c=mc; }
-  }
-  const hidden=at(r,c);
-  if(hidden){ // 숲 충돌: 직전 칸 정지 + 양측 일시 공개
-    S.tempReveal.add(hidden.id); S.tempReveal.add(p.id);
-    observeMove(p,visBefore); // 충돌 공개 → 이동 목격
-    S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id); S.contactKind="collision";
-    collisionLog(p);
-    if(p.type==="minion"&&zoneOf(1-p.owner).includes(p.r)&&!zoneOf(1-p.owner).includes(pr)) met(p.owner,"minionInvades");
-    if(applyForced(p,beforeAdj)) return;
-    render(); return;
-  }
-  p.r=r; p.c=c;
-  observeMove(p,visBefore); // #21 이동 후 보이면 목격
-  S.movedPiece=p; S.contactSet=adjEnemies(p).map(e=>e.id);
-  if(p.type==="minion"&&zoneOf(1-p.owner).includes(r)&&!zoneOf(1-p.owner).includes(pr)) met(p.owner,"minionInvades"); // 지표: 하수인 적진 진입
-  if(checkKingReach()) return;
-  const ev=S.events.find(e=>e.r===r&&e.c===c&&!e.consumed);
-  if(ev){S.traces[p.owner].add(ev.r+"_"+ev.c);
-    if(!isAI(p.owner)){addLog(TRACE_FOUND_MSG,"imp"); showToast(TRACE_FOUND_MSG);}}
-  if(applyForced(p,beforeAdj)) return;
-  render();
-}
+function doMove(p,r,c){ if(p) dispatchCoreAction({t:"move",id:p.id,r,c}); } // #245: 이동의 단일 Core 진입점 (UI·AI·온라인 재생 공통) — 레거시 분기 없음
 /* T1 강제 전투: 이동·텔레포트로 새로 인접한 적과는 반드시 전투 (canBattle 불가 조합 제외 — 폭탄·함정이 공격측일 때. 왕vs왕은 #122 REVISE CJ QA 6 으로 전투 대상이 됐다) */
 /* #245 강제 접촉의 표시·개시 한 곳: 상태(forcedTargets·selected·contactSet)는 부르기 전에 이미 확정돼 있다.
    레거시 applyForced 와 Core 의 moved 이벤트가 같은 문구·배너·render·initBattle 순서를 쓴다 (표시 진실이 갈라지지 않게). */
@@ -943,14 +1401,14 @@ function forcedContactStart(p,list){
   const def=list.length===1?alivePieces().find(e=>e.id===list[0]):null;
   if(list.length===1){
     const fmsg=p.type==="bomb"?"💣 신규 인접 — 폭탄 접촉 발동!":"⚔️ 신규 인접 — 강제 전투!";
-    addLog(fmsg,"imp"); showToast(fmsg);
-    contactBannerFx(p,null); // #106 4.3.1: 접촉 배너 (상황 문구는 initBattle 이 이어 붙인다)
+    addLog(fmsg,"imp"); emitToast(fmsg);
+    emitContactBanner(p,null); // #106 4.3.1: 접촉 배너 (상황 문구는 initBattle 이 이어 붙인다)
   }else{
     const fmsg=`⚔️ 강제 전투 — 신규 인접 대상 ${list.length}개 중 하나를 선택하세요.`;
-    addLog(fmsg,"imp"); if(!isAI(p.owner)) showToast(fmsg);
-    contactBannerFx(p,viewerIsOwner(p.owner)?"여러 말과 접촉하였습니다. 어떤 말을 선택하시겠습니까?":"상대가 접촉한 말 중 하나를 고르고 있습니다"); // 상황 1 — 배너 뒤 잠금 해제, 클릭 선택(시간 제한 없음)
+    addLog(fmsg,"imp"); if(!isAI(p.owner)) emitToast(fmsg);
+    emitContactBanner(p,viewerIsOwner(p.owner)?"여러 말과 접촉하였습니다. 어떤 말을 선택하시겠습니까?":"상대가 접촉한 말 중 하나를 고르고 있습니다"); // 상황 1 — 배너 뒤 잠금 해제, 클릭 선택(시간 제한 없음)
   }
-  render();
+  emitCore({type:"render"});
   if(!isAI(p.owner)&&def) initBattle(p,def); // 사람: 확인 없이 즉시 개시 (왕·동료는 기존 모달 흐름) · AI: aiStep이 최우선 개시
 }
 function applyForced(p,beforeAdj,list){
@@ -1015,55 +1473,11 @@ function teleportSwapValid(a,b,state){
   if(a===b||a.id===b.id) return "서로 다른 두 말을 골라야 합니다";
   return null;
 }
-/* #245 텔레포트 스왑의 단일 Core 진입점 (UI 둘째 말 선택·AI·온라인 셀 재생 공통) — 왕이 섞인 교환만 레거시(끝줄 도달 즉시 승리)로 떨어진다.
+/* #245 텔레포트 스왑의 단일 Core 진입점 (UI 둘째 말 선택·AI·온라인 셀 재생 공통) — 레거시 분기 없음.
    반환 계약은 종전과 같다: 실제로 교환됐으면 true, 재검사 거부·사전 차단이면 false. */
 function doTeleportSwap(a,b){
   const result=dispatchCoreAction({t:"teleSwap",a,b});
-  if(result) return result.events[0].type==="teleSwapped";
-  return doTeleportSwapLegacy(a,b);
-}
-function doTeleportSwapLegacy(a,b){
-  /* #131: 거부는 **아무것도 소모하지 않는다** — 자원(주 행동·텔레포트 횟수)·좌표·HP·회복 자세·공개 상태·강제 전투 큐·난수가 모두 그대로다.
-     첫 말이 무효가 됐으면 1단계로 되돌리고(단계 일치), 둘째 말만 무효면 1단계 선택은 유지한다. */
-  const bad=teleportSwapValid(a,b);
-  if(bad){
-    /* 비공개(Saturn REVISE P1): 거부 사유를 **공용 보드 로그(addLog)에 쓰지 않는다.** S.log 는 양측이 공유하는
-       상태라 온라인 재생에서 상대 화면에도 그대로 렌더된다 — "함정에 걸렸다"는 내 말의 미공개 상태다.
-       사유는 소유자 화면의 토스트로만 알린다 (표시 계층 · 규칙 상태·난수 불변). */
-    if(viewerIsOwner(S.current)) showToast(`🌀 ${bad}`);
-    if(S.teleport&&(!a||a.owner!==S.current||!a.alive||!a.placed||a.immobile>0)) S.teleport={stage:1,piece:null};
-    render(); return false;
-  }
-  const block=teleportSwapBlock(a,b);
-  if(block){ // #18: 실행 전 차단 + 이유 안내 (텔레포트 횟수·주 행동 미소모)
-    /* 비공개(Venus 계약 6절 · Saturn REVISE): 차단 사유도 **소유자 화면에만** 알린다.
-       종전에는 공용 보드 로그(addLog)에 남기고 `!isAI(S.current)` 로만 토스트를 걸어, 온라인 상대 클라이언트가
-       같은 셀 프레임을 재생할 때 상대 화면의 로그·토스트에 내 말의 접촉 상황이 그대로 떴다.
-       규칙 상태는 이 분기에서 아무것도 바뀌지 않으므로(자원·좌표·큐·난수 불변) 공개 기록도 남길 것이 없다. */
-    if(viewerIsOwner(S.current)) showToast(`🌀 텔레포트 스왑 차단 — ${block}`);
-    if(S.teleport) S.teleport={stage:1,piece:null};
-    S.selected=null; render(); return false;
-  }
-  const beforeA=new Set(adjEnemies(a).map(e=>e.id)), beforeB=new Set(adjEnemies(b).map(e=>e.id));
-  S.mainUsed=true; met(S.current,"teleports"); S.teleUsed[S.current]++; S.teleport=null; S.selected=null;
-  healBreak(a); healBreak(b); S.contactKind="tele"; // #106: 텔레포트 교환은 두 말의 회복 자세 해제
-  const ar=a.r, ac=a.c; a.r=b.r; a.c=b.c; b.r=ar; b.c=ac; // movedEver/movedPreBT 미설정 — 걷는 이동이 아님 (폭탄 재배치 위장 유지)
-  if(S.mode==="pve"&&a.owner===0){addLog(`🌀 텔레포트 스왑: ${idLabel(0,a)} ↔ ${idLabel(0,b)}`,"imp"); showToast("🌀 텔레포트 완료");}
-  else {addLog("상대가 텔레포트를 사용했습니다","imp"); showToast("상대가 텔레포트를 사용했습니다");} // 대상·위치 비공개 (중립 문구)
-  for(const p of [a,b]){ // 도착 칸 이벤트 흔적
-    const ev=S.events.find(e=>e.r===p.r&&e.c===p.c&&!e.consumed);
-    if(ev){S.traces[p.owner].add(ev.r+"_"+ev.c);
-      if(!isAI(p.owner)){addLog(TRACE_FOUND_MSG,"imp");}} // #245: 문구는 이동·스왑이 같은 상수를 쓴다 (토스트는 스왑에 없다 — 레거시 그대로)
-  }
-  if(checkKingReach()) return true; // 왕 포함 스왑 — 끝줄 도달 즉시 승리
-  // #18: 두 말의 강제 전투를 독립 queue에 적재 — 첫 전투의 결과(승·패·도주)와 무관하게 게임이 끝나지 않으면 둘째 실행
-  S.forcedQueue=[];
-  for(const [p,before] of [[a,beforeA],[b,beforeB]]){
-    const list=adjEnemies(p).filter(e=>!before.has(e.id)&&forcedEligible(p,e)).map(e=>e.id);
-    if(list.length) S.forcedQueue.push({pid:p.id,targets:list});
-  }
-  if(!drainForcedQueue(true)) render();
-  return true;
+  return !!result&&result.events[0].type==="teleSwapped";
 }
 /* #18 강제 전투 queue 소비: 대기 항목 하나를 꺼내 forcedTargets로 승격. 전투 종료 지점(승·패·포획·도주·폭탄·함정·밀어내기)마다 호출.
    autoStart: 사람·단일 대상이면 즉시 개시(스왑 직후) / false면 대상 표시만(전투 연출 종료 직후 — 클릭으로 개시).
@@ -1085,7 +1499,7 @@ function checkWipe(){
     if(!S.pieces.some(x=>x.owner===p&&x.alive&&x.placed&&(x.type==="minion"||x.type==="ally"))){
       gameOver(1-p,"wipe");
       const msg=`💀 ${pname(p)} 전투 가능 말 전멸 — ${pname(1-p)} 승리!`;
-      addLog(msg,"imp"); showToast(msg); render(); return true;
+      addLog(msg,"imp"); emitToast(msg); emitCore({type:"render"}); return true;
     }
   }
   return false;
@@ -1093,13 +1507,12 @@ function checkWipe(){
 
 /* 왕 끝줄 도달 즉시 승리 (GDD-13 4.1 개정) — 왕 위치가 바뀌는 모든 지점 직후 호출 */
 function checkKingReach(){
-  if(S.phase!=="play") return false;
-  const k=alivePieces().find(p=>p.type==="king"&&((p.owner===0&&p.r===1)||(p.owner===1&&p.r===ROWS)));
+  const k=kingAtEdge(S);
   if(!k) return false;
   k.revealed=true;
   gameOver(k.owner,"edge");
   const msg=`👑 왕이 적진 최후방에 도달 — ${pname(k.owner)} 승리!`;
-  addLog(msg,"imp"); showToast(msg); render();
+  addLog(msg,"imp"); emitToast(msg); emitCore({type:"render"});
   return true;
 }
 
@@ -1157,84 +1570,6 @@ function recruitState(state){
 /* #121 계약 4·6 탐색 보상 선택 화면 — 단계별로 다시 그린다. 온라인은 modal() 래퍼가 소유자만 조작하게 하고
    버튼 인덱스를 중계하며, 비소유자에게는 원문을 **한 번도 쓰지 않고** 대기 화면만 그린다(계약 4.8 비공개).
    확정 전에는 어떤 슬롯도 건드리지 않는다 (계약 4.2-7). */
-function recruitModal(){
-  const st=recruitState(); if(!st){ close(); return; }
-  const {R,p,rd}=st, own=R.owner;
-  /* 동기화 모달의 버튼은 modal() 래퍼가 {t:"modal",seq,i} 로 이미 중계한다 — 콜백에서 netAction 을 겹쳐 부르면
-     로컬이 두 프레임을 보내고 원격이 같은 선택을 두 번 적용한다. 그래서 **코어를 직접** 부른다 (PD 검토 3). */
-  const tk=R.token; // #245 Saturn REVISE: 이 화면이 연 recruit 의 토큰을 버튼에 고정 — 새 탐색이 열린 뒤의 늦은 클릭은 코어가 거부한다
-  const btn=(label,step,i)=>[label,()=>window.__recruitCore(step,i,tk)];
-  const skCard=(sid,head,extra)=>{ const sk=SKILLS[sid];
-    return `<div class="fighter"><b>${head} ${skillNameKo(sid,null)}</b><small>${sk.cls?`<span class="badge">${SKILL_CLS_KO[sk.cls]} 분류</span> `:sk.el?`<span class="badge el-${sk.el}">${ELEM_KO[sk.el]}</span> `:""}${SKILL_TIER_KO[sk.tier]||SKIND_KO[sk.kind]} · 위력 ${sk.pow?sk.pow:"-"} · 쿨 ${sk.reaper?"봉인":sk.cd}<br>${sk.desc}${extra||""}</small></div>`; };
-  if(R.stage==="root"){
-    const recv=capReceivers(own);
-    modal(`<h2>🌿 숲에서 무언가를 찾았다</h2><p>기술을 배우거나, 공용 하수인을 포획할 수 있습니다.<br><small>포기해도 이 칸은 다시 쓸 수 없습니다.</small></p>
-      <div class="fighter"><b>📘 기술 교체</b><small>신규 공용 기술 3종 중 하나를 직접 골라, 내 최초 하수인 6명 중 살아 있는 말의 4슬롯 어디든 바꿉니다.</small></div>
-      <div class="fighter"><b>🔴 하수인 포획</b><small>${recv.length?`동료·왕 중 포획 슬롯이 빈 말 ${recv.length}기가 받을 수 있습니다 (보유 볼 ${S.balls[own]})`:"<b>포획 슬롯이 빈 동료·왕이 없습니다 — 포획 불가</b>"}</small></div>`,
-      (V2_INTERP.recruitSkillSwap?[btn("📘 기술 교체","skills",0)]:[["📘 기술 교체 (v0.4.11 과도기 — 닫힘)",null,true]]).concat(recv.length?[btn("🔴 하수인 포획","cap",0)]:[]).concat([btn("포기","giveup",0)]));
-    return;
-  }
-  if(R.stage==="skill"){
-    /* 계약 4.2-1·5: 3종을 모두 보여 주고 직접 고른다. 난수 없음. 이미 그 기술을 가진 말만 다음 단계에서 비활성이 되므로
-       여기서는 "내 6명 중 아직 그 기술이 없는 말이 한 명도 없으면" 그 제안을 비활성으로 표시한다 */
-    const openFor=sid=>rosterMinions(own).some(m=>m.alive&&m.placed&&m.skills&&!m.skills.includes(sid));
-    modal(`<h2>📘 배울 기술 선택</h2><p>하나를 고르세요.<br><small>같은 말에 같은 기술을 두 번 장착할 수 없습니다.</small></p>
-      ${NEW_SKILLS.map((sid,i)=>skCard(sid,`${i+1}.`,openFor(sid)?"":" <b>· 내 모든 하수인이 이미 보유</b>")).join("")}`,
-      NEW_SKILLS.map((sid,i)=>openFor(sid)?btn(`${i+1}. ${SKILLS[sid].ko}`,"skill",i):[`${i+1}. ${SKILLS[sid].ko} (보유)`,null,true])
-        .concat([btn("← 뒤로","back",0),btn("포기","giveup",0)]));
-    return;
-  }
-  if(R.stage==="target"){
-    /* 계약 4.2-2·4: 대상 말을 고르기 전 4슬롯은 ? 로 가린다. 죽은 말은 보이되 비활성 */
-    const ms=rosterMinions(own);
-    const row=(m,i)=>{ const dead=!m.alive||!m.placed, has=m.skills&&m.skills.includes(R.skill);
-      return `<div class="fighter"><b>${i+1}. ${m.name||TYPE_KO.minion}${m.element?` <span class="badge el-${m.element}">${ELEM_KO[m.element]}</span>`:""}</b>
-        <small>${dead?"<b>제거됨 — 선택 불가</b>":`HP ${m.hp}/${m.maxHp} · 공 ${m.atk} · 기술 ? ? ? ?`}${has?" · <b>이미 이 기술 보유</b>":""}</small></div>`; };
-    modal(`<h2>📘 ${SKILLS[R.skill].ko} — 대상 말</h2><p>이 기술을 배울 말을 고르세요. 고르면 그 말의 4슬롯이 보입니다.</p>
-      ${ms.map(row).join("")}`,
-      ms.map((m,i)=>{ const sel=m.alive&&m.placed&&m.skills&&!m.skills.includes(R.skill);
-        const why=(!m.alive||!m.placed)?"제거됨":"이미 보유";
-        return sel?btn(`${i+1}. ${m.name||"하수인"}`,"target",i)
-                 :[`${i+1}. ${m.name||"하수인"} (${why})`,null,true]; })
-        .concat([btn("← 뒤로","back",0),btn("포기","giveup",0)]));
-    return;
-  }
-  if(R.stage==="slot"){
-    const m=S.pieces.find(x=>x.id===R.targetId);
-    if(!m||!m.alive||!m.skills){ window.__recruitCore("back",0,tk); return; } // #245 되돌림도 Core 가 소유한다 (표시 계층은 단계를 쓰지 않는다)
-    modal(`<h2>📘 ${SKILLS[R.skill].ko} → ${m.name||"하수인"}</h2><p>바꿀 슬롯을 고르세요.<br><small>새 기술은 그 자리의 남은 쿨타임을 이어받습니다.</small></p>
-      ${skCard(R.skill,"새 기술:")}
-      <p style="margin:6px 0 2px"><small>${m.name||"하수인"}의 현재 4슬롯</small></p>
-      ${m.skills.map((sid,i)=>skCard(sid,`슬롯 ${i+1}:`,m.cds[i]?` · 남은 쿨 ${m.cds[i]}`:"")).join("")}`,
-      m.skills.map((sid,i)=>btn(`슬롯 ${i+1} 교체 (${SKILLS[sid].ko})`,"slot",i))
-        .concat([btn("← 뒤로","back",0),btn("포기","giveup",0)]));
-    return;
-  }
-  if(R.stage==="capRecv"){
-    const recv=capReceivers(own);
-    if(!recv.length){ window.__recruitCore("back",0,tk); return; } // #245 되돌림도 Core 가 소유한다 (capRecv → root)
-    modal(`<h2>🔴 포획 하수인을 받을 말</h2><p>받을 말을 고르세요.<br><small>공격 포획이 실패하면 피해는 탐색한 ${idLabel(own,p)}가 받습니다.</small></p>
-      ${recv.map((x,i)=>`<div class="fighter"><b>${i+1}. ${TYPE_KO[x.type]}</b><small>HP ${x.hp}/${x.maxHp} · 포획 슬롯 비어 있음</small></div>`).join("")}`,
-      recv.map((x,i)=>btn(`${i+1}. ${TYPE_KO[x.type]}`,"recv",i)).concat([btn("← 뒤로","back",0),btn("포기","giveup",0)]));
-    return;
-  }
-  if(R.stage==="capMode"){
-    /* 계약 6: 뽑힌 종의 스탯·4기술·아트 정체를 그대로 적용한다. 후보는 위에서 고정했으므로 방법을 바꿔도 같은 종이다 */
-    const b=S.balls[own], recv=S.pieces.find(x=>x.id===R.recvId);
-    const opt=(name,cost,rate,risk)=>`<div class="fighter"><b>${name}</b><small>볼 ${cost} · 성공 ${rate}${risk?" · "+risk:""}</small></div>`;
-    modal(`<h2>🔴 포획 시도 (몬스터볼 ${b})</h2>
-      <div class="fighter"><b>발견: ${rd.name} <span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span></b>
-        <small>HP ${rd.hp} · 공 ${rd.atk} · ⭐1 스킬 ${speciesSkills(rd.id,1).map(s=>SKILLS[s].ko).join("·")} — 이 종의 ⭐1 수치·스킬로 합류합니다<br>받을 말: ${recv?TYPE_KO[recv.type]:"-"}</small></div>
-      <small>공격 포획 실패 시 <b>탐색 말</b>이 최대 HP 25% 피해!</small>
-      ${opt("안전 포획",2,"100%","")}${opt("위험 포획",1,"50%","실패 시 소멸")}${opt("공격 포획",1,"70%","실패 시 소멸 + 탐색 말 HP 25% 피해")}`,
-      [["안전 포획 (볼 2)",b>=2?()=>window.__recruitCore("mode",0,tk):null,b<2],
-       ["위험 포획 (볼 1)",b>=1?()=>window.__recruitCore("mode",1,tk):null,b<1],
-       ["공격 포획 (볼 1)",b>=1?()=>window.__recruitCore("mode",2,tk):null,b<1],
-       btn("← 뒤로","back",0),btn("포기","giveup",0)]);
-    return;
-  }
-  close();
-}
 /* #245 Saturn REVISE: 탐색 보상 선택의 단계 계약 — step 은 이 단계에서만 합법이다 (back·giveup 은 어느 단계에서나 가능).
    root ─cap→ capRecv ─recv→ capMode ─mode→ 완료 / root ─skills→ skill ─skill→ target ─target→ slot ─slot→ 완료 */
 const RECRUIT_STEP_STAGE={skills:"root",cap:"root",skill:"skill",target:"target",slot:"slot",recv:"capRecv",mode:"capMode"};
@@ -1247,7 +1582,6 @@ const RECRUIT_CHOICE_STEPS=new Set(["skill","target","slot","recv","mode"]);
 const CAP_MODES=["safe","risky","attack"]; // 순서 고정 — UI·AI·온라인 인덱스 중계 공용
 /* 탐색 보상 선택의 단일 적용기 — 온라인은 netAction("recruit") 으로 양측이 같은 순서로 이 함수를 탄다.
    난수는 쓰지 않는다(후보 종은 탐색 시점에 고정, 제안 3종은 고정 목록) — 단 포획 판정(tryCapture)만 rand 1회를 쓴다. */
-window.__recruitCore=(step,i,token)=>{ dispatchCoreAction({t:"recruit",step,i,token}); };
 /* #129 계약 7 — 탐색 완료 전용 종료 경로.
    1) 탐색 시점에 mainUsed·consumed 는 이미 세웠지만 **필수 선택이 끝날 때까지** 턴을 종료하지 않는다 (위 분기들이 모달을 띄운 채 기다린다).
    2) 선택이 끝나면 결과·획득 연출을 1.2초(계약 8의 itemFx·captureFx) 보여 주고 **그 끝점에서** 종료 조건을 다시 평가한다.
@@ -1259,32 +1593,11 @@ window.__recruitCore=(step,i,token)=>{ dispatchCoreAction({t:"recruit",step,i,to
    owner 전용 내용(획득 종류·습득 기술·대상 말·포획 종·수령 말)은 **소유자 화면에만** 그린다. 상대 화면에는 같은 길이의
    중립 배너를 띄운다 — 연출 시간·규칙 상태·난수는 양측 동일하고 달라지는 것은 표시 문구뿐이다(표시 계층 전용).
    온라인 비소유자는 물론 PVE 의 AI 탐색에서도 사람 화면에 종류가 새지 않는다 (viewerIsOwner 가 둘을 함께 처리한다). */
-/* Saturn REVISE: 같은 완료 토큰으로 두 번 발화하지 않기 위한 **표시 전용** 래치. 게임 객체를 키로 둔다 —
-   프로세스 전역 숫자였을 때는 새 게임(newGame 이 S 를 새 객체로 갈아끼우고 searchEndSeq 는 다시 1부터다)의
-   첫 탐색이 앞 게임의 래치 값과 겹쳐 searchEndCheck 가 통째로 묻혔다. 규칙 상태(S)에는 아무것도 쓰지 않는다. */
-const searchEndFired=new WeakMap();
-function searchFinalizeFx(owner,title,sub,fxKey,seq){
-  const tk={gen:FX.gen,game:S,turn:S.turnCount,cur:S.current,seq};
-  close();
-  const done=()=>{ if(FX.gen!==tk.gen||S!==tk.game||S.turnCount!==tk.turn||S.current!==tk.cur) return; // 새 게임·턴 교대·행동자 교대 → 무효
-    if(S.searchEndSeq!==tk.seq||searchEndFired.get(S)===tk.seq) return; // 더 최신 탐색 완료가 있거나 이미 발화했다 — 이 콜백은 버린다 (정확히 한 번)
-    searchEndFired.set(S,tk.seq);
-    searchEndCheck(); };
-  const mine=owner===null||owner===undefined||viewerIsOwner(owner);
-  if(title) fxPlay({key:fxKey||"itemFx",kind:"banner",
-    title:mine?title:"🌿 숲 이벤트",                       // 비소유자: 종류·대상·기술을 말하지 않는 중립 문구
-    sub:mine?(sub||""):"상대가 숲에서 무언가를 마쳤습니다."}); // 계약 9: 탐색 결과·획득 연출도 1.2초 (양측 같은 길이)
-  if(mine&&title) showToast(title+(sub?` · ${sub}`:""));   // 상세는 소유자 전용 토스트로만
-  fxWhenIdle(done);
-  render();
-}
-function searchEndCheck(){
-  if(!BAL.fx.autoEnd) return;                 // 자동 턴 종료 스위치가 꺼진 환경(기존 헤드리스 회귀)은 종전 동작 유지
-  if(autoEndReady()!=="end") return;           // 잠금·모달·강제 전투·텔레포트·남은 선택 전투 → 종료하지 않는다
-  FX.auto=null;                                // 전역 grace 예약을 흡수 (이중 종료 방지)
-  showToast("탐색을 마쳤습니다 — 턴을 종료합니다.");
-  netAction({t:"endTurn",auto:true});          // auto 표식으로 양 클라이언트가 같은 지표(autoEnds)를 기록
-}
+/* 같은 완료 토큰으로 두 번 발화하지 않기 위한 래치. 완료 토큰을 반 칸(+0.5) 올려 "이 토큰은 이미 소비됐다"로 표시한다 —
+   분리 전 원본과 같은 값·같은 경로다(#245 기준선 동등성). 다음 탐색은 그 위에서 +1 을 올리므로 완료마다 1.5 씩 오른다.
+   새 게임은 newGame 이 S 를 새 객체로 갈아끼워 다시 1 부터 시작하므로 앞 게임의 래치와 겹치지 않는다
+   (프로세스 전역 숫자였을 때 묻혔던 회귀는 그 전역 때문이지 이 칸 때문이 아니다).
+   규칙 상태이므로 쓰기는 Core 액션 하나(searchEndLatch)를 지난다 — 표시 계층이 S 를 직접 쓰지 않는다. */
 /* #121 계약 6 숲 포획 — 종전(#20)은 속성만 무작위이고 수치는 공용 100/20/30·표준형 템플릿이었다. 이제 **ROSTER 20종 균등**으로
    뽑힌 종의 HP·최대 HP·ATK·기술 수치·CD·4기술·아트 정체를 **그대로** 적용한다 → HP 85~120 · ATK 18~25 의 종별 편차가 생긴다.
    · `rd` 는 doSearch 에서 **이미 고정**된 후보 종이다 (모달 재렌더·방법 변경으로 재추첨하지 않는다 — 계약 6 "후보 고정").
@@ -1330,16 +1643,19 @@ function explosionFx(pieces){
      설치했을 때만 배열이 있으므로(S.__ddFxCells), 로컬 PVE/핫시트에서는 이 줄이 아무 것도 하지 않는다 —
      새 큐를 만들지 않고, 있으면 push만 한다. 규칙·RNG·로컬 FX 동작은 그대로다. */
   if(Array.isArray(S.__ddFxCells)) S.__ddFxCells.push({key:"explosion",cells:hold.map(h=>[h.r,h.c])});
-  fxPlay({key:"explosion",kind:"boom",dim:false,cells:hold.map(h=>[h.r,h.c]),cellCls:"fx-boom",hold});
+  emitCore({type:"fx",item:{key:"explosion",kind:"boom",dim:false,cells:hold.map(h=>[h.r,h.c]),cellCls:"fx-boom",hold}});
 }
 function trapFxPlay(trap,victim){
   if(Array.isArray(S.__ddFxCells)) S.__ddFxCells.push({key:"trapFx",cells:[[trap.r,trap.c],[victim.r,victim.c]]});
-  fxPlay({key:"trapFx",kind:"trap",dim:false,cells:[[trap.r,trap.c],[victim.r,victim.c]],cellCls:"fx-trap",hold:[{piece:trap,r:trap.r,c:trap.c}]});
+  emitCore({type:"fx",item:{key:"trapFx",kind:"trap",dim:false,cells:[[trap.r,trap.c],[victim.r,victim.c]],cellCls:"fx-trap",hold:[{piece:trap,r:trap.r,c:trap.c}]}});
 }
-function initBattle(att,def){
-  const forced=S.forcedTargets&&S.forcedTargets.length&&S.forcedTargets.includes(def.id);
-  if(forced){S.forcedTargets=[]; met(att.owner,"forcedBattles");} // T1: 강제 이행
-  situationFx(att,def); // #106 4.3.1 상황 2: 6상황 문구 (강제·선택 전투 공통) → 해결
+/* #245 Saturn REVISE(M3): 전투 개시의 **단일 Core 진입점**. 종전에는 AI·onCell·이동/스왑 이벤트가 이 함수를 직접 불러
+   forcedTargets·battlesUsed·alive·immobile·revealed 를 **어떤 dispatch 도 열리지 않은 채** 바꿨다 (Saturn 의 함정 재현).
+   이제 battleStart 액션이 reducer 를 지나 강제 전투 표식·지표를 순수하게 정리하고, 남은 개시 실행은 그 dispatch 안의
+   battleBegan 효과에서 일어난다 — 화면이 없어도 같은 순서로 끝난다. */
+function initBattle(att,def){ return att&&def?dispatchCoreAction({t:"battleStart",attId:att.id,defId:def.id}):false; }
+function initBattleRun(att,def){
+  emitCore({type:"contactSituation",att,def}); // #106 4.3.1 상황 2: 6상황 문구 (강제·선택 전투 공통) → 해결
   healBreak(att); healBreak(def); // #106: 전투 참여(공격·방어·폭탄·함정)는 회복 자세 해제 — 틱보다 먼저
   if(att.type==="bomb"){ bombAttack(att,def); return; } // #106 4.4.2 폭탄 직접 접촉 발동
   if(def.type==="bomb"){
@@ -1347,11 +1663,11 @@ function initBattle(att,def){
     def.alive=false;
     if(att.type==="minion"){att.alive=false; met(def.owner,"bombHitsMinion"); // #20: 폭탄 소유자 기준
       addLog(`💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.`,"imp");
-      showToast(`💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.`);
+      emitToast(`💥 폭탄 발동! 공격한 말과 폭탄이 모두 제거되었습니다.`);
       explosionFx([def,att]);}
     else {met(def.owner,"bombClearedByVip");
       addLog(`💥 폭탄 발동! 폭탄만 제거되고 공격한 말은 생존했습니다. (정체 비공개 유지)`,"imp");
-      showToast(`💥 폭탄 발동! 폭탄만 제거되고 공격한 말은 생존했습니다. (정체 비공개 유지)`);
+      emitToast(`💥 폭탄 발동! 폭탄만 제거되고 공격한 말은 생존했습니다. (정체 비공개 유지)`);
       explosionFx([def]);}
     if(checkWipe()) return; // T4: 폭탄 동귀 후 전멸 판정
     afterBattle(att,false); return;
@@ -1361,9 +1677,9 @@ function initBattle(att,def){
     def.alive=false; att.immobile=2;
     def.revealed=true; att.revealed=true; // #106 T4 (CJ 최종): 함정과 걸린 말 모두 정체 공개 — 그 밖의 말은 공개 대상 비확대
     const tmsg=`🪤 함정 발동! ${idLabel(2,att)} 정체 공개 · 2턴 이동 불가 (함정 제거)`;
-    addLog(tmsg,"imp"); showToast(tmsg);
+    addLog(tmsg,"imp"); emitToast(tmsg);
     trapFxPlay(def,att);
-    afterBattle(att,false); render(); return;
+    afterBattle(att,false); emitCore({type:"render"}); return;
   }
   const needA=(att.type==="ally"||att.type==="king"), needD=(def.type==="ally"||def.type==="king");
   if(needA||needD){ vipChoice(att,def); return; }
@@ -1376,12 +1692,12 @@ function bombAttack(bomb,def){
   S.battlesUsed++; met(bomb.owner,"battles"); met(bomb.owner,"bombContacts");
   if(def.type==="minion"){
     bomb.alive=false; def.alive=false; met(bomb.owner,"bombHitsMinion");
-    const m=`💥 폭탄 접촉 발동! 폭탄과 상대 하수인이 함께 제거되었습니다.`; addLog(m,"imp"); showToast(m);
+    const m=`💥 폭탄 접촉 발동! 폭탄과 상대 하수인이 함께 제거되었습니다.`; addLog(m,"imp"); emitToast(m);
     explosionFx([bomb,def]);
     if(checkWipe()) return;
   } else if(def.type==="ally"||def.type==="king"){
     bomb.alive=false; met(bomb.owner,"bombClearedByVip");
-    const m=`💥 폭탄 접촉 발동! 상대 말이 폭탄을 제거했습니다 — 상대 말 생존 (정체 비공개 유지)`; addLog(m,"imp"); showToast(m);
+    const m=`💥 폭탄 접촉 발동! 상대 말이 폭탄을 제거했습니다 — 상대 말 생존 (정체 비공개 유지)`; addLog(m,"imp"); emitToast(m);
     explosionFx([bomb]);
     if(checkWipe()) return;
   } else { /* #122 REVISE(2026-09-10 CJ QA 5): #114 상황 6(밀기·양쪽 유지)을 **폐지**한다 — 폭탄 ↔ 폭탄/함정은
@@ -1389,41 +1705,46 @@ function bombAttack(bomb,def){
        이 갈래에 오는 조합은 "움직인 폭탄 → 상대 폭탄" 과 "움직인 폭탄 → 상대 함정" 둘뿐이다.
        함정 발동(2턴 이동 불가·trapTriggers)은 일으키지 않는다 — 함정이 걸린 것이 아니라 폭탄이 터진 것이다. */
     bomb.alive=false; def.alive=false;
-    const m=`💥 폭탄 접촉 발동! 폭탄과 상대 ${TYPE_KO[def.type]}이(가) 함께 제거되었습니다.`; addLog(m,"imp"); showToast(m);
+    const m=`💥 폭탄 접촉 발동! 폭탄과 상대 ${TYPE_KO[def.type]}이(가) 함께 제거되었습니다.`; addLog(m,"imp"); emitToast(m);
     explosionFx([bomb,def]);
     if(checkWipe()) return;
   }
-  afterBattle(bomb,false); render();
+  afterBattle(bomb,false); emitCore({type:"render"});
 }
 /* #122 REVISE(2026-09-10 CJ QA 1) — 동료↔동료 · 동료↔왕은 **밀기가 아니라 전투**다.
    폐지된 것: #114 상황 8 의 조기 밀기(vip↔vip 즉시 doPush)와 그 뒤 "양측 본체 선택 = 밀기"(Q2-b C안) 두 갈래.
    #122 REVISE(CJ QA 6)로 왕 ↔ 왕 불가침도 폐지돼 이제 동료·왕의 모든 조합이 이 함수를 탄다.
    보존된 것: 대리 출전(포획 하수인) 선택 체인 ·
    패배 결과(동료 = 동료+포획 하수인 동시 제거 / 왕 = 경기 패배) · 밀기 자체(pushResolve)는 폭탄↔폭탄·도망 후 교환에서 계속 쓴다. */
-function vipChoice(att,def){
-  const choices={};
-  const ask=(side,piece,next)=>{
-    const res=(!piece.cap&&S.reserve[piece.owner])?S.reserve[piece.owner]:null; // #12: cap 없고 예비(포획 하수인) 있으면 대리 출전 가능
-    if(!(piece.type==="ally"||piece.type==="king")||(!piece.cap&&!res)){choices[side]="body"; next(); return;}
-    const useRes=()=>{piece.cap=S.reserve[piece.owner]; S.reserve[piece.owner]=null;}; // 사용 시 reserve 소모 → 해당 전투원의 cap
-    if(isAI(piece.owner)){if(res)useRes(); choices[side]="cap"; next(); return;} // AI: 보유 시 항상 대리 (진짜 비공개 선택)
-    netModalOwner(piece.owner); // 온라인: 이 비공개 선택의 주인은 해당 말 소유자 (방어자 포함)
-    modal(`<h2>🔒 ${pname(piece.owner)}만 확인${S.mode==="pvp"&&!NET.mode?" (상대는 시선 회피)":""}</h2>
-      <p>${TYPE_KO[piece.type]} 출전 선택 — 어느 쪽이 패배해도 ${piece.type==="king"?"경기 패배":"동료·포획 하수인 동시 제거"}입니다.</p>`,
-      [["본체 출전",()=>{choices[side]="body";close();next();}],
-       res?[`예비 하수인(${ELEM_KO[res.element]}) HP ${res.hp}/${res.maxHp} 대리 출전`,()=>{useRes();choices[side]="cap";close();next();}]
-          :[`포획 하수인(${ELEM_KO[piece.cap.element]}) HP ${piece.cap.hp}/${piece.cap.maxHp} 출전`,()=>{choices[side]="cap";close();next();}]]);
-  };
-  ask("A",att,()=>ask("D",def,()=>{
-    att.revealed=true; def.revealed=true;
-    const fa=choices.A==="cap"?att.cap:att, fd=choices.D==="cap"?def.cap:def;
-    const aIsBody=(att.type==="ally"||att.type==="king")&&choices.A!=="cap";
-    const dIsBody=(def.type==="ally"||def.type==="king")&&choices.D!=="cap";
+/* #245 Saturn REVISE(M1·M3): 출전 선택은 **상태로 남는 보류 결정**(S.entryPick)이고, 답은 직렬화 가능한 Core 액션
+   (battleEntryPick·battleEntryGo)이다. Core 와 어댑터 사이를 오가는 값에 함수가 없다 — 이어지는 진행은 콜백이 아니라
+   상태를 다시 읽는 entryStep() 이 맡으므로, 화면이 없어도 온라인 재생이어도 같은 순서가 나온다.
+   보류 결정을 아무도 받지 않으면(화면 없는 런타임) Core 가 그 단계의 기본 액션을 직접 보내 진행을 끝낸다. */
+function vipChoice(att,def){ dispatchCoreAction({t:"battleEntryBegin",attId:att.id,defId:def.id}); }
+/* 보류 결정의 현재 단계를 상태에서 다시 읽어 한 걸음 진행한다. 자동으로 정해지는 단계(대리 출전 대상이 아니거나 AI)는
+   그 자리에서 기본 액션을 보내고, 사람이 골라야 하는 단계만 프롬프트 이벤트를 낸다. 이벤트의 handled 는 **불리언 한 칸**이다
+   — 화면이 그 창을 실제로 열었는지만 말하고, 무엇을 고를지는 언제나 액션으로 되돌아온다. */
+function entryStep(){
+  const EP=S.entryPick; if(!EP) return;
+  const att=S.pieces.find(x=>x.id===EP.attId), def=S.pieces.find(x=>x.id===EP.defId);
+  if(!att||!def){ dispatchCoreAction({t:"battleEntryAbort"}); return; } // 말이 사라진 보류 결정은 조용히 거둔다
+  if(EP.stage==="reveal"){
+    const fa=EP.A==="cap"?att.cap:att, fd=EP.D==="cap"?def.cap:def;
     // #122 REVISE(2026-09-10 CJ QA 1): 종전 Q2-b C안 "양측 본체 = 밀기"는 폐지됐다 — 본체끼리도 그대로 전투한다
     const desc=`공격: ${fa===att?TYPE_KO[att.type]:"포획 하수인("+ELEM_KO[fa.element]+")"} vs 방어: ${fd===def?TYPE_KO[def.type]:"포획 하수인("+ELEM_KO[fd.element]+")"}`;
-    if(S.mode==="sim"){ addLog("출전 공개 — "+desc,"ai"); startRounds(att,def,fa,fd); return; }
-    modal(`<h2>출전 공개</h2><p>${desc}</p>`,[["전투 시작",()=>{close();startRounds(att,def,fa,fd);}]]);
-  }));
+    if(S.mode==="sim"){ addLog("출전 공개 — "+desc,"ai"); dispatchCoreAction({t:"battleEntryGo"}); return; }
+    emitCore({type:"battleEntryReveal",desc});   // 보류 결정은 state.entryPick 에 그대로 남는다 — 답(battleEntryGo)은 나중에 액션으로 들어온다
+    return;
+  }
+  const side=EP.stage, piece=side==="A"?att:def;
+  const res=(!piece.cap&&S.reserve[piece.owner])?S.reserve[piece.owner]:null; // #12: cap 없고 예비(포획 하수인) 있으면 대리 출전 가능
+  if(!(piece.type==="ally"||piece.type==="king")||(!piece.cap&&!res)){ dispatchCoreAction({t:"battleEntryPick",side,what:"body"}); return; }
+  if(isAI(piece.owner)){ dispatchCoreAction({t:"battleEntryPick",side,what:"cap"}); return; } // AI: 보유 시 항상 대리 (진짜 비공개 선택)
+  const stat=x=>x?{element:x.element,hp:x.hp,maxHp:x.maxHp}:null; // 회선·화면에 그대로 실을 수 있는 값만 싣는다
+  /* 사람이 골라야 하는 단계다. Core 는 여기서 **멈춘다** — 보류 결정은 state.entryPick 에 남고,
+     답은 나중에 직렬화 가능한 액션(battleEntryPick)으로 들어온다. 동기 응답 약속도, Core 쪽 기본값도 없다. */
+  emitCore({type:"battleEntryPrompt",side,owner:piece.owner,pieceId:piece.id,pieceType:piece.type,
+            reserve:stat(res),cap:stat(piece.cap)});
 }
 /* ===== #114 (v0.4.5) 양측 밀기·재배치 — CJ 원문 "아무 일도 일어나지 않습니다. 말을 한칸씩 밀어냅니다" 개정 (docs/v0.4.5-analysis.md 3장 계약 1~4) =====
    pushResolve(att,def): 접촉 축(att→def)의 반대 방향으로 두 말을 각각 한 칸 민다 — 목적 칸이 보드 밖이거나 점유(숨은 말 포함)면 그 말은 제자리, 다른 말은 가능하면 이동
@@ -1479,14 +1800,14 @@ function pushResolve(att,def,opts){ // 밀기 → 왕 끝줄 승리 → 재배�
   if(!adj(att,def)) return false;
   met(who,"pushes");
   pushPair(att,def);
-  addLog(`🤜 밀어내기! ${PUSH_MSG}`,"imp"); showToast(`🤜 밀어내기! ${PUSH_MSG}`);
-  fxPlay({key:"pushBanner",kind:"banner",title:"밀어내기!",sub:PUSH_MSG}); // #106 5.6 배너 "밀어내기!" + 결과 문구 (#125: pushBanner 1.2초)
+  addLog(`🤜 밀어내기! ${PUSH_MSG}`,"imp"); emitToast(`🤜 밀어내기! ${PUSH_MSG}`);
+  emitCore({type:"fx",item:{key:"pushBanner",kind:"banner",title:"밀어내기!",sub:PUSH_MSG}}); // #106 5.6 배너 "밀어내기!" + 결과 문구 (#125: pushBanner 1.2초)
   if(checkKingReach()) return true; // 왕이 실제 밀려 상대 끝줄 도달 — 승리 먼저 확정, 재배치 중단
   const stuck=adj(att,def)||adjEnemies(att).length>0||adjEnemies(def).length>0; // 숨은 말 포함 (규칙 엔진 내부 판정)
   if(stuck){
     if(relocatePair(att,def)){ met(who,"relocations");
-      addLog(`🔄 말 재배치! ${RELOC_MSG}`,"imp"); showToast(`🔄 말 재배치! ${RELOC_MSG}`);
-      fxPlay({key:"pushBanner",kind:"banner",title:"🔄 말 재배치!",sub:RELOC_MSG}); }
+      addLog(`🔄 말 재배치! ${RELOC_MSG}`,"imp"); emitToast(`🔄 말 재배치! ${RELOC_MSG}`);
+      emitCore({type:"fx",item:{key:"pushBanner",kind:"banner",title:"🔄 말 재배치!",sub:RELOC_MSG}}); }
     else addLog("🔄 재배치할 안전한 자리가 없어 밀기 결과를 유지합니다. (이 접촉은 처리 완료)","imp"); // 승인된 예외 — 추가 제거·승패 없음
   }
   return true;
@@ -1495,7 +1816,7 @@ function doPush(att,def){ // 동료/왕 ↔ 동료/왕 접촉 (전투 1회 계�
   S.battlesUsed++; met(att.owner,"battles");
   pushResolve(att,def);
   if(S.phase!=="play") return;
-  afterBattle(att,false); render();
+  afterBattle(att,false); emitCore({type:"render"});
 }
 function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; met(attP.owner,"battles");
@@ -1521,7 +1842,7 @@ function startRounds(attP,defP,fa,fd){
   S.battle.firstSide=decideFirstSide(S.battle); // #233 (GDD-23 4.4): 1라운드의 선턴을 전투 개시 시 한 번만 고정한다
   S.battle.firstSideR1=S.battle.firstSide; // #234 REVISE 4차 CJ 결정(2026-09-17): 2라운드부터의 교대 기준 = R1 선턴 측
   bmsg(`⚔️ ${fighterName("A")} vs ${fighterName("D")} — 전투 개시!`);
-  battleModal();
+  emitCore({type:"battleRedraw"});
 }
 /* #233 (GDD-23 4.6): "전투 사이에는 HP만 유지하며 상태이상·버프·방어막·쿨타임을 초기화한다. 새 전투의 모든 스킬
    쿨타임은 0이다." — 종전 #92/#121/#146 시절의 "쿨은 전투 간 유지" 계약을 **이 Issue의 명시적 승인 범위 안에서 대체**한다
@@ -1570,8 +1891,12 @@ function stFx(side,f){ return {side,text:stIcons(f),shield:f.shield||0,max:f.max
    그대로 날라 준다(room.js _authorize · frameMatches). 봉투는 action.t 만 화이트리스트로 보므로 프로토콜은 그대로다.
    대조는 **모든** 전투 어휘에 걸린다: 행동자·행동 토큰(actSeq)은 언제나 보고, 라운드·단계는 회선 문맥(wire)이 실려 오면 언제나
    본다 — 무료 보너스 행동(가방·패키지·포획)도 예외가 아니다(행동자만 보던 종전 계약에서 올라왔다).
-   strict: 행동을 소모하는 커맨드(도망·넘기기)만 — 렌더 프레임에도 라운드·단계를 걸고 메시지 큐 정지까지 더해 그 렌더의
-   행동을 **정확히 한 번**만 쓰게 한다. */
+   strict: 행동을 소모하는 커맨드(도망·넘기기)만 — 렌더 프레임에도 라운드·단계를 걸어 그 렌더의 행동을 **정확히 한 번**만 쓰게 한다.
+   #245 Saturn REVISE(MEDIUM): 여기서 **메시지 큐(B.msgQ)를 보지 않는다** — 그건 표시 계층이 소유한 재생 큐이지 규칙 상태가 아니다.
+   Core 가 그걸 읽으면 화면 없는 런타임(헤드리스·서버 좌석 엔진·AI)이 연출 큐를 손으로 비워야 합법 행동을 이어갈 수 있게 되어,
+   규칙이 표시 계층에 묶인다. 연출 중 입력 차단은 그대로 **경계**가 맡는다: 사람 UI 는 battleModal 의 busy(msgQ·fxLocked)로 커맨드를
+   비활성화하고, 입력 단일 경로 netAction 과 __passCore/__fleeCore 진입점은 fxLocked() 에서 막고, 수신 경계 netReady 는 빈 msgQ 를
+   기다리며, AI 는 fxWhenIdle 뒤에 둔다. 같은 행동을 두 번 쓰는 길은 행동 토큰(actSeq)+라운드·단계 대조가 이미 막는다. */
 const BF_KEYS=["side","seq","round","phase"];
 function bfShapeOk(w){ return !!w&&typeof w==="object"&&!Array.isArray(w)
   &&Object.keys(w).length===BF_KEYS.length&&BF_KEYS.every(k=>ownProp(w,k)); }
@@ -1599,7 +1924,6 @@ function battleCmdCtx(state,action,strict){
      회선 문맥에는 네 값이 다 실려 오므로 전부 대조하고(조작·재생 프레임의 자체 모순까지 잡는다), 행동을 소모하는
      커맨드(strict)에는 종전 계약 그대로 렌더 프레임에도 건다. */
   if((action.wire||strict)&&(w.round!==B.round||w.phase!==B.phase)) return null;
-  if(strict&&B.msgQ.length) return null;
   const piece=side==="A"?B.attP:B.defP;
   return {B,side,oSide:side==="A"?"D":"A",f:side==="A"?B.fa:B.fd,opp:side==="A"?B.fd:B.fa,
     piece,oppPiece:side==="A"?B.defP:B.attP,ownerP:piece.owner};
@@ -1612,26 +1936,13 @@ function battleCmdCtx(state,action,strict){
 /** @returns {BattleWire|null} */
 function battleActionFrame(state){ const st=state||S, B=st.battle;
   return B?{side:actorOfPhase(st),seq:B.actSeq||0,round:B.round,phase:B.phase}:null; }
+/* #245 Saturn REVISE(M2): 같은 겨냥 문맥을 **지금 상태에서** 짓는다 — 화면 렌더가 굳혀 둔 프레임을 빌릴 수 없는
+   호출자(AI·화면 없는 런타임)가 쓴다. 값은 battleActionFrame 과 같고 전투 인스턴스(B)만 더한다. */
+function battleCmdFrame(state){ const st=state||S, w=battleActionFrame(st); return w?Object.assign({B:st.battle},w):null; }
 /* #121 계약 2.2·3 패키지 개봉 선택 화면 — **표시 전용**이다. modal() 래퍼가 온라인 동기화를 맡으므로(소유자만 조작·
    버튼 인덱스 중계, 비소유자에게는 "상대 선택 대기 중" 마스킹) 여기서 별도 송신을 하지 않는다. 재고·선택 내용은
    소유자에게만 보인다. 개봉 자체는 난수를 쓰지 않는다 — 플레이어 선택이다 (계약 2.2 [추론]).
    취소는 아무것도 소모하지 않는다: 재고는 **확정 분기(pkgPick reducer)에서만** 움직인다. */
-function pkgOpenModal(kind,ownerP,round,id){
-  if(kind==="itemGift"){
-    const row=k=>`<div class="fighter"><b>${GIFT_KO[k]}</b><small>${k==="ball"?`보유 ${S.balls[ownerP]} → ${S.balls[ownerP]+1}`:ITEMS[k].desc}</small></div>`;
-    modal(`<h2>🎁 아이템 선물 패키지</h2><p>하나를 골라 지금 받습니다. 취소하면 패키지는 그대로 남습니다.</p>
-      ${GIFT_PICKS.map(row).join("")}`,
-      GIFT_PICKS.map((k,i)=>[GIFT_KO[k],()=>window.__pkgPickCore("gift",i,id)]).concat([["취소",()=>window.__pkgCancelCore(id)]]));
-    return;
-  }
-  const r1=round===1; // 계약 3.3: 시간의 수호자는 사용자 자기 행동의 1라운드에만
-  const row=key=>`<div class="fighter"><b>${BUFFS[key].ko}</b><small>${BUFFS[key].desc}${key==="time"&&!r1?" · <b>1라운드에만 선택 가능</b>":""}</small></div>`;
-  modal(`<h2>✨ 전투 버프 패키지</h2><p>하나를 골라 이번 전투에만 적용합니다. 전투당 1개이며 취소하면 패키지는 그대로 남습니다.</p>
-    ${BUFF_KEYS.map(row).join("")}`,
-    BUFF_KEYS.map((key,i)=>{ const no=key==="time"&&!r1; // 계약 3.3: 시간은 1라운드에만 — 문구가 아니라 실제 disabled
-      return [BUFFS[key].ko+(no?" (1R 전용)":""),no?null:()=>window.__pkgPickCore("buff",i,id),no]; })
-      .concat([["취소",()=>window.__pkgCancelCore(id)]]));
-}
 /* ===== 구형 속성 스킬 경로 (로스터 미적용 하수인 전용 — 레거시 테스트 호환) =====
    #245: 종전 __actCore 렌더 클로저 안에 있던 그대로다. Core 의 act 액션이 이 경로를 고르면 battleLegacySkill
    이벤트로 넘어와 커밋된 상태 위에서 실행된다 (execSlot 경로와 같은 경계). */
@@ -1670,219 +1981,7 @@ function legacySkillAct(side){
 }
 /* #245 도망 성공 종료 연출 — 전투 해체(자세 정리·battle=null)는 Core 의 flee 액션이 이미 끝냈고 여기는 남은
    메시지 재생·결과 배너·후방 말 교환 화면뿐이다 (#114). */
-function battleFleeFx(owner,piece,oppPiece,queue){
-  addLog(`🏃 ${pname(owner)} 도망 성공 — 전투 종료 (판정·제거 없음)`,"imp"); showToast("🏃 도망 성공 — 전투 종료");
-  battleEndFx(queue,{title:"도망 성공 — 전투 종료",cls:""},()=>{ if(!S.battle){ close(); fleeSwapPrompt(piece,oppPiece); } });
-}
-function battleModal(){
-  const B=S.battle; if(!B) return;
-  const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
-  const ownerP=side==="A"?B.attP.owner:B.defP.owner;
-  const aiActor=isAI(ownerP);
-  const viewer=S.mode==="sim"?2:(S.mode==="pve"?0:NET.mode?NET.me:ownerP); // 기술 공개 기준 시점 (핫시트는 행동자·온라인은 내 화면 고정)
-  const busy=B.msgQ.length>0||fxLocked(); // 메시지 재생·연출 대기 중 커맨드 비활성 (#106: 배너·카운트다운 잠금 포함)
-  /* #146 Saturn REVISE P1 — 이 렌더가 낸 버튼이 전투 행동을 **정확히 한 번만** 소비하게 하는 가드.
-     `S.battle===B` 와 `actorOfPhase()===side` 만으로는 부족하다: 라운드 경계에서 같은 전투원이 연속으로
-     행동할 차례가 오면(R1 후공 D → R2 선공 D) 옛 모달 클로저 하나가 두 번째 행동까지 그대로 소비한다.
-     그래서 **공유 게임 상태**로 행동 전환을 센다: actSeq 는 `nextPhase()`(= 전투 행동 하나가 끝나고 다음 차례로
-     넘어가는 유일한 지점)마다 1 늘고, 도망·패스 코어가 자기 행동을 확정하는 순간에도 늘린다.
-     여기에 그 시점의 (round, phase) 스냅샷을 함께 가둬, **일반 공격·포획 실패 같은 다른 행동으로 차례가 넘어간
-     뒤에 남아 있던 옛 도망·패스 콜백도** 거부한다. 렌더 횟수가 아니라 게임 상태를 세므로 온라인 양측이
-     서로 다른 횟수로 다시 그려도 판정이 갈리지 않는다.
-     연출·메시지 재생 중에도 거부한다 — 두 번 클릭·늦은 콜백이 재생 중인 행동 위에 겹치지 않게 한다.
-     아이템·패키지 개봉 같은 **행동 내 무료 선택**은 차례를 넘기지 않으므로 이 값이 그대로여서 정상 동작한다.
-     (온라인 수신 재생은 netReady 가 이미 잠금 해제·빈 msgQ 를 기다리므로 이 가드에 걸리지 않는다.) */
-  /* #245 전투 커맨드 프레임 — 이 렌더의 전투 인스턴스·행동자·행동 토큰(recruit 의 token 과 같은 역할, 회선 미전송) */
-  const frame={B,side,seq:B.actSeq||0,round:B.round,phase:B.phase};
-  const inBonus=!!(B.bonus&&B.bonus.stage==="active"&&B.bonus.side===side); // #241 R1 번개 꼬리 추가 공격 단계 — 스킬 선택만 (도망 · 볼 · 아이템 · 패키지 · 패스 불가 L17)
-  const mySide=S.mode==="pve"?(B.attP.owner===0?"A":"D"):NET.mode?(B.attP.owner===NET.me?"A":"D"):"A", topSide=mySide==="A"?"D":"A";
-  const panel=sid=>{ // 전투원 정보 패널: 이름·아키타입/속성 배지·HP바·방어막 바(#106 5.5)·상태. "가한 유효 피해" 게이지는 HP 비율 판정(H1)과 달라 제거 — recA/recD 는 지표로만 기록
-    const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
-    const rd=pf===piece&&piece.rosterId?ROSTER.find(x=>x.id===piece.rosterId):null;
-    const dhp=B["dispHp"+sid]!==undefined?B["dispHp"+sid]:pf.hp; // 표시 HP (메시지 재생과 동기화)
-    const dsh=B["dispSh"+sid]!==undefined?B["dispSh"+sid]:(pf.shield||0);
-    /* #122: 이름·배지·HP/방어막 바·HP 수치는 **고정 머리(.fhead)** 다. 보호막과 상태 이상이 한꺼번에 걸려 길어지는
-       상태 목록과 기술 4슬롯만 **.fscroll** 안에서 세로로 스크롤한다 — 좁은 폭에서도 이름·HP 가 밀려나지 않고
-       7상태를 전부 읽을 수 있으며 판이 자라 전투원 도트를 덮지도 않는다 (Saturn·PD 실측 지적).
-       마크업 조각·id(hpfill-·shfill-·hptxt-·bst-)와 문구는 종전 그대로라 연출(applyFx)·비공개 마스킹 경로는 불변이다. */
-    return `<div class="fighter"><div class="fhead">
-      <b>${fighterName(sid)}</b> <small>(${pname(piece.owner)})</small>
-      ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
-      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}</div>
-      <div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>
-      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}</div>
-      </div><div class="fscroll">
-      <div class="status"><span id="bst-${sid}">${stIcons(pf)}</span></div>
-      ${pf.skills?`<div class="status">${(()=>{
-        /* #234 (GDD-23 7.9): 등급·미사용 스킬은 비공개 — 보유 칸 수가 곧 등급이므로 상대 화면에는 공개된 스킬만 이름으로 쓰고
-           나머지는 개수 없이 "?" 하나로 묶는다. 소유자·관전(sim)은 전부 본다. */
-        const all=viewer===2||piece.owner===viewer;
-        const parts=pf.skills.map((sid2,i)=>(all||(pf.revealedSkills&&pf.revealedSkills.includes(i)))?`${skillNameKo(sid2,pf.element)}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:null);
-        const shown=parts.filter(x=>x!==null); if(!all&&shown.length<parts.length) shown.push("? 미공개");
-        return shown.join(" · ");
-      })()}</div>`:""}
-    </div></div>`;
-  };
-  const token=sid=>{ // 스테이지 토큰: 하수인 본체·대리 출전 포획 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료 본체는 현행 속성색 원형 + 이모지 유지 (규격 6.3 · #91)
-    const pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
-    /* #121 계약 3.1·9: **적용된 효과는 상대에게도 공개**된다 (재고·선택만 비공개) — 그래서 버프 표시는 양측 화면에 그린다.
-       시간의 수호자는 전투 전체에 걸리므로 그 버프를 쓴 side 의 토큰에 붙인다. */
-    const bkey=sid==="A"?B.buffA:B.buffD;
-    const bcls=bkey?" buff-"+bkey:"";
-    const lb=pf===piece&&(piece.type==="king"||piece.type==="ally"); // #234: 왕·동료 본체 토큰은 현행 이모지·라벨 유지(속성은 패널 배지) — 표시 개편은 #238
-    const pos=sid===mySide?"tok-me":"tok-op", label=pf.element&&!lb?ELEM_KO[pf.element]:TYPE_KO[piece.type];
-    // #89/#91 지금 실제로 싸우는 전투원 기준: 본체면 그 말의 종, 대리 출전(포획·예비 하수인)이면 cap 에 기록된 종. 왕·동료 본체 그림은 없으므로 null → 이모지
-    const dir=artDirOfFighter(pf,piece);
-    if(artBattleOk(dir))   // #201: 전투 파일이 영구 결손으로 판정되면 다시 내보내지 않는다 (요청 왕복·보드 아이콘 억제 방지)
-      return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`;
-    /* #124: 왕·동료 **본체** 출전이면 새 아트를 그 정체 역할로 그린다. 대리 출전(포획 하수인)은 위 분기라 여기 오지 않는다.
-       자산이 없거나 실패하면 아래 현행 이모지 토큰으로 그대로 되돌아간다 (artSpriteFail 이 같은 자리를 바꿔 끼운다) */
-    const ld=leaderBattleDir(pf,piece);
-    if(ld)
-      return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite leader" src="${artUrl(ld,LEADER_FILES.battle)}" alt="${fighterName(sid)}" width="128" height="128" onerror="artSpriteFail('${ld}',this)"><small>${label}</small></div>`;
-    const col=pf.element&&!lb?`var(--${pf.element})`:"#5a6377";
-    const emo=lb?(piece.type==="king"?"👑":"🤝"):pf.element?ELEM_EMO[pf.element]:(piece.type==="king"?"👑":piece.type==="ally"?"🤝":"❔");
-    return `<div class="btok ${pos}${bcls}" id="tok-${sid}" style="background:${col}">${emo}<small>${label}</small></div>`;
-  };
-  // #121 계약 2.3: itemRound(라운드 1회)만 실제 게이트다. itemsX·lastItemX 는 기록으로만 남아 더 이상 버튼을 막지 않는다
-  const itemRound=side==="A"?B.itemRoundA:B.itemRoundD;
-  const dis=aiActor||busy||(NET.mode&&ownerP!==NET.me); // 온라인: 상대 행동 차례엔 조작 불가
-  /* Saturn REVISE P1(비공개): 마스킹 기준은 **소유자 관측**이다 — 온라인·PVE·핫시트를 함께 처리한다 */
-  const mineView=viewerIsOwner(ownerP);
-  /* #146: 지금 이 전투원이 **합법으로 쓸 수 있는 공격 수단이 하나도 없는가**. 왕·동료 본체(skills 없음)는 기본 공격이 있으므로 항상 false.
-     비공개: "공격할 것이 없습니다"는 **상대의 미공개 기술 4칸이 전부 막혀 있다**는 사실을 그대로 알려 주는 정보다.
-     그래서 안내도 [턴 종료] 버튼도 **소유자 화면에만** 그린다 (비소유자에게는 종전처럼 마스킹된 4슬롯 버튼만 보인다). */
-  const noAtk=!!f.skills&&!f.skills.some((sid2,i)=>slotUsable(f,i,side));
-  const noAtkShow=noAtk&&mineView;
-  let cmdBtns; const skillTips=[]; // skillTips: ⓘ 설명 버튼이 여는 [{label,tip}] (정체를 아는 기술만)
-  if(f.skills){ // 4슬롯 커맨드 — 기본 공격 버튼 없음. 전부 불가하면 공격 대신 수동 [턴 종료] (#146)
-    const maskCmd=viewer!==2&&ownerP!==viewer;
-    cmdBtns=f.skills.map((sid2,i)=>{
-      const sk2=SKILLS[sid2], onCd=f.cds[i]>0;
-      const known=!maskCmd||(f.revealedSkills&&f.revealedSkills.includes(i));
-      if(!known) return ""; // #234 (7.9): 상대 화면에는 미공개 칸을 칸 수만큼 그리지 않는다(아래에서 "?" 하나로 묶는다)
-      /* #121 계약 5.3: 사신의 낫은 쿨이 아니라 **봉인**으로 막힌다. 표시도 "봉인"이고 사유를 그대로 보여 준다
-         (쿨링수·냉각·전술 연계·급속 순환으로는 풀리지 않는다 — 게이트가 cds[] 와 분리되어 있다) */
-      const seal=sk2.reaper?reaperWhy(side):null;
-      const cond=!onCd&&!seal&&!slotUsable(f,i,side); // #234: 전투당 1회 사용 · 사용 조건 미충족 · 수면 포자(기본기만)
-      const locked=onCd||!!seal||cond;
-      const label=known?`${skillNameKo(sid2,f.element)}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:seal?" (봉인)":cond?" (불가)":""}`:`? ${SKIND_KO[sk2.kind]}`;
-      const cross=known&&sk2.el&&f.element&&sk2.el!==f.element; // #92 본체와 다른 속성의 공격기 — 판정 속성을 설명에 덧붙여 비교 가능하게
-      const tip=known?sk2.desc+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:"")+(sk2.cls?` · ${SKILL_CLS_KO[sk2.cls]} 분류(상성표 밖)`:"")+(seal?` · ${seal}`:""):"";
-      skillTips[i]=known&&tip?{label,tip}:null;
-      /* v0.4.10 CJ 모바일 QA: hover 가 없는 터치 기기에서도 기술 설명을 볼 수 있게 기술 버튼 옆에 ⓘ 설명 버튼을 둔다.
-         설명 버튼은 표시 전용이다 — 송신·규칙 상태·전투 행동·턴 소비가 없고, 내 차례가 아니거나 기술이 쿨·봉인이어도 열린다.
-         정체를 모르는 기술(비공개 "? 종류")에는 설명 버튼을 만들지 않는다(tip 이 비어 있다). PC hover(title)는 그대로다. */
-      return `<span class="skillCmd"><button ${dis||locked?"disabled":""} title="${escAttr(tip)}" onclick="window.__act(${i})">${label}</button>${skillTips[i]?`<button type="button" class="skillInfoBtn" aria-label="${escAttr(label)} 설명 보기" aria-controls="skillInfoBox" aria-expanded="false" onclick="window.__skillInfo(${i})">ⓘ</button>`:""}</span>`;
-    }).join("");
-    if(maskCmd&&f.skills.some((x,i)=>!(f.revealedSkills&&f.revealedSkills.includes(i)))) cmdBtns+=`<span class="skillCmd"><button disabled>? 미공개</button></span>`;
-    /* #146 계약 (v0.4.7 CJ 2026-09-10) — #121 계약 5.3 의 "폴백 기본 공격"을 **철회**한다.
-       4슬롯이 전부 쿨·봉인·조건 미충족으로 불가하면 **어떤 공격도 제공하지 않는다**. 안내와 명시적 수동 [턴 종료]만 둔다.
-       · 보조기·시그니처가 하나라도 합법이면 예외 없이 그 슬롯을 쓴다 (여기 오지 않는다).
-       · 왕·동료 본체(f.skills 없음)는 아래 else 분기라 기본 공격을 그대로 유지한다.
-       · [턴 종료]는 **자기 전투 행동 1회**(nextPhase)를 넘기는 것이지 보드 턴이 아니다 — 주 행동·턴당 전투 횟수는 그대로다.
-       · 버튼을 누르기 전에는 아무것도 자동으로 진행하지 않는다. 가방·패키지·포획·도망 메뉴는 그대로 쓸 수 있고,
-         쿨링수로 쿨이 풀리면 다음 렌더에서 이 판정이 다시 계산돼 공격 슬롯이 되살아난다. */
-    if(noAtkShow) cmdBtns+=`<button class="primary" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`;
-  } else { // 왕·동료 본체·구형 경로: 기본 공격 유지
-    const canSkill=f.skillAtk&&f.cd===0;
-    cmdBtns=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(f.atk)}</button>`
-      +(f.skillAtk?`<button ${dis||!canSkill?"disabled":""} onclick="window.__act('skill')">${f.element?SKILL_KO[f.element]:"스킬"} ${dmgRange(f.skillAtk)}${f.cd?` (쿨${f.cd})`:""}</button>`:"");
-  }
-  // #12 볼 투척: 대상이 적 하수인·HP<30%·볼 보유·예비 슬롯 빈 상태·라운드당 1회 / #13 도망: 자기 HP<50%
-  const oppPiece=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
-  const canThrow=oppPiece.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown;
-  /* #146 계약: 도망에는 **HP 조건도 시도 횟수 상한도 없다**. 성공률만 전투원별로 다르다 (기본 30% · 도망의 수호자 70%) */
-  const fleeP=fleeProbOf(f);
-  const throwWhy=oppPiece.type!=="minion"?"상대가 하수인이 아닙니다":opp.hp>=opp.maxHp*0.3?`상대 HP ${pct(opp.hp/opp.maxHp)} — 30% 미만이어야 합니다`:S.balls[ownerP]<=0?"몬스터볼이 없습니다":S.reserve[ownerP]?"예비 슬롯이 차 있습니다":thrown?"이번 라운드에 이미 던졌습니다":"";
-  const fleeNote=f.fleeBoost?" · 🏃 도망의 수호자 — 이 전투 도망 성공률 70%":"";
-  const ballBtn=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
-  const fleeBtn=`<button class="danger" ${dis||f.fleeLock?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패하면 상대의 기본 공격 1회를 맞고 내 전투 행동 1회를 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
-  /* #121 계약 2.3: 아이템 사용 제한은 **플레이어별 라운드 1회**만 남는다 — 전투당 2회(itemPerBattle)와 연속 동일 금지(lastItem)는 제거됐다.
-     두 값은 BAL 에서 Infinity / 미참조가 되었고, 여기서도 더 이상 버튼을 막지 않는다. */
-  /* Saturn REVISE P1(비공개): 마스킹 기준을 **소유자 관측**으로 바꾼다. 종전 `NET.mode&&ownerP!==NET.me` 는 온라인만 가려서
-     PVE 의 AI 행동 차례에 AI 의 가방·패키지 재고가 사람 화면에 그대로 보였다. viewerIsOwner() 는 온라인·PVE·핫시트를 함께 처리한다.
-     (mineView 는 위 #146 비공개 판정과 같은 값을 쓰도록 전투원 판정 앞에서 한 번만 계산한다.) */
-  let itemBtns=!mineView?`<small>상대 아이템 비공개</small>`:S.inv[ownerP].map((k,i)=>
-    `<button ${dis||itemRound?"disabled":""} title="${ITEMS[k].desc}" onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
-  /* #121 계약 2.2·3.1 패키지: 재고·개봉 선택은 **소유자에게만** 보인다. 개봉·버프 선택은 무료 보너스 행동이라
-     주 행동·전투 행동·아이템 라운드 카운터를 하나도 소모하지 않는다 (확정 순간에만 재고가 움직인다). */
-  const pk=S.pkgs[ownerP], buffUsed=(side==="A"?B.buffA:B.buffD);
-  /* 계약 9: 한 전투 안의 UI 표시 — 양측에 적용된 버프를 상태줄로 보여 준다 (적용된 효과는 공개 정보) */
-  const buffLine=(B.buffA||B.buffD)?`<div class="status">✨ ${[B.buffA?`${fighterName("A")} ${BUFFS[B.buffA].ko}`:"",B.buffD?`${fighterName("D")} ${BUFFS[B.buffD].ko}`:""].filter(Boolean).join(" · ")}</div>`:"";
-  let pkgBtns=!mineView?`<small>상대 패키지 비공개</small>`:
-    [`<button ${dis||pk.itemGift<=0?"disabled":""} title="아이템 선물 패키지를 열어 회복약·쿨링수·해독제·공용 볼 중 1개를 받습니다 (행동 미소모)" onclick="window.__openPkg('itemGift')">🎁 아이템 선물 ${pk.itemGift}</button>`,
-     `<button ${dis||pk.battleBuff<=0||!!buffUsed?"disabled":""} title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')">✨ 전투 버프 ${pk.battleBuff}</button>`].join("");
-  const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
-  if(noAtkShow&&!aiActor&&S.mode!=="sim") tutHint("noatk"); // #26·#146 4슬롯 전부 불가가 처음 나올 때 1회 (표시 계층 전용 — 게임 상태·난수·저장소 무변경)
-  const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
-  /* #122 REVISE(2026-09-10 CJ QA 4): 하위 메뉴의 '← 뒤로'를 **하위 메뉴 패널 바로 아래**로 내린다 (직전 REVISE의 제목 옆 좌상단을 대체).
-     핸들러는 종전 그대로 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */
-  const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}</div>`;
-  modal(`<div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2></div>
-    <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${battleMaxRounds()}${B.maxRounds?" 🧭":""}</div>
-    <div id="bstage" class="scene"><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
-    ${buffLine}
-    <div id="msgBox">${busy?"":inBonus?`⚡ ${fighterName(side)} 추가 공격 — ${mineView?"기본기 · 2차 · 3차 중 선택 (피해 60%)":"선택을 기다리는 중"}`:(noAtkShow?NO_ATTACK_MSG:`${fighterName(side)}의 행동을 선택하세요.`)}</div>
-    <div class="bmenu${menu?" hidden":""}" id="bmenu"><b style="grid-column:1/-1;font-size:12px;color:var(--dim)">${pname(ownerP)}:</b>
-      <button ${dis?"disabled":""} onclick="window.__menu('fight')">⚔️ 싸우기</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('bag')">🎒 가방</button>
-      <button ${dis||inBonus?"disabled":""} onclick="window.__menu('ball')">🔴 포획</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('flee')">🏃 도망가기</button>
-      ${noAtkShow?`<button class="primary" style="grid-column:1/-1" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`:""}</div>
-    ${sub("fight",`<small>⚔️ 싸우기 — 기술 4슬롯</small>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}<div class="row">${cmdBtns}</div><div id="skillInfoBox" class="skillInfoBox hidden" role="note" aria-live="polite"></div>`)}
-    ${sub("bag",`<small>🎒 가방 — 아이템은 보너스 행동 (라운드당 1회, 전투 횟수·연속 동일 제한 없음) · 사용 후 같은 행동자의 메뉴로 복귀${itemRound?" · <b>이번 라운드에 이미 사용</b>":""}</small>
-      <div class="row">${itemBtns||"<small>아이템 없음</small>"}</div>
-      <small>📦 패키지 — 개봉·버프 적용은 행동·아이템 카운터를 소모하지 않습니다${buffUsed?` · 적용된 버프: <b>${BUFFS[buffUsed].ko}</b>`:""}</small>
-      <div class="row">${pkgBtns}</div>`)}
-    ${sub("ball",`<small>🔴 포획 — 상대 하수인 HP 30% 미만 · 볼 ${mineView?`${S.balls[ownerP]}개`:"비공개"} · 성공 ${pct(BAL.enemyCapProb)}${mineView&&throwWhy?` · <b>${throwWhy}</b>`:""}</small><div class="row">${ballBtn}</div>`)}
-    ${sub("flee",`<small>🏃 도망가기 — HP 조건 없음 · 성공 ${pct(fleeP)} · 실패하면 상대의 <b>기본 공격 1회</b>를 맞고 내 전투 행동 1회를 소모${fleeNote}</small><div class="row">${fleeBtn}</div>`)}
-    <button id="bmenuBack" class="bmenuBack${menu?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button>
-    <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
-    []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
-  try{ const ob=$("overlayBox"); if(ob&&ob.classList) ob.classList.add("battleBox"); }catch(e){} // #122 세로 전투 화면 레이아웃
-  window.__skillInfo=i=>{ // 기술 설명 토글 — 표시 전용(송신 0 · 규칙 상태 무변경 · 전투 행동/턴 소비 없음). 같은 ⓘ 를 다시 누르거나 [닫기]로 닫는다
-    const box=$("skillInfoBox"), t=skillTips[i]; if(!box||!t) return;
-    const open=!box.classList.contains("hidden")&&box.getAttribute&&box.getAttribute("data-idx")===String(i);
-    try{ const ob=$("overlayBox"); if(ob&&ob.querySelectorAll) Array.prototype.forEach.call(ob.querySelectorAll(".skillInfoBtn"),b=>b.setAttribute("aria-expanded","false")); }catch(e){}
-    if(open){ box.classList.add("hidden"); box.innerHTML=""; if(box.setAttribute) box.setAttribute("data-idx",""); return; }
-    box.innerHTML=`<b>${escAttr(t.label)}</b><div>${escAttr(t.tip)}</div><button type="button" class="skillInfoClose" onclick="window.__skillInfo(${i})">닫기</button>`;
-    if(box.setAttribute) box.setAttribute("data-idx",String(i)); box.classList.remove("hidden");
-    try{ const ob=$("overlayBox"); const btn=ob&&ob.querySelectorAll?ob.querySelectorAll(".skillInfoBtn"):[]; Array.prototype.forEach.call(btn,b=>{ if(b.getAttribute("onclick")===`window.__skillInfo(${i})`) b.setAttribute("aria-expanded","true"); }); }catch(e){}
-  };
-  window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
-    if(S.battle!==B) return; B.menu=key||null;
-    try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(B.menu) bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){} // 행동창 아래 '← 뒤로'는 하위 메뉴가 열렸을 때만
-    try{ const root=$("bmenu"); if(root){ if(B.menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
-      for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===B.menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
-  };
-  /* #245 전투 커맨드 진입점 — 규칙·자원 회계는 전부 Core reducer(pkgOpen·pkgPick·item·ball·flee·pass·act)가 소유한다.
-     여기 남는 것은 **버튼 이름과 액션을 잇는 한 줄**뿐이다: 렌더가 전투원·차례·행동 토큰을 들고 다니던 구조가 사라져
-     늦은 콜백이 다른 차례를 대신 쓰는 경로 자체가 없어진다 (#146 Saturn REVISE P1 의 actSeq 스냅샷 가드가 막던 것).
-     이름과 배치는 그대로 둔다 — AI(패키지)·패키지 모달 버튼·netReady 의 전투 화면 준비 판정이 이 이름을 쓴다. */
-  window.__openPkgCore=(kind,wire)=>dispatchCoreAction({t:"pkgOpen",kind,frame,wire});
-  window.__pkgPickCore=(what,i,id)=>dispatchCoreAction({t:"pkgPick",what,i,id,frame});                 // id = 그 개봉 화면이 받은 표 번호 (없으면 인가되지 않는다)
-  window.__pkgCancelCore=id=>dispatchCoreAction({t:"pkgCancel",id,frame}); // 취소도 표시 계층이 아니라 Core 경계가 처리한다 — 자기 번호의 표만 회수한다
-  window.__useItemCore=(i,wire)=>dispatchCoreAction({t:"item",i,frame,wire});
-  window.__throwBallCore=wire=>dispatchCoreAction({t:"ball",frame,wire});
-  /* 도망·넘기기는 자기 전투 행동 1회를 소모한다 — 연출 재생 중(표시 잠금)에는 받지 않는다. 잠금은 표시 계층의 사실이라
-     여기서 보고, 같은 렌더의 행동을 두 번 쓰지 못하게 하는 규칙 대조는 Core 의 strict 프레임 검사가 맡는다. */
-  window.__fleeCore=wire=>{ if(fxLocked()) return; dispatchCoreAction({t:"flee",frame,wire}); };
-  window.__passCore=wire=>{ if(fxLocked()) return; dispatchCoreAction({t:"pass",frame,wire}); };
-  window.__actCore=(kind,wire)=>dispatchCoreAction({t:"act",k:kind,frame,wire});
-  /* #106 5.1·5.2 표시 순서: (1) 진입 카운트다운 3·2·1·배틀 시작! (1회) → (2) 남은 메시지 재생 → (3) 행동(phase) 배너 "나의 턴!/상대 턴!" (행동마다 1회) → (4) 메뉴 활성 / AI 스케줄.
-     각 단계는 끝나면 battleModal 을 다시 그려 다음 단계로 간다 — 플래그(intro·bannerKey)로 같은 단계를 두 번 재생하지 않는다. 헤드리스·sim 은 (1)(3) 이 0ms 라 종전 흐름과 같다 */
-  if(!B.intro){ B.intro=true;
-    if(fxLive()){ for(const t of ["3","2","1","배틀 시작!"]) fxPlay({key:"countStep",kind:"count",title:t}); fxWhenIdle(()=>{ if(S.battle===B) battleModal(); }); return; } }
-  if(B.msgQ.length){ playMsgs(B.msgQ.splice(0),()=>{ if(S.battle===B) battleModal(); }); return; }
-  const bkey=B.round+"-"+B.phase;
-  if(B.bannerKey!==bkey){ B.bannerKey=bkey;
-    if(fxLive()){ fxPlay({key:"roundBanner",kind:"banner",cls:viewerIsOwner(ownerP)&&!(S.mode==="pvp"&&!NET.mode)?"mine":"",title:turnLabel,sub:`Round ${B.round} / ${BAL.maxRounds}`}); fxWhenIdle(()=>{ if(S.battle===B) battleModal(); }); return; } }
-  if(aiActor) aiScheduleBattle();
-}
 /* #106 5.6 전투 종료 연출 공통: 남은 메시지 재생 → 결과 배너(뷰어 기준 문구) → 닫기 콜백. 헤드리스는 즉시 */
-function battleEndFx(q,banner,after){
-  const run=()=>fxPlay({key:"resultBanner",kind:"result",cls:banner.cls||"",title:banner.title,sub:banner.sub||"",onEnd:after});
-  if(liveBattleDom()) playMsgs(q,run); else { MSGQ.length=0; run(); }
-}
 /* ===== #126 (v0.4.7) 경기 종료 표현 — 경기당 정확히 1회 =====
    왕 제거·전멸처럼 **전투가 곧 경기 종료**인 경우에는 전투 결과 배너 대신 이 경기 결과 배너 하나로 분기하고,
    전투를 거치지 않는 종료(왕 도달·기권·상대 이탈·sim 턴 상한)는 gameOver 안에서 이 배너 하나만 재생한다.
@@ -1893,7 +1992,7 @@ function matchBannerOf(){
   const w=S.winner, typeKo=S.metrics.winType?WINTYPE_KO[S.metrics.winType]:"";
   if(w===null) return {title:"무승부",sub:"경기 무승부 — 시뮬레이션 턴 상한 도달",cls:"match draw"};
   const sub=(typeKo?`승리 유형: ${typeKo} · `:"")+`총 ${S.turnCount}턴`;
-  if(S.mode==="sim"||(S.mode==="pvp"&&!NET.mode)) return {title:`${pname(w)} 승리!`,sub,cls:"match neutral"}; // 핫시트는 중립 문구 (같은 기기의 두 사람)
+  if(S.mode==="sim"||offlinePvp()) return {title:`${pname(w)} 승리!`,sub,cls:"match neutral"}; // 핫시트는 중립 문구 (같은 기기의 두 사람)
   return viewerIsOwner(w)?{title:"경기 승리!",sub,cls:"match win"}:{title:"경기 패배...",sub,cls:"match lose"};
 }
 function matchEndBanner(){ // 경기당 1회 — 이미 낸 뒤면 null (경기 기준 플래그, newGame 이 새로 만든다)
@@ -1901,17 +2000,10 @@ function matchEndBanner(){ // 경기당 1회 — 이미 낸 뒤면 null (경기 
   S.matchFxDone=true;
   return matchBannerOf();
 }
-function matchEndFx(){
-  const b=matchEndBanner(); if(!b) return;
-  /* 경기가 끝났으므로 남아 있던 표시 큐(턴 배너·접촉 배너·대기 콜백)는 더 이상 의미가 없다 — 걷어내고 결과 하나만 남긴다.
-     연출이 자기를 넣고 자기를 지우는 순서가 생기지 않도록 **넣기 전에** 정리한다 (Venus 3.2 · L5). */
-  try{ fxReleaseAll(); }catch(e){}
-  fxPlay({key:"resultBanner",kind:"result",cls:b.cls,title:b.title,sub:b.sub});
-}
 function resultBannerOf(winP){ // 사망·판정 결과 문구: 핫시트 중립 "P1 승리!", PVE·온라인 뷰어 기준 "전투에서 승리!/패배,,,"
   /* #126: 문구·뷰어 규약은 종전 그대로이고 cls 만 연출 갈래를 고른다 — 중립(핫시트)은 금빛, 뷰어 승리는 금빛, 패배는 어두운 균열.
      전투 판정 동률은 방어자 승이라 여기 오는 결과는 언제나 승/패 둘 중 하나다 (전투 무승부 갈래를 만들지 않는다). */
-  if(S.mode==="pvp"&&!NET.mode) return {title:`${pname(winP.owner)} 승리!`,cls:"neutral"};
+  if(offlinePvp()) return {title:`${pname(winP.owner)} 승리!`,cls:"neutral"};
   return viewerIsOwner(winP.owner)?{title:"전투에서 승리!",cls:"win"}:{title:"전투에서 패배,,,",cls:"lose"};
 }
 /* ===== 4슬롯 실행 엔진 (GDD-16) — slot -1은 폴백 기본 공격, 로직은 동기 완결 ===== */
@@ -2109,9 +2201,14 @@ function instaKill(opp){ opp.shieldLayers=[]; opp.shield=0; opp.hp=0; } // 4.3 �
    두 좌석 엔진이 갈려도 VOID 가 뜨지 않는다. #234 전까지 예고 피해 기술이 없어 호출처는 0건이고
    여기서는 계약만 완결한다 — 앞으로 예고 기술을 붙이는 호출처는 반드시 tag 를 넘겨야 한다. */
 /* #245: 둘 다 Core 액션 하나로 들어간다 — #233 계약(인자·보관 형식)은 그대로고, pendingFx 를 고치는 자리는 reducer 한 곳뿐이다.
-   #241: 해일 예고가 조건 표식(v2TideCheck)으로 바뀜어 atStart 분기는 삭제됐고 #233 예약 계약만 남는다(현재 예약 호출처 0). */
-function scheduleDelayed(f,delayRounds,run,tag){ dispatchCoreAction({t:"delaySchedule",f,delayRounds,run,tag}); }
-function tickDelayed(f){ dispatchCoreAction({t:"delayTick",f}); }
+   #241: 해일 예고가 조건 표식(v2TideCheck)으로 바뀌어 atStart 분기는 삭제됐고 #233 예약 계약만 남는다(현재 예약 호출처 0).
+   #245 Saturn REVISE(M3): 래퍼의 인자는 종전 그대로 **전투원 객체**지만, 액션에 실리는 것은 그 전투원이 아니라
+   상태 안에서의 자리(side)다 — 액션이 상태를 우회해 남의 객체를 들고 들어오는 통로가 없다. 상태에 없는 전투원은
+   가리킬 자리가 없으므로 조용한 무동작이다(대기열을 만들지 않는다). */
+function delayFighterOf(state,side){ const B=state&&state.battle; return B?(side==="A"?B.fa:(side==="D"?B.fd:null)):null; }
+function battleSideOf(f,state){ const B=(state||S)&&(state||S).battle; return (B&&f)?(f===B.fa?"A":(f===B.fd?"D":null)):null; }
+function scheduleDelayed(f,delayRounds,run,tag){ return dispatchCoreAction({t:"delaySchedule",side:battleSideOf(f),delayRounds,run,tag}); }
+function tickDelayed(f){ return dispatchCoreAction({t:"delayTick",side:battleSideOf(f)}); }
 function execSlot(side,slot,opts){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A";
@@ -2125,7 +2222,7 @@ function execSlot(side,slot,opts){
      CJ 결정 = "이 경로에만 예외로 부활" — 평시 전투 UI 에는 4슬롯 전투원용 기본 공격 버튼을 만들지 않으므로
      #146 계약 2.4 의 취지(슬롯이 전부 불가하면 기본 공격이 아니라 수동 [턴 종료])는 그대로 남는다.
      이 예외는 사람이 고를 수 없는 자동 경로이고, 도망을 **시도한 쪽이 아니라 상대**가 때리는 한 번뿐이다. */
-  if(slot<0&&f.skills&&!(opts&&opts.allowBasic)){ battleModal(); return; }
+  if(slot<0&&f.skills&&!(opts&&opts.allowBasic)){ emitCore({type:"battleRedraw"}); return; }
   const sk=(slot>=0&&f.skills)?SKILLS[f.skills[slot]]:null;
   const atkEl=atkElOf(f,sk); // #92 판정 속성: 공격기는 기술 속성, 기본 공격·시그니처(잔류장 포함)는 본체 속성 · #121 cls 기술은 null(중립)
   /* #121 계약 5.3 💀 사신의 낫 — 피해 파이프라인을 타지 않는 별도 분기다. **게이트를 여기서 최신 상태로 한 번 더 검사한다**:
@@ -2143,7 +2240,7 @@ function execSlot(side,slot,opts){
        거기에 이름을 쓰면 **쓰지도 않은 미공개 기술**이 상대에게 공개된다. 사유는 소유자 화면의 토스트로만 알린다
        (표시 계층 · 규칙 상태·난수 불변). 거부된 호출은 순수 기본 공격으로 폴백해 전투가 멈추지 않는다. */
     const ownerOf=side==="A"?B.attP.owner:B.defP.owner;
-    const tellOwner=msg=>{ try{ if(viewerIsOwner(ownerOf)) showToast(msg); }catch(e){} };
+    const tellOwner=msg=>{ try{ if(viewerIsOwner(ownerOf)) emitToast(msg); }catch(e){} };
     if(f.cds[slot]>0){ tellOwner(`💀 사신의 낫은 쿨타임입니다 (남은 쿨 ${f.cds[slot]})`);
       execSlot(side,-1); return; }   // #146: 4슬롯 전투원이므로 위 -1 가드가 잡아 **아무 피해도 나가지 않고** 메뉴로 돌아간다
     if(actorOfPhase()!==side) return;                       // 남의 차례에는 아무것도 하지 않는다
@@ -2263,8 +2360,8 @@ function skillParamsOf(f){
   };
 }
 const ELEM_EMO={fire:"🔥",water:"💧",grass:"🌿",lightning:"⚡",land:"🗻"};
-function fighterName(sid){
-  const B=S.battle, pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
+function fighterName(sid,board){ // #245 M2: board 를 주면 그 전투를 읽는다 — 지난 전투 스냅샷 렌더가 전역 S.battle 을 갈아끼우지 않게
+  const B=board||S.battle, pf=sid==="A"?B.fa:B.fd, piece=sid==="A"?B.attP:B.defP;
   return pf===piece?(piece.type==="minion"&&piece.name?piece.name:TYPE_KO[piece.type]):"포획 하수인·"+ELEM_KO[pf.element];
 }
 function stIcons(f){
@@ -2277,68 +2374,20 @@ function stIcons(f){
 /* #106 5.4: opts.key 가 있는 메시지는 새 표시 그룹을 연다(그룹 시간 = BAL.fx[key] — skillFx·damageFx·itemFx·captureFx·fleeFx·judgeBanner·roundEndFx).
    key 없는 메시지는 직전 그룹에 줄로 덧붙는다(쿨 감소·상태 부여·약화 해제 등). 재생 시작 시점에 그룹이 없으면 msgStep(0.6초) 단독 그룹. opts.big: 큰 글씨 */
 function bmsg(txt,fx,opts,to){const B=to||S.battle; if(!B) return; B.blog.push(txt); B.msgQ.push({txt,fx:fx||null,key:opts&&opts.key||null,big:!!(opts&&opts.big)});}
-let MSGQ=[], MSGPLAYING=false, MSGAFTER=null;
-function liveBattleDom(){ // 실제 DOM에 msgBox가 있을 때만 재생 (sim·헤드리스 스텁 제외)
-  try{const mb=$("msgBox"); return S.mode!=="sim"&&!!mb&&mb.nodeType===1;}catch(e){return false;}
-}
-function playMsgs(q,after){ // 그룹 단위 순차 재생 (계약 5.4) — 재생 불가 환경은 즉시 완료. 재생 중은 fxLocked() (입력 잠금·수신 보류)
-  MSGQ.push(...q); MSGAFTER=after||null;
-  if(MSGPLAYING) return;
-  if(!liveBattleDom()){ MSGQ.length=0; const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); return; }
-  MSGPLAYING=true; fxSetLockClass(true);
-  const gen=FX.gen;
-  (function step(){
-    if(FX.gen!==gen) return; // 새 게임 — 옛 세대의 step 은 아무것도 만지지 않는다: MSGQ·MSGPLAYING·MSGAFTER 는 fxReleaseAll 이 이미 비웠고 그 뒤 새 게임의 재생이 소유한다 (REVISE msg_d847280b3dba)
-    const m=MSGQ.shift();
-    if(!m){ MSGPLAYING=false; if(!FX.cur&&!FX.q.length) fxSetLockClass(false); const fn=MSGAFTER; MSGAFTER=null; if(fn)fn(); fxIdle(); return; }
-    const lines=[m.txt]; applyFx(m.fx);
-    while(MSGQ.length&&!MSGQ[0].key){ const n=MSGQ.shift(); lines.push(n.txt); applyFx(n.fx); } // 같은 그룹의 후속 줄 즉시 병합
-    try{ const mb=$("msgBox"); if(mb){ mb.innerHTML=lines.join("<br>"); if(mb.classList){ if(m.big) mb.classList.add("big"); else mb.classList.remove("big"); } } }catch(e){}
-    const ms=m.key?fxMs(m.key):(fxLive()?BAL.fx.msgStep:0);
-    setTimeout(step,ms>0?ms:600);
-  })();
-}
-/* #106 5.5 HP 바 지연 표시 토큰 (side 별 일련번호) — 표시 계층 전용, 규칙 상태(S)·난수와 무관.
-   한 피해 이벤트가 방어막과 HP 를 모두 줄이면 방어막 바만 즉시 줄이고(CSS 전환 .35s) HP 바·숫자는 BAL.fx.barStep 뒤에 쓴다 → 화면에서 방어막 흡수가 먼저 보이고 HP 가 그 다음 줄어든다.
-   두 전환(0.35s + 0.35s = 700ms)은 damageFx(#125 1200ms) 안에서 여유 500ms 를 남기고 끝난다. 표시값 dispHp 는 종전처럼 즉시 갱신하므로 재렌더는 항상 최신 값을 그린다.
-   지연 콜백은 게임 세대(FX.gen)·같은 전투 객체·같은 HP 바 DOM 노드·같은 side 일련번호가 모두 일치할 때만 쓴다 — 옛 게임·닫힌 전투·다시 그려진 모달·뒤따른 HP 갱신을 덮어쓰지 않는다.
-   헤드리스·sim(fxLive() false)은 barStep 0 → 종전처럼 동기 즉시 쓰기 (REVISE msg_d847280b3dba 2번: setter 순서가 아니라 실제 시간 단계로 분리) */
-const HPSTAGE={A:0,D:0};
-function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·HP바·방어막 바·상태 아이콘) — 실패는 조용히 무시
-  if(!fx) return;
-  try{
-    const B=S?S.battle:null;
-    let stage=0; // 5.5: 같은 side 의 방어막·HP 가 이번 이벤트로 함께 줄 때만 HP 표시를 barStep 만큼 늦춘다 (회복·방어막만 감소·HP 만 감소는 즉시)
-    if(fx.st&&fx.st.max&&fx.hp&&fx.hp.side===fx.st.side&&B){
-      const side=fx.st.side, prevSh=B["dispSh"+side]!==undefined?B["dispSh"+side]:0, prevHp=B["dispHp"+side];
-      if(prevSh>(fx.st.shield||0)&&prevHp!==undefined&&prevHp>fx.hp.val) stage=fxMs("barStep"); }
-    if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text;
-      if(fx.st.max){ if(B) B["dispSh"+fx.st.side]=fx.st.shield||0; // #106 5.5 방어막 바 — 항상 즉시 (흡수가 먼저 줄고 HP 는 barStep 뒤)
-        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; } }
-    if(fx.hp){ const side=fx.hp.side; if(B) B["dispHp"+side]=fx.hp.val;
-      const seq=++HPSTAGE[side], bar=$("hpfill-"+side), t=$("hptxt-"+side); // 새 HP 갱신은 같은 side 의 대기 중인 지연 쓰기를 무효화한다 (최신 값이 이긴다)
-      const write=()=>{ if(bar) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%"; if(t) t.textContent=fx.hp.val; };
-      if(stage>0){ const gen=FX.gen;
-        setTimeout(()=>{ if(FX.gen!==gen||!S||S.battle!==B||HPSTAGE[side]!==seq) return; // 옛 게임·끝난 전투·뒤따른 갱신 → 무효
-          if($("hpfill-"+side)!==bar) return; // 모달이 다시 그려져 노드가 바뀌었다 — 재렌더가 dispHp 로 이미 최신 값을 그렸다
-          try{ write(); }catch(e){} },stage); }
-      else write(); }
-    if(fx.shake){ const t=$("tok-"+fx.shake); if(t){t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake");} }
-    if(fx.flash){ const st=$("bstage"); if(st){st.style.boxShadow=`inset 0 0 70px var(--${fx.flash})`;
-      setTimeout(()=>{try{st.style.boxShadow="";}catch(e){}},380);} }
-    if(fx.sig){ const st=$("bstage"); if(st&&st.classList){st.classList.remove("sigblink"); void st.offsetWidth; st.classList.add("sigblink");
-      setTimeout(()=>{try{st.classList.remove("sigblink");}catch(e){}},750);} } // 시그니처 전용 강조 (테두리 점멸)
-    if(fx.float){ const t=$("tok-"+fx.float.side); if(t&&t.appendChild){const d=document.createElement("div");
-      d.className="dmgfloat"; d.innerHTML=fx.float.html; t.appendChild(d);
-      setTimeout(()=>{if(d.parentNode)d.parentNode.removeChild(d);},1100);} }
-    if(fx.ko){ const t=$("tok-"+fx.ko); if(t) t.classList.add("ko"); }
-  }catch(e){}
-}
 function addRec(side,amount){
   const B=S.battle;
   if(side==="A") B.recA=Math.min(B.fd.maxHp,B.recA+amount);
   else B.recD=Math.min(B.fa.maxHp,B.recD+amount);
 }
+/* 스킬 사용 1회 마무리 — 사망 → 해일 예고 검사 → (번개 꼬리) 추가 공격 단계 → 차례 전환.
+   #245 Saturn REVISE(M1): 전투 상태(B.bonus·actSeq·pkgSel·menu)를 바꾸고 전투 화면을 다시 부르는 **규칙 전이**라
+   Data(data.js)가 아니라 Core 가 소유한다. 문구·순서·토큰 계약은 옮기기 전과 같다. */
+function finishV2(side){ if(!S.battle) return; if(checkDeath()) return; if(v2TideCheck()) return;
+  const B=S.battle;
+  /* #241 R1 [CJ 설계] 번개 꼬리: 턴이 넘어가지 않고 같은 전투원이 한 번 더 고른다(방식 A). nextPhase 를 부르지 않고 actSeq 만 올려
+     이전 렌더의 콜백을 무효로 만든 뒤 같은 행동자의 메뉴를 다시 그린다 — 추가 공격은 두 번째 행동(L15)이다 */
+  if(B.bonus&&B.bonus.side===side&&B.bonus.stage==="pending"){ B.bonus.stage="active"; B.actSeq=(B.actSeq||0)+1; B.pkgSel=null; B.menu=null; emitCore({type:"battleRedraw"}); return; } // #245 Saturn REVISE 3차: 여기도 행동 토큰이 올라가는 지점이다 — nextPhase 와 같이 열려 있던 개봉 표를 회수한다
+  nextPhase(); }
 function nextPhase(){
   const B=S.battle;
   /* #146 Saturn REVISE P1: 전투 행동 하나가 끝나고 차례가 넘어가는 **유일한 지점**이다.
@@ -2348,7 +2397,7 @@ function nextPhase(){
   B.pkgSel=null; // #121: 행동·라운드가 넘어가면 열려 있던 개봉 표도 함께 만료된다 (표 자체를 회수 — 토큰 대조에만 기대지 않는다)
   if(B.bonus) v2BonusEnd(B); // #241 R1 번개 꼬리 추가 공격이 끝났다(= 번개 여우의 턴 끝) — 2·3차 ⌛ 복원 (L8)
   if(v2TideCheck()) return;  // #241 R2 매 행동 뒤 해일 예고 판정
-  if(B.phase===0){B.phase=1; battleModal(); return;}
+  if(B.phase===0){B.phase=1; emitCore({type:"battleRedraw"}); return;}
   for(const [f,side] of [[B.fa,"A"],[B.fd,"D"]]){
     /* #233 (GDD-23 4.7·5.6, 2026-09-16 PD 결정): 화상은 **부여된 라운드를 세지 않는다** —
        "화상은 부여된 라운드를 세지 않으므로 다음 2개 라운드의 종료 시에 각 5"(4.7).
@@ -2390,7 +2439,7 @@ function nextPhase(){
   B.ballThrowA=false; B.ballThrowD=false; // #12: 볼 투척 라운드당 1회 리셋
   B.round++;
   if(B.round>battleMaxRounds()){judge(); return;} // #121 계약 3.3: 시간의 수호자가 걸린 전투는 3라운드 (전역 BAL.maxRounds 불변)
-  B.phase=0; B.firstSide=decideFirstSide(B); battleModal(); // #241: 라운드 시작 훅(영구 자기장 재부여·해일 atStart) 삭제 // #233 (GDD-23 4.4): "라운드 시작 시 확정" — 이 라운드의 선턴을 여기서 한 번만 고정한다
+  B.phase=0; B.firstSide=decideFirstSide(B); emitCore({type:"battleRedraw"}); // #241: 라운드 시작 훅(영구 자기장 재부여·해일 atStart) 삭제 // #233 (GDD-23 4.4): "라운드 시작 시 확정" — 이 라운드의 선턴을 여기서 한 번만 고정한다
 }
 function checkDeath(){
   const B=S.battle;
@@ -2423,7 +2472,7 @@ function finishBattle(winSide,how){
     msg=`포획 하수인 패배(${how}) — ${TYPE_KO[loseP.type]} 동시 ${loseP.type==="king"?"패배":"제거"}`; }
   if(loseP.type==="ally"){ syncOwnerLeaders(loseP.owner); } // #234 (5.3): 동료 사망 → 살아 있는 왕·동료에 🪄 칸 추가
   addLog(`⚔️ 전투 종료: ${pname(winP.owner)} 승 — ${msg}`,"imp");
-  showToast(`⚔️ 전투 종료: ${pname(winP.owner)} 승 — ${msg}`);
+  emitToast(`⚔️ 전투 종료: ${pname(winP.owner)} 승 — ${msg}`);
   resetAfter(B.fa); resetAfter(B.fd);
   const attacker=B.attP;
   const q=B.msgQ.splice(0);
@@ -2434,14 +2483,14 @@ function finishBattle(winSide,how){
   ENDING_BATTLE=true;
   try{
     if(loseP.type==="king"){ gameOver(winP.owner,"king");
-      const gmsg=`🏁 경기 종료 — ${pname(winP.owner)} 승리!`; addLog(gmsg,"imp"); showToast(gmsg); ended=true; }
+      const gmsg=`🏁 경기 종료 — ${pname(winP.owner)} 승리!`; addLog(gmsg,"imp"); emitToast(gmsg); ended=true; }
     else if(checkWipe()) ended=true; // T4: 전투 제거(대리 동시 제거 포함) 후 전멸 판정
   } finally{ ENDING_BATTLE=false; }
   // #106 5.6 연출: 남은 메시지 재생 → 결과 배너(전투 = 뷰어 기준 "전투에서 승리!/패배,,," · 경기 종료 = 경기 결과) → 닫힘 — 헤드리스·sim은 즉시 닫힘
-  battleEndFx(q,(ended?matchEndBanner():null)||resultBannerOf(winP),()=>{ if(!S.battle) close(); });
-  if(ended){ render(); return; }
+  emitCore({type:"battleEndFx",queue:q,banner:(ended?matchEndBanner():null)||resultBannerOf(winP)});
+  if(ended){ emitCore({type:"render"}); return; }
   afterBattle(attacker, winSide==="A"&&attacker.alive);
-  render();
+  emitCore({type:"render"});
 }
 /* 전투 종료 공통 정리 — finishBattle(승패·판정) · __fleeCore(도망 성공) · finishByCapture(적 포획) 세 경로가 모두 이 함수를 부른다.
    #121 계약 3.1: 버프 플래그(powerBuff·fleeBoost)도 여기서 지운다. 본체 출전이면 f === 말 객체라 지우지 않으면 다음 전투로 새어 나간다.
@@ -2467,7 +2516,7 @@ function finishByCapture(side){
   loseP.alive=false;
   bmsg(`🔴 몬스터볼 적중! ${fighterName(loseSide)}를(을) 포획했다!`,{ko:loseSide},{key:"captureFx"}); // #106 5.4 성공 연출
   addLog(`🔴 포획 종료: ${pname(p)}가 적 하수인을 포획 — 전투 즉시 종료 (예비 하수인 HP ${BAL.enemyCapHp}/${cb.hp})`,"imp");
-  showToast(`🔴 포획 종료 — 적 하수인 포획! (예비 HP ${BAL.enemyCapHp}/${cb.hp})`);
+  emitToast(`🔴 포획 종료 — 적 하수인 포획! (예비 HP ${BAL.enemyCapHp}/${cb.hp})`);
   resetAfter(B.fa); resetAfter(B.fd);
   const attacker=B.attP;
   const q=B.msgQ.splice(0);
@@ -2476,13 +2525,13 @@ function finishByCapture(side){
   let ended=false;
   ENDING_BATTLE=true;
   try{ ended=checkWipe(); } finally{ ENDING_BATTLE=false; } // 제거이므로 전멸 판정 기여
-  battleEndFx(q,(ended?matchEndBanner():null)
+  emitCore({type:"battleEndFx",queue:q,banner:(ended?matchEndBanner():null)
     /* #126: 포획은 **양측 모두 포획 갈래**다. 문구와 승자·소유자 의미는 그대로 두고, 비포획자 시점만 가라앉힌 색(capnot)을 쓴다 —
        종전처럼 lose 를 주면 포획당한 쪽에 경기 패배급 균열·낙하가 걸린다 (Saturn REVISE). */
-    ||{title:"포획 성공! 전투 종료",cls:(viewerIsOwner(p)||(S.mode==="pvp"&&!NET.mode)?"cap":"cap capnot")},()=>{ if(!S.battle) close(); }); // #106 5.6
-  if(ended){ render(); return; }
+    ||{title:"포획 성공! 전투 종료",cls:(viewerIsOwner(p)||offlinePvp()?"cap":"cap capnot")}}); // #106 5.6
+  if(ended){ emitCore({type:"render"}); return; }
   afterBattle(attacker, side==="A"&&attacker.alive);
-  render();
+  emitCore({type:"render"});
 }
 /* #146 (v0.4.7 CJ 2026-09-10) 이 지웠던 도망 실패 반격은 #122 REVISE(2026-09-10 CJ QA 2)로 **기본 공격 한정으로 되살아났다**.
    실패 = 상대의 무료 기본 공격 1회 + 자기 전투 행동 1회 소모, 그 뒤 상대의 정상 차례. 전용 함수를 새로 두지 않고
@@ -2507,11 +2556,11 @@ function fleeSwapPrompt(piece,opp){
   }
   const mine=fleePickMine();
   const m=mine?"🏃 도망 성공 — 후방의 자기 말(파란 칸)을 클릭해 교환하거나 [교환 생략]":"🛗 도망 성공! 상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다.";
-  addLog("🏃 도망 성공 — 후방 말 교환 선택 중","imp"); showToast(m);
-  fxPlay({key:"fleeFx",kind:"banner",cls:"flee",title:"🛗 도망 성공!",sub:mine?"후방의 자기 말을 골라 자리를 바꾸거나 생략하세요. 교체 후 말을 한칸씩 밀어냅니다.":"상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다."});
-  render();
+  addLog("🏃 도망 성공 — 후방 말 교환 선택 중","imp"); emitToast(m);
+  emitCore({type:"fx",item:{key:"fleeFx",kind:"banner",cls:"flee",title:"🛗 도망 성공!",sub:mine?"후방의 자기 말을 골라 자리를 바꾸거나 생략하세요. 교체 후 말을 한칸씩 밀어냅니다.":"상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다."}});
+  emitCore({type:"render"});
 }
-function fleeDone(){ if(S.phase==="play"&&!S.battle) drainForcedQueue(false); render(); if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule(); } // #18: 스왑 둘째 말의 강제 전투는 밀기·재배치 뒤 승격
+function fleeDone(){ if(S.phase==="play"&&!S.battle) drainForcedQueue(false); emitCore({type:"render"}); if(S.phase==="play"&&!S.battle&&isAI(S.current)) emitCore({type:"aiTurn",player:S.current}); } // #18: 스왑 둘째 말의 강제 전투는 밀기·재배치 뒤 승격
 function fleeResolve(swapId){ // swapId: 후방 후보 id 또는 null(생략) — 온라인 양측이 같은 액션 프레임으로 같은 결과
   const fp=S.fleePick; if(!fp) return false;
   S.fleePick=null;
@@ -2533,6 +2582,6 @@ function fleeSwap(a,b){
 function afterBattle(attacker,attackerWonAlive){
   if(S.battlesUsed===1) S.firstBattleWonByMover = (attacker===S.movedPiece && attackerWonAlive);
   drainForcedQueue(false); // #18: 스왑 둘째 말 강제 전투 — 독립 queue에서 승격 (승·패·포획 종료 공통)
-  render();
-  if(S.phase==="play"&&!S.battle&&isAI(S.current)) aiSchedule();
+  emitCore({type:"render"});
+  if(S.phase==="play"&&!S.battle&&isAI(S.current)) emitCore({type:"aiTurn",player:S.current});
 }

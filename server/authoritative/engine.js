@@ -22,7 +22,19 @@
 //     netPump(80ms, 락스텝 릴레이 수신 큐 펌프 — 서버는 applyAction을 직접 부르므로 NET.queue가 항상 비어 있다)와
 //     netResumeTick(1000ms, 클라이언트 재접속 재시도). 둘 다 규칙 상태를 만들지 않으며, 끝없이 반복되는 콜백을
 //     drain 안에서 돌리면 drain이 유한할 수 없다. clearInterval(id)는 기록을 지운다.
+//
+// #245 최종 tranche — 런타임이 싣는 것은 규칙 3종(data·state·core)뿐이다(runtime.js 머리말). 그래서 이 파일이
+// 하던 일 중 **표시 계층이 대신 해 주던 것**이 이리로 온다. 규칙은 하나도 오지 않는다:
+//   - fx 캡처: 종전에는 ui.js 의 FX.log 배열 push 를 후킹했다. 이제는 Core 가 UI_PORT.event 로 내보내는
+//     **의미 이벤트**를 그대로 받아(installSink) 같은 회선 fx 항목으로 옮긴다. 값은 Core 가 이미 만든 것이고
+//     이 파일은 옮겨 담기만 한다 — 문구를 새로 짓는 자리는 turnLabel() 두 문자열뿐이다(회선 호환 자산).
+//   - 좌석·재생 질의와 액션 진입점: 종전 network.js 의 NET.me·NET.replaying·applyAction·netActor·netStart 자리.
+//     서버가 자기 값으로 채운다(host.seat/host.replaying). 프로토콜 어휘와 4키 프레임은 그대로다.
+//   - 동기화 모달: ./uicompat.js 가 Core 결정 상태에서 회선 모양을 만든다(규칙·난수·전이 없음).
+// 제품 스크립트는 타이머를 하나도 예약하지 않으므로(UI_PORT.defer 기본값=false → Core 가 그 자리에서 이어간다)
+// 아래 스케줄러는 **빈 채로 돈다**. room.js 의 clear()/drain() 계약과 fail-closed 경계를 그대로 두려고 남긴다.
 const { createRuntime } = require('./runtime');
+const { pendingModal, fxItemsFor, turnLabel } = require('./uicompat');
 
 const DEFAULT_MAX_CALLBACKS_PER_DRAIN = 200000;
 // 한 행동이 만드는 연출 체인의 가상 시간 상한. 가장 긴 정상 체인(10라운드 전투의 메시지 재생·배너·워치독)도
@@ -142,25 +154,89 @@ function createScheduler(opts) {
 
 // 엔진 하나 = 독립된 V8 컨텍스트 하나 + 그 안에서 제품 스크립트를 한 번 실행해 얻은 네임스페이스 하나.
 function createEngine(opts) {
-  // 타이머를 먼저 세우고(제품 스크립트 로드 중 예약도 이 스케줄러가 받는다) 그 위에서 제품을 실행한다.
   const sched = createScheduler(opts);
-  const T = createRuntime(sched);
+  const T = createRuntime();
   T.scheduler = sched;
   T.drain = sched.drain;
-
-  // 브라우저에서 overlayBox.innerHTML 교체는 그 안의 옛 #obBtns(와 버튼)를 없앤다. 서버 표시 싱크는 id
-  // 레지스트리라 obBtns 요소가 재사용돼 버튼이 누적된다 — 동기화 모달의 버튼 인덱스·disabled 판정이 어긋난다.
-  // 기존 락스텝 회귀(demo/test/regression/smoke_online_sync.js load())와 같은 방식으로 브라우저 의미를 복원한다.
-  const box = T.byId('overlayBox');
-  const ob = T.byId('obBtns');
-  Object.defineProperty(box, 'innerHTML', {
-    configurable: true,
-    get() { return this._html; },
-    set(v) { this._html = v; this.children.length = 0; ob.children.length = 0; },
-  });
-
+  installHost(T);
+  installSink(T);
   ensureFxCapture(T);
   return T;
+}
+
+// ===== #245 호스트 진입점 — 종전 network.js 자리. 프로토콜만 옮기고 규칙은 Core 에 그대로 둔다 =====
+const FLEE_ONLY = new Set(['cell', 'fleeSwap', 'fleeSkip', 'resign']); // 도망 교환 중 통과하는 어휘 (network.js 와 같은 목록)
+const FLEE_PICK = new Set(['cell', 'fleeSwap', 'fleeSkip']);           // 그중 토큰을 싣는 것
+const BATTLE_VERBS = new Set(['act', 'item', 'ball', 'flee', 'pass', 'pkgOpen']); // 회선을 타는 전투 어휘 (network.js BATTLE_CMDS 와 같은 목록)
+
+function installHost(T) {
+  T.__modal = { seq: 0, key: null };
+
+  // 지금 게임이 입력을 기다리는 플레이어. 서버 엔진은 실제 전투 인스턴스를 들고 있으므로 Core 로 그대로 읽는다.
+  T.netActor = () => {
+    const S = T.S;
+    if (!S) return null;
+    if (S.phase === 'setup') return S.setupPlayer;
+    if (S.battle) return (T.actorOfPhase() === 'A' ? S.battle.attP : S.battle.defP).owner;
+    if (S.fleePick) return S.fleePick.owner; // #114 도망 교환은 도망친 말의 소유자 입력(방어자일 수 있다)
+    return S.current;
+  };
+
+  /* 회선에서 온 액션 하나 — Core 가 맡는 어휘는 Core 가 풀고, 남는 셋만 여기서 푼다(network.js applyAction 과 같은 순서).
+     'modal' 은 회선 호환 어휘다: 버튼 자리를 그 자리가 되돌려 보내기로 한 **Core 액션**으로 바꿔 다시 넣는다. */
+  T.applyAction = (a) => {
+    const S = T.S;
+    if (a.pick && (!S.fleePick || a.pick !== S.fleePick.token)) return;
+    if (S.fleePick && (!FLEE_ONLY.has(a.t) || (FLEE_PICK.has(a.t) && a.pick !== S.fleePick.token))) return;
+    if (a.t === 'modal') {
+      const pm = T.__modal.view;
+      if (!pm || T.__modal.seq !== a.seq) return;            // 지나간 seq 의 늦은 응답은 조용히 버린다
+      const b = pm.buttons[a.i];
+      if (!b || b.disabled || !b.act) return;
+      T.applyAction(b.act);                                   // 실제 판정은 그 Core 액션의 reducer 가 한다
+      return;
+    }
+    /* 전투 어휘는 **받는 쪽 전투 화면의 진입점**이 자기 렌더의 프레임을 붙여 Core 로 보낸다(network.js 의
+       window.__actCore 계열과 같은 자리). 서버에는 렌더가 없으므로 지금 상태에서 같은 프레임을 짓고
+       (battleCmdFrame — 값은 4키 프레임과 같고 전투 인스턴스만 더한다), 보낸 쪽이 겨냥한 문맥 a.bf 를
+       wire 로 그대로 넘긴다. 대조는 Core(battleCmdCtx)가 한다 — 여기서는 판정하지 않는다. */
+    if (BATTLE_VERBS.has(a.t)) {
+      const frame = T.battleCmdFrame(S);
+      if (!frame) return;
+      T.dispatchCoreAction(Object.assign({}, a, { frame, wire: a.bf }));
+      return;
+    }
+    if (T.dispatchCoreAction(a)) return;
+    switch (a.t) {
+      case 'cell': T.onCellCore(a.r, a.c); break;
+      case 'fleeSwap': if (S.fleePick && S.fleePick.cands.includes(a.id)) T.fleeResolve(a.id); break;
+      case 'fleeSkip': if (S.fleePick) T.fleeResolve(null); break;
+      default: break;
+    }
+  };
+
+  /* 공개 방 개시 — 종전 network.js netStart 와 같은 순서·같은 난수 소비다(newGame 의 숲 셔플 2회 →
+     netSetup 2회(손상 데이터일 때만 셔플) → beginPlay 의 선공 1회). 표시 호출(render·showToast)만 없다. */
+  T.netStart = (seed, setups) => {
+    T.setSeed(seed);
+    T.newGame('pvp', {});
+    T.addLog('PVP — 두 플레이어가 번갈아 비공개 배치합니다.', 'sys');
+    T.dispatchCoreAction({ t: 'netSetup', player: 0, data: setups[0] });
+    T.dispatchCoreAction({ t: 'netSetup', player: 1, data: setups[1] });
+    T.addLog(`🌐 온라인 매치 시작 — 당신은 P${T.host.seat + 1}입니다 (자기 진영이 화면 아래). 양측 사전 배치가 적용되었습니다.`, 'sys');
+    T.dispatchCoreAction({ t: 'beginPlay' });
+  };
+}
+
+/* 지금 떠 있는 동기화 모달. 화면이 없으므로 "떠 있다"는 곧 Core 결정 상태다 — uicompat 이 그 상태를 읽어
+   회선 모양을 만들고, 여기서는 **화면이 바뀐 순간에만** seq 를 올린다(종전 modal() 래퍼의 NET.modalSeq++ 자리).
+   같은 화면을 다시 그려도 seq 가 그대로라, 이미 답한 seq 를 room.js 가 소비 처리하면 다시 열리지 않는다. */
+function refreshModal(T) {
+  const m = T.S ? pendingModal(T) : null;
+  const M = T.__modal;
+  if (!m) { M.view = null; M.key = null; return; }
+  if (m.key !== M.key) { M.key = m.key; M.seq++; }
+  M.view = m;
 }
 
 // ===== #217 전투 표시 이벤트(fx) 캡처 =====
@@ -321,43 +397,33 @@ function hookBattleAccessor(T, S) {
   if (backing && Array.isArray(backing.msgQ)) hookMsgQ(T, backing.msgQ);
 }
 
-// FX.log는 게임 내내 재할당되지 않는 module-scope 객체(const FX={...,log:[]})의 프로퍼티라 1회만 걸면 된다.
-// 여기 실리는 것은 fxLive()===true 여야만 fxPlay가 실제로 큐잉하는 배너 중, 그래도 헤드리스에서 무조건
-// 호출되는 것들뿐이다(turnBanner·contactBanner·pushBanner·fleeFx 등 — 호출부 자체에 fxLive() 게이트가 없는
-// 것들). countStep/roundBanner처럼 호출부 자체가 `if(fxLive())`로 감싸인 것은 여기 절대 안 걸린다 — 그건
-// hookBattleAccessor의 battleStart·아래 syncRoundBanner가 대신 담당한다(PD REVISE 1번).
-// explosion/trapFx는 **일부러 여기서 건너뛴다**: Mars 훅(§5)이 있으면 hookFxCellsQueue(아래
-// ensureFxCellsQueue)가 cells까지 채운 완전한 이벤트를 S.__ddFxCells.push 호출 그 순간(원래 FX 지점)에
-// 만든다 — 여기서도 똑같이 만들면 좌표 없는 것 하나 + 좌표 있는 것 하나, 실제로는 하나뿐인 폭발/함정이
-// 이벤트 두 개로 중복된다(2026-09-13 실측으로 발견·수정). Mars 훅이 아직 없으면(오래된 demo 빌드)
-// S.__ddFxCells가 항상 비어 있으므로 이 두 키는 그 순간 아무 이벤트도 못 만든다 — "신호는 있는데 좌표만
-// 없음"보다 "훅이 붙으면 완전한 신호, 안 붙으면 무신호"가 Mars 쪽에서 분기 처리하기 더 단순하고, 실제로
-// 이 branch가 실행될 시점(오늘 기준)엔 이미 훅이 반영돼 있다.
-function hookFxLog(T) {
-  const log = T.FX && T.FX.log;
-  if (!Array.isArray(log) || log.__ddHooked) return;
-  Object.defineProperty(log, '__ddHooked', { value: true, enumerable: false, configurable: true });
-  const realPush = Array.prototype.push;
-  log.push = function pushAndCapture(...items) {
-    for (const it of items) {
-      try {
+/* #245 — 종전에는 ui.js 의 FX.log 배열 push 를 후킹했다. 그 배열은 이제 서버에 없다: Core 가 표시 이벤트를
+   UI_PORT.event 하나로 내보내고, 그 포트를 서버가 쥔다. 옮겨 담는 값은 Core 가 이미 만든 것이고, 이벤트 →
+   회선 fx 항목의 대응은 uicompat.fxItemsFor 한 곳에 있다(문구는 종전 ui.js 가 같은 이벤트로 만들던 것과 같다).
+   여기서 하는 일은 그 항목에 서버 문맥(battleId·turn·scene)을 붙여 캡처 창에 넣는 것뿐이다.
+   explosion/trapFx 는 **일부러 건너뛴다**(fxItemsFor 가 거른다): hookFxCellsQueue 가 cells 까지 채운 완전한
+   이벤트를 S.__ddFxCells.push 그 순간(원래 FX 지점)에 만들므로, 여기서도 만들면 좌표 없는 것 하나 + 좌표 있는
+   것 하나로 하나뿐인 폭발/함정이 둘이 된다(2026-09-13 실측으로 발견·수정).
+   roundBanner 는 여기 오지 않는다 — 원본에서도 `if(fxLive())` 안이라 호출조차 되지 않던 것이고,
+   hookBattleAccessor 의 battleStart·아래 syncRoundBanner 가 대신 담당한다(PD REVISE 1번). */
+function installSink(T) {
+  T.host.sink = (ev) => {
+    try {
+      for (const it of fxItemsFor(T, ev)) {
         const key = it.key || null;
-        if (key === 'explosion' || key === 'trapFx') continue; // hookFxCellsQueue가 대신 담당(아래 주석)
         const battleId = currentBattleIdFor(T, key);
         // Saturn REVISE(fx-qa-revise.md P1 #2) — scene도 battleId와 같은 조건으로만 동봉한다: 이 resultBanner가
-        // 실제로 직전 전투에서 유래했다고 판정됐을 때(battleId != null)만 그 무대를 붙인다. 무관한 resultBanner에
-        // battleId:null만 붙이고 scene은 그대로 옛 것을 남기면 절반만 고친 것이 된다.
+        // 실제로 직전 전투에서 유래했다고 판정됐을 때(battleId != null)만 그 무대를 붙인다.
         fxAppend(T, {
           src: 'stage', battleId,
-          turn: typeof it.turn === 'number' ? it.turn : null,
+          turn: T.S && typeof T.S.turnCount === 'number' ? T.S.turnCount : null,
           key, kind: it.kind || 'banner',
           title: typeof it.title === 'string' ? it.title : '', sub: typeof it.sub === 'string' ? it.sub : '',
           cls: typeof it.cls === 'string' ? it.cls : undefined,
           scene: (key === 'resultBanner' && battleId != null) ? (T.__fx.lastScene || null) : undefined,
         });
-      } catch (e) { /* 캡처 실패는 표시 계층 손실일 뿐 — 게임 진행을 막지 않는다 */ }
-    }
-    return realPush.apply(this, items);
+      }
+    } catch (e) { /* 캡처 실패는 표시 계층 손실일 뿐 — 게임 진행을 막지 않는다 */ }
   };
 }
 
@@ -366,28 +432,30 @@ function hookFxLog(T) {
 // 엔진을 구동하는 유일한 공통 지점(withEngine)의 맨 앞에서 매번 불러 그 재할당을 놓치지 않는다.
 function ensureFxCapture(T) {
   if (!T.__fx) T.__fx = { items: [], nextSeq: 1, gen: 0 };
-  hookFxLog(T);
   if (T.S) { hookBattleAccessor(T, T.S); ensureFxCellsQueue(T, T.S); }
 }
 
-// #217 PD REVISE 1번 — roundBanner의 문구/재생 여부를 서버가 새로 판정하지 않는다. 원본이 이미 세워 둔
-// `battle.bannerKey`(= `round+"-"+phase`, index.html:3355-3356, 헤드리스에서도 무조건 갱신)가 우리가 마지막
-// 으로 내보낸 값과 다르면 "그 사이 원본 기준으로 배너가 한 번 필요했다"는 뜻이므로 그때만 내보낸다. 문구는
-// 원본이 이미 노출하는 순수 함수(`actorOfPhase`·`fxTurnLabel`·`viewerIsOwner`)를 그대로 호출해서 얻는다 —
-// 텍스트를 새로 짓지 않는다(원본 index.html:3107·3357과 동일 계산). 이 함수는 매 withEngine 호출 끝, 즉
-// "이 행동이 만든 연출 체인이 전부 가라앉은 뒤"에 최종 상태만 보고 판단한다 — 규칙 재계산·RNG 없음.
+/* #217 PD REVISE 1번 — roundBanner의 재생 여부를 서버가 새로 판정하지 않는다. 기준은 원본과 같은 한 줄
+   `round+"-"+phase`(ui.js battleModal 의 bkey)다: 그 값이 우리가 마지막으로 내보낸 것과 다르면 "그 사이 원본
+   기준으로 배너가 한 번 필요했다"는 뜻이므로 그때만 내보낸다.
+   #245 — 종전에는 그 값을 `B.bannerKey` 에서 **읽었다**. 그 칸을 세우던 것은 ui.js 의 battleModal 이고, 그 파일은
+   이제 서버에 없다(읽으면 언제나 undefined 라 배너가 하나도 나가지 않았다). 같은 두 칸(round·phase)에서 직접
+   짓는다 — 표시 플래그에 의존하지 않으니 오히려 결합이 하나 줄었고, 값·시점은 종전과 같다.
+   문구는 원본이 이미 노출하는 순수 함수(`actorOfPhase`·`viewerIsOwner`)로 얻는다 — 종전 `fxTurnLabel` 의
+   온라인 분기(= 공개 방의 유일한 분기)와 같은 값을 uicompat.turnLabel 이 낸다.
+   이 함수는 매 withEngine 호출 끝, 즉 "이 행동이 만든 연출 체인이 전부 가라앉은 뒤"에 최종 상태만 보고
+   판단한다 — 규칙 재계산·RNG 없음. */
 function syncRoundBanner(T) {
   const S = T.S, B = S && S.battle;
-  if (!B || B.bannerKey === undefined || B.bannerKey === null) return; // 아직 첫 배너 전이 안 됨(intro 단계)
-  if (B.__ddBannerKeyEmitted === B.bannerKey) return;
-  Object.defineProperty(B, '__ddBannerKeyEmitted', { value: B.bannerKey, writable: true, enumerable: false, configurable: true });
+  if (!B || B.round === undefined || B.phase === undefined) return;
+  const bkey = B.round + '-' + B.phase;
+  if (B.__ddBannerKeyEmitted === bkey) return;
+  Object.defineProperty(B, '__ddBannerKeyEmitted', { value: bkey, writable: true, enumerable: false, configurable: true });
   try {
     const side = T.actorOfPhase ? T.actorOfPhase() : 'A';
     const ownerP = side === 'A' ? B.attP.owner : B.defP.owner;
-    const title = T.fxTurnLabel ? T.fxTurnLabel(ownerP, true) : '';
-    const mine = T.viewerIsOwner ? T.viewerIsOwner(ownerP) : false;
-    const netMode = !!(T.NET && T.NET.mode);
-    const cls = mine && !(S.mode === 'pvp' && !netMode) ? 'mine' : '';
+    const title = turnLabel(T, ownerP);
+    const cls = T.viewerIsOwner(ownerP) ? 'mine' : ''; // 공개 방은 언제나 온라인 — 종전 `S.mode==='pvp' && !NET.mode`(핫시트) 분기는 서버에 오지 않는다
     fxAppend(T, {
       src: 'stage', battleId: T.__fx.lastBattleId || null, turn: typeof S.turnCount === 'number' ? S.turnCount : null,
       key: 'roundBanner', kind: 'banner', title, sub: 'Round ' + B.round + ' / ' + (T.BAL ? T.BAL.maxRounds : ''),
@@ -461,6 +529,7 @@ function withEngine(T, fn) {
   // explosion/trapFx(cells)는 더 이상 여기서 드레인하지 않는다 — hookFxCellsQueue(§ensureFxCellsQueue)가
   // Mars의 실제 push 호출 시점에 즉시 이벤트화하므로(원인이 그보다 늦게 나는 결과보다 항상 먼저 seq를 받음).
   syncRoundBanner(T);
+  refreshModal(T); // 이 행동이 끝난 뒤 떠 있는 동기화 모달 — 화면이 바뀌었을 때만 seq 가 오른다
   return result;
 }
 
