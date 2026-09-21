@@ -150,12 +150,39 @@ const PERSIST_API=[/\blocalStorage\b/,/\bsessionStorage\b/,/\bindexedDB\b/,/\bop
   /\bcaches\b/,/navigator\s*\.\s*storage/,/\bXMLHttpRequest\b/,/\bfetch\s*\(/,/\bsendBeacon\b/,/\bBroadcastChannel\b/];
 function persistApiHits(src){ return PERSIST_API.filter(re=>re.test(String(src))).map(re=>re.source); }
 
+function localAsset(htmlPath,ref){
+  const clean=String(ref).split(/[?#]/,1)[0];
+  if(!clean||/^(?:[a-z]+:|\/|\\)/i.test(clean)) throw new Error("external asset is not local: "+ref);
+  const root=path.dirname(path.resolve(htmlPath));
+  const file=path.resolve(root,clean);
+  if(file!==root&&!file.startsWith(root+path.sep)) throw new Error("external asset escapes demo root: "+ref);
+  return fs.readFileSync(file,"utf8");
+}
+function inlineAssets(source,htmlPath){
+  let html=String(source).replace(/<link\b([^>]*)>/gi,(tag,attrs)=>{
+    const rel=/\brel\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    if(!rel||rel[2].toLowerCase()!=="stylesheet") return tag;
+    const href=/\bhref\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    if(!href) return tag;
+    return "<style>"+localAsset(htmlPath,href[2])+"</style>";
+  });
+  const scripts=[];
+  const marker="<!-- harness-script -->";
+  html=html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi,(tag,attrs,body)=>{
+    const src=/\bsrc\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    scripts.push(src?localAsset(htmlPath,src[2]):body);
+    return scripts.length===1?marker:"";
+  });
+  if(!scripts.length) throw new Error("script block not found");
+  const script=scripts.join("\n");
+  return {html:html.replace(marker,"<script>"+script+"</script>"),script};
+}
+
 function load(htmlPath,opts){
   opts=opts||{};
   htmlPath=htmlPath||path.join(__dirname,"..","..","index.html");
-  const html=opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"); // #94·#96 opts.html: 파일을 쓰지 않고 메모리 HTML을 로드 — #94 변이본 음성 대조, #96 git show 기준판 before/after 대조용
-  const m=html.match(/<script>([\s\S]*)<\/script>/);
-  if(!m) throw new Error("script block not found");
+  const loaded=inlineAssets(opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"),htmlPath); // #94·#96 메모리 HTML과 #245 외부 정적 파일을 같은 실행 소스로 정규화
+  const html=loaded.html;
   const els={};
   const cookieWrites=[];
   // doc를 먼저 만들고 모든 요소를 mkEl(doc)로 생성한다 — 포커스는 이 로드의 문서에만 기록된다
@@ -227,7 +254,7 @@ function load(htmlPath,opts){
   const drain=(cap)=>{cap=cap||5000000; let n=0; while(TQ.length&&n<cap){TQ.shift()();n++;} return n;};
   const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win};
   /* 렉시컬 캡처 — 이 줄은 제품 코드 1행과 같은 줄에 이어 붙지 않도록 개행 없이 앞에 둔다 (에러 행 번호 보존) */
-  const code=`const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window}=__ENV;`+m[1]+`
+  const code=`"use strict";const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window}=__ENV;`+loaded.script+`
 ;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
   /* #233 (GDD-23 3-4장) 8스탯 전투 엔진 계약 — 기준판 로드 호환을 위해 typeof 가드를 둔다(부재 시 undefined) */
   ARCHETYPE_BASE:typeof ARCHETYPE_BASE!=="undefined"?ARCHETYPE_BASE:undefined, KING_BASE:typeof KING_BASE!=="undefined"?KING_BASE:undefined,
@@ -261,10 +288,10 @@ function load(htmlPath,opts){
   witchApply:typeof witchApply==="function"?witchApply:undefined, reaperWhy:typeof reaperWhy==="function"?reaperWhy:undefined,
   slotUsable:typeof slotUsable==="function"?slotUsable:undefined, battleMaxRounds:typeof battleMaxRounds==="function"?battleMaxRounds:undefined,
   resetAfter:typeof resetAfter==="function"?resetAfter:undefined, resetBattleTemps:typeof resetBattleTemps==="function"?resetBattleTemps:undefined, // #121 계약 3.1 전투 종료 정리 검증용
-  recruitState:typeof recruitState==="function"?recruitState:undefined, searchFinalize:typeof searchFinalize==="function"?searchFinalize:undefined, // #121 계약 4·6 · #129 계약 7
+  recruitState:typeof recruitState==="function"?recruitState:undefined, searchFinalizeFx:typeof searchFinalizeFx==="function"?searchFinalizeFx:undefined, // #121 계약 4·6 · #129 계약 7 (#245: 상태는 reducer, 이 이름은 표시 전용)
   searchEndCheck:typeof searchEndCheck==="function"?searchEndCheck:undefined, rosterMinions:typeof rosterMinions==="function"?rosterMinions:undefined,
   capReceivers:typeof capReceivers==="function"?capReceivers:undefined,
-  get __openPkgCore(){return window.__openPkgCore;}, get __pkgPickCore(){return window.__pkgPickCore;}, // #121 전투 중 패키지 (battleModal 클로저 — 매 렌더 교체되므로 getter)
+  get __openPkgCore(){return window.__openPkgCore;}, get __pkgPickCore(){return window.__pkgPickCore;}, get __pkgCancelCore(){return window.__pkgCancelCore;}, // #245 취소도 Core 경계 // #121 전투 중 패키지 (battleModal 클로저 — 매 렌더 교체되므로 getter)
   get __recruitCore(){return window.__recruitCore;},
   get __openPkg(){return window.__openPkg;}, get __act(){return window.__act;}, get __useItem(){return window.__useItem;}, // netAction 래퍼 (온라인 송신 경로 검증용)
   get __useItemCore(){return window.__useItemCore;}, get __throwBallCore(){return window.__throwBallCore;}, // 전투 모달 클로저 — 매 렌더 교체되므로 getter
@@ -280,7 +307,13 @@ function load(htmlPath,opts){
   finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,archSkills,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,aiUnitValue,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
-  applyAction,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼
+  applyAction,resolveCoreAction:typeof resolveCoreAction==="function"?resolveCoreAction:undefined,reduceCoreAction:typeof reduceCoreAction==="function"?reduceCoreAction:undefined,dispatchCoreAction:typeof dispatchCoreAction==="function"?dispatchCoreAction:undefined,commitCoreState:typeof commitCoreState==="function"?commitCoreState:undefined,
+  /* #245 Saturn REVISE(M3): 규칙 이벤트의 소유자(Core)와 그 소비 루프 — 화면 없이 규칙 진행을 검증하는 경로 */
+  applyCoreEffects:typeof applyCoreEffects==="function"?applyCoreEffects:undefined,runCoreEvents:typeof runCoreEvents==="function"?runCoreEvents:undefined,
+  emitCore:typeof emitCore==="function"?emitCore:undefined,UI_PORT:typeof UI_PORT!=="undefined"?UI_PORT:undefined,
+  battleSideOf:typeof battleSideOf==="function"?battleSideOf:undefined,entryStep:typeof entryStep==="function"?entryStep:undefined,
+  AI:typeof AI!=="undefined"?AI:undefined,aiMem:typeof aiMem==="function"?aiMem:undefined,aiCloneBoard:typeof aiCloneBoard==="function"?aiCloneBoard:undefined, // #245 M2 AI 어댑터 기록·사본 보드
+  boardCellOk:typeof boardCellOk==="function"?boardCellOk:undefined,movablePiece:typeof movablePiece==="function"?movablePiece:undefined,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼 · #245 점진 Core 경계
   recruitCandidates:typeof recruitCandidates==="function"?recruitCandidates:undefined,aiRecruitSlot:typeof aiRecruitSlot==="function"?aiRecruitSlot:undefined, // #92 (기준판 로드 호환: 없으면 undefined)
   atkElOf:typeof atkElOf==="function"?atkElOf:undefined,skillNameKo:typeof skillNameKo==="function"?skillNameKo:undefined,recruitModal:typeof recruitModal==="function"?recruitModal:undefined,
   SKILL_TIER_KO:typeof SKILL_TIER_KO!=="undefined"?SKILL_TIER_KO:undefined,
@@ -327,7 +360,7 @@ function load(htmlPath,opts){
   autoEndCheck:typeof autoEndCheck==="function"?autoEndCheck:undefined,autoEndReady:typeof autoEndReady==="function"?autoEndReady:undefined,anyMainActionLeft:typeof anyMainActionLeft==="function"?anyMainActionLeft:undefined,optionalBattleLeft:typeof optionalBattleLeft==="function"?optionalBattleLeft:undefined,
   turnBannerFx:typeof turnBannerFx==="function"?turnBannerFx:undefined,viewerIsOwner:typeof viewerIsOwner==="function"?viewerIsOwner:undefined,fxTurnLabel:typeof fxTurnLabel==="function"?fxTurnLabel:undefined,resultBannerOf:typeof resultBannerOf==="function"?resultBannerOf:undefined,
   renderTurnBar,renderBoard,netReady,netAction,onCellCore,execSlot,aiSchedule,aiScheduleBattle,
-  playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,fighterName,
+  playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,battleActionFrame:typeof battleActionFrame==="function"?battleActionFrame:undefined,fighterName, // #245 bf — 수신 프레임 재생 검증용 (기준판 대조 로드에는 없다)
   // #114 v0.4.5 (기준판 로드 호환: 부재 시 undefined) — 양측 밀기·재배치·도망 보드 교환·AI 밀기 평가
   pushResolve:typeof pushResolve==="function"?pushResolve:undefined,pushPair:typeof pushPair==="function"?pushPair:undefined,relocatePair:typeof relocatePair==="function"?relocatePair:undefined,relocCandidates:typeof relocCandidates==="function"?relocCandidates:undefined,relocZone:typeof relocZone==="function"?relocZone:undefined,
   fleeSwapPrompt:typeof fleeSwapPrompt==="function"?fleeSwapPrompt:undefined,fleeResolve:typeof fleeResolve==="function"?fleeResolve:undefined,fleePickMine:typeof fleePickMine==="function"?fleePickMine:undefined,
@@ -421,8 +454,10 @@ function runSim(T,levels,seed,opts){
   while(T.TQ.length&&n<opts.cap||5000000){
     if(!T.TQ.length) break;
     T.TQ.shift()(); n++;
+    if(opts.trace) opts.trace(T,n);
     if(opts.check&&(n%opts.check===0)){ const v=invariants(T); if(v.length){viol.push(...v.map(x=>"t"+T.S.turnCount+" "+x));} }
-    if(T.S.aiLastThinkMs!==undefined){think.push(T.S.aiLastThinkMs); T.S.aiLastThinkMs=undefined;}
+    /* #245 M2: 사고 시간은 게임 상태가 아니라 AI 어댑터 기록이다 (AI.lastThinkMs) */
+    const mem=T.AI; if(mem&&mem.lastThinkMs){ think.push(mem.lastThinkMs); mem.lastThinkMs=0; }
     if(n>=(opts.cap||5000000)) break;
   }
   const v=invariants(T); if(v.length) viol.push(...v);

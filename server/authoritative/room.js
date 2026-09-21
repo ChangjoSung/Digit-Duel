@@ -1,7 +1,7 @@
 'use strict';
 // 룸 상태 기계 — analysis.md §2.3(생명주기)·§2.4(자격)·§2.5(명령)·§2.6(화이트리스트)의 구현.
 // 게임 규칙 자체(이동·전투·상성·스킬·아이템·폭탄·함정·밀어내기·탐색·텔레포트·도망·기권)는 재구현하지 않고
-// demo/index.html의 실제 엔진(engine.js가 하네스로 헤드리스 구동)을 그대로 쓴다.
+// demo/index.html의 실제 제품 스크립트(engine.js가 서버 소유 헤드리스 런타임 runtime.js로 구동)를 그대로 쓴다.
 //
 // v4 (Saturn REVISE msg_9a62b8728ecf) — 무엇이 바뀌었나:
 //
@@ -53,11 +53,26 @@ const ACTION_TYPES = new Set([
 const SETUP_ONLY_ACTIONS = new Set(['auto', 'clear', 'roster', 'setupDone', 'selTray']);
 const ACT_KINDS = new Set(['basic', 'skill', 'common']); // __actCore의 레거시 문자열 kind (왕·동료 본체 UI가 'basic'/'skill'을 보낸다)
 const PKG_KINDS = new Set(['itemGift', 'battleBuff']);
+/* #245 회선을 타는 전투 어휘 — demo/js/network.js BATTLE_CMDS 와 같은 목록이다. 확정(pkgPick)은 모달 중계를 타므로 여기 없다. */
+const BATTLE_CMDS = new Set(['act', 'item', 'ball', 'flee', 'pass', 'pkgOpen']);
+const BF_KEYS = ['side', 'seq', 'round', 'phase'];
 const RECRUIT_SWAP_STAGES = new Set(['skill', 'target', 'slot']); // demo/index.html recruitModal 의 기술 교체 단계 (#234 닫힘)
 const ROSTER_SIZE = 6; // applyNetSetup: data.roster.length===6
 
 function now() { return Date.now(); }
 function err(reason) { return { ok: false, reason }; }
+
+/* 겨냥 프레임 — 클라이언트가 전투 어휘에 싣는 값과 같은 모양(demo/js/core.js battleActionFrame). 상태만 읽는다. */
+function battleFrame(T) {
+  const B = T.S && T.S.battle;
+  return B ? { side: T.actorOfPhase(), seq: B.actSeq || 0, round: B.round, phase: B.phase } : null;
+}
+/* 회선에서 온 프레임은 **온전하고 정확해야** 한다 — 없음·부분·여분 키·배열·문자열 숫자는 나머지 값이 맞아도 거부다
+   (demo/js/core.js bfShapeOk + battleCmdCtx 와 같은 판정). 네 값을 === 로만 보므로 재귀·형변환이 없다. */
+function frameMatches(w, want) {
+  return !!want && !!w && typeof w === 'object' && !Array.isArray(w)
+    && Object.keys(w).length === BF_KEYS.length && BF_KEYS.every((k) => w[k] === want[k]);
+}
 
 // ===== 배치 검증용 카탈로그 — 엔진 하나를 프로세스당 한 번만 띄워 상수만 읽는다 =====
 let CATALOG = null;
@@ -86,14 +101,22 @@ function catalog() {
 // (① 회피 · ③ 분산 · ⑦ 치명) 소비하므로, 두 좌석 엔진의 난수 소비가 한 번이라도 어긋나면 이후 모든 판정이 갈린다 —
 // 그 어긋남이 상태에 드러나는 지점(방어막 층 순서 · 균열/경화 잔여 · 예고 피해 대기열)을 전부 덮지 않으면
 // fail-closed VOID 가 발동하지 못하고 두 좌석이 조용히 다른 경기를 보게 된다.
-// #234 — demo/index.html V2_TIMED 와 같은 목록(harness 가 노출하지 않아 사본을 둔다. 드리프트는 경계 검사가 잡는다).
+// #234 — demo/js/data.js V2_TIMED 와 같은 목록. 런타임 네임스페이스에 V2_TIMED 가 노출돼 있어도 **일부러 읽지 않는다**:
+// 요약 키 순서는 두 좌석 엔진을 비교하는 경계 계약이라 엔진 값과 함께 조용히 따라 움직이면 안 된다(엔진이 바뀌면
+// 양쪽 요약이 똑같이 바뀌어 드리프트가 가려진다). 여기 고정해 두면 test-issue241-boundary.js S1 이 서버 목록과
+// 엔진 V2_TIMED 의 순서까지 같은지 대조해 불일치를 실패로 만든다.
 // #241 (CJ 승인 2026-09-17 스킬 정리) — spdDownR→evadeDownR(V1 회피율 감소) · mirrorR(R3)·burrowR·fortressR(단순화) 삭제. 순서도 엔진과 같다.
 const V2_TIMED_KEYS = Object.freeze(['absorbR', 'spdBuffR', 'evadeDownR', 'healCutR', 'vanguardTurn', 'retaliateBurnR',
   'reflectR', 'counterR', 'overloadR', 'nullHitR', 'sandStormR', 'ringR', 'enduredR', 'breedR', 'immuneShockR', 'mossR']);
 function lockstepDigest(T) {
   const S = T.S;
   const B = S.battle;
-  const sm = T.NET.syncModal;
+  /* #245 의도적 digest 스키마 변경 — 종전 `modalSeq`/`sync`는 ui.js·network.js 가 서버에 실려 있을 때의
+     **표시 계층 부산물**(NET.modalSeq 와 NET.syncModal.fns 개수)이었다. 그 두 파일이 권위 런타임에서 빠지면서
+     같은 사실을 Core 결정 상태가 직접 들고 있다: 출전 보류 결정(S.entryPick) · 패키지 표(S.battle.pkgSel) ·
+     탐색 보상 단계(S.recruit). 요약이 덮는 범위는 **넓어졌다** — 종전에는 버튼 개수만 봤지만 이제 어느 단계·
+     어느 표인지까지 본다. 두 좌석 엔진이 다른 화면에 서 있으면 그 자리에서 갈린다(fail-closed VOID). */
+  const EP = S.entryPick, PS = B && B.pkgSel;
   // #233 — 전투원이 지니는 8스탯(3.2·3.3·3.5). 등급 성장(3.4)과 포획·예비 승계로 값이 갈릴 수 있어 함께 본다.
   const stats = (f) => [f.def || 0, f.spd || 0, f.dodge || 0, f.crit || 0, f.statusPct || 0,
     f.grade === undefined ? null : f.grade];
@@ -212,15 +235,36 @@ function lockstepDigest(T) {
       fa: fighter(B.fa), fd: fighter(B.fd), itemRoundA: !!B.itemRoundA, itemRoundD: !!B.itemRoundD,
       ballThrowA: !!B.ballThrowA, ballThrowD: !!B.ballThrowD, buffA: B.buffA || null, buffD: B.buffD || null,
       // #234 4.3 반사·반격 "한 행동 1회" 게이트 — 마지막으로 발동한 actSeq. 한쪽만 서 있으면 같은 행동의 두 번째 반사가 갈린다.
-      reflectSeq: B.reflectSeq === undefined ? null : B.reflectSeq, counterSeq: B.counterSeq === undefined ? null : B.counterSeq,
+      reflectSeq: B.reflectSeq === undefined ? null : B.reflectSeq,
       /* #241 R1 (CJ 설계) 번개 꼬리 추가 공격 단계 — 같은 행동자가 한 번 더 고르는 상태. 한 좌석만 서 있으면 그 좌석은 차례를 넘기지
          않고 다른 좌석은 넘겨 행위자 자체가 갈린다. allowed(합법 슬롯)·saved(턴 끝에 되돌릴 2·3차 ⌛ 사본)·tailSlot 모두 규칙 상태다.
          B.actSeq 는 추가 공격 시작에도 오르며 위 actSeq 가 이미 본다. */
       bonus: B.bonus ? [B.bonus.side, B.bonus.stage, (B.bonus.allowed || []).slice(),
         Object.keys(B.bonus.saved || {}).sort().map((k) => [k, B.bonus.saved[k]]), B.bonus.tailSlot === undefined ? null : B.bonus.tailSlot] : null,
+      /* #245 패키지 개봉 인가 표 — 확정(pkgPick)은 모달 중계라 회선 프레임이 없고 이 표가 곧 그 확정의 겨냥 문맥이자
+         재고를 움직일 권한이다. 발급 번호(id)까지 본다: 같은 종류를 같은 문맥에서 다시 열면 나머지 여섯 값이 전부 같아
+         id 가 빠지면 서로 다른 두 표를 같은 상태로 읽는다. 요약에 없으면 fail-closed VOID 가 발동하지 못한다.
+         발급 카운터(S.pkgSeq — #245 REVISE 4차로 전투가 아니라 **경기 단위**가 됐다)는 **넣지 않는다** — 표 없이
+         카운터만 갈린 상태는 아직 아무 인가도 아니고, 그 차이는 다음 개봉이 발급하는 id 에서 곧바로 드러나 위
+         pkgSel 이 잡는다. 분리 전 원본에 없는 필드인 것도 그대로라, 넣으면 smoke_issue245 의 버전 대조가 — 이제는
+         전투가 끝나도 경기 내내 남는 값이라 더 넓게 — 동작은 같은데 값만 다르다고 어긋난다. */
+      pkgSel: B.pkgSel ? [B.pkgSel.kind, B.pkgSel.owner, B.pkgSel.side, B.pkgSel.seq, B.pkgSel.round, B.pkgSel.phase,
+        B.pkgSel.id === undefined ? null : B.pkgSel.id] : null,
     } : null,
     fleePick: S.fleePick ? { owner: S.fleePick.owner, cands: S.fleePick.cands.slice(), token: S.fleePick.token } : null,
     events: (S.events || []).map((e) => [e.r, e.c, e.kind, !!e.consumed]),
+    /* #245 (Saturn REVISE) 탐색 보상 선택의 **진행 중** 규칙 상태. 좌석별 엔진이 같은 프레임을 같은 순서로 적용하면
+       전부 같아야 하는 결정론적 값이고(후보 종은 탐색 시점의 rand 1회, 토큰은 말 id + 게임 내 recruit 순번), 뷰에는
+       싣지 않는 서버 내부 비교 전용이라 비공개 내용을 어디로도 내보내지 않는다.
+       빠져 있으면 한 좌석만 단계를 전진했거나 다른 후보 종·다른 수령 말·다른 토큰을 들고 있어도 요약이 같게 나온다 —
+       그 좌석의 다음 선택만 합법이 되거나(단계·토큰) 포획 결과가 곧바로 갈린다(종·수령 말·비용).
+       searchEndSeq 는 완료 토큰이라 한쪽만 올라가면 종료 연출·턴 종료 재평가가 한 번 더 또는 덜 발화한다. */
+    recruit: S.recruit ? [S.recruit.owner, S.recruit.pieceId, S.recruit.species, S.recruit.stage,
+      S.recruit.skill === undefined ? null : S.recruit.skill,
+      S.recruit.targetId === undefined ? null : S.recruit.targetId,
+      S.recruit.recvId === undefined ? null : S.recruit.recvId,
+      S.recruit.token === undefined ? null : S.recruit.token] : null,
+    searchEndSeq: S.searchEndSeq || 0,
     // #233 — 예비(포획) 하수인도 승계한 아키타입 8스탯을 지니고 그대로 대리 출전한다(3.3). element/hp만 보면
     // 스탯 주입이 갈린 상태를 놓친다.
     balls: S.balls.slice(), inv: S.inv.map((a) => a.slice()),
@@ -228,7 +272,9 @@ function lockstepDigest(T) {
     reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x), num(x.reaperSeal)] : null)),
     pkgs: S.pkgs.map((p) => Object.assign({}, p)), teleUsed: (S.teleUsed || []).slice(),
     traces: S.traces.map((t) => [...t].sort()), tempReveal: [...(S.tempReveal || [])].sort(), winner: S.winner,
-    modalSeq: T.NET.modalSeq, sync: sm ? { seq: sm.seq, owner: sm.owner, n: sm.fns ? sm.fns.length : 0 } : null,
+    modalSeq: T.__modal ? T.__modal.seq : 0,
+    entryPick: EP ? [EP.attId, EP.defId, EP.stage, EP.A, EP.D] : null,
+    pkgSel: PS ? [PS.kind, PS.owner, PS.id, PS.round, PS.side, PS.seq, PS.phase] : null,
     // #233 — 본체 출전이면 말 자체가 전투원이라 8스탯(3.3·3.5)과 등급이 말에 남는다. 포획 하수인(cap)도 같은
     // 스탯을 승계해 대리 출전하므로(3.3) cap 튜플도 함께 넓힌다.
     pieces: S.pieces.map((p) => [p.id, p.owner, p.type, p.rosterId, p.element, p.hp, p.maxHp, p.r, p.c, p.placed, p.alive,
@@ -508,7 +554,7 @@ class Room {
     try {
       engines = [createEngine(), createEngine()];
       engines.forEach((T, seat) => {
-        withEngine(T, () => { T.NET.me = seat; T.netStart(seed, setups); });
+        withEngine(T, () => { T.host.seat = seat; T.netStart(seed, setups); }); // #245 좌석 시점은 호스트 포트가 준다(종전 NET.me)
         this._assertSetupApplied(T, setups);
       });
       const d0 = lockstepDigest(engines[0]), d1 = lockstepDigest(engines[1]);
@@ -569,29 +615,27 @@ class Room {
     }
   }
 
-  // 지금 입력을 기다리는 동기화 모달(버튼이 있는 2차 선택 화면). 소유자 좌석의 엔진 DOM에서 실제로 떠 있는지 확인한다:
-  // syncModal이 남아 있어도 (a) 이미 그 seq를 처리했거나 (b) 오버레이가 닫혔거나 (c) 다른 모달이 버튼을 교체했으면
-  // 대기 중이 아니다(close()는 NET.syncModal을 지우지 않는다).
+  // 지금 입력을 기다리는 동기화 모달(버튼이 있는 2차 선택 화면). 이미 그 seq를 처리했으면 대기 중이 아니다.
+  // #245 — 종전에는 소유자 좌석 엔진의 **DOM**(overlay/obBtns/overlayBox)을 긁어 이 값을 만들었다. 권위 런타임이
+  // 규칙 3종만 싣게 되면서 그 DOM 이 사라졌고, 같은 값을 engine.js 의 호환 직렬화(uicompat.pendingModal)가 Core
+  // 결정 상태(S.entryPick · S.battle.pkgSel · S.recruit)에서 만든다. 회선 모양·좌석 경계는 그대로다:
+  // 두 좌석 엔진이 같은 화면을 같은 seq 로 들고 있을 때만 대기 중으로 보고, 문구·버튼은 소유자에게만 나간다.
   _pendingModal() {
     if (!this.engines) return null;
-    const sm0 = this.engines[0].NET.syncModal;
-    if (!sm0 || !sm0.fns || !sm0.fns.length) return null;
-    if (this._consumedModalSeq === sm0.seq) return null;
-    const owner = sm0.owner;
+    const M0 = this.engines[0].__modal;
+    if (!M0 || !M0.view) return null;
+    if (this._consumedModalSeq === M0.seq) return null;
+    const owner = M0.view.owner;
     if (owner !== 0 && owner !== 1) return null;
-    const To = this.engines[owner];
-    const sm = To.NET.syncModal;
-    if (!sm || sm.seq !== sm0.seq || !sm.fns || sm.fns.length !== sm0.fns.length) return null;
-    const overlay = To.byId('overlay');
-    if (!overlay || overlay.classList.contains('hidden')) return null;
-    const kids = To.byId('obBtns').children;
-    if (kids.length !== sm.fns.length) return null;
-    const box = To.byId('overlayBox');
+    const Mo = this.engines[owner].__modal;
+    // 좌석 엔진이 갈리면(같은 입력에 다른 화면) 대기 중으로 보지 않는다 — 종전 sm.seq/길이 대조와 같은 자리.
+    if (!Mo || !Mo.view || Mo.seq !== M0.seq || Mo.view.buttons.length !== M0.view.buttons.length) return null;
+    const btns = Mo.view.buttons;
     return {
-      seq: sm.seq, owner, count: sm.fns.length,
-      disabled: kids.map((b) => !!b.disabled),
-      html: box ? String(box.innerHTML).replace(/<div class="row" id="obBtns"><\/div>\s*$/, '') : '',
-      buttons: kids.map((b) => ({ text: b.textContent, disabled: !!b.disabled })),
+      seq: Mo.seq, owner, count: btns.length,
+      disabled: btns.map((b) => !!b.disabled),
+      html: Mo.view.html,
+      buttons: btns.map((b) => ({ text: b.text, disabled: !!b.disabled })),
     };
   }
 
@@ -649,6 +693,11 @@ class Room {
       const side = T.actorOfPhase();
       const ownerP = side === 'A' ? B.attP.owner : B.defP.owner;
       if (seatIndex !== ownerP) return err('E_NOT_ACTOR');
+      /* #245 겨냥 프레임(bf) — 클라이언트 netAction 이 **보낸 시점의** 행동자·전투 진행 지점을 싣는다. 좌석·차례 판정 바로 뒤,
+         어휘별 합법성과 Core 보다 **먼저** 통째로 대조한다: 없음·부분·여분 키·배열·낡음/재생·앞선 seq·다른 행동자/라운드/단계는
+         전부 여기서 떨어져 규칙 상태·난수·revision 을 하나도 건드리지 않는다. 통과한 값은 아래에서 좌석 엔진까지 그대로 실려
+         가고(엔진 battleCmdCtx 가 같은 대조를 다시 한다) 서버가 최소 필드로 다시 짓는 경계에서 버려지지 않는다. */
+      if (BATTLE_CMDS.has(a.t) && !frameMatches(a.bf, battleFrame(T))) return err('E_ILLEGAL_ACTION');
       const f = side === 'A' ? B.fa : B.fd;
       const opp = side === 'A' ? B.fd : B.fa;
       /* #241 R1 (CJ 설계) 번개 꼬리 추가 공격 단계 — 스킬 선택만 합법이다(L5·L17: 포기·도망·볼·아이템·패키지·패스 불가).
@@ -659,34 +708,34 @@ class Room {
       if (inBonus && a.t !== 'act') return err('E_ILLEGAL_ACTION');
       switch (a.t) {
         case 'act':
-          return this._legalAct(T, f, side, a.k) ? { ok: true, action: { t: 'act', k: a.k } } : err('E_ILLEGAL_ACTION');
+          return this._legalAct(T, f, side, a.k) ? { ok: true, action: { t: 'act', k: a.k, bf: a.bf } } : err('E_ILLEGAL_ACTION');
         case 'item': {
           const k = (S.inv[ownerP] || [])[a.i];
           if (a.i < 0 || k === undefined || !T.ITEMS || !T.ITEMS[k]) return err('E_ILLEGAL_ACTION');
           if (side === 'A' ? B.itemRoundA : B.itemRoundD) return err('E_ILLEGAL_ACTION'); // 라운드 1회
-          return { ok: true, action: { t: 'item', i: a.i } };
+          return { ok: true, action: { t: 'item', i: a.i, bf: a.bf } };
         }
         case 'ball': {
           const oppPiece = side === 'A' ? B.defP : B.attP;
           const thrown = side === 'A' ? B.ballThrowA : B.ballThrowD;
           const canThrow = oppPiece.type === 'minion' && opp.hp < opp.maxHp * 0.3 && S.balls[ownerP] > 0 && !S.reserve[ownerP] && !thrown;
-          return canThrow ? { ok: true, action: { t: 'ball' } } : err('E_ILLEGAL_ACTION');
+          return canThrow ? { ok: true, action: { t: 'ball', bf: a.bf } } : err('E_ILLEGAL_ACTION');
         }
         case 'flee':
           // #234 가시 덩굴 3차 '뿌리 고정' — 이 전투에서는 도망칠 수 없다(__fleeCore 가 조용히 무시하고 UI 버튼도 비활성).
           // 서버가 먼저 거부해 판정 통과·상태 불변 noop 프레임이 생기지 않게 한다.
           if (f.fleeLock) return err('E_ILLEGAL_ACTION');
-          return { ok: true, action: { t: 'flee' } };
+          return { ok: true, action: { t: 'flee', bf: a.bf } };
         case 'pass': {
           const allLocked = !!f.skills && !f.skills.some((_, i) => T.slotUsable(f, i, side));
-          return allLocked ? { ok: true, action: { t: 'pass' } } : err('E_ILLEGAL_ACTION');
+          return allLocked ? { ok: true, action: { t: 'pass', bf: a.bf } } : err('E_ILLEGAL_ACTION');
         }
         case 'pkgOpen': {
           if (!PKG_KINDS.has(a.kind)) return err('E_ILLEGAL_ACTION');
           const pk = S.pkgs[ownerP];
           if (!pk || !(pk[a.kind] > 0)) return err('E_ILLEGAL_ACTION');
           if (a.kind === 'battleBuff' && (side === 'A' ? B.buffA : B.buffD)) return err('E_ILLEGAL_ACTION');
-          return { ok: true, action: { t: 'pkgOpen', kind: a.kind } };
+          return { ok: true, action: { t: 'pkgOpen', kind: a.kind, bf: a.bf } };
         }
         default:
           return err('E_ILLEGAL_ACTION'); // skipMain·tele·endTurn·heal·search·cell·fleeSwap … 전투 중 보드 입력 금지
@@ -750,15 +799,15 @@ class Room {
     return this.engines.map((T) => JSON.stringify(T.S) + '#' + lockstepDigest(T)).join('|');
   }
 
-  // 판정을 통과한 입력을 두 좌석 엔진에 같은 순서로 적용한다(락스텝). NET.replaying=true는 원본 수신측 재생과 같은
-  // 모드 — 행동자 화면 전용 로컬 팝업(메모 피커)을 열지 않는다.
+  // 판정을 통과한 입력을 두 좌석 엔진에 같은 순서로 적용한다(락스텝). replaying=true는 원본 수신측 재생과 같은
+  // 모드 — 행동자 화면 전용 로컬 팝업(메모 피커)을 열지 않는다. (#245: 종전 NET.replaying 자리, 호스트 포트로 이동)
   _apply(seatIndex, action) {
     const before = this._stateFingerprint();
     try {
       for (const T of this.engines) {
         withEngine(T, () => {
-          T.NET.replaying = true;
-          try { T.applyAction(action); } finally { T.NET.replaying = false; }
+          T.host.replaying = true;
+          try { T.applyAction(action); } finally { T.host.replaying = false; }
         });
       }
       if (action.t === 'modal') this._consumedModalSeq = action.seq;
@@ -1189,4 +1238,4 @@ class Room {
   isListable() { return this.isPublic && this.state === STATES.OPEN; }
 }
 
-module.exports = { Room, STATES, DISCONNECT_GRACE_MS, ACTION_TYPES, lockstepDigest, catalog };
+module.exports = { Room, STATES, DISCONNECT_GRACE_MS, ACTION_TYPES, BATTLE_CMDS, battleFrame, lockstepDigest, catalog };

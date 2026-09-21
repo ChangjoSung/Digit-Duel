@@ -664,7 +664,7 @@ function staleBad(r){
      그 사본에서는 위 J 검사가 반드시 실패해야 한다 — 실패하지 않으면 검사가 비어 있는 것이다. */
   const fs=require("fs"), os=require("os"), path=require("path");
   const GUARD="const live=()=>NET.ws===sock;";
-  const src=fs.readFileSync(htmlPath,"utf8");
+  const src=H.load(htmlPath).html;
   ok(src.indexOf(GUARD)>=0,"J13 전제: 소켓 동일성 확인(live)이 제품 소스에 있다");
   const mutantPath=path.join(os.tmpdir(),"digitduel_stale_mutant_"+process.pid+".html");
   fs.writeFileSync(mutantPath,src.replace(GUARD,"const live=()=>true;"));

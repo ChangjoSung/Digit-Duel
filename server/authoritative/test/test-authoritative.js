@@ -6,6 +6,8 @@
 const WebSocket = require('ws');
 const { server, EPOCH, lobby } = require('../server');
 const { createEngine } = require('../engine');
+const { battleFrame } = require('../room'); // #245 전투 어휘는 겨냥 프레임(bf)을 함께 실어야 서버가 받는다
+const { openBattle } = require('./helpers'); // #245 전투 픽스처는 인접 전제를 실제로 만든 뒤 합법 경로로 연다
 
 let pass = 0, fail = 0;
 function ok(cond, msg) { if (cond) { pass++; } else { fail++; console.error('FAIL: ' + msg); } }
@@ -31,8 +33,8 @@ function mkQueue(ws) {
 function connect(port, credential) { return new WebSocket(`ws://127.0.0.1:${port}/`, ['digit-duel.v1', credential]); }
 function send(ws, tok, gen, obj) { ws.send(JSON.stringify(Object.assign({ v: 1, seatToken: tok, tokenGen: gen }, obj))); }
 
-// 실제 배치 화면과 같은 형태 — engine.js의 createEngine()(snapshot/restore로 감싼 harness.load())을 통해서만
-// 만든다. 직접 harness.load()를 부르면 global.setTimeout이 흘러가지 않고 이 테스트의 타이머가 멈춘다.
+// 실제 배치 화면과 같은 형태 — engine.js의 createEngine()(서버 런타임 + 서버 스케줄러)을 통해서만 만든다.
+// #245: 이제 테스트 하네스 경로 자체가 없다 — 권위 런타임은 제품 스크립트(demo/js/*.js)만 실행한다.
 function makeSetup() {
   const T = createEngine();
   const roster = T.ROSTER.slice(0, 6).map((r) => r.id);
@@ -287,8 +289,8 @@ async function main() {
     const E0 = room14.engine;
     const attId = E0.S.pieces.find((p) => p.owner === cur && p.type === 'minion').id;
     const dId = E0.S.pieces.find((p) => p.owner === def && p.type === 'minion').id;
-    for (const E of room14.engines) { E.initBattle(E.S.pieces.find((p) => p.id === attId), E.S.pieces.find((p) => p.id === dId)); E.drain(); }
-    send(socks[cur], toks[cur].seatToken, toks[cur].tokenGen, { requestId: 'atk', t: 'action', baseRevision: room14.revision, action: { t: 'act', k: 0 } });
+    openBattle(room14, { att: attId, def: dId });
+    send(socks[cur], toks[cur].seatToken, toks[cur].tokenGen, { requestId: 'atk', t: 'action', baseRevision: room14.revision, action: { t: 'act', k: 0, bf: battleFrame(E0) } });
     const atk = await qs[cur].withRequestId('atk');
     ok(atk.type === 'room_state' && room14.state === 'IN_PROGRESS', '공격자 act k0 수락(실소켓): ' + JSON.stringify(atk.code));
     if (room14.engine && room14.engine.S.battle) {

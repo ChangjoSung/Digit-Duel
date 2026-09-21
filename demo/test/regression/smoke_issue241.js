@@ -96,6 +96,20 @@ fixRand(0.5); // 회피 0 · 분산 ×1.0 · 치명 없음
   ok(t.d.hp===hp&&t.B.bonus&&t.B.bonus.stage==="active","L12 번개 꼬리 이전 모달의 콜백 거부 (actSeq)");
   window.__actCore(1); T.TQ.length=0; ok(!t.B.bonus&&300-t.d.hp===20+14,"L13 현재 모달 콜백으로는 추가 공격 실행");
 }
+{ /* #245: 추가 공격 개시는 nextPhase 를 거치지 않고 **행동 토큰만** 올리는 유일한 지점이다 —
+     그때 열려 있던 패키지 개봉 표(B.pkgSel)도 nextPhase 와 똑같이 회수돼야 한다. 남으면 추가 공격 단계로
+     넘어간 표를 옛 개봉 모달의 콜백이 그대로 확정해 재고를 움직인다. */
+  const t=openBattle({skills:FOX},{hp:300,maxHp:300});
+  T.byId("obBtns").children.length=0; T.battleModal();
+  T.S.pkgs[0]={itemGift:1,battleBuff:0}; T.S.inv[0]=[];
+  window.__openPkgCore("itemGift"); T.TQ.length=0;
+  ok(!!t.B.pkgSel&&Number.isInteger(t.B.pkgSel.id),"L13a 전제: 추가 공격 전에 개봉 표가 발급됐다");
+  const stalePick=window.__pkgPickCore, tk=t.B.pkgSel.id, balls0=T.S.balls[0];
+  act("A",3);
+  ok(t.B.bonus&&t.B.bonus.stage==="active"&&t.B.pkgSel===null,"L13b 추가 공격 개시가 열려 있던 개봉 표를 회수한다 (#245)");
+  stalePick("gift",0,tk); T.TQ.length=0;
+  ok(T.S.pkgs[0].itemGift===1&&T.S.inv[0].length===0&&T.S.balls[0]===balls0,"L13c 회수된 표를 든 옛 개봉 콜백은 추가 공격 단계에서 재고를 움직이지 못한다");
+}
 { /* 추가 공격은 두 번째 행동 — 빙벽 반사가 한 번 더 걸린다 (L15) */
   const t=openBattle({skills:FOX},{hp:300,maxHp:300}); t.d.reflectR=2; act("A",3); bonusAct(0);
   eq(100-t.a.hp,6+4,"L14 반사 2회 — 20×30%=6 · 12×30%=3.6→4");

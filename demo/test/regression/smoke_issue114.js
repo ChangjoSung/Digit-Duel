@@ -37,11 +37,15 @@ test("VIP pair now battles: no push, proxy-choice chain opens, no random or reve
 test("bomb to trap detonates on the spot and removes both",()=>{
   const s=board(T),a=piece(T,0,"bomb"),b=piece(T,1,"trap");H.place(T,a,7,4);H.place(T,b,6,4);
   const tt=s.metrics.trapTriggers;
+  /* #245 Saturn REVISE: 폭탄이 공격측인 전투는 **강제 접촉으로만** 열린다 (능동 클릭 경로는 canBattle 이 계속 막는다).
+     라이브 경로(applyForced → forcedContactStart)가 세우는 표식을 그대로 세워 같은 조합을 검사한다. */
+  s.movedPiece=a; s.forcedTargets=[b.id];
   T.initBattle(a,b);assert(!a.alive&&!b.alive&&!b.movedEver);assert.equal(s.battlesUsed,1);
   assert.equal(s.metrics.trapTriggers,tt);assert.equal(s.metrics.bombContacts,1);assert(!a.immobile&&!b.immobile);
 });
 test("bomb to bomb detonates on the spot and removes both",()=>{
   const s=board(T),a=piece(T,0,"bomb"),b=piece(T,1,"bomb");H.place(T,a,7,4);H.place(T,b,6,4);
+  s.movedPiece=a; s.forcedTargets=[b.id]; // 위와 같다 — 폭탄 공격측은 강제 접촉 경로뿐이다
   T.initBattle(a,b);assert(!a.alive&&!b.alive);assert.equal(s.battlesUsed,1);assert.equal(s.metrics.pushes,0);
 });
 test("blocked side stays, possible side moves",()=>{
@@ -76,7 +80,8 @@ test("king reaches enemy edge before relocation even adjacent to another enemy",
   T.pushResolve(a,b);assert.equal(s.winner,0);assert.equal(s.phase,"over");assert.equal(s.metrics.relocations,0);assert.deepEqual(pos(a),[1,4]);
 });
 test("full HP healing consumes action, zero HP tick, existing pose cannot repeat",()=>{
-  const s=board(T),a=piece(T,0,"minion");H.place(T,a,10,4);assert(T.canHeal(a));assert(T.doHeal(a));assert(s.mainUsed&&a.healing);assert(!T.canHeal(a));T.healTick();assert.equal(s.metrics.healHp,0);assert(a.healing);
+  const s=board(T);let a=piece(T,0,"minion");H.place(T,a,10,4);assert(T.canHeal(a));assert(T.doHeal(a));a=s.pieces.find(x=>x.id===a.id); // #245: heal 은 대상 말을 복제한다
+  assert(s.mainUsed&&a.healing);assert(!T.canHeal(a));T.healTick();assert.equal(s.metrics.healHp,0);assert(a.healing);
 });
 test("end button hidden for queue, teleport, modal and FX, restored at idle",()=>{
   const s=board(T),a=piece(T,0,"minion"),b=piece(T,1,"minion");H.place(T,a,7,4);H.place(T,b,6,4);s.mainUsed=true;

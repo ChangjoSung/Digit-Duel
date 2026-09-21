@@ -103,7 +103,7 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
   const cur = T.S.current, other = 1 - cur;
   const att = T.S.pieces.find((p) => p.owner === cur && p.type === 'minion' && p.alive).id;
   const def = T.S.pieces.find((p) => p.owner === other && p.type === 'minion' && p.alive).id;
-  both(room, (E) => { E.initBattle(byId(E, att), byId(E, def)); });
+  H.openBattle(room, { att, def }); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
 
   // 균열·경화를 실제 값으로 걸어 둔다(#234 전까지 이를 거는 기술이 없어 라이브로는 0이지만, 계약은 값이 있을 때
   // 그 값이 그대로 양쪽 화면에 도달하는지로 판정해야 한다 — stIcons가 hardenPct를 숫자로 찍는다).
@@ -148,7 +148,7 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
   const cur = T.S.current, other = 1 - cur;
   const att = T.S.pieces.find((p) => p.owner === cur && p.type === 'minion' && p.alive).id;
   const def = T.S.pieces.find((p) => p.owner === other && p.type === 'minion' && p.alive).id;
-  both(room, (E) => { E.initBattle(byId(E, att), byId(E, def)); });
+  H.openBattle(room, { att, def });
 
   const base = lockstepDigest(room.engines[0]);
   ok(base === lockstepDigest(room.engines[1]), '두 좌석 엔진이 같은 상태에서 같은 요약을 낸다');

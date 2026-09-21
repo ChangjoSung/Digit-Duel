@@ -1,52 +1,88 @@
 {
-    "schema_version":  1,
-    "approved_on":  "2026-09-13",
-    "consumer":  "Mercury: explicit orca worker-start arguments",
-    "workers":  [
-                    {
-                        "agent":  "codex",
-                        "effort":  "low",
-                        "model":  "gpt-5.6-terra",
-                        "role":  "Mercury"
-                    },
-                    {
-                        "agent":  "claude",
-                        "effort":  "medium",
-                        "model":  "claude-sonnet-5",
-                        "role":  "Venus"
-                    },
-                    {
-                        "agent":  "codex",
-                        "effort":  "medium",
-                        "model":  "gpt-6-astra",
-                        "task_kind":  "new_asset",
-                        "role":  "Earth"
-                    },
-                    {
-                        "agent":  "codex",
-                        "effort":  "medium",
-                        "model":  "gpt-5.6-terra",
-                        "task_kind":  "existing_asset",
-                        "role":  "Earth"
-                    },
-                    {
-                        "agent":  "claude",
-                        "effort":  "medium",
-                        "model":  "claude-sonnet-5",
-                        "role":  "Mars"
-                    },
-                    {
-                        "agent":  "claude",
-                        "effort":  "medium",
-                        "model":  "claude-sonnet-5",
-                        "role":  "Jupiter"
-                    },
-                    {
-                        "agent":  "codex",
-                        "effort":  "medium",
-                        "model":  "gpt-5.6-sol",
-                        "role":  "Saturn"
-                    }
-                ],
-    "issue":  211
+  "schema_version": 1,
+  "approved_on": "2026-09-18",
+  "consumer": "Mercury: explicit Orca worker-start arguments",
+  "handoff_permission_contract": {
+    "status": "authorized",
+    "scope": "next Mercury_PD handoff session only",
+    "sandbox": "danger-full-access",
+    "approval_policy": "never",
+    "decision": "Do not propagate this permission to other workers, projects, or managed/host policy bypasses"
+  },
+  "ponytail_contract": {
+    "version": "4.10.0",
+    "default_mode": "full",
+    "required_roles": ["Mercury", "Mars", "Jupiter", "Saturn"],
+    "conditional_roles": {
+      "Venus": {
+        "mode": "lite",
+        "when": "technical planning needs YAGNI review of implementation scope, dependencies, or acceptance criteria"
+      }
+    },
+    "not_applicable": {
+      "Earth": "pure art and asset creation; route code or tooling changes to Mars"
+    },
+    "safety": "Never reduce role boundaries, required validation, input validation, error handling, security, accessibility, or explicit requirements",
+    "measurement": "Do not claim project token savings before 5-10 representative tasks are measured"
+  },
+  "workers": [
+    {
+      "agent": "codex",
+      "effort": "high",
+      "model": "gpt-5.6-sol",
+      "role": "Mercury",
+      "service_tier": "default",
+      "skills": ["ponytail"]
+    },
+    {
+      "agent": "claude",
+      "effort": "high",
+      "model": "claude-opus-5",
+      "role": "Venus",
+      "skills": ["eli-adult"],
+      "conditional_skills": ["ponytail"]
+    },
+    {
+      "agent": "codex",
+      "effort": "medium",
+      "model": "gpt-6-astra",
+      "task_kind": "new_asset",
+      "role": "Earth",
+      "service_tier": "default",
+      "skills": []
+    },
+    {
+      "agent": "codex",
+      "effort": "high",
+      "model": "gpt-5.6-terra",
+      "task_kind": "existing_asset",
+      "role": "Earth",
+      "service_tier": "default",
+      "skills": []
+    },
+    {
+      "agent": "claude",
+      "effort": "high",
+      "model": "claude-opus-5",
+      "role": "Mars",
+      "skills": ["ponytail"]
+    },
+    {
+      "agent": "claude",
+      "effort": "high",
+      "model": "claude-opus-5",
+      "role": "Jupiter",
+      "skills": ["ponytail"]
+    },
+    {
+      "agent": "codex",
+      "effort": "high",
+      "model": "gpt-5.6-sol",
+      "role": "Saturn",
+      "service_tier": "default",
+      "skills": ["ponytail"]
+    }
+  ],
+  "issue": 244,
+  "decision": "2026-09-18 CJ: Saturn QA uses gpt-5.6-sol high No Fast; Ponytail policy is active; next Mercury_PD handoff uses full access"
 }

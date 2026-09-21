@@ -44,6 +44,10 @@ async function main() {
     ok(/connect-src 'self' ws: wss:/.test(res.headers['content-security-policy']), 'CSP가 같은 출처 WebSocket 접속을 허용');
     const idx = await request(port, { path: '/index.html' });
     ok(idx.status === 200 && idx.body.equals(onDisk), 'GET /index.html 200');
+    const js = await request(port, { path: '/js/core.js' });
+    ok(js.status === 200 && /text\/javascript/.test(js.headers['content-type']) && js.body.equals(fs.readFileSync(path.join(demo, 'js', 'core.js'))), 'GET /js/core.js 200·JavaScript MIME');
+    const css = await request(port, { path: '/css/game.css' });
+    ok(css.status === 200 && /text\/css/.test(css.headers['content-type']) && css.body.equals(fs.readFileSync(path.join(demo, 'css', 'game.css'))), 'GET /css/game.css 200·CSS MIME');
     const head = await request(port, { path: '/', method: 'HEAD' });
     ok(head.status === 200 && head.body.length === 0 && Number(head.headers['content-length']) === onDisk.length, 'HEAD / 200·본문 없음·Content-Length');
   }

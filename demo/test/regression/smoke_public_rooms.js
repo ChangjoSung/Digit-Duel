@@ -377,6 +377,13 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   global.__act(0);
   const la=JSON.parse(T.wsLog[0].sent[T.wsLog[0].sent.length-1]);
   ok(T.wsLog[0].sent.length===sentBefore+1&&la.t==="action"&&la.action.t==="act"&&la.action.k===0,"L5d 기술 버튼(window.__act)이 실제 action:act 전송으로 이어진다 — 로컬 판정 없음");
+  /* #245 Saturn REVISE 2차 — 공개 방 봉투도 **보낸 시점의 겨냥 문맥(bf)** 을 함께 싣는다. 봉투는 action.t 만 화이트리스트로
+     보므로 프로토콜(v1·requestId·seatToken·baseRevision)은 그대로다. 서버는 지금 수락한 액션을 최소 필드로 다시 지어
+     좌석 엔진에 넘기므로 이 값이 그 경계를 넘지는 않는다 — 보존은 Jupiter 소관이고, 클라이언트는 실어 보내기만 한다.
+     값은 서버가 보낸 좌석 뷰(actor·actSeq·round·phase)에서 복원한 라이브 전투 그대로여야 한다. */
+  ok(la.v===1&&typeof la.requestId==="string"&&la.t==="action"&&Number.isInteger(la.baseRevision)
+     &&JSON.stringify(la.action.bf)===JSON.stringify({side:T.actorOfPhase(),seq:T.S.battle.actSeq||0,round:T.S.battle.round,phase:T.S.battle.phase}),
+    "L5d2 공개 방 action 봉투가 보낸 시점의 겨냥 문맥(bf)을 함께 싣는다 — 명령 봉투 형식은 그대로");
   ok(T.S.battle.fd.hp===15||T.S.battle.fd.hp===15||true,"L5g (전송만, 로컬 HP 변경 없음)");
   ok(!$el(T,"overlay").classList.contains("hidden"),"L6 전투 중에는 오버레이가 열려 있다");
   const endView=mkSeatView({battle:null,revision:4,state:"IN_PROGRESS"});

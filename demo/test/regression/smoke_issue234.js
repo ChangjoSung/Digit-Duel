@@ -256,8 +256,9 @@ function idx(f,id){ return f.skills.indexOf(id); }
   king.element="grass"; T.syncLeaderSkills(king); eq(king.skills[1],"K-2-grass","B13 왕 속성 변경 → 2차 스킬도 리프 커터로");
 }
 { /* B14 AI 로스터: 30종 중 6종 · 5속성 전부 · 모두 ⭐1 */
-  T.newGame("pve",{}); T.S.roster[1]=[]; T.aiPickRoster(1);
-  const r=T.S.roster[1];
+  T.newGame("pve",{}); T.S.roster[1]=[];
+  const r=T.aiPickRoster(1); // #245: 고르기만 하고 상태는 쓰지 않는다 (적용은 Core setupAuto)
+  ok(T.S.roster[1].length===0,"B14 AI 로스터 선택은 상태를 쓰지 않는다 — 적용은 Core 액션 한 곳");
   ok(r.length===6&&new Set(r).size===6&&r.every(id=>T.ROSTER.some(x=>x.id===id)),"B14a AI 로스터 6종 중복 없음");
   ok(new Set(r.map(id=>T.ROSTER.find(x=>x.id===id).element)).size===5,"B14b 5속성을 모두 포함");
 }
@@ -366,7 +367,7 @@ function idx(f,id){ return f.skills.indexOf(id); }
   eq(done,2,"D3b ⭐4 뇌격수 vs 전설 사신 AI 전투가 끝까지 진행된다");
 }
 { /* D4 AI 코드가 상대 전투원의 grade·skills·cds·revealedSkills 를 읽지 않는다 — 정적 대조(보조) */
-  const src=require("fs").readFileSync(htmlPath,"utf8");
+  const src=T.html;
   const body=name=>{ const i=src.indexOf("function "+name+"("); const j=src.indexOf("\nfunction ",i+10); return src.slice(i,j); };
   for(const fn of ["aiBattleAction","aiBattleActionStrong","aiBattleEV","aiWinProb","aiBattlePairScore"]){
     const b=body(fn);
@@ -637,11 +638,13 @@ unfix();
   eq(T.V2_INTERP.recruitSkillSwap,false,"E1 [CJ 결정 2026-09-17] 탐색 기술 교체 비활성");
   H.freshPlay(T,"pvp");
   const own=0, p=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.placed);
-  T.S.recruit={owner:own,pieceId:p.id,species:"M-E3",stage:"root",skill:null,targetId:null,recvId:null,token:1};
-  window.__recruitCore("skills",0); eq(T.S.recruit&&T.S.recruit.stage,"root","E2 '기술 교체' 단계로 진입하지 않는다 (코어 거부)");
-  window.__recruitCore("skill",0); ok(T.S.recruit&&T.S.recruit.skill===null,"E3 기술 선택도 거부");
+  T.S.recruit={owner:own,pieceId:p.id,species:"M-E3",stage:"root",skill:null,targetId:null,recvId:null,token:p.id+"#1"};
+  const tk234=T.S.recruit.token; // #245: recruit step 은 모두 토큰 필수 — 거부 사유가 토큰 누락이 아니라 과도기 게이트임을 지키려고 실어 준다.
+                                 // 토큰은 발급형("말id#발급번호")이어야 한다 — 임의 값이면 기록 자체가 손상으로 거부돼 E4 가 과도기 게이트를 못 본다
+  window.__recruitCore("skills",0,tk234); eq(T.S.recruit&&T.S.recruit.stage,"root","E2 '기술 교체' 단계로 진입하지 않는다 (코어 거부)");
+  window.__recruitCore("skill",0,tk234); ok(T.S.recruit&&T.S.recruit.skill===null,"E3 기술 선택도 거부");
   const recv=T.capReceivers(own)[0]; T.S.balls[own]=2;
-  window.__recruitCore("cap",0); window.__recruitCore("recv",0); window.__recruitCore("mode",0); T.TQ.length=0;
+  window.__recruitCore("cap",0,tk234); window.__recruitCore("recv",0,tk234); window.__recruitCore("mode",0,tk234); T.TQ.length=0;
   ok(recv.cap&&recv.cap.rosterId==="M-E3"&&recv.cap.grade===1&&recv.cap.skills.length===1&&recv.cap.skills[0]==="M-E3-1"&&recv.cap.cds.length===1,"E4 하수인 포획은 유지 — 30종 후보(땅 포함) · ⭐1 · 1차 기본기");
   const ks=T.S.pieces.filter(x=>x.type==="minion"&&x.owner===1);
   ok(ks.every(m=>!T.SKILLS[m.skills[0]].reaper),"E5 일반 하수인에 전설 스킬 없음");

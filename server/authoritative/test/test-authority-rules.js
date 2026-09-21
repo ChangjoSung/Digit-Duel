@@ -20,8 +20,8 @@ function firstOf(T, owner, type) {
   both(room, (E) => {
     const k = byId(E, kingId);
     k.cap = { element: 'water', hp: 100, maxHp: 100, atk: 20, skillAtk: 30, cd: 0, cdMax: 2, skills: E.archSkills('std', 'water'), cds: [0, 0, 0, 0], revealedSkills: [] };
-    E.initBattle(byId(E, attId), k);
   });
+  H.openBattle(room, { att: attId, def: kingId }); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
   const pm = room._pendingModal();
   ok(!!pm && pm.owner === def, 'VIP 출전 선택 모달의 소유자는 방어자(왕 소유 좌석): ' + JSON.stringify(pm && { owner: pm.owner, cur }));
   ok(T.S.current === cur && T.netActor() === cur, '픽스처 확인: S.current·netActor()는 공격자 좌석');
@@ -85,8 +85,8 @@ function firstOf(T, owner, type) {
   both(room, (E) => {
     const k = byId(E, kingId);
     k.cap = { element: 'fire', hp: 90, maxHp: 100, atk: 20, skillAtk: 30, cd: 0, cdMax: 2, skills: E.archSkills('std', 'fire'), cds: [0, 0, 0, 0], revealedSkills: [] };
-    E.initBattle(byId(E, attId), k);
   });
+  H.openBattle(room, { att: attId, def: kingId });
   const pm = room._pendingModal();
   const before = snap(room);
   const res = act(room, cur, { t: 'modal', seq: pm.seq, i: 0 });
@@ -103,7 +103,9 @@ function firstOf(T, owner, type) {
   const T = room.engine;
   const cur = T.S.current, def = 1 - cur;
   const attId = firstOf(T, cur, 'minion').id, dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.S.pkgs[cur].battleBuff = 1; E.initBattle(byId(E, attId), byId(E, dId)); E.S.battle.round = 3; E.battleModal(); });
+  both(room, (E) => { E.S.pkgs[cur].battleBuff = 1; });
+  H.openBattle(room, { att: attId, def: dId });
+  both(room, (E) => { E.S.battle.round = 3; }); // #245 행동 메뉴 재렌더는 필요 없다 — Core 가 상태에서 직접 판정한다
   let res = act(room, cur, { t: 'pkgOpen', kind: 'battleBuff' });
   ok(res.ok, '전투 중 행동자의 패키지 개봉 수락: ' + JSON.stringify(res.reason));
   const pm = room._pendingModal();
@@ -125,7 +127,7 @@ function firstOf(T, owner, type) {
   const T = room.engine;
   const cur = T.S.current, def = 1 - cur;
   const attId = firstOf(T, cur, 'minion').id, dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.initBattle(byId(E, attId), byId(E, dId)); });
+  H.openBattle(room, { att: attId, def: dId });
   ok(T.actorOfPhase() === 'A' && !T.S.mainUsed, '픽스처: 전투 A 차례, mainUsed=false');
   let res = act(room, cur, { t: 'act', k: 0 });
   ok(res.ok, '공격자 슬롯0 공격 수락: ' + JSON.stringify(res.reason));
@@ -158,10 +160,10 @@ function firstOf(T, owner, type) {
   /* #234 (GDD-23 3.4·6장): 경기 시작 하수인은 ⭐1 = 스킬 1칸이다. 이 절은 "4칸 전투원의 쿨 슬롯·레거시 kind 매핑" 합법성을
      보므로, 종전 암묵 전제(모든 하수인 4칸)를 픽스처에 명시한다 — 1칸 그대로 슬롯0 을 쿨로 막으면 합법 칸이 없어 pass 가
      정당하게 수락된다(규칙 변경이지 서버 결함이 아니다). 사용 조건이 없는 레거시 4칸 키트(포획 픽스처와 같은 archSkills)를 쓴다. */
+  H.openBattle(room, { att: attId, def: dId });
   both(room, (E) => {
-    E.initBattle(byId(E, attId), byId(E, dId));
     const fa = E.S.battle.fa; fa.skills = E.archSkills('std', fa.element); fa.cds = [2, 0, 0, 0]; fa.revealedSkills = [];
-    E.S.inv[cur] = []; E.S.balls[cur] = 0; E.S.pkgs[cur].itemGift = 0; E.battleModal();
+    E.S.inv[cur] = []; E.S.balls[cur] = 0; E.S.pkgs[cur].itemGift = 0;
   });
   for (const a of [{ t: 'act', k: 0 }, { t: 'act', k: 7 }, { t: 'act', k: 'basic' }, { t: 'item', i: 0 }, { t: 'ball' }, { t: 'pass' }, { t: 'pkgOpen', kind: 'itemGift' }, { t: 'pkgOpen', kind: 'nope' }]) {
     const before = snap(room);
@@ -185,7 +187,7 @@ function firstOf(T, owner, type) {
   const T = room.engine;
   const cur = T.S.current, def = 1 - cur;
   const kingId = firstOf(T, cur, 'king').id, dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.initBattle(byId(E, kingId), byId(E, dId)); });
+  H.openBattle(room, { att: kingId, def: dId });
   // 왕이 끼는 전투는 "출전 공개" 확인 모달(행동자 소유)을 거친 뒤 전투가 열린다
   const reveal = room._pendingModal();
   ok(!!reveal && reveal.owner === cur && /출전 공개/.test(reveal.html), '왕 출전 공개 모달은 공격자 소유: ' + JSON.stringify(reveal && reveal.owner));
@@ -261,7 +263,7 @@ function firstOf(T, owner, type) {
     for (let p = 0; p < 2; p++) {
       const mine = E.S.pieces.filter((x) => x.owner === p);
       const exact = mine.every((x, i) => x.c === good.pos[i][1] && x.r === (p === 1 ? 14 - good.pos[i][0] : good.pos[i][0]));
-      ok(exact && E.S.roster[p].join() === good.roster.join(), `제출 배치가 좌석${p} 엔진${E.NET.me}에 정확히 반영(좌석1 미러링)`);
+      ok(exact && E.S.roster[p].join() === good.roster.join(), `제출 배치가 좌석${p} 엔진${E.host.seat}에 정확히 반영(좌석1 미러링)`);
     }
     ok(!E.S.log.some((l) => /배치 데이터 손상/.test(l.msg)), '무작위 대체("배치 데이터 손상") 로그 없음');
   }
@@ -314,7 +316,8 @@ function firstOf(T, owner, type) {
   // 전선에 가까운 말을 공격자로 — 후방 후보가 생긴다
   const att = T.S.pieces.filter((p) => p.owner === cur && p.type === 'minion').sort((a, b) => (cur === 0 ? a.r - b.r : b.r - a.r))[0];
   const dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.BAL.fleeProb = 1; E.initBattle(byId(E, att.id), byId(E, dId)); });
+  both(room, (E) => { E.BAL.fleeProb = 1; });
+  H.openBattle(room, { att: att.id, def: dId });
   let res = act(room, cur, { t: 'flee' });
   ok(res.ok && !!T.S.fleePick && T.S.fleePick.owner === cur, '도망 성공 → 교환 선택(fleePick) 진입: ' + JSON.stringify(res.reason));
   if (T.S.fleePick && T.S.fleePick.cands.length) {

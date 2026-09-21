@@ -408,7 +408,7 @@ function validateRelayMessage(raw, isBinary, limitsOverride) {
  * 자산이 늘면 같이 커져야 하는 계약이라 순수 상수로 내놓는다 — 회귀 테스트가 실제 자산 수와 대조한다.
  */
 const STATIC_BUDGET = {
-  pageLoadRequests: 48,    // index.html 1 + 하수인 20×2 + 리더 2×2 = 45, 부수 요청 여유 3
+  pageLoadRequests: 57,    // index 1 + CSS/JS 9 + 하수인 20×2 + 리더 2×2 = 54, 부수 요청 여유 3
   concurrentPageLoads: 6,  // 같은 IP 에서 겹칠 수 있는 로드 수
 };
 
@@ -472,8 +472,8 @@ class AttemptLimiter {
 
 /* ===== 보안 헤더 ===== */
 
-// demo/index.html 은 인라인 <script>·인라인 스타일·on* 속성으로 구성된 단일 파일이라
-// script-src/style-src 에 'unsafe-inline' 이 불가피하다(제거하면 클라이언트가 깨진다 — Mars 후속 과제).
+// JS·CSS 본문은 외부 파일이지만 demo/index.html 의 on* 속성과 style 속성이 남아 있어
+// script-src/style-src 에 'unsafe-inline' 이 필요하다(제거하려면 해당 속성도 함께 외부화해야 한다).
 // 나머지 지시자는 최대한 조인다.
 const CSP = [
   "default-src 'none'",

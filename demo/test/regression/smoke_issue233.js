@@ -835,19 +835,23 @@ function endRound(B){ B.phase=1; T.nextPhase(); T.TQ.length=0; if(B.msgQ) B.msgQ
 }
 {
   /* pendingFx 는 서버 락스텝 요약이 콜백 대신 [roundsLeft, tag] 로 읽는다 (Jupiter 계약).
-     tag 가 없으면 같은 라운드에 예약된 서로 다른 예고 피해 둘을 구분하지 못해 두 좌석이 갈려도 VOID 가 안 뜬다. */
-  const f={pendingFx:[]};
+     tag 가 없으면 같은 라운드에 예약된 서로 다른 예고 피해 둘을 구분하지 못해 두 좌석이 갈려도 VOID 가 안 뜬다.
+     #245: 예약은 **상태 안의 전투원 자리**에만 걸린다 — 실제 전투를 열고 그 전투원으로 같은 보관 형식을 확인한다
+     (종전 임시 객체 픽스처는 상태에 없는 자리라 가리킬 수 없다. 보관 형식·정체성 계약 자체는 그대로다). */
+  const n8=openBattle({A:{atk:100},D:{def:0,dodge:0,hp:500,maxHp:500}});
+  const f=n8.fa;
   T.scheduleDelayed(f,2,()=>{},"tide_warning");
   eq(f.pendingFx.length,1,"N8 예고가 등록된다");
   eq(f.pendingFx[0].roundsLeft,2,"N9 roundsLeft 보존");
   eq(f.pendingFx[0].tag,"tide_warning","N10 **안정된 tag 문자열을 함께 저장한다** (서버 요약 식별자)");
   ok(typeof f.pendingFx[0].run==="function","N11 실행 콜백도 그대로 보존");
+  ok(f===T.S.battle.fa,"N11b 예약은 전투원 객체를 복제하지 않는다 — run 훅·execSlot 이 붙잡은 정체성 그대로");
   /* tag 를 넘기지 않는 구형 호출은 null 로 떨어져 깨지지 않는다 (서버 역호환 계약) */
-  const g={pendingFx:[]};
+  const g=n8.fd;
   T.scheduleDelayed(g,1,()=>{});
   eq(g.pendingFx[0].tag,null,"N12 tag 없는 호출은 null — 서버 요약이 방어적으로 읽어도 깨지지 않는다");
   /* 같은 라운드에 예약된 서로 다른 예고를 요약이 구분할 수 있다 */
-  const h={pendingFx:[]};
+  const h=openBattle({A:{atk:100},D:{def:0,dodge:0,hp:500,maxHp:500}}).fa;
   T.scheduleDelayed(h,2,()=>{},"a"); T.scheduleDelayed(h,2,()=>{},"b");
   const digest=h.pendingFx.map(e=>[e.roundsLeft,e.tag||null]);
   ok(JSON.stringify(digest)==='[[2,"a"],[2,"b"]]',"N13 같은 라운드 예고 둘이 요약에서 구분된다 — tag 가 없으면 [[2,null],[2,null]] 로 뭉개진다");
