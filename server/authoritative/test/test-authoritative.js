@@ -32,8 +32,8 @@ function mkQueue(ws) {
 function connect(port, credential) { return new WebSocket(`ws://127.0.0.1:${port}/`, ['digit-duel.v1', credential]); }
 function send(ws, tok, gen, obj) { ws.send(JSON.stringify(Object.assign({ v: 1, seatToken: tok, tokenGen: gen }, obj))); }
 
-// 실제 배치 화면과 같은 형태 — engine.js의 createEngine()(snapshot/restore로 감싼 harness.load())을 통해서만
-// 만든다. 직접 harness.load()를 부르면 global.setTimeout이 흘러가지 않고 이 테스트의 타이머가 멈춘다.
+// 실제 배치 화면과 같은 형태 — engine.js의 createEngine()(서버 런타임 + 서버 스케줄러)을 통해서만 만든다.
+// #245: 이제 테스트 하네스 경로 자체가 없다 — 권위 런타임은 제품 스크립트(demo/js/*.js)만 실행한다.
 function makeSetup() {
   const T = createEngine();
   const roster = T.ROSTER.slice(0, 6).map((r) => r.id);

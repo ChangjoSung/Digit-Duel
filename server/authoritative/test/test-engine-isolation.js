@@ -25,7 +25,7 @@ async function main() {
   const T3 = createEngine();
 
   ok(global.setTimeout === realSetTimeout, '엔진 3개 로드 후에도 진짜 global.setTimeout 정체성 불변');
-  ok(global.setInterval === realSetInterval, '엔진 3개 로드 후에도 진짜 global.setInterval 정체성 불변 (v2 회귀 지점 — harness.js가 setInterval을 no-op으로 덮어쓴다)');
+  ok(global.setInterval === realSetInterval, '엔진 3개 로드 후에도 진짜 global.setInterval 정체성 불변 (v2 회귀 지점 — 제품 스크립트가 로드 중 setInterval 을 건다)');
   ok(global.clearInterval === realClearInterval, '엔진 3개 로드 후에도 진짜 global.clearInterval 정체성 불변');
   ok(global.clearTimeout === realClearTimeout, '엔진 3개 로드 후에도 진짜 global.clearTimeout 정체성 불변');
   ok(global.document === realDocument, '엔진 3개 로드 후에도 진짜 global.document 정체성 불변 (보통 undefined)');

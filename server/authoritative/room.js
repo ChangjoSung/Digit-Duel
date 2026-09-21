@@ -1,7 +1,7 @@
 'use strict';
 // 룸 상태 기계 — analysis.md §2.3(생명주기)·§2.4(자격)·§2.5(명령)·§2.6(화이트리스트)의 구현.
 // 게임 규칙 자체(이동·전투·상성·스킬·아이템·폭탄·함정·밀어내기·탐색·텔레포트·도망·기권)는 재구현하지 않고
-// demo/index.html의 실제 엔진(engine.js가 하네스로 헤드리스 구동)을 그대로 쓴다.
+// demo/index.html의 실제 제품 스크립트(engine.js가 서버 소유 헤드리스 런타임 runtime.js로 구동)를 그대로 쓴다.
 //
 // v4 (Saturn REVISE msg_9a62b8728ecf) — 무엇이 바뀌었나:
 //
@@ -101,7 +101,10 @@ function catalog() {
 // (① 회피 · ③ 분산 · ⑦ 치명) 소비하므로, 두 좌석 엔진의 난수 소비가 한 번이라도 어긋나면 이후 모든 판정이 갈린다 —
 // 그 어긋남이 상태에 드러나는 지점(방어막 층 순서 · 균열/경화 잔여 · 예고 피해 대기열)을 전부 덮지 않으면
 // fail-closed VOID 가 발동하지 못하고 두 좌석이 조용히 다른 경기를 보게 된다.
-// #234 — demo/index.html V2_TIMED 와 같은 목록(harness 가 노출하지 않아 사본을 둔다. 드리프트는 경계 검사가 잡는다).
+// #234 — demo/js/data.js V2_TIMED 와 같은 목록. 런타임 네임스페이스에 V2_TIMED 가 노출돼 있어도 **일부러 읽지 않는다**:
+// 요약 키 순서는 두 좌석 엔진을 비교하는 경계 계약이라 엔진 값과 함께 조용히 따라 움직이면 안 된다(엔진이 바뀌면
+// 양쪽 요약이 똑같이 바뀌어 드리프트가 가려진다). 여기 고정해 두면 test-issue241-boundary.js S1 이 서버 목록과
+// 엔진 V2_TIMED 의 순서까지 같은지 대조해 불일치를 실패로 만든다.
 // #241 (CJ 승인 2026-09-17 스킬 정리) — spdDownR→evadeDownR(V1 회피율 감소) · mirrorR(R3)·burrowR·fortressR(단순화) 삭제. 순서도 엔진과 같다.
 const V2_TIMED_KEYS = Object.freeze(['absorbR', 'spdBuffR', 'evadeDownR', 'healCutR', 'vanguardTurn', 'retaliateBurnR',
   'reflectR', 'counterR', 'overloadR', 'nullHitR', 'sandStormR', 'ringR', 'enduredR', 'breedR', 'immuneShockR', 'mossR']);

@@ -1,36 +1,28 @@
 'use strict';
 // #217 서버 권위 규칙 엔진 어댑터 — demo/index.html의 실제 규칙 엔진을 서버가 헤드리스로 직접 구동한다.
-// 새 규칙 모듈을 만들지 않고 Mars의 기존 헤드리스 하네스(demo/test/shared/harness.js)를 그대로 재사용한다.
+// #245: 새 규칙 모듈을 만들지 않는 것은 그대로지만, 더 이상 테스트 하네스(demo/test/shared/harness.js)를
+// 거치지 않는다. 제품 스크립트(demo/js/*.js)를 직접 읽어 실행하는 서버 소유 런타임은 ./runtime.js 다.
 // demo/**는 읽기만 한다 — 이 파일은 server/authoritative/에 있다.
 //
-// 실행 환경 격리 (v3부터): 엔진마다 완전히 분리된 V8 컨텍스트(Node vm)에서 harness.js 자체를 실행한다.
-// harness가 `global.setTimeout=...` 등을 덮어써도 그 컨텍스트의 global 하나에만 적용되고 실제 프로세스의
-// global(server.js heartbeat/sweeper, room.js 이탈 유예 타이머)은 절대 건드리지 않는다.
+// 실행 환경 격리: 엔진마다 완전히 분리된 V8 컨텍스트(Node vm)에서 제품 스크립트를 실행한다. 그 컨텍스트의
+// global 하나만 쓰므로 실제 프로세스의 global(server.js heartbeat/sweeper, room.js 이탈 유예 타이머)은
+// 절대 건드리지 않는다.
 //
-// v4 — 서버 스케줄러 (Saturn REVISE msg_9a62b8728ecf): harness의 가짜 타이머는 clearTimeout이 없고, setTimeout이
-// 항상 0을 돌려주며, drain이 지연 시간을 무시하고 FIFO로 돌다가 5백만 콜백에서 **조용히** 멈췄다. 게임은 연출
-// 지연(msgStep 600ms·roundEndFx 1000ms·watchdog 1000ms …)의 **상대 순서**에 의존한다 — 브라우저에서는 600ms
-// 메시지가 1000ms 워치독보다 먼저 온다. 그래서 load() 직후 이 컨텍스트의 타이머 전역을 아래 createScheduler()로
-// 교체한다:
+// v4 — 서버 스케줄러 (Saturn REVISE msg_9a62b8728ecf): 게임은 연출 지연(msgStep 600ms·roundEndFx 1000ms·
+// watchdog 1000ms …)의 **상대 순서**에 의존한다 — 브라우저에서는 600ms 메시지가 1000ms 워치독보다 먼저 온다.
+// 그래서 제품 스크립트를 실행하기 **전에** 이 컨텍스트의 타이머 전역을 아래 createScheduler()로 세운다
+// (#245: 하네스의 가짜 큐 TQ 를 나중에 옮겨 담던 경로가 없어졌다 — 로드 중 예약도 처음부터 이 스케줄러로 간다):
 //   - setTimeout(fn, delay, ...args) → 고유한 양의 정수 id. 가상 시계 기준 due = now + max(0, delay).
 //   - clearTimeout(id) → 실제로 취소한다.
 //   - drain() → (due, 등록 순서) 오름차순으로 실행하고 가상 시계를 due로 옮긴다(브라우저의 지연 순서 보존).
 //     한 번의 drain이 콜백 수 예산(maxCallbacks) 또는 가상 시간 예산(maxVirtualMs)을 넘기면 **남은 큐를 비우고
 //     EngineFault를 던진다** — 조용히 멈추지 않는다. 콜백이 예외를 던져도 큐를 비우고 EngineFault로 감싸 던진다.
 //     호출자(room.js)는 그 룸을 VOID(NO_CONTEST, E_INTERNAL)로 닫는다(fail-closed).
-//   - setInterval(fn, delay) → 고유 id를 돌려주되 **발화하지 않는다**. index.html의 setInterval은 두 곳뿐이다:
+//   - setInterval(fn, delay) → 고유 id를 돌려주되 **발화하지 않는다**. 제품의 setInterval은 두 곳뿐이다:
 //     netPump(80ms, 락스텝 릴레이 수신 큐 펌프 — 서버는 applyAction을 직접 부르므로 NET.queue가 항상 비어 있다)와
 //     netResumeTick(1000ms, 클라이언트 재접속 재시도). 둘 다 규칙 상태를 만들지 않으며, 끝없이 반복되는 콜백을
 //     drain 안에서 돌리면 drain이 유한할 수 없다. clearInterval(id)는 기록을 지운다.
-const fs = require('fs');
-const path = require('path');
-const vm = require('vm');
-
-const HARNESS_PATH = path.join(__dirname, '..', '..', 'demo', 'test', 'shared', 'harness.js');
-const HARNESS_DIR = path.dirname(HARNESS_PATH);
-const HARNESS_SRC = fs.readFileSync(HARNESS_PATH, 'utf8');
-// 소스는 프로세스당 한 번만 읽고 vm.Script로 한 번만 컴파일해 엔진마다 재사용한다(실행 컨텍스트만 새로 만든다).
-const HARNESS_SCRIPT = new vm.Script(HARNESS_SRC, { filename: HARNESS_PATH });
+const { createRuntime } = require('./runtime');
 
 const DEFAULT_MAX_CALLBACKS_PER_DRAIN = 200000;
 // 한 행동이 만드는 연출 체인의 가상 시간 상한. 가장 긴 정상 체인(10라운드 전투의 메시지 재생·배너·워치독)도
@@ -148,49 +140,16 @@ function createScheduler(opts) {
   };
 }
 
-function sandboxRequire(specifier) {
-  // harness.js는 require("fs")·require("path")만 쓴다. 내장 모듈은 상태를 공유하지 않는 순수 함수 묶음이다.
-  if (specifier === 'fs' || specifier === 'path') return require(specifier);
-  throw new Error('server/authoritative/engine.js sandbox: unexpected require("' + specifier + '")');
-}
-
-// 엔진 하나 = 독립된 V8 컨텍스트 하나 + 그 안에서 harness.load()를 한 번 실행해 얻은 인스턴스 하나.
+// 엔진 하나 = 독립된 V8 컨텍스트 하나 + 그 안에서 제품 스크립트를 한 번 실행해 얻은 네임스페이스 하나.
 function createEngine(opts) {
-  const sandbox = {};
-  sandbox.global = sandbox;
-  sandbox.globalThis = sandbox;
-  sandbox.console = console;
-  // harness.js(mkLocation)가 URL을 bare 식별자로 쓴다 — 새 vm 컨텍스트에는 기본으로 없다.
-  sandbox.URL = URL;
-  sandbox.URLSearchParams = URLSearchParams;
-  const context = vm.createContext(sandbox);
-
-  const moduleObj = { exports: {} };
-  sandbox.module = moduleObj;
-  sandbox.exports = moduleObj.exports;
-  sandbox.require = sandboxRequire;
-  sandbox.__filename = HARNESS_PATH;
-  sandbox.__dirname = HARNESS_DIR;
-
-  HARNESS_SCRIPT.runInContext(context);
-  const harnessExports = moduleObj.exports;
-  if (typeof harnessExports.load !== 'function') throw new Error('harness.js가 module.exports.load를 노출하지 않음 — 계약 변경 가능성');
-
-  const T = harnessExports.load();
-
-  // 타이머 전역을 서버 스케줄러로 교체한다(위 머리 주석). load() 도중 harness 가짜 큐에 쌓인 콜백이 있으면
-  // 등록 순서대로 지연 0으로 옮긴다(harness 큐는 지연을 기록하지 않았다).
+  // 타이머를 먼저 세우고(제품 스크립트 로드 중 예약도 이 스케줄러가 받는다) 그 위에서 제품을 실행한다.
   const sched = createScheduler(opts);
-  sandbox.setTimeout = sched.setTimeout;
-  sandbox.clearTimeout = sched.clearTimeout;
-  sandbox.setInterval = sched.setInterval;
-  sandbox.clearInterval = sched.clearInterval;
-  for (const fn of T.TQ.splice(0)) sched.setTimeout(fn, 0);
+  const T = createRuntime(sched);
   T.scheduler = sched;
   T.drain = sched.drain;
 
-  // 브라우저에서 overlayBox.innerHTML 교체는 그 안의 옛 #obBtns(와 버튼)를 없앤다. 하네스 스텁은 id 레지스트리라
-  // obBtns 요소가 재사용돼 버튼이 누적된다 — 동기화 모달의 버튼 인덱스·disabled 판정이 어긋난다.
+  // 브라우저에서 overlayBox.innerHTML 교체는 그 안의 옛 #obBtns(와 버튼)를 없앤다. 서버 표시 싱크는 id
+  // 레지스트리라 obBtns 요소가 재사용돼 버튼이 누적된다 — 동기화 모달의 버튼 인덱스·disabled 판정이 어긋난다.
   // 기존 락스텝 회귀(demo/test/regression/smoke_online_sync.js load())와 같은 방식으로 브라우저 의미를 복원한다.
   const box = T.byId('overlayBox');
   const ob = T.byId('obBtns');
@@ -200,7 +159,6 @@ function createEngine(opts) {
     set(v) { this._html = v; this.children.length = 0; ob.children.length = 0; },
   });
 
-  T.__vmContext = context; // T 생존 기간 동안 컨텍스트 참조 유지
   ensureFxCapture(T);
   return T;
 }
@@ -213,7 +171,7 @@ function createEngine(opts) {
 // 버린다는 것뿐이다(liveBattleDom()===false → MSGQ.length=0). 아래 훅은 그 값이 사라지기 전에 "이미 만들어진
 // 값"을 그대로 옮겨 담을 뿐 — 규칙 함수를 호출하지도, 새 값을 계산하지도, bmsg/fxPlay 자체를 재바인딩하지도
 // 않는다(내부 코드는 여전히 원본 함수를 그대로 호출한다 — 이 파일이 관찰하는 것은 그 함수들이 이미 쓰는
-// 공유 가변 배열의 push 호출 순간뿐이다). demo/index.html·harness.js는 건드리지 않는다 — 위 197행
+// 공유 가변 배열의 push 호출 순간뿐이다). demo/** 는 건드리지 않는다 — 위 createEngine 의
 // Object.defineProperty(box,'innerHTML',...)와 같은 기법을 배열 인스턴스에 적용한다(새 패턴 아님).
 const FX_RETAIN = 40; // 기존 battle.log/room log의 .slice(-40) 관례와 동일 크기로 통일 — 유한 보관
 
@@ -222,7 +180,7 @@ const FX_RETAIN = 40; // 기존 battle.log/room log의 .slice(-40) 관례와 동
 // demo/index.html이 **이미 계산해 battle 객체에 써 두는 확정 상태**(`battle.intro`·`battle.bannerKey` — 원본이
 // "이 배너를 이미 보여줬다"를 추적하려고 스스로 세우는 플래그, 헤드리스에서도 그대로 세워진다)를 그대로
 // 읽어 "지금 이 전환에 배너가 필요하다"만 판단하고, 실제 문구는 원본이 노출하는 순수 함수(`actorOfPhase`·
-// `fxTurnLabel`·`viewerIsOwner` — 전부 harness.js가 이미 T에 노출)를 그대로 호출해 얻는다. 규칙 함수 호출도
+// `fxTurnLabel`·`viewerIsOwner` — 전부 런타임 네임스페이스에 그대로 있다)를 호출해 얻는다. 규칙 함수 호출도
 // 새 판정도 없다 — 확정된 상태 전환 근거로만 선언적 신호를 만든다(원 태스크 계약 그대로).
 function fxAppend(T, evt) {
   const store = T.__fx;

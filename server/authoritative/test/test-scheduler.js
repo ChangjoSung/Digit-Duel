@@ -118,10 +118,14 @@ async function main() {
   const ctx1 = T1.__vmContext;
   ok(ctx1.setTimeout === T1.scheduler.setTimeout && ctx1.clearTimeout === T1.scheduler.clearTimeout && ctx1.setInterval === T1.scheduler.setInterval, '엔진 컨텍스트의 setTimeout/clearTimeout/setInterval은 그 엔진의 스케줄러');
   ok(T1.scheduler !== T2.scheduler && ctx1.setTimeout !== T2.__vmContext.setTimeout, '엔진마다 독립 스케줄러');
-  ok(T1.TQ.length === 0, 'harness 가짜 큐(TQ)는 비어 있고 더 이상 쓰이지 않음');
+  ok(T1.TQ === undefined, '#245: harness 가짜 큐(TQ)가 런타임에 아예 없다 — 로드 중 예약도 처음부터 스케줄러가 받는다');
+  // #245: 제품 스크립트 자체가 로드 중 netPump(80ms) 인터벌을 건다 — 이제 그것도 이 스케줄러가 받는다(발화는 여전히 없다).
+  const iv0 = T1.scheduler.intervalCount();
+  ok(iv0 >= 1, '제품 로드 중 등록된 setInterval도 스케줄러가 기록(발화 없음): ' + iv0);
   const ivId = ctx1.setInterval(() => {}, 80);
-  ok(Number.isInteger(ivId) && ivId > 0 && T1.scheduler.intervalCount() === 1, '엔진 컨텍스트 setInterval은 발화하지 않는 기록으로 등록(양의 id)');
+  ok(Number.isInteger(ivId) && ivId > 0 && T1.scheduler.intervalCount() === iv0 + 1, '엔진 컨텍스트 setInterval은 발화하지 않는 기록으로 등록(양의 id)');
   ctx1.clearInterval(ivId);
+  ok(T1.scheduler.intervalCount() === iv0, 'clearInterval로 기록 제거');
   ok(typeof ctx1.clearTimeout === 'function', 'v3 결함: 엔진 컨텍스트에 clearTimeout이 존재');
 
   // 실제 게임 코드의 지연 타이머가 스케줄러로 실행된다 — 헤드리스는 fxLive()=false라 연출 지연은 0(동기)이고,
@@ -137,7 +141,7 @@ async function main() {
     ok(res.ok && E.scheduler.stats.scheduled > sched0 && E.scheduler.stats.fired > fired0, '회복 토스트의 2300ms 제거 타이머가 스케줄러에 예약·실행됨: ' + JSON.stringify(E.scheduler.stats));
     ok(E.scheduler.pending() === 0 && toasts === 0, 'drain 뒤 남는 예약 없음·토스트 제거 콜백이 실제로 돌아 DOM에서 빠짐: toasts=' + toasts);
     ok(E.scheduler.now() >= 2300, '가상 시계가 토스트 지연만큼 전진: ' + E.scheduler.now());
-    ok(E.TQ.length === 0, 'harness 가짜 큐는 쓰이지 않음');
+    ok(E.TQ === undefined, '#245: harness 가짜 큐가 존재하지 않음');
   }
 
   // ===== 7) 네이티브 타이머·여러 룸·오류 정리 — 엔진을 쓰는 동안 실제 setTimeout/setInterval이 계속 흐른다 =====
