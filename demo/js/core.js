@@ -651,6 +651,29 @@ function reduceCoreAction(state,action){
       if(slot!==null) return {state,events:[{type:"battleSlot",side,slot}]};
       return {state,events:[{type:"battleLegacySkill",side}]};                                  // 구형 속성 스킬 경로
     }
+    /* #245 예고·지연 효과 스케줄러(#233 GDD-23 4.3·4.6) — 예약 등록과 라운드 카운트가 Core 안의 한 곳이 된다.
+       종전에는 같은 함수가 큰(f.pendingFx) 상태를 고치면서 **전역 S.battle 을 읽고 임의 콜백까지 그 자리에서 불렀다** —
+       상태 전이와 효과 실행이 섞여 있어 발동 순간의 재진입(예약 또 예약·발동으로 인한 전투 종료)이 상태를 되짚어 쓰는 경로가 있었다.
+       다른 전투 어휘와 같이 **상태는 reducer, 실행은 이벤트**로 가른다: reducer 는 카운트만 내리고 발동할 항목을
+       delayedFired 로 넘긴다. 발동 시 전투가 살아 있을 때만 실행하는 4.6 취소 규칙은 그 핸들러가 항목마다 그대로 검사한다.
+       전투원(f)은 전투 커맨드 tranche 와 같은 이유로 복제하지 않고 값만 고쳐 쓴다(예약 항목·msgQ 가 정체성을 붙잡고 있다).
+       대상은 teleSwap 처럼 참조로 실려 온다 — 서버 요약은 [roundsLeft, tag] 만 읽고(#233 계약) 이 어휘는 회선을 타지 않는다. */
+    case "delaySchedule": {
+      const f=action.f; if(!f) return {state,events:[]};
+      f.pendingFx=f.pendingFx||[];
+      f.pendingFx.push({roundsLeft:action.delayRounds,tag:action.tag!==undefined?action.tag:null,run:action.run});
+      return {state,events:[]};
+    }
+    case "delayTick": {
+      const f=action.f;
+      if(!f||!f.pendingFx||!f.pendingFx.length) return {state,events:[]};
+      const keep=[],fired=[];
+      for(const ev of f.pendingFx){ ev.roundsLeft--; if(ev.roundsLeft<=0) fired.push(ev); else keep.push(ev); }
+      /* 남은 목록은 **발동 전에** 확정한다. 종전은 콜백을 먼저 돌리고 끝난 뒤에 그 목록을 대입해,
+         발동한 효과가 전투를 끝내 resetAfter 가 이미 비운 대기열을 다시 살려 놓았다(4.6 "전투가 끝나면 취소" 위반). */
+      f.pendingFx=keep;
+      return {state,events:fired.length?[{type:"delayedFired",fired}]:[]};
+    }
     default: return null;
   }
 }
@@ -2072,15 +2095,10 @@ function instaKill(opp){ opp.shieldLayers=[]; opp.shield=0; opp.hp=0; } // 4.3 �
    (기술 id 등). 콜백은 직렬화할 수 없어 서버는 [roundsLeft, tag||null] 로만 요약한다 — tag 가 없으면
    두 좌석 엔진이 갈려도 VOID 가 뜨지 않는다. #234 전까지 예고 피해 기술이 없어 호출처는 0건이고
    여기서는 계약만 완결한다 — 앞으로 예고 기술을 붙이는 호출처는 반드시 tag 를 넘겨야 한다. */
-function scheduleDelayed(f,delayRounds,run,tag){ f.pendingFx=f.pendingFx||[]; f.pendingFx.push({roundsLeft:delayRounds,tag:tag!==undefined?tag:null,run}); }
-function tickDelayed(f){
-  if(!f.pendingFx||!f.pendingFx.length) return;
-  const keep=[];
-  for(const ev of f.pendingFx){ ev.roundsLeft--;
-    if(ev.roundsLeft<=0){ if(S.battle) ev.run(); }
-    else keep.push(ev); } // #241: 해일 예고가 조건 표식(v2TideCheck)으로 바뀌어 atStart 분기를 삭제 — #233 예약 계약만 남는다(현재 호출처 0)
-  f.pendingFx=keep;
-}
+/* #245: 둘 다 Core 액션 하나로 들어간다 — #233 계약(인자·보관 형식)은 그대로고, pendingFx 를 고치는 자리는 reducer 한 곳뿐이다.
+   #241: 해일 예고가 조건 표식(v2TideCheck)으로 바뀜어 atStart 분기는 삭제됐고 #233 예약 계약만 남는다(현재 예약 호출처 0). */
+function scheduleDelayed(f,delayRounds,run,tag){ dispatchCoreAction({t:"delaySchedule",f,delayRounds,run,tag}); }
+function tickDelayed(f){ dispatchCoreAction({t:"delayTick",f}); }
 function execSlot(side,slot,opts){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A";

@@ -157,6 +157,9 @@ function applyUiEvents(events){
     if(event.type==="battleBasicCounter"){ execSlot(event.side,-1,{allowBasic:true}); continue; }        // #122 도망 실패 페널티 — 상대의 무료 기본 공격 1회
     if(event.type==="battleCaptured"){ finishByCapture(event.side); continue; }
     if(event.type==="battleNextPhase"){ nextPhase(); continue; }
+    /* #233 (GDD-23 4.3·4.6) · #245 예고·지연 효과 발동 — 카운트·대기열은 Core 가 끝냈고 여기는 실행만 한다.
+       항목마다 다시 본다: 앞 효과가 전투를 끝냈으면 뒤는 발동하지 않는다(4.6 취소). checkDeath 는 run() 안에서 이미 처리된다. */
+    if(event.type==="delayedFired"){ for(const ev of event.fired) if(S.battle) ev.run(); continue; }
     if(event.type==="battleFleeLocked"){ try{ if(viewerIsOwner(event.owner)) showToast("🌿 뿌리 고정 — 이 전투에서는 도망칠 수 없습니다"); }catch(e){} continue; } // #234 가시 덩굴 3차 — 사유는 소유자 화면에만
     if(event.type==="battleFled"){ battleFleeFx(event.owner,event.piece,event.oppPiece,event.queue); continue; }
     if(event.type==="mainSkipped"){

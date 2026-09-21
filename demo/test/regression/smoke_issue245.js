@@ -1158,6 +1158,55 @@ ok(/function doSearch\(p,ev\)\{\r?\n  const result=dispatchCoreAction\(\{t:"sear
   ok(!/\b(execSlot|nextPhase|finishBattle|finishByCapture|bmsg)\s*\(/.test(aiSrc)&&!/S\.battle\.[A-Za-z]+\s*=[^=]/.test(aiSrc),
      "AI 는 전투 상태를 직접 바꾸지 않는다 — 액션만 돌려준다");
 }
+/* ===== (14) #245 예고·지연 효과 스케줄러(#233 GDD-23 4.3·4.6) — 예약·카운트는 Core reducer, 발동은 delayedFired 이벤트 ===== */
+{
+  const liveBattle=T.S.battle, fired=[], st={phase:"play"};
+  /* 예약: #233 요약 계약(roundsLeft·tag·run)은 그대로고, 대기열을 고치는 자리만 Core 안으로 모였다 */
+  const f1={pendingFx:[]};
+  const sched=T.reduceCoreAction(st,{t:"delaySchedule",f:f1,delayRounds:2,run:()=>{},tag:"tide_warning"});
+  ok(sched.state===st&&sched.events.length===0&&f1.pendingFx.length===1&&f1.pendingFx[0].roundsLeft===2&&f1.pendingFx[0].tag==="tide_warning"&&typeof f1.pendingFx[0].run==="function",
+     "예약은 Core 액션 하나로 들어가고 서버 락스텝 요약이 읽는 roundsLeft·tag·run 을 그대로 보존한다");
+  T.reduceCoreAction(st,{t:"delaySchedule",f:f1,delayRounds:1,run:()=>{}});
+  ok(f1.pendingFx[1].tag===null&&T.reduceCoreAction(st,{t:"delaySchedule",f:null,delayRounds:1,run:()=>{}}).events.length===0,
+     "tag 없는 예약은 null 로 떨어지고(서버 요약 역호환) 대상 없는 예약은 조용한 무동작이다");
+  /* 카운트만 내리고 콜백은 부르지 않는다 — 분리 전에는 같은 함수가 전역 S.battle 을 읽고 그 자리에서 실행했다 */
+  const f2={pendingFx:[{roundsLeft:1,tag:"a",run:()=>fired.push("a")}]};
+  T.S.battle={};
+  const tick=T.reduceCoreAction({},{t:"delayTick",f:f2});
+  ok(fired.length===0&&f2.pendingFx.length===0&&tick.events.length===1&&tick.events[0].type==="delayedFired"&&tick.events[0].fired.length===1&&tick.events[0].fired[0].tag==="a",
+     "reducer 는 카운트만 내리고 콜백을 부르지 않는다 — 발동은 delayedFired 이벤트로만 나간다 (전역 S 없이 빈 상태로도 같은 결과)");
+  const f3={pendingFx:[{roundsLeft:2,tag:null,run:()=>fired.push("b")}]};
+  const wait=T.reduceCoreAction({},{t:"delayTick",f:f3});
+  ok(wait.events.length===0&&f3.pendingFx.length===1&&f3.pendingFx[0].roundsLeft===1&&T.reduceCoreAction({},{t:"delayTick",f:{pendingFx:[]}}).events.length===0,
+     "대기 중인 예약은 카운트만 내려가고 빈 대기열은 이벤트를 내지 않는다");
+  /* 4.6 취소 규칙은 항목마다 다시 본다 — tickDelayed() 래퍼는 종전과 같은 결과를 낸다 */
+  const f4={pendingFx:[{roundsLeft:1,tag:null,run:()=>fired.push("c")}]};
+  T.S.battle=null; T.tickDelayed(f4);
+  ok(fired.indexOf("c")<0&&f4.pendingFx.length===0,"전투가 이미 끝난 뒤에는 발동하지 않고 대기열에서만 빠진다 (4.6 취소)");
+  const f5={pendingFx:[{roundsLeft:1,tag:null,run:()=>fired.push("d")}]};
+  T.S.battle={}; T.tickDelayed(f5);
+  ok(fired.filter(x=>x==="d").length===1&&f5.pendingFx.length===0,"전투가 살아 있으면 tickDelayed() 한 번에 정확히 한 번 발동한다");
+  /* 음성 대조: 발동한 효과가 전투를 끝내면(resetAfter 가 대기열을 비운다) 남은 예약은 되살아나지 않는다.
+     분리 전은 콜백을 먼저 돌리고 **그 뒤에** 남은 목록을 다시 대입해, 이미 취소된 예약이 다음 전투로 살아서 넘어갔다. */
+  const f6={pendingFx:[]};
+  f6.pendingFx.push({roundsLeft:1,tag:"end",run:()=>{ T.S.battle=null; T.resetAfter(f6); fired.push("e"); }});
+  f6.pendingFx.push({roundsLeft:3,tag:"later",run:()=>fired.push("f")});
+  T.S.battle={}; T.tickDelayed(f6);
+  ok(fired.indexOf("e")>=0&&fired.indexOf("f")<0&&(!f6.pendingFx||f6.pendingFx.length===0),
+     "발동한 효과가 전투를 끝내면 남은 예약은 되살아나지 않는다 (4.6) — 종전은 실행 뒤에 대기열을 다시 대입해 취소된 예약을 부활시켰다");
+  T.S.battle=liveBattle;
+  /* 단일 경로: 래퍼 둘은 Core 액션 호출뿐이고, 표시·AI·네트워크 계층은 대기열을 직접 건드리지 않는다 */
+  const coreSrc=fs.readFileSync(path.join(demo,"js","core.js"),"utf8");
+  ok(/function scheduleDelayed\(f,delayRounds,run,tag\)\{ dispatchCoreAction\(\{t:"delaySchedule",f,delayRounds,run,tag\}\); \}/.test(coreSrc)
+    &&/function tickDelayed\(f\)\{ dispatchCoreAction\(\{t:"delayTick",f\}\); \}/.test(coreSrc),
+     "#233 래퍼 둘은 Core 액션 하나를 부르는 줄만 남긴다 (계약은 그대로, 대기열 변이는 reducer 한 곳)");
+  const delayCase=coreSrc.slice(coreSrc.indexOf('case "delayTick"'),coreSrc.indexOf("default: return null;"));
+  ok(delayCase.length>0&&!/\.run\(\)/.test(delayCase)&&delayCase.indexOf("S.")<0,
+     "delayTick reducer 안에는 콜백 실행도 전역 S 참조도 없다");
+  ok(["ui.js","ui-overlays.js","ai.js","network.js","state.js","data.js"].every(name=>
+      !/pendingFx\s*(?:=[^=]|\.(?:push|splice|pop|shift|unshift))/.test(fs.readFileSync(path.join(demo,"js",name),"utf8"))),
+     "표시·AI·네트워크·데이터 계층은 예약 대기열을 직접 변이하지 않는다");
+}
 ok((T.html.match(/<script>/g)||[]).length===1&&!T.html.includes('<script src='),"harness exposes one compatible inline script");
 ok(T.html.includes("<style>")&&T.html.includes("</style>"),"harness exposes compatible inline CSS");
 let blocked=false;
