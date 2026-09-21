@@ -36,8 +36,11 @@ function netActor(){ // 지금 게임이 입력을 기다리는 플레이어
 }
 function netLocalModal(){NET.localOpen=true;}   // 다음 modal()을 로컬 전용으로 (동기화·seq 제외)
 function netModalOwner(p){NET.modalOwner=p;}    // 다음 modal()의 소유자 명시 (기본: netActor())
+/** @param {NetClientFrame} m */
 function netSend(m){ try{ if(NET.ws&&NET.ws.readyState===1) NET.ws.send(JSON.stringify(m)); }catch(e){} }
 const BATTLE_CMDS=["act","item","ball","flee","pass","pkgOpen"]; // 회선을 타는 전투 어휘 (확정 pkgPick 은 모달 중계 — 개봉이 발급한 표가 문맥을 싣는다)
+/** #245 프로토콜 계약의 송신 끝 — 상태를 바꾸는 입력은 전부 이 한 곳을 지난다.
+    @param {NetWireAction} a */
 function netAction(a){ // 모든 상태 변경 입력의 단일 경로 — 오프라인은 즉시 적용, 온라인은 검증·송신 후 적용
   if(S.fleePick&&!["cell","fleeSwap","fleeSkip","resign"].includes(a.t)) return;
   if(!NET.replaying&&["cell","fleeSwap","fleeSkip"].includes(a.t)&&S.fleePick) a=Object.assign({},a,{pick:S.fleePick.token});
@@ -58,6 +61,8 @@ function netAction(a){ // 모든 상태 변경 입력의 단일 경로 — 오�
   }
   applyAction(a);
 }
+/** #245 프로토콜 계약의 수신 끝 — 회선에서 온 액션을 Core 로 넘기고, Core 가 맡지 않는 어휘만 여기서 푼다.
+    @param {NetWireAction} a */
 function applyAction(a){
   if(a.pick&&(!S.fleePick||a.pick!==S.fleePick.token)) return;
   if(S.fleePick&&(!["cell","fleeSwap","fleeSkip","resign"].includes(a.t)||(["cell","fleeSwap","fleeSkip"].includes(a.t)&&a.pick!==S.fleePick.token))) return;
@@ -108,7 +113,7 @@ function netPump(){
     NET.replaying=false;
   }
 }
-(function(){ const t=setInterval(netPump,80); if(t&&typeof t.unref==="function") t.unref(); })(); // 브라우저는 숫자 반환(무영향) · Node 하네스에서는 이벤트 루프를 붙잡지 않음 (#41 회귀: smoke 종료 지연)
+(function(){ const t=/** @type {any} */(setInterval(netPump,80)); if(t&&typeof t.unref==="function") t.unref(); })(); // 브라우저는 숫자 반환(무영향) · Node 하네스에서는 이벤트 루프를 붙잡지 않음 (#41 회귀: smoke 종료 지연)
 /* 동기화 대상 입력의 안정 진입점 — 원본(…Core)은 applyAction만 호출 */
 function onCell(r,c){ const m=memoClickTarget(r,c); if(m){ memoModal(m); return; } netAction({t:"cell",r,c}); } // #94 로컬 메모 클릭은 송신·seq·RNG 없이 피커만 연다 (#106 잠금 중에는 memoClickTarget 이 null → netAction 가드가 막는다)
 window.selTray=id=>netAction({t:"selTray",id});
@@ -129,6 +134,7 @@ window.__pass=()=>netAction({t:"pass"}); // #146: 4슬롯 전부 불가일 때�
 window.__openPkg=kind=>netAction({t:"pkgOpen",kind});
 /* modal() 래퍼: 동기화 모달은 seq 부여 + 소유자만 조작(클릭 시 인덱스 중계), 비소유자는 내용 마스킹 */
 const _modalCore=modal;
+// @ts-ignore #245: 레거시 함수 선언(ui-overlays.js modal)을 의도적으로 덮어쓰는 배선이다 — tsc 의 재대입 금지만 끄고 본문 검사는 그대로 받는다
 modal=function(html,buttons){
   const local=NET.localOpen; NET.localOpen=false;
   const owner=(NET.modalOwner!==null&&NET.modalOwner!==undefined)?NET.modalOwner:netActor();
@@ -395,7 +401,32 @@ function netHandlePublicSocketClosed(){
 }
 /* 명령 봉투(protocol.md v2 §3) — list_rooms만 seatToken/tokenGen 없이 보낸다(server/authoritative/protocol.js
    validateEnvelope가 그 하나만 예외로 둔다). */
-function netSendCmd(t,extra){ netSend(Object.assign({v:1,requestId:netReqId(),seatToken:NET.seatToken,tokenGen:NET.tokenGen,t},extra||{})); }
+/* #245 Saturn REVISE(HIGH 4): 명령 이름과 그 명령이 실어야 하는 칸을 한 쌍으로 묶는다.
+   종전에는 이 래퍼가 아예 검사를 받지 않아 `netSendCmd("ready_typo")` 도, action 봉투를 baseRevision·action 없이
+   보내는 호출도 조용히 나갔다 — 서버는 그걸 E_BAD_ENVELOPE 로 떨어뜨리고 화면은 이유 없이 멈춰 있게 된다.
+   오버로드 목록이 곧 보내는 쪽 계약이다 (받는 쪽은 NetCommandFrame · 둘 다 server/authoritative/protocol.js validateEnvelope 에서 왔다).
+   전송 프레임 자체는 한 글자도 바뀌지 않는다 — 같은 Object.assign 이다. */
+/**
+ * @overload
+ * @param {"ready"|"unready"|"resign"|"leave"|"resync"} t
+ * @returns {void}
+ *
+ * @overload
+ * @param {"action"} t
+ * @param {{baseRevision:number, action:NetWireAction}} extra
+ * @returns {void}
+ *
+ * @overload
+ * @param {"setup"} t
+ * @param {{roster:string[], pos:number[][]}} extra
+ * @returns {void}
+ *
+ * @param {NetCommandType} t
+ * @param {object} [extra]
+ * @returns {void}
+ */
+function netSendCmd(t,extra){ netSend(/** @type {NetCommandFrame} */(Object.assign({v:1,requestId:netReqId(),seatToken:NET.seatToken,tokenGen:NET.tokenGen,t},extra||{}))); }
+/** @param {NetWireAction} a */
 function netSendAction(a){
   if(a&&a.t==="resign"){ netSendCmd("resign"); return; } // room.js handleCommand: 기권은 최상위 명령이지 action 봉투가 아니다
   NET.lastActionRev=NET.revision; NET.lastAction=a&&a.t; NET.lastActionAuto=!!(a&&(a.auto||(a.t==="skipMain"&&NET.autoSending)));
@@ -631,7 +662,7 @@ function netFxRememberScene(ev){
   if(ev&&ev.scene&&ev.battleId!=null){
     NET.fxScenes[ev.battleId]=ev.scene;
     const keys=Object.keys(NET.fxScenes);
-    if(keys.length>4) delete NET.fxScenes[keys.sort((a,b)=>a-b)[0]]; // 최근 battleId 4개만 — 무한 누적 방지
+    if(keys.length>4) delete NET.fxScenes[keys.sort((a,b)=>Number(a)-Number(b))[0]]; // 최근 battleId 4개만 — 무한 누적 방지
   }
 }
 /* 전투 중에 생긴 이벤트(battleId 있음)는 그 전투 무대 위에서 재생된다. 전투와 무관한 이벤트는 보드 위 배너다. */
@@ -674,7 +705,7 @@ function netFxShowBanner(ev,title){
   el.classList.remove("hidden");
   if(Array.isArray(ev.cells)&&(ev.key==="explosion"||ev.key==="trapFx")){
     const cls=ev.key==="explosion"?"fx-boom":"fx-trap";
-    for(const rc of ev.cells){ const cell=document.querySelector(`#board .cell[data-r="${rc[0]}"][data-c="${rc[1]}"]`);
+    for(const rc of ev.cells){ const cell=/** @type {any} */(document.querySelector(`#board .cell[data-r="${rc[0]}"][data-c="${rc[1]}"]`));
       if(cell){ cell.classList.remove(cls); void cell.offsetWidth; cell.classList.add(cls); } }
   }
 }
@@ -834,7 +865,7 @@ function netResumeTick(){
 function netResumeAttempt(){
   if(NET.ws||!NET.resuming) return;
   NET.resumeAttempts++; NET.resumeLastAttempt=Date.now();
-  const opened=netOpenCredentialSocket("r-"+NET.epoch+"."+NET.seatToken,false); // 재시도 주소는 저장하지 않는다 — 이미 접속에 성공했던 주소다
+  const opened=netOpenCredentialSocket("r-"+NET.epoch+"."+NET.seatToken); // 재시도 주소는 저장하지 않는다 — 이미 접속에 성공했던 주소다
   if(!opened.ok) return; // 유예 타이머의 다음 tick이 다시 시도한다
   const ws=opened.ws;
   NET.ws=ws; const sock=ws; const pubLive=()=>NET.ws===sock&&NET.resuming;
@@ -889,6 +920,7 @@ function netSynthBattle(bd,you){
   if(!bd) return null;
   const A=netSynthFighter(bd.a,you), D=netSynthFighter(bd.d,you);
   const a=bd.a||{}, d=bd.d||{};
+  /** @type {BattleState} */
   const B={attP:A.piece,defP:D.piece,fa:A.f,fd:D.f,round:bd.round||1,phase:bd.phase||0,actSeq:bd.actSeq||0,
     maxRounds:bd.maxRounds!=null?bd.maxRounds:null,recA:a.rec||0,recD:d.rec||0,itemsA:a.items||0,itemsD:d.items||0,
     itemRoundA:!!a.itemRound,itemRoundD:!!d.itemRound,lastItemA:a.lastItem!=null?a.lastItem:null,lastItemD:d.lastItem!=null?d.lastItem:null,
@@ -963,7 +995,9 @@ function netSyncOverlays(force){
   else if(NET._overlayOpen){ close(); NET._overlayOpen=false; }
 }
 const _renderCoreForBattle=render;
-render=function(){ _renderCoreForBattle(); if(NET.publicMode) netSyncOverlays(); netResumeBarSync(); };
+const _renderWithOverlays=function(){ _renderCoreForBattle(); if(NET.publicMode) netSyncOverlays(); netResumeBarSync(); };
+// @ts-ignore #245: 위 modal 과 같은 이유 — 본문은 위 줄에서 검사받고 이 줄의 재대입만 허용한다
+render=_renderWithOverlays;
 /* #217 재접속 중 표시 — 사이드 패널은 보드·전투 화면에서 서랍/오버레이 뒤에 있어 보이지 않는다(실브라우저 E2E 발견).
    어느 화면에서 끊겨도 보이도록 오버레이·배너 위에 고정 상태 줄을 둔다. 재접속 중 입력은 잠긴다(netFxBusyNow). */
 function netResumeBarSync(){

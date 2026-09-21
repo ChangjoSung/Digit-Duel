@@ -83,7 +83,7 @@ function memoModal(pc){
     b.onclick=()=>commit(o.key);
     grid.appendChild(b); MEMO_UI.btns.push(b);
   }
-  const del=$("obBtns").children[0]; if(del) del.disabled=!cur;
+  const del=/** @type {any} */($("obBtns").children[0]); if(del) del.disabled=!cur;
   const focusTo=MEMO_UI.btns.find(b=>b.dataset.key===cur)||MEMO_UI.btns[0]; try{ if(focusTo) focusTo.focus(); }catch(e){}
 }
 function handoff(title,after){
@@ -138,6 +138,7 @@ const TUT_SCENES={
       {t:"내 왕이 끝줄 닿기",vis:TSV.svg(70,70,"내 왕이 상대편 맨 끝줄(금색 테두리 줄)까지 올라가 서는 장면",g2),res:"맨 끝줄에 서면 승리 · 밀려서 닿아도 승리",tone:"ok"},
       {t:"싸우는 말 전멸",vis:TSV.svg(96,50,"상대의 하수인 6개와 동료 2개가 모두 엑스 표시로 지워진 장면",g3),res:"하수인 6 + 동료 2 모두 없애면 승리",tone:"ok"}]; },
   pieces(){
+    /** @type {[string,number,string][]} */
     const rows=[["하수인",6,"⚔"],["동료",2,"🤝"],["왕",1,"👑"],["폭탄",3,"💣"],["함정",2,"🪤"]];
     const list=hid=>`<div class="tut-plist">`+rows.map(r=>`<span class="tut-lbl">${r[0]} ${r[1]}</span><span class="tut-toks">${Array.from({length:r[1]},()=>TSV.dtok(hid?"?":r[2],hid?"hid":"me",1)).join("")}</span>`).join("")+`</div>`;
     return [
@@ -299,7 +300,7 @@ function tutOpen(opts){
   if(TUT.open){ tutGo(0); return; } // 이미 열려 있으면 처음으로
   TUT.open=true; TUT.step=0; TUT.auto=!!opts.auto;
   const ae=document.activeElement;
-  TUT.restore=(ae&&ae!==document.body&&ae.focus)?ae:null; // 닫을 때 안전 복원
+  TUT.restore=/** @type {any} */((ae&&ae!==document.body&&/** @type {any} */(ae).focus)?ae:null); // 닫을 때 안전 복원
   tutSetInert(true);
   const ov=$("tutOverlay"); if(ov){ ov.classList.remove("hidden"); tutAttr(ov,"aria-hidden",null); }
   tutRender();

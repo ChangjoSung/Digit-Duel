@@ -4,6 +4,8 @@
 /* #245 Saturn REVISE: "실리지 않았다"와 "실렸는데 값이 못 쓴다"를 가르는 한 곳. 참/거짓으로 보면 null·0·""·undefined 가
    모두 "생략"으로 둔갑해 조작된·손상된 프레임이 기본값 해석을 얻는다 — 오직 자기 속성 유무만 본다. */
 function ownProp(o,k){return !!o&&Object.prototype.hasOwnProperty.call(o,k);}
+/** #245 액션 계약: 들어온 액션을 reducer 가 받는 모양으로 **한 번만** 해석한다.
+    @param {GameState} state @param {ReducerAction} action @returns {ReducerAction} */
 function resolveCoreAction(state,action){
   /* #245 턴바 [탐색]·온라인 재생 프레임은 좌표를 싣지 않는다 — 선택 말과 그 칸의 **발견된** 흔적을 여기서 한 번만 해석한다.
      판정은 searchLegalIndex 한 곳뿐이고(좌표를 실은 직접 호출도 같은 게이트를 지난다), 고른 흔적은 좌표가 아니라 **자리(ei)** 로
@@ -33,6 +35,8 @@ function resolveCoreAction(state,action){
   }
   return {t:"setupAuto",player,roster,positions};
 }
+/** #245 액션·이벤트·상태 계약이 만나는 한 곳. 거부는 null 이다 (다음 상태도 이벤트도 없다).
+    @param {GameState} state @param {ReducerAction} action @returns {CoreResult} */
 function reduceCoreAction(state,action){
   switch(action.t){
     case "cell": {
@@ -223,7 +227,8 @@ function reduceCoreAction(state,action){
        다른 결과가 나온다(온라인 재생·AI 탐색처럼 S 와 reducer 상태가 갈리는 호출). */
     case "drainForced": {
       if(state.fleePick) return {state,events:[]};
-      const queue=state.forcedQueue?state.forcedQueue.slice():[], events=[];
+      const queue=state.forcedQueue?state.forcedQueue.slice():[];
+      /** @type {CoreEvent[]} */ const events=[];
       let promoted=null;
       while(queue.length&&!promoted&&state.phase==="play"&&!state.battle&&!(state.forcedTargets&&state.forcedTargets.length)){
         const n=queue.shift(), p=alivePieces(state).find(x=>x.id===n.pid);
@@ -311,7 +316,7 @@ function reduceCoreAction(state,action){
        문구·로그·렌더는 호출처 소유이므로 resignLoser 로 표시 계층에 넘긴다. */
     case "resign": {
       const result=reduceCoreAction(state,{t:"gameOver",winner:1-state.current,winType:"resign"});
-      result.events[0].resignLoser=state.current;
+      /** @type {CoreEventOf<"matchEnded">} */(result.events[0]).resignLoser=state.current; // matchEnded 의 표시용 칸 — #245 HIGH 3: 계약 안에서 받으므로 이름을 잘못 적으면 여기서 걸린다
       return result;
     }
     /* #245 탐색: 실행 가능 판정 → 주 행동·이벤트 칸 소모·지표·회복 자세 해제 → 보상 확정(패키지 재고 +1 또는 recruit 개시)
@@ -337,6 +342,7 @@ function reduceCoreAction(state,action){
         events:state.events.map((e,idx)=>idx===ei?Object.assign({},e,{consumed:true}):e)});  // 요청한 그 자리만 소모한다 (좌표가 겹쳐도)
       met(own,"searches",1,next);
       if(p.type==="minion") met(own,"minionSearches",1,next); // #12·#20 하수인 탐색 (구 '하수인 이벤트')
+      /** @type {CoreEvent} */
       const searched={type:"searched",owner:own,piece,healBroken:!!p.healing};
       /* #121 계약 1.1 이후 이벤트는 3종뿐이다. itemGift·battleBuff 는 **그 자리에서 재고 +1** 로 끝나고(필수 선택 없음),
          개봉(내용 선택)은 전투 중 가방에서 한다(계약 2.2·3.1). recruit 만 탐색 자리에서 필수 선택이 이어진다. */
@@ -365,6 +371,7 @@ function reduceCoreAction(state,action){
     case "recruit": {
       const st=recruitState(state); if(!st) return {state,events:[{type:"recruitClosed"}]};
       const {R,p,rd}=st, own=R.owner, step=action.step, i=action.i;
+      /** @type {(patch:any)=>CoreResult} */
       const stage=patch=>({state:Object.assign({},state,{recruit:Object.assign({},R,patch)}),events:[{type:"recruitStage"}]});
       /* Saturn REVISE: 토큰은 **모든** step 에 필수다 (back·giveup 포함). 실리지 않은 호출을 봐주면 늦은 콜백·AI·되돌림이
          그 구멍으로 현재 recruit 을 전진시킨다 — 호출처는 자기가 본 recruit 의 토큰을 실어야 한다. 토큰은 탐색한 말 id 를
@@ -685,6 +692,7 @@ function searchDoneResult(state,before,owner,title,sub,fxKey,tut){
 }
 /* 반환: Core 가 맡지 않은 액션이면 false, 맡았으면 커밋된 결과({state,events}) — 호출처는 종전처럼 truthy 검사만 하면 되고,
    결과의 세부 판정(예: 스왑이 실제로 일어났는지)이 필요한 래퍼만 events 를 읽는다. */
+/** @param {ReducerAction} action */
 function dispatchCoreAction(action){
   const result=reduceCoreAction(S,resolveCoreAction(S,action));
   if(!result) return false;
@@ -694,6 +702,7 @@ function dispatchCoreAction(action){
 }
 /* #245 commit: reducer 가 순수하므로 바뀐 말은 복제본으로 돌아온다. 레거시 경로·AI·예약 콜백·테스트가 말 객체 참조를
    그대로 들고 있으므로, 복제본의 값을 같은 id 의 원본 말에 얹고 참조를 원본으로 되돌린다 — S 객체 정체성을 유지하는 것과 같은 이유다. */
+/** @param {GameState} next @param {CoreEvent[]} events */
 function commitCoreState(next,events){
   const live=new Set(S.pieces); // 이미 S.pieces 안의 그 객체면 그대로 통과 — id 가 중복돼도 원본을 잃거나 겹치지 않는다 (거부 결과는 S.pieces 를 그대로 되돌린다)
   const canon=new Map(S.pieces.map(piece=>[piece.id,piece]));
@@ -716,7 +725,7 @@ function commitCoreState(next,events){
      자리가 어긋났거나(길이 변화·재정렬) 좌표가 다르면 그대로 새 객체를 쓴다. */
   if(next.events!==S.events) norm.events=next.events.map((e,idx)=>{ const origin=S.events[idx];
     return origin&&origin!==e&&origin.r===e.r&&origin.c===e.c?Object.assign(origin,e):e; });
-  for(const event of events||[]){ // healStarted·moved·teleSwapped 등 말을 실은 이벤트도 같은 정규화를 받는다 — UI 핸들러가 떨어진 복제본을 보지 않게 여기서 한 번만
+  for(const event of /** @type {any[]} */(events||[])){ // healStarted·moved·teleSwapped 등 말을 실은 이벤트도 같은 정규화를 받는다 — UI 핸들러가 떨어진 복제본을 보지 않게 여기서 한 번만
     if(event.piece) event.piece=keep(event.piece);
     if(event.pieces) event.pieces=event.pieces.map(keep);
   }
@@ -1128,6 +1137,7 @@ function rosterMinions(own,state){ return (state||S).pieces.filter(x=>x.owner===
 /* #121 계약 6: 포획 수령 말 — 살아 있고 배치된 동료·왕 중 포획 슬롯(cap)이 빈 말. 탐색한 말이 하수인이어도 된다 */
 function capReceivers(own,state){ return alivePieces(state).filter(x=>x.owner===own&&(x.type==="ally"||x.type==="king")&&!x.cap); }
 /* 현재 recruit 상태가 아직 유효한가 — 늦은 콜백·새 게임·턴 교대·말 사망 방어 */
+/** @param {GameState} [state] @returns {{R:RecruitState,p:BoardPiece,rd:any}|null} */
 function recruitState(state){
   const T=state||S, R=T&&T.recruit; if(!R) return null;
   if((R.owner!==0&&R.owner!==1)||R.owner!==T.current) return null;   // 소유자는 두 플레이어 중 하나이고 지금 차례여야 한다
@@ -1542,6 +1552,7 @@ function decideFirstSide(B){
   if(fa.grade!=null&&fd.grade!=null&&fa.grade!==fd.grade) return fa.grade<fd.grade?"A":"D"; // 낮은 등급 우선 (등급 없는 왕·동료가 끼면 여기를 건너뛰어 이미 위에서 A로 떨어진다)
   return "A";
 }
+/** @param {GameState} [state] @returns {BattleSide} */
 function actorOfPhase(state){ // #245: 다른 판정 헬퍼와 같은 선택적 말미 state 인자 규약 (기본 S) — reducer 는 자기가 받은 보드만 읽는다
   const B=(state||S).battle;
   // #233 (GDD-23 4.4): "라운드 시작 시 확정" — B.firstSide는 startRounds·nextPhase의 라운드 진입 시점에 한 번만 굳는다.
@@ -1564,6 +1575,7 @@ function stFx(side,f){ return {side,text:stIcons(f),shield:f.shield||0,max:f.max
 const BF_KEYS=["side","seq","round","phase"];
 function bfShapeOk(w){ return !!w&&typeof w==="object"&&!Array.isArray(w)
   &&Object.keys(w).length===BF_KEYS.length&&BF_KEYS.every(k=>ownProp(w,k)); }
+/** @returns {BattleCmdCtx|null} */
 function battleCmdCtx(state,action,strict){
   const fr=action&&action.frame, B=state.battle;
   if(!fr||!B||B.phase===undefined||fr.B!==B) return null;
@@ -1597,6 +1609,7 @@ function battleCmdCtx(state,action,strict){
    공개 방(서버 권위)에도 **같이 싣는다**: 클라이언트는 로컬 판정 없이 의도만 보내지만, room.js 가 그 bf 를 자기
    battleFrame 과 대조해(frameMatches) 어긋나면 E_ILLEGAL_ACTION 으로 떨어뜨리고, 수락한 액션에는 bf 를 그대로
    보존해 두 좌석 엔진에 넘긴다 — 그래서 좌석 엔진도 같은 대조를 받는다. 봉투·화이트리스트는 action.t 만 보므로 그대로다. */
+/** @returns {BattleWire|null} */
 function battleActionFrame(state){ const st=state||S, B=st.battle;
   return B?{side:actorOfPhase(st),seq:B.actSeq||0,round:B.round,phase:B.phase}:null; }
 /* #121 계약 2.2·3 패키지 개봉 선택 화면 — **표시 전용**이다. modal() 래퍼가 온라인 동기화를 맡으므로(소유자만 조작·

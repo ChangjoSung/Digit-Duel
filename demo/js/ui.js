@@ -38,6 +38,8 @@ function showToast(msg,kind){
     setTimeout(()=>{if(t.parentNode)t.parentNode.removeChild(t);},2300);
   }catch(e){}
 }
+/** #245 이벤트 계약의 소비 끝 — reducer 가 돌려준 표시 이벤트만 여기서 화면이 된다.
+    @param {CoreEvent[]} events */
 function applyUiEvents(events){
   for(const event of events||[]){
     if(event.type==="render"){ render(); continue; }
@@ -182,7 +184,7 @@ function escAttr(v){
     .replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/`/g,"&#96;");
 }
 
-const $=id=>document.getElementById(id);
+const $=id=>/** @type {any} */(document.getElementById(id)); // #245: DOM 접근은 동적 — 이 검사의 대상은 상태·액션·이벤트·프로토콜 계약이지 DOM 타입이 아니다
 
 /* ===== #122 (v0.4.7) 세로 UI 셸 — 표시 계층 전용 =====
    규칙 상태는 종전대로 S.phase 하나뿐이다. 여기서 기억하는 것은 (a) 타이틀 화면을 지났는가 (b) 어떤 서랍이 열려 있는가
@@ -489,7 +491,7 @@ function renderBoard(){
   const flip=boardFlipped(); bd.dataset.flip=flip?"1":"0"; // #93 표시 메타데이터만 — 화면 행 i 에 논리 행 r=14−i (열 유지)
   for(let i=1;i<=ROWS;i++) for(let c=1;c<=COLS;c++){
     const r=flip?ROWS+1-i:i;
-    const cell=document.createElement("div");
+    const cell=/** @type {any} */(document.createElement("div")); // dataset 에 논리 좌표를 **숫자 그대로** 넣는다 (하네스 회귀 G2 가 그 원문을 본다)
     cell.className="cell"+(r<=3?" zA":r<=5?" forest":r<=8?"":r<=10?" forest":" zB");
     cell.dataset.r=r; cell.dataset.c=c;
     if(S.phase!=="menu"){

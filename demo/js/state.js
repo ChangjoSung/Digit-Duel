@@ -1,5 +1,6 @@
 "use strict";
 /* ===== 상태 ===== */
+/** @type {GameState} */
 let S=null;
 function pname(p){
   if(NET.mode) return (p===NET.me?"나":"상대")+"(P"+(p+1)+")";
@@ -25,42 +26,108 @@ function met(p,key,n,st){ // 합산 + 플레이어별 동시 증가 (p: 행동 �
   M[key]+=n;
   if(p===0||p===1) M.byPlayer[p][key]=(M.byPlayer[p][key]||0)+n;
 }
-function newPlayerMetrics(){const o={}; for(const k of PLAYER_METRIC_KEYS) o[k]=0; return o;}
-function newGame(mode,opts){
-  opts=opts||{};
-  fxReleaseAll(); // #106: 새 게임 — 이전 게임의 연출 잠금·타이머·대기 콜백 전부 무효 (불변식 2)
-  S={
+/** @returns {Record<string,number>} */
+function newPlayerMetrics(){
+  /** @type {Record<string,number>} */
+  const o={};
+  for(const k of PLAYER_METRIC_KEYS) o[k]=0;
+  return o;
+}
+/* #245 상태 계약: 새 경기 상태를 **만드는 한 곳**. GameState 타입을 이 리터럴에서 그대로 끌어오므로(아래 @typedef)
+   따로 관리하는 타입 표가 없고, 여기서 칸을 더하거나 빼면 계약이 같이 움직인다.
+   널·빈 배열처럼 리터럴만으로는 좁게 추론되는 칸에만 `@type` 을 적는다 — 그 주석이 곧 그 칸의 계약이다. */
+function newGameState(mode,opts){
+  return {
     mode, phase:"setup", setupPlayer:0, current:0, turnCount:0,
+    /** @type {string[]} */
     aiLevel:opts.aiLevel||["grade5","grade5"], // #21 플레이어별 AI 난이도 (PVE는 [1]만 의미)
+    /** @type {Set<number>[]} */
     aiSeenMoved:[new Set(),new Set()], // #21 공개 관측 기억: [관측자][적 말 id] — 관측자에게 보이는 상태에서 BT 이전 이동이 목격된 적 말 (숨은 숲 내부 이동은 미기록)
+    /** @type {{id:number,r:number,c:number}[][]} */
     aiHist:[[],[]], // #21 5단 반복 패턴 완화용 최근 이동 이력 [{id,r,c}]
-    pieces:[], events:[], inv:[[],[]], balls:[BAL.ballStart,BAL.ballStart],
+    /** @type {BoardPiece[]} */
+    pieces:[],
+    /** @type {BoardEvent[]} */
+    events:[],
+    /** @type {string[][]} */
+    inv:[[],[]],
+    balls:[BAL.ballStart,BAL.ballStart],
     pkgs:[{itemGift:0,battleBuff:0},{itemGift:0,battleBuff:0}], // #121 계약 2·3: 플레이어 공용 패키지 재고 (보유 상한 없음) — 개봉 전까지 내용이 정해지지 않은 미개봉 상자
-    reserve:[null,null], teleUsed:[0,0], forcedQueue:[], // #12 포획 예비 슬롯 · #14 스왑 횟수 · #18 강제 전투 독립 queue [{pid,targets}]
+    /** @type {(ReservePiece|null)[]} */ // #12 포획 예비 슬롯 — 보드 정체(id·좌표·placed) 없이 전투 수치만 든 말 기록
+    reserve:[null,null],
+    teleUsed:[0,0], // #14 스왑 횟수
+    /** @type {{pid:number|null,targets?:any}[]} */ // #18 강제 전투 독립 queue [{pid,targets}] — 권위 방 재수화는 개수만 아는 자리표(pid:null·targets 없음)를 넣는다
+    forcedQueue:[],
+    /** @type {string[][]} */
     roster:[[],[]],
+    /** @type {Set<string>[]} */
     traces:[new Set(), new Set()],
+    /** @type {Record<string,string>[]} */
     memos:[{},{}], // #11·#36 추측 메모: [뷰어(PVE:0/PVP:플레이어)][pieceId]=MEMO_OPTS 키 — 상대·AI·로그 비노출, 인메모리만
 
-    selected:null, mainUsed:false, battlesUsed:0,
-    movedPiece:null, contactSet:[], firstBattleWonByMover:false,
-    forcedTargets:[], teleport:null,
+    /** @type {UiSelection|null} */
+    selected:null,
+    mainUsed:false, battlesUsed:0,
+    /** @type {BoardPiece|null} */
+    movedPiece:null,
+    /** @type {BoardPiece[]} */
+    contactSet:[],
+    firstBattleWonByMover:false,
+    /** @type {BoardPiece[]} */
+    forcedTargets:[],
+    /** @type {{stage:number,piece:BoardPiece|null}|null} */
+    teleport:null,
+    /** @type {Set<number>} */
     tempReveal:new Set(),
-    battle:null, winner:null, aiPending:false, aiBattlePending:false, aiVanguard:[null,null],
+    /** @type {BattleState|null} */ // #245 Saturn REVISE(MEDIUM): 전투 인스턴스도 닫힌 계약이다 — 없는 칸(S.battle.없는칸)은 읽든 쓰든 걸린다. 전투원(fa/fd) 내부 수치만 경계 밖이다
+    battle:null,
+    /** @type {number|null} */
+    winner:null,
+    aiPending:false, aiBattlePending:false,
+    /** @type {(number|null)[]} */ // 말이 아니라 **말 id** 를 든다 (ai.js aiVanguard[me]=vcands[0].id)
+    aiVanguard:[null,null],
+    /** @type {any[]} */
     aiProfile:[null,null],
     healTickTurn:-1, btBannerDue:false, contactKind:"move", // #106: 회복 틱 중복 가드(같은 turn 1회) · 버닝 타임 배너 1회 예약 · 접촉 배너 부제 종류
     matchFxDone:false, // #126: 경기 종료 연출 1회 보장 (경기 기준 — 새 경기마다 자연히 초기화된다)
+    /** @type {{owner:number,pieceId:number|null,oppId?:number|null,cands:number[],token:string|number}|null} */
     fleePick:null, // #114 도망 후 교환 선택 상태 {owner,pieceId,oppId,cands:[id]} — 소유자(S.current 와 다를 수 있음)만 보드 클릭·생략 입력, 상대는 대기
     metrics:{battles:0,judged:0,ties:0,pushes:0,searches:0,captures:0,captureFails:0,heals:0,healHp:0,bombContacts:0,autoEnds:0,relocations:0,fleePushes:0,
              bombHitsMinion:0,bombClearedByVip:0,kingForestTurns:0,battleRefusals:0,
              attackerWins:0,defenderWins:0,kingStandoff:0,endTurn:0,
-             winType:null,btReached:false,btEnterTurn:0,
+             /** @type {string|null} */
+             winType:null,
+             btReached:false,btEnterTurn:0,
              forcedBattles:0,teleports:0,statusApplied:0,statusFailed:0,minionInvades:0,
              enemyCaptures:0,fleeTries:0,fleeOks:0,minionSearches:0, // #20: minionEventUses → minionSearches (하수인 탐색)
              enemyCapTries:0,enemyCapFails:0,bombMoves:0,trapTriggers:0, // #20 누락 카운터
-             firstPlayer:null,winner:null, // #20 선공·승자
+             /** @type {number|null} */
+             firstPlayer:null,
+             /** @type {number|null} */
+             winner:null, // #20 선공·승자
+             /** @type {Record<string,number>[]} */
              byPlayer:[newPlayerMetrics(),newPlayerMetrics()]}, // #20 플레이어별 핵심 행동 (합산과 met()로 동시 집계)
+    /** @type {{msg:string,cls:string}[]} */
     log:[]
   };
+}
+/* #245: newGameState() 가 만들지 않고 **경기 중에 붙는** 상태 칸. 정적 검사가 실측으로 찾아낸 drift 라 이름으로 적어 둔다.
+   런타임은 그대로 두고(초기값을 주면 새 경기 객체 모양이 바뀐다) 계약에만 올린다 — 여기 없는 칸을 새로 붙이면 그 자리에서 잡힌다.
+   추가 여부는 기획·서버 계약이 걸린 판단이라 [기획 필요]로 남긴다. */
+/** @typedef {Sealed<ReturnType<typeof newGameState>> & {
+      recruit?:RecruitState|null, // 탐색 보상 선택 상태 (core.js recruit reducer) — #245 MEDIUM: 닫힌 계약
+      recruitToken?:number,  // 그 선택창의 결정적 토큰 **발급 번호**(숫자). recruit.token 은 이 숫자를 담은 문자열이다 — 둘은 다른 것이다
+      aiLastThinkMs?:number, // 강AI 사고 시간 (표시 전용)
+      pkgSeq?:number,        // 패키지 개봉 표 번호
+      searchEndSeq?:number,  // 탐색 종료 재평가 순번
+      __ddFxCells?:any,      // 연출 칸 임시 보관
+      _pendingModal?:any     // 재접속 중 보류된 동기화 모달
+    }} GameState */
+/** @typedef {Sealed<ReturnType<typeof mkPiece>>} Piece */
+function newGame(mode,opts){
+  opts=opts||{};
+  fxReleaseAll(); // #106: 새 게임 — 이전 게임의 연출 잠금·타이머·대기 콜백 전부 무효 (불변식 2)
+  S=newGameState(mode,opts);
   for(const p of [0,1]){
     for(let i=0;i<6;i++) S.pieces.push(mkPiece(p,"minion")); // 속성·스탯은 로스터 선택 시 주입
 

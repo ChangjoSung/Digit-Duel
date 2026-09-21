@@ -205,7 +205,8 @@ function aiMoveOptions(p){
     }
   return out;
 }
-function aiCellDanger(me,[r,c]){ // 그 칸에 인접한 (보이는) 적 유닛 수
+/** @param {number} me @param {number[]} cell */
+function aiCellDanger(me,cell){ const [r,c]=cell; // 그 칸에 인접한 (보이는) 적 유닛 수
   return aiVisible(me).filter(e=>Math.abs(e.r-r)+Math.abs(e.c-c)===1&&aiThreatOf(me,e)!=="trap").length;
 }
 function aiRandomMove(me){
@@ -565,7 +566,7 @@ function aiMainStrong(me){
   const V=aiVisible(me); // 결정 시점 고정 가시 집합
   const my=alivePieces().filter(x=>x.owner===me);
   const hist=S.aiHist[me]||(S.aiHist[me]=[]);
-  const cands=[];
+  /** @type {any[]} */ const cands=[]; // 후보는 종류마다 필드가 다르고 2-ply 점수(s2)가 나중에 붙는다
   const virt=(fn)=>{ // 가상 적용 → 평가 → 복원
     const snap=my.map(x=>[x,x.r,x.c]); fn();
     const s=aiEvalPos(me,V);
