@@ -1649,10 +1649,15 @@ let blocked=false;
 try { H.load(index,{html:'<script src="../package.json"></script>'}); } catch(error) { blocked=/escapes demo root/.test(error.message); }
 ok(blocked,"harness rejects asset traversal");
 
+/* 기준판은 **도달 가능한** 커밋에서만 읽는다. 종전 9853a2c 는 #244 PR 브랜치의 커밋이라 분리 병합 adc92cd 의
+   부모가 아니고, 원격 브랜치 삭제 후 어느 ref 에서도 도달할 수 없어 fresh clone 에서 git show 가 실패했다.
+   0b7f683 은 adc92cd 의 실제 부모이자 HEAD 의 조상이므로, 문자 그대로 분리 전 상태이면서 모든 clone 에 있다. */
 let baseHtml=null;
-try { baseHtml=execFileSync("git",["show","9853a2c:demo/index.html"],{cwd:path.resolve(demo,".."),maxBuffer:1<<26}).toString("utf8"); }
+try { baseHtml=execFileSync("git",["show","0b7f683:demo/index.html"],{cwd:path.resolve(demo,".."),maxBuffer:1<<26}).toString("utf8"); }
 catch(error) { console.error(error.message); }
 ok(!!baseHtml,"pre-split baseline source is available");
+/* 그 ref 가 정말 분리 전 단일 문서인지 본다 — 분리 후 판을 가리키면 아래 대조가 자기 자신이 되어 아무것도 검사하지 않는다 */
+ok(!!baseHtml&&/<script>/.test(baseHtml)&&!/<script\s+src="js\//.test(baseHtml),"baseline ref points at the pre-split single document");
 if(baseHtml){
   const setupTrace=opts=>{
     const X=H.load(index,opts); X.setSeed(245); X.newGame("pvp"); X.autoPlaceCore();
