@@ -76,7 +76,12 @@ function openBattle(X,a,d){ X.S.battle=null; X.S.battlesUsed=0; a.hp=a.maxHp; d.
   a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0; a.powerBuff=false; d.powerBuff=false; a.fleeBoost=false; d.fleeBoost=false;
   // #233 (GDD-23 4.2 ①⑦): 이 파일은 시너지·패키지·버프 규칙을 보는 것이지 신규 회피·치명타를 보는 것이 아니다 — 0으로 고정한다.
   if(a.dodge!==undefined){a.dodge=0; a.crit=0;} if(d.dodge!==undefined){d.dodge=0; d.crit=0;}
-  X.TQ.length=0; X.startRounds(a,d,a,d); X.TQ.length=0; }
+  X.TQ.length=0; X.startRounds(a,d,a,d); X.TQ.length=0;
+  /* #235 (GDD-23 왕국 시너지): 왕국 효과는 참전 확정 순간 startRounds → applySynergy 에서 참전자에 스냅샷된다.
+     이 픽스처의 기본 보드(내 하수인·왕·동료가 같은 불 속성 3칸)는 (2) 단계를 달성하므로 스킬 적중마다
+     왕국 화상 판정이 하나 더 붙는다 — #121 기술 자체의 효과를 재는 이 파일에서는 남의 효과다.
+     smoke_issue235 G·P 절과 같은 자리·같은 방식(참전자 synEl=null)으로 끈다. 왕국 계약은 그 파일이 본다. */
+  const B=X.S.battle; if(B){ B.fa.synEl=null; B.fd.synEl=null; } }
 const fixed=X=>{ X.BAL.dmgVar=0; X.BAL.statusProb=1; X.BAL.shockProb=1; };
 /* 상태 확률만 1로 고정하고 **피해 분산은 살려 둔다** — 힘의 수호자는 분산 단계를 보는 계약이라 dmgVar 를 0 으로 만들면 검사가 공허해진다 */
 const fixedVar=X=>{ X.BAL.dmgVar=0.2; X.BAL.statusProb=1; X.BAL.shockProb=1; };
