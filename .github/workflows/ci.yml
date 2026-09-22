@@ -103,6 +103,10 @@ jobs:
       # smoke_issue241.js (#241, v0.4.11): 스킬 정리(CJ 승인 2026-09-17) — 번개 꼬리 같은 턴 추가 공격(선택 · ⌛ 사본 복원 · 금지 행동)·
       # 해일 예고 조건 표식(사용 시 X 확정 · HP+방어막 ≤ X · 천년목/철벽/과부하 보류)·거울 수면 옮기기·회피율 감소(0~40%)·단순화 12·
       # Q3 ⌛ 증가 Fresh(사실 확인 대조 포함)·AI 예정 선턴 입력과 추가 공격 합법 선택을 실제 엔진 경로로 본다.
+      # smoke_issue235.js (#235, v0.4.11): 왕국(속성)·아키타입·전설 직접 참전 패시브·동료 사망 🪄 칸 집중 회귀.
+      # 승인 수치표를 스위트 안에 따로 옮겨 적어 제품 표와 대조하고, 집계 경계(필드 9칸·사망/포획 칸 동결·가방 제외·
+      # 전설/무속성 0)·참전 확정 순간 스냅샷 고정·타입별 상한과 기존 회피 40%/치명 50% 상한 보존·왕국 스킬당 1판정·
+      # 전설 패시브(용/마녀/사신)·(2) 미달 무효·소유자 전용 selector(상대 집계 비노출)를 실제 엔진 경로로 본다.
       - name: 턴 흐름·전투·온라인 규칙 회귀
         run: |
           set -e
@@ -124,6 +128,7 @@ jobs:
           node demo/test/regression/smoke_issue233.js
           node demo/test/regression/smoke_issue234.js
           node demo/test/regression/smoke_issue241.js
+          node demo/test/regression/smoke_issue235.js
           node demo/test/regression/smoke_issue245.js
       # smoke_online_art.js (#201, v0.4.8 HotFix): 온라인에서 개별 이미지가 한 번 실패해도 그 자산이 영구히
       # 이모지·텍스트로 남지 않는다. 예산은 **파일 단위**다 — 연속 실패 3회 또는 수명 누적 8회에서 영구 결손으로

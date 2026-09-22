@@ -1669,8 +1669,12 @@ if(baseHtml){
     const result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000,trace:Y=>stateTrace.push(lockstepDigest(Y))});
     return JSON.stringify({stateTrace,digest:lockstepDigest(X),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
   };
-  // 24511 은 텔레포트 스왑 3회, 24512 는 2회 + 왕 끝줄 도달(edge) 승리 — Core 로 옮긴 스왑과 왕 끝줄 승리 경로를 둘 다 지난다 (레거시 분기는 남아 있지 않다)
-  for(const seed of [24501,24502,24511,24512]) ok(trace({html:baseHtml},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner matches the pre-split baseline");
+  /* #235 전환 — 이 네 시드는 9853a2c(분리 전) 판과의 1:1 대조였다. #235 왕국·아키타입·전설 시너지가 실제 규칙으로
+     켜지면서 같은 각본의 전투 결과가 바뀌므로 분리 전 판과 같을 수 없다(승인된 규칙 변경). 대조 **상대**만 현재 엔진의
+     독립 두 로드로 승계하고, 이 검사가 지키는 계약 — 같은 seed/action trace 는 같은 state·digest·승패를 내고 로드 사이에
+     새는 전역 상태가 없다 — 는 그대로 둔다. 기대값을 구현에 맞춰 낮춘 것이 아니다. 위 setup 대조는 분리 전 판 그대로다.
+     24511 은 텔레포트 스왑 3회, 24512 는 2회 + 왕 끝줄 도달(edge) 승리 — Core 로 옮긴 스왑과 왕 끝줄 승리 경로를 둘 다 지난다 (레거시 분기는 남아 있지 않다) */
+  for(const seed of [24501,24502,24511,24512]) ok(trace({},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner is identical across independent loads (#235 전환)");
 }
 
 /* ===== #245 반복 스킬 선언 표 — 데이터 한 곳 · 예외만 좁은 hook =====

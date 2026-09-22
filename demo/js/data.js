@@ -174,7 +174,7 @@ function archSkills(arch,el){return ARCH_TMPL[arch].map(t=>(t==="stable"||t==="e
    slotPow 는 이제 표시용이다 — 기술 라벨의 예상 피해 폭(dmgRange)과 AI 휴리스틱 추정처럼
    사람에게 정수로 보여 주거나 비교만 하는 곳이 쓴다. 실제 타격은 slotPowRaw 로 소수를 그대로 ②에 넣고
    ⑪ 에서 딱 한 번만 반올림한다. */
-function slotPowRaw(f,sk){return sk.pow*f.atk/SKILL_ATK_BASE;}
+function slotPowRaw(f,sk){return sk.pow*effAtk(f)/SKILL_ATK_BASE;}
 function slotPow(f,sk){return Math.round(slotPowRaw(f,sk));} // 표시용 위력 스케일 (사사오입)
 /* #92 기술 속성 판정 — 공격기(el 보유)는 기술 속성, 기본 공격·시그니처·보조기·레거시 경로는 본체 속성 그대로 */
 const SKILL_TIER_KO={stable:"안정",effect:"효과",heavy:"고위력"};
@@ -325,9 +325,38 @@ const V2_ELEM_FX={fire:"burn",water:"weaken",lightning:"shock",land:"crack",gras
 /* 5.3 동료의 복수·왕의 분노 — 그 왕국의 현재 최고 달성 단계 값. #234 REVISE 3차 CJ 결정(2026-09-17 D4): 왕국을 (2) 단계까지
    달성하지 못했으면 (2) 값을 쓰지 않는다 — 효과 없이 위력만 남는다(종전 GDD 5.3 "(2)도 달성하지 못했다면 (2) 값" 대체).
    왕국 집계는 #235 전이라 항상 미달성 → null. 아래 표는 #235 가 "달성 단계 ≥ (2)"일 때 그 단계 값으로 쓸 데이터로 보존한다(연결점). */
-const V2_KINGDOM_STAGE2={fire:{kind:"burn",mag:0.02,rounds:1},water:{kind:"weaken",mag:0.04,hits:1},lightning:{kind:"shock",rounds:1},
-  land:{kind:"harden",mag:0.03,rounds:1},grass:{kind:"absorb",mag:0.10,rounds:1}};
-function v2KingdomEffectOf(owner,el){ return null; } // #235 연결점: 달성 단계 ≥ (2)이면 그 단계 값(V2_KINGDOM_STAGE2 등), 미달성이면 null
+/* #235 왕국 시너지 표 — 필드 9칸(하수인 6 + 왕 1 + 동료 2) 중 같은 속성 칸 수가 단계 (2)(4)(6)(9) 를 넘을 때마다 강해진다.
+   표기 확률 p 는 부여자의 statusPct 를 가산해 100% 상한으로 자른다 — 그 계산은 공용 v2Apply 가 하고 여기는 표기값만 든다.
+   kind 는 4.5 속성 효과 이름 그대로다: 화상 · 약화 · 감전은 대상, 경화 · 흡수는 자신. */
+const V2_KINGDOM_STEPS=[2,4,6,9];
+const V2_KINGDOM_STAGES={
+  fire:     [{p:0.20,kind:"burn",mag:0.02,rounds:1},{p:0.40,kind:"burn",mag:0.04,rounds:1},{p:0.60,kind:"burn",mag:0.06,rounds:1},{p:1.00,kind:"burn",mag:0.10,rounds:1}],
+  water:    [{p:0.25,kind:"weaken",mag:0.04,hits:1},{p:0.45,kind:"weaken",mag:0.08,hits:1},{p:0.65,kind:"weaken",mag:0.12,hits:1},{p:1.00,kind:"weaken",mag:0.20,hits:1}],
+  lightning:[{p:0.15,kind:"shock",rounds:1},{p:0.30,kind:"shock",rounds:1},{p:0.45,kind:"shock",rounds:1},{p:0.70,kind:"shock",rounds:1}],
+  land:     [{p:0.20,kind:"harden",mag:0.03,rounds:1},{p:0.40,kind:"harden",mag:0.06,rounds:1},{p:0.60,kind:"harden",mag:0.09,rounds:1},{p:1.00,kind:"harden",mag:0.15,rounds:1}],
+  grass:    [{p:0.20,kind:"absorb",mag:0.10,rounds:1},{p:0.40,kind:"absorb",mag:0.20,rounds:1},{p:0.60,kind:"absorb",mag:0.30,rounds:1},{p:1.00,kind:"absorb",mag:0.50,rounds:1}]
+};
+/* #234 가 예약해 둔 소비자 이름 — 단계 (2) 줄 그 자체다. 같은 값을 두 곳에 적지 않도록 위 표에서 끌어온다. */
+const V2_KINGDOM_STAGE2={}; for(const el of Object.keys(V2_KINGDOM_STAGES)) V2_KINGDOM_STAGE2[el]=V2_KINGDOM_STAGES[el][0];
+/* #235 아키타입 시너지 — 필드 하수인 6칸 + 가방 전설 중 같은 타입 칸 수. 단계는 2 · 3 · 4 · 5 · 6 이고
+   **배열 길이가 그 타입의 상한**이다: 표준 · 공격 · 지속은 6단계까지, 방어 · 속공 · 보호는 5단계까지다(6칸이어도 5단계 값).
+   수혜자는 참전자 전원(왕 · 동료 · 전설 · 대리 포함)이고 활성화된 타입 효과를 모두 함께 받는다. 2 미만은 효과 없음. */
+const V2_ARCH_STEPS=[2,3,4,5,6];
+const V2_ARCH_SYN={
+  std:    [{atk:0.03,def:3,spd:1},{atk:0.05,def:5,spd:1},{atk:0.07,def:7,spd:2},{atk:0.09,def:9,spd:2},{atk:0.12,def:12,spd:3}],
+  atk:    [{crit:0.05},{crit:0.10},{crit:0.15},{crit:0.20},{crit:0.25}],
+  def:    [{def:5},{def:10},{def:15},{def:20}],
+  swift:  [{spd:1,dodge:0.03},{spd:2,dodge:0.06},{spd:3,dodge:0.09},{spd:4,dodge:0.12}],
+  sustain:[{statusPct:0.05},{statusPct:0.10},{statusPct:0.15},{statusPct:0.20},{statusPct:0.25}],
+  guard:  [{shieldPct:0.05},{shieldPct:0.08},{shieldPct:0.11},{shieldPct:0.14}]
+};
+/* #235 전설 직접 참전 패시브 — 가방에서 기다리는 전설은 타입 집계에만 들고 패시브는 받지 못한다.
+   용은 달성한 왕국 중 최고 단계 1속성의 효과를 받고(본체는 무속성 · 상성 중립 그대로), 모두 (2) 미달이면 효과가 없다. */
+const V2_LEGEND_SYN={witch:{statusPct:0.05,max:0.25},reaper:{atk:0.05,max:0.40}};
+/* #235 연결점 — 참전 확정 순간에 고정된 스냅샷(S.battle.syn)에서 그 왕국의 최고 달성 단계 값을 읽는다.
+   (2) 도 달성하지 못했으면 null — 동료의 복수 · 왕의 분노는 그때 효과 없이 위력만 남는다(#234 REVISE 3차 D4). */
+function v2KingdomEffectOf(owner,el){ const B=(typeof S!=="undefined"&&S)?S.battle:null; const snap=(B&&B.syn)?B.syn[owner]:null;
+  return snap?synKingdomEffect(snap,el):null; }
 /* 6.1 2차 아키타입 골격 — 감전만 예외(표준 50 · 지속 100 · 그 밖 30) */
 const V2_SKELETON={
   std:{pct:140,p:0.70,shock:0.50,cd:2}, atk:{pct:170,p:0.50,shock:0.30,cd:3},
@@ -547,11 +576,18 @@ function resetV2(f){
   f.burrowRound=0; f.enduredUsed=false; f.shocksDealt=0; f.mitigated=0; f.healTotal=0; f.onceUsed={};
   f.tideMark=0; f.tideBy=null; f.tideHeld=false; // #241 R2 해일 예고 표식 — 전투 끝까지 · 전투가 끝나면 소멸(T16)
   f.cdUpFresh=[]; // #241 Q3 ⌛ 증가 Fresh — 이번 라운드에 ⌛0 에서 +1 된 슬롯
+  /* #235 시너지 가산칸 — 참전 확정 순간에 한 번 채워지고 전투가 끝나면 여기서 지워진다(resetBattleTemps · resetAfter 공용).
+     기본 스탓(atk · def · spd · dodge · crit · statusPct)은 건드리지 않는다. */
+  f.synAtk=0; f.synDef=0; f.synSpd=0; f.synDodge=0; f.synCrit=0; f.synStatusPct=0; f.synEl=null;
+  delete f.synHit; delete f.synDone; // 행동 1회 안에서만 사는 누적칸 — 없음(undefined) = 이번 행동에 적중 없음. **지울 때는 delete 다** — 말 객체는 전투를 넘어 살아남으므로 null/false 를 대입하면 행동이 끝난 뒤에도 키가 스냅샷에 남는다 (v2SkillSettle 도 같은 방식으로 비운다)
   if(f.skills) f.cds=f.skills.map(()=>0);
 }
-function effSpd(f){ return (f.spd||0)+(f.spdBuff||0); } // 4.4 1라운드 순서 판정용 유효 속도 (#241 V1: 속도 감소 폐지)
+function effSpd(f){ return (f.spd||0)+(f.spdBuff||0)+(f.synSpd||0); } // 4.4 1라운드 순서 판정용 유효 속도 (#241 V1: 속도 감소 폐지 · #235 속공 · 표준 시너지 가산)
+/* #235 유효 공격력 — 표준형 시너지는 공격력 자체를 +N% 하므로 ② 기본 피해와 표시 위력이 같은 값을 봐야 한다.
+   f.atk 원값은 그대로 둔다 — 전투 범위 가산칸(synAtk)만 더하므로 되돌리기를 빼먹어 스탓이 쌓이는 길이 없고, 회선에도 실리지 않는다. */
+function effAtk(f){ return (f.atk||0)*(1+(f.synAtk||0)); }
 /* #241 V1 [CJ 승인 Q2] 최종 회피율 = 기본 + 회피 증가 − 회피율 감소 → 0~40% (한 식으로 자른다 · Venus 5.2.3) */
-function effEvade(f){ return Math.max(0,Math.min(V2_INTERP.evadeCap,(f.dodge||0)+(f.evadeBuff||0)-(f.evadeDownR>0?(f.evadeDown||0):0))); }
+function effEvade(f){ return Math.max(0,Math.min(V2_INTERP.evadeCap,(f.dodge||0)+(f.synDodge||0)+(f.evadeBuff||0)-(f.evadeDownR>0?(f.evadeDown||0):0))); } // #235 속공 시너지도 같은 40% 상한 안에서 더해진다
 function v2IsStatus(k){ return k==="burn"||k==="weaken"||k==="shock"||k==="crack"||k==="evadeDown"||k==="healCut"||k==="moss"; }
 /* 회복 — 회복 감소 적용 후 한 번 반올림, 최대 HP 상한, 실제로 오른 양만 "회복 총량"에 더한다(4.6) */
 function v2Heal(side,f,amount,label){
@@ -577,7 +613,7 @@ function v2IncomingCap(f,dmg){
    접지(감전 면역)는 감전만 막는다. (#241: 거울 수면 되돌림 분기는 '옮기기' 교체로 삭제) */
 function v2Apply(cSide,caster,tSide,target,kind,prob,o){
   o=o||{};
-  if(!o.force){ let p=Math.min(1,(prob||0)+(caster.statusPct||0)); if(caster.sandStormR>0) p*=0.5;
+  if(!o.force){ let p=Math.min(1,(prob||0)+(caster.statusPct||0)+(caster.synStatusPct||0)); if(caster.sandStormR>0) p*=0.5; // #235 지속형 시너지 · 마녀의 집회도 같은 가산 자리
     if(!(rand()<p)){ S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false; } }
   if(kind==="shock"&&target.immuneShockR>0){ bmsg(`⚡ ${fighterName(tSide)}는 감전 면역이다.`); return false; }
   S.metrics.statusApplied++;
@@ -700,8 +736,7 @@ function execV2(side,slot,sk){
   const run=V2_FX[sk.fx]||v2Default;
   run(ctx);
   if(!S.battle) return;
-  /* 흡수(4.5) — 이번 스킬의 적중이 HP 에 준 피해 기준, 당첨된 그 공격부터(Q9) */
-  if(f.absorbR>0){ const got=ctx.hits.reduce((s,r)=>s+(r.evaded?0:r.actual),0); if(got>0) v2Heal(side,f,got*(f.absorbPct||0),"흡수"); }
+  v2SkillSettle(side,f,oSide,opp); if(!S.battle) return; // #235 왕국 1판정 + 흡수(4.5) 정산 — 레거시 경로와 같은 공용 경계
   finishV2(side);
 }
 /* 스킬 사용 전처리(Q10) — 수면 포자 소모 · 환영 무도 무효 · 번식 포자 피해. execV2 가 부른다.
@@ -735,7 +770,7 @@ function v2Hit(ctx,pct,o){
   const flat=(o.flat||0);
   /* 확정 치명 — 죽음의 그림자(f.critForce, 1회성 · 위와 같이 회피돼도 소모) 와 조준 사격(o.critForce, I1: 이 타격 한정 · 플래그를 켜지 않아 다음으로 넘어가지 않음) */
   let critNow=!!o.critForce; if(f.critForce){ critNow=true; f.critForce=false; }
-  const res=resolveHit(side,f,opp,oSide,f.atk*p/100*scale,flat*scale,sk.neutral?null:f.element,sk.dragonMult||null,0,
+  const res=resolveHit(side,f,opp,oSide,effAtk(f)*p/100*scale,flat*scale,sk.neutral?null:f.element,sk.dragonMult||null,0,
     {ignoreShield:!!(o.ignoreShield||sk.ignoreShield),ignoreDef:!!(o.ignoreDef||sk.ignoreDef),critForce:critNow});
   ctx.hits.push(res);
   if(S.battle===B) v2AfterHit(side,f,opp,oSide,res,ctx);
@@ -780,14 +815,21 @@ const V2_FX={
     if(o.burn>0){ const tick=o.maxHp*(o.burnMag||BAL.burnPct), left=o.burn;
       o.burn=0; o.burnFresh=false; o.burnMag=0; o.burnNoCure=false; const by=o.burnBy; o.burnBy=null;
       // 4.3 지속 피해 계열 — 회피·방어력·방어막 없이 ⑩ 반올림 한 번 (남은 라운드 × 1회 피해 × 1.5)
-      c.hits.push({evaded:false,actual:v2Dot(c.oSide,o,tick*left*1.5,"💥 폭발 연소 —",c.side)}); }
+      const actual=v2Dot(c.oSide,o,tick*left*1.5,"💥 폭발 연소 —",c.side);
+      c.hits.push({evaded:false,actual});
+      /* #235 이 분기만 resolveHit 를 타지 않는다 — 그래도 이건 이 스킬의 적중이다.
+         공용 정산칸(v2SkillSettle 의 유일한 입력)에 직접 넣지 않으면 왕국 1판정·흡수가 통째로 빠진다. */
+      c.f.synHit=(c.f.synHit||0)+actual; }
     else c.hit(120,{}); },
   /* #245 표로 옮기지 않는다 — 경화가 반격 표식보다 **먼저** 와야 하는데 선언 표의 고정 순서는 지속 플래그를 경화보다 앞에 둔다.
      (태고의 각성은 회복 → 경화, 나이테 등은 지속 플래그 → 문구라서 한 순서로 둘 다 만족시킬 수 없다.) */
   heatShell(c){ v2Apply(c.side,c.f,c.side,c.f,"harden",1,{force:true,mag:0.20,rounds:1}); applyTimedFx(c.f,"retaliateBurnR",1); },
   eruption(c){ c.hit(80,{flat:Math.min(40,c.f.mitigated||0)}); },
   flameMark(c){ const r=c.hit(60,{}); if(S.battle&&!r.evaded&&c.opp.burn>0){ const o=c.opp;
-      v2Dot(c.oSide,o,o.maxHp*(o.burnMag||BAL.burnPct),"🔥 불꽃 표식 —",c.side); } },
+      /* #235 폭발 연소와 같은 이유 — 이 지속 피해도 이 스킬의 실 HP 피해다. 공용 정산칸에 넣지 않으면 흡수가 빠진다.
+         왕국 판정은 c.hit 누적으로 이미 1회뿐이라 여기서 더 늘지 않는다. */
+      const actual=v2Dot(c.oSide,o,o.maxHp*(o.burnMag||BAL.burnPct),"🔥 불꽃 표식 —",c.side);
+      c.f.synHit=(c.f.synHit||0)+actual; } },
   undyingEmber(c){ const r=c.hit(130,{}); if(S.battle&&!r.evaded&&c.opp.burn>0){ c.opp.burn=Math.min(3,c.opp.burn+1); bmsg(`🔥 화상 지속 +1R (${c.opp.burn}R)`,{st:stFx(c.oSide,c.opp)}); }
     if(S.battle){ applyTimedFx(c.f,"vanguardTurn",1); bmsg(`🏃 ${fighterName(c.side)} — 다음 라운드 선턴`,{st:stFx(c.side,c.f)}); } },
   /* #241 단순화 10: 화상 피해율 +3%p 보너스(전용 필드 burnBonus) → 그 화상 수치를 8%로 갱신(큰 값, 5.6) */
@@ -817,7 +859,7 @@ const V2_FX={
      사용자 약화는 공격으로 1회 소모 · 방어막 소모 없음(Venus 2.2 추가). 회피하면 표식 없음 · 전투당 1회는 소모(T4).
      판정은 v2TideCheck(사용 직후 · 매 행동 뒤 · 라운드 종료 처리 뒤 = 방어 효과 만료 직후) */
   tsunami(c){ const o=c.opp;
-    const pre=resolveHit(c.side,c.f,o,c.oSide,c.f.atk*(120+(o.weaken||0)*30)/100,0,c.f.element,null,0,{preview:true,critForce:false});
+    const pre=resolveHit(c.side,c.f,o,c.oSide,effAtk(c.f)*(120+(o.weaken||0)*30)/100,0,c.f.element,null,0,{preview:true,critForce:false});
     if(!S.battle) return;
     if(pre.evaded){ bmsg(`🌊 해일 예고가 빗나갔다 — 표식 없음`); return; }
     o.tideMark=pre.dmg; o.tideBy=c.side; o.tideHeld=false;
@@ -895,13 +937,36 @@ const V2_FX={
   revenge(c){ v2Revenge(c,0); },
   wrath(c){ v2Revenge(c,1); }
 };
+/* #235 왕국 효과 1판정 — 부여자는 그 왕국과 같은 속성의 참전자다(왕 · 동료 · 대리 포함 · 무속성 전설 제외).
+   누가 수혜자인지는 startRounds 가 참전 확정 순간에 f.synEl 로 정해 둔다 — 용의 군주(무속성 예외)도 거기서 들어간다.
+   확률 가산 · 100% 상한 · 감전 면역 · 지표 집계는 전부 공용 v2Apply 경로를 그대로 탄다.
+   o.force = 동료의 복수 · 왕의 분노의 **확정** 발동(확률 판정 없음 · 난수 0) · o.extend = 지속 +N · o.evaded = 이번 스킬이 회피됐다.
+   자기 대상(경화 · 흡수)은 회피와 무관하게 유지되고(4.2 ①), 대상 지정 효과만 회피에 막힌다. */
+function v2KingdomProc(cSide,f,oSide,opp,o){
+  const e=f.synEl; if(!e) return; o=o||{};
+  const self=(e.kind==="harden"||e.kind==="absorb"); // 경화 · 흡수는 자기 대상(4.5)
+  if(o.evaded&&!self) return;
+  const ext=o.extend||0;
+  v2Apply(cSide,f,self?cSide:oSide,self?f:opp,e.kind,o.force?1:e.p,
+    {force:!!o.force,mag:e.mag,rounds:e.rounds===undefined?undefined:e.rounds+ext,hits:e.hits===undefined?undefined:e.hits+ext});
+}
+/* #235 피해 스킬 1회의 마무리 — **왕국 1판정과 흡수 정산이 만나는 공용 경계**다.
+   execV2(v2 스킬) · execSlot(레거시 피해 스킬) · legacySkillAct(구형 속성 스킬) 셋이 전부 여기로 들어온다.
+   resolveHit 이 적중마다 f.synHit 에 실 HP 피해를 누적해 두므로 multi-hit 도 **스킬당 1판정**이고,
+   회피만 한 스킬 · 해일 예고 · 도망 실패 페널티 평타는 누적 자체가 없어 자연히 빠진다(방어막 완전 흡수는 적중이다).
+   흡수(4.5)는 왕국 부여 **뒤에** 정산해야 "당첨된 그 공격부터"(Q9)가 성립한다. */
+function v2SkillSettle(side,f,oSide,opp){
+  const got=f.synHit, forced=f.synDone; delete f.synHit; delete f.synDone;
+  if(got===null||got===undefined) return;                                    // 이번 행동에 적중이 없었다
+  if(f.synEl&&!forced){ v2KingdomProc(side,f,oSide,opp); if(!S.battle) return; }
+  if(f.absorbR>0&&got>0) v2Heal(side,f,got*(f.absorbPct||0),"흡수");
+}
+/* 5.3 동료의 복수 · 왕의 분노 — 같은 왕국 효과를 **확정으로 정확히 1회** 건다(지속 +extend).
+   확률 proc 과 같은 함수를 쓰고 f.synDone 으로 위 settle 의 자동 판정을 건너뛴다 — 둘 다 타면 난수·statusApplied 가 겹친다. */
 function v2Revenge(c,extend){
   const r=c.hit(c.sk.pct,{}); if(!S.battle) return;
-  const e=v2KingdomEffectOf(c.f.owner!==undefined?c.f.owner:null,c.f.element); if(!e) return;
-  if(e.kind==="harden"||e.kind==="absorb"){ v2Apply(c.side,c.f,c.side,c.f,e.kind,1,{force:true,mag:e.mag,rounds:e.rounds+extend}); return; }
-  if(r.evaded) return;
-  if(e.kind==="weaken") c.st("weaken",1,{force:true,mag:e.mag,hits:e.hits+extend});
-  else c.st(e.kind,1,{force:true,mag:e.mag,rounds:e.rounds+extend});
+  c.f.synDone=true;
+  v2KingdomProc(c.side,c.f,c.oSide,c.opp,{force:true,extend,evaded:r.evaded});
 }
 function v2CdUp(tSide,t){ const i=v2CdUpTarget(t); if(i<0){ bmsg(`❄ 늘릴 ⌛가 없다.`); return; }
   /* #241 Q3 [CJ 승인 2026-09-17] ⌛0 에 건 +1 은 부여 라운드의 종료 감소에서 제외한다(5.6 Fresh 와 같은 방식) — 시전자가 후턴이어도 효과가 남는다 */
@@ -975,9 +1040,12 @@ function aiV2DmgAdj(side,f,sk){
 }
 function aiV2SupportScore(f,sk,lowHp,side,opp){
   const k=sk.ai||"buff", B=S.battle;
-  if(sk.fx==="tsunami"&&opp){ // #241 R2 — 사용 시점: 공개 수치(HP · 방어막 · 약화 · 방어력 · 경화 · 속성)로 X 를 어림해 곧 발동할 때 쓴다
+  /* #241 R2 — 사용 시점: 공개 수치(HP · 방어막 · 약화 · 방어력 · 경화 · 속성)로 X 를 어림해 곧 발동할 때 쓴다.
+     #235: 자기 공격력은 Core 와 같은 effAtk(f) 를 쓴다(표준·사신 💪 가산 포함) — 규칙 사본을 늘리지 않는다.
+     상대의 시너지 가산칸(synDef 등)은 비공개라 읽지 않는다: 어림이 그만큼 보수적인 것은 공정 관측의 비용이다. */
+  if(sk.fx==="tsunami"&&opp){
     const adv=f.element&&opp.element&&BEATS[f.element]===opp.element, dis=f.element&&opp.element&&BEATS[opp.element]===f.element;
-    const x=(f.atk||0)*(1.2+0.3*(opp.weaken||0))*(adv?BAL.advMult:dis?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1)*(1-Math.min(0.5,(opp.def||0)/100+(opp.hardenPct||0)));
+    const x=effAtk(f)*(1.2+0.3*(opp.weaken||0))*(adv?BAL.advMult:dis?BAL.disMult:1)*(f.weaken>0?(1-BAL.weakenPct):1)*(1-Math.min(0.5,(opp.def||0)/100+(opp.hardenPct||0)));
     const pool=(opp.hp||0)+(opp.shield||0);
     return pool<=x*0.95?95:pool<=x*1.5?9:1; }
   if(k==="heal") return f.hp<f.maxHp*0.6?(lowHp?20:9):1;
