@@ -1245,6 +1245,11 @@ function battleModal(board){
   const dis=aiActor||busy||(NET.mode&&ownerP!==NET.me); // 온라인: 상대 행동 차례엔 조작 불가
   /* Saturn REVISE P1(비공개): 마스킹 기준은 **소유자 관측**이다 — 온라인·PVE·핫시트를 함께 처리한다 */
   const mineView=viewerIsOwner(ownerP);
+  /* #235 비공개: 💪 시너지 가산(synAtk)은 **그 좌석의 필드 아키타입 집계**에서 나온다. 위력 표기에 그대로 실으면
+     종·등급이 이미 공개된 전투원 옆에서 상대가 가산분을 역산해 로스터 구성을 읽는다(7.9 소유자 전용).
+     그래서 비소유자 화면의 위력 표기만 가산 없는 사본으로 뽑는다 — 규칙 사본을 만들지 않고 같은 Core 함수(slotPow·effAtk)를 그대로 쓴다.
+     실제 피해는 언제나 Core 가 낸다. 소유자 화면은 execSlot 과 같은 값을 본다. */
+  const fShow=mineView?f:Object.assign({},f,{synAtk:0});
   /* #146: 지금 이 전투원이 **합법으로 쓸 수 있는 공격 수단이 하나도 없는가**. 왕·동료 본체(skills 없음)는 기본 공격이 있으므로 항상 false.
      비공개: "공격할 것이 없습니다"는 **상대의 미공개 기술 4칸이 전부 막혀 있다**는 사실을 그대로 알려 주는 정보다.
      그래서 안내도 [턴 종료] 버튼도 **소유자 화면에만** 그린다 (비소유자에게는 종전처럼 마스킹된 4슬롯 버튼만 보인다). */
@@ -1262,7 +1267,7 @@ function battleModal(board){
       const seal=sk2.reaper?reaperWhy(side,ST):null;
       const cond=!onCd&&!seal&&!slotUsable(f,i,side,ST); // #234: 전투당 1회 사용 · 사용 조건 미충족 · 수면 포자(기본기만)
       const locked=onCd||!!seal||cond;
-      const label=known?`${skillNameKo(sid2,f.element)}${sk2.pow?" "+dmgRange(slotPow(f,sk2)):""}${onCd?` (쿨${f.cds[i]})`:seal?" (봉인)":cond?" (불가)":""}`:`? ${SKIND_KO[sk2.kind]}`;
+      const label=known?`${skillNameKo(sid2,f.element)}${sk2.pow?" "+dmgRange(slotPow(fShow,sk2)):""}${onCd?` (쿨${f.cds[i]})`:seal?" (봉인)":cond?" (불가)":""}`:`? ${SKIND_KO[sk2.kind]}`;
       const cross=known&&sk2.el&&f.element&&sk2.el!==f.element; // #92 본체와 다른 속성의 공격기 — 판정 속성을 설명에 덧붙여 비교 가능하게
       const tip=known?sk2.desc+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:"")+(sk2.cls?` · ${SKILL_CLS_KO[sk2.cls]} 분류(상성표 밖)`:"")+(seal?` · ${seal}`:""):"";
       skillTips[i]=known&&tip?{label,tip}:null;
@@ -1282,7 +1287,8 @@ function battleModal(board){
     if(noAtkShow) cmdBtns+=`<button class="primary" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`;
   } else { // 왕·동료 본체·구형 경로: 기본 공격 유지
     const canSkill=f.skillAtk&&f.cd===0;
-    cmdBtns=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(f.atk)}</button>`
+    /* #235: 기본 공격의 실제 위력은 execSlot 이 effAtk(f) 로 낸다 — 표기도 같은 Core 함수를 본다(위 fShow 마스킹 동일) */
+    cmdBtns=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(effAtk(fShow))}</button>`
       +(f.skillAtk?`<button ${dis||!canSkill?"disabled":""} onclick="window.__act('skill')">${f.element?SKILL_KO[f.element]:"스킬"} ${dmgRange(f.skillAtk)}${f.cd?` (쿨${f.cd})`:""}</button>`:"");
   }
   // #12 볼 투척: 대상이 적 하수인·HP<30%·볼 보유·예비 슬롯 빈 상태·라운드당 1회 / #13 도망: 자기 HP<50%

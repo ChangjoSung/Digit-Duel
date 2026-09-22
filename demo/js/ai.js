@@ -729,9 +729,11 @@ function aiBattleActionStrong(side){
   const oAdv=opp.element&&f.element&&BEATS[opp.element]===f.element, oDis=opp.element&&f.element&&BEATS[f.element]===opp.element;
   const oppEst=(opp.atk||16)*1.18*(oAdv?BAL.advMult:oDis?BAL.disMult:1)*(opp.weaken>0?(1-BAL.weakenPct):1)*(f.dmgCut?1-f.dmgCut:1);
   const usable=f.skills?f.skills.map((sid,i)=>({i,sk:SKILLS[sid]})).filter(x=>slotUsable(f,x.i,side)):[]; // #121 계약 5.3: 봉인 포함 합법 슬롯만
-  const dmgOf=sk=>(sk?slotPow(f,sk):f.atk)*multOf(atkElOf(f,sk))*(f.focusCharge&&sk&&sk.kind==="attack"?1.2:1)*(sk?aiV2DmgAdj(side,f,sk)[0]:1); // #241 추가 공격 60% 등
+  /* #235: 내 위력 추정은 Core 의 effAtk 하나만 본다 — 시너지 💪 가산이 slotPow 와 기본 공격 양쪽에 같은 값으로 들어간다.
+     상대 쪽 oppEst 는 종전대로 공개 스탯 opp.atk 그대로다 — 상대 시너지는 상대 로스터 구성이라 공정 관측 밖이다. */
+  const dmgOf=sk=>(sk?slotPow(f,sk):effAtk(f))*multOf(atkElOf(f,sk))*(f.focusCharge&&sk&&sk.kind==="attack"?1.2:1)*(sk?aiV2DmgAdj(side,f,sk)[0]:1); // #241 추가 공격 60% 등
   const inBonus=!!(B.bonus&&B.bonus.stage==="active"&&B.bonus.side===side); // #241 R1 번개 꼬리 추가 공격 — 스킬 선택만 합법(L17)
-  let bestDmg=f.atk*multOf(f.element), bestSlot=-1;
+  let bestDmg=effAtk(f)*multOf(f.element), bestSlot=-1;
   for(const {i,sk} of usable) if(sk.pow&&dmgOf(sk)>bestDmg){bestDmg=dmgOf(sk); bestSlot=i;}
   const killNow=bestDmg*(1-BAL.dmgVar)>=opp.hp+opp.shield;
   const toKillMe=Math.ceil(Math.max(1,f.hp)/Math.max(1,oppEst)), toKillOpp=Math.ceil((opp.hp+opp.shield)/Math.max(1,bestDmg));

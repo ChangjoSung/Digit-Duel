@@ -24,7 +24,9 @@ const first=(o,type,i)=>T.S.pieces.filter(x=>x.owner===o&&x.type===type)[i||0];
 const cur=p=>T.S.pieces.find(x=>x.id===p.id); // #245: heal reducer 는 대상 말을 복제한다 — 성공 직후 현재 S.pieces 객체로 재조회
 /* 보드 초기화: 양 왕을 구석에, 나머지 전부 회수 (전멸 방지용 하수인 1기씩 뒤에 배치) */
 function board(mode,lv){
-  H.freshPlay(T,mode||"pvp",lv); H.clearBoard(T);
+  H.freshPlay(T,mode||"pvp",lv);
+  H.synNeutral(T,[]); // #235: 무작위 로스터의 왕국·아키타입·전설 집계가 아래 고정 수치·선턴·rand 소비를 흔들지 않게 이 공유 무대 전체를 시너지 중립으로 못 박는다
+  H.clearBoard(T);
   H.place(T,king(0),13,1); H.place(T,king(1),1,7);
   H.place(T,first(0,"minion",5),13,7); H.place(T,first(1,"minion",5),1,1);
   T.FX.log.length=0; T.S.contactKind="move"; T.tutSkip(); T.TQ.length=0; T.FX.auto=null; T.els.overlay.classList.add("hidden"); // 실제 DOM 초기 상태(오버레이 숨김)

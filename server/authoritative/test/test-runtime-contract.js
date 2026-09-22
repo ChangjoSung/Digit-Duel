@@ -211,19 +211,24 @@ function drive(T, seed, steps) {
 /* 아래 값은 위 drive() 각본을 **반복 실행해 같은 값이 나오는 것을 확인한 뒤** 그대로 박은 고정 기대값이다
    (2026-09-22, 엔진 3개 독립 실행 대조). 쌍둥이 실행 비교는 그대로 두되 **그것만으로 끝내지 않는다** — 같은
    코드가 같은 결과를 내는 것은 규칙이 바뀌어도 성립하므로, 규칙이 바뀌면 반드시 어긋나는 고정 해시를 함께 건다. */
+/* #235 시너지(왕국 · 아키타입 · 전설 패시브) 가 실제 규칙으로 켜지면서 같은 각본의 결과가 바뀌었다 — 위 주석이 말하는 "규칙이 바뀌면 반드시 어긋나는" 그 자리다.
+   2026-09-22 재기준선: DD_GOLDEN=1 로 두 번 돌려 같은 값임을 확인했고, 아래 쌀둥이 실행 비교가 결정성을 그대로 다시 건다.
+   값을 구현에 맞춰 낮춘 것이 아니라, 승인된 규칙 변경의 새 기준선이다. */
 const GOLDEN = [
-  { seed: 11, turns: 179, phase: 'play', winner: null, battles: 7, forced: 7, searches: 6,
-    state: '3e63d78f0d2e91a1', log: '318ddb78c7c8552e', logN: 213, fx: '4243c0ca5f1cfcf2', fxN: 40, metrics: 'c15033f442ae6b2a' },
+  { seed: 11, turns: 193, phase: 'play', winner: null, battles: 10, forced: 10, searches: 6,
+    state: 'e34f54fe8e291f52', log: 'deb6c5c972a41f6b', logN: 232, fx: 'e9fda9000717d322', fxN: 40, metrics: 'bd4dd0734edd4a23' },
   { seed: 44, turns: 102, phase: 'play', winner: null, battles: 1, forced: 1, searches: 3,
-    state: '7817d68ab3a557e9', log: 'ded86e54b3a639f5', logN: 117, fx: 'd91ef0891a1ba3cb', fxN: 40, metrics: 'a7a363df0fdc0428' },
-  { seed: 55, turns: 226, phase: 'play', winner: null, battles: 5, forced: 5, searches: 5,
-    state: '921e45fb64e2d6ba', log: 'af7cd61c2d4b2ba7', logN: 253, fx: 'fed1315f16f6a8ba', fxN: 40, metrics: 'b2173e7368c08035' },
+    state: '2e7afdb03290a5a9', log: '1baf6e275497de1a', logN: 117, fx: '1192587af4cd50f9', fxN: 40, metrics: 'dad750cdf9258568' },
+  { seed: 55, turns: 219, phase: 'play', winner: null, battles: 4, forced: 4, searches: 4,
+    state: 'd5d643aab7f786bd', log: '4df332d4325b1db5', logN: 242, fx: '6a4790ecde97a33d', fxN: 40, metrics: '39c674c40570fb11' },
 ];
 const rep = (k, v) => (v instanceof Set ? [...v] : v);
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);
 for (const g of GOLDEN) {
   const T = drive(createEngine(), g.seed, 400);
   const S = T.S, M = S.metrics;
+  // 규칙이 바뀜 때 고정 기대값을 다시 뜨는 덤프 — DD_GOLDEN=1 로 두 번 돌려 같은 값이 나오는 것을 확인한 뒤 아래 GOLDEN 에 박는다.
+  if (process.env.DD_GOLDEN) console.log(JSON.stringify({ seed: g.seed, turns: S.turnCount, phase: S.phase, winner: S.winner, battles: M.battles, forced: M.forcedBattles, searches: M.searches, state: sha(JSON.stringify(S, rep)), log: sha(JSON.stringify(S.log)), logN: S.log.length, fx: sha(JSON.stringify(T.__fx.items)), fxN: T.__fx.items.length, metrics: sha(JSON.stringify(M)) }));
   ok(S.turnCount === g.turns && S.phase === g.phase && S.winner === g.winner,
     'seed ' + g.seed + ': 완주 결과 동일 (turns=' + S.turnCount + ' phase=' + S.phase + ' winner=' + S.winner + ')');
   ok(sha(JSON.stringify(S, rep)) === g.state, 'seed ' + g.seed + ': 최종 상태 스냅샷 동일');

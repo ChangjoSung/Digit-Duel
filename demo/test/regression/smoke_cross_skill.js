@@ -31,6 +31,7 @@ function setup(T,mode){
   const ally0=T.S.pieces.find(x=>x.owner===0&&x.type==="ally");
   H.place(T,k0,13,1); H.place(T,k1,1,7); H.place(T,me,12,4); H.place(T,em,11,4);
   T.S.balls=[3,3]; T.S.reserve=[null,null]; T.S.inv=[[],[]]; T.TQ.length=0;
+  H.synNeutral(T,[me,em]); // #235: 무작위 로스터의 왕국·아키타입 단계가 아래 고정 수치·rand 소비를 흔들지 않게 집계를 0 으로 못 박는다
   return {me,em,k0,k1,ally0};
 }
 /* 실제 사용자 경로: 말 아래 recruit 이벤트 + 흔적 → 선택 → search 액션(netAction) */
@@ -272,6 +273,7 @@ const T=loadH(htmlPath);
   const em2=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x!==U.me); giveSpecies(T,em2,R(T,"M-F1")); H.place(T,em2,10,4);
   const ally1=T.S.pieces.find(x=>x.owner===1&&x.type==="ally"); H.place(T,ally1,9,4); ally1.cap=T.S.reserve[1]; T.S.reserve[1]=null;
   ally1.cap.dodge=0; ally1.cap.crit=0; em2.dodge=0; em2.crit=0; // #233 (GDD-23 4.2 ①⑦): 이 절은 교차 속성 판정을 보는 것 — 회피·치명타 미고정 시 setSeed(null) 구간이라 비결정적이었다
+  H.synNeutral(T,[ally1,em2]); // #235: 이 절은 setup 의 두 말이 아니라 새 짝(동료 대리 출전 vs em2)으로 무대를 다시 세운다 — 포획되어 판에 남은 앞 하수인·왕의 왕국·아키타입 집계가 아래 고정 피해를 흔들지 않게 그 경계에서도 중립으로 못 박는다
   T.S.battle=null; T.S.battlesUsed=0; T.startRounds(ally1,em2,ally1.cap,em2); T.TQ.length=0; T.execSlot("A",0);
   ok(em2.hp===100-28&&ally1.cap.revealedSkills.includes(0),"F8 대리 출전한 예비 하수인의 물대포 → 불 상대: 28 = round(round(26×20/22)×1.3×(1-방어력10%)) — #233 GDD-23 4.2④⑧ (def 도입 전 31)");
   fixed(T,0.7); T.BAL.shockProb=0.5; T.BAL.dmgVar=0.2; T.setSeed(null);

@@ -1818,6 +1818,96 @@ function doPush(att,def){ // 동료/왕 ↔ 동료/왕 접촉 (전투 1회 계�
   if(S.phase!=="play") return;
   afterBattle(att,false); emitCore({type:"render"});
 }
+/* ===== #235 시너지 — 왕국(속성) · 아키타입 · 전설 직접 참전 패시브. Core 소유 · 순수 함수 =====
+   집계는 **전투 참전이 확정된 순간(startRounds)에 한 번** 일어나고 그 전투가 끝날 때까지 고정된다(S.battle.syn).
+   전투 중에 칸이 죽거나 포획돼도 이번 전투의 수치는 움직이지 않고, 다음 전투가 바뀜 칸을 반영한다.
+
+   필드 9칸 = 그 소유자의 하수인 6 + 왕 1 + 동료 2 중 **실제로 보드에 나간 칸**(placed)이다.
+   죽은 칸도 placed 를 그대로 들고 있으므로 그 자리에서 그대로 세진다 — 이것이 "사망 · 포획 칸 동결"이다.
+   가방(예비 하수인 · 포획 슬롯)은 왕국 집계에서 빠지고, 아키타입은 가방의 **전설**만 더 센다.
+   전설과 무속성 칸은 왕국에 0 이다(속성이 없다). */
+const SYN_FIELD_TYPES=["minion","king","ally"]; // 필드 9칸을 이루는 세 종류
+/* 가방에서 대기 중인 전설 — 예비 하수인 1자리와 왕·동료의 포획 슬롯. 대리로 나가 진 전설은
+   기존 전투 종료 처리가 그 자리를 비우므로 자연히 집계에서 빠진다. */
+function synBagLegends(owner,state){
+  const g=state||S, out=[];
+  const res=g.reserve&&g.reserve[owner];
+  if(res&&res.legend) out.push(res);
+  for(const p of g.pieces) if(p.owner===owner&&p.cap&&p.cap.legend) out.push(p.cap);
+  return out;
+}
+/* 스냅샷 원본 — {el:속성별 칸 수, arch:타입별 칸 수, dead:사망한 하수인·동료 칸 수}. 단계·수치는 전부 여기서 파생된다. */
+function synCount(owner,state){
+  const g=state||S, el={}, arch={};
+  for(const k of V2_ELEM_ORDER) el[k]=0;
+  for(const k of Object.keys(V2_ARCH_SYN)) arch[k]=0;
+  let dead=0;
+  for(const p of g.pieces){
+    if(p.owner!==owner||p.placed!==true||SYN_FIELD_TYPES.indexOf(p.type)<0) continue;
+    if(!p.legend&&p.element&&el[p.element]!==undefined) el[p.element]++;
+    if(p.type==="minion"){ const a=archOf(p); if(a&&arch[a]!==undefined) arch[a]++; }
+    if(p.alive===false&&p.type!=="king") dead++;
+  }
+  for(const lg of synBagLegends(owner,g)){ const a=legendArchOf(lg); if(a&&arch[a]!==undefined) arch[a]++; }
+  return {el,arch,dead};
+}
+/* 달성 단계 색인 — -1 은 (2) 미달이다. 가장 높은 달성 단계 하나만 쓴다. */
+function synKingdomStage(snap,el){
+  let i=-1; const n=(snap&&snap.el&&snap.el[el])||0;
+  V2_KINGDOM_STEPS.forEach((need,k)=>{ if(n>=need) i=k; });
+  return i;
+}
+function synKingdomEffect(snap,el){ const i=(snap&&el&&V2_KINGDOM_STAGES[el])?synKingdomStage(snap,el):-1; return i<0?null:V2_KINGDOM_STAGES[el][i]; }
+/* 활성화된 모든 타입 효과의 합 — 누가 받는지와 무관하게 그 원정의 집계가 정한다(참전자 전원 같은 값). */
+function synArchBonus(snap){
+  const out={atk:0,def:0,spd:0,dodge:0,crit:0,statusPct:0,shieldPct:0};
+  for(const a of Object.keys(V2_ARCH_SYN)){
+    const tbl=V2_ARCH_SYN[a], n=(snap&&snap.arch&&snap.arch[a])||0;
+    if(n<V2_ARCH_STEPS[0]) continue; // 2 미만은 효과 없음
+    const b=tbl[Math.min(tbl.length-1,n-V2_ARCH_STEPS[0])]; // 배열 끝 = 그 타입의 상한 단계
+    for(const k of Object.keys(b)) out[k]+=b[k];
+  }
+  return out;
+}
+function synElemKinds(snap){ return V2_ELEM_ORDER.filter(el=>((snap&&snap.el&&snap.el[el])||0)>0).length; } // 필드 9칸의 서로 다른 속성 수 (마녀의 집회)
+/* 용의 군주 — 달성한 왕국 중 최고 단계 1속성. 동률은 칸 수, 그래도 같으면 V2_ELEM_ORDER(불→물→번개→땅→풀). 모두 (2) 미달이면 null. */
+function synDragonEl(snap){
+  let best=null,bs=-1,bc=-1;
+  for(const el of V2_ELEM_ORDER){
+    const st=synKingdomStage(snap,el); if(st<0) continue;
+    const c=snap.el[el];
+    if(st>bs||(st===bs&&c>bc)){ best=el; bs=st; bc=c; }
+  }
+  return best;
+}
+/* 참전 확정 순간 1회 — 스냅샷을 고정하고 두 전투원에 전투 범위 가산칸을 넣는다.
+   가산칸은 resetV2(전투 시작·종료)가 지우므로 기본 스탓은 영원히 그대로다.
+   보호형 시너지 방어막은 기본 10% 층(guardStart) 다음에 **수혜자 모두 1회** 더해진다. */
+function applySynergy(B){
+  if(!B) return null;
+  const snap={0:synCount(0,S),1:synCount(1,S)};
+  B.syn=snap;
+  for(const [piece,f] of [[B.attP,B.fa],[B.defP,B.fd]]){
+    const own=piece.owner, s=snap[own], bon=synArchBonus(s);
+    f.synAtk=bon.atk; f.synDef=bon.def; f.synSpd=bon.spd; f.synDodge=bon.dodge; f.synCrit=bon.crit; f.synStatusPct=bon.statusPct;
+    /* 전설 직접 참전 패시브 — 가방 대기 전설은 여기 오지 않으므로 자연히 제외된다 */
+    if(f.legend==="witch") f.synStatusPct+=Math.min(V2_LEGEND_SYN.witch.max,synElemKinds(s)*V2_LEGEND_SYN.witch.statusPct);
+    if(f.legend==="reaper") f.synAtk+=Math.min(V2_LEGEND_SYN.reaper.max,s.dead*V2_LEGEND_SYN.reaper.atk);
+    const el=f.legend?(f.legend==="dragon"?synDragonEl(s):null):(f.element||null); // 무속성 전설은 왕국 수혜자가 아니다 — 용만 예외
+    f.synEl=el?synKingdomEffect(s,el):null;
+    if(bon.shieldPct) shieldAdd(f,Math.round(f.maxHp*bon.shieldPct),"synGuard");
+  }
+  return snap;
+}
+/* #235 숫자 경계 — **소유자 전용** selector. AI · UI 는 이 한 함수로만 자기 시너지 현황을 읽는다.
+   상대 칸 수 · 타입 집계는 어느 경로로도 나가지 않는다 — 서버 좌석 뷰(room.js)와 낙스텝 요약은 서버 안에만 있다.
+   전투 중이면 고정된 스냅샷을, 아니면 지금 보드를 본다(다음 전투에 적용될 값). */
+function synView(owner,state){
+  const g=state||S; if(owner!==0&&owner!==1) return null;
+  const B=g&&g.battle, snap=(B&&B.syn&&B.syn[owner])||synCount(owner,g);
+  const stage={}; for(const el of V2_ELEM_ORDER) stage[el]=synKingdomStage(snap,el);
+  return {el:Object.assign({},snap.el),arch:Object.assign({},snap.arch),dead:snap.dead,stage,bonus:synArchBonus(snap)};
+}
 function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; met(attP.owner,"battles");
   attP.revealed=true; defP.revealed=true;
@@ -1831,8 +1921,11 @@ function startRounds(attP,defP,fa,fd){
     blog:[], msgQ:[], actSeq:0, dispHpA:fa.hp, dispHpD:fd.hp, // actSeq: **모든 전투 행동 전환**(nextPhase)마다 1 증가하는 공유 게임 상태 (#146 Saturn REVISE P1 — 아래 actionFresh)
     /* #121 계약 3.1: 버프 회계는 **플레이어별 한 전투 1개**다. 어느 버프를 썼는지(표시·검증용)와 썼는지 여부를 side 별로 둔다.
        계약 3.3: maxRounds 는 **전투 인스턴스 값**이다 — 전역 BAL.maxRounds 는 건드리지 않는다 (null = 전역값 사용) */
+    /* #235 참전 확정 순간의 시너지 스냅샷 — 아래 applySynergy 가 바로 채운다. 전투가 끝날 때까지 그대로다(전투 중 사망·포획은 다음 전투부터 반영). */
+    syn:null,
     buffA:null, buffD:null, maxRounds:null};
   resetBattleTemps(fa); resetBattleTemps(fd);
+  applySynergy(S.battle); // #235: 기본 스탓 초기화 바로 다음 · 선턴 판정(effSpd)보다 먼저 — 시너지 속도가 1라운드 순서에 들어간다
   /* #234 REVISE 2차 CJ 결정(2026-09-17): 사신의 낫 전투를 넘는 봉인 — 이 전투원(말)이 참전할 때만 1 줄인다(필드·대리 출전 동일).
      전투 종료 초기화(resetAfter/resetBattleTemps) 대상이 아닌 말 단위 상태다 */
   for(const f of [fa,fd]) if(f.reaperSeal>0) f.reaperSeal--;
@@ -1949,10 +2042,14 @@ function battleCmdFrame(state){ const st=state||S, w=battleActionFrame(st); retu
 function legacySkillAct(side){
   const B=S.battle; if(!B) return;
   const f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa, oSide=side==="A"?"D":"A", sp=skillParamsOf(f);
-  const tryStatus=prob=>{ // T5-A(D10): 상태이상 부여 확률 — 지속형 100%, 그 외 statusProb (#96: 감전은 shockProb)
+  const sus=archOf(f)==="sustain"; // T5-A(D10): 지속형은 **기본 확률 100%** 이지 판정 면제가 아니다
+  const tryStatus=prob=>{ // 상태이상 부여 확률 — 그 외는 statusProb (#96: 감전은 shockProb)
     // #233 (GDD-23 3.2 💫): 스탯 상태이상 부여 확률을 %p로 가산, 상한 100%
-    const p=Math.min(1,(prob===undefined?BAL.statusProb:prob)+(f.statusPct||0));
-    if(archOf(f)==="sustain"||rand()<p){S.metrics.statusApplied++; return true;}
+    // #235: 지속형 시너지·마녀의 집회(synStatusPct)도 v2Apply 와 같은 자리에서 가산한다
+    let p=Math.min(1,(sus?1:(prob===undefined?BAL.statusProb:prob))+(f.statusPct||0)+(f.synStatusPct||0));
+    if(f.sandStormR>0) p*=0.5; // #235: 모래 폭풍 절반도 v2Apply 와 같은 순서 — 가산·상한 뒤에 곱한다
+    // 지속형이 100% 그대로면 종전처럼 난수를 쓰지 않는다. 모래 폭풍이 절반으로 깎았을 때만 판정 1회를 소비한다.
+    if((sus&&p>=1)||rand()<p){S.metrics.statusApplied++; return true;}
     S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
   };
   bmsg(`${fighterName(side)}의 ${f.element?SKILL_KO[f.element]:"스킬"}!`,null,{key:"skillFx"});
@@ -1976,6 +2073,7 @@ function legacySkillAct(side){
     if(f.element==="lightning"&&tryStatus(BAL.shockProb)){applyTimedFx(opp,"shock",sp.shockRounds);
       bmsg(`⚡ ${fighterName(oSide)}는 감전 — 다음 ${opp.shock}라운드 후공!`,{st:stFx(oSide,opp)});}
   }
+  v2SkillSettle(side,f,oSide,opp); if(!S.battle) return; // #235: 구형 속성 스킬도 같은 경계
   if(checkDeath()) return;
   nextPhase();
 }
@@ -2126,13 +2224,15 @@ function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp,
   /* ⑦ 치명타 판정, 상한 50% (3.2). "치명타 확정" 효과(f.critForce)는 확률 판정을 건너뛰고 상한보다 우선하며 rand 를 쓰지 않고,
      다음 피해 스킬 1회에 소모된다(3.2 — #234 전까지 이 플래그를 켜는 스킬은 없다). */
   let crit;
-  if(hopts.critForce!==undefined) crit=hopts.critForce?true:rand()<Math.min(0.5,f.crit||0); // v2Hit 경로 — 확정이면 rand 0회(종전과 같은 소비)
+  const critP=Math.min(0.5,(f.crit||0)+(f.synCrit||0)); // #235 공격형 시너지 가산 — 종전 상한 50% 그대로
+  if(hopts.critForce!==undefined) crit=hopts.critForce?true:rand()<critP; // v2Hit 경로 — 확정이면 rand 0회(종전과 같은 소비)
   else if(f.critForce&&!hopts.penalty){ crit=true; f.critForce=false; }
-  else crit=rand()<Math.min(0.5,f.crit||0);
+  else crit=rand()<critP;
   if(crit) dmg=dmg*1.5;
   if(!hopts.ignoreDef){
-  const dmgDown=Math.min(0.5,((opp.def||0)/100)+(opp.hardenPct||0)+(opp.dmgCut||0)); // ⑧ 받는 피해 감소 = 방어력+경화+"다음 피격 감소"류, 상한 50% (#241: 굴 파기는 경화 40%로 단순화 — 전용 분기 삭제)
-  if(!hopts.preview) opp.mitigated=(opp.mitigated||0)+dmg*Math.min(dmgDown,((opp.def||0)/100)+(opp.hardenPct||0)); // #234 분화: 방어력·경화로 줄인 피해 총량
+  const defPct=((opp.def||0)+(opp.synDef||0))/100; // #235 표준·방어형 시너지의 방어력 가산칸 — 기본 스탓(opp.def)은 그대로 둔다
+  const dmgDown=Math.min(0.5,defPct+(opp.hardenPct||0)+(opp.dmgCut||0)); // ⑧ 받는 피해 감소 = 방어력+경화+"다음 피격 감소"류, 상한 50% (#241: 굴 파기는 경화 40%로 단순화 — 전용 분기 삭제)
+  if(!hopts.preview) opp.mitigated=(opp.mitigated||0)+dmg*Math.min(dmgDown,defPct+(opp.hardenPct||0)); // #234 분화: 방어력·경화로 줄인 피해 총량
   dmg=dmg*(1-dmgDown);
   }
   if(!hopts.preview){
@@ -2149,6 +2249,10 @@ function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp,
   const {absorbed,breaks,bySrc}=hopts.ignoreShield?{absorbed:0,breaks:0,bySrc:{}}:shieldConsume(opp,dmg); // ⑪ 방어막 우선 소모 후 HP (방어막 무시 스킬은 층을 깎지 않는다)
   const hpDmg=dmg-absorbed;
   let actual=Math.min(hpDmg,opp.hp); actual=v2Endure(opp,actual); opp.hp-=actual;
+  /* #235 왕국 1판정 · 흡수 정산의 **유일한 입력**이다 — 피해 스킬이 적중했다는 사실과 그 실 HP 피해를 여기 한 곳에서 누적한다.
+     회피는 위에서 이미 조기 반환했고, 해일 예고(preview)도 ⑩ 에서 반환하므로 오지 않는다.
+     도망 실패 페널티 평타(hopts.penalty)는 스킬 밖 예외라 제외한다(#234 6.1). 비우는 곳은 v2SkillSettle 하나다. */
+  if(!hopts.penalty) f.synHit=(f.synHit||0)+actual;
   const capLeft=Math.max(0,Math.round(opp.maxHp*BAL.absorbCapPct)-opp.absorbed); // 전투 판정용 유효 피해 흡수 상한 — 현행 그대로 (변경 대상 아님)
   const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
   const counted=actual+(absorbed-freeAbsorb);
@@ -2174,8 +2278,9 @@ function resolveTyped(side,f,opp,oSide,dmgRaw,useElement,label,emoji){
 function resolveTypedInner(side,f,opp,oSide,dmgRaw,useElement,label,emoji){
   let dmg=dmgRaw;
   if(useElement&&f.element&&opp.element){ if(BEATS[f.element]===opp.element) dmg=dmg*BAL.advMult; else if(BEATS[opp.element]===f.element) dmg=dmg*BAL.disMult; }
-  const dmgDown=Math.min(0.5,((opp.def||0)/100)+(opp.hardenPct||0)+(opp.dmgCut||0)); opp.dmgCut=0;
-  opp.mitigated=(opp.mitigated||0)+dmg*Math.min(dmgDown,((opp.def||0)/100)+(opp.hardenPct||0));
+  const defPct=((opp.def||0)+(opp.synDef||0))/100; // #235 시너지 방어력은 반사·반격 경로에도 같이 적용된다
+  const dmgDown=Math.min(0.5,defPct+(opp.hardenPct||0)+(opp.dmgCut||0)); opp.dmgCut=0;
+  opp.mitigated=(opp.mitigated||0)+dmg*Math.min(dmgDown,defPct+(opp.hardenPct||0));
   dmg=dmg*(1-dmgDown);
   const dmgTakeUp=Math.min(0.5,(opp.crack?0.10:0)+(opp.vulnMark?0.15:0)); opp.vulnMark=false;
   dmg=dmg*(1+dmgTakeUp);
@@ -2192,7 +2297,7 @@ function resolveTypedInner(side,f,opp,oSide,dmgRaw,useElement,label,emoji){
   return {dmg,absorbed,breaks,actual,counted};
 }
 function resolveReflect(side,f,opp,oSide,incomingDmg,pct){ return resolveTyped(side,f,opp,oSide,incomingDmg*pct,false,"반사","🪞"); } // 상성 판정 없음
-function resolveCounter(side,f,opp,oSide,pct){ return resolveTyped(side,f,opp,oSide,(f.atk||0)*pct,true,"반격","🦀"); } // ④ 상성만 탄다
+function resolveCounter(side,f,opp,oSide,pct){ return resolveTyped(side,f,opp,oSide,effAtk(f)*pct,true,"반격","🦀"); } // ④ 상성만 탄다
 function instaKill(opp){ opp.shieldLayers=[]; opp.shield=0; opp.hp=0; } // 4.3 즉사 — 단계 없음, 방어막 무시
 /* GDD-23 4.3 예고 피해(해일 예고 등) — 발동 시점에 일반 피해 ①~⑪을 그대로 태운다. 발동 전에 전투가 끝나면 취소된다
    (tickDelayed가 라운드 종료마다 불리고, S.battle이 이미 없으면 run()을 부르지 않는다 → 자동 취소, 4.6). */
@@ -2264,7 +2369,9 @@ function execSlot(side,slot,opts){
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
   const gate=(force,prob)=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기: 화상·약화 statusProb 70% · 감전 shockProb 50% (#96) · 잔류장 100% — force는 rand 미소비)
     // #233 (GDD-23 3.2 💫): 스탯 상태이상 부여 확률을 %p로 가산, 상한 100% (force 경로는 확률 판정 자체가 없으므로 영향 없음)
-    const p=Math.min(1,(prob===undefined?BAL.statusProb:prob)+(f.statusPct||0));
+    // #235: 지속형 시너지·마녀의 집회(synStatusPct)도 v2Apply 와 같은 자리에서 가산한다
+    let p=Math.min(1,(prob===undefined?BAL.statusProb:prob)+(f.statusPct||0)+(f.synStatusPct||0));
+    if(f.sandStormR>0) p*=0.5; // #235: 모래 폭풍 절반도 v2Apply 와 같은 순서 — 가산·상한 뒤에 곱한다
     if(force||rand()<p){S.metrics.statusApplied++; return true;}
     S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false;
   };
@@ -2311,7 +2418,7 @@ function execSlot(side,slot,opts){
     let extraDmgUp=0;
     if(f.focusCharge&&sk&&sk.kind==="attack"){extraDmgUp=0.2; f.focusCharge=false;
       bmsg(`🎯 집중 발동 — 위력 +20%!`,{st:stFx(side,f)});}
-    const base=sk?slotPowRaw(f,sk):f.atk; // ⑪ 단일 반올림 — 여기서 반올림하지 않고 resolveHit 에 소수를 그대로 넘긴다
+    const base=sk?slotPowRaw(f,sk):effAtk(f); // ⑪ 단일 반올림 — 여기서 반올림하지 않고 resolveHit 에 소수를 그대로 넘긴다
     /* #121 계약 5.1 드래곤 숨결: 상성표가 아니라 기술 고유 배율(④를 대체) — 속성이 있는 상대에게만 적용, 무속성 중립 1.0.
        cls 기술이라 atkEl 은 null 이므로 resolveHit 안에서 일반 상성 블록은 타지 않는다(난수 소비 0). */
     if(sk&&sk.dragonMult&&opp.element) bmsg(`🐉 용의 숨결이 속성을 태운다 — ×${sk.dragonMult}!`);
@@ -2341,6 +2448,8 @@ function execSlot(side,slot,opts){
       if(sk.coolAttackLongest) coolReduce(i=>SKILLS[f.skills[i]].kind==="attack",null);   // 급속 순환
     }
   }
+  /* #235: 레거시 피해 스킬(드래곤 숨결 등)도 v2 와 같은 경계를 탄다 — 비피해 기술·도망 실패 평타는 누적이 없어 무동작이다 */
+  v2SkillSettle(side,f,oSide,opp); if(!S.battle) return;
   if(checkDeath()) return;
   nextPhase();
 }

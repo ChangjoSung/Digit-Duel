@@ -237,6 +237,12 @@ type BattleDelayedFx = { roundsLeft: number; tag: any; run: () => any };
 /** #121 개봉이 발급한 표 — 확정·취소가 **자기가 받은 그 번호**를 제시해야 한다. */
 type BattlePkgSel = { kind: string; owner: number; side: BattleSide; seq: number; round: number; phase: number; id: number };
 
+/** #235 한 좌석의 시너지 집계 한 벌 — 필드 9칸의 속성별 칸 수 · 타입별 칸 수(가방 전설 포함) · 사망한 하수인·동료 칸 수.
+    Core 의 synCount() 하나가 만들고, 단계·수치는 전부 여기서 파생된다(별도 저장 없음). */
+type SynSnapshot = { el: Record<string, number>; arch: Record<string, number>; dead: number };
+/** 좌석 0·1 의 스냅샷 한 쌍 — startRounds 가 참전 확정 순간에 굳힌다. */
+type SynSnapshots = { [seat: number]: SynSnapshot };
+
 /** #241 R1 번개 꼬리 추가 공격 단계. 권위 방 복원은 tailSlot 을 싣지 않는다(서버가 보내지 않는다). */
 type BattleBonus = { side: BattleSide; stage: "pending" | "active"; allowed: number[]; saved: any; tailSlot?: number };
 
@@ -265,6 +271,7 @@ interface BattleState {
   dispHpA?: number; dispHpD?: number; dispShA?: number; dispShD?: number; // 표시용 HP·방어막 바 값
   menu?: string | null;        // 4카테고리 하위 메뉴 (로컬 표시 상태 — 송신 없음)
   pkgSel?: BattlePkgSel | null;
+  syn?: SynSnapshots | null;  // #235 참전 확정 순간 고정된 시너지 집계 (권위 방 복원은 싣지 않는다 — 서버가 보내지 않는다)
   bonus?: BattleBonus | null;
   chainLock?: boolean;         // resolveTyped 재진입 차단
   reflectSeq?: number;         // 반사·반격을 행동 토큰당 1회로 묶는다

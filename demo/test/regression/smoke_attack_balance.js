@@ -78,6 +78,7 @@ function setupDuel(T,aId,dId){
   const k0=S.pieces.find(x=>x.owner===0&&x.type==="king"), k1=S.pieces.find(x=>x.owner===1&&x.type==="king");
   H.place(T,A,7,4); H.place(T,D,6,4); H.place(T,k0,13,1); H.place(T,k1,1,7);
   S.phase="play"; S.current=0; S.mainUsed=true; S.battlesUsed=0; T.TQ.length=0;
+  H.synNeutral(T,[A,D]); // #235: 무작위 로스터의 왕국·아키타입 단계가 아래 고정 수치·rand 소비를 흔들지 않게 집계를 0 으로 못 박는다 (실제 전투원 A·D 는 보존)
   T.startRounds(A,D,A,D);
   // #233 (GDD-23 4.2 ①⑦): 이 파일은 위력·연속 구간 수치를 보는 것이지 신규 회피·치명타를 보는 것이 아니다 —
   // 0으로 고정해 이 절이 그 두 확률원에 얽히지 않게 한다(방어력(4.2 ⑧)은 의도된 값이라 그대로 둔다).

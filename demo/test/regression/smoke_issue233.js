@@ -43,6 +43,7 @@ function arena(){
   H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
   H.place(T,T.S.pieces.filter(x=>x.owner===0&&x.type==="minion")[1],12,7);
   H.place(T,T.S.pieces.filter(x=>x.owner===1&&x.type==="minion")[1],2,1);
+  H.synNeutral(T,[m,e]); // #235: 무작위 로스터의 왕국·아키타입 단계가 아래 고정 수치·rand 소비를 흔들지 않게 집계를 0 으로 못 박는다
   return {m,e};
 }
 /* 전투를 열고 두 전투원의 신규 스탯을 **전투 시작 전에** 고정한다 (4.4 선턴은 startRounds 에서 한 번 굳으므로

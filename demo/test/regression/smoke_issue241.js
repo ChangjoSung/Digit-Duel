@@ -33,6 +33,7 @@ function arena(){
   H.place(T,m,7,4); H.place(T,e,6,4);
   H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1);
   H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
+  H.synNeutral(T,[m,e]); // #235: 무작위 로스터의 왕국·아키타입 단계가 아래 고정 수치·rand 소비를 흔들지 않게 집계를 0 으로 못 박는다
   return {m,e};
 }
 /* 기본 수치: 공격 20 · 방어 0 · 회피 0 · 치명 0 · 무속성 · 속도 10(동률이면 A 선턴) */

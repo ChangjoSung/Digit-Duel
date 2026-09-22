@@ -1649,10 +1649,15 @@ let blocked=false;
 try { H.load(index,{html:'<script src="../package.json"></script>'}); } catch(error) { blocked=/escapes demo root/.test(error.message); }
 ok(blocked,"harness rejects asset traversal");
 
+/* 기준판은 **도달 가능한** 커밋에서만 읽는다. 종전 9853a2c 는 #244 PR 브랜치의 커밋이라 분리 병합 adc92cd 의
+   부모가 아니고, 원격 브랜치 삭제 후 어느 ref 에서도 도달할 수 없어 fresh clone 에서 git show 가 실패했다.
+   0b7f683 은 adc92cd 의 실제 부모이자 HEAD 의 조상이므로, 문자 그대로 분리 전 상태이면서 모든 clone 에 있다. */
 let baseHtml=null;
-try { baseHtml=execFileSync("git",["show","9853a2c:demo/index.html"],{cwd:path.resolve(demo,".."),maxBuffer:1<<26}).toString("utf8"); }
+try { baseHtml=execFileSync("git",["show","0b7f683:demo/index.html"],{cwd:path.resolve(demo,".."),maxBuffer:1<<26}).toString("utf8"); }
 catch(error) { console.error(error.message); }
 ok(!!baseHtml,"pre-split baseline source is available");
+/* 그 ref 가 정말 분리 전 단일 문서인지 본다 — 분리 후 판을 가리키면 아래 대조가 자기 자신이 되어 아무것도 검사하지 않는다 */
+ok(!!baseHtml&&/<script>/.test(baseHtml)&&!/<script\s+src="js\//.test(baseHtml),"baseline ref points at the pre-split single document");
 if(baseHtml){
   const setupTrace=opts=>{
     const X=H.load(index,opts); X.setSeed(245); X.newGame("pvp"); X.autoPlaceCore();
@@ -1669,8 +1674,12 @@ if(baseHtml){
     const result=H.runSim(X,["grade5","grade5"],seed,{cap:3000000,trace:Y=>stateTrace.push(lockstepDigest(Y))});
     return JSON.stringify({stateTrace,digest:lockstepDigest(X),snapshot:result.snap,winner:result.winner,phase:result.phase,turns:result.turns,winType:result.winType,steps:result.steps,viol:result.viol});
   };
-  // 24511 은 텔레포트 스왑 3회, 24512 는 2회 + 왕 끝줄 도달(edge) 승리 — Core 로 옮긴 스왑과 왕 끝줄 승리 경로를 둘 다 지난다 (레거시 분기는 남아 있지 않다)
-  for(const seed of [24501,24502,24511,24512]) ok(trace({html:baseHtml},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner matches the pre-split baseline");
+  /* #235 전환 — 이 네 시드는 9853a2c(분리 전) 판과의 1:1 대조였다. #235 왕국·아키타입·전설 시너지가 실제 규칙으로
+     켜지면서 같은 각본의 전투 결과가 바뀌므로 분리 전 판과 같을 수 없다(승인된 규칙 변경). 대조 **상대**만 현재 엔진의
+     독립 두 로드로 승계하고, 이 검사가 지키는 계약 — 같은 seed/action trace 는 같은 state·digest·승패를 내고 로드 사이에
+     새는 전역 상태가 없다 — 는 그대로 둔다. 기대값을 구현에 맞춰 낮춘 것이 아니다. 위 setup 대조는 분리 전 판 그대로다.
+     24511 은 텔레포트 스왑 3회, 24512 는 2회 + 왕 끝줄 도달(edge) 승리 — Core 로 옮긴 스왑과 왕 끝줄 승리 경로를 둘 다 지난다 (레거시 분기는 남아 있지 않다) */
+  for(const seed of [24501,24502,24511,24512]) ok(trace({},seed)===trace({},seed),"seed "+seed+" snapshot/digest/winner is identical across independent loads (#235 전환)");
 }
 
 /* ===== #245 반복 스킬 선언 표 — 데이터 한 곳 · 예외만 좁은 hook =====

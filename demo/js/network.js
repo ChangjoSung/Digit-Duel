@@ -891,7 +891,8 @@ function netSynthFighter(sd,you){
     evadeDown:sd.evadeDown||0,evadeDownR:sd.evadeDownR||0,tideMark:sd.tideMark||0,tideHeld:!!sd.tideHeld, // #241 표시용 — 서버가 보내면 쓰고 없으면 0 (Jupiter 후속)
     skills:ad.skills,cds:ad.cds,revealedSkills:ad.revealedSkills,atk:atk,skillAtk:skillAtk||0,cd:typeof sd.cd==="number"?sd.cd:0,
     powerBuff:sd.buff==="power",fleeBoost:sd.buff==="escape",artRosterId:body?null:(sd.artRosterId||null),
-    reaperSeal:sd.reaperSeal||0}); // #234 REVISE 2차: 자기 전투원에만 온다 — 상대 쪽은 키가 없어 0
+    reaperSeal:sd.reaperSeal||0, // #234 REVISE 2차: 자기 전투원에만 온다 — 상대 쪽은 키가 없어 0
+    synAtk:sd.synAtk||0}); // #235: 같은 owner-only 경계 — 위력 표기(slotPow/effAtk)가 읽는다. 상대 쪽은 키가 없어 0이고 로컬 역산도 하지 않는다
   if(!body) piece.cap=f;
   return {piece,f};
 }

@@ -212,6 +212,13 @@ function lockstepDigest(T) {
     /* #234 REVISE 2차 (CJ 결정 2026-09-17) 사신의 낫 전투를 넘는 봉인 — 전투원 객체 단위 0/1/2. slotUsable→reaperWhy 가
        읽어 합법 슬롯 집합을 가른다. resetV2 목록 밖이라 전투가 끝나도 남으므로 아래 말·예비 요약에도 따로 넣는다. */
     reaperSeal: num(f.reaperSeal),
+    /* #235 시너지 가산칸 — 참전 확정 순간 한 번 굳고 전투 내내 고정이다. 기본 스탯(stats)은 그대로이므로
+       가산칸이 한 좌석만 갈리면 stats 는 같은데 피해·회피·선턴·상태 확률이 전부 달라진다. 왕국 효과(synEl)는
+       그 전투원이 스킬마다 굴리는 1판정의 종류·확률·수치라 rand 소비까지 바꾼다 — 같은 이유로 함께 본다. */
+    syn: [num(f.synAtk), num(f.synDef), num(f.synSpd), num(f.synDodge), num(f.synCrit), num(f.synStatusPct),
+      f.synEl == null ? null : (typeof f.synEl === 'object'
+        ? Object.keys(f.synEl).sort().map((k) => [k, f.synEl[k]]) // 키를 정해 두지 않는다 — 효과 표가 칸을 늘리면 그 차이도 그대로 갈린다
+        : f.synEl)],
     v2: v2(f),
     stats: stats(f),
   } : null);
@@ -250,6 +257,14 @@ function lockstepDigest(T) {
          전투가 끝나도 경기 내내 남는 값이라 더 넓게 — 동작은 같은데 값만 다르다고 어긋난다. */
       pkgSel: B.pkgSel ? [B.pkgSel.kind, B.pkgSel.owner, B.pkgSel.side, B.pkgSel.seq, B.pkgSel.round, B.pkgSel.phase,
         B.pkgSel.id === undefined ? null : B.pkgSel.id] : null,
+      /* #235 참전 확정 순간의 시너지 스냅샷 원본(좌석별 속성·타입 칸 수와 사망 칸 수). 두 좌석 엔진이 다른 보드를
+         들고 있으면 여기서 바로 갈린다 — fail-closed VOID 의 자리다. **요약은 서버 안에서만 비교하는 값이고
+         좌석 뷰(toSeatView)로는 나가지 않는다**: 상대 칸 수는 상대의 로스터 속성·아키타입 구성을 그대로 역산해
+         주므로 GDD-23 7.9 의 소유자 전용 경계에 속한다. */
+      syn: B.syn ? [0, 1].map((q) => (B.syn[q]
+        ? [Object.keys(B.syn[q].el).sort().map((k) => [k, B.syn[q].el[k]]),
+          Object.keys(B.syn[q].arch).sort().map((k) => [k, B.syn[q].arch[k]]), B.syn[q].dead]
+        : null)) : null,
     } : null,
     fleePick: S.fleePick ? { owner: S.fleePick.owner, cands: S.fleePick.cands.slice(), token: S.fleePick.token } : null,
     events: (S.events || []).map((e) => [e.r, e.c, e.kind, !!e.consumed]),
@@ -1198,6 +1213,12 @@ class Room {
         artRosterId: bodyFight ? null : (f.artRosterId || null),
         // #234 REVISE 2차 — 사신의 낫 봉인은 자기 전투원에만(키 자체를 상대 쪽에 만들지 않는다 · _serializeOwn 주석).
         ...(owner === seatIndex ? { reaperSeal: f.reaperSeal || 0 } : {}),
+        /* #235 공격형·표준 시너지 가산칸 — **자기 전투원에만** 싣는다(reaperSeal 과 같은 owner-only 경계: 상대 쪽에는 키 자체를 만들지 않는다).
+           소비자는 ui.js 의 위력 표기 하나다 — slotPow/effAtk(f) 가 atk*(1+synAtk) 로 기술·기본 공격 칸의 dmgRange 를 그린다.
+           서버가 안 보내면 netSynthFighter 가 0 으로 합성해 **소유자 화면마저** 실제 피해보다 낮은 위력을 표기한다(실제 판정은 서버 Core 가 낸다).
+           나머지 가산칸(synDef·synSpd·synDodge·synCrit·synStatusPct)과 왕국 효과(synEl)는 싣지 않는다 — 표시 경로가 없고
+           서버가 판정하므로 필요 없다. 상대 쪽에 실리면 가산분에서 그 좌석의 필드 아키타입·속성 구성이 역산된다(GDD-23 7.9). */
+        ...(owner === seatIndex ? { synAtk: f.synAtk || 0 } : {}),
         /* #241 V1·R2 (CJ 승인 2026-09-17) — 적용된 효과라 두 전투원 패널 모두에 그려진다(stIcons 💨회피−N%p·NR · 🌊해일≤X(보류) ·
            HP 바 X 선). burn/shock/crack 과 같은 등급(#121 계약 "적용된 효과는 상대에게도 공개")이므로 뷰어 분기 없이 싣는다.
            해일 X 는 시전자의 공격 계산 결과지만 기획 기본값이 "사용 시 UI 표시(양쪽)"다 — 기술 이름은 이미 사용 순간 공개된다.

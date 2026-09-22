@@ -256,20 +256,23 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   // 이 절은 battleId 단조성만 보므로 시드를 고정해 전투 길이를 결정적으로 만든다(고정 시 fx 32개 < 40).
   both(room, (E) => { E.setSeed(12345); });
   startBattle(room);
+  /* #235: 시너지가 켜지면 첫 전투가 내는 fx 가 어느 시드에서든 유한 보관(engine.js FX_RETAIN=40)을 넘어
+     첫 battleStart 가 창 밖으로 밀린다. 그래서 첫 battleStart 는 **발급된 그 자리에서** 집어 둔다 —
+     이 절이 보는 것은 battleId 의 단조성이지 보관 창 크기가 아니므로 검사 강도는 그대로다. */
+  const start1 = room.toSeatView(0).fx.events.filter((e) => e.key === 'battleStart').pop();
+  ok(!!start1, '첫 initBattle 이 battleStart 를 발급했음');
   driveBattleToEnd(room, 60);
-  const before = room.toSeatView(0).fx;
   const T = room.engine;
   const remaining = T.S.pieces.filter((p) => p.alive && p.placed && p.type === 'minion');
   const byOwner = { 0: remaining.filter((p) => p.owner === 0), 1: remaining.filter((p) => p.owner === 1) };
   ok(byOwner[0].length && byOwner[1].length, '두 번째 전투를 시작할 살아있는 하수인이 양쪽에 남아 있음(픽스처 전제)');
   H.openBattle(room, { att: byOwner[0][0].id, def: byOwner[1][0].id });
   const afterStart = room.toSeatView(0).fx;
-  const starts = afterStart.events.filter((e) => e.key === 'battleStart');
-  ok(starts.length === 2, '두 번째 initBattle로 battleStart가 하나 더 생김: ' + starts.length);
-  ok(starts[1].battleId === starts[0].battleId + 1, '두 번째 battleId는 첫 번째보다 정확히 1 큼(룸 수명 동안 유일·단조): ' + JSON.stringify(starts.map((s) => s.battleId)));
-  const b2 = starts[1];
-  const leaking = afterStart.events.filter((e) => e.seq > b2.seq && e.battleId === starts[0].battleId);
-  ok(leaking.length === 0, '두 번째 battleStart 이후 이벤트에 첫 전투(battleId=' + starts[0].battleId + ')가 다시 붙지 않음');
+  const b2 = afterStart.events.filter((e) => e.key === 'battleStart').pop();
+  ok(!!b2 && b2.seq > start1.seq, '두 번째 initBattle 로 battleStart 가 하나 더 생김: ' + JSON.stringify([start1 && start1.seq, b2 && b2.seq]));
+  ok(!!b2 && b2.battleId === start1.battleId + 1, '두 번째 battleId는 첫 번째보다 정확히 1 큼(룸 수명 동안 유일·단조): ' + JSON.stringify([start1 && start1.battleId, b2 && b2.battleId]));
+  const leaking = afterStart.events.filter((e) => e.seq > b2.seq && e.battleId === start1.battleId);
+  ok(leaking.length === 0, '두 번째 battleStart 이후 이벤트에 첫 전투(battleId=' + start1.battleId + ')가 다시 붙지 않음');
 }
 
 // ===== 10) resultBanner — battle=null이 된 뒤에도 scene을 동봉해 "어느 무대에 마지막 타격을 그릴지" 알 수 있다 =====

@@ -273,7 +273,16 @@ function load(htmlPath,opts){
   fighterOrderCat:typeof fighterOrderCat==="function"?fighterOrderCat:undefined, // 4.4 순서 효과 분류(0=선턴 1=기본 2=후턴)
   finishBattle:typeof finishBattle==="function"?finishBattle:undefined, // 4.6 전투 종료 경로(HP만 유지 검증용)
   /* #234 (GDD-23 6장) 로스터·스킬 계약 — 기준판 로드 호환 typeof 가드 */
-  V2_INTERP:typeof V2_INTERP!=="undefined"?V2_INTERP:undefined, V2_SPECIES:typeof V2_SPECIES!=="undefined"?V2_SPECIES:undefined, V2_SPECIES_DEF:typeof V2_SPECIES_DEF!=="undefined"?V2_SPECIES_DEF:undefined, V2_SKELETON:typeof V2_SKELETON!=="undefined"?V2_SKELETON:undefined, V2_ELEM_ORDER:typeof V2_ELEM_ORDER!=="undefined"?V2_ELEM_ORDER:undefined, V2_ELEM_FX:typeof V2_ELEM_FX!=="undefined"?V2_ELEM_FX:undefined, V2_KINGDOM_STAGE2:typeof V2_KINGDOM_STAGE2!=="undefined"?V2_KINGDOM_STAGE2:undefined, LEGEND_ROSTER:typeof LEGEND_ROSTER!=="undefined"?LEGEND_ROSTER:undefined, V2_FX:typeof V2_FX!=="undefined"?V2_FX:undefined,
+  V2_INTERP:typeof V2_INTERP!=="undefined"?V2_INTERP:undefined, V2_SPECIES:typeof V2_SPECIES!=="undefined"?V2_SPECIES:undefined, V2_SPECIES_DEF:typeof V2_SPECIES_DEF!=="undefined"?V2_SPECIES_DEF:undefined, V2_SKELETON:typeof V2_SKELETON!=="undefined"?V2_SKELETON:undefined, V2_ELEM_ORDER:typeof V2_ELEM_ORDER!=="undefined"?V2_ELEM_ORDER:undefined, V2_ELEM_FX:typeof V2_ELEM_FX!=="undefined"?V2_ELEM_FX:undefined, V2_KINGDOM_STAGE2:typeof V2_KINGDOM_STAGE2!=="undefined"?V2_KINGDOM_STAGE2:undefined,
+  /* #235 시너지 — 왕국·아키타입·전설 패시브 표와 Core 집계·선택자 (기준판 로드 호환: 부재 시 undefined) */
+  V2_KINGDOM_STEPS:typeof V2_KINGDOM_STEPS!=="undefined"?V2_KINGDOM_STEPS:undefined, V2_KINGDOM_STAGES:typeof V2_KINGDOM_STAGES!=="undefined"?V2_KINGDOM_STAGES:undefined,
+  V2_ARCH_STEPS:typeof V2_ARCH_STEPS!=="undefined"?V2_ARCH_STEPS:undefined, V2_ARCH_SYN:typeof V2_ARCH_SYN!=="undefined"?V2_ARCH_SYN:undefined,
+  V2_LEGEND_SYN:typeof V2_LEGEND_SYN!=="undefined"?V2_LEGEND_SYN:undefined,
+  v2KingdomEffectOf:typeof v2KingdomEffectOf==="function"?v2KingdomEffectOf:undefined, effAtk:typeof effAtk==="function"?effAtk:undefined,
+  synCount:typeof synCount==="function"?synCount:undefined, synKingdomStage:typeof synKingdomStage==="function"?synKingdomStage:undefined,
+  synArchBonus:typeof synArchBonus==="function"?synArchBonus:undefined,
+  synElemKinds:typeof synElemKinds==="function"?synElemKinds:undefined, synDragonEl:typeof synDragonEl==="function"?synDragonEl:undefined,
+  synView:typeof synView==="function"?synView:undefined, LEGEND_ROSTER:typeof LEGEND_ROSTER!=="undefined"?LEGEND_ROSTER:undefined, V2_FX:typeof V2_FX!=="undefined"?V2_FX:undefined,
   speciesSkills:typeof speciesSkills==="function"?speciesSkills:undefined, applySpecies:typeof applySpecies==="function"?applySpecies:undefined, applyLegend:typeof applyLegend==="function"?applyLegend:undefined, leaderSkillIds:typeof leaderSkillIds==="function"?leaderSkillIds:undefined, syncLeaderSkills:typeof syncLeaderSkills==="function"?syncLeaderSkills:undefined, syncOwnerLeaders:typeof syncOwnerLeaders==="function"?syncOwnerLeaders:undefined, leaderDefaultElement:typeof leaderDefaultElement==="function"?leaderDefaultElement:undefined, assignLeaderElements:typeof assignLeaderElements==="function"?assignLeaderElements:undefined, execV2:typeof execV2==="function"?execV2:undefined, v2Apply:typeof v2Apply==="function"?v2Apply:undefined, v2Heal:typeof v2Heal==="function"?v2Heal:undefined, v2CdUpTarget:typeof v2CdUpTarget==="function"?v2CdUpTarget:undefined, v2ReqOk:typeof v2ReqOk==="function"?v2ReqOk:undefined, v2RoundStart:typeof v2RoundStart==="function"?v2RoundStart:undefined, effSpd:typeof effSpd==="function"?effSpd:undefined, resetV2:typeof resetV2==="function"?resetV2:undefined, aiV2SupportScore:typeof aiV2SupportScore==="function"?aiV2SupportScore:undefined, aiPickRoster:typeof aiPickRoster==="function"?aiPickRoster:undefined,
   /* #241 스킬 정리 — 회피율 감소 · 해일 예고 · 거울 수면 · AI 예정 선턴 (기준판 로드 호환: 부재 시 undefined) */
   effEvade:typeof effEvade==="function"?effEvade:undefined, v2TideCheck:typeof v2TideCheck==="function"?v2TideCheck:undefined, v2PeekStatus:typeof v2PeekStatus==="function"?v2PeekStatus:undefined,
@@ -419,6 +428,18 @@ function place(T,p,r,c){clearCell(T,r,c); p.r=r;p.c=c;p.placed=true;p.alive=true
 function mine(T,o,type){return T.S.pieces.filter(x=>x.owner===o&&x.type===type&&x.alive&&x.placed);}
 function clearBoard(T){for(const x of T.S.pieces) x.placed=false;}
 
+/* #235 시너지 중립 무대 — 고정 수치·난수 소비를 보는 회귀(#233·#234·#241)의 전제.
+   그 무대들은 freshPlay 의 **무작위 로스터** 위에 서 있어서, 같은 속성(왕 속성 포함)이나 같은 아키타입이
+   우연히 한 좌석에 2칸 모이면 왕국 (2) · 아키타입 2단계가 켜지고 피해·회피·선턴·상태 확률·rand 소비가 흔들린다.
+   전투원(fighters)의 속성은 그대로 두고 **나머지 필드 칸의 집계 입력만** 비운다 — 남은 전투원은 좌석당 1칸이라
+   어느 단계도 켜지지 않아 두 좌석의 집계가 0 으로 못 박힌다. 제품 규칙은 건드리지 않고 입력만 중립으로 놓는다. */
+function synNeutral(T,fighters){
+  const keep=new Set(fighters||[]);
+  for(const x of T.S.pieces) if(!keep.has(x)&&(x.type==="minion"||x.type==="king"||x.type==="ally")){ x.element=null; x.legend=null; x.rosterId=null; }
+  if(T.S.reserve) T.S.reserve=[null,null]; // 가방 전설도 아키타입 집계에 든다
+  return T.S;
+}
+
 /* 불변식 검사 — 위반 목록 반환 */
 function invariants(T){
   const S=T.S, out=[];
@@ -465,5 +486,5 @@ function runSim(T,levels,seed,opts){
     thinkAvg:think.length?think.reduce((a,b)=>a+b,0)/think.length:0, thinkMax:think.length?Math.max(...think):0};
 }
 
-module.exports={load,freshPlay,clearCell,place,mine,clearBoard,invariants,runSim,mkLocation,setLocation,
+module.exports={load,freshPlay,clearCell,place,mine,clearBoard,synNeutral,invariants,runSim,mkLocation,setLocation,
   mkStorage,setStorage,resetStorage,throwingStorage,storageExtras,storageTrace,storageSnapshot,persistApiHits,DEFAULT_HREF};
