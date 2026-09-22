@@ -28,6 +28,7 @@ function arena(T,mode){
   H.place(T,m,7,4); H.place(T,e,6,4); H.place(T,k0,13,1); H.place(T,k1,1,7);
   H.place(T,T.S.pieces.filter(x=>x.owner===0&&x.type==="minion")[1],12,7);
   H.place(T,T.S.pieces.filter(x=>x.owner===1&&x.type==="minion")[1],2,1);
+  H.synNeutral(T,[m,e]); // #235: 무작위 로스터의 왕국·아키타입 단계가 아래 고정 수치·rand 소비를 흔들지 않게 집계를 0 으로 못 박는다
   return {m,e};
 }
 /* 시드 고정 후 fn 실행 → 소비한 rand 횟수 (mulberry32 결정론: 다음 값이 시드 재생 몇 번째인가) */
