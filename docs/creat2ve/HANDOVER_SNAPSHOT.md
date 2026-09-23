@@ -2,7 +2,7 @@
 
 ## 기준
 
-- 기준 시각: 2026-09-22 KST
+- 기준 시각: 2026-09-23 KST
 - 최신 완료 범위: Issue #235 왕국·아키타입·전설 시너지
 - 제품 통합 commit: `957228ddcccad4f769a373e27caaa791d30131a3`
 - 통합 PR: [#248](https://github.com/ChangjoSung/Digit-Duel/pull/248), `milestone/v0.4.11`에 squash MERGED
@@ -22,7 +22,7 @@
 - 한 번에 한 editor, correction 뒤 fresh Saturn, delivery는 release-before-ack 순서를 지킨다.
 - Git은 Mercury만 수행한다. exact file staging, diff check, commit/push 후 새 HEAD CI A/B/B2/C/D/E 6/6을 확인한다.
 - Issue TODO는 완료 조건을 충족한 뒤에만 체크하고 누적 진행 댓글을 남기지 않는다.
-- Mercury·Saturn은 Codex `gpt-5.6-sol` high, service tier default(No Fast). Mars·Jupiter는 Claude `claude-opus-5` high. Ponytail full을 유지한다.
+- Mercury·Saturn은 Codex `gpt-6-sol` xhigh, service tier default(No Fast). Venus·Mars·Jupiter는 Claude `claude-opus-5-5` high. Earth는 신규 창작 `gpt-6-astra` medium·No Fast, 기존 자산 수정 `gpt-6-luna` xhigh·No Fast. Ponytail full을 유지한다.
 
 ## #235 완료 결과
 

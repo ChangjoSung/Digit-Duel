@@ -18,4 +18,4 @@
 
 현재 문서의 길잡이는 [docs 안내](../README.md)입니다. 과거 QA 보고서는 해당 시점의 증거이며 최신 게임 규칙이나 새로운 구현 승인으로 사용하지 않습니다.
 
-2026-09-13 #211: [Worker 모델 실행 계약](WORKER_MODELS.md)과 [모델 설정](worker-models.json)은 Mercury가 CJ 승인 기준으로 관리한다. Venus의 Notion 기획 작성·관리는 최신 CLAUDE.md 계약을 따른다.
+2026-09-23 #250: [Worker 모델 실행 계약](WORKER_MODELS.md)과 [모델 설정](worker-models.json)은 Mercury가 CJ 승인 기준으로 관리한다. Venus의 Notion 기획 작성·관리는 최신 CLAUDE.md 계약을 따른다.

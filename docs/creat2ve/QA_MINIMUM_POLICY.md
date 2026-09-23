@@ -15,7 +15,7 @@ Saturn은 변경 범위의 필수 검증만 수행한다. v0.4.10 때처럼 네�
 
 ## 토큰 절감 실행 계약 — 2026-09-16 CJ 승인
 
-- 적용 대상은 PD·구현 부서·Saturn 모두다. 역할·독립 QA·필수 CI는 유지한다. 2026-09-18 CJ 결정으로 Mercury와 Saturn은 Codex Sol high·No Fast, Venus·Mars·Jupiter는 Opus 5 high를 사용한다. Mercury·Mars·Jupiter·Saturn은 Ponytail full을 필수 적용하되 검증을 줄이는 근거로 쓰지 않는다.
+- 적용 대상은 PD·구현 부서·Saturn 모두다. 역할·독립 QA·필수 CI는 유지한다. 2026-09-23 CJ 결정으로 Mercury와 Saturn은 Codex `gpt-6-sol` xhigh·No Fast, Venus·Mars·Jupiter는 Claude `claude-opus-5-5` high를 사용한다. Earth는 신규 창작 `gpt-6-astra` medium·No Fast, 기존 자산 수정 `gpt-6-luna` xhigh·No Fast를 사용한다. Mercury·Mars·Jupiter·Saturn은 Ponytail full을 필수 적용하되 검증을 줄이는 근거로 쓰지 않는다.
 - Dispatch에는 수정 파일 범위, 필요한 검사 명령, 명령별 최대 실행 횟수(기본 1회), 중단 조건을 명시한다. 작업 완료 보고는 판정·파일·검사·남은 문제·증거 링크 5항목, 기본 10줄 이내다.
 - 검사는 출력과 종료 코드를 같은 실행에서 수집한다. 종료 코드 확인만을 위한 재실행, 통과 뒤 3회/5회 반복, 여러 시드 전수 실행은 금지한다.
 - 실패를 수정한 경우 해당 검사만 다시 실행하고 이유·횟수를 기록한다. 검사 확대가 필요하면 근거를 PD에게 보고하고 범위를 조정한 뒤 진행한다. 정적 점검 지시는 실행 테스트 승인으로 해석하지 않는다.
