@@ -60,14 +60,17 @@ const logText=T=>T.S.log.map(l=>l.msg).join("|");
   ok(flipOf(T)==="0"&&orderOk(T,false),"A1 메뉴 보드: r=1..13 위→아래, data-flip=0");
   T.startMode("pve",{aiLevel:"grade5"});
   ok(flipOf(T)==="0"&&orderOk(T,false)&&+cells(T)[70].dataset.r===11,"A2 PVE 배치 화면: 내 진영 11~13행이 아래 (종전 그대로)");
+  T.dispatchCoreAction({t:"shopTimeout",player:0}); // #236: 로스터 선택 자리를 시작 상점(S01)이 대신한다 — 시간 초과 자동 구매로 6칸
   T.netAction({t:"auto"}); T.netAction({t:"setupDone"}); T.drain();
   ok(T.S.phase==="play"&&flipOf(T)==="0"&&orderOk(T,false),"A3 PVE 대전 화면: 무변경");
 }
 {
   const T=load(); T.startMode("pvp");
+  T.dispatchCoreAction({t:"shopTimeout",player:0}); // #236 S01 (P1)
   T.netAction({t:"auto"}); T.netAction({t:"setupDone"}); T.drain(); // handoff 모달 → P2 배치
   const ob=T.byId("obBtns"); if(ob.children[0]&&ob.children[0].onclick) ob.children[0].onclick();
   ok(T.S.setupPlayer===1&&flipOf(T)==="0"&&orderOk(T,false)&&+cells(T)[0].dataset.r===1,"A4 핫시트 PVP P2 배치: 뒤집지 않는다 (핫시트 현행 유지 — 1~3행이 위)");
+  T.dispatchCoreAction({t:"shopTimeout",player:1}); // #236 S01 (P2)
   T.netAction({t:"auto"}); T.netAction({t:"setupDone"}); T.drain();
   const ob2=T.byId("obBtns"); if(ob2.children[0]&&ob2.children[0].onclick) ob2.children[0].onclick();
   ok(T.S.phase==="play"&&flipOf(T)==="0"&&orderOk(T,false),"A5 핫시트 PVP 대전: 무변경 (현재 플레이어가 P2여도 뒤집지 않는다)");

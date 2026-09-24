@@ -57,7 +57,7 @@ const SCENE_BOTH=`(()=>{ ${CAP_FN}
   return {step:1,reserveId:rv.artRosterId};
 })()`;
 const SCENE_BOTH_2=`(()=>{ ${CAP_FN}
-  try{ close(); }catch(e){}
+  try{ closeModal(); }catch(e){}
   S.battle=null;
   const king=S.pieces.find(x=>x.owner===0&&x.type==="king"), eAlly=S.pieces.find(x=>x.owner===1&&x.type==="ally");
   const em=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.rosterId); if(em) em.placed=false;

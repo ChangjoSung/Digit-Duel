@@ -67,7 +67,7 @@ const SETUP_PLAY=`(()=>{
 })()`;
 
 const OPEN_ROSTER=`(()=>{ rosterInfo("M-F1"); return document.getElementById("overlayBox").innerHTML.indexOf("rosterArt")>=0; })()`;
-const CLOSE_MODAL=`(()=>{ close(); return true; })()`;
+const CLOSE_MODAL=`(()=>{ closeModal(); return true; })()`;
 
 const START_BATTLE=`(()=>{
   const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.placed&&x.rosterId);

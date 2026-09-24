@@ -304,12 +304,12 @@ window.netCodePrompt=function(){
   netLocalModal(); // 동기화 대상 아님 (아직 매칭 전이고, 이 모달은 내 화면 전용)
   const take=()=>{ const el=$("netCodeRetry"); const c=(el&&typeof el.value==="string"?el.value:"").trim();
     if(!netCodeValid(c)){ showToast(NET_CODE_HINT); return; } // 값은 되풀이하지 않는다
-    if(el) el.value=""; NET.code=c; close(); netConnect(); };
+    if(el) el.value=""; NET.code=c; closeModal(); netConnect(); };
   modal(`<h2>🌐 접속 코드 입력</h2>
     <p style="margin:8px 0;color:var(--dim)">서버 콘솔의 <b>[접속 코드]</b> 값을 그대로 입력하세요. 코드는 이 탭의 메모리에만 두고 저장하지 않으며, 서버가 다시 시작되면 새 코드가 발급됩니다.</p>
     <input id="netCodeRetry" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="64" placeholder="접속 코드"
       style="width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:8px;font-size:14px">`,
-    [["접속",take],["취소",()=>{ const el=$("netCodeRetry"); if(el) el.value=""; close(); }]]);
+    [["접속",take],["취소",()=>{ const el=$("netCodeRetry"); if(el) el.value=""; closeModal(); }]]);
 };
 /* ===== #217/#218 공개 방(초대 코드 없는 목록·참가) — server/authoritative/**(Jupiter_Server, protocol.md v2) =====
    서버는 demo/index.html의 실제 엔진을 룸마다 헤드리스로 그대로 구동한다(engine.js — Mars의 하네스 재사용,
@@ -972,9 +972,9 @@ function netSyncOverlays(force){
   NET.overlaySig=sig;
   if(w.kind==="battle"){
     if(netRenderBattleStage(w.bid)) NET._overlayOpen=true;
-    else { NET.overlaySig="none"; if(NET._overlayOpen){ close(); NET._overlayOpen=false; } }
+    else { NET.overlaySig="none"; if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; } }
   } else if(w.kind==="modal"){ netRenderModalOverlay(S._pendingModal); NET._overlayOpen=true; }
-  else if(NET._overlayOpen){ close(); NET._overlayOpen=false; }
+  else if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; }
 }
 const _renderCoreForBattle=render;
 const _renderWithOverlays=function(){ _renderCoreForBattle(); if(NET.publicMode) netSyncOverlays(); netResumeBarSync(); };

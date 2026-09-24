@@ -128,17 +128,26 @@ function newGameState(mode,opts){
     log:[]
   };
 }
+/* #236 경제 상태 (GDD-23 2.1~2.4 · 7장) — **로컬 모드로 시작한 경기에만** 붙는다(startMode 가 온라인이 아닐 때).
+   온라인·권위 서버 경기에는 이 칸이 아예 없어 상태 모양이 종전과 한 글자도 다르지 않다 — #237 이 전환할 때까지
+   종전 경제(시작 지급·패키지·예비 슬롯)를 그대로 쓴다. 모든 경제 분기는 `S.eco` 유무 하나로 갈린다. */
+/** @returns {EcoState} */
+function newEcoState(){
+  return {coins:[ECO.start,ECO.start], bag:[[],[]], tickets:[0,0],
+    buffInv:[{power:0,time:0,escape:0},{power:0,time:0,escape:0}], soldHp:[{},{}], shop:null, bagPick:null, unitSeq:0};
+}
 /* #245: newGameState() 가 만들지 않고 **경기 중에 붙는** 상태 칸. 정적 검사가 실측으로 찾아낸 drift 라 이름으로 적어 둔다.
    런타임은 그대로 두고(초기값을 주면 새 경기 객체 모양이 바뀐다) 계약에만 올린다 — 여기 없는 칸을 새로 붙이면 그 자리에서 잡힌다.
    추가 여부는 기획·서버 계약이 걸린 판단이라 [기획 필요]로 남긴다. */
 /** @typedef {Sealed<ReturnType<typeof newGameState>> & {
       recruit?:RecruitState|null, // 탐색 보상 선택 상태 (core.js recruit reducer) — #245 MEDIUM: 닫힌 계약
       recruitToken?:number,  // 그 선택창의 결정적 토큰 **발급 번호**(숫자). recruit.token 은 이 숫자를 담은 문자열이다 — 둘은 다른 것이다
-      entryPick?:{attId:number,defId:number,stage:"A"|"D"|"reveal",A:string|null,D:string|null}|null, // #245 M3 출전 선택의 보류 결정 (답은 battleEntryPick·battleEntryGo 액션)
+      entryPick?:{attId:number,defId:number,stage:"A"|"D"|"reveal",A:string|null,D:string|null,aU?:number,dU?:number}|null, // #236 aU·dU: 가방 대리 출전 uid // #245 M3 출전 선택의 보류 결정 (답은 battleEntryPick·battleEntryGo 액션)
       pkgSeq?:number,        // 패키지 개봉 표 번호
       searchEndSeq?:number,  // 탐색 종료 재평가 순번 — 완료마다 +1, 완료 연출이 끝나면 래치가 +0.5 (분리 전 원본과 같은 값)
       __ddFxCells?:any,      // 연출 칸 임시 보관
-      _pendingModal?:any     // 재접속 중 보류된 동기화 모달
+      _pendingModal?:any,    // 재접속 중 보류된 동기화 모달
+      eco?:EcoState          // #236 로컬 경제 (온라인 경기에는 없다)
     }} GameState */
 /** @typedef {Sealed<ReturnType<typeof mkPiece>>} Piece */
 /* #245 Saturn REVISE(M3) 새 경기의 **단일 커밋 경계**. 전역 S 에 대입하는 자리는 이 함수 하나뿐이고(다른 어떤 파일에도 없다),
@@ -153,6 +162,7 @@ function commitNewGame(game){
 function newGame(mode,opts){
   opts=opts||{};
   commitNewGame(newGameState(mode,opts));
+  if(opts.eco){ S.eco=newEcoState(); S.balls=[0,0]; } // #236: 🪙10 · 소모품·볼 0 에서 시작 (2.2)
   for(const p of [0,1]){
     for(let i=0;i<6;i++) S.pieces.push(mkPiece(p,"minion")); // 속성·스탯은 로스터 선택 시 주입
 
@@ -162,9 +172,10 @@ function newGame(mode,opts){
     S.pieces.push(mkPiece(p,"king"));
     /* #121 계약 2.1: 시작 아이템은 회복약·쿨링수·해독제 각 1 (고정). 종전 D11 은 무작위 2개였고 shuffle 로 rand 를
        소비했다 — 고정 목록이 되어 **이 지점의 난수 소비가 0** 이 된다 (공유 시드 재현은 양측 동일하므로 안전) */
-    for(const k of BAL.itemStart) S.inv[p].push(k);
+    if(!S.eco) for(const k of BAL.itemStart) S.inv[p].push(k); // #236: 로컬 경제는 소모품 0 에서 시작 (2.2)
   }
   genEvents();
+  if(S.eco) ecoOpenShop(S,"start",0); // #236 S01 경기 시작 상점 — 양측 진열 5칸 (배치 전)
 }
 let PID=1;
 function mkPiece(owner,type,element,allyIdx){
@@ -217,6 +228,8 @@ function genEvents(){
     const cells=[];
     for(const r of rows) for(let c=1;c<=COLS;c++) cells.push([r,c]);
     shuffle(cells);
+    /* #236 (GDD-23 7.2 · 8.1 ⑬): 로컬 경제의 수풀은 구역당 4개 · 코인 전용. 금액은 발견 순서로 정해진다(core.js search) */
+    if(S.eco){ for(let i=0;i<ECO.bushPerZone;i++) S.events.push({r:cells[i][0], c:cells[i][1], kind:"coin", consumed:false}); continue; }
     EVENT_KINDS.forEach((kind,i)=>{ S.events.push({r:cells[i][0], c:cells[i][1], kind, consumed:false}); });
   }
 }

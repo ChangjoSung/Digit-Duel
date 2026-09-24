@@ -29,8 +29,8 @@ function applyUiEvents(events){
     if(event.type==="toast"){ showToast(event.message,event.kind); continue; }
     if(event.type==="logAppended"){ renderLog(); continue; }
     if(event.type==="battleRedraw"){ battleModal(); continue; }
-    if(event.type==="closeOverlay"){ close(); continue; }
-    if(event.type==="gameReset"){ fxReleaseAll(); continue; }
+    if(event.type==="closeOverlay"){ closeModal(); continue; }
+    if(event.type==="gameReset"){ fxReleaseAll(); shopClockStop(); bagClockStop(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다
     if(event.type==="tutHint"){ tutHint(event.key); continue; }
     if(event.type==="memoPick"){ memoModal(event.piece); continue; }
     if(event.type==="contactSituation"){ situationFx(event.att,event.def); continue; }
@@ -41,7 +41,7 @@ function applyUiEvents(events){
       continue;
     }
     if(event.type==="searchBanner"){ // #129 계약 8·9 — 완료 토큰·자동 종료 재평가는 Core 소유, 여기는 연출뿐
-      close();
+      closeModal();
       if(event.title) fxPlay({key:event.fxKey,kind:"banner",title:event.title,sub:event.sub});
       continue;
     }
@@ -56,10 +56,32 @@ function applyUiEvents(events){
       else { turnBannerFx(); render(); }
       continue;
     }
+    /* #236 경제 화면 — 규칙·회계는 Core 가 끝냈고 여기는 소유자 시점으로 상태를 읽어 그린다 */
+    if(event.type==="shopOpened"){ shopShow(true); continue; }
+    if(event.type==="shopChanged"){ if(event.toast&&shopViewer()===event.player) showToast(event.toast); shopShow(false); continue; }
+    if(event.type==="shopRefused"){ if(shopViewer()===event.player) showToast("🛒 "+event.message); shopShow(false); continue; }
+    if(event.type==="shopHandoff"){ shopShow(true); continue; }
+    if(event.type==="shopClosed"){ if(isAI(event.player)&&!event.all) continue; shopClockStop(); if(event.kind==="start"){ UI.prep="place"; render(); } else closeModal(); continue; } // AI 완료는 사람 상점 창을 닫지 않는다
+    if(event.type==="aiShopTurn"){ aiShop(event.player); continue; }
+    if(event.type==="aiBagPickTurn"){ aiBagPick(event.owner); continue; }
+    if(event.type==="bagPickOpen"){ const g=S; fxWhenIdle(()=>{ if(S===g&&S.eco.bagPick) bagPickShow(); }); continue; } // 전투 종료 연출이 창을 닫은 뒤
+    if(event.type==="bagPickDone"){ if(isAI(event.owner)) continue; bagClockStop(); closeModal(); if(S.mode==="pvp"&&event.owner!==S.current&&S.phase==="play") handoff(pname(S.current)+" 턴 계속",render); continue; }
+    if(event.type==="battleEntryPrompt"&&event.bag){ // #236 가방 대리 출전 — 본체 또는 가방 말 1마리 (소유자만)
+      /* Saturn REVISE HIGH1: 핫시트에서 소유자가 차례 주인이 아니면(방어자 등) 가림 뒤에 열고, 고른 뒤 가림을 다시 거쳐 차례 주인에게 돌려준다 (B08 과 같은 규칙) */
+      const side=event.side, g=S, away=S.mode==="pvp"&&event.owner!==S.current;
+      const pick=(what,uid)=>{ closeModal(); const go=()=>{ if(S===g) dispatchCoreAction({t:"battleEntryPick",side,what,uid}); };
+        if(away) handoff(pname(S.current)+" 턴 계속",go); else go(); };
+      const show=()=>{ if(S!==g||!S.entryPick||S.entryPick.stage!==side) return;
+        modal(`<h2>🔒 ${pname(event.owner)}만 확인${S.mode==="pvp"?" (상대는 시선 회피)":""}</h2>
+        <p>${TYPE_KO[event.pieceType]} 출전 선택 — 대리가 지면 ${event.pieceType==="king"?"경기 패배":"그 동료도 제거"}, 이기면 받은 피해를 안고 가방으로 돌아옵니다.</p>`,
+        [["본체 출전",()=>pick("body")]].concat(event.bag.map(u=>[`대리: ${u.name} ⭐${u.grade} HP ${u.hp}/${u.maxHp}`,()=>pick("bag",u.uid)]))); };
+      if(away) handoff(`${pname(event.owner)} — ${TYPE_KO[event.pieceType]} 출전 선택`,show); else show();
+      continue;
+    }
     if(event.type==="battleEntryPrompt"){ // #12 대리 출전 — 비공개 선택. 답은 Core 액션으로만 돌아간다
       netModalOwner(event.owner); // 온라인: 이 비공개 선택의 주인은 해당 말 소유자 (방어자 포함)
       const res=event.reserve, cap=event.cap, side=event.side;
-      const pick=what=>{ close(); dispatchCoreAction({t:"battleEntryPick",side,what}); };
+      const pick=what=>{ closeModal(); dispatchCoreAction({t:"battleEntryPick",side,what}); };
       modal(`<h2>🔒 ${pname(event.owner)}만 확인${S.mode==="pvp"&&!NET.mode?" (상대는 시선 회피)":""}</h2>
         <p>${TYPE_KO[event.pieceType]} 출전 선택 — 어느 쪽이 패배해도 ${event.pieceType==="king"?"경기 패배":"동료·포획 하수인 동시 제거"}입니다.</p>`,
         [["본체 출전",()=>pick("body")],
@@ -68,15 +90,15 @@ function applyUiEvents(events){
       continue;
     }
     if(event.type==="battleEntryReveal"){
-      modal(`<h2>출전 공개</h2><p>${event.desc}</p>`,[["전투 시작",()=>{ close(); dispatchCoreAction({t:"battleEntryGo"}); }]]);
+      modal(`<h2>출전 공개</h2><p>${event.desc}</p>`,[["전투 시작",()=>{ closeModal(); dispatchCoreAction({t:"battleEntryGo"}); }]]);
       continue;
     }
     if(event.type==="resignPrompt"){ // 확인 창은 표시 계층 소유. 확정은 종전처럼 사람 입력 경로로 되돌아간다
       const game=S, turn=event.turn;
       netLocalModal(); // 확인 모달은 로컬 전용 — 확정만 동기화
       modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,
-        [["기권 확정",()=>{ if(S!==game||S.turnCount!==turn) return; close(); netAction({t:"resign"}); }], // 늦은 확인이 다음 턴을 기권시키지 않는다
-         ["취소",close]]);
+        [["기권 확정",()=>{ if(S!==game||S.turnCount!==turn) return; closeModal(); netAction({t:"resign"}); }], // 늦은 확인이 다음 턴을 기권시키지 않는다
+         ["취소",closeModal]]);
       continue;
     }
     if(event.type==="setupRosterChanged"){
@@ -89,15 +111,15 @@ function applyUiEvents(events){
       else { NET.queued=true; render(); netConnect(); }
       continue;
     }
-    if(event.type==="setupHandoff"){ handoff(pname(event.player)+" 배치",render); continue; }
+    if(event.type==="setupHandoff"){ if(S.eco) UI.prep="roster"; handoff(pname(event.player)+" 배치",render); continue; } // #236: 다음 사람은 시작 상점부터
     if(event.type==="recruitOpened"||event.type==="recruitStage"){ recruitModal(); if(event.type==="recruitOpened") render(); continue; } // 단계 전이는 Core 가 끝냈고 여기는 그 단계의 화면만 (AI 해결·튜토리얼은 Core 소유)
-    if(event.type==="recruitClosed"){ close(); continue; }        // 늦은 콜백·새 게임·턴 교대·말 사망 — 화면만 닫는다
+    if(event.type==="recruitClosed"){ closeModal(); continue; }        // 늦은 콜백·새 게임·턴 교대·말 사망 — 화면만 닫는다
     if(event.type==="matchEnded"){ // 상태·결과 배너·기권 문구는 Core 가 끝냈고 여기는 남은 화면 정리뿐
       if(event.interrupted){
         /* Saturn 추가 P2: **살아 있던 전투를 걷어냈을 때만** 열린 전투 모달을 닫고 낡은 마크업·연출 큐를 비운다.
            상태만 지우고 화면을 두면 buff-power 같은 CSS 애니메이션이 무한히 돌고 낡은 모달이 입력 면으로 남는다 (계약 3.1 은 표시까지 포함).
            정상 승패·판정·도망·적 포획은 이 지점 전에 이미 전투를 비웠고 battleEndFx 가 결과 연출 뒤 닫으므로 건드리지 않는다. */
-        try{ close(); }catch(e){}
+        try{ closeModal(); }catch(e){}
         try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
         try{ fxReleaseAll(); }catch(e){} // 남은 연출 큐·잠금도 함께 해제 (무한 애니메이션·입력 잠금 잔존 방지)
       }
@@ -133,7 +155,7 @@ const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[]};
 function uiScreenName(){
   if(!UI.entered) return "title";
   if(!S) return "lobby";
-  return S.phase==="menu"?"lobby":S.phase==="setup"?"prep":S.phase==="play"?"board":"result";
+  return S.phase==="menu"?"lobby":S.phase==="setup"?"prep":(S.phase==="play"||S.phase==="shop"||S.phase==="bagPick")?"board":"result"; // #236 상점·B08 은 보드 위 팝업
 }
 function uiApply(){
   try{
@@ -195,7 +217,7 @@ function uiOverlayOpen(){ // 게임 모달(#overlay)·튜토리얼 모달(#tutOv
   return false;
 }
 /* 이 확인창이 아직 내 것인가 — 다른 modal() 이 오버레이를 가져갔거나(UI.ask 교체) 게임이 바뀌었으면 아니다.
-   아니면 아무것도 하지 않는다: 특히 **close() 도 부르지 않아** 지금 떠 있는 남의 창을 닫아 버리지 않는다. */
+   아니면 아무것도 하지 않는다: 특히 **closeModal() 도 부르지 않아** 지금 떠 있는 남의 창을 닫아 버리지 않는다. */
 function uiAskMine(tok,game){ return UI.ask===tok&&S===game; }
 function uiBackSpec(){ // null = 이전 화면이 없다(타이틀) → 버튼을 숨긴다
   const sc=uiScreenName();
@@ -233,8 +255,8 @@ window.uiBack=function(){
     netLocalModal(); // 확인 모달은 로컬 전용 (온라인 중계·seq 제외)
     modal(`<h2>← 로비로 돌아가기</h2><p>출전 준비를 그만두고 로비로 돌아갈까요?</p>`
       +`<small>지금까지 고른 로스터와 배치는 사라집니다.${NET.preparing?" 온라인 대전 준비도 함께 취소됩니다.":""}</small>`,
-      [["로비로 돌아가기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; close(); toLobby(); }],
-       ["계속 준비하기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; close(); }]]);
+      [["로비로 돌아가기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; closeModal(); toLobby(); }],
+       ["계속 준비하기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; closeModal(); }]]);
     UI.ask=tok; // modal() 이 토큰을 비우므로 연 뒤에 세운다
     return;
   }
@@ -244,8 +266,8 @@ window.uiBack=function(){
     const game=S, tok={};
     modal(`<h2>← 관전 종료</h2><p>AI vs AI 관전을 끝내고 로비로 돌아갈까요?</p>`
       +`<small>이 경기의 진행은 저장되지 않습니다. [계속 관전]을 누르면 그대로 이어집니다.</small>`,
-      [["로비로 돌아가기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; close(); toLobby(); }],
-       ["계속 관전",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; close(); aiHoldRelease(); }]]);
+      [["로비로 돌아가기",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; closeModal(); toLobby(); }],
+       ["계속 관전",()=>{ if(!uiAskMine(tok,game)) return; UI.ask=null; closeModal(); aiHoldRelease(); }]]);
     UI.ask=tok;
     /* 확인창이 떠 있는 동안에만 AI 예약 실행을 미룬다 — 그러지 않으면 약 simDelay 뒤 AI 가 다음 수를 두면서
        전투 모달·종료 연출로 이 확인창을 덮어쓴다 (aiStep 은 오버레이를 보지 않는다). 판단·난수는 그대로다. */
@@ -689,7 +711,8 @@ function situationFx(att,def){ fxPlay({key:"contactBanner",kind:"contact",title:
 function render(){
   $("phaseLabel").textContent = S.phase==="menu" ? ""
     : S.phase==="setup" ? `— 배치: ${pname(S.setupPlayer)}`
-    : S.phase==="play" ? `— ${pname(S.current)} 턴 ${S.turnCount+1}${isBurning()?" 🔥BT":""}` : S.phase==="over"?"— 종료":"";
+    : S.phase==="play" ? `— ${pname(S.current)} 턴 ${S.turnCount+1}${isBurning()?" 🔥BT":""}` : S.phase==="over"?"— 종료"
+    : S.phase==="shop" ? `— 🛒 ${S.eco.shop.turn}턴 상점` : S.phase==="bagPick" ? "— 🎒 가방 초과" : "";
   renderBoard(); renderSide(); renderTurnBar(); renderMetrics();
   try{ uiApply(); renderBoardInfo(); fitBoard(); }catch(e){} // #122 표시 계층 — 화면 상태·상태 줄·보드 스케일
   try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
@@ -721,6 +744,7 @@ function renderBoard(){
           ? pcBodyHtml(p)
           : g ? glyphSpan(g.key,"guess") : "?"; // 추측도 확정과 같은 기호 규칙 — 그릴 수 없는 기호만 같은 뜻의 텍스트로
         if(known) chip.setAttribute("aria-label",pcLabel(p)); // 이미 공개된 값만 — 미공개 말에는 붙이지 않는다
+        if(p.swapMark&&!known){ chip.innerHTML+=`<span class="swapMark" title="상점에서 교체됨">↺</span>`; chip.setAttribute("title","상점에서 교체됨 (정체 비공개)"); } // #236 (7.5) 공개 칸에 들어온 비공개 말
         if(g){ chip.className+=" memo-guess"; chip.setAttribute("title",`추측: ${g.ko} (내 메모 · 정체 미공개)`); chip.setAttribute("aria-label",`정체 미공개 상대 말 — 내 추측: ${g.ko}`); }
         cell.appendChild(chip);
       }
@@ -840,14 +864,16 @@ function renderSide(){
     ${NET.publicMode?`<small>새 대전은 로비의 공개 방 목록에서 방을 만들거나 참가하세요.</small>`:NET.mode?`<small>온라인 재대전은 로비에서 서버 주소·접속 코드를 넣고 다시 매칭합니다.</small>`:""}`;
     return;
   }
-  const p = NET.mode?NET.me:(S.mode==="pvp"?S.current:0); // 온라인: 사이드 패널은 항상 내 정보
+  const p = NET.mode?NET.me:(S.mode==="pvp"?humanViewer():0); // 온라인: 사이드 패널은 항상 내 정보 · #236 핫시트 상점·B08 은 그 화면 주인
   let h=`<h2>${pname(p)}</h2>
   <div class="row"><span class="badge">몬스터볼 ${S.balls[p]}</span>
   <span class="badge">아이템 ${S.inv[p].length}</span>${S.pkgs?`<span class="badge">🎁 ${S.pkgs[p].itemGift}</span><span class="badge">✨ ${S.pkgs[p].battleBuff}</span>`:""}
   <span class="badge">전투 ${S.battlesUsed}/2</span>
   ${S.reserve[p]?`<span class="badge">예비 하수인(${ELEM_KO[S.reserve[p].element]}) HP ${S.reserve[p].hp}/${S.reserve[p].maxHp}</span>`:""}
   <span class="badge">${S.mainUsed?"주 행동 완료":"주 행동 가능"}</span></div>
-  <div class="row">${S.inv[p].map(i=>`<span class="badge">${ITEMS[i].ko}</span>`).join("")||"<small>아이템 없음</small>"}</div>`; // #121 계약 2.1: 보유 상한 없음 — 분모를 쓰지 않는다
+  <div class="row">${S.inv[p].map(i=>`<span class="badge">${ITEMS[i].ko}</span>`).join("")||"<small>아이템 없음</small>"}</div>`;
+  if(S.eco) h+=`<div class="row"><span class="badge">🪙 ${S.eco.coins[p]}</span><span class="badge">🎟 ${S.eco.tickets[p]}</span>${BUFF_KEYS.map(k=>S.eco.buffInv[p][k]?`<span class="badge">${BUFFS[k].ko} ${S.eco.buffInv[p][k]}</span>`:"").join("")}</div>
+    <div class="row">${[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; return `<span class="badge">🎒 ${u?`${u.name} ${ecoStars(u.grade)} HP ${u.hp}/${u.maxHp}`:"빈칸"}</span>`; }).join("")}</div>`; // #236 소유자 전용 (7.9) // #121 계약 2.1: 보유 상한 없음 — 분모를 쓰지 않는다
   if(S.selected&&!S.selected.tray&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대가 선택한 말 정보(HP 등) 비노출
     const s=S.selected;
     h+=`<h2>선택: ${idLabel(p,s)}</h2><div class="status">HP ${s.hp}/${s.maxHp}${s.immobile>0?` · 이동 불가 ${s.immobile}턴`:""}${s.cap?` · 포획 하수인(${ELEM_KO[s.cap.element]}) HP ${s.cap.hp}/${s.cap.maxHp}`:""}${s.healing?` · 🌿회복 자세(턴마다 +${Math.round(s.maxHp*BAL.healPostPct)})`:""}</div>
@@ -886,7 +912,8 @@ function renderBoardInfo(){
   const who=isAI(S.current)?`🤖 ${pname(S.current)}`:fxTurnLabel(S.current,false);
   const info=sel?`${idLabel(p,sel)} · HP ${sel.hp}/${sel.maxHp}`
     :(!mineTurn?"상대가 행동을 선택하고 있습니다":(S.mainUsed?"주 행동 완료":"자기 말을 선택하세요"));
-  el.innerHTML=`<span class="who">${who} · ${S.turnCount+1}턴${isBurning()?" 🔥BT":""}</span>`
+  const nextShop=S.eco?ECO.shopTurns.find(t=>t>S.turnCount):undefined; // #236 (8.2) 닫힌 상점: 다음 오픈까지 남은 턴
+  el.innerHTML=`<span class="who">${who} · ${S.turnCount+1}턴${isBurning()?" 🔥BT":""}${S.eco?` · 🪙${S.eco.coins[p]} · 🛒${nextShop!==undefined?` ${nextShop-S.turnCount}턴 뒤`:" 끝"}`:""}</span>`
     +`<span class="sel">${info} · 전투 ${S.battlesUsed}/2</span>`
     +`<button type="button" class="more" onclick="uiDrawer('side')">상세 ›</button>`;
 }
@@ -923,10 +950,13 @@ function renderSetup(sp){
   let h=(NET.publicMode&&!NET.started?`<div class="netRoomBar"><b id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</b>
     <span class="badge" role="status" aria-live="polite">상대: ${NET.roomState==="OPEN"?"입장 대기":NET.peerReady?"준비 완료":"준비 중"}</span>
     <button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`:"")+`<div class="prepTabs">
-    <button type="button" data-prep-step="roster" aria-pressed="${UI.prep==="roster"}" onclick="uiPrep('roster')">01 로스터 선택 ${sel.length}/6</button>
+    <button type="button" data-prep-step="roster" aria-pressed="${UI.prep==="roster"}" onclick="uiPrep('roster')">01 ${S.eco?"시작 상점":"로스터 선택"} ${sel.length}/6</button>
     <button type="button" data-prep-step="place" aria-pressed="${UI.prep==="place"}" onclick="uiPrep('place')">02 비공개 배치 ${14-unplaced.length}/14</button></div>
-  <section class="prepStep" data-step="roster">
-  <h2>${NET.preparing?"🌐 온라인 대전 — 내":pname(p)} 로스터 선택 (${sel.length}/6)</h2>
+  <section class="prepStep" data-step="roster">`;
+  if(S.eco){ // #236 S01 — 무료 로스터 선택 대신 🪙10 으로 ⭐1 6명을 산다 (8.1 ⑪)
+    h+=S.eco.shop.done[p]?`<h2>🛒 시작 상점 완료</h2><small>02 비공개 배치로 넘어가세요.</small>`:shopHtml(p);
+  } else {
+  h+=`<h2>${NET.preparing?"🌐 온라인 대전 — 내":pname(p)} 로스터 선택 (${sel.length}/6)</h2>
   <small>30종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정 · 경기 시작은 모두 ⭐1(1차 기본기).</small>`;
   for(const el of V2_ELEM_ORDER){ // #234 (GDD-23 6.3): 5속성 × 6아키타입
     h+=`<div class="row">`;
@@ -935,6 +965,7 @@ function renderSetup(sp){
         <b class="el-${rd.element}">${rd.name}</b>
         <small>${ELEM_KO[rd.element]}·${ARCH_KO[rd.arch]} · HP${rd.hp} 공${rd.atk} · ${speciesSkills(rd.id,4).map(s=>SKILLS[s].ko).join("·")}</small></div>`;
     h+=`</div>`;
+  }
   }
   h+=`</section><section class="prepStep" data-step="place">
   <h2>비공개 배치 (${14-unplaced.length}/14)</h2>
@@ -951,6 +982,7 @@ function renderSetup(sp){
     <button onclick="clearPlace()">전체 회수</button>
     <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>${NET.publicMode?"배치 완료 → 준비 완료":NET.preparing?"배치 완료 → 매칭 시작":"배치 완료"}</button></div></section>`;
   sp.innerHTML=h;
+  if(S.eco&&!S.eco.shop.done[p]) shopClockStart(p); // #236 S01 90초는 상점이 실제로 그려진 뒤 시작 (가림 중이면 shopClockStart 가 거절)
 }
 function renderLog(){
   const el=$("log");
@@ -998,10 +1030,11 @@ function netLeave(){ // 온라인 상태 완전 해제 — 이 정리 없이 로
 }
 function uiResetScreen(){ // 이전 경기의 연출 큐·모달·토스트 잔존 0 (DOM 을 비워 무한 버프 애니메이션까지 멈춘다)
   try{ fxReleaseAll(); }catch(e){}
-  try{ close(); }catch(e){}
+  try{ closeModal(); }catch(e){}
   try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
   try{ clearToasts(); }catch(e){}
   UI.drawer=null; UI.prep="roster";
+  shopClockStop(); bagClockStop(); // #236 이전 경기의 상점·B08 타이머 잔존 0
   UI.ask=null; UI.hold=false; UI.holdQ=[]; // #122 REVISE: 확인창 소유권·AI 보류 큐도 함께 정리 (이전 경기 잔존 0)
 }
 window.toLobby=()=>{
@@ -1025,9 +1058,10 @@ window.startMode=(mode,opts)=>{
   UI.entered=true; UI.drawer=null; UI.prep="roster"; // #122 표시 상태만 초기화 (규칙·저장소 무관)
   let lv=opts.aiLevel; // #21: 문자열(PVE 상대 난이도) 또는 [p0,p1] 배열(sim)
   if(typeof lv==="string") lv=["grade5",lv];
-  newGame(mode,{aiLevel:lv});
+  newGame(mode,{aiLevel:lv,eco:!NET.mode}); // #236: 새 경제는 로컬 모드(PVE·핫시트·sim)만 — 온라인(릴레이 재생성 포함)은 #237 전환 전까지 종전 경제
   if(mode==="pvp"||mode==="pve"){
     addLog(mode==="pve"?`PVE(${AI_LEVEL_KO[S.aiLevel[1]]}${S.aiLevel[1]==="dan5"?" · 탐색·추론 기반 강AI":""}) — 당신의 14개 말을 배치하세요.`:"PVP — 두 플레이어가 번갈아 비공개 배치합니다.","sys");
+    if(S.eco&&mode==="pve") aiShop(1); // #236 GDD-23 2.3: 사람 S01(90초)이 열리는 순간 AI 는 즉시 완료 — 배치(aiAutoPlace)는 종전대로 사람 배치 뒤
     render();
   } else { // sim
     aiAutoPlace(0);
@@ -1057,7 +1091,7 @@ window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 �
     <div class="row"><span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span><span class="badge">${ARCH_KO[rd.arch]}형</span>${on?`<span class="badge">✔ 선택됨</span>`:""}</div>
     <div class="status" style="margin:6px 0">⭐1 HP ${rd.hp} · 공격 ${rd.atk} (스킬 위력 💪N% = 공격력 × N%)</div>
     ${rows}`,
-    [[on?"선택 해제":"선택하기",()=>{close(); toggleRoster(rid);}],["닫기",close]]);
+    [[on?"선택 해제":"선택하기",()=>{closeModal(); toggleRoster(rid);}],["닫기",closeModal]]);
 };
 function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중복 없음)
   const rest=shuffle(ROSTER.filter(r=>!S.roster[p].includes(r.id)).map(r=>r.id));
@@ -1074,7 +1108,7 @@ window.setupDoneCore=()=>dispatchCoreAction({t:"setupConfirm",preparing:NET.prep
    battleModal(board): 인자를 주면 **그 전투 보드**를 그린다 — 지난 전투 스냅샷을 그릴 때 전역 S.battle 을 잠시
    갈아끼우지 않기 위한 유일한 확장이다 (network.js netRenderBattleStage). 인자가 없으면 종전대로 S.battle 이다. */
 function recruitModal(){
-  const st=recruitState(); if(!st){ close(); return; }
+  const st=recruitState(); if(!st){ closeModal(); return; }
   const {R,p,rd}=st, own=R.owner;
   /* 동기화 모달의 버튼은 modal() 래퍼가 {t:"modal",seq,i} 로 이미 중계한다 — 콜백에서 netAction 을 겹쳐 부르면
      로컬이 두 프레임을 보내고 원격이 같은 선택을 두 번 적용한다. 그래서 **코어를 직접** 부른다 (PD 검토 3). */
@@ -1149,7 +1183,7 @@ function recruitModal(){
        btn("← 뒤로","back",0),btn("포기","giveup",0)]);
     return;
   }
-  close();
+  closeModal();
 }
 function pkgOpenModal(kind,ownerP,round,id){
   if(kind==="itemGift"){
@@ -1293,10 +1327,9 @@ function battleModal(board){
   }
   // #12 볼 투척: 대상이 적 하수인·HP<30%·볼 보유·예비 슬롯 빈 상태·라운드당 1회 / #13 도망: 자기 HP<50%
   const oppPiece=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
-  const canThrow=oppPiece.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown;
+  const throwWhy=ballWhy(ST,side)||"", canThrow=!throwWhy; // #236: 투척 가능 판정은 Core 한 곳 (전설·보유 종 제외 포함)
   /* #146 계약: 도망에는 **HP 조건도 시도 횟수 상한도 없다**. 성공률만 전투원별로 다르다 (기본 30% · 도망의 수호자 70%) */
   const fleeP=fleeProbOf(f);
-  const throwWhy=oppPiece.type!=="minion"?"상대가 하수인이 아닙니다":opp.hp>=opp.maxHp*0.3?`상대 HP ${pct(opp.hp/opp.maxHp)} — 30% 미만이어야 합니다`:S.balls[ownerP]<=0?"몬스터볼이 없습니다":S.reserve[ownerP]?"예비 슬롯이 차 있습니다":thrown?"이번 라운드에 이미 던졌습니다":"";
   const fleeNote=f.fleeBoost?" · 🏃 도망의 수호자 — 이 전투 도망 성공률 70%":"";
   const ballBtn=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
   const fleeBtn=`<button class="danger" ${dis||f.fleeLock?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패하면 상대의 기본 공격 1회를 맞고 내 전투 행동 1회를 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
@@ -1312,7 +1345,7 @@ function battleModal(board){
   const pk=S.pkgs[ownerP], buffUsed=(side==="A"?B.buffA:B.buffD);
   /* 계약 9: 한 전투 안의 UI 표시 — 양측에 적용된 버프를 상태줄로 보여 준다 (적용된 효과는 공개 정보) */
   const buffLine=(B.buffA||B.buffD)?`<div class="status">✨ ${[B.buffA?`${fighterName("A",B)} ${BUFFS[B.buffA].ko}`:"",B.buffD?`${fighterName("D",B)} ${BUFFS[B.buffD].ko}`:""].filter(Boolean).join(" · ")}</div>`:"";
-  let pkgBtns=!mineView?`<small>상대 패키지 비공개</small>`:
+  let pkgBtns=!mineView?`<small>상대 패키지 비공개</small>`:S.eco?BUFF_KEYS.map(k=>`<button ${dis||S.eco.buffInv[ownerP][k]<=0||!!buffUsed||(k==="time"&&B.round!==1)?"disabled":""} onclick="window.__buffUse('${k}')">${BUFFS[k].ko} ${S.eco.buffInv[ownerP][k]}</button>`).join(""):
     [`<button ${dis||pk.itemGift<=0?"disabled":""} title="아이템 선물 패키지를 열어 회복약·쿨링수·해독제·공용 볼 중 1개를 받습니다 (행동 미소모)" onclick="window.__openPkg('itemGift')">🎁 아이템 선물 ${pk.itemGift}</button>`,
      `<button ${dis||pk.battleBuff<=0||!!buffUsed?"disabled":""} title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')">✨ 전투 버프 ${pk.battleBuff}</button>`].join("");
   const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
@@ -1354,6 +1387,7 @@ function battleModal(board){
   window.__pkgPickCore=(what,i,id)=>dispatchCoreAction({t:"pkgPick",what,i,id,frame});                 // id = 그 개봉 화면이 받은 표 번호 (없으면 인가되지 않는다)
   window.__pkgCancelCore=id=>dispatchCoreAction({t:"pkgCancel",id,frame}); // 취소도 표시 계층이 아니라 Core 경계가 처리한다 — 자기 번호의 표만 회수한다
   window.__useItemCore=(i,wire)=>dispatchCoreAction({t:"item",i,frame,wire});
+  window.__buffUse=key=>dispatchCoreAction({t:"buffUse",key,frame}); // #236 산 버프 (로컬 전용 — 회선 어휘 아님)
   window.__throwBallCore=wire=>dispatchCoreAction({t:"ball",frame,wire});
   /* 도망·넘기기는 자기 전투 행동 1회를 소모한다 — 연출 재생 중(표시 잠금)에는 받지 않는다. 잠금은 표시 계층의 사실이라
      여기서 보고, 같은 렌더의 행동을 두 번 쓰지 못하게 하는 규칙 대조는 Core 의 strict 프레임 검사가 맡는다. */
@@ -1387,7 +1421,7 @@ function searchEndCheck(){
    (그 액션은 이 연출이 끝난 뒤 fxIdle 에서 실행되므로 순서는 종전과 같다). */
 function battleEndFx(spec){
   const q=spec.queue, banner=spec.banner;
-  const after=()=>{ if(!S.battle) close(); };
+  const after=()=>{ if(!S.battle) closeModal(); };
   const run=()=>fxPlay({key:"resultBanner",kind:"result",cls:banner.cls||"",title:banner.title,sub:banner.sub||"",onEnd:after});
   if(liveBattleDom()) playMsgs(q,run); else { MSGQ.length=0; run(); }
 }
@@ -1445,6 +1479,133 @@ function pcLabel(p){ // 확정 말의 접근성 문구 — 이미 공개된 값�
 /* 말판과 배치 트레이가 같은 함수를 쓴다 — 한쪽만 아이콘으로 바뀌는 불일치가 생기지 않는다 (규격 7.10.4) */
 function pcBodyHtml(p){return pcFaceHtml(p)+pcInfoHtml(p);}
 
+/* ===== #236 상점·가방·B08 화면 — 플레이 QA 용 기능형 최소 UI (최종 카드·레드닷 위치·연출은 #238) =====
+   화면은 소유자 시점 상태만 읽고, 입력은 전부 Core 액션 하나로 보낸다. 거래 판정·회계는 Core(ecoReduce) 한 곳이다.
+   확인 팝업은 승급·판매·티켓만(GDD-23 7.5·8.2), 버튼은 누르는 순간 잠긴다(once). 상점 90초는 사람 좌석마다(PVE·핫시트 — 2026-09-24 CJ D1)
+   자기 상점이 처음 보이는 순간부터 흐른다: 가림이 떠 있는 동안은 시작하지 않고, 가림 확인 뒤 상점이 그려질 때 시작한다. B08 20초도 같은 원칙(가림 뒤). */
+const once=fn=>{ let used=false; return ()=>{ if(used) return; used=true; fn(); }; };
+const SHOPCLK={t:null,iv:null,key:null,dl:0}, BAGCLK={t:null,iv:null};
+function shopViewer(){ // 지금 이 기기에서 상점을 쓰는 사람 (없으면 null)
+  const sh=S&&S.eco?S.eco.shop:null; if(!sh) return null;
+  if(sh.kind==="start") return S.phase==="setup"&&!isAI(S.setupPlayer)&&!sh.done[S.setupPlayer]?S.setupPlayer:null;
+  if(S.phase!=="shop") return null;
+  if(sh.active!==null) return sh.active;
+  const p=[0,1].find(x=>!isAI(x)&&!sh.done[x]); return p===undefined?null:p;
+}
+function ecoName(k){ const r=ROSTER.find(x=>x.id===k); if(r) return `${ELEM_EMO[r.element]}${r.name}`; const L=LEGEND_ROSTER.find(x=>x.id===k); return L?`${L.emo}${L.name}`:"?"; }
+function ecoStars(g){ return "⭐".repeat(Math.min(5,g||1)); }
+function shopHtml(p){
+  const sh=S.eco.shop, start=sh.kind==="start", coins=S.eco.coins[p];
+  const cost=s=>{ const u=ecoUnitOf(S,p,s.key); if(!u) return {c:ecoPrice(s.grade),up:null};
+    const c=s.grade>u.grade?ecoPrice(s.grade)-ecoPrice(u.grade):ecoPrice(s.grade);
+    return {c,full:ecoPrice(s.grade),up:`⭐${u.grade} → ${s.grade>u.grade?s.grade:u.grade+1}`}; };
+  const slots=sh.slots[p].map((s,i)=>{
+    if(!s) return `<div class="fighter"><small>${i+1}. 빈칸 (살 수 없음)</small></div>`;
+    if(sh.sold[p].includes(s.key)) return `<div class="fighter"><small>${i+1}. ${ecoName(s.key)} ${ecoStars(s.grade)} — <b>판매함</b></small></div>`;
+    const pr=cost(s);
+    return `<div class="fighter"><b>${i+1}. ${ecoName(s.key)} ${ecoStars(s.grade)}</b> ${pr.up?`<span class="badge">${pr.up}</span>`:""}
+      <button ${pr.c>coins?"disabled":""} onclick="window.__shop('buy',${i})">${pr.up&&pr.full!==pr.c?`🪙<s>${pr.full}</s> → ${pr.c}`:`🪙${pr.c}`}</button></div>`;
+  }).join("");
+  const goods=(start?ECO.startGoods:ECO.goods).map(k=>`<button ${coins<ECO.goodPrice||!ecoReserveOk(S,p,ECO.goodPrice)?"disabled":""} onclick="window.__shop('good','${k}')">${GOOD_KO[k]} 🪙${ECO.goodPrice}</button>`).join("");
+  const field=S.pieces.filter(x=>x.owner===p&&x.type==="minion").map(x=>!ecoKey(x)?`<span class="badge">빈칸</span>`
+    :`<span class="badge">${x.fresh?"🔴 ":""}${x.alive?"":"💀 "}${x.name} ${ecoStars(/** @type {any} */(x).grade)} HP ${x.hp}/${x.maxHp}</span>`).join("");
+  const bag=[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; if(!u) return `<div class="fighter"><small>가방 ${i+1} — 빈칸</small></div>`;
+    return `<div class="fighter"><b>${u.fresh?"🔴 ":""}${u.name} ${ecoStars(u.grade)}</b> <small>HP ${u.hp}/${u.maxHp} · 원장 🪙${u.paid||0}</small>
+      <button onclick="window.__shop('swap',${u.uid})">교체</button><button class="danger" onclick="window.__shop('sell',${u.uid})">판매 +🪙${u.paid||0}</button></div>`; }).join("");
+  const leaders=S.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally"));
+  const lead=start?`<h3>왕·동료 속성 (무료 — 고르지 않으면 필드 최다 속성)</h3>`+leaders.map(x=>`<div class="row"><small>${TYPE_KO[x.type]}${x.leaderElChosen?` · ${ELEM_KO[x.element]} 선택됨`:""}</small>`
+      +V2_ELEM_ORDER.map(el=>`<button ${x.leaderElChosen&&x.element===el?"disabled":""} onclick="window.__shop('lead',${x.id},'${el}')">${ELEM_EMO[el]}</button>`).join("")+`</div>`).join("")
+    :`<div class="row"><button ${S.eco.tickets[p]>0?"":"disabled"} onclick="window.__shop('ticket')">🎟 티켓 사용 (${S.eco.tickets[p]})</button></div>`;
+  const empty=ecoEmptyField(S,p).length, noBuy=ecoBuyable(S,p)<0;
+  return `<h2>🛒 ${start?"시작 상점":`${sh.turn}턴 상점`} — ${pname(p)}</h2>
+    <div class="row"><span class="badge">🪙 ${coins}</span><span class="badge" id="shopClock">${shopClockText(p)}</span>
+      ${start?`<span class="badge">필드 ${ECO.field-empty}/${ECO.field}</span>`:""}</div>
+    ${start&&empty?`<small>필드 빈칸 ${empty}개 — 남은 필수 비용 🪙${ecoReserveNeed(S,p)}(하수인 ${empty}명 + 필요한 새로 고침). 소모품은 산 뒤에도 🪙${ecoReserveNeed(S,p)}, 🔄 새로 고침은 새 진열 ${ECO.slots}칸 기준 🪙${ecoReserveNeed(S,p,ECO.slots)}이 남아야 합니다.</small>`:""}
+    ${shopSynHtml(p)}
+    <h3>진열</h3>${slots}
+    ${start&&empty&&noBuy?`<small>살 수 있는 칸이 없습니다 — 🔄 새로 고침으로 새 진열을 받으세요.</small>`:""}
+    <div class="row"><button ${coins<ECO.refresh||!ecoReserveOk(S,p,ECO.refresh,ECO.slots)?"disabled":""} onclick="window.__shop('refresh')">🔄 새로 고침 🪙${ECO.refresh}</button></div>
+    <h3>소모품${start?"":" · 버프 · 티켓"}</h3><div class="row">${goods}</div>
+    <h3>필드</h3><div class="row">${field}</div>
+    <h3>가방 (${S.eco.bag[p].length}/${ECO.bagMax})</h3>${bag}
+    ${lead}
+    <div class="row"><button class="primary" ${start&&empty?"disabled":""} onclick="window.__shop('done')">완료${start?" → 배치":""}</button></div>`;
+}
+/* 5차 E16 — 내 왕국·아키타입 칸 수 · 달성 단계 · 다음 단계까지. 단계 경계는 #235 상수 그대로 (새 효과·수치 없음) */
+function shopSynHtml(p){
+  const v=ecoSynView(S,p), start=S.eco.shop.kind==="start";
+  const stage=(n,steps)=>{ let i=-1; steps.forEach((s,k)=>{ if(n>=s) i=k; }); const nx=steps[i+1];
+    return `${i<0?"미달":`(${steps[i]}) 달성`}${nx?` · (${nx})까지 ${nx-n}칸`:" · 최고 단계"}`; };
+  const el=V2_ELEM_ORDER.map(k=>`<span class="badge el-${k}">${ELEM_EMO[k]} ${ELEM_KO[k]} ${v.el[k]}칸 · ${stage(v.el[k],V2_KINGDOM_STEPS)}</span>`).join("");
+  const arch=Object.keys(V2_ARCH_SYN).map(k=>`<span class="badge">${ARCH_KO[k]} ${v.arch[k]}칸 · ${stage(v.arch[k],V2_ARCH_STEPS.slice(0,V2_ARCH_SYN[k].length))}</span>`).join("");
+  const d=v.deadAllies;
+  const lead=start?(v.pending.length?`<small>미선택 — 상점 완료 때 필드 최다 속성으로 자동 배정: ${v.pending.map(x=>TYPE_KO[x.type]).join("·")} (위 칸 수에 아직 없음)</small>`:"")
+    :`<small>왕·동료 시너지: 죽은 동료 ${d}/2 — ${d>=2?`${SKILLS["LD-REVENGE"].ko} · ${SKILLS["LD-WRATH"].ko}`:d===1?`${SKILLS["LD-REVENGE"].ko} · 2명이면 ${SKILLS["LD-WRATH"].ko}`:`미달 · 1명이면 ${SKILLS["LD-REVENGE"].ko}`}</small>`;
+  return `<h3>📊 내 시너지 현황${start?" (미리보기 — 필드에 산 하수인 + 고른 왕·동료 속성)":""}</h3>
+    <div class="row">${el}</div><div class="row">${arch}</div>${lead}`;
+}
+function shopShow(cover){
+  const p=shopViewer(); if(p===null) return;
+  if(S.eco.shop.kind==="start"){ closeModal(); render(); return; }       // S01 은 출전 준비 화면 안에 그린다 (renderSetup)
+  const open=()=>{ if(shopViewer()!==p) return; modal(shopHtml(p),[]); shopClockStart(p); };
+  if(cover&&S.mode==="pvp") handoff(`${pname(p)} — 🛒 ${S.eco.shop.turn}턴 상점`,open); else open();
+}
+function shopClockStart(p){
+  if(!fxLive()||NET.mode||isAI(p)) return;                                  // 사람 좌석만 (온라인 종전 경제·AI·sim 제외)
+  const o=$("overlay"); if(o&&o.classList&&o.classList.contains("handoff")) return; // 가림 중에는 누구의 90초도 흐르지 않는다
+  const key=S.eco.shop.kind+S.eco.shop.turn+":"+p; if(SHOPCLK.key===key) return; // 같은 좌석의 다시 그리기 = 마감 유지
+  shopClockStop(); SHOPCLK.key=key;
+  const g=S; SHOPCLK.dl=Date.now()+ECO.shopSec*1000;
+  SHOPCLK.t=setTimeout(()=>{ if(S!==g||!S.eco.shop||S.eco.shop.done[p]) return; closeModal(); dispatchCoreAction({t:"shopTimeout",player:p}); },ECO.shopSec*1000); // 확정 거래는 보존 · 열린 확인 창(미확정)만 취소
+  const tick=()=>{ const el=$("shopClock"); if(el) el.textContent=shopClockText(p); }; tick();
+  SHOPCLK.iv=setInterval(tick,500);
+}
+function shopClockStop(){ clearTimeout(SHOPCLK.t); clearInterval(SHOPCLK.iv); SHOPCLK.t=SHOPCLK.iv=SHOPCLK.key=null; SHOPCLK.dl=0; }
+function shopClockText(p){ return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000))}초`:""; }
+function bagClockStop(){ clearTimeout(BAGCLK.t); clearInterval(BAGCLK.iv); BAGCLK.t=BAGCLK.iv=null; }
+window.__shop=(op,a,b)=>{
+  const p=shopViewer(); if(p===null) return;
+  const go=act=>dispatchCoreAction(Object.assign({player:p},act));
+  const back=()=>shopShow(false);
+  const confirm=(html,label,act)=>modal(html,[[label,once(()=>go(act))],["취소",back]]);
+  if(op==="buy"){
+    const s=S.eco.shop.slots[p][a]; if(!s) return;
+    const u=ecoUnitOf(S,p,s.key), act={t:"shopBuy",i:a,seq:S.eco.shop.seq[p]};
+    if(!u){ go(act); return; }                                        // 신규 구매는 확인 없이 확정 · 신규 표시(🔴)
+    const g=s.grade>u.grade?s.grade:u.grade+1, c=s.grade>u.grade?ecoPrice(s.grade)-ecoPrice(u.grade):ecoPrice(s.grade);
+    confirm(`<h2>승급 확인</h2><p>${u.name} ⭐${u.grade} → ⭐${g} · 🪙${c}</p><small>그 자리에서 오르고 새 최대 HP 까지 회복하며 스킬 칸이 열립니다.</small>`,"승급",act);
+    return;
+  }
+  if(op==="refresh"){ go({t:"shopRefresh",seq:S.eco.shop.seq[p]}); return; }
+  if(op==="good"){ go({t:"shopGood",item:a}); return; }
+  if(op==="lead"){ go({t:"leaderEl",pieceId:a,el:b}); return; }
+  if(op==="done"){ go({t:"shopDone"}); return; }
+  if(op==="sell"){ const u=S.eco.bag[p].find(x=>x.uid===a); if(!u) return;
+    confirm(`<h2>판매 확인</h2><p>${u.name} ${ecoStars(u.grade)} — 🪙${u.paid||0} 환급 (원장 100%)</p><small>이번 상점에서는 이 종을 다시 살 수 없고, 다음에 사면 지금 HP 비율(${pct(u.hp/u.maxHp)})로 들어옵니다.</small>`,"판매",{t:"shopSell",uid:a});
+    return; }
+  if(op==="swap"){ const f=S.pieces.filter(x=>x.owner===p&&x.type==="minion"&&x.alive&&ecoKey(x));
+    modal(`<h2>교체 대상</h2><p>가방 말과 1:1 로 바꿀 살아 있는 필드 하수인을 고르세요. HP 는 그대로입니다.</p>`,
+      f.map(x=>[`${x.name} ${ecoStars(/** @type {any} */(x).grade)} HP ${x.hp}/${x.maxHp}`,once(()=>go({t:"shopSwap",pieceId:x.id,uid:a}))]).concat([["취소",back]]));
+    return; }
+  if(op==="ticket"){ const ls=S.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally")&&x.alive);
+    modal(`<h2>🎟 시너지 교체 티켓</h2><p>속성을 바꿀 왕·동료를 고르세요.</p>`,ls.map(x=>[`${TYPE_KO[x.type]} (${ELEM_KO[x.element]||"-"})`,()=>
+      modal(`<h2>새 속성</h2>`,V2_ELEM_ORDER.filter(el=>el!==x.element).map(el=>[`${ELEM_EMO[el]} ${ELEM_KO[el]}`,()=>
+        confirm(`<h2>티켓 사용 확인</h2><p>${TYPE_KO[x.type]} ${ELEM_KO[x.element]} → ${ELEM_KO[el]} (스킬도 바뀝니다 · HP 유지 · 다음 전투부터 시너지 반영)</p>`,"사용",{t:"shopTicket",pieceId:x.id,el})]).concat([["취소",back]]))]).concat([["취소",back]]));
+  }
+};
+function bagPickShow(){
+  const bp=S.eco.bagPick, p=bp.owner, tok=bp.token;
+  const go=i=>{ bagClockStop(); closeModal(); dispatchCoreAction({t:"bagPick",i,token:tok}); };
+  const show=()=>{ if(S.eco.bagPick!==bp) return;
+    modal(`<h2>🎒 가방이 가득 찼습니다 — ${pname(p)}만 확인</h2><p>4마리 중 1마리를 내보냅니다. 내보낸 말은 원장만큼 자동 판매됩니다.</p>
+      <small>고르지 않으면 포획한 말을 내보냅니다 (기존 가방 말은 그대로).</small> <span class="badge" id="bagClock"></span>`,
+      S.eco.bag[p].map((u,i)=>[`${u.name} ${ecoStars(u.grade)} HP ${u.hp}/${u.maxHp} · +🪙${u.paid||0}`,once(()=>go(i))])
+        .concat([[`포획한 ${bp.unit.name} ${ecoStars(bp.unit.grade)} 내보내기 (🪙0)`,once(()=>go(S.eco.bag[p].length))]]));
+    if(fxLive()){ bagClockStop(); const dl=Date.now()+ECO.bagPickSec*1000; // 20초는 소유자에게 창이 보이는 순간부터 (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
+      BAGCLK.t=setTimeout(()=>{ if(S.eco.bagPick===bp) go(S.eco.bag[p].length); },ECO.bagPickSec*1000); // 무응답 → 포획한 말만 방출
+      BAGCLK.iv=setInterval(()=>{ const el=$("bagClock"); if(el) el.textContent=`⏱ ${Math.max(0,Math.ceil((dl-Date.now())/1000))}초`; },500); } };
+  if(S.mode==="pvp"&&S.current!==p) handoff(`${pname(p)} — 가방 초과 선택`,show); else show(); // 핫시트: 포획한 쪽이 화면 주인이 아니면 가림 먼저
+}
 /* ===== #245 Saturn REVISE(M1·M6) 표시 포트 설치 =====
    state.js 가 선언한 무동작 기본 구현을 브라우저 구현으로 갈아 끼운다. 이 파일이 실린 뒤에만 화면이 움직이므로,
    data.js·state.js·core.js 만 실은 런타임(서버 권위 엔진)은 같은 규칙을 화면 없이 그대로 실행한다.

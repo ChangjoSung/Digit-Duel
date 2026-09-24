@@ -313,6 +313,12 @@ function aiPushScore(att,def){
 function aiPkgAction(side){
   const B=S.battle; if(!B) return false;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner, f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
+  if(S.eco){ // #236 정기 상점에서 산 버프 — 한 전투 1개 (시간은 1라운드만)
+    if(side==="A"?B.buffA:B.buffD) return false;
+    const inv=S.eco.buffInv[ownerP], key=BUFF_KEYS.find(k=>inv[k]>0&&(k!=="time"||B.round===1));
+    if(!key) return false;
+    aiCmd({t:"buffUse",key}); return true;
+  }
   const pk=S.pkgs[ownerP]; if(!pk) return false;
   /* 1) 전투 버프 — 한 전투 1개. 시간은 R1 에만 고를 수 있으니 가장 먼저 판단한다 */
   if(pk.battleBuff>0&&!(side==="A"?B.buffA:B.buffD)){
@@ -360,9 +366,7 @@ function aiBattleAction(){
     if(use>=0){ aiCmd({t:"item",i:use}); return; } // 모달 재렌더 → 재스케줄
   }
   // #12 적 하수인 포획: 게이트 충족 시 확률적 투척 (capture 프로파일 가중)
-  const oppPc=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
-  if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown
-     &&rand()<0.4+0.4*prof.capture){ aiCmd({t:"ball"}); return; }
+  if(!ballWhy(S,side)&&rand()<0.4+0.4*prof.capture){ aiCmd({t:"ball"}); return; }
   // #13 도망: 동료·왕 본체 또는 열세 전투원 (caution 가중)
   const myPc=side==="A"?B.attP:B.defP;
   /* #146: 규칙상 도망은 HP 조건이 없다. 아래 임계는 **AI 의 판단 휴리스틱**이지 규칙 게이트가 아니다
@@ -750,8 +754,7 @@ function aiBattleActionStrong(side){
     if(use>=0){ aiCmd({t:"item",i:use}); return; }
   }
   // 볼 투척: 게이트 충족 시 포획(제거+예비 확보)이 킬보다 가치 큼 — 확정 킬이고 내 HP가 위험할 때만 킬 우선
-  const thrown=side==="A"?B.ballThrowA:B.ballThrowD;
-  if(oppPc.type==="minion"&&opp.hp<opp.maxHp*0.3&&S.balls[ownerP]>0&&!S.reserve[ownerP]&&!thrown&&(!killNow||f.hp>f.maxHp*0.6)){ aiCmd({t:"ball"}); return; }
+  if(!ballWhy(S,side)&&(!killNow||f.hp>f.maxHp*0.6)){ aiCmd({t:"ball"}); return; }
   // 도망: 본체 VIP가 죽을 위기이거나 열세 전투 (확정 킬 가능하면 안 함)
   if((f.hp<f.maxHp*0.5||f.fleeBoost)&&!killNow&&!f.fleeLock){ // #146: 규칙 게이트가 아니라 5단 AI 의 휴리스틱 임계 (도망의 수호자는 성공률 70%)
     const vipBody=(myPc.type==="ally"||myPc.type==="king")&&f===myPc;
@@ -794,6 +797,43 @@ function aiBattleActionStrong(side){
 /* AI 로스터 선택: 5속성 각 1종 + 나머지 1종 무작위 (중복 없음, 아키타입 혼합 선호) — #234 30종 후보 · 모두 ⭐1.
    #245: 상태를 쓰지 않고 **고른 6종을 돌려주기만** 한다 — 적용(roster 대입·applyRoster)은 Core 의 setupAuto 가 한다.
    난수 소비 순서·횟수는 분리 전과 같다 (아키타입 셔플 → 속성 셔플 → 나머지 셔플 → 최종 셔플). */
+/* ===== #236 AI 경제 — 사람과 같은 Core 액션만 보낸다. 읽는 것은 자기 진열·재화·가방·필드뿐 (공정 관측 7.9 · 8.1 ⑦).
+   무엇을 살지는 규칙이 아니라 구현 선택이다 — 밸런스는 8.4 시뮬레이션 뒤 CJ·Venus 가 조정한다. 난수를 쓰지 않는다. */
+function aiShop(p){
+  const act=a=>dispatchCoreAction(Object.assign({player:p},a));
+  const changed=r=>!!r&&!!r.events[0]&&r.events[0].type==="shopChanged";
+  const buy=i=>changed(act({t:"shopBuy",i,seq:S.eco.shop.seq[p]}));
+  if(S.eco.shop.kind==="start"){
+    for(let n=0;n<12&&ecoEmptyField(S,p).length;n++){ const i=ecoBuyable(S,p);                    // 필드 6칸 — 산 칸은 빈칸이라 5칸 뒤 새로 고침 (D9 — 2026-09-24 CJ 확정)
+      if(!(i<0?changed(act({t:"shopRefresh",seq:S.eco.shop.seq[p]})):buy(i))) break; }
+    for(const k of ["ball","potion"]) act({t:"shopGood",item:k});
+    const i=ecoBuyable(S,p); if(i>=0&&S.eco.coins[p]>=1) buy(i);                                  // 대리 출전 후보 1마리
+    act({t:"shopDone"}); return;
+  }
+  for(let n=0;n<20&&S.phase==="shop"&&!S.eco.shop.done[p];n++){
+    const slots=S.eco.shop.slots[p], coins=S.eco.coins[p], bagFree=S.eco.bag[p].length<ECO.bagMax;
+    const cost=s=>{ const u=ecoUnitOf(S,p,s.key); return !u?ecoPrice(s.grade):s.grade>u.grade?ecoPrice(s.grade)-ecoPrice(u.grade):ecoPrice(s.grade); };
+    const ok=s=>!!s&&!S.eco.shop.sold[p].includes(s.key)&&cost(s)<=coins&&(bagFree||ecoOwnsKey(S,p,s.key));
+    const score=s=>(ecoOwnsKey(S,p,s.key)?10:0)+s.grade;           // 승급 우선 → 높은 등급 신규
+    let pick=-1;
+    slots.forEach((s,i)=>{ if(ok(s)&&(pick<0||score(s)>score(slots[pick]))) pick=i; });
+    if(S.balls[p]===0&&coins>=1){ act({t:"shopGood",item:"ball"}); continue; }
+    if(pick>=0&&buy(pick)) continue;
+    const hurt=S.pieces.find(x=>x.owner===p&&x.type==="minion"&&x.alive&&ecoKey(x)&&x.hp<x.maxHp*0.5);
+    const fresh=hurt&&S.eco.bag[p].find(u=>u.hp>hurt.hp&&u.hp>=u.maxHp*0.8);
+    if(fresh&&changed(act({t:"shopSwap",pieceId:hurt.id,uid:fresh.uid}))) continue;
+    break;
+  }
+  if(S.phase==="shop"&&!S.eco.shop.done[p]) act({t:"shopDone"});
+}
+/* B08 — 가장 약한 말(등급·HP)을 내보낸다. 전설은 지키고, 포획한 말이 가장 약하면 그것을 방출한다 */
+function aiBagPick(owner){
+  const bp=S.eco.bagPick; if(!bp||bp.owner!==owner) return;
+  const val=u=>(u.legend?1000:u.grade*100)+u.hp;
+  let pick=S.eco.bag[owner].length, best=val(bp.unit);
+  S.eco.bag[owner].forEach((u,i)=>{ if(val(u)<best){ best=val(u); pick=i; } });
+  dispatchCoreAction({t:"bagPick",i:pick,token:bp.token});
+}
 function aiPickRoster(p){
   if(S.roster[p].length===6) return S.roster[p].slice();
   const picked=[];
@@ -811,6 +851,7 @@ function aiPickRoster(p){
    판정에 쓰는 보드는 **지금 놓인 말 + 이번에 놓기로 한 자리**다 (종전에는 말을 바로 옮겨 at() 가 그 사실을 보았다) —
    같은 순서·같은 난수·같은 결과이며, 배치가 실제로 상태가 되는 자리는 reducer 한 곳뿐이다. */
 function aiAutoPlace(p){
+  if(S.eco&&S.eco.shop&&!S.eco.shop.done[p]) aiShop(p); // #236: 로스터 대신 시작 상점에서 산다 (8.1 ⑪)
   const roster=aiPickRoster(p);
   const rows=zoneOf(p);
   const back = p===1?rows[0]:rows[2];     // 후열

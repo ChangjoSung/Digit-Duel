@@ -68,10 +68,23 @@ type CoreAction =
   /* #245 Saturn REVISE(M3): 전투 개시와 출전 선택 — 어느 것도 함수·말 객체를 싣지 않는다 (id·자리·선택지뿐). */
   | { t: "battleStart"; attId: number; defId: number }
   | { t: "battleEntryBegin"; attId: number; defId: number }
-  | { t: "battleEntryPick"; side?: "A" | "D"; what: "body" | "cap" }
+  | { t: "battleEntryPick"; side?: "A" | "D"; what: "body" | "cap" | "bag"; uid?: number }
   | { t: "battleEntryGo" }
   | { t: "battleEntryAbort" }
-  | { t: "fleeSwapResume"; pieceId: number | null; oppId: number | null };
+  | { t: "fleeSwapResume"; pieceId: number | null; oppId: number | null }
+  /* #236 경제 거래 — 로컬 모드 전용(회선에 싣지 않는다, 온라인 권위는 #237). 거래마다 액션 하나이고 player 가 주인이다.
+     seq = 그 플레이어 진열 번호(새로 고침·구매마다 +1) — 지난 진열로 온 구매·새로 고침은 거부된다. uid = 가방 말 번호. */
+  | { t: "shopBuy"; player: number; i: number; seq: number }
+  | { t: "shopRefresh"; player: number; seq: number }
+  | { t: "shopGood"; player: number; item: string }
+  | { t: "shopSell"; player: number; uid: number }
+  | { t: "shopSwap"; player: number; pieceId: number; uid: number }
+  | { t: "shopTicket"; player: number; pieceId: number; el: string }
+  | { t: "leaderEl"; player: number; pieceId: number; el: string }
+  | { t: "shopDone"; player: number }
+  | { t: "shopTimeout"; player: number }
+  | { t: "bagPick"; player?: number; i: number; token: number }
+  | { t: "buffUse"; key: string; frame?: any; wire?: BattleWire };
 
 /** reduceCoreAction 이 실제로 받는 t 값. 서버 protocol.js ACTION_TYPES 와의 대조는 tools/typecheck/test 가 본다. */
 type CoreActionType = CoreAction["t"];
@@ -106,10 +119,21 @@ type CoreEvent =
   /* 출전 선택(보류 결정)의 두 단계 — 답은 battleEntryPick·battleEntryGo 액션으로만 돌아온다 */
   | { type: "battleEntryPrompt"; side: "A" | "D"; owner: number; pieceId: number; pieceType: string;
       reserve: { element: string | null; hp: number; maxHp: number } | null;
-      cap: { element: string | null; hp: number; maxHp: number } | null }
+      cap: { element: string | null; hp: number; maxHp: number } | null;
+      bag?: { uid: number; name: string; element: string | null; grade: number; hp: number; maxHp: number }[] } // #236 가방 대리 후보 (소유자 전용)
   | { type: "battleEntryReveal"; desc: string }
   | { type: "battleEntryStep" }                               // 보류 결정을 상태에서 다시 읽어 한 걸음 (Core 전용)
-  | { type: "battleEntryStart"; attId: number; defId: number; A: string | null; D: string | null }
+  | { type: "battleEntryStart"; attId: number; defId: number; A: string | null; D: string | null; aU?: number; dU?: number }
+  /* #236 경제 — 상점·B08. 금액·내용은 이벤트에 싣지 않는다(화면이 소유자 시점으로 상태를 읽는다) */
+  | { type: "shopOpened" }
+  | { type: "shopChanged"; player: number; toast: string }
+  | { type: "shopRefused"; player: number; message: string }
+  | { type: "shopHandoff"; player: number }
+  | { type: "shopClosed"; kind: string; player: number; all: boolean; bt: boolean }
+  | { type: "aiShopTurn"; player: number }
+  | { type: "bagPickOpen"; owner: number }
+  | { type: "bagPickDone"; owner: number; released: boolean }
+  | { type: "aiBagPickTurn"; owner: number }
   | { type: "battleBegan"; attId: number; defId: number }     // 전투 개시 실행 (Core 전용)
   | { type: "fleeSwapPromptRun"; pieceId: number | null; oppId: number | null }
   /* 연출·AI 어댑터가 받는 이벤트 — 실리는 것은 전부 값이다 (함수 없음).
@@ -143,7 +167,7 @@ type CoreEvent =
   | { type: "netSetupCorrupt"; player: number }
   | { type: "playBegan"; player: number; bt: boolean }
   | { type: "turnStarted"; bt: boolean }
-  | { type: "turnEnded"; player: number; healed: any[]; simDraw?: boolean; bt?: boolean } // sim 무승부 갈래만 simDraw, 정상 교대 갈래만 bt (실측: emit 지점 2곳)
+  | { type: "turnEnded"; player: number; healed: any[]; simDraw?: boolean; bt?: boolean; shop?: boolean } // #236 shop: 정기 상점이 열려 다음 턴을 미뤘다 // sim 무승부 갈래만 simDraw, 정상 교대 갈래만 bt (실측: emit 지점 2곳)
   | { type: "matchEnded"; winner: number | null; winType: string | null; interrupted: boolean; banner: boolean; resignLoser?: number } // resignLoser 는 resign 갈래만 덧붙인다
   | { type: "pkgOpenModal"; kind: string; owner: number; round: number; id: number }
   | { type: "pkgPicked"; owner: number | null; toast?: string }
@@ -214,10 +238,33 @@ type NetClientFrame = NetRelayFrame | NetCommandFrame;
 type WireOmitted = "burnFresh" | "crackFresh" | "hardenFresh" | "evadeBuffR" | "dmgUpBuffR" | "allyKind" | "leaderElChosen";
 
 /** 보드 위의 말. 권위 방에서 되살아난 말은 위 칸이 비어 있고, reaperSeal 은 mkPiece 가 만들지 않고 전투 중에 붙는다. */
-type BoardPiece = Omit<Piece, WireOmitted> & Partial<Pick<Piece, WireOmitted>> & { reaperSeal?: number };
+type BoardPiece = Omit<Piece, WireOmitted> & Partial<Pick<Piece, WireOmitted>> & { reaperSeal?: number;
+  /* #236 로컬 경제에서만 붙는 칸 — 원장(이 개체에 낸 코인) · 신규 표시 · "상점에서 교체됨" 표식 */
+  paid?: number; fresh?: boolean; swapMark?: boolean };
 
 /** 포획 예비 슬롯 — 보드 정체(id·owner·r·c·placed) 없이 전투 수치만 든 말 기록. */
 type ReservePiece = Partial<Piece> & { [k: string]: any };
+
+/** #236 상점 한 번의 오픈 (core.js ecoOpenShop 한 곳이 만든다). 진열·판매 잠금·완료는 플레이어별이다.
+    active: 핫시트 순차 상점에서 지금 쓰는 사람(동시 오픈은 null) · next: 상점이 닫히면 턴을 받을 사람 */
+interface EcoShop {
+  kind: "start" | "regular"; turn: number;
+  seq: number[]; slots: ({ key: string; grade: number } | null)[][]; sold: string[][]; done: boolean[];
+  active: number | null; next: number | null;
+}
+
+/** #236 로컬 경제 상태 (state.js newEcoState 한 곳이 만든다). 온라인 경기에는 S.eco 자체가 없다.
+    전부 소유자 전용 정보다(GDD-23 7.9) — 화면·로그·AI 는 자기 좌석 칸만 읽는다. */
+interface EcoState {
+  coins: number[];
+  bag: ReservePiece[][];                    // 가방 3칸 — 구매·포획·전설 공용
+  tickets: number[];
+  buffInv: { power: number; time: number; escape: number }[];
+  soldHp: Record<string, number>[];         // 종별 마지막 판매 당시 HP 비율
+  shop: EcoShop | null;
+  bagPick: { owner: number; unit: ReservePiece; token: number } | null; // B08
+  unitSeq: number;                          // 가방 말 uid 발급 번호
+}
 
 /** 선택 상태. 보드 말이거나, 배치 트레이의 {tray,id} 다 — 읽는 쪽이 .tray 로 갈라 쓴다. */
 type UiSelection = Partial<BoardPiece> & { tray?: boolean; id: number };
