@@ -1,90 +1,29 @@
 # Digit-Duel — 인수인계 스냅샷
 
-## 기준
+## 현재 기준 (2026-09-24 KST)
 
-- 기준 시각: 2026-09-24 KST. 실제 원격 HEAD와 GitHub 상태는 새 세션에서 재조회한다.
-- 최신 제품·기획 완료 범위: Issue #253 CJ UI System Flow Lerp Concept 보완·공용 아트
-- 최신 운영 결정: 다음 Earth 작업의 자산 유형별 Skill 선택은 [WORKER_MODELS.md](WORKER_MODELS.md#earth-이미지-skill-선택--2026-09-24-cj-지시)를 따른다.
-- #253 통합 commit: `750253cbc838678a03db970c6e367f2bf1ffba30`
-- 통합 PR: [#254](https://github.com/ChangjoSung/Digit-Duel/pull/254), `milestone/v0.4.11`에 squash MERGED
-- 모델 설정 통합: [PR #251](https://github.com/ChangjoSung/Digit-Duel/pull/251), merge commit `5435b40ff48c2ca7444771a38f4e125f2c267716`
-- 모델 문서 후속: [PR #252](https://github.com/ChangjoSung/Digit-Duel/pull/252), merge commit `5c833b5f7bd8fa4b4585405b8a44d94b2995b966`
-- Issue [#253](https://github.com/ChangjoSung/Digit-Duel/issues/253): Venus 기획·Earth 공용 아트·Saturn QA·CJ 시각 승인·트랙 통합 후 CLOSED. #235와 #250도 CLOSED.
-- 부모 Issue [#232](https://github.com/ChangjoSung/Digit-Duel/issues/232): OPEN. CJ 지시로 #236을 진행 중이며 [PR #256](https://github.com/ChangjoSung/Digit-Duel/pull/256)은 초안이다. #237 → #238은 별도 CJ 착수 게이트를 지킨다.
-- 원본 작업공간 `C:\Users\pc_77\orca\Digit-Duel`에는 사용자 변경과 대량 미추적 파일이 있다. 읽기 외 작업, 수정, 스테이징, 정리, pull/switch/reset/clean을 하지 않는다.
+- 정식 출시본은 v0.4.10이며, v0.4.11 개발 트랙 `milestone/v0.4.11`의 확인된 원격 HEAD는 `e1285c153cae8d5f419a49b0415e17d35b13341a` (#237 통합)이다. 인수 시 실제 원격 HEAD와 GitHub 상태를 다시 조회한다.
+- [부모 #232](https://github.com/ChangjoSung/Digit-Duel/issues/232)는 OPEN. #233·#234·#241·#235·#253·#236·#237과 구조 선행 #243·#245는 완료됐다. 남은 제품 하위 이슈는 [#238](https://github.com/ChangjoSung/Digit-Duel/issues/238)이며 OPEN·구현 미착수·CJ 별도 착수 지시 대기다.
+- #253 공용 아트는 [PR #254](https://github.com/ChangjoSung/Digit-Duel/pull/254) → `750253c`, #236 경제 계약은 [PR #256](https://github.com/ChangjoSung/Digit-Duel/pull/256) → `dde2b48`, #237 온라인 권위 계약은 [PR #257](https://github.com/ChangjoSung/Digit-Duel/pull/257) → `e1285c1`로 통합·CLOSED다. #236은 CJ 플레이 QA 우선 PASS, #237은 CJ 플레이 QA PASS·병합 HEAD [CI 6/6](https://github.com/ChangjoSung/Digit-Duel/actions/runs/35992526131)을 받았다.
+- 이번 문서 갱신은 #238 착수 승인이 아니다. 승인 전 분석은 [#238 Mercury 착수 전 분석](../milestone/v0.4.11/issues/238/Mercury/prestart-analysis.md)에 있다. CJ가 범위·미결정 사항을 검토한 뒤 별도 착수 지시를 해야 최종 아트·코드·테스트·통합 PR을 시작한다.
 
-## 권위와 역할 계약
+## 권위·역할·인계
 
-충돌 우선순위는 CJ 최신 지시 > `CLAUDE.md` > 프로젝트별 authoritative 문서 > 이 스냅샷 > 범용 핸드북이다.
+- 충돌 우선순위: CJ 최신 Comment > [CLAUDE.md](../../CLAUDE.md) > [GDD-23](https://app.notion.com/p/3dc1e7f1708580329da6fe4986654f7b)·[GDD-24](https://app.notion.com/p/3dc1e7f1708581a48421fcec63d3cdf8) 등 프로젝트 기획 > Notion 구조 정의 > 이 스냅샷 > 범용 핸드북. 미결정·제안을 확정 규칙으로 승격하지 않는다.
+- Mercury는 조정·Git/GitHub·운영 문서/메타데이터만 담당한다. Venus는 기획·Notion GDD, Earth는 아트, Mars는 HTML 클라이언트, Jupiter는 서버, Saturn은 READ_ONLY 독립 QA다. Worker에게 Git을 맡기지 않으며, dispatch preflight 5필드와 한 번에 한 editor·수정 뒤 fresh Saturn·release-before-ack를 지킨다. [역할/모델 계약](WORKER_MODELS.md)을 확인한다.
+- 제품 변경은 한 이슈·통합 PR 한 개, 트랙 직접 커밋 금지, exact file staging·diff check·새 HEAD 필수 CI A/B/B2/C/D/E 6/6·CJ 플레이 QA 후 squash merge다. 이슈·PR·커밋 제목과 PR·커밋 본문은 한국어(기술 식별자 제외)로 작성한다.
+- 원본 작업공간 `C:\Users\pc_77\orca\Digit-Duel`의 사용자 변경·미추적 파일은 보존한다. 해당 체크아웃에서 수정·stage·pull·switch·reset·clean을 하지 않고, 독립 Orca 작업공간에서 문서 작업한다.
 
-- Mercury: COORDINATE/GIT/GITHUB/DOC_METADATA만 담당한다. 제품·런타임·빌드·도구·테스트 코드를 직접 수정하지 않는다.
-- Mars: CLIENT/HTML/UNITY/TOOLING IMPLEMENT. Git 금지.
-- Jupiter: SERVER IMPLEMENT. Git 금지.
-- Saturn: QA READ_ONLY, mutation=none. Git·편집 금지.
-- Worker dispatch는 `required_role`, `mode`, `area`, `mutation`, `instance_index`의 정확히 5개 preflight 필드를 포함한다.
-- 한 번에 한 editor, correction 뒤 fresh Saturn, delivery는 release-before-ack 순서를 지킨다.
-- Git은 Mercury만 수행한다. exact file staging, diff check, commit/push 후 새 HEAD CI A/B/B2/C/D/E 6/6을 확인한다. CJ 최신 지시: 이슈·PR·커밋 제목과 PR·커밋 본문은 한국어로 쓴다(기술 식별자는 유지).
-- Issue TODO는 완료 조건을 충족한 뒤에만 체크하고 누적 진행 댓글을 남기지 않는다.
-- Mercury·Saturn은 Codex `gpt-6-sol` xhigh, service tier default(No Fast). Venus·Mars·Jupiter는 Claude `claude-opus-5-5` high. Earth는 신규 창작 `gpt-6-astra` medium·No Fast, 기존 자산 수정 `gpt-6-luna` xhigh·No Fast. Ponytail full을 유지한다.
+## #238에 넘길 확정 계약과 남은 결정
 
-## #250 모델 재설정 결과
+- #253은 CJ의 화면·공용 아트 **방향** 승인을 받았다. [Venus 흐름 보고](../milestone/v0.4.11/issues/253/Venus/report.md)·[Earth 자산 보고](../milestone/v0.4.11/issues/253/Earth/report.md)와 GDD-24 00.1~00.10을 입력으로 삼되 개별 모션 수치·새 기능까지 승인된 것은 아니다.
+- #236 상점은 구매한 진열 칸을 새로 고침까지 비우고, 시작·정기 상점에서 자기 시너지 현황을 표시한다. 시작 상점 여섯 번째 필수 하수인은 유료 새로 고침 🪙1로 확보하며, 예비 재화와 시간 초과 자동 새로 고침을 유지한다. 핫시트 상점은 각자 자기 화면이 보이는 때부터 90초다.
+- #237은 서버 권위 거래·타이머 정지/재개·좌석별 비공개 상태·상대 단절 표시 필드를 제공한다. 경제 방 SETUP의 자발적 나가기/기권은 승자 없는 취소, IN_PROGRESS의 기권은 상대 차례·상점·단절 정지 중에도 즉시 패배다. 이는 현행 서버 계약이므로 GDD-24 00.10의 오래된 '미결정' 행과 Venus가 대조해야 한다.
+- #238은 기존 Core·서버 규칙을 다시 만들지 않고 T/L/S/M/B/X 화면 전이, 상점·가방·전투 HUD와 연출, 숨은 정보, 핫시트 가림, 접근성을 연결한다. 레드닷 위치/해제, S01 상품 숨김/Dim, 로딩/결과 화면, 모션 제안값, OPEN→SETUP 표시 등은 [착수 전 분석](../milestone/v0.4.11/issues/238/Mercury/prestart-analysis.md)의 CJ/Venus 결정 게이트를 따른다.
+- 로그인·채팅·자동 매치·캠페인·고정 75% 로딩·배치/행동 타이머 등 계약 없는 스케치 요소는 구현 범위가 아니다. Roblox·Unity 포팅도 #238 범위가 아니다.
 
-- 프로젝트 기본값은 `.codex/config.toml`의 `gpt-6-sol` xhigh·`service_tier=default`와 `.claude/settings.json`의 `claude-opus-5-5` high다. 역할별 Worker는 항상 `worker-models.json`의 명시값으로 시작한다.
-- Codex 역할의 No Fast는 `service_tier=default`로 고정하며, 계정 전역 설정과 다른 프로젝트는 변경하지 않았다.
-- 공식 모델 계약과 설치 환경을 대조했다: OpenAI는 `gpt-6-sol`·`gpt-6-luna`의 xhigh와 `service_tier=default` 표준 처리를 지원하고, Claude Code의 `claude-opus-5-5`는 설치된 2.1.280에서 지원된다.
-- PR #251 HEAD `3a990166553b37a14b8d48532bf84d8ea3a8fa61`의 GitHub Actions [run 35806710267](https://github.com/ChangjoSung/Digit-Duel/actions/runs/35806710267)은 A/B/B2/C/D/E 6/6 SUCCESS다.
-- 2026-09-24 새 Mercury_PD 인수 영수증은 `gpt-6-sol` xhigh·No Fast·all access로 확인됐고 #250을 종결했다. 이 권한은 다른 Worker에 전파하지 않는다.
+## 다음 Mercury PD 동작
 
-## #253 UI System Flow 인계와 다음 Earth Skill
-
-- [GDD-24 00.1~00.10](https://app.notion.com/p/3dc1e7f1708581a48421fcec63d3cdf8)에 CJ 스케치의 T/L/S/M/B/X 화면 대응, 전이·예외·모션 제안·미결정 목록을 기록했다. [GDD-13 9장](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38)에 CJ의 방향 승인과 개별 수치 미승인을 구분했다.
-- #253 [Venus 보고](../milestone/v0.4.11/issues/253/Venus/report.md)와 [Earth 보고](../milestone/v0.4.11/issues/253/Earth/report.md), [contact sheet](../milestone/v0.4.11/issues/253/Earth/contact-sheet.png)를 #238 입력으로 사용한다. 기존 화면에 없는 로그인·채팅·고정 75% 로딩 등을 구현 승인으로 오독하지 않는다.
-- 새 Saturn 독립 QA PASS(HIGH 0 / MEDIUM 0 / LOW 0), PR #254 HEAD `934080cc5bafcf81aac24ca46ba684233f2067a5`의 CI 6/6 SUCCESS, squash commit `750253c` push [CI 6/6 SUCCESS](https://github.com/ChangjoSung/Digit-Duel/actions/runs/35944373970). CJ는 공용 아트 시각 방향을 승인했다. GDD-24 00.10의 개별 규칙·모션 수치 승인과는 구분한다.
-- 다음 Earth Task는 [WORKER_MODELS.md의 자산 유형별 Skill 표](WORKER_MODELS.md#earth-이미지-skill-선택--2026-09-24-cj-지시)를 dispatch에 적용한다. #253처럼 정확한 SVG/아이콘/UI 상태는 원본 직접 편집, 새 래스터 일러스트·배경 시안은 `imagegen` 선택 사용이다. GPT Image 2.5 실행 여부는 모델 영수증으로 확인할 수 있을 때만 기록한다. 신규 창작 `gpt-6-astra` medium·No Fast / 기존 수정 `gpt-6-luna` xhigh·No Fast 계약은 유지한다.
-- 남은 UI 실행은 #238이다. #236은 상점·가방·포획 경제 상태, #237은 서버 권위·상대 단절 상태·타이머, #238은 CJ 화면 전체 T/L/S/M/B/X의 최종 구성·입력·접근성·아트 연결을 맡는다. #238은 #236·#237 완료와 CJ 별도 착수 지시 전 시작하지 않는다.
-
-## #236 CJ 플레이 QA 수정 상태 (2026-09-24)
-
-- CJ 요청: 시작 상점에서 하수인을 사면 해당 진열 칸은 새로 고침 전까지 빈칸으로 유지한다. 시작·정기 상점에는 현재 소유자 시너지 칸 수·단계·다음 단계까지 남은 칸 수를 보여 왕·동료 속성 선택에 사용한다. 시작 상점의 여섯 번째 필수 하수인은 **유료 새로 고침 🪙1**로 구매하고, 예비 재화가 이 비용까지 보존하며 시간 초과 때 자동 새로 고침한다(CJ 확정).
-- Venus [6차 보고](../milestone/v0.4.11/issues/236/Venus/report.md)와 Notion GDD-23·24·13에 확정 규칙을 반영했다. Mars는 [구현 보고](../milestone/v0.4.11/issues/236/Mars/report.md)에 슬롯·예비 재화·시간 초과·AI·시너지 집계와 안내 문구 수정을 기록했다. 시작 상점은 배치 전 구매한 필드 하수인과 직접 속성을 고른 왕·동료만 미리 보여 준다. 정기 상점은 #235 실제 집계를 재사용한다. 상대·가림 화면에는 노출하지 않는다.
-- 수정 뒤 fresh Saturn 최종 **PASS · HIGH 0 / MEDIUM 0 / LOW 0**. `smoke_issue236` 272/0, 이전 #235 회귀 122/0, AI 완주 59/0, 독립 여섯 번째 구매 경계 검사가 통과했다. 수정 전 PR #256 HEAD·CI 영수증은 현 수정의 증거가 아니다. [초안 PR #256](https://github.com/ChangjoSung/Digit-Duel/pull/256)에 새 커밋을 올려 그 HEAD의 CI 6/6을 확인하고 CJ 전체 플레이 QA를 다시 받아야 한다. 그 전 #236은 OPEN, 병합 금지다.
-
-## #235 완료 결과
-
-- 전투 참전 확정 시 왕국·아키타입·전설 집계를 한 번 계산해 battle snapshot으로 고정했다.
-- 왕국은 필드 기여·동결·동속성 수혜, 아키타입은 하수인 6칸과 가방 전설의 중복 없는 집계·전 참전자 수혜를 구현했다.
-- 단계·중첩·상한, 전설 직접 참전 패시브, 동료의 복수와 왕의 분노를 공용 Core 경계에 연결했다.
-- #243의 Data/Core/UI/AI/Network/Server adapter 책임을 유지했다. 온라인에는 좌석 소유자의 허용된 `synAtk`만 전달하며 상대 집계와 비공개 정보를 노출하지 않는다.
-- #233·#234·#241·#245 회귀는 중립 fixture로 보존했고 #235 client/server contract 검사를 추가했다.
-- 원격 `feature/235-synergies` 브랜치는 squash merge 뒤 삭제했다.
-
-## #235 검증 근거
-
-- PR HEAD: `ef9d8bcba33915673bba49bb3c561e67495798e5`
-- fresh Saturn 최종 판정: PASS, HIGH 0 / MEDIUM 0 / LOW 0
-- GitHub Actions [run 35679411036](https://github.com/ChangjoSung/Digit-Duel/actions/runs/35679411036): A/B/B2/C/D/E 6/6 SUCCESS
-- `smoke_issue235` 122/0, `smoke_issue233` 310/0, `smoke_issue234` 352/0, `smoke_issue241` 86/0, `smoke_issue245` 352/0
-- typecheck PASS, `test:typecheck` 70/0
-- 서버 전체 검사 PASS, `test-issue235-boundary` 37/0
-- `git diff --check` PASS
-- 삭제된 PR 브랜치 commit `9853a2c`를 참조하던 #245 기준판 검사는 도달 가능한 분리 전 부모 `0b7f683`으로 교정하고, 분리 전 단일 문서 가드를 추가했다.
-
-## GitHub·Orca 상태
-
-- PR #248: MERGED, merge commit `957228d`
-- PR #251: MERGED, merge commit `5435b40`
-- PR #252: MERGED, merge commit `5c833b5`
-- PR #254: MERGED, merge commit `750253c`
-- Issue #235: 모든 완료 조건 체크 후 CLOSED
-- Issue #250: 새 Mercury_PD 시작 영수증과 인계 수락 후 CLOSED
-- Issue #253: 모든 완료 조건 체크 후 CLOSED
-- Issue #232: #235·#253 행 CLOSED, #236은 OPEN·구현/독립 QA 완료·최신 HEAD CI와 CJ 플레이 QA 대기, #237·#238은 OPEN·착수 대기
-- #235 구현 worktree는 완료 상태이며, 관련 구현·QA worker는 모두 release됐다.
-
-## 다음 Mercury PD의 첫 동작
-
-1. `CLAUDE.md`, `CONTRIBUTING.md`, `README.md`, `ASSET-LICENSE.md`, `docs/creat2ve/README.md`, `AUTHORITY.md`, `WORKER_MODELS.md`, `worker-models.json`, `QA_MINIMUM_POLICY.md`, 이 파일, `github-infra.json`, 역할별 prompt, `Creat2veVibeCodingStructure.html`, Roblox 브랜치 정책, CI 정의를 전부 읽는다.
-2. tracked 범위의 추가 governing/`AGENTS.md`를 검색한다.
-3. PR #254와 Issue #253/#232/#236/#237/#238의 state/body/checks, 원격 `milestone/v0.4.11` HEAD, 원본 작업공간 HEAD/status를 읽기 전용으로 재확인한다.
-4. 자기 시작 영수증의 requested/effective 모델·effort·service tier·권한을 확인한다. Earth를 dispatch할 때는 이 문서의 Skill 인계와 `WORKER_MODELS.md`의 실행 계약을 함께 적용한다.
-5. `[결정]`으로 시작해 #236 PR #256의 최신 HEAD·CI·CJ 플레이 QA 게이트를 이어받는다. #237·#238은 별도 CJ 착수 지시 없이 시작하지 않는다.
+1. [CLAUDE.md](../../CLAUDE.md), [권위 문서 등록표](AUTHORITY.md), [모델/Skill 계약](WORKER_MODELS.md), [#238 분석](../milestone/v0.4.11/issues/238/Mercury/prestart-analysis.md), GDD-23·24 및 #232/#238 최신 본문과 원격 HEAD를 읽어 이 스냅샷과 대조한다.
+2. CJ에게 #238 실행 범위와 미결정 선택지를 보고하고 착수 승인 여부를 받는다. 답변 전에는 #238 최종 아트·코드·테스트·PR을 만들지 않는다.
+3. 승인 후에는 Venus의 계약 정리, Earth/Mars의 소관 작업, Saturn 독립 QA, CJ 플레이 QA, Mercury 통합 순서로 #238을 진행한다. #232는 #238 종결 뒤에도 통합 회귀·관측·최종 CJ 승인 전까지 OPEN이다.
