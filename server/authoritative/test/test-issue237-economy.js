@@ -409,6 +409,98 @@ async function main() {
     ok(room.state === STATES.FINISHED && room.result.type === 'NO_CONTEST' && room.result.winner === null, '만료 시각이 같으면 승자 없음');
   }
   {
+    // 타이머가 Date.now() 기준 1ms 일찍 깨어나면 대기를 유지·재무장하고, 기록된 만료 시각에 확정한다 — CI 경합 재현(결정적)
+    const room = startedEco(27, { graceMs: 60 });
+    openRegular(room);
+    room.socketClosed(0); room.socketClosed(1);
+    room._clearDisconnectTimer(0); room._clearDisconnectTimer(1);
+    const t = room.seats[1].disconnectExpiry = room.seats[0].disconnectExpiry;
+    const realNow = Date.now;
+    try {
+      Date.now = () => t - 1;
+      room._onGraceExpireInProgress(0);
+      ok(room.state === STATES.IN_PROGRESS && room.result === null && room.seats[0].disconnectTimer !== null, '조기 발화(now=만료-1)는 확정하지 않고 남은 시간으로 재무장');
+      room._clearDisconnectTimer(0);
+      Date.now = () => t;
+      room._onGraceExpireInProgress(0);
+    } finally { Date.now = realNow; }
+    ok(room.state === STATES.FINISHED && room.result.type === 'NO_CONTEST' && room.result.winner === null, '만료 시각 정각 발화 → 같은 만료는 승자 없음');
+  }
+  // 콜백이 늦어도 기록된 만료 시각이 기준 — 만료 전 재개는 수락, 만료 정각·뒤 재개는 거부하고 몰수·취소를 확정한다(결정적)
+  const lateResume = (room, seat, at) => {
+    room._clearDisconnectTimer(0); room._clearDisconnectTimer(1); // 콜백 지연 재현
+    const tok = room.seats[seat].credential.current, realNow = Date.now;
+    Date.now = () => at(room.seats[seat].disconnectExpiry);
+    try { return { tok, res: room.resumeSeat(seat, tok, fakeWs()) }; } finally { Date.now = realNow; }
+  };
+  {
+    const room = startedEco(33, { graceMs: 60 });
+    room.socketClosed(1);
+    const { tok, res } = lateResume(room, 1, (e) => e - 1);
+    ok(res.ok && room.state === STATES.IN_PROGRESS && room.seats[1].connected && room.seats[1].disconnectExpiry === null && room.seats[1].credential.current !== tok, '경기 중 만료 1ms 전 재개 수락 · 토큰 회전');
+  }
+  for (const [d, label] of [[0, '정각'], [1, '+1ms']]) {
+    const room = startedEco(34, { graceMs: 60 });
+    room.socketClosed(1);
+    const { tok, res } = lateResume(room, 1, (e) => e + d);
+    ok(!res.ok && res.reason === 'E_ROOM_CLOSED' && room.state === STATES.FINISHED && room.result.type === 'FORFEIT' && room.result.winner === 0 && !room.seats[1].connected && room.seats[1].credential.current === tok,
+      '경기 중 만료 ' + label + ' 재개(콜백 전) 거부 → 몰수 확정 · 토큰 불변');
+  }
+  {
+    const room = startedEco(35, { graceMs: 60 });
+    room.socketClosed(0); room.socketClosed(1);
+    room.seats[0].disconnectExpiry = room.seats[1].disconnectExpiry - 10; // 좌석 0 먼저 만료
+    const { res } = lateResume(room, 1, (e) => e - 1); // 좌석 1은 아직 유예 안
+    ok(res.ok && room.state === STATES.FINISHED && room.result.type === 'FORFEIT' && room.result.winner === 1, '상대 만료가 지난 뒤 재개 → 먼저 만료된 상대 몰수 확정 후 결과 화면 재개');
+  }
+  {
+    const room = startedEco(36, { graceMs: 60 });
+    room.socketClosed(0); room.socketClosed(1);
+    room.seats[0].disconnectExpiry = room.seats[1].disconnectExpiry;
+    const { res } = lateResume(room, 1, (e) => e);
+    ok(!res.ok && room.state === STATES.FINISHED && room.result.type === 'NO_CONTEST' && room.result.winner === null, '같은 만료 정각 재개(콜백 전) 거부 → 승자 없음');
+  }
+  // 만료 콜백이 먼저 와 FINISHED 가 된 뒤의 재개도 콜백 지연과 같은 판정 — 만료 좌석은 거부·토큰 불변, 미만료 좌석은 결과 화면 재개(결정적)
+  const callbackFirst = (room, seat, at, fire) => {
+    room._clearDisconnectTimer(0); room._clearDisconnectTimer(1);
+    const tok = room.seats[seat].credential.current, realNow = Date.now;
+    try {
+      Date.now = () => room.seats[fire].disconnectExpiry; room._onGraceExpireInProgress(fire);
+      Date.now = () => at(room.seats[seat].disconnectExpiry);
+      return { tok, res: room.resumeSeat(seat, tok, fakeWs()) };
+    } finally { Date.now = realNow; }
+  };
+  for (const [d, label] of [[0, '정각'], [1, '+1ms']]) {
+    const got = ['first', 'delayed'].map((mode) => {
+      const room = startedEco(38, { graceMs: 60 });
+      room.socketClosed(1);
+      const { tok, res } = mode === 'first' ? callbackFirst(room, 1, (e) => e + d, 1) : lateResume(room, 1, (e) => e + d);
+      return !res.ok && res.reason === 'E_ROOM_CLOSED' && room.state === STATES.FINISHED && room.result.type === 'FORFEIT' && room.result.winner === 0 &&
+        !room.seats[1].connected && room.seats[1].credential.current === tok;
+    });
+    ok(got[0] && got[1], '만료 ' + label + ' 재개: 콜백 선행·지연 모두 거부 · 몰수 · 토큰 불변');
+  }
+  {
+    const room = startedEco(39, { graceMs: 60 });
+    room.socketClosed(0); room.socketClosed(1);
+    room.seats[0].disconnectExpiry = room.seats[1].disconnectExpiry - 10; // 좌석 0 먼저 만료 → 콜백 선행으로 몰수 확정
+    const { tok, res } = callbackFirst(room, 1, (e) => e - 1, 0);
+    ok(res.ok && room.state === STATES.FINISHED && room.result.winner === 1 && room.seats[1].connected && room.seats[1].credential.current !== tok,
+      '상대 몰수(콜백 선행) 뒤 미만료 좌석 결과 화면 재개 · 토큰 회전');
+    const tok0 = room.seats[0].credential.current, realNow = Date.now, t1 = room.seats[0].disconnectExpiry + 9;
+    let r0;
+    try { Date.now = () => t1; r0 = room.resumeSeat(0, tok0, fakeWs()); } finally { Date.now = realNow; }
+    ok(!r0.ok && r0.reason === 'E_ROOM_CLOSED' && room.seats[0].credential.current === tok0, '몰수된 만료 좌석의 결과 화면 재개 거부 · 토큰 불변');
+  }
+  for (const [d, label] of [[-1, '1ms 전'], [0, '정각'], [1, '+1ms']]) {
+    const room = ecoRoom(37, { graceMs: 60 });
+    room.socketClosed(1);
+    const { res } = lateResume(room, 1, (e) => e + d);
+    const want = d < 0 ? res.ok && room.state === STATES.SETUP : !res.ok && res.reason === 'E_ROOM_CLOSED' && room.state === STATES.CANCELED && room.result === null;
+    ok(want, '경기 전 만료 ' + label + ' 재개: ' + (d < 0 ? '수락' : '거부 → 취소'));
+    room._clearClock();
+  }
+  {
     const room = startedEco(28);
     openRegular(room);
     room.voidForRestart();

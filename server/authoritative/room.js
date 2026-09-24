@@ -413,6 +413,14 @@ class Room {
     const seat = this.seats[seatIndex];
     if (!seat.credential) return err('E_SEAT_TOKEN_INVALID');
     if (TERMINAL_NO_BOARD.has(this.state)) return err('E_ROOM_CLOSED');
+    if (seat.credential.classify(token) === 'invalid') return err('E_SEAT_TOKEN_INVALID');
+    // 유예는 콜백이 아니라 기록된 만료 시각에 끝난다 — 콜백이 늦었어도 지난 만료를 먼저 확정하고,
+    // 내 유예가 이미 지났으면 재개를 거부한다(토큰은 회전하지 않는다). 만료 콜백이 먼저 와 FINISHED 가 됐어도
+    // 기록된 만료 시각으로 같은 판정을 한다 — 콜백 순서와 무관하게 만료 좌석은 결과 화면으로도 돌아오지 못한다.
+    const t = now();
+    this._settleLapsedGrace(t);
+    const lapsed = !seat.connected && seat.disconnectExpiry != null && seat.disconnectExpiry <= t;
+    if (lapsed || TERMINAL_NO_BOARD.has(this.state)) return err('E_ROOM_CLOSED');
     const issued = seat.credential.resume(token);
     if (!issued) return err('E_SEAT_TOKEN_INVALID');
     this._clearDisconnectTimer(seatIndex);
@@ -453,22 +461,23 @@ class Room {
     if (!seat.credential) return;
     seat.connected = false;
     seat.ws = null;
-    if (this.state === STATES.OPEN || this.state === STATES.SETUP) {
+    if (this._graceLive()) {
       this._clearDisconnectTimer(seatIndex);
       seat.disconnectExpiry = now() + this.graceMs;
-      seat.disconnectTimer = setTimeout(() => this._onGraceExpirePreStart(seatIndex), this.graceMs);
-      if (seat.disconnectTimer.unref) seat.disconnectTimer.unref();
-      this._syncClock(); // 시작 상점 시계도 멈춘다 — 흐르는 것은 재연결 대기뿐 (GDD-23 2.4)
-      return;
+      this._armGrace(seatIndex);
+      this._syncClock(); // 시계도 멈춘다 — 흐르는 것은 재연결 대기뿐 (GDD-23 2.4)
     }
-    if (this.state === STATES.IN_PROGRESS) {
-      this._clearDisconnectTimer(seatIndex);
-      const expiry = now() + this.graceMs;
-      seat.disconnectExpiry = expiry;
-      seat.disconnectTimer = setTimeout(() => this._onGraceExpireInProgress(seatIndex), this.graceMs);
-      if (seat.disconnectTimer.unref) seat.disconnectTimer.unref();
-      this._syncClock();
-    }
+  }
+
+  _graceLive() {
+    return this.state === STATES.OPEN || this.state === STATES.SETUP || this.state === STATES.IN_PROGRESS;
+  }
+
+  // 기록된 만료 시각까지 남은 시간만큼 건다 — 조기 발화 뒤 재무장도 같은 경로.
+  _armGrace(seatIndex) {
+    const seat = this.seats[seatIndex];
+    seat.disconnectTimer = setTimeout(() => this._onGraceExpire(seatIndex), Math.max(0, seat.disconnectExpiry - now()));
+    if (seat.disconnectTimer.unref) seat.disconnectTimer.unref();
   }
 
   _clearDisconnectTimer(seatIndex) {
@@ -476,11 +485,33 @@ class Room {
     if (seat.disconnectTimer) { clearTimeout(seat.disconnectTimer); seat.disconnectTimer = null; }
   }
 
+  // setTimeout 은 Date.now() 기준 ~1ms 일찍 깨어날 수 있다 — 만료 전이면 남은 시간만큼 다시 걸고 대기를 유지한다.
+  _rearmIfEarly(seatIndex) {
+    const seat = this.seats[seatIndex];
+    if (seat.disconnectExpiry == null || now() >= seat.disconnectExpiry) return false;
+    this._armGrace(seatIndex);
+    return true;
+  }
+
+  _onGraceExpire(seatIndex) {
+    if (this.state === STATES.IN_PROGRESS) this._onGraceExpireInProgress(seatIndex);
+    else this._onGraceExpirePreStart(seatIndex);
+  }
+
+  // 시각 t 에 만료 시각이 지난 단절 좌석을 먼저 끝난 순서로 확정한다(콜백 지연과 무관).
+  _settleLapsedGrace(t) {
+    if (!this._graceLive()) return;
+    const due = [0, 1].filter((i) => !this.seats[i].connected && this.seats[i].disconnectExpiry != null && this.seats[i].disconnectExpiry <= t);
+    due.sort((a, b) => this.seats[a].disconnectExpiry - this.seats[b].disconnectExpiry);
+    if (due.length) this._onGraceExpire(due[0]); // 같은 만료·먼저 만료 판정은 만료 처리기가 한다
+  }
+
   _onGraceExpirePreStart(seatIndex) {
     const seat = this.seats[seatIndex];
     seat.disconnectTimer = null;
     if (seat.connected) return;
     if (this.state !== STATES.OPEN && this.state !== STATES.SETUP) return;
+    if (this._rearmIfEarly(seatIndex)) return;
     this._finalize(STATES.CANCELED, null);
   }
 
@@ -489,15 +520,16 @@ class Room {
     seat.disconnectTimer = null;
     if (this.state !== STATES.IN_PROGRESS) return;
     if (seat.connected) return;
+    if (this._rearmIfEarly(seatIndex)) return;
     const other = 1 - seatIndex;
     const otherSeat = this.seats[other];
-    if (!otherSeat.connected && otherSeat.disconnectExpiry != null && otherSeat.disconnectExpiry <= now()) {
+    // 여기까지 오면 내 만료 시각이 지났다. 상대 비교도 now()가 아니라 기록된 만료 시각끼리 한다 —
+    // 상대 콜백이 아직 안 왔어도 같은 만료는 승자 없음, 먼저 만료된 쪽이 몰수 (#237 CI 경합).
+    if (!otherSeat.connected && otherSeat.disconnectExpiry != null && otherSeat.disconnectExpiry <= seat.disconnectExpiry) {
       if (seat.disconnectExpiry === otherSeat.disconnectExpiry) {
         this._finalize(STATES.FINISHED, { type: 'NO_CONTEST', winner: null });
-      } else if (seat.disconnectExpiry < otherSeat.disconnectExpiry) {
-        this._finalize(STATES.FINISHED, { type: 'FORFEIT', winner: other });
       } else {
-        this._finalize(STATES.FINISHED, { type: 'FORFEIT', winner: seatIndex });
+        this._finalize(STATES.FINISHED, { type: 'FORFEIT', winner: seatIndex }); // 상대가 먼저 만료
       }
       return;
     }
