@@ -20,6 +20,20 @@
 - Ponytail은 역할 경계, 명시 요구, 입력 검증, 오류 처리, 데이터 보존, 보안, 접근성, 필수 QA를 생략하는 근거가 아니다.
 - 프로젝트 절감률은 동일 조건의 대표 작업 5~10건에서 입력·캐시 입력·출력·추론·완료 시간·재작업을 측정하기 전 단정하지 않는다.
 
+## Earth 이미지 Skill 선택 — 2026-09-24 CJ 지시
+
+다음 Earth Task부터 Mercury는 **납품 형식과 기존 원본**을 먼저 확인해 dispatch에 사용할 Skill 경로를 적는다. Earth의 대화 모델(`gpt-6-astra` 신규 창작 / `gpt-6-luna` 기존 자산 수정)과 이미지 생성 엔진은 별개다. 이미지 도구를 호출했다는 이유로 특정 GPT Image 버전을 사용했다고 기록하지 않는다.
+
+| 납품 대상 | Earth 작업 방식 |
+|---|---|
+| 기존 SVG·아이콘·로고·버튼 상태·9-slice 패널·정확한 픽셀 그리드 | 기존 편집 가능한 원본을 직접 수정·재사용한다. `imagegen`은 사용하지 않는다. #253 공용 UI가 이 경우다. |
+| 새 배경화·캐릭터 일러스트·질감·분위기 시안 등 래스터가 최종 형식인 자산 | 설치된 `imagegen` Skill의 기본 내장 도구를 선택적으로 사용한다. 참조 이미지와 보존 조건을 명시하고 실제 게임 크기에서 가독성·팔레트·투명 가장자리·스타일 일치를 검사한다. |
+| 이미지의 특정 부분만 바꾸는 수정 | 기존 파일을 보존하는 편집으로 요청한다. 단순 SVG/PNG 수정을 생성 이미지로 우회하지 않는다. |
+
+- GPT Image 2.5는 래스터 시안 후보일 뿐, 모든 Earth 작업의 의무 도구가 아니다. Flare는 빠른 시안, Sunburst는 정밀 수정이 실제로 필요한 때 검토한다. 현재 설치된 `imagegen` Skill의 CLI 기본값은 `gpt-image-2`이고 내장 도구는 모델 ID를 노출하지 않는다. **2.5가 필요한 작업은 사용 가능한 모델 지정 경로와 실제 실행 영수증을 먼저 확인**하고, 확인되지 않으면 2.5 사용으로 보고하지 않는다. CLI/API 경로는 CJ가 명시적으로 선택했을 때만 사용하며 키를 채팅으로 받지 않는다. [공식 모델 선택](https://developers.openai.com/api/docs/guides/image-prompting), [요금](https://developers.openai.com/api/docs/pricing).
+- 첫 래스터 과제는 소수 시안으로 적합성을 확인한다. 자산별 원본·내보내기·프롬프트/모델 영수증(확인 가능할 때)·출처·라이선스·실제 크기 검수 결과를 인계한다. 화면 문구, 서버 상태, 입력 잠금, 접근성 의미와 비공개 정보 가림은 생성 이미지에 굽지 않고 GDD와 Mars/Jupiter 실행 계약으로 처리한다.
+- Mercury는 다음 Earth dispatch에 위 표의 대상 유형과 `imagegen` 사용 여부, 재사용할 원본, 검수 크기, 라이선스 기록을 명시한다. 새 아트가 필요 없으면 새 이미지를 만들지 않는다.
+
 ## 실행 및 검증
 
 1. CLAUDE.md의 역할 계약과 required_role/mode/area/mutation/instance_index를 먼저 검증한다. 부서의 표시 이름은 Mercury_PD 등이며 기존 역할 식별자 Mercury/Venus/Earth/Mars/Jupiter/Saturn은 유지한다.
@@ -41,7 +55,7 @@
 
 Venus는 Notion 기획서를 eli_adult 방식으로 작성·관리한다. 목적·흐름·규칙·예외·완료 조건을 쉬운 성인 언어로 설명한다. Earth는 도트·리소스·UI 시각/전환 설계, Mars는 HTML/Java/Unity C# 및 UI 동작 코드, Jupiter는 서버·DB·Table 스키마/검증을 담당한다. Table 의미/수치는 Venus/CJ, 클라이언트 로더는 Mars 소관이다. CSV 언급은 기존 TSV 일괄 변환 승인이 아니다. Mercury는 GitHub/Orca/운영 보고를 관리하고 기획 본문을 대행하지 않는다. Saturn은 파일 쓰기 없는 독립 QA다.
 
-프로젝트 운영 결정만 적용한다. 범용 creat2ve-structure 원본을 자동 변경하지 않는다. 외부 서버와 Lobby/System Flow는 CJ 개별 요청 전 착수하지 않는다.
+프로젝트 운영 결정만 적용한다. 범용 creat2ve-structure 원본을 자동 변경하지 않는다. #253의 CJ UI System Flow 기획·공용 아트는 완료됐지만 #238의 제품 구현과 새 외부 서버는 각 CJ 착수 지시 전 시작하지 않는다.
 
 ## 적용 범위 — Digit-Duel 전용
 
