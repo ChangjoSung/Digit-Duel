@@ -20,6 +20,9 @@ The following material is **not** licensed under Apache-2.0:
   `docs/milestone/v0.4.7/issues/122/Earth/` and
   `docs/milestone/v0.4.7/issues/126/Earth/` (the source code, manifests, and
   Markdown documentation in these folders remain under the code license);
+- the original UI artwork (SVG and PNG) under
+  `docs/milestone/v0.4.11/issues/253/Earth/` (Markdown documentation there
+  remains under the code license);
 - any future original artwork, logos, audio, narrative text, or other media
   that is explicitly marked as excluded from the code license.
 
