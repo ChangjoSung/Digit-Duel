@@ -1,12 +1,13 @@
 "use strict";
 /* ===== 모달·핸드오프 ===== */
 /* #11·#36 추측 메모 UI 상태 (게임 상태 S와 분리) — btns/piece: 테스트·포커스용.
-   #94 token: 지금 오버레이를 소유한 메모 피커의 토큰(다른 modal()/close()가 오면 null) · seq: 피커 발급 번호 · overlayOpen: 오버레이 표시 여부 */
+   #94 token: 지금 오버레이를 소유한 메모 피커의 토큰(다른 modal()/closeModal()가 오면 null) · seq: 피커 발급 번호 · overlayOpen: 오버레이 표시 여부 */
 const MEMO_UI={btns:[],piece:null,token:null,seq:0,overlayOpen:false};
 function modal(html,buttons){
   MEMO_UI.token=null; MEMO_UI.overlayOpen=true; // #94 새 모달이 오버레이를 가져간다 — 열려 있던 메모 피커 콜백은 무효
   UI.ask=null; if(UI.hold) aiHoldRelease();      // #122 REVISE: 뒤로가기 확인창도 함께 무효 (옛 버튼이 새 창을 닫지 못한다) · 확인창이 사라졌으면 AI 보류도 푼다
   try{ const ob0=$("overlayBox"); if(ob0&&ob0.classList) ob0.classList.remove("battleBox"); }catch(e){} // #122 전투 화면 전용 레이아웃 클래스 해제
+  handoffCover(false); // #236 HIGH1: 가림 전용 불투명 상태는 그 가림 창에만 — 다음 모달(선택 창 등)은 일반 반투명 배경
   $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
   const ob=$("obBtns");
   /* 버튼 튜플은 [문구, 콜백] 또는 [문구, 콜백, disabled] 다. Saturn REVISE P2: "선택 불가"를 문구로만 알리지 않고
@@ -18,7 +19,7 @@ function modal(html,buttons){
     b.className="primary"; ob.appendChild(b);} // #106: 연출 잠금 중 모달 버튼 무시
   $("overlay").classList.remove("hidden");
 }
-function close(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; $("overlay").classList.add("hidden");
+function closeModal(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; $("overlay").classList.add("hidden"); handoffCover(false);
   if(UI.ask){ UI.ask=null; if(UI.hold) aiHoldRelease(); } } // #122 REVISE: 다른 경로로 확인창이 닫혀도 AI 보류가 남지 않는다
 /* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음)
    #94 상대 턴·AI 턴에도 뷰어가 고정된 모드(온라인 NET.me · PVE 0)에서는 로컬로 연다 — 진입은 onCell → memoClickTarget (네트워크·RNG·selected·게임 로그 무변화) */
@@ -60,14 +61,14 @@ function memoModal(pc){
   if(pc.revealed){ showToast(`이미 공개된 말: ${idLabel(v,pc)}`); return; } // 실제 정체가 우선 — 추측 불필요
   const cur=S.memos[v][pc.id]||null;
   /* #94 오래된 콜백 무효: 이 피커의 토큰이 오버레이 소유권을 잃었거나(다른 모달·close·새 게임) 대상이 공개·사망·비가시가 되면
-     저장·삭제·닫기 콜백은 메모 세트를 바꾸지 않는다. 소유권을 잃은 경우에는 close()·render()도 하지 않는다 — 새 모달(전투·상대 선택 대기)을 가리지 않는다. */
+     저장·삭제·닫기 콜백은 메모 세트를 바꾸지 않는다. 소유권을 잃은 경우에는 closeModal()·render()도 하지 않는다 — 새 모달(전투·상대 선택 대기)을 가리지 않는다. */
   const tk={game:S,piece:pc.id,viewer:v,seq:++MEMO_UI.seq};
   const live=()=>MEMO_UI.token===tk&&S===tk.game;
   const commit=key=>{ if(!live()) return; MEMO_UI.token=null;
     const cur2=S.pieces.find(x=>x.id===pc.id);
     if(S.phase==="play"&&memoTargetOk(v,cur2)) memoSet(v,pc.id,key); else showToast("대상 말의 상태가 바뀌어 추측을 적용하지 않았습니다.");
-    close(); render(); };
-  const dismiss=()=>{ if(!live()) return; MEMO_UI.token=null; close(); };
+    closeModal(); render(); };
+  const dismiss=()=>{ if(!live()) return; MEMO_UI.token=null; closeModal(); };
   netLocalModal(); // 메모 피커는 로컬 전용 모달
   modal(`<h2>📝 정체 추측 — ? (${pc.r}행 ${pc.c}열)</h2>
     <small>이 물음표 말이 무엇일지 골라 두세요. 나만 보이는 메모이며 상대·AI에게는 보이지 않아요.</small>
@@ -86,11 +87,20 @@ function memoModal(pc){
   const del=/** @type {any} */($("obBtns").children[0]); if(del) del.disabled=!cur;
   const focusTo=MEMO_UI.btns.find(b=>b.dataset.key===cur)||MEMO_UI.btns[0]; try{ if(focusTo) focusTo.focus(); }catch(e){}
 }
+/* #236 Saturn REVISE HIGH1: 핫시트 가림은 앞 주인의 보드·사이드·비공개 칸(코인·가방)을 **완전히** 가린다 —
+   #overlay.handoff = 불투명 배경(game.css) + #app inert/aria-hidden(포커스·스크린리더 제외). modal()·closeModal() 가 매번 해제하므로
+   가림→선택 창→가림 반복에서도 다른 모달로 새지 않는다. 튜토리얼이 #app inert 를 쥐고 있으면 그쪽 해제에 맡긴다(tutSetInert). */
+function handoffCover(on){
+  const o=$("overlay"); if(!o) return;
+  if(on) o.classList.add("handoff"); else o.classList.remove("handoff");
+  if(!TUT.open){ const app=$("app"); tutAttr(app,"inert",on?"":null); tutAttr(app,"aria-hidden",on?"true":null); }
+}
 function handoff(title,after){
   if(NET.mode){after();return;} // 온라인: 기기 넘김 불필요 — 즉시 진행
   clearToasts();
   modal(`<h2>🔄 기기를 넘기세요</h2><p style="margin:10px 0">${title}</p><small>상대는 화면을 보지 마세요.</small>`,
-    [["확인 — 시작",()=>{close();after();}]]);
+    [["확인 — 시작",()=>{closeModal();after();}]]);
+  handoffCover(true); // modal() 이 비운 뒤에 건다
 }
 
 /* ===== #26·#32·#42 첫 플레이어용 ELI5 튜토리얼 — 게임 상태 S와 완전 분리 (TUT) ·
@@ -284,7 +294,9 @@ const TUT={open:false,step:0,seenThisLoad:false,auto:false,hints:{teleport:false
 function tutSeen(){ return TUT.seenThisLoad; }
 function tutAttr(el,k,v){ try{ if(!el) return; if(v===null){ if(el.removeAttribute) el.removeAttribute(k); } else if(el.setAttribute) el.setAttribute(k,String(v)); }catch(e){} }
 function tutSetInert(on){ // 배경(게임 화면·게임 모달)을 스크린리더·포커스·클릭에서 제외 — 열릴 때만
-  for(const id of ["app","overlay","tutHint"]){ const el=$(id); tutAttr(el,"inert",on?"":null); tutAttr(el,"aria-hidden",on?"true":null); }
+  for(const id of ["app","overlay","tutHint"]){ const el=$(id);
+    if(!on&&id==="app"&&$("overlay").classList.contains("handoff")) continue; // #236: 가림 중이면 #app 은 계속 가려 둔다
+    tutAttr(el,"inert",on?"":null); tutAttr(el,"aria-hidden",on?"true":null); }
 }
 function tutFocus(el,opt){ // opt.preventScroll: 포커스가 스크롤 컨테이너를 끌지 않게 (미지원 브라우저는 인자 무시 → 아래 tutScrollTop이 되돌린다)
   try{ if(!el||!el.focus) return; if(opt) el.focus(opt); else el.focus(); }catch(e){ try{ el.focus(); }catch(e2){} }

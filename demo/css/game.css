@@ -172,6 +172,7 @@
   #log .ai{color:#c9a25b;}
   .row{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:4px 0;}
   .overlay{position:fixed; inset:0; background:#000c; display:flex; align-items:center; justify-content:center; z-index:50;}
+  .overlay.handoff{background:#000;} /* #236 HIGH1: 핫시트 가림은 불투명 — 앞 주인의 보드·코인·가방이 비치지 않는다 */
   .overlay .box{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:24px; max-width:560px; width:92%;
     max-height:92vh; overflow-y:auto;}
   .hidden{display:none !important;}

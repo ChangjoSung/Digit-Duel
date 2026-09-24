@@ -10,7 +10,7 @@
 - 모델 설정 통합: [PR #251](https://github.com/ChangjoSung/Digit-Duel/pull/251), merge commit `5435b40ff48c2ca7444771a38f4e125f2c267716`
 - 모델 문서 후속: [PR #252](https://github.com/ChangjoSung/Digit-Duel/pull/252), merge commit `5c833b5f7bd8fa4b4585405b8a44d94b2995b966`
 - Issue [#253](https://github.com/ChangjoSung/Digit-Duel/issues/253): Venus 기획·Earth 공용 아트·Saturn QA·CJ 시각 승인·트랙 통합 후 CLOSED. #235와 #250도 CLOSED.
-- 부모 Issue [#232](https://github.com/ChangjoSung/Digit-Duel/issues/232): OPEN. #236 → #237 → #238 순서이며 각 제품 이슈의 별도 CJ 착수 게이트를 지킨다.
+- 부모 Issue [#232](https://github.com/ChangjoSung/Digit-Duel/issues/232): OPEN. CJ 지시로 #236을 진행 중이며 [PR #256](https://github.com/ChangjoSung/Digit-Duel/pull/256)은 초안이다. #237 → #238은 별도 CJ 착수 게이트를 지킨다.
 - 원본 작업공간 `C:\Users\pc_77\orca\Digit-Duel`에는 사용자 변경과 대량 미추적 파일이 있다. 읽기 외 작업, 수정, 스테이징, 정리, pull/switch/reset/clean을 하지 않는다.
 
 ## 권위와 역할 계약
@@ -23,7 +23,7 @@
 - Saturn: QA READ_ONLY, mutation=none. Git·편집 금지.
 - Worker dispatch는 `required_role`, `mode`, `area`, `mutation`, `instance_index`의 정확히 5개 preflight 필드를 포함한다.
 - 한 번에 한 editor, correction 뒤 fresh Saturn, delivery는 release-before-ack 순서를 지킨다.
-- Git은 Mercury만 수행한다. exact file staging, diff check, commit/push 후 새 HEAD CI A/B/B2/C/D/E 6/6을 확인한다.
+- Git은 Mercury만 수행한다. exact file staging, diff check, commit/push 후 새 HEAD CI A/B/B2/C/D/E 6/6을 확인한다. CJ 최신 지시: 이슈·PR·커밋 제목과 PR·커밋 본문은 한국어로 쓴다(기술 식별자는 유지).
 - Issue TODO는 완료 조건을 충족한 뒤에만 체크하고 누적 진행 댓글을 남기지 않는다.
 - Mercury·Saturn은 Codex `gpt-6-sol` xhigh, service tier default(No Fast). Venus·Mars·Jupiter는 Claude `claude-opus-5-5` high. Earth는 신규 창작 `gpt-6-astra` medium·No Fast, 기존 자산 수정 `gpt-6-luna` xhigh·No Fast. Ponytail full을 유지한다.
 
@@ -72,7 +72,7 @@
 - Issue #235: 모든 완료 조건 체크 후 CLOSED
 - Issue #250: 새 Mercury_PD 시작 영수증과 인계 수락 후 CLOSED
 - Issue #253: 모든 완료 조건 체크 후 CLOSED
-- Issue #232: #235·#253 행 CLOSED, #236~#238은 OPEN·대기
+- Issue #232: #235·#253 행 CLOSED, #236은 OPEN·구현/독립 QA 완료·최신 HEAD CI와 CJ 플레이 QA 대기, #237·#238은 OPEN·착수 대기
 - #235 구현 worktree는 완료 상태이며, 관련 구현·QA worker는 모두 release됐다.
 
 ## 다음 Mercury PD의 첫 동작
@@ -81,4 +81,4 @@
 2. tracked 범위의 추가 governing/`AGENTS.md`를 검색한다.
 3. PR #254와 Issue #253/#232/#236/#237/#238의 state/body/checks, 원격 `milestone/v0.4.11` HEAD, 원본 작업공간 HEAD/status를 읽기 전용으로 재확인한다.
 4. 자기 시작 영수증의 requested/effective 모델·effort·service tier·권한을 확인한다. Earth를 dispatch할 때는 이 문서의 Skill 인계와 `WORKER_MODELS.md`의 실행 계약을 함께 적용한다.
-5. `[결정]`으로 시작해 완료 상태와 운영 규칙 이해를 CJ에게 보고한다. 별도 CJ 착수 지시 없이 #236·#237·#238 제품 구현이나 Worker를 시작하지 않는다.
+5. `[결정]`으로 시작해 #236 PR #256의 최신 HEAD·CI·CJ 플레이 QA 게이트를 이어받는다. #237·#238은 별도 CJ 착수 지시 없이 시작하지 않는다.

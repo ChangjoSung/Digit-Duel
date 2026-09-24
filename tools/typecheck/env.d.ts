@@ -28,6 +28,8 @@ declare var __pass: UiHandler;
 declare var __skillInfo: UiHandler;
 declare var __throwBall: UiHandler;
 declare var __useItem: UiHandler;
+declare var __shop: UiHandler;    // #236 상점 화면 버튼
+declare var __buffUse: UiHandler; // #236 산 전투 버프
 // setSeed·tutOpen·tutHintClose·metricsSnapshot 은 함수 선언이 이미 전역이라 여기서 다시 적지 않는다.
 declare var artFail: UiHandler;
 declare var artPortraitFail: UiHandler;

@@ -56,12 +56,12 @@ block("A 화면 상태",()=>{
   ok(/onclick="toLobby\(\)"/.test(SRC)&&/onclick="rematch\(\)"/.test(SRC),"A10b 결과 화면 출구는 [로비로]·[다시 대전]");
   /* 출전 준비 2단계 — 두 절이 항상 함께 렌더된다 */
   T.startMode("pvp"); T.UI.prep="roster";
-  for(const rd of T.ROSTER.slice(0,6)) T.toggleRoster(rd.id); // 실제 입력 경로(netAction → applyAction → toggleRosterCore)
+  T.dispatchCoreAction({t:"shopTimeout",player:0}); // #236: 로컬 모드의 01 단계는 시작 상점(S01)이다 — 무료 로스터 선택(toggleRoster)은 거부된다
   T.renderSide();
   const sp=T.byId("sidePanel").innerHTML;
   ok(/data-step="roster"/.test(sp)&&/data-step="place"/.test(sp),"A11 로스터·배치 두 절이 동시에 DOM 에 있다 (보이기만 전환)");
-  ok(/로스터 선택/.test(sp)&&/비공개 배치/.test(sp)&&/배치 완료/.test(sp),"A12 기존 안내·버튼 문구 보존");
-  ok(T.UI.prep==="place","A13 6종을 다 고르면 배치 단계로 넘어간다");
+  ok(/시작 상점/.test(sp)&&/비공개 배치/.test(sp)&&/배치 완료/.test(sp),"A12 기존 안내·버튼 문구 보존 (#236: 01 = 시작 상점)");
+  ok(T.UI.prep==="place","A13 시작 상점을 마치면(6칸) 배치 단계로 넘어간다");
   T.uiPrep("roster"); ok(T.UI.prep==="roster","A14 탭으로 로스터 단계로 되돌아간다");
 });
 

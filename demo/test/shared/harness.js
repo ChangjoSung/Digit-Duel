@@ -326,7 +326,7 @@ function load(htmlPath,opts){
   recruitCandidates:typeof recruitCandidates==="function"?recruitCandidates:undefined,aiRecruitSlot:typeof aiRecruitSlot==="function"?aiRecruitSlot:undefined, // #92 (기준판 로드 호환: 없으면 undefined)
   atkElOf:typeof atkElOf==="function"?atkElOf:undefined,skillNameKo:typeof skillNameKo==="function"?skillNameKo:undefined,recruitModal:typeof recruitModal==="function"?recruitModal:undefined,
   SKILL_TIER_KO:typeof SKILL_TIER_KO!=="undefined"?SKILL_TIER_KO:undefined,
-  renderSide,renderMetrics,render,startMode,modal,close,onCell,humanViewer,idLabel,
+  renderSide,renderMetrics,render,startMode,modal,close:typeof closeModal==="function"?closeModal:close,closeModal:typeof closeModal==="function"?closeModal:undefined,onCell,humanViewer,idLabel,
   MEMO_OPTS,MEMO_UI,memoOpt,memoSet,memoModal, // #36 추측 메모 피커
   memoClickTarget:typeof memoClickTarget==="function"?memoClickTarget:undefined, memoTargetOk:typeof memoTargetOk==="function"?memoTargetOk:undefined, // #94 로컬 메모 분기 (변경 전 소스로 음성 대조를 돌릴 수 있게 부재 허용)
   ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artDirOfFighter:typeof artDirOfFighter==="function"?artDirOfFighter:undefined,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
@@ -341,7 +341,7 @@ function load(htmlPath,opts){
   artScheduleRecovery:typeof artScheduleRecovery==="function"?artScheduleRecovery:undefined, artProbe:typeof artProbe==="function"?artProbe:undefined,
   artRerender:typeof artRerender==="function"?artRerender:undefined, artLeaderReady:typeof artLeaderReady==="function"?artLeaderReady:undefined,
   rosterInfo:window.rosterInfo,battleModal,toggleRoster:window.toggleRoster, // #89 하수인 아트 연결 (표시 계층)
-  NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
+  NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
   netServerDefault,netActor,netAction,netPrepare,netConnect,netPump,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
   netUiTab:typeof netUiTab==="function"?netUiTab:undefined, netRoomsHtml:typeof netRoomsHtml==="function"?netRoomsHtml:undefined, // #217/#218 공개 방(초대 코드 없는 목록·참가)
   netListRooms:typeof netListRooms==="function"?netListRooms:undefined, netCreatePublicRoom:typeof netCreatePublicRoom==="function"?netCreatePublicRoom:undefined,
@@ -387,6 +387,14 @@ function load(htmlPath,opts){
   LEADER_FILES:typeof LEADER_FILES!=="undefined"?LEADER_FILES:undefined, leaderDirOf:typeof leaderDirOf==="function"?leaderDirOf:undefined,
   leaderArtDir:typeof leaderArtDir==="function"?leaderArtDir:undefined, leaderBattleDir:typeof leaderBattleDir==="function"?leaderBattleDir:undefined,
   get MSGPLAYING(){return MSGPLAYING;},get MSGQ(){return MSGQ;},
+  /* #236 경제 — 기준판 로드 호환을 위해 부재 시 undefined */
+  ECO:typeof ECO!=="undefined"?ECO:undefined, ecoKey:typeof ecoKey==="function"?ecoKey:undefined, ecoUnitOf:typeof ecoUnitOf==="function"?ecoUnitOf:undefined,
+  ecoEmptyField:typeof ecoEmptyField==="function"?ecoEmptyField:undefined, ecoPrice:typeof ecoPrice==="function"?ecoPrice:undefined,
+  ecoOpenShop:typeof ecoOpenShop==="function"?ecoOpenShop:undefined, checkDeath:typeof checkDeath==="function"?checkDeath:undefined,
+  battleCmdFrame:typeof battleCmdFrame==="function"?battleCmdFrame:undefined,
+  ballWhy:typeof ballWhy==="function"?ballWhy:undefined, aiShop:typeof aiShop==="function"?aiShop:undefined, aiBagPick:typeof aiBagPick==="function"?aiBagPick:undefined,
+  shopHtml:typeof shopHtml==="function"?shopHtml:undefined, shopViewer:typeof shopViewer==="function"?shopViewer:undefined,
+  get __shop(){return window.__shop;},
   html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;

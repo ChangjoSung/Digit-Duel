@@ -51,6 +51,16 @@ const BAL={
      #125: damageFx 가 2000→1200 으로 줄면 종전 600+600=1200 은 damageFx 와 같아 여유가 0 이다(단계가 그룹 경계에 붙는다). barStep 과 CSS 두 바 전환을
      함께 350ms 로 내려 합 700ms, damageFx 안 여유 500ms 를 확보한다. 방어막→HP 순서·표시값·입력 잠금 계약은 불변. 불변식: 2*barStep ≤ damageFx */
 };
+/* #236 (GDD-23 2.1~2.3 · 7.2~7.7) 경제 수치 — 로컬 모드(PVE·핫시트·sim) 전용. 온라인은 #237 전환 전까지 위 BAL 의 종전 경제를 쓴다 */
+const ECO={
+  start:10, field:6, bagMax:3, slots:5, legendPrice:10, goodPrice:1, refresh:1,
+  shopTurns:[20,40,60,80], bonus:{20:2,40:3,60:4,80:5},
+  tiers:{20:[1,2],40:[2,3],60:[3,4],80:[4,5]}, lowPct:0.6,      // 칸마다 낮은 등급 60% / 높은 등급 40% (⭐5 = 전설)
+  win:3, lose:1, bushPerZone:4, capHpPct:0.7,
+  startGoods:["potion","cool","cure","ball"],                   // 시작 상점 (2.2)
+  goods:["potion","cool","cure","ball","ticket","power","time","escape"], // 정기 상점 (7.3)
+  shopSec:90, bagPickSec:20                                     // 상점 1인 90초 (PVE·핫시트 순차 최대 180초 — 자기 상점이 보이는 순간부터, 2026-09-24 CJ D1) · B08 20초
+};
 /* ===== #21 시드 가능한 RNG — 게임 로직의 모든 난수는 rand()를 경유. setSeed(n)로 결정적 재현, setSeed(null)로 Math.random 복귀 ===== */
 let RNG=null; // null → Math.random (테스트 하네스의 Math.random 오버라이드와 호환)
 function rand(){return RNG?RNG():Math.random();}
@@ -220,6 +230,7 @@ const BUFFS={
   escape:{ko:"🏃 도망의 수호자",desc:"이 전투 동안 도망 성공률을 70%로 높입니다"}
 };
 const BUFF_KEYS=["power","time","escape"];
+const GOOD_KO={potion:"회복약",cool:"쿨링수",cure:"해독제",ball:"몬스터 볼",ticket:"🎟 시너지 교체 티켓",power:BUFFS.power.ko,time:BUFFS.time.ko,escape:BUFFS.escape.ko}; // #236 상점 품목
 /* ===== #233 (GDD-23 3장) 8스탯 전투 엔진 계약 — 순수 데이터·헬퍼. 보호형(guard)·땅속성 종은 #234 전까지 로스터에 없다.
    여기 실린 표는 GDD-23 3.3·3.4·3.5·3.6 을 그대로 옮긴 것이며, 실제 라이브 로스터(ROSTER·king·ally)는
    아래에서 이 표를 읽어 8스탯을 주입한다(hp·atk 외 def·spd·dodge·crit·statusPct·shieldStartPct). */

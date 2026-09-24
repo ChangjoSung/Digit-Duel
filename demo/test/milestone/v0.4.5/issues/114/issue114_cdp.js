@@ -45,7 +45,7 @@ async function same(clients,logs=true){const [a,b]=await Promise.all(clients.map
 async function idle(t){return t.ev("!fxLocked()&&NET.queue.length===0");}
 async function shot(t,name){if(!SHOTS)return;fs.mkdirSync(OUT,{recursive:true});await cdp.send("Page.bringToFront",{},t.sid);await sleep(100);const {data}=await cdp.send("Page.captureScreenshot",{format:"png"},t.sid);fs.writeFileSync(path.join(OUT,name+".png"),Buffer.from(data,"base64"));console.log("SHOT "+path.relative(ROOT,path.join(OUT,name+".png")));}
 const fixture=owner=>`(()=>{
-  close();fxReleaseAll();BAL.fx.autoEnd=false;for(const k of Object.keys(BAL.fx))if(typeof BAL.fx[k]==='number')BAL.fx[k]=0;BAL.fx.fleeFx=2000;BAL.fx.pushBanner=2000;BAL.fx.watchdog=1000;
+  closeModal();fxReleaseAll();BAL.fx.autoEnd=false;for(const k of Object.keys(BAL.fx))if(typeof BAL.fx[k]==='number')BAL.fx[k]=0;BAL.fx.fleeFx=2000;BAL.fx.pushBanner=2000;BAL.fx.watchdog=1000;
   for(const p of S.pieces){p.placed=false;p.alive=true;p.revealed=false;p.healing=false;p.hp=p.maxHp;}
   S.phase='play';S.current=0;S.turnCount=10;S.mainUsed=true;S.battlesUsed=0;S.battle=null;S.fleePick=null;S.selected=null;S.teleport=null;S.forcedTargets=[];S.forcedQueue=[];S.movedPiece=null;S.contactSet=[];S.log=[];
   const get=(o,t,n=0)=>S.pieces.filter(p=>p.owner===o&&p.type===t)[n],put=(p,r,c)=>{p.r=r;p.c=c;p.placed=true;};
@@ -91,7 +91,7 @@ const fixture=owner=>`(()=>{
       note("flee owner "+owner+" "+(skip?"skip":"candidate click"),{sent:states.map(s=>s.sent.length),received:states.map(s=>s.received),battlesUsed:1,defaultFleeAndPushMs:2000});
     }
     // Relocation rules are reached through a real online bomb/trap contact click.
-    const reloc=`(()=>{close();fxReleaseAll();for(const p of S.pieces)p.placed=false;S.current=0;S.mainUsed=true;S.battlesUsed=0;S.fleePick=null;S.battle=null;S.forcedTargets=[];S.forcedQueue=[];S.log=[];const g=(o,t,n=0)=>S.pieces.filter(p=>p.owner===o&&p.type===t)[n],put=(p,r,c)=>{p.r=r;p.c=c;p.placed=true;p.alive=true;p.revealed=false;};put(g(0,'king'),13,1);put(g(1,'king'),1,7);put(g(0,'bomb'),7,4);put(g(1,'trap'),6,4);put(g(0,'trap'),8,4);put(g(1,'bomb'),5,4);S.selected=g(0,'bomb');render();__sent.length=0;__received=0;return true;})()`;
+    const reloc=`(()=>{closeModal();fxReleaseAll();for(const p of S.pieces)p.placed=false;S.current=0;S.mainUsed=true;S.battlesUsed=0;S.fleePick=null;S.battle=null;S.forcedTargets=[];S.forcedQueue=[];S.log=[];const g=(o,t,n=0)=>S.pieces.filter(p=>p.owner===o&&p.type===t)[n],put=(p,r,c)=>{p.r=r;p.c=c;p.placed=true;p.alive=true;p.revealed=false;};put(g(0,'king'),13,1);put(g(1,'king'),1,7);put(g(0,'bomb'),7,4);put(g(1,'trap'),6,4);put(g(0,'trap'),8,4);put(g(1,'bomb'),5,4);S.selected=g(0,'bomb');render();__sent.length=0;__received=0;return true;})()`;
     for(const t of clients){await t.ev(reloc);await t.ev("S.movedPiece=S.selected;S.forcedTargets=[at(6,4).id];S.contactSet=S.forcedTargets.slice();render();true");}await clients[0].click(cell(6,4));
     await until(async()=>(await Promise.all(clients.map(idle))).every(Boolean),"relocation settle");await same(clients);
     assert(await clients[0].ev("S.metrics.relocations>0"));note("live bomb/trap contact relocates both, canonical states including logs match");
@@ -106,11 +106,11 @@ const fixture=owner=>`(()=>{
     assert.equal(publicHeal(healLogs[0]).filter(l=>l==="HEAL_ACTION").length,1);assert.deepEqual(publicHeal(healLogs[0]),publicHeal(healLogs[1]));
     note("full HP healing wait auto-ends once from owner only; state agrees, healing identity stays private");
     if(SHOTS){
-      for(const t of clients){await t.ev(fixture(0));await t.ev("S.battle=null;close();fxReleaseAll();S.battlesUsed=0;S.selected=at(7,4);renderLog();clearToasts();render();true");}
+      for(const t of clients){await t.ev(fixture(0));await t.ev("S.battle=null;closeModal();fxReleaseAll();S.battlesUsed=0;S.selected=at(7,4);renderLog();clearToasts();render();true");}
       assert(await clients[0].ev("[...document.querySelectorAll('#turnBar button')].some(b=>b.textContent==='싸우지 않고 종료'&&!b.disabled)"));
       await shot(clients[0],"conditional-end-option");
     }
-    for(const t of clients){await t.ev(fixture(1));await t.ev("S.battle=null;close();fxReleaseAll();fleeSwapPrompt(at(6,4),at(7,4));true");}
+    for(const t of clients){await t.ev(fixture(1));await t.ev("S.battle=null;closeModal();fxReleaseAll();fleeSwapPrompt(at(6,4),at(7,4));true");}
     await until(async()=>(await Promise.all(clients.map(idle))).every(Boolean),"resign selection idle");
     assert(await clients[1].ev("document.querySelector('#turnBar button.danger').disabled"));
     await clients[0].click("#turnBar button.danger");await clients[0].click("#obBtns button:first-child");
@@ -118,7 +118,7 @@ const fixture=owner=>`(()=>{
     assert.equal(await clients[1].ev("__sent.length"),0);note("current player resignation works during defender-owned flee selection");
     const local=await tab(`http://127.0.0.1:${net.port}/index.html`);
     await local.ev("newGame('pvp');aiAutoPlace(0);aiAutoPlace(1);S.phase='play';true");
-    await local.ev(fixture(0));await local.ev("S.battle=null;close();fxReleaseAll();fleeSwapPrompt(at(7,4),at(6,4));window.__stale=document.querySelector('#turnBar button').onclick;window.__pending=FX.cur;newGame('pvp');window.__before=JSON.stringify(S);__stale();true");
+    await local.ev(fixture(0));await local.ev("S.battle=null;closeModal();fxReleaseAll();fleeSwapPrompt(at(7,4),at(6,4));window.__stale=document.querySelector('#turnBar button').onclick;window.__pending=FX.cur;newGame('pvp');window.__before=JSON.stringify(S);__stale();true");
     await sleep(2300);assert(await local.ev("JSON.stringify(S)===__before"));note("old DOM flee callback and pending 2s banner cannot mutate a new game");
   }catch(e){failed=e.stack||String(e);console.error(failed);}
   finally{

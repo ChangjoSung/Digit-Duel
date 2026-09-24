@@ -32,7 +32,7 @@ const SCENE_ROSTER=`(()=>{ newGame("pve",{aiLevel:"grade5"}); rosterInfo("M-L1")
 const GIVE=`const give=(m,r)=>{ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; };
   const adjacent=(a,b)=>{ const occ=S.pieces.find(x=>x.placed&&x.alive&&x.r===a.r-1&&x.c===a.c&&x.id!==b.id); if(occ) occ.placed=false; b.r=a.r-1; b.c=a.c; b.placed=true; b.alive=true; };`;
 const SCENE_BATTLE=`(()=>{ ${GIVE}
-  try{ close(); }catch(e){}
+  try{ closeModal(); }catch(e){}
   setSeed(9696); newGame("pve",{aiLevel:"grade5"}); aiAutoPlace(0); aiAutoPlace(1);
   S.phase="play"; S.current=0; S.mainUsed=false; S.battlesUsed=0; S.movedPiece=null; S.contactSet=[]; S.forcedTargets=[]; S.forcedQueue=[];
   const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"), op=S.pieces.find(x=>x.owner===1&&x.type==="minion");
@@ -53,7 +53,7 @@ const SCENE_ACT=want=>`(()=>{ const {me,op}=window.__96||{}; if(!me||!op) return
   let seed=-1; for(let s=1;s<200;s++){ setSeed(s); rand(); if((rand()<BAL.shockProb)===${want}){ seed=s; break; } }
   if(seed<0) return {error:"no-seed"};
   S.battle=null; S.battlesUsed=0; me.hp=me.maxHp; op.hp=op.maxHp; me.cds=[0,0,0,0]; op.cds=[0,0,0,0];
-  try{ close(); }catch(e){} startRounds(me,op,me,op); setSeed(seed);
+  try{ closeModal(); }catch(e){} startRounds(me,op,me,op); setSeed(seed);
   return {seed,shockBefore:op.shock,hpD:op.hp,blog:S.battle.blog.length}; })()`;
 const PLAYING=`(()=>typeof MSGPLAYING==="undefined"?null:MSGPLAYING)()`;
 const CLICK_SHOCK=`(()=>{ const btn=[...document.querySelectorAll("#overlayBox button")].find(b=>/^감전 침/.test(b.textContent.trim()));

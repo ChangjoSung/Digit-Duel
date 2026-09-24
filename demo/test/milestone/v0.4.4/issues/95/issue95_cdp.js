@@ -33,7 +33,7 @@ const SETUP=`(()=>{
   return S.phase;
 })()`;
 const OPEN_ROSTER=`(()=>{ rosterInfo("M-F2"); const b=document.getElementById("overlayBox"); return {text:b.innerText.replace(/\\s+/g," "), art:b.innerHTML.indexOf("fire_atk/portrait")>=0}; })()`;
-const CLOSE=`(()=>{ close(); return true; })()`;
+const CLOSE=`(()=>{ closeModal(); return true; })()`;
 /* 내 로스터에 화염 투사(M-F2)를 넣고 배치 완료 → 상대 하수인 하나를 내 앞에 끌어와 실제 initBattle 로 전투 진입 (공격측 = 나 = R1 선공) */
 const START_BATTLE=`(()=>{
   S.roster[0]=["M-F2","M-W2","M-G2","M-L2","M-F1","M-W1"]; applyRoster(0);

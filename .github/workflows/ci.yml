@@ -130,6 +130,7 @@ jobs:
           node demo/test/regression/smoke_issue241.js
           node demo/test/regression/smoke_issue235.js
           node demo/test/regression/smoke_issue245.js
+          node demo/test/regression/smoke_issue236.js
       # smoke_online_art.js (#201, v0.4.8 HotFix): 온라인에서 개별 이미지가 한 번 실패해도 그 자산이 영구히
       # 이모지·텍스트로 남지 않는다. 예산은 **파일 단위**다 — 연속 실패 3회 또는 수명 누적 8회에서 영구 결손으로
       # 굳고, 백오프로 간격을 늘리며, 파일당 예약·조회는 각각 1개다. 응답이 오지도 끊기지도 않는 요청은
