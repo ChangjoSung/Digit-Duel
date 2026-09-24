@@ -802,6 +802,12 @@ function reduceCoreAction(state,action){
        말은 서버 스텁으로 **통째로 갈아끼운다**(replaceBoard) — 이전 스냅샷의 잔여 칸이 섞이면 서버 판정과 화면이 갈린다. */
     case "hydrate": {
       const v=action.view, seat=action.seat;
+      /* #237 경기 전 서버 권위 경제(시작 상점) — 로컬 배치 뼈대(P0 시점) 위에 서버가 판정한 자기 말·경제·로스터만 앉힌다.
+         배치 좌표는 로컬 입력이라 network.js 가 뼈대 값을 그대로 실어 온다(정체성 보존 커밋 — replaceBoard 아님). */
+      if(v.setupEco){
+        const roster=state.roster.map(x=>x.slice()); roster[0]=v.roster.slice();
+        return {state:Object.assign({},state,{pieces:v.pieces,roster,eco:v.eco}),events:[]};
+      }
       const byId=id=>id==null?null:(v.pieces.find(p=>p.id===id)||null);
       const turn=v.turn;
       const next=Object.assign({},state,{
@@ -819,7 +825,8 @@ function reduceCoreAction(state,action){
         movedPiece:turn?byId(turn.movedPiece):null,
         firstBattleWonByMover:!!(turn&&turn.firstBattleWonByMover),
         contactSet:turn&&Array.isArray(turn.contactSet)?turn.contactSet.slice():[],
-        events:v.events, fleePick:v.fleePick, battle:v.battle, _pendingModal:v.modal});
+        events:v.events, fleePick:v.fleePick, battle:v.battle, _pendingModal:v.modal,
+        eco:v.eco===undefined?state.eco:v.eco}); // #237 자기 좌석 경제(재화·가방·진열·B08) — 상대 자리는 network.js 가 빈 기본값으로 둔다
       next.inv[seat]=v.inv; next.balls[seat]=v.balls; next.reserve[seat]=v.reserve;
       if(v.pkgs) next.pkgs[seat]=v.pkgs;
       if(v.teleUsed!==null) next.teleUsed[seat]=v.teleUsed;

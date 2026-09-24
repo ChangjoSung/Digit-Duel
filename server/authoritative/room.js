@@ -47,19 +47,36 @@ const ACTION_TYPES = new Set([
   'cell', 'selTray', 'roster', 'auto', 'clear', 'setupDone', 'skipMain', 'search', 'tele',
   'endTurn', 'heal', 'fleeSwap', 'fleeSkip', 'resign', 'act', 'item', 'ball', 'flee', 'pass',
   'pkgOpen', 'modal',
+  'shopBuy', 'shopRefresh', 'shopGood', 'shopSell', 'shopSwap', 'shopTicket', 'leaderEl', 'shopDone', 'bagPick', 'buffUse',
 ]);
+/* #237 경제 어휘 — 상점(S01·정기)과 B08. 규칙 판정은 Core ecoReduce 한 곳이 하고, 서버는 좌석·단계·진열 번호·마감만 먼저 본다.
+   shopTimeout 은 서버 시계만 낸다(회선 어휘가 아니다). 거래 요청은 전역 baseRevision 대신 **자기 진열 번호**로 낡음을 가린다:
+   동시 상점에서 상대 거래가 revision 을 올려도 내 진열은 그대로이기 때문이다(GDD-23 2.4). */
+const ECO_VERBS = new Set(['shopBuy', 'shopRefresh', 'shopGood', 'shopSell', 'shopSwap', 'shopTicket', 'leaderEl', 'shopDone', 'bagPick']);
 // 배치 화면 전용 코어(autoPlaceCore/clearPlaceCore/toggleRosterCore/setupDoneCore/selTrayCore)는 S.phase 가드가 없어
 // 매치 중에 닿으면 보드를 붕괴시킨다. 이 서버는 배치를 `setup` 명령으로 받으므로 매치 중에는 전부 거부한다.
 const SETUP_ONLY_ACTIONS = new Set(['auto', 'clear', 'roster', 'setupDone', 'selTray']);
 const ACT_KINDS = new Set(['basic', 'skill', 'common']); // __actCore의 레거시 문자열 kind (왕·동료 본체 UI가 'basic'/'skill'을 보낸다)
 const PKG_KINDS = new Set(['itemGift', 'battleBuff']);
 /* #245 회선을 타는 전투 어휘 — demo/js/network.js BATTLE_CMDS 와 같은 목록이다. 확정(pkgPick)은 모달 중계를 타므로 여기 없다. */
-const BATTLE_CMDS = new Set(['act', 'item', 'ball', 'flee', 'pass', 'pkgOpen']);
+const BATTLE_CMDS = new Set(['act', 'item', 'ball', 'flee', 'pass', 'pkgOpen', 'buffUse']); // #237 buffUse — 정기 상점에서 산 전투 버프
 const BF_KEYS = ['side', 'seq', 'round', 'phase'];
 const RECRUIT_SWAP_STAGES = new Set(['skill', 'target', 'slot']); // demo/index.html recruitModal 의 기술 교체 단계 (#234 닫힘)
 const ROSTER_SIZE = 6; // applyNetSetup: data.roster.length===6
 
 function now() { return Date.now(); }
+// #237 상대 HP 100 눈금 — 최대 HP(=등급)를 지우고 비율만 남긴다. 올림이라 살아 있는 말(HP≥1)은 1 이상이다.
+function pct100(v, max) { return Math.ceil(((Number(v) || 0) * 100) / (Number(max) || 1)); }
+/* #237 상대가 주어인 전투 문구의 HP 계열 수치(피해·회복·방어막·흡수·유효·해일 X·버틴 HP·과부하 상한)를 100 눈금으로 바꾼다.
+   라운드·횟수·퍼센트·쿨·차수·좌석(2R·1회·15%·⌛0·3차·P1)은 HP 와 무관한 규칙 상수라 그대로 둔다. max 가 없으면(주어 불명) '?'.
+   바꾼 수치에는 '%'를 붙여 비율임을 표시한다 — HP_NUM 이 '%' 앞 수치를 건너뛰므로 다시 통과해도 두 번 바뀌지 않는다. */
+const HP_NUM = /(^|[^⌛⭐P\d.])(\d+)(?![\d.]|\s*(?:%|R|회|차|턴|라운드|칸|개|명|마리|초|·\s*\d+\s*차))/g;
+function scaleText(txt, max) { return String(txt).replace(HP_NUM, (all, pre, n) => pre + (max ? pct100(n, max) + '%' : '?')); }
+// 전투 문구 한 줄의 주어(그 수치가 가리키는 전투원 쪽) — bmsg 가 함께 싣는 표시 fx 의 쪽 표기에서 읽는다.
+function fxSubject(fx) {
+  if (!fx) return null;
+  return (fx.hp && fx.hp.side) || (fx.float && fx.float.side) || (fx.st && fx.st.side) || fx.ko || fx.shake || null;
+}
 function err(reason) { return { ok: false, reason }; }
 
 /* 겨냥 프레임 — 클라이언트가 전투 어휘에 싣는 값과 같은 모양(demo/js/core.js battleActionFrame). 상태만 읽는다. */
@@ -300,19 +317,43 @@ function lockstepDigest(T) {
       p.allyKind === undefined ? null : p.allyKind, !!p.leaderElChosen, p.legend === undefined ? null : p.legend,
       p.revealedSkills || null,
       // #234 REVISE 2차 — 본체 출전 말의 사신의 낫 봉인. 전투 밖(보드)에서도 유지되어 다음 참전 전투의 합법 슬롯을 가른다.
-      num(p.reaperSeal)]),
+      num(p.reaperSeal),
+      // #237 말 단위 경제 칸 — 원장·신규 표시·교체 표식(GDD-23 7.5·7.6)
+      num(p.paid), !!p.fresh, !!p.swapMark]),
+    eco: ecoDigest(S.eco, stats, num),
   });
+}
+
+/* #237 경제 상태 전체(GDD-23 2.4 "서버가 재화·원장·판매 기록·진열·가방·필드·시너지 상태를 권위적으로 보관") — 두 좌석 엔진이
+   같아야 하는 값이다. 서버 안에서만 비교하고 어떤 좌석 프레임에도 싣지 않는다(좌석 뷰는 _ecoView 가 소유자 몫만 고른다). */
+function ecoDigest(E, stats, num) {
+  if (!E) return null;
+  const unit = (u) => [u.uid, u.rosterId || null, u.legend || null, u.element || null, u.hp, u.maxHp, num(u.paid), !!u.fresh, !!u.revealed,
+    u.skills || null, u.cds || null, u.revealedSkills || null, num(u.reaperSeal), ...stats(u)];
+  const sh = E.shop, bp = E.bagPick;
+  return {
+    coins: E.coins, tickets: E.tickets, buffInv: E.buffInv, soldHp: E.soldHp, unitSeq: E.unitSeq,
+    bag: E.bag.map((b) => b.map(unit)),
+    shop: sh ? [sh.kind, sh.turn, sh.seq, sh.slots, sh.sold, sh.done, sh.active, sh.next] : null,
+    bagPick: bp ? [bp.owner, bp.token, unit(bp.unit)] : null,
+  };
 }
 
 class Room {
   // seed: 테스트 재현용 엔진 시드 주입(단위 테스트 전용). lobby.createRoom은 절대 넘기지 않는다 — 운영 룸은 매치 시작 시
   // crypto 난수로 비밀 시드를 뽑는다. 어떤 네트워크 입력도 이 값에 닿지 않는다.
-  constructor(roomId, { isPublic, epoch, graceMs, seed }) {
+  // economy: #237 경제 경기(시작 상점 → 배치 → 정기 상점·B08). 로비가 넘기며, 끄면 종전 무료 로스터 경기다.
+  // shopMs·bagPickMs: 테스트 재현용 시계 주입(graceMs 와 같은 관례). 기본은 Core 상수(ECO.shopSec·bagPickSec).
+  constructor(roomId, { isPublic, epoch, graceMs, seed, economy, shopMs, bagPickMs }) {
     this.roomId = roomId;
     this.isPublic = !!isPublic;
     this.epoch = epoch;
     this.graceMs = graceMs != null ? graceMs : DISCONNECT_GRACE_MS;
     this._testSeed = Number.isInteger(seed) ? seed : null;
+    this.economy = !!economy;
+    this._clockMs = { shop: shopMs, bagPick: bagPickMs };
+    this._clock = [null, null]; // #237 좌석별 게임 시계 {key, left, deadline, handle, expired} — 단절 중에는 left 만 들고 멈춘다
+    this.onUpdate = null;       // #237 시계 만료처럼 명령 없이 일어난 전이를 양 좌석에 알린다(server.js 가 푸시)
     this.state = STATES.OPEN;
     this.createdAt = now();
     this.inviteCode = null; // 비공개 룸만
@@ -360,7 +401,12 @@ class Room {
     this._attach(1, ws);
     this.state = STATES.SETUP;
     this.revision += 1; // OPEN → SETUP 전이 — 호스트가 받는 알림 room_state의 revision이 새로 선다
-    return { ok: true, issued: seat.credential.issue() };
+    const issued = seat.credential.issue();
+    if (this.economy) {
+      const opened = this._openEconomy();
+      if (!opened.ok) return opened;
+    }
+    return { ok: true, issued };
   }
 
   resumeSeat(seatIndex, token, ws) {
@@ -372,6 +418,7 @@ class Room {
     this._clearDisconnectTimer(seatIndex);
     this._attach(seatIndex, ws);
     seat.disconnectExpiry = null;
+    this._syncClock(); // 양측 연결이 갖춰졌으면 저장해 둔 잔여 시간부터 이어서 흐른다 (GDD-23 2.4)
     return { ok: true, issued };
   }
 
@@ -408,8 +455,10 @@ class Room {
     seat.ws = null;
     if (this.state === STATES.OPEN || this.state === STATES.SETUP) {
       this._clearDisconnectTimer(seatIndex);
+      seat.disconnectExpiry = now() + this.graceMs;
       seat.disconnectTimer = setTimeout(() => this._onGraceExpirePreStart(seatIndex), this.graceMs);
       if (seat.disconnectTimer.unref) seat.disconnectTimer.unref();
+      this._syncClock(); // 시작 상점 시계도 멈춘다 — 흐르는 것은 재연결 대기뿐 (GDD-23 2.4)
       return;
     }
     if (this.state === STATES.IN_PROGRESS) {
@@ -418,6 +467,7 @@ class Room {
       seat.disconnectExpiry = expiry;
       seat.disconnectTimer = setTimeout(() => this._onGraceExpireInProgress(seatIndex), this.graceMs);
       if (seat.disconnectTimer.unref) seat.disconnectTimer.unref();
+      this._syncClock();
     }
   }
 
@@ -464,6 +514,7 @@ class Room {
     this.state = state;
     if (result) this.result = result;
     if (opts.bump !== false) this.revision += 1;
+    this._clearClock(); // 끝난 경기의 시계는 다시 흐르지 않는다 — 몰수 확정 뒤 상점 만료가 거래를 만들지 않는다 (2.4)
     for (let i = 0; i < 2; i++) {
       this._clearDisconnectTimer(i);
       const seat = this.seats[i];
@@ -498,6 +549,8 @@ class Room {
   // ===== 명령 처리 =====
 
   handleCommand(seatIndex, msg) {
+    // #237 GDD-23 2.4 — 단절이 확정된 동안 모든 행동을 멈춘다. 흐르는 것은 재연결 대기뿐이고 나가기·재동기화·항복만 받는다.
+    if ((msg.t === 'setup' || msg.t === 'ready' || msg.t === 'unready') && this._paused()) return err('E_PAUSED');
     if (msg.t === 'setup') return this._handleSetup(seatIndex, msg);
     if (msg.t === 'ready') return this._handleReady(seatIndex, true);
     if (msg.t === 'unready') return this._handleReady(seatIndex, false);
@@ -537,6 +590,13 @@ class Room {
     if (this.state !== STATES.SETUP) return err('E_ILLEGAL_ACTION');
     const v = this._validateSetup(msg);
     if (!v.ok) return v;
+    if (this.economy) {
+      /* #237 경제 경기의 배치는 시작 상점을 마친 뒤다(GDD-23 2.2). 로스터는 고르는 값이 아니라 **산 필드 순서 그대로**여야
+         한다 — 배치 좌표 i 가 엔진 말 i 에 대응하므로, 다르면 클라이언트가 다른 말을 놓았다고 보고 거부한다. */
+      const S0 = this.engines && this.engines[0].S;
+      if (!S0 || !S0.eco || !S0.eco.shop || !S0.eco.shop.done[seatIndex]) return err('E_ILLEGAL_ACTION');
+      if (S0.roster[seatIndex].join('|') !== msg.roster.join('|')) return err('E_ILLEGAL_ACTION');
+    }
     const seat = this.seats[seatIndex];
     seat.rawSetup = { roster: msg.roster.slice(), pos: msg.pos.map((q) => [q[0], q[1]]) };
     seat.placed = true;
@@ -562,16 +622,58 @@ class Room {
 
   // 원자적 시작 — 동기 구간 안에서 두 좌석 엔진 기동 → 배치 반영 확인 → 락스텝 일치 확인 → 전이.
   // 기존 온라인 경로의 netStart(seed,[setup0,setup1])를 좌석 시점 엔진마다 그대로 부른다.
+  _seed() { return this._testSeed != null ? this._testSeed : (crypto.randomBytes(4).readUInt32BE(0) & 0x7fffffff); } // 서버 비밀 시드 — 어떤 프레임에도 나가지 않는다
+
+  /* #237 경제 경기 — 두 좌석이 모이면 곧바로 좌석 시점 엔진 쌍을 띄우고 시작 상점(S01)을 양측에 동시에 연다(GDD-23 2.3 온라인).
+     S01 은 배치 전이라 룸은 SETUP(경기 전)이다 — 이 동안의 단절 만료는 경기 취소다(2.4). 시드는 종전 netStart 와 같은 비밀 시드. */
+  _openEconomy() {
+    let engines;
+    try {
+      const seed = this._seed();
+      engines = [createEngine(), createEngine()];
+      engines.forEach((T, seat) => withEngine(T, () => {
+        T.host.seat = seat;
+        T.setSeed(seed);
+        T.newGame('pvp', { eco: true });
+        T.addLog('PVP — 경기 시작 상점에서 하수인 6명을 산 뒤 비공개 배치합니다.', 'sys');
+      }));
+      if (lockstepDigest(engines[0]) !== lockstepDigest(engines[1])) throw new Error('lockstep divergence at shop open');
+    } catch (e) {
+      if (engines) for (const T of engines) { try { T.scheduler.clear(); } catch (x) { /* noop */ } }
+      return this._engineFault(e);
+    }
+    this.engines = engines;
+    this._syncClock();
+    return { ok: true };
+  }
+
   _startMatch() {
-    const seed = this._testSeed != null ? this._testSeed : (crypto.randomBytes(4).readUInt32BE(0) & 0x7fffffff); // 서버 비밀 시드 — 어떤 프레임에도 나가지 않는다
+    const seed = this._seed();
     const setups = [this.seats[0].rawSetup, this.seats[1].rawSetup];
     let engines;
     try {
-      engines = [createEngine(), createEngine()];
-      engines.forEach((T, seat) => {
-        withEngine(T, () => { T.host.seat = seat; T.netStart(seed, setups); }); // #245 좌석 시점은 호스트 포트가 준다(종전 NET.me)
-        this._assertSetupApplied(T, setups);
-      });
+      if (this.economy) {
+        engines = this.engines; // #237 시작 상점부터 살아 있던 엔진 — 산 말 위에 배치만 얹고 개시한다(로스터 재주입 없음, Core setupAuto)
+        engines.forEach((T) => {
+          withEngine(T, () => {
+            for (let p = 0; p < 2; p++) {
+              const positions = T.S.pieces.filter((x) => x.owner === p).map((x, i) => ({
+                id: x.id, r: p === 1 ? (catalog().rows + 1 - setups[p].pos[i][0]) : setups[p].pos[i][0], c: setups[p].pos[i][1],
+              }));
+              T.dispatchCoreAction({ t: 'setupAuto', player: p, roster: [], positions });
+            }
+            T.addLog(`🌐 온라인 매치 시작 — 당신은 P${T.host.seat + 1}입니다 (자기 진영이 화면 아래). 양측 사전 배치가 적용되었습니다.`, 'sys');
+            T.dispatchCoreAction({ t: 'beginPlay' });
+          });
+          this._assertSetupApplied(T, setups);
+        });
+      } else {
+        engines = [createEngine(), createEngine()];
+        engines.forEach((T, seat) => {
+          withEngine(T, () => { T.host.seat = seat; T.netStart(seed, setups); }); // #245 좌석 시점은 호스트 포트가 준다(종전 NET.me)
+          this._assertSetupApplied(T, setups);
+        });
+      }
       const d0 = lockstepDigest(engines[0]), d1 = lockstepDigest(engines[1]);
       if (d0 !== d1) throw new Error('lockstep divergence at match start');
     } catch (e) {
@@ -581,6 +683,7 @@ class Room {
     this.engines = engines;
     this._consumedModalSeq = null;
     this.state = STATES.IN_PROGRESS;
+    this._syncClock();
     // revision: 이 시작은 ready 명령과 같은 동기 구간 — _handleReady가 이미 한 번 올렸다.
     return { ok: true };
   }
@@ -601,16 +704,55 @@ class Room {
   // ===== 게임 중 행동 =====
 
   _handleAction(seatIndex, msg) {
-    if (this.state !== STATES.IN_PROGRESS || !this.engines) return err('E_ROOM_CLOSED');
-    if (msg.baseRevision !== this.revision) return { ok: false, reason: 'E_STALE_REVISION', staleView: this.toSeatView(seatIndex) };
     const a = msg.action;
+    const eco = !!a && typeof a === 'object' && ECO_VERBS.has(a.t);
+    // #237 시작 상점(S01)은 배치 전(SETUP)에 열린다 — 경제 어휘만 SETUP 에서 받는다.
+    const live = this.state === STATES.IN_PROGRESS || (eco && this.economy && this.state === STATES.SETUP);
+    if (!live || !this.engines) return err('E_ROOM_CLOSED');
+    if (!eco && msg.baseRevision !== this.revision) return { ok: false, reason: 'E_STALE_REVISION', staleView: this.toSeatView(seatIndex) };
     if (!a || typeof a !== 'object' || !ACTION_TYPES.has(a.t)) return err('E_BAD_ENVELOPE');
     if (SETUP_ONLY_ACTIONS.has(a.t)) return err('E_ILLEGAL_ACTION');
     if (!this._sanitizeAction(a)) return err('E_BAD_ENVELOPE');
-    if (a.t === 'resign') return this._handleResign(seatIndex);
-    const auth = this._authorize(seatIndex, a);
+    if (a.t === 'resign') return this._handleResign(seatIndex); // 의도적 항복은 단절 중에도 즉시 종료(2.4 "현행대로")
+    if (this._paused()) return err('E_PAUSED');
+    const auth = eco ? this._authorizeEco(seatIndex, a) : this._authorize(seatIndex, a);
     if (!auth.ok) return auth;
-    return this._apply(seatIndex, auth.action);
+    return this._apply(seatIndex, auth.action, eco);
+  }
+
+  /* #237 경제 거래 인가(GDD-23 2.4) — 좌석·단계·진열 번호·서버 시각 마감만 본다. 거래 자체의 합법성(코인·예비 재화·가방·
+     동종·판매 잠금 …)은 Core ecoReduce 가 판정하고, 거부된 거래는 상태를 하나도 바꾸지 않으므로 _apply 가 거부로 돌려준다.
+     player·token 은 클라이언트 값을 믿지 않고 서버가 좌석에서 채운다. */
+  _authorizeEco(seatIndex, a) {
+    const T = this.engines[0], S = T.S, E = S.eco;
+    if (!E) return err('E_ILLEGAL_ACTION');
+    const c = this._clock[seatIndex];
+    const late = !!c && (c.expired || (c.deadline != null && now() >= c.deadline));
+    if (a.t === 'bagPick') {
+      const bp = E.bagPick;
+      if (S.phase !== 'bagPick' || !bp) return err('E_ILLEGAL_ACTION');
+      if (bp.owner !== seatIndex) return err('E_NOT_ACTOR');
+      if (a.token !== bp.token) return err('E_SHOP_STALE'); // 지난 B08 의 늦은 응답
+      if (late) return err('E_DEADLINE');
+      if (a.i < 0 || a.i > E.bag[seatIndex].length) return err('E_ILLEGAL_ACTION');
+      return { ok: true, action: { t: 'bagPick', token: bp.token, i: a.i } };
+    }
+    const sh = E.shop;
+    if (!sh || !(S.phase === 'shop' || (sh.kind === 'start' && S.phase === 'setup'))) return err('E_ILLEGAL_ACTION');
+    if (a.shop !== sh.turn || a.seq !== sh.seq[seatIndex]) return err('E_SHOP_STALE'); // 지난 진열(다른 오픈·새로 고침·구매 전)
+    if (sh.done[seatIndex]) return err('E_ILLEGAL_ACTION');                             // 완료·만료된 상점은 다시 열리지 않는다
+    if (late) return err('E_DEADLINE');
+    const out = { t: a.t, player: seatIndex, seq: sh.seq[seatIndex] };
+    if (a.t === 'shopBuy') out.i = a.i;
+    if (a.t === 'shopGood') out.item = a.item;
+    if (a.t === 'shopSell' || a.t === 'shopSwap') out.uid = a.uid;
+    if (a.t === 'shopSwap' || a.t === 'shopTicket' || a.t === 'leaderEl') {
+      const p = this._resolveOwnAlias(seatIndex, a.id);
+      if (!p) return err('E_ILLEGAL_ACTION');
+      out.pieceId = p.id;
+    }
+    if (a.t === 'shopTicket' || a.t === 'leaderEl') out.el = a.el;
+    return { ok: true, action: out };
   }
 
   // 필드 형태만 좁힌다 — 게임적 합법성은 _authorize가 판정한다.
@@ -626,6 +768,15 @@ class Room {
       case 'item': return smallInt(a.i);
       case 'pkgOpen': return smallStr(a.kind);
       case 'modal': return smallInt(a.seq) && smallInt(a.i);
+      // #237 경제 어휘 — shop(오픈 턴: 0=S01 · 20/40/60/80) + seq(그 좌석 진열 번호)로 겨냥한 진열을 싣는다
+      case 'shopBuy': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.i);
+      case 'shopRefresh': case 'shopDone': return smallInt(a.shop) && smallInt(a.seq);
+      case 'shopGood': return smallInt(a.shop) && smallInt(a.seq) && smallStr(a.item);
+      case 'shopSell': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.uid);
+      case 'shopSwap': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.uid) && smallStr(a.id);
+      case 'shopTicket': case 'leaderEl': return smallInt(a.shop) && smallInt(a.seq) && smallStr(a.id) && smallStr(a.el);
+      case 'bagPick': return smallInt(a.token) && smallInt(a.i);
+      case 'buffUse': return smallStr(a.key);
       default: return false;
     }
   }
@@ -714,7 +865,6 @@ class Room {
          가고(엔진 battleCmdCtx 가 같은 대조를 다시 한다) 서버가 최소 필드로 다시 짓는 경계에서 버려지지 않는다. */
       if (BATTLE_CMDS.has(a.t) && !frameMatches(a.bf, battleFrame(T))) return err('E_ILLEGAL_ACTION');
       const f = side === 'A' ? B.fa : B.fd;
-      const opp = side === 'A' ? B.fd : B.fa;
       /* #241 R1 (CJ 설계) 번개 꼬리 추가 공격 단계 — 스킬 선택만 합법이다(L5·L17: 포기·도망·볼·아이템·패키지·패스 불가).
          합법 슬롯(allowed = 기본기·2차·3차 중 실제 칸)은 _legalAct 가 쓰는 T.slotUsable 이 이미 거른다. 나머지 어휘는 클라이언트
          코어(__itemCore·__ballCore·__fleeCore·__passCore·패키지)가 조용히 무시하므로(상태 불변 noop) 서버가 먼저 거부한다.
@@ -730,12 +880,13 @@ class Room {
           if (side === 'A' ? B.itemRoundA : B.itemRoundD) return err('E_ILLEGAL_ACTION'); // 라운드 1회
           return { ok: true, action: { t: 'item', i: a.i, bf: a.bf } };
         }
-        case 'ball': {
-          const oppPiece = side === 'A' ? B.defP : B.attP;
-          const thrown = side === 'A' ? B.ballThrowA : B.ballThrowD;
-          const canThrow = oppPiece.type === 'minion' && opp.hp < opp.maxHp * 0.3 && S.balls[ownerP] > 0 && !S.reserve[ownerP] && !thrown;
-          return canThrow ? { ok: true, action: { t: 'ball', bf: a.bf } } : err('E_ILLEGAL_ACTION');
-        }
+        case 'ball':
+          // #237 포획 가능 판정은 Core ballWhy 한 곳(reducer·전투 화면·AI 공용)이다 — 종전 조건(하수인·HP 30% 미만·볼·예비 칸·라운드 1회)에
+          // 경제 경기의 전설·보유 종 제외(GDD-23 7.7)가 더해진다. 서버 사본을 두지 않는다.
+          return T.ballWhy(S, side) === null ? { ok: true, action: { t: 'ball', bf: a.bf } } : err('E_ILLEGAL_ACTION');
+        case 'buffUse': // #237 정기 상점에서 산 전투 버프(GDD-23 7.3) — 재고·전투당 1개는 여기서, 나머지(시간의 수호자 1라운드 등)는 Core 가 본다
+          if (!S.eco || !(S.eco.buffInv[ownerP][a.key] > 0) || (side === 'A' ? B.buffA : B.buffD)) return err('E_ILLEGAL_ACTION');
+          return { ok: true, action: { t: 'buffUse', key: a.key, bf: a.bf } };
         case 'flee':
           // #234 가시 덩굴 3차 '뿌리 고정' — 이 전투에서는 도망칠 수 없다(__fleeCore 가 조용히 무시하고 UI 버튼도 비활성).
           // 서버가 먼저 거부해 판정 통과·상태 불변 noop 프레임이 생기지 않게 한다.
@@ -816,13 +967,23 @@ class Room {
 
   // 판정을 통과한 입력을 두 좌석 엔진에 같은 순서로 적용한다(락스텝). replaying=true는 원본 수신측 재생과 같은
   // 모드 — 행동자 화면 전용 로컬 팝업(메모 피커)을 열지 않는다. (#245: 종전 NET.replaying 자리, 호스트 포트로 이동)
-  _apply(seatIndex, action) {
+  _apply(seatIndex, action, eco) {
+    /* ponytail: #237 온라인 상점 보정 두 줄 — Core 는 지금 "pvp = 핫시트"로만 상점을 연다(ecoGate S01 은 setupPlayer 한 명,
+       ecoShopOpenState 는 순차 active). 온라인은 양측 동시다(GDD-23 2.3). Core 가 UI_PORT.seat()!==null 로 온라인을 가리게 되면
+       (Mars 인계) 두 보정은 아무 일도 하지 않는다. 두 엔진에 같은 값을 쓰므로 락스텝은 그대로다. */
+    const startShop = (T) => T.S.phase === 'setup' && T.S.eco && T.S.eco.shop && T.S.eco.shop.kind === 'start';
+    const prevSetup = this.engines.map((T) => T.S.setupPlayer); // 거부·noop 이면 되돌린다 — 거부 거래는 상태 0변경
+    if (action.player === 0 || action.player === 1) {
+      for (const T of this.engines) if (startShop(T)) T.S.setupPlayer = action.player;
+    }
     const before = this._stateFingerprint();
     try {
       for (const T of this.engines) {
         withEngine(T, () => {
           T.host.replaying = true;
           try { T.applyAction(action); } finally { T.host.replaying = false; }
+          const sh = T.S.eco && T.S.eco.shop;
+          if (sh && sh.active !== null) sh.active = null;
         });
       }
       if (action.t === 'modal') this._consumedModalSeq = action.seq;
@@ -836,6 +997,9 @@ class Room {
     // 마지막으로 유효한 것이 되므로, 아래 분기와 무관하게 먼저 찍는다.
     for (let i = 0; i < 2; i++) this._fxCache[i] = this._snapshotFx(this.engines[i]);
     if (this._stateFingerprint() === before) {
+      this.engines.forEach((T, i) => { T.S.setupPlayer = prevSetup[i]; });
+      // #237 합법 거래는 반드시 상태를 바꾼다(코인·진열 번호·가방·속성). 바뀌지 않았으면 Core 가 거부한 거래다 — 전부 거부.
+      if (eco) return err('E_ILLEGAL_ACTION');
       return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
     }
     this.revision += 1;
@@ -843,17 +1007,99 @@ class Room {
     if (S.phase === 'over') {
       this._finalize(STATES.FINISHED, { type: 'WIN', winner: S.winner, winType: S.metrics.winType }, { bump: false, notify: false });
     }
+    this._syncClock();
     return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
   }
 
-  // 기권 — 행위자가 아니라 S.current 기준이다(원본 netAction: a.t==="resign"?S.current:netActor(), confirmResign).
+  // ===== #237 게임 시계 · 단절 정지 (GDD-23 2.3·2.4) =====
+
+  // 단절이 확정된 좌석이 하나라도 있으면 경기가 멈춘다 — 엔진이 살아 있는 경기(시작 상점·배치·경기 중)만 해당한다.
+  _paused() {
+    return !!this.engines && (this.state === STATES.SETUP || this.state === STATES.IN_PROGRESS)
+      && this.seats.some((s) => s.credential && !s.connected);
+  }
+
+  // 그 좌석이 지금 기다리는 시한 입력 — 상점(S01·정기, 완료 전)과 B08(소유자). 키는 오픈·포획마다 새로 선다.
+  _wantClock(seatIndex) {
+    const T = this.engines && this.engines[0], S = T && T.S, E = S && S.eco;
+    if (!E || (this.state !== STATES.SETUP && this.state !== STATES.IN_PROGRESS)) return null;
+    const sh = E.shop;
+    if (sh && !sh.done[seatIndex] && (S.phase === 'shop' || (sh.kind === 'start' && S.phase === 'setup'))) {
+      return { key: 'shop:' + sh.turn, ms: this._clockMs.shop != null ? this._clockMs.shop : T.ECO.shopSec * 1000 };
+    }
+    if (E.bagPick && E.bagPick.owner === seatIndex && S.phase === 'bagPick') {
+      return { key: 'bag:' + E.bagPick.token, ms: this._clockMs.bagPick != null ? this._clockMs.bagPick : T.ECO.bagPickSec * 1000 };
+    }
+    return null;
+  }
+
+  /* 상태가 바뀔 때마다 부른다: 새 시한 입력이면 전체 시간으로 세우고, 같은 입력이면 남은 시간을 그대로 둔다.
+     단절 중에는 남은 시간(left)만 들고 멈추고, 양측이 다시 모이면 그 값부터 흐른다. 새 단절은 새 60초(유예 쪽)이고
+     게임 시계는 그대로 이어진다 — 둘은 따로다. */
+  _syncClock() {
+    const paused = this._paused();
+    for (let i = 0; i < 2; i++) {
+      const want = this._wantClock(i);
+      let c = this._clock[i];
+      if (c && (!want || c.key !== want.key)) { if (c.handle) clearTimeout(c.handle); c = null; }
+      if (!c && want) c = { key: want.key, left: want.ms, deadline: null, handle: null, expired: false };
+      if (c && !c.expired) {
+        if (paused && c.deadline != null) {
+          c.left = Math.max(0, c.deadline - now()); c.deadline = null;
+          clearTimeout(c.handle); c.handle = null;
+        } else if (!paused && c.deadline == null) {
+          const key = c.key;
+          c.deadline = now() + c.left;
+          c.handle = setTimeout(() => this._onClock(i, key), c.left);
+          if (c.handle.unref) c.handle.unref();
+        }
+      }
+      this._clock[i] = c;
+    }
+  }
+
+  _clearClock() {
+    for (const c of this._clock) if (c && c.handle) clearTimeout(c.handle);
+    this._clock = [null, null];
+  }
+
+  /* 시한 만료 — 서버 시각 기준. 확정된 거래는 이미 엔진에 있고(수락 순간 확정), 여기서는 Core 의 만료 액션 하나만 넣는다:
+     상점 = shopTimeout(S01 은 빈 필드 자동 구매·자동 새로 고침·속성 자동 배정), B08 = 포획한 말 방출(기존 가방 불변, 7.7).
+     합법 만료가 거부되면 Core 계약이 깨진 것이다 — 조용히 멈추지 않고 룸을 닫는다(fail-closed). */
+  _onClock(seatIndex, key) {
+    const c = this._clock[seatIndex];
+    if (!c || c.key !== key || c.expired || this._paused() || !this.engines) return;
+    c.expired = true; c.handle = null; c.deadline = null;
+    const E = this.engines[0].S.eco;
+    const action = key.startsWith('bag:')
+      ? { t: 'bagPick', token: E.bagPick.token, i: E.bag[seatIndex].length }
+      : { t: 'shopTimeout', player: seatIndex };
+    const res = this._apply(seatIndex, action, true);
+    if (!res.ok && this.engines) this._engineFault(new Error('clock expiry refused: ' + key));
+    if (this.onUpdate) this.onUpdate();
+  }
+
+  /* 기권 — #237 GDD-23 2.4 "의도적 항복은 현행대로 즉시 종료". 경기 중이면 **어느 좌석이든** 언제든(상대 차례·정기 상점·B08·
+     단절 정지 중) 즉시 그 좌석의 패배다 — 종전 "자기 차례·보드 phase 만"은 상점·B08 에서 항복 수단을 없앴다.
+     경기 전(시작 상점·배치)은 승패가 없는 경기 취소다(2.4 "경기가 시작되기 전 … 경기 취소") — 나가기와 같은 전이.
+     수락된 거래는 이미 엔진에 있고(유지) 여기서 종료가 확정되면 _finalize 가 시계를 걷어 뒤이은 거래·만료를 막는다.
+     종전 무료 로스터 경기(DD_ECONOMY=0)는 원본 온라인 규칙(자기 차례에만 · confirmResign) 그대로다. */
   _handleResign(seatIndex) {
+    if (this.economy && (this.state === STATES.OPEN || this.state === STATES.SETUP)) return this.explicitLeave(seatIndex);
     if (this.state !== STATES.IN_PROGRESS || !this.engines) return err('E_ROOM_CLOSED');
-    const S = this.engines[0].S;
-    if (S.phase !== 'play') return err('E_ILLEGAL_ACTION');
-    if (S.current !== seatIndex) return err('E_NOT_ACTOR');
+    if (!this.economy) {
+      const S = this.engines[0].S;
+      if (S.phase !== 'play') return err('E_ILLEGAL_ACTION');
+      if (S.current !== seatIndex) return err('E_NOT_ACTOR');
+    }
     try {
-      for (const T of this.engines) withEngine(T, () => { T.applyAction({ t: 'resign' }); });
+      for (const T of this.engines) withEngine(T, () => {
+        // 자기 차례의 보드 phase 는 종전 Core resign 경로 그대로(패자 = S.current). 그 밖은 같은 종료 전이를 패자 좌석으로 직접 부른다.
+        if (T.S.phase === 'play' && T.S.current === seatIndex) { T.applyAction({ t: 'resign' }); return; }
+        T.dispatchCoreAction({ t: 'gameOver', winner: 1 - seatIndex, winType: 'resign' });
+        T.addLog(`🏳️ ${T.pname(seatIndex)} 기권 — ${T.pname(1 - seatIndex)} 승리!`, 'imp'); // Core matchEnded(resignLoser) 와 같은 문구
+      });
+      if (this.engines[0].S.phase !== 'over') throw new Error('resign did not end the match');
       if (lockstepDigest(this.engines[0]) !== lockstepDigest(this.engines[1])) throw new Error('lockstep divergence after resign');
     } catch (e) {
       return this._engineFault(e);
@@ -880,10 +1126,24 @@ class Room {
     const seat = this.seats[seatIndex];
     const ready = [this.seats[0].ready, this.seats[1].ready];
     if (this.state === STATES.OPEN || this.state === STATES.SETUP) {
-      return {
+      const base = {
         seat: seatIndex, state: this.state, phase: 'setup', revision: this.revision, current: null,
         seats: { ready }, units: [], you: { placed: seat.placed }, result: null, fx: this._fxCache[seatIndex],
+        economy: this.economy, // #237 경제 방 여부 — OPEN 호스트가 상대 입장 전 무료 로스터 화면을 잠깐 그리지 않게 한다
       };
+      if (!this.engines) return base;
+      /* #237 경제 경기의 경기 전 — 시작 상점(phase 'shop') → 배치(phase 'setup'). 자기 말(산 필드 칸·왕·동료 속성)과 자기 경제만
+         싣는다. 상대는 아무것도 없다: 상대의 구매·진열·재화·완료 여부는 이 뷰 어디에도 나가지 않는다(7.9). */
+      const T = this.engines[seatIndex], S = T.S, sh = S.eco && S.eco.shop;
+      return Object.assign(base, {
+        phase: sh && !sh.done[seatIndex] ? 'shop' : 'setup',
+        you: Object.assign({ placed: seat.placed, pieces: S.pieces.filter((p) => p.owner === seatIndex).map((p) => this._serializeOwn(T, p)) },
+          this._ecoView(T, seatIndex)),
+        shop: this._shopView(T, seatIndex),
+        clock: this._clockView(seatIndex),
+        pause: this._pauseView(),
+        log: (S.log || []).slice(-40).map((l) => ({ msg: l.msg, cls: l.cls })),
+      });
     }
     if (TERMINAL_NO_BOARD.has(this.state) || !this.engines) {
       // #217 — 이 분기는 finalize 직후(this.engines가 이미 null) 도달하지만, _apply/_handleResign이 그 直前에
@@ -922,6 +1182,7 @@ class Room {
       // 자기 정보다(상대 teleUsed는 내려주지 않는다).
       teleUsed: Number.isInteger(S.teleUsed && S.teleUsed[seatIndex]) ? S.teleUsed[seatIndex] : 0,
     };
+    Object.assign(you, this._ecoView(T, seatIndex));
     const battle = S.battle ? this._serializeBattle(T, S.battle, seatIndex) : null;
     const fleePick = S.fleePick ? {
       owner: S.fleePick.owner,
@@ -955,7 +1216,8 @@ class Room {
     return {
       seat: seatIndex,
       state: this.state,
-      phase: this.state === STATES.FINISHED ? 'over' : (S.fleePick ? 'flee' : (S.battle ? 'battle' : 'play')),
+      phase: this.state === STATES.FINISHED ? 'over'
+        : (S.phase === 'shop' || S.phase === 'bagPick' ? S.phase : (S.fleePick ? 'flee' : (S.battle ? 'battle' : 'play'))),
       revision: this.revision,
       turnCount: S.turnCount,
       current: S.current,
@@ -970,11 +1232,80 @@ class Room {
       modal: this._serializeModal(seatIndex),
       log: (S.log || []).slice(-40).map((l) => ({ msg: l.msg, cls: l.cls })),
       events,
+      // #237 경제 — 자기 진열·B08·시계만. 상대 B08 은 "누가 고르는 중"만(원본 모달 대기 표시와 같은 양).
+      ...(S.eco ? {
+        shop: this._shopView(T, seatIndex),
+        bagPick: S.eco.bagPick ? (S.eco.bagPick.owner === seatIndex
+          ? { owner: seatIndex, token: S.eco.bagPick.token, unit: this._serializeUnit(T, S.eco.bagPick.unit) }
+          : { owner: S.eco.bagPick.owner }) : null,
+        clock: this._clockView(seatIndex),
+      } : {}),
+      ...(this._pauseView() ? { pause: this._pauseView() } : {}), // 단절 중에만 — 없으면 경기가 흐르고 있다
       result: this.result,
       // #217 — engines가 살아있는 동안은 T.__fx를 직접(라이브) 읽는다. _apply/_handleResign가 명령 처리
       // 경로로만 _fxCache를 갱신하므로, 그 경로를 거치지 않고 엔진을 직접 조작하는 호출(예: 테스트 픽스처)
       // 뒤에 바로 조회해도 최신 이벤트를 놓치지 않는다 — _fxCache는 engines가 사라지는 종료 분기 전용 백업.
       fx: this._snapshotFx(T),
+    };
+  }
+
+  /* #237 자기 경제(GDD-23 7.9 소유자 전용: 재화·가방 내용·개수·등급·쓰지 않은 스킬·원장·판매 기록) — you 에 얹는다.
+     상대 좌석 값은 읽지도 않는다: 인덱스를 seatIndex 로만 고른다. */
+  _ecoView(T, seatIndex) {
+    const E = T.S.eco;
+    if (!E) return {};
+    return {
+      eco: {
+        coins: E.coins[seatIndex], tickets: E.tickets[seatIndex], buffInv: Object.assign({}, E.buffInv[seatIndex]),
+        soldHp: Object.assign({}, E.soldHp[seatIndex]),
+        bag: E.bag[seatIndex].map((u) => this._serializeUnit(T, u)),
+      },
+    };
+  }
+
+  /* 자기 진열 — shop(오픈 턴)·seq(진열 번호)가 거래 요청이 겨냥할 값이다. 산 칸은 null(빈칸), 판매한 종은 sold.
+     시너지 현황(E16)은 Core ecoSynView 그대로(S01 미리보기 · 정기 실제 집계) — 소유자 전용이다. */
+  _shopView(T, seatIndex) {
+    const S = T.S, sh = S.eco && S.eco.shop;
+    if (!sh) return null;
+    const syn = T.ecoSynView(S, seatIndex);
+    return {
+      kind: sh.kind, shop: sh.turn, seq: sh.seq[seatIndex], done: sh.done[seatIndex],
+      slots: sh.slots[seatIndex].map((x) => (x ? { key: x.key, grade: x.grade, sold: sh.sold[seatIndex].includes(x.key) } : null)),
+      sold: sh.sold[seatIndex].slice(),
+      syn: {
+        el: Object.assign({}, syn.el), arch: Object.assign({}, syn.arch), stage: JSON.parse(JSON.stringify(syn.stage)),
+        bonus: JSON.parse(JSON.stringify(syn.bonus == null ? null : syn.bonus)), deadAllies: syn.deadAllies,
+        pending: syn.pending.map((p) => this._alias(p.id)),
+      },
+    };
+  }
+
+  // 자기 시한 입력의 남은 시간(ms). 단절 중에는 멈춘 값 그대로다.
+  _clockView(seatIndex) {
+    const c = this._clock[seatIndex];
+    if (!c) return null;
+    const left = c.expired ? 0 : (c.deadline != null ? Math.max(0, c.deadline - now()) : c.left);
+    return { key: c.key.split(':')[0], leftMs: left, running: c.deadline != null };
+  }
+
+  // "상대 연결 대기" — 끊긴 좌석과 그 재연결 유예 잔여. 게임 시계는 이 동안 멈춰 있다(2.4).
+  _pauseView() {
+    if (!this._paused()) return null;
+    const out = [];
+    this.seats.forEach((s, i) => {
+      if (s.credential && !s.connected) out.push({ seat: i, graceLeftMs: s.disconnectExpiry != null ? Math.max(0, s.disconnectExpiry - now()) : null });
+    });
+    return out;
+  }
+
+  // 가방 말·B08 포획 말 — 자기 좌석 전용. 원장(paid)·등급·스킬 전부. 보드 자리가 없으므로 id 대신 uid 로 가리킨다.
+  _serializeUnit(T, u) {
+    return {
+      uid: u.uid, rosterId: T.ecoKey(u), name: u.name, element: u.element, // 전설도 진열 key 와 같은 종 키(ecoKey) — 원시 legend 칸은 #234 경계상 싣지 않는다
+      grade: u.grade === undefined ? null : u.grade, hp: u.hp, maxHp: u.maxHp, atk: u.atk, skillAtk: u.skillAtk,
+      def: u.def, spd: u.spd, dodge: u.dodge, crit: u.crit, statusPct: u.statusPct,
+      skills: this._skillsFor(T, u, true), paid: u.paid || 0, fresh: !!u.fresh, revealed: !!u.revealed, reaperSeal: u.reaperSeal || 0,
     };
   }
 
@@ -985,10 +1316,20 @@ class Room {
   _snapshotFx(T) {
     const store = T.__fx;
     if (!store || !store.items.length) return { firstSeq: null, lastSeq: store ? store.nextSeq - 1 : 0, events: [] };
+    /* #237 주어가 없는 문구(천년목 "HP N"·과부하 "피해 N → 상한")는 같은 전투의 다음 주어 있는 문구(곧바로 이어지는 그 전투원의 피해 줄)를 따른다 */
+    const subj = [];
+    let next = null;
+    for (let i = store.items.length - 1; i >= 0; i--) {
+      const e = store.items[i];
+      if (e.src !== 'msg') continue;
+      const s = fxSubject(e.fx);
+      if (s) next = { s, bid: e.battleId };
+      subj[i] = s || (next && next.bid === e.battleId ? next.s : null);
+    }
     return {
       firstSeq: store.items[0].seq,
       lastSeq: store.nextSeq - 1,
-      events: store.items.map((e) => this._serializeFxEvent(e)),
+      events: store.items.map((e, i) => this._serializeFxEvent(e, T.host && T.host.seat, subj[i])),
     };
   }
 
@@ -1021,31 +1362,41 @@ class Room {
   // sameRef===true로 변조가 그대로 보임 — resync/재조회 스토어까지 물든다). scene(_serializeFxScene)·
   // cells(_serializeFxCells)처럼 매 호출마다 원시 필드만 골라 **새 객체**를 짓는다 — 내부 저장소와 반환값이
   // 항상 독립된 참조를 갖도록(이중 화이트리스트, room.js 기존 _serialize* 관례와 동일).
-  _serializeFxMsgFx(fx) {
+  /* #237 opp(side) — 그 쪽이 이 좌석의 상대 전투원이고 경제 경기면 그 전투원의 최대 HP, 아니면 null. 상대 쪽 HP·방어막·
+     떠오르는 수치는 100 눈금으로 바꿔 싣는다(_serializeKnownOpponent 와 같은 계약 — 최대 HP 로 등급이 역산되지 않게). */
+  _serializeFxMsgFx(fx, opp) {
     if (!fx || typeof fx !== 'object') return null;
+    opp = opp || (() => null);
     const out = {};
     if (fx.shake === 'A' || fx.shake === 'D') out.shake = fx.shake;
     if (fx.sig === true) out.sig = true;
     if (typeof fx.flash === 'string') out.flash = fx.flash;
     if (fx.ko === 'A' || fx.ko === 'D') out.ko = fx.ko;
     if (fx.float && (fx.float.side === 'A' || fx.float.side === 'D') && (fx.float.sign === 'pos' || fx.float.sign === 'neg')) {
-      out.float = { side: fx.float.side, sign: fx.float.sign, amount: Number(fx.float.amount) || 0 };
+      const m = opp(fx.float.side), amount = Number(fx.float.amount) || 0;
+      out.float = { side: fx.float.side, sign: fx.float.sign, amount: m ? pct100(amount, m) : amount };
     }
     if (fx.hp && (fx.hp.side === 'A' || fx.hp.side === 'D')) {
-      out.hp = { side: fx.hp.side, val: Number(fx.hp.val) || 0, max: Number(fx.hp.max) || 0 };
+      out.hp = opp(fx.hp.side) ? { side: fx.hp.side, val: pct100(fx.hp.val, fx.hp.max), max: 100 }
+        : { side: fx.hp.side, val: Number(fx.hp.val) || 0, max: Number(fx.hp.max) || 0 };
     }
     if (fx.st && (fx.st.side === 'A' || fx.st.side === 'D')) {
-      out.st = { side: fx.st.side, text: typeof fx.st.text === 'string' ? fx.st.text : '',
-        shield: Number(fx.st.shield) || 0, max: Number(fx.st.max) || 0 };
+      const o = !!opp(fx.st.side), text = typeof fx.st.text === 'string' ? fx.st.text : '';
+      out.st = { side: fx.st.side, text: o ? scaleText(text, fx.st.max) : text, // 상태 아이콘의 🛡방어막·🌊해일≤X
+        shield: o ? pct100(fx.st.shield, fx.st.max) : Number(fx.st.shield) || 0, max: o ? 100 : Number(fx.st.max) || 0 };
     }
     return Object.keys(out).length ? out : null;
   }
 
-  _serializeFxEvent(e) {
+  _serializeFxEvent(e, seatIndex, subject) {
     if (e.src === 'msg') {
+      const opp = (side) => (this.economy && e.sides && e.sides[side] && e.sides[side][0] !== seatIndex ? e.sides[side][1] : null);
+      // #237 문구: 주어가 자기 전투원이면 실제 값, 상대면 100 눈금, 주어 불명이면 HP 계열 수치를 '?' 로 가린다
+      const own = subject && e.sides && e.sides[subject] && e.sides[subject][0] === seatIndex;
+      const txt = !this.economy || own ? e.txt : scaleText(e.txt, subject ? opp(subject) : null);
       return {
         seq: e.seq, src: 'msg', battleId: Number.isInteger(e.battleId) ? e.battleId : null,
-        round: e.round, actSeq: e.actSeq, key: e.key, big: e.big, txt: e.txt, fx: this._serializeFxMsgFx(e.fx),
+        round: e.round, actSeq: e.actSeq, key: e.key, big: e.big, txt, fx: this._serializeFxMsgFx(e.fx, opp),
       };
     }
     const out = {
@@ -1082,7 +1433,7 @@ class Room {
       name: p.name, hp: p.hp, maxHp: p.maxHp, atk: p.atk, skillAtk: p.skillAtk,
       // #217 Earth art-omission-audit P0(2) — 자기 하수인 보드 아이콘(artDirOf)이 쓰는 유일한 키. 자기 말은 이미
       // type/element/skills까지 전부 공개되므로(§2.6.1) rosterId 추가는 새 노출이 아니다 — 종전 whitelist의 누락이었다.
-      rosterId: p.rosterId || null,
+      rosterId: T.ecoKey(p), // #237 전설 칸은 rosterId 가 없다 — 진열·가방과 같은 종 키(ecoKey, 일반은 rosterId 그대로)
       skills: this._skillsFor(T, p, true), cdMax: p.cdMax, immobile: p.immobile, cap: p.cap,
       healing: p.healing, alive: p.alive, placed: p.placed, movedEver: p.movedEver, revealed: p.revealed,
       burn: p.burn, weaken: p.weaken, shield: p.shield, shock: p.shock, dmgCut: p.dmgCut,
@@ -1105,6 +1456,8 @@ class Room {
          (reaperWhy)를 되살리는 데 필요하다. 상대 뷰(_serializeKnownOpponent·_serializeUnknownOpponent)와 상대 전투원
          뷰에는 싣지 않는다: 봉인은 "그 말이 지난 전투에서 사신의 낫을 썼다/가졌다"를 알려 주는 미공개 기술 정보다. */
       reaperSeal: p.reaperSeal || 0,
+      // #237 소유자 전용 경제 칸 — 원장·신규 표시·교체 표식 (속성 미선택은 상점 뷰 syn.pending 이 알린다 — #234 경계상 leaderElChosen 은 싣지 않는다)
+      paid: p.paid || 0, fresh: !!p.fresh, swapMark: !!p.swapMark,
     };
   }
 
@@ -1118,20 +1471,25 @@ class Room {
         스킬·집계 비공개)의 최소 공개 원칙대로 경계를 유지한다.
      ④ 등급(grade)은 7.9·8.1⑦이 소유자 전용으로 못박은 값이라 공개 상대 뷰에 실을 수 없다.
      상대 동료 스탯이 정말 필요해지면 두 전투원이 서로 공개된 **전투 뷰**에서 다시 합의해 내보낸다. */
+  /* #237 (GDD-23 7.9·8.1⑦) 경제 경기에서는 최대 HP 가 등급마다 달라 "종(name) + maxHp" 로 상대 등급이 역산된다.
+     그래서 상대 말 HP 는 **100 눈금 비율**로만 싣는다: maxHp=100 고정, hp=ceil(hp/maxHp×100)(살아 있으면 1 이상).
+     클라이언트는 필드 모양을 바꾸지 않고 그대로 HP 바를 그린다 — 숫자가 "N/100" 으로 보일 뿐이다(Mars 표기 인계). */
   _serializeKnownOpponent(p) {
+    const hp = this.economy ? { hp: pct100(p.hp, p.maxHp), maxHp: 100 } : { hp: p.hp, maxHp: p.maxHp };
     return {
       id: this._alias(p.id), r: p.r, c: p.c, owner: p.owner, alive: p.alive, immobile: p.immobile,
-      type: p.type, name: p.name, element: p.element, hp: p.hp, maxHp: p.maxHp, healing: p.healing,
+      type: p.type, name: p.name, element: p.element, hp: hp.hp, maxHp: hp.maxHp, healing: p.healing,
       // #217 Saturn ctx_e6437fa06ae4 REVISE — 공개 상대 보드 하수인 아이콘(artDirOf)이 쓰는 유일한 키.
       // name이 이미 ROSTER 20종을 1:1로 특정하므로(art-restore-fields.md §"새 노출 아님") 형태만 추가하는
       // 표시 whitelist 복구다 — 정보량 증가 없음. 하수인이 아니면(왕/동료) 항상 null.
       rosterId: p.type === 'minion' ? (p.rosterId || null) : null,
+      ...(p.swapMark ? { swapMark: true } : {}), // #237 "상점에서 교체됨" — 7.9 가 상대에게 허용한 유일한 상점 표식
     };
   }
 
-  // 등급 B (미공개 상대): 위치·생존만.
+  // 등급 B (미공개 상대): 위치·생존만. #237 "상점에서 교체됨" 표식은 공개 표식이라 여기에도 실린다(7.9).
   _serializeUnknownOpponent(p) {
-    return { id: this._alias(p.id), r: p.r, c: p.c, owner: p.owner, alive: p.alive, immobile: p.immobile };
+    return { id: this._alias(p.id), r: p.r, c: p.c, owner: p.owner, alive: p.alive, immobile: p.immobile, ...(p.swapMark ? { swapMark: true } : {}) };
   }
 
   // 자기 전투원의 기술은 전부, 상대 전투원의 기술은 revealedSkills에 있는 인덱스만 이름·쿨을 싣는다 (§2.6.2).
@@ -1159,8 +1517,10 @@ class Room {
   _serializeBattle(T, battle, seatIndex) {
     const side = (owner, f, piece, sfx) => {
       const bodyFight = f === piece; // 본체 출전(f===piece) vs 포획·예비 하수인 대리 출전(#91 artDirOfFighter와 같은 구분)
+      const scaled = this.economy && owner !== seatIndex; // #237 상대 전투원 HP·방어막은 100 눈금(등급 역산 차단 — _serializeKnownOpponent 와 같은 계약)
       return {
-        owner, hp: f.hp, maxHp: f.maxHp, shield: f.shield || 0, burn: f.burn || 0, weaken: f.weaken || 0,
+        owner, hp: scaled ? pct100(f.hp, f.maxHp) : f.hp, maxHp: scaled ? 100 : f.maxHp,
+        shield: scaled ? pct100(f.shield || 0, f.maxHp) : (f.shield || 0), burn: f.burn || 0, weaken: f.weaken || 0,
         shock: f.shock || 0, shockFresh: !!f.shockFresh, dmgCut: f.dmgCut || 0, focusCharge: !!f.focusCharge,
         /* #233 (GDD-23 4.5) 균열·경화 — 이미 내려보내는 burn/weaken/shock/dmgCut/vulnMark 와 **같은 등급**이다.
            원본 stIcons(f)(demo/index.html)가 두 전투원 패널 모두에 뷰어 분기 없이 이 셋을 그리고, #121 계약
@@ -1186,7 +1546,9 @@ class Room {
         // atk/skillAtk도 자기 pieces/cap 또는 공개 ROSTER/BAL로 대부분 유도 가능해 필수 노출이 아니다(포획 대리
         // 출전의 상대 cap 수치만 유도 불가하지만 원본 UI도 그 경우 "?"만 보여줄 뿐이다) — 불필요한 공개 확장은
         // 하지 않는다.
-        rec: battle['rec' + sfx] || 0, items: battle['items' + sfx] || 0, itemRound: !!battle['itemRound' + sfx],
+        // rec = 이 쪽이 상대에게 기록한 피해(상대 최대 HP 로 상한) — 내 기록은 상대 최대 HP 를 드러내므로 100 눈금(#237)
+        rec: this.economy && owner === seatIndex ? pct100(battle['rec' + sfx] || 0, (sfx === 'A' ? battle.fd : battle.fa).maxHp) : (battle['rec' + sfx] || 0),
+        items: battle['items' + sfx] || 0, itemRound: !!battle['itemRound' + sfx],
         lastItem: battle['lastItem' + sfx] != null ? battle['lastItem' + sfx] : null,
         ballThrow: !!battle['ballThrow' + sfx], buff: battle['buff' + sfx] || null,
         /* #217 Earth art-omission-audit P0(1) — 전투 무대 스프라이트(원본 token()/artDirOfFighter/leaderBattleDir) 복원에
@@ -1225,7 +1587,8 @@ class Room {
            tideBy 는 싣지 않는다: 표식 대상의 반대편으로 항상 유도되고 표시가 읽지 않는다. cdUpFresh(Q3)도 싣지 않는다 —
            ⌛ 값 자체가 미공개 칸 은닉(_skillsFor) 대상이고 표시 경로가 없다. */
         evadeDown: f.evadeDown || 0, evadeDownR: f.evadeDownR || 0,
-        tideMark: f.tideMark || 0, tideHeld: !!f.tideHeld,
+        // #237 해일 X 는 HP 선(HP 바 위 X 위치)이라 상대 쪽은 hp·shield 와 같은 100 눈금 — 원값이면 비율 HP 와 어긋나고 최대 HP 가 역산된다
+        tideMark: scaled ? pct100(f.tideMark || 0, f.maxHp) : (f.tideMark || 0), tideHeld: !!f.tideHeld,
       };
     };
     /* #241 R1 번개 꼬리 추가 공격 단계 — 양 좌석에 side 만 공개(행동 중인 쪽 · 상대 화면의 대기 표시). allowed 는 소유자 좌석에만:
@@ -1248,7 +1611,10 @@ class Room {
       a: side(battle.attP.owner, battle.fa, battle.attP, 'A'),
       d: side(battle.defP.owner, battle.fd, battle.defP, 'D'),
       bonus,
-      log: (battle.blog || []).slice(-40), // 이 좌석 시점 엔진의 전투 로그
+      // 이 좌석 시점 엔진의 전투 로그. #237 경제 경기는 같은 문구를 주어 표기와 함께 담은 fx 창(문구 정리 완료)에서 이 전투 몫만 싣는다
+      log: this.economy
+        ? this._snapshotFx(T).events.filter((e) => e.src === 'msg' && e.battleId === (T.__fx && T.__fx.lastBattleId)).map((e) => e.txt).slice(-40)
+        : (battle.blog || []).slice(-40),
     };
   }
 
@@ -1259,4 +1625,4 @@ class Room {
   isListable() { return this.isPublic && this.state === STATES.OPEN; }
 }
 
-module.exports = { Room, STATES, DISCONNECT_GRACE_MS, ACTION_TYPES, BATTLE_CMDS, battleFrame, lockstepDigest, catalog };
+module.exports = { Room, STATES, DISCONNECT_GRACE_MS, ACTION_TYPES, BATTLE_CMDS, ECO_VERBS, battleFrame, lockstepDigest, catalog };

@@ -220,12 +220,12 @@ function readyFlow(seat){
 {
   // 게스트(SETUP 참가)는 배치 완료 즉시 보낸다 · 준비 취소는 unready 후 배치 화면으로
   const T=readyFlow(1);
-  ok(sentTypes(T.wsLog[0]).join(",")==="setup,ready","G13 게스트는 참가 즉시 SETUP 이라 배치 완료에서 바로 보낸다");
+  ok(sentTypes(T.wsLog[0]).join(",")==="resync,setup,ready","G13 게스트는 참가 즉시 SETUP 이라 배치 완료에서 바로 보낸다 (#237: 참가 프레임엔 좌석 뷰가 없어 resync 로 먼저 받는다)");
   T.netRoomReady(false);
   ok(lastSent(T.wsLog[0]).t==="unready"&&T.NET.readyWanted===false,"G14 준비 취소는 unready를 보낸다");
   ok(/비공개 배치/.test($el(T,"sidePanel").innerHTML)&&/방 나가기/.test($el(T,"sidePanel").innerHTML),"G15 준비 취소 뒤 배치 화면(방 나가기 포함)으로 돌아와 배치를 고칠 수 있다");
   T.setupDoneCore();
-  ok(sentTypes(T.wsLog[0]).join(",")==="setup,ready,unready,setup,ready","G16 다시 배치 완료하면 새 배치로 준비 의사를 다시 보낸다");
+  ok(sentTypes(T.wsLog[0]).join(",")==="resync,setup,ready,unready,setup,ready","G16 다시 배치 완료하면 새 배치로 준비 의사를 다시 보낸다");
 }
 
 /* ===== H. 나가기 ===== */
@@ -303,6 +303,16 @@ function seatedRoom(){ // 방을 만들고 배치까지 마친(SETUP, ready 전)
   openWs(T.wsLog[1],MARKER);
   T.wsLog[1].onmessage({data:JSON.stringify({v:1,type:"error",code:"E_ROOM_NOT_FOUND"})});
   ok(T.NET.resuming===false&&T.S.phase==="menu","K15 회복 불가능한 오류(E_ROOM_NOT_FOUND)는 유예를 기다리지 않고 즉시 포기한다");
+  ok(/방 목록으로 돌아가/.test(toasts(T).join("|"))&&!/무효/.test(toasts(T).join("|")),"K15b 에폭 외 재개 오류는 기존 연결 끊김 문구를 유지한다");
+}
+{ // §2.8 에폭 불일치 — 서버 재시작으로 방 VOID. 몰수패 아님, 60초 유예 없이 전용 문구로 즉시 포기
+  const T=seatedRoom();
+  T.wsLog[0].onclose();
+  openWs(T.wsLog[1],MARKER);
+  T.wsLog[1].onmessage({data:JSON.stringify({v:1,type:"error",code:"E_EPOCH"})});
+  const ts=toasts(T).join("|");
+  ok(T.NET.resuming===false&&T.S.phase==="menu","K15c E_EPOCH는 유예를 기다리지 않고 즉시 방 목록으로 돌아간다");
+  ok(/서버 재시작으로 경기가 무효 처리되었습니다/.test(ts)&&!/연결이 끊겼습니다/.test(ts)&&!/패배|몰수/.test(ts),"K15d E_EPOCH는 일반 단절이 아니라 서버 재시작 무효 안내다 ("+ts+")");
 }
 { // 명시적 나가기는 재접속을 타지 않는다
   const T=seatedRoom();

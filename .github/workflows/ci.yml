@@ -228,8 +228,15 @@ jobs:
       # (각자 독립 V8 컨텍스트 · 진짜 ws · 진짜 타이머)가 로비→생성/참가→배치→준비→대국→전투·선택창·도망 교환→결과를 2게임 완주한다.
       # 대국 중 소켓을 실제로 파괴해 같은 방·같은 좌석 재개와 이후 진행을 확인하고, 미공개 상대 정체 누출·클라이언트 예외 0 을 본다.
       # 서버 의존성(ws)이 필요해 A 잡이 아니라 npm ci 뒤인 여기서 돈다.
+      # #237 서버 기본값이 경제 경기가 되어 이 구 모드(무료 로스터) 검증은 DD_ECONOMY=0 을 명시한다(자식 서버가 env 를 물려받는다).
       - name: 공개 방 실서버 2클라이언트 통합 (#217)
         run: node demo/test/integration/smoke_public_live.js 2
+        env:
+          DD_ECONOMY: "0"
+
+      # #237 경제 경기(기본 ON) — 시작 상점·서버 시계·단절 정지·정기 상점·상대 경제 비노출을 실서버 2클라이언트로 본다.
+      - name: 공개 방 경제 실서버 2클라이언트 통합 (#237)
+        run: node demo/test/integration/smoke_public_eco_live.js
 
   # ── B2. Windows 실행기 회귀 ──────────────────────────────────────────────────
   # server/test-launcher.js 는 `if (process.platform !== 'win32') { SKIP; exit(0) }` 라

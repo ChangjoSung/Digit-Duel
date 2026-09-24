@@ -27,8 +27,10 @@ function entryModal(T) {
   const att = S.pieces.find((x) => x.id === EP.attId), def = S.pieces.find((x) => x.id === EP.defId);
   if (!att || !def) return null;
   if (EP.stage === 'reveal') {
-    const fa = EP.A === 'cap' ? att.cap : att, fd = EP.D === 'cap' ? def.cap : def;
-    const name = (f, p) => (f === p ? T.TYPE_KO[p.type] : '포획 하수인(' + T.ELEM_KO[f.element] + ')');
+    // #237 경제 경기는 가방 말이 대리로 나선다 — 전투원은 Core entryFighter 가 고르고 문구는 Core entryStep 과 같다.
+    const fa = S.eco ? T.entryFighter(att, EP.A, EP.aU) : (EP.A === 'cap' ? att.cap : att);
+    const fd = S.eco ? T.entryFighter(def, EP.D, EP.dU) : (EP.D === 'cap' ? def.cap : def);
+    const name = (f, p) => (f === p ? T.TYPE_KO[p.type] : (S.eco && f.name ? '대리 ' + f.name : '포획 하수인(' + T.ELEM_KO[f.element] + ')'));
     const desc = `공격: ${name(fa, att)} vs 방어: ${name(fd, def)}`;
     return {
       key: 'entry:reveal', owner: T.netActor(),
@@ -37,6 +39,19 @@ function entryModal(T) {
     };
   }
   const side = EP.stage, piece = side === 'A' ? att : def;
+  /* #237 경제 경기(GDD-23 7.5) — 후보는 본체 또는 가방 말 1마리. Core entryStep 이 사람에게 묻는 조건(왕·동료 · 가방 있음) 그대로다.
+     버튼 문구(가방 말 이름·등급·HP)는 소유자 전용이다 — room.js _serializeModal 이 html·buttons 를 소유 좌석에만 싣는다. */
+  if (S.eco) {
+    const bag = S.eco.bag[piece.owner];
+    if (!(piece.type === 'ally' || piece.type === 'king') || !bag.length) return null;
+    return {
+      key: 'entry:' + side, owner: piece.owner,
+      html: `<h2>🔒 ${esc(T.pname(piece.owner))}만 확인</h2>
+        <p>${esc(T.TYPE_KO[piece.type])} 출전 선택 — 본체 또는 가방 말 1마리</p>`,
+      buttons: [btn('본체 출전', { t: 'battleEntryPick', side, what: 'body' })]
+        .concat(bag.map((u) => btn(`대리 ${u.name} ⭐${u.grade || ''} HP ${u.hp}/${u.maxHp}`, { t: 'battleEntryPick', side, what: 'bag', uid: u.uid }))),
+    };
+  }
   // entryStep() 이 사람에게 묻는 단계에서만 멈춘다 — 그 조건 그대로 읽는다(판정이 아니라 같은 상태 읽기).
   const res = (!piece.cap && S.reserve[piece.owner]) ? S.reserve[piece.owner] : null;
   if (!(piece.type === 'ally' || piece.type === 'king') || (!piece.cap && !res)) return null;

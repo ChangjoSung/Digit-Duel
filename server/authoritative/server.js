@@ -69,7 +69,10 @@ const httpBuckets = new Map();
 const upgradeBuckets = new Map();
 const connectionsByIp = new Map();
 const authLimiter = new S.AttemptLimiter(LIMITS.authFailures, LIMITS.authWindowMs);
-const lobby = new Lobby({ epoch: EPOCH });
+/* #237 경제 경기가 기본이다(온라인 클라이언트 연결 완료). DD_ECONOMY=0 은 종전 무료 로스터 경기 — 되돌림(rollback)과
+   구 공개방 회귀 검증(smoke_public_live.js) 용도로만 남긴다. */
+const ECONOMY = process.env.DD_ECONOMY !== '0';
+const lobby = new Lobby({ epoch: EPOCH, economy: ECONOMY });
 
 // PUBLIC_DEPLOY: 소켓의 직접 피어는 항상 리버스 프록시(플랫폼 엣지)이지 실제 클라이언트가 아니다.
 // 그 피어의 주소 대역을 신뢰 판정에 쓰지 않는다(임의 프록시 뒤 IP를 그대로 믿지 않는다는 원칙) —
@@ -248,6 +251,7 @@ function pushState(room, seat) {
 // 모든 룸 공통 — 타이머·정리로 일어난 종료 전이는 응답할 명령이 없으므로 양 좌석에 결과를 푸시한다.
 function attachNotifier(room) {
   room.onFinalize = () => { pushState(room, 0); pushState(room, 1); };
+  room.onUpdate = room.onFinalize; // #237 게임 시계 만료(상점·B08)도 명령 없이 일어난 전이다
 }
 
 function firstFrame(ws, type, room, seat, issued, extra) {
@@ -255,7 +259,7 @@ function firstFrame(ws, type, room, seat, issued, extra) {
   sendFrame(ws, Object.assign({
     v: 1, type, epoch: EPOCH, roomId: room.roomId, seat,
     seatToken: issued.seatToken, tokenGen: issued.tokenGen,
-    revision: room.revision, seq: bumpSeq(room, seat),
+    revision: room.revision, seq: bumpSeq(room, seat), economy: room.economy, // #237 첫 프레임부터 경제 방 여부
   }, extra || {}));
 }
 
@@ -314,6 +318,7 @@ wss.on('connection', (ws) => {
     const result = match.room.resumeSeat(match.seat, cred.token, ws);
     if (!result.ok) return failClose(result.reason);
     firstFrame(ws, 'room_resumed', match.room, match.seat, result.issued, { data: match.room.toSeatView(match.seat) });
+    pushState(match.room, 1 - match.seat); // #237 상대의 "연결 대기" 해제·시계 재개를 알린다(2.4)
   }
 
   ws.on('message', (data, isBinary) => {
@@ -388,6 +393,7 @@ wss.on('connection', (ws) => {
     // 연결 펜싱(§2.4.4) — 재개로 밀려난 낡은 소켓의 뒤늦은 close는 새로 붙은 좌석을 끊지 않는다.
     if (!seat.credential || seat.credential.connGen !== ws.ddConnGen) return;
     room.socketClosed(ws.ddSeat);
+    pushState(room, 1 - ws.ddSeat); // #237 서버가 단절을 확정한 순간부터 상대 화면에 "상대 연결 대기"(2.4) — revision 은 그대로
   });
 
   ws.on('error', () => ws.terminate());
