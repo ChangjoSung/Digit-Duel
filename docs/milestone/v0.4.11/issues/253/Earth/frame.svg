@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="800" viewBox="0 0 432 800">
+ <title>Common UI — title, lobby and board surround</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0.</metadata>
+ <defs><linearGradient id="night" x2="0" y2="1"><stop stop-color="#1c2f4d"/><stop offset=".48" stop-color="#12151c"/><stop offset="1" stop-color="#1c2130"/></linearGradient></defs>
+ <path fill="url(#night)" d="M0 0H432V800H0Z"/>
+ <g fill="none" stroke="#333c52"><path d="M16 112V76L40 52H392L416 76V112M16 688V724L40 748H392L416 724V688"/><path d="M24 92V80L44 60H388L408 80V92M24 708V720L44 740H388L408 720V708"/></g>
+ <g fill="#132139" stroke="#0a1120" stroke-width="2"><path d="M1 1H431V48H1Z"/><path d="M1 752H431V799H1Z"/></g>
+ <g stroke="#333c52"><path d="M2 47H430M2 753H430M86 760V792M173 760V792M259 760V792M346 760V792"/></g>
+ <g fill="#8a93a8"><path d="M208 54L216 50L224 54L216 58ZM208 746L216 742L224 746L216 750Z"/></g>
+ <path fill="none" stroke="#0a1120" stroke-width="4" d="M2 49V751M430 49V751"/>
+</svg>

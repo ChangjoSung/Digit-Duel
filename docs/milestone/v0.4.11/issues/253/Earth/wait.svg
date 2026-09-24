@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160">
+ <title>X01 / L03 neutral waiting panel, no progress or timer assertion</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0.</metadata>
+ <path fill="#1c2130" stroke="#333c52" d="M8 1H312L319 8V152L312 159H8L1 152V8Z"/>
+ <path fill="none" stroke="#8a93a8" d="M4 12V9L9 4H12M308 4H311L316 9V12M316 148V151L311 156H308M12 156H9L4 151V148"/>
+ <g fill="none" stroke="#8a93a8" stroke-width="2"><path d="M138 24L146 16H174L182 24V52L174 60H146L138 52Z"/><path stroke="#e8ecf5" d="M156 29V47M164 29V47"/></g>
+ <path stroke="#333c52" d="M24 72H296"/>
+</svg>
