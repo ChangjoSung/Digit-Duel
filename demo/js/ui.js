@@ -274,6 +274,7 @@ window.uiBack=function(){
     UI.hold=true;
     return;
   }
+  if(NET.publicMode&&S&&S.eco&&S.phase==="play"){ netEcoResign(); return; } // #237 경제 방: 상대 차례에도 기권 확인
   if(!S||S.phase!=="play"||isAI(S.current)||(NET.mode&&S.current!==NET.me)){
     showToast("내 차례에만 나갈 수 있습니다 (기권 확인)."); return;
   }
@@ -782,10 +783,13 @@ function renderTurnBar(){
   const game=S, turn=S.turnCount, pick=S.fleePick;
   const fresh=()=>S===game&&S.turnCount===turn&&S.fleePick===pick;
   const mk=(txt,fn,dis,cls)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=()=>{if(fresh()) fn();};b.disabled=!!dis||aiTurn;if(cls)b.className=cls;tb.appendChild(b);return b;};
+  /* #237 서버 권위 경제 방은 상대 차례에도 기권할 수 있다(GDD-23 2.4 · room.js _handleResign) — 그 밖은 종전 자기 턴 규칙 */
+  const ecoResign=NET.publicMode&&!!S.eco;
+  const mkResign=()=>{ const b=mk("기권",ecoResign?netEcoResign:confirmResign,false,"danger"); if(ecoResign) b.disabled=false; };
   if(S.fleePick){ // #114 도망 교환 선택 중: 소유자(S.current 와 다를 수 있음)만 [교환 생략] — 그 외 턴 조작은 전부 숨긴다. 기권은 자기 턴 규칙 그대로
     const mine=fleePickMine();
     const b=document.createElement("button"); b.textContent="교환 생략 (그대로 밀어내기)"; b.onclick=()=>{if(fresh()) netAction({t:"fleeSkip"});}; b.disabled=!mine; b.className="primary"; tb.appendChild(b);
-    mk("기권",confirmResign,false,"danger");
+    mkResign();
     const s=document.createElement("span"); s.className="badge"; s.textContent=mine?"🏃 도망 성공 — 후방 말(파란 칸)을 클릭해 교환하거나 생략":"🏃 상대가 말을 교체 중입니다…"; tb.appendChild(s);
     return;
   }
@@ -800,7 +804,7 @@ function renderTurnBar(){
   /* #114 CJ 선택 A: 평소 [주 행동 생략]·[턴 종료] 버튼은 없다 — 할 수 있는 행동이 없으면 자동으로 넘어간다(autoEndCheck).
      주 행동을 마친 뒤 선택 전투가 남아 있을 때만 "싸우지 않고 종료" 를 표시해 기존 전투 선택권을 유지한다. 강제 대상이 남으면 표시하지 않는다 */
   if(S.mainUsed&&!forced&&!S.forcedQueue.length&&!S.teleport&&!fxLocked()&&$("overlay").classList.contains("hidden")&&optionalBattleLeft()) mk("싸우지 않고 종료",()=>netAction({t:"endTurn"}),false,"primary");
-  mk("기권",confirmResign,false,"danger");
+  mkResign();
   if(forced){const s=document.createElement("span");s.className="badge";s.textContent="⚔️ 강제 전투 대상 선택";tb.appendChild(s);}
   if(aiTurn){const s=document.createElement("span");s.className="badge";s.textContent=(NET.mode&&!isAI(S.current))?"🌐 상대 턴 진행 중…":"🤖 AI 행동 중…";tb.appendChild(s);}
 }
@@ -942,6 +946,12 @@ function renderSetup(sp){
       <div class="row netRoomActions"><button type="button" onclick="netRoomReady(false)">준비 취소</button><button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
     return;
   }
+  if(NET.publicMode&&!NET.started&&NET.economy&&!S.eco){ // #237 경제 방: 시작 상점은 서버 좌석 뷰로 열린다 — 그 전(상대 입장 대기)에 무료 로스터를 그리지 않는다
+    sp.innerHTML=`<h2 id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</h2>
+      <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">${NET.roomState==="OPEN"?"상대를 기다리는 중… 상대가 들어오면 시작 상점(90초)이 열립니다.":"시작 상점을 여는 중…"}</p>
+      <div class="row netRoomActions"><button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
+    return;
+  }
   const sel=S.roster[p], rosterDone=sel.length===6;
   const unplaced=S.pieces.filter(x=>x.owner===p&&!x.placed);
   /* #122: 출전 준비를 "01 로스터 선택 / 02 비공개 배치" 두 단계로 나눠 보여 준다. 두 절 모두 항상 DOM 에 있고
@@ -1058,7 +1068,7 @@ window.startMode=(mode,opts)=>{
   UI.entered=true; UI.drawer=null; UI.prep="roster"; // #122 표시 상태만 초기화 (규칙·저장소 무관)
   let lv=opts.aiLevel; // #21: 문자열(PVE 상대 난이도) 또는 [p0,p1] 배열(sim)
   if(typeof lv==="string") lv=["grade5",lv];
-  newGame(mode,{aiLevel:lv,eco:!NET.mode}); // #236: 새 경제는 로컬 모드(PVE·핫시트·sim)만 — 온라인(릴레이 재생성 포함)은 #237 전환 전까지 종전 경제
+  newGame(mode,{aiLevel:lv,eco:!NET.mode}); // #236 로컬 모드(PVE·핫시트·sim) 경제. 온라인 경제는 #237 공개 방 서버 권위뿐(network.js netApplyEcoSetup) — 코드 접속 릴레이(무해석 락스텝)는 종전 경제
   if(mode==="pvp"||mode==="pve"){
     addLog(mode==="pve"?`PVE(${AI_LEVEL_KO[S.aiLevel[1]]}${S.aiLevel[1]==="dan5"?" · 탐색·추론 기반 강AI":""}) — 당신의 14개 말을 배치하세요.`:"PVP — 두 플레이어가 번갈아 비공개 배치합니다.","sys");
     if(S.eco&&mode==="pve") aiShop(1); // #236 GDD-23 2.3: 사람 S01(90초)이 열리는 순간 AI 는 즉시 완료 — 배치(aiAutoPlace)는 종전대로 사람 배치 뒤
@@ -1238,11 +1248,11 @@ function battleModal(board){
     return `<div class="fighter"><div class="fhead">
       <b>${fighterName(sid,B)}</b> <small>(${pname(piece.owner)})</small>
       ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
-      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}</div>
+      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}${hpPctView(piece.owner)?"%":""}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}</div>
       <div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>
-      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}</div>
+      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>${hpPctView(piece.owner)?"%":"/"+pf.maxHp}</div>
       </div><div class="fscroll">
-      <div class="status"><span id="bst-${sid}">${stIcons(pf)}</span></div>
+      <div class="status"><span id="bst-${sid}">${hpPctView(piece.owner)?stIcons(pf).replace(/(🛡|🌊해일≤)(\d+)/g,"$1$2%"):stIcons(pf)}</span></div>
       ${pf.skills?`<div class="status">${(()=>{
         /* #234 (GDD-23 7.9): 등급·미사용 스킬은 비공개 — 보유 칸 수가 곧 등급이므로 상대 화면에는 공개된 스킬만 이름으로 쓰고
            나머지는 개수 없이 "?" 하나로 묶는다. 소유자·관전(sim)은 전부 본다. */
@@ -1387,7 +1397,7 @@ function battleModal(board){
   window.__pkgPickCore=(what,i,id)=>dispatchCoreAction({t:"pkgPick",what,i,id,frame});                 // id = 그 개봉 화면이 받은 표 번호 (없으면 인가되지 않는다)
   window.__pkgCancelCore=id=>dispatchCoreAction({t:"pkgCancel",id,frame}); // 취소도 표시 계층이 아니라 Core 경계가 처리한다 — 자기 번호의 표만 회수한다
   window.__useItemCore=(i,wire)=>dispatchCoreAction({t:"item",i,frame,wire});
-  window.__buffUse=key=>dispatchCoreAction({t:"buffUse",key,frame}); // #236 산 버프 (로컬 전용 — 회선 어휘 아님)
+  window.__buffUseCore=(key,wire)=>dispatchCoreAction({t:"buffUse",key,frame,wire}); // #236 산 버프 · #237 버튼(window.__buffUse)은 netAction 단일 경로 — 공개 방은 서버 BATTLE_CMDS
   window.__throwBallCore=wire=>dispatchCoreAction({t:"ball",frame,wire});
   /* 도망·넘기기는 자기 전투 행동 1회를 소모한다 — 연출 재생 중(표시 잠금)에는 받지 않는다. 잠금은 표시 계층의 사실이라
      여기서 보고, 같은 렌더의 행동을 두 번 쓰지 못하게 하는 규칙 대조는 Core 의 strict 프레임 검사가 맡는다. */
@@ -1466,15 +1476,17 @@ function pcFaceHtml(p){
   return `<span class="face"><span class="nm">${p.type==="minion"&&p.name?p.name:(TYPE_KO[p.type]||"?")}</span></span>`;
 }
 /* 정보 행 — 원소 기호(하수인만) + 현재 HP(하수인·동료·왕만). 폭탄·함정은 전체 공개에서도 HP 를 표시하지 않는다 (규격 7.8·7.9) */
+/* #237 공개 경제 방의 상대 말·전투원 HP 는 서버가 100 눈금 비율로만 보낸다(최대 HP 로 등급이 역산되지 않게) — % 로 표기한다. 자기 말은 실제 값 */
+function hpPctView(owner){ return !!(NET.publicMode&&S&&S.eco&&owner!==NET.me); }
 function pcInfoHtml(p){
   const key=p.type==="minion"?pieceMemoKey(p):null;
-  const hp=(p.type==="minion"||p.type==="ally"||p.type==="king")?String(p.hp):"";
+  const hp=(p.type==="minion"||p.type==="ally"||p.type==="king")?p.hp+(hpPctView(p.owner)?"%":""):"";
   if(!key&&!hp) return "";
   return `<span class="info">${key?glyphSpan(key,"sym"):""}${hp?`<span class="hp">${hp}</span>`:""}</span>`;
 }
 function pcLabel(p){ // 확정 말의 접근성 문구 — 이미 공개된 값만 쓴다
   return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.type==="minion"&&p.element?" · "+ELEM_KO[p.element]:"")
-    +((p.type==="minion"||p.type==="ally"||p.type==="king")?" · HP "+p.hp:"");
+    +((p.type==="minion"||p.type==="ally"||p.type==="king")?" · HP "+p.hp+(hpPctView(p.owner)?"%":""):"");
 }
 /* 말판과 배치 트레이가 같은 함수를 쓴다 — 한쪽만 아이콘으로 바뀌는 불일치가 생기지 않는다 (규격 7.10.4) */
 function pcBodyHtml(p){return pcFaceHtml(p)+pcInfoHtml(p);}
@@ -1551,6 +1563,8 @@ function shopShow(cover){
   if(cover&&S.mode==="pvp") handoff(`${pname(p)} — 🛒 ${S.eco.shop.turn}턴 상점`,open); else open();
 }
 function shopClockStart(p){
+  if(NET.publicMode){ shopClockStop(); // #237 공개 방: 마감·만료는 서버 시계(가림 없음 — 표시 순간부터 개인별) — 여기는 남은 시간 표시만
+    const tick=()=>{ const el=$("shopClock"); if(el) el.textContent=shopClockText(p); }; tick(); SHOPCLK.iv=setInterval(tick,500); return; }
   if(!fxLive()||NET.mode||isAI(p)) return;                                  // 사람 좌석만 (온라인 종전 경제·AI·sim 제외)
   const o=$("overlay"); if(o&&o.classList&&o.classList.contains("handoff")) return; // 가림 중에는 누구의 90초도 흐르지 않는다
   const key=S.eco.shop.kind+S.eco.shop.turn+":"+p; if(SHOPCLK.key===key) return; // 같은 좌석의 다시 그리기 = 마감 유지
@@ -1561,13 +1575,18 @@ function shopClockStart(p){
   SHOPCLK.iv=setInterval(tick,500);
 }
 function shopClockStop(){ clearTimeout(SHOPCLK.t); clearInterval(SHOPCLK.iv); SHOPCLK.t=SHOPCLK.iv=SHOPCLK.key=null; SHOPCLK.dl=0; }
-function shopClockText(p){ return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000))}초`:""; }
+function shopClockText(p){ if(NET.publicMode) return netClockText(); return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000))}초`:""; }
 function bagClockStop(){ clearTimeout(BAGCLK.t); clearInterval(BAGCLK.iv); BAGCLK.t=BAGCLK.iv=null; }
 window.__shop=(op,a,b)=>{
   const p=shopViewer(); if(p===null) return;
-  const go=act=>dispatchCoreAction(Object.assign({player:p},act));
+  /* #237 공개 방: 거래는 서버가 판정한다 — 의도만 보내고 결과는 room_state 로 받는다(시작 상점은 배치 화면 안이라 확인 창만 닫는다).
+     확인·선택 창은 소유자 로컬 창이다(동기화 모달 중계·비소유자 마스킹 대상이 아니다). */
+  const go=act=>{ act=Object.assign({player:p},act);
+    if(NET.publicMode){ if(S.eco.shop.kind==="start") closeModal(); netSendAction(netEcoWire(act)); return; }
+    dispatchCoreAction(act); };
   const back=()=>shopShow(false);
-  const confirm=(html,label,act)=>modal(html,[[label,once(()=>go(act))],["취소",back]]);
+  const md=(html,buttons)=>{ netLocalModal(); modal(html,buttons); };
+  const confirm=(html,label,act)=>md(html,[[label,once(()=>go(act))],["취소",back]]);
   if(op==="buy"){
     const s=S.eco.shop.slots[p][a]; if(!s) return;
     const u=ecoUnitOf(S,p,s.key), act={t:"shopBuy",i:a,seq:S.eco.shop.seq[p]};
@@ -1584,27 +1603,31 @@ window.__shop=(op,a,b)=>{
     confirm(`<h2>판매 확인</h2><p>${u.name} ${ecoStars(u.grade)} — 🪙${u.paid||0} 환급 (원장 100%)</p><small>이번 상점에서는 이 종을 다시 살 수 없고, 다음에 사면 지금 HP 비율(${pct(u.hp/u.maxHp)})로 들어옵니다.</small>`,"판매",{t:"shopSell",uid:a});
     return; }
   if(op==="swap"){ const f=S.pieces.filter(x=>x.owner===p&&x.type==="minion"&&x.alive&&ecoKey(x));
-    modal(`<h2>교체 대상</h2><p>가방 말과 1:1 로 바꿀 살아 있는 필드 하수인을 고르세요. HP 는 그대로입니다.</p>`,
+    md(`<h2>교체 대상</h2><p>가방 말과 1:1 로 바꿀 살아 있는 필드 하수인을 고르세요. HP 는 그대로입니다.</p>`,
       f.map(x=>[`${x.name} ${ecoStars(/** @type {any} */(x).grade)} HP ${x.hp}/${x.maxHp}`,once(()=>go({t:"shopSwap",pieceId:x.id,uid:a}))]).concat([["취소",back]]));
     return; }
   if(op==="ticket"){ const ls=S.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally")&&x.alive);
-    modal(`<h2>🎟 시너지 교체 티켓</h2><p>속성을 바꿀 왕·동료를 고르세요.</p>`,ls.map(x=>[`${TYPE_KO[x.type]} (${ELEM_KO[x.element]||"-"})`,()=>
-      modal(`<h2>새 속성</h2>`,V2_ELEM_ORDER.filter(el=>el!==x.element).map(el=>[`${ELEM_EMO[el]} ${ELEM_KO[el]}`,()=>
+    md(`<h2>🎟 시너지 교체 티켓</h2><p>속성을 바꿀 왕·동료를 고르세요.</p>`,ls.map(x=>[`${TYPE_KO[x.type]} (${ELEM_KO[x.element]||"-"})`,()=>
+      md(`<h2>새 속성</h2>`,V2_ELEM_ORDER.filter(el=>el!==x.element).map(el=>[`${ELEM_EMO[el]} ${ELEM_KO[el]}`,()=>
         confirm(`<h2>티켓 사용 확인</h2><p>${TYPE_KO[x.type]} ${ELEM_KO[x.element]} → ${ELEM_KO[el]} (스킬도 바뀝니다 · HP 유지 · 다음 전투부터 시너지 반영)</p>`,"사용",{t:"shopTicket",pieceId:x.id,el})]).concat([["취소",back]]))]).concat([["취소",back]]));
   }
 };
 function bagPickShow(){
   const bp=S.eco.bagPick, p=bp.owner, tok=bp.token;
-  const go=i=>{ bagClockStop(); closeModal(); dispatchCoreAction({t:"bagPick",i,token:tok}); };
+  const go=i=>{ bagClockStop(); // #237 공개 방: 선택은 서버 B08 표(token)로 보내고, 창은 결과 room_state 가 바꾼다
+    if(NET.publicMode){ netSendAction({t:"bagPick",i,token:tok}); return; }
+    closeModal(); dispatchCoreAction({t:"bagPick",i,token:tok}); };
   const show=()=>{ if(S.eco.bagPick!==bp) return;
+    netLocalModal(); // 소유자 로컬 창 — 온라인 동기화 모달 중계·마스킹 대상 아님 (오프라인은 무영향)
     modal(`<h2>🎒 가방이 가득 찼습니다 — ${pname(p)}만 확인</h2><p>4마리 중 1마리를 내보냅니다. 내보낸 말은 원장만큼 자동 판매됩니다.</p>
-      <small>고르지 않으면 포획한 말을 내보냅니다 (기존 가방 말은 그대로).</small> <span class="badge" id="bagClock"></span>`,
+      <small>고르지 않으면 포획한 말을 내보냅니다 (기존 가방 말은 그대로).</small> <span class="badge" id="bagClock"></span>${NET.publicMode?netResignBtn():""}`,
       S.eco.bag[p].map((u,i)=>[`${u.name} ${ecoStars(u.grade)} HP ${u.hp}/${u.maxHp} · +🪙${u.paid||0}`,once(()=>go(i))])
         .concat([[`포획한 ${bp.unit.name} ${ecoStars(bp.unit.grade)} 내보내기 (🪙0)`,once(()=>go(S.eco.bag[p].length))]]));
-    if(fxLive()){ bagClockStop(); const dl=Date.now()+ECO.bagPickSec*1000; // 20초는 소유자에게 창이 보이는 순간부터 (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
+    if(NET.publicMode){ bagClockStop(); const tick=()=>{ const el=$("bagClock"); if(el) el.textContent=netClockText(); }; tick(); BAGCLK.iv=setInterval(tick,500); } // 마감·만료는 서버 시계
+    else if(fxLive()){ bagClockStop(); const dl=Date.now()+ECO.bagPickSec*1000; // 20초는 소유자에게 창이 보이는 순간부터 (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
       BAGCLK.t=setTimeout(()=>{ if(S.eco.bagPick===bp) go(S.eco.bag[p].length); },ECO.bagPickSec*1000); // 무응답 → 포획한 말만 방출
       BAGCLK.iv=setInterval(()=>{ const el=$("bagClock"); if(el) el.textContent=`⏱ ${Math.max(0,Math.ceil((dl-Date.now())/1000))}초`; },500); } };
-  if(S.mode==="pvp"&&S.current!==p) handoff(`${pname(p)} — 가방 초과 선택`,show); else show(); // 핫시트: 포획한 쪽이 화면 주인이 아니면 가림 먼저
+  if(S.mode==="pvp"&&!NET.mode&&S.current!==p) handoff(`${pname(p)} — 가방 초과 선택`,show); else show(); // 핫시트: 포획한 쪽이 화면 주인이 아니면 가림 먼저
 }
 /* ===== #245 Saturn REVISE(M1·M6) 표시 포트 설치 =====
    state.js 가 선언한 무동작 기본 구현을 브라우저 구현으로 갈아 끼운다. 이 파일이 실린 뒤에만 화면이 움직이므로,

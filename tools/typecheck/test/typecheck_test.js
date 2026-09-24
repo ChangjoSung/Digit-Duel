@@ -164,7 +164,8 @@ try {
     fs.mkdirSync(dir);
     const expected = [];
     for (const f of sources) {
-      let src = fs.readFileSync(path.join(jsDir, f), "utf8");
+      // 기준점이 LF 로 적혀 있으니 CRLF 체크아웃도 메모리에서 LF 로 맞춘다 (행 수는 그대로)
+      let src = fs.readFileSync(path.join(jsDir, f), "utf8").replace(/\r\n/g, "\n");
       for (const m of batch.filter(x => x.file === f)) {
         const at = src.indexOf(m.from);
         ok(at >= 0 && src.indexOf(m.from, at + 1) < 0, "변이 기준점이 " + f + " 에 정확히 1곳 있다: " + m.contract);

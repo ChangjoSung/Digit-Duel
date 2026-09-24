@@ -4,6 +4,7 @@
 // demo/index.html 원본 엔진을 그대로 구동하므로(room.js·engine.js), 여기서는 프로토콜·인가·
 // 가시성 화이트리스트·생명주기만 검증하고 규칙 세부 회귀는 CLAUDE.md가 요구하는 기존 데모 스모크가 맡는다.
 const WebSocket = require('ws');
+process.env.DD_ECONOMY = '0'; // #237 이 파일은 종전 무료 로스터 공개방 회귀 — 경제(기본 ON)는 test-issue237-economy.js 가 본다
 const { server, EPOCH, lobby } = require('../server');
 const { createEngine } = require('../engine');
 const { battleFrame } = require('../room'); // #245 전투 어휘는 겨냥 프레임(bf)을 함께 실어야 서버가 받는다
