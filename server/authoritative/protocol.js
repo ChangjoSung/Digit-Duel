@@ -6,6 +6,8 @@ const ERROR_CODES = new Set([
   'E_ROOM_CLOSED', 'E_EPOCH', 'E_STALE_REVISION', 'E_NOT_ACTOR', 'E_NOT_OWNER',
   'E_ILLEGAL_ACTION', 'E_MATCH_STARTED', 'E_SUPERSEDED', 'E_CAPACITY', 'E_RATE_LIMITED',
   'E_INTERNAL', 'E_DRAINING',
+  // #237 GDD-23 2.4 — 단절 중 입력 정지 · 지난 진열/지난 B08 · 서버 시각 마감
+  'E_PAUSED', 'E_SHOP_STALE', 'E_DEADLINE',
 ]);
 
 const COMMAND_TYPES = new Set(['setup', 'ready', 'unready', 'action', 'resign', 'leave', 'resync', 'list_rooms']);
@@ -14,6 +16,8 @@ const ACTION_TYPES = new Set([
   'cell', 'selTray', 'roster', 'auto', 'clear', 'setupDone', 'skipMain', 'search', 'tele',
   'endTurn', 'heal', 'fleeSwap', 'fleeSkip', 'resign', 'act', 'item', 'ball', 'flee', 'pass',
   'pkgOpen', 'modal',
+  // #237 경제 어휘 (demo/js/core.js ecoReduce · buffUse). shopTimeout 은 서버 시계만 낸다 — 회선 어휘가 아니다.
+  'shopBuy', 'shopRefresh', 'shopGood', 'shopSell', 'shopSwap', 'shopTicket', 'leaderEl', 'shopDone', 'bagPick', 'buffUse',
 ]);
 
 const MAX_ENVELOPE_BYTES = 8 * 1024;

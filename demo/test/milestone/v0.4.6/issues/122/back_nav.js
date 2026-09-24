@@ -147,7 +147,7 @@ block("E 경기 중 출구 없음",()=>{
   const fn=SRC.slice(SRC.indexOf("window.uiBack=function()"), SRC.indexOf("window.uiBack=function()")+3000);
   const body=fn.slice(0,fn.indexOf("\n};"));
   ok(/confirmResign\(\)/.test(body),"E0 uiBack 은 기존 기권 확인을 호출한다");
-  ok(!/newGame\(|S\.phase\s*=|netLeave\(|location\.reload/.test(body),"E1 uiBack 은 규칙 상태를 직접 건드리지 않는다 (초기화·재생성·reload 없음)");
+  ok(!/newGame\(|S\.phase\s*=(?!=)|netLeave\(|location\.reload/.test(body),"E1 uiBack 은 규칙 상태를 직접 건드리지 않는다 (초기화·재생성·reload 없음)");
 
   H.freshPlay(T,"pvp"); T.S.current=0; T.UI.entered=true; T.UI.drawer=null; T.close(); T.uiApply();
   const g=T.S;

@@ -28,6 +28,7 @@ class Lobby {
     this.inviteIndex = new Map(); // code -> {roomId, expiresAt}
     this.nextRoomId = 1;
     this.draining = false;
+    this.economy = !!opts.economy; // #237 새 방을 경제 경기로 연다(시작 상점 → 배치 → 정기 상점·B08)
   }
 
   activeRoomCount() {
@@ -53,7 +54,7 @@ class Lobby {
       return { ok: false, reason: 'E_CAPACITY' };
     }
     const roomId = this.nextRoomId++;
-    const room = new Room(roomId, { isPublic, epoch: this.epoch });
+    const room = new Room(roomId, { isPublic, epoch: this.epoch, economy: this.economy });
     room.creatorIp = ip;
     if (!isPublic) {
       const code = this._issueInvite(roomId);

@@ -14,6 +14,7 @@ declare var __throwBallCore: ((wire?: BattleWire) => any) | undefined;
 declare var __fleeCore: ((wire?: BattleWire) => any) | undefined;
 declare var __passCore: ((wire?: BattleWire) => any) | undefined;
 declare var __openPkgCore: ((kind: string, wire?: BattleWire) => any) | undefined;
+declare var __buffUseCore: ((key: string, wire?: BattleWire) => any) | undefined; // #237 산 전투 버프 — 공개 방은 서버 BATTLE_CMDS
 declare var __pkgPickCore: ((what: string, i: number, id: number) => any) | undefined;
 declare var __pkgCancelCore: ((id: number) => any) | undefined;
 // #245 Saturn REVISE(HIGH 2): 탐색 보상 토큰은 **문자열**이다 (core.js 가 `말id#발급번호` 로 발급) — 숫자 상태 카운터와 섞지 않는다.
