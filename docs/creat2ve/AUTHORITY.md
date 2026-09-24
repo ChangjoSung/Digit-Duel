@@ -8,6 +8,8 @@
 |---|---|---|
 | [CLAUDE.md](../../CLAUDE.md) | 역할·Git·Issue/PR·QA·세션 운영 계약 | Mercury · CJ 운영 결정 시 |
 | [GDD-13 Game Overview](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) | 게임 규칙·Decision Log·구현/QA 기준 | Venus 작성·관리 · CJ 결정 시 |
+| [GDD-23 v0.4.11 기획](https://app.notion.com/p/3dc1e7f1708580329da6fe4986654f7b) | #232 하위 이슈의 경제·서버·비공개 정보·화면 규칙 | Venus 작성·관리 · CJ 결정 시 |
+| [GDD-24 UI/UX](https://app.notion.com/p/3dc1e7f1708581a48421fcec63d3cdf8) | #238 화면 ID·전이·예외·아트 인계 및 00.10 미결정 목록 | Venus 작성·관리 · CJ 화면 결정 시 |
 | [GDD-12 검증 지표·상호작용표](https://app.notion.com/p/3ca1e7f170858183beddfb1e8ecbbfe7) | 지표 정의·상호작용 검증 | Venus 작성·관리 · 관련 결정 시 |
 | [전투 수치](https://app.notion.com/p/3cd1e7f170858116bbdbd60e98cc6924) | 수치 계약과 보류 백로그 | Venus 작성·관리 · 수치 결정 시 |
 | [Creat2ve 구조 정의](https://app.notion.com/p/3ce1e7f17085818c82c5dd886149ad5b) | 범용 조직·역할·세션·문서 수명주기 | 구조 원본 관리 · 조직 결정 시 |
