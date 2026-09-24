@@ -159,8 +159,44 @@ AI vs AI 관찰(8.4 참고, 판정 아님): grade5×grade5 12판 평균 경기 �
 - **검증**: CI node 테스트(잡 A 전체 21종 · online_art · trap_icon · fx_timing · cross_skill · orientation_audit · ai_completion · attack_balance · shock · issue122_rules · back_nav) 전부 rc=0. `smoke_fx_timing`(실제 타이머) 첫 실행 1회만 rc=2(전투 바 쓰기 0회 TypeError, 상점 경로 아님) → 재실행 4회 모두 82/0 [추론: 부하 flake]. `server` `npm test` 전부 통과. `npm run typecheck` rc=0. `test:typecheck` 68/1 — 5-3·5-4 의 같은 network.js 변이 기준점이며 HEAD 원본 트리(`git archive`)에서도 같은 FAIL [확정: 무관].
 - **실제 브라우저 (Orca 내장, `file://…/demo/index.html`)**: 페이지에서 `ECO.shopSec=6` 으로 줄여 실제 타이머로 핫시트 S01 확인 — P1 표시 즉시 "⏱ 6초" · 자동 만료(필드 6/6) · 배치 뒤 가림 · 가림 13.5초 동안 P2 미만료(빈칸 6) · '확인 — 시작' 뒤 "⏱ 6초" · 11.4초 뒤 P2 만료. 정기 상점은 브라우저에서 보지 않았다. Chrome 확장은 연결되지 않았다.
 
+## 5-6. CJ 플레이 QA REVISE — S01 산 칸 빈칸 · 상점 시너지 현황 (Venus 5차 E2·E16·D9·AC44~48, 2026-09-24)
+
+- **입력**: dispatch `task_2e63aaa981d4` — ① S01 산 칸은 새로 고침 전까지 빈칸 **[확정: CJ 플레이 QA]** ② 시작·정기 상점에 소유자 시너지 현황 **[확정: CJ 플레이 QA]** ③ 여섯 번째 구매 = 새로 고침 🪙1 · 예비 재화에 필수 새로 고침 비용 포함 · 시간 초과/AI 자동 새로 고침 **[확정: 2026-09-24 CJ — D9 ⓐ 유료 새로 고침·비용 보존 승인]** (작업 중 PD 메시지 `msg_4fd11ba72f4d` 로 전달, CJ 원문은 Mars 미확인 · 착수 시점엔 PD 작업 가정이었다).
+- **추적한 경로**: `ecoReduce` shopBuy(S01 무료 보충 1줄) · `ecoReserveOk` 호출처 2곳(shopRefresh·shopGood) · shopTimeout 자동 구매 루프 · `aiShop` S01 루프(`aiAutoPlace` 에서 호출 — PVE·sim) · `shopHtml`(S01 = `renderSetup` 안, 정기 = `shopShow` 모달, 둘 다 `shopChanged`/`shopRefused` → `shopShow(false)` 로 다시 그림) · `synCount`/`synView`(`placed===true` 만 셈 → S01 은 0) · `assignLeaderElements`(`leaderElChosen` 아닌 왕·동료만 완료 때 배정).
+- **수정**
+  - `demo/js/core.js`
+    - shopBuy: S01 무료 보충 줄 삭제 — 산 칸은 S01·정기 모두 `null`. 빈칸 재구매는 기존 `!slot` 거부(상태 불변).
+    - 예비 재화 (D9 가 모인 한 곳): `ecoReserveNeed(state,p,v)` = k + ⌈max(0, k − v) ÷ 5⌉ × `ECO.refresh`(v 기본 = 지금 살 수 있는 칸, 빈칸·판매함 제외). `ecoReserveOk` 가 이것을 쓰고, shopRefresh 는 v = `ECO.slots`(새 진열 5칸)로 판정. 소모품은 현재 v. 하수인 구매는 규칙 밖(🪙·k·v 가 함께 1 줄어 여유 불변).
+    - `ecoBuyable(state,p)`: 살 수 있는 첫 진열 칸(-1 = 없음) — 시간 초과·AI·UI 공용.
+    - shopTimeout: 살 칸이 있으면 ①부터 구매, 없으면 `shopRefresh` 를 같은 reducer 로 실행 후 반복(상한 12회 · 실제 최대 6구매+2새로고침).
+    - `ecoSynView(state,p)` (소유자 전용 selector): 정기 = `synView` + `deadAllies`(죽은 동료 0~2 — `synView.dead` 는 죽은 하수인까지 센 사신용 값이라 따로 셈). S01 = 산 필드 하수인 + 속성을 고른 왕·동료만 `placed:true` 로 본 사본을 **같은 `synCount`** 로 셈(미리보기), 미선택 왕·동료는 `pending`. #235 산식·상수·효과 무변경.
+  - `demo/js/ai.js` `aiShop` S01: 살 칸이 없으면 새로 고침 뒤 계속 — 6칸 완료. 그 밖의 AI 순서(볼·회복약·대리 후보 1마리) 무변경. AI 입력에 시너지 현황 추가 없음.
+  - `demo/js/ui.js` `shopHtml`
+    - `shopSynHtml(p)`: "📊 내 시너지 현황" — 왕국 5속성·아키타입 6종 각 `n칸 · (단계) 달성|미달 · (다음)까지 m칸|최고 단계`. 단계 경계 = `V2_KINGDOM_STEPS`, 아키타입은 `V2_ARCH_STEPS` 를 그 타입 표 길이로 자름(표준·공격·지속 (6) · 방어·속공·보호 (5)).
+    - S01: 제목에 "(미리보기 — 필드에 산 하수인 + 고른 왕·동료 속성)" · 미선택 왕·동료는 "미선택 — 상점 완료 때 필드 최다 속성으로 자동 배정: 왕·동료… (위 칸 수에 아직 없음)".
+    - 정기: "왕·동료 시너지: 죽은 동료 n/2 — …" (스킬 이름은 `SKILLS["LD-REVENGE"/"LD-WRATH"].ko` 재사용).
+    - 예비 문구 "남은 필수 비용 🪙N(하수인 k명 + 필요한 새로 고침)…" · 살 칸 0 이면 "살 수 있는 칸이 없습니다 — 🔄 새로 고침으로 새 진열을 받으세요." · 소모품/새로 고침 버튼은 예비 규칙에 걸리면 Dim.
+  - 갱신 시점: 확정 거래의 `shopChanged` → 다시 그리기(기존 경로). 확인 창을 열거나 취소해도 상태가 그대로라 값 불변. 비공개: 현황은 `shopHtml(p)` 안에만 있어 기존 소유자 전용·가림 경로를 그대로 따른다 — 로그·토스트·상대 화면 추가 없음.
+  - `demo/test/shared/harness.js`: `ecoBuyable`·`ecoReserveNeed`·`ecoSynView` 노출(부재 시 undefined).
+- **회귀 (`smoke_issue236` 250 → 272, A절 정정 + A 보강 + 새 S절)**
+  - A(정정): AC44 산 칸 빈칸 · 나머지 칸 불변 · 빈칸 재구매 거부/불변 · 5칸 소진 → 살 칸 0 · 새로 고침 🪙1 → 서로 다른 미보유 ⭐1 5칸 · 6번째 → 필드 6칸 🪙3 · 가방 3칸. AC04 필수 7 · 볼 3개 허용/4번째 거부 · k=6 새로 고침 거부(볼 3개 뒤)/허용(볼 0개) · 하수인 구매 뒤 여유 불변. AC08 필드 1칸 만료 → 자동 구매+자동 새로 고침 6칸 · 볼 보존 · 🪙≥0.
+  - A(보강): AC08 필드 0칸 만료 → 5구매·자동 새로 고침·1구매, 🪙3. **AC45 불변식** 시드 40 × 무작위 합법 요청 30회(구매·소모품·새로 고침·속성·S01 판매·교체) → 막힘 0 · 시간 초과 뒤 항상 6칸 · 🪙≥0. PVE AI S01 새로 고침으로 6칸 완료.
+  - S: AC46 배치 전 `synView` 0 vs 미리보기 불 2 · 아키타입 2칸만 · 미선택 표시 · 왕 🔥 → "불 3칸 · (2) 달성 · (4)까지 1칸" · 거부 요청 불변 · 가방 하수인 미산입 · 배치 뒤 `synView` = 미리보기 + 자동 배정 동료 2. AC47 정기 = `synView` · 죽은 동료 1(`dead` 2) · 같은 속성 티켓 거부 불변 · 티켓·교체 확정 즉시 반영 · 판매 확인 창만으로 불변. AC48 핫시트 가림 화면에 현황 없음 · 상대 칸·사망 변경에 내 화면 불변 · 로그에 칸 수 없음 · `aiShop` 이 현황을 읽지 않음.
+  - **음성 대조**: 예비 재화를 종전 `k` 로 되돌린 변이 → AC45 막힘 8건 · 미완료 2건 등 **fail 9**. 수정 후 **pass 272 / fail 0**.
+- **검증 (Windows 로컬)**: CI 워크플로의 `node demo/test/…` 32종 전부 rc=0(AI vs AI 완주 포함) · `server` `npm test` 전부 통과 · `npm run typecheck` rc=0 · `test:typecheck` 68/1 — 기존과 같은 network.js CRLF 변이 기준점(network.js 무수정) [확정: 무관].
+- **실제 브라우저 (Orca 내장, `file://…/demo/index.html`, 핫시트)**: S01 2구매 → 진열 `[null,null,…]` · "빈칸 (살 수 없음)" 2 · 🪙8 · "남은 필수 비용 🪙5(하수인 4명 + 필요한 새로 고침)"(k=4·v=3 → 4+1) · 현황·미선택 문구 표시. P1 배치 뒤 가림 `overlay handoff` · 가림 안 현황 없음. P2 만료 → 6칸 · 🪙3. 20턴 상점: 가림 중 누수 없음 → 확인 뒤 "🛒 20턴 상점 — P2" · "왕·동료 시너지: 죽은 동료 0/2 — 미달 · 1명이면 🪄 동료의 복수" · "🔥 불 0칸 · 미달 · (2)까지 2칸". 스크린샷은 Orca 런타임 `runtime_unavailable` 로 못 찍었다(DOM 값만).
+- **D9 표기**: 코드·테스트 주석은 "D9 — 2026-09-24 CJ 확정" 으로 적었다. Venus 보고서·Notion 의 [PD 작업 가정] 문구 정정은 PD→Venus 후속(Mars 미수정). 규칙이 다시 바뀌면 `ecoReserveNeed` 한 줄과 AC04·AC08·AC45 기대값만 바꾸면 된다.
+- **한계**: 현황 배치·문구 스타일은 기능형(뱃지 행) — 최종 HUD·레이아웃은 #238. 정기 상점은 헤드리스 + DOM 확인만, 실제 플레이 QA 는 CJ.
+
+## 5-7. Saturn LOW — 예비 재화 문구와 유료 새로 고침 불일치 (2026-09-24)
+
+- **입력**: dispatch `task_0512974fb780` — fresh Saturn QA PASS(HIGH 0 · MEDIUM 0 · LOW 1). 볼 3개 + S01 하수인 5마리 뒤 🪙2 · 살 칸 0 → 현재 필수 🪙2. 새로 고침은 새 진열 5칸 기준 필수 🪙1 이라 합법(🪙1 남김)인데, 문구는 "소모품·새로 고침은 지출 뒤에도 이만큼(🪙2) 남아야" 라고 해 성공한 거래와 모순 **[확정: Saturn 지적 · 아래 재현]**.
+- **수정 (`demo/js/ui.js` `shopHtml` 예비 문구 1줄)**: "소모품은 산 뒤에도 🪙{현재 필수}, 🔄 새로 고침은 새 진열 5칸 기준 🪙{`ecoReserveNeed(S,p,ECO.slots)`}이 남아야 합니다." — 두 값은 `ecoReserveOk` 가 소모품·새로 고침에 쓰는 v 와 같다. 예비 산식·거래·타이머·AI·시너지 무변경. 기존 UI 단언은 이 문구를 담지 않아 테스트 무수정.
+- **검증**: 시드 12 PVE S01 볼 3 + 하수인 5 → 🪙2 · 문구 "소모품은 산 뒤에도 🪙2, 🔄 새로 고침은 새 진열 5칸 기준 🪙1" · 새로 고침 버튼 활성 → `shopRefresh` = shopChanged · 🪙1 · 필수 1(scratch 스크립트, 저장소 밖). `smoke_issue236` **pass 272 / fail 0** · `git diff --check` rc=0. 다른 CI 테스트·브라우저는 재실행하지 않았다(문구 1줄).
+
 ## 6. 남은 것
 
+- 5-6 REVISE 구현 및 5-7 안내 문구 정정 완료. Venus 보고서·Notion GDD-23/24/13의 D9 CJ 확정 표기도 반영됐다. 수정 후 fresh Saturn QA는 PASS(HIGH 0 · MEDIUM 0 · LOW 0)다. CJ 플레이 QA(AC43 · AC44~48)와 최신 HEAD CI가 남았다.
 - D1 해소(5-5절). 핫시트 정기 상점의 실제 브라우저 확인은 하지 않았다 — 헤드리스 가짜 시계(Q3·Q4)로만 봤다.
 - Mars는 5-3에서 실제 브라우저 핫시트 교대까지 확인했다. 헤드리스 하네스로 S01·정기 상점·핫시트 가림 순서·티켓·B08·대리 선택 화면 경로를 실행해 오류 0 을 확인했다. 최종 HUD·레드닷 위치·Dim·연출은 #238.
 - 5-4 정정 후 fresh Saturn 독립 QA는 PASS(HIGH 0, MEDIUM 0, LOW 1: Windows CRLF 변이 기준점)이며 별도 Chrome에서 PVE AI 즉시 완료와 핫시트 불투명 가림을 확인했다. CJ 플레이 QA(AC43) · 필수 CI · 통합 PR은 Mercury 후속이다.

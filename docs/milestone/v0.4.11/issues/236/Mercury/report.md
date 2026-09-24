@@ -9,3 +9,10 @@
 - D1 수정 뒤 새 Saturn 독립 QA: **PASS · HIGH 0 · MEDIUM 0 · LOW 1**. LOW는 Venus 보고서의 옛 Issue 상태 문구였고 Mercury가 현행 90초 상태로 바로잡았다. Saturn 브라우저 재검증은 Orca 런타임을 사용할 수 없어 미확인이고, Mars의 실제 브라우저 증거와 헤드리스 회귀를 별도로 기록한다.
 - 남은 게이트: 수정된 최신 HEAD의 필수 CI A/B/B2/C/D/E 6/6, CJ 전체 플레이 QA(AC43), `milestone/v0.4.11` squash 병합. 완료 전 #236은 OPEN, PR #256은 초안으로 둔다.
 - 원본 `C:/Users/pc_77/orca/Digit-Duel`의 사용자 변경 25건은 읽기 외 작업 없이 보존했다.
+
+## 2026-09-24 CJ 플레이 QA 수정과 재검증
+
+- 위의 244/0·Saturn LOW 1·CI 결과는 수정 전 판정이다. CJ는 구매한 하수인 진열 칸을 빈칸으로 두고, 시작·정기 상점에 현재 내 시너지 현황을 표시하라고 요청했다. 시작 상점의 여섯 번째 하수인은 유료 새로 고침 🪙1로 구매하고 필수 구매·새로 고침 비용을 보존하며 시간 초과 때 자동 새로 고침하는 방향도 CJ가 확정했다.
+- Venus는 GDD-23·24·13과 [6차 보고](../Venus/report.md)의 D9를 CJ 확정으로 정정했다. Mars는 시작 상점 빈칸, 예비 재화, 시간 초과·AI 새로 고침, 배치 전 시너지 미리보기와 정기 상점 실제 시너지 집계, 소유자 전용 표시를 구현했다. Saturn이 지적한 예비 재화 안내 문구 LOW 1건도 정정했다.
+- 최종 fresh Saturn **PASS · HIGH 0 · MEDIUM 0 · LOW 0**. `smoke_issue236` 272/0, `smoke_issue235` 122/0, AI 완주 59/0, 서버 검사와 타입 검사 통과. 독립 경계 검사에서 볼 3개·하수인 5명 뒤 현재 필수 🪙2와 새로 고침 후 필수 🪙1을 구분해 표시하고, 유료 새로 고침 뒤 여섯 번째 구매로 필드 6/6을 확인했다. `git diff --check` 통과. 기존 Windows CRLF `test:typecheck` 기준점은 변경 범위 밖이다.
+- [PR #256](https://github.com/ChangjoSung/Digit-Duel/pull/256)은 초안·Issue #236은 OPEN이다. 이 기록을 커밋한 새 HEAD의 필수 CI A/B/B2/C/D/E 6/6을 확인한 뒤 CJ 전체 플레이 QA(AC43)를 다시 요청한다. CJ PASS 전에는 마일스톤에 병합하지 않는다. 온라인 경제 권위 #237과 최종 HUD #238은 별도 착수 게이트다.

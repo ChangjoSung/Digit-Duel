@@ -804,9 +804,10 @@ function aiShop(p){
   const changed=r=>!!r&&!!r.events[0]&&r.events[0].type==="shopChanged";
   const buy=i=>changed(act({t:"shopBuy",i,seq:S.eco.shop.seq[p]}));
   if(S.eco.shop.kind==="start"){
-    for(let n=0;n<12&&ecoEmptyField(S,p).length;n++){ const i=S.eco.shop.slots[p].findIndex(Boolean); if(i<0||!buy(i)) break; } // 필드 6칸
+    for(let n=0;n<12&&ecoEmptyField(S,p).length;n++){ const i=ecoBuyable(S,p);                    // 필드 6칸 — 산 칸은 빈칸이라 5칸 뒤 새로 고침 (D9 — 2026-09-24 CJ 확정)
+      if(!(i<0?changed(act({t:"shopRefresh",seq:S.eco.shop.seq[p]})):buy(i))) break; }
     for(const k of ["ball","potion"]) act({t:"shopGood",item:k});
-    const i=S.eco.shop.slots[p].findIndex(Boolean); if(i>=0&&S.eco.coins[p]>=1) buy(i);           // 대리 출전 후보 1마리
+    const i=ecoBuyable(S,p); if(i>=0&&S.eco.coins[p]>=1) buy(i);                                  // 대리 출전 후보 1마리
     act({t:"shopDone"}); return;
   }
   for(let n=0;n<20&&S.phase==="shop"&&!S.eco.shop.done[p];n++){

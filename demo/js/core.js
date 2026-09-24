@@ -1355,8 +1355,14 @@ function ecoGate(state,p){
   if(sh.kind==="start") return state.phase==="setup"&&(p===state.setupPlayer||ecoAiSeat(state,p))?null:"상점이 열려 있지 않습니다";
   return state.phase==="shop"&&(sh.active===null||sh.active===p)?null:"상점 차례가 아닙니다";
 }
-/* S01 예비 재화 (2.2): 칸을 채우지 않는 지출은 지출 뒤 🪙 ≥ 빈 필드 칸 수일 때만 */
-function ecoReserveOk(state,p,cost){ return state.eco.shop.kind!=="start"||state.eco.coins[p]-cost>=ecoEmptyField(state,p).length; }
+/* S01 예비 재화 (2.2 · Venus 5차 E2 — 새로 고침 비용 포함은 D9 — 2026-09-24 CJ 확정): 산 칸은 빈칸이라 여섯 번째부터는 새로 고침이 필요하다.
+   남은 필수 비용 = 빈 필드 k + ⌈max(0, k − 살 수 있는 칸 v) ÷ 5⌉ × 새로 고침. 칸을 채우지 않는 지출은 지출 뒤 🪙 ≥ 이 값일 때만.
+   하수인 구매는 🪙·k·v 를 함께 1 줄여 여유가 그대로라 막히지 않는다 — 시간 초과·AI 가 6칸을 못 채우고 멈추는 일이 없다. */
+function ecoBuyable(state,p){ const sh=state.eco.shop; return sh.slots[p].findIndex(s=>!!s&&!sh.sold[p].includes(s.key)); } // 살 수 있는 첫 칸 (-1 = 없음)
+function ecoReserveNeed(state,p,v){ const sh=state.eco.shop, k=ecoEmptyField(state,p).length;
+  if(v===undefined) v=sh.slots[p].filter(s=>!!s&&!sh.sold[p].includes(s.key)).length;             // 기본 = 지금 진열에서 살 수 있는 칸 수
+  return k+Math.ceil(Math.max(0,k-v)/ECO.slots)*ECO.refresh; }
+function ecoReserveOk(state,p,cost,v){ return state.eco.shop.kind!=="start"||state.eco.coins[p]-cost>=ecoReserveNeed(state,p,v); }
 /** @returns {CoreResult} */
 function ecoRefuse(state,p,message){ return {state,events:[{type:"shopRefused",player:p,message}]}; }
 /** @returns {CoreResult} */
@@ -1412,15 +1418,14 @@ function ecoReduce(state,action){
         const r=state.eco.soldHp[p][slot.key]; if(r!==undefined) u.hp=Math.max(1,Math.round(u.maxHp*r)); // 판매 기록 HP 비율 (7.6)
         next.eco.bag[p].push(u); msg=`${u.name} → 가방`;
       }
-      next.eco.shop.slots[p][action.i]=null;
-      if(start){ const taken=new Set(next.eco.shop.slots[p].filter(Boolean).map(s=>s.key)); next.eco.shop.slots[p][action.i]=ecoDraw(next,p,taken); } // S01 무료 보충
+      next.eco.shop.slots[p][action.i]=null;                               // 산 칸은 새로 고침 전까지 빈칸 — S01 도 같다 (5차 CJ 플레이 QA)
       next.eco.shop.seq[p]++;
       return ecoChanged(next,p,msg);
     }
     case "shopRefresh": {
       if(action.seq!==sh.seq[p]) return ecoRefuse(state,p,"진열이 바뀌었습니다 — 다시 골라 주세요");
       if(state.eco.coins[p]<ECO.refresh) return ecoRefuse(state,p,"🪙 코인이 부족합니다");
-      if(!ecoReserveOk(state,p,ECO.refresh)) return ecoRefuse(state,p,"필드 6칸을 채울 코인을 남겨야 합니다");
+      if(!ecoReserveOk(state,p,ECO.refresh,ECO.slots)) return ecoRefuse(state,p,"필드 6칸을 채울 코인을 남겨야 합니다");
       const next=ecoNext(state); next.eco.coins[p]-=ECO.refresh; ecoFill(next,p); next.eco.shop.seq[p]++;
       return ecoChanged(next,p,"🔄 새로 고침");
     }
@@ -1465,10 +1470,10 @@ function ecoReduce(state,action){
     case "shopDone": case "shopTimeout": {
       let next=ecoNext(state);
       if(start){
-        if(action.t==="shopTimeout"){ // 빈 필드 칸을 진열 순번 ①부터 자동 구매 (무료 보충으로 계속 채워진다)
-          for(let n=0;n<ECO.field&&ecoEmptyField(next,p).length;n++){
-            const i=next.eco.shop.slots[p].findIndex(Boolean); if(i<0) break;
-            const r=ecoReduce(next,{t:"shopBuy",player:p,i,seq:next.eco.shop.seq[p]});
+        if(action.t==="shopTimeout"){ // 빈 필드 칸을 살 수 있는 진열 ①부터 자동 구매 · 살 칸이 없으면 새로 고침 🪙1 뒤 다시 ① (D9 — 2026-09-24 CJ 확정)
+          for(let n=0;n<ECO.field*2&&ecoEmptyField(next,p).length;n++){
+            const i=ecoBuyable(next,p), seq=next.eco.shop.seq[p];
+            const r=ecoReduce(next,i<0?{t:"shopRefresh",player:p,seq}:{t:"shopBuy",player:p,i,seq});
             if(r.events[0].type!=="shopChanged") break; next=r.state;
           }
         }
@@ -2203,6 +2208,16 @@ function synView(owner,state){
   const B=g&&g.battle, snap=(B&&B.syn&&B.syn[owner])||synCount(owner,g);
   const stage={}; for(const el of V2_ELEM_ORDER) stage[el]=synKingdomStage(snap,el);
   return {el:Object.assign({},snap.el),arch:Object.assign({},snap.arch),dead:snap.dead,stage,bonus:synArchBonus(snap)};
+}
+/* #236 5차 E16 상점 시너지 현황 — 소유자 전용(상점 화면만 읽는다 · AI 입력 아님). 산식은 위 synCount 그대로.
+   정기 상점: synView(지금 보드) + 죽은 동료 수(왕·동료 시너지 5.3 — synView.dead 는 죽은 하수인까지 센 사신용 값).
+   S01: 배치 전(placed:false)이라 synView 는 0 — 필드에 산 하수인 + 속성을 고른 왕·동료만 놓였다고 보고 센다(미리보기).
+   고르지 않은 왕·동료는 pending 으로 돌려준다 — 완료 때 필드 최다 속성으로 자동 배정된다(2.2). */
+function ecoSynView(state,p){
+  const leaders=state.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally"));
+  if(state.eco.shop.kind!=="start") return Object.assign(synView(p,state),{deadAllies:leaders.filter(x=>x.type==="ally"&&!x.alive).length,pending:[]});
+  const pieces=state.pieces.filter(x=>x.owner===p&&(x.type==="minion"?!!ecoKey(x):x.leaderElChosen)).map(x=>Object.assign({},x,{placed:true}));
+  return Object.assign(synView(p,Object.assign({},state,{pieces})),{deadAllies:0,pending:leaders.filter(x=>!x.leaderElChosen)});
 }
 function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; met(attP.owner,"battles");

@@ -390,6 +390,8 @@ function load(htmlPath,opts){
   /* #236 경제 — 기준판 로드 호환을 위해 부재 시 undefined */
   ECO:typeof ECO!=="undefined"?ECO:undefined, ecoKey:typeof ecoKey==="function"?ecoKey:undefined, ecoUnitOf:typeof ecoUnitOf==="function"?ecoUnitOf:undefined,
   ecoEmptyField:typeof ecoEmptyField==="function"?ecoEmptyField:undefined, ecoPrice:typeof ecoPrice==="function"?ecoPrice:undefined,
+  ecoBuyable:typeof ecoBuyable==="function"?ecoBuyable:undefined, ecoReserveNeed:typeof ecoReserveNeed==="function"?ecoReserveNeed:undefined,
+  ecoSynView:typeof ecoSynView==="function"?ecoSynView:undefined,
   ecoOpenShop:typeof ecoOpenShop==="function"?ecoOpenShop:undefined, checkDeath:typeof checkDeath==="function"?checkDeath:undefined,
   battleCmdFrame:typeof battleCmdFrame==="function"?battleCmdFrame:undefined,
   ballWhy:typeof ballWhy==="function"?ballWhy:undefined, aiShop:typeof aiShop==="function"?aiShop:undefined, aiBagPick:typeof aiBagPick==="function"?aiBagPick:undefined,

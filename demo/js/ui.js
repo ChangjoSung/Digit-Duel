@@ -1506,7 +1506,7 @@ function shopHtml(p){
     return `<div class="fighter"><b>${i+1}. ${ecoName(s.key)} ${ecoStars(s.grade)}</b> ${pr.up?`<span class="badge">${pr.up}</span>`:""}
       <button ${pr.c>coins?"disabled":""} onclick="window.__shop('buy',${i})">${pr.up&&pr.full!==pr.c?`🪙<s>${pr.full}</s> → ${pr.c}`:`🪙${pr.c}`}</button></div>`;
   }).join("");
-  const goods=(start?ECO.startGoods:ECO.goods).map(k=>`<button ${coins<ECO.goodPrice?"disabled":""} onclick="window.__shop('good','${k}')">${GOOD_KO[k]} 🪙${ECO.goodPrice}</button>`).join("");
+  const goods=(start?ECO.startGoods:ECO.goods).map(k=>`<button ${coins<ECO.goodPrice||!ecoReserveOk(S,p,ECO.goodPrice)?"disabled":""} onclick="window.__shop('good','${k}')">${GOOD_KO[k]} 🪙${ECO.goodPrice}</button>`).join("");
   const field=S.pieces.filter(x=>x.owner===p&&x.type==="minion").map(x=>!ecoKey(x)?`<span class="badge">빈칸</span>`
     :`<span class="badge">${x.fresh?"🔴 ":""}${x.alive?"":"💀 "}${x.name} ${ecoStars(/** @type {any} */(x).grade)} HP ${x.hp}/${x.maxHp}</span>`).join("");
   const bag=[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; if(!u) return `<div class="fighter"><small>가방 ${i+1} — 빈칸</small></div>`;
@@ -1516,18 +1516,33 @@ function shopHtml(p){
   const lead=start?`<h3>왕·동료 속성 (무료 — 고르지 않으면 필드 최다 속성)</h3>`+leaders.map(x=>`<div class="row"><small>${TYPE_KO[x.type]}${x.leaderElChosen?` · ${ELEM_KO[x.element]} 선택됨`:""}</small>`
       +V2_ELEM_ORDER.map(el=>`<button ${x.leaderElChosen&&x.element===el?"disabled":""} onclick="window.__shop('lead',${x.id},'${el}')">${ELEM_EMO[el]}</button>`).join("")+`</div>`).join("")
     :`<div class="row"><button ${S.eco.tickets[p]>0?"":"disabled"} onclick="window.__shop('ticket')">🎟 티켓 사용 (${S.eco.tickets[p]})</button></div>`;
-  const empty=ecoEmptyField(S,p).length;
+  const empty=ecoEmptyField(S,p).length, noBuy=ecoBuyable(S,p)<0;
   return `<h2>🛒 ${start?"시작 상점":`${sh.turn}턴 상점`} — ${pname(p)}</h2>
     <div class="row"><span class="badge">🪙 ${coins}</span><span class="badge" id="shopClock">${shopClockText(p)}</span>
       ${start?`<span class="badge">필드 ${ECO.field-empty}/${ECO.field}</span>`:""}</div>
-    ${start&&empty?`<small>필드 빈칸 ${empty}개 — 소모품·새로 고침은 지출 뒤 🪙${empty} 이상 남아야 합니다.</small>`:""}
+    ${start&&empty?`<small>필드 빈칸 ${empty}개 — 남은 필수 비용 🪙${ecoReserveNeed(S,p)}(하수인 ${empty}명 + 필요한 새로 고침). 소모품은 산 뒤에도 🪙${ecoReserveNeed(S,p)}, 🔄 새로 고침은 새 진열 ${ECO.slots}칸 기준 🪙${ecoReserveNeed(S,p,ECO.slots)}이 남아야 합니다.</small>`:""}
+    ${shopSynHtml(p)}
     <h3>진열</h3>${slots}
-    <div class="row"><button ${coins<ECO.refresh?"disabled":""} onclick="window.__shop('refresh')">🔄 새로 고침 🪙${ECO.refresh}</button></div>
+    ${start&&empty&&noBuy?`<small>살 수 있는 칸이 없습니다 — 🔄 새로 고침으로 새 진열을 받으세요.</small>`:""}
+    <div class="row"><button ${coins<ECO.refresh||!ecoReserveOk(S,p,ECO.refresh,ECO.slots)?"disabled":""} onclick="window.__shop('refresh')">🔄 새로 고침 🪙${ECO.refresh}</button></div>
     <h3>소모품${start?"":" · 버프 · 티켓"}</h3><div class="row">${goods}</div>
     <h3>필드</h3><div class="row">${field}</div>
     <h3>가방 (${S.eco.bag[p].length}/${ECO.bagMax})</h3>${bag}
     ${lead}
     <div class="row"><button class="primary" ${start&&empty?"disabled":""} onclick="window.__shop('done')">완료${start?" → 배치":""}</button></div>`;
+}
+/* 5차 E16 — 내 왕국·아키타입 칸 수 · 달성 단계 · 다음 단계까지. 단계 경계는 #235 상수 그대로 (새 효과·수치 없음) */
+function shopSynHtml(p){
+  const v=ecoSynView(S,p), start=S.eco.shop.kind==="start";
+  const stage=(n,steps)=>{ let i=-1; steps.forEach((s,k)=>{ if(n>=s) i=k; }); const nx=steps[i+1];
+    return `${i<0?"미달":`(${steps[i]}) 달성`}${nx?` · (${nx})까지 ${nx-n}칸`:" · 최고 단계"}`; };
+  const el=V2_ELEM_ORDER.map(k=>`<span class="badge el-${k}">${ELEM_EMO[k]} ${ELEM_KO[k]} ${v.el[k]}칸 · ${stage(v.el[k],V2_KINGDOM_STEPS)}</span>`).join("");
+  const arch=Object.keys(V2_ARCH_SYN).map(k=>`<span class="badge">${ARCH_KO[k]} ${v.arch[k]}칸 · ${stage(v.arch[k],V2_ARCH_STEPS.slice(0,V2_ARCH_SYN[k].length))}</span>`).join("");
+  const d=v.deadAllies;
+  const lead=start?(v.pending.length?`<small>미선택 — 상점 완료 때 필드 최다 속성으로 자동 배정: ${v.pending.map(x=>TYPE_KO[x.type]).join("·")} (위 칸 수에 아직 없음)</small>`:"")
+    :`<small>왕·동료 시너지: 죽은 동료 ${d}/2 — ${d>=2?`${SKILLS["LD-REVENGE"].ko} · ${SKILLS["LD-WRATH"].ko}`:d===1?`${SKILLS["LD-REVENGE"].ko} · 2명이면 ${SKILLS["LD-WRATH"].ko}`:`미달 · 1명이면 ${SKILLS["LD-REVENGE"].ko}`}</small>`;
+  return `<h3>📊 내 시너지 현황${start?" (미리보기 — 필드에 산 하수인 + 고른 왕·동료 속성)":""}</h3>
+    <div class="row">${el}</div><div class="row">${arch}</div>${lead}`;
 }
 function shopShow(cover){
   const p=shopViewer(); if(p===null) return;

@@ -3,7 +3,8 @@
    파일을 쓰지 않는다 (Saturn --read-only 재실행 안전). 근거: GDD-23 2.1~2.4 · 7장 · docs/milestone/v0.4.11/issues/236/Venus/report.md AC01~AC43.
 
    절 (AC 번호는 Venus 보고서 9장)
-     A  S01 시작 상점 — 🪙10·지급 0·진열·무료 보충·필드→가방·예비 재화·완료·S01 전용 품목·속성·시간 초과 (AC01~08)
+     A  S01 시작 상점 — 🪙10·지급 0·진열·산 칸 빈칸·필드→가방·예비 재화(새로 고침 포함)·완료·S01 전용 품목·속성·시간 초과 (AC01~08 · AC44 · AC45)
+     S  상점 시너지 현황 — S01 미리보기·정기 실제 집계·죽은 동료·갱신 시점·소유자 전용 (AC46~AC48 · 5차 E16)
      B  정기 상점 시점 — 20·40·60·80턴 보너스·경기 종료 우선·보드 잠금·순서 (AC09~11 · AC39 · AC40)
      C  진열 — 등급 확률·제외·후보 고갈·새로 고침 (AC12~15)
      D  승급·합성·동종 1마리·사망 종 재구매 (AC16~20)
@@ -76,26 +77,34 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   const f0=field(T,0)[0];
   ok(kind(r)==="shopChanged"&&E(T).coins[0]===9&&f0.rosterId===k0&&f0.grade===1&&f0.paid===1&&f0.fresh===true,"AC02·AC03 구매 → 🪙1 차감 · 첫 필드 칸 · 원장 1 · 신규 표시");
   const nsl=E(T).shop.slots[0];
-  ok(nsl[0]&&nsl[0].key!==k0&&nsl[0].grade===1&&!ownKeys(T,0).includes(nsl[0].key)&&new Set(nsl.map(s=>s.key)).size===5,"AC02 산 칸은 즉시 무료 보충 — 새 미보유 ⭐1 · 진열 중복 없음");
+  ok(nsl[0]===null&&JSON.stringify(nsl.slice(1))===JSON.stringify(sl.slice(1)),"AC44 산 칸은 빈칸으로 남고 나머지 칸은 그대로 (무료 보충 없음)");
   ok(E(T).shop.seq[0]===seq0+1,"구매마다 진열 번호 +1");
   refusedClean(T,{t:"shopBuy",player:0,i:1,seq:seq0},"AC36 지난 진열 번호로 온 구매는 거부 · 상태 불변");
-  for(let n=0;n<5;n++) act(T,{t:"shopBuy",player:0,i:n,seq:E(T).shop.seq[0]});
-  ok(T.ecoEmptyField(T.S,0).length===0&&E(T).bag[0].length===0&&E(T).coins[0]===4,"AC03 1~6번째 구매는 필드 6칸");
-  for(let n=0;n<3;n++) act(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]});
-  ok(E(T).bag[0].length===3&&E(T).coins[0]===1&&E(T).bag[0].every(u=>u.grade===1&&u.paid===1&&u.fresh),"AC03 7번째부터 가방 3칸");
-  refusedClean(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]},"AC03 가방 3칸 초과 신규 구매 거부 · 상태 불변");
+  refusedClean(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]},"AC44 빈칸 재구매 거부 · 상태 불변");
+  for(let n=1;n<5;n++) act(T,{t:"shopBuy",player:0,i:n,seq:E(T).shop.seq[0]});
+  ok(E(T).shop.slots[0].every(s=>s===null)&&T.ecoBuyable(T.S,0)===-1&&E(T).coins[0]===5&&T.ecoEmptyField(T.S,0).length===1,"AC44 5칸을 다 사면 살 칸 0 · 필드 5칸");
+  ok(kind(act(T,{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]}))==="shopChanged"&&E(T).coins[0]===4,"AC44 새로 고침 🪙1");
+  const rsl=E(T).shop.slots[0];
+  ok(rsl.every(s=>s&&s.grade===1&&!ownKeys(T,0).includes(s.key))&&new Set(rsl.map(s=>s.key)).size===5,"AC44 새로 고침 진열 = 서로 다른 미보유 ⭐1 5칸");
+  act(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]});
+  ok(T.ecoEmptyField(T.S,0).length===0&&E(T).bag[0].length===0&&E(T).coins[0]===3,"AC03 1~6번째 구매는 필드 6칸 (5칸 → 새로 고침 → 6번째)");
+  for(let n=1;n<4;n++) act(T,{t:"shopBuy",player:0,i:n,seq:E(T).shop.seq[0]});
+  ok(E(T).bag[0].length===3&&E(T).coins[0]===0&&E(T).bag[0].every(u=>u.grade===1&&u.paid===1&&u.fresh),"AC03 7번째부터 가방 3칸");
+  E(T).coins[0]=1; refusedClean(T,{t:"shopBuy",player:0,i:4,seq:E(T).shop.seq[0]},"AC03 가방 3칸 초과 신규 구매 거부 · 상태 불변");
   ok(uniqueOwned(T,0),"AC19 S01 에서도 같은 종 2마리 없음");
   ok(T.S.roster[0].length===6&&T.S.roster[0].every((k,i)=>field(T,0)[i].rosterId===k),"S01 산 필드가 배치 로스터와 같은 순서로 이어진다");
 }
-{ /* AC04 예비 재화 */
+{ /* AC04 예비 재화 — 필수(k, v) = k + ⌈max(0, k − v) ÷ 5⌉ (D9 — 2026-09-24 CJ 확정) */
   const T=pveSetup(12);
-  for(let n=0;n<4;n++) ok(kind(act(T,{t:"shopGood",player:0,item:"ball"}))==="shopChanged","AC04 k=6 볼 "+(n+1)+"번째 허용");
-  refusedClean(T,{t:"shopGood",player:0,item:"ball"},"AC04 k=6 볼 5번째 거부 (지출 뒤 🪙5 < 6) · 상태 불변");
-  refusedClean(T,{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]},"AC04 새로 고침도 같은 규칙");
+  eq(T.ecoReserveNeed(T.S,0),7,"AC04 시작 🪙10·k=6·v=5 → 필수 7");
+  { const T2=pveSetup(12); ok(kind(act(T2,{t:"shopRefresh",player:0,seq:E(T2).shop.seq[0]}))==="shopChanged","AC04 볼 0개일 때 k=6 새로 고침 허용 (🪙9 ≥ 7)"); }
+  for(let n=0;n<3;n++) ok(kind(act(T,{t:"shopGood",player:0,item:"ball"}))==="shopChanged","AC04 k=6 볼 "+(n+1)+"번째 허용");
+  refusedClean(T,{t:"shopGood",player:0,item:"ball"},"AC04 k=6 볼 4번째 거부 (지출 뒤 🪙6 < 7) · 상태 불변");
+  refusedClean(T,{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]},"AC04 k=6 새로 고침 거부 (지출 뒤 🪙6 < 필수(6, 5)=7)");
   act(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]});
-  eq(E(T).coins[0]-T.ecoEmptyField(T.S,0).length,0,"AC04 하수인 구매는 🪙와 빈칸을 함께 1 줄여 여유(🪙−k)는 그대로 — [확정] 규칙대로 계산 (Venus AC04 둘째 문장과 다름, 보고서 기재)");
+  eq(E(T).coins[0]-T.ecoReserveNeed(T.S,0),0,"AC04 하수인 구매는 🪙·k·v 를 함께 1 줄여 여유(🪙 − 필수)는 그대로");
   refusedClean(T,{t:"shopGood",player:0,item:"potion"},"AC04 여유 0 이면 소모품 거부");
-  eq(T.S.balls[0],4,"AC04 확정된 볼 4개 보존");
+  eq(T.S.balls[0],3,"AC04 확정된 볼 3개 보존");
   /* AC05·AC06 */
   refusedClean(T,{t:"shopDone",player:0},"AC05 필드 5칸 이하면 완료 거부");
   refusedClean(T,{t:"shopGood",player:0,item:"ticket"},"AC06 S01 에서 티켓 거부");
@@ -105,12 +114,13 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   ok(kind(act(T,{t:"leaderEl",player:0,pieceId:king.id,el:"land"}))==="shopChanged"&&king.element==="land"&&king.leaderElChosen&&king.skills[1]==="K-2-land","AC07 왕 속성 무료 선택 — 스킬 칸도 그 속성");
   refusedClean(T,{t:"shopTicket",player:0,pieceId:king.id,el:"fire"},"AC35 S01 에서 티켓 사용 거부");
   /* AC08 시간 초과 — 필드 1칸 산 상태 */
-  const slot0=E(T).shop.slots[0][0].key;
+  const slot0=E(T).shop.slots[0][T.ecoBuyable(T.S,0)].key;
   act(T,{t:"shopTimeout",player:0});
   const S=T.S, cnt={}; for(const m of field(T,0)) cnt[m.element]=(cnt[m.element]||0)+1;
   const order=["fire","water","lightning","land","grass"]; let best=order[0]; for(const el of order) if((cnt[el]||0)>(cnt[best]||0)) best=el;
-  ok(T.ecoEmptyField(S,0).length===0&&S.eco.shop.done[0]&&field(T,0)[1].rosterId===slot0,"AC08 시간 초과 → 진열 ①부터 자동 구매해 6칸 · 완료");
-  eq(S.balls[0],4,"AC08 확정 거래(볼) 보존");
+  ok(T.ecoEmptyField(S,0).length===0&&S.eco.shop.done[0]&&field(T,0)[1].rosterId===slot0,"AC08 시간 초과 → 살 수 있는 진열 ①부터 자동 구매 · 살 칸 0 이면 자동 새로 고침 → 6칸 · 완료");
+  eq(S.balls[0],3,"AC08 확정 거래(볼) 보존");
+  ok(S.eco.coins[0]>=0,"AC08 코인 음수 없음");
   ok(king.element==="land"&&allies.every(a=>a.element===best),"AC07 고른 속성은 유지 · 안 고른 동료는 필드 최다 속성(동률 🔥→💧→⚡→🗻→🌿)");
   refusedClean(T,{t:"shopGood",player:0,item:"ball"},"AC05 완료 뒤 모든 S01 거래 거부");
   ok(field(T,0).every(m=>!m.fresh),"S01 완료로 신규 표시 해제");
@@ -128,6 +138,31 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   ok(S.eco.shop.done[1]===true&&T.ecoEmptyField(S,1).length===0,"2.3 PVE AI S01 은 시작 즉시 완료 · 필드 6칸");
   ok(S.pieces.filter(x=>x.owner===1).every(x=>!x.placed),"2.3 AI 말 배치는 아직 없다 (사람 배치 뒤)");
   const T2=pveSetup(13); ok(JSON.stringify(T2.S.eco)===JSON.stringify(S.eco),"2.3 같은 시드 → 같은 AI 상점 결과");
+}
+
+{ /* AC08 필드 0칸 만료 · AC45 막힘 없음 불변식 (5차 · D9 — 2026-09-24 CJ 확정) */
+  const T=pveSetup(14); act(T,{t:"shopTimeout",player:0});
+  ok(E(T).shop.done[0]&&T.ecoEmptyField(T.S,0).length===0&&E(T).coins[0]===3&&E(T).shop.slots[0].filter(s=>s===null).length===1,
+    "AC08 필드 0칸 만료 → 5개 구매 · 자동 새로 고침 · 1개 → 6칸 (🪙10−6−1=3, 새 진열의 산 칸 1개만 빈칸)");
+  let lcg=7; const rnd=n=>{ lcg=(lcg*1103515245+12345)&0x7fffffff; return lcg%n; };
+  let stuck=0, runs=0;
+  for(let seed=0;seed<40;seed++){
+    const X=pveSetup(300+seed), S=X.S, ld=S.pieces.filter(x=>x.owner===0&&(x.type==="king"||x.type==="ally"));
+    for(let n=0;n<30&&!S.eco.shop.done[0];n++){
+      const seq=S.eco.shop.seq[0], bag=S.eco.bag[0], fm=field(X,0).filter(m=>X.ecoKey(m)), pick=rnd(7);
+      const a=pick===0?{t:"shopRefresh",seq}:pick===1?{t:"shopGood",item:["potion","cool","cure","ball"][rnd(4)]}
+        :pick===2?{t:"leaderEl",pieceId:ld[rnd(3)].id,el:["fire","water","lightning","land","grass"][rnd(5)]}
+        :pick===3&&bag.length?{t:"shopSell",uid:bag[0].uid}:pick===4&&bag.length&&fm.length?{t:"shopSwap",pieceId:fm[rnd(fm.length)].id,uid:bag[0].uid}
+        :{t:"shopBuy",i:rnd(5),seq};
+      act(X,Object.assign({player:0},a));
+      if(X.ecoEmptyField(S,0).length&&X.ecoBuyable(S,0)<0&&kind(X.reduceCoreAction(S,{t:"shopRefresh",player:0,seq:S.eco.shop.seq[0]}))!=="shopChanged") stuck++;
+    }
+    if(!S.eco.shop.done[0]) act(X,{t:"shopTimeout",player:0});
+    if(S.eco.shop.done[0]&&X.ecoEmptyField(S,0).length===0&&S.eco.coins[0]>=0) runs++;
+  }
+  eq(stuck,0,"AC45 시드 40개 × 무작위 합법 요청 30회 — '빈 필드 > 0 · 살 칸 0 · 새로 고침 거부' 막힘 상태 없음");
+  eq(runs,40,"AC45 무작위 요청 뒤 시간 초과까지 항상 필드 6칸 · 🪙 ≥ 0 · 완료");
+  const A=pveSetup(15); ok(A.S.eco.shop.done[1]&&A.S.eco.coins[1]>=0&&A.S.eco.shop.slots[1].some(s=>s===null),"AC45 PVE AI S01 — 산 칸 빈칸 · 새로 고침으로 6칸 완료");
 }
 
 /* ===== B. 정기 상점 시점 ===== */
@@ -584,6 +619,59 @@ function proxyBattle(T,win){
   T.NET.mode=true; T.startMode("pvp"); ok(T.S.eco===undefined,"D3 온라인 중(NET.mode) 재생성도 종전 경제"); T.NET.mode=false;
   T.startMode("pvp"); ok(!!T.S.eco,"D3 핫시트는 새 경제");
   ok(T.reduceCoreAction(T.S,{t:"roster",rid:T.ROSTER[0].id})===null,"8.1 ⑪ 로컬 경제는 무료 로스터 선택 거부");
+}
+
+/* ===== S. 상점 시너지 현황 (5차 E16 · AC46~AC48) ===== */
+{ /* AC46 S01 미리보기 */
+  const T=pveSetup(16), S=T.S, fire=T.ROSTER.filter(r=>r.element==="fire"), water=T.ROSTER.find(r=>r.element==="water");
+  const king=S.pieces.find(x=>x.owner===0&&x.type==="king");
+  setSlots(T,0,[[fire[0].id,1],[fire[1].id,1],[water.id,1],[fire[2].id,1],[T.ROSTER.find(r=>r.element==="grass").id,1]]);
+  act(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]}); act(T,{t:"shopBuy",player:0,i:1,seq:E(T).shop.seq[0]});
+  let v=T.ecoSynView(S,0);
+  ok(v.el.fire===2&&v.el.water===0&&T.synView(0,S).el.fire===0,"AC46 배치 전(placed:false) synView 는 0 · 미리보기는 산 불 하수인 2");
+  ok(Object.values(v.arch).reduce((a,b)=>a+b,0)===2&&v.arch[fire[0].arch]>=1,"AC46 아키타입도 산 하수인 2칸만 (왕·동료는 아키타입 집계에 없음)");
+  ok(v.pending.length===3&&/미선택/.test(T.shopHtml(0)),"AC46 속성을 고르지 않은 왕·동료는 0 으로 세고 '미선택' 표시");
+  const before=T.shopHtml(0);
+  act(T,{t:"leaderEl",player:0,pieceId:king.id,el:"fire"}); v=T.ecoSynView(S,0);
+  ok(v.el.fire===3&&v.pending.length===2&&T.shopHtml(0).includes("불 3칸 · (2) 달성 · (4)까지 1칸")&&T.shopHtml(0)!==before,"AC46 왕 🔥 선택 → 불 3칸 · (2) 달성 · (4)까지 1칸");
+  refusedClean(T,{t:"leaderEl",player:0,pieceId:king.id,el:"nope"},"AC47 거부 요청은 상태 불변"); eq(T.ecoSynView(S,0).el.fire,3,"AC47 거부 요청 뒤 집계 불변");
+  /* 필드를 마저 채우고 가방에 불 하수인 → 가방은 세지 않는다 */
+  for(let n=0;n<12&&T.ecoEmptyField(S,0).length;n++){ const i=T.ecoBuyable(S,0); act(T,i<0?{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]}:{t:"shopBuy",player:0,i,seq:E(T).shop.seq[0]}); }
+  const pv=T.ecoSynView(S,0), fb=fire.find(r=>!ownKeys(T,0).includes(r.id));
+  setSlots(T,0,[[fb.id,1],null,null,null,null]); act(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]});
+  ok(E(T).bag[0].length===1&&T.ecoSynView(S,0).el.fire===pv.el.fire,"AC46 가방 하수인은 세지 않는다");
+  /* 완료 · 배치 뒤 실제 집계 = 미리보기 + 자동 배정분 */
+  act(T,{t:"shopDone",player:0}); T.netAction({t:"auto"}); T.netAction({t:"setupDone"});
+  const real=T.synView(0,S), autoEl=S.pieces.find(x=>x.owner===0&&x.type==="ally").element;
+  ok(Object.keys(pv.el).every(k=>real.el[k]===pv.el[k]+(k===autoEl?2:0))&&JSON.stringify(real.arch)===JSON.stringify(pv.arch),
+    "AC46 배치 뒤 synView 왕국·아키타입 = 미리보기 + 자동 배정 동료 2");
+}
+{ /* AC47 정기 상점 = 실제 집계 + 죽은 동료 수 · 확정 거래마다 갱신 */
+  const T=pvePlay(17), S=T.S; endTurnAt(T,20);
+  let v=T.ecoSynView(S,0), sv=T.synView(0,S);
+  ok(JSON.stringify(v.el)===JSON.stringify(sv.el)&&JSON.stringify(v.arch)===JSON.stringify(sv.arch)&&v.deadAllies===0,"AC47 정기 상점 = 소유자 synView 그대로");
+  const ally=S.pieces.find(x=>x.owner===0&&x.type==="ally"), m=field(T,0)[0]; ally.alive=false; m.alive=false;
+  v=T.ecoSynView(S,0);
+  ok(v.deadAllies===1&&v.dead===2&&v.el[m.element]===sv.el[m.element]&&/죽은 동료 1\/2/.test(T.shopHtml(0)),"AC47 죽은 동료 1 (synView.dead 2 는 하수인 포함) · 사망 칸 동결");
+  const king=S.pieces.find(x=>x.owner===0&&x.type==="king"), to=["fire","water","lightning","land","grass"].find(e=>e!==king.element), from=king.element;
+  E(T).tickets[0]=1; refusedClean(T,{t:"shopTicket",player:0,pieceId:king.id,el:from},"AC47 같은 속성 티켓 거부 · 상태 불변");
+  const n0=T.ecoSynView(S,0).el; act(T,{t:"shopTicket",player:0,pieceId:king.id,el:to}); const n1=T.ecoSynView(S,0).el;
+  ok(n1[to]===n0[to]+1&&n1[from]===n0[from]-1,"AC47 티켓 확정 → 속성 칸 수 즉시 반영");
+  const alive=field(T,0).find(x=>x.alive&&T.ecoKey(x)), other=T.ROSTER.find(r=>r.element!==alive.element&&!ownKeys(T,0).includes(r.id));
+  S.eco.bag[0]=[unit(T,other.id,alive.grade,1)]; const e0=T.ecoSynView(S,0).el, outEl=alive.element;   // 커밋은 말 객체를 제자리 갱신하므로 먼저 적어 둔다
+  act(T,{t:"shopSwap",player:0,pieceId:alive.id,uid:S.eco.bag[0][0].uid}); const e1=T.ecoSynView(S,0).el;
+  ok(e1[other.element]===e0[other.element]+1&&e1[outEl]===e0[outEl]-1,"AC47 교체 확정 → 속성 칸 수 즉시 반영");
+  T.__shop("sell",S.eco.bag[0][0].uid); ok(JSON.stringify(T.ecoSynView(S,0).el)===JSON.stringify(e1),"AC47 판매 확인 창(미확정)만으로는 집계 불변");
+}
+{ /* AC48 소유자 전용 — 상대 칸은 내 현황에 없고 · 핫시트 가림 화면에는 현황이 없다 */
+  const T=hotseatPlay(18), S=T.S; endTurnAt(T,20);
+  const p=S.eco.shop.active, ov=T.byId("overlay");
+  ok(ov.classList.contains("handoff")&&!/시너지 현황|칸 · /.test(T.byId("overlayBox").innerHTML),"AC48 핫시트 가림 화면에 시너지 현황 없음");
+  const h0=T.shopHtml(p); S.pieces.filter(x=>x.owner===1-p&&x.type==="minion").forEach(x=>{ x.element="grass"; x.alive=false; });
+  S.pieces.filter(x=>x.owner===1-p&&x.type==="ally").forEach(x=>{ x.alive=false; });
+  ok(T.shopHtml(p)===h0,"AC48 상대 칸·사망을 바꿔도 내 상점 화면(현황) 불변");
+  ok(!S.log.some(l=>/시너지 현황|칸 · \(/.test(l.msg)),"AC48 공개 로그에 칸 수·단계 없음");
+  ok(!/ecoSynView|shopSynHtml/.test(T.aiShop.toString()),"AC48 AI 상점 판단은 시너지 현황을 입력으로 쓰지 않는다");
 }
 
 /* ===== Q. 상점 90초 — 사람 좌석마다, 자기 상점이 보이는 순간부터 (2026-09-24 CJ D1 · AC39 · AC40) =====
