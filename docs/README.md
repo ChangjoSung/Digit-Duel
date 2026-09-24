@@ -16,10 +16,12 @@
 | Roblox 작업자 안내 | [바뀐 버전·브랜치 정책](roblox/BRANCH-POLICY.md) — v0.5.0 · `milestone/v0.5.0` 트랙 |
 | 버전별 변경 내용 | [릴리스 노트 목록](releases/README.md) |
 | 구현·QA 기준과 최신 CJ 결정 | [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) |
+| v0.4.11 경제·서버·UI 규칙 | [GDD-23](https://app.notion.com/p/3dc1e7f1708580329da6fe4986654f7b) · [GDD-24](https://app.notion.com/p/3dc1e7f1708581a48421fcec63d3cdf8) |
 | 역할·Git·작업 계약 | [CLAUDE.md](../CLAUDE.md), [권위 문서 등록표](creat2ve/AUTHORITY.md) |
 | 기여·PR·CI 사용법 | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Mercury 인수·현재 상태 | [인수인계 스냅샷](creat2ve/HANDOVER_SNAPSHOT.md) |
 | v0.4.11 HTML 구조 전환 | [#245 migration·rollback·최종 책임 경계](milestone/v0.4.11/issues/245/Mercury/migration-rollback.md) |
+| v0.4.11 현재 상태·#238 착수 전 범위 | [부모 #232](https://github.com/ChangjoSung/Digit-Duel/issues/232) · [#238 분석](milestone/v0.4.11/issues/238/Mercury/prestart-analysis.md) |
 
 ## 버전별 기록
 
@@ -27,7 +29,7 @@
 
 | 버전 | 범위 | 인덱스 |
 |---|---|---|
-| v0.4.11 | HTML 책임 분리·공용 Core·정적 계약 — #245 · **개발 중** | [#245 구조 전환 문서](milestone/v0.4.11/issues/245/Mercury/migration-rollback.md) |
+| v0.4.11 | 전투·시너지·경제·온라인 권위 완료, 전체 UI #238 착수 승인 대기 · **개발 중** | [#232 진행 상태](https://github.com/ChangjoSung/Digit-Duel/issues/232) · [#238 착수 전 분석](milestone/v0.4.11/issues/238/Mercury/prestart-analysis.md) |
 | v0.4.10 | 공개 방 온라인 대전·서버 권위 판정·재접속 — #217·#218 · **2026-09-13 출시** | [v0.4.10](milestone/v0.4.10/) |
 | v0.4.6 | 탐색 개편·연출 템포·전투 정비·세로 UI — #121·#122·#124·#125·#126·#128·#129·#130·#131·#146 · Infra #132/#134 · **2026-09-11 출시** | [v0.4.6](milestone/v0.4.6/README.md) |
 | v0.5.0 | Roblox 포팅 — #118 (별도 작업자 진행 중 · 미출시) | [v0.5.0](milestone/v0.5.0/README.md) |
