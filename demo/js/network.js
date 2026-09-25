@@ -53,6 +53,9 @@ function netAction(a){ // 모든 상태 변경 입력의 단일 경로 — 오�
      같은 대조를 받는다 (room.js _authorize 의 여섯 어휘가 전부 bf 를 다시 싣는다 — 이 파일은 실어 보내기만 하고 판정하지 않는다). */
   if(!NET.replaying&&S.battle&&BATTLE_CMDS.includes(a.t)) a=Object.assign({},a,{bf:battleActionFrame(S)});
   if(!NET.replaying){ FX.inputSeq++; // #106 3.2 입력 잠금: 연출 중 사람 입력(셀·턴바·전투 커맨드)은 무시 — 기권만 허용, AI·수신 재생·자동 종료(idle 뒤)는 해당 없음
+    /* #263 (2026-09-25 CJ): 단절 정지 중에는 **기권도 포함해** 양측의 모든 게임 입력을 막는다. 서버도 E_PAUSED 로 거부하므로
+       여기서 먼저 막아 사유를 알린다 — 복구(재접속·포기하고 방 목록)만 열려 있다. */
+    if(netPaused()){ showToast(NET_PAUSE_MSG); return; }
     if(fxLocked()&&a.t!=="resign"&&!isAI(netActor())) return; }
   if(NET.mode&&!NET.replaying){
     if((a.t==="resign"?S.current:netActor())!==NET.me){ showToast(S.fleePick?"🌐 상대가 말을 교체 중입니다.":"🌐 상대 턴입니다."); return; }
@@ -411,12 +414,21 @@ function netHandlePublicSocketClosed(){
  * @returns {void}
  */
 function netSendCmd(t,extra){ netSend(/** @type {NetCommandFrame} */(Object.assign({v:1,requestId:netReqId(),seatToken:NET.seatToken,tokenGen:NET.tokenGen,t},extra||{}))); }
-/** @param {NetWireAction} a */
+/* #263 Saturn REVISE: 정지 사유 문구 한 곳 — 토스트·모달·상태 줄이 같은 말을 쓴다 */
+const NET_PAUSE_MSG="⏸ 연결이 끊겨 경기와 시간이 멈췄습니다 — 복구될 때까지 기권을 포함한 입력이 잠깁니다.";
+/** #263 Saturn REVISE: 공개 방 **게임 입력의 단일 송신 끝**. netAction 을 거치지 않는 호출(상점 window.__shop ·
+    B08 bagPickShow · 모달 중계 · 기권 확인 창)도 전부 여기를 지나므로 단절 정지 차단을 이 한 곳에 둔다 —
+    호출자마다 다시 걸지 않는다(빠뜨린 호출자가 곧 구멍이었다). 복구 경로(resync·leave·ready)는 netSendCmd
+    직행이라 잠기지 않는다. 서버도 E_PAUSED 로 거부하므로 여기서 먼저 막아 사유를 알릴 뿐이다.
+    @param {NetWireAction} a
+    @returns {boolean} 보냈으면 true · 정지로 막혔으면 false (호출자가 창을 닫지 않도록) */
 function netSendAction(a){
-  if(a&&a.t==="resign"){ netSendCmd("resign"); return; } // room.js handleCommand: 기권은 최상위 명령이지 action 봉투가 아니다
+  if(netPaused()){ showToast(NET_PAUSE_MSG); return false; }
+  if(a&&a.t==="resign"){ netSendCmd("resign"); return true; } // room.js handleCommand: 기권은 최상위 명령이지 action 봉투가 아니다
   NET.lastActionRev=NET.revision; NET.lastAction=a&&a.t; NET.lastActionAuto=!!(a&&(a.auto||(a.t==="skipMain"&&NET.autoSending)));
   NET.lastActionEco=!!(a&&(/^shop|^leaderEl$|^bagPick$/.test(a.t)));
   netSendCmd("action",{baseRevision:NET.revision,action:a});
+  return true;
 }
 /* 준비 의사 — 사용자가 [배치 완료 → 준비 완료]를 누른 의사는 NET.readyWanted 로 들고 있고, 표시(내 준비 완료)는
    서버가 seats.ready 로 확정한 NET.myReady 만 쓴다. 서버는 두 좌석이 모두 앉은 SETUP 에서만 setup·ready 를 받으므로,
@@ -566,7 +578,12 @@ function netApplyRoomState(data,isResumeFrame){
   netFxResetCursorIfNeeded(); // (epoch,roomId,seat) 경계 — 스냅샷 캐시보다 먼저
   const at=Date.now(); // #237 서버 시계·재연결 유예는 남은 ms 로 온다 — 받은 순간부터 로컬로 줄여 표시만 한다(마감 판정은 서버)
   NET.ecoClock=data.clock?Object.assign({at},data.clock):null;
+  const wasPaused=netPaused(); // #263 정지가 풀리는 순간 — 잠금 중 보류된 대기 콜백을 흘려보낸다(fxIdle 이 잠금을 다시 본다)
   NET.pause=Array.isArray(data.pause)&&data.pause.length?data.pause.map(x=>Object.assign({at},x)):null;
+  /* #263 Saturn 2차 REVISE: 흘려보내기는 **권위 상태 재수화·다시 그리기 뒤**로 미룬다(netUnpauseFlush).
+     이 자리에서 부르면 NET.revision 은 이미 새 값인데 S 는 아직 옛 보드라, 대기 콜백(UI_PORT.defer)과
+     autoEndCheck 가 옛 turn/state 를 읽고 새 revision 으로 낡은 자동 입력을 보낼 수 있다. */
+  const unpaused=wasPaused&&!netPaused();
   /* #217 서버 v4 확정 계약(room.js toSeatView) — 시작 전 룸이 종결되면(호스트 이탈 유예 만료 등)
      data.state가 CANCELED|VOID|CLOSED, data.phase는 그 소문자형으로 온다(room.js TERMINAL_NO_BOARD).
      이 분기가 netBuildAuthoritativeBoard보다 먼저 걸려 보드 없는 종결 뷰가 play로 오인되지 않게 한다. */
@@ -576,7 +593,7 @@ function netApplyRoomState(data,isResumeFrame){
     return;
   }
   if(data.phase==="shop"&&data.state!=="IN_PROGRESS"||data.phase==="setup"&&data.you&&Array.isArray(data.you.pieces)) netApplyEcoSetup(data); // #237 경제 방의 경기 전(시작 상점 → 배치)
-  if(!data.phase||data.phase==="setup"||data.state==="SETUP"){ netFxEnqueue(data.fx,!!isResumeFrame); render(); netFxPump(); return; } // 대국 시작 전 — ready 배지만 갱신, 보드는 아직 없다(§7)
+  if(!data.phase||data.phase==="setup"||data.state==="SETUP"){ netFxEnqueue(data.fx,!!isResumeFrame); render(); netFxPump(); netUnpauseFlush(unpaused); return; } // 대국 시작 전 — ready 배지만 갱신, 보드는 아직 없다(§7)
   netBuildAuthoritativeBoard(data);
   /* 새 이벤트를 먼저 큐에 올리고(재생은 아직) 그린 뒤 재생한다 — 그래야 이번 행동의 타격이 재생되기 전에
      전투 무대가 최종 HP로 먼저 그려졌다가 되돌아가는 일이 없다(표시 HP는 재생 대기 중이면 유지된다).
@@ -584,7 +601,10 @@ function netApplyRoomState(data,isResumeFrame){
   netFxEnqueue(data.fx,!!isResumeFrame);
   render();
   netFxPump();
+  netUnpauseFlush(unpaused);
 }
+/* 정지가 풀린 프레임에서만, 그리고 권위 상태가 자리잡은 뒤에만 잠금 중 보류된 대기 콜백을 흘려보낸다 */
+function netUnpauseFlush(unpaused){ if(unpaused) try{ fxIdle(); }catch(e){} }
 function netBuildAuthoritativeBoard(data){
   NET.mode=true; NET.started=true; NET.preparing=false; // #217 온라인 마스킹·netActor·modal 동기화 배선을 켠다 — 레거시 hello/hello2 브리지는 공개 방 경로에서 쓰지 않는다
   const you=data.you||{};
@@ -686,9 +706,14 @@ function netClockText(){
 }
 /* 상점·B08·상대 차례에도 기권할 수 있다(경제 방 GDD-23 2.4) — 확인 창은 로컬, 확정만 서버 명령(차례 판정은 서버).
    확인 창은 동기화 오버레이가 아니라 직접 닫는다 — 보드(오버레이 없음)에서 연 창이 남지 않게, 상점·B08 은 다음 동기화가 다시 그린다 */
-function netResignBtn(){ return `<div class="row"><button type="button" class="danger" onclick="netEcoResign()">🏳️ 기권</button></div>`; }
-function netEcoResign(){ netLocalModal();
-  modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,[["기권 확정",()=>{ closeModal(); NET.overlaySig=null; netSendCmd("resign"); render(); }],["취소",()=>{ closeModal(); NET.overlaySig=null; render(); }]]); }
+function netResignBtn(){ return netPaused()
+  ? `<div class="row"><button type="button" class="danger" disabled aria-disabled="true">🏳️ 기권</button><small role="status">⏸ 연결 대기 — 경기·시간이 멈춰 기권도 잠겨 있습니다.</small></div>`
+  : `<div class="row"><button type="button" class="danger" onclick="netEcoResign()">🏳️ 기권</button></div>`; }
+function netEcoResign(){ if(netPaused()){ showToast(NET_PAUSE_MSG); return; }
+  netLocalModal();
+  /* #263 Saturn REVISE: **확정 시점에도** 다시 본다 — 창을 연 뒤에 단절이 시작될 수 있다. netSendAction 이
+     정지면 false 를 돌려주므로 창을 닫지 않고 사유만 띄운다(복구되면 그 자리에서 다시 누를 수 있다). */
+  modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,[["기권 확정",()=>{ if(!netSendAction({t:"resign"})) return; closeModal(); NET.overlaySig=null; render(); }],["취소",()=>{ closeModal(); NET.overlaySig=null; render(); }]]); }
 function netRenderEcoOverlay(kind){
   const wait=(h,p)=>_modalCore(`<h2>${h}</h2><p style="margin:8px 0;color:var(--dim)">${p}</p>`+netResignBtn(),[]);
   if(kind==="shop"){ const p=shopViewer();
@@ -897,6 +922,11 @@ window.netJoinPublicRoom=function(roomId){
 };
 /* 준비 완료/취소 — 표시는 서버 확정값(seats.ready)만. 취소하면 배치 화면으로 돌아가 자기 배치를 고칠 수 있다(서버는 내 ready만 해제). */
 window.netRoomReady=function(flag){
+  /* #263 Saturn 2차 REVISE: 정지 중에는 **상태를 바꾸기 전에** 막는다. 종전에는 readyWanted/readySent 를 먼저 지우고
+     unready 를 보냈는데, 서버는 E_PAUSED 로 거부하므로 **화면만** 배치 단계로 되돌아가 준비 의사를 잃었다.
+     준비 의사 자체(readyWanted)는 게임 입력이므로 정지 중에는 걸지도 풀지도 않는다 — 복구 뒤 그 자리에서 다시 누른다.
+     재접속 복구의 재전송(netFlushSetupReady)은 새 입력이 아니라 이미 가진 의사의 재표명이라 이 가드 밖이다. */
+  if(netPaused()){ showToast(NET_PAUSE_MSG); return; }
   if(flag){ if(!NET.mySetup) return; NET.readyWanted=true; NET.readySent=false; netFlushSetupReady(); render(); return; }
   NET.readyWanted=false; NET.readySent=false;
   if(NET.roomState==="SETUP") netSendCmd("unready");
@@ -1059,6 +1089,9 @@ function netSyncOverlays(force){
   } else if(w.kind==="modal"){ const m=S._pendingModal; sig="m|"+m.seq+"|"+m.owner+"|"+m.count+"|"+(m.html||"")+"|"+JSON.stringify(m.buttons||[]); }
   else if(w.kind==="shop"||w.kind==="bag"){ const E=S.eco; sig=w.kind+"|"+JSON.stringify([E.shop,E.bagPick&&E.bagPick.token,E.coins,E.tickets,E.buffInv,E.bag]); } // 자기 경제가 바뀔 때만 — 상대 거래 푸시가 열린 확인 창을 닫지 않게
   else sig="none";
+  sig=(netPaused()?"P|":"")+(turnClockLate("battle")?"L|":"")+sig; // #263 정지 토글도 다시 그린다 — 상점·B08 조작이 잠긴 모습으로 바뀌고 복구되면 되돌아온다
+  /* L| = 전투 행동 60초(T4)가 지난 순간. 서버의 만료 푸시가 오기 전에도 전투 커맨드를 잠긴 모습으로 바꾼다 —
+     서명에 넣지 않으면 같은 스냅샷이라 다시 그리지 않아 버튼이 열린 채 남는다(늦은 입력은 서버가 E_DEADLINE 으로 거부한다). */
   if(!force&&sig===NET.overlaySig&&(w.kind==="none"||!hidden)) return;
   NET.overlaySig=sig;
   if(w.kind==="battle"){
@@ -1078,13 +1111,14 @@ function netResumeBarSync(){
   let el=document.getElementById("netResumeBar");
   const on=NET.publicMode&&NET.resuming;
   /* #237 상대 단절(서버가 확정) — 모든 게임 시계·입력이 멈추고 재연결 유예만 흐른다(GDD-23 2.4). 표시는 서버 잔여 ms 기준 */
-  const peer=NET.publicMode&&!on&&NET.pause&&NET.pause.find(x=>x.seat!==NET.me);
+  const peer=NET.publicMode&&!on&&NET.pause&&NET.pause.length?(NET.pause.find(x=>x.seat!==NET.me)||NET.pause[0]):null; // #263: 끊긴 좌석이 나로 확정돼도 정지 사유를 보여 준다
   if(peer&&!NET.pauseTimer) NET.pauseTimer=setInterval(netResumeBarSync,1000);
   if(!peer&&NET.pauseTimer){ clearInterval(NET.pauseTimer); NET.pauseTimer=null; }
   if(peer){ if(!el){ el=document.createElement("div"); el.id="netResumeBar"; if(document.body&&document.body.appendChild) document.body.appendChild(el); }
     const g=peer.graceLeftMs==null?null:Math.max(0,Math.ceil((peer.graceLeftMs-(Date.now()-peer.at))/1000));
     if(el.setAttribute){ el.setAttribute("role","status"); el.setAttribute("aria-live","polite"); }
-    el.innerHTML=`<b>⏸ 상대 연결 대기</b><span>경기와 시간이 멈췄습니다${g===null?"":` (재연결 유예 ${g}초)`}. 상대가 돌아오면 남은 시간부터 이어집니다.</span>`;
+    const who=peer.seat===NET.me?"내 연결":"상대 연결";
+    el.innerHTML=`<b>⏸ ${who} 대기</b><span>경기와 시간이 멈췄습니다${g===null?"":` (재연결 유예 ${g}초)`}. 기권을 포함한 양측 입력이 잠기고, 연결이 돌아오면 남은 시간부터 이어집니다.</span>`;
     if(el.classList) el.classList.remove("hidden"); return; }
   if(!on){ if(el&&el.classList) el.classList.add("hidden"); return; }
   if(!el){ el=document.createElement("div"); el.id="netResumeBar"; if(document.body&&document.body.appendChild) document.body.appendChild(el); }
