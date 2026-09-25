@@ -1,6 +1,6 @@
 # #263 Mars — 클라이언트/UI 구현 보고
 
-- 기준: [Issue #263](https://github.com/ChangjoSung/Digit-Duel/issues/263) 본문(2026-09-25 CJ Q1=A·Q2=A 확정) · [CLAUDE.md](../../../../../CLAUDE.md) · [AUTHORITY.md](../../../../creat2ve/AUTHORITY.md) · [QA 최소 운영](../../../../creat2ve/QA_MINIMUM_POLICY.md) · [Jupiter 보고](../Jupiter/report.md) 특히 4절
+- 기준: [Issue #263](https://github.com/ChangjoSung/Digit-Duel/issues/263) 본문(2026-09-25 CJ Q1=A·Q2=A 확정) · [CLAUDE.md](../../../../../../CLAUDE.md) · [AUTHORITY.md](../../../../../creat2ve/AUTHORITY.md) · [QA 최소 운영](../../../../../creat2ve/QA_MINIMUM_POLICY.md) · [Jupiter 보고](../Jupiter/report.md) 특히 4절
 - 작업 브랜치: `ChangjoSung/issue-263-shop-timers` · Ponytail full 적용 · Git 쓰기·스테이징·커밋·PR·이슈 조작·배포·Render 자원 생성·결제 없음
 - 범위: 클라이언트 표시·입력 계층(`demo/js/ui.js`·`demo/js/network.js`·`demo/css/game.css`)과 대상 검사. **Core·서버(`demo/js/core.js`·`data.js`·`ai.js`·`server/**`)는 한 줄도 건드리지 않았다** — 호환 결함도 발견하지 않아 에스컬레이션이 없었다. 작업 시작 시점의 미커밋 Jupiter 변경물과 모든 dirty/untracked 파일을 보존했다.
 
