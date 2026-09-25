@@ -160,6 +160,7 @@
   #msgBox.big{font-size:18px; font-weight:bold; text-align:center;}
   @media (max-width:480px){ .bmenu button{font-size:13px; padding:10px 4px;} #fxTitle{font-size:26px;} #fxBanner.count #fxTitle{font-size:64px;} }
   .badge{display:inline-block; padding:1px 6px; border-radius:8px; background:var(--panel2); border:1px solid var(--line); font-size:12px; margin:1px;}
+  .badge:empty{display:none;} /* #263 배치 90초·행동 30초 배지는 그 시한이 없을 때 자리를 차지하지 않는다 */
   button{background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px;}
   button:hover{border-color:var(--accent);}
   button:disabled{opacity:.35; cursor:default;}
@@ -651,3 +652,5 @@
   /* 로비·결과 화면에서는 기록·지표 서랍을 접어 둔다 (개발용 상시 사이드바 제거) */
   #app[data-screen="lobby"] #drawerLog,#app[data-screen="lobby"] #drawerMetrics,
   #app[data-screen="title"] #drawerLog,#app[data-screen="title"] #drawerMetrics{display:none;}
+/* #263 단절 정지 — 상점 조작 잠금 래퍼(<fieldset disabled>)는 테두리·여백을 만들지 않는다 */
+fieldset.pauseLock{border:0;padding:0;margin:0;min-width:0}

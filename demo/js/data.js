@@ -53,13 +53,14 @@ const BAL={
 };
 /* #236 (GDD-23 2.1~2.3 · 7.2~7.7) 경제 수치 — 로컬 모드(PVE·핫시트·sim) 전용. 온라인은 #237 전환 전까지 위 BAL 의 종전 경제를 쓴다 */
 const ECO={
-  start:10, field:6, bagMax:3, slots:5, legendPrice:10, goodPrice:1, refresh:1,
+  start:10, field:6, bagMax:3, slots:6, legendPrice:10, goodPrice:1, refresh:1,   // #263 (2026-09-25 CJ): 하수인 진열은 S01·정기 모두 6칸 고정
   shopTurns:[20,40,60,80], bonus:{20:2,40:3,60:4,80:5},
   tiers:{20:[1,2],40:[2,3],60:[3,4],80:[4,5]}, lowPct:0.6,      // 칸마다 낮은 등급 60% / 높은 등급 40% (⭐5 = 전설)
   win:3, lose:1, bushPerZone:4, capHpPct:0.7,
   startGoods:["potion","cool","cure","ball"],                   // 시작 상점 (2.2)
   goods:["potion","cool","cure","ball","ticket","power","time","escape"], // 정기 상점 (7.3)
-  shopSec:90, bagPickSec:20                                     // 상점 1인 90초 (PVE·핫시트 순차 최대 180초 — 자기 상점이 보이는 순간부터, 2026-09-24 CJ D1) · B08 20초
+  shopSec:90, bagPickSec:20,                                    // 상점 1인 90초 (PVE·핫시트 순차 최대 180초 — 자기 상점이 보이는 순간부터, 2026-09-24 CJ D1) · B08 20초
+  placeSec:90, actSec:30, battleSec:60                          // #263: 배치 90초(S01 을 직접 끝낸 좌석만) · 게임 행동 30초(출전 후보 선택 포함 · 전투 중 정지) · 전투 행동 60초(2026-09-25 CJ T4)
 };
 /* ===== #21 시드 가능한 RNG — 게임 로직의 모든 난수는 rand()를 경유. setSeed(n)로 결정적 재현, setSeed(null)로 Math.random 복귀 ===== */
 let RNG=null; // null → Math.random (테스트 하네스의 Math.random 오버라이드와 호환)
@@ -539,13 +540,18 @@ function syncLeaderSkills(p,state){
   p.revealedSkills=p.revealedSkills.filter(i=>i<ids.length&&old[i]===ids[i]);
 }
 function syncOwnerLeaders(owner,state){ const game=state||S; if(!game||!game.pieces) return; for(const x of game.pieces) if(x.owner===owner&&(x.type==="king"||x.type==="ally")) syncLeaderSkills(x,game); }
-/* 2.2 왕·동료 속성 미선택 규칙 — 필드 하수인에 가장 많은 속성, 동률이면 🔥 → 💧 → ⚡ → 🗻 → 🌿. 선택 UI 는 #236/#238 */
+/* 2.2 왕·동료 속성 미선택 규칙 — 필드 하수인에 가장 많은 왕국. 선택 UI 는 #236/#238.
+   #263 (2026-09-25 CJ Q1=A): 공동 1위가 둘 이상이면 종전 고정 순서(🔥 → 💧 → ⚡ → 🗻 → 🌿) 대신 난수로 고른다.
+   호출이 곧 추첨이고 assignLeaderElements 가 그 결과를 왕·동료 3명에게 그대로 나눠 주므로 **좌석당 난수는 한 번**이다.
+   필드에 하수인이 하나도 없으면 후보 왕국 자체가 없다 — 난수를 쓰지 않고 종전 첫 순서를 그대로 돌려준다. */
 function leaderDefaultElement(owner,state){
   const game=state||S;
   const cnt={}; for(const el of V2_ELEM_ORDER) cnt[el]=0;
   for(const x of game.pieces) if(x.owner===owner&&x.type==="minion"&&x.element&&cnt[x.element]!==undefined) cnt[x.element]++;
-  let best=V2_ELEM_ORDER[0]; for(const el of V2_ELEM_ORDER) if(cnt[el]>cnt[best]) best=el;
-  return best;
+  let top=0; for(const el of V2_ELEM_ORDER) if(cnt[el]>top) top=cnt[el];
+  if(top===0) return V2_ELEM_ORDER[0];
+  const tied=V2_ELEM_ORDER.filter(el=>cnt[el]===top);
+  return tied.length===1?tied[0]:tied[Math.floor(rand()*tied.length)];
 }
 function assignLeaderElements(owner,state){
   const game=state||S, el=leaderDefaultElement(owner,game);

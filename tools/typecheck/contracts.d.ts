@@ -26,6 +26,7 @@ type CoreAction =
   | { t: "selTray"; id: number }
   | { t: "roster"; rid: string }
   | { t: "auto" }
+  | { t: "autoPlace"; player: number } // #263 배치 자동 완성 — 좌석을 실어 보내는 "auto" (정규화되면 setupAuto)
   | { t: "clear" }
   | { t: "setupAuto"; player: number; roster: string[]; positions: { id: number; r: number; c: number }[] }
   | { t: "setupConfirm"; preparing: boolean; publicMode: boolean }
@@ -37,7 +38,11 @@ type CoreAction =
   | { t: "move"; id: number; r: number; c: number; origin?: "ai" }
   | { t: "teleSwap"; a: any; b: any; origin?: "ai" }
   | { t: "drainForced"; autoStart: boolean }
-  | { t: "endTurn" }
+  /* #263 T3 — 강제 전투 대상 선택 30초 만료. 적격 후보를 다시 세고 균등 권위 난수로 하나를 남긴다 (선택 1회당 rand 1회). */
+  | { t: "forcedAuto" }
+  /* #263 timeout 은 **서버 시계만** 붙이는 표식이다. 회선으로 온 같은 어휘는 room.js _authorize 가 최소 필드로 다시
+     지어 넘기므로(endTurn → {t,auto?} · pass → {t,bf}) 클라이언트가 이 갈래를 요청할 길은 없다. */
+  | { t: "endTurn"; auto?: boolean; timeout?: boolean }
   | { t: "gameOver"; winner: number | null; winType: string | null; endingBattle?: any }
   | { t: "resign" }
   | { t: "search"; id?: number | null; r?: any; c?: any; ei?: any; origin?: "ai" }
@@ -52,7 +57,7 @@ type CoreAction =
   | { t: "item"; i: number; frame?: any; wire?: BattleWire }
   | { t: "ball"; frame?: any; wire?: BattleWire }
   | { t: "flee"; frame?: any; wire?: BattleWire }
-  | { t: "pass"; frame?: any; wire?: BattleWire }
+  | { t: "pass"; frame?: any; wire?: BattleWire; timeout?: boolean } // #263 T4 timeout — 전투 행동 60초 만료 (서버 시계 전용)
   | { t: "act"; k: string; frame?: any; wire?: BattleWire }
   | { t: "netSetup"; player: number; data: any }
   | { t: "hydrate"; seat: number; view: any }
@@ -157,6 +162,7 @@ type CoreEvent =
   | { type: "moved"; piece: BoardPiece; trace: boolean; healBroken: boolean; collision: boolean; forced: number[] | null; kingReach?: boolean } // kingReach 갈래만 — 화면 갱신을 matchEnded·kingReached 에 넘긴다
   | { type: "forcedExempt"; owner?: number; message: string; toast?: string } // 대상이 사라진 면제는 owner 를 싣지 않는다 (실측)
   | { type: "forcedPromoted"; piece: BoardPiece; list: number[]; autoStart: boolean }
+  | { type: "forcedAutoPick"; id: number; count: number }     // #263 T3 시한 만료 — 서버가 고른 강제 전투 대상(적격 후보 수만 싣는다)
   | { type: "searchRefused"; owner: number }
   | { type: "searched"; owner: number; piece: BoardPiece; healBroken: boolean }
   | { type: "searchDone"; owner: number; title: string; sub: string; fxKey?: string; tut?: string; seq: number }
@@ -249,7 +255,7 @@ type ReservePiece = Partial<Piece> & { [k: string]: any };
     active: 핫시트 순차 상점에서 지금 쓰는 사람(동시 오픈은 null) · next: 상점이 닫히면 턴을 받을 사람 */
 interface EcoShop {
   kind: "start" | "regular"; turn: number;
-  seq: number[]; slots: ({ key: string; grade: number } | null)[][]; sold: string[][]; done: boolean[];
+  seq: number[]; slots: ({ key: string; grade: number; soldOut?: boolean } | null)[][]; sold: string[][]; done: boolean[]; // #263 soldOut: 산 칸(수동 새로 고침 전까지 구매 불가)
   active: number | null; next: number | null;
 }
 

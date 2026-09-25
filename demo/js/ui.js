@@ -30,7 +30,7 @@ function applyUiEvents(events){
     if(event.type==="logAppended"){ renderLog(); continue; }
     if(event.type==="battleRedraw"){ battleModal(); continue; }
     if(event.type==="closeOverlay"){ closeModal(); continue; }
-    if(event.type==="gameReset"){ fxReleaseAll(); shopClockStop(); bagClockStop(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다
+    if(event.type==="gameReset"){ fxReleaseAll(); shopClockStop(); bagClockStop(); turnClockStop(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다 (#263 배치·행동도 같다)
     if(event.type==="tutHint"){ tutHint(event.key); continue; }
     if(event.type==="memoPick"){ memoModal(event.piece); continue; }
     if(event.type==="contactSituation"){ situationFx(event.att,event.def); continue; }
@@ -318,7 +318,16 @@ function fxLive(){ // 실제 DOM 이 있고 사람이 보는 모드일 때만 �
 }
 function fxMs(key){ return fxLive()?(BAL.fx[key]||0):0; }
 function fxLocked(){ return !!FX.cur||FX.q.length>0||MSGPLAYING||netFxBusyNow(); }
-function netFxBusyNow(){ try{ return !!NET.publicMode&&(NET.fxPlaying||NET.fxQueue.length>0||NET.resuming); }catch(e){ return false; } } // #217 공개 방: 서버 fx 재생 중·재접속 중에도 원본과 같은 입력 잠금 (NET 선언 전 호출 안전)
+function netFxBusyNow(){ try{ return !!NET.publicMode&&(NET.fxPlaying||NET.fxQueue.length>0||netPaused()); }catch(e){ return false; } } // #217 공개 방: 서버 fx 재생 중·재접속 중에도 원본과 같은 입력 잠금 (NET 선언 전 호출 안전)
+/* #263 (2026-09-25 CJ): 단절 정지 — 서버가 확정한 단절(room_state.pause) 또는 내 재접속 중이다. 이 동안 게임 시계와
+   **양측의 모든 게임 입력이 멈춘다 — 기권도 포함**(#237 의 "단절 중에도 즉시 기권" 허용을 대체). 서버도 E_PAUSED 로 막는다. */
+function netPaused(){ try{ return !!NET.publicMode&&(NET.resuming||!!(NET.pause&&NET.pause.length)); }catch(e){ return false; } }
+/* #263 Saturn 2차 REVISE: 정지 중 잠기는 **게임 입력 묶음**의 한 모양 — <fieldset disabled> 하나로 감싸면
+   브라우저가 안쪽 폼 요소를 전부 비활성으로 만든다(키보드·스크린리더 포함). 상점·출전 준비가 같은 모양을 쓴다.
+   복구 입력(방 나가기·재접속 포기)은 이 밖에 둔다 — 잠그는 것은 게임 입력이지 복구가 아니다.
+   송신 차단은 여전히 netSendAction·netRoomReady 가 맡는다(모습만으로 막지 않는다). */
+function pauseLockOpen(subject){ return netPaused()?`<fieldset class="pauseLock" disabled aria-disabled="true"><small role="status">⏸ 연결 대기 — 경기·시간이 멈춰 ${subject} 잠겨 있습니다.</small>`:""; }
+function pauseLockClose(){ return netPaused()?`</fieldset>`:""; }
 function fxSetLockClass(on){ try{ const b=document.body; if(b&&b.classList){ if(on) b.classList.add("fx-lock"); else b.classList.remove("fx-lock"); } }catch(e){} }
 /* #126 (v0.4.7): 결과 배너의 섬광·파편 레이어. 각도·거리·지연이 전부 **인덱스 계산**이라 rand() 도 Math.random 도 쓰지 않는다
    — 시드 스트림·락스텝·AI vs AI 완주 결과에 영향이 0 이다. 결과가 아닌 항목에서는 비워 두므로 다른 배너에는 아무것도 얹히지 않는다.
@@ -716,6 +725,7 @@ function render(){
     : S.phase==="shop" ? `— 🛒 ${S.eco.shop.turn}턴 상점` : S.phase==="bagPick" ? "— 🎒 가방 초과" : "";
   renderBoard(); renderSide(); renderTurnBar(); renderMetrics();
   try{ uiApply(); renderBoardInfo(); fitBoard(); }catch(e){} // #122 표시 계층 — 화면 상태·상태 줄·보드 스케일
+  try{ turnClockSync(); }catch(e){} // #263 배치 90초·행동 30초 (온라인은 서버 시계 표시만)
   try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
 }
 function renderBoard(){
@@ -782,15 +792,19 @@ function renderTurnBar(){
   const aiTurn=isAI(S.current)||(NET.mode&&S.current!==NET.me); // 온라인: 상대 턴이면 조작 불가
   const game=S, turn=S.turnCount, pick=S.fleePick;
   const fresh=()=>S===game&&S.turnCount===turn&&S.fleePick===pick;
-  const mk=(txt,fn,dis,cls)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=()=>{if(fresh()) fn();};b.disabled=!!dis||aiTurn;if(cls)b.className=cls;tb.appendChild(b);return b;};
-  /* #237 서버 권위 경제 방은 상대 차례에도 기권할 수 있다(GDD-23 2.4 · room.js _handleResign) — 그 밖은 종전 자기 턴 규칙 */
+  const paused=netPaused(); // #263 단절 정지 — 양측 게임 입력과 기권을 함께 막는다 (사유는 #netResumeBar 와 입력 토스트)
+  const late=turnClockLate("act"); // #263 시한이 지난 뒤의 늦은 입력 — 서버는 E_DEADLINE 으로 거부한다
+  const mk=(txt,fn,dis,cls)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=()=>{if(fresh()) fn();};b.disabled=!!dis||aiTurn||paused||late;if(cls)b.className=cls;tb.appendChild(b);return b;};
+  /* #237 서버 권위 경제 방은 상대 차례에도 기권할 수 있다(GDD-23 2.4 · room.js _handleResign) — 그 밖은 종전 자기 턴 규칙.
+     #263 (2026-09-25 CJ): 단절 정지 중에는 그 예외도 닫힌다 — 서버가 E_PAUSED 로 거부하므로 버튼부터 비활성이다. */
   const ecoResign=NET.publicMode&&!!S.eco;
-  const mkResign=()=>{ const b=mk("기권",ecoResign?netEcoResign:confirmResign,false,"danger"); if(ecoResign) b.disabled=false; };
+  const mkResign=()=>{ const b=mk("기권",ecoResign?netEcoResign:confirmResign,false,"danger"); if(ecoResign) b.disabled=paused; };
   if(S.fleePick){ // #114 도망 교환 선택 중: 소유자(S.current 와 다를 수 있음)만 [교환 생략] — 그 외 턴 조작은 전부 숨긴다. 기권은 자기 턴 규칙 그대로
     const mine=fleePickMine();
     const b=document.createElement("button"); b.textContent="교환 생략 (그대로 밀어내기)"; b.onclick=()=>{if(fresh()) netAction({t:"fleeSkip"});}; b.disabled=!mine; b.className="primary"; tb.appendChild(b);
     mkResign();
     const s=document.createElement("span"); s.className="badge"; s.textContent=mine?"🏃 도망 성공 — 후방 말(파란 칸)을 클릭해 교환하거나 생략":"🏃 상대가 말을 교체 중입니다…"; tb.appendChild(s);
+    const fc=document.createElement("span"); fc.className="badge"; fc.id="actClock"; fc.setAttribute("role","timer"); fc.textContent=turnClockText("act"); tb.appendChild(fc); // #263 도망 교환도 같은 행동 30초 안이다
     return;
   }
   const sel=S.selected&&!S.selected.tray?S.selected:null;
@@ -807,6 +821,8 @@ function renderTurnBar(){
   mkResign();
   if(forced){const s=document.createElement("span");s.className="badge";s.textContent="⚔️ 강제 전투 대상 선택";tb.appendChild(s);}
   if(aiTurn){const s=document.createElement("span");s.className="badge";s.textContent=(NET.mode&&!isAI(S.current))?"🌐 상대 턴 진행 중…":"🤖 AI 행동 중…";tb.appendChild(s);}
+  if(paused){const s=document.createElement("span");s.className="badge";s.setAttribute("role","status");s.textContent="⏸ 연결 대기 — 경기·시간 정지 (기권 포함 입력 불가)";tb.appendChild(s);}
+  const ac=document.createElement("span"); ac.className="badge"; ac.id="actClock"; ac.setAttribute("role","timer"); ac.textContent=turnClockText("act"); tb.appendChild(ac); // #263 행동 30초
 }
 /* #114 도망 교환 선택의 입력 주인이 이 화면의 사람인가 — PVE: 사람(0) · 핫시트: 기기 공유(소유자 시점으로 전환) · 온라인: NET.me */
 function renderSide(){
@@ -943,7 +959,7 @@ function renderSetup(sp){
     sp.innerHTML=`<h2 id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</h2>
       <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">${line}</p>
       <div class="row"><span class="badge">내 준비: ${NET.myReady?"<span class=\"netOkDot\" aria-hidden=\"true\">●</span> 완료":NET.roomState==="OPEN"?"상대 입장 후 전송":"요청 중…"}</span><span class="badge">상대: ${NET.peerReady?"<span class=\"netOkDot\" aria-hidden=\"true\">●</span> ":""}${opp}</span></div>
-      <div class="row netRoomActions"><button type="button" onclick="netRoomReady(false)">준비 취소</button><button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
+      <div class="row netRoomActions">${pauseLockOpen("준비 취소가")}<button type="button" onclick="netRoomReady(false)">준비 취소</button>${pauseLockClose()}<button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
     return;
   }
   if(NET.publicMode&&!NET.started&&NET.economy&&!S.eco){ // #237 경제 방: 시작 상점은 서버 좌석 뷰로 열린다 — 그 전(상대 입장 대기)에 무료 로스터를 그리지 않는다
@@ -978,7 +994,7 @@ function renderSetup(sp){
   }
   }
   h+=`</section><section class="prepStep" data-step="place">
-  <h2>비공개 배치 (${14-unplaced.length}/14)</h2>
+  <h2>비공개 배치 (${14-unplaced.length}/14) <span class="badge" id="placeClock">${turnClockText("place")}</span></h2>
   <small>말을 클릭 → 자기 진영 칸 클릭. 배치된 말 클릭 시 회수.${rosterDone?"":" <b>하수인은 로스터 6종 선택 후 활성됩니다.</b>"}</small>
   <div class="tray">`;
   for(const x of unplaced){
@@ -987,10 +1003,10 @@ function renderSetup(sp){
       <div class="pc p${p}" aria-label="${pcLabel(x)}">${pcBodyHtml(x)}</div>
     </div>`;
   }
-  h+=`</div><div class="row">
+  h+=`</div>${pauseLockOpen("배치 조작이")}<div class="row">
     <button onclick="autoPlace()">무작위 배치</button>
     <button onclick="clearPlace()">전체 회수</button>
-    <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>${NET.publicMode?"배치 완료 → 준비 완료":NET.preparing?"배치 완료 → 매칭 시작":"배치 완료"}</button></div></section>`;
+    <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>${NET.publicMode?"배치 완료 → 준비 완료":NET.preparing?"배치 완료 → 매칭 시작":"배치 완료"}</button></div>${pauseLockClose()}</section>`;
   sp.innerHTML=h;
   if(S.eco&&!S.eco.shop.done[p]) shopClockStart(p); // #236 S01 90초는 상점이 실제로 그려진 뒤 시작 (가림 중이면 shopClockStart 가 거절)
 }
@@ -1044,7 +1060,7 @@ function uiResetScreen(){ // 이전 경기의 연출 큐·모달·토스트 잔�
   try{ const ob=$("overlayBox"); if(ob) ob.innerHTML=""; }catch(e){}
   try{ clearToasts(); }catch(e){}
   UI.drawer=null; UI.prep="roster";
-  shopClockStop(); bagClockStop(); // #236 이전 경기의 상점·B08 타이머 잔존 0
+  shopClockStop(); bagClockStop(); turnClockStop(); // #236 이전 경기의 상점·B08 타이머 잔존 0 (#263 배치·행동 포함)
   UI.ask=null; UI.hold=false; UI.holdQ=[]; // #122 REVISE: 확인창 소유권·AI 보류 큐도 함께 정리 (이전 경기 잔존 0)
 }
 window.toLobby=()=>{
@@ -1286,7 +1302,7 @@ function battleModal(board){
   };
   // #121 계약 2.3: itemRound(라운드 1회)만 실제 게이트다. itemsX·lastItemX 는 기록으로만 남아 더 이상 버튼을 막지 않는다
   const itemRound=side==="A"?B.itemRoundA:B.itemRoundD;
-  const dis=aiActor||busy||(NET.mode&&ownerP!==NET.me); // 온라인: 상대 행동 차례엔 조작 불가
+  const dis=aiActor||busy||(NET.mode&&ownerP!==NET.me)||turnClockLate("battle"); // 온라인: 상대 행동 차례엔 조작 불가 · #263 T4 시한이 지난 뒤의 늦은 입력도 잠근다
   /* Saturn REVISE P1(비공개): 마스킹 기준은 **소유자 관측**이다 — 온라인·PVE·핫시트를 함께 처리한다 */
   const mineView=viewerIsOwner(ownerP);
   /* #235 비공개: 💪 시너지 가산(synAtk)은 **그 좌석의 필드 아키타입 집계**에서 나온다. 위력 표기에 그대로 실으면
@@ -1365,7 +1381,8 @@ function battleModal(board){
      핸들러는 종전 그대로 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */
   const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}</div>`;
   modal(`<div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2></div>
-    <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}</div>
+    <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}
+      <span class="badge" id="battleClock" role="timer">${turnClockText("battle")}</span>${NET.mode&&ownerP!==NET.me?`<span class="badge" role="status">⏳ 상대 응답 대기</span>`:""}</div>
     <div id="bstage" class="scene"><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
     ${buffLine}
     <div id="msgBox">${busy?"":inBonus?`⚡ ${fighterName(side,B)} 추가 공격 — ${mineView?"기본기 · 2차 · 3차 중 선택 (피해 60%)":"선택을 기다리는 중"}`:(noAtkShow?NO_ATTACK_MSG:`${fighterName(side,B)}의 행동을 선택하세요.`)}</div>
@@ -1384,6 +1401,7 @@ function battleModal(board){
     <details><summary style="font-size:11px;color:var(--dim)">전투 이력</summary><div id="battleLog">${B.blog.slice(-30).join("<br>")}</div></details>`,
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
   uiBattleBox(); // #122 세로 전투 화면 레이아웃 — DOM 은 표시 계층이 만진다
+  try{ turnClockSync(); }catch(e){} // #263 T4 전투 행동 60초 — 전투 화면이 열린 그 자리에서 선다 (render 를 기다리지 않는다)
   window.__skillInfo=i=>uiSkillInfoToggle(i,skillTips[i]);  // 기술 설명 토글 — 표시 전용(송신 0 · 규칙 상태 무변경 · 전투 행동/턴 소비 없음)
   window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
     if(S.battle!==B) return; B.menu=key||null;
@@ -1497,6 +1515,159 @@ function pcBodyHtml(p){return pcFaceHtml(p)+pcInfoHtml(p);}
    자기 상점이 처음 보이는 순간부터 흐른다: 가림이 떠 있는 동안은 시작하지 않고, 가림 확인 뒤 상점이 그려질 때 시작한다. B08 20초도 같은 원칙(가림 뒤). */
 const once=fn=>{ let used=false; return ()=>{ if(used) return; used=true; fn(); }; };
 const SHOPCLK={t:null,iv:null,key:null,dl:0}, BAGCLK={t:null,iv:null};
+/* ===== #263 게임 시한 — 상점 90초 · 배치 90초 · 보드 행동 30초 · 전투 행동 60초(T4) · B08 20초 (다섯 종) =====
+   복수 강제 대상 선택의 30초(T3)는 **새 종류가 아니라 행동 30초를 한 번 더 도는 것**이다 — 저장 자리만 따로 둔다.
+   (2026-09-25 CJ 후속 T1~T4 · Venus 타이머 규칙 동기화 · Jupiter 보고 7절)
+   온라인(공개 방)은 서버가 마감을 소유한다 — 여기는 room_state.clock 의 남은 시간을 그대로 **표시만** 한다(추론 금지).
+   로컬(PVE·핫시트)은 화면이 시계를 건다. 모양은 서버 room.js 와 같다:
+     · 시한 **종류마다 자리가 따로** 있다. 한 좌석이 동시에 두 시한에 걸리기 때문이다 — 전투 행동 60초가 흐르는 동안
+       보드 30초는 남은 시간을 지킨 채 멈추고 전투가 끝나면 **그 값부터** 이어 흐른다. 자리 하나로는 둘 중 하나를 반드시 잃는다.
+     · 키가 그 시한 입력 하나를 가리키고, 키가 바뀌면 전체 시간으로 새로 선다. 키가 같으면 남은 시간이 그대로 이어진다.
+     · 정지(가림·전투·대상 선택·B08·연출)는 남은 시간을 들고 멈춘다 — Q2=A "후보 확정 뒤 전투 중 정지".
+     · 만료된 보드 행동은 전투가 끝난 자리에서 마무리한다(서버 _settleExpiredAct 와 같은 자리).
+   상점 90초(SHOPCLK)·B08 20초(BAGCLK)는 종전 그대로다. 재연결 유예 60초는 게임 시계가 아니다 — 단절 중 유일하게 흐른다.
+   Q5(2026-09-25 CJ 최종): 회복·선택 전투를 고르는 시간은 **보드 30초**에 포함되고, 전투에 들어간 뒤의 명령이 60초다.
+   B02 출전 후보는 단일 강제 대상이면 보드 30초의 잔여, 복수 강제 대상이면 대상 선택 30초의 잔여를 쓴다(전용 B02 타이머 없음). */
+const TURNCLK={c:{},iv:null,firing:false,late:false};   // c[kind] = {key,p,left,dl,t,expired,fired}
+const TURNCLK_KINDS=["place","act","pick","battle"];
+/** 지금 이 기기에서 흐르는 시한 입력들 (온라인·sim·헤드리스는 빈 배열 — 판정은 서버가 한다) */
+function turnClockWants(){
+  if(!S||!S.eco||NET.mode||!fxLive()) return [];                        // 온라인·sim·헤드리스 스텁 제외 (온라인은 서버 시계)
+  const cov=turnClockCovered();
+  if(S.phase==="setup"){
+    /* 배치 90초 — S01 을 끝낸 좌석이 **배치를 확정(setupConfirm)하기 전**까지다. 끝 조건이 "다 놓았다"가 아닌 이유는
+       서버 _wantSeatClock 이 placed 가 아니라 `placed && ready` 를 보는 이유와 같다: 14개를 다 놓고 [배치 완료]를 끝내
+       누르지 않는 좌석에서 시계가 사라지면 경기가 시작되지 않는 교착이 남는데, 그 교착을 없애려고 있는 시한이다.
+       확정하면 setupPlayer 가 넘어가거나(핫시트) phase 가 play 로 바뀌어(PVE·마지막 좌석) 이 시한이 사라진다. */
+    const p=S.setupPlayer;
+    if(isAI(p)||!S.eco.shop||!S.eco.shop.done[p]) return [];
+    return [{kind:"place",p,key:"place:"+p,ms:ECO.placeSec*1000,paused:cov}];
+  }
+  if(S.phase!=="play"&&S.phase!=="bagPick") return [];
+  const out=[];
+  /* T4 전투 행동 60초 — 싸우기·가방·포획·도망을 고르는 시간. **전투 행동 하나마다** 새로 선다: 키에 행동 토큰(actSeq)·
+     라운드·단계를 실어 차례가 넘어가면 새 60초가 되고, 같은 행동을 다시 그려도(하위 메뉴·개봉 표) 남은 시간이 이어진다. */
+  if(S.battle){
+    const B=S.battle, side=actorOfPhase(), p=(side==="A"?B.attP:B.defP).owner;
+    if(!isAI(p)) out.push({kind:"battle",p,key:["battle",S.turnCount,S.battlesUsed,B.actSeq||0,B.round,B.phase].join(":"),
+      ms:ECO.battleSec*1000,paused:cov||fxLocked()||!B.intro}); // 진입 카운트다운이 아직 큐에 들어가기 전(intro 전)도 정지다 — 연출 시간은 60초를 먹지 않는다
+  }
+  /* T3 강제 전투 대상 선택 30초 — 적격 대상이 **둘 이상**일 때만 선다(하나면 T2 로 곧바로 전투라 시계를 새로 세지 않는다).
+     고른 뒤 이어지는 출전 선택(B02)도 **같은 시계로 이어 센다** — 보드 시계로 돌아가면 고르는 데 쓴 시간이 사라져
+     B02 가 사실상 새 30초를 받는다. 키에 이동한 말과 그 턴의 전투 횟수를 실어 텔레포트 큐의 다음 항목은 새 30초를 받는다. */
+  const pick=(S.phase==="play"&&!S.battle&&S.movedPiece
+    &&((S.forcedTargets&&S.forcedTargets.length>1)||(!!S.entryPick&&!!TURNCLK.c.pick)))
+    ?{kind:"pick",p:S.current,key:["pick",S.turnCount,S.battlesUsed,S.movedPiece.id].join(":"),ms:ECO.actSec*1000,paused:cov}:null;
+  if(pick) out.push(pick);
+  /* 보드 행동 30초 — 한 턴에 하나. 키는 턴이 바뀔 때만 바뀌므로 주 행동 뒤 **남은 시간**이 그 턴이 끝날 때까지 이어진다.
+     전투·대상 선택·B08·연출 동안 멈춘다(Q2=A · Jupiter 7-6.4 — 20초·60초와는 끝까지 별개의 시계다). */
+  if(!isAI(S.current)) out.push({kind:"act",p:S.current,key:"act:"+S.turnCount+":"+S.current,ms:ECO.actSec*1000,
+    paused:cov||!!S.battle||!!pick||S.phase==="bagPick"||fxLocked()});
+  return out;
+}
+function turnClockCovered(){ try{ const o=$("overlay"); return !!(o&&o.classList&&o.classList.contains("handoff")); }catch(e){ return false; } }
+function turnClockStop(){ for(const k of TURNCLK_KINDS){ const c=TURNCLK.c[k]; if(c&&c.t) clearTimeout(c.t); }
+  TURNCLK.c={}; clearInterval(TURNCLK.iv); TURNCLK.iv=null; TURNCLK.late=false; }
+function turnClockSync(){
+  if(NET.publicMode&&Object.keys(TURNCLK.c).length) turnClockStop();    // 서버 시계 — 로컬 마감은 걸지 않고 표시 간격만 돌린다
+  const wants=NET.publicMode?[]:turnClockWants();
+  for(const k of TURNCLK_KINDS) turnClockArm(k,wants.find(w=>w.kind===k)||null);
+  const sc=NET.ecoClock;
+  const live=NET.publicMode?(!!sc&&TURNCLK_KINDS.indexOf(sc.key)>=0):Object.keys(TURNCLK.c).length>0;
+  if(live&&!TURNCLK.iv) TURNCLK.iv=setInterval(turnClockSync,500);      // 정지 해제(전투·연출·가림이 끝난 자리)는 다시 그리기를 기다리지 않는다
+  else if(!live&&TURNCLK.iv){ clearInterval(TURNCLK.iv); TURNCLK.iv=null; }
+  turnClockTick();
+}
+/* 시계 하나의 세우기·정지·재개 — 서버 _tick 과 같은 산술이다. 같은 키면 남은 시간을 그대로 두고, 답할 좌석만 옮겨 간다. */
+function turnClockArm(kind,want){
+  let c=TURNCLK.c[kind];
+  if(c&&(!want||c.key!==want.key)){ clearTimeout(c.t); delete TURNCLK.c[kind]; c=null; }
+  if(!want) return;
+  if(!c) c=TURNCLK.c[kind]={key:want.key,p:want.p,left:want.ms,dl:0,t:null,expired:false,fired:false};
+  c.p=want.p;
+  if(!c.expired){
+    if(want.paused&&c.dl){ c.left=Math.max(0,c.dl-Date.now()); c.dl=0; clearTimeout(c.t); c.t=null; }
+    else if(!want.paused&&!c.dl){ const key=c.key; c.dl=Date.now()+c.left; c.t=setTimeout(()=>turnClockFire(kind,key),c.left); }
+  } else if(want.paused) c.fired=false;                                 // 전투·연출이 다시 열렸다 — 끝난 자리에서 한 번 더 마무리한다
+  else if(!c.fired) turnClockFire(kind,c.key);                          // 전투가 끝난 자리에서 미완료 행동 1회 생략 마무리
+  /* fired 는 "이 정지 구간에서 이미 한 번 마무리했다" 다. 없으면 Core 가 거부하는 만료를 간격마다 다시 보내
+     같은 거부 토스트를 끝없이 띄운다 — 1회 생략은 말 그대로 1회다. */
+}
+/* 만료 — 서버 _onClock/_actTimeout/_battleTimeout 과 같은 동작만 한다. 확정된 입력은 보존하고 새 규칙을 만들지 않는다.
+   · 배치: 아직 놓지 않은 말을 Core 가 합법 위치에 놓고(autoPlace) 그대로 준비(배치 완료)로 전이한다.
+   · 전투 행동(T4): **지금 차례인 전투원의 그 행동만** 건너뛴다 — 전투 취소·즉시 패배·경기 종료는 없다.
+   · 보드 행동·대상 선택: 막혀 있는 자리를 순서대로 풀고(turnClockStep) 턴을 넘긴다(T1). 대상 선택 만료는 턴을 넘기지 않는다. */
+function turnClockFire(kind,key){
+  const c=TURNCLK.c[kind]; if(!c||c.key!==key||TURNCLK.firing) return;
+  c.expired=true; c.left=0; c.dl=0; clearTimeout(c.t); c.t=null;
+  const w=turnClockWants().find(x=>x.kind===kind);
+  if(!w||w.key!==key||w.paused) return;                                 // 정지 중이면 그대로 두고, 풀린 뒤 turnClockSync 가 다시 부른다
+  const p=c.p; c.fired=true; TURNCLK.firing=true;
+  try{
+    if(kind==="place"){
+      closeModal();
+      dispatchCoreAction({t:"autoPlace",player:p});
+      if(S.phase==="setup"&&S.setupPlayer===p&&!S.pieces.some(x=>x.owner===p&&!x.placed)) window.setupDoneCore();
+      return;
+    }
+    if(kind==="battle"){
+      const B=S.battle; if(!B) return;
+      /* 쓸 수 있는 기술이 남아 있어도(그리고 R1 추가 공격 중에도) 건너뛴다 — timeout 표식이 수동 넘기기의 조건을 지난다.
+         프레임은 지금 이 전투·행동자·행동 토큰이다(수동 [턴 종료] 버튼이 붙이는 것과 같은 값). */
+      dispatchCoreAction({t:"pass",timeout:true,frame:{B,side:actorOfPhase(),seq:B.actSeq||0,round:B.round,phase:B.phase}});
+      return;
+    }
+    let last=null;
+    for(let n=0;n<8&&S.phase==="play"&&!S.battle;n++){
+      const a=turnClockStep(); if(!a) break;
+      const sig=JSON.stringify(a); if(sig===last) break;                // 같은 자리가 그대로다 — 다시 두드리지 않고 턴 종료로 내려간다
+      last=sig; closeModal(); applyAction(a);
+    }
+    if(kind==="pick") return;                                           // 대상 선택 만료는 그 선택만 대신한다 — 보드에 남은 시간을 빼앗지 않는다
+    if(S.phase==="play"&&!S.battle&&S.current===p&&!S.entryPick)
+      dispatchCoreAction({t:"endTurn",auto:true,timeout:true});          // T1 — 강제 전투 표식이 남아도 평범한 턴 종료 경로로 넘긴다
+  } finally{ TURNCLK.firing=false; }
+}
+/* 만료 시점에 **막혀 있는 자리 하나**를 푸는 액션 (서버 _expiredActStep 과 같은 순서). 없으면 null = 턴을 넘길 차례다.
+   ① 고르던 텔레포트 단계 취소(아무것도 소모하지 않는 되돌림 — 남겨 두면 Core endTurn 이 조용한 무동작이다)
+   ② 도망 뒤 교환은 '교환하지 않음'(자원을 쓰지 않는 쪽 · 서버와 같은 [추론])
+   ③ 답을 기다리는 화면은 대신 고른다 — 탐색 보상은 '포기', 출전 후보(B02)는 본체 출전(Q2=A · 전용 타이머 없음)
+   ④ 강제 전투가 남으면 T3 으로 적격 대상을 다시 세어 고르고 전투를 연다(개시는 사람 클릭과 같은 Core 헬퍼다). */
+/** @returns {NetWireAction|null} 반환 리터럴의 t 가 string 으로 넓어지지 않게 계약으로 문맥을 준다 */
+function turnClockStep(){
+  if(S.teleport) return {t:"tele"};
+  if(S.fleePick) return {t:"fleeSkip",pick:S.fleePick.token};
+  if(S.recruit) return {t:"recruit",step:"giveup",i:0,token:S.recruit.token};
+  if(S.entryPick) return S.entryPick.stage==="reveal"?{t:"battleEntryGo"}:{t:"battleEntryPick",side:S.entryPick.stage,what:"body"};
+  if(S.forcedTargets&&S.forcedTargets.length) return {t:"forcedAuto"};
+  if(S.forcedQueue&&S.forcedQueue.length) return {t:"drainForced",autoStart:true};
+  return null;
+}
+/** 남은 시간 표시 — 온라인은 서버 값(netClockText), 로컬은 이 기기의 마감. 대상이 아니면 빈 문자열(.badge:empty 는 숨는다).
+    보드 배지는 대상 선택 30초가 도는 동안 **그 시계**를 보여 준다 — 서버 _clockView 가 "지금 흐르는 것 하나"를 보내는 것과 같고,
+    둘 다 "지금 남은 초"라는 뜻이라 화면은 구분하지 않는다(Jupiter 7-5.2). */
+function turnClockText(kind){
+  if(NET.publicMode){ const c=NET.ecoClock; return c&&(c.key===kind||(kind==="act"&&c.key==="pick"))?netClockText():""; }
+  const c=kind==="act"?(TURNCLK.c.pick||TURNCLK.c.act):TURNCLK.c[kind];
+  if(!c) return "";
+  const ms=c.dl?c.dl-Date.now():c.left;
+  return `⏱ ${Math.max(0,Math.ceil(ms/1000))}초${c.dl?"":" (정지)"}`;
+}
+/** 시한이 이미 지났는가 — 만료 전이가 도착하기 전의 **늦은 입력**을 화면에서 먼저 막는다(서버는 E_DEADLINE 으로 거부한다). */
+function turnClockLate(kind){
+  if(NET.publicMode){ const c=NET.ecoClock;
+    return !!c&&c.running&&(c.key===kind||(kind==="act"&&c.key==="pick"))&&c.leftMs-(Date.now()-c.at)<=0; }
+  const c=kind==="act"?(TURNCLK.c.pick||TURNCLK.c.act):TURNCLK.c[kind];
+  return !!c&&c.expired;
+}
+function turnClockTick(){
+  for(const k of [["placeClock","place"],["actClock","act"],["battleClock","battle"]]){ const el=$(k[0]); if(el) el.textContent=turnClockText(k[1]); }
+  /* 온라인에서 서버 마감이 지나는 순간 — 푸시가 오기 전에도 조작 버튼을 그 자리에서 잠근다(표시 간격이 알아챈다).
+     지나간 뒤 한 번만 다시 그린다: render → turnClockSync → 여기로 돌아와도 late 가 그대로라 되풀이되지 않는다. */
+  if(!NET.publicMode) return;
+  const late=TURNCLK_KINDS.some(turnClockLate);
+  if(late!==TURNCLK.late){ TURNCLK.late=late; if(!TURNCLK.firing) render(); }
+}
 function shopViewer(){ // 지금 이 기기에서 상점을 쓰는 사람 (없으면 null)
   const sh=S&&S.eco?S.eco.shop:null; if(!sh) return null;
   if(sh.kind==="start") return S.phase==="setup"&&!isAI(S.setupPlayer)&&!sh.done[S.setupPlayer]?S.setupPlayer:null;
@@ -1513,6 +1684,7 @@ function shopHtml(p){
     return {c,full:ecoPrice(s.grade),up:`⭐${u.grade} → ${s.grade>u.grade?s.grade:u.grade+1}`}; };
   const slots=sh.slots[p].map((s,i)=>{
     if(!s) return `<div class="fighter"><small>${i+1}. 빈칸 (살 수 없음)</small></div>`;
+    if(s.soldOut) return `<div class="fighter"><small>${i+1}. ${ecoName(s.key)} ${ecoStars(s.grade)} — <b>SOLD OUT</b></small></div>`; // #263: 산 칸은 새로 고침 전까지 품절
     if(sh.sold[p].includes(s.key)) return `<div class="fighter"><small>${i+1}. ${ecoName(s.key)} ${ecoStars(s.grade)} — <b>판매함</b></small></div>`;
     const pr=cost(s);
     return `<div class="fighter"><b>${i+1}. ${ecoName(s.key)} ${ecoStars(s.grade)}</b> ${pr.up?`<span class="badge">${pr.up}</span>`:""}
@@ -1529,7 +1701,11 @@ function shopHtml(p){
       +V2_ELEM_ORDER.map(el=>`<button ${x.leaderElChosen&&x.element===el?"disabled":""} onclick="window.__shop('lead',${x.id},'${el}')">${ELEM_EMO[el]}</button>`).join("")+`</div>`).join("")
     :`<div class="row"><button ${S.eco.tickets[p]>0?"":"disabled"} onclick="window.__shop('ticket')">🎟 티켓 사용 (${S.eco.tickets[p]})</button></div>`;
   const empty=ecoEmptyField(S,p).length, noBuy=ecoBuyable(S,p)<0;
-  return `<h2>🛒 ${start?"시작 상점":`${sh.turn}턴 상점`} — ${pname(p)}</h2>
+  /* #263 Saturn REVISE: 단절 정지 중에는 상점 조작 전체가 잠긴 모습이어야 한다. 버튼마다 disabled 를 붙이는 대신
+     <fieldset disabled> 하나로 감싼다 — 브라우저가 안쪽 버튼을 전부 비활성으로 만들고(키보드·스크린리더 포함)
+     기권 버튼(netResignBtn)은 이 밖에 붙으므로 그 자리 규칙을 그대로 쓴다. 송신 차단은 netSendAction 이 맡는다. */
+  return pauseLockOpen("상점 조작이")
+    +`<h2>🛒 ${start?"시작 상점":`${sh.turn}턴 상점`} — ${pname(p)}</h2>
     <div class="row"><span class="badge">🪙 ${coins}</span><span class="badge" id="shopClock">${shopClockText(p)}</span>
       ${start?`<span class="badge">필드 ${ECO.field-empty}/${ECO.field}</span>`:""}</div>
     ${start&&empty?`<small>필드 빈칸 ${empty}개 — 남은 필수 비용 🪙${ecoReserveNeed(S,p)}(하수인 ${empty}명 + 필요한 새로 고침). 소모품은 산 뒤에도 🪙${ecoReserveNeed(S,p)}, 🔄 새로 고침은 새 진열 ${ECO.slots}칸 기준 🪙${ecoReserveNeed(S,p,ECO.slots)}이 남아야 합니다.</small>`:""}
@@ -1541,7 +1717,8 @@ function shopHtml(p){
     <h3>필드</h3><div class="row">${field}</div>
     <h3>가방 (${S.eco.bag[p].length}/${ECO.bagMax})</h3>${bag}
     ${lead}
-    <div class="row"><button class="primary" ${start&&empty?"disabled":""} onclick="window.__shop('done')">완료${start?" → 배치":""}</button></div>`;
+    <div class="row"><button class="primary" ${start&&empty?"disabled":""} onclick="window.__shop('done')">완료${start?" → 배치":""}</button></div>`
+    +pauseLockClose();
 }
 /* 5차 E16 — 내 왕국·아키타입 칸 수 · 달성 단계 · 다음 단계까지. 단계 경계는 #235 상수 그대로 (새 효과·수치 없음) */
 function shopSynHtml(p){
@@ -1570,7 +1747,12 @@ function shopClockStart(p){
   const key=S.eco.shop.kind+S.eco.shop.turn+":"+p; if(SHOPCLK.key===key) return; // 같은 좌석의 다시 그리기 = 마감 유지
   shopClockStop(); SHOPCLK.key=key;
   const g=S; SHOPCLK.dl=Date.now()+ECO.shopSec*1000;
-  SHOPCLK.t=setTimeout(()=>{ if(S!==g||!S.eco.shop||S.eco.shop.done[p]) return; closeModal(); dispatchCoreAction({t:"shopTimeout",player:p}); },ECO.shopSec*1000); // 확정 거래는 보존 · 열린 확인 창(미확정)만 취소
+  SHOPCLK.t=setTimeout(()=>{ if(S!==g||!S.eco.shop||S.eco.shop.done[p]) return; closeModal(); dispatchCoreAction({t:"shopTimeout",player:p}); // 확정 거래는 보존 · 열린 확인 창(미확정)만 취소
+    /* #263: S01 시간 초과 좌석은 Core 가 자동 구매에 이어 자동 배치까지 끝냈다 — 그 자리에서 곧바로 배치를 확정한다.
+       배치 90초를 다시 걸지 않는다(서버 _onClock 의 shopTimedOut → _autoPlace 와 같은 자리). 정기 상점은 대상이 아니다. */
+    if(S&&S.phase==="setup"&&S.eco&&S.eco.shop&&S.eco.shop.kind==="start"&&S.eco.shop.done[p]&&S.setupPlayer===p
+       &&!S.pieces.some(x=>x.owner===p&&!x.placed)) window.setupDoneCore();
+  },ECO.shopSec*1000);
   const tick=()=>{ const el=$("shopClock"); if(el) el.textContent=shopClockText(p); }; tick();
   SHOPCLK.iv=setInterval(tick,500);
 }
@@ -1582,7 +1764,7 @@ window.__shop=(op,a,b)=>{
   /* #237 공개 방: 거래는 서버가 판정한다 — 의도만 보내고 결과는 room_state 로 받는다(시작 상점은 배치 화면 안이라 확인 창만 닫는다).
      확인·선택 창은 소유자 로컬 창이다(동기화 모달 중계·비소유자 마스킹 대상이 아니다). */
   const go=act=>{ act=Object.assign({player:p},act);
-    if(NET.publicMode){ if(S.eco.shop.kind==="start") closeModal(); netSendAction(netEcoWire(act)); return; }
+    if(NET.publicMode){ if(!netSendAction(netEcoWire(act))) return; if(S.eco.shop.kind==="start") closeModal(); return; } // #263 보내지 못했으면(정지) 창을 닫지 않는다
     dispatchCoreAction(act); };
   const back=()=>shopShow(false);
   const md=(html,buttons)=>{ netLocalModal(); modal(html,buttons); };
@@ -1619,10 +1801,11 @@ function bagPickShow(){
     closeModal(); dispatchCoreAction({t:"bagPick",i,token:tok}); };
   const show=()=>{ if(S.eco.bagPick!==bp) return;
     netLocalModal(); // 소유자 로컬 창 — 온라인 동기화 모달 중계·마스킹 대상 아님 (오프라인은 무영향)
+    const paused=netPaused(); // #263 Saturn REVISE: 정지 중 B08 선택도 잠긴 모습으로 (modal 의 세 번째 칸 = 실제 disabled)
     modal(`<h2>🎒 가방이 가득 찼습니다 — ${pname(p)}만 확인</h2><p>4마리 중 1마리를 내보냅니다. 내보낸 말은 원장만큼 자동 판매됩니다.</p>
-      <small>고르지 않으면 포획한 말을 내보냅니다 (기존 가방 말은 그대로).</small> <span class="badge" id="bagClock"></span>${NET.publicMode?netResignBtn():""}`,
-      S.eco.bag[p].map((u,i)=>[`${u.name} ${ecoStars(u.grade)} HP ${u.hp}/${u.maxHp} · +🪙${u.paid||0}`,once(()=>go(i))])
-        .concat([[`포획한 ${bp.unit.name} ${ecoStars(bp.unit.grade)} 내보내기 (🪙0)`,once(()=>go(S.eco.bag[p].length))]]));
+      <small>고르지 않으면 포획한 말을 내보냅니다 (기존 가방 말은 그대로).</small> <span class="badge" id="bagClock"></span>${paused?`<small role="status">⏸ 연결 대기 — 경기·시간이 멈춰 선택이 잠겨 있습니다.</small>`:""}${NET.publicMode?netResignBtn():""}`,
+      S.eco.bag[p].map((u,i)=>[`${u.name} ${ecoStars(u.grade)} HP ${u.hp}/${u.maxHp} · +🪙${u.paid||0}`,once(()=>go(i)),paused])
+        .concat([[`포획한 ${bp.unit.name} ${ecoStars(bp.unit.grade)} 내보내기 (🪙0)`,once(()=>go(S.eco.bag[p].length)),paused]]));
     if(NET.publicMode){ bagClockStop(); const tick=()=>{ const el=$("bagClock"); if(el) el.textContent=netClockText(); }; tick(); BAGCLK.iv=setInterval(tick,500); } // 마감·만료는 서버 시계
     else if(fxLive()){ bagClockStop(); const dl=Date.now()+ECO.bagPickSec*1000; // 20초는 소유자에게 창이 보이는 순간부터 (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
       BAGCLK.t=setTimeout(()=>{ if(S.eco.bagPick===bp) go(S.eco.bag[p].length); },ECO.bagPickSec*1000); // 무응답 → 포획한 말만 방출

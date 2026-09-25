@@ -107,6 +107,10 @@ jobs:
       # 승인 수치표를 스위트 안에 따로 옮겨 적어 제품 표와 대조하고, 집계 경계(필드 9칸·사망/포획 칸 동결·가방 제외·
       # 전설/무속성 0)·참전 확정 순간 스냅샷 고정·타입별 상한과 기존 회피 40%/치명 50% 상한 보존·왕국 스킬당 1판정·
       # 전설 패시브(용/마녀/사신)·(2) 미달 무효·소유자 전용 selector(상대 집계 비노출)를 실제 엔진 경로로 본다.
+      # smoke_issue263_client.js (#263, v0.4.11): 클라이언트 표시·입력 계약 — 진열 6칸·SOLD OUT 칸의 구매 버튼 부재,
+      # 로컬(PVE·핫시트) 배치 90초·행동 30초(전투 판정·연출 중 정지 · 만료 1회 턴 넘김 · 출전 후보도 같은 30초 · 가림 불산입),
+      # 온라인은 서버 시계(room_state.clock place·act)를 표시만 하고 로컬 마감을 걸지 않는 것, 단절 정지 중 양측 게임
+      # 입력·기권 잠금과 사유 표시·복구 해제를 본다. 이 파일 전용 가짜 시계(되풀이하는 setInterval 포함) 위에서 본다.
       - name: 턴 흐름·전투·온라인 규칙 회귀
         run: |
           set -e
@@ -131,6 +135,7 @@ jobs:
           node demo/test/regression/smoke_issue235.js
           node demo/test/regression/smoke_issue245.js
           node demo/test/regression/smoke_issue236.js
+          node demo/test/regression/smoke_issue263_client.js
       # smoke_online_art.js (#201, v0.4.8 HotFix): 온라인에서 개별 이미지가 한 번 실패해도 그 자산이 영구히
       # 이모지·텍스트로 남지 않는다. 예산은 **파일 단위**다 — 연속 실패 3회 또는 수명 누적 8회에서 영구 결손으로
       # 굳고, 백오프로 간격을 늘리며, 파일당 예약·조회는 각각 1개다. 응답이 오지도 끊기지도 않는 요청은

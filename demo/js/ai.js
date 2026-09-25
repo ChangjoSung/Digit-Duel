@@ -804,7 +804,7 @@ function aiShop(p){
   const changed=r=>!!r&&!!r.events[0]&&r.events[0].type==="shopChanged";
   const buy=i=>changed(act({t:"shopBuy",i,seq:S.eco.shop.seq[p]}));
   if(S.eco.shop.kind==="start"){
-    for(let n=0;n<12&&ecoEmptyField(S,p).length;n++){ const i=ecoBuyable(S,p);                    // 필드 6칸 — 산 칸은 빈칸이라 5칸 뒤 새로 고침 (D9 — 2026-09-24 CJ 확정)
+    for(let n=0;n<12&&ecoEmptyField(S,p).length;n++){ const i=ecoBuyable(S,p);                    // #263: 진열 6칸 = 필드 6칸이라 새로 고침 없이 채운다 (산 칸은 품절로 남는다)
       if(!(i<0?changed(act({t:"shopRefresh",seq:S.eco.shop.seq[p]})):buy(i))) break; }
     for(const k of ["ball","potion"]) act({t:"shopGood",item:k});
     const i=ecoBuyable(S,p); if(i>=0&&S.eco.coins[p]>=1) buy(i);                                  // 대리 출전 후보 1마리
@@ -813,7 +813,7 @@ function aiShop(p){
   for(let n=0;n<20&&S.phase==="shop"&&!S.eco.shop.done[p];n++){
     const slots=S.eco.shop.slots[p], coins=S.eco.coins[p], bagFree=S.eco.bag[p].length<ECO.bagMax;
     const cost=s=>{ const u=ecoUnitOf(S,p,s.key); return !u?ecoPrice(s.grade):s.grade>u.grade?ecoPrice(s.grade)-ecoPrice(u.grade):ecoPrice(s.grade); };
-    const ok=s=>!!s&&!S.eco.shop.sold[p].includes(s.key)&&cost(s)<=coins&&(bagFree||ecoOwnsKey(S,p,s.key));
+    const ok=s=>ecoSlotOpen(S.eco.shop,p,s)&&cost(s)<=coins&&(bagFree||ecoOwnsKey(S,p,s.key)); // #263: 품절 칸 제외
     const score=s=>(ecoOwnsKey(S,p,s.key)?10:0)+s.grade;           // 승급 우선 → 높은 등급 신규
     let pick=-1;
     slots.forEach((s,i)=>{ if(ok(s)&&(pick<0||score(s)>score(slots[pick]))) pick=i; });

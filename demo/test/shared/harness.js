@@ -356,6 +356,15 @@ function load(htmlPath,opts){
   netFxPump:typeof netFxPump==="function"?netFxPump:undefined, netSyncOverlays:typeof netSyncOverlays==="function"?netSyncOverlays:undefined,
   netSynthBattle:typeof netSynthBattle==="function"?netSynthBattle:undefined, netRenderBattleStage:typeof netRenderBattleStage==="function"?netRenderBattleStage:undefined,
   netFlushSetupReady:typeof netFlushSetupReady==="function"?netFlushSetupReady:undefined, netSendAction:typeof netSendAction==="function"?netSendAction:undefined,
+  /* #263 게임 시한 다섯 종(상점 90·배치 90·행동 30·전투 60·B08 20) · 단절 정지 — 시계 자리와 정지·시한 경과 판정 검증용.
+     복수 강제 대상 선택의 30초는 **행동 30초를 한 번 더 도는 것**이라 종류를 따로 세지 않는다(저장 자리만 다르다). */
+  get TURNCLK(){return typeof TURNCLK!=="undefined"?TURNCLK:undefined;},
+  turnClockText:typeof turnClockText==="function"?turnClockText:undefined, turnClockSync:typeof turnClockSync==="function"?turnClockSync:undefined,
+  turnClockLate:typeof turnClockLate==="function"?turnClockLate:undefined, turnClockWants:typeof turnClockWants==="function"?turnClockWants:undefined,
+  netPaused:typeof netPaused==="function"?netPaused:undefined, netResignBtn:typeof netResignBtn==="function"?netResignBtn:undefined,
+  bagPickShow:typeof bagPickShow==="function"?bagPickShow:undefined, netEcoResign:typeof netEcoResign==="function"?netEcoResign:undefined,
+  netRenderEcoOverlay:typeof netRenderEcoOverlay==="function"?netRenderEcoOverlay:undefined,
+  netClockText:typeof netClockText==="function"?netClockText:undefined,
   autoEndReady:typeof autoEndReady==="function"?autoEndReady:undefined, toLobby:typeof toLobby==="function"?toLobby:undefined,
   NET_RESUME_GRACE_MS:typeof NET_RESUME_GRACE_MS!=="undefined"?NET_RESUME_GRACE_MS:undefined, NET_RESUME_RETRY_MS:typeof NET_RESUME_RETRY_MS!=="undefined"?NET_RESUME_RETRY_MS:undefined,
   TUT,TUT_STEPS,TUT_HINTS,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
