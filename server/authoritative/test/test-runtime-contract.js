@@ -214,13 +214,16 @@ function drive(T, seed, steps) {
 /* #235 시너지(왕국 · 아키타입 · 전설 패시브) 가 실제 규칙으로 켜지면서 같은 각본의 결과가 바뀌었다 — 위 주석이 말하는 "규칙이 바뀌면 반드시 어긋나는" 그 자리다.
    2026-09-22 재기준선: DD_GOLDEN=1 로 두 번 돌려 같은 값임을 확인했고, 아래 쌀둥이 실행 비교가 결정성을 그대로 다시 건다.
    값을 구현에 맞춰 낮춘 것이 아니라, 승인된 규칙 변경의 새 기준선이다. */
+/* #263 (2026-09-25 CJ Q1=A) 재기준선: 왕·동료의 미선택 왕국 동률이 고정 순서에서 **난수 1회**로 바뀌었다 —
+   난수 소비가 늘어 같은 시드의 각본이 다른 판이 된다. 위 주석이 말하는 "규칙이 바뀌면 반드시 어긋나는" 그 자리다.
+   DD_GOLDEN=1 로 두 번 돌려 같은 값임을 확인하고 박았다. 값을 구현에 맞춰 낮춘 것이 아니라 승인된 규칙 변경의 새 기준선이다. */
 const GOLDEN = [
-  { seed: 11, turns: 193, phase: 'play', winner: null, battles: 10, forced: 10, searches: 6,
-    state: 'e34f54fe8e291f52', log: 'deb6c5c972a41f6b', logN: 232, fx: 'e9fda9000717d322', fxN: 40, metrics: 'bd4dd0734edd4a23' },
-  { seed: 44, turns: 102, phase: 'play', winner: null, battles: 1, forced: 1, searches: 3,
-    state: '2e7afdb03290a5a9', log: '1baf6e275497de1a', logN: 117, fx: '1192587af4cd50f9', fxN: 40, metrics: 'dad750cdf9258568' },
-  { seed: 55, turns: 219, phase: 'play', winner: null, battles: 4, forced: 4, searches: 4,
-    state: 'd5d643aab7f786bd', log: '4df332d4325b1db5', logN: 242, fx: '6a4790ecde97a33d', fxN: 40, metrics: '39c674c40570fb11' },
+  { seed: 11, turns: 71, phase: 'play', winner: null, battles: 0, forced: 0, searches: 3,
+    state: '483b50ecf58f344c', log: 'd2b6a79974bda20c', logN: 84, fx: '9802fc2eaad2f033', fxN: 40, metrics: 'fff2fbfce4478d8e' },
+  { seed: 44, turns: 111, phase: 'over', winner: 0, battles: 2, forced: 2, searches: 3,
+    state: '54be1eac51496282', log: 'eb3ab1f5bc3fe290', logN: 128, fx: '0b8775810364dfca', fxN: 40, metrics: '7e0297c8192fe704' },
+  { seed: 55, turns: 135, phase: 'play', winner: null, battles: 9, forced: 9, searches: 6,
+    state: '35850223cf001bbf', log: '3fac178ebf3512f3', logN: 172, fx: 'bd52ade6a2b27033', fxN: 40, metrics: '8a1facbfd255a2c4' },
 ];
 const rep = (k, v) => (v instanceof Set ? [...v] : v);
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);

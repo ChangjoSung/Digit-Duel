@@ -344,15 +344,20 @@ class Room {
   // crypto 난수로 비밀 시드를 뽑는다. 어떤 네트워크 입력도 이 값에 닿지 않는다.
   // economy: #237 경제 경기(시작 상점 → 배치 → 정기 상점·B08). 로비가 넘기며, 끄면 종전 무료 로스터 경기다.
   // shopMs·bagPickMs: 테스트 재현용 시계 주입(graceMs 와 같은 관례). 기본은 Core 상수(ECO.shopSec·bagPickSec).
-  constructor(roomId, { isPublic, epoch, graceMs, seed, economy, shopMs, bagPickMs }) {
+  constructor(roomId, { isPublic, epoch, graceMs, seed, economy, shopMs, bagPickMs, placeMs, actMs, battleMs }) {
     this.roomId = roomId;
     this.isPublic = !!isPublic;
     this.epoch = epoch;
     this.graceMs = graceMs != null ? graceMs : DISCONNECT_GRACE_MS;
     this._testSeed = Number.isInteger(seed) ? seed : null;
     this.economy = !!economy;
-    this._clockMs = { shop: shopMs, bagPick: bagPickMs };
-    this._clock = [null, null]; // #237 좌석별 게임 시계 {key, left, deadline, handle, expired} — 단절 중에는 left 만 들고 멈춘다
+    this._clockMs = { shop: shopMs, bagPick: bagPickMs, place: placeMs, act: actMs, battle: battleMs }; // #263 배치 90초·행동 30초·전투 행동 60초 주입
+    this._clock = [null, null]; // #237 좌석에 묶인 게임 시계 {key, left, deadline, handle, expired, owner} — 상점·배치·B08. 단절 중에는 left 만 들고 멈춘다
+    /* #263 답할 좌석이 단계마다 바뀌는 두 시계는 방이 하나씩만 들고 owner 로 가리킨다 — 자리를 옮겨도 같은 시계라
+       남은 시간이 보존된다(B02 출전 후보 선택은 방어자에게 넘어간다 · 전투 행동은 그 라운드의 행동자다). */
+    this._act = null;    // 보드 행동 30초 (주 행동 · 출전 후보 선택(B02) · 도망 교환) — 한 턴에 하나
+    this._pick = null;   // 강제 전투 대상 선택 30초 (T3, 적격 대상 2개 이상) — 도는 동안 _act 는 남은 시간을 지킨 채 멈춘다
+    this._bclock = null; // 전투 행동 60초 (싸우기·가방·포획·도망)
     this.onUpdate = null;       // #237 시계 만료처럼 명령 없이 일어난 전이를 양 좌석에 알린다(server.js 가 푸시)
     this.state = STATES.OPEN;
     this.createdAt = now();
@@ -382,6 +387,7 @@ class Room {
       credential: null, ws: null, connected: false,
       ready: false, placed: false, rawSetup: null, seq: 0,
       disconnectExpiry: null, disconnectTimer: null,
+      shopTimedOut: false, // #263 S01 을 시간 초과로 끝낸 좌석 — 그 자리에서 자동 배치·준비까지 끝나므로 배치 90초를 받지 않는다
     };
   }
 
@@ -582,7 +588,17 @@ class Room {
 
   handleCommand(seatIndex, msg) {
     // #237 GDD-23 2.4 — 단절이 확정된 동안 모든 행동을 멈춘다. 흐르는 것은 재연결 대기뿐이고 나가기·재동기화·항복만 받는다.
-    if ((msg.t === 'setup' || msg.t === 'ready' || msg.t === 'unready') && this._paused()) return err('E_PAUSED');
+    /* #263 (2026-09-25 CJ): 단절이 확정된 동안에는 **양측 모든 게임 입력**을 막는다 — 기권도 포함이다
+       (#237 의 "항복은 단절 중에도 받는다"를 최신 지시가 대체한다). 흐르는 것은 재접속 유예뿐이고
+       복구(resync)와 경기 전 나가기(leave = 취소)만 남는다. 유예 만료 몰수·경기 전 취소·동시 만료 NO_CONTEST 는 그대로다. */
+    if ((msg.t === 'setup' || msg.t === 'ready' || msg.t === 'unready' || msg.t === 'resign') && this._paused()) return err('E_PAUSED');
+    /* #263 배치 90초가 지난 뒤의 늦은 배치·준비도 받지 않는다 — 보드 입력과 같은 시한 대조다(_late).
+       기권은 시한이 걸린 입력이 아니라 여기 없다(단절 정지만 막는다 · 2026-09-25 CJ). 서버 자신의 만료 처리는
+       _autoPlace 가 _handleSetup/_handleReady 를 직접 부르므로 이 문을 지나지 않는다 — 자기 배치를 막지 않는다. */
+    if (msg.t === 'setup' || msg.t === 'ready' || msg.t === 'unready') {
+      const pc = this._clock[seatIndex];
+      if (pc && pc.key === 'place' && this._late(pc)) return err('E_DEADLINE');
+    }
     if (msg.t === 'setup') return this._handleSetup(seatIndex, msg);
     if (msg.t === 'ready') return this._handleReady(seatIndex, true);
     if (msg.t === 'unready') return this._handleReady(seatIndex, false);
@@ -634,6 +650,7 @@ class Room {
     seat.placed = true;
     seat.ready = false; // 자기 배치를 바꾼 좌석의 ready만 해제 (analysis.md §2.3)
     this.revision += 1;
+    this._syncClock(); // #263 배치 90초는 "아직 배치를 확정하지 않은 좌석"의 시계다 — placed/ready 가 바뀌면 다시 센다
     return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
   }
 
@@ -645,6 +662,7 @@ class Room {
     if (seat.ready === wantReady) return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
     seat.ready = wantReady;
     this.revision += 1;
+    this._syncClock(); // #263 — 준비를 세우거나 내리면 그 좌석의 배치 90초도 서거나 사라진다
     if (this.seats[0].ready && this.seats[1].ready) {
       const started = this._startMatch();
       if (!started.ok) return started;
@@ -745,8 +763,8 @@ class Room {
     if (!a || typeof a !== 'object' || !ACTION_TYPES.has(a.t)) return err('E_BAD_ENVELOPE');
     if (SETUP_ONLY_ACTIONS.has(a.t)) return err('E_ILLEGAL_ACTION');
     if (!this._sanitizeAction(a)) return err('E_BAD_ENVELOPE');
-    if (a.t === 'resign') return this._handleResign(seatIndex); // 의도적 항복은 단절 중에도 즉시 종료(2.4 "현행대로")
-    if (this._paused()) return err('E_PAUSED');
+    if (this._paused()) return err('E_PAUSED'); // #263: 기권 포함 모든 게임 입력이 단절 중에는 멈춘다
+    if (a.t === 'resign') return this._handleResign(seatIndex);
     const auth = eco ? this._authorizeEco(seatIndex, a) : this._authorize(seatIndex, a);
     if (!auth.ok) return auth;
     return this._apply(seatIndex, auth.action, eco);
@@ -759,7 +777,7 @@ class Room {
     const T = this.engines[0], S = T.S, E = S.eco;
     if (!E) return err('E_ILLEGAL_ACTION');
     const c = this._clock[seatIndex];
-    const late = !!c && (c.expired || (c.deadline != null && now() >= c.deadline));
+    const late = this._late(c);
     if (a.t === 'bagPick') {
       const bp = E.bagPick;
       if (S.phase !== 'bagPick' || !bp) return err('E_ILLEGAL_ACTION');
@@ -850,6 +868,11 @@ class Room {
     const T = this.engines[0];
     const S = T.S;
     if (S.phase !== 'play') return err('E_ILLEGAL_ACTION');
+    /* #263 시한이 지난 입력은 받지 않는다 — 그 만료는 서버가 이미 처리했거나 곧 처리한다(되살리기·중복 실행 금지).
+       전투 어휘는 전투 행동 60초, 그 밖의 보드 입력은 행동 30초가 그 시한이다. 판정은 경제 인가와 같은
+       **서버 시각 대조**다(_late) — expired 표식만 보면 마감과 만료 콜백 사이의 창으로 늦은 입력이 그대로 들어온다. */
+    const gov = S.battle ? this._bclock : (this._pick || this._act);
+    if (gov && gov.owner === seatIndex && this._late(gov)) return err('E_DEADLINE');
 
     // 1) 대기 중인 동기화 모달 — 소유자(NET.syncModal.owner)만, 모달 응답만
     const pm = this._pendingModal();
@@ -1051,68 +1074,287 @@ class Room {
       && this.seats.some((s) => s.credential && !s.connected);
   }
 
-  // 그 좌석이 지금 기다리는 시한 입력 — 상점(S01·정기, 완료 전)과 B08(소유자). 키는 오픈·포획마다 새로 선다.
-  _wantClock(seatIndex) {
+  _ms(kind, sec) { return this._clockMs[kind] != null ? this._clockMs[kind] : sec * 1000; }
+
+  /* #263 그 시계의 시한이 지났는가 — **서버 시각**으로 본다. expired 표식은 만료 콜백이 실제로 돈 뒤에야 서므로
+     그것만 보면 마감과 setTimeout 발화 사이(이벤트 루프가 밀리면 넓어진다)로 들어온 입력이 그대로 통과한다.
+     멈춘 시계는 deadline 이 null 이라 여기서 걸리지 않는다 — 정지 중 남은 시간은 줄지 않는다(단절·전투·B08).
+     입력을 거부해도 상태·revision 은 바뀌지 않고 걸려 있는 만료 콜백은 예정대로 한 번 돈다. */
+  _late(c) { return !!c && (c.expired || (c.deadline != null && now() >= c.deadline)); }
+
+  /* **좌석에 묶인** 시한 입력 — 키는 그 입력 하나를 가리키고, 키가 바뀌면 전체 시간으로 새로 선다.
+     #237 상점(S01·정기, 완료 전)·B08(소유자) · #263 배치 90초. 좌석마다 하나뿐이라 순서가 곧 우선순위다.
+     답할 좌석이 단계마다 바뀌는 행동 30초·전투 행동 60초는 _wantAct·_wantBattle 이 따로 들고 있다. */
+  _wantSeatClock(seatIndex) {
     const T = this.engines && this.engines[0], S = T && T.S, E = S && S.eco;
     if (!E || (this.state !== STATES.SETUP && this.state !== STATES.IN_PROGRESS)) return null;
-    const sh = E.shop;
+    const sh = E.shop, seat = this.seats[seatIndex];
     if (sh && !sh.done[seatIndex] && (S.phase === 'shop' || (sh.kind === 'start' && S.phase === 'setup'))) {
-      return { key: 'shop:' + sh.turn, ms: this._clockMs.shop != null ? this._clockMs.shop : T.ECO.shopSec * 1000 };
+      return { key: 'shop:' + sh.turn, ms: this._ms('shop', T.ECO.shopSec) };
+    }
+    /* #263 배치 90초 — S01 을 **90초 안에 직접** 끝냈는데 아직 배치를 확정하지 않은 좌석만 받는다.
+       시간 초과로 끝난 좌석(shopTimedOut)은 그 자리에서 자동 배치·준비까지 끝났으므로 다시 걸지 않는다.
+       끝 조건이 placed 가 아니라 **placed && ready** 인 이유: 이 시한의 만료 동작이 "자동 배치하고 **준비 상태로 전이**"라
+       준비까지가 이 시한의 끝이다. placed 만 보면 setup 만 보내고 ready 를 영영 안 보내는 좌석에서 시계가 사라져
+       경기가 시작되지 않는 교착이 남는다(그 교착을 없애려고 있는 시한이다). 배치를 다시 보내면 _handleSetup 이
+       ready 를 내리므로 시계도 그 시점의 남은 시간으로 다시 선다. */
+    if (this.state === STATES.SETUP && sh && sh.done[seatIndex] && !seat.shopTimedOut && !(seat.placed && seat.ready)) {
+      return { key: 'place', ms: this._ms('place', T.ECO.placeSec) };
     }
     if (E.bagPick && E.bagPick.owner === seatIndex && S.phase === 'bagPick') {
-      return { key: 'bag:' + E.bagPick.token, ms: this._clockMs.bagPick != null ? this._clockMs.bagPick : T.ECO.bagPickSec * 1000 };
+      return { key: 'bag:' + E.bagPick.token, ms: this._ms('bagPick', T.ECO.bagPickSec) };
     }
     return null;
+  }
+
+  /* #263 보드 행동 30초 — 한 턴에 **하나**이고, 그 시각 실제로 답해야 하는 좌석이 들고 있다(#263 본문
+     "공격자·방어자 중 실제 선택자가 응답한다"). 보드 차례는 S.current 이지만, B02 출전 후보 선택은 방어자 단계
+     (entryPick stage D)로 넘어가고 도망 뒤 교환 선택은 도망친 말의 소유자다 — owner 만 옮겨 가고 **같은 시계**라
+     남은 시간이 그대로 이어진다("후보마다 30초를 다시 주지 않는다" · Q2=A).
+     키는 턴이 바뀔 때만 바뀐다 — 주 행동을 마친 뒤 남은 시간은 그 턴이 끝날 때까지 그 값이다.
+     정지: 강제 전투 대상 선택창(그 30초는 아래 _wantPick 이 따로 센다) · 전투가 열려 있는 동안(전투 행동 60초가
+     따로 흐른다) · B08 가방 초과 20초 동안(별개의 시계다) · 단절 중. 멈춘 동안의 남은 시간은 그대로 보존되고
+     그 자리들이 끝나면 **그 값부터** 이어 흐른다. */
+  _wantAct() {
+    const T = this.engines && this.engines[0], S = T && T.S;
+    if (!S || this.state !== STATES.IN_PROGRESS || (S.phase !== 'play' && S.phase !== 'bagPick')) return null;
+    const pm = S.battle ? null : this._pendingModal(); // 전투 안의 표(패키지 개봉)는 전투 행동 60초가 맡는다
+    const owner = pm ? pm.owner : (S.fleePick ? S.fleePick.owner : S.current);
+    return { key: 'act:' + S.turnCount + ':' + S.current,
+      ms: this._ms('act', T.ECO.actSec), owner, paused: this._pausedFor('act:') };
+  }
+
+  /* #263 T3 강제 전투 대상 선택 30초 — **적격 대상이 둘 이상**일 때 선다. CJ 가 "이동 완료 직후 새 30초"로 정한
+     그 시계이고 길이는 행동 30초와 같다(새 타이머 종류가 아니라 30초를 한 번 더 도는 것). 이것이 도는 동안 보드
+     행동 30초는 멈춰 남은 시간을 지킨다 — 고르느라 쓴 시간이 보드 시간을 깎지 않는다.
+     **대상을 고른 뒤 이어지는 출전 선택(B02)도 이 시계로 이어 센다.** 보드 시계로 돌아가면 고르는 데 쓴 시간이
+     사라져 B02 가 사실상 새 30초를 받는다 — PD 가 지목한 자리다(보드 12초 · 새 30초 · 27초 쓰고 선택 → B02 는 남은 3초,
+     전투가 끝나면 보드는 12초부터). 키가 그대로라 같은 시계가 그대로 이어지고, 답할 좌석만 단계를 따라간다(방어자 단계).
+     키에 이동한 말과 그 턴의 전투 횟수를 실어, 같은 화면을 다시 그려도(재연결·메뉴) 남은 시간이 이어지고
+     텔레포트 큐의 **다음 항목**이 승격되면 새 30초가 된다. 만료는 행동 30초와 같은 처리기로 간다(_actTimeout → forcedAuto). */
+  _wantPick() {
+    const T = this.engines && this.engines[0], S = T && T.S;
+    if (!S || this.state !== STATES.IN_PROGRESS || S.phase !== 'play' || S.battle || !S.movedPiece) return null;
+    const open = !!(S.forcedTargets && S.forcedTargets.length > 1);   // 고르는 중
+    const carry = !!S.entryPick && !!this._pick;                      // 고른 뒤 이어지는 출전 선택 — 같은 시계로 이어 센다
+    if (!open && !carry) return null;
+    const pm = carry ? this._pendingModal() : null;
+    return { key: ['pick', S.turnCount, S.battlesUsed, S.movedPiece.id].join(':'),
+      ms: this._ms('act', T.ECO.actSec), owner: pm ? pm.owner : S.current, paused: this._paused() };
+  }
+
+  /* #263 T4 전투 행동 60초 (2026-09-25 CJ) — 싸우기·가방·포획·도망을 고르는 시간. **전투 행동 하나마다** 새로 선다:
+     키에 행동 토큰(actSeq)·라운드·단계를 실어 차례가 넘어가면 새 60초가 되고, 같은 행동을 다시 그려도(메뉴 열기·
+     개봉 표·재연결) 키가 같아 남은 시간이 그대로 이어진다. 한 턴의 두 번째 전투는 battlesUsed 가 달라 같은 actSeq 여도
+     다른 키다. 단절 중에만 멈춘다 — 재연결 유예 60초·B08 20초와는 끝까지 별개의 시계다(한쪽 만료가 다른 쪽을 부르지 않는다). */
+  _wantBattle() {
+    const T = this.engines && this.engines[0], S = T && T.S;
+    if (!S || this.state !== STATES.IN_PROGRESS || !S.battle || S.phase !== 'play') return null;
+    const B = S.battle, side = T.actorOfPhase();
+    return { key: ['battle', S.turnCount, S.battlesUsed, B.actSeq || 0, B.round, B.phase].join(':'),
+      ms: this._ms('battle', T.ECO.battleSec), owner: (side === 'A' ? B.attP : B.defP).owner, paused: this._paused() };
+  }
+
+  /* 그 시계가 지금 멈춰 있는가. 단절은 **모든** 시계를 멈추고(2.4), 행동 30초는 전투가 열려 있는 동안(Q2=A "후보를 고른 뒤
+     전투 판정·연출 중 정지")과 B08 가방 초과 동안 추가로 멈춘다. 멈춘 시계는 남은 시간(left)만 들고 있다가 그 값부터 이어 흐른다. */
+  _pausedFor(key) {
+    if (this._paused()) return true;
+    if (!this.engines || !String(key).startsWith('act:')) return false;
+    const S = this.engines[0].S;
+    // 대상 선택 30초가 도는 동안(그 뒤로 이어지는 출전 선택 포함) 보드 시계는 남은 시간을 지킨 채 멈춘다.
+    return !!S.battle || S.phase === 'bagPick' || !!this._wantPick();
+  }
+
+  // 그 키가 사는 자리 — 행동 30초·전투 행동 60초는 방이 하나씩만 들고(owner 로 좌석을 가리킨다) 나머지는 좌석별이다.
+  _clockByKey(seatIndex, key) {
+    if (String(key).startsWith('act:')) return this._act;
+    if (String(key).startsWith('pick:')) return this._pick;
+    if (String(key).startsWith('battle:')) return this._bclock;
+    return this._clock[seatIndex];
   }
 
   /* 상태가 바뀔 때마다 부른다: 새 시한 입력이면 전체 시간으로 세우고, 같은 입력이면 남은 시간을 그대로 둔다.
      단절 중에는 남은 시간(left)만 들고 멈추고, 양측이 다시 모이면 그 값부터 흐른다. 새 단절은 새 60초(유예 쪽)이고
      게임 시계는 그대로 이어진다 — 둘은 따로다. */
   _syncClock() {
-    const paused = this._paused();
     for (let i = 0; i < 2; i++) {
-      const want = this._wantClock(i);
-      let c = this._clock[i];
-      if (c && (!want || c.key !== want.key)) { if (c.handle) clearTimeout(c.handle); c = null; }
-      if (!c && want) c = { key: want.key, left: want.ms, deadline: null, handle: null, expired: false };
-      if (c && !c.expired) {
-        if (paused && c.deadline != null) {
-          c.left = Math.max(0, c.deadline - now()); c.deadline = null;
-          clearTimeout(c.handle); c.handle = null;
-        } else if (!paused && c.deadline == null) {
-          const key = c.key;
-          c.deadline = now() + c.left;
-          c.handle = setTimeout(() => this._onClock(i, key), c.left);
-          if (c.handle.unref) c.handle.unref();
-        }
-      }
-      this._clock[i] = c;
+      const w = this._wantSeatClock(i);
+      this._clock[i] = this._tick(this._clock[i], w && { key: w.key, ms: w.ms, owner: i, paused: this._paused() });
     }
+    this._act = this._tick(this._act, this._wantAct());
+    this._pick = this._tick(this._pick, this._wantPick());
+    this._bclock = this._tick(this._bclock, this._wantBattle());
+    this._settleExpiredAct();
+  }
+
+  /* 시계 하나의 세우기·정지·재개 — 새 키면 전체 시간으로 세우고, 같은 키면 남은 시간을 그대로 둔다.
+     답할 좌석(owner)이 바뀌어도 키가 같으면 같은 시계다(남은 시간·만료 상태 보존) — 그래서 만료 콜백은
+     들고 있던 좌석이 아니라 **그 시점의 owner** 로 처리한다(_onClock). */
+  _tick(c, want) {
+    if (c && (!want || c.key !== want.key)) { if (c.handle) clearTimeout(c.handle); c = null; }
+    if (!c && want) c = { key: want.key, left: want.ms, deadline: null, handle: null, expired: false, owner: want.owner };
+    if (!c) return null;
+    c.owner = want.owner;
+    if (!c.expired) {
+      if (want.paused && c.deadline != null) {
+        c.left = Math.max(0, c.deadline - now()); c.deadline = null;
+        clearTimeout(c.handle); c.handle = null;
+      } else if (!want.paused && c.deadline == null) {
+        const key = c.key, seat = c.owner;
+        c.deadline = now() + c.left;
+        c.handle = setTimeout(() => this._onClock(seat, key), c.left);
+        if (c.handle.unref) c.handle.unref();
+      }
+    }
+    return c;
+  }
+
+  /* #263 만료된 행동 30초의 뒤처리 — 만료 처리가 전투를 열면(단일 대상 강제 전투·서버 대행 출전 후보) 시계는
+     expired 인 채 멈춘다. 전투·B08 이 끝나 다시 흐를 수 있게 된 순간, 이미 지나간 그 행동 시간으로는 더 둘 수
+     없으므로 턴을 넘긴다. 만료는 한 번만 처리한다(expired 표식 + _settling). */
+  _settleExpiredAct() {
+    if (this._settling || !this.engines) return;
+    const c = this._act, S = this.engines[0].S;
+    if (!c || !c.expired || this._pausedFor(c.key) || S.phase !== 'play') return;
+    this._actTimeout();
   }
 
   _clearClock() {
-    for (const c of this._clock) if (c && c.handle) clearTimeout(c.handle);
+    for (const c of this._clock.concat([this._act, this._pick, this._bclock])) if (c && c.handle) clearTimeout(c.handle);
     this._clock = [null, null];
+    this._act = null;
+    this._pick = null;
+    this._bclock = null;
   }
 
   /* 시한 만료 — 서버 시각 기준. 확정된 거래는 이미 엔진에 있고(수락 순간 확정), 여기서는 Core 의 만료 액션 하나만 넣는다:
-     상점 = shopTimeout(S01 은 빈 필드 자동 구매·자동 새로 고침·속성 자동 배정), B08 = 포획한 말 방출(기존 가방 불변, 7.7).
+     상점 = shopTimeout (S01 은 **노출된 적격 칸만** 자동 구매 — #263 으로 자동 새로 고침은 폐지다 — 뒤이어 속성 자동 배정·자동 배치),
+     B08 = 포획한 말 방출(기존 가방 불변, 7.7). 배치·행동은 아래 전용 처리기로 간다.
      합법 만료가 거부되면 Core 계약이 깨진 것이다 — 조용히 멈추지 않고 룸을 닫는다(fail-closed). */
   _onClock(seatIndex, key) {
-    const c = this._clock[seatIndex];
-    if (!c || c.key !== key || c.expired || this._paused() || !this.engines) return;
+    const c = this._clockByKey(seatIndex, key);
+    if (!c || c.key !== key || c.expired || this._pausedFor(key) || !this.engines) return;
+    const seat = c.owner != null ? c.owner : seatIndex; // 답할 좌석은 그 사이 옮겨 갔을 수 있다(B02 방어자·전투 행동자)
     c.expired = true; c.handle = null; c.deadline = null;
+    if (key === 'place') { this._autoPlace(seat); if (this.onUpdate) this.onUpdate(); return; }              // #263 배치 90초
+    if (key.startsWith('act:') || key.startsWith('pick:')) { this._actTimeout(key.startsWith('pick:')); if (this.onUpdate) this.onUpdate(); return; } // #263 행동 30초·대상 선택 30초
+    if (key.startsWith('battle:')) { this._battleTimeout(seat); if (this.onUpdate) this.onUpdate(); return; } // #263 T4 전투 행동 60초
     const E = this.engines[0].S.eco;
     const action = key.startsWith('bag:')
-      ? { t: 'bagPick', token: E.bagPick.token, i: E.bag[seatIndex].length }
-      : { t: 'shopTimeout', player: seatIndex };
-    const res = this._apply(seatIndex, action, true);
+      ? { t: 'bagPick', token: E.bagPick.token, i: E.bag[seat].length }
+      : { t: 'shopTimeout', player: seat };
+    const res = this._apply(seat, action, true);
     if (!res.ok && this.engines) this._engineFault(new Error('clock expiry refused: ' + key));
+    /* #263: S01 시간 초과 좌석은 Core 가 자동 구매에 이어 자동 배치까지 끝냈다 — 그 배치를 좌석 배치로 확정하고
+       곧바로 준비한다. 배치 90초는 다시 걸지 않는다(shopTimedOut). */
+    if (res.ok && this.state === STATES.SETUP && this.engines) {
+      this.seats[seat].shopTimedOut = true;
+      this._autoPlace(seat);
+    }
     if (this.onUpdate) this.onUpdate();
   }
 
-  /* 기권 — #237 GDD-23 2.4 "의도적 항복은 현행대로 즉시 종료". 경기 중이면 **어느 좌석이든** 언제든(상대 차례·정기 상점·B08·
-     단절 정지 중) 즉시 그 좌석의 패배다 — 종전 "자기 차례·보드 phase 만"은 상점·B08 에서 항복 수단을 없앴다.
+  /* #263 행동 30초 만료 — 서버가 미완료 행동을 **1회** 대신 처리한다. 만료된 시계는 expired 로 남아 같은 만료가
+     두 번 실행되지 않고(_settling 이 재진입도 막는다), 늦게 도착한 같은 행동은 revision·seq·모달 seq 와
+     _authorize 의 시한 대조에서 이미 떨어진다(중복 진행 없음). 아래 순서로 **막혀 있는 자리를 먼저 풀고** 턴을 넘긴다:
+     ① 고르던 텔레포트 단계는 취소한다(아무것도 소모하지 않는 되돌림) — 남겨 두면 Core endTurn 이 조용히 무동작이다.
+     ② 도망 뒤 교환 선택은 '교환하지 않음'으로 닫는다. 그 선택은 자원을 쓰지 않는 쪽이고, 남겨 두면 같은 교착이다 [추론].
+     ③ 답을 기다리는 화면은 서버가 대신 고른다 — 출전 후보(B02)는 첫 자리(본체 출전 → 전투 시작)이고,
+        '취소·포기' 자리가 있는 화면(패키지·탐색)은 그 자리를 골라 생략한다. 전용 20초 타이머는 만들지 않는다.
+     ④ 강제 전투가 남아 있으면 **턴을 넘기지 않는다** — T3 으로 적격 대상을 다시 세어 균등 권위 난수로 고르고
+        전투를 연다(적격 후보가 없을 때만 표식이 비워져 ⑤로 간다). 큐에 남은 항목(텔레포트 두 이동)은 승격해
+        차례대로 같은 처리를 받는다.
+     ⑤ 전투가 열렸으면 거기서 멈춘다 — 전투 행동 60초가 이어받고, 전투가 끝나면 _settleExpiredAct 가 이 자리로
+        돌아와 턴을 넘긴다.
+     ⑥ 그 밖에는 턴을 넘긴다(T1). 강제 전투 표식을 이유로 한 Core 의 종료 거부는 timeout 표식이 지난다. */
+  _actTimeout(fromPick) {
+    if (this._settling || !this.engines) return;
+    this._settling = true;
+    const turn0 = this.engines[0].S.turnCount, cur0 = this.engines[0].S.current;
+    try {
+      for (let n = 0; n < 8 && this.engines; n++) {
+        const S = this.engines[0].S;
+        if (S.phase !== 'play') return;      // 상점·B08 로 넘어갔다 — 그쪽 시계가 따로 있다
+        if (S.battle) return;                // ⑤ 전투 행동 60초가 이어받는다
+        const step = this._expiredActStep(S);
+        if (!step) break;                    // 더 풀 자리가 없다 → ⑥
+        const r = this._apply(step.seat, step.action, false);
+        if (!r.ok || r.noop) break;          // 아무것도 바뀌지 않았다 — 같은 자리를 다시 두드리지 않고 턴을 넘긴다
+      }
+      const S = this.engines && this.engines[0].S;
+      if (!S || S.battle || S.phase !== 'play') return;
+      /* 턴을 넘기는 것은 **보드 행동 30초**가 끝났을 때다. 대상 선택 30초(T3) 만료는 그 선택만 대신할 뿐,
+         남아 있는 보드 시간을 빼앗지 않는다 — 적격 대상이 하나도 없어 표식만 접힌 경우도 마찬가지다. */
+      if (fromPick && !(this._act && this._act.expired)) return;
+      if (S.turnCount !== turn0 || S.current !== cur0) return; // 그 사이 턴이 넘어갔다 — 한 만료로 두 턴을 넘기지 않는다
+      this._apply(cur0, { t: 'endTurn', auto: true, timeout: true }, false); // ⑥
+    } finally { this._settling = false; }
+  }
+
+  // 만료 시점에 **막혀 있는 자리 하나**와 그것을 푸는 액션. 없으면 null(= 턴을 넘길 차례다). 위 ①~④ 순서 그대로다.
+  _expiredActStep(S) {
+    if (S.teleport) return { seat: S.current, action: { t: 'tele' } };
+    if (S.fleePick) return { seat: S.fleePick.owner, action: { t: 'fleeSkip', pick: S.fleePick.token } };
+    const pm = this._pendingModal();
+    if (pm) {
+      const i = this._autoModalIndex(this.engines[pm.owner].__modal.view);
+      return i < 0 ? null : { seat: pm.owner, action: { t: 'modal', seq: pm.seq, i } };
+    }
+    if (S.forcedTargets && S.forcedTargets.length) return { seat: S.current, action: { t: 'forcedAuto' } };
+    if (S.forcedQueue && S.forcedQueue.length) return { seat: S.current, action: { t: 'drainForced', autoStart: true } };
+    return null;
+  }
+
+  /* #263 T4 전투 행동 60초 만료 — **지금 차례인 전투원의 행동 1회만** 건너뛰고 전투는 다음 행동·다음 라운드로
+     이어진다. 전투 취소·즉시 패배·경기 종료는 없고 보드 턴도 그대로다(보드 시계는 그동안 멈춰 있다).
+     쓸 수 있는 기술이 남아 있어도 건너뛴다 — 사람의 '넘기기'는 4칸이 전부 막혔을 때만 합법이므로, 회선에 오르지
+     않는 timeout 표식으로 Core 에 이 갈래임을 알린다(_authorize 가 정규화하는 클라이언트 입력에는 붙지 않는다).
+     합법 만료가 아무것도 바꾸지 못하면 Core 계약이 깨진 것이다 — 조용히 멈추지 않고 룸을 닫는다(fail-closed). */
+  _battleTimeout(seatIndex) {
+    if (this._settling || !this.engines) return;
+    this._settling = true;
+    try {
+      const T = this.engines[0];
+      if (!T.S.battle) return;
+      const res = this._apply(seatIndex, { t: 'pass', timeout: true, bf: battleFrame(T) }, false);
+      if ((!res.ok || res.noop) && this.engines) this._engineFault(new Error('battle clock expiry refused'));
+    } finally { this._settling = false; }
+  }
+
+  // 서버가 대신 누를 자리 — '취소·포기'가 있으면 그것(생략), 없으면 첫 활성 자리(출전 후보 = 본체 출전).
+  _autoModalIndex(view) {
+    const isSkip = (b) => !b.disabled && b.act && (b.act.t === 'pkgCancel' || (b.act.t === 'recruit' && b.act.step === 'giveup'));
+    const skip = view.buttons.findIndex(isSkip);
+    return skip >= 0 ? skip : view.buttons.findIndex((b) => !b.disabled);
+  }
+
+  /* #263 배치 자동 완성 — 아직 놓이지 않은 말을 Core 가 자기 진영 빈 칸에 놓고(합법 위치 보장), 그 결과를
+     좌석 배치로 확정한 뒤 준비까지 세운다. 좌표는 좌석0 기준으로 되돌려 _handleSetup 의 검증(내 진영 행·열 범위·중복
+     없음·로스터 일치)을 그대로 지난다 — 서버가 만든 배치도 클라이언트 배치와 같은 문을 통과한다. 상대에게는 나가지 않는다. */
+  _autoPlace(seatIndex) {
+    if (this.state !== STATES.SETUP || !this.engines) return err('E_ILLEGAL_ACTION');
+    const S0 = this.engines[0].S;
+    if (!S0.eco || !S0.eco.shop || !S0.eco.shop.done[seatIndex]) return err('E_ILLEGAL_ACTION');
+    /* 이미 자기 배치를 보낸 좌석은 **그 배치를 그대로 둔다** — 준비만 세운다. 엔진 말은 개시(_startMatch) 때 비로소
+       놓이므로 여기서 "엔진에 안 놓였다"를 근거로 다시 놓으면 사람이 고른 자리를 무작위로 덮어쓴다. */
+    if (this.seats[seatIndex].placed && this.seats[seatIndex].rawSetup) return this._handleReady(seatIndex, true);
+    if (S0.pieces.some((x) => x.owner === seatIndex && !x.placed)) {
+      const r = this._apply(seatIndex, { t: 'autoPlace', player: seatIndex }, false);
+      if (!r.ok) return r;
+    }
+    if (!this.engines) return err('E_ROOM_CLOSED');
+    const S = this.engines[0].S, rows = catalog().rows;
+    const mine = S.pieces.filter((x) => x.owner === seatIndex);
+    if (mine.some((x) => !x.placed)) return this._engineFault(new Error('auto placement incomplete for seat ' + seatIndex));
+    const pos = mine.map((x) => [seatIndex === 1 ? rows + 1 - x.r : x.r, x.c]);
+    const set = this._handleSetup(seatIndex, { roster: S.roster[seatIndex].slice(), pos });
+    if (!set.ok) return this._engineFault(new Error('auto placement rejected: ' + set.reason));
+    return this._handleReady(seatIndex, true);
+  }
+
+  /* 기권 — #237 GDD-23 2.4 "의도적 항복은 현행대로 즉시 종료". 경기 중이면 **어느 좌석이든** 언제든(상대 차례·정기 상점·B08)
+     즉시 그 좌석의 패배다 — 종전 "자기 차례·보드 phase 만"은 상점·B08 에서 항복 수단을 없앴다.
+     #263 (2026-09-25 CJ): **단절 정지 중에는 예외로 받지 않는다** — 호출부(handleCommand·_handleAction)가 E_PAUSED 로 먼저 막는다.
      경기 전(시작 상점·배치)은 승패가 없는 경기 취소다(2.4 "경기가 시작되기 전 … 경기 취소") — 나가기와 같은 전이.
      수락된 거래는 이미 엔진에 있고(유지) 여기서 종료가 확정되면 _finalize 가 시계를 걷어 뒤이은 거래·만료를 막는다.
      종전 무료 로스터 경기(DD_ECONOMY=0)는 원본 온라인 규칙(자기 차례에만 · confirmResign) 그대로다. */
@@ -1295,7 +1537,9 @@ class Room {
     };
   }
 
-  /* 자기 진열 — shop(오픈 턴)·seq(진열 번호)가 거래 요청이 겨냥할 값이다. 산 칸은 null(빈칸), 판매한 종은 sold.
+  /* 자기 진열 — shop(오픈 턴)·seq(진열 번호)가 거래 요청이 겨냥할 값이다. 진열은 S01·정기 모두 **언제나 6칸**이고,
+     산 칸은 비지 않고 soldOut 으로 남는다(#263 — 즉시 보충 없음, 수동 새로 고침까지 구매 불가). sold 는
+     "지금 살 수 없다"는 한 칸이라 품절도 포함한다(종전 판매 잠금 + 품절) — 화면 문구는 soldOut 이 가른다.
      시너지 현황(E16)은 Core ecoSynView 그대로(S01 미리보기 · 정기 실제 집계) — 소유자 전용이다. */
   _shopView(T, seatIndex) {
     const S = T.S, sh = S.eco && S.eco.shop;
@@ -1303,7 +1547,7 @@ class Room {
     const syn = T.ecoSynView(S, seatIndex);
     return {
       kind: sh.kind, shop: sh.turn, seq: sh.seq[seatIndex], done: sh.done[seatIndex],
-      slots: sh.slots[seatIndex].map((x) => (x ? { key: x.key, grade: x.grade, sold: sh.sold[seatIndex].includes(x.key) } : null)),
+      slots: sh.slots[seatIndex].map((x) => (x ? { key: x.key, grade: x.grade, soldOut: !!x.soldOut, sold: !!x.soldOut || sh.sold[seatIndex].includes(x.key) } : null)),
       sold: sh.sold[seatIndex].slice(),
       syn: {
         el: Object.assign({}, syn.el), arch: Object.assign({}, syn.arch), stage: JSON.parse(JSON.stringify(syn.stage)),
@@ -1313,9 +1557,13 @@ class Room {
     };
   }
 
-  // 자기 시한 입력의 남은 시간(ms). 단절 중에는 멈춘 값 그대로다.
+  /* 자기 시한 입력의 남은 시간(ms). 단절 중에는 멈춘 값 그대로다.
+     #263 한 좌석이 여러 시계에 걸릴 수 있으므로(전투 행동 60초 + 멈춰 있는 행동 30초, B08 20초 + 멈춰 있는 행동 30초)
+     **지금 흐르고 있는 것**을 보여 준다 — 멈춘 시계뿐이면 그중 첫 번째다. key 는 종전처럼 앞 토막만 나가고
+     (shop·place·bag·act·battle) 진행 지점·좌석은 싣지 않는다. */
   _clockView(seatIndex) {
-    const c = this._clock[seatIndex];
+    const mine = [this._bclock, this._pick, this._act, this._clock[seatIndex]].filter((x) => x && x.owner === seatIndex);
+    const c = mine.find((x) => x.deadline != null) || mine[0];
     if (!c) return null;
     const left = c.expired ? 0 : (c.deadline != null ? Math.max(0, c.deadline - now()) : c.left);
     return { key: c.key.split(':')[0], leftMs: left, running: c.deadline != null };

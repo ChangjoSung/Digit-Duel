@@ -58,7 +58,10 @@ function mkClient(name,port){
 }
 
 async function startServer(port){
-  const proc=spawn(process.execPath,[path.join(ROOT,"server","authoritative","server.js")],{env:Object.assign({},process.env,{DD_AUTH_PORT:String(port)}),stdio:["ignore","pipe","pipe"]});
+  /* #237 이후 서버 기본값은 경제 경기다. 이 파일은 종전 무료 로스터 경기 회귀라 모드를 여기서 고정한다 —
+     물려받은 env 에 맡기면 DD_ECONOMY 를 빼고 부른 로컬 실행이 로스터 0칸·배치 거부(E_ILLEGAL_ACTION)로
+     "timeout: match start" 만 남기고 죽어 제품 회귀처럼 보인다. 경제 경기는 smoke_public_eco_live.js(=1) 가 본다. */
+  const proc=spawn(process.execPath,[path.join(ROOT,"server","authoritative","server.js")],{env:Object.assign({},process.env,{DD_AUTH_PORT:String(port),DD_ECONOMY:"0"}),stdio:["ignore","pipe","pipe"]});
   let out=""; proc.stdout.on("data",d=>out+=d); proc.stderr.on("data",d=>out+=d);
   const end=Date.now()+15000; while(Date.now()<end){ if(await getHealth(port)) return {proc,log:()=>out}; await sleep(100); }
   proc.kill(); throw new Error("server did not start: "+out);

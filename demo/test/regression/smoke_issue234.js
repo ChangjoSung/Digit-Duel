@@ -227,17 +227,35 @@ function idx(f,id){ return f.skills.indexOf(id); }
   ok(allies.every(x=>x.skills.length===2&&x.skills[0]===(x.allyKind==="shield"?"SH-1":"AS-1")),"B9 동료 2칸 = 기본기 + 본체 속성 스킬 (암살자·방패병 각각)");
   ok(new Set(allies.filter(x=>x.owner===0).map(x=>x.allyKind)).size===2,"B9b 동료 2명 = 암살자 1 · 방패병 1");
   for(const o of [0,1]){ const cnt={}; for(const m of ms.filter(x=>x.owner===o)) cnt[m.element]=(cnt[m.element]||0)+1;
-    const want=T.V2_ELEM_ORDER.reduce((b,el)=>(cnt[el]||0)>(cnt[b]||0)?el:b,T.V2_ELEM_ORDER[0]);
-    ok(T.S.pieces.filter(x=>x.owner===o&&(x.type==="king"||x.type==="ally")).every(x=>x.element===want),`B10 P${o+1} 왕·동료 속성 = 필드 하수인 최다 속성 ${want}`); }
+    // #263 (CJ Q1=A): 공동 1위가 둘 이상이면 난수로 하나를 뽑으므로 "고정 첫 순서"가 아니라 "공동 1위 중 하나 · 3명이 동일"이 계약이다.
+    const top=Math.max(...T.V2_ELEM_ORDER.map(el=>cnt[el]||0)), tied=T.V2_ELEM_ORDER.filter(el=>(cnt[el]||0)===top);
+    const lead=T.S.pieces.filter(x=>x.owner===o&&(x.type==="king"||x.type==="ally"));
+    ok(lead.length===3&&new Set(lead.map(x=>x.element)).size===1&&tied.includes(lead[0].element),
+      `B10 P${o+1} 왕·동료 속성 = 필드 하수인 최다 왕국(공동 1위 ${tied.join("/")}) · 3명 동일`); }
 }
-{ /* B11 동률 순서 🔥 → 💧 → ⚡ → 🗻 → 🌿 */
+{ /* B11 (#263 · 2026-09-25 CJ Q1=A) 공동 1위 왕국이 둘 이상이면 **서버 권위 난수 1회**로 고른다 —
+     종전 고정 순서(🔥 → 💧 → ⚡ → 🗻 → 🌿)는 폐지다. 단독 최다는 종전대로 난수 없이 결정적이다. */
   H.freshPlay(T,"pvp");
   const ms=T.S.pieces.filter(x=>x.owner===0&&x.type==="minion");
   const setEls=els=>{ ms.forEach((m,i)=>{ m.element=els[i]||null; }); return T.leaderDefaultElement(0); };
-  eq(setEls(["grass","grass","land","land","water","lightning"]),"land","B11a 풀2·땅2 동률 → 땅(🗻 가 🌿 보다 앞)");
-  eq(setEls(["water","lightning","land","grass","fire","water"]),"water","B11b 물2 단독 최다 → 물");
-  eq(setEls(["lightning","water","grass","land","fire",null]),"fire","B11c 전부 1 동률 → 불");
-  eq(setEls(["lightning","lightning","water","water","grass","grass"]),"water","B11d 물2·번개2·풀2 → 물");
+  const spread=(els,seeds)=>{ const seen=new Set(); for(let n=1;n<=seeds;n++){ T.setSeed(n); seen.add(setEls(els)); } T.setSeed(null); return seen; };
+  eq(setEls(["water","lightning","land","grass","fire","water"]),"water","B11b 물2 단독 최다 → 물 (동률 아님 = 난수 없음)");
+  const a=spread(["grass","grass","land","land","water","lightning"],30);
+  ok(a.size===2&&[...a].every(el=>el==="grass"||el==="land"),"B11a 풀2·땅2 동률 → 공동 1위 둘 사이에서 갈린다 (고정 🗻 우선 폐지): "+[...a]);
+  const c=spread(["lightning","water","grass","land","fire",null],60);
+  ok(c.size>1&&[...c].every(el=>T.V2_ELEM_ORDER.includes(el)),"B11c 전부 1 동률 → 5후보 중 난수 (고정 🔥 폐지): "+[...c]);
+  const d=spread(["lightning","lightning","water","water","grass","grass"],30);
+  ok(d.size===3&&[...d].every(el=>["water","lightning","grass"].includes(el)),"B11d 물2·번개2·풀2 → 셋 사이에서 갈린다: "+[...d]);
+  eq(setEls([null,null,null,null,null,null]),T.V2_ELEM_ORDER[0],"B11e 필드에 하수인이 없으면 후보 왕국이 없다 — 난수 없이 첫 순서");
+  /* 좌석당 추첨은 **한 번**이고 왕·동료 3명이 그 결과를 공유한다 — 난수 스트림으로 호출 횟수를 직접 센다 */
+  setEls(["grass","grass","land","land","water","lightning"]);
+  T.setSeed(101); const ref=[T.rand(),T.rand()];
+  T.S.pieces.filter(x=>x.owner===0&&(x.type==="king"||x.type==="ally")).forEach(x=>{ x.leaderElChosen=false; x.element=null; });
+  T.setSeed(101); T.assignLeaderElements(0,T.S);
+  const lead=T.S.pieces.filter(x=>x.owner===0&&(x.type==="king"||x.type==="ally"));
+  ok(lead.length===3&&new Set(lead.map(x=>x.element)).size===1&&["grass","land"].includes(lead[0].element)&&T.rand()===ref[1],
+    "B11f 왕·동료 3명이 같은 결과를 공유 — 좌석당 난수 호출 정확히 1회 (#263 Q1=A)");
+  T.setSeed(null);
 }
 { /* B12 동료 사망 → 🪄 칸 추가 — 실제 finishBattle 경로 */
   H.freshPlay(T,"pvp"); H.clearBoard(T);

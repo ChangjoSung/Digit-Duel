@@ -15,7 +15,9 @@ function modal(html,buttons){
      disabled 버튼은 콜백을 걸지 않으므로 온라인 인덱스 중계로도 눌릴 수 없다. */
   for(const [txt,fn,dis] of buttons){const b=document.createElement("button"); b.textContent=txt;
     if(dis){ b.disabled=true; b.setAttribute("aria-disabled","true"); }
-    else b.onclick=()=>{ if(fxLocked()) return; fn(); };
+    /* #263 Saturn REVISE: 창이 열린 **뒤에** 단절이 시작되면 fxLocked 가 클릭을 조용히 삼켰다 — 이유를 알린다
+       (창을 연 시점의 검사만으로는 열린 기권 확인·승급 확인이 사유 없이 먹통으로 보인다). */
+    else b.onclick=()=>{ if(netPaused()){ showToast(NET_PAUSE_MSG); return; } if(fxLocked()) return; fn(); };
     b.className="primary"; ob.appendChild(b);} // #106: 연출 잠금 중 모달 버튼 무시
   $("overlay").classList.remove("hidden");
 }

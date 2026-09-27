@@ -3,7 +3,7 @@
    파일을 쓰지 않는다 (Saturn --read-only 재실행 안전). 근거: GDD-23 2.1~2.4 · 7장 · docs/milestone/v0.4.11/issues/236/Venus/report.md AC01~AC43.
 
    절 (AC 번호는 Venus 보고서 9장)
-     A  S01 시작 상점 — 🪙10·지급 0·진열·산 칸 빈칸·필드→가방·예비 재화(새로 고침 포함)·완료·S01 전용 품목·속성·시간 초과 (AC01~08 · AC44 · AC45)
+     A  S01 시작 상점 — 🪙10·지급 0·6칸 진열·산 칸 SOLD OUT·필드→가방·예비 재화·완료·S01 전용 품목·속성·시간 초과 (AC01~08 · AC44 · AC45 · #263)
      S  상점 시너지 현황 — S01 미리보기·정기 실제 집계·죽은 동료·갱신 시점·소유자 전용 (AC46~AC48 · 5차 E16)
      B  정기 상점 시점 — 20·40·60·80턴 보너스·경기 종료 우선·보드 잠금·순서 (AC09~11 · AC39 · AC40)
      C  진열 — 등급 확률·제외·후보 고갈·새로 고침 (AC12~15)
@@ -71,40 +71,40 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   ok(S.eco.bag[0].length===0&&S.reserve[0]===null&&S.pieces.every(p=>!p.cap),"AC01 가방 비어 있음 · 예비·cap 경로 미사용");
   ok(S.phase==="setup"&&S.eco.shop&&S.eco.shop.kind==="start","S01 은 배치 전 setup 단계에 열린다");
   const sl=S.eco.shop.slots[0];
-  ok(sl.length===5&&sl.every(s=>s&&s.grade===1)&&new Set(sl.map(s=>s.key)).size===5&&sl.every(s=>T.ROSTER.some(r=>r.id===s.key)),"AC02 진열 5칸 = 서로 다른 ⭐1 일반 종");
+  ok(sl.length===6&&sl.every(s=>s&&s.grade===1)&&new Set(sl.map(s=>s.key)).size===6&&sl.every(s=>T.ROSTER.some(r=>r.id===s.key)),"AC02 진열 6칸 = 서로 다른 ⭐1 일반 종 (#263)");
   const k0=sl[0].key, seq0=S.eco.shop.seq[0];
   const r=act(T,{t:"shopBuy",player:0,i:0,seq:seq0});
   const f0=field(T,0)[0];
   ok(kind(r)==="shopChanged"&&E(T).coins[0]===9&&f0.rosterId===k0&&f0.grade===1&&f0.paid===1&&f0.fresh===true,"AC02·AC03 구매 → 🪙1 차감 · 첫 필드 칸 · 원장 1 · 신규 표시");
   const nsl=E(T).shop.slots[0];
-  ok(nsl[0]===null&&JSON.stringify(nsl.slice(1))===JSON.stringify(sl.slice(1)),"AC44 산 칸은 빈칸으로 남고 나머지 칸은 그대로 (무료 보충 없음)");
+  ok(nsl.length===6&&nsl[0]&&nsl[0].soldOut&&nsl[0].key===k0&&JSON.stringify(nsl.slice(1))===JSON.stringify(sl.slice(1)),
+    "AC44/#263 산 칸은 SOLD OUT 으로 남고(비지 않는다) 나머지 칸은 그대로 — 즉시 보충 없음");
   ok(E(T).shop.seq[0]===seq0+1,"구매마다 진열 번호 +1");
   refusedClean(T,{t:"shopBuy",player:0,i:1,seq:seq0},"AC36 지난 진열 번호로 온 구매는 거부 · 상태 불변");
-  refusedClean(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]},"AC44 빈칸 재구매 거부 · 상태 불변");
-  for(let n=1;n<5;n++) act(T,{t:"shopBuy",player:0,i:n,seq:E(T).shop.seq[0]});
-  ok(E(T).shop.slots[0].every(s=>s===null)&&T.ecoBuyable(T.S,0)===-1&&E(T).coins[0]===5&&T.ecoEmptyField(T.S,0).length===1,"AC44 5칸을 다 사면 살 칸 0 · 필드 5칸");
-  ok(kind(act(T,{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]}))==="shopChanged"&&E(T).coins[0]===4,"AC44 새로 고침 🪙1");
+  refusedClean(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]},"AC44/#263 품절 칸 재구매 거부 · 상태 불변");
+  for(let n=1;n<6;n++) act(T,{t:"shopBuy",player:0,i:n,seq:E(T).shop.seq[0]});
+  ok(E(T).shop.slots[0].length===6&&E(T).shop.slots[0].every(s=>s&&s.soldOut)&&T.ecoBuyable(T.S,0)===-1&&E(T).coins[0]===4&&T.ecoEmptyField(T.S,0).length===0,
+    "AC44/#263 6칸을 다 사면 6칸 모두 SOLD OUT · 살 칸 0 · 필드 6칸 (새로 고침 없이 완결)");
+  ok(kind(act(T,{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]}))==="shopChanged"&&E(T).coins[0]===3,"AC44 수동 새로 고침 🪙1 — 품절이 다시 채워지는 유일한 길");
   const rsl=E(T).shop.slots[0];
-  ok(rsl.every(s=>s&&s.grade===1&&!ownKeys(T,0).includes(s.key))&&new Set(rsl.map(s=>s.key)).size===5,"AC44 새로 고침 진열 = 서로 다른 미보유 ⭐1 5칸");
-  act(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]});
-  ok(T.ecoEmptyField(T.S,0).length===0&&E(T).bag[0].length===0&&E(T).coins[0]===3,"AC03 1~6번째 구매는 필드 6칸 (5칸 → 새로 고침 → 6번째)");
-  for(let n=1;n<4;n++) act(T,{t:"shopBuy",player:0,i:n,seq:E(T).shop.seq[0]});
+  ok(rsl.every(s=>s&&s.grade===1&&!s.soldOut&&!ownKeys(T,0).includes(s.key))&&new Set(rsl.map(s=>s.key)).size===6,"AC44 새로 고침 진열 = 서로 다른 미보유 ⭐1 6칸");
+  for(let n=0;n<3;n++) act(T,{t:"shopBuy",player:0,i:n,seq:E(T).shop.seq[0]});
   ok(E(T).bag[0].length===3&&E(T).coins[0]===0&&E(T).bag[0].every(u=>u.grade===1&&u.paid===1&&u.fresh),"AC03 7번째부터 가방 3칸");
-  E(T).coins[0]=1; refusedClean(T,{t:"shopBuy",player:0,i:4,seq:E(T).shop.seq[0]},"AC03 가방 3칸 초과 신규 구매 거부 · 상태 불변");
+  E(T).coins[0]=1; refusedClean(T,{t:"shopBuy",player:0,i:3,seq:E(T).shop.seq[0]},"AC03 가방 3칸 초과 신규 구매 거부 · 상태 불변");
   ok(uniqueOwned(T,0),"AC19 S01 에서도 같은 종 2마리 없음");
   ok(T.S.roster[0].length===6&&T.S.roster[0].every((k,i)=>field(T,0)[i].rosterId===k),"S01 산 필드가 배치 로스터와 같은 순서로 이어진다");
 }
-{ /* AC04 예비 재화 — 필수(k, v) = k + ⌈max(0, k − v) ÷ 5⌉ (D9 — 2026-09-24 CJ 확정) */
+{ /* AC04 예비 재화 — 필수(k, v) = k + ⌈max(0, k − v) ÷ 6⌉. #263: 진열 6칸 = 필드 6칸이라 시작 필수는 곧 빈 칸 수다 */
   const T=pveSetup(12);
-  eq(T.ecoReserveNeed(T.S,0),7,"AC04 시작 🪙10·k=6·v=5 → 필수 7");
-  { const T2=pveSetup(12); ok(kind(act(T2,{t:"shopRefresh",player:0,seq:E(T2).shop.seq[0]}))==="shopChanged","AC04 볼 0개일 때 k=6 새로 고침 허용 (🪙9 ≥ 7)"); }
-  for(let n=0;n<3;n++) ok(kind(act(T,{t:"shopGood",player:0,item:"ball"}))==="shopChanged","AC04 k=6 볼 "+(n+1)+"번째 허용");
-  refusedClean(T,{t:"shopGood",player:0,item:"ball"},"AC04 k=6 볼 4번째 거부 (지출 뒤 🪙6 < 7) · 상태 불변");
-  refusedClean(T,{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]},"AC04 k=6 새로 고침 거부 (지출 뒤 🪙6 < 필수(6, 5)=7)");
+  eq(T.ecoReserveNeed(T.S,0),6,"AC04/#263 시작 🪙10·k=6·v=6 → 필수 6 (빈 칸 수만큼)");
+  { const T2=pveSetup(12); ok(kind(act(T2,{t:"shopRefresh",player:0,seq:E(T2).shop.seq[0]}))==="shopChanged","AC04 볼 0개일 때 k=6 새로 고침 허용 (🪙9 ≥ 6)"); }
+  for(let n=0;n<4;n++) ok(kind(act(T,{t:"shopGood",player:0,item:"ball"}))==="shopChanged","AC04 k=6 볼 "+(n+1)+"번째 허용");
+  refusedClean(T,{t:"shopGood",player:0,item:"ball"},"AC04 k=6 볼 5번째 거부 (지출 뒤 🪙5 < 6) · 상태 불변");
+  refusedClean(T,{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]},"AC04 k=6 새로 고침 거부 (지출 뒤 🪙5 < 필수(6, 6)=6)");
   act(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]});
   eq(E(T).coins[0]-T.ecoReserveNeed(T.S,0),0,"AC04 하수인 구매는 🪙·k·v 를 함께 1 줄여 여유(🪙 − 필수)는 그대로");
   refusedClean(T,{t:"shopGood",player:0,item:"potion"},"AC04 여유 0 이면 소모품 거부");
-  eq(T.S.balls[0],3,"AC04 확정된 볼 3개 보존");
+  eq(T.S.balls[0],4,"AC04 확정된 볼 4개 보존");
   /* AC05·AC06 */
   refusedClean(T,{t:"shopDone",player:0},"AC05 필드 5칸 이하면 완료 거부");
   refusedClean(T,{t:"shopGood",player:0,item:"ticket"},"AC06 S01 에서 티켓 거부");
@@ -116,12 +116,16 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   /* AC08 시간 초과 — 필드 1칸 산 상태 */
   const slot0=E(T).shop.slots[0][T.ecoBuyable(T.S,0)].key;
   act(T,{t:"shopTimeout",player:0});
-  const S=T.S, cnt={}; for(const m of field(T,0)) cnt[m.element]=(cnt[m.element]||0)+1;
-  const order=["fire","water","lightning","land","grass"]; let best=order[0]; for(const el of order) if((cnt[el]||0)>(cnt[best]||0)) best=el;
-  ok(T.ecoEmptyField(S,0).length===0&&S.eco.shop.done[0]&&field(T,0)[1].rosterId===slot0,"AC08 시간 초과 → 살 수 있는 진열 ①부터 자동 구매 · 살 칸 0 이면 자동 새로 고침 → 6칸 · 완료");
-  eq(S.balls[0],3,"AC08 확정 거래(볼) 보존");
+  const S=T.S, seqAtTimeout=S.eco.shop.seq[0], cnt={}; for(const m of field(T,0)) cnt[m.element]=(cnt[m.element]||0)+1;
+  const top=Math.max(...T.V2_ELEM_ORDER.map(el=>cnt[el]||0)), tied=T.V2_ELEM_ORDER.filter(el=>(cnt[el]||0)===top);
+  ok(T.ecoEmptyField(S,0).length===0&&S.eco.shop.done[0]&&field(T,0)[1].rosterId===slot0,"AC08 시간 초과 → 노출된 적격 칸을 ①부터 자동 구매 · 6칸 · 완료");
+  ok(S.eco.shop.slots[0].every(s=>s&&s.soldOut),"AC08/#263 자동 구매한 칸도 SOLD OUT 으로 남는다 (자동 새로 고침 0회)");
+  eq(S.balls[0],4,"AC08 확정 거래(볼) 보존");
   ok(S.eco.coins[0]>=0,"AC08 코인 음수 없음");
-  ok(king.element==="land"&&allies.every(a=>a.element===best),"AC07 고른 속성은 유지 · 안 고른 동료는 필드 최다 속성(동률 🔥→💧→⚡→🗻→🌿)");
+  ok(king.element==="land"&&new Set(allies.map(a=>a.element)).size===1&&tied.includes(allies[0].element),
+    "AC07/#263 고른 속성은 유지 · 안 고른 동료는 공동 1위 왕국 중 하나를 셋이 함께 받는다(난수 1회)");
+  ok(S.pieces.filter(x=>x.owner===0).every(x=>x.placed&&T.zoneOf(0).includes(x.r)&&x.c>=1&&x.c<=7),
+    "AC08/#263 시간 초과 좌석은 모든 말이 자기 진영 합법 위치에 자동 배치된다");
   refusedClean(T,{t:"shopGood",player:0,item:"ball"},"AC05 완료 뒤 모든 S01 거래 거부");
   ok(field(T,0).every(m=>!m.fresh),"S01 완료로 신규 표시 해제");
 }
@@ -142,8 +146,8 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
 
 { /* AC08 필드 0칸 만료 · AC45 막힘 없음 불변식 (5차 · D9 — 2026-09-24 CJ 확정) */
   const T=pveSetup(14); act(T,{t:"shopTimeout",player:0});
-  ok(E(T).shop.done[0]&&T.ecoEmptyField(T.S,0).length===0&&E(T).coins[0]===3&&E(T).shop.slots[0].filter(s=>s===null).length===1,
-    "AC08 필드 0칸 만료 → 5개 구매 · 자동 새로 고침 · 1개 → 6칸 (🪙10−6−1=3, 새 진열의 산 칸 1개만 빈칸)");
+  ok(E(T).shop.done[0]&&T.ecoEmptyField(T.S,0).length===0&&E(T).coins[0]===4&&E(T).shop.slots[0].every(s=>s&&s.soldOut),
+    "AC08/#263 필드 0칸 만료 → 노출 6종 전부 구매 · 새로 고침 0회 · 🪙10−6=4 보존 · 6칸 모두 SOLD OUT");
   let lcg=7; const rnd=n=>{ lcg=(lcg*1103515245+12345)&0x7fffffff; return lcg%n; };
   let stuck=0, runs=0;
   for(let seed=0;seed<40;seed++){
@@ -153,7 +157,7 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
       const a=pick===0?{t:"shopRefresh",seq}:pick===1?{t:"shopGood",item:["potion","cool","cure","ball"][rnd(4)]}
         :pick===2?{t:"leaderEl",pieceId:ld[rnd(3)].id,el:["fire","water","lightning","land","grass"][rnd(5)]}
         :pick===3&&bag.length?{t:"shopSell",uid:bag[0].uid}:pick===4&&bag.length&&fm.length?{t:"shopSwap",pieceId:fm[rnd(fm.length)].id,uid:bag[0].uid}
-        :{t:"shopBuy",i:rnd(5),seq};
+        :{t:"shopBuy",i:rnd(6),seq};
       act(X,Object.assign({player:0},a));
       if(X.ecoEmptyField(S,0).length&&X.ecoBuyable(S,0)<0&&kind(X.reduceCoreAction(S,{t:"shopRefresh",player:0,seq:S.eco.shop.seq[0]}))!=="shopChanged") stuck++;
     }
@@ -162,7 +166,7 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   }
   eq(stuck,0,"AC45 시드 40개 × 무작위 합법 요청 30회 — '빈 필드 > 0 · 살 칸 0 · 새로 고침 거부' 막힘 상태 없음");
   eq(runs,40,"AC45 무작위 요청 뒤 시간 초과까지 항상 필드 6칸 · 🪙 ≥ 0 · 완료");
-  const A=pveSetup(15); ok(A.S.eco.shop.done[1]&&A.S.eco.coins[1]>=0&&A.S.eco.shop.slots[1].some(s=>s===null),"AC45 PVE AI S01 — 산 칸 빈칸 · 새로 고침으로 6칸 완료");
+  const A=pveSetup(15); ok(A.S.eco.shop.done[1]&&A.S.eco.coins[1]>=0&&A.S.eco.shop.slots[1].some(s=>s&&s.soldOut)&&A.ecoEmptyField(A.S,1).length===0,"AC45/#263 PVE AI S01 — 산 칸 SOLD OUT · 6칸 진열만으로 필드 6칸 완료");
 }
 
 /* ===== B. 정기 상점 시점 ===== */
@@ -256,7 +260,7 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   const c=S.eco.coins[0], seq=S.eco.shop.seq[0];
   act(T,{t:"shopRefresh",player:0,seq}); act(T,{t:"shopRefresh",player:0,seq:seq+1});
   ok(S.eco.coins[0]===c-2&&S.eco.shop.seq[0]===seq+2,"AC15 새로 고침 🪙1 · 무제한 · 진열 번호 +1");
-  ok(S.eco.shop.slots[0].length===5,"새로 고침 뒤 5칸");
+  ok(S.eco.shop.slots[0].length===6,"새로 고침 뒤 6칸 (#263)");
   S.eco.coins[0]=0; refusedClean(T,{t:"shopRefresh",player:0,seq:S.eco.shop.seq[0]},"AC15 잔액 0 이면 새로 고침 거부 · 상태 불변");
 }
 
@@ -270,7 +274,7 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   const rd=T.ROSTER.find(r=>r.id===key);
   ok(S.eco.coins[0]===8&&m.grade===3&&m.paid===3&&m.id===id&&m.r===pos[0]&&m.c===pos[1],"AC16 ⭐1 보유 + ⭐3 진열 → 🪙2 · 원장 3 · 그 자리 ⭐3");
   ok(m.maxHp===T.gradeHp(rd.hp,3)&&m.hp===m.maxHp&&m.skills.length===3&&m.cds.every(c=>c===0),"AC16 새 최대 HP 까지 회복 · 스킬 칸 1~3차");
-  eq(S.eco.shop.slots[0][0],null,"정기 상점: 산 칸은 새로 고침 전까지 빈칸");
+  ok(S.eco.shop.slots[0][0]&&S.eco.shop.slots[0][0].soldOut&&S.eco.shop.slots[0][0].key===key,"정기 상점/#263: 산 칸은 비지 않고 SOLD OUT 으로 남는다"); // 진열은 위 setSlots 픽스처가 세운 것이라 길이는 보지 않는다
   const u=unit(T,T.ROSTER.find(r=>!ownKeys(T,0).includes(r.id)).id,2,2); u.hp=5; S.eco.bag[0]=[u];
   setSlots(T,0,[[T.ecoKey(u),2],null,null,null,null]);
   act(T,{t:"shopBuy",player:0,i:0,seq:S.eco.shop.seq[0]});
@@ -688,16 +692,17 @@ function proxyBattle(T,win){
   const boot=(mode,opts)=>{ const T=load(); arm(); T.FX.force=true; if(T.TUT.open) T.tutClose(); C.q=[]; T.startMode(mode,opts); return T; };
   const covered=T=>T.byId("overlay").classList.contains("handoff");
   const confirm=T=>{ const k=T.byId("obBtns").children, b=k.slice().reverse().find(x=>/확인 — 시작/.test(x.textContent)); ok(!!b,"Q 가림 확인 버튼"); k.length=0; if(b) b.onclick(); };
-  const place=T=>{ T.netAction({t:"auto"}); T.netAction({t:"setupDone"}); };
   try{
     /* Q1 PVE (회귀): S01 이 그려지는 순간부터 90초 · 다시 그려도 마감 유지 · 만료 = 자동 구매 완료 */
     { const T=boot("pve",{aiLevel:"grade5"}), S=T.S;
       eq(T.byId("shopClock").textContent,"⏱ 90초","Q1 PVE S01 표시 즉시 남은 시간 90초");
       adv(40000); T.render(); T.render(); ok(T.shopHtml(0).includes("⏱ 50초"),"Q1 다시 그리기는 마감을 되돌리지 않는다 (남은 50초)");
       adv(S90-40000-1); ok(!S.eco.shop.done[0],"Q1 PVE S01 89.999초엔 진행 중");
-      adv(1); ok(S.eco.shop.done[0]&&T.ecoEmptyField(S,0).length===0,"Q1 PVE S01 90초 만료 → 빈 필드 자동 구매 · 완료");
+      /* #263 (2026-09-25 CJ): 만료 좌석은 자동 구매에 이어 **자동 배치·준비**까지 그 자리에서 끝난다 — 배치 90초를 다시 걸지 않는다 */
+      adv(1); ok(T.ecoEmptyField(S,0).length===0&&!S.pieces.some(x=>x.owner===0&&!x.placed)&&S.phase==="play",
+        "Q1 PVE S01 90초 만료 → 빈 필드 자동 구매 · 자동 배치 · 곧바로 준비(경기 시작)");
       /* 정기 상점: 확정 거래 보존 · 미확정 확인 창 취소 */
-      place(T); const P=S; P.current=0; P.mainUsed=false; P.battlesUsed=0; P.forcedTargets=[]; P.forcedQueue=[]; P.movedPiece=null;
+      const P=S; P.current=0; P.mainUsed=false; P.battlesUsed=0; P.forcedTargets=[]; P.forcedQueue=[]; P.movedPiece=null;
       C.q=[]; endTurnAt(T,20); ok(S.phase==="shop"&&!S.eco.shop.done[0]&&S.eco.shop.done[1],"Q1 PVE 20턴 상점 — AI 즉시 완료, 사람 대기");
       const u=unit(T,T.ROSTER.find(r=>!ownKeys(T,0).includes(r.id)).id,2,2); S.eco.bag[0]=[u];
       adv(10000); const c0=S.eco.coins[0]; act(T,{t:"shopGood",player:0,item:"ball"}); T.__shop("sell",u.uid);   // 볼 = 확정 · 판매 = 확인 창만
@@ -709,15 +714,15 @@ function proxyBattle(T,win){
     ok(!covered(T)&&S.setupPlayer===0,"Q2 P1 S01 은 첫 화면에서 바로 보인다");
     eq(T.byId("shopClock").textContent,"⏱ 90초","Q2 P1 S01 표시 즉시 90초 시작");
     adv(S90-1); ok(!S.eco.shop.done[0],"Q2 P1 S01 89.999초엔 진행 중");
-    adv(1); ok(S.eco.shop.done[0]&&T.ecoEmptyField(S,0).length===0,"Q2 P1 S01 90초 만료 → 자동 구매 완료");
-    place(T); ok(covered(T)&&S.setupPlayer===1,"Q2 P1 배치 뒤 불투명 가림");
+    adv(1); ok(T.ecoEmptyField(S,0).length===0&&!S.pieces.some(x=>x.owner===0&&!x.placed),"Q2 P1 S01 90초 만료 → 자동 구매 · 자동 배치");
+    ok(covered(T)&&S.setupPlayer===1,"Q2 P1 은 그 자리에서 준비까지 끝나 곧바로 P2 가림 (#263 배치 90초 재발행 없음)");
     T.render(); T.render();                                              // 가림 뒤에서 다시 그려져도 P2 시간은 시작하지 않는다
     adv(10*S90); ok(!S.eco.shop.done[1]&&T.ecoEmptyField(S,1).length===6,"Q2 가림이 15분 떠 있어도 P2 S01 은 만료되지 않는다 (가림 불산입)");
     confirm(T); ok(!covered(T),"Q2 가림 확인 → P2 상점 표시");
     eq(T.byId("shopClock").textContent,"⏱ 90초","Q2 P2 S01 은 가림 확인 뒤 표시 순간부터 90초");
     adv(45000); T.render(); adv(S90-45000-1); ok(!S.eco.shop.done[1],"Q2 P2 S01 89.999초엔 진행 중 (중간 다시 그리기 무관)");
-    adv(1); ok(S.eco.shop.done[1]&&T.ecoEmptyField(S,1).length===0,"Q2 P2 S01 90초 만료 → 자동 구매 완료");
-    place(T); ok(S.phase==="play","Q2 두 사람 배치 뒤 경기 시작");
+    adv(1); ok(T.ecoEmptyField(S,1).length===0&&!S.pieces.some(x=>x.owner===1&&!x.placed),"Q2 P2 S01 90초 만료 → 자동 구매 · 자동 배치");
+    ok(S.phase==="play","Q2 P2 도 곧바로 준비 → 두 좌석 배치 확정으로 경기 시작 (#263)");
     /* Q3 핫시트 정기 상점 (20턴 P2 먼저): 가림 대기 불산입 · 좌석마다 새 90초 · 확정 보존 / 미확정 취소 */
     confirm(T); S.current=0; S.mainUsed=false; S.battlesUsed=0; S.forcedTargets=[]; S.forcedQueue=[]; S.movedPiece=null;
     endTurnAt(T,20); const first=S.eco.shop.active, second=1-first;
@@ -741,7 +746,7 @@ function proxyBattle(T,win){
     adv(S90-30000+1); ok(S.phase==="shop"&&!S.eco.shop.done[1-f2],"Q4 먼저 끝낸 좌석의 옛 시계는 다음 좌석을 끝내지 않는다");
     const T5=boot("pve",{aiLevel:"grade5"}); adv(60000); if(T5.TUT.open) T5.tutClose(); T5.startMode("pve",{aiLevel:"grade5"});   // 재시작 경로(초기화 없이) — gameReset 이 옛 마감을 지운다
     adv(S90-60000+1); ok(!T5.S.eco.shop.done[0],"Q4 새 경기 S01 은 옛 경기 마감(90초)에 끝나지 않는다");
-    adv(60000-2); ok(!T5.S.eco.shop.done[0],"Q4 새 경기 S01 89.999초엔 진행 중"); adv(1); ok(T5.S.eco.shop.done[0],"Q4 새 경기 S01 은 자기 90초에 만료");
+    adv(60000-2); ok(!T5.S.eco.shop.done[0],"Q4 새 경기 S01 89.999초엔 진행 중"); adv(1); ok(T5.S.phase==="play"&&!T5.S.eco.shop,"Q4 새 경기 S01 은 자기 90초에 만료 (자동 구매·배치·준비까지)");
     /* Q5 sim(AI vs AI) 은 상점 시계를 걸지 않는다 (온라인 종전 경제는 O 절) */
     const T6=boot("sim"); ok(C.q.every(x=>x.at-C.now<S90),"Q5 AI vs AI 에는 90초 상점 시계가 없다");
   } finally { global.setTimeout=saved.st; global.clearTimeout=saved.ct; global.setInterval=saved.si; global.clearInterval=saved.ci; Date.now=saved.now; }

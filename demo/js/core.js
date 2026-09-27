@@ -114,21 +114,33 @@ function resolveCoreAction(state,action){
     const ei=searchLegalIndex(state,sel);                              // 자리를 건네지 않은 해석은 여기 한 번뿐이다
     return ei<0?{t:"search",id:null}:{t:"search",id:sel.id,r:sel.r,c:sel.c,ei};
   }
+  /* #263: 시간 초과 자동 배치(좌석을 실어 보낸다) — 화면의 "자동 배치"(state.setupPlayer)와 같은 한 곳을 쓴다.
+     로스터는 건드리지 않는다: 경제 경기의 말은 시작 상점에서 산 것이고, 재주입은 setupAuto 가 이미 막는다. */
+  if(action.t==="autoPlace"){
+    const p=action.player;
+    return (p!==0&&p!==1)?action:{t:"setupAuto",player:p,roster:state.roster[p].slice(),positions:autoPlacePositions(state,p)};
+  }
   if(action.t!=="auto") return action;
   const player=state.setupPlayer, roster=state.roster[player].slice();
   if(roster.length<6){
     const rest=shuffle(ROSTER.filter(item=>!roster.includes(item.id)).map(item=>item.id));
     while(roster.length<6) roster.push(rest.pop());
   }
-  const rows=player===0?[11,12,13]:[1,2,3], cells=[];
-  for(const row of rows) for(let column=1;column<=COLS;column++) cells.push([row,column]);
+  return {t:"setupAuto",player,roster,positions:autoPlacePositions(state,player)};
+}
+/* 아직 놓이지 않은 그 좌석의 말만 자기 진영의 빈 칸에 난수로 놓는다 — 반환 좌표는 항상 합법(자기 zone · 1..COLS · 중복 없음)이다.
+   이미 놓인 말(자기·상대)은 그대로 두고 그 칸만 피한다. */
+function autoPlacePositions(state,player){
+  const cells=[];
+  for(const row of zoneOf(player)) for(let column=1;column<=COLS;column++) cells.push([row,column]);
   shuffle(cells);
   const occupied=new Set(state.pieces.filter(piece=>piece.alive&&piece.placed).map(piece=>piece.r+"_"+piece.c)), positions=[];
   for(const piece of state.pieces.filter(piece=>piece.owner===player&&!piece.placed)){
     const cell=cells.find(([row,column])=>!occupied.has(row+"_"+column));
+    if(!cell) break;                                                   // 진영 칸보다 말이 많을 수 없다 — 방어적 중단
     positions.push({id:piece.id,r:cell[0],c:cell[1]}); occupied.add(cell[0]+"_"+cell[1]);
   }
-  return {t:"setupAuto",player,roster,positions};
+  return positions;
 }
 /** #245 액션·이벤트·상태 계약이 만나는 한 곳. 거부는 null 이다 (다음 상태도 이벤트도 없다).
     @param {GameState} state @param {ReducerAction} action @returns {CoreResult} */
@@ -357,6 +369,22 @@ function reduceCoreAction(state,action){
       }
       return {state:next,events};
     }
+    /* #263 T3 (2026-09-25 CJ) 강제 전투 대상 자동 선택 — 대상 선택 30초가 만료됐을 때 서버 시계가 넣는 액션이다.
+       ① 후보를 **그 시점에 다시 검증**한다(밀려나거나 죽은 대상·적격이 바뀐 대상은 빠진다 — "선택 중 대상이
+          사라지거나 적격성이 바뀌면 현재 적격 후보만 사용한다"). 판정은 forcedPickOk 와 같은 한 곳(contactEligible)이다.
+       ② 남은 합법 후보 중 **균등**하게 하나를 뽑는다. 난수는 **선택 1회당 rand() 1회**이고(후보마다 다시 뽑지 않는다)
+          후보가 하나뿐이면 아예 쓰지 않는다 — 같은 상태·같은 시드면 같은 대상이 나온다(V3 재현).
+       ③ 합법 후보가 하나도 남지 않으면 강제 전투 표식을 지워 턴을 마칠 수 있게 한다(면제 사유는 로그로 남긴다).
+       개시는 사람 클릭과 같은 경로(forcedContactStart→initBattle)가 맡는다 — 여기서 하는 일은 대상을 좁히는 것뿐이다. */
+    case "forcedAuto": {
+      const p=state.movedPiece, list=(state.forcedTargets||[]).slice();
+      if(!p||!list.length) return {state,events:[]};
+      const cands=adjEnemies(p,state).filter(e=>list.includes(e.id)&&contactEligible(p,e,state)).map(e=>e.id);
+      if(!cands.length) return {state:Object.assign({},state,{forcedTargets:[]}),
+        events:[{type:"forcedExempt",message:"⚔️ 강제 전투 면제 — 적격 대상이 남지 않았습니다."}]};
+      const pick=cands.length===1?cands[0]:cands[Math.floor(rand()*cands.length)];
+      return {state:Object.assign({},state,{forcedTargets:[pick]}),events:[{type:"forcedAutoPick",id:pick,count:cands.length}]};
+    }
     /* #245 턴 종료: 강제 전투 잔여 확인 → immobile 감소 → 지표(왕 숲 체류·전투 회피) → 회복 틱 → turnCount++ → 교대
        (current 플립 + 턴 시작 초기화·메모 정리·BT 진입 플래그)까지의 **상태 전이**를 Core 가 소유한다 (#106 4.2.2 순서 그대로).
        표시(강제 전투 미이행 토스트·회복 로그·턴 배너·BT 고지·핫시트 넘김·렌더·AI 스케줄)와 sim 무승부 종료(gameOver — 전투 회계
@@ -377,9 +405,14 @@ function reduceCoreAction(state,action){
         next=drained.state; events=drained.events.slice();
       }
       if(next.forcedTargets&&next.forcedTargets.length){ // T1: 강제 전투 미이행 시 턴 종료 불가
-        if(!((next.mode==="pve"&&next.current===1)||next.mode==="sim")) // isAI(S.current) 가드 — 상태 기준
+        /* #263 T1 (2026-09-25 CJ): **시한 만료로 서버가 넘기는 턴**은 이 거부에 걸리지 않는다. 걸리면 그 좌석이
+           차례를 쥔 채 경기가 멈춘다(종전 한계 1 — endTurn 이 거부되어 턴이 넘어가지 않던 자리다). 정상 흐름에서는
+           여기까지 오지 않는다: 만료 처리는 forcedAuto 로 대상을 먼저 결정하고, 적격 후보가 하나도 없을 때만
+           비워진 표식으로 이 자리에 닿는다. timeout 표식은 서버 시계만 붙인다(회선 어휘에는 없다 — _authorize 가
+           {t:'endTurn'}·{t:'endTurn',auto:true} 로만 정규화한다). */
+        if(!action.timeout&&!((next.mode==="pve"&&next.current===1)||next.mode==="sim")) // isAI(S.current) 가드 — 상태 기준
           return {state:next,events:events.concat([{type:"toast",message:"⚔️ 강제 전투 대상과 전투해야 턴을 마칠 수 있습니다."}])};
-        next=Object.assign({},next,{forcedTargets:[],forcedQueue:[]}); // AI 안전장치 (이행 불가 상태 해소)
+        next=Object.assign({},next,{forcedTargets:[],forcedQueue:[]}); // AI 안전장치 · 시한 만료 (이행 불가 상태 해소)
       }
       const clones=new Map(), clone=x=>{ let c=clones.get(x); if(!c){ c=Object.assign({},x); clones.set(x,c); } return c; };
       const me=next.current, board=alivePieces(next);
@@ -725,18 +758,25 @@ function reduceCoreAction(state,action){
     /* #146 계약: 4슬롯이 전부 불가할 때의 **수동** 전투 행동 넘기기. 자동 진행이 아니라 사람이 [턴 종료]를 눌러야 실행된다.
        차단 대상(전부 조용히 무시 — 상대에게는 아무 안내도 새지 않는다): 전투 밖 · 내 차례 아님 · 사실은 쓸 수 있는 공격이 있음 ·
        왕·동료 본체(f.skills 없음 — 기본 공격이 있으므로 넘기기 대상이 아니다).
-       소모하는 것은 **자기 전투 행동 1회**(nextPhase)뿐이다: 보드 주 행동·턴당 전투 횟수·약화 잔여 횟수·난수는 건드리지 않는다. */
+       소모하는 것은 **자기 전투 행동 1회**(nextPhase)뿐이다: 보드 주 행동·턴당 전투 횟수·약화 잔여 횟수·난수는 건드리지 않는다.
+       #263 T4 (2026-09-25 CJ): **전투 행동 60초 만료**도 같은 자리를 쓴다 — `action.timeout` 이 붙으면 쓸 수 있는 기술이
+       남아 있어도(그리고 R1 추가 공격 중에도) 그 전투원의 행동 1회만 건너뛰고 전투는 다음 행동·다음 라운드로 이어진다.
+       "일반 수동 pass 의 기술 불가 조건을 시간 초과에도 강요하지 않는다"(#263 본문)가 그 근거다. 전투 취소·즉시 패배·
+       경기 종료는 없고, 라운드 상한(6)이 그대로라 연달아 만료되면 기존 남은 HP 비율 판정으로 승패가 난다.
+       timeout 표식은 **서버 시계만** 붙인다: 회선으로 온 pass 는 room.js _authorize 가 {t:'pass',bf} 로 다시 지어 넘기므로
+       클라이언트가 이 갈래를 요청할 길이 없다. */
     case "pass": {
       if(!action.frame) return null;                 // 프레임이 없는 호출(수신 어휘·직접 호출)은 전투 화면 진입점이 자기 프레임을 붙여 다시 부른다
       const ctx=battleCmdCtx(state,action,true); if(!ctx) return {state,events:[]};
-      const {B,side,f}=ctx;
-      if(B.bonus&&B.bonus.stage==="active") return {state,events:[]};                        // #241 R1 추가 공격 중 불가(L17)
-      if(!f.skills||f.skills.some((sid,i)=>slotUsable(f,i,side))) return {state,events:[]};
+      const {B,side,f}=ctx, timeout=!!action.timeout;
+      if(!timeout&&B.bonus&&B.bonus.stage==="active") return {state,events:[]};               // #241 R1 추가 공격 중 불가(L17)
+      if(!timeout&&(!f.skills||f.skills.some((sid,i)=>slotUsable(f,i,side)))) return {state,events:[]};
       B.actSeq++;
       B.menu=null;
       /* 비공개: B.blog 는 양측이 공유하는 상태다. **왜** 넘겼는지(= 내 기술 4칸이 전부 막혔다)는 상대의 미공개 정보이므로
-         공개 로그에는 중립적인 결과만 남긴다 (#121 5.3 봉인 사유 비공개와 같은 원칙). */
-      bmsg(`⏭ ${fighterName(side)}는 이번 행동을 넘겼다.`,null,null,B);
+         공개 로그에는 중립적인 결과만 남긴다 (#121 5.3 봉인 사유 비공개와 같은 원칙). 시간 초과는 그 자체가 양측에
+         공개된 사실이므로 사람의 선택과 구분되게 적는다(#263 AC 11). */
+      bmsg(timeout?`⏳ ${fighterName(side)}는 시간이 초과되어 이번 행동을 건너뛴다.`:`⏭ ${fighterName(side)}는 이번 행동을 넘겼다.`,null,null,B);
       return {state,events:[{type:"battleNextPhase"}]};
     }
     /* 전투 커맨드의 실제 적용 지점 — 슬롯 인덱스(0~3) + 레거시 매핑: 'basic'→슬롯0(합법이 아니면 거부), 'skill'→슬롯1, 'common'→슬롯2.
@@ -1144,6 +1184,16 @@ function applyCoreEffects(event){
       emitContactBanner(event.piece,viewerIsOwner(event.piece.owner)?"남은 말의 접촉 대상(빨간 표시)을 클릭하세요":"상대가 남은 접촉 대상을 고르고 있습니다"); // #106 4.5 "추가 접촉" 배너 (render 는 호출처가 한다)
       return true;
     }
+    /* #263 T3 — 대상 선택 30초가 만료돼 서버가 대신 고른 강제 전투. 개시는 사람이 고른 경우와 **같은 헬퍼**
+       (forcedContactStart→initBattle)를 쓰고, 기록만 사람의 선택과 구분되게 한 줄 남긴다. 어느 말을 뽑았는지는
+       적지 않는다 — 그 자리는 이미 양측에 보이는 접촉 배너가 말하고, 비공개 정보를 새로 늘리지 않는다. */
+    case "forcedAutoPick": {
+      const p=S.movedPiece, def=alivePieces().find(e=>e.id===event.id);
+      if(!p||!def) return true;
+      addLog(`⏳ ${pname(p.owner)} 강제 전투 대상 선택 시간 초과 — 서버가 적격 대상 ${event.count}개 중 하나를 결정했습니다.`,"imp");
+      forcedContactStart(p,[def.id]);
+      return true;
+    }
     case "recruitOpened": {                                                          // #121 계약 4·6 — recruit 상태는 reducer 가 열었다
       if(isAI(event.owner)){ emitCore({type:"aiRecruitTurn",owner:event.owner,pieceId:event.piece.id}); return true; }
       if(S.mode!=="sim"&&viewerIsOwner(event.owner)) emitCore({type:"tutHint",key:"recruit"}); // #26·#121 첫 1회 도움말
@@ -1362,12 +1412,15 @@ function ecoGate(state,p){
   if(sh.kind==="start") return state.phase==="setup"&&(p===state.setupPlayer||ecoAiSeat(state,p))?null:"상점이 열려 있지 않습니다";
   return state.phase==="shop"&&(sh.active===null||sh.active===p)?null:"상점 차례가 아닙니다";
 }
-/* S01 예비 재화 (2.2 · Venus 5차 E2 — 새로 고침 비용 포함은 D9 — 2026-09-24 CJ 확정): 산 칸은 빈칸이라 여섯 번째부터는 새로 고침이 필요하다.
-   남은 필수 비용 = 빈 필드 k + ⌈max(0, k − 살 수 있는 칸 v) ÷ 5⌉ × 새로 고침. 칸을 채우지 않는 지출은 지출 뒤 🪙 ≥ 이 값일 때만.
-   하수인 구매는 🪙·k·v 를 함께 1 줄여 여유가 그대로라 막히지 않는다 — 시간 초과·AI 가 6칸을 못 채우고 멈추는 일이 없다. */
-function ecoBuyable(state,p){ const sh=state.eco.shop; return sh.slots[p].findIndex(s=>!!s&&!sh.sold[p].includes(s.key)); } // 살 수 있는 첫 칸 (-1 = 없음)
+/* S01 예비 재화 (2.2 · #263 2026-09-25 CJ): 진열이 6칸이고 필드도 6칸이라 **정상 흐름에서는 새로 고침 없이** 여섯을 채운다.
+   남은 필수 비용 = 빈 필드 k + ⌈max(0, k − 살 수 있는 칸 v) ÷ ECO.slots⌉ × 새로 고침. 칸을 채우지 않는 지출은 지출 뒤 🪙 ≥ 이 값일 때만.
+   시작 시 k=v=6 이라 필수는 곧 빈 칸 수(6)이고, 산 칸은 품절로 남아 k 와 v 가 함께 줄므로 여유가 그대로다.
+   새로 고침 항은 가상의 후보 고갈(v < k)에서만 살아나는 안전장치다 — 일반 하수인 30종·6칸에서는 발생하지 않는다(Venus 검증). */
+function ecoBuyable(state,p){ const sh=state.eco.shop; return sh.slots[p].findIndex(s=>ecoSlotOpen(sh,p,s)); } // 살 수 있는 첫 칸 (-1 = 없음)
+/* #263: 진열 6칸은 상점이 닫힐 때까지 그대로 있다 — 살 수 있는 칸은 "칸이 있고 · 품절(내가 산 칸)이 아니고 · 판매 잠금 종이 아닌" 칸뿐이다 */
+function ecoSlotOpen(sh,p,s){ return !!s&&!s.soldOut&&!sh.sold[p].includes(s.key); }
 function ecoReserveNeed(state,p,v){ const sh=state.eco.shop, k=ecoEmptyField(state,p).length;
-  if(v===undefined) v=sh.slots[p].filter(s=>!!s&&!sh.sold[p].includes(s.key)).length;             // 기본 = 지금 진열에서 살 수 있는 칸 수
+  if(v===undefined) v=sh.slots[p].filter(s=>ecoSlotOpen(sh,p,s)).length;                          // 기본 = 지금 진열에서 살 수 있는 칸 수
   return k+Math.ceil(Math.max(0,k-v)/ECO.slots)*ECO.refresh; }
 function ecoReserveOk(state,p,cost,v){ return state.eco.shop.kind!=="start"||state.eco.coins[p]-cost>=ecoReserveNeed(state,p,v); }
 /** @returns {CoreResult} */
@@ -1399,6 +1452,7 @@ function ecoReduce(state,action){
     case "shopBuy": {
       const slot=sh.slots[p][action.i];
       if(action.seq!==sh.seq[p]||!slot) return ecoRefuse(state,p,"진열이 바뀌었습니다 — 다시 골라 주세요");
+      if(slot.soldOut) return ecoRefuse(state,p,"품절 — 새로 고침 전까지는 살 수 없습니다");                 // #263
       if(sh.sold[p].includes(slot.key)) return ecoRefuse(state,p,"판매함 — 이번 상점에서는 살 수 없습니다");
       const own=ecoUnitOf(state,p,slot.key);
       const grade=own?(slot.grade>own.grade?slot.grade:own.grade+1):slot.grade;
@@ -1425,7 +1479,7 @@ function ecoReduce(state,action){
         const r=state.eco.soldHp[p][slot.key]; if(r!==undefined) u.hp=Math.max(1,Math.round(u.maxHp*r)); // 판매 기록 HP 비율 (7.6)
         next.eco.bag[p].push(u); msg=`${u.name} → 가방`;
       }
-      next.eco.shop.slots[p][action.i]=null;                               // 산 칸은 새로 고침 전까지 빈칸 — S01 도 같다 (5차 CJ 플레이 QA)
+      next.eco.shop.slots[p][action.i]=Object.assign({},slot,{soldOut:true}); // #263: 산 칸은 **비지 않고** 품절로 남는다 — 즉시 보충 없음, 수동 새로 고침까지 구매 불가
       next.eco.shop.seq[p]++;
       return ecoChanged(next,p,msg);
     }
@@ -1477,18 +1531,28 @@ function ecoReduce(state,action){
     case "shopDone": case "shopTimeout": {
       let next=ecoNext(state);
       if(start){
-        if(action.t==="shopTimeout"){ // 빈 필드 칸을 살 수 있는 진열 ①부터 자동 구매 · 살 칸이 없으면 새로 고침 🪙1 뒤 다시 ① (D9 — 2026-09-24 CJ 확정)
-          for(let n=0;n<ECO.field*2&&ecoEmptyField(next,p).length;n++){
-            const i=ecoBuyable(next,p), seq=next.eco.shop.seq[p];
-            const r=ecoReduce(next,i<0?{t:"shopRefresh",player:p,seq}:{t:"shopBuy",player:p,i,seq});
+        if(action.t==="shopTimeout"){
+          /* #263 (2026-09-25 CJ): **그 순간 노출된** 적격 칸을 ①부터 자동 구매한다. 자동 새로 고침은 폐지다(비용 0·횟수 0) —
+             진열이 6칸이고 필드도 6칸이라 이미 산 만큼 품절이 되어도 남은 노출 칸 수 = 빈 필드 칸 수다.
+             예비 재화(ecoReserveOk)가 빈 칸 수만큼의 코인을 강제하므로 하수인 외 지출 뒤에도 자동 구매 비용은 보장된다. */
+          for(let n=0;n<ECO.slots&&ecoEmptyField(next,p).length;n++){
+            const i=ecoBuyable(next,p); if(i<0) break;
+            const r=ecoReduce(next,{t:"shopBuy",player:p,i,seq:next.eco.shop.seq[p]});
             if(r.events[0].type!=="shopChanged") break; next=r.state;
           }
         }
         if(ecoEmptyField(next,p).length) return ecoRefuse(state,p,"필드 6칸을 모두 채워야 완료할 수 있습니다");
         next.pieces=next.pieces.map(x=>x.owner===p&&(x.type==="king"||x.type==="ally"||x.fresh)?Object.assign({},x,{fresh:false}):x);
-        assignLeaderElements(p,next);                                      // 고르지 않은 왕·동료만 필드 최다 속성 (2.2)
+        assignLeaderElements(p,next);                                      // 고르지 않은 왕·동료만 필드 최다 왕국 (2.2 · #263 동률은 난수 1회)
       }
       next.eco.shop.done[p]=true;
+      /* #263: 시간 초과로 끝난 좌석은 그 자리에서 배치까지 끝내고 곧바로 준비한다 — 배치 90초를 다시 걸지 않는다.
+         직접 완료(shopDone)한 좌석은 여기서 놓지 않는다: 그 좌석만 별도의 배치 90초를 받는다.
+         done[p] 를 세운 **뒤에** 놓는다 — setupAuto 는 시작 상점을 마친 좌석만 받는다. */
+      if(start&&action.t==="shopTimeout"){
+        const auto=reduceCoreAction(next,resolveCoreAction(next,{t:"autoPlace",player:p}));
+        if(auto) next=auto.state;
+      }
       /** @type {CoreEvent[]} */ const events=[{type:"shopClosed",kind:sh.kind,player:p,all:false,bt:false}];
       if(start) return {state:next,events};
       const other=1-p;
@@ -1697,7 +1761,7 @@ function forcedContactStart(p,list){
   }else{
     const fmsg=`⚔️ 강제 전투 — 신규 인접 대상 ${list.length}개 중 하나를 선택하세요.`;
     addLog(fmsg,"imp"); if(!isAI(p.owner)) emitToast(fmsg);
-    emitContactBanner(p,viewerIsOwner(p.owner)?"여러 말과 접촉하였습니다. 어떤 말을 선택하시겠습니까?":"상대가 접촉한 말 중 하나를 고르고 있습니다"); // 상황 1 — 배너 뒤 잠금 해제, 클릭 선택(시간 제한 없음)
+    emitContactBanner(p,viewerIsOwner(p.owner)?"여러 말과 접촉하였습니다. 어떤 말을 선택하시겠습니까?":"상대가 접촉한 말 중 하나를 고르고 있습니다"); // 상황 1 — 배너 뒤 잠금 해제, 클릭 선택. #263 T3: 이 시점에 대상 선택 30초가 새로 서고, 만료되면 서버가 적격 후보 중 균등 난수로 하나를 골라(forcedAuto) 전투를 연다
   }
   emitCore({type:"render"});
   if(!isAI(p.owner)&&def) initBattle(p,def); // 사람: 확인 없이 즉시 개시 (왕·동료는 기존 모달 흐름) · AI: aiStep이 최우선 개시
