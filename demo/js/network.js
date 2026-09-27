@@ -21,7 +21,7 @@ const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncMo
      소켓 단절(비의사)과 명시적 leave(의사)를 구분한다. explicitLeave는 netLeaveRoom()이 close() 직전에만 세운다.
      epoch/tokenGen은 room_opened/room_joined/room_resumed의 실제 필드(protocol.md v2 §2)를 그대로 담는다 —
      tokenGen은 재개(resume) 성공 때만 회전한다(seatToken.js resume()). resumeDeadline은 Date.now() 기준 ms epoch. */
-  explicitLeave:false, epoch:null, tokenGen:0,
+  explicitLeave:false, epoch:null, tokenGen:0, players:null, // #259 players: 서버가 준 좌석별 공개 닉네임 [좌석0, 좌석1] (모르면 null)
   resuming:false, resumeDeadline:0, resumeAttempts:0, resumeTimer:null, resumeLastAttempt:0};
 function netActor(){ // 지금 게임이 입력을 기다리는 플레이어
   if(!S) return null;
@@ -328,7 +328,8 @@ const NET_LOBBY_MSG={
   gone:"이 방은 더 이상 참가할 수 없습니다.",
   dropBeforeReady:"연결이 끊겼습니다. 방 목록으로 돌아가 다시 참가해 주세요.",
   full:"지금은 방이 가득 찼습니다. 잠시 후 다시 시도해 주세요.",
-  busy:"요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요."
+  busy:"요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.",
+  sameAccount:"같은 계정끼리는 대전할 수 없습니다. 다른 계정으로 참가해 주세요."
 };
 function netLobbyMsg(kind){ NET.lobbyMsg=kind?{kind,text:NET_LOBBY_MSG[kind]||kind}:null; }
 function netRoomsHtml(){
@@ -373,12 +374,13 @@ function netAttachPublicSocket(ws,opts){
       netLobbyMsg("loadFail"); render(); const s=$("netStatus"); if(s){ s.style.display=""; s.textContent=NET_PROTO_FAIL; } showToast(NET_PROTO_FAIL); return; } // netConnect()의 protoAbort()와 같은 fail-closed 원칙
     const s=$("netStatus"); if(s) s.textContent="연결됨"; };
   ws.onerror=()=>{ if(!pubLive()) return; if(!NET.roomId){ NET.lobbyPending=null; NET.roomsLoading=false; netLobbyMsg("loadFail"); render(); } };
-  ws.onclose=()=>{ if(!pubLive()) return; NET.ws=null; netHandlePublicSocketClosed(); };
+  ws.onclose=ev=>{ if(!pubLive()) return; NET.ws=null; netHandlePublicSocketClosed(ev); };
   ws.onmessage=ev=>{ if(!pubLive()) return; let m; try{ m=JSON.parse(ev.data); }catch(e){ return; } netHandlePublicMessage(m); };
 }
 /* 공개 소켓이 (재접속 시도 소켓 포함) 닫혔을 때의 공통 처리 — netAttachPublicSocket()과 재개 성공 뒤 재배선된
    소켓이 함께 쓴다. 단절이 방 안(비의사)이면 유예 재접속, 아니면 로비 카드에 상태를 남긴다. */
-function netHandlePublicSocketClosed(){
+function netHandlePublicSocketClosed(ev){
+  if(ev&&ev.code===4003){ acctEndSession(ACCT_SESSION_ENDED); return; } // #259 서버가 계정 세션을 끝냈다(E_SESSION_ENDED 프레임을 놓쳤어도) — 재접속하지 않는다
   NET.roomsLoading=false;
   if(NET.publicMode&&NET.roomId&&!NET.explicitLeave&&!NET.resuming){ netBeginResume(); return; } // #217 소켓 단절(비의사) — 유예 안에서 자동 재접속
   if(NET.lobbyPending){ NET.lobbyPending=null; netLobbyMsg("loadFail"); }
@@ -435,6 +437,8 @@ const NET_ERR_KO={E_NOT_ACTOR:"지금은 상대의 차례입니다.",E_ILLEGAL_A
   E_PAUSED:"상대 연결을 기다리는 중이라 경기가 멈춰 있습니다.",E_SHOP_STALE:"진열이 바뀌었습니다 — 최신 상점으로 갱신했습니다.",E_DEADLINE:"시간이 끝났습니다."};
 function netHandlePublicMessage(m){
   if(!m||typeof m!=="object") return;
+  /* #259 서버 권위 공개 닉네임(첫 프레임·room_state의 players[좌석]) — 서버 닉네임 규칙에 맞는 값만 받는다(화면 HTML 에 그대로 들어간다) */
+  if(Array.isArray(m.players)) NET.players=[0,1].map(i=>typeof m.players[i]==="string"&&ACCT_NICK_RE.test(m.players[i])?m.players[i]:null);
   if(m.type==="lobby_ready"){ NET.lobbyOnly=true; NET.roomsLoading=true; render(); netSend({v:1,t:"list_rooms"}); return; }
   if(m.type==="lobby_rooms"){ NET.rooms=Array.isArray(m.rooms)?m.rooms:[]; NET.roomsLoading=false; NET.roomsLoaded=true; if(NET.lobbyMsg&&NET.lobbyMsg.kind!=="gone") netLobbyMsg(null); render(); return; }
   if(m.type==="room_opened"||m.type==="room_joined"){
@@ -450,6 +454,7 @@ function netHandlePublicMessage(m){
     addLog(NET.economy?`🌐 공개 방 #${NET.roomId} — 시작 상점에서 하수인 6명을 산 뒤 14개 말을 배치하고 [배치 완료 → 준비 완료]를 누르세요.`
       :`🌐 공개 방 #${NET.roomId} — 로스터 6종을 고르고 14개 말을 배치한 뒤 [배치 완료 → 준비 완료]를 누르세요.`,"sys");
     render();
+    acctSeatSave(); // #259 새로고침·브라우저 재시작 뒤 재접속용 (로그인한 계정 서버에서만)
     if(m.type==="room_joined") netSendCmd("resync"); // #237 참가 프레임에는 좌석 뷰가 없다 — 경제 방은 이 순간 시작 상점이 열려 있다
     return; }
   if(m.type==="room_resumed"){
@@ -466,11 +471,12 @@ function netHandlePublicMessage(m){
        이후 이 소켓이 다시 끊기면(아직 leave 전이면) 표준 경로처럼 또 자동 재접속을 시도하도록 재배선한다.
        재배선하지 않으면 두 번째 단절은 아무 반응 없이 조용히 죽는다. */
     if(NET.ws){ const sock2=NET.ws; const pubLive2=()=>NET.ws===sock2;
-      sock2.onclose=()=>{ if(!pubLive2()) return; NET.ws=null; netHandlePublicSocketClosed(); };
+      sock2.onclose=ev=>{ if(!pubLive2()) return; NET.ws=null; netHandlePublicSocketClosed(ev); };
       sock2.onerror=()=>{};
       /* 재시도 소켓의 onmessage 는 "재접속 중"일 때만 받도록 열렸다 — 재개가 끝나면 그 조건이 거짓이 되어 이후 상대 푸시·명령 응답을
          전부 버린다(실서버 통합에서 재현: 재개한 좌석이 revision 에서 멈춰 양측 차례가 엇갈림). 표준 수신으로 바꿔 끼운다. */
       sock2.onmessage=ev=>{ if(!pubLive2()) return; let mm; try{ mm=JSON.parse(ev.data); }catch(e){ return; } netHandlePublicMessage(mm); }; }
+    acctSeatSave(); // #259 재개마다 회전한 토큰으로 갱신
     showToast("🌐 재접속했습니다.");
     NET.readySent=false; // 재개 뒤에는 서버 상태를 다시 보고 필요하면 준비 의사를 다시 보낸다
     if(m.data) netApplyRoomState(m.data,true); else render(); // #217 fx §7-4: room_resumed는 보수적 baseline(netFxIngest)
@@ -479,12 +485,17 @@ function netHandlePublicMessage(m){
   if(m.type==="room_state"){ netApplyRoomState(m.data); netFlushSetupReady(); return; }
   if(m.type==="error"){
     /* §2.8 에폭 불일치 = 서버 재시작으로 방 VOID(몰수 아님) — 60초 유예를 기다리지 않고 일반 단절과 다른 문구로 즉시 포기 */
+    if(m.code==="E_SESSION_ENDED"){ acctEndSession(m.reason==="login_replaced"?ACCT_REPLACED:ACCT_SESSION_ENDED); return; } // #259 서버가 이 계정 세션을 끝냈다 — 재접속하지 않는다
     if(NET.resuming&&m.code==="E_EPOCH"){ netAbandonResume("🌐 서버 재시작으로 경기가 무효 처리되었습니다."); netListRooms(); return; }
     if(NET.resuming&&["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_SEAT_TOKEN_INVALID","E_EPOCH","E_TOKEN_GEN_STALE","E_SUPERSEDED"].includes(m.code)){
+      if(m.code==="E_SEAT_TOKEN_INVALID") acctResumeProbe(); // #259 좌석 계정과 지금 쿠키의 계정이 다를 수 있다(같은 프로필 다른 탭 로그인) — 원인을 확인해 알린다
       netResumeExpire(); return; } // #217 재개 불가능한 오류는 유예 만료를 기다리지 않고 즉시 포기
+    /* #259 같은 계정의 다른 탭(또는 새로고침한 창)이 이 좌석으로 재접속했다 — 마지막 탭이 좌석을 가진다.
+       되찾으려 재접속하지 않고 로비로 간다(되찾으면 두 탭이 서로 밀어내는 반복이 된다). */
+    if(m.code==="E_SUPERSEDED"&&NET.roomId!=null){ netAbandonResume("🌐 다른 창에서 이 경기에 다시 접속했습니다 — 이 창은 로비로 돌아갑니다."); netListRooms(); return; }
     if(!NET.roomId){ // 방 진입 전(목록·생성·참가) 실패 — 카드 안에 지속 상태로 남기고 목록을 최신으로
       NET.lobbyPending=null;
-      netLobbyMsg(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_ROOM_FULL"].includes(m.code)?"gone":m.code==="E_CAPACITY"?"full":m.code==="E_RATE_LIMITED"?"busy":"loadFail");
+      netLobbyMsg(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_ROOM_FULL"].includes(m.code)?"gone":m.code==="E_CAPACITY"?"full":m.code==="E_RATE_LIMITED"?"busy":m.code==="E_SAME_ACCOUNT"?"sameAccount":"loadFail");
       render();
       if(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_CAPACITY","E_DRAINING"].includes(m.code)) netListRooms();
       return; }
@@ -936,9 +947,12 @@ function netResumeAttempt(){
   if(!opened.ok) return; // 유예 타이머의 다음 tick이 다시 시도한다
   const ws=opened.ws;
   NET.ws=ws; const sock=ws; const pubLive=()=>NET.ws===sock&&NET.resuming;
-  ws.onopen=()=>{}; // r- credential은 소켓이 열리자마자 서버가 room_resumed/error를 스스로 보낸다 — 클라이언트가 먼저 보낼 프레임이 없다
+  let didOpen=false;
+  ws.onopen=()=>{ didOpen=true; }; // r- credential은 소켓이 열리자마자 서버가 room_resumed/error를 스스로 보낸다 — 클라이언트가 먼저 보낼 프레임이 없다
   ws.onerror=()=>{}; // 유예 타이머가 재시도 — 실패마다 토스트를 띄우지 않는다
-  ws.onclose=()=>{ if(NET.ws===sock) NET.ws=null; }; // 유예 안이면 다음 tick이 재시도, 유예 밖이면 이미 정리됨
+  /* 유예 안이면 다음 tick이 재시도, 유예 밖이면 이미 정리됨. #259 열리지도 못한 소켓(업그레이드 401 = 세션 없음)이면 세션을 확인한다 —
+     다른 곳의 새 로그인·만료라면 60초 내내 헛재시도하지 않고 로그아웃을 알린다(네트워크 단절이면 확인도 실패해 그대로 재시도). */
+  ws.onclose=()=>{ if(NET.ws===sock){ NET.ws=null; if(!didOpen) acctResumeProbe(); } };
   ws.onmessage=ev=>{ if(!pubLive()) return; let m; try{ m=JSON.parse(ev.data); }catch(e){ return; } netHandlePublicMessage(m); };
 }
 function netAbandonResume(msg){

@@ -8,7 +8,7 @@ const {lockstepDigest}=require("../../../server/authoritative/room");
 const demo=path.join(__dirname,"..","..");
 const index=path.join(demo,"index.html");
 const html=fs.readFileSync(index,"utf8");
-const expected=["data.js","state.js","ui.js","core.js","ai.js","ui-overlays.js","network.js","bootstrap.js"];
+const expected=["data.js","state.js","ui.js","core.js","ai.js","ui-overlays.js","network.js","account.js","bootstrap.js"]; // #259 account.js — 계정·로그인 게이트
 let pass=0,fail=0;
 function ok(value,name){ if(value) pass++; else { fail++; console.error("FAIL: "+name); } }
 
@@ -762,7 +762,7 @@ ok(/function gameOver\(winner,type\)\{ dispatchCoreAction\(\{t:"gameOver",winner
   }
   /* (d) 새 경기 단일 커밋 경계 — 전역 S 대입은 state.js 의 commitNewGame 한 곳뿐이다 */
   {
-    const assigns=["data.js","state.js","ui.js","core.js","ai.js","ui-overlays.js","network.js","bootstrap.js"]
+    const assigns=["data.js","state.js","ui.js","core.js","ai.js","ui-overlays.js","network.js","account.js","bootstrap.js"]
       .map(n=>{ const src=fs.readFileSync(path.join(demo,"js",n),"utf8").replace(/\blet\s+S\s*=\s*null;/,""); // 선언은 대입이 아니다
         return [n,(src.match(/(^|[^.$\w])S\s*=[^=]/gm)||[]).length]; });
     const total=assigns.reduce((n,[,k])=>n+k,0);

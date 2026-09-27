@@ -8,6 +8,8 @@ const ERROR_CODES = new Set([
   'E_INTERNAL', 'E_DRAINING',
   // #237 GDD-23 2.4 — 단절 중 입력 정지 · 지난 진열/지난 B08 · 서버 시각 마감
   'E_PAUSED', 'E_SHOP_STALE', 'E_DEADLINE',
+  // #259 세션이 끝난(로그아웃·재설정·다른 곳 로그인·절대 만료) 소켓 — 이 프레임 뒤 close 4003
+  'E_SESSION_ENDED', 'E_SAME_ACCOUNT', // 같은 계정은 상대 좌석에 참가할 수 없다
 ]);
 
 const COMMAND_TYPES = new Set(['setup', 'ready', 'unready', 'action', 'resign', 'leave', 'resync', 'list_rooms']);
