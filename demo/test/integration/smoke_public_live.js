@@ -158,9 +158,10 @@ async function playGame(g,port){
   host.T.netCreatePublicRoom();
   await waitFor(()=>host.T.NET.roomId!=null,5000,"room_opened");
   const rid=host.T.NET.roomId;
-  guest.T.netListRooms();
+  guest.T.rooms.lobbyRooms(); // #261 방 목록은 L02 화면에 있다
   await waitFor(()=>(guest.T.NET.rooms||[]).some(r=>String(r.roomId)===String(rid)),5000,"lobby lists room");
-  ok(/방 #/.test(guest.T.byId("sidePanel").innerHTML)&&!/netCode/.test(guest.T.byId("sidePanel").innerHTML),`G${g}-L1 로비 카드에 방이 보이고 코드 입력칸이 없다`);
+  const lh=guest.T.byId("sidePanel").innerHTML+guest.T.byId("roomList").innerHTML;
+  ok(lh.indexOf("#"+rid+"</small>")>=0&&!/netCode/.test(lh),`G${g}-L1 방 목록(L02)에 방이 보이고 코드 입력칸이 없다`);
   guest.T.netJoinPublicRoom(rid);
   await waitFor(()=>guest.T.NET.roomId===rid&&host.T.NET.roomState==="SETUP",5000,"join + host notify");
   ok(true,`G${g}-L2 참가·호스트 입장 알림`);

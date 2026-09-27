@@ -436,5 +436,5 @@ window.startMode=function(mode,opts){
   return _acctStartMode(mode,opts);
 };
 const _acctNetCreate=window.netCreatePublicRoom, _acctNetJoin=window.netJoinPublicRoom;
-window.netCreatePublicRoom=function(){ if(NET.lobbyPending||NET.roomId) return; acctBeforeConnect(()=>_acctNetCreate()); };
+window.netCreatePublicRoom=function(name){ if(NET.lobbyPending||NET.roomId) return; acctBeforeConnect(()=>_acctNetCreate(name)); }; // #261 방 이름을 그대로 넘긴다
 window.netJoinPublicRoom=function(roomId){ if(NET.lobbyPending||NET.roomId) return; acctBeforeConnect(()=>_acctNetJoin(roomId)); };

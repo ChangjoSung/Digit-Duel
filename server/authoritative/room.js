@@ -1911,11 +1911,16 @@ class Room {
     };
   }
 
+  // #261 공개 행 — 이름·번호·상태·인원·공개 닉네임/대표 하수인만. 계정 id·초대 코드·IP·가방·배치·전투 정보는 싣지 않는다.
   lobbyRow() {
-    return { roomId: this.roomId, label: '방 #' + this.roomId, ageSec: Math.floor((now() - this.createdAt) / 1000), seats: '1/2' };
+    const seat = (k) => [0, 1].map((i) => this.seats[i][k] || null);
+    return {
+      roomId: this.roomId, roomName: this.name, state: this.state, seats: this.state === STATES.OPEN ? '1/2' : '2/2',
+      label: '방 #' + this.roomId, ageSec: Math.floor((now() - this.createdAt) / 1000), players: seat('nickname'), reps: seat('rep'),
+    };
   }
 
-  isListable() { return this.isPublic && this.state === STATES.OPEN; }
+  isListable() { return this.isPublic && (this.state === STATES.OPEN || this.state === STATES.SETUP || this.state === STATES.IN_PROGRESS); }
 }
 
 module.exports = { Room, STATES, DISCONNECT_GRACE_MS, ACTION_TYPES, BATTLE_CMDS, ECO_VERBS, battleFrame, lockstepDigest, catalog };

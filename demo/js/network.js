@@ -11,7 +11,7 @@ const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncMo
      검증까지 마친 실제 프로토콜을 그대로 따른다: credential 기반 소켓(l-/cp-/p-/r-) → 첫 인밴드 프레임(room_opened/
      room_joined/room_resumed/lobby_ready) → 이후 room_state/error. 코드 접속(위 code 경로)은 이 필드들과 무관하게
      그대로 동작한다(기존 릴레이 server/server.js, 건드리지 않음). */
-  uiTab:"public", rooms:[], roomsLoading:false, roomId:null, seatToken:null, publicMode:false, // #217 CJ 승인: 공개 로비가 기본 진입(Earth/lobby-guide.md) — 코드 접속은 SUPERSEDED된 검토 옵션으로만 남는다
+  uiTab:"public", rooms:[], roomsLoading:false, roomId:null, roomName:null, seatToken:null, publicMode:false, // #217 CJ 승인: 공개 로비가 기본 진입(Earth/lobby-guide.md) — 코드 접속은 SUPERSEDED된 검토 옵션으로만 남는다
   myReady:false, peerReady:false, lobbyOnly:false, revision:0, waitingForPeer:false,
   /* #217 Jupiter/battle-fx-protocol.md v2 §7 — (epoch,roomId,seat) 단위 큐 커서. enqueuedSeq는 로컬 재생
      큐에 이미 넣은 최대 seq, playedSeq는 실제 재생이 끝난 최대 seq. 새 room/epoch가 되면 netFxResetCursor가
@@ -324,7 +324,6 @@ window.netCodePrompt=function(){
 /* #217 CJ 승인: 공개 방이 유일한 온라인 진입이다. 초대 코드·접속 코드(SUPERSEDED)는 화면에 노출하지 않는다 —
    종전 코드 접속 함수(netPrepare/netConnect)는 서버 엔진의 락스텝 재생·기존 회귀가 쓰므로 코드에만 남는다. */
 window.netUiTab=function(){ NET.uiTab="public"; render(); };
-function netRoomAgeLabel(sec){ sec=Math.max(0,sec|0); if(sec<10) return "방금 전"; if(sec<60) return sec+"초 전"; return Math.floor(sec/60)+"분 전"; }
 /* 로비 카드 상태 문구(Earth/lobby-guide.md) — 토스트만으로 끝내지 않고 카드 안에 남긴다. 서버 내부 코드·주소는 싣지 않는다. */
 const NET_LOBBY_MSG={
   loadFail:"공개 방을 불러오지 못했습니다.",
@@ -333,25 +332,12 @@ const NET_LOBBY_MSG={
   full:"지금은 방이 가득 찼습니다. 잠시 후 다시 시도해 주세요.",
   busy:"요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.",
   sameAccount:"같은 계정끼리는 대전할 수 없습니다. 다른 계정으로 참가해 주세요.",
-  backlog:"지난 경기 결과를 저장하는 중이라 지금은 새 대전을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요." // #260 서버 E_RESULTS_BACKLOG — 내부 사정(대기 건수·파일)은 싣지 않는다
+  backlog:"지난 경기 결과를 저장하는 중이라 지금은 새 대전을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요.", // #260 서버 E_RESULTS_BACKLOG — 내부 사정(대기 건수·파일)은 싣지 않는다
+  badName:"2~20자의 한글·영문·숫자·공백·밑줄(_)·하이픈(-)만 쓸 수 있습니다." // #261 서버 E_BAD_ROOM_NAME — 화면 검사(lobby.js roomNameNorm)와 같은 문구
 };
 function netLobbyMsg(kind){ NET.lobbyMsg=kind?{kind,text:NET_LOBBY_MSG[kind]||kind}:null; }
-function netRoomsHtml(){
-  const pend=NET.lobbyPending; // "create" | "join:<roomId>" | null
-  const busy=!!pend;
-  const rows=(NET.rooms||[]).map(rm=>{
-    const rid=String(rm.roomId), joining=pend==="join:"+rid;
-    return `<div class="netRoomRow"><span class="netRoomInfo">${escAttr(rm.label||("방 #"+rid))} · ${escAttr(rm.seats||"1/2")} · ${netRoomAgeLabel(rm.ageSec)}</span>
-      <button type="button" ${busy?"disabled":""} onclick="netJoinPublicRoom(${escAttr(JSON.stringify(rid))})">${joining?"방에 참가하는 중…":"참가"}</button></div>`;
-  }).join("");
-  const empty=NET.roomsLoading?"목록을 불러오는 중…":(NET.roomsLoaded?"열려 있는 방이 없습니다. 새 방을 만들어 보세요.":"[새로고침]을 누르면 열려 있는 방을 불러옵니다.");
-  const msg=NET.lobbyMsg?`<div class="netLobbyMsg err" role="alert">${escAttr(NET.lobbyMsg.text)}
-      <div class="row"><button type="button" onclick="netListRooms()">${NET.lobbyMsg.kind==="gone"?"다른 방 보기":"다시 시도"}</button></div></div>`:"";
-  return `<div class="row netLobbyActions"><button type="button" class="primary big" ${busy?"disabled":""} onclick="netCreatePublicRoom()">${pend==="create"?"방을 만드는 중…":"새 방 만들기"}</button>
-      <button type="button" ${busy?"disabled":""} onclick="netListRooms()">새로고침</button></div>
-    ${msg}
-    <div class="netRoomList" aria-busy="${NET.roomsLoading?"true":"false"}">${rows||`<small>${empty}</small>`}</div>`;
-}
+/* #261 서버가 정리·검증해 보낸 방 이름 — 문자열만 받는다(표시는 언제나 escAttr 텍스트). 없으면 null → '방 #번호' */
+function netRoomName(v){ return typeof v==="string"&&v.length>0&&v.length<=40?v:null; }
 function netCredNonce(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
 function netReqId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2); }
 /* 공개 방 서버 주소 — 페이지를 서빙한 서버가 곧 공개 방 서버다(server/authoritative 정적 호스팅). 사용자에게 주소를 묻지 않고
@@ -361,8 +347,8 @@ function netPublicAddr(){ return location.protocol.indexOf("http")===0&&location
 /* credential 소켓 생성의 유일한 지점 — list/create/join/resume이 전부 이 함수를 거친다(각기 다른 credential
    문자열만 다르다, protocol.md v2 §1). 이 함수 밖에서 WebSocket 생성자를 새로 호출하지 않는다 — smoke_online.js
    C26이 그 생성자 호출 지점 개수를 정적으로 고정한다(코드 접속 1곳 + 이 함수 1곳, 그 밖의 우회 없음). */
-function netOpenCredentialSocket(credential){
-  const url=(location.protocol==="https:"?"wss://":"ws://")+netPublicAddr();
+function netOpenCredentialSocket(credential,query){
+  const url=(location.protocol==="https:"?"wss://":"ws://")+netPublicAddr()+(query||""); // #261 query 는 방 만들기의 ?rn= 뿐이다(Jupiter 계약 — credential 은 그대로)
   try{ return {ok:true,ws:new WebSocket(url,[NET_PROTOCOL_MARKER,credential])}; }catch(e){ return {ok:false,err:e}; }
 }
 function netCloseCurrentSocket(){ if(NET.ws){ const w=NET.ws; NET.ws=null; try{w.close();}catch(e){} } NET.ws=null; NET.lobbyOnly=false; }
@@ -385,7 +371,7 @@ function netAttachPublicSocket(ws,opts){
    소켓이 함께 쓴다. 단절이 방 안(비의사)이면 유예 재접속, 아니면 로비 카드에 상태를 남긴다. */
 function netHandlePublicSocketClosed(ev){
   if(ev&&ev.code===4003){ acctEndSession(ACCT_SESSION_ENDED); return; } // #259 서버가 계정 세션을 끝냈다(E_SESSION_ENDED 프레임을 놓쳤어도) — 재접속하지 않는다
-  NET.roomsLoading=false;
+  NET.roomsLoading=false; lobbyRttOff(); // #261 로비 핑 — '측정 불가'와 다른 '연결 끊김'
   if(NET.publicMode&&NET.roomId&&!NET.explicitLeave&&!NET.resuming){ netBeginResume(); return; } // #217 소켓 단절(비의사) — 유예 안에서 자동 재접속
   if(NET.lobbyPending){ NET.lobbyPending=null; netLobbyMsg("loadFail"); }
   const s=$("netStatus"); if(s) s.textContent="연결 종료"; render();
@@ -453,10 +439,11 @@ function netHandlePublicMessage(m){
   /* #259 서버 권위 공개 닉네임(첫 프레임·room_state의 players[좌석]) — 서버 닉네임 규칙에 맞는 값만 받는다(화면 HTML 에 그대로 들어간다) */
   if(Array.isArray(m.players)) NET.players=[0,1].map(i=>typeof m.players[i]==="string"&&ACCT_NICK_RE.test(m.players[i])?m.players[i]:null);
   if(Array.isArray(m.reps)) NET.reps=[0,1].map(i=>lobbyRepOk(m.reps[i])?m.reps[i]:null); // #260 일반 30종 ID 만 — 그 밖의 값은 그리지 않는다
-  if(m.type==="lobby_ready"){ NET.lobbyOnly=true; NET.roomsLoading=true; render(); netSend({v:1,t:"list_rooms"}); return; }
-  if(m.type==="lobby_rooms"){ NET.rooms=Array.isArray(m.rooms)?m.rooms:[]; NET.roomsLoading=false; NET.roomsLoaded=true; if(NET.lobbyMsg&&NET.lobbyMsg.kind!=="gone") netLobbyMsg(null); render(); return; }
+  if(m.type==="lobby_ready"){ NET.lobbyOnly=true; lobbyPollStart(); /* #261 L02 면 핑·5초 갱신 시작 */ NET.roomsLoading=true; render(); netSend({v:1,t:"list_rooms"}); return; }
+  if(m.type==="lobby_rooms"){ NET.rooms=Array.isArray(m.rooms)?m.rooms:[]; NET.roomsLoading=false; NET.roomsLoaded=true; if(NET.lobbyMsg&&NET.lobbyMsg.kind!=="gone") netLobbyMsg(null); lobbyRoomsPaint(); return; }
+  if(m.type==="rtt"){ lobbyRttReply(m.n); return; } // #261 로비 전용 왕복 측정 응답 — 게임 상태·시간과 무관
   if(m.type==="room_opened"||m.type==="room_joined"){
-    NET.roomId=m.roomId; NET.me=(typeof m.seat==="number")?m.seat:0;
+    NET.roomId=m.roomId; NET.me=(typeof m.seat==="number")?m.seat:0; NET.roomName=netRoomName(m.roomName);
     NET.seatToken=m.seatToken||null; NET.tokenGen=(typeof m.tokenGen==="number")?m.tokenGen:0;
     NET.epoch=m.epoch!=null?m.epoch:NET.epoch; NET.revision=(typeof m.revision==="number")?m.revision:0;
     NET.roomState=m.type==="room_opened"?"OPEN":"SETUP"; // 생성 직후는 상대 입장 대기, 참가 성공은 두 좌석이 찬 배치 단계
@@ -473,7 +460,7 @@ function netHandlePublicMessage(m){
     return; }
   if(m.type==="room_resumed"){
     netClearResume();
-    if(m.roomId!=null) NET.roomId=m.roomId; if(typeof m.seat==="number") NET.me=m.seat;
+    if(m.roomId!=null) NET.roomId=m.roomId; if(typeof m.seat==="number") NET.me=m.seat; if("roomName" in m) NET.roomName=netRoomName(m.roomName);
     if(m.seatToken) NET.seatToken=m.seatToken; if(typeof m.tokenGen==="number") NET.tokenGen=m.tokenGen;
     if(m.epoch!=null) NET.epoch=m.epoch;
     if(typeof m.economy==="boolean") NET.economy=m.economy; // #237
@@ -509,7 +496,7 @@ function netHandlePublicMessage(m){
     if(m.code==="E_SUPERSEDED"&&NET.roomId!=null){ netAbandonResume("🌐 다른 창에서 이 경기에 다시 접속했습니다 — 이 창은 로비로 돌아갑니다."); netListRooms(); return; }
     if(!NET.roomId){ // 방 진입 전(목록·생성·참가) 실패 — 카드 안에 지속 상태로 남기고 목록을 최신으로
       NET.lobbyPending=null;
-      netLobbyMsg(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_ROOM_FULL"].includes(m.code)?"gone":m.code==="E_CAPACITY"?"full":m.code==="E_RATE_LIMITED"?"busy":m.code==="E_SAME_ACCOUNT"?"sameAccount":m.code==="E_RESULTS_BACKLOG"?"backlog":"loadFail");
+      netLobbyMsg(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_ROOM_FULL"].includes(m.code)?"gone":m.code==="E_CAPACITY"?"full":m.code==="E_RATE_LIMITED"?"busy":m.code==="E_SAME_ACCOUNT"?"sameAccount":m.code==="E_RESULTS_BACKLOG"?"backlog":m.code==="E_BAD_ROOM_NAME"?"badName":"loadFail");
       render();
       if(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_CAPACITY","E_DRAINING"].includes(m.code)) netListRooms();
       return; }
@@ -917,10 +904,11 @@ window.netListRooms=function(){
   if(!opened.ok){ NET.roomsLoading=false; netLobbyMsg("loadFail"); render(); return; }
   netAttachPublicSocket(opened.ws,{lobbyOnly:true});
 };
-window.netCreatePublicRoom=function(){
+/* #261 name: 화면 검사(lobby.js lobbyCreateRoom)를 거친 방 이름. 없으면 서버가 '방 <번호>'로 만든다(종전 호출·계약 그대로) */
+window.netCreatePublicRoom=function(name){
   if(NET.lobbyPending||NET.roomId) return; // 중복 탭 방지
   netCloseCurrentSocket();
-  const opened=netOpenCredentialSocket("cp-"+netCredNonce());
+  const opened=netOpenCredentialSocket("cp-"+netCredNonce(),name==null?"":"/?rn="+encodeURIComponent(name));
   if(!opened.ok){ netLobbyMsg("loadFail"); render(); return; }
   NET.lobbyPending="create"; netLobbyMsg(null);
   netAttachPublicSocket(opened.ws,{lobbyOnly:false}); render();
@@ -945,7 +933,7 @@ window.netRoomReady=function(flag){
   if(NET.roomState==="SETUP") netSendCmd("unready");
   render();
 };
-window.netLeaveRoom=function(){ NET.explicitLeave=true; netClearResume(); if(NET.roomId) netSendCmd("leave"); netLeave(); newGame("pvp",{phase:"menu"}); render(); netListRooms(); };
+window.netLeaveRoom=function(){ NET.explicitLeave=true; netClearResume(); if(NET.roomId) netSendCmd("leave"); netLeave(); LOBBY.next="rooms"; newGame("pvp",{phase:"menu"}); render(); netListRooms(); }; // #261 L03 나가기 → L02
 /* ===== #217 재접속(bounded resume) — Venus 구현 승인(implementation-approval.md "재접속 유예(60초)")에 따른 자동 재개.
    대상은 명시적 leave가 아닌 소켓 단절(비의사)뿐이다. 유예 60초 안에서 3초 간격으로 재시도하고, 회복 불가능한
    서버 오류나 유예 만료 시 방 목록으로 돌아간다. 재개는 credential(r-<epoch>.<seatToken>, protocol.md v2 §1)
@@ -990,7 +978,7 @@ function netResumeAttempt(){
 function netAbandonResume(msg){
   netClearResume();
   showToast(msg);
-  netLeave(); newGame("pvp",{phase:"menu"}); render();
+  netLeave(); LOBBY.next="rooms"; newGame("pvp",{phase:"menu"}); render(); // #261 재접속 포기·만료는 방 목록(L02)으로
 }
 function netResumeExpire(){ netAbandonResume("🌐 연결이 끊겼습니다. 방 목록으로 돌아가 다시 참가해 주세요."); netListRooms(); }
 window.netCancelResume=function(){ netAbandonResume("🌐 재접속을 취소했습니다."); netListRooms(); };

@@ -17,7 +17,8 @@ const LOBBY_ASSETS=["assets/ui/icons.svg","assets/ui/panel.svg"]; // #253 Earth 
 const LOBBY_ICON={help:0,detail:1,history:2,back:3,close:4,resign:5,timer:6,refresh:7,currency:8,lock:9,done:10,loading:11}; // icons.svg 24px 칸 순서
 const LOBBY_LOCKED=[["settings","설정"],["currency","재화 획득"],["mission","미션"],["event","이벤트"],["shop","로비 상점"],["minions","하수인 설정"],["rank","랭크"]];
 /* assets: null(아직) | [{url,state:"loading"|"ok"|"fail"}] · prof: idle|loading|ok|off|err · profile: 서버 값만 */
-const LOBBY={gen:0,assets:null,prof:"idle",profile:null,err:null,repBusy:false,notice:"",focused:false};
+const LOBBY={gen:0,assets:null,prof:"idle",profile:null,err:null,repBusy:false,notice:"",focused:false,
+  view:"home",next:null,q:"",name:"",nameErr:"",poll:null,rtt:{n:0,t0:0,ms:null,st:"wait",pending:false}}; // #261 view: home(L01)|rooms(L02) · next: 로비에 들어올 때 열 view(방 나가기 → L02)
 
 function lobbyReady(){ return LOBBY.gen===0||!!LOBBY.assets&&LOBBY.assets.every(a=>a.state!=="loading")&&(LOBBY.prof==="ok"||LOBBY.prof==="off"); }
 function lobbyArtOk(){ return !!LOBBY.assets&&LOBBY.assets.every(a=>a.state==="ok"); }
@@ -60,6 +61,7 @@ function lobbyParseHist(h){
 function lobbyLoad(){
   const g=++LOBBY.gen;
   LOBBY.err=null; LOBBY.notice=""; LOBBY.focused=false;
+  LOBBY.view=LOBBY.next||"home"; LOBBY.next=null; // #261 결과·타이틀에서 오면 L01, 방 나가기·재접속 포기면 L02
   if(!LOBBY.assets||LOBBY.assets.some(a=>a.state==="fail")) lobbyLoadAssets(g); // 성공한 자산은 다시 받지 않는다(실패한 것만 다시 시도)
   if(AUTH.state==="in") lobbyLoadProfile(g);
   else { LOBBY.prof="off"; LOBBY.profile=null; } // 증명된 계정 없는 서버(file://·DB 없음) — 프로필 없이 로비
@@ -67,7 +69,7 @@ function lobbyLoad(){
   render(); lobbyFocus(); if(lobbyReady()) LOBBY.focused=true; // 이미 끝난 로딩(계정 없는 서버·자산 재사용)은 로비 제목으로 바로
 }
 /* 화면이 바뀌면 그 화면의 제목으로 키보드·스크린리더 초점을 옮긴다 — 로딩 제목 → (끝나면) 로비 닉네임 제목 */
-function lobbyFocus(){ const h=$(lobbyReady()?"lobbyNick":"lobbyLoadTitle"); try{ if(h&&h.focus) h.focus({preventScroll:true}); }catch(e){} }
+function lobbyFocus(){ const h=$(!lobbyReady()?"lobbyLoadTitle":LOBBY.view==="rooms"?"roomsTitle":"lobbyNick"); try{ if(h&&h.focus) h.focus({preventScroll:true}); }catch(e){} }
 function lobbyLoadAssets(g){
   LOBBY.assets=LOBBY_ASSETS.map(url=>{ const old=(LOBBY.assets||[]).find(a=>a.url===url); return old&&old.state==="ok"?old:{url,state:"loading"}; });
   for(const a of LOBBY.assets.filter(x=>x.state==="loading")){
@@ -141,6 +143,7 @@ function lobbyHistHtml(p){
 }
 function lobbyHtml(){
   if(!lobbyReady()) return lobbyLoadingHtml();
+  if(LOBBY.view==="rooms") return lobbyRoomsHtml();
   const p=LOBBY.profile, rd=p?ROSTER.find(r=>r.id===p.repMinion):null;
   const lockBtn=([k,t])=>`<button type="button" class="locked" aria-disabled="true" data-lock="${k}" onclick="lobbyLocked('${t}')">${lobbyIcon("lock","🔒")} ${t}</button>`;
   return `<section class="lobbyProfile" aria-labelledby="lobbyNick">
@@ -152,9 +155,10 @@ function lobbyHtml(){
     <p id="lobbyNotice" class="lobbyNotice" role="status" aria-live="polite">${escAttr(LOBBY.notice)}</p>
     <section class="lobbyCard net" aria-labelledby="netLobbyTitle"><span class="tagPill">멀티</span>
       <h2 id="netLobbyTitle">멀티 — 공개 대전</h2>
-      <small>열린 방을 골라 바로 참가하세요. 초대 코드는 필요하지 않습니다.</small>
-      ${location.protocol==="file:"?`<p style="margin:6px 0"><small style="color:var(--buff)">⚠️ html 파일을 직접 연 상태(file://)에서는 공개 대전에 접속할 수 없습니다. 공개 방 서버가 서빙하는 주소로 페이지를 열어 주세요.</small></p>`:""}
-      ${netRoomsHtml()}
+      <small>방 이름으로 찾아 참가 대기 방에 바로 참가하세요. 초대 코드는 필요하지 않습니다.</small>
+      ${lobbyFileWarn()}
+      <button type="button" class="primary big" onclick="lobbyRooms()">방 목록 열기</button>
+      ${lobbyNetMsgHtml()}
       <span class="badge netStatusLine" id="netStatus" role="status" aria-live="polite" style="display:none"></span></section>
     <section class="lobbyCard" aria-labelledby="singleTitle"><span class="tagPill">싱글</span>
       <h2 id="singleTitle">싱글</h2>
@@ -164,9 +168,132 @@ function lobbyHtml(){
     <nav class="lockGrid" aria-label="추후 공개 메뉴">${LOBBY_LOCKED.map(lockBtn).join("")}</nav>`;
 }
 /* 잠긴 메뉴 — 기능 없이 안내만. 버튼은 disabled 가 아니라 aria-disabled 라 키보드로 닿고 Enter·Space 로 안내를 듣는다 */
-function lobbyLocked(name){
-  LOBBY.notice=`🔒 ${name} — 추후 공개 예정입니다.`;
-  const n=$("lobbyNotice"); if(n) n.textContent=LOBBY.notice;
+function lobbyLocked(name){ lobbyNotify(`🔒 ${name} — 추후 공개 예정입니다.`); }
+function lobbyNotify(t){ LOBBY.notice=t; const n=$("lobbyNotice"); if(n) n.textContent=t; }
+function lobbyFileWarn(){ return location.protocol==="file:"?`<p style="margin:6px 0"><small style="color:var(--buff)">⚠️ html 파일을 직접 연 상태(file://)에서는 공개 대전에 접속할 수 없습니다. 공개 방 서버가 서빙하는 주소로 페이지를 열어 주세요.</small></p>`:""; }
+function lobbyNetMsgHtml(){ const m=NET.lobbyMsg; return m?`<div class="netLobbyMsg err" role="alert">${escAttr(m.text)}
+    <div class="row"><button type="button" onclick="netListRooms()">${m.kind==="gone"?"다른 방 보기":"다시 시도"}</button></div></div>`:""; }
+
+/* ===== #261 L02 멀티 방 목록 · L03 방 대기 (GDD-24 00.2 'L02 · L03 멀티 방') =====
+   - 방 이름·검색어: 정리 전 원문을 허용 문자로 먼저 검사한다(자모·태그 기호·제어 문자·이모지는 여기서 걸린다) → 앞뒤 공백 제거·연속 공백 1칸.
+     이름 2~20자(서버가 같은 규칙으로 다시 거부한다 E_BAD_ROOM_NAME), 검색어 1~20자(비면 전체). 표시는 언제나 escAttr 텍스트다.
+   - 목록: 서버 행 {roomId,roomName,state,seats,ageSec,players,reps} 중 화면에 필요한 것만 쓴다. 참가는 OPEN 만, 그 밖은 이유를 알리는 aria-disabled.
+   - 5초 갱신·핑: L02 가 보이고 로비 소켓이 있을 때만 도는 interval 하나. 다른 화면·방 입장·소켓 없음이면 멈추고, 탭이 숨으면 보내지 않는다.
+   - 핑: 로비 소켓의 {t:"rtt",n} ↔ {type:"rtt",n} 실측 왕복(ms 정수). 지금 보낸 n 의 응답만 받는다 — 3초가 지나면 '측정 불가'로 닫고 늦은 응답은 버린다.
+     게임 판정·타이머·재접속 유예에는 쓰지 않는다. */
+const ROOM_NAME_RAW=/^[가-힣A-Za-z0-9 _-]*$/;
+const ROOM_STATE_KO={OPEN:"참가 대기",SETUP:"준비 중",IN_PROGRESS:"대전 중"};
+const LOBBY_POLL_MS=5000, LOBBY_RTT_TIMEOUT_MS=3000, ROOM_NAME_MAX=20;
+const LOBBY_SEARCH_ERR="검색어는 1~20자의 한글·영문·숫자·공백·밑줄(_)·하이픈(-)만 쓸 수 있습니다.";
+function roomNameNorm(raw){ return typeof raw==="string"&&ROOM_NAME_RAW.test(raw)?raw.trim().replace(/ {2,}/g," "):null; }
+function lobbyRoomsOn(){ return uiScreenName()==="lobby"&&LOBBY.view==="rooms"&&!NET.roomId; }
+function lobbySock(){ return !!(NET.ws&&NET.lobbyOnly&&NET.ws.readyState===1); }
+
+function lobbyRooms(){
+  LOBBY.view="rooms"; LOBBY.notice=""; LOBBY.rtt={n:LOBBY.rtt.n,t0:0,ms:null,st:/^https?:$/.test(location.protocol)?"wait":"off",pending:false};
+  render(); lobbyFocus();
+  if(LOBBY.rtt.st==="off") return; // file:// — 접속할 서버가 없다
+  netListRooms(); lobbyPollStart(); // 소켓이 아직 열리는 중이면 lobby_ready 가 다시 부른다
+}
+function lobbyHome(){ LOBBY.view="home"; LOBBY.notice=""; lobbyPollStop(); render(); lobbyFocus(); }
+function lobbyPollStart(){
+  if(!lobbyRoomsOn()) return;
+  if(!LOBBY.poll){ LOBBY.poll=setInterval(lobbyPollTick,LOBBY_POLL_MS); if(LOBBY.poll&&typeof LOBBY.poll.unref==="function") LOBBY.poll.unref(); }
+  lobbyRttSend(); // 들어온 순간 한 번 — 이후는 5초마다
+}
+function lobbyPollStop(){ if(LOBBY.poll){ try{ clearInterval(LOBBY.poll); }catch(e){} } LOBBY.poll=null; LOBBY.rtt.pending=false; }
+function lobbyPollTick(){
+  if(!lobbyRoomsOn()||!NET.ws){ lobbyPollStop(); return; } // 다른 화면·방 안·소켓 없음 — 경기로 타이머를 끌고 가지 않는다
+  if(document.hidden===true||!lobbySock()) return;      // 탭이 숨으면 보내지 않는다(다시 보이면 다음 tick 부터)
+  netSend({v:1,t:"list_rooms"}); lobbyRttSend();
+}
+function lobbyRttNow(){ return typeof performance!=="undefined"&&performance.now?performance.now():Date.now(); }
+function lobbyRttSend(){
+  if(!lobbySock()) return;
+  const r=LOBBY.rtt, n=r.n=r.n%2147483647+1;
+  r.t0=lobbyRttNow(); r.pending=true; if(r.st==="off") r.st="wait";
+  netSend({v:1,t:"rtt",n});
+  setTimeout(()=>{ if(r!==LOBBY.rtt||r.n!==n||!r.pending) return; r.pending=false; r.st="fail"; lobbyPingPaint(); },LOBBY_RTT_TIMEOUT_MS);
+}
+function lobbyRttReply(n){
+  const r=LOBBY.rtt; if(!r.pending||n!==r.n) return; // 지난 요청·시간 초과 뒤의 늦은 응답은 버린다
+  r.pending=false; r.ms=Math.max(0,Math.round(lobbyRttNow()-r.t0)); r.st="ok"; lobbyPingPaint();
+}
+function lobbyRttOff(){ LOBBY.rtt.pending=false; LOBBY.rtt.st="off"; lobbyPingPaint(); }
+function lobbyPingText(){ const r=LOBBY.rtt; return r.st==="ok"?`핑 ${r.ms}ms`:r.st==="fail"?"핑 측정 불가":r.st==="off"?"연결 끊김":"핑 측정 중"; }
+function lobbyPingPaint(){ if(!lobbyRoomsOn()) return; const el=$("pingBadge"); if(el) el.textContent=lobbyPingText(); }
+/* 목록만 다시 그린다 — 5초 갱신이 입력 중인 검색어·방 이름 칸의 포커스를 빼앗지 않게 */
+function lobbyRoomsPaint(){
+  if(lobbyRoomsOn()){ const el=$("roomList"); if(el){ el.innerHTML=lobbyRoomListHtml(); try{ el.setAttribute("aria-busy",NET.roomsLoading?"true":"false"); }catch(e){} return; } }
+  render();
+}
+function lobbySearchQuery(){ const q=roomNameNorm(LOBBY.q); return q!==null&&q.length<=ROOM_NAME_MAX?q:null; } // null = 잘못된 검색어
+function lobbySearch(v){ LOBBY.q=String(v); const m=$("roomSearchMsg"); if(m) m.textContent=lobbySearchQuery()===null?LOBBY_SEARCH_ERR:""; lobbyRoomsPaint(); }
+function lobbyNameInput(v){ LOBBY.name=String(v); }
+function lobbyCreateRoom(){
+  const n=roomNameNorm(LOBBY.name);
+  if(n===null||n.length<2||n.length>ROOM_NAME_MAX){ LOBBY.nameErr=NET_LOBBY_MSG.badName; const m=$("roomNameMsg"); if(m) m.textContent=LOBBY.nameErr; return; }
+  LOBBY.nameErr=""; LOBBY.name=n; netCreatePublicRoom(n);
+}
+function lobbyRoomLocked(st){ lobbyNotify(`이 방은 ${ROOM_STATE_KO[st]||"참가할 수 없는 상태"}이라 참가할 수 없습니다. 참가 대기 방만 들어갈 수 있습니다.`); }
+function lobbySeatHtml(nick,rep){
+  if(typeof nick!=="string"||!ACCT_NICK_RE.test(nick)) return "";
+  return `<span class="roomSeat">${lobbyRepOk(rep)?lobbyRepHtml(rep,"xs"):""}${escAttr(nick)}</span>`;
+}
+function lobbyRoomRows(){
+  const q=lobbySearchQuery(), ql=q?q.toLowerCase():"", age=r=>r.age===null?1e9:r.age;
+  const st=rm=>rm.state===undefined?"OPEN":rm.state; // #261 이전 서버는 참가 대기(OPEN) 방만 state 없이 보냈다
+  return (NET.rooms||[]).filter(rm=>rm&&Number.isInteger(rm.roomId)&&ROOM_STATE_KO[st(rm)])
+    .map(rm=>({id:rm.roomId,name:netRoomName(rm.roomName)||("방 "+rm.roomId),st:st(rm),seats:rm.seats==="2/2"?"2/2":"1/2",age:lobbyCount(rm.ageSec),
+      players:Array.isArray(rm.players)?rm.players:[],reps:Array.isArray(rm.reps)?rm.reps:[]}))
+    .filter(r=>!ql||r.name.toLowerCase().includes(ql))
+    .sort((a,b)=>(+(a.st!=="OPEN"))-(+(b.st!=="OPEN"))||age(a)-age(b)||b.id-a.id); // 참가 대기 먼저, 같은 상태는 최근 방 먼저
+}
+function lobbyRoomListHtml(){
+  const pend=NET.lobbyPending, rows=lobbyRoomRows();
+  const empty=NET.roomsLoading?"목록을 불러오는 중…":!NET.roomsLoaded?"[새로 고침]을 누르면 방 목록을 불러옵니다."
+    :lobbySearchQuery()&&(NET.rooms||[]).length?"검색 결과가 없습니다.":"열려 있는 방이 없습니다. 새 방을 만들어 보세요.";
+  return lobbyNetMsgHtml()+(rows.length?`<ul class="roomList">${rows.map(r=>`<li class="roomRow st-${r.st}">
+      <div class="roomHead"><b class="roomName">${escAttr(r.name)}</b> <small class="roomNo">#${r.id}</small></div>
+      <div class="roomMeta"><span class="badge roomSt">${ROOM_STATE_KO[r.st]}</span><span class="badge" aria-label="인원 ${r.seats}">${r.seats}</span>${lobbySeatHtml(r.players[0],r.reps[0])}${lobbySeatHtml(r.players[1],r.reps[1])}</div>
+      ${r.st==="OPEN"?`<button type="button" ${pend?"disabled":""} aria-label="${escAttr(r.name)} #${r.id} 참가" onclick="netJoinPublicRoom(${r.id})">${pend==="join:"+r.id?"방에 참가하는 중…":"참가"}</button>`
+        :`<button type="button" aria-disabled="true" onclick="lobbyRoomLocked('${r.st}')">참가 불가 · ${ROOM_STATE_KO[r.st]}</button>`}</li>`).join("")}</ul>`
+    :`<p class="roomEmpty"><small>${empty}</small></p>`);
+}
+function lobbyRoomsHtml(){
+  const pend=NET.lobbyPending;
+  return `<section class="roomsScreen" aria-labelledby="roomsTitle">
+    <div class="roomsHead"><h2 id="roomsTitle" tabindex="-1">멀티 방 목록</h2><span id="pingBadge" class="badge pingBadge" title="내 브라우저와 게임 서버 사이의 왕복 시간">${lobbyPingText()}</span></div>
+    ${lobbyFileWarn()}
+    <p id="lobbyNotice" class="lobbyNotice" role="status" aria-live="polite">${escAttr(LOBBY.notice)}</p>
+    <div class="roomSearch"><label for="roomSearch">방 이름 검색</label>
+      <div class="row"><input id="roomSearch" type="search" maxlength="40" autocomplete="off" value="${escAttr(LOBBY.q)}" oninput="lobbySearch(this.value)" aria-describedby="roomSearchMsg">
+      <button type="button" ${pend?"disabled":""} onclick="netListRooms()">${lobbyIcon("refresh","↻")} 새로 고침</button></div>
+      <p id="roomSearchMsg" class="acctMsg err" role="alert">${lobbySearchQuery()===null?LOBBY_SEARCH_ERR:""}</p></div>
+    <div id="roomList" class="netRoomList" aria-busy="${NET.roomsLoading?"true":"false"}">${lobbyRoomListHtml()}</div>
+    <form class="roomCreate" onsubmit="lobbyCreateRoom();return false;" aria-labelledby="roomCreateTitle">
+      <h3 id="roomCreateTitle">새 방 만들기</h3>
+      <label for="roomName">방 이름 (2~20자)</label>
+      <input id="roomName" type="text" maxlength="40" autocomplete="off" value="${escAttr(LOBBY.name)}" oninput="lobbyNameInput(this.value)" aria-describedby="roomNameHint roomNameMsg">
+      <small id="roomNameHint">한글·영문·숫자·공백·밑줄(_)·하이픈(-)만 쓸 수 있습니다. 개인정보를 방 이름에 입력하지 마세요.</small>
+      <p id="roomNameMsg" class="acctMsg err" role="alert">${escAttr(LOBBY.nameErr)}</p>
+      <button type="submit" class="primary big" ${pend?"disabled":""}>${pend==="create"?"방을 만드는 중…":"방 만들기"}</button>
+    </form>
+    <span class="badge netStatusLine" id="netStatus" role="status" aria-live="polite" style="display:none"></span>
+  </section>`;
+}
+/* L03 — 방을 만든 사람만 OPEN 동안 여기서 기다린다. 두 번째 참가자가 앉으면(SETUP) 기존 시작 상점으로 간다. 새 준비 버튼·대기 시간 없음 */
+function lobbyWaitHtml(){
+  const me=NET.me===1?1:0;
+  const seat=i=>{ const n=NET.players&&NET.players[i], rep=NET.reps&&NET.reps[i];
+    const face=lobbyRepOk(rep)?lobbyRepHtml(rep):`<span class="repFace" aria-hidden="true">${i===me?"?":"…"}</span>`;
+    return `<li class="waitSeat${n||i===me?"":" empty"}">${face}<b>${n?escAttr(n):i===me?"나":"입장 대기"}</b>${n&&i===me?" <small>(나)</small>":""}</li>`; };
+  return `<section class="waitScreen" aria-labelledby="netRoomTitle">
+    <h2 id="netRoomTitle" tabindex="-1">${escAttr(NET.roomName||("방 "+NET.roomId))} <small>#${escAttr(String(NET.roomId))}</small></h2>
+    <p class="lobbyNotice" role="status" aria-live="polite">상대를 기다리는 중… 상대가 들어오면 시작 상점(90초)이 열립니다.</p>
+    <ul class="waitSeats" aria-label="참가자">${seat(me)}${seat(1-me)}</ul>
+    <div class="row netRoomActions"><button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>
+  </section>`;
 }
 
 /* 방 안: 서버가 좌석 입장 때 고정해 보낸 상대 대표 하수인(NET.reps) — 모르면 아무것도 그리지 않는다 */

@@ -1,10 +1,10 @@
 # Digit-Duel — 인수인계 스냅샷
 
-## 최신 체크포인트 — 2026-09-27 18:55 KST #260 CJ QA PASS·Git 정리 승인·#261 구현 승인
+## 최신 체크포인트 — 2026-09-27 22:12 KST #261 CJ QA PASS·Git 정리 승인·#262 규칙 확정
 
 - **#259**: CJ 최종 로컬 QA PASS와 커밋·PR 작성 승인에 따라 b865133 제품 커밋, 실제 원격 milestone bd4c90c 통합24945b7, 권한·QA·화면 기록68863dc를 feature에 push했다. [PR #269](https://github.com/ChangjoSung/Digit-Duel/pull/269)는 검토 가능 상태이며 최종 HEAD68863dc 필수 CI6/6 PASS(run36306785458). fresh Saturn 통합 LOCAL PASS(live46/runtime74), 파일 수정0. 단일 inline probe exit1은 정상 null 기대값 오류이며 그 뒤 privacy 단언 미실행을 원장에 보존했다. HTTPS/Render 검증은 남아 있고 마일스톤 병합·Issue close·배포는 승인되지 않았다. 계정 흐름 CJ PASS는 통합 전 검수로 구분한다. 원장은 활성 #259 Mercury/report.md 하나다.
 - **#260**: CJ가 최종 플레이 QA **PASS**를 확인했다. Saturn 최종 로컬 PASS와 앞선 REVISE·수리·검사 제한은 활성 #260 Mercury/report.md 단일 원장에 보존한다. issue-260-account-lobby(HEAD24945b7)의 변경은 미커밋이며 CJ가 권장 순서 착수로 커밋·PR 작성과 필수 원격 CI를 승인했으며 #259 브랜치 기준의 분리 PR로 정리한다. milestone 병합·Issue close·배포 승인 없음. GitHub는 기존 완료 조건 한 목록에 CJ PASS만 반영한다.
-- **Worker·보존·다음 작업**: CJ 지시로 Digit-Duel의 기존 4개 WorkTree에서 완료된 Worker 터미널13개를 정확한 handle로 종료했다(13/13 ptyKilled=true). 재조회 결과 Worker0·Mercury PD1, main Run dispatch57 completed/3 failed·reclaimable0이며 과거 판정은 유지한다. 종료 전후 manifest의35,179개 파일 SHA·4개 HEAD/status 불변을 확인했다(초기 git 열거가 경고한 Unity 초장경로는 검사 범위 밖). WorkTree·dirty/untracked·보고서·CJ 계정/DB·SMTP·백업을 보존했다. QA8081 Node36888/PG34176(55459), QA8082 Node42336/PG31704(55460)는 정상이며 #259 DB에는005를 적용하지 않았다. CJ가 #261 권장안과 권장 구현 순서를 승인했으며 #260 PR/CI 뒤 #261을 별도 트리에서 착수한다. Git/Render 권한 게이트와 고정 모델·full access/never 계약을 유지한다. 아래 날짜별 상태는 이력이다.
+- **Worker·보존·다음 작업**: 기존 완료 Worker13개 정리 뒤, CJ가 승인한 #261을 a444d57 기반 issue-261-multiplayer-lobby에서 구현했다. Venus GDD 동기화·Jupiter 서버·Mars 화면·fresh Saturn 독립 LOCAL PASS를 완료하고 네 Worker 모두 accepted 정산/release 후 정확한 terminal close(ptyKilled=true)했다. run_c1092f5b4df6 reclaimable0·#261 terminal0, QA 종료 시 동결281파일 SHA/HEAD 불변을 확인했고 이후 PD 인계 갱신 뒤 제품/도구/설정267파일도 불변이다. 실제 PG22단언 후 초기 참가 거부 timeout은 미확정 이력이며 격리13·실제Chrome320px8·마지막 별도PG 참가 거부 경계1건이 성공했다. 자세한 실패/재검사·모델 증거는 해당 트리 Mercury/report.md가 단일 원장이다. CJ 최종 QA PASS와 커밋·push·#260 기준 PR/CI 승인을 받았다. #262는6종/5초/2.5초·경기 전반 양쪽 차례·브라우저 숨김 유지가 CJ 확정돼 별도 트리에서 진행한다. 기존 QA http://localhost:8083/ · PG55461/서버PID6688/PGPID26768, /·healthz·readyz200. 기존127.0.0.1 QA와 쿠키 호스트를 분리했고 QA261 테스트 계정4개와 기존8081/8082·CJ DB/계정/SMTP/백업·dirty/untracked를 보존했다. #261 Git/CI·milestone 병합·Issue close·배포·Render 변경과 다음#262/#238은 별도 CJ 지시 범위다. 아래 날짜별 상태는 이력이다.
 
 ## 이전 기준 (2026-09-24 KST · 이력)
 

@@ -175,7 +175,19 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
 - 기록 대상: **보드 경기가 시작된(IN_PROGRESS) 온라인 경기만**, 서버 확정 순간(`room._finalize`) 좌석(계정)마다 1행(`005` `match_results`, `UNIQUE(match_id, account_id)`).
   승·패는 행에서 센다(NO_CONTEST 제외). 경기 전 취소·PVE 는 행이 없다. 시간 = 보드 시작 → 결과 확정(상점·재접속 대기 포함).
 - WS 좌석 프레임(`players` 가 있는 모든 프레임)에 `reps:[좌석0, 좌석1]` — 좌석에 들어갈 때의 대표 하수인으로 고정되고 재접속해도 바뀌지 않는다.
-  공개 방 목록(`lobby_rooms`)에는 닉네임·대표·전적이 없다.
+  공개 방 목록(`lobby_rooms`)에는 전적이 없다(#261 부터 행에 공개 닉네임·대표만 — 아래).
+
+#### 멀티 방 이름 · 공개 목록 · 실측 핑 (#261)
+
+- **방 이름**: 생성 소켓(`cp-`/`c-`)만 같은 WS 주소에 `?rn=<encodeURIComponent(이름)>` 을 붙인다(credential 토큰은 64자 ASCII 라 한글 이름을 싣지 못한다).
+  원문 전체가 완성형 한글·영문·숫자·공백(U+0020)·`_`·`-` 이어야 하고(그 밖의 문자는 지우지 않고 거부), 앞뒤 공백 제거·연속 공백 1칸 정리 뒤 2~20자.
+  `rn` 이 1개가 아니거나 틀리면 세션 확인 뒤 `error E_BAD_ROOM_NAME` + close 1008 — 방을 만들지 않는다. `rn` 이 **없는** 옛 생성만 `방 <번호>`.
+  이름은 생성 때 고정·중복 허용(방 번호로 구분). 첫 프레임(`room_opened`/`room_joined`/`room_resumed`)에 `roomName`.
+- **목록 행** `{roomId, roomName, state:'OPEN'|'SETUP'|'IN_PROGRESS', seats:'1/2'|'2/2', ageSec, label, players:[닉|null,닉|null], reps:[id|null,id|null]}` —
+  공개 방의 그 세 상태만, 참가 대기 먼저·그 안에서 최신 먼저. 비공개·종료·취소·무효·닫힌 방은 없다. 계정 id·아이디·이메일·토큰·초대 코드·IP·가방·배치·전투 정보는 싣지 않는다.
+  참가(`p-<id>`)는 여전히 공개 `OPEN` 만 — 목록이 낡았어도 서버가 `E_ROOM_NOT_FOUND` 로 거부한다. 검색은 클라이언트가 `roomName` 으로 거른다.
+- **실측 핑**: 로비 전용(`l-`) 소켓에 `{v:1,t:'rtt',n}`(n = 0~2147483647 정수) → 즉시 `{v:1,type:'rtt',n}`. 틀린 n 은 답하지 않는다. 좌석 소켓의 `rtt` 는 무시(seq 불변).
+  연결 생존 ping/pong(30초)과 별개이고 경기·타이머·재접속 유예를 바꾸지 않는다. 측정 주기·3초 실패 판정은 클라이언트 몫.
 - 결과 아웃박스(`authoritative/resultOutbox.js`): 서버가 결과를 확정하면 결과 프레임을 보내기 **전에** 로컬 JSONL 파일에 한 줄 append + fsync 하고,
   DB 에 들어간 것(두 좌석 행을 한 문장으로 — 원자적)이 확인된 뒤에만 그 줄을 지운다(임시 파일 + fsync + rename). DB 장애·제약 위반·프로세스 재시작 중에도
   완료된 결과를 **버리지 않는다** — 30초마다·기동 직후 다시 쓰고, `UNIQUE(match_id, account_id)` + `ON CONFLICT DO NOTHING` 이라 재생해도 한 번만 남는다.
@@ -426,6 +438,7 @@ npm run test:static   # 정적 서빙 요청 예산 (#201) — 프리로드 전�
 npm run test:db       # #264 DSN·TLS·마이그레이션·fail-closed (Postgres 없이)
 npm run test:accounts # #259 계정·단일 로그인·이메일 코드 재설정·WS 좌석 계정 바인딩 (Postgres 없이 — 메모리 대역, 메일은 주입 전송)
 npm run test:profile  # #260 프로필·대표 하수인·전적 기록(1회)·파일 아웃박스(상한·제약 위반·재시작 재생·깨진 줄·쓰기 실패)·WS reps (메모리 대역, DD_TEST_DATABASE_URL 이면 실제 Postgres)
+npm run test:lobby    # #261 방 이름 경계·목록 상태/순서/공개 필드·참가 경합·시작된 방 참가 거부·재접속 roomName·rtt 왕복 (DB 없음)
 ```
 
 실제 Postgres 로 같은 계정 시나리오를 돌리려면(그 DB 의 표를 지운다 — 전용 테스트 DB 에만):

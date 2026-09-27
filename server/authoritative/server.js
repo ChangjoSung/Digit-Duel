@@ -28,7 +28,7 @@ const { WebSocketServer, OPEN } = require('ws');
 const S = require('../security');
 const { Lobby } = require('./lobby');
 const { STATES } = require('./room');
-const { validateEnvelope } = require('./protocol');
+const { validateEnvelope, normalizeRoomName } = require('./protocol');
 const { isWellFormedToken } = require('./seatToken');
 const db = require('../db'); // #264 — DATABASE_URL 이 없으면 전부 비활성(기존 동작 그대로)
 const A = require('./accounts');
@@ -252,7 +252,11 @@ server.on('upgrade', (req, socket, head) => {
   if (!allowedHost(req.headers.host)) return rejectUpgrade(socket, 400, 'Bad Request');
 
   let pathname = '/';
-  try { pathname = new URL(req.url || '/', 'http://placeholder.invalid').pathname; } catch (e) { /* 기본값 유지 */ }
+  let roomNames = []; // #261 생성 소켓의 방 이름 ?rn= (credential 토큰은 64자 ASCII 라 한글 이름을 싣지 못한다)
+  try {
+    const u = new URL(req.url || '/', 'http://placeholder.invalid');
+    pathname = u.pathname; roomNames = u.searchParams.getAll('rn');
+  } catch (e) { /* 기본값 유지 */ }
   if (pathname !== '/') return rejectUpgrade(socket, 404, 'Not Found');
 
   const origin = req.headers.origin;
@@ -275,6 +279,7 @@ server.on('upgrade', (req, socket, head) => {
     wss.handleUpgrade(req, socket, head, (ws) => {
       ws.ddIp = ip;
       ws.ddCred = presented.cred;
+      ws.ddRoomNames = roomNames;
       ws.ddAccount = account; // #259 {id,userId,nickname} | null(계정 없는 서버·로비 목록)
       wss.emit('connection', ws, req);
     });
@@ -365,6 +370,7 @@ function firstFrame(ws, type, room, seat, issued, extra) {
     v: 1, type, epoch: EPOCH, roomId: room.roomId, seat,
     seatToken: issued.seatToken, tokenGen: issued.tokenGen,
     revision: room.revision, seq: bumpSeq(room, seat), economy: room.economy, // #237 첫 프레임부터 경제 방 여부
+    roomName: room.name,      // #261 서버가 정한 방 이름 — 새로고침·재접속에도 같은 값
     players: playersOf(room), // #259 서버 권위 공개 닉네임
     reps: repsOf(room),       // #260 입장 때 고정된 대표 하수인 ID
   }, extra || {}));
@@ -394,7 +400,11 @@ wss.on('connection', (ws) => {
     ws.ddLobbyOnly = true;
     sendFrame(ws, { v: 1, type: 'lobby_ready', epoch: EPOCH });
   } else if (cred.kind === 'create') {
-    const created = lobby.createRoom(ip, { isPublic: cred.isPublic });
+    // #261 rn 이 없으면(옛 클라이언트) 기본 이름. 보냈으면 정확히 1개·허용 문자·2~20자여야 한다 — 틀린 이름을 기본값으로 바꾸지 않는다.
+    const rn = ws.ddRoomNames;
+    const name = rn.length === 0 ? undefined : (rn.length === 1 ? normalizeRoomName(rn[0]) : null);
+    if (name === null) return failClose('E_BAD_ROOM_NAME');
+    const created = lobby.createRoom(ip, { isPublic: cred.isPublic, name });
     if (!created.ok) return failClose(created.reason);
     attachNotifier(created.room);
     const issued = created.room.openHostSeat(ws);
@@ -448,6 +458,7 @@ wss.on('connection', (ws) => {
     if (ws.ddLobbyOnly) {
       const v = validateEnvelope(data);
       if (v.ok && v.msg.t === 'list_rooms') sendFrame(ws, { v: 1, type: 'lobby_rooms', rooms: lobby.listPublicOpenRooms() });
+      if (v.ok && v.msg.t === 'rtt') sendFrame(ws, { v: 1, type: 'rtt', n: v.msg.n }); // #261 실측 왕복 — 즉시 되돌려 준다(연결 생존 ping/pong 과 별개)
       return;
     }
 
@@ -463,6 +474,7 @@ wss.on('connection', (ws) => {
     if (!parsed.ok) { sendFrame(ws, { v: 1, type: 'error', code: parsed.reason, seq: bumpSeq(room, seatIndex) }); return; }
     const msg = parsed.msg;
 
+    if (msg.t === 'rtt') return; // #261 로비 전용 소켓에서만 답한다 — 좌석 소켓은 seq 를 건드리지 않고 무시
     if (msg.t === 'list_rooms') { // 읽기 전용 — 상태를 바꾸지 않는다
       sendFrame(ws, { v: 1, type: 'lobby_rooms', rooms: lobby.listPublicOpenRooms(), seq: bumpSeq(room, seatIndex) });
       return;

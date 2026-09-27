@@ -5,6 +5,7 @@
      node tools/qa/issue260_local.js status         # 두 포트와 /readyz
      node tools/qa/issue260_local.js stop           # 서버 + PG 정지 (데이터는 남는다)
      node tools/qa/issue260_local.js stop --server-only
+     … --issue261                                  # #261 미리보기: 같은 절차를 전용 Postgres 55461 · HTTP 8083 · qa/issue-261-local 로(#260 기본값·데이터·PID 는 그대로)
    - 데이터: C:/Users/pc_77/orca/qa/Digit-Duel/issue-260-local/pgdata · data/match-results-outbox.jsonl — 정지·재기동해도 남는다. 이 도구는 아무것도 지우지 않는다.
    - 비밀: 첫 기동 때 만든 전용 DB 비밀번호(secrets/local.json, 사용자 전용 ACL)와 #259 의 secrets/smtp.json(있으면 **읽기만**)을
      서버 자식 프로세스의 환경에만 넘긴다. 명령줄·로그·출력에 값을 쓰지 않는다.
@@ -12,10 +13,11 @@
    - #259 폴더에서 쓰는 것은 PG 실행 파일(pg18/bin)과 smtp.json 읽기뿐이다. */
 const fs=require("fs"), path=require("path"), crypto=require("crypto"), net=require("net"), http=require("http"), cp=require("child_process");
 
-const QA="C:/Users/pc_77/orca/qa/Digit-Duel/issue-260-local";
+const I261=process.argv.includes("--issue261"); // #261 — 이 한 칸만 포트·폴더를 바꾼다
+const QA="C:/Users/pc_77/orca/qa/Digit-Duel/issue-"+(I261?"261":"260")+"-local";
 const QA259="C:/Users/pc_77/orca/qa/Digit-Duel/issue-259-local";
 const PG_BIN=QA259+"/pg18/bin", SMTP_FILE=QA259+"/secrets/smtp.json";
-const PG_PORT=55460, HTTP_PORT=8082, PG_USER="dd_qa", PG_DB="postgres"; // 전용 클러스터 하나 = 전용 DB
+const PG_PORT=I261?55461:55460, HTTP_PORT=I261?8083:8082, PG_USER="dd_qa", PG_DB="postgres"; // 전용 클러스터 하나 = 전용 DB
 const SERVER=path.resolve(__dirname,"../../server");
 const DATA=QA+"/pgdata", SECRETS=QA+"/secrets", LOGS=QA+"/logs", CFG=SECRETS+"/local.json";
 const OUTBOX=QA+"/data/match-results-outbox.jsonl"; // Jupiter #260 결과 저장 재시도 파일(확정: DD_RESULT_OUTBOX, 상한 200 은 서버 고정). 정지·재기동에도 남는다
@@ -101,7 +103,7 @@ async function up(){
 }
 /* start: up 을 WMI 로 띄운다 — 부모가 WmiPrvSE 라 이 셸·Orca 탭이 닫혀도 PG·서버가 산다(#259 서비스 중단 교훈). 명령줄에 비밀 없음 */
 async function start(){
-  const cmd=`"${process.execPath}" "${__filename}" up`.replace(/'/g,"''");
+  const cmd=`"${process.execPath}" "${__filename}" up${I261?" --issue261":""}`.replace(/'/g,"''");
   const ps=`$r=([wmiclass]'Win32_Process').Create('${cmd}','${SERVER.replace(/'/g,"''")}'); "$($r.ReturnValue) $($r.ProcessId)"`;
   const r=run("powershell",["-NoProfile","-Command",ps]); const [rv,pid]=String(r.stdout||"").trim().split(" ");
   if(r.status!==0||rv!=="0") die("WMI launch failed ("+String(r.stdout||r.stderr).trim().slice(0,80)+")");
@@ -124,9 +126,9 @@ async function status(){
     +" · server 127.0.0.1:"+HTTP_PORT+" "+(s.pid?"pid "+s.pid+(s.ours?" (ours)":" (NOT ours)")+" · healthz "+await get("/healthz")+" · readyz "+await get("/readyz"):"down"));
 }
 
-const [cmd,flag]=process.argv.slice(2);
+const [cmd,flag]=process.argv.slice(2).filter(a=>a!=="--issue261");
 if(cmd==="up") up().catch(e=>die("unexpected "+(e&&e.code||"error"))); // 예외 메시지는 쓰지 않는다(DSN 을 담을 수 있다)
 else if(cmd==="start") start();
 else if(cmd==="stop") stop(flag==="--server-only");
 else if(cmd==="status") status();
-else { console.log("usage: node tools/qa/issue260_local.js start|status|stop [--server-only]"); process.exit(2); }
+else { console.log("usage: node tools/qa/issue260_local.js start|status|stop [--server-only] [--issue261]"); process.exit(2); }

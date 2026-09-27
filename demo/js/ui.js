@@ -155,6 +155,7 @@ const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[],s
 function uiScreenName(){
   if(!UI.entered) return "title";
   if(!S) return "lobby";
+  if(S.phase==="setup"&&NET.publicMode&&NET.economy&&!NET.started&&NET.roomState==="OPEN"&&!S.eco) return "room"; // #261 L03 방 대기(만든 사람 · 상대 입장 전)
   return S.phase==="menu"?"lobby":S.phase==="setup"?"prep":(S.phase==="play"||S.phase==="shop"||S.phase==="bagPick")?"board":"result"; // #236 상점·B08 은 보드 위 팝업
 }
 function uiApply(){
@@ -164,6 +165,7 @@ function uiApply(){
     /* #260: 어느 경로로 로비에 들어오든(타이틀 [시작]·결과·방 나가기·재접속 실패) 그 순간 한 번 실제로 다시 불러온다 — 새 결과가 전적에 들어가야 한다 */
     const entering=sc==="lobby"&&UI.screen!=="lobby"; UI.screen=sc;
     if(entering) lobbyLoad();
+    if(sc!=="lobby") lobbyPollStop(); // #261 L02 5초 갱신·핑은 로비 밖으로 새지 않는다
     a.setAttribute("data-screen",sc);
     a.setAttribute("data-prep",UI.prep);
     if(sc==="board"&&UI.drawer) a.setAttribute("data-drawer",UI.drawer);
@@ -225,7 +227,8 @@ function uiAskMine(tok,game){ return UI.ask===tok&&S===game; }
 function uiBackSpec(){ // null = 이전 화면이 없다(타이틀) → 버튼을 숨긴다
   const sc=uiScreenName();
   if(sc==="title") return null;
-  if(sc==="lobby") return {label:"← 타이틀",title:"타이틀 화면으로 돌아갑니다"};
+  if(sc==="lobby") return LOBBY.view==="rooms"?{label:"← 로비",title:"로비로 돌아갑니다"}:{label:"← 타이틀",title:"타이틀 화면으로 돌아갑니다"};
+  if(sc==="room") return {label:"← 방 나가기",title:"방을 나가면 방이 취소되고 방 목록으로 돌아갑니다"};
   if(sc==="prep"){
     if(NET.queued) return {label:"← 대기 취소",title:"매칭 대기를 취소합니다 (배치는 그대로 유지됩니다)"};
     if(UI.prep==="place") return {label:"← 로스터",title:"01 로스터 선택으로 돌아갑니다 (고른 로스터와 배치는 그대로 유지됩니다)"};
@@ -243,7 +246,8 @@ window.uiBack=function(){
   if(sc==="title") return;
   if(sc==="board"&&UI.drawer){ uiDrawer(null); return; } // 서랍이 열려 있으면 서랍부터 닫는다 (화면은 그대로)
   if(uiOverlayOpen()){ showToast("진행 중인 창을 먼저 마쳐 주세요."); return; }
-  if(sc==="lobby"){ UI.entered=false; UI.drawer=null; uiApply(); return; }
+  if(sc==="lobby"){ if(LOBBY.view==="rooms"){ lobbyHome(); return; } UI.entered=false; UI.drawer=null; uiApply(); return; }
+  if(sc==="room"){ netLeaveRoom(); return; } // #261 L03 [방 나가기]와 같은 경로(방 취소)
   if(sc==="result"){ // #126 종료 연출이 재생 중이면 결과 패널의 [로비로]와 같은 잠금을 따른다
     if(fxLocked()){ showToast("연출이 끝난 뒤에 눌러 주세요."); return; }
     toLobby(); return;
@@ -948,14 +952,9 @@ function renderSetup(sp){
     return;
   }
   if(NET.publicMode&&!NET.started&&NET.economy&&!S.eco){ // #237 경제 방: 시작 상점은 서버 좌석 뷰로 열린다 — 그 전(상대 입장 대기)에 무료 로스터를 그리지 않는다
-    sp.innerHTML=`<h2 id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</h2>
-      <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">${NET.roomState==="OPEN"?"상대를 기다리는 중… 상대가 들어오면 시작 상점(90초)이 열립니다.":"시작 상점을 여는 중…"}</p>
-      <div class="row netRoomActions"><button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
-    return;
-  }
-  if(NET.publicMode&&!NET.started&&NET.economy&&!S.eco){ // #237 경제 방: 시작 상점은 서버 좌석 뷰로 열린다 — 그 전(상대 입장 대기)에 무료 로스터를 그리지 않는다
-    sp.innerHTML=`<h2 id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</h2>
-      <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">${NET.roomState==="OPEN"?"상대를 기다리는 중… 상대가 들어오면 시작 상점(90초)이 열립니다.":"시작 상점을 여는 중…"}</p>
+    sp.innerHTML=NET.roomState==="OPEN"?lobbyWaitHtml() // #261 L03 방 대기 전체 화면
+      :`<h2 id="netRoomTitle">${escAttr(NET.roomName||("방 "+NET.roomId))} <small>#${escAttr(String(NET.roomId))}</small></h2>
+      <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">시작 상점을 여는 중…</p>
       <div class="row netRoomActions"><button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
     return;
   }

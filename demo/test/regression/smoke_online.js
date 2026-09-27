@@ -451,7 +451,7 @@ function prepared(){ const T=loadAt(FILE_HREF); typeCode(T,CODE); T.netPrepare()
   ok(T1.location.protocol==="file:"&&T1.netServerDefault()==="192.168.1.11:1111","G4 앞선 T의 location·저장소는 나중 load의 https/다른 주소에 끌려가지 않는다");
   ok(T2.netServerDefault()==="10.2.2.2:2222"&&T2.wsLog[0].url==="wss://10.2.2.2:2222","G5 나중 T는 자기 페이지 프로토콜(https→wss)과 자기 저장값을 쓴다");
   ok(T1.NET.code===CODE&&T2.NET.code===CODE&&T1.NET!==T2.NET,"G6 코드도 로드별 메모리에 따로 산다");
-  T1.NET.rooms=[{roomId:"G7ROOM",label:"방 #G7ROOM",seats:"1/2",ageSec:3}]; T1.render();
+  T1.LOBBY.view="rooms"; T1.NET.rooms=[{roomId:7,roomName:"G7ROOM",state:"OPEN",seats:"1/2",ageSec:3}]; T1.render(); // #261 방 행은 L02 화면에 있다
   ok($el(T1,"sidePanel").innerHTML.indexOf("G7ROOM")>=0&&$el(T2,"sidePanel").innerHTML.indexOf("G7ROOM")<0,"G7 앞선 T의 render()는 자기 문서에 그린다 (나중 load의 document로 새지 않음)");
 }
 {
