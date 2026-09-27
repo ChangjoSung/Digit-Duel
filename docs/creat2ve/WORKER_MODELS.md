@@ -2,7 +2,7 @@
 
 2026-09-23 CJ 승인 · Issue #250. 이 문서와 worker-models.json은 Mercury가 신규 Orca Worker를 시작할 때 사용하는 실행 계약이다. Orca가 JSON을 자동으로 읽는 기능은 없으므로 Mercury는 해당 항목의 agent/model/effort와 Codex의 `service_tier=default`(No Fast)를 실행 인수로 반드시 전달한다.
 
-2026-09-25 CJ 후속 #259 착수 지시: 이번 구현의 **모든 Worker**는 full access·무확인 실행으로 명시 기동한다(Claude `--dangerously-skip-permissions`, Codex `-s danger-full-access -a never`). 시작 화면과 실제 동작을 확인한다. Saturn의 파일 무수정 QA 역할 및 Git·Render 자원·결제 승인 경계는 유지한다. 계정 전역 설정은 바꾸지 않는다.
+2026-09-25 CJ의 모든 Worker 자동 진행 지시(2026-09-27 #260 재확인): Digit-Duel에서 CJ가 착수시킨 모든 작업의 Worker는 full access·무확인 실행으로 명시 기동한다(Claude --dangerously-skip-permissions, Codex -s danger-full-access -a never). 시작 화면과 현재 실행을 확인한다. Saturn 파일 무수정·역할 경계·Git/Render/배포/결제 게이트를 유지하며 계정 전역 설정은 바꾸지 않는다.
 
 | 부서 / 작업 | agent | model | effort |
 |---|---|---|---|

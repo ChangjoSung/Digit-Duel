@@ -479,18 +479,18 @@
   #titleScreen .titleArt i.q{background:#3a4152; color:#cdd6e8; font-style:normal; font-size:12px; font-weight:bold; display:grid; place-items:center;}
   #titleScreen button{min-height:48px; width:min(88%,300px);}
   #titleScreen .ghost{background:transparent; color:#c6d3ea; border-color:#3d5580;}
-  /* #259 계정 패널 — 타이틀 안의 로그인·가입·재설정·복구 코드 표시. 세로 화면에서 넘치면 타이틀이 스크롤된다 */
+  /* #259 계정 패널 — 타이틀 안의 로그인·가입·이메일 코드 비밀번호 재설정·이메일 등록. 세로 화면에서 넘치면 타이틀이 스크롤된다 */
   #titleScreen{overflow-y:auto; justify-content:safe center;}
   #acctPanel{width:min(88%,300px); display:flex; flex-direction:column; gap:8px; text-align:left;}
   #acctPanel:empty{display:none;}
-  #acctPanel button{width:100%;}
+  #acctPanel button{width:100%; min-height:44px;} /* #260 Saturn REVISE: 계정 패널의 모든 버튼(탭·로그인·로그아웃·재설정) 터치 44px — 뷰포트 무관 */
   #acctPanel .acctTabs,#acctPanel .acctRow{display:flex; gap:4px;}
-  #acctPanel .acctTabs button{min-height:40px; font-size:12.5px; padding:6px 4px;}
+  #acctPanel .acctTabs button{min-height:44px; font-size:12.5px; padding:6px 4px;}
   #acctPanel .acctTabs button[aria-pressed="true"]{border-color:#fff; background:#25395c;}
   #acctPanel .acctForm{display:flex; flex-direction:column; gap:8px;}
   #acctPanel .acctField{display:flex; flex-direction:column; gap:3px; font-size:13px;}
   #acctPanel .acctField small,#acctPanel .acctNote{color:#9fb1d0; font-size:11.5px;}
-  #acctPanel input[type=text],#acctPanel input[type=password],#acctPanel input[type=email]{min-height:40px; padding:6px 10px; font-size:16px; border-radius:6px;
+  #acctPanel input[type=text],#acctPanel input[type=password],#acctPanel input[type=email]{min-height:44px; padding:6px 10px; font-size:16px; border-radius:6px;
     background:#25395c; border:1px solid #3d5580; color:#eef2fb;}
   #acctPanel input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
   #acctPanel .acctMsg{margin:0; font-size:12.5px; min-height:1em;} #acctPanel .acctMsg.err{color:#ff9aa6;}
@@ -670,3 +670,39 @@
   #app[data-screen="title"] #drawerLog,#app[data-screen="title"] #drawerMetrics{display:none;}
 /* #263 단절 정지 — 상점 조작 잠금 래퍼(<fieldset disabled>)는 테두리·여백을 만들지 않는다 */
 fieldset.pauseLock{border:0;padding:0;margin:0;min-width:0}
+
+/* ===== #260 계정 로비·로딩 — 화면 이름은 lobby 그대로다. 터치 칸 44px 이상, 320px 폭에서 가로 넘침 없음 ===== */
+#app[data-screen="lobby"] #screenBody{padding-bottom:max(8px,env(safe-area-inset-bottom));}
+#titleScreen{padding-top:max(12px,env(safe-area-inset-top)); padding-bottom:max(12px,env(safe-area-inset-bottom));}
+.uiIco{display:inline-block; width:24px; height:24px; line-height:24px; text-align:center; vertical-align:middle; font-style:normal;}
+#app.uiArt .uiIco{background:url(../assets/ui/icons.svg) no-repeat calc(var(--i) * -24px) 0; color:transparent; overflow:hidden;}
+#app.uiArt .lobbyCard,#app.uiArt .lobbyProfile{border:12px solid transparent; border-image:url(../assets/ui/panel.svg) 12 fill stretch; padding:0; background:none;}
+.lobbyLoading{display:flex; flex-direction:column; gap:10px; padding:8px 4px;}
+.lobbyLoading .uiIco{animation:lobbySpin 1.2s linear infinite;}
+@keyframes lobbySpin{to{transform:rotate(360deg)}}
+.loadList{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px;}
+.loadList li{display:flex; justify-content:space-between; gap:8px; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--panel2);}
+.loadList b{font-weight:normal; color:var(--dim); text-align:right;}
+.lobbyProfile{display:flex; gap:10px; align-items:center; border:1px solid var(--line); border-radius:12px; background:var(--panel2); padding:10px 12px;}
+.lobbyWho{flex:1; min-width:0;} .lobbyWho h2{margin:0; overflow-wrap:anywhere;}
+.repBtn{min-width:64px; min-height:64px; padding:2px; border-radius:12px;}
+.repFace{display:grid; place-items:center; width:56px; height:56px; font-size:32px;}
+.repFace img{width:56px; height:56px; object-fit:contain; image-rendering:pixelated;}
+.repFace.xs{width:20px; height:20px; font-size:14px; display:inline-grid; vertical-align:middle;} .repFace.xs img{width:20px; height:20px;}
+.repFace.sm{width:40px; height:40px; font-size:24px;} .repFace.sm img{width:40px; height:40px;}
+.repGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:6px; max-height:52vh; overflow-y:auto; margin:8px 0;}
+.repPick{display:flex; flex-direction:column; align-items:center; gap:2px; min-height:44px; font-size:12px;}
+.repPick[aria-pressed="true"]{border-color:#fff; background:#25395c;}
+.lobbyNotice{margin:6px 0; min-height:1em; font-size:12.5px; color:var(--buff);}
+.lockCards{display:flex; flex-wrap:wrap; gap:6px;}
+.lockCard{flex:1 1 130px; display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-height:64px; text-align:left;}
+button.locked{opacity:.72; border-style:dashed;} /* 잠금은 색만이 아니라 🔒·'추후 공개' 글자로도 알린다 */
+.lockGrid{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;}
+.lockGrid button,.lobbyLoading button,#app[data-screen="lobby"] #sidePanel button{min-height:44px;}
+.lockGrid button{flex:1 1 30%;}
+#app[data-screen="lobby"] #sidePanel button:focus-visible,#titleScreen button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.histList{list-style:none; margin:4px 0 0; padding:0;}
+.histList li{padding:6px 0; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline;}
+.histList li small{flex:1 1 100%;}
+.histList .h-win b{color:var(--ok);} .histList .h-loss b{color:var(--danger);} .histList .h-void b{color:var(--dim);}
+@media (prefers-reduced-motion: reduce){ .lobbyLoading .uiIco{animation:none;} } /* 정지한 로딩 표시 — 문구가 상태를 알린다 */

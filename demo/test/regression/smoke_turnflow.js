@@ -29,7 +29,7 @@ function board(mode,lv){
   H.clearBoard(T);
   H.place(T,king(0),13,1); H.place(T,king(1),1,7);
   H.place(T,first(0,"minion",5),13,7); H.place(T,first(1,"minion",5),1,1);
-  T.FX.log.length=0; T.S.contactKind="move"; T.tutSkip(); T.TQ.length=0; T.FX.auto=null; T.els.overlay.classList.add("hidden"); // 실제 DOM 초기 상태(오버레이 숨김)
+  T.FX.log.length=0; T.S.contactKind="move"; T.tutSkip(); T.TQ.length=0; T.FX.auto=null; T.byId("overlay").classList.add("hidden"); // 실제 DOM 초기 상태(오버레이 숨김) · #260 자동 튜토리얼이 없어 els 가 아니라 byId 로 만든다
   for(const x of T.S.pieces) if(x.type==="minion"){ x.maxHp=100; x.hp=100; } // 종별 HP(85~120)를 100 으로 통일 — 5% 틱·비율 검증 단순화
   return T.S;
 }

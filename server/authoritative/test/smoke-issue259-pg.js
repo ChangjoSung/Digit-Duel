@@ -69,7 +69,7 @@ const cmd = (c, tok, gen, obj) => c.s.send(JSON.stringify(Object.assign({ v: 1, 
 async function main() {
   const { Pool } = require('pg');
   const pool = new Pool({ connectionString: URL_ });
-  await pool.query('DROP TABLE IF EXISTS password_resets, sessions, accounts, db_meta, schema_migrations');
+  await pool.query('DROP TABLE IF EXISTS match_results, password_resets, sessions, accounts, db_meta, schema_migrations'); // #260 match_results 는 accounts 를 참조한다
 
   // 1. 게이트
   let srv = boot();

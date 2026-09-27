@@ -31,7 +31,7 @@ function applyUiEvents(events){
     if(event.type==="battleRedraw"){ battleModal(); continue; }
     if(event.type==="closeOverlay"){ closeModal(); continue; }
     if(event.type==="gameReset"){ fxReleaseAll(); shopClockStop(); bagClockStop(); turnClockStop(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다 (#263 배치·행동도 같다)
-    if(event.type==="tutHint"){ tutHint(event.key); continue; }
+    if(event.type==="tutHint") continue; // #260 (CJ 2026-09-27): 경기 중 1회 도움말은 제품에서 띄우지 않는다 — Core 는 종전대로 이벤트만 낸다
     if(event.type==="memoPick"){ memoModal(event.piece); continue; }
     if(event.type==="contactSituation"){ situationFx(event.att,event.def); continue; }
     if(event.type==="contactBanner"){ contactBannerFx(event.piece,event.sub); continue; }
@@ -151,7 +151,7 @@ const $=id=>/** @type {any} */(document.getElementById(id)); // #245: DOM 접근
         **새 창을 닫지 못한다** (오래된 확인 버튼이 새 게임 모달을 close 하는 사고 방지).
    hold/holdQ: sim 관전 종료 확인창이 떠 있는 동안 AI **예약 실행**만 잠시 미뤄 두는 표시 제어.
         AI 판단·난수·승패·시간표를 바꾸지 않는다 — "언제 다음 수를 두는가"만 미루고, 취소하면 그대로 이어진다. */
-const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[]};
+const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[],screen:"title"}; // #260 screen: 직전에 그린 화면 — 로비에 들어오는 순간을 한 곳에서 안다
 function uiScreenName(){
   if(!UI.entered) return "title";
   if(!S) return "lobby";
@@ -161,6 +161,9 @@ function uiApply(){
   try{
     const a=$("app"); if(!a||!a.setAttribute) return;
     const sc=uiScreenName();
+    /* #260: 어느 경로로 로비에 들어오든(타이틀 [시작]·결과·방 나가기·재접속 실패) 그 순간 한 번 실제로 다시 불러온다 — 새 결과가 전적에 들어가야 한다 */
+    const entering=sc==="lobby"&&UI.screen!=="lobby"; UI.screen=sc;
+    if(entering) lobbyLoad();
     a.setAttribute("data-screen",sc);
     a.setAttribute("data-prep",UI.prep);
     if(sc==="board"&&UI.drawer) a.setAttribute("data-drawer",UI.drawer);
@@ -812,7 +815,6 @@ function renderTurnBar(){
   mk("탐색",()=>netAction({t:"search"}),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))); // #20: 폭탄·함정은 탐색 실행 불가
   const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
   mk(S.teleport?"텔레포트 취소":"🌀 텔레포트",()=>netAction({t:"tele"}),teleDis); // #14 스왑형 · #114 경기당 횟수 제한 없음 (주 행동 1회 소모)
-  if(!teleDis&&!aiTurn&&S.mode!=="sim") tutHint("teleport"); // #26 사람 턴에 텔레포트가 처음 가능해질 때 1회 도움말 (게임 상태 무변경)
   mk("🌿 회복",()=>netAction({t:"heal",id:sel?sel.id:null}),!(sel&&canHeal(sel))); // #106 T2 회복 주 행동 — 자기 말 선택·하수인/동료/왕 (#114: 만피 말도 '기다리기'로 지정 가능)
   const forced=S.forcedTargets&&S.forcedTargets.length>0;
   /* #114 CJ 선택 A: 평소 [주 행동 생략]·[턴 종료] 버튼은 없다 — 할 수 있는 행동이 없으면 자동으로 넘어간다(autoEndCheck).
@@ -840,26 +842,9 @@ function renderSide(){
     return;
   }
   if(S.phase==="menu"){
-    /* #122: 카드 세 장으로 나눈 세로 로비. 진입점·문구·입력칸(주소/코드 2개)·관전 링크·튜토리얼 버튼은 종전 그대로다 */
-    sp.innerHTML=`<h2>오늘은 누구와 겨룰까요?</h2>
-      <p style="margin:6px 0 8px;font-size:12.5px;color:var(--dim)">7×13 전장에서 정체와 숲 속 위치를 감춘 14개의 말을 운용해 상대 왕을 제거하세요.</p>
-      <div class="lobbyCard net" aria-labelledby="netLobbyTitle"><span class="tagPill">공개 방</span>
-      <h2 id="netLobbyTitle">공개 대전</h2>
-      <small>열린 방을 골라 바로 참가하세요. 초대 코드는 필요하지 않습니다.</small>
-      ${location.protocol==="file:"?`<p style="margin:6px 0"><small style="color:var(--buff)">⚠️ html 파일을 직접 연 상태(file://)에서는 공개 대전에 접속할 수 없습니다. 공개 방 서버가 서빙하는 주소로 페이지를 열어 주세요.</small></p>`:""}
-      ${netRoomsHtml()}
-      <span class="badge netStatusLine" id="netStatus" role="status" aria-live="polite" style="display:none"></span></div>
-      <div class="lobbyCard"><span class="tagPill">혼자서</span>
-      <h2>PVE (AI 대전) — 난이도 선택</h2>
-      <div class="row"><button class="primary big" onclick="startMode('pve',{aiLevel:'grade5'})">5급 — 기본 AI</button>
-        <button class="primary big" onclick="startMode('pve',{aiLevel:'dan5'})">5단 — 탐색·추론 기반 강AI</button></div>
-      <small>5급: 휴리스틱 기준선 AI · 5단: 공정 관측 아래 2수 앞(상대 최선 응수)까지 평가하는 제한 탐색 AI</small></div>
-      <div class="lobbyCard"><span class="tagPill">한 기기 2인</span>
-      <div class="row" style="margin-top:2px"><button class="big" onclick="startMode('pvp')">PVP (핫시트 2인)</button></div>
-      <small>기기를 번갈아 건네며 대전합니다. 교대할 때마다 화면이 가려집니다.</small></div>
-      <div class="row"><a class="simlink" onclick="startMode('sim')">AI vs AI 시뮬레이션(관전 · 5급 vs 5급)</a>
-        <a class="simlink" onclick="startMode('sim',{aiLevel:['dan5','grade5']})">5단 vs 5급 관전</a></div>
-      <div class="row" style="margin-top:10px"><button type="button" onclick="tutOpen()">📖 튜토리얼 다시 보기</button></div>`;
+    /* #260: 계정 로비(로딩 → 프로필·멀티·잠긴 싱글·최근 기록·잠긴 메뉴) — lobby.js. 옛 PVE 5급/5단·핫시트·관전·튜토리얼 진입점은 제품에서 없앴고
+       엔진 진입점(startMode)은 회귀 검사용으로 그대로다 */
+    sp.innerHTML=lobbyHtml();
     return;
   }
   if(S.phase==="setup"){renderSetup(sp);return;}
@@ -958,7 +943,7 @@ function renderSetup(sp){
     const line=NET.roomState==="OPEN"?"상대를 기다리는 중…":!NET.myReady?"서버에 준비를 알리는 중…":NET.peerReady?"두 참가자가 준비했습니다. 서버가 대국을 시작하는 중…":"상대의 준비를 기다리는 중…";
     sp.innerHTML=`<h2 id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</h2>
       <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">${line}</p>
-      <div class="row"><span class="badge">내 준비: ${NET.myReady?"<span class=\"netOkDot\" aria-hidden=\"true\">●</span> 완료":NET.roomState==="OPEN"?"상대 입장 후 전송":"요청 중…"}</span><span class="badge">상대: ${NET.peerReady?"<span class=\"netOkDot\" aria-hidden=\"true\">●</span> ":""}${opp}</span></div>
+      <div class="row"><span class="badge">내 준비: ${NET.myReady?"<span class=\"netOkDot\" aria-hidden=\"true\">●</span> 완료":NET.roomState==="OPEN"?"상대 입장 후 전송":"요청 중…"}</span><span class="badge">상대: ${NET.peerReady?"<span class=\"netOkDot\" aria-hidden=\"true\">●</span> ":""}${opp}</span>${lobbySeatRepHtml(1-NET.me)}</div>
       <div class="row netRoomActions">${pauseLockOpen("준비 취소가")}<button type="button" onclick="netRoomReady(false)">준비 취소</button>${pauseLockClose()}<button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
     return;
   }
@@ -980,7 +965,7 @@ function renderSetup(sp){
      CSS 로 한 쪽만 보인다 — 안내 문구·버튼·트레이 마크업은 종전 그대로다. 배치 단계에서는 트레이가 화면 아래에 고정되어
      "트레이 말 탭 → 보드 칸 탭" 조작이 스크롤로 끊기지 않는다. */
   let h=(NET.publicMode&&!NET.started?`<div class="netRoomBar"><b id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</b>
-    <span class="badge" role="status" aria-live="polite">상대: ${NET.roomState==="OPEN"?"입장 대기":NET.peerReady?"준비 완료":"준비 중"}</span>
+    <span class="badge" role="status" aria-live="polite">상대: ${NET.roomState==="OPEN"?"입장 대기":NET.peerReady?"준비 완료":"준비 중"}</span>${lobbySeatRepHtml(1-NET.me)}
     <button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`:"")+`<div class="prepTabs">
     <button type="button" data-prep-step="roster" aria-pressed="${UI.prep==="roster"}" onclick="uiPrep('roster')">01 ${S.eco?"시작 상점":"로스터 선택"} ${sel.length}/6</button>
     <button type="button" data-prep-step="place" aria-pressed="${UI.prep==="place"}" onclick="uiPrep('place')">02 비공개 배치 ${14-unplaced.length}/14</button></div>
@@ -1051,7 +1036,7 @@ function netLeave(){ // 온라인 상태 완전 해제 — 이 정리 없이 로
   NET.mode=false; NET.me=null; NET.ws=null; NET.replaying=false; NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
   NET.localOpen=false; NET.modalOwner=null; NET.started=false; NET.preparing=false; NET.queued=false;
   NET.mySetup=null; NET.pendingSeed=null; NET.code=null; // 접속 코드는 탭 메모리에만 있었고 여기서 버린다 (재입력)
-  NET.rooms=[]; NET.roomsLoading=false; NET.roomId=null; NET.seatToken=null; NET.publicMode=false; NET.players=null;
+  NET.rooms=[]; NET.roomsLoading=false; NET.roomId=null; NET.seatToken=null; NET.publicMode=false; NET.players=null; NET.reps=null;
   NET.myReady=false; NET.peerReady=false; NET.waitingForPeer=false; NET.pendingRoomAction=null; // #217/#218 공개 방 상태도 함께 해제
   netClearResume(); NET.explicitLeave=false; NET.epoch=null; NET.tokenGen=0; // #217 재접속 타이머·유예 상태도 함께 해제
   NET.roomState=null; NET.readyWanted=false; NET.readySent=false; NET.lobbyPending=null; NET.result=null; NET.finalReveal=false; NET.autoEndBlockRev=null; NET.lastActionAuto=false;
@@ -1382,7 +1367,6 @@ function battleModal(board){
     [`<button ${dis||pk.itemGift<=0?"disabled":""} title="아이템 선물 패키지를 열어 회복약·쿨링수·해독제·공용 볼 중 1개를 받습니다 (행동 미소모)" onclick="window.__openPkg('itemGift')">🎁 아이템 선물 ${pk.itemGift}</button>`,
      `<button ${dis||pk.battleBuff<=0||!!buffUsed?"disabled":""} title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')">✨ 전투 버프 ${pk.battleBuff}</button>`].join("");
   const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
-  if(noAtkShow&&!aiActor&&S.mode!=="sim") tutHint("noatk"); // #26·#146 4슬롯 전부 불가가 처음 나올 때 1회 (표시 계층 전용 — 게임 상태·난수·저장소 무변경)
   const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
   /* #122 REVISE(2026-09-10 CJ QA 4): 하위 메뉴의 '← 뒤로'를 **하위 메뉴 패널 바로 아래**로 내린다 (직전 REVISE의 제목 옆 좌상단을 대체).
      핸들러는 종전 그대로 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */

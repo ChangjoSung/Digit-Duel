@@ -43,6 +43,8 @@ async function boot(href,rt,st,storage){
   const T=H.load(htmlPath,{href,fetch:global.fetch,storage:storage||H.mkStorage(Object.assign({tutorialSeen:"1"},st||{}))});
   await tick(); return T;
 }
+/* #260: 로비에 들어오면 방 목록 소켓(l-)을 로딩과 함께 연다. 이 파일의 소켓 단언은 방 생성·참가·재접속(cp-/p-/r-) 소켓에 대한 것이라 목록 소켓만 뺀다 */
+const rs=T=>T.wsLog.filter(w=>!/^l-/.test((w.protocols||[])[1]||""));
 const panel=T=>T.byId("acctPanel").innerHTML;
 const msg=T=>T.byId("acctMsg").textContent;
 const toasts=T=>(T.byId("toasts").children||[]).map(x=>x.textContent).join("|");
@@ -80,7 +82,7 @@ for(const [name,rt] of [["연결 실패(fetch 예외)",{}],["모르는 5xx",{"GE
   T.uiStart(); const u=T.UI.entered;
   T.UI.entered=true; T.startMode("pve",{aiLevel:"grade5"}); const ph=T.S.phase;
   T.UI.entered=true; T.netCreatePublicRoom(); T.netJoinPublicRoom("3"); await tick();
-  ok(T.AUTH.state==="down"&&u===false&&ph==="menu"&&T.wsLog.length===0&&/다시 시도/.test(panel(T)),"A5 "+name+" → 닫힘: 대전 시작·PVE·방 생성/참가 모두 차단 + 다시 시도");
+  ok(T.AUTH.state==="down"&&u===false&&ph==="menu"&&rs(T).length===0&&/다시 시도/.test(panel(T)),"A5 "+name+" → 닫힘: 대전 시작·PVE·방 생성/참가 모두 차단 + 다시 시도");
 }
 {
   const T=await boot(HTTPS,{});
@@ -94,7 +96,7 @@ for(const [name,rt] of [["연결 실패(fetch 예외)",{}],["모르는 5xx",{"GE
   T.UI.entered=true; T.startMode("pve",{aiLevel:"grade5"}); ok(T.S.phase==="menu"&&T.S.mode!=="pve","A9 checking — startMode 직접 호출도 게임을 만들지 않는다");
   T.UI.entered=true; T.startMode("sim"); ok(T.S.phase==="menu","A10 checking — 관전도 차단");
   const n=calls.length; T.UI.entered=true; T.netCreatePublicRoom(); T.netJoinPublicRoom("3"); await tick();
-  ok(T.wsLog.length===0&&calls.length===n,"A11 checking — 방 생성·참가 소켓 없음(세션 재확인 요청도 없음)");
+  ok(rs(T).length===0&&calls.length===n,"A11 checking — 방 생성·참가 소켓 없음(세션 재확인 요청도 없음)");
 }
 
 /* ===== B. 로그인 필요 ===== */
@@ -108,7 +110,7 @@ for(const [name,rt] of [["연결 실패(fetch 예외)",{}],["모르는 5xx",{"GE
   ok(T.S.phase==="menu"&&T.UI.entered===false,"B5 PVE 직접 호출도 차단 → 타이틀");
   T.startMode("sim"); ok(T.S.phase==="menu","B6 AI 관전도 차단");
   T.netCreatePublicRoom(); T.netJoinPublicRoom("3"); await tick();
-  ok(T.wsLog.length===0,"B7 공개 방 생성·참가 소켓을 열지 않는다");
+  ok(rs(T).length===0,"B7 공개 방 생성·참가 소켓을 열지 않는다");
   const D=await boot(HTTPS,{"GET /api/auth/session":[503,{error:"E_ACCOUNTS_UNAVAILABLE"}]});
   D.uiStart(); ok(D.AUTH.state==="down"&&D.UI.entered===false&&/다시 시도/.test(panel(D)),"B8 DB 장애(503 E_ACCOUNTS_UNAVAILABLE) → 입장 차단 + 다시 시도");
 }
@@ -151,7 +153,7 @@ for(const [name,rt] of [["연결 실패(fetch 예외)",{}],["모르는 5xx",{"GE
   ok(T.AUTH.state==="in"&&T.AUTH.code===undefined&&!/복구 코드|recovery/i.test(panel(T)),"D4 가입 성공 → 바로 로그인 · 복구 코드 화면 없음");
   T.uiStart(); ok(T.UI.entered===true,"D5 가입 즉시 입장(코드 저장 확인 게이트 없음)");
   ok(!JSON.stringify(T.storage.st).includes("password1")&&!JSON.stringify(T.storage.st).includes("Example.co.kr"),"D6 비밀번호·이메일을 저장소에 쓰지 않는다");
-  ok(calls.every(c=>c.url==="/api/auth/signup"||c.url==="/api/auth/session"),"D3b 이메일 중복 확인 요청 없음 — 가입 요청 하나뿐(형식만 클라이언트가 본다)");
+  ok(calls.every(c=>c.url==="/api/auth/signup"||c.url==="/api/auth/session"||c.url==="/api/profile"),"D3b 이메일 중복 확인 요청 없음 — 가입 요청 하나뿐(형식만 클라이언트가 본다)");
   for(const [code,want] of [["E_NICKNAME_TAKEN","이미 사용 중인 닉네임"],["E_ID_TAKEN","이미 사용 중인 아이디"]]){
     const N=await boot(HTTPS,Object.assign({},ANON,{"POST /api/auth/signup":[409,{error:code}]}));
     N.acct.acctView("signup"); signupFill(N); await N.acct.acctSubmit();
@@ -341,9 +343,9 @@ for(const [name,rt] of [["연결 실패(fetch 예외)",{}],["모르는 5xx",{"GE
   const T=await boot(HTTPS,{"GET /api/auth/session":()=>sessionOk?[200,ALICE]:[401,{error:"E_NO_SESSION"}]});
   T.uiStart(); calls.length=0;
   T.netCreatePublicRoom();
-  ok(T.wsLog.length===0&&calls.length===1&&calls[0].url==="/api/auth/session","G1 방 생성 — 소켓보다 세션 확인이 먼저");
+  ok(rs(T).length===0&&calls.filter(c=>!/^\/api\/profile/.test(c.url)).length===1&&calls[0].url==="/api/auth/session","G1 방 생성 — 소켓보다 세션 확인이 먼저");
   await tick();
-  const ws=T.wsLog[0];
+  const ws=rs(T)[0];
   ok(ws&&ws.protocols[1].startsWith("cp-"),"G2 세션 확인 뒤 생성 소켓");
   openWs(ws); frame(ws,{type:"room_opened",roomId:7,seat:0,seatToken:TOK,tokenGen:0,revision:0,economy:false});
   const r=JSON.parse(seat(T)||"null");
@@ -351,51 +353,51 @@ for(const [name,rt] of [["연결 실패(fetch 예외)",{}],["모르는 5xx",{"GE
     "G3 좌석 기록은 계정별 키(dd_seat.<아이디>) — 좌석 정보와 아이디만");
   T.netLeaveRoom();
   ok(seat(T)===null,"G4 나가기 → 기록 삭제");
-  T.UI.entered=true; sessionOk=false; const n=T.wsLog.length; T.netJoinPublicRoom("9"); await tick();
-  ok(T.wsLog.slice(n).every(w=>!/^p-/.test(w.protocols[1]))&&T.AUTH.state==="anon"&&T.UI.entered===false&&/만료/.test(toasts(T)),"G5 세션 만료 → 참가 소켓 없이 로그인 화면");
+  T.UI.entered=true; sessionOk=false; const n=rs(T).length; T.netJoinPublicRoom("9"); await tick();
+  ok(rs(T).slice(n).every(w=>!/^p-/.test(w.protocols[1]))&&T.AUTH.state==="anon"&&T.UI.entered===false&&/만료/.test(toasts(T)),"G5 세션 만료 → 참가 소켓 없이 로그인 화면");
 
   const R=await boot(HTTPS,IN,{[SK]:rec()});
-  const rw=R.wsLog[0];
+  const rw=rs(R)[0];
   ok(rw&&rw.protocols[1]==="r-"+EPOCH+"."+TOK&&R.NET.resuming===true&&R.UI.entered===true,"G6 로드 시 저장된 좌석으로 재접속(r-<epoch>.<token>)");
   const TOK2="B".repeat(22);
   openWs(rw); frame(rw,{type:"room_resumed",roomId:7,seat:0,seatToken:TOK2,tokenGen:1,revision:3,economy:false});
   ok(JSON.parse(seat(R)).seatToken===TOK2&&JSON.parse(seat(R)).tokenGen===1,"G7 재개 성공 → 회전한 토큰으로 기록 갱신");
   const TOK3="C".repeat(22); R.storage.setItem(SK,rec({seatToken:TOK3,tokenGen:2}));
-  const before=R.wsLog.length;
+  const before=rs(R).length;
   frame(rw,{type:"error",code:"E_SUPERSEDED"});
   ok(R.NET.roomId===null&&R.NET.resuming===false&&/다른 창에서 이 경기에 다시 접속/.test(toasts(R)),"G8 밀려난 탭(같은 계정 마지막 탭 규칙 유지) → 로비 안내");
-  ok(R.wsLog.slice(before).every(w=>!/^r-/.test(w.protocols[1]))&&JSON.parse(seat(R)).seatToken===TOK3,"G9 되찾기 재접속 없음 + 다른 탭의 기록 보존");
+  ok(rs(R).slice(before).every(w=>!/^r-/.test(w.protocols[1]))&&JSON.parse(seat(R)).seatToken===TOK3,"G9 되찾기 재접속 없음 + 다른 탭의 기록 보존");
 
   const F=await boot(HTTPS,IN,{[SK]:rec()});
-  frame(F.wsLog[0],{type:"error",code:"E_ROOM_NOT_FOUND"});
+  frame(rs(F)[0],{type:"error",code:"E_ROOM_NOT_FOUND"});
   ok(seat(F)===null&&F.NET.roomId===null,"G10 재접속 실패(방 없음·유예 만료) → 기록 삭제");
   const bobRec=rec({u:"bob_22"});
   const B=await boot(HTTPS,IN,{"dd_seat.bob_22":bobRec});
-  ok(B.wsLog.length===0&&seat(B,"dd_seat.bob_22")===bobRec,"G11 다른 계정의 기록 → 재접속하지 않고 지우지도 않는다");
+  ok(rs(B).length===0&&seat(B,"dd_seat.bob_22")===bobRec,"G11 다른 계정의 기록 → 재접속하지 않고 지우지도 않는다");
   const X=await boot(HTTPS,IN,{[SK]:rec({u:"bob_22"})});
-  ok(X.wsLog.length===0,"G11b 키와 기록 속 아이디가 다르면(조작) 재접속하지 않는다");
+  ok(rs(X).length===0,"G11b 키와 기록 속 아이디가 다르면(조작) 재접속하지 않는다");
   const A=await boot(HTTPS,ANON,{[SK]:rec()});
-  ok(A.wsLog.length===0,"G12 로그인 안 됨 → 재접속하지 않는다");
+  ok(rs(A).length===0,"G12 로그인 안 됨 → 재접속하지 않는다");
   const M=await boot(HTTPS,IN,{[SK]:rec({seatToken:"bad token"})});
-  ok(M.wsLog.length===0&&seat(M)===null,"G13 형식이 틀린 기록 → 재접속하지 않고 삭제");
+  ok(rs(M).length===0&&seat(M)===null,"G13 형식이 틀린 기록 → 재접속하지 않고 삭제");
   const O=await boot("file:///C:/Digit-Duel/demo/index.html",{},{[SK]:rec()});
-  ok(O.wsLog.length===0,"G14 계정 없는 경로는 기록을 쓰지도 읽지도 않는다");
+  ok(rs(O).length===0,"G14 계정 없는 경로는 기록을 쓰지도 읽지도 않는다");
 }
 
 /* ===== I. 로그아웃·세션 종료 — 열린 방 소켓 정리 ===== */
 async function inRoom(extra,T0){
   const T=T0||await boot(HTTPS,Object.assign({},IN,extra));
   T.uiStart(); T.netCreatePublicRoom(); await tick();
-  const ws=openWs(T.wsLog[T.wsLog.length-1]); frame(ws,{type:"room_opened",roomId:7,seat:0,seatToken:TOK,tokenGen:0,revision:0,economy:false});
+  const ws=openWs(rs(T)[rs(T).length-1]); frame(ws,{type:"room_opened",roomId:7,seat:0,seatToken:TOK,tokenGen:0,revision:0,economy:false});
   return {T,ws};
 }
 {
   const {T,ws}=await inRoom({"POST /api/auth/logout":[200,{ok:true}]});
   ok(T.NET.roomId===7&&seat(T)!==null,"I0 방 안 + 좌석 기록 있음");
-  const n=T.wsLog.length;
+  const n=rs(T).length;
   await T.acct.acctLogout();
   ok(ws.closed===true&&T.NET.ws===null&&T.NET.roomId===null&&seat(T)===null,"I1 로그아웃 성공 → 방 소켓 닫힘·좌석 기록 삭제");
-  ok(T.AUTH.state==="anon"&&T.UI.entered===false&&T.NET.resuming===false&&T.wsLog.length===n,"I2 로그인 화면으로 · 재접속 소켓 없음");
+  ok(T.AUTH.state==="anon"&&T.UI.entered===false&&T.NET.resuming===false&&rs(T).length===n,"I2 로그인 화면으로 · 재접속 소켓 없음");
 }
 {
   const {T,ws}=await inRoom({"POST /api/auth/logout":[503,{error:"E_ACCOUNTS_UNAVAILABLE"}]});
@@ -407,49 +409,49 @@ async function inRoom(extra,T0){
 }
 {
   const {T,ws}=await inRoom({});
-  const n=T.wsLog.length;
+  const n=rs(T).length;
   routes=Object.assign({},ANON); // 서버가 끝낸 세션 — 이후 세션 확인은 401
   frame(ws,{type:"error",code:"E_SESSION_ENDED"}); await tick();
-  ok(T.AUTH.state==="anon"&&ws.closed===true&&T.NET.ws===null&&T.NET.roomId===null&&T.NET.resuming===false&&T.wsLog.length===n,"I5 서버 E_SESSION_ENDED → 로그인 화면·방 소켓 닫힘·자동 재접속 없음");
+  ok(T.AUTH.state==="anon"&&ws.closed===true&&T.NET.ws===null&&T.NET.roomId===null&&T.NET.resuming===false&&rs(T).length===n,"I5 서버 E_SESSION_ENDED → 로그인 화면·방 소켓 닫힘·자동 재접속 없음");
   ok(JSON.parse(seat(T)||"null")&&JSON.parse(seat(T)).seatToken===TOK,"I6 비자발 세션 종료는 좌석 기록을 남긴다(#237 60초 유예 재접속용)");
-  ws.onclose&&ws.onclose({code:4003}); ok(T.wsLog.length===n,"I7 뒤이은 close 4003 도 재접속을 부르지 않는다");
+  ws.onclose&&ws.onclose({code:4003}); ok(rs(T).length===n,"I7 뒤이은 close 4003 도 재접속을 부르지 않는다");
   routes=Object.assign({},ANON,{"POST /api/auth/login":[200,ALICE]});
   setv(T,"acctId","alice_1"); setv(T,"acctPw","password1"); await T.acct.acctSubmit();
-  const rw=T.wsLog[n];
+  const rw=rs(T)[n];
   ok(T.AUTH.state==="in"&&rw&&rw.protocols[1]==="r-"+EPOCH+"."+TOK&&T.NET.resuming===true,"I8 이 브라우저에서 같은 계정으로 다시 로그인 → 남은 좌석으로 재접속");
 }
 {
   const {T,ws}=await inRoom({});
-  const n=T.wsLog.length;
+  const n=rs(T).length;
   routes=Object.assign({},ANON);
   frame(ws,{type:"error",code:"E_SESSION_ENDED",reason:"login_replaced"}); await tick();
-  ok(T.AUTH.state==="anon"&&ws.closed===true&&T.NET.resuming===false&&T.wsLog.length===n&&/새로 로그인해 이 창은 자동으로 로그아웃/.test(toasts(T)),
+  ok(T.AUTH.state==="anon"&&ws.closed===true&&T.NET.resuming===false&&rs(T).length===n&&/새로 로그인해 이 창은 자동으로 로그아웃/.test(toasts(T)),
     "I9 E_SESSION_ENDED reason=login_replaced(다른 기기·브라우저의 새 로그인) → 명확한 자동 로그아웃 안내·재접속 없음");
   frame(ws,{type:"error",code:"E_SESSION_ENDED",reason:"login_replaced"}); await tick();
   ok((toasts(T).match(/자동으로 로그아웃/g)||[]).length===1,"I10 닫힌 소켓의 늦은 두 번째 알림은 무시");
 }
 {
   const {T,ws}=await inRoom({});
-  const n=T.wsLog.length;
+  const n=rs(T).length;
   routes=Object.assign({},ANON);
   ws.readyState=3; ws.onclose({code:4003}); await tick(); // 오류 프레임 없이 close 4003 만 온 경우
-  ok(T.AUTH.state==="anon"&&T.NET.ws===null&&T.NET.roomId===null&&T.NET.resuming===false&&T.wsLog.length===n&&seat(T)!==null&&/로그아웃되었거나/.test(toasts(T)),"I11 close 4003 단독 → 일반 안내·재접속 없음·좌석 기록 유지");
+  ok(T.AUTH.state==="anon"&&T.NET.ws===null&&T.NET.roomId===null&&T.NET.resuming===false&&rs(T).length===n&&seat(T)!==null&&/로그아웃되었거나/.test(toasts(T)),"I11 close 4003 단독 → 일반 안내·재접속 없음·좌석 기록 유지");
   const C=await boot(HTTPS,ANON); C.storage.setItem(SK,rec());
   setv(C,"acctId","bob_22"); setv(C,"acctPw","password1"); routes=Object.assign({},ANON,{"POST /api/auth/login":[200,BOB]}); await C.acct.acctSubmit();
-  ok(C.AUTH.user.userId==="bob_22"&&seat(C)===rec()&&C.wsLog.length===0,"I12 다른 계정으로 로그인 → 앨리스 좌석 기록을 지우지도 재접속하지도 않는다");
+  ok(C.AUTH.user.userId==="bob_22"&&seat(C)===rec()&&rs(C).length===0,"I12 다른 계정으로 로그인 → 앨리스 좌석 기록을 지우지도 재접속하지도 않는다");
 }
 {
   // 재접속 도중 세션이 사라졌다(다른 곳 새 로그인) — 업그레이드 401 로 열리지 않는 소켓을 60초 헛재시도하지 않는다
   const {T,ws}=await inRoom({});
   ws.readyState=3; ws.onclose({code:1006});
-  const rw=T.wsLog[T.wsLog.length-1];
+  const rw=rs(T)[rs(T).length-1];
   ok(T.NET.resuming===true&&/^r-/.test(rw.protocols[1]),"I13 단절 → 재접속 시도");
   routes=Object.assign({},ANON);
   rw.readyState=3; rw.onclose({code:1006}); await tick();
   ok(T.AUTH.state==="anon"&&T.NET.resuming===false&&T.NET.roomId===null&&/로그아웃되었거나/.test(toasts(T)),"I14 열리지 못한 재접속 소켓 → 세션 확인 401 → 재시도 중단·로그인 화면");
   const {T:U,ws:w2}=await inRoom({});
   w2.readyState=3; w2.onclose({code:1006});
-  const rw2=U.wsLog[U.wsLog.length-1]; routes["GET /api/auth/session"]=()=>{ throw new TypeError("offline"); };
+  const rw2=rs(U)[rs(U).length-1]; routes["GET /api/auth/session"]=()=>{ throw new TypeError("offline"); };
   rw2.readyState=3; rw2.onclose({code:1006}); await tick();
   ok(U.AUTH.state==="in"&&U.NET.resuming===true,"I15 네트워크 단절(확인도 실패)이면 로그인 유지·유예 안 재시도 계속");
 }
@@ -473,22 +475,22 @@ async function lateCase(label,between,entry){
   T.uiStart();
   routes["GET /api/auth/session"]=()=>d.p.then(()=>[200,ALICE]); // 입장 전 세션 확인이 늦게 온다
   entry(T);
-  await tick(); ok(T.wsLog.length===0&&T.AUTH.state==="in","K0 "+label+" — 세션 확인 대기 중(소켓 없음)");
+  await tick(); ok(rs(T).length===0&&T.AUTH.state==="in","K0 "+label+" — 세션 확인 대기 중(소켓 없음)");
   await between(T);
   d.release(); await tick();
   return T;
 }
 {
   const T=await lateCase("로그아웃",async T=>{ await T.acct.acctLogout(); },T=>T.netCreatePublicRoom());
-  ok(T.AUTH.state==="anon"&&T.AUTH.user===null&&T.wsLog.length===0&&T.S.phase==="menu"&&T.UI.entered===false,"K1 로그아웃 성공 뒤 도착한 GET session 200 → 익명 유지·방 소켓 0·게임 없음");
+  ok(T.AUTH.state==="anon"&&T.AUTH.user===null&&rs(T).length===0&&T.S.phase==="menu"&&T.UI.entered===false,"K1 로그아웃 성공 뒤 도착한 GET session 200 → 익명 유지·방 소켓 0·게임 없음");
 }
 {
   const T=await lateCase("서버 세션 종료",async T=>{ routes["GET /api/auth/session"]=[401,{error:"E_NO_SESSION"}]; T.acct.acctEndSession("ended"); await tick(); },T=>T.netJoinPublicRoom("3"));
-  ok(T.AUTH.state==="anon"&&T.AUTH.user===null&&T.wsLog.length===0&&T.UI.entered===false,"K2 세션 종료(E_SESSION_ENDED·4003 공통 경로) 뒤 늦은 200 → 익명 유지·참가 소켓 0");
+  ok(T.AUTH.state==="anon"&&T.AUTH.user===null&&rs(T).length===0&&T.UI.entered===false,"K2 세션 종료(E_SESSION_ENDED·4003 공통 경로) 뒤 늦은 200 → 익명 유지·참가 소켓 0");
 }
 {
   const T=await lateCase("계정 전환",async T=>{ await T.acct.acctLogout(); setv(T,"acctId","bob_22"); setv(T,"acctPw","password1"); await T.acct.acctSubmit(); },T=>T.netCreatePublicRoom());
-  ok(T.AUTH.state==="in"&&T.AUTH.user.userId==="bob_22"&&T.wsLog.length===0,"K3 로그아웃→다른 계정 로그인 뒤 늦은 alice 200 → bob 유지·옛 입장 실행 안 함");
+  ok(T.AUTH.state==="in"&&T.AUTH.user.userId==="bob_22"&&rs(T).length===0,"K3 로그아웃→다른 계정 로그인 뒤 늦은 alice 200 → bob 유지·옛 입장 실행 안 함");
 }
 {
   const d=later();
@@ -497,13 +499,13 @@ async function lateCase(label,between,entry){
   const pending=T.acct.acctCheck(); // [다시 시도] — 응답 전에 세션이 끝났다
   T.AUTH.state="in"; T.AUTH.user={userId:"alice_1",nickname:"앨리스",hasEmail:true}; T.acct.acctEndSession("ended");
   d.release(); await pending; await tick();
-  ok(T.wsLog.length===0&&T.NET.resuming===false,"K4 계정 확인(다시 시도) 도중 세션 종료 → 늦은 200 이 재접속·입장을 일으키지 않는다");
+  ok(rs(T).length===0&&T.NET.resuming===false,"K4 계정 확인(다시 시도) 도중 세션 종료 → 늦은 200 이 재접속·입장을 일으키지 않는다");
 }
 {
   const T=await boot(HTTPS,IN); T.uiStart();
   routes["GET /api/auth/session"]=[200,BOB]; // 다른 탭이 같은 브라우저 쿠키를 bob 으로 바꿨다(알림 이벤트를 놓친 경우)
   T.netCreatePublicRoom(); await tick();
-  ok(T.AUTH.user.userId==="bob_22"&&T.wsLog.length===0&&/다른 계정/.test(toasts(T)),"K5 입장 직전 확인이 다른 계정을 돌려주면 신원만 갱신하고 옛 입장은 잇지 않는다");
+  ok(T.AUTH.user.userId==="bob_22"&&rs(T).length===0&&/다른 계정/.test(toasts(T)),"K5 입장 직전 확인이 다른 계정을 돌려주면 신원만 갱신하고 옛 입장은 잇지 않는다");
 }
 
 /* ===== L. 같은 브라우저 프로필의 두 탭 (쿠키 하나·저장소 하나) ===== */
@@ -520,21 +522,21 @@ async function lateCase(label,between,entry){
   ok(t1.AUTH.state==="anon"&&t2.AUTH.state==="anon","L0 두 탭 모두 로그인 전(같은 프로필)");
   t1.activate(); setv(t1,"acctId","alice_1"); setv(t1,"acctPw","password1"); await t1.acct.acctSubmit();
   storageEvent(t2); await tick();
-  ok(t2.AUTH.state==="in"&&t2.AUTH.user.userId==="alice_1"&&t2.wsLog.length===0,"L1 탭1 로그인 알림 → 탭2 는 프로필의 로그인(alice)을 그대로 보인다(재접속·입장 없음)");
+  ok(t2.AUTH.state==="in"&&t2.AUTH.user.userId==="alice_1"&&rs(t2).length===0,"L1 탭1 로그인 알림 → 탭2 는 프로필의 로그인(alice)을 그대로 보인다(재접속·입장 없음)");
   t2.activate(); t2.AUTH.state="anon"; t2.AUTH.user=null; // CJ 재현 순서: 탭2 는 탭1 로그인 전에 열려 로그인 폼 그대로다(알림이 없던 이전 빌드)
   t1.activate(); const {ws:w1}=await inRoom({},t1);
   ok(t1.NET.roomId===7&&seat(t1)!==null,"L2 탭1(alice) 호스트 좌석 + dd_seat.alice_1");
-  const w1n=t1.wsLog.length;
+  const w1n=rs(t1).length;
   t2.activate(); setv(t2,"acctId","bob_22"); setv(t2,"acctPw","password1"); await t2.acct.acctSubmit();
   ok(t2.AUTH.user.userId==="bob_22"&&seat(t2)!==null&&JSON.parse(seat(t2)).u==="alice_1","L3 탭2 bob 로그인 → alice 좌석 기록을 지우지 않는다(종전 빌드는 여기서 지웠다)");
   t1.activate(); storageEvent(t1); await tick();
-  ok(w1.closed===true&&t1.NET.roomId===null&&t1.NET.resuming===false&&t1.wsLog.length===w1n,"L4 탭1: 옛 신원(alice)의 방 소켓을 닫고 재접속하지 않는다");
+  ok(w1.closed===true&&t1.NET.roomId===null&&t1.NET.resuming===false&&rs(t1).length===w1n,"L4 탭1: 옛 신원(alice)의 방 소켓을 닫고 재접속하지 않는다");
   ok(t1.AUTH.state==="in"&&t1.AUTH.user.userId==="bob_22"&&/다른 창에서 밥돌이\(bob_22\) 계정으로 로그인/.test(toasts(t1)),"L5 탭1 은 프로필의 실제 계정(bob)을 명시적으로 알린다 — 조용히 alice 로 남지 않는다");
   ok(JSON.parse(seat(t1)).u==="alice_1"&&JSON.parse(seat(t1)).seatToken===TOK,"L6 alice 좌석 기록은 남는다(이 브라우저에서 alice 로 다시 로그인하면 유예 안 재접속)");
   // bob 이 탭2 에서 참가해 좌석을 얻은 뒤 탭1 을 새로고침해도 alice·bob 좌석이 섞이지 않는다
   t2.activate(); shared.setItem("dd_seat.bob_22",rec({u:"bob_22",seat:1,seatToken:"B".repeat(22)}));
   const t1r=H.load(htmlPath,{href:HTTPS,fetch:global.fetch,storage:shared}); await tick();
-  const rr=t1r.wsLog[0];
+  const rr=rs(t1r)[0];
   ok(t1r.AUTH.user.userId==="bob_22"&&(!rr||rr.protocols[1]!=="r-"+EPOCH+"."+TOK),"L7 새로고침한 탭1 은 bob — alice 의 호스트 좌석 토큰으로 재접속하지 않는다");
   ok(!rr||rr.protocols[1]==="r-"+EPOCH+"."+"B".repeat(22),"L8 새로고침 탭은 프로필 계정(bob) 자신의 좌석만 쓴다(같은 계정 마지막 탭 규칙 — 계정 간 섞임 없음)");
   // 알림을 놓쳐도: 서버가 옮겨 간 옛 세션을 끊으면(login_replaced) 옛 탭은 끝나고 프로필 계정을 알린다
@@ -547,7 +549,7 @@ async function lateCase(label,between,entry){
   profile.cookie="alice_1";
   const b=await boot(HTTPS,PROFILE_RT,null,H.mkStorage({tutorialSeen:"1",[SK]:rec()}));
   profile.cookie="bob_22";
-  frame(openWs(b.wsLog[0]),{type:"error",code:"E_SEAT_TOKEN_INVALID"}); await tick();
+  frame(openWs(rs(b)[0]),{type:"error",code:"E_SEAT_TOKEN_INVALID"}); await tick();
   ok(b.NET.resuming===false&&b.AUTH.user&&b.AUTH.user.userId==="bob_22"&&/밥돌이\(bob_22\)/.test(toasts(b)),"L10 재접속 거절(좌석 계정≠쿠키 계정) → 막연한 '연결 끊김' 대신 계정 전환을 알린다");
   // 실서버 통합에서 찾은 경합: 옮겨 간 옛 세션 종료(이유 없음)가 새 쿠키보다 먼저 와 세션 확인이 401 로 늦게 오는 사이, 다른 탭 알림이 도착
   profile.cookie="alice_1";
@@ -576,7 +578,7 @@ async function lateCase(label,between,entry){
   ok(T.pname(0)==="나(P1)"&&T.pname(1)==="상대(P2)","M2 닉네임 규칙에 맞지 않는 값·null 은 표시하지 않는다(HTML 주입 없음)");
   T.netLeaveRoom(); ok(T.NET.players===null,"M3 방을 나가면 닉네임도 비운다");
   const J=await boot(HTTPS,IN); J.uiStart(); J.netJoinPublicRoom("5"); await tick();
-  const jw=openWs(J.wsLog[0]); frame(jw,{type:"error",code:"E_SAME_ACCOUNT"});
+  const jw=openWs(rs(J)[0]); frame(jw,{type:"error",code:"E_SAME_ACCOUNT"});
   ok(/같은 계정끼리는 대전할 수 없습니다/.test(J.NET.lobbyMsg&&J.NET.lobbyMsg.text||"")&&J.NET.roomId===null,"M4 E_SAME_ACCOUNT → 로비 카드에 명확한 안내");
 }
 
@@ -589,7 +591,7 @@ async function lateCase(label,between,entry){
   const I=await boot(HTTPS,IN);
   const n0=sessCalls(); routes["GET /api/auth/session"]=[401,{error:"E_NO_SESSION"}];
   wt(I); await tick();
-  ok(sessCalls()===n0+2&&I.AUTH.state==="anon"&&/로그아웃되었거나 다른 곳의 새 로그인/.test(toasts(I))&&I.wsLog.length===0,"W1 방 소켓 없는 로그인 탭 + 서버 세션 없음(401) → 대조 1회로 자동 로그아웃 안내·소켓 0 (요청 2 = 대조 + 로그아웃 뒤 프로필 재확인 1회)");
+  ok(sessCalls()===n0+2&&I.AUTH.state==="anon"&&/로그아웃되었거나 다른 곳의 새 로그인/.test(toasts(I))&&rs(I).length===0,"W1 방 소켓 없는 로그인 탭 + 서버 세션 없음(401) → 대조 1회로 자동 로그아웃 안내·소켓 0 (요청 2 = 대조 + 로그아웃 뒤 프로필 재확인 1회)");
   // W2 포커스·다시 보임은 즉시 대조, 숨은 탭은 묻지 않는다
   const V=await boot(HTTPS,IN); V.document.hidden=true;
   const n1=sessCalls(); wt(V); wt(V); await tick();
@@ -601,12 +603,12 @@ async function lateCase(label,between,entry){
     const F=await boot(HTTPS,IN); const d=later(); routes["GET /api/auth/session"]=()=>d.p.then(()=>typeof h==="function"?h():h);
     const html=panel(F); wt(F); await tick();
     const mid=F.AUTH.state; d.release(); await tick();
-    ok(mid==="in"&&F.AUTH.state==="in"&&panel(F)===html&&F.wsLog.length===0,"W4 대조 "+name+" → 대기 중에도 checking 으로 바뀌지 않고 로그인·화면 유지");
+    ok(mid==="in"&&F.AUTH.state==="in"&&panel(F)===html&&rs(F).length===0,"W4 대조 "+name+" → 대기 중에도 checking 으로 바뀌지 않고 로그인·화면 유지");
   }
   // W5 같은 계정 200 은 아무것도 하지 않는다 — 저장된 좌석이 있어도 방을 열거나 재접속하지 않는다
-  const R=await boot(HTTPS,IN); R.storage.setItem(SK,rec()); const nw=R.wsLog.length, html5=panel(R);
+  const R=await boot(HTTPS,IN); R.storage.setItem(SK,rec()); const nw=rs(R).length, html5=panel(R);
   wt(R); await tick();
-  ok(R.AUTH.state==="in"&&R.wsLog.length===nw&&R.NET.resuming===false&&panel(R)===html5,"W5 같은 계정 200 → 소켓·재접속·화면 변화 없음");
+  ok(R.AUTH.state==="in"&&rs(R).length===nw&&R.NET.resuming===false&&panel(R)===html5,"W5 같은 계정 200 → 소켓·재접속·화면 변화 없음");
   // W6 한 번에 하나 — tick·포커스·다시 보임이 겹쳐도 요청 1개
   const D=await boot(HTTPS,IN); const dd=later(); routes["GET /api/auth/session"]=()=>dd.p.then(()=>[200,ALICE]);
   const n6=sessCalls(); wt(D); wt(D); wt(D); await tick(); dd.release(); await tick();
@@ -615,7 +617,7 @@ async function lateCase(label,between,entry){
   const L=await boot(HTTPS,Object.assign({},IN,{"POST /api/auth/logout":[200,{ok:true}],"POST /api/auth/login":[200,BOB]}));
   const l1=later(); routes["GET /api/auth/session"]=()=>l1.p.then(()=>[200,ALICE]);
   wt(L); await tick(); await L.acct.acctLogout(); l1.release(); await tick();
-  ok(L.AUTH.state==="anon"&&L.AUTH.user===null&&L.wsLog.length===0,"W7 로그아웃 뒤 도착한 옛 대조 200 → 익명 유지(부활 없음)");
+  ok(L.AUTH.state==="anon"&&L.AUTH.user===null&&rs(L).length===0,"W7 로그아웃 뒤 도착한 옛 대조 200 → 익명 유지(부활 없음)");
   const S=await boot(HTTPS,Object.assign({},IN,{"POST /api/auth/logout":[200,{ok:true}],"POST /api/auth/login":[200,BOB]}));
   const l2=later(); routes["GET /api/auth/session"]=()=>l2.p.then(()=>[401,{error:"E_NO_SESSION"}]);
   wt(S); await tick(); await S.acct.acctLogout(); setv(S,"acctId","bob_22"); setv(S,"acctPw","password1"); await S.acct.acctSubmit();
@@ -626,7 +628,7 @@ async function lateCase(label,between,entry){
   ok(sessCalls()===n9&&G.AUTH.state==="in","W9 인증된 방 소켓이 열려 있으면 백그라운드 대조를 하지 않는다");
   // W10 다른 계정 200(같은 프로필 다른 탭, 알림을 놓침) → 전환 안내
   const X=await boot(HTTPS,IN); routes["GET /api/auth/session"]=[200,BOB]; wt(X); await tick();
-  ok(X.AUTH.user&&X.AUTH.user.userId==="bob_22"&&/밥돌이\(bob_22\)/.test(toasts(X))&&X.wsLog.length===0,"W10 대조가 다른 계정을 돌려주면 옛 신원을 끝내고 전환 안내(재접속 없음)");
+  ok(X.AUTH.user&&X.AUTH.user.userId==="bob_22"&&/밥돌이\(bob_22\)/.test(toasts(X))&&rs(X).length===0,"W10 대조가 다른 계정을 돌려주면 옛 신원을 끝내고 전환 안내(재접속 없음)");
   // W11 타이머는 로그인에 하나, 익명이 되면 끈다(렌더·재확인으로 늘지 않는다)
   const Z=await boot(HTTPS,Object.assign({},ANON,{"POST /api/auth/login":[200,ALICE],"POST /api/auth/logout":[200,{ok:true}]}));
   const made=[],cleared=[]; const si=global.setInterval, ci=global.clearInterval;

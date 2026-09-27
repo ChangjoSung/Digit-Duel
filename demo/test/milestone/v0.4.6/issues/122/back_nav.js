@@ -28,9 +28,8 @@ const STORE=H.mkStorage({netServer:"127.0.0.1:8080",someUserKey:"keep-me"});
 H.setStorage(STORE);
 const T=H.load(htmlPath,{storage:"inherit"});
 const SRC=T.html;
-/* 문서 로드당 1회 자동 튜토리얼(#128)이 열려 있는 채로 시작한다 — 화면 조작 전에 닫는다 (플래그는 그대로 둔다).
-   DOM 스텁은 마크업의 class="overlay hidden" 을 읽지 않으므로 게임 모달도 한 번 닫아 '닫힘' 상태에서 시작한다 */
-T.tutClose(); T.close();
+/* #260: 자동 튜토리얼이 없다. DOM 스텁은 마크업의 class="hidden" 을 읽지 않으므로 튜토리얼·게임 모달을 '닫힘' 상태로 맞추고 시작한다 */
+T.byId("tutOverlay").classList.add("hidden"); T.close();
 /* 실제 DOM 에서 #obBtns 는 modal() 이 overlayBox.innerHTML 을 갈아 끼울 때마다 새로 생긴다.
    스텁은 id 별 단일 객체라 이전 모달의 버튼이 남으므로, 누를 때마다 실제와 같이 비우고 시작한다. */
 const back=()=>{ T.byId("obBtns").children.length=0; global.uiBack(); };

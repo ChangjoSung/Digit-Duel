@@ -413,6 +413,9 @@ function load(htmlPath,opts){
   AUTH:typeof AUTH!=="undefined"?AUTH:undefined,
   acct:typeof acctCheck==="function"?{acctCheck,acctSubmit,acctResetSend,acctEmailSubmit,acctLogout,acctView,acctSeatLoad,acctGateMsg,acctEndSession,acctOnStorage,acctWatchTick:typeof acctWatchTick==="function"?acctWatchTick:undefined}:undefined,
   pname:typeof pname==="function"?pname:undefined,
+  /* #260 계정 로비 — 기준판 로드 호환: 부재 시 undefined */
+  LOBBY:typeof LOBBY!=="undefined"?LOBBY:undefined,
+  lobby:typeof lobbyHtml==="function"?{lobbyHtml,lobbyReady,lobbyLoad,lobbyLocked,lobbyRetry,lobbyRepOpen,lobbyRepPick,lobbySeatRepHtml,lobbyParseProfile,LOBBY_API,LOBBY_TIMEOUT_MS}:undefined,
   html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;

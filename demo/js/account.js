@@ -12,7 +12,7 @@
      다르면 버린다. AUTH.rgen: 재설정 단계·화면이 바뀔 때 1 오른다 — 늦게 온 옛 단계 응답이 지금 화면을 바꾸지 못하게.
    - 한 브라우저 프로필(같은 창의 여러 탭)은 쿠키 하나를 나눠 쓴다 — 탭마다 다른 계정을 둘 수 없다. 이 탭에서 신원이 바뀌면
      dd_acct 에 알리고(storage 이벤트), 다른 탭은 옛 신원의 방 소켓·재접속을 끊고 프로필의 실제 로그인을 다시 본다(#259 CJ QA REVISE).
-   - DB 가 켜진 서버면 게임 입장(공개 방·PVE·핫시트·관전) 전에 로그인이 필요하다. 타이틀·튜토리얼은 열려 있다.
+   - DB 가 켜진 서버면 게임 입장(공개 방 · 엔진 진입점 startMode) 전에 로그인이 필요하다. 타이틀은 열려 있다(#260: 제품 튜토리얼·PVE·핫시트 진입점 없음).
    state: off | checking(확인 중 — 입장 차단) | anon(로그인 필요) | in | down(계정 상태를 확인하지 못함 — 입장 차단) */
 const AUTH={state:"off",user:null,view:"login",busy:false,gen:0,rgen:0,reset:null,probing:false,was:null,watch:null}; // was: 서버·다른 탭이 끝낸 이 탭의 옛 아이디(전환 안내용) · watch: 세션 대조 타이머
 const ACCT_ID_RE=/^[a-z0-9_]{4,20}$/, ACCT_NICK_RE=/^[가-힣A-Za-z0-9_]{2,12}$/, ACCT_PW_MIN=8, ACCT_PW_MAX=128; // 서버 accounts.js 와 같은 규칙

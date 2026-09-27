@@ -12,7 +12,7 @@
   },
   "worker_permission_override": {
     "approved_on": "2026-09-25",
-    "scope": "CJ-authorized #259 implementation workers in Digit-Duel only",
+    "scope": "All workers on CJ-authorized Digit-Duel work including #264, #259 and #260; full access and no progress-permission questions",
     "sandbox": "danger-full-access",
     "approval_policy": "never",
     "role_boundaries_unchanged": true,

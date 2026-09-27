@@ -32,6 +32,7 @@ const { validateEnvelope } = require('./protocol');
 const { isWellFormedToken } = require('./seatToken');
 const db = require('../db'); // #264 — DATABASE_URL 이 없으면 전부 비활성(기존 동작 그대로)
 const A = require('./accounts');
+const { createOutbox } = require('./resultOutbox');
 
 // DD_AUTH_PORT 를 명시하면 그대로 우선한다(기존 로컬/LAN 실행기·문서 그대로). 미설정이면 플랫폼이
 // 주입하는 PORT(Render 등)를 듣는다 — 없으면 기존 기본값 8081.
@@ -80,7 +81,16 @@ const lobby = new Lobby({ epoch: EPOCH, economy: ECONOMY });
 // DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 그대로다 — 계정 API 는 503 E_ACCOUNTS_DISABLED.
 // DB 가 켜졌는데 장애면 계정 API·방 접속 모두 503 이다(메모리로 대신하지 않는다).
 // 메일(비밀번호 재설정 코드)은 DD_SMTP_URL·DD_MAIL_FROM 이 있을 때만 — 없으면 재설정 요청은 503 E_MAIL_UNAVAILABLE(accounts.js smtpMailer).
-let accounts = db.enabled() ? A.createAccounts(A.pgStore(db.query), null, A.smtpMailer(process.env)) : null;
+// #260 완료된 경기 결과의 내구 아웃박스(resultOutbox.js) — DB 가 켜진 서버에서만. 기본 경로는 server/data/(.gitignore)이고,
+// 운영·QA 는 DD_RESULT_OUTBOX 로 체크아웃 밖의 비공개·영속 디스크를 지정한다. 열지 못하면 기동하지 않는다(결과를 잃는 서버를 띄우지 않는다).
+function openOutbox() {
+  try { return createOutbox(process.env.DD_RESULT_OUTBOX || path.join(__dirname, '..', 'data', 'match-results-outbox.jsonl'), 200); }
+  catch (e) {
+    console.error(`[전적] 결과 아웃박스를 열 수 없습니다(오류 코드 ${(e && e.code) || '없음'}). DD_RESULT_OUTBOX 경로·권한을 확인하세요 — E_OUTBOX_INSECURE 는 이미 있는 폴더·파일에 다른 계정 권한이 있다는 뜻이며 서버는 그것을 고치지 않습니다. 기동을 중단합니다.`);
+    process.exit(1);
+  }
+}
+let accounts = db.enabled() ? A.createAccounts(A.pgStore(db.query), null, A.smtpMailer(process.env), openOutbox()) : null;
 const authBuckets = new Map(); // scrypt 를 부르는 계정 요청(가입·로그인·복구·재발급)의 IP당 예산
 
 // PUBLIC_DEPLOY: 소켓의 직접 피어는 항상 리버스 프록시(플랫폼 엣지)이지 실제 클라이언트가 아니다.
@@ -120,7 +130,7 @@ const server = http.createServer((req, res) => {
   const ip = S.normalizeIp(req.socket.remoteAddress);
   if (!peerAllowed(ip)) return deny(res, 403, LAN_OPT_IN ? 'LAN only' : 'localhost only');
   if (!bucketFor(httpBuckets, ip, LIMITS.httpBurst, LIMITS.httpReqPerSec).take(1)) return deny(res, 429, 'too many requests');
-  const authPath = /^\/api\/auth\//.test(req.url || '');
+  const authPath = /^\/api\/(auth\/|profile(?:[/?]|$))/.test(req.url || ''); // #260 /api/profile* 도 같은 계정 경계(CSRF·본문 상한·DB 503)
   if (!S.ALLOWED_METHODS.has(req.method) && !(authPath && req.method === 'POST')) {
     sendHead(res, 405, { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('method not allowed');
@@ -315,9 +325,12 @@ function endSessions(desc) {
 function bindSeat(room, seat, ws) {
   room.seats[seat].accountId = ws.ddAccount ? ws.ddAccount.id : null;
   room.seats[seat].nickname = ws.ddAccount ? ws.ddAccount.nickname : null;
+  room.seats[seat].rep = ws.ddAccount ? ws.ddAccount.repMinion : null; // #260 입장 당시 대표 하수인 — 이 방이 끝날 때까지 고정(재접속은 bindSeat 를 거치지 않는다)
 }
 // 좌석별 서버 권위 공개 닉네임 [좌석0, 좌석1] — 빈 좌석·계정 없는 서버는 null.
 const playersOf = (room) => [0, 1].map((i) => room.seats[i].nickname || null);
+// #260 좌석별 대표 하수인 ID [좌석0, 좌석1] — 프로필 표현일 뿐 전투 정보가 아니다. 빈 좌석·계정 없는 서버는 null.
+const repsOf = (room) => [0, 1].map((i) => room.seats[i].rep || null);
 // 같은 계정이 상대 좌석을 잡지 못한다(자기 방 참가 금지). 자기 좌석 재접속(resume)은 별개 경로다.
 const sameAccount = (room, ws) => !!ws.ddAccount && room.seats[0].accountId === ws.ddAccount.id;
 
@@ -335,13 +348,15 @@ function bumpSeq(room, seat) {
 function pushState(room, seat) {
   const s = room.seats[seat];
   if (!s.ws || s.ws.readyState !== OPEN) return;
-  sendFrame(s.ws, { v: 1, type: 'room_state', epoch: EPOCH, revision: room.revision, seat, data: room.toSeatView(seat), players: playersOf(room), seq: bumpSeq(room, seat) });
+  sendFrame(s.ws, { v: 1, type: 'room_state', epoch: EPOCH, revision: room.revision, seat, data: room.toSeatView(seat), players: playersOf(room), reps: repsOf(room), seq: bumpSeq(room, seat) });
 }
 
 // 모든 룸 공통 — 타이머·정리로 일어난 종료 전이는 응답할 명령이 없으므로 양 좌석에 결과를 푸시한다.
 function attachNotifier(room) {
   room.onFinalize = () => { pushState(room, 0); pushState(room, 1); };
   room.onUpdate = room.onFinalize; // #237 게임 시계 만료(상점·B08)도 명령 없이 일어난 전이다
+  // #260 보드 경기 종료 — 좌석(계정)별 전적 기록. 좌석의 계정·닉네임은 입장 때 묶인 값(경기 당시 스냅샷)이다.
+  room.onResult = (ended) => { if (accounts) accounts.recordMatch(ended, room.seats); };
 }
 
 function firstFrame(ws, type, room, seat, issued, extra) {
@@ -351,6 +366,7 @@ function firstFrame(ws, type, room, seat, issued, extra) {
     seatToken: issued.seatToken, tokenGen: issued.tokenGen,
     revision: room.revision, seq: bumpSeq(room, seat), economy: room.economy, // #237 첫 프레임부터 경제 방 여부
     players: playersOf(room), // #259 서버 권위 공개 닉네임
+    reps: repsOf(room),       // #260 입장 때 고정된 대표 하수인 ID
   }, extra || {}));
 }
 
@@ -369,6 +385,10 @@ wss.on('connection', (ws) => {
 
   const cred = ws.ddCred;
   const failClose = (code) => { sendFrame(ws, { v: 1, type: 'error', code }); ws.close(1008, code); };
+
+  // #260 DB 에 쓰지 못한 결과가 상한(200경기) 이상이거나 아웃박스 파일이 어긋났으면 새 공식 경기(방 생성·참가)를 받지 않는다.
+  // 진행 중인 경기의 재접속(resume)은 막지 않는다 — 끝나야 결과가 남는다. 완료된 결과는 어떤 경우에도 버리지 않는다.
+  if (accounts && /^(create|join|joinPublic)$/.test(cred.kind) && accounts.resultsBlocked()) return failClose('E_RESULTS_BACKLOG');
 
   if (cred.kind === 'lobby') {
     ws.ddLobbyOnly = true;
@@ -511,7 +531,7 @@ const heartbeat = setInterval(() => {
 const sweeper = setInterval(() => {
   lobby.sweep();
   authLimiter.sweep(Date.now());
-  if (accounts) accounts.sweep(Date.now());
+  if (accounts) { accounts.sweep(Date.now()); accounts.flushPending().catch(() => {}); } // #260 보류 중인 전적 기록 재시도
   for (const ws of wss.clients) if (ws.ddAccount && sessionOver(ws)) endSession(ws); // 명령 없이 열려만 있는 소켓도 만료 시 끊는다
   if (authBuckets.size > 256) authBuckets.clear();
   if (httpBuckets.size > 256) httpBuckets.clear();
@@ -545,7 +565,13 @@ if (require.main === module) {
         ? mig.up(client, mig.loadMigrations()).then((done) => { if (done.length) console.log(`  DB 마이그레이션 적용: ${done.join(', ')}`); return client; })
         : client))
       .then((client) => mig.verify(client))
-      .then(() => { console.log(`  ${db.describe()} — 연결·스키마 확인 완료`); listen(); })
+      .then(() => {
+        console.log(`  ${db.describe()} — 연결·스키마 확인 완료`);
+        const n = accounts.pendingCount(); // #260 재시작 전 DB 에 쓰지 못한 결과 — 기동 즉시 다시 쓴다(멱등)
+        if (n) console.log(`  [전적] 아웃박스 미저장 결과 ${n}건 — DB 에 다시 쓴다`);
+        accounts.flushPending().catch(() => {});
+        listen();
+      })
       .catch((e) => {
         // pg 원문 메시지는 찍지 않는다 — 호스트·포트가 섞일 수 있다(db.safeErrorText).
         console.error(`[DB] DATABASE_URL 이 설정됐지만 사용할 수 없습니다: ${db.safeErrorText(e)}`);

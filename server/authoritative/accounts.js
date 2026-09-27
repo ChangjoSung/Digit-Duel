@@ -18,6 +18,7 @@
 const crypto = require('crypto');
 const { promisify } = require('util');
 const S = require('../security');
+const { createOutbox } = require('./resultOutbox');
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -170,7 +171,7 @@ function pgStore(query) {
       return row ? row.login_gen : null;
     },
     async findSession(hash) {
-      return one(await query(`SELECT a.id, a.user_id, a.nickname, a.email IS NOT NULL AS has_email, s.expires_at, s.login_gen FROM sessions s
+      return one(await query(`SELECT a.id, a.user_id, a.nickname, a.email IS NOT NULL AS has_email, a.rep_minion, s.expires_at, s.login_gen FROM sessions s
         JOIN accounts a ON a.id = s.account_id AND a.credential_gen = s.credential_gen AND a.login_gen = s.login_gen
         WHERE s.token_hash = $1 AND s.expires_at > now()`, [hash]));
     },
@@ -231,18 +232,77 @@ function pgStore(query) {
         SELECT login_gen FROM acct`, [accountId, grantHash, passwordHash, gen]));
       return row ? row.login_gen : null;
     },
+
+    /* #260 프로필 — 승·패는 기록 행에서 센다(카운터 없음). ponytail: 계정 인덱스 범위 COUNT — 계정당 수만 행을 넘으면 요약 표로. */
+    async getProfile(accountId) {
+      return one(await query(`SELECT a.nickname, a.rep_minion,
+          (SELECT count(*) FROM match_results m WHERE m.account_id = a.id AND m.result = 'WIN')::int AS wins,
+          (SELECT count(*) FROM match_results m WHERE m.account_id = a.id AND m.result = 'LOSS')::int AS losses
+        FROM accounts a WHERE a.id = $1`, [accountId]));
+    },
+    async recentMatches(accountId, limit) {
+      return (await query(`SELECT result, reason, opponent_nickname, turns, duration_ms, ended_at FROM match_results
+        WHERE account_id = $1 ORDER BY ended_at DESC, id DESC LIMIT $2`, [accountId, limit])).rows;
+    },
+    async setRepMinion(accountId, minionId) {
+      return !!one(await query('UPDATE accounts SET rep_minion = $2 WHERE id = $1 RETURNING id', [accountId, minionId]));
+    },
+    // 한 경기의 좌석 행들을 한 문장으로. 같은 (match_id, account_id) 는 한 번만 — 재시도해도 중복이 없다.
+    async insertMatchRows(rows) {
+      await query(`INSERT INTO match_results (match_id, account_id, result, reason, opponent_nickname, turns, duration_ms, ended_at)
+        SELECT match_id, account_id, result, reason, opponent_nickname, turns, duration_ms, ended_at
+        FROM jsonb_to_recordset($1::jsonb) AS x(match_id text, account_id bigint, result text, reason text, opponent_nickname text,
+          turns integer, duration_ms bigint, ended_at timestamptz)
+        ON CONFLICT (match_id, account_id) DO NOTHING`, [JSON.stringify(rows)]);
+    },
   };
 }
+
+/* ===== #260 경기 결과 → 좌석(계정)별 기록 행 =====
+ * ended: room._finalize 가 IN_PROGRESS 를 떠날 때 준 {matchId, result, turns, startedAt, endedAt}. seats: [{accountId, nickname}] ×2.
+ * WIN(기권 포함)·FORFEIT(연결 종료 몰수) = 승/패 · 그 밖(동시 만료·경기 중 서버 장애·재시작) = NO_CONTEST(기록만). 계정 없는 좌석은 행이 없다. */
+const REASON_RE = /^[a-z_]{1,32}$/;
+function matchReason(r) {
+  if (r.type === 'WIN') return REASON_RE.test(String(r.winType)) ? r.winType : 'server_error';
+  if (r.type === 'FORFEIT') return 'forfeit';
+  if (r.reason === 'RESTART') return 'server_restart';
+  if (r.type === 'NO_CONTEST' && !r.reason) return 'both_disconnected';
+  return 'server_error'; // E_INTERNAL · 그 밖의 서버 측 종료
+}
+function matchRows(ended, seats) {
+  const r = ended.result;
+  const decided = (r.type === 'WIN' || r.type === 'FORFEIT') && (r.winner === 0 || r.winner === 1);
+  const rows = [];
+  for (let i = 0; i < 2; i++) {
+    if (!seats[i] || !seats[i].accountId) continue;
+    rows.push({
+      match_id: ended.matchId, account_id: seats[i].accountId,
+      result: decided ? (r.winner === i ? 'WIN' : 'LOSS') : 'NO_CONTEST', reason: matchReason(r),
+      opponent_nickname: (seats[1 - i] && seats[1 - i].nickname) || null,
+      turns: Math.max(0, ended.turns | 0), duration_ms: Math.max(0, ended.endedAt - ended.startedAt),
+      ended_at: new Date(ended.endedAt).toISOString(),
+    });
+  }
+  return rows;
+}
+
+const HISTORY_LIMIT = 20;  // 화면 최근 20경기(CJ 확정). 서버는 전부 보존한다.
+const DEFAULT_REP = 'M-F1'; // 새끼 화룡(CJ 확정)
+const rosterIds = () => require('./room').catalog().rosterIds; // 일반 30종 — 서버 엔진의 ROSTER 가 권위(전설·왕·동료 제외)
 
 /* ===== 서비스 ===== */
 
 // revoke 기술자(server.js endSessions): {sessionHash} = 그 세션 하나 · {accountId, belowLoginGen, reason?} = 그 계정에서
 // **그 세대보다 낮은** 세션만. 세대 비교라 늦게 도착한 옛 로그인의 폐기가 더 새 로그인의 소켓·조회를 건드리지 못한다.
-function createAccounts(store, policy, mailer) {
+// outbox: 완료된 경기 결과의 내구 보관함(resultOutbox.js). 없으면 메모리 전용 — 단위 테스트만. 운영 서버는 파일 아웃박스를 준다(server.js).
+function createAccounts(store, policy, mailer, outbox) {
+  outbox = outbox || createOutbox(null);
   const P = Object.assign({}, POLICY, policy || {});
   const loginLimiter = new S.AttemptLimiter(P.loginMaxFailures, P.loginWindowMs);
   const otpKey = crypto.randomBytes(32); // ponytail: 프로세스 키 — 재시작하면 대기 중 코드가 무효(10분짜리라 허용). 인스턴스 여럿이면 공유 비밀 env 로.
   const codeHash = (code) => crypto.createHmac('sha256', otpKey).update(code).digest('hex');
+  let flushing = null; // #260 진행 중인 flushPending — 하나만 돈다
+  const rejected = new WeakSet(); // 제약 위반으로 거부된 항목 — 로그는 한 번만, 항목은 아웃박스에 그대로 남는다
   const newSession = () => { const token = newToken(); return { token, hash: tokenHash(token), ttlMs: P.sessionTtlMs }; };
   const ok = (status, body, session) => ({ status, body, session });
   const AUTH_FAILED = ok(401, { error: 'E_AUTH_FAILED' });
@@ -315,7 +375,41 @@ function createAccounts(store, policy, mailer) {
       return row ? {
         id: String(row.id), userId: row.user_id, nickname: row.nickname, hasEmail: !!row.has_email,
         sessionHash: hash, loginGen: Number(row.login_gen), expiresAt: new Date(row.expires_at).getTime(),
+        repMinion: row.rep_minion || DEFAULT_REP, // #260 좌석 입장 때 이 값을 방에 고정한다(server.js bindSeat)
       } : null;
+    },
+
+    /* ===== #260 프로필 · 대표 하수인 · 전적 ===== */
+    async profile(account) {
+      if (!account) return ok(401, { error: 'E_NO_SESSION' });
+      const p = await store.getProfile(account.id);
+      if (!p) return ok(401, { error: 'E_NO_SESSION' });
+      return ok(200, {
+        nickname: p.nickname, representativeMinion: p.rep_minion || DEFAULT_REP,
+        stats: { wins: Number(p.wins) || 0, losses: Number(p.losses) || 0 },
+        matches: await this._history(account.id), pendingMatches: pendingFor(account.id),
+      });
+    },
+    async _history(accountId) {
+      return (await store.recentMatches(accountId, HISTORY_LIMIT)).map((m) => ({
+        result: m.result, reason: m.reason, opponentNickname: m.opponent_nickname || null,
+        turns: Number(m.turns), durationMs: Number(m.duration_ms), endedAt: new Date(m.ended_at).toISOString(),
+      }));
+    },
+    async setRepresentative(account, { minionId }) {
+      if (!account) return ok(401, { error: 'E_NO_SESSION' });
+      if (typeof minionId !== 'string' || !rosterIds().has(minionId)) return BAD_INPUT;
+      if (!(await store.setRepMinion(account.id, minionId))) return ok(401, { error: 'E_NO_SESSION' });
+      return ok(200, { representativeMinion: minionId });
+    },
+
+    /* 경기 결과 기록 — 버리지 않는다: 먼저 아웃박스(파일, fsync)에 동기로 적고(→ 이 호출이 끝난 뒤에야 결과 프레임이 나간다),
+       DB 에 들어간 뒤에만 아웃박스에서 지운다. 실패는 아웃박스에 남아 sweep 마다(30초)·재시작 때 다시 쓴다(멱등). */
+    recordMatch(ended, seats) {
+      const rows = matchRows(ended, seats);
+      if (!rows.length) return Promise.resolve();
+      outbox.add(rows);
+      return flushPending();
     },
 
     // 이메일 없는 기존 계정의 등록 — 로그인 세션 + 현재 비밀번호. 이미 이메일이 있으면 바꾸지 않는다(주소 변경 경로는 아직 없다).
@@ -379,7 +473,41 @@ function createAccounts(store, policy, mailer) {
       loginLimiter.reset(acct.user_id);
       return Object.assign(ok(200, { ok: true }), { clear: !who || who.id === String(acct.id), revoke: [{ accountId: String(acct.id), belowLoginGen: gen }] });
     },
+
+    flushPending,
+    pendingCount: () => outbox.size(),
+    resultsBlocked: () => outbox.blocked(), // 참이면 새 공식 경기 시작을 막는다(server.js) — 쓰지 못한 결과가 상한 이상이거나 파일이 어긋났다
   };
+
+  // 아웃박스의 기록을 오래된 순서로 DB 에 쓴다(경기당 한 문장 = 두 좌석 행이 함께). 일시 장애면 그 뒤는 다음 차례로 미룬다.
+  // 제약 위반(23xxx)은 다시 써도 같을 가능성이 높지만 **버리지 않는다** — 아웃박스에 남겨 건수에 잡히고(상한이면 새 경기 차단)
+  // 수동 확인 대상이 된다. 로그는 오류 코드·건수만(계정 id·원문 없음).
+  function flushPending() {
+    if (!flushing) flushing = drain().finally(() => { flushing = null; });
+    return flushing;
+  }
+  async function drain() {
+    outbox.persist(); // 앞서 파일 쓰기가 실패했으면 전체 재작성부터 다시 시도한다
+    const tried = new Set();
+    for (let rows; (rows = outbox.entries.find((x) => !tried.has(x)));) {
+      tried.add(rows);
+      try { await store.insertMatchRows(rows); outbox.remove(rows); }
+      catch (e) {
+        const code = (e && e.code) || '없음';
+        if (/^23/.test(String(e && e.code))) {
+          if (!rejected.has(rows)) { rejected.add(rows); console.error(`[전적] 기록 거부(제약 위반, 오류 코드 ${code}) — 아웃박스에 보존(수동 확인 필요)`); }
+          continue;
+        }
+        console.error(`[전적] 기록 저장 실패(오류 코드 ${code}) — 미저장 ${outbox.size()}건, 30초마다 재시도`);
+        break;
+      }
+    }
+  }
+  function pendingFor(accountId) {
+    let n = 0;
+    for (const rows of outbox.entries) if (rows.some((r) => String(r.account_id) === String(accountId))) n++;
+    return n;
+  }
 }
 
 /* ===== HTTP (/api/auth/*) =====
@@ -435,6 +563,8 @@ const ROUTES = {
   'POST /api/auth/logout': {},
   'GET /api/auth/session': {},
   'HEAD /api/auth/session': {},
+  'GET /api/profile': {},                     // #260 비밀 값이 없다 — HTTPS 게이트 없음(세션 조회와 같다)
+  'POST /api/profile/representative': {},
 };
 
 // 비밀 값(비밀번호·코드) 교환을 받아도 되는 전송인가.
@@ -485,6 +615,8 @@ async function handleAuth(req, res, pathname, ctx) {
       case '/api/auth/password-reset/verify': out = await A.resetVerify(body); break;
       case '/api/auth/password-reset/complete': out = await A.resetComplete(body, token); break;
       case '/api/auth/logout': out = await A.logout(token); out.clear = true; break;
+      case '/api/profile': out = await A.profile(await A.resolve(token)); break;
+      case '/api/profile/representative': out = await A.setRepresentative(await A.resolve(token), body); break;
       default: { // session
         const who = await A.resolve(token);
         out = who ? { status: 200, body: { userId: who.userId, nickname: who.nickname, hasEmail: who.hasEmail } } : { status: 401, body: { error: 'E_NO_SESSION' } };
@@ -505,4 +637,5 @@ module.exports = {
   POLICY, COOKIE, USER_ID_RE, SAME_PASSWORD_MSG, ID_NOT_FOUND_MSG,
   hashSecret, verifySecret, normalizeUserId, normalizeNickname, normalizeEmail, tokenHash, newResetCode,
   pgStore, createAccounts, smtpMailer, handleAuth, transport, parseCookies, sessionTokenFrom, sessionCookie,
+  matchRows, DEFAULT_REP, HISTORY_LIMIT,
 };
