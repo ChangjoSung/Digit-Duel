@@ -15,7 +15,7 @@
 
 - 적용 범위는 Digit-Duel 프로젝트뿐이다. 모델·effort의 계정 전역 기본값을 수정하지 않는다. 단, CJ가 지시한 Codex·Claude Ponytail 설치는 제공된 설치 명령에 따른 user scope 예외다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
 - #250 모델 재설정 후 다음 Mercury_PD 인수인계 세션만 CJ의 명시적 지시에 따라 `gpt-6-sol` xhigh·`service_tier=default`(No Fast)와 `danger-full-access`·approval `never`로 시작한다. 이 승인은 다른 Worker·다른 프로젝트·managed/host 정책 우회로 확장하지 않는다.
-- 2026-09-25 CJ의 후속 #259 구현 지시에 따라 이 작업의 **모든 Worker**는 full access·무확인 실행으로 명시 기동한다(Claude `--dangerously-skip-permissions`, Codex `-s danger-full-access -a never`). 이는 위 PD 인계 권한과 별도 승인이다. Saturn의 파일 무수정 QA 역할, Git·Render 자원·결제 게이트는 유지한다.
+- 2026-09-25 CJ의 모든 Worker 자동 진행 지시는 Digit-Duel에서 CJ가 착수시킨 모든 작업(#264·#259·#260 포함)에 적용한다. 각 Worker를 full access·무확인 실행(Claude --dangerously-skip-permissions, Codex -s danger-full-access -a never)으로 명시 기동하고 실제 실행을 확인한다. 역할 경계·Saturn 파일 무수정·Git/Render/배포/결제 승인 게이트는 유지하고 다른 프로젝트·계정 전역 설정을 바꾸지 않는다.
 - 신규 Worker는 [WORKER_MODELS.md](docs/creat2ve/WORKER_MODELS.md)와 [worker-models.json](docs/creat2ve/worker-models.json)의 agent/model/effort를 명시해 시작한다. 계정 기본값만으로 부서별 실행값을 추정하지 않는다. 시작 영수증 requested/effective와 실제 응답을 확인한다.
 - 후속 dispatch 입력 전 모델 전환 팝업을 처리하고, 현재 턴·GO 직전·완료 시 실제 모델/effort·tier·footer를 다시 대조한다. 이전 preflight를 재사용하지 않으며 불일치 결과는 정식 QA에서 제외한다. 절차는 WORKER_MODELS.md의 후속 dispatch 모델 게이트를 따른다.
 - Mercury_PD=Codex `gpt-6-sol` xhigh·No Fast, Venus_Plan/Mars_Client/Jupiter_Server=Claude `claude-opus-5-5` high, Saturn_QA=Codex `gpt-6-sol` xhigh·No Fast. Earth_Art는 신규 창작 `gpt-6-astra` medium·No Fast / 기존 자산 수정 `gpt-6-luna` xhigh·No Fast. `No Fast`는 `service_tier=default`다.
@@ -43,7 +43,7 @@
 CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 불필요하며, Notion의 Plan Prompt·Orchestration Launcher는 새 환경/다른 도구용 백업이다.
 1. **분류**: 매 보고 첫머리에 Comment를 [결정]/[피드백]/[질문]으로 분류해 표기한다.
 2. **Issue·PR 단위 (2026-09-07 CJ 승인)**: 코드 변경과 납품 자산 변경을 이슈화한다. 문서·결정·분석만 있는 안건은 Notion Decision Log로 관리한다. 하나의 납품 목표는 Mercury가 **Issue 1개 + 통합 PR 1개**로 관리하며, 같은 목표의 병렬 Worker 작업은 체크리스트와 Orca Task로 나눈다. Worker별 Issue·PR을 만들지 않는다. 독립 출시·독립 롤백이 필요한 범위만 별도 Issue·PR로 분리할 수 있고, 부모 에픽이 있으면 sub-issue로 연결한다(깊이 1단계). 부모는 모든 sub 종결 + CJ QA 통과 시 닫는다. Worker는 결과를 PD에게 보고하고, GitHub·Notion 기록과 Git 쓰기는 Mercury가 취합·집행한다.
-3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주한다. 모든 완료 조건과 통합 상태를 기존 Issue 본문에서 확인한 뒤 허가된 범위에서 close한다. 신규 GitHub Issue 댓글은 작성하지 않는다. 현재 #259·#264의 종결·Git 쓰기·배포는 별도 CJ 지시 전 금지다.
+3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주한다. 모든 완료 조건과 통합 상태를 기존 Issue 본문에서 확인한 뒤 허가된 범위에서 close한다. 신규 GitHub Issue 댓글은 작성하지 않는다. 2026-09-27 CJ는 #259의 stage·commit·push·milestone/v0.4.11 대상 PR 작성과 타이머 충돌 정리·필수 CI 확인을 승인했다. #259 마일스톤 병합·Issue 종결·배포, #260 Git 쓰기, #264 자원 생성·결제는 별도 승인 전 금지다.
 4. **기획서 동기화**: 규칙 변경은 Decision Log + 해당 본문 섹션을 동시에 갱신하고, 보고에 "문서 반영 위치" 표를 포함한다.
 5. **DIGEST**: 마일스톤 종료·대규모 규칙 개정 시 eli-adult로 읽기 좋은 정리본을 생성한다.
 6. **Worker**: 독립 기능·대규모 변경은 Orca Worker 위임, 소규모 Delta는 직접. Worker는 git 쓰기 금지, Coordinator가 diff 리뷰·검증 후 커밋한다.

@@ -1,6 +1,14 @@
 # #259 Mercury 조정·독립 QA 원장
 
-## 현재 — 2026-09-27 16:53 KST CJ 최종 QA PASS / #260 분석 착수
+## 현재 — 2026-09-27 17:35 KST 통합 QA PASS / PR #269
+
+- **승인 범위**: CJ 최종 로컬 QA PASS 뒤 #259의 stage·commit·push·PR 작성을 명시 승인했다. 제품 커밋 `b865133`과 최신 원격 타이머 통합 `24945b7`을 `ChangjoSung/issue-259-accounts`에 push하고 [PR #269](https://github.com/ChangjoSung/Digit-Duel/pull/269)를 작성했다. 마일스톤 병합·Issue 종결·배포는 승인하지 않았다. #260은 별도 `issue-260-account-lobby` 작업 트리에서 구현하며 Git 쓰기 승인은 없다.
+- **기준 확인**: 실제 원격 milestone HEAD는 `bd4c90c`다. 이전 인계의 `83434f0`과 조상 관계는 다르지만 두 tree는 `b82890cf`로 완전히 동일하다. 실제 원격을 feature에 통합했고 이력을 재작성하지 않았다.
+- **통합 독립 QA**: Saturn `task_0219689b66d0` / `ctx_06c33786f3c3`, 현재 Sol/xhigh/default·full access/never, PID13632·현재 JSONL·footer를 GO/완료 때 확인했다. live economy **46/0**, runtime contract **74/0**, 각 1회 exit0. 기존 계정111/208·타이머133/164·경제114·DB·타입 검사를 재사용했다. HEAD·clean status·1404 tracked SHA aggregate 불변, 파일 수정0, LOCAL PASS. 단일 추가 socket probe는 세션 종료·계정별 resume·잔여 시계까지 검증했지만 `_pauseView()`의 정상 null을 undefined로 기대한 검사 오류로 **exit1**이었다. 이후 privacy 단언은 실행되지 않았으며 이를 PASS로 소급하지 않는다. 비공개 상태 판정은 기존 live 검사와 현재 public frame 소스 검토에 근거한다. release는 external retained/processAction none이며 Delivery ACK 완료다.
+- **CI·화면**: 제품 HEAD `24945b7`의 필수 CI **6/6 PASS**, run `36305344522`. 익명 별도 브라우저 프로필에서 빈 로그인 입력 화면을 캡처·직접 확인했고 계정·비밀번호·개인정보가 없다([화면](account-entry.jpeg)). 권한 문서 범위를 모든 CJ 승인 Digit-Duel Worker로 통일하는 metadata 커밋의 CI는 push 뒤 별도 확인한다.
+- **운영**: 통합 뒤 기존 도구로 Node만 재기동했다. Node36888·기존 PG34176/55459·**http://127.0.0.1:8081/**, 페이지/healthz/readyz200. CJ 계정·DB·SMTP·백업 유지, 새 가입·로그인·실메일·데이터 삭제0. CJ 최종 PASS는 통합 전 계정 흐름 검수이며 통합 후 CJ 검수로 소급하지 않는다. HTTPS/Render의 계정·메일 배포 검증은 남아 있다.
+
+### 16:53 CJ 최종 QA PASS / #260 분석 착수 — 이력
 
 - **CJ 최종 검수**: CJ가 “CJ QA Test PASS·최종 QA Test PASS·다음 Work 진행”을 직접 전달했다. 이번 로컬 계정 흐름의 CJ 재검수는 PASS다. 종합 판정 외에 받은편지함 시각·수신 로그·코드 값은 관측하지 않았다. HTTPS/Render·최신 타이머 통합·PR/필수 CI는 별도 남아 있으며 제품 미커밋·Issue OPEN을 유지한다. 다음 #260은 기획/서버/화면 분석부터 착수했다.
 - **최신 확정 계약**: 비밀번호 찾기는 아이디만 입력한다. 서버가 먼저 계정 존재를 확인하고 없는 아이디는 `404 E_ID_NOT_FOUND`·“존재하지 않는 아이디입니다”로 알리며 첫 화면에 머문다. 있는 계정의 DB 등록 이메일로 6자리 코드를 보내고, 발송 성공 뒤에만 코드 입력으로 진행한다. 등록 이메일 없음은 `409 E_EMAIL_REQUIRED`, 발송 불가·실패는 `503 E_MAIL_UNAVAILABLE`로 진행을 막는다. request `{userId}` → verify `{userId,code}` → complete `{resetToken,newPassword}`. 가입 이메일 필수·중복 허용, 계정별 코드/허가, 직전 비밀번호 거부·세션 무효화는 유지한다. 이전 ID+이메일 입력·없는 계정의 같은202 응답 정책은 폐기됐다.
