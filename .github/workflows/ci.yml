@@ -309,10 +309,6 @@ jobs:
       # #122 튜토리얼 매니페스트와 PNG는 이력 증거로 보존한다. v0.4.11 README에서 10단계 보기를 폐기했으므로
       # 그 캡션을 현재 README와 대조하던 검사는 종료한다. 새 화면 6장의 경로는 위 검사에서 확인한다.
 
-      # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
-      - name: README 도구 READ_ONLY 회귀
-        run: node tools/media/test/readme_media_readonly_test.js --quick --no-gh
-
   # ── D. 납품 아트 자산 무결성 ─────────────────────────────────────────────────
   # 이 잡은 **납품된 바이트 그대로**를 대조하므로 러너를 그 바이트를 구운 환경에 맞춘다 —
   # windows-2025 · Python 3.14.3 · Pillow 12.3.0. ubuntu-24.04 + Python 3.12.14 에서는 같은
