@@ -71,3 +71,22 @@
 - 이전 보고의 001~004 범위 [확정]: §2 의 체크섬 표(001~004)는 #259 기준 트리에서 잰 값이다. 부모의 추가 SQL `005_profile_matches.sql` 은 바이트 그대로 두었고, 현재 트리 실측은 새 `3fcef9d09e82` · legacy(CRLF 원문) `bf892e4e4853` — 같은 LF 정규화 규칙이 005 에도 그대로 적용된다. SQL 파일은 수정하지 않았다.
 - 검증 [확정]: `node server/test-db.js` 1회 — ok 43 / FAIL 0, "#264 DB 회귀 통과". accounts·timers·실 PG 는 재실행하지 않았다(변경은 테스트 파일 병합뿐).
 - Render 실측 반영 [PD 제공]: 실제 서비스 env 는 `DD_AUTH_PUBLIC_DEPLOY`·`DD_AUTH_PUBLIC_HOST` 두 개뿐 — `NODE_VERSION`·`DATABASE_URL`·SMTP 없음. 따라서 §3 의 `.node-version`(24.21.0)이 실제로 적용되고, DB 없이 기동하는 경로가 현재 운영 경로다. 프로젝트는 Free Web 1개(`main`, Singapore, DB 없음). Free SMTP 25/465/587 차단은 여전히 설정 차단이며 제공자·plan 결정 전까지 고치지 않는다.
+
+## 7. 필수 스키마 게이트 — Saturn #232 REVISE (2026-09-28, task_93536b7e4868 · ctx_cd3a4c02a0e6)
+
+- 입력 [Saturn 실측, 외부 증거 `qa/Digit-Duel/issue232-saturn/schema-case-*`]: 001~005 원장 5행이 온전한 채 `match_results` 를 DROP 해도 서버가 10000 에서 listen 하고 `/readyz` 200 `ok (db)`. 원인 [확정]: `verify()` 는 원장만, `/readyz` 는 `select 1` 만 봤다.
+- 수정 [확정] (기준 HEAD `0f7fa62`):
+
+| 파일 | 변경 |
+|---|---|
+| `server/db-migrate.js` | `REQUIRED_SCHEMA` = `authoritative/accounts.js` SQL 이 실제로 쓰는 4표·33열(accounts 9 · sessions 5 · password_resets 10 · match_results 9). `missingSchema(client)` = `information_schema.columns`(current_schema) 고정 조회 1개, 읽기 전용. `verify()` 가 원장 검사 뒤 이를 호출해 빠지면 `필수 스키마 누락 …` 로 throw |
+| `server/authoritative/server.js` | `/readyz` 가 `db.ping()` 대신 같은 `missingSchema` 호출 — 빠지면 503 `db schema incomplete`, DB 오류면 기존 503 `db unavailable`. 본문에 표 이름 없음. `/healthz` 무변경. `db-migrate` require 를 최상위로(pg 를 불러오지 않음) |
+| `server/db.js` | 머리 주석 1줄(/readyz 설명)만 |
+| `server/test-db.js` | 가짜 풀이 카탈로그 조회에 응답(기본 온전, `opts.schema` 로 결손) + 음성 대조 1건(원장 온전·표 없음 / 열 없음 → verify 실패, up() 무적용·원장 불변) + 목록이 마이그레이션에 실제로 있는 표·열만 가리키는지 1건 |
+
+- 두 기동 경로 [확정]: `DD_DB_MIGRATE_ON_START=1` 도 `up()` 뒤 같은 `verify()` 를 거친다 — 미적용이 없으면 아무것도 적용하지 않고 스키마 누락으로 exit 1. 자동 복구·재적용·원장 수정 없음. `db_meta` 는 CLI(`db-migrate.js meta`) 전용이라 필수 목록에서 뺐다 [확정: 서버 런타임 SQL 에 없음].
+- 불변 [확정]: SQL 5개·원장 형식·legacy CRLF 체크섬 인정·계정/로그인/게임/UI/타이머/Host·Origin/SMTP 동작 무변경. 새 의존성 없음.
+- 검증 [확정]:
+  - `node server/test-db.js` 1회 exit 0 — ok 45 / FAIL 0.
+  - 실 PG 18.4 격리 픽스처(외부 `qa/Digit-Duel/issue232-jupiter-schema/schema-guard.js`, 기존 바이너리, PG 55470·HTTP 10000 루프백, Render 형 `DD_AUTH_PUBLIC_DEPLOY=1`) exit 0: A 실행 중 `match_results` DROP → `/readyz` 503 · `/healthz` 200 / B 원장 5행+표 없음 무마이그레이션 기동 exit 1 / C 같은 상태 migrateOnStart exit 1·원장 불변·표 미복구 / D1 legacy CRLF 원장+온전 스키마 기동·200·원장 불변 / D2 `accounts.rep_minion` DROP → 두 기동 모두 exit 1 / 서버 로그에 비밀번호 없음 / 소유 포트 종료 확인. 클러스터 데이터는 삭제, 로그·결과 JSON 보존.
+- 한계 [확정]: 표·열 존재만 본다(타입·CHECK·UNIQUE·인덱스 미검사). `current_schema()` 밖(search_path 뒤쪽 스키마)에 있는 표는 없음으로 본다(fail-closed). 기존 QA DB(55462)·8085·계정·SMTP 미접근. 전체 서버·GUI·CI 재실행 안 함.

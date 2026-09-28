@@ -223,6 +223,10 @@ function fakePool(opts) {
           state.ledger.push({ version: params[0], name: params[1], checksum: params[2] });
           return Promise.resolve({ rows: [] });
         }
+        if (/information_schema\.columns/.test(sql)) { // 실제 카탈로그 — 기본은 앱 스키마 온전, opts.schema 로 빠진 DB 를 흉내 낸다
+          const schema = opts.schema || mig.REQUIRED_SCHEMA;
+          return Promise.resolve({ rows: Object.entries(schema).flatMap(([t, cols]) => cols.map((c) => ({ table_name: t, column_name: c }))) });
+        }
         if (/^(begin|commit|rollback)$/.test(sql)) needsLock(id, sql);
         if (opts.failOn && opts.failOn.test(sql)) return Promise.reject(Object.assign(new Error('boom'), { code: '42601' }));
         return Promise.resolve({ rows: [] });
@@ -319,6 +323,20 @@ await checkAsync('verify() — 미적용이 있으면 실패, 다 적용되면 �
   await mig.verify(c, M);
 });
 
+// Saturn #232 REVISE: 001~005 원장 5행이 온전한 채 match_results 를 DROP 해도 서버가 떴다. 원장만 보지 않고 실제 표·열을 본다.
+await checkAsync('원장이 온전해도 앱이 쓰는 표·열이 없으면 verify() 실패 · up() 은 재적용·자동 복구하지 않는다', async () => {
+  const ledger = M.map((m) => ({ version: m.version, name: m.name, checksum: m.checksum }));
+  const { match_results: _dropped, ...noTable } = mig.REQUIRED_SCHEMA;
+  const noColumn = { ...mig.REQUIRED_SCHEMA, accounts: mig.REQUIRED_SCHEMA.accounts.filter((c) => c !== 'rep_minion') };
+  const c = fakeClient({ ledger, schema: noTable });
+  assert.deepStrictEqual(await mig.up(c, M), [], 'DD_DB_MIGRATE_ON_START 경로도 아무것도 적용하지 않는다');
+  await assert.rejects(() => mig.verify(c, M), /필수 스키마 누락 match_results \(/);
+  assert.deepStrictEqual(c.ledger, ledger, '원장을 고치지 않는다');
+  assert.ok(!c.log.some((s) => /^create table (?!if not exists schema_migrations)/i.test(s)), `DDL 실행: ${c.log.join(' | ')}`);
+  await assert.rejects(() => mig.verify(fakeClient({ ledger, schema: noColumn }), M), /필수 스키마 누락 accounts\.rep_minion \(/);
+  assert.deepStrictEqual(await mig.missingSchema(fakeClient({ ledger })), [], '온전한 스키마는 통과');
+});
+
 await checkAsync('status() 는 읽기 전용 — DDL 도 돌리지 않는다', async () => {
   const c = fakeClient();
   const s2 = await mig.status(c, M);
@@ -390,6 +408,14 @@ check('계정 스키마는 002 에만 · 결과 기록은 005 에만 · 방·경
   }
   const results = ms.filter((m) => m.sql.toLowerCase().includes('create table match_results')).map((m) => m.version);
   assert.deepStrictEqual(results, ['005'], `match_results 는 005 에만: ${results}`);
+});
+
+check('필수 스키마 목록은 마이그레이션이 실제로 만드는 표·열만 가리킨다 (없는 스키마를 요구하지 않는다)', () => {
+  const all = mig.loadMigrations().map((m) => m.sql.toLowerCase()).join('\n');
+  for (const [t, cols] of Object.entries(mig.REQUIRED_SCHEMA)) {
+    assert.ok(all.includes(`create table ${t} (`), `마이그레이션에 없는 표: ${t}`);
+    for (const c of cols) assert.ok(new RegExp(`\\b${c}\\s+(text|bigint|integer|timestamptz)\\b`).test(all), `마이그레이션에 없는 열: ${t}.${c}`);
+  }
 });
 
 /* ===== 4. fail-closed 런타임·기동 ===== */

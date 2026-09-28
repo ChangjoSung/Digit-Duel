@@ -127,7 +127,33 @@ async function up(poolOrClient, migrations) {
   }
 }
 
-// 기동 게이트 — 연결과 스키마를 실제로 확인한다. 실패하면 throw 해서 서버가 뜨지 않게 한다.
+// 앱이 실제로 읽고 쓰는 표·열 (authoritative/accounts.js 의 SQL 그대로). 원장은 "적용했다"는 기록일 뿐이라
+// 표·열이 나중에 지워져도 원장은 멀쩡하다 — 그래서 기동 게이트와 /readyz 는 이 목록을 실제 카탈로그와 대조한다.
+// db_meta 는 CLI(meta) 전용이라 넣지 않는다. 앱 SQL 이 새 표·열을 쓰게 되면 여기에도 더한다.
+// ponytail: 표·열 존재만 본다 — 타입·제약·인덱스까지 필요해지면 그때 넓힌다.
+const REQUIRED_SCHEMA = {
+  accounts: ['id', 'user_id', 'nickname', 'password_hash', 'credential_gen', 'login_gen', 'email', 'email_norm', 'rep_minion'],
+  sessions: ['token_hash', 'account_id', 'expires_at', 'credential_gen', 'login_gen'],
+  password_resets: ['account_id', 'code_hash', 'code_expires_at', 'attempts', 'sent_at', 'send_count', 'window_start', 'grant_hash', 'grant_expires_at', 'grant_gen'],
+  match_results: ['id', 'match_id', 'account_id', 'result', 'reason', 'opponent_nickname', 'turns', 'duration_ms', 'ended_at'],
+};
+
+// **읽기 전용** — 빠진 것을 'table' 또는 'table.column' 으로 돌려준다(빈 배열 = 온전). 고치지 않는다.
+async function missingSchema(client) {
+  const { rows } = await client.query(
+    'select table_name, column_name from information_schema.columns where table_schema = current_schema() and table_name = any($1)',
+    [Object.keys(REQUIRED_SCHEMA)],
+  );
+  const have = new Set(rows.map((r) => `${r.table_name}.${r.column_name}`));
+  const missing = [];
+  for (const [table, cols] of Object.entries(REQUIRED_SCHEMA)) {
+    if (!rows.some((r) => r.table_name === table)) missing.push(table);
+    else for (const col of cols) if (!have.has(`${table}.${col}`)) missing.push(`${table}.${col}`);
+  }
+  return missing;
+}
+
+// 기동 게이트 — 연결·원장·실제 스키마를 확인한다. 실패하면 throw 해서 서버가 뜨지 않게 한다.
 async function verify(client, migrations) {
   await client.query('select 1');
   const s = await status(client, migrations || loadMigrations());
@@ -135,6 +161,8 @@ async function verify(client, migrations) {
   if (s.pending.length) problems.push(`미적용 마이그레이션 ${s.pending.map((m) => m.name).join(', ')}`);
   if (s.drift.length) problems.push(`내용이 바뀐 마이그레이션 ${s.drift.map((m) => m.name).join(', ')}`);
   if (s.unknown.length) problems.push(`코드가 모르는 버전 ${s.unknown.map((r) => r.version).join(', ')}`);
+  const missing = await missingSchema(client);
+  if (missing.length) problems.push(`필수 스키마 누락 ${missing.join(', ')} (원장과 실제 DB 가 다르다 — 자동 복구하지 않는다)`);
   if (problems.length) throw coded(problems.join(' · '));
   return s;
 }
@@ -188,4 +216,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { loadMigrations, status, up, verify, acquire, MIGRATION_DIR, LEDGER_DDL, LOCK_KEY, sha256 };
+module.exports = { loadMigrations, status, up, verify, missingSchema, REQUIRED_SCHEMA, acquire, MIGRATION_DIR, LEDGER_DDL, LOCK_KEY, sha256 };
