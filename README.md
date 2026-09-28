@@ -1,192 +1,99 @@
 # Digit-Duel
 
 <p align="center">
-  <a href="docs/media/digit-duel-hero.png"><img src="docs/media/digit-duel-hero.png" alt="Digit-Duel 홍보 일러스트 — 숲속 말판 위에서 마주 선 물·풀 진영과 불·번개 진영, 정체를 숨긴 물음표 말들" width="100%"></a>
+  <a href="docs/media/digit-duel-hero.png"><img src="docs/media/digit-duel-hero.png" alt="Digit-Duel 홍보 일러스트 — 숲속 말판에서 물·풀 진영과 불·번개 진영이 마주 선 모습" width="100%"></a>
   <br>
-  <sub>홍보용 일러스트입니다. 실제 게임 화면은 아래 <a href="#게임-플레이-사진">게임 플레이 사진</a>에서 볼 수 있습니다.</sub>
+  <sub>홍보용 일러스트입니다. 실제 화면은 아래 게임 플레이 사진에서 볼 수 있습니다.</sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10"><img src="https://img.shields.io/badge/release-v0.4.10-4c9a2a" alt="정식 릴리스 v0.4.10"></a>
-  <a href="https://github.com/ChangjoSung/Digit-Duel"><img src="https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat" alt="GitHub Stars"></a>
-  <a href="https://github.com/ChangjoSung/Digit-Duel/forks"><img src="https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat" alt="GitHub Forks"></a>
+  <a href="https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.11"><img src="https://img.shields.io/badge/release-v0.4.11-4c9a2a" alt="정식 릴리스 v0.4.11"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-Apache--2.0-blue" alt="코드 라이선스 Apache-2.0"></a>
 </p>
 
-**[▶ 웹에서 바로 플레이 — digit-duel-mipa.onrender.com](https://digit-duel-mipa.onrender.com)**
-
-현재 정식 버전은 [**v0.4.10**](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10)입니다. PC·휴대폰 브라우저에서 접속해 공개 방 1대1 대전을 즐길 수 있습니다.
+**[▶ 웹에서 바로 플레이](https://digit-duel-mipa.onrender.com)** · 정식 버전 **[v0.4.11](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.11)**
 
 ## 게임 소개
 
-**상대의 말이 전부 물음표로 보이는 1대1 턴제 전략 보드게임.** 정체를 숨긴 말 14개를 몰래 배치하고, 숲에 숨고, 흔적을 쫓고, 옆에 붙는 순간 터지는 속성 전투로 판을 뒤집으세요.
+**상대 말의 정체를 추리하며 싸우는 2인 온라인 턴제 전략 보드게임입니다.** 두 플레이어가 각각 14개 말을 비밀리에 배치합니다. 상대 말은 물음표로 보이고, 숲에 들어간 말은 위치도 숨겨집니다. 내 하수인을 움직여 단서를 모으고, 상대와 맞붙어 속성 전투를 벌이세요.
 
-체스처럼 말을 움직이지만, 상대 말의 정체는 싸워 보기 전까지 알 수 없습니다. 장기의 수읽기와 속성 상성 배틀을 하나로 합쳐, 위치가 아니라 **정보**를 두고 다투는 게임을 만들었습니다. 상대의 이동을 읽고 물음표 뒤의 정체를 추리하세요. 왕을 잡거나, 내 왕을 상대 진영 끝까지 밀어 넣거나, 상대의 싸우는 말을 모두 쓰러뜨리면 승리입니다.
+상대 왕을 쓰러뜨리거나, 내 왕을 상대 진영의 마지막 줄까지 보내거나, 상대의 하수인과 동료를 모두 제거하면 승리합니다.
 
 ## 게임 기능
 
-*아래 설명은 정식 버전 **v0.4.10** 기준입니다. 최신 수정 내용은 [새로운 기능](#새로운-기능)에서 확인하세요.*
-
-- **물음표 뒤를 추리하세요** — 하수인 6 · 동료 2 · 왕 1 · 폭탄 3 · 함정 2, 말 14개를 자기 진영에 비공개로 배치합니다. 상대에게 내 말은 모두 물음표이며, 전투를 치른 말은 정체가 드러납니다. 8종 추측 메모로 상대 말에 나만 보이는 표시를 남겨 두세요.
-- **숲에 숨고 흔적을 쫓으세요** — 7열 × 13행 판 가운데에는 몸을 숨길 수 있는 숲이 흩어져 있습니다. 숲 속의 말은 상대가 바로 옆에 와야만 보입니다. 숲 어딘가에 숨은 선물의 흔적을 찾아 탐색하면 몬스터볼 · 회복약 · 다음 전투 버프 · 공용 하수인을 얻습니다.
-- **옆에 붙으면 시작되는 전투** — 전투 가능한 말이 이동해서 상대 말 옆에 새로 붙으면 전투를 피할 수 없습니다. 전투는 불 → 풀 → 번개 → 물 → 불 순서의 속성 가위바위보입니다. 깎인 HP와 기술 쿨타임은 전투가 끝나도 그대로 남으니, 언제 싸울지 고르는 것도 전략입니다.
-- **하수인 20종, 나만의 로스터 6종** — 속성 4종 × 아키타입 5종(표준 · 공격 · 방어 · 속공 · 지속) 가운데 경기마다 6종을 고릅니다. 각 하수인은 속성 공격기 2개, 공용 보조기 1개, 아키타입 시그니처 기술 1개를 들고 싸웁니다.
-- **기술을 바꾸고 회복을 준비하세요** — 탐색으로 다른 속성 공격기를 얻으면 공격 슬롯 하나와 교체할 수 있습니다. 주 행동으로 회복 자세를 지정하면 그 턴 종료부터 나와 상대의 각 턴마다 최대 HP의 5%를 회복합니다. 그 말이 이동·탐색·텔레포트·전투에 참여하면 자세가 풀립니다. 전투가 6라운드까지 이어지면 남은 HP 비율로 승패를 가르고, 동률이면 방어자가 이깁니다.
-- **잡아오고, 도망치고, 순간이동하세요** — HP가 낮아진 상대 하수인은 몬스터볼로 포획할 수 있고, 위험한 내 말은 도망칠 수 있습니다. 상대 진영 깊숙이 들어가면 텔레포트로 내 말 두 개의 자리를 바꿔 허를 찌르세요. 65턴부터 버닝 타임이 시작되면 이동 가능한 말은 최대 두 칸까지 움직입니다. 적진·적 숲에 있거나 진입·통과할 때는 한 칸으로 제한됩니다.
-- **혼자서도, 둘이서도** — 5급 · 5단 두 단계의 AI와 겨루는 PVE, 한 기기에서 번갈아 두는 핫시트 PVP, 서로 다른 장소의 PC·휴대폰에서 겨루는 공개 방 온라인 PVP를 지원합니다. AI는 플레이어와 같은 정보만 보고 판단하며, 숨은 정보를 들여다보지 않습니다.
+- **하수인을 고르고 배치하세요** — 시작 상점에서 재화로 일반 하수인 30종 중 6명을 고릅니다. 왕·동료·폭탄·함정과 함께 7열 × 13행 보드의 내 진영에 비밀리에 배치합니다.
+- **숲과 정체를 이용하세요** — 숲에 숨은 말의 위치를 추적하고 탐색으로 재화를 얻습니다. 상대 말에는 나만 보는 추측 메모를 남길 수 있습니다.
+- **속성 전투를 벌이세요** — 불 → 풀 → 땅 → 번개 → 물 → 불의 상성과 하수인 스킬, 아이템·포획·도망을 활용합니다. 전투 뒤 HP는 남고 전투 상태와 쿨타임은 초기화됩니다.
+- **경기 중 전력을 키우세요** — 정기 상점에서 하수인을 승급·교체하고 가방 3칸과 왕국·아키타입 시너지를 활용합니다. 거래와 경기 판정은 서버가 확인합니다.
+- **공개 방에서 대전하세요** — 방 이름으로 검색하고 참가 가능 상태와 서버 핑을 확인합니다. 경기 중에는 정해진 이모티콘 6종으로 반응할 수 있습니다.
+- **기록을 남기세요** — ID로 가입·로그인하고 이메일 6자리 코드로 비밀번호를 재설정합니다. 로비에서 대표 하수인, 공식 승·패와 최근 20경기를 확인할 수 있습니다.
 
 ## 게임 플레이 사진
 
-이미지를 클릭하면 원본 크기로 볼 수 있습니다. 이미지는 실제 게임 화면을 촬영한 것 입니다.
+이미지를 누르면 원본 크기로 볼 수 있습니다. 모두 v0.4.11의 실제 온라인 플레이 화면입니다.
 
 <table>
   <tr>
-    <td align="center" width="50%">
-      <a href="docs/hotfix/201/Mars/trap-icon/201-trap-01-online-board-seat-P1.png"><img src="docs/hotfix/201/Mars/trap-icon/201-trap-01-online-board-seat-P1.png" alt="v0.4.9 온라인 전략 보드 — 전용 함정 아이콘과 왕·동료·하수인, 숲 칸과 아래쪽 행동 메뉴" width="78%"></a>
-      <br><b>전략 보드</b><br><sub>전용 함정 아이콘과 왕·동료·하수인 아트입니다. 상대의 미공개 말은 물음표로 표시합니다.</sub>
-    </td>
-    <td align="center" width="50%">
-      <a href="docs/hotfix/201/Mars/artifacts/201-03-battle-FIXTURE-offline.png"><img src="docs/hotfix/201/Mars/artifacts/201-03-battle-FIXTURE-offline.png" alt="v0.4.8 속성 전투 — 오른쪽 위의 상대, 왼쪽 아래의 내 말과 양측 HP, 아래 네 가지 명령" width="78%"></a>
-      <br><b>속성 전투</b><br><sub>상대는 오른쪽 위, 내 말은 왼쪽 아래. 싸우기 · 가방 · 포획 · 도망 가운데 행동을 고릅니다.</sub>
-    </td>
-  </tr>
-</table>
-
-<details>
-<summary><b>튜토리얼 10단계 보기</b></summary>
-<br>
-<table>
-  <tr>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-01.png" alt="1단계 이기는 법 세 가지" width="100%"></a><br><sub>1. 이기는 법 세 가지</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-02.png" alt="2단계 말 5가지와 숨은 정체" width="100%"></a><br><sub>2. 말 5가지와 숨은 정체</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-03.png" alt="3단계 움직이기와 숲에 숨기" width="100%"></a><br><sub>3. 움직이기와 숲에 숨기</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-04.png" alt="4단계 흔적과 탐색" width="100%"></a><br><sub>4. 흔적과 탐색</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-05.png" alt="5단계 옆에 붙으면 꼭 싸워요 — 강제 전투와 동료·왕끼리도 전투" width="100%"></a><br><sub>5. 전투 · 동료·왕끼리도 전투<br>수동 대기 · 보호막 합산</sub></td>
+    <td align="center" width="50%"><a href="docs/screenshots/v0.4.11/01-lobby.png"><img src="docs/screenshots/v0.4.11/01-lobby.png" alt="계정형 메인 로비 — 대표 하수인, 공식 전적, 멀티플레이 입구" width="100%"></a><br><b>메인 로비</b><br><sub>대표 하수인과 공식 전적을 확인하고 멀티 대전을 시작합니다.</sub></td>
+    <td align="center" width="50%"><a href="docs/screenshots/v0.4.11/02-room-list.png"><img src="docs/screenshots/v0.4.11/02-room-list.png" alt="공개 방 목록 — 방 이름 검색, 참가 대기 상태, 서버 핑" width="100%"></a><br><b>공개 방 목록</b><br><sub>방 이름을 찾고 참가 가능 상태와 핑을 확인합니다.</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-06.png" alt="6단계 폭탄과 함정" width="100%"></a><br><sub>6. 폭탄과 함정</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-07.png" alt="7단계 잡아오기와 도망치기 — 도망 성공 후 보드에서 후방 말 선택 또는 생략" width="100%"></a><br><sub>7. 포획 · HP 제한 없는 도망<br>기본 30% · 실패하면 상대 기본 공격 1번</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-08.png" alt="8단계 텔레포트(순간이동) — 횟수 제한 없이, 한 차례의 주 행동으로 교체" width="100%"></a><br><sub>8. 텔레포트 · 함정에 걸린 말 제외</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-09.png" alt="9단계 버닝 타임(불타는 시간)" width="100%"></a><br><sub>9. 버닝 타임(불타는 시간)</sub></td>
-    <td align="center" width="20%"><a href="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png"><img src="docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/tutorial-10.png" alt="10단계 빠른 복습 — 첫 차례 체크리스트 · 자동 종료와 싸우지 않고 종료, HP가 가득 차도 회복 자세" width="100%"></a><br><sub>10. 빠른 복습 · 보드 턴 종료 선택</sub></td>
+    <td align="center" width="50%"><a href="docs/screenshots/v0.4.11/03-start-shop.png"><img src="docs/screenshots/v0.4.11/03-start-shop.png" alt="시작 상점 — 하수인 6칸과 재화, 필드·가방 슬롯" width="100%"></a><br><b>시작 상점</b><br><sub>하수인 6명을 골라 첫 전력을 꾸립니다.</sub></td>
+    <td align="center" width="50%"><a href="docs/screenshots/v0.4.11/04-secret-placement.png"><img src="docs/screenshots/v0.4.11/04-secret-placement.png" alt="비공개 배치 — 숲과 양쪽 진영, 내 말 14개" width="100%"></a><br><b>비공개 배치</b><br><sub>왕·동료·하수인·폭탄·함정을 내 진영에 놓습니다.</sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><a href="docs/screenshots/v0.4.11/05-strategy-board.png"><img src="docs/screenshots/v0.4.11/05-strategy-board.png" alt="전략 보드 — 물음표 상대 말, 숲, 내 말과 행동 메뉴" width="100%"></a><br><b>전략 보드</b><br><sub>숨은 말을 추리하며 이동·탐색·회복합니다.</sub></td>
+    <td align="center" width="50%"><a href="docs/screenshots/v0.4.11/06-element-battle.png"><img src="docs/screenshots/v0.4.11/06-element-battle.png" alt="속성 전투 — 불 하수인과 땅 하수인, HP와 네 가지 행동" width="100%"></a><br><b>속성 전투</b><br><sub>스킬·가방·포획·도망 가운데 행동을 고릅니다.</sub></td>
   </tr>
 </table>
-<sub>튜토리얼은 [건너뛰기]나 <kbd>Esc</kbd>로 곧바로 닫을 수 있고, 제목 옆 <code>?</code> 버튼이나 메뉴의 [📖 튜토리얼 다시 보기]로 언제든 다시 볼 수 있습니다. 
-
-
-</details>
 
 ## 새로운 기능
 
-[![v0.4.10](https://img.shields.io/badge/v0.4.10-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10) 이제 서로 다른 장소에서도 방을 만들고 1대1 대전을 즐길 수 있습니다.
+[![v0.4.11](https://img.shields.io/badge/v0.4.11-release-4c9a2a)](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.11) 계정형 2인 대전과 경기 경제·전투·화면을 개편했습니다.
 
-**v0.4.10 Patch Note** (2026-09-13)
+**v0.4.11 Patch Note** (2026-09-29)
 
-- [기능 추가] 공개 방 목록에서 방을 만들거나 참가해 온라인 대전을 시작합니다.
-- [개선] 서버가 대전을 판정하고 각 플레이어에게 보이는 정보만 전달합니다. 연결이 잠시 끊기면 같은 페이지에서 복귀를 시도합니다.
-- [버그 수정] 모바일에서 기술 옆 ⓘ를 눌러 설명을 확인할 수 있습니다.
-- [버그 수정] 도망·텔레포트 위치 변경 뒤 두 플레이어의 턴 흐름을 맞추고 전투 아트·승패 텍스트와 효과를 복구했습니다.
+- [기능 추가] ID 계정, 이메일 6자리 비밀번호 재설정, 공식 승·패와 최근 경기 기록을 제공합니다.
+- [기능 추가] 방 이름 검색·상태·핑, 대표 하수인, 경기 중 이모티콘을 제공합니다.
+- [기능 추가] 30종 하수인, 5속성 전투, 왕국·아키타입 시너지와 6칸 시작·정기 상점, 성장·가방 경제를 적용합니다.
+- [개선] 배치 90초·보드 행동 30초·전투 행동 60초를 서버가 관리하고, 연결이 끊기면 남은 시간을 멈춥니다.
+- [개선] 로비·방·상점·배치·보드·전투·결과 화면과 아트를 새 구성으로 정리했습니다.
 
-자세한 내용은 [v0.4.10 릴리스 노트](docs/releases/v0.4.10.md)를 참고하세요.
+자세한 내용은 [v0.4.11 릴리스 노트](docs/releases/v0.4.11.md)를 참고하세요. 이전 내역은 [릴리스 노트 목록](docs/releases/README.md)에 있습니다.
 
-[![v0.4.9](https://img.shields.io/badge/v0.4.9-release-4c9a2a)](docs/releases/v0.4.9.md) 함정을 전용 그림으로 표시합니다.
-
-[![v0.4.8](https://img.shields.io/badge/v0.4.8-release-4c9a2a)](docs/releases/v0.4.8.md) 온라인 대전 아트 로드를 수정했습니다.
-
-[![v0.4.6](https://img.shields.io/badge/v0.4.6-release-4c9a2a)](docs/releases/v0.4.6.md) 탐색 선물·접촉 전투·세로 화면을 적용했습니다.
-
-이전 패치 노트는 [릴리스 노트 목록](docs/releases/README.md)에서 볼 수 있습니다. 다음 개발 트랙인 **v0.5.0 Roblox 포팅**과 **v0.6.0 Unity 포팅**은 아직 출시되지 않았습니다.
 ## 게임 정보
 
 | 항목 | 내용 |
 | --- | --- |
-| 현재 버전 | [v0.4.10](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.10) — 공개 방 온라인 대전 ([패치 노트](docs/releases/v0.4.10.md)) |
-| 다음 버전 | v0.5.0 Roblox 포팅 · v0.6.0 Unity 포팅 (미출시) |
-| 최근 업데이트 | 2026-09-13 |
-| Star · Fork | [![Stars](https://img.shields.io/github/stars/ChangjoSung/Digit-Duel?style=flat&label=stars)](https://github.com/ChangjoSung/Digit-Duel) [![Forks](https://img.shields.io/github/forks/ChangjoSung/Digit-Duel?style=flat&label=forks)](https://github.com/ChangjoSung/Digit-Duel/forks) |
-| 필요한 환경 | 공개 온라인: PC·휴대폰 브라우저와 인터넷 · 오프라인: 데스크톱 브라우저 · 직접 LAN 서버 운영: [Node.js](https://nodejs.org) |
-| 장르 | 1대1 턴제 전략 보드게임 (숨은 정체 · 속성 배틀) |
-| 플레이 인원 | 1인(AI 대전) · 2인(핫시트 · 공개 방 온라인 · 같은 공유기 온라인) |
-| 개발자 | 성창조 (Sung Changjo) · [이욱채 (lee775)](https://github.com/lee775) — Roblox 포팅 |
-| 첫 출시일 | 2026-09-02 (v0.3.0) |
-| 플랫폼 | HTML 웹 게임 (PC·휴대폰 브라우저) · Roblox 및 Android/Unity 포팅은 미출시 |
-| 개발 일정 | [v0.5.0 — Roblox 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [v0.6.0 — Unity 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/4) |
+| 정식 버전 | [v0.4.11](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.11) |
+| 플레이 주소 | [digit-duel-mipa.onrender.com](https://digit-duel-mipa.onrender.com) |
+| 장르 | 숨은 정체·속성 전투를 결합한 1대1 턴제 전략 보드게임 |
+| 플레이 인원 | 온라인 2인, 각자 PC 또는 휴대폰에서 접속 |
+| 필요한 환경 | 인터넷에 연결된 최신 브라우저와 가입용 이메일 주소 |
+| 플랫폼 | HTML 웹 게임 |
+| 개발자 | 성창조 (Sung Changjo) |
+| 첫 정식 출시 | 2026-09-02 (v0.3.0) |
 
 ## 플레이 방법
 
-**서로 다른 장소에서 온라인 대전**
+1. [게임 페이지](https://digit-duel-mipa.onrender.com)를 열고 ID·닉네임·이메일·비밀번호로 가입하거나 로그인합니다.
+2. 로비에서 **멀티플레이**를 누릅니다. 한 사람이 방을 만들고 다른 사람이 목록에서 찾아 참가합니다. 참가자가 준비하면 방장이 시작합니다.
+3. 시작 상점에서 하수인 6명을 고르고 왕·동료 속성을 정합니다. 이어서 말 14개를 내 진영에 배치합니다. 상점과 배치에는 각각 90초가 주어집니다.
+4. 자기 차례 30초 안에 말을 움직이거나 탐색·회복·텔레포트를 선택합니다. 새로 맞닿은 적과는 전투가 시작됩니다.
+5. 전투에서는 60초 안에 싸우기·가방·포획·도망을 선택합니다. 상대의 왕과 전력을 추리하며 세 가지 승리 조건 중 하나를 노리세요.
+6. 경기 후 로비에서 공식 전적을 확인합니다.
 
-1. 두 사람 모두 [Digit-Duel 플레이](https://digit-duel-mipa.onrender.com)를 여세요.
-2. 튜토리얼을 확인하고 **대전 시작**을 누르세요.
-3. 한 사람이 **새 방 만들기**, 다른 사람이 목록에서 그 방에 참가합니다.
-4. 각자 로스터와 배치를 정하고 준비하면 경기가 시작됩니다.
-
-첫 접속은 서버가 깨어나는 동안 조금 느릴 수 있습니다. 경기 중에는 페이지를 새로고침하지 마세요. 서버가 재시작되면 진행 중인 방은 유지되지 않습니다.
-
-**혼자 또는 한 기기에서 둘이 (오프라인)**
-
-- 오른쪽 **Releases**에서 최신 버전의 `Source code`를 내려받아 압축을 푸세요.
-- `demo/index.html`을 브라우저로 여세요. 설치도, 서버도, 인터넷 연결도 필요 없습니다. (`demo/assets/` 폴더는 함께 두어야 합니다.)
-- 메뉴에서 **PVE**(5급 · 5단) 또는 **PVP 핫시트**를 고르고, 로스터 6종을 선택한 뒤 말 14개를 배치하면 시작됩니다. [무작위 배치]로 한 번에 채울 수도 있습니다.
-
-**같은 공유기 안의 두 PC로 온라인 대전 (개발 PC 전용)**
-
-- 서버 PC에서 `server/LAN모드실행.bat` 하나만 더블 클릭하세요. 계정·공개 로비 서버를 같은 공유기(사설 주소)에만 공개해 켭니다. [Node.js](https://nodejs.org)가 필요하고, 서버 의존성이 없으면 처음 한 번 `npm ci`로 설치합니다.
-- 이 실행기는 개발 PC에 미리 준비된 전용 QA DB(`127.0.0.1:55462`)와 메일 설정을 그대로 씁니다. 하나라도 없으면 새 DB를 만들지 않고 안내를 띄운 뒤 멈춥니다 — 계정이 빈 DB로 바뀌는 일을 막기 위해서입니다. 그래서 내려받은 `Source code`만으로는 실행되지 않습니다.
-- LAN 모드는 HTTPS로만 켜집니다(로그인·가입이 HTTPS를 요구합니다). 실행기는 이 서버 전용 인증서(`localhost`와 이 PC의 사설 IPv4, 90일)를 전용 QA 비밀 폴더에 만들고, 그 인증서 하나만 **현재 Windows 사용자**의 신뢰 목록에 넣습니다. 처음 실행하거나 주소가 바뀌면 Windows 보안 확인 창이 한 번 뜹니다 — **예**를 누르세요. 거부하거나 인증서를 만들 수 없으면 HTTP로 대신 켜지 않고 멈춥니다. Git for Windows의 `openssl.exe`가 필요합니다.
-- 화면에 표시된 `https://192.168.x.x:8085` 주소를 같은 공유기의 상대에게 전달하세요. 두 사람 모두 그 주소를 열어 로그인한 뒤 공개 로비에서 방을 만들거나 참가합니다. 다른 기기에서는 이 서버의 공개 인증서(`server.crt`)를 그 기기에 신뢰시켜야 경고 없이 열립니다. 개인 키는 절대 옮기지 마세요.
-- 창을 닫거나 Ctrl+C를 누르면 게임 서버가 꺼집니다. 진행 중인 방은 사라지지만 계정·전적은 DB에 남습니다. DB는 이 PC 안(`127.0.0.1`)에서 계속 켜져 있다가 다음 실행 때 다시 쓰입니다. DB까지 끄려면 저장소 루트에서 `node tools/qa/issue260_local.js stop --issue262`를 실행하세요.
-- [참조] 같은 공유기 안에서 아는 사람과 대전하는 용도입니다. 인터넷 너머 대전은 위의 플레이 주소를 이용하세요.
-
-서버 설정의 자세한 내용은 [`server/README.md`](server/README.md)에 있습니다.
-
-**개발 중인 다음 버전을 미리 보고 싶다면**
-
-위 Releases의 다운로드는 정식 버전 **v0.4.10**입니다. 아직 출시되지 않은 작업을 보려면 초록색 **Code** 버튼에서 브랜치를 `dev`로 바꿔 받은 뒤 똑같이 `demo/index.html`을 열면 됩니다.
+현재 싱글플레이·Google 로그인·로비 상점·채팅은 잠겨 있습니다. 진행 중인 경기는 서버 재시작 시 복구되지 않으며, 확정된 계정과 전적은 데이터베이스에 남습니다.
 
 ## 저장소 구조
 
-```
-demo/
-  index.html            게임 본체 — 브라우저로 열면 바로 실행되는 HTML 데모
-  assets/minions/       하수인 20종 설명창·전투·말판 이미지 (index.html과 함께 필요)
-  assets/leaders/       왕·동료 말판·전투 이미지 (index.html과 함께 필요)
-  test/                 데모 회귀 테스트 (Node)
-server/
-  authoritative/        계정·공개 로비·대전 판정 서버 + demo/ 정적 서빙 (Render는 npm start로 이것을 실행)
-  db.js  db/            계정·전적 DB 연결과 마이그레이션
-  security.js           바인드·주소·경로·메시지 검증
-  LAN모드실행.bat        Windows 원클릭 실행 — 같은 공유기 LAN 모드 (개발 PC의 전용 QA DB 사용)
-  test/                 서버 테스트 (옛 코드 접속 릴레이는 회귀용으로만 보관)
-  README.md             서버 실행 방법과 보안 범위
-tools/  tests/          하수인 아트 제작 도구·문서 링크 검사기·로컬 QA 서버 도구(tools/qa)와 그 테스트
-.github/workflows/      PR·push 자동 검사 (CI)
-docs/
-  media/                README용 홍보 일러스트·튜토리얼 이미지
-  releases/             버전별 패치 노트
-  screenshots/          이전 README용 실행 화면
-  creat2ve/             개발 조직·작업 계약 문서
-  milestone/            버전별 규격·구현·독립 QA 기록
-    v0.4.10/            현재 출시본의 공개 방·System Flow·QA 기록
-    <버전>/issues/<번호>/<역할>/   그 Issue를 누가 무엇으로 납품·검수했는지
-CLAUDE.md               프로젝트 규약 · 기준 문서 링크
-CONTRIBUTING.md         기여 안내 · PR 검사 항목
-LICENSE · NOTICE · ASSET-LICENSE.md   라이선스와 자산 정책
-```
-
-문서의 현재 기준과 과거 검수 이력은 [docs 안내](docs/README.md)에서 구분해 볼 수 있습니다. 버전별 기록은 [마일스톤 보관소](docs/milestone/README.md)에서 버전 → Issue → 역할 순으로 찾습니다.
-
-PR과 `main`·`dev` push마다 [GitHub Actions](https://github.com/ChangjoSung/Digit-Duel/actions)가 HTML 규칙 회귀·서버·문서 링크·자산 무결성·Roblox 컴파일과 규칙을 검사합니다. `main`·`dev` 병합에는 6개 검사(A·B·B2·C·D·E)가 모두 필요합니다. 검사 항목과 로컬 재현 명령은 [CONTRIBUTING.md](CONTRIBUTING.md)에 있습니다.
+~~~
+demo/               웹 게임과 게임 자산
+server/             계정·공개 방·경기 판정 서버
+docs/releases/      버전별 릴리스 노트
+docs/screenshots/   실제 게임 화면
+~~~
 
 ## 라이선스
 
-소스 코드 · 테스트 · 설정 · 문서는 [Apache License 2.0](LICENSE)으로 배포됩니다. 각 기여자는 자신의 기여분에 대한 저작권을 유지하며, 귀속 사항은 [`NOTICE`](NOTICE)에 있습니다.
-
-다음은 Apache-2.0 대상이 **아닙니다**. 범위와 이용 조건은 [`ASSET-LICENSE.md`](ASSET-LICENSE.md)를 따릅니다.
-
-- Digit-Duel / Digit Dual 명칭과 브랜딩
-- 하수인 원본 · 파생 아트(`demo/assets/minions/`, `docs/milestone/v0.4.3/assets/minions/`, `docs/milestone/v0.4.3/issues/87/Earth/`의 생성 레퍼런스 이미지)와 이 README의 홍보 일러스트(`docs/media/`)
-- 왕·동료 원본과 파생 아트(`docs/milestone/v0.4.6/issues/124/Earth/`의 이미지, `demo/assets/leaders/`)와 화면·효과 시안(`#122`·`#126`의 Earth 이미지·벡터 아트)
-- 렌더링된 게임 화면(`docs/screenshots/`, `docs/milestone/`의 검증 캡처 이미지, `docs/media/`의 이미지)
-
-Copyright 2026 Sung Changjo and Digit-Duel contributors.
+코드·문서는 [Apache License 2.0](LICENSE)입니다. 이름·아트·게임 화면의 별도 이용 조건은 [ASSET-LICENSE.md](ASSET-LICENSE.md), 저작권 귀속은 [NOTICE](NOTICE)를 따릅니다.

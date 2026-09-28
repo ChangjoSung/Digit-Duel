@@ -302,34 +302,12 @@ jobs:
       - name: 문서 링크·이미지 검사
         run: node tools/docs/docs_link_check.js --verbose
 
-      # README 미디어 도구의 정적 자기 검사 + 오프라인 검증.
-      # --no-gh --no-render 로 gh CLI·Chrome·네트워크·secret 없이 파일시스템 검사만 수행한다.
+      # README 미디어 도구의 정적 자기 검사. 현재 README 이미지 경로는 위 문서 링크·이미지 검사가 확인한다.
       - name: README 미디어 도구 자기 검사
         run: node tools/media/readme_media_capture.js selfcheck
 
-      # --manifest 를 명시한다: 도구 기본값은 Issue #105(v0.4.4) 매니페스트다.
-      # #146(v0.4.7)에서 도망·수동 대기·보호막·텔레포트 규칙이 튜토리얼 10단계 문안에 들어가 **다시 촬영**했으므로
-      # 매니페스트를 그 납품본으로 바꾼다 (촬영 ref aa6998ae · demo/index.html blob 2a9b54c7 · 뷰포트 1280x900 · dpr 2).
-      # 앞선 #121 매니페스트와 그 PNG 10장은 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
-      # 매니페스트를 옛 것으로 두면 frame 캡션 기준이 현행 문안과 어긋나 WARN 이 난다 —
-      # 새 PNG 의 SHA 를 엄격히 대조하는 게이트가 아니다. verify 의 크기·해시 대조는 docs/media 고정 경로를 읽는다.
-      # 이 매니페스트로 로컬 실측 문제 0건이다. 도구 기본값·경고 정책·테스트는 건드리지 않고 CI 인자만 현재 납품본에 맞춘다.
-      # #122 (v0.4.7): 세로 UI 개편으로 README 게임 화면 기준이 바뀌어 현재 납품본 매니페스트로 옮긴다.
-      # #122 CJ QA REVISE (2026-09-10): 어두운 배경 복원으로 튜토리얼 10장을 **새 소스(21637d1)로 다시 촬영**해
-      # README 참조를 revise-back-dark/tutorial 로 옮겼으므로 매니페스트도 그 납품본으로 바꿨다.
-      # #122 CJ QA REVISE 2차 (2026-09-10, PR#168): 접촉·전투 규칙 개편으로 5·6·7단계 문안이 바뀌어 다시 촬영했고
-      # README 참조가 revise-cjqa-rules/tutorial 로 옮겨갔다. **매니페스트 인자도 함께 옮긴다** —
-      # 옛 매니페스트를 두면 기록된 경로가 README 경로와 겹치지 않아 바이트 대조가 **조용히 건너뛰어진다**
-      # (실패도 WARN 도 없이 가드만 사라진다). PR#168 에서 이 인자를 놓쳤고 #169 에서 교정한다.
-      # 앞선 #105·#146·#122(1차) 매니페스트와 그 PNG 는 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
-      - name: README 링크·이미지 오프라인 검증 (#122 REVISE 2차 매니페스트)
-        run: >-
-          node tools/media/readme_media_capture.js verify --read-only --no-gh --no-render
-          --manifest docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json
-
-      # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
-      - name: README 도구 READ_ONLY 회귀
-        run: node tools/media/test/readme_media_readonly_test.js --quick --no-gh
+      # #122 튜토리얼 매니페스트와 PNG는 이력 증거로 보존한다. v0.4.11 README에서 10단계 보기를 폐기했으므로
+      # 그 캡션을 현재 README와 대조하던 검사는 종료한다. 새 화면 6장의 경로는 위 검사에서 확인한다.
 
   # ── D. 납품 아트 자산 무결성 ─────────────────────────────────────────────────
   # 이 잡은 **납품된 바이트 그대로**를 대조하므로 러너를 그 바이트를 구운 환경에 맞춘다 —
