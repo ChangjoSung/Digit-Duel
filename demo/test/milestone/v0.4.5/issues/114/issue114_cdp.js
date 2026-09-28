@@ -22,7 +22,7 @@ async function start(){
   chrome=spawn(CHROME,["--headless=new","--remote-debugging-port=0","--user-data-dir="+profile,"--no-first-run","--no-default-browser-check","--disable-background-timer-throttling","--disable-renderer-backgrounding","about:blank"],{windowsHide:true,stdio:["ignore","pipe","pipe"]});
   let stderr="";chrome.stderr.on("data",b=>stderr+=b);const endpoint=await until(()=>stderr.match(/DevTools listening on (ws:\/\/\S+)/)?.[1],"Chrome launch");
   const ws=new WebSocket(endpoint);await new Promise((res,rej)=>{ws.onopen=res;ws.onerror=rej;});cdp=new CDP(ws);
-  server=spawn(process.execPath,[path.join(ROOT,"server/server.js")],{windowsHide:true,env:{...process.env,PORT:"0"},stdio:["ignore","pipe","pipe"]});
+  server=spawn(process.execPath,[path.join(ROOT,"server/test/relay/server.js")],{windowsHide:true,env:{...process.env,PORT:"0"},stdio:["ignore","pipe","pipe"]});
   let output="";server.stdout.on("data",b=>output+=b);server.stderr.on("data",b=>output+=b);
   const net=await until(()=>{const port=output.match(/listening on [\d.]+:(\d+)/),code=output.match(/접속 코드: (\S+)/);return port&&code?{port:+port[1],code:code[1]}:null;},"relay launch");
   console.log("RESOURCE chromePID="+chrome.pid+" serverPID="+server.pid+" profile="+profile);return net;

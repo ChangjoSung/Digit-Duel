@@ -10,7 +10,7 @@ const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncMo
   /* #217/#218 공개 방(초대 코드 없는 자유 참가) — server/authoritative/**(Jupiter_Server, protocol.md v2)가 구현·헤드리스
      검증까지 마친 실제 프로토콜을 그대로 따른다: credential 기반 소켓(l-/cp-/p-/r-) → 첫 인밴드 프레임(room_opened/
      room_joined/room_resumed/lobby_ready) → 이후 room_state/error. 코드 접속(위 code 경로)은 이 필드들과 무관하게
-     그대로 동작한다(기존 릴레이 server/server.js, 건드리지 않음). */
+     그대로 동작한다(기존 릴레이 — 현재는 테스트 전용 server/test/relay/server.js, 건드리지 않음). */
   uiTab:"public", rooms:[], roomsLoading:false, roomId:null, roomName:null, seatToken:null, publicMode:false, // #217 CJ 승인: 공개 로비가 기본 진입(Earth/lobby-guide.md) — 코드 접속은 SUPERSEDED된 검토 옵션으로만 남는다
   myReady:false, peerReady:false, lobbyOnly:false, revision:0, waitingForPeer:false,
   /* #217 Jupiter/battle-fx-protocol.md v2 §7 — (epoch,roomId,seat) 단위 큐 커서. enqueuedSeq는 로컬 재생

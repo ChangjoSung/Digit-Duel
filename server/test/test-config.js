@@ -6,7 +6,8 @@
 //
 // 기동을 시도하는 케이스도 전부 PORT=0(임의 포트)이라 이미 떠 있는 8080 을 건드리지 않는다.
 const { spawn } = require('child_process');
-const S = require('./security');
+const RELAY_DIR = require('path').join(__dirname, 'relay'); // 테스트 전용 릴레이 fixture
+const S = require('../security');
 
 const CODE = 'TESTCODE2345';
 const MARKER = S.PROTOCOL_MARKER;
@@ -65,7 +66,7 @@ function unitTests() {
 function startServer(env) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
-      cwd: __dirname,
+      cwd: RELAY_DIR,
       env: { ...process.env, PORT: '0', DD_LAN: '0', DD_BIND: '', DD_ACCESS_CODE: '', ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -113,7 +114,7 @@ async function acceptTests() {
   section('정상 설정은 기동한다');
   const started = await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
-      cwd: __dirname,
+      cwd: RELAY_DIR,
       env: { ...process.env, PORT: '0', DD_LAN: '0', DD_BIND: '127.0.0.1', DD_ACCESS_CODE: CODE },
       stdio: ['ignore', 'pipe', 'pipe'],
     });

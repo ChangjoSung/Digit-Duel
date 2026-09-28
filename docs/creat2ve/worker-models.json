@@ -5,7 +5,7 @@
   "runtime_verification": "Inspect the prompt composer and resolve model-switch dialogs before input. Verify current turn model/effort, live footer and tier before GO and at completion; never reuse prior preflight. Mismatched-model results are diagnostic only; formal QA needs an approved-model fresh worker. See WORKER_MODELS.md.",
   "handoff_permission_contract": {
     "status": "authorized",
-    "scope": "next Mercury_PD handoff after Issue #250 model reset only",
+    "scope": "Mercury_PD handoff approved by CJ on 2026-09-28; Digit-Duel only",
     "sandbox": "danger-full-access",
     "approval_policy": "never",
     "decision": "Do not propagate this permission to other workers, projects, or managed/host policy bypasses"

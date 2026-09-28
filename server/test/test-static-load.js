@@ -16,12 +16,13 @@
 // 서버는 PORT=0(임의 포트)·루프백 바인드로 자식 프로세스로 띄우고 끝나면 닫는다 — 떠 있는 운영
 // 서버(8080)를 건드리지 않는다. 접근 코드는 쓰지 않는다 (정적 서빙은 인증 경계가 아니다).
 const { spawn } = require('child_process');
+const RELAY_DIR = require('path').join(__dirname, 'relay'); // 테스트 전용 릴레이 fixture
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const S = require('./security');
+const S = require('../security');
 
-const DEMO = path.join(__dirname, '..', 'demo');
+const DEMO = path.join(__dirname, '..', '..', 'demo');
 const BUDGET = S.STATIC_BUDGET;
 const BURST = BUDGET.pageLoadRequests * BUDGET.concurrentPageLoads; // server.js LIMITS 와 같은 식
 const RPS = BUDGET.pageLoadRequests * 2;
@@ -58,7 +59,7 @@ function pageLoadCorpus() {
 function startServer() {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
-      cwd: __dirname,
+      cwd: RELAY_DIR,
       env: { ...process.env, PORT: '0', DD_LAN: '0', DD_ACCESS_CODE: 'TESTCODE2345' },
       stdio: ['ignore', 'pipe', 'inherit'],
     });

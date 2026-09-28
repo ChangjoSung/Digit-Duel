@@ -1,5 +1,5 @@
 'use strict';
-// #217 서버 권위 인증 서버 — protocol.md의 구현. 기존 코드 접속 릴레이(server/server.js, 기본 8080)는 건드리지 않고
+// #217 서버 권위 인증 서버 — protocol.md의 구현. 기존 코드 접속 릴레이(#276 이후 server/test/relay/server.js 테스트 fixture)와
 // 별도 프로세스/포트(DD_AUTH_PORT, 기본 8081)로 뜬다. 오프라인 클라이언트·LAN 릴레이 기본 동작에 영향이 없다.
 //
 // v4 — 정적 호스팅 (Saturn REVISE: "authoritative HTTP는 health 외 404, npm start는 이전 8080 relay"):
@@ -20,6 +20,8 @@
 // 형태의 실질 경계다. DD_AUTH_PUBLIC_HOST 없이 켜면 모든 요청이 400(bad host)이 되므로 기동을 막는다.
 // 미설정(기본)은 기존 로컬/LAN 동작을 그대로 유지한다.
 const http = require('http');
+const https = require('https');
+const tls = require('tls');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -44,12 +46,35 @@ const PUBLIC_DEPLOY = process.env.DD_AUTH_PUBLIC_DEPLOY === '1';
 const PUBLIC_HOST = process.env.DD_AUTH_PUBLIC_HOST || null; // §2.1 DD_PUBLIC_HOST 상당
 const PUBLIC_HOST_CHECK = PUBLIC_HOST ? S.validatePublicHost(PUBLIC_HOST) : { ok: true, host: null };
 
+// #276 네이티브 HTTPS 옵트인 — LAN 에서 로그인하려면 TLS 가 필요하다(평문 원격 인증은 accounts.transport() 가 계속 403).
+// 둘 다 없으면 기존 HTTP 그대로(Render 는 엣지 TLS). 둘 다 있으면 같은 포트·핸들러·WebSocket 을 TLS 로 연다.
+// 하나만 있거나·상대 경로·읽기 실패·PEM 오류·키 불일치면 HTTP 로 내려가지 않고 멈춘다 — 사유는 오류 코드만(경로·키 내용 없음).
+function loadTls(certPath, keyPath) {
+  if (!certPath && !keyPath) return { ok: true, options: null };
+  if (!certPath || !keyPath) return { ok: false, reason: 'pair_incomplete' };
+  if (!path.isAbsolute(certPath) || !path.isAbsolute(keyPath)) return { ok: false, reason: 'path_not_absolute' };
+  try {
+    const options = { cert: fs.readFileSync(certPath), key: fs.readFileSync(keyPath), minVersion: 'TLSv1.2' };
+    tls.createSecureContext(options); // 깨진 PEM·키 불일치를 여기서 던진다
+    return { ok: true, options };
+  } catch (e) {
+    return { ok: false, reason: (e && e.code) || 'invalid_pem' };
+  }
+}
+const TLS = loadTls(process.env.DD_AUTH_TLS_CERT, process.env.DD_AUTH_TLS_KEY);
+if (!TLS.ok) {
+  const msg = `[보안] DD_AUTH_TLS_CERT·DD_AUTH_TLS_KEY 가 올바르지 않습니다 (사유: ${TLS.reason}). 둘 다 PEM 파일 절대 경로로 지정하거나 둘 다 지우세요. HTTP 로 대신 뜨지 않고 기동을 중단합니다.`;
+  if (require.main === module) { console.error(msg); process.exit(1); }
+  throw new Error(msg); // require 로 불러도 HTTP 서버를 만들지 않는다
+}
+const SCHEME = TLS.options ? 'https' : 'http';
+
 const bindChoice = S.resolveBindAddress(process.env.DD_AUTH_BIND, LAN_OPT_IN || PUBLIC_DEPLOY);
 const BIND = bindChoice.ok ? bindChoice.bind : '127.0.0.1';
 
 const EPOCH = crypto.randomBytes(4).toString('hex'); // 8자 16진 (analysis.md §2.4.1.1)
 
-// 게임 클라이언트 정적 서빙 위치 — 릴레이(server/server.js)와 같은 탐색 순서.
+// 게임 클라이언트 정적 서빙 위치 — 저장소 demo/ 우선, 독립 배포는 ./client/demo.
 const ROOT = [
   path.join(__dirname, '..', '..', 'demo'),
   path.join(__dirname, '..', 'client', 'demo'),
@@ -127,7 +152,7 @@ function deny(res, status, message) {
   res.end(message || String(status));
 }
 
-const server = http.createServer((req, res) => {
+function handleRequest(req, res) {
   const ip = S.normalizeIp(req.socket.remoteAddress);
   if (!peerAllowed(ip)) return deny(res, 403, LAN_OPT_IN ? 'LAN only' : 'localhost only');
   if (!bucketFor(httpBuckets, ip, LIMITS.httpBurst, LIMITS.httpReqPerSec).take(1)) return deny(res, 429, 'too many requests');
@@ -188,7 +213,8 @@ const server = http.createServer((req, res) => {
     if (req.method === 'HEAD') return res.end();
     res.end(data);
   });
-});
+}
+const server = TLS.options ? https.createServer(TLS.options, handleRequest) : http.createServer(handleRequest);
 
 server.maxHeadersCount = 64;
 server.headersTimeout = 10000;
@@ -639,24 +665,29 @@ function listen() {
     const mode = PUBLIC_DEPLOY ? '공개 배포(WAN) — 리버스 프록시 뒤, 피어 IP 미검사' : (LAN_OPT_IN ? 'LAN 공개 — 사설 대역만' : '루프백 전용');
     console.log(`Digit Dual 공개 대전 서버(#217 서버 권위) listening on ${BIND}:${actual} (${mode}, epoch ${EPOCH})`);
     console.log(`  클라이언트: ${ROOT}`);
-    console.log(`  접속 주소: http://127.0.0.1:${actual}`);
+    console.log(`  접속 주소: ${SCHEME}://127.0.0.1:${actual}`);
+    if (TLS.options) console.log('  TLS: 네이티브 HTTPS(TLS 1.2+) — 인증서가 이 접속 주소의 이름을 담고 접속 기기가 그 인증서를 신뢰해야 한다');
     if (PUBLIC_DEPLOY) {
       console.log(`  WAN 접속 주소(플랫폼 도메인): https://${PUBLIC_HOST}`);
       console.log('  주의: 이 모드는 소켓 피어 IP를 신뢰 경계로 쓰지 않는다 — Host·Origin·좌석 토큰만으로 막는다.');
       console.log('  주의: 리버스 프록시 뒤에서는 IP당 요청/연결 한도가 이 인스턴스 전체가 나누는 공유 한도가 된다(docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md).');
     } else if (LAN_OPT_IN) {
-      for (const list of Object.values(os.networkInterfaces())) {
-        for (const i of list) {
-          if (i.family === 'IPv4' && !i.internal && S.isPrivateIp(i.address)) console.log(`  내부망 주소: http://${i.address}:${actual}`);
+      // TLS 는 인증서에 담긴 이름으로만 접속된다 — 인터페이스를 훑어 인증서 밖 주소를 안내하지 않고 접속 주소는 실행기가 안내한다.
+      if (TLS.options) console.log(`  내부망: ${BIND}:${actual} TLS 바인딩 — 인증서에 담긴 주소로만 접속된다(실행기가 안내한 주소 사용)`);
+      else {
+        console.log('  주의: 평문 HTTP 내부망 주소에서는 로그인·가입이 403 E_INSECURE_TRANSPORT 다 — 로그인은 DD_AUTH_TLS_CERT·DD_AUTH_TLS_KEY(HTTPS)가 필요하다.');
+        for (const list of Object.values(os.networkInterfaces())) {
+          for (const i of list) {
+            if (i.family === 'IPv4' && !i.internal && S.isPrivateIp(i.address)) console.log(`  내부망 주소: ${SCHEME}://${i.address}:${actual}`);
+          }
         }
       }
     } else {
       console.log('  LAN 공개가 필요하면 --lan (또는 DD_LAN=1) 로 기동하세요 (기본은 이 PC 전용).');
     }
-    console.log(`  헬스체크: http://127.0.0.1:${actual}/healthz`);
+    console.log(`  헬스체크: ${SCHEME}://127.0.0.1:${actual}/healthz`);
     if (accounts) console.log(`  비밀번호 재설정 메일: ${accounts.mailEnabled ? 'SMTP 설정됨' : '미설정 — 재설정 요청은 503 E_MAIL_UNAVAILABLE'}`); // 설정 값은 찍지 않는다
     if (PUBLIC_HOST && !PUBLIC_DEPLOY) console.log(`  WAN 배포 준비 호스트(Host 허용 목록에만 추가됨): ${PUBLIC_HOST}`);
-    console.log('  코드 접속(기존 릴레이)은 별도 서버입니다: npm run start:relay (기본 8080).');
   });
 }
 
@@ -664,4 +695,4 @@ function listen() {
 // 한 IP(루프백)에서 수십 건을 보내는 테스트가 예산에 막히지 않게 예산도 비운다.
 function useAccounts(a) { accounts = a; authBuckets.clear(); }
 
-module.exports = { server, wss, lobby, EPOCH, useAccounts, ROOT, parseCredential, presentedCredential, peerAllowed, PUBLIC_DEPLOY, PUBLIC_HOST, LAN_OPT_IN, PORT };
+module.exports = { server, wss, lobby, EPOCH, useAccounts, ROOT, parseCredential, presentedCredential, peerAllowed, PUBLIC_DEPLOY, PUBLIC_HOST, LAN_OPT_IN, PORT, SCHEME };

@@ -2,7 +2,7 @@
  * 사용: node demo/test/hotfix/201/online_art_cdp.js [--out <dir>] [--chrome <chrome.exe>] [--no-shots]
  *
  * 무엇을 실제로 하는가 (헤드리스 하네스가 흉내 낼 수 없는 것만)
- *   1. 내가 띄운 server/server.js 를 루프백 임의 포트로 기동한다 (사용자의 서버를 건드리지 않는다).
+ *   1. 내가 띄운 server/test/relay/server.js 를 루프백 임의 포트로 기동한다 (사용자의 서버를 건드리지 않는다).
  *      접속 코드는 이 실행에서만 쓰는 값을 주입한다 — 산출물 어디에도 적지 않는다.
  *   2. 내가 띄운 헤드리스 Chrome 임시 프로필에서 **독립된 두 탭**(P1·P2)을 냉시작으로 연다.
  *   3. 두 탭이 실제 로비 입력칸·버튼 클릭으로 온라인 매칭에 들어가고, 실제 인증(하위 프로토콜)으로
@@ -40,7 +40,7 @@ const OWNED={server:null,chrome:null,udd:null};
 function startServer(){
   const code="dd"+crypto.randomBytes(12).toString("hex"); // 이 실행 전용 · 산출물에 쓰지 않는다
   return new Promise((res,rej)=>{
-    const p=spawn(process.execPath,[path.join(ROOT,"server","server.js")],
+    const p=spawn(process.execPath,[path.join(ROOT,"server","test","relay","server.js")],
       {cwd:path.join(ROOT,"server"),env:Object.assign({},process.env,{PORT:"0",DD_ACCESS_CODE:code}),stdio:["ignore","pipe","pipe"]});
     OWNED.server=p;
     let buf="",err="";

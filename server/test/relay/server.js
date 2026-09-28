@@ -1,4 +1,6 @@
 'use strict';
+// #276 테스트 전용 fixture — 실행 경로가 아니다(npm 스크립트·BAT 없음). 공유 security.js 의 접근 코드·Origin·
+// 정적 예산(#201) 회귀(server/test/*.js)가 자식 프로세스로 띄운다. 게임 온라인 진입은 authoritative/server.js 뿐이다.
 // Digit Dual PVP 릴레이 서버 — 내부망 전용, 비권위 1:1 중계.
 // #62 방어적 하드닝: 기본 루프백 바인드 · 런타임 접근 코드 · Origin/Host 검증 ·
 // 정적 경로 잠금 · WebSocket 인증/한도 · 보안 헤더. 게임 프로토콜은 그대로 유지한다.
@@ -12,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { WebSocketServer, OPEN } = require('ws');
-const S = require('./security');
+const S = require('../../security');
 
 /* ===== 설정 ===== */
 
@@ -89,11 +91,8 @@ const LIMITS = {
   authWindowMs: 5 * 60 * 1000,
 };
 
-// 클라이언트 정적 서빙 위치 자동 탐색 (저장소 server/ 실행 → ../demo, 독립 배포 → ./client/demo)
-const ROOT = [
-  path.join(__dirname, '..', 'demo'),
-  path.join(__dirname, 'client', 'demo'),
-].find((p) => fs.existsSync(path.join(p, 'index.html'))) || path.join(__dirname, '..', 'demo');
+// 클라이언트 정적 서빙 위치 — 저장소 demo/ (server/test/relay → ../../../demo)
+const ROOT = path.join(__dirname, '..', '..', '..', 'demo');
 
 /* ===== 상태 ===== */
 

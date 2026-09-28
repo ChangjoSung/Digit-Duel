@@ -48,7 +48,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* 기존 사용자 서버(8080)를 건드리지 않는다 — PORT=0 임의 포트 · 루프백 · 접속 코드는 서버 stdout 에서 읽는다(이 프로세스 메모리에만 둔다) */
 function startServer(){
   return new Promise((res,rej)=>{
-    const p=spawn(process.execPath,[path.join(ROOT,"server","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
+    const p=spawn(process.execPath,[path.join(ROOT,"server","test","relay","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
     let out=""; const t=setTimeout(()=>{ try{p.kill();}catch(e){} rej(new Error("서버 기동 대기 시간 초과\n"+out)); },15000);
     const onData=d=>{ out+=d; const m=out.match(/listening on ([\d.]+):(\d+)/), c=out.match(/접속 코드: (\S+)/); if(m&&c){ clearTimeout(t); res({proc:p,host:m[1],port:Number(m[2]),code:c[1]}); } };
     p.stdout.on("data",onData); p.stderr.on("data",onData);

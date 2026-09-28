@@ -10,9 +10,13 @@
 - 통합 후 Render의 서버 구조·설정·플랜 제약을 확인해 CJ에게 보고한다. main Release·배포·Render 자원 생성·결제·요금제 변경은 아직 승인되지 않았다. CJ가 보고를 받은 뒤 별도로 지시한다. 신규 Issue 댓글·중복TODO·수동 Issue close도 실행하지 않는다.
 - 통합 QA와 배포 구조 점검 후 필요 없는 게임 QA 내부망 리스너를 종료한다. DB 데이터·계정·SMTP 비밀·검증 증거와 다른 앱 프로세스는 보존한다.
 
-## 현재 조정 기록 — 2026-09-28
+## 현재 조정 기록 — 2026-09-28 #276 CJ QA PASS·병합 승인
 
-[#232 통합·Render 준비 보고](docs/milestone/v0.4.11/issues/232/Mercury/integration-review.md)가 현재 조정 원장이다. 승인 제품 코드는 milestone에 통합했고 기존 작업 트리 8개와 해당 로컬 브랜치 8개·원격 브랜치 6개를 보존 후 정리했다. 게임 QA 서비스는 종료하고 DB·계정·SMTP·백업을 유지했다. 현 Render 설정은 DB·SMTP 준비가 없어 배포 NO-GO다. main Release·배포·자원 생성·결제·요금제 변경은 CJ의 별도 지시 전 진행하지 않는다. 사용자 dirty 원본은 stage/reset/pull하지 않으며 후속 Release 검토는 release-review 트리를 사용한다. GitHub는 기존 완료 조건만 관리하며 신규 Issue 댓글·중복 TODO·Issue close를 만들지 않는다.
+[#276 서버 정리·LAN HTTPS 단일 실행기](docs/milestone/v0.4.11/issues/276/Mercury/report.md)의 수정본은 CJ QA·로컬 QA·독립 검토 PASS다. CJ가 stage·commit·push·PR·milestone/v0.4.11 병합과 이후 Mercury_PD Full Access 인수인계를 승인했다. 최초 HTTP 안내·루프백 검사 누락을 native HTTPS와 전용 서버 leaf로 수정했고, 실제 LAN 주소의 가입·로그인·Secure/HttpOnly/Strict 쿠키·인증 WSS 및 BAT2회 재실행을 검증했다. 가상 주소 로그도 정정했다. 기존 계정·세션·전적·SMTP와 원본 dirty를 보존했으며 모든 Worker를 실제 종료했다. 단일 원장은 위 보고서, GitHub는 기존 완료 조건 한곳만 갱신한다.
+
+실제 BAT는 C:/Users/pc_77/orca/workspaces/Digit-Duel/release-review-v0.4.11/server/LAN모드실행.bat, 접속은 실행기 표시 HTTPS 주소(현재 https://192.168.3.30:8085/)다. QA 게임8085는 닫았고 baseline PG29932/55462와 다른 앱4956/8084는 유지했다. 통합 기준 HEAD264010d에서 #276 전용 infra/276-lan-launcher 브랜치와 PR을 정리하고 필수 CI 6개 통과 후 squash 병합한다. 원본 사용자 checkout은 pull/reset하지 않는다.
+
+[#232 통합·Render 준비 보고](docs/milestone/v0.4.11/issues/232/Mercury/integration-review.md)의 통합·작업 트리 정리 완료는 유지한다. 현 Render DB·SMTP 미준비로 배포 NO-GO이며 CJ가 직접 유료 전환 후 알리기로 했다. main Release·Render 배포·자원 생성·결제·요금제 변경은 별도 지시 대상이다. CJ가 직접 유료 전환 후 PD에게 알리고 배포를 별도로 지시할 때까지 실행하지 않는다. 신규 Issue 댓글·중복 TODO·수동 Issue close 금지는 유지한다.
 
 ## 기준 문서 (Notion — 구현·QA의 진실 원본)
 - 필수 QA 운영: [QA_MINIMUM_POLICY.md](docs/creat2ve/QA_MINIMUM_POLICY.md) — 2026-09-16 CJ 지시. 변경에 필요한 자동 검증 우선, 브라우저 수동·네트워크 반복 QA 축소. 필수 CI 유지.
@@ -26,7 +30,7 @@
 ## 현재 부서·모델·Ponytail 운영 (2026-09-23 CJ 승인 · #250)
 
 - 적용 범위는 Digit-Duel 프로젝트뿐이다. 모델·effort의 계정 전역 기본값을 수정하지 않는다. 단, CJ가 지시한 Codex·Claude Ponytail 설치는 제공된 설치 명령에 따른 user scope 예외다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
-- #250 모델 재설정 후 다음 Mercury_PD 인수인계 세션만 CJ의 명시적 지시에 따라 `gpt-6-sol` xhigh·`service_tier=default`(No Fast)와 `danger-full-access`·approval `never`로 시작한다. 이 승인은 다른 Worker·다른 프로젝트·managed/host 정책 우회로 확장하지 않는다.
+- 2026-09-28 CJ가 승인한 이번 Mercury_PD 인수인계 세션은 `gpt-6-sol` xhigh·`service_tier=default`(No Fast)와 `danger-full-access`·approval `never`로 시작한다. 이 승인은 다른 Worker·다른 프로젝트·managed/host 정책 우회로 확장하지 않는다.
 - 2026-09-25 CJ의 모든 Worker 자동 진행 지시는 Digit-Duel에서 CJ가 착수시킨 모든 작업(#264·#259·#260 포함)에 적용한다. 각 Worker를 full access·무확인 실행(Claude --dangerously-skip-permissions, Codex -s danger-full-access -a never)으로 명시 기동하고 실제 실행을 확인한다. 역할 경계·Saturn 파일 무수정·Git/Render/배포/결제 승인 게이트는 유지하고 다른 프로젝트·계정 전역 설정을 바꾸지 않는다.
 - 신규 Worker는 [WORKER_MODELS.md](docs/creat2ve/WORKER_MODELS.md)와 [worker-models.json](docs/creat2ve/worker-models.json)의 agent/model/effort를 명시해 시작한다. 계정 기본값만으로 부서별 실행값을 추정하지 않는다. 시작 영수증 requested/effective와 실제 응답을 확인한다.
 - 후속 dispatch 입력 전 모델 전환 팝업을 처리하고, 현재 턴·GO 직전·완료 시 실제 모델/effort·tier·footer를 다시 대조한다. 이전 preflight를 재사용하지 않으며 불일치 결과는 정식 QA에서 제외한다. 절차는 WORKER_MODELS.md의 후속 dispatch 모델 게이트를 따른다.
