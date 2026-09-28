@@ -4,11 +4,12 @@
 // URL·쿼리에는 코드를 싣지 않는다 (HTTP 페이지 자체는 인증이 없다).
 // 고정 포트를 쓰지 않으므로 이미 떠 있는 운영 서버(8080)와 충돌하지 않는다.
 const { spawn } = require('child_process');
+const RELAY_DIR = require('path').join(__dirname, 'relay'); // 테스트 전용 릴레이 fixture
 const WebSocket = require('ws');
-const { PROTOCOL_MARKER } = require('./security');
+const { PROTOCOL_MARKER } = require('../security');
 
 const server = spawn(process.execPath, ['server.js'], {
-  cwd: __dirname,
+  cwd: RELAY_DIR,
   env: { ...process.env, PORT: '0', DD_LAN: '0' },
   stdio: ['ignore', 'pipe', 'inherit'],
 });

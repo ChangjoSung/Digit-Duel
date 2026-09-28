@@ -69,5 +69,5 @@ Venus는 Notion 기획서를 eli_adult 방식으로 작성·관리한다. 목적
 
 CJ의 2026-09-13 추가 지시에 따라 계정 전역 기본값은 유지한다. 최초 작업 중 전역값을 변경했으나 즉시 Codex Astra medium/priority, Claude opus[1m]/effort 미지정으로 복원했다. 백업은 각 설정 파일 옆 `.before-211-20260913`에 보존한다. 인증·MCP·권한과 다른 설정은 변경 대상이 아니다. 독립 비교에서 Codex TUI가 생성한 `tui.model_availability_nux.gpt-6-astra=1` 안내 확인 메타데이터만 추가됐음을 확인했다. 이 UI 메타데이터는 모델/effort 기본값이 아니므로 유지하며, 그 외 설정은 백업과 의미상 동일하다.
 
-Digit-Duel의 신규 Worker에만 위 모델·effort를 CLI 인수로 적용한다. 다른 프로젝트나 연결 계정의 기본 모델은 변경하지 않는다. #250 모델 재설정 후 다음 Mercury_PD 인수인계 세션은 CJ의 명시적 지시에 따라 `gpt-6-sol` xhigh·No Fast와 `danger-full-access`·approval `never`로 시작한다. 이 일회성 인수인계 권한은 다른 Worker에 전파하지 않는다. Orca UI나 managed/host 정책이 실행값보다 우선할 수 있으므로 시작 영수증을 확인한다.
+Digit-Duel의 신규 Worker에만 위 모델·effort를 CLI 인수로 적용한다. 다른 프로젝트나 연결 계정의 기본 모델은 변경하지 않는다. 2026-09-28 CJ가 명시 승인한 이번 Mercury_PD 인수인계 세션은 `gpt-6-sol` xhigh·No Fast와 `danger-full-access`·approval `never`로 시작한다. 이 일회성 인수인계 권한은 다른 Worker에 전파하지 않는다. Orca UI나 managed/host 정책이 실행값보다 우선할 수 있으므로 시작 영수증을 확인한다.
 근거: [OpenAI 설정](https://learn.chatgpt.com/docs/config-file/config-reference), [Claude 모델 설정](https://code.claude.com/docs/en/model-config), 설치된 Orca 1.4.200의 worker-start 도움말.

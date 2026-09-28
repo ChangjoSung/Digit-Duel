@@ -1,7 +1,7 @@
 /* #93/#104 온라인 보드 방향 독립 감사 — 실제 Chrome 2클라이언트 (Mars_3, 2026-09-08)
    사용: node demo/test/milestone/v0.4.4/issues/104/orientation_audit_cdp.js [--ref 6baa0b5] [--read-only] [--out <dir>] [--chrome <chrome.exe>] [--no-shots]
    원리:
-     · 검증 전용 릴레이 서버(server/server.js, PORT=0 루프백)를 띄우고, 두 탭이 그 서버 주소로 /index.html 을 연다.
+     · 검증 전용 릴레이 서버(server/test/relay/server.js, PORT=0 루프백)를 띄우고, 두 탭이 그 서버 주소로 /index.html 을 연다.
        단, 두 탭은 서버의 같은 출처 빈 URL(/qa-orientation-blank, 404 텍스트)로 간 뒤 **Page.setDocumentContent** 로 문서 본문을 **git show <ref>:demo/index.html(메모리)** 로 바꿔 넣는다
        — 작업 트리의 demo/index.html(병렬 #106 편집 중)을 읽지 않고, 서버와 같은 출처(Origin)라 WebSocket Origin 검사도 그대로 통과한다. (CDP Fetch 가로채기는 이후 WebSocket 핸드셰이크를 깨뜨려 쓰지 않는다.)
        아트(demo/assets)는 서버가 디스크에서 읽어 서빙한다(승인된 자산 읽기).
@@ -58,7 +58,7 @@ function connect(url){ return new Promise((res,rej)=>{ const ws=new WebSocket(ur
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function startServer(){
   return new Promise((res,rej)=>{
-    const p=spawn(process.execPath,[path.join(ROOT,"server","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
+    const p=spawn(process.execPath,[path.join(ROOT,"server","test","relay","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
     let out=""; const t=setTimeout(()=>{ try{p.kill();}catch(e){} rej(new Error("서버 기동 대기 시간 초과\n"+out)); },15000);
     const onData=d=>{ out+=d; const m=out.match(/listening on ([\d.]+):(\d+)/), c=out.match(/접속 코드: (\S+)/); if(m&&c){ clearTimeout(t); res({proc:p,host:m[1],port:Number(m[2]),code:c[1]}); } };
     p.stdout.on("data",onData); p.stderr.on("data",onData);

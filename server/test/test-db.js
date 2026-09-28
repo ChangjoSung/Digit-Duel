@@ -13,8 +13,8 @@ const assert = require('assert');
 const http = require('http');
 const path = require('path');
 const { spawn } = require('child_process');
-const db = require('./db');
-const mig = require('./db-migrate');
+const db = require('../db');
+const mig = require('../db-migrate');
 
 let failures = 0;
 function check(label, fn) {
@@ -461,7 +461,7 @@ check('safeErrorText 는 pg 원문 메시지를 흘리지 않는다', () => {
   assert.strictEqual(db.safeErrorText(new Error('원문')), '알 수 없는 오류(코드 없음)');
 });
 
-const SERVER = path.join(__dirname, 'authoritative', 'server.js');
+const SERVER = path.join(__dirname, '..', 'authoritative', 'server.js');
 
 function spawnServer(env) {
   const child = spawn(process.execPath, [SERVER], {

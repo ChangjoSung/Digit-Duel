@@ -1,43 +1,34 @@
-# Digit Dual PVP 릴레이 서버
+# Digit Dual 서버
 
-1:1 자동 매칭·릴레이 서버 + 데모 클라이언트(`../demo`) 정적 서빙.
-서버는 게임 내용을 해석하지 않는 비권위 릴레이이며, 클라이언트는 시드 락스텝으로 동기화한다.
+게임 서버는 `authoritative/server.js` 하나다 — 공개 로비·서버 권위 대전·계정을 맡고 게임 페이지(`../demo`)도 직접 서빙한다.
+프로토콜·검증 범위의 원본은 `docs/milestone/v0.4.10/issues/217/Jupiter/protocol.md` 다.
+
+## 구조 (#276)
+
+| 경로 | 역할 |
+| --- | --- |
+| `authoritative/` | 현재 게임 서버. `server.js` 가 `npm start`·Render 진입점이고 engine·room·lobby·accounts·resultOutbox 등이 함께 있다 |
+| `authoritative/test/` | 인증 서버 회귀(`npm run test:authoritative`) |
+| `db.js` · `db-migrate.js` · `db/migrations/` | DB 연결·TLS 검증 · 마이그레이션 러너 · `001`~`005` SQL(적용된 파일은 체크섬 때문에 고치지 않는다) |
+| `security.js` | 공유 보안 유틸(주소 판정·Origin·정적 경로·요청 예산) |
+| `test/` | 루트 회귀 — 보안·기동 설정·정적 예산·DB·실행기 |
+| `test/relay/server.js` | **테스트 전용** 구 코드 접속 릴레이. `test/*.js` 가 공유 `security.js` 계약을 실서버로 검증하려고 띄운다. 실행 스크립트·실행기가 없다 |
+| `LAN모드실행.bat` | 유일한 Windows 실행기 |
 
 ## 실행
 
-Windows 는 실행기를 더블클릭한다. 모드는 실행기가 결정하고, 창 제목과 배너에 현재 모드가 표시된다.
+Windows 는 `LAN모드실행.bat` 을 더블클릭한다. 저장소 루트에서 `node tools/qa/issue260_local.js lan --issue262` 를 실행하는 것과
+같다 — 기존 비공개 로컬 Postgres(루프백)와 그 DB·메일 비밀값으로 인증 서버를 LAN 모드(같은 공유기 사설 대역만, 게임 포트 8085)로 띄운다.
+비공개 PG·DB·SMTP 준비물이 하나라도 없으면 새 DB 를 만들지 않고 실패한다. 창을 닫거나 Ctrl+C 하면 게임 서버는 멈추지만
+Postgres 는 루프백에서 계속 돈다(데이터 유지) — 끄려면 저장소 루트에서 `node tools/qa/issue260_local.js stop --issue262`.
 
-| 실행기 | 모드 | 접속 허용 대상 |
-| --- | --- | --- |
-| `서버시작.bat` | 로컬 전용 (기본) | 서버를 켠 이 PC 만 |
-| `LAN서버시작.bat` | LAN 공개 | 같은 공유기의 사설 대역만 |
-
-두 실행기는 각각 목적이 하나로 고정돼 있다. 모드를 바꾸는 옵션은 없고, **어느 파일을 더블클릭했는지가
-곧 모드다.** LAN 공개는 환경 변수를 영구 설정하지 않으므로 그 창이 살아 있는 동안만 유효하고, 창을
-닫으면 다음 실행은 다시 로컬 전용이다. Windows 방화벽 규칙·포트포워딩·브라우저 설정은 어느 실행기도
-바꾸지 않는다.
-
-최초 실행 시 의존성은 자동 설치되고, 설치가 실패하면 서버를 띄우지 않는다.
-
-터미널에서 직접 실행하려면(코드 접속 릴레이): `npm install` 후 `npm run start:relay` (로컬 전용) · `npm run start:relay:lan` (LAN 공개).
-
-### 공개 대전 서버 (#217 서버 권위, 기본 8081)
-
-공개 로비·서버 권위 대전은 별도 서버 `authoritative/server.js` 가 맡는다. 게임 페이지도 이 서버가 직접 서빙하므로
+터미널에서 직접: `npm ci` 후 `npm start`(이 PC 전용) · `npm run start:lan`(LAN 사설 대역). `DATABASE_URL` 이 없으면 계정 없이 뜬다.
 **`http://127.0.0.1:8081` 을 브라우저로 열면** 페이지의 기본 접속 주소가 곧 이 서버다(접속 코드 없음).
-
-| 실행 | 모드 |
-| --- | --- |
-| `공개서버시작.bat` · `npm start` | 공개 대전 — 로컬 전용 |
-| `공개LAN서버시작.bat` · `npm run start:lan` | 공개 대전 — LAN 공개(사설 대역만) |
-
-두 서버는 포트가 달라(릴레이 8080 · 공개 8081) 동시에 켤 수 있다. 프로토콜·검증 범위는
-`docs/milestone/v0.4.10/issues/217/Jupiter/protocol.md` 가 원본이다.
+Render 는 저장소 루트에서 `npm ci --prefix server` / `npm start --prefix server` 로 같은 진입점을 쓴다.
 
 #### 공개 배포(WAN) 옵트인 — Render 등 리버스 프록시 뒤 (#217 deploy-readiness)
 
-기본(미설정)은 위 로컬/LAN 동작 그대로다. 아래 옵트인은 `authoritative/server.js` 전용이며 코드 접속
-릴레이(`server.js`)에는 영향이 없다.
+기본(미설정)은 위 로컬/LAN 동작 그대로다. 아래 옵트인은 `authoritative/server.js` 전용이다.
 
 | 변수 | 기본값 | 설명 |
 | --- | --- | --- |
@@ -45,7 +36,8 @@ Windows 는 실행기를 더블클릭한다. 모드는 실행기가 결정하고
 | `DD_AUTH_PORT` | `8081` | 명시하면 `PORT` 보다 우선(기존 로컬/LAN 실행기·문서 그대로) |
 | `DD_AUTH_PUBLIC_DEPLOY` | (없음) | `1` 이면 리버스 프록시 뒤 배포 모드. 소켓 피어 IP 검사를 건너뛰고 Host·Origin·좌석 토큰만으로 막는다. `DD_AUTH_PUBLIC_HOST` 없이 켜면 기동을 중단한다 |
 | `DD_AUTH_PUBLIC_HOST` | (없음) | 배포 도메인. 스킴·포트·경로 없이 호스트명만(`my-service.onrender.com`). 형식이 어긋나거나 사설/루프백 주소면 기동을 중단한다 |
-| `DD_AUTH_BIND` | 옵트인별 기본값 | 명시 지정 시 IP 리터럴만(위 릴레이 규칙과 동일 판정 함수 공유) |
+| `DD_AUTH_BIND` | 옵트인별 기본값 | 명시 지정 시 IP 리터럴만(`security.js` 의 `resolveBindAddress` 공유) |
+| `DD_AUTH_TLS_CERT` · `DD_AUTH_TLS_KEY` | (없음) | #276 네이티브 HTTPS(LAN 로그인용). 인증서·개인 키 PEM **절대 경로** 둘 다 주면 같은 포트·핸들러·WebSocket 을 HTTPS/WSS(TLS 1.2+)로 열고 안내 주소도 `https://` 다. 둘 다 없으면 기존 HTTP 그대로(Render 는 엣지 TLS 라 쓰지 않는다). 하나만·상대 경로·읽기 실패·PEM 오류·키 불일치면 HTTP 로 내려가지 않고 기동을 중단한다(사유는 오류 코드만). 개인 키는 Git 밖에 둔다. 인증서가 접속 주소 이름(내부망 IP)을 담고 접속 기기가 그것을 신뢰해야 한다 — 발급·신뢰 등록은 실행기(Mars) 몫 |
 
 ```
 DD_AUTH_PUBLIC_DEPLOY=1 DD_AUTH_PUBLIC_HOST=<배정된 도메인> npm start
@@ -66,8 +58,8 @@ WS 업그레이드 분당 60회, 인증 실패 5분에 10회로 차단. `X-Forwa
 **클라이언트 주소 판정 재확인(정정)**: 공개 방(생성·목록·참가·재개)은 전부 `netOpenCredentialSocket()`
 한 곳만 거치며(`demo/index.html`), 이 함수는 `netPublicAddr()`(= `location.host`)에 `location.protocol`
 기준으로 `ws:`/`wss:`를 붙일 뿐 도메인 이름을 거부하는 판정(`netParseAddr`)을 전혀 거치지 않는다. 그
-판정은 위 "클라이언트 쪽 목적지 제한 (#63)"에 적힌 **구 코드 접속 릴레이**(수동 주소 입력, `server.js`
-8080 전용) UI에만 쓰인다 — 의도된 설계이고 이 공개 배포 경로와는 무관하다. 즉 **공개 방 기능은 도메인
+판정은 위 "클라이언트 쪽 목적지 제한 (#63)"에 적힌 **구 코드 접속 릴레이**(수동 주소 입력, 화면 노출 없음 — #276 이후 `test/relay/server.js`
+테스트 fixture) 경로에만 쓰인다 — 의도된 설계이고 이 공개 배포 경로와는 무관하다. 즉 **공개 방 기능은 도메인
 배포 자체로 막히지 않으며, 이를 풀기 위한 별도 클라이언트 수정이나 CJ 승인은 필요하지 않다.** 다만 이
 경로가 실제 인터넷 클라이언트 ↔ Render 배포 사이에서 브라우저로 끝까지 검증된 적은 이 세션에서 없다 —
 실배포 후 실제 접속 확인이 남은 항목이다. 전체 근거는
@@ -247,8 +239,8 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
   처음부터 TLS · 사용자·비밀번호는 URL 인코딩) 과 `DD_MAIL_FROM` 이 **둘 다** 있어야 켜진다. 없거나 잘못되면 **있는 아이디**의 재설정 요청이
   `503 E_MAIL_UNAVAILABLE`(없는 아이디는 먼저 404). 기동 로그는 "SMTP 설정됨/미설정"만 찍고 값·오류는 찍지 않는다(잘못된 URL 도 "미설정"으로 보인다).
   URL 은 nodemailer 에 넘기지 않는다 — nodemailer 는 URL 질의로 `requireTLS`·`ignoreTLS`·`secure`·`tls.*`·`debug`·`service` 를 덮을 수 있어서,
-  서버가 호스트·포트·계정만 뽑고 TLS 옵션(`secure`/`requireTLS`, `ignoreTLS:false`)은 고정한다. 인증서 검증을 끄거나 평문으로 낮추는 설정 경로는 없다. **현재 메일 설정이 없으므로 실제 받은편지함
-  발송은 검증되지 않았다** — 자격 증명이 주어지기 전에는 이메일 재설정이 운영 준비됐다고 말할 수 없다.
+  서버가 호스트·포트·계정만 뽑고 TLS 옵션(`secure`/`requireTLS`, `ignoreTLS:false`)은 고정한다. 인증서 검증을 끄거나 평문으로 낮추는 설정 경로는 없다. 실제 받은편지함 발송은 해당 실행 환경의 SMTP 설정과 수신 QA 결과로 판정한다.
+  기존 로컬 QA SMTP 설정은 보존하며 Render 운영 설정과 수신 검증은 별도로 준비한다.
 - **오류는 일반화**: 틀린 비밀번호·없는 아이디(로그인), 틀림·만료·재사용 코드·없는 아이디(코드 확인)는 같은 응답이다. 가입의
   `E_ID_TAKEN`·`E_NICKNAME_TAKEN` 과 재설정 요청의 `E_ID_NOT_FOUND`(CJ 2026-09-27 — 아이디 존재를 알려 준다, IP 예산이 열거 속도를 묶는다)는 존재를 드러낸다.
 - **시도 제한**: 로그인·이메일 등록 실패는 아이디별 15분 10회(없는 아이디도 똑같이 잠긴다, 검증 전에 센다 — 메모리라 재시작하면 풀린다).
@@ -257,6 +249,7 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
   공개 배포(`DD_AUTH_PUBLIC_DEPLOY=1`)는 TLS 가 엣지에서 끝나므로 `X-Forwarded-Proto: https` **와** 브라우저 `Origin` 의 `https:` 스킴을
   **둘 다** 요구한다(평문 HTTP 페이지 Origin + 위조 XFP 는 거부). 헤더는 전송 보안의 증명이 아니다 — 컨테이너가 플랫폼 엣지를 통해서만
   닿는다는 배포 전제 위에서만 성립한다.
+  LAN 에서 로그인하려면 `DD_AUTH_TLS_CERT`·`DD_AUTH_TLS_KEY`(네이티브 HTTPS)를 쓴다 — 실제 TLS 소켓이면 Secure 쿠키와 함께 받는다. 내부망이라는 사실이나 `X-Forwarded-Proto` 를 TLS 로 치지 않는다.
 - **CSRF**: 상태를 바꾸는 요청은 POST + `Content-Type: application/json` + 같은 출처 `Origin` 필수, 본문 2KB 상한.
 - **저장**: `002_accounts.sql`(계정·세션) + **`003_email_single_login.sql`**(추가만 — 002 는 적용된 DB 가 있어 고치지 않는다):
   `accounts.login_gen`·`email`·`email_norm`(유일)·복구 열 NULL 허용, `sessions.login_gen`, `password_resets`(계정당 1행). 003 은 계정·비밀번호·세션 행을
@@ -270,6 +263,12 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
   WS 업그레이드의 세션 조회가 도는 동안 도착한 폐기는 그 조회에 기록돼, 폐기 전 상태를 읽은 조회로는 소켓이 인가되지 않는다(401).
 
 설계·검증 근거는 [`docs/milestone/v0.4.11/issues/259/Jupiter/report.md`](../docs/milestone/v0.4.11/issues/259/Jupiter/report.md) 가 원본이다.
+
+## 테스트 전용 릴레이 fixture (`test/relay/server.js`)
+
+아래는 구 코드 접속 릴레이의 보안 계약이다. 게임 화면에는 코드 접속 경로가 없고(#217 공개 로비가 유일한 온라인 진입) 실행
+스크립트·실행기도 없다. 이 서버는 `test/test.js`·`test-security.js`·`test-config.js`·`test-static-load.js` 가 임의 포트로 띄워
+공유 `security.js`(접근 코드·Origin·Host·정적 경로·요청 예산)를 실서버로 검증하는 데만 쓴다.
 
 기동하면 콘솔에 **접속 주소**와 **접속 코드**가 서로 다른 줄에 따로 출력된다.
 
@@ -321,11 +320,7 @@ new WebSocket('ws://<서버주소>/', ['digit-duel.v1', accessCode]);
 | 기본 | `127.0.0.1` | 이 PC 만 |
 | `DD_LAN=1` | `0.0.0.0` | 같은 공유기의 사설 대역만 (10.x · 172.16~31.x · 192.168.x · 링크 로컬) |
 
-```
-npm run start:relay:lan    # 또는  node server.js --lan  /  DD_LAN=1 npm run start:relay
-```
-
-Windows 에서는 `LAN서버시작.bat` 더블클릭이 위 `node server.js --lan` 과 같은 경로다.
+LAN 모드는 `--lan` 인자 또는 `DD_LAN=1` 이다(테스트가 자식 프로세스로 줄 때만 쓴다).
 
 **외부망(WAN) 공개 경로는 없다.** LAN 모드에서도 피어 IP 가 사설 대역이 아니면 HTTP·WebSocket 모두
 거부한다(공인 IP 는 항상 거부). 포트포워딩·터널로 외부에 노출하는 것은 지원 범위 밖이며,
@@ -438,18 +433,14 @@ WebSocket 업그레이드는 별도 버킷(`upgradeBuckets`, 분당 60)과 `Atte
   거부된다. 서버가 서빙하는 `http://<서버주소>` 페이지로 접속하는 흐름을 사용한다. 클라이언트는
   `file://` 로 열렸을 때 메뉴에 그 사실과 대안 주소를 표시한다 (#63).
 - **클라이언트 쪽 목적지 제한 (#63)**: 코드는 주소 칸이 가리키는 서버로 전송되므로, 클라이언트
-  (`demo/index.html`·`test-client.html`)는 `localhost` 와 루프백·사설·링크로컬 **IP 리터럴**만 접속
+  (`demo/index.html`)는 `localhost` 와 루프백·사설·링크로컬 **IP 리터럴**만 접속
   대상으로 인정하고 도메인 이름·공인 IP·`user:pw@호스트` 는 소켓 생성 전에 거부한다. 서버의
   `isAllowedHost` 정책과 같은 범위라, 정상 서버가 그 밖에 있을 수 없다.
-- **`test-client.html`**: 주소·접속 코드 분리 입력과 `[digit-duel.v1, code]` 하위 프로토콜 제시로
-  갱신했다 (#63). 다만 이 파일은 정적 서빙 루트(`../demo`) 밖에 있어 `file://` 로 열면 Origin 이
-  거부된다 — 쓰려면 `demo/` 로 복사해 `http://<서버주소>/test-client.html` 로 연다. 이 파일의 목적지·
-  코드 방어 경계는 `node demo/test/regression/smoke_testclient.js` 가, 서버 쪽 계약은 `npm test` 가 덮는다.
 
 ## 테스트
 
 ```
-npm test              # 아래 다섯 다
+npm test              # 루트 회귀(test/) + test:authoritative 전부
 npm run test:protocol # 매칭 / 양방향 릴레이 / 이탈 알림 / 대기 슬롯 정리
 npm run test:security # 인증·경로·헤더·한도·메시지 검증 (단위 + 통합)
 npm run test:config   # 기동 설정 fail-closed 경계 (DD_ACCESS_CODE·DD_BIND)
@@ -460,13 +451,13 @@ npm run test:accounts # #259 계정·단일 로그인·이메일 코드 재설�
 npm run test:profile  # #260 프로필·대표 하수인·전적 기록(1회)·파일 아웃박스(상한·제약 위반·재시작 재생·깨진 줄·쓰기 실패)·WS reps (메모리 대역, DD_TEST_DATABASE_URL 이면 실제 Postgres)
 npm run test:lobby    # #261 방 이름 경계·목록 상태/순서/공개 필드·참가 경합·시작된 방 참가 거부·재접속 roomName·rtt 왕복 (DB 없음)
 npm run test:emotes   # #262 이모티콘 허용 ID·전용 응답·연타·토큰 펜싱·상대 단절/재접속 쿨다운 유지·단계별 전송·게임 상태 불변 (DB 없음)
+npm run test:tls      # #276 네이티브 HTTPS 옵트인 — 임시 자체 서명 인증서(openssl 필요)로 HTTPS 페이지·로그인 Secure 쿠키·모르는 CA 거부·평문 차단·WSS Origin·짝 누락/키 불일치 fail-closed (DB 없음)
 ```
 
 실제 Postgres 로 같은 계정 시나리오를 돌리려면(그 DB 의 표를 지운다 — 전용 테스트 DB 에만):
-`DD_TEST_DATABASE_URL=postgres://… npm run test:accounts` · 서버 프로세스 2클라이언트 스모크(기동 게이트·재시작 뒤 세션 유지):
-`DD_TEST_DATABASE_URL=postgres://… node authoritative/test/smoke-issue259-pg.js`.
+`DD_TEST_DATABASE_URL=postgres://… npm run test:accounts`.
 
-`test-security.js` 가 덮는 범위:
+`test/test-security.js` 가 덮는 범위:
 
 - **단위(I/O 없음)** — IP 정규화·루프백/사설 판정, 상수시간 코드 비교, 정적 경로 판정(이탈·이중
   인코딩·역슬래시·숨김 파일·제어 문자·확장자), 릴레이 봉투 검증(바이너리·예약 키 `type`·크기·JSON·
@@ -475,23 +466,16 @@ npm run test:emotes   # #262 이모티콘 허용 ID·전용 응답·연타·토�
   쿼리스트링 코드 거부, `[마커, 코드]` 접속 성립과 응답에 코드가 반향되지 않음, IP당 연결 수 한도,
   초과 페이로드(1009)·바이너리(1003) 종료, 정상 매칭·릴레이
 
-`test-config.js` 가 덮는 범위:
+`test/test-config.js` 가 덮는 범위:
 
 - **단위** — `DD_ACCESS_CODE` 판정(공백·비ASCII·제어 문자·길이·쉼표/세미콜론·공개 마커),
   `DD_BIND` 판정(옵트인 유무별 허용·거부, IPv6 정규화)
 - **기동** — 위 위반 설정 8종이 각각 종료 코드 1 로 중단하고 `listen` 하지 않으며 실패 로그에
   코드 값을 남기지 않음, 정상 설정(`DD_BIND=127.0.0.1` + 유효 코드)은 그대로 기동함
 
-`test-launcher.js` 가 덮는 범위 (#75):
+`test/test-launcher.js` 는 유일한 실행기 `LAN모드실행.bat` 의 고정 목적 계약을 본다(Windows 전용, 다른 OS 에서는 SKIP).
 
-- 공백·한글이 섞인 임시 폴더에 두 실행기를 복사하고, `server.js` 자리에 argv 를 찍는 스텁을 둔 뒤
-  더블클릭과 같은 방식으로 호출한다 — `서버시작.bat` 은 인자 없이, `LAN서버시작.bat` 은 `--lan` 정확히
-  1개로 기동, 둘 다 실행기 폴더로 이동하고 `DD_LAN` 환경 변수를 남기지 않음, `server.js` 종료 코드 전파
-- **고정 목적 계약** — 호출 방식이 달라져도 각 실행기의 모드와 `server.js` 에 넘어가는 인자가 그대로다.
-  실행기가 외부 문자열을 명령줄로 펼치지 않는다는 것까지 표식으로 확인한다
-- 스텁은 포트를 열지 않고 `node_modules` 를 미리 만들어 두므로 서버도 `npm install` 도 타지 않는다
-
-`test-static-load.js` 가 덮는 범위 (#201):
+`test/test-static-load.js` 가 덮는 범위 (#201):
 
 - **예산 계약** — HTML 참조와 실제 자산 디렉터리에서 만든 프리로드 코퍼스(54건)가 선언 예산(57건) 안에 있는지
 - **정상 로드는 전량 200** — 냉시작 1명(54건) · 같은 IP 동시 2명(108건) · 같은 버킷 연속 3회(162건).
@@ -501,5 +485,5 @@ npm run test:emotes   # #262 이모티콘 허용 ID·전용 응답·연타·토�
 - **결정적 판정** — 시간 인자를 넣은 제품 `TokenBucket` 으로 수정 전 예산(60·30)이 같은 요청을 거부하고
   수정 후(342·114)는 전부 받는 것, 소진된 버킷이 같은 시각 요청을 거부하고 회복 후에는 받는 것을 본다
 
-서버를 띄우는 네 테스트는 모두 `PORT=0`(임의 포트) + 루프백 바인드로 자식 서버를 따로 띄우고 실행기
-테스트는 서버를 아예 띄우지 않으므로, 이미 떠 있는 서버(8080)를 건드리지 않는다.
+서버를 띄우는 테스트는 모두 `PORT=0`(임의 포트) + 루프백 바인드로 자식 서버를 따로 띄우고 실행기
+테스트는 서버를 아예 띄우지 않으므로, 이미 떠 있는 서버를 건드리지 않는다.

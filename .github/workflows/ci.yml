@@ -133,7 +133,6 @@ jobs:
           node demo/test/regression/smoke_own_side.js
           node demo/test/regression/smoke_online.js
           node demo/test/regression/smoke_online_sync.js
-          node demo/test/regression/smoke_testclient.js
           node demo/test/regression/smoke_minion_art.js
           node demo/test/regression/smoke_issue114.js
           node demo/test/regression/smoke_tutorial.js
@@ -240,7 +239,7 @@ jobs:
         working-directory: server
 
       # 각 테스트는 PORT=0(임의 포트)·루프백으로 자식 서버를 띄운다 — 러너 포트 충돌 없음.
-      # test-launcher.js 는 Windows 전용이라 여기서는 스스로 SKIP 한다 (실제 검증은 아래 server-launcher-windows).
+      # test/test-launcher.js 는 Windows 전용이라 여기서는 스스로 SKIP 한다 (실제 검증은 아래 server-launcher-windows).
       - name: 서버 회귀 (프로토콜·보안·설정·실행기)
         run: npm test
         working-directory: server
@@ -260,9 +259,9 @@ jobs:
         run: node demo/test/integration/smoke_public_eco_live.js
 
   # ── B2. Windows 실행기 회귀 ──────────────────────────────────────────────────
-  # server/test-launcher.js 는 `if (process.platform !== 'win32') { SKIP; exit(0) }` 라
-  # Linux 잡에서는 **한 건도 검증하지 않는다**. 배치 실행기(서버시작.bat · LAN서버시작.bat)의
-  # 인자 무시·모드 고정·주입 방지·종료 코드 전파 계약을 실제로 확인하려면 Windows 러너가 필요하다.
+  # server/test/test-launcher.js 는 `if (process.platform !== 'win32') { SKIP; exit(0) }` 라
+  # Linux 잡에서는 **한 건도 검증하지 않는다**. 단일 실행기(LAN모드실행.bat, #276)의
+  # 인자 무시·고정 명령·주입 방지·종료 코드 전파·의존성 설치 실패 중단·수명주기 소유 판정을 실제로 확인하려면 Windows 러너가 필요하다.
   server-launcher-windows:
     name: B2. Windows 실행기 회귀
     runs-on: windows-2025
@@ -274,9 +273,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-      # 스텁 server.js 로만 돌아가므로 npm install 이 필요 없다 (테스트가 node_modules 를 미리 만든다).
+      # 스텁 도구·스텁 npm 으로만 돌아가므로 npm install 이 필요 없다 (테스트가 node_modules 를 미리 만든다).
       - name: 배치 실행기 계약 회귀
-        run: node test-launcher.js
+        run: node test/test-launcher.js
         working-directory: server
 
   # ── C. 문서 무결성 (링크·이미지) ──────────────────────────────────────────────

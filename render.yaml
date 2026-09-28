@@ -43,7 +43,7 @@
 #   - **클라이언트 주소 판정 재확인(정정)**: 공개 방(생성/목록/참가/재개)은 전부 netOpenCredentialSocket()
 #     한 곳만 거치고(demo/index.html), 그 함수는 netPublicAddr() = location.host 에 location.protocol
 #     기준 ws/wss를 붙일 뿐 도메인 이름을 거부하는 판정(netParseAddr)을 전혀 거치지 않는다. 그 판정은
-#     구 코드 접속 릴레이(수동 주소 입력, server/server.js 8080 전용) UI에만 쓰인다 — 의도된 설계이고
+#     구 코드 접속 릴레이(수동 주소 입력, 현재는 테스트 전용 server/test/relay/server.js 8080) UI에만 쓰인다 — 의도된 설계이고
 #     이 서비스와 무관하다. 즉 **공개 방 기능은 도메인 배포 자체로 막히지 않으며 별도 CJ 승인·클라이언트
 #     수정을 요구하지 않는다.** 다만 이 코드 경로가 실제 인터넷 클라이언트↔Render 배포 간에 브라우저로
 #     끝까지 검증된 적은 이 세션에서 없다 — 실배포 후 실제 접속 확인이 남은 항목이다.

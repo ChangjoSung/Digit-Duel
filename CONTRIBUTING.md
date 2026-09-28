@@ -51,13 +51,13 @@ It needs no secrets and requests only `contents: read`. Six jobs run in parallel
 | --- | --- | --- |
 | `rules-headless` | A. 규칙 회귀·AI 완주 (헤드리스) | Headless rule regressions over `demo/index.html`, current approved balance and tutorial contracts, the fixed-baseline comparison, the board orientation audit, and the AI vs AI completion gate |
 | `server` | B. 서버 (프로토콜·보안·설정) | `npm ci` then `npm test` in `server/` — relay protocol, security, configuration, launcher |
-| `server-launcher-windows` | B2. Windows 실행기 회귀 | `server/test-launcher.js` on a Windows runner, where it is not skipped |
+| `server-launcher-windows` | B2. Windows 실행기 회귀 | `server/test/test-launcher.js` on a Windows runner, where it is not skipped — launcher argv/exit contract, server ownership, and the LAN HTTPS certificate checks (temporary certificates via Git for Windows `openssl.exe`; nothing is added to any trust store) |
 | `docs-integrity` | C. 문서 링크·이미지 무결성 | The link checker's regression suite, supported relative Markdown/HTML links and images in tracked `*.md`, and the README media tool's self-check and offline verification |
 | `assets-integrity` | D. 납품 아트 자산 무결성 | Delivered minion, king, and companion PNGs and manifests match, without overwriting them, plus the art pipeline tools' own tests. Runs on a Windows runner — see below |
 | `roblox-luau` | E. Roblox 클라이언트·규칙 (Luau) | Luau compilation of `roblox/src`, undeclared identifier checks, rule/AI regressions, Roblox API and local-variable budget checks, static UI layout checks, and a Rojo build |
 
 Jobs A, B, C, and E run on `ubuntu-24.04`. B2 and D run on Windows, for different
-reasons: B2 because `server/test-launcher.js` skips itself off `win32`, and D
+reasons: B2 because `server/test/test-launcher.js` skips itself off `win32`, and D
 because it compares **delivered bytes**. The same `Pillow==12.3.0` pin passed on
 Windows and failed on `ubuntu-24.04` for 14 of the 28 delivered PNGs, so job D
 pins the environment the assets were baked in — `windows-2025`, Python 3.14.3.

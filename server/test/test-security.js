@@ -1,10 +1,11 @@
 // #62 보안 회귀 테스트 — 순수 유틸 단위 + 실서버 통합.
 // 서버는 PORT=0(임의 포트)·루프백 바인드로 따로 띄우므로 이미 떠 있는 8080 을 건드리지 않는다.
 const { spawn } = require('child_process');
+const RELAY_DIR = require('path').join(__dirname, 'relay'); // 테스트 전용 릴레이 fixture
 const http = require('http');
 const path = require('path');
 const WebSocket = require('ws');
-const S = require('./security');
+const S = require('../security');
 
 const CODE = 'TESTCODE2345';           // DD_ACCESS_CODE 로 주입 — 콘솔 파싱 없이 결정적으로 검증
 const MARKER = S.PROTOCOL_MARKER;
@@ -54,7 +55,7 @@ function unitTests() {
   ok(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{10}$/.test(S.generateAccessCode()), '생성 코드 알파벳·길이');
 
   section('정적 경로');
-  const root = path.join(__dirname, '..', 'demo');
+  const root = path.join(__dirname, '..', '..', 'demo');
   ok(S.resolveStaticPath(root, '/index.html').ok && S.resolveStaticPath(root, '/').ok, '정상 경로·디렉터리 인덱스');
   // %2F 로 감춘 구분자는 URL 정규화를 통과하므로, 디코드 후 세그먼트 검사가 마지막 방어선이다.
   rejects(S.resolveStaticPath(root, '/a%2F..%2Fserver/security.js'), 'traversal', '인코딩 구분자 경로 이탈');
@@ -95,7 +96,7 @@ function unitTests() {
 function startServer() {
   return new Promise((resolve, reject) => {
     child = spawn(process.execPath, ['server.js'], {
-      cwd: __dirname,
+      cwd: RELAY_DIR,
       env: { ...process.env, PORT: '0', DD_LAN: '0', DD_ACCESS_CODE: CODE, DD_MAX_CONNECTIONS_PER_IP: '2' },
       stdio: ['ignore', 'pipe', 'inherit'],
     });

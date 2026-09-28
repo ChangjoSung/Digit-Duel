@@ -1,14 +1,14 @@
 # Digit-Duel — Mercury_PD 인수인계
 
-## 현재 체크포인트 — 2026-09-28 #232 제품 통합·정리 완료 / Render 설정 NO-GO
+## 현재 체크포인트 — 2026-09-28 #276 CJ QA PASS·병합 승인
 
-- 최신 CJ가 승인한 stage·commit·push·PR·마일스톤 통합 및 보존 후 정리를 완료했다. PR269~274는 각 현재 필수 CI6/6 확인 후 병합, 제품 통합 기준87944d5다. 자세한 근거와 미완료 운영 조건은 [#232 단일 조정 원장](../milestone/v0.4.11/issues/232/Mercury/integration-review.md)을 따른다.
-- 첫 독립 통합 QA의 누락 테이블 false-ready는 REVISE/failed로 보존했다. Jupiter 수정 뒤 fresh Sol/xhigh/default/full/never Saturn이 실제 PG의 5원장·33열·두 시작 경로·readiness503/health200·복구·원본1687파일 불변을 PASS로 검증했다. Opus5.5/high/bypass·Sol/xhigh native/currentJSONL/footer와 새 turn_started·preamble/capability를 GO/완료에 대조했다. actualnull과 rawtierABSENT는 관측대로 유지했다.
-- 8개 Worker 작업은 명시 정산 후 정확 terminal을 닫고 ACK했다. 첫 QA failed는 성공으로 소급하지 않는다. 남은 Worker와 회수 대기0.
-- 기존 작업 트리8·로컬 브랜치8·원격 브랜치6을 납품 통합·ZIP SHA·Git bundle 확인 후 제거했다. 원본 C:/Users/pc_77/orca/Digit-Duel은 dirty/untracked 및 로컬HEAD33490f9 그대로다. Release 검토에는 별도 release-review-v0.4.11을 최신 원격 milestone 기준으로 사용한다. 원본을 reset/pull/stage하지 않는다.
-- QA8085·PG55462 및 임시 검증 서비스 종료. DB·계정·SMTP·원본 보존, PG18 cold backup1006파일 SHA검증. 게임 외8084 유지.
-- 실제 Render는 Free/Singapore/main 기존d0bc196, 프로젝트PG·DATABASE_URL·SMTP없음, FreeSMTP차단. 현재 배포 NO-GO. main Release·배포·Render자원생성·결제·요금제변경은 CJ의 별도 지시 전 실행하지 않는다.
-- GitHub 기존 완료조건만 갱신, 신규댓글·중복TODO·Issueclose0. #232/#264와 #259 실제 배포 조건은 미체크 유지. 게임 규칙은 현행 GDD13/23/24, 모델은 WORKER_MODELS.md와 worker-models.json의 최신 #250 계약을 따른다. 아래는 과거 기록이며 최신 실행값으로 재사용하지 않는다.
+- 현행 원장은 [#276 Mercury 보고](../milestone/v0.4.11/issues/276/Mercury/report.md)다. 최초 HTTP 안내와 루프백 전용 QA의 누락을 수정해 실제 LAN HTTPS 가입·로그인·보안 쿠키·인증 WSS, BAT2/2·인증서/키/신뢰·PG 재사용을 검증했다. 마지막 가상 주소 로그 수정도 독립 검토 PASS다. 기존 GitHub 완료 조건 한곳만 갱신하며 댓글·중복 TODO·Issue close를 만들지 않는다.
+- 실제 파일은 C:/Users/pc_77/orca/workspaces/Digit-Duel/release-review-v0.4.11/server/LAN모드실행.bat, 현재 접속 주소는 https://192.168.3.30:8085/. CJ가 stage·commit·push·PR·milestone/v0.4.11 병합을 승인했다. 기준 HEAD264010d에서 infra/276-lan-launcher PR을 작성해 필수 CI6개를 확인한다. 원본 HEAD33490f9·dirty/untracked는 보존하며 pull/reset하지 않는다. main Release·Render 배포는 승인되지 않았다.
+- 서버 정리는 BAT4→1, 루트 회귀5→server/test, 사용하는 구 릴레이→fixture, 미사용 test-client·중복/수동 DROP smoke 제거와 참조 정정이다. TLS는 기존 보호 규칙과 Render 기본 경로를 유지하며 전용 CA:false leaf만 CurrentUser Root에 등록한다. 현재 thumb4E10A2D305BA6FBAB2C03E4F5174EC99C02A5DC1은 CJ 재실행용으로 유지했다.
+- TLS 도입 후 전체 npm test30/30·exit0, launcher49/0·HTTP24/0·accounts125/0. 주소 로그 정정 TLS13/0·exit0(PS OpenSSL PATH fixture 실패 후 Git Bash 재시도). Saturn 실제 브라우저 및 최종 좁은 검토 PASS, 검사 재실행 없이 변경 범위를 확인했다. 기존 계정16·세션16·전적10·복구0 행 digest 동일, QA용 계정1개만 삭제, 비밀/outbox 해시 동일. 다른 물리 기기/방화벽·창 X·이번 정리의 실메일 발송은 미검증이다.
+- 게임8085는 종료했고 시작 전 baseline PG29932/127.0.0.1:55462와 다른 앱PID4956/8084를 보존했다. Run run_016f80765b2b의 완료 Worker들은 영수증 보관 뒤 정확한 native terminal close로 실제 종료했다. external_terminal retained metadata를 실행 종료로 오인하지 않는다. 병합 뒤 review 트리는 최신 통합본 검토와 승인된 Mercury_PD 인수인계에 재사용한다.
+- 현재 모델은 Mars/Jupiter Opus5.5/high/No Fast/bypass, Saturn Sol6/xhigh/default/full/never다. 현재 argv·화면·JSONL·preamble/capability·native turn을 검증했다. requested/effective=null·미기록 tier는 보존했다. 마지막 start_unknown은 held paste Enter1회 후 실제 turn_started와 cap를 재확인해 복구했으며 앞선 실패를 정상 시작으로 소급하지 않는다. 원본 보고·ZIP60파일/SHA·모델/정리 영수증은 C:/Users/pc_77/orca/archives/Digit-Duel/server-cleanup-2026-09-28에 있다.
+- #232 통합·기존 작업 트리 정리는 완료다. 현재 Render DB·SMTP 미준비 NO-GO이며 CJ가 직접 유료 전환한 뒤 PD에게 별도로 알려 배포를 지시할 때까지 기다린다. 이번 인수인계는 gpt-6-sol/xhigh/default·danger-full-access·approval never로 승인됐다. 근거는 [#232 원장](../milestone/v0.4.11/issues/232/Mercury/integration-review.md)을 따른다. 아래 이전 날짜 항목은 과거 기록이다.
 
 ## 이전 체크포인트 — 2026-09-28 07:26 KST #238 로컬 시각·회귀 QA PASS
 
