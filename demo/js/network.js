@@ -21,7 +21,7 @@ const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncMo
      소켓 단절(비의사)과 명시적 leave(의사)를 구분한다. explicitLeave는 netLeaveRoom()이 close() 직전에만 세운다.
      epoch/tokenGen은 room_opened/room_joined/room_resumed의 실제 필드(protocol.md v2 §2)를 그대로 담는다 —
      tokenGen은 재개(resume) 성공 때만 회전한다(seatToken.js resume()). resumeDeadline은 Date.now() 기준 ms epoch. */
-  explicitLeave:false, epoch:null, tokenGen:0, players:null, // #259 players: 서버가 준 좌석별 공개 닉네임 [좌석0, 좌석1] (모르면 null)
+  explicitLeave:false, epoch:null, tokenGen:0, players:null, reps:null, // #259 players: 서버가 준 좌석별 공개 닉네임 [좌석0, 좌석1] (모르면 null) · #260 reps: 좌석별 입장 때 고정된 대표 하수인 ID
   resuming:false, resumeDeadline:0, resumeAttempts:0, resumeTimer:null, resumeLastAttempt:0};
 function netActor(){ // 지금 게임이 입력을 기다리는 플레이어
   if(!S) return null;
@@ -332,7 +332,8 @@ const NET_LOBBY_MSG={
   dropBeforeReady:"연결이 끊겼습니다. 방 목록으로 돌아가 다시 참가해 주세요.",
   full:"지금은 방이 가득 찼습니다. 잠시 후 다시 시도해 주세요.",
   busy:"요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.",
-  sameAccount:"같은 계정끼리는 대전할 수 없습니다. 다른 계정으로 참가해 주세요."
+  sameAccount:"같은 계정끼리는 대전할 수 없습니다. 다른 계정으로 참가해 주세요.",
+  backlog:"지난 경기 결과를 저장하는 중이라 지금은 새 대전을 시작할 수 없습니다. 잠시 후 다시 시도해 주세요." // #260 서버 E_RESULTS_BACKLOG — 내부 사정(대기 건수·파일)은 싣지 않는다
 };
 function netLobbyMsg(kind){ NET.lobbyMsg=kind?{kind,text:NET_LOBBY_MSG[kind]||kind}:null; }
 function netRoomsHtml(){
@@ -451,6 +452,7 @@ function netHandlePublicMessage(m){
   if(!m||typeof m!=="object") return;
   /* #259 서버 권위 공개 닉네임(첫 프레임·room_state의 players[좌석]) — 서버 닉네임 규칙에 맞는 값만 받는다(화면 HTML 에 그대로 들어간다) */
   if(Array.isArray(m.players)) NET.players=[0,1].map(i=>typeof m.players[i]==="string"&&ACCT_NICK_RE.test(m.players[i])?m.players[i]:null);
+  if(Array.isArray(m.reps)) NET.reps=[0,1].map(i=>lobbyRepOk(m.reps[i])?m.reps[i]:null); // #260 일반 30종 ID 만 — 그 밖의 값은 그리지 않는다
   if(m.type==="lobby_ready"){ NET.lobbyOnly=true; NET.roomsLoading=true; render(); netSend({v:1,t:"list_rooms"}); return; }
   if(m.type==="lobby_rooms"){ NET.rooms=Array.isArray(m.rooms)?m.rooms:[]; NET.roomsLoading=false; NET.roomsLoaded=true; if(NET.lobbyMsg&&NET.lobbyMsg.kind!=="gone") netLobbyMsg(null); render(); return; }
   if(m.type==="room_opened"||m.type==="room_joined"){
@@ -507,7 +509,7 @@ function netHandlePublicMessage(m){
     if(m.code==="E_SUPERSEDED"&&NET.roomId!=null){ netAbandonResume("🌐 다른 창에서 이 경기에 다시 접속했습니다 — 이 창은 로비로 돌아갑니다."); netListRooms(); return; }
     if(!NET.roomId){ // 방 진입 전(목록·생성·참가) 실패 — 카드 안에 지속 상태로 남기고 목록을 최신으로
       NET.lobbyPending=null;
-      netLobbyMsg(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_ROOM_FULL"].includes(m.code)?"gone":m.code==="E_CAPACITY"?"full":m.code==="E_RATE_LIMITED"?"busy":m.code==="E_SAME_ACCOUNT"?"sameAccount":"loadFail");
+      netLobbyMsg(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_ROOM_FULL"].includes(m.code)?"gone":m.code==="E_CAPACITY"?"full":m.code==="E_RATE_LIMITED"?"busy":m.code==="E_SAME_ACCOUNT"?"sameAccount":m.code==="E_RESULTS_BACKLOG"?"backlog":"loadFail");
       render();
       if(["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_MATCH_STARTED","E_CAPACITY","E_DRAINING"].includes(m.code)) netListRooms();
       return; }

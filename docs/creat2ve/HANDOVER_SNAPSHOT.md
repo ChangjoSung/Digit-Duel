@@ -1,6 +1,12 @@
 # Digit-Duel — 인수인계 스냅샷
 
-## 현재 기준 (2026-09-24 KST)
+## 최신 체크포인트 — 2026-09-27 18:55 KST #260 CJ QA PASS·Git 정리 승인·#261 구현 승인
+
+- **#259**: CJ 최종 로컬 QA PASS와 커밋·PR 작성 승인에 따라 b865133 제품 커밋, 실제 원격 milestone bd4c90c 통합24945b7, 권한·QA·화면 기록68863dc를 feature에 push했다. [PR #269](https://github.com/ChangjoSung/Digit-Duel/pull/269)는 검토 가능 상태이며 최종 HEAD68863dc 필수 CI6/6 PASS(run36306785458). fresh Saturn 통합 LOCAL PASS(live46/runtime74), 파일 수정0. 단일 inline probe exit1은 정상 null 기대값 오류이며 그 뒤 privacy 단언 미실행을 원장에 보존했다. HTTPS/Render 검증은 남아 있고 마일스톤 병합·Issue close·배포는 승인되지 않았다. 계정 흐름 CJ PASS는 통합 전 검수로 구분한다. 원장은 활성 #259 Mercury/report.md 하나다.
+- **#260**: CJ가 최종 플레이 QA **PASS**를 확인했다. Saturn 최종 로컬 PASS와 앞선 REVISE·수리·검사 제한은 활성 #260 Mercury/report.md 단일 원장에 보존한다. issue-260-account-lobby(HEAD24945b7)의 변경은 미커밋이며 CJ가 권장 순서 착수로 커밋·PR 작성과 필수 원격 CI를 승인했으며 #259 브랜치 기준의 분리 PR로 정리한다. milestone 병합·Issue close·배포 승인 없음. GitHub는 기존 완료 조건 한 목록에 CJ PASS만 반영한다.
+- **Worker·보존·다음 작업**: CJ 지시로 Digit-Duel의 기존 4개 WorkTree에서 완료된 Worker 터미널13개를 정확한 handle로 종료했다(13/13 ptyKilled=true). 재조회 결과 Worker0·Mercury PD1, main Run dispatch57 completed/3 failed·reclaimable0이며 과거 판정은 유지한다. 종료 전후 manifest의35,179개 파일 SHA·4개 HEAD/status 불변을 확인했다(초기 git 열거가 경고한 Unity 초장경로는 검사 범위 밖). WorkTree·dirty/untracked·보고서·CJ 계정/DB·SMTP·백업을 보존했다. QA8081 Node36888/PG34176(55459), QA8082 Node42336/PG31704(55460)는 정상이며 #259 DB에는005를 적용하지 않았다. CJ가 #261 권장안과 권장 구현 순서를 승인했으며 #260 PR/CI 뒤 #261을 별도 트리에서 착수한다. Git/Render 권한 게이트와 고정 모델·full access/never 계약을 유지한다. 아래 날짜별 상태는 이력이다.
+
+## 이전 기준 (2026-09-24 KST · 이력)
 
 - 정식 출시본은 v0.4.10이며, v0.4.11 개발 트랙 `milestone/v0.4.11`의 확인된 원격 HEAD는 `e1285c153cae8d5f419a49b0415e17d35b13341a` (#237 통합)이다. 인수 시 실제 원격 HEAD와 GitHub 상태를 다시 조회한다.
 - [부모 #232](https://github.com/ChangjoSung/Digit-Duel/issues/232)는 OPEN. #233·#234·#241·#235·#253·#236·#237과 구조 선행 #243·#245는 완료됐다. 남은 제품 하위 이슈는 [#238](https://github.com/ChangjoSung/Digit-Duel/issues/238)이며 OPEN·구현 미착수·CJ 별도 착수 지시 대기다.

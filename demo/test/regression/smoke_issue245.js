@@ -8,7 +8,7 @@ const {lockstepDigest}=require("../../../server/authoritative/room");
 const demo=path.join(__dirname,"..","..");
 const index=path.join(demo,"index.html");
 const html=fs.readFileSync(index,"utf8");
-const expected=["data.js","state.js","ui.js","core.js","ai.js","ui-overlays.js","network.js","account.js","bootstrap.js"]; // #259 account.js — 계정·로그인 게이트
+const expected=["data.js","state.js","ui.js","core.js","ai.js","ui-overlays.js","network.js","account.js","lobby.js","bootstrap.js"]; // #259 account.js — 계정·로그인 게이트 · #260 lobby.js — 계정 로비·로딩
 let pass=0,fail=0;
 function ok(value,name){ if(value) pass++; else { fail++; console.error("FAIL: "+name); } }
 

@@ -372,6 +372,9 @@ class Room {
     this._consumedModalSeq = null;
     this.lastFault = null; // 엔진 장애 진단(서버 로그용 — 어떤 프레임에도 싣지 않는다)
     this.onFinalize = null;
+    this.onResult = null; // #260 보드 경기(IN_PROGRESS)가 끝나는 전이에서 정확히 한 번 — 전적 기록(server.js)
+    this.matchId = null;  // #260 보드 경기 시작 시 무작위 id (기록 재시도의 멱등 키)
+    this.startedAt = null;
     // #217 전투 표시 이벤트(fx) — 좌석별 최근 창(engine.js T.__fx 스냅샷). 엔진 자체가 아니라 Room에 둔다:
     // 경기 종료(_finalize)는 TERMINAL_NO_BOARD 전이에서 this.engines를 즉시 null로 비우므로(메모리 해제),
     // "종료 직후 battle=null에도 결과/마지막 타격 표시" 요구를 만족하려면 engines가 살아있는 마지막 순간
@@ -549,6 +552,13 @@ class Room {
     opts = opts || {};
     if (TERMINAL_NO_BOARD.has(this.state)) return false; // 이미 닫힌 룸은 다시 전이하지 않는다
     if (this.state === STATES.FINISHED && state !== STATES.CLOSED) return false; // 확정된 결과는 덮어쓰지 않는다
+    // #260 보드 경기를 떠나는 전이는 IN_PROGRESS 에서 한 번뿐이다 — 알림 여부(notify)와 무관하게 여기서 결과를 뜬다.
+    // 턴은 엔진이 비워지기 전에 읽는다(보드 없는 종료는 아래에서 engines 를 null 로 만든다).
+    const ended = this.state === STATES.IN_PROGRESS ? {
+      matchId: this.matchId, result: result || { type: 'NO_CONTEST', winner: null, reason: state },
+      turns: this.engines ? this.engines[0].S.turnCount + 1 : 0,
+      startedAt: this.startedAt, endedAt: now(),
+    } : null;
     this.state = state;
     if (result) this.result = result;
     if (opts.bump !== false) this.revision += 1;
@@ -562,6 +572,7 @@ class Room {
       for (const T of this.engines) { try { T.scheduler.clear(); } catch (e) { /* noop */ } }
       this.engines = null; // 보드 없는 종료 — 엔진 메모리 해제
     }
+    if (ended && this.onResult) { try { this.onResult(ended); } catch (e) { /* 기록 실패가 종료 전이를 되돌리지 않는다 — 기록기가 스스로 로그한다 */ } }
     if (opts.notify !== false && this.onFinalize) this.onFinalize(state, this.result);
     return true;
   }
@@ -733,6 +744,8 @@ class Room {
     this.engines = engines;
     this._consumedModalSeq = null;
     this.state = STATES.IN_PROGRESS;
+    this.matchId = crypto.randomBytes(16).toString('hex');
+    this.startedAt = now();
     this._syncClock();
     // revision: 이 시작은 ready 명령과 같은 동기 구간 — _handleReady가 이미 한 번 올렸다.
     return { ok: true };

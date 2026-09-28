@@ -345,17 +345,20 @@ check('파일명 규칙·중복 버전 검사를 통과하고 체크섬이 안�
   assert.strictEqual(loaded[0].checksum, mig.sha256(loaded[0].sql));
   assert.ok(/^\d{3}_/.test(loaded[0].name));
 });
-// #259 이후: 계정 스키마는 002 에만 있고(001 은 #264 그대로), 방·경기 영속화는 여전히 범위 밖이다.
-check('계정 스키마는 002 에만 · 방·경기 영속화 스키마는 없다', () => {
+// #259 이후: 계정 스키마는 002 에만 있고(001 은 #264 그대로). #260 이후: 경기 **결과** 기록(match_results)만 005 에 있고,
+// 방·진행 중 경기 상태의 영속화는 여전히 범위 밖이다.
+check('계정 스키마는 002 에만 · 결과 기록은 005 에만 · 방·경기 상태 영속화 스키마는 없다', () => {
   const ms = mig.loadMigrations();
   const first = ms.find((m) => m.version === '001').sql.toLowerCase();
   for (const forbidden of ['create table accounts', 'create table sessions', 'password']) {
     assert.ok(!first.includes(forbidden), `001 에 계정 스키마: ${forbidden}`);
   }
   const all = ms.map((m) => m.sql.toLowerCase()).join('\n');
-  for (const forbidden of ['create table rooms', 'create table matches']) {
+  for (const forbidden of ['create table rooms', 'create table matches', 'create table match_state']) {
     assert.ok(!all.includes(forbidden), `범위 밖 스키마: ${forbidden}`);
   }
+  const results = ms.filter((m) => m.sql.toLowerCase().includes('create table match_results')).map((m) => m.version);
+  assert.deepStrictEqual(results, ['005'], `match_results 는 005 에만: ${results}`);
 });
 
 /* ===== 4. fail-closed 런타임·기동 ===== */

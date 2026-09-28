@@ -163,6 +163,32 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
 403 `E_INSECURE_TRANSPORT` / 403 `E_BAD_ORIGIN` / 415·400 `E_BAD_INPUT` / 429 `E_RATE_LIMITED`. 복구 코드 경로(`/recover`·`/recovery-code`)는
 폐기됐다(404, CJ 2026-09-27).
 
+#### 프로필 · 대표 하수인 · 전적 (#260 — 같은 계정 경계: 세션 쿠키, POST 는 같은 출처 Origin + JSON)
+
+| 경로 | 본문 | 성공 | 오류 |
+|---|---|---|---|
+| `GET /api/profile` | | 200 `{nickname, representativeMinion, stats:{wins, losses}, matches:[최근 20], pendingMatches}` | 401 `E_NO_SESSION` |
+| `POST /api/profile/representative` | `{minionId}` | 200 `{representativeMinion}` — **다음에 들어가는 방부터** | 400 `E_BAD_INPUT`(일반 30종 ROSTER 밖 — 전설·왕·동료 불가) · 401 |
+
+- `matches[i]` = `{result:'WIN'|'LOSS'|'NO_CONTEST', reason, opponentNickname, turns, durationMs, endedAt}` 최신순. `reason` = WIN/LOSS 는 엔진 `winType`
+  (`king`·`edge`·`wipe`·`resign`) 또는 `forfeit`(연결 종료 몰수), NO_CONTEST 는 `both_disconnected`·`server_error`·`server_restart`.
+- 기록 대상: **보드 경기가 시작된(IN_PROGRESS) 온라인 경기만**, 서버 확정 순간(`room._finalize`) 좌석(계정)마다 1행(`005` `match_results`, `UNIQUE(match_id, account_id)`).
+  승·패는 행에서 센다(NO_CONTEST 제외). 경기 전 취소·PVE 는 행이 없다. 시간 = 보드 시작 → 결과 확정(상점·재접속 대기 포함).
+- WS 좌석 프레임(`players` 가 있는 모든 프레임)에 `reps:[좌석0, 좌석1]` — 좌석에 들어갈 때의 대표 하수인으로 고정되고 재접속해도 바뀌지 않는다.
+  공개 방 목록(`lobby_rooms`)에는 닉네임·대표·전적이 없다.
+- 결과 아웃박스(`authoritative/resultOutbox.js`): 서버가 결과를 확정하면 결과 프레임을 보내기 **전에** 로컬 JSONL 파일에 한 줄 append + fsync 하고,
+  DB 에 들어간 것(두 좌석 행을 한 문장으로 — 원자적)이 확인된 뒤에만 그 줄을 지운다(임시 파일 + fsync + rename). DB 장애·제약 위반·프로세스 재시작 중에도
+  완료된 결과를 **버리지 않는다** — 30초마다·기동 직후 다시 쓰고, `UNIQUE(match_id, account_id)` + `ON CONFLICT DO NOTHING` 이라 재생해도 한 번만 남는다.
+  - 경로: `DD_RESULT_OUTBOX`(체크아웃 밖 비공개·영속 디스크 권장 — 파일에 계정 id 가 있다. 새 폴더 0700·파일 0600, Windows 는 새 폴더의 상속을 끊고 현재 사용자만 허용하는 ACL). 없으면 `server/data/match-results-outbox.jsonl`(`.gitignore`).
+    열거나 쓸 수 없으면 DB 켠 서버는 기동하지 않는다. 이미 있는 폴더·파일(`.bad`·`.tmp` 포함)은 검사만 한다 — 다른 계정 권한이 있으면
+    (POSIX group/other 비트 · Windows 현재 사용자·SYSTEM·Administrators 밖의 허용 ACE·소유자) `E_OUTBOX_INSECURE` 로 기동을 거부하고 권한·데이터를 고치지 않는다.
+  - 깨진·형식 밖 줄은 기동 때 `<파일>.bad` 에 덧붙여 보존하고 로그한다(수동 확인). 제약 위반으로 거부된 결과도 아웃박스에 남는다(한 번 로그 · 수동 확인).
+  - 미저장 결과가 200경기 이상이거나 파일 쓰기가 실패한 상태면 새 공식 경기(방 생성·참가)를 WS `E_RESULTS_BACKLOG` 로 거부한다. 진행 중 경기·재접속은 그대로다.
+  - 프로필 `pendingMatches`(정수) = 그 계정이 들어 있는 미저장 결과 수. DB 장애 중 프로필은 503 `E_ACCOUNTS_UNAVAILABLE`. 로그는 오류 코드·건수만(계정 id·원문 없음).
+  - **한계**: 같은 디스크가 남는 동안만 지킨다. 재배포마다 파일 시스템이 사라지는 호스트(Render Free 등)에서는 DB 장애 중 재배포·재시작된 미저장 결과를 잃는다 —
+    그런 곳에서는 영속 디스크를 붙이기 전까지 이 보장을 주장하지 않는다. 한 파일은 한 서버 프로세스만 쓴다.
+- 배포: 기동 게이트가 `005` 적용을 요구한다(`DD_DB_MIGRATE_ON_START=1` 또는 `npm run db:migrate`).
+
 - **형식**: 아이디 = 소문자 `a-z`·숫자·`_` 4~20자(입력은 소문자로 정규화, 비공개 로그인 ID) · 닉네임 = **완성형 한글 음절
   (U+AC00–U+D7A3)·ASCII 영문·숫자·`_` 2~12자**, NFC 정규화 뒤 검사, 낱자모(`ㄱ`)·다른 문자 체계·공백·기호 불가, 영문 대소문자만
   다른 닉네임은 같은 닉네임(`Orca`=`orca` → `E_NICKNAME_TAKEN`) — CJ 2026-09-26 확정, DB CHECK 로도 막는다 · 비밀번호 8~128자 ·
@@ -399,6 +425,7 @@ npm run test:launcher # 원클릭 실행기 계약 (Windows 전용, 다른 OS �
 npm run test:static   # 정적 서빙 요청 예산 (#201) — 프리로드 전량 200 · 남발은 여전히 429
 npm run test:db       # #264 DSN·TLS·마이그레이션·fail-closed (Postgres 없이)
 npm run test:accounts # #259 계정·단일 로그인·이메일 코드 재설정·WS 좌석 계정 바인딩 (Postgres 없이 — 메모리 대역, 메일은 주입 전송)
+npm run test:profile  # #260 프로필·대표 하수인·전적 기록(1회)·파일 아웃박스(상한·제약 위반·재시작 재생·깨진 줄·쓰기 실패)·WS reps (메모리 대역, DD_TEST_DATABASE_URL 이면 실제 Postgres)
 ```
 
 실제 Postgres 로 같은 계정 시나리오를 돌리려면(그 DB 의 표를 지운다 — 전용 테스트 DB 에만):

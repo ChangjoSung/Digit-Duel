@@ -118,7 +118,7 @@ async function pgFixture(url) {
   const { Pool } = require('pg');
   const mig = require('../../db-migrate');
   const pool = new Pool({ connectionString: url, max: 4 });
-  await pool.query('DROP TABLE IF EXISTS password_resets, sessions, accounts, db_meta, schema_migrations');
+  await pool.query('DROP TABLE IF EXISTS match_results, password_resets, sessions, accounts, db_meta, schema_migrations'); // #260 match_results 는 accounts 를 참조한다
   const all = mig.loadMigrations();
   await mig.up(pool, all.filter((m) => m.version <= '002'));
   // 002 는 계정당 세션 개수를 막지 않았다 — 기기별 중복 세션을 그대로 만든다. 003 은 계정마다 **만료 안 됐고 자격 세대가 현재인**
