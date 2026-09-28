@@ -9,7 +9,7 @@
 //   - 기동: DATABASE_URL 이 있는데 연결·마이그레이션 확인이 실패하면 listen 하지 않고 exit 1
 //     (authoritative/server.js). 반쯤 붙은 서버가 "저장됐다"고 답하는 상태를 만들지 않는다.
 //   - 런타임: query() 는 비활성/미설정/장애를 전부 throw 한다. 빈 결과로 대체하지 않는다.
-//   - 관측: /readyz 가 DB 왕복을 실제로 해 보고 503 을 낸다. /healthz 는 DB와 무관하게 200 "ok"
+//   - 관측: /readyz 가 DB 왕복과 필수 표·열(db-migrate.js REQUIRED_SCHEMA)을 실제로 확인하고 503 을 낸다. /healthz 는 DB와 무관하게 200 "ok"
 //     를 유지한다(#217 배포 계약 — 헬스체크가 DB로 흔들리면 서비스가 재시작 루프에 빠진다).
 //
 // TLS 정책(직접 DSN 을 파싱하는 이유): pg 의 ConnectionParameters 는 connectionString 을 파싱한

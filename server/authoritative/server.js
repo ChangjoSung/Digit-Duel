@@ -31,6 +31,7 @@ const { STATES } = require('./room');
 const { validateEnvelope, normalizeRoomName, isEmoteId } = require('./protocol');
 const { isWellFormedToken } = require('./seatToken');
 const db = require('../db'); // #264 — DATABASE_URL 이 없으면 전부 비활성(기존 동작 그대로)
+const mig = require('../db-migrate'); // pg 를 require 하지 않는다 — 무DB 설치에서도 안전
 const A = require('./accounts');
 const { createOutbox } = require('./resultOutbox');
 
@@ -146,16 +147,21 @@ const server = http.createServer((req, res) => {
     sendHead(res, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end(req.method === 'HEAD' ? undefined : 'ok');
   }
-  // #264 /readyz — DB 왕복을 실제로 해 본다. /healthz 와 분리한 이유: 플랫폼 헬스체크가 DB 로
+  // #264 /readyz — DB 왕복을 실제로 해 보고, 앱이 쓰는 표·열이 지금도 있는지 본다(기동 게이트와 같은 검사 —
+  // 기동 뒤에 표가 지워져도 원장은 그대로라 원장만으로는 모른다). /healthz 와 분리한 이유: 플랫폼 헬스체크가 DB 로
   // 흔들리면 DB 장애가 서비스 재시작 루프가 된다. DB 를 안 쓰는 배포에서는 그냥 200 "ok (no db)".
-  // 본문에 호스트·오류 문구를 싣지 않는다(정보 노출 없이 상태만).
+  // 본문에 호스트·오류 문구·빠진 표 이름을 싣지 않는다(정보 노출 없이 상태만).
   if (pathname === '/readyz') {
     if (!db.enabled()) {
       sendHead(res, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end(req.method === 'HEAD' ? undefined : 'ok (no db)');
     }
-    return db.ping().then(
-      () => { sendHead(res, 200, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end(req.method === 'HEAD' ? undefined : 'ok (db)'); },
+    return mig.missingSchema({ query: db.query }).then(
+      (missing) => {
+        if (missing.length) return deny(res, 503, 'db schema incomplete');
+        sendHead(res, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(req.method === 'HEAD' ? undefined : 'ok (db)');
+      },
       () => deny(res, 503, 'db unavailable'),
     );
   }
@@ -603,7 +609,6 @@ if (require.main === module) {
   // 반쯤 붙은 서버가 뜨는 것이 최악이다(나중에 계정 쓰기가 조용히 실패한다). 확인 실패 = exit 1.
   // DD_DB_MIGRATE_ON_START=1 은 셸이 없는 Render Free 용 옵트인이다(기본은 적용하지 않고 게이트만).
   if (db.enabled()) {
-    const mig = require('../db-migrate');
     Promise.resolve()
       .then(() => db.getPool()) // 설정 오류(TLS 강등·잘못된 DSN)도 여기서 잡아 같은 경로로 중단한다
       .then((client) => (process.env.DD_DB_MIGRATE_ON_START === '1'
