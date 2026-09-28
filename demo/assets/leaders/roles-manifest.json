@@ -1,0 +1,47 @@
+{
+  "tool": "tools/art/leaders_export.py",
+  "issue": "#238",
+  "note": "Earth 원본을 LANCZOS 축소만 한 납품본. 창작적 편집·매트 제거·색 보정 없음.",
+  "files": [
+    {
+      "leader": "companion_atk",
+      "path": "demo/assets/leaders/companion_atk/battle256.png",
+      "size": 256,
+      "bytes": 73410,
+      "sha256": "ec862ca441b3a648a6539cd80a3a003f76fae60451f487bff343c44b5a27b2f8",
+      "source": "docs/milestone/v0.4.11/issues/238/Earth_3/companion_atk/master.png",
+      "sourceSize": "1254x1254",
+      "sourceSha256": "3dbda041c25b30c2ac603e0423689b07dc21716b94f7e928c12b4a5dd6f91fb5"
+    },
+    {
+      "leader": "companion_atk",
+      "path": "demo/assets/leaders/companion_atk/icon64.png",
+      "size": 64,
+      "bytes": 7647,
+      "sha256": "f4a97b7ddb8f83c36884feefeaa48c6ace2021c4c8508b54e815bc9f397c2b45",
+      "source": "docs/milestone/v0.4.11/issues/238/Earth_3/companion_atk/master.png",
+      "sourceSize": "1254x1254",
+      "sourceSha256": "3dbda041c25b30c2ac603e0423689b07dc21716b94f7e928c12b4a5dd6f91fb5"
+    },
+    {
+      "leader": "companion_def",
+      "path": "demo/assets/leaders/companion_def/battle256.png",
+      "size": 256,
+      "bytes": 77554,
+      "sha256": "9c4352d0dc7529db659847d33e93235598e01c4e8c63d5347edd477fd081de06",
+      "source": "docs/milestone/v0.4.11/issues/238/Earth_3/companion_def/master.png",
+      "sourceSize": "1254x1254",
+      "sourceSha256": "941b2d8beb08989d1cc66a433778f3b0007a516eb2e6fdbf4f62e420e481a3b4"
+    },
+    {
+      "leader": "companion_def",
+      "path": "demo/assets/leaders/companion_def/icon64.png",
+      "size": 64,
+      "bytes": 7507,
+      "sha256": "6d8d9d928b1b0de4ee8e540faaa38d600c9746c78ead820425415c7ef40b794d",
+      "source": "docs/milestone/v0.4.11/issues/238/Earth_3/companion_def/master.png",
+      "sourceSize": "1254x1254",
+      "sourceSha256": "941b2d8beb08989d1cc66a433778f3b0007a516eb2e6fdbf4f62e420e481a3b4"
+    }
+  ]
+}

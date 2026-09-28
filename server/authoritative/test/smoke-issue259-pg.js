@@ -92,12 +92,17 @@ async function main() {
   const guest = await ws('j-' + opened.inviteCode, b.cookie);
   const joined = await waitFor(guest.frames, (f) => f.type === 'room_joined');
   ok(opened && joined && JSON.stringify(joined.players) === '["호스트","게스트"]', '생성·초대 참가 · players 두 닉네임');
-  cmd(host, opened.seatToken, opened.tokenGen, Object.assign({ requestId: 's1', t: 'setup' }, makeSetup()));
-  cmd(guest, joined.seatToken, joined.tokenGen, Object.assign({ requestId: 's2', t: 'setup' }, makeSetup()));
+  // #238 두 번째 참가는 대기방 — 참가자 준비 → 방장 시작 → 서버 5초 뒤 배치(SETUP)
+  cmd(guest, joined.seatToken, joined.tokenGen, { requestId: 'w1', t: 'lobby_ready', round: 0 });
+  await waitFor(guest.frames, (f) => f.requestId === 'w1');
+  cmd(host, opened.seatToken, opened.tokenGen, { requestId: 'w2', t: 'lobby_start', round: 0 });
+  await waitFor(host.frames, (f) => f.type === 'room_state' && f.data && f.data.state === 'SETUP', 8000);
+  cmd(host, opened.seatToken, opened.tokenGen, Object.assign({ requestId: 's1', t: 'setup', round: 1 }, makeSetup()));
+  cmd(guest, joined.seatToken, joined.tokenGen, Object.assign({ requestId: 's2', t: 'setup', round: 1 }, makeSetup()));
   await waitFor(host.frames, (f) => f.requestId === 's1'); await waitFor(guest.frames, (f) => f.requestId === 's2');
-  cmd(host, opened.seatToken, opened.tokenGen, { requestId: 's3', t: 'ready' });
+  cmd(host, opened.seatToken, opened.tokenGen, { requestId: 's3', t: 'ready', round: 1 });
   await waitFor(host.frames, (f) => f.requestId === 's3');
-  cmd(guest, joined.seatToken, joined.tokenGen, { requestId: 's4', t: 'ready' });
+  cmd(guest, joined.seatToken, joined.tokenGen, { requestId: 's4', t: 'ready', round: 1 });
   const go = await waitFor(guest.frames, (f) => f.requestId === 's4');
   ok(go && go.data && go.data.phase === 'play', '양쪽 준비 → play');
 

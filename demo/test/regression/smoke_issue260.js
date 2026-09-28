@@ -161,8 +161,8 @@ const gets=p=>calls.filter(c=>c.url===p&&!(c.init.method));
   ok(/무제한 AI 대전/.test(s)&&/도전! 왕국 대전/.test(s)&&/설정/.test(s)&&/재화 획득/.test(s)&&/미션/.test(s)&&/이벤트/.test(s)&&/로비 상점/.test(s)&&/하수인 설정/.test(s)&&/랭크/.test(s),"E2 지정 메뉴 전부");
   ok(!/class="locked[^>]*\sdisabled[\s>]/.test(s),"E3 disabled 가 아니라 aria-disabled — 키보드 포커스·Enter/Space 로 안내");
   T.lobby.lobbyLocked("미션");
-  ok(/미션 — 추후 공개/.test(T.byId("lobbyNotice").textContent),"E4 누르면 추후 공개 안내(role=status)");
-  ok(/id="lobbyNotice"[^>]*role="status"[^>]*aria-live="polite"/.test(s),"E5 안내는 스크린리더에 알린다");
+  ok(/미션 — 추후 공개/.test(T.byId("lobbyToast").innerHTML),"E4 누르면 추후 공개 안내(#238 CJ 최신 1: 사라지는 토스트)");
+  ok(/id="lobbyToast"[^>]*role="status"[^>]*aria-live="polite"/.test(s),"E5 안내는 스크린리더에 알린다");
   ok(/Google 로그인 — 추후 공개/.test(JS("account.js")),"E6 Google 로그인 잠금(#259 그대로)");
 }
 

@@ -189,6 +189,15 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
 - **실측 핑**: 로비 전용(`l-`) 소켓에 `{v:1,t:'rtt',n}`(n = 0~2147483647 정수) → 즉시 `{v:1,type:'rtt',n}`. 틀린 n 은 답하지 않는다. 좌석 소켓의 `rtt` 는 무시(seq 불변).
   연결 생존 ping/pong(30초)과 별개이고 경기·타이머·재접속 유예를 바꾸지 않는다. 측정 주기·3초 실패 판정은 클라이언트 몫.
 
+#### 경기 결과 S04 `final` (#238)
+
+- `room_state.data.final` 은 **`FINISHED` 뷰에만** 실린다(그 전·`CANCELED`·`VOID` 에는 키 자체가 없다). `{sides:[좌석0, 좌석1]}`,
+  각 `{seat, pieces:[필드 9칸 — 사망 포함], bag:[가방 0~3], syn}`. 말 = `{type, rosterId, name, element, alive, hp, maxHp, hpSeen?}` 뿐 —
+  별칭·위치·등급·스킬·원장은 없다. 상대 HP 는 보드와 같은 규칙(싸운 개체 `hpSeen` 만 실제값, 나머지 100 눈금).
+- `syn` 은 Core `synView(seat, S)` 복제 그대로다(`el`·`arch`·`dead`·`stage`·`bonus`). 클라이언트는 다시 계산하지 않는다.
+  가방 포함은 CJ '양측 하수인 전체'에 대한 PD·Venus 해석(2026-09-28)이다.
+- S01 상품 8종(#238)은 Core `ECO.startGoods`(demo/js/data.js)가 판정한다 — 서버에 별도 허용 목록은 없다.
+
 #### 경기 중 이모티콘 (#262)
 
 - 좌석 소켓 `{v:1,t:'emote',requestId,seatToken,tokenGen,id}` — `id` 는 `hello`·`nice`·`wow`·`think`·`oops`·`gg`(`protocol.js` `EMOTE_IDS`). 게임 명령 경로가 아니다:

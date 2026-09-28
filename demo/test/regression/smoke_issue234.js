@@ -169,8 +169,8 @@ function idx(f,id){ return f.skills.indexOf(id); }
   eq(ld,18,"A14 왕·암살자·방패병 기본기 3 + 속성 스킬 15가 6.2 표와 일치");
   ok(SK("LD-REVENGE").pct===220&&SK("LD-REVENGE").cd===2&&SK("LD-WRATH").pct===280&&SK("LD-WRATH").cd===2,"A15 5.3 동료의 복수 220%/⌛2 · 왕의 분노 280%/⌛2");
   /* 아트 과도기 (명세 3장) */
-  eq(T.ART_DIRS.length,20,"A16 아트 허용 목록은 기존 20 폴더 그대로 — 새 경로 없음");
-  ok(T.ROSTER.filter(r=>r.arch==="guard"||r.element==="land").every(r=>!T.ART_DIR_SET.has(r.element+"_"+r.arch)),"A17 보호형·땅 10종은 아트 목록 밖(이모지 폴백)");
+  eq(T.ART_DIRS.length,33,"A16 아트 허용 목록 = 기존 20 + #238 보호형·땅 10 + 전설 3 (닫힌 목록)");
+  ok(T.ROSTER.filter(r=>r.arch==="guard"||r.element==="land").every(r=>T.ART_DIR_SET.has(r.element+"_"+r.arch)),"A17 보호형·땅 10종도 #238 Earth_2 아트 폴더에 대응");
   ok(T.ART_DIR_SET.has("water_def")&&T.ART_DIR_SET.has("grass_sustain"),"A18 이름만 바뀐 빙벽 정령·이끼 거인은 같은 속성·아키타입 폴더 재사용");
 }
 

@@ -11,18 +11,15 @@
      새 문서·새 창·라우터가 아니다 — #128 "새 문서 로드당 1회" 튜토리얼 경계는 그대로다. -->
 <div id="app" data-screen="title" data-prep="roster">
   <div id="titleScreen">
-    <div class="kick">POCKET STRATEGY</div>
-    <div class="logo">DIGIT<br>DUEL</div>
+    <!-- #238 (2026-09-28 CJ 시각 REVISE · SYS 타이틀): 로고 + 격자 보드 그림 + [로그인]·[Google 🔒] (계정 패널이 그린다) · 로그인 뒤 [시작] -->
+    <div class="logo" role="img" aria-label="Digit Duel">Digit<br>Duel</div>
     <div class="titleArt" aria-hidden="true"><i></i><i class="b"></i><i></i><i></i><i></i><i class="q">?</i><i></i><i></i><i></i><i class="f"></i><i></i><i class="f"></i><i></i><i></i><i></i><i class="q">?</i><i></i><i class="a"></i><i></i><i></i><i></i></div>
-    <div class="tag">정체를 숨기고, 한 수 앞을 읽다.</div>
     <div id="acctPanel" aria-live="polite"></div>
     <button class="primary big" type="button" onclick="uiStart()">시작 →</button>
   </div>
   <div id="appBar">
     <button id="btnBack" class="backBtn" type="button" onclick="uiBack()">←</button>
     <h1><span class="brand">DIGIT DUEL</span> <small id="phaseLabel"></small></h1>
-    <button id="btnDrawerSide" class="barBtn" type="button" onclick="uiDrawer('side')">상세</button>
-    <button id="btnDrawerLog" class="barBtn" type="button" onclick="uiDrawer('log')">기록</button>
   </div>
   <div id="toasts"></div>
   <div id="screenBody">
@@ -33,8 +30,6 @@
     <div id="right">
       <div id="drawerHead"><span id="drawerTitle"></span><button type="button" onclick="uiDrawer(null)">닫기</button></div>
       <div class="panel" id="sidePanel"></div>
-      <details class="drawer" id="drawerLog"><summary>📜 공개 기록</summary><div class="drawerBody"><div id="log"></div></div></details>
-      <details class="drawer" id="drawerMetrics"><summary>📊 경기 지표</summary><div class="drawerBody"><div id="metrics" style="font-size:12px;color:var(--dim)"></div></div></details>
     </div>
   </div>
   <div id="actionDock"><div class="row" id="turnBar"></div></div>

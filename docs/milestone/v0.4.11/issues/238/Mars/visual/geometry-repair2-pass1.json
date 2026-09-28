@@ -1,0 +1,384 @@
+{
+ "a02-signup-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "title",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "formOrder": "acctId>acctPw>acctPw2>acctNick>acctEmail",
+  "resultBoardHidden": false
+ },
+ "l01-lobby-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "lobby",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "rep": {
+   "box": 310,
+   "visibleW": 246,
+   "pctOfVw": 57,
+   "feetY": 582
+  },
+  "resultBoardHidden": true
+ },
+ "l01-lobby-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "lobby",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "rep": {
+   "box": 230,
+   "visibleW": 184,
+   "pctOfVw": 57,
+   "feetY": 373
+  },
+  "resultBoardHidden": true
+ },
+ "l03-wait-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "room",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "waitArt": "assets/minions/land_std/battle.png 96",
+  "resultBoardHidden": true
+ },
+ "s01-shop-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "prep",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "shop": {
+   "inner": 390,
+   "field": [
+    61.7,
+    61.7,
+    61.7,
+    61.7,
+    61.7,
+    61.7
+   ],
+   "fieldTops": 1,
+   "bag": 3,
+   "syn": [
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44"
+   ],
+   "synRows": [
+    5,
+    6
+   ],
+   "goods": 8,
+   "synWhy": "",
+   "active": "",
+   "tofuVisible": 0
+  },
+  "resultBoardHidden": true
+ },
+ "s01-shop-320-top": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "prep",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "shop": {
+   "inner": 298,
+   "field": [
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2
+   ],
+   "fieldTops": 1,
+   "bag": 3,
+   "syn": [
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44"
+   ],
+   "synRows": [
+    5,
+    6
+   ],
+   "goods": 8,
+   "synWhy": "",
+   "active": "",
+   "tofuVisible": 0
+  },
+  "resultBoardHidden": true
+ },
+ "s01-shop-320-mid": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "prep",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "shop": {
+   "inner": 298,
+   "field": [
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2
+   ],
+   "fieldTops": 1,
+   "bag": 3,
+   "syn": [
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44"
+   ],
+   "synRows": [
+    5,
+    6
+   ],
+   "goods": 8,
+   "synWhy": "",
+   "active": "",
+   "tofuVisible": 0
+  },
+  "resultBoardHidden": true
+ },
+ "s01-shop-320-bottom": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "prep",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "shop": {
+   "inner": 298,
+   "field": [
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2
+   ],
+   "fieldTops": 1,
+   "bag": 3,
+   "syn": [
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44"
+   ],
+   "synRows": [
+    5,
+    6
+   ],
+   "goods": 8,
+   "synWhy": "",
+   "active": "",
+   "tofuVisible": 0
+  },
+  "resultBoardHidden": true
+ },
+ "s01-syn-keyboard-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "prep",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "shop": {
+   "inner": 298,
+   "field": [
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2
+   ],
+   "fieldTops": 1,
+   "bag": 3,
+   "syn": [
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44"
+   ],
+   "synRows": [
+    5,
+    6
+   ],
+   "goods": 8,
+   "synWhy": "불 1칸 · 미달 · (2)까지 1칸",
+   "active": "synChip",
+   "tofuVisible": 0
+  },
+  "resultBoardHidden": true
+ },
+ "s01-syn-touch-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "prep",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "shop": {
+   "inner": 298,
+   "field": [
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2,
+    47.2
+   ],
+   "fieldTops": 1,
+   "bag": 3,
+   "syn": [
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44"
+   ],
+   "synRows": [
+    5,
+    6
+   ],
+   "goods": 8,
+   "synWhy": "방어 0칸 · 미달 · (2)까지 2칸",
+   "active": "synChip",
+   "tofuVisible": 0
+  },
+  "resultBoardHidden": true
+ },
+ "m01-shop-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "board",
+  "phase": "shop",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "shop": {
+   "inner": 347.4,
+   "field": [
+    54.6,
+    54.6,
+    54.6,
+    54.6,
+    54.6,
+    54.6
+   ],
+   "fieldTops": 1,
+   "bag": 3,
+   "syn": [
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44",
+    "49x44"
+   ],
+   "synRows": [
+    5,
+    6
+   ],
+   "goods": 8,
+   "synWhy": "",
+   "active": "refresh",
+   "tofuVisible": 0
+  },
+  "resultBoardHidden": false
+ },
+ "s04-result-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "result",
+  "phase": "over",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "resultBoardHidden": true
+ },
+ "s04-result-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "result",
+  "phase": "over",
+  "overflowX": false,
+  "small": [],
+  "offscreen": [],
+  "resultBoardHidden": true
+ }
+}

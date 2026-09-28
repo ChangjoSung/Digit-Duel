@@ -121,7 +121,7 @@ async function main() {
   const c = open('cp-c261', 'Open Room');
   const cOpen = await first(c);
   rows = await list(viewer);
-  ok(rows.map((r) => r.roomId + ':' + r.state + ':' + r.seats).join(' ') === `${cOpen.roomId}:OPEN:1/2 ${bOpen.roomId}:SETUP:2/2 ${aOpen.roomId}:SETUP:2/2`, 'B8 참가 대기 먼저 · 준비 중 2/2 표시: ' + JSON.stringify(rows.map((r) => [r.roomId, r.state])));
+  ok(rows.map((r) => r.roomId + ':' + r.state + ':' + r.seats).join(' ') === `${cOpen.roomId}:OPEN:1/2 ${bOpen.roomId}:WAITING:2/2 ${aOpen.roomId}:WAITING:2/2`, 'B8 참가 대기 먼저 · 준비 중 2/2 표시: ' + JSON.stringify(rows.map((r) => [r.roomId, r.state])));
   const stale = open('p-' + aOpen.roomId);
   const staleF = await first(stale);
   ok(staleF && staleF.type === 'error' && staleF.code === 'E_ROOM_NOT_FOUND', 'B8 목록에 보여도 준비 중 방 참가 거부');

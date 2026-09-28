@@ -166,7 +166,8 @@ function equipActor(room, sp) {
         && Object.keys(owner.bonus).sort().join() === 'allowed,side', '소유자 프레임 bonus = {side, allowed}: ' + JSON.stringify(owner.bonus));
       ok(other.bonus && other.bonus.side === side && Object.keys(other.bonus).join() === 'side', '상대 프레임 bonus = {side} (allowed 는 칸 수 = 등급을 드러냄): ' + JSON.stringify(other.bonus));
       for (const s of [seat, 1 - seat]) {
-        const raw = JSON.stringify(room.toSeatView(s));
+        // #238 B04 battle.ownSyn(자기 좌석 Core synView — 속성별 왕국 단계 `stage` 포함)은 소유자 전용 표시값이라 번개 꼬리 bonus.stage 검사 대상에서 뺀다
+        const raw = JSON.stringify(room.toSeatView(s), (k, v) => (k === 'ownSyn' ? undefined : v));
         ok(!/"saved":|"tailSlot":|"cdUpFresh":|"tideBy":|"stage":/.test(raw), `좌석${s} 프레임에 saved·tailSlot·cdUpFresh·tideBy·stage 키 없음`);
       }
       // 허용 칸(기본기)로 추가 공격 → 단계 종료 · 2·3차 ⌛ 사본 복원 · 차례 진행

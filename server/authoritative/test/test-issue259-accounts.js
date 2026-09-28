@@ -6,7 +6,7 @@
 // 메일은 주입한 테스트 전송으로만 받는다 — 실제 받은편지함 발송은 이 테스트가 증명하지 않는다.
 const http = require('http');
 const WebSocket = require('ws');
-const { server, useAccounts } = require('../server');
+const { server, wss, useAccounts } = require('../server');
 const A = require('../accounts');
 
 let pass = 0, fail = 0;
@@ -644,6 +644,51 @@ async function main() {
   ok((await req('GET', '/api/auth/session', { cookie: L })).status === 503 && (await wsOpen('c-down', L)).status === 503, 'DB 장애: 세션 확인·업그레이드 503');
   store.setDown(false);
   ok(await valid(L), 'DB 복구 뒤 세션 그대로');
+
+  /* ===== 9. #238 멀티 접속 인원 — lobby_rooms.onlineCount = 열린 WS 의 유효 로그인 계정 고유 수 ===== */
+  accounts = svc(); useAccounts(accounts);
+  const P1 = (await post('/api/auth/signup', { userId: 'onl_0001', nickname: '온라인일', password: 'online-pass1', email: 'onl1@example.com' })).cookie;
+  const Q1 = (await post('/api/auth/signup', { userId: 'onl_0002', nickname: '온라인이', password: 'online-pass2', email: 'onl2@example.com' })).cookie;
+  const viewer = await wsOpen('l-oview'); await viewer.first(); // 익명 — 세지 않는다
+  const count = async (c = viewer) => {
+    const n = c.frames.length; c.ws.send(JSON.stringify({ v: 1, t: 'list_rooms' }));
+    const f = await waitFor(c.frames, (x) => x.type === 'lobby_rooms' && c.frames.indexOf(x) >= n);
+    return f ? f.onlineCount : null;
+  };
+  const settle = async (want) => { for (let i = 0; i < 100; i++) { if ((await count()) === want) return true; await sleep(20); } return false; };
+  const base = await count();
+  ok(Number.isInteger(base) && base >= 0, 'lobby_rooms 에 onlineCount 정수 ' + base);
+  const pl1 = await wsOpen('l-op1', P1); ok((await pl1.first()).type === 'lobby_ready', '세션 쿠키 방 찾기 연결');
+  ok(await count() === base + 1, '방 찾기 로그인 계정 +1 · 익명 제외');
+  const pl2b = await wsOpen('l-op2', P1); await pl2b.first();
+  const ph = await wsOpen('c-oph', P1); const pho = await ph.first();
+  ok(await count() === base + 1, '같은 계정의 방 찾기 2개 + 방 좌석 = 1명');
+  const qg = await wsOpen('j-' + pho.inviteCode, Q1); await qg.first();
+  ok(await count() === base + 2, '다른 계정 입장(대기방) +1');
+  qg.ws.send(JSON.stringify({ v: 1, t: 'list_rooms' }));
+  ok((await waitFor(qg.frames, (x) => x.type === 'lobby_rooms' && Number.isInteger(x.seq))).onlineCount === base + 2, '좌석 소켓의 list_rooms 응답에도 같은 onlineCount');
+  qg.ws.close();
+  ok(await settle(base + 1), '좌석 단절(60초 유예 중) 제외');
+  ok((await post('/api/auth/logout', {}, { cookie: P1 })).status === 200 && await ended(ph, undefined), '로그아웃 — 좌석 소켓은 종전대로 E_SESSION_ENDED·4003');
+  ok(await settle(base), '로그아웃 계정 제외');
+  ok(pl1.closeCode === null && !pl1.frames.some((x) => x.code === 'E_SESSION_ENDED') && Number.isInteger(await count(pl1)), '방 찾기 소켓은 끊지 않고 익명 읽기 전용으로 남는다');
+  const ql = await wsOpen('l-oq', Q1); await ql.first();
+  ok(await count() === base + 1, 'Q 방 찾기 +1');
+  for (const w of wss.clients) if (w.ddAccount && w.ddAccount.userId === 'onl_0002') w.ddAccount.expiresAt = Date.now() - 1; // 절대 만료 흉내
+  ok(await count() === base && ql.closeCode === null && Number.isInteger(await count(ql)), '만료 세션 제외 · 방 찾기 소켓은 유지');
+  const Q2 = (await post('/api/auth/login', { userId: 'onl_0002', password: 'online-pass2' })).cookie;
+  const held = holdOnce(store, 'findSession', true);
+  const pendQ = wsOpen('l-orace', Q2); await held.hit;
+  await post('/api/auth/logout', {}, { cookie: Q2 }); held.release();
+  const race = await pendQ;
+  ok(race.status === 101 && (await race.first()).type === 'lobby_ready' && await count() === base, '조회 중 폐기된 세션 — 익명 방 찾기로만 연결(세지 않음)');
+  closeAll(pl1, pl2b, ph, ql, race); await sleep(100); // IP당 연결 상한(8) 안에서 다음 연결을 연다
+  const Q3 = (await post('/api/auth/login', { userId: 'onl_0002', password: 'online-pass2' })).cookie;
+  store.setDown(true);
+  const downL = await wsOpen('l-odown', Q3);
+  ok(downL.status === 101 && (await downL.first()).type === 'lobby_ready', 'DB 장애 — 방 찾기는 익명으로 연결(좌석 연결은 위 503 그대로) ' + downL.status);
+  store.setDown(false);
+  closeAll(viewer, downL);
 
   if (fx.pool) await fx.pool.end();
   server.close();

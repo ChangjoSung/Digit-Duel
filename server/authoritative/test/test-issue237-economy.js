@@ -103,10 +103,10 @@ async function main() {
     ok(!fourth.ok && fourth.reason === 'E_ILLEGAL_ACTION' && snap(room) === s3 && S0(room).eco.coins[0] === 5 && S0(room).balls[0] === 4,
       '예비 재화 위반 거래는 전부 거부(코인·볼·진열 불변) — Core 판정을 서버가 거부로 돌려준다');
     const ticket = shop(room, 0, 'shopGood', { item: 'ticket' });
-    ok(!ticket.ok && snap(room) === s3, 'S01 에서 티켓 구매 거부');
+    ok(!ticket.ok && snap(room) === s3, 'S01 티켓도 예비 재화 위반이면 거부 (#238 — 품목 자체는 S01 판매)');
     // 좌석 1 거부 거래도 상태 0변경 — 서버의 온라인 상점 보정(setupPlayer)까지 되돌린다. 이어서 좌석 1 유효 거래는 반영된다.
     const q4 = snap(room), sv4 = [0, 1].map((s) => stable(view(room, s))), rv4 = room.revision, sp4 = room.engines.map((T) => T.S.setupPlayer);
-    const t1 = shop(room, 1, 'shopGood', { item: 'ticket' });
+    const t1 = shop(room, 1, 'shopGood', { item: 'bogus' }); // #238: 티켓은 이제 S01 상품이라 없는 품목으로 거부를 만든다
     const same = !t1.ok && t1.reason === 'E_ILLEGAL_ACTION' && snap(room) === q4 && [0, 1].every((s) => stable(view(room, s)) === sv4[s]) && room.revision === rv4
       && JSON.stringify(room.engines.map((T) => T.S.setupPlayer)) === JSON.stringify(sp4);
     const c1 = S0(room).eco.coins[1], g1 = shop(room, 1, 'shopGood', { item: 'ball' });
@@ -131,6 +131,35 @@ async function main() {
     ok(room.state === STATES.IN_PROGRESS && S0(room).phase === 'play' && S0(room).eco.shop === null && S0(room).eco.coins[0] === 0,
       '양측 배치·ready → 개시, 산 말·재화 그대로');
     ok(S0(room).pieces.filter((p) => p.owner === 0).every((p) => p.placed), '배치 좌표 적용');
+  }
+
+  // ===== 1b. #238 S01 상품 8종 실구매 — 아이템 5종 · 전투 버프 3종, 예비 재화 · 사용 시점 · 만료 자동 구매 =====
+  {
+    const room = ecoRoom(238, { shopMs: 200 });
+    const store = (seat, k) => {
+      const S = S0(room);
+      return k === 'ball' ? S.balls[seat] : k === 'ticket' ? S.eco.tickets[seat] : S.eco.buffInv[seat][k] !== undefined ? S.eco.buffInv[seat][k] : S.inv[seat].filter((x) => x === k).length;
+    };
+    for (const [seat, goods] of [[0, ['ticket', 'power', 'time', 'escape']], [1, ['potion', 'cool', 'cure', 'ball']]]) {
+      for (const k of goods) {
+        const c = S0(room).eco.coins[seat], n = store(seat, k);
+        const r = shop(room, seat, 'shopGood', { item: k });
+        ok(r.ok && S0(room).eco.coins[seat] === c - 1 && store(seat, k) === n + 1 && room.engines[1 - seat].S.eco.coins[seat] === c - 1,
+          `S01 ${k} 구매 수락: 🪙-1 · 보관처 +1 · 두 엔진 반영`);
+      }
+      const s5 = snap(room), g5 = shop(room, seat, 'shopGood', { item: 'potion' });
+      ok(!g5.ok && g5.reason === 'E_ILLEGAL_ACTION' && snap(room) === s5 && S0(room).eco.coins[seat] === 6, `좌석 ${seat} 다섯째 상품은 예비 재화(빈 칸 6)로 거부 · 상태 불변`);
+    }
+    ok(!JSON.stringify(view(room, 1)).includes('"tickets":1') && view(room, 0).you.eco.tickets === 1 && view(room, 0).you.eco.buffInv.escape === 1, 'S01 상품 보유는 소유자 뷰에만');
+    const king = view(room, 0).you.pieces.find((p) => p.type === 'king').id, s6 = snap(room);
+    const use = shop(room, 0, 'shopTicket', { id: king, el: 'water' });
+    ok(!use.ok && snap(room) === s6, 'S01 티켓 사용은 여전히 거부 — 사용 시점은 [기획 필요]');
+    await sleep(320);
+    const S = S0(room);
+    ok([0, 1].every((s) => S.pieces.filter((x) => x.owner === s && x.type === 'minion' && x.rosterId).length === 6 && S.eco.coins[s] === 0),
+      '상품 4개를 산 뒤 만료 → 남은 🪙6으로 6명 자동 구매 · 🪙0 (예비 재화가 자동 구매를 보장)');
+    ok(S.eco.tickets[0] === 1 && S.eco.buffInv[0].power === 1 && S.balls[1] === 1 && S.inv[1].includes('cure'), '만료 뒤에도 S01 상품은 보존');
+    room._clearClock();
   }
 
   // ===== 2. S01 서버 시계 만료 — 자동 구매·속성 자동 배정·자동 배치(#263), 명령 없는 전이 알림 =====
@@ -356,12 +385,44 @@ async function main() {
       'S01(경기 전) 항복 = 경기 취소(승패 없음) · 시계 해제');
   }
   {
-    const room = startedEco(21);
+    const room = ecoRoom(21);
+    finishStart(room, 0);
+    for (let n = 0; S0(room).eco.bag[1].length < 1 && n < 20; n++) { // #238 픽스처: 좌석 1 은 일곱째 하수인을 사서 가방에 1명
+      const i = firstBuyable(view(room, 1));
+      if (!(i >= 0 ? shop(room, 1, 'shopBuy', { i }) : shop(room, 1, 'shopRefresh')).ok) throw new Error('fixture bag buy failed');
+    }
+    finishStart(room, 1);
+    placeAndStart(room);
     const cur = S0(room).current;
+    ok(!('final' in view(room, 0)) && !('final' in view(room, 1)), '#238 S04 final 은 경기 중에는 없다');
+    // 픽스처: 양측 하수인 하나씩 사망 · 좌석 1 의 살아 있는 하수인 하나는 싸운 개체(hpSeen)
+    both(room, (E) => {
+      for (const s of [0, 1]) E.S.pieces.find((p) => p.owner === s && p.type === 'minion' && p.alive).alive = false;
+      Object.assign(E.S.pieces.find((p) => p.owner === 1 && p.type === 'minion' && p.alive), { hpSeen: true });
+    });
     const r = room.handleCommand(1 - cur, { t: 'resign' });
     ok(r.ok && room.state === STATES.FINISHED && room.result.type === 'WIN' && room.result.winner === cur && room.result.winType === 'resign',
       '상대 차례에도 항복 가능 → 그 좌석 패배');
     ok(view(room, cur).log.some((l) => /기권/.test(l.msg)) && view(room, 1 - cur).log.some((l) => /기권/.test(l.msg)), '양 좌석 로그에 기권 문구');
+    // #238 S04 — 양측 필드 9칸(사망 포함) + Core synView 그대로 · 비공개 필드 없음 · 엔진과 참조 분리
+    const f0 = view(room, 0).final, T = room.engines[0];
+    const keys = new Set(['type', 'rosterId', 'name', 'element', 'alive', 'hp', 'maxHp', 'hpSeen']);
+    ok(f0 && f0.sides.length === 2 && f0.sides.every((sd, s) => sd.seat === s && sd.pieces.length === 9 && sd.pieces.filter((p) => !p.alive).length === 1
+      && sd.pieces.filter((p) => p.type === 'minion').length === 6 && sd.pieces.every((p) => Object.keys(p).every((k) => keys.has(k)))),
+    'final: 양측 9칸(하수인 6 · 왕 · 동료 2) · 사망 포함 · 화이트리스트 필드만(별칭·위치·등급·스킬·원장·가방 없음)');
+    ok(f0.sides.every((sd, s) => JSON.stringify(sd.syn) === JSON.stringify(T.synView(s, T.S))), 'final.syn 은 Core synView 그대로(새 산식 없음)');
+    const field = (s) => T.S.pieces.filter((p) => p.owner === s && p.placed && T.SYN_FIELD_TYPES.includes(p.type));
+    const real = (list, eng) => list.every((p, i) => p.hp === eng[i].hp && p.maxHp === eng[i].maxHp);
+    const opp = f0.sides[1].pieces, seenIdx = opp.findIndex((p) => p.hpSeen);
+    ok(opp.filter((p) => p.hpSeen).length === 1 && real([opp[seenIdx]], [field(1)[seenIdx]]) && opp.filter((p) => !p.hpSeen).every((p) => p.maxHp === 100)
+      && real(f0.sides[0].pieces, field(0)),
+      '상대 HP 는 싸운 개체만 실제값 · 나머지 100 눈금 · 내 말은 실제값');
+    const h0 = snap(room);
+    f0.sides[0].syn.el.fire = 99; f0.sides[0].pieces[0].hp = -1;
+    const bag0 = f0.sides[1].bag, bag1 = view(room, 1).final.sides[1].bag, eb = T.S.eco.bag[1];
+    ok(f0.sides[0].bag.length === 0 && bag0.length === 1 && bag0[0].type === 'minion' && bag0[0].rosterId === T.ecoKey(eb[0]) && Object.keys(bag0[0]).every((k) => keys.has(k))
+      && bag0[0].maxHp === 100 && real(bag1, eb), 'final.bag: 양측 가방 하수인 · 같은 화이트리스트 · 상대에게는 100 눈금 · 소유자는 실제값');
+    ok(snap(room) === h0 && view(room, 0).final.sides[0].pieces[0].hp !== -1 && T.synView(0, T.S).el.fire !== 99, '뷰를 고쳐도 엔진 · 다음 뷰는 그대로');
   }
   {
     const room = startedEco(22);
@@ -566,6 +627,31 @@ async function main() {
   }
 
   {
+    // #238 B04 — battle.ownSyn: 이 좌석 Core synView 스냅샷만 · 전투 전·종료 뒤 없음 · 참전 스냅샷 고정 · 엔진과 참조 분리
+    const room = startedEco(35);
+    const cur = S0(room).current;
+    ok([0, 1].every((s) => !view(room, s).battle), 'ownSyn: 전투 전에는 battle 자체가 없다');
+    const att = S0(room).pieces.find((p) => p.owner === cur && p.type === 'minion');
+    const foe = S0(room).pieces.find((p) => p.owner === 1 - cur && p.type === 'minion');
+    H.openBattle(room, { att: att.id, def: foe.id });
+    for (let n = 0; n < 4 && !S0(room).battle; n++) { const pm = room._pendingModal(); if (!pm) break; H.act(room, pm.owner, { t: 'modal', seq: pm.seq, i: 0 }); }
+    const keys = ['arch', 'bonus', 'dead', 'el', 'stage'];
+    const src = (s) => JSON.stringify(room.engines[s].synView(s, room.engines[s].S));
+    const own = (s) => view(room, s).battle.ownSyn;
+    ok(S0(room).battle && [0, 1].every((s) => room.engines[s].S.battle.syn && own(s) && JSON.stringify(Object.keys(own(s)).sort()) === JSON.stringify(keys)
+      && JSON.stringify(own(s)) === src(s) && Object.keys(view(room, s).battle).filter((k) => /syn/i.test(k)).join() === 'ownSyn'),
+    'ownSyn: 좌석별 자기 엔진 synView 그대로(el·arch·dead·stage·bonus) · 상대 syn 필드 없음');
+    const before = [0, 1].map((s) => JSON.stringify(own(s)));
+    both(room, (E) => { E.S.pieces.find((p) => p.owner === cur && p.type === 'minion' && p.alive && p.id !== att.id).alive = false; });
+    ok([0, 1].every((s) => JSON.stringify(own(s)) === before[s]), 'ownSyn: 전투 중 보드가 바뀌어도 참전 스냅샷 고정');
+    const h = snap(room), v0 = own(0);
+    v0.el.fire = 99; v0.stage.fire = 99; v0.dead = 99;
+    ok(snap(room) === h && JSON.stringify(own(0)) === before[0], 'ownSyn: 뷰를 고쳐도 엔진 · 다음 뷰는 그대로');
+    ok(room.handleCommand(1 - cur, { t: 'resign' }).ok && room.state === STATES.FINISHED
+      && [0, 1].every((s) => { const v = view(room, s); return (!v.battle || !('ownSyn' in v.battle) || v.battle.ownSyn === null) && v.final.sides.length === 2; }),
+    'ownSyn: 종료(FINISHED) 뒤 없음 · 결과는 final.sides 양측');
+  }
+  {
     // #262 CJ QA(2026-09-27) — 전투 중에는 두 전투원 모두 실제 HP/최대 HP(패널·fx·해일 X·문구·기록 피해). 종전 #237 상대 100 눈금 폐지.
     const room = startedEco(34);
     const cur = S0(room).current;
@@ -677,6 +763,7 @@ async function main() {
   {
     const { server, lobby } = require('../server');
     lobby.economy = true;
+    lobby.startGate = false; // #238 참가 즉시 시작 상점을 보는 회귀 — 대기방은 test-issue238-lobby.js
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const port = server.address().port;
     const conn = (cred) => {
