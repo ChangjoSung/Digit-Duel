@@ -21,12 +21,15 @@ T.BAL.dmgVar=0; T.BAL.statusProb=1; T.BAL.shockProb=1;
 const S=()=>T.S;
 const king=(o)=>T.S.pieces.find(x=>x.owner===o&&x.type==="king");
 const first=(o,type,i)=>T.S.pieces.filter(x=>x.owner===o&&x.type===type)[i||0];
+const cur=p=>T.S.pieces.find(x=>x.id===p.id); // #245: heal reducer 는 대상 말을 복제한다 — 성공 직후 현재 S.pieces 객체로 재조회
 /* 보드 초기화: 양 왕을 구석에, 나머지 전부 회수 (전멸 방지용 하수인 1기씩 뒤에 배치) */
 function board(mode,lv){
-  H.freshPlay(T,mode||"pvp",lv); H.clearBoard(T);
+  H.freshPlay(T,mode||"pvp",lv);
+  H.synNeutral(T,[]); // #235: 무작위 로스터의 왕국·아키타입·전설 집계가 아래 고정 수치·선턴·rand 소비를 흔들지 않게 이 공유 무대 전체를 시너지 중립으로 못 박는다
+  H.clearBoard(T);
   H.place(T,king(0),13,1); H.place(T,king(1),1,7);
   H.place(T,first(0,"minion",5),13,7); H.place(T,first(1,"minion",5),1,1);
-  T.FX.log.length=0; T.S.contactKind="move"; T.tutSkip(); T.TQ.length=0; T.FX.auto=null; T.els.overlay.classList.add("hidden"); // 실제 DOM 초기 상태(오버레이 숨김)
+  T.FX.log.length=0; T.S.contactKind="move"; T.tutSkip(); T.TQ.length=0; T.FX.auto=null; T.byId("overlay").classList.add("hidden"); // 실제 DOM 초기 상태(오버레이 숨김) · #260 자동 튜토리얼이 없어 els 가 아니라 byId 로 만든다
   for(const x of T.S.pieces) if(x.type==="minion"){ x.maxHp=100; x.hp=100; } // 종별 HP(85~120)를 100 으로 통일 — 5% 틱·비율 검증 단순화
   return T.S;
 }
@@ -38,14 +41,14 @@ function randUsed(fn){ T.setSeed(4242); const seq=[]; for(let i=0;i<60;i++) seq.
 /* ===== A. 회복 주 행동 ===== */
 block("A 회복",()=>{
   board("pvp");
-  const m=first(0,"minion"), e=first(1,"minion"), a=first(0,"ally"), b=first(0,"bomb"), t=first(0,"trap");
+  let m=first(0,"minion"), e=first(1,"minion"), a=first(0,"ally"); const b=first(0,"bomb"), t=first(0,"trap");
   H.place(T,m,10,4); H.place(T,e,3,4); H.place(T,a,12,4); H.place(T,b,12,2); H.place(T,t,13,3);
   m.hp=50; a.hp=80;
   ok(!T.canHeal(m)===false&&T.canHeal(m)&&T.canHeal(a),"A1 HP<최대 하수인·동료는 회복 지정 가능");
   ok(!T.canHeal(b)&&!T.canHeal(t),"A2 폭탄·함정은 회복 대상이 아니다");
   const full=first(0,"minion",1); H.place(T,full,11,1); ok(T.canHeal(full),"A3 #114 만피 말도 기다리기로 회복 지정 가능");
   ok(!T.canHeal(e),"A4 상대 말은 지정 불가 (자기 턴·자기 말만)");
-  const used=randUsed(()=>{ T.applyAction({t:"heal",id:m.id}); });
+  const used=randUsed(()=>{ T.applyAction({t:"heal",id:m.id}); }); m=cur(m);
   ok(m.healing===true&&S().mainUsed===true&&m.hp===50&&used===0,"A5 지정 → mainUsed·자세 시작·즉시 회복 없음·rand 소비 0 (hp "+m.hp+", rand "+used+")");
   ok(!T.canHeal(a),"A6 주 행동을 썼으므로 같은 턴 두 번째 지정 불가");
   ok(S().metrics.heals===1&&S().metrics.byPlayer[0].heals===1,"A7 지표 heals P1 귀속");
@@ -53,7 +56,7 @@ block("A 회복",()=>{
   ok(m.hp===55&&S().metrics.healHp===5&&rt===0,"A8 지정한 플레이어의 턴 종료에 +round(100×5%)=5 (rand 0)");
   ok(S().current===1,"A8b 턴 교대");
   // 상대 턴: 상대도 회복 지정 → 양측 자세 말이 같은 경계에서 함께 틱
-  e.hp=40; T.S.selected=e; T.applyAction({t:"heal",id:e.id});
+  e.hp=40; T.S.selected=e; T.applyAction({t:"heal",id:e.id}); e=cur(e);
   ok(e.healing&&S().mainUsed,"A9 상대(P2)도 회복 지정");
   T.endTurn();
   ok(m.hp===60&&e.hp===45,"A10 상대 턴 종료에 양 플레이어 자세 말 모두 +5 (m 60 · e 45) — 한 쌍 = 10%");
@@ -66,7 +69,7 @@ block("A 회복",()=>{
   T.S.mainUsed=true; T.endTurn();
   // 복수 자세: 다른 말도 다른 턴에 지정 가능
   ok(S().current===0,"A14 P1 턴");
-  a.hp=80; T.S.selected=a; T.applyAction({t:"heal",id:a.id});
+  a.hp=80; T.S.selected=a; T.applyAction({t:"heal",id:a.id}); a=cur(a);
   ok(a.healing&&m.healing&&e.healing,"A15 여러 말이 동시에 자세 (각각 주 행동 1턴 소모)");
   m.hp=90; const e1=e.hp; T.endTurn(); ok(m.hp===95&&a.hp===85&&e.hp===e1+5,"A16 세 말 모두 같은 경계에서 틱 (m 95 · a 85 · e +5)");
   // 해제: 이동
@@ -108,7 +111,7 @@ block("A 회복",()=>{
 /* A' 회복 표시·비노출 (H8) */
 block("A' 회복 표시",()=>{
   board("pve");
-  const m=first(0,"minion"), e=first(1,"minion"); H.place(T,m,10,4); H.place(T,e,4,4); m.hp=50; e.hp=50;
+  const m=first(0,"minion"); let e=first(1,"minion"); H.place(T,m,10,4); H.place(T,e,4,4); m.hp=50; e.hp=50;
   m.healing=true; e.healing=true; T.S.tempReveal.add(e.id); // e 는 숲(4행)이지만 일시 공개로 칩이 그려짐 — 정체(revealed)는 비공개
   T.render();
   const cells=T.els.board.children;
@@ -118,7 +121,7 @@ block("A' 회복 표시",()=>{
   e.revealed=true; T.render(); ok(/\bhealing\b/.test(chipAt(4,4).className),"A'3 공개(revealed)된 상대 말은 회복 효과 표시");
   // 로그: 미공개 상대(AI) 말의 지정은 중립 문구, 공개 말은 이름 포함
   e.revealed=false; e.healing=false; T.S.current=1; T.S.mainUsed=false; T.S.selected=null; const n0=T.S.log.length;
-  T.doHeal(e); const l1=T.S.log.slice(n0).map(x=>x.msg).join("|");
+  T.doHeal(e); e=cur(e); const l1=T.S.log.slice(n0).map(x=>x.msg).join("|");
   ok(/상대가 말 회복 행동을 했습니다/.test(l1)&&!/회복 자세 시작/.test(l1),"A'4 미공개 상대 말 회복 지정 로그는 대상·위치 비공개 중립 문구");
   e.healing=false; e.revealed=true; T.S.mainUsed=false; const n1=T.S.log.length; T.doHeal(e); const l2=T.S.log.slice(n1).map(x=>x.msg).join("|");
   ok(/회복 자세 시작/.test(l2),"A'5 공개 말의 회복 지정은 이름 포함 로그");
@@ -251,7 +254,10 @@ block("D 판정",()=>{
   T.startRounds(al,m2,al.cap,m2); T.drain(); T.judge(); T.drain();
   ok(!al.alive&&m2.alive&&S().metrics.defenderWins===1,"D5 예비 하수인(70/100) 대리 출전은 무피해 판정에서 70% < 100% 로 패배 — 알려진 트레이드오프(보정 없음)");
   // D6 recA/recD 지표는 계속 기록 (execSlot 경로)
-  [a,d]=setup(); T.execSlot("A",0); T.drain(); ok(S().battle&&S().battle.recA>0,"D6 recA 지표 기록 유지 (판정에는 미사용)");
+    /* #233 (GDD-23 4.2 ①) 결정론 픽스처: 회피가 실제 스탯이 된 뒤로 무작위 배정된 아키타입의 회피율이
+     걸리면 resolveHit 이 ① 에서 조기 반환해 addRec 가 불리지 않아 recA 가 0 으로 남는다(CI 간헐 실패).
+     회피율을 0 으로 고정해 타격이 반드시 적중하게 한다. 단언(recA>0)은 그대로다. 상세는 Mars 보고서 §10. */
+  [a,d]=setup(); d.dodge=0; T.execSlot("A",0); T.drain(); ok(S().battle&&S().battle.recA>0,"D6 recA 지표 기록 유지 (판정에는 미사용)");
   // D7 6라운드 자연 종료 → judge 경유 배너 메시지 (blog)
   T.S.battle.round=6; T.S.battle.phase=1; T.execSlot("D",0); T.drain(); // #146: 4슬롯 전투원의 순수 기본 공격(-1)은 철회 — 합법 슬롯으로 12번째 행동을 낸다
   ok(!S().battle&&S().metrics.judged===1&&T.S.log.some(l=>/판정|동률/.test(l.msg)),"D7 12번째 행동 뒤 판정 경로 (judged 1)");
@@ -349,7 +355,9 @@ block("G 연출 큐",()=>{
   ok(T.FX.cur&&T.FX.cur.title==="new","G13 이전 게임의 타이머는 새 게임 항목을 끝내지 못한다 (세대 토큰)"); T.TQ.length=0; T.fxReleaseAll();
   // 순서: 접촉 배너 → 상황 문구 → (전투) 카운트다운 4 → 개시 메시지 → 라운드 배너
   board("pvp"); T.FX.force=true; T.TQ.length=0; T.els.msgBox.nodeType=1; // 메시지 재생 경로도 켠다
-  const a=first(0,"minion"), d=first(1,"minion"); H.place(T,a,8,4); H.place(T,d,6,4); T.doMove(a,7,4);
+    /* #233 (GDD-23 4.2 ①) 결정론 픽스처: 회피되면 "회피했다!" 만 나와 G19 의 피해 그룹이 생기지 않는다.
+     누가 선턴인지는 속도로 갈리므로 양쪽 회피율을 0 으로 고정한다. 순서 단언은 그대로다. 보고서 §10. */
+  const a=first(0,"minion"), d=first(1,"minion"); a.dodge=0; d.dodge=0; H.place(T,a,8,4); H.place(T,d,6,4); T.doMove(a,7,4);
   const titles=()=>T.FX.log.map(x=>x.kind+":"+(x.title||x.sub||x.key));
   ok(S().battle&&T.FX.log[0].title==="⚠️ 상대 말 접촉!"&&T.FX.log[1].sub==="배틀을 시작합니다."&&T.FX.log.slice(2,6).map(x=>x.title).join(",")==="3,2,1,배틀 시작!","G14 순서: 접촉 배너 → 상황 문구 → 3·2·1·배틀 시작! ("+titles().slice(0,6).join(" | ")+")");
   ok(T.fxLocked()&&T.netReady({t:"act",k:0})===false,"G15 카운트다운 중 잠금 · 수신 전투 프레임 보류(netReady false)");
@@ -396,6 +404,10 @@ block("G 연출 큐",()=>{
   { board("pve"); T.FX.force=true; T.els.msgBox.nodeType=1; T.TQ.length=0;
     const a=first(0,"minion"), d=first(1,"minion"), b2=first(0,"minion",1), e2=first(1,"minion",1), rear=first(0,"minion",2);
     H.place(T,a,7,4); H.place(T,d,6,4); H.place(T,b2,7,6); H.place(T,e2,6,6); H.place(T,rear,10,4);
+    /* #233 (GDD-23 4.4): 선턴이 속도로 갈리므로 이 절도 순서를 전투 시작 전에 고정한다 —
+       검증 대상은 사람(A) 이 낸 도망의 배너 연쇄이라 A 가 선턴이어야 그 렌더의 클로저로 도망을 낼 수 있다.
+       무작위 배정된 아키타입 속도로 D 가 선턴이 되면 거울 사본이 그려져 검사가 실행마다 붙다 떨어졌다. */
+    d.spd=a.spd; d.grade=a.grade;
     a.hp=20; T.startRounds(a,d,a,d); T.setSeed(null); const rr=global.Math.random; global.Math.random=()=>0.01; // HP<50% 를 전투 개시 전에 두어야 메뉴의 canFlee 가 참이다 · 도망 성공 고정
     T.S.forcedQueue=[{pid:b2.id,targets:[e2.id]}]; // 스왑 둘째 말의 강제 전투가 대기 중
     /* #146 코어 잠금(Saturn REVISE P1): 도망·패스는 연출·메시지 재생 중에는 코어에서도 거부된다.
@@ -507,6 +519,13 @@ block("I 온라인",()=>{
 /* ===== J. 전투 4카테고리 DOM ===== */
 block("J 전투 메뉴",()=>{
   board("pve"); const m=first(0,"minion"), e=first(1,"minion"); H.place(T,m,7,4); H.place(T,e,6,4); T.S.selected=null;
+  /* #233 (GDD-23 4.4): 선턴은 이제 속도·등급·접촉 개시자로 정해진다. 이 절은 사람(A) 화면의 4카테고리 DOM 을
+     보므로 phase 0 이 사람 차례여야 한다 — 새 게임마다 무작위로 배정되는 아키타입 속도로 순서가
+     뒤집히면 "상대 턴" 거울 사본이 그려져 J5·J6 이 보려는 버튼 자체가 없어진다(실제로 이 절은
+     엔진 변경으로 난수 소비가 밀릴 때마다 붙다 떨어졌다). 속도·등급을 **전투 시작 전에** 동률로
+     맞춰 접촉 개시자(A)가 선턴이 되게 고정한다(4.4 3항-3). J9 는 그 반대편(phase 1 = 상대 차례)을
+     보므로 같은 고정에 의존한다. */
+  e.spd=m.spd; e.grade=m.grade;
   T.startRounds(m,e,m,e); T.drain();
   const h=()=>T.els.overlayBox.innerHTML;
   ok(/id="bmenu"/.test(h())&&/⚔️ 싸우기/.test(h())&&/🎒 가방/.test(h())&&/🔴 포획/.test(h())&&/🏃 도망가기/.test(h()),"J1 루트 4카테고리");

@@ -3,8 +3,8 @@
 // (1) 인증 서버가 게임 클라이언트(demo/index.html + assets)를 릴레이와 같은 보안 검사로 서빙한다 — 그 페이지의
 //     기본 접속 주소(location.host)가 곧 이 서버다.
 // (2) 같은 포트에서 WebSocket 공개 로비가 동작한다.
-// (3) package.json: npm start/start:lan = 인증 서버, 기존 코드 접속 릴레이는 start:relay/start:relay:lan으로 보존.
-//     기존 실행기(서버시작.bat·LAN서버시작.bat)는 릴레이 그대로, 공개 대전 실행기는 별도 파일.
+// (3) package.json: npm start/start:lan = 인증 서버. #276: 릴레이는 테스트 fixture(server/test/relay)일 뿐 실행 경로가 아니다 —
+//     start:relay 스크립트와 옛 실행기 4종(서버시작·LAN서버시작·공개서버시작·공개LAN서버시작.bat)이 없어야 한다.
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -44,6 +44,10 @@ async function main() {
     ok(/connect-src 'self' ws: wss:/.test(res.headers['content-security-policy']), 'CSP가 같은 출처 WebSocket 접속을 허용');
     const idx = await request(port, { path: '/index.html' });
     ok(idx.status === 200 && idx.body.equals(onDisk), 'GET /index.html 200');
+    const js = await request(port, { path: '/js/core.js' });
+    ok(js.status === 200 && /text\/javascript/.test(js.headers['content-type']) && js.body.equals(fs.readFileSync(path.join(demo, 'js', 'core.js'))), 'GET /js/core.js 200·JavaScript MIME');
+    const css = await request(port, { path: '/css/game.css' });
+    ok(css.status === 200 && /text\/css/.test(css.headers['content-type']) && css.body.equals(fs.readFileSync(path.join(demo, 'css', 'game.css'))), 'GET /css/game.css 200·CSS MIME');
     const head = await request(port, { path: '/', method: 'HEAD' });
     ok(head.status === 200 && head.body.length === 0 && Number(head.headers['content-length']) === onDisk.length, 'HEAD / 200·본문 없음·Content-Length');
   }
@@ -94,15 +98,10 @@ async function main() {
     const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'));
     ok(pkg.scripts.start === 'node authoritative/server.js', 'npm start = 인증 서버(공개 로비 기본 경로)');
     ok(pkg.scripts['start:lan'] === 'node authoritative/server.js --lan', 'npm run start:lan = 인증 서버 LAN');
-    ok(pkg.scripts['start:relay'] === 'node server.js' && pkg.scripts['start:relay:lan'] === 'node server.js --lan', '기존 코드 접속 릴레이 보존(start:relay·start:relay:lan)');
+    ok(!('start:relay' in pkg.scripts) && !('start:relay:lan' in pkg.scripts), '#276 릴레이 실행 스크립트 없음(테스트 fixture 전용)');
     const dir = path.join(__dirname, '..', '..');
-    const relayLocal = fs.readFileSync(path.join(dir, '서버시작.bat'), 'utf8');
-    const relayLan = fs.readFileSync(path.join(dir, 'LAN서버시작.bat'), 'utf8');
-    ok(/^node server\.js\r?$/m.test(relayLocal) && /^node server\.js --lan\r?$/m.test(relayLan), '기존 실행기는 릴레이 그대로(LAN 코드 접속 경로 보존)');
-    const pubLocal = fs.readFileSync(path.join(dir, '공개서버시작.bat'), 'utf8');
-    const pubLan = fs.readFileSync(path.join(dir, '공개LAN서버시작.bat'), 'utf8');
-    ok(/^node authoritative\\server\.js\r?$/m.test(pubLocal) && /^node authoritative\\server\.js --lan\r?$/m.test(pubLan), '공개 대전 실행기는 인증 서버 고정 명령');
-    ok(!/%[1-9*]/.test(pubLocal) && !/%[1-9*]/.test(pubLan), '공개 대전 실행기는 호출자 인자(%1·%*)를 읽지 않음');
+    const oldBats = ['서버시작.bat', 'LAN서버시작.bat', '공개서버시작.bat', '공개LAN서버시작.bat'].filter((f) => fs.existsSync(path.join(dir, f)));
+    ok(oldBats.length === 0, `#276 옛 실행기 제거(남은 파일: ${oldBats.join(', ') || '없음'})`);
     // 기본 포트 — 릴레이 8080과 겹치지 않는다
     const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
     ok(/DD_AUTH_PORT \|\| process\.env\.PORT \|\| 8081/.test(src), '인증 서버 기본 포트 8081(릴레이 8080과 분리) — 미설정이면 플랫폼 주입 PORT(Render 등) 폴백');

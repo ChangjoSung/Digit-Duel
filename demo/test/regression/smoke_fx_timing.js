@@ -135,7 +135,11 @@ function trackWidth(el,name,sink){ el.style=new Proxy({},{set(t,k,v){ if(k==="wi
      램프는 #125 의 다른 키들로 이미 C 절에서 확인했다. damageFx·barStep·msgStep 은 제품 값 유지. */
   const RAMP={contactBanner:60,countStep:40,roundBanner:60,skillFx:60};
   const savedRamp={}; for(const k of Object.keys(RAMP)){ savedRamp[k]=T.BAL.fx[k]; T.BAL.fx[k]=RAMP[k]; }
+    /* #233 (GDD-23 4.2 ① · 4.4) 결정론 픽스처: 이 파일은 시드가 없어 선턴(속도)과 적중(회피)이 실행마다
+     달라진다. 속도·등급을 전투 시작 전에 동률로 맞춰 A 를 선턴으로 굳히고 방어측 회피율을 0 으로 둔다.
+     회피율 0 은 ① 의 rand() 소비를 바꾸지 않는다. 측정·순서 단언은 그대로다. 보고서 §10. */
   board("pvp"); const aD=first(0,"minion"), dD=first(1,"minion"); H.place(T,aD,8,4); H.place(T,dD,6,4);
+  dD.spd=aD.spd; dD.grade=aD.grade; dD.dodge=0;
   T.doMove(aD,7,4);
   let n=0; while(T.fxLocked()&&n++<400) await sleep(10);
   const B=T.S.battle;

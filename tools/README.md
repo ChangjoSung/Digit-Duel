@@ -4,12 +4,36 @@
 
 | 폴더 | 목적 | CI 잡 |
 |---|---|---|
+| [`typecheck/`](typecheck) | 클라이언트 상태·액션·이벤트·프로토콜 경계 정적 계약 검사 | A. 규칙 회귀·AI 완주 (헤드리스) |
 | [`docs/`](docs) | 추적 중인 `*.md`의 내부 링크·이미지 무결성 | C. 문서 링크·이미지 무결성 |
 | [`media/`](media) | README 미디어 캡처와 오프라인 검증 | C. 문서 링크·이미지 무결성 |
 | [`art/`](art) | 하수인·왕·동료 아트 파이프라인(결정적 익스포터·검증기) | D. 납품 아트 자산 무결성 |
 | [`milestone/v0.4.6/issues/122/`](milestone/v0.4.6/issues/122) | 뒤로가기·어두운 배경 브라우저 증빙 | 로컬 Chrome 검수용 |
 
 버전 열은 출시된 파일의 최초 태그, Issue 열은 도입 작업을 가리킨다. 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니며**, 해당 Issue에서 추가됐지만 아직 출시 태그에 포함되지 않은 파일임을 뜻한다. 옛 경로 대조는 [#134 MOVES.csv](../docs/milestone/v0.4.6/issues/134/Mercury/MOVES.csv)에서 본다.
+
+## 정적 계약 검사 (`typecheck/`)
+
+게임 코드는 그대로 **classic script** 다. 번들러도, 프레임워크도, 빌드 산출물도 없고 `demo/index.html` 을 `file://` 로 열면
+똑같이 돈다. 이 폴더는 그 코드를 **고치지 않고 읽기만 해서** 네 경계의 어휘가 서로 맞는지 보는 `tsc --noEmit` 설정이다.
+유일한 도구 의존성은 루트 [`package.json`](../package.json) 의 `typescript` 하나(정확한 버전 고정)다.
+
+```
+npm ci                 # typescript 1개
+npm run typecheck      # 양성 — 실제 코드에 계약 위반 0
+npm run test:typecheck # 음성 — 일부러 틀린 코드가 실제로 걸리는지 + 설정 무력화 감지
+```
+
+| 파일 | 버전 | Issue | 하는 일 | 파일 쓰기 |
+|---|---|---|---|---|
+| [`tsconfig.json`](typecheck/tsconfig.json) | v0.4.11(미출시) | #245 | `demo/js/*.js` 를 `allowJs`·`checkJs` 로 읽는 양성 검사. `noEmit` 이라 산출물이 없다 | 0건 |
+| [`contracts.d.ts`](typecheck/contracts.d.ts) | v0.4.11(미출시) | #245 | 액션·이벤트·프로토콜 계약과 중첩 상태(`BattleState`·`RecruitState`) 선언. **`GameState`·`Piece` 는 여기 없다** — `demo/js/state.js` 의 `newGameState()`·`mkPiece()` 리터럴에서 직접 끌어오므로 표를 두 벌 관리하지 않는다 | 0건 |
+| [`env.d.ts`](typecheck/env.d.ts) | v0.4.11(미출시) | #245 | classic script 가 `window.x=…` 로 붙여 맨이름으로 부르는 전역 선언. 포괄 인덱스 시그니처를 쓰지 않는다 — 그러면 오타난 전역까지 통과해 검사가 사라진다 | 0건 |
+| [`test/typecheck_test.js`](typecheck/test/typecheck_test.js) | v0.4.11(미출시) | #245 | 검사 자체의 회귀. 네 계약마다 음성 대조군이 실제로 걸리는지, 설정·억제 주석으로 무력화되지 않았는지, 서버 `ACTION_TYPES` 가 전부 클라이언트 계약에 있는지를 본다 | 0건 (서버 파일은 읽기만) |
+| [`test/negative/*.js`](typecheck/test/negative) | v0.4.11(미출시) | #245 | 일부러 계약을 어긴 대조군. 양성 검사(`tsconfig.json`)는 이 폴더를 읽지 않는다 — `test/tsconfig.negative.json` 에서만 읽는다 | — |
+
+검사가 **통과한다는 사실만으로는** 계약이 살아 있다는 증거가 못 된다: 전부 `any` 로 만들거나 `checkJs` 를 끄면 똑같이 통과한다.
+그래서 CI 는 양성과 음성을 **둘 다** 돌린다.
 
 ## 문서 무결성 (`docs/`)
 

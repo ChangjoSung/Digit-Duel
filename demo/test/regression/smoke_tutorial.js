@@ -20,11 +20,13 @@ function sSnap(T){ const s=T.S; return JSON.stringify({mode:s.mode,phase:s.phase
   pcs:s.pieces.map(p=>[p.id,p.r,p.c,p.alive,p.placed,p.hp]),m:T.metricsSnapshot(),log:s.log.length}); }
 const N=10, LAST=N-1;
 
-/* ===== A. 최초 방문 자동 표시 (localStorage 미지원) · 10단계 내용·순서 · 규칙 수치 일치 · S와 분리 ===== */
+/* ===== A. #260 자동 표시 없음 (localStorage 미지원) · 10단계 내용·순서 · 규칙 수치 일치 · S와 분리 ===== */
 {
   setLS(null);
   const T=H.load(htmlPath);
-  ok(T.TUT.open===true&&T.TUT.step===0&&T.TUT.auto===true,"A1 localStorage 미지원 환경에서도 최초 로드 시 자동 표시 (step 0)");
+  /* #260 (CJ 2026-09-27): 페이지 로드 튜토리얼·제품 진입점 제거 — 모듈은 회귀용으로만 남아 직접 열어 본다 */
+  ok(T.TUT.open===false&&T.TUT.seenThisLoad===false,"A1 #260 로드해도 자동 표시하지 않는다");
+  T.tutOpen(); ok(T.TUT.open===true&&T.TUT.step===0&&T.TUT.auto===false,"A1b 모듈 직접 호출(tutOpen)로는 1단계부터 열린다");
   ok(!T.els.tutOverlay.classList.contains("hidden")&&T.els.tutOverlay.getAttribute("aria-hidden")===null,"A2 튜토리얼 오버레이 표시 (hidden 제거·aria-hidden 해제)");
   ok(T.TUT_STEPS.length===N,"A3 기본 10단계");
   const titles=T.TUT_STEPS.map(s=>s.title), body=T.TUT_STEPS.map(s=>strip(s.lines.join(" ")));
@@ -35,8 +37,13 @@ const N=10, LAST=N-1;
   ok(/왕/.test(body[0])&&/끝줄/.test(body[0])&&/하수인.*6개/.test(body[0])&&/동료.*2개/.test(body[0])&&/모두 없애/.test(body[0]),"A6 1단계에 승리 조건 3가지 모두(왕 제거·끝줄·전멸) — 마지막 복습과 범위 동일");
   ok(/한 칸/.test(body[2])&&/대각선/.test(body[2])&&/바로 옆/.test(body[2])&&/다시 숨/.test(body[2])&&/앞 칸에 멈추/.test(body[2]),"A7 이동 1칸 직교·숲 은폐/공개/재은폐·숨은 말 충돌 정지 규칙");
   ok(/다음 차례/.test(body[3])&&/하수인·동료·왕/.test(body[3])&&/폭탄·함정은 못/.test(body[3])&&/몬스터볼/.test(body[3])&&/버프/.test(body[3]),"A8 흔적→다음 턴 탐색·탐색 가능 말(하수인·동료·왕)·보상 요약");
-  const bt=T.BEATS, cyc=`${{fire:"불",water:"물",grass:"풀",lightning:"번개"}.fire}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt.fire]}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt[bt.fire]]}→${({fire:"불",water:"물",grass:"풀",lightning:"번개"})[bt[bt[bt.fire]]]}→불`;
-  ok(body[4].includes(cyc)&&/최대 2번/.test(body[4])&&/HP\(체력\)/.test(body[4])&&/쿨타임.*그대로/.test(body[4])&&/상태이상.*사라/.test(body[4]),"A9 강제 전투·최대 2회·상성 순환("+cyc+")이 엔진 BEATS와 일치·HP/쿨 유지·상태이상 해제");
+  /* #233 (GDD-23 4.1): 5속성 순환(불→풀→땅→번개→물→불)이 도입되며 땅은 #234 전까지 실제 플레이 속성이 아니다(ELEMS 밖).
+     튜토리얼 문구는 지금 실제로 보이는 4종 사이의 관계만 말하므로, 사이클 전체를 한 문자열로 재구성하는 대신
+     BEATS 의 개별 링크 3개(불→풀·번개→물·물→불)와 "더는 서로 안 물리는" 풀↔번개 관계를 각각 대조한다. */
+  const bt=T.BEATS;
+  ok(bt.fire==="grass"&&bt.lightning==="water"&&bt.water==="fire"&&bt.grass!=="lightning"&&bt.lightning!=="grass",
+     "A9 상성 링크가 엔진 BEATS와 일치 (불→풀·번개→물·물→불, 풀↔번개는 더는 서로 안 물림)");
+  ok(body[4].includes("불→풀")&&body[4].includes("번개→물→불")&&/서로 상성이 없어요/.test(body[4])&&/최대 2번/.test(body[4])&&/HP\(체력\)/.test(body[4])&&/쿨타임.*그대로/.test(body[4])&&/상태이상.*사라/.test(body[4]),"A9b 강제 전투·최대 2회·상성 링크 문구·HP/쿨 유지·상태이상 해제 — #233 GDD-23 4.1 (구 4각 순환 문구 대체)");
   ok(/폭탄.*한 칸/.test(body[5])&&/2칸/.test(body[5])&&/함정.*못 움직/.test(body[5])&&/둘 다 사라/.test(body[5])&&/동료·왕.*살아남/.test(body[5])&&/2번/.test(body[5]),"A10 폭탄 1칸/BT 2칸·함정 고정·폭탄 vs 하수인 동귀·동료/왕 생존·함정 2턴 정지");
   /* A11 #146 (v0.4.7 CJ 2026-09-10): 도망 계약이 바뀌어 튜토리얼 문안도 함께 바뀐다 —
      HP 조건 폐지 · 기본 성공률 30% · 도망의 수호자 70%(치환) · 실패 시 상대의 추가 반격 없음(내 싸움 차례 한 번만 소모).
@@ -104,7 +111,9 @@ const N=10, LAST=N-1;
   T.tutGo(8); ok(/<div class="tut-banner">턴 65부터 🔥 버닝 타임<\/div>/.test(T.els.tutBox.innerHTML)&&(T.els.tutBox.innerHTML.match(/tut-banner/g)||[]).length===1,"G13 9단계 상단 배너(턴 65부터 버닝 타임)는 격자 전체 폭 1개");
   T.tutGo(4); ok(!/tut-banner/.test(T.els.tutBox.innerHTML),"G13b 다른 단계엔 배너 없음");
   // CSS 구조: 격자 auto-fit/minmax · 간격은 변수 · 배지 place-items:center · 텍스트 자연 줄바꿈 · 절대좌표 없음
-  const css=T.html.slice(T.html.indexOf("/* ===== #26 튜토리얼 모달"),T.html.indexOf("</style>"));
+  // 튜토리얼 CSS = #26 표지부터 들여쓴 블록 끝(다음 0열 주석 = #263·#260 이후 다른 화면 구획)까지. 없으면 </style>까지
+  const cssA=T.html.indexOf("/* ===== #26 튜토리얼 모달"), cssZ=T.html.indexOf("\n/* ",cssA);
+  const css=T.html.slice(cssA,cssZ>0?cssZ:T.html.indexOf("</style>",cssA));
   ok(/\.tut-scene\{[^}]*display:grid;[^}]*grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,var\(--tut-card-min\)\),1fr\)\);[^}]*gap:var\(--tut-gap\)/.test(css),"G14 .tut-scene = CSS Grid auto-fit/minmax(var(--tut-card-min)) + gap 변수");
   ok(/\.tut-sn\{[^}]*display:grid;[^}]*place-items:center/.test(css),"G15 번호 원형 배지는 display:grid + place-items:center");
   ok(/\.tut-card\{[^}]*min-width:0/.test(css)&&/\.tut-txt\{[^}]*overflow-wrap:anywhere/.test(css)&&/\.tut-card-h h3\{[^}]*overflow-wrap:anywhere/.test(css)&&/\.tut-res\{[^}]*overflow-wrap:anywhere/.test(css),"G16 카드·제목·결과·설명은 min-width:0 + overflow-wrap:anywhere (좁은 열에서 자연 줄바꿈, 넘침 없음)");
@@ -133,7 +142,7 @@ const N=10, LAST=N-1;
 {
   const ls=memLS(); setLS(ls);
   const T=H.load(htmlPath);
-  ok(T.TUT.open===true,"B1 빈 저장소 → 자동 표시");
+  ok(T.TUT.open===false,"B1 #260 빈 저장소여도 자동 표시 없음"); T.tutOpen();
   const txt=()=>T.TUT.btns.map(b=>b.textContent+(b.disabled?"(x)":"")).join("|");
   ok(/이전\(x\)/.test(txt())&&/다음/.test(txt())&&/건너뛰기/.test(txt()),"B2 1단계 버튼: 이전(비활성)·다음·건너뛰기 ("+txt()+")");
   T.tutPrev(); ok(T.TUT.step===0,"B3 1단계에서 이전은 무동작");
@@ -152,17 +161,17 @@ const N=10, LAST=N-1;
   /* #128 핵심 회귀 — 같은 저장소(=같은 브라우저 프로필)로 문서를 다시 로드하면 다시 뜬다.
      기준판(로드당 1회 이전)에서는 앞선 완료가 tutorialSeen=1 을 남겨 여기서 open===false 가 되어 실패한다. */
   const T2=H.load(htmlPath);
-  ok(T2.TUT.open===true&&T2.TUT.step===0&&T2.TUT.auto===true,"B13 #128 같은 저장소로 재로드 → 1단계부터 다시 자동 표시");
+  ok(T2.TUT.open===false&&T2.TUT.seenThisLoad===false,"B13 #260 같은 저장소로 재로드해도 자동 표시 없음");
   ok(/id="tutOverlay" class="hidden" aria-hidden="true"/.test(T2.html)&&/id="tutHint" class="hidden"/.test(T2.html),"B14 초기 마크업은 오버레이·도움말 모두 hidden");
   T2.tutSkip(); T2.tutOpen(); ok(T2.TUT.open&&T2.TUT.step===0,"B15 재로드 후에도 수동 다시 보기 가능"); T2.tutSkip();
-  ok(/튜토리얼 다시 보기/.test(T2.els.sidePanel.innerHTML)&&/id="tutBtn"/.test(T2.html)&&/onclick="tutOpen\(\)"/.test(T2.html),"B16 메뉴 '튜토리얼 다시 보기' 버튼 + 헤더 ? 버튼");
+  ok(!/튜토리얼/.test(T2.els.sidePanel.innerHTML)&&!/id="tutBtn"/.test(T2.html)&&!/onclick="tutOpen\(\)"/.test(T2.html),"B16 #260 로비·타이틀·상단 바에 튜토리얼 진입점 없음");
   ok(H.storageTrace(ls).all.length===0&&ls.log.length===0,"B17 여러 번 열고 닫고 다시 로드해도 저장 쓰기 0회");
   /* #128 과거 키 무시 + 보존 — tutorialSeen=1 이 이미 있어도 자동 표시되고, 제품이 그 값을 지우거나 바꾸지 않는다 (사용자 저장값 보존) */
   const legacy=memLS(); legacy.setItem("tutorialSeen","1"); legacy.setItem("netServer","ws://127.0.0.1:8787"); legacy.writes.length=0;
   const before=H.storageSnapshot(legacy);
   setLS(legacy);
   const T3=H.load(htmlPath);
-  ok(T3.TUT.open===true&&T3.TUT.auto===true,"B18 #128 과거 tutorialSeen=1 이 있어도 자동 표시된다 (과거 키 무시)");
+  ok(T3.TUT.open===false,"B18 #260 과거 tutorialSeen=1 이 있어도 없어도 자동 표시 없음 (키를 읽지 않는다)");
   T3.tutOpen(); for(let i=0;i<LAST;i++) T3.tutNext(); T3.tutNext(); T3.tutOpen(); T3.tutSkip();
   ok(legacy.getItem("tutorialSeen")==="1"&&legacy.getItem("netServer")==="ws://127.0.0.1:8787"&&H.storageSnapshot(legacy)===before&&legacy.writes.length===0,
     "B19 #128 과거 키·다른 저장값(netServer)을 읽지도 지우지도 덮어쓰지도 않는다 ("+J(legacy.writes)+")");
@@ -173,26 +182,27 @@ const N=10, LAST=N-1;
   setLS(H.throwingStorage("SecurityError: denied")); // 접근 자체가 던지는 환경 (시크릿 모드·정책 차단)
   let T=null, err=null;
   try{ T=H.load(htmlPath); }catch(e){ err=e; }
-  ok(!err&&T&&T.TUT.open===true,"C1 localStorage 접근 자체가 예외를 던져도 로드·자동 표시 정상 ("+(err&&err.message)+")");
+  ok(!err&&T&&T.TUT.open===false,"C1 localStorage 접근 자체가 예외를 던져도 로드 정상·자동 표시 없음 ("+(err&&err.message)+")");
+  T.tutOpen();
   let err2=null; try{ T.tutSkip(); }catch(e){ err2=e; }
   ok(!err2&&!T.TUT.open&&T.tutSeen()===true,"C2 예외 환경에서 건너뛰기 정상 + 이번 로드 내 seen 유지(메모리)");
   /* #128: 영구 저장 자체가 사라졌으므로 예외를 삼킬 저장 헬퍼도 없다 — tutSeen 은 메모리 플래그 그대로다 */
   ok(T.TUT_KEY===undefined&&T.tutStore===undefined&&T.tutSeen()===T.TUT.seenThisLoad,"C3 튜토리얼 저장 헬퍼(TUT_KEY·tutStore) 부재 · tutSeen()은 seenThisLoad 그 자체");
   const ls=memLS(); ls.setItem=()=>{throw new Error("QuotaExceededError");}; setLS(ls);
-  const T3=H.load(htmlPath); let err3=null; try{ T3.tutNext(); T3.tutSkip(); }catch(e){ err3=e; }
+  const T3=H.load(htmlPath); let err3=null; try{ T3.tutOpen(); T3.tutNext(); T3.tutSkip(); }catch(e){ err3=e; }
   ok(!err3&&!T3.TUT.open&&T3.TUT.seenThisLoad===true,"C4 setItem 이 던지는 환경(용량·시크릿 모드)에서도 닫힘·메모리 seen 정상 — 애초에 쓰지 않는다");
   /* C5 #128 로드마다 새 판단 — 같은 프로세스에서 세 번 연속 로드해도 매번 1단계 자동 표시 (새 탭·새로고침·재접속의 헤드리스 등가물) */
   const fresh=memLS(); setLS(fresh);
   const shown=[]; // 앞 로드를 **완료(finish)한 뒤** 다음 로드 — 새로고침·새 탭의 헤드리스 등가물
-  for(let i=0;i<3;i++){ const x=H.load(htmlPath); shown.push(x.TUT.open===true&&x.TUT.step===0&&x.TUT.auto===true); x.tutClose("finish"); }
+  for(let i=0;i<3;i++){ const x=H.load(htmlPath); shown.push(x.TUT.open===false); x.tutOpen(); x.tutClose("finish"); }
   ok(shown.every(Boolean)&&H.storageTrace(fresh).all.length===0,
-    "C5 #128 앞 로드를 완료한 뒤 다시 로드해도 매번 1단계 자동 표시·저장 흔적 0 ("+J(shown)+")");
+    "C5 #260 앞 로드에서 열고 마친 뒤 다시 로드해도 자동 표시 없음·저장 흔적 0 ("+J(shown)+")");
 }
 
 /* ===== D. 키보드·포커스 ===== */
 {
   const ls=memLS(); setLS(ls);
-  const T=H.load(htmlPath); const D=global.document;
+  const T=H.load(htmlPath); const D=global.document; T.tutOpen(); // #260 자동 표시가 없어 모듈을 직접 연다
   const ev=k=>{let pd=false; const e={key:k,shiftKey:false,preventDefault(){pd=true;},stopPropagation(){}}; return {e,get pd(){return pd;}};};
   ok(D.activeElement===T.TUT.btns[1]&&/다음/.test(D.activeElement.textContent),"D1 열리면 '다음' 버튼에 포커스");
   let a=ev("ArrowRight"); T.tutKeydown(a.e); ok(T.TUT.step===1&&a.pd,"D2 → 키: 다음 단계 (기본 동작 차단)");
@@ -221,28 +231,31 @@ const N=10, LAST=N-1;
   const m=T.S.pieces.find(x=>x.owner===0&&x.type==="minion");
   H.place(T,m,11,3); H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1); H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
   T.render();
-  ok(T.TUT.hints.teleport===false&&T.els.tutHint.children.length===0,"E1 텔레포트 불가 상태에서는 도움말 없음");
+  ok(T.TUT.hints.teleport===false&&T.byId("tutHint").children.length===0,"E1 텔레포트 불가 상태에서는 도움말 없음");
   H.place(T,m,3,4);
   const before=sSnap(T);
   T.render();
-  ok(T.TUT.hints.teleport===true&&!T.els.tutHint.classList.contains("hidden")&&/텔레포트\(순간이동\)/.test(T.els.tutHint.innerHTML),"E2 사람 턴에 텔레포트가 처음 가능해지면 도움말 1회 (전문어 즉시 풀이)");
+  ok(T.TUT.hints.teleport===false&&T.byId("tutHint").children.length===0,"E2 #260 텔레포트가 처음 가능해져도 제품 화면에 도움말 없음");
+  T.tutHint("teleport"); // 이하 모듈 직접 호출 — 문구·닫기·1회 계약은 회귀용으로 유지
+  ok(T.TUT.hints.teleport===true&&!T.byId("tutHint").classList.contains("hidden")&&/텔레포트\(순간이동\)/.test(T.byId("tutHint").innerHTML),"E2b 모듈 직접 호출 시 도움말 1회 (전문어 즉시 풀이)");
   ok(sSnap(T)===before,"E3 도움말 표시가 게임 상태 S를 변경하지 않음");
-  const okBtn=T.els.tutHint.children.find(b=>/알겠어요/.test(b.textContent));
+  const okBtn=T.byId("tutHint").children.find(b=>/알겠어요/.test(b.textContent));
   ok(!!okBtn&&okBtn.getAttribute("aria-label")==="도움말 닫기","E4 도움말 닫기 버튼(알겠어요)");
-  okBtn.onclick(); ok(T.els.tutHint.classList.contains("hidden"),"E5 닫기 후 숨김");
-  T.render(); ok(T.els.tutHint.classList.contains("hidden")&&T.tutHint("teleport")===false,"E6 두 번째부터는 표시 안 함 (1회)");
+  okBtn.onclick(); ok(T.byId("tutHint").classList.contains("hidden"),"E5 닫기 후 숨김");
+  T.render(); ok(T.byId("tutHint").classList.contains("hidden")&&T.tutHint("teleport")===false,"E6 두 번째부터는 표시 안 함 (1회)");
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="minion"),12,3); H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="minion"),2,3);
   H.place(T,T.S.pieces.find(x=>x.owner===0&&x.type==="king"),13,1); H.place(T,T.S.pieces.find(x=>x.owner===1&&x.type==="king"),1,7);
   T.S.turnCount=T.BAL.burnStart-2; T.S.mainUsed=true;
   const b2=sSnap(T); T.endTurn();
-  ok(T.S.metrics.btReached===true&&T.TUT.hints.burning===true&&/버닝 타임\(불타는 시간\)/.test(T.els.tutHint.innerHTML),"E7 버닝 타임 첫 진입 시 도움말 1회 (전문어 즉시 풀이)");
+  ok(T.S.metrics.btReached===true&&T.TUT.hints.burning===false&&T.byId("tutHint").children.length===0,"E7 #260 버닝 타임 첫 진입 — Core 이벤트를 화면이 띄우지 않는다");
+  T.tutHint("burning"); ok(/버닝 타임\(불타는 시간\)/.test(T.byId("tutHint").innerHTML),"E7b 모듈 직접 호출 문구 (전문어 즉시 풀이)");
   ok(JSON.parse(sSnap(T)).m.total.btEnterTurn===T.BAL.burnStart&&b2!==sSnap(T),"E8 엔진의 BT 진입 처리(btReached·btEnterTurn)는 기존과 동일");
   T.tutHintClose(); T.S.mainUsed=true; T.endTurn();
-  ok(T.els.tutHint.classList.contains("hidden")&&T.tutHint("burning")===false,"E9 이후 턴에는 재표시 없음");
+  ok(T.byId("tutHint").classList.contains("hidden")&&T.tutHint("burning")===false,"E9 이후 턴에는 재표시 없음");
   T.TUT.hints.teleport=false; T.TUT.hints.burning=false; T.tutHintClose();
   const r=H.runSim(T,["grade5","grade5"],321);
-  ok(r.phase==="over"&&T.TUT.hints.teleport===false&&T.TUT.hints.burning===false&&T.els.tutHint.classList.contains("hidden"),"E10 sim 모드에서는 도움말 미발생 · sim 완주 정상");
+  ok(r.phase==="over"&&T.TUT.hints.teleport===false&&T.TUT.hints.burning===false&&T.byId("tutHint").classList.contains("hidden"),"E10 sim 모드에서는 도움말 미발생 · sim 완주 정상");
   ok(T.TUT.hints.teleport===false&&H.storageTrace(T.storage).all.length===0&&T.cookieWrites.length===0,"E11 도움말은 저장하지 않음 (#128 이 로드의 저장 흔적 0·쿠키 0)");
   T.TQ.length=0;
 }
@@ -295,7 +308,7 @@ const N=10, LAST=N-1;
    브라우저 자동 스크롤을 유발해 제목·카드 1~2가 가려진 채 단계가 열렸다. (실측은 tut_layout_cdp.js) */
 {
   setLS(memLS());
-  const T=H.load(htmlPath); const D=global.document;
+  const T=H.load(htmlPath); const D=global.document; T.tutOpen(); // #260 자동 표시가 없어 모듈을 직접 연다
   const box=T.els.tutBox, nav=T.els.tutNav;
   nav.parentNode=box;                          // 스텁은 getElementById로 요소를 따로 만들므로 실제 DOM 포함관계(nav ⊂ box)를 명시
   box.scrollHeight=1200; box.clientHeight=344; // 640×360 상당: 내용이 박스보다 세로로 김 → 스크롤 컨테이너

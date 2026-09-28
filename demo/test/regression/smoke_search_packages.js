@@ -28,14 +28,16 @@ const J=x=>JSON.stringify(x);
    하네스 스텁은 id 캐시라 모달마다 버튼이 누적되고, 그러면 (a) 텍스트로 버튼을 찾을 때 옛 모달의 버튼이 잡히고
    (b) 동기화 모달 래퍼가 children 을 인덱스로 재배선해 새 버튼에 엉뚱한 콜백이 붙는다.
    이 계약은 4단계 모달을 연달아 쓰므로 smoke_online_sync.js 와 같은 방식으로 스텁을 실제 DOM 에 맞춘다. */
-function load(){ const X=H.load(htmlPath);
+/* #234 [CJ 결정 2026-09-17]: 탐색 '기술 교체'는 v0.4.11 에서 없어질 시스템이라 제품 기본값은 비활성(V2_INTERP.recruitSkillSwap=false,
+   smoke_issue234 E1~E3 가 고정)이다. 코드는 비활성 분기로 보존됐으므로, 이 파일은 그 보존 분기의 #121 계약 회귀를 계속 보기 위해 로드마다 분기를 켠다. */
+function load(){ const X=H.load(htmlPath); if(X.V2_INTERP) X.V2_INTERP.recruitSkillSwap=true;
   const box=X.byId("overlayBox"), ob=X.byId("obBtns");
   Object.defineProperty(box,"innerHTML",{configurable:true,get(){return this._html;},set(v){this._html=v; this.children.length=0; ob.children.length=0;}});
   return X; }
 const T=load();
 
 /* ── 공통 픽스처 ─────────────────────────────────────────────────────────── */
-function giveSpecies(X,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=X.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
+function giveSpecies(X,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=X.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; if(X.applyArchStats) X.applyArchStats(m,r.arch,m.grade||1); } // #233 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
 const R=(X,id)=>X.ROSTER.find(r=>r.id===id);
 /* 내 하수인(12,4)·상대 하수인(11,4)·왕 둘·동료 하나 — 볼 3·예비 없음 */
 function setup(X,mode){
@@ -72,7 +74,14 @@ const has=(X,txt)=>(X.byId("obBtns").children||[]).some(b=>b.textContent===txt);
 function randConsumed(X,seed,fn,max){ X.setSeed(seed); const seq=[]; for(let i=0;i<(max||14);i++) seq.push(X.rand()); X.setSeed(seed); fn(); const n=X.rand(); const k=seq.indexOf(n); return k; }
 function openBattle(X,a,d){ X.S.battle=null; X.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; a.cd=0; d.cd=0;
   a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0; a.powerBuff=false; d.powerBuff=false; a.fleeBoost=false; d.fleeBoost=false;
-  X.TQ.length=0; X.startRounds(a,d,a,d); X.TQ.length=0; }
+  // #233 (GDD-23 4.2 ①⑦): 이 파일은 시너지·패키지·버프 규칙을 보는 것이지 신규 회피·치명타를 보는 것이 아니다 — 0으로 고정한다.
+  if(a.dodge!==undefined){a.dodge=0; a.crit=0;} if(d.dodge!==undefined){d.dodge=0; d.crit=0;}
+  X.TQ.length=0; X.startRounds(a,d,a,d); X.TQ.length=0;
+  /* #235 (GDD-23 왕국 시너지): 왕국 효과는 참전 확정 순간 startRounds → applySynergy 에서 참전자에 스냅샷된다.
+     이 픽스처의 기본 보드(내 하수인·왕·동료가 같은 불 속성 3칸)는 (2) 단계를 달성하므로 스킬 적중마다
+     왕국 화상 판정이 하나 더 붙는다 — #121 기술 자체의 효과를 재는 이 파일에서는 남의 효과다.
+     smoke_issue235 G·P 절과 같은 자리·같은 방식(참전자 synEl=null)으로 끈다. 왕국 계약은 그 파일이 본다. */
+  const B=X.S.battle; if(B){ B.fa.synEl=null; B.fd.synEl=null; } }
 const fixed=X=>{ X.BAL.dmgVar=0; X.BAL.statusProb=1; X.BAL.shockProb=1; };
 /* 상태 확률만 1로 고정하고 **피해 분산은 살려 둔다** — 힘의 수호자는 분산 단계를 보는 계약이라 dmgVar 를 0 으로 만들면 검사가 공허해진다 */
 const fixedVar=X=>{ X.BAL.dmgVar=0.2; X.BAL.statusProb=1; X.BAL.shockProb=1; };
@@ -229,8 +238,8 @@ function swapSkill(X,target,skillIdx,slot){
   const dmgOf=buff=>{ openBattle(T,Q5.me,Q5.em); Q5.me.powerBuff=!!buff; T.setSeed(31); T.execSlot("A",0); T.TQ.length=0; return Q5.em.maxHp-Q5.em.hp; };
   const plain=dmgOf(false), powered=dmgOf(true);
   ok(powered>=plain,"C5 힘의 수호자: 피해가 분산 상단으로 고정 (기본 "+plain+" → 버프 "+powered+")");
-  ok(powered===Math.round(Math.round(basePow*(1+T.BAL.dmgVar))*T.BAL.advMult),
-     "C5b 분산 단계만 ×"+(1+T.BAL.dmgVar)+" 로 고정되고 상성(불→풀 ×"+T.BAL.advMult+")은 그대로 통과 — 위력 "+basePow+" → "+powered);
+  ok(powered===Math.round(basePow*(1+T.BAL.dmgVar)*T.BAL.advMult*(1-Q5.em.def/100)),
+     "C5b 분산 단계만 ×"+(1+T.BAL.dmgVar)+" 로 고정되고 상성(불→풀 ×"+T.BAL.advMult+")·방어력(1-"+Q5.em.def+"%)은 그대로 통과, 정수 반올림은 마지막 1회뿐 — 위력 "+basePow+" → "+powered+" — #233 GDD-23 4.2⑧⑩");
   // rand 소비: 전투 개시·배치가 아니라 **execSlot 한 번**만 격리해 센다
   const consumeOf=buff=>{ openBattle(T,Q5.me,Q5.em); Q5.me.powerBuff=!!buff;
     T.setSeed(31); const seq=[]; for(let i=0;i<12;i++) seq.push(T.rand());
@@ -247,15 +256,16 @@ function swapSkill(X,target,skillIdx,slot){
   T.S.pkgs[0]={itemGift:0,battleBuff:3};
   openBattle(T,Q6.me,Q6.em); B=T.S.battle;
   ok(T.battleMaxRounds()===gMax,"C6 기본 최대 라운드는 전역값 "+gMax);
-  /* 라운드 2 의 선공은 방어측이다(actorOfPhase) — 공격측이 행동하는 차례는 phase 1 이다.
-     "사용자 자기 행동의 1라운드에만"을 검사하려면 행동자를 공격측으로 맞춰야 한다. */
-  B.round=2; B.phase=1; freshModal(T);
+  /* #233 (GDD-23 4.4): 행동 순서는 더 이상 라운드 홀짝이 아니라 **선턴(B.firstSide)** 로 정해진다.
+     이 절은 "사용자 자기 행동의 1라운드에만" 을 보므로 행동자를 공격측(A)으로 맞춰야 한다 —
+     선턴이 누구든 A 가 행동하는 phase 를 계산해 고른다(선턴이 A 면 phase 0, 아니면 phase 1). */
+  B.round=2; B.phase=(B.firstSide==="A")?0:1; freshModal(T);
   ok(T.actorOfPhase()==="A","C6a 전제: 라운드 2 에서 공격측 행동 차례");
   T.__openPkgCore("battleBuff");
   const beforeT=B.maxRounds;
   ok(isDisabled(T,"🧭 시간의 수호자 (1R 전용)"),"C6b 2라운드에서 시간의 수호자 버튼은 **실제 disabled** (문구만이 아니다 — Saturn REVISE P2)");
   /* 코어 거부도 함께: UI 를 우회해 직접 호출해도 적용되지 않는다 */
-  T.__pkgPickCore("buff",T.BUFF_KEYS.indexOf("time"));
+  T.__pkgPickCore("buff",T.BUFF_KEYS.indexOf("time"),B.pkgSel&&B.pkgSel.id);
   ok(B.maxRounds===beforeT&&B.maxRounds===null,"C6b' 코어를 직접 불러도 2라운드에서는 적용되지 않는다 (계약 3.3 R1 한정)");
   T.close(); B.round=1; B.phase=0; freshModal(T); T.__openPkgCore("battleBuff"); click(T,"🧭 시간의 수호자");
   ok(B.maxRounds===3&&T.battleMaxRounds()===3&&T.BAL.maxRounds===gMax,"C6c R1 적용: 이 전투만 3라운드 · 전역 BAL.maxRounds("+gMax+") 불변");
@@ -417,7 +427,7 @@ function swapSkill(X,target,skillIdx,slot){
      "D2b 죽은 말은 목록에 보이되 **실제 disabled** (핸들러 없음) — "+(deadBtn?deadBtn.textContent:"버튼 없음"));
   /* 코어 거부도 함께: UI 를 우회해 직접 호출해도 대상이 되지 않는다 (Saturn REVISE P2) */
   const stageBefore=T.S.recruit.stage;
-  T.__recruitCore("target",2);
+  T.__recruitCore("target",2,T.S.recruit.token); // #245: 토큰을 실어야 거부 사유가 "죽은 말"로 남는다 (누락 토큰이 아니라)
   ok(T.S.recruit&&T.S.recruit.stage===stageBefore&&T.S.recruit.targetId===null,"D2b' 코어를 직접 불러도 죽은 말은 대상이 되지 않는다");
   ok(/기술 \? \? \? \?/.test(ob(T)),"D2c 대상을 고르기 전 4슬롯은 ? 로 가린다 (계약 4.2-4)");
   // D3 4슬롯 어디든 · 고른 뒤 기술이 보인다
@@ -440,7 +450,7 @@ function swapSkill(X,target,skillIdx,slot){
   ok(!!dupBtn&&dupBtn.disabled===true&&typeof dupBtn.onclick!=="function"&&/이미 이 기술 보유/.test(ob(T)),
      "D5 이미 그 기술을 가진 말은 **실제 disabled** (계약 4.2-5) — "+(dupBtn?dupBtn.textContent:J(btns(T))));
   const sBefore=T.S.recruit.stage, skBefore=J(target.skills);
-  T.__recruitCore("target",T.rosterMinions(0).findIndex(m=>m.id===target.id));
+  T.__recruitCore("target",T.rosterMinions(0).findIndex(m=>m.id===target.id),T.S.recruit.token); // #245: 같은 이유로 토큰을 싣는다
   ok(T.S.recruit.stage===sBefore&&J(target.skills)===skBefore,"D5' 코어를 직접 불러도 중복 장착으로 넘어가지 않는다");
   T.close();
   // D6 취소·포기: 슬롯 불변 · 이벤트는 소모
@@ -469,8 +479,10 @@ function swapSkill(X,target,skillIdx,slot){
     openBattle(T,P.me,d); T.setSeed(9); T.execSlot("A",0); T.TQ.length=0; return {dmg:(d.maxHp)-d.hp,P}; };
   const pow=T.slotPow({atk:22},T.SKILLS.dragon_breath);
   const vsGrass=mk("M-G1").dmg, vsWater=mk("M-W1").dmg, vsKing=mk(null,"king").dmg;
-  ok(vsGrass===Math.round(pow*1.3)&&vsWater===Math.round(pow*1.3),"E1 드래곤 숨결: 속성 있는 상대에게 **항상** ×1.3 — 풀 "+vsGrass+" · 물 "+vsWater+" (불→풀 우위·물 열위와 무관하게 동일)");
-  ok(vsKing===pow,"E1b 무속성 왕 본체에는 중립 1.0 — "+vsKing);
+  ok(vsGrass===Math.round(pow*1.3*0.9)&&vsWater===Math.round(pow*1.3*0.9),"E1 드래곤 숨결: 속성 있는 상대에게 **항상** ×1.3, 표준형 방어력 10%는 그대로 통과 — 풀 "+vsGrass+" · 물 "+vsWater+" (불→풀 우위·물 열위와 무관하게 동일) — #233 GDD-23 4.2⑧ (def 도입 전 "+Math.round(pow*1.3)+")");
+  /* #234 (GDD-23 6.4 드래곤 숨결 주석 · 2.2): "현행 왕·동료 본체는 무속성이었지만, 이번 개편에서는 속성을 가지므로 ×1.3 대상" —
+     왕은 경기 시작(미선택 규칙)으로 속성을 가지므로 중립 1.0 기대를 ×1.3 으로 갱신한다. 방어력 10% 적용은 그대로 */
+  ok(vsKing===Math.round(pow*1.3*0.9),"E1b 속성을 가진 왕 본체에도 ×1.3, 왕의 방어력 10%는 적용된다 — "+vsKing+" — #234 GDD-23 6.4 · #233 3.5·4.2⑧");
   ok(T.SKILLS.dragon_breath.el===undefined&&T.atkElOf({element:"fire"},T.SKILLS.dragon_breath)===null,"E1c 드래곤은 속성 판정에서 빠진다 (상성표 4종 불변)");
   // E2 마녀: 서로 다른 2효과 100% · rand 1회 · 풀 회복 실피해 100%
   ok(J(T.WITCH_COMBOS)===J([[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]])&&T.WITCH_EFFECTS.length===4,"E2 마녀 조합표: 4효과 중 2개 = 6조합 균등");
@@ -497,12 +509,12 @@ function swapSkill(X,target,skillIdx,slot){
     openBattle(T,P.me,P.em);
     T.setSeed(55); T.execSlot("A",0); T.TQ.length=0;
     const kW=seq.indexOf(T.rand());
-    ok(kW===2,"E2e 마녀 1회 사용의 rand 소비는 피해 분산 1 + 조합 추첨 1 = 2회 (효과 적용에 확률 게이트 rand 없음) — 관측 "+kW);
-    // 음성 대조: 분산이 없으면 조합 추첨 1회만 남는다
+    ok(kW===4,"E2e 마녀 1회 사용의 rand 소비는 회피+분산+치명타+조합 추첨 = 4회 (효과 적용에 확률 게이트 rand 없음) — #233 GDD-23 4.2①⑦ (def 도입 전 2회) 관측 "+kW);
+    // 음성 대조(#233 갱신): 회피·치명타 판정은 dmgVar 값과 무관하게 항상 뽑히므로, 분산을 꺼도 소비 횟수는 그대로 4다 (측정이 공허하지 않다 — 값이 바뀌면 잡는다)
     T.BAL.dmgVar=0; openBattle(T,P.me,P.em);
     T.setSeed(55); const seq2=[]; for(let i=0;i<12;i++) seq2.push(T.rand());
     openBattle(T,P.me,P.em); T.setSeed(55); T.execSlot("A",0); T.TQ.length=0;
-    ok(seq2.indexOf(T.rand())===1,"E2e' 분산을 끄면 조합 추첨 1회만 남는다 (측정이 공허하지 않다)");
+    ok(seq2.indexOf(T.rand())===4,"E2e' [#233 갱신] 분산을 꺼도 회피·치명타 판정은 그대로 뽑히므로 소비 횟수는 4 그대로다 (def 도입 전 결정: 분산 draw 자체가 생략돼 1회였다)");
     fixed(T);
   }
   /* 풀 회복의 경계 두 가지 — **grass 효과가 실제로 뽑힌 시드에서만** 판정한다.
@@ -513,7 +525,8 @@ function swapSkill(X,target,skillIdx,slot){
     const gIdx=T.WITCH_EFFECTS.indexOf("grassHeal");
     ok(gIdx>=0,"E2f0 전제: grassHeal 이 효과 목록에 있다 (index "+gIdx+")");
     /* 시드별로 조합을 미리 계산한다 — 제품과 같은 순서(분산 1회 → 조합 1회)로 난수를 읽는다 */
-    const comboOf=seed=>{ T.setSeed(seed); T.rand(); return T.WITCH_COMBOS[Math.floor(T.rand()*T.WITCH_COMBOS.length)]; };
+    // #233 (GDD-23 4.2①③⑦): 조합 추첨 전에 회피·분산·치명타 판정 3회가 먼저 rand 를 소비한다 (def 도입 전엔 분산 1회뿐이었다)
+    const comboOf=seed=>{ T.setSeed(seed); T.rand(); T.rand(); T.rand(); return T.WITCH_COMBOS[Math.floor(T.rand()*T.WITCH_COMBOS.length)]; };
     let grassSeed=-1, plainSeed=-1;
     for(let s=1;s<=400&&(grassSeed<0||plainSeed<0);s++){ const c=comboOf(s);
       if(c.includes(gIdx)){ if(grassSeed<0) grassSeed=s; } else if(plainSeed<0) plainSeed=s; }
@@ -557,34 +570,40 @@ function swapSkill(X,target,skillIdx,slot){
     }
     ok(refreshed,"E2g 마녀 재부여는 지속 기간 갱신 — 이미 화상 1R 인 상대에게 "+T.BAL.burnRounds+"R 로 덮어쓴다 ("+tried+"시드 시도)");
     ok(everBurn>0,"E2g' 갱신이 실제로 관측된다 (1R 초과로 올라간 횟수 "+everBurn+")");
-    // 일반 효과기(잔불 표식): 이미 화상이면 부여하지 않는다 — 마녀 예외가 일반 규칙으로 번지지 않았다
+    /* #233 (GDD-23 5.6 중첩·재부여, 2026-09-16 PD 코드 검토): 종전에는 일반 효과기가 !opp.burn 가드로
+       재부여 자체를 거부했고 마녀만 갱신하는 예외였다. 5.6 은 "같은 종류의 효과는 이미 걸려 있어도
+       수치는 큰 값·남은 지속은 긴 값으로 갱신" 을 **모든 경로에** 요구하므로, 이제 마녀 예외가 아니라
+       일반 효과기도 같은 규칙을 따른다. 단, **합산이 아니라 갱신**이라 지속은 burnRounds 를 넘지 않는다. */
     giveSpecies(T,P.me,R(T,"M-F1")); T.BAL.statusProb=1; T.BAL.shockProb=1; // #96 계약: 두 확률은 같은 줄에서 함께 고정한다 (감전 결정론)
     openBattle(T,P.me,P.em); T.S.battle.fd.burn=1;
     const applied0=T.S.metrics.statusApplied; T.setSeed(3); T.execSlot("A",1); T.TQ.length=0;
-    ok(T.S.battle&&T.S.battle.fd.burn===1&&T.S.metrics.statusApplied===applied0,"E2h 일반 효과기의 '이미 걸려 있으면 부여 안 함'은 그대로 (마녀 전용 예외)");
+    ok(T.S.battle&&T.S.battle.fd.burn===T.BAL.burnRounds&&T.S.metrics.statusApplied===applied0+1,
+      "E2h 일반 효과기도 이미 걸린 화상을 "+T.BAL.burnRounds+"R 로 **갱신**한다 — 5.6 공통 규칙이라 마녀 전용 예외가 아니다 (#233)");
+    ok(T.S.battle&&T.S.battle.fd.burnFresh===true,"E2h' 갱신도 부여 라운드 제외 가드를 다시 세운다 (4.7)");
   }
   // E3 사신: 봉인 게이트
   {
     const P=setup(T); fixed(T); giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[3]="reaper_scythe"; giveSpecies(T,P.em,R(T,"M-G1"));
     openBattle(T,P.me,P.em); const B=T.S.battle;
-    B.round=5; B.fa.hp=10; B.fd.hp=100;
-    ok(T.reaperWhy("A")!==null&&/라운드부터/.test(T.reaperWhy("A")),"E3 5라운드에서는 봉인 ("+T.reaperWhy("A")+")");
-    B.round=6; B.fa.hp=100; B.fd.hp=100;
+    /* #234 REVISE 2차 CJ 결정(2026-09-17): 봉인 해제 라운드 6 → 4 — 종전 5R 봉인/6R 해제 단언을 3R/4R 로 옮긴다 */
+    B.round=3; B.fa.hp=10; B.fd.hp=100;
+    ok(T.reaperWhy("A")!==null&&/라운드부터/.test(T.reaperWhy("A")),"E3 3라운드에서는 봉인 ("+T.reaperWhy("A")+")");
+    B.round=4; B.fa.hp=100; B.fd.hp=100;
     ok(T.reaperWhy("A")!==null&&/낮아야/.test(T.reaperWhy("A")),"E3b HP 비율 동률이면 사용 불가 (strict)");
     B.fa.hp=100; B.fd.hp=50;
     ok(T.reaperWhy("A")!==null,"E3c HP 비율 우세면 사용 불가");
     B.fa.hp=30; B.fd.hp=100;
-    ok(T.reaperWhy("A")===null&&T.slotUsable(B.fa,3,"A")===true,"E3d 6라운드 + 내 비율 열세에서만 사용 가능");
+    ok(T.reaperWhy("A")===null&&T.slotUsable(B.fa,3,"A")===true,"E3d 4라운드 + 내 비율 열세에서만 사용 가능 (#234 CJ 결정 6→4)");
     /* 쿨 감소 수단으로 봉인이 풀리지 않는다 — **실제로 쿨링수를 쓴다** (종전 검사는 함수를 참조만 하고 호출하지 않았다).
-       쿨링수는 4슬롯 cds 를 전부 0 으로 만든다. 그래도 5라운드에서는 봉인이 그대로여야 한다. */
-    B.round=5; B.fa.hp=30; B.fd.hp=100; B.fa.cds=[2,2,2,2]; B.itemRoundA=false;
+       쿨링수는 4슬롯 cds 를 전부 0 으로 만든다. 그래도 3라운드에서는 봉인이 그대로여야 한다 (#234 CJ 결정 6→4). */
+    B.round=3; B.fa.hp=30; B.fd.hp=100; B.fa.cds=[2,2,2,2]; B.itemRoundA=false;
     T.S.inv[0]=["cool"];
     if(T.actorOfPhase()!=="A") B.phase=B.phase===0?1:0;
     T.byId("obBtns").children.length=0; T.battleModal();        // 클로저를 현재 side 로 맞춘다
     ok(T.actorOfPhase()==="A","E3e0 전제: 공격측 차례 · 쿨 2 · 가방에 쿨링수");
     T.__useItemCore(0);                                         // 실제 사용
     ok(J(B.fa.cds)===J([0,0,0,0]),"E3e1 쿨링수가 실제로 적용돼 4슬롯 쿨이 0 이 됐다 (관측 "+J(B.fa.cds)+")");
-    ok(T.SKILLS.reaper_scythe.cd===0&&T.reaperWhy("A")!==null&&T.slotUsable(B.fa,3,"A")===false,"E3e 쿨링수로 쿨을 0 으로 만든 뒤에도 5라운드에서는 **여전히 봉인** — 게이트가 CD 와 분리 (조기 해제 불가)");
+    ok(T.SKILLS.reaper_scythe.cd===0&&T.reaperWhy("A")!==null&&T.slotUsable(B.fa,3,"A")===false,"E3e 쿨링수로 쿨을 0 으로 만든 뒤에도 3라운드에서는 **여전히 봉인** — 게이트가 CD 와 분리 (조기 해제 불가)");
     /* 코어 거부까지: 실제 적용 경로로 불러도 즉사가 나가지 않는다 */
     const aliveE=P.em.alive, hpE=B.fd.hp;
     T.execSlot("A",3); T.drain(20000);
@@ -638,7 +657,13 @@ const recv=(X,a)=>{ X.T.NET.queue.push(a); X.T.netPump(); };
 const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMinions(0).map(m=>m.cds),
   rev:X.T.rosterMinions(0).map(m=>m.revealedSkills),pkg:X.T.S.pkgs,balls:X.T.S.balls,inv:X.T.S.inv,
   cap:X.T.S.pieces.filter(p=>p.cap).map(p=>[p.id,p.cap.rosterId]),seq:X.T.NET.modalSeq,
-  sync:X.T.NET.syncModal?X.T.NET.syncModal.seq:null,ev:X.T.S.events[0]&&X.T.S.events[0].consumed,main:X.T.S.mainUsed,hidden:hidden(X.T)});
+  sync:X.T.NET.syncModal?X.T.NET.syncModal.seq:null,ev:X.T.S.events[0]&&X.T.S.events[0].consumed,main:X.T.S.mainUsed,hidden:hidden(X.T),
+  /* #245 Saturn REVISE: 진행 중 보상 선택도 락스텝 대조에 넣는다 — 단계·후보 종·대상·수령 말·토큰·완료 순번이 한쪽만
+     달라도 예전 요약(확정된 기술·쿨·볼·가방만 보는)은 같게 나왔고, 갈라짐은 다음 선택의 합법성에서야 드러났다. */
+  rec:X.T.S.recruit?[X.T.S.recruit.owner,X.T.S.recruit.pieceId,X.T.S.recruit.species,X.T.S.recruit.stage,
+    X.T.S.recruit.skill===undefined?null:X.T.S.recruit.skill,X.T.S.recruit.targetId===undefined?null:X.T.S.recruit.targetId,
+    X.T.S.recruit.recvId===undefined?null:X.T.S.recruit.recvId,X.T.S.recruit.token===undefined?null:X.T.S.recruit.token]:null,
+  endSeq:X.T.S.searchEndSeq||0});
 {
   // F1 숲 포획 기본 계약
   const P=setup(T); giveSpecies(T,P.me,R(T,"M-F1")); T.S.balls[0]=5;
@@ -653,7 +678,7 @@ const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMini
   ok(has(T,"안전 포획 (볼 2)")&&has(T,"위험 포획 (볼 1)")&&has(T,"공격 포획 (볼 1)"),"F1d 세 방법 제시");
   const b0=T.S.balls[0];
   click(T,"안전 포획 (볼 2)");
-  ok(recv0.cap&&recv0.cap.rosterId===sp.id&&recv0.cap.hp===sp.hp&&recv0.cap.atk===sp.atk&&J(recv0.cap.skills)===J(T.archSkills(sp.arch,sp.element)),"F1e 수령 말이 그 종 그대로 받는다 (HP "+sp.hp+"·ATK "+sp.atk+"·4기술)");
+  ok(recv0.cap&&recv0.cap.rosterId===sp.id&&recv0.cap.hp===sp.hp&&recv0.cap.atk===sp.atk&&J(recv0.cap.skills)===J(T.speciesSkills(sp.id,1)),"F1e 수령 말이 그 종 그대로 받는다 (HP "+sp.hp+"·ATK "+sp.atk+"·⭐1 스킬 — #234 명세 3장)");
   ok(T.S.balls[0]===b0-2,"F1f 안전 포획 비용 볼 2");
   ok(T.archOf(recv0.cap)===sp.arch,"F1g archOf(cap)=그 종의 아키타입 — 기술 실제 동작 보존 (계약 6 '그 종 그대로')");
   // F2 공격 포획 실패 반동은 탐색 말 (수령 말이 아니다)
@@ -709,6 +734,17 @@ const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMini
   ok(netState(A2)!==netState(B2),"F9 [음성] 선택 프레임을 재생하지 않은 2P 는 상태가 달라 검사기가 잡는다");
   for(const fr of A2.ws.sent.slice(1).map(x=>JSON.parse(x).a)) recv(B2,fr);
   ok(netState(A2)===netState(B2),"F9b 프레임을 모두 재생하면 다시 일치");
+  /* F9c #245 Saturn REVISE — **진행 중** 보상 선택도 대조에 들어간다. 확정된 기술·쿨·볼·가방과 모달 seq 가 모두 같아도
+     한쪽만 다른 단계·다른 후보 종·다른 토큰에 서 있으면 그 좌석부터 다음 선택의 합법성이 갈린다 (종전 요약은 못 봤다). */
+  {
+    const r2=B2.T.S.recruit;
+    const drift=(k,v)=>{ const keep=r2[k]; r2[k]=v; const moved=netState(A2)!==netState(B2); r2[k]=keep; return moved&&netState(A2)===netState(B2); };
+    ok(!!r2&&drift("stage","capRecv")&&drift("species",B2.T.ROSTER.find(x=>x.id!==r2.species).id)&&drift("token",r2.token+"x")
+       &&drift("skill",B2.T.NEW_SKILLS[1])&&drift("targetId",-1)&&drift("recvId",-1)&&drift("owner",1)&&drift("pieceId",-1),
+       "F9c 진행 중 recruit 기록(단계·후보 종·토큰·기술·대상·수령 말·소유자·탐색 말)이 한쪽만 달라도 검사기가 잡고, 되돌리면 다시 일치한다");
+    const s2=B2.T.S.searchEndSeq||0; B2.T.S.searchEndSeq=s2+1; const seqMoved=netState(A2)!==netState(B2); B2.T.S.searchEndSeq=s2;
+    ok(seqMoved&&netState(A2)===netState(B2),"F9d 탐색 완료 순번이 한쪽만 올라가도 검사기가 잡는다 (완료 연출·턴 종료 재평가가 한 번 더 또는 덜 발화한다)");
+  }
   // F10 전투 중 패키지 개봉도 같은 단일 경로
   {
     const A3=mkNet(0), B3=mkNet(1);
@@ -716,7 +752,15 @@ const netState=X=>J({sk:X.T.rosterMinions(0).map(m=>m.skills),cds:X.T.rosterMini
     const n0=A3.ws.sent.length;
     A3.T.byId("obBtns").children.length=0; B3.T.byId("obBtns").children.length=0;
     A3.T.__openPkg("itemGift");
-    ok(A3.ws.sent.length===n0+1&&J(lastFrame(A3).a)===J({t:"pkgOpen",kind:"itemGift"}),"F10 전투 중 개봉 화면 열기는 pkgOpen semantic 액션 1프레임 (전투 모달은 buttons 가 없어 중계가 없다)");
+    /* #245 Saturn REVISE: 전투 어휘는 **보낸 쪽이 겨냥한 행동자·전투 진행 지점**(bf)을 함께 싣는다 — 받는 쪽 진입점이
+       자기 렌더의 프레임을 붙이므로 이 값이 없으면 늦게·다시 도착한 프레임이 지금 차례인 다른 행동자에게 다시 묶인다.
+       프레임 **개수**와 semantic 어휘(모달 중계 아님)라는 F10 의 계약은 그대로다. */
+    {
+      const fr=lastFrame(A3).a, B0=A3.T.S.battle;
+      ok(A3.ws.sent.length===n0+1&&fr.t==="pkgOpen"&&fr.kind==="itemGift"&&J(Object.keys(fr).sort())===J(["bf","kind","t"])
+         &&J(fr.bf)===J({side:A3.T.actorOfPhase(),seq:B0.actSeq||0,round:B0.round,phase:B0.phase}),
+         "F10 전투 중 개봉 화면 열기는 pkgOpen semantic 액션 1프레임 (전투 모달은 buttons 가 없어 중계가 없다) + 보낸 시점의 행동자 정체성");
+    }
     recv(B3,lastFrame(A3).a);
     ok(/아이템 선물 패키지/.test(ob(A3.T))&&/상대 선택 대기/.test(ob(B3.T)),"F10b 1P 는 개봉 화면, 2P 는 대기 화면");
     const n1=A3.ws.sent.length; click(A3.T,"회복약");

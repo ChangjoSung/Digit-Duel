@@ -33,7 +33,7 @@ const SETUP=`(()=>{
   return S.phase;
 })()`;
 const OPEN_ROSTER=`(()=>{ rosterInfo("M-F2"); const b=document.getElementById("overlayBox"); return {text:b.innerText.replace(/\\s+/g," "), art:b.innerHTML.indexOf("fire_atk/portrait")>=0}; })()`;
-const CLOSE=`(()=>{ close(); return true; })()`;
+const CLOSE=`(()=>{ closeModal(); return true; })()`;
 /* 내 로스터에 화염 투사(M-F2)를 넣고 배치 완료 → 상대 하수인 하나를 내 앞에 끌어와 실제 initBattle 로 전투 진입 (공격측 = 나 = R1 선공) */
 const START_BATTLE=`(()=>{
   S.roster[0]=["M-F2","M-W2","M-G2","M-L2","M-F1","M-W1"]; applyRoster(0);
@@ -92,7 +92,7 @@ function connect(url){ return new Promise((res,rej)=>{ const ws=new WebSocket(ur
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function startServer(){ // 기존 사용자 서버(8080)는 건드리지 않는다 — PORT=0 임의 포트 전용 서버
   return new Promise((res,rej)=>{
-    const p=spawn(process.execPath,[path.join(ROOT,"server","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
+    const p=spawn(process.execPath,[path.join(ROOT,"server","test","relay","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
     let out=""; const t=setTimeout(()=>{ try{p.kill();}catch(e){} rej(new Error("서버 기동 대기 시간 초과\n"+out)); },15000);
     const onData=d=>{ out+=d; const m=out.match(/listening on ([\d.]+):(\d+)/); if(m){ clearTimeout(t); res({proc:p,host:m[1],port:Number(m[2])}); } };
     p.stdout.on("data",onData); p.stderr.on("data",onData);

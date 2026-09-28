@@ -47,7 +47,7 @@ function connect(url){ return new Promise((res,rej)=>{ const ws=new WebSocket(ur
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function startServer(){
   return new Promise((res,rej)=>{
-    const p=spawn(process.execPath,[path.join(ROOT,"server","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
+    const p=spawn(process.execPath,[path.join(ROOT,"server","test","relay","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
     let out=""; const t=setTimeout(()=>{ try{p.kill();}catch(e){} rej(new Error("서버 기동 대기 시간 초과\n"+out)); },15000);
     const onData=d=>{ out+=d; const m=out.match(/listening on ([\d.]+):(\d+)/), c=out.match(/접속 코드: (\S+)/); if(m&&c){ clearTimeout(t); res({proc:p,host:m[1],port:Number(m[2]),code:c[1]}); } };
     p.stdout.on("data",onData); p.stderr.on("data",onData);

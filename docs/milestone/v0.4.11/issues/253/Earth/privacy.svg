@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="800" viewBox="0 0 432 800" preserveAspectRatio="none">
+ <title>X02 opaque privacy surface — stretch to entire viewport</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0.</metadata>
+ <rect width="432" height="800" fill="#12151c"/>
+ <path fill="none" stroke="#333c52" stroke-width="2" d="M16 96V40L40 16H392L416 40V96M16 704V760L40 784H392L416 760V704"/>
+ <path fill="none" stroke="#132139" d="M24 104V44L44 24H388L408 44V104M24 696V756L44 776H388L408 756V696"/>
+</svg>

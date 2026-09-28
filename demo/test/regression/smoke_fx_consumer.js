@@ -10,7 +10,8 @@
      F. room_resumed baseline
      G. (epoch,roomId,seat) 경계 리셋
      H. 표시 시간 — msg 그룹 BAL.fx[key]/msgStep, 배너 BAL.fx[key], 표시 HP는 재생 순서대로(최종값 선반영 없음)
-     I. 움직임 줄이기 — 시간은 원본 그대로, CSS가 보드·전투 연출 움직임까지 끈다(정적 규칙 검사 · 실제 computed style은 브라우저 E2E) */
+     I. 움직임 줄이기 — 시간은 원본 그대로, CSS가 보드·전투 연출 움직임까지 끈다(정적 규칙 검사 · 실제 computed style은 브라우저 E2E)
+     K. #238 온라인 시전 연출 — 일반 30종·전설 3종(본체·왕 대리) · 보관 스냅샷 전투원 · 세대 검사 · 재접속 무재생 */
 "use strict";
 const H=require("../shared/harness");
 const htmlPath=process.argv[2]||require("path").join(__dirname,"..","..","index.html");
@@ -249,6 +250,87 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   ok(/\.cell\.fx-boom, \.cell\.fx-trap, \.btok\.shake, #bstage\.sigblink, \.dmgfloat, \.pc\.fx-ghost\{animation:none !important;\}/.test(css),"I1 reduced-motion 블록이 폭발·함정 셀·토큰 흔들림·시그니처 점멸·피해 숫자·폭발 잔상 움직임을 끈다");
   ok(/\.cell\.fx-boom::after\{animation:none !important;/.test(css),"I2 폭발 이모지 팝업 움직임도 끈다(정지 표시 유지)");
   ok(!/netFxReducedMotion/.test(T.html),"I3 JS 표시 시간은 움직임 설정으로 줄이지 않는다(원본과 같은 시간·문구 유지)");
+}
+
+/* ===== J. #262 (CJ 2026-09-27) 경제방 HP — 전투원은 양쪽 실제 현재/최대(% 없음) · 보드 상대 말은 전투 노출(hpSeen) 전 N%, 뒤 실제 현재 HP ===== */
+{
+  const T=seated(0);
+  const eco={coins:0,tickets:0,buffInv:{},soldHp:{},bag:[]};
+  const v=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:5,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:120,shield:30,tideMark:40}),fx:fx([])});
+  v.you.eco=eco; msg(T,{v:1,type:"room_state",data:v}); T.drain();
+  const h=ovHtml(T);
+  ok(/id="bst-D">🛡30 🌊해일≤40</.test(h)&&/해일 예고 40"/.test(h)&&/id="hptxt-D">50<\/span>\/120</.test(h),"J1 상대 전투원도 실제 현재/최대 HP·방어막·해일 표식(% 없음)");
+  ok(/id="bst-A">🛡5 🌊해일≤7</.test(h)&&/해일 예고 7"/.test(h)&&/id="hptxt-A">15<\/span>\/20</.test(h),"J2 자기 전투원은 실제값 그대로(형식 불변)");
+  const v2=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:4,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:120,shield:25,tideMark:40},{actSeq:1,phase:1,actor:"D"}),fx:fx([
+    {seq:1,src:"msg",battleId:9,round:1,actSeq:1,key:"damageFx",big:false,txt:"5 흡수",fx:{st:{side:"D",text:"🛡25 🌊해일≤40",shield:25,max:120}}},
+    {seq:2,src:"msg",battleId:9,round:1,actSeq:1,key:null,big:false,txt:"1 흡수",fx:{st:{side:"A",text:"🛡4 🌊해일≤7",shield:4,max:20}}}])});
+  v2.you.eco=eco; msg(T,{v:1,type:"room_state",data:v2});
+  ok(T.byId("bst-D").textContent==="🛡25 🌊해일≤40","J3 상대 st 문구에 %를 붙이지 않는다: "+T.byId("bst-D").textContent);
+  ok(T.byId("bst-A").textContent==="🛡4 🌊해일≤7","J4 자기 st 문구는 실제값 그대로: "+T.byId("bst-A").textContent);
+  T.drain();
+  const opp=(hp,maxHp,extra)=>Object.assign({id:"u-o1",r:4,c:4,owner:1,alive:true,immobile:0,type:"minion",name:"불꽃도마뱀",element:"fire",hp,maxHp,healing:false,rosterId:null},extra||{});
+  const board=u=>{ const b=view(T,{units:[u]}); b.you.eco=eco; msg(T,{v:1,type:"room_state",data:b}); T.drain(); const p=T.S.pieces.find(x=>x.owner===1); return T.pcInfoHtml(p)+"|"+T.pcLabel(p); };
+  const b1=board(opp(57,100)), b2=board(opp(45,120,{hpSeen:true}));
+  ok(/>57%</.test(b1)&&/HP 57%$/.test(b1),"J5 전투 노출 전 공개 상대 말은 종전 N% 유지: "+b1);
+  ok(/>45</.test(b2)&&/HP 45$/.test(b2)&&!/%|\/120|\/100/.test(b2),"J6 전투 노출(hpSeen) 뒤 보드는 실제 현재 HP 만(% · N/100 없음): "+b2);
+}
+
+/* ===== K. #238 Saturn REVISE — 온라인 시전 연출(fx.cast) · 전설 정체(L-DRAGON/L-WITCH/L-REAPER) =====
+   실제 디스패처 → 재생 큐 → netFxApplyMsgFx → 공용 castFx. 그 이벤트 battleId 의 보관 스냅샷 전투원만 읽는다. */
+{
+  const T=seated(0); let seq=0, bid=100;
+  const castMsg=(b,sideKey)=>({seq:++seq,src:"msg",battleId:b,round:1,actSeq:1,key:"skillFx",big:false,txt:"기술!",fx:{cast:sideKey}});
+  const minion=(o,id,el)=>({owner:o,type:"minion",rosterId:id,element:el,skills:[{i:0,revealed:false,kind:"attack"}]});
+  const tokA=()=>T.byId("tok-A");
+  const play=(a,d)=>{ const b=++bid; msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(b,a,d),fx:fx([castMsg(b,"A")])})}); return b; };
+  const clsOf=t=>["lg-dragon","lg-witch","lg-reaper"].concat(["std","atk","def","swift","sustain","guard"].map(x=>"ar-"+x)).filter(c=>t.classList.contains(c));
+  const seen=new Set();
+  for(const r of T.ROSTER){
+    T.delays.length=0; play(minion(1,r.id,r.element),{owner:0,type:"king"});
+    const t=tokA();
+    if(t.classList.contains("cast")&&JSON.stringify(clsOf(t))===JSON.stringify(["ar-"+r.arch])&&t.style["--castC"]===`var(--${r.element})`) seen.add(r.arch+"/"+r.element);
+    ok(T.delays.includes(1200),"K0 "+r.id+" 시전 연출 정리 1.2초: "+JSON.stringify(T.delays));
+    T.drain(); ok(!tokA().classList.contains("cast"),"K0b "+r.id+" 1.2초 뒤 정리");
+  }
+  ok(T.ROSTER.length===30&&seen.size===30,"K1 온라인 일반 30종 = 공개 종의 아키타입 × 속성 색: "+seen.size);
+  for(const [id,key] of [["L-DRAGON","dragon"],["L-WITCH","witch"],["L-REAPER","reaper"]]){
+    play({owner:1,type:"minion",rosterId:id,element:null,skills:[{i:0,revealed:false,kind:"attack"}]},{owner:0,type:"king"});
+    ok(JSON.stringify(clsOf(tokA()))===JSON.stringify(["lg-"+key])&&tokA().style["--castC"]==="var(--buff)","K2 전설 본체 "+id+" → lg-"+key);
+    ok(T.S.battle.fa.legend===key&&T.S.battle.fa.atk===undefined&&T.S.battle.fa.rosterId===null,"K2b 상대 전설 본체: legend 만 되살리고 공격력·종 칸은 만들지 않는다");
+    T.drain();
+    play({owner:1,type:"king",bodyFight:false,element:null,artRosterId:id},{owner:0,type:"king"});
+    ok(JSON.stringify(clsOf(tokA()))===JSON.stringify(["lg-"+key])&&T.S.battle.fa.legend===key&&T.S.battle.fa.artRosterId===null,"K3 왕 대리 출전(전설 cap) "+id+" → lg-"+key);
+    T.drain();
+  }
+  play({owner:1,type:"king",bodyFight:false,element:"fire",artRosterId:"L-FAKE"},{owner:0,type:"king"});
+  ok(!T.S.battle.fa.legend&&JSON.stringify(clsOf(tokA()))==='["ar-std"]',"K3b 닫힌 목록 밖 종 키는 전설로 되살리지 않는다");
+  T.drain();
+  // 내 왕의 전설 대리 출전 — 원시 cap 에는 artRosterId 가 없다. ecoKey(cap) 로 짝지어 자기 공격력을 보존한다
+  const v=view(T,{battle:battle(++bid,{owner:0,type:"king",bodyFight:false,element:null,artRosterId:"L-REAPER"},{owner:1,type:"ally"}),fx:fx([])});
+  v.you.pieces[0].cap={legend:"reaper",element:null,atk:31,skillAtk:9,hp:50,maxHp:50};
+  msg(T,{v:1,type:"room_state",data:v}); T.drain();
+  ok(T.S.battle.fa.legend==="reaper"&&T.S.battle.fa.atk===31&&T.S.battle.fa.skillAtk===9,"K4 내 전설 대리 출전 = ecoKey(cap) 로 짝지어 자기 공격력 31/9 유지");
+  // 옛 전투(용)의 시전 이벤트는 더 새 전투(일반 하수인) 스냅샷이 먼저 와도 옛 전투원으로 그린다
+  const rd=T.ROSTER.find(r=>r.arch==="guard"), old=++bid;
+  msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(old,{owner:1,type:"minion",rosterId:"L-DRAGON",element:null,skills:[{i:0,revealed:false,kind:"attack"}]},{owner:0,type:"king"}),fx:fx([])})}); T.drain();
+  let atCast=null; const cl=tokA().classList, add0=cl.add; // hookAdd 는 인자 하나만 넘기므로 여기서는 여러 클래스를 그대로 넘기는 관찰자를 쓴다
+  cl.add=(...cs)=>{ if(cs.includes("cast")&&!atCast) atCast={stage:T.NET.stageBid,live:T.S.battle.fa.rosterId}; return add0.apply(cl,cs); };
+  msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(++bid,minion(1,rd.id,rd.element),{owner:0,type:"king"}),fx:fx([castMsg(old,"A")])})});
+  ok(atCast&&atCast.stage===old&&atCast.live===rd.id&&JSON.stringify(clsOf(tokA()))==='["lg-dragon"]',"K5 전역 S.battle(새 전투 "+rd.id+")이 아니라 이벤트 battleId 의 보관 스냅샷(용)으로 시전 연출: "+JSON.stringify(atCast));
+  T.drain();
+  // 세대 검사 — 방 경계(세대 증가) 뒤의 옛 정리 타이머는 아무것도 만지지 않는다
+  play(minion(1,rd.id,rd.element),{owner:0,type:"king"});
+  const t0=tokA(); T.NET.fxGen++; T.drain();
+  ok(t0.classList.contains("cast"),"K6 옛 세대(NET.fxGen)의 지연 정리는 무효");
+}
+{
+  // K7 재접속 baseline — 창에 남은 옛 시전 이벤트는 다시 재생하지 않는다(마지막 KO 1개만)
+  const T=seated(0), rd=T.ROSTER[0];
+  const b=battle(60,{owner:1,type:"minion",rosterId:rd.id,element:rd.element,skills:[{i:0,revealed:false,kind:"attack"}]},{owner:0,type:"king"});
+  msg(T,{v:1,type:"room_resumed",epoch:"e1",roomId:"R1",seat:0,seatToken:"t2",tokenGen:1,data:view(T,{battle:b,fx:{firstSeq:1,lastSeq:2,events:[
+    {seq:1,src:"msg",battleId:60,round:1,actSeq:1,key:"skillFx",big:false,txt:"기술!",fx:{cast:"A"}},
+    {seq:2,src:"msg",battleId:60,round:1,actSeq:1,key:"damageFx",big:false,txt:"쓰러졌다!",fx:{ko:"D"}}]}})});
+  ok(!T.byId("tok-A").classList.contains("cast")&&T.byId("tok-D").classList.contains("ko"),"K7 재접속 baseline 은 옛 시전 연출을 재생하지 않는다");
 }
 
 console.log("\n=== smoke_fx_consumer (#217 공개 방 표시 계층): pass "+pass+" / fail "+fail+" ===");

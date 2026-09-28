@@ -57,7 +57,7 @@ const SCENE_BOTH=`(()=>{ ${CAP_FN}
   return {step:1,reserveId:rv.artRosterId};
 })()`;
 const SCENE_BOTH_2=`(()=>{ ${CAP_FN}
-  try{ close(); }catch(e){}
+  try{ closeModal(); }catch(e){}
   S.battle=null;
   const king=S.pieces.find(x=>x.owner===0&&x.type==="king"), eAlly=S.pieces.find(x=>x.owner===1&&x.type==="ally");
   const em=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.rosterId); if(em) em.placed=false;
@@ -108,7 +108,7 @@ function connect(url){ return new Promise((res,rej)=>{ const ws=new WebSocket(ur
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function startServer(){
   return new Promise((res,rej)=>{
-    const p=spawn(process.execPath,[path.join(ROOT,"server","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
+    const p=spawn(process.execPath,[path.join(ROOT,"server","test","relay","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
     let out=""; const t=setTimeout(()=>{ try{p.kill();}catch(e){} rej(new Error("서버 기동 대기 시간 초과\n"+out)); },15000);
     const onData=d=>{ out+=d; const m=out.match(/listening on ([\d.]+):(\d+)/); if(m){ clearTimeout(t); res({proc:p,host:m[1],port:Number(m[2])}); } };
     p.stdout.on("data",onData); p.stderr.on("data",onData);
@@ -138,7 +138,7 @@ function startServer(){
     ws2.onmessage=ev=>{ try{ const m=JSON.parse(ev.data); if(m.method==="Runtime.exceptionThrown") consoleErrs.push("exception: "+((m.params.exceptionDetails.exception||{}).description||m.params.exceptionDetails.text||"").slice(0,200));
       else if(m.method==="Runtime.consoleAPICalled"&&m.params.type==="error") consoleErrs.push("console.error: "+m.params.args.map(a=>a.value||a.description||"").join(" ").slice(0,200));
       else if(m.method==="Log.entryAdded"&&m.params.entry.level==="error") consoleErrs.push("log: "+(m.params.entry.text||"").slice(0,120)+" "+(m.params.entry.url||"")); }catch(e){} prevMsg(ev); };
-    /* favicon.ico 404 는 QA 서버(server/server.js)가 파비콘을 제공하지 않아 HTTP 첫 탐색에서 나는 기존 로그로 #91 과 무관하다 — 판정에서 빼되 보고서에 ignoredConsole 로 남긴다 */
+    /* favicon.ico 404 는 QA 서버(server/test/relay/server.js)가 파비콘을 제공하지 않아 HTTP 첫 탐색에서 나는 기존 로그로 #91 과 무관하다 — 판정에서 빼되 보고서에 ignoredConsole 로 남긴다 */
     const IGNORE_ALWAYS=/favicon\.ico/;
     const takeErrs=(ignoreRe)=>{ const all=consoleErrs.splice(0), errs=[], ignored=[]; for(const x of all) (IGNORE_ALWAYS.test(x)||(ignoreRe&&ignoreRe.test(x))?ignored:errs).push(x); return {errs,ignored}; };
     const ev=async expr=>{ const r=await cdp.send("Runtime.evaluate",{expression:expr,returnByValue:true,awaitPromise:true},sid); if(r.exceptionDetails) return {error:"JS 예외: "+(r.exceptionDetails.exception&&r.exceptionDetails.exception.description||r.exceptionDetails.text)}; return r.result.value; };

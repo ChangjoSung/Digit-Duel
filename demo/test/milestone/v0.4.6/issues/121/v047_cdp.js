@@ -199,7 +199,7 @@ async function openTab(cdp,url){
     /* ── 3. #125 보호막 → HP 2단이 실제 CSS 전환으로 damageFx 안에서 끝난다 ── */
     const stage=await T.ev(`(()=>new Promise(res=>{
       /* 전투를 직접 열고 방어자에게 보호막을 준 뒤 공격 1회 — 바 width 쓰기 시각과 잠금 해제 시각을 실제 시간으로 찍는다 */
-      fxReleaseAll(); close();
+      fxReleaseAll(); closeModal();
       const mine=S.pieces.filter(p=>p.owner===0&&p.type==="minion"&&p.alive)[0];
       const opp=S.pieces.filter(p=>p.owner===1&&p.type==="minion"&&p.alive)[0];
       for(const p of [mine,opp]){ p.hp=p.maxHp; }
@@ -253,7 +253,7 @@ async function openTab(cdp,url){
     }
 
     /* ── 4. #121 탐색 보상 — 실제 클릭으로 기술 교체 3단계 완주 ───────────── */
-    await T.ev(`(()=>{ fxReleaseAll(); close(); S.battle=null; return 1; })()`);
+    await T.ev(`(()=>{ fxReleaseAll(); closeModal(); S.battle=null; return 1; })()`);
     const prep=await T.ev(`(()=>{
       const me=S.pieces.filter(p=>p.owner===0&&p.type==="minion"&&p.alive)[0];
       for(const p of S.pieces) if(p.owner===1) { p.placed=false; }
@@ -296,7 +296,7 @@ async function openTab(cdp,url){
 
     /* ── 5. #129 — 탐색 완료 뒤 정확히 한 번 종료 (실제 타이머) ───────────── */
     const endFlow=await T.ev(`(()=>new Promise(res=>{
-      fxReleaseAll(); close();
+      fxReleaseAll(); closeModal();
       BAL.fx.autoEnd=true;
       const me=rosterMinions(0)[0];
       for(const p of S.pieces) if(p.owner===1) p.placed=false;
@@ -325,7 +325,7 @@ async function openTab(cdp,url){
 
     /* ── 6. #121 전투 버프 — 토큰 주변 CSS 효과가 실제로 계산된다 ──────────── */
     const buff=await T.ev(`(()=>new Promise(res=>{
-      fxReleaseAll(); close(); S.battle=null;
+      fxReleaseAll(); closeModal(); S.battle=null;
       const mine=rosterMinions(0)[0], opp=S.pieces.filter(p=>p.owner===1&&p.type==="minion")[0];
       opp.placed=true; opp.r=9; opp.c=1; opp.alive=true;
       for(const p of [mine,opp]) p.hp=p.maxHp;
@@ -373,7 +373,7 @@ async function openTab(cdp,url){
        계약 3.1·4.8·10: 재고·개봉 선택·기술·"대상 없음"은 비공개이고 **적용된 효과만** 공개된다.
        한계(보고에 명시): 같은 탭에서 NET.me·행동자만 바꿔 그 시점의 DOM 을 읽는다 — 두 기기 릴레이 종단간 검증이 아니다. */
     const priv=await T.ev(`(()=>{
-      fxReleaseAll(); close(); S.battle=null;
+      fxReleaseAll(); closeModal(); S.battle=null;
       const mine=rosterMinions(0)[0], opp=S.pieces.filter(p=>p.owner===1&&p.type==="minion")[0];
       opp.placed=true; opp.r=9; opp.c=2; opp.alive=true; for(const p of [mine,opp]) p.hp=p.maxHp;
       /* 관측 대상 자원을 눈에 띄는 값으로 — 숫자가 DOM 에 새면 바로 잡힌다 */
@@ -428,7 +428,7 @@ async function openTab(cdp,url){
     /* ── 7. 튜토리얼 10단계 렌더 계약 (--tutorial-check) ──────────────────── */
     if(DO_TUT){
       /* 렌더 계약만 본다 — PNG·매니페스트는 만들지 않는다 (기존 미디어 도구 소유) */
-      const n=await T.ev(`(()=>{ fxReleaseAll(); close(); TUT.seenThisLoad=false; tutOpen(); return TUT_STEPS.length; })()`);
+      const n=await T.ev(`(()=>{ fxReleaseAll(); closeModal(); TUT.seenThisLoad=false; tutOpen(); return TUT_STEPS.length; })()`);
       ok(n===10,"7a 제품 튜토리얼 단계 수 = 10 (관측 "+n+")");
       const titles=[];
       for(let i=0;i<n;i++){

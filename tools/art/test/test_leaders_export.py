@@ -52,18 +52,19 @@ class LeadersExportTest(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="leadersexp-"))
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.srcs = {}
-        for name, f in LE.LEADERS.items():
-            p = self.tmp / LE.REL_SOURCE_DIR / f
-            make_source(p)
-            self.srcs[name] = p
+        for src_dir, table, _, _ in LE.GROUPS:  # #238 공격·방어 동료 원본(Earth_3)도 같은 규칙
+            for name, f in table.items():
+                p = self.tmp / src_dir / f
+                make_source(p)
+                self.srcs[name] = p
 
     # 1·2 ------------------------------------------------------------------
     def test_downscale_only_and_alpha_preserved(self) -> None:
         rows, problems = LE.build(self.tmp)
         self.assertEqual([p for p in problems if not p.startswith("[경고]")], [])
-        self.assertEqual(len(rows), len(LE.LEADERS) * len(LE.OUTPUTS))
+        self.assertEqual(len(rows), (len(LE.LEADERS) + len(LE.ROLES)) * len(LE.OUTPUTS))
         for r in rows:
-            with Image.open(self.tmp / LE.REL_SOURCE_DIR / Path(r["source"]).name) as src:
+            with Image.open(self.tmp / r["source"]) as src:
                 src.load()
                 expect = LE.render_png(src, r["size"])
             self.assertEqual(sha(r["_data"]), sha(expect), f"{r['path']} 는 순수 축소 결과와 같아야 한다")
@@ -87,10 +88,15 @@ class LeadersExportTest(unittest.TestCase):
         self.assertEqual(paths, [
             "demo/assets/leaders/companion/battle256.png",
             "demo/assets/leaders/companion/icon64.png",
+            "demo/assets/leaders/companion_atk/battle256.png",
+            "demo/assets/leaders/companion_atk/icon64.png",
+            "demo/assets/leaders/companion_def/battle256.png",
+            "demo/assets/leaders/companion_def/icon64.png",
             "demo/assets/leaders/king/battle256.png",
             "demo/assets/leaders/king/icon64.png",
         ])
         self.assertEqual(LE.REL_MANIFEST.as_posix(), "demo/assets/leaders/leaders-manifest.json")
+        self.assertEqual(LE.REL_ROLE_MANIFEST.as_posix(), "demo/assets/leaders/roles-manifest.json")
 
     # 4 --------------------------------------------------------------------
     def _tree(self) -> dict[str, str]:
@@ -114,6 +120,23 @@ class LeadersExportTest(unittest.TestCase):
         self.assertEqual(LE.run(self.tmp, check=True, list_only=False), 1)
         self.assertEqual(self._tree(), dirty, "--check 는 어긋난 산출물도 되살리지 않는다")
 
+    def test_check_manifest_crlf_portable(self) -> None:
+        # #238 잡 D: Windows autocrlf 가 매니페스트를 CRLF 로 바꿔도 일치, JSON 값이 바뀌면 불일치, PNG 는 바이트 그대로 대조
+        self.assertEqual(LE.run(self.tmp, check=False, list_only=False), 0)
+        for m in (LE.REL_MANIFEST, LE.REL_ROLE_MANIFEST):
+            p = self.tmp / m
+            p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+        crlf = self._tree()
+        self.assertEqual(LE.run(self.tmp, check=True, list_only=False), 0, "CRLF 매니페스트는 내용이 같으면 일치")
+        self.assertEqual(self._tree(), crlf, "--check 는 CRLF 를 LF 로 되돌려 쓰지 않는다")
+        role = self.tmp / LE.REL_ROLE_MANIFEST
+        role.write_bytes(role.read_bytes().replace(b'"size": 64', b'"size": 65', 1))
+        self.assertEqual(LE.run(self.tmp, check=True, list_only=False), 1, "JSON 데이터 변경은 불일치")
+        role.write_bytes(role.read_bytes().replace(b'"size": 65', b'"size": 64', 1))
+        png = self.tmp / "demo/assets/leaders/companion_atk/icon64.png"
+        png.write_bytes(png.read_bytes() + b"\r\n")
+        self.assertEqual(LE.run(self.tmp, check=True, list_only=False), 1, "PNG 는 EOL 정규화 없이 바이트 대조")
+
     def test_list_never_writes(self) -> None:
         before = self._tree()
         self.assertEqual(LE.run(self.tmp, check=False, list_only=True), 0)
@@ -131,7 +154,8 @@ class LeadersExportTest(unittest.TestCase):
         LE.run(self.tmp, check=False, list_only=False)
         doc = json.loads((self.tmp / LE.REL_MANIFEST).read_text(encoding="utf-8"))
         self.assertEqual(doc["tool"], "tools/art/leaders_export.py")
-        self.assertEqual(len(doc["files"]), 4)
+        self.assertEqual(len(doc["files"]), 4)  # 승인된 왕·동료 매니페스트는 그대로 4행 — #238 역할 2종은 roles-manifest.json 에만
+        self.assertEqual(len(json.loads((self.tmp / LE.REL_ROLE_MANIFEST).read_text(encoding="utf-8"))["files"]), 4)
         for f in doc["files"]:
             self.assertEqual(set(f) - {"leader", "path", "size", "bytes", "sha256", "source", "sourceSize", "sourceSha256"}, set())
             self.assertEqual(sha((self.tmp / f["path"]).read_bytes()), f["sha256"])

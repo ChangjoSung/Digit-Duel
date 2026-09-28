@@ -1,0 +1,16 @@
+{
+  "//": "#245 정적 계약 검사 — 상태·액션·이벤트·프로토콜 경계를 tsc --noEmit 로만 본다. 산출물은 만들지 않는다.",
+  "//lib": "demo/js/*.js 는 module 이 아닌 classic script 다 — import/export 가 없으므로 tsc 가 전역 스코프로 읽고, 파일 사이의 전역 함수·typedef 가 그대로 이어진다.",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": [],
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": false
+  },
+  "include": ["env.d.ts", "contracts.d.ts", "../../demo/js/*.js"]
+}

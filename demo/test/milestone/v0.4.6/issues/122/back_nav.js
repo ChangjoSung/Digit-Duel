@@ -28,9 +28,8 @@ const STORE=H.mkStorage({netServer:"127.0.0.1:8080",someUserKey:"keep-me"});
 H.setStorage(STORE);
 const T=H.load(htmlPath,{storage:"inherit"});
 const SRC=T.html;
-/* 문서 로드당 1회 자동 튜토리얼(#128)이 열려 있는 채로 시작한다 — 화면 조작 전에 닫는다 (플래그는 그대로 둔다).
-   DOM 스텁은 마크업의 class="overlay hidden" 을 읽지 않으므로 게임 모달도 한 번 닫아 '닫힘' 상태에서 시작한다 */
-T.tutClose(); T.close();
+/* #260: 자동 튜토리얼이 없다. DOM 스텁은 마크업의 class="hidden" 을 읽지 않으므로 튜토리얼·게임 모달을 '닫힘' 상태로 맞추고 시작한다 */
+T.byId("tutOverlay").classList.add("hidden"); T.close();
 /* 실제 DOM 에서 #obBtns 는 modal() 이 overlayBox.innerHTML 을 갈아 끼울 때마다 새로 생긴다.
    스텁은 id 별 단일 객체라 이전 모달의 버튼이 남으므로, 누를 때마다 실제와 같이 비우고 시작한다. */
 const back=()=>{ T.byId("obBtns").children.length=0; global.uiBack(); };
@@ -147,7 +146,7 @@ block("E 경기 중 출구 없음",()=>{
   const fn=SRC.slice(SRC.indexOf("window.uiBack=function()"), SRC.indexOf("window.uiBack=function()")+3000);
   const body=fn.slice(0,fn.indexOf("\n};"));
   ok(/confirmResign\(\)/.test(body),"E0 uiBack 은 기존 기권 확인을 호출한다");
-  ok(!/newGame\(|S\.phase\s*=|netLeave\(|location\.reload/.test(body),"E1 uiBack 은 규칙 상태를 직접 건드리지 않는다 (초기화·재생성·reload 없음)");
+  ok(!/newGame\(|S\.phase\s*=(?!=)|netLeave\(|location\.reload/.test(body),"E1 uiBack 은 규칙 상태를 직접 건드리지 않는다 (초기화·재생성·reload 없음)");
 
   H.freshPlay(T,"pvp"); T.S.current=0; T.UI.entered=true; T.UI.drawer=null; T.close(); T.uiApply();
   const g=T.S;
@@ -263,15 +262,17 @@ block("G 보존 계약",()=>{
      "플레이할 때 행동 공간 밑에 뒤로가기가 있어야 시야적으로 좋다" — 머리줄에는 제목만 남고, 버튼은 네 하위 패널 다음·전투 이력 앞에 선다. */
   ok(/<div class="bhead"><h2 style="font-size:22px">/.test(SRC)&&!/<div class="bhead">[\s\S]{0,120}bmenuBack/.test(SRC),
     "G1a-1 전투 패널 머리줄에는 제목만 남는다 (좌상단 '← 뒤로' 제거)");
-  ok(/\$\{sub\("flee",[\s\S]*?\)\}\s+<button id="bmenuBack" class="bmenuBack\$\{menu\?"":" hidden"\}" type="button" onclick="window\.__menu\(null\)">← 뒤로<\/button>\s+<details>/.test(SRC),
-    "G1a-2 '← 뒤로'는 하위 메뉴 패널 **아래**(전투 이력 위)에 있고 핸들러는 계속 window.__menu(null) 시맨틱 호출");
+  /* #238 (2026-09-28 CJ): 전투 '전투 이력' <details> 토글이 제거돼 '← 뒤로'가 전투 모달 본문의 마지막 요소가 됐다.
+     위치 계약(네 하위 패널 바로 아래)과 시맨틱 핸들러는 그대로이므로 앵커만 <details> 대신 템플릿 끝(`)으로 옮긴다 */
+  ok(/\$\{sub\("flee",[\s\S]*?\)\}\s+<button id="bmenuBack" class="bmenuBack\$\{menu\?"":" hidden"\}" type="button" onclick="window\.__menu\(null\)">← 뒤로<\/button>`/.test(SRC),
+    "G1a-2 '← 뒤로'는 하위 메뉴 패널 **아래**(전투 모달 본문 마지막 · #238 전투 이력 제거)에 있고 핸들러는 계속 window.__menu(null) 시맨틱 호출");
   ok(/#overlayBox\.battleBox \.bmenuBack\{[^}]*display:block[^}]*width:100%/.test(SRC)&&/#overlayBox\.battleBox \.bmenuBack\.hidden\{display:none;\}/.test(SRC),
     "G1a-3 행동창 아래 전체 폭 버튼이며 하위 메뉴가 닫히면 숨는다");
   ok(/const sub=\(key,inner\)=>`<div class="bsub\$\{menu===key\?"":" hidden"\}" id="bsub-\$\{key\}">\$\{inner\}<\/div>`;/.test(SRC),
     "G1b 하위 패널 안에는 중복 뒤로가기를 남기지 않는다");
   ok(/const bb=\$\("bmenuBack"\)[\s\S]{0,160}B\.menu\?bb\.classList\.remove|__menu=key=>\{[\s\S]{0,400}bmenuBack/.test(SRC),
     "G1c 상단 '← 뒤로'는 하위 메뉴가 열렸을 때만 보인다 (같은 __menu 핸들러가 토글)");
-  ok(/<\/details>`,\s*\n\s*\[\]\)/.test(SRC),"G2 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용)");
+  ok(/← 뒤로<\/button>`,[^\n]*\n\s*\[\]\)/.test(SRC),"G2 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용 · #238 이후 본문 끝 = '← 뒤로')");
   ok(!/toLobby\(\)"[^>]*>\s*←/.test(SRC),"G3 전투 화면에 강제 이탈(로비 직행) 버튼을 만들지 않았다");
   /* 보드 기하·말 규격·수풀 판정·연출 상수는 이번 수정 범위 밖 */
   ok(/#board\{[^}]*repeat\(7,52px\)/.test(SRC)&&/grid-auto-rows:52px/.test(SRC),"G4 7×13 · 칸 52px 기하 불변");

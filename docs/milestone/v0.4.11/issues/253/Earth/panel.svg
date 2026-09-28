@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+ <title>Obsidian panel — nine slice at 12 pixels</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0.</metadata>
+ <path fill="#1c2130" stroke="#333c52" d="M8 1H56L63 8V56L56 63H8L1 56V8Z"/>
+ <path fill="none" stroke="#132139" stroke-width="3" d="M10 4H54L60 10V54L54 60H10L4 54V10Z"/>
+ <path fill="none" stroke="#8a93a8" d="M4 12V9L9 4H12M52 4H55L60 9V12M60 52V55L55 60H52M12 60H9L4 55V52"/>
+</svg>

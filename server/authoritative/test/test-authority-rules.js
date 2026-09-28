@@ -20,8 +20,8 @@ function firstOf(T, owner, type) {
   both(room, (E) => {
     const k = byId(E, kingId);
     k.cap = { element: 'water', hp: 100, maxHp: 100, atk: 20, skillAtk: 30, cd: 0, cdMax: 2, skills: E.archSkills('std', 'water'), cds: [0, 0, 0, 0], revealedSkills: [] };
-    E.initBattle(byId(E, attId), k);
   });
+  H.openBattle(room, { att: attId, def: kingId }); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
   const pm = room._pendingModal();
   ok(!!pm && pm.owner === def, 'VIP 출전 선택 모달의 소유자는 방어자(왕 소유 좌석): ' + JSON.stringify(pm && { owner: pm.owner, cur }));
   ok(T.S.current === cur && T.netActor() === cur, '픽스처 확인: S.current·netActor()는 공격자 좌석');
@@ -85,8 +85,8 @@ function firstOf(T, owner, type) {
   both(room, (E) => {
     const k = byId(E, kingId);
     k.cap = { element: 'fire', hp: 90, maxHp: 100, atk: 20, skillAtk: 30, cd: 0, cdMax: 2, skills: E.archSkills('std', 'fire'), cds: [0, 0, 0, 0], revealedSkills: [] };
-    E.initBattle(byId(E, attId), k);
   });
+  H.openBattle(room, { att: attId, def: kingId });
   const pm = room._pendingModal();
   const before = snap(room);
   const res = act(room, cur, { t: 'modal', seq: pm.seq, i: 0 });
@@ -103,7 +103,9 @@ function firstOf(T, owner, type) {
   const T = room.engine;
   const cur = T.S.current, def = 1 - cur;
   const attId = firstOf(T, cur, 'minion').id, dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.S.pkgs[cur].battleBuff = 1; E.initBattle(byId(E, attId), byId(E, dId)); E.S.battle.round = 3; E.battleModal(); });
+  both(room, (E) => { E.S.pkgs[cur].battleBuff = 1; });
+  H.openBattle(room, { att: attId, def: dId });
+  both(room, (E) => { E.S.battle.round = 3; }); // #245 행동 메뉴 재렌더는 필요 없다 — Core 가 상태에서 직접 판정한다
   let res = act(room, cur, { t: 'pkgOpen', kind: 'battleBuff' });
   ok(res.ok, '전투 중 행동자의 패키지 개봉 수락: ' + JSON.stringify(res.reason));
   const pm = room._pendingModal();
@@ -125,7 +127,7 @@ function firstOf(T, owner, type) {
   const T = room.engine;
   const cur = T.S.current, def = 1 - cur;
   const attId = firstOf(T, cur, 'minion').id, dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.initBattle(byId(E, attId), byId(E, dId)); });
+  H.openBattle(room, { att: attId, def: dId });
   ok(T.actorOfPhase() === 'A' && !T.S.mainUsed, '픽스처: 전투 A 차례, mainUsed=false');
   let res = act(room, cur, { t: 'act', k: 0 });
   ok(res.ok, '공격자 슬롯0 공격 수락: ' + JSON.stringify(res.reason));
@@ -155,7 +157,14 @@ function firstOf(T, owner, type) {
   const T = room.engine;
   const cur = T.S.current, def = 1 - cur;
   const attId = firstOf(T, cur, 'minion').id, dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.initBattle(byId(E, attId), byId(E, dId)); E.S.battle.fa.cds = [2, 0, 0, 0]; E.S.inv[cur] = []; E.S.balls[cur] = 0; E.S.pkgs[cur].itemGift = 0; E.battleModal(); });
+  /* #234 (GDD-23 3.4·6장): 경기 시작 하수인은 ⭐1 = 스킬 1칸이다. 이 절은 "4칸 전투원의 쿨 슬롯·레거시 kind 매핑" 합법성을
+     보므로, 종전 암묵 전제(모든 하수인 4칸)를 픽스처에 명시한다 — 1칸 그대로 슬롯0 을 쿨로 막으면 합법 칸이 없어 pass 가
+     정당하게 수락된다(규칙 변경이지 서버 결함이 아니다). 사용 조건이 없는 레거시 4칸 키트(포획 픽스처와 같은 archSkills)를 쓴다. */
+  H.openBattle(room, { att: attId, def: dId });
+  both(room, (E) => {
+    const fa = E.S.battle.fa; fa.skills = E.archSkills('std', fa.element); fa.cds = [2, 0, 0, 0]; fa.revealedSkills = [];
+    E.S.inv[cur] = []; E.S.balls[cur] = 0; E.S.pkgs[cur].itemGift = 0;
+  });
   for (const a of [{ t: 'act', k: 0 }, { t: 'act', k: 7 }, { t: 'act', k: 'basic' }, { t: 'item', i: 0 }, { t: 'ball' }, { t: 'pass' }, { t: 'pkgOpen', kind: 'itemGift' }, { t: 'pkgOpen', kind: 'nope' }]) {
     const before = snap(room);
     const res = act(room, cur, a);
@@ -169,33 +178,39 @@ function firstOf(T, owner, type) {
   ok(res.ok && !res.noop, "4슬롯 전투원의 레거시 'skill'(슬롯1)은 수락");
 }
 
-// ===== P1 왕/동료 본체 act 'basic' — v3: _sanitizeAction이 문자열 k를 E_BAD_ENVELOPE로 거부 =====
+// ===== P1 왕/동료 본체 act — v3: _sanitizeAction이 문자열 k를 E_BAD_ENVELOPE로 거부 =====
+// #234 (GDD-23 3.5·6.2): 왕 본체는 이제 스킬 2칸(K-1 기본기 · K-2-속성)을 가진다(전투 개시 syncLeaderSkills).
+// 종전 "기술 슬롯 없음 → 숫자 슬롯·'common' 거부, 'basic' 은 순수 기본 공격" 기대는 규칙 변경으로 다음으로 대체한다:
+// 숫자 슬롯 0 수락 · 없는 칸(2·'common') 거부 · 합법 칸이 있으므로 pass 거부 · 레거시 'basic' = 슬롯0 수락.
 {
   const room = H.startedRoom(106);
   const T = room.engine;
   const cur = T.S.current, def = 1 - cur;
   const kingId = firstOf(T, cur, 'king').id, dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.initBattle(byId(E, kingId), byId(E, dId)); });
+  H.openBattle(room, { att: kingId, def: dId });
   // 왕이 끼는 전투는 "출전 공개" 확인 모달(행동자 소유)을 거친 뒤 전투가 열린다
   const reveal = room._pendingModal();
   ok(!!reveal && reveal.owner === cur && /출전 공개/.test(reveal.html), '왕 출전 공개 모달은 공격자 소유: ' + JSON.stringify(reveal && reveal.owner));
   if (reveal) ok(act(room, cur, { t: 'modal', seq: reveal.seq, i: 0 }).ok, '공격자 "전투 시작" 수락');
-  ok(!!T.S.battle && !T.S.battle.fa.skills && T.actorOfPhase() === 'A', '픽스처: 왕 본체(기술 슬롯 없음) 공격 차례, 모달 없음: ' + JSON.stringify(room._pendingModal()));
-  for (const a of [{ t: 'act', k: 0 }, { t: 'act', k: 'common' }, { t: 'pass' }]) {
+  /* #233 (GDD-23 4.4): 선턴은 속도로 갈린다 — 왕(spd 8)은 표준형 하수인(spd 10)보다 느려 방어자가 선턴이다.
+     이 절의 목적은 왕 본체의 행동 어휘이므로 순서를 가정하지 않고 실제 행위자를 따라가 왕의 차례까지 진행시킨다. */
+  if (T.S.battle && T.actorOfPhase() === 'D') {
+    const dSlot = T.S.battle.fd.skills.findIndex((_, i) => T.slotUsable(T.S.battle.fd, i, 'D'));
+    ok(act(room, def, { t: 'act', k: dSlot }).ok, '방어자가 선턴을 소비(속도 10 > 왕 8, GDD-23 4.4)');
+  }
+  const fa = T.S.battle && T.S.battle.fa;
+  ok(!!fa && Array.isArray(fa.skills) && fa.skills.length === 2 && T.actorOfPhase() === 'A' && !room._pendingModal(),
+    '픽스처: 왕 본체(스킬 2칸, GDD-23 6.2) 공격 차례, 모달 없음: ' + JSON.stringify(fa && fa.skills));
+  for (const a of [{ t: 'act', k: 2 }, { t: 'act', k: 3 }, { t: 'act', k: 'common' }, { t: 'pass' }]) {
     const before = snap(room);
     const res = act(room, cur, a);
-    ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, `왕 본체의 ${JSON.stringify(a)} 거부·불변`);
-  }
-  if (!T.S.battle.fa.skillAtk) {
-    const before = snap(room);
-    const res = act(room, cur, { t: 'act', k: 'skill' });
-    ok(!res.ok && snap(room) === before, "skillAtk 없는 왕의 'skill' 거부·불변");
+    ok(!res.ok && res.reason === 'E_ILLEGAL_ACTION' && snap(room) === before, `2칸 왕 본체의 ${JSON.stringify(a)} 거부·불변(없는 칸·합법 칸 보유)`);
   }
   const hpBefore = T.S.battle.fd.hp, seqBefore = T.S.battle.actSeq || 0, rev = room.revision;
   const res = act(room, cur, { t: 'act', k: 'basic' });
-  ok(res.ok && !res.noop && room.revision === rev + 1, "왕 본체 기본 공격 act k='basic' 수락: " + JSON.stringify(res.reason));
+  ok(res.ok && !res.noop && room.revision === rev + 1, "왕 본체 레거시 act k='basic'(= 슬롯0 K-1) 수락: " + JSON.stringify(res.reason));
   const B = room.engine.S.battle;
-  ok(!B || B.fd.hp < hpBefore || (B.actSeq || 0) > seqBefore, '기본 공격이 실제로 적용됨(피해 또는 차례 진행)');
+  ok(!B || B.fd.hp < hpBefore || (B.actSeq || 0) > seqBefore, '슬롯0 기본기가 실제로 적용됨(피해 또는 차례 진행)');
 }
 
 // ===== P1 배치 검증 — v3: 중복/미지 로스터·말 수 불일치를 수락하고 applyNetSetup이 무작위 대체해 경기 시작 =====
@@ -248,7 +263,7 @@ function firstOf(T, owner, type) {
     for (let p = 0; p < 2; p++) {
       const mine = E.S.pieces.filter((x) => x.owner === p);
       const exact = mine.every((x, i) => x.c === good.pos[i][1] && x.r === (p === 1 ? 14 - good.pos[i][0] : good.pos[i][0]));
-      ok(exact && E.S.roster[p].join() === good.roster.join(), `제출 배치가 좌석${p} 엔진${E.NET.me}에 정확히 반영(좌석1 미러링)`);
+      ok(exact && E.S.roster[p].join() === good.roster.join(), `제출 배치가 좌석${p} 엔진${E.host.seat}에 정확히 반영(좌석1 미러링)`);
     }
     ok(!E.S.log.some((l) => /배치 데이터 손상/.test(l.msg)), '무작위 대체("배치 데이터 손상") 로그 없음');
   }
@@ -301,7 +316,8 @@ function firstOf(T, owner, type) {
   // 전선에 가까운 말을 공격자로 — 후방 후보가 생긴다
   const att = T.S.pieces.filter((p) => p.owner === cur && p.type === 'minion').sort((a, b) => (cur === 0 ? a.r - b.r : b.r - a.r))[0];
   const dId = firstOf(T, def, 'minion').id;
-  both(room, (E) => { E.BAL.fleeProb = 1; E.initBattle(byId(E, att.id), byId(E, dId)); });
+  both(room, (E) => { E.BAL.fleeProb = 1; });
+  H.openBattle(room, { att: att.id, def: dId });
   let res = act(room, cur, { t: 'flee' });
   ok(res.ok && !!T.S.fleePick && T.S.fleePick.owner === cur, '도망 성공 → 교환 선택(fleePick) 진입: ' + JSON.stringify(res.reason));
   if (T.S.fleePick && T.S.fleePick.cands.length) {

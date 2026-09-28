@@ -1,0 +1,5 @@
+{
+  "//": "#245 음성 대조군 전용 — 양성 검사(../tsconfig.json)에 negative/*.js 만 더한다. CI 의 양성 검사는 이 파일을 쓰지 않는다.",
+  "extends": "../tsconfig.json",
+  "include": ["../env.d.ts", "../contracts.d.ts", "../../../demo/js/*.js", "negative/*.js"]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "digit-duel-typecheck",
+  "version": "0.0.0",
+  "private": true,
+  "description": "#245 상태·액션·이벤트·프로토콜 경계 정적 검사 전용. 게임은 여전히 classic script 라 빌드도 번들도 없다 — demo/index.html 을 그대로 열면 돈다.",
+  "scripts": {
+    "typecheck": "tsc -p tools/typecheck/tsconfig.json",
+    "test:typecheck": "node tools/typecheck/test/typecheck_test.js"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
