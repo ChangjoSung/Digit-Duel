@@ -8,11 +8,11 @@
 # Jupiter(이 작업)는 Render 계정 로그인·서비스 생성·구매·GitHub 연동을 하지 않았다.
 #
 # 전제(server/authoritative/server.js 가 실제로 요구하는 것):
-#   - server/authoritative/engine.js 가 런타임에 demo/test/shared/harness.js 를 require() 하므로
-#     (상대경로 ../../demo/test/shared/harness.js), 저장소 전체(특히 demo/)가 함께 체크아웃돼 있어야
+#   - 서버 런타임(server/authoritative/runtime.js, #245)이 기동 시 demo/index.html 과 demo/js/*.js 를
+#     읽어 실행하므로(상대경로 ../../demo), 저장소 전체(특히 demo/)가 함께 체크아웃돼 있어야
 #     한다. **Root Directory는 반드시 저장소 루트여야 한다 — server/ 로 좁히면 안 된다.** Render 공식
 #     monorepo 문서 기준으로 Root Directory 밖의 파일은 빌드/런타임에서 이용할 수 없으므로, rootDir를
-#     server/ 로 두면 demo/ 가 보이지 않아 위 require()가 ENOENT로 죽는다(이전 버전이 "결과는 같다"고
+#     server/ 로 두면 demo/ 가 보이지 않아 위 파일 읽기가 ENOENT로 죽는다(이전 버전이 "결과는 같다"고
 #     적었던 것은 오판이었다 — 정정). 그래서 Root Directory는 그대로 두고 build/start 명령에만
 #     `--prefix server`를 붙인다(root의 실제 대시보드 설정과 동일한 형태). server/ 만 있는 별도 저장소
 #     (서브트리·서브모듈 추출본)로 배포해도 마찬가지로 기동 즉시 깨진다 — 반드시 이 모노레포 전체를

@@ -45,7 +45,11 @@ function loadMigrations(dir) {
     if (!m) throw new Error(`마이그레이션 파일명 규칙 위반: ${file} (NNN_snake_case.sql)`);
     if (out.some((x) => x.version === m[1])) throw new Error(`마이그레이션 버전 중복: ${m[1]}`);
     const sql = fs.readFileSync(path.join(dir, file), 'utf8');
-    out.push({ version: m[1], name: file, sql, checksum: sha256(sql) });
+    // 체크섬은 LF 로 맞춘 내용 기준 — Windows(autocrlf) 체크아웃과 Render(LF) 체크아웃이 같은 해시를 낸다.
+    // legacyChecksum: 이 규칙 이전에 CRLF 체크아웃에서 원문 바이트로 기록된 원장 행을 같은 SQL 로 인정한다
+    // (원장은 고치지 않는다). 예전 LF 원문 해시는 새 체크섬과 같다. 실제 내용이 바뀌면 둘 다 어긋나 멈춘다.
+    const lf = sql.replace(/\r\n/g, '\n');
+    out.push({ version: m[1], name: file, sql, checksum: sha256(lf), legacyChecksum: sha256(lf.replace(/\n/g, '\r\n')) });
   }
   return out;
 }
@@ -80,7 +84,7 @@ async function status(client, migrations) {
   for (const m of migrations) {
     const applied = byVersion.get(m.version);
     if (!applied) pending.push(m);
-    else if (applied.checksum !== m.checksum) drift.push(m);
+    else if (applied.checksum !== m.checksum && applied.checksum !== m.legacyChecksum) drift.push(m);
   }
   const unknown = rows.filter((r) => !migrations.some((m) => m.version === r.version));
   return { applied: rows, pending, drift, unknown };

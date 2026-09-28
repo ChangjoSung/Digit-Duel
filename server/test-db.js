@@ -342,8 +342,39 @@ check('파일명 규칙·중복 버전 검사를 통과하고 체크섬이 안�
   const loaded = mig.loadMigrations();
   assert.ok(loaded.length >= 1, '마이그레이션이 하나도 없다');
   assert.deepStrictEqual(loaded.map((m) => m.version), mig.loadMigrations().map((m) => m.version));
-  assert.strictEqual(loaded[0].checksum, mig.sha256(loaded[0].sql));
+  assert.strictEqual(loaded[0].checksum, mig.sha256(loaded[0].sql.replace(/\r\n/g, '\n')));
   assert.ok(/^\d{3}_/.test(loaded[0].name));
+});
+
+// Windows(autocrlf) 체크아웃과 Render(LF) 체크아웃이 같은 해시를 내야 기동 게이트가 서로의 원장을 받아들인다.
+await checkAsync('체크섬은 줄바꿈과 무관 · 예전 CRLF 원장 행은 고치지 않고 인정 · 실제 SQL 변경은 거부', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const sql = fs.readFileSync(path.join(mig.MIGRATION_DIR, '001_db_meta.sql'), 'utf8').replace(/\r\n/g, '\n');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dd-mig-eol-'));
+  try {
+    const load = (name, body) => {
+      const dir = path.join(tmp, name);
+      fs.mkdirSync(dir);
+      fs.writeFileSync(path.join(dir, '001_db_meta.sql'), body);
+      return mig.loadMigrations(dir);
+    };
+    const lf = load('lf', sql);
+    const crlf = load('crlf', sql.replace(/\n/g, '\r\n'));
+    assert.strictEqual(lf[0].checksum, crlf[0].checksum, 'LF·CRLF 새 체크섬이 다르다');
+    // 이 수정 전 CRLF 체크아웃이 기록한 원문 바이트 해시 — LF 체크아웃(Render)에서도 통과해야 한다
+    const rawCrlf = mig.sha256(sql.replace(/\n/g, '\r\n'));
+    assert.notStrictEqual(rawCrlf, lf[0].checksum);
+    const row = { version: '001', name: '001_db_meta.sql', checksum: rawCrlf };
+    const c = fakeClient({ ledger: [row] });
+    await mig.verify(c, lf);
+    assert.deepStrictEqual(await mig.up(c, lf), []);
+    assert.deepStrictEqual(c.ledger, [{ version: '001', name: '001_db_meta.sql', checksum: rawCrlf }], '원장 행이 바뀌었다');
+    // 줄바꿈 말고 실제 내용이 바뀌면 새·예전 체크섬 모두 어긋나 멈춘다
+    const edited = load('edited', sql.replace(/\n/g, '\r\n') + '-- x\r\n');
+    await assert.rejects(() => mig.verify(fakeClient({ ledger: [row] }), edited), /내용이 바뀐/);
+    await assert.rejects(() => mig.up(fakeClient({ ledger: [{ ...row, checksum: lf[0].checksum }] }), edited), /내용이 바뀌었다/);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 // #259 이후: 계정 스키마는 002 에만 있고(001 은 #264 그대로), 방·경기 영속화는 여전히 범위 밖이다.
 check('계정 스키마는 002 에만 · 방·경기 영속화 스키마는 없다', () => {
