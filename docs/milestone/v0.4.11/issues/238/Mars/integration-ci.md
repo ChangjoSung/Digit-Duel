@@ -68,3 +68,49 @@ game.css·UI·Core·네트워크·서버·SQL·자산·다른 보고서·`.gitat
 - [예외 공개] 진단 중 읽기 전용 Git 명령(`git config`·`ls-files --eol`·`check-attr`·`diff`·`show HEAD:`)을 사용했다.
   Worker Git 읽기 금지 기록과 충돌하므로 사실대로 보고한다 (쓰기 0).
 - [실행 횟수] smoke_tutorial 은 출력 필터 실수로 2회, Python 스위트도 2회 실행됐다 (동일 결과). `--check` 1회.
+
+---
+
+# 2026-09-28 추가 — CI A back_nav.js 계약 앵커 복구 (Mars)
+
+- 역할: Mars (CLIENT_TOOLING, IMPLEMENT, mutation=code) · task_a79152a38dc2 / ctx_9c23c558ac2e · claude-opus-5-5 high · Ponytail full · PD live preamble GO 수신 후 착수
+- 기준: issue-238-integration HEAD f880b78 (clean) · 입력: PR273 run 36383095778 · job 108802739450 (A만 실패, B/B2/C/D/E PASS)
+
+## 1. 실패와 원인 [확정]
+
+`demo/test/milestone/v0.4.6/issues/122/back_nav.js` 120 pass / 2 fail — G1a-2, G2.
+
+- 두 단언 모두 전투 모달 템플릿의 **`<details>`(전투 이력) 토글을 앵커**로 썼다. #238 CJ 지시(2026-09-28, Venus visual-alignment B04 ① · Mars visual-rebuild "제거한 이력 토글")로 `demo/js/ui.js` 전투 '전투 이력' `<details>`가 제거돼 앵커 문자열이 사라졌다.
+- 실제 제품 계약은 그대로다: `demo/js/ui.js` battleModal 에서 `← 뒤로`(`#bmenuBack`)는 여전히 네 하위 패널(`sub("flee",…)`) 바로 아래이며 이제 본문 마지막 요소, 핸들러는 `window.__menu(null)` 시맨틱 호출, `modal(…, [])` buttons 빈 배열(온라인 인덱스 중계 미사용), `network.js` 의 `__menu` 래퍼·`bmenuBack` 예외도 불변. **제품 결함 없음** → 에스컬레이션 대상 아님.
+
+## 2. 변경 (테스트 앵커만 · 단언 삭제·skip·완화 없음)
+
+| 단언 | 옛 앵커 | 새 앵커 | 비호환 이유 |
+|---|---|---|---|
+| G1a-2 | `…← 뒤로</button>\s+<details>` | `…← 뒤로</button>`` ` `` (템플릿 끝) | #238이 `<details>`를 제거 — 위치 계약(패널 아래)은 "본문 마지막"으로 더 엄격히 고정 |
+| G2 | `</details>`,\s*\n\s*\[\]\)` | `← 뒤로</button>`,[^\n]*\n\s*\[\]\)` | 같은 이유 — `[]` 가 전투 모달 본문 끝에 묶인 채 유지 (같은 줄 주석 허용) |
+
+변경 파일: `demo/test/milestone/v0.4.6/issues/122/back_nav.js` (+5/−3, 설명 주석 2줄 포함), 본 보고서 섹션. 제품·UI·레이아웃·시맨틱·다른 테스트·자산·서버 무수정. Git 쓰기 없음(읽기 전용 `git diff/show` 만 사용 — PD 허용).
+
+## 3. 검증 (각 1회)
+
+- `node demo/test/milestone/v0.4.6/issues/122/back_nav.js` → **122 / 0**.
+- 음성 대조 — scratchpad 외부 사본(`index.html`+`js`+`css`)의 `ui.js` 만 메모리 변형해 같은 테스트에 경로 인자로 실행, 저장소 파일 무변경:
+
+| 변형 | 결과 |
+|---|---|
+| 핸들러를 `window.__pick(0)` 인덱스 호출로 | exit 1 · G1a-2 FAIL |
+| `← 뒤로`를 도망 패널 **위**로 이동 | exit 1 · G1a-2·G2 FAIL |
+| `<details>전투 이력</details>` 재도입 | exit 1 · G1a-2·G2 FAIL |
+| buttons `[]` → `[["뒤로",…]]` 인덱스 버튼 | exit 1 · G2 FAIL |
+
+  (이동 변형 첫 시도는 원본 버튼을 남긴 채 복제만 해 exit 0 이었다 — 변형 오류이므로 원본을 제거한 진짜 이동으로 1회 재실행.)
+
+## 4. back_nav 이후 A 단계 정적 점검 [확정/추론]
+
+run 36383095778 은 back_nav 에서 멈춰 이후 6단계(smoke_fx_timing · attack_balance · shock · cross_skill · orientation_audit · ai_completion)가 CI에서 실행되지 않았다. 지시에 따라 재실행 없이 정적 점검만 했다.
+
+- [확정] 제거된 UI(전투 이력 `details`·기록/지표 서랍 `id="log"`/`metrics` DOM·최근 기록·상세·핫시트·빨간 점·전투 제목 메뉴)를 가리키는 단언 없음 (grep).
+- [확정] 소스 변형 앵커 17개(shock 6 · cross_skill 11) 전부 현재 `index.html`+`demo/js`+`demo/css` 에 존재.
+- [확정] #238 `core.js` 변경은 `bmsg` fx 에 `cast:side` 추가뿐 — fx_timing 은 msgBox 타이밍만 보고 fx 모양(`null` 여부)을 단언하지 않는다.
+- [추론] 따라서 같은 종류의 낡은 계약 위험은 발견되지 않았다. 실제 통과 여부는 PD 의 다음 CI A 실행이 최종 확인이다.
