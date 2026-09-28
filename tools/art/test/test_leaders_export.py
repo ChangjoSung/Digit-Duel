@@ -120,6 +120,23 @@ class LeadersExportTest(unittest.TestCase):
         self.assertEqual(LE.run(self.tmp, check=True, list_only=False), 1)
         self.assertEqual(self._tree(), dirty, "--check 는 어긋난 산출물도 되살리지 않는다")
 
+    def test_check_manifest_crlf_portable(self) -> None:
+        # #238 잡 D: Windows autocrlf 가 매니페스트를 CRLF 로 바꿔도 일치, JSON 값이 바뀌면 불일치, PNG 는 바이트 그대로 대조
+        self.assertEqual(LE.run(self.tmp, check=False, list_only=False), 0)
+        for m in (LE.REL_MANIFEST, LE.REL_ROLE_MANIFEST):
+            p = self.tmp / m
+            p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+        crlf = self._tree()
+        self.assertEqual(LE.run(self.tmp, check=True, list_only=False), 0, "CRLF 매니페스트는 내용이 같으면 일치")
+        self.assertEqual(self._tree(), crlf, "--check 는 CRLF 를 LF 로 되돌려 쓰지 않는다")
+        role = self.tmp / LE.REL_ROLE_MANIFEST
+        role.write_bytes(role.read_bytes().replace(b'"size": 64', b'"size": 65', 1))
+        self.assertEqual(LE.run(self.tmp, check=True, list_only=False), 1, "JSON 데이터 변경은 불일치")
+        role.write_bytes(role.read_bytes().replace(b'"size": 65', b'"size": 64', 1))
+        png = self.tmp / "demo/assets/leaders/companion_atk/icon64.png"
+        png.write_bytes(png.read_bytes() + b"\r\n")
+        self.assertEqual(LE.run(self.tmp, check=True, list_only=False), 1, "PNG 는 EOL 정규화 없이 바이트 대조")
+
     def test_list_never_writes(self) -> None:
         before = self._tree()
         self.assertEqual(LE.run(self.tmp, check=False, list_only=True), 0)

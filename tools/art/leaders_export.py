@@ -81,6 +81,12 @@ def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def text_lf(data: bytes) -> bytes:
+    """매니페스트(텍스트 JSON)만 CRLF → LF 로 맞춘다. Windows core.autocrlf 체크아웃이 roles-manifest.json 을
+    CRLF 로 바꿔도 내용이 같으면 일치로 본다 (#238 잡 D). 내용 변경은 그대로 불일치다. PNG 는 이 함수를 거치지 않는다."""
+    return data.replace(b"\r\n", b"\n")
+
+
 def render_png(src: Image.Image, size: int) -> bytes:
     """원본을 size x size 로 축소해 PNG 바이트를 만든다. 축소 외의 편집은 하지 않는다."""
     if src.mode != "RGBA":
@@ -178,7 +184,7 @@ def run(repo_root: Path, check: bool, list_only: bool) -> int:
             rel = man_path.relative_to(repo_root).as_posix()
             if not man_path.is_file():
                 bad.append(f"없음      {rel}")
-            elif man_path.read_bytes() != man:
+            elif text_lf(man_path.read_bytes()) != man:
                 bad.append(f"불일치    {rel}")
         for b in bad:
             print(b, file=sys.stderr)

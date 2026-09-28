@@ -17,7 +17,7 @@ const LOBBY_ASSETS=["assets/ui/icons.svg","assets/ui/panel.svg"]; // #253 Earth 
 const LOBBY_ICON={help:0,detail:1,history:2,back:3,close:4,resign:5,timer:6,refresh:7,currency:8,lock:9,done:10,loading:11}; // icons.svg 24px 칸 순서
 /* assets: null(아직) | [{url,state:"loading"|"ok"|"fail"}] · prof: idle|loading|ok|off|err · profile: 서버 값만 */
 const LOBBY={gen:0,assets:null,prof:"idle",profile:null,err:null,repBusy:false,notice:"",toast:null,focused:false,hist:false,create:false, // #238 hist·create: 전적 기록 창·방 만들기 창(표시 전용)
-  
+
   req:/** @type {{rev:number,t:number}|null} */(null),cdT:/** @type {any} */(null), // #238 L03 누른 준비·시작의 잠금(서버 뷰가 바뀔 때까지) · 카운트다운 표시 타이머
   view:"home",next:null,q:"",name:"",nameErr:"",poll:null,rtt:{n:0,t0:0,ms:null,st:"wait",pending:false}}; // #261 view: home(L01)|rooms(L02) · next: 로비에 들어올 때 열 view(방 나가기 → L02)
 
