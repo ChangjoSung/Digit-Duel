@@ -17,13 +17,14 @@ const UI_PORT={
   defer(action){ return false; },
   /* 호스트 질의 — 값을 돌려줄 뿐 아무것도 실행하지 않는다 */
   seat(){ return null; },            // 온라인 좌석 번호. null = 오프라인(핫시트·PVE·sim)
+  nick(p){ return null; },           // #259 온라인 좌석의 공개 닉네임. null = 모름(표시 생략)
   replaying(){ return false; }       // 수신 프레임 재생 중인가
 };
 /** @type {GameState} */
 let S=null;
 function pname(p){
   const seat=UI_PORT.seat();
-  if(seat!==null) return (p===seat?"나":"상대")+"(P"+(p+1)+")"; // #245: 좌석은 포트가 준다 — state.js 는 네트워크 계층을 모른다
+  if(seat!==null){ const n=UI_PORT.nick(p); return (p===seat?"나":"상대")+"(P"+(p+1)+(n?" · "+n:"")+")"; } // #245: 좌석은 포트가 준다 — state.js 는 네트워크 계층을 모른다
   if(S.mode==="pve") return p===0?"플레이어":"AI("+(AI_LEVEL_KO[S.aiLevel[1]]||"5급")+")";
   if(S.mode==="sim") return (p===0?"AI-1":"AI-2")+"("+(AI_LEVEL_KO[S.aiLevel[p]]||"5급")+")";
   return p===0?"P1(하단·청)":"P2(상단·적)";

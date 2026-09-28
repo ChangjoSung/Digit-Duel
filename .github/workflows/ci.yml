@@ -107,6 +107,10 @@ jobs:
       # 승인 수치표를 스위트 안에 따로 옮겨 적어 제품 표와 대조하고, 집계 경계(필드 9칸·사망/포획 칸 동결·가방 제외·
       # 전설/무속성 0)·참전 확정 순간 스냅샷 고정·타입별 상한과 기존 회피 40%/치명 50% 상한 보존·왕국 스킬당 1판정·
       # 전설 패시브(용/마녀/사신)·(2) 미달 무효·소유자 전용 selector(상대 집계 비노출)를 실제 엔진 경로로 본다.
+      # smoke_issue259.js (#259, v0.4.11): 아이디 계정 클라이언트 — 계정 없는 경로(file://·DB 없는 서버) 무변경·로그인 게이트(대전 시작·PVE·공개 방)·
+      # 로그인/가입(이메일 필수·중복 이메일 허용)/아이디 전용 이메일 6자리 코드 비밀번호 재설정/로그아웃 요청 형식과 실패 문구·이메일 주소 비표시·
+      # 비보안 원격 HTTP 비밀번호 칸 없음·단일 로그인(다른 탭·기기 로그인 시 옛 세션 종료)·공개 방 소켓 전 세션 확인·
+      # 좌석 재접속 기록(dd_seat) 저장/삭제/새로고침 재접속/다른 계정 격리/밀려난 탭. 서버는 fetch 스텁.
       # smoke_issue263_client.js (#263, v0.4.11): 클라이언트 표시·입력 계약 — 진열 6칸·SOLD OUT 칸의 구매 버튼 부재,
       # 로컬(PVE·핫시트) 배치 90초·행동 30초(전투 판정·연출 중 정지 · 만료 1회 턴 넘김 · 출전 후보도 같은 30초 · 가림 불산입),
       # 온라인은 서버 시계(room_state.clock place·act)를 표시만 하고 로컬 마감을 걸지 않는 것, 단절 정지 중 양측 게임
@@ -135,6 +139,7 @@ jobs:
           node demo/test/regression/smoke_issue235.js
           node demo/test/regression/smoke_issue245.js
           node demo/test/regression/smoke_issue236.js
+          node demo/test/regression/smoke_issue259.js
           node demo/test/regression/smoke_issue263_client.js
       # smoke_online_art.js (#201, v0.4.8 HotFix): 온라인에서 개별 이미지가 한 번 실패해도 그 자산이 영구히
       # 이모지·텍스트로 남지 않는다. 예산은 **파일 단위**다 — 연속 실패 3회 또는 수명 누적 8회에서 영구 결손으로

@@ -30,6 +30,8 @@ const { Lobby } = require('./lobby');
 const { STATES } = require('./room');
 const { validateEnvelope } = require('./protocol');
 const { isWellFormedToken } = require('./seatToken');
+const db = require('../db'); // #264 — DATABASE_URL 이 없으면 전부 비활성(기존 동작 그대로)
+const A = require('./accounts');
 
 // DD_AUTH_PORT 를 명시하면 그대로 우선한다(기존 로컬/LAN 실행기·문서 그대로). 미설정이면 플랫폼이
 // 주입하는 PORT(Render 등)를 듣는다 — 없으면 기존 기본값 8081.
@@ -74,6 +76,13 @@ const authLimiter = new S.AttemptLimiter(LIMITS.authFailures, LIMITS.authWindowM
 const ECONOMY = process.env.DD_ECONOMY !== '0';
 const lobby = new Lobby({ epoch: EPOCH, economy: ECONOMY });
 
+// #259 계정 — DB 가 있는 서버에서만 켠다. 켜지면 온라인 방 생성·참가·재접속이 로그인을 요구한다.
+// DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 그대로다 — 계정 API 는 503 E_ACCOUNTS_DISABLED.
+// DB 가 켜졌는데 장애면 계정 API·방 접속 모두 503 이다(메모리로 대신하지 않는다).
+// 메일(비밀번호 재설정 코드)은 DD_SMTP_URL·DD_MAIL_FROM 이 있을 때만 — 없으면 재설정 요청은 503 E_MAIL_UNAVAILABLE(accounts.js smtpMailer).
+let accounts = db.enabled() ? A.createAccounts(A.pgStore(db.query), null, A.smtpMailer(process.env)) : null;
+const authBuckets = new Map(); // scrypt 를 부르는 계정 요청(가입·로그인·복구·재발급)의 IP당 예산
+
 // PUBLIC_DEPLOY: 소켓의 직접 피어는 항상 리버스 프록시(플랫폼 엣지)이지 실제 클라이언트가 아니다.
 // 그 피어의 주소 대역을 신뢰 판정에 쓰지 않는다(임의 프록시 뒤 IP를 그대로 믿지 않는다는 원칙) —
 // 대신 이 경로에서는 Host·Origin·좌석 토큰이 실질 경계가 된다(둘 다 peerAllowed 뒤에서 그대로 검사).
@@ -111,7 +120,8 @@ const server = http.createServer((req, res) => {
   const ip = S.normalizeIp(req.socket.remoteAddress);
   if (!peerAllowed(ip)) return deny(res, 403, LAN_OPT_IN ? 'LAN only' : 'localhost only');
   if (!bucketFor(httpBuckets, ip, LIMITS.httpBurst, LIMITS.httpReqPerSec).take(1)) return deny(res, 429, 'too many requests');
-  if (!S.ALLOWED_METHODS.has(req.method)) {
+  const authPath = /^\/api\/auth\//.test(req.url || '');
+  if (!S.ALLOWED_METHODS.has(req.method) && !(authPath && req.method === 'POST')) {
     sendHead(res, 405, { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('method not allowed');
   }
@@ -125,6 +135,33 @@ const server = http.createServer((req, res) => {
   if (pathname === '/healthz') {
     sendHead(res, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end(req.method === 'HEAD' ? undefined : 'ok');
+  }
+  // #264 /readyz — DB 왕복을 실제로 해 본다. /healthz 와 분리한 이유: 플랫폼 헬스체크가 DB 로
+  // 흔들리면 DB 장애가 서비스 재시작 루프가 된다. DB 를 안 쓰는 배포에서는 그냥 200 "ok (no db)".
+  // 본문에 호스트·오류 문구를 싣지 않는다(정보 노출 없이 상태만).
+  if (pathname === '/readyz') {
+    if (!db.enabled()) {
+      sendHead(res, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end(req.method === 'HEAD' ? undefined : 'ok (no db)');
+    }
+    return db.ping().then(
+      () => { sendHead(res, 200, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end(req.method === 'HEAD' ? undefined : 'ok (db)'); },
+      () => deny(res, 503, 'db unavailable'),
+    );
+  }
+
+  if (authPath) {
+    // 비밀번호·복구 코드는 HTTPS 이거나 이 PC(루프백)에서만 받는다 — 판정과 그 전제는 accounts.js transport().
+    const t = A.transport(req, ip, PUBLIC_DEPLOY, S.isLoopbackIp);
+    return A.handleAuth(req, res, pathname, {
+      accounts,
+      send: (r, status, headers, body) => { sendHead(r, status, headers); r.end(body); },
+      secure: t.secure,
+      secretOk: t.secretOk,
+      sameOrigin: !!origin, // 다른 출처 Origin 은 위에서 이미 403 이다 — 여기서는 "있는가"만 본다
+      takeBucket: () => bucketFor(authBuckets, ip, 20, 1).take(1),
+      revoke: endSessions,
+    }).catch(() => { if (!res.headersSent) deny(res, 500, 'internal error'); else res.destroy(); }); // 처리되지 않은 reject 로 프로세스가 죽지 않게
   }
 
   const resolved = S.resolveStaticPath(ROOT, req.url);
@@ -219,17 +256,70 @@ server.on('upgrade', (req, socket, head) => {
   }
   authLimiter.reset(ip);
 
-  if (wss.clients.size >= LIMITS.maxConnections) return rejectUpgrade(socket, 503, 'Service Unavailable');
-  if ((connectionsByIp.get(ip) || 0) >= LIMITS.maxConnectionsPerIp) {
-    return rejectUpgrade(socket, 429, 'Too Many Requests');
-  }
-
-  wss.handleUpgrade(req, socket, head, (ws) => {
-    ws.ddIp = ip;
-    ws.ddCred = presented.cred;
-    wss.emit('connection', ws, req);
-  });
+  const accept = (account) => {
+    if (socket.destroyed) return;
+    if (wss.clients.size >= LIMITS.maxConnections) return rejectUpgrade(socket, 503, 'Service Unavailable');
+    if ((connectionsByIp.get(ip) || 0) >= LIMITS.maxConnectionsPerIp) {
+      return rejectUpgrade(socket, 429, 'Too Many Requests');
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.ddIp = ip;
+      ws.ddCred = presented.cred;
+      ws.ddAccount = account; // #259 {id,userId,nickname} | null(계정 없는 서버·로비 목록)
+      wss.emit('connection', ws, req);
+    });
+  };
+  // #259 좌석을 얻거나 되찾는 연결(생성·참가·재접속)은 서버 쪽 세션 검증을 통과해야 한다. 로비 목록은 읽기 전용이라 예외.
+  if (!accounts || presented.cred.kind === 'lobby') return accept(null);
+  // 조회가 도는 동안 일어난 폐기는 이 기록에 쌓인다(endSessions). 조회는 폐기 전 DB 상태를 읽었을 수 있다 — 그 결과로
+  // 소켓을 인가하지 않는다. 기록의 수명은 이 조회 하나의 수명과 같다(시계·시간 기반 정리 없음 — 잊을 수 없다).
+  const lookup = { revoked: [] };
+  pendingLookups.add(lookup);
+  accounts.resolve(A.sessionTokenFrom(req)).then(
+    (who) => {
+      pendingLookups.delete(lookup);
+      if (who && lookup.revoked.some((r) => revokes(who, r))) who = null;
+      return who ? accept(who) : (!socket.destroyed && rejectUpgrade(socket, 401, 'Unauthorized'));
+    },
+    () => { pendingLookups.delete(lookup); if (!socket.destroyed) rejectUpgrade(socket, 503, 'Service Unavailable'); }, // DB 장애 — 무계정으로 통과시키지 않는다
+  ).catch(() => socket.destroy());
 });
+
+// #259 진행 중인 업그레이드 세션 조회들 — 조회 결과가 돌아와 소켓이 등록되기 전에 일어난 폐기를 놓치지 않으려고 둔다.
+const pendingLookups = new Set();
+
+// #259 세션이 끝난(로그아웃·재설정·절대 만료) 소켓은 더 행동하지 못한다. 좌석은 일반 단절처럼 60초 유예에 들어가므로
+// 같은 계정으로 다시 로그인하면 그 안에 좌석 토큰으로 재접속할 수 있다(#237 유예·좌석 계정 바인딩 그대로).
+// 클라이언트 계약: error E_SESSION_ENDED 프레임 뒤 close 4003 'session ended' — 자동 재접속하지 말고 로그인으로.
+// ponytail: 폐기는 이 프로세스 안의 로그아웃·재설정 경로에서만 알린다(인스턴스 1개 전제). 여러 인스턴스면 주기적 DB 재확인이나 pub/sub 이 필요하다.
+function sessionOver(ws) {
+  return !!(ws.ddSessionEnded || (ws.ddAccount && Date.now() >= ws.ddAccount.expiresAt));
+}
+function endSession(ws, reason) {
+  if (ws.ddSessionEnded) return;
+  ws.ddSessionEnded = true;
+  sendFrame(ws, Object.assign({ v: 1, type: 'error', code: 'E_SESSION_ENDED' }, reason ? { reason } : {})); // reason 'login_replaced' = 다른 곳에서 로그인
+  try { ws.close(4003, 'session ended'); } catch (e) { /* noop */ }
+}
+// 폐기 기술자(accounts.js): {sessionHash} = 그 세션 하나 · {accountId, belowLoginGen} = 그 계정의 **더 낮은 세대** 세션만.
+// 세대 비교라, 늦게 끝난 옛 로그인·재설정의 폐기가 그보다 새 로그인의 소켓이나 진행 중 조회를 끊지 못한다.
+function revokes(a, d) {
+  return !!a && (a.sessionHash === d.sessionHash || (a.id === d.accountId && a.loginGen < d.belowLoginGen));
+}
+function endSessions(desc) {
+  for (const p of pendingLookups) p.revoked.push(desc); // 아직 소켓이 되지 않은 조회에도 알린다
+  for (const ws of wss.clients) if (revokes(ws.ddAccount, desc)) endSession(ws, desc.reason);
+}
+
+// #259 좌석을 계정에 묶는다. 이후 그 좌석의 재접속은 같은 계정 세션에서만 된다. 공개 닉네임도 여기서 붙인다(표시용 — 아이디·이메일·계정 id 는 프레임에 싣지 않는다).
+function bindSeat(room, seat, ws) {
+  room.seats[seat].accountId = ws.ddAccount ? ws.ddAccount.id : null;
+  room.seats[seat].nickname = ws.ddAccount ? ws.ddAccount.nickname : null;
+}
+// 좌석별 서버 권위 공개 닉네임 [좌석0, 좌석1] — 빈 좌석·계정 없는 서버는 null.
+const playersOf = (room) => [0, 1].map((i) => room.seats[i].nickname || null);
+// 같은 계정이 상대 좌석을 잡지 못한다(자기 방 참가 금지). 자기 좌석 재접속(resume)은 별개 경로다.
+const sameAccount = (room, ws) => !!ws.ddAccount && room.seats[0].accountId === ws.ddAccount.id;
 
 function sendFrame(ws, obj) {
   if (!ws || ws.readyState !== OPEN) return;
@@ -245,7 +335,7 @@ function bumpSeq(room, seat) {
 function pushState(room, seat) {
   const s = room.seats[seat];
   if (!s.ws || s.ws.readyState !== OPEN) return;
-  sendFrame(s.ws, { v: 1, type: 'room_state', epoch: EPOCH, revision: room.revision, seat, data: room.toSeatView(seat), seq: bumpSeq(room, seat) });
+  sendFrame(s.ws, { v: 1, type: 'room_state', epoch: EPOCH, revision: room.revision, seat, data: room.toSeatView(seat), players: playersOf(room), seq: bumpSeq(room, seat) });
 }
 
 // 모든 룸 공통 — 타이머·정리로 일어난 종료 전이는 응답할 명령이 없으므로 양 좌석에 결과를 푸시한다.
@@ -260,6 +350,7 @@ function firstFrame(ws, type, room, seat, issued, extra) {
     v: 1, type, epoch: EPOCH, roomId: room.roomId, seat,
     seatToken: issued.seatToken, tokenGen: issued.tokenGen,
     revision: room.revision, seq: bumpSeq(room, seat), economy: room.economy, // #237 첫 프레임부터 경제 방 여부
+    players: playersOf(room), // #259 서버 권위 공개 닉네임
   }, extra || {}));
 }
 
@@ -287,21 +378,26 @@ wss.on('connection', (ws) => {
     if (!created.ok) return failClose(created.reason);
     attachNotifier(created.room);
     const issued = created.room.openHostSeat(ws);
+    bindSeat(created.room, 0, ws);
     firstFrame(ws, 'room_opened', created.room, 0, issued, {
       inviteCode: created.room.inviteCode || undefined, public: created.room.isPublic,
     });
   } else if (cred.kind === 'join') {
     const found = lobby.findByInvite(cred.code);
     if (!found.ok) return failClose(found.reason);
+    if (sameAccount(found.room, ws)) return failClose('E_SAME_ACCOUNT'); // 방·초대 코드를 건드리기 전에 거부
     const res = found.room.joinGuestSeat(ws);
     if (!res.ok) return failClose(res.reason);
+    bindSeat(found.room, 1, ws);
     lobby.invalidateInvite(found.code); // 1회용 (analysis.md §2.3)
     guestJoined(ws, found.room, res.issued);
   } else if (cred.kind === 'joinPublic') {
     const room = lobby.getRoom(cred.roomId);
     if (!room || !room.isPublic || room.state !== STATES.OPEN) return failClose('E_ROOM_NOT_FOUND');
+    if (sameAccount(room, ws)) return failClose('E_SAME_ACCOUNT');
     const res = room.joinGuestSeat(ws);
     if (!res.ok) return failClose(res.reason);
+    bindSeat(room, 1, ws);
     guestJoined(ws, room, res.issued);
   } else if (cred.kind === 'resume') {
     // §2.4.1.1 — 에폭이 다르면 토큰을 검증하지 않고 즉시 E_EPOCH. VOID (몰수 아님).
@@ -315,6 +411,10 @@ wss.on('connection', (ws) => {
       if (match) break;
     }
     if (!match) return failClose('E_SEAT_TOKEN_INVALID');
+    // #259 좌석 토큰만 훔쳐서는 안 된다 — 그 좌석을 얻은 계정의 세션이어야 한다. 좌석을 회전·교체하기 **전에** 본다.
+    // 응답은 토큰이 틀린 것과 같다(토큰이 맞았다는 사실을 알려 주지 않는다). 계정 없는 서버는 양쪽 다 null 이라 그대로다.
+    const owner = match.room.seats[match.seat].accountId || null;
+    if (owner !== (ws.ddAccount ? ws.ddAccount.id : null)) return failClose('E_SEAT_TOKEN_INVALID');
     const result = match.room.resumeSeat(match.seat, cred.token, ws);
     if (!result.ok) return failClose(result.reason);
     firstFrame(ws, 'room_resumed', match.room, match.seat, result.issued, { data: match.room.toSeatView(match.seat) });
@@ -323,6 +423,7 @@ wss.on('connection', (ws) => {
 
   ws.on('message', (data, isBinary) => {
     if (isBinary) { ws.close(1003, 'binary not supported'); return; }
+    if (sessionOver(ws)) { endSession(ws); return; } // #259 끝난 세션의 소켓은 어떤 명령도(읽기 포함) 처리하지 않는다
 
     if (ws.ddLobbyOnly) {
       const v = validateEnvelope(data);
@@ -410,6 +511,9 @@ const heartbeat = setInterval(() => {
 const sweeper = setInterval(() => {
   lobby.sweep();
   authLimiter.sweep(Date.now());
+  if (accounts) accounts.sweep(Date.now());
+  for (const ws of wss.clients) if (ws.ddAccount && sessionOver(ws)) endSession(ws); // 명령 없이 열려만 있는 소켓도 만료 시 끊는다
+  if (authBuckets.size > 256) authBuckets.clear();
   if (httpBuckets.size > 256) httpBuckets.clear();
   if (upgradeBuckets.size > 256) upgradeBuckets.clear();
 }, 30000);
@@ -430,6 +534,30 @@ if (require.main === module) {
     console.error('[보안] DD_AUTH_PUBLIC_DEPLOY=1 인데 DD_AUTH_PUBLIC_HOST 가 없습니다. 이 상태로 뜨면 모든 요청이 Host 불일치(400)로 거부됩니다. 배포 도메인을 DD_AUTH_PUBLIC_HOST 로 지정하세요. 기동을 중단합니다.');
     process.exit(1);
   }
+  // #264 DB 기동 게이트 — DATABASE_URL 이 있으면 **연결과 스키마를 실제로 확인한 뒤에만** listen 한다.
+  // 반쯤 붙은 서버가 뜨는 것이 최악이다(나중에 계정 쓰기가 조용히 실패한다). 확인 실패 = exit 1.
+  // DD_DB_MIGRATE_ON_START=1 은 셸이 없는 Render Free 용 옵트인이다(기본은 적용하지 않고 게이트만).
+  if (db.enabled()) {
+    const mig = require('../db-migrate');
+    Promise.resolve()
+      .then(() => db.getPool()) // 설정 오류(TLS 강등·잘못된 DSN)도 여기서 잡아 같은 경로로 중단한다
+      .then((client) => (process.env.DD_DB_MIGRATE_ON_START === '1'
+        ? mig.up(client, mig.loadMigrations()).then((done) => { if (done.length) console.log(`  DB 마이그레이션 적용: ${done.join(', ')}`); return client; })
+        : client))
+      .then((client) => mig.verify(client))
+      .then(() => { console.log(`  ${db.describe()} — 연결·스키마 확인 완료`); listen(); })
+      .catch((e) => {
+        // pg 원문 메시지는 찍지 않는다 — 호스트·포트가 섞일 수 있다(db.safeErrorText).
+        console.error(`[DB] DATABASE_URL 이 설정됐지만 사용할 수 없습니다: ${db.safeErrorText(e)}`);
+        console.error('  DB 없이 뜨면 계정·전적 쓰기가 조용히 실패하므로 기동을 중단합니다. DB 를 쓰지 않으려면 DATABASE_URL 을 지우고, 스키마가 미적용이면 `node db-migrate.js up` 을 먼저 실행하세요.');
+        process.exit(1);
+      });
+  } else {
+    listen();
+  }
+}
+
+function listen() {
   server.listen(PORT, BIND, () => {
     const actual = server.address().port;
     const mode = PUBLIC_DEPLOY ? '공개 배포(WAN) — 리버스 프록시 뒤, 피어 IP 미검사' : (LAN_OPT_IN ? 'LAN 공개 — 사설 대역만' : '루프백 전용');
@@ -450,9 +578,14 @@ if (require.main === module) {
       console.log('  LAN 공개가 필요하면 --lan (또는 DD_LAN=1) 로 기동하세요 (기본은 이 PC 전용).');
     }
     console.log(`  헬스체크: http://127.0.0.1:${actual}/healthz`);
+    if (accounts) console.log(`  비밀번호 재설정 메일: ${accounts.mailEnabled ? 'SMTP 설정됨' : '미설정 — 재설정 요청은 503 E_MAIL_UNAVAILABLE'}`); // 설정 값은 찍지 않는다
     if (PUBLIC_HOST && !PUBLIC_DEPLOY) console.log(`  WAN 배포 준비 호스트(Host 허용 목록에만 추가됨): ${PUBLIC_HOST}`);
     console.log('  코드 접속(기존 릴레이)은 별도 서버입니다: npm run start:relay (기본 8080).');
   });
 }
 
-module.exports = { server, wss, lobby, EPOCH, ROOT, parseCredential, presentedCredential, peerAllowed, PUBLIC_DEPLOY, PUBLIC_HOST, LAN_OPT_IN, PORT };
+// 테스트 전용 — 살아 있는 Postgres 없이 계정 경로를 돌리려고 저장소를 바꿔 끼운다(운영 경로는 위 db.enabled() 하나).
+// 한 IP(루프백)에서 수십 건을 보내는 테스트가 예산에 막히지 않게 예산도 비운다.
+function useAccounts(a) { accounts = a; authBuckets.clear(); }
+
+module.exports = { server, wss, lobby, EPOCH, useAccounts, ROOT, parseCredential, presentedCredential, peerAllowed, PUBLIC_DEPLOY, PUBLIC_HOST, LAN_OPT_IN, PORT };

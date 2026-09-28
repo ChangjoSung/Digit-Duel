@@ -15,7 +15,9 @@
 
 - 적용 범위는 Digit-Duel 프로젝트뿐이다. 모델·effort의 계정 전역 기본값을 수정하지 않는다. 단, CJ가 지시한 Codex·Claude Ponytail 설치는 제공된 설치 명령에 따른 user scope 예외다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
 - #250 모델 재설정 후 다음 Mercury_PD 인수인계 세션만 CJ의 명시적 지시에 따라 `gpt-6-sol` xhigh·`service_tier=default`(No Fast)와 `danger-full-access`·approval `never`로 시작한다. 이 승인은 다른 Worker·다른 프로젝트·managed/host 정책 우회로 확장하지 않는다.
+- 2026-09-25 CJ의 모든 Worker 자동 진행 지시는 Digit-Duel에서 CJ가 착수시킨 모든 작업(#264·#259·#260 포함)에 적용한다. 각 Worker를 full access·무확인 실행(Claude --dangerously-skip-permissions, Codex -s danger-full-access -a never)으로 명시 기동하고 실제 실행을 확인한다. 역할 경계·Saturn 파일 무수정·Git/Render/배포/결제 승인 게이트는 유지하고 다른 프로젝트·계정 전역 설정을 바꾸지 않는다.
 - 신규 Worker는 [WORKER_MODELS.md](docs/creat2ve/WORKER_MODELS.md)와 [worker-models.json](docs/creat2ve/worker-models.json)의 agent/model/effort를 명시해 시작한다. 계정 기본값만으로 부서별 실행값을 추정하지 않는다. 시작 영수증 requested/effective와 실제 응답을 확인한다.
+- 후속 dispatch 입력 전 모델 전환 팝업을 처리하고, 현재 턴·GO 직전·완료 시 실제 모델/effort·tier·footer를 다시 대조한다. 이전 preflight를 재사용하지 않으며 불일치 결과는 정식 QA에서 제외한다. 절차는 WORKER_MODELS.md의 후속 dispatch 모델 게이트를 따른다.
 - Mercury_PD=Codex `gpt-6-sol` xhigh·No Fast, Venus_Plan/Mars_Client/Jupiter_Server=Claude `claude-opus-5-5` high, Saturn_QA=Codex `gpt-6-sol` xhigh·No Fast. Earth_Art는 신규 창작 `gpt-6-astra` medium·No Fast / 기존 자산 수정 `gpt-6-luna` xhigh·No Fast. `No Fast`는 `service_tier=default`다.
 - Mercury·Mars·Jupiter·Saturn은 모든 작업에서 Ponytail `full`을 필수 적용한다. Venus는 `eli-adult`를 계속 필수 적용하고 기술 기획의 YAGNI 검토에만 Ponytail `lite`를 병행한다. Earth의 순수 아트 제작에는 적용하지 않으며 코드·도구 작업은 Mars로 라우팅한다. 역할 경계·필수 QA·입력 검증·보안·접근성 요구는 줄이지 않는다.
 - Venus가 Notion 기획서 작성·관리를 맡는다(eli_adult). Mercury는 GitHub·Orca 조정·운영 보고와 메타데이터를 관리한다. 아래 과거 계약의 Worker Notion 직접 쓰기 금지는 Venus의 승인된 기획 문서 관리에는 적용하지 않는다. 다른 Worker의 GitHub/Notion 쓰기와 모든 Worker의 Git 쓰기 금지는 유지한다.
@@ -41,7 +43,7 @@
 CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 불필요하며, Notion의 Plan Prompt·Orchestration Launcher는 새 환경/다른 도구용 백업이다.
 1. **분류**: 매 보고 첫머리에 Comment를 [결정]/[피드백]/[질문]으로 분류해 표기한다.
 2. **Issue·PR 단위 (2026-09-07 CJ 승인)**: 코드 변경과 납품 자산 변경을 이슈화한다. 문서·결정·분석만 있는 안건은 Notion Decision Log로 관리한다. 하나의 납품 목표는 Mercury가 **Issue 1개 + 통합 PR 1개**로 관리하며, 같은 목표의 병렬 Worker 작업은 체크리스트와 Orca Task로 나눈다. Worker별 Issue·PR을 만들지 않는다. 독립 출시·독립 롤백이 필요한 범위만 별도 Issue·PR로 분리할 수 있고, 부모 에픽이 있으면 sub-issue로 연결한다(깊이 1단계). 부모는 모든 sub 종결 + CJ QA 통과 시 닫는다. Worker는 결과를 PD에게 보고하고, GitHub·Notion 기록과 Git 쓰기는 Mercury가 취합·집행한다.
-3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주해 근거 코멘트와 함께 close한다. 마일스톤 종료 시 전수 정리.
+3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주한다. 모든 완료 조건과 통합 상태를 기존 Issue 본문에서 확인한 뒤 허가된 범위에서 close한다. 신규 GitHub Issue 댓글은 작성하지 않는다. 2026-09-27 CJ는 #259의 stage·commit·push·milestone/v0.4.11 대상 PR 작성과 타이머 충돌 정리·필수 CI 확인을 승인했다. #259 마일스톤 병합·Issue 종결·배포, #260 Git 쓰기, #264 자원 생성·결제는 별도 승인 전 금지다.
 4. **기획서 동기화**: 규칙 변경은 Decision Log + 해당 본문 섹션을 동시에 갱신하고, 보고에 "문서 반영 위치" 표를 포함한다.
 5. **DIGEST**: 마일스톤 종료·대규모 규칙 개정 시 eli-adult로 읽기 좋은 정리본을 생성한다.
 6. **Worker**: 독립 기능·대규모 변경은 Orca Worker 위임, 소규모 Delta는 직접. Worker는 git 쓰기 금지, Coordinator가 diff 리뷰·검증 후 커밋한다.
@@ -61,7 +63,7 @@ CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.
 - 라벨: PR마다 작업 유형 1개(`feature`/`fix`/`infra`/`doc`)와 영역 1개(`html_demo`/`dev_client`/향후 `dev_server`/`design`)를 붙인다. `Release`는 `dev` → `main` 릴리스 PR에만 사용한다.
 - PR 필수 항목: 연결 이슈(`Ref #N`; 기본 브랜치가 main이므로 dev PR에서 자동 종료 키워드 금지), Acceptance Criteria, 변경 파일, 검증 결과, Saturn 판정, UI 변경 시 스크린샷, rollback. `dev` 병합 후 이슈는 검증 근거를 남기고 수동 종료한다.
 - 보호: 현재 공개 저장소이며 branch protection을 지원한다. main/dev에 PR 필수·force push/삭제 금지·대화 해결·필수 CI 6개(A·B·B2·C·D·E)를 적용한다. 2026-09-10 CJ 승인으로 `E. Roblox 클라이언트·규칙 (Luau)`를 추가했고 모두 GitHub Actions 앱15368·strict=true다. 관리자의 우회도 허용하지 않으며, 필요한 승인 리뷰 수는 0으로 두고 Saturn 검수·CJ 승인 계약은 별도로 유지한다. [Issue #132 연결 기록](docs/milestone/v0.4.6/issues/132/Mercury/required-checks.md)에 실제 성공 이력과 보호 설정 재조회 결과를 보관한다.
-- 모든 작업 결과는 해당 GitHub Issue에 코멘트로 기록 (수정 파일·검증 결과·커밋 해시)
+- GitHub Issue에는 진행 댓글을 추가하지 않는다. 기존 본문의 완료 조건 하나에서만 체크 상태를 관리하며 별도 현황 TODO·중복 하위 체크리스트를 만들지 않는다. 구현·QA 증거는 이슈별 부서 보고서에 기록한다.
 
 ## HTML 데모 (demo/index.html)
 - 게임 코드는 `demo/index.html`에 유지하고, CJ의 2026-09-07 게임 적용 지시에 따라 하수인 이미지는 `demo/assets/minions/` 상대경로로 로드한다. 오프라인은 해당 폴더를 함께 둔 채 브라우저로 열면 실행(서버 불필요); 온라인은 기존 서버의 HTTP 주소로 연다. 모드: PVE(AI 대전) / PVP(핫시트 2인) / AI vs AI 시뮬레이션(숨은 링크).

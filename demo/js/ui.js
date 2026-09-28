@@ -968,6 +968,12 @@ function renderSetup(sp){
       <div class="row netRoomActions"><button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
     return;
   }
+  if(NET.publicMode&&!NET.started&&NET.economy&&!S.eco){ // #237 경제 방: 시작 상점은 서버 좌석 뷰로 열린다 — 그 전(상대 입장 대기)에 무료 로스터를 그리지 않는다
+    sp.innerHTML=`<h2 id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</h2>
+      <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">${NET.roomState==="OPEN"?"상대를 기다리는 중… 상대가 들어오면 시작 상점(90초)이 열립니다.":"시작 상점을 여는 중…"}</p>
+      <div class="row netRoomActions"><button type="button" class="danger" onclick="netLeaveRoom()">방 나가기</button></div>`;
+    return;
+  }
   const sel=S.roster[p], rosterDone=sel.length===6;
   const unplaced=S.pieces.filter(x=>x.owner===p&&!x.placed);
   /* #122: 출전 준비를 "01 로스터 선택 / 02 비공개 배치" 두 단계로 나눠 보여 준다. 두 절 모두 항상 DOM 에 있고
@@ -1040,11 +1046,12 @@ window.setSeed=setSeed;
    location.reload() 를 부르지 않는 출구라 #128 자동 튜토리얼은 다시 뜨지 않는다 (새 문서 로드에서만 뜬다 — 정책 그대로).
    저장소·상황 도움말 이력·사용자 저장값은 하나도 건드리지 않는다. */
 function netLeave(){ // 온라인 상태 완전 해제 — 이 정리 없이 로비로 가면 다음 오프라인 경기가 온라인 게이팅·보드 반전·인덱스 중계를 그대로 물고 간다
+  acctSeatDrop(NET.seatToken); // #259 이 탭 좌석의 재접속 기록도 함께 버린다 (다른 탭이 가져간 좌석 기록은 남긴다)
   try{ if(NET.ws) NET.ws.close(); }catch(e){}
   NET.mode=false; NET.me=null; NET.ws=null; NET.replaying=false; NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
   NET.localOpen=false; NET.modalOwner=null; NET.started=false; NET.preparing=false; NET.queued=false;
   NET.mySetup=null; NET.pendingSeed=null; NET.code=null; // 접속 코드는 탭 메모리에만 있었고 여기서 버린다 (재입력)
-  NET.rooms=[]; NET.roomsLoading=false; NET.roomId=null; NET.seatToken=null; NET.publicMode=false;
+  NET.rooms=[]; NET.roomsLoading=false; NET.roomId=null; NET.seatToken=null; NET.publicMode=false; NET.players=null;
   NET.myReady=false; NET.peerReady=false; NET.waitingForPeer=false; NET.pendingRoomAction=null; // #217/#218 공개 방 상태도 함께 해제
   netClearResume(); NET.explicitLeave=false; NET.epoch=null; NET.tokenGen=0; // #217 재접속 타이머·유예 상태도 함께 해제
   NET.roomState=null; NET.readyWanted=false; NET.readySent=false; NET.lobbyPending=null; NET.result=null; NET.finalReveal=false; NET.autoEndBlockRev=null; NET.lastActionAuto=false;
@@ -1820,6 +1827,7 @@ function uiInstallCorePort(){
   UI_PORT.event=event=>applyUiEvent(event);              // 의미 이벤트 → 화면·연출·AI 어댑터 (위 applyUiEvents 한 곳)
   UI_PORT.defer=action=>{ fxWhenIdle(()=>dispatchCoreAction(action)); return true; }; // 연출이 끝난 자리에서 Core 가 준 액션을 그대로 되돌려 보낸다
   UI_PORT.seat=()=>NET.mode?NET.me:null;                 // 오프라인(핫시트·PVE·sim)은 좌석이 없다
+  UI_PORT.nick=p=>NET.mode&&NET.players?NET.players[p]||null:null; // #259 서버가 준 공개 닉네임(network.js 가 규칙 검사)
   UI_PORT.replaying=()=>!!NET.replaying;
 }
 uiInstallCorePort(); // ui.js 가 실리는 순간 설치 — state.js 가 이미 UI_PORT 를 선언했다

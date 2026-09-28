@@ -73,6 +73,146 @@ WS 업그레이드 분당 60회, 인증 실패 5분에 10회로 차단. `X-Forwa
 실배포 후 실제 접속 확인이 남은 항목이다. 전체 근거는
 [`docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md`](../docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md)에 있다.
 
+#### QA용 Postgres 연결 (선택 · #264)
+
+`DATABASE_URL` 이 **없으면 DB 기능은 전부 꺼져 있고 위 동작이 그대로다** — 오프라인·LAN·현재 배포는
+아무 것도 달라지지 않는다. 방·경기 영속화는 이 범위에 없다(별도 승인). `DATABASE_URL` 이 있으면 아래 계정(#259)이 켜진다.
+
+| 변수 | 기본값 | 설명 |
+| --- | --- | --- |
+| `DATABASE_URL` | (없음) | `postgres://…` DSN. **Git·Issue·로그에 적지 않는다** — 플랫폼 환경변수로만 주입한다 |
+| `DD_DB_CA_CERT` | (없음) | 플랫폼 CA 가 시스템 신뢰 저장소에 없을 때 쓸 CA 파일 경로 |
+| `DD_DB_POOL_MAX` | `3` | 커넥션 풀 상한 (Free Postgres 연결 수가 넉넉하지 않다) |
+| `DD_DB_CONNECT_TIMEOUT_MS` | `10000` | 연결 시도 제한 |
+| `DD_DB_MIGRATE_ON_START` | (없음) | `1` 이면 기동 시 미적용 마이그레이션을 적용한다. Free 인스턴스에는 셸이 없어 남겨 둔 옵트인이며, 기본은 **적용하지 않고 검사만** 한다 |
+| `DD_SMTP_URL` | (없음) | #259 비밀번호 재설정 메일용 SMTP `smtp://user:pass@host:587`(STARTTLS 필수) 또는 `smtps://…:465`(처음부터 TLS). **질의(`?…`)·프래그먼트·경로가 있으면 잘못된 설정으로 메일을 끈다**(503). 자격 증명이 들어 있다 — **Git·Issue·로그에 적지 않는다** |
+| `DD_MAIL_FROM` | (없음) | 재설정 메일 보낸 사람 주소. `DD_SMTP_URL` 과 **둘 다** 있어야 메일이 켜진다(없으면 재설정 요청 503 `E_MAIL_UNAVAILABLE`) |
+
+TLS 는 호스트 종류와 `sslmode` 로 정한다. 호스트 분류는 **허용 목록**이다 — 어느 칸에도 들지 않는 호스트는
+평문으로도 TLS 로도 붙지 않고 기동을 멈춘다.
+
+| 호스트 | `sslmode` 미지정·`disable`·`allow` | `require`·`prefer` | `verify-ca`·`verify-full` |
+| --- | --- | --- | --- |
+| 내부: Render 내부 URL 형태 `dpg-<영숫자>-a`(Render 연결 문서의 예시 형식 — 실배포 URL 로는 미확인) · `localhost` · `127.0.0.1` · `[::1]` | 평문 | 암호화 on · 인증서 검증은 `DD_DB_CA_CERT` 가 있을 때만(없으면 미검증임을 기동 로그에 적는다) | 검증 on |
+| 외부: 점으로 이은 DNS 이름 · IPv4 리터럴(사설 포함) · `[::1]` 밖의 모든 IPv6 리터럴 | 미지정은 **검증 on**, `disable`·`allow` 는 **기동 중단 (`ssl_downgrade`)** | `require` 는 **검증 on**, `prefer` 는 **기동 중단** | **검증 on** |
+| 그 밖 — 다른 한 단어 이름(`db`·`postgres`), resolver 가 IPv4 로 읽는 비정규 숫자(`0x08080808`·`0177.1`), 밑줄·퍼센트 인코딩 등 | **기동 중단 (`bad_host`)** | ← | ← |
+
+`sslmode` 는 libpq 가 아는 여섯 값만 받는다. 오타(`requre`)·`pg` 전용 값(`no-verify`)·빈 값·중복 지정은 호스트와 무관하게
+**기동 중단 (`bad_sslmode`)** 이다 — 모르는 값을 평문으로 해석하지 않는다. DSN 파싱이나 퍼센트 디코딩이 실패하면
+`malformed` 로 멈추고, 오류 문구에는 사유 코드만 남는다(DSN 조각을 싣지 않는다).
+
+Render 공식 문서는 내부 연결도 TLS 를 받아들이지만 인증서가 self-signed 라고 설명한다 — 그래서 내부
+`require` 를 평문으로 깎지 않고 "암호화만" 으로 올린다. `DD_DB_CA_CERT` 를 지정했는데 읽을 수 없으면
+조용히 시스템 CA 로 내려가지 않고 거부한다(`ca_unreadable`).
+
+DSN 은 `pg` 에 `connectionString` 으로 넘기지 않고 직접 파싱해 개별 필드로 넘긴다 — `pg` 는
+connectionString 파싱 결과를 명시 옵션 위에 덮어써서, DSN 의 `?sslmode=disable` 이 켜 둔 TLS 를 끌 수 있다.
+
+fail-closed 세 층 — ① `DATABASE_URL` 이 있는데 연결·스키마 확인이 실패하면 **listen 하지 않고 종료**한다,
+② `db.query()` 는 비활성·설정 오류·장애를 전부 reject 한다(빈 결과로 바꾸지 않는다), ③ `/readyz` 가 DB
+왕복을 실제로 해 보고 실패 시 503 을 낸다. `/healthz` 는 DB 와 무관하게 200 `ok` 를 유지한다 — 플랫폼
+헬스체크가 DB 로 흔들리면 DB 장애가 재시작 루프가 된다.
+
+```
+npm run db:status          # 적용/미적용/불일치 (DB 변경 없음)
+npm run db:migrate         # 미적용 마이그레이션 적용
+node db-migrate.js meta free_tier_expires_at 2026-10-25   # 무료 DB 만료일 기록
+```
+
+마이그레이션은 `db/migrations/NNN_snake_case.sql` 이고, 적용 이력은 DB 의 `schema_migrations` 에 남는다.
+이미 적용된 파일을 고치면(체크섬 불일치) 적용을 거부한다 — 과거 파일을 수정하지 말고 새 번호를 추가한다.
+`db:status` 와 기동 게이트는 **읽기 전용**이다(원장 표조차 만들지 않는다). 원장 생성·적용은 `db:migrate`
+안에서만 일어나고, 그 구간 전체가 연결 하나를 체크아웃해 `pg_advisory_lock` 으로 직렬화된다 —
+`pg` 의 advisory lock 은 세션(연결) 단위라 풀에서 매번 다른 연결로 잠그면 아무것도 막지 못한다.
+백업·복원·만료 운영 절차는 #264 Jupiter 보고서(`docs/milestone/v0.4.11/issues/264/Jupiter/report.md` — #264 통합과 함께
+저장소에 들어온다)가 원본이다.
+
+#### 계정 · 로그인 (#259 — `DATABASE_URL` 이 있는 서버에서만)
+
+**경계**: DB 가 있는 서버는 온라인 방 **생성(`c-`/`cp-`)·참가(`j-`/`p-`)·재접속(`r-`)** 업그레이드에 로그인 세션을 요구한다
+(없거나 무효 = 401, DB 장애 = 503 — 무계정으로 통과시키지 않는다). 로비 목록(`l-`)은 읽기 전용이라 로그인 없이 된다.
+DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 그대로이고, 계정 API 는 `503 E_ACCOUNTS_DISABLED` 다.
+그래서 **로그인 UI 가 없는 클라이언트를 DB 붙은 서버에 올리면 온라인 방에 들어갈 수 없다** — 클라이언트 계정 화면과 함께 배포한다.
+
+좌석은 그 좌석을 얻은 계정에 묶인다. 재접속은 좌석 토큰 + **같은 계정의 세션**이어야 한다 — 다른 계정 세션으로 남의
+좌석 토큰을 내면 토큰이 틀린 것과 같은 `E_SEAT_TOKEN_INVALID` 로 거부되고, 원래 좌석은 밀려나지 않는다. 60초 재접속 유예·
+방/경기 의미는 그대로다. **같은 계정은 자기 방의 상대 좌석에 참가할 수 없다**(`j-`/`p-` → `error E_SAME_ACCOUNT` + close 1008,
+방·초대 코드는 그대로). 첫 프레임(`room_opened`/`room_joined`/`room_resumed`)과 `room_state` 푸시에 **서버 권위 공개 닉네임**
+`players: [좌석0, 좌석1]`(빈 좌석·계정 없는 서버 = `null`)을 싣는다 — 로그인 아이디·이메일·계정 id 는 게임 프레임에 싣지 않는다.
+
+**단일 로그인**(CJ 2026-09-27): 로그인에 성공하면 그 계정의 **이전 세션은 전부 무효**가 되고 열린 소켓은 `error E_SESSION_ENDED`
+(`reason: 'login_replaced'`) + `close 4003` 으로 끝난다. 실패한 로그인은 아무도 끊지 않는다. 로그인·가입이 **다른 세션 쿠키를 들고**
+성공하면(같은 브라우저에서 계정 전환) 그 들고 온 세션도 지우고 그 소켓을 끊는다(`reason` 없음). 그 밖의 종료 — **로그아웃**(그 세션의
+소켓만) · **비밀번호 재설정**(그 계정의 모든 소켓) · **30일 절대 만료** — 도 같은 `E_SESSION_ENDED` + 4003 이다(`reason` 없음).
+끝난 소켓의 프레임은 읽기 명령까지 처리하지 않는다. 좌석은 일반 단절처럼 60초 유예에 들어가 같은 계정의 새 세션으로 재접속할 수 있다.
+클라이언트는 4003 에서 자동 재접속하지 말고 로그인 화면으로 보낸다. 폐기 알림은 DB 에 기록된 **뒤에만** 일어나고(DB 장애로 로그아웃이
+503 이면 세션도 소켓도 그대로), 이 프로세스 안에서만 퍼진다(인스턴스 1개 전제). 절대 만료는 DB 없이 서버 시계로 적용한다.
+
+| 요청 | 본문 | 성공 | 실패 |
+| --- | --- | --- | --- |
+| `POST /api/auth/signup` | `{userId, nickname, password, email}` | 201 `{userId, nickname, hasEmail:true}` + 쿠키 | 400 `E_BAD_INPUT` · 409 `E_ID_TAKEN` / `E_NICKNAME_TAKEN` |
+| `POST /api/auth/login` | `{userId, password}` | 200 `{userId, nickname, hasEmail}` + 쿠키(이전 세션 무효) | 401 `E_AUTH_FAILED` · 429 `E_RATE_LIMITED` |
+| `POST /api/auth/logout` | `{}` | 200 `{ok:true}` + 쿠키 삭제 | |
+| `GET /api/auth/session` | | 200 `{userId, nickname, hasEmail}` | 401 `E_NO_SESSION` |
+| `POST /api/auth/email` | `{password, email}` (로그인 상태, 이메일 없는 기존 계정만) | 200 `{ok:true, hasEmail:true}` | 401 `E_NO_SESSION` / `E_AUTH_FAILED` · 409 `E_EMAIL_ALREADY_SET` |
+| `POST /api/auth/password-reset/request` | `{userId}` (이메일은 받지 않는다) | 202 `{ok:true}` — **등록 이메일로 발송이 끝난 뒤에만**(주소는 응답에 없다) | 검사 순서: 404 `{error:'E_ID_NOT_FOUND', message:'존재하지 않는 아이디입니다'}`(없는 아이디 — 메일 설정보다 먼저) · 409 `E_EMAIL_REQUIRED`(이메일 없는 기존 계정) · 503 `E_MAIL_UNAVAILABLE`(메일 미설정·발송 실패) · 429 `E_RATE_LIMITED`(재발송 간격·24시간 상한) · 400 `E_BAD_INPUT`(아이디 빠짐) |
+| `POST /api/auth/password-reset/verify` | `{userId, code}` | 200 `{resetToken}`(메모리에만 둘 것, 10분) | 401 `E_CODE_INVALID`(틀림·만료·재사용·상한·없는 아이디 모두) |
+| `POST /api/auth/password-reset/complete` | `{resetToken, newPassword}` | 200 `{ok:true}` — 자동 로그인 없음(다시 로그인). 쿠키는 이 브라우저의 세션이 재설정 계정의 것이거나 없을·무효일 때만 삭제(다른 계정 로그인은 유지) | 409 `{error:'E_SAME_PASSWORD', message:'직전 비밀번호와 같습니다'}`(허가 유지) · 401 `E_RESET_INVALID` · 400 `E_BAD_INPUT` |
+
+공통: 503 `E_ACCOUNTS_DISABLED`(DB 없는 서버) / 503 `E_ACCOUNTS_UNAVAILABLE`(DB 장애 — 원문 오류는 싣지 않는다) /
+403 `E_INSECURE_TRANSPORT` / 403 `E_BAD_ORIGIN` / 415·400 `E_BAD_INPUT` / 429 `E_RATE_LIMITED`. 복구 코드 경로(`/recover`·`/recovery-code`)는
+폐기됐다(404, CJ 2026-09-27).
+
+- **형식**: 아이디 = 소문자 `a-z`·숫자·`_` 4~20자(입력은 소문자로 정규화, 비공개 로그인 ID) · 닉네임 = **완성형 한글 음절
+  (U+AC00–U+D7A3)·ASCII 영문·숫자·`_` 2~12자**, NFC 정규화 뒤 검사, 낱자모(`ㄱ`)·다른 문자 체계·공백·기호 불가, 영문 대소문자만
+  다른 닉네임은 같은 닉네임(`Orca`=`orca` → `E_NICKNAME_TAKEN`) — CJ 2026-09-26 확정, DB CHECK 로도 막는다 · 비밀번호 8~128자 ·
+  이메일 = ASCII `local@domain.tld` 254자 이하(앞뒤 공백만 제거하고 입력 그대로 저장·발송). 가입 필수지만 **유일하지 않다**(CJ 2026-09-27 · `004`) —
+  여러 계정이 같은 주소를 쓸 수 있고 유일한 것은 아이디·닉네임뿐이다. `email_norm` 은 소문자 전체 주소이고 Gmail 점·`+` 같은 제공자별 접기는
+  하지 않는다. 가입 시 소유 확인 메일은 없다(PD 기본값 — 메일 설정 없이도 가입).
+- **기존 계정**(003 이전, 이메일 없음): 로그인·게임은 그대로(`hasEmail:false` 로 안내만), 로그인 + 현재 비밀번호로 이메일을 **한 번** 등록한다
+  (다른 계정이 쓰는 주소도 된다).
+  이미 이메일이 있는 계정의 주소 변경 경로는 아직 없다.
+- **세션**: 쿠키 `dd_sid` — `HttpOnly; SameSite=Strict; Path=/`, HTTPS 면 `Secure`. 로그인 시점부터 **절대 30일**(써도 연장하지
+  않는다), 계정당 마지막 로그인 하나만 유효. 토큰은 응답 본문에 싣지 않고 DB 에는 sha256 만 남는다.
+- **비밀번호 재설정**(CJ 2026-09-27 최신 — 아이디만 입력, 복구 코드 대체): **아이디만** 넣는다. 서버가 먼저 아이디 존재를 확인해 없으면
+  `404 E_ID_NOT_FOUND`(재설정 행·메일 없음), 있으면 **DB 에 등록된 그 계정의 이메일로만** **6자리 숫자 코드**(CSPRNG)를 보낸다 — 요청에 실린
+  주소는 쓰지 않고 응답에도 주소를 돌려주지 않는다. 이메일 없는 기존 계정은 `409 E_EMAIL_REQUIRED`(주소를 지어내지 않는다 — 로그인 뒤 등록).
+  게임 안에서 아이디·코드 확인 → 서버가 준 재설정 허가(256비트, sha256 만 저장)로 새 비밀번호. 코드·시도·허가는 그 한 계정의 행에만 묶이고,
+  같은 주소를 쓰는 다른 계정의 비밀번호·세션·코드는 건드리지 않는다.
+  PD 구현 기본값: 코드 **10분** · 재발송 **60초** 간격(간격 안 요청은 `429`, 메일은
+  안 보냄) · 코드당 틀린 시도 **5회**면 그 코드 무효 · 계정당 **24시간 10통** · 허가 **10분**. 새 코드는 옛 코드를 즉시 무효로 한다.
+  코드는 **HMAC-SHA256(프로세스마다 새로 만드는 키)** 만 DB 에 남는다 — 원문·키는 DB·로그·응답 어디에도 없다(서버를 재시작하면 대기 중
+  코드는 무효 — 다시 요청). 코드 확인은 한 SQL 문장으로 소비(1회)·허가 발급·시도 증가를 원자적으로 하고, 완료는 허가 소비·비밀번호
+  교체·세대 증가·세션 전부 삭제를 한 문장으로 한다. 새 비밀번호가 **직전(현재) 비밀번호와 같으면** 서버가 scrypt 로 비교해 409 로
+  거부하고 계정·허가는 그대로다. 요청은 발송을 **기다린 뒤** 202 를 준다 — 발송이 실패하면 그 코드를 치우고 `503 E_MAIL_UNAVAILABLE`(첫 화면에 머문다, 원문 오류 없음).
+- **메일 전송**(범용 SMTP — [nodemailer](https://nodemailer.com/smtp), 새 의존성 1개): `DD_SMTP_URL`(`smtp://` 는 STARTTLS 강제, `smtps://` 는
+  처음부터 TLS · 사용자·비밀번호는 URL 인코딩) 과 `DD_MAIL_FROM` 이 **둘 다** 있어야 켜진다. 없거나 잘못되면 **있는 아이디**의 재설정 요청이
+  `503 E_MAIL_UNAVAILABLE`(없는 아이디는 먼저 404). 기동 로그는 "SMTP 설정됨/미설정"만 찍고 값·오류는 찍지 않는다(잘못된 URL 도 "미설정"으로 보인다).
+  URL 은 nodemailer 에 넘기지 않는다 — nodemailer 는 URL 질의로 `requireTLS`·`ignoreTLS`·`secure`·`tls.*`·`debug`·`service` 를 덮을 수 있어서,
+  서버가 호스트·포트·계정만 뽑고 TLS 옵션(`secure`/`requireTLS`, `ignoreTLS:false`)은 고정한다. 인증서 검증을 끄거나 평문으로 낮추는 설정 경로는 없다. **현재 메일 설정이 없으므로 실제 받은편지함
+  발송은 검증되지 않았다** — 자격 증명이 주어지기 전에는 이메일 재설정이 운영 준비됐다고 말할 수 없다.
+- **오류는 일반화**: 틀린 비밀번호·없는 아이디(로그인), 틀림·만료·재사용 코드·없는 아이디(코드 확인)는 같은 응답이다. 가입의
+  `E_ID_TAKEN`·`E_NICKNAME_TAKEN` 과 재설정 요청의 `E_ID_NOT_FOUND`(CJ 2026-09-27 — 아이디 존재를 알려 준다, IP 예산이 열거 속도를 묶는다)는 존재를 드러낸다.
+- **시도 제한**: 로그인·이메일 등록 실패는 아이디별 15분 10회(없는 아이디도 똑같이 잠긴다, 검증 전에 센다 — 메모리라 재시작하면 풀린다).
+  비밀번호·코드·이메일을 싣는 요청은 IP당 버스트 20·초당 1 예산. 공개 배포에서는 IP 가 프록시 하나로 보여 이 예산이 인스턴스 공유다.
+- **전송**: 비밀번호·코드·이메일을 싣는 요청은 HTTPS 이거나 이 PC(루프백)에서만 받는다 — LAN 평문 HTTP 는 `403 E_INSECURE_TRANSPORT`.
+  공개 배포(`DD_AUTH_PUBLIC_DEPLOY=1`)는 TLS 가 엣지에서 끝나므로 `X-Forwarded-Proto: https` **와** 브라우저 `Origin` 의 `https:` 스킴을
+  **둘 다** 요구한다(평문 HTTP 페이지 Origin + 위조 XFP 는 거부). 헤더는 전송 보안의 증명이 아니다 — 컨테이너가 플랫폼 엣지를 통해서만
+  닿는다는 배포 전제 위에서만 성립한다.
+- **CSRF**: 상태를 바꾸는 요청은 POST + `Content-Type: application/json` + 같은 출처 `Origin` 필수, 본문 2KB 상한.
+- **저장**: `002_accounts.sql`(계정·세션) + **`003_email_single_login.sql`**(추가만 — 002 는 적용된 DB 가 있어 고치지 않는다):
+  `accounts.login_gen`·`email`·`email_norm`(유일)·복구 열 NULL 허용, `sessions.login_gen`, `password_resets`(계정당 1행). 003 은 계정·비밀번호·세션 행을
+  지우지 않고, 적용 순간 계정마다 **만료 전·현재 자격 세대 세션 중 `created_at`(002 의 로그인 시각) 최신 1개만** 유효로 남긴다(동률은
+  `expires_at` → `token_hash` 내림차순). 나머지 기존 세션은 세대 불일치로 무효가 되고 그 기기는 다시 로그인한다.
+  **`004_email_not_unique.sql`**(추가만 — 003 은 적용된 DB 가 있어 고치지 않는다): 이메일 유일 인덱스 `accounts_email_norm_key` 하나만 지운다(행 변경 없음).
+- **세대 — 경합이 옛 권한을 되살리지 못한다**: 세션은 발급 당시 `credential_gen`(재설정이 올림)·`login_gen`(로그인·재설정이 올림)이 계정의
+  현재 값과 **둘 다** 같을 때만 유효하다. 세대는 같은 행 UPDATE 로만 올라 행 잠금으로 직렬화되므로, 동시 로그인은 정확히 하나만 살고,
+  옛 비밀번호 검증을 마친 로그인이 재설정보다 늦게 끝나면 `401 E_AUTH_FAILED` 다. 소켓 폐기도 세대를 본다 — 로그인 폐기는 "그 계정의
+  **그 세대보다 낮은** 세션"만 끊으므로, 늦게 도착한 옛 로그인의 폐기가 더 새 로그인의 소켓이나 진행 중 업그레이드를 끊지 못한다.
+  WS 업그레이드의 세션 조회가 도는 동안 도착한 폐기는 그 조회에 기록돼, 폐기 전 상태를 읽은 조회로는 소켓이 인가되지 않는다(401).
+
+설계·검증 근거는 [`docs/milestone/v0.4.11/issues/259/Jupiter/report.md`](../docs/milestone/v0.4.11/issues/259/Jupiter/report.md) 가 원본이다.
+
 기동하면 콘솔에 **접속 주소**와 **접속 코드**가 서로 다른 줄에 따로 출력된다.
 
 ```
@@ -257,7 +397,13 @@ npm run test:security # 인증·경로·헤더·한도·메시지 검증 (단위
 npm run test:config   # 기동 설정 fail-closed 경계 (DD_ACCESS_CODE·DD_BIND)
 npm run test:launcher # 원클릭 실행기 계약 (Windows 전용, 다른 OS 에서는 SKIP)
 npm run test:static   # 정적 서빙 요청 예산 (#201) — 프리로드 전량 200 · 남발은 여전히 429
+npm run test:db       # #264 DSN·TLS·마이그레이션·fail-closed (Postgres 없이)
+npm run test:accounts # #259 계정·단일 로그인·이메일 코드 재설정·WS 좌석 계정 바인딩 (Postgres 없이 — 메모리 대역, 메일은 주입 전송)
 ```
+
+실제 Postgres 로 같은 계정 시나리오를 돌리려면(그 DB 의 표를 지운다 — 전용 테스트 DB 에만):
+`DD_TEST_DATABASE_URL=postgres://… npm run test:accounts` · 서버 프로세스 2클라이언트 스모크(기동 게이트·재시작 뒤 세션 유지):
+`DD_TEST_DATABASE_URL=postgres://… node authoritative/test/smoke-issue259-pg.js`.
 
 `test-security.js` 가 덮는 범위:
 

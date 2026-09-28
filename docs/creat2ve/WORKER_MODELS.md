@@ -2,6 +2,8 @@
 
 2026-09-23 CJ 승인 · Issue #250. 이 문서와 worker-models.json은 Mercury가 신규 Orca Worker를 시작할 때 사용하는 실행 계약이다. Orca가 JSON을 자동으로 읽는 기능은 없으므로 Mercury는 해당 항목의 agent/model/effort와 Codex의 `service_tier=default`(No Fast)를 실행 인수로 반드시 전달한다.
 
+2026-09-25 CJ의 모든 Worker 자동 진행 지시(2026-09-27 #260 재확인): Digit-Duel에서 CJ가 착수시킨 모든 작업의 Worker는 full access·무확인 실행으로 명시 기동한다(Claude --dangerously-skip-permissions, Codex -s danger-full-access -a never). 시작 화면과 현재 실행을 확인한다. Saturn 파일 무수정·역할 경계·Git/Render/배포/결제 게이트를 유지하며 계정 전역 설정은 바꾸지 않는다.
+
 | 부서 / 작업 | agent | model | effort |
 |---|---|---|---|
 | Mercury_PD | codex | gpt-6-sol | xhigh |
@@ -11,6 +13,12 @@
 | Mars_Client | claude | claude-opus-5-5 | high |
 | Jupiter_Server | claude | claude-opus-5-5 | high |
 | Saturn_QA | codex | gpt-6-sol | xhigh |
+
+## 후속 dispatch 모델 게이트 — 2026-09-27
+
+- 입력 전 실제 화면이 프롬프트 입력창인지 확인한다. 한도 임박 모델 전환 팝업이 있으면 본문·Enter를 보내지 않고 `Keep current model`을 선택한 뒤 승인 모델 footer를 확인한다. 계정 전역 설정·`/fast`·전역 알림 숨김은 바꾸지 않는다.
+- 각 dispatch의 현재 턴·Mercury GO 직전·완료 시 모델/effort·tier·권한·footer·preamble/capability·turn_started를 대조한다. Codex는 현재 JSONL `turn_context`를 확인하며 이전 `/status`나 기동 인수를 현재 실행값으로 재사용하지 않는다. adopted requested/effective가 null이면 그대로 기록한다.
+- 불일치 결과는 결함·검사 증거로 보존하고 정식 QA에서 제외한 뒤 승인 모델의 fresh Worker로 필요한 범위만 재검사한다. #259에서 팝업을 놓친 두 Luna/medium 후속 QA는 이렇게 제외했고 fresh Sol/xhigh/default는 2026-09-27 00:05 로컬 PASS다. 상세 근거는 #259 Mercury 원장에 둔다.
 
 ## Ponytail 적용 계약 — 2026-09-18 CJ 승인
 

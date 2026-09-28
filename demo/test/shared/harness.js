@@ -252,9 +252,12 @@ function load(htmlPath,opts){
   if(opts.realTimers){ global.setTimeout=setTimeout; global.setInterval=setInterval; global.clearInterval=clearInterval; }
   else { global.setTimeout=ownSetTimeout; global.setInterval=()=>0; global.clearInterval=()=>{}; } // #41: 헤드리스에서는 무동작 (프로세스가 안 끝나던 회귀 방지)
   const drain=(cap)=>{cap=cap||5000000; let n=0; while(TQ.length&&n<cap){TQ.shift()();n++;} return n;};
-  const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win};
+  /* #259 계정 확인(fetch /api/auth/session) — opts.fetch 가 없으면 "DB 없는 서버"(503 E_ACCOUNTS_DISABLED)로 답한다.
+     Node 전역 fetch 는 상대 주소를 거부하고, 제품은 그 실패를 계정 장애로 닫으므로(입장 차단) 기존 http 회귀가 쓸 수 없다. */
+  const fetchFn=opts.fetch||(async()=>({status:503,json:async()=>({error:"E_ACCOUNTS_DISABLED"})}));
+  const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win,fetch:fetchFn};
   /* 렉시컬 캡처 — 이 줄은 제품 코드 1행과 같은 줄에 이어 붙지 않도록 개행 없이 앞에 둔다 (에러 행 번호 보존) */
-  const code=`"use strict";const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window}=__ENV;`+loaded.script+`
+  const code=`"use strict";const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window,fetch}=__ENV;`+loaded.script+`
 ;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
   /* #233 (GDD-23 3-4장) 8스탯 전투 엔진 계약 — 기준판 로드 호환을 위해 typeof 가드를 둔다(부재 시 undefined) */
   ARCHETYPE_BASE:typeof ARCHETYPE_BASE!=="undefined"?ARCHETYPE_BASE:undefined, KING_BASE:typeof KING_BASE!=="undefined"?KING_BASE:undefined,
@@ -406,9 +409,16 @@ function load(htmlPath,opts){
   ballWhy:typeof ballWhy==="function"?ballWhy:undefined, aiShop:typeof aiShop==="function"?aiShop:undefined, aiBagPick:typeof aiBagPick==="function"?aiBagPick:undefined,
   shopHtml:typeof shopHtml==="function"?shopHtml:undefined, shopViewer:typeof shopViewer==="function"?shopViewer:undefined,
   get __shop(){return window.__shop;},
+  /* #259 계정 — 기준판 로드 호환: 부재 시 undefined */
+  AUTH:typeof AUTH!=="undefined"?AUTH:undefined,
+  acct:typeof acctCheck==="function"?{acctCheck,acctSubmit,acctResetSend,acctEmailSubmit,acctLogout,acctView,acctSeatLoad,acctGateMsg,acctEndSession,acctOnStorage,acctWatchTick:typeof acctWatchTick==="function"?acctWatchTick:undefined}:undefined,
+  pname:typeof pname==="function"?pname:undefined,
   html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;
+  /* 기본 fetch(DB 없는 서버)면 그 답이 올 결과(off)를 동기로 먼저 세운다 — 로드 직후 동기 호출하는 기존 회귀가 "확인 중" 게이트에 걸리지 않게.
+     계정 흐름 자체는 opts.fetch 를 주는 smoke_issue259.js 가 비동기 그대로 검사한다. */
+  if(!opts.fetch&&T.AUTH&&T.AUTH.state==="checking") T.AUTH.state="off";
   T.drain=drain; T.TQ=TQ; T.els=els; T.document=doc;
   T.wsLog=wsLog; T.WebSocketCtor=WebSocketCtor; T.location=loc;
   T.storage=storage; T.sessionStorage=sessionStorage; T.indexedDB=indexedDB; T.cookieWrites=cookieWrites;

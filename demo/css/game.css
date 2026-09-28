@@ -479,6 +479,22 @@
   #titleScreen .titleArt i.q{background:#3a4152; color:#cdd6e8; font-style:normal; font-size:12px; font-weight:bold; display:grid; place-items:center;}
   #titleScreen button{min-height:48px; width:min(88%,300px);}
   #titleScreen .ghost{background:transparent; color:#c6d3ea; border-color:#3d5580;}
+  /* #259 계정 패널 — 타이틀 안의 로그인·가입·재설정·복구 코드 표시. 세로 화면에서 넘치면 타이틀이 스크롤된다 */
+  #titleScreen{overflow-y:auto; justify-content:safe center;}
+  #acctPanel{width:min(88%,300px); display:flex; flex-direction:column; gap:8px; text-align:left;}
+  #acctPanel:empty{display:none;}
+  #acctPanel button{width:100%;}
+  #acctPanel .acctTabs,#acctPanel .acctRow{display:flex; gap:4px;}
+  #acctPanel .acctTabs button{min-height:40px; font-size:12.5px; padding:6px 4px;}
+  #acctPanel .acctTabs button[aria-pressed="true"]{border-color:#fff; background:#25395c;}
+  #acctPanel .acctForm{display:flex; flex-direction:column; gap:8px;}
+  #acctPanel .acctField{display:flex; flex-direction:column; gap:3px; font-size:13px;}
+  #acctPanel .acctField small,#acctPanel .acctNote{color:#9fb1d0; font-size:11.5px;}
+  #acctPanel input[type=text],#acctPanel input[type=password],#acctPanel input[type=email]{min-height:40px; padding:6px 10px; font-size:16px; border-radius:6px;
+    background:#25395c; border:1px solid #3d5580; color:#eef2fb;}
+  #acctPanel input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  #acctPanel .acctMsg{margin:0; font-size:12.5px; min-height:1em;} #acctPanel .acctMsg.err{color:#ff9aa6;}
+  #acctPanel .acctUser{margin:0; text-align:center;}
   /* 로비·결과 카드 (renderSide 산출을 그대로 감싸는 표시 계층) */
   #app[data-screen="lobby"] #sidePanel h2:first-child{font-size:17px;}
   #app[data-screen="lobby"] #sidePanel button.big,#app[data-screen="result"] #sidePanel button.big{flex:1 1 46%; min-height:48px;}
