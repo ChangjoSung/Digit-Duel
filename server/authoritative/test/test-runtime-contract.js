@@ -217,13 +217,15 @@ function drive(T, seed, steps) {
 /* #263 (2026-09-25 CJ Q1=A) 재기준선: 왕·동료의 미선택 왕국 동률이 고정 순서에서 **난수 1회**로 바뀌었다 —
    난수 소비가 늘어 같은 시드의 각본이 다른 판이 된다. 위 주석이 말하는 "규칙이 바뀌면 반드시 어긋나는" 그 자리다.
    DD_GOLDEN=1 로 두 번 돌려 같은 값임을 확인하고 박았다. 값을 구현에 맞춰 낮춘 것이 아니라 승인된 규칙 변경의 새 기준선이다. */
+/* #262 (2026-09-27 CJ QA) 재기준선: 개체 표식 hpSeen(기본 false · 전투원에 true)이 상태에 더해져 state 해시만 바뀌었다.
+   hpSeen 키만 빼면 종전 세 값과 같고 log·fx·metrics·경로는 그대로다(규칙·난수 무변경). */
 const GOLDEN = [
   { seed: 11, turns: 71, phase: 'play', winner: null, battles: 0, forced: 0, searches: 3,
-    state: '483b50ecf58f344c', log: 'd2b6a79974bda20c', logN: 84, fx: '9802fc2eaad2f033', fxN: 40, metrics: 'fff2fbfce4478d8e' },
+    state: 'f33e9ddd1d90aadc', log: 'd2b6a79974bda20c', logN: 84, fx: '9802fc2eaad2f033', fxN: 40, metrics: 'fff2fbfce4478d8e' },
   { seed: 44, turns: 111, phase: 'over', winner: 0, battles: 2, forced: 2, searches: 3,
-    state: '54be1eac51496282', log: 'eb3ab1f5bc3fe290', logN: 128, fx: '0b8775810364dfca', fxN: 40, metrics: '7e0297c8192fe704' },
+    state: '8881c250487b5081', log: 'eb3ab1f5bc3fe290', logN: 128, fx: '0b8775810364dfca', fxN: 40, metrics: '7e0297c8192fe704' },
   { seed: 55, turns: 135, phase: 'play', winner: null, battles: 9, forced: 9, searches: 6,
-    state: '35850223cf001bbf', log: '3fac178ebf3512f3', logN: 172, fx: 'bd52ade6a2b27033', fxN: 40, metrics: '8a1facbfd255a2c4' },
+    state: 'd97076556df456db', log: '3fac178ebf3512f3', logN: 172, fx: 'bd52ade6a2b27033', fxN: 40, metrics: '8a1facbfd255a2c4' },
 ];
 const rep = (k, v) => (v instanceof Set ? [...v] : v);
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);

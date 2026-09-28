@@ -553,11 +553,20 @@ async function main() {
     both(room, (E) => { const p = E.S.pieces.find((x) => x.id === q.id); p.grade = 4; p.maxHp *= 2; p.hp *= 2; });
     ok(JSON.stringify(unitOf()) === JSON.stringify(u1), '같은 종 · 같은 HP 비율이면 등급(최대 HP)이 달라도 상대 뷰가 한 글자도 같다');
     const opp = JSON.stringify(view(room, 0).units);
-    ok(!/"(grade|coins|bag|soldHp|buffInv|tickets|syn|paid|legend)"/.test(opp), '상대 말 레코드에 등급·경제·시너지 키 없음');
+    ok(!/"(grade|coins|bag|soldHp|buffInv|tickets|syn|paid|legend|hpSeen)"/.test(opp), '상대 말 레코드에 등급·경제·시너지 키 없음 · 전투 전에는 hpSeen 없음');
+    // #262 CJ QA(2026-09-27) — 전투에 나서 HP 가 공개된 개체(hpSeen)는 보드에서도 실제 현재 HP/최대 HP. HP 밖 비공개 필드는 그대로 없다.
+    both(room, (E) => { E.S.pieces.find((x) => x.id === q.id).hpSeen = true; });
+    const u2 = unitOf();
+    ok(u2 && u2.hpSeen === true && u2.hp === q.hp && u2.maxHp === q.maxHp &&!('grade' in u2) && !('def' in u2) && !('skills' in u2) && !('paid' in u2) && !('cap' in u2) && !('reaperSeal' in u2),
+      '전투 노출(hpSeen) 상대 말: 실제 HP/최대 HP · 등급·스탯·스킬·원장·포획·봉인 없음 ' + JSON.stringify(u2));
+    // 미공개 상대 말은 hpSeen 이 있어도 위치·생존만 — HP·정체·표식 없음
+    both(room, (E) => { E.S.pieces.find((x) => x.id === q.id).revealed = false; });
+    const u3 = unitOf();
+    ok(u3 && !['hp', 'maxHp', 'name', 'type', 'element', 'rosterId', 'hpSeen'].some((k) => k in u3), '미공개 상대 말: hpSeen 이어도 HP·정체·표식 없음 ' + JSON.stringify(u3));
   }
 
   {
-    // 전투 — 상대 전투원 패널·fx(HP·방어막·떠오르는 수치)도 100 눈금. 자기 전투원은 실제 값.
+    // #262 CJ QA(2026-09-27) — 전투 중에는 두 전투원 모두 실제 HP/최대 HP(패널·fx·해일 X·문구·기록 피해). 종전 #237 상대 100 눈금 폐지.
     const room = startedEco(34);
     const cur = S0(room).current;
     const att = S0(room).pieces.find((p) => p.owner === cur && p.type === 'minion');
@@ -571,69 +580,83 @@ async function main() {
     const B = S0(room).battle;
     let checked = 0, bad = [];
     for (const s of [0, 1]) {
-      const v = view(room, s), oppL = S0(room).pieces.find((p) => p.id === att.id).owner === s ? 'D' : 'A';
+      const v = view(room, s);
       if (v.battle) {
-        const o = v.battle[oppL.toLowerCase()], m = v.battle[oppL === 'A' ? 'd' : 'a'], real = oppL === 'A' ? B.fa : B.fd, mineReal = oppL === 'A' ? B.fd : B.fa;
-        if (o.maxHp !== 100 || o.hp !== Math.ceil((real.hp * 100) / real.maxHp) || m.maxHp !== mineReal.maxHp) bad.push(['panel', s, o, m.maxHp]);
-        checked++;
+        for (const [l, real] of [['a', B.fa], ['d', B.fd]]) {
+          const o = v.battle[l];
+          if (o.hp !== real.hp || o.maxHp !== real.maxHp || o.shield !== (real.shield || 0)) bad.push(['panel', s, l, o]);
+          checked++;
+        }
       }
       for (const e of v.fx.events) {
         const fx = e.fx || {};
-        if (fx.hp && fx.hp.side === oppL) { checked++; if (fx.hp.max !== 100) bad.push(['hp', s, fx.hp]); }
-        if (fx.st && fx.st.side === oppL) { checked++; if (fx.st.max !== 100) bad.push(['st', s, fx.st]); }
+        if (fx.hp) { checked++; if (fx.hp.max !== (fx.hp.side === 'A' ? B.fa : B.fd).maxHp) bad.push(['hp', s, fx.hp]); }
+        if (fx.st) { checked++; if (fx.st.max !== (fx.st.side === 'A' ? B.fa : B.fd).maxHp) bad.push(['st', s, fx.st]); }
       }
     }
-    ok(B && checked >= 2 && bad.length === 0, '전투 상대 패널·fx HP/방어막은 100 눈금 · 자기 쪽은 실제 값 ' + JSON.stringify(bad).slice(0, 300));
-    // 해일 X(HP 선) — 상대 쪽은 hp 와 같은 100 눈금, 자기 쪽은 실제 값. 최대 HP 를 두 배로 해도(같은 비율) 상대 뷰는 같다.
-    const tide = (k) => { const out = []; for (const s of [0, 1]) { const v = view(room, s), mineL = S0(room).pieces.find((p) => p.id === att.id).owner === s ? 'a' : 'd'; out.push([v.battle[mineL].tideMark, v.battle[mineL === 'a' ? 'd' : 'a'].tideMark]); } return JSON.stringify(out) + k; };
+    ok(B && checked >= 4 && bad.length === 0, '전투 양쪽 패널·fx HP/방어막은 실제 값(두 좌석 동일) ' + JSON.stringify(bad).slice(0, 300));
+    // 전투 시작이 실제 전투원(본체 출전)에 hpSeen 을 세운다 — Core startRounds 계약(Mars)
+    ok(!!(B && B.fa.hpSeen && B.fd.hpSeen), '전투원 fa/fd 에 hpSeen 표식');
+    // 해일 X(HP 선) — 두 좌석 모두 양쪽 실제 값
+    const tide = () => JSON.stringify([0, 1].map((s) => { const v = view(room, s); return [v.battle.a.tideMark, v.battle.d.tideMark]; }));
     both(room, (E) => { E.S.battle.fa.tideMark = 37; E.S.battle.fd.tideMark = 23; });
-    const MA = B.fa.maxHp, MD = B.fd.maxHp, t1 = tide('');
-    const wantTide = JSON.stringify([0, 1].map((s) => (S0(room).pieces.find((p) => p.id === att.id).owner === s ? [37, Math.ceil(2300 / MD)] : [23, Math.ceil(3700 / MA)])));
-    both(room, (E) => { const b = E.S.battle; b.fd.maxHp *= 2; b.fd.hp *= 2; b.fd.tideMark *= 2; b.fa.maxHp *= 2; b.fa.hp *= 2; b.fa.tideMark *= 2; });
-    const t2 = tide('');
-    both(room, (E) => { const b = E.S.battle; b.fd.maxHp = MD; b.fd.hp /= 2; b.fa.maxHp = MA; b.fa.hp /= 2; b.fa.tideMark = 0; b.fd.tideMark = 0; });
-    ok(t1 === wantTide && JSON.parse(t2).every((r, s) => r[1] === JSON.parse(t1)[s][1]), `전투 해일 X: 상대 100 눈금 · 자기 실제 값 · 최대 HP 역산 불가 ${t1} ${t2} want ${wantTide}`);
-    const store = room.engines[0].__fx.items.find((e) => e.sides);
-    ok(!!store && !JSON.stringify(view(room, 0).fx).includes('"sides"'), 'fx 내부 쪽별 최대 HP(sides)는 좌석 프레임에 싣지 않는다');
+    const t1 = tide();
+    both(room, (E) => { E.S.battle.fa.tideMark = 0; E.S.battle.fd.tideMark = 0; });
+    ok(t1 === JSON.stringify([[37, 23], [37, 23]]), `전투 해일 X: 두 좌석 모두 실제 값 ${t1}`);
+    ok(!JSON.stringify(view(room, 0).fx).includes('"sides"'), 'fx 이벤트에 내부 쪽별 값(sides) 없음');
 
-    /* 문구 경계 — 상대가 주어인 전투 문구·상태 아이콘의 HP 계열 수치는 100 눈금, 자기 주어 문구는 원문 그대로.
-       원문 수치(최대 HP×비율인 회복·방어막·지속 피해 등)가 상대 좌석 문구에 그대로 남으면 최대 HP=등급이 결정론적으로 역산된다. */
+    /* 문구 경계 — 주어가 있는 전투 문구·상태 아이콘은 두 좌석 모두 원문(실제 값). 주어 불명 줄만 HP 계열 수치를 '?' 로 가린다(#237 유지). */
     const HP_NUM = /(^|[^⌛⭐P\d.])(\d+)(?![\d.]|\s*(?:%|R|회|차|턴|라운드|칸|개|명|마리|초|·\s*\d+\s*차))/g;
-    // 바꾼 수치 뒤 '%' — 절대 HP 로 읽히지 않고, 다시 통과해도 두 번 바뀌지 않는다(아래 scale(out)===out)
-    const scale = (t, M) => String(t).replace(HP_NUM, (a, p, n) => p + (M ? Math.ceil((n * 100) / M) + '%' : '?'));
+    const mask = (t) => String(t).replace(HP_NUM, (a, p) => p + '?');
     const subj = (fx) => fx && ((fx.hp && fx.hp.side) || (fx.float && fx.float.side) || (fx.st && fx.st.side) || fx.ko || fx.shake);
-    let opp = 0, own = 0, leaks = [];
+    let withSubj = 0, leaks = [];
     for (const s of [0, 1]) {
       const raw = room.engines[s].__fx.items, vv = view(room, s), byseq = new Map(vv.fx.events.map((e) => [e.seq, e]));
       for (const e of raw) {
-        const sd = e.src === 'msg' && subj(e.fx);
-        if (!sd || !e.sides || !/\d/.test(e.txt)) continue;
-        const out = byseq.get(e.seq), mine = e.sides[sd][0] === s;
-        const want = mine ? e.txt : scale(e.txt, e.sides[sd][1]);
-        if (mine) own++; else opp++;
-        if (!out || out.txt !== want) leaks.push([s, mine ? 'own' : 'opp', e.txt, out && out.txt]);
-        if (out && !mine && (scale(out.txt, e.sides[sd][1]) !== out.txt || (want !== e.txt && !/\d%/.test(out.txt)))) leaks.push([s, 'opp %/재변환', e.txt, out.txt]);
-        if (out && out.fx && out.fx.st && !mine && e.fx.st && e.fx.st.side === sd && out.fx.st.text !== scale(e.fx.st.text, e.fx.st.max)) leaks.push([s, 'st', e.fx.st.text, out.fx.st.text]);
+        if (e.src !== 'msg' || !/\d/.test(e.txt)) continue;
+        const out = byseq.get(e.seq);
+        if (subj(e.fx)) { withSubj++; if (!out || out.txt !== e.txt) leaks.push([s, 'subj', e.txt, out && out.txt]); }
+        else if (!out || (out.txt !== e.txt && out.txt !== mask(e.txt))) leaks.push([s, 'nosubj', e.txt, out && out.txt]);
+        if (out && out.fx && out.fx.st && e.fx.st && out.fx.st.text !== e.fx.st.text) leaks.push([s, 'st', e.fx.st.text, out.fx.st.text]);
+        if (out && out.fx && out.fx.float && e.fx.float && out.fx.float.amount !== e.fx.float.amount) leaks.push([s, 'float', e.fx.float, out.fx.float]);
       }
       if (vv.battle) {
         const txts = new Set(vv.fx.events.map((e) => e.txt));
         if (!vv.battle.log.every((l) => txts.has(l))) leaks.push([s, 'battle.log 원문']);
-        const mineL = S0(room).pieces.find((p) => p.id === att.id).owner === s ? 'a' : 'd', Braw = room.engines[s].S.battle;
-        const recRaw = mineL === 'a' ? Braw.recA : Braw.recD, oppMax = (mineL === 'a' ? Braw.fd : Braw.fa).maxHp;
-        if (vv.battle[mineL].rec !== Math.ceil(((recRaw || 0) * 100) / oppMax)) leaks.push([s, 'rec', recRaw, vv.battle[mineL].rec]);
+        const Braw = room.engines[s].S.battle;
+        if (vv.battle.a.rec !== (Braw.recA || 0) || vv.battle.d.rec !== (Braw.recD || 0)) leaks.push([s, 'rec', Braw.recA, Braw.recD, vv.battle.a.rec, vv.battle.d.rec]);
       }
     }
-    ok(opp > 0 && own > 0 && leaks.length === 0, `전투 문구·상태 아이콘·전투 로그·기록 피해: 상대 주어 100 눈금(${opp}줄) · 자기 주어 원문(${own}줄) ` + JSON.stringify(leaks).slice(0, 400));
+    ok(withSubj > 0 && leaks.length === 0, `전투 문구·상태 아이콘·떠오르는 수치·전투 로그·기록 피해: 실제 값(${withSubj}줄) · 주어 불명만 '?' ` + JSON.stringify(leaks).slice(0, 400));
+    // 전투 뒤(또는 중) 보드 — 전투에 나선 상대 말은 실제 현재 HP/최대 HP + hpSeen, 나서지 않은 공개 상대 말은 100 눈금
+    for (let n = 0; n < 20 && S0(room).battle; n++) {
+      const T = room.engines[0], Bn = T.S.battle, side = T.actorOfPhase();
+      H.act(room, side === 'A' ? Bn.attP.owner : Bn.defP.owner, { t: 'act', k: 0 });
+    }
+    const other = S0(room).pieces.find((p) => p.owner === 1 - cur && p.type === 'minion' && p.id !== foe.id && p.alive && p.placed && room.engines[0].visibleTo(cur, p));
+    both(room, (E) => { E.S.pieces.find((x) => x.id === other.id).revealed = true; });
+    const units = view(room, cur).units, byId = (id) => units.find((u) => u.id === room._alias(id));
+    const foeNow = S0(room).pieces.find((x) => x.id === foe.id), fu = byId(foe.id), ou = byId(other.id);
+    // 전투 뒤 시야에서 빠지면 레코드 자체가 없다(등급 A · 안개 유지) — 그래도 표식은 개체에 남아 다시 보일 때 실제 값이 된다(직렬화기 직접 확인)
+    const fk = room._serializeKnownOpponent(foeNow);
+    ok(foeNow.hpSeen === true && fk.hpSeen === true && fk.hp === foeNow.hp && fk.maxHp === foeNow.maxHp
+      && (!fu || (fu.hpSeen === true && fu.hp === foeNow.hp && fu.maxHp === foeNow.maxHp))
+      && (fu || !room.engines[0].visibleTo(cur, foeNow) || !foeNow.alive)
+      && ou && !('hpSeen' in ou) && ou.maxHp === 100 && ou.hp === Math.ceil((other.hp * 100) / other.maxHp)
+      && !/"(grade|def|spd|skills|cds|cap|paid|reaperSeal|synAtk|coins|bag)"/.test(JSON.stringify(units)),
+    '전투 뒤 보드: 나선 상대 말 실제 HP · 안 나선 공개 말 100 눈금 · HP 밖 비공개 필드 없음 ' + JSON.stringify([fu, fk, ou]).slice(0, 300));
   }
   {
-    // 보드 회복 틱 로그 "HP +N" — 상대 말은 100 눈금, 자기 말은 실제 값
+    // 보드 회복 틱 로그 "HP +N" — 전투에 안 나선 상대 말은 100 눈금, 자기 말과 전투 노출(hpSeen) 상대 말은 실제 값(#262)
     const room = startedEco(35);
     const cur = S0(room).current;
     const mineP = S0(room).pieces.find((p) => p.owner === cur && p.type === 'minion');
     const oppP = S0(room).pieces.find((p) => p.owner === 1 - cur && p.type === 'minion');
+    const seenP = S0(room).pieces.find((p) => p.owner === 1 - cur && p.type === 'minion' && p.id !== oppP.id && p.name !== oppP.name);
     both(room, (E) => {
-      for (const id of [mineP.id, oppP.id]) { const p = E.S.pieces.find((x) => x.id === id); p.healing = true; p.hp = Math.max(1, p.maxHp - 50); }
+      for (const id of [mineP.id, oppP.id, seenP.id]) { const p = E.S.pieces.find((x) => x.id === id); p.healing = true; p.hp = Math.max(1, p.maxHp - 50); }
       E.S.pieces.find((x) => x.id === oppP.id).revealed = true;
+      Object.assign(E.S.pieces.find((x) => x.id === seenP.id), { revealed: true, hpSeen: true });
     });
     const gain = (p) => Math.min(Math.round(p.maxHp * room.engines[0].BAL.healPostPct), 50);
     if (!S0(room).mainUsed) H.act(room, cur, { t: 'skipMain' });
@@ -645,6 +668,9 @@ async function main() {
       && !lines.some((m) => m.includes(oppName.name) && m.includes(`HP +${gain(oppName)} `))
       && lines.some((m) => m.includes(mineName.name) && !m.includes('%')),
     '보드 회복 로그: 자기 말 실제 값(% 없음) · 상대 말 100 눈금 + % ' + JSON.stringify(lines));
+    const seenName = S0(room).pieces.find((x) => x.id === seenP.id);
+    ok(lines.some((m) => m.includes(seenName.name) && m.includes(`HP +${gain(seenName)} (회복 자세)`)) && !lines.some((m) => m.includes(seenName.name) && m.includes('%')),
+      '보드 회복 로그: 전투 노출(hpSeen) 상대 말은 실제 값(% 없음) ' + JSON.stringify(lines));
   }
 
   // ===== 11. 실제 WebSocket — 같은 requestId 는 한 번만 처리(저장 응답 재전송) =====

@@ -44,6 +44,17 @@
 <!-- #106 연출 배너 오버레이 (게임 모달 z50 위 · 튜토리얼 z60 아래) — 표시 전용, 규칙 상태 무관.
      #126: 결과 연출의 파편·섬광은 #fxFx 안에서만 만들어지며 난수를 쓰지 않는다 (인덱스 계산 고정). -->
 <div id="fxBanner" class="hidden" role="status" aria-live="polite"><div id="fxFx" aria-hidden="true"></div><div class="fxBox"><div id="fxTitle"></div><div id="fxSub"></div></div></div>
+<!-- #262 경기 중 이모티콘 — 게임 모달(z50)·연출 배너(z55) 위 · 튜토리얼(z60)·재접속 줄(z70) 아래 고정 층. 게임 입력을 막지 않는다 -->
+<div id="emoteLayer" class="hidden">
+  <button id="emoteBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="emotePop" aria-label="이모티콘" onclick="emoteToggle()">💬</button>
+  <div id="emotePop" class="hidden" role="group" aria-label="이모티콘 보내기">
+    <fieldset id="emoteSet"></fieldset>
+    <small id="emoteWhy" role="status"></small>
+    <label class="emoteMute"><input id="emoteMute" type="checkbox" onchange="emoteSetMuted(this.checked)"> 상대 이모티콘 숨기기</label>
+  </div>
+  <div id="emoteBubs" aria-hidden="true"><div id="emoteBubOpp" class="emoteBub hidden"></div><div id="emoteBubMe" class="emoteBub me hidden"></div></div>
+</div>
+<div id="emoteLive" class="srOnly" aria-live="polite"></div>
 <!-- #26 상황 도움말·튜토리얼 모달 — #260(CJ 2026-09-27)으로 제품 진입점·자동 표시·경기 중 도움말은 없다. 모듈은 회귀 검사용으로만 남는다 -->
 <div id="tutHint" class="hidden" role="status" aria-live="polite"></div>
 <div id="tutOverlay" class="hidden" aria-hidden="true"><div id="tutBox" role="dialog" aria-modal="true" aria-labelledby="tutTitle" aria-describedby="tutBody" tabindex="-1"></div></div>

@@ -185,7 +185,7 @@ function mkPiece(owner,type,element,allyIdx){
     hp:b.hp||1, maxHp:b.hp||1, atk:b.atk||0, skillAtk:b.skill||0,
     rosterId:null, name:null, cdMax:b.cd||0,
     cd:0, skills:null, cds:[0,0,0,0], revealedSkills:null,
-    r:0,c:0, placed:false, revealed:false, alive:true, movedEver:false, movedPreBT:false,
+    r:0,c:0, placed:false, revealed:false, hpSeen:false, alive:true, movedEver:false, movedPreBT:false,
     immobile:0, cap:null, nextBattleBuff:false, healing:false, // #106 healing: 회복 자세(지속형) — 소유자·공개 말만 표시, AI 는 미공개 상대 말의 값을 읽지 않는다
     burn:0,burnFresh:false, burnBy:null, weaken:0, shield:0, shieldLayers:[], absorbed:0, shock:0, shockFresh:false,
     crack:0,crackFresh:false, harden:0,hardenFresh:false,hardenPct:0, evadeBuff:0,evadeBuffR:0, dmgUpBuff:0,dmgUpBuffR:0, // #233 (GDD-23 4.5): 균열·경화·회피 증가·가하는 피해 증가 지속 버프/상태

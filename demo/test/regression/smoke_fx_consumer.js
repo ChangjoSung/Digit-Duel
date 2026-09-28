@@ -251,22 +251,27 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   ok(!/netFxReducedMotion/.test(T.html),"I3 JS 표시 시간은 움직임 설정으로 줄이지 않는다(원본과 같은 시간·문구 유지)");
 }
 
-/* ===== J. #237 경제방 상대 🛡·🌊 100 눈금 — 상대만 N%, 자기 쪽은 실제값, 서버가 붙인 %에 다시 붙이지 않는다 ===== */
+/* ===== J. #262 (CJ 2026-09-27) 경제방 HP — 전투원은 양쪽 실제 현재/최대(% 없음) · 보드 상대 말은 전투 노출(hpSeen) 전 N%, 뒤 실제 현재 HP ===== */
 {
   const T=seated(0);
   const eco={coins:0,tickets:0,buffInv:{},soldHp:{},bag:[]};
-  const v=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:5,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:100,shield:30,tideMark:40}),fx:fx([])});
+  const v=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:5,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:120,shield:30,tideMark:40}),fx:fx([])});
   v.you.eco=eco; msg(T,{v:1,type:"room_state",data:v}); T.drain();
   const h=ovHtml(T);
-  ok(/id="bst-D">🛡30% 🌊해일≤40%</.test(h)&&/해일 예고 40%"/.test(h),"J1 경제방 상대 전투 패널의 방어막·해일 표식은 100 눈금 N%");
-  ok(/id="bst-A">🛡5 🌊해일≤7</.test(h)&&/해일 예고 7"/.test(h),"J2 자기 전투원은 실제값 그대로(% 없음)");
-  const v2=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:4,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:100,shield:25,tideMark:40},{actSeq:1,phase:1,actor:"D"}),fx:fx([
-    {seq:1,src:"msg",battleId:9,round:1,actSeq:1,key:"damageFx",big:false,txt:"5% 흡수",fx:{st:{side:"D",text:"🛡25% 🌊해일≤40%",shield:25,max:100}}},
+  ok(/id="bst-D">🛡30 🌊해일≤40</.test(h)&&/해일 예고 40"/.test(h)&&/id="hptxt-D">50<\/span>\/120</.test(h),"J1 상대 전투원도 실제 현재/최대 HP·방어막·해일 표식(% 없음)");
+  ok(/id="bst-A">🛡5 🌊해일≤7</.test(h)&&/해일 예고 7"/.test(h)&&/id="hptxt-A">15<\/span>\/20</.test(h),"J2 자기 전투원은 실제값 그대로(형식 불변)");
+  const v2=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:4,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:120,shield:25,tideMark:40},{actSeq:1,phase:1,actor:"D"}),fx:fx([
+    {seq:1,src:"msg",battleId:9,round:1,actSeq:1,key:"damageFx",big:false,txt:"5 흡수",fx:{st:{side:"D",text:"🛡25 🌊해일≤40",shield:25,max:120}}},
     {seq:2,src:"msg",battleId:9,round:1,actSeq:1,key:null,big:false,txt:"1 흡수",fx:{st:{side:"A",text:"🛡4 🌊해일≤7",shield:4,max:20}}}])});
   v2.you.eco=eco; msg(T,{v:1,type:"room_state",data:v2});
-  ok(T.byId("bst-D").textContent==="🛡25% 🌊해일≤40%","J3 서버가 %를 붙인 상대 st 문구는 그대로 — %% 중복 없음: "+T.byId("bst-D").textContent);
+  ok(T.byId("bst-D").textContent==="🛡25 🌊해일≤40","J3 상대 st 문구에 %를 붙이지 않는다: "+T.byId("bst-D").textContent);
   ok(T.byId("bst-A").textContent==="🛡4 🌊해일≤7","J4 자기 st 문구는 실제값 그대로: "+T.byId("bst-A").textContent);
   T.drain();
+  const opp=(hp,maxHp,extra)=>Object.assign({id:"u-o1",r:4,c:4,owner:1,alive:true,immobile:0,type:"minion",name:"불꽃도마뱀",element:"fire",hp,maxHp,healing:false,rosterId:null},extra||{});
+  const board=u=>{ const b=view(T,{units:[u]}); b.you.eco=eco; msg(T,{v:1,type:"room_state",data:b}); T.drain(); const p=T.S.pieces.find(x=>x.owner===1); return T.pcInfoHtml(p)+"|"+T.pcLabel(p); };
+  const b1=board(opp(57,100)), b2=board(opp(45,120,{hpSeen:true}));
+  ok(/>57%</.test(b1)&&/HP 57%$/.test(b1),"J5 전투 노출 전 공개 상대 말은 종전 N% 유지: "+b1);
+  ok(/>45</.test(b2)&&/HP 45$/.test(b2)&&!/%|\/120|\/100/.test(b2),"J6 전투 노출(hpSeen) 뒤 보드는 실제 현재 HP 만(% · N/100 없음): "+b2);
 }
 
 console.log("\n=== smoke_fx_consumer (#217 공개 방 표시 계층): pass "+pass+" / fail "+fail+" ===");

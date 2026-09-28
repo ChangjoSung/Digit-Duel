@@ -343,8 +343,9 @@ function connectWith(href,input,st,code){
   ok(codeLines.length>0&&persistNear.length===0,
     "D8 코드 심볼이 등장하는 줄에 저장·주소·콘솔·게임 로그 API가 하나도 없다"+(persistNear.length?" — "+persistNear[0].trim():""));
   ok(!/setItem\(\s*["'][^"']*[Cc]ode/.test(src),"D9 'code' 이름의 저장 키를 쓰지 않는다");
-  ok(/localStorage\.setItem\("netServer"/.test(src)&&/function acctStore\(k,v\)\{ try\{ localStorage\.setItem\(k,v\); \}/.test(src)&&(src.match(/localStorage\.setItem\(/g)||[]).length===3,
-    "D10 localStorage.setItem 호출은 코드 접속 주소 저장 두 곳(netPrepare·netConnect)과 #259 계정 저장 한 곳(acctStore — 좌석 재접속 기록·탭 알림 두 키, smoke_issue259 H1 이 키를 고정)뿐 — 공개 방은 주소를 저장하지 않는다(페이지를 서빙한 서버)");
+  ok(/localStorage\.setItem\("netServer"/.test(src)&&/function acctStore\(k,v\)\{ try\{ localStorage\.setItem\(k,v\); \}/.test(src)
+    &&/localStorage\.setItem\(EMOTE_MUTE_KEY,"1"\)/.test(src)&&/EMOTE_MUTE_KEY="dd_emote_mute"/.test(src)&&(src.match(/localStorage\.setItem\(/g)||[]).length===4,
+    "D10 localStorage.setItem 호출은 코드 접속 주소 저장 두 곳(netPrepare·netConnect)과 #259 계정 저장 한 곳(acctStore — 좌석 재접속 기록·탭 알림 두 키, smoke_issue259 H1 이 키를 고정), #262 상대 이모티콘 숨김 설정 한 곳(dd_emote_mute=\"1\" 고정값)뿐 — 공개 방은 주소를 저장하지 않는다(페이지를 서빙한 서버)");
 }
 
 /* ===== E. 저장값 마크업 주입 방어 — 저장된 주소가 곧 스크립트가 되지 않는다 ===== */

@@ -168,6 +168,7 @@ function createEngine(opts) {
 /* #237 (GDD-23 7.9·8.1⑦) 경제 경기의 보드 회복 틱 로그 "🌿 <말> HP +N" — 상대 말의 N 은 최대 HP×비율이라 최대 HP(=등급)가
    그대로 역산된다. 좌석 엔진의 로그를 만드는 Core healLogs 한 곳만 감싸 **상대 말의 N 을 100 눈금**(room.js 상대 HP 와 같은
    계약)으로 바꿔 넘긴다. 자기 말은 실제 값 그대로다. 로그는 락스텝 요약 밖(시점 의존 표시)이라 규칙 상태·난수와 무관하다.
+   #262 CJ QA(2026-09-27): 전투에 나서 실제 HP 가 공개된 개체(p.hpSeen)는 보드 HP 와 같이 실제 값이다.
    Core 의 최상위 함수는 컨텍스트 전역 속성이라 여기서 바꾼 바인딩을 Core 의 내부 호출도 그대로 탄다. */
 function installHealLogScale(T) {
   const ctx = T.__vmContext, orig = ctx.healLogs;
@@ -177,7 +178,7 @@ function installHealLogScale(T) {
     if (!S || !S.eco || !Array.isArray(healed)) return orig(healed, viewer);
     return orig(healed.map((h) => {
       const p = S.pieces.find((x) => x.id === h.id);
-      if (!p || p.owner === viewer || !(h.gain > 0)) return h;
+      if (!p || p.owner === viewer || p.hpSeen || !(h.gain > 0)) return h;
       // Core 는 gain 을 비교(>0)와 문구(`HP +${gain}`)에만 쓴다 — 숫자로는 눈금값, 문자열로는 'N%'(battle 문구와 같은 비율 표시)
       const n = Math.ceil((h.gain * 100) / (p.maxHp || 1));
       return Object.assign({}, h, { gain: { valueOf: () => n, toString: () => n + '%' } });
@@ -342,9 +343,6 @@ function hookMsgQ(T, msgQ) {
           round: B ? B.round : null, actSeq: B ? (B.actSeq || 0) : null,
           key: it.key || null, big: !!it.big, txt: it.txt, fx: normalizeMsgFx(it.fx),
         };
-        /* #237 좌석 뷰가 상대 쪽 HP 수치를 100 눈금으로 바꿀 때 쓰는 서버 내부 값: 쪽별 [소유 좌석, 최대 HP].
-           비열거 속성이라 JSON 직렬화(표시 이벤트 골든 해시·좌석 프레임)에 나타나지 않는다 — room.js 만 이름으로 읽는다. */
-        Object.defineProperty(evt, 'sides', { value: B ? { A: [B.attP.owner, B.fa.maxHp], D: [B.defP.owner, B.fd.maxHp] } : null });
         fxAppend(T, evt);
       } catch (e) { /* 캡처 실패는 표시 계층 손실일 뿐 — 게임 진행을 막지 않는다(원본 push는 아래에서 계속 진행) */ }
     }
