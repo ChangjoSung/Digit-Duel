@@ -706,3 +706,31 @@ button.locked{opacity:.72; border-style:dashed;} /* 잠금은 색만이 아니�
 .histList li small{flex:1 1 100%;}
 .histList .h-win b{color:var(--ok);} .histList .h-loss b{color:var(--danger);} .histList .h-void b{color:var(--dim);}
 @media (prefers-reduced-motion: reduce){ .lobbyLoading .uiIco{animation:none;} } /* 정지한 로딩 표시 — 문구가 상태를 알린다 */
+/* ===== #261 L02 멀티 방 목록 · L03 방 대기 — 로비와 같은 전체 화면 패널(#253 방향 · 기존 토큰·공용 아트만). 모든 터치 칸 44px, 320px 가로 넘침 없음 ===== */
+#app[data-screen="room"] #left,#app[data-screen="room"] #drawerLog,#app[data-screen="room"] #drawerMetrics,#app[data-screen="room"] #phaseLabel{display:none;}
+#app[data-screen="lobby"] #btnBack,#app[data-screen="room"] #btnBack{min-height:44px;} /* L02 ← 로비 · L03 ← 방 나가기 도 터치 44px */
+#app[data-screen="room"] #right>.panel{background:var(--panel);}
+.roomsHead{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px;}
+.roomsHead h2{margin:0; flex:1 1 auto;}
+.pingBadge{white-space:nowrap;}
+.roomSearch label,.roomCreate label{display:block; font-size:12.5px; color:var(--dim); margin:6px 0 2px;}
+.roomSearch .row{flex-wrap:nowrap;} .roomSearch input{flex:1 1 auto; min-width:0 !important;}
+.roomsScreen input,.roomsScreen button,.waitScreen button,.roomRow button{min-height:44px;}
+.roomsScreen input{font-size:16px; padding:6px 10px; border-radius:6px; max-width:100%; box-sizing:border-box;}
+.roomCreate{border:1px solid var(--line); border-radius:12px; background:var(--panel2); padding:10px 12px; margin:8px 0;}
+.roomCreate h3{margin:0 0 4px; font-size:14px;}
+.roomCreate input{width:100%;} .roomCreate button{width:100%; margin-top:6px;}
+.roomList{list-style:none; margin:6px 0; padding:0; display:flex; flex-direction:column; gap:6px;}
+.roomRow{display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:var(--panel2);}
+.roomHead{flex:1 1 100%; min-width:0; overflow-wrap:anywhere;}
+.roomMeta{flex:1 1 150px; min-width:0; display:flex; flex-wrap:wrap; gap:4px; align-items:center;}
+.roomSeat{display:inline-flex; align-items:center; gap:3px; font-size:12px; overflow-wrap:anywhere;}
+.roomRow>button{flex:0 0 auto; min-width:88px;}
+.roomRow:not(.st-OPEN){opacity:.8;} .roomRow:not(.st-OPEN)>button{border-style:dashed;} /* 비활성은 색만이 아니라 '참가 불가 · 상태' 글자로도 알린다 */
+.roomRow.st-OPEN .roomSt{border-color:var(--ok); color:var(--ok);}
+.waitScreen h2{overflow-wrap:anywhere;}
+.waitSeats{list-style:none; margin:8px 0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.waitSeat{display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 6px; border:1px solid var(--line); border-radius:12px; background:var(--panel2); min-width:0; text-align:center; overflow-wrap:anywhere;}
+.waitSeat.empty{border-style:dashed; color:var(--dim);}
+.waitScreen .netRoomActions button{flex:1 1 100%;}
+@media (max-width:360px){ .roomRow>button{flex:1 1 100%;} }

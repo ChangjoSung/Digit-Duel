@@ -47,7 +47,8 @@ class Lobby {
     return n;
   }
 
-  createRoom(ip, { isPublic }) {
+  // name: 검증·정리된 방 이름(protocol.normalizeRoomName) | undefined — rn 을 보내지 않은 옛 생성만 '방 <번호>'.
+  createRoom(ip, { isPublic, name }) {
     if (this.draining) return { ok: false, reason: 'E_DRAINING' };
     if (this.activeRoomCount() >= this.maxRooms) return { ok: false, reason: 'E_CAPACITY' };
     if (isPublic && this._openPublicCountForIp(ip) >= this.maxOpenPublicPerIp) {
@@ -56,6 +57,7 @@ class Lobby {
     const roomId = this.nextRoomId++;
     const room = new Room(roomId, { isPublic, epoch: this.epoch, economy: this.economy });
     room.creatorIp = ip;
+    room.name = name || '방 ' + roomId; // 생성 때 정하고 바꾸지 않는다. 이름 중복 허용 — roomId 로 구분
     if (!isPublic) {
       const code = this._issueInvite(roomId);
       room.inviteCode = code;
@@ -98,12 +100,13 @@ class Lobby {
     return this.rooms.get(roomId) || null;
   }
 
+  // #261 공개 방의 참가 대기·준비 중·대전 중 — 참가 대기 먼저, 그 안에서 최신(큰 번호) 먼저. 참가 가능 여부는 p- 참가가 다시 판정한다.
   listPublicOpenRooms() {
     const rows = [];
     for (const r of this.rooms.values()) {
       if (r.isListable()) rows.push(r.lobbyRow());
     }
-    return rows;
+    return rows.sort((a, b) => (b.state === STATES.OPEN) - (a.state === STATES.OPEN) || b.roomId - a.roomId);
   }
 
   sweep() {

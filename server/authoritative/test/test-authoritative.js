@@ -182,7 +182,8 @@ async function main() {
 
   viewer.send(JSON.stringify({ v: 1, t: 'list_rooms' }));
   const rooms2 = await viewerQ.matching((m) => m.type === 'lobby_rooms');
-  ok(!rooms2.rooms.some((r) => r.roomId === pubOpened.roomId), 'SETUP 전이 후 로비 목록에서 제거: ' + JSON.stringify(rooms2));
+  // #261 준비 중·대전 중 공개 방도 목록에 남되 상태로 구분된다 — 참가는 아래처럼 p- 가 거부한다.
+  ok(rooms2.rooms.some((r) => r.roomId === pubOpened.roomId && r.state === 'SETUP' && r.seats === '2/2'), 'SETUP 전이 후 로비 목록에 준비 중으로 표시: ' + JSON.stringify(rooms2));
 
   const pubNotice = await pubHostQ.matching((m) => m.type === 'room_state' && !m.requestId);
   ok(pubNotice.data.state === 'SETUP', '공개 룸 참가도 호스트에게 참가 알림');
