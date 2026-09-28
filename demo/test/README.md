@@ -15,7 +15,7 @@
 
 | 파일 | 버전 | Issue | 하는 일 |
 |---|---|---|---|
-| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 (+#122) | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. 회귀와 비교 도구 및 이슈 전용 헤드리스 검사가 공유한다. 브라우저 CDP 도구와 `smoke_testclient`는 별도 환경을 사용한다 |
+| [`harness.js`](shared/harness.js) | v0.3.0 | #19·#20·#21 (+#122) | `demo/index.html`의 `<script>`를 DOM 스텁 위에서 eval하고 내부 심볼을 노출한다. 회귀와 비교 도구 및 이슈 전용 헤드리스 검사가 공유한다. 브라우저 CDP 도구는 별도 환경을 사용한다 |
 
 ## 회귀 게이트 (`regression/`) — CI 잡 A
 
@@ -27,7 +27,6 @@
 | [`smoke_tutorial.js`](regression/smoke_tutorial.js) | v0.3.1 | #26 #32 (+#128) | 튜토리얼 10단계 내용·장면 그림·접근성 · **문서 로드당 1회 자동 표시**(#128, 2026-09-10 CJ 승인). 영구 저장을 읽지도 쓰지도 않으므로 과거 `tutorialSeen` 키가 남아 있어도 매 로드 1단계부터 뜬다 — B18·B19·C5 가 그 계약과 사용자 저장값 보존을, F7·F7b 가 "튜토리얼 구간 저장·전송 API 0줄"(sessionStorage 대체 금지 포함)을 고정한다 |
 | [`smoke_memo.js`](regression/smoke_memo.js) | v0.3.1 | #36 #38 (+#94) | 추측 메모 피커·viewer 격리·AI 비관측·상대 턴 로컬 메모 |
 | [`smoke_online.js`](regression/smoke_online.js) | v0.4.0 | #54 #63 | 온라인 PVP 접속 경로·주소 정규화·스킴. **J절 음성 대조만 `os.tmpdir()`에 변이 HTML 사본 1개를 만들고 삭제한다** |
-| [`smoke_testclient.js`](regression/smoke_testclient.js) | v0.4.1 | #63 | 릴레이 점검 클라이언트(`server/test-client.html`)의 목적지 허용 목록·코드 비노출 |
 | [`smoke_minion_art.js`](regression/smoke_minion_art.js) | v0.4.3 | #89 (+#91) | 하수인 아이콘 체계·미공개 정보 비노출·납품 아트 바이트 보존 |
 | [`smoke_cross_skill.js`](regression/smoke_cross_skill.js) | v0.4.4 | #92 | 속성 교차 공격기의 **엔진 계약**(후보 함수·AI 슬롯 정책·공격/방어 상성 판정·UI 표시·포획 승계). 기준판 `d614392`를 `git show`로 읽어 대조한다(CI `fetch-depth: 0` 필요). v0.4.7 #121 로 **보상 전달** 부분은 `smoke_search_packages.js` 로 이전 |
 | [`smoke_own_side.js`](regression/smoke_own_side.js) | v0.4.4 | #93 | 온라인 양측 자기 진영 아래 표시 — 표시 전용 행 반사, 논리 좌표 불변 |

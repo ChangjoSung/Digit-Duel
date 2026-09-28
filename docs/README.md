@@ -1,13 +1,13 @@
 # Digit-Duel 문서 안내
 
-최신 정식 릴리스는 **[v0.4.6](releases/v0.4.6.md)**입니다. 2026-09-10 CJ 플레이 QA를 통과하고 2026-09-11 출시했습니다. 개발 중인 다음 버전은 **v0.5.0 Roblox 포팅**(#118 · 별도 작업자 · [작업자 안내](roblox/BRANCH-POLICY.md))과 **v0.6.0 Unity 포팅**입니다.
+최신 정식 릴리스는 **[v0.4.10](releases/v0.4.10.md)**입니다. 2026-09-13 출시했으며 공개 방 온라인 대전을 지원합니다. 개발 중인 트랙은 **v0.4.11**, **v0.5.0 Roblox 포팅**(#118 · 별도 작업자 · [작업자 안내](roblox/BRANCH-POLICY.md)), **v0.6.0 Unity 포팅**입니다.
 
 ## 지금 읽을 문서
 
 | 목적 | 문서 |
 |---|---|
 | 게임 소개·실행 방법 | [프로젝트 README](../README.md) |
-| 이번 버전에서 바뀐 것 | [v0.4.6 릴리스 노트](releases/v0.4.6.md) — 2026-09-11 출시 |
+| 이번 버전에서 바뀐 것 | [v0.4.10 릴리스 노트](releases/v0.4.10.md) — 2026-09-13 출시 |
 | 탐색·기술·연출 규칙 | [#121 승인 계약](milestone/v0.4.6/issues/121/Venus/gameplay-spec.md) (#121·#125·#129) |
 | 전투 행동 규칙 | [#146 승인 계약](milestone/v0.4.6/issues/146/Venus/gameplay-spec.md) — 도망 30%/버프 70%·행동 없음 수동 대기·함정 텔레포트 차단·보호막 합산 (#146·#131·#130) |
 | 접촉·전투 규칙 개편 | [#122 REVISE 2차 보고](milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/report.md) — 동료·왕끼리 전투·왕 불가침 폐지·폭탄 동반 제거·도망 실패 반격 |
@@ -16,9 +16,12 @@
 | Roblox 작업자 안내 | [바뀐 버전·브랜치 정책](roblox/BRANCH-POLICY.md) — v0.5.0 · `milestone/v0.5.0` 트랙 |
 | 버전별 변경 내용 | [릴리스 노트 목록](releases/README.md) |
 | 구현·QA 기준과 최신 CJ 결정 | [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) |
+| v0.4.11 경제·서버·UI 규칙 | [GDD-23](https://app.notion.com/p/3dc1e7f1708580329da6fe4986654f7b) · [GDD-24](https://app.notion.com/p/3dc1e7f1708581a48421fcec63d3cdf8) |
 | 역할·Git·작업 계약 | [CLAUDE.md](../CLAUDE.md), [권위 문서 등록표](creat2ve/AUTHORITY.md) |
 | 기여·PR·CI 사용법 | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | Mercury 인수·현재 상태 | [인수인계 스냅샷](creat2ve/HANDOVER_SNAPSHOT.md) |
+| v0.4.11 HTML 구조 전환 | [#245 migration·rollback·최종 책임 경계](milestone/v0.4.11/issues/245/Mercury/migration-rollback.md) |
+| v0.4.11 현재 상태·#238 착수 전 범위 | [부모 #232](https://github.com/ChangjoSung/Digit-Duel/issues/232) · [#238 분석](milestone/v0.4.11/issues/238/Mercury/prestart-analysis.md) |
 
 ## 버전별 기록
 
@@ -26,6 +29,8 @@
 
 | 버전 | 범위 | 인덱스 |
 |---|---|---|
+| v0.4.11 | 전투·시너지·경제·온라인 권위 완료, 전체 UI #238 착수 승인 대기 · **개발 중** | [#232 진행 상태](https://github.com/ChangjoSung/Digit-Duel/issues/232) · [#238 착수 전 분석](milestone/v0.4.11/issues/238/Mercury/prestart-analysis.md) |
+| v0.4.10 | 공개 방 온라인 대전·서버 권위 판정·재접속 — #217·#218 · **2026-09-13 출시** | [v0.4.10](milestone/v0.4.10/) |
 | v0.4.6 | 탐색 개편·연출 템포·전투 정비·세로 UI — #121·#122·#124·#125·#126·#128·#129·#130·#131·#146 · Infra #132/#134 · **2026-09-11 출시** | [v0.4.6](milestone/v0.4.6/README.md) |
 | v0.5.0 | Roblox 포팅 — #118 (별도 작업자 진행 중 · 미출시) | [v0.5.0](milestone/v0.5.0/README.md) |
 | v0.4.5 | 턴 행동 정리·문서·튜토리얼 갱신 — #114 | [v0.4.5](milestone/v0.4.5/README.md) |

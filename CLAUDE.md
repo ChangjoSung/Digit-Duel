@@ -2,7 +2,24 @@
 
 숫자 장기 × 속성 배틀 결합 1vs1 턴제 전략 보드게임. 최종 타깃 Android/Unity, 기획 검증용 HTML 데모 선행(2트랙).
 
+
+## 현재 CJ 승인 — 2026-09-28 #232 통합·정리·Render 배포 구조 점검
+
+- CJ는 #232 통합을 승인했다. #262·#238과 필요한 #264 납품의 stage·commit·push·PR 및 #259→#260→#261→#262→#238 순차 milestone/v0.4.11 통합을 진행한다. 각 현재 PR의 필수 CI·Saturn 조건을 확인한다. Worker는 full access·무확인 자동 진행하며 진행 허가를 CJ에게 다시 묻지 않는다. 아래 이전 Git 금지 기록과 충돌하면 이 최신 지시가 우선한다.
+- 통합 후 필요 없는 Digit-Duel 작업 트리·브랜치를 정리한다. dirty·untracked·중요 변경은 먼저 통합/검증 보관하고, 아직 필요한 트리와 원본 사용자 checkout은 보존한다. 삭제 대상의 정확한 경로와 병합/보관 근거를 확인한다.
+- 통합 후 Render의 서버 구조·설정·플랜 제약을 확인해 CJ에게 보고한다. main Release·배포·Render 자원 생성·결제·요금제 변경은 아직 승인되지 않았다. CJ가 보고를 받은 뒤 별도로 지시한다. 신규 Issue 댓글·중복TODO·수동 Issue close도 실행하지 않는다.
+- 통합 QA와 배포 구조 점검 후 필요 없는 게임 QA 내부망 리스너를 종료한다. DB 데이터·계정·SMTP 비밀·검증 증거와 다른 앱 프로세스는 보존한다.
+
+## 현재 조정 기록 — 2026-09-28 #276 CJ QA PASS·병합 승인
+
+[#276 서버 정리·LAN HTTPS 단일 실행기](docs/milestone/v0.4.11/issues/276/Mercury/report.md)의 수정본은 CJ QA·로컬 QA·독립 검토 PASS다. CJ가 stage·commit·push·PR·milestone/v0.4.11 병합과 이후 Mercury_PD Full Access 인수인계를 승인했다. 최초 HTTP 안내·루프백 검사 누락을 native HTTPS와 전용 서버 leaf로 수정했고, 실제 LAN 주소의 가입·로그인·Secure/HttpOnly/Strict 쿠키·인증 WSS 및 BAT2회 재실행을 검증했다. 가상 주소 로그도 정정했다. 기존 계정·세션·전적·SMTP와 원본 dirty를 보존했으며 모든 Worker를 실제 종료했다. 단일 원장은 위 보고서, GitHub는 기존 완료 조건 한곳만 갱신한다.
+
+실제 BAT는 C:/Users/pc_77/orca/workspaces/Digit-Duel/release-review-v0.4.11/server/LAN모드실행.bat, 접속은 실행기 표시 HTTPS 주소(현재 https://192.168.3.30:8085/)다. QA 게임8085는 닫았고 baseline PG29932/55462와 다른 앱4956/8084는 유지했다. 통합 기준 HEAD264010d에서 #276 전용 infra/276-lan-launcher 브랜치와 PR을 정리하고 필수 CI 6개 통과 후 squash 병합한다. 원본 사용자 checkout은 pull/reset하지 않는다.
+
+[#232 통합·Render 준비 보고](docs/milestone/v0.4.11/issues/232/Mercury/integration-review.md)의 통합·작업 트리 정리 완료는 유지한다. 현 Render DB·SMTP 미준비로 배포 NO-GO이며 CJ가 직접 유료 전환 후 알리기로 했다. main Release·Render 배포·자원 생성·결제·요금제 변경은 별도 지시 대상이다. CJ가 직접 유료 전환 후 PD에게 알리고 배포를 별도로 지시할 때까지 실행하지 않는다. 신규 Issue 댓글·중복 TODO·수동 Issue close 금지는 유지한다.
+
 ## 기준 문서 (Notion — 구현·QA의 진실 원본)
+- 필수 QA 운영: [QA_MINIMUM_POLICY.md](docs/creat2ve/QA_MINIMUM_POLICY.md) — 2026-09-16 CJ 지시. 변경에 필요한 자동 검증 우선, 브라우저 수동·네트워크 반복 QA 축소. 필수 CI 유지.
 - Game Overview (GDD-13, 기준 문서): https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38
 - 전투 수치 v0.1 (보류 백로그 D1~D8): https://app.notion.com/p/3cd1e7f170858116bbdbd60e98cc6924
 - 검증 지표·상호작용표 (GDD-12): https://app.notion.com/p/3ca1e7f170858183beddfb1e8ecbbfe7
@@ -10,11 +27,15 @@
 
 규칙: 기획에 없는 내용은 임의 구현하지 않고 [기획 필요]로 보고한다. CJ 결정은 GDD-13 Decision Log에 날짜와 함께 기록한다. 모든 보고는 확정/추론/미확정을 구분한다.
 
-## 현재 부서·모델 운영 (2026-09-13 CJ 승인 · #211)
+## 현재 부서·모델·Ponytail 운영 (2026-09-23 CJ 승인 · #250)
 
-- 적용 범위는 Digit-Duel 프로젝트뿐이다. 계정 전역 기본값을 수정하지 않는다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
+- 적용 범위는 Digit-Duel 프로젝트뿐이다. 모델·effort의 계정 전역 기본값을 수정하지 않는다. 단, CJ가 지시한 Codex·Claude Ponytail 설치는 제공된 설치 명령에 따른 user scope 예외다. .codex/config.toml과 .claude/settings.json은 새 프로젝트 세션의 기본값이며, 부서별 Worker에는 아래 실행 인수를 명시한다.
+- 2026-09-28 CJ가 승인한 이번 Mercury_PD 인수인계 세션은 `gpt-6-sol` xhigh·`service_tier=default`(No Fast)와 `danger-full-access`·approval `never`로 시작한다. 이 승인은 다른 Worker·다른 프로젝트·managed/host 정책 우회로 확장하지 않는다.
+- 2026-09-25 CJ의 모든 Worker 자동 진행 지시는 Digit-Duel에서 CJ가 착수시킨 모든 작업(#264·#259·#260 포함)에 적용한다. 각 Worker를 full access·무확인 실행(Claude --dangerously-skip-permissions, Codex -s danger-full-access -a never)으로 명시 기동하고 실제 실행을 확인한다. 역할 경계·Saturn 파일 무수정·Git/Render/배포/결제 승인 게이트는 유지하고 다른 프로젝트·계정 전역 설정을 바꾸지 않는다.
 - 신규 Worker는 [WORKER_MODELS.md](docs/creat2ve/WORKER_MODELS.md)와 [worker-models.json](docs/creat2ve/worker-models.json)의 agent/model/effort를 명시해 시작한다. 계정 기본값만으로 부서별 실행값을 추정하지 않는다. 시작 영수증 requested/effective와 실제 응답을 확인한다.
-- Mercury_PD=Terra low, Venus_Plan/Mars_Client/Jupiter_Server=Sonnet 5 medium, Saturn_QA=Sol medium. Earth_Art는 신규 창작 Astra medium / 기존 자산 수정 Terra medium.
+- 후속 dispatch 입력 전 모델 전환 팝업을 처리하고, 현재 턴·GO 직전·완료 시 실제 모델/effort·tier·footer를 다시 대조한다. 이전 preflight를 재사용하지 않으며 불일치 결과는 정식 QA에서 제외한다. 절차는 WORKER_MODELS.md의 후속 dispatch 모델 게이트를 따른다.
+- Mercury_PD=Codex `gpt-6-sol` xhigh·No Fast, Venus_Plan/Mars_Client/Jupiter_Server=Claude `claude-opus-5-5` high, Saturn_QA=Codex `gpt-6-sol` xhigh·No Fast. Earth_Art는 신규 창작 `gpt-6-astra` medium·No Fast / 기존 자산 수정 `gpt-6-luna` xhigh·No Fast. `No Fast`는 `service_tier=default`다.
+- Mercury·Mars·Jupiter·Saturn은 모든 작업에서 Ponytail `full`을 필수 적용한다. Venus는 `eli-adult`를 계속 필수 적용하고 기술 기획의 YAGNI 검토에만 Ponytail `lite`를 병행한다. Earth의 순수 아트 제작에는 적용하지 않으며 코드·도구 작업은 Mars로 라우팅한다. 역할 경계·필수 QA·입력 검증·보안·접근성 요구는 줄이지 않는다.
 - Venus가 Notion 기획서 작성·관리를 맡는다(eli_adult). Mercury는 GitHub·Orca 조정·운영 보고와 메타데이터를 관리한다. 아래 과거 계약의 Worker Notion 직접 쓰기 금지는 Venus의 승인된 기획 문서 관리에는 적용하지 않는다. 다른 Worker의 GitHub/Notion 쓰기와 모든 Worker의 Git 쓰기 금지는 유지한다.
 - Earth는 도트·리소스·UI 시각/전환 설계, Mars는 UI 실행 코드, Jupiter는 서버·DB·Table 스키마/검증, Venus/CJ는 Table 의미/수치를 맡는다. 기존 TSV의 일괄 CSV 변환은 승인되지 않았다.
 - 이번 범위는 infra 역할·모델 설정이다. 외부 서버 및 Lobby/System Flow 작업은 별도 CJ 요청 전 착수하지 않는다. 아래 과거 부서 단계·관리 주체와 충돌하면 이 최신 계약을 우선한다.
@@ -38,7 +59,7 @@
 CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 불필요하며, Notion의 Plan Prompt·Orchestration Launcher는 새 환경/다른 도구용 백업이다.
 1. **분류**: 매 보고 첫머리에 Comment를 [결정]/[피드백]/[질문]으로 분류해 표기한다.
 2. **Issue·PR 단위 (2026-09-07 CJ 승인)**: 코드 변경과 납품 자산 변경을 이슈화한다. 문서·결정·분석만 있는 안건은 Notion Decision Log로 관리한다. 하나의 납품 목표는 Mercury가 **Issue 1개 + 통합 PR 1개**로 관리하며, 같은 목표의 병렬 Worker 작업은 체크리스트와 Orca Task로 나눈다. Worker별 Issue·PR을 만들지 않는다. 독립 출시·독립 롤백이 필요한 범위만 별도 Issue·PR로 분리할 수 있고, 부모 에픽이 있으면 sub-issue로 연결한다(깊이 1단계). 부모는 모든 sub 종결 + CJ QA 통과 시 닫는다. Worker는 결과를 PD에게 보고하고, GitHub·Notion 기록과 Git 쓰기는 Mercury가 취합·집행한다.
-3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주해 근거 코멘트와 함께 close한다. 마일스톤 종료 시 전수 정리.
+3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주한다. 모든 완료 조건과 통합 상태를 기존 Issue 본문에서 확인한 뒤 허가된 범위에서 close한다. 신규 GitHub Issue 댓글은 작성하지 않는다. 2026-09-27 CJ는 #259의 stage·commit·push·milestone/v0.4.11 대상 PR 작성과 타이머 충돌 정리·필수 CI 확인을 승인했다. 2026-09-27 권장 순서 구현 지시에 따라 #260 커밋·push·#259 브랜치 대상 PR 작성·브랜치 필수 CI도 완료했다. 2026-09-27 CJ는 #261 최종 QA PASS 뒤 stage·commit·push·#260 브랜치 대상 분리 PR 작성과 필수 CI 확인을 명시 승인했다. #259/#260/#261 마일스톤 병합·Issue 종결·배포, #262/#238 Git 쓰기, #264 자원 생성·결제는 별도 승인 전 금지다.
 4. **기획서 동기화**: 규칙 변경은 Decision Log + 해당 본문 섹션을 동시에 갱신하고, 보고에 "문서 반영 위치" 표를 포함한다.
 5. **DIGEST**: 마일스톤 종료·대규모 규칙 개정 시 eli-adult로 읽기 좋은 정리본을 생성한다.
 6. **Worker**: 독립 기능·대규모 변경은 Orca Worker 위임, 소규모 Delta는 직접. Worker는 git 쓰기 금지, Coordinator가 diff 리뷰·검증 후 커밋한다.
@@ -51,14 +72,14 @@ CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.
 - **hotfix (2026-09-11 CJ 승인 · #175에서 첫 적용)**: 마일스톤에 속하지 않으면서 **현재 출시본에 즉시 반영해야 하는** 수정. 흐름은 `hotfix/<이슈>-<slug>` **`main`에서 분기** →(squash) `main` + 패치 태그 →(merge commit) `dev` 역병합 →(merge commit) 살아 있는 트랙 브랜치 동기화. **`dev`에서 분기하지 않는다** — `dev`에는 미출시 작업이 섞여 있어 `dev → main` 병합은 그 전부를 배포한다(#169 착수 직전 실측: `dev`가 `main`보다 37커밋·1,027파일·+71,815줄 앞섰고 그중 235파일·+29,260줄이 미완성 Roblox였다). 이슈는 `hotfix` 라벨을 달고 **마일스톤에 넣지 않는다**(마일스톤=계획, hotfix=계획 밖). **필수 CI 6개를 우회하지 않는다** — 문서 전용이어도 3분이면 끝난다. **역병합과 트랙 동기화까지가 완료다**: `main`에만 병합하고 멈추면 `dev`·트랙이 옛 상태로 남는다(#175 실측: 역병합 전 `dev`가 9파일·+110/−157을 놓쳤고, 트랙에는 별도 개발자용 안내 문서 자체가 없었다). 검사 자체가 고장 나 hotfix가 막히는 진짜 긴급 상황에서는 **CJ만** `enforce_admins`를 일시 해제할 수 있고, 끈 사실·이유·되돌린 시각을 그 이슈에 남긴다.
 - 병합: 이슈 브랜치 → 트랙 브랜치(트랙이 없으면 `dev`)는 원칙적으로 squash merge 후 Mercury가 해당 로컬·원격 브랜치를 명시적으로 삭제한다. **트랙 브랜치 → `dev`는 merge commit**을 쓴다 — squash 하면 마일스톤 안의 개별 이슈 이력이 뭉개진다. GitHub의 전역 `delete_branch_on_merge`는 릴리스 PR의 장수 `dev`까지 삭제하므로 사용하지 않는다. `main`·`dev`는 삭제 대상이 아니다. 여러 마일스톤을 보존하는 이관 PR과 `dev` → `main` 릴리스 PR만 merge commit을 사용한다. rebase merge는 사용하지 않는다.
 - 릴리스: 마일스톤의 승인 범위가 완료됐을 때만 `dev` → `main` 릴리스 PR을 연다. 병합된 main SHA에 annotated tag `vX.Y.Z`와 동일 버전 GitHub Release를 생성한다. 과거 버전을 현재 `dev` 상태로 소급 릴리스하지 않는다.
-- 이슈·PR·커밋 제목: `[scope] 제목 (#이슈번호)` — scope: `[infra]` `[demo]` `[client]` `[design]`
+- 이슈·PR·커밋 제목: `[scope] 한국어 제목 (#이슈번호)` — scope: `[infra]` `[demo]` `[client]` `[design]`. PR 본문과 Git 커밋 본문도 한국어로 작성한다(브랜치명·명령·식별자·원문 인용은 유지).
 - 마일스톤: `vX.Y.Z — 제목` 릴리스 트레인 (v0.1.0 인프라 / v0.2.0 HTML 데모 / v0.3.0 A/B·지표 / v0.3.1 온보딩 / v0.4.0 온라인 PVP·HTML 안정화 / **v0.4.6 HTML 데모 완결** / **v0.5.0 Roblox 포팅** / **v0.6.0 Unity 포팅**). 2026-09-10 CJ 승인(Issue #169)으로 재배번했다 — 종전 `v0.4.7`(HTML)→`v0.4.6`, 종전 `v0.4.6`(Roblox)→`v0.5.0`, 종전 `v0.5.0`(Unity)→`v0.6.0`. **버전 키 폴더는 마일스톤 버전을 따라가는 주소**라 함께 옮겼고 경로 대조는 [MOVES.csv](docs/milestone/MOVES.csv)가 담당한다. 옮겨진 아카이브 **본문의 옛 버전 서술은 작성 당시의 판정이라 고치지 않는다**.
 - 2026-09-10 현재 일정 (Issue #169 재배번 후): **v0.4.6(Milestone13)=HTML 데모 완결 — 탐색 개편·연출 템포·전투 정비·세로 UI·접촉 전투 규칙. 2026-09-11 출시(태그 v0.4.6).** **v0.5.0(Milestone12)=Roblox 포팅 #118**, **v0.6.0(Milestone4)=Unity 포팅(미착수)**. #119·#120·#123·#127은 CJ 판단으로 Unity 개발·플레이테스트 이후로 보류해 `not planned`로 닫았고 **삭제하지 않았다** — 승인된 기획 계약(#121·#146 gameplay-spec)이 그 번호를 인용하므로 필요해지면 CJ가 reopen 한다. #121·#125·#129(PR143) 및 #130·#131·#146([PR152](https://github.com/ChangjoSung/Digit-Duel/pull/152), dev `24ebf36`)은 CJ QA PASS로 종결했다. **#128은 매 페이지 로드 튜토리얼 노출로 정책 변경 구현 후 2026-09-10 CJ QA PASS·CLOSED**: 새 접속·새 탭·새로고침마다 표시하고, 같은 열린 페이지의 새게임·재대전·모드변경·온라인 재연결·탭/보존 페이지 복귀는 추가 표시하지 않는다. 건너뛰기·Esc·수동 재보기·기존10단계·다른 저장값을 보존한다. 같은 LAN 주소 재접속 생략은 기존 저장 정책으로 설명되며 초기 타 PC 공유 신고가 입증/해결됐다고 소급하지 않는다. GDD13 본문4.13·DL47·DL50 및 [Issue128](https://github.com/ChangjoSung/Digit-Duel/issues/128)·[PR157](https://github.com/ChangjoSung/Digit-Duel/pull/157)이 최신 승인·검증·통합 상태의 원본이다. 과거 #146 [PD 기록](docs/milestone/v0.4.6/issues/146/Mercury/report.md)의 관측 한계·후속 정리 절차 위반을 보존한다. #122는 2026-09-10 정적 러프 검토 후 CJ가 수풀만 수풀 표현·현행 보드 말 표시·첨부 이미지의 전투 구성을 요청하고 **#124 동료·왕 아트와 #126 강한 승패 효과도 함께 진행**하도록 지시했다. [후속 범위](docs/milestone/v0.4.6/issues/122/Mercury/cj-followup.md)에 따라 PR160으로 첫 납품을 통합했고, CJ QA REVISE 1차 [뒤로가기·어두운 배경 수정](docs/milestone/v0.4.6/issues/122/Mercury/revise-back-dark.md)(Mars Claude 구현·Saturn Codex 독립 READ_ONLY 검수)에 이어 2차 [접촉·전투 규칙 개편](docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/report.md)까지 반영해 **2026-09-10 CJ QA PASS로 세 Issue를 종결**했다. 2차는 동료↔동료·동료↔왕·왕↔왕을 전투로 바꾸고(#114 상황 8·왕 불가침 폐지), 폭탄↔폭탄·폭탄↔함정을 그 자리에서 동반 제거하며(상황 6 폐지), 도망 실패에 상대의 기본 공격 1회 페널티를 되살리고(#146 계약 1.2 대체 · 힘의 수호자면 최대 피해), 출전 준비 탭 눌림 표시와 전투 '← 뒤로' 위치(행동창 아래)를 고쳤다. HTML과 Roblox 규칙을 같은 계약으로 맞췄다. **2차는 Codex 사용량 한도 초과로 Saturn 교차 모델 QA 없이 Mars가 백업 QA·Git·문서를 대행했고 CJ 플레이 QA가 최종 게이트였다** — 이 예외를 소급 정상화하지 않는다. 릴리스는 여전히 대기다. [통합 기록](docs/milestone/v0.4.6/issues/122/Mercury/report.md)에 실제 미디어·소스·검증과 Worker Git 쓰기/검색 범위 예외를 보존한다. 나머지는 번호별 요청 대기이며 Roblox 담당 lee775의 별도 작업·브랜치는 보존한다. **정식 출시는 v0.4.6이다**(종전 v0.4.5에서 갱신). Roblox v0.5.0·Unity v0.6.0은 미출시다. v0.4.6 에는 `roblox/` 소스가 함께 들어 있지만 필수 검사 E 가 그 폴더에서 돌아 분리할 수 없을 뿐이며 **출시 기능이 아니다** — Roblox 는 v0.5.0 으로 따로 출시한다. Roblox 담당은 별도 개발자이므로 [작업자 안내](docs/roblox/BRANCH-POLICY.md)를 원본으로 둔다.
 - 버전 통제: 계획 버전은 Milestone 하나로만 관리하고, 배포 버전은 main tag·GitHub Release로만 관리한다. 중복되는 `vX.Y.Z` 라벨은 만들지 않는다.
 - 라벨: PR마다 작업 유형 1개(`feature`/`fix`/`infra`/`doc`)와 영역 1개(`html_demo`/`dev_client`/향후 `dev_server`/`design`)를 붙인다. `Release`는 `dev` → `main` 릴리스 PR에만 사용한다.
 - PR 필수 항목: 연결 이슈(`Ref #N`; 기본 브랜치가 main이므로 dev PR에서 자동 종료 키워드 금지), Acceptance Criteria, 변경 파일, 검증 결과, Saturn 판정, UI 변경 시 스크린샷, rollback. `dev` 병합 후 이슈는 검증 근거를 남기고 수동 종료한다.
 - 보호: 현재 공개 저장소이며 branch protection을 지원한다. main/dev에 PR 필수·force push/삭제 금지·대화 해결·필수 CI 6개(A·B·B2·C·D·E)를 적용한다. 2026-09-10 CJ 승인으로 `E. Roblox 클라이언트·규칙 (Luau)`를 추가했고 모두 GitHub Actions 앱15368·strict=true다. 관리자의 우회도 허용하지 않으며, 필요한 승인 리뷰 수는 0으로 두고 Saturn 검수·CJ 승인 계약은 별도로 유지한다. [Issue #132 연결 기록](docs/milestone/v0.4.6/issues/132/Mercury/required-checks.md)에 실제 성공 이력과 보호 설정 재조회 결과를 보관한다.
-- 모든 작업 결과는 해당 GitHub Issue에 코멘트로 기록 (수정 파일·검증 결과·커밋 해시)
+- GitHub Issue에는 진행 댓글을 추가하지 않는다. 기존 본문의 완료 조건 하나에서만 체크 상태를 관리하며 별도 현황 TODO·중복 하위 체크리스트를 만들지 않는다. 구현·QA 증거는 이슈별 부서 보고서에 기록한다.
 
 ## HTML 데모 (demo/index.html)
 - 게임 코드는 `demo/index.html`에 유지하고, CJ의 2026-09-07 게임 적용 지시에 따라 하수인 이미지는 `demo/assets/minions/` 상대경로로 로드한다. 오프라인은 해당 폴더를 함께 둔 채 브라우저로 열면 실행(서버 불필요); 온라인은 기존 서버의 HTTP 주소로 연다. 모드: PVE(AI 대전) / PVP(핫시트 2인) / AI vs AI 시뮬레이션(숨은 링크).

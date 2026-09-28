@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="24" viewBox="0 0 192 24">
+ <title>Potion, cool, cure, ball, ticket, power, time, escape</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0 under ASSET-LICENSE.md.</metadata>
+ <g fill="none" stroke="#e8ecf5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <g id="potion"><path d="M9 3H15V6H9ZM10 6V9C4 12 4 20 9 21H15C20 20 20 12 14 9V6M9 15H15M12 12V18"/></g>
+  <g id="cool" transform="translate(24)"><path d="M12 3V21M4.2 7.5L19.8 16.5M4.2 16.5L19.8 7.5M9 5L12 8L15 5M9 19L12 16L15 19M4.5 11L7.7 9.5L7.4 6M16.6 18L16.3 14.5L19.5 13M4.5 13L7.7 14.5L7.4 18M16.6 6L16.3 9.5L19.5 11"/></g>
+  <g id="cure" transform="translate(48)"><path d="M12 3L20 6V12C20 16 16 19 12 21C8 19 4 16 4 12V6ZM8 12L11 15L16 9"/></g>
+  <g id="ball" transform="translate(72)"><circle cx="12" cy="12" r="9"/><path d="M12 6L17 12L12 18L7 12ZM5 7L7 9M17 15L19 17"/></g>
+  <g id="ticket" transform="translate(96)"><path d="M3 6H21V10A2 2 0 0 0 21 14V18H3V14A2 2 0 0 0 3 10ZM8 10H16L14 8M16 14H8L10 16"/></g>
+  <g id="power" transform="translate(120)"><path d="M4 8V16M7 6V18M7 12H17M17 6V18M20 8V16"/></g>
+  <g id="time" transform="translate(144)"><path d="M6 3H18M6 21H18M7 3V6C7 9 10 10 12 12C14 14 17 15 17 18V21M17 3V6C17 9 14 10 12 12C10 14 7 15 7 18V21M10 6H14M10 18H14"/></g>
+  <g id="escape" transform="translate(168)"><path d="M11 4H4V20H11M9 12H21L17 8M21 12L17 16"/></g>
+ </g>
+</svg>

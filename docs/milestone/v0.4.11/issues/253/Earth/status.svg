@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="32" viewBox="0 0 128 32">
+ <title>Notification dot, neutral count badge, dim tile, neutral waiting badge</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0.</metadata>
+ <circle cx="16" cy="16" r="5" fill="#ff5b6e" stroke="#12151c" stroke-width="2"/>
+ <rect x="33" y="5" width="30" height="22" rx="11" fill="#242b3d" stroke="#8a93a8"/>
+ <rect x="64" width="32" height="32" fill="#12151c" fill-opacity=".72"/>
+ <path d="M103 5H121L127 11V21L121 27H103L97 21V11Z" fill="#242b3d" stroke="#8a93a8"/>
+ <path d="M109 12V20M115 12V20" stroke="#e8ecf5" stroke-width="2"/>
+</svg>

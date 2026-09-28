@@ -21,7 +21,7 @@ const BASE_REF=process.env.BASE_REF||"d614392";
 let pass=0,fail=0; const fails=[];
 function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); console.error("FAIL: "+name); } }
 const J=x=>JSON.stringify(x);
-function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; }
+function giveSpecies(T,m,r){ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=T.archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; if(T.applyArchStats) T.applyArchStats(m,r.arch,m.grade||1); } // #233 (GDD-23 3.3): 이 헬퍼가 심는 종의 아키타입 8스탯(def·spd·dodge·crit·statusPct)도 실제 엔진과 같은 표를 쓴다 — 안 하면 새 게임 시작 시 무작위 배정된 이전 아키타입 스탯이 그대로 남아 결정론이 깨진다.
 const R=(T,id)=>T.ROSTER.find(r=>r.id===id);
 /* 표준 판: 내 하수인(12,4)·상대 하수인(11,4)·왕 둘, 볼 3·예비 없음 */
 function setup(T,mode){
@@ -31,6 +31,7 @@ function setup(T,mode){
   const ally0=T.S.pieces.find(x=>x.owner===0&&x.type==="ally");
   H.place(T,k0,13,1); H.place(T,k1,1,7); H.place(T,me,12,4); H.place(T,em,11,4);
   T.S.balls=[3,3]; T.S.reserve=[null,null]; T.S.inv=[[],[]]; T.TQ.length=0;
+  H.synNeutral(T,[me,em]); // #235: 무작위 로스터의 왕국·아키타입 단계가 아래 고정 수치·rand 소비를 흔들지 않게 집계를 0 으로 못 박는다
   return {me,em,k0,k1,ally0};
 }
 /* 실제 사용자 경로: 말 아래 recruit 이벤트 + 흔적 → 선택 → search 액션(netAction) */
@@ -45,16 +46,25 @@ const btns=T=>(T.byId("obBtns").children||[]).map(b=>b.textContent);
 const click=(T,txt)=>{ const b=(T.byId("obBtns").children||[]).slice().reverse().find(x=>x.textContent===txt); if(!b) throw new Error("버튼 없음: "+txt+" / "+J(btns(T))); b.onclick(); };
 /* rand 소비 횟수 — 시드 고정 후 fn 실행, 다음 rand 가 몇 번째 값인지로 역산 */
 function randConsumed(T,seed,fn,max){ T.setSeed(seed); const seq=[]; for(let i=0;i<(max||12);i++) seq.push(T.rand()); T.setSeed(seed); fn(); const n=T.rand(); const k=seq.indexOf(n); T.setSeed(null); return k; }
-function openBattle(T,a,d){ T.S.battle=null; T.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; a.cd=0; d.cd=0; a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0; T.TQ.length=0; T.startRounds(a,d,a,d); T.TQ.length=0; }
+function openBattle(T,a,d){ T.S.battle=null; T.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; a.cd=0; d.cd=0; a.shield=0; d.shield=0; a.burn=0; d.burn=0; a.shock=0; d.shock=0; a.weaken=0; d.weaken=0;
+  /* #233 (GDD-23 4.2 ①⑦ · 4.4): 이 파일은 교차 속성 판정을 보는 것이지 신규 회피·치명타·선턴을 보는 것이 아니다.
+     회피·치명은 0, 속도·등급은 동률로 고정해 접촉 개시자(A)를 선턴으로 굳힌다 — 레거시 말은 아키타입이 무작위
+     배정돼 속도가 흔들리면 __actCore 가 D 로 실행되어 D10 이 약 40% 확률로 떨어졌다(보고서 §11). */
+  if(a.dodge!==undefined){a.dodge=0; a.crit=0;} if(d.dodge!==undefined){d.dodge=0; d.crit=0;}
+  if(a.spd!==undefined&&d.spd!==undefined){d.spd=a.spd; d.grade=a.grade;}
+  T.TQ.length=0; T.startRounds(a,d,a,d); T.TQ.length=0; }
 /* 하네스는 load()마다 전역 setTimeout 을 그 로드의 TQ 로 갈아끼운다 — 여러 로드가 살아 있을 때 시뮬을 돌릴 로드로 타이머를 되돌린다 */
 const useTimers=X=>{ global.setTimeout=fn=>{ X.TQ.push(fn); return 0; }; };
 const fixed=(T,v)=>{ T.BAL.dmgVar=0; T.BAL.statusProb=v===undefined?1:v; T.BAL.shockProb=v===undefined?1:v; };
 
-const T=H.load(htmlPath);
+/* #234 [CJ 결정 2026-09-17]: 탐색 '기술 교체'는 제품 기본값 비활성(smoke_issue234 E1~E3). 이 파일은 코드로 보존된 비활성 분기의
+   #92/#121 계약 회귀를 계속 보기 위해 로드마다 분기를 켠다(기준판 로드에는 이 객체가 없어 영향 없음). */
+function loadH(p,o){ const X=H.load(p,o); if(X.V2_INTERP) X.V2_INTERP.recruitSkillSwap=true; return X; }
+const T=loadH(htmlPath);
 
 /* ===== A. 데이터 ===== */
 {
-  const atk=Object.keys(T.SKILLS).filter(k=>T.SKILLS[k].kind==="attack");
+  const atk=Object.keys(T.SKILLS).filter(k=>T.SKILLS[k].kind==="attack"&&!T.SKILLS[k].v2); // #234: GDD-23 6장 스킬(v2)은 별도 레지스트리 항목 — 레거시 기술 집합 계약은 그대로
   /* #121 계약 5 (v0.4.7 승인): 공격기가 12 → 15 종이 됐다. 늘어난 3종은 **속성 공격기가 아니라 기술 전용 분류(cls)** 라
      el·tier 를 갖지 않는다 — 속성 12종의 "el=키 접두사·tier=키 접미사" 규칙은 그대로 두고 두 집합을 나눠 본다. */
   const elemAtk=atk.filter(k=>!T.SKILLS[k].cls), clsAtk=atk.filter(k=>T.SKILLS[k].cls);
@@ -130,16 +140,16 @@ const T=H.load(htmlPath);
     return h0-d.hp; };
   giveSpecies(T,P.me,R(T,"M-F1")); giveSpecies(T,P.em,R(T,"M-W1"));
   P.me.skills[1]="lightning_effect";
-  ok(dmg(P.me,P.em,1)===29&&P.em.shock===1&&P.em.burn===0&&T.S.battle.blog.some(l=>/감전 — 다음 1라운드 후공/.test(l))&&!T.S.battle.blog.some(l=>/화상/.test(l)),"D1 불 본체의 감전 침 → 물 상대: 22×1.3=29 (강상성)·감전 부여·화상 아님 (AC3)");
+  ok(dmg(P.me,P.em,1)===26&&P.em.shock===1&&P.em.burn===0&&T.S.battle.blog.some(l=>/감전 — 다음 1라운드 후공/.test(l))&&!T.S.battle.blog.some(l=>/화상/.test(l)),"D1 불 본체의 감전 침 → 물 상대: 26 = round(22×1.3×(1-방어력10%)) (강상성)·감전 부여·화상 아님 — #233 GDD-23 4.2⑧ (def 도입 전 29) (AC3)");
   P.me.skills[1]="fire_effect";
-  ok(dmg(P.me,P.em,1)===17&&P.em.burn===T.BAL.burnRounds&&P.em.shock===0,"D1b 대조: 같은 불 본체의 잔불 표식 → 물: 22×0.75=17 (약상성)·화상");
+  ok(dmg(P.me,P.em,1)===15&&P.em.burn===T.BAL.burnRounds&&P.em.shock===0,"D1b 대조: 같은 불 본체의 잔불 표식 → 물: 15 = round(22×0.75×(1-방어력10%)) (약상성)·화상 — #233 GDD-23 4.2⑧ (def 도입 전 17)");
   giveSpecies(T,P.em,R(T,"M-G1")); P.me.skills[1]="lightning_effect";
-  ok(dmg(P.me,P.em,1)===17&&P.em.shock===1,"D2 불 본체의 감전 침 → 풀 상대: 번개는 풀에 약상성 17 (본체 불이면 29였을 값)");
+  ok(dmg(P.me,P.em,1)===20&&P.em.shock===1,"D2 불 본체의 감전 침 → 풀 상대: 20 = round(22×(1-방어력10%)) — 번개-풀은 5속성 순환에서 땅을 거쳐 더는 직접 물리지 않아 중립이다 — #233 GDD-23 4.1 (구 4각 순환에서는 약상성 17, 본체 불이면 26이었을 값)");
   // 방어 상성은 본체 속성: 물 상대가 (번개 기술을 배운) 불 본체를 때리면 ×1.3
   giveSpecies(T,P.em,R(T,"M-W1"));
-  ok(dmg(P.em,P.me,0)===34,"D3 물대포(26) → 번개 기술 배운 불 본체: 26×1.3=34 — 방어는 본체 속성 (AC3 후반)");
+  ok(dmg(P.em,P.me,0)===30,"D3 물대포(26) → 번개 기술 배운 불 본체: 30 = round(26×1.3×(1-방어력10%)) — 방어는 본체 속성 — #233 GDD-23 4.2⑧ (def 도입 전 34) (AC3 후반)");
   giveSpecies(T,P.em,R(T,"M-G1"));
-  ok(dmg(P.em,P.me,0)===20,"D3b 덩굴 채찍(26) → 불 본체: 26×0.75=20");
+  ok(dmg(P.em,P.me,0)===18,"D3b 덩굴 채찍(26) → 불 본체: 18 = round(26×0.75×(1-방어력10%)) — #233 GDD-23 4.2⑧ (def 도입 전 20)");
   // 상태 확률: 배운 감전 침은 shockProb, 배운 잔불 표식은 statusProb
   giveSpecies(T,P.em,R(T,"M-W1"));
   Object.assign(T.BAL,{statusProb:1,shockProb:0}); dmg(P.me,P.em,1); // 확률 경로 분리 검사 (감전만 0) — 결정론 고정이 아님
@@ -156,7 +166,7 @@ const T=H.load(htmlPath);
   const rate=(a,d,slot,N,base,pred)=>{ let hit=0, cons={}; for(let i=0;i<N;i++){ openBattle(T,a,d); const k=randConsumed(T,base+i,()=>T.execSlot("A",slot)); cons[k]=(cons[k]||0)+1; if(pred(d)) hit++; } return {rate:hit/N,cons}; };
   giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[1]="lightning_effect"; giveSpecies(T,P.em,R(T,"M-W1"));
   let r=rate(P.me,P.em,1,1000,50000,o=>o.shock===1);
-  ok(r.rate>=0.45&&r.rate<=0.55&&Object.keys(r.cons).join(",")==="2","D5 배운 감전 침 1000회 부여율 "+(r.rate*100).toFixed(1)+"% (45~55%) · rand 2회(분산+판정)");
+  ok(r.rate>=0.45&&r.rate<=0.55&&Object.keys(r.cons).join(",")==="4","D5 배운 감전 침 1000회 부여율 "+(r.rate*100).toFixed(1)+"% (45~55%) · rand 4회(회피+분산+치명타+판정) — #233 GDD-23 4.2①⑦ 신규 회피·치명타 판정 추가 (def 도입 전 2회)");
   giveSpecies(T,P.me,R(T,"M-L1")); P.me.skills[1]="fire_effect"; giveSpecies(T,P.em,R(T,"M-G1"));
   r=rate(P.me,P.em,1,1000,60000,o=>o.burn>0);
   ok(r.rate>=0.65&&r.rate<=0.75,"D5b 번개 본체가 배운 잔불 표식 1000회 화상 "+(r.rate*100).toFixed(1)+"% (65~75%)");
@@ -164,27 +174,27 @@ const T=H.load(htmlPath);
   fixed(T,0);
   giveSpecies(T,P.me,R(T,"M-F5")); P.me.skills[0]="water_effect"; P.me.skills[1]="lightning_heavy"; giveSpecies(T,P.em,R(T,"M-G1"));
   const k5=randConsumed(T,777,()=>{ openBattle(T,P.me,P.em); T.execSlot("A",3); });
-  ok(P.em.burn===T.BAL.burnRounds&&k5===0,"D6 불 지속형 잔류장: 공격 슬롯이 물·번개여도 본체 속성 화상 100%·판정 난수 0 (확률 키 0)");
+  ok(P.em.burn===T.BAL.burnRounds&&k5===3,"D6 불 지속형 잔류장: 공격 슬롯이 물·번개여도 본체 속성 화상 100%·상태 판정 난수 0(확률 키 0)이지만 회피+분산+치명타로 3회 소비 — #233 GDD-23 4.2①③⑦ (def 도입 전 0회)");
   giveSpecies(T,P.me,R(T,"M-L5")); P.me.skills[0]="fire_effect"; openBattle(T,P.me,P.em); T.execSlot("A",3);
   ok(P.em.shock===1&&P.em.burn===0,"D6b 번개 지속형 잔류장: 슬롯0이 잔불 표식이어도 감전 100%");
   // 배운 공격기의 부가효과 유지
   fixed(T);
   giveSpecies(T,P.me,R(T,"M-F1")); giveSpecies(T,P.em,R(T,"M-W1"));
   P.me.skills[0]="grass_effect"; openBattle(T,P.me,P.em); P.me.hp=50; T.execSlot("A",0);
-  ok(P.em.hp===100-20&&P.me.hp===58,"D7a 불 본체가 배운 흡수 새싹 → 물: 20(무상성)·실피해 40% 회복 8");
+  ok(P.em.hp===100-18&&P.me.hp===57,"D7a 불 본체가 배운 흡수 새싹 → 물: 18 = round(20×(1-방어력10%))(무상성)·실피해 40% 회복 7 — #233 GDD-23 4.2⑧ (def 도입 전 20·회복 8)");
   P.me.skills[0]="grass_heavy"; openBattle(T,P.me,P.em); T.execSlot("A",0);
-  ok(P.em.hp===100-34&&P.me.shield===10,"D7b 배운 가시 폭발: 34·자기 보호막 10");
+  ok(P.em.hp===100-31&&P.me.shield===10,"D7b 배운 가시 폭발: 31 = round(34×(1-방어력10%))·자기 보호막 10 — #233 GDD-23 4.2⑧ (def 도입 전 34)");
   giveSpecies(T,P.em,R(T,"M-G1")); P.me.skills[0]="water_heavy"; openBattle(T,P.me,P.em); P.em.shield=20; T.execSlot("A",0);
-  ok(P.em.hp===100-18&&P.em.shield===0&&T.S.battle.blog.some(l=>/보호막 대상 추가 위력 \+6/.test(l)),"D7c 배운 쇄도 파도 → 보호막 풀: 32+6=38, 흡수 20·HP 18");
+  ok(P.em.hp===100-14&&P.em.shield===0&&T.S.battle.blog.some(l=>/보호막 대상 추가 위력 \+6/.test(l)),"D7c 배운 쇄도 파도 → 보호막 풀: round((32+6)×(1-방어력10%))=34, 흡수 20·HP 14 — #233 GDD-23 4.2②⑧ (def 도입 전 흡수 20·HP 18)");
   P.me.skills[0]="lightning_heavy"; openBattle(T,P.me,P.em); P.em.burn=2; T.execSlot("A",0);
-  ok(P.em.hp===100-(Math.round(34*0.75)+6),"D7d 배운 연쇄 번개 → 화상 풀: 34×0.75=26 +6 = 32 (상성은 번개 기준)");
+  ok(P.em.hp===100-36,"D7d 배운 연쇄 번개 → 화상 풀: 36 = round((34+6)×(1-방어력10%)) — 번개-풀은 5속성 순환에서 중립(D2와 같은 사유) — #233 GDD-23 4.1·4.2②⑧ (구 4각 순환+def 도입 전 32)");
   // 기본 공격·시그니처는 본체 속성
   giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[0]="water_stable"; P.me.skills[1]="lightning_effect"; giveSpecies(T,P.em,R(T,"M-G1"));
-  ok(dmg(P.me,P.em,-1)===29,"D8a 기본 공격(폴백)은 본체 불 기준: 22×1.3=29 (공격 슬롯이 물·번개여도)");
+  ok(dmg(P.me,P.em,-1)===26,"D8a 기본 공격(폴백)은 본체 불 기준: 26 = round(22×1.3×(1-방어력10%)) — #233 GDD-23 4.2⑧ (def 도입 전 29) (공격 슬롯이 물·번개여도)");
   giveSpecies(T,P.me,R(T,"M-F2")); P.me.skills[0]="water_stable"; P.me.skills[1]="lightning_heavy";
-  ok(dmg(P.me,P.em,3)===59,"D8b 결정타(시그니처 40, atk25→45)는 본체 불 기준 45×1.3=59");
+  ok(dmg(P.me,P.em,3)===53,"D8b 결정타(시그니처 40, atk25→45)는 본체 불 기준 53 = round(45×1.3×(1-방어력10%)) — #233 GDD-23 4.2⑧ (def 도입 전 59)");
   giveSpecies(T,P.me,R(T,"M-F1")); P.me.skills[0]="water_stable"; openBattle(T,P.me,P.em); T.execSlot("A",3);
-  ok(P.em.hp===100-Math.round(30*1.3),"D8c 전술 연계(30)도 본체 불 기준 39");
+  ok(P.em.hp===100-35,"D8c 전술 연계(30)도 본체 불 기준 35 = round(30×1.3×(1-방어력10%)) — #233 GDD-23 4.2⑧ (def 도입 전 39)");
   // 플래시(속성 이펙트)는 판정 속성 — 실제 재생 환경을 흉내(msgBox nodeType) 내 boxShadow 기록
   const flashes=[]; const st=T.byId("bstage"); st.style=new Proxy({},{set(t,k,v){ if(k==="boxShadow"&&v) flashes.push(v); t[k]=v; return true; }}); T.byId("msgBox").nodeType=1;
   const liveOpen=(a,d)=>{ T.S.battle=null; T.S.battlesUsed=0; a.hp=a.maxHp; d.hp=d.maxHp; a.cds=[0,0,0,0]; d.cds=[0,0,0,0]; d.burn=0; d.shock=0; T.TQ.length=0; T.startRounds(a,d,a,d); T.drain(); flashes.length=0; }; // 재생 환경에서는 큐를 비우지 않고 끝까지 재생
@@ -196,7 +206,7 @@ const T=H.load(htmlPath);
   // 레거시(기술 배열 없음) 경로 불변: 본체 속성 스킬
   const L=setup(T); fixed(T); L.me.skills=null; L.me.rosterId=null; L.me.element="fire"; L.me.skillAtk=35; L.me.cd=0; L.me.revealedSkills=null; giveSpecies(T,L.em,R(T,"M-G1"));
   openBattle(T,L.me,L.em); global.__actCore("skill");
-  ok(L.em.hp===100-46&&L.em.burn===T.BAL.burnRounds,"D10 레거시 속성 스킬 경로: 35×1.3=46·화상 — 본체 속성 그대로");
+  ok(L.em.hp===100-41&&L.em.burn===T.BAL.burnRounds,"D10 레거시 속성 스킬 경로: 41 = round(35×1.3×(1-방어력10%))·화상 — 본체 속성 그대로 — #233 GDD-23 4.2⑧ (def 도입 전 46)");
   // 사용 시 공개
   const Q=setup(T); giveSpecies(T,Q.me,R(T,"M-F1")); Q.me.skills[0]="water_stable"; giveSpecies(T,Q.em,R(T,"M-G1"));
   openBattle(T,Q.me,Q.em); T.execSlot("A",0);
@@ -215,16 +225,18 @@ const T=H.load(htmlPath);
   const Q=setup(T,"pve"); giveSpecies(T,Q.em,R(T,"M-W1")); Q.em.skills[1]="lightning_effect"; giveSpecies(T,Q.me,R(T,"M-G1"));
   T.S.current=1; openBattle(T,Q.em,Q.me); h=ob(T);
   const qb=(h.match(/<button[^>]*>\? [^<]+<\/button>/g)||[]).map(x=>x.replace(/<[^>]+>/g,""));
-  ok(J(qb)===J(["? 공격기","? 공격기","? 보조기","? 시그니처"])&&!h.includes("감전 침")&&!h.includes("⚡감전")&&h.includes("?공격기 · ?공격기"),"E2 상대 화면: 배운 기술도 사용 전에는 '? 공격기'·패널 '?공격기'·이름 없음 (AC4)");
+  /* #234 (GDD-23 7.9 등급·미사용 스킬 비공개): 보유 칸 수가 곧 등급이므로 상대 화면은 미공개 칸을 칸 수만큼 그리지 않고 "? 미공개" 하나로 묶는다 */
+  ok(J(qb)===J(["? 미공개"])&&!h.includes("감전 침")&&!h.includes("⚡감전")&&h.includes("? 미공개")&&!h.includes("?공격기"),"E2 상대 화면: 배운 기술도 사용 전에는 '? 공격기'·패널 '?공격기'·이름 없음 (AC4)");
   ok(!/title="[^"]*감전/.test(h),"E2b 상대 화면 버튼 title 에도 설명 없음");
   T.execSlot("A",1); T.TQ.length=0; h=ob(T);
-  ok(J(Q.em.revealedSkills)===J([1])&&h.includes("⚡감전 침")&&h.includes("?공격기 · ⚡감전 침"),"E3 상대가 사용한 뒤에만 그 슬롯이 공개되어 이름·속성 표시 (슬롯0은 여전히 ?공격기)");
+  ok(J(Q.em.revealedSkills)===J([1])&&h.includes("⚡감전 침")&&h.includes("⚡감전 침(쿨2) · ? 미공개"),"E3 상대가 사용한 뒤에만 그 슬롯이 공개되어 이름·속성 표시 (슬롯0은 여전히 ?공격기)");
   // 사이드 패널(자기 말 선택)
   T.S.battle=null; T.S.current=0; T.S.selected=Q.me; Q.me.skills[0]="fire_heavy"; T.render();
   ok(T.byId("sidePanel").innerHTML.includes("🔥폭염 강타 · 흡수 새싹"),"E4 사이드 패널 자기 말 기술 목록에 속성 표시");
   // 로스터 팝업은 템플릿 그대로
   T.rosterInfo("M-F1"); h=ob(T);
-  ok(h.includes("화염탄")&&h.includes("잔불 표식")&&!h.includes("💧")&&!h.includes("⚡감전"),"E5 로스터 정보 팝업은 종 템플릿 그대로");
+  /* #234 (GDD-23 6.3): 로스터 팝업은 종별 스킬 4칸(새끼 화룡)을 보여 준다 — 교체 학습이 팝업에 섞이지 않는 성질은 그대로 */
+  ok(h.includes("불씨 할퀴기")&&h.includes("불씨 브레스")&&h.includes("성룡의 포효")&&!h.includes("💧")&&!h.includes("⚡감전")&&!h.includes("폭염 강타"),"E5 로스터 정보 팝업은 종 스킬 그대로 (학습 기술 미혼입)");
   // 제품 문구에 개발 용어 없음
   /* #121 계약 4 의 새 선택 화면. 제품 문구에 개발 용어가 없어야 하는 계약은 그대로다. */
   const W=setup(T,"pvp"); giveSpecies(T,W.me,R(T,"M-F1")); T.setSeed(5); recruitAt(T,W.me); h=ob(T);
@@ -253,14 +265,17 @@ const T=H.load(htmlPath);
   ok(J(r3.skills)===J(T.archSkills("std","fire"))&&r3.artRosterId===null,"F6 기술 배열 없는 레거시 대상은 표준형 템플릿 폴백·정체 null");
   // 중립 숲 포획 불변
   const N=setup(T); T.setSeed(4242); N.k0.cap=null; T.tryCapture(N.k0,"safe");
-  ok(!!N.k0.cap&&J(N.k0.cap.skills)===J(T.archSkills("std",N.k0.cap.element))&&N.k0.cap.hp===100,"F7 숲 공용 포획은 속성 표준형 세트·100/100 그대로");
+  /* #234 (명세 3장): 숲 포획 말은 ⭐1 — 그 종의 1차 기본기 1칸. 종 미지정 호출은 종전대로 ROSTER[0](새끼 화룡 100/100) */
+  ok(!!N.k0.cap&&J(N.k0.cap.skills)===J(T.speciesSkills(N.k0.cap.rosterId,1))&&N.k0.cap.hp===100,"F7 숲 공용 포획은 종 ⭐1 스킬·100/100");
   // 예비 → 대리 출전: 승계한 물대포는 물 속성으로 판정
   const U=setup(T); fixed(T); giveSpecies(T,U.me,R(T,"M-F1")); U.me.skills[0]="water_stable"; giveSpecies(T,U.em,R(T,"M-W1"));
   T.S.current=1; openBattle(T,U.em,U.me); T.finishByCapture("A"); T.TQ.length=0;
   const em2=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x!==U.me); giveSpecies(T,em2,R(T,"M-F1")); H.place(T,em2,10,4);
   const ally1=T.S.pieces.find(x=>x.owner===1&&x.type==="ally"); H.place(T,ally1,9,4); ally1.cap=T.S.reserve[1]; T.S.reserve[1]=null;
+  ally1.cap.dodge=0; ally1.cap.crit=0; em2.dodge=0; em2.crit=0; // #233 (GDD-23 4.2 ①⑦): 이 절은 교차 속성 판정을 보는 것 — 회피·치명타 미고정 시 setSeed(null) 구간이라 비결정적이었다
+  H.synNeutral(T,[ally1,em2]); // #235: 이 절은 setup 의 두 말이 아니라 새 짝(동료 대리 출전 vs em2)으로 무대를 다시 세운다 — 포획되어 판에 남은 앞 하수인·왕의 왕국·아키타입 집계가 아래 고정 피해를 흔들지 않게 그 경계에서도 중립으로 못 박는다
   T.S.battle=null; T.S.battlesUsed=0; T.startRounds(ally1,em2,ally1.cap,em2); T.TQ.length=0; T.execSlot("A",0);
-  ok(em2.hp===100-Math.round(Math.round(26*20/22)*1.3)&&ally1.cap.revealedSkills.includes(0),"F8 대리 출전한 예비 하수인의 물대포 → 불 상대: 물 판정 ×1.3 (24→31)");
+  ok(em2.hp===100-28&&ally1.cap.revealedSkills.includes(0),"F8 대리 출전한 예비 하수인의 물대포 → 불 상대: 28 = round(round(26×20/22)×1.3×(1-방어력10%)) — #233 GDD-23 4.2④⑧ (def 도입 전 31)");
   fixed(T,0.7); T.BAL.shockProb=0.5; T.BAL.dmgVar=0.2; T.setSeed(null);
 }
 
@@ -304,7 +319,7 @@ const T=H.load(htmlPath);
   try{ baseHtml=execFileSync("git",["show",BASE_REF+":demo/index.html"],{cwd:path.resolve(__dirname,"..","..",".."),maxBuffer:1<<26}).toString("utf8"); }catch(e){ err=e; }
   ok(!!baseHtml&&!err,"K0 기준판 "+BASE_REF+" 소스 로드 (git 읽기만)");
   if(baseHtml){
-    const Tb=H.load(htmlPath,{html:baseHtml});
+    const Tb=loadH(htmlPath,{html:baseHtml});
     ok(!/el:"fire",tier:"stable"/.test(Tb.html)&&Tb.recruitCandidates===undefined&&/\[임시 대체 — 기획 확정 전\]/.test(Tb.html),"K1 기준판에는 기술 속성·후보 함수가 없고 임시 보조기 교체가 있다 (대조가 공허하지 않음)");
     const play=(X,seed)=>{ useTimers(X); X.setSeed(seed); X.TQ.length=0; X.startMode("sim",{aiLevel:["grade5","grade5"]}); for(const e of X.S.events) if(e.kind==="recruit") e.kind=(X.EVENT_KINDS?"itemGift":"potion"); // #121: 현행은 itemGift, 기준판은 옛 potion — 양쪽 모두 "선택 학습이 없는 경기"
       let n=0; while(X.TQ.length&&n<3000000){ X.TQ.shift()(); n++; } return J({w:X.S.winner,t:X.S.turnCount,wt:X.S.metrics.winType,log:X.S.log.map(l=>l.msg),m:X.metricsSnapshot()}); };
@@ -337,7 +352,7 @@ const T=H.load(htmlPath);
 /* ===== L. 메모리 변형 음성 대조 — 계약을 어기는 변형을 메모리에서 로드해 위 검사기가 잡는지 ===== */
 {
   const src=T.html;
-  const mut=(name,from,to)=>{ if(!src.includes(from)) return {name,error:"변형 앵커 없음: "+from}; const M=H.load(htmlPath,{html:src.replace(from,to)}); M.BAL.aiDelay=0; return {name,M}; };
+  const mut=(name,from,to)=>{ if(!src.includes(from)) return {name,error:"변형 앵커 없음: "+from}; const M=loadH(htmlPath,{html:src.replace(from,to)}); M.BAL.aiDelay=0; return {name,M}; };
   /* #121 계약 4.2-7 확정 경로의 변형을 잡는다 — 신규 3종 선택 → 대상 말 → 슬롯 확정까지 실제로 눌러 본다.
      (옛 L2·L3 은 #92 의 swap 클로저를 앵커로 썼고 그 코드는 계약 4 로 대체됐다.) */
   const swapCheck=M=>{ const P=setup(M); giveSpecies(M,P.me,R(M,"M-F1")); P.me.cds=[2,1,0,0]; P.me.revealedSkills=[0,1]; M.setSeed(92001);
@@ -346,35 +361,37 @@ const T=H.load(htmlPath);
     click(M,(idx+1)+". "+(P.me.name||"하수인"));
     click(M,"슬롯 1 교체 ("+M.SKILLS[P.me.skills[0]].ko+")");
     return {cds:P.me.cds.slice(),rev:P.me.revealedSkills.slice(),sk:P.me.skills.slice()}; };
-  let v=mut("no-skill-element",'function atkElOf(f,sk){ if(sk&&sk.cls) return null; return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element; }','function atkElOf(f,sk){ if(sk&&sk.cls) return null; return f.element; }');
+  // #234: atkElOf 에 전설 중립(sk.neutral) 조건이 더해져 앵커 문자열만 바뀌었다 — 변형 내용(판정 속성을 본체로 되돌림)은 같다
+  let v=mut("no-skill-element",'  return (sk&&sk.kind==="attack"&&sk.el)?sk.el:f.element; }','  return f.element; }');
   if(v.M){ const P=setup(v.M); fixed(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); giveSpecies(v.M,P.em,R(v.M,"M-W1")); P.me.skills[1]="lightning_effect"; openBattle(v.M,P.me,P.em); v.M.execSlot("A",1);
-    ok(P.em.hp===100-17&&P.em.burn>0&&P.em.shock===0,"L1 [음성] 판정 속성을 본체로 되돌리면 D1(29·감전) 검사기가 잡는다 (관측 "+(100-P.em.hp)+"·화상)"); } else ok(false,"L1 "+v.error);
-  v=mut("cd-reset","    m.skills[i]=R.skill;","    m.skills[i]=R.skill; m.cds[i]=0;"); // 한 줄 앵커 (원문은 CRLF 이므로 개행을 앵커에 넣지 않는다)
+    ok(P.em.hp===100-15&&P.em.burn>0&&P.em.shock===0,"L1 [음성] 판정 속성을 본체로 되돌리면 D1(26·감전) 검사기가 잡는다 (관측 "+(100-P.em.hp)+"·화상) — #233 GDD-23 4.2⑧ (def 도입 전 17)"); } else ok(false,"L1 "+v.error);
+  v=mut("cd-reset","nm.skills[i]=R.skill;","nm.skills[i]=R.skill; nm.cds[i]=0;"); // 한 줄 앵커 (원문은 CRLF 이므로 개행을 앵커에 넣지 않는다) · #245: 확정이 reducer 의 복제 말(nm)로 옮겨져 앵커 이름만 갱신 — 변형 내용(쿨 초기화)은 같다
   if(v.M){ const r=swapCheck(v.M); ok(r.cds[0]===0,"L2 [음성] 확정 시 쿨을 초기화하는 변형은 쿨 승계 검사기(신규 suite D절)가 잡는다");
     ok(r.sk[0]==="dragon_breath","L2b 변형판에서도 교체 자체는 일어난다 (검사기가 쿨만 본다는 확인)"); } else ok(false,"L2 "+v.error);
-  v=mut("keep-revealed",'if(m.revealedSkills) m.revealedSkills=m.revealedSkills.filter(x=>x!==i);','');
+  v=mut("keep-revealed",'if(nm.revealedSkills) nm.revealedSkills=nm.revealedSkills.filter(x=>x!==i);',''); // #245: 같은 이유로 앵커 이름만 갱신
   if(v.M){ const r=swapCheck(v.M); ok(J(r.rev)===J([0,1]),"L3 [음성] 공개 기록을 지우지 않는 변형은 비공개 복귀 검사기(신규 suite D절)가 잡는다"); } else ok(false,"L3 "+v.error);
   v=mut("species-reroll",'species:ROSTER[Math.floor(rand()*ROSTER.length)].id','species:shuffle(ROSTER.slice())[0].id');
   if(v.M){ const P=setup(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); v.M.setSeed(92001); v.M.rand(); const next=v.M.rand(); v.M.setSeed(92001); recruitAt(v.M,P.me);
     ok(v.M.rand()!==next,"L4 [음성] 후보 종을 shuffle 로 여러 번 굴리는 변형은 rand 1회 검사기(신규 suite B절·smoke_minion_art K1d)가 잡는다"); v.M.close(); } else ok(false,"L4 "+v.error);
-  v=mut("capture-template",'skills:loseP.skills?loseP.skills.slice():archSkills(arch,el)','skills:archSkills(arch,el)');
+  // #234: 적 포획 폴백이 종 ⭐1 스킬 → 레거시 템플릿 순으로 바뀌어 앵커 문자열만 갱신했다 — 변형 내용(승계 대신 재생성)은 같다
+  v=mut("capture-template",'skills:loseP.skills?loseP.skills.slice():(speciesSkills(loseP.rosterId,1)||archSkills(ARCH_TMPL[arch]?arch:"std",el))','skills:archSkills(ARCH_TMPL[arch]?arch:"std",el)');
   if(v.M){ const P=setup(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); giveSpecies(v.M,P.em,R(v.M,"M-W1")); P.me.skills[0]="water_stable"; v.M.S.current=1; openBattle(v.M,P.em,P.me); v.M.finishByCapture("A"); v.M.TQ.length=0;
     ok(v.M.S.reserve[1].skills[0]==="fire_stable","L5 [음성] 템플릿 재생성 변형은 F1(교체 기술 승계) 검사기가 잡는다"); } else ok(false,"L5 "+v.error);
-  v=mut("capture-alias",'skills:loseP.skills?loseP.skills.slice():archSkills(arch,el)','skills:loseP.skills?loseP.skills:archSkills(arch,el)');
+  v=mut("capture-alias",'skills:loseP.skills?loseP.skills.slice():(speciesSkills(loseP.rosterId,1)||archSkills(ARCH_TMPL[arch]?arch:"std",el))','skills:loseP.skills?loseP.skills:(speciesSkills(loseP.rosterId,1)||archSkills(ARCH_TMPL[arch]?arch:"std",el))');
   if(v.M){ const P=setup(v.M); giveSpecies(v.M,P.me,R(v.M,"M-F1")); giveSpecies(v.M,P.em,R(v.M,"M-W1")); v.M.S.current=1; openBattle(v.M,P.em,P.me); v.M.finishByCapture("A"); v.M.TQ.length=0;
     ok(v.M.S.reserve[1].skills===P.me.skills,"L6 [음성] 참조 공유 변형은 F3(비공유) 검사기가 잡는다"); } else ok(false,"L6 "+v.error);
   v=mut("ai-ignore-pow",'return SKILLS[alt].pow>=SKILLS[p.skills[pick]].pow?pick:-1;','return 0;');
   if(v.M){ const P=setup(v.M,"sim"); giveSpecies(v.M,P.me,R(v.M,"M-F3")); ok(v.M.aiRecruitSlot(P.me,"water_stable")===0,"L7 [음성] 위력·보존 룰을 무시하는 AI 변형은 C2 검사기가 잡는다"); } else ok(false,"L7 "+v.error);
   // 전투 AI: 상태 키·기대 피해가 본체 속성으로 되돌아가면 5단 선택이 바뀐다 (결정론적 케이스)
   const aiPick=(M,skills,oppId,pre)=>{ const P=setup(M,"pve"); giveSpecies(M,P.me,R(M,"M-F1")); P.me.skills=skills; giveSpecies(M,P.em,R(M,oppId)); M.S.current=0; openBattle(M,P.me,P.em); if(pre) pre(P); M.setSeed(3); M.aiBattleActionStrong("A"); M.TQ.length=0; return P.me.revealedSkills[0]; };
-  ok(aiPick(H.load(htmlPath),["fire_stable","lightning_effect","sup_heal","sig_def"],"M-F1",P=>{P.em.burn=2;})===1,"L8a 5단 AI: 불 본체 vs 불(화상 중) — 상태 키를 기술 속성(감전)으로 보면 감전 침 +4 로 슬롯1 선택");
+  ok(aiPick(loadH(htmlPath),["fire_stable","lightning_effect","sup_heal","sig_def"],"M-F1",P=>{P.em.burn=2;})===1,"L8a 5단 AI: 불 본체 vs 불(화상 중) — 상태 키를 기술 속성(감전)으로 보면 감전 침 +4 로 슬롯1 선택");
   v=mut("ai-statuskey-body",'[atkElOf(f,sk)]; // 상태 키는 기술 속성 (#92)','[f.element];');
   if(v.M){ ok(aiPick(v.M,["fire_stable","lightning_effect","sup_heal","sig_def"],"M-F1",P=>{P.em.burn=2;})===0,"L8b [음성] 상태 키를 본체 속성으로 되돌리면 (이미 화상) +4 가 사라져 화염탄(슬롯0)을 고른다 — L8a 검사기가 잡는다"); } else ok(false,"L8b "+v.error);
-  ok(aiPick(H.load(htmlPath),["fire_heavy","lightning_stable","sup_heal","sig_def"],"M-W1")===1,"L9a 5단 AI: 불 본체 vs 물 — 기대 피해를 기술 속성으로 보면 전기탄(26×1.3) > 폭염 강타(38×0.75) 로 슬롯1");
+  ok(aiPick(loadH(htmlPath),["fire_heavy","lightning_stable","sup_heal","sig_def"],"M-W1")===1,"L9a 5단 AI: 불 본체 vs 물 — 기대 피해를 기술 속성으로 보면 전기탄(26×1.3) > 폭염 강타(38×0.75) 로 슬롯1");
   v=mut("ai-mult-body",'multOf(atkElOf(f,sk))*(f.focusCharge','multOf(f.element)*(f.focusCharge');
   if(v.M){ ok(aiPick(v.M,["fire_heavy","lightning_stable","sup_heal","sig_def"],"M-W1")===0,"L9b [음성] 기대 피해를 본체 속성으로 계산하면 폭염 강타(슬롯0)를 고른다 — L9a 검사기가 잡는다"); } else ok(false,"L9b "+v.error);
   const pick5=(M,seeds)=>{ let s1=0; for(const sd of seeds){ const P=setup(M,"sim"); /* 5급 aiBattleAction() 은 인자 없이 actorOfPhase 의 소유자가 AI 일 때만 행동 → sim */ giveSpecies(M,P.me,R(M,"M-F1")); P.me.skills=["fire_heavy","lightning_stable","sup_heal","sig_def"]; giveSpecies(M,P.em,R(M,"M-W1")); M.S.current=0; openBattle(M,P.me,P.em); M.setSeed(sd); M.aiBattleAction(); M.TQ.length=0; if(P.me.revealedSkills[0]===1) s1++; } return s1/seeds.length; };
-  const seeds=Array.from({length:60},(_,i)=>500+i); const r5=pick5(H.load(htmlPath),seeds);
+  const seeds=Array.from({length:60},(_,i)=>500+i); const r5=pick5(loadH(htmlPath),seeds);
   ok(r5>=0.6,"L9c 5급 AI(확률 혼합 포함) 60시드: 전기탄(기술 속성 ×1.3) 선택률 "+(r5*100).toFixed(0)+"% ≥ 60%");
   v=mut("ai5-mult-body",'const est=slotPow(f,sk)*multOf(atkEl)*(f.focusCharge','const est=slotPow(f,sk)*multOf(f.element)*(f.focusCharge');
   if(v.M){ const rm=pick5(v.M,seeds); ok(rm<=0.3,"L9d [음성] 5급 기대 피해를 본체 속성으로 되돌리면 전기탄 선택률 "+(rm*100).toFixed(0)+"% ≤ 30% — L9c 검사기가 잡는다"); } else ok(false,"L9d "+v.error);

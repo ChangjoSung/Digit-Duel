@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="240" viewBox="0 0 480 240">
+ <title>Button atlas — primary, secondary, danger; default, focus, pressed, disabled, loading</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0.</metadata>
+ <defs><path id="bevel" d="M8 3H152L157 8V40L152 45H8L3 40V8Z"/><path id="inset" d="M9 6H151L154 9V39L151 42H9L6 39V9Z"/><g id="wait" fill="none" stroke="#e8ecf5" stroke-width="2" stroke-linecap="round"><path d="M86 18A8 8 0 1 0 87 28"/><path d="M86 14V20H80"/></g></defs>
+ <g stroke-width="1"><use href="#bevel" fill="#2f5fd0" stroke="#5b8cff"/><use href="#bevel" x="160" fill="#242b3d" stroke="#8a93a8"/><use href="#bevel" x="320" fill="#502a33" stroke="#ff5b6e"/></g>
+ <g transform="translate(0 48)"><g stroke="#e8ecf5" stroke-width="2"><use href="#bevel" fill="#2f5fd0"/><use href="#bevel" x="160" fill="#242b3d"/><use href="#bevel" x="320" fill="#502a33"/></g><g fill="none" stroke="#e8ecf5"><use href="#inset"/><use href="#inset" x="160"/><use href="#inset" x="320"/></g></g>
+ <g transform="translate(0 96)" stroke-width="2"><use href="#bevel" fill="#132139" stroke="#5b8cff"/><use href="#bevel" x="160" fill="#12151c" stroke="#8a93a8"/><use href="#bevel" x="320" fill="#331c25" stroke="#ff5b6e"/><path stroke="#0a1120" d="M10 7H150M170 7H310M330 7H470"/></g>
+ <g transform="translate(0 144)" fill="#1c2130" stroke="#333c52" stroke-dasharray="3 3"><use href="#bevel"/><use href="#bevel" x="160"/><use href="#bevel" x="320"/></g>
+ <g transform="translate(0 192)"><use href="#bevel" fill="#2f5fd0" stroke="#5b8cff"/><use href="#bevel" x="160" fill="#242b3d" stroke="#8a93a8"/><use href="#bevel" x="320" fill="#502a33" stroke="#ff5b6e"/><use href="#wait"/><use href="#wait" x="160"/><use href="#wait" x="320"/></g>
+</svg>

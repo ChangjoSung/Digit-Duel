@@ -48,7 +48,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* 기존 사용자 서버(8080)를 건드리지 않는다 — PORT=0 임의 포트 · 루프백 · 접속 코드는 서버 stdout 에서 읽는다(이 프로세스 메모리에만 둔다) */
 function startServer(){
   return new Promise((res,rej)=>{
-    const p=spawn(process.execPath,[path.join(ROOT,"server","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
+    const p=spawn(process.execPath,[path.join(ROOT,"server","test","relay","server.js")],{env:Object.assign({},process.env,{PORT:"0"}),stdio:["ignore","pipe","pipe"]});
     let out=""; const t=setTimeout(()=>{ try{p.kill();}catch(e){} rej(new Error("서버 기동 대기 시간 초과\n"+out)); },15000);
     const onData=d=>{ out+=d; const m=out.match(/listening on ([\d.]+):(\d+)/), c=out.match(/접속 코드: (\S+)/); if(m&&c){ clearTimeout(t); res({proc:p,host:m[1],port:Number(m[2]),code:c[1]}); } };
     p.stdout.on("data",onData); p.stderr.on("data",onData);
@@ -61,7 +61,7 @@ const PREP=`(()=>{ try{ localStorage.setItem("tutorialSeen","1"); }catch(e){} if
 const GIVE=`const give=(m,r)=>{ m.rosterId=r.id; m.name=r.name; m.element=r.element; m.hp=r.hp; m.maxHp=r.hp; m.atk=r.atk; m.skillAtk=r.skill; m.cdMax=r.cd; m.skills=archSkills(r.arch,r.element); m.cds=[0,0,0,0]; m.revealedSkills=[]; };
   const put=(p,r,c)=>{ const occ=S.pieces.find(x=>x.placed&&x.alive&&x.r===r&&x.c===c&&x.id!==p.id); if(occ) occ.placed=false; p.r=r; p.c=c; p.placed=true; p.alive=true; };`;
 /* PVE: 불 표준형(M-F1)을 숲(10,4) recruit 칸 위에, 적 물 표준형(M-W1)은 멀리. 감전 침이 후보로 나오는 시드를 골라 둔다 (rand 는 탐색에서 1회만 소비) */
-const SCENE_RECRUIT=`(()=>{ ${GIVE} try{ close(); }catch(e){}
+const SCENE_RECRUIT=`(()=>{ ${GIVE} try{ closeModal(); }catch(e){}
   BAL.aiDelay=120000; newGame("pve",{aiLevel:"grade5"}); aiAutoPlace(0); aiAutoPlace(1);
   S.phase="play"; S.current=0; S.mainUsed=false; S.battlesUsed=0; S.movedPiece=null; S.contactSet=[]; S.forcedTargets=[]; S.forcedQueue=[];
   const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"), op=S.pieces.find(x=>x.owner===1&&x.type==="minion");
@@ -82,7 +82,7 @@ const MODAL=`(()=>{ const ob=document.getElementById("overlayBox"), t=ob.innerTe
 const PIECE=`(()=>{ const p=window.__92p||(window.__92&&window.__92.me); if(!p) return null; return {id:p.id,skills:p.skills.slice(),cds:p.cds.slice(),rev:(p.revealedSkills||[]).slice(),el:p.element,alive:p.alive,hp:p.hp}; })()`;
 const AFTER=`(()=>{ const {me}=window.__92; return {skills:me.skills.slice(),cds:me.cds.slice(),rev:me.revealedSkills.slice(),hidden:document.getElementById("overlay").classList.contains("hidden"),
   consumed:S.events[0].consumed,main:S.mainUsed,log:S.log.slice(-3).map(l=>l.msg),side:document.getElementById("sidePanel").innerText.slice(0,400)}; })()`;
-const SCENE_BATTLE=`(()=>{ ${GIVE} const {me,op}=window.__92; try{ close(); }catch(e){}
+const SCENE_BATTLE=`(()=>{ ${GIVE} const {me,op}=window.__92; try{ closeModal(); }catch(e){}
   put(op,9,4); op.revealed=false; me.cds=[0,0,0,0]; S.mainUsed=false; S.battlesUsed=0; S.battle=null; S.selected=null; S.forcedTargets=[]; S.forcedQueue=[]; S.contactSet=[];
   BAL.dmgVar=0; BAL.shockProb=1; render(); return {opAt:[op.r,op.c],skills:me.skills.slice()}; })()`;
 const BTNS=`(()=>{ const B=S.battle; if(!B) return {error:"no-battle"}; const btns=[...document.querySelectorAll("#overlayBox button")].map(b=>({text:b.textContent.trim(),title:b.title,disabled:b.disabled,onclick:b.getAttribute("onclick")}));

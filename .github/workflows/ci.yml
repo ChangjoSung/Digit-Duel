@@ -50,8 +50,27 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      # demo/index.html 의 <script> 를 DOM 스텁 위에서 eval 하는 하네스 기반. 외부 패키지 0.
+      # ── #245 상태·액션·이벤트·프로토콜 정적 계약 검사 ────────────────────────
+      # 런타임 회귀보다 **먼저** 돌린다: 경계 어휘가 어긋나면 아래 스위트는 "그냥 아무 일도 안 일어남"으로 통과할 수 있고
+      # (모르는 t 는 reducer 가 조용히 지나간다) 그 침묵을 잡아 주는 건 이 검사뿐이다.
+      # 유일한 도구 의존성은 루트 package.json 의 typescript 하나다 — 번들러도, 빌드 산출물도, 프레임워크도 없다.
+      # 게임은 그대로 classic script 라 demo/index.html 을 file:// 로 열면 똑같이 돈다.
+      - name: 도구 의존성 설치 (npm ci — typescript 1개)
+        run: npm ci
+
+      # 양성: 실제 클라이언트 코드에 계약 위반이 0 이어야 한다.
+      - name: 정적 계약 검사 (tsc --noEmit)
+        run: npm run typecheck
+
+      # 음성: 네 계약마다 일부러 틀린 코드가 **실제로 걸리는지**와, 설정·억제 주석으로 검사가 무력화되지 않았는지.
+      # 통과 사실만으로는 계약이 살아 있다는 증거가 못 된다 — 전부 any 로 만들어도 양성 검사는 통과한다.
+      - name: 정적 계약 검사 자체의 회귀 (음성 대조군·설정 무력화 감지)
+        run: npm run test:typecheck
+
+      # demo/index.html 이 참조하는 로컬 JS를 순서대로 합쳐 DOM 스텁 위에서 eval 하는 하네스 기반. 외부 패키지 0.
       # 모든 스위트가 **현재 작업 트리**의 demo/index.html 을 검사한다.
       # smoke_issue146.js (#146·#131·#130·#128, v0.4.7): 도망 재계약(HP 조건 폐지·30%/70%·실패 반격 삭제)·4슬롯 전부 불가 시
       # 수동 [턴 종료](기본 공격 없음·비공개·쿨링수 재평가·AI 두 난이도)·보호막 3경로 합산·텔레포트 함정 차단(양끝·재검사)·
@@ -70,6 +89,40 @@ jobs:
       # 전투 무대는 재생 중 이벤트의 battleId 가 소유한다(battle=null·다음 전투 스냅샷이 먼저 와도 옛 무대 유지 → 끝나면 닫힘/교체/선택창).
       # 실제 디스패처 → render 래퍼 → 원본 battleModal() 경로로만 검증한다(S.battle 직접 대입 지름길 없음).
       # 실서버 2클라이언트 통합은 B 잡의 smoke_public_live.js, 실브라우저 증빙은 docs/milestone/v0.4.10/issues/217/Mars/report.md.
+      # smoke_issue233.js (#233, v0.4.11): 새 전투 엔진 집중 회귀 (GDD-23 3·4장 + 5.6 공통 규칙).
+      # 8스태·등급 성장·5속성 순환·피해 계산 ①~⑪(단일 반올림·상한)·방어막 층과 깨짐·반사/반격/지속/예고/즉사·
+      # 라운드 시작 시 확정되는 선턴·상태/버프 중첩과 지속·HP만 유지+⌛0 초기화·💫 가산·확정 효과를 본다.
+      # 실제 엔진 함수를 직접 부르거나 실제 전투 경로로 몰아서 본다 — 헬퍼 전용 대체물이 아니다.
+      # 검사의 유효성은 음성 대조로 확인했다: 메모리 밖 변형판 11종(균열 fresh 가드 제거·이중 반올림·
+      # 선턴 재계산·등급 계수 변경·회피 상한 제거·💫 가산 제거(gate 구현 2곳 각각)·방어막 FIFO 반전·
+      # 확정 치명 제거·쿨 초기화 제거·연쇄 금지 해제)을 모두 검출한다.
+      # smoke_issue234.js (#234, v0.4.11): 하수인 30종·전설 3종·왕·동료 스킬 (GDD-23 6장 + 3.3~3.6·4.3·4.5·4.6).
+      # 6.3·6.4·6.2 표를 스위트 안에 따로 옮겨 적어 제품 데이터(이름·💪%·⌛·전투당 1회·골격·전설 스탯 21값)와 대조하고,
+      # 132+17 스킬 전부를 실제 execSlot 경로로 한 번씩 실행한다. ⭐1~4 스킬 개방·왕/동료 🪄 칸(실제 finishBattle)·
+      # 기본기 규칙(⌛ 증가 대상 제외·도망 실패 페널티 = 스킬 밖 예외)·AI 공정 관측(상대 비공개 스킬·등급이 달라도 같은 선택)을 본다.
+      # smoke_issue241.js (#241, v0.4.11): 스킬 정리(CJ 승인 2026-09-17) — 번개 꼬리 같은 턴 추가 공격(선택 · ⌛ 사본 복원 · 금지 행동)·
+      # 해일 예고 조건 표식(사용 시 X 확정 · HP+방어막 ≤ X · 천년목/철벽/과부하 보류)·거울 수면 옮기기·회피율 감소(0~40%)·단순화 12·
+      # Q3 ⌛ 증가 Fresh(사실 확인 대조 포함)·AI 예정 선턴 입력과 추가 공격 합법 선택을 실제 엔진 경로로 본다.
+      # smoke_issue235.js (#235, v0.4.11): 왕국(속성)·아키타입·전설 직접 참전 패시브·동료 사망 🪄 칸 집중 회귀.
+      # 승인 수치표를 스위트 안에 따로 옮겨 적어 제품 표와 대조하고, 집계 경계(필드 9칸·사망/포획 칸 동결·가방 제외·
+      # 전설/무속성 0)·참전 확정 순간 스냅샷 고정·타입별 상한과 기존 회피 40%/치명 50% 상한 보존·왕국 스킬당 1판정·
+      # 전설 패시브(용/마녀/사신)·(2) 미달 무효·소유자 전용 selector(상대 집계 비노출)를 실제 엔진 경로로 본다.
+      # smoke_issue259.js (#259, v0.4.11): 아이디 계정 클라이언트 — 계정 없는 경로(file://·DB 없는 서버) 무변경·로그인 게이트(대전 시작·PVE·공개 방)·
+      # 로그인/가입(이메일 필수·중복 이메일 허용)/아이디 전용 이메일 6자리 코드 비밀번호 재설정/로그아웃 요청 형식과 실패 문구·이메일 주소 비표시·
+      # 비보안 원격 HTTP 비밀번호 칸 없음·단일 로그인(다른 탭·기기 로그인 시 옛 세션 종료)·공개 방 소켓 전 세션 확인·
+      # 좌석 재접속 기록(dd_seat) 저장/삭제/새로고침 재접속/다른 계정 격리/밀려난 탭. 서버는 fetch 스텁.
+      # smoke_issue263_client.js (#263, v0.4.11): 클라이언트 표시·입력 계약 — 진열 6칸·SOLD OUT 칸의 구매 버튼 부재,
+      # 로컬(PVE·핫시트) 배치 90초·행동 30초(전투 판정·연출 중 정지 · 만료 1회 턴 넘김 · 출전 후보도 같은 30초 · 가림 불산입),
+      # 온라인은 서버 시계(room_state.clock place·act)를 표시만 하고 로컬 마감을 걸지 않는 것, 단절 정지 중 양측 게임
+      # 입력·기권 잠금과 사유 표시·복구 해제를 본다. 이 파일 전용 가짜 시계(되풀이하는 setInterval 포함) 위에서 본다.
+      # smoke_issue260.js (#260, v0.4.11): 계정 로비 클라이언트 — 로그인 유지여도 타이틀 [시작] → 실제 로딩(자산 성공/실패/무응답·
+      # 프로필 오류/느림/만료·가짜 진행률 없음) → 로비 · 방 목록·최근 기록은 로비를 막지 않음 · 서버 전적·기록(최근 20)만 표시 ·
+      # 싱글 두 카드·지정 메뉴 잠금(aria-disabled·안내) · 재화 0 · 대표 하수인 일반 30종·서버 저장 · 방 좌석 reps ·
+      # 튜토리얼·도움말·옛 PVE·핫시트·관전 제품 진입점 없음(엔진 진입점은 유지). 서버는 fetch 스텁(Jupiter 잠정 경로).
+      # smoke_issue262.js (#262, v0.4.11): 경기 중 이모티콘 클라이언트 — 화면 6종 = 서버 EMOTE_IDS · 전용 emote 봉투(게임 액션·resync 0) ·
+      # 응답 전 성공 표시 없음 · 서버 cooldownMs/retryMs/emoteRetryMs 초읽기 · OPEN·정지·재접속·상대 끊김 잠금 · 상대 숨김 저장(예외 저장소 포함) · 나가면 잔존 0.
+      # smoke_issue238.js (#238, v0.4.11): 경기 UI — S01 상품 8종·예비 재화 · 진열 6카드/SOLD OUT · 필드 6/가방 3 슬롯 · 레드닷 없음 · 상점 Dim+남은 턴 ·
+      # S04 = data.final/Core synView 원값(재계산 없음) · B04 내 칩 = battle.ownSyn · 기술 연출 30+3종 1.2초 이하·움직임 줄이기 · X01/X03 inert·[포기] 없음.
       - name: 턴 흐름·전투·온라인 규칙 회귀
         run: |
           set -e
@@ -80,7 +133,6 @@ jobs:
           node demo/test/regression/smoke_own_side.js
           node demo/test/regression/smoke_online.js
           node demo/test/regression/smoke_online_sync.js
-          node demo/test/regression/smoke_testclient.js
           node demo/test/regression/smoke_minion_art.js
           node demo/test/regression/smoke_issue114.js
           node demo/test/regression/smoke_tutorial.js
@@ -88,6 +140,17 @@ jobs:
           node demo/test/regression/smoke_issue146.js
           node demo/test/regression/smoke_public_rooms.js
           node demo/test/regression/smoke_fx_consumer.js
+          node demo/test/regression/smoke_issue233.js
+          node demo/test/regression/smoke_issue234.js
+          node demo/test/regression/smoke_issue241.js
+          node demo/test/regression/smoke_issue235.js
+          node demo/test/regression/smoke_issue245.js
+          node demo/test/regression/smoke_issue236.js
+          node demo/test/regression/smoke_issue259.js
+          node demo/test/regression/smoke_issue263_client.js
+          node demo/test/regression/smoke_issue260.js
+          node demo/test/regression/smoke_issue262.js
+          node demo/test/regression/smoke_issue238.js
       # smoke_online_art.js (#201, v0.4.8 HotFix): 온라인에서 개별 이미지가 한 번 실패해도 그 자산이 영구히
       # 이모지·텍스트로 남지 않는다. 예산은 **파일 단위**다 — 연속 실패 3회 또는 수명 누적 8회에서 영구 결손으로
       # 굳고, 백오프로 간격을 늘리며, 파일당 예약·조회는 각각 1개다. 응답이 오지도 끊기지도 않는 요청은
@@ -176,7 +239,7 @@ jobs:
         working-directory: server
 
       # 각 테스트는 PORT=0(임의 포트)·루프백으로 자식 서버를 띄운다 — 러너 포트 충돌 없음.
-      # test-launcher.js 는 Windows 전용이라 여기서는 스스로 SKIP 한다 (실제 검증은 아래 server-launcher-windows).
+      # test/test-launcher.js 는 Windows 전용이라 여기서는 스스로 SKIP 한다 (실제 검증은 아래 server-launcher-windows).
       - name: 서버 회귀 (프로토콜·보안·설정·실행기)
         run: npm test
         working-directory: server
@@ -185,13 +248,20 @@ jobs:
       # (각자 독립 V8 컨텍스트 · 진짜 ws · 진짜 타이머)가 로비→생성/참가→배치→준비→대국→전투·선택창·도망 교환→결과를 2게임 완주한다.
       # 대국 중 소켓을 실제로 파괴해 같은 방·같은 좌석 재개와 이후 진행을 확인하고, 미공개 상대 정체 누출·클라이언트 예외 0 을 본다.
       # 서버 의존성(ws)이 필요해 A 잡이 아니라 npm ci 뒤인 여기서 돈다.
+      # #237 서버 기본값이 경제 경기가 되어 이 구 모드(무료 로스터) 검증은 DD_ECONOMY=0 을 명시한다(자식 서버가 env 를 물려받는다).
       - name: 공개 방 실서버 2클라이언트 통합 (#217)
         run: node demo/test/integration/smoke_public_live.js 2
+        env:
+          DD_ECONOMY: "0"
+
+      # #237 경제 경기(기본 ON) — 시작 상점·서버 시계·단절 정지·정기 상점·상대 경제 비노출을 실서버 2클라이언트로 본다.
+      - name: 공개 방 경제 실서버 2클라이언트 통합 (#237)
+        run: node demo/test/integration/smoke_public_eco_live.js
 
   # ── B2. Windows 실행기 회귀 ──────────────────────────────────────────────────
-  # server/test-launcher.js 는 `if (process.platform !== 'win32') { SKIP; exit(0) }` 라
-  # Linux 잡에서는 **한 건도 검증하지 않는다**. 배치 실행기(서버시작.bat · LAN서버시작.bat)의
-  # 인자 무시·모드 고정·주입 방지·종료 코드 전파 계약을 실제로 확인하려면 Windows 러너가 필요하다.
+  # server/test/test-launcher.js 는 `if (process.platform !== 'win32') { SKIP; exit(0) }` 라
+  # Linux 잡에서는 **한 건도 검증하지 않는다**. 단일 실행기(LAN모드실행.bat, #276)의
+  # 인자 무시·고정 명령·주입 방지·종료 코드 전파·의존성 설치 실패 중단·수명주기 소유 판정을 실제로 확인하려면 Windows 러너가 필요하다.
   server-launcher-windows:
     name: B2. Windows 실행기 회귀
     runs-on: windows-2025
@@ -203,9 +273,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-      # 스텁 server.js 로만 돌아가므로 npm install 이 필요 없다 (테스트가 node_modules 를 미리 만든다).
+      # 스텁 도구·스텁 npm 으로만 돌아가므로 npm install 이 필요 없다 (테스트가 node_modules 를 미리 만든다).
       - name: 배치 실행기 계약 회귀
-        run: node test-launcher.js
+        run: node test/test-launcher.js
         working-directory: server
 
   # ── C. 문서 무결성 (링크·이미지) ──────────────────────────────────────────────
@@ -232,34 +302,12 @@ jobs:
       - name: 문서 링크·이미지 검사
         run: node tools/docs/docs_link_check.js --verbose
 
-      # README 미디어 도구의 정적 자기 검사 + 오프라인 검증.
-      # --no-gh --no-render 로 gh CLI·Chrome·네트워크·secret 없이 파일시스템 검사만 수행한다.
+      # README 미디어 도구의 정적 자기 검사. 현재 README 이미지 경로는 위 문서 링크·이미지 검사가 확인한다.
       - name: README 미디어 도구 자기 검사
         run: node tools/media/readme_media_capture.js selfcheck
 
-      # --manifest 를 명시한다: 도구 기본값은 Issue #105(v0.4.4) 매니페스트다.
-      # #146(v0.4.7)에서 도망·수동 대기·보호막·텔레포트 규칙이 튜토리얼 10단계 문안에 들어가 **다시 촬영**했으므로
-      # 매니페스트를 그 납품본으로 바꾼다 (촬영 ref aa6998ae · demo/index.html blob 2a9b54c7 · 뷰포트 1280x900 · dpr 2).
-      # 앞선 #121 매니페스트와 그 PNG 10장은 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
-      # 매니페스트를 옛 것으로 두면 frame 캡션 기준이 현행 문안과 어긋나 WARN 이 난다 —
-      # 새 PNG 의 SHA 를 엄격히 대조하는 게이트가 아니다. verify 의 크기·해시 대조는 docs/media 고정 경로를 읽는다.
-      # 이 매니페스트로 로컬 실측 문제 0건이다. 도구 기본값·경고 정책·테스트는 건드리지 않고 CI 인자만 현재 납품본에 맞춘다.
-      # #122 (v0.4.7): 세로 UI 개편으로 README 게임 화면 기준이 바뀌어 현재 납품본 매니페스트로 옮긴다.
-      # #122 CJ QA REVISE (2026-09-10): 어두운 배경 복원으로 튜토리얼 10장을 **새 소스(21637d1)로 다시 촬영**해
-      # README 참조를 revise-back-dark/tutorial 로 옮겼으므로 매니페스트도 그 납품본으로 바꿨다.
-      # #122 CJ QA REVISE 2차 (2026-09-10, PR#168): 접촉·전투 규칙 개편으로 5·6·7단계 문안이 바뀌어 다시 촬영했고
-      # README 참조가 revise-cjqa-rules/tutorial 로 옮겨갔다. **매니페스트 인자도 함께 옮긴다** —
-      # 옛 매니페스트를 두면 기록된 경로가 README 경로와 겹치지 않아 바이트 대조가 **조용히 건너뛰어진다**
-      # (실패도 WARN 도 없이 가드만 사라진다). PR#168 에서 이 인자를 놓쳤고 #169 에서 교정한다.
-      # 앞선 #105·#146·#122(1차) 매니페스트와 그 PNG 는 **그대로 보존**한다 — 그 시점의 증빙이라 지우거나 덮어쓰지 않는다.
-      - name: README 링크·이미지 오프라인 검증 (#122 REVISE 2차 매니페스트)
-        run: >-
-          node tools/media/readme_media_capture.js verify --read-only --no-gh --no-render
-          --manifest docs/milestone/v0.4.6/issues/122/Mars/revise-cjqa-rules/tutorial/capture-manifest.json
-
-      # 기존 툴링 회귀 (READ_ONLY 보증의 외부 관측 + 변조 음성 대조)
-      - name: README 도구 READ_ONLY 회귀
-        run: node tools/media/test/readme_media_readonly_test.js --quick --no-gh
+      # #122 튜토리얼 매니페스트와 PNG는 이력 증거로 보존한다. v0.4.11 README에서 10단계 보기를 폐기했으므로
+      # 그 캡션을 현재 README와 대조하던 검사는 종료한다. 새 화면 6장의 경로는 위 검사에서 확인한다.
 
   # ── D. 납품 아트 자산 무결성 ─────────────────────────────────────────────────
   # 이 잡은 **납품된 바이트 그대로**를 대조하므로 러너를 그 바이트를 구운 환경에 맞춘다 —

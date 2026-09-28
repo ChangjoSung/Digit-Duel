@@ -7,7 +7,7 @@ const H = require('./helpers');
 const { both, byId, act, STATES } = H;
 const { ok, done } = H.makeCounter('battle-fx');
 
-const MSG_FX_KEYS = new Set(['shake', 'sig', 'flash', 'ko', 'float', 'hp', 'st']);
+const MSG_FX_KEYS = new Set(['shake', 'sig', 'flash', 'ko', 'float', 'hp', 'st', 'cast']);
 const MSG_EVENT_KEYS = new Set(['seq', 'src', 'battleId', 'round', 'actSeq', 'key', 'big', 'txt', 'fx']);
 const STAGE_EVENT_KEYS = new Set(['seq', 'src', 'battleId', 'turn', 'key', 'kind', 'title', 'sub', 'cls', 'cells', 'scene']);
 const SCENE_SIDE_KEYS = new Set(['owner', 'type', 'element', 'bodyFight', 'rosterId', 'artRosterId']);
@@ -51,8 +51,7 @@ function battlePair(T, cur) {
 function startBattle(room) {
   const T = room.engine;
   const cur = T.S.current;
-  const ids = battlePair(T, cur);
-  both(room, (E) => { E.initBattle(byId(E, ids.att), byId(E, ids.def)); });
+  H.openBattle(room, battlePair(T, cur)); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다(helpers.openBattle)
   return cur;
 }
 
@@ -105,6 +104,12 @@ function assertEventShape(evt, label) {
 {
   const room = H.startedRoom(950);
   const cur = startBattle(room);
+  // PR239 CI battle-fx447pass1fail — 이 절은 "실제 타격(damageFx+float)이 만들어진다"만 보고 회피·치명타
+  // 자체는 다루지 않는다(그건 다른 스위트 소관). rand() 기반 회피(①, 상한 40%)가 기본 아키타입 dodge(5~10%)
+  // 확률로 이번 첫 공격을 회피로 만들면 fx.float가 아예 생기지 않아 간헐적으로 실패했다. 두 전투원의
+  // dodge/evadeBuff를 0으로 고정해 회피 판정(rand()<0)이 항상 거짓이 되게 해 첫 공격이 반드시 명중하게
+  // 만든다 — 피해량 자체(치명타 여부·분산 roll)는 그대로 rand()에 맡겨 이 절이 검증하는 것 이상을 고정하지 않는다.
+  both(room, (E) => { const B = E.S.battle; B.fa.dodge = 0; B.fa.evadeBuff = 0; B.fd.dodge = 0; B.fd.evadeBuff = 0; });
   const r = act(room, cur, { t: 'act', k: 0 });
   ok(r.ok, '공격 행동 수락: ' + JSON.stringify(r.reason));
   const fx = room.toSeatView(cur).fx;
@@ -117,6 +122,20 @@ function assertEventShape(evt, label) {
   ok(fx.events.some((e) => e.src === 'stage'), '무대 배너(turnBanner/contactBanner 등) 포함');
   for (const e of fx.events) assertEventShape(e, 'T1');
   ok(fx.events.every((e) => e.src !== 'msg' || (e.round != null && e.actSeq != null)), 'msg 이벤트는 round/actSeq를 동반');
+  ok(fx.events.some((e) => e.src === 'msg' && e.key === 'skillFx' && e.fx && (e.fx.cast === 'A' || e.fx.cast === 'D')), '#238 실제 공격 줄은 시전 측 cast A|D 를 싣는다');
+}
+
+// ===== 1b) #238 cast 엄격 허용 — engine normalizeMsgFx · room _serializeFxMsgFx 두 층 모두 A/D 만, 그 밖은 생략 =====
+{
+  const room = H.startedRoom(951);
+  const cur = startBattle(room);
+  const probes = [['cast-X', 'X'], ['cast-num', 1], ['cast-obj', { side: 'A' }], ['cast-D', 'D']];
+  both(room, (E) => { for (const [txt, cast] of probes) E.S.battle.msgQ.push({ txt, fx: { cast, sig: true }, key: 'skillFx', big: false }); });
+  const ev = (txt) => room.toSeatView(cur).fx.events.find((e) => e.src === 'msg' && e.txt === txt);
+  const cap = (txt) => room.engines[cur].__fx.items.find((e) => e.txt === txt);
+  ok(['cast-X', 'cast-num', 'cast-obj'].every((t) => ev(t) && ev(t).fx && !('cast' in ev(t).fx) && cap(t) && !('cast' in cap(t).fx)),
+    '#238 잘못된 cast(X·숫자·객체)는 엔진 캡처와 좌석 뷰 모두에서 생략(다른 fx 는 유지)');
+  ok(ev('cast-D') && ev('cast-D').fx.cast === 'D' && cap('cast-D').fx.cast === 'D', '#238 유효 cast D 는 두 층을 통과');
 }
 
 // ===== 2) 종료 직후 battle=null에도 결과·마지막 타격이 남는다 (room은 IN_PROGRESS 유지) =====
@@ -187,7 +206,7 @@ function assertEventShape(evt, label) {
     const alive = T.S.pieces.filter((p) => p.alive && p.placed && p.type === 'minion');
     const mine = alive.find((p) => p.owner === 0), theirs = alive.find((p) => p.owner === 1);
     if (!mine || !theirs) break; // 한쪽 하수인이 전멸 — 더 전투를 못 만든다(아래에서 lastSeq 전제로 감지)
-    both(room, (E) => { E.initBattle(byId(E, mine.id), byId(E, theirs.id)); });
+    H.openBattle(room, { att: mine.id, def: theirs.id });
     driveBattleToEnd(room, 60);
     fx = room.toSeatView(0).fx;
     if (fx.lastSeq > 40) break;
@@ -246,21 +265,28 @@ function resolveSyncModals(room, seatHint, maxSteps) {
 // ===== 9) 연속 전투 — battleId가 매번 새로 발급되고, 새 전투 이후 이벤트에 옛 battleId가 다시 붙지 않는다 =====
 {
   const room = H.startedRoom(958);
+  // 서버 엔진 rand()는 기본 미시드(Math.random)라 첫 전투 길이가 매번 다르다. 길어지면 fx 유한 보관
+  // (engine.js FX_RETAIN=40)이 첫 battleStart를 밀어내 starts.length가 1이 된다(PR239 CI B 실패, 로컬 약 2.7%).
+  // 이 절은 battleId 단조성만 보므로 시드를 고정해 전투 길이를 결정적으로 만든다(고정 시 fx 32개 < 40).
+  both(room, (E) => { E.setSeed(12345); });
   startBattle(room);
+  /* #235: 시너지가 켜지면 첫 전투가 내는 fx 가 어느 시드에서든 유한 보관(engine.js FX_RETAIN=40)을 넘어
+     첫 battleStart 가 창 밖으로 밀린다. 그래서 첫 battleStart 는 **발급된 그 자리에서** 집어 둔다 —
+     이 절이 보는 것은 battleId 의 단조성이지 보관 창 크기가 아니므로 검사 강도는 그대로다. */
+  const start1 = room.toSeatView(0).fx.events.filter((e) => e.key === 'battleStart').pop();
+  ok(!!start1, '첫 initBattle 이 battleStart 를 발급했음');
   driveBattleToEnd(room, 60);
-  const before = room.toSeatView(0).fx;
   const T = room.engine;
   const remaining = T.S.pieces.filter((p) => p.alive && p.placed && p.type === 'minion');
   const byOwner = { 0: remaining.filter((p) => p.owner === 0), 1: remaining.filter((p) => p.owner === 1) };
   ok(byOwner[0].length && byOwner[1].length, '두 번째 전투를 시작할 살아있는 하수인이 양쪽에 남아 있음(픽스처 전제)');
-  both(room, (E) => { E.initBattle(byId(E, byOwner[0][0].id), byId(E, byOwner[1][0].id)); });
+  H.openBattle(room, { att: byOwner[0][0].id, def: byOwner[1][0].id });
   const afterStart = room.toSeatView(0).fx;
-  const starts = afterStart.events.filter((e) => e.key === 'battleStart');
-  ok(starts.length === 2, '두 번째 initBattle로 battleStart가 하나 더 생김: ' + starts.length);
-  ok(starts[1].battleId === starts[0].battleId + 1, '두 번째 battleId는 첫 번째보다 정확히 1 큼(룸 수명 동안 유일·단조): ' + JSON.stringify(starts.map((s) => s.battleId)));
-  const b2 = starts[1];
-  const leaking = afterStart.events.filter((e) => e.seq > b2.seq && e.battleId === starts[0].battleId);
-  ok(leaking.length === 0, '두 번째 battleStart 이후 이벤트에 첫 전투(battleId=' + starts[0].battleId + ')가 다시 붙지 않음');
+  const b2 = afterStart.events.filter((e) => e.key === 'battleStart').pop();
+  ok(!!b2 && b2.seq > start1.seq, '두 번째 initBattle 로 battleStart 가 하나 더 생김: ' + JSON.stringify([start1 && start1.seq, b2 && b2.seq]));
+  ok(!!b2 && b2.battleId === start1.battleId + 1, '두 번째 battleId는 첫 번째보다 정확히 1 큼(룸 수명 동안 유일·단조): ' + JSON.stringify([start1 && start1.battleId, b2 && b2.battleId]));
+  const leaking = afterStart.events.filter((e) => e.seq > b2.seq && e.battleId === start1.battleId);
+  ok(leaking.length === 0, '두 번째 battleStart 이후 이벤트에 첫 전투(battleId=' + start1.battleId + ')가 다시 붙지 않음');
 }
 
 // ===== 10) resultBanner — battle=null이 된 뒤에도 scene을 동봉해 "어느 무대에 마지막 타격을 그릴지" 알 수 있다 =====
@@ -288,7 +314,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
     a0.cap = { element: rd.element, hp: rd.hp, maxHp: rd.hp, atk: rd.atk, skillAtk: rd.skill, cd: 0, cdMax: rd.cd,
       skills: E.archSkills(rd.arch, rd.element), cds: [0, 0, 0, 0], revealedSkills: [], rosterId: rd.id, artRosterId: rd.id };
   });
-  both(room, (E) => { E.initBattle(byId(E, ally0.id), byId(E, king1.id)); });
+  H.openBattle(room, { att: ally0.id, def: king1.id });
   const v0Pre = room.toSeatView(0);
   ok(v0Pre.modal && v0Pre.modal.owner === 0 && v0Pre.modal.count === 2, '동료+포획 하수인 보유: 본체/대리 2지선다 모달(전제)');
   act(room, v0Pre.modal.owner, { t: 'modal', seq: v0Pre.modal.seq, i: 1 }); // "포획 하수인 … 출전" 선택
@@ -331,7 +357,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const hiddenOriginalId = hidden.id;
   const HIDDEN_ID_SENTINEL = 900000001; // 정상 게임에서 나올 수 없는 자리수 — hp/seq/round/cells와 값으로도 절대 겹치지 않음
   both(room, (E) => { const h = E.S.pieces.find((p) => p.id === hiddenOriginalId); if (h) h.id = HIDDEN_ID_SENTINEL; });
-  both(room, (E) => { E.initBattle(byId(E, myMinion.id), byId(E, fighter.id)); });
+  H.openBattle(room, { att: myMinion.id, def: fighter.id });
   driveBattleToEnd(room, 60);
   const v0 = room.toSeatView(0);
   const rawFx0 = JSON.stringify(v0.fx);
@@ -394,7 +420,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const bomb = T.S.pieces.find((p) => p.type === 'bomb' && p.owner === 0);
   const enemyMinion = T.S.pieces.find((p) => p.type === 'minion' && p.owner === 1);
   ok(!!bomb && !!enemyMinion, 'T14 전제: 좌석0 폭탄·좌석1 하수인 존재');
-  both(room, (E) => { E.initBattle(byId(E, bomb.id), byId(E, enemyMinion.id)); });
+  H.openBattle(room, { att: bomb.id, def: enemyMinion.id });
   const fx = room.toSeatView(0).fx;
   const explosions = fx.events.filter((e) => e.key === 'explosion');
   ok(explosions.length === 1, 'T14: 실제 폭탄 접촉 1회 = explosion 이벤트 정확히 1개(FX.log 경로와 cells 큐 경로가 중복 생성하지 않음): ' + explosions.length);
@@ -408,7 +434,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const trap = T.S.pieces.find((p) => p.type === 'trap' && p.owner === 0);
   const enemyMinion = T.S.pieces.find((p) => p.type === 'minion' && p.owner === 1);
   ok(!!trap && !!enemyMinion, 'T14 전제: 좌석0 함정·좌석1 하수인 존재');
-  both(room, (E) => { E.initBattle(byId(E, enemyMinion.id), byId(E, trap.id)); });
+  H.openBattle(room, { att: enemyMinion.id, def: trap.id });
   const fx = room.toSeatView(0).fx;
   const traps = fx.events.filter((e) => e.key === 'trapFx');
   ok(traps.length === 1, 'T14: 실제 함정 발동 1회 = trapFx 이벤트 정확히 1개(중복 없음): ' + traps.length);
@@ -432,7 +458,7 @@ function resolveSyncModals(room, seatHint, maxSteps) {
       if (p.owner === 1 && p.alive && p.placed && (p.type === 'minion' || p.type === 'ally') && p.id !== victim.id) p.alive = false;
     }
   });
-  both(room, (E) => { E.initBattle(byId(E, bomb.id), byId(E, victim.id)); });
+  H.openBattle(room, { att: bomb.id, def: victim.id });
   const fx = room.toSeatView(0).fx;
   const explosion = fx.events.find((e) => e.key === 'explosion');
   const result = fx.events.find((e) => e.key === 'resultBanner');
@@ -468,7 +494,14 @@ function resolveSyncModals(room, seatHint, maxSteps) {
 {
   const room = H.startedRoom(1874204);
   const cur = startBattle(room);
-  act(room, cur, { t: 'act', k: 0 });
+  // #241 CI B(PR240 1e29f44) 간헐 실패 — 이 절은 "반환값 변조가 내부 저장소를 오염시키지 않는다"만 보고 회피는
+  // 다루지 않는다. 첫 공격이 rand() 회피(기본 dodge·evadeBuff, 상한 40%)에 걸리면 엔진은 "회피했다!" msg만
+  // 내고 hp 필드를 싣지 않아 전제(hp가 실린 msg)가 없어지고 이후 hpEvt.fx 접근이 TypeError로 죽었다.
+  // T1(PR239)과 같은 방식으로 두 전투원의 dodge/evadeBuff를 0으로 고정해 회피 판정(rand()<0)을 항상 거짓으로
+  // 만든다 — 명중 시 damageFx에 hp가 항상 실린다. 피해량·치명타는 rand()에 그대로 맡기고 전제 단언은 유지한다.
+  both(room, (E) => { const B = E.S.battle; B.fa.dodge = 0; B.fa.evadeBuff = 0; B.fd.dodge = 0; B.fd.evadeBuff = 0; });
+  const r17 = act(room, cur, { t: 'act', k: 0 });
+  ok(r17.ok, 'T17 전제: 공격 행동 수락: ' + JSON.stringify(r17.reason));
   const v0 = room.toSeatView(cur);
   const hpEvt = v0.fx.events.find((e) => e.src === 'msg' && e.fx && e.fx.hp);
   ok(!!hpEvt, 'T17 전제: hp 표시가 실린 msg 이벤트 존재');
@@ -484,6 +517,73 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const v2 = room.handleCommand(cur, { t: 'resync' });
   const hpEvt3 = v2.data.fx.events.find((e) => e.seq === hpEvt.seq);
   ok(!!hpEvt3 && hpEvt3.fx.hp.val === origVal, 'T17: resync 응답도 변조 이전 값 그대로(resync 스토어까지 오염되지 않음)');
+}
+
+// ===== 18) #238 전설 정체 — 본체·대리 출전 모두 공개된 전설 종 키(L-DRAGON/L-WITCH/L-REAPER)가 기존 종 키 칸
+// (본체 rosterId · 대리 artRosterId)으로 battle.a/d 와 FX scene(battleStart·종료 뒤 resultBanner)에 같은 값으로 실린다.
+// 양 좌석(소유자·상대) 모두 같고, 원시 legend·grade·skills·cap 은 어느 쪽에도 없다. 값은 Core ecoKey 가 원본이다. =====
+{
+  const legends = H.createEngine().LEGEND_ROSTER.map((L) => ({ key: L.key, id: L.id }));
+  ok(JSON.stringify(legends.map((L) => L.id)) === '["L-DRAGON","L-WITCH","L-REAPER"]', 'T18 전제: 전설 3종 종 키: ' + JSON.stringify(legends));
+  // battle.a/d 의 skills 는 기존 은닉 목록(_skillsFor)이라 여기서는 새 원시 칸(legend·grade·cap)만 본다. scene 은 skills 까지 없어야 한다.
+  const noRaw = (s, label) => ok(!('legend' in s) && !('grade' in s) && !('cap' in s) && (!/scene/.test(label) || !('skills' in s)),
+    label + ' 원시 legend·grade·cap' + (/scene/.test(label) ? '·skills' : '') + ' 없음: ' + JSON.stringify(Object.keys(s)));
+  legends.forEach((L, i) => {
+    // (a) 본체 출전 — 보드 하수인 칸에 전설이 앉은 상태(상점 교체와 같은 모양: type minion · rosterId null · legend 키)
+    {
+      const room = H.startedRoom(1823800 + i);
+      const T = room.engine;
+      const cur = T.S.current;
+      const pair = battlePair(T, cur);
+      both(room, (E) => { E.applyLegend(byId(E, pair.att), L.key); });
+      ok(byId(T, pair.att).rosterId === null && T.ecoKey(byId(T, pair.att)) === L.id, 'T18 ' + L.id + ' 본체 전제: rosterId null · ecoKey=' + L.id);
+      H.openBattle(room, pair);
+      for (const seat of [cur, 1 - cur]) {
+        const v = room.toSeatView(seat);
+        ok(!!v.battle && v.battle.a.bodyFight === true && v.battle.a.rosterId === L.id && v.battle.a.artRosterId === null,
+          'T18 ' + L.id + ' 본체 battle.a (좌석 ' + seat + (seat === cur ? ' 소유자' : ' 상대') + ') rosterId=' + (v.battle && v.battle.a.rosterId));
+        noRaw(v.battle.a, 'T18 ' + L.id + ' 본체 battle.a 좌석 ' + seat);
+        const bs = v.fx.events.find((e) => e.key === 'battleStart');
+        ok(!!bs && bs.scene.a.rosterId === L.id && bs.scene.a.artRosterId === null && bs.scene.a.bodyFight === true,
+          'T18 ' + L.id + ' 본체 battleStart scene.a 좌석 ' + seat + ': ' + JSON.stringify(bs && bs.scene.a));
+        ok(bs.scene.d.rosterId === v.battle.d.rosterId, 'T18 ' + L.id + ' 상대 측 일반 하수인 정체는 battle.d 와 같은 값 그대로');
+        noRaw(bs.scene.a, 'T18 ' + L.id + ' 본체 scene.a 좌석 ' + seat);
+      }
+      driveBattleToEnd(room);
+      for (const seat of [0, 1]) {
+        const v = room.toSeatView(seat);
+        const rb = v.fx.events.filter((e) => e.key === 'resultBanner');
+        ok(v.battle === null && rb.length === 1 && rb[0].scene && rb[0].scene.a.rosterId === L.id,
+          'T18 ' + L.id + ' 종료 뒤(battle=null) resultBanner scene 도 같은 전설 정체 유지 좌석 ' + seat + ': ' + JSON.stringify(rb[0] && rb[0].scene && rb[0].scene.a));
+        for (const e of v.fx.events) assertEventShape(e, 'T18 ' + L.id + ' 본체');
+        ok(!/"legend"/.test(JSON.stringify(v.fx)) && !/"grade"/.test(JSON.stringify(v.fx)), 'T18 ' + L.id + ' fx 전체에 legend·grade 키 없음 좌석 ' + seat);
+      }
+    }
+    // (b) 대리 출전 — 동료의 포획 슬롯(cap)에 전설(artRosterId 없음). T11 과 같은 모달 경로로 대리 출전을 고른다.
+    {
+      const room = H.startedRoom(1823810 + i);
+      const T = room.engine;
+      const ally0 = T.S.pieces.find((p) => p.owner === 0 && p.type === 'ally');
+      const king1 = T.S.pieces.find((p) => p.owner === 1 && p.type === 'king');
+      both(room, (E) => { byId(E, ally0.id).cap = E.applyLegend({ cd: 0 }, L.key); });
+      H.openBattle(room, { att: ally0.id, def: king1.id });
+      const pre = room.toSeatView(0);
+      ok(pre.modal && pre.modal.owner === 0 && pre.modal.count === 2, 'T18 ' + L.id + ' 대리 전제: 본체/대리 2지선다 모달');
+      act(room, pre.modal.owner, { t: 'modal', seq: pre.modal.seq, i: 1 });
+      resolveSyncModals(room, 0);
+      for (const seat of [0, 1]) {
+        const v = room.toSeatView(seat);
+        ok(!!v.battle && v.battle.a.bodyFight === false && v.battle.a.type === 'ally' && v.battle.a.artRosterId === L.id && v.battle.a.rosterId === null,
+          'T18 ' + L.id + ' 대리 battle.a (좌석 ' + seat + (seat === 0 ? ' 소유자' : ' 상대') + ') artRosterId=' + (v.battle && v.battle.a.artRosterId));
+        noRaw(v.battle.a, 'T18 ' + L.id + ' 대리 battle.a 좌석 ' + seat);
+        const bs = v.fx.events.find((e) => e.key === 'battleStart');
+        ok(!!bs && bs.scene.a.artRosterId === L.id && bs.scene.a.rosterId === null && bs.scene.a.bodyFight === false,
+          'T18 ' + L.id + ' 대리 battleStart scene.a 좌석 ' + seat + ': ' + JSON.stringify(bs && bs.scene.a));
+        noRaw(bs.scene.a, 'T18 ' + L.id + ' 대리 scene.a 좌석 ' + seat);
+        for (const e of v.fx.events) assertEventShape(e, 'T18 ' + L.id + ' 대리');
+      }
+    }
+  });
 }
 
 process.exit(done());

@@ -33,6 +33,8 @@ function setup(T,mode){ // 인간(0) 하수인 12,4 · 상대 말 3개(왕 2,4 �
   const me=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), king0=T.S.pieces.find(x=>x.owner===0&&x.type==="king");
   const ek=T.S.pieces.find(x=>x.owner===1&&x.type==="king"), eb=T.S.pieces.find(x=>x.owner===1&&x.type==="bomb"), em=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
   H.place(T,me,12,4); H.place(T,king0,13,1); H.place(T,ek,2,4); H.place(T,eb,5,7); H.place(T,em,11,4);
+  /* #234: 30종 중 보호형·땅 10종은 전용 아트가 없어(이모지 폴백) 공개 시 종 아이콘 계약(B2)의 전제가 되지 않는다 — 무작위로 그런 종이 뽑히면 아트가 있는 종으로 바꿔 둔다 */
+  for(const m of [me,em]) if(!T.artDirOf(m)) T.applySpecies(m,T.ROSTER.find(r=>r.id==="M-G3"),1);
   for(const x of [ek,eb,em]) x.revealed=false;
   T.S.selected=null; T.render();
   return {me,king0,ek,eb,em};
@@ -331,7 +333,7 @@ block("D6~D10 오래된 콜백 블록",()=>{
   ok(!T2.els.overlay.classList.contains("hidden")&&T2.byId("overlayBox").innerHTML===ovHtml&&JSON.stringify(T2.S.memos)===memosBefore&&!!T2.S.battle,
     "D8b 오래된 저장·삭제·닫기 콜백은 전투 모달을 닫거나 덮지 않고 메모도 바꾸지 않는다");
   T2.drain(2000); const blog0=T2.S.battle.blog.length, hp0=T2.S.battle.fd.hp;
-  T2.recv({t:"a",a:{t:"act",k:"basic"}}); T2.netPump(); T2.drain(3000); T2.netPump(); T2.drain(3000);
+  T2.recv({t:"a",a:{t:"act",k:"basic",bf:T2.battleActionFrame(T2.S)}}); T2.netPump(); T2.drain(3000); T2.netPump(); T2.drain(3000); // #245: 회선을 타는 전투 어휘는 보낸 쪽이 겨냥한 문맥(bf)을 싣는다
   ok(T2.NET.queue.length===0&&!!T2.S.battle&&T2.S.battle.blog.length>blog0&&(T2.S.battle.fd.hp<hp0||T2.S.battle.round>1),"D8c 이후 상대의 전투 행동이 대기 큐를 통해 정상 재생된다 (메모가 진행을 막지 않음)");
   // (d) 동기화 모달(상대 선택 대기)이 피커를 대체 — 오래된 콜백이 syncModal 을 지우거나 대기 화면을 닫지 않는다
   const T3=solo(true); const t3=enemyOf(T3,x=>x.type==="minion"&&!x.revealed);

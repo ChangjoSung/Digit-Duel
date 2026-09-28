@@ -8,6 +8,7 @@
 
 | 버전 | Milestone | 범위 | 파일 | 인덱스 |
 |---|---|---|---|---|
+| v0.4.11 | [Milestone 15](https://github.com/ChangjoSung/Digit-Duel/milestone/15) | HTML 책임 분리·공용 Core·정적 계약 — #245 (개발 중) | 진행 중 | [#245 구조 전환 문서](v0.4.11/issues/245/Mercury/migration-rollback.md) |
 | v0.4.3 | [Milestone 7](https://github.com/ChangjoSung/Digit-Duel/milestone/7) | 하수인 아트·말판 아이콘 — #81 #83 #87 #89 | 125 (md 19) | [v0.4.3](v0.4.3/README.md) |
 | v0.4.4 | [Milestone 10](https://github.com/ChangjoSung/Digit-Duel/milestone/10) | 전투 변수·온라인 시점·턴 흐름 — #91~#96 #104~#106 | 144 (md 47) | [v0.4.4](v0.4.4/README.md) |
 | v0.4.5 | [Milestone 11](https://github.com/ChangjoSung/Digit-Duel/milestone/11) | 턴 행동 정리·문서·튜토리얼 갱신 — #114 | 37 (md 7) | [v0.4.5](v0.4.5/README.md) |

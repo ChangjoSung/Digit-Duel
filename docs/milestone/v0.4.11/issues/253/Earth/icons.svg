@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="288" height="24" viewBox="0 0 288 24">
+ <title>Help, detail, history, back, close, resign, timer, refresh, currency, lock, complete, indeterminate</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0.</metadata>
+ <g fill="none" stroke="#e8ecf5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="9"/><path d="M9 8A3 3 0 0 1 15 9C15 11 12 11 12 13M12 17h0"/>
+  <g transform="translate(24)"><circle cx="12" cy="8" r="4"/><path d="M4 21V19A8 8 0 0 1 20 19V21Z"/></g>
+  <g transform="translate(48)"><path d="M6 3H20V19H6A3 3 0 0 1 3 16V6A3 3 0 0 1 6 3ZM6 3V19M9 8H16M9 12H16M6 19V21H20"/></g>
+  <g transform="translate(72)"><path d="M11 5L4 12L11 19M4 12H21"/></g>
+  <g transform="translate(96)"><path d="M5 5L19 19M19 5L5 19"/></g>
+  <g transform="translate(120)"><path d="M5 21V3M5 4H20L16 8L20 12H5"/></g>
+  <g transform="translate(144)"><circle cx="12" cy="14" r="7"/><path d="M12 7V3M9 3H15M18 7L20 5M12 10V14L15 16"/></g>
+  <g transform="translate(168)"><path d="M19 9A8 8 0 0 0 5 6L3 9M3 4V9H8M5 15A8 8 0 0 0 19 18L21 15M16 15H21V20"/></g>
+  <g transform="translate(192)"><circle cx="12" cy="12" r="9"/><path d="M12 6L16 12L12 18L8 12Z"/></g>
+  <g transform="translate(216)"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7A4 4 0 0 1 16 7V10M12 14V17"/></g>
+  <g transform="translate(240)"><path d="M4 12L9 17L20 6"/></g>
+  <g transform="translate(264)"><path d="M19 7A9 9 0 1 0 21 14"/></g>
+ </g>
+</svg>

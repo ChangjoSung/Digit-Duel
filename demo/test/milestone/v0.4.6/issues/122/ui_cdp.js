@@ -95,10 +95,10 @@ async function openTab(cdp,url,vp,reduceMotion){
 /* #122 HP 판 스트레스 — 보호막 + 상태 이상 7종을 전부 켜 상태줄을 가장 길게 만든 전투 화면.
    좁은 폭에서 HP 판이 서로·전투원 도트·무대 밖과 겹치지 않는지 실측한다 (Saturn 요청). */
 const BATTLE_STRESS=`(()=>{
-  fxReleaseAll(); close(); S.battle=null;
+  fxReleaseAll(); closeModal(); S.battle=null;
   startMode("pve",{aiLevel:"grade5"}); setSeed(2026);
   fillRosterRandom(0); fillRosterRandom(1); aiAutoPlace(0); aiAutoPlace(1); beginPlay();
-  fxReleaseAll(); close();
+  fxReleaseAll(); closeModal();
   const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive);
   const em=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive);
   S.current=0; S.mainUsed=false; S.battlesUsed=0;
@@ -174,7 +174,7 @@ const BUSH_FIXTURE_FULL=`(()=>{
       const cs=e=>e?getComputedStyle(e):null;
       const mc=chip(9,4), fc=chip(9,5), hc=chip(10,1);
       const k=S.pieces.find(x=>x.owner===0&&x.type==="king"); k.r=13; k.c=1; k.placed=true;
-      fxReleaseAll(); close();   // 핫시트 교대 모달·개시 연출을 걷어 화면이 가려지지 않은 상태에서 촬영·측정한다
+      fxReleaseAll(); closeModal();   // 핫시트 교대 모달·개시 연출을 걷어 화면이 가려지지 않은 상태에서 촬영·측정한다
       render();  // 모든 배치를 끝낸 뒤 한 번만 그리고, 그 다음 **살아 있는 노드**에서만 계산값을 읽는다
       const mc2=chip(9,4), fc2=chip(9,5), plain=chip(13,1);
       const icoOp=e=>{ const i=e&&e.querySelector(".icon,.face"); return i?getComputedStyle(i).opacity:null; };
@@ -411,10 +411,10 @@ const LAYOUT_EXPR=`(()=>{
 
     /* ── 실제 finishByCapture 종점: 상대 동료·하수인이 살아 있어 경기는 계속된다 ───────── */
     await T.ev(`(()=>{
-      fxReleaseAll(); close(); S.battle=null;
+      fxReleaseAll(); closeModal(); S.battle=null;
       startMode("pve",{aiLevel:"grade5"}); setSeed(777);
       fillRosterRandom(0); fillRosterRandom(1); aiAutoPlace(0); aiAutoPlace(1); beginPlay();
-      fxReleaseAll(); close();
+      fxReleaseAll(); closeModal();
       S.matchFxDone=false; FX.log.length=0;
       const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive);
       const em=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive);
@@ -445,14 +445,14 @@ const LAYOUT_EXPR=`(()=>{
     ok(capEnd.banners===1&&/포획 성공/.test(capEnd.bannerTitle||""),`C16k 결과 배너 정확히 1회·포획 문구 (${capEnd.banners}회 "${capEnd.bannerTitle}")`);
     ok(capEnd.cls.split(" ").indexOf("cap")>=0&&capEnd.cls.split(" ").indexOf("win")<0,"C16l 실제 종점의 배너 클래스가 포획 갈래 ("+capEnd.cls+")");
     ok(capEnd.reserve===true,"C16m 포획 결과(예비 하수인)는 종전 규칙 그대로");
-    await T.ev(`fxReleaseAll(); close();`); await sleep(100);
+    await T.ev(`fxReleaseAll(); closeModal();`); await sleep(100);
 
     /* ── 포획 비소유자(피포획자) 시점: 같은 포획 갈래이고 패배 균열·낙하가 없다 ─────── */
     await T.ev(`(()=>{
-      fxReleaseAll(); close(); S.battle=null;
+      fxReleaseAll(); closeModal(); S.battle=null;
       startMode("pve",{aiLevel:"grade5"}); setSeed(4242);
       fillRosterRandom(0); fillRosterRandom(1); aiAutoPlace(0); aiAutoPlace(1); beginPlay();
-      fxReleaseAll(); close(); S.matchFxDone=false; FX.log.length=0;
+      fxReleaseAll(); closeModal(); S.matchFxDone=false; FX.log.length=0;
       const me=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive);
       const em=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive);
       S.current=0; S.mainUsed=false; S.battlesUsed=0;
@@ -475,11 +475,11 @@ const LAYOUT_EXPR=`(()=>{
     ok(capNotInfo.phase==="play"&&capNotInfo.matchFxDone===false&&capNotInfo.reserve===true,"C16r 승자·소유자 의미 보존 (상대 예비 슬롯으로 승계 · 경기 계속)");
     ok(capNotInfo.titleColor!==capTitleColor,"C16s 포획자 시점과 색으로 구분된다");
     await sleep(420); await T.shot("122-15-fx-capture-notowner-390.png"); // 같은 이유로 420ms 뒤
-    await T.ev(`fxReleaseAll(); close();`); await sleep(100);
+    await T.ev(`fxReleaseAll(); closeModal();`); await sleep(100);
 
     /* 경기 종료 — 배너가 정확히 1회, 그리고 결과 화면으로 이어진다 */
     const matchOnce=await T.ev(`(()=>{
-      fxReleaseAll(); S.battle=null; close(); S.matchFxDone=false; // 제품의 전투 종료 경로가 하는 것과 같이 전투 모달을 먼저 닫는다
+      fxReleaseAll(); S.battle=null; closeModal(); S.matchFxDone=false; // 제품의 전투 종료 경로가 하는 것과 같이 전투 모달을 먼저 닫는다
       const seen=[]; const origPlay=fxPlay;
       window.__seen=seen;
       const k=S.pieces.find(x=>x.owner===1&&x.type==="king");
@@ -568,12 +568,12 @@ const LAYOUT_EXPR=`(()=>{
       const bodyTok=(document.getElementById("tok-A")||{}).outerHTML||"";
       // 대리 출전: 왕이 포획 하수인을 앞세우면 그 하수인 아트가 나와야 한다 (왕 아트로 바뀌지 않는다)
       const rd=ROSTER.find(r=>r.element==="water"&&r.arch==="std");
-      S.battle=null; close();
+      S.battle=null; closeModal();
       k.cap={element:"water",hp:100,maxHp:100,atk:20,skillAtk:30,cd:0,cdMax:2,skills:archSkills("std","water"),cds:[0,0,0,0],revealedSkills:[],artRosterId:rd.id};
       fxReleaseAll(); S.current=0; S.mainUsed=false; S.battlesUsed=0;
       startRounds(k,em,k.cap,em);
       const capTok=(document.getElementById("tok-A")||{}).outerHTML||"";
-      S.battle=null; close(); k.cap=null;
+      S.battle=null; closeModal(); k.cap=null;
       return {bodyTok,capTok};
     })()`);
     rec("leaderTok",{body:ltok.bodyTok.slice(0,150),cap:ltok.capTok.slice(0,150)});
@@ -704,7 +704,7 @@ const LAYOUT_EXPR=`(()=>{
       await sleep(230); await V.shot(`122-08-fx-win-peak-${vp.name}.png`);
       await V.ev(`(()=>{ fxReleaseAll(); fxPlay({key:"resultBanner",kind:"result",cls:"lose",title:"전투에서 패배,,,",sub:""}); return 1; })()`);
       await sleep(230); await V.shot(`122-09-fx-lose-peak-${vp.name}.png`);
-      await V.ev(`(()=>{ fxReleaseAll(); close(); S.battle=null; S.matchFxDone=false; gameOver(0,"king"); render(); return 1; })()`);
+      await V.ev(`(()=>{ fxReleaseAll(); closeModal(); S.battle=null; S.matchFxDone=false; gameOver(0,"king"); render(); return 1; })()`);
       await sleep(2700); await V.shot(`122-10-result-${vp.name}.png`);
       /* 수풀 양측 표시도 같은 폭에서 한 장 남긴다 (CJ 추가 피드백 증빙 — 판정은 390 절이 이미 했다) */
       await V.ev(BUSH_FIXTURE); await sleep(250);

@@ -61,7 +61,8 @@ function mkEl(doc){const el={ownerDocument:doc||null,_html:"",textContent:"",sty
     if(!(opt&&opt.preventScroll)){ for(let a=this.parentNode;a;a=a.parentNode) if(a.scrollHeight>a.clientHeight) a.scrollTop=a.scrollHeight-a.clientHeight; }
     const d=this.ownerDocument; if(d) d.activeElement=this;},
   blur(){const d=this.ownerDocument; if(d&&d.activeElement===this) d.activeElement=d.body;}};
-  el.classList={add(c){el._cls.add(c);},remove(c){el._cls.delete(c);},contains(c){return el._cls.has(c);}};
+  el.classList={add(...cs){for(const c of cs) el._cls.add(c);},remove(...cs){for(const c of cs) el._cls.delete(c);},contains(c){return el._cls.has(c);}}; // #238 실제 DOM 처럼 여러 개
+  el.style.setProperty=function(k,v){this[k]=v;};
   return el;}
 
 const DEFAULT_HREF="file:///C:/Digit-Duel/demo/index.html"; // #54: 기본 실행 경로 = html 파일 직접 열기(file:)
@@ -150,12 +151,39 @@ const PERSIST_API=[/\blocalStorage\b/,/\bsessionStorage\b/,/\bindexedDB\b/,/\bop
   /\bcaches\b/,/navigator\s*\.\s*storage/,/\bXMLHttpRequest\b/,/\bfetch\s*\(/,/\bsendBeacon\b/,/\bBroadcastChannel\b/];
 function persistApiHits(src){ return PERSIST_API.filter(re=>re.test(String(src))).map(re=>re.source); }
 
+function localAsset(htmlPath,ref){
+  const clean=String(ref).split(/[?#]/,1)[0];
+  if(!clean||/^(?:[a-z]+:|\/|\\)/i.test(clean)) throw new Error("external asset is not local: "+ref);
+  const root=path.dirname(path.resolve(htmlPath));
+  const file=path.resolve(root,clean);
+  if(file!==root&&!file.startsWith(root+path.sep)) throw new Error("external asset escapes demo root: "+ref);
+  return fs.readFileSync(file,"utf8");
+}
+function inlineAssets(source,htmlPath){
+  let html=String(source).replace(/<link\b([^>]*)>/gi,(tag,attrs)=>{
+    const rel=/\brel\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    if(!rel||rel[2].toLowerCase()!=="stylesheet") return tag;
+    const href=/\bhref\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    if(!href) return tag;
+    return "<style>"+localAsset(htmlPath,href[2])+"</style>";
+  });
+  const scripts=[];
+  const marker="<!-- harness-script -->";
+  html=html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi,(tag,attrs,body)=>{
+    const src=/\bsrc\s*=\s*(["'])(.*?)\1/i.exec(attrs);
+    scripts.push(src?localAsset(htmlPath,src[2]):body);
+    return scripts.length===1?marker:"";
+  });
+  if(!scripts.length) throw new Error("script block not found");
+  const script=scripts.join("\n");
+  return {html:html.replace(marker,"<script>"+script+"</script>"),script};
+}
+
 function load(htmlPath,opts){
   opts=opts||{};
   htmlPath=htmlPath||path.join(__dirname,"..","..","index.html");
-  const html=opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"); // #94·#96 opts.html: 파일을 쓰지 않고 메모리 HTML을 로드 — #94 변이본 음성 대조, #96 git show 기준판 before/after 대조용
-  const m=html.match(/<script>([\s\S]*)<\/script>/);
-  if(!m) throw new Error("script block not found");
+  const loaded=inlineAssets(opts.html!==undefined?String(opts.html):fs.readFileSync(htmlPath,"utf8"),htmlPath); // #94·#96 메모리 HTML과 #245 외부 정적 파일을 같은 실행 소스로 정규화
+  const html=loaded.html;
   const els={};
   const cookieWrites=[];
   // doc를 먼저 만들고 모든 요소를 mkEl(doc)로 생성한다 — 포커스는 이 로드의 문서에만 기록된다
@@ -225,10 +253,44 @@ function load(htmlPath,opts){
   if(opts.realTimers){ global.setTimeout=setTimeout; global.setInterval=setInterval; global.clearInterval=clearInterval; }
   else { global.setTimeout=ownSetTimeout; global.setInterval=()=>0; global.clearInterval=()=>{}; } // #41: 헤드리스에서는 무동작 (프로세스가 안 끝나던 회귀 방지)
   const drain=(cap)=>{cap=cap||5000000; let n=0; while(TQ.length&&n<cap){TQ.shift()();n++;} return n;};
-  const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win};
+  /* #259 계정 확인(fetch /api/auth/session) — opts.fetch 가 없으면 "DB 없는 서버"(503 E_ACCOUNTS_DISABLED)로 답한다.
+     Node 전역 fetch 는 상대 주소를 거부하고, 제품은 그 실패를 계정 장애로 닫으므로(입장 차단) 기존 http 회귀가 쓸 수 없다. */
+  const fetchFn=opts.fetch||(async()=>({status:503,json:async()=>({error:"E_ACCOUNTS_DISABLED"})}));
+  const __ENV={document:doc,location:loc,WebSocket:WebSocketCtor,localStorage:storage,sessionStorage,indexedDB,window:win,fetch:fetchFn};
   /* 렉시컬 캡처 — 이 줄은 제품 코드 1행과 같은 줄에 이어 붙지 않도록 개행 없이 앞에 둔다 (에러 행 번호 보존) */
-  const code=`const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window}=__ENV;`+m[1]+`
+  const code=`"use strict";const {document,location,WebSocket,localStorage,sessionStorage,indexedDB,window,fetch}=__ENV;`+loaded.script+`
 ;global.__T={get S(){return S;},set S(v){S=v;},BAL,ROSTER,SKILLS,ELEMS,BEATS,PLAYER_METRIC_KEYS,AI_LEVEL_KO,
+  /* #233 (GDD-23 3-4장) 8스탯 전투 엔진 계약 — 기준판 로드 호환을 위해 typeof 가드를 둔다(부재 시 undefined) */
+  ARCHETYPE_BASE:typeof ARCHETYPE_BASE!=="undefined"?ARCHETYPE_BASE:undefined, KING_BASE:typeof KING_BASE!=="undefined"?KING_BASE:undefined,
+  ALLY_BASE:typeof ALLY_BASE!=="undefined"?ALLY_BASE:undefined, LEGEND_BASE:typeof LEGEND_BASE!=="undefined"?LEGEND_BASE:undefined,
+  gradeHp:typeof gradeHp==="function"?gradeHp:undefined, gradeAtk:typeof gradeAtk==="function"?gradeAtk:undefined,
+  applyArchStats:typeof applyArchStats==="function"?applyArchStats:undefined, applyFixedStats:typeof applyFixedStats==="function"?applyFixedStats:undefined,
+  shieldAdd:typeof shieldAdd==="function"?shieldAdd:undefined, shieldConsume:typeof shieldConsume==="function"?shieldConsume:undefined, shieldClearAll:typeof shieldClearAll==="function"?shieldClearAll:undefined,
+  resolveHit:typeof resolveHit==="function"?resolveHit:undefined, resolveReflect:typeof resolveReflect==="function"?resolveReflect:undefined,
+  resolveCounter:typeof resolveCounter==="function"?resolveCounter:undefined, instaKill:typeof instaKill==="function"?instaKill:undefined,
+  scheduleDelayed:typeof scheduleDelayed==="function"?scheduleDelayed:undefined, tickDelayed:typeof tickDelayed==="function"?tickDelayed:undefined,
+  resolveTyped:typeof resolveTyped==="function"?resolveTyped:undefined, // 4.3 타입별 피해 공통 진입점(연쇄 금지 chainLock 포함)
+  applyTimedFx:typeof applyTimedFx==="function"?applyTimedFx:undefined, // 5.6 중첩·재부여·지속
+  applyCrack:typeof applyCrack==="function"?applyCrack:undefined, applyHarden:typeof applyHarden==="function"?applyHarden:undefined,
+  applyEvadeBuff:typeof applyEvadeBuff==="function"?applyEvadeBuff:undefined, applyDmgUpBuff:typeof applyDmgUpBuff==="function"?applyDmgUpBuff:undefined,
+  decideFirstSide:typeof decideFirstSide==="function"?decideFirstSide:undefined, // 4.4 선턴 확정
+  fighterOrderCat:typeof fighterOrderCat==="function"?fighterOrderCat:undefined, // 4.4 순서 효과 분류(0=선턴 1=기본 2=후턴)
+  finishBattle:typeof finishBattle==="function"?finishBattle:undefined, // 4.6 전투 종료 경로(HP만 유지 검증용)
+  /* #234 (GDD-23 6장) 로스터·스킬 계약 — 기준판 로드 호환 typeof 가드 */
+  V2_INTERP:typeof V2_INTERP!=="undefined"?V2_INTERP:undefined, V2_SPECIES:typeof V2_SPECIES!=="undefined"?V2_SPECIES:undefined, V2_SPECIES_DEF:typeof V2_SPECIES_DEF!=="undefined"?V2_SPECIES_DEF:undefined, V2_SKELETON:typeof V2_SKELETON!=="undefined"?V2_SKELETON:undefined, V2_ELEM_ORDER:typeof V2_ELEM_ORDER!=="undefined"?V2_ELEM_ORDER:undefined, V2_ELEM_FX:typeof V2_ELEM_FX!=="undefined"?V2_ELEM_FX:undefined, V2_KINGDOM_STAGE2:typeof V2_KINGDOM_STAGE2!=="undefined"?V2_KINGDOM_STAGE2:undefined,
+  /* #235 시너지 — 왕국·아키타입·전설 패시브 표와 Core 집계·선택자 (기준판 로드 호환: 부재 시 undefined) */
+  V2_KINGDOM_STEPS:typeof V2_KINGDOM_STEPS!=="undefined"?V2_KINGDOM_STEPS:undefined, V2_KINGDOM_STAGES:typeof V2_KINGDOM_STAGES!=="undefined"?V2_KINGDOM_STAGES:undefined,
+  V2_ARCH_STEPS:typeof V2_ARCH_STEPS!=="undefined"?V2_ARCH_STEPS:undefined, V2_ARCH_SYN:typeof V2_ARCH_SYN!=="undefined"?V2_ARCH_SYN:undefined,
+  V2_LEGEND_SYN:typeof V2_LEGEND_SYN!=="undefined"?V2_LEGEND_SYN:undefined,
+  v2KingdomEffectOf:typeof v2KingdomEffectOf==="function"?v2KingdomEffectOf:undefined, effAtk:typeof effAtk==="function"?effAtk:undefined,
+  synCount:typeof synCount==="function"?synCount:undefined, synKingdomStage:typeof synKingdomStage==="function"?synKingdomStage:undefined,
+  synArchBonus:typeof synArchBonus==="function"?synArchBonus:undefined,
+  synElemKinds:typeof synElemKinds==="function"?synElemKinds:undefined, synDragonEl:typeof synDragonEl==="function"?synDragonEl:undefined,
+  synView:typeof synView==="function"?synView:undefined, LEGEND_ROSTER:typeof LEGEND_ROSTER!=="undefined"?LEGEND_ROSTER:undefined, V2_FX:typeof V2_FX!=="undefined"?V2_FX:undefined,
+  speciesSkills:typeof speciesSkills==="function"?speciesSkills:undefined, applySpecies:typeof applySpecies==="function"?applySpecies:undefined, applyLegend:typeof applyLegend==="function"?applyLegend:undefined, leaderSkillIds:typeof leaderSkillIds==="function"?leaderSkillIds:undefined, syncLeaderSkills:typeof syncLeaderSkills==="function"?syncLeaderSkills:undefined, syncOwnerLeaders:typeof syncOwnerLeaders==="function"?syncOwnerLeaders:undefined, leaderDefaultElement:typeof leaderDefaultElement==="function"?leaderDefaultElement:undefined, assignLeaderElements:typeof assignLeaderElements==="function"?assignLeaderElements:undefined, execV2:typeof execV2==="function"?execV2:undefined, v2Apply:typeof v2Apply==="function"?v2Apply:undefined, v2Heal:typeof v2Heal==="function"?v2Heal:undefined, v2CdUpTarget:typeof v2CdUpTarget==="function"?v2CdUpTarget:undefined, v2ReqOk:typeof v2ReqOk==="function"?v2ReqOk:undefined, v2RoundStart:typeof v2RoundStart==="function"?v2RoundStart:undefined, effSpd:typeof effSpd==="function"?effSpd:undefined, resetV2:typeof resetV2==="function"?resetV2:undefined, aiV2SupportScore:typeof aiV2SupportScore==="function"?aiV2SupportScore:undefined, aiPickRoster:typeof aiPickRoster==="function"?aiPickRoster:undefined,
+  /* #241 스킬 정리 — 회피율 감소 · 해일 예고 · 거울 수면 · AI 예정 선턴 (기준판 로드 호환: 부재 시 undefined) */
+  effEvade:typeof effEvade==="function"?effEvade:undefined, v2TideCheck:typeof v2TideCheck==="function"?v2TideCheck:undefined, v2PeekStatus:typeof v2PeekStatus==="function"?v2PeekStatus:undefined,
+  aiScheduledLead:typeof aiScheduledLead==="function"?aiScheduledLead:undefined, aiV2DmgAdj:typeof aiV2DmgAdj==="function"?aiV2DmgAdj:undefined,
   EVENT_POOL:typeof EVENT_POOL!=="undefined"?EVENT_POOL:undefined, // v0.4.6 이하 기준판 호환 (v0.4.7 에서 EVENT_KINDS 로 대체)
   EVENT_KINDS:typeof EVENT_KINDS!=="undefined"?EVENT_KINDS:undefined, EVENT_KO:typeof EVENT_KO!=="undefined"?EVENT_KO:undefined, // #121 계약 1.1
   ITEMS:typeof ITEMS!=="undefined"?ITEMS:undefined,
@@ -239,10 +301,10 @@ function load(htmlPath,opts){
   witchApply:typeof witchApply==="function"?witchApply:undefined, reaperWhy:typeof reaperWhy==="function"?reaperWhy:undefined,
   slotUsable:typeof slotUsable==="function"?slotUsable:undefined, battleMaxRounds:typeof battleMaxRounds==="function"?battleMaxRounds:undefined,
   resetAfter:typeof resetAfter==="function"?resetAfter:undefined, resetBattleTemps:typeof resetBattleTemps==="function"?resetBattleTemps:undefined, // #121 계약 3.1 전투 종료 정리 검증용
-  recruitState:typeof recruitState==="function"?recruitState:undefined, searchFinalize:typeof searchFinalize==="function"?searchFinalize:undefined, // #121 계약 4·6 · #129 계약 7
+  recruitState:typeof recruitState==="function"?recruitState:undefined, searchFinalizeFx:typeof searchFinalizeFx==="function"?searchFinalizeFx:undefined, // #121 계약 4·6 · #129 계약 7 (#245: 상태는 reducer, 이 이름은 표시 전용)
   searchEndCheck:typeof searchEndCheck==="function"?searchEndCheck:undefined, rosterMinions:typeof rosterMinions==="function"?rosterMinions:undefined,
   capReceivers:typeof capReceivers==="function"?capReceivers:undefined,
-  get __openPkgCore(){return window.__openPkgCore;}, get __pkgPickCore(){return window.__pkgPickCore;}, // #121 전투 중 패키지 (battleModal 클로저 — 매 렌더 교체되므로 getter)
+  get __openPkgCore(){return window.__openPkgCore;}, get __pkgPickCore(){return window.__pkgPickCore;}, get __pkgCancelCore(){return window.__pkgCancelCore;}, // #245 취소도 Core 경계 // #121 전투 중 패키지 (battleModal 클로저 — 매 렌더 교체되므로 getter)
   get __recruitCore(){return window.__recruitCore;},
   get __openPkg(){return window.__openPkg;}, get __act(){return window.__act;}, get __useItem(){return window.__useItem;}, // netAction 래퍼 (온라인 송신 경로 검증용)
   get __useItemCore(){return window.__useItemCore;}, get __throwBallCore(){return window.__throwBallCore;}, // 전투 모달 클로저 — 매 렌더 교체되므로 getter
@@ -258,11 +320,17 @@ function load(htmlPath,opts){
   finishByCapture,tryCapture,afterBattle,vipChoice,mkPiece,adjEnemies,archOf,archSkills,isBurning,beginPlay,
   aiMain,aiMainStrong,aiStep,aiVisible,aiThreatOf,aiStaticRisk,aiSeenMoved,aiLevelOf,aiBattleEV,aiEvalPos,aiEvalBattles,aiEvalBattlesStrong,aiUnitValue,
   aiBattleAction,aiBattleActionStrong,aiProf,observeMove,met,metricsSnapshot,setSeed,rand,gameOver,doPush,judge,execSlot,nextPhase,
-  applyAction,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼
+  applyAction,resolveCoreAction:typeof resolveCoreAction==="function"?resolveCoreAction:undefined,reduceCoreAction:typeof reduceCoreAction==="function"?reduceCoreAction:undefined,dispatchCoreAction:typeof dispatchCoreAction==="function"?dispatchCoreAction:undefined,commitCoreState:typeof commitCoreState==="function"?commitCoreState:undefined,
+  /* #245 Saturn REVISE(M3): 규칙 이벤트의 소유자(Core)와 그 소비 루프 — 화면 없이 규칙 진행을 검증하는 경로 */
+  applyCoreEffects:typeof applyCoreEffects==="function"?applyCoreEffects:undefined,runCoreEvents:typeof runCoreEvents==="function"?runCoreEvents:undefined,
+  emitCore:typeof emitCore==="function"?emitCore:undefined,UI_PORT:typeof UI_PORT!=="undefined"?UI_PORT:undefined,
+  battleSideOf:typeof battleSideOf==="function"?battleSideOf:undefined,entryStep:typeof entryStep==="function"?entryStep:undefined,
+  AI:typeof AI!=="undefined"?AI:undefined,aiMem:typeof aiMem==="function"?aiMem:undefined,aiCloneBoard:typeof aiCloneBoard==="function"?aiCloneBoard:undefined, // #245 M2 AI 어댑터 기록·사본 보드
+  boardCellOk:typeof boardCellOk==="function"?boardCellOk:undefined,movablePiece:typeof movablePiece==="function"?movablePiece:undefined,netPump,slotPow,dmgRange,SKIND_KO,ELEM_KO,ELEM_EMO,TYPE_KO,WINTYPE_KO,shuffle, // #92 온라인 수신 경로·표시 헬퍼 · #245 점진 Core 경계
   recruitCandidates:typeof recruitCandidates==="function"?recruitCandidates:undefined,aiRecruitSlot:typeof aiRecruitSlot==="function"?aiRecruitSlot:undefined, // #92 (기준판 로드 호환: 없으면 undefined)
   atkElOf:typeof atkElOf==="function"?atkElOf:undefined,skillNameKo:typeof skillNameKo==="function"?skillNameKo:undefined,recruitModal:typeof recruitModal==="function"?recruitModal:undefined,
   SKILL_TIER_KO:typeof SKILL_TIER_KO!=="undefined"?SKILL_TIER_KO:undefined,
-  renderSide,renderMetrics,render,startMode,modal,close,onCell,humanViewer,idLabel,
+  renderSide,renderMetrics,render,startMode,modal,close:typeof closeModal==="function"?closeModal:close,closeModal:typeof closeModal==="function"?closeModal:undefined,onCell,humanViewer,idLabel,
   MEMO_OPTS,MEMO_UI,memoOpt,memoSet,memoModal, // #36 추측 메모 피커
   memoClickTarget:typeof memoClickTarget==="function"?memoClickTarget:undefined, memoTargetOk:typeof memoTargetOk==="function"?memoTargetOk:undefined, // #94 로컬 메모 분기 (변경 전 소스로 음성 대조를 돌릴 수 있게 부재 허용)
   ART,ART_BASE,ART_DIRS,ART_DIR_SET,artUrl,artDirOf,artDirOfFighter:typeof artDirOfFighter==="function"?artDirOfFighter:undefined,artOk,artPreload,pcFaceHtml,pcInfoHtml,pcBodyHtml,pcLabel,pieceEmoji,memoEmoji,
@@ -277,12 +345,15 @@ function load(htmlPath,opts){
   artScheduleRecovery:typeof artScheduleRecovery==="function"?artScheduleRecovery:undefined, artProbe:typeof artProbe==="function"?artProbe:undefined,
   artRerender:typeof artRerender==="function"?artRerender:undefined, artLeaderReady:typeof artLeaderReady==="function"?artLeaderReady:undefined,
   rosterInfo:window.rosterInfo,battleModal,toggleRoster:window.toggleRoster, // #89 하수인 아트 연결 (표시 계층)
-  NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr,close, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
+  NET,NET_LOCAL_DEFAULT,NET_PROTOCOL_MARKER,NET_CODE_MIN,NET_CODE_MAX,NET_CODE_HINT,netCodeValid,netParseAddr,netIpv4Class,netIpv6Allowed,NET_ADDR_HINT,netCaptureCode,netCodePrompt,escAttr, // #63 안전 접속 — 기본 주소·접속 코드 분리·하위 프로토콜 계약 검증용
   netServerDefault,netActor,netAction,netPrepare,netConnect,netPump,netCancelQueue,applyNetSetup,netStart,setupDoneCore,autoPlaceCore,fillRosterRandom,zoneOf,showToast, // #54 온라인 PVP — 주소 기본값·정규화·ws/wss·사전 배치 검증용 최소 노출
   netUiTab:typeof netUiTab==="function"?netUiTab:undefined, netRoomsHtml:typeof netRoomsHtml==="function"?netRoomsHtml:undefined, // #217/#218 공개 방(초대 코드 없는 목록·참가)
   netListRooms:typeof netListRooms==="function"?netListRooms:undefined, netCreatePublicRoom:typeof netCreatePublicRoom==="function"?netCreatePublicRoom:undefined,
   netJoinPublicRoom:typeof netJoinPublicRoom==="function"?netJoinPublicRoom:undefined, netRoomReady:typeof netRoomReady==="function"?netRoomReady:undefined,
-  netLeaveRoom:typeof netLeaveRoom==="function"?netLeaveRoom:undefined, netHandlePublicMessage:typeof netHandlePublicMessage==="function"?netHandlePublicMessage:undefined,
+  netLeaveRoom:typeof netLeaveRoom==="function"?netLeaveRoom:undefined, // #238 대기방 준비·시작·복귀
+  netLobbyReady:typeof netLobbyReady==="function"?netLobbyReady:undefined, netLobbyStart:typeof netLobbyStart==="function"?netLobbyStart:undefined,
+  netReturnToRoom:typeof netReturnToRoom==="function"?netReturnToRoom:undefined, netLobbyCountdownLeft:typeof netLobbyCountdownLeft==="function"?netLobbyCountdownLeft:undefined,
+  netHandlePublicMessage:typeof netHandlePublicMessage==="function"?netHandlePublicMessage:undefined,
   /* #217 재접속(bounded resume) — setInterval이 헤드리스에서 무동작이므로 tick을 직접 호출해 검증한다 */
   netResumeTick:typeof netResumeTick==="function"?netResumeTick:undefined, netResumeAttempt:typeof netResumeAttempt==="function"?netResumeAttempt:undefined,
   netBeginResume:typeof netBeginResume==="function"?netBeginResume:undefined, netClearResume:typeof netClearResume==="function"?netClearResume:undefined,
@@ -292,6 +363,15 @@ function load(htmlPath,opts){
   netFxPump:typeof netFxPump==="function"?netFxPump:undefined, netSyncOverlays:typeof netSyncOverlays==="function"?netSyncOverlays:undefined,
   netSynthBattle:typeof netSynthBattle==="function"?netSynthBattle:undefined, netRenderBattleStage:typeof netRenderBattleStage==="function"?netRenderBattleStage:undefined,
   netFlushSetupReady:typeof netFlushSetupReady==="function"?netFlushSetupReady:undefined, netSendAction:typeof netSendAction==="function"?netSendAction:undefined,
+  /* #263 게임 시한 다섯 종(상점 90·배치 90·행동 30·전투 60·B08 20) · 단절 정지 — 시계 자리와 정지·시한 경과 판정 검증용.
+     복수 강제 대상 선택의 30초는 **행동 30초를 한 번 더 도는 것**이라 종류를 따로 세지 않는다(저장 자리만 다르다). */
+  get TURNCLK(){return typeof TURNCLK!=="undefined"?TURNCLK:undefined;},
+  turnClockText:typeof turnClockText==="function"?turnClockText:undefined, turnClockSync:typeof turnClockSync==="function"?turnClockSync:undefined,
+  turnClockLate:typeof turnClockLate==="function"?turnClockLate:undefined, turnClockWants:typeof turnClockWants==="function"?turnClockWants:undefined,
+  netPaused:typeof netPaused==="function"?netPaused:undefined, netResignBtn:typeof netResignBtn==="function"?netResignBtn:undefined,
+  bagPickShow:typeof bagPickShow==="function"?bagPickShow:undefined, netEcoResign:typeof netEcoResign==="function"?netEcoResign:undefined,
+  netRenderEcoOverlay:typeof netRenderEcoOverlay==="function"?netRenderEcoOverlay:undefined,
+  netClockText:typeof netClockText==="function"?netClockText:undefined,
   autoEndReady:typeof autoEndReady==="function"?autoEndReady:undefined, toLobby:typeof toLobby==="function"?toLobby:undefined,
   NET_RESUME_GRACE_MS:typeof NET_RESUME_GRACE_MS!=="undefined"?NET_RESUME_GRACE_MS:undefined, NET_RESUME_RETRY_MS:typeof NET_RESUME_RETRY_MS!=="undefined"?NET_RESUME_RETRY_MS:undefined,
   TUT,TUT_STEPS,TUT_HINTS,tutSeen,tutOpen,tutClose,tutNext,tutPrev,tutSkip,tutGo,tutRender,tutKeydown,tutHint,tutHintClose,tutFocus,tutScrollTop, // #26 튜토리얼 (S와 분리) · #42 tutScrollTop = 새 단계 스크롤 최상단 복귀
@@ -305,7 +385,7 @@ function load(htmlPath,opts){
   autoEndCheck:typeof autoEndCheck==="function"?autoEndCheck:undefined,autoEndReady:typeof autoEndReady==="function"?autoEndReady:undefined,anyMainActionLeft:typeof anyMainActionLeft==="function"?anyMainActionLeft:undefined,optionalBattleLeft:typeof optionalBattleLeft==="function"?optionalBattleLeft:undefined,
   turnBannerFx:typeof turnBannerFx==="function"?turnBannerFx:undefined,viewerIsOwner:typeof viewerIsOwner==="function"?viewerIsOwner:undefined,fxTurnLabel:typeof fxTurnLabel==="function"?fxTurnLabel:undefined,resultBannerOf:typeof resultBannerOf==="function"?resultBannerOf:undefined,
   renderTurnBar,renderBoard,netReady,netAction,onCellCore,execSlot,aiSchedule,aiScheduleBattle,
-  playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,fighterName,
+  playMsgs,applyFx,bmsg,liveBattleDom,stIcons,aiHealPick:typeof aiHealPick==="function"?aiHealPick:undefined,aiMainStrong,teleportSwapBlock,newAdjAt,forcedEligible,drainForcedQueue,applyForced,fleeSwap,actorOfPhase,battleActionFrame:typeof battleActionFrame==="function"?battleActionFrame:undefined,fighterName, // #245 bf — 수신 프레임 재생 검증용 (기준판 대조 로드에는 없다)
   // #114 v0.4.5 (기준판 로드 호환: 부재 시 undefined) — 양측 밀기·재배치·도망 보드 교환·AI 밀기 평가
   pushResolve:typeof pushResolve==="function"?pushResolve:undefined,pushPair:typeof pushPair==="function"?pushPair:undefined,relocatePair:typeof relocatePair==="function"?relocatePair:undefined,relocCandidates:typeof relocCandidates==="function"?relocCandidates:undefined,relocZone:typeof relocZone==="function"?relocZone:undefined,
   fleeSwapPrompt:typeof fleeSwapPrompt==="function"?fleeSwapPrompt:undefined,fleeResolve:typeof fleeResolve==="function"?fleeResolve:undefined,fleePickMine:typeof fleePickMine==="function"?fleePickMine:undefined,
@@ -323,9 +403,39 @@ function load(htmlPath,opts){
   LEADER_FILES:typeof LEADER_FILES!=="undefined"?LEADER_FILES:undefined, leaderDirOf:typeof leaderDirOf==="function"?leaderDirOf:undefined,
   leaderArtDir:typeof leaderArtDir==="function"?leaderArtDir:undefined, leaderBattleDir:typeof leaderBattleDir==="function"?leaderBattleDir:undefined,
   get MSGPLAYING(){return MSGPLAYING;},get MSGQ(){return MSGQ;},
+  /* #236 경제 — 기준판 로드 호환을 위해 부재 시 undefined */
+  ECO:typeof ECO!=="undefined"?ECO:undefined, ecoKey:typeof ecoKey==="function"?ecoKey:undefined, ecoUnitOf:typeof ecoUnitOf==="function"?ecoUnitOf:undefined,
+  ecoEmptyField:typeof ecoEmptyField==="function"?ecoEmptyField:undefined, ecoPrice:typeof ecoPrice==="function"?ecoPrice:undefined,
+  ecoBuyable:typeof ecoBuyable==="function"?ecoBuyable:undefined, ecoReserveNeed:typeof ecoReserveNeed==="function"?ecoReserveNeed:undefined,
+  ecoSynView:typeof ecoSynView==="function"?ecoSynView:undefined,
+  ecoOpenShop:typeof ecoOpenShop==="function"?ecoOpenShop:undefined, checkDeath:typeof checkDeath==="function"?checkDeath:undefined,
+  battleCmdFrame:typeof battleCmdFrame==="function"?battleCmdFrame:undefined,
+  ballWhy:typeof ballWhy==="function"?ballWhy:undefined, aiShop:typeof aiShop==="function"?aiShop:undefined, aiBagPick:typeof aiBagPick==="function"?aiBagPick:undefined,
+  shopHtml:typeof shopHtml==="function"?shopHtml:undefined, shopViewer:typeof shopViewer==="function"?shopViewer:undefined,
+  get __shop(){return window.__shop;},
+  /* #259 계정 — 기준판 로드 호환: 부재 시 undefined */
+  AUTH:typeof AUTH!=="undefined"?AUTH:undefined,
+  acct:typeof acctCheck==="function"?{acctCheck,acctSubmit,acctResetSend,acctEmailSubmit,acctLogout,acctView,acctSeatLoad,acctGateMsg,acctEndSession,acctOnStorage,acctWatchTick:typeof acctWatchTick==="function"?acctWatchTick:undefined}:undefined,
+  pname:typeof pname==="function"?pname:undefined,
+  /* #260 계정 로비 — 기준판 로드 호환: 부재 시 undefined */
+  LOBBY:typeof LOBBY!=="undefined"?LOBBY:undefined,
+  lobby:typeof lobbyHtml==="function"?{lobbyHtml,lobbyReady,lobbyLoad,lobbyLocked,lobbyRetry,lobbyRepOpen,lobbyRepPick,lobbySeatRepHtml,lobbyParseProfile,LOBBY_API,LOBBY_TIMEOUT_MS}:undefined,
+  /* #262 경기 중 이모티콘 — 기준판 로드 호환: 부재 시 undefined */
+  emote:typeof emoteSync==="function"?{EMOTES,EMO,emoteSync,emoteToggle,emoteSend,emoteSetMuted,emoteClose,netEmoteCanSend}:undefined,
+  /* #261 멀티 방 목록·대기 — 기준판 로드 호환: 부재 시 undefined */
+  rooms:typeof lobbyRoomsHtml==="function"?{lobbyRooms,lobbyHome,lobbyRoomsHtml,lobbyRoomListHtml,lobbyWaitHtml,lobbyRoomRows,
+    roomNameNorm,lobbySearch,lobbyNameInput,lobbyCreateRoom,lobbyRoomLocked,lobbyPollTick,lobbyPollStart,lobbyRttReply,lobbyPingText}:undefined,
+  /* #238 경기 UI — 기준판 로드 호환: 부재 시 undefined */
+  ui238:typeof castFx==="function"?{castFx,battleSynChips,netSynthBattle,resultSeatsHtml,resultSideOffline,uiLeaveConfirm,renderBoardInfo,netResumeBarSync,modalFocus,MODAL_FOCUS,
+    /* 2026-09-28 CJ 재수정 8항목 — 기준판 로드 호환: 부재 시 undefined */
+    synHelp:typeof synHelp==="function"?synHelp:undefined,synTier:typeof synTier==="function"?synTier:undefined,synTierText:typeof synTierText==="function"?synTierText:undefined,
+    SYNHELP:typeof SYNHELP!=="undefined"?SYNHELP:undefined,allyRole:typeof allyRole==="function"?allyRole:undefined,uiScreenName:typeof uiScreenName==="function"?uiScreenName:undefined}:undefined,
   html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;
+  /* 기본 fetch(DB 없는 서버)면 그 답이 올 결과(off)를 동기로 먼저 세운다 — 로드 직후 동기 호출하는 기존 회귀가 "확인 중" 게이트에 걸리지 않게.
+     계정 흐름 자체는 opts.fetch 를 주는 smoke_issue259.js 가 비동기 그대로 검사한다. */
+  if(!opts.fetch&&T.AUTH&&T.AUTH.state==="checking") T.AUTH.state="off";
   T.drain=drain; T.TQ=TQ; T.els=els; T.document=doc;
   T.wsLog=wsLog; T.WebSocketCtor=WebSocketCtor; T.location=loc;
   T.storage=storage; T.sessionStorage=sessionStorage; T.indexedDB=indexedDB; T.cookieWrites=cookieWrites;
@@ -364,6 +474,18 @@ function place(T,p,r,c){clearCell(T,r,c); p.r=r;p.c=c;p.placed=true;p.alive=true
 function mine(T,o,type){return T.S.pieces.filter(x=>x.owner===o&&x.type===type&&x.alive&&x.placed);}
 function clearBoard(T){for(const x of T.S.pieces) x.placed=false;}
 
+/* #235 시너지 중립 무대 — 고정 수치·난수 소비를 보는 회귀(#233·#234·#241)의 전제.
+   그 무대들은 freshPlay 의 **무작위 로스터** 위에 서 있어서, 같은 속성(왕 속성 포함)이나 같은 아키타입이
+   우연히 한 좌석에 2칸 모이면 왕국 (2) · 아키타입 2단계가 켜지고 피해·회피·선턴·상태 확률·rand 소비가 흔들린다.
+   전투원(fighters)의 속성은 그대로 두고 **나머지 필드 칸의 집계 입력만** 비운다 — 남은 전투원은 좌석당 1칸이라
+   어느 단계도 켜지지 않아 두 좌석의 집계가 0 으로 못 박힌다. 제품 규칙은 건드리지 않고 입력만 중립으로 놓는다. */
+function synNeutral(T,fighters){
+  const keep=new Set(fighters||[]);
+  for(const x of T.S.pieces) if(!keep.has(x)&&(x.type==="minion"||x.type==="king"||x.type==="ally")){ x.element=null; x.legend=null; x.rosterId=null; }
+  if(T.S.reserve) T.S.reserve=[null,null]; // 가방 전설도 아키타입 집계에 든다
+  return T.S;
+}
+
 /* 불변식 검사 — 위반 목록 반환 */
 function invariants(T){
   const S=T.S, out=[];
@@ -399,8 +521,10 @@ function runSim(T,levels,seed,opts){
   while(T.TQ.length&&n<opts.cap||5000000){
     if(!T.TQ.length) break;
     T.TQ.shift()(); n++;
+    if(opts.trace) opts.trace(T,n);
     if(opts.check&&(n%opts.check===0)){ const v=invariants(T); if(v.length){viol.push(...v.map(x=>"t"+T.S.turnCount+" "+x));} }
-    if(T.S.aiLastThinkMs!==undefined){think.push(T.S.aiLastThinkMs); T.S.aiLastThinkMs=undefined;}
+    /* #245 M2: 사고 시간은 게임 상태가 아니라 AI 어댑터 기록이다 (AI.lastThinkMs) */
+    const mem=T.AI; if(mem&&mem.lastThinkMs){ think.push(mem.lastThinkMs); mem.lastThinkMs=0; }
     if(n>=(opts.cap||5000000)) break;
   }
   const v=invariants(T); if(v.length) viol.push(...v);
@@ -408,5 +532,5 @@ function runSim(T,levels,seed,opts){
     thinkAvg:think.length?think.reduce((a,b)=>a+b,0)/think.length:0, thinkMax:think.length?Math.max(...think):0};
 }
 
-module.exports={load,freshPlay,clearCell,place,mine,clearBoard,invariants,runSim,mkLocation,setLocation,
+module.exports={load,freshPlay,clearCell,place,mine,clearBoard,synNeutral,invariants,runSim,mkLocation,setLocation,
   mkStorage,setStorage,resetStorage,throwingStorage,storageExtras,storageTrace,storageSnapshot,persistApiHits,DEFAULT_HREF};

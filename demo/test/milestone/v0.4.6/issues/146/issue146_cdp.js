@@ -139,7 +139,7 @@ async function openTab(cdp,url){
 /* 전투 고정 픽스처를 페이지 안에서 만든다 (제품 함수만 사용 — 규칙을 흉내 내지 않는다) */
 const SETUP_FN=`window.__fix=(o)=>{
   o=o||{};
-  try{ S&&(S.battle=null); close(); }catch(e){}   // 이전 절이 남긴 모달·오버레이를 먼저 닫는다 (실제 클릭이 오버레이에 가로막히지 않게)
+  try{ S&&(S.battle=null); closeModal(); }catch(e){}   // 이전 절이 남긴 모달·오버레이를 먼저 닫는다 (실제 클릭이 오버레이에 가로막히지 않게)
   startMode("pvp");
   for(const p of S.pieces) p.placed=false;
   const k0=S.pieces.find(p=>p.owner===0&&p.type==="king"), k1=S.pieces.find(p=>p.owner===1&&p.type==="king");
@@ -361,7 +361,7 @@ const TUT_PROBE=`(()=>{ let stored=null,err=null;
 
     /* ── 3. #146 비공개 — 관찰자 시점에는 안내도 버튼도 없다 ─────────────────── */
     const obs=await T.ev(`(()=>{
-      try{ S&&(S.battle=null); close(); }catch(e){}
+      try{ S&&(S.battle=null); closeModal(); }catch(e){}
       startMode("pve");
       for(const p of S.pieces) p.placed=false;
       const k0=S.pieces.find(p=>p.owner===0&&p.type==="king"), k1=S.pieces.find(p=>p.owner===1&&p.type==="king");
@@ -403,7 +403,7 @@ const TUT_PROBE=`(()=>{ let stored=null,err=null;
       put(k0,13,1); put(k1,1,7); put(ms[0],2,2); put(ms[1],12,4); put(ms[2],12,6);
       ms[1].immobile=2;                       // 함정에 걸려 멈춘 말
       S.phase="play"; S.current=0; S.mainUsed=false; S.battlesUsed=0; S.battle=null; S.selected=null;
-      try{ close(); }catch(e){}
+      try{ closeModal(); }catch(e){}
       render();
       return {available:teleportAvailable(0),trapped:{r:ms[1].r,c:ms[1].c},free1:{r:ms[0].r,c:ms[0].c},free2:{r:ms[2].r,c:ms[2].c}};})()`);
     rec("4 전제",teleSetup);

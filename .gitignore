@@ -118,3 +118,6 @@ roblox/build/
 **/.chrome-render/
 **/render-profile-ctx-*/
 **/earth-*-render/
+
+# Node 도구 의존성 (#245 정적 계약 검사 — 루트 package.json 의 typescript)
+/node_modules/

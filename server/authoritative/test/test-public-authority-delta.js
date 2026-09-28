@@ -46,12 +46,28 @@ function main() {
     const enemies = T.S.pieces.filter((p) => p.owner === other && p.alive && p.placed && p.type === 'minion').slice(0, 2);
     ok(enemies.length === 2, '픽스처에 살아있는 상대 하수인 2기 이상 존재(전제)');
     const dest = { r: 7, c: 4 }, srcE1 = { r: 7, c: 5 }, srcE2 = { r: 6, c: 4 };
+    /* #245 — 출발 칸은 (7,3)이다. 종전 픽스처는 (7,1)에서 (7,4)로 **세 칸**을 한 번에 갔고, 그때는 doMove 가
+       넘어온 좌표를 그대로 믿어 통과했다. 지금은 Core 가 이동 합법성을 직접 보므로 그 호출은 아무 일도 하지
+       않는다(강제 전투 분기 자체가 생기지 않는다). 검사의 의도 — "이동 전에는 두 적 어느 쪽과도 인접하지
+       않다가 이동으로 둘 다 새로 인접해진다" — 는 (7,3)에서 그대로 성립한다: (7,5)는 두 칸, (6,4)는 대각
+       거리라 둘 다 비인접이고, (7,4)로 한 칸 가면 둘 다 인접이 된다. 경계를 약하게 만들지 않고 전제를 옮겼다. */
+    const src = { r: 7, c: 3 };
     both(room, (E) => {
-      const m = byId(E, mover.id); m.r = 7; m.c = 1; // dest와 비인접(기존 인접 집합에서 제외)
+      const m = byId(E, mover.id); m.r = src.r; m.c = src.c;
       const e1 = byId(E, enemies[0].id); e1.r = srcE1.r; e1.c = srcE1.c;
       const e2 = byId(E, enemies[1].id); e2.r = srcE2.r; e2.c = srcE2.c;
     });
+    ok(!T.adj(byId(T, mover.id), byId(T, enemies[0].id)) && !T.adj(byId(T, mover.id), byId(T, enemies[1].id)),
+      '전제: 이동 전에는 두 적 어느 쪽과도 인접하지 않다');
+    /* 음성 대조 — 종전 픽스처가 쓰던 세 칸 이동은 **거부돼야 한다**. 상태가 한 칸도 움직이지 않는지까지 본다
+       (조용히 통과하면 위 검사가 "합법 경로를 지났다"고 말할 근거가 사라진다). */
+    {
+      const before = H.snap(room);
+      both(room, (E) => { E.doMove(byId(E, mover.id), 7, 7); });
+      ok(H.snap(room) === before && byId(T, mover.id).c === src.c, '음성 대조: 여러 칸 건너뛰는 이동은 거부·상태 불변');
+    }
     both(room, (E) => { E.doMove(byId(E, mover.id), dest.r, dest.c); }); // 실제 엔진 doMove — applyForced()가 신규 인접 2개를 발견
+    ok(byId(T, mover.id).r === dest.r && byId(T, mover.id).c === dest.c, '전제: 합법 한 칸 이동이 실제로 반영됨');
     const e1Alias = room._alias(enemies[0].id), e2Alias = room._alias(enemies[1].id);
     const va = room.toSeatView(cur), vo = room.toSeatView(other);
     ok(va.turn.movedPiece === room._alias(mover.id), 'movedPiece 별칭이 실제 이동한 말과 일치');
@@ -96,7 +112,7 @@ function main() {
     const remaining = T.S.pieces.filter((p) => p.alive && p.placed && p.type === 'minion');
     const own2 = remaining.find((p) => p.owner === cur), opp2 = remaining.find((p) => p.owner === other);
     if (own2 && opp2) {
-      both(room, (E) => { E.initBattle(byId(E, own2.id), byId(E, opp2.id)); });
+      H.openBattle(room, { att: own2.id, def: opp2.id }); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
       const vb2 = room.toSeatView(cur);
       ok(Number.isInteger(vb2.battle.battleId) && vb2.battle.battleId === bId1 + 1, '두 번째 실제 전투 battleId = 첫 번째 + 1(룸 수명 단조): ' + vb2.battle.battleId);
       const starts2 = vb2.fx.events.filter((e) => e.key === 'battleStart');
@@ -142,7 +158,8 @@ function main() {
     // 전선에 가까운 말을 공격자로 — 후방 교환 후보가 생기도록(test-authority-rules.js P1과 동일한 픽스처 요령)
     const att = T.S.pieces.filter((p) => p.owner === cur && p.type === 'minion').sort((a, b) => (cur === 0 ? a.r - b.r : b.r - a.r))[0];
     const def = T.S.pieces.find((p) => p.owner === other && p.type === 'minion' && p.alive);
-    both(room, (E) => { E.BAL.fleeProb = 1; E.initBattle(byId(E, att.id), byId(E, def.id)); });
+    both(room, (E) => { E.BAL.fleeProb = 1; });
+    H.openBattle(room, { att: att.id, def: def.id }); // #245 인접 전제를 실제로 만든 뒤 합법 경로로 연다
     const res = act(room, cur, { t: 'flee' });
     ok(res.ok && T.S.fleePick && T.S.fleePick.owner === cur, '도망 성공 → fleePick 진입(fleeProb=1 강제): ' + JSON.stringify(res.reason));
     if (T.S.fleePick) {

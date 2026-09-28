@@ -66,11 +66,25 @@ LEADERS: dict[str, str] = {
 # 산출 파일 → 한 변의 픽셀. 게임 CSS 표시 크기(32 / 128)의 2배라 고해상도 화면에서도 뭉개지지 않는다.
 OUTPUTS: dict[str, int] = {"icon64.png": 64, "battle256.png": 256}
 
+# #238 (2026-09-28 CJ 4) 공격 동료 · 방어 동료 — Earth_3 원본 2종. 별도 매니페스트에 적어 승인된
+# leaders-manifest.json·king·companion 바이트를 바꾸지 않는다(원본 manifest 177파일 보존). 변환 규칙은 위와 같다(축소만).
+REL_ROLE_SOURCE_DIR = Path("docs/milestone/v0.4.11/issues/238/Earth_3")
+REL_ROLE_MANIFEST = REL_OUT_DIR / "roles-manifest.json"
+ROLES: dict[str, str] = {"companion_atk": "companion_atk/master.png", "companion_def": "companion_def/master.png"}
+# (원본 폴더, 말 → 원본, 매니페스트, 이슈)
+GROUPS = [(REL_SOURCE_DIR, LEADERS, REL_MANIFEST, "#124"), (REL_ROLE_SOURCE_DIR, ROLES, REL_ROLE_MANIFEST, "#238")]
+
 EXPECTED_SOURCE_SIZE = 1254  # Earth 납품 원본 실측 (정사각 RGBA). 다르면 경고만 하고 그대로 축소한다.
 
 
 def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def text_lf(data: bytes) -> bytes:
+    """매니페스트(텍스트 JSON)만 CRLF → LF 로 맞춘다. Windows core.autocrlf 체크아웃이 roles-manifest.json 을
+    CRLF 로 바꿔도 내용이 같으면 일치로 본다 (#238 잡 D). 내용 변경은 그대로 불일치다. PNG 는 이 함수를 거치지 않는다."""
+    return data.replace(b"\r\n", b"\n")
 
 
 def render_png(src: Image.Image, size: int) -> bytes:
@@ -87,10 +101,11 @@ def build(repo_root: Path) -> tuple[list[dict], list[str]]:
     """계획을 만든다 — (산출물 목록, 문제 목록). 이 함수는 파일을 쓰지 않는다."""
     rows: list[dict] = []
     problems: list[str] = []
-    for name, src_file in sorted(LEADERS.items()):
-        src_path = repo_root / REL_SOURCE_DIR / src_file
+    for src_dir, table, manifest, issue in GROUPS:
+      for name, src_file in sorted(table.items()):
+        src_path = repo_root / src_dir / src_file
         if not src_path.is_file():
-            problems.append(f"원본이 없습니다: {REL_SOURCE_DIR / src_file}")
+            problems.append(f"원본이 없습니다: {src_dir / src_file}")
             continue
         src_bytes = src_path.read_bytes()
         with Image.open(io.BytesIO(src_bytes)) as im:
@@ -110,18 +125,20 @@ def build(repo_root: Path) -> tuple[list[dict], list[str]]:
                     "size": size,
                     "bytes": len(data),
                     "sha256": sha256_hex(data),
-                    "source": str((REL_SOURCE_DIR / src_file).as_posix()),
+                    "source": str((src_dir / src_file).as_posix()),
                     "sourceSize": f"{src_size[0]}x{src_size[1]}",
                     "sourceSha256": sha256_hex(src_bytes),
                     "_data": data,
+                    "_manifest": manifest,
+                    "_issue": issue,
                 })
     return rows, problems
 
 
-def manifest_json(rows: list[dict]) -> bytes:
+def manifest_json(rows: list[dict], issue: str = "#124") -> bytes:
     doc = {
         "tool": "tools/art/leaders_export.py",
-        "issue": "#124",
+        "issue": issue,
         "note": "Earth 원본을 LANCZOS 축소만 한 납품본. 창작적 편집·매트 제거·색 보정 없음.",
         "files": [{k: r[k] for k in ("leader", "path", "size", "bytes", "sha256", "source", "sourceSize", "sourceSha256")}
                   for r in sorted(rows, key=lambda r: r["path"])],
@@ -140,14 +157,16 @@ def run(repo_root: Path, check: bool, list_only: bool) -> int:
         print("산출할 항목이 없습니다.", file=sys.stderr)
         return 2
 
-    man = manifest_json(rows)
-    man_path = repo_root / REL_MANIFEST
+    # 매니페스트마다 (경로, 바이트) — 그 매니페스트에 속한 행만 적는다
+    mans = [(repo_root / m, manifest_json([r for r in rows if r["_manifest"] == m], i)) for _, _, m, i in GROUPS
+            if any(r["_manifest"] == m for r in rows)]
 
     if list_only:
         for r in rows:
             print(f"  {r['path']}  {r['size']}px  {r['bytes']}B  {r['sha256'][:12]}  ← {r['source']}")
-        print(f"  {REL_MANIFEST.as_posix()}  {len(man)}B")
-        print(f"=== leaders_export --list: {len(rows)} 파일 + 매니페스트 (쓰기 0) ===")
+        for man_path, man in mans:
+            print(f"  {man_path.relative_to(repo_root).as_posix()}  {len(man)}B")
+        print(f"=== leaders_export --list: {len(rows)} 파일 + 매니페스트 {len(mans)} (쓰기 0) ===")
         return 0
 
     if check:
@@ -161,13 +180,15 @@ def run(repo_root: Path, check: bool, list_only: bool) -> int:
             cur = f.read_bytes()
             if cur != r["_data"]:
                 bad.append(f"불일치    {r['path']}  (현재 {len(cur)}B/{sha256_hex(cur)[:12]} ≠ 생성 {r['bytes']}B/{r['sha256'][:12]})")
-        if not man_path.is_file():
-            bad.append(f"없음      {REL_MANIFEST.as_posix()}")
-        elif man_path.read_bytes() != man:
-            bad.append(f"불일치    {REL_MANIFEST.as_posix()}")
+        for man_path, man in mans:
+            rel = man_path.relative_to(repo_root).as_posix()
+            if not man_path.is_file():
+                bad.append(f"없음      {rel}")
+            elif text_lf(man_path.read_bytes()) != man:
+                bad.append(f"불일치    {rel}")
         for b in bad:
             print(b, file=sys.stderr)
-        print(f"=== leaders_export --check: 일치 {len(rows) + 1 - len(bad)} / 불일치 {len(bad)} (쓰기 0) ===")
+        print(f"=== leaders_export --check: 일치 {len(rows) + len(mans) - len(bad)} / 불일치 {len(bad)} (쓰기 0) ===")
         return 1 if bad else 0
 
     written = 0
@@ -180,12 +201,13 @@ def run(repo_root: Path, check: bool, list_only: bool) -> int:
             print(f"쓰기      {r['path']}  {r['size']}px  {r['bytes']}B  {r['sha256'][:12]}")
         else:
             print(f"동일      {r['path']}")
-    man_path.parent.mkdir(parents=True, exist_ok=True)
-    if not man_path.is_file() or man_path.read_bytes() != man:
-        man_path.write_bytes(man)
-        written += 1
-        print(f"쓰기      {REL_MANIFEST.as_posix()}  {len(man)}B")
-    print(f"=== leaders_export: 갱신 {written} / 전체 {len(rows) + 1} ===")
+    for man_path, man in mans:
+        man_path.parent.mkdir(parents=True, exist_ok=True)
+        if not man_path.is_file() or man_path.read_bytes() != man:
+            man_path.write_bytes(man)
+            written += 1
+            print(f"쓰기      {man_path.relative_to(repo_root).as_posix()}  {len(man)}B")
+    print(f"=== leaders_export: 갱신 {written} / 전체 {len(rows) + len(mans)} ===")
     return 0
 
 

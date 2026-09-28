@@ -25,7 +25,9 @@ async function main() {
   const r2 = room1._handleReady(1, true);
   ok(room1.state === STATES.IN_PROGRESS, 'F4 양쪽 ready → 원자적으로 IN_PROGRESS: ' + room1.state);
   ok(Array.isArray(room1.engines) && room1.engines.length === 2 && room1.engines[0] !== room1.engines[1], '좌석 시점 엔진 쌍이 생성됨');
-  ok(room1.engines[0].NET.me === 0 && room1.engines[1].NET.me === 1 && room1.engines.every((E) => E.NET.mode === true), '엔진마다 NET.me가 그 좌석으로 고정(원본 온라인 시점)');
+  // #245 — 좌석 시점은 호스트 포트가 준다(종전 NET.me/NET.mode). Core 는 UI_PORT.seat() 로만 시점을 읽는다.
+  ok(room1.engines[0].host.seat === 0 && room1.engines[1].host.seat === 1
+    && room1.engines.every((E, i) => E.UI_PORT.seat() === i), '엔진마다 좌석 시점이 그 좌석으로 고정(원본 온라인 시점)');
   ok(H.lockstepDigest(room1.engines[0]) === H.lockstepDigest(room1.engines[1]), '시작 직후 두 엔진의 규칙 상태 일치(락스텝)');
   ok(room1.engine.S.pieces.filter((p) => p.alive && p.placed).length === 28, '양측 14기씩 총 28기 배치');
   ok(r2.data.phase === 'play' && r2.data.state === 'IN_PROGRESS', 'F4 시작 후 phase=play: ' + JSON.stringify(r2.data.phase));
@@ -76,7 +78,7 @@ async function main() {
     });
     const viewOfCurrent = room1.toSeatView(current);
     ok(!viewOfCurrent.units.some((u) => u.id === room1._alias(victim.id)), 'A1 숲 속·비인접 상대 유닛은 units에서 완전히 빠짐');
-    both(room1, (E) => { E.S.pieces.forEach((p, i) => { const s = saved[E.NET.me][i]; p.r = s[0]; p.c = s[1]; p.revealed = s[2]; }); });
+    both(room1, (E) => { E.S.pieces.forEach((p, i) => { const s = saved[E.host.seat][i]; p.r = s[0]; p.c = s[1]; p.revealed = s[2]; }); });
   }
 
   // ===== C3 — 낡은 baseRevision =====
