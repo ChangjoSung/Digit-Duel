@@ -1,6 +1,16 @@
-# v0.4.11 작업 트리 정리 — Mercury, 2026-09-25
+# v0.4.11 작업 트리 정리 — Mercury, 2026-09-28
 
-## 현재 작업 공간
+## 현재 작업 공간 — #232 통합 후
+
+| 남은 경로 | 용도 | 상태 |
+|---|---|---|
+| C:/Users/pc_77/orca/Digit-Duel | 사용자 원본·Mercury 창구 | dirty/untracked·로컬HEAD33490f9 보존 |
+| C:/Users/pc_77/orca/workspaces/Digit-Duel/release-review-v0.4.11 | 후속 Release 검토 | 최신 통합 milestone 기준, Worker 없음 |
+
+승인 납품을 먼저 마일스톤에 반영한 뒤 기존 트리8·로컬 브랜치8·원격 브랜치6을 정리했다. ZIP 원문·미커밋/미추적 파일·Git bundle·삭제 영수증은 C:/Users/pc_77/orca/archives/Digit-Duel/issue232-integration-2026-09-28에 보존했다. QA8085·PG55462는 종료, 데이터·SMTP·cold backup은 유지했다. [#232 통합·Render 준비 보고](../../issues/232/Mercury/integration-review.md)가 현재 판정이며 현재 Render 운영 설정 NO-GO와 CJ 별도 Release/배포 게이트를 따른다.
+
+## 과거 작업 공간 — 2026-09-25 당시 기록
+
 
 | 경로 / 브랜치 | 기준 HEAD | 보존할 작업 | 판정 |
 |---|---|---|---|
