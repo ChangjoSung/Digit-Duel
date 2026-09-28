@@ -274,7 +274,7 @@ function seatedRoom(){ // 방을 만들고 배치까지 마친(SETUP, ready 전)
   ok(T.wsLog[1].sent.length===0,"K4b credential 재개는 소켓이 열리자마자 서버가 스스로 응답한다 — 클라이언트가 명령을 보내지 않는다");
   ok(/재접속 중/.test($el(T,"sidePanel").innerHTML),"K5 배치 화면이 재접속 중 안내로 바뀐다");
   const bar=$el(T,"netResumeBar");
-  ok(!bar.classList.contains("hidden")&&/재접속 중/.test(bar.innerHTML)&&/남은 시간 \d+초/.test(bar.innerHTML)&&/netCancelResume\(\)/.test(bar.innerHTML),"K5b 어느 화면이든 보이는 고정 재접속 상태 줄(남은 시간·포기 버튼)이 뜬다");
+  ok(!bar.classList.contains("hidden")&&/재접속 중/.test(bar.innerHTML)&&/시도 \d+회/.test(bar.innerHTML)&&!/남은 시간/.test(bar.innerHTML)&&!/netCancelResume\(\)/.test(bar.innerHTML),"K5b 어느 화면이든 보이는 고정 재접속 상태 층이 뜬다 (#238 X03: 서버 시각이 아닌 카운트다운·[포기] 없음)");
   ok(T.fxLocked()===true,"K5c 재접속 중에는 입력이 잠긴다(보내지 못할 행동을 받지 않는다)");
   T.netResumeTick(); // 유예가 아직 한참 남았고 소켓도 이미 열려 있으니 tick이 추가 소켓을 만들지 않는다
   ok(T.wsLog.length===2,"K6 유예 안에서 소켓이 이미 살아 있으면 tick이 새 소켓을 더 열지 않는다");
@@ -292,14 +292,35 @@ function seatedRoom(){ // 방을 만들고 배치까지 마친(SETUP, ready 전)
   ok(T.wsLog.length===3,"K11 두 번째 재접속도 새 소켓을 연다");
   ok(protos(T.wsLog[2])[1]==="r-e1.h2","K11b 두 번째 재시도는 회전된 최신 토큰을 쓴다");
 }
-{ // 유예 만료 — 60초가 지나도 재개하지 못하면 방 목록으로 돌아간다
-  const T=seatedRoom();
-  T.wsLog[0].onclose();
-  ok(T.NET.resuming===true,"K12 단절 직후 재접속 유예 시작");
-  T.NET.resumeDeadline=Date.now()-1; // 유예 만료를 직접 재현 (실제 setInterval은 하네스에서 무동작)
-  T.netResumeTick();
-  ok(T.NET.resuming===false&&T.S.phase==="menu","K13 유예 만료 시 재접속을 포기하고 메뉴(방 목록)로 돌아간다");
-  ok(/방 목록으로 돌아가/.test(toasts(T).join("|")),"K14 유예 만료 안내 문구가 뜬다");
+{ // #238 X03 Saturn REVISE — 60초 유예·몰수는 서버만 판정한다. 클라이언트 시계로는 마감하지 않고, 권위 응답이 올 때까지 같은 간격으로 재시도한다
+  const T=seatedRoom(), realNow=Date.now, t0=realNow(); let now=t0;
+  Date.now=()=>now; // 가짜 시계 — 실제로 기다리지 않는다
+  try{
+    T.wsLog[0].onclose();
+    ok(T.NET.resuming===true,"K12 단절 직후 재접속 시작");
+    const retryAt=ms=>{ now=t0+ms; T.wsLog[T.wsLog.length-1].onclose(); T.netResumeTick(); }; // 직전 시도 소켓이 실패로 닫힌 뒤 tick
+    retryAt(61000);
+    const n61=T.wsLog.length;
+    ok(T.NET.resuming===true&&T.S.phase!=="menu"&&n61===3&&protos(T.wsLog[2])[1]==="r-e1.h","K13 로컬 60초가 지나도 포기·로비 이동 없이 같은 credential 로 재시도한다");
+    retryAt(62000);
+    ok(T.wsLog.length===n61,"K13b 재시도 간격(NET_RESUME_RETRY_MS)은 그대로 — 3초 안에는 새 소켓을 열지 않는다");
+    retryAt(121000);
+    ok(T.NET.resuming===true&&T.S.phase!=="menu"&&T.wsLog.length===n61+1,"K13c 120초가 지나도 계속 재시도한다 (클라이언트 마감 없음)");
+    ok($el(T,"app").getAttribute("inert")===""&&!/방 목록으로 돌아가/.test(toasts(T).join("|")),"K13d 재시도 동안 아래 화면은 inert 이고 포기 안내가 없다");
+    openWs(T.wsLog[T.wsLog.length-1],MARKER);
+    T.wsLog[T.wsLog.length-1].onmessage({data:JSON.stringify({v:1,type:"error",code:"E_ROOM_CLOSED"})});
+    ok(T.NET.resuming===false&&T.S.phase==="menu"&&/방 목록으로 돌아가/.test(toasts(T).join("|")),"K14 서버 권위 오류(유예 만료 → E_ROOM_CLOSED)를 받을 때만 방 목록으로 나간다");
+  } finally { Date.now=realNow; }
+}
+{ // 같은 가짜 시계에서 120초 뒤라도 서버가 room_resumed 로 답하면 그대로 복구한다
+  const T=seatedRoom(), realNow=Date.now, t0=realNow(); let now=t0;
+  Date.now=()=>now;
+  try{
+    T.wsLog[0].onclose(); now=t0+125000; T.wsLog[1].onclose(); T.netResumeTick();
+    const ws=openWs(T.wsLog[T.wsLog.length-1],MARKER);
+    ws.onmessage({data:JSON.stringify({v:1,type:"room_resumed",epoch:"e1",roomId:9,seat:0,seatToken:"h2",tokenGen:1,revision:0,seq:1,data:mkSetupView(true,false,true)})});
+    ok(T.NET.resuming===false&&T.NET.roomId===9&&$el(T,"netResumeBar").classList.contains("hidden")&&$el(T,"app").getAttribute("inert")!=="","K14b 120초 뒤의 room_resumed 도 복구하고 inert 를 푼다");
+  } finally { Date.now=realNow; }
 }
 { // 회복 불가능한 오류 — 유예가 남아 있어도 즉시 포기한다
   const T=seatedRoom();
@@ -512,8 +533,22 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   ok(!/<img/.test(chipOf(6,5).innerHTML)&&!/assets\/minions/.test(chipOf(6,5).innerHTML),"P3 미공개 칩에는 자산 경로가 없다");
   const over=mkSeatView({revision:9,state:"FINISHED",phase:"over",units:[known,Object.assign({},unknown,{type:"bomb",name:null,element:null,hp:1,maxHp:1,healing:false,rosterId:null})],result:{type:"WIN",winner:0,winType:"king"}});
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:9,seat:0,data:over})});
-  ok(T.S.phase==="over"&&T.NET.finalReveal===true&&/종료 공개/.test($el(T,"sidePanel").innerHTML)&&/VICTORY/.test($el(T,"sidePanel").innerHTML),"P4 FINISHED는 종료 공개 문구와 결과(내 승리)를 보인다");
-  ok(/새 대전은 로비의 공개 방 목록에서/.test($el(T,"sidePanel").innerHTML)&&!/접속 코드/.test($el(T,"sidePanel").innerHTML),"P5 결과 화면 안내는 공개 방 기준(접속 코드 문구 없음)");
+  /* #238 (2026-09-28 CJ 시각 REVISE): 결과 화면은 승자 · VS · 패자 · [로비로] — 종료 공개·안내 문장은 없앴다 (공개 상태는 NET.finalReveal 이 그대로 진다) */
+  const p4=$el(T,"sidePanel").innerHTML;
+  ok(T.S.phase==="over"&&T.NET.finalReveal===true&&/resultSeat mine win/.test(p4)&&/Win!/.test(p4)&&/resultVs/.test(p4)&&/Lose!/.test(p4),"P4 FINISHED는 종료 공개 상태와 결과(내 승리 · VS · 상대 패)를 보인다");
+  /* #238 CJ 8항(2026-09-28): 온라인 결과의 출구는 같은 대기방 복귀 하나다(방을 파괴하지 않는다 · 즉석 재대전 없음) */
+  ok((p4.match(/<button/g)||[]).length===1&&/netReturnToRoom\(\)/.test(p4)&&!/rematch\(\)/.test(p4)&&!/접속 코드|새 대전은/.test(p4),"P5 결과 화면 출구는 [방으로 돌아가기] 하나 · 재대전·안내 문구 없음");
+  T.netReturnToRoom();
+  const ret=lastSent(T.wsLog[0]);
+  ok(ret.t==="lobby_return"&&ret.round===T.NET.round&&ret.seatToken&&ret.requestId,"P5b 복귀는 lobby_return 봉투(round·좌석 토큰 포함)");
+  /* 복귀 좌석의 대기방 뷰 — 지난 경기 결과·최종 공개·보드 상태를 비우고 대기방으로 */
+  const wait=mkSeatView({revision:11,state:"WAITING",phase:"waiting",round:1,units:[],result:null,lobby:{guestReady:true,countdownMs:4000,peerInResult:false}});
+  T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:11,seat:0,data:wait})});
+  ok(T.NET.roomState==="WAITING"&&!T.NET.started&&T.NET.result===null&&T.NET.final===null&&!T.NET.finalReveal&&T.S.phase==="setup"&&T.NET.round===1,"P5c 대기방 복귀 — 경기별 클라이언트 상태 초기화");
+  const left=T.netLobbyCountdownLeft();
+  ok(T.NET.lobby&&T.NET.lobby.guestReady===true&&left>3000&&left<=4000,"P5d 대기방 준비·카운트다운(서버 남은 ms 기준) 표시값");
+  T.netLobbyStart(); ok(lastSent(T.wsLog[0]).t==="lobby_start","P5e 방장 시작 명령");
+  T.netLobbyReady(false); ok(lastSent(T.wsLog[0]).t==="lobby_unready","P5f 준비 취소 명령");
   const forfeit=Object.assign({},over,{revision:10,result:{type:"FORFEIT",winner:1}});
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:10,seat:0,data:forfeit})});
   ok(/몰수패/.test($el(T,"sidePanel").innerHTML)&&!/승리 유형: undefined/.test($el(T,"sidePanel").innerHTML),"P6 연결 유예 만료 몰수는 원인 문구로 보이고 알 수 없는 승리 유형을 찍지 않는다");

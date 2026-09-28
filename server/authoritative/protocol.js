@@ -14,7 +14,9 @@ const ERROR_CODES = new Set([
 ]);
 
 // #261 rtt 는 로비 전용 소켓의 실측 왕복 요청이다(좌석 없는 명령 — list_rooms 와 같이 credential 을 싣지 않는다).
-const COMMAND_TYPES = new Set(['setup', 'ready', 'unready', 'action', 'resign', 'leave', 'resync', 'list_rooms', 'rtt', 'emote']);
+// #238 lobby_* — 대기방 참가자 준비·방장 시작·결과 뒤 복귀(배치 준비 ready/unready 와 별개 명령).
+const COMMAND_TYPES = new Set(['setup', 'ready', 'unready', 'action', 'resign', 'leave', 'resync', 'list_rooms', 'rtt', 'emote',
+  'lobby_ready', 'lobby_unready', 'lobby_start', 'lobby_return']);
 const SEATLESS = new Set(['list_rooms', 'rtt']);
 const RTT_MAX = 2147483647;
 // #262 경기 중 이모티콘 — 허용 ID(2026-09-27 CJ 승인 6종). 화면 목록과 같은지는 Mars 테스트가 이 값을 읽어 대조한다.
@@ -67,6 +69,7 @@ function validateEnvelope(raw) {
     if (!Array.isArray(msg.roster) || !Array.isArray(msg.pos)) return { ok: false, reason: 'E_BAD_ENVELOPE' };
   }
   if ('baseRevision' in msg && !Number.isInteger(msg.baseRevision)) return { ok: false, reason: 'E_BAD_ENVELOPE' };
+  if ('round' in msg && !Number.isInteger(msg.round)) return { ok: false, reason: 'E_BAD_ENVELOPE' }; // #238 경기 번호(room.js handleCommand 경계)
   return { ok: true, msg };
 }
 

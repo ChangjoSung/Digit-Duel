@@ -6,6 +6,7 @@
 const WebSocket = require('ws');
 process.env.DD_ECONOMY = '0'; // #237 이 파일은 종전 무료 로스터 공개방 회귀 — 경제(기본 ON)는 test-issue237-economy.js 가 본다
 const { server, EPOCH, lobby } = require('../server');
+lobby.startGate = false; // #238 종전 참가 즉시 배치 흐름 회귀 — 대기방(준비·시작·5초)은 test-issue238-lobby.js 가 본다
 const { createEngine } = require('../engine');
 const { battleFrame } = require('../room'); // #245 전투 어휘는 겨냥 프레임(bf)을 함께 실어야 서버가 받는다
 const { openBattle } = require('./helpers'); // #245 전투 픽스처는 인접 전제를 실제로 만든 뒤 합법 경로로 연다

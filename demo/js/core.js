@@ -2736,7 +2736,7 @@ function execSlot(side,slot,opts){
     if(why){ tellOwner(`💀 사신의 낫은 아직 봉인되어 있습니다 — ${why}`);
       execSlot(side,-1); return; }   // 같은 이유로 무동작 — 다른 슬롯이 합법이어도 기본 공격으로 대신하지 않는다
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); // 사용 시 공개
-    bmsg(`💀 ${fighterName(side)}의 사신의 낫!`,{sig:true},{key:"skillFx"});
+    bmsg(`💀 ${fighterName(side)}의 사신의 낫!`,{sig:true,cast:side},{key:"skillFx"});
     /* #234 REVISE 2차 CJ 결정(2026-09-17): 절대 판정 즉사 — 천년목·철벽 돌파·과부하 방벽·방어막(결과 경감)과
        환영 무도·수면 포자(행동 차단)를 모두 무시한다. v2PreUse·v2Endure·v2IncomingCap 을 부르지 않는다.
        사용 즉시 이 말에 전투를 넘는 봉인을 건다(다음 참전 전투 봉인) */
@@ -2775,7 +2775,7 @@ function execSlot(side,slot,opts){
     f.cds[pick]--; bmsg(`🔄 ${SKILLS[f.skills[pick]].ko} 쿨 -1 (남은 쿨 ${f.cds[pick]})`);
   };
   const supFlash=sk&&!sk.pow?(sk.healPct?"heal":(sk.shieldPct||sk.dmgCut)?"guard":"buff"):null; // S3-A 보조 3계열
-  bmsg(`${fighterName(side)}의 ${sk?sk.ko:"기본 공격"}!`,(sk&&sk.kind==="sig")?{sig:true,flash:supFlash}:(supFlash?{flash:supFlash}:null),{key:"skillFx"}); // #106 5.4 그룹1 기술 연출
+  bmsg(`${fighterName(side)}의 ${sk?sk.ko:"기본 공격"}!`,(sk&&sk.kind==="sig")?{sig:true,flash:supFlash,cast:side}:(supFlash?{flash:supFlash,cast:side}:{cast:side}),{key:"skillFx"}); // #106 5.4 그룹1 기술 연출 · #238 cast = 시전 측(공개된 전투원) — 공용 프리셋·전설 연출 선택용
   if(sk&&!sk.pow){ // 비피해 기술: 보조기·불굴 진형 — 첫 효과 메시지가 그룹2(효과 연출 damageFx)를 열고 나머지는 같은 그룹에 덧붙는다
     let effKey="damageFx"; const eb=(t,fx)=>{ bmsg(t,fx,effKey?{key:effKey}:null); effKey=null; };
     if(sk.healPct){const h=Math.round(f.maxHp*sk.healPct); f.hp=Math.min(f.maxHp,f.hp+h);

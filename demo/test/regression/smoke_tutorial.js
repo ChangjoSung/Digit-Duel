@@ -111,7 +111,9 @@ const N=10, LAST=N-1;
   T.tutGo(8); ok(/<div class="tut-banner">턴 65부터 🔥 버닝 타임<\/div>/.test(T.els.tutBox.innerHTML)&&(T.els.tutBox.innerHTML.match(/tut-banner/g)||[]).length===1,"G13 9단계 상단 배너(턴 65부터 버닝 타임)는 격자 전체 폭 1개");
   T.tutGo(4); ok(!/tut-banner/.test(T.els.tutBox.innerHTML),"G13b 다른 단계엔 배너 없음");
   // CSS 구조: 격자 auto-fit/minmax · 간격은 변수 · 배지 place-items:center · 텍스트 자연 줄바꿈 · 절대좌표 없음
-  const css=T.html.slice(T.html.indexOf("/* ===== #26 튜토리얼 모달"),T.html.indexOf("</style>"));
+  // 튜토리얼 CSS = #26 표지부터 들여쓴 블록 끝(다음 0열 주석 = #263·#260 이후 다른 화면 구획)까지. 없으면 </style>까지
+  const cssA=T.html.indexOf("/* ===== #26 튜토리얼 모달"), cssZ=T.html.indexOf("\n/* ",cssA);
+  const css=T.html.slice(cssA,cssZ>0?cssZ:T.html.indexOf("</style>",cssA));
   ok(/\.tut-scene\{[^}]*display:grid;[^}]*grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,var\(--tut-card-min\)\),1fr\)\);[^}]*gap:var\(--tut-gap\)/.test(css),"G14 .tut-scene = CSS Grid auto-fit/minmax(var(--tut-card-min)) + gap 변수");
   ok(/\.tut-sn\{[^}]*display:grid;[^}]*place-items:center/.test(css),"G15 번호 원형 배지는 display:grid + place-items:center");
   ok(/\.tut-card\{[^}]*min-width:0/.test(css)&&/\.tut-txt\{[^}]*overflow-wrap:anywhere/.test(css)&&/\.tut-card-h h3\{[^}]*overflow-wrap:anywhere/.test(css)&&/\.tut-res\{[^}]*overflow-wrap:anywhere/.test(css),"G16 카드·제목·결과·설명은 min-width:0 + overflow-wrap:anywhere (좁은 열에서 자연 줄바꿈, 넘침 없음)");

@@ -1,0 +1,160 @@
+{
+ "l01-320": {
+  "overflow": false,
+  "rec": [
+   48,
+   44,
+   "2승 0패"
+  ],
+  "histOpen": "histClose",
+  "escBack": "l01Rec"
+ },
+ "l02-320": {
+  "overflow": false,
+  "back": {
+   "backX": 18,
+   "titleX": 70
+  },
+  "create": {
+   "titleH": 23,
+   "x": [
+    44,
+    44
+   ],
+   "focus": "roomName"
+  },
+  "escFocus": "roomMk"
+ },
+ "l03-320": {
+  "overflow": false,
+  "screen": "room",
+  "small": [],
+  "emote": {
+   "btnTop": 530,
+   "chatTop": 530,
+   "btnRight": 308,
+   "chatRight": 250,
+   "overlap": false
+  },
+  "cd": "4"
+ },
+ "s01-320": {
+  "overflow": false,
+  "rows": [
+   "왕 — 물 선택됨",
+   "공격 동료 — 무료, 고르지 않으면 필드 최다 속성",
+   "방어 동료 — 무료, 고르지 않으면 필드 최다 속성"
+  ],
+  "imgs": [
+   "assets/leaders/king/icon64.png:64",
+   "assets/leaders/companion_atk/icon64.png:64",
+   "assets/leaders/companion_def/icon64.png:64"
+  ],
+  "help": "불 왕국\n✕\n\n지금 0칸 · (2)부터 효과\n\n(2) 화상 20% 확률 · 라운드마다 최대 HP 2% 피해 · 1라운드\n(4) 화상 40% 확률 · 라운드마다 최대 HP 4% 피해 · 1라운드\n(6) 화상 60% 확률 · 라운드마다 최대 HP 6% 피해 · 1라운드\n(9) 화상 100%",
+  "helpClosed": "synChip"
+ },
+ "b04-320": {
+  "overflow": false,
+  "chips": [
+   "물 왕국 3칸 — 효과 보기",
+   "표준 아키타입 2칸 — 효과 보기",
+   "방어 아키타입 2칸 — 효과 보기"
+  ],
+  "panelChips": 0,
+  "head": {
+   "headH": 30,
+   "synRight": 15,
+   "synTop": 8
+  },
+  "help": "물 왕국\n✕\n\n지금 3칸 · (2) 단계 적용 중\n\n(2) 약화 25% 확률 · 대상이 가하는 피해 −4% · 1회\n(4) 약화 45% 확률 · 대상이 가하는 피해 −8% · 1회\n(6) 약화 65% 확률 · 대상이"
+ },
+ "s04-320": {
+  "overflow": false,
+  "board": {
+   "boardW": 304,
+   "cell": 42.1,
+   "belowResult": true
+  },
+  "btn": "로비로 돌아가기",
+  "onlineBtn": "방으로 돌아가기"
+ },
+ "l01-432": {
+  "overflow": false,
+  "rec": [
+   48,
+   44,
+   "2승 0패"
+  ],
+  "histOpen": "histClose",
+  "escBack": "l01Rec"
+ },
+ "l02-432": {
+  "overflow": false,
+  "back": {
+   "backX": 18,
+   "titleX": 70
+  },
+  "create": {
+   "titleH": 23,
+   "x": [
+    44,
+    44
+   ],
+   "focus": "roomName"
+  },
+  "escFocus": "roomMk"
+ },
+ "l03-432": {
+  "overflow": false,
+  "screen": "room",
+  "small": [],
+  "emote": {
+   "btnTop": 750,
+   "chatTop": 750,
+   "btnRight": 420,
+   "chatRight": 362,
+   "overlap": false
+  },
+  "cd": "4"
+ },
+ "s01-432": {
+  "overflow": false,
+  "rows": [
+   "왕 — 물 선택됨",
+   "공격 동료 — 무료, 고르지 않으면 필드 최다 속성",
+   "방어 동료 — 무료, 고르지 않으면 필드 최다 속성"
+  ],
+  "imgs": [
+   "assets/leaders/king/icon64.png:64",
+   "assets/leaders/companion_atk/icon64.png:64",
+   "assets/leaders/companion_def/icon64.png:64"
+  ],
+  "help": "불 왕국\n✕\n\n지금 0칸 · (2)부터 효과\n\n(2) 화상 20% 확률 · 라운드마다 최대 HP 2% 피해 · 1라운드\n(4) 화상 40% 확률 · 라운드마다 최대 HP 4% 피해 · 1라운드\n(6) 화상 60% 확률 · 라운드마다 최대 HP 6% 피해 · 1라운드\n(9) 화상 100%",
+  "helpClosed": "synChip"
+ },
+ "b04-432": {
+  "overflow": false,
+  "chips": [
+   "물 왕국 3칸 — 효과 보기",
+   "표준 아키타입 2칸 — 효과 보기",
+   "방어 아키타입 2칸 — 효과 보기"
+  ],
+  "panelChips": 0,
+  "head": {
+   "headH": 30,
+   "synRight": 15,
+   "synTop": 8
+  },
+  "help": "물 왕국\n✕\n\n지금 3칸 · (2) 단계 적용 중\n\n(2) 약화 25% 확률 · 대상이 가하는 피해 −4% · 1회\n(4) 약화 45% 확률 · 대상이 가하는 피해 −8% · 1회\n(6) 약화 65% 확률 · 대상이"
+ },
+ "s04-432": {
+  "overflow": false,
+  "board": {
+   "boardW": 376,
+   "cell": 52,
+   "belowResult": true
+  },
+  "btn": "로비로 돌아가기",
+  "onlineBtn": "방으로 돌아가기"
+ }
+}

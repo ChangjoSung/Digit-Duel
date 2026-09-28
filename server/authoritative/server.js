@@ -285,18 +285,21 @@ server.on('upgrade', (req, socket, head) => {
     });
   };
   // #259 좌석을 얻거나 되찾는 연결(생성·참가·재접속)은 서버 쪽 세션 검증을 통과해야 한다. 로비 목록은 읽기 전용이라 예외.
-  if (!accounts || presented.cred.kind === 'lobby') return accept(null);
+  // #238 로비 목록도 세션 쿠키가 있으면 조회해 접속 인원에 센다 — 없거나 틀리거나 DB 장애면 종전처럼 익명 읽기 전용으로 받는다.
+  const lobbyOnly = presented.cred.kind === 'lobby';
+  const token = A.sessionTokenFrom(req);
+  if (!accounts || (lobbyOnly && !token)) return accept(null);
   // 조회가 도는 동안 일어난 폐기는 이 기록에 쌓인다(endSessions). 조회는 폐기 전 DB 상태를 읽었을 수 있다 — 그 결과로
   // 소켓을 인가하지 않는다. 기록의 수명은 이 조회 하나의 수명과 같다(시계·시간 기반 정리 없음 — 잊을 수 없다).
   const lookup = { revoked: [] };
   pendingLookups.add(lookup);
-  accounts.resolve(A.sessionTokenFrom(req)).then(
+  accounts.resolve(token).then(
     (who) => {
       pendingLookups.delete(lookup);
       if (who && lookup.revoked.some((r) => revokes(who, r))) who = null;
-      return who ? accept(who) : (!socket.destroyed && rejectUpgrade(socket, 401, 'Unauthorized'));
+      return who || lobbyOnly ? accept(who) : (!socket.destroyed && rejectUpgrade(socket, 401, 'Unauthorized'));
     },
-    () => { pendingLookups.delete(lookup); if (!socket.destroyed) rejectUpgrade(socket, 503, 'Service Unavailable'); }, // DB 장애 — 무계정으로 통과시키지 않는다
+    () => { pendingLookups.delete(lookup); if (lobbyOnly) accept(null); else if (!socket.destroyed) rejectUpgrade(socket, 503, 'Service Unavailable'); }, // DB 장애 — 좌석 연결은 무계정으로 통과시키지 않는다
   ).catch(() => socket.destroy());
 });
 
@@ -311,10 +314,18 @@ function sessionOver(ws) {
   return !!(ws.ddSessionEnded || (ws.ddAccount && Date.now() >= ws.ddAccount.expiresAt));
 }
 function endSession(ws, reason) {
+  if (ws.ddLobbyOnly) { ws.ddAccount = null; return; } // #238 방 찾기는 읽기 전용 — 세션이 끝나면 끊지 않고 익명으로 남는다(접속 인원에서만 빠진다)
   if (ws.ddSessionEnded) return;
   ws.ddSessionEnded = true;
   sendFrame(ws, Object.assign({ v: 1, type: 'error', code: 'E_SESSION_ENDED' }, reason ? { reason } : {})); // reason 'login_replaced' = 다른 곳에서 로그인
   try { ws.close(4003, 'session ended'); } catch (e) { /* noop */ }
+}
+// #238 현재 멀티 접속 인원 — 열린 WS 중 유효 세션 계정의 고유 수(같은 계정 여러 소켓 = 1). 유예 중 좌석·익명·오프라인은 소켓이 없거나 계정이 없다.
+// ponytail: 목록 요청마다 wss.clients 한 바퀴(최대 연결 상한까지) — 캐시·타이머 없음
+function onlineCount() {
+  const ids = new Set();
+  for (const ws of wss.clients) if (ws.readyState === OPEN && ws.ddAccount && !sessionOver(ws)) ids.add(ws.ddAccount.id);
+  return ids.size;
 }
 // 폐기 기술자(accounts.js): {sessionHash} = 그 세션 하나 · {accountId, belowLoginGen} = 그 계정의 **더 낮은 세대** 세션만.
 // 세대 비교라, 늦게 끝난 옛 로그인·재설정의 폐기가 그보다 새 로그인의 소켓이나 진행 중 조회를 끊지 못한다.
@@ -366,6 +377,7 @@ function attachNotifier(room) {
 
 function firstFrame(ws, type, room, seat, issued, extra) {
   ws.ddRoomId = room.roomId; ws.ddSeat = seat; ws.ddConnGen = issued.connGen;
+  ws.ddSeatCred = room.seats[seat].credential; // #238 비워진 참가자 좌석의 옛 소켓 — 새 참가자의 connGen 과 번호가 겹쳐도 자격 객체가 다르다
   sendFrame(ws, Object.assign({
     v: 1, type, epoch: EPOCH, roomId: room.roomId, seat,
     seatToken: issued.seatToken, tokenGen: issued.tokenGen,
@@ -464,11 +476,11 @@ wss.on('connection', (ws) => {
 
   ws.on('message', (data, isBinary) => {
     if (isBinary) { ws.close(1003, 'binary not supported'); return; }
-    if (sessionOver(ws)) { endSession(ws); return; } // #259 끝난 세션의 소켓은 어떤 명령도(읽기 포함) 처리하지 않는다
+    if (sessionOver(ws)) { endSession(ws); if (!ws.ddLobbyOnly) return; } // #259 끝난 세션의 소켓은 어떤 명령도(읽기 포함) 처리하지 않는다
 
     if (ws.ddLobbyOnly) {
       const v = validateEnvelope(data);
-      if (v.ok && v.msg.t === 'list_rooms') sendFrame(ws, { v: 1, type: 'lobby_rooms', rooms: lobby.listPublicOpenRooms() });
+      if (v.ok && v.msg.t === 'list_rooms') sendFrame(ws, { v: 1, type: 'lobby_rooms', rooms: lobby.listPublicOpenRooms(), onlineCount: onlineCount() });
       if (v.ok && v.msg.t === 'rtt') sendFrame(ws, { v: 1, type: 'rtt', n: v.msg.n }); // #261 실측 왕복 — 즉시 되돌려 준다(연결 생존 ping/pong 과 별개)
       return;
     }
@@ -479,7 +491,7 @@ wss.on('connection', (ws) => {
     const seat = room.seats[seatIndex];
 
     // 연결 펜싱 — 더 이상 이 소켓이 그 좌석의 최신 연결이 아니면 무시한다 (analysis.md §2.4.4).
-    if (seat.credential.connGen !== ws.ddConnGen) { try { ws.close(4001, 'superseded'); } catch (e) { /* noop */ } return; }
+    if (seat.credential !== ws.ddSeatCred || seat.credential.connGen !== ws.ddConnGen) { try { ws.close(4001, 'superseded'); } catch (e) { /* noop */ } return; }
 
     const parsed = validateEnvelope(data);
     if (!parsed.ok) { sendFrame(ws, { v: 1, type: 'error', code: parsed.reason, seq: bumpSeq(room, seatIndex) }); return; }
@@ -487,7 +499,7 @@ wss.on('connection', (ws) => {
 
     if (msg.t === 'rtt') return; // #261 로비 전용 소켓에서만 답한다 — 좌석 소켓은 seq 를 건드리지 않고 무시
     if (msg.t === 'list_rooms') { // 읽기 전용 — 상태를 바꾸지 않는다
-      sendFrame(ws, { v: 1, type: 'lobby_rooms', rooms: lobby.listPublicOpenRooms(), seq: bumpSeq(room, seatIndex) });
+      sendFrame(ws, { v: 1, type: 'lobby_rooms', rooms: lobby.listPublicOpenRooms(), onlineCount: onlineCount(), seq: bumpSeq(room, seatIndex) });
       return;
     }
 
@@ -505,6 +517,12 @@ wss.on('connection', (ws) => {
 
     if (msg.t === 'emote') return sendEmote(room, seatIndex, ws, msg);
 
+    // #238 경기 번호 경계는 중복 제거보다 먼저 — 지난 경기의 저장 응답을 재전송하지 않는다. 거부는 저장하지 않는다(최신 뷰 동봉).
+    if (room.roundStale(msg)) {
+      sendFrame(ws, { v: 1, type: 'error', requestId: msg.requestId, code: 'E_STALE_REVISION', revision: room.revision, data: room.toSeatView(seatIndex), peerConnected: room.peerConnected(seatIndex), seq: bumpSeq(room, seatIndex) });
+      return;
+    }
+
     // 중복 제거 — §2.5.3. (roomId,seat,requestId) 키, 재실행하지 않고 저장된 응답을 재전송한다.
     const cached = room.checkDedup(seatIndex, msg.requestId);
     if (cached) { sendFrame(ws, Object.assign({}, cached, { peerConnected: room.peerConnected(seatIndex), seq: bumpSeq(room, seatIndex) })); return; }
@@ -517,14 +535,15 @@ wss.on('connection', (ws) => {
     } else {
       frame = { v: 1, type: outcome.type, requestId: msg.requestId, epoch: EPOCH, revision: room.revision, seat: seatIndex, data: outcome.data };
     }
-    room.storeDedup(seatIndex, msg.requestId, frame);
+    const vacated = room.seats[seatIndex] !== seat; // #238 대기방 참가자 나가기 — 이 좌석은 비워졌다(응답을 새 참가자의 중복 제거 표에 남기지 않는다)
+    if (!vacated) room.storeDedup(seatIndex, msg.requestId, frame);
     sendFrame(ws, Object.assign({}, frame, { peerConnected: room.peerConnected(seatIndex), seq: bumpSeq(room, seatIndex) })); // peerConnected 는 보낼 때의 값(캐시에 넣지 않는다)
 
     // 상대에게도 같은 revision의 갱신 뷰를 보낸다 — 실제로 상태가 바뀐 성공 명령만(noop·오류는 보내지 않는다).
-    if (outcome.ok && !outcome.noop) pushState(room, 1 - seatIndex);
+    if (outcome.ok && (!outcome.noop || vacated)) pushState(room, 1 - seatIndex);
 
     // 종료된 경기에서의 leave — 응답을 보낸 뒤 이 소켓만 닫는다.
-    if (outcome.ok && msg.t === 'leave' && room.state === STATES.FINISHED) {
+    if (outcome.ok && msg.t === 'leave' && (room.state === STATES.FINISHED || vacated)) {
       seat.connected = false;
       try { ws.close(1000, 'leave'); } catch (e) { /* noop */ }
     }
@@ -538,7 +557,7 @@ wss.on('connection', (ws) => {
     if (!room || !Number.isInteger(ws.ddSeat)) return;
     const seat = room.seats[ws.ddSeat];
     // 연결 펜싱(§2.4.4) — 재개로 밀려난 낡은 소켓의 뒤늦은 close는 새로 붙은 좌석을 끊지 않는다.
-    if (!seat.credential || seat.credential.connGen !== ws.ddConnGen) return;
+    if (!seat.credential || seat.credential !== ws.ddSeatCred || seat.credential.connGen !== ws.ddConnGen) return;
     room.socketClosed(ws.ddSeat);
     pushState(room, 1 - ws.ddSeat); // #237 서버가 단절을 확정한 순간부터 상대 화면에 "상대 연결 대기"(2.4) — revision 은 그대로
   });

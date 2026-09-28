@@ -121,6 +121,8 @@ jobs:
       # 튜토리얼·도움말·옛 PVE·핫시트·관전 제품 진입점 없음(엔진 진입점은 유지). 서버는 fetch 스텁(Jupiter 잠정 경로).
       # smoke_issue262.js (#262, v0.4.11): 경기 중 이모티콘 클라이언트 — 화면 6종 = 서버 EMOTE_IDS · 전용 emote 봉투(게임 액션·resync 0) ·
       # 응답 전 성공 표시 없음 · 서버 cooldownMs/retryMs/emoteRetryMs 초읽기 · OPEN·정지·재접속·상대 끊김 잠금 · 상대 숨김 저장(예외 저장소 포함) · 나가면 잔존 0.
+      # smoke_issue238.js (#238, v0.4.11): 경기 UI — S01 상품 8종·예비 재화 · 진열 6카드/SOLD OUT · 필드 6/가방 3 슬롯 · 레드닷 없음 · 상점 Dim+남은 턴 ·
+      # S04 = data.final/Core synView 원값(재계산 없음) · B04 내 칩 = battle.ownSyn · 기술 연출 30+3종 1.2초 이하·움직임 줄이기 · X01/X03 inert·[포기] 없음.
       - name: 턴 흐름·전투·온라인 규칙 회귀
         run: |
           set -e
@@ -149,6 +151,7 @@ jobs:
           node demo/test/regression/smoke_issue263_client.js
           node demo/test/regression/smoke_issue260.js
           node demo/test/regression/smoke_issue262.js
+          node demo/test/regression/smoke_issue238.js
       # smoke_online_art.js (#201, v0.4.8 HotFix): 온라인에서 개별 이미지가 한 번 실패해도 그 자산이 영구히
       # 이모지·텍스트로 남지 않는다. 예산은 **파일 단위**다 — 연속 실패 3회 또는 수명 누적 8회에서 영구 결손으로
       # 굳고, 백오프로 간격을 늘리며, 파일당 예약·조회는 각각 1개다. 응답이 오지도 끊기지도 않는 요청은

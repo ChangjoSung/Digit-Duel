@@ -77,10 +77,17 @@ async function finishStartShop(c){
     host.T.netCreatePublicRoom();
     await waitFor(()=>host.T.NET.roomId!=null,5000,"room_opened");
     host.T.render();
-    ok(host.T.NET.economy===true&&!/로스터 선택/.test(host.T.byId("sidePanel").innerHTML)&&/시작 상점\(90초\)이 열립니다/.test(host.T.byId("sidePanel").innerHTML),"E0 OPEN 호스트는 상대 입장 전 무료 로스터 대신 대기 안내(room_opened.economy)");
+    ok(host.T.NET.economy===true&&!/로스터 선택/.test(host.T.byId("sidePanel").innerHTML)&&host.T.NET.roomState==="OPEN"&&!host.T.S.eco,"E0 OPEN 호스트는 상대 입장 전 무료 로스터 대신 방 대기 화면(room_opened.economy) — #238 입장만으로 상점이 열리지 않으므로 상점 예고 문구는 없다");
     guest.T.netJoinPublicRoom(host.T.NET.roomId);
+    /* #238 (2026-09-28 CJ) 두 번째 참가는 대기방(WAITING) — 참가자 준비 → 방장 시작 → 서버 5초 뒤에만 시작 상점 */
+    await waitFor(()=>host.T.NET.roomState==="WAITING"&&guest.T.NET.roomState==="WAITING"&&!open0(host)&&!open0(guest),5000,"waiting room");
+    guest.T.netLobbyReady(true);
+    await waitFor(()=>host.T.NET.lobby&&host.T.NET.lobby.guestReady,5000,"guest ready");
+    host.T.netLobbyStart();
+    await waitFor(()=>guest.T.NET.lobby&&typeof guest.T.NET.lobby.countdownMs==="number",5000,"countdown");
+    ok(!open0(host)&&!open0(guest),"E1a 카운트다운 중에는 상점이 열리지 않는다");
     await waitFor(()=>open0(host)&&open0(guest),8000,"start shop opens on both seats");
-    ok(true,"E1 참가 즉시 두 좌석에 시작 상점(S01)이 동시에 열린다");
+    ok(true,"E1 5초 완료 뒤 두 좌석에 시작 상점(S01)이 동시에 열린다");
     const hv=lastState(host);
     ok(hv.phase==="shop"&&typeof hv.shop.seq==="number"&&typeof hv.you.eco.coins==="number"&&(hv.units||[]).length===0,"E2 좌석 뷰는 자기 진열·자기 재화만 싣는다(상대 경제·말 없음)");
     ok(hv.clock&&hv.clock.key==="shop"&&hv.clock.leftMs>80000&&hv.clock.leftMs<=90000,"E3 서버 개인 상점 시계 90초 "+JSON.stringify(hv.clock));
@@ -100,7 +107,7 @@ async function finishStartShop(c){
     await waitFor(()=>host.ctor.frames.slice(n0).some(m=>m.type==="room_state"),5000,"resync after stale");
 
     // 같은 requestId 재전송 — 한 번만 적용 (서버 dedup)
-    const N=host.T.NET, c2=coins(host), frame={v:1,requestId:"dup-237",seatToken:N.seatToken,tokenGen:N.tokenGen,t:"action",baseRevision:N.revision,
+    const N=host.T.NET, c2=coins(host), frame={v:1,requestId:"dup-237",seatToken:N.seatToken,tokenGen:N.tokenGen,round:N.round,t:"action",baseRevision:N.revision,
       action:{t:"shopGood",shop:0,seq:host.T.S.eco.shop.seq[0],item:"potion"}};
     n0=host.ctor.frames.length; N.ws.send(JSON.stringify(frame)); N.ws.send(JSON.stringify(frame));
     await waitFor(()=>host.ctor.frames.slice(n0).filter(m=>m.requestId==="dup-237").length===2,5000,"dup replies");
@@ -121,7 +128,7 @@ async function finishStartShop(c){
     ok(guest.ctor.errors.length===ge&&coins(guest)===gc,"E11 단절 중 상점 입력은 회선에 나가지 않는다 (클라이언트 송신 끝 차단 · 서버 왕복 없음)");
     { /* 그 가드를 우회한 프레임(구버전·변조 클라이언트) — **서버 권위 E_PAUSED 는 그대로**다 */
       const N=guest.T.NET;
-      N.ws.send(JSON.stringify({v:1,requestId:"paused-263",seatToken:N.seatToken,tokenGen:N.tokenGen,t:"action",
+      N.ws.send(JSON.stringify({v:1,requestId:"paused-263",seatToken:N.seatToken,tokenGen:N.tokenGen,round:N.round,t:"action",
         baseRevision:N.revision,action:{t:"shopGood",shop:0,seq:guest.T.S.eco.shop.seq[0],item:"potion"}}));
       await waitFor(()=>guest.ctor.errors.length>ge,5000,"paused reject");
       ok(guest.ctor.errors[ge]==="E_PAUSED","E11b 송신 끝을 우회한 프레임은 서버가 E_PAUSED 로 거부한다 (서버 권위 유지)"); }

@@ -7,6 +7,7 @@ const WebSocket = require('ws');
 process.env.DD_AUTH_MAX_CONNECTIONS_PER_IP = '32';
 const { validateEnvelope, EMOTE_IDS, isEmoteId } = require('../protocol');
 const { server, lobby } = require('../server');
+lobby.startGate = false; // #238 이 파일은 참가 즉시 시작(SETUP·경기 중) 이모티콘 회귀 — 대기방 경로는 test-issue238-lobby.js 가 본다
 const { STATES } = require('../room');
 const H = require('./helpers');
 

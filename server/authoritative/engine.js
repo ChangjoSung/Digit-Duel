@@ -306,6 +306,7 @@ function normalizeMsgFx(fx) {
   if (fx.sig === true) out.sig = true;
   if (typeof fx.flash === 'string') out.flash = fx.flash;
   if (fx.ko === 'A' || fx.ko === 'D') out.ko = fx.ko;
+  if (fx.cast === 'A' || fx.cast === 'D') out.cast = fx.cast; // #238 시전 측(공개된 전투원) — 스킬 연출 프리셋 선택용
   const float = decodeFloat(fx.float);
   if (float) out.float = float;
   if (fx.hp && (fx.hp.side === 'A' || fx.hp.side === 'D')) {
@@ -355,16 +356,18 @@ function hookMsgQ(T, msgQ) {
 // 않는다(#217 PD REVISE 5번 "private raw id/cap/미공개기술 등 금지 필드" — scene은 규칙 판정에 안 쓰이는
 // 표시 전용 스냅샷이라 room.js가 매 프레임 재구성하는 battle.a/d보다 더 적게만 담는다). room.js와 필드
 // 목록이 갈리면 안 되므로 바뀌면 양쪽을 함께 고친다(battle-fx-protocol.md에 명시).
-function sceneSideOf(f, piece) {
+function sceneSideOf(T, f, piece) {
   const bodyFight = f === piece;
   return {
     owner: piece.owner, type: piece.type, element: f.element || null, bodyFight,
-    rosterId: bodyFight && piece.type === 'minion' ? (piece.rosterId || null) : null,
-    artRosterId: bodyFight ? null : (f.artRosterId || null),
+    // #238 전설 정체 — room.js _serializeBattle side()와 같은 규칙. 종 키는 Core ecoKey(일반=rosterId 그대로,
+    // 전설=L-DRAGON/L-WITCH/L-REAPER). 대리 출전은 기존 artRosterId 우선, 없을 때 전설만. 원시 legend·등급·기술·cap 은 싣지 않는다.
+    rosterId: bodyFight && piece.type === 'minion' ? (T.ecoKey(piece) || null) : null,
+    artRosterId: bodyFight ? null : (f.artRosterId || (f.legend ? T.ecoKey(f) : null)),
   };
 }
-function sceneOf(battle) {
-  return { a: sceneSideOf(battle.fa, battle.attP), d: sceneSideOf(battle.fd, battle.defP) };
+function sceneOf(T, battle) {
+  return { a: sceneSideOf(T, battle.fa, battle.attP), d: sceneSideOf(T, battle.fd, battle.defP) };
 }
 
 // 이 시점(stage 이벤트 캡처 시점)에 표시해야 할 battleId — 전투가 아직 열려 있으면 그 전투, 막 끝나
@@ -403,7 +406,7 @@ function hookBattleAccessor(T, S) {
         hookMsgQ(T, v.msgQ);
         T.__fx.battleSeq = (T.__fx.battleSeq || 0) + 1;
         T.__fx.lastBattleId = T.__fx.battleSeq;
-        try { T.__fx.lastScene = sceneOf(v); } catch (e) { T.__fx.lastScene = null; }
+        try { T.__fx.lastScene = sceneOf(T, v); } catch (e) { T.__fx.lastScene = null; }
         fxAppend(T, { src: 'stage', turn: T.S && typeof T.S.turnCount === 'number' ? T.S.turnCount : null,
           key: 'battleStart', kind: 'count', title: '', sub: '',
           battleId: T.__fx.lastBattleId, scene: T.__fx.lastScene });

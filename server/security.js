@@ -408,7 +408,9 @@ function validateRelayMessage(raw, isBinary, limitsOverride) {
  * 자산이 늘면 같이 커져야 하는 계약이라 순수 상수로 내놓는다 — 회귀 테스트가 실제 자산 수와 대조한다.
  */
 const STATIC_BUDGET = {
-  pageLoadRequests: 57,    // index 1 + CSS/JS 9 + 하수인 20×2 + 리더 2×2 = 54, 부수 요청 여유 3
+  // #238 자산 증가 후 실제 코퍼스(test-static-load.js pageLoadCorpus)가 최소 선언값이다:
+  // index 1 + CSS/JS 11 + 하수인 33×2 + 리더 2×2 = 82. 부수 요청은 concurrentPageLoads 배수 버스트가 담는다.
+  pageLoadRequests: 82,
   concurrentPageLoads: 6,  // 같은 IP 에서 겹칠 수 있는 로드 수
 };
 

@@ -219,26 +219,41 @@ function drive(T, seed, steps) {
    DD_GOLDEN=1 로 두 번 돌려 같은 값임을 확인하고 박았다. 값을 구현에 맞춰 낮춘 것이 아니라 승인된 규칙 변경의 새 기준선이다. */
 /* #262 (2026-09-27 CJ QA) 재기준선: 개체 표식 hpSeen(기본 false · 전투원에 true)이 상태에 더해져 state 해시만 바뀌었다.
    hpSeen 키만 빼면 종전 세 값과 같고 log·fx·metrics·경로는 그대로다(규칙·난수 무변경). */
+/* #238 (2026-09-28) fx 재기준선: 기술 사용 줄(src msg · key skillFx)에 표시 전용 태그 fx.cast(시전 측 'A'|'D')가 더해져
+   전투가 있는 seed 44·55 의 fx 해시만 바뀌었다(seed 11 은 전투 0 이라 그대로). 규칙·난수·상태·log·metrics 는 무변경.
+   그래서 fx 는 두 겹으로 건다: ① fx = 새 전체 해시(엄격) ② fxLegacy = **cast 한 칸만** 걷어 낸 투영이 종전 값과 한 글자도
+   다르지 않음 — 그 밖의 어떤 필드가 바뀌어도 ②가 깨진다. casts = cast 가 실린 이벤트 수이고, cast 는 skillFx 줄에만,
+   모든 skillFx 줄에 A|D 로 실려야 한다. 근거: Jupiter/runtime-fx-contract.md (재기준선 전 좁은 진단 실측). */
 const GOLDEN = [
   { seed: 11, turns: 71, phase: 'play', winner: null, battles: 0, forced: 0, searches: 3,
-    state: 'f33e9ddd1d90aadc', log: 'd2b6a79974bda20c', logN: 84, fx: '9802fc2eaad2f033', fxN: 40, metrics: 'fff2fbfce4478d8e' },
+    state: 'f33e9ddd1d90aadc', log: 'd2b6a79974bda20c', logN: 84, fx: '9802fc2eaad2f033', fxLegacy: '9802fc2eaad2f033', casts: 0, fxN: 40, metrics: 'fff2fbfce4478d8e' },
   { seed: 44, turns: 111, phase: 'over', winner: 0, battles: 2, forced: 2, searches: 3,
-    state: '8881c250487b5081', log: 'eb3ab1f5bc3fe290', logN: 128, fx: '0b8775810364dfca', fxN: 40, metrics: '7e0297c8192fe704' },
+    state: '8881c250487b5081', log: 'eb3ab1f5bc3fe290', logN: 128, fx: '1b677f50ffb8c810', fxLegacy: '0b8775810364dfca', casts: 10, fxN: 40, metrics: '7e0297c8192fe704' },
   { seed: 55, turns: 135, phase: 'play', winner: null, battles: 9, forced: 9, searches: 6,
-    state: 'd97076556df456db', log: '3fac178ebf3512f3', logN: 172, fx: 'bd52ade6a2b27033', fxN: 40, metrics: '8a1facbfd255a2c4' },
+    state: 'd97076556df456db', log: '3fac178ebf3512f3', logN: 172, fx: '42f759efc5216e2f', fxLegacy: 'bd52ade6a2b27033', casts: 6, fxN: 40, metrics: '8a1facbfd255a2c4' },
 ];
 const rep = (k, v) => (v instanceof Set ? [...v] : v);
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);
+// #238 이전 모양 투영 — 떼어 낸 사본에서 fx.cast 하나만 지운다(원본 불변). cast 만 있던 fx 는 normalizeMsgFx 규칙대로 null.
+const fxLegacyOf = (items) => JSON.parse(JSON.stringify(items)).map((e) => {
+  if (e.fx && 'cast' in e.fx) { delete e.fx.cast; if (!Object.keys(e.fx).length) e.fx = null; }
+  return e;
+});
 for (const g of GOLDEN) {
   const T = drive(createEngine(), g.seed, 400);
   const S = T.S, M = S.metrics;
   // 규칙이 바뀜 때 고정 기대값을 다시 뜨는 덤프 — DD_GOLDEN=1 로 두 번 돌려 같은 값이 나오는 것을 확인한 뒤 아래 GOLDEN 에 박는다.
-  if (process.env.DD_GOLDEN) console.log(JSON.stringify({ seed: g.seed, turns: S.turnCount, phase: S.phase, winner: S.winner, battles: M.battles, forced: M.forcedBattles, searches: M.searches, state: sha(JSON.stringify(S, rep)), log: sha(JSON.stringify(S.log)), logN: S.log.length, fx: sha(JSON.stringify(T.__fx.items)), fxN: T.__fx.items.length, metrics: sha(JSON.stringify(M)) }));
+  if (process.env.DD_GOLDEN) console.log(JSON.stringify({ seed: g.seed, turns: S.turnCount, phase: S.phase, winner: S.winner, battles: M.battles, forced: M.forcedBattles, searches: M.searches, state: sha(JSON.stringify(S, rep)), log: sha(JSON.stringify(S.log)), logN: S.log.length, fx: sha(JSON.stringify(T.__fx.items)), fxLegacy: sha(JSON.stringify(fxLegacyOf(T.__fx.items))), casts: T.__fx.items.filter((e) => e.fx && 'cast' in e.fx).length, fxN: T.__fx.items.length, metrics: sha(JSON.stringify(M)) }));
   ok(S.turnCount === g.turns && S.phase === g.phase && S.winner === g.winner,
     'seed ' + g.seed + ': 완주 결과 동일 (turns=' + S.turnCount + ' phase=' + S.phase + ' winner=' + S.winner + ')');
   ok(sha(JSON.stringify(S, rep)) === g.state, 'seed ' + g.seed + ': 최종 상태 스냅샷 동일');
   ok(S.log.length === g.logN && sha(JSON.stringify(S.log)) === g.log, 'seed ' + g.seed + ': 공개 기록(log) 동일 (' + S.log.length + '줄)');
   ok(T.__fx.items.length === g.fxN && sha(JSON.stringify(T.__fx.items)) === g.fx, 'seed ' + g.seed + ': 표시 이벤트(fx) 동일 (' + T.__fx.items.length + '건)');
+  ok(sha(JSON.stringify(fxLegacyOf(T.__fx.items))) === g.fxLegacy, 'seed ' + g.seed + ': #238 cast 한 칸만 걷으면 종전 fx 와 동일 (' + g.fxLegacy + ')');
+  const casted = T.__fx.items.filter((e) => e.fx && 'cast' in e.fx), skillMsgs = T.__fx.items.filter((e) => e.src === 'msg' && e.key === 'skillFx');
+  ok(casted.length === g.casts && casted.every((e) => e.src === 'msg' && e.key === 'skillFx' && (e.fx.cast === 'A' || e.fx.cast === 'D'))
+    && skillMsgs.every((e) => e.fx && (e.fx.cast === 'A' || e.fx.cast === 'D')),
+    'seed ' + g.seed + ': #238 cast 는 skillFx 줄에만·모든 skillFx 줄에 A|D 로 실린다 (casts=' + casted.length + '/skillFx=' + skillMsgs.length + ')');
   ok(sha(JSON.stringify(M)) === g.metrics, 'seed ' + g.seed + ': 지표 동일');
   ok(M.battles === g.battles && M.forcedBattles === g.forced && M.searches === g.searches,
     'seed ' + g.seed + ': 전투·강제 전투·탐색 경로를 실제로 지났다 (battles=' + M.battles + ' forced=' + M.forcedBattles + ' searches=' + M.searches + ')');

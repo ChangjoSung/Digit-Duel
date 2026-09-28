@@ -1,0 +1,1406 @@
+{
+ "s03-board-320-new": {
+  "top": {
+   "vw": 320,
+   "vh": 640,
+   "screen": "board",
+   "phase": "play",
+   "bs": "0.809",
+   "boardW": 304.2,
+   "ratio": 95.1,
+   "cellPx": 42.1,
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 504,
+    "height": 694,
+    "overflowY": "auto"
+   },
+   "appBar": {
+    "x": 0,
+    "y": 0,
+    "w": 320,
+    "h": 62
+   },
+   "boardInfo": {
+    "x": 8,
+    "y": 70,
+    "w": 304,
+    "h": 110
+   },
+   "dock": {
+    "x": 0,
+    "y": 566,
+    "w": 320,
+    "h": 74
+   },
+   "turnBar": [
+    {
+     "t": "탐색",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌀 텔레포트",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌿 회복",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🎒0가방",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "기권",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    }
+   ],
+   "lastRow": {
+    "rc": "13,1",
+    "rect": {
+     "x": 7.9,
+     "y": 714.2,
+     "w": 42.1,
+     "h": 42.1
+    },
+    "coveredByInfo": false,
+    "inScroller": false
+   },
+   "tapBefore": {
+    "want": "1,4",
+    "got": "1,4"
+   }
+  },
+  "bottom": {
+   "vw": 320,
+   "vh": 640,
+   "screen": "board",
+   "phase": "play",
+   "bs": "0.809",
+   "boardW": 304.2,
+   "ratio": 95.1,
+   "cellPx": 42.1,
+   "overflowX": false,
+   "scroll": {
+    "top": 190,
+    "client": 504,
+    "height": 694,
+    "overflowY": "auto"
+   },
+   "appBar": {
+    "x": 0,
+    "y": 0,
+    "w": 320,
+    "h": 62
+   },
+   "boardInfo": {
+    "x": 8,
+    "y": 62,
+    "w": 304,
+    "h": 110
+   },
+   "dock": {
+    "x": 0,
+    "y": 566,
+    "w": 320,
+    "h": 74
+   },
+   "turnBar": [
+    {
+     "t": "탐색",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌀 텔레포트",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌿 회복",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🎒0가방",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "기권",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    }
+   ],
+   "lastRow": {
+    "rc": "13,1",
+    "rect": {
+     "x": 7.9,
+     "y": 524.2,
+     "w": 42.1,
+     "h": 42.1
+    },
+    "coveredByInfo": false,
+    "inScroller": true
+   },
+   "tapAfter": {
+    "want": "13,6",
+    "got": "13,6",
+    "piece": 33,
+    "selected": 33,
+    "scrollTopAfterTap": 190
+   }
+  }
+ },
+ "b04-battle-320-new": {
+  "box": {
+   "x": 12.8,
+   "y": 37.5,
+   "w": 294.4,
+   "h": 565
+  },
+  "bstage": {
+   "x": 27.8,
+   "y": 111.5,
+   "w": 264.4,
+   "h": 288
+  },
+  "slots": [
+   {
+    "x": 35.8,
+    "y": 119.5,
+    "w": 130.2,
+    "h": 108
+   },
+   {
+    "x": 154,
+    "y": 279.5,
+    "w": 130.2,
+    "h": 112
+   }
+  ],
+  "buttons": [
+   {
+    "t": "⚔️ 싸우기",
+    "x": 27.8,
+    "y": 481.5,
+    "w": 128.2,
+    "h": 44
+   },
+   {
+    "t": "🎒 가방",
+    "x": 164,
+    "y": 481.5,
+    "w": 128.2,
+    "h": 44
+   },
+   {
+    "t": "🔴 포획",
+    "x": 27.8,
+    "y": 533.5,
+    "w": 128.2,
+    "h": 44
+   },
+   {
+    "t": "🏃 도망가기",
+    "x": 164,
+    "y": 533.5,
+    "w": 128.2,
+    "h": 44
+   },
+   {
+    "t": "불꽃 주먹 21~3",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "ⓘ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "💪 힘의 수호자 ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🧭 시간의 수호자",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🏃 도망의 수호자",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🔴 던지기 (성공",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🏃 도망 (성공 ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "← 뒤로",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   }
+  ],
+  "imgs": [
+   "assets/minions/land_std/battle.png",
+   "assets/minions/fire_atk/battle.png"
+  ]
+ },
+ "s04-result-320-new": {
+  "top": {
+   "vw": 320,
+   "vh": 640,
+   "screen": "result",
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 578,
+    "height": 592
+   },
+   "buttons": [
+    "로비로 돌아가기"
+   ],
+   "lobbyBtn": {
+    "w": 276,
+    "h": 52,
+    "inView": true
+   },
+   "boardHidden": true,
+   "seats": [
+    "플레이어Win! 🏆",
+    "AI(5급)Lose!"
+   ],
+   "vs": true,
+   "visibleText": "경기 종료 플레이어 Win! 🏆 화염 투사 HP 90/90 새싹 파수꾼 HP 100/100 스파크 HP 100/100 방패 게 HP 110/110 황토 아르마딜로 HP 110/110 바위 두더지 HP 100/100 동료 HP 100/100 동료 HP 100/100 왕 HP 100/100 1 1 1 5 1 3 1 2 VS AI(5급) Lose! 스파크 HP",
+   "banned": []
+  },
+  "bottom": {
+   "vw": 320,
+   "vh": 640,
+   "screen": "result",
+   "overflowX": false,
+   "scroll": {
+    "top": 14,
+    "client": 578,
+    "height": 592
+   },
+   "buttons": [
+    "로비로 돌아가기"
+   ],
+   "lobbyBtn": {
+    "w": 276,
+    "h": 52,
+    "inView": true
+   },
+   "boardHidden": true,
+   "seats": [
+    "플레이어Win! 🏆",
+    "AI(5급)Lose!"
+   ],
+   "vs": true,
+   "visibleText": "경기 종료 플레이어 Win! 🏆 화염 투사 HP 90/90 새싹 파수꾼 HP 100/100 스파크 HP 100/100 방패 게 HP 110/110 황토 아르마딜로 HP 110/110 바위 두더지 HP 100/100 동료 HP 100/100 동료 HP 100/100 왕 HP 100/100 1 1 1 5 1 3 1 2 VS AI(5급) Lose! 스파크 HP",
+   "banned": []
+  }
+ },
+ "s03-board-432-new": {
+  "top": {
+   "vw": 432,
+   "vh": 932,
+   "screen": "board",
+   "phase": "play",
+   "bs": "1",
+   "boardW": 376,
+   "ratio": 87,
+   "cellPx": 52,
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 796,
+    "height": 800,
+    "overflowY": "auto"
+   },
+   "appBar": {
+    "x": 0,
+    "y": 0,
+    "w": 432,
+    "h": 62
+   },
+   "boardInfo": {
+    "x": 8,
+    "y": 70,
+    "w": 416,
+    "h": 82
+   },
+   "dock": {
+    "x": 0,
+    "y": 858,
+    "w": 432,
+    "h": 74
+   },
+   "turnBar": [
+    {
+     "t": "탐색",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌀 텔레포트",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌿 회복",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🎒0가방",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "기권",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    }
+   ],
+   "lastRow": {
+    "rc": "13,1",
+    "rect": {
+     "x": 28,
+     "y": 810,
+     "w": 52,
+     "h": 52
+    },
+    "coveredByInfo": false,
+    "inScroller": false
+   },
+   "tapBefore": {
+    "want": "1,4",
+    "got": "1,4"
+   }
+  },
+  "bottom": {
+   "vw": 432,
+   "vh": 932,
+   "screen": "board",
+   "phase": "play",
+   "bs": "1",
+   "boardW": 376,
+   "ratio": 87,
+   "cellPx": 52,
+   "overflowX": false,
+   "scroll": {
+    "top": 4,
+    "client": 796,
+    "height": 800,
+    "overflowY": "auto"
+   },
+   "appBar": {
+    "x": 0,
+    "y": 0,
+    "w": 432,
+    "h": 62
+   },
+   "boardInfo": {
+    "x": 8,
+    "y": 66,
+    "w": 416,
+    "h": 82
+   },
+   "dock": {
+    "x": 0,
+    "y": 858,
+    "w": 432,
+    "h": 74
+   },
+   "turnBar": [
+    {
+     "t": "탐색",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌀 텔레포트",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌿 회복",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🎒0가방",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "기권",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    }
+   ],
+   "lastRow": {
+    "rc": "13,1",
+    "rect": {
+     "x": 28,
+     "y": 806,
+     "w": 52,
+     "h": 52
+    },
+    "coveredByInfo": false,
+    "inScroller": true
+   },
+   "tapAfter": {
+    "want": "13,6",
+    "got": "13,6",
+    "piece": 33,
+    "selected": 33,
+    "scrollTopAfterTap": 4
+   }
+  }
+ },
+ "b04-battle-432-new": {
+  "box": {
+   "x": 17.3,
+   "y": 183.5,
+   "w": 397.4,
+   "h": 565
+  },
+  "bstage": {
+   "x": 32.3,
+   "y": 257.5,
+   "w": 367.4,
+   "h": 288
+  },
+  "slots": [
+   {
+    "x": 40.3,
+    "y": 265.5,
+    "w": 164,
+    "h": 108.5
+   },
+   {
+    "x": 227.7,
+    "y": 425.5,
+    "w": 164,
+    "h": 112
+   }
+  ],
+  "buttons": [
+   {
+    "t": "⚔️ 싸우기",
+    "x": 32.3,
+    "y": 627.5,
+    "w": 179.7,
+    "h": 44
+   },
+   {
+    "t": "🎒 가방",
+    "x": 220,
+    "y": 627.5,
+    "w": 179.7,
+    "h": 44
+   },
+   {
+    "t": "🔴 포획",
+    "x": 32.3,
+    "y": 679.5,
+    "w": 179.7,
+    "h": 44
+   },
+   {
+    "t": "🏃 도망가기",
+    "x": 220,
+    "y": 679.5,
+    "w": 179.7,
+    "h": 44
+   },
+   {
+    "t": "불꽃 주먹 21~3",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "ⓘ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "💪 힘의 수호자 ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🧭 시간의 수호자",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🏃 도망의 수호자",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🔴 던지기 (성공",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🏃 도망 (성공 ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "← 뒤로",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   }
+  ],
+  "imgs": [
+   "assets/minions/land_std/battle.png",
+   "assets/minions/fire_atk/battle.png"
+  ]
+ },
+ "s04-result-432-new": {
+  "top": {
+   "vw": 432,
+   "vh": 932,
+   "screen": "result",
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 870,
+    "height": 870
+   },
+   "buttons": [
+    "로비로 돌아가기"
+   ],
+   "lobbyBtn": {
+    "w": 388,
+    "h": 52,
+    "inView": true
+   },
+   "boardHidden": true,
+   "seats": [
+    "플레이어Win! 🏆",
+    "AI(5급)Lose!"
+   ],
+   "vs": true,
+   "visibleText": "경기 종료 플레이어 Win! 🏆 화염 투사 HP 90/90 새싹 파수꾼 HP 100/100 스파크 HP 100/100 방패 게 HP 110/110 황토 아르마딜로 HP 110/110 바위 두더지 HP 100/100 동료 HP 100/100 동료 HP 100/100 왕 HP 100/100 1 1 1 5 1 3 1 2 VS AI(5급) Lose! 스파크 HP",
+   "banned": []
+  },
+  "bottom": {
+   "vw": 432,
+   "vh": 932,
+   "screen": "result",
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 870,
+    "height": 870
+   },
+   "buttons": [
+    "로비로 돌아가기"
+   ],
+   "lobbyBtn": {
+    "w": 388,
+    "h": 52,
+    "inView": true
+   },
+   "boardHidden": true,
+   "seats": [
+    "플레이어Win! 🏆",
+    "AI(5급)Lose!"
+   ],
+   "vs": true,
+   "visibleText": "경기 종료 플레이어 Win! 🏆 화염 투사 HP 90/90 새싹 파수꾼 HP 100/100 스파크 HP 100/100 방패 게 HP 110/110 황토 아르마딜로 HP 110/110 바위 두더지 HP 100/100 동료 HP 100/100 동료 HP 100/100 왕 HP 100/100 1 1 1 5 1 3 1 2 VS AI(5급) Lose! 스파크 HP",
+   "banned": []
+  }
+ },
+ "s03-board-320-before": {
+  "top": {
+   "vw": 320,
+   "vh": 640,
+   "screen": "board",
+   "phase": "play",
+   "bs": "0.52",
+   "boardW": 195.5,
+   "ratio": 61.1,
+   "cellPx": 27,
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 504,
+    "height": 504,
+    "overflowY": "hidden"
+   },
+   "appBar": {
+    "x": 0,
+    "y": 0,
+    "w": 320,
+    "h": 62
+   },
+   "boardInfo": {
+    "x": 8,
+    "y": 70,
+    "w": 304,
+    "h": 110
+   },
+   "dock": {
+    "x": 0,
+    "y": 566,
+    "w": 320,
+    "h": 74
+   },
+   "turnBar": [
+    {
+     "t": "탐색",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌀 텔레포트",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌿 회복",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🎒0가방",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "기권",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    }
+   ],
+   "lastRow": {
+    "rc": "13,1",
+    "rect": {
+     "x": 62.2,
+     "y": 527,
+     "w": 27,
+     "h": 27
+    },
+    "coveredByInfo": false,
+    "inScroller": true
+   },
+   "tapBefore": {
+    "want": "1,4",
+    "got": "1,4"
+   }
+  },
+  "bottom": {
+   "vw": 320,
+   "vh": 640,
+   "screen": "board",
+   "phase": "play",
+   "bs": "0.52",
+   "boardW": 195.5,
+   "ratio": 61.1,
+   "cellPx": 27,
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 504,
+    "height": 504,
+    "overflowY": "hidden"
+   },
+   "appBar": {
+    "x": 0,
+    "y": 0,
+    "w": 320,
+    "h": 62
+   },
+   "boardInfo": {
+    "x": 8,
+    "y": 70,
+    "w": 304,
+    "h": 110
+   },
+   "dock": {
+    "x": 0,
+    "y": 566,
+    "w": 320,
+    "h": 74
+   },
+   "turnBar": [
+    {
+     "t": "탐색",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌀 텔레포트",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌿 회복",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🎒0가방",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "기권",
+     "w": 47,
+     "h": 58,
+     "inView": true
+    }
+   ],
+   "lastRow": {
+    "rc": "13,1",
+    "rect": {
+     "x": 62.2,
+     "y": 527,
+     "w": 27,
+     "h": 27
+    },
+    "coveredByInfo": false,
+    "inScroller": true
+   },
+   "tapAfter": {
+    "want": "13,6",
+    "got": "13,6",
+    "piece": 33,
+    "selected": 33,
+    "scrollTopAfterTap": 0
+   }
+  }
+ },
+ "b04-battle-320-before": {
+  "box": {
+   "x": 12.8,
+   "y": 37.5,
+   "w": 294.4,
+   "h": 565
+  },
+  "bstage": {
+   "x": 27.8,
+   "y": 111.5,
+   "w": 264.4,
+   "h": 288
+  },
+  "slots": [
+   {
+    "x": 35.8,
+    "y": 119.5,
+    "w": 130.2,
+    "h": 108
+   },
+   {
+    "x": 154,
+    "y": 279.5,
+    "w": 130.2,
+    "h": 112
+   }
+  ],
+  "buttons": [
+   {
+    "t": "⚔️ 싸우기",
+    "x": 27.8,
+    "y": 481.5,
+    "w": 128.2,
+    "h": 44
+   },
+   {
+    "t": "🎒 가방",
+    "x": 164,
+    "y": 481.5,
+    "w": 128.2,
+    "h": 44
+   },
+   {
+    "t": "🔴 포획",
+    "x": 27.8,
+    "y": 533.5,
+    "w": 128.2,
+    "h": 44
+   },
+   {
+    "t": "🏃 도망가기",
+    "x": 164,
+    "y": 533.5,
+    "w": 128.2,
+    "h": 44
+   },
+   {
+    "t": "불꽃 주먹 21~3",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "ⓘ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "💪 힘의 수호자 ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🧭 시간의 수호자",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🏃 도망의 수호자",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🔴 던지기 (성공",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🏃 도망 (성공 ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "← 뒤로",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   }
+  ],
+  "imgs": [
+   "assets/minions/land_std/battle.png",
+   "assets/minions/fire_atk/battle.png"
+  ]
+ },
+ "s04-result-320-before": {
+  "top": {
+   "vw": 320,
+   "vh": 640,
+   "screen": "result",
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 578,
+    "height": 778
+   },
+   "buttons": [
+    "로비로 돌아가기",
+    "다시 대전"
+   ],
+   "lobbyBtn": {
+    "w": 135,
+    "h": 76,
+    "inView": false
+   },
+   "boardHidden": true,
+   "seats": [
+    "플레이어Win! 🏆",
+    "AI(5급)Lose!"
+   ],
+   "vs": true,
+   "visibleText": "MATCH COMPLETE VICTORY 경기 종료 플레이어 승리! 🏆 승리 유형: 전멸 총 진행 0턴 🔍 종료 공개 — 보드의 모든 말 위치·정체가 공개되었습니다. 플레이어 Win! 🏆 화염 투사 HP 90/90 새싹 파수꾼 HP 100/100 스파크 HP 100/100 방패 게 HP 110/110 황토 아르마딜로 HP 110/110 바위 두더지 H",
+   "banned": [
+    "MATCH COMPLETE",
+    "VICTORY",
+    "승리 유형",
+    "총 진행",
+    "종료 공개",
+    "다시 대전"
+   ]
+  },
+  "bottom": {
+   "vw": 320,
+   "vh": 640,
+   "screen": "result",
+   "overflowX": false,
+   "scroll": {
+    "top": 200,
+    "client": 578,
+    "height": 778
+   },
+   "buttons": [
+    "로비로 돌아가기",
+    "다시 대전"
+   ],
+   "lobbyBtn": {
+    "w": 135,
+    "h": 76,
+    "inView": true
+   },
+   "boardHidden": true,
+   "seats": [
+    "플레이어Win! 🏆",
+    "AI(5급)Lose!"
+   ],
+   "vs": true,
+   "visibleText": "MATCH COMPLETE VICTORY 경기 종료 플레이어 승리! 🏆 승리 유형: 전멸 총 진행 0턴 🔍 종료 공개 — 보드의 모든 말 위치·정체가 공개되었습니다. 플레이어 Win! 🏆 화염 투사 HP 90/90 새싹 파수꾼 HP 100/100 스파크 HP 100/100 방패 게 HP 110/110 황토 아르마딜로 HP 110/110 바위 두더지 H",
+   "banned": [
+    "MATCH COMPLETE",
+    "VICTORY",
+    "승리 유형",
+    "총 진행",
+    "종료 공개",
+    "다시 대전"
+   ]
+  }
+ },
+ "s03-board-432-before": {
+  "top": {
+   "vw": 432,
+   "vh": 932,
+   "screen": "board",
+   "phase": "play",
+   "bs": "0.977",
+   "boardW": 367.4,
+   "ratio": 85,
+   "cellPx": 50.8,
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 796,
+    "height": 796,
+    "overflowY": "hidden"
+   },
+   "appBar": {
+    "x": 0,
+    "y": 0,
+    "w": 432,
+    "h": 62
+   },
+   "boardInfo": {
+    "x": 8,
+    "y": 70,
+    "w": 416,
+    "h": 82
+   },
+   "dock": {
+    "x": 0,
+    "y": 858,
+    "w": 432,
+    "h": 74
+   },
+   "turnBar": [
+    {
+     "t": "탐색",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌀 텔레포트",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌿 회복",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🎒0가방",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "기권",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    }
+   ],
+   "lastRow": {
+    "rc": "13,1",
+    "rect": {
+     "x": 32.3,
+     "y": 795.1,
+     "w": 50.8,
+     "h": 50.8
+    },
+    "coveredByInfo": false,
+    "inScroller": true
+   },
+   "tapBefore": {
+    "want": "1,4",
+    "got": "1,4"
+   }
+  },
+  "bottom": {
+   "vw": 432,
+   "vh": 932,
+   "screen": "board",
+   "phase": "play",
+   "bs": "0.977",
+   "boardW": 367.4,
+   "ratio": 85,
+   "cellPx": 50.8,
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 796,
+    "height": 796,
+    "overflowY": "hidden"
+   },
+   "appBar": {
+    "x": 0,
+    "y": 0,
+    "w": 432,
+    "h": 62
+   },
+   "boardInfo": {
+    "x": 8,
+    "y": 70,
+    "w": 416,
+    "h": 82
+   },
+   "dock": {
+    "x": 0,
+    "y": 858,
+    "w": 432,
+    "h": 74
+   },
+   "turnBar": [
+    {
+     "t": "탐색",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌀 텔레포트",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🌿 회복",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "🎒0가방",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    },
+    {
+     "t": "기권",
+     "w": 66,
+     "h": 58,
+     "inView": true
+    }
+   ],
+   "lastRow": {
+    "rc": "13,1",
+    "rect": {
+     "x": 32.3,
+     "y": 795.1,
+     "w": 50.8,
+     "h": 50.8
+    },
+    "coveredByInfo": false,
+    "inScroller": true
+   },
+   "tapAfter": {
+    "want": "13,6",
+    "got": "13,6",
+    "piece": 33,
+    "selected": 33,
+    "scrollTopAfterTap": 0
+   }
+  }
+ },
+ "b04-battle-432-before": {
+  "box": {
+   "x": 17.3,
+   "y": 183.5,
+   "w": 397.4,
+   "h": 565
+  },
+  "bstage": {
+   "x": 32.3,
+   "y": 257.5,
+   "w": 367.4,
+   "h": 288
+  },
+  "slots": [
+   {
+    "x": 40.3,
+    "y": 265.5,
+    "w": 164,
+    "h": 108.5
+   },
+   {
+    "x": 227.7,
+    "y": 425.5,
+    "w": 164,
+    "h": 112
+   }
+  ],
+  "buttons": [
+   {
+    "t": "⚔️ 싸우기",
+    "x": 32.3,
+    "y": 627.5,
+    "w": 179.7,
+    "h": 44
+   },
+   {
+    "t": "🎒 가방",
+    "x": 220,
+    "y": 627.5,
+    "w": 179.7,
+    "h": 44
+   },
+   {
+    "t": "🔴 포획",
+    "x": 32.3,
+    "y": 679.5,
+    "w": 179.7,
+    "h": 44
+   },
+   {
+    "t": "🏃 도망가기",
+    "x": 220,
+    "y": 679.5,
+    "w": 179.7,
+    "h": 44
+   },
+   {
+    "t": "불꽃 주먹 21~3",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "ⓘ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "💪 힘의 수호자 ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🧭 시간의 수호자",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🏃 도망의 수호자",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🔴 던지기 (성공",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "🏃 도망 (성공 ",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   },
+   {
+    "t": "← 뒤로",
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0
+   }
+  ],
+  "imgs": [
+   "assets/minions/land_std/battle.png",
+   "assets/minions/fire_atk/battle.png"
+  ]
+ },
+ "s04-result-432-before": {
+  "top": {
+   "vw": 432,
+   "vh": 932,
+   "screen": "result",
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 870,
+    "height": 870
+   },
+   "buttons": [
+    "로비로 돌아가기",
+    "다시 대전"
+   ],
+   "lobbyBtn": {
+    "w": 191,
+    "h": 52,
+    "inView": true
+   },
+   "boardHidden": true,
+   "seats": [
+    "플레이어Win! 🏆",
+    "AI(5급)Lose!"
+   ],
+   "vs": true,
+   "visibleText": "MATCH COMPLETE VICTORY 경기 종료 플레이어 승리! 🏆 승리 유형: 전멸 총 진행 0턴 🔍 종료 공개 — 보드의 모든 말 위치·정체가 공개되었습니다. 플레이어 Win! 🏆 화염 투사 HP 90/90 새싹 파수꾼 HP 100/100 스파크 HP 100/100 방패 게 HP 110/110 황토 아르마딜로 HP 110/110 바위 두더지 H",
+   "banned": [
+    "MATCH COMPLETE",
+    "VICTORY",
+    "승리 유형",
+    "총 진행",
+    "종료 공개",
+    "다시 대전"
+   ]
+  },
+  "bottom": {
+   "vw": 432,
+   "vh": 932,
+   "screen": "result",
+   "overflowX": false,
+   "scroll": {
+    "top": 0,
+    "client": 870,
+    "height": 870
+   },
+   "buttons": [
+    "로비로 돌아가기",
+    "다시 대전"
+   ],
+   "lobbyBtn": {
+    "w": 191,
+    "h": 52,
+    "inView": true
+   },
+   "boardHidden": true,
+   "seats": [
+    "플레이어Win! 🏆",
+    "AI(5급)Lose!"
+   ],
+   "vs": true,
+   "visibleText": "MATCH COMPLETE VICTORY 경기 종료 플레이어 승리! 🏆 승리 유형: 전멸 총 진행 0턴 🔍 종료 공개 — 보드의 모든 말 위치·정체가 공개되었습니다. 플레이어 Win! 🏆 화염 투사 HP 90/90 새싹 파수꾼 HP 100/100 스파크 HP 100/100 방패 게 HP 110/110 황토 아르마딜로 HP 110/110 바위 두더지 H",
+   "banned": [
+    "MATCH COMPLETE",
+    "VICTORY",
+    "승리 유형",
+    "총 진행",
+    "종료 공개",
+    "다시 대전"
+   ]
+  }
+ }
+}

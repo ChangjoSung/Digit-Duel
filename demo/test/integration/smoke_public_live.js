@@ -163,7 +163,12 @@ async function playGame(g,port){
   const lh=guest.T.byId("sidePanel").innerHTML+guest.T.byId("roomList").innerHTML;
   ok(lh.indexOf("#"+rid+"</small>")>=0&&!/netCode/.test(lh),`G${g}-L1 방 목록(L02)에 방이 보이고 코드 입력칸이 없다`);
   guest.T.netJoinPublicRoom(rid);
-  await waitFor(()=>guest.T.NET.roomId===rid&&host.T.NET.roomState==="SETUP",5000,"join + host notify");
+  /* #238 (2026-09-28 CJ) 두 번째 참가는 대기방 — 참가자 준비 → 방장 시작 → 서버 5초 뒤 배치(SETUP) */
+  await waitFor(()=>guest.T.NET.roomId===rid&&host.T.NET.roomState==="WAITING"&&guest.T.NET.roomState==="WAITING",5000,"join → waiting room");
+  guest.T.netLobbyReady(true);
+  await waitFor(()=>host.T.NET.lobby&&host.T.NET.lobby.guestReady,5000,"guest ready");
+  host.T.netLobbyStart();
+  await waitFor(()=>host.T.NET.roomState==="SETUP"&&guest.T.NET.roomState==="SETUP",8000,"join + host notify");
   ok(true,`G${g}-L2 참가·호스트 입장 알림`);
   // 호스트는 게스트 입장 전에 배치를 끝냈을 수도 있다 — 여기선 게스트가 먼저 준비하고 호스트가 뒤따른다
   for(const c of clients){ c.T.autoPlaceCore(); c.T.setupDoneCore(); }

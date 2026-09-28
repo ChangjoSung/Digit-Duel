@@ -29,6 +29,7 @@ class Lobby {
     this.nextRoomId = 1;
     this.draining = false;
     this.economy = !!opts.economy; // #237 새 방을 경제 경기로 연다(시작 상점 → 배치 → 정기 상점·B08)
+    this.startGate = opts.startGate !== false; // #238 두 번째 참가 → 대기방(준비·방장 시작·5초). false 는 종전 즉시 시작을 보는 회귀 테스트 전용
   }
 
   activeRoomCount() {
@@ -55,7 +56,7 @@ class Lobby {
       return { ok: false, reason: 'E_CAPACITY' };
     }
     const roomId = this.nextRoomId++;
-    const room = new Room(roomId, { isPublic, epoch: this.epoch, economy: this.economy });
+    const room = new Room(roomId, { isPublic, epoch: this.epoch, economy: this.economy, startGate: this.startGate });
     room.creatorIp = ip;
     room.name = name || '방 ' + roomId; // 생성 때 정하고 바꾸지 않는다. 이름 중복 허용 — roomId 로 구분
     if (!isPublic) {
@@ -113,8 +114,8 @@ class Lobby {
     const cutoffClosed = [];
     for (const [id, r] of this.rooms) {
       r.sweepDedup();
-      if (r.state === STATES.FINISHED && !r._closeAt) r._closeAt = Date.now() + 5 * 60 * 1000;
-      if ((r.state === STATES.CANCELED || r.state === STATES.VOID) && !r._closeAt) r._closeAt = Date.now();
+      if (r.state === STATES.FINISHED && !r._closeAt && !r._returnLive()) r._closeAt = Date.now() + 5 * 60 * 1000;
+      if ((r.state === STATES.CANCELED || r.state === STATES.VOID || r.state === STATES.CLOSED) && !r._closeAt) r._closeAt = Date.now(); // #238 결과 뒤 복귀 경로가 닫은 방도 목록에서 뺀다
       if (r._closeAt && Date.now() >= r._closeAt) cutoffClosed.push(id);
     }
     for (const id of cutoffClosed) {

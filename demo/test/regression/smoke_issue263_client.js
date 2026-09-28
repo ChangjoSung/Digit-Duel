@@ -350,7 +350,7 @@ const sideHtml=T=>{ T.renderSide(); return T.byId("sidePanel").innerHTML; };
   const html=sideHtml(T);
   ok(/<fieldset class="pauseLock" disabled[^>]*>[\s\S]*?준비 취소<\/button>[\s\S]*?<\/fieldset>/.test(html),"G2 정지 중 [준비 취소]는 잠긴 모습이다 (<fieldset disabled> 안)");
   ok(/준비 취소가 잠겨 있습니다/.test(html),"G3 잠긴 사유를 화면에 적는다");
-  ok(/onclick="netLeaveRoom\(\)"/.test(html)&&!/<fieldset[\s\S]*?netLeaveRoom[\s\S]*?<\/fieldset>/.test(html),"G4 복구 입력(방 나가기)은 잠금 밖에 남는다");
+  ok(/onclick="(netLeaveRoom|uiLeaveConfirm)\(\)"/.test(html)&&!/<fieldset[\s\S]*?(netLeaveRoom|uiLeaveConfirm)[\s\S]*?<\/fieldset>/.test(html),"G4 복구 입력(방 나가기)은 잠금 밖에 남는다 (#238: 평시엔 확인 창 경유)");
   /* 모습뿐 아니라 동작도 — 직접 불러도 상태를 바꾸지도, 보내지도 않는다 */
   T.netRoomReady(false);
   eq(T.sent.length,0,"G5 정지 중 준비 취소는 unready 를 보내지 않는다");
