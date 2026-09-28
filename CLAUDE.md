@@ -10,6 +10,10 @@
 - 통합 후 Render의 서버 구조·설정·플랜 제약을 확인해 CJ에게 보고한다. main Release·배포·Render 자원 생성·결제·요금제 변경은 아직 승인되지 않았다. CJ가 보고를 받은 뒤 별도로 지시한다. 신규 Issue 댓글·중복TODO·수동 Issue close도 실행하지 않는다.
 - 통합 QA와 배포 구조 점검 후 필요 없는 게임 QA 내부망 리스너를 종료한다. DB 데이터·계정·SMTP 비밀·검증 증거와 다른 앱 프로세스는 보존한다.
 
+## 현재 조정 기록 — 2026-09-28
+
+[#232 통합·Render 준비 보고](docs/milestone/v0.4.11/issues/232/Mercury/integration-review.md)가 현재 조정 원장이다. 승인 제품 코드는 milestone에 통합했고 기존 작업 트리 8개와 해당 로컬 브랜치 8개·원격 브랜치 6개를 보존 후 정리했다. 게임 QA 서비스는 종료하고 DB·계정·SMTP·백업을 유지했다. 현 Render 설정은 DB·SMTP 준비가 없어 배포 NO-GO다. main Release·배포·자원 생성·결제·요금제 변경은 CJ의 별도 지시 전 진행하지 않는다. 사용자 dirty 원본은 stage/reset/pull하지 않으며 후속 Release 검토는 release-review 트리를 사용한다. GitHub는 기존 완료 조건만 관리하며 신규 Issue 댓글·중복 TODO·Issue close를 만들지 않는다.
+
 ## 기준 문서 (Notion — 구현·QA의 진실 원본)
 - 필수 QA 운영: [QA_MINIMUM_POLICY.md](docs/creat2ve/QA_MINIMUM_POLICY.md) — 2026-09-16 CJ 지시. 변경에 필요한 자동 검증 우선, 브라우저 수동·네트워크 반복 QA 축소. 필수 CI 유지.
 - Game Overview (GDD-13, 기준 문서): https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38

@@ -1,15 +1,14 @@
 # Digit-Duel — Mercury_PD 인수인계
 
-## 현재 체크포인트 — 2026-09-28 #238 기록 높이 수정·Saturn/CJ PASS / #232 통합 준비
+## 현재 체크포인트 — 2026-09-28 #232 제품 통합·정리 완료 / Render 설정 NO-GO
 
-- 최신 CJ: 왼쪽 기록 아이콘을 오른쪽 이벤트 아이콘과 같은 높이에 둔다. Toast 위치·참가자 이탈 후 방 유지·5초 목록/인원 집계·로그인 계정 인원은 CJ PASS. 기록 높이 수정 후 별도 CJ 플레이 QA 없이 PASS 처리하고 다음 Work 진행 승인. 기록 아이콘·최근20경기 팝업과 다른 승인 영역은 유지한다.
-- 활성 child issue-238-game-ui / ChangjoSung/issue-238-game-ui / HEAD e1bfdc2. Mars가 top:10vh와 낡은 주석만 수정, 후속으로 기존 K4b의 폐기된 위치 조건만 제거. UI 검사1회147/0. 독립 Saturn task_21e8dbe017d4/ctx_6ff0862e8ea5: 320×640·432×950 두 아이콘 top/centerY 차이0, 실제터치·팝업·닫기/Escape 초점·다른L01좌표·가로넘침 PASS. CJ 지시에 따라 #238 현재 UI QA PASS, 추가 CJ QA 없음. 과거351/0·터치12점·REVISE/하네스 오류는 그대로 보존하며 이번에 전체검사 재실행 없음.
-- Saturn과 PD가 동결1625/1625 SHA·HEAD/status 무변경을 각각 확인. 승인177아트·부모262원본22파일 보존. 부모 비교시 SHA 대소문자 하네스 오탐은 외부 정정 증거로 보존, 실제변경0. 최종 PD 운영문서 갱신은 QA 동결 확인 이후 별도 기록한다.
-- Run run_67407ff72916. 단일 #238 원장=활성 child/docs/milestone/v0.4.11/issues/238/Mercury/report.md. Venus가 같은 높이 규칙을 GDD13/23/24·planning에 반영했고 PD 직접 재조회했다. Notion 구현대기 문구는 GitHub 기존 완료조건을 참조하도록 정리했다. 현재 모델/effort·native/footer·turn_started·preamble/capability GO/완료 대조, Opus5.5/high/bypass 및 Saturn Sol/xhigh/default/full/never. 채택null 유지·raw Codex tier필드ABSENT는 실제argv default와 구분한다.
-- Venus/Mars/Saturn 정상정산→release retained/external→정확 terminal close(ptyKilled=true)→Delivery ACK. 따뜻한 QA TUI도 정산 후 회수했다. 사용자 서버/브라우저·계정·PG·SMTP는 보존한다.
-- QA http://127.0.0.1:8085/ · 서버45248·PG38816/55462, 게임외8084 유지. GitHub #238 기존4조건 중3체크, 마지막은 Saturn/CJ PASS·CI/통합 대기. OPEN·신규댓글0.
-- 다음 Work #232 통합 준비를 착수했다. root/docs/milestone/v0.4.11/issues/232/Mercury/integration-review.md가 실행 검토안이다. #269→milestone·#270→259·#271→260은 OPEN/MERGEABLE/CLEAN. #269 PR검사6/6, #270/#271 현재HEAD 브랜치검사6/6이며 직접PR검사 목록은 비어 있다. #262/#238 미커밋 변경 분리→분리PR→순서통합·필수CI, #264 실제DB는 별도 게이트다.
-- 원격 milestone 현재HEAD bd4c90c. #238에 없는 부모262 보고서/기획/QA17개는 삭제 변경으로 만들지 않고 기준 갱신 때 보존한다. 모든 중요 트리/dirty/untracked 유지. #262/#238 stage/commit/push/PR와 milestone 병합·Issue close·배포·Render 생성/결제는 별도 승인 전이다.
+- 최신 CJ가 승인한 stage·commit·push·PR·마일스톤 통합 및 보존 후 정리를 완료했다. PR269~274는 각 현재 필수 CI6/6 확인 후 병합, 제품 통합 기준87944d5다. 자세한 근거와 미완료 운영 조건은 [#232 단일 조정 원장](../milestone/v0.4.11/issues/232/Mercury/integration-review.md)을 따른다.
+- 첫 독립 통합 QA의 누락 테이블 false-ready는 REVISE/failed로 보존했다. Jupiter 수정 뒤 fresh Sol/xhigh/default/full/never Saturn이 실제 PG의 5원장·33열·두 시작 경로·readiness503/health200·복구·원본1687파일 불변을 PASS로 검증했다. Opus5.5/high/bypass·Sol/xhigh native/currentJSONL/footer와 새 turn_started·preamble/capability를 GO/완료에 대조했다. actualnull과 rawtierABSENT는 관측대로 유지했다.
+- 8개 Worker 작업은 명시 정산 후 정확 terminal을 닫고 ACK했다. 첫 QA failed는 성공으로 소급하지 않는다. 남은 Worker와 회수 대기0.
+- 기존 작업 트리8·로컬 브랜치8·원격 브랜치6을 납품 통합·ZIP SHA·Git bundle 확인 후 제거했다. 원본 C:/Users/pc_77/orca/Digit-Duel은 dirty/untracked 및 로컬HEAD33490f9 그대로다. Release 검토에는 별도 release-review-v0.4.11을 최신 원격 milestone 기준으로 사용한다. 원본을 reset/pull/stage하지 않는다.
+- QA8085·PG55462 및 임시 검증 서비스 종료. DB·계정·SMTP·원본 보존, PG18 cold backup1006파일 SHA검증. 게임 외8084 유지.
+- 실제 Render는 Free/Singapore/main 기존d0bc196, 프로젝트PG·DATABASE_URL·SMTP없음, FreeSMTP차단. 현재 배포 NO-GO. main Release·배포·Render자원생성·결제·요금제변경은 CJ의 별도 지시 전 실행하지 않는다.
+- GitHub 기존 완료조건만 갱신, 신규댓글·중복TODO·Issueclose0. #232/#264와 #259 실제 배포 조건은 미체크 유지. 게임 규칙은 현행 GDD13/23/24, 모델은 WORKER_MODELS.md와 worker-models.json의 최신 #250 계약을 따른다. 아래는 과거 기록이며 최신 실행값으로 재사용하지 않는다.
 
 ## 이전 체크포인트 — 2026-09-28 07:26 KST #238 로컬 시각·회귀 QA PASS
 
