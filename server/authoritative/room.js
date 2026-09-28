@@ -35,9 +35,11 @@ const { createEngine, withEngine } = require('./engine');
 
 const DISCONNECT_GRACE_MS = 60 * 1000;
 const DEDUP_TTL_MS = 120 * 1000;
+const EMOTE_COOLDOWN_MS = 5 * 1000; // #262 좌석별 이모티콘 전송 간격(2026-09-27 CJ 승인)
+const START_COUNTDOWN_MS = 5 * 1000; // #238 대기방 방장 시작 → 시작 상점까지 서버 카운트다운(2026-09-28 CJ)
 
 const STATES = Object.freeze({
-  OPEN: 'OPEN', SETUP: 'SETUP', IN_PROGRESS: 'IN_PROGRESS', FINISHED: 'FINISHED',
+  OPEN: 'OPEN', WAITING: 'WAITING', SETUP: 'SETUP', IN_PROGRESS: 'IN_PROGRESS', FINISHED: 'FINISHED', // #238 WAITING — 두 좌석이 앉은 경기 전 대기방(준비 → 방장 시작 → 5초)
   CANCELED: 'CANCELED', VOID: 'VOID', CLOSED: 'CLOSED',
 });
 const TERMINAL_NO_BOARD = new Set([STATES.CANCELED, STATES.VOID, STATES.CLOSED]);
@@ -66,12 +68,13 @@ const ROSTER_SIZE = 6; // applyNetSetup: data.roster.length===6
 
 function now() { return Date.now(); }
 // #237 상대 HP 100 눈금 — 최대 HP(=등급)를 지우고 비율만 남긴다. 올림이라 살아 있는 말(HP≥1)은 1 이상이다.
+// #262 CJ QA(2026-09-27): 전투에 나선 적 없는(hpSeen 없는) 공개 상대 보드 말에만 쓴다.
 function pct100(v, max) { return Math.ceil(((Number(v) || 0) * 100) / (Number(max) || 1)); }
-/* #237 상대가 주어인 전투 문구의 HP 계열 수치(피해·회복·방어막·흡수·유효·해일 X·버틴 HP·과부하 상한)를 100 눈금으로 바꾼다.
-   라운드·횟수·퍼센트·쿨·차수·좌석(2R·1회·15%·⌛0·3차·P1)은 HP 와 무관한 규칙 상수라 그대로 둔다. max 가 없으면(주어 불명) '?'.
-   바꾼 수치에는 '%'를 붙여 비율임을 표시한다 — HP_NUM 이 '%' 앞 수치를 건너뛰므로 다시 통과해도 두 번 바뀌지 않는다. */
+/* 주어 불명 전투 문구의 HP 계열 수치(피해·회복·방어막·흡수·유효·해일 X·버틴 HP·과부하 상한)를 '?'로 가린다.
+   라운드·횟수·퍼센트·쿨·차수·좌석(2R·1회·15%·⌛0·3차·P1)은 HP 와 무관한 규칙 상수라 그대로 둔다.
+   #262 CJ QA(2026-09-27): 주어가 있는 줄은 두 전투원 모두 실제 값이다(전투 중 양쪽 HP 공개) — 종전 #237 100 눈금 변환은 폐지. */
 const HP_NUM = /(^|[^⌛⭐P\d.])(\d+)(?![\d.]|\s*(?:%|R|회|차|턴|라운드|칸|개|명|마리|초|·\s*\d+\s*차))/g;
-function scaleText(txt, max) { return String(txt).replace(HP_NUM, (all, pre, n) => pre + (max ? pct100(n, max) + '%' : '?')); }
+function maskText(txt) { return String(txt).replace(HP_NUM, (all, pre) => pre + '?'); }
 // 전투 문구 한 줄의 주어(그 수치가 가리키는 전투원 쪽) — bmsg 가 함께 싣는 표시 fx 의 쪽 표기에서 읽는다.
 function fxSubject(fx) {
   if (!fx) return null;
@@ -301,7 +304,7 @@ function lockstepDigest(T) {
     // 스탯 주입이 갈린 상태를 놓친다.
     balls: S.balls.slice(), inv: S.inv.map((a) => a.slice()),
     // #234 REVISE 2차 — 예비 하수인도 대리 출전 전투원 객체라 사신의 낫 봉인(reaperSeal)을 지닌다.
-    reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x), num(x.reaperSeal)] : null)),
+    reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x), num(x.reaperSeal), !!x.hpSeen] : null)),
     pkgs: S.pkgs.map((p) => Object.assign({}, p)), teleUsed: (S.teleUsed || []).slice(),
     traces: S.traces.map((t) => [...t].sort()), tempReveal: [...(S.tempReveal || [])].sort(), winner: S.winner,
     modalSeq: T.__modal ? T.__modal.seq : 0,
@@ -311,7 +314,7 @@ function lockstepDigest(T) {
     // 스탯을 승계해 대리 출전하므로(3.3) cap 튜플도 함께 넓힌다.
     pieces: S.pieces.map((p) => [p.id, p.owner, p.type, p.rosterId, p.element, p.hp, p.maxHp, p.r, p.c, p.placed, p.alive,
       !!p.revealed, p.immobile, !!p.healing, p.skills || null, p.cds || null,
-      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap), num(p.cap.reaperSeal)] : null, ...stats(p),
+      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap), num(p.cap.reaperSeal), !!p.cap.hpSeen] : null, ...stats(p),
       // #234 6.2·6.4 — 동료 종류는 스킬 세트(AS/SH)를, 속성 선택 여부는 미선택 규칙 재적용을, legend 는 전설 스킬·아키타입을 가른다.
       // 공개 기록(revealedSkills)은 syncLeaderSkills 가 칸 교체 때 걸러 내는 말 단위 상태라 함께 본다.
       p.allyKind === undefined ? null : p.allyKind, !!p.leaderElChosen, p.legend === undefined ? null : p.legend,
@@ -319,7 +322,9 @@ function lockstepDigest(T) {
       // #234 REVISE 2차 — 본체 출전 말의 사신의 낫 봉인. 전투 밖(보드)에서도 유지되어 다음 참전 전투의 합법 슬롯을 가른다.
       num(p.reaperSeal),
       // #237 말 단위 경제 칸 — 원장·신규 표시·교체 표식(GDD-23 7.5·7.6)
-      num(p.paid), !!p.fresh, !!p.swapMark]),
+      num(p.paid), !!p.fresh, !!p.swapMark,
+      // #262 전투 HP 노출 표식 — 좌석 뷰의 상대 HP 표기(100 눈금/실제)를 가른다
+      !!p.hpSeen]),
     eco: ecoDigest(S.eco, stats, num),
   });
 }
@@ -329,7 +334,7 @@ function lockstepDigest(T) {
 function ecoDigest(E, stats, num) {
   if (!E) return null;
   const unit = (u) => [u.uid, u.rosterId || null, u.legend || null, u.element || null, u.hp, u.maxHp, num(u.paid), !!u.fresh, !!u.revealed,
-    u.skills || null, u.cds || null, u.revealedSkills || null, num(u.reaperSeal), ...stats(u)];
+    u.skills || null, u.cds || null, u.revealedSkills || null, num(u.reaperSeal), ...stats(u), !!u.hpSeen];
   const sh = E.shop, bp = E.bagPick;
   return {
     coins: E.coins, tickets: E.tickets, buffInv: E.buffInv, soldHp: E.soldHp, unitSeq: E.unitSeq,
@@ -344,13 +349,19 @@ class Room {
   // crypto 난수로 비밀 시드를 뽑는다. 어떤 네트워크 입력도 이 값에 닿지 않는다.
   // economy: #237 경제 경기(시작 상점 → 배치 → 정기 상점·B08). 로비가 넘기며, 끄면 종전 무료 로스터 경기다.
   // shopMs·bagPickMs: 테스트 재현용 시계 주입(graceMs 와 같은 관례). 기본은 Core 상수(ECO.shopSec·bagPickSec).
-  constructor(roomId, { isPublic, epoch, graceMs, seed, economy, shopMs, bagPickMs, placeMs, actMs, battleMs }) {
+  // startGate: #238 두 번째 참가를 WAITING 대기방으로 받는다(로비가 넘긴다 — 운영 기본). 끄면 종전처럼 참가 즉시 시작(단위 테스트 관례).
+  // countdownMs: 방장 시작 카운트다운 주입(테스트 전용). 기본 5초.
+  constructor(roomId, { isPublic, epoch, graceMs, seed, economy, shopMs, bagPickMs, placeMs, actMs, battleMs, startGate, countdownMs }) {
     this.roomId = roomId;
     this.isPublic = !!isPublic;
     this.epoch = epoch;
     this.graceMs = graceMs != null ? graceMs : DISCONNECT_GRACE_MS;
     this._testSeed = Number.isInteger(seed) ? seed : null;
     this.economy = !!economy;
+    this.startGate = !!startGate;
+    this.countdownMs = countdownMs != null ? countdownMs : START_COUNTDOWN_MS;
+    this._countdown = null; // #238 {deadline, handle} — 방장 시작 뒤 서버 5초. 준비 취소·단절·나가기로 취소된다
+    this.round = 0;         // #238 이 방의 경기 번호 — 5초 완료(경기 시작)마다 +1. 모든 좌석 뷰에 실린다
     this._clockMs = { shop: shopMs, bagPick: bagPickMs, place: placeMs, act: actMs, battle: battleMs }; // #263 배치 90초·행동 30초·전투 행동 60초 주입
     this._clock = [null, null]; // #237 좌석에 묶인 게임 시계 {key, left, deadline, handle, expired, owner} — 상점·배치·B08. 단절 중에는 left 만 들고 멈춘다
     /* #263 답할 좌석이 단계마다 바뀌는 두 시계는 방이 하나씩만 들고 owner 로 가리킨다 — 자리를 옮겨도 같은 시계라
@@ -372,6 +383,9 @@ class Room {
     this._consumedModalSeq = null;
     this.lastFault = null; // 엔진 장애 진단(서버 로그용 — 어떤 프레임에도 싣지 않는다)
     this.onFinalize = null;
+    this.onResult = null; // #260 보드 경기(IN_PROGRESS)가 끝나는 전이에서 정확히 한 번 — 전적 기록(server.js)
+    this.matchId = null;  // #260 보드 경기 시작 시 무작위 id (기록 재시도의 멱등 키)
+    this.startedAt = null;
     // #217 전투 표시 이벤트(fx) — 좌석별 최근 창(engine.js T.__fx 스냅샷). 엔진 자체가 아니라 Room에 둔다:
     // 경기 종료(_finalize)는 TERMINAL_NO_BOARD 전이에서 this.engines를 즉시 null로 비우므로(메모리 해제),
     // "종료 직후 battle=null에도 결과/마지막 타격 표시" 요구를 만족하려면 engines가 살아있는 마지막 순간
@@ -388,6 +402,10 @@ class Room {
       ready: false, placed: false, rawSetup: null, seq: 0,
       disconnectExpiry: null, disconnectTimer: null,
       shopTimedOut: false, // #263 S01 을 시간 초과로 끝낸 좌석 — 그 자리에서 자동 배치·준비까지 끝나므로 배치 90초를 받지 않는다
+      emoteAt: 0, // #262 마지막 이모티콘 성공 시각(서버 시계) — 좌석에 붙어 재접속에도 남는다. 뷰·재생·DB 에 싣지 않는다
+      lobbyReady: false, // #238 대기방 참가자 준비(좌석 1만) — 배치 준비(ready)와 별개
+      returned: false,   // #238 결과(FINISHED)에서 대기방으로 복귀했다
+      left: false,       // #238 결과에서 명시적으로 나갔다 — 재대전 불가
     };
   }
 
@@ -408,6 +426,7 @@ class Room {
     this.state = STATES.SETUP;
     this.revision += 1; // OPEN → SETUP 전이 — 호스트가 받는 알림 room_state의 revision이 새로 선다
     const issued = seat.credential.issue();
+    if (this.startGate) { this.state = STATES.WAITING; return { ok: true, issued }; } // #238 자동 시작 금지 — 준비·방장 시작·5초 뒤에만 시작 상점
     if (this.economy) {
       const opened = this._openEconomy();
       if (!opened.ok) return opened;
@@ -450,24 +469,55 @@ class Room {
 
   // 명시적 나가기 — server.js는 좌석 토큰 인증·중복 제거를 통과한 뒤에만 handleCommand('leave')로 부른다.
   explicitLeave(seatIndex) {
-    if (this.state === STATES.OPEN || this.state === STATES.SETUP) {
+    // #238 최신 3항(2026-09-28 CJ) — 공개 대기방의 참가자 나가기는 그 좌석만 비운다(방장 나가기 = 방 파괴는 그대로).
+    if (seatIndex === 1 && this.startGate && this.isPublic && (this.state === STATES.WAITING || this.state === STATES.FINISHED)) return this._vacateGuest();
+    if (this.state === STATES.OPEN || this.state === STATES.WAITING || this.state === STATES.SETUP) {
       this._finalize(STATES.CANCELED, null, { notify: false }); // 응답·상대 푸시는 명령 경로(server.js)가 한다
       return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
     }
     if (this.state === STATES.IN_PROGRESS) return err('E_ILLEGAL_ACTION');
     if (this.state === STATES.FINISHED) {
       // 결과는 이미 확정 — 상태 변화 없음. 소켓 종료는 응답을 보낸 뒤 server.js가 한다.
+      // #238 떠난 좌석은 재대전하지 않는다 — 상대가 이미 대기방으로 복귀해 기다리고 있으면 방을 닫는다(기존 closed → 방 목록 경로).
+      // 대기방으로 복귀한 방장이 나가면 참가자가 아직 결과를 보고 있어도 방을 파괴한다.
+      this.seats[seatIndex].left = true;
+      if (this._returnLive()) this.close();
       return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
     }
     return err('E_ROOM_CLOSED');
   }
+
+  /* 참가자 좌석을 새 빈 좌석으로 바꾼다 — 토큰·계정·소켓 매핑·준비·카운트다운·그 좌석의 중복 제거 응답이 함께 사라진다.
+     옛 참가자의 재개·늦은 소켓 종료·늦은 명령은 server.js 가 좌석 자격 객체 동일성으로 막는다.
+     방장이 아직 결과를 보고 있으면 결과·방을 그대로 두고(상대 표시용 닉네임·대표만 남김) 방장 복귀 때 빈 방으로 연다. */
+  _vacateGuest() {
+    const old = this.seats[1];
+    this._cancelCountdown();
+    this._clearDisconnectTimer(1);
+    this.seats[1] = Object.assign(this._newSeat(), { nickname: old.nickname, rep: old.rep });
+    for (const k of [...this.dedup.keys()]) if (k.startsWith('1:')) this.dedup.delete(k);
+    const reopen = this.state === STATES.WAITING || this.seats[0].returned;
+    if (reopen) this._reopenEmpty();
+    return {
+      ok: true, type: 'room_state', noop: !reopen,
+      data: { seat: 1, state: STATES.CLOSED, phase: 'closed', revision: this.revision, round: this.round, current: null, seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null },
+    };
+  }
+
+  _reopenEmpty() { this.seats[1] = this._newSeat(); this._resetForRematch(STATES.OPEN); }
 
   socketClosed(seatIndex) {
     const seat = this.seats[seatIndex];
     if (!seat.credential) return;
     seat.connected = false;
     seat.ws = null;
-    if (this._graceLive()) {
+    if (this.state === STATES.WAITING) { // #238 단절은 카운트다운을 취소하고, 참가자 단절은 준비도 해제한다
+      const was = !!this._countdown || (seatIndex === 1 && seat.lobbyReady);
+      this._cancelCountdown();
+      if (seatIndex === 1) seat.lobbyReady = false;
+      if (was) this.revision += 1;
+    }
+    if (this._graceLive() || this._returnLive()) {
       this._clearDisconnectTimer(seatIndex);
       seat.disconnectExpiry = now() + this.graceMs;
       this._armGrace(seatIndex);
@@ -475,8 +525,29 @@ class Room {
     }
   }
 
+  // #262 상대 좌석이 지금 연결돼 있는가 — 소켓이 실제로 열려 있어야 한다(OPEN 방의 빈 좌석·단절·결과 화면 이탈은 false).
+  peerConnected(seatIndex) {
+    const s = this.seats[1 - seatIndex];
+    return !!(s.connected && s.ws && s.ws.readyState === 1 /* OPEN */);
+  }
+
+  // #262 이모티콘 전송 판정 — 게임 상태·revision·시계·중복 제거를 건드리지 않는다. 거부는 쿨다운을 쓰지 않는다.
+  emote(seatIndex) {
+    if (![STATES.WAITING, STATES.SETUP, STATES.IN_PROGRESS, STATES.FINISHED].includes(this.state)) return err('E_ILLEGAL_ACTION');
+    if (!this.peerConnected(seatIndex)) return err('E_PAUSED');
+    const left = this.emoteRetryMs(seatIndex);
+    if (left > 0) return { ok: false, reason: 'E_RATE_LIMITED', retryMs: left };
+    this.seats[seatIndex].emoteAt = now();
+    return { ok: true, cooldownMs: EMOTE_COOLDOWN_MS };
+  }
+
+  emoteRetryMs(seatIndex) { return Math.max(0, this.seats[seatIndex].emoteAt + EMOTE_COOLDOWN_MS - now()); }
+
+  // #238 결과 화면에서 한 좌석이라도 대기방으로 복귀했다 — 그 방은 5분 정리 대신 단절 60초 유예로 끝난다(복귀한 좌석을 조용히 닫지 않는다).
+  _returnLive() { return this.state === STATES.FINISHED && this.seats.some((s) => s.returned); }
+
   _graceLive() {
-    return this.state === STATES.OPEN || this.state === STATES.SETUP || this.state === STATES.IN_PROGRESS;
+    return this.state === STATES.OPEN || this.state === STATES.WAITING || this.state === STATES.SETUP || this.state === STATES.IN_PROGRESS;
   }
 
   // 기록된 만료 시각까지 남은 시간만큼 건다 — 조기 발화 뒤 재무장도 같은 경로.
@@ -516,9 +587,11 @@ class Room {
     const seat = this.seats[seatIndex];
     seat.disconnectTimer = null;
     if (seat.connected) return;
-    if (this.state !== STATES.OPEN && this.state !== STATES.SETUP) return;
+    const ret = this._returnLive();
+    if (this.state !== STATES.OPEN && this.state !== STATES.WAITING && this.state !== STATES.SETUP && !ret) return;
     if (this._rearmIfEarly(seatIndex)) return;
-    this._finalize(STATES.CANCELED, null);
+    if (ret) this.close(); // 결과는 이미 확정 — 재대전만 불가(닫힘 알림 → 방 목록)
+    else this._finalize(STATES.CANCELED, null);
   }
 
   _onGraceExpireInProgress(seatIndex) {
@@ -549,9 +622,17 @@ class Room {
     opts = opts || {};
     if (TERMINAL_NO_BOARD.has(this.state)) return false; // 이미 닫힌 룸은 다시 전이하지 않는다
     if (this.state === STATES.FINISHED && state !== STATES.CLOSED) return false; // 확정된 결과는 덮어쓰지 않는다
+    // #260 보드 경기를 떠나는 전이는 IN_PROGRESS 에서 한 번뿐이다 — 알림 여부(notify)와 무관하게 여기서 결과를 뜬다.
+    // 턴은 엔진이 비워지기 전에 읽는다(보드 없는 종료는 아래에서 engines 를 null 로 만든다).
+    const ended = this.state === STATES.IN_PROGRESS ? {
+      matchId: this.matchId, result: result || { type: 'NO_CONTEST', winner: null, reason: state },
+      turns: this.engines ? this.engines[0].S.turnCount + 1 : 0,
+      startedAt: this.startedAt, endedAt: now(),
+    } : null;
     this.state = state;
     if (result) this.result = result;
     if (opts.bump !== false) this.revision += 1;
+    this._cancelCountdown();
     this._clearClock(); // 끝난 경기의 시계는 다시 흐르지 않는다 — 몰수 확정 뒤 상점 만료가 거래를 만들지 않는다 (2.4)
     for (let i = 0; i < 2; i++) {
       this._clearDisconnectTimer(i);
@@ -562,6 +643,7 @@ class Room {
       for (const T of this.engines) { try { T.scheduler.clear(); } catch (e) { /* noop */ } }
       this.engines = null; // 보드 없는 종료 — 엔진 메모리 해제
     }
+    if (ended && this.onResult) { try { this.onResult(ended); } catch (e) { /* 기록 실패가 종료 전이를 되돌리지 않는다 — 기록기가 스스로 로그한다 */ } }
     if (opts.notify !== false && this.onFinalize) this.onFinalize(state, this.result);
     return true;
   }
@@ -587,6 +669,7 @@ class Room {
   // ===== 명령 처리 =====
 
   handleCommand(seatIndex, msg) {
+    if (this.roundStale(msg)) return { ok: false, reason: 'E_STALE_REVISION', staleView: this.toSeatView(seatIndex) };
     // #237 GDD-23 2.4 — 단절이 확정된 동안 모든 행동을 멈춘다. 흐르는 것은 재연결 대기뿐이고 나가기·재동기화·항복만 받는다.
     /* #263 (2026-09-25 CJ): 단절이 확정된 동안에는 **양측 모든 게임 입력**을 막는다 — 기권도 포함이다
        (#237 의 "항복은 단절 중에도 받는다"를 최신 지시가 대체한다). 흐르는 것은 재접속 유예뿐이고
@@ -605,8 +688,22 @@ class Room {
     if (msg.t === 'action') return this._handleAction(seatIndex, msg);
     if (msg.t === 'resign') return this._handleResign(seatIndex);
     if (msg.t === 'leave') return this.explicitLeave(seatIndex);
+    if (msg.t === 'lobby_ready') return this._handleLobbyReady(seatIndex, true);
+    if (msg.t === 'lobby_unready') return this._handleLobbyReady(seatIndex, false);
+    if (msg.t === 'lobby_start') return this._handleLobbyStart(seatIndex);
+    if (msg.t === 'lobby_return') return this._handleReturn(seatIndex);
     if (msg.t === 'resync') return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
     return err('E_BAD_ENVELOPE');
+  }
+
+  /* #238 경기 번호 경계 — 운영 방(startGate)의 상태 변경 명령은 자기 round 를 **반드시** 싣고 현재 경기 번호와 같아야 한다.
+     빠짐·다름 모두 거부한다: 새 경기의 진열 번호(seq)·S01 턴은 0 부터 다시 서므로 revision 을 보지 않는 경제 거래는 이 경계가
+     아니면 지난 경기 명령과 구별되지 않는다. 복구 경로 resync·leave 는 예외. server.js 는 이 판정을 **중복 제거 조회보다 먼저**
+     부른다 — 지난 경기의 저장 응답이 새 경기에 재전송되지 않는다. startGate 없는 직접 생성 Room(단위 테스트)만 빠짐을 허용한다. */
+  roundStale(msg) {
+    if (msg.t === 'resync' || msg.t === 'leave') return false;
+    if (msg.round === undefined) return this.startGate;
+    return msg.round !== this.round;
   }
 
   _dedupKey(seatIndex, requestId) { return seatIndex + ':' + requestId; }
@@ -668,6 +765,94 @@ class Room {
       if (!started.ok) return started;
     }
     return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
+  }
+
+  // ===== #238 대기방 — 참가자 준비 · 방장 시작 · 서버 5초 · 결과 뒤 같은 방 복귀 (2026-09-28 CJ) =====
+
+  _bothConnected() { return this.seats.every((s) => s.credential && s.connected); }
+
+  _handleLobbyReady(seatIndex, want) {
+    if (this.state !== STATES.WAITING) return err('E_ILLEGAL_ACTION');
+    if (seatIndex !== 1) return err('E_NOT_ACTOR'); // 준비는 참가자의 의사다 — 방장은 시작으로 답한다
+    const seat = this.seats[1];
+    if (seat.lobbyReady === want) return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
+    seat.lobbyReady = want;
+    if (!want) this._cancelCountdown();
+    this.revision += 1;
+    return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
+  }
+
+  _handleLobbyStart(seatIndex) {
+    if (seatIndex !== 0) return err('E_NOT_OWNER');
+    if (this.state !== STATES.WAITING || !this.seats[1].lobbyReady || !this._bothConnected()) return err('E_ILLEGAL_ACTION');
+    if (this._countdown) return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true }; // 중복 시작 — 연장·이중 시작 없음
+    this._armCountdown(now() + this.countdownMs);
+    this.revision += 1;
+    return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
+  }
+
+  _armCountdown(deadline) {
+    const handle = setTimeout(() => this._onCountdown(), Math.max(0, deadline - now()));
+    if (handle.unref) handle.unref();
+    this._countdown = { deadline, handle };
+  }
+
+  _cancelCountdown() {
+    if (!this._countdown) return;
+    clearTimeout(this._countdown.handle);
+    this._countdown = null;
+  }
+
+  // 5초 완료 — 조건을 다시 보고 경기를 연다. S01 90초는 _openEconomy 의 _syncClock 에서 지금부터 흐른다.
+  _onCountdown() {
+    const c = this._countdown;
+    if (!c) return;
+    if (now() < c.deadline) { this._armCountdown(c.deadline); return; } // setTimeout 조기 발화
+    this._countdown = null;
+    if (this.state !== STATES.WAITING || !this.seats[1].lobbyReady || !this._bothConnected()) return;
+    this.round += 1;
+    this.state = STATES.SETUP;
+    this.revision += 1;
+    if (this.economy && !this._openEconomy().ok) return; // 엔진 장애는 _engineFault 가 VOID 로 닫고 알린다
+    if (this.onUpdate) this.onUpdate();
+  }
+
+  // 결과 확인 뒤 같은 대기방으로 — 좌석마다 따로 누르고, 두 좌석이 모두 돌아와야 다음 경기를 준비할 수 있다.
+  _handleReturn(seatIndex) {
+    if (this.state !== STATES.FINISHED) return err('E_ILLEGAL_ACTION');
+    const seat = this.seats[seatIndex];
+    if (seat.returned) return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
+    if (this.seats[1 - seatIndex].left) { this.close(); return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true }; }
+    seat.returned = true;
+    this._closeAt = null; // 복귀한 좌석이 있는 방은 5분 정리 대상이 아니다(lobby.sweep)
+    const peer = this.seats[1 - seatIndex];
+    if (peer.returned) this._resetForRematch();
+    else if (!peer.credential) this._reopenEmpty(); // 참가자가 이미 나갔다 — 빈 대기방(새 참가자를 받는다)
+    else {
+      this.revision += 1;
+      if (!peer.connected && peer.disconnectExpiry == null) { peer.disconnectExpiry = now() + this.graceMs; this._armGrace(1 - seatIndex); } // 결과 중 이미 끊긴 상대 — 60초 유예
+    }
+    return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
+  }
+
+  /* 경기별 상태만 비운다. 방 번호·이름·좌석·좌석 토큰·계정 바인딩은 그대로다. revision·seq·중복 제거 표는 이어 간다 —
+     지난 경기의 늦은 명령은 E_STALE_REVISION·중복 응답으로 막혀 새 경기에 닿지 않는다. 결과 기록은 이미 _finalize 가
+     그 경기 matchId 로 한 번 냈고, 다음 경기는 _startMatch 가 새 matchId 를 뽑는다. */
+  _resetForRematch(state = STATES.WAITING) {
+    if (this.engines) for (const T of this.engines) { try { T.scheduler.clear(); } catch (e) { /* noop */ } }
+    this.engines = null;
+    this.result = null; this.matchId = null; this.startedAt = null;
+    this._consumedModalSeq = null;
+    this._aliasByPid = new Map(); this._pidByAlias = new Map();
+    this._fxCache = [{ firstSeq: null, lastSeq: 0, events: [] }, { firstSeq: null, lastSeq: 0, events: [] }];
+    this._closeAt = null; // lobby.sweep 이 FINISHED 에 건 5분 정리 예약
+    this.dedup.clear(); // 지난 경기 requestId 의 저장 응답을 새 경기에서 재전송하지 않는다 — 재실행은 round 경계가 막는다
+    this.state = state;
+    this.revision += 1;
+    this.seats.forEach((seat, i) => {
+      Object.assign(seat, { ready: false, placed: false, rawSetup: null, shopTimedOut: false, lobbyReady: false, returned: false });
+      if (seat.credential && !seat.connected && seat.disconnectExpiry == null) { seat.disconnectExpiry = now() + this.graceMs; this._armGrace(i); } // 끊긴 좌석 — 대기방 유예 60초(이미 걸린 유예는 그대로)
+    });
   }
 
   // 원자적 시작 — 동기 구간 안에서 두 좌석 엔진 기동 → 배치 반영 확인 → 락스텝 일치 확인 → 전이.
@@ -733,6 +918,8 @@ class Room {
     this.engines = engines;
     this._consumedModalSeq = null;
     this.state = STATES.IN_PROGRESS;
+    this.matchId = crypto.randomBytes(16).toString('hex');
+    this.startedAt = now();
     this._syncClock();
     // revision: 이 시작은 ready 명령과 같은 동기 구간 — _handleReady가 이미 한 번 올렸다.
     return { ok: true };
@@ -1359,6 +1546,7 @@ class Room {
      수락된 거래는 이미 엔진에 있고(유지) 여기서 종료가 확정되면 _finalize 가 시계를 걷어 뒤이은 거래·만료를 막는다.
      종전 무료 로스터 경기(DD_ECONOMY=0)는 원본 온라인 규칙(자기 차례에만 · confirmResign) 그대로다. */
   _handleResign(seatIndex) {
+    if (this.state === STATES.WAITING) return err('E_ILLEGAL_ACTION');
     if (this.economy && (this.state === STATES.OPEN || this.state === STATES.SETUP)) return this.explicitLeave(seatIndex);
     if (this.state !== STATES.IN_PROGRESS || !this.engines) return err('E_ROOM_CLOSED');
     if (!this.economy) {
@@ -1397,7 +1585,24 @@ class Room {
   }
 
   toSeatView(seatIndex) {
+    return Object.assign(this._seatView(seatIndex), { round: this.round }); // #238 경기 번호 — 바뀌면 클라이언트가 경기별 상태를 비운다
+  }
+
+  _seatView(seatIndex) {
     const seat = this.seats[seatIndex];
+    /* #238 대기방 — 방 전체가 WAITING 이거나, 결과에서 먼저 복귀해 상대를 기다리는 좌석. 지난 경기의 fx·결과·보드는 싣지 않는다. */
+    if (this.state === STATES.WAITING || (this.state === STATES.FINISHED && seat.returned)) {
+      const c = this._countdown;
+      return {
+        seat: seatIndex, state: STATES.WAITING, phase: 'waiting', revision: this.revision, current: null,
+        seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null, economy: this.economy,
+        lobby: {
+          guestReady: this.state === STATES.WAITING && this.seats[1].lobbyReady,
+          countdownMs: c ? Math.max(0, c.deadline - now()) : null,
+          peerInResult: this.state === STATES.FINISHED,
+        },
+      };
+    }
     const ready = [this.seats[0].ready, this.seats[1].ready];
     if (this.state === STATES.OPEN || this.state === STATES.SETUP) {
       const base = {
@@ -1516,10 +1721,36 @@ class Room {
       } : {}),
       ...(this._pauseView() ? { pause: this._pauseView() } : {}), // 단절 중에만 — 없으면 경기가 흐르고 있다
       result: this.result,
+      ...(revealAll ? { final: this._finalView(T, seatIndex) } : {}), // #238 S04 — 종료 확정 뒤에만
       // #217 — engines가 살아있는 동안은 T.__fx를 직접(라이브) 읽는다. _apply/_handleResign가 명령 처리
       // 경로로만 _fxCache를 갱신하므로, 그 경로를 거치지 않고 엔진을 직접 조작하는 호출(예: 테스트 픽스처)
       // 뒤에 바로 조회해도 최신 이벤트를 놓치지 않는다 — _fxCache는 engines가 사라지는 종료 분기 전용 백업.
       fx: this._snapshotFx(T),
+    };
+  }
+
+  /* #238 S04 결과(FINISHED 전용) — 양측 필드 9칸(사망 포함 · Core synCount 와 같은 거름)과 Core synView 그대로.
+     시너지 산식을 새로 만들지 않는다(전투 중 종료면 synView 가 그 전투 스냅샷을 준다). 별칭·위치·등급·스킬·원장은
+     싣지 않는다. 상대 HP 는 _serializeKnownOpponent 와 같은 규칙 — 실제로 싸운 개체(hpSeen)만 실제값, 나머지는 100 눈금.
+     JSON 복제로 엔진 상태와 참조를 공유하지 않는다. */
+  /* 가방(bag, 최대 3)도 같은 필드로 싣는다 — PD·Venus 해석(2026-09-28): CJ '양측 하수인 전체'는 소유 하수인 전부이고,
+     Core 시너지가 이미 가방 전설을 센다. 가방 말은 하수인이며 보드 자리가 없다. */
+  _finalView(T, seatIndex) {
+    const S = T.S;
+    const unit = (u, seat, type) => {
+      const hp = seat !== seatIndex && this.economy && !u.hpSeen ? { hp: pct100(u.hp, u.maxHp), maxHp: 100 } : { hp: u.hp, maxHp: u.maxHp };
+      return {
+        type, rosterId: type === 'minion' ? T.ecoKey(u) : null, name: u.name, element: u.element || null,
+        alive: u.alive !== false, hp: hp.hp, maxHp: hp.maxHp, ...(u.hpSeen ? { hpSeen: true } : {}),
+      };
+    };
+    return {
+      sides: [0, 1].map((seat) => ({
+        seat,
+        pieces: S.pieces.filter((p) => p.owner === seat && p.placed === true && T.SYN_FIELD_TYPES.includes(p.type)).map((p) => unit(p, seat, p.type)),
+        bag: S.eco ? S.eco.bag[seat].map((u) => unit(u, seat, 'minion')) : [],
+        syn: JSON.parse(JSON.stringify(T.synView(seat, S))),
+      })),
     };
   }
 
@@ -1609,7 +1840,7 @@ class Room {
     return {
       firstSeq: store.items[0].seq,
       lastSeq: store.nextSeq - 1,
-      events: store.items.map((e, i) => this._serializeFxEvent(e, T.host && T.host.seat, subj[i])),
+      events: store.items.map((e, i) => this._serializeFxEvent(e, subj[i])),
     };
   }
 
@@ -1642,41 +1873,36 @@ class Room {
   // sameRef===true로 변조가 그대로 보임 — resync/재조회 스토어까지 물든다). scene(_serializeFxScene)·
   // cells(_serializeFxCells)처럼 매 호출마다 원시 필드만 골라 **새 객체**를 짓는다 — 내부 저장소와 반환값이
   // 항상 독립된 참조를 갖도록(이중 화이트리스트, room.js 기존 _serialize* 관례와 동일).
-  /* #237 opp(side) — 그 쪽이 이 좌석의 상대 전투원이고 경제 경기면 그 전투원의 최대 HP, 아니면 null. 상대 쪽 HP·방어막·
-     떠오르는 수치는 100 눈금으로 바꿔 싣는다(_serializeKnownOpponent 와 같은 계약 — 최대 HP 로 등급이 역산되지 않게). */
-  _serializeFxMsgFx(fx, opp) {
+  /* #262 CJ QA(2026-09-27) — msg 이벤트는 전투 msgQ 에서만 나오므로(engine.js hookMsgQ) 모든 HP 수치는 무대 위 두 전투원 것이다.
+     전투 중에는 양쪽 실제 HP 를 공개하므로 HP·방어막·떠오르는 수치를 원값 그대로 싣는다(종전 #237 상대 쪽 100 눈금 폐지). */
+  _serializeFxMsgFx(fx) {
     if (!fx || typeof fx !== 'object') return null;
-    opp = opp || (() => null);
     const out = {};
     if (fx.shake === 'A' || fx.shake === 'D') out.shake = fx.shake;
     if (fx.sig === true) out.sig = true;
     if (typeof fx.flash === 'string') out.flash = fx.flash;
     if (fx.ko === 'A' || fx.ko === 'D') out.ko = fx.ko;
+    if (fx.cast === 'A' || fx.cast === 'D') out.cast = fx.cast; // #238 시전 측(공개된 전투원) — 스킬 연출 프리셋 선택용
     if (fx.float && (fx.float.side === 'A' || fx.float.side === 'D') && (fx.float.sign === 'pos' || fx.float.sign === 'neg')) {
-      const m = opp(fx.float.side), amount = Number(fx.float.amount) || 0;
-      out.float = { side: fx.float.side, sign: fx.float.sign, amount: m ? pct100(amount, m) : amount };
+      out.float = { side: fx.float.side, sign: fx.float.sign, amount: Number(fx.float.amount) || 0 };
     }
     if (fx.hp && (fx.hp.side === 'A' || fx.hp.side === 'D')) {
-      out.hp = opp(fx.hp.side) ? { side: fx.hp.side, val: pct100(fx.hp.val, fx.hp.max), max: 100 }
-        : { side: fx.hp.side, val: Number(fx.hp.val) || 0, max: Number(fx.hp.max) || 0 };
+      out.hp = { side: fx.hp.side, val: Number(fx.hp.val) || 0, max: Number(fx.hp.max) || 0 };
     }
     if (fx.st && (fx.st.side === 'A' || fx.st.side === 'D')) {
-      const o = !!opp(fx.st.side), text = typeof fx.st.text === 'string' ? fx.st.text : '';
-      out.st = { side: fx.st.side, text: o ? scaleText(text, fx.st.max) : text, // 상태 아이콘의 🛡방어막·🌊해일≤X
-        shield: o ? pct100(fx.st.shield, fx.st.max) : Number(fx.st.shield) || 0, max: o ? 100 : Number(fx.st.max) || 0 };
+      out.st = { side: fx.st.side, text: typeof fx.st.text === 'string' ? fx.st.text : '', // 상태 아이콘의 🛡방어막·🌊해일≤X
+        shield: Number(fx.st.shield) || 0, max: Number(fx.st.max) || 0 };
     }
     return Object.keys(out).length ? out : null;
   }
 
-  _serializeFxEvent(e, seatIndex, subject) {
+  _serializeFxEvent(e, subject) {
     if (e.src === 'msg') {
-      const opp = (side) => (this.economy && e.sides && e.sides[side] && e.sides[side][0] !== seatIndex ? e.sides[side][1] : null);
-      // #237 문구: 주어가 자기 전투원이면 실제 값, 상대면 100 눈금, 주어 불명이면 HP 계열 수치를 '?' 로 가린다
-      const own = subject && e.sides && e.sides[subject] && e.sides[subject][0] === seatIndex;
-      const txt = !this.economy || own ? e.txt : scaleText(e.txt, subject ? opp(subject) : null);
+      // 문구: 주어가 있으면 원문(두 전투원 모두 실제 값 · #262), 경제 경기에서 주어 불명이면 HP 계열 수치를 '?' 로 가린다(#237 유지)
+      const txt = !this.economy || subject ? e.txt : maskText(e.txt);
       return {
         seq: e.seq, src: 'msg', battleId: Number.isInteger(e.battleId) ? e.battleId : null,
-        round: e.round, actSeq: e.actSeq, key: e.key, big: e.big, txt, fx: this._serializeFxMsgFx(e.fx, opp),
+        round: e.round, actSeq: e.actSeq, key: e.key, big: e.big, txt, fx: this._serializeFxMsgFx(e.fx),
       };
     }
     const out = {
@@ -1752,10 +1978,12 @@ class Room {
      ④ 등급(grade)은 7.9·8.1⑦이 소유자 전용으로 못박은 값이라 공개 상대 뷰에 실을 수 없다.
      상대 동료 스탯이 정말 필요해지면 두 전투원이 서로 공개된 **전투 뷰**에서 다시 합의해 내보낸다. */
   /* #237 (GDD-23 7.9·8.1⑦) 경제 경기에서는 최대 HP 가 등급마다 달라 "종(name) + maxHp" 로 상대 등급이 역산된다.
-     그래서 상대 말 HP 는 **100 눈금 비율**로만 싣는다: maxHp=100 고정, hp=ceil(hp/maxHp×100)(살아 있으면 1 이상).
-     클라이언트는 필드 모양을 바꾸지 않고 그대로 HP 바를 그린다 — 숫자가 "N/100" 으로 보일 뿐이다(Mars 표기 인계). */
+     그래서 전투에 나선 적 없는 상대 말 HP 는 **100 눈금 비율**로만 싣는다: maxHp=100 고정, hp=ceil(hp/maxHp×100)(살아 있으면 1 이상).
+     #262 CJ QA(2026-09-27) — 전투에 실제로 나선 개체(Core startRounds 가 전투원 fa/fd 에 세우는 hpSeen, 개체와 함께 이동)는
+     전투 중 이미 실제 HP/최대 HP 를 보였으므로 보드에서도 실제 현재 HP/최대 HP 를 싣고 hpSeen:true 로 알린다.
+     정체 공개(함정·종료 리빌)만으로는 해당하지 않는다. 등급·스탯·스킬·원장 등 HP 밖 필드는 종전 그대로 싣지 않는다. */
   _serializeKnownOpponent(p) {
-    const hp = this.economy ? { hp: pct100(p.hp, p.maxHp), maxHp: 100 } : { hp: p.hp, maxHp: p.maxHp };
+    const hp = this.economy && !p.hpSeen ? { hp: pct100(p.hp, p.maxHp), maxHp: 100 } : { hp: p.hp, maxHp: p.maxHp };
     return {
       id: this._alias(p.id), r: p.r, c: p.c, owner: p.owner, alive: p.alive, immobile: p.immobile,
       type: p.type, name: p.name, element: p.element, hp: hp.hp, maxHp: hp.maxHp, healing: p.healing,
@@ -1764,6 +1992,7 @@ class Room {
       // 표시 whitelist 복구다 — 정보량 증가 없음. 하수인이 아니면(왕/동료) 항상 null.
       rosterId: p.type === 'minion' ? (p.rosterId || null) : null,
       ...(p.swapMark ? { swapMark: true } : {}), // #237 "상점에서 교체됨" — 7.9 가 상대에게 허용한 유일한 상점 표식
+      ...(p.hpSeen ? { hpSeen: true } : {}),
     };
   }
 
@@ -1797,10 +2026,10 @@ class Room {
   _serializeBattle(T, battle, seatIndex) {
     const side = (owner, f, piece, sfx) => {
       const bodyFight = f === piece; // 본체 출전(f===piece) vs 포획·예비 하수인 대리 출전(#91 artDirOfFighter와 같은 구분)
-      const scaled = this.economy && owner !== seatIndex; // #237 상대 전투원 HP·방어막은 100 눈금(등급 역산 차단 — _serializeKnownOpponent 와 같은 계약)
+      // #262 CJ QA(2026-09-27) — 전투 중에는 두 전투원(대리 출전 포함) 모두 실제 HP/최대 HP·방어막·해일 X·기록 피해를 싣는다(#237 100 눈금 폐지)
       return {
-        owner, hp: scaled ? pct100(f.hp, f.maxHp) : f.hp, maxHp: scaled ? 100 : f.maxHp,
-        shield: scaled ? pct100(f.shield || 0, f.maxHp) : (f.shield || 0), burn: f.burn || 0, weaken: f.weaken || 0,
+        owner, hp: f.hp, maxHp: f.maxHp,
+        shield: f.shield || 0, burn: f.burn || 0, weaken: f.weaken || 0,
         shock: f.shock || 0, shockFresh: !!f.shockFresh, dmgCut: f.dmgCut || 0, focusCharge: !!f.focusCharge,
         /* #233 (GDD-23 4.5) 균열·경화 — 이미 내려보내는 burn/weaken/shock/dmgCut/vulnMark 와 **같은 등급**이다.
            원본 stIcons(f)(demo/index.html)가 두 전투원 패널 모두에 뷰어 분기 없이 이 셋을 그리고, #121 계약
@@ -1826,8 +2055,7 @@ class Room {
         // atk/skillAtk도 자기 pieces/cap 또는 공개 ROSTER/BAL로 대부분 유도 가능해 필수 노출이 아니다(포획 대리
         // 출전의 상대 cap 수치만 유도 불가하지만 원본 UI도 그 경우 "?"만 보여줄 뿐이다) — 불필요한 공개 확장은
         // 하지 않는다.
-        // rec = 이 쪽이 상대에게 기록한 피해(상대 최대 HP 로 상한) — 내 기록은 상대 최대 HP 를 드러내므로 100 눈금(#237)
-        rec: this.economy && owner === seatIndex ? pct100(battle['rec' + sfx] || 0, (sfx === 'A' ? battle.fd : battle.fa).maxHp) : (battle['rec' + sfx] || 0),
+        rec: battle['rec' + sfx] || 0, // 이 쪽이 상대에게 기록한 피해(상대 최대 HP 로 상한)
         items: battle['items' + sfx] || 0, itemRound: !!battle['itemRound' + sfx],
         lastItem: battle['lastItem' + sfx] != null ? battle['lastItem' + sfx] : null,
         ballThrow: !!battle['ballThrow' + sfx], buff: battle['buff' + sfx] || null,
@@ -1851,8 +2079,10 @@ class Room {
            전투가 끝나 battle 객체가 사라지면 이 필드도 함께 사라진다 — board 뷰로 새지 않는다.
            기술 종류(kind)/이름/쿨의 은닉 범위는 그대로다(위 skills 라인). */
         type: piece.type, element: f.element || null, bodyFight,
-        rosterId: bodyFight && piece.type === 'minion' ? (piece.rosterId || null) : null,
-        artRosterId: bodyFight ? null : (f.artRosterId || null),
+        // #238 전설 정체 — 공개된 전설 종 키(L-DRAGON/L-WITCH/L-REAPER)를 기존 종 키 칸에 싣는다(Core ecoKey · 일반 값 불변).
+        // 원시 legend·등급·기술·cap 은 싣지 않는다. engine.js sceneSideOf 와 같은 규칙 — 바뀌면 양쪽을 함께 고친다.
+        rosterId: bodyFight && piece.type === 'minion' ? (T.ecoKey(piece) || null) : null,
+        artRosterId: bodyFight ? null : (f.artRosterId || (f.legend ? T.ecoKey(f) : null)),
         // #234 REVISE 2차 — 사신의 낫 봉인은 자기 전투원에만(키 자체를 상대 쪽에 만들지 않는다 · _serializeOwn 주석).
         ...(owner === seatIndex ? { reaperSeal: f.reaperSeal || 0 } : {}),
         /* #235 공격형·표준 시너지 가산칸 — **자기 전투원에만** 싣는다(reaperSeal 과 같은 owner-only 경계: 상대 쪽에는 키 자체를 만들지 않는다).
@@ -1867,8 +2097,7 @@ class Room {
            tideBy 는 싣지 않는다: 표식 대상의 반대편으로 항상 유도되고 표시가 읽지 않는다. cdUpFresh(Q3)도 싣지 않는다 —
            ⌛ 값 자체가 미공개 칸 은닉(_skillsFor) 대상이고 표시 경로가 없다. */
         evadeDown: f.evadeDown || 0, evadeDownR: f.evadeDownR || 0,
-        // #237 해일 X 는 HP 선(HP 바 위 X 위치)이라 상대 쪽은 hp·shield 와 같은 100 눈금 — 원값이면 비율 HP 와 어긋나고 최대 HP 가 역산된다
-        tideMark: scaled ? pct100(f.tideMark || 0, f.maxHp) : (f.tideMark || 0), tideHeld: !!f.tideHeld,
+        tideMark: f.tideMark || 0, tideHeld: !!f.tideHeld, // 해일 X 는 HP 선 — hp·shield 와 같은 실제 값(#262)
       };
     };
     /* #241 R1 번개 꼬리 추가 공격 단계 — 양 좌석에 side 만 공개(행동 중인 쪽 · 상대 화면의 대기 표시). allowed 는 소유자 좌석에만:
@@ -1891,6 +2120,9 @@ class Room {
       a: side(battle.attP.owner, battle.fa, battle.attP, 'A'),
       d: side(battle.defP.owner, battle.fd, battle.defP, 'D'),
       bonus,
+      /* #238 B04 내 시너지 칩 — 참전 확정 스냅샷(battle.syn)이 있을 때만 이 좌석 몫의 Core synView 복제. 상대 칸 수·단계는
+         7.9 소유자 전용이라 싣지 않는다. 산식은 Core 그대로(재구현 없음), JSON 복제로 엔진 참조를 끊는다. */
+      ownSyn: this.state !== STATES.FINISHED && battle.syn && battle.syn[seatIndex] ? JSON.parse(JSON.stringify(T.synView(seatIndex, T.S))) : null,
       // 이 좌석 시점 엔진의 전투 로그. #237 경제 경기는 같은 문구를 주어 표기와 함께 담은 fx 창(문구 정리 완료)에서 이 전투 몫만 싣는다
       log: this.economy
         ? this._snapshotFx(T).events.filter((e) => e.src === 'msg' && e.battleId === (T.__fx && T.__fx.lastBattleId)).map((e) => e.txt).slice(-40)
@@ -1898,11 +2130,16 @@ class Room {
     };
   }
 
+  // #261 공개 행 — 이름·번호·상태·인원·공개 닉네임/대표 하수인만. 계정 id·초대 코드·IP·가방·배치·전투 정보는 싣지 않는다.
   lobbyRow() {
-    return { roomId: this.roomId, label: '방 #' + this.roomId, ageSec: Math.floor((now() - this.createdAt) / 1000), seats: '1/2' };
+    const seat = (k) => [0, 1].map((i) => this.seats[i][k] || null);
+    return {
+      roomId: this.roomId, roomName: this.name, state: this.state, seats: this.state === STATES.OPEN ? '1/2' : '2/2',
+      label: '방 #' + this.roomId, ageSec: Math.floor((now() - this.createdAt) / 1000), players: seat('nickname'), reps: seat('rep'),
+    };
   }
 
-  isListable() { return this.isPublic && this.state === STATES.OPEN; }
+  isListable() { return this.isPublic && [STATES.OPEN, STATES.WAITING, STATES.SETUP, STATES.IN_PROGRESS].includes(this.state); }
 }
 
 module.exports = { Room, STATES, DISCONNECT_GRACE_MS, ACTION_TYPES, BATTLE_CMDS, ECO_VERBS, battleFrame, lockstepDigest, catalog };

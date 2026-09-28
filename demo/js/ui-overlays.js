@@ -20,9 +20,44 @@ function modal(html,buttons){
     else b.onclick=()=>{ if(netPaused()){ showToast(NET_PAUSE_MSG); return; } if(fxLocked()) return; fn(); };
     b.className="primary"; ob.appendChild(b);} // #106: 연출 잠금 중 모달 버튼 무시
   $("overlay").classList.remove("hidden");
+  modalFocus();
 }
 function closeModal(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; $("overlay").classList.add("hidden"); handoffCover(false);
-  if(UI.ask){ UI.ask=null; if(UI.hold) aiHoldRelease(); } } // #122 REVISE: 다른 경로로 확인창이 닫혀도 AI 보류가 남지 않는다
+  if(UI.ask){ UI.ask=null; if(UI.hold) aiHoldRelease(); } // #122 REVISE: 다른 경로로 확인창이 닫혀도 AI 보류가 남지 않는다
+  modalRefocus(); }
+/* #238 모달 포커스 (GDD-24 00.6): 열리면 첫 주요 버튼(없으면 제목)으로, Tab 은 모달 안에서만 돈다 — 예외로 이모티콘 여는 버튼·팝오버는
+   순환에 들어간다(#262). Esc 는 [취소]가 있는 확인 창에서만 취소이고(M03~M06), 이모티콘 팝오버가 열려 있으면 그것만 닫는다.
+   닫히면 연 버튼으로, 그 버튼이 사라졌으면 보드 아이콘 → 행동 줄 순으로 돌아간다. 다시 그려도(전투 화면) 포커스가 창 안에 있으면 옮기지 않는다. */
+const MODAL_FOCUS={opener:null};
+function modalFocusables(){
+  const box=$("overlayBox"), L=$("emoteLayer"); if(!box||!box.querySelectorAll) return [];
+  const q="button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex='-1'])";
+  const own=[...box.querySelectorAll(q)], emo=L&&L.classList&&!L.classList.contains("hidden")?[...L.querySelectorAll(q)].filter(x=>x.offsetParent!==null):[];
+  return own.concat(emo);
+}
+function modalFocus(){ try{
+  if(typeof document==="undefined"||!document.activeElement) return;
+  const box=$("overlayBox"), a=document.activeElement; if(!box||!box.contains) return;
+  if(box.contains(a)) return;
+  if(!MODAL_FOCUS.opener&&a!==document.body) MODAL_FOCUS.opener=a;
+  const t=box.querySelector("#obBtns button:not([disabled]),button:not([disabled])")||box.querySelector("h2");
+  if(t&&t.focus){ if(t.tagName==="H2") t.setAttribute("tabindex","-1"); t.focus({preventScroll:true}); }
+  }catch(e){} } // 포커스는 보조 동작 — 실패해도 창은 연다
+function modalRefocus(){ try{
+  if(typeof document==="undefined"||!document.querySelector) return;
+  const o=MODAL_FOCUS.opener; MODAL_FOCUS.opener=null;
+  const t=[o,document.querySelector("#turnBar button.hudIco"),document.querySelector("#turnBar button:not([disabled])")].find(x=>x&&x.isConnected&&!x.disabled);
+  if(t&&t.focus) t.focus({preventScroll:true});
+  }catch(e){} }
+if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("keydown",e=>{
+  const o=$("overlay"); if(!o||o.classList.contains("hidden")||(typeof EMO!=="undefined"&&EMO.open&&e.key==="Escape")) return;
+  if(e.key==="Escape"){ const c=[...$("overlayBox").querySelectorAll("#obBtns button")].find(b=>b.textContent==="취소"&&!b.disabled); if(c){ e.preventDefault(); c.click(); } return; }
+  if(e.key!=="Tab") return;
+  const f=modalFocusables(); if(!f.length) return;
+  const i=f.indexOf(/** @type {any} */(document.activeElement));
+  const to=i<0?(e.shiftKey?f.length-1:0):(e.shiftKey&&i===0)?f.length-1:(!e.shiftKey&&i===f.length-1)?0:-1;
+  if(to>=0){ e.preventDefault(); f[to].focus(); }
+});
 /* #11·#36 추측 메모: 게임 중 정체 미공개 상대 말 클릭(전투 지정 경로 외) → 8종 이모지 피커 — 뷰어(PVE:0 / PVP:현재 플레이어)별 비공개, 인메모리만(로그·영구 저장 없음)
    #94 상대 턴·AI 턴에도 뷰어가 고정된 모드(온라인 NET.me · PVE 0)에서는 로컬로 연다 — 진입은 onCell → memoClickTarget (네트워크·RNG·selected·게임 로그 무변화) */
 function memoSet(v,pid,key){ // key: MEMO_OPTS 키 또는 null(삭제). 그 외 값은 무시 — 상대 말·게임 중에만

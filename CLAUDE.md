@@ -2,6 +2,14 @@
 
 숫자 장기 × 속성 배틀 결합 1vs1 턴제 전략 보드게임. 최종 타깃 Android/Unity, 기획 검증용 HTML 데모 선행(2트랙).
 
+
+## 현재 CJ 승인 — 2026-09-28 #232 통합·정리·Render 배포 구조 점검
+
+- CJ는 #232 통합을 승인했다. #262·#238과 필요한 #264 납품의 stage·commit·push·PR 및 #259→#260→#261→#262→#238 순차 milestone/v0.4.11 통합을 진행한다. 각 현재 PR의 필수 CI·Saturn 조건을 확인한다. Worker는 full access·무확인 자동 진행하며 진행 허가를 CJ에게 다시 묻지 않는다. 아래 이전 Git 금지 기록과 충돌하면 이 최신 지시가 우선한다.
+- 통합 후 필요 없는 Digit-Duel 작업 트리·브랜치를 정리한다. dirty·untracked·중요 변경은 먼저 통합/검증 보관하고, 아직 필요한 트리와 원본 사용자 checkout은 보존한다. 삭제 대상의 정확한 경로와 병합/보관 근거를 확인한다.
+- 통합 후 Render의 서버 구조·설정·플랜 제약을 확인해 CJ에게 보고한다. main Release·배포·Render 자원 생성·결제·요금제 변경은 아직 승인되지 않았다. CJ가 보고를 받은 뒤 별도로 지시한다. 신규 Issue 댓글·중복TODO·수동 Issue close도 실행하지 않는다.
+- 통합 QA와 배포 구조 점검 후 필요 없는 게임 QA 내부망 리스너를 종료한다. DB 데이터·계정·SMTP 비밀·검증 증거와 다른 앱 프로세스는 보존한다.
+
 ## 기준 문서 (Notion — 구현·QA의 진실 원본)
 - 필수 QA 운영: [QA_MINIMUM_POLICY.md](docs/creat2ve/QA_MINIMUM_POLICY.md) — 2026-09-16 CJ 지시. 변경에 필요한 자동 검증 우선, 브라우저 수동·네트워크 반복 QA 축소. 필수 CI 유지.
 - Game Overview (GDD-13, 기준 문서): https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38
@@ -43,7 +51,7 @@
 CJ Comment가 유일한 작업 입력(launcher)이다. 프롬프트 복사는 불필요하며, Notion의 Plan Prompt·Orchestration Launcher는 새 환경/다른 도구용 백업이다.
 1. **분류**: 매 보고 첫머리에 Comment를 [결정]/[피드백]/[질문]으로 분류해 표기한다.
 2. **Issue·PR 단위 (2026-09-07 CJ 승인)**: 코드 변경과 납품 자산 변경을 이슈화한다. 문서·결정·분석만 있는 안건은 Notion Decision Log로 관리한다. 하나의 납품 목표는 Mercury가 **Issue 1개 + 통합 PR 1개**로 관리하며, 같은 목표의 병렬 Worker 작업은 체크리스트와 Orca Task로 나눈다. Worker별 Issue·PR을 만들지 않는다. 독립 출시·독립 롤백이 필요한 범위만 별도 Issue·PR로 분리할 수 있고, 부모 에픽이 있으면 sub-issue로 연결한다(깊이 1단계). 부모는 모든 sub 종결 + CJ QA 통과 시 닫는다. Worker는 결과를 PD에게 보고하고, GitHub·Notion 기록과 Git 쓰기는 Mercury가 취합·집행한다.
-3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주한다. 모든 완료 조건과 통합 상태를 기존 Issue 본문에서 확인한 뒤 허가된 범위에서 close한다. 신규 GitHub Issue 댓글은 작성하지 않는다. 2026-09-27 CJ는 #259의 stage·commit·push·milestone/v0.4.11 대상 PR 작성과 타이머 충돌 정리·필수 CI 확인을 승인했다. #259 마일스톤 병합·Issue 종결·배포, #260 Git 쓰기, #264 자원 생성·결제는 별도 승인 전 금지다.
+3. **Issue 종결**: CJ가 QA 통과를 명시하거나, 완료 보고 후 CJ의 다음 Comment가 이의를 제기하지 않으면 묵시적 승인으로 간주한다. 모든 완료 조건과 통합 상태를 기존 Issue 본문에서 확인한 뒤 허가된 범위에서 close한다. 신규 GitHub Issue 댓글은 작성하지 않는다. 2026-09-27 CJ는 #259의 stage·commit·push·milestone/v0.4.11 대상 PR 작성과 타이머 충돌 정리·필수 CI 확인을 승인했다. 2026-09-27 권장 순서 구현 지시에 따라 #260 커밋·push·#259 브랜치 대상 PR 작성·브랜치 필수 CI도 완료했다. 2026-09-27 CJ는 #261 최종 QA PASS 뒤 stage·commit·push·#260 브랜치 대상 분리 PR 작성과 필수 CI 확인을 명시 승인했다. #259/#260/#261 마일스톤 병합·Issue 종결·배포, #262/#238 Git 쓰기, #264 자원 생성·결제는 별도 승인 전 금지다.
 4. **기획서 동기화**: 규칙 변경은 Decision Log + 해당 본문 섹션을 동시에 갱신하고, 보고에 "문서 반영 위치" 표를 포함한다.
 5. **DIGEST**: 마일스톤 종료·대규모 규칙 개정 시 eli-adult로 읽기 좋은 정리본을 생성한다.
 6. **Worker**: 독립 기능·대규모 변경은 Orca Worker 위임, 소규모 Delta는 직접. Worker는 git 쓰기 금지, Coordinator가 diff 리뷰·검증 후 커밋한다.

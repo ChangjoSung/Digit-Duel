@@ -11,20 +11,15 @@
      새 문서·새 창·라우터가 아니다 — #128 "새 문서 로드당 1회" 튜토리얼 경계는 그대로다. -->
 <div id="app" data-screen="title" data-prep="roster">
   <div id="titleScreen">
-    <div class="kick">POCKET STRATEGY</div>
-    <div class="logo">DIGIT<br>DUEL</div>
+    <!-- #238 (2026-09-28 CJ 시각 REVISE · SYS 타이틀): 로고 + 격자 보드 그림 + [로그인]·[Google 🔒] (계정 패널이 그린다) · 로그인 뒤 [시작] -->
+    <div class="logo" role="img" aria-label="Digit Duel">Digit<br>Duel</div>
     <div class="titleArt" aria-hidden="true"><i></i><i class="b"></i><i></i><i></i><i></i><i class="q">?</i><i></i><i></i><i></i><i class="f"></i><i></i><i class="f"></i><i></i><i></i><i></i><i class="q">?</i><i></i><i class="a"></i><i></i><i></i><i></i></div>
-    <div class="tag">정체를 숨기고, 한 수 앞을 읽다.</div>
     <div id="acctPanel" aria-live="polite"></div>
-    <button class="primary big" type="button" onclick="uiStart()">대전 시작 →</button>
-    <button class="ghost big" type="button" onclick="tutOpen()">📖 튜토리얼 보기</button>
+    <button class="primary big" type="button" onclick="uiStart()">시작 →</button>
   </div>
   <div id="appBar">
     <button id="btnBack" class="backBtn" type="button" onclick="uiBack()">←</button>
     <h1><span class="brand">DIGIT DUEL</span> <small id="phaseLabel"></small></h1>
-    <button id="btnDrawerSide" class="barBtn" type="button" onclick="uiDrawer('side')">상세</button>
-    <button id="btnDrawerLog" class="barBtn" type="button" onclick="uiDrawer('log')">기록</button>
-    <button id="tutBtn" class="tutBtn" type="button" aria-label="튜토리얼 다시 보기" title="튜토리얼 다시 보기" onclick="tutOpen()">?</button>
   </div>
   <div id="toasts"></div>
   <div id="screenBody">
@@ -35,14 +30,6 @@
     <div id="right">
       <div id="drawerHead"><span id="drawerTitle"></span><button type="button" onclick="uiDrawer(null)">닫기</button></div>
       <div class="panel" id="sidePanel"></div>
-      <details class="drawer" id="drawerLog"><summary>📜 공개 기록</summary><div class="drawerBody"><div id="log"></div></div></details>
-      <details class="drawer" id="drawerMetrics"><summary>📊 지표 (GDD-12 연동 스캐폴드)</summary><div class="drawerBody"><div id="metrics" style="font-size:12px;color:var(--dim)"></div></div></details>
-      <details class="drawer" id="drawerRef"><summary>ℹ️ 기준 문서·간소화 범위</summary><div class="drawerBody" style="font-size:11px;color:var(--dim)">
-        기준: GDD-13 v0.7 확정 규칙 · 수치는 [DATA] 전투 수치 v0.1 제안값(승인 전 임시) ·
-        AI: 공정 관측(플레이어와 동일한 정보 제한, 이동 이력 기반 논리 추론만 사용) ·
-        기술 4슬롯 체계: GDD-16 v1.0 (S1~S3 A안) ·
-        간소화: PVP 대리 출전 순차 블라인드, 후퇴-탐색 금지·제한 시간 미구현, 마지막 목격 칸 미표시(A/B는 v0.3.0)
-      </div></details>
     </div>
   </div>
   <div id="actionDock"><div class="row" id="turnBar"></div></div>
@@ -52,7 +39,18 @@
 <!-- #106 연출 배너 오버레이 (게임 모달 z50 위 · 튜토리얼 z60 아래) — 표시 전용, 규칙 상태 무관.
      #126: 결과 연출의 파편·섬광은 #fxFx 안에서만 만들어지며 난수를 쓰지 않는다 (인덱스 계산 고정). -->
 <div id="fxBanner" class="hidden" role="status" aria-live="polite"><div id="fxFx" aria-hidden="true"></div><div class="fxBox"><div id="fxTitle"></div><div id="fxSub"></div></div></div>
-<!-- #26 상황 도움말(비모달, 1회) · 튜토리얼 모달(게임 내부, 외부 창·서버 없음) -->
+<!-- #262 경기 중 이모티콘 — 게임 모달(z50)·연출 배너(z55) 위 · 튜토리얼(z60)·재접속 줄(z70) 아래 고정 층. 게임 입력을 막지 않는다 -->
+<div id="emoteLayer" class="hidden">
+  <button id="emoteBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="emotePop" aria-label="이모티콘" onclick="emoteToggle()">💬</button>
+  <div id="emotePop" class="hidden" role="group" aria-label="이모티콘 보내기">
+    <fieldset id="emoteSet"></fieldset>
+    <small id="emoteWhy" role="status"></small>
+    <label class="emoteMute"><input id="emoteMute" type="checkbox" onchange="emoteSetMuted(this.checked)"> 상대 이모티콘 숨기기</label>
+  </div>
+  <div id="emoteBubs" aria-hidden="true"><div id="emoteBubOpp" class="emoteBub hidden"></div><div id="emoteBubMe" class="emoteBub me hidden"></div></div>
+</div>
+<div id="emoteLive" class="srOnly" aria-live="polite"></div>
+<!-- #26 상황 도움말·튜토리얼 모달 — #260(CJ 2026-09-27)으로 제품 진입점·자동 표시·경기 중 도움말은 없다. 모듈은 회귀 검사용으로만 남는다 -->
 <div id="tutHint" class="hidden" role="status" aria-live="polite"></div>
 <div id="tutOverlay" class="hidden" aria-hidden="true"><div id="tutBox" role="dialog" aria-modal="true" aria-labelledby="tutTitle" aria-describedby="tutBody" tabindex="-1"></div></div>
 
@@ -64,6 +62,7 @@
   <script src="js/ui-overlays.js"></script>
   <script src="js/network.js"></script>
   <script src="js/account.js"></script>
+  <script src="js/lobby.js"></script>
   <script src="js/bootstrap.js"></script>
 </body>
 </html>

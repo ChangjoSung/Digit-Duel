@@ -1357,7 +1357,7 @@ function commitCoreState(next,events,replaceBoard){
    로컬 모드(S.eco)만 탄다. 거래 하나 = Core 액션 하나이고, 검증을 모두 통과한 뒤 복제본에만 쓰므로
    전부 적용되거나(커밋) 전부 거부된다(입력 상태 그대로 + shopRefused). 중복·늦은 요청은 진열 번호(seq)·uid 로 걸러진다. */
 const ECO_UNIT_KEYS=["rosterId","name","element","legend","hp","maxHp","atk","skillAtk","cdMax","def","spd","dodge","crit","statusPct",
-  "shieldStartPct","grade","skills","cds","revealedSkills","revealed","paid","fresh","reaperSeal"]; // 필드 칸 ↔ 가방이 주고받는 "그 개체" (보드 자리·id 는 칸에 남는다)
+  "shieldStartPct","grade","skills","cds","revealedSkills","revealed","hpSeen","paid","fresh","reaperSeal"]; // 필드 칸 ↔ 가방이 주고받는 "그 개체" (보드 자리·id 는 칸에 남는다)
 function ecoKey(u){ if(!u) return null; if(u.legend){ const L=LEGEND_ROSTER.find(x=>x.key===u.legend); return L?L.id:null; } return u.rosterId||null; }
 function ecoPrice(g){ return g>=5?ECO.legendPrice:g; }
 /** 필드(살아 있는 하수인 칸) + 가방에서 그 종의 개체 — 동종 1마리 제한은 이 둘만 센다 (사망 칸 제외, 7.4) */
@@ -1399,7 +1399,7 @@ function ecoNext(state){
 function ecoEditPiece(next,x){ const c=Object.assign({},x); next.pieces[next.pieces.indexOf(x)]=c; return c; }
 function ecoSyncRoster(next,p){ next.roster[p]=next.pieces.filter(x=>x.owner===p&&x.type==="minion"&&ecoKey(x)).map(ecoKey); } // 배치·재수화 호환 — 필드 순서 그대로
 function ecoMakeUnit(next,key,grade){
-  const u=/** @type {any} */({uid:++next.eco.unitSeq,paid:0,fresh:false,revealed:false,reaperSeal:0,cap:null});
+  const u=/** @type {any} */({uid:++next.eco.unitSeq,paid:0,fresh:false,revealed:false,hpSeen:false,reaperSeal:0,cap:null});
   const L=LEGEND_ROSTER.find(x=>x.id===key);
   if(L) applyLegend(u,L.key); else applySpecies(u,ROSTER.find(r=>r.id===key),grade);
   return u;
@@ -2293,6 +2293,7 @@ function ecoSynView(state,p){
 function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; met(attP.owner,"battles");
   attP.revealed=true; defP.revealed=true;
+  fa.hpSeen=fd.hpSeen=true; // #262 (CJ 2026-09-27) 실제로 싸운 개체만 HP 실제값 공개 — 대리 출전의 왕·동료 본체는 아니다. 함정·끝줄 정체 공개는 해당 없음
   healBreak(attP); healBreak(defP); // #106: 전투 참여 해제 (initBattle 경유가 아닌 직접 호출도 동일)
   /* #234 (GDD-23 6.2 · 5.3 · 5.6 스냅샷): 참전 확정 순간 왕·동료 스킬 칸(동료 사망 수에 따른 🪄 칸)을 맞춘다.
      속성이 아직 없으면(로스터 전 직접 호출) 2.2 미선택 규칙으로 정한다. */
@@ -2735,7 +2736,7 @@ function execSlot(side,slot,opts){
     if(why){ tellOwner(`💀 사신의 낫은 아직 봉인되어 있습니다 — ${why}`);
       execSlot(side,-1); return; }   // 같은 이유로 무동작 — 다른 슬롯이 합법이어도 기본 공격으로 대신하지 않는다
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); // 사용 시 공개
-    bmsg(`💀 ${fighterName(side)}의 사신의 낫!`,{sig:true},{key:"skillFx"});
+    bmsg(`💀 ${fighterName(side)}의 사신의 낫!`,{sig:true,cast:side},{key:"skillFx"});
     /* #234 REVISE 2차 CJ 결정(2026-09-17): 절대 판정 즉사 — 천년목·철벽 돌파·과부하 방벽·방어막(결과 경감)과
        환영 무도·수면 포자(행동 차단)를 모두 무시한다. v2PreUse·v2Endure·v2IncomingCap 을 부르지 않는다.
        사용 즉시 이 말에 전투를 넘는 봉인을 건다(다음 참전 전투 봉인) */
@@ -2774,7 +2775,7 @@ function execSlot(side,slot,opts){
     f.cds[pick]--; bmsg(`🔄 ${SKILLS[f.skills[pick]].ko} 쿨 -1 (남은 쿨 ${f.cds[pick]})`);
   };
   const supFlash=sk&&!sk.pow?(sk.healPct?"heal":(sk.shieldPct||sk.dmgCut)?"guard":"buff"):null; // S3-A 보조 3계열
-  bmsg(`${fighterName(side)}의 ${sk?sk.ko:"기본 공격"}!`,(sk&&sk.kind==="sig")?{sig:true,flash:supFlash}:(supFlash?{flash:supFlash}:null),{key:"skillFx"}); // #106 5.4 그룹1 기술 연출
+  bmsg(`${fighterName(side)}의 ${sk?sk.ko:"기본 공격"}!`,(sk&&sk.kind==="sig")?{sig:true,flash:supFlash,cast:side}:(supFlash?{flash:supFlash,cast:side}:{cast:side}),{key:"skillFx"}); // #106 5.4 그룹1 기술 연출 · #238 cast = 시전 측(공개된 전투원) — 공용 프리셋·전설 연출 선택용
   if(sk&&!sk.pow){ // 비피해 기술: 보조기·불굴 진형 — 첫 효과 메시지가 그룹2(효과 연출 damageFx)를 열고 나머지는 같은 그룹에 덧붙는다
     let effKey="damageFx"; const eb=(t,fx)=>{ bmsg(t,fx,effKey?{key:effKey}:null); effKey=null; };
     if(sk.healPct){const h=Math.round(f.maxHp*sk.healPct); f.hp=Math.min(f.maxHp,f.hp+h);

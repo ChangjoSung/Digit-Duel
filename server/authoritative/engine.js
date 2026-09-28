@@ -168,6 +168,7 @@ function createEngine(opts) {
 /* #237 (GDD-23 7.9·8.1⑦) 경제 경기의 보드 회복 틱 로그 "🌿 <말> HP +N" — 상대 말의 N 은 최대 HP×비율이라 최대 HP(=등급)가
    그대로 역산된다. 좌석 엔진의 로그를 만드는 Core healLogs 한 곳만 감싸 **상대 말의 N 을 100 눈금**(room.js 상대 HP 와 같은
    계약)으로 바꿔 넘긴다. 자기 말은 실제 값 그대로다. 로그는 락스텝 요약 밖(시점 의존 표시)이라 규칙 상태·난수와 무관하다.
+   #262 CJ QA(2026-09-27): 전투에 나서 실제 HP 가 공개된 개체(p.hpSeen)는 보드 HP 와 같이 실제 값이다.
    Core 의 최상위 함수는 컨텍스트 전역 속성이라 여기서 바꾼 바인딩을 Core 의 내부 호출도 그대로 탄다. */
 function installHealLogScale(T) {
   const ctx = T.__vmContext, orig = ctx.healLogs;
@@ -177,7 +178,7 @@ function installHealLogScale(T) {
     if (!S || !S.eco || !Array.isArray(healed)) return orig(healed, viewer);
     return orig(healed.map((h) => {
       const p = S.pieces.find((x) => x.id === h.id);
-      if (!p || p.owner === viewer || !(h.gain > 0)) return h;
+      if (!p || p.owner === viewer || p.hpSeen || !(h.gain > 0)) return h;
       // Core 는 gain 을 비교(>0)와 문구(`HP +${gain}`)에만 쓴다 — 숫자로는 눈금값, 문자열로는 'N%'(battle 문구와 같은 비율 표시)
       const n = Math.ceil((h.gain * 100) / (p.maxHp || 1));
       return Object.assign({}, h, { gain: { valueOf: () => n, toString: () => n + '%' } });
@@ -305,6 +306,7 @@ function normalizeMsgFx(fx) {
   if (fx.sig === true) out.sig = true;
   if (typeof fx.flash === 'string') out.flash = fx.flash;
   if (fx.ko === 'A' || fx.ko === 'D') out.ko = fx.ko;
+  if (fx.cast === 'A' || fx.cast === 'D') out.cast = fx.cast; // #238 시전 측(공개된 전투원) — 스킬 연출 프리셋 선택용
   const float = decodeFloat(fx.float);
   if (float) out.float = float;
   if (fx.hp && (fx.hp.side === 'A' || fx.hp.side === 'D')) {
@@ -342,9 +344,6 @@ function hookMsgQ(T, msgQ) {
           round: B ? B.round : null, actSeq: B ? (B.actSeq || 0) : null,
           key: it.key || null, big: !!it.big, txt: it.txt, fx: normalizeMsgFx(it.fx),
         };
-        /* #237 좌석 뷰가 상대 쪽 HP 수치를 100 눈금으로 바꿀 때 쓰는 서버 내부 값: 쪽별 [소유 좌석, 최대 HP].
-           비열거 속성이라 JSON 직렬화(표시 이벤트 골든 해시·좌석 프레임)에 나타나지 않는다 — room.js 만 이름으로 읽는다. */
-        Object.defineProperty(evt, 'sides', { value: B ? { A: [B.attP.owner, B.fa.maxHp], D: [B.defP.owner, B.fd.maxHp] } : null });
         fxAppend(T, evt);
       } catch (e) { /* 캡처 실패는 표시 계층 손실일 뿐 — 게임 진행을 막지 않는다(원본 push는 아래에서 계속 진행) */ }
     }
@@ -357,16 +356,18 @@ function hookMsgQ(T, msgQ) {
 // 않는다(#217 PD REVISE 5번 "private raw id/cap/미공개기술 등 금지 필드" — scene은 규칙 판정에 안 쓰이는
 // 표시 전용 스냅샷이라 room.js가 매 프레임 재구성하는 battle.a/d보다 더 적게만 담는다). room.js와 필드
 // 목록이 갈리면 안 되므로 바뀌면 양쪽을 함께 고친다(battle-fx-protocol.md에 명시).
-function sceneSideOf(f, piece) {
+function sceneSideOf(T, f, piece) {
   const bodyFight = f === piece;
   return {
     owner: piece.owner, type: piece.type, element: f.element || null, bodyFight,
-    rosterId: bodyFight && piece.type === 'minion' ? (piece.rosterId || null) : null,
-    artRosterId: bodyFight ? null : (f.artRosterId || null),
+    // #238 전설 정체 — room.js _serializeBattle side()와 같은 규칙. 종 키는 Core ecoKey(일반=rosterId 그대로,
+    // 전설=L-DRAGON/L-WITCH/L-REAPER). 대리 출전은 기존 artRosterId 우선, 없을 때 전설만. 원시 legend·등급·기술·cap 은 싣지 않는다.
+    rosterId: bodyFight && piece.type === 'minion' ? (T.ecoKey(piece) || null) : null,
+    artRosterId: bodyFight ? null : (f.artRosterId || (f.legend ? T.ecoKey(f) : null)),
   };
 }
-function sceneOf(battle) {
-  return { a: sceneSideOf(battle.fa, battle.attP), d: sceneSideOf(battle.fd, battle.defP) };
+function sceneOf(T, battle) {
+  return { a: sceneSideOf(T, battle.fa, battle.attP), d: sceneSideOf(T, battle.fd, battle.defP) };
 }
 
 // 이 시점(stage 이벤트 캡처 시점)에 표시해야 할 battleId — 전투가 아직 열려 있으면 그 전투, 막 끝나
@@ -405,7 +406,7 @@ function hookBattleAccessor(T, S) {
         hookMsgQ(T, v.msgQ);
         T.__fx.battleSeq = (T.__fx.battleSeq || 0) + 1;
         T.__fx.lastBattleId = T.__fx.battleSeq;
-        try { T.__fx.lastScene = sceneOf(v); } catch (e) { T.__fx.lastScene = null; }
+        try { T.__fx.lastScene = sceneOf(T, v); } catch (e) { T.__fx.lastScene = null; }
         fxAppend(T, { src: 'stage', turn: T.S && typeof T.S.turnCount === 'number' ? T.S.turnCount : null,
           key: 'battleStart', kind: 'count', title: '', sub: '',
           battleId: T.__fx.lastBattleId, scene: T.__fx.lastScene });

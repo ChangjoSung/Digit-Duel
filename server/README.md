@@ -163,6 +163,64 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
 403 `E_INSECURE_TRANSPORT` / 403 `E_BAD_ORIGIN` / 415·400 `E_BAD_INPUT` / 429 `E_RATE_LIMITED`. 복구 코드 경로(`/recover`·`/recovery-code`)는
 폐기됐다(404, CJ 2026-09-27).
 
+#### 프로필 · 대표 하수인 · 전적 (#260 — 같은 계정 경계: 세션 쿠키, POST 는 같은 출처 Origin + JSON)
+
+| 경로 | 본문 | 성공 | 오류 |
+|---|---|---|---|
+| `GET /api/profile` | | 200 `{nickname, representativeMinion, stats:{wins, losses}, matches:[최근 20], pendingMatches}` | 401 `E_NO_SESSION` |
+| `POST /api/profile/representative` | `{minionId}` | 200 `{representativeMinion}` — **다음에 들어가는 방부터** | 400 `E_BAD_INPUT`(일반 30종 ROSTER 밖 — 전설·왕·동료 불가) · 401 |
+
+- `matches[i]` = `{result:'WIN'|'LOSS'|'NO_CONTEST', reason, opponentNickname, turns, durationMs, endedAt}` 최신순. `reason` = WIN/LOSS 는 엔진 `winType`
+  (`king`·`edge`·`wipe`·`resign`) 또는 `forfeit`(연결 종료 몰수), NO_CONTEST 는 `both_disconnected`·`server_error`·`server_restart`.
+- 기록 대상: **보드 경기가 시작된(IN_PROGRESS) 온라인 경기만**, 서버 확정 순간(`room._finalize`) 좌석(계정)마다 1행(`005` `match_results`, `UNIQUE(match_id, account_id)`).
+  승·패는 행에서 센다(NO_CONTEST 제외). 경기 전 취소·PVE 는 행이 없다. 시간 = 보드 시작 → 결과 확정(상점·재접속 대기 포함).
+- WS 좌석 프레임(`players` 가 있는 모든 프레임)에 `reps:[좌석0, 좌석1]` — 좌석에 들어갈 때의 대표 하수인으로 고정되고 재접속해도 바뀌지 않는다.
+  공개 방 목록(`lobby_rooms`)에는 전적이 없다(#261 부터 행에 공개 닉네임·대표만 — 아래).
+
+#### 멀티 방 이름 · 공개 목록 · 실측 핑 (#261)
+
+- **방 이름**: 생성 소켓(`cp-`/`c-`)만 같은 WS 주소에 `?rn=<encodeURIComponent(이름)>` 을 붙인다(credential 토큰은 64자 ASCII 라 한글 이름을 싣지 못한다).
+  원문 전체가 완성형 한글·영문·숫자·공백(U+0020)·`_`·`-` 이어야 하고(그 밖의 문자는 지우지 않고 거부), 앞뒤 공백 제거·연속 공백 1칸 정리 뒤 2~20자.
+  `rn` 이 1개가 아니거나 틀리면 세션 확인 뒤 `error E_BAD_ROOM_NAME` + close 1008 — 방을 만들지 않는다. `rn` 이 **없는** 옛 생성만 `방 <번호>`.
+  이름은 생성 때 고정·중복 허용(방 번호로 구분). 첫 프레임(`room_opened`/`room_joined`/`room_resumed`)에 `roomName`.
+- **목록 행** `{roomId, roomName, state:'OPEN'|'SETUP'|'IN_PROGRESS', seats:'1/2'|'2/2', ageSec, label, players:[닉|null,닉|null], reps:[id|null,id|null]}` —
+  공개 방의 그 세 상태만, 참가 대기 먼저·그 안에서 최신 먼저. 비공개·종료·취소·무효·닫힌 방은 없다. 계정 id·아이디·이메일·토큰·초대 코드·IP·가방·배치·전투 정보는 싣지 않는다.
+  참가(`p-<id>`)는 여전히 공개 `OPEN` 만 — 목록이 낡았어도 서버가 `E_ROOM_NOT_FOUND` 로 거부한다. 검색은 클라이언트가 `roomName` 으로 거른다.
+- **실측 핑**: 로비 전용(`l-`) 소켓에 `{v:1,t:'rtt',n}`(n = 0~2147483647 정수) → 즉시 `{v:1,type:'rtt',n}`. 틀린 n 은 답하지 않는다. 좌석 소켓의 `rtt` 는 무시(seq 불변).
+  연결 생존 ping/pong(30초)과 별개이고 경기·타이머·재접속 유예를 바꾸지 않는다. 측정 주기·3초 실패 판정은 클라이언트 몫.
+
+#### 경기 결과 S04 `final` (#238)
+
+- `room_state.data.final` 은 **`FINISHED` 뷰에만** 실린다(그 전·`CANCELED`·`VOID` 에는 키 자체가 없다). `{sides:[좌석0, 좌석1]}`,
+  각 `{seat, pieces:[필드 9칸 — 사망 포함], bag:[가방 0~3], syn}`. 말 = `{type, rosterId, name, element, alive, hp, maxHp, hpSeen?}` 뿐 —
+  별칭·위치·등급·스킬·원장은 없다. 상대 HP 는 보드와 같은 규칙(싸운 개체 `hpSeen` 만 실제값, 나머지 100 눈금).
+- `syn` 은 Core `synView(seat, S)` 복제 그대로다(`el`·`arch`·`dead`·`stage`·`bonus`). 클라이언트는 다시 계산하지 않는다.
+  가방 포함은 CJ '양측 하수인 전체'에 대한 PD·Venus 해석(2026-09-28)이다.
+- S01 상품 8종(#238)은 Core `ECO.startGoods`(demo/js/data.js)가 판정한다 — 서버에 별도 허용 목록은 없다.
+
+#### 경기 중 이모티콘 (#262)
+
+- 좌석 소켓 `{v:1,t:'emote',requestId,seatToken,tokenGen,id}` — `id` 는 `hello`·`nice`·`wow`·`think`·`oops`·`gg`(`protocol.js` `EMOTE_IDS`). 게임 명령 경로가 아니다:
+  중복 제거 캐시·`handleCommand`·`revision`·`seq`·`room_state`·시계·DB·재생 어디에도 닿지 않고, 저장·재전송하지 않는다(놓친 것은 사라진다).
+- 성공: 보낸 쪽 `{v:1,type:'emote',epoch,roomId,from,id,requestId,cooldownMs:5000}`, 상대 `{v:1,type:'emote',epoch,roomId,from,id}`(requestId 없음). `seq` 없음.
+- 거부(보낸 쪽만, `seq` 없음 · 일반 `error` 가 아니다): `{v:1,type:'emote_result',ok:false,requestId,code,retryMs?}` —
+  `E_BAD_ENVELOPE`(허용 밖 id · 값은 되돌려 보내지 않는다) · `E_SEAT_TOKEN_INVALID` · `E_TOKEN_GEN_STALE` · `E_ILLEGAL_ACTION`(SETUP·IN_PROGRESS·FINISHED 가 아님) ·
+  `E_PAUSED`(상대 좌석이 연결돼 있지 않음 — 단절·결과 화면 이탈 포함) · `E_RATE_LIMITED`+`retryMs`. 거부는 쿨다운을 쓰지 않는다.
+- 쿨다운 5초는 서버 시계로 좌석에 붙는다 — 새로고침·재접속해도 이어지며 `room_resumed.emoteRetryMs`(남은 ms)로 알린다.
+- 첫 프레임·`room_state`·명령 응답에 `peerConnected`(상대 좌석 연결 여부, 서버 권위)를 싣는다 — 클라이언트는 이 값으로 전송 버튼을 막는다.
+- 결과 아웃박스(`authoritative/resultOutbox.js`): 서버가 결과를 확정하면 결과 프레임을 보내기 **전에** 로컬 JSONL 파일에 한 줄 append + fsync 하고,
+  DB 에 들어간 것(두 좌석 행을 한 문장으로 — 원자적)이 확인된 뒤에만 그 줄을 지운다(임시 파일 + fsync + rename). DB 장애·제약 위반·프로세스 재시작 중에도
+  완료된 결과를 **버리지 않는다** — 30초마다·기동 직후 다시 쓰고, `UNIQUE(match_id, account_id)` + `ON CONFLICT DO NOTHING` 이라 재생해도 한 번만 남는다.
+  - 경로: `DD_RESULT_OUTBOX`(체크아웃 밖 비공개·영속 디스크 권장 — 파일에 계정 id 가 있다. 새 폴더 0700·파일 0600, Windows 는 새 폴더의 상속을 끊고 현재 사용자만 허용하는 ACL). 없으면 `server/data/match-results-outbox.jsonl`(`.gitignore`).
+    열거나 쓸 수 없으면 DB 켠 서버는 기동하지 않는다. 이미 있는 폴더·파일(`.bad`·`.tmp` 포함)은 검사만 한다 — 다른 계정 권한이 있으면
+    (POSIX group/other 비트 · Windows 현재 사용자·SYSTEM·Administrators 밖의 허용 ACE·소유자) `E_OUTBOX_INSECURE` 로 기동을 거부하고 권한·데이터를 고치지 않는다.
+  - 깨진·형식 밖 줄은 기동 때 `<파일>.bad` 에 덧붙여 보존하고 로그한다(수동 확인). 제약 위반으로 거부된 결과도 아웃박스에 남는다(한 번 로그 · 수동 확인).
+  - 미저장 결과가 200경기 이상이거나 파일 쓰기가 실패한 상태면 새 공식 경기(방 생성·참가)를 WS `E_RESULTS_BACKLOG` 로 거부한다. 진행 중 경기·재접속은 그대로다.
+  - 프로필 `pendingMatches`(정수) = 그 계정이 들어 있는 미저장 결과 수. DB 장애 중 프로필은 503 `E_ACCOUNTS_UNAVAILABLE`. 로그는 오류 코드·건수만(계정 id·원문 없음).
+  - **한계**: 같은 디스크가 남는 동안만 지킨다. 재배포마다 파일 시스템이 사라지는 호스트(Render Free 등)에서는 DB 장애 중 재배포·재시작된 미저장 결과를 잃는다 —
+    그런 곳에서는 영속 디스크를 붙이기 전까지 이 보장을 주장하지 않는다. 한 파일은 한 서버 프로세스만 쓴다.
+- 배포: 기동 게이트가 `005` 적용을 요구한다(`DD_DB_MIGRATE_ON_START=1` 또는 `npm run db:migrate`).
+
 - **형식**: 아이디 = 소문자 `a-z`·숫자·`_` 4~20자(입력은 소문자로 정규화, 비공개 로그인 ID) · 닉네임 = **완성형 한글 음절
   (U+AC00–U+D7A3)·ASCII 영문·숫자·`_` 2~12자**, NFC 정규화 뒤 검사, 낱자모(`ㄱ`)·다른 문자 체계·공백·기호 불가, 영문 대소문자만
   다른 닉네임은 같은 닉네임(`Orca`=`orca` → `E_NICKNAME_TAKEN`) — CJ 2026-09-26 확정, DB CHECK 로도 막는다 · 비밀번호 8~128자 ·
@@ -399,6 +457,9 @@ npm run test:launcher # 원클릭 실행기 계약 (Windows 전용, 다른 OS �
 npm run test:static   # 정적 서빙 요청 예산 (#201) — 프리로드 전량 200 · 남발은 여전히 429
 npm run test:db       # #264 DSN·TLS·마이그레이션·fail-closed (Postgres 없이)
 npm run test:accounts # #259 계정·단일 로그인·이메일 코드 재설정·WS 좌석 계정 바인딩 (Postgres 없이 — 메모리 대역, 메일은 주입 전송)
+npm run test:profile  # #260 프로필·대표 하수인·전적 기록(1회)·파일 아웃박스(상한·제약 위반·재시작 재생·깨진 줄·쓰기 실패)·WS reps (메모리 대역, DD_TEST_DATABASE_URL 이면 실제 Postgres)
+npm run test:lobby    # #261 방 이름 경계·목록 상태/순서/공개 필드·참가 경합·시작된 방 참가 거부·재접속 roomName·rtt 왕복 (DB 없음)
+npm run test:emotes   # #262 이모티콘 허용 ID·전용 응답·연타·토큰 펜싱·상대 단절/재접속 쿨다운 유지·단계별 전송·게임 상태 불변 (DB 없음)
 ```
 
 실제 Postgres 로 같은 계정 시나리오를 돌리려면(그 DB 의 표를 지운다 — 전용 테스트 DB 에만):

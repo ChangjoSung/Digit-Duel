@@ -1,0 +1,39 @@
+{
+ "s01-432": {
+  "overflow": false,
+  "small": []
+ },
+ "s03-432": {
+  "overflow": false,
+  "small": []
+ },
+ "b04-432": {
+  "overflow": false,
+  "small": []
+ },
+ "s04-432": {
+  "overflow": false,
+  "small": []
+ },
+ "s01-320": {
+  "overflow": false,
+  "small": []
+ },
+ "s03-320": {
+  "overflow": false,
+  "small": []
+ },
+ "b04-320": {
+  "overflow": false,
+  "small": []
+ },
+ "s04-320": {
+  "overflow": false,
+  "small": []
+ },
+ "x01": {
+  "inert": true,
+  "focus": "xTitle",
+  "reducedAnim": "none"
+ }
+}

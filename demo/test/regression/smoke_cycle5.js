@@ -238,7 +238,8 @@ const realRandom=Math.random;
 {
   T.newGame("pvp"); T.S.phase="menu"; T.renderSide();
   const menu=T.els.sidePanel.innerHTML;
-  ok(/5급/.test(menu)&&/5단/.test(menu)&&/탐색·추론 기반 강AI/.test(menu)&&!/학습 AI/.test(menu),"H1 PVE 시작 화면 5급·5단 선택 + '탐색·추론 기반 강AI' 문구, '학습 AI' 없음");
+  /* #260 (CJ 2026-09-27): 옛 PVE 5급/5단 제품 진입점은 로비에서 없앴다 — 두 난이도는 엔진·AI 회귀용으로 그대로다(H3~) */
+  ok(!/5급|5단|startMode\(/.test(menu)&&T.AI_LEVEL_KO.grade5==="5급"&&T.AI_LEVEL_KO.dan5==="5단"&&!/학습 AI/.test(menu),"H1 #260 로비에 5급·5단 PVE 진입점 없음 · 엔진 난이도 표기는 유지 · '학습 AI' 없음");
   ok(!/학습 AI/.test(T.html),"H2 HTML 전체에 '학습 AI' 문구 없음");
   T.startMode("pve",{aiLevel:"dan5"});
   ok(T.S.aiLevel[1]==="dan5"&&T.S.aiLevel[0]==="grade5"&&/5단/.test(T.S.log[0].msg),"H3 startMode('pve',{aiLevel:'dan5'}) → S.aiLevel=[grade5,dan5]");

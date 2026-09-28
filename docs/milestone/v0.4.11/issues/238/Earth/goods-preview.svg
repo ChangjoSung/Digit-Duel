@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="816" height="216" viewBox="0 0 816 216">
+ <title>Goods atlas review: 24 logical pixels above, four times enlarged below</title>
+ <metadata>Original Digit-Duel artwork. Copyright 2026 Sung Changjo and contributors. All rights reserved; excluded from Apache-2.0 under ASSET-LICENSE.md. Review only; requires sibling goods.svg.</metadata>
+ <rect width="816" height="216" fill="#12151c"/>
+ <rect x="12" y="12" width="792" height="60" rx="8" fill="#1c2130" stroke="#333c52"/>
+ <image href="goods.svg" x="312" y="30" width="192" height="24"/>
+ <rect x="12" y="84" width="792" height="120" rx="8" fill="#1c2130" stroke="#333c52"/>
+ <path d="M120 96V192M216 96V192M312 96V192M408 96V192M504 96V192M600 96V192M696 96V192" fill="none" stroke="#333c52"/>
+ <image href="goods.svg" x="24" y="96" width="768" height="96"/>
+</svg>

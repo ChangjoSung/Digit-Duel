@@ -7,7 +7,7 @@ const H = require('./helpers');
 const { both, byId, act, STATES } = H;
 const { ok, done } = H.makeCounter('battle-fx');
 
-const MSG_FX_KEYS = new Set(['shake', 'sig', 'flash', 'ko', 'float', 'hp', 'st']);
+const MSG_FX_KEYS = new Set(['shake', 'sig', 'flash', 'ko', 'float', 'hp', 'st', 'cast']);
 const MSG_EVENT_KEYS = new Set(['seq', 'src', 'battleId', 'round', 'actSeq', 'key', 'big', 'txt', 'fx']);
 const STAGE_EVENT_KEYS = new Set(['seq', 'src', 'battleId', 'turn', 'key', 'kind', 'title', 'sub', 'cls', 'cells', 'scene']);
 const SCENE_SIDE_KEYS = new Set(['owner', 'type', 'element', 'bodyFight', 'rosterId', 'artRosterId']);
@@ -122,6 +122,20 @@ function assertEventShape(evt, label) {
   ok(fx.events.some((e) => e.src === 'stage'), '무대 배너(turnBanner/contactBanner 등) 포함');
   for (const e of fx.events) assertEventShape(e, 'T1');
   ok(fx.events.every((e) => e.src !== 'msg' || (e.round != null && e.actSeq != null)), 'msg 이벤트는 round/actSeq를 동반');
+  ok(fx.events.some((e) => e.src === 'msg' && e.key === 'skillFx' && e.fx && (e.fx.cast === 'A' || e.fx.cast === 'D')), '#238 실제 공격 줄은 시전 측 cast A|D 를 싣는다');
+}
+
+// ===== 1b) #238 cast 엄격 허용 — engine normalizeMsgFx · room _serializeFxMsgFx 두 층 모두 A/D 만, 그 밖은 생략 =====
+{
+  const room = H.startedRoom(951);
+  const cur = startBattle(room);
+  const probes = [['cast-X', 'X'], ['cast-num', 1], ['cast-obj', { side: 'A' }], ['cast-D', 'D']];
+  both(room, (E) => { for (const [txt, cast] of probes) E.S.battle.msgQ.push({ txt, fx: { cast, sig: true }, key: 'skillFx', big: false }); });
+  const ev = (txt) => room.toSeatView(cur).fx.events.find((e) => e.src === 'msg' && e.txt === txt);
+  const cap = (txt) => room.engines[cur].__fx.items.find((e) => e.txt === txt);
+  ok(['cast-X', 'cast-num', 'cast-obj'].every((t) => ev(t) && ev(t).fx && !('cast' in ev(t).fx) && cap(t) && !('cast' in cap(t).fx)),
+    '#238 잘못된 cast(X·숫자·객체)는 엔진 캡처와 좌석 뷰 모두에서 생략(다른 fx 는 유지)');
+  ok(ev('cast-D') && ev('cast-D').fx.cast === 'D' && cap('cast-D').fx.cast === 'D', '#238 유효 cast D 는 두 층을 통과');
 }
 
 // ===== 2) 종료 직후 battle=null에도 결과·마지막 타격이 남는다 (room은 IN_PROGRESS 유지) =====
@@ -503,6 +517,73 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const v2 = room.handleCommand(cur, { t: 'resync' });
   const hpEvt3 = v2.data.fx.events.find((e) => e.seq === hpEvt.seq);
   ok(!!hpEvt3 && hpEvt3.fx.hp.val === origVal, 'T17: resync 응답도 변조 이전 값 그대로(resync 스토어까지 오염되지 않음)');
+}
+
+// ===== 18) #238 전설 정체 — 본체·대리 출전 모두 공개된 전설 종 키(L-DRAGON/L-WITCH/L-REAPER)가 기존 종 키 칸
+// (본체 rosterId · 대리 artRosterId)으로 battle.a/d 와 FX scene(battleStart·종료 뒤 resultBanner)에 같은 값으로 실린다.
+// 양 좌석(소유자·상대) 모두 같고, 원시 legend·grade·skills·cap 은 어느 쪽에도 없다. 값은 Core ecoKey 가 원본이다. =====
+{
+  const legends = H.createEngine().LEGEND_ROSTER.map((L) => ({ key: L.key, id: L.id }));
+  ok(JSON.stringify(legends.map((L) => L.id)) === '["L-DRAGON","L-WITCH","L-REAPER"]', 'T18 전제: 전설 3종 종 키: ' + JSON.stringify(legends));
+  // battle.a/d 의 skills 는 기존 은닉 목록(_skillsFor)이라 여기서는 새 원시 칸(legend·grade·cap)만 본다. scene 은 skills 까지 없어야 한다.
+  const noRaw = (s, label) => ok(!('legend' in s) && !('grade' in s) && !('cap' in s) && (!/scene/.test(label) || !('skills' in s)),
+    label + ' 원시 legend·grade·cap' + (/scene/.test(label) ? '·skills' : '') + ' 없음: ' + JSON.stringify(Object.keys(s)));
+  legends.forEach((L, i) => {
+    // (a) 본체 출전 — 보드 하수인 칸에 전설이 앉은 상태(상점 교체와 같은 모양: type minion · rosterId null · legend 키)
+    {
+      const room = H.startedRoom(1823800 + i);
+      const T = room.engine;
+      const cur = T.S.current;
+      const pair = battlePair(T, cur);
+      both(room, (E) => { E.applyLegend(byId(E, pair.att), L.key); });
+      ok(byId(T, pair.att).rosterId === null && T.ecoKey(byId(T, pair.att)) === L.id, 'T18 ' + L.id + ' 본체 전제: rosterId null · ecoKey=' + L.id);
+      H.openBattle(room, pair);
+      for (const seat of [cur, 1 - cur]) {
+        const v = room.toSeatView(seat);
+        ok(!!v.battle && v.battle.a.bodyFight === true && v.battle.a.rosterId === L.id && v.battle.a.artRosterId === null,
+          'T18 ' + L.id + ' 본체 battle.a (좌석 ' + seat + (seat === cur ? ' 소유자' : ' 상대') + ') rosterId=' + (v.battle && v.battle.a.rosterId));
+        noRaw(v.battle.a, 'T18 ' + L.id + ' 본체 battle.a 좌석 ' + seat);
+        const bs = v.fx.events.find((e) => e.key === 'battleStart');
+        ok(!!bs && bs.scene.a.rosterId === L.id && bs.scene.a.artRosterId === null && bs.scene.a.bodyFight === true,
+          'T18 ' + L.id + ' 본체 battleStart scene.a 좌석 ' + seat + ': ' + JSON.stringify(bs && bs.scene.a));
+        ok(bs.scene.d.rosterId === v.battle.d.rosterId, 'T18 ' + L.id + ' 상대 측 일반 하수인 정체는 battle.d 와 같은 값 그대로');
+        noRaw(bs.scene.a, 'T18 ' + L.id + ' 본체 scene.a 좌석 ' + seat);
+      }
+      driveBattleToEnd(room);
+      for (const seat of [0, 1]) {
+        const v = room.toSeatView(seat);
+        const rb = v.fx.events.filter((e) => e.key === 'resultBanner');
+        ok(v.battle === null && rb.length === 1 && rb[0].scene && rb[0].scene.a.rosterId === L.id,
+          'T18 ' + L.id + ' 종료 뒤(battle=null) resultBanner scene 도 같은 전설 정체 유지 좌석 ' + seat + ': ' + JSON.stringify(rb[0] && rb[0].scene && rb[0].scene.a));
+        for (const e of v.fx.events) assertEventShape(e, 'T18 ' + L.id + ' 본체');
+        ok(!/"legend"/.test(JSON.stringify(v.fx)) && !/"grade"/.test(JSON.stringify(v.fx)), 'T18 ' + L.id + ' fx 전체에 legend·grade 키 없음 좌석 ' + seat);
+      }
+    }
+    // (b) 대리 출전 — 동료의 포획 슬롯(cap)에 전설(artRosterId 없음). T11 과 같은 모달 경로로 대리 출전을 고른다.
+    {
+      const room = H.startedRoom(1823810 + i);
+      const T = room.engine;
+      const ally0 = T.S.pieces.find((p) => p.owner === 0 && p.type === 'ally');
+      const king1 = T.S.pieces.find((p) => p.owner === 1 && p.type === 'king');
+      both(room, (E) => { byId(E, ally0.id).cap = E.applyLegend({ cd: 0 }, L.key); });
+      H.openBattle(room, { att: ally0.id, def: king1.id });
+      const pre = room.toSeatView(0);
+      ok(pre.modal && pre.modal.owner === 0 && pre.modal.count === 2, 'T18 ' + L.id + ' 대리 전제: 본체/대리 2지선다 모달');
+      act(room, pre.modal.owner, { t: 'modal', seq: pre.modal.seq, i: 1 });
+      resolveSyncModals(room, 0);
+      for (const seat of [0, 1]) {
+        const v = room.toSeatView(seat);
+        ok(!!v.battle && v.battle.a.bodyFight === false && v.battle.a.type === 'ally' && v.battle.a.artRosterId === L.id && v.battle.a.rosterId === null,
+          'T18 ' + L.id + ' 대리 battle.a (좌석 ' + seat + (seat === 0 ? ' 소유자' : ' 상대') + ') artRosterId=' + (v.battle && v.battle.a.artRosterId));
+        noRaw(v.battle.a, 'T18 ' + L.id + ' 대리 battle.a 좌석 ' + seat);
+        const bs = v.fx.events.find((e) => e.key === 'battleStart');
+        ok(!!bs && bs.scene.a.artRosterId === L.id && bs.scene.a.rosterId === null && bs.scene.a.bodyFight === false,
+          'T18 ' + L.id + ' 대리 battleStart scene.a 좌석 ' + seat + ': ' + JSON.stringify(bs && bs.scene.a));
+        noRaw(bs.scene.a, 'T18 ' + L.id + ' 대리 scene.a 좌석 ' + seat);
+        for (const e of v.fx.events) assertEventShape(e, 'T18 ' + L.id + ' 대리');
+      }
+    }
+  });
 }
 
 process.exit(done());

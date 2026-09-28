@@ -12,9 +12,9 @@
      다르면 버린다. AUTH.rgen: 재설정 단계·화면이 바뀔 때 1 오른다 — 늦게 온 옛 단계 응답이 지금 화면을 바꾸지 못하게.
    - 한 브라우저 프로필(같은 창의 여러 탭)은 쿠키 하나를 나눠 쓴다 — 탭마다 다른 계정을 둘 수 없다. 이 탭에서 신원이 바뀌면
      dd_acct 에 알리고(storage 이벤트), 다른 탭은 옛 신원의 방 소켓·재접속을 끊고 프로필의 실제 로그인을 다시 본다(#259 CJ QA REVISE).
-   - DB 가 켜진 서버면 게임 입장(공개 방·PVE·핫시트·관전) 전에 로그인이 필요하다. 타이틀·튜토리얼은 열려 있다.
+   - DB 가 켜진 서버면 게임 입장(공개 방 · 엔진 진입점 startMode) 전에 로그인이 필요하다. 타이틀은 열려 있다(#260: 제품 튜토리얼·PVE·핫시트 진입점 없음).
    state: off | checking(확인 중 — 입장 차단) | anon(로그인 필요) | in | down(계정 상태를 확인하지 못함 — 입장 차단) */
-const AUTH={state:"off",user:null,view:"login",busy:false,gen:0,rgen:0,reset:null,probing:false,was:null,watch:null}; // was: 서버·다른 탭이 끝낸 이 탭의 옛 아이디(전환 안내용) · watch: 세션 대조 타이머
+const AUTH={state:"off",user:null,view:"login",sheet:false,busy:false,gen:0,rgen:0,reset:null,probing:false,was:null,watch:null}; // was: 서버·다른 탭이 끝낸 이 탭의 옛 아이디(전환 안내용) · watch: 세션 대조 타이머
 const ACCT_ID_RE=/^[a-z0-9_]{4,20}$/, ACCT_NICK_RE=/^[가-힣A-Za-z0-9_]{2,12}$/, ACCT_PW_MIN=8, ACCT_PW_MAX=128; // 서버 accounts.js 와 같은 규칙
 const ACCT_EMAIL_RE=/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/; // 서버 EMAIL_RE 와 같다
 const ACCT_RESEND_MS=60000; // 서버 재발송 간격(코드 10분 유효·5회 틀리면 무효)
@@ -61,7 +61,7 @@ function acctSetUser(b){
   if(!AUTH.user||AUTH.user.userId!==u.userId) AUTH.gen++;
   AUTH.state="in"; AUTH.user=u; AUTH.was=null; acctWatch(true);
 }
-function acctSetAnon(){ acctWatch(false); AUTH.gen++; AUTH.rgen++; AUTH.state="anon"; AUTH.user=null; AUTH.view="login"; AUTH.reset=null; }
+function acctSetAnon(){ acctWatch(false); AUTH.gen++; AUTH.rgen++; AUTH.state="anon"; AUTH.user=null; AUTH.view="login"; AUTH.sheet=false; AUTH.reset=null; }
 
 /* 페이지 로드(와 [다시 시도]) — 서버 세션으로 로그인 상태를 복원하고, 그 계정의 진행 중 좌석이 있으면 재접속한다.
    passive(이전 아이디 또는 true): 다른 탭·서버가 이 탭의 신원을 끝낸 뒤 프로필의 실제 로그인만 다시 본다 — 재접속은 하지 않는다
@@ -204,20 +204,28 @@ function acctField(id,label,type,ac,hint,extra){
 }
 const acctPwField=(id,label,ac,hint)=>acctField(id,label,"password",ac,hint,`maxlength="${ACCT_PW_MAX}" required`);
 const acctEmailField=hint=>acctField("acctEmail","이메일","email","email",hint,'maxlength="254" autocapitalize="none" spellcheck="false" required');
+/* #238 (2026-09-28 CJ 시각 REVISE · SYS 로그인·회원가입): 타이틀에는 [로그인]·[Google 🔒] 두 버튼만, 누르면 ✕ 가 있는 모달 카드.
+   종전 3탭(로그인·회원가입·비밀번호 찾기)은 스케치처럼 카드 아래 링크 전환이다 — 흐름·검증·서버 호출은 그대로(표시 전용 AUTH.sheet) */
+const ACCT_TITLE={login:"로그인",signup:"회원가입",reset:"비밀번호 찾기"};
 function acctFormHtml(){
   const v=AUTH.view;
-  const tabs=`<div class="acctTabs" role="group" aria-label="계정">${[["login","로그인"],["signup","회원가입"],["reset","비밀번호 찾기"]].map(([k,t])=>
-    `<button type="button" aria-pressed="${v===k}" onclick="acctView('${k}')">${t}</button>`).join("")}</div>`;
+  const tabs=`<div class="acctTabs" role="group" aria-label="계정">${v==="login"
+    ?`<button type="button" class="link" onclick="acctView('signup')">아이디가 없으신가요? <u>회원가입</u></button><button type="button" class="link" onclick="acctView('reset')">비밀번호를 잊으셨나요? <u>비밀번호 찾기</u></button>`
+    :`<button type="button" class="link" onclick="acctView('login')">← 로그인으로</button>`}</div>`;
   const google=`<button type="button" class="ghost" disabled aria-disabled="true">🔒 Google 로그인 — 추후 공개</button>`;
-  if(!acctSecure()) return tabs.replace(/<button /g,"<button disabled ")
-    +`<p class="acctMsg err" role="alert">🔒 보안 연결(HTTPS)이 아닌 주소에서는 로그인할 수 없습니다. HTTPS 주소로 접속해 주세요.</p>`+google;
+  const sheet=body=>`<button type="button" class="primary big acctOpen" id="acctOpenBtn" onclick="acctOpen()">로그인</button>${google}
+    <div class="acctSheet${AUTH.sheet?" open":""}" role="dialog" aria-labelledby="acctSheetTitle"><div class="acctCard">
+      <div class="acctHead"><h2 id="acctSheetTitle">${ACCT_TITLE[v]||"로그인"}</h2><button type="button" class="acctX" aria-label="닫기" onclick="acctClose()">✕</button></div>${body}</div></div>`;
+  if(!acctSecure()) return sheet(tabs.replace(/<button /g,"<button disabled ")
+    +`<p class="acctMsg err" role="alert">🔒 보안 연결(HTTPS)이 아닌 주소에서는 로그인할 수 없습니다. HTTPS 주소로 접속해 주세요.</p>`);
   const idF=acctField("acctId","아이디","text","username","영문 소문자·숫자·밑줄 4~20자",'maxlength="20" autocapitalize="none" spellcheck="false" required');
   const newPw=acctPwField("acctPw",v==="reset"?"새 비밀번호":"비밀번호","new-password",ACCT_PW_MIN+"~"+ACCT_PW_MAX+"자")+acctPwField("acctPw2",v==="reset"?"새 비밀번호 확인":"비밀번호 확인","new-password","");
   const R=AUTH.reset;
   let body="", go="로그인", extra="";
   if(v==="signup"){
-    body=idF+acctField("acctNick","닉네임","text","nickname","다른 플레이어에게 보이는 이름 · 한글(완성형)·영문·숫자·밑줄 2~12자, 공백·기호 불가",'maxlength="12" required')
-      +acctEmailField("비밀번호를 잊었을 때 인증 코드를 받을 주소")+newPw;
+    /* 2차 REVISE (SYS 회원가입 순서): 아이디 → 비밀번호 → 비밀번호 확인 → 닉네임 → 이메일(필수) — id·name·autocomplete·검증·API 그대로 */
+    body=idF+newPw+acctField("acctNick","닉네임","text","nickname","한글·영문·숫자·밑줄 2~12자",'maxlength="12" required')
+      +acctEmailField("비밀번호를 잊었을 때 인증 코드를 받을 주소");
     go="가입하기";
   }else if(v==="reset"&&R&&R.step==="code"){
     body=`<small class="acctNote">아이디 ${escAttr(R.userId)} — 가입할 때 등록한 이메일로 6자리 인증 코드를 보냈습니다. 10분 안에 입력해 주세요. 메일이 없으면 스팸함도 확인해 주세요.</small>`
@@ -231,13 +239,17 @@ function acctFormHtml(){
     body=`<small class="acctNote">아이디를 입력하면 가입할 때 등록한 이메일로 6자리 인증 코드를 보내 드립니다.</small>`+idF;
     go="인증 코드 받기";
   }else body=idF+acctPwField("acctPw","비밀번호","current-password","");
-  return tabs+`<form class="acctForm" onsubmit="acctSubmit();return false" novalidate>${body}
+  return sheet(`<form class="acctForm" onsubmit="acctSubmit();return false" novalidate>${body}
     <p class="acctMsg err" id="acctMsg" role="alert"></p>
-    <button type="submit" class="primary" id="acctGo">${go}</button>${extra}</form>`+google;
+    <button type="submit" class="primary" id="acctGo">${go}</button>${extra}</form>`+tabs);
 }
+/* 모달 카드 열기·닫기 — 표시 상태만(입력값·재설정 단계·서버 호출 없음). ✕ = 타이틀로 */
+function acctOpen(){ AUTH.sheet=true; acctRender(); acctFocus("acctId"); }
+function acctClose(){ AUTH.sheet=false; acctRender(); acctFocus("acctOpenBtn"); }
 function acctRender(){
   const el=$("acctPanel"); if(!el) return;
   const s=AUTH.state;
+  try{ const ts=$("titleScreen"); if(ts&&ts.setAttribute) ts.setAttribute("data-auth",s); }catch(e){} // #238 타이틀 [시작]은 로그인·계정 없는 경로에서만 보인다(game.css)
   if(s==="off"){ el.innerHTML=""; return; }
   if(s==="checking"){ el.innerHTML=`<p class="acctMsg" role="status">계정을 확인하는 중…</p>`; return; }
   if(s==="down"){ el.innerHTML=`<p class="acctMsg err" role="alert">${ACCT_ERR.E_ACCOUNTS_UNAVAILABLE}</p><button type="button" onclick="acctCheck()">다시 시도</button>`; return; }
@@ -267,7 +279,7 @@ function acctSetVal(id,v){ const e=$(id); if(e) e.value=v; }
 function acctClear(){ for(const id of ["acctPw","acctPw2","acctCode"]){ const e=$(id); if(e) e.value=""; } } // 비밀 칸은 실패해도 남기지 않는다
 function acctFocus(id){ const f=$(id); if(f&&f.focus) f.focus(); }
 function acctView(v){
-  AUTH.view=v; AUTH.rgen++; AUTH.busy=false; // 화면을 바꾸면 진행 중이던 재설정 단계의 늦은 응답은 버린다(버튼 잠금도 풀린다) · 허가도 버린다
+  AUTH.view=v; AUTH.sheet=true; AUTH.rgen++; AUTH.busy=false; // 화면을 바꾸면 진행 중이던 재설정 단계의 늦은 응답은 버린다(버튼 잠금도 풀린다) · 허가도 버린다
   AUTH.reset=v==="reset"?{step:"id",userId:"",token:null,sentAt:0}:null;
   acctRender(); acctFocus(v==="email"?"acctEmail":"acctId");
 }
@@ -425,7 +437,7 @@ function acctEndSession(msg,explicit){
 const _acctUiStart=window.uiStart;
 window.uiStart=function(){
   const gate=acctGateMsg();
-  if(gate){ showToast("🔒 "+gate); acctFocus("acctId"); return; }
+  if(gate){ showToast("🔒 "+gate); if(AUTH.state==="anon") acctOpen(); else acctFocus("acctId"); return; }
   _acctUiStart();
 };
 /* 모든 게임 시작(PVE·핫시트·관전·재대전)의 공통 입구. 계정 상태가 정해지기 전(checking)에도 막는다 */
@@ -436,5 +448,5 @@ window.startMode=function(mode,opts){
   return _acctStartMode(mode,opts);
 };
 const _acctNetCreate=window.netCreatePublicRoom, _acctNetJoin=window.netJoinPublicRoom;
-window.netCreatePublicRoom=function(){ if(NET.lobbyPending||NET.roomId) return; acctBeforeConnect(()=>_acctNetCreate()); };
+window.netCreatePublicRoom=function(name){ if(NET.lobbyPending||NET.roomId) return; acctBeforeConnect(()=>_acctNetCreate(name)); }; // #261 방 이름을 그대로 넘긴다
 window.netJoinPublicRoom=function(roomId){ if(NET.lobbyPending||NET.roomId) return; acctBeforeConnect(()=>_acctNetJoin(roomId)); };

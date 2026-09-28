@@ -23,6 +23,8 @@
      P. 등급 C-2 공개 상대는 정체가 그려지고 등급 B는 "?" · FINISHED 종료 공개
      Q. 오류 코드 → 플레이어 문구(코드 원문 비노출) · 자동 턴 종료 거부 루프 방지
      R. 준비 표시는 서버 확정값만 — OPEN에서는 보내지 않고 입장 알림 뒤 전송, 준비 취소
+     S. #261 L02·L03 — 방 이름(원문 허용 문자 → 공백 정리 → 2~20자, ?rn=)·검색·상태(참가 대기만 참가)·정렬·텍스트 표시·공개 정보 경계,
+        실측 핑(지금 n 만 · 3초 '측정 불가' · 늦은 응답 버림 · 끊김 '연결 끊김')·5초 갱신 정지(다른 화면·숨은 탭·소켓 없음·방 입장), 참가 거부 뒤 갱신, L03 방 대기
    게임 규칙 자체(전투·상성 등)의 서버측 정확성은 server/authoritative/test/가 검증한다 — 여기서는 클라이언트
    전송·수신·렌더 배선만 본다. */
 "use strict";
@@ -66,7 +68,9 @@ function mkSetupView(ready0,ready1,placed){
   ok(T.NET.uiTab==="public"&&/공개 대전/.test(menu0),"A1 온라인 카드는 공개 대전이다");
   ok(!/id="netCode"/.test(menu0)&&!/코드로 참가/.test(menu0),"A1b 코드 입력칸·코드 탭이 없다");
   ok(!/id="netServer"/.test(menu0),"A1c 서버 주소 입력칸도 없다 — 서버·호스팅 구성은 플레이어 흐름에 노출하지 않는다");
-  ok(/새 방 만들기/.test(menu0)&&/새로고침/.test(menu0)&&/초대 코드는 필요하지 않습니다/.test(menu0),"A4 방 만들기·새로고침·안내 문구가 있다");
+  ok(/방 목록 열기/.test(menu0)&&/초대 코드는 필요하지 않습니다/.test(menu0),"A4 로비 멀티 카드는 방 목록(L02) 진입과 안내 문구다");
+  T.rooms.lobbyRooms(); const rooms0=$el(T,"sidePanel").innerHTML; T.rooms.lobbyHome();
+  ok(/>방 만들기</.test(rooms0)&&/새로 고침/.test(rooms0)&&/방 이름 검색/.test(rooms0)&&T.wsLog.length===0,"A4b L02 에 방 만들기·새로 고침·검색이 있다(file:// 은 접속하지 않는다)");
   T.netUiTab("code"); T.render();
   ok(T.NET.uiTab==="public"&&!/id="netCode"/.test($el(T,"sidePanel").innerHTML),"A2 옛 탭 전환 호출도 공개 방 카드만 그린다 (우회 진입 없음)");
   ok(/role="status"/.test(menu0)&&/aria-live="polite"/.test(menu0),"A5 연결 상태는 aria-live 상태 영역으로 알린다");
@@ -84,32 +88,32 @@ function mkSetupView(ready0,ready1,placed){
 }
 
 /* ===== C. 로비 — lobby_ready 수신 → list_rooms 자동 송신 → lobby_rooms 반영 ===== */
+const roomsHtml=T=>$el(T,"sidePanel").innerHTML+$el(T,"roomList").innerHTML; // #261 5초 갱신은 목록 칸만 다시 그린다
 {
-  const T=loadAt();
+  const T=loadAt(); T.rooms.lobbyRooms();
   T.netListRooms();
   ok(T.NET.roomsLoading===true,"C1 목록 요청 즉시 로딩 상태");
   openWs(T.wsLog[0],MARKER);
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"lobby_ready",epoch:"e1"})});
   ok(T.NET.lobbyOnly===true,"C1b 첫 인밴드 프레임(lobby_ready) 수신으로 로비 전용 소켓임을 안다");
   ok(lastSent(T.wsLog[0]).t==="list_rooms","C2 lobby_ready 수신 즉시 list_rooms 송신");
-  T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"lobby_rooms",rooms:[{roomId:7,label:"방 #7",seats:"1/2",ageSec:42}]})});
+  T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"lobby_rooms",rooms:[{roomId:7,roomName:"디짓 방",state:"OPEN",seats:"1/2",ageSec:42,label:"방 #7",players:["앨리스",null],reps:["M-F1",null]}]})});
   ok(T.NET.roomsLoading===false&&T.NET.rooms.length===1&&T.NET.rooms[0].roomId===7,"C3 lobby_rooms 수신이 NET.rooms에 반영되고 로딩이 풀린다");
-  ok(/방 #7/.test($el(T,"sidePanel").innerHTML)&&/42초 전/.test($el(T,"sidePanel").innerHTML),
-    "C5 기본 탭이 이미 공개 방이므로 목록 항목(레이블·경과시간)이 바로 그려진다");
-  ok(/netRoomRow/.test($el(T,"sidePanel").innerHTML)&&/>참가</.test($el(T,"sidePanel").innerHTML),"C4 방 행마다 [참가] 버튼이 있다");
+  ok(/디짓 방/.test(roomsHtml(T))&&/#7/.test(roomsHtml(T))&&/참가 대기/.test(roomsHtml(T))&&/앨리스/.test(roomsHtml(T)),"C5 목록 항목(이름·번호·상태·공개 닉네임)이 그려진다");
+  ok(/roomRow/.test(roomsHtml(T))&&/>참가</.test(roomsHtml(T)),"C4 참가 대기 방 행에 [참가] 버튼이 있다");
   T.netListRooms(); // 새로고침 — 이미 로비 소켓이 살아 있으면 재사용(새 소켓을 열지 않는다)
   ok(T.wsLog.length===1,"C7 새로고침은 살아있는 로비 소켓을 재사용한다 (소켓을 새로 열지 않음)");
   ok(sentTypes(T.wsLog[0]).filter(t=>t==="list_rooms").length===2,"C8 새로고침이 list_rooms를 다시 보낸다");
 }
 {
-  const T=loadAt();
-  ok(/새로고침\]을 누르면/.test($el(T,"sidePanel").innerHTML),"C6 접속 전에는 새로고침 안내를 보여준다");
+  const T=loadAt(); T.rooms.lobbyRooms();
+  ok(/새로 고침\]을 누르면/.test($el(T,"sidePanel").innerHTML),"C6 접속 전에는 새로 고침 안내를 보여준다");
   T.netListRooms(); openWs(T.wsLog[0],MARKER);
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"lobby_rooms",rooms:[]})});
-  ok(/열려 있는 방이 없습니다. 새 방을 만들어 보세요./.test($el(T,"sidePanel").innerHTML),"C6b 받아 온 목록이 비면 빈 목록 문구");
+  ok(/열려 있는 방이 없습니다. 새 방을 만들어 보세요./.test(roomsHtml(T)),"C6b 받아 온 목록이 비면 빈 목록 문구");
 }
 {
-  const T=loadAt();
+  const T=loadAt(); T.rooms.lobbyRooms();
   T.netCreatePublicRoom();
   ok(/방을 만드는 중…/.test($el(T,"sidePanel").innerHTML)&&/<button type="button" disabled onclick="netListRooms\(\)">/.test($el(T,"sidePanel").innerHTML),"C9 생성 중에는 주 행동 문구가 바뀌고 중복 탭이 막힌다");
   T.netCreatePublicRoom();
@@ -270,7 +274,7 @@ function seatedRoom(){ // 방을 만들고 배치까지 마친(SETUP, ready 전)
   ok(T.wsLog[1].sent.length===0,"K4b credential 재개는 소켓이 열리자마자 서버가 스스로 응답한다 — 클라이언트가 명령을 보내지 않는다");
   ok(/재접속 중/.test($el(T,"sidePanel").innerHTML),"K5 배치 화면이 재접속 중 안내로 바뀐다");
   const bar=$el(T,"netResumeBar");
-  ok(!bar.classList.contains("hidden")&&/재접속 중/.test(bar.innerHTML)&&/남은 시간 \d+초/.test(bar.innerHTML)&&/netCancelResume\(\)/.test(bar.innerHTML),"K5b 어느 화면이든 보이는 고정 재접속 상태 줄(남은 시간·포기 버튼)이 뜬다");
+  ok(!bar.classList.contains("hidden")&&/재접속 중/.test(bar.innerHTML)&&/시도 \d+회/.test(bar.innerHTML)&&!/남은 시간/.test(bar.innerHTML)&&!/netCancelResume\(\)/.test(bar.innerHTML),"K5b 어느 화면이든 보이는 고정 재접속 상태 층이 뜬다 (#238 X03: 서버 시각이 아닌 카운트다운·[포기] 없음)");
   ok(T.fxLocked()===true,"K5c 재접속 중에는 입력이 잠긴다(보내지 못할 행동을 받지 않는다)");
   T.netResumeTick(); // 유예가 아직 한참 남았고 소켓도 이미 열려 있으니 tick이 추가 소켓을 만들지 않는다
   ok(T.wsLog.length===2,"K6 유예 안에서 소켓이 이미 살아 있으면 tick이 새 소켓을 더 열지 않는다");
@@ -288,14 +292,35 @@ function seatedRoom(){ // 방을 만들고 배치까지 마친(SETUP, ready 전)
   ok(T.wsLog.length===3,"K11 두 번째 재접속도 새 소켓을 연다");
   ok(protos(T.wsLog[2])[1]==="r-e1.h2","K11b 두 번째 재시도는 회전된 최신 토큰을 쓴다");
 }
-{ // 유예 만료 — 60초가 지나도 재개하지 못하면 방 목록으로 돌아간다
-  const T=seatedRoom();
-  T.wsLog[0].onclose();
-  ok(T.NET.resuming===true,"K12 단절 직후 재접속 유예 시작");
-  T.NET.resumeDeadline=Date.now()-1; // 유예 만료를 직접 재현 (실제 setInterval은 하네스에서 무동작)
-  T.netResumeTick();
-  ok(T.NET.resuming===false&&T.S.phase==="menu","K13 유예 만료 시 재접속을 포기하고 메뉴(방 목록)로 돌아간다");
-  ok(/방 목록으로 돌아가/.test(toasts(T).join("|")),"K14 유예 만료 안내 문구가 뜬다");
+{ // #238 X03 Saturn REVISE — 60초 유예·몰수는 서버만 판정한다. 클라이언트 시계로는 마감하지 않고, 권위 응답이 올 때까지 같은 간격으로 재시도한다
+  const T=seatedRoom(), realNow=Date.now, t0=realNow(); let now=t0;
+  Date.now=()=>now; // 가짜 시계 — 실제로 기다리지 않는다
+  try{
+    T.wsLog[0].onclose();
+    ok(T.NET.resuming===true,"K12 단절 직후 재접속 시작");
+    const retryAt=ms=>{ now=t0+ms; T.wsLog[T.wsLog.length-1].onclose(); T.netResumeTick(); }; // 직전 시도 소켓이 실패로 닫힌 뒤 tick
+    retryAt(61000);
+    const n61=T.wsLog.length;
+    ok(T.NET.resuming===true&&T.S.phase!=="menu"&&n61===3&&protos(T.wsLog[2])[1]==="r-e1.h","K13 로컬 60초가 지나도 포기·로비 이동 없이 같은 credential 로 재시도한다");
+    retryAt(62000);
+    ok(T.wsLog.length===n61,"K13b 재시도 간격(NET_RESUME_RETRY_MS)은 그대로 — 3초 안에는 새 소켓을 열지 않는다");
+    retryAt(121000);
+    ok(T.NET.resuming===true&&T.S.phase!=="menu"&&T.wsLog.length===n61+1,"K13c 120초가 지나도 계속 재시도한다 (클라이언트 마감 없음)");
+    ok($el(T,"app").getAttribute("inert")===""&&!/방 목록으로 돌아가/.test(toasts(T).join("|")),"K13d 재시도 동안 아래 화면은 inert 이고 포기 안내가 없다");
+    openWs(T.wsLog[T.wsLog.length-1],MARKER);
+    T.wsLog[T.wsLog.length-1].onmessage({data:JSON.stringify({v:1,type:"error",code:"E_ROOM_CLOSED"})});
+    ok(T.NET.resuming===false&&T.S.phase==="menu"&&/방 목록으로 돌아가/.test(toasts(T).join("|")),"K14 서버 권위 오류(유예 만료 → E_ROOM_CLOSED)를 받을 때만 방 목록으로 나간다");
+  } finally { Date.now=realNow; }
+}
+{ // 같은 가짜 시계에서 120초 뒤라도 서버가 room_resumed 로 답하면 그대로 복구한다
+  const T=seatedRoom(), realNow=Date.now, t0=realNow(); let now=t0;
+  Date.now=()=>now;
+  try{
+    T.wsLog[0].onclose(); now=t0+125000; T.wsLog[1].onclose(); T.netResumeTick();
+    const ws=openWs(T.wsLog[T.wsLog.length-1],MARKER);
+    ws.onmessage({data:JSON.stringify({v:1,type:"room_resumed",epoch:"e1",roomId:9,seat:0,seatToken:"h2",tokenGen:1,revision:0,seq:1,data:mkSetupView(true,false,true)})});
+    ok(T.NET.resuming===false&&T.NET.roomId===9&&$el(T,"netResumeBar").classList.contains("hidden")&&$el(T,"app").getAttribute("inert")!=="","K14b 120초 뒤의 room_resumed 도 복구하고 inert 를 푼다");
+  } finally { Date.now=realNow; }
 }
 { // 회복 불가능한 오류 — 유예가 남아 있어도 즉시 포기한다
   const T=seatedRoom();
@@ -508,8 +533,22 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   ok(!/<img/.test(chipOf(6,5).innerHTML)&&!/assets\/minions/.test(chipOf(6,5).innerHTML),"P3 미공개 칩에는 자산 경로가 없다");
   const over=mkSeatView({revision:9,state:"FINISHED",phase:"over",units:[known,Object.assign({},unknown,{type:"bomb",name:null,element:null,hp:1,maxHp:1,healing:false,rosterId:null})],result:{type:"WIN",winner:0,winType:"king"}});
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:9,seat:0,data:over})});
-  ok(T.S.phase==="over"&&T.NET.finalReveal===true&&/종료 공개/.test($el(T,"sidePanel").innerHTML)&&/VICTORY/.test($el(T,"sidePanel").innerHTML),"P4 FINISHED는 종료 공개 문구와 결과(내 승리)를 보인다");
-  ok(/새 대전은 로비의 공개 방 목록에서/.test($el(T,"sidePanel").innerHTML)&&!/접속 코드/.test($el(T,"sidePanel").innerHTML),"P5 결과 화면 안내는 공개 방 기준(접속 코드 문구 없음)");
+  /* #238 (2026-09-28 CJ 시각 REVISE): 결과 화면은 승자 · VS · 패자 · [로비로] — 종료 공개·안내 문장은 없앴다 (공개 상태는 NET.finalReveal 이 그대로 진다) */
+  const p4=$el(T,"sidePanel").innerHTML;
+  ok(T.S.phase==="over"&&T.NET.finalReveal===true&&/resultSeat mine win/.test(p4)&&/Win!/.test(p4)&&/resultVs/.test(p4)&&/Lose!/.test(p4),"P4 FINISHED는 종료 공개 상태와 결과(내 승리 · VS · 상대 패)를 보인다");
+  /* #238 CJ 8항(2026-09-28): 온라인 결과의 출구는 같은 대기방 복귀 하나다(방을 파괴하지 않는다 · 즉석 재대전 없음) */
+  ok((p4.match(/<button/g)||[]).length===1&&/netReturnToRoom\(\)/.test(p4)&&!/rematch\(\)/.test(p4)&&!/접속 코드|새 대전은/.test(p4),"P5 결과 화면 출구는 [방으로 돌아가기] 하나 · 재대전·안내 문구 없음");
+  T.netReturnToRoom();
+  const ret=lastSent(T.wsLog[0]);
+  ok(ret.t==="lobby_return"&&ret.round===T.NET.round&&ret.seatToken&&ret.requestId,"P5b 복귀는 lobby_return 봉투(round·좌석 토큰 포함)");
+  /* 복귀 좌석의 대기방 뷰 — 지난 경기 결과·최종 공개·보드 상태를 비우고 대기방으로 */
+  const wait=mkSeatView({revision:11,state:"WAITING",phase:"waiting",round:1,units:[],result:null,lobby:{guestReady:true,countdownMs:4000,peerInResult:false}});
+  T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:11,seat:0,data:wait})});
+  ok(T.NET.roomState==="WAITING"&&!T.NET.started&&T.NET.result===null&&T.NET.final===null&&!T.NET.finalReveal&&T.S.phase==="setup"&&T.NET.round===1,"P5c 대기방 복귀 — 경기별 클라이언트 상태 초기화");
+  const left=T.netLobbyCountdownLeft();
+  ok(T.NET.lobby&&T.NET.lobby.guestReady===true&&left>3000&&left<=4000,"P5d 대기방 준비·카운트다운(서버 남은 ms 기준) 표시값");
+  T.netLobbyStart(); ok(lastSent(T.wsLog[0]).t==="lobby_start","P5e 방장 시작 명령");
+  T.netLobbyReady(false); ok(lastSent(T.wsLog[0]).t==="lobby_unready","P5f 준비 취소 명령");
   const forfeit=Object.assign({},over,{revision:10,result:{type:"FORFEIT",winner:1}});
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:10,seat:0,data:forfeit})});
   ok(/몰수패/.test($el(T,"sidePanel").innerHTML)&&!/승리 유형: undefined/.test($el(T,"sidePanel").innerHTML),"P6 연결 유예 만료 몰수는 원인 문구로 보이고 알 수 없는 승리 유형을 찍지 않는다");
@@ -531,5 +570,108 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   ok(T.autoEndReady()==="end","Q4 상태가 바뀌면(revision) 자동 턴 종료 평가가 다시 열린다");
 }
 
-console.log("\n=== smoke_public_rooms (#217/#218): pass "+pass+" / fail "+fail+" ===");
+/* ===== S. #261 L02 멀티 방 목록 · L03 방 대기 (GDD-24 'L02 · L03 멀티 방' 수용 기준 1~11의 클라이언트 몫) ===== */
+{
+  const T=loadAt(), R=T.rooms, N=R.roomNameNorm;
+  ok(N("  디짓   방 ")==="디짓 방"&&N("ab")==="ab"&&N("가나다라마바사아자차카타파하 Az_-9")!==null,"S1 이름 정리 — 앞뒤 공백 제거·연속 공백 1칸, 허용 문자 혼합");
+  const bad=["ㄱㄴ","<b>방","a\nb","방\t이름","😀방","방!","방\u0000"];
+  ok(bad.every(x=>N(x)===null),"S1b 자모·태그 기호·줄바꿈·탭·이모지·기호·제어 문자는 정리 전에 거부");
+  T.rooms.lobbyRooms();
+  for(const n of ["가"," 가 ","가".repeat(21),"ㄱㄴ","<b>x</b>"]){ R.lobbyNameInput(n); R.lobbyCreateRoom(); }
+  ok(T.wsLog.length===0&&/2~20자의 한글·영문·숫자·공백·밑줄\(_\)·하이픈\(-\)만/.test(T.LOBBY.nameErr),"S2 1자·21자·자모·태그 이름은 방을 만들지 않고 안내한다");
+  R.lobbyNameInput("  디짓   방 "); R.lobbyCreateRoom();
+  const w=T.wsLog[0];
+  ok(T.wsLog.length===1&&protos(w)[1].startsWith("cp-")&&w.url.endsWith("/?rn="+encodeURIComponent("디짓 방"))&&T.LOBBY.nameErr==="","S3 정리된 이름으로 만든다 — credential 은 cp- 그대로, 이름은 ?rn= 한 곳 ("+w.url+")");
+  R.lobbyNameInput("가".repeat(20)); T.NET.lobbyPending=null; T.NET.ws=null; R.lobbyCreateRoom();
+  ok(T.wsLog.length===2&&decodeURIComponent(T.wsLog[1].url.split("?rn=")[1])==="가".repeat(20),"S3b 20자 경계는 만든다");
+}
+{
+  const T=loadAt(); T.rooms.lobbyRooms(); T.netListRooms(); openWs(T.wsLog[0],MARKER);
+  T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"lobby_ready",epoch:"e1"})});
+  const rows=[
+    {roomId:3,roomName:"Orca Room",state:"IN_PROGRESS",seats:"2/2",ageSec:5,players:["밥돌이","앨리스"],reps:["M-F1","M-L2"],accountId:"acc-9",email:"x@y.z",inviteCode:"ABC123",ip:"10.0.0.1"},
+    {roomId:4,roomName:"디짓 방",state:"OPEN",seats:"1/2",ageSec:30,players:["밥돌이",null],reps:["M-F1",null]},
+    {roomId:5,roomName:"디짓 방",state:"OPEN",seats:"1/2",ageSec:2,players:[null,null],reps:[null,null]},
+    {roomId:6,roomName:"<img src=x onerror=alert(1)>",state:"SETUP",seats:"2/2",ageSec:1,players:["<b>x</b>",null],reps:["BAD",null]},
+    {roomId:7,roomName:"끝난 방",state:"FINISHED",seats:"2/2",ageSec:1}];
+  T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"lobby_rooms",rooms:rows})});
+  const h=T.rooms.lobbyRoomListHtml(), order=T.rooms.lobbyRoomRows().map(r=>r.id).join(",");
+  ok(order==="5,4,6,3","S4 참가 대기 먼저, 같은 상태는 최근 방 먼저 · 끝난 방은 그리지 않는다 ("+order+")");
+  ok(/디짓 방<\/b> <small class="roomNo">#4/.test(h)&&/디짓 방<\/b> <small class="roomNo">#5/.test(h),"S5 같은 이름의 두 방은 방 번호로 구분된다");
+  ok((h.match(/onclick="netJoinPublicRoom\(/g)||[]).length===2&&/참가 불가 · 준비 중/.test(h)&&/참가 불가 · 대전 중/.test(h)&&(h.match(/aria-disabled="true" onclick="lobbyRoomLocked/g)||[]).length===2,
+    "S6 참가 대기만 [참가] — 준비 중·대전 중은 이유를 적은 aria-disabled 버튼");
+  ok(!/<img src=x/.test(h)&&/&lt;img src=x/.test(h)&&!/<b>x<\/b>/.test(h),"S7 방 이름·닉네임은 텍스트로만 — HTML 로 해석되지 않는다");
+  ok(!/acc-9|x@y\.z|ABC123|10\.0\.0\.1|끝난 방/.test(h+$el(T,"sidePanel").innerHTML),"S8 계정 ID·이메일·초대 코드·IP 같은 칸이 와도 화면에 싣지 않는다");
+  T.rooms.lobbyRoomLocked("SETUP");
+  ok(/준비 중이라 참가할 수 없습니다/.test(T.LOBBY.notice),"S9 비활성 행을 누르면 참가할 수 없는 이유를 알린다");
+  const ids=()=>T.rooms.lobbyRoomRows().map(r=>r.id).join(",");
+  T.rooms.lobbySearch("orca"); const a=ids(); T.rooms.lobbySearch("  디짓  "); const b=ids(); T.rooms.lobbySearch("");  const c=ids();
+  ok(a==="3"&&b==="5,4"&&c==="5,4,6,3","S10 부분 일치·영문 대소문자 무시·검색어 공백 정리·빈 검색은 전체 ("+[a,b,c].join(" / ")+")");
+  T.rooms.lobbySearch("없는방"); ok(/검색 결과가 없습니다/.test(T.rooms.lobbyRoomListHtml()),"S10b 결과가 없으면 안내");
+  T.rooms.lobbySearch("<"); ok(/검색어는 1~20자/.test($el(T,"roomSearchMsg").textContent)&&ids()==="5,4,6,3","S10c 허용 밖 검색어는 안내하고 거르지 않는다");
+  T.rooms.lobbySearch("디짓");
+  T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"lobby_rooms",rooms:rows})});
+  ok(T.LOBBY.q==="디짓"&&ids()==="5,4","S10d 갱신 뒤에도 검색어가 유지된다");
+  /* 참가 경합 — 목록이 늦어 시작된 방을 눌렀다: 서버 거부 → 안내 + 목록 새로 받기 */
+  T.netJoinPublicRoom(4); const j=T.wsLog[T.wsLog.length-1]; openWs(j,MARKER);
+  j.onmessage({data:JSON.stringify({v:1,type:"error",code:"E_MATCH_STARTED"})});
+  ok(T.NET.roomId===null&&/이 방은 더 이상 참가할 수 없습니다/.test($el(T,"sidePanel").innerHTML)&&protos(T.wsLog[T.wsLog.length-1])[1].startsWith("l-"),"S11 시작된 방 참가 거부는 안내 뒤 목록을 새로 받는다(멈춘 화면 없음)");
+  const n0=T.wsLog.length; T.netCreatePublicRoom("디짓 방"); const cw=T.wsLog[n0]; openWs(cw,MARKER);
+  cw.onmessage({data:JSON.stringify({v:1,type:"error",code:"E_BAD_ROOM_NAME"})});
+  ok(T.NET.roomId===null&&/2~20자의 한글/.test($el(T,"sidePanel").innerHTML)&&!/E_BAD_ROOM_NAME/.test($el(T,"sidePanel").innerHTML),"S12 서버의 이름 거부는 같은 안내 문구(코드 원문 없음)");
+}
+/* 실측 핑·5초 갱신 — http 로비(L02)에서만, 지금 보낸 n 의 응답만 */
+{
+  const T=loadAt("http://127.0.0.1:8081/demo/index.html"); T.uiStart(); T.rooms.lobbyRooms();
+  const ws=T.wsLog[T.wsLog.length-1]; openWs(ws,MARKER);
+  ok(T.uiScreenName()==="lobby"&&T.rooms.lobbyPingText()==="핑 측정 중","S13 L02 에 들어오면 첫 결과 전에는 '측정 중'");
+  ws.onmessage({data:JSON.stringify({v:1,type:"lobby_ready",epoch:"e1"})});
+  const rtts=()=>ws.sent.map(x=>JSON.parse(x)).filter(m=>m.t==="rtt");
+  ok(rtts().length===1&&rtts()[0].n===1&&Object.keys(rtts()[0]).sort().join()==="n,t,v"&&sentTypes(ws).includes("list_rooms"),"S14 소켓이 준비되면 목록과 핑(n=1, credential 없음)을 보낸다");
+  ws.onmessage({data:JSON.stringify({v:1,type:"rtt",n:1})});
+  ok(/^핑 \d+ms$/.test(T.rooms.lobbyPingText())&&Number.isInteger(T.LOBBY.rtt.ms),"S15 응답이 오면 실제 왕복 ms(정수) ("+T.rooms.lobbyPingText()+")");
+  T.rooms.lobbyPollTick();
+  ok(rtts().length===2&&rtts()[1].n===2&&sentTypes(ws).filter(t=>t==="list_rooms").length===2,"S16 5초 tick 이 목록과 핑을 한 번씩 보낸다");
+  ws.onmessage({data:JSON.stringify({v:1,type:"rtt",n:1})});
+  ok(T.LOBBY.rtt.pending===true,"S17 지난 요청의 응답(n=1)은 지금 측정을 끝내지 않는다");
+  T.drain();
+  ok(T.rooms.lobbyPingText()==="핑 측정 불가","S18 3초 안에 답이 없으면 '측정 불가'");
+  ws.onmessage({data:JSON.stringify({v:1,type:"rtt",n:2})});
+  ok(T.rooms.lobbyPingText()==="핑 측정 불가","S19 시간 초과 뒤 늦은 응답은 덮어쓰지 않는다");
+  T.document.hidden=true; const k=ws.sent.length; T.rooms.lobbyPollTick();
+  ok(ws.sent.length===k,"S20 탭이 숨으면 목록·핑을 보내지 않는다"); T.document.hidden=false;
+  T.rooms.lobbyHome(); T.rooms.lobbyPollTick();
+  ok(ws.sent.length===k&&T.LOBBY.poll===null,"S21 로비(L01)로 돌아가면 갱신·핑이 멈춘다");
+  T.rooms.lobbyRooms(); const ws2=T.wsLog[T.wsLog.length-1]; openWs(ws2,MARKER);
+  ws2.onmessage({data:JSON.stringify({v:1,type:"lobby_ready",epoch:"e1"})});
+  ws2.onclose({code:1006});
+  ok(T.rooms.lobbyPingText()==="연결 끊김","S22 서버 연결이 끊기면 '측정 불가'와 다른 '연결 끊김'");
+  const k2=ws2.sent.length; T.rooms.lobbyPollTick();
+  ok(ws2.sent.length===k2&&T.LOBBY.poll===null,"S23 소켓이 없으면 갱신이 멈춘다");
+  /* 방 입장 — 갱신이 경기로 새지 않는다 */
+  T.rooms.lobbyRooms(); const ws3=T.wsLog[T.wsLog.length-1]; openWs(ws3,MARKER);
+  ws3.onmessage({data:JSON.stringify({v:1,type:"lobby_ready",epoch:"e1"})});
+  T.netJoinPublicRoom(4); const jw=T.wsLog[T.wsLog.length-1]; openWs(jw,MARKER);
+  jw.onmessage({data:JSON.stringify({v:1,type:"room_joined",epoch:"e1",roomId:4,seat:1,seatToken:"g",tokenGen:0,revision:0,seq:1,economy:true,roomName:"디짓 방"})});
+  const k3=jw.sent.length; T.rooms.lobbyPollTick();
+  ok(T.LOBBY.poll===null&&!jw.sent.slice(k3).some(x=>/"t":"(rtt|list_rooms)"/.test(x))&&T.uiScreenName()!=="room","S24 참가하면 갱신·핑이 멈추고 참가자는 L03 을 거치지 않는다");
+}
+/* L03 방 대기 — 만든 사람만, OPEN 동안. 새 준비 버튼·대기 시간 없음 */
+{
+  const T=loadAt(); T.uiStart(); T.rooms.lobbyRooms(); T.netCreatePublicRoom("<b>디짓</b>");
+  const w=T.wsLog[0]; openWs(w,MARKER);
+  w.onmessage({data:JSON.stringify({v:1,type:"room_opened",epoch:"e1",roomId:9,seat:0,seatToken:"h",tokenGen:0,revision:0,seq:1,economy:true,roomName:"<b>디짓</b>",players:["앨리스",null],reps:["M-L2",null]})});
+  const sp=$el(T,"sidePanel").innerHTML;
+  ok(T.uiScreenName()==="room"&&/waitScreen/.test(sp)&&/&lt;b&gt;디짓&lt;\/b&gt;/.test(sp)&&/#9/.test(sp)&&/앨리스/.test(sp)&&/입장 대기/.test(sp)&&/netLeaveRoom\(\)/.test(sp),
+    "S25 L03 — 방 이름(텍스트)·번호·내 닉네임·상대 '입장 대기'·방 나가기");
+  ok(!/netRoomReady|준비 완료|남은 시간/.test(sp)&&/방 나가기/.test($el(T,"btnBack").textContent),"S26 L03 에는 새 준비 버튼·대기 시간이 없고 뒤로가기는 방 나가기다");
+  w.onmessage({data:JSON.stringify({v:1,type:"room_state",revision:1,seat:0,data:Object.assign(mkSetupView(false,false,false),{state:"SETUP",revision:1,economy:true})})});
+  ok(T.uiScreenName()==="prep","S27 두 번째 참가자가 앉으면(SETUP) 기존 시작 상점 단계로 간다");
+  w.onmessage({data:JSON.stringify({v:1,type:"room_resumed",epoch:"e1",roomId:9,seat:0,seatToken:"h2",tokenGen:1,economy:true})});
+  ok(T.NET.roomName==="<b>디짓</b>","S28 재개 프레임에 이름이 없으면 기존 이름을 지운다고 가정하지 않는다");
+  T.netLeaveRoom();
+  ok(T.uiScreenName()==="lobby"&&T.LOBBY.view==="rooms"&&T.NET.roomId===null,"S29 방 나가기 → L02 방 목록");
+}
+
+console.log("\n=== smoke_public_rooms (#217/#218/#261): pass "+pass+" / fail "+fail+" ===");
 if(fail){ console.error("실패: "+fails.join(" | ")); process.exit(1); }

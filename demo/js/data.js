@@ -57,7 +57,7 @@ const ECO={
   shopTurns:[20,40,60,80], bonus:{20:2,40:3,60:4,80:5},
   tiers:{20:[1,2],40:[2,3],60:[3,4],80:[4,5]}, lowPct:0.6,      // 칸마다 낮은 등급 60% / 높은 등급 40% (⭐5 = 전설)
   win:3, lose:1, bushPerZone:4, capHpPct:0.7,
-  startGoods:["potion","cool","cure","ball"],                   // 시작 상점 (2.2)
+  startGoods:["potion","cool","cure","ball","ticket","power","time","escape"], // 시작 상점 (2.2) — #238 (2026-09-25 CJ): 정기 상점 상품 8종 전체를 실제 구매. 티켓 '사용'은 정기 상점 전용 유지
   goods:["potion","cool","cure","ball","ticket","power","time","escape"], // 정기 상점 (7.3)
   shopSec:90, bagPickSec:20,                                    // 상점 1인 90초 (PVE·핫시트 순차 최대 180초 — 자기 상점이 보이는 순간부터, 2026-09-24 CJ D1) · B08 20초
   placeSec:90, actSec:30, battleSec:60                          // #263: 배치 90초(S01 을 직접 끝낸 좌석만) · 게임 행동 30초(출전 후보 선택 포함 · 전투 중 정지) · 전투 행동 60초(2026-09-25 CJ T4)
@@ -742,7 +742,7 @@ function execV2(side,slot,sk){
   if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot);
   if(sk.once){ f.onceUsed=f.onceUsed||{}; f.onceUsed[sk.id]=true; }
   const supFlash=!sk.pct?"buff":null;
-  bmsg(`${fighterName(side)}의 ${sk.ko}!`,supFlash?{flash:supFlash}:null,{key:"skillFx"});
+  bmsg(`${fighterName(side)}의 ${sk.ko}!`,supFlash?{flash:supFlash,cast:side}:{cast:side},{key:"skillFx"}); // #238 cast = 시전 측
   const dmgSkill=!!sk.pct;
   if(v2PreUse(side,f,sk)) return;
   /* #241 R1 번개 꼬리 추가 공격 — 이 사용이 추가 공격이면 피해만 60%(L6 · 확률 효과는 원래대로) */
@@ -1021,7 +1021,7 @@ function v2TideCheck(){
     if(f.hp+(f.shield||0)>f.tideMark){ f.tideHeld=false; continue; }
     if(v2TideBlocked(f)){ if(!f.tideHeld){ f.tideHeld=true; bmsg(`🌊 해일 예고 — ${fighterName(side)}의 방어 효과가 켜져 있어 보류`,{st:stFx(side,f)}); } continue; }
     const lethal=f.hp+(f.shield||0), by=f.tideBy; f.tideMark=0; f.tideHeld=false;
-    bmsg(`🌊 해일 예고 발동!`,{sig:true},{key:"skillFx"});
+    bmsg(`🌊 해일 예고 발동!`,by==="A"||by==="D"?{sig:true,cast:by}:{sig:true},{key:"skillFx"});
     instaKill(f); if(by==="A"||by==="D") addRec(by,lethal);
     bmsg(`🌊 ${fighterName(side)}는 해일에 휩쓸렸다 — 사망!`,{shake:side,float:{side,html:`<span class="neg">해일</span>`},hp:{side,val:0,max:f.maxHp},st:stFx(side,f)},{key:"damageFx"});
     fired=true;
@@ -1086,20 +1086,28 @@ const ART_BASE="assets/minions/";
    폴더 이름에 소유자·진영 정보가 없고 프리로드가 정체와 무관한 고정 집합이라 요청 목록이 상관관계를 만들지 않는다. */
 const LEADER_BASE="assets/leaders/";
 const LEADER_OF={king:"king",ally:"companion"};
-const LEADER_DIRS=["king","companion"], LEADER_DIR_SET=new Set(LEADER_DIRS);
+/* #238 CJ 4: 공격 동료(assassin)·방어 동료(shield) 전용 그림 2종 — 고정 프리로드 집합에 더한다(정체와 무관한 닫힌 목록).
+   role 은 호출자가 **이미 아는** 역할만 넘긴다(내 말 · 상대는 공개된 기술로 드러난 역할). 모르면 공용 companion 그대로 */
+const LEADER_DIRS=["king","companion","companion_atk","companion_def"], LEADER_DIR_SET=new Set(LEADER_DIRS);
+const ALLY_ROLE_DIR={assassin:"companion_atk",shield:"companion_def"};
 const LEADER_FILES={icon:"icon64.png",battle:"battle256.png"};
-function leaderDirOf(p){ return (p&&LEADER_OF[p.type])?LEADER_OF[p.type]:null; }
+function leaderDirOf(p,role){ const d=(p&&LEADER_OF[p.type])?LEADER_OF[p.type]:null; return d==="companion"&&ALLY_ROLE_DIR[role]?ALLY_ROLE_DIR[role]:d; }
 /* 실제 로드가 확인된 뒤에만 참 — 자산이 없거나 실패하면 null 이라 현행 이모지 경로로 간다.
    #201: ART.loaded 는 "언젠가 받은 적이 있다"는 과거 기록이다. 그 뒤 그 파일이 영구 결손으로 판정되면(artGone)
-   여기서도 손을 떼야 한다 — 그러지 않으면 없는 파일을 화면이 열릴 때마다 다시 요청한다 (하수인 쪽 artBattleOk 와 같은 이유). */
-function leaderArtDir(p){ const d=leaderDirOf(p);
-  return (d&&!ART.failed.has(d)&&!artGone(d,LEADER_FILES.icon)&&ART.loaded.has(d+"/"+LEADER_FILES.icon))?d:null; }
-function leaderBattleDir(pf,piece){ // 본체 출전일 때만 — 포획 하수인 대리 출전은 그 하수인 아트를 그대로 쓴다 (#91)
-  if(!pf||!piece||pf!==piece) return null;
-  const d=leaderDirOf(piece);
-  return (d&&!ART.failed.has(d)&&!artGone(d,LEADER_FILES.battle)&&ART.loaded.has(d+"/"+LEADER_FILES.battle))?d:null;
+   여기서도 손을 떼야 한다 — 그러지 않으면 없는 파일을 화면이 열릴 때마다 다시 요청한다 (하수인 쪽 artBattleOk 와 같은 이유).
+   역할 그림이 아직·못 오면 공용 companion 으로 내려간다(그것도 없으면 null → 이모지) */
+function leaderLoaded(d,f){ return !!d&&!ART.failed.has(d)&&!artGone(d,f)&&ART.loaded.has(d+"/"+f); }
+function leaderPick(p,role,f){ const d=leaderDirOf(p,role), g=leaderDirOf(p); return leaderLoaded(d,f)?d:d!==g&&leaderLoaded(g,f)?g:null; }
+function leaderArtDir(p,role){ return leaderPick(p,role,LEADER_FILES.icon); }
+function leaderBattleDir(pf,piece,role){ // 본체 출전일 때만 — 포획 하수인 대리 출전은 그 하수인 아트를 그대로 쓴다 (#91)
+  return pf&&piece&&pf===piece?leaderPick(piece,role,LEADER_FILES.battle):null;
 }
-const ART_DIRS=ROSTER.filter(r=>ELEMS.includes(r.element)&&ARCH_TMPL[r.arch]).map(r=>r.element+"_"+r.arch); // 기존 20종 폴더 허용 목록 — #234 의 보호형·땅 10종은 폴더가 없어 목록 밖(이모지 폴백, 새 경로 생성 금지)
+/* #238 (2026-09-28 CJ 시각 REVISE): Earth_2 가 없던 13종(보호형 4 · 땅 6 · 전설 3)을 같은 규격으로 납품했다 — 닫힌 목록으로만 더한다.
+   기존 20종은 종전 파생식 그대로(폴더·파일 바이트 불변). 전설은 속성이 없어 속성_아키타입 폴더가 아니라 공개 ID → 폴더 표로만 잇는다 */
+const ART_DIRS_238=["fire_guard","water_guard","lightning_guard","grass_guard","land_std","land_atk","land_def","land_swift","land_sustain","land_guard"];
+const LEGEND_ART={"L-DRAGON":"legend_dragon","L-WITCH":"legend_witch","L-REAPER":"legend_reaper"}; // 공개 전설 ID → 폴더
+const LEGEND_ART_KEY={dragon:"legend_dragon",witch:"legend_witch",reaper:"legend_reaper"}; // 대리 출전 cap.legend 키 → 폴더
+const ART_DIRS=ROSTER.filter(r=>ELEMS.includes(r.element)&&ARCH_TMPL[r.arch]).map(r=>r.element+"_"+r.arch).concat(ART_DIRS_238,Object.values(LEGEND_ART)); // 33 폴더 닫힌 허용 목록 — 밖의 값은 이모지 폴백(새 경로 생성 금지)
 const ART_DIR_SET=new Set(ART_DIRS);
 /* #201 (v0.4.8) retry·gone·settled 는 일시적 로드 실패 복구 전용 칸이다 — 규칙·수치·정보 경계와 무관한 표시 계층 상태다.
    예산은 **파일 단위**다 ("종/파일" 키). 전투 도트 하나가 영영 없다고 해서 멀쩡한 보드 아이콘까지 막히면 안 되기 때문이다.
@@ -1110,7 +1118,10 @@ const ART={failed:new Set(),loaded:new Set(),preloaded:false,rerender:null,retry
 function artUrl(dir,file){return (LEADER_DIR_SET.has(dir)?LEADER_BASE:ART_BASE)+dir+"/"+file;} // #124: 왕·동료는 별도 폴더
 /* 말 → 종 폴더. rosterId 가 없거나(미배정 하수인) 허용 목록 밖이면 null → 안전 폴백. 포획·예비 하수인(cap)은 type 이 없어 여기서는 항상 null — 전투 토큰은 artDirOfFighter (#91) */
 function artDirOf(p){
-  if(!p||p.type!=="minion"||!p.rosterId) return null;
+  if(!p||p.type!=="minion") return null;
+  if(typeof p.legend==="string"&&Object.prototype.hasOwnProperty.call(LEGEND_ART_KEY,p.legend)) return LEGEND_ART_KEY[p.legend]; // #238 필드로 나온 전설
+  if(!p.rosterId) return null;
+  if(typeof p.rosterId==="string"&&Object.prototype.hasOwnProperty.call(LEGEND_ART,p.rosterId)) return LEGEND_ART[p.rosterId]; // #238 전설 공개 ID(상점·가방·결과)
   const rd=ROSTER.find(r=>r.id===p.rosterId); if(!rd) return null;
   const dir=rd.element+"_"+rd.arch;
   return ART_DIR_SET.has(dir)?dir:null;
@@ -1124,7 +1135,9 @@ function artDirOf(p){
 function artDirOfFighter(pf,piece){
   if(!pf||!piece) return null;
   if(pf===piece) return artDirOf(piece);
-  if(pf!==piece.cap||!pf.artRosterId) return null;
+  if(pf!==piece.cap) return null;
+  if(typeof pf.legend==="string"&&Object.prototype.hasOwnProperty.call(LEGEND_ART_KEY,pf.legend)) return LEGEND_ART_KEY[pf.legend]; // #238 전설 대리 출전(가방) — 속성 없음
+  if(!pf.artRosterId) return null;
   const rd=ROSTER.find(r=>r.id===pf.artRosterId); if(!rd||rd.element!==pf.element) return null;
   const dir=rd.element+"_"+rd.arch;
   return ART_DIR_SET.has(dir)?dir:null;

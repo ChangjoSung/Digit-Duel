@@ -1,0 +1,166 @@
+{
+ "t01-title-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "title",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "a01-login-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "title",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "a02-signup-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "title",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "t01-loading-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "lobby",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "l01-lobby-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "lobby",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "l01-lobby-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "lobby",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "l02-rooms-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "lobby",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "l02-rooms-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "lobby",
+  "phase": "menu",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "l03-wait-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "room",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "s01-shop-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "prep",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "s01-shop-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "prep",
+  "phase": "setup",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "m01-shop-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "board",
+  "phase": "shop",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "s03-board-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "board",
+  "phase": "play",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "s03-board-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "board",
+  "phase": "play",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "b04-battle-new-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "board",
+  "phase": "play",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "b04-battle-old-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "board",
+  "phase": "play",
+  "overflowX": false,
+  "small": [
+   "대전 중에는 기권 확인을 거쳐야 로비로 나갈 수 있습니 32x32"
+  ],
+  "offscreen": []
+ },
+ "s04-result-432": {
+  "vw": 432,
+  "vh": 932,
+  "screen": "result",
+  "phase": "over",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ },
+ "s04-result-320": {
+  "vw": 320,
+  "vh": 640,
+  "screen": "result",
+  "phase": "over",
+  "overflowX": false,
+  "small": [],
+  "offscreen": []
+ }
+}

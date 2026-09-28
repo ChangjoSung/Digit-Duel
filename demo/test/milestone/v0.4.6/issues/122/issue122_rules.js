@@ -50,10 +50,13 @@ block("A 화면 상태",()=>{
   T.S.phase="over"; ok(T.uiScreenName()==="result","A6 over → 경기 결과");
   /* 마크업은 어떤 화면에서도 사라지지 않는다 — 보이기만 CSS 로 바뀐다 (테스트·접근성이 innerHTML 을 읽는다) */
   ok(/id="titleScreen"/.test(SRC)&&/id="appBar"/.test(SRC)&&/id="screenBody"/.test(SRC)&&/id="actionDock"/.test(SRC),"A7 셸 구성 요소가 문서에 있다");
-  ok(/id="sidePanel"/.test(SRC)&&/id="board"/.test(SRC)&&/id="turnBar"/.test(SRC)&&/id="log"/.test(SRC)&&/id="metrics"/.test(SRC),"A8 기존 id 를 하나도 없애지 않았다");
+  /* #238 (2026-09-28 CJ): 공개 기록·경기 지표 서랍은 제품에서 없앴다 — 기능 셸 id 는 남고, 옛 기록·지표 id·서랍 토글은 문서에 없어야 한다 */
+  ok(/id="sidePanel"/.test(SRC)&&/id="board"/.test(SRC)&&/id="turnBar"/.test(SRC)
+    &&!/id="(log|metrics|drawerLog|drawerMetrics)"/.test(SRC)&&!/uiDrawer\(\W(log|metrics)\W\)/.test(SRC),"A8 기능 셸 id 유지 · 없앤 기록·지표 id·토글 부재");
   ok(/data-screen="title"/.test(SRC),"A9 첫 렌더 이전의 초기 화면은 타이틀");
   ok(!/onclick="location\.reload/.test(SRC),"A10 화면 출구에 문서 재로드 버튼이 남아 있지 않다 (같은 문서 전환)");
-  ok(/onclick="toLobby\(\)"/.test(SRC)&&/onclick="rematch\(\)"/.test(SRC),"A10b 결과 화면 출구는 [로비로]·[다시 대전]");
+  /* #238 (2026-09-28 CJ 시각 REVISE): 결과 화면 출구는 [로비로] 하나 — [다시 대전] 버튼은 없앴고 rematch() 는 엔진 함수로 남는다(B8~B10) */
+  ok(/onclick="toLobby\(\)"/.test(SRC)&&!/onclick="rematch\(\)"/.test(SRC)&&typeof T.rematch==="function","A10b 결과 화면 출구는 [로비로] 하나 (rematch 엔진 함수 유지)");
   /* 출전 준비 2단계 — 두 절이 항상 함께 렌더된다 */
   T.startMode("pvp"); T.UI.prep="roster";
   T.dispatchCoreAction({t:"shopTimeout",player:0}); // #236: 로컬 모드의 01 단계는 시작 상점(S01)이다 — 무료 로스터 선택(toggleRoster)은 거부된다
@@ -165,12 +168,13 @@ block("C 경기 종료 연출",()=>{
 block("D 왕·동료 아트 훅",()=>{
   board("pvp");
   ok(T.LEADER_BASE==="assets/leaders/","D1 왕·동료는 하수인과 다른 폴더 (ART_DIRS 허용 목록에 끼워 넣지 않는다)");
-  ok(T.LEADER_DIRS.join(",")==="king,companion","D2 폴더 2종: "+T.LEADER_DIRS.join(","));
+  ok(T.LEADER_DIRS.join(",")==="king,companion,companion_atk,companion_def","D2 폴더 4종(#238 CJ 4: 공격·방어 동료 추가): "+T.LEADER_DIRS.join(","));
   ok(T.artUrl("king",T.LEADER_FILES.icon)==="assets/leaders/king/icon64.png","D3 왕 아이콘 경로");
   ok(T.artUrl("companion",T.LEADER_FILES.battle)==="assets/leaders/companion/battle256.png","D4 동료 전투 경로");
   ok(T.artUrl("fire_std","icon.png")==="assets/minions/fire_std/icon.png","D5 하수인 경로는 종전 그대로 (라우팅이 기존 20종을 바꾸지 않는다)");
   const k=king(0), a=ally(0), m=first(0,"minion",0);
   ok(T.leaderDirOf(k)==="king"&&T.leaderDirOf(a)==="companion"&&T.leaderDirOf(m)===null,"D6 말 → 폴더 매핑 (하수인은 대상 아님)");
+  ok(T.leaderDirOf(a,"assassin")==="companion_atk"&&T.leaderDirOf(a,"shield")==="companion_def"&&T.leaderDirOf(k,"shield")==="king"&&T.leaderDirOf(a,"x")==="companion","D6b 아는 역할만 역할 폴더 · 왕·모르는 값은 종전");
   /* 자산이 로드되기 전에는 그림을 쓰지 않는다 — 현행 이모지 폴백 */
   T.ART.loaded.clear(); T.ART.failed.clear();
   ok(T.leaderArtDir(k)===null&&T.leaderArtDir(a)===null,"D7 로드 확인 전에는 아트 경로를 만들지 않는다");
@@ -245,7 +249,9 @@ block("E 보존",()=>{
   ok(!/싸우지 않고 종료/.test(tb())||T.optionalBattleLeft(),"E2 '싸우지 않고 종료'는 선택 전투가 남아 있을 때만");
   ok(/기권/.test(tb()),"E3 기권은 항상 있다");
   /* 전투 모달은 인덱스 중계가 아니라 시맨틱 액션 — buttons 는 빈 배열 그대로 */
-  ok(/<\/details>`,\s*\n\s*\[\]\)/.test(SRC),"E4 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용)");
+  /* #238: 전투 이력 <details> 는 없앴다 — battleModal 본문의 유일한 modal( 호출이 마지막 [← 뒤로] 템플릿 바로 뒤에 [] 를 넘기는지 본다 */
+  const bm=SRC.slice(SRC.indexOf("function battleModal("),SRC.indexOf("\nfunction ",SRC.indexOf("function battleModal(")+1));
+  ok((bm.match(/\bmodal\(/g)||[]).length===1&&/id="bmenuBack"[^\n]*<\/button>`,[^\n]*\n\s*\[\]\);/.test(bm),"E4 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용)");
   ok(/__act\(/.test(SRC)&&/__pass\(\)/.test(SRC)&&/__flee\(\)/.test(SRC)&&/__throwBall\(\)/.test(SRC),"E5 전투 시맨틱 액션 단일 경로 유지");
   /* 4슬롯 전부 불가일 때만 수동 [턴 종료] · 소유자 화면 전용 */
   ok(/const noAtkShow=noAtk&&mineView;/.test(SRC),"E6 전투 내 수동 [턴 종료] 는 4슬롯 전부 불가 + 소유자 화면일 때만 (#146)");

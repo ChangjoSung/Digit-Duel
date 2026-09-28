@@ -60,3 +60,14 @@
 
 - **Free 인스턴스 SMTP 차단** [확정, 공식 문서 기준 PD 확인]: 포트 25·465·587 아웃바운드 차단 → 이메일 인증·비밀번호 재설정 발송 불가. SMTP 제공자·plan 변경은 CJ 결정 사항이라 손대지 않았다.
 - DB 연결·유료 자원·env·Blueprint 적용은 별도 승인 대상(#264 자원 생성·결제 금지).
+
+## 6. #232 통합 충돌 해소 — `server/test-db.js` (2026-09-28, task_acb0059ec684)
+
+- 상황 [확정]: `issue-264-render-compat` HEAD `b26ae13`(#250 포함)에 `origin/ChangjoSung/issue-238-integration`(HEAD `4d6428…`)을 병합하는 중이며, 충돌은 `server/test-db.js` 한 곳뿐이었다. Git stage·commit·abort 는 하지 않았다(PD 집행).
+- 해소 [확정]: 양쪽 단언을 모두 남겼다.
+  - HEAD 쪽: "체크섬은 줄바꿈과 무관 · 예전 CRLF 원장 행은 고치지 않고 인정 · 실제 SQL 변경은 거부" 검사 전체.
+  - 부모 쪽: 스키마 경계 검사 제목·설명을 #260 기준("계정 스키마는 002 에만 · 결과 기록은 005 에만 · 방·경기 상태 영속화 스키마는 없다")으로 채택. 본문(`match_results` 는 005 에만)은 충돌 밖이라 그대로.
+  - 삭제된 단언 없음. HEAD 쪽 옛 제목은 부모 제목이 상위 집합이라 대체했다.
+- 이전 보고의 001~004 범위 [확정]: §2 의 체크섬 표(001~004)는 #259 기준 트리에서 잰 값이다. 부모의 추가 SQL `005_profile_matches.sql` 은 바이트 그대로 두었고, 현재 트리 실측은 새 `3fcef9d09e82` · legacy(CRLF 원문) `bf892e4e4853` — 같은 LF 정규화 규칙이 005 에도 그대로 적용된다. SQL 파일은 수정하지 않았다.
+- 검증 [확정]: `node server/test-db.js` 1회 — ok 43 / FAIL 0, "#264 DB 회귀 통과". accounts·timers·실 PG 는 재실행하지 않았다(변경은 테스트 파일 병합뿐).
+- Render 실측 반영 [PD 제공]: 실제 서비스 env 는 `DD_AUTH_PUBLIC_DEPLOY`·`DD_AUTH_PUBLIC_HOST` 두 개뿐 — `NODE_VERSION`·`DATABASE_URL`·SMTP 없음. 따라서 §3 의 `.node-version`(24.21.0)이 실제로 적용되고, DB 없이 기동하는 경로가 현재 운영 경로다. 프로젝트는 Free Web 1개(`main`, Singapore, DB 없음). Free SMTP 25/465/587 차단은 여전히 설정 차단이며 제공자·plan 결정 전까지 고치지 않는다.

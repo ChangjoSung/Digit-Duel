@@ -46,11 +46,11 @@ function setup(T,mode,seed){
 /* ===== A. 허용 목록·경로 생성 규칙 ===== */
 {
   const T=H.load(htmlPath);
-  ok(T.ART_DIRS.length===20&&new Set(T.ART_DIRS).size===20,"A1 종 폴더 허용 목록 20개·중복 없음");
-  ok(T.ART_DIRS.every(d=>/^(fire|water|grass|lightning)_(std|atk|def|swift|sustain)$/.test(d)),"A2 폴더명은 속성_아키타입 형식만");
-  ok(T.ART_DIRS.every(d=>fs.existsSync(path.join(ASSETS,d,"icon.png"))&&fs.existsSync(path.join(ASSETS,d,"battle.png"))&&fs.existsSync(path.join(ASSETS,d,"portrait.webp"))),"A3 20종 모두 icon.png·battle.png·portrait.webp 실제 존재");
+  ok(T.ART_DIRS.length===33&&new Set(T.ART_DIRS).size===33,"A1 종 폴더 허용 목록 33개(기존 20 + #238 보호형·땅 10 + 전설 3)·중복 없음");
+  ok(T.ART_DIRS.every(d=>/^(fire|water|grass|lightning|land)_(std|atk|def|swift|sustain|guard)$|^legend_(dragon|witch|reaper)$/.test(d)),"A2 폴더명은 속성_아키타입 또는 legend_<전설> 형식만");
+  ok(T.ART_DIRS.every(d=>fs.existsSync(path.join(ASSETS,d,"icon.png"))&&fs.existsSync(path.join(ASSETS,d,"battle.png"))&&fs.existsSync(path.join(ASSETS,d,"portrait.webp"))),"A3 33종 모두 icon.png·battle.png·portrait.webp 실제 존재");
   /* #234 (GDD-23 6.3 · 명세 3장): 30종 중 기존 20종만 폴더가 있고, 보호형·땅 10종은 전용 아트가 없어 허용 목록 밖(이모지 폴백)이다 */
-  ok(T.ROSTER.length===30&&T.ROSTER.filter(r=>T.ART_DIR_SET.has(r.element+"_"+r.arch)).length===20&&T.ROSTER.filter(r=>r.arch==="guard"||r.element==="land").every(r=>!T.ART_DIR_SET.has(r.element+"_"+r.arch)),"A4 ROSTER 30종 중 기존 20종이 허용 목록에 대응 (누락 0) · 새 10종은 목록 밖");
+  ok(T.ROSTER.length===30&&T.ROSTER.filter(r=>T.ART_DIR_SET.has(r.element+"_"+r.arch)).length===30&&new Set(T.ROSTER.map(r=>r.element+"_"+r.arch)).size===30&&T.LEGEND_ROSTER.every(L=>T.artDirOf({type:"minion",rosterId:L.id})==="legend_"+L.key),"A4 ROSTER 30종 모두 서로 다른 허용 폴더에 대응 (누락 0) · 전설 3종은 공개 ID 별도 표로만");
   ok(T.artUrl("fire_std","icon.png")==="assets/minions/fire_std/icon.png"&&!/^\/|^[a-z]+:/i.test(T.artUrl("fire_std","icon.png")),
     "A5 자산 경로는 상대경로 — file:// 오프라인과 기존 HTTP 서빙에서 같은 문자열이 쓰인다");
   // rosterId 없음 / 오염된 ID / 목록 밖 값은 전부 null → 안전 폴백
@@ -61,7 +61,7 @@ function setup(T,mode,seed){
   // 프리로드는 20종 일괄 (개별 말과 상관관계 없음)
   const T2=H.load(htmlPath);
   ok(T2.ART.preloaded===true,"A10 페이지 로드 시 프리로드 실행됨 (게임 시작 전 · 말과 무관)");
-  ok(T2.ART_DIRS.every(d=>T2.artUrl(d,"icon.png")&&T2.artUrl(d,"battle.png")),"A11 프리로드 대상은 20종 × icon·battle 전량 (설명창 원본은 제외 — 용량)");
+  ok(T2.ART_DIRS.every(d=>T2.artUrl(d,"icon.png")&&T2.artUrl(d,"battle.png")),"A11 프리로드 대상은 33종 × icon·battle 전량 (설명창 원본은 제외 — 용량)");
 }
 
 /* ===== B. 양측 말 공통 아이콘 체계 · 기호 어휘 8종 ===== */
@@ -298,7 +298,7 @@ function setup(T,mode,seed){
   }
   ok(bad===0&&checked===28,`I3 납품 파생 28파일 SHA-256 전부 일치 (검사 ${checked} · 불일치 ${bad}) — 아트 무변경`);
   const icons=fs.readdirSync(ASSETS).filter(d=>fs.statSync(path.join(ASSETS,d)).isDirectory());
-  ok(icons.length===20&&icons.every(d=>fs.readdirSync(path.join(ASSETS,d)).length===5),"I4 20폴더 × 5파일 = 100파일 구조 그대로");
+  ok(icons.length===33&&icons.every(d=>fs.readdirSync(path.join(ASSETS,d)).length===5),"I4 33폴더 × 5파일 = 165파일 구조 (#238 13종 추가)");
 }
 
 /* ===== J. 글리프 폴백 · 전투 도트 실패 시 즉시 대체 (PD 실브라우저 지적 반영) ===== */
@@ -489,7 +489,7 @@ function proxyBattle(T,att,def,pickA,pickD){
   // K2 적 하수인 포획(전투 중 볼 적중): 원래 종 rosterId·arch 를 보존 — 20종 전부 · HP 70/최대 100 · 공용 스탯 · 기술 템플릿은 원래 아키타입
   const T=H.load(htmlPath);
   let good=0, dirs=new Set(), filesOk=true, detail=[];
-  for(const r of T.ROSTER.filter(x=>T.ART_DIR_SET.has(x.element+"_"+x.arch))){ // #234: 아트 폴더가 있는 기존 20종이 이 절(외형 정체·폴더 대응)의 대상 — 새 10종은 폴더 없음(A4)
+  for(const r of T.ROSTER.filter(x=>T.ELEMS.includes(x.element)&&x.arch!=="guard")){ // #234: 아트 폴더가 있는 기존 20종이 이 절(외형 정체·폴더 대응)의 대상 — 새 10종은 폴더 없음(A4)
     const P=setup(T,"pvp"); giveSpecies(T,P.em,r);
     T.S.current=0; T.S.mainUsed=false; T.S.battlesUsed=0; T.S.reserve[0]=null;
     T.initBattle(P.me,P.em); T.drain(500);

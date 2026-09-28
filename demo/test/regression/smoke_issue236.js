@@ -107,8 +107,8 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   eq(T.S.balls[0],4,"AC04 확정된 볼 4개 보존");
   /* AC05·AC06 */
   refusedClean(T,{t:"shopDone",player:0},"AC05 필드 5칸 이하면 완료 거부");
-  refusedClean(T,{t:"shopGood",player:0,item:"ticket"},"AC06 S01 에서 티켓 거부");
-  for(const k of ["power","time","escape"]) refusedClean(T,{t:"shopGood",player:0,item:k},"AC06 S01 에서 전투 버프 거부: "+k);
+  refusedClean(T,{t:"shopGood",player:0,item:"ticket"},"AC06 여유 0 이면 S01 티켓도 거부 (#238: S01 구매 자체는 허용 — smoke_issue238 A2)");
+  for(const k of ["power","time","escape"]) refusedClean(T,{t:"shopGood",player:0,item:k},"AC06 여유 0 이면 S01 전투 버프도 거부 (#238 A3): "+k);
   /* AC07 속성 */
   const king=T.S.pieces.find(x=>x.owner===0&&x.type==="king"), allies=T.S.pieces.filter(x=>x.owner===0&&x.type==="ally");
   ok(kind(act(T,{t:"leaderEl",player:0,pieceId:king.id,el:"land"}))==="shopChanged"&&king.element==="land"&&king.leaderElChosen&&king.skills[1]==="K-2-land","AC07 왕 속성 무료 선택 — 스킬 칸도 그 속성");

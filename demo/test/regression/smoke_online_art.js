@@ -13,7 +13,7 @@
  *
  * ── 고정하는 계약 (전부 표시 계층 · 관측 가능한 동작으로만 판정한다) ───────────
  *   A 재시도 예약이 유한하고 실제로 점점 길어진다 (관측한 예약 시각 간격으로 본다 — 상수를 베껴 적지 않는다)
- *   B 프리로드의 고정 44 요청 집합이 그대로이고, 복구 조회도 그 집합 안에서만 일어난다 (새 URL 0건)
+ *   B 프리로드의 고정 74 요청 집합이 그대로이고, 복구 조회도 그 집합 안에서만 일어난다 (새 URL 0건)
  *   C 일시적 실패는 복구된다 — 하수인 아이콘·왕 아이콘·왕 전투 도트·전투 도트 실패 경로
  *   D 영구 결손은 유한하게 끝난다 — 예산 소진 후 조회도 재그리기도 더 없다
  *   E 중복 제거 — 예약 중복·진행 중 중복 모두
@@ -161,20 +161,20 @@ const mkImg=T=>{ const el=T.document.createElement("img"); el.onerror=function()
   ok(T.clock.pending()===0,"A5 끝난 뒤 남은 예약이 없다");
 }
 
-/* ===== B. 고정 44 요청 집합과 조회 경계 ===== */
+/* ===== B. 고정 74 요청 집합과 조회 경계 (#238: 33종 × 2 + 왕·동료 4 + 2026-09-28 CJ 4 공격·방어 동료 4) ===== */
 {
   const T=loadRec();
   T.artPreload();
   const got=reqs(T).map(e=>e.src), want=corpus(T);
-  ok(got.length===44&&want.length===44,"B1 냉시작 프리로드가 정확히 44건이다 (실제 "+got.length+")");
-  ok(JSON.stringify([...got].sort())===JSON.stringify([...want].sort()),"B2 요청 URL 집합이 고정 44 집합과 정확히 같다");
+  ok(got.length===74&&want.length===74,"B1 냉시작 프리로드가 정확히 74건이다 (실제 "+got.length+")");
+  ok(JSON.stringify([...got].sort())===JSON.stringify([...want].sort()),"B2 요청 URL 집합이 고정 74 집합과 정확히 같다");
   const before=got.length;
   fireAll(T,"err");
   for(let i=0;i<40;i++){ T.clock.advance(6000); const a=fireAll(T,"err"); if(!a&&T.clock.pending()===0) break; }
   const all=reqs(T).map(e=>e.src), wantSet=new Set(want);
-  ok(all.every(u=>wantSet.has(u)),"B3 복구 조회도 같은 44 집합 안에서만 일어난다 (새 URL 0건)");
+  ok(all.every(u=>wantSet.has(u)),"B3 복구 조회도 같은 74 집합 안에서만 일어난다 (새 URL 0건)");
   const extra=all.length-before;
-  ok(extra>0&&extra<=44*8,"B4 전 종 영구 결손에서도 추가 요청 총량이 절대 상한 이내다 ("+extra+")");
+  ok(extra>0&&extra<=70*8,"B4 전 종 영구 결손에서도 추가 요청 총량이 절대 상한 이내다 ("+extra+")");
   ok(T.clock.pending()===0,"B5 예산을 다 쓰면 남은 예약이 없다");
 }
 
@@ -353,7 +353,7 @@ const mkImg=T=>{ const el=T.document.createElement("img"); el.onerror=function()
   ok(ed&&dump.indexOf(ed)<0,"F4 미공개 적 하수인의 종 폴더 값이 DOM 어디에도 없다");
   ok(dump.indexOf("king")<0&&dump.indexOf("companion")<0&&P.ek.type==="king","F5 미공개 적 왕의 정체 값이 DOM 어디에도 없다");
   const all=reqs(T).map(e=>e.src), wantSet=new Set(corpus(T));
-  ok(all.every(u=>wantSet.has(u)),"F6 복구 중 나간 요청이 전부 고정 44 집합 안이다");
+  ok(all.every(u=>wantSet.has(u)),"F6 복구 중 나간 요청이 전부 고정 74 집합 안이다");
   ok(isArt(T,P.me)&&T.leaderArtDir(P.king0)==="king","F7 같은 복구로 내 공개 말들은 실제로 아트를 되찾았다");
 }
 
