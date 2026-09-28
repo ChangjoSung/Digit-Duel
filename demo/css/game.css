@@ -554,6 +554,36 @@
     body{padding:18px 0;}
     #app{height:min(940px,calc(100vh - 36px)); height:min(940px,calc(100dvh - 36px)); border-radius:18px;}
   }
+/* ===== #262 경기 중 이모티콘 — 세로 프레임(--frame) 오른쪽 위에 붙는 고정 층 (모달 z50·연출 배너 z55 위 · 튜토리얼 z60·재접속 줄 z70 아래).
+   상단 바와 모달은 그 44px 자리를 비워 두어 어떤 행동 버튼도 가리지 않는다. 말풍선은 눌림을 가로채지 않는다. ===== */
+#emoteLayer{position:fixed; top:0; left:50%; transform:translateX(-50%); width:min(100vw,var(--frame)); height:0; z-index:57;}
+#emoteBtn{position:absolute; top:3px; right:4px; min-width:44px; height:44px; padding:0 6px; border-radius:8px; background:#25395c;
+  border:1px solid #3d5580; color:#eef2fb; font-size:17px; line-height:1; white-space:nowrap;}
+body.emoteOn #appBar{padding-right:56px;}
+body.emoteOn .overlay{padding-top:52px;}
+body.emoteOn .overlay .box{max-height:calc(92vh - 52px);}
+#emotePop{position:absolute; top:52px; right:4px; width:min(280px,calc(100% - 8px)); background:var(--panel); border:2px solid var(--navyLine);
+  border-radius:10px; padding:8px; box-shadow:0 8px 24px #0009;}
+#emoteSet{border:0; display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+#emoteSet button{min-height:44px; font-size:13px; padding:4px 6px; text-align:left;}
+#emoteSet:disabled button{opacity:.45;}
+#emoteWhy{display:block; color:var(--dim); font-size:11.5px; margin:6px 2px 0; min-height:1em;}
+.emoteMute{display:flex; align-items:center; gap:8px; min-height:44px; font-size:12.5px; margin-top:4px; cursor:pointer;}
+.emoteMute input{width:20px; height:20px;}
+/* 말풍선 두 줄(위 상대 · 아래 나)은 상단 바의 제목·단계 글자 칸(#appBar h1) 위에만 뜬다 — 보드 칸·상태 줄·행동 버튼·상세/기록·뒤로가기를 가리지 않는다.
+   left/width 는 emotePlace() 가 h1 실측으로 맞추고, 아래 값은 실측 전 기본값이다 */
+#emoteBubs{position:absolute; top:3px; height:44px; left:70px; width:calc(100% - 130px); display:flex; flex-direction:column; justify-content:center;
+  align-items:flex-start; gap:2px; pointer-events:none;}
+.emoteBub{max-width:100%; padding:1px 6px; border-radius:10px; background:#000e; border:1px solid var(--line); color:var(--txt); font-size:11.5px; letter-spacing:-.02em;
+  line-height:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.emoteBub.me{align-self:flex-end; border-color:var(--accent);}
+.emoteBub.show{animation:emoteIn .3s ease-out, emoteOut .2s ease-in 2.3s forwards;} /* 움직임 0.3초 + 사라짐 0.2초 (00.6 상한 1.2초 안) · 표시 2.5초 */
+@keyframes emoteIn{0%{opacity:0; transform:scale(.6)} 70%{transform:scale(1.08)} 100%{opacity:1; transform:scale(1)}}
+@keyframes emoteOut{to{opacity:0}}
+@keyframes emoteFade{from{opacity:0}}
+.srOnly{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+@media (min-width:900px){ #emoteLayer{top:18px;} }
+@media (prefers-reduced-motion: reduce){ .emoteBub.show{animation:emoteFade .1s, emoteOut .1s linear 2.4s forwards;} } /* 크기·위치 변화 없이 불투명도만 */
   /* ===== #26 튜토리얼 모달·상황 도움말 (게임 모달 #overlay z50 위 z60 · 도움말은 z45로 게임 모달 아래) ===== */
   .tutBtn{width:26px; height:26px; padding:0; border-radius:50%; font-size:14px; font-weight:bold; margin-left:6px; vertical-align:middle; line-height:1;}
   #tutOverlay{position:fixed; inset:0; background:#000d; display:flex; align-items:center; justify-content:center; z-index:60; padding:12px;}

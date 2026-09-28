@@ -188,6 +188,17 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
   참가(`p-<id>`)는 여전히 공개 `OPEN` 만 — 목록이 낡았어도 서버가 `E_ROOM_NOT_FOUND` 로 거부한다. 검색은 클라이언트가 `roomName` 으로 거른다.
 - **실측 핑**: 로비 전용(`l-`) 소켓에 `{v:1,t:'rtt',n}`(n = 0~2147483647 정수) → 즉시 `{v:1,type:'rtt',n}`. 틀린 n 은 답하지 않는다. 좌석 소켓의 `rtt` 는 무시(seq 불변).
   연결 생존 ping/pong(30초)과 별개이고 경기·타이머·재접속 유예를 바꾸지 않는다. 측정 주기·3초 실패 판정은 클라이언트 몫.
+
+#### 경기 중 이모티콘 (#262)
+
+- 좌석 소켓 `{v:1,t:'emote',requestId,seatToken,tokenGen,id}` — `id` 는 `hello`·`nice`·`wow`·`think`·`oops`·`gg`(`protocol.js` `EMOTE_IDS`). 게임 명령 경로가 아니다:
+  중복 제거 캐시·`handleCommand`·`revision`·`seq`·`room_state`·시계·DB·재생 어디에도 닿지 않고, 저장·재전송하지 않는다(놓친 것은 사라진다).
+- 성공: 보낸 쪽 `{v:1,type:'emote',epoch,roomId,from,id,requestId,cooldownMs:5000}`, 상대 `{v:1,type:'emote',epoch,roomId,from,id}`(requestId 없음). `seq` 없음.
+- 거부(보낸 쪽만, `seq` 없음 · 일반 `error` 가 아니다): `{v:1,type:'emote_result',ok:false,requestId,code,retryMs?}` —
+  `E_BAD_ENVELOPE`(허용 밖 id · 값은 되돌려 보내지 않는다) · `E_SEAT_TOKEN_INVALID` · `E_TOKEN_GEN_STALE` · `E_ILLEGAL_ACTION`(SETUP·IN_PROGRESS·FINISHED 가 아님) ·
+  `E_PAUSED`(상대 좌석이 연결돼 있지 않음 — 단절·결과 화면 이탈 포함) · `E_RATE_LIMITED`+`retryMs`. 거부는 쿨다운을 쓰지 않는다.
+- 쿨다운 5초는 서버 시계로 좌석에 붙는다 — 새로고침·재접속해도 이어지며 `room_resumed.emoteRetryMs`(남은 ms)로 알린다.
+- 첫 프레임·`room_state`·명령 응답에 `peerConnected`(상대 좌석 연결 여부, 서버 권위)를 싣는다 — 클라이언트는 이 값으로 전송 버튼을 막는다.
 - 결과 아웃박스(`authoritative/resultOutbox.js`): 서버가 결과를 확정하면 결과 프레임을 보내기 **전에** 로컬 JSONL 파일에 한 줄 append + fsync 하고,
   DB 에 들어간 것(두 좌석 행을 한 문장으로 — 원자적)이 확인된 뒤에만 그 줄을 지운다(임시 파일 + fsync + rename). DB 장애·제약 위반·프로세스 재시작 중에도
   완료된 결과를 **버리지 않는다** — 30초마다·기동 직후 다시 쓰고, `UNIQUE(match_id, account_id)` + `ON CONFLICT DO NOTHING` 이라 재생해도 한 번만 남는다.
@@ -439,6 +450,7 @@ npm run test:db       # #264 DSN·TLS·마이그레이션·fail-closed (Postgres
 npm run test:accounts # #259 계정·단일 로그인·이메일 코드 재설정·WS 좌석 계정 바인딩 (Postgres 없이 — 메모리 대역, 메일은 주입 전송)
 npm run test:profile  # #260 프로필·대표 하수인·전적 기록(1회)·파일 아웃박스(상한·제약 위반·재시작 재생·깨진 줄·쓰기 실패)·WS reps (메모리 대역, DD_TEST_DATABASE_URL 이면 실제 Postgres)
 npm run test:lobby    # #261 방 이름 경계·목록 상태/순서/공개 필드·참가 경합·시작된 방 참가 거부·재접속 roomName·rtt 왕복 (DB 없음)
+npm run test:emotes   # #262 이모티콘 허용 ID·전용 응답·연타·토큰 펜싱·상대 단절/재접속 쿨다운 유지·단계별 전송·게임 상태 불변 (DB 없음)
 ```
 
 실제 Postgres 로 같은 계정 시나리오를 돌리려면(그 DB 의 표를 지운다 — 전용 테스트 DB 에만):

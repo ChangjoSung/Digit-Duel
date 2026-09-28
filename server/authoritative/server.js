@@ -28,7 +28,7 @@ const { WebSocketServer, OPEN } = require('ws');
 const S = require('../security');
 const { Lobby } = require('./lobby');
 const { STATES } = require('./room');
-const { validateEnvelope, normalizeRoomName } = require('./protocol');
+const { validateEnvelope, normalizeRoomName, isEmoteId } = require('./protocol');
 const { isWellFormedToken } = require('./seatToken');
 const db = require('../db'); // #264 — DATABASE_URL 이 없으면 전부 비활성(기존 동작 그대로)
 const A = require('./accounts');
@@ -353,7 +353,7 @@ function bumpSeq(room, seat) {
 function pushState(room, seat) {
   const s = room.seats[seat];
   if (!s.ws || s.ws.readyState !== OPEN) return;
-  sendFrame(s.ws, { v: 1, type: 'room_state', epoch: EPOCH, revision: room.revision, seat, data: room.toSeatView(seat), players: playersOf(room), reps: repsOf(room), seq: bumpSeq(room, seat) });
+  sendFrame(s.ws, { v: 1, type: 'room_state', epoch: EPOCH, revision: room.revision, seat, data: room.toSeatView(seat), players: playersOf(room), reps: repsOf(room), peerConnected: room.peerConnected(seat), seq: bumpSeq(room, seat) });
 }
 
 // 모든 룸 공통 — 타이머·정리로 일어난 종료 전이는 응답할 명령이 없으므로 양 좌석에 결과를 푸시한다.
@@ -373,7 +373,18 @@ function firstFrame(ws, type, room, seat, issued, extra) {
     roomName: room.name,      // #261 서버가 정한 방 이름 — 새로고침·재접속에도 같은 값
     players: playersOf(room), // #259 서버 권위 공개 닉네임
     reps: repsOf(room),       // #260 입장 때 고정된 대표 하수인 ID
+    peerConnected: room.peerConnected(seat), // #262 상대 좌석 연결 여부(서버 권위) — 이모티콘 전송 가능 표시
   }, extra || {}));
+}
+
+// #262 이모티콘 — 게임 명령 경로(중복 제거·handleCommand·revision·seq·room_state)를 타지 않는 일회성 전달. 저장·재전송 없음.
+// 상대 사본에는 requestId(클라이언트가 정한 자유 문자열)를 싣지 않는다. 틀린 id 는 되돌려 보내지 않는다.
+function sendEmote(room, seat, ws, msg) {
+  const r = isEmoteId(msg.id) ? room.emote(seat) : { ok: false, reason: 'E_BAD_ENVELOPE' };
+  if (!r.ok) return sendFrame(ws, Object.assign({ v: 1, type: 'emote_result', ok: false, requestId: msg.requestId, code: r.reason }, r.retryMs ? { retryMs: r.retryMs } : {}));
+  const base = { v: 1, type: 'emote', epoch: EPOCH, roomId: room.roomId, from: seat, id: msg.id };
+  sendFrame(ws, Object.assign({}, base, { requestId: msg.requestId, cooldownMs: r.cooldownMs }));
+  sendFrame(room.seats[1 - seat].ws, base);
 }
 
 // 게스트 참가 성공 직후 — 호스트는 OPEN→SETUP 전이를 이 푸시로만 안다(Mars 실통합 msg_31cb978ea815: 없으면
@@ -447,7 +458,7 @@ wss.on('connection', (ws) => {
     if (owner !== (ws.ddAccount ? ws.ddAccount.id : null)) return failClose('E_SEAT_TOKEN_INVALID');
     const result = match.room.resumeSeat(match.seat, cred.token, ws);
     if (!result.ok) return failClose(result.reason);
-    firstFrame(ws, 'room_resumed', match.room, match.seat, result.issued, { data: match.room.toSeatView(match.seat) });
+    firstFrame(ws, 'room_resumed', match.room, match.seat, result.issued, { data: match.room.toSeatView(match.seat), emoteRetryMs: match.room.emoteRetryMs(match.seat) }); // #262 좌석 쿨다운 잔여(ms)
     pushState(match.room, 1 - match.seat); // #237 상대의 "연결 대기" 해제·시계 재개를 알린다(2.4)
   }
 
@@ -483,17 +494,20 @@ wss.on('connection', (ws) => {
     // 좌석 토큰 인증 — §2.4.3. **leave를 포함한 모든 상태 변경 명령**이 여기를 통과해야 한다
     // (v3는 leave 분기가 이 검사보다 앞에 있어 위조 토큰으로 OPEN 룸을 취소할 수 있었다 — Saturn msg_eb240f4c5b27).
     // previous 토큰은 재개 전용이라 일반 명령에는 허용하지 않는다.
+    // #262 이모티콘의 거부는 일반 error 가 아니라 전용 emote_result 다(seq 를 올리지 않는다 — 클라이언트의 명령 오류 처리를 타지 않게).
+    const refuse = (code) => sendFrame(ws, msg.t === 'emote'
+      ? { v: 1, type: 'emote_result', ok: false, requestId: msg.requestId, code }
+      : { v: 1, type: 'error', requestId: msg.requestId, code, seq: bumpSeq(room, seatIndex) });
     const cls = seat.credential.classify(msg.seatToken);
-    if (cls === 'invalid') { sendFrame(ws, { v: 1, type: 'error', requestId: msg.requestId, code: 'E_SEAT_TOKEN_INVALID', seq: bumpSeq(room, seatIndex) }); return; }
-    if (cls === 'previous' || msg.tokenGen !== seat.credential.tokenGen) {
-      sendFrame(ws, { v: 1, type: 'error', requestId: msg.requestId, code: 'E_TOKEN_GEN_STALE', seq: bumpSeq(room, seatIndex) });
-      return;
-    }
+    if (cls === 'invalid') return refuse('E_SEAT_TOKEN_INVALID');
+    if (cls === 'previous' || msg.tokenGen !== seat.credential.tokenGen) return refuse('E_TOKEN_GEN_STALE');
     seat.credential.verifyForCommand(msg.seatToken, msg.tokenGen); // ack — 직전 토큰 폐기
+
+    if (msg.t === 'emote') return sendEmote(room, seatIndex, ws, msg);
 
     // 중복 제거 — §2.5.3. (roomId,seat,requestId) 키, 재실행하지 않고 저장된 응답을 재전송한다.
     const cached = room.checkDedup(seatIndex, msg.requestId);
-    if (cached) { sendFrame(ws, Object.assign({}, cached, { seq: bumpSeq(room, seatIndex) })); return; }
+    if (cached) { sendFrame(ws, Object.assign({}, cached, { peerConnected: room.peerConnected(seatIndex), seq: bumpSeq(room, seatIndex) })); return; }
 
     const outcome = room.handleCommand(seatIndex, msg);
     let frame;
@@ -504,7 +518,7 @@ wss.on('connection', (ws) => {
       frame = { v: 1, type: outcome.type, requestId: msg.requestId, epoch: EPOCH, revision: room.revision, seat: seatIndex, data: outcome.data };
     }
     room.storeDedup(seatIndex, msg.requestId, frame);
-    sendFrame(ws, Object.assign({}, frame, { seq: bumpSeq(room, seatIndex) }));
+    sendFrame(ws, Object.assign({}, frame, { peerConnected: room.peerConnected(seatIndex), seq: bumpSeq(room, seatIndex) })); // peerConnected 는 보낼 때의 값(캐시에 넣지 않는다)
 
     // 상대에게도 같은 revision의 갱신 뷰를 보낸다 — 실제로 상태가 바뀐 성공 명령만(noop·오류는 보내지 않는다).
     if (outcome.ok && !outcome.noop) pushState(room, 1 - seatIndex);

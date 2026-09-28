@@ -416,6 +416,8 @@ function load(htmlPath,opts){
   /* #260 계정 로비 — 기준판 로드 호환: 부재 시 undefined */
   LOBBY:typeof LOBBY!=="undefined"?LOBBY:undefined,
   lobby:typeof lobbyHtml==="function"?{lobbyHtml,lobbyReady,lobbyLoad,lobbyLocked,lobbyRetry,lobbyRepOpen,lobbyRepPick,lobbySeatRepHtml,lobbyParseProfile,LOBBY_API,LOBBY_TIMEOUT_MS}:undefined,
+  /* #262 경기 중 이모티콘 — 기준판 로드 호환: 부재 시 undefined */
+  emote:typeof emoteSync==="function"?{EMOTES,EMO,emoteSync,emoteToggle,emoteSend,emoteSetMuted,emoteClose,netEmoteCanSend}:undefined,
   /* #261 멀티 방 목록·대기 — 기준판 로드 호환: 부재 시 undefined */
   rooms:typeof lobbyRoomsHtml==="function"?{lobbyRooms,lobbyHome,lobbyRoomsHtml,lobbyRoomListHtml,lobbyWaitHtml,lobbyRoomRows,
     roomNameNorm,lobbySearch,lobbyNameInput,lobbyCreateRoom,lobbyRoomLocked,lobbyPollTick,lobbyPollStart,lobbyRttReply,lobbyPingText}:undefined,

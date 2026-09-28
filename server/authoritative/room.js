@@ -35,6 +35,7 @@ const { createEngine, withEngine } = require('./engine');
 
 const DISCONNECT_GRACE_MS = 60 * 1000;
 const DEDUP_TTL_MS = 120 * 1000;
+const EMOTE_COOLDOWN_MS = 5 * 1000; // #262 좌석별 이모티콘 전송 간격(2026-09-27 CJ 승인)
 
 const STATES = Object.freeze({
   OPEN: 'OPEN', SETUP: 'SETUP', IN_PROGRESS: 'IN_PROGRESS', FINISHED: 'FINISHED',
@@ -66,12 +67,13 @@ const ROSTER_SIZE = 6; // applyNetSetup: data.roster.length===6
 
 function now() { return Date.now(); }
 // #237 상대 HP 100 눈금 — 최대 HP(=등급)를 지우고 비율만 남긴다. 올림이라 살아 있는 말(HP≥1)은 1 이상이다.
+// #262 CJ QA(2026-09-27): 전투에 나선 적 없는(hpSeen 없는) 공개 상대 보드 말에만 쓴다.
 function pct100(v, max) { return Math.ceil(((Number(v) || 0) * 100) / (Number(max) || 1)); }
-/* #237 상대가 주어인 전투 문구의 HP 계열 수치(피해·회복·방어막·흡수·유효·해일 X·버틴 HP·과부하 상한)를 100 눈금으로 바꾼다.
-   라운드·횟수·퍼센트·쿨·차수·좌석(2R·1회·15%·⌛0·3차·P1)은 HP 와 무관한 규칙 상수라 그대로 둔다. max 가 없으면(주어 불명) '?'.
-   바꾼 수치에는 '%'를 붙여 비율임을 표시한다 — HP_NUM 이 '%' 앞 수치를 건너뛰므로 다시 통과해도 두 번 바뀌지 않는다. */
+/* 주어 불명 전투 문구의 HP 계열 수치(피해·회복·방어막·흡수·유효·해일 X·버틴 HP·과부하 상한)를 '?'로 가린다.
+   라운드·횟수·퍼센트·쿨·차수·좌석(2R·1회·15%·⌛0·3차·P1)은 HP 와 무관한 규칙 상수라 그대로 둔다.
+   #262 CJ QA(2026-09-27): 주어가 있는 줄은 두 전투원 모두 실제 값이다(전투 중 양쪽 HP 공개) — 종전 #237 100 눈금 변환은 폐지. */
 const HP_NUM = /(^|[^⌛⭐P\d.])(\d+)(?![\d.]|\s*(?:%|R|회|차|턴|라운드|칸|개|명|마리|초|·\s*\d+\s*차))/g;
-function scaleText(txt, max) { return String(txt).replace(HP_NUM, (all, pre, n) => pre + (max ? pct100(n, max) + '%' : '?')); }
+function maskText(txt) { return String(txt).replace(HP_NUM, (all, pre) => pre + '?'); }
 // 전투 문구 한 줄의 주어(그 수치가 가리키는 전투원 쪽) — bmsg 가 함께 싣는 표시 fx 의 쪽 표기에서 읽는다.
 function fxSubject(fx) {
   if (!fx) return null;
@@ -301,7 +303,7 @@ function lockstepDigest(T) {
     // 스탯 주입이 갈린 상태를 놓친다.
     balls: S.balls.slice(), inv: S.inv.map((a) => a.slice()),
     // #234 REVISE 2차 — 예비 하수인도 대리 출전 전투원 객체라 사신의 낫 봉인(reaperSeal)을 지닌다.
-    reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x), num(x.reaperSeal)] : null)),
+    reserve: S.reserve.map((x) => (x ? [x.element, x.hp, ...stats(x), num(x.reaperSeal), !!x.hpSeen] : null)),
     pkgs: S.pkgs.map((p) => Object.assign({}, p)), teleUsed: (S.teleUsed || []).slice(),
     traces: S.traces.map((t) => [...t].sort()), tempReveal: [...(S.tempReveal || [])].sort(), winner: S.winner,
     modalSeq: T.__modal ? T.__modal.seq : 0,
@@ -311,7 +313,7 @@ function lockstepDigest(T) {
     // 스탯을 승계해 대리 출전하므로(3.3) cap 튜플도 함께 넓힌다.
     pieces: S.pieces.map((p) => [p.id, p.owner, p.type, p.rosterId, p.element, p.hp, p.maxHp, p.r, p.c, p.placed, p.alive,
       !!p.revealed, p.immobile, !!p.healing, p.skills || null, p.cds || null,
-      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap), num(p.cap.reaperSeal)] : null, ...stats(p),
+      p.cap ? [p.cap.element, p.cap.hp, ...stats(p.cap), num(p.cap.reaperSeal), !!p.cap.hpSeen] : null, ...stats(p),
       // #234 6.2·6.4 — 동료 종류는 스킬 세트(AS/SH)를, 속성 선택 여부는 미선택 규칙 재적용을, legend 는 전설 스킬·아키타입을 가른다.
       // 공개 기록(revealedSkills)은 syncLeaderSkills 가 칸 교체 때 걸러 내는 말 단위 상태라 함께 본다.
       p.allyKind === undefined ? null : p.allyKind, !!p.leaderElChosen, p.legend === undefined ? null : p.legend,
@@ -319,7 +321,9 @@ function lockstepDigest(T) {
       // #234 REVISE 2차 — 본체 출전 말의 사신의 낫 봉인. 전투 밖(보드)에서도 유지되어 다음 참전 전투의 합법 슬롯을 가른다.
       num(p.reaperSeal),
       // #237 말 단위 경제 칸 — 원장·신규 표시·교체 표식(GDD-23 7.5·7.6)
-      num(p.paid), !!p.fresh, !!p.swapMark]),
+      num(p.paid), !!p.fresh, !!p.swapMark,
+      // #262 전투 HP 노출 표식 — 좌석 뷰의 상대 HP 표기(100 눈금/실제)를 가른다
+      !!p.hpSeen]),
     eco: ecoDigest(S.eco, stats, num),
   });
 }
@@ -329,7 +333,7 @@ function lockstepDigest(T) {
 function ecoDigest(E, stats, num) {
   if (!E) return null;
   const unit = (u) => [u.uid, u.rosterId || null, u.legend || null, u.element || null, u.hp, u.maxHp, num(u.paid), !!u.fresh, !!u.revealed,
-    u.skills || null, u.cds || null, u.revealedSkills || null, num(u.reaperSeal), ...stats(u)];
+    u.skills || null, u.cds || null, u.revealedSkills || null, num(u.reaperSeal), ...stats(u), !!u.hpSeen];
   const sh = E.shop, bp = E.bagPick;
   return {
     coins: E.coins, tickets: E.tickets, buffInv: E.buffInv, soldHp: E.soldHp, unitSeq: E.unitSeq,
@@ -391,6 +395,7 @@ class Room {
       ready: false, placed: false, rawSetup: null, seq: 0,
       disconnectExpiry: null, disconnectTimer: null,
       shopTimedOut: false, // #263 S01 을 시간 초과로 끝낸 좌석 — 그 자리에서 자동 배치·준비까지 끝나므로 배치 90초를 받지 않는다
+      emoteAt: 0, // #262 마지막 이모티콘 성공 시각(서버 시계) — 좌석에 붙어 재접속에도 남는다. 뷰·재생·DB 에 싣지 않는다
     };
   }
 
@@ -477,6 +482,24 @@ class Room {
       this._syncClock(); // 시계도 멈춘다 — 흐르는 것은 재연결 대기뿐 (GDD-23 2.4)
     }
   }
+
+  // #262 상대 좌석이 지금 연결돼 있는가 — 소켓이 실제로 열려 있어야 한다(OPEN 방의 빈 좌석·단절·결과 화면 이탈은 false).
+  peerConnected(seatIndex) {
+    const s = this.seats[1 - seatIndex];
+    return !!(s.connected && s.ws && s.ws.readyState === 1 /* OPEN */);
+  }
+
+  // #262 이모티콘 전송 판정 — 게임 상태·revision·시계·중복 제거를 건드리지 않는다. 거부는 쿨다운을 쓰지 않는다.
+  emote(seatIndex) {
+    if (this.state !== STATES.SETUP && this.state !== STATES.IN_PROGRESS && this.state !== STATES.FINISHED) return err('E_ILLEGAL_ACTION');
+    if (!this.peerConnected(seatIndex)) return err('E_PAUSED');
+    const left = this.emoteRetryMs(seatIndex);
+    if (left > 0) return { ok: false, reason: 'E_RATE_LIMITED', retryMs: left };
+    this.seats[seatIndex].emoteAt = now();
+    return { ok: true, cooldownMs: EMOTE_COOLDOWN_MS };
+  }
+
+  emoteRetryMs(seatIndex) { return Math.max(0, this.seats[seatIndex].emoteAt + EMOTE_COOLDOWN_MS - now()); }
 
   _graceLive() {
     return this.state === STATES.OPEN || this.state === STATES.SETUP || this.state === STATES.IN_PROGRESS;
@@ -1622,7 +1645,7 @@ class Room {
     return {
       firstSeq: store.items[0].seq,
       lastSeq: store.nextSeq - 1,
-      events: store.items.map((e, i) => this._serializeFxEvent(e, T.host && T.host.seat, subj[i])),
+      events: store.items.map((e, i) => this._serializeFxEvent(e, subj[i])),
     };
   }
 
@@ -1655,41 +1678,35 @@ class Room {
   // sameRef===true로 변조가 그대로 보임 — resync/재조회 스토어까지 물든다). scene(_serializeFxScene)·
   // cells(_serializeFxCells)처럼 매 호출마다 원시 필드만 골라 **새 객체**를 짓는다 — 내부 저장소와 반환값이
   // 항상 독립된 참조를 갖도록(이중 화이트리스트, room.js 기존 _serialize* 관례와 동일).
-  /* #237 opp(side) — 그 쪽이 이 좌석의 상대 전투원이고 경제 경기면 그 전투원의 최대 HP, 아니면 null. 상대 쪽 HP·방어막·
-     떠오르는 수치는 100 눈금으로 바꿔 싣는다(_serializeKnownOpponent 와 같은 계약 — 최대 HP 로 등급이 역산되지 않게). */
-  _serializeFxMsgFx(fx, opp) {
+  /* #262 CJ QA(2026-09-27) — msg 이벤트는 전투 msgQ 에서만 나오므로(engine.js hookMsgQ) 모든 HP 수치는 무대 위 두 전투원 것이다.
+     전투 중에는 양쪽 실제 HP 를 공개하므로 HP·방어막·떠오르는 수치를 원값 그대로 싣는다(종전 #237 상대 쪽 100 눈금 폐지). */
+  _serializeFxMsgFx(fx) {
     if (!fx || typeof fx !== 'object') return null;
-    opp = opp || (() => null);
     const out = {};
     if (fx.shake === 'A' || fx.shake === 'D') out.shake = fx.shake;
     if (fx.sig === true) out.sig = true;
     if (typeof fx.flash === 'string') out.flash = fx.flash;
     if (fx.ko === 'A' || fx.ko === 'D') out.ko = fx.ko;
     if (fx.float && (fx.float.side === 'A' || fx.float.side === 'D') && (fx.float.sign === 'pos' || fx.float.sign === 'neg')) {
-      const m = opp(fx.float.side), amount = Number(fx.float.amount) || 0;
-      out.float = { side: fx.float.side, sign: fx.float.sign, amount: m ? pct100(amount, m) : amount };
+      out.float = { side: fx.float.side, sign: fx.float.sign, amount: Number(fx.float.amount) || 0 };
     }
     if (fx.hp && (fx.hp.side === 'A' || fx.hp.side === 'D')) {
-      out.hp = opp(fx.hp.side) ? { side: fx.hp.side, val: pct100(fx.hp.val, fx.hp.max), max: 100 }
-        : { side: fx.hp.side, val: Number(fx.hp.val) || 0, max: Number(fx.hp.max) || 0 };
+      out.hp = { side: fx.hp.side, val: Number(fx.hp.val) || 0, max: Number(fx.hp.max) || 0 };
     }
     if (fx.st && (fx.st.side === 'A' || fx.st.side === 'D')) {
-      const o = !!opp(fx.st.side), text = typeof fx.st.text === 'string' ? fx.st.text : '';
-      out.st = { side: fx.st.side, text: o ? scaleText(text, fx.st.max) : text, // 상태 아이콘의 🛡방어막·🌊해일≤X
-        shield: o ? pct100(fx.st.shield, fx.st.max) : Number(fx.st.shield) || 0, max: o ? 100 : Number(fx.st.max) || 0 };
+      out.st = { side: fx.st.side, text: typeof fx.st.text === 'string' ? fx.st.text : '', // 상태 아이콘의 🛡방어막·🌊해일≤X
+        shield: Number(fx.st.shield) || 0, max: Number(fx.st.max) || 0 };
     }
     return Object.keys(out).length ? out : null;
   }
 
-  _serializeFxEvent(e, seatIndex, subject) {
+  _serializeFxEvent(e, subject) {
     if (e.src === 'msg') {
-      const opp = (side) => (this.economy && e.sides && e.sides[side] && e.sides[side][0] !== seatIndex ? e.sides[side][1] : null);
-      // #237 문구: 주어가 자기 전투원이면 실제 값, 상대면 100 눈금, 주어 불명이면 HP 계열 수치를 '?' 로 가린다
-      const own = subject && e.sides && e.sides[subject] && e.sides[subject][0] === seatIndex;
-      const txt = !this.economy || own ? e.txt : scaleText(e.txt, subject ? opp(subject) : null);
+      // 문구: 주어가 있으면 원문(두 전투원 모두 실제 값 · #262), 경제 경기에서 주어 불명이면 HP 계열 수치를 '?' 로 가린다(#237 유지)
+      const txt = !this.economy || subject ? e.txt : maskText(e.txt);
       return {
         seq: e.seq, src: 'msg', battleId: Number.isInteger(e.battleId) ? e.battleId : null,
-        round: e.round, actSeq: e.actSeq, key: e.key, big: e.big, txt, fx: this._serializeFxMsgFx(e.fx, opp),
+        round: e.round, actSeq: e.actSeq, key: e.key, big: e.big, txt, fx: this._serializeFxMsgFx(e.fx),
       };
     }
     const out = {
@@ -1765,10 +1782,12 @@ class Room {
      ④ 등급(grade)은 7.9·8.1⑦이 소유자 전용으로 못박은 값이라 공개 상대 뷰에 실을 수 없다.
      상대 동료 스탯이 정말 필요해지면 두 전투원이 서로 공개된 **전투 뷰**에서 다시 합의해 내보낸다. */
   /* #237 (GDD-23 7.9·8.1⑦) 경제 경기에서는 최대 HP 가 등급마다 달라 "종(name) + maxHp" 로 상대 등급이 역산된다.
-     그래서 상대 말 HP 는 **100 눈금 비율**로만 싣는다: maxHp=100 고정, hp=ceil(hp/maxHp×100)(살아 있으면 1 이상).
-     클라이언트는 필드 모양을 바꾸지 않고 그대로 HP 바를 그린다 — 숫자가 "N/100" 으로 보일 뿐이다(Mars 표기 인계). */
+     그래서 전투에 나선 적 없는 상대 말 HP 는 **100 눈금 비율**로만 싣는다: maxHp=100 고정, hp=ceil(hp/maxHp×100)(살아 있으면 1 이상).
+     #262 CJ QA(2026-09-27) — 전투에 실제로 나선 개체(Core startRounds 가 전투원 fa/fd 에 세우는 hpSeen, 개체와 함께 이동)는
+     전투 중 이미 실제 HP/최대 HP 를 보였으므로 보드에서도 실제 현재 HP/최대 HP 를 싣고 hpSeen:true 로 알린다.
+     정체 공개(함정·종료 리빌)만으로는 해당하지 않는다. 등급·스탯·스킬·원장 등 HP 밖 필드는 종전 그대로 싣지 않는다. */
   _serializeKnownOpponent(p) {
-    const hp = this.economy ? { hp: pct100(p.hp, p.maxHp), maxHp: 100 } : { hp: p.hp, maxHp: p.maxHp };
+    const hp = this.economy && !p.hpSeen ? { hp: pct100(p.hp, p.maxHp), maxHp: 100 } : { hp: p.hp, maxHp: p.maxHp };
     return {
       id: this._alias(p.id), r: p.r, c: p.c, owner: p.owner, alive: p.alive, immobile: p.immobile,
       type: p.type, name: p.name, element: p.element, hp: hp.hp, maxHp: hp.maxHp, healing: p.healing,
@@ -1777,6 +1796,7 @@ class Room {
       // 표시 whitelist 복구다 — 정보량 증가 없음. 하수인이 아니면(왕/동료) 항상 null.
       rosterId: p.type === 'minion' ? (p.rosterId || null) : null,
       ...(p.swapMark ? { swapMark: true } : {}), // #237 "상점에서 교체됨" — 7.9 가 상대에게 허용한 유일한 상점 표식
+      ...(p.hpSeen ? { hpSeen: true } : {}),
     };
   }
 
@@ -1810,10 +1830,10 @@ class Room {
   _serializeBattle(T, battle, seatIndex) {
     const side = (owner, f, piece, sfx) => {
       const bodyFight = f === piece; // 본체 출전(f===piece) vs 포획·예비 하수인 대리 출전(#91 artDirOfFighter와 같은 구분)
-      const scaled = this.economy && owner !== seatIndex; // #237 상대 전투원 HP·방어막은 100 눈금(등급 역산 차단 — _serializeKnownOpponent 와 같은 계약)
+      // #262 CJ QA(2026-09-27) — 전투 중에는 두 전투원(대리 출전 포함) 모두 실제 HP/최대 HP·방어막·해일 X·기록 피해를 싣는다(#237 100 눈금 폐지)
       return {
-        owner, hp: scaled ? pct100(f.hp, f.maxHp) : f.hp, maxHp: scaled ? 100 : f.maxHp,
-        shield: scaled ? pct100(f.shield || 0, f.maxHp) : (f.shield || 0), burn: f.burn || 0, weaken: f.weaken || 0,
+        owner, hp: f.hp, maxHp: f.maxHp,
+        shield: f.shield || 0, burn: f.burn || 0, weaken: f.weaken || 0,
         shock: f.shock || 0, shockFresh: !!f.shockFresh, dmgCut: f.dmgCut || 0, focusCharge: !!f.focusCharge,
         /* #233 (GDD-23 4.5) 균열·경화 — 이미 내려보내는 burn/weaken/shock/dmgCut/vulnMark 와 **같은 등급**이다.
            원본 stIcons(f)(demo/index.html)가 두 전투원 패널 모두에 뷰어 분기 없이 이 셋을 그리고, #121 계약
@@ -1839,8 +1859,7 @@ class Room {
         // atk/skillAtk도 자기 pieces/cap 또는 공개 ROSTER/BAL로 대부분 유도 가능해 필수 노출이 아니다(포획 대리
         // 출전의 상대 cap 수치만 유도 불가하지만 원본 UI도 그 경우 "?"만 보여줄 뿐이다) — 불필요한 공개 확장은
         // 하지 않는다.
-        // rec = 이 쪽이 상대에게 기록한 피해(상대 최대 HP 로 상한) — 내 기록은 상대 최대 HP 를 드러내므로 100 눈금(#237)
-        rec: this.economy && owner === seatIndex ? pct100(battle['rec' + sfx] || 0, (sfx === 'A' ? battle.fd : battle.fa).maxHp) : (battle['rec' + sfx] || 0),
+        rec: battle['rec' + sfx] || 0, // 이 쪽이 상대에게 기록한 피해(상대 최대 HP 로 상한)
         items: battle['items' + sfx] || 0, itemRound: !!battle['itemRound' + sfx],
         lastItem: battle['lastItem' + sfx] != null ? battle['lastItem' + sfx] : null,
         ballThrow: !!battle['ballThrow' + sfx], buff: battle['buff' + sfx] || null,
@@ -1880,8 +1899,7 @@ class Room {
            tideBy 는 싣지 않는다: 표식 대상의 반대편으로 항상 유도되고 표시가 읽지 않는다. cdUpFresh(Q3)도 싣지 않는다 —
            ⌛ 값 자체가 미공개 칸 은닉(_skillsFor) 대상이고 표시 경로가 없다. */
         evadeDown: f.evadeDown || 0, evadeDownR: f.evadeDownR || 0,
-        // #237 해일 X 는 HP 선(HP 바 위 X 위치)이라 상대 쪽은 hp·shield 와 같은 100 눈금 — 원값이면 비율 HP 와 어긋나고 최대 HP 가 역산된다
-        tideMark: scaled ? pct100(f.tideMark || 0, f.maxHp) : (f.tideMark || 0), tideHeld: !!f.tideHeld,
+        tideMark: f.tideMark || 0, tideHeld: !!f.tideHeld, // 해일 X 는 HP 선 — hp·shield 와 같은 실제 값(#262)
       };
     };
     /* #241 R1 번개 꼬리 추가 공격 단계 — 양 좌석에 side 만 공개(행동 중인 쪽 · 상대 화면의 대기 표시). allowed 는 소유자 좌석에만:

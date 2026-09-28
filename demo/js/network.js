@@ -22,7 +22,18 @@ const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncMo
      epoch/tokenGen은 room_opened/room_joined/room_resumed의 실제 필드(protocol.md v2 §2)를 그대로 담는다 —
      tokenGen은 재개(resume) 성공 때만 회전한다(seatToken.js resume()). resumeDeadline은 Date.now() 기준 ms epoch. */
   explicitLeave:false, epoch:null, tokenGen:0, players:null, reps:null, // #259 players: 서버가 준 좌석별 공개 닉네임 [좌석0, 좌석1] (모르면 null) · #260 reps: 좌석별 입장 때 고정된 대표 하수인 ID
-  resuming:false, resumeDeadline:0, resumeAttempts:0, resumeTimer:null, resumeLastAttempt:0};
+  resuming:false, resumeDeadline:0, resumeAttempts:0, resumeTimer:null, resumeLastAttempt:0,
+  /* #262 이모티콘 — emoteUntil: 서버가 알려 준 다음 전송 가능 시각(Date.now 기준) · emoteReq: 응답 대기 중인 requestId ·
+     peerConnected: 서버가 준 상대 소켓 연결 여부(모르면 null). 쿨다운의 원본은 서버 좌석 시각이고 이 값은 표시용 사본이다. */
+  emoteUntil:0, emoteReq:null, peerConnected:null,
+  /** #262 이모티콘 전송의 유일한 끝 — 게임 액션 경로(netAction·netSendAction·모달 중계·resync·재생)를 타지 않고,
+      requestId 로 전용 응답(emote_result)만 짝짓는다. 성공 표시는 서버의 emote 프레임을 받은 뒤에만 한다(낙관 표시 없음).
+      @param {string} id @returns {boolean} 보냈으면 true */
+  sendEmote(id){
+    if(!emoteDef(id)||!netEmoteCanSend()) return false;
+    const rid=netReqId(); NET.emoteReq=rid;
+    netSend(/** @type {NetCommandFrame} */({v:1,requestId:rid,seatToken:NET.seatToken,tokenGen:NET.tokenGen,t:"emote",id}));
+    emoteSync(); return true; }};
 function netActor(){ // 지금 게임이 입력을 기다리는 플레이어
   if(!S) return null;
   if(S.phase==="setup") return S.setupPlayer;
@@ -371,6 +382,7 @@ function netAttachPublicSocket(ws,opts){
    소켓이 함께 쓴다. 단절이 방 안(비의사)이면 유예 재접속, 아니면 로비 카드에 상태를 남긴다. */
 function netHandlePublicSocketClosed(ev){
   if(ev&&ev.code===4003){ acctEndSession(ACCT_SESSION_ENDED); return; } // #259 서버가 계정 세션을 끝냈다(E_SESSION_ENDED 프레임을 놓쳤어도) — 재접속하지 않는다
+  emoteReset(true); // #262 끊긴 소켓의 응답은 오지 않는다 — 대기·말풍선을 지우고 간격 사본은 재개 때 서버 값으로 맞춘다
   NET.roomsLoading=false; lobbyRttOff(); // #261 로비 핑 — '측정 불가'와 다른 '연결 끊김'
   if(NET.publicMode&&NET.roomId&&!NET.explicitLeave&&!NET.resuming){ netBeginResume(); return; } // #217 소켓 단절(비의사) — 유예 안에서 자동 재접속
   if(NET.lobbyPending){ NET.lobbyPending=null; netLobbyMsg("loadFail"); }
@@ -429,6 +441,27 @@ function netFlushSetupReady(){
   netSendCmd("setup",{roster:NET.mySetup.roster,pos:NET.mySetup.pos});
   netSendCmd("ready");
 }
+/* ===== #262 경기 중 이모티콘 — 회선 (화면은 ui.js emote*) =====
+   서버(Jupiter)가 허용 ID·좌석별 5초 간격(서버 시계)·상대 연결을 판정한다. 여기서 먼저 막는 것은 사유를 보여 주기 위해서일 뿐이다.
+   성공 {type:"emote",epoch,roomId,from,id}(보낸 쪽만 requestId·cooldownMs) · 거부 {type:"emote_result",ok:false,requestId,code,retryMs?}. */
+const EMOTE_STATES=["SETUP","IN_PROGRESS","FINISHED"]; // OPEN(상대 없음)·종결 방은 보낼 수 없다
+function netEmoteCanSend(){
+  return !!(NET.publicMode&&NET.roomId!=null&&NET.ws&&NET.ws.readyState===1&&EMOTE_STATES.includes(NET.roomState)
+    &&!netPaused()&&NET.peerConnected!==false&&!NET.emoteReq&&Date.now()>=NET.emoteUntil);
+}
+function emoteCool(ms){ NET.emoteUntil=Date.now()+Math.max(0,Math.min(60000,Number(ms)||0)); emoteSync(); } // 서버가 준 남은 ms 만 — 절대 시각을 비교하지 않는다(시계 차이 무관)
+function netEmoteRecv(m){
+  if(m.epoch!==NET.epoch||m.roomId!==NET.roomId||(m.from!==0&&m.from!==1)||!emoteDef(m.id)) return; // 다른 방·에폭·목록 밖은 그리지 않는다
+  if(m.from===NET.me){ if(m.requestId===NET.emoteReq) NET.emoteReq=null; emoteCool(m.cooldownMs); }
+  emoteShow(m.from===NET.me,m.id);
+}
+function netEmoteResult(m){
+  if(!m.requestId||m.requestId!==NET.emoteReq) return; // 지난 요청의 늦은 응답은 무시
+  NET.emoteReq=null;
+  if(m.ok===false&&typeof m.retryMs==="number"&&m.retryMs>0) emoteCool(m.retryMs); // E_RATE_LIMITED — 새로고침한 탭도 여기서 서버 간격을 받는다
+  else if(m.ok===false) showToast("💬 "+(m.code==="E_PAUSED"?"상대 연결을 기다리는 중이라 이모티콘을 보낼 수 없습니다.":"지금은 이모티콘을 보낼 수 없습니다."));
+  emoteSync();
+}
 /* 서버 오류 코드 → 플레이어 문구. 코드 원문은 화면에 싣지 않는다(서버도 message 를 보내지 않는다). */
 const NET_ERR_KO={E_NOT_ACTOR:"지금은 상대의 차례입니다.",E_ILLEGAL_ACTION:"지금은 할 수 없는 행동입니다.",E_STALE_REVISION:"화면이 최신 상태가 아니었습니다 — 최신 상태로 갱신했습니다.",
   E_MATCH_STARTED:"이미 대국이 시작되었습니다.",E_RATE_LIMITED:NET_LOBBY_MSG.busy,E_CAPACITY:NET_LOBBY_MSG.full,E_DRAINING:"서버가 곧 다시 시작됩니다. 잠시 후 다시 시도해 주세요.",
@@ -439,6 +472,9 @@ function netHandlePublicMessage(m){
   /* #259 서버 권위 공개 닉네임(첫 프레임·room_state의 players[좌석]) — 서버 닉네임 규칙에 맞는 값만 받는다(화면 HTML 에 그대로 들어간다) */
   if(Array.isArray(m.players)) NET.players=[0,1].map(i=>typeof m.players[i]==="string"&&ACCT_NICK_RE.test(m.players[i])?m.players[i]:null);
   if(Array.isArray(m.reps)) NET.reps=[0,1].map(i=>lobbyRepOk(m.reps[i])?m.reps[i]:null); // #260 일반 30종 ID 만 — 그 밖의 값은 그리지 않는다
+  if(typeof m.peerConnected==="boolean") NET.peerConnected=m.peerConnected; // #262 서버 권위 상대 연결 — 결과 화면처럼 정지가 없는 단계의 이모티콘 잠금 근거
+  if(m.type==="emote"){ netEmoteRecv(m); return; }
+  if(m.type==="emote_result"){ netEmoteResult(m); return; } // #262 전용 거부 응답 — 일반 오류 경로(재동기·자동 턴·준비 재전송)를 타지 않는다
   if(m.type==="lobby_ready"){ NET.lobbyOnly=true; lobbyPollStart(); /* #261 L02 면 핑·5초 갱신 시작 */ NET.roomsLoading=true; render(); netSend({v:1,t:"list_rooms"}); return; }
   if(m.type==="lobby_rooms"){ NET.rooms=Array.isArray(m.rooms)?m.rooms:[]; NET.roomsLoading=false; NET.roomsLoaded=true; if(NET.lobbyMsg&&NET.lobbyMsg.kind!=="gone") netLobbyMsg(null); lobbyRoomsPaint(); return; }
   if(m.type==="rtt"){ lobbyRttReply(m.n); return; } // #261 로비 전용 왕복 측정 응답 — 게임 상태·시간과 무관
@@ -449,7 +485,7 @@ function netHandlePublicMessage(m){
     NET.roomState=m.type==="room_opened"?"OPEN":"SETUP"; // 생성 직후는 상대 입장 대기, 참가 성공은 두 좌석이 찬 배치 단계
     NET.preparing=true; NET.queued=false; NET.mySetup=null; NET.myReady=false; NET.peerReady=false; NET.lobbyOnly=false;
     NET.readyWanted=false; NET.readySent=false; NET.lobbyPending=null; netLobbyMsg(null);
-    netClearResume(); NET.explicitLeave=false;
+    netClearResume(); NET.explicitLeave=false; emoteReset(false); // #262 새 방 — 옛 말풍선·대기·간격 사본을 버린다
     NET.economy=!!m.economy; // #237 경제 방 — 시작 상점은 서버 좌석 뷰(SETUP)로만 열린다. 그 전(OPEN 호스트)에는 무료 로스터를 그리지 않는다(renderSide)
     newGame("pvp");
     addLog(NET.economy?`🌐 공개 방 #${NET.roomId} — 시작 상점에서 하수인 6명을 산 뒤 14개 말을 배치하고 [배치 완료 → 준비 완료]를 누르세요.`
@@ -460,6 +496,7 @@ function netHandlePublicMessage(m){
     return; }
   if(m.type==="room_resumed"){
     netClearResume();
+    emoteReset(true); if(typeof m.emoteRetryMs==="number") emoteCool(m.emoteRetryMs); // #262 같은 좌석 — 서버 좌석 시각이 남은 간격을 알려 준다(새로고침 포함)
     if(m.roomId!=null) NET.roomId=m.roomId; if(typeof m.seat==="number") NET.me=m.seat; if("roomName" in m) NET.roomName=netRoomName(m.roomName);
     if(m.seatToken) NET.seatToken=m.seatToken; if(typeof m.tokenGen==="number") NET.tokenGen=m.tokenGen;
     if(m.epoch!=null) NET.epoch=m.epoch;
@@ -544,7 +581,7 @@ function netStubPiece(u){
     atk:u.atk||0, skillAtk:u.skillAtk||0, rosterId:u.rosterId!==undefined?u.rosterId:null, cdMax:u.cdMax||0, cd:0,
     skills:adapted.skills, cds:adapted.cds, revealedSkills:adapted.revealedSkills,
     movedEver:!!u.movedEver, movedPreBT:false, immobile:u.immobile||0, cap:u.cap||null,
-    nextBattleBuff:false, healing:!!u.healing,
+    nextBattleBuff:false, healing:!!u.healing, hpSeen:!!u.hpSeen, // #262 서버가 전투에서 싸운 상대 말에만 싣는다 — 보드 HP 실제값 표기
     /* 등급 C-2(공개된 상대)는 서버가 revealed 필드 없이 정체(type·name·element)를 보낸다 — 정체가 왔다는 것 자체가 공개다.
        등급 B(미공개)는 type 필드 자체가 없다. 자기 말은 서버 revealed 값을 그대로 쓴다. */
     revealed:u.revealed!==undefined?!!u.revealed:(u.type!==undefined&&u.type!==null),
@@ -822,15 +859,10 @@ function netFxApplyMsgFx(bid,fx,gen){
     if(fx.float&&fx.float.side){ const tk=$("tok-"+fx.float.side);
       if(tk&&tk.appendChild){ const dv=document.createElement("div"); dv.className="dmgfloat";
         const span=document.createElement("span"); span.className=fx.float.sign==="neg"?"neg":"pos";
-        span.textContent=(fx.float.sign==="neg"?"-":"+")+fx.float.amount+(netFxOppSide(bid,fx.float.side)?"%":""); dv.appendChild(span); tk.appendChild(dv);
+        span.textContent=(fx.float.sign==="neg"?"-":"+")+fx.float.amount; dv.appendChild(span); tk.appendChild(dv);
         setTimeout(()=>{ try{ if(dv.parentNode) dv.parentNode.removeChild(dv); }catch(e){} },1100); } }
     if(fx.ko){ const tk=$("tok-"+fx.ko); if(tk) tk.classList.add("ko"); }
   }catch(e){}
-}
-/* #237 경제 방 상대 전투원의 떠오르는 수치는 서버가 최대 HP 대비 100 눈금으로 보낸다 — % 로 표기해 실제량처럼 보이지 않게 한다 */
-function netFxOppSide(bid,side){
-  const sn=NET.fxBattleSnaps[bid], sd=sn&&sn.battle&&sn.battle[side==="A"?"a":"d"];
-  return !!(sd&&hpPctView(sd.owner));
 }
 function netFxEsc(s){ return String(s==null?"":s).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
 const NET_FX_COUNT_FRAMES=["3","2","1","배틀 시작!"]; // 원본 battleModal 진입 카운트다운과 같은 4프레임

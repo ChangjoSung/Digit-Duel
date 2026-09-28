@@ -14,9 +14,13 @@ const ERROR_CODES = new Set([
 ]);
 
 // #261 rtt 는 로비 전용 소켓의 실측 왕복 요청이다(좌석 없는 명령 — list_rooms 와 같이 credential 을 싣지 않는다).
-const COMMAND_TYPES = new Set(['setup', 'ready', 'unready', 'action', 'resign', 'leave', 'resync', 'list_rooms', 'rtt']);
+const COMMAND_TYPES = new Set(['setup', 'ready', 'unready', 'action', 'resign', 'leave', 'resync', 'list_rooms', 'rtt', 'emote']);
 const SEATLESS = new Set(['list_rooms', 'rtt']);
 const RTT_MAX = 2147483647;
+// #262 경기 중 이모티콘 — 허용 ID(2026-09-27 CJ 승인 6종). 화면 목록과 같은지는 Mars 테스트가 이 값을 읽어 대조한다.
+// id 는 봉투에서 보지 않는다 — 틀린 id 도 전용 응답(emote_result E_BAD_ENVELOPE)으로 돌려준다(server.js).
+const EMOTE_IDS = Object.freeze(['hello', 'nice', 'wow', 'think', 'oops', 'gg']);
+const isEmoteId = (id) => typeof id === 'string' && EMOTE_IDS.includes(id);
 
 // #261 방 이름 — 원문 전체가 완성형 한글·영문·숫자·공백(U+0020)·_·- 여야 한다(그 밖의 문자는 지우지 않고 거부).
 // 그 뒤 앞뒤 공백 제거·연속 공백 1칸으로 정리해 2~20자. 반환: 정리된 이름 | null(거부).
@@ -66,4 +70,4 @@ function validateEnvelope(raw) {
   return { ok: true, msg };
 }
 
-module.exports = { ERROR_CODES, COMMAND_TYPES, ACTION_TYPES, validateEnvelope, MAX_ENVELOPE_BYTES, normalizeRoomName };
+module.exports = { ERROR_CODES, COMMAND_TYPES, ACTION_TYPES, validateEnvelope, MAX_ENVELOPE_BYTES, normalizeRoomName, EMOTE_IDS, isEmoteId };

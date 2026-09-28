@@ -732,6 +732,7 @@ function render(){
     : S.phase==="shop" ? `— 🛒 ${S.eco.shop.turn}턴 상점` : S.phase==="bagPick" ? "— 🎒 가방 초과" : "";
   renderBoard(); renderSide(); renderTurnBar(); renderMetrics();
   try{ uiApply(); renderBoardInfo(); fitBoard(); }catch(e){} // #122 표시 계층 — 화면 상태·상태 줄·보드 스케일
+  try{ emoteSync(); }catch(e){} // #262 이모티콘 고정 층 — 단계·연결·간격 표시만
   try{ turnClockSync(); }catch(e){} // #263 배치 90초·행동 30초 (온라인은 서버 시계 표시만)
   try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
 }
@@ -1043,7 +1044,75 @@ function netLeave(){ // 온라인 상태 완전 해제 — 이 정리 없이 로
   NET.fxGen=(NET.fxGen||0)+1; NET.fxQueue=[]; NET.fxPlaying=false; NET.fxCur=null; NET.fxEpoch=null; NET.fxRoomId=null; NET.fxSeat=null;
   NET.fxBattleSnaps={}; NET.fxDisp={}; NET.stageBid=null; NET.fxLiveBid=null; NET.battleMenu=null; NET.overlaySig=null; NET._overlayOpen=false;
   try{ fxSetLockClass(false); const fb=$("fxBanner"); if(fb&&fb.classList) fb.classList.add("hidden"); }catch(e){}
+  emoteReset(false); NET.peerConnected=null; // #262 말풍선·타이머·응답 대기·간격 사본 잔존 0
   setSeed(null); // 공유 시드 해제 — 이후 오프라인 경기는 다시 Math.random
+}
+/* ===== #262 경기 중 이모티콘 — 화면 (2026-09-27 CJ 승인 · GDD-24 00.8) =====
+   채팅이 아니다: 정해진 6종만 고른다. 문구는 이 목록의 고정 문자열만 textContent 로 싣는다(서버 값은 ID 대조에만 쓴다).
+   모달(z50)·연출 배너(z55) 위의 고정 층이라 시작 상점·배치·보드·정기 상점·가방·전투·결과 어디서든 닿고, 말풍선은
+   눌림을 가로채지 않는다(pointer-events:none). 게임 상태·시계·모달·연출 큐와 무관하며 큐·재생이 없다(새 것이 대체).
+   상대 숨김은 이 브라우저에만 저장하고(실패해도 '보임'으로 동작) 내 전송·내 말풍선은 막지 않는다. */
+const EMOTES=[["hello","👋","안녕하세요"],["nice","👍","좋은 수예요"],["wow","😮","놀라워요"],["think","🤔","고민 중이에요"],["oops","😅","아차"],["gg","🤝","좋은 경기였어요"]];
+const EMOTE_SHOW_MS=2500, EMOTE_MUTE_KEY="dd_emote_mute";
+const EMO={open:false,muted:null,bub:[null,null],tick:null};
+function emoteDef(id){ return EMOTES.find(e=>e[0]===id)||null; }
+function emoteMuted(){ if(EMO.muted===null){ try{ EMO.muted=localStorage.getItem(EMOTE_MUTE_KEY)==="1"; }catch(e){ EMO.muted=false; } } return EMO.muted; }
+function emoteSetMuted(on){ EMO.muted=!!on; try{ if(on) localStorage.setItem(EMOTE_MUTE_KEY,"1"); else localStorage.removeItem(EMOTE_MUTE_KEY); }catch(e){} // 저장 불가 환경은 이 탭 메모리로만
+  if(on){ const b=$("emoteBubOpp"); if(b&&b.classList) b.classList.add("hidden"); const l=$("emoteLive"); if(l) l.textContent=""; } }
+function emoteActive(){ return !!(NET.publicMode&&NET.roomId!=null&&EMOTE_STATES.includes(NET.roomState)&&S&&S.phase!=="menu"); }
+function emoteSync(){
+  const L=$("emoteLayer"); if(!L||!L.classList) return;
+  const on=emoteActive(), body=document.body;
+  if(on){ L.classList.remove("hidden"); if(body&&body.classList) body.classList.add("emoteOn"); }
+  else { L.classList.add("hidden"); if(body&&body.classList) body.classList.remove("emoteOn"); emoteClose(false); return; }
+  const set=/** @type {HTMLFieldSetElement} */($("emoteSet"));
+  if(!set.innerHTML) set.innerHTML=EMOTES.map(([id,e,ko])=>`<button type="button" data-emote="${id}" onclick="emoteSend('${id}')">${e} ${ko}</button>`).join("");
+  const left=Math.max(0,NET.emoteUntil-Date.now()), sec=Math.ceil(left/1000);
+  const why=netPaused()||NET.peerConnected===false?"상대 연결을 기다리는 중입니다":sec>0?`${sec}초 후 다시 보낼 수 있습니다`:NET.emoteReq?"보내는 중…":"";
+  set.disabled=!netEmoteCanSend(); // <fieldset disabled> — 여섯 버튼이 키보드·스크린리더까지 함께 잠긴다(#263 pauseLock 과 같은 모양)
+  $("emoteWhy").textContent=why;
+  const b=$("emoteBtn"); b.textContent=sec>0?"💬"+sec:"💬"; b.setAttribute("aria-label","이모티콘"+(why?" — "+why:""));
+  /** @type {HTMLInputElement} */($("emoteMute")).checked=emoteMuted();
+  if(left>0&&!EMO.tick) EMO.tick=setTimeout(()=>{ EMO.tick=null; emoteSync(); },(left%1000)||1000); // 간격 동안만 초 단위로 다시 그린다
+}
+function emoteShow(mine,id){
+  const d=emoteDef(id); if(!d||(!mine&&emoteMuted())) return; // 숨긴 동안 온 것은 저장·나중 표시 없음
+  const k=mine?1:0, el=$(mine?"emoteBubMe":"emoteBubOpp"); if(!el||!el.classList) return;
+  emotePlace(); el.textContent=d[1]+" "+d[2]; el.classList.remove("show"); void el.offsetWidth; el.classList.remove("hidden"); el.classList.add("show"); // 같은 쪽 새 것은 대체(연출 재시작)
+  if(EMO.bub[k]) clearTimeout(EMO.bub[k]);
+  EMO.bub[k]=setTimeout(()=>{ EMO.bub[k]=null; el.classList.add("hidden"); el.classList.remove("show"); },EMOTE_SHOW_MS);
+  if(!mine){ const l=$("emoteLive"); if(l) l.textContent="상대: "+d[2]; }
+}
+function emotePlace(){ // 말풍선 줄을 지금 화면의 제목 칸(h1) 위로 — 화면마다 상세/기록 버튼 유무로 폭이 다르다
+  const h=document.querySelector("#appBar h1"), L=$("emoteLayer"), box=$("emoteBubs");
+  if(!h||!box||!h.getBoundingClientRect||!L.getBoundingClientRect) return;
+  const a=h.getBoundingClientRect(), b=L.getBoundingClientRect(); if(!a.width) return;
+  box.style.left=Math.round(a.left-b.left)+"px"; box.style.width=Math.round(a.width)+"px";
+}
+function emoteReset(keepCool){ // 방 바뀜·나가기·단절·재개 — 말풍선·타이머·응답 대기를 지운다(간격 사본은 같은 좌석 재개 때만 남긴다)
+  EMO.bub.forEach((t,k)=>{ if(t) clearTimeout(t); EMO.bub[k]=null; });
+  if(EMO.tick){ clearTimeout(EMO.tick); EMO.tick=null; }
+  for(const id of ["emoteBubOpp","emoteBubMe"]){ const el=$(id); if(el&&el.classList){ el.classList.add("hidden"); el.classList.remove("show"); } }
+  const l=$("emoteLive"); if(l) l.textContent="";
+  NET.emoteReq=null; if(!keepCool) NET.emoteUntil=0;
+  emoteClose(false);
+}
+function emoteClose(refocus){
+  const was=EMO.open; EMO.open=false;
+  const p=$("emotePop"), b=$("emoteBtn");
+  if(p&&p.classList) p.classList.add("hidden");
+  if(b&&b.setAttribute){ b.setAttribute("aria-expanded","false"); if(refocus&&was) b.focus(); }
+}
+function emoteToggle(){
+  if(EMO.open){ emoteClose(true); return; }
+  EMO.open=true; emoteSync(); $("emotePop").classList.remove("hidden"); $("emoteBtn").setAttribute("aria-expanded","true");
+  const set=/** @type {HTMLFieldSetElement} */($("emoteSet")), first=!set.disabled&&set.querySelector("button");
+  (first||$("emoteMute")).focus();
+}
+function emoteSend(id){ if(NET.sendEmote(id)) emoteClose(true); }
+if(typeof document!=="undefined"&&document.addEventListener){
+  document.addEventListener("keydown",e=>{ if(EMO.open&&e.key==="Escape") emoteClose(true); });
+  document.addEventListener("pointerdown",e=>{ const L=$("emoteLayer"); if(EMO.open&&L&&!L.contains(/** @type {Node} */(e.target))) emoteClose(false); }); // 바깥 누르기 — 누른 곳으로 포커스가 간다
 }
 function uiResetScreen(){ // 이전 경기의 연출 큐·모달·토스트 잔존 0 (DOM 을 비워 무한 버프 애니메이션까지 멈춘다)
   try{ fxReleaseAll(); }catch(e){}
@@ -1255,11 +1324,11 @@ function battleModal(board){
     return `<div class="fighter"><div class="fhead">
       <b>${fighterName(sid,B)}</b> <small>(${pname(piece.owner)})</small>
       ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
-      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}${hpPctView(piece.owner)?"%":""}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}</div>
+      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}</div>
       <div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>
-      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>${hpPctView(piece.owner)?"%":"/"+pf.maxHp}</div>
+      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}</div>
       </div><div class="fscroll">
-      <div class="status"><span id="bst-${sid}">${hpPctView(piece.owner)?stIcons(pf).replace(/(🛡|🌊해일≤)(\d+)/g,"$1$2%"):stIcons(pf)}</span></div>
+      <div class="status"><span id="bst-${sid}">${stIcons(pf)}</span></div>
       ${pf.skills?`<div class="status">${(()=>{
         /* #234 (GDD-23 7.9): 등급·미사용 스킬은 비공개 — 보유 칸 수가 곧 등급이므로 상대 화면에는 공개된 스킬만 이름으로 쓰고
            나머지는 개수 없이 "?" 하나로 묶는다. 소유자·관전(sim)은 전부 본다. */
@@ -1484,17 +1553,18 @@ function pcFaceHtml(p){
   return `<span class="face"><span class="nm">${p.type==="minion"&&p.name?p.name:(TYPE_KO[p.type]||"?")}</span></span>`;
 }
 /* 정보 행 — 원소 기호(하수인만) + 현재 HP(하수인·동료·왕만). 폭탄·함정은 전체 공개에서도 HP 를 표시하지 않는다 (규격 7.8·7.9) */
-/* #237 공개 경제 방의 상대 말·전투원 HP 는 서버가 100 눈금 비율로만 보낸다(최대 HP 로 등급이 역산되지 않게) — % 로 표기한다. 자기 말은 실제 값 */
-function hpPctView(owner){ return !!(NET.publicMode&&S&&S.eco&&owner!==NET.me); }
+/* #237 공개 경제 방의 상대 말 HP 는 서버가 100 눈금 비율로만 보낸다(최대 HP 로 등급이 역산되지 않게) — % 로 표기한다. 자기 말은 실제 값.
+   #262 (CJ 2026-09-27) 전투에서 싸운 말(hpSeen)은 서버가 실제 값을 보내므로 % 없이 현재 HP 만. 전투원 패널은 양쪽 모두 실제 현재/최대 */
+function hpPctView(p){ return !!(NET.publicMode&&S&&S.eco&&p.owner!==NET.me&&!p.hpSeen); }
 function pcInfoHtml(p){
   const key=p.type==="minion"?pieceMemoKey(p):null;
-  const hp=(p.type==="minion"||p.type==="ally"||p.type==="king")?p.hp+(hpPctView(p.owner)?"%":""):"";
+  const hp=(p.type==="minion"||p.type==="ally"||p.type==="king")?p.hp+(hpPctView(p)?"%":""):"";
   if(!key&&!hp) return "";
   return `<span class="info">${key?glyphSpan(key,"sym"):""}${hp?`<span class="hp">${hp}</span>`:""}</span>`;
 }
 function pcLabel(p){ // 확정 말의 접근성 문구 — 이미 공개된 값만 쓴다
   return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.type==="minion"&&p.element?" · "+ELEM_KO[p.element]:"")
-    +((p.type==="minion"||p.type==="ally"||p.type==="king")?" · HP "+p.hp+(hpPctView(p.owner)?"%":""):"");
+    +((p.type==="minion"||p.type==="ally"||p.type==="king")?" · HP "+p.hp+(hpPctView(p)?"%":""):"");
 }
 /* 말판과 배치 트레이가 같은 함수를 쓴다 — 한쪽만 아이콘으로 바뀌는 불일치가 생기지 않는다 (규격 7.10.4) */
 function pcBodyHtml(p){return pcFaceHtml(p)+pcInfoHtml(p);}
