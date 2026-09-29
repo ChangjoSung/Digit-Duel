@@ -1059,7 +1059,7 @@ function netAbandonResume(msg){
   showToast(msg);
   netLeave(); LOBBY.next="rooms"; newGame("pvp",{phase:"menu"}); render(); // #261 재접속 포기·만료는 방 목록(L02)으로
 }
-function netResumeExpire(){ netAbandonResume("🌐 연결이 끊긴 동안 이 방의 자리가 종료되었습니다. 방 목록에서 다시 참가해 주세요."); netListRooms(); } // #295 사유(내보내기·자동 비움·만료)를 가리지 않는 공통 안내
+function netResumeExpire(){ netAbandonResume("🌐 연결이 끊긴 동안 이 방의 자리가 종료되었습니다. 방 목록으로 돌아가 다시 참가해 주세요."); netListRooms(); } // #295 사유(내보내기·자동 비움·만료)를 가리지 않는 공통 안내
 window.netCancelResume=function(){ netAbandonResume("🌐 재접속을 취소했습니다."); netListRooms(); };
 /* ===== #217 전투 화면 — 원본 battleModal()을 그대로 재사용한다 =====
    서버 스냅샷(protocol v4.2 §7 battle 화이트리스트)으로 원본 battleModal()이 읽는 모양의 표시용 전투 객체를 짓는다.
