@@ -371,6 +371,7 @@ class Room {
     this._bclock = null; // 전투 행동 60초 (싸우기·가방·포획·도망)
     this.onUpdate = null;       // #237 시계 만료처럼 명령 없이 일어난 전이를 양 좌석에 알린다(server.js 가 푸시)
     this.state = STATES.OPEN;
+    this.owner = 0; // #295 방장 좌석 — 결과 화면에서 방장이 끊기면 참가자(1)가 좌석·결과 매핑 그대로 방장 역할만 즉시 잇는다
     this.createdAt = now();
     this.inviteCode = null; // 비공개 룸만
     this.revision = 0;
@@ -469,6 +470,12 @@ class Room {
 
   // 명시적 나가기 — server.js는 좌석 토큰 인증·중복 제거를 통과한 뒤에만 handleCommand('leave')로 부른다.
   explicitLeave(seatIndex) {
+    // #295 REVISE #3 (2026-09-30 CJ) — 공개 대기방(결과에서 이미 복귀한 방장 포함)의 방장 나가기 = 방장 단절(_dropHost):
+    // 연결된 참가자가 방장을 잇고 방은 남는다. 연결된 참가자가 없거나 방장이 아직 결과를 보고 있으면 아래 종전 경로(취소·닫힘)다.
+    if (seatIndex === this.owner && this._publicLobby() && (this.state !== STATES.FINISHED || this.seats[seatIndex].returned) && this.seats[1 - seatIndex].connected) {
+      this._dropHost();
+      return { ok: true, type: 'room_state', data: this._closedView(seatIndex) };
+    }
     // #238 최신 3항(2026-09-28 CJ) — 공개 대기방의 참가자 나가기는 그 좌석만 비운다(방장 나가기 = 방 파괴는 그대로).
     if (seatIndex === 1 && this.startGate && this.isPublic && (this.state === STATES.WAITING || this.state === STATES.FINISHED)) return this._vacateGuest();
     if (this.state === STATES.OPEN || this.state === STATES.WAITING || this.state === STATES.SETUP) {
@@ -497,27 +504,78 @@ class Room {
     this.seats[1] = Object.assign(this._newSeat(), { nickname: old.nickname, rep: old.rep });
     for (const k of [...this.dedup.keys()]) if (k.startsWith('1:')) this.dedup.delete(k);
     const reopen = this.state === STATES.WAITING || this.seats[0].returned;
-    if (reopen) this._reopenEmpty();
-    return {
-      ok: true, type: 'room_state', noop: !reopen,
-      data: { seat: 1, state: STATES.CLOSED, phase: 'closed', revision: this.revision, round: this.round, current: null, seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null },
-    };
+    if (!this.seats[0].credential) this.close(); // #295 방장 역할을 이은 참가자까지 떠났다 — 빈 방을 남기지 않는다
+    else if (reopen) this._reopenEmpty();
+    return { ok: true, type: 'room_state', noop: !reopen, data: this._closedView(1) };
   }
 
-  _reopenEmpty() { this.seats[1] = this._newSeat(); this._resetForRematch(STATES.OPEN); }
+  // 좌석을 떠난 소켓에 보내는 닫힘 뷰(나가기·내보내기 응답)
+  _closedView(seat) {
+    return { seat, state: STATES.CLOSED, phase: 'closed', revision: this.revision, round: this.round, current: null, seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null };
+  }
+
+  // #295 좌석0 주인이 바뀌었을 수 있다(승격) — 방 목록의 IP별 OPEN 상한도 지금 방장 몫이다.
+  _reopenEmpty() {
+    const ip = this.seats[0].ws && this.seats[0].ws.ddIp;
+    if (ip) this.creatorIp = ip;
+    this.seats[1] = this._newSeat(); this._resetForRematch(STATES.OPEN);
+  }
+
+  /* #295 (2026-09-30 CJ QA REVISE) 공개 대기방 — 방 OPEN·WAITING, 또는 결과(FINISHED) 화면·복귀 경로. 30초 내보내기 대기는 폐지됐다. */
+  _publicLobby() {
+    return this.startGate && this.isPublic && (this.state === STATES.OPEN || this.state === STATES.WAITING || this.state === STATES.FINISHED);
+  }
+
+  // 서버가 단절을 확정한 대기방 참가자 — 내보내지 않으면 60초 유예 만료에 좌석만 비운다(방 OPEN 유지 · 지난 결과·기록 그대로).
+  _guestAway() {
+    const g = this.seats[1];
+    return this._publicLobby() && !!g.credential && !g.connected && g.disconnectExpiry != null;
+  }
+
+  // 방장 전용 — 앉아 있는 참가자(연결·단절 무관, 결과 화면 포함)를 즉시 비운다. 결과·기록을 만들지 않는다(나가기와 같은 _vacateGuest · 옛 토큰 무효).
+  // 빈 좌석은 E_NO_GUEST(무변경). kicked 는 server.js 가 내보낸 참가자 소켓에 보내는 닫힘 뷰다.
+  _handleKick(seatIndex) {
+    if (seatIndex !== this.owner) return err('E_NOT_OWNER');
+    if (!this._publicLobby()) return err('E_ILLEGAL_ACTION');
+    if (!this.seats[1 - this.owner].credential) return err('E_NO_GUEST'); // 결과 화면에서 방장을 이은 참가자(owner 1)는 상대 좌석이 비어 있다
+    const kicked = this._vacateGuest().data;
+    return { ok: true, type: 'room_state', data: this.toSeatView(0), kicked };
+  }
+
+  /* 공개 대기방·결과 화면에서 방장 전송이 끊겼다 — 유예 없이 방장 좌석을 무효화한다(옛 토큰·소켓은 재개·명령 불가).
+     살아 있는 참가자가 있으면 그 좌석 객체(토큰·소켓·계정·seq)를 그대로 좌석0으로 올려 빈 대기방을 연다.
+     참가자가 아직 결과를 보고 있으면 좌석별 엔진·결과·fx 가 좌석 번호에 묶여 있으므로 좌석은 1 그대로 두고 방장 역할(owner)만
+     즉시 넘긴다 — 좌석0 이동은 그가 대기방으로 복귀할 때다. 살아 있는 참가자가 없으면(방장을 이은 참가자의 단절 포함) 방을 즉시 닫는다.
+     명시적 나가기(left)는 종전 경로 그대로다. */
+  _dropHost() {
+    const h = this.owner, old = this.seats[h], g = this.seats[1 - h];
+    old.credential.revokeAll();
+    this._clearDisconnectTimer(h);
+    this._cancelCountdown();
+    if (!g.credential || !g.connected) { this.close(); return; }
+    if (this.state === STATES.FINISHED && !g.returned) {
+      this.seats[0] = Object.assign(this._newSeat(), { nickname: old.nickname, rep: old.rep }); // 결과 화면의 상대 이름·대표는 남긴다
+      this.owner = 1;
+      this.revision += 1;
+      return;
+    }
+    this.seats[0] = g;
+    this._reopenEmpty();
+  }
 
   socketClosed(seatIndex) {
     const seat = this.seats[seatIndex];
     if (!seat.credential) return;
     seat.connected = false;
     seat.ws = null;
+    if (seatIndex === this.owner && !seat.left && this._publicLobby()) { this._dropHost(); return; } // #295 방장 단절 — 유예 없음
     if (this.state === STATES.WAITING) { // #238 단절은 카운트다운을 취소하고, 참가자 단절은 준비도 해제한다
       const was = !!this._countdown || (seatIndex === 1 && seat.lobbyReady);
       this._cancelCountdown();
       if (seatIndex === 1) seat.lobbyReady = false;
       if (was) this.revision += 1;
     }
-    if (this._graceLive() || this._returnLive()) {
+    if (this._graceLive() || this._returnLive() || (seatIndex === 1 && this._publicLobby())) { // #295 결과 화면 참가자 단절도 60초 뒤 좌석만 비운다
       this._clearDisconnectTimer(seatIndex);
       seat.disconnectExpiry = now() + this.graceMs;
       this._armGrace(seatIndex);
@@ -588,8 +646,11 @@ class Room {
     seat.disconnectTimer = null;
     if (seat.connected) return;
     const ret = this._returnLive();
-    if (this.state !== STATES.OPEN && this.state !== STATES.WAITING && this.state !== STATES.SETUP && !ret) return;
+    const away = seatIndex === 1 && this._guestAway();
+    if (this.state !== STATES.OPEN && this.state !== STATES.WAITING && this.state !== STATES.SETUP && !ret && !away) return;
     if (this._rearmIfEarly(seatIndex)) return;
+    // #295 공개 대기방·결과 화면 참가자 60초 — 방을 취소·닫지 않고 좌석만 비운다(방 OPEN 유지 · 지난 결과·기록 그대로).
+    if (away) { this._vacateGuest(); if (this.onUpdate) this.onUpdate(); return; }
     if (ret) this.close(); // 결과는 이미 확정 — 재대전만 불가(닫힘 알림 → 방 목록)
     else this._finalize(STATES.CANCELED, null);
   }
@@ -692,6 +753,7 @@ class Room {
     if (msg.t === 'lobby_unready') return this._handleLobbyReady(seatIndex, false);
     if (msg.t === 'lobby_start') return this._handleLobbyStart(seatIndex);
     if (msg.t === 'lobby_return') return this._handleReturn(seatIndex);
+    if (msg.t === 'lobby_kick') return this._handleKick(seatIndex);
     if (msg.t === 'resync') return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
     return err('E_BAD_ENVELOPE');
   }
@@ -827,12 +889,15 @@ class Room {
     this._closeAt = null; // 복귀한 좌석이 있는 방은 5분 정리 대상이 아니다(lobby.sweep)
     const peer = this.seats[1 - seatIndex];
     if (peer.returned) this._resetForRematch();
-    else if (!peer.credential) this._reopenEmpty(); // 참가자가 이미 나갔다 — 빈 대기방(새 참가자를 받는다)
+    else if (!peer.credential) { // 상대 좌석이 이미 비었다 — 빈 대기방(새 참가자를 받는다)
+      if (seatIndex === 1) { this.seats[0] = seat; this.owner = 0; } // #295 방장이 결과 중 끊겼다 — 방장 역할을 이은 참가자가 좌석0으로
+      this._reopenEmpty();
+    }
     else {
       this.revision += 1;
       if (!peer.connected && peer.disconnectExpiry == null) { peer.disconnectExpiry = now() + this.graceMs; this._armGrace(1 - seatIndex); } // 결과 중 이미 끊긴 상대 — 60초 유예
     }
-    return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
+    return { ok: true, type: 'room_state', data: this.toSeatView(this.seats.indexOf(seat)) }; // 승격됐으면 새 좌석 번호의 뷰
   }
 
   /* 경기별 상태만 비운다. 방 번호·이름·좌석·좌석 토큰·계정 바인딩은 그대로다. revision·seq·중복 제거 표는 이어 간다 —
@@ -1588,14 +1653,15 @@ class Room {
   }
 
   toSeatView(seatIndex) {
-    return Object.assign(this._seatView(seatIndex), { round: this.round }); // #238 경기 번호 — 바뀌면 클라이언트가 경기별 상태를 비운다
+    // #238 경기 번호 — 바뀌면 클라이언트가 경기별 상태를 비운다 · #295 owner — 지금 방장 좌석(결과 화면 방장 승계 때만 1)
+    return Object.assign(this._seatView(seatIndex), { round: this.round, owner: this.owner });
   }
 
   _seatView(seatIndex) {
     const seat = this.seats[seatIndex];
     /* #238 대기방 — 방 전체가 WAITING 이거나, 결과에서 먼저 복귀해 상대를 기다리는 좌석. 지난 경기의 fx·결과·보드는 싣지 않는다. */
     if (this.state === STATES.WAITING || (this.state === STATES.FINISHED && seat.returned)) {
-      const c = this._countdown;
+      const c = this._countdown, p = this.seats[1 - seatIndex];
       return {
         seat: seatIndex, state: STATES.WAITING, phase: 'waiting', revision: this.revision, current: null,
         seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null, economy: this.economy,
@@ -1603,6 +1669,9 @@ class Room {
           guestReady: this.state === STATES.WAITING && this.seats[1].lobbyReady,
           countdownMs: c ? Math.max(0, c.deadline - now()) : null,
           peerInResult: this.state === STATES.FINISHED,
+          kickInMs: seatIndex === this.owner ? 0 : null, canKick: seatIndex === this.owner, // #295 방장은 연결·단절 무관 즉시 내보내기(kickInMs 는 옛 클라이언트 호환 0)
+          // #295 REVISE #3 — 끊긴 참가자의 남은 재접속 유예(서버 만료 시각에서만 잰다). 방장 단절·빈 좌석은 유예가 없어 null
+          peerGraceMs: 1 - seatIndex !== this.owner && p.credential && !p.connected && p.disconnectExpiry != null ? Math.max(0, p.disconnectExpiry - now()) : null,
         },
       };
     }

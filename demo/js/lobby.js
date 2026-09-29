@@ -16,9 +16,10 @@ const LOBBY_TIMEOUT_MS=8000, LOBBY_HISTORY_MAX=20, LOBBY_REP_DEFAULT="M-F1";
 const LOBBY_ASSETS=["assets/ui/icons.svg","assets/ui/panel.svg"]; // #253 Earth 공용 UI — 실패하면 이모지·CSS 테두리로 그린다
 const LOBBY_ICON={help:0,detail:1,history:2,back:3,close:4,resign:5,timer:6,refresh:7,currency:8,lock:9,done:10,loading:11}; // icons.svg 24px 칸 순서
 /* assets: null(아직) | [{url,state:"loading"|"ok"|"fail"}] · prof: idle|loading|ok|off|err · profile: 서버 값만 */
-const LOBBY={gen:0,assets:null,prof:"idle",profile:null,err:null,repBusy:false,notice:"",toast:null,focused:false,hist:false,create:false, // #238 hist·create: 전적 기록 창·방 만들기 창(표시 전용)
+const LOBBY={gen:0,assets:null,prof:"idle",profile:null,err:null,rec:/** @type {null|"load"|"save"|"err"} */(null),recGen:0, // #295 rec: 전적 다시 받기 상태(null = 서버 확정값)
+repBusy:false,notice:"",toast:null,focused:false,hist:false,create:false, // #238 hist·create: 전적 기록 창·방 만들기 창(표시 전용)
 
-  req:/** @type {{rev:number,t:number}|null} */(null),cdT:/** @type {any} */(null), // #238 L03 누른 준비·시작의 잠금(서버 뷰가 바뀔 때까지) · 카운트다운 표시 타이머
+  req:/** @type {{rev:number,t:number}|null} */(null),cdT:/** @type {any} */(null),graceT:/** @type {any} */(null), // #238 L03 누른 준비·시작의 잠금(서버 뷰가 바뀔 때까지) · 카운트다운 표시 타이머 · #295 재연결 유예 표시 타이머
   view:"home",next:null,q:"",name:"",nameErr:"",poll:null,rtt:{n:0,t0:0,ms:null,st:"wait",pending:false}}; // #261 view: home(L01)|rooms(L02) · next: 로비에 들어올 때 열 view(방 나가기 → L02)
 
 function lobbyReady(){ return LOBBY.gen===0||!!LOBBY.assets&&LOBBY.assets.every(a=>a.state!=="loading")&&(LOBBY.prof==="ok"||LOBBY.prof==="off"); }
@@ -86,19 +87,37 @@ function lobbyLoadAssets(g){
   }
 }
 function lobbyLoadProfile(g){
-  LOBBY.prof="loading"; LOBBY.profile=null;
-  const ag=AUTH.gen;
+  LOBBY.prof="loading"; LOBBY.profile=null; LOBBY.rec=null;
+  const ag=AUTH.gen, rg=++LOBBY.recGen; // #295 방 대기에서 시작한 다시 받기·재시도는 여기서 끊는다
   lobbyFetch(LOBBY_API.profile).then(r=>{
     if(g!==LOBBY.gen||ag!==AUTH.gen) return; // 다른 로딩·다른 신원의 늦은 응답은 버린다
     if(r.status===401&&r.body.error==="E_NO_SESSION"){ LOBBY.prof="idle"; acctEndSession(ACCT_SESSION_ENDED); return; }
     const p=r.status===200?lobbyParseProfile(r.body):null;
-    if(p){ LOBBY.profile=p; LOBBY.prof="ok"; }
+    if(p){ LOBBY.profile=p; LOBBY.prof="ok"; if(p.pending){ LOBBY.rec="save"; lobbyRecLater(rg,ag); } }
     else { LOBBY.prof="err"; LOBBY.err=r.timeout?"계정 정보 응답이 늦어 중단했습니다.":r.status===0?"서버에 연결할 수 없습니다. 네트워크를 확인해 주세요.":"계정 정보를 불러오지 못했습니다."; }
     lobbyRerender();
   });
 }
 function lobbyRerender(){ try{ if(uiScreenName()!=="lobby") return; render(); if(lobbyReady()&&!LOBBY.focused){ LOBBY.focused=true; lobbyFocus(); } }catch(e){} } // 로딩이 끝난 순간 한 번만
 function lobbyRetry(){ lobbyLoad(); }
+/* #295 내 공식 전적 다시 받기 — 방 대기(L03)에 들어오는 순간(참가·결과 복귀·재개) 한 번. 하트비트·room_state 마다 부르지 않는다(netApplyRoomState).
+   결과 저장 대기(pendingMatches>0)·실패면 '저장 중'·'확인 불가'로 두고 옛 승·패를 확정처럼 보이지 않으며, 로비·방 대기에 있는 동안 다시 묻는다.
+   늦은 응답은 recGen(새 요청·로비 다시 불러오기)·AUTH.gen(계정 전환)으로 버린다. 세션 만료 처리는 로비 로딩·소켓 경로가 맡는다. */
+const LOBBY_REC_RETRY_MS=3000;
+function lobbyRecRefresh(){
+  if(AUTH.state!=="in") return;
+  const rg=++LOBBY.recGen, ag=AUTH.gen; if(!LOBBY.rec) LOBBY.rec="load"; // 재시도 중에는 '저장 중'을 깜빡이지 않는다
+  lobbyFetch(LOBBY_API.profile).then(r=>{
+    if(rg!==LOBBY.recGen||ag!==AUTH.gen) return;
+    const p=r.status===200?lobbyParseProfile(r.body):null;
+    if(p) LOBBY.profile=p;
+    LOBBY.rec=!p?"err":p.pending?"save":null;
+    if(LOBBY.rec&&r.status!==401) lobbyRecLater(rg,ag);
+    if(lobbyRecOn()) render();
+  });
+}
+function lobbyRecOn(){ const sc=uiScreenName(); return sc==="lobby"||sc==="room"; }
+function lobbyRecLater(rg,ag){ setTimeout(()=>{ if(rg===LOBBY.recGen&&ag===AUTH.gen&&lobbyRecOn()) lobbyRecRefresh(); },LOBBY_REC_RETRY_MS); }
 
 /* ===== 화면 ===== */
 function lobbyIcon(key,emoji){ return `<span class="uiIco" style="--i:${LOBBY_ICON[key]}" aria-hidden="true">${emoji}</span>`; }
@@ -132,7 +151,7 @@ function lobbyLoadingHtml(){
 }
 function lobbyStatsHtml(p){
   if(!p) return `<small>계정 서버에 로그인하면 닉네임·전적·대표 하수인이 표시됩니다.</small>`;
-  const rec=p.wins===null||p.losses===null?"전적 확인 불가":`${p.wins}승 ${p.losses}패`;
+  const rec=LOBBY.rec==="load"?"전적 확인 중…":LOBBY.rec==="save"?"결과 저장 중…":LOBBY.rec==="err"||p.wins===null||p.losses===null?"전적 확인 불가":`${p.wins}승 ${p.losses}패`;
   return `<span class="badge rec" aria-label="공식 전적 ${rec}">${gi("trophy")} ${rec}</span>`;
 }
 function lobbyHistHtml(p){
@@ -294,8 +313,11 @@ function lobbyRoomRows(){
     .sort((a,b)=>(+(a.st!=="OPEN"))-(+(b.st!=="OPEN"))||age(a)-age(b)||b.id-a.id); // 참가 대기 먼저, 같은 상태는 최근 방 먼저
 }
 /* #238 (SYS 방 검색): 핑은 이 브라우저↔게임 서버 한 값이다(방마다 다르지 않다) — 행마다 같은 4칸 막대로, ms 값은 접근성 이름에 */
-function lobbyPingBars(){ const r=LOBBY.rtt, n=r.st!=="ok"?0:r.ms<80?4:r.ms<150?3:r.ms<250?2:1;
-  return `<span class="pingBars" role="img" aria-label="${lobbyPingText()}">${[1,2,3,4].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</span>`; }
+function lobbyPingBars(){ const r=LOBBY.rtt; return lobbyBarsN(r.st!=="ok"?0:lobbyBarsOf(r.ms),lobbyPingText(),false); }
+function lobbyBarsOf(ms){ return ms<80?4:ms<150?3:ms<250?2:1; }
+function lobbyBarsN(n,label,off){ return `<span class="pingBars${off?" off":""}" role="img" aria-label="${label}">${[1,2,3,4].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</span>`; }
+/* #295 방 대기 좌석용 — 숫자(ms) + 막대. off = 빗금 막대 + '재연결 중' */
+function lobbyBarsHtml(ms,label,off){ return `<b aria-hidden="true">${off?"재연결 중":ms===null?"—":ms+"ms"}</b>${lobbyBarsN(off||ms===null?0:lobbyBarsOf(ms),label,off)}`; }
 function lobbyRoomListHtml(){
   const pend=NET.lobbyPending, rows=lobbyRoomRows();
   const empty=NET.roomsLoading?"목록을 불러오는 중…":!NET.roomsLoaded?"[새로 고침]을 누르면 방 목록을 불러옵니다."
@@ -352,33 +374,53 @@ const LOBBY_REQ_MS=3000;
 function lobbyWaitReq(){ const r=LOBBY.req; return !!r&&r.rev===NET.revision&&Date.now()-r.t<LOBBY_REQ_MS; }
 function lobbyWaitSend(fn){ if(lobbyWaitReq()) return; LOBBY.req={rev:NET.revision,t:Date.now()}; fn(); render(); setTimeout(()=>{ if(uiScreenName()==="room") render(); },LOBBY_REQ_MS); }
 function lobbyWaitHtml(){
-  const me=NET.me===1?1:0, p=LOBBY.profile, L=NET.roomState==="WAITING"?NET.lobby:null, host=NET.me!==1;
-  const cd=netLobbyCountdownLeft(), peerOff=NET.peerConnected===false||(L&&L.peerInResult);
-  const seat=i=>{ const n=NET.players&&NET.players[i], rep=NET.reps&&NET.reps[i];
-    const face=lobbyRepOk(rep)?lobbyRepHtml(rep,"lg"):`<span class="repFace lg" aria-hidden="true">${i===me?"?":"…"}</span>`;
-    const st=!L||!n?"":i!==me&&L.peerInResult?"결과 확인 중":i===1?(L.guestReady?"준비 완료":"준비 전"):""; // 준비는 참가자(좌석 1)만
-    return `<li class="waitSeat${n||i===me?"":" empty"}${i===me?" me":""}${i===1&&L&&L.guestReady?" ready":""}">${face}<span class="who">${i===0?`${gi("crown")} `:""}<b>${n?escAttr(n):i===me?"나":"입장 대기"}</b>${n&&i===me?" <small>(나)</small>":""}
-      ${st?`<span class="badge waitTag">${st}</span>`:""}${i===me&&p?lobbyStatsHtml(p):""}</span></li>`; };
+  const me=NET.me===1?1:0, p=LOBBY.profile, L=NET.roomState==="WAITING"?NET.lobby:null, host=NET.me===NET.owner;
+  const cd=netLobbyCountdownLeft(), lost=NET.peerConnected===false, peerOff=lost||(L&&L.peerInResult);
+  /* #295 CJ 2026-09-30 REVISE: 상대 좌석이 찼는지는 서버 대기방 뷰(L — WAITING·결과 복귀)로만 판단한다. 닉네임·대표(players·reps)는
+     게스트·프로필 장애면 null 이라 빈 자리의 근거가 아니다 — 찼는데 이름을 모르면 중립 '상대'/'방장'(👑) + '?' 얼굴(지어내지 않는다) */
+  const seat=i=>{ const occ=i===me||!!L, n=occ&&NET.players&&NET.players[i], rep=occ&&NET.reps&&NET.reps[i], off=i!==me&&occ&&lost;
+    const face=lobbyRepOk(rep)?lobbyRepHtml(rep,"lg"):`<span class="repFace lg" aria-hidden="true">${occ?"?":"…"}</span>`;
+    const st=!L?"":i!==me&&lost?"연결 끊김":i!==me&&L.peerInResult?"결과 확인 중":i===1?(L.guestReady?"준비 완료":"준비 전"):""; // 준비는 참가자(좌석 1)만
+    let ping=occ?lobbySeatPingSpan(i===me):"";
+    const gl=off&&i!==NET.owner?netLobbyGraceLeft():null; // #295 CJ REVISE 3: 끊긴 참가자 카드 오른쪽 위 = 서버 자리 비움까지 남은 초(표시 전용) · 그 아래 빗금 핑
+    if(gl!==null){ ping=`<span class="seatSide"><span id="peerGrace" class="graceTimer" role="timer" title="시간 안에 돌아오지 않으면 서버가 자리를 비웁니다">${gi("timer")}<span class="srOnly">재연결 대기 남은 시간 </span><b id="peerGraceN">${Math.ceil(gl/1000)}</b>초</span>${ping}</span>`; lobbyGraceTick(); }
+    return `<li class="waitSeat${occ?"":" empty"}${i===me?" me":""}${off?" off":""}${i===1&&L&&L.guestReady?" ready":""}">${face}<span class="who">${i===NET.owner?`${gi("crown")} `:""}<b>${n?escAttr(n):i===me?"나":!occ?"입장 대기":i===NET.owner?"방장":"상대"}</b>${n&&i===me?" <small>(나)</small>":""}
+      ${st?`<span class="badge waitTag">${st}</span>`:""}${i===me&&p?lobbyStatsHtml(p):""}</span>${ping}</li>`; };
   const busy=lobbyWaitReq();
   const state=!L?`${gi("timer")} 상대를 기다리는 중…`:cd!==null?`${gi("timer")} <span id="lobbyCd">${Math.ceil(cd/1000)}</span>초 뒤 시작`
-    :L.peerInResult?"상대가 결과를 확인하는 중입니다":NET.peerConnected===false?"상대 연결을 기다리는 중…":!L.guestReady?(host?"참가자의 준비를 기다리는 중…":"준비를 누르면 방장이 시작할 수 있습니다"):(host?"참가자가 준비했습니다 — 시작을 누르세요":"방장의 시작을 기다리는 중…");
-  const act=!L?"":host?`<button type="button" class="primary" ${!L.guestReady||cd!==null||peerOff||busy?"disabled":""} onclick="lobbyWaitSend(netLobbyStart)">${cd!==null?"시작하는 중…":"시작"}</button>`
-    :`<button type="button" class="${L.guestReady?"":"primary"}" aria-pressed="${L.guestReady}" ${(!L.guestReady&&peerOff)||busy?"disabled":""} onclick="lobbyWaitSend(()=>netLobbyReady(${!L.guestReady}))">${L.guestReady?"준비 취소":"준비"}</button>`;
+    :lost?(host?"상대 연결이 끊겼습니다 — 돌아오기를 기다리는 중…<small class=\"srOnly\"> 1분 안에 돌아오지 않으면 자리가 자동으로 비워집니다.</small>":"방장 연결이 끊겼습니다 — 돌아오기를 기다리는 중…")
+    :L.peerInResult?"상대가 결과를 확인하는 중입니다":!L.guestReady?(host?"참가자의 준비를 기다리는 중…":"준비를 누르면 방장이 시작할 수 있습니다"):(host?"참가자가 준비했습니다 — 시작을 누르세요":"방장의 시작을 기다리는 중…");
+  /* #295 CJ 2026-09-30 배치: 윗줄 = [시작](방장)·[준비](참가자) 한 줄 전체 · 아랫줄 = 방장 [내보내기](항상 활성 · 빈 자리면 서버 E_NO_GUEST 안내) 왼쪽 + [방 나가기] 오른쪽 · 참가자는 [방 나가기] 한 줄 전체(CSS) */
+  const act=host?`<button type="button" class="primary waitMain" ${!L||!L.guestReady||cd!==null||peerOff||busy?"disabled":""} onclick="lobbyWaitSend(netLobbyStart)">${cd!==null?"시작하는 중…":"시작"}</button>`
+    :`<button type="button" class="waitMain${L&&L.guestReady?"":" primary"}" aria-pressed="${!!L&&L.guestReady}" ${!L||(!L.guestReady&&peerOff)||busy?"disabled":""} onclick="lobbyWaitSend(()=>netLobbyReady(${!(L&&L.guestReady)}))">${L&&L.guestReady?"준비 취소":"준비"}</button>`;
   if(cd!==null) lobbyCdTick();
   return `<section class="waitScreen" aria-labelledby="netRoomTitle">
     <h2 id="netRoomTitle" tabindex="-1">${escAttr(NET.roomName||("방 "+NET.roomId))} <small>#${escAttr(String(NET.roomId))}</small></h2>
     <ul class="waitSeats" aria-label="참가자">${seat(1-me)}<li class="waitVs" aria-hidden="true">VS</li>${seat(me)}</ul>
     <p class="waitState" role="status" aria-live="polite">${state}${L?"":`<span class="srOnly"> 상대가 들어오면 참가자가 준비하고 방장이 시작합니다.</span>`}</p>
     <div class="chatLock" role="note">${gi("lock")} 채팅 — 추후 공개</div>
-    <div class="row netRoomActions">${act}
-      <button type="button" class="danger" onclick="netLeaveRoom()">${gi("exit")} 방 나가기</button></div>
+    <div class="row netRoomActions">${act}${host?`<button type="button" class="danger" onclick="netLobbyKick()">내보내기</button>`:""}
+      <button type="button" class="danger waitLeave" onclick="netLeaveRoom()">${gi("exit")} 방 나가기</button></div>
   </section>`;
 }
-/* 카운트다운 표시만 1초마다 고친다(버튼·포커스는 건드리지 않는다). 서버가 SETUP·취소를 푸시하면 화면이 바뀌어 스스로 멈춘다 */
+/* 카운트다운 표시만 1초마다 고친다(버튼·포커스는 건드리지 않는다). 서버가 SETUP·취소를 푸시하면 화면이 바뀌어 스스로 멈춘다. */
 function lobbyCdTick(){ if(LOBBY.cdT) return;
   LOBBY.cdT=setTimeout(()=>{ LOBBY.cdT=null; const left=netLobbyCountdownLeft(), el=$("lobbyCd");
     if(left===null||!el||uiScreenName()!=="room") return; el.textContent=String(Math.ceil(left/1000)); lobbyCdTick(); },250); }
-
+/* #295 재연결 유예 숫자만 고친다 — role=timer(읽어 주지 않음) · 0에서 멈추고 자리 비움은 서버 OPEN 뷰가 다시 그린다 */
+function lobbyGraceTick(){ if(LOBBY.graceT) return;
+  LOBBY.graceT=setTimeout(()=>{ LOBBY.graceT=null; const left=netLobbyGraceLeft(), el=$("peerGraceN");
+    if(left===null||!el) return; el.textContent=String(Math.ceil(left/1000)); if(left>0) lobbyGraceTick(); },250); }
+/* #295 좌석 카드 오른쪽 지연 = 서버가 잰 왕복(ms) + 막대. 내 칸 = 나↔서버(selfPingMs) · 상대 칸 = 상대↔서버(peerPingMs) — 나↔상대 직접 핑이 아니며,
+   높아도 '연결 끊김'으로 보이지 않는다(끊김은 서버 peerConnected 만 · 끊기면 상대 칸은 '재연결 중' + 빗금 막대) */
+const LOBBY_SELF_PING_TIP="서버가 잰 내 브라우저와 게임 서버 사이의 왕복 시간입니다.";
+const LOBBY_PEER_PING_TIP="서버가 잰 상대와 게임 서버 사이의 왕복 시간입니다. 나와 상대 사이의 직접 핑이 아닙니다.";
+function lobbySelfPingHtml(){ const v=NET.selfPing; return lobbyBarsHtml(v,`내↔서버 왕복 ${v===null?"측정 전":v+"ms"}`,false); }
+function lobbyPeerPingHtml(){ const v=NET.peerPing;
+  return NET.peerConnected===false?lobbyBarsHtml(null,"상대 재연결 중",true):lobbyBarsHtml(v,`상대↔서버 왕복 ${v===null?"측정 전":v+"ms"}`,false); }
+/* 방 대기(L03)·결과(#295 CJ 결과 화면 확장) 좌석 카드 공용 — 실시간 프레임은 이 두 id 칸만 고친다 */
+function lobbySeatPingSpan(mine){ return mine?`<span id="selfPing" class="seatPing" title="${LOBBY_SELF_PING_TIP}">${lobbySelfPingHtml()}</span>`:`<span id="peerPing" class="seatPing" title="${LOBBY_PEER_PING_TIP}">${lobbyPeerPingHtml()}</span>`; }
+function lobbySeatPingPaint(){ const a=$("selfPing"), b=$("peerPing"); if(a) a.innerHTML=lobbySelfPingHtml(); if(b) b.innerHTML=lobbyPeerPingHtml(); }
 /* 방 안: 서버가 좌석 입장 때 고정해 보낸 상대 대표 하수인(NET.reps) — 모르면 아무것도 그리지 않는다 */
 function lobbySeatRepHtml(seat){
   const id=NET.reps&&NET.reps[seat], rd=id?ROSTER.find(r=>r.id===id):null; if(!rd) return "";

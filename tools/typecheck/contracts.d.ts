@@ -214,7 +214,7 @@ type NetCmdCred = { v: 1; requestId: string; seatToken: string; tokenGen: number
 type NetCommandFrame =
   | { v: 1; t: "list_rooms" }                                                   // 유일하게 credential 없이 나가는 명령
   | { v: 1; t: "rtt"; n: number }                                              // #261 로비 소켓 전용 실측 핑(양의 정수 n) — credential 없음, 게임 상태 무관
-  | (NetCmdCred & { t: "ready" | "unready" | "resign" | "leave" | "resync" | "lobby_ready" | "lobby_unready" | "lobby_start" | "lobby_return" }) // #238 대기방
+  | (NetCmdCred & { t: "ready" | "unready" | "resign" | "leave" | "resync" | "lobby_ready" | "lobby_unready" | "lobby_start" | "lobby_kick" | "lobby_return" }) // #238 대기방 · #295 lobby_kick
   | (NetCmdCred & { t: "action"; baseRevision: number; action: NetWireAction })
   | (NetCmdCred & { t: "setup"; roster: string[]; pos: number[][] })
   | (NetCmdCred & { t: "emote"; id: EmoteId });                                // #262 게임 상태 밖 전용 명령 — 응답도 전용(emote/emote_result)

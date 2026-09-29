@@ -115,7 +115,7 @@ function playToFinish(room) {
   ok(room.state === STATES.FINISHED && room.toSeatView(0).result && !room.seats[1].credential && !room._returnLive(), '복귀 참가자 나가기 — 방장 결과·방 유지');
   cmd(room, 0, 'lobby_return');
   ok(room.state === STATES.OPEN, '방장 복귀 → 빈 대기방');
-  // 7b') 방장이 먼저 복귀해 기다리는 중 참가자가 결과에서 나가면 즉시 빈 방 · 방장이 대기방에서 나가면 참가자가 결과 중이어도 파괴
+  // 7b') 방장이 먼저 복귀해 기다리는 중 참가자가 결과에서 나가면 즉시 빈 방 · 방장이 대기방에서 나가면 방장 단절과 같다(#295 REVISE #3 — 종전 파괴 대체)
   room.joinGuestSeat(fakeWs()); cmd(room, 1, 'lobby_ready'); cmd(room, 0, 'lobby_start');
   await wait(CD + 30); playToFinish(room);
   cmd(room, 0, 'lobby_return');
@@ -123,9 +123,11 @@ function playToFinish(room) {
   room.joinGuestSeat(fakeWs()); cmd(room, 1, 'lobby_ready'); cmd(room, 0, 'lobby_start');
   await wait(CD + 30); playToFinish(room);
   cmd(room, 0, 'lobby_return'); cmd(room, 0, 'leave');
-  ok(room.state === STATES.CLOSED, '대기방 방장 나가기 — 참가자가 결과 중이어도 방 파괴');
+  ok(room.state === STATES.FINISHED && room.owner === 1 && room.seats[1].credential && !room.seats[0].credential, '대기방 방장 나가기 — 결과 중 참가자가 방장 승계(owner 1)');
+  cmd(room, 1, 'lobby_return');
+  ok(room.state === STATES.OPEN && room.owner === 0 && room.seats[0].credential, '승계 방장 복귀 → 좌석0 빈 대기방');
 
-  // 7b) 복귀한 좌석은 5분 정리로 조용히 닫히지 않는다 — 결과 중인 상대가 끊기면 60초 유예 뒤 닫는다
+  // 7b) 복귀한 좌석은 5분 정리로 조용히 닫히지 않는다 — 결과 중인 상대가 끊기면 60초 유예 뒤 그 좌석만 비운다(#295 — 종전 닫힘 대체)
   const lob = new Lobby({ epoch: 'aaaaaaaa' });
   const lr = lob.createRoom('1.1.1.1', { isPublic: true }).room;
   lr.graceMs = 30; lr.countdownMs = CD;
@@ -140,9 +142,9 @@ function playToFinish(room) {
   ok(!lr._closeAt && lob.getRoom(lr.roomId), '복귀 좌석이 있으면 정리 예약 해제');
   lr.socketClosed(1);
   await wait(60);
-  ok(lr.state === STATES.CLOSED, '결과 중 상대 단절 유예 만료 → 닫힘');
+  ok(lr.state === STATES.OPEN && !lr.seats[1].credential, '결과 중 상대 단절 유예 만료 → 좌석 비움·빈 대기방(OPEN)');
   lob.sweep();
-  ok(!lob.getRoom(lr.roomId), '닫힌 방 목록 제거');
+  ok(lob.getRoom(lr.roomId) && lr.isListable(), '빈 대기방은 목록에 남는다');
 
   // 8) 나가기는 대기방 취소 · 방장 혼자 시작 불가 · 경제 방은 5초 뒤 시작 상점 90초가 그때부터
   const solo = new Room(2, { isPublic: true, epoch: 'aaaaaaaa', startGate: true, countdownMs: CD });
@@ -158,8 +160,10 @@ function playToFinish(room) {
   await wait(CD + 30);
   ok(lv.state === STATES.SETUP && lv.round === 1, '새 참가자 준비 → 방장 시작 → 5초');
   lv._finalize(STATES.CANCELED, null, { notify: false });
-  const hv = gateRoom(6); cmd(hv, 1, 'lobby_ready'); cmd(hv, 0, 'lobby_start'); cmd(hv, 0, 'leave');
-  ok(hv.state === STATES.CANCELED && !hv._countdown, '대기방 방장 나가기 → 방 파괴·카운트다운 정리');
+  const hv = gateRoom(6); const hvGuest = hv.seats[1]; cmd(hv, 1, 'lobby_ready'); cmd(hv, 0, 'lobby_start'); cmd(hv, 0, 'leave');
+  ok(hv.state === STATES.OPEN && !hv._countdown && hv.seats[0] === hvGuest && !hvGuest.lobbyReady, '대기방 방장 나가기 → 참가자 승격 OPEN·카운트다운 정리(#295 REVISE #3)');
+  const hs = gateRoom(7); hs.socketClosed(1); cmd(hs, 0, 'leave');
+  ok(hs.state === STATES.CANCELED, '연결된 참가자 없는 방장 나가기 → 방 파괴(종전)');
   const eco = gateRoom(4, { economy: true });
   ok(!eco.engines, '경제 방도 참가만으로 상점을 열지 않는다');
   cmd(eco, 1, 'lobby_ready'); cmd(eco, 0, 'lobby_start');

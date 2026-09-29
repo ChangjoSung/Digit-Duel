@@ -277,9 +277,9 @@ function pvePlay(seed){ const T=pveSetup(seed);
   N.lobby={guestReady:false,countdownMs:null,peerInResult:false,at:Date.now()};
   eq(T.ui238.uiScreenName(),"room","K7 WAITING(두 사람 대기방) = L03 화면 — 시작 상점 자동 진입 없음");
   let w=T.rooms.lobbyWaitHtml();
-  ok(/class="primary" disabled onclick="lobbyWaitSend\(netLobbyStart\)">시작<\/button>/.test(w)&&/준비 전/.test(w),"K8 방장 [시작]은 참가자 준비 전 비활성");
+  ok(/class="primary waitMain" disabled onclick="lobbyWaitSend\(netLobbyStart\)">시작<\/button>/.test(w)&&/준비 전/.test(w),"K8 방장 [시작]은 참가자 준비 전 비활성");
   N.lobby.guestReady=true; w=T.rooms.lobbyWaitHtml();
-  ok(/class="primary"  onclick="lobbyWaitSend\(netLobbyStart\)">시작/.test(w)&&/준비 완료/.test(w),"K9 참가자 준비 → [시작] 활성");
+  ok(/class="primary waitMain"  onclick="lobbyWaitSend\(netLobbyStart\)">시작/.test(w)&&/준비 완료/.test(w),"K9 참가자 준비 → [시작] 활성");
   N.lobby.peerInResult=true; w=T.rooms.lobbyWaitHtml();
   ok(/disabled onclick="lobbyWaitSend\(netLobbyStart\)"/.test(w)&&/결과 확인 중/.test(w),"K10 상대가 결과 화면이면 시작 불가 · 표시");
   N.lobby={guestReady:true,countdownMs:4200,peerInResult:false,at:Date.now()}; w=T.rooms.lobbyWaitHtml();
@@ -366,8 +366,8 @@ function pvePlay(seed){ const T=pveSetup(seed);
   const OPEN=(rev,round)=>({state:"OPEN",phase:"setup",revision:rev,round,seats:{ready:[false,false]},units:[],you:{placed:false},result:null,economy:true});
   T.netApplyRoomState(OPEN(6,0));
   let w=T.rooms.lobbyWaitHtml();
-  ok(T.ui238.uiScreenName()==="room"&&N.lobby===null&&N.roomState==="OPEN"&&/입장 대기/.test(w)&&!/test|M-W1/.test(w)&&!/netLobbyStart|netLobbyReady|초 뒤 시작/.test(w)&&/상대를 기다리는 중/.test(w)&&/netLeaveRoom\(\)/.test(w),
-    "L1 준비·카운트다운 중 참가자가 나가면 방장은 같은 방의 빈 대기방(준비·5초 해제 · 상대 이름·그림 없음)");
+  ok(T.ui238.uiScreenName()==="room"&&N.lobby===null&&N.roomState==="OPEN"&&/입장 대기/.test(w)&&!/test|M-W1/.test(w)&&/class="primary waitMain" disabled onclick="lobbyWaitSend\(netLobbyStart\)"/.test(w)&&!/netLobbyReady|초 뒤 시작/.test(w)&&/상대를 기다리는 중/.test(w)&&/netLeaveRoom\(\)/.test(w),
+    "L1 준비·카운트다운 중 참가자가 나가면 방장은 같은 방의 빈 대기방(준비·5초 해제 · 상대 이름·그림 없음 · [시작] 비활성 자리 유지)");
   N.players=["창조","new"]; N.reps=["M-F1","M-G1"]; N.peerConnected=true;
   T.netApplyRoomState({state:"WAITING",phase:"waiting",revision:7,round:0,seats:{ready:[false,false]},units:[],you:{placed:false},result:null,economy:true,lobby:{guestReady:false,countdownMs:null,peerInResult:false}});
   w=T.rooms.lobbyWaitHtml();

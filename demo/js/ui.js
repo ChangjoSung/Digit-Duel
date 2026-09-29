@@ -913,6 +913,7 @@ function renderSide(){
       :NET.publicMode&&S.metrics.winType==="forfeit"?(viewerIsOwner(S.winner)?"상대 연결 종료 · 몰수승":"연결 종료 · 몰수패")
       :S.mode==="sim"?pname(S.winner)+" 승리":"";
     /* 2026-09-28 CJ 8: 온라인 종료 뒤에는 방을 부수지 않고 같은 멀티 대기방(L03)으로 — [방으로 돌아가기](서버 lobby_return · 누르면 잠금, 서버가 받아 준 뒤에만 화면이 바뀐다).
+       #295 CJ 2026-09-30 REVISE: 결과 화면에는 [내보내기]가 없다(방장·참가자 모두 · 내보내기는 방 대기에서만).
        결과 카드 아래에는 최종 공개 말판(#left — FINISHED 뷰가 공개한 말만 · CSS 로 순서만 바꾼다). 오프라인은 종전 [로비로 돌아가기] */
     const back=uiPubFinished()?`<button class="primary big" onclick="this.disabled=true;netReturnToRoom()">방으로 돌아가기</button>`:`<button class="primary big" onclick="toLobby()">로비로 돌아가기</button>`;
     sp.innerHTML=`<h2 class="srOnly">경기 종료</h2>${why?`<p class="resultWhy">${why}</p>`:""}${resultSeatsHtml()}
@@ -1108,7 +1109,7 @@ function netLeave(){ // 온라인 상태 완전 해제 — 이 정리 없이 로
   NET.fxGen=(NET.fxGen||0)+1; NET.fxQueue=[]; NET.fxPlaying=false; NET.fxCur=null; NET.fxEpoch=null; NET.fxRoomId=null; NET.fxSeat=null;
   NET.fxBattleSnaps={}; NET.fxDisp={}; NET.stageBid=null; NET.fxLiveBid=null; NET.battleMenu=null; NET.overlaySig=null; NET._overlayOpen=false;
   try{ fxSetLockClass(false); const fb=$("fxBanner"); if(fb&&fb.classList) fb.classList.add("hidden"); }catch(e){}
-  emoteReset(false); NET.peerConnected=null; // #262 말풍선·타이머·응답 대기·간격 사본 잔존 0
+  emoteReset(false); NET.peerConnected=null; NET.peerPing=null; NET.selfPing=null; NET.owner=0; // #262 말풍선·타이머·응답 대기·간격 사본 잔존 0
   setSeed(null); // 공유 시드 해제 — 이후 오프라인 경기는 다시 Math.random
 }
 /* ===== #262 경기 중 이모티콘 — 화면 (2026-09-27 CJ 승인 · GDD-24 00.8) =====
@@ -1951,7 +1952,7 @@ function resultSeatsHtml(){
       :`<small>시너지 정보를 받지 못했습니다.</small>`;
     const pcs=d&&Array.isArray(d.pieces)?d.pieces:[], bag=d&&Array.isArray(d.bag)?d.bag:[];
     const res=S.winner===null?(NET.publicMode?"무효":"Draw"):S.winner===p?"Win!":"Lose!"; // 공개 방 무승부는 무효(양측 연결 종료)
-    return (idx?`<div class="resultVs" aria-hidden="true">VS</div>`:"")+`<section class="resultSeat${p===me?" mine":""}${S.winner===p?" win":S.winner===null?"":" lose"}"><h3>${gi("profile")}<span>${p===me&&NET.mode?"나":pname(p)}</span><b class="res">${res}</b>${S.winner===p?" 🏆":""}</h3>
+    return (idx?`<div class="resultVs" aria-hidden="true">VS</div>`:"")+`<section class="resultSeat${p===me?" mine":""}${S.winner===p?" win":S.winner===null?"":" lose"}"><h3>${gi("profile")}<span>${p===me&&NET.mode?"나":pname(p)}</span><b class="res">${res}</b>${S.winner===p?" 🏆":""}${NET.publicMode?lobbySeatPingSpan(p===me):""}</h3>
       <div class="slotGrid">${pcs.map(e=>ent(e,p,false)).join("")||`<small>말 정보 없음</small>`}</div>
       ${bag.length?`<h4>🎒 가방</h4><div class="slotGrid bag">${bag.map(e=>ent(e,p,true)).join("")}</div>`:""}
       <div class="synRow">${synLine}</div></section>`;
