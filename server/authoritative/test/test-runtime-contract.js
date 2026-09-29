@@ -224,13 +224,15 @@ function drive(T, seed, steps) {
    그래서 fx 는 두 겹으로 건다: ① fx = 새 전체 해시(엄격) ② fxLegacy = **cast 한 칸만** 걷어 낸 투영이 종전 값과 한 글자도
    다르지 않음 — 그 밖의 어떤 필드가 바뀌어도 ②가 깨진다. casts = cast 가 실린 이벤트 수이고, cast 는 skillFx 줄에만,
    모든 skillFx 줄에 A|D 로 실려야 한다. 근거: Jupiter/runtime-fx-contract.md (재기준선 전 좁은 진단 실측). */
+/* #285 (2026-09-29 CJ 승인) 재기준선: 모든 모드 시작 소지품이 회복약1·볼1(종전 회복·쿨링·해독 각1·볼2, BAL.itemStart·ballStart)로 바뀌어 state 해시만 바뀌었다.
+   DD_GOLDEN=1 두 번 실행이 같은 값이고 turns·phase·winner·battles·log·fx·fxLegacy·casts·metrics 는 종전 그대로다. */
 const GOLDEN = [
   { seed: 11, turns: 71, phase: 'play', winner: null, battles: 0, forced: 0, searches: 3,
-    state: 'f33e9ddd1d90aadc', log: 'd2b6a79974bda20c', logN: 84, fx: '9802fc2eaad2f033', fxLegacy: '9802fc2eaad2f033', casts: 0, fxN: 40, metrics: 'fff2fbfce4478d8e' },
+    state: '52095ee8e7b87696', log: 'd2b6a79974bda20c', logN: 84, fx: '9802fc2eaad2f033', fxLegacy: '9802fc2eaad2f033', casts: 0, fxN: 40, metrics: 'fff2fbfce4478d8e' },
   { seed: 44, turns: 111, phase: 'over', winner: 0, battles: 2, forced: 2, searches: 3,
-    state: '8881c250487b5081', log: 'eb3ab1f5bc3fe290', logN: 128, fx: '1b677f50ffb8c810', fxLegacy: '0b8775810364dfca', casts: 10, fxN: 40, metrics: '7e0297c8192fe704' },
+    state: '95d05a032d49bb1b', log: 'eb3ab1f5bc3fe290', logN: 128, fx: '1b677f50ffb8c810', fxLegacy: '0b8775810364dfca', casts: 10, fxN: 40, metrics: '7e0297c8192fe704' },
   { seed: 55, turns: 135, phase: 'play', winner: null, battles: 9, forced: 9, searches: 6,
-    state: 'd97076556df456db', log: '3fac178ebf3512f3', logN: 172, fx: '42f759efc5216e2f', fxLegacy: 'bd52ade6a2b27033', casts: 6, fxN: 40, metrics: '8a1facbfd255a2c4' },
+    state: 'ccb8e831783fe427', log: '3fac178ebf3512f3', logN: 172, fx: '42f759efc5216e2f', fxLegacy: 'bd52ade6a2b27033', casts: 6, fxN: 40, metrics: '8a1facbfd255a2c4' },
 ];
 const rep = (k, v) => (v instanceof Set ? [...v] : v);
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);

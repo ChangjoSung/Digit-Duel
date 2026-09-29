@@ -163,7 +163,7 @@ function commitNewGame(game){
 function newGame(mode,opts){
   opts=opts||{};
   commitNewGame(newGameState(mode,opts));
-  if(opts.eco){ S.eco=newEcoState(); S.balls=[0,0]; } // #236: 🪙10 · 소모품·볼 0 에서 시작 (2.2)
+  if(opts.eco) S.eco=newEcoState(); // #236 🪙10 · #285: 소모품·볼은 다른 모드와 같은 BAL 시작값 (종전 0/0 덮어쓰기 폐지)
   for(const p of [0,1]){
     for(let i=0;i<6;i++) S.pieces.push(mkPiece(p,"minion")); // 속성·스탯은 로스터 선택 시 주입
 
@@ -171,9 +171,9 @@ function newGame(mode,opts){
     for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"ally",null,i)); // i=0 암살자·1 방패병 (3.5)
     for(let i=0;i<2;i++) S.pieces.push(mkPiece(p,"trap"));
     S.pieces.push(mkPiece(p,"king"));
-    /* #121 계약 2.1: 시작 아이템은 회복약·쿨링수·해독제 각 1 (고정). 종전 D11 은 무작위 2개였고 shuffle 로 rand 를
+    /* #121 계약 2.1: 시작 아이템은 BAL.itemStart 고정 목록 (#285: 회복약 1). 종전 D11 은 무작위 2개였고 shuffle 로 rand 를
        소비했다 — 고정 목록이 되어 **이 지점의 난수 소비가 0** 이 된다 (공유 시드 재현은 양측 동일하므로 안전) */
-    if(!S.eco) for(const k of BAL.itemStart) S.inv[p].push(k); // #236: 로컬 경제는 소모품 0 에서 시작 (2.2)
+    for(const k of BAL.itemStart) S.inv[p].push(k); // #285: 경제 경기도 같은 시작 아이템
   }
   genEvents();
   if(S.eco) ecoOpenShop(S,"start",0); // #236 S01 경기 시작 상점 — 양측 진열 5칸 (배치 전)
