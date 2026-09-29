@@ -12,7 +12,7 @@ const BAL={
   /* #121 (v0.4.7 계약 2.1·2.3): 시작 자원 회복약·쿨링수·해독제 각 1 · 공용 볼 2 · 보유 상한 전부 해제.
      itemPerRound(1)만 남고 itemPerBattle(전투 2회)·lastItem(연속 동일 금지)은 제거됐다 — 상수는 "제한 없음"을 뜻하는
      Infinity 로 남겨 두 제한이 사라진 사실을 한 곳에서 읽게 한다. 상한 해제는 **보유** 상한만이고 생성량(보드 이벤트 6개)은 늘지 않는다 */
-  itemPerBattle:Infinity, itemPerRound:1, invMax:Infinity, ballStart:2, itemStart:["potion","cool","cure"],
+  itemPerBattle:Infinity, itemPerRound:1, invMax:Infinity, ballStart:1, itemStart:["potion"], // #285 (2026-09-29 CJ): 모든 모드 회복약 1 · 볼 1 만 (종전 회복·쿨링·해독 각 1 · 볼 2)
   burnStart:65, // 버닝 타임 진입 표시 턴 (GDD-13 4.11 개정)
   captureAtkFailPct:0.25,
   statusProb:0.7, // T5-A(D10): 스킬 상태이상 부여 확률 — 화상·약화 (지속형은 100%, 테스트는 1로 고정)
