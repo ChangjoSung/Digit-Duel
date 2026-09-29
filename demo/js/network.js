@@ -523,6 +523,7 @@ function netHandlePublicMessage(m){
       sock2.onmessage=ev=>{ if(!pubLive2()) return; let mm; try{ mm=JSON.parse(ev.data); }catch(e){ return; } netHandlePublicMessage(mm); }; }
     acctSeatSave(); // #259 재개마다 회전한 토큰으로 갱신
     showToast("🌐 재접속했습니다.");
+    artResumeRecovery(); // #292 끊긴 동안 굳은 아트 로드 실패를 한 번 더 확인한다
     NET.readySent=false; // 재개 뒤에는 서버 상태를 다시 보고 필요하면 준비 의사를 다시 보낸다
     if(m.data) netApplyRoomState(m.data,true); else render(); // #217 fx §7-4: room_resumed는 보수적 baseline(netFxIngest)
     netFlushSetupReady();

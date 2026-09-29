@@ -496,6 +496,33 @@ function proxyBattle(T,win){
   const T=pvePlay(92), S=T.S; proxyBattle(T,false);
   ok(S.phase==="over"&&S.winner===1&&S.eco.bag[0].length===0,"AC34 왕 대리 패배 → 대리 제거 · 경기 패배");
 }
+{ /* #292 가방 대리 출전·포획 말 출전의 전투 도트 — 가방 개체 자체가 싸우므로 그 종(전설이면 전설) 폴더로 그린다 */
+  const tokSrc=T=>(T.byId("overlayBox").innerHTML.match(/id="tok-A"><img class="bsprite[^"]*" src="([^"]+)"/)||[])[1]||null;
+  const proxyArt=(T,u,name)=>{ const S=T.S, king=S.pieces.find(x=>x.owner===0&&x.type==="king"), foe=T.alivePieces().find(p=>p.owner===1&&p.type==="minion");
+    S.eco.bag[0]=[u]; H.place(T,king,7,3); H.place(T,foe,7,4); S.current=0; S.battlesUsed=0; S.phase="play";
+    act(T,{t:"battleStart",attId:king.id,defId:foe.id}); act(T,{t:"battleEntryPick",side:"A",what:"bag",uid:u.uid}); act(T,{t:"battleEntryGo"});
+    const want=T.artDirOf(Object.assign({type:"minion"},u)); T.render();
+    ok(S.battle&&S.battle.fa===u&&!!want&&T.artDirOfFighter(S.battle.fa,S.battle.attP)===want,name+" 전투원 폴더 = "+want);
+    ok(tokSrc(T)===T.artUrl(want,"battle.png"),name+" 전투 토큰 <img> = 그 종 도트 ("+tokSrc(T)+")"); };
+  { const T=pvePlay(95); proxyArt(T,unit(T,T.ROSTER.find(r=>!ownKeys(T,0).includes(r.id)).id,2,2),"#292 가방 일반 말 대리"); }
+  { const T=pvePlay(96); proxyArt(T,unit(T,"L-WITCH",5,0),"#292 가방 전설 대리"); }
+  { const T=pvePlay(97), S=T.S; const me=T.alivePieces().find(p=>p.owner===0&&p.type==="minion"), foe=T.alivePieces().find(p=>p.owner===1&&p.type==="minion");
+    S.eco.bag[0]=[]; H.place(T,me,7,3); H.place(T,foe,7,4); S.current=0; S.battlesUsed=0; S.phase="play";
+    act(T,{t:"battleStart",attId:me.id,defId:foe.id}); if(S.entryPick) act(T,{t:"battleEntryGo"});
+    T.finishByCapture("A"); const u=S.eco.bag[0][0];
+    ok(u&&T.ecoKey(u)===T.ecoKey(foe),"#292 포획 말은 그 종 그대로 가방에 든다");
+    if(u) proxyArt(T,u,"#292 포획 말 대리"); }
+  { /* 전설 말판 아이콘 — 필드 칸의 전설(내 말·공개된 상대 말)은 전설 32px 아이콘. 미공개 상대 전설은 칸에 정체 값이 없다 */
+    const T=pvePlay(99), S=T.S, mine=T.alivePieces().find(p=>p.owner===0&&p.type==="minion"), foe=T.alivePieces().find(p=>p.owner===1&&p.type==="minion");
+    T.applyLegend(mine,"dragon"); T.applyLegend(foe,"reaper"); foe.revealed=false; T.render();
+    const cell=p=>T.els.board.children.find(x=>String(x.dataset.r)===String(p.r)&&String(x.dataset.c)===String(p.c)), html=p=>{ const c=cell(p); return c?c.children.map(x=>x.innerHTML).join(""):""; };
+    ok(html(mine).includes('src="'+T.artUrl("legend_dragon","icon.png")+'"'),"#292 내 전설 말판 아이콘 = legend_dragon/icon.png");
+    ok(!/legend_|reaper|사신/.test(html(foe)),"#292 미공개 상대 전설 칸에는 정체 값이 없다");
+    foe.revealed=true; T.render();
+    ok(html(foe).includes('src="'+T.artUrl("legend_reaper","icon.png")+'"'),"#292 공개된 상대 전설 말판 아이콘 = legend_reaper/icon.png"); }
+  { const piece={type:"king",owner:0,cap:null}, T=pvePlay(98); T.S.eco.bag[0]=[];
+    ok(T.artDirOfFighter(unit(T,"L-WITCH",5,0),piece)===null,"#292 그 소유자 가방에 없는 떠도는 개체는 여전히 폴더 없음 (G9e·J5 경계 유지)"); }
+}
 {
   const T=pvePlay(93), S=T.S; const king=S.pieces.find(x=>x.owner===0&&x.type==="king"), foe=T.alivePieces().find(p=>p.owner===1&&p.type==="minion");
   S.eco.bag[0]=[]; H.place(T,king,7,3); H.place(T,foe,7,4); S.current=0; S.battlesUsed=0;
