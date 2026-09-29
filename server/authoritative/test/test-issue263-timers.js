@@ -217,7 +217,9 @@ function moveVia(room, seat, from, to) {
       prev = u.leftMs;
       await sleep(10);
     }
-    ok(!grew && prev < 60000 - 60, '준비 완료·취소 반복으로 배치 잔여가 늘지 않고 취소하면 그 잔여부터 다시 흐른다');
+    /* 흐른 시간의 보장 하한은 sleep 30+10+10 = 50ms 다. 종전 `- 60` 은 그 하한을 넘어, 타이머가 정확한 Linux CI 에서
+       잔여가 59940±1 로 떨어져 간헐 실패했다(Windows 는 타이머 해상도 ~15ms 라 통과). 10ms 여유를 둔다. */
+    ok(!grew && prev < 60000 - 40,'준비 완료·취소 반복으로 배치 잔여가 늘지 않고 취소하면 그 잔여부터 다시 흐른다');
     ok(!ranWhileReady, '준비 완료 동안 배치 시계는 멈춰 있다');
     ok(room._clock[1] === foe && foe.deadline === foeDeadline, '상대 좌석의 배치 시계는 그대로다');
     room._clearClock();
@@ -332,7 +334,10 @@ function moveVia(room, seat, from, to) {
   {
     const room = ecoRoom(12, { shopMs: 60, actMs: 60000, graceMs: 60 });
     await started(room);
-    room.socketClosed(0); room.socketClosed(1);
+    // "동시" = 기록된 만료 시각이 같은 ms 다. 두 호출이 ms 경계를 넘으면 FORFEIT 가 되므로(간헐 실패) 그 순간의 시각을 고정한다.
+    const realNow = Date.now, t = realNow();
+    Date.now = () => t;
+    try { room.socketClosed(0); room.socketClosed(1); } finally { Date.now = realNow; }
     await settled(room);
     ok(room.state === STATES.FINISHED && room.result.type === 'NO_CONTEST' && room.result.winner === null, '진행 중 동시 만료 → NO_CONTEST 보존');
   }
