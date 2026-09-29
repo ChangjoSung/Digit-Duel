@@ -382,6 +382,14 @@ for(const [name,rt] of [["연결 실패(fetch 예외)",{}],["모르는 5xx",{"GE
   ok(rs(M).length===0&&seat(M)===null,"G13 형식이 틀린 기록 → 재접속하지 않고 삭제");
   const O=await boot("file:///C:/Digit-Duel/demo/index.html",{},{[SK]:rec()});
   ok(rs(O).length===0,"G14 계정 없는 경로는 기록을 쓰지도 읽지도 않는다");
+
+  /* #283 새로고침 재접속 뒤 배치 완료 — room_joined 를 거치지 않은 좌석도 핫시트 인계가 아니라 서버 setup·ready 로 가야 한다 */
+  const P=await boot(HTTPS,IN,{[SK]:rec()});
+  const pw=openWs(rs(P)[0]);
+  frame(pw,{type:"room_resumed",roomId:7,seat:0,seatToken:TOK2,tokenGen:1,revision:3,economy:false,data:{state:"SETUP",phase:"setup",revision:3,seats:{ready:[false,false]}}});
+  P.autoPlaceCore(0); P.netAction({t:"setupDone"}); // 실제 버튼 경로(window.setupDone)
+  ok(P.S.setupPlayer===0&&!/기기를 넘기세요/.test(P.byId("overlayBox").innerHTML||"")&&pw.sent.map(s=>JSON.parse(s).t).join(",")==="setup,ready",
+    "G15 #283 재접속한 시작 전 좌석의 [배치 완료] → 인계 화면·상대 좌석 0 · setup,ready 송신");
 }
 
 /* ===== I. 로그아웃·세션 종료 — 열린 방 소켓 정리 ===== */
