@@ -1,5 +1,14 @@
 # Digit-Duel — Mercury_PD 인수인계
 
+## 2026-09-29 23:36 KST 현행 인계 확인 · v0.4.13 최종 출시 때 main 병합 예정
+
+- OpenAI [모델 목록](https://developers.openai.com/api/docs/models)과 [변경 이력](https://developers.openai.com/api/docs/changelog)을 먼저 재확인했다. 최신 일반 GPT 계열은 GPT-6, 9월 25일 Sol/Luna 이미지 수정이 최신 항목이다. 현 Mercury 프로세스는 `gpt-6-sol`·`xhigh`·`service_tier=default`·`danger-full-access`·approval `never`로 실제 실행 중이며, Worker 계약과 일치한다.
+- `git fetch origin main` 뒤 원본 PD WorkTree는 `main` → `origin/main`, HEAD와 원격 모두 `9b306bbfda103263cb2feea90fd9c89527eb9290`이다. 원본에는 미추적 `unity/`만 있으며 보존한다. stash `9ebd041242f61e10906ae388e8037c03c33ad386`와 `cc644636b67788727963b2158001bc66cb40fe86`도 보존한다.
+- CJ 최신 Comment, `CLAUDE.md`, `AUTHORITY.md`, `WORKER_MODELS.md`, `worker-models.json`, `QA_MINIMUM_POLICY.md`, Notion GDD-13·23·24, GitHub #295·PR #303·Release를 재조회했다. 이 문서의 아래 18:41 체크포인트는 과거 기록이며, 이후 CJ의 #292 및 #295 착수 지시가 우선한다. #293·#294·#296·#297은 별도 착수 전 접수 상태다.
+- Codex MCP의 Notion GDD fetch와 Render workspace 조회가 실제 성공했다. Claude MCP의 로컬 Notion은 연결됨을 확인하고 GDD-23 fetch를 실제 호출했다. Claude Google Drive·Calendar·Gmail 및 Slack은 인증되지 않았고 연결하지 않는다. 회사 계정의 Claude·Notion 로컬 연동 정책을 유지한다. Unity MCP는 v0.6.0 개발 때 추적하며 이번 v0.4.13에서는 호출하거나 새 연동하지 않는다. 현재 Codex·Claude 설정에 남은 Unity 항목은 이전 설정이며 이번 인계의 필수 호출 대상이 아니다.
+- #295 활성 WorkTree는 `origin/milestone/v0.4.13`의 `c25252e521668fb64dfe3bed920684cb661bcc72`에서 생성됐고, ID는 `003dc8a0-372c-4547-9290-31d34edd82be::C:/Users/pc_77/orca/workspaces/Digit-Duel/issue-295-lobby-disconnect`다. HEAD `f762ae8a4b77966ffe1b08361543c7c92197ac04`, [PR #303](https://github.com/ChangjoSung/Digit-Duel/pull/303) 필수 CI 6/6 PASS, beta Render는 이 SHA로 Live다. CJ 2계정 Play QA는 대기 중이며, PASS 전 병합·Release·Production 갱신을 하지 않는다.
+- CJ의 2026-09-29 지시: 인수인계의 Google 금지·Notion 로컬 회사 계정 유지·Unity v0.6.0 연기 결정은 기록하되, 이 문서 브랜치의 main 병합은 v0.4.13 최종 Release와 Render Web 갱신 때 함께 진행한다. 기존 아래 항목 중 이 결정과 충돌하는 연결·Issue 상태는 과거 이력으로 취급한다.
+
 ## 현재 체크포인트 — 2026-09-29 18:41 KST PD 교대 준비
 
 - **모델 첫 확인:** [OpenAI 모델 목록](https://developers.openai.com/api/docs/models)과 [변경 이력](https://developers.openai.com/api/docs/changelog)을 재조회했다. 최신 일반 GPT 계열은 GPT-6이며, 9월 25일 Sol/Luna 수정 이후 더 새 계열 출시를 확인하지 못했다. 현 PD 화면은 `GPT-6-Sol xhigh`, 프로젝트 설정은 `gpt-6-sol`·`xhigh`·`service_tier=default`다. 수신 PD는 새 터미널의 실제 모델·effort·tier를 다시 확인한다.
