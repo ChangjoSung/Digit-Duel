@@ -92,6 +92,13 @@ CJ용 사용 설명서: Notion "CJ 세션 사용 안내서" (https://app.notion.
 - audition_Idol 참조 구조 검토: 로컬 저장소 `C:\WORK\Client\audition_idol\Client_Idol`
 - Unity 본개발은 Heavy 오케스트레이션 프롬프트([Content] Orca Orchestration Prompt) 사용 예정.
 
+## Mercury PD 위치·인수인계 — 2026-09-29 CJ 결정
+
+- Mercury PD의 상설 작업 공간은 `main`을 추적하는 `origin/main` 기준이다. 매 인수인계 전 원격을 갱신하고 `main`·upstream `origin/main`·동일 HEAD SHA를 확인한다. detached HEAD나 마일스톤/이슈 WorkTree에서 PD를 인계하지 않는다. 미커밋·미추적 파일은 식별·보존한 뒤 동기화한다.
+- 매 인수인계는 **GPT 업데이트 확인 → 필요 시 인계 전 PD가 최신 버전 전환 지시·실제 적용 확인 → 필수 문서 읽기 → full access 권한 확인 → 필수 MCP 목록·실동작 확인 및 끊긴 연결 복구 → CJ 완료 보고** 순서다. 공식 모델 목록과 실제 계정에서 사용 가능한 모델/실행값을 대조한다. 어느 필수 게이트든 실패하면 완료로 보고하지 않고 원인과 조치를 보고한다. 상세 목록과 보고 항목은 [인수인계 스냅샷](docs/creat2ve/HANDOVER_SNAPSHOT.md)을 따른다.
+- Claude와 Notion은 CJ가 정한 기존 회사 계정·로컬 PC 연동 정책을 유지한다. Slack은 연결하지 않으며 필수 MCP 검사 대상에서 제외한다. 작업물의 외부 공유를 수반하는 연결 변경은 이 인수인계 절차에 포함하지 않는다.
+- Worker WorkTree의 Git 기준은 작업 대상 브랜치의 **명시한 원격 ref와 SHA**다. 마일스톤 Issue는 해당 `origin/milestone/vX.Y.Z`, 트랙 없는 개발 작업은 `origin/dev`, hotfix는 `origin/main`에서 만든다. Orca의 parent WorkTree는 UI 소속일 뿐 Git 분기 기준이 아니다. PD의 `main` 작업 공간에서 `--worktree current`로 Worker를 시작하지 않는다. 상세 계약은 [Worker 실행 설정](docs/creat2ve/WORKER_MODELS.md)을 따른다.
+
 <!-- creat2ve:begin -->
 ## 조직 구조 — Creat2ve Vibe Coding Structure rev 6 (release 0.3.0, 2026-09-02)
 태양계 명명 부서제. 범용 핸드북·용어·bootstrap 원본: creat2ve-structure 저장소 (사본: docs/creat2ve/Creat2veVibeCodingStructure.html). 프로젝트별 결정은 이 파일과 기준 문서가 우선한다.

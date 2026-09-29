@@ -982,8 +982,9 @@ class Room {
     const out = { t: a.t, player: seatIndex, seq: sh.seq[seatIndex] };
     if (a.t === 'shopBuy') out.i = a.i;
     if (a.t === 'shopGood') out.item = a.item;
-    if (a.t === 'shopSell' || a.t === 'shopSwap') out.uid = a.uid;
-    if (a.t === 'shopSwap' || a.t === 'shopTicket' || a.t === 'leaderEl') {
+    if ((a.t === 'shopSell' && a.id === undefined) || a.t === 'shopSwap') out.uid = a.uid;
+    // #285 shopSell 은 가방 uid 또는 필드 별칭 id 중 하나만 싣는다(_sanitizeAction) — 필드 판매의 종류·생존·판매 가능 여부는 Core 가 판정한다.
+    if (a.t === 'shopSwap' || a.t === 'shopTicket' || a.t === 'leaderEl' || (a.t === 'shopSell' && a.id !== undefined)) {
       const p = this._resolveOwnAlias(seatIndex, a.id);
       if (!p) return err('E_ILLEGAL_ACTION');
       out.pieceId = p.id;
@@ -1009,7 +1010,7 @@ class Room {
       case 'shopBuy': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.i);
       case 'shopRefresh': case 'shopDone': return smallInt(a.shop) && smallInt(a.seq);
       case 'shopGood': return smallInt(a.shop) && smallInt(a.seq) && smallStr(a.item);
-      case 'shopSell': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.uid);
+      case 'shopSell': return smallInt(a.shop) && smallInt(a.seq) && ((smallInt(a.uid) && a.id === undefined) || (smallStr(a.id) && a.uid === undefined));
       case 'shopSwap': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.uid) && smallStr(a.id);
       case 'shopTicket': case 'leaderEl': return smallInt(a.shop) && smallInt(a.seq) && smallStr(a.id) && smallStr(a.el);
       case 'bagPick': return smallInt(a.token) && smallInt(a.i);
@@ -1284,9 +1285,11 @@ class Room {
        끝 조건이 placed 가 아니라 **placed && ready** 인 이유: 이 시한의 만료 동작이 "자동 배치하고 **준비 상태로 전이**"라
        준비까지가 이 시한의 끝이다. placed 만 보면 setup 만 보내고 ready 를 영영 안 보내는 좌석에서 시계가 사라져
        경기가 시작되지 않는 교착이 남는다(그 교착을 없애려고 있는 시한이다). 배치를 다시 보내면 _handleSetup 이
-       ready 를 내리므로 시계도 그 시점의 남은 시간으로 다시 선다. */
-    if (this.state === STATES.SETUP && sh && sh.done[seatIndex] && !seat.shopTimedOut && !(seat.placed && seat.ready)) {
-      return { key: 'place', ms: this._ms('place', T.ECO.placeSec) };
+       ready 를 내리므로 시계도 그 시점의 남은 시간으로 다시 선다.
+       #284 준비 완료 동안은 시계를 없애지 않고 **멈춘다** — 없애면 준비 취소가 새 90초를 받는다(S02 "멈춘 자리부터").
+       만료된 시계도 남아 있어 만료 뒤 준비 취소는 E_DEADLINE 이다. */
+    if (this.state === STATES.SETUP && sh && sh.done[seatIndex] && !seat.shopTimedOut) {
+      return { key: 'place', ms: this._ms('place', T.ECO.placeSec), paused: seat.placed && seat.ready };
     }
     if (E.bagPick && E.bagPick.owner === seatIndex && S.phase === 'bagPick') {
       return { key: 'bag:' + E.bagPick.token, ms: this._ms('bagPick', T.ECO.bagPickSec) };
@@ -1366,7 +1369,7 @@ class Room {
   _syncClock() {
     for (let i = 0; i < 2; i++) {
       const w = this._wantSeatClock(i);
-      this._clock[i] = this._tick(this._clock[i], w && { key: w.key, ms: w.ms, owner: i, paused: this._paused() });
+      this._clock[i] = this._tick(this._clock[i], w && { key: w.key, ms: w.ms, owner: i, paused: w.paused || this._paused() });
     }
     this._act = this._tick(this._act, this._wantAct());
     this._pick = this._tick(this._pick, this._wantPick());
@@ -1616,7 +1619,9 @@ class Room {
       const T = this.engines[seatIndex], S = T.S, sh = S.eco && S.eco.shop;
       return Object.assign(base, {
         phase: sh && !sh.done[seatIndex] ? 'shop' : 'setup',
-        you: Object.assign({ placed: seat.placed, pieces: S.pieces.filter((p) => p.owner === seatIndex).map((p) => this._serializeOwn(T, p)) },
+        // #285 S01 에서 산 아이템·볼도 자기 몫만 싣는다 — 경기 중 뷰와 같은 필드라 클라이언트가 상점 동안에도 보유를 그린다.
+        you: Object.assign({ placed: seat.placed, pieces: S.pieces.filter((p) => p.owner === seatIndex).map((p) => this._serializeOwn(T, p)),
+          inv: (S.inv[seatIndex] || []).slice(), balls: S.balls[seatIndex] },
           this._ecoView(T, seatIndex)),
         shop: this._shopView(T, seatIndex),
         clock: this._clockView(seatIndex),

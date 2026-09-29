@@ -149,7 +149,7 @@ function moveVia(room, seat, from, to) {
     const kept = S0(room).pieces.filter((x) => x.owner === 0 && x.rosterId).map((x) => x.rosterId).join();
     await sleep(320);
     const S = S0(room);
-    ok(g.ok && S.balls[0] === 1, '하수인 밖 지출(볼)은 확정된 그대로 보존된다');
+    ok(g.ok && S.balls[0] === 2, '하수인 밖 지출(볼)은 확정된 그대로 보존된다'); // #285 시작 볼1 + 산 볼1
     ok(S.pieces.filter((x) => x.owner === 0 && x.rosterId).map((x) => x.rosterId).join().startsWith(kept), '이미 산 3명은 그 자리 그대로');
     ok(S.pieces.filter((x) => x.owner === 0 && x.type === 'minion' && x.rosterId).length === 6 && S.eco.coins[0] >= 0,
       '남은 노출·미구매 적격 칸으로 6명까지 — 예비 재화가 자동 구매 비용을 보장한다');
@@ -165,7 +165,7 @@ function moveVia(room, seat, from, to) {
     ok(v.shop.done && v.clock && v.clock.key === 'place' && v.clock.running, '직접 완료(shopDone) → 그 좌석만 배치 90초 시작');
     ok(!room.seats[0].shopTimedOut && !room.seats[0].placed, '전제: 아직 배치 전');
     await sleep(190);
-    ok(room.seats[0].placed && room.seats[0].ready && room._clock[0] === null, '배치 만료 → 자동 배치·준비 · 시계 해제');
+    ok(room.seats[0].placed && room.seats[0].ready && room._clock[0] && room._clock[0].expired && room._clock[0].deadline === null, '배치 만료 → 자동 배치·준비 · 시계는 만료 상태로 멈춘다(#284)');
     ok(S0(room).pieces.filter((x) => x.owner === 0).every((x) => x.placed), '만료 좌석의 말은 모두 합법 위치에 놓인다');
     ok(room.state === STATES.SETUP, '상대가 아직 S01 이면 경기는 시작되지 않는다');
     finishStart(room, 1);
@@ -193,9 +193,35 @@ function moveVia(room, seat, from, to) {
     finishStart(room, 0);
     room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
     room.handleCommand(0, { t: 'ready' });
-    ok(room.seats[0].ready && room._clock[0] === null, '배치·준비를 마치면 배치 시계는 사라진다');
+    ok(room.seats[0].ready && room._clock[0] && room._clock[0].deadline === null, '배치·준비를 마치면 배치 시계는 멈춘다(#284)');
     room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
     ok(!room.seats[0].ready && room._clock[0] && room._clock[0].key === 'place', '배치를 다시 보내면 준비가 풀리고 배치 시계가 다시 선다');
+    room._clearClock();
+  }
+  { // #284 준비 완료·취소를 반복해도 같은 좌석의 배치 잔여는 늘지 않고, 상대 좌석 시계는 건드리지 않는다
+    const room = ecoRoom(284, { placeMs: 60000 });
+    finishStart(room, 0); finishStart(room, 1);
+    const foe = room._clock[1], foeDeadline = foe.deadline;
+    room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
+    await sleep(30);
+    let prev = view(room, 0).clock.leftMs, grew = false, ranWhileReady = false;
+    for (let i = 0; i < 3; i++) {
+      room.handleCommand(0, { t: 'ready' });
+      const r = view(room, 0).clock;
+      await sleep(20);
+      const r2 = view(room, 0).clock;
+      if (r.running || r2.running || r2.leftMs !== r.leftMs) ranWhileReady = true;
+      room.handleCommand(0, { t: 'unready' });
+      const u = view(room, 0).clock;
+      if (r.leftMs > prev || u.leftMs > r.leftMs || !u.running) grew = true;
+      prev = u.leftMs;
+      await sleep(10);
+    }
+    /* 흐른 시간의 보장 하한은 sleep 30+10+10 = 50ms 다. 종전 `- 60` 은 그 하한을 넘어, 타이머가 정확한 Linux CI 에서
+       잔여가 59940±1 로 떨어져 간헐 실패했다(Windows 는 타이머 해상도 ~15ms 라 통과). 10ms 여유를 둔다. */
+    ok(!grew && prev < 60000 - 40,'준비 완료·취소 반복으로 배치 잔여가 늘지 않고 취소하면 그 잔여부터 다시 흐른다');
+    ok(!ranWhileReady, '준비 완료 동안 배치 시계는 멈춰 있다');
+    ok(room._clock[1] === foe && foe.deadline === foeDeadline, '상대 좌석의 배치 시계는 그대로다');
     room._clearClock();
   }
 
@@ -308,7 +334,10 @@ function moveVia(room, seat, from, to) {
   {
     const room = ecoRoom(12, { shopMs: 60, actMs: 60000, graceMs: 60 });
     await started(room);
-    room.socketClosed(0); room.socketClosed(1);
+    // "동시" = 기록된 만료 시각이 같은 ms 다. 두 호출이 ms 경계를 넘으면 FORFEIT 가 되므로(간헐 실패) 그 순간의 시각을 고정한다.
+    const realNow = Date.now, t = realNow();
+    Date.now = () => t;
+    try { room.socketClosed(0); room.socketClosed(1); } finally { Date.now = realNow; }
     await settled(room);
     ok(room.state === STATES.FINISHED && room.result.type === 'NO_CONTEST' && room.result.winner === null, '진행 중 동시 만료 → NO_CONTEST 보존');
   }
@@ -673,8 +702,10 @@ function moveVia(room, seat, from, to) {
     ok(!room.seats[0].placed && !room.seats[0].ready && !room.seats[0].rawSetup && room.revision === rev && !c.expired,
       '거부는 좌석 배치·준비·revision 을 바꾸지 않는다');
     room._onClock(0, 'place');
-    ok(c.expired && room.seats[0].placed && room.seats[0].ready && room._clock[0] === null,
+    ok(c.expired && room.seats[0].placed && room.seats[0].ready && room._clock[0] === c,
       '걸려 있던 배치 만료는 예정대로 자동 배치·준비를 끝낸다 — 서버 자신의 배치는 이 문에 막히지 않는다');
+    const lateUnready = room.handleCommand(0, { t: 'unready' });
+    ok(!lateUnready.ok && lateUnready.reason === 'E_DEADLINE' && room.seats[0].ready, '#284 만료 뒤 준비 취소로 새 90초를 받을 수 없다');
   }
   { // 멈춘 시계는 시한 대조에 걸리지 않는다 — 정지 중에는 deadline 이 없고 남은 시간만 보존된다
     const room = ecoRoom(27, { placeMs: 120, graceMs: 5000 });

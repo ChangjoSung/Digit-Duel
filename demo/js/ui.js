@@ -161,7 +161,7 @@ const $=id=>/** @type {any} */(document.getElementById(id)); // #245: DOM 접근
         **새 창을 닫지 못한다** (오래된 확인 버튼이 새 게임 모달을 close 하는 사고 방지).
    hold/holdQ: sim 관전 종료 확인창이 떠 있는 동안 AI **예약 실행**만 잠시 미뤄 두는 표시 제어.
         AI 판단·난수·승패·시간표를 바꾸지 않는다 — "언제 다음 수를 두는가"만 미루고, 취소하면 그대로 이어진다. */
-const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[],screen:"title"}; // #260 screen: 직전에 그린 화면 — 로비에 들어오는 순간을 한 곳에서 안다
+const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[],screen:"title",goodInfo:/** @type {string|null} */(null)}; // #260 screen: 직전에 그린 화면 — 로비에 들어오는 순간을 한 곳에서 안다
 function uiScreenName(){
   if(!UI.entered) return "title";
   if(!S) return "lobby";
@@ -311,11 +311,20 @@ function fitBoard(){
     /* #238 Saturn 시각 REVISE: 대전 말판도 가로 폭에만 맞춘다 — 종전 뷰포트 높이/700 상한은 320×640 에서 칸을 28px 로 줄였다.
        세로가 모자라면 보드 화면 #screenBody 가 말판을 세로 스크롤한다 (CSS). 스크롤 위치는 여기서 건드리지 않는다 */
     let s=Math.min(avail/376,1);
+    /* #286 (2026-09-29 CJ 안드로이드): 대전(S03)은 세로도 맞춘다 — #screenBody 에서 말판 위(HUD·여백)를 뺀 실측 높이/700.
+       하한은 칸 32px(32/52) — 그보다 작아질 화면(가로 모드 등)은 #238 처럼 그 크기로 두고 세로 스크롤한다. 배치(prep)는 아래 트레이가 말판에 붙어 폭 맞춤 그대로 */
+    const b=$("screenBody"), app=$("app");
+    if(b&&b.getBoundingClientRect&&w.getBoundingClientRect&&app&&app.getAttribute&&app.getAttribute("data-screen")==="board"){
+      const h=b.clientHeight-(w.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop);
+      if(h>0) s=Math.min(s,Math.max(h/700,32/52));
+    }
     if(!(s>0.2)) s=1;
-    w.style.setProperty("--bs",String(Math.round(s*1000)/1000));
+    w.style.setProperty("--bs",String(Math.floor(s*1000)/1000)); // 내림 — 반올림 1px 로 마지막 행이 잘리지 않게
   }catch(e){}
 }
 if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("resize",()=>{try{fitBoard(); emoteSync();}catch(e){}}); // #238 L03 이모티콘 위치도 다시 잰다
+/* #286 주소창·회전·safe area·행동 독 높이 변화로 #screenBody 상자가 바뀌면 다시 잰다 (resize 가 오지 않는 경우 포함) */
+if(typeof ResizeObserver==="function"&&typeof document!=="undefined"&&document.getElementById&&document.getElementById("screenBody")) new ResizeObserver(()=>{try{fitBoard();}catch(e){}}).observe(document.getElementById("screenBody"));
 
 /* ===== #106 연출 잠금·배너 큐 (turn-flow 계약 3장) =====
    원칙: 규칙 상태(S) 전이는 종전처럼 동기·즉시. 여기 있는 것은 표시 계층(배너 오버레이·입력 잠금·표시 유지)뿐이며 rand() 를 쓰지 않고
@@ -860,7 +869,7 @@ function renderTurnBar(){
   if(S.mainUsed&&!forced&&!S.forcedQueue.length&&!S.teleport&&!fxLocked()&&$("overlay").classList.contains("hidden")&&optionalBattleLeft()) mk("싸우지 않고 종료",()=>netAction({t:"endTurn"}),false,"primary");
   mkResign();
   if(forced){const s=document.createElement("span");s.className="badge";s.textContent="⚔️ 강제 전투 대상 선택";tb.appendChild(s);}
-  if(aiTurn){const s=document.createElement("span");s.className="badge";s.textContent=(NET.mode&&!isAI(S.current))?"🌐 상대 턴 진행 중…":"🤖 AI 행동 중…";tb.appendChild(s);}
+  if(aiTurn){const s=document.createElement("span");s.className="badge turnWait";s.textContent=(NET.mode&&!isAI(S.current))?"🌐 상대 턴 진행 중…":"🤖 AI 행동 중…";tb.appendChild(s);}
   if(paused){const s=document.createElement("span");s.className="badge";s.setAttribute("role","status");s.textContent="⏸ 연결 대기 — 경기·시간 정지 (기권 포함 입력 불가)";tb.appendChild(s);}
   // #263 행동 30초(#actClock)는 #238 상단 HUD(renderBoardInfo)로 옮겼다 — 같은 id·같은 turnClockTick 이 갱신한다
 }
@@ -903,13 +912,12 @@ function renderSide(){
   }
   const p = NET.mode?NET.me:(S.mode==="pvp"?humanViewer():0); // 온라인: 사이드 패널은 항상 내 정보 · #236 핫시트 상점·B08 은 그 화면 주인
   let h=`<h2>${pname(p)}</h2>
-  <div class="row"><span class="badge">몬스터볼 ${S.balls[p]}</span>
-  <span class="badge">아이템 ${S.inv[p].length}</span>${S.pkgs?`<span class="badge">🎁 ${S.pkgs[p].itemGift}</span><span class="badge">✨ ${S.pkgs[p].battleBuff}</span>`:""}
+  <div class="row">${S.pkgs?`<span class="badge">🎁 ${S.pkgs[p].itemGift}</span><span class="badge">✨ ${S.pkgs[p].battleBuff}</span>`:""}
   <span class="badge">전투 ${S.battlesUsed}/2</span>
   ${S.reserve[p]?`<span class="badge">예비 하수인(${ELEM_KO[S.reserve[p].element]}) HP ${S.reserve[p].hp}/${S.reserve[p].maxHp}</span>`:""}
   <span class="badge">${S.mainUsed?"주 행동 완료":"주 행동 가능"}</span></div>
-  <div class="row">${S.inv[p].map(i=>`<span class="badge">${ITEMS[i].ko}</span>`).join("")||"<small>아이템 없음</small>"}</div>`;
-  if(S.eco) h+=`<div class="row"><span class="badge cnb" data-n="${S.eco.coins[p]}">🪙 ${S.eco.coins[p]}</span><span class="badge">🎟 ${S.eco.tickets[p]}</span>${BUFF_KEYS.map(k=>S.eco.buffInv[p][k]?`<span class="badge">${BUFFS[k].ko} ${S.eco.buffInv[p][k]}</span>`:"").join("")}</div>
+  ${ownGridHtml(p)}`;
+  if(S.eco) h+=`<div class="row"><span class="badge cnb" data-n="${S.eco.coins[p]}">🪙 ${S.eco.coins[p]}</span></div>
     <div class="row">${[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; return `<span class="badge">🎒 ${u?`${u.name} ${ecoStars(u.grade)} HP ${u.hp}/${u.maxHp}`:"빈칸"}</span>`; }).join("")}</div>`; // #236 소유자 전용 (7.9) // #121 계약 2.1: 보유 상한 없음 — 분모를 쓰지 않는다
   if(S.selected&&!S.selected.tray&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대가 선택한 말 정보(HP 등) 비노출
     const s=S.selected;
@@ -1838,6 +1846,12 @@ function ecoStars(g){ return "⭐".repeat(Math.min(5,g||1)); }
 /* ===== #238 상점 시트(S01·S05) — 진열 6카드 · 상품 8종 · 필드 6/가방 3 고정 슬롯. 거래 판정·회계·예비 재화는 전부 Core 값을 읽기만 한다 ===== */
 const GOOD_DESC={ball:"포획 1회 (전투 중 HP 30% 미만)",ticket:"왕·동료 속성 교체 — 정기 상점에서 사용"};
 function goodOwned(p,k){ return k==="ball"?S.balls[p]:k==="ticket"?S.eco.tickets[p]:BUFF_KEYS.includes(k)?S.eco.buffInv[p][k]:S.inv[p].filter(x=>x===k).length; }
+function goodNm(k){ return GOOD_KO[k].replace(/^[^\s가-힣]+\s/,""); }
+/* #285: 아이콘은 설명만(이름·효과·가격·보유) — 구매는 아래 [구매] 버튼 하나 */
+function goodInfoText(p,k){ return `${goodNm(k)} — ${GOOD_DESC[k]||(ITEMS[k]||BUFFS[k]).desc} · 🪙${ECO.goodPrice} · 보유 ${goodOwned(p,k)}`; }
+/* #285 가방 서랍 — 내 보유 아이템·볼·버프 수량 아이콘 (상대 정보 없음 · p 는 화면 주인) */
+function ownGridHtml(p){ return `<div class="ownGrid" role="list" aria-label="보유 아이템">`+(S.eco?ECO.goods:["potion","cool","cure","ball"]).map(k=>{ const n=goodOwned(p,k);
+  return `<span class="ownItem${n?"":" none"}" role="listitem" aria-label="${escAttr(`${goodNm(k)} ${n}개`)}" title="${escAttr(goodNm(k))}"><span class="ico" style="--g:${ECO.goods.indexOf(k)}" aria-hidden="true"></span><b aria-hidden="true">×${n}</b></span>`; }).join("")+`</div>`; }
 function unitIco(key){ const dir=artDirOf({type:"minion",rosterId:key}), L=LEGEND_ROSTER.find(x=>x.id===key), r=ROSTER.find(x=>x.id===key);
   return artOk(dir)?`<img class="icon" src="${artUrl(dir,"icon.png")}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${dir}',this)">`
     :`<span class="face" aria-hidden="true">${L?L.emo:r?ELEM_EMO[r.element]:"?"}</span>`; } // 도트가 없는 종(땅·보호 등)은 속성 기호
@@ -1862,11 +1876,12 @@ function shopHtml(p){
     return card(i,s,`${pr.up?`<span class="badge up">${pr.up}</span>`:""}<button class="buy" ${pr.c>coins?"disabled":""} aria-label="${escAttr(unitName(s.key))} 구매 🪙${pr.c}" onclick="window.__shop('buy',${i})">${pr.up&&pr.full!==pr.c?`${gi("coin","cn")}<s>${pr.full}</s> ${pr.c}`:`${gi("coin","cn")}${pr.c}`}</button>`,"");
   }).join("");
   const goodOk=coins>=ECO.goodPrice&&ecoReserveOk(S,p,ECO.goodPrice);
-  /* 상품 8종 — 아이콘 + 🪙1 · 이름·설명은 접근성 이름과 툴팁(긴 설명을 화면에 펼치지 않는다) */
-  const goods=(start?ECO.startGoods:ECO.goods).map(k=>{ const nm=GOOD_KO[k].replace(/^[^\s가-힣]+\s/,""), d=GOOD_DESC[k]||(ITEMS[k]||BUFFS[k]).desc, own=goodOwned(p,k);
-    return `<button class="goodCard" ${goodOk?"":"disabled"} aria-label="${escAttr(`${nm} 🪙${ECO.goodPrice} · 보유 ${own} — ${d}`)}" title="${escAttr(`${nm} — ${d}`)}" onclick="window.__shop('good','${k}')"><span class="ico" style="--g:${ECO.goods.indexOf(k)}" aria-hidden="true"></span><span class="price">${gi("coin","cn")}${ECO.goodPrice}</span>${own?`<span class="own">×${own}</span>`:""}</button>`; }).join("");
+  /* 상품 8종 — #285: 아이콘 = 설명(#goodDesc)만 · 아래 [구매] = 구매만 */
+  const gk=start?ECO.startGoods:ECO.goods;
+  const goods=gk.map(k=>{ const nm=goodNm(k), own=goodOwned(p,k);
+    return `<div class="goodCard"><button type="button" class="goodIco" aria-controls="goodDesc" aria-label="${escAttr(`${nm} 설명 · 보유 ${own}`)}" onclick="window.__shop('info','${k}')"><span class="ico" style="--g:${ECO.goods.indexOf(k)}" aria-hidden="true"></span>${own?`<span class="own">×${own}</span>`:""}</button><button type="button" class="buy" ${goodOk?"":"disabled"} aria-label="${escAttr(`${nm} 구매 🪙${ECO.goodPrice}`)}" onclick="window.__shop('good','${k}')">구매 ${gi("coin","cn")}${ECO.goodPrice}</button></div>`; }).join("");
   const field=S.pieces.filter(x=>x.owner===p&&x.type==="minion").map(x=>!ecoKey(x)?slotHtml(null,`<small>빈칸</small>`)
-    :slotHtml(x,`${unitIco(ecoKey(x))}<span class="stars">${"★".repeat(Math.min(5,/** @type {any} */(x).grade||1))}</span><b>${x.alive?"":"💀 "}${x.name}</b><small>HP ${x.hp}/${x.maxHp}</small>`)).join("");
+    :slotHtml(x,`${unitIco(ecoKey(x))}<span class="stars">${"★".repeat(Math.min(5,/** @type {any} */(x).grade||1))}</span><b>${x.alive?"":"💀 "}${x.name}</b><small>HP ${x.hp}/${x.maxHp}</small>${start&&x.alive?`<span class="acts"><button class="danger" aria-label="${escAttr(`${x.name} 판매 🪙${x.paid||0} 환급`)}" onclick="window.__shop('sellField',${x.id})">판매 +${coinize('🪙')}${x.paid||0}</button></span>`:""}`)).join("");
   const bag=[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; if(!u) return slotHtml(null,`<small>빈칸</small>`);
     return slotHtml(u,`${unitIco(ecoKey(u))}<span class="stars">${"★".repeat(Math.min(5,u.grade||1))}</span><b>${u.name}</b><small>HP ${u.hp}/${u.maxHp} · ${coinize('🪙')}${u.paid||0}</small>
       <span class="acts"><button onclick="window.__shop('swap',${u.uid})">교체</button><button class="danger" onclick="window.__shop('sell',${u.uid})">판매 +${coinize('🪙')}${u.paid||0}</button></span>`); }).join("");
@@ -1894,7 +1909,8 @@ function shopHtml(p){
     <h3>${gi("bag")} 가방 ${S.eco.bag[p].length}/${ECO.bagMax}</h3><div class="slotGrid bag">${bag}</div>
     ${shopSynHtml(p)}
     ${lead}
-    <h3>${gi("potion")} 아이템</h3><div class="goodsGrid">${goods}</div></div>`
+    <h3>${gi("potion")} 아이템</h3><div class="goodsGrid">${goods}</div>
+    <p id="goodDesc" class="goodDesc" role="status">${gk.includes(UI.goodInfo)?coinize(goodInfoText(p,UI.goodInfo)):"아이콘을 누르면 설명이 보입니다."}</p></div>`
     +pauseLockClose();
 }
 /* ===== #238 S04 결과 — 양측 하수인 전체(사망 포함) + 시너지. UI 는 새로 세지 않는다:
@@ -1996,6 +2012,10 @@ window.__shop=(op,a,b)=>{
   }
   if(op==="refresh"){ go({t:"shopRefresh",seq:S.eco.shop.seq[p]}); return; }
   if(op==="good"){ go({t:"shopGood",item:a}); return; }
+  if(op==="info"){ UI.goodInfo=a; const el=$("goodDesc"); if(el) el.innerHTML=coinize(goodInfoText(p,a)); return; } // 설명만 — 코인·상태 무변경
+  if(op==="sellField"){ const x=S.pieces.find(y=>y.id===a); if(!x||!ecoKey(x)) return;
+    confirm(`<h2>필드 판매 확인</h2><p>${x.name} ${ecoStars(/** @type {any} */(x).grade)} — 🪙${/** @type {any} */(x).paid||0} 환급 (원장 100%)</p><small>그 칸은 빈칸이 되어 완료 전에 다시 채워야 합니다. 이번 상점에서는 이 종을 다시 살 수 없습니다.</small>`,"판매",{t:"shopSell",pieceId:a});
+    return; }
   if(op==="lead"){ go({t:"leaderEl",pieceId:a,el:b}); return; }
   if(op==="done"){ go({t:"shopDone"}); return; }
   if(op==="sell"){ const u=S.eco.bag[p].find(x=>x.uid===a); if(!u) return;
