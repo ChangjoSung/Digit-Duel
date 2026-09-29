@@ -66,8 +66,8 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   const T=pveSetup(11), S=T.S;
   const G=load(); G.newGame("pve",{eco:true}); const S0=G.S; // 지급 시점 — startMode 는 AI S01 을 곧바로 끝내므로(2.3) 그 전 상태를 본다
   ok(!!S0.eco&&S0.eco.coins[0]===10&&S0.eco.coins[1]===10,"AC01 로컬 새 경기: 양측 🪙10");
-  ok(S0.inv[0].length===0&&S0.inv[1].length===0&&S0.balls[0]===0&&S0.balls[1]===0,"AC01 소모품·볼 지급 0");
-  ok(S.eco.coins[0]===10&&S.inv[0].length===0&&S.balls[0]===0,"AC01 사람 S01 은 🪙10·지급 0 그대로 열린다");
+  ok([0,1].every(p=>JSON.stringify(S0.inv[p])==='["potion"]'&&S0.balls[p]===1),"AC01 #285 경제 경기도 회복약 1·볼 1 지급 (다른 소모품 0)");
+  ok(S.eco.coins[0]===10&&S.inv[0].length===1&&S.balls[0]===1,"AC01 사람 S01 은 🪙10·회복약 1·볼 1 로 열린다 (#285)");
   ok(S.eco.bag[0].length===0&&S.reserve[0]===null&&S.pieces.every(p=>!p.cap),"AC01 가방 비어 있음 · 예비·cap 경로 미사용");
   ok(S.phase==="setup"&&S.eco.shop&&S.eco.shop.kind==="start","S01 은 배치 전 setup 단계에 열린다");
   const sl=S.eco.shop.slots[0];
@@ -104,7 +104,7 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   act(T,{t:"shopBuy",player:0,i:0,seq:E(T).shop.seq[0]});
   eq(E(T).coins[0]-T.ecoReserveNeed(T.S,0),0,"AC04 하수인 구매는 🪙·k·v 를 함께 1 줄여 여유(🪙 − 필수)는 그대로");
   refusedClean(T,{t:"shopGood",player:0,item:"potion"},"AC04 여유 0 이면 소모품 거부");
-  eq(T.S.balls[0],4,"AC04 확정된 볼 4개 보존");
+  eq(T.S.balls[0],5,"AC04 확정된 볼 4개 보존 (시작 1 + 4)");
   /* AC05·AC06 */
   refusedClean(T,{t:"shopDone",player:0},"AC05 필드 5칸 이하면 완료 거부");
   refusedClean(T,{t:"shopGood",player:0,item:"ticket"},"AC06 여유 0 이면 S01 티켓도 거부 (#238: S01 구매 자체는 허용 — smoke_issue238 A2)");
@@ -120,7 +120,7 @@ function setSlots(T,p,slots){ E(T).shop.slots[p]=slots.map(s=>s?{key:s[0],grade:
   const top=Math.max(...T.V2_ELEM_ORDER.map(el=>cnt[el]||0)), tied=T.V2_ELEM_ORDER.filter(el=>(cnt[el]||0)===top);
   ok(T.ecoEmptyField(S,0).length===0&&S.eco.shop.done[0]&&field(T,0)[1].rosterId===slot0,"AC08 시간 초과 → 노출된 적격 칸을 ①부터 자동 구매 · 6칸 · 완료");
   ok(S.eco.shop.slots[0].every(s=>s&&s.soldOut),"AC08/#263 자동 구매한 칸도 SOLD OUT 으로 남는다 (자동 새로 고침 0회)");
-  eq(S.balls[0],4,"AC08 확정 거래(볼) 보존");
+  eq(S.balls[0],5,"AC08 확정 거래(볼) 보존 (시작 1 + 4)");
   ok(S.eco.coins[0]>=0,"AC08 코인 음수 없음");
   ok(king.element==="land"&&new Set(allies.map(a=>a.element)).size===1&&tied.includes(allies[0].element),
     "AC07/#263 고른 속성은 유지 · 안 고른 동료는 공동 1위 왕국 중 하나를 셋이 함께 받는다(난수 1회)");
@@ -616,7 +616,7 @@ function proxyBattle(T,win){
 /* ===== O. 온라인 경계 (D3) ===== */
 {
   const T=load(); T.newGame("pvp"); const S=T.S;
-  ok(S.eco===undefined&&S.balls[0]===2&&S.inv[0].length===3&&S.events.length===6&&S.events.some(e=>e.kind==="itemGift"),"D3 온라인·권위 서버 경로(newGame 직접)는 종전 경제 그대로 — 상태 모양 불변");
+  ok(S.eco===undefined&&S.balls[0]===1&&S.inv[0].length===1&&S.events.length===6&&S.events.some(e=>e.kind==="itemGift"),"D3 온라인·권위 서버 경로(newGame 직접)는 종전 경제 그대로 — 상태 모양 불변");
   const legacy=T.S, snap=JSON.stringify(legacy,(k,v)=>v instanceof Set?[...v]:v);
   const rs=["shopBuy","shopRefresh","shopGood","shopSell","shopSwap","shopTicket","leaderEl","shopDone","shopTimeout","bagPick"].map(t=>T.reduceCoreAction(legacy,{t,player:0,i:0,seq:0,uid:1,token:1,item:"ball"}));
   ok(rs.every(r=>r&&r.state===legacy&&r.events.every(e=>e.type==="shopRefused"))&&JSON.stringify(legacy,(k,v)=>v instanceof Set?[...v]:v)===snap,"D3 종전 경제 상태에 경제 액션이 오면 거부 · 상태 불변 (예외 없음)");
@@ -707,7 +707,7 @@ function proxyBattle(T,win){
       const u=unit(T,T.ROSTER.find(r=>!ownKeys(T,0).includes(r.id)).id,2,2); S.eco.bag[0]=[u];
       adv(10000); const c0=S.eco.coins[0]; act(T,{t:"shopGood",player:0,item:"ball"}); T.__shop("sell",u.uid);   // 볼 = 확정 · 판매 = 확인 창만
       adv(S90-10000-1); ok(S.phase==="shop","Q1 PVE 정기 상점 89.999초엔 진행 중");
-      adv(1); ok(S.phase==="play"&&S.eco.coins[0]===c0-1&&S.eco.bag[0].includes(u)&&S.balls[0]===1,"Q1 PVE 만료 → 확정 구매 보존 · 미확정 판매 취소 · 상점 종료");
+      adv(1); ok(S.phase==="play"&&S.eco.coins[0]===c0-1&&S.eco.bag[0].includes(u)&&S.balls[0]===2,"Q1 PVE 만료 → 확정 구매 보존 · 미확정 판매 취소 · 상점 종료");
     }
     /* Q2 핫시트 S01: P1 표시 순간 90초 → 가림(시간 불산입) → 가림 확인 뒤 P2 90초 */
     const T=boot("pvp"), S=T.S;

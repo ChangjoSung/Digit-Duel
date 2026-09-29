@@ -982,8 +982,9 @@ class Room {
     const out = { t: a.t, player: seatIndex, seq: sh.seq[seatIndex] };
     if (a.t === 'shopBuy') out.i = a.i;
     if (a.t === 'shopGood') out.item = a.item;
-    if (a.t === 'shopSell' || a.t === 'shopSwap') out.uid = a.uid;
-    if (a.t === 'shopSwap' || a.t === 'shopTicket' || a.t === 'leaderEl') {
+    if ((a.t === 'shopSell' && a.id === undefined) || a.t === 'shopSwap') out.uid = a.uid;
+    // #285 shopSell 은 가방 uid 또는 필드 별칭 id 중 하나만 싣는다(_sanitizeAction) — 필드 판매의 종류·생존·판매 가능 여부는 Core 가 판정한다.
+    if (a.t === 'shopSwap' || a.t === 'shopTicket' || a.t === 'leaderEl' || (a.t === 'shopSell' && a.id !== undefined)) {
       const p = this._resolveOwnAlias(seatIndex, a.id);
       if (!p) return err('E_ILLEGAL_ACTION');
       out.pieceId = p.id;
@@ -1009,7 +1010,7 @@ class Room {
       case 'shopBuy': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.i);
       case 'shopRefresh': case 'shopDone': return smallInt(a.shop) && smallInt(a.seq);
       case 'shopGood': return smallInt(a.shop) && smallInt(a.seq) && smallStr(a.item);
-      case 'shopSell': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.uid);
+      case 'shopSell': return smallInt(a.shop) && smallInt(a.seq) && ((smallInt(a.uid) && a.id === undefined) || (smallStr(a.id) && a.uid === undefined));
       case 'shopSwap': return smallInt(a.shop) && smallInt(a.seq) && smallInt(a.uid) && smallStr(a.id);
       case 'shopTicket': case 'leaderEl': return smallInt(a.shop) && smallInt(a.seq) && smallStr(a.id) && smallStr(a.el);
       case 'bagPick': return smallInt(a.token) && smallInt(a.i);
@@ -1618,7 +1619,9 @@ class Room {
       const T = this.engines[seatIndex], S = T.S, sh = S.eco && S.eco.shop;
       return Object.assign(base, {
         phase: sh && !sh.done[seatIndex] ? 'shop' : 'setup',
-        you: Object.assign({ placed: seat.placed, pieces: S.pieces.filter((p) => p.owner === seatIndex).map((p) => this._serializeOwn(T, p)) },
+        // #285 S01 에서 산 아이템·볼도 자기 몫만 싣는다 — 경기 중 뷰와 같은 필드라 클라이언트가 상점 동안에도 보유를 그린다.
+        you: Object.assign({ placed: seat.placed, pieces: S.pieces.filter((p) => p.owner === seatIndex).map((p) => this._serializeOwn(T, p)),
+          inv: (S.inv[seatIndex] || []).slice(), balls: S.balls[seatIndex] },
           this._ecoView(T, seatIndex)),
         shop: this._shopView(T, seatIndex),
         clock: this._clockView(seatIndex),

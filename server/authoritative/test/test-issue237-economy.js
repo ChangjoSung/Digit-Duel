@@ -100,7 +100,7 @@ async function main() {
     for (let n = 0; n < 4; n++) shop(room, 0, 'shopGood', { item: 'ball' });
     const s3 = snap(room);
     const fourth = shop(room, 0, 'shopGood', { item: 'ball' });
-    ok(!fourth.ok && fourth.reason === 'E_ILLEGAL_ACTION' && snap(room) === s3 && S0(room).eco.coins[0] === 5 && S0(room).balls[0] === 4,
+    ok(!fourth.ok && fourth.reason === 'E_ILLEGAL_ACTION' && snap(room) === s3 && S0(room).eco.coins[0] === 5 && S0(room).balls[0] === 5, // #285 시작 볼1 + 산 볼4
       '예비 재화 위반 거래는 전부 거부(코인·볼·진열 불변) — Core 판정을 서버가 거부로 돌려준다');
     const ticket = shop(room, 0, 'shopGood', { item: 'ticket' });
     ok(!ticket.ok && snap(room) === s3, 'S01 티켓도 예비 재화 위반이면 거부 (#238 — 품목 자체는 S01 판매)');
@@ -158,7 +158,7 @@ async function main() {
     const S = S0(room);
     ok([0, 1].every((s) => S.pieces.filter((x) => x.owner === s && x.type === 'minion' && x.rosterId).length === 6 && S.eco.coins[s] === 0),
       '상품 4개를 산 뒤 만료 → 남은 🪙6으로 6명 자동 구매 · 🪙0 (예비 재화가 자동 구매를 보장)');
-    ok(S.eco.tickets[0] === 1 && S.eco.buffInv[0].power === 1 && S.balls[1] === 1 && S.inv[1].includes('cure'), '만료 뒤에도 S01 상품은 보존');
+    ok(S.eco.tickets[0] === 1 && S.eco.buffInv[0].power === 1 && S.balls[1] === 2 && S.inv[1].includes('cure'), '만료 뒤에도 S01 상품은 보존');
     room._clearClock();
   }
 
@@ -757,6 +757,79 @@ async function main() {
     const seenName = S0(room).pieces.find((x) => x.id === seenP.id);
     ok(lines.some((m) => m.includes(seenName.name) && m.includes(`HP +${gain(seenName)} (회복 자세)`)) && !lines.some((m) => m.includes(seenName.name) && m.includes('%')),
       '보드 회복 로그: 전투 노출(hpSeen) 상대 말은 실제 값(% 없음) ' + JSON.stringify(lines));
+  }
+
+  // ===== 10b. #285 필드 판매 회선 — shopSell 은 가방 uid 또는 자기 필드 별칭 id 중 하나만 받는다 =====
+  // 서버 경계(형태·좌석 별칭 해석·진열 번호)만 본다. 필드 판매 자체의 합법성·환급·6칸 복구는 Core(Mars) 판정이다.
+  {
+    const room = ecoRoom(285);
+    for (const s of [0, 1]) shop(room, s, 'shopBuy', { i: firstBuyable(view(room, s)) });
+    const mine = view(room, 0).you.pieces.find((p) => p.type === 'minion' && p.rosterId).id;
+    const theirs = view(room, 1).you.pieces.find((p) => p.type === 'minion' && p.rosterId).id;
+    const v = view(room, 0), s0 = snap(room);
+    const refused = (extra, reason) => { const r = shop(room, 0, 'shopSell', extra); return !r.ok && r.reason === reason && snap(room) === s0; };
+    ok(refused({ uid: 1, id: mine }, 'E_BAD_ENVELOPE') && refused({}, 'E_BAD_ENVELOPE') && refused({ id: 7 }, 'E_BAD_ENVELOPE'),
+      '#285 uid·id 동시/둘 다 없음/숫자 id 는 봉투 거부 · 상태 불변');
+    ok(refused({ id: theirs }, 'E_ILLEGAL_ACTION') && refused({ id: 'u-stale000' }, 'E_ILLEGAL_ACTION'),
+      '#285 상대 필드 별칭·모르는 별칭은 같은 거부(존재 비노출) · 상태 불변');
+    const stale = room._handleAction(0, { baseRevision: 0, action: { t: 'shopSell', shop: v.shop.shop, seq: v.shop.seq - 1, id: mine } });
+    ok(!stale.ok && stale.reason === 'E_SHOP_STALE' && snap(room) === s0, '#285 지난 진열 번호의 필드 판매 거부');
+    const pid = room._pidByAlias.get(mine);
+    const tr = room._authorizeEco(0, { t: 'shopSell', shop: v.shop.shop, seq: v.shop.seq, id: mine, player: 1, owner: 1, paid: 99 });
+    ok(tr.ok && JSON.stringify(tr.action) === JSON.stringify({ t: 'shopSell', player: 0, seq: v.shop.seq, pieceId: pid })
+      && S0(room).pieces.find((p) => p.id === pid).owner === 0, '#285 자기 필드 별칭 → 내부 pieceId 로 번역 · 클라이언트 player/owner/가격 무시 ' + JSON.stringify(tr));
+    const bag = room._authorizeEco(0, { t: 'shopSell', shop: v.shop.shop, seq: v.shop.seq, uid: 5 });
+    ok(bag.ok && bag.action.uid === 5 && !('pieceId' in bag.action), '#285 가방 판매(uid)는 종전 그대로');
+
+    // 끝에서 끝: 새로 고침(진열 6칸 확보) → 별칭 판매 → 원장 환급 · 칸 비움 · 종 잠금 → 다시 채우기. 두 엔진이 같은 결과를 본다.
+    ok(shop(room, 0, 'shopRefresh').ok, '#285 fixture: 판매 전 새로 고침');
+    const key = S0(room).pieces.find((p) => p.id === pid).rosterId, paid = S0(room).pieces.find((p) => p.id === pid).paid, c0 = S0(room).eco.coins[0];
+    const sold = shop(room, 0, 'shopSell', { id: mine });
+    const sv = view(room, 0), eng = room.engines.map((T) => T.S.pieces.find((p) => p.id === pid));
+    ok(sold.ok && paid === 1 && S0(room).eco.coins[0] === c0 + paid && room.engines[1].S.eco.coins[0] === c0 + paid && sv.you.eco.coins === c0 + paid,
+      '#285 별칭 필드 판매 수락: 원장 paid 만큼 환급 · 두 엔진·소유자 뷰 반영 ' + JSON.stringify(sold));
+    ok(eng.every((p) => p.owner === 0 && p.rosterId === null && !p.paid) && !sv.you.pieces.some((p) => p.type === 'minion' && p.rosterId),
+      '#285 판매한 필드 칸은 빈칸(종·원장 제거)');
+    ok(sv.shop.sold.includes(key) && room.engines[1].S.eco.shop.sold[0].includes(key), '#285 판매한 종은 이번 오픈 동안 잠금');
+    const again = shop(room, 0, 'shopSell', { id: mine }), s1 = snap(room);
+    ok(!again.ok && snap(room) === s1, '#285 빈칸이 된 별칭의 재판매 거부 · 상태 불변');
+    const ri = firstBuyable(sv), refill = shop(room, 0, 'shopBuy', { i: ri });
+    const filled = S0(room).pieces.filter((p) => p.owner === 0 && p.type === 'minion' && p.rosterId);
+    ok(refill.ok && filled.length === 1 && filled[0].rosterId !== key && filled[0].paid === 1 && S0(room).eco.coins[0] === c0 + paid - 1,
+      '#285 판매 뒤 유효한 다시 채우기 수락(잠긴 종 제외)');
+  }
+
+  // ===== 10b. #285 경기 전 뷰의 자기 보유 — S01 볼·아이템 구매가 상점·배치·ready·재연결 뷰에 그대로 실린다(상대 뷰엔 없다) =====
+  {
+    const room = ecoRoom(285);
+    const v0 = view(room, 0);
+    const inv0 = S0(room).inv[0].join(), inv1 = view(room, 1).you.inv.join();
+    ok(v0.you.balls === 1 && Array.isArray(v0.you.inv) && v0.you.inv.join() === inv0 && !inv0.includes('cure'), '#285 S01 첫 뷰: 시작 볼1 · 시작 아이템 그대로');
+    const g = shop(room, 0, 'shopGood', { item: 'ball' }), p = shop(room, 0, 'shopGood', { item: 'cure' });
+    const a = view(room, 0), b = view(room, 1);
+    ok(g.ok && p.ok && a.phase === 'shop' && a.you.balls === 2 && a.you.balls === S0(room).balls[0] && a.you.inv.join() === S0(room).inv[0].join()
+      && a.you.inv.includes('cure') && a.you.eco.coins === 8, '#285 S01 볼·해독 구매 → 자기 뷰 balls 2 · inv +해독 · 🪙8 (서버와 일치)');
+    ok(b.you.balls === 1 && b.you.inv.join() === inv1 && !JSON.stringify(b).includes('cure'), '#285 상대 뷰는 자기 보유만 — 상대 구매 미노출');
+    finishStart(room, 0);
+    const pos = H.makeSetup().pos;
+    ok(room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos }).ok && room.handleCommand(0, { t: 'ready' }).ok, 'fixture: 좌석 0 배치·ready');
+    const r = view(room, 0);
+    ok(room.state === STATES.SETUP && r.phase === 'setup' && r.seats.ready[0] && r.you.balls === 2 && r.you.inv.includes('cure'), '#285 상점 완료·ready 뒤 경기 전 뷰에도 balls·inv 유지');
+    room.socketClosed(0);
+    const res = room.resumeSeat(0, room.seats[0].credential.current, fakeWs());
+    const rv = view(room, 0);
+    ok(res.ok && rv.you.balls === 2 && rv.you.inv.includes('cure'), '#285 경기 전 재연결 뷰에도 balls·inv 복원');
+    finishStart(room, 1);
+    ok(room.handleCommand(1, { t: 'setup', roster: S0(room).roster[1].slice(), pos }).ok && room.handleCommand(1, { t: 'ready' }).ok && room.state === STATES.IN_PROGRESS, 'fixture: 개시');
+    const iv = view(room, 0);
+    ok(iv.you.balls === 2 && iv.you.inv.includes('cure'), '#285 개시 뒤 경기 중 뷰와 같은 값');
+    room._clearClock();
+  }
+  {
+    const room = new H.Room(2851, { isPublic: false, epoch: 'aaaaaaaa', economy: true, seed: 285 });
+    room.openHostSeat(fakeWs());
+    const o = view(room, 0);
+    ok(room.state === STATES.OPEN && !('inv' in o.you) && !('balls' in o.you), '#285 OPEN(엔진 전)에는 보유 필드 없음');
   }
 
   // ===== 11. 실제 WebSocket — 같은 requestId 는 한 번만 처리(저장 응답 재전송) =====

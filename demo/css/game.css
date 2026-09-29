@@ -1031,7 +1031,13 @@ button.l01Cur{display:flex; gap:8px; width:100%; min-height:44px; padding:0; pos
 .shopSheet .goodCard{position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; min-height:64px; padding:6px 2px; text-align:center;
   background:#0d1f47; border:2px solid #2a4f98; border-radius:10px; color:#fff;}
 .shopSheet .goodCard .ico{width:32px; height:32px; background:url(../assets/ui/ui-icons.png) no-repeat calc((38 + var(--g)) * -32px) 0/1536px 32px;} /* Earth_1 B15~B22 = ECO.goods 순서 */
-.shopSheet .goodCard .price{font-size:12px; color:#ffd66b;}
+.shopSheet .goodCard .goodIco{position:static; display:grid; place-items:center; min-width:44px; min-height:44px; padding:0; background:none; border:0;} /* #285 아이콘 = 설명 */
+.shopSheet .goodCard .buy{width:100%; min-height:32px; padding:2px; font-size:12px; font-weight:bold; color:var(--goldInk); background:linear-gradient(180deg,var(--gold1),var(--gold2)); border:2px solid #7a4a0c; border-radius:8px;}
+.shopSheet .goodDesc{margin:6px 0 0; min-height:1.4em; font-size:12.5px;}
+.ownGrid{display:flex; flex-wrap:wrap; gap:4px;}
+.ownItem{display:inline-flex; align-items:center; gap:2px; padding:2px 6px; border-radius:8px; background:#0d1f47; border:1px solid #2a4f98; font-size:12px;}
+.ownItem.none{opacity:.45;}
+.ownItem .ico{width:24px; height:24px; background:url(../assets/ui/ui-icons.png) no-repeat calc((38 + var(--g)) * -24px) 0/1152px 24px;}
 .shopSheet .goodCard .own{position:absolute; top:2px; right:4px; font-size:10.5px; color:#fff; background:#2f5fd0; border-radius:8px; padding:0 4px;}
 #app[data-screen="prep"] .netRoomBar{padding:4px 6px; border-radius:10px; background:#0b1a3c; border:2px solid var(--blueEdge); font-size:12px;}
 
@@ -1096,6 +1102,9 @@ h2[tabindex="-1"]:focus{outline:none;} /* 화면 전환 때 제목으로 옮긴 
   #app[data-screen="prep"] #right>.panel{padding:6px;}
   #overlayBox:not(.battleBox){width:100%; padding:10px 4px;}
   .shopSheet .slotGrid{gap:3px;}
+  /* #285 320px 실측: 필드 6열 판매 39px·가방 가로 두 버튼 43px → 필드 3열 · 가방 버튼 세로(44px 이상) */
+  .shopSheet .slotGrid:not(.bag){grid-template-columns:repeat(3,minmax(0,1fr));}
+  .shopSheet .slotGrid.bag .uSlot .acts{flex-direction:column;}
 }
 /* 2) 시너지 칩 = 44px 버튼 · 누르면 아래 한 줄에 단계 설명 */
 .synChip{min-width:44px; min-height:44px; justify-content:center; cursor:pointer; font-family:inherit;}
