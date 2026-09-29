@@ -148,6 +148,8 @@ jobs:
           node demo/test/regression/smoke_issue245.js
           node demo/test/regression/smoke_issue236.js
           node demo/test/regression/smoke_issue259.js
+          # #286 S03 말판 높이·44px 조작 영역 회귀
+          node demo/test/regression/smoke_issue286.js
           node demo/test/regression/smoke_issue263_client.js
           node demo/test/regression/smoke_issue260.js
           node demo/test/regression/smoke_issue262.js
