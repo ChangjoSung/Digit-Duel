@@ -401,7 +401,7 @@ function lobbyWaitHtml(){
 function lobbyCdTick(){ if(LOBBY.cdT) return;
   LOBBY.cdT=setTimeout(()=>{ LOBBY.cdT=null; if(uiScreenName()!=="room") return; let on=false;
     for(const [id,left] of [["lobbyCd",netLobbyCountdownLeft()],["lobbyKickCd",lobbyKickLeft()]]){ const el=$(id);
-      if(left!==null&&el){ const t=String(Math.ceil(left/1000)); if(el.textContent!==t) el.textContent=t; on=true; } }
+      if(typeof left==="number"&&el){ const t=String(Math.ceil(left/1000)); if(el.textContent!==t) el.textContent=t; on=true; } }
     if(on) lobbyCdTick(); },250); }
 function lobbyKickLeft(){ const l=NET.lobby; return l&&l.kickInMs!==null&&!l.canKick?Math.max(0,l.kickInMs-(Date.now()-l.at)):null; }
 /* #295 상대 카드의 지연 = 서버가 잰 상대↔서버 왕복(ms). 나↔상대 직접 핑이 아니며, 높아도 '연결 끊김'으로 보이지 않는다(끊김은 서버 peerConnected 만) */
