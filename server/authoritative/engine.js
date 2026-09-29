@@ -361,9 +361,9 @@ function sceneSideOf(T, f, piece) {
   return {
     owner: piece.owner, type: piece.type, element: f.element || null, bodyFight,
     // #238 전설 정체 — room.js _serializeBattle side()와 같은 규칙. 종 키는 Core ecoKey(일반=rosterId 그대로,
-    // 전설=L-DRAGON/L-WITCH/L-REAPER). 대리 출전은 기존 artRosterId 우선, 없을 때 전설만. 원시 legend·등급·기술·cap 은 싣지 않는다.
+    // 전설=L-DRAGON/L-WITCH/L-REAPER). 대리 출전은 기존 artRosterId 우선, 없으면 그 개체의 ecoKey(#292 경제 가방 말). 원시 legend·등급·기술·cap 은 싣지 않는다.
     rosterId: bodyFight && piece.type === 'minion' ? (T.ecoKey(piece) || null) : null,
-    artRosterId: bodyFight ? null : (f.artRosterId || (f.legend ? T.ecoKey(f) : null)),
+    artRosterId: bodyFight ? null : (f.artRosterId || T.ecoKey(f) || null),
   };
 }
 function sceneOf(T, battle) {

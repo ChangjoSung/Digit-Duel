@@ -1995,7 +1995,8 @@ class Room {
       // #217 Saturn ctx_e6437fa06ae4 REVISE — 공개 상대 보드 하수인 아이콘(artDirOf)이 쓰는 유일한 키.
       // name이 이미 ROSTER 20종을 1:1로 특정하므로(art-restore-fields.md §"새 노출 아님") 형태만 추가하는
       // 표시 whitelist 복구다 — 정보량 증가 없음. 하수인이 아니면(왕/동료) 항상 null.
-      rosterId: p.type === 'minion' ? (p.rosterId || null) : null,
+      // #292 공개된 전설은 rosterId 가 없다 — _serializeOwn 과 같은 종 키(ecoKey, L-DRAGON 등). 이미 싣는 name 이 전설을 특정하므로 새 노출 아님.
+      rosterId: p.type === 'minion' ? (this.engines[0].ecoKey(p) || null) : null, // ecoKey 는 상수표만 읽는 순수 함수 — 어느 좌석 엔진이든 같다
       ...(p.swapMark ? { swapMark: true } : {}), // #237 "상점에서 교체됨" — 7.9 가 상대에게 허용한 유일한 상점 표식
       ...(p.hpSeen ? { hpSeen: true } : {}),
     };
@@ -2087,7 +2088,8 @@ class Room {
         // #238 전설 정체 — 공개된 전설 종 키(L-DRAGON/L-WITCH/L-REAPER)를 기존 종 키 칸에 싣는다(Core ecoKey · 일반 값 불변).
         // 원시 legend·등급·기술·cap 은 싣지 않는다. engine.js sceneSideOf 와 같은 규칙 — 바뀌면 양쪽을 함께 고친다.
         rosterId: bodyFight && piece.type === 'minion' ? (T.ecoKey(piece) || null) : null,
-        artRosterId: bodyFight ? null : (f.artRosterId || (f.legend ? T.ecoKey(f) : null)),
+        // #292 대리 출전: cap 은 artRosterId, 경제 가방 말(포획분 포함)은 그 개체의 종 키(ecoKey) — 출전 중인 개체만, 가방 목록은 싣지 않는다
+        artRosterId: bodyFight ? null : (f.artRosterId || T.ecoKey(f) || null),
         // #234 REVISE 2차 — 사신의 낫 봉인은 자기 전투원에만(키 자체를 상대 쪽에 만들지 않는다 · _serializeOwn 주석).
         ...(owner === seatIndex ? { reaperSeal: f.reaperSeal || 0 } : {}),
         /* #235 공격형·표준 시너지 가산칸 — **자기 전투원에만** 싣는다(reaperSeal 과 같은 owner-only 경계: 상대 쪽에는 키 자체를 만들지 않는다).

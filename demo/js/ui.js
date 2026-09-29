@@ -502,6 +502,15 @@ window.artFail=function(dir,el){
   artScheduleRecovery(dir,artIconFile(dir));
   if(first) artRerender();   // 재그리기는 종전대로 상태가 바뀔 때 한 번만
 };
+/* #292 재접속: 끊긴 동안 떨어진 파일은 회선이 없어서였지 결손의 증거가 아니다. 재접속 유예(60초)가 복구 예산(약 5초)보다 길어
+   재개 뒤에도 gone·failed 로 굳어 새로고침 전까지 이모지로 남았다. 재개 성공 때 그 파일들만 예산을 새로 받아 다시 확인한다 —
+   대상은 이미 실패로 기록된 고정 프리로드 파일뿐이라 새 URL·정체 상관 요청이 없고, 재개 1회당 파일마다 ART_RETRY.max 회로 유한하다 */
+function artResumeRecovery(){
+  const gone=[...ART.gone]; ART.gone.clear();
+  for(const [k,st] of ART.retry) if(!st.timer&&!st.busy) ART.retry.delete(k); // 진행 중인 조회는 그대로 끝나게 둔다
+  for(const k of gone){ const i=k.lastIndexOf("/"); artScheduleFile(k.slice(0,i),k.slice(i+1)); }
+  for(const d of ART.failed) artScheduleRecovery(d,artIconFile(d));
+}
 /* 전투 도트 실패: 지금 보고 있는 전투에서도 즉시 현행 이모지 토큰으로 바꿔 끼운다 — 전투원 자리가 비어 보이지 않는다.
    battleModal() 을 다시 부르지 않으므로 메시지 재생·FX 에 재진입하지 않고, 토큰의 id·위치 클래스는 그대로라 shake·ko·dmgfloat 경로가 유지된다 */
 window.artSpriteFail=function(dir,el){

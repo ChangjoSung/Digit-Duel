@@ -1135,10 +1135,12 @@ function artDirOf(p){
 function artDirOfFighter(pf,piece){
   if(!pf||!piece) return null;
   if(pf===piece) return artDirOf(piece);
-  if(pf!==piece.cap) return null;
+  // #292 경제 가방 대리 출전(가방 말·포획해 가방에 든 말)은 cap 이 아니라 그 소유자 가방의 개체 자체가 싸운다 — 그 개체만 더 받는다
+  const inBag=pf!==piece.cap;
+  if(inBag&&!(typeof S!=="undefined"&&S&&S.eco&&S.eco.bag[piece.owner]&&S.eco.bag[piece.owner].includes(pf))) return null;
   if(typeof pf.legend==="string"&&Object.prototype.hasOwnProperty.call(LEGEND_ART_KEY,pf.legend)) return LEGEND_ART_KEY[pf.legend]; // #238 전설 대리 출전(가방) — 속성 없음
-  if(!pf.artRosterId) return null;
-  const rd=ROSTER.find(r=>r.id===pf.artRosterId); if(!rd||rd.element!==pf.element) return null;
+  const id=inBag?pf.rosterId:pf.artRosterId; if(!id) return null; // cap 은 표시 전용 artRosterId 만, 가방 개체는 그 종 rosterId (#292)
+  const rd=ROSTER.find(r=>r.id===id); if(!rd||rd.element!==pf.element) return null;
   const dir=rd.element+"_"+rd.arch;
   return ART_DIR_SET.has(dir)?dir:null;
 }
