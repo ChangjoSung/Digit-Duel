@@ -26,8 +26,11 @@ const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncMo
   /* #262 이모티콘 — emoteUntil: 서버가 알려 준 다음 전송 가능 시각(Date.now 기준) · emoteReq: 응답 대기 중인 requestId ·
      peerConnected: 서버가 준 상대 소켓 연결 여부(모르면 null). 쿨다운의 원본은 서버 좌석 시각이고 이 값은 표시용 사본이다. */
   emoteUntil:0, emoteReq:null, peerConnected:null,
-  /* #238 대기방 — lobby: 서버 WAITING 뷰의 {guestReady,countdownMs,peerInResult,at(받은 시각)} · round: 서버 경기 번호(모든 뷰) */
-  lobby:/** @type {{guestReady:boolean,countdownMs:number|null,peerInResult:boolean,at:number}|null} */(null), round:0,
+  /* #295 peerPing: 서버가 잰 상대↔서버 왕복 ms(정수·모르면 null) — 나↔상대 직접 핑이 아니고, 연결 끊김 판정에 쓰지 않는다 */
+  peerPing:/** @type {number|null} */(null),
+  /* #238 대기방 — lobby: 서버 WAITING 뷰의 {guestReady,countdownMs,peerInResult,at(받은 시각)} · round: 서버 경기 번호(모든 뷰)
+     #295 kickInMs: 끊긴 참가자를 내보낼 수 있을 때까지 남은 ms(방장에게만 · 아니면 null) · canKick: 서버가 허락한 [내보내기] */
+  lobby:/** @type {{guestReady:boolean,countdownMs:number|null,peerInResult:boolean,kickInMs:number|null,canKick:boolean,at:number}|null} */(null), round:0,
   /** #262 이모티콘 전송의 유일한 끝 — 게임 액션 경로(netAction·netSendAction·모달 중계·resync·재생)를 타지 않고,
       requestId 로 전용 응답(emote_result)만 짝짓는다. 성공 표시는 서버의 emote 프레임을 받은 뒤에만 한다(낙관 표시 없음).
       @param {string} id @returns {boolean} 보냈으면 true */
@@ -350,6 +353,7 @@ const NET_LOBBY_MSG={
 };
 function netLobbyMsg(kind){ NET.lobbyMsg=kind?{kind,text:NET_LOBBY_MSG[kind]||kind}:null; }
 /* #261 서버가 정리·검증해 보낸 방 이름 — 문자열만 받는다(표시는 언제나 escAttr 텍스트). 없으면 null → '방 #번호' */
+function netPingMs(v){ return Number.isSafeInteger(v)&&v>=0?v:null; }
 function netRoomName(v){ return typeof v==="string"&&v.length>0&&v.length<=40?v:null; }
 function netCredNonce(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
 function netReqId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2); }
@@ -399,7 +403,7 @@ function netHandlePublicSocketClosed(ev){
    전송 프레임 자체는 한 글자도 바뀌지 않는다 — 같은 Object.assign 이다. */
 /**
  * @overload
- * @param {"ready"|"unready"|"resign"|"leave"|"resync"|"lobby_ready"|"lobby_unready"|"lobby_start"|"lobby_return"} t
+ * @param {"ready"|"unready"|"resign"|"leave"|"resync"|"lobby_ready"|"lobby_unready"|"lobby_start"|"lobby_return"|"lobby_kick"} t
  * @returns {void}
  *
  * @overload
@@ -475,6 +479,8 @@ function netHandlePublicMessage(m){
   if(Array.isArray(m.players)) NET.players=[0,1].map(i=>typeof m.players[i]==="string"&&ACCT_NICK_RE.test(m.players[i])?m.players[i]:null);
   if(Array.isArray(m.reps)) NET.reps=[0,1].map(i=>lobbyRepOk(m.reps[i])?m.reps[i]:null); // #260 일반 30종 ID 만 — 그 밖의 값은 그리지 않는다
   if(typeof m.peerConnected==="boolean") NET.peerConnected=m.peerConnected; // #262 서버 권위 상대 연결 — 결과 화면처럼 정지가 없는 단계의 이모티콘 잠금 근거
+  if("peerPingMs" in m) NET.peerPing=netPingMs(m.peerPingMs); // #295 방 프레임 최상위
+  if(m.type==="peer_ping"){ NET.peerPing=netPingMs(m.ms); lobbyPeerPingPaint(); return; } // #295 실시간 갱신 — 그 칸만 고친다(포커스 유지)
   if(m.type==="emote"){ netEmoteRecv(m); return; }
   if(m.type==="emote_result"){ netEmoteResult(m); return; } // #262 전용 거부 응답 — 일반 오류 경로(재동기·자동 턴·준비 재전송)를 타지 않는다
   if(m.type==="lobby_ready"){ NET.lobbyOnly=true; NET.online=null; /* #238 새 로비 소켓 — 첫 목록 전까지 — */ lobbyPollStart(); /* #261 L02 면 핑·5초 갱신 시작 */ NET.roomsLoading=true; render(); netSend({v:1,t:"list_rooms"}); return; }
@@ -487,7 +493,7 @@ function netHandlePublicMessage(m){
     NET.epoch=m.epoch!=null?m.epoch:NET.epoch; NET.revision=(typeof m.revision==="number")?m.revision:0;
     NET.roomState=m.type==="room_opened"?"OPEN":"SETUP"; // 생성 직후는 상대 입장 대기, 참가 성공은 두 좌석이 찬 배치 단계
     NET.preparing=true; NET.queued=false; NET.mySetup=null; NET.myReady=false; NET.peerReady=false; NET.lobbyOnly=false;
-    NET.readyWanted=false; NET.readySent=false; NET.lobbyPending=null; netLobbyMsg(null); NET.round=0; NET.lobby=null; // #238 새 방은 경기 0 — 지난 방의 round 로 명령을 보내면 서버가 거부한다
+    NET.readyWanted=false; NET.readySent=false; NET.lobbyPending=null; netLobbyMsg(null); NET.round=0; NET.lobby=null; NET.peerPing=netPingMs(m.peerPingMs); /* #295 이 프레임의 값만(없으면 null) — 옛 방 지연이 새지 않는다 */ // #238 새 방은 경기 0 — 지난 방의 round 로 명령을 보내면 서버가 거부한다
     netClearResume(); NET.explicitLeave=false; emoteReset(false); // #262 새 방 — 옛 말풍선·대기·간격 사본을 버린다
     NET.economy=!!m.economy; // #237 경제 방 — 시작 상점은 서버 좌석 뷰(SETUP)로만 열린다. 그 전(OPEN 호스트)에는 무료 로스터를 그리지 않는다(renderSide)
     newGame("pvp");
@@ -533,7 +539,7 @@ function netHandlePublicMessage(m){
     /* §2.8 에폭 불일치 = 서버 재시작으로 방 VOID(몰수 아님) — 60초 유예를 기다리지 않고 일반 단절과 다른 문구로 즉시 포기 */
     if(m.code==="E_SESSION_ENDED"){ acctEndSession(m.reason==="login_replaced"?ACCT_REPLACED:ACCT_SESSION_ENDED); return; } // #259 서버가 이 계정 세션을 끝냈다 — 재접속하지 않는다
     if(NET.resuming&&m.code==="E_EPOCH"){ netAbandonResume("🌐 서버 재시작으로 경기가 무효 처리되었습니다."); netListRooms(); return; }
-    if(NET.resuming&&["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_SEAT_TOKEN_INVALID","E_EPOCH","E_TOKEN_GEN_STALE","E_SUPERSEDED"].includes(m.code)){
+    if(NET.resuming&&["E_ROOM_NOT_FOUND","E_ROOM_CLOSED","E_SEAT_TOKEN_INVALID","E_EPOCH","E_TOKEN_GEN_STALE","E_SUPERSEDED"].includes(m.code)){ // #295 내보내기·자동 비움된 좌석은 E_SEAT_TOKEN_INVALID
       if(m.code==="E_SEAT_TOKEN_INVALID") acctResumeProbe(); // #259 좌석 계정과 지금 쿠키의 계정이 다를 수 있다(같은 프로필 다른 탭 로그인) — 원인을 확인해 알린다
       netResumeExpire(); return; } // #217 재개 불가능한 오류는 유예 만료를 기다리지 않고 즉시 포기
     /* #259 같은 계정의 다른 탭(또는 새로고침한 창)이 이 좌석으로 재접속했다 — 마지막 탭이 좌석을 가진다.
@@ -615,6 +621,7 @@ function netStubStats(u){
 }
 function netApplyRoomState(data,isResumeFrame){
   if(!data) return;
+  const wasWait=uiRoomWait(); // #295 방 대기(L03)에 들어오는 순간(참가·결과 복귀·새로고침 재개) 한 번만 공식 전적을 다시 받는다
   NET.waitingForPeer=false; // 성공한 room_state가 왔다는 것 자체가 더 이상 "게스트 미입장" 상태가 아니라는 뜻이다
   if(typeof data.revision==="number") NET.revision=data.revision;
   if(typeof data.state==="string") NET.roomState=data.state;
@@ -631,7 +638,9 @@ function netApplyRoomState(data,isResumeFrame){
      autoEndCheck 가 옛 turn/state 를 읽고 새 revision 으로 낡은 자동 입력을 보낼 수 있다. */
   const unpaused=wasPaused&&!netPaused();
   /* #238 대기방(WAITING) — 준비·카운트다운·상대 결과 확인 중 여부. 지난 경기에서 넘어왔으면 경기별 클라이언트 상태를 비운다. */
-  NET.lobby=data.lobby&&typeof data.lobby==="object"?{guestReady:!!data.lobby.guestReady,countdownMs:typeof data.lobby.countdownMs==="number"?data.lobby.countdownMs:null,peerInResult:!!data.lobby.peerInResult,at}:null;
+  NET.lobby=data.lobby&&typeof data.lobby==="object"?{guestReady:!!data.lobby.guestReady,countdownMs:typeof data.lobby.countdownMs==="number"?data.lobby.countdownMs:null,peerInResult:!!data.lobby.peerInResult,
+    kickInMs:netPingMs(data.lobby.kickInMs),canKick:data.lobby.canKick===true,at}:null;
+  if(!wasWait&&uiRoomWait()) lobbyRecRefresh();
   /* #238 CJ 최신 3: 참가자가 나가면 방장은 OPEN(phase 'setup')을 받는다 — 상대 없는 대기방. 상대 이름·대표 그림은 비우고(결과에서 복귀한 경우도) 경기별 상태를 되돌린다 */
   if(data.state==="OPEN"&&NET.me!==1){ if(NET.players) NET.players[1]=null; if(NET.reps) NET.reps[1]=null; }
   if(data.phase==="waiting"||data.state==="OPEN"){ if(NET.started||!S||S.phase!=="setup"||S.eco) netRematchReset(); render(); netUnpauseFlush(unpaused); return; }
@@ -989,6 +998,7 @@ window.netRoomReady=function(flag){
 /* ===== #238 대기방 — 참가자 준비 · 방장 시작(서버 5초) · 결과 뒤 같은 방 복귀. 판정·표시 값은 서버 뷰(NET.lobby)만 쓴다 ===== */
 window.netLobbyReady=function(flag){ if(NET.roomState==="WAITING") netSendCmd(flag?"lobby_ready":"lobby_unready"); };
 window.netLobbyStart=function(){ if(NET.roomState==="WAITING") netSendCmd("lobby_start"); };
+window.netLobbyKick=function(){ if(NET.roomState==="WAITING"&&NET.lobby&&NET.lobby.canKick) netSendCmd("lobby_kick"); }; // #295 방장만 · 서버가 다시 검사한다
 window.netReturnToRoom=function(){ if(NET.roomState==="FINISHED") netSendCmd("lobby_return"); };
 /** 카운트다운 남은 ms(받은 순간부터 로컬로 줄인 표시값) · 카운트다운이 없으면 null. 시작 판정은 서버가 한다. */
 function netLobbyCountdownLeft(){ const l=NET.lobby; return l&&typeof l.countdownMs==="number"?Math.max(0,l.countdownMs-(Date.now()-l.at)):null; }
@@ -1049,7 +1059,7 @@ function netAbandonResume(msg){
   showToast(msg);
   netLeave(); LOBBY.next="rooms"; newGame("pvp",{phase:"menu"}); render(); // #261 재접속 포기·만료는 방 목록(L02)으로
 }
-function netResumeExpire(){ netAbandonResume("🌐 연결이 끊겼습니다. 방 목록으로 돌아가 다시 참가해 주세요."); netListRooms(); }
+function netResumeExpire(){ netAbandonResume("🌐 연결이 끊긴 동안 이 방의 자리가 종료되었습니다. 방 목록에서 다시 참가해 주세요."); netListRooms(); } // #295 사유(내보내기·자동 비움·만료)를 가리지 않는 공통 안내
 window.netCancelResume=function(){ netAbandonResume("🌐 재접속을 취소했습니다."); netListRooms(); };
 /* ===== #217 전투 화면 — 원본 battleModal()을 그대로 재사용한다 =====
    서버 스냅샷(protocol v4.2 §7 battle 화이트리스트)으로 원본 battleModal()이 읽는 모양의 표시용 전투 객체를 짓는다.

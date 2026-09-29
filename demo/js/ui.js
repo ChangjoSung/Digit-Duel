@@ -1108,7 +1108,7 @@ function netLeave(){ // 온라인 상태 완전 해제 — 이 정리 없이 로
   NET.fxGen=(NET.fxGen||0)+1; NET.fxQueue=[]; NET.fxPlaying=false; NET.fxCur=null; NET.fxEpoch=null; NET.fxRoomId=null; NET.fxSeat=null;
   NET.fxBattleSnaps={}; NET.fxDisp={}; NET.stageBid=null; NET.fxLiveBid=null; NET.battleMenu=null; NET.overlaySig=null; NET._overlayOpen=false;
   try{ fxSetLockClass(false); const fb=$("fxBanner"); if(fb&&fb.classList) fb.classList.add("hidden"); }catch(e){}
-  emoteReset(false); NET.peerConnected=null; // #262 말풍선·타이머·응답 대기·간격 사본 잔존 0
+  emoteReset(false); NET.peerConnected=null; NET.peerPing=null; // #262 말풍선·타이머·응답 대기·간격 사본 잔존 0
   setSeed(null); // 공유 시드 해제 — 이후 오프라인 경기는 다시 Math.random
 }
 /* ===== #262 경기 중 이모티콘 — 화면 (2026-09-27 CJ 승인 · GDD-24 00.8) =====

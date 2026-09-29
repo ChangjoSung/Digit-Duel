@@ -125,7 +125,7 @@ function playToFinish(room) {
   cmd(room, 0, 'lobby_return'); cmd(room, 0, 'leave');
   ok(room.state === STATES.CLOSED, '대기방 방장 나가기 — 참가자가 결과 중이어도 방 파괴');
 
-  // 7b) 복귀한 좌석은 5분 정리로 조용히 닫히지 않는다 — 결과 중인 상대가 끊기면 60초 유예 뒤 닫는다
+  // 7b) 복귀한 좌석은 5분 정리로 조용히 닫히지 않는다 — 결과 중인 상대가 끊기면 60초 유예 뒤 그 좌석만 비운다(#295 — 종전 닫힘 대체)
   const lob = new Lobby({ epoch: 'aaaaaaaa' });
   const lr = lob.createRoom('1.1.1.1', { isPublic: true }).room;
   lr.graceMs = 30; lr.countdownMs = CD;
@@ -140,9 +140,9 @@ function playToFinish(room) {
   ok(!lr._closeAt && lob.getRoom(lr.roomId), '복귀 좌석이 있으면 정리 예약 해제');
   lr.socketClosed(1);
   await wait(60);
-  ok(lr.state === STATES.CLOSED, '결과 중 상대 단절 유예 만료 → 닫힘');
+  ok(lr.state === STATES.OPEN && !lr.seats[1].credential, '결과 중 상대 단절 유예 만료 → 좌석 비움·빈 대기방(OPEN)');
   lob.sweep();
-  ok(!lob.getRoom(lr.roomId), '닫힌 방 목록 제거');
+  ok(lob.getRoom(lr.roomId) && lr.isListable(), '빈 대기방은 목록에 남는다');
 
   // 8) 나가기는 대기방 취소 · 방장 혼자 시작 불가 · 경제 방은 5초 뒤 시작 상점 90초가 그때부터
   const solo = new Room(2, { isPublic: true, epoch: 'aaaaaaaa', startGate: true, countdownMs: CD });

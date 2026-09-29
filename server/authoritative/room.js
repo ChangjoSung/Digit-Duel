@@ -34,6 +34,7 @@ const { SeatCredential } = require('./seatToken');
 const { createEngine, withEngine } = require('./engine');
 
 const DISCONNECT_GRACE_MS = 60 * 1000;
+const KICK_AFTER_MS = 30 * 1000; // #295 공개 대기방 참가자 단절 30초 뒤 방장 내보내기 허용(2026-09-29 CJ) — 60초면 자동 비움
 const DEDUP_TTL_MS = 120 * 1000;
 const EMOTE_COOLDOWN_MS = 5 * 1000; // #262 좌석별 이모티콘 전송 간격(2026-09-27 CJ 승인)
 const START_COUNTDOWN_MS = 5 * 1000; // #238 대기방 방장 시작 → 시작 상점까지 서버 카운트다운(2026-09-28 CJ)
@@ -351,11 +352,12 @@ class Room {
   // shopMs·bagPickMs: 테스트 재현용 시계 주입(graceMs 와 같은 관례). 기본은 Core 상수(ECO.shopSec·bagPickSec).
   // startGate: #238 두 번째 참가를 WAITING 대기방으로 받는다(로비가 넘긴다 — 운영 기본). 끄면 종전처럼 참가 즉시 시작(단위 테스트 관례).
   // countdownMs: 방장 시작 카운트다운 주입(테스트 전용). 기본 5초.
-  constructor(roomId, { isPublic, epoch, graceMs, seed, economy, shopMs, bagPickMs, placeMs, actMs, battleMs, startGate, countdownMs }) {
+  constructor(roomId, { isPublic, epoch, graceMs, kickMs, seed, economy, shopMs, bagPickMs, placeMs, actMs, battleMs, startGate, countdownMs }) {
     this.roomId = roomId;
     this.isPublic = !!isPublic;
     this.epoch = epoch;
     this.graceMs = graceMs != null ? graceMs : DISCONNECT_GRACE_MS;
+    this.kickMs = kickMs != null ? kickMs : KICK_AFTER_MS; // #295 테스트 주입(graceMs 와 같은 관례)
     this._testSeed = Number.isInteger(seed) ? seed : null;
     this.economy = !!economy;
     this.startGate = !!startGate;
@@ -400,7 +402,7 @@ class Room {
     return {
       credential: null, ws: null, connected: false,
       ready: false, placed: false, rawSetup: null, seq: 0,
-      disconnectExpiry: null, disconnectTimer: null,
+      disconnectExpiry: null, disconnectTimer: null, kickTimer: null, // #295 kickTimer — 30초 내보내기 허용 순간 푸시(참가자 좌석만)
       shopTimedOut: false, // #263 S01 을 시간 초과로 끝낸 좌석 — 그 자리에서 자동 배치·준비까지 끝나므로 배치 90초를 받지 않는다
       emoteAt: 0, // #262 마지막 이모티콘 성공 시각(서버 시계) — 좌석에 붙어 재접속에도 남는다. 뷰·재생·DB 에 싣지 않는다
       lobbyReady: false, // #238 대기방 참가자 준비(좌석 1만) — 배치 준비(ready)와 별개
@@ -506,6 +508,44 @@ class Room {
 
   _reopenEmpty() { this.seats[1] = this._newSeat(); this._resetForRematch(STATES.OPEN); }
 
+  /* #295 (2026-09-29 CJ) 공개 대기방(WAITING, 또는 결과 뒤 방장이 먼저 복귀한 FINISHED)에서 서버가 단절을 확정한 참가자.
+     단절 시각은 유예 만료 시각에서 거꾸로 센다(disconnectExpiry - graceMs) — 재단절은 유예와 함께 다시 센다, 재접속은 null 로 끝낸다. */
+  _guestAway() {
+    const g = this.seats[1];
+    return this.startGate && this.isPublic && !!g.credential && !g.connected && g.disconnectExpiry != null
+      && (this.state === STATES.WAITING || (this.state === STATES.FINISHED && this.seats[0].returned));
+  }
+
+  // 내보내기까지 남은 ms — 0 이면 허용, null 이면 해당 없음(참가자 연결 중·다른 상태). RTT 는 보지 않는다.
+  _kickInMs() {
+    if (!this._guestAway()) return null;
+    return Math.max(0, this.seats[1].disconnectExpiry - this.graceMs + this.kickMs - now());
+  }
+
+  // 방장 전용 — 30초가 지난 단절 참가자만. 결과·기록을 만들지 않고 좌석만 비운다(나가기와 같은 _vacateGuest · 옛 토큰 무효).
+  _handleKick(seatIndex) {
+    if (seatIndex !== 0) return err('E_NOT_OWNER');
+    if (this._kickInMs() !== 0) return err('E_ILLEGAL_ACTION');
+    this._vacateGuest();
+    return { ok: true, type: 'room_state', data: this.toSeatView(0) };
+  }
+
+  // 30초가 되는 순간 방장에게 허용을 알린다(onUpdate 푸시). 조기 발화면 다시 건다.
+  _armKick() {
+    const seat = this.seats[1];
+    if (seat.kickTimer) clearTimeout(seat.kickTimer);
+    seat.kickTimer = null;
+    const at = seat.disconnectExpiry - this.graceMs + this.kickMs;
+    if (!(at > now())) return;
+    seat.kickTimer = setTimeout(() => {
+      seat.kickTimer = null;
+      if (this.seats[1] !== seat) return;
+      if (now() < at) { this._armKick(); return; }
+      if (this._kickInMs() === 0 && this.onUpdate) this.onUpdate();
+    }, at - now());
+    if (seat.kickTimer.unref) seat.kickTimer.unref();
+  }
+
   socketClosed(seatIndex) {
     const seat = this.seats[seatIndex];
     if (!seat.credential) return;
@@ -555,11 +595,13 @@ class Room {
     const seat = this.seats[seatIndex];
     seat.disconnectTimer = setTimeout(() => this._onGraceExpire(seatIndex), Math.max(0, seat.disconnectExpiry - now()));
     if (seat.disconnectTimer.unref) seat.disconnectTimer.unref();
+    if (seatIndex === 1) this._armKick();
   }
 
   _clearDisconnectTimer(seatIndex) {
     const seat = this.seats[seatIndex];
     if (seat.disconnectTimer) { clearTimeout(seat.disconnectTimer); seat.disconnectTimer = null; }
+    if (seat.kickTimer) { clearTimeout(seat.kickTimer); seat.kickTimer = null; }
   }
 
   // setTimeout 은 Date.now() 기준 ~1ms 일찍 깨어날 수 있다 — 만료 전이면 남은 시간만큼 다시 걸고 대기를 유지한다.
@@ -590,6 +632,8 @@ class Room {
     const ret = this._returnLive();
     if (this.state !== STATES.OPEN && this.state !== STATES.WAITING && this.state !== STATES.SETUP && !ret) return;
     if (this._rearmIfEarly(seatIndex)) return;
+    // #295 공개 대기방 참가자 60초 — 방을 취소·닫지 않고 좌석만 비운다(방 OPEN 유지 · 지난 결과·기록 그대로).
+    if (seatIndex === 1 && this._guestAway()) { this._vacateGuest(); if (this.onUpdate) this.onUpdate(); return; }
     if (ret) this.close(); // 결과는 이미 확정 — 재대전만 불가(닫힘 알림 → 방 목록)
     else this._finalize(STATES.CANCELED, null);
   }
@@ -692,6 +736,7 @@ class Room {
     if (msg.t === 'lobby_unready') return this._handleLobbyReady(seatIndex, false);
     if (msg.t === 'lobby_start') return this._handleLobbyStart(seatIndex);
     if (msg.t === 'lobby_return') return this._handleReturn(seatIndex);
+    if (msg.t === 'lobby_kick') return this._handleKick(seatIndex);
     if (msg.t === 'resync') return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
     return err('E_BAD_ENVELOPE');
   }
@@ -1596,6 +1641,7 @@ class Room {
     /* #238 대기방 — 방 전체가 WAITING 이거나, 결과에서 먼저 복귀해 상대를 기다리는 좌석. 지난 경기의 fx·결과·보드는 싣지 않는다. */
     if (this.state === STATES.WAITING || (this.state === STATES.FINISHED && seat.returned)) {
       const c = this._countdown;
+      const kickIn = seatIndex === 0 ? this._kickInMs() : null;
       return {
         seat: seatIndex, state: STATES.WAITING, phase: 'waiting', revision: this.revision, current: null,
         seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null, economy: this.economy,
@@ -1603,6 +1649,7 @@ class Room {
           guestReady: this.state === STATES.WAITING && this.seats[1].lobbyReady,
           countdownMs: c ? Math.max(0, c.deadline - now()) : null,
           peerInResult: this.state === STATES.FINISHED,
+          kickInMs: kickIn, canKick: kickIn === 0, // #295 방장 전용 — 단절 참가자 내보내기까지 남은 ms · 지금 가능한가
         },
       };
     }
