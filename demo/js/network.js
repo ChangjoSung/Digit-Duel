@@ -505,6 +505,10 @@ function netHandlePublicMessage(m){
     if(m.epoch!=null) NET.epoch=m.epoch;
     if(typeof m.economy==="boolean") NET.economy=m.economy; // #237
     NET.lobbyOnly=false;
+    /* #283 새로고침 재접속(acctResumeSaved)은 room_joined 를 거치지 않아 NET.preparing 이 초기값 false 로 남는다 —
+       그대로 [배치 완료]를 누르면 setupConfirm 이 핫시트 인계(setupHandoff)로 빠진다. 시작 전 재개는 공개 방 배치 준비 상태다
+       (시작된 경기면 아래 netBuildAuthoritativeBoard 가 다시 false 로 둔다). */
+    if(!NET.started) NET.preparing=true;
     /* 이 소켓은 credential(r-)으로 열렸고 room_opened/joined를 거치지 않았다 — 처음 겪는 재개(예: 새로고침
        직후 재접속)라면 로컬 배치 화면 골격이 아직 없을 수 있으므로 방어적으로 만들어 둔다. */
     if(!S||S.phase==="menu") newGame("pvp");
