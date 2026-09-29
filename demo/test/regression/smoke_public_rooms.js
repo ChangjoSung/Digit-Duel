@@ -537,7 +537,8 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   const p4=$el(T,"sidePanel").innerHTML;
   ok(T.S.phase==="over"&&T.NET.finalReveal===true&&/resultSeat mine win/.test(p4)&&/Win!/.test(p4)&&/resultVs/.test(p4)&&/Lose!/.test(p4),"P4 FINISHED는 종료 공개 상태와 결과(내 승리 · VS · 상대 패)를 보인다");
   /* #238 CJ 8항(2026-09-28): 온라인 결과의 출구는 같은 대기방 복귀 하나다(방을 파괴하지 않는다 · 즉석 재대전 없음) */
-  ok((p4.match(/<button/g)||[]).length===1&&/netReturnToRoom\(\)/.test(p4)&&!/rematch\(\)/.test(p4)&&!/접속 코드|새 대전은/.test(p4),"P5 결과 화면 출구는 [방으로 돌아가기] 하나 · 재대전·안내 문구 없음");
+  /* #295 CJ 2026-09-30: 방장은 결과 화면에도 [내보내기](출구가 아님)가 있다 — 출구 수에서 뺀다 */
+  ok((p4.match(/<button(?![^>]*netLobbyKick)/g)||[]).length===1&&/netReturnToRoom\(\)/.test(p4)&&!/rematch\(\)/.test(p4)&&!/접속 코드|새 대전은/.test(p4),"P5 결과 화면 출구는 [방으로 돌아가기] 하나 · 재대전·안내 문구 없음");
   T.netReturnToRoom();
   const ret=lastSent(T.wsLog[0]);
   ok(ret.t==="lobby_return"&&ret.round===T.NET.round&&ret.seatToken&&ret.requestId,"P5b 복귀는 lobby_return 봉투(round·좌석 토큰 포함)");

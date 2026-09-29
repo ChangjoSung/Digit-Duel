@@ -126,10 +126,10 @@ async function main() {
   const staleF = await first(stale);
   ok(staleF && staleF.type === 'error' && staleF.code === 'E_ROOM_NOT_FOUND', 'B8 목록에 보여도 준비 중 방 참가 거부');
 
-  // 재접속 — 서버가 들고 있는 이름
-  a.ws.close();
+  // 재접속 — 서버가 들고 있는 이름 (#295 대기방 방장 단절은 즉시 무효화·참가자 승격이라 유예가 남는 참가자로 본다)
+  ga.ws.close();
   await sleep(100);
-  const ar = open(`r-${aOpen.epoch}.${aOpen.seatToken}`);
+  const ar = open(`r-${aJoined.epoch}.${aJoined.seatToken}`);
   const resumed = await first(ar);
   ok(resumed && resumed.type === 'room_resumed' && resumed.roomName === '테스트 Room_1', 'B9 재접속 첫 프레임 roomName: ' + JSON.stringify(resumed && resumed.roomName));
 
@@ -144,7 +144,7 @@ async function main() {
     ok(!rows.some((r) => r.roomId === aOpen.roomId), 'B10 목록에서 제외: ' + s);
   }
 
-  for (const x of [ar, b, p, c, viewer, bGuest, ga, g1, g2, stale]) x.ws.close();
+  for (const x of [ar, a, b, p, c, viewer, bGuest, g1, g2, stale]) x.ws.close();
   console.log(`#261 lobby: ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 }

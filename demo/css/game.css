@@ -1144,7 +1144,9 @@ h2[tabindex="-1"]:focus{outline:none;} /* 화면 전환 때 제목으로 옮긴 
 /* 3) L03 준비 · 시작 · 5초 · 채팅 옆 이모티콘 */
 .waitScreen .waitTag{align-self:flex-start; margin:2px 0 0; font-size:12px; background:#06102a; border:1px solid #3d5580; color:#cfe0ff;}
 .waitScreen .waitSeat.ready .waitTag{border-color:var(--gold1); color:#ffd66b;}
-.waitScreen .netRoomActions>button:only-child{grid-column:1/-1;}
+.waitScreen .netRoomActions .waitMain{grid-column:1/-1;} .waitScreen .netRoomActions .waitLeave{grid-column:2;} /* #295 윗줄 시작·준비 · 아랫줄 내보내기(왼쪽)·나가기(오른쪽) */
+.seatPing{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:14px; white-space:nowrap;}
+.pingBars.off{position:relative;} .pingBars.off::after{content:""; position:absolute; left:-3px; right:-3px; top:50%; border-top:2px solid #ff6b7d; transform:rotate(-35deg);}
 .waitScreen .netRoomActions button:not(.danger){font-weight:bold; border-radius:12px; color:#fff; background:linear-gradient(180deg,#2d64c9,#173c86); border:2px solid #0b1f4d;}
 .waitScreen .netRoomActions button.primary{background:linear-gradient(180deg,var(--gold1),var(--gold2)); color:var(--goldInk); border-color:#7a4a0c;}
 .waitScreen .netRoomActions button:disabled{opacity:.5;}

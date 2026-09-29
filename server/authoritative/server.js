@@ -384,6 +384,14 @@ const peerPingOf = (room, seat) => {
   const w = room.peerConnected(seat) ? room.seats[1 - seat].ws : null;
   return w && Number.isInteger(w.ddRtt) ? w.ddRtt : null;
 };
+// #295 연결 표시 칸 — 상대 연결·상대 왕복·내 소켓의 서버 실측 왕복(selfPingMs, 아직 재지 않았으면 null). 보낼 때의 값이다.
+const liveOf = (room, seat) => {
+  const w = room.seats[seat].ws;
+  return { peerConnected: room.peerConnected(seat), peerPingMs: peerPingOf(room, seat), selfPingMs: w && Number.isInteger(w.ddRtt) ? w.ddRtt : null };
+};
+// #295 소켓의 현재 좌석 번호 — 번호를 소켓에 굳히지 않고 자격 객체·연결 세대로 찾는다. 승격된 참가자(1→0)는 같은 소켓·토큰으로
+// 따라가고, 무효화된 방장·내보낸 참가자·밀려난 낡은 연결은 -1 이다.
+const seatOf = (room, ws) => room.seats.findIndex((s) => !!s.credential && s.credential === ws.ddSeatCred && s.credential.connGen === ws.ddConnGen);
 // 같은 계정이 상대 좌석을 잡지 못한다(자기 방 참가 금지). 자기 좌석 재접속(resume)은 별개 경로다.
 const sameAccount = (room, ws) => !!ws.ddAccount && room.seats[0].accountId === ws.ddAccount.id;
 
@@ -401,7 +409,7 @@ function bumpSeq(room, seat) {
 function pushState(room, seat) {
   const s = room.seats[seat];
   if (!s.ws || s.ws.readyState !== OPEN) return;
-  sendFrame(s.ws, { v: 1, type: 'room_state', epoch: EPOCH, revision: room.revision, seat, data: room.toSeatView(seat), players: playersOf(room), reps: repsOf(room), peerConnected: room.peerConnected(seat), peerPingMs: peerPingOf(room, seat), seq: bumpSeq(room, seat) });
+  sendFrame(s.ws, { v: 1, type: 'room_state', epoch: EPOCH, revision: room.revision, seat, data: room.toSeatView(seat), players: playersOf(room), reps: repsOf(room), ...liveOf(room, seat), seq: bumpSeq(room, seat) });
 }
 
 // 모든 룸 공통 — 타이머·정리로 일어난 종료 전이는 응답할 명령이 없으므로 양 좌석에 결과를 푸시한다.
@@ -413,7 +421,7 @@ function attachNotifier(room) {
 }
 
 function firstFrame(ws, type, room, seat, issued, extra) {
-  ws.ddRoomId = room.roomId; ws.ddSeat = seat; ws.ddConnGen = issued.connGen;
+  ws.ddRoomId = room.roomId; ws.ddConnGen = issued.connGen;
   ws.ddSeatCred = room.seats[seat].credential; // #238 비워진 참가자 좌석의 옛 소켓 — 새 참가자의 connGen 과 번호가 겹쳐도 자격 객체가 다르다
   sendFrame(ws, Object.assign({
     v: 1, type, epoch: EPOCH, roomId: room.roomId, seat,
@@ -422,8 +430,7 @@ function firstFrame(ws, type, room, seat, issued, extra) {
     roomName: room.name,      // #261 서버가 정한 방 이름 — 새로고침·재접속에도 같은 값
     players: playersOf(room), // #259 서버 권위 공개 닉네임
     reps: repsOf(room),       // #260 입장 때 고정된 대표 하수인 ID
-    peerConnected: room.peerConnected(seat), // #262 상대 좌석 연결 여부(서버 권위) — 이모티콘 전송 가능 표시
-    peerPingMs: peerPingOf(room, seat),      // #295 상대 실측 왕복(ms) | null
+    ...liveOf(room, seat), // #262 상대 연결 여부 · #295 상대/내 실측 왕복(ms) | null
   }, extra || {}));
 }
 
@@ -450,13 +457,16 @@ wss.on('connection', (ws) => {
   ws.isAlive = true;
   ws.on('pong', (data) => {
     ws.isAlive = true;
-    // #295 짝 맞은 pong 만 왕복으로 잰다 — 좌석 소켓이면 상대에게 peer_ping 으로 알린다(seq 없는 일회성 프레임). 값이 커도 단절로 보지 않는다.
+    // #295 짝 맞은 pong 만 왕복으로 잰다 — 좌석 소켓이면 나에게 self_ping, 상대에게 peer_ping 으로 알린다(seq 없는 일회성 프레임). 값이 커도 단절로 보지 않는다.
     const p = ws.ddPing;
     if (!p || data.toString() !== p.n) return;
     ws.ddPing = null;
     ws.ddRtt = Math.round(performance.now() - p.at);
     const room = !ws.ddLobbyOnly && lobby.getRoom(ws.ddRoomId);
-    if (room && room.seats[ws.ddSeat].ws === ws) sendFrame(room.seats[1 - ws.ddSeat].ws, { v: 1, type: 'peer_ping', ms: ws.ddRtt });
+    const at = room ? seatOf(room, ws) : -1;
+    if (at < 0) return;
+    sendFrame(ws, { v: 1, type: 'self_ping', ms: ws.ddRtt });
+    sendFrame(room.seats[1 - at].ws, { v: 1, type: 'peer_ping', ms: ws.ddRtt });
   });
 
   const cred = ws.ddCred;
@@ -534,11 +544,10 @@ wss.on('connection', (ws) => {
 
     const room = lobby.getRoom(ws.ddRoomId);
     if (!room) { sendFrame(ws, { v: 1, type: 'error', code: 'E_ROOM_CLOSED' }); return; }
-    const seatIndex = ws.ddSeat;
+    // 연결 펜싱 — 더 이상 이 소켓이 어느 좌석의 최신 연결도 아니면 무시한다 (analysis.md §2.4.4 · #295 무효화된 방장).
+    const seatIndex = seatOf(room, ws);
+    if (seatIndex < 0) { try { ws.close(4001, 'superseded'); } catch (e) { /* noop */ } return; }
     const seat = room.seats[seatIndex];
-
-    // 연결 펜싱 — 더 이상 이 소켓이 그 좌석의 최신 연결이 아니면 무시한다 (analysis.md §2.4.4).
-    if (seat.credential !== ws.ddSeatCred || seat.credential.connGen !== ws.ddConnGen) { try { ws.close(4001, 'superseded'); } catch (e) { /* noop */ } return; }
 
     const parsed = validateEnvelope(data);
     if (!parsed.ok) { sendFrame(ws, { v: 1, type: 'error', code: parsed.reason, seq: bumpSeq(room, seatIndex) }); return; }
@@ -566,31 +575,40 @@ wss.on('connection', (ws) => {
 
     // #238 경기 번호 경계는 중복 제거보다 먼저 — 지난 경기의 저장 응답을 재전송하지 않는다. 거부는 저장하지 않는다(최신 뷰 동봉).
     if (room.roundStale(msg)) {
-      sendFrame(ws, { v: 1, type: 'error', requestId: msg.requestId, code: 'E_STALE_REVISION', revision: room.revision, data: room.toSeatView(seatIndex), peerConnected: room.peerConnected(seatIndex), peerPingMs: peerPingOf(room, seatIndex), seq: bumpSeq(room, seatIndex) });
+      sendFrame(ws, { v: 1, type: 'error', requestId: msg.requestId, code: 'E_STALE_REVISION', revision: room.revision, data: room.toSeatView(seatIndex), ...liveOf(room, seatIndex), seq: bumpSeq(room, seatIndex) });
       return;
     }
 
     // 중복 제거 — §2.5.3. (roomId,seat,requestId) 키, 재실행하지 않고 저장된 응답을 재전송한다.
     const cached = room.checkDedup(seatIndex, msg.requestId);
-    if (cached) { sendFrame(ws, Object.assign({}, cached, { peerConnected: room.peerConnected(seatIndex), peerPingMs: peerPingOf(room, seatIndex), seq: bumpSeq(room, seatIndex) })); return; }
+    if (cached) { sendFrame(ws, Object.assign({}, cached, liveOf(room, seatIndex), { seq: bumpSeq(room, seatIndex) })); return; }
 
+    const peer = room.seats[1 - seatIndex];
     const outcome = room.handleCommand(seatIndex, msg);
+    // #238 -1 = 이 좌석은 비워졌다(응답을 새 참가자의 중복 제거 표에 남기지 않는다) · #295 다른 번호 = 결과 복귀로 방장이 됐다
+    const at = room.seats.indexOf(seat);
+    const me = at < 0 ? seatIndex : at;
     let frame;
     if (!outcome.ok) {
       frame = { v: 1, type: 'error', requestId: msg.requestId, code: outcome.reason, revision: room.revision };
       if (outcome.staleView) frame.data = outcome.staleView;
     } else {
-      frame = { v: 1, type: outcome.type, requestId: msg.requestId, epoch: EPOCH, revision: room.revision, seat: seatIndex, data: outcome.data };
+      frame = { v: 1, type: outcome.type, requestId: msg.requestId, epoch: EPOCH, revision: room.revision, seat: me, data: outcome.data };
     }
-    const vacated = room.seats[seatIndex] !== seat; // #238 대기방 참가자 나가기 — 이 좌석은 비워졌다(응답을 새 참가자의 중복 제거 표에 남기지 않는다)
-    if (!vacated) room.storeDedup(seatIndex, msg.requestId, frame);
-    sendFrame(ws, Object.assign({}, frame, { peerConnected: room.peerConnected(seatIndex), peerPingMs: peerPingOf(room, seatIndex), seq: bumpSeq(room, seatIndex) })); // peerConnected·peerPingMs 는 보낼 때의 값(캐시에 넣지 않는다)
+    if (at >= 0) room.storeDedup(at, msg.requestId, frame);
+    sendFrame(ws, Object.assign({}, frame, liveOf(room, me), { seq: ++seat.seq })); // 연결 표시 칸은 보낼 때의 값(캐시에 넣지 않는다)
 
     // 상대에게도 같은 revision의 갱신 뷰를 보낸다 — 실제로 상태가 바뀐 성공 명령만(noop·오류는 보내지 않는다).
-    if (outcome.ok && (!outcome.noop || vacated)) pushState(room, 1 - seatIndex);
+    if (outcome.ok && (!outcome.noop || at !== seatIndex)) pushState(room, 1 - me);
+
+    // #295 내보낸 참가자 — 닫힘 뷰를 보내고 그 소켓을 닫는다(옛 토큰은 이미 좌석에 없다).
+    if (outcome.kicked && peer.ws) {
+      sendFrame(peer.ws, { v: 1, type: 'room_state', epoch: EPOCH, reason: 'kicked', revision: room.revision, seat: 1, data: outcome.kicked, seq: ++peer.seq });
+      try { peer.ws.close(1000, 'kicked'); } catch (e) { /* noop */ }
+    }
 
     // 종료된 경기에서의 leave — 응답을 보낸 뒤 이 소켓만 닫는다.
-    if (outcome.ok && msg.t === 'leave' && (room.state === STATES.FINISHED || vacated)) {
+    if (outcome.ok && msg.t === 'leave' && (room.state === STATES.FINISHED || at < 0)) {
       seat.connected = false;
       try { ws.close(1000, 'leave'); } catch (e) { /* noop */ }
     }
@@ -601,12 +619,15 @@ wss.on('connection', (ws) => {
     if (n <= 0) connectionsByIp.delete(ip); else connectionsByIp.set(ip, n);
     if (ws.ddLobbyOnly) return;
     const room = lobby.getRoom(ws.ddRoomId);
-    if (!room || !Number.isInteger(ws.ddSeat)) return;
-    const seat = room.seats[ws.ddSeat];
-    // 연결 펜싱(§2.4.4) — 재개로 밀려난 낡은 소켓의 뒤늦은 close는 새로 붙은 좌석을 끊지 않는다.
-    if (!seat.credential || seat.credential !== ws.ddSeatCred || seat.credential.connGen !== ws.ddConnGen) return;
-    room.socketClosed(ws.ddSeat);
-    pushState(room, 1 - ws.ddSeat); // #237 서버가 단절을 확정한 순간부터 상대 화면에 "상대 연결 대기"(2.4) — revision 은 그대로
+    if (!room) return;
+    // 연결 펜싱(§2.4.4) — 재개로 밀려난 낡은 소켓·무효화된 방장·내보낸 참가자의 뒤늦은 close는 지금 좌석을 끊지 않는다.
+    const at = seatOf(room, ws);
+    if (at < 0) return;
+    room.socketClosed(at);
+    // #295 방장 단절로 참가자가 좌석0으로 올랐으면 방 목록의 IP별 OPEN 상한도 새 방장 몫이다.
+    if (at === 0 && room.seats[0].ws && room.seats[0].ws !== ws) room.creatorIp = room.seats[0].ws.ddIp;
+    // #237 상대 화면에 "상대 연결 대기"(2.4) · #295 승격된 방장에게 새 좌석·방 상태 — 두 좌석 모두(빈 좌석은 건너뛴다)
+    pushState(room, 0); pushState(room, 1);
   });
 
   ws.on('error', () => ws.terminate());
