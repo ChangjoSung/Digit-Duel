@@ -1,6 +1,19 @@
 # Digit-Duel — Mercury_PD 인수인계
 
-## 현재 체크포인트 — 2026-09-28 #276 CJ QA PASS·병합 승인
+## 필수 인수 절차 — 2026-09-29 CJ Comment
+
+매번 아래 순서를 새로 확인한다. 이전 세션의 확인 결과를 재사용하지 않는다.
+
+1. **GPT 업데이트부터 확인:** OpenAI 공식 모델 목록·변경 이력과 현재 계정에서 사용 가능한 GPT를 대조하고, [Worker 모델 계약](WORKER_MODELS.md)의 Mercury 모델 및 실제 실행 모델/effort/tier를 확인한다. 더 최신인 사용 가능 모델이 있으면 인계 전 PD가 버전 전환을 지시하고 실제 적용을 확인한 다음 진행한다. 사용 가능 여부나 적용을 확인할 수 없으면 인수를 완료 처리하지 않는다.
+2. **PD 위치 확인:** `git fetch origin main` 후 PD 작업 공간의 브랜치 `main`, upstream `origin/main`, `HEAD`와 `origin/main`의 동일 SHA를 확인한다. detached HEAD·다른 브랜치·뒤처진 main에서는 인계하지 않는다. 미커밋·미추적 파일을 먼저 식별·보존하고 안전하게 동기화한다.
+3. **필수 자료 읽기:** CJ 최신 Comment, 이 저장소 `CLAUDE.md`, [권위 문서](AUTHORITY.md), 이 스냅샷의 현재 체크포인트, [Worker 모델·WorkTree 계약](WORKER_MODELS.md), [모델 실행값](worker-models.json), [QA 최소 원칙](QA_MINIMUM_POLICY.md), 현재 작업의 Notion GDD·GitHub Issue·PR을 읽고 상충하거나 낡은 이력을 구분한다.
+4. **권한 확인:** 현재 PD의 실제 실행 권한이 `danger-full-access`·approval `never`인지 확인한다. 새 Worker는 역할별 승인 설정을 명시하고 시작 영수증과 실제 실행을 확인한다. 관리형 정책보다 높은 권한을 가정하지 않는다.
+5. **MCP 목록·연결 확인:** Codex와 Claude의 MCP 목록을 조회하고 업무상 필수인 연결은 인증 상태뿐 아니라 최소 1개 실제 호출로 확인한다. 끊긴 필수 MCP는 기존 정책 범위에서 연동부터 복구한다. Claude와 Notion은 회사 계정의 기존 로컬 PC 연동을 유지한다. **Slack은 CJ 지시로 연결하지 않으며 필수 검사 대상이 아니다.** 연결 변경으로 작업물을 외부에 공유하지 않는다.
+6. **CJ 인수 완료 보고:** 1~5가 모두 통과한 뒤에만 확인 시각, `main`/`origin/main` SHA, GPT 버전·실행값, 읽은 자료, 권한, 필수 MCP별 결과, 활성 Worker WorkTree의 원격 기준/SHA/ID, 보존한 로컬 변경, 남은 위험을 기록해 CJ에게 보낸다. 실패한 항목은 미완료와 원인을 명시한다.
+
+**2026-09-29 18:03 KST 과거 위치 확인:** `main` → `origin/main`, 양쪽 SHA `d6925d49636f5ebcd68033e87ba01f0f471d4d6a`. 이전 문서 변경은 stash `cc644636b67788727963b2158001bc66cb40fe86`에 보존했다. `unity/` 미추적 파일은 남아 있었고 이 스냅샷 수정은 당시 미커밋이었다. 아래의 다른 브랜치 인계 지시는 당시 이력이다.
+
+## 이전 체크포인트 — 2026-09-28 #276 CJ QA PASS·병합 승인
 
 - 현행 원장은 [#276 Mercury 보고](../milestone/v0.4.11/issues/276/Mercury/report.md)다. 최초 HTTP 안내와 루프백 전용 QA의 누락을 수정해 실제 LAN HTTPS 가입·로그인·보안 쿠키·인증 WSS, BAT2/2·인증서/키/신뢰·PG 재사용을 검증했다. 마지막 가상 주소 로그 수정도 독립 검토 PASS다. 기존 GitHub 완료 조건 한곳만 갱신하며 댓글·중복 TODO·Issue close를 만들지 않는다.
 - 실제 파일은 C:/Users/pc_77/orca/workspaces/Digit-Duel/release-review-v0.4.11/server/LAN모드실행.bat, 현재 접속 주소는 https://192.168.3.30:8085/. CJ가 stage·commit·push·PR·milestone/v0.4.11 병합을 승인했다. 기준 HEAD264010d에서 infra/276-lan-launcher PR을 작성해 필수 CI6개를 확인한다. 원본 HEAD33490f9·dirty/untracked는 보존하며 pull/reset하지 않는다. main Release·Render 배포는 승인되지 않았다.
@@ -26,7 +39,7 @@
 - 중단 시점 #259 변경 파일 27개를 `C:/Users/pc_77/orca/archives/Digit-Duel/issue-259-pause-2026-09-26.zip`에 원본 경로·크기·SHA-256 manifest와 함께 담고 전건 재검증했다(ZIP SHA-256 `3e8f47853155446f7572c003676e60cdf2b1fa29b4fe9dbaea5a5d7edeb1b5c8`). 먼저 시도한 `.tar.gz`는 빈 경로 오류로 검증되지 않았고, 그 정확한 임시 파일 삭제도 자동 승인 검토의 `blocked by policy`로 거절돼 남아 있다. **유효 보존본은 ZIP만**이다.
 - **2026-09-27 00:05 KST 현행 QA 상태**: 승인 모델의 #259 로컬 보안 QA **PASS**. Jupiter 수리 메모리119/0·로컬PG120/0·PG프로세스13/0, Mars 최종125/0. 첫 Saturn Sol QA `ctx_bc57846fd734`의 HIGH3/MEDIUM1 REVISE와 초기 turn_start_unobserved 조사는 이력대로 보존한다. 같은 TUI의 후속 `ctx_9ba0306aac92`·`ctx_86942e191833`는 실제 Luna/medium으로 실행돼 진단 근거만 보존하고 정식 QA에서 제외했다. 확정: 첫 완료 뒤 모델 전환 팝업이 열려 있었고 후속 입력 직후 Luna가 됐다. 추론: dispatch 키 입력이 팝업 선택에 쓰였다. PD의 입력창 상태 누락·과거 preflight 재사용을 정정했다. `ctx_cb9eeacee16f`는 tier 직접 증거를 확정하지 못한 preflight-only failed, 제품 변경/검사0·owned terminal released다. 최종 fresh `task_2b837cc4bcc5`/`ctx_57e27a16fe77`는 명시 Sol/xhigh/default·Full Access/never, 현재 turn_context/footer·turn_started·preamble/capability를 GO/완료 때 대조했다. 서버119/0·클라이언트125/0·typecheck/diff exit0 및 별도 지연 응답/복구 코드 게이트 재현 PASS, QA 전후30파일 해시/status/HEAD 동일. 완료 후 팝업에서 Keep current model을 선택해 Sol footer를 확인했다. 단일 원장은 활성 issue-259-accounts의 `docs/milestone/v0.4.11/issues/259/Mercury/report.md`다. root와 활성 #259/#264의 CLAUDE·모델 표/JSON·QA 원칙에 현재 턴·입력창·완료 검증을 반영했다(운영 절차, 자동 차단 코드 아님). 외부 terminal release는 retained/external이며 실제 종료가 아니다. GitHub #259 기존 로컬 계정 조건을 체크하고 #259/#264 중복 하위 체크를 제거, #263 완료 조건의 운영 세부사항도 줄였다. 새 Issue댓글0. 실제 브라우저HTTPS·RenderDB·CJQA·CI·최신83434f0/#264 통합은 미검증이다. #259 Git 쓰기/배포/Render 변경 금지와 dirty/untracked 보존을 유지한다.
 
-## 2026-09-25 PD 교대 지시
+## 이전 인계 — 2026-09-25 PD 교대 지시 (당시 기록)
 
 - **같은 체크아웃을 인계한다.** `C:/Users/pc_77/orca/Digit-Duel`의 `milestone/v0.4.11`에서 새 Mercury_PD 터미널만 열고 WorkTree를 생성하지 않는다. 2026-09-25 CJ 최신 정정에 따라 새 PD는 `gpt-6-sol`·xhigh·No Fast와 `danger-full-access`·approval `never`로 시작한다. 이 권한은 새 PD에 한정하며 Worker·다른 프로젝트·host 정책으로 확대하지 않는다.
 - 새 PD는 첫 보고 전에 CJ 최신 Comment → `CLAUDE.md` → [Creat2ve Work Rule](https://app.notion.com/p/3ce1e7f17085818c82c5dd886149ad5b) → `docs/creat2ve/AUTHORITY.md`·`WORKER_MODELS.md`·`QA_MINIMUM_POLICY.md` → 이 스냅샷의 **현재 체크포인트** → 현재 Notion GDD·GitHub Issue 순으로 대조한다. 아래 날짜가 오래된 섹션은 이력이며 현재 상태나 권한보다 우선하지 않는다.
@@ -40,7 +53,7 @@
 - #264 첫 Jupiter는 `claude-opus-5/high`, 첫 Saturn은 `gpt-5.6-sol/high`로 실행돼 #250과 다르다. 첫 Saturn은 파일 무수정 REVISE로 공개 IPv6를 내부 호스트로 오분류해 TLS를 끄는 결함과 복원 예시의 오류 중단/비밀 인수 문제를 찾았다. 이는 유효한 결함 증거이나 **#250 모델의 정식 Saturn QA로 계산하지 않는다**. 첫 트리 파일은 검증된 ZIP과 최신 트리의 Mercury 운영 기록 사본으로 보존하고 트리 자체는 제거했다. `origin/milestone/v0.4.11`의 `fafc619`에서 새 `issue-264-render-db-current` 트리를 만들고, 올바른 모델의 Jupiter 수리·Saturn 재QA를 수행했다. 결과와 잔여는 다음 항목에 적었다.
 - 새 트리의 Jupiter `task_0aad1d9b4497`/`ctx_7c30588516d0`는 `claude-opus-5-5/high`·full access로 최신 base에 이식했다. 올바른 `gpt-6-sol/xhigh/default` Saturn들이 코드·복원 런북의 REVISE를 내고 Jupiter가 순차 수리했다. 최종 fresh Saturn `task_9ceb08f9aff5`/`ctx_84fdb5a9f39c`는 **로컬 런북 GO**를 보고했다. 새 트리 `docs/milestone/v0.4.11/issues/264/Mercury/model-contract-audit.md`에 각 결함과 제한을 기록했다. 새 Worker의 TUI 모델·권한·preamble·capability·`turn_started`를 관측했고, 기존 TUI 재사용으로 Orca launch requested/effective는 `null`이므로 관측값으로 꾸미지 않는다. **#264 전체 완료 아님**: 실 DB·Render·독립 스크래치 복원·배포 검증, CJ 자원 승인이 남았다.
 
-## 현재 체크포인트 — 2026-09-25 #264 Render DB 로컬 준비 GO·실 DB 대기
+## 이전 체크포인트 — 2026-09-25 #264 Render DB 로컬 준비 GO·실 DB 대기
 
 - CJ가 다음 권장 이슈 #264 구현과 이번 작업의 모든 Worker full access·무확인 실행을 지시했다. 이는 실행 권한 예외이며 Mercury의 제품 코드 비작성, Saturn의 파일 무수정 QA, Worker Git 쓰기 금지, Render 리소스·결제 별도 승인 게이트를 바꾸지 않는다. `CLAUDE.md`·`WORKER_MODELS.md`·`worker-models.json`에 이번 범위를 기록했다.
 - #264 첫 트리 `C:/Users/pc_77/orca/workspaces/Digit-Duel/issue-264-render-db` (`33490f9`)에서 Run `run_a9e99997333d`의 Jupiter `task_ed012e422daa`/`ctx_c1d31a5b346a`가 선택적 Postgres 연결·마이그레이션·fail-closed 게이트를 구현하고 `worker_done` 성공으로 정산됐다. Mercury는 그 스냅샷의 DB 회귀 33건, `npm.cmd test`, 공개 방 2클라이언트 smoke 23/0, `git diff --check`를 확인했다. Saturn `task_f1065749b581`/`ctx_5fbffac2707e`는 파일 무수정 REVISE였으며 모델 설정 오류와 발견 결함은 위 최상위 정정에 기록했다. 이 트리는 수정·검증 이력으로 보존하며 최신 기준 납품으로 쓰지 않는다. 실 Postgres·Render 왕복은 아직 없다.
@@ -139,7 +152,7 @@ feature/233-combat-engine 원격·로컬 브랜치를 삭제했다. 작업 폴�
 
 아래는 이전 일정·인수 이력이다.
 
-## 현재 체크포인트 — 2026-09-16 v0.4.11 일정 등록
+## 이전 체크포인트 — 2026-09-16 v0.4.11 일정 등록
 
 CJ의 후속 지시로 [Milestone #15](https://github.com/ChangjoSung/Digit-Duel/milestone/15), 상위 [#232](https://github.com/ChangjoSung/Digit-Duel/issues/232)와 하위 #233~#238을 등록하고 GDD-23·24의 Milestone/Issue 링크를 연결했다. **구현·Issue 해결·QA·시뮬레이션·배포는 별도 CJ 착수 지시 대기**다. [등록 보고](../milestone/v0.4.11/reports/Mercury/registration.md)와 [Issue 인덱스](../milestone/v0.4.11/README.md)를 따른다.
 
