@@ -1,5 +1,14 @@
 # Digit-Duel — Mercury_PD 인수인계
 
+## 현재 체크포인트 — 2026-09-29 18:41 KST PD 교대 준비
+
+- **모델 첫 확인:** [OpenAI 모델 목록](https://developers.openai.com/api/docs/models)과 [변경 이력](https://developers.openai.com/api/docs/changelog)을 재조회했다. 최신 일반 GPT 계열은 GPT-6이며, 9월 25일 Sol/Luna 수정 이후 더 새 계열 출시를 확인하지 못했다. 현 PD 화면은 `GPT-6-Sol xhigh`, 프로젝트 설정은 `gpt-6-sol`·`xhigh`·`service_tier=default`다. 수신 PD는 새 터미널의 실제 모델·effort·tier를 다시 확인한다.
+- **PD 기준:** 인계 준비 시 `main` → `origin/main`, `HEAD`와 원격 SHA 모두 `56f1fa9ab4bb3ace8154dbce7d5305835511248a`였다. 이 체크포인트를 반영한 PR의 최종 병합 SHA는 수신 PD가 `git fetch origin main` 뒤 재기록한다. detached HEAD나 별도 WorkTree를 PD 위치로 쓰지 않는다.
+- **읽은 기준:** CJ 최신 Comment, `CLAUDE.md`, `AUTHORITY.md`, 이 스냅샷, `WORKER_MODELS.md`, `worker-models.json`, `QA_MINIMUM_POLICY.md`, Notion GDD-13·23·24와 Creat2ve 구조 원본, GitHub 현행 Issue·PR·Release를 대조했다. 열린 PR은 없었다. `v0.4.12`가 최신 Release이고, v0.4.13의 #292~#297은 접수·범위 추적만 하는 Open 이슈다. **CJ 별도 착수 지시 전 분석·기획 확정·구현·QA·배포를 시작하지 않는다.** 아래 오래된 #276 등 체크포인트는 당시 이력이다.
+- **권한·MCP:** 현 PD는 `danger-full-access`·approval `never`; 수신 PD도 이 값으로 명시 기동하고 실제 실행을 확인한다. Codex MCP 목록의 Notion·Render는 활성이고 Notion GDD fetch·Render workspace 조회가 성공했다. `node_repl`·Unity는 로컬 stdio로 활성이다. Claude MCP 건강 검사에서 Docs·Google Drive/Calendar/Gmail·Notion·Unity는 연결됨을 확인했다. **Slack은 CJ 지시로 연결하지 않는 제외 대상**이다. Claude·Notion은 기존 회사 계정·로컬 PC 정책을 유지한다.
+- **작업·보존:** PD 원본 WorkTree 외에는 문서 PR용 임시 WorkTree만 있으며 병합 후 정리한다. 활성 Worker WorkTree·열린 PR은 없다. 원본의 `unity/` 미추적 파일(관측 최소 29,623개, 대부분 `Library` 캐시)은 Unity MCP 사용 중이라 보존한다. 기존 stash `9ebd041242f61e10906ae388e8037c03c33ad386`, `cc644636b67788727963b2158001bc66cb40fe86`도 보존한다. `release-review-v0.4.11`의 빈 잔여 폴더 삭제는 자동 승인 검토에서 차단돼 남아 있다.
+- **수신 조건:** 원격 병합 후 수신 PD가 최신 SHA·필수 파일·실제 권한·필수 MCP 호출을 재확인하고 CJ에게 결과를 보고해야 인수인계가 완료된다. 이 준비 기록만으로 완료 처리하지 않는다.
+
 ## 필수 인수 절차 — 2026-09-29 CJ Comment
 
 매번 아래 순서를 새로 확인한다. 이전 세션의 확인 결과를 재사용하지 않는다.
