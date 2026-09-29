@@ -395,7 +395,7 @@ function lobbyWaitHtml(){
     <ul class="waitSeats" aria-label="참가자">${seat(1-me)}<li class="waitVs" aria-hidden="true">VS</li>${seat(me)}</ul>
     <p class="waitState" role="status" aria-live="polite">${state}${L?"":`<span class="srOnly"> 상대가 들어오면 참가자가 준비하고 방장이 시작합니다.</span>`}</p>
     <div class="chatLock" role="note">${gi("lock")} 채팅 — 추후 공개</div>
-    <div class="row netRoomActions">${act}${host?`<button type="button" class="danger" onclick="lobbyWaitSend(netLobbyKick)">내보내기</button>`:""}
+    <div class="row netRoomActions">${act}${host?`<button type="button" class="danger" onclick="netLobbyKick()">내보내기</button>`:""}
       <button type="button" class="danger waitLeave" onclick="netLeaveRoom()">${gi("exit")} 방 나가기</button></div>
   </section>`;
 }

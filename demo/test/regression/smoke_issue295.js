@@ -61,26 +61,26 @@ const WAIT=(rev,lobby,extra)=>({state:"WAITING",phase:"waiting",revision:rev,rou
 
   /* ===== A 끊김·내보내기 ===== */
   let h=w();
-  ok(/class="danger" onclick="lobbyWaitSend\(netLobbyKick\)">내보내기/.test(h)&&!/lobbyKickCd|초 뒤 내보내기/.test(h),"A0 방장 [내보내기] = 상대 연결 중에도 활성");
+  ok(/class="danger" onclick="netLobbyKick\(\)">내보내기/.test(h)&&!/lobbyKickCd|초 뒤 내보내기/.test(h),"A0 방장 [내보내기] = 상대 연결 중에도 활성");
   T.netHandlePublicMessage({type:"room_state",data:WAIT(9,{kickInMs:30000,canKick:false}),peerConnected:false,peerPingMs:null});
   h=w();
-  ok(/연결 끊김/.test(h)&&/재연결 중/.test(peerCard(h))&&/class="pingBars off" role="img" aria-label="상대 재연결 중"/.test(h)&&!/lobbyKickCd|초 뒤|30초/.test(h)&&/class="danger" onclick="lobbyWaitSend\(netLobbyKick\)">내보내기/.test(h),
+  ok(/연결 끊김/.test(h)&&/재연결 중/.test(peerCard(h))&&/class="pingBars off" role="img" aria-label="상대 재연결 중"/.test(h)&&!/lobbyKickCd|초 뒤|30초/.test(h)&&/class="danger" onclick="netLobbyKick\(\)">내보내기/.test(h),
     "A1 방장 — 서버 확정 끊김 = 상대 칸 재연결 중 빗금 막대 · 30초 카운트다운 없음 · [내보내기] 활성");
   ok(/1분 안에 돌아오지 않으면 자리가 자동으로 비워집니다/.test(h),"A2 서버 60초 자동 비움 안내는 유지");
   global.netLobbyKick(); const k=sent.find(m=>m.t==="lobby_kick");
   ok(!!k&&k.round===1&&typeof k.requestId==="string","A3 lobby_kick = 인증 좌석 명령(round·requestId·seatToken 봉투) · 서버 canKick 을 기다리지 않는다");
-  ok(/<button type="button" class="primary waitMain"[^>]*>시작<\/button><button type="button" class="danger" onclick="lobbyWaitSend\(netLobbyKick\)">내보내기<\/button>\s*<button type="button" class="danger waitLeave"/.test(h),"A4 윗줄 [시작] · 아랫줄 [내보내기] 왼쪽 · [방 나가기] 오른쪽");
+  ok(/<button type="button" class="primary waitMain"[^>]*>시작<\/button><button type="button" class="danger" onclick="netLobbyKick\(\)">내보내기<\/button>\s*<button type="button" class="danger waitLeave"/.test(h),"A4 윗줄 [시작] · 아랫줄 [내보내기] 왼쪽 · [방 나가기] 오른쪽");
   N.me=1; T.netHandlePublicMessage({type:"room_state",seat:1,data:WAIT(10),peerConnected:false});
   h=w(); ok(/방장 연결이 끊겼습니다/.test(h)&&!/내보내기|lobbyKickCd/.test(h)&&/class="waitMain primary"/.test(h)&&/class="danger waitLeave"/.test(h),"A6 참가자 — [준비] 윗줄 · 내보내기 없음 · [방 나가기] 오른쪽 칸");
   const nk=sent.length; global.netLobbyKick(); ok(sent.length===nk,"A6b 참가자는 lobby_kick 을 보내지 않는다");
   N.me=0; T.netHandlePublicMessage({type:"room_state",seat:0,data:WAIT(11),peerConnected:true,peerPingMs:50});
   h=w(); ok(!/연결 끊김|재연결 중|lobbyKickCd/.test(h)&&/>50ms<\/b>/.test(peerCard(h)),"A7 60초 전 복귀 = 끊김 해제 · 상대 지연 다시 표시");
   T.netHandlePublicMessage({type:"room_state",data:WAIT(12,{peerInResult:true}),peerConnected:false});
-  ok(/연결 끊김/.test(w())&&/lobbyWaitSend\(netLobbyKick\)/.test(w()),"A8 FINISHED(상대 결과 화면) 중 끊김도 같은 내보내기 흐름");
+  ok(/연결 끊김/.test(w())&&/netLobbyKick\(\)/.test(w()),"A8 FINISHED(상대 결과 화면) 중 끊김도 같은 내보내기 흐름");
   /* 빈 자리(OPEN) — [시작] 비활성 · [내보내기] 활성 · 서버 E_NO_GUEST 안내 */
   const OPEN=rev=>({state:"OPEN",phase:"setup",revision:rev,round:1,seats:{ready:[false,false]},units:[],you:{placed:false},result:null,economy:true});
   T.netHandlePublicMessage({type:"room_state",seat:0,data:OPEN(13),players:["창조",null],reps:["M-F1",null],peerConnected:false});
-  h=w(); ok(/입장 대기/.test(h)&&!/id="peerPing"/.test(h)&&/class="primary waitMain" disabled/.test(h)&&/class="danger" onclick="lobbyWaitSend\(netLobbyKick\)">내보내기/.test(h),"A9 빈 대기방 — [시작] 비활성 · [내보내기] 활성 · 빈 자리에 지연 없음");
+  h=w(); ok(/입장 대기/.test(h)&&!/id="peerPing"/.test(h)&&/class="primary waitMain" disabled/.test(h)&&/class="danger" onclick="netLobbyKick\(\)">내보내기/.test(h),"A9 빈 대기방 — [시작] 비활성 · [내보내기] 활성 · 빈 자리에 지연 없음");
   const toasts=[]; const box=T.byId("toasts"), ap=box.appendChild.bind(box); box.appendChild=el=>{ toasts.push(String(el.textContent||"")); return ap(el); };
   sent.length=0; global.netLobbyKick(); ok(sent.some(m=>m.t==="lobby_kick"),"A10 빈 자리에서도 lobby_kick 을 보낸다(판정은 서버)");
   T.netHandlePublicMessage({type:"error",code:"E_NO_GUEST"}); ok(toasts.some(t=>/내보낼 참가자가 없습니다/.test(t)),"A11 서버 E_NO_GUEST = 안내");
@@ -91,6 +91,23 @@ const WAIT=(rev,lobby,extra)=>({state:"WAITING",phase:"waiting",revision:rev,rou
   h=w(); const mine=(h.match(/<li class="waitSeat me">[^]*?<\/li>/)||[""])[0];
   ok(N.me===0&&/<span class="who"><i class="gi"[^>]*><\/i> <b>test<\/b>/.test(mine)&&/netLobbyStart/.test(h)&&/netLobbyKick/.test(h)&&!/netLobbyReady/.test(h),"P1 방장 이탈 → 서버 좌석 0 = 곧바로 방장(👑 · 시작 · 내보내기)");
 
+  /* ===== K 앞 요청 대기 중에도 [내보내기] (Saturn REVISE · CJ '항상 사용 가능') — 렌더된 버튼 onclick 을 그대로 실행한다(lobbyWaitSend 는 테스트가 주입) ===== */
+  { const T4=H.load(htmlPath), N4=T4.NET, s4=[]; T4.startMode("pvp"); T4.UI.entered=true;
+    Object.assign(N4,{publicMode:true,economy:true,started:false,roomId:7,roomName:"adw",me:0,players:["창조","test"],reps:["M-F1","M-W1"],roomState:"FINISHED",peerConnected:true,revision:5,
+      ws:{readyState:1,send(x){ s4.push(JSON.parse(x)); },close(){}}});
+    T4.netHandlePublicMessage({type:"room_state",data:WAIT(6,{guestReady:true}),peerConnected:true});
+    const click=(h,label)=>{ const m=h.match(new RegExp(`<button[^>]*onclick="([^"]*)"[^>]*>${label}`)); if(!m) return false; new Function("lobbyWaitSend",m[1])(T4.rooms.lobbyWaitSend); return true; };
+    const n=t=>s4.filter(m=>m.t===t).length;
+    ok(click(T4.rooms.lobbyWaitHtml(),"시작")&&n("lobby_start")===1,"K1 [시작] = lobby_start 1회 · 요청 대기 시작");
+    const h=T4.rooms.lobbyWaitHtml();
+    ok(/class="primary waitMain" disabled/.test(h)&&(T4.rooms.lobbyWaitSend(global.netLobbyStart),n("lobby_start")===1),"K2 대기 중 [시작] 잠금·중복 전송 없음(요청 가드 유지)");
+    ok(/class="danger" onclick="netLobbyKick\(\)">내보내기/.test(h)&&click(h,"내보내기")&&n("lobby_kick")===1,"K3 [시작] 응답 대기 중에도 [내보내기] 활성 · lobby_kick 1회 전송");
+    ok(click(T4.rooms.lobbyWaitHtml(),"내보내기")&&n("lobby_kick")===2&&n("lobby_start")===1,"K4 [내보내기]는 시작 대기를 건드리지 않고 다시 눌러도 전송(판정은 서버)");
+    T4.LOBBY.req=null; T4.rooms.lobbyWaitSend(global.netLobbyStart); ok(n("lobby_start")===2,"K5 대기가 풀리면 [시작] 다시 전송");
+    /* 결과 화면 [내보내기]도 앞 요청 대기(LOBBY.req)에 막히지 않는다 */
+    T4.LOBBY.req={rev:N4.revision,t:Date.now()}; N4.roomState="FINISHED"; N4.started=true; T4.S.phase="over"; T4.S.winner=0; T4.renderSide();
+    ok(click(T4.byId("sidePanel").innerHTML,"내보내기")&&n("lobby_kick")===3,"K6 결과 화면 [내보내기]도 앞 요청 대기와 무관하게 전송"); }
+
   /* ===== R 결과 화면(FINISHED) — 양쪽 서버 실측 핑·단절 · 방장만 [내보내기] · 방장 단절 뒤 참가자 복귀 = 방장 승계 ===== */
   { const T3=H.load(htmlPath), N3=T3.NET, s3=[]; T3.startMode("pvp"); T3.UI.entered=true;
     Object.assign(N3,{publicMode:true,economy:true,mode:true,started:true,roomId:7,roomName:"adw",me:0,players:["창조","test"],reps:["M-F1","M-W1"],roomState:"FINISHED",round:1,revision:20,
@@ -98,7 +115,7 @@ const WAIT=(rev,lobby,extra)=>({state:"WAITING",phase:"waiting",revision:rev,rou
     T3.S.phase="over"; T3.S.winner=0;
     const sp=()=>{ T3.renderSide(); return T3.byId("sidePanel").innerHTML; };
     let r=sp();
-    ok(/Win!/.test(r)&&/id="selfPing"[^]*?>12ms</.test(r)&&/id="peerPing"[^]*?>40ms</.test(r)&&/직접 핑이 아닙니다/.test(r)&&/class="danger" onclick="lobbyWaitSend\(netLobbyKick\)">내보내기/.test(r),"R1 방장 결과 = 내·상대 서버 실측 핑 · [내보내기]");
+    ok(/Win!/.test(r)&&/id="selfPing"[^]*?>12ms</.test(r)&&/id="peerPing"[^]*?>40ms</.test(r)&&/직접 핑이 아닙니다/.test(r)&&/class="danger" onclick="netLobbyKick\(\)">내보내기/.test(r),"R1 방장 결과 = 내·상대 서버 실측 핑 · [내보내기]");
     global.netLobbyKick(); ok(s3.some(m=>m.t==="lobby_kick"&&m.round===1),"R2 결과 화면에서도 방장은 바로 lobby_kick");
     /* Jupiter FINISHED 계약: 방장 전송 끊김 → 살아 있는 참가자는 좌석 1·원래 결과·최종 판 그대로 data.owner 1(지금 방장) · 평소 owner 0 */
     const FIN=(rev,owner)=>({seat:1,state:"FINISHED",phase:"over",revision:rev,round:1,owner,turnCount:5,current:0,mainUsed:false,battlesUsed:0,seats:{ready:[true,true]},units:[],
@@ -111,7 +128,7 @@ const WAIT=(rev,lobby,extra)=>({state:"WAITING",phase:"waiting",revision:rev,rou
     const mineCard=(r.match(/<section class="resultSeat mine[^]*?<\/section>/)||[""])[0];
     ok(N3.me===1&&N3.owner===1&&/Lose!/.test(mineCard)&&/<span>나<\/span>/.test(mineCard)&&/Win!/.test(r)&&/창조/.test(r)&&T3.S.winner===0,"R5 방장 끊김 → 좌석 1·원래 Lose!/Win!·상대 이름 그대로");
     ok(/id="selfPing"[^]*?>15ms</.test(r)&&/id="peerPing"[^]*?재연결 중/.test(r)&&/class="pingBars off"/.test(r)&&!/lobbyKickCd|초 뒤|30초/.test(r),"R6 끊김 중에도 두 결과 카드 핑 유지(내 칸 실측 · 상대 칸 재연결 중) · 30초 상자 없음");
-    ok(/class="danger" onclick="lobbyWaitSend\(netLobbyKick\)">내보내기/.test(r),"R7 지금 방장(owner 1)인 참가자 결과 화면 = [내보내기]");
+    ok(/class="danger" onclick="netLobbyKick\(\)">내보내기/.test(r),"R7 지금 방장(owner 1)인 참가자 결과 화면 = [내보내기]");
     global.netLobbyKick(); ok(s3.some(m=>m.t==="lobby_kick"&&m.round===1),"R8 owner 1 참가자는 lobby_kick 을 보낸다(빈 자리 판정은 서버)");
     T3.netHandlePublicMessage({type:"self_ping",ms:33}); ok(/>33ms</.test(T3.byId("selfPing").innerHTML)&&/Lose!/.test(sp()),"R9 끊김 중 내 핑 실시간 갱신 · 결과 유지");
     T3.netHandlePublicMessage({type:"room_state",seat:0,players:["test",null],reps:["M-W1",null],peerConnected:false,

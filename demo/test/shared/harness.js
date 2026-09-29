@@ -425,7 +425,7 @@ function load(htmlPath,opts){
   emote:typeof emoteSync==="function"?{EMOTES,EMO,emoteSync,emoteToggle,emoteSend,emoteSetMuted,emoteClose,netEmoteCanSend}:undefined,
   /* #261 멀티 방 목록·대기 — 기준판 로드 호환: 부재 시 undefined */
   rooms:typeof lobbyRoomsHtml==="function"?{lobbyRooms,lobbyHome,lobbyRoomsHtml,lobbyRoomListHtml,lobbyWaitHtml,lobbyRoomRows,
-    roomNameNorm,lobbySearch,lobbyNameInput,lobbyCreateRoom,lobbyRoomLocked,lobbyPollTick,lobbyPollStart,lobbyRttReply,lobbyPingText}:undefined,
+    roomNameNorm,lobbySearch,lobbyNameInput,lobbyCreateRoom,lobbyRoomLocked,lobbyPollTick,lobbyPollStart,lobbyRttReply,lobbyPingText,lobbyWaitSend:typeof lobbyWaitSend==="function"?lobbyWaitSend:undefined}:undefined,
   /* #238 경기 UI — 기준판 로드 호환: 부재 시 undefined */
   ui238:typeof castFx==="function"?{castFx,battleSynChips,netSynthBattle,resultSeatsHtml,resultSideOffline,uiLeaveConfirm,renderBoardInfo,netResumeBarSync,modalFocus,MODAL_FOCUS,
     /* 2026-09-28 CJ 재수정 8항목 — 기준판 로드 호환: 부재 시 undefined */
