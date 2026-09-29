@@ -19,7 +19,7 @@ const LOBBY_ICON={help:0,detail:1,history:2,back:3,close:4,resign:5,timer:6,refr
 const LOBBY={gen:0,assets:null,prof:"idle",profile:null,err:null,rec:/** @type {null|"load"|"save"|"err"} */(null),recGen:0, // #295 rec: 전적 다시 받기 상태(null = 서버 확정값)
 repBusy:false,notice:"",toast:null,focused:false,hist:false,create:false, // #238 hist·create: 전적 기록 창·방 만들기 창(표시 전용)
 
-  req:/** @type {{rev:number,t:number}|null} */(null),cdT:/** @type {any} */(null), // #238 L03 누른 준비·시작의 잠금(서버 뷰가 바뀔 때까지) · 카운트다운 표시 타이머
+  req:/** @type {{rev:number,t:number}|null} */(null),cdT:/** @type {any} */(null),graceT:/** @type {any} */(null), // #238 L03 누른 준비·시작의 잠금(서버 뷰가 바뀔 때까지) · 카운트다운 표시 타이머 · #295 재연결 유예 표시 타이머
   view:"home",next:null,q:"",name:"",nameErr:"",poll:null,rtt:{n:0,t0:0,ms:null,st:"wait",pending:false}}; // #261 view: home(L01)|rooms(L02) · next: 로비에 들어올 때 열 view(방 나가기 → L02)
 
 function lobbyReady(){ return LOBBY.gen===0||!!LOBBY.assets&&LOBBY.assets.every(a=>a.state!=="loading")&&(LOBBY.prof==="ok"||LOBBY.prof==="off"); }
@@ -381,7 +381,9 @@ function lobbyWaitHtml(){
   const seat=i=>{ const occ=i===me||!!L, n=occ&&NET.players&&NET.players[i], rep=occ&&NET.reps&&NET.reps[i], off=i!==me&&occ&&lost;
     const face=lobbyRepOk(rep)?lobbyRepHtml(rep,"lg"):`<span class="repFace lg" aria-hidden="true">${occ?"?":"…"}</span>`;
     const st=!L?"":i!==me&&lost?"연결 끊김":i!==me&&L.peerInResult?"결과 확인 중":i===1?(L.guestReady?"준비 완료":"준비 전"):""; // 준비는 참가자(좌석 1)만
-    const ping=occ?lobbySeatPingSpan(i===me):"";
+    let ping=occ?lobbySeatPingSpan(i===me):"";
+    const gl=off&&i!==NET.owner?netLobbyGraceLeft():null; // #295 CJ REVISE 3: 끊긴 참가자 카드 오른쪽 위 = 서버 자리 비움까지 남은 초(표시 전용) · 그 아래 빗금 핑
+    if(gl!==null){ ping=`<span class="seatSide"><span id="peerGrace" class="graceTimer" role="timer" title="시간 안에 돌아오지 않으면 서버가 자리를 비웁니다">${gi("timer")}<span class="srOnly">재연결 대기 남은 시간 </span><b id="peerGraceN">${Math.ceil(gl/1000)}</b>초</span>${ping}</span>`; lobbyGraceTick(); }
     return `<li class="waitSeat${occ?"":" empty"}${i===me?" me":""}${off?" off":""}${i===1&&L&&L.guestReady?" ready":""}">${face}<span class="who">${i===NET.owner?`${gi("crown")} `:""}<b>${n?escAttr(n):i===me?"나":!occ?"입장 대기":i===NET.owner?"방장":"상대"}</b>${n&&i===me?" <small>(나)</small>":""}
       ${st?`<span class="badge waitTag">${st}</span>`:""}${i===me&&p?lobbyStatsHtml(p):""}</span>${ping}</li>`; };
   const busy=lobbyWaitReq();
@@ -405,6 +407,10 @@ function lobbyWaitHtml(){
 function lobbyCdTick(){ if(LOBBY.cdT) return;
   LOBBY.cdT=setTimeout(()=>{ LOBBY.cdT=null; const left=netLobbyCountdownLeft(), el=$("lobbyCd");
     if(left===null||!el||uiScreenName()!=="room") return; el.textContent=String(Math.ceil(left/1000)); lobbyCdTick(); },250); }
+/* #295 재연결 유예 숫자만 고친다 — role=timer(읽어 주지 않음) · 0에서 멈추고 자리 비움은 서버 OPEN 뷰가 다시 그린다 */
+function lobbyGraceTick(){ if(LOBBY.graceT) return;
+  LOBBY.graceT=setTimeout(()=>{ LOBBY.graceT=null; const left=netLobbyGraceLeft(), el=$("peerGraceN");
+    if(left===null||!el) return; el.textContent=String(Math.ceil(left/1000)); if(left>0) lobbyGraceTick(); },250); }
 /* #295 좌석 카드 오른쪽 지연 = 서버가 잰 왕복(ms) + 막대. 내 칸 = 나↔서버(selfPingMs) · 상대 칸 = 상대↔서버(peerPingMs) — 나↔상대 직접 핑이 아니며,
    높아도 '연결 끊김'으로 보이지 않는다(끊김은 서버 peerConnected 만 · 끊기면 상대 칸은 '재연결 중' + 빗금 막대) */
 const LOBBY_SELF_PING_TIP="서버가 잰 내 브라우저와 게임 서버 사이의 왕복 시간입니다.";

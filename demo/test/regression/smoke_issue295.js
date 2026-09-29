@@ -7,6 +7,7 @@
      R  결과 화면(FINISHED) — 양쪽 서버 실측 핑·단절 · [내보내기] 없음(CJ 2026-09-30 REVISE · 방장·참가자 모두) · 방장 끊김 = 참가자 좌석 1·결과 유지 owner 1 · 복귀 = 좌석 0
      W  익명 좌석(CJ 2026-09-30 REVISE) — players·reps null 이어도 서버 대기방 뷰면 찬 좌석(중립 '상대'/'방장' · '?' · 핑) · 끊긴 상대 = 어두운 카드 + 재연결 중 · OPEN = 입장 대기 · 참가자 [방 나가기] 한 줄
      C  전적 — 방 대기에 들어올 때 한 번(하트비트마다 아님) · 저장 대기 = '저장 중' + 확정까지 재시도 · 실패 = 옛 승·패 숨김 · 계정 전환 뒤 늦은 응답 버림
+     G  끊긴 참가자 재연결 유예 — 서버 lobby.peerGraceMs 받은 시각 기준 남은 초(참가자 카드 오른쪽 위 · 0에서 멈춤 · OPEN·재접속·새 방이면 사라짐) · 방장 나가기 = leave 후 닫기
      D  재개 실패(내보내기·자동 비움 = E_SEAT_TOKEN_INVALID) = 공통 좌석 종료 안내 → 방 목록 */
 "use strict";
 const H=require("../shared/harness");
@@ -168,6 +169,38 @@ const WAIT=(rev,lobby,extra)=>({state:"WAITING",phase:"waiting",revision:rev,rou
     /* 결과 화면 — 참가자(owner 0)도 [내보내기] 없음 */
     N5.roomState="FINISHED"; N5.started=true; T5.S.phase="over"; T5.S.winner=0; N5.me=1; N5.owner=0; T5.renderSide();
     ok(!/내보내기|netLobbyKick/.test(T5.byId("sidePanel").innerHTML)&&/netReturnToRoom/.test(T5.byId("sidePanel").innerHTML),"W10 참가자 결과 화면 [내보내기] 없음 · 복귀 유지"); }
+
+  /* ===== G 끊긴 참가자 재연결 유예(CJ 2026-09-30 REVISE 3) — 서버 lobby.peerGraceMs(실제 만료 기준) → 참가자 카드 오른쪽 위 남은 초 · 표시 전용 ===== */
+  { const T6=H.load(htmlPath), N6=T6.NET, s6=[]; let closed=0; T6.startMode("pvp"); T6.UI.entered=true;
+    Object.assign(N6,{publicMode:true,economy:true,started:false,roomId:4,roomName:"grace",me:0,players:["창조","test"],reps:["M-F1","M-W1"],roomState:"WAITING",peerConnected:true,revision:1,
+      ws:{readyState:1,send(x){ s6.push(JSON.parse(x)); },close(){ closed=s6.length; }}});
+    const peer=h=>((h.match(/<li class="waitSeat[^"]*">[^]*?<\/li>/g)||[])[0]||""), g=()=>T6.rooms.lobbyWaitHtml();
+    const OPEN6=rev=>({state:"OPEN",phase:"setup",revision:rev,round:1,seats:{ready:[false,false]},units:[],you:{placed:false},result:null,economy:true});
+    T6.netHandlePublicMessage({type:"room_state",seat:0,data:WAIT(2,{peerGraceMs:45000}),peerConnected:false,peerPingMs:null}); let h=g();
+    ok(/class="seatSide"><span id="peerGrace" class="graceTimer" role="timer"[^>]*>[^]*?재연결 대기 남은 시간 <\/span><b id="peerGraceN">45<\/b>초<\/span><span id="peerPing"[^]*?pingBars off/.test(peer(h))&&!/aria-live/.test(peer(h)),
+      "G1 방장 — 끊긴 참가자 카드 = 오른쪽 위 45초(role=timer · 초마다 읽지 않음) + 아래 빗금 핑");
+    const n0=s6.length; N6.lobby.at-=12400; T6.TQ.splice(0).forEach(f=>f());
+    ok(T6.byId("peerGraceN").textContent==="33"&&s6.length===n0,"G2 받은 시각 기준 표시만 줄인다(33초) · 추가 요청 없음");
+    N6.lobby.at-=60000; T6.TQ.splice(0).forEach(f=>f());
+    ok(T6.byId("peerGraceN").textContent==="0"&&T6.TQ.length===0&&/<b id="peerGraceN">0<\/b>/.test(g())&&s6.length===n0,"G3 0에서 멈춘다 · 자리 비움 요청을 보내지 않는다(서버만 비운다)");
+    T6.netHandlePublicMessage({type:"room_state",seat:0,data:OPEN6(3),players:["창조",null],reps:["M-F1",null],peerConnected:false}); h=g();
+    ok(!/peerGrace/.test(h)&&/입장 대기/.test(peer(h)),"G4 서버 자리 비움(OPEN) = 타이머 사라짐 · 빈 자리");
+    T6.netHandlePublicMessage({type:"room_state",seat:0,data:WAIT(4,{peerGraceMs:60000}),players:["창조","test"],reps:["M-F1","M-W1"],peerConnected:false});
+    ok(/<b id="peerGraceN">60<\/b>/.test(g()),"G5 새 끊김 = 새 유예값");
+    T6.netHandlePublicMessage({type:"room_state",seat:0,data:WAIT(5),peerConnected:true,peerPingMs:40}); h=g();
+    ok(!/peerGrace/.test(h)&&/>40ms</.test(peer(h)),"G6 재접속 = 타이머 사라짐 · 핑 복귀");
+    T6.netHandlePublicMessage({type:"room_state",seat:0,data:WAIT(6,{peerGraceMs:"30000"}),peerConnected:false});
+    ok(!/peerGrace/.test(g())&&/재연결 중/.test(g()),"G7 이상값·값 없음 = 타이머 없음(끊김 표시는 유지)");
+    T6.netHandlePublicMessage({type:"room_state",seat:0,data:WAIT(7,{peerGraceMs:30000}),peerConnected:true});
+    ok(!/peerGrace/.test(g()),"G8 연결된 상대에게는 값이 와도 그리지 않는다");
+    N6.me=1; T6.netHandlePublicMessage({type:"room_state",seat:1,data:WAIT(8,{peerGraceMs:30000}),peerConnected:false});
+    ok(!/peerGrace/.test(g())&&/방장 연결이 끊겼습니다/.test(g()),"G9 참가자 시점 끊긴 방장 카드에는 타이머 없음(참가자 카드 전용)");
+    N6.me=0; T6.netHandlePublicMessage({type:"room_state",seat:0,data:WAIT(9,{peerGraceMs:30000}),peerConnected:false});
+    /* 방장 [방 나가기] — leave 를 소켓을 닫기 전에 보내고 방 목록으로 · 타이머 잔존 없음 */
+    s6.length=0; global.netLeaveRoom();
+    ok(s6[0]&&s6[0].t==="leave"&&s6[0].round===1&&closed===1&&N6.roomId===null&&T6.LOBBY.view==="rooms"&&T6.uiScreenName()!=="room"&&!/peerGrace/.test(g()),"G10 방장 나가기 = leave 먼저 → 소켓 닫기 → 방 목록 · 타이머 없음");
+    T6.netHandlePublicMessage({type:"room_opened",roomId:5,seat:0,seatToken:"t5",tokenGen:0,revision:0});
+    ok(N6.lobby===null&&!/peerGrace/.test(g()),"G11 새 방 = 옛 유예 없음"); }
 
   /* ===== C6·C7 실패·계정 전환 ===== */
   T.netApplyRoomState({state:"FINISHED",phase:"over",revision:13});

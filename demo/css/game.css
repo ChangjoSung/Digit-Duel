@@ -1148,6 +1148,8 @@ h2[tabindex="-1"]:focus{outline:none;} /* 화면 전환 때 제목으로 옮긴 
 .waitScreen .waitSeat.off{background:#0b1430; border-color:#3a4a6e;} /* #295 끊긴 상대 좌석 — 배경만 어둡게(이름·재연결 중 글자는 그대로 읽힌다) */
 .seatPing{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:14px; white-space:nowrap;}
 .pingBars.off{position:relative;} .pingBars.off::after{content:""; position:absolute; left:-3px; right:-3px; top:50%; border-top:2px solid #ff6b7d; transform:rotate(-35deg);}
+.seatSide{margin-left:auto; align-self:stretch; display:flex; flex-direction:column; align-items:flex-end; justify-content:space-between; gap:4px;} .seatSide .seatPing{margin-left:0;} /* #295 끊긴 참가자 카드 — 오른쪽 위 남은 초 · 아래 빗금 핑 */
+.graceTimer{display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:999px; background:#3a1d08; border:1px solid #ffb04a; color:#ffd66b; font-size:14px; white-space:nowrap;} .graceTimer b{font-size:16px; font-variant-numeric:tabular-nums;}
 .waitScreen .netRoomActions button:not(.danger){font-weight:bold; border-radius:12px; color:#fff; background:linear-gradient(180deg,#2d64c9,#173c86); border:2px solid #0b1f4d;}
 .waitScreen .netRoomActions button.primary{background:linear-gradient(180deg,var(--gold1),var(--gold2)); color:var(--goldInk); border-color:#7a4a0c;}
 .waitScreen .netRoomActions button:disabled{opacity:.5;}

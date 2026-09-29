@@ -3,6 +3,7 @@
 // 참가자 단절 60초 자동 비움(방 OPEN 유지) · 방장 전송 단절 = 즉시 무효화 + 살아 있는 참가자 승격(없으면 방 닫힘) ·
 // 결과·기록 불변 · 경기 중 60초 유예/몰수 그대로 · selfPingMs/self_ping + peerPingMs/peer_ping. 운영 60초는 GRACE ms 로 줄인다.
 const { makeCounter, fakeWs, makeSetup, Room, STATES } = require('./helpers');
+const { Lobby } = require('../lobby');
 const { ok, done } = makeCounter('test-issue295-lobby-disconnect');
 
 const GRACE = 200, CD = 30;
@@ -140,6 +141,57 @@ const resume = (room, seat, tok) => room.resumeSeat(seat, tok, fakeWs());
   await wait(GRACE / 2 + 40);
   ok(m.state === STATES.FINISHED && m.result.type === 'FORFEIT' && m.result.winner === 1 && m.records.length === 1, '경기 중 60초 → 몰수(종전)');
 
+  // 8) REVISE #3 — 대기방 방장 나가기 = 방장 단절 · 대기방 참가자 남은 유예 peerGraceMs
+  const lv = gateRoom(20);
+  const lvGuest = lv.seats[1], lvTok = lv.seats[0].credential.current;
+  cmd(lv, 1, 'lobby_ready'); cmd(lv, 0, 'lobby_start');
+  const lvl = cmd(lv, 0, 'leave');
+  ok(lvl.ok && lvl.data.phase === 'closed' && lvl.data.seat === 0 && lv.seats[0] === lvGuest && lv.state === STATES.OPEN && !lv._countdown && lv.isListable(), '대기방 방장 나가기 → 참가자 승격 좌석0 · OPEN · 카운트다운 취소');
+  ok(resume(lv, 0, lvTok).reason === 'E_SEAT_TOKEN_INVALID' && lv.pushes === 0 && lv.records.length === 0 && lv.toSeatView(0).owner === 0, '옛 방장 토큰 거부 · 중복 푸시·기록 없음');
+  const solo = new Room(21, { isPublic: true, epoch: 'aaaaaaaa', graceMs: GRACE, startGate: true, countdownMs: CD });
+  solo.openHostSeat(fakeWs());
+  ok(cmd(solo, 0, 'leave').ok && solo.state === STATES.CANCELED && !solo.isListable(), '혼자인 방장 나가기 → 방 닫힘(종전 취소)');
+  const la = gateRoom(22); la.socketClosed(1);
+  ok(cmd(la, 0, 'leave').ok && la.state === STATES.CANCELED, '참가자 단절 중 방장 나가기 → 방 닫힘');
+  const rv = await finished(23);
+  ok(cmd(rv, 0, 'leave').noop && rv.state === STATES.FINISHED && rv.owner === 0 && rv.seats[1].credential && rv.records.length === 1, '결과 화면 방장 나가기 — 종전 경로(승계 없음)');
+  const rr = await finished(24);
+  const rrGuest = rr.seats[1], rrTok = rr.seats[0].credential.current, rrRes = JSON.stringify(rr.result);
+  cmd(rr, 0, 'lobby_return');
+  const rl = cmd(rr, 0, 'leave');
+  ok(rl.ok && rl.data.phase === 'closed' && rr.state === STATES.FINISHED && rr.owner === 1 && rr.seats[1] === rrGuest && JSON.stringify(rr.result) === rrRes && !!rr.toSeatView(1).result && rr.records.length === 1, '복귀한 방장 나가기 → 결과 중 참가자 방장 승계 · 기록 1건');
+  ok(resume(rr, 0, rrTok).reason === 'E_SEAT_TOKEN_INVALID', '복귀 방장 옛 토큰 거부');
+  // creatorIp — 승격 방장 IP 로 옮긴다(나가기·결과 복귀 승격 모두)
+  const lob = new Lobby({ epoch: 'aaaaaaaa' });
+  const ci = lob.createRoom('1.1.1.1', { isPublic: true }).room;
+  ci.openHostSeat(Object.assign(fakeWs(), { ddIp: '1.1.1.1' })); ci.joinGuestSeat(Object.assign(fakeWs(), { ddIp: '2.2.2.2' }));
+  cmd(ci, 0, 'leave');
+  ok(ci.creatorIp === '2.2.2.2' && lob.listPublicOpenRooms().some((x) => x.roomId === ci.roomId), '나가기 승격 → creatorIp 새 방장 · 목록 OPEN');
+  // peerGraceMs
+  const pg = gateRoom(25);
+  ok(lobbyOf(pg).peerGraceMs === null && pg.toSeatView(1).lobby.peerGraceMs === null, '연결 중 — peerGraceMs null');
+  pg.socketClosed(1);
+  const g1 = lobbyOf(pg).peerGraceMs, left1 = pg.seats[1].disconnectExpiry - Date.now();
+  ok(g1 > 0 && g1 <= GRACE && Math.abs(g1 - left1) <= 5 && pg.toSeatView(1).lobby.peerGraceMs === null, '참가자 단절 — 방장 뷰 peerGraceMs = 만료 시각 잔여');
+  const pgTok = pg.seats[1].credential.current;
+  ok(resume(pg, 1, pgTok).ok && lobbyOf(pg).peerGraceMs === null && !pg.seats[1].disconnectTimer, '재접속 → null · 타이머 해제');
+  pg.socketClosed(1);
+  await wait(GRACE + 40);
+  ok(pg.state === STATES.OPEN && pg.pushes === 1 && !pg.toSeatView(0).lobby, '유예 0 → 좌석 비움 OPEN 즉시 푸시');
+  const pr = await finished(26);
+  pr.socketClosed(1);
+  ok(pr.toSeatView(0).lobby === undefined, '결과 카드 — 유예 필드 없음');
+  cmd(pr, 0, 'lobby_return');
+  ok(lobbyOf(pr).peerGraceMs > 0, '복귀 방장 대기방 — 결과 중 끊긴 참가자 잔여');
+  const ph = await finished(27);
+  cmd(ph, 1, 'lobby_return'); ph.socketClosed(0);
+  ok(ph.state === STATES.OPEN && !ph.seats[0].disconnectTimer && !ph.toSeatView(0).lobby, '방장 단절 — 유예 없음');
+  const pv = gateRoom(28); await startRound(pv);
+  pv._handleSetup(0, makeSetup()); pv._handleSetup(1, makeSetup()); pv._handleReady(0, true); pv._handleReady(1, true);
+  pv.socketClosed(1);
+  ok(pv.toSeatView(0).lobby === undefined && pv.toSeatView(0).pause, '경기 중 — lobby 필드 없음(pause 경로 그대로)');
+  pv._finalize(STATES.CANCELED, null, { notify: false });
+
   // 7) 실제 서버 — 연결 중 참가자 WS 내보내기 · 방장 WS 단절 승격 · selfPingMs/self_ping · peer_ping · 결과 화면 승계
   const WebSocket = require('ws');
   const { server, lobby, heartbeatTick } = require('../server');
@@ -214,6 +266,37 @@ const resume = (room, seat, tok) => room.resumeSeat(seat, tok, fakeWs());
   G4.ws.close();
   await wait(100);
   ok(R4.state === STATES.CLOSED, 'WS 승계 방장 단절 → 방 닫힘');
+  // REVISE #3 WS — 대기방 방장 나가기 → 참가자 seat 0 OPEN 푸시 1회 · 떠난 소켓 종료 · 옛 토큰 거부 · 목록
+  const H5 = await conn('cp-leave295'); const H5o = await until(H5, (fr) => fr.type === 'room_opened');
+  const R5 = lobby.getRoom(H5o.roomId);
+  const G5 = await conn('p-' + H5o.roomId); const G5o = await until(G5, (fr) => fr.type === 'room_joined');
+  await until(H5, (fr) => fr.type === 'room_state' && fr.data.state === 'WAITING');
+  n = G5.frames.length;
+  send(H5, H5o, { requestId: 'lv', t: 'leave' });
+  const lvr = await until(H5, (fr) => fr.requestId === 'lv');
+  ok(lvr && lvr.data.phase === 'closed' && lvr.seat === 0, 'WS 방장 나가기 응답 = 닫힘');
+  const g5p = await until(G5, (fr) => fr.type === 'room_state' && fr.seat === 0, n);
+  await wait(100);
+  ok(g5p && g5p.data.state === 'OPEN' && g5p.data.owner === 0 && G5.frames.slice(n).filter((fr) => fr.type === 'room_state').length === 1 && H5.ws.closedCode === 1000 && R5.state === STATES.OPEN, 'WS 참가자 승격 seat 0 OPEN 푸시 1회 · 떠난 방장 소켓 종료');
+  const OldH5 = await conn('r-' + H5o.epoch + '.' + H5o.seatToken);
+  ok((await until(OldH5, (fr) => fr.type === 'error')).code === 'E_SEAT_TOKEN_INVALID', 'WS 나간 방장 옛 토큰 재개 거부');
+  V.ws.send(JSON.stringify({ v: 1, t: 'list_rooms' }));
+  const lr5 = await until(V, (fr) => fr.type === 'lobby_rooms' && fr.rooms.some((r) => r.roomId === H5o.roomId));
+  ok(lr5 && lr5.rooms.find((r) => r.roomId === H5o.roomId).seats === '1/2', 'WS 방 목록 — 승격 방 OPEN 1/2');
+  // REVISE #3 WS — 참가자 단절 peerGraceMs → 재접속 null → 유예 만료 OPEN 푸시
+  const G6 = await conn('p-' + H5o.roomId); const G6o = await until(G6, (fr) => fr.type === 'room_joined');
+  R5.graceMs = GRACE;
+  n = G5.frames.length;
+  G6.ws.close();
+  const pg1 = await until(G5, (fr) => fr.type === 'room_state' && fr.data.lobby && fr.data.lobby.peerGraceMs > 0, n);
+  ok(pg1 && pg1.data.lobby.peerGraceMs <= GRACE, 'WS 참가자 단절 → 방장 peerGraceMs');
+  n = G5.frames.length;
+  const G6r = await conn('r-' + G6o.epoch + '.' + G6o.seatToken); await until(G6r, (fr) => fr.type === 'room_resumed');
+  ok(await until(G5, (fr) => fr.type === 'room_state' && fr.data.lobby && fr.data.lobby.peerGraceMs === null, n), 'WS 재접속 → peerGraceMs null');
+  n = G5.frames.length;
+  G6r.ws.close();
+  ok(await until(G5, (fr) => fr.type === 'room_state' && fr.data.state === 'OPEN', n) && R5.state === STATES.OPEN, 'WS 유예 만료 → OPEN 푸시');
+  for (const x of [H5, G5, OldH5, G6, G6r]) x.ws.close();
   for (const x of [H, G, Old, G2, G3, V, OldH, H4, OldH4]) x.ws.close();
   server.close();
 

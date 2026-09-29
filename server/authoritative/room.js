@@ -470,6 +470,12 @@ class Room {
 
   // 명시적 나가기 — server.js는 좌석 토큰 인증·중복 제거를 통과한 뒤에만 handleCommand('leave')로 부른다.
   explicitLeave(seatIndex) {
+    // #295 REVISE #3 (2026-09-30 CJ) — 공개 대기방(결과에서 이미 복귀한 방장 포함)의 방장 나가기 = 방장 단절(_dropHost):
+    // 연결된 참가자가 방장을 잇고 방은 남는다. 연결된 참가자가 없거나 방장이 아직 결과를 보고 있으면 아래 종전 경로(취소·닫힘)다.
+    if (seatIndex === this.owner && this._publicLobby() && (this.state !== STATES.FINISHED || this.seats[seatIndex].returned) && this.seats[1 - seatIndex].connected) {
+      this._dropHost();
+      return { ok: true, type: 'room_state', data: this._closedView(seatIndex) };
+    }
     // #238 최신 3항(2026-09-28 CJ) — 공개 대기방의 참가자 나가기는 그 좌석만 비운다(방장 나가기 = 방 파괴는 그대로).
     if (seatIndex === 1 && this.startGate && this.isPublic && (this.state === STATES.WAITING || this.state === STATES.FINISHED)) return this._vacateGuest();
     if (this.state === STATES.OPEN || this.state === STATES.WAITING || this.state === STATES.SETUP) {
@@ -500,13 +506,20 @@ class Room {
     const reopen = this.state === STATES.WAITING || this.seats[0].returned;
     if (!this.seats[0].credential) this.close(); // #295 방장 역할을 이은 참가자까지 떠났다 — 빈 방을 남기지 않는다
     else if (reopen) this._reopenEmpty();
-    return {
-      ok: true, type: 'room_state', noop: !reopen,
-      data: { seat: 1, state: STATES.CLOSED, phase: 'closed', revision: this.revision, round: this.round, current: null, seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null },
-    };
+    return { ok: true, type: 'room_state', noop: !reopen, data: this._closedView(1) };
   }
 
-  _reopenEmpty() { this.seats[1] = this._newSeat(); this._resetForRematch(STATES.OPEN); }
+  // 좌석을 떠난 소켓에 보내는 닫힘 뷰(나가기·내보내기 응답)
+  _closedView(seat) {
+    return { seat, state: STATES.CLOSED, phase: 'closed', revision: this.revision, round: this.round, current: null, seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null };
+  }
+
+  // #295 좌석0 주인이 바뀌었을 수 있다(승격) — 방 목록의 IP별 OPEN 상한도 지금 방장 몫이다.
+  _reopenEmpty() {
+    const ip = this.seats[0].ws && this.seats[0].ws.ddIp;
+    if (ip) this.creatorIp = ip;
+    this.seats[1] = this._newSeat(); this._resetForRematch(STATES.OPEN);
+  }
 
   /* #295 (2026-09-30 CJ QA REVISE) 공개 대기방 — 방 OPEN·WAITING, 또는 결과(FINISHED) 화면·복귀 경로. 30초 내보내기 대기는 폐지됐다. */
   _publicLobby() {
@@ -1648,7 +1661,7 @@ class Room {
     const seat = this.seats[seatIndex];
     /* #238 대기방 — 방 전체가 WAITING 이거나, 결과에서 먼저 복귀해 상대를 기다리는 좌석. 지난 경기의 fx·결과·보드는 싣지 않는다. */
     if (this.state === STATES.WAITING || (this.state === STATES.FINISHED && seat.returned)) {
-      const c = this._countdown;
+      const c = this._countdown, p = this.seats[1 - seatIndex];
       return {
         seat: seatIndex, state: STATES.WAITING, phase: 'waiting', revision: this.revision, current: null,
         seats: { ready: [false, false] }, units: [], you: { placed: false }, result: null, economy: this.economy,
@@ -1657,6 +1670,8 @@ class Room {
           countdownMs: c ? Math.max(0, c.deadline - now()) : null,
           peerInResult: this.state === STATES.FINISHED,
           kickInMs: seatIndex === this.owner ? 0 : null, canKick: seatIndex === this.owner, // #295 방장은 연결·단절 무관 즉시 내보내기(kickInMs 는 옛 클라이언트 호환 0)
+          // #295 REVISE #3 — 끊긴 참가자의 남은 재접속 유예(서버 만료 시각에서만 잰다). 방장 단절·빈 좌석은 유예가 없어 null
+          peerGraceMs: 1 - seatIndex !== this.owner && p.credential && !p.connected && p.disconnectExpiry != null ? Math.max(0, p.disconnectExpiry - now()) : null,
         },
       };
     }

@@ -599,7 +599,9 @@ wss.on('connection', (ws) => {
     sendFrame(ws, Object.assign({}, frame, liveOf(room, me), { seq: ++seat.seq })); // 연결 표시 칸은 보낼 때의 값(캐시에 넣지 않는다)
 
     // 상대에게도 같은 revision의 갱신 뷰를 보낸다 — 실제로 상태가 바뀐 성공 명령만(noop·오류는 보내지 않는다).
-    if (outcome.ok && (!outcome.noop || at !== seatIndex)) pushState(room, 1 - me);
+    // #295 상대가 승격됐으면(방장 나가기) 그 새 좌석 번호로 보낸다.
+    const pAt = room.seats.indexOf(peer);
+    if (outcome.ok && (!outcome.noop || at !== seatIndex)) pushState(room, pAt >= 0 ? pAt : 1 - me);
 
     // #295 내보낸 참가자 — 닫힘 뷰를 보내고 그 소켓을 닫는다(옛 토큰은 이미 좌석에 없다).
     if (outcome.kicked && peer.ws) {
@@ -624,8 +626,6 @@ wss.on('connection', (ws) => {
     const at = seatOf(room, ws);
     if (at < 0) return;
     room.socketClosed(at);
-    // #295 방장 단절로 참가자가 좌석0으로 올랐으면 방 목록의 IP별 OPEN 상한도 새 방장 몫이다.
-    if (at === 0 && room.seats[0].ws && room.seats[0].ws !== ws) room.creatorIp = room.seats[0].ws.ddIp;
     // #237 상대 화면에 "상대 연결 대기"(2.4) · #295 승격된 방장에게 새 좌석·방 상태 — 두 좌석 모두(빈 좌석은 건너뛴다)
     pushState(room, 0); pushState(room, 1);
   });

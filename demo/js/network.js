@@ -29,8 +29,8 @@ const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncMo
   /* #295 peerPing·selfPing: 서버가 잰 상대↔서버·나↔서버 왕복 ms(정수·모르면 null) — 나↔상대 직접 핑이 아니고, 연결 끊김 판정에 쓰지 않는다 */
   peerPing:/** @type {number|null} */(null), selfPing:/** @type {number|null} */(null),
   owner:0, // #295 서버 data.owner — 지금 방장 좌석(결과 화면에서 방장이 끊기면 참가자 좌석 1 그대로 1) · 내보내기·방장 표시는 NET.me===NET.owner
-  /* #238 대기방 — lobby: 서버 WAITING 뷰의 {guestReady,countdownMs,peerInResult,at(받은 시각)} · round: 서버 경기 번호(모든 뷰) */
-  lobby:/** @type {{guestReady:boolean,countdownMs:number|null,peerInResult:boolean,at:number}|null} */(null), round:0,
+  /* #238 대기방 — lobby: 서버 WAITING 뷰의 {guestReady,countdownMs,peerInResult,peerGraceMs,at(받은 시각)} · round: 서버 경기 번호(모든 뷰) */
+  lobby:/** @type {{guestReady:boolean,countdownMs:number|null,peerInResult:boolean,peerGraceMs:number|null,at:number}|null} */(null), round:0,
   /** #262 이모티콘 전송의 유일한 끝 — 게임 액션 경로(netAction·netSendAction·모달 중계·resync·재생)를 타지 않고,
       requestId 로 전용 응답(emote_result)만 짝짓는다. 성공 표시는 서버의 emote 프레임을 받은 뒤에만 한다(낙관 표시 없음).
       @param {string} id @returns {boolean} 보냈으면 true */
@@ -642,7 +642,8 @@ function netApplyRoomState(data,isResumeFrame){
      autoEndCheck 가 옛 turn/state 를 읽고 새 revision 으로 낡은 자동 입력을 보낼 수 있다. */
   const unpaused=wasPaused&&!netPaused();
   /* #238 대기방(WAITING) — 준비·카운트다운·상대 결과 확인 중 여부. 지난 경기에서 넘어왔으면 경기별 클라이언트 상태를 비운다. */
-  NET.lobby=data.lobby&&typeof data.lobby==="object"?{guestReady:!!data.lobby.guestReady,countdownMs:typeof data.lobby.countdownMs==="number"?data.lobby.countdownMs:null,peerInResult:!!data.lobby.peerInResult,at}:null;
+  NET.lobby=data.lobby&&typeof data.lobby==="object"?{guestReady:!!data.lobby.guestReady,countdownMs:typeof data.lobby.countdownMs==="number"?data.lobby.countdownMs:null,peerInResult:!!data.lobby.peerInResult,
+    peerGraceMs:Number.isFinite(data.lobby.peerGraceMs)&&data.lobby.peerGraceMs>=0?data.lobby.peerGraceMs:null,at}:null; // #295 끊긴 참가자 자리 비움까지 남은 ms(서버 실제 만료 기준) — 표시 전용
   if(!wasWait&&uiRoomWait()) lobbyRecRefresh();
   /* #238 CJ 최신 3: 참가자가 나가면 방장은 OPEN(phase 'setup')을 받는다 — 상대 없는 대기방. 상대 이름·대표 그림은 비우고(결과에서 복귀한 경우도) 경기별 상태를 되돌린다 */
   if(data.state==="OPEN"&&NET.me!==1){ if(NET.players) NET.players[1]=null; if(NET.reps) NET.reps[1]=null; }
@@ -1005,6 +1006,8 @@ window.netLobbyKick=function(){ if(NET.me===NET.owner&&(uiRoomWait()||uiPubFinis
 window.netReturnToRoom=function(){ if(NET.roomState==="FINISHED") netSendCmd("lobby_return"); };
 /** 카운트다운 남은 ms(받은 순간부터 로컬로 줄인 표시값) · 카운트다운이 없으면 null. 시작 판정은 서버가 한다. */
 function netLobbyCountdownLeft(){ const l=NET.lobby; return l&&typeof l.countdownMs==="number"?Math.max(0,l.countdownMs-(Date.now()-l.at)):null; }
+/** #295 끊긴 참가자 재연결 유예 남은 ms(표시값 · 0에서 멈춘다) · 없으면 null. 자리 비움은 서버만 한다(OPEN room_state 가 오면 사라진다). */
+function netLobbyGraceLeft(){ const l=NET.lobby; return l&&l.peerGraceMs!==null?Math.max(0,l.peerGraceMs-(Date.now()-l.at)):null; }
 /* 지난 경기에서 대기방으로 — 방·좌석·토큰·닉네임·이모티콘 간격은 그대로 두고 경기별 상태만 참가 직후 모양으로 되돌린다 */
 function netRematchReset(){
   NET.mode=false; NET.started=false; NET.preparing=true; NET.queued=false; NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
