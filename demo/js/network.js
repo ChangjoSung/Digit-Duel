@@ -732,7 +732,9 @@ function netApplyEcoSetup(data){
   NET.ecoAlias=U.map(u=>u.id);
   const pieces=S.pieces.map(x=>merged.get(x)||x);
   const roster=pieces.filter(x=>x.owner===0&&x.type==="minion"&&ecoKey(x)).map(ecoKey); // 서버 ecoSyncRoster 와 같은 필드 순서 — setup 명령이 이 순서를 그대로 싣는다
-  dispatchCoreAction({t:"hydrate",seat:0,view:{setupEco:true,pieces,roster,eco:netEcoState(data,0)}});
+  /* #285 시작 상점에서 산 소모품(회복약·볼)도 서버 권위 값 — 자기 좌석 값만 온다(상대 값은 뷰에 없다). 없으면(구 서버) 로컬 값을 둔다 */
+  const you=data.you, inv=Array.isArray(you.inv)?you.inv.slice():null, balls=typeof you.balls==="number"?you.balls:null;
+  dispatchCoreAction({t:"hydrate",seat:0,view:{setupEco:true,pieces,roster,eco:netEcoState(data,0),inv,balls}});
   if(wasOpen&&S.eco.shop&&S.eco.shop.done[0]){ closeModal(); UI.prep="place"; } // 완료·만료(서버 시계) → 02 비공개 배치
 }
 /** 로컬 경제 액션(ui.js __shop) → 회선 어휘. player·token 은 서버가 좌석에서 채우고, 진열은 shop(오픈 턴)+seq 로 겨냥한다.

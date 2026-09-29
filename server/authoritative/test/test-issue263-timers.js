@@ -149,7 +149,7 @@ function moveVia(room, seat, from, to) {
     const kept = S0(room).pieces.filter((x) => x.owner === 0 && x.rosterId).map((x) => x.rosterId).join();
     await sleep(320);
     const S = S0(room);
-    ok(g.ok && S.balls[0] === 1, '하수인 밖 지출(볼)은 확정된 그대로 보존된다');
+    ok(g.ok && S.balls[0] === 2, '하수인 밖 지출(볼)은 확정된 그대로 보존된다'); // #285 시작 볼1 + 산 볼1
     ok(S.pieces.filter((x) => x.owner === 0 && x.rosterId).map((x) => x.rosterId).join().startsWith(kept), '이미 산 3명은 그 자리 그대로');
     ok(S.pieces.filter((x) => x.owner === 0 && x.type === 'minion' && x.rosterId).length === 6 && S.eco.coins[0] >= 0,
       '남은 노출·미구매 적격 칸으로 6명까지 — 예비 재화가 자동 구매 비용을 보장한다');

@@ -846,7 +846,10 @@ function reduceCoreAction(state,action){
          배치 좌표는 로컬 입력이라 network.js 가 뼈대 값을 그대로 실어 온다(정체성 보존 커밋 — replaceBoard 아님). */
       if(v.setupEco){
         const roster=state.roster.map(x=>x.slice()); roster[0]=v.roster.slice();
-        return {state:Object.assign({},state,{pieces:v.pieces,roster,eco:v.eco}),events:[]};
+        const next=Object.assign({},state,{pieces:v.pieces,roster,eco:v.eco});
+        if(v.inv){ next.inv=state.inv.slice(); next.inv[0]=v.inv; }             // #285 시작 상점 소모품 — 뼈대 P0 자리만(상대 자리는 로컬 기본값 그대로)
+        if(v.balls!=null){ next.balls=state.balls.slice(); next.balls[0]=v.balls; }
+        return {state:next,events:[]};
       }
       const byId=id=>id==null?null:(v.pieces.find(p=>p.id===id)||null);
       const turn=v.turn;
@@ -1501,6 +1504,18 @@ function ecoReduce(state,action){
       return ecoChanged(next,p,`${GOOD_KO[k]} 구매`);
     }
     case "shopSell": {
+      if(action.pieceId!==undefined){ // #285 S01 필드 판매 — 원장 100% · 종 잠금 · HP 비율 기록, 그 칸은 빈칸(다시 채워야 완료)
+        const fp0=state.pieces.find(x=>x.id===action.pieceId);
+        if(!start||!fp0||fp0.owner!==p||fp0.type!=="minion"||!fp0.alive||!ecoKey(fp0)) return ecoRefuse(state,p,"판매할 수 없는 칸입니다");
+        const next=ecoNext(state), sh2=next.eco.shop;
+        ecoSellUnit(next,p,fp0); sh2.sold[p].push(ecoKey(fp0));
+        Object.assign(ecoEditPiece(next,fp0),{rosterId:null,legend:null,name:null,element:null,paid:0,fresh:false,swapMark:false,skills:null,revealedSkills:null});
+        ecoSyncRoster(next,p);
+        /* 90초 자동 완료(shopTimeout)는 새로 고침 없이 지금 진열만 산다 — 빈 칸이 살 수 있는 칸·코인보다 많아지는 판매는 교착이라 거부 */
+        if(ecoEmptyField(next,p).length>sh2.slots[p].filter(s=>ecoSlotOpen(sh2,p,s)).length||!ecoReserveOk(next,p,0))
+          return ecoRefuse(state,p,"판매 뒤 필드 6칸을 다시 채울 진열이 부족합니다 — 🔄 새로 고침 뒤 판매하세요");
+        return ecoChanged(next,p,`${fp0.name} 판매 (+🪙${fp0.paid||0})`);
+      }
       const i=state.eco.bag[p].findIndex(u=>u.uid===action.uid);
       if(i<0) return ecoRefuse(state,p,"가방에 없는 말입니다");
       const next=ecoNext(state), u=next.eco.bag[p].splice(i,1)[0];

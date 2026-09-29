@@ -82,7 +82,7 @@ type CoreAction =
   | { t: "shopBuy"; player: number; i: number; seq: number }
   | { t: "shopRefresh"; player: number; seq: number }
   | { t: "shopGood"; player: number; item: string }
-  | { t: "shopSell"; player: number; uid: number }
+  | { t: "shopSell"; player: number; uid?: number; pieceId?: number } // #285 pieceId = S01 필드 판매
   | { t: "shopSwap"; player: number; pieceId: number; uid: number }
   | { t: "shopTicket"; player: number; pieceId: number; el: string }
   | { t: "leaderEl"; player: number; pieceId: number; el: string }

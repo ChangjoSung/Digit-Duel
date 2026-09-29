@@ -139,8 +139,8 @@ function swapSkill(X,target,skillIdx,slot){
 /* ===== B. 계약 2 — 공용 인벤토리·개봉 ================================== */
 {
   T.newGame("pvp");
-  ok(J(T.S.inv[0])===J(["potion","cool","cure"])&&J(T.S.inv[1])===J(["potion","cool","cure"]),"B1 시작 아이템 회복약·쿨링수·해독제 각 1 (양측 고정)");
-  ok(T.S.balls[0]===2&&T.S.balls[1]===2,"B2 시작 공용 볼 2");
+  ok(J(T.S.inv[0])===J(["potion"])&&J(T.S.inv[1])===J(["potion"]),"B1 #285 시작 아이템 회복약 1 (양측 고정)");
+  ok(T.S.balls[0]===1&&T.S.balls[1]===1,"B2 #285 시작 공용 볼 1");
   ok(T.BAL.invMax===Infinity&&T.BAL.ballMax===Infinity,"B3 보유 상한 해제 (가방·볼 모두 Infinity)");
   ok(T.BAL.itemPerRound===1,"B4 라운드 1회 제한만 남는다");
   ok(T.BAL.itemPerBattle===Infinity,"B4b 전투당 2회 제한 제거");

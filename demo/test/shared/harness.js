@@ -413,6 +413,7 @@ function load(htmlPath,opts){
   ballWhy:typeof ballWhy==="function"?ballWhy:undefined, aiShop:typeof aiShop==="function"?aiShop:undefined, aiBagPick:typeof aiBagPick==="function"?aiBagPick:undefined,
   shopHtml:typeof shopHtml==="function"?shopHtml:undefined, shopViewer:typeof shopViewer==="function"?shopViewer:undefined,
   get __shop(){return window.__shop;},
+  netEcoWire:typeof netEcoWire==="function"?netEcoWire:undefined, // #285 필드 판매 회선(pieceId → id)
   /* #259 계정 — 기준판 로드 호환: 부재 시 undefined */
   AUTH:typeof AUTH!=="undefined"?AUTH:undefined,
   acct:typeof acctCheck==="function"?{acctCheck,acctSubmit,acctResetSend,acctEmailSubmit,acctLogout,acctView,acctSeatLoad,acctGateMsg,acctEndSession,acctOnStorage,acctWatchTick:typeof acctWatchTick==="function"?acctWatchTick:undefined}:undefined,
