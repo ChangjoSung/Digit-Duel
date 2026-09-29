@@ -376,17 +376,19 @@ function lobbyWaitSend(fn){ if(lobbyWaitReq()) return; LOBBY.req={rev:NET.revisi
 function lobbyWaitHtml(){
   const me=NET.me===1?1:0, p=LOBBY.profile, L=NET.roomState==="WAITING"?NET.lobby:null, host=NET.me===NET.owner;
   const cd=netLobbyCountdownLeft(), lost=NET.peerConnected===false, peerOff=lost||(L&&L.peerInResult);
-  const seat=i=>{ const n=NET.players&&NET.players[i], rep=NET.reps&&NET.reps[i];
-    const face=lobbyRepOk(rep)?lobbyRepHtml(rep,"lg"):`<span class="repFace lg" aria-hidden="true">${i===me?"?":"…"}</span>`;
-    const st=!L||!n?"":i!==me&&lost?"연결 끊김":i!==me&&L.peerInResult?"결과 확인 중":i===1?(L.guestReady?"준비 완료":"준비 전"):""; // 준비는 참가자(좌석 1)만
-    const ping=i===me||n?lobbySeatPingSpan(i===me):"";
-    return `<li class="waitSeat${n||i===me?"":" empty"}${i===me?" me":""}${i===1&&L&&L.guestReady?" ready":""}">${face}<span class="who">${i===NET.owner?`${gi("crown")} `:""}<b>${n?escAttr(n):i===me?"나":"입장 대기"}</b>${n&&i===me?" <small>(나)</small>":""}
+  /* #295 CJ 2026-09-30 REVISE: 상대 좌석이 찼는지는 서버 대기방 뷰(L — WAITING·결과 복귀)로만 판단한다. 닉네임·대표(players·reps)는
+     게스트·프로필 장애면 null 이라 빈 자리의 근거가 아니다 — 찼는데 이름을 모르면 중립 '상대'/'방장'(👑) + '?' 얼굴(지어내지 않는다) */
+  const seat=i=>{ const occ=i===me||!!L, n=occ&&NET.players&&NET.players[i], rep=occ&&NET.reps&&NET.reps[i], off=i!==me&&occ&&lost;
+    const face=lobbyRepOk(rep)?lobbyRepHtml(rep,"lg"):`<span class="repFace lg" aria-hidden="true">${occ?"?":"…"}</span>`;
+    const st=!L?"":i!==me&&lost?"연결 끊김":i!==me&&L.peerInResult?"결과 확인 중":i===1?(L.guestReady?"준비 완료":"준비 전"):""; // 준비는 참가자(좌석 1)만
+    const ping=occ?lobbySeatPingSpan(i===me):"";
+    return `<li class="waitSeat${occ?"":" empty"}${i===me?" me":""}${off?" off":""}${i===1&&L&&L.guestReady?" ready":""}">${face}<span class="who">${i===NET.owner?`${gi("crown")} `:""}<b>${n?escAttr(n):i===me?"나":!occ?"입장 대기":i===NET.owner?"방장":"상대"}</b>${n&&i===me?" <small>(나)</small>":""}
       ${st?`<span class="badge waitTag">${st}</span>`:""}${i===me&&p?lobbyStatsHtml(p):""}</span>${ping}</li>`; };
   const busy=lobbyWaitReq();
   const state=!L?`${gi("timer")} 상대를 기다리는 중…`:cd!==null?`${gi("timer")} <span id="lobbyCd">${Math.ceil(cd/1000)}</span>초 뒤 시작`
     :lost?(host?"상대 연결이 끊겼습니다 — 돌아오기를 기다리는 중…<small class=\"srOnly\"> 1분 안에 돌아오지 않으면 자리가 자동으로 비워집니다.</small>":"방장 연결이 끊겼습니다 — 돌아오기를 기다리는 중…")
     :L.peerInResult?"상대가 결과를 확인하는 중입니다":!L.guestReady?(host?"참가자의 준비를 기다리는 중…":"준비를 누르면 방장이 시작할 수 있습니다"):(host?"참가자가 준비했습니다 — 시작을 누르세요":"방장의 시작을 기다리는 중…");
-  /* #295 CJ 2026-09-30 배치: 윗줄 = [시작](방장)·[준비](참가자) 한 줄 전체 · 아랫줄 = 방장 [내보내기](항상 활성 · 빈 자리면 서버 E_NO_GUEST 안내) 왼쪽 + [방 나가기] 오른쪽 */
+  /* #295 CJ 2026-09-30 배치: 윗줄 = [시작](방장)·[준비](참가자) 한 줄 전체 · 아랫줄 = 방장 [내보내기](항상 활성 · 빈 자리면 서버 E_NO_GUEST 안내) 왼쪽 + [방 나가기] 오른쪽 · 참가자는 [방 나가기] 한 줄 전체(CSS) */
   const act=host?`<button type="button" class="primary waitMain" ${!L||!L.guestReady||cd!==null||peerOff||busy?"disabled":""} onclick="lobbyWaitSend(netLobbyStart)">${cd!==null?"시작하는 중…":"시작"}</button>`
     :`<button type="button" class="waitMain${L&&L.guestReady?"":" primary"}" aria-pressed="${!!L&&L.guestReady}" ${!L||(!L.guestReady&&peerOff)||busy?"disabled":""} onclick="lobbyWaitSend(()=>netLobbyReady(${!(L&&L.guestReady)}))">${L&&L.guestReady?"준비 취소":"준비"}</button>`;
   if(cd!==null) lobbyCdTick();

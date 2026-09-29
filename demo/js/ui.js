@@ -913,8 +913,9 @@ function renderSide(){
       :NET.publicMode&&S.metrics.winType==="forfeit"?(viewerIsOwner(S.winner)?"상대 연결 종료 · 몰수승":"연결 종료 · 몰수패")
       :S.mode==="sim"?pname(S.winner)+" 승리":"";
     /* 2026-09-28 CJ 8: 온라인 종료 뒤에는 방을 부수지 않고 같은 멀티 대기방(L03)으로 — [방으로 돌아가기](서버 lobby_return · 누르면 잠금, 서버가 받아 준 뒤에만 화면이 바뀐다).
+       #295 CJ 2026-09-30 REVISE: 결과 화면에는 [내보내기]가 없다(방장·참가자 모두 · 내보내기는 방 대기에서만).
        결과 카드 아래에는 최종 공개 말판(#left — FINISHED 뷰가 공개한 말만 · CSS 로 순서만 바꾼다). 오프라인은 종전 [로비로 돌아가기] */
-    const back=uiPubFinished()?`<button class="primary big" onclick="this.disabled=true;netReturnToRoom()">방으로 돌아가기</button>${NET.me===NET.owner?`<button type="button" class="danger" onclick="netLobbyKick()">내보내기</button>`:""}`:`<button class="primary big" onclick="toLobby()">로비로 돌아가기</button>`;
+    const back=uiPubFinished()?`<button class="primary big" onclick="this.disabled=true;netReturnToRoom()">방으로 돌아가기</button>`:`<button class="primary big" onclick="toLobby()">로비로 돌아가기</button>`;
     sp.innerHTML=`<h2 class="srOnly">경기 종료</h2>${why?`<p class="resultWhy">${why}</p>`:""}${resultSeatsHtml()}
     <div class="row" style="margin-top:10px;justify-content:center">${back}</div><h3 class="finalBoardT">최종 공개 말판</h3>`;
     return;

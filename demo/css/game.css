@@ -1144,7 +1144,8 @@ h2[tabindex="-1"]:focus{outline:none;} /* 화면 전환 때 제목으로 옮긴 
 /* 3) L03 준비 · 시작 · 5초 · 채팅 옆 이모티콘 */
 .waitScreen .waitTag{align-self:flex-start; margin:2px 0 0; font-size:12px; background:#06102a; border:1px solid #3d5580; color:#cfe0ff;}
 .waitScreen .waitSeat.ready .waitTag{border-color:var(--gold1); color:#ffd66b;}
-.waitScreen .netRoomActions .waitMain{grid-column:1/-1;} .waitScreen .netRoomActions .waitLeave{grid-column:2;} /* #295 윗줄 시작·준비 · 아랫줄 내보내기(왼쪽)·나가기(오른쪽) */
+.waitScreen .netRoomActions .waitMain{grid-column:1/-1;} .waitScreen .netRoomActions .waitLeave{grid-column:2;} .waitScreen .netRoomActions .waitMain+.waitLeave{grid-column:1/-1;} /* #295 윗줄 시작·준비 · 아랫줄 내보내기(왼쪽)·나가기(오른쪽) · 참가자(내보내기 없음)는 나가기 한 줄 전체 */
+.waitScreen .waitSeat.off{background:#0b1430; border-color:#3a4a6e;} /* #295 끊긴 상대 좌석 — 배경만 어둡게(이름·재연결 중 글자는 그대로 읽힌다) */
 .seatPing{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:14px; white-space:nowrap;}
 .pingBars.off{position:relative;} .pingBars.off::after{content:""; position:absolute; left:-3px; right:-3px; top:50%; border-top:2px solid #ff6b7d; transform:rotate(-35deg);}
 .waitScreen .netRoomActions button:not(.danger){font-weight:bold; border-radius:12px; color:#fff; background:linear-gradient(180deg,#2d64c9,#173c86); border:2px solid #0b1f4d;}
