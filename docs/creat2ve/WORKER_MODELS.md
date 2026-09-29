@@ -14,6 +14,12 @@
 | Jupiter_Server | claude | claude-opus-5-5 | high |
 | Saturn_QA | codex | gpt-6-sol | xhigh |
 
+## Worker WorkTree 기준 — 2026-09-29 CJ 결정
+
+- Mercury PD는 `origin/main`을 추적하는 `main` 작업 공간에 상주한다. Orca의 parent WorkTree는 작업 목록의 소속만 나타내며 Git 분기 기준을 결정하지 않는다.
+- 마일스톤 Issue 구현 WorkTree는 해당 최신 `origin/milestone/vX.Y.Z`에서 만든다. 트랙이 없는 개발 작업만 `origin/dev`를 기준으로 하고, 긴급 hotfix는 `origin/main`을 기준으로 한다. 릴리스 검토는 실제 `origin/main`에서 수행한다. Saturn QA는 검증 대상 Issue의 정확한 HEAD SHA를 읽기 전용으로 검증한다.
+- WorkTree 생성 시 `--base-branch`에 원격 ref를 명시하고 생성 직후 기준 SHA와 Orca WorkTree ID를 기록한다. 같은 Issue의 쓰기 작업은 하나의 Issue WorkTree/브랜치를 공유하되 역할별 범위를 지킨다. dispatch에는 대상 WorkTree ID, 원격 기준 ref·SHA, 검증 대상 HEAD를 적는다. PD의 `main`에서 `--worktree current`를 사용하지 않는다.
+
 ## 후속 dispatch 모델 게이트 — 2026-09-27
 
 - 입력 전 실제 화면이 프롬프트 입력창인지 확인한다. 한도 임박 모델 전환 팝업이 있으면 본문·Enter를 보내지 않고 `Keep current model`을 선택한 뒤 승인 모델 footer를 확인한다. 계정 전역 설정·`/fast`·전역 알림 숨김은 바꾸지 않는다.
@@ -45,7 +51,7 @@
 ## 실행 및 검증
 
 1. CLAUDE.md의 역할 계약과 required_role/mode/area/mutation/instance_index를 먼저 검증한다. 부서의 표시 이름은 Mercury_PD 등이며 기존 역할 식별자 Mercury/Venus/Earth/Mars/Jupiter/Saturn은 유지한다.
-2. JSON의 해당 작업 유형을 선택하고 새 Worker에 `--agent`, `--model`, `--effort`를 명시한다. 예: `orca orchestration worker-start --spec "자기완결적 작업 명세; Ponytail full 필수" --worktree current --agent claude --model claude-opus-5-5 --effort high --json`.
+2. JSON의 해당 작업 유형을 선택하고 새 Worker에 `--agent`, `--model`, `--effort`와 위에서 확인한 대상 WorkTree ID를 명시한다. 작업 명세에는 기준 원격 ref·SHA와 검증 대상 HEAD를 넣는다.
 3. 시작 영수증의 launch.requested와 launch.effective를 대조하고 실제 응답 성공도 별도로 확인한다. 설정 저장, 실행값 전달, 제공자의 응답 성공을 구분한다. 모델 접근 오류는 자동으로 다른 모델에 넘기지 않고 보고한다.
 4. 기존 터미널 재사용에는 모델/effort 인수를 조합하지 않는다. 모델 변경이 필요하면 정리된 인계문으로 같은 역할의 새 Worker를 시작한다. 현재 PD 대화의 모델은 계정 설정 파일 저장만으로 바뀌지 않는다.
 5. 완료 후 worker_done을 검증하고 `orca orchestration worker-release --dispatch <id>`를 실행한다. release가 출력 보관과 자원 정리를 수행하며 별도 archive 명령을 사용하지 않는다. 불필요한 Worker나 모델별 단순 인사 테스트를 반복 기동하지 않는다.
