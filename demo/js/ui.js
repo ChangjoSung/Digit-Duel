@@ -311,11 +311,20 @@ function fitBoard(){
     /* #238 Saturn 시각 REVISE: 대전 말판도 가로 폭에만 맞춘다 — 종전 뷰포트 높이/700 상한은 320×640 에서 칸을 28px 로 줄였다.
        세로가 모자라면 보드 화면 #screenBody 가 말판을 세로 스크롤한다 (CSS). 스크롤 위치는 여기서 건드리지 않는다 */
     let s=Math.min(avail/376,1);
+    /* #286 (2026-09-29 CJ 안드로이드): 대전(S03)은 세로도 맞춘다 — #screenBody 에서 말판 위(HUD·여백)를 뺀 실측 높이/700.
+       하한은 칸 32px(32/52) — 그보다 작아질 화면(가로 모드 등)은 #238 처럼 그 크기로 두고 세로 스크롤한다. 배치(prep)는 아래 트레이가 말판에 붙어 폭 맞춤 그대로 */
+    const b=$("screenBody"), app=$("app");
+    if(b&&b.getBoundingClientRect&&w.getBoundingClientRect&&app&&app.getAttribute&&app.getAttribute("data-screen")==="board"){
+      const h=b.clientHeight-(w.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop);
+      if(h>0) s=Math.min(s,Math.max(h/700,32/52));
+    }
     if(!(s>0.2)) s=1;
-    w.style.setProperty("--bs",String(Math.round(s*1000)/1000));
+    w.style.setProperty("--bs",String(Math.floor(s*1000)/1000)); // 내림 — 반올림 1px 로 마지막 행이 잘리지 않게
   }catch(e){}
 }
 if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("resize",()=>{try{fitBoard(); emoteSync();}catch(e){}}); // #238 L03 이모티콘 위치도 다시 잰다
+/* #286 주소창·회전·safe area·행동 독 높이 변화로 #screenBody 상자가 바뀌면 다시 잰다 (resize 가 오지 않는 경우 포함) */
+if(typeof ResizeObserver==="function"&&typeof document!=="undefined"&&document.getElementById&&document.getElementById("screenBody")) new ResizeObserver(()=>{try{fitBoard();}catch(e){}}).observe(document.getElementById("screenBody"));
 
 /* ===== #106 연출 잠금·배너 큐 (turn-flow 계약 3장) =====
    원칙: 규칙 상태(S) 전이는 종전처럼 동기·즉시. 여기 있는 것은 표시 계층(배너 오버레이·입력 잠금·표시 유지)뿐이며 rand() 를 쓰지 않고
@@ -860,7 +869,7 @@ function renderTurnBar(){
   if(S.mainUsed&&!forced&&!S.forcedQueue.length&&!S.teleport&&!fxLocked()&&$("overlay").classList.contains("hidden")&&optionalBattleLeft()) mk("싸우지 않고 종료",()=>netAction({t:"endTurn"}),false,"primary");
   mkResign();
   if(forced){const s=document.createElement("span");s.className="badge";s.textContent="⚔️ 강제 전투 대상 선택";tb.appendChild(s);}
-  if(aiTurn){const s=document.createElement("span");s.className="badge";s.textContent=(NET.mode&&!isAI(S.current))?"🌐 상대 턴 진행 중…":"🤖 AI 행동 중…";tb.appendChild(s);}
+  if(aiTurn){const s=document.createElement("span");s.className="badge turnWait";s.textContent=(NET.mode&&!isAI(S.current))?"🌐 상대 턴 진행 중…":"🤖 AI 행동 중…";tb.appendChild(s);}
   if(paused){const s=document.createElement("span");s.className="badge";s.setAttribute("role","status");s.textContent="⏸ 연결 대기 — 경기·시간 정지 (기권 포함 입력 불가)";tb.appendChild(s);}
   // #263 행동 30초(#actClock)는 #238 상단 HUD(renderBoardInfo)로 옮겼다 — 같은 id·같은 turnClockTick 이 갱신한다
 }
