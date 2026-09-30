@@ -1,15 +1,14 @@
 # Digit-Duel — Mercury_PD 인수인계
 
-## 2026-09-29 현행 인계 검증 · 미완료 · v0.4.13 최종 출시 때 main 병합 예정
+## 2026-09-30 현행 인계 준비 · 수신 PD 최종 확인 대기
 
-- OpenAI [모델 목록](https://developers.openai.com/api/docs/models)과 [변경 이력](https://developers.openai.com/api/docs/changelog)을 먼저 재확인했다. 최신 일반 GPT 계열은 GPT-6, 9월 25일 Sol/Luna 이미지 수정이 최신 항목이다. 현 Mercury 프로세스는 `gpt-6-sol`·`xhigh`·`service_tier=default`·`danger-full-access`·approval `never`로 실제 실행 중이며, Worker 계약과 일치한다.
-- `git fetch origin main` 뒤 원본 PD WorkTree는 `main` → `origin/main`, HEAD와 원격 모두 `9b306bbfda103263cb2feea90fd9c89527eb9290`이다. 원본에는 미추적 `unity/`만 있으며 보존한다. stash `9ebd041242f61e10906ae388e8037c03c33ad386`와 `cc644636b67788727963b2158001bc66cb40fe86`도 보존한다.
-- CJ 최신 Comment, `CLAUDE.md`, `AUTHORITY.md`, `WORKER_MODELS.md`, `worker-models.json`, `QA_MINIMUM_POLICY.md`, Notion GDD-13·23·24, GitHub #295·PR #303·Release를 재조회했다. 이 문서의 아래 18:41 체크포인트는 과거 기록이며, 이후 CJ의 #292 및 #295 착수 지시가 우선한다. #293·#294·#296·#297은 별도 착수 전 접수 상태다.
-- Codex MCP의 Notion GDD fetch와 Render workspace 조회가 실제 성공했다. Claude의 기존 로컬 Notion에서 GDD-23 fetch를 실제 호출했고 Slack은 미인증이다. Unity MCP의 기존 등록은 Codex와 Claude 설정에서 제거했으며 v0.6.0 개발 때만 다시 추적한다. **Claude Google Drive·Calendar·Gmail은 재조회에서 Connected였다.** 이들은 `claude.ai` 계정 커넥터라 CLI logout/remove로 해제할 수 없었고, 이 환경의 브라우저는 Claude 로그인 화면으로 이동했다. CJ의 회사 계정 정책에 따라 Google 커넥터를 사용하지 않았으며 계정 화면에서 3개를 해제하고 재검증해야 한다.
-- **인계 판정: 미완료.** 모델·main SHA·필수 문서·권한·업무 필수 Notion/Render 호출은 통과했으나 Claude Google 연결 상태가 CJ 정책과 충돌한다. 계정 소유자의 커넥터 해제와 새 `claude mcp list` 검증 전에는 완료로 보고하지 않는다.
-- #295 활성 WorkTree는 `origin/milestone/v0.4.13`의 `c25252e521668fb64dfe3bed920684cb661bcc72`에서 생성됐고, ID는 `003dc8a0-372c-4547-9290-31d34edd82be::C:/Users/pc_77/orca/workspaces/Digit-Duel/issue-295-lobby-disconnect`다. HEAD `f762ae8a4b77966ffe1b08361543c7c92197ac04`, [PR #303](https://github.com/ChangjoSung/Digit-Duel/pull/303) 필수 CI 6/6 PASS, beta Render는 이 SHA로 Live다. CJ 2계정 Play QA는 대기 중이며, PASS 전 병합·Release·Production 갱신을 하지 않는다.
-- CJ의 2026-09-29 지시: 인수인계의 Google 금지·Notion 로컬 회사 계정 유지·Unity v0.6.0 연기 결정은 기록하되, 이 문서 브랜치의 main 병합은 v0.4.13 최종 Release와 Render Web 갱신 때 함께 진행한다. 기존 아래 항목 중 이 결정과 충돌하는 연결·Issue 상태는 과거 이력으로 취급한다.
-
+- **CJ 최신 결정:** Mercury_PD와 Saturn_QA만 Codex gpt-6.1-sol·xhigh·service_tier=default(No Fast)로 변경한다. Venus·Mars·Jupiter의 claude-opus-5-5/high, Earth 신규 gpt-6-astra/medium, 기존 자산 수정 gpt-6-luna/xhigh는 유지한다. [OpenAI 공식 모델 문서](https://developers.openai.com/api/docs/models/gpt-6.1-sol)는 모델 ID와 xhigh 지원을 명시한다. 인수 전 수신 터미널에서 실제 모델·effort·tier를 새로 확인한다.
+- **PD 위치와 Git:** 원본 C:/Users/pc_77/orca/Digit-Duel은 main → origin/main, 양쪽 SHA 9b306bbfda103263cb2feea90fd9c89527eb9290이다. origin/milestone/v0.4.13은 4f638a12dbab5e85b5b3b8d1d50ab17d029ea5b3이다. 원본에서 미추적 unity/와 stash 9ebd041242f61e10906ae388e8037c03c33ad386, cc644636b67788727963b2158001bc66cb40fe86을 보존한다. 로컬 ChangjoSung/mercury-pd-v0413-handoff-0929의 고유 커밋 b44e302도 미병합이라 보존한다. 새 모델 계약 6파일의 동일한 로컬 사본은 원본 main에 미커밋 적용하고 PR #304 병합 때까지 보존한다. main 커밋 SHA는 바꾸지 않는다.
+- **현행 제품 상태:** v0.4.12가 최신 GitHub Release다. v0.4.13의 #292는 CJ QA PASS 뒤 [PR #302](https://github.com/ChangjoSung/Digit-Duel/pull/302)로 c25252e521668fb64dfe3bed920684cb661bcc72에 병합·종결했다. #295는 CJ 최종 QA PASS 뒤 [PR #303](https://github.com/ChangjoSung/Digit-Duel/pull/303)으로 4f638a12dbab5e85b5b3b8d1d50ab17d029ea5b3에 squash 병합·종결했고 [병합 HEAD CI](https://github.com/ChangjoSung/Digit-Duel/actions/runs/36646873720) 6/6 PASS다. #295 원격 이슈 브랜치와 작업 트리는 정리했다. CJ QA 베타는 마지막 확인에서 /healthz 200이었으나 연결 브랜치를 삭제했으므로 다음 배포 전 베타 설정을 갱신해야 한다. main Release와 운영 Render는 아직 갱신하지 않았다.
+- **대기 범위:** #293·#294·#296·#297은 OPEN이며 CJ의 별도 착수 지시 전 분석 확정·구현·QA·배포를 시작하지 않는다. CJ는 게임 시작 전 “상점 → 배치 → 완료” UI/UX를 기획 중이고 대기를 지시했다. #292·#295의 과거 “접수만” 또는 “재플레이 대기” 문장은 이 항목으로 대체한다.
+- **인계 문서와 PR:** [PR #304](https://github.com/ChangjoSung/Digit-Duel/pull/304)는 main 대상 Draft다. CJ의 이전 결정에 따라 v0.4.13 최종 Release·운영 Render 갱신 때 병합한다. 이 PR에 최신 모델·인계 계약을 갱신하되 이번 인수를 완료로 소급하지 않는다. CLAUDE.md, AUTHORITY.md, WORKER_MODELS.md, worker-models.json, QA_MINIMUM_POLICY.md, Notion GDD-13·23·24, 현행 Issue·PR·Release가 기준이다.
+- **권한과 연결 범위:** 수신 Mercury는 danger-full-access·approval never를 명시하고 실제 실행으로 확인한다. 현재 연결된 업무 필수 MCP만 목록과 최소 1회 실제 읽기 호출로 확인한다. Codex의 Notion·Render, Claude의 기존 로컬 Notion을 대상으로 하며 호출이 불가하면 미완료로 보고한다. Claude Google Drive·Calendar·Gmail·Docs 등은 연결 상태와 무관하게 이번 인계의 호출·신규 연동·해제 대상에서 제외한다. Slack은 CJ 정책상 미연결로 유지한다. Claude·Notion 회사 계정은 기존 로컬 연결만 유지하고 Unity MCP 연동 작업은 v0.6.0 개발 때 추적한다. 과거 Google 연결을 필수 차단 게이트로 기록한 내용은 CJ의 이번 범위 변경으로 대체한다.
+- **인계 판정:** 이 문서는 송신 준비 기록이다. 수신 PD가 아래 절차의 GPT·SHA·필수 파일·실제 권한·범위 내 MCP 실호출을 독립 확인하고 CJ에게 정확한 SHA와 증거를 보고해야 완료다. 실패한 게이트가 있으면 “인수 미완료”와 원인을 보고한다.
 ## 현재 체크포인트 — 2026-09-29 18:41 KST PD 교대 준비
 
 - **모델 첫 확인:** [OpenAI 모델 목록](https://developers.openai.com/api/docs/models)과 [변경 이력](https://developers.openai.com/api/docs/changelog)을 재조회했다. 최신 일반 GPT 계열은 GPT-6이며, 9월 25일 Sol/Luna 수정 이후 더 새 계열 출시를 확인하지 못했다. 현 PD 화면은 `GPT-6-Sol xhigh`, 프로젝트 설정은 `gpt-6-sol`·`xhigh`·`service_tier=default`다. 수신 PD는 새 터미널의 실제 모델·effort·tier를 다시 확인한다.
@@ -23,11 +22,11 @@
 
 매번 아래 순서를 새로 확인한다. 이전 세션의 확인 결과를 재사용하지 않는다.
 
-1. **GPT 업데이트부터 확인:** OpenAI 공식 모델 목록·변경 이력과 현재 계정에서 사용 가능한 GPT를 대조하고, [Worker 모델 계약](WORKER_MODELS.md)의 Mercury 모델 및 실제 실행 모델/effort/tier를 확인한다. 더 최신인 사용 가능 모델이 있으면 인계 전 PD가 버전 전환을 지시하고 실제 적용을 확인한 다음 진행한다. 사용 가능 여부나 적용을 확인할 수 없으면 인수를 완료 처리하지 않는다.
+1. **GPT 업데이트부터 확인:** OpenAI 공식 모델 문서·변경 이력과 현재 계정에서 사용 가능한 모델을 대조한다. CJ가 이번 인수에 지정한 Mercury·Saturn `gpt-6.1-sol/xhigh/default`를 임의 대체하지 않는다. 수신 PD의 실제 모델·effort·tier를 확인하지 못하면 인수를 완료 처리하지 않는다.
 2. **PD 위치 확인:** `git fetch origin main` 후 PD 작업 공간의 브랜치 `main`, upstream `origin/main`, `HEAD`와 `origin/main`의 동일 SHA를 확인한다. detached HEAD·다른 브랜치·뒤처진 main에서는 인계하지 않는다. 미커밋·미추적 파일을 먼저 식별·보존하고 안전하게 동기화한다.
 3. **필수 자료 읽기:** CJ 최신 Comment, 이 저장소 `CLAUDE.md`, [권위 문서](AUTHORITY.md), 이 스냅샷의 현재 체크포인트, [Worker 모델·WorkTree 계약](WORKER_MODELS.md), [모델 실행값](worker-models.json), [QA 최소 원칙](QA_MINIMUM_POLICY.md), 현재 작업의 Notion GDD·GitHub Issue·PR을 읽고 상충하거나 낡은 이력을 구분한다.
 4. **권한 확인:** 현재 PD의 실제 실행 권한이 `danger-full-access`·approval `never`인지 확인한다. 새 Worker는 역할별 승인 설정을 명시하고 시작 영수증과 실제 실행을 확인한다. 관리형 정책보다 높은 권한을 가정하지 않는다.
-5. **MCP 목록·연결 확인:** Codex와 Claude의 MCP 목록을 조회하고 업무상 필수인 연결은 인증 상태뿐 아니라 최소 1개 실제 호출로 확인한다. 끊긴 필수 MCP는 기존 정책 범위에서 연동부터 복구한다. Claude와 Notion은 회사 계정의 기존 로컬 PC 연동을 유지한다. **Slack은 CJ 지시로 연결하지 않으며 필수 검사 대상이 아니다.** 연결 변경으로 작업물을 외부에 공유하지 않는다.
+5. **MCP 목록·연결 확인:** 현재 연결된 업무 필수 MCP만 확인한다. Codex Notion·Render와 Claude의 기존 로컬 Notion은 목록·인증 상태와 최소 1개 실제 읽기 호출로 검증한다. 실패하면 미완료로 보고하고 임의 신규 연동·계정 변경은 하지 않는다. Claude Google·Docs 등은 검사·호출·해제 대상에서 제외한다. Slack은 미연결로 유지하고 Unity MCP는 v0.6.0으로 연기한다.
 6. **CJ 인수 완료 보고:** 1~5가 모두 통과한 뒤에만 확인 시각, `main`/`origin/main` SHA, GPT 버전·실행값, 읽은 자료, 권한, 필수 MCP별 결과, 활성 Worker WorkTree의 원격 기준/SHA/ID, 보존한 로컬 변경, 남은 위험을 기록해 CJ에게 보낸다. 실패한 항목은 미완료와 원인을 명시한다.
 
 **2026-09-29 18:03 KST 과거 위치 확인:** `main` → `origin/main`, 양쪽 SHA `d6925d49636f5ebcd68033e87ba01f0f471d4d6a`. 이전 문서 변경은 stash `cc644636b67788727963b2158001bc66cb40fe86`에 보존했다. `unity/` 미추적 파일은 남아 있었고 이 스냅샷 수정은 당시 미커밋이었다. 아래의 다른 브랜치 인계 지시는 당시 이력이다.
