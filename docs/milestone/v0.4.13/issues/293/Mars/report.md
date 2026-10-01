@@ -1,9 +1,9 @@
-# [결정] #293 시작 상점 → 배치 → 완료 — Mars 구현 보고 (2026-10-01 · HEAD `ce96f25` · Opus 5.5 high · Ponytail full)
-**판정**: 구현·자체 검증 완료(제품 QA PASS 아님 — Saturn QA·CJ 플레이 QA 남음). Git/GitHub/Notion 쓰기 없음. core·state·data·network·index·서버·규칙·수치 무변경.
+# [결정] #293 시작 상점 → 배치 → 완료 — Mars 구현 보고 (2026-10-01 · 시작 HEAD `ce96f25` · Opus 5.5 high · Ponytail full)
+**판정(Mercury 현황 정정)**: 최초 구현·자체 검증 완료. 이후 [Saturn 독립 QA](../Saturn/report.md)는 PASS했고 CJ 플레이 QA는 대기다. Git/GitHub/Notion 쓰기 없음. core·state·data·network·index·서버·규칙·수치 무변경.
 **구현**: 상단 한 줄(나 VS 상대·시계 하나·내 코인·⚙) + 진행 막대/진행 버튼 한 줄 + 우측 시너지 열(순위별 Earth 색·기여 카드) · 공통 하수인 카드(그림·이름·등급 테두리+★·왕국/아키타입·HP) · 가방 [교체][판매] 한 줄 · 교체 6카드 창(빈칸/사망 disabled·`shopSwap` 1회·Esc 포커스 복귀) · 트레이 14칸. 상대 표식은 `seats.ready`일 때만 03.
 **파일**: `demo/js/ui.js` · `demo/css/game.css` · 신규 `demo/test/regression/smoke_issue293.js` · `.github/workflows/ci.yml`(293 한 줄 등록) · 기대값 갱신 `smoke_issue238.js`·`smoke_issue263_client.js`·`smoke_issue236.js` · 본 폴더(스크린샷 15장·`geometry.json`·`geometry-320.json`).
 **검사(exit 0)**: `smoke_issue293` 59/0(최종 CSS 뒤 재실행) · 238 147/0 · 285 38/0 · 263_client 164/0 · 236 287/0 · 286 13/0 · public_rooms 191/0 · online 159/0 · `node --check` · `npm run typecheck`. 마무리 단계는 CSS·워크플로만 바뀌어 293 1회만 다시 돌렸다.
-**기대값 정합(2026-10-01 Mercury 문서 정정)**: Venus AC10이 승인한 9건 = 표시 위치·픽스처 7건(238 I2·I6·J7·K37, 236 AC46·Q1, 263 G14+`shop.done`) + 오프라인 경제 판 UI 순서 2건(238 I14·I15). 순서 변경을 단순 자리 이동으로 부르지 않는다. 시계·재화·HP·보안 규칙 단언은 무수정이며 Saturn이 실제 diff를 독립 확인했다.
+**기대값 정합(2026-10-01 Mercury 문서 정정)**: Venus AC10이 승인한 9건 = 표시 위치·픽스처 7건(238 I2·I6·J7·K37, 236 AC46·Q1, 263 G14+`shop.done`) + 오프라인 경제 판 UI 순서 2건(238 I14·I15). 순서 변경을 단순 자리 이동으로 부르지 않는다. 시계·재화·HP·보안 규칙 단언은 무수정이며 Saturn이 실제 diff를 독립 확인했다. 이후 CI의 #122 표시/순서 2건은 Venus 목록 정정 뒤 별도 보정했고, 새 비경제 전환 A14b 포함 99/0이다([정정](ci-correction.md)); 현재 수정 목록은 총 11건이다.
 **390×844 실측**: 상단·진행 막대·가방 버튼 한 줄, 가로 넘침 없음, 누르는 대상 ≥44px(가방 48×44), 보드 91칸 46px 정사각, 교체 창 Esc → 포커스·시계·스크롤 유지. `07-place` 첫 화면은 13행 아래 33px가 고정 트레이에 가리지만 기존 세로 스크롤(118px) 끝에서 13행 7칸 전부 보이고 눌린다(`geometry-320.json` `place390`) — 보드 변경 없음.
 **320×640 실측(1회 + 이음줄 CSS 뒤 스크린샷 2장 재촬영)**: 가방 2열로 [교체][판매] 한 줄 59×44 · 왕·동료 속성 버튼 44×44 · 트레이 5열 50×60 · 가로 넘침 없음 · 실제 탭으로 교체 창 열림 · 보드 37px 정사각, 13행 스크롤 끝에서 전부 도달(`14`·`15`).
 **색**: 전부 Earth `UI_CONTRACT.md` 토큰(등급 1~5 · 시너지 순위 0~4 각 한 색 · 진행 버튼 `#B3261E`/`#5E0F0B`/`#FFFFFF`) — `TODO(Earth)` 없음.

@@ -28,3 +28,11 @@
 - 완료 대기 이미지 `10/11`은 공개 방 값을 넣어 같은 렌더러로 그린 모의 상태다. 실서버 브라우저 E2E는 미실행이며 PASS 범위로 주장하지 않는다.
 - 상대 01/02 구분은 공개 데이터가 없어 미표시(R1). 별도 CJ 결정·Jupiter 계약 없이 추가하지 않는다.
 - CJ 플레이 QA·병합·main Release·Render 배포·#294/#295 전면 개편/#296은 이 판정 밖이다.
+
+## CI 보정 추가 독립 QA — Mercury 기록
+
+- 2026-10-01 11:14 KST **PASS**, 완료 `msg_26cf6c7ca7e5`; fresh task `task_9572b75d4426` / dispatch `ctx_21f4612070bf` / thread `01a0f534-4f1a-7ca0-8d47-0cb76164f454`. 시작/완료 실제 `gpt-6.1-sol/xhigh/default(No Fast)` · `danger-full-access/never`와 현재 footer/argv를 각각 새로 확인했다.
+- 후보 `5e605cd40c0ad6c997ac25a876ab42dba57cc156` 대 `2c8bebdc4ad6b939fa9d26d7fe5070ed4b605dd9`: Venus AC10·Mars CI 보고·기존 #122 검사만, 정확히 3파일. A12 표시/현재 단계, A14 경제 모드 재진입 잠금, 새 A14b 비경제 전환 보존을 실제 UI/Core와 대조했다. 기존 98 = 수정 2 + 무수정 96, +새 1 = 99; 규칙·수치·보안·경제 단언을 삭제/약화하지 않았다.
+- `node demo/test/milestone/v0.4.6/issues/122/issue122_rules.js` **정확히 1회: 99 passed / 0 failed / exit0**. 다른 검사/typecheck/브라우저/CI 재실행 없음.
+- 제품·기존 다른 7검사·워크플로·최초 승인 UI 기대값 9건은 최초 QA `0e3afc032f0d3f54e138e585a45e575058fd3129` 이후 불변, 13AC/R1/R2 보존. 따라서 최초 QA는 불변 범위에만 재사용한다. QA 전후 HEAD 동일·status clean, `filesModified=[]`, Saturn 파일 작성 없음.
+- 전체 현재 목록은 변경된 기존 UI 기대값 **11건 + 새 A14b 1건**이며 앞선 최초 QA의 9건 기록은 그 당시 범위다. 이후 문서 정정/QA 기록 커밋은 제품·검사 코드를 바꾸지 않는다. 최종 HEAD CI/CJ 플레이 QA/실서버 E2E의 별도 한계는 위와 같다.
