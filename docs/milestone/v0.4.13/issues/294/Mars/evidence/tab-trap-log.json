@@ -1,0 +1,14 @@
+{
+ "inOverlay": true,
+ "behindBuyButtons": 14,
+ "stops": [
+  "true:하수인",
+  "true:스킬",
+  "true:✕",
+  "true:하수인",
+  "true:스킬",
+  "true:✕"
+ ],
+ "shiftTab": "true",
+ "escClosesOnlyHelp": "{\"help\":false,\"modalStillOpen\":true,\"refocus\":true}"
+}

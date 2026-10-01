@@ -246,6 +246,29 @@ try{
   adv(5000); eq(N.byId("actClock").textContent,"⏱ 9초 (정지)","D5 정지 중에는 표시도 줄지 않는다");
   N.netApplyRoomState(netFrame({key:"bag",leftMs:9000,running:true}),false);
   eq(N.byId("actClock").textContent,"","D6 다른 시한(B08)일 때는 행동 배지가 비어 있다 (.badge:empty 로 숨는다)");
+  { /* ===== #294 공개 보드 시계(boardClock) — 표시 전용. 상대 차례에도 같은 마감에서 초를 계산하고, 화면은 명령을 만들지 않는다 ===== */
+    const bf=(bc,cur,clock)=>{ const f=netFrame(clock||null); f.current=cur; if(bc!==undefined) f.boardClock=bc; return f; };
+    const M=netBoot(), wire={readyState:1,sent:[],send(m){ this.sent.push(m); },close(){}}, sent=()=>wire.sent.length, dl=7e12; M.NET.ws=wire; // 열린 회선 — 화면이 무엇이든 보내면 여기 쌓인다
+    M.netApplyRoomState(bf({leftMs:23000,running:true,deadline:dl,serverNow:dl-23000},1),false); const s0=sent();
+    eq(M.byId("actClock").textContent,"⏱ 23초","L1 상대 차례(내 clock 없음)에도 시간 칸에 서버 보드 시계의 초가 보인다");
+    ok(M.NET.ecoClock===null&&!M.turnClockLate("act")&&Object.keys(M.TURNCLK.c).length===0,"L2 입력 잠금·늦은 입력 판정은 종전 clock 만 본다 — 로컬 마감을 걸지 않는다");
+    adv(4000); eq(M.byId("actClock").textContent,"⏱ 19초","L3 상대 차례에도 표시 간격이 돌아 받은 순간부터 줄어든다");
+    M.netApplyRoomState(bf({leftMs:99000,running:true,deadline:dl,serverNow:dl-15000},0,{key:"act",leftMs:15000,running:true}),false);
+    eq(M.byId("actClock").textContent,"⏱ 15초","L4 내 차례도 같은 마감(deadline − serverNow)에서 계산한다 — leftMs 가 달라도 마감이 기준");
+    M.netApplyRoomState(bf({leftMs:9000,running:false,deadline:null,serverNow:dl},1),false); adv(5000);
+    eq(M.byId("actClock").textContent,"⏱ 정지 · 9초","L5 running:false(전투·B08·단절)는 '정지'로 값이 멈춘다");
+    M.netApplyRoomState(bf({leftMs:0,running:true,deadline:dl,serverNow:dl},1),false); adv(3000);
+    eq(M.byId("actClock").textContent,"⏱ 0초 · 처리 중","L6 만료 직후 = '0초 · 처리 중'");
+    eq(sent(),s0,"L7 만료 뒤에도 화면은 턴 넘김 등 어떤 명령도 보내지 않는다(만료 처리는 서버)");
+    M.netApplyRoomState(bf(null,1),false); eq(M.byId("actClock").textContent,"","L8 boardClock:null(정기 상점·종료) = 표시 없음");
+    M.netApplyRoomState(bf(undefined,1),false); adv(31000);
+    eq(M.byId("actClock").textContent,"확인 중","L9 필드가 없으면(구 서버) 상대 차례는 '확인 중' — 로컬 30초를 지어내지 않는다");
+    M.netApplyRoomState(bf({leftMs:"12",running:true,owner:1,key:"act"},1),false);
+    ok(M.NET.boardClock===undefined&&M.byId("actClock").textContent==="확인 중","L10 규격 밖 값은 쓰지 않는다");
+    M.netApplyRoomState(bf({leftMs:5000,running:false,deadline:null,serverNow:null,owner:1,key:"pick"},1),false);
+    ok(JSON.stringify(Object.keys(M.NET.boardClock).sort())==='["at","deadline","leftMs","running","serverNow"]',"L11 받은 시계에서 계약 필드만 보관한다(key·owner 를 들고 있지 않는다)");
+    M.netApplyRoomState(bf({leftMs:5000,running:true},1),false);
+    ok(M.NET.boardClock.deadline===null&&M.NET.boardClock.serverNow===null&&M.byId("actClock").textContent==="⏱ 5초","L12 마감·서버 시각이 빠진 시계는 그 칸을 null(모름)로 두고 leftMs 로 계산한다"); }
   /* #293 준비 시계 — 서버 절대 마감(deadline)과 그 프레임의 서버 시각(serverNow)으로 그린다. 이 기기 시계·leftMs 로 새 180초를 만들지 않는다 */
   const dl=5e12;
   N.netApplyRoomState(netFrame({key:"prep",leftMs:999000,running:true,deadline:dl,serverNow:dl-120000}),false);

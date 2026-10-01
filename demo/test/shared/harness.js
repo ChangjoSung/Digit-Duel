@@ -188,7 +188,10 @@ function load(htmlPath,opts){
   const cookieWrites=[];
   // doc를 먼저 만들고 모든 요소를 mkEl(doc)로 생성한다 — 포커스는 이 로드의 문서에만 기록된다
   const doc={getElementById:id=>els[id]||(els[id]=mkEl(doc)),createElement:()=>mkEl(doc),body:null,activeElement:null,
-    contains(n){return !!n&&n.isConnected!==false;}}; // #26: 포커스 추적·속성 스텁
+    contains(n){return !!n&&n.isConnected!==false;},
+    /* #294: 문서 수준 리스너(안내 창의 Esc·바깥 누름 등)를 등록하고 테스트가 직접 부른다 — 요소 스텁(mkEl)과 같은 모양 */
+    _listeners:{}, addEventListener(t,fn){(this._listeners[t]=this._listeners[t]||[]).push(fn);},
+    dispatch(t,ev){for(const fn of (this._listeners[t]||[])) fn(ev);}}; // #26: 포커스 추적·속성 스텁
   /* #217 최소 querySelector(doc 레벨) — 실제 제품 코드가 쓰는 유일한 패턴 "#id .cls[data-x=\"v\"]..."만 지원한다.
      조각 파서·매칭기(parseSimple/matchesSimple/descendants)는 모듈 top-level에 있다(el.querySelector와 공유). */
   function queryAll(selector){
@@ -433,7 +436,11 @@ function load(htmlPath,opts){
     SYNHELP:typeof SYNHELP!=="undefined"?SYNHELP:undefined,allyRole:typeof allyRole==="function"?allyRole:undefined,uiScreenName:typeof uiScreenName==="function"?uiScreenName:undefined,
     /* #293 CJ QA REVISE(2026-10-01) — 말 얼굴 등급 배경 · 시너지 덧붙임 칩 (기준판 로드 호환: 부재 시 undefined) */
     GI:typeof GI!=="undefined"?GI:undefined,pcGradeCls:typeof pcGradeCls==="function"?pcGradeCls:undefined,synExtraChips:typeof synExtraChips==="function"?synExtraChips:undefined,
-    synHelpClose:typeof synHelpClose==="function"?synHelpClose:undefined}:undefined,
+    synHelpClose:typeof synHelpClose==="function"?synHelpClose:undefined,
+    /* #294 메인 화면 흐름 — 공용 신원 부품 · 설명 창 · 시너지 열 (기준판 로드 호환: 부재 시 undefined) */
+    idHeadHtml:typeof idHeadHtml==="function"?idHeadHtml:undefined,idHelp:typeof idHelp==="function"?idHelp:undefined,
+    unitHelpPiece:typeof unitHelpPiece==="function"?unitHelpPiece:undefined,unitHelpBag:typeof unitHelpBag==="function"?unitHelpBag:undefined,unitHelpSlot:typeof unitHelpSlot==="function"?unitHelpSlot:undefined,
+    lobbyRepHtml:typeof lobbyRepHtml==="function"?lobbyRepHtml:undefined,synRailHtml:typeof synRailHtml==="function"?synRailHtml:undefined,synContrib:typeof synContrib==="function"?synContrib:undefined}:undefined,
   PREPCLK:typeof PREPCLK!=="undefined"?PREPCLK:undefined, synExtraView:typeof synExtraView==="function"?synExtraView:undefined,
   synKingdomEffect:typeof synKingdomEffect==="function"?synKingdomEffect:undefined, netStubPiece:typeof netStubPiece==="function"?netStubPiece:undefined,
   ARCH_KO:typeof ARCH_KO!=="undefined"?ARCH_KO:undefined,

@@ -637,6 +637,12 @@ function netApplyRoomState(data,isResumeFrame){
   netFxResetCursorIfNeeded(); // (epoch,roomId,seat) 경계 — 스냅샷 캐시보다 먼저
   const at=Date.now(); // #237 서버 시계·재연결 유예는 남은 ms 로 온다 — 받은 순간부터 로컬로 줄여 표시만 한다(마감 판정은 서버)
   NET.ecoClock=data.clock?Object.assign({at},data.clock):null;
+  /* #294 공개 보드 시계(표시 전용) — 없음(구 서버)·규격 밖 = undefined("확인 중"), null = 지금 보드 시계 없음(정기 상점·종료). 입력 잠금·만료는 종전 clock 만 본다 */
+  { const b=data.boardClock, n=v=>v===null||v===undefined||Number.isFinite(v), num=v=>Number.isFinite(v)?v:null; // 마감·서버 시각이 없으면 null(모름) — 있는 척하지 않는다(그때는 leftMs 로 계산)
+    /** @type {NetBoardClock|null|undefined} */
+    const bc=b===null?null:b&&typeof b==="object"&&Number.isFinite(b.leftMs)&&typeof b.running==="boolean"&&n(b.deadline)&&n(b.serverNow)
+      ?{leftMs:b.leftMs,running:b.running,deadline:num(b.deadline),serverNow:num(b.serverNow),at}:undefined;
+    NET.boardClock=bc; }
   const wasPaused=netPaused(); // #263 정지가 풀리는 순간 — 잠금 중 보류된 대기 콜백을 흘려보낸다(fxIdle 이 잠금을 다시 본다)
   NET.pause=Array.isArray(data.pause)&&data.pause.length?data.pause.map(x=>Object.assign({at},x)):null;
   /* #263 Saturn 2차 REVISE: 흘려보내기는 **권위 상태 재수화·다시 그리기 뒤**로 미룬다(netUnpauseFlush).
@@ -770,11 +776,14 @@ function netEcoWire(a){
 }
 function netClockText(){
   const c=NET.ecoClock; if(!c) return "";
+  return `⏱ ${Math.max(0,Math.ceil(netClockMs(c)/1000))}초${c.running?"":" (정지)"}`;
+}
+/** 서버 시계 한 개의 지금 남은 ms(표시값) — 준비·행동(clock)과 #294 공개 보드 시계(boardClock)가 같은 보정식을 쓴다 */
+function netClockMs(c){
   /* #293: 준비 시계(key "prep")는 서버 절대 마감(deadline)과 그 프레임의 서버 시각(serverNow)으로 온다 — 남은 시간 = 마감 − 서버 시각 − 받은 뒤 흐른 시간.
      양쪽 좌석이 같은 마감을 받으므로 같은 시계를 본다. 이 기기 시계로 새 180초를 만들지 않는다(없으면 종전 leftMs) */
   const left=Number.isFinite(c.deadline)&&Number.isFinite(c.serverNow)?c.deadline-c.serverNow:c.leftMs;
-  const ms=c.running?left-(Date.now()-c.at):left;
-  return `⏱ ${Math.max(0,Math.ceil(ms/1000))}초${c.running?"":" (정지)"}`;
+  return c.running?left-(Date.now()-c.at):left;
 }
 /* 상점·B08·상대 차례에도 기권할 수 있다(경제 방 GDD-23 2.4) — 확인 창은 로컬, 확정만 서버 명령(차례 판정은 서버).
    확인 창은 동기화 오버레이가 아니라 직접 닫는다 — 보드(오버레이 없음)에서 연 창이 남지 않게, 상점·B08 은 다음 동기화가 다시 그린다 */
@@ -1018,7 +1027,7 @@ function netRematchReset(){
   NET.mode=false; NET.started=false; NET.preparing=true; NET.queued=false; NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
   NET.mySetup=null; NET.myReady=false; NET.peerReady=false; NET.readyWanted=false; NET.readySent=false;
   NET.result=null; NET.final=null; NET.finalReveal=false; NET.autoEndBlockRev=null; NET.lastActionAuto=false; NET.lastActionEco=false;
-  NET.ecoClock=null; NET.ecoAlias=null; NET.overlaySig=null;
+  NET.ecoClock=null; NET.boardClock=undefined; NET.ecoAlias=null; NET.overlaySig=null;
   if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; }
   NET.fxRound=null; netFxResetCursorIfNeeded(); // 지난 경기의 재생 큐·전투 무대 정지
   newGame("pvp");

@@ -71,13 +71,35 @@ function pvePlay(seed){ const T=pveSetup(seed);
   const T=pvePlay(33), S=T.S; S.turnCount=7; T.renderTurnBar(); T.ui238.renderBoardInfo();
   const kids=()=>T.byId("turnBar").children, lab=el=>el.getAttribute&&el.getAttribute("aria-label")||"";
   const shop=kids().find(k=>/^상점 — /.test(lab(k)));
-  ok(!!shop&&/\bhudIco dim\b/.test(shop.className)&&lab(shop)==="상점 — 13턴 뒤 열림"&&/<span class="num">13<\/span>/.test(shop.innerHTML),"C1 닫힌 상점 = Dim + 남은 턴 13 (행동 줄)");
+  /* #294 대체 기대값: 숫자 배지 → '상점' + 'N턴 후 열림' 두 줄. N 은 종전 계산(다음 상점 턴 − S.turnCount) 그대로이고 누를 수 없다 */
+  const nx=T.ECO.shopTurns.find(t=>t>S.turnCount);
+  ok(!!shop&&/\bhudIco dim\b/.test(shop.className)&&nx-S.turnCount===13&&lab(shop)==="상점 — 13턴 후 열림"&&shop.innerHTML.replace(/<[^>]+>/g,"")==="상점13턴 후 열림"&&!/class="num"/.test(shop.innerHTML)
+    &&!shop.onclick&&shop.getAttribute("role")==="img","C1 닫힌 상점 = '상점' + '13턴 후 열림'(현행 계산) · 숫자 배지 없음 · 누를 수 없음");
   const bag=kids().find(k=>/^가방 보기/.test(lab(k)));
-  ok(!!bag&&lab(bag)==="가방 보기 (0/3)"&&(bag.onclick(),T.UI.drawer==="side"),"C2 가방 버튼은 내 가방 서랍을 연다");
+  ok(!!bag&&lab(bag)==="가방 보기 (0/3)"&&/가방 0\/3/.test(bag.innerHTML)&&(bag.onclick(),T.UI.drawer==="side"),"C2 가방 버튼(가방 n/3)은 내 가방 서랍을 연다");
+  { /* #294 가방 창: 카드 3칸(실제 가방 + 빈칸 '+' 장식) · 실제 보유 아이템 8종 · 명령 없음 · 상대 차례에도 열린다 */
+    const u={uid:++S.eco.unitSeq,paid:0,fresh:false,revealed:false,reaperSeal:0,cap:null}; T.applySpecies(u,T.ROSTER[0],2); S.eco.bag[0]=[u]; S.inv[0]=["potion","potion"];
+    T.render(); const d=T.byId("sidePanel").innerHTML, grid=d.slice(d.indexOf('class="slotGrid bag"'),d.indexOf("</div><h3>"));
+    eq([count(grid,/class="uSlot uCard/g),count(grid,/class="uSlot empty" role="img" aria-label="빈칸">\+<\/div>/g)],[1,2],"C2a 가방 창 카드 3칸 = 실제 가방 1 + 빈칸 2");
+    ok(grid.includes(`<b>${u.name}</b>`)&&grid.includes(`${u.hp}/${u.maxHp}`)&&T.byId("drawerTitle").textContent==="🎒 가방 1/3","C2b 카드는 실제 가방 하수인(이름 · HP) · 머리줄 = 가방 n/3(실제 수 / ECO.bagMax)");
+    const empties=grid.split('class="uSlot empty"').slice(1).map(x=>x.split("</div>")[0]);
+    ok(empties.every(x=>!/onclick|tabindex|role="button"/.test(x))&&!/__shop\(|netAction|shopSwap|shopSell|shopBuy|<button/.test(d.slice(0,d.indexOf("</div><h3>"))),"C2c 빈칸 '+' 는 누를 수 없는 장식 · 창 윗부분에 사용·교체·판매·구매 명령이 없다");
+    ok(count(d,/class="ownItem/g)===8&&/aria-label="회복약 2개"/.test(d)&&/aria-label="쿨링수 0개"[^>]*>[\s\S]*?×0/.test(d),"C2d 아이템 = 실제 보유 8종(×0 포함) — 수량을 지어내지 않는다");
+    ok(/onclick="unitHelpBag\(\d+,this\)"/.test(grid)&&!/onclick="unitHelpBag[^"]*"[^>]*>[^<]*<button/.test(grid),"C2e 카드 그림 = 읽기 전용 설명 진입(명령 버튼과 별개 대상)");
+    S.current=1; T.render(); const bag2=kids().find(k=>/^가방 보기/.test(lab(k)));
+    ok(!!bag2&&!bag2.disabled&&kids().filter(k=>k.getAttribute&&k.getAttribute("data-ico")).every(k=>k.disabled),"C2f 상대(AI) 차례: 행동 버튼은 잠기고 가방 보기만 열린다(정보 보기)");
+    S.current=0; S.eco.bag[0]=[]; S.inv[0]=[]; T.render(); }
   T.UI.drawer=null;
   S.turnCount=85; T.renderTurnBar();
-  ok(kids().some(k=>lab(k)==="상점 — 더 열리지 않음"),"C3 80턴 뒤에는 '더 열리지 않음'");
+  ok(kids().some(k=>lab(k)==="상점 — 예정 없음"&&/예정 없음/.test(k.innerHTML)),"C3 80턴 뒤에는 '예정 없음' (#294 대체 문구)");
+  T.ui238.renderBoardInfo();
   const h=T.byId("boardInfo").innerHTML;
+  { /* #294 상단: 상태 네 칸(시간 · 턴 · 내 코인 · 전투) = 현행 값 · ⚙ = 기존 나가기 진입점 + 비활성 사운드 줄 */
+    const cells=h.slice(h.indexOf('class="hudStats"'),h.indexOf("</div>",h.indexOf('class="hudStats"'))).split(/class="hudStat[ "]/).slice(1);
+    ok(cells.length===4&&/id="actClock"/.test(cells[0])&&cells[1].includes(`aria-label="${S.turnCount+1}턴"`)&&cells[2].includes(`aria-label="재화 ${S.eco.coins[0]}"`)&&cells[3].includes(`aria-label="전투 ${S.battlesUsed}/2"`)
+      &&count(h,/aria-label="재화 /g)===1,"C4a 상태 네 칸 = 남은 시간 · 턴(S.turnCount+1) · 내 코인 · 전투 n/2 — 상대 코인 없음");
+    const gear=h.slice(h.indexOf('<details class="flowGear"'),h.indexOf("</details>"));
+    ok(/onclick="uiBack\(\)"/.test(gear)&&/<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공<\/button>/.test(gear)&&count(gear,/<button/g)===2,"C4b ⚙ = 기존 나가기 진입점(uiBack — 기권 확인 경로) + 사운드 줄은 비활성"); }
   ok(/id="actClock" role="timer"/.test(h)&&/aria-label="재화 \d+"/.test(h)&&!/상세 ›/.test(h),"C4 위 줄 = 남은 시간(#actClock)·턴·재화 · 옛 [상세 ›] 없음");
   ok(["탐색","🌀 텔레포트","🌿 회복","기권"].every(t=>kids().some(k=>k.textContent===t&&k.getAttribute&&k.getAttribute("data-ico"))),"C5 행동 버튼은 문구 그대로 + 아이콘(data-ico)");
 }

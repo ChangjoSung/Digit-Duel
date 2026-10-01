@@ -767,5 +767,93 @@ function moveVia(room, seat, from, to) {
     room._clearClock();
   }
 
+  /* ===== 16. #294 공개 보드 시계(boardClock) — 양 좌석이 **같은 서버 시계**(_pick 또는 _act)를 표시 전용으로 받는다 =====
+     소유 좌석 전용 clock(입력 잠금·늦은 입력 판정)은 종전 그대로이고, boardClock 은 그 시계를 읽기만 한다:
+     허용 필드는 leftMs·running·deadline·serverNow 넷뿐(key·owner 없음) · 전투 60초는 실리지 않는다 ·
+     뷰를 몇 번 만들어도·좌석을 바꿔도·재연결해도 같은 시계가 사는 동안 마감이 그대로다. */
+  const BC_KEYS = 'deadline,leftMs,running,serverNow';
+  const bcOf = (room) => [view(room, 0).boardClock, view(room, 1).boardClock];
+  const bcShape = (room) => bcOf(room).every((b) => b && Object.keys(b).sort().join() === BC_KEYS);
+  const frozen = (fn) => { const real = Date.now, t = real(); Date.now = () => t; try { return fn(t); } finally { Date.now = real; } };
+  {
+    const room = ecoRoom(28);
+    ok(!('boardClock' in view(room, 0)) && !('boardClock' in view(room, 1)), '준비 구간(SETUP)에는 boardClock 이 없다 — 공통 prep 시계가 맡는다');
+    room._clearClock();
+  }
+  { // 보드 행동 중 — 같은 마감 · 상대는 표시만 받고 명령은 잠긴 그대로 · 읽기는 시계를 다시 세우지 않는다
+    const room = ecoRoom(29, { prepMs: 60, actMs: 4000, graceMs: 5000 });
+    await started(room);
+    const cur = S0(room).current, other = 1 - cur, c = room._act, d = c.deadline, h = c.handle;
+    frozen((t) => {
+      const [a, b] = bcOf(room);
+      ok(bcShape(room) && JSON.stringify(a) === JSON.stringify(b), '시간을 고정하면 두 좌석의 boardClock 이 통째로 같다 — 필드는 넷뿐(key·owner 없음)');
+      ok(a.running === true && a.deadline === d && a.serverNow === t && a.leftMs === d - t, '값은 서버 행동 시계 그대로: running · deadline(epoch ms) · serverNow · leftMs = deadline − serverNow');
+    });
+    const vo = view(room, other);
+    ok(vo.clock === null && vo.turn === null && view(room, cur).clock.key === 'act', '기존 clock 은 소유 좌석에만 — 상대 좌석의 clock·turn 은 종전대로 없다');
+    const rev = room.revision, locked = H.act(room, other, { t: 'skipMain' });
+    ok(!locked.ok && locked.reason === 'E_NOT_ACTOR' && room.revision === rev, '상대는 시계를 볼 뿐 명령은 종전대로 거부된다');
+    const first = bcOf(room);
+    await sleep(30);
+    for (let i = 0; i < 5; i++) bcOf(room);
+    const later = bcOf(room);
+    ok(later.every((b) => b.deadline === d) && later[0].leftMs < first[0].leftMs && later[1].leftMs < first[1].leftMs,
+      '시간이 흐른 뒤에도 양 좌석 마감은 그대로이고 leftMs 만 준다');
+    ok(room._act === c && c.deadline === d && c.handle === h && !c.expired, '뷰를 여러 번 만들어도 서버 시계는 다시 서지 않는다(같은 객체·같은 마감·같은 타이머)');
+
+    room.socketClosed(other); // 단절 정지 — 값 보존
+    const p1 = bcOf(room);
+    await sleep(25);
+    const p2 = bcOf(room);
+    ok(p1.concat(p2).every((b) => b.running === false && b.deadline === null && b.leftMs === room._act.left) && view(room, cur).pause,
+      '단절 → 양 좌석 boardClock 이 같은 남은 시간으로 멈추고 흐르지 않는다');
+    const left = room._act.left;
+    room.resumeSeat(other, room.seats[other].credential.current, fakeWs());
+    const r = bcOf(room);
+    ok(room._act === c && c.left === left && r.every((b) => b.running && b.deadline === c.deadline && b.leftMs <= left),
+      '재연결 → 새 30초가 아니라 멈춘 값부터 — 양 좌석이 같은 재개 마감을 본다(재개 재계산은 현행 규칙)');
+
+    // 만료 직후(콜백 전) — 0 을 싣되 보는 것만으로는 아무것도 진행되지 않는다. 처리는 서버의 기존 만료 하나뿐이다.
+    c.deadline = Date.now() - 1;
+    const turn = S0(room).turnCount, rev2 = room.revision, z = bcOf(room);
+    ok(z.every((b) => b.leftMs === 0) && S0(room).turnCount === turn && room.revision === rev2 && !c.expired,
+      '마감이 지난 프레임은 leftMs 0 — 뷰 생성이 턴·revision·만료 표식을 바꾸지 않는다');
+    room._onClock(cur, c.key);
+    const n = bcOf(room);
+    ok(S0(room).current === other && room._act !== c && n.every((b) => b.running && b.deadline === room._act.deadline && b.leftMs > 0),
+      '턴이 넘어가면 다음 행동 30초가 양 좌석에 같은 마감으로 실린다(턴 전환 재설정은 종전대로)');
+    ok(view(room, other).clock.key === 'act' && view(room, cur).clock === null, '소유 좌석 clock 도 종전대로 새 차례 좌석으로 옮겨 간다');
+    ok(room.handleCommand(other, { t: 'resign' }).ok && room.state === STATES.FINISHED && bcOf(room).every((b) => b === null),
+      '종료 뒤에는 boardClock 이 null 이다');
+  }
+  { // 대상 선택 30초 — 양 좌석이 그 시계를 본다(멈춘 행동 시계가 아니라) · 고르는 좌석·후보는 실리지 않는다
+    const room = ecoRoom(30, { prepMs: 60, actMs: 10000 });
+    await started(room);
+    const f = forcedBoard(room, 2);
+    await sleep(30);
+    moveVia(room, f.cur, f.from, f.to);
+    const pick = room._pick, b = bcOf(room);
+    ok(pick && room._act.deadline === null && bcShape(room) && b.every((x) => x.running && x.deadline === pick.deadline),
+      '대상 2개 선택 중 — 양 좌석 boardClock 은 흐르는 선택 시계의 마감이다');
+    const vo = view(room, 1 - f.cur);
+    ok(vo.clock === null && vo.turn === null && !JSON.stringify(vo.boardClock).includes('pick'),
+      '상대에게는 종전대로 clock·강제 대상 목록이 없고 boardClock 에 시계 종류가 없다');
+    room._clearClock();
+  }
+  { // 전투 중 — 멈춘 행동 시계만. 전투 행동 60초는 어느 좌석의 boardClock 에도 실리지 않는다
+    const room = ecoRoom(31, { prepMs: 60, actMs: 10000, battleMs: 8000 });
+    await started(room);
+    await sleep(30);
+    H.openBattle(room);
+    room._syncClock();
+    const B = S0(room).battle, actor = (room.engines[0].actorOfPhase() === 'A' ? B.attP : B.defP).owner, b = bcOf(room);
+    const oc = view(room, 1 - actor).clock; // 비행동자는 종전대로 없거나, 자기가 들고 있는 멈춘 행동 30초뿐이다
+    ok(room._bclock && room._bclock.deadline != null && view(room, actor).clock.key === 'battle' && (oc === null || (oc.key === 'act' && oc.running === false)),
+      '전제: 전투 행동 60초가 흐르고 그 clock 은 행동자 좌석에만 나간다(종전 그대로)');
+    ok(bcShape(room) && b.every((x) => x.running === false && x.deadline === null && x.leftMs === room._act.left) && room._act.left < 10000,
+      '전투 동안 양 좌석 boardClock 은 멈춘 행동 시계의 남은 시간 — 전투 60초 값이 아니다: ' + room._act.left);
+    room._clearClock();
+  }
+
   done();
 })().catch((e) => { console.error(e); process.exitCode = 1; });

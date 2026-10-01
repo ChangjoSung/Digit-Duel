@@ -8,7 +8,7 @@ function modal(html,buttons){
   UI.ask=null; if(UI.hold) aiHoldRelease();      // #122 REVISE: 뒤로가기 확인창도 함께 무효 (옛 버튼이 새 창을 닫지 못한다) · 확인창이 사라졌으면 AI 보류도 푼다
   try{ const ob0=$("overlayBox"); if(ob0&&ob0.classList) ob0.classList.remove("battleBox"); }catch(e){} // #122 전투 화면 전용 레이아웃 클래스 해제
   handoffCover(false); // #236 HIGH1: 가림 전용 불투명 상태는 그 가림 창에만 — 다음 모달(선택 창 등)은 일반 반투명 배경
-  modalHelpDrop();
+  synHelpClose(false); // #294: 전투·상점·확인 창이 열리면 보드 위 설명 창도 끝난다(창 안의 안내는 종전 modalHelpDrop 과 같다)
   $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
   const ob=$("obBtns");
   /* 버튼 튜플은 [문구, 콜백] 또는 [문구, 콜백, disabled] 다. Saturn REVISE P2: "선택 불가"를 문구로만 알리지 않고
@@ -94,13 +94,21 @@ function memoClickTarget(r,c){
   if(s&&adj(s,p)&&canBattle(s,p)) return null;
   return p; // (b)
 }
+/* #294 상대 차례(온라인 · PVE 의 AI 차례)에 내 말을 누르면 읽기 전용 설명 창 — 종전에는 아무 일도 없던 탭이다(전송 · 선택 · seq 0).
+   내 차례의 내 말 탭은 종전대로 선택이고(설명은 선택 요약의 [설명] 버튼), 도망 교환 · 전투 · 연출 잠금 · 열린 창이 있으면 종전 경로 그대로다 */
+function ownInfoTarget(r,c){
+  if(!S||S.phase!=="play"||S.battle||S.fleePick||NET.replaying||MEMO_UI.overlayOpen||fxLocked()) return null;
+  const v=humanViewer(), p=at(r,c); if((v!==0&&v!==1)||!p||p.owner!==v) return null;
+  const myTurn=NET.mode?netActor()===NET.me:!isAI(S.current);
+  return !myTurn&&(NET.mode||S.mode==="pve")?p:null;
+}
 function memoModal(pc){
   if(S.phase!=="play"||!pc) return;
   if(NET.replaying) return; // 온라인: 상대 클릭 재생 시 내 메모 팝업 금지 (메모는 뷰어 전용·비동기화)
   const v=humanViewer();
   if(pc.owner===v) return;
   if(!pc.alive||!pc.placed||!visibleTo(v,pc)) return; // #94 죽은 말·비가시 말은 대상이 아니다
-  if(pc.revealed){ showToast(`이미 공개된 말: ${idLabel(v,pc)}`); return; } // 실제 정체가 우선 — 추측 불필요
+  if(pc.revealed){ unitHelpPiece(pc.id,null); return; } // 실제 정체가 우선 — 추측 대신 #294 읽기 전용 설명 창(허용 필드만)
   const cur=S.memos[v][pc.id]||null;
   /* #94 오래된 콜백 무효: 이 피커의 토큰이 오버레이 소유권을 잃었거나(다른 모달·close·새 게임) 대상이 공개·사망·비가시가 되면
      저장·삭제·닫기 콜백은 메모 세트를 바꾸지 않는다. 소유권을 잃은 경우에는 closeModal()·render()도 하지 않는다 — 새 모달(전투·상대 선택 대기)을 가리지 않는다. */

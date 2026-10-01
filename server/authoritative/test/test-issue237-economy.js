@@ -254,6 +254,7 @@ async function main() {
     ok(v0.phase === 'shop' && v1.phase === 'shop' && S0(room).eco.shop.active === null && v0.shop.shop === 20, '20턴 끝 → 양측 동시 정기 상점');
     ok(v0.you.eco.coins === coins[0] + 2 && v1.you.eco.coins === coins[1] + 2, '턴 보너스 🪙2');
     ok(v0.clock.running && v1.clock.running, '양측 90초 시계');
+    ok(v0.boardClock === null && v1.boardClock === null, '#294 정기 상점 90초는 공개 보드 시계에 실리지 않는다 — boardClock 은 null');
     ok(v0.shop.syn && typeof v0.shop.syn.el === 'object' && Array.isArray(v0.shop.syn.pending), '시너지 현황은 자기 상점 뷰에만');
     const s = snap(room);
     const mv = H.act(room, cur, { t: 'skipMain' });
@@ -330,6 +331,10 @@ async function main() {
     ok(JSON.stringify(v1.bagPick) === JSON.stringify({ owner: 0 })
       && (v1.clock === null || (v1.clock.key === 'act' && v1.clock.running === false))
       && !JSON.stringify(v1).includes(free[3]), '상대: 누가 고르는 중인지만 — 포획 말·가방 비노출');
+    /* #294 공개 보드 시계 — B08 동안 양 좌석이 **멈춘 행동 30초**를 같은 값으로 본다. B08 20초(소유자 clock)·토큰은 실리지 않는다. */
+    ok(v0.clock.key === 'bag' && [v0, v1].every((v) => v.boardClock && v.boardClock.running === false && v.boardClock.deadline === null
+      && v.boardClock.leftMs === room._act.left && Object.keys(v.boardClock).sort().join() === 'deadline,leftMs,running,serverNow'),
+      '#294 B08 동안 boardClock 은 멈춘 행동 시계(양 좌석 같은 값) — 20초 시계·key·owner·토큰 없음');
     const s = snap(room);
     const other = room._handleAction(1, { baseRevision: 0, action: { t: 'bagPick', token: v0.bagPick.token, i: 0 } });
     const stale = room._handleAction(0, { baseRevision: 0, action: { t: 'bagPick', token: v0.bagPick.token + 99, i: 0 } });
