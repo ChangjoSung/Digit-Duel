@@ -1,6 +1,6 @@
 # [피드백][결정] #293 CJ QA REVISE 추가 4건
 
-현재 단계: **2026-10-02, 추가 네 항목 구현·독립 QA·필수 CI 6/6·Free QA 재배포 및 CJ 플레이 QA PASS**. CJ Comment 원문 `CJ QA Test : PASS`를 접수했다. [최신 QA 사이트](https://digit-duel-mipa-qa.onrender.com/?qa=c8b2b7c)는 제품 SHA `c8b2b7c2186f08c8d37bc8be25effc4731e98f0f`를 실행한다. 이전 계획의 milestone 병합 금지 경계에 따라 #293 OPEN·PR305 Draft는 병합·종결 승인 전까지 유지한다. [직전 7건 보고](qa-revise-report.md)는 이전 납품의 증거다.
+현재 단계: **2026-10-02, 추가 네 항목 구현·독립 QA·필수 CI 6/6·Free QA 재배포 및 CJ 플레이 QA PASS·종결 승인**. CJ Comment 원문 `CJ QA Test : PASS`와 후속 `넵 #293은 종결 처리합니다.`를 접수했다. [최신 QA 사이트](https://digit-duel-mipa-qa.onrender.com/?qa=c8b2b7c)는 제품 SHA `c8b2b7c2186f08c8d37bc8be25effc4731e98f0f`를 실행한다. 후속 승인은 PR305 Draft 해제·`milestone/v0.4.13` squash 병합·병합 SHA CI 확인·#293 종결 범위이며, 최종 병합 SHA·CI·종결 결과는 [Issue293 본문](https://github.com/ChangjoSung/Digit-Duel/issues/293)과 [PR305 본문](https://github.com/ChangjoSung/Digit-Duel/pull/305)에 기록한다. [직전 7건 보고](qa-revise-report.md)는 이전 납품의 증거다.
 
 입력은 [CJ 원문·원본 3장](../references/CJ_QA_REVISE4_20261002.md), 기준은 [Venus 계약](../Venus/implementation-contract.md) 9장·AC14~18이다. 선행 계약 커밋은 `17dd0bfa51e322ba76ff83be577e0f920949376a`. 기존 AC1~13은 명시적으로 바뀐 기대값 외에 유지한다.
 
@@ -62,4 +62,4 @@ Venus는 기존 회사 계정 로컬 Notion으로 GDD13/23/24를 실제 읽기�
 
 Render 첫 인증 갱신은 콜백 대기 시간 초과였고 실제 MCP도 인증을 요구했다. CJ 재호출 지시에 따라 `codex mcp login render` 재실행이 성공했고, 00:20 KST 실제 `get_service`·`list_workspaces`·`get_deploy`가 성공했다. 기존 워크스페이스 `tea-daj3p25g1s2s739al7q0`, Free QA 서비스 `srv-dauvf1m0tbcc73ctepsg`를 유지한다. 새 계정·연결·자원·플랜은 만들지 않았다. 인증 완료만으로 연결 복구를 판단하지 않았다.
 
-현재 작업은 기존 WorkTree `003dc8a0-372c-4547-9290-31d34edd82be::C:/Users/pc_77/orca/workspaces/Digit-Duel/issue-293-start-flow-concept`, 브랜치 `ChangjoSung/issue-293-start-flow-concept`이다. main의 모델 계약 6파일·unity/·stash2건·b44e302 handoff 브랜치와 PR304 Draft를 보존한다. #293 OPEN·PR305 Draft, 정규 Release v0.4.12 유지. main/milestone 병합·운영 배포·결제는 이번 범위에 없다.
+현재 작업은 기존 WorkTree `003dc8a0-372c-4547-9290-31d34edd82be::C:/Users/pc_77/orca/workspaces/Digit-Duel/issue-293-start-flow-concept`, 브랜치 `ChangjoSung/issue-293-start-flow-concept`이다. main의 모델 계약 6파일·unity/·stash2건·b44e302 handoff 브랜치와 PR304 Draft를 보존한다. QA 서비스가 이 브랜치를 배포 대상으로 사용하므로 브랜치와 기존 체크아웃은 QA 사이트 보존을 위해 유지한다. 후속 승인에 따른 PR305의 milestone 병합과 #293 종결 외에는 main/dev 병합·Release·운영 배포·결제·Render 설정 변경을 실행하지 않는다.
