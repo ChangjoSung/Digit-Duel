@@ -664,7 +664,8 @@ function proxyBattle(T,win){
   ok(v.pending.length===3&&/미선택/.test(T.shopHtml(0)),"AC46 속성을 고르지 않은 왕·동료는 0 으로 세고 '미선택' 표시");
   const before=T.shopHtml(0);
   act(T,{t:"leaderEl",player:0,pieceId:king.id,el:"fire"}); v=T.ecoSynView(S,0);
-  ok(v.el.fire===3&&v.pending.length===2&&T.shopHtml(0).includes("불 3칸 · (2) 달성 · (4)까지 1칸")&&T.shopHtml(0)!==before,"AC46 왕 🔥 선택 → 불 3칸 · (2) 달성 · (4)까지 1칸");
+  T.render(); // #293 (2026-10-01 CJ): S01 시너지 칩은 상점 본문(shopHtml)이 아니라 같은 화면의 우측 시너지 열에 있다 — 그려진 화면에서 같은 문구를 본다
+  ok(v.el.fire===3&&v.pending.length===2&&T.byId("sidePanel").innerHTML.includes("불 3칸 · (2) 달성 · (4)까지 1칸")&&T.shopHtml(0)!==before,"AC46 왕 🔥 선택 → 불 3칸 · (2) 달성 · (4)까지 1칸");
   refusedClean(T,{t:"leaderEl",player:0,pieceId:king.id,el:"nope"},"AC47 거부 요청은 상태 불변"); eq(T.ecoSynView(S,0).el.fire,3,"AC47 거부 요청 뒤 집계 불변");
   /* 필드를 마저 채우고 가방에 불 하수인 → 가방은 세지 않는다 */
   for(let n=0;n<12&&T.ecoEmptyField(S,0).length;n++){ const i=T.ecoBuyable(S,0); act(T,i<0?{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]}:{t:"shopBuy",player:0,i,seq:E(T).shop.seq[0]}); }
@@ -723,7 +724,7 @@ function proxyBattle(T,win){
     /* Q1 PVE (회귀): S01 이 그려지는 순간부터 90초 · 다시 그려도 마감 유지 · 만료 = 자동 구매 완료 */
     { const T=boot("pve",{aiLevel:"grade5"}), S=T.S;
       eq(T.byId("shopClock").textContent,"⏱ 90초","Q1 PVE S01 표시 즉시 남은 시간 90초");
-      adv(40000); T.render(); T.render(); ok(T.shopHtml(0).includes("⏱ 50초"),"Q1 다시 그리기는 마감을 되돌리지 않는다 (남은 50초)");
+      adv(40000); T.render(); T.render(); ok(T.byId("sidePanel").innerHTML.includes("⏱ 50초"),"Q1 다시 그리기는 마감을 되돌리지 않는다 (남은 50초)");
       adv(S90-40000-1); ok(!S.eco.shop.done[0],"Q1 PVE S01 89.999초엔 진행 중");
       /* #263 (2026-09-25 CJ): 만료 좌석은 자동 구매에 이어 **자동 배치·준비**까지 그 자리에서 끝난다 — 배치 90초를 다시 걸지 않는다 */
       adv(1); ok(T.ecoEmptyField(S,0).length===0&&!S.pieces.some(x=>x.owner===0&&!x.placed)&&S.phase==="play",

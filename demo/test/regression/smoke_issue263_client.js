@@ -372,9 +372,12 @@ const sideHtml=T=>{ T.renderSide(); return T.byId("sidePanel").innerHTML; };
 }
 { /* 배치 화면(02 비공개 배치)의 조작 버튼도 같은 잠금을 쓴다 — 종전에는 netAction 토스트만 뜨고 모습은 열려 있었다 */
   const T=setupNetBoot(false);
+  T.S.eco.shop.done[0]=true; // #293: 배치 화면은 내 시작 상점을 끝낸 뒤에만 그려진다(진행 막대 = 상태 파생) — 종전 픽스처는 01·02 두 절을 함께 그리던 화면에 기대고 있었다
   setPause(T,true);
   const html=sideHtml(T);
-  ok(/<fieldset class="pauseLock" disabled[^>]*>[\s\S]*?autoPlace\(\)[\s\S]*?setupDone\(\)[\s\S]*?<\/fieldset>/.test(html),"G14 정지 중 배치 조작(무작위 배치·전체 회수·배치 완료)이 통째로 잠긴다");
+  /* #293 (2026-10-01 CJ): [배치 완료]는 진행 막대 옆(상단)으로 올라가 트레이 버튼과 같은 fieldset 에 있지 않다 — 잠금은 그대로다:
+     무작위 배치·전체 회수는 종전 <fieldset disabled> 안, [배치 완료]는 버튼 자체가 disabled */
+  ok(/<fieldset class="pauseLock" disabled[^>]*>[\s\S]*?autoPlace\(\)[\s\S]*?clearPlace\(\)[\s\S]*?<\/fieldset>/.test(html)&&/<button[^>]*onclick="setupDone\(\)" disabled/.test(html),"G14 정지 중 배치 조작(무작위 배치·전체 회수·배치 완료)이 통째로 잠긴다");
   ok(/배치 조작이 잠겨 있습니다/.test(html),"G15 배치 화면에도 사유를 적는다");
   T.netAction({t:"auto"});
   eq(T.sent.length,0,"G16 정지 중 배치 입력은 회선에 나가지 않는다 (종전 netAction 가드 유지)");
