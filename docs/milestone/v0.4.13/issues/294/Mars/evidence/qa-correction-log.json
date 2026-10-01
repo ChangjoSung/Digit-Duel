@@ -1,0 +1,414 @@
+{
+ "source": "working tree after QA correction (base HEAD 757f45b + uncommitted ui.js fix)",
+ "chromePid": 35276,
+ "port": 9383,
+ "synthetic": "offline PVE engine state, file://, no network",
+ "rail": [
+  {
+   "state": "prep(start shop) 390x844",
+   "legendsInCoreView": 0,
+   "order": [
+    "불",
+    "물",
+    "번개",
+    "땅",
+    "풀",
+    "표준",
+    "공격",
+    "방어",
+    "속공",
+    "지속",
+    "보호",
+    "죽은"
+   ],
+   "file": "not captured — no active legend chip is producible in prep without play state"
+  },
+  {
+   "state": "main 320x640 (rail scrolled to its end so crown → legend is visible)",
+   "railPos": {
+    "fxBannerHidden": true,
+    "toasts": 0,
+    "scrollTop": 260
+   },
+   "order": [
+    "불",
+    "물",
+    "번개",
+    "땅",
+    "풀",
+    "표준",
+    "공격",
+    "방어",
+    "속공",
+    "지속",
+    "보호",
+    "죽은",
+    "LEGEND:사신"
+   ],
+   "overflowX": false,
+   "file": "320-main-rail-crown-first.png"
+  },
+  {
+   "state": "main 390x844 (rail scrolled to its end so crown → legend is visible)",
+   "railPos": {
+    "fxBannerHidden": true,
+    "toasts": 0,
+    "scrollTop": 56
+   },
+   "order": [
+    "불",
+    "물",
+    "번개",
+    "땅",
+    "풀",
+    "표준",
+    "공격",
+    "방어",
+    "속공",
+    "지속",
+    "보호",
+    "죽은",
+    "LEGEND:사신"
+   ],
+   "overflowX": false,
+   "file": "390-main-rail-crown-first.png"
+  },
+  {
+   "state": "main 1100x1000 (rail scrolled to its end so crown → legend is visible)",
+   "railPos": {
+    "fxBannerHidden": true,
+    "toasts": 0,
+    "scrollTop": 0
+   },
+   "order": [
+    "불",
+    "물",
+    "번개",
+    "땅",
+    "풀",
+    "표준",
+    "공격",
+    "방어",
+    "속공",
+    "지속",
+    "보호",
+    "죽은",
+    "LEGEND:사신"
+   ],
+   "overflowX": false,
+   "file": "1100-main-rail-crown-first.png"
+  }
+ ],
+ "bag": [
+  {
+   "viewport": "390x844",
+   "steps": [
+    [
+     "open: real mouse click on dock bag button → focus",
+     "bag:닫기"
+    ],
+    [
+     "Tab 1",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Tab 2",
+     "bag:화염 투사 설명"
+    ],
+    [
+     "Tab 3",
+     "bag:용암 거북 설명"
+    ],
+    [
+     "Tab 4",
+     "bag:닫기"
+    ],
+    [
+     "Tab 5",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Tab 6",
+     "bag:화염 투사 설명"
+    ],
+    [
+     "Shift+Tab 1",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Shift+Tab 2",
+     "bag:닫기"
+    ],
+    [
+     "Shift+Tab 3",
+     "bag:용암 거북 설명"
+    ],
+    [
+     "focus on first bag card",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Enter on card → child help open=true",
+     "help:닫기"
+    ],
+    [
+     "child Tab 1",
+     "help:하수인"
+    ],
+    [
+     "child Tab 2",
+     "help:스킬"
+    ],
+    [
+     "child Tab 3",
+     "help:닫기"
+    ],
+    [
+     "child Tab 4",
+     "help:하수인"
+    ],
+    [
+     "child Shift+Tab",
+     "help:닫기"
+    ],
+    [
+     "Esc#1 → child open=false drawer=side",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Esc#2 → drawer=null",
+     "bagButton:가방 보기 (3/3)"
+    ],
+    [
+     "Enter on bag button (keyboard reopen) → drawer=side",
+     "bag:닫기"
+    ],
+    [
+     "real mouse click on ✕ → drawer=null",
+     "bagButton:가방 보기 (3/3)"
+    ]
+   ],
+   "role": "dialog / drawer=side",
+   "focusablesInBag": 4,
+   "scroll": {
+    "scroller": "right",
+    "scrollHeight": 390,
+    "clientHeight": 390,
+    "overflowY": "auto",
+    "scrollTopBefore": 0,
+    "scrollTopAtEnd": 0,
+    "focusedInViewport": true
+   },
+   "stateUnchanged": true,
+   "noOverlay": true,
+   "allContained": true
+  },
+  {
+   "viewport": "320x640",
+   "steps": [
+    [
+     "open: real mouse click on dock bag button → focus",
+     "bag:닫기"
+    ],
+    [
+     "Tab 1",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Tab 2",
+     "bag:화염 투사 설명"
+    ],
+    [
+     "Tab 3",
+     "bag:용암 거북 설명"
+    ],
+    [
+     "Tab 4",
+     "bag:닫기"
+    ],
+    [
+     "Tab 5",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Tab 6",
+     "bag:화염 투사 설명"
+    ],
+    [
+     "Shift+Tab 1",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Shift+Tab 2",
+     "bag:닫기"
+    ],
+    [
+     "Shift+Tab 3",
+     "bag:용암 거북 설명"
+    ],
+    [
+     "focus on first bag card",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Enter on card → child help open=true",
+     "help:닫기"
+    ],
+    [
+     "child Tab 1",
+     "help:하수인"
+    ],
+    [
+     "child Tab 2",
+     "help:스킬"
+    ],
+    [
+     "child Tab 3",
+     "help:닫기"
+    ],
+    [
+     "child Tab 4",
+     "help:하수인"
+    ],
+    [
+     "child Shift+Tab",
+     "help:닫기"
+    ],
+    [
+     "Esc#1 → child open=false drawer=side",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Esc#2 → drawer=null",
+     "bagButton:가방 보기 (3/3)"
+    ],
+    [
+     "Enter on bag button (keyboard reopen) → drawer=side",
+     "bag:닫기"
+    ],
+    [
+     "real mouse click on ✕ → drawer=null",
+     "bagButton:가방 보기 (3/3)"
+    ]
+   ],
+   "role": "dialog / drawer=side",
+   "focusablesInBag": 4,
+   "scroll": {
+    "scroller": "right",
+    "scrollHeight": 418,
+    "clientHeight": 418,
+    "overflowY": "auto",
+    "scrollTopBefore": 0,
+    "scrollTopAtEnd": 0,
+    "focusedInViewport": true
+   },
+   "stateUnchanged": true,
+   "noOverlay": true,
+   "allContained": true
+  },
+  {
+   "viewport": "320x420",
+   "steps": [
+    [
+     "open: real mouse click on dock bag button → focus",
+     "bag:닫기"
+    ],
+    [
+     "Tab 1",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Tab 2",
+     "bag:화염 투사 설명"
+    ],
+    [
+     "Tab 3",
+     "bag:용암 거북 설명"
+    ],
+    [
+     "Tab 4",
+     "bag:닫기"
+    ],
+    [
+     "Tab 5",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Tab 6",
+     "bag:화염 투사 설명"
+    ],
+    [
+     "Shift+Tab 1",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Shift+Tab 2",
+     "bag:닫기"
+    ],
+    [
+     "Shift+Tab 3",
+     "bag:용암 거북 설명"
+    ],
+    [
+     "focus on first bag card",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Enter on card → child help open=true",
+     "help:닫기"
+    ],
+    [
+     "child Tab 1",
+     "help:하수인"
+    ],
+    [
+     "child Tab 2",
+     "help:스킬"
+    ],
+    [
+     "child Tab 3",
+     "help:닫기"
+    ],
+    [
+     "child Tab 4",
+     "help:하수인"
+    ],
+    [
+     "child Shift+Tab",
+     "help:닫기"
+    ],
+    [
+     "Esc#1 → child open=false drawer=side",
+     "bag:새끼 화룡 설명"
+    ],
+    [
+     "Esc#2 → drawer=null",
+     "bagButton:가방 보기 (3/3)"
+    ],
+    [
+     "Enter on bag button (keyboard reopen) → drawer=side",
+     "bag:닫기"
+    ],
+    [
+     "real mouse click on ✕ → drawer=null",
+     "bagButton:가방 보기 (3/3)"
+    ]
+   ],
+   "role": "dialog / drawer=side",
+   "focusablesInBag": 4,
+   "scroll": {
+    "scroller": "right",
+    "scrollHeight": 418,
+    "clientHeight": 317,
+    "overflowY": "auto",
+    "scrollTopBefore": 0,
+    "scrollTopAtEnd": 101,
+    "focusedInViewport": true
+   },
+   "stateUnchanged": true,
+   "noOverlay": true,
+   "allContained": true
+  }
+ ],
+ "profileRemoved": true
+}

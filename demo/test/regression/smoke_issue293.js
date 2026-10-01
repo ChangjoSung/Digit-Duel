@@ -350,6 +350,7 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   ok(T.synCount(0,S).dead===0&&lg(chips()).length===0,"H5 사신: 사망 칸 0 이면 값 0 — 칩 없음(활성 전에는 보이지 않는다)");
   f[1].alive=false; const rv=T.synExtraView(0,S).legends[0];
   ok(!!rv&&rv.legend==="reaper"&&rv.v===Math.min(T.V2_LEGEND_SYN.reaper.max,1*T.V2_LEGEND_SYN.reaper.atk)&&lg(chips())[0].includes("+5%"),"H6 사망 칸 1 → 사신 칩 +5% (Core 값)");
+  ok(chips().length===2&&/synHelp\('crown'/.test(chips()[0])&&/synChip on lg/.test(chips()[1]),"H6b 순서 = 왕관 → 활성 전설 (#294 계약 5 · 칩 수 그대로)");
   f[1].alive=true; T.applyLegend(f[0],"dragon");
   const del=T.synDragonEl(T.synCount(0,S)), dx=T.synExtraView(0,S).legends[0];
   ok(del?(dx.legend==="dragon"&&dx.el===del&&dx.fx===T.synKingdomEffect(T.synCount(0,S),del)&&lg(chips()).length===1):lg(chips()).length===0,"H7 용: 달성한 최고 왕국 효과가 있을 때만 칩 (Core synDragonEl 값)");
@@ -362,6 +363,8 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   const rail=hud.slice(hud.indexOf('class="synRail"'),hud.indexOf("</aside>")), v=T.synView(0,S);
   ok(!/hudSyn/.test(hud)&&/synHelp\('crown',2,/.test(rail)&&T.V2_ELEM_ORDER.every(k=>rail.includes(`synHelp('${k}',${v.el[k]},this,0)`))&&Object.keys(T.V2_ARCH_SYN).every(k=>rail.includes(`synHelp('${k}',${v.arch[k]},this,0)`))
     &&count(rail,/onclick="synHelp\('(?!crown)/g)===11&&Object.values(v.arch).some(n=>n===0),"H11 메인 시너지 열 = 왕국 5 + 아키타입 6(미달 0 포함) + 왕관 — 숫자는 Core synView 값");
+  { const at=s=>rail.indexOf(s), ks=T.V2_ELEM_ORDER.concat(Object.keys(T.V2_ARCH_SYN)).map(k=>at(`synHelp('${k}',`)), cr=at("synHelp('crown',"), lgAt=at("synChip on lg");
+    ok(ks.every((x,i)=>x>=0&&(!i||x>ks[i-1]))&&cr>ks[10]&&(lgAt<0?lg(chips()).length===0:lgAt>cr),"H11c 열 순서 = 왕국 5 → 아키타입 6 → 왕관 → 활성 전설"); }
   ok(hud.includes(U.idHeadHtml(0))&&/class="idSeat nt"/.test(hud)&&!/class="hudVs"/.test(hud),"H11b 메인 상단도 같은 신원 부품(오프라인 = 중립 아이콘 + pname)");
   { /* 기여 = 숫자(전투가 없을 때) · 사망 유지 · 일반 가방 제외 · 가방 전설 꼬리표 · 전투 중에는 명단 없음 */
     allies.forEach(x=>{ x.alive=true; }); S.eco.bag[0]=[unit(T,T.ROSTER.find(r=>!f.some(x=>x.rosterId===r.id)).id,1),unit(T,"L-WITCH")]; const lost=f[2]; lost.alive=false;

@@ -89,6 +89,21 @@ function pvePlay(seed){ const T=pveSetup(seed);
     S.current=1; T.render(); const bag2=kids().find(k=>/^가방 보기/.test(lab(k)));
     ok(!!bag2&&!bag2.disabled&&kids().filter(k=>k.getAttribute&&k.getAttribute("data-ico")).every(k=>k.disabled),"C2f 상대(AI) 차례: 행동 버튼은 잠기고 가방 보기만 열린다(정보 보기)");
     S.current=0; S.eco.bag[0]=[]; S.inv[0]=[]; T.render(); }
+  { /* #294 Saturn REVISE: 가방 창(role=dialog) 포커스 — 열면 창 안(✕) · Tab/Shift+Tab 은 창 안에서만 · 안내 창이 열려 있으면 Esc 는 그것만 · ✕/Esc 는 연 가방 버튼으로 · 상태 무변경.
+       스텁 문서는 index.html 을 파싱하지 않으므로 ✕ 와 창 안 카드 한 장을 직접 꽂는다(선택자 자체는 실브라우저 증거 bag-focus-log.json) */
+    const D=T.document, x=D.createElement("button"), card=D.createElement("span"), bagB=()=>kids().find(k=>/^가방 보기/.test(lab(k)));
+    T.byId("drawerHead").appendChild(x); T.byId("right").querySelectorAll=()=>[x,card]; ["overlay","tutOverlay"].forEach(id=>T.byId(id).classList.add("hidden")); // 실제 문서처럼 모달은 닫힌 상태
+    const key=(k,shift)=>{ const e={key:k,shiftKey:!!shift,pd:0,stop:false,preventDefault(){this.pd++;},stopImmediatePropagation(){this.stop=true;},stopPropagation(){}};
+      for(const fn of D._listeners.keydown){ fn(e); if(e.stop) break; } return [e.pd,D.activeElement]; };
+    const sig=()=>JSON.stringify([S.selected&&S.selected.id,S.current,S.turnCount,S.pieces.map(p=>[p.r,p.c,p.hp,p.alive]),S.eco.coins,T.wsLog.length]), s0=sig();
+    T.UI.drawer=null; bagB().onclick();
+    ok(T.UI.drawer==="side"&&D.activeElement===x&&!!x.focusOpts&&x.focusOpts.preventScroll===true,"C2g 가방 창을 열면 포커스가 창 안(✕)으로 — 스크롤을 건드리지 않는다");
+    eq([key("Tab"),key("Tab"),key("Tab",true)].map(r=>[r[0],r[1]===x?"x":r[1]===card?"card":"밖"]),[[1,"card"],[1,"x"],[1,"card"]],"C2h Tab · Shift+Tab 은 가방 창 안에서만 돈다(뒤 보드로 나가지 않는다)");
+    T.ui238.synHelp("fire",1,card); const child=!!T.ui238.SYNHELP.el; key("Escape");
+    ok(child&&!T.ui238.SYNHELP.el&&T.UI.drawer==="side"&&D.activeElement===card,"C2i 가방 창 안에서 연 안내 창: Esc 는 안내만 닫고 연 카드로 — 가방 창은 그대로");
+    key("Escape"); const escBack=T.UI.drawer===null&&D.activeElement===bagB();
+    bagB().onclick(); global.uiDrawer(null); // index.html ✕ 의 onclick
+    ok(escBack&&T.UI.drawer===null&&D.activeElement===bagB()&&sig()===s0,"C2j Esc · ✕ 는 가방 창을 닫고 연 가방 버튼으로 포커스 복귀 — 선택 · 송신 · 상태 무변경"); }
   T.UI.drawer=null;
   S.turnCount=85; T.renderTurnBar();
   ok(kids().some(k=>lab(k)==="상점 — 예정 없음"&&/예정 없음/.test(k.innerHTML)),"C3 80턴 뒤에는 '예정 없음' (#294 대체 문구)");

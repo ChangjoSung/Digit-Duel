@@ -209,7 +209,9 @@ function uiApply(){
     }
   }catch(e){}
 }
-window.uiDrawer=function(k){ UI.drawer=(k&&UI.drawer===k)?null:(k||null); uiApply(); try{ fitBoard(); }catch(e){} };
+/* #294 Saturn REVISE: 가방 창(role=dialog)은 열릴 때 창 안(✕)으로 포커스를 옮기고, 어떻게 닫히든(✕ · Esc · 바깥 · ←) 연 가방 버튼으로 돌려준다 — 표시만(전송 · 선택 · seq 무변경) */
+window.uiDrawer=function(k){ const was=UI.drawer; UI.drawer=(k&&UI.drawer===k)?null:(k||null); uiApply(); try{ fitBoard(); }catch(e){}
+  try{ const b=/** @type {any} */(UI.drawer?document.querySelector("#drawerHead button"):was?document.querySelector('#turnBar button.hudIco[aria-haspopup="dialog"]'):null); if(b) b.focus({preventScroll:true}); }catch(e){} };
 window.uiStart=function(){ UI.entered=true; uiApply(); try{ render(); }catch(e){} };
 /* 단계를 바꾸면 말판이 보이거나 숨겨지므로 그 자리에서 보드 배율을 다시 잰다 (숨어 있는 동안에는 폭이 0 이라 잴 수 없다) */
 /* #238 Saturn REVISE: 공개 경제 방 시작 전의 01/02 는 탭·늦은 콜백이 아니라 서버 좌석 뷰(내 시작 상점 완료 여부)가 정한다.
@@ -1455,10 +1457,10 @@ function synHelpOpen(html,from){ synHelpClose(false);
 function synHelpClose(refocus){ const d=SYNHELP.el, f=SYNHELP.from; SYNHELP.el=SYNHELP.from=SYNHELP.pid=null;
   if(d&&d.parentNode) d.parentNode.removeChild(d); if(refocus&&f&&f.isConnected&&f.focus) f.focus({preventScroll:true}); }
 if(typeof document!=="undefined"&&document.addEventListener){
-  document.addEventListener("keydown",e=>{ const d=SYNHELP.el; if(!d) return;
-    if(e.key==="Escape"){ e.stopImmediatePropagation(); e.preventDefault(); synHelpClose(true); return; } // 모달의 Esc(=취소)보다 먼저 — 안내만 닫는다
+  document.addEventListener("keydown",e=>{ const h=SYNHELP.el, d=h||(UI.drawer&&uiScreenName()==="board"&&!uiOverlayOpen()&&!EMO.open?$("right"):null); if(!d) return; // 안내 창이 먼저 · 없으면 열린 가방 창(#294 Saturn REVISE: Tab 이 뒤 보드로 나가지 않는다)
+    if(e.key==="Escape"){ if(!h) return; e.stopImmediatePropagation(); e.preventDefault(); synHelpClose(true); return; } // 모달의 Esc(=취소)보다 먼저 — 안내만 닫는다 (가방 창의 Esc 는 아래 핸들러)
     if(e.key!=="Tab") return;
-    const f=[...d.querySelectorAll("button:not([disabled]),[tabindex]:not([tabindex='-1'])")]; if(!f.length) return; // #294 Tab 은 어디서 열렸든(보드 · 준비 · 상점/전투 창 안) 이 창 안에서만 돈다 — 뒤 창의 구매·판매 버튼으로 나가지 않는다
+    const f=[...d.querySelectorAll("button:not([disabled]),[tabindex]:not([tabindex='-1'])")].filter(x=>/** @type {any} */(x).offsetParent!==null); if(!f.length) return; // #294 Tab 은 어디서 열렸든(보드 · 준비 · 상점/전투 창 안) 이 창 안에서만 돈다 — 뒤 창의 구매·판매 버튼으로 나가지 않는다. 가방 창은 보이는 것만(숨은 패널 제외)
     const i=f.indexOf(/** @type {any} */(document.activeElement)), to=e.shiftKey?(i<=0?f.length-1:i-1):(i<0||i===f.length-1?0:i+1);
     e.stopImmediatePropagation(); e.preventDefault(); /** @type {any} */(f[to]).focus();
   },true);
@@ -1468,7 +1470,7 @@ if(typeof document!=="undefined"&&document.addEventListener){
 }
 if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("keydown",e=>{ // #294 가방 창(서랍) Esc = 그 창만 닫고 가방 버튼으로 포커스 복귀 (안내 창이 열려 있으면 위 캡처 핸들러가 먼저 그것만 닫는다)
   if(e.key!=="Escape"||!UI.drawer||uiOverlayOpen()||EMO.open) return;
-  uiDrawer(null); try{ const b=/** @type {any} */(document.querySelector("#turnBar button.hudIco")); if(b) b.focus({preventScroll:true}); }catch(x){} });
+  uiDrawer(null); }); // 포커스 복귀는 uiDrawer 한 곳
 /* 전설 개인 시너지 칩 — 같은 안내 창에 효과 문구(칩의 title 그대로 · 새 수치 없음) */
 function synNote(from){ synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${gi("crown")} 전설 개인 시너지</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div><p>${escAttr(from.getAttribute("title"))}</p>`,from); }
 /* ===== #294 하수인 · 스킬 설명 창 — 읽기 전용(전송 · seq · 시계 · 선택 무변경). 안내 창 틀(synHelpOpen) 한 장을 쓴다 =====
@@ -2168,10 +2170,9 @@ function synRailHtml(p){ const start=S.phase==="setup"; if(start&&!S.eco.shop) r
 function synCrownTitle(d){ return `죽은 동료 ${d}/2 · ${d>=2?`${SKILLS["LD-REVENGE"].ko} · ${SKILLS["LD-WRATH"].ko}`:d===1?`${SKILLS["LD-REVENGE"].ko} · 2명이면 ${SKILLS["LD-WRATH"].ko}`:`미달 · 1명이면 ${SKILLS["LD-REVENGE"].ko}`}`; }
 function synExtraChips(p){
   const v=synExtraView(p,S), pc=x=>Math.round(x*100)+"%";
-  return v.legends.map(l=>{ const t=`${l.name} 개인 시너지 — `+(l.legend==="dragon"?`${ELEM_KO[l.el]} 왕국 효과: ${synTierText(l.el,l.fx)}`:l.legend==="witch"?`상태 부여 확률 +${pc(l.v)}`:`공격 +${pc(l.v)}`);
+  return [synChipHtml("crown",v.deadAllies,v.deadAllies>=1,synCrownTitle(v.deadAllies),synTier("crown",v.deadAllies))].concat(v.legends.map(l=>{ const t=`${l.name} 개인 시너지 — `+(l.legend==="dragon"?`${ELEM_KO[l.el]} 왕국 효과: ${synTierText(l.el,l.fx)}`:l.legend==="witch"?`상태 부여 확률 +${pc(l.v)}`:`공격 +${pc(l.v)}`);
     const call=`synNote(this)`; // #294: 누르면 같은 안내 창에 이름 · 효과 문구(title 그대로)
-    return `<span class="synChip on lg" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${t}" title="${t}" onclick="${call}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${call};}">${gi("crown")}<b>${l.legend==="dragon"?gi(l.el):"+"+pc(l.v)}</b></span>`; })
-    .concat([synChipHtml("crown",v.deadAllies,v.deadAllies>=1,synCrownTitle(v.deadAllies),synTier("crown",v.deadAllies))]);
+    return `<span class="synChip on lg" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${t}" title="${t}" onclick="${call}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${call};}">${gi("crown")}<b>${l.legend==="dragon"?gi(l.el):"+"+pc(l.v)}</b></span>`; })); // #294 Saturn REVISE: 계약 5 순서 = 왕국 → 아키타입 → 왕관 → 활성 전설
 }
 function flowHeadHtml(p,btn){
   const pub=NET.publicMode, seats=pub?[NET.me,1-NET.me]:[p,1-p];
