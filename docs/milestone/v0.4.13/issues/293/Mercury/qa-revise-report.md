@@ -21,7 +21,8 @@
 - [Saturn 독립 검증](qa-revise-saturn.md): 고정 소스 `0a132ec`, 13AC·코드·자동 검사·대표 화면 범위 PASS. 승인 검사 총5회 모두 exit0, 파일 수정0. 실제 두 브라우저/CJ 플레이 QA PASS를 뜻하지 않는다.
 - 배포 소스 [CI 36852910772](https://github.com/ChangjoSung/Digit-Duel/actions/runs/36852910772): A·B·B2·C·D·E 6/6 SUCCESS. 첫 B는 기존 #217 라이브 테스트 T3 텔레포트 커버리지0으로 실패(22/1, 게임 오류0·완주2건). 직전 72ed 소스 CI6/6이고 최종 변경은 CSS/시각 문서뿐이므로 실패 job만 한 번 재시도했다. 단언을 완화하지 않았고 커버리지 변동 원인은 해결됐다고 주장하지 않는다.
 - 최초 9322 소스 CI E3/E10/E12는 옛 개인90초·단절 중 정지 기대였다. Mars가 공통 마감 기준으로 해당 기대를 정정하고 E3b/E12b를 추가했다. 기존 단절 유예·차단 조건을 보존했고 후속 CI가 통과했다.
-- 작성자 검사·실패·정정·실행 수는 [Mars 시각 기록](../Mars/qa-revise-visual/README.md)·[Mars 구현](../Mars/report.md)·[Jupiter 구현](../Jupiter/report.md)에 기록했다. 최종 #293 99/0, 서버 경제173/0, 준비 타이머147/0, 구문/typecheck 통과. 겹치는 검사를 독립 검증 수로 합산하지 않는다.
+- 작성자 검사·실패·정정·실행 수는 [Mars 시각 기록](../Mars/qa-revise-visual/README.md)·[Mars 구현](../Mars/report.md)·[Jupiter 구현](../Jupiter/qa-revise-implementation.md)에 기록했다. 최종 #293 99/0, 서버 경제173/0, 준비 타이머147/0, 구문/typecheck 통과. 겹치는 검사를 독립 검증 수로 합산하지 않는다.
+- 후속 문서 커밋 c98650b의 CI는 제품 검사5개 통과·문서C 실패였다. Mercury가 Jupiter 보고 파일명을 두 곳에서 잘못 참조한 원인으로, 실제 `qa-revise-implementation.md` 링크로 정정했다. 검사기/제품 코드/단언 변경 없이 후속 문서 HEAD의 필수CI를 확인한다.
 - Render deploy `dep-dav4168jo6nc73fdma9g`: 20:14:33 KST 요청 → **20:15:29 KST live**, get_deploy로 정확한 소스 `0a132ecdc8783007bc91b99fde596ec68ff89666` 확인.
 - 20:19:17 KST 실제 `/`·`/healthz`·`/readyz` 모두200, `ok`·`ok (no db)`, Cache-Control no-store. 제공 data/core/ui/network/game.css 5개 모두 배포 Git blob과 바이트 동일. CSS SHA-256 `e926ca1d91885541cd14246451cb218cd54d6964b1d01ec116c2741472e93ecf`.
 - Orca QA 페이지 `917e6a93-3c03-4f3f-9e2b-220323d3151f`를 열고 실제 홈·스크립트 로드·AUTH off를 읽었다. 홈 준비 상태 확인이며 두 브라우저 경기 증거로 확대하지 않는다.
@@ -67,7 +68,7 @@ Render MCP는 기존 OAuth 재인증 후 실제 읽기·배포 호출 성공. �
 | CJ 7건·추가 응답·원본6장 | [최신 원문](../references/CJ_QA_REVISE_20261001.md), 원본 바이트 보존 |
 | 선행 계약·13AC·분석 | [Venus 계약](../Venus/implementation-contract.md)·[분석](../Venus/analysis.md), 구현 전 계약 `8594d27c2e48f14ff4ccbe31a872b44bf0d37868` |
 | 기존 시각 계약 | [Earth UI_CONTRACT](../Earth/UI_CONTRACT.md): grade 배경·실제 역할·44px·header 취소·보드 중심 |
-| 구현·대표 화면 | [Mars](../Mars/report.md)·[시각 기록](../Mars/qa-revise-visual/README.md)·[Jupiter](../Jupiter/report.md) |
+| 구현·대표 화면 | [Mars](../Mars/report.md)·[시각 기록](../Mars/qa-revise-visual/README.md)·[Jupiter](../Jupiter/qa-revise-implementation.md) |
 | GDD-13 | [Decision Log](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38): 최신 CJ 결정·운영 기준, edited18:06:13 KST |
 | GDD-23 | [System Flow](https://app.notion.com/p/3dc1e7f1708580329da6fe4986654f7b): 2.3/2.4·7.6·7.9·최신7항목, edited18:05:51 KST |
 | GDD-24 | [UI/UX](https://app.notion.com/p/3dc1e7f1708581a48421fcec63d3cdf8): 00.7·S02·Y01·타이머/말 표시, edited18:06:11 KST |
