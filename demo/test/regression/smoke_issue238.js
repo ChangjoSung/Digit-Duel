@@ -36,7 +36,9 @@ function pvePlay(seed){ const T=pveSetup(seed);
   const T=pveSetup(31), E={get tickets(){return T.S.eco.tickets;},get buffInv(){return T.S.eco.buffInv;},get coins(){return T.S.eco.coins;}}; // reducer 가 새 상태를 돌려주므로 매번 읽는다
   eq(T.ECO.startGoods,T.ECO.goods,"A1 S01 상품 = 정기 상점 상품 8종 (2026-09-25 CJ · #238)");
   ok(kind(act(T,{t:"shopGood",player:0,item:"ticket"}))==="shopChanged"&&E.tickets[0]===1,"A2 S01 에서 교체 티켓 구매");
-  for(const k of ["power","time","escape"]) ok(kind(act(T,{t:"shopGood",player:0,item:k}))==="shopChanged"&&E.buffInv[0][k]===1,"A3 S01 전투 버프 구매: "+k);
+  /* #293 (2026-10-02 CJ 2): 수호자 3종 🪙3 — 예비 재화가 그대로라 시작 시점(🪙10 · 빈칸 6)에는 티켓 1 + 수호자 1개까지 */
+  ok(kind(act(T,{t:"shopGood",player:0,item:"power"}))==="shopChanged"&&E.buffInv[0].power===1&&E.coins[0]===6,"A3 S01 전투 버프 구매: power (🪙3)");
+  for(const k of ["time","escape"]) ok(kind(act(T,{t:"shopGood",player:0,item:k}))==="shopRefused"&&E.buffInv[0][k]===0,"A3 둘째 수호자는 예비 재화로 거부: "+k);
   eq(E.coins[0],6,"A4 하수인 외 지출은 🪙4 까지 (🪙10 − 6칸 몫)");
   ok(kind(act(T,{t:"shopGood",player:0,item:"potion"}))==="shopRefused"&&E.coins[0]===6,"A5 예비 재화(빈 칸 6 × 🪙1)는 그대로 막는다");
   const king=T.S.pieces.find(x=>x.owner===0&&x.type==="king");
@@ -45,7 +47,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
   eq(count(h,/class="goodCard"/g),8,"A7 상품 카드 8장");
   eq([...h.matchAll(/--g:(\d)"/g)].map(m=>m[1]).join(""),"01234567","A7b Earth goods.svg 8칸을 ECO.goods 순서로 쓴다");
   ok(/하수인 몫 🪙6은 남겨 둡니다/.test(h.replace(/<[^>]+>/g,""))&&!/필요한 새로 고침/.test(h),"A8 예비 재화 문구 = 빈 칸 × 🪙1 (옛 '필요한 새로 고침' 문장 삭제 · 🪙 는 코인 그림 + srOnly 글자)");
-  ok(/티켓 1장 보유 — 사용은 정기 상점에서/.test(h)&&!/__shop\('ticket'\)/.test(h),"A9 S01 에는 티켓 사용 버튼 없이 보유 안내만");
+  ok(/aria-label="시작 상점은 티켓 없이 속성을 바꿀 수 있습니다"/.test(h)&&/<\/i>무료<\/span>/.test(h)&&!/__shop\('ticket'\)/.test(h),"A9 S01 에는 티켓 사용 버튼 없이 티켓 아이콘 + '무료' 안내만 (#293 2026-10-01 CJ 4 — 보유 수 배지 대체)");
 }
 /* ===== B. 상점 시트 ===== */
 {
@@ -85,7 +87,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
   T.render(); ok(!/resultSeats/.test(T.byId("sidePanel").innerHTML),"D1 경기 중에는 결과 블록이 없다 (상대 정보 선공개 0)");
   const side=T.ui238.resultSideOffline(1);
   eq(side.pieces.length,9,"D2 보드 9칸 = 왕 1 · 동료 2 · 하수인 6 (폭탄·함정 제외)");
-  ok(side.pieces.every(e=>["king","ally","minion"].includes(e.type)&&!("grade" in e)&&!("id" in e)),"D3 항목은 서버 final 과 같은 허용 칸만");
+  ok(side.pieces.every(e=>["king","ally","minion"].includes(e.type)&&!("id" in e)&&Object.keys(e).every(k=>["type","rosterId","name","element","alive","hp","maxHp","grade","hpSeen","allyKind"].includes(k))),"D3 항목은 서버 final 과 같은 허용 칸만 (#293: 등급 = 결과 얼굴 배경이라 grade 포함 · id·위치·스킬·원장 없음)");
   eq(side.syn,T.synView(1,S),"D4 시너지는 Core synView 원값 그대로 (UI 재계산 없음)");
   S.pieces.find(x=>x.owner===1&&x.type==="minion").alive=false;
   T.gameOver(0,"wipe"); T.drain(); T.render();
@@ -100,9 +102,9 @@ function pvePlay(seed){ const T=pveSetup(seed);
   ok(/시너지 정보를 받지 못했습니다/.test(T.ui238.resultSeatsHtml()),"E1 final 이 없으면 재계산 없이 안내만");
   const e=(o)=>Object.assign({type:"minion",rosterId:"M-F1",name:"새끼 화룡",element:"fire",alive:true,hp:40,maxHp:100},o);
   N.final={sides:[{seat:0,pieces:[e({hp:77})],bag:[],syn:{el:{fire:2,water:0,lightning:0,land:0,grass:0},arch:{std:1},dead:0,stage:{fire:0,water:-1,lightning:-1,land:-1,grass:-1}}},
-    {seat:1,pieces:[e({hp:55}),e({hp:30,maxHp:90,hpSeen:true,name:"화염 투사"})],bag:[e({hp:12})],syn:{el:{fire:1},arch:{},dead:0}}]};
+    {seat:1,pieces:[e({hp:55,grade:3}),e({hp:30,maxHp:90,hpSeen:true,name:"화염 투사"})],bag:[e({hp:12})],syn:{el:{fire:1},arch:{},dead:0}}]};
   const h=T.ui238.resultSeatsHtml();
-  ok(/HP 77\/100/.test(h)&&/HP 55%/.test(h)&&/HP 30\/90/.test(h)&&/HP 12%/.test(h),"E2 내 값은 실제, 상대는 싸운 개체만 실제·그 밖은 %");
+  ok(/· HP 77</.test(h)&&/>77<\/span>/.test(h)&&/>55<\/span>/.test(h)&&/>30<\/span>/.test(h)&&/>12<\/span>/.test(h)&&!/\d%/.test(h)&&/class="uSlot faceBox gf g3"/.test(h),"E2 양쪽 모두 서버가 보낸 실제 HP(% 없음 · #293 2026-10-01 CJ 6) · 상대 등급 = 배경색");
   ok(/🎒 가방/.test(h)&&h.includes("불 2칸 · (2) 달성")&&h.includes('title="표준 1칸"')&&!h.includes("표준 1칸 ·"),"E3 가방 소절 · 왕국 단계는 서버 stage 그대로 · 아키타입은 칸 수만 (경계 재계산 없음)");
   const src=fs.readFileSync(path.join(path.dirname(htmlPath),"js","network.js"),"utf8");
   ok(/NET\.final=data\.state==="FINISHED"&&data\.final/.test(src)&&/NET\.final=null/.test(fs.readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8")),
@@ -197,7 +199,9 @@ function pvePlay(seed){ const T=pveSetup(seed);
   ws.onmessage({data:JSON.stringify({v:1,type:"room_opened",epoch:"e1",roomId:11,seat:0,seatToken:"h",tokenGen:0,revision:0,seq:1,economy:true})});
   P.UI.entered=true; P.byId("tutOverlay").classList.add("hidden"); // 실제 DOM 초기 상태 (H3 과 같다)
   const feed=()=>{ const v=room.toSeatView(0); ws.onmessage({data:JSON.stringify({v:1,type:"room_state",revision:v.revision,seat:0,data:v})}); P.byId("overlay").classList.add("hidden"); return v; };
-  const tab=s=>(P.byId("sidePanel").innerHTML.match(new RegExp('<button[^>]*data-prep-step="'+s+'"[^>]*>'))||[""])[0];
+  /* #293 (2026-10-01 CJ): 경제 판의 01/02 탭은 진행 막대(01 상점 — 02 배치 — 03 완료)로 바뀌었다 — 누르는 탭이 아니라 서버 단계 표시다.
+     그래서 I2·I6 은 "탭 disabled" 대신 "막대의 현재 단계 + 누르는 탭 없음"을 본다. 단계 잠금 자체(I3·I7·I8)는 그대로다 */
+  const step=()=>{ const h=P.byId("sidePanel").innerHTML, m=h.match(/aria-current="step">[\s\S]*?<b>0\d<\/b> ([^<]+)<\/span>/); return (m?m[1]:"")+(/data-prep-step=/.test(h)?" +tab":""); };
   const btn=t=>P.byId("obBtns").children.slice().reverse().find(b=>b.textContent===t);
   const acts=()=>ws.sent.map(x=>JSON.parse(x)).map(x=>x.t==="action"?x.action.t:x.t);
   const shopAct=(seat,t,extra)=>{ const v=room.toSeatView(seat); return room._handleAction(seat,{baseRevision:v.revision,action:Object.assign({t,shop:v.shop.shop,seq:v.shop.seq},extra||{})}); };
@@ -210,12 +214,12 @@ function pvePlay(seed){ const T=pveSetup(seed);
 
   let v=feed();
   ok(v.phase==="shop"&&P.S.eco&&P.S.eco.shop.kind==="start"&&!P.S.eco.shop.done[0]&&P.UI.prep==="roster","I1 서버 S01 뷰 수화 → 01 시작 상점");
-  ok(/disabled/.test(tab("place"))&&!/disabled/.test(tab("roster")),"I2 S01 열린 동안 02 탭 비활성");
+  eq(step(),"상점","I2 S01 열린 동안 진행 막대 = 01 상점 (02 로 가는 탭 없음)");
   global.uiPrep("place"); ok(P.UI.prep==="roster"&&P.byId("app").getAttribute("data-prep")==="roster","I3 02 탭 호출로 열린 S01 을 건너뛰지 못한다");
   leaveAsk("I4 S01");
   finish(0); v=feed();
   ok(v.phase==="setup"&&P.S.eco.shop.done[0]&&P.UI.prep==="place"&&!P.NET.readyWanted,"I5 내 S01 완료 뷰 → 02 배치 (상대는 아직 상점)");
-  ok(/disabled/.test(tab("roster"))&&!/disabled/.test(tab("place")),"I6 S01 완료 뒤 01 탭 비활성");
+  eq(step(),"배치","I6 S01 완료 뒤 진행 막대 = 02 배치 (01 로 돌아가는 탭 없음)");
   global.uiPrep("roster"); ok(P.UI.prep==="place","I7 01 탭 호출로 끝난 S01 을 다시 열지 못한다");
   P.UI.prep="roster"; P.render(); ok(P.UI.prep==="place"&&P.byId("app").getAttribute("data-prep")==="place","I8 늦은 콜백이 UI.prep 을 되돌려도 다음 표시에서 서버 단계로 복귀");
   leaveAsk("I9 S02 편집");
@@ -226,8 +230,9 @@ function pvePlay(seed){ const T=pveSetup(seed);
   let atClose=null; const close=ws.close; ws.close=()=>{ atClose=acts(); close(); };
   global.uiBack(); btn("나가기").onclick();
   ok(atClose&&atClose[atClose.length-1]==="leave"&&ws.closed&&P.NET.roomId===null,"I13 확인 → leave 명령 뒤 소켓 닫기 "+JSON.stringify(atClose));
-  /* PVE — 서버 단계 잠금 없음 · 종전 자유 전환 */
-  const V=pveSetup(40); global.uiPrep("place"); ok(V.UI.prep==="place","I14 PVE 는 S01 중에도 02 탭 전환 (종전)"); global.uiPrep("roster"); ok(V.UI.prep==="roster","I15 PVE 01 복귀 (종전)");
+  /* #293: 오프라인 경제 판(PVE)도 단계는 그 기기의 진행 상태(내 시작 상점 완료 여부)가 정한다 — 종전 자유 전환은 비경제 로스터 선택에만 남는다 */
+  const V=pveSetup(40); global.uiPrep("place"); ok(V.UI.prep==="roster","I14 PVE 경제 판도 열린 S01 을 02 로 건너뛰지 못한다 (#293 진행 막대 = 상태 파생)");
+  V.S.eco=null; global.uiPrep("place"); const freeTo=V.UI.prep; global.uiPrep("roster"); ok(freeTo==="place"&&V.UI.prep==="roster","I15 비경제 로스터 선택은 01 ↔ 02 자유 전환 (종전)");
 }
 /* ===== J. #238 시각 REVISE (2026-09-28 CJ) — 이력 토글 제거 · 13종 아트 연결 · 로비 구성 ===== */
 {
@@ -240,8 +245,8 @@ function pvePlay(seed){ const T=pveSetup(seed);
   const piece={type:"ally"}, cap={legend:"reaper",element:null}; piece.cap=cap;
   ok(T.artDirOfFighter(cap,piece)==="legend_reaper"&&T.artDirOfFighter({legend:"reaper"},piece)===null,"J5 전설 대리 출전은 그 cap 일 때만 전설 폴더");
   ok(T.ART_DIRS.every(d=>["icon.png","battle.png","battle-grid.png","portrait.png","portrait.webp"].every(f=>fs.existsSync(path.join(path.dirname(htmlPath),"assets","minions",d,f)))),"J6 33 폴더 × 5 파일 실재");
-  const sh=pveSetup(36).shopHtml(0);
-  ok((sh.match(/class="stars" aria-label="등급 \d"/g)||[]).length===6&&/class="tags" role="img" aria-label="[^"]+ · [^"]+"/.test(sh)&&/class="synChip/.test(sh),"J7 상점 = 한 줄 6행(등급·썸네일·이름·속성/아키타입 아이콘) · 시너지 아이콘 칩");
+  const T7=pveSetup(36), sh=T7.shopHtml(0); T7.render(); // #293: S01 시너지 칩은 본문이 아니라 우측 시너지 열(.synRail)에 있다 — 그려진 화면에서 본다
+  ok((sh.match(/class="stars" aria-label="등급 \d"/g)||[]).length===6&&/class="tags" role="img" aria-label="[^"]+ · [^"]+"/.test(sh)&&/class="synRail"[^>]*><span class="synChip/.test(T7.byId("sidePanel").innerHTML),"J7 상점 = 한 줄 6행(등급·썸네일·이름·속성/아키타입 아이콘) · 시너지 아이콘 칩");
 }
 /* ===== K. 2026-09-28 CJ 재수정 8항목 ===== */
 {
@@ -345,7 +350,8 @@ function pvePlay(seed){ const T=pveSetup(seed);
   const d=U.SYNHELP.el;
   ok(!!d&&host.children.length===n0+1&&(d.innerHTML.match(/<li/g)||[]).length===T.V2_ARCH_SYN.def.length&&/<li class="on" aria-current="true"><b>\(5\)<\/b>/.test(d.innerHTML)&&/지금 6칸/.test(d.innerHTML),"K35 안내 = 모든 단계 + 달성 단계 강조(방어 6칸 → 상한 (5))");
   U.synHelp("fire",0,null); ok(host.children.length===n0+1&&/\(2\)부터 효과/.test(U.SYNHELP.el.innerHTML),"K36 다시 열면 하나만 · 미달 안내");
-  ok(/role="button" tabindex="0"[^>]*onkeydown="if\(event\.key==='Enter'\|\|event\.key===' '\)/.test(T.shopHtml(0))&&!/uiSynWhy|id="synWhy"/.test(ui),"K37 칩 = 누르기·터치·Enter/Space (정지 fieldset 안에서도 읽기 전용 안내) · 옛 한 줄 안내 대체");
+  T.render(); // #293: S01 칩은 우측 시너지 열(그려진 화면)에 있다 — 누르기·Enter/Space 계약은 같은 synChipHtml 그대로
+  ok(/role="button" tabindex="0"[^>]*onkeydown="if\(event\.key==='Enter'\|\|event\.key===' '\)/.test(T.byId("sidePanel").innerHTML)&&!/uiSynWhy|id="synWhy"/.test(ui),"K37 칩 = 누르기·터치·Enter/Space (정지 fieldset 안에서도 읽기 전용 안내) · 옛 한 줄 안내 대체");
   /* Saturn REVISE(2026-09-28) 1~4: 👑 죽은 동료 안내 · 결과 칩 44 · 감전 효과 · 방 만들기 창 폭 */
   const sh0=S.eco.shop; S.eco.shop=Object.assign({},sh0,{kind:"turn",turn:20}); a0[0].alive=false;
   h=T.shopHtml(0); S.eco.shop=sh0; a0[0].alive=true;

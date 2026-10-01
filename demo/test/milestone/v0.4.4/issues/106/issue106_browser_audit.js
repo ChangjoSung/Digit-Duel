@@ -316,9 +316,9 @@ const P2_SETUP={roster:P2_CANON.roster,pos:Object.fromEntries(Object.entries(P2_
           if(last){ if(T!==P1) throw new Error("12번째 행동자가 P1 이 아니다"); await fixture("F-tie 12번째 행동 직전: 양측 hp=maxHp · P1 응급 치유 쿨 0 (양 탭)",`(()=>{ S.battle.fa.hp=S.battle.fa.maxHp; S.battle.fd.hp=S.battle.fd.maxHp; S.battle.fa.cds[2]=0; return true; })()`); fixed=true; }
           await T.clickText("#bmenu","⚔️ 싸우기"); await sleep(120); await T.clickText("#bsub-fight .row",last?"응급 치유":(T===P1?"화염탄":"기본 공격")); await sleep(150);
           await until(async()=>{ const s2=await st(P1); return !s2.battle||((await bothIdle())&&(await same())); },60000,"action"); }
-        await settle("B2 종료",60000); const ob=await P1.ev(OBS(since2)); const msg=spans(ob,"msg"); const jud=msg.find(x=>/남은 HP 비율로 판별합니다!/.test(x.v)), pctLine=msg.find(x=>/100% vs .*100%/.test(x.v));
+        await settle("B2 종료",60000); const ob=await P1.ev(OBS(since2)); const msg=spans(ob,"msg"); const jud=msg.find(x=>/남은 HP 비율로 판별합니다!/.test(x.v)), pctLine=msg.find(x=>/(\d+)\/\1 vs .*?(\d+)\/\2/.test(x.v)&&!/%/.test(x.v)); // #293: 판정 문구는 실제 HP(현재/최대) — 만피끼리
         const ra=bannerSpans(ob).filter(x=>/result/.test(x.cls)), rb=bannerSpans(await P2.ev(OBS(since2))).filter(x=>/result/.test(x.cls)); const m=JSON.parse(await P1.ev(SNAP)).m; const f1=await P1.ev(PIECE(F1.id)), al=await P1.ev(PIECE(ALLY.id));
-        note(`B2f 12행동 완주(실제 클릭 ${n}) → 판정 배너 '⚖️ 남은 HP 비율로 판별합니다!' → '100% vs 100%'`,{ok:n===12&&fixed&&!!jud&&!!pctLine,detail:`${jud&&jud.v.split("\n")[0]} | ${pctLine&&pctLine.v}`});
+        note(`B2f 12행동 완주(실제 클릭 ${n}) → 판정 배너 '⚖️ 남은 HP 비율로 판별합니다!' → '만피/최대 vs 만피/최대'`,{ok:n===12&&fixed&&!!jud&&!!pctLine,detail:`${jud&&jud.v.split("\n")[0]} | ${pctLine&&pctLine.v}`});
         if(jud&&jud.ms) tnote("B2g 판정 배너 시간",jud.ms,FXD.judgeBanner);
         note("B2h 동률 → 방어자(P2 동료) 승: ties +1 · judged +1 · P1 M-F1 제거 · 동료 생존 · 결과 배너 P1 '전투에서 패배,,,' / P2 '전투에서 승리!' · 양 탭 동일",{ok:m.ties>=1&&m.judged>=1&&!f1.alive&&al.alive&&ra[0]&&ra[0].title==="전투에서 패배,,,"&&rb[0]&&rb[0].title==="전투에서 승리!"&&(await same()),detail:`ties=${m.ties} judged=${m.judged} P1 '${ra[0]&&ra[0].title}' P2 '${rb[0]&&rb[0].title}'`});
         await P1.shot("b2-board-after-tie"); }

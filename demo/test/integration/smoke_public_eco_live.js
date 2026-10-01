@@ -90,7 +90,10 @@ async function finishStartShop(c){
     ok(true,"E1 5초 완료 뒤 두 좌석에 시작 상점(S01)이 동시에 열린다");
     const hv=lastState(host);
     ok(hv.phase==="shop"&&typeof hv.shop.seq==="number"&&typeof hv.you.eco.coins==="number"&&(hv.units||[]).length===0,"E2 좌석 뷰는 자기 진열·자기 재화만 싣는다(상대 경제·말 없음)");
-    ok(hv.clock&&hv.clock.key==="shop"&&hv.clock.leftMs>80000&&hv.clock.leftMs<=90000,"E3 서버 개인 상점 시계 90초 "+JSON.stringify(hv.clock));
+    /* #293 (2026-10-01 CJ 1): 경기 전은 방의 준비 시계 하나 — 180초 · 서버 epoch 절대 마감 · 두 좌석이 같은 deadline (개인 상점 90초 폐지) */
+    const gv0=lastState(guest);
+    ok(hv.clock&&hv.clock.key==="prep"&&hv.clock.running===true&&hv.clock.leftMs>170000&&hv.clock.leftMs<=180000&&Number.isFinite(hv.clock.deadline)&&hv.clock.leftMs===hv.clock.deadline-hv.clock.serverNow,"E3 서버 준비 시계 180초 · 절대 마감(leftMs = deadline − serverNow) "+JSON.stringify(hv.clock));
+    ok(!!gv0.clock&&gv0.clock.key==="prep"&&gv0.clock.deadline===hv.clock.deadline,"E3b 두 좌석의 준비 마감이 같다 "+JSON.stringify(gv0.clock));
     ok(/시작 상점/.test(host.T.byId("sidePanel").innerHTML)&&/⏱ \d+초/.test(host.T.byId("sidePanel").innerHTML),"E4 배치 화면 안에 시작 상점과 서버 시계가 그려진다");
 
     // 구매 — 서버 응답으로만 반영, 산 칸은 빈칸
@@ -114,14 +117,14 @@ async function finishStartShop(c){
     await sleep(50);
     ok(coins(host)===c2-1,"E8 같은 requestId 두 번 → 한 번만 적용 (🪙 "+c2+"→"+coins(host)+")");
 
-    // 단절 — 상대 화면 정지·입력 거부·시계 정지, 재접속 뒤 남은 시간부터
+    // 단절 — 상대 화면 정지·입력 거부. #293: 준비 시계는 단절 중에도 서버에서 계속 흐른다(같은 마감 · 재발급·정지 없음)
     host.ctor.block=true;
     try{ host.T.NET.ws._socket.destroy(); }catch(e){ host.T.NET.ws.terminate(); }
     await waitFor(()=>guest.T.NET.pause&&guest.T.NET.pause.length,8000,"guest sees pause");
     const bar=guest.T.byId("netResumeBar");
     ok(/상대 연결 대기/.test(bar.innerHTML)&&!bar.classList.contains("hidden"),"E9 상대 화면에 '상대 연결 대기'·재연결 유예 표시");
     const gClock=Object.assign({},guest.T.NET.ecoClock);
-    ok(gClock.running===false,"E10 단절 동안 상대의 상점 시계도 멈춘다 "+JSON.stringify(gClock));
+    ok(gClock.key==="prep"&&gClock.running===true&&gClock.deadline===hv.clock.deadline&&gClock.serverNow>hv.clock.serverNow&&gClock.leftMs===gClock.deadline-gClock.serverNow,"E10 단절 동안에도 준비 시계는 멈추지 않는다 — 같은 마감 · 서버 시각만 흐른다 "+JSON.stringify(gClock));
     const ge=guest.ctor.errors.length; const gc=coins(guest);
     guest.W.__shop("good","potion");   // 화면 버튼 경로 — #263 Saturn REVISE 뒤로는 클라이언트 송신 끝에서 먼저 막힌다
     await sleep(400);
@@ -137,7 +140,9 @@ async function finishStartShop(c){
     await waitFor(()=>!host.T.NET.resuming&&host.T.NET.ws&&host.T.NET.ws.readyState===1&&!guest.T.NET.pause,20000,"resume");
     await waitFor(()=>guest.T.NET.ecoClock&&guest.T.NET.ecoClock.running,5000,"clock resumes");
     const g2=guest.T.NET.ecoClock;
-    ok(g2.leftMs<=gClock.leftMs&&g2.leftMs>=gClock.leftMs-1000,"E12 재접속 뒤 남은 시간부터 재개 (정지 "+gClock.leftMs+" → 재개 "+g2.leftMs+")");
+    const el=g2.serverNow-gClock.serverNow, h2=lastState(host).clock;
+    ok(g2.key==="prep"&&g2.deadline===gClock.deadline&&el>=1900&&gClock.leftMs-g2.leftMs===el,"E12 재접속 뒤에도 같은 절대 마감 — 단절 동안 흐른 시간("+el+"ms)만큼 남은 시간이 줄었다 ("+gClock.leftMs+" → "+g2.leftMs+" · 새 시간·정지 없음)");
+    ok(!!h2&&h2.key==="prep"&&h2.deadline===gClock.deadline,"E12b 재접속한 좌석도 같은 마감을 받는다 "+JSON.stringify(h2));
     ok(open0(host)&&host.T.S.pieces.filter(x=>x.owner===0&&x.type==="minion"&&x.rosterId).length===1,"E13 재접속한 좌석이 같은 시작 상점·산 말을 되찾는다");
 
     // S01 완료 → 배치 → 개시

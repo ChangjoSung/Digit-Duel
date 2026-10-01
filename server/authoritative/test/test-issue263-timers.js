@@ -1,9 +1,11 @@
 'use strict';
 /* #263 배치·행동 타이머와 경기 상점 6칸 자동 처리 — 서버 권위 경계만 본다 (GDD-23 2.2·2.4 · 2026-09-25 CJ Q1=A·Q2=A).
    규칙(가격·예비 재화·진열·자동 배치 좌표)은 Core 가 판정하고 demo/test/regression/smoke_issue236.js·smoke_issue234.js 가 본다.
-   여기서 보는 것: 6칸 진열과 SOLD OUT 의 회선 모양 · S01 시간 초과의 자동 구매(새로 고침 0회)와 자동 배치·준비 ·
-   직접 완료 좌석만 받는 배치 90초 · 행동 30초(출전 후보 포함, 전투 판정 중 정지) · 단절 60초가 그 셋을 모두 멈추고
-   기권까지 막는 것 · 유예 만료 몰수·경기 전 취소 보존. #236/#237 의 서버 권위·비공개 계약은 그대로다.
+   여기서 보는 것: 6칸 진열과 SOLD OUT 의 회선 모양 · 준비 시간 초과의 자동 구매(새로 고침 0회)와 자동 배치·준비 ·
+   #293(2026-10-01 CJ) 양 좌석 공통 준비 180초(서버 절대 마감 하나 — 상점 완료·배치·준비·준비 취소·단절·재연결로
+   다시 서거나 멈추지 않는다 · 종전 S01 90초 + 배치 90초 대체) · 행동 30초(출전 후보 포함, 전투 판정 중 정지) ·
+   단절 60초가 경기 중 시계를 모두 멈추고 기권까지 막는 것 · 유예 만료 몰수·경기 전 취소 보존.
+   #236/#237 의 서버 권위·비공개 계약은 그대로다.
    2026-09-25 후속 CJ(T1~T4) — 7~12절: 빈손 만료의 턴 넘김(강제 표식이 남아 있어도 막히지 않는다) · 적격 대상 1개
    즉시 전투 / 2개 이상 새 30초와 균등 권위 난수 자동 선택(선택당 rand 1회 · 마감 시점 재검증) · 텔레포트 강제 전투
    큐의 순차 처리 · B02 방어자 단계로 시계가 옮겨 가되 다시 세지 않는 것 · 전투 행동 60초가 쓸 수 있는 기술이 있어도
@@ -24,10 +26,10 @@ async function until(cond, why, ms) {
 const started = (room) => until(() => room.state === STATES.IN_PROGRESS && room.engines && S0(room).phase === 'play', '경기 개시');
 const settled = (room) => until(() => room.state !== STATES.IN_PROGRESS && room.state !== STATES.SETUP, '경기 종료 전이');
 
-// 시계는 테스트 주입값으로 돌린다 — 기본은 Core 상수(ECO.shopSec·placeSec·actSec)다.
+// 시계는 테스트 주입값으로 돌린다 — 기본은 Core 상수(ECO.prepSec·shopSec·actSec)다.
 function ecoRoom(id, opts) {
   const room = new H.Room(id, Object.assign(
-    { isPublic: false, epoch: 'aaaaaaaa', graceMs: 5000, economy: true, seed: 263, shopMs: 60000, bagPickMs: 60000, placeMs: 60000, actMs: 60000 },
+    { isPublic: false, epoch: 'aaaaaaaa', graceMs: 5000, economy: true, seed: 263, shopMs: 60000, bagPickMs: 60000, prepMs: 60000, actMs: 60000 },
     opts || {}));
   room.openHostSeat(fakeWs());
   room.joinGuestSeat(fakeWs());
@@ -113,27 +115,39 @@ function moveVia(room, seat, from, to) {
     room._clearClock();
   }
 
-  /* S01 90초 만료 — 노출 6종 전부 자동 구매(새로 고침 0회) · 10→4 보존.
-     상대는 먼저 직접 완료시켜 경기를 열지 않는다(개시하면 beginPlay 가 eco.shop 을 닫아 진열을 볼 수 없다). */
+  /* 준비 180초 만료(#293) — 노출 6종 전부 자동 구매(새로 고침 0회) · 10→4 보존.
+     만료는 양 좌석을 함께 마무리해 곧바로 개시하고, 개시하면 beginPlay 가 eco.shop 을 닫아 진열을 볼 수 없다 —
+     그래서 좌석 0 의 자동 배치 직전(= shopTimeout 직후)의 진열을 그 자리에서 떠 둔다. */
+  const shopSnap = (room) => {
+    const auto = room._autoPlace.bind(room), snap = {};
+    room._autoPlace = (s) => {
+      const sh = S0(room).eco.shop;
+      if (s === 0) Object.assign(snap, { seq: sh.seq[0], slots: sh.slots[0].map((x) => (x ? !!x.soldOut : null)) });
+      return auto(s);
+    };
+    return snap;
+  };
   {
-    const room = ecoRoom(2, { shopMs: 120 });
+    const room = ecoRoom(2, { prepMs: 120 });
+    const snap = shopSnap(room);
     finishStart(room, 1);
     await sleep(240);
     const S = S0(room);
-    ok(S.eco.shop.seq[0] === 6, '0명 산 좌석의 만료 = 구매 6회뿐 — 자동 새로 고침 0회 (진열 번호로 실측)');
+    ok(snap.seq === 6, '0명 산 좌석의 만료 = 구매 6회뿐 — 자동 새로 고침 0회 (진열 번호로 실측)');
     ok(S.eco.coins[0] === 4, '기본 사례 🪙10 → 6명 구매 → 4 보존 (자동 새로 고침 비용 없음)');
     ok(S.pieces.filter((x) => x.owner === 0 && x.type === 'minion' && x.rosterId).length === 6, '노출된 6종을 모두 사서 필드 6칸');
-    ok(S.eco.shop.slots[0].length === 6 && S.eco.shop.slots[0].every((x) => x && x.soldOut), '자동 구매한 칸도 SOLD OUT 으로 남는다 — 진열은 6칸 그대로');
-    ok(room.seats[0].shopTimedOut && room.seats[0].placed && room.seats[0].ready && room._clock[0] === null,
-      '시간 초과 좌석은 그 자리에서 자동 배치·준비 — 배치 90초를 다시 걸지 않는다');
+    ok(snap.slots && snap.slots.length === 6 && snap.slots.every((x) => x === true), '자동 구매한 칸도 SOLD OUT 으로 남는다 — 진열은 6칸 그대로');
+    ok(room.seats[0].placed && room.seats[0].ready && room._clock[0] === null && room._prep === null,
+      '시간 초과 좌석은 그 자리에서 자동 배치·준비 — 새 90초를 걸지 않는다(#293)');
     const zone = new Set(room.engines[0].zoneOf(0));
     ok(S.pieces.filter((x) => x.owner === 0).every((x) => x.placed && zone.has(x.r) && x.c >= 1 && x.c <= 7), '자동 배치는 자기 진영 합법 칸 안에서만');
     ok(new Set(S.pieces.filter((x) => x.placed).map((x) => x.r + '_' + x.c)).size === S.pieces.filter((x) => x.placed).length, '자동 배치에 겹치는 칸이 없다');
-    ok(room.state === STATES.SETUP, '상대가 아직 배치 전이면 경기는 시작되지 않는다');
+    ok(room.seats[1].placed && room.seats[1].ready && room.state === STATES.IN_PROGRESS && S.phase === 'play',
+      '#293 공통 만료 — 상점만 끝내고 배치 전이던 상대 좌석도 같은 순간 자동 배치·준비되어 경기가 시작된다');
     room._clearClock();
   }
   { // 양측 만료 → 곧바로 개시
-    const room = ecoRoom(3, { shopMs: 60 });
+    const room = ecoRoom(3, { prepMs: 60 });
     await sleep(170);
     ok(room.state === STATES.IN_PROGRESS && S0(room).phase === 'play' && S0(room).pieces.every((x) => x.placed),
       '양측 S01 만료 → 자동 구매·자동 배치·준비로 곧바로 개시');
@@ -142,7 +156,8 @@ function moveVia(room, seat, from, to) {
 
   // 1~5명을 이미 샀고 하수인 밖 지출도 한 좌석 — 기존 구매 보존 + 남은 노출 칸으로 6까지
   {
-    const room = ecoRoom(4, { shopMs: 200 });
+    const room = ecoRoom(4, { prepMs: 200 });
+    const snap = shopSnap(room);
     finishStart(room, 1);
     for (let n = 0; n < 3; n++) shop(room, 0, 'shopBuy', { i: openSlot(view(room, 0)) });
     const g = shop(room, 0, 'shopGood', { item: 'ball' });
@@ -153,81 +168,88 @@ function moveVia(room, seat, from, to) {
     ok(S.pieces.filter((x) => x.owner === 0 && x.rosterId).map((x) => x.rosterId).join().startsWith(kept), '이미 산 3명은 그 자리 그대로');
     ok(S.pieces.filter((x) => x.owner === 0 && x.type === 'minion' && x.rosterId).length === 6 && S.eco.coins[0] >= 0,
       '남은 노출·미구매 적격 칸으로 6명까지 — 예비 재화가 자동 구매 비용을 보장한다');
-    ok(S.eco.shop.seq[0] === 6, '구매 3 + 자동 구매 3 = 진열 번호 6 — 새로 고침 0회 (진열 번호는 구매·새로 고침만 올린다)');
+    ok(snap.seq === 6, '구매 3 + 자동 구매 3 = 진열 번호 6 — 새로 고침 0회 (진열 번호는 구매·새로 고침만 올린다)');
     room._clearClock();
   }
 
-  // ===== 2. 배치 90초 — 직접 완료한 좌석만 받는다 · 만료 시 자동 배치·준비 =====
+  // ===== 2. #293 준비 180초 — 방에 하나인 서버 절대 마감 · 어떤 전이도 다시 세우거나 멈추지 않는다 (종전 S01 90초 + 배치 90초 대체) =====
+  const prepOf = (room) => [view(room, 0).clock, view(room, 1).clock];
+  const sameDeadline = (room, d) => prepOf(room).every((c) => c && c.key === 'prep' && c.running === true && c.deadline === d
+    && Number.isFinite(c.serverNow) && c.leftMs === Math.max(0, c.deadline - c.serverNow)) && room._prep.deadline === d;
   {
-    const room = ecoRoom(5, { placeMs: 80 });
+    const room = ecoRoom(5, { prepMs: 80 });
+    const d = room._prep.deadline;
+    ok(Number.isFinite(d) && sameDeadline(room, d), 'S01 이 열리면 양 좌석이 같은 prep 마감(서버 epoch ms)을 받는다 — key:prep · running · deadline · serverNow');
     finishStart(room, 0);
     const v = view(room, 0);
-    ok(v.shop.done && v.clock && v.clock.key === 'place' && v.clock.running, '직접 완료(shopDone) → 그 좌석만 배치 90초 시작');
-    ok(!room.seats[0].shopTimedOut && !room.seats[0].placed, '전제: 아직 배치 전');
+    ok(v.shop.done && sameDeadline(room, d), '직접 완료(shopDone) → 새 시계 없음 · 양 좌석 마감 그대로');
+    ok(!room.seats[0].placed, '전제: 아직 배치 전');
     await sleep(190);
-    ok(room.seats[0].placed && room.seats[0].ready && room._clock[0] && room._clock[0].expired && room._clock[0].deadline === null, '배치 만료 → 자동 배치·준비 · 시계는 만료 상태로 멈춘다(#284)');
-    ok(S0(room).pieces.filter((x) => x.owner === 0).every((x) => x.placed), '만료 좌석의 말은 모두 합법 위치에 놓인다');
-    ok(room.state === STATES.SETUP, '상대가 아직 S01 이면 경기는 시작되지 않는다');
-    finishStart(room, 1);
-    await sleep(190);
-    ok(room.state === STATES.IN_PROGRESS && S0(room).phase === 'play', '양측 준비 → 개시');
+    ok(room.seats.every((st) => st.placed && st.ready) && room._prep === null && room._clock.every((c) => c === null),
+      '준비 만료 → 양 좌석 자동 배치·준비 · 준비 시계 해제 · 좌석 시계 없음');
+    ok(S0(room).pieces.every((x) => x.placed), '만료 좌석의 말은 모두 합법 위치에 놓인다');
+    ok(S0(room).pieces.filter((x) => x.owner === 1 && x.type === 'minion' && x.rosterId).length === 6,
+      '아직 S01 이던 상대 좌석은 같은 만료에서 자동 구매로 필드 6칸을 채운다');
+    ok(room.state === STATES.IN_PROGRESS && S0(room).phase === 'play', '공통 만료 → 곧바로 개시 (새 90초가 걸리는 경로 없음)');
     room._clearClock();
   }
-  /* 경계: 배치만 보내고 준비를 안 누른 좌석 — 시한의 끝은 placed 가 아니라 **준비까지**다.
-     만료는 그 좌석이 고른 자리를 덮어쓰지 않고 준비만 세운다. */
+  /* 경계: 배치만 보내고 준비를 안 누른 좌석 — 만료는 그 좌석이 고른 자리를 덮어쓰지 않고 준비만 세운다. */
   {
-    const room = ecoRoom(50, { placeMs: 120 });
+    const room = ecoRoom(50, { prepMs: 120 });
+    const d = room._prep.deadline;
     finishStart(room, 0); finishStart(room, 1);
     const pos = H.makeSetup().pos;
     const sent = room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos });
     ok(sent.ok && room.seats[0].placed && !room.seats[0].ready, '전제: 배치만 보내고 준비는 안 눌렀다');
-    ok(room._clock[0] && room._clock[0].key === 'place' && room._clock[0].deadline != null,
-      '배치만 보낸 좌석의 배치 90초는 계속 흐른다 — 준비를 영영 안 눌러도 경기가 멈추지 않게');
+    ok(sameDeadline(room, d), '배치만 보낸 좌석도 같은 준비 마감이 계속 흐른다 — 준비를 영영 안 눌러도 경기가 멈추지 않게');
     await sleep(240);
     ok(room.seats[0].ready, '만료 → 준비까지 세운다');
     ok(JSON.stringify(room.seats[0].rawSetup.pos) === JSON.stringify(pos), '이미 보낸 배치는 무작위로 덮어쓰지 않는다');
+    ok(room.seats[1].placed && room.seats[1].ready && room.state === STATES.IN_PROGRESS, '배치 전이던 상대 좌석은 자동 배치 → 개시');
     room._clearClock();
   }
-  { // 배치를 다시 보내면 ready 가 풀리고 시한도 다시 선다
-    const room = ecoRoom(51, { placeMs: 60000 });
+  { // 배치·준비·배치 재전송 어느 것도 마감을 바꾸지 않는다
+    const room = ecoRoom(51, { prepMs: 60000 });
+    const d = room._prep.deadline;
     finishStart(room, 0);
     room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
     room.handleCommand(0, { t: 'ready' });
-    ok(room.seats[0].ready && room._clock[0] && room._clock[0].deadline === null, '배치·준비를 마치면 배치 시계는 멈춘다(#284)');
+    ok(room.seats[0].ready && sameDeadline(room, d), '배치·준비를 마쳐도 준비 시계는 멈추지 않고 마감도 그대로다(#293)');
     room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
-    ok(!room.seats[0].ready && room._clock[0] && room._clock[0].key === 'place', '배치를 다시 보내면 준비가 풀리고 배치 시계가 다시 선다');
+    ok(!room.seats[0].ready && sameDeadline(room, d), '배치를 다시 보내면 준비가 풀린다 — 마감은 다시 서지 않는다');
     room._clearClock();
   }
-  { // #284 준비 완료·취소를 반복해도 같은 좌석의 배치 잔여는 늘지 않고, 상대 좌석 시계는 건드리지 않는다
-    const room = ecoRoom(284, { placeMs: 60000 });
+  { // 준비 완료·취소를 반복해도 마감은 하나다 — 잔여는 늘지 않고, 준비 중에도 흐르고, 양 좌석이 같은 값을 본다
+    const room = ecoRoom(284, { prepMs: 60000 });
+    const d = room._prep.deadline;
     finishStart(room, 0); finishStart(room, 1);
-    const foe = room._clock[1], foeDeadline = foe.deadline;
     room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
     await sleep(30);
-    let prev = view(room, 0).clock.leftMs, grew = false, ranWhileReady = false;
+    let prev = view(room, 0).clock.leftMs, grew = false, same = sameDeadline(room, d), stoppedWhileReady = false;
     for (let i = 0; i < 3; i++) {
       room.handleCommand(0, { t: 'ready' });
       const r = view(room, 0).clock;
       await sleep(20);
       const r2 = view(room, 0).clock;
-      if (r.running || r2.running || r2.leftMs !== r.leftMs) ranWhileReady = true;
+      if (!r.running || !r2.running || r2.leftMs >= r.leftMs) stoppedWhileReady = true;
+      same = same && sameDeadline(room, d);
       room.handleCommand(0, { t: 'unready' });
       const u = view(room, 0).clock;
-      if (r.leftMs > prev || u.leftMs > r.leftMs || !u.running) grew = true;
+      if (r.leftMs > prev || u.leftMs > r2.leftMs || !u.running) grew = true;
       prev = u.leftMs;
+      same = same && sameDeadline(room, d);
       await sleep(10);
     }
-    /* 흐른 시간의 보장 하한은 sleep 30+10+10 = 50ms 다. 종전 `- 60` 은 그 하한을 넘어, 타이머가 정확한 Linux CI 에서
-       잔여가 59940±1 로 떨어져 간헐 실패했다(Windows 는 타이머 해상도 ~15ms 라 통과). 10ms 여유를 둔다. */
-    ok(!grew && prev < 60000 - 40,'준비 완료·취소 반복으로 배치 잔여가 늘지 않고 취소하면 그 잔여부터 다시 흐른다');
-    ok(!ranWhileReady, '준비 완료 동안 배치 시계는 멈춰 있다');
-    ok(room._clock[1] === foe && foe.deadline === foeDeadline, '상대 좌석의 배치 시계는 그대로다');
+    /* 흐른 시간의 보장 하한은 sleep 30 + (20+10)×3 − 마지막 10 = 110ms 지만 종전 단언의 여유(40ms)를 그대로 둔다. */
+    ok(!grew && prev < 60000 - 40, '준비 완료·취소 반복으로 준비 잔여가 늘지 않는다');
+    ok(!stoppedWhileReady, '#293 준비 완료 동안에도 준비 시계는 계속 흐른다(종전 #284 "준비 동안 정지" 대체)');
+    ok(same, '준비·준비 취소 전후로 양 좌석의 마감은 한 번도 바뀌지 않는다');
     room._clearClock();
   }
 
   // ===== 3. 행동 30초 — 미완료 보드 행동 1회 생략 · 늦은/중복 요청 거부 =====
   {
-    const room = ecoRoom(6, { shopMs: 60 });
+    const room = ecoRoom(6, { prepMs: 60 });
     await started(room); // 양측 S01 만료 → 자동 배치·개시
     ok(room.state === STATES.IN_PROGRESS, '전제: 경기 개시');
     const cur = S0(room).current, turn = S0(room).turnCount;
@@ -251,7 +273,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 4. 행동 30초 — 출전 후보 선택 포함(Q2=A) · 서버 대행 선택 · 전투 판정 중 정지 =====
   {
-    const room = ecoRoom(7, { shopMs: 60, actMs: 10000 });
+    const room = ecoRoom(7, { prepMs: 60, actMs: 10000 });
     await started(room);
     const cur = S0(room).current;
     const owned = new Set(S0(room).pieces.filter((p) => p.owner === cur && p.rosterId).map((p) => p.rosterId));
@@ -282,7 +304,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 5. 단절 60초 — 모든 게임 시계 정지 · 양측 입력·기권 금지 · 복구 뒤 잔여 시간 재개 =====
   {
-    const room = ecoRoom(8, { shopMs: 60, actMs: 4000, graceMs: 5000 });
+    const room = ecoRoom(8, { prepMs: 60, actMs: 4000, graceMs: 5000 });
     await started(room);
     const cur = S0(room).current, other = 1 - cur;
     await sleep(40);
@@ -305,19 +327,31 @@ function moveVia(room, seat, from, to) {
     ok(back && back.deadline != null && back.left === left, '복구 → 남은 시간 그대로 다시 흐른다');
     ok(room.handleCommand(cur, { t: 'resign' }).ok && room.state === STATES.FINISHED, '복구 뒤 기권은 종전대로 즉시 종료');
   }
-  { // 배치 90초도 같은 규칙으로 멈춘다
-    const room = ecoRoom(9, { placeMs: 4000, graceMs: 5000 });
+  { // #293 준비 180초는 단절 유예 중에도 흐른다 — 입력 잠금과 유예는 그대로, 재연결도 마감을 바꾸지 않는다
+    const room = ecoRoom(9, { prepMs: 4000, graceMs: 5000 });
+    const d = room._prep.deadline;
     finishStart(room, 0);
     await sleep(40);
     room.socketClosed(1);
-    const c = room._clock[0];
-    ok(c && c.key === 'place' && c.deadline === null && c.left > 0 && c.left < 4000, '단절 중에는 배치 90초도 남은 시간만 들고 멈춘다');
+    const a = view(room, 0).clock;
+    await sleep(30);
+    const b = view(room, 0).clock;
+    ok(room._prep.deadline === d && a.key === 'prep' && a.running && a.deadline === d && b.deadline === d && b.leftMs < a.leftMs,
+      '단절 중에도 준비 시계는 같은 마감으로 계속 흐른다');
+    const pv = view(room, 0);
+    ok(pv.pause && pv.pause.some((x) => x.seat === 1 && x.graceLeftMs > 0), '좌석 뷰에 재접속 유예가 보인다(유예 60초는 그대로)');
+    const rev = room.revision;
+    const blocked = room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
+    const blockedShop = shop(room, 1, 'shopBuy', { i: openSlot(view(room, 1)) });
+    ok(!blocked.ok && blocked.reason === 'E_PAUSED' && !blockedShop.ok && blockedShop.reason === 'E_PAUSED' && !room.seats[0].placed && room.revision === rev,
+      '단절 중 준비 구간 입력(배치·상점 거래)은 계속 거부된다 — 입력 잠금 유지');
     room.resumeSeat(1, room.seats[1].credential.current, fakeWs());
-    ok(room._clock[0] && room._clock[0].deadline != null, '복구 → 배치 시간도 다시 흐른다');
+    ok(sameDeadline(room, d), '재연결 → 마감은 다시 서지 않는다(양 좌석 같은 값)');
+    ok(room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos }).ok, '복구 뒤의 배치는 받아들인다');
     room._clearClock();
   }
   { // 진행 중 유예 만료 몰수 (#237 보존)
-    const room = ecoRoom(10, { shopMs: 60, actMs: 60000, graceMs: 50 });
+    const room = ecoRoom(10, { prepMs: 60, actMs: 60000, graceMs: 50 });
     await started(room);
     ok(room.state === STATES.IN_PROGRESS, '전제: 개시');
     room.socketClosed(1);
@@ -332,7 +366,7 @@ function moveVia(room, seat, from, to) {
     ok(room.state === STATES.CANCELED, '경기 전(S01) 유예 만료 → 취소 보존');
   }
   {
-    const room = ecoRoom(12, { shopMs: 60, actMs: 60000, graceMs: 60 });
+    const room = ecoRoom(12, { prepMs: 60, actMs: 60000, graceMs: 60 });
     await started(room);
     // "동시" = 기록된 만료 시각이 같은 ms 다. 두 호출이 ms 경계를 넘으면 FORFEIT 가 되므로(간헐 실패) 그 순간의 시각을 고정한다.
     const realNow = Date.now, t = realNow();
@@ -344,7 +378,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 6. Q1=A — 공동 1위 왕국 추첨은 좌석당 1회, 왕·동료 3명이 공유 =====
   {
-    const room = ecoRoom(13, { shopMs: 60 });
+    const room = ecoRoom(13, { prepMs: 60 });
     await started(room);
     const order = room.engines[0].V2_ELEM_ORDER;
     for (const p of [0, 1]) {
@@ -361,7 +395,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 7. T1 — 빈손 만료는 평범한 턴 종료다. 강제 전투 표식이 남아 있어도 턴 넘기기를 거부하지 않는다 =====
   {
-    const room = ecoRoom(14, { shopMs: 60 });
+    const room = ecoRoom(14, { prepMs: 60 });
     await started(room);
     const cur = S0(room).current, turn = S0(room).turnCount;
     /* 이행할 수 없는 강제 표식(움직인 말이 없다) — 종전에는 Core endTurn 이 거부해 그 좌석이 차례를 쥔 채 멈췄다.
@@ -377,7 +411,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 8. T2 — 적격 강제 대상이 하나면 선택창 없이 곧바로 전투 · 30초를 새로 세지 않는다 =====
   {
-    const room = ecoRoom(15, { shopMs: 60, actMs: 10000 });
+    const room = ecoRoom(15, { prepMs: 60, actMs: 10000 });
     await started(room);
     const f = forcedBoard(room, 1);
     const before = room._act; // 같은 시계인지는 객체 정체성으로 본다(_tick 은 키가 같으면 그 객체를 그대로 들고 간다)
@@ -394,7 +428,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 9. T3 — 적격 대상 2개 이상: 이동 완료 직후 새 30초 · 만료 시 균등 권위 난수 1회로 자동 선택 =====
   {
-    const room = ecoRoom(16, { shopMs: 60, actMs: 10000 });
+    const room = ecoRoom(16, { prepMs: 60, actMs: 10000 });
     await started(room);
     const f = forcedBoard(room, 2);
     const board = room._act;
@@ -449,7 +483,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 10. 강제 전투 큐(텔레포트 두 이동)는 만료에서도 순서대로 처리되고 막히지 않는다 =====
   {
-    const room = ecoRoom(17, { shopMs: 60, actMs: 10000 });
+    const room = ecoRoom(17, { prepMs: 60, actMs: 10000 });
     await started(room);
     const f = forcedBoard(room, 1);
     // 주 행동을 이미 쓴 뒤 큐에 남은 둘째 항목 — 스왑 직후 첫 항목이 이미 처리된 상태의 모양 그대로다
@@ -466,7 +500,7 @@ function moveVia(room, seat, from, to) {
     room._clearClock();
   }
   { // 큐 항목이 전부 면제(대상 소멸)면 턴이 막히지 않고 넘어간다
-    const room = ecoRoom(18, { shopMs: 60, actMs: 10000 });
+    const room = ecoRoom(18, { prepMs: 60, actMs: 10000 });
     await started(room);
     const f = forcedBoard(room, 1);
     both(room, (E) => {
@@ -484,7 +518,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 11. B02 — 출전 후보 선택이 방어자 단계로 넘어가면 시계도 따라가되 다시 세지 않는다 =====
   {
-    const room = ecoRoom(19, { shopMs: 60, actMs: 10000 });
+    const room = ecoRoom(19, { prepMs: 60, actMs: 10000 });
     await started(room);
     const cur = S0(room).current, foeSeat = 1 - cur;
     const owned = new Set(S0(room).pieces.filter((p) => p.rosterId).map((p) => p.rosterId));
@@ -510,7 +544,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 12. T4 전투 행동 60초 — 쓸 수 있는 기술이 있어도 그 행동 1회만 건너뛰고 전투는 계속된다 =====
   {
-    const room = ecoRoom(20, { shopMs: 60, actMs: 10000, battleMs: 8000 });
+    const room = ecoRoom(20, { prepMs: 60, actMs: 10000, battleMs: 8000 });
     await started(room);
     H.openBattle(room);
     room._syncClock(); // 픽스처는 엔진을 직접 다룬다 — 시계는 그 뒤에 맞춘다
@@ -557,7 +591,7 @@ function moveVia(room, seat, from, to) {
      "보드 12초가 남은 상태에서 이동이 대상 2개를 만들면 새 30초, 27초를 쓰고 고르면 B02 는 남은 3초로 응답하고,
       전투가 끝나면 보드는 12초부터 이어진다." 세 시각이 서로를 침범하지 않는지 값으로 대조한다. */
   {
-    const room = ecoRoom(21, { shopMs: 60, actMs: 10000 });
+    const room = ecoRoom(21, { prepMs: 60, actMs: 10000 });
     await started(room);
     const foeSeat = 1 - S0(room).current;
     const owned = new Set(S0(room).pieces.filter((p) => p.rosterId).map((p) => p.rosterId));
@@ -601,7 +635,7 @@ function moveVia(room, seat, from, to) {
 
   // ===== 14. T4 경계 — 개봉 표를 열어도 60초는 그대로 · 추가 공격 단계의 만료도 그 행동만 건너뛴다 =====
   {
-    const room = ecoRoom(22, { shopMs: 60, actMs: 10000, battleMs: 8000 });
+    const room = ecoRoom(22, { prepMs: 60, actMs: 10000, battleMs: 8000 });
     await started(room);
     H.openBattle(room);
     room._syncClock();
@@ -636,7 +670,7 @@ function moveVia(room, seat, from, to) {
      매번 보는 것 셋: 늦은 입력이 E_DEADLINE 으로 떨어진다 · 상태·revision·시계가 하나도 안 바뀐다 ·
      걸려 있던 만료는 예정대로 **한 번** 돈다. */
   { // 보드 행동 30초
-    const room = ecoRoom(23, { shopMs: 60, actMs: 60000 });
+    const room = ecoRoom(23, { prepMs: 60, actMs: 60000 });
     await started(room);
     const cur = S0(room).current, c = room._act;
     ok(c && c.deadline != null && !c.expired && c.handle, '전제: 보드 30초가 콜백을 건 채 흐른다');
@@ -654,7 +688,7 @@ function moveVia(room, seat, from, to) {
     room._clearClock();
   }
   { // 강제 전투 대상 선택 30초 (T3)
-    const room = ecoRoom(24, { shopMs: 60, actMs: 60000 });
+    const room = ecoRoom(24, { prepMs: 60, actMs: 60000 });
     await started(room);
     const f = forcedBoard(room, 2);
     moveVia(room, f.cur, f.from, f.to);
@@ -671,7 +705,7 @@ function moveVia(room, seat, from, to) {
     room._clearClock();
   }
   { // 전투 행동 60초 (T4)
-    const room = ecoRoom(25, { shopMs: 60, actMs: 60000, battleMs: 60000 });
+    const room = ecoRoom(25, { prepMs: 60, actMs: 60000, battleMs: 60000 });
     await started(room);
     H.openBattle(room);
     room._syncClock();
@@ -688,11 +722,14 @@ function moveVia(room, seat, from, to) {
     ok(c.expired && (S0(room).battle.actSeq || 0) > seq, '걸려 있던 전투 만료는 예정대로 그 행동 하나를 건너뛴다');
     room._clearClock();
   }
-  { // 배치 90초 — 늦은 배치·준비도 같은 문에서 떨어진다. 서버 자신의 자동 배치는 그 문을 지나지 않는다.
-    const room = ecoRoom(26, { placeMs: 60000 });
-    finishStart(room, 0);
-    const c = room._clock[0];
-    ok(c && c.key === 'place' && c.deadline != null && !c.expired, '전제: 배치 90초가 흐른다');
+  { // 준비 180초(#293) — 늦은 배치·준비·준비 취소·상점 거래도 같은 문에서 떨어진다. 서버 자신의 자동 배치는 그 문을 지나지 않는다.
+    const room = ecoRoom(26, { prepMs: 60000 });
+    finishStart(room, 0); finishStart(room, 1);
+    const pos1 = H.makeSetup().pos;
+    room.handleCommand(1, { t: 'setup', roster: S0(room).roster[1].slice(), pos: pos1 });
+    room.handleCommand(1, { t: 'ready' });
+    const c = room._prep;
+    ok(c && c.deadline != null && !c.expired && room.seats[1].ready, '전제: 준비 시계가 흐르고 좌석 1 은 준비 완료');
     c.deadline = Date.now() - 1;
     const rev = room.revision;
     const lateSetup = room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
@@ -701,22 +738,32 @@ function moveVia(room, seat, from, to) {
       '마감을 넘긴 배치·준비는 콜백 전이어도 거부된다');
     ok(!room.seats[0].placed && !room.seats[0].ready && !room.seats[0].rawSetup && room.revision === rev && !c.expired,
       '거부는 좌석 배치·준비·revision 을 바꾸지 않는다');
-    room._onClock(0, 'place');
-    ok(c.expired && room.seats[0].placed && room.seats[0].ready && room._clock[0] === c,
-      '걸려 있던 배치 만료는 예정대로 자동 배치·준비를 끝낸다 — 서버 자신의 배치는 이 문에 막히지 않는다');
-    const lateUnready = room.handleCommand(0, { t: 'unready' });
-    ok(!lateUnready.ok && lateUnready.reason === 'E_DEADLINE' && room.seats[0].ready, '#284 만료 뒤 준비 취소로 새 90초를 받을 수 없다');
+    const lateUnready = room.handleCommand(1, { t: 'unready' });
+    ok(!lateUnready.ok && lateUnready.reason === 'E_DEADLINE' && room.seats[1].ready && room.revision === rev, '만료 뒤 준비 취소로 새 시간을 받을 수 없다');
+    room._onPrep(); // setTimeout 이 부르는 그 진입점
+    ok(c.expired && room.seats[0].placed && room.seats[0].ready && room.state === STATES.IN_PROGRESS,
+      '걸려 있던 준비 만료는 예정대로 자동 배치·준비를 끝내고 개시한다 — 서버 자신의 배치는 이 문에 막히지 않는다');
+    ok(JSON.stringify(room.seats[1].rawSetup.pos) === JSON.stringify(pos1), '이미 준비를 마친 좌석의 배치는 만료가 건드리지 않는다');
+    const after = room.revision;
+    room._onPrep();
+    ok(room.revision === after && room.state === STATES.IN_PROGRESS, '같은 만료가 두 번 실행되지 않는다');
+    room._clearClock();
   }
-  { // 멈춘 시계는 시한 대조에 걸리지 않는다 — 정지 중에는 deadline 이 없고 남은 시간만 보존된다
-    const room = ecoRoom(27, { placeMs: 120, graceMs: 5000 });
+  { // #293 단절 중에 준비 180초가 먼저 끝나면 서버가 양 좌석을 자동 마무리해 개시한다 — 경기 중 시계는 종전대로 단절 동안 멈춘다
+    const room = ecoRoom(27, { prepMs: 120, graceMs: 5000 });
     finishStart(room, 0);
     room.socketClosed(1);
-    const c = room._clock[0];
-    ok(c && c.key === 'place' && c.deadline === null && !c.expired, '전제: 단절로 배치 시계가 남은 시간만 들고 멈췄다');
-    await sleep(180); // 멈춰 있는 동안 벽시계로는 원래 시한을 넘겼다
+    ok(room._prep && room._prep.deadline != null && !room._prep.expired, '전제: 단절 중에도 준비 마감이 걸려 있다');
+    await started(room);
+    ok(room.seats.every((st) => st.placed && st.ready) && S0(room).pieces.every((x) => x.placed), '단절 좌석 포함 양 좌석 자동 구매·자동 배치·준비');
+    const act = room._act;
+    ok(act && act.deadline === null && act.handle === null && view(room, 0).pause && view(room, 0).pause.some((x) => x.seat === 1),
+      '개시 뒤 행동 30초는 단절 동안 멈춰 있고 재접속 유예가 이어진다(다른 시계의 단절 정지 규칙 불변)');
+    const cur = S0(room).current;
+    const board = room._handleAction(cur, { baseRevision: room.revision, action: { t: 'skipMain' } });
+    ok(!board.ok && board.reason === 'E_PAUSED', '단절 중 게임 입력은 계속 거부된다');
     room.resumeSeat(1, room.seats[1].credential.current, fakeWs());
-    const back = room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos: H.makeSetup().pos });
-    ok(back.ok && room.seats[0].placed, '복구 뒤의 배치는 받아들인다 — 멈춰 있던 동안 지난 시간은 시한을 깎지 않는다');
+    ok(room._act && room._act.deadline != null, '복구 → 행동 시계가 흐른다');
     room._clearClock();
   }
 

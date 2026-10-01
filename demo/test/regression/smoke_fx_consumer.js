@@ -252,7 +252,7 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   ok(!/netFxReducedMotion/.test(T.html),"I3 JS 표시 시간은 움직임 설정으로 줄이지 않는다(원본과 같은 시간·문구 유지)");
 }
 
-/* ===== J. #262 (CJ 2026-09-27) 경제방 HP — 전투원은 양쪽 실제 현재/최대(% 없음) · 보드 상대 말은 전투 노출(hpSeen) 전 N%, 뒤 실제 현재 HP ===== */
+/* ===== J. #262 (CJ 2026-09-27) 경제방 HP — 전투원은 양쪽 실제 현재/최대(% 없음) · 보드 상대 말은 정체가 공개되면 실제 현재 HP (#293 2026-10-01 CJ 6: 전투 노출 전 N% 표기 폐지) ===== */
 {
   const T=seated(0);
   const eco={coins:0,tickets:0,buffInv:{},soldHp:{},bag:[]};
@@ -271,7 +271,7 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   const opp=(hp,maxHp,extra)=>Object.assign({id:"u-o1",r:4,c:4,owner:1,alive:true,immobile:0,type:"minion",name:"불꽃도마뱀",element:"fire",hp,maxHp,healing:false,rosterId:null},extra||{});
   const board=u=>{ const b=view(T,{units:[u]}); b.you.eco=eco; msg(T,{v:1,type:"room_state",data:b}); T.drain(); const p=T.S.pieces.find(x=>x.owner===1); return T.pcInfoHtml(p)+"|"+T.pcLabel(p); };
   const b1=board(opp(57,100)), b2=board(opp(45,120,{hpSeen:true}));
-  ok(/>57%</.test(b1)&&/HP 57%$/.test(b1),"J5 전투 노출 전 공개 상대 말은 종전 N% 유지: "+b1);
+  ok(/>57</.test(b1)&&/HP 57$/.test(b1)&&!/%|\/100/.test(b1),"J5 전투 노출 전 공개 상대 말도 실제 현재 HP 만(% 표기 폐지 · #293): "+b1);
   ok(/>45</.test(b2)&&/HP 45$/.test(b2)&&!/%|\/120|\/100/.test(b2),"J6 전투 노출(hpSeen) 뒤 보드는 실제 현재 HP 만(% · N/100 없음): "+b2);
 }
 

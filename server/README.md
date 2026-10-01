@@ -184,8 +184,10 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
 #### 경기 결과 S04 `final` (#238)
 
 - `room_state.data.final` 은 **`FINISHED` 뷰에만** 실린다(그 전·`CANCELED`·`VOID` 에는 키 자체가 없다). `{sides:[좌석0, 좌석1]}`,
-  각 `{seat, pieces:[필드 9칸 — 사망 포함], bag:[가방 0~3], syn}`. 말 = `{type, rosterId, name, element, alive, hp, maxHp, hpSeen?}` 뿐 —
-  별칭·위치·등급·스킬·원장은 없다. 상대 HP 는 보드와 같은 규칙(싸운 개체 `hpSeen` 만 실제값, 나머지 100 눈금).
+  각 `{seat, pieces:[필드 9칸 — 사망 포함], bag:[가방 0~3], syn}`. 말 = `{type, rosterId, name, element, alive, hp, maxHp, grade, hpSeen?, allyKind?}` 뿐 —
+  별칭·위치·스킬·원장은 없다. #293: 종료 리빌이라 양측 모두 실제 HP/최대 HP 와 등급(`grade` — 하수인만, 왕·동료는 `null`)이다(100 눈금 폐지).
+  `allyKind`(`assassin`/`shield`)는 동료 말 중 **받는 좌석이 이미 아는 역할**에만 실린다 — 자기 동료, 또는 AS-/SH- 기술이 이미 공개된 상대 동료.
+  모르는 상대 동료에는 키 자체가 없다(`skills`·`revealedSkills` 는 싣지 않는다).
 - `syn` 은 Core `synView(seat, S)` 복제 그대로다(`el`·`arch`·`dead`·`stage`·`bonus`). 클라이언트는 다시 계산하지 않는다.
   가방 포함은 CJ '양측 하수인 전체'에 대한 PD·Venus 해석(2026-09-28)이다.
 - S01 상품 8종(#238)은 Core `ECO.startGoods`(demo/js/data.js)가 판정한다 — 서버에 별도 허용 목록은 없다.

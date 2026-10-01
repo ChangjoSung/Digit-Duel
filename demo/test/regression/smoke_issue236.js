@@ -599,11 +599,11 @@ function proxyBattle(T,win){
   const T=pvePlay(111), S=T.S; endTurnAt(T,20);
   const u=unit(T,T.ROSTER.find(r=>!ownKeys(T,0).includes(r.id)).id,2,2); S.eco.bag[0]=[u];
   const c=S.eco.coins[0];
+  /* #293 (2026-10-01 CJ 5): 가방·필드 판매는 확인 창이 없다 — [판매]를 누르는 순간 요청 1회. 승급·티켓 확인 창은 그대로다 */
   T.__shop("sell",u.uid);
-  const bs=T.byId("obBtns").children, btn=bs[bs.length-2]; // 확인 창의 [판매] (스텁은 이전 창 버튼을 남기므로 끝에서 센다)
-  ok(btn&&btn.textContent==="판매","판매 확인 팝업 1회");
-  btn.onclick(); btn.onclick();
-  eq(S.eco.coins[0],c+2,"AC36 확인 버튼은 누르는 순간 잠긴다 — 연타해도 1회");
+  ok(!S.eco.bag[0].some(x=>x.uid===u.uid)&&!/판매 확인/.test(T.byId("overlayBox").innerHTML),"판매는 확인 창 없이 즉시 1회");
+  T.__shop("sell",u.uid); T.__shop("sell",u.uid);
+  eq(S.eco.coins[0],c+2,"AC36 판매는 누르는 순간 확정된다 — 연타해도 1회");
   ok(/시작 상점|턴 상점/.test(T.shopHtml(0))&&T.shopViewer()===0,"H 기능형 상점 화면이 소유자 시점으로 그려진다");
 }
 
@@ -664,7 +664,8 @@ function proxyBattle(T,win){
   ok(v.pending.length===3&&/미선택/.test(T.shopHtml(0)),"AC46 속성을 고르지 않은 왕·동료는 0 으로 세고 '미선택' 표시");
   const before=T.shopHtml(0);
   act(T,{t:"leaderEl",player:0,pieceId:king.id,el:"fire"}); v=T.ecoSynView(S,0);
-  ok(v.el.fire===3&&v.pending.length===2&&T.shopHtml(0).includes("불 3칸 · (2) 달성 · (4)까지 1칸")&&T.shopHtml(0)!==before,"AC46 왕 🔥 선택 → 불 3칸 · (2) 달성 · (4)까지 1칸");
+  T.render(); // #293 (2026-10-01 CJ): S01 시너지 칩은 상점 본문(shopHtml)이 아니라 같은 화면의 우측 시너지 열에 있다 — 그려진 화면에서 같은 문구를 본다
+  ok(v.el.fire===3&&v.pending.length===2&&T.byId("sidePanel").innerHTML.includes("불 3칸 · (2) 달성 · (4)까지 1칸")&&T.shopHtml(0)!==before,"AC46 왕 🔥 선택 → 불 3칸 · (2) 달성 · (4)까지 1칸");
   refusedClean(T,{t:"leaderEl",player:0,pieceId:king.id,el:"nope"},"AC47 거부 요청은 상태 불변"); eq(T.ecoSynView(S,0).el.fire,3,"AC47 거부 요청 뒤 집계 불변");
   /* 필드를 마저 채우고 가방에 불 하수인 → 가방은 세지 않는다 */
   for(let n=0;n<12&&T.ecoEmptyField(S,0).length;n++){ const i=T.ecoBuyable(S,0); act(T,i<0?{t:"shopRefresh",player:0,seq:E(T).shop.seq[0]}:{t:"shopBuy",player:0,i,seq:E(T).shop.seq[0]}); }
@@ -692,7 +693,8 @@ function proxyBattle(T,win){
   S.eco.bag[0]=[unit(T,other.id,alive.grade,1)]; const e0=T.ecoSynView(S,0).el, outEl=alive.element;   // 커밋은 말 객체를 제자리 갱신하므로 먼저 적어 둔다
   act(T,{t:"shopSwap",player:0,pieceId:alive.id,uid:S.eco.bag[0][0].uid}); const e1=T.ecoSynView(S,0).el;
   ok(e1[other.element]===e0[other.element]+1&&e1[outEl]===e0[outEl]-1,"AC47 교체 확정 → 속성 칸 수 즉시 반영");
-  T.__shop("sell",S.eco.bag[0][0].uid); ok(JSON.stringify(T.ecoSynView(S,0).el)===JSON.stringify(e1),"AC47 판매 확인 창(미확정)만으로는 집계 불변");
+  T.__shop("ticket"); ok(JSON.stringify(T.ecoSynView(S,0).el)===JSON.stringify(e1),"AC47 티켓 선택 창(미확정)만으로는 집계 불변"); T.closeModal(); // #293: 판매 확인 창은 없어졌다 — 남은 미확정 창(티켓)으로 같은 불변을 본다
+  T.__shop("sell",S.eco.bag[0][0].uid); ok(S.eco.bag[0].length===0&&JSON.stringify(T.ecoSynView(S,0).el)===JSON.stringify(e1),"AC47 가방 판매(확인 창 없이 즉시)는 필드 속성 집계를 바꾸지 않는다");
 }
 { /* AC48 소유자 전용 — 상대 칸은 내 현황에 없고 · 핫시트 가림 화면에는 현황이 없다 */
   const T=hotseatPlay(18), S=T.S; endTurnAt(T,20);
@@ -705,7 +707,8 @@ function proxyBattle(T,win){
   ok(!/ecoSynView|shopSynHtml/.test(T.aiShop.toString()),"AC48 AI 상점 판단은 시너지 현황을 입력으로 쓰지 않는다");
 }
 
-/* ===== Q. 상점 90초 — 사람 좌석마다, 자기 상점이 보이는 순간부터 (2026-09-24 CJ D1 · AC39 · AC40) =====
+/* ===== Q. 정기 상점 90초 — 사람 좌석마다, 자기 상점이 보이는 순간부터 (2026-09-24 CJ D1 · AC39 · AC40) =====
+   시작 상점(S01)은 #293 (2026-10-01 CJ 1)로 **공통 준비 180초 하나**다 — 상점·배치·핫시트 두 사람이 같은 마감을 쓰고 가림·차례 넘김에 다시 걸리지도 멈추지도 않는다.
    하네스 스텁 타이머는 지연을 무시하므로 여기서만 가짜 시계(Date.now·setTimeout·clearTimeout)를 건다. 경과는 adv(ms) 로만 흐른다. */
 {
   const saved={st:global.setTimeout,ct:global.clearTimeout,si:global.setInterval,ci:global.clearInterval,now:Date.now};
@@ -715,41 +718,48 @@ function proxyBattle(T,win){
   Date.now=()=>C.now;
   const adv=ms=>{ const end=C.now+ms; for(;;){ const due=C.q.filter(x=>x.at<=end).sort((a,b)=>a.at-b.at||a.id-b.id)[0]; if(!due) break;
     C.q=C.q.filter(x=>x!==due); C.now=due.at; due.fn(); } C.now=end; };
-  const S90=90000;
+  const S90=90000, S180=180000;
   const boot=(mode,opts)=>{ const T=load(); arm(); T.FX.force=true; if(T.TUT.open) T.tutClose(); C.q=[]; T.startMode(mode,opts); return T; };
   const covered=T=>T.byId("overlay").classList.contains("handoff");
   const confirm=T=>{ const k=T.byId("obBtns").children, b=k.slice().reverse().find(x=>/확인 — 시작/.test(x.textContent)); ok(!!b,"Q 가림 확인 버튼"); k.length=0; if(b) b.onclick(); };
   try{
-    /* Q1 PVE (회귀): S01 이 그려지는 순간부터 90초 · 다시 그려도 마감 유지 · 만료 = 자동 구매 완료 */
+    /* Q1 PVE: S01 이 그려지는 순간부터 공통 준비 180초(ECO.prepSec) · 다시 그려도 마감 유지 · 만료 = 자동 구매 완료 */
     { const T=boot("pve",{aiLevel:"grade5"}), S=T.S;
-      eq(T.byId("shopClock").textContent,"⏱ 90초","Q1 PVE S01 표시 즉시 남은 시간 90초");
-      adv(40000); T.render(); T.render(); ok(T.shopHtml(0).includes("⏱ 50초"),"Q1 다시 그리기는 마감을 되돌리지 않는다 (남은 50초)");
-      adv(S90-40000-1); ok(!S.eco.shop.done[0],"Q1 PVE S01 89.999초엔 진행 중");
-      /* #263 (2026-09-25 CJ): 만료 좌석은 자동 구매에 이어 **자동 배치·준비**까지 그 자리에서 끝난다 — 배치 90초를 다시 걸지 않는다 */
+      eq(T.ECO.prepSec,180,"Q1 준비 시간 상수 = 180초");
+      eq(T.byId("prepClock").textContent,"⏱ 180초","Q1 PVE S01 표시 즉시 남은 시간 180초");
+      adv(40000); T.render(); T.render(); ok(T.byId("sidePanel").innerHTML.includes("⏱ 140초"),"Q1 다시 그리기는 마감을 되돌리지 않는다 (남은 140초)");
+      adv(S180-40000-1); ok(!S.eco.shop.done[0],"Q1 PVE S01 179.999초엔 진행 중 (90초에 끝나지 않는다)");
+      /* #263 (2026-09-25 CJ): 만료 좌석은 자동 구매에 이어 **자동 배치·준비**까지 그 자리에서 끝난다 */
       adv(1); ok(T.ecoEmptyField(S,0).length===0&&!S.pieces.some(x=>x.owner===0&&!x.placed)&&S.phase==="play",
-        "Q1 PVE S01 90초 만료 → 빈 필드 자동 구매 · 자동 배치 · 곧바로 준비(경기 시작)");
+        "Q1 PVE S01 180초 만료 → 빈 필드 자동 구매 · 자동 배치 · 곧바로 준비(경기 시작)");
       /* 정기 상점: 확정 거래 보존 · 미확정 확인 창 취소 */
       const P=S; P.current=0; P.mainUsed=false; P.battlesUsed=0; P.forcedTargets=[]; P.forcedQueue=[]; P.movedPiece=null;
       C.q=[]; endTurnAt(T,20); ok(S.phase==="shop"&&!S.eco.shop.done[0]&&S.eco.shop.done[1],"Q1 PVE 20턴 상점 — AI 즉시 완료, 사람 대기");
       const u=unit(T,T.ROSTER.find(r=>!ownKeys(T,0).includes(r.id)).id,2,2); S.eco.bag[0]=[u];
-      adv(10000); const c0=S.eco.coins[0]; act(T,{t:"shopGood",player:0,item:"ball"}); T.__shop("sell",u.uid);   // 볼 = 확정 · 판매 = 확인 창만
+      adv(10000); const c0=S.eco.coins[0]; act(T,{t:"shopGood",player:0,item:"ball"}); T.__shop("ticket");   // 볼 = 확정 · 티켓 선택 창 = 미확정(#293: 판매 확인 창은 없어졌다)
       adv(S90-10000-1); ok(S.phase==="shop","Q1 PVE 정기 상점 89.999초엔 진행 중");
-      adv(1); ok(S.phase==="play"&&S.eco.coins[0]===c0-1&&S.eco.bag[0].includes(u)&&S.balls[0]===2,"Q1 PVE 만료 → 확정 구매 보존 · 미확정 판매 취소 · 상점 종료");
+      adv(1); ok(S.phase==="play"&&S.eco.coins[0]===c0-1&&S.eco.bag[0].includes(u)&&S.balls[0]===2,"Q1 PVE 만료 → 확정 구매 보존 · 미확정 창 취소(가방·티켓 그대로) · 상점 종료");
     }
-    /* Q2 핫시트 S01: P1 표시 순간 90초 → 가림(시간 불산입) → 가림 확인 뒤 P2 90초 */
+    /* Q2 핫시트 S01: 두 사람이 **180초 하나**를 함께 쓴다 — P1 이 30초에 직접 끝내면 P2 는 남은 시간뿐이고, 가림이 떠 있어도 그대로 흐른다 */
+    { const H2=boot("pvp"), G=H2.S;
+      eq(H2.byId("prepClock").textContent,"⏱ 180초","Q2 P1 S01 표시 즉시 공통 180초 시작");
+      adv(30000);
+      for(let n=0;n<6;n++) act(H2,{t:"shopBuy",player:0,i:H2.ecoBuyable(G,0),seq:G.eco.shop.seq[0]});
+      act(H2,{t:"shopDone",player:0}); H2.render();
+      ok(H2.byId("sidePanel").innerHTML.includes("⏱ 150초"),"Q2 P1 상점 완료 → 배치로 넘어가도 새 90초 없이 같은 마감 (남은 150초)");
+      H2.netAction({t:"auto"}); H2.netAction({t:"setupDone"});
+      ok(covered(H2)&&G.setupPlayer===1,"Q2 P1 배치 확정 → P2 가림");
+      adv(100000); ok(G.phase==="setup"&&!G.eco.shop.done[1],"Q2 가림 중에도 같은 시계가 흐른다 — 130초엔 아직 만료 전");
+      confirm(H2); ok(!covered(H2),"Q2 가림 확인 → P2 상점 표시");
+      eq(H2.byId("prepClock").textContent,"⏱ 50초","Q2 P2 는 새 180초가 아니라 남은 50초 (재발급·정지 없음)");
+      adv(50000-1); ok(!G.eco.shop.done[1]&&G.phase==="setup","Q2 179.999초엔 P2 진행 중");
+      adv(1); ok(H2.ecoEmptyField(G,1).length===0&&!G.pieces.some(x=>!x.placed)&&G.phase==="play","Q2 180초 만료 → P2 자동 구매 · 자동 배치 · 경기 시작"); }
+    /* 아무도 끝내지 못한 채 만료 — 두 좌석을 차례로 자동 마무리해 시작한다 */
     const T=boot("pvp"), S=T.S;
     ok(!covered(T)&&S.setupPlayer===0,"Q2 P1 S01 은 첫 화면에서 바로 보인다");
-    eq(T.byId("shopClock").textContent,"⏱ 90초","Q2 P1 S01 표시 즉시 90초 시작");
-    adv(S90-1); ok(!S.eco.shop.done[0],"Q2 P1 S01 89.999초엔 진행 중");
-    adv(1); ok(T.ecoEmptyField(S,0).length===0&&!S.pieces.some(x=>x.owner===0&&!x.placed),"Q2 P1 S01 90초 만료 → 자동 구매 · 자동 배치");
-    ok(covered(T)&&S.setupPlayer===1,"Q2 P1 은 그 자리에서 준비까지 끝나 곧바로 P2 가림 (#263 배치 90초 재발행 없음)");
-    T.render(); T.render();                                              // 가림 뒤에서 다시 그려져도 P2 시간은 시작하지 않는다
-    adv(10*S90); ok(!S.eco.shop.done[1]&&T.ecoEmptyField(S,1).length===6,"Q2 가림이 15분 떠 있어도 P2 S01 은 만료되지 않는다 (가림 불산입)");
-    confirm(T); ok(!covered(T),"Q2 가림 확인 → P2 상점 표시");
-    eq(T.byId("shopClock").textContent,"⏱ 90초","Q2 P2 S01 은 가림 확인 뒤 표시 순간부터 90초");
-    adv(45000); T.render(); adv(S90-45000-1); ok(!S.eco.shop.done[1],"Q2 P2 S01 89.999초엔 진행 중 (중간 다시 그리기 무관)");
-    adv(1); ok(T.ecoEmptyField(S,1).length===0&&!S.pieces.some(x=>x.owner===1&&!x.placed),"Q2 P2 S01 90초 만료 → 자동 구매 · 자동 배치");
-    ok(S.phase==="play","Q2 P2 도 곧바로 준비 → 두 좌석 배치 확정으로 경기 시작 (#263)");
+    adv(S180-1); ok(!S.eco.shop.done[0]&&!S.eco.shop.done[1],"Q2 179.999초엔 두 좌석 모두 진행 중");
+    adv(1); ok(T.ecoEmptyField(S,0).length===0&&T.ecoEmptyField(S,1).length===0&&!S.pieces.some(x=>!x.placed),"Q2 180초 만료 → 두 좌석 자동 구매 · 자동 배치");
+    ok(S.phase==="play","Q2 두 좌석 배치 확정으로 경기 시작");
     /* Q3 핫시트 정기 상점 (20턴 P2 먼저): 가림 대기 불산입 · 좌석마다 새 90초 · 확정 보존 / 미확정 취소 */
     confirm(T); S.current=0; S.mainUsed=false; S.battlesUsed=0; S.forcedTargets=[]; S.forcedQueue=[]; S.movedPiece=null;
     endTurnAt(T,20); const first=S.eco.shop.active, second=1-first;
@@ -758,9 +768,9 @@ function proxyBattle(T,win){
     confirm(T); eq(T.byId("shopClock").textContent,"⏱ 90초","Q3 첫 좌석 가림 확인 → 90초 시작");
     const u=unit(T,T.ROSTER.find(r=>!ownKeys(T,first).includes(r.id)).id,2,2); S.eco.bag[first]=[u];
     adv(20000); const c1=S.eco.coins[first], b1=S.balls[first];
-    act(T,{t:"shopGood",player:first,item:"ball"}); T.__shop("sell",u.uid);             // 확정 구매 1 + 열린 판매 확인 창
+    act(T,{t:"shopGood",player:first,item:"ball"}); T.__shop("ticket");                 // 확정 구매 1 + 열린 티켓 선택 창(미확정 — #293: 판매 확인 창은 없어졌다)
     adv(S90-20000-1); ok(!S.eco.shop.done[first],"Q3 첫 좌석 89.999초엔 진행 중 (거래·다시 그리기 뒤에도 마감 유지)");
-    adv(1); ok(S.eco.shop.done[first]&&S.eco.coins[first]===c1-1&&S.balls[first]===b1+1&&S.eco.bag[first].includes(u),"Q3 첫 좌석 만료 → 확정 구매 보존 · 미확정 판매 취소");
+    adv(1); ok(S.eco.shop.done[first]&&S.eco.coins[first]===c1-1&&S.balls[first]===b1+1&&S.eco.bag[first].includes(u),"Q3 첫 좌석 만료 → 확정 구매 보존 · 미확정 창 취소(가방 그대로)");
     ok(S.phase==="shop"&&S.eco.shop.active===second&&covered(T),"Q3 만료 뒤 가림을 거쳐 다음 좌석");
     adv(10*S90); ok(!S.eco.shop.done[second],"Q3 둘째 좌석 가림 대기 불산입 (앞 좌석 시계 누수 없음)");
     confirm(T); eq(T.byId("shopClock").textContent,"⏱ 90초","Q3 둘째 좌석도 자기 상점 표시 순간부터 새 90초");
@@ -772,10 +782,10 @@ function proxyBattle(T,win){
     confirm(T); adv(30000); act(T,{t:"shopDone",player:f2}); confirm(T);             // P1 30초에 완료 → P2 가림 확인
     adv(S90-30000+1); ok(S.phase==="shop"&&!S.eco.shop.done[1-f2],"Q4 먼저 끝낸 좌석의 옛 시계는 다음 좌석을 끝내지 않는다");
     const T5=boot("pve",{aiLevel:"grade5"}); adv(60000); if(T5.TUT.open) T5.tutClose(); T5.startMode("pve",{aiLevel:"grade5"});   // 재시작 경로(초기화 없이) — gameReset 이 옛 마감을 지운다
-    adv(S90-60000+1); ok(!T5.S.eco.shop.done[0],"Q4 새 경기 S01 은 옛 경기 마감(90초)에 끝나지 않는다");
-    adv(60000-2); ok(!T5.S.eco.shop.done[0],"Q4 새 경기 S01 89.999초엔 진행 중"); adv(1); ok(T5.S.phase==="play"&&!T5.S.eco.shop,"Q4 새 경기 S01 은 자기 90초에 만료 (자동 구매·배치·준비까지)");
+    adv(S180-60000+1); ok(!T5.S.eco.shop.done[0],"Q4 새 경기 S01 은 옛 경기 마감(180초)에 끝나지 않는다");
+    adv(60000-2); ok(!T5.S.eco.shop.done[0],"Q4 새 경기 S01 179.999초엔 진행 중"); adv(1); ok(T5.S.phase==="play"&&!T5.S.eco.shop,"Q4 새 경기 S01 은 자기 180초에 만료 (자동 구매·배치·준비까지)");
     /* Q5 sim(AI vs AI) 은 상점 시계를 걸지 않는다 (온라인 종전 경제는 O 절) */
-    const T6=boot("sim"); ok(C.q.every(x=>x.at-C.now<S90),"Q5 AI vs AI 에는 90초 상점 시계가 없다");
+    const T6=boot("sim"); ok(C.q.every(x=>x.at-C.now<S90),"Q5 AI vs AI 에는 상점·준비 시계가 없다");
   } finally { global.setTimeout=saved.st; global.clearTimeout=saved.ct; global.setInterval=saved.si; global.clearInterval=saved.ci; Date.now=saved.now; }
 }
 

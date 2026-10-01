@@ -1033,7 +1033,7 @@ button.l01Cur{display:flex; gap:8px; width:100%; min-height:44px; padding:0; pos
 .shopSheet .goodCard .ico{width:32px; height:32px; background:url(../assets/ui/ui-icons.png) no-repeat calc((38 + var(--g)) * -32px) 0/1536px 32px;} /* Earth_1 B15~B22 = ECO.goods 순서 */
 .shopSheet .goodCard .goodIco{position:static; display:grid; place-items:center; min-width:44px; min-height:44px; padding:0; background:none; border:0;} /* #285 아이콘 = 설명 */
 .shopSheet .goodCard .buy{width:100%; min-height:32px; padding:2px; font-size:12px; font-weight:bold; color:var(--goldInk); background:linear-gradient(180deg,var(--gold1),var(--gold2)); border:2px solid #7a4a0c; border-radius:8px;}
-.shopSheet .goodDesc{margin:6px 0 0; min-height:1.4em; font-size:12.5px;}
+
 .ownGrid{display:flex; flex-wrap:wrap; gap:4px;}
 .ownItem{display:inline-flex; align-items:center; gap:2px; padding:2px 6px; border-radius:8px; background:#0d1f47; border:1px solid #2a4f98; font-size:12px;}
 .ownItem.none{opacity:.45;}
@@ -1180,6 +1180,13 @@ body:has(#emoteLayer.inRoom:not(.hidden)) .waitScreen .chatLock{margin-right:58p
 .synHelp li{font-size:12.5px; line-height:1.35; padding:5px 8px; border-radius:8px; background:#06102a; border:1px solid #1f3e78; color:#cfe0ff;}
 .synHelp li b{color:#fff; margin-right:4px;} .synHelp li.on{border:2px solid var(--gold1); color:#fff; box-shadow:0 0 8px #ffd66b55;}
 .synHelp small{font-size:11px; color:#a9bcdc;}
+/* #293 (2026-10-02 CJ 3) 상품 설명 = 같은 창 — 머리줄 아이콘 24 · 본문 왼쪽 큰 아이콘 64 | 이름 + 가격 / 설명 한 줄(좁으면 자연 줄바꿈) */
+.synHelp .ico{flex:none; width:24px; height:24px; background:url(../assets/ui/ui-icons.png) no-repeat calc((38 + var(--g)) * -24px) 0/1152px 24px;}
+.goodHelp{display:grid; grid-template-columns:64px minmax(0,1fr); gap:4px 12px; align-items:center; padding:8px; border-radius:8px; background:#06102a; border:1px solid #1f3e78;}
+.goodHelp .ico{grid-row:1/3; width:64px; height:64px; background-position:calc((38 + var(--g)) * -64px) 0; background-size:3072px 64px; image-rendering:pixelated;}
+.goodHelp b{display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; font-size:16px; color:#fff;}
+.goodHelp .price{color:#ffd66b;}
+.goodHelp .desc{font-size:14px; line-height:1.4; color:#cfe0ff; word-break:keep-all; overflow-wrap:anywhere;} /* 낱말 단위 줄바꿈 (.readyPop 과 같은 방식) */
 /* 7) 공용 팝업(확인·상점 완료·대기 등) = 로비와 같은 남색 · 파랑 · 금색 — 전투창(.battleBox)은 제외(배치 불변) */
 .overlay .box:not(.battleBox){background:linear-gradient(180deg,#132a5c,#0b1a3c); color:#eef2fb; border:2px solid var(--blueEdge); border-radius:14px;
   box-shadow:0 0 0 2px #06102a,0 12px 40px #000c,0 0 18px var(--blueGlow);}
@@ -1208,4 +1215,138 @@ body:has(#emoteLayer.inRoom:not(.hidden)) .waitScreen .chatLock{margin-right:58p
   #app[data-screen="board"] #turnBar button[data-ico],#app[data-screen="board"] #turnBar .hudIco{min-height:44px;}
   #app[data-screen="board"] #turnBar button[data-ico]::before{width:22px; height:22px; background-position:calc(var(--i) * -22px) 0; background-size:1056px 22px;}
   #app[data-screen="board"] #turnBar .hudIco .gi{font-size:22px;}
+}
+
+/* ---------- #293 (2026-10-01 CJ) 시작 상점 → 배치 → 완료 · 공통 하수인 카드 · 교체 선택 · 시너지 열 ----------
+   색은 Earth UI_CONTRACT.md 토큰: 등급 1~5 테두리(등급만 뜻한다 — 가격은 코인 칸) · 시너지 단계 순위(미달/0/1/2/3/4 — 순위마다 한 색) · 선택 고리 · 사망.
+   상태(선택·사망·비활성)는 등급 테두리를 덮지 않는 별도 표시다. */
+:root{--g1:#ffffff; --g2:#bce2cf; --g3:#376bce; --g4:#7651a8; --g5:#c89c3c;
+  --syn0:#d7d2c9; --syn1:#b8754a; --syn2:#9ea9b7; --syn3:#c99b39; --syn4:#376bce; --syn5:#7651a8; --pick:#e8907a; --deadInk:#d7d2c9; --go:#b3261e; --goEdge:#5e0f0b; --goInk:#ffffff;}
+.g1{--gc:var(--g1);} .g2{--gc:var(--g2);} .g3{--gc:var(--g3);} .g4{--gc:var(--g4);} .g5{--gc:var(--g5);}
+/* 틀: 상단 한 줄 + 진행 막대는 위에 붙고, 말판(#left)·본문이 그 아래로 스크롤한다. 시너지 열은 머리 아래 오른쪽에 매달린다 */
+#app[data-flow] #appBar{display:none;} /* 나가기는 ⚙ 안(같은 확인 경로) — 상단은 한 줄 */
+#app[data-flow] #screenBody{padding:0 52px 8px 4px; gap:6px;}
+#app[data-flow] #right,#app[data-flow] #sidePanel{display:contents;}
+#app[data-flow] .prepStep{display:flex; flex-direction:column; gap:6px;}
+#app[data-flow] .prepStep[data-step="place"]{display:contents;} /* 트레이가 말판과 같은 스크롤 상자의 자식이어야 아래에 붙는다(sticky) — 말판 13행과 트레이가 한 화면에 든다 */
+#app[data-flow] #toasts{top:112px;} /* 상단 한 줄·진행 막대를 가리지 않게 그 아래로 */
+/* 이모티콘 버튼은 ⚙ 와 겹치지 않게 시너지 열 아래 빈 자리(오른쪽 아래)로 — 팝오버는 그 위로 열린다 */
+#app[data-flow] ~ #emoteLayer #emoteBtn{top:calc(100dvh - 54px); right:2px;}
+#app[data-flow] ~ #emoteLayer #emotePop{top:auto; bottom:calc(58px - 100dvh);}
+#app[data-flow] ~ #emoteLayer #emoteBubs{top:110px;}
+#app[data-flow][data-prep="roster"] .prepStep[data-step="place"],#app[data-flow][data-prep="place"] .prepStep[data-step="roster"]{display:none;}
+.flowHead{order:-1; position:sticky; top:0; z-index:5; flex:0 0 auto; margin-right:-48px; padding:4px 0; display:flex; flex-direction:column; gap:4px;
+  background:var(--panel); box-shadow:-4px 0 0 var(--panel),4px 0 0 var(--panel);}
+.flowTop{display:flex; align-items:center; gap:6px; min-height:44px; padding:0 0 0 6px; border-radius:10px; background:#0b1a3c; border:2px solid var(--blueEdge); color:#fff;}
+.flowTop .vs{flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap;}
+.flowTop .vs .gi{font-size:20px;}
+.flowTop .vs b{min-width:0; overflow:hidden; text-overflow:ellipsis;}
+.flowTop .vs small{flex:0 0 auto; color:#ff8a98; font-weight:bold; font-size:11px;}
+.flowTop .badge{flex:0 0 auto; margin:0; padding:3px 7px; font-size:14px; font-weight:bold; white-space:nowrap; color:#fff; background:#06102a; border-color:#1f3e78;}
+.flowGear{position:relative; flex:0 0 auto;}
+.flowGear summary{list-style:none; width:44px; height:44px; display:grid; place-items:center; font-size:26px; cursor:pointer; border-radius:8px;}
+.flowGear summary::-webkit-details-marker{display:none;}
+.flowGear summary:focus-visible{outline:2px solid #fff; outline-offset:-2px;}
+.flowGear .menu{position:absolute; right:0; top:100%; z-index:6; display:flex; flex-direction:column; gap:6px; min-width:150px; padding:8px;
+  background:#0b1a3c; border:2px solid var(--blueEdge); border-radius:10px; box-shadow:0 8px 24px #000a;}
+.flowGear .menu b{font-size:13px;} .flowGear .menu button{min-height:44px; white-space:nowrap;}
+.flowBar{display:flex; flex-wrap:wrap; align-items:stretch; gap:6px;}
+.flowSteps{flex:1 1 0; min-width:0; list-style:none; display:flex; align-items:flex-end; min-height:44px; padding:2px 4px 4px; border-radius:10px; background:#0b1a3c; border:1px solid #1f3e78;}
+.flowSteps li{flex:1 1 0; min-width:0; position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px; color:#8fa3c8; white-space:nowrap;}
+.flowSteps li+li::before{content:""; position:absolute; left:-18%; width:36%; bottom:7px; height:2px; background:#2a4f98;}
+.flowSteps li.past{color:#cfe0ff;} .flowSteps li.cur{color:#fff; font-weight:bold;} .flowSteps li.cur b{color:var(--gold1);}
+.flowSteps .mks{display:flex; gap:2px; height:16px;}
+.mk{display:inline-grid; place-items:center; min-width:18px; height:16px; padding:0 4px; border-radius:8px; font-size:10px; font-weight:bold; line-height:1; color:#fff;}
+.mk.me{background:var(--accentFill);} .mk.op{background:#a33a4a;}
+.flowBar .go{flex:0 0 auto; min-width:86px; min-height:44px; padding:0 8px; font-size:14px; font-weight:bold; border-radius:10px; white-space:nowrap;}
+.flowBar .primary.go{color:var(--goInk); background:var(--go); border:2px solid var(--goEdge);} /* Earth UI_CONTRACT "Primary progress action" — 붉은 다음 단계/배치 완료 */
+.flowBar .go:disabled{opacity:.5;}
+.flowBar fieldset.pauseLock{display:contents;} .flowBar .pauseLock small{order:9; flex:1 1 100%; font-size:11px;}
+/* 우측 시너지 열 — 아이콘 + 칸 수 + 단계 점, 칩 44px */
+.synRail{position:absolute; top:100%; right:0; width:46px; max-height:calc(100dvh - 190px); overflow-y:auto; scrollbar-width:none; display:flex; flex-direction:column; align-items:center; gap:2px; padding:2px 0;}
+.synRail::-webkit-scrollbar{display:none;}
+.synRail .synChip{flex:0 0 auto; flex-direction:column; gap:0; width:44px; min-height:44px; padding:1px 0; border-radius:10px; font-size:18px; line-height:1;}
+.synRail .synChip b{font-size:12px;}
+.synChip .pips{font-style:normal; font-size:6px; line-height:1; letter-spacing:0;}
+/* 단계 색 = 달성 순위(칸 수 아님) — 순위 −1 은 무채색, 0·1·2 = 동·은·금, 3 = 파랑, 4 = 보라(다섯 단계 아키타입만). 순위끼리 색을 함께 쓰지 않는다 */
+.synChip.t0{border-color:#5d6474; box-shadow:none; color:var(--syn0);} .synChip.t0 .gi{filter:grayscale(1) opacity(.55);} .synChip.t0 b{color:var(--syn0);}
+.synChip.t1{border-color:var(--syn1); background:#3a2416; box-shadow:0 0 6px #b8754a66;}
+.synChip.t2{border-color:var(--syn2); background:#2b3038; box-shadow:0 0 6px #9ea9b766;}
+.synChip.t3{border-color:var(--syn3); background:#3d2f10; box-shadow:0 0 8px #c99b3988;}
+.synChip.t4{border-color:var(--syn4); background:#12244d; box-shadow:0 0 10px #376bcecc;}
+.synChip.t5{border-color:var(--syn5); background:#2a1d42; box-shadow:0 0 10px #7651a8cc;}
+.synChip.t1 .pips{color:var(--syn1);} .synChip.t2 .pips{color:var(--syn2);} .synChip.t3 .pips{color:var(--syn3);} .synChip.t4 .pips{color:#8fb2ff;} .synChip.t5 .pips{color:#c3a6ee;}
+/* 절 제목 줄 — 제목 왼쪽 · 조작/보유 오른쪽 (한 줄) */
+.secHead{display:flex; align-items:center; justify-content:space-between; gap:6px;}
+.secHead h3,.shopSheet .secHead h3{margin:0;}
+.secHead .badge{display:inline-flex; align-items:center; gap:2px; font-size:13px; font-weight:bold; color:#fff; background:#06102a; border-color:#1f3e78;}
+.secHead .refresh{flex:0 0 auto; min-width:72px; min-height:44px; font-size:15px; font-weight:bold; color:#fff; background:#173c86; border:2px solid #0b1f4d; border-radius:10px;}
+/* 구매 한 행 — 등급 테두리 + HP */
+.shopSheet .shopCard:not(.empty){border-color:var(--gc,#2a4f98);}
+.shopSheet .shopCard .meta{display:flex; align-items:center; gap:8px;}
+.hp{display:inline-flex; align-items:center; gap:2px; font-size:11px; color:#fff; white-space:nowrap;} .hp .gi{font-size:12px;}
+/* 공통 하수인 카드 — ★ 좌상단 · 왕국/아키타입 우상단 · 그림 · 이름 · HP · (버튼 한 줄) */
+.uSlot.uCard{position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"st tg" "ic ic" "nm nm" "hp hp" "ac ac"; justify-items:center; align-items:center; gap:1px 2px;
+  min-width:0; min-height:0; padding:3px; text-align:center; font:inherit; color:#fff; background:#0d1f47; border:2px solid var(--gc,#2a4f98); border-radius:8px;}
+.uCard .stars{grid-area:st; justify-self:start; font-size:9px; letter-spacing:-1px; line-height:1.2; color:#ffd66b;}
+.uCard .tags{grid-area:tg; display:inline-flex; gap:1px; font-size:15px;}
+.uCard .icon,.uCard .face,.uCard .leadFace{grid-area:ic; width:40px; height:40px; font-size:28px; line-height:40px; image-rendering:pixelated;}
+.uCard b{grid-area:nm; max-width:100%; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.uCard .hp{grid-area:hp;}
+.uCard .acts{grid-area:ac; display:flex; flex-direction:row; gap:3px; width:100%; margin-top:2px;}
+.uCard .acts button{flex:1 1 0; width:auto; min-width:0; min-height:44px; padding:0; font-size:12.5px; font-weight:bold;}
+.shopSheet .slotGrid.bag .uSlot .acts{flex-direction:row;} /* 가방 [교체][판매]는 좁은 폭에서도 한 줄 (2026-10-01 CJ) */
+.uSlot.uCard.dead{opacity:1;} .uCard.dead>*{opacity:.5;} .uCard.dead .icon{filter:grayscale(1);} .uCard.dead .hp{color:var(--deadInk);}
+.uCard .deadMk{position:absolute; top:22px; left:50%; transform:translateX(-50%); font-style:normal; font-size:22px; opacity:1 !important;}
+button.uCard{cursor:pointer;} button.uCard:disabled{cursor:not-allowed;} button.uCard:disabled>*{opacity:.4;}
+button.uCard:focus-visible,.trayItem:focus-visible{outline:3px solid #fff; outline-offset:1px;}
+.uCard.lead .leadFace{display:grid; place-items:center;} .uCard.lead .leadFace img{width:40px; height:40px; image-rendering:auto;}
+.uCard.lead{grid-template-areas:"tg tg" "ic ic" "nm nm";} .uCard.lead .tags{justify-self:end;}
+.shopSheet .slotGrid,.shopSheet .slotGrid.bag,.swapGrid,.synCon{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px;}
+.slotGrid .uSlot.empty{min-height:92px; display:grid; place-items:center; font-size:26px; color:#6f86b8; background:#0a173380; border:2px dashed #2a4f98; border-radius:8px;}
+.swapGrid{margin:8px 0 4px;} .swapGrid .uSlot{min-height:112px;}
+.swapGrid button.uCard:not(:disabled):hover{box-shadow:0 0 0 3px var(--pick);}
+/* 배치 트레이 — 14 고정 칸 7×2, 놓은 칸은 ✓. 선택 = 바깥 고리 + '선택' (등급 테두리는 그대로) */
+#app[data-flow] .tray{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; margin:0; padding:4px 0; overflow:visible; background:var(--panel);}
+#app[data-flow] .trayItem{position:relative; min-width:0; min-height:60px; padding:1px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;
+  color:#fff; background:#0d1f47; border:2px solid var(--gc,#2a4f98); border-radius:8px; box-shadow:none; cursor:pointer;}
+/* #293 (2026-10-01 CJ 6) 말 얼굴 — 보드 말(.pc)·트레이 칸·결과 칸(.faceBox)이 같은 부품: 왕국(왼쪽 위)·아키타입/역할(오른쪽 위) 모서리 기호,
+   ♥ + 실제 HP(어두운 알약 — 어떤 등급 배경 위에서도 읽힌다), 등급 = 불투명 배경(Earth UI_CONTRACT --g1~--g5 · ★ 없음). 소유 구분은 테두리 색.
+   선택·사망·놓음은 배경을 덮지 않는 별도 표식이다. 수풀 칸은 종전 규칙(바탕 50%) 그대로 등급 색에 적용한다 */
+.trayItem .pc{align-self:stretch; flex:1 1 auto; width:auto; height:auto; border:0; border-radius:6px; background:none; overflow:visible;} /* 칸을 채운다 — 등급 배경(.pc.gf)은 아래 규칙이 얹는다 */
+.faceBox{position:relative;}
+.faceBox .pc{position:static; width:auto; height:auto; border:0; background:none; overflow:visible;}
+.pc .cr,.faceBox .cr{position:absolute; top:1px; z-index:2; font-size:13px; line-height:1; filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);}
+.cr.tl{left:1px;} .cr.tr{right:1px;}
+.gf .nm,.gf .face .sym.ng{padding:0 2px; border-radius:4px; background:#06102a; color:#fff;} /* 그림이 없을 때의 이름표 — 밝은 등급 배경(g1 흰색 등) 위에서도 읽히게 HP 알약과 같은 어두운 바탕 */
+.pc .info .hp .gi{font-size:9px;}
+.pc .info .hp.pill{display:inline-flex; align-items:center; gap:1px; padding:0 3px; border-radius:6px; background:#06102a; color:#fff;}
+.pc.gf.p0,.pc.gf.p1{background:var(--gc);} .pc.gf.p0{border-color:#33406e;} .pc.gf.p1{border-color:#6e3340;}
+.pc.gf.p0.inbush::before,.pc.gf.p1.inbush::before{content:none;} /* 수풀 칸에서도 등급 배경은 불투명 그대로(위 .pc.gf 규칙) — 반투명 바탕 층을 얹지 않는다. 그림만 종전처럼 옅다(.pc.inbush .icon) */
+.resultSeat .uSlot.gf{background:var(--gc);}
+.resultSeat .uSlot.faceBox{justify-content:center;} .resultSeat .uSlot.faceBox.dead{opacity:1;} .resultSeat .uSlot.dead .icon{filter:grayscale(1);}
+.resultSeat .cr{font-size:10px;}
+.resultSeat .uSlot .dead{top:auto; bottom:13px; left:1px; right:1px; padding:1px 0; font-size:9px; font-weight:bold; line-height:1; color:#fff; background:#7a2733; border-radius:4px;}
+/* #293 (2026-10-01 CJ 2) 준비 완료 — 보드 중앙의 불투명 상태 팝업(상단 한 줄·진행 막대를 가리지 않는다). [준비 취소]는 우상단 진행 버튼 자리 */
+.readyPop{position:absolute; left:50%; top:50%; /* 기준 상자 = 말판 래퍼 #left(position:relative · renderSide 가 노드를 그 안으로 옮긴다) — 화면이 아니라 말판의 가운데 */ transform:translate(-50%,-50%); z-index:4; display:flex; flex-direction:column; align-items:center; gap:4px; width:max-content; max-width:min(86vw,320px); padding:16px 18px; word-break:keep-all;
+  text-align:center; font-size:16px; color:#fff; background:#0b1a3c; border:2px solid var(--gold1); border-radius:12px; box-shadow:0 8px 24px #000a;}
+.readyPop small{font-size:11px; color:#cfe0ff;}
+.synChip.lg{cursor:default;} .synChip.lg b{display:inline-flex; align-items:center;}
+#app[data-flow] .trayItem.sel{outline:3px solid var(--pick); outline-offset:1px; z-index:1;}
+.trayItem .selT{position:absolute; top:-7px; right:-4px; z-index:2; padding:1px 3px; font-style:normal; font-size:8px; font-weight:bold; line-height:1.2; color:#2a1208; background:var(--pick); border-radius:6px;} /* 모서리 표식 — 등급·HP 를 가리지 않는다 */
+.trayItem.placed{cursor:default;} .trayItem.placed>*{opacity:.3;}
+.trayItem.placed>.pc{opacity:1;} .trayItem.placed>.pc .icon{opacity:.3;} /* 놓은 칸: 등급 배경·왕국/아키타입 기호·HP·그림 없는 이름표/기호(.face)는 불투명 그대로 — 실제 그림(.icon)만 옅게 하고 ✓ 를 얹는다 */
+button.trayItem.placed:disabled{opacity:1;} /* 놓은 칸은 disabled 버튼이다 — 공통 button:disabled{opacity:.35} 는 조상 불투명도라 자식의 opacity:1 로 되돌릴 수 없어 등급 배경·HP 까지 옅어졌다. 비활성 표시는 위의 옅은 그림 + ✓ 가 맡는다 (다른 disabled 버튼은 그대로) */
+.pc.gf.inbush .face{opacity:1;} /* 수풀 칸의 그림 없는 이름표도 불투명 — 옅어지는 것은 실제 그림(.pc.inbush .icon)뿐 */
+.trayItem.placed::after{content:"✓"; position:absolute; inset:0; display:grid; place-items:center; font-size:26px; font-weight:bold; color:var(--ok);}
+.trayActs{display:flex; gap:6px; margin:0;} .trayActs button{flex:1 1 0; min-height:44px; font-weight:bold;}
+/* 시너지 안내 안의 기여 카드 */
+.synHelp .synCon .uSlot{min-height:0;}
+/* 좁은 폭(≤360px): 시너지 열만큼 본문이 좁아진다 — 한 줄은 지키고 누르는 대상 44px 를 되찾는다.
+   가방은 2열(카드가 넓어져 [교체][판매] 한 줄 각 44px 이상) · 왕·동료 줄은 말 그림을 줄여 속성 버튼 5개를 44px 로 · 트레이는 5열 */
+@media (max-width:360px){
+  .shopSheet .slotGrid.bag{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .shopSheet .leadRow{gap:2px;} .shopSheet .leadRow .leadFace{flex:0 0 32px; width:32px;} .shopSheet .leadRow .leadFace img{width:30px; height:30px;}
+  #app[data-flow] .tray{grid-template-columns:repeat(5,minmax(0,1fr));}
+  .flowSteps li+li::before{display:none;} /* 좁은 막대에서는 이음줄이 단계 글자를 지나간다 — 글자만 둔다 */
 }
