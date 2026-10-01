@@ -91,3 +91,13 @@ Codex 입력은 캐시 포함, 출력은 reasoning 포함이다(Earth 2,120, Sat
 5. **Q5-05 모바일·기존 플레이**: 320/390px·PC에서 보드/우측 열/여섯 행동/팝업 스크롤을 확인하고 이동·수풀·상점 남은 턴·감정표현/기권이 유지되는지 재테스트한다.
 
 최종 납품 시 기존 Free `digit-duel-mipa-qa`만 사용한다. #294 검증 SHA의 CI 6/6·배포 SHA·/healthz 200·Git/제공 파일 일치 뒤 #293 원격 브랜치의 사용 종료를 확인해 정리한다. #294 checkout은 CJ QA용으로 유지한다. main 기존 변경 6개·unity/·stash2·미병합 handoff·Draft PR304를 원래 기준과 비교해 보존한다.
+
+## CI 영향 검사 정정
+
+최종 문서 SHA `5bbfe5f0a6227bccf0b28c781b70842508fc81c0`의 CI run [36912961602](https://github.com/ChangjoSung/Digit-Duel/actions/runs/36912961602)는 5/6 PASS, B의 기존 실서버 경제 통합 E15e/E15j 두 항목이 실패했다. #263 시점의 대기 좌석 빈 시간/옛 정지 문구 기대값이 #294 공개 보드 시계 계약과 달랐다.
+
+fresh Mars `ctx_a3e304b060e0` / `task_04b308adc161`가 기존 `smoke_public_eco_live.js`의 두 표시 기대값을 바꾸고 공개 descriptor·턴 전환·단절 정지·잔여 재개 단언 5개를 추가했다. 개인 clock owner 제한·로컬 시한 없음·경제/보안 검사는 유지했다. 최초 49개(47/2) → 54개, 자체 검사 54/0·자연 종료 exit0·16.8초다. 새로운 제품/의존성/CI 설정 변경은 없다. 워커 메시지의 “4개/50→54”는 실제 diff와 CI 로그에 따라 보고 메타데이터를 5개/49→54로 정정했다.
+
+Mars 세션 `b3d4503e-30ba-4f04-8813-3b15b24a7679`의 현재 assistant model Opus5.5·PID22420 high/bypass·현재 footer를 확인했다. adopted requested/effective null. 기존 ws의 절대 require 경로를 기존 main 의존성으로 돌리는 저장소 밖 임시 -r 스크립트를 로컬 검사에서만 사용했다(CI에는 server/node_modules가 있어 필요 없음). 자체 검사 서버/Node 프로세스가 자연 종료됐다. 이 환경 조정은 제품 검사 기대값을 바꾸지 않으며 Saturn이 독립 확인한다.
+
+제품 경로는 `80a2955`와 동일하다. 새 소스 SHA에서 Saturn은 이 테스트 변경만 읽기 전용 검토·단독 실서버 실행하며, 기존 419/0·미영향 1,019/0·이미지 검증을 반복하지 않는다. 최종 독립 판정과 새 SHA CI/배포 결과는 Issue/PR 본문의 납품 원장에 기록한다.

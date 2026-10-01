@@ -85,6 +85,28 @@
 - **종전 캡처는 `757f45b` 시점의 과거 기록입니다.** `*-main*.png` · `*-prep-*.png` 중 전설 칩이 보이는 장면은 열 순서(전설 → 왕관)만 지금과 다르고 다시 찍지 않았습니다. `*-main-bag*.png` 의 모양은 그대로입니다(포커스 동작만 바뀜).
 - 자원: Chrome headless PID 33808 · 37584 · 36296 · 35276(포트 9383, 스크립트 재시도 포함) — 모두 종료 · 임시 프로필 삭제. 서버 · 새 의존성 없음. Git 명령 없음.
 
+## 3.4 CI 통합 테스트 기대값 정정 (dispatch `ctx_a3e304b060e0` / task `task_04b308adc161` · 기준 HEAD `5bbfe5f`)
+
+CI run `36912961602` 의 B 가 `demo/test/integration/smoke_public_eco_live.js` E15e · E15j 에서 실패했습니다(나머지 5개 job PASS).
+
+- **원인 [확정 — 코드 읽기]**: 제품 결함이 아니라 **#263 시점의 옛 표시 기대값**입니다. E15e 는 기다리는 좌석의 `turnClockText("act")===""`, E15j 는 `(정지)` 를 기대했는데, #294 계약 3.1 · 3.2 로 서버(`room.js` `_boardClockView`)가 두 좌석에 `boardClock` 을 내리고 화면(`ui.js` `turnClockText` · `network.js` 수신)은 상대 차례에 `⏱ N초`, 정지 중 `⏱ 정지 · N초` 를 보입니다. 입력용 `clock` 은 종전대로 owner 전용입니다. 이 통합 파일은 첫 납품 때 제가 돌리지 않아(2장 목록에 없음) 놓쳤습니다.
+- **수정 = 이 테스트 파일 하나.** 제품 소스 · Core · 서버 · 하네스 · CI 설정 · 의존성은 건드리지 않았습니다. CI 최초 47 PASS + 2 FAIL = 49개에 신규 5개를 더해 54개입니다(Mercury의 실행 로그/메타데이터 정정).
+
+| 단언 | 종전 | 지금 |
+|---|---|---|
+| E15e | 기다리는 좌석 표시 `""` | `⏱ N초` 이고 `0 < N ≤ ceil(그 좌석 boardClock.leftMs/1000)` — 서버 값보다 큰 초를 지어내지 않음 |
+| E15j | `/(정지)/` | 정확히 `⏱ 정지 · ${ceil(서버 잔여 ms/1000)}초` |
+| E15c2(신규) | — | 같은 revision 의 두 좌석 `boardClock` 이 **4필드뿐**(`key` · `owner` 없음) · `running:true` · 같은 유한 `deadline` · 좌석별 `leftMs === deadline − serverNow` · 0 < leftMs ≤ 30000 |
+| E15h2(신규) | — | 턴이 넘어간 뒤 두 좌석이 같은 새 마감(직전 마감보다 큼) · 넘긴 좌석의 `clock` 은 `null` |
+| E15i2(신규) | — | 단절 정지: `running:false` · `deadline:null` · `leftMs` 가 owner `clock.leftMs` 와 같음 |
+| E15m2(신규) | — | 1.2초 뒤에도 `boardClock.leftMs` · 화면 문자열 불변 |
+| E15n2(신규) | — | 재개 뒤 재접속 좌석 포함 같은 `deadline` · 두 좌석 `leftMs ≤ 정지 잔여`(새 30초 아님) · 재접속 좌석 `clock` 은 `null` |
+
+- 그대로 둔 것: E15b/c/g/h(owner 전용 `clock`) · E15f/o(로컬 마감 0) · E15i/k/l/m/n(30초 · 정지 · 유예 60초 · 잔여 재개) · E11/E11b/E16/E17(보안) 등 나머지 전부. 좌석 간 비교는 `deadline` · `running` 과 멈춘 `leftMs` 만 하고 `serverNow` · 흐르는 `leftMs` 는 좌석별 식으로만 검사합니다(계약 3.1 허용 오차) — 정규화 · 비교기 추가 없음. 좌석 비교 전 두 클라이언트가 같은 `revision` 프레임을 받을 때까지 기다립니다(테스트 안 한 줄 `sameRev`).
+- 실행(수정 뒤 1회 · 이것만): `node demo/test/integration/smoke_public_eco_live.js` → **pass 54 / fail 0 · exit 0 · 16.8초**(자연 종료). 이 작업 트리에는 `server/node_modules` 가 없어 `NODE_PATH` = 원본 checkout 의 `server/node_modules`(기존 `ws`)와, 테스트의 절대 경로 `ws` 요청만 그리로 돌리는 **저장소 밖 임시 `-r` 스크립트**(세션 scratchpad)를 썼습니다. npm · typecheck · 다른 테스트는 돌리지 않았습니다. CI 는 `server/node_modules` 가 있어 이 우회가 필요 없습니다.
+- 자원: 테스트가 띄운 서버 자식 프로세스(임의 포트 · 재시작 1회 포함)는 테스트의 `finally` 가 종료 — 실행 전후 `node` 프로세스 0개. 작업 트리에 새 파일 없음. Git 명령 없음.
+- 이것은 Mars 자체 점검이며 **독립 QA PASS 가 아닙니다.** 5장의 "실제 `boardClock` 결합 · 실제 두 클라이언트" 중 시계 부분(값 · 정지 · 재개 · 표시)은 이 실서버 실행이 처음 확인했고, 신원 · 가방 · 설명 창의 실네트워크 확인은 여전히 없습니다.
+
 ## 4. 계약과 다르던 점 — Root(Mercury) 수용 완료
 
 1. **`smoke_memo` D3 기대값 교체** — 계약 9장 대체 목록에는 없지만 4.1 표("상대 차례 · 내 말 → 설명 창")가 요구해 "차단 토스트"를 "설명 창 · 선택 없음 · 송신 0"으로 바꿨습니다.
@@ -98,7 +120,7 @@
 
 ## 5. 확인하지 못한 것
 
-- Jupiter 의 실제 `boardClock` 과의 결합(계약 3.1 모양으로만 검사) · 실제 두 클라이언트 네트워크 경기.
+- 최초 납품에서는 Jupiter의 실제 `boardClock` 결합·두 클라이언트 네트워크 경기를 검사하지 않았습니다. 3.4의 실서버 시계·정지·재개 검사는 후속으로 완료했으며, 신원·가방·설명 창의 실네트워크 플레이는 CJ QA 대기입니다.
 - 정기 상점(모달) 안의 설명 진입은 같은 코드 경로지만 화면 캡처는 하지 않았습니다.
 
 ## 6. 남긴 자원
