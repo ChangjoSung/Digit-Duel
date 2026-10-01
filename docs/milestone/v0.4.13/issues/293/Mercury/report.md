@@ -1,5 +1,7 @@
 # [결정][피드백] #293 시작 상점 → 배치 → 완료 — Mercury 운영 보고
 
+> **현행 기준: 2026-10-01 CJ 7건 REVISE.** 아래는 15:14 KST까지의 이전 구현·QA 환경 기록이며, 90초·판매 확인·상대 단계 비공개 조건은 최신 CJ 지시로 폐기됐다. 현재 규칙·새 수정 배포 상태·CJ 테스트 목록은 [최신 수정 보고](qa-revise-report.md)를 따른다.
+
 2026-10-01 · Mercury_PD · CJ 최신 Comment: QA REVISE, 기존 QA 사이트 정리 후 #293 최신 구현을 지정 도메인에 재배포하고 CJ QA Test List 보고.
 
 **현재 상태:** 구현·Saturn 독립 QA·배포 소스 `0cf0179e0ccafd39b0cb6308ae3c0c315b988dcf`의 CI 6/6 PASS 완료. CJ REVISE는 기존 QA 사이트에 최신 구현이 없었던 환경 문제를 포함하며 제품 QA PASS가 아니다. 기존 QA를 삭제하고 [새 QA 사이트](https://digit-duel-mipa-qa.onrender.com/)에 위 커밋을 배포했다. 실제 JS·CSS Git blob 일치와 HTTP 200을 확인했고 **CJ 재테스트 대기**다. [배포 보고·CJ QA Test List](qa-deployment.md)에 정확한 서비스/배포 SHA·정리 증거·진입 순서·기대 결과를 기록했다. 이번 갱신은 운영 문서뿐이다. 이전 시안·인수 보고는 Git 이력의 `2febd197` 및 `ce96f25`에서 보존한다.

@@ -1311,22 +1311,24 @@ button.uCard:focus-visible,.trayItem:focus-visible{outline:3px solid #fff; outli
 .faceBox .pc{position:static; width:auto; height:auto; border:0; background:none; overflow:visible;}
 .pc .cr,.faceBox .cr{position:absolute; top:1px; z-index:2; font-size:13px; line-height:1; filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);}
 .cr.tl{left:1px;} .cr.tr{right:1px;}
+.gf .nm,.gf .face .sym.ng{padding:0 2px; border-radius:4px; background:#06102a; color:#fff;} /* 그림이 없을 때의 이름표 — 밝은 등급 배경(g1 흰색 등) 위에서도 읽히게 HP 알약과 같은 어두운 바탕 */
 .pc .info .hp .gi{font-size:9px;}
 .pc .info .hp.pill{display:inline-flex; align-items:center; gap:1px; padding:0 3px; border-radius:6px; background:#06102a; color:#fff;}
 .pc.gf.p0,.pc.gf.p1{background:var(--gc);} .pc.gf.p0{border-color:#33406e;} .pc.gf.p1{border-color:#6e3340;}
-.pc.gf.p0.inbush,.pc.gf.p1.inbush{background-color:transparent;} .pc.gf.p0.inbush::before,.pc.gf.p1.inbush::before{background:var(--gc);}
+.pc.gf.p0.inbush::before,.pc.gf.p1.inbush::before{content:none;} /* 수풀 칸에서도 등급 배경은 불투명 그대로(위 .pc.gf 규칙) — 반투명 바탕 층을 얹지 않는다. 그림만 종전처럼 옅다(.pc.inbush .icon) */
 .resultSeat .uSlot.gf{background:var(--gc);}
 .resultSeat .uSlot.faceBox{justify-content:center;} .resultSeat .uSlot.faceBox.dead{opacity:1;} .resultSeat .uSlot.dead .icon{filter:grayscale(1);}
 .resultSeat .cr{font-size:10px;}
 .resultSeat .uSlot .dead{top:auto; bottom:13px; left:1px; right:1px; padding:1px 0; font-size:9px; font-weight:bold; line-height:1; color:#fff; background:#7a2733; border-radius:4px;}
 /* #293 (2026-10-01 CJ 2) 준비 완료 — 보드 중앙의 불투명 상태 팝업(상단 한 줄·진행 막대를 가리지 않는다). [준비 취소]는 우상단 진행 버튼 자리 */
-.readyPop{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:4; display:flex; flex-direction:column; align-items:center; gap:4px; max-width:min(86vw,320px); padding:16px 18px;
+.readyPop{position:absolute; left:50%; top:50%; /* 기준 상자 = 말판 래퍼 #left(position:relative · renderSide 가 노드를 그 안으로 옮긴다) — 화면이 아니라 말판의 가운데 */ transform:translate(-50%,-50%); z-index:4; display:flex; flex-direction:column; align-items:center; gap:4px; width:max-content; max-width:min(86vw,320px); padding:16px 18px; word-break:keep-all;
   text-align:center; font-size:16px; color:#fff; background:#0b1a3c; border:2px solid var(--gold1); border-radius:12px; box-shadow:0 8px 24px #000a;}
 .readyPop small{font-size:11px; color:#cfe0ff;}
 .synChip.lg{cursor:default;} .synChip.lg b{display:inline-flex; align-items:center;}
 #app[data-flow] .trayItem.sel{outline:3px solid var(--pick); outline-offset:1px; z-index:1;}
 .trayItem .selT{position:absolute; top:-7px; right:-4px; z-index:2; padding:1px 3px; font-style:normal; font-size:8px; font-weight:bold; line-height:1.2; color:#2a1208; background:var(--pick); border-radius:6px;} /* 모서리 표식 — 등급·HP 를 가리지 않는다 */
 .trayItem.placed{cursor:default;} .trayItem.placed>*{opacity:.3;}
+.trayItem.placed>.pc{opacity:1;} .trayItem.placed>.pc .icon,.trayItem.placed>.pc .face{opacity:.3;} /* 놓은 칸: 등급 배경·왕국/아키타입 기호·HP 는 불투명 그대로 — 그림만 옅게 하고 ✓ 를 얹는다 */
 .trayItem.placed::after{content:"✓"; position:absolute; inset:0; display:grid; place-items:center; font-size:26px; font-weight:bold; color:var(--ok);}
 .trayActs{display:flex; gap:6px; margin:0;} .trayActs button{flex:1 1 0; min-height:44px; font-weight:bold;}
 /* 시너지 안내 안의 기여 카드 */

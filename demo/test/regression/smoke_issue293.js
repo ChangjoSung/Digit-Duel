@@ -185,7 +185,9 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   const pop=(h.match(/<div class="readyPop" role="status" aria-live="polite">([\s\S]*?)<\/div>/)||[])[1]||"";
   ok(stepOf(h)==="완료"&&/id="prepClock" role="timer"/.test(h)&&/onclick="uiLeaveConfirm\(\)">방 나가기/.test(h)&&/준비 완료 · 상대 기다리는 중…/.test(pop),"E14 서버 확정 → 03 완료 · 공통 시계는 계속 보인다 · 나가기는 ⚙ 안 · 중앙 상태 팝업");
   ok(!/netRoomTitle|내 준비:|상대: /.test(h)&&!/button/.test(pop)&&count(h,/준비 취소/g)===1&&/onclick="netRoomReady\(false\)">준비 취소/.test(bar(h)),"E14b 하단 대기 영역(방 이름·준비 배지) 없음 · [준비 취소]는 우상단 진행 버튼 자리 하나뿐(팝업 안 중복 없음)");
-  ok(/\.readyPop\{position:fixed;[^}]*background:#0b1a3c/.test(css),"E14c 팝업은 보드 중앙의 불투명 상자");
+  ok(/\.readyPop\{position:absolute; left:50%; top:50%;[^}]*transform:translate\(-50%,-50%\);[^}]*background:#0b1a3c/.test(css)&&/#left\{[^}]*position:relative;/.test(css)
+    &&/sp\.querySelector\("\.readyPop"\); if\(pop\) \$\("left"\)\.appendChild\(pop\);/.test(fs.readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8"))
+    &&/\$\("left"\)\.querySelector\("\.readyPop"\); if\(old\) old\.remove\(\);/.test(fs.readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8")),"E14c 팝업은 말판 래퍼(#left, position:relative) 가운데의 불투명 상자 — 화면 고정이 아니다 · 매 렌더에 치우고 준비 대기에서만 다시 붙인다");
   P.NET.myReady=false; P.NET.readyWanted=false; P.NET.steps=["place","place"]; P.render(); h=view();
   ok(stepOf(h)==="배치"&&/class="tray"/.test(h)&&!/readyPop/.test(h),"E15 준비 취소 → 팝업이 닫히고 02 배치 화면으로 복귀");
   P.NET.myReady=true; P.NET.steps=["done","place"]; P.render(); h=view(); // 준비 의사 없이 서버가 준비 완료 = 준비 시간 초과 자동 완료(01 → 03 직행)
@@ -262,6 +264,20 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   const rs=U.resultSeatsHtml().replace(/<div class="synRow">[\s\S]*?<\/section>/g,""); T.NET.publicMode=false; T.NET.final=null;
   ok(/class="uSlot faceBox gf g2"/.test(rs)&&/class="uSlot faceBox gf g4 dead"/.test(rs)&&/>50<\/span>/.test(rs)&&/>88<\/span>/.test(rs)&&/aria-hidden="true">사망<\/i>/.test(rs)&&!/\d%|★|class="stars"/.test(rs),"G10 결과 = 보드와 같은 얼굴 · 실제 HP + 등급 배경(상대 포함) · 사망 표식 · % / ★ 없음");
   ok(/\.pc\.gf\.p0,\.pc\.gf\.p1\{background:var\(--gc\);\}/.test(css)&&/\.resultSeat \.uSlot\.gf\{background:var\(--gc\);\}/.test(css),"G11 등급 배경 = 상점과 같은 Earth 토큰(--gc ← --g1~--g5) · 새 색 없음");
+  /* Saturn REVISE(2026-10-01): 결과에서 내 동료의 역할이 사라지지 않는다(상대 역할은 싣지 않는다) · 수풀/놓은 칸에서도 등급 배경·기호·HP 는 불투명 · 팝업 문구는 낱말 중간에서 끊기지 않는다 */
+  { const s0=U.resultSideOffline(0), s1=U.resultSideOffline(1), a0=s0.pieces.filter(e=>e.type==="ally"), mine=T.S.pieces.filter(x=>x.owner===0&&x.type==="ally");
+    ok(a0.length===2&&a0.every((e,i)=>e.allyKind===mine[i].allyKind&&!!e.allyKind)&&s1.pieces.every(e=>!("allyKind" in e))&&s0.pieces.concat(s1.pieces).every(e=>!("skills" in e)&&!("arch" in e)),"G12 결과 항목: 내 동료만 실제 역할(allyKind)을 지닌다 · 상대 동료 역할·기술·아키타입은 없다");
+    T.S.phase="over"; T.S.winner=0; const rs2=U.resultSeatsHtml(), own=rs2.slice(rs2.indexOf('resultSeat mine'),rs2.indexOf('resultVs')), opp=rs2.slice(rs2.indexOf('resultVs'));
+    const allySlots=own.split('<div class="uSlot').filter(x=>/역할 — (공격|방어) 동료/.test(x));
+    ok(count(own,/역할 — (공격|방어) 동료/g)===4&&allySlots.length===2&&allySlots.every(x=>new RegExp(`<i class="gi cr tr" style="--i:(${GI.atk}|${GI.def})"`).test(x))&&!/역할 — (공격|방어) 동료/.test(opp),"G13 결과 화면: 내 동료 둘은 역할 기호 + 접근성 이름 '역할 — …' · 상대 동료는 역할 표시 없음 ["+[count(own,/역할 — (공격|방어) 동료/g),count(own,/cr tr/g),/역할 — (공격|방어) 동료/.test(opp),own.length,opp.length].join(",")+"]"); }
+  ok(/\.pc\.gf\.p0\.inbush::before,\.pc\.gf\.p1\.inbush::before\{content:none;\}/.test(css)&&!/\.pc\.gf[^{]*inbush[^{]*\{background-color:transparent/.test(css)
+    &&/\.trayItem\.placed>\.pc\{opacity:1;\}/.test(css)&&/\.readyPop\{[^}]*word-break:keep-all;/.test(css)&&/\.gf \.nm,\.gf \.face \.sym\.ng\{[^}]*background:#06102a; color:#fff;\}/.test(css),"G14 수풀·놓은 칸: 등급 배경 불투명 유지(반투명 층 없음) · 준비 팝업 낱말 단위 줄바꿈 · 그림 없는 이름표는 밝은 등급 배경에서도 읽힌다");
+  { const X=pveSetup(63); act(X,{t:"shopTimeout",player:0}); X.netAction({t:"setupDone"}); const a=field(X,0)[0], d=field(X,1)[0];
+    X.applySpecies(d,X.ROSTER.find(r=>!field(X,0).some(y=>X.ecoKey(y)===r.id)),1); // 내가 갖지 않은 종 — '이미 가진 종' 사유가 앞서지 않게
+    X.startRounds(a,d,a,d); X.drain(); a.hp=Math.max(1,a.maxHp-7); d.hp=d.maxHp; const why=X.ballWhy(X.S,"A");
+    ok(why===`상대 HP ${d.hp}/${d.maxHp} — 최대 HP의 30% 미만이어야 합니다`,"G15 포획 불가 사유 = 실제 HP(현재/최대) · 조건(최대 HP의 30% 미만)은 그대로: "+why);
+    X.judge(); X.drain();
+    ok(X.S.log.some(l=>l.msg.includes(`판정 ${d.maxHp}/${d.maxHp} vs ${a.maxHp-7}/${a.maxHp}`))&&!X.S.log.some(l=>/판정 \d+% vs/.test(l.msg))&&d.alive&&!a.alive,"G16 판정 문구 = 실제 HP(현재/최대) · 승패는 비율 비교 그대로(만피 방어자 승)"); }
 }
 /* ===== H. 시너지 덧붙임 칩 — 전설 개인 시너지(필드에 살아 있고 값 > 0 일 때만) · 왕·동료(왕관) 0/1/2 ===== */
 {

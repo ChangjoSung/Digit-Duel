@@ -429,7 +429,9 @@ async function main() {
     ok(view(room, cur).log.some((l) => /기권/.test(l.msg)) && view(room, 1 - cur).log.some((l) => /기권/.test(l.msg)), '양 좌석 로그에 기권 문구');
     // #238 S04 — 양측 필드 9칸(사망 포함) + Core synView 그대로 · 비공개 필드 없음 · 엔진과 참조 분리
     const f0 = view(room, 0).final, T = room.engines[0];
-    const keys = new Set(['type', 'rosterId', 'name', 'element', 'alive', 'hp', 'maxHp', 'grade', 'hpSeen']); // #293 grade — 결과 말 얼굴 배경색
+    const keys = new Set(['type', 'rosterId', 'name', 'element', 'alive', 'hp', 'maxHp', 'grade', 'hpSeen', 'allyKind']); // #293 grade — 결과 말 얼굴 배경색 · allyKind — 아는 동료 역할만
+    const noRole = (sides) => JSON.stringify(sides.map((sd) => sd.pieces.map((p) => Object.assign({}, p, { allyKind: undefined }))));
+    const roles = (sd) => sd.pieces.filter((p) => p.type === 'ally').map((p) => p.allyKind).sort();
     ok(f0 && f0.sides.length === 2 && f0.sides.every((sd, s) => sd.seat === s && sd.pieces.length === 9 && sd.pieces.filter((p) => !p.alive).length === 1
       && sd.pieces.filter((p) => p.type === 'minion').length === 6 && sd.pieces.every((p) => Object.keys(p).every((k) => keys.has(k)))),
     'final: 양측 9칸(하수인 6 · 왕 · 동료 2) · 사망 포함 · 화이트리스트 필드만(별칭·위치·스킬·원장 없음)');
@@ -439,8 +441,21 @@ async function main() {
     const opp = f0.sides[1].pieces;
     ok(opp.filter((p) => p.hpSeen).length === 1 && real(opp, field(1)) && real(f0.sides[0].pieces, field(0))
       && opp.filter((p) => p.type === 'minion').every((p) => Number.isInteger(p.grade)) && opp.filter((p) => p.type !== 'minion').every((p) => p.grade === null)
-      && JSON.stringify(view(room, 1).final.sides.map((sd) => sd.pieces)) === JSON.stringify(f0.sides.map((sd) => sd.pieces)),
-      '#293 결과: 양측 모든 말이 실제 HP/최대 HP + 등급(하수인만 · 왕·동료 null) — 100 눈금 없음 · 두 좌석 뷰 동일');
+      && noRole(view(room, 1).final.sides) === noRole(f0.sides),
+      '#293 결과: 양측 모든 말이 실제 HP/최대 HP + 등급(하수인만 · 왕·동료 null) — 100 눈금 없음 · 두 좌석 뷰 동일(아는 동료 역할 제외)');
+    {
+      const f1 = view(room, 1).final, own = JSON.stringify(['assassin', 'shield']);
+      ok(JSON.stringify(roles(f0.sides[0])) === own && JSON.stringify(roles(f1.sides[1])) === own
+        && f0.sides.concat(f1.sides).every((sd) => sd.pieces.concat(sd.bag).every((p) => p.type === 'ally' || !('allyKind' in p))),
+        '#293 결과: 자기 동료 2기는 실제 역할(assassin·shield) · 동료가 아닌 말·가방에는 allyKind 없음');
+      const hid = T.S.pieces.filter((p) => p.owner === 1 && p.type === 'ally' && !(p.revealedSkills || []).some((i) => /^(AS|SH)-/.test(String(p.skills[i]))));
+      ok(hid.length > 0 && f0.sides[1].pieces.filter((p) => p.type === 'ally' && !('allyKind' in p)).length === hid.length
+        && !/"skills"|"revealedSkills"/.test(JSON.stringify(f0.sides.map((sd) => [sd.pieces, sd.bag]))), '#293 결과: 기술이 공개되지 않은 상대 동료는 역할 키 자체가 없음 · skills/revealedSkills 비노출');
+      const sh = T.S.pieces.find((p) => p.owner === 1 && p.type === 'ally' && p.allyKind === 'shield'), keep = sh.revealedSkills;
+      both(room, (E) => { E.S.pieces.find((p) => p.id === sh.id).revealedSkills = [0]; });
+      ok(roles(view(room, 0).final.sides[1]).includes('shield'), '#293 결과: 상대 동료는 AS-/SH- 기술이 이미 공개된 경우에만 역할 공개');
+      both(room, (E) => { E.S.pieces.find((p) => p.id === sh.id).revealedSkills = keep; });
+    }
     const h0 = snap(room);
     f0.sides[0].syn.el.fire = 99; f0.sides[0].pieces[0].hp = -1;
     const bag0 = f0.sides[1].bag, bag1 = view(room, 1).final.sides[1].bag, eb = T.S.eco.bag[1];

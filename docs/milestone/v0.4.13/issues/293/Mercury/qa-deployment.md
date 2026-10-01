@@ -1,5 +1,7 @@
 # [결정][피드백] #293 Render QA 재배포 · CJ QA Test List
 
+> **현행 기준: 2026-10-01 CJ 7건 REVISE.** 아래는 15:14 KST까지의 이전 구현·QA 환경 기록이며, 90초·판매 확인·상대 단계 비공개 조건은 최신 CJ 지시로 폐기됐다. 현재 규칙·새 수정 배포 상태·CJ 테스트 목록은 [최신 수정 보고](qa-revise-report.md)를 따른다.
+
 2026-10-01 · Mercury_PD · 확인 시각 15:14 KST(06:14 UTC).
 
 **새 QA 사이트:** <https://digit-duel-mipa-qa.onrender.com/>. #293의 최신 제품 구현으로 배포했고 실제 제공 중인 JS·CSS가 배포 커밋의 Git blob과 일치한다. 기존 QA 서비스는 삭제했다. **CJ QA 판정은 REVISE이며, 새 사이트에서 재테스트를 기다린다.** 배포 확인은 제품 QA PASS나 병합·출시 승인이 아니다.

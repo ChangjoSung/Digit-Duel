@@ -51,3 +51,11 @@ Mercury 가 승인한 6개 명령을 `server/` 에서 각 1회 실행했습니�
 - `ECO.prepSec` · 만료 보충 새로 고침(4.3) · 판매 가드(4.2) · 왕·동료 집계는 Mars Core 소관입니다. 서버는 `shopTimeout` 을 좌석별로 넣기만 합니다.
 - 준비 만료는 방에 하나라 `onUpdate` 푸시가 좌석별 2회에서 1회로 줄었습니다(한 번이 양 좌석에 나갑니다).
 - 종전 무료 로스터 방(경제 아님)의 공개 상대 말에도 `grade` 키가 실립니다(값은 엔진 값 그대로).
+
+## 5. Saturn REVISE 후속 — 결과 동료 역할(`allyKind`) (2026-10-01)
+
+- 원인: `_finalView`(`server/authoritative/room.js`)가 `allyKind`·스킬을 모두 빼서 결과 화면이 자기 동료의 역할을 알 수 없었습니다. 호출자는 `toSeatView` 한 곳(FINISHED 전용)입니다.
+- 수정: 동료 말에 한해, 받는 좌석이 **이미 아는 역할**일 때만 `allyKind` 를 싣습니다 — 자기 동료(소유자 값), 또는 AS-/SH- 기술이 이미 공개된 상대 동료(클라이언트 `allyRole` 과 같은 규칙). 모르는 상대 동료에는 키 자체가 없습니다. HP·등급·가방·`syn` 과 `skills`·`revealedSkills` 비노출은 그대로입니다.
+- 테스트: `test-issue237-economy.js` 화이트리스트에 `allyKind` 추가, "두 좌석 뷰 동일"은 `allyKind` 제외 비교로 변경, 단언 3개 추가(자기 역할 · 미공개 상대 키 부재 · 공개된 뒤에만 노출).
+- 검증: `NODE_PATH`(원본 checkout `server/node_modules` 읽기 전용)로 `node server/authoritative/test/test-issue237-economy.js` **1회** — 173 passed, 0 failed, exit 0. 다른 스위트(234·238 등)는 다시 돌리지 않았습니다.
+- 문서: `server/README.md` S04 `final` 말 필드 목록을 현행(`grade`·실제 HP·`allyKind?`)으로 고쳤습니다. 남은 것: Mars 클라이언트 반영 · Saturn 재검수.

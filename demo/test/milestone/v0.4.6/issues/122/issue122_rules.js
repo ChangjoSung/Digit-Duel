@@ -137,7 +137,7 @@ block("C 경기 종료 연출",()=>{
   const rl=T.resultBannerOf({owner:1});
   ok(/전투에서 패배/.test(rl.title)&&/\blose\b/.test(rl.cls),"C9 전투 패배 배너");
   ok(!/finishBattle\(null/.test(SRC)&&!/cls:"draw"/.test(SRC.replace(/match draw/g,"")),"C10 전투 결과에 무승부 분기가 없다 (draw 는 경기 결과 전용)");
-  ok(/동률 \$\{pct\(ra\)\} — 방어자 승/.test(SRC),"C11 판정 동률은 종전대로 방어자 승 (규칙 무변경)");
+  ok(/else \{S\.metrics\.ties\+\+; finishBattle\("D",`동률 \$\{ha\} vs \$\{hd\} — 방어자 승`\);\}/.test(SRC)&&/const ra=B\.fa\.hp\/B\.fa\.maxHp, rd=B\.fd\.hp\/B\.fd\.maxHp;/.test(SRC),"C11 판정 동률은 종전대로 방어자 승 (규칙 무변경)");
 
   /* C12 왕 제거로 끝나는 전투 — 배너가 한 번만, 그리고 그것이 경기 결과다 */
   board("pve",["grade5","grade5"]);

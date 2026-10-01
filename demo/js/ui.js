@@ -890,6 +890,7 @@ function renderTurnBar(){
 /* #114 도망 교환 선택의 입력 주인이 이 화면의 사람인가 — PVE: 사람(0) · 핫시트: 기기 공유(소유자 시점으로 전환) · 온라인: NET.me */
 function renderSide(){
   const sp=$("sidePanel");
+  { const old=$("left").querySelector(".readyPop"); if(old) old.remove(); } // #293 말판 래퍼로 옮겨 둔 준비 팝업은 매 렌더에 치운다 — 아래 준비 대기 분기만 다시 붙인다
   /* #217 실브라우저 E2E로 발견: 이 재접속 배너가 renderSetup() 안에만 있어 배치(setup) 단계에서 끊겼을
      때만 보였다 — 실제 대국 중(play)에 끊기면 화면이 그냥 마지막 상태에 멈춰 아무 피드백이 없었다(진짜
      클라이언트 버그, 테스트 오탐과는 별개). phase 분기보다 먼저 확인해 어느 단계에서 끊겨도 동일하게 뜨게
@@ -1019,6 +1020,8 @@ function renderSetup(sp){
        [준비 취소]는 팝업이 아니라 기존 우상단 진행 버튼 자리 하나뿐이고(중복 없음), 누르면 서버가 준비를 풀어 팝업이 닫히고 다시 배치한다. 시계는 계속 흐른다 */
     if(S.eco){ const wait=NET.myReady&&!NET.peerReady&&NET.roomState!=="OPEN";
       sp.innerHTML=flowHeadHtml(p,cancel)+`<div class="readyPop" role="status" aria-live="polite"><b>${wait?"준비 완료 · 상대 기다리는 중…":line}</b>${wait&&autoReady?`<small>시간이 지나 서버가 남은 말을 사고 자동 배치했습니다(자동 배치 완료).</small>`:""}</div>`;
+      /* 말판 중앙 고정: 팝업 노드를 말판 래퍼 #left(position:relative)로 옮긴다 — 위치는 CSS 가 그 상자의 가운데로 잡고, 말판과 함께 스크롤한다 */
+      const pop=sp.querySelector(".readyPop"); if(pop) $("left").appendChild(pop);
       return; }
     sp.innerHTML=`<h2 id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</h2>
       <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">${line}</p>
@@ -1683,6 +1686,7 @@ function pieceMemoKey(p){ return !p?null:(p.type==="minion"?(p.element?"minion_"
 /* #238 CJ 4: 동료 역할(공격·방어) — 내 말은 소유자 값(allyKind · 온라인은 내 기술 id), 상대 말은 **공개된 기술 id** 로만 안다.
    모르면 null 이라 공용 companion 그림이다(말 id·요청·DOM·클래스로 추정하지 않는다) */
 function allyRole(p){ if(!p||p.type!=="ally") return null;
+  if(p.resultRole) return p.resultRole; // 결과 화면 항목 — 권위 final(서버·resultEntry)이 공개 범위 안에서 실어 준 값만
   const mine=viewerIsOwner(p.owner); if(mine&&p.allyKind) return p.allyKind;
   const k=(p.skills||[]).filter((s,i)=>mine||(p.revealedSkills||[]).includes(i)).map(String).find(s=>/^(AS|SH)-/.test(s));
   return k?(k[0]==="S"?"shield":"assassin"):null; }
@@ -2008,7 +2012,10 @@ function shopHtml(p){
    온라인은 서버가 FINISHED 에만 싣는 data.final 좌석 블록, 오프라인은 이 기기의 권위 엔진(Core synView) 값을 같은 모양으로 읽는다.
    종료 전(over 가 아닌 단계)에는 불리지 않으므로 상대 비공개 정보가 먼저 나가지 않는다. */
 function resultEntry(x){ const e={type:x.type,rosterId:ecoKey(x)||x.rosterId||null,name:x.name,element:x.element||null,alive:x.alive!==false,hp:x.hp,maxHp:x.maxHp,grade:x.grade||null}; // #293: grade = 결과 얼굴의 등급 배경(서버 final 과 같은 칸)
-  return x.hpSeen?Object.assign(e,{hpSeen:true}):e; }
+  /* 동료의 역할(allyKind)은 **이미 아는 것만** 결과 얼굴(그림·역할 기호)에 남긴다 — 보드와 같은 공개 규칙(allyRole: 내 동료 · 공개된 기술로 드러난 상대 동료).
+     모르는 상대 역할은 넣지 않는다. 서버 final 도 같은 범위만 싣는다 */
+  const role=x.type==="ally"?allyRole(x):null;
+  return Object.assign(e,role?{allyKind:role}:null,x.hpSeen?{hpSeen:true}:null); }
 /** 오프라인(PVE·sim 제외): 서버 final 과 같은 모양 {seat,pieces,bag,syn} — 보드 9칸(폭탄·함정 제외, 사망 포함) + 가방 + Core synView 원값 */
 function resultSideOffline(p){
   return {seat:p,pieces:S.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally"||x.type==="minion")).map(resultEntry),
@@ -2020,7 +2027,7 @@ function resultSeatsHtml(){
   const sides=NET.publicMode?(NET.final&&Array.isArray(NET.final.sides)?NET.final.sides:[]):[0,1].map(resultSideOffline);
   /* #293 (2026-10-01 CJ 6): 결과 칸도 보드·트레이와 같은 얼굴(pcBodyHtml) — 왕국 · 아키타입/역할 · ♥ 실제 HP · 등급 배경. % 와 ★ 는 어디에도 없다.
      상대 값은 서버가 종료 뒤 보낸 실제 값 그대로다. 사망은 등급 배경을 덮지 않는 별도 표식('사망') */
-  const ent=(e,p,bag)=>{ const x=Object.assign({},e,{owner:p,type:bag?"minion":e.type}), nm=escAttr((e.alive?"":"사망 · ")+pcLabel(x));
+  const ent=(e,p,bag)=>{ const x=Object.assign({},e,{owner:p,type:bag?"minion":e.type,resultRole:e.allyKind==="assassin"||e.allyKind==="shield"?e.allyKind:null}) /* resultRole = 결과 항목이 이미 실은(공개 범위 안의) 역할 */, nm=escAttr((e.alive?"":"사망 · ")+pcLabel(x));
     return `<div class="uSlot faceBox${pcGradeCls(x)}${e.alive?"":" dead"}" title="${nm}"><span class="pc">${pcBodyHtml(x)}</span><b class="srOnly">${e.alive?"":"💀 "}${nm}</b>${e.alive?"":`<i class="dead" aria-hidden="true">사망</i>`}</div>`; };
   /* #238 (2026-09-28 CJ 시각 REVISE · BAT 결과): 승자 위 · VS · 패자 아래 — 프로필 + Win!/Lose! · 하수인 줄 · 시너지 아이콘 칩. 이력 토글 없음 */
   const order=S.winner===1-me?[1-me,me]:[me,1-me];

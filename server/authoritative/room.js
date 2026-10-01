@@ -1826,9 +1826,13 @@ class Room {
      Core 시너지가 이미 가방 전설을 센다. 가방 말은 하수인이며 보드 자리가 없다. */
   _finalView(T, seatIndex) {
     const S = T.S;
+    /* #293 동료 역할(결과 화면 그림) — 자기 동료는 소유자 값, 상대 동료는 **이미 공개된 AS-/SH- 기술**이 있을 때만(클라이언트 allyRole 과 같은 규칙).
+       모르는 상대 동료에는 키 자체가 없다. skills·revealedSkills 는 여전히 싣지 않는다. */
+    const roleKnown = (u) => u.owner === seatIndex || (u.revealedSkills || []).some((i) => /^(AS|SH)-/.test(String((u.skills || [])[i])));
     const unit = (u, type) => ({
       type, rosterId: type === 'minion' ? T.ecoKey(u) : null, name: u.name, element: u.element || null,
       alive: u.alive !== false, hp: u.hp, maxHp: u.maxHp, grade: u.grade === undefined ? null : u.grade, ...(u.hpSeen ? { hpSeen: true } : {}),
+      ...(type === 'ally' && u.allyKind && roleKnown(u) ? { allyKind: u.allyKind } : {}),
     });
     return {
       sides: [0, 1].map((seat) => ({

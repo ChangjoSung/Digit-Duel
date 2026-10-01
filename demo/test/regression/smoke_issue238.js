@@ -85,7 +85,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
   T.render(); ok(!/resultSeats/.test(T.byId("sidePanel").innerHTML),"D1 경기 중에는 결과 블록이 없다 (상대 정보 선공개 0)");
   const side=T.ui238.resultSideOffline(1);
   eq(side.pieces.length,9,"D2 보드 9칸 = 왕 1 · 동료 2 · 하수인 6 (폭탄·함정 제외)");
-  ok(side.pieces.every(e=>["king","ally","minion"].includes(e.type)&&!("id" in e)&&Object.keys(e).every(k=>["type","rosterId","name","element","alive","hp","maxHp","grade","hpSeen"].includes(k))),"D3 항목은 서버 final 과 같은 허용 칸만 (#293: 등급 = 결과 얼굴 배경이라 grade 포함 · id·위치·스킬·원장 없음)");
+  ok(side.pieces.every(e=>["king","ally","minion"].includes(e.type)&&!("id" in e)&&Object.keys(e).every(k=>["type","rosterId","name","element","alive","hp","maxHp","grade","hpSeen","allyKind"].includes(k))),"D3 항목은 서버 final 과 같은 허용 칸만 (#293: 등급 = 결과 얼굴 배경이라 grade 포함 · id·위치·스킬·원장 없음)");
   eq(side.syn,T.synView(1,S),"D4 시너지는 Core synView 원값 그대로 (UI 재계산 없음)");
   S.pieces.find(x=>x.owner===1&&x.type==="minion").alive=false;
   T.gameOver(0,"wipe"); T.drain(); T.render();

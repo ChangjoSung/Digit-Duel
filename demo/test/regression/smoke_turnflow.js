@@ -241,7 +241,7 @@ block("D 판정",()=>{
   const setup=()=>{ board("pvp"); const m1=first(0,"minion"), m2=first(1,"minion"); H.place(T,m1,7,4); H.place(T,m2,6,4); T.S.selected=null; T.startRounds(m1,m2,m1,m2); T.drain(); return [m1,m2]; };
   let [a,d]=setup(); a.hp=65; d.hp=40; T.S.battle.recA=5; T.S.battle.recD=90; T.judge(); T.drain();
   ok(a.alive&&!d.alive&&S().metrics.judged===1&&S().metrics.attackerWins===1,"D1 판정: A 65% > D 40% → 공격자 승 (누적 유효 피해 recD 90 > recA 5 여도 무관)");
-  ok(T.S.log.some(l=>/판정 65% vs 40%/.test(l.msg)),"D1b 로그에 비율 표기");
+  ok(T.S.log.some(l=>l.msg.includes(`판정 65/${a.maxHp} vs 40/${d.maxHp}`))&&!T.S.log.some(l=>/판정 \d+% vs/.test(l.msg)),"D1b 로그에 실제 HP(현재/최대) 표기 — % 없음 (#293 · 승패는 비율 그대로)");
   [a,d]=setup(); a.hp=50; d.hp=50; T.judge(); T.drain();
   ok(!a.alive&&d.alive&&S().metrics.ties===1&&S().metrics.defenderWins===1,"D2 동률 → 방어자 승");
   [a,d]=setup(); a.hp=50; d.hp=50; a.shield=40; T.judge(); T.drain();
@@ -532,7 +532,7 @@ block("J 전투 메뉴",()=>{
   ok(/id="bsub-fight" /.test(h())||/id="bsub-fight"/.test(h()),"J2 하위 패널이 모두 그려져 있다 (활성 패널만 보임)");
   ok(/class="bsub hidden" id="bsub-fight"/.test(h())&&/class="bsub hidden" id="bsub-bag"/.test(h()),"J3 초기에는 하위 패널 숨김");
   ok(/__act\(0\)/.test(h())&&/__throwBall\(\)/.test(h())&&/__flee\(\)/.test(h()),"J4 기존 규칙 버튼(__act·__throwBall·__flee)이 그대로 존재 (온라인 송신 경로 불변)");
-  ok(/<button disabled[^>]*__throwBall/.test(h())&&/상대 HP 100% — 30% 미만/.test(h()),"J5 포획 조건 미충족 사유 표시·비활성");
+  ok(/<button disabled[^>]*__throwBall/.test(h())&&/상대 HP (\d+)\/\1 — 최대 HP의 30% 미만/.test(h()),"J5 포획 조건 미충족 사유 표시·비활성");
   /* #146 (v0.4.7 CJ 2026-09-10): 도망의 HP 게이트가 폐지됐다 — 만피여도 버튼이 활성이고 조건 미충족 사유 문구 자체가 없다.
      대신 표기 성공률이 기본 30% 다. #122 REVISE(2026-09-10 CJ QA 2)로 실패 페널티가 다시 생겨,
      안내는 "상대의 기본 공격 1회를 맞는다"로 바뀐다 — 종전 #146 의 "추가 반격은 없고" 문구는 더 이상 쓰지 않는다. */

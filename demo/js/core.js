@@ -1605,7 +1605,7 @@ function ballWhy(state,side){
   if(oppPiece.type!=="minion") return "상대가 하수인이 아닙니다";
   if(state.eco&&opp.legend) return "전설은 포획할 수 없습니다";
   if(state.eco&&ecoOwnsKey(state,own,ecoKey(opp))) return "이미 가진 종입니다";
-  if(!(opp.hp<opp.maxHp*0.3)) return `상대 HP ${pct(opp.hp/opp.maxHp)} — 30% 미만이어야 합니다`;
+  if(!(opp.hp<opp.maxHp*0.3)) return `상대 HP ${opp.hp}/${opp.maxHp} — 최대 HP의 30% 미만이어야 합니다`; // #293: 표시는 실제 HP(현재/최대) — 조건(30% 미만)은 그대로
   if(state.balls[own]<=0) return "몬스터볼이 없습니다";
   if(!state.eco&&state.reserve[own]) return "예비 슬롯이 차 있습니다";
   if(side==="A"?B.ballThrowA:B.ballThrowD) return "이번 라운드에 이미 던졌습니다";
@@ -2981,10 +2981,11 @@ function judge(){
   const B=S.battle; S.metrics.judged++;
   const ra=B.fa.hp/B.fa.maxHp, rd=B.fd.hp/B.fd.maxHp;
   bmsg("⚖️ 남은 HP 비율로 판별합니다!",null,{key:"judgeBanner",big:true});
-  bmsg(`${fighterName("A")} ${pct(ra)} vs ${fighterName("D")} ${pct(rd)}`);
-  if(ra>rd) finishBattle("A",`판정 ${pct(ra)} vs ${pct(rd)}`);
-  else if(rd>ra) finishBattle("D",`판정 ${pct(rd)} vs ${pct(ra)}`);
-  else {S.metrics.ties++; finishBattle("D",`동률 ${pct(ra)} — 방어자 승`);}
+  const ha=`${B.fa.hp}/${B.fa.maxHp}`, hd=`${B.fd.hp}/${B.fd.maxHp}`; // #293 (2026-10-01 CJ 6): 표시는 실제 HP(현재/최대) — 승패는 종전 그대로 비율(ra·rd) 비교다
+  bmsg(`${fighterName("A")} ${ha} vs ${fighterName("D")} ${hd}`);
+  if(ra>rd) finishBattle("A",`판정 ${ha} vs ${hd}`);
+  else if(rd>ra) finishBattle("D",`판정 ${hd} vs ${ha}`);
+  else {S.metrics.ties++; finishBattle("D",`동률 ${ha} vs ${hd} — 방어자 승`);}
 }
 function finishBattle(winSide,how){
   const B=S.battle;
