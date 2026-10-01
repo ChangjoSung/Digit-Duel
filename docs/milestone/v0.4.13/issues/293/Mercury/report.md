@@ -51,3 +51,9 @@ CJ 최신 Comment가 역사적 지시보다 우선한다. 현행 main `CLAUDE.md
 | 최신 Release | v0.4.12. hotfix 부활·main Release·운영/베타 Render 배포 없음 |
 
 필수 MCP의 연결 목록·인증·실제 읽기 게이트는 모두 PASS했다(Codex Notion 44도구, Render 23도구, Claude 기존 로컬 Notion만). Render OAuth의 일시적 인증 요구는 기존 연결 재인증 후 실제 현재 도구 호출로 복구했다. TUI 경고 1건은 `Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell`이며 필수 MCP 실패가 아니다. 운영 Render와 QA 자원은 읽기만 했으며 다음 베타 전 연결 브랜치/정확한 SHA 조정 검토가 필요하다. main 6파일 원본 바이트는 해시로 보존했고 PR #304 Git 내용은 같지만 로컬 CRLF/원격 LF 때문에 원시 바이트 동일이라고 주장하지 않는다.
+
+## 마지막 CI 입력 전제 보정
+
+후속 CI `36805060923`에서 #122 기대값 보정(99/0)은 통과했으나 다음 뒤로가기 검사 B7이 실패했다. 자유 전환용 B3가 경제 모드의 열린 S01을 만들면서 단계 잠금 → 준비 취소 확인창 잔존 → 다음 B7의 모달 보호 가드가 정당하게 차단한 것이 원인이다. Venus가 AC10 전제를 먼저 문서화하고 Mars가 B3의 `S.eco=null` 입력 한 줄만 보정했다. **기존 뒤로가기 122개 조건/문구를 모두 보존**했으며 B7 앞에서 창을 닫아 실패를 숨기지 않았다. 제품 변경 없이 Mars 1회 122/0 exit0 및 fresh Saturn 독립 1회 122/0 exit0을 확인했다. [입력 전제 정정 근거](../Mars/back-nav-correction.md).
+
+추가 독립 PASS 2026-10-01 11:41 KST, `msg_f76f40cf60df`, 후보 `4d1d57bc92ace7b21ede516d7840d010acec0566`; 이전 QA 이후 제품/다른 검사/워크플로 불변이다. 최종 HEAD 필수 CI는 PR #305 Checks의 현재 결과가 기준이며 CJ 플레이 QA는 계속 대기다. 11:31 KST 확인 기록에는 Codex GDD-13/23/24와 Render 기존 Workspace의 **실제 읽기 재성공 4건**을 보관했다. 새 계정/연결/자원/배포 변경은 없다.

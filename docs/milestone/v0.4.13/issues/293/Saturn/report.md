@@ -36,3 +36,10 @@
 - `node demo/test/milestone/v0.4.6/issues/122/issue122_rules.js` **정확히 1회: 99 passed / 0 failed / exit0**. 다른 검사/typecheck/브라우저/CI 재실행 없음.
 - 제품·기존 다른 7검사·워크플로·최초 승인 UI 기대값 9건은 최초 QA `0e3afc032f0d3f54e138e585a45e575058fd3129` 이후 불변, 13AC/R1/R2 보존. 따라서 최초 QA는 불변 범위에만 재사용한다. QA 전후 HEAD 동일·status clean, `filesModified=[]`, Saturn 파일 작성 없음.
 - 전체 현재 목록은 변경된 기존 UI 기대값 **11건 + 새 A14b 1건**이며 앞선 최초 QA의 9건 기록은 그 당시 범위다. 이후 문서 정정/QA 기록 커밋은 제품·검사 코드를 바꾸지 않는다. 최종 HEAD CI/CJ 플레이 QA/실서버 E2E의 별도 한계는 위와 같다.
+
+## 뒤로가기 입력 전제 보정 독립 QA — Mercury 기록
+
+- **PASS 2026-10-01 11:41 KST**, 완료 `msg_f76f40cf60df`, task `task_e2a050000a45` / dispatch `ctx_c85ea4aee043` / thread `01a0f54c-95c7-78f0-9ce9-997cd47c109e`. 시작/완료 실제 `gpt-6.1-sol/xhigh/default(No Fast)` · `danger-full-access/never` 및 native argv/현재 footer를 각각 새로 확인했다.
+- 후보 `4d1d57bc92ace7b21ede516d7840d010acec0566` 대 `0201e3ef640cfa51c66e32a239dc343709d0b636`는 정확히 3파일. 뒤로가기 검사 B3의 비경제 전제 `S.eco=null` 입력/주석 한 줄, Venus AC10 전제 메타데이터, Mars 보고다. 입력 한 줄을 빼면 원래 파일의 모든 바이트가 같고 **기존 122개 조건·문구 전부 무수정**이다. 실제 UI/Core/harness 경로로 준비 취소 창 잔존과 B7 보호 가드를 대조했다.
+- `node demo/test/milestone/v0.4.6/issues/122/back_nav.js` **정확히 1회: 122 passed / 0 failed / exit0**. 제품·다른 검사/워크플로·기존 11개 화면 기대값/A14b는 이전 QA `5e605cd` 이후 불변이다. 기존 13AC/R1/R2 및 59/99 PASS는 그 불변 범위에만 재사용한다.
+- QA 전후 HEAD 동일·status clean·`filesModified=[]`; 보고/임시 파일/추가 검사/typecheck/브라우저/CI 실행 없음. 이후 PD QA 기록 커밋은 제품·검사 코드를 바꾸지 않는다. 최종 HEAD CI/CJ 플레이 QA/실서버 E2E는 별도 게이트다.
