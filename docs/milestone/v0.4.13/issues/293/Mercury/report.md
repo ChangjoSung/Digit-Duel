@@ -2,7 +2,7 @@
 
 2026-10-01 · Mercury_PD · CJ 최신 Comment: 전체 흐름 PASS, 카드 정보·단계 색·한 줄 배치를 문서에 반영한 뒤 구현.
 
-**현재 상태:** 문서 선행 게시 `ce96f25b8da7899f0f3253cb52b0517ccf7ef6bb`와 Notion 동기화 뒤 Mars/Earth 구현·보완 완료. Venus의 검사 문구 보정도 완료했으며, Saturn 독립 QA와 최종 제품 커밋 CI·CJ 플레이 QA는 대기다. 이전 시안·인수 보고는 Git 이력의 `2febd197` 및 `ce96f25`에서 보존한다.
+**현재 상태:** 문서 선행 게시 `ce96f25b8da7899f0f3253cb52b0517ccf7ef6bb`와 Notion 동기화 뒤 Mars/Earth 구현·보완 완료. Venus의 검사 문구 보정과 Saturn 독립 QA도 완료했다. 최종 제품 blob은 QA 대상 `0e3afc032f0d3f54e138e585a45e575058fd3129`로 고정했다. 필수 CI는 PR #305 최신 HEAD Checks가 기준이며 CJ 플레이 QA는 대기다. 이전 시안·인수 보고는 Git 이력의 `2febd197` 및 `ce96f25`에서 보존한다.
 
 ## 객관적 분석과 적용
 
@@ -28,8 +28,10 @@
 - 실행 확인: Mercury `gpt-6.1-sol/xhigh/default`, Earth 기존 자산 정정 `gpt-6-luna/xhigh/default`, Venus·Mars `claude-opus-5-5/high`. Codex `danger-full-access/never`, Claude 실제 `--dangerously-skip-permissions`. Orca 사용자 terminal을 명시 실행해 receipt model=null인 부분은 실제 argv·현재 턴/응답·tier 로그로 확인했다.
 - Mars 검사: 신규 #293 59/0, #238 147/0, #285 38/0, #263_client 164/0, #236 287/0, #286 13/0, public_rooms 191/0, online 159/0, JS 구문/typecheck exit0. 최종 CSS 뒤 #293만 재검사했다. 기존 경제·시계·보안 불변식은 보존하며 UI 위치/순서 기대값 9건 수정은 숨기지 않고 [Mars 보고](../Mars/report.md)에 기록했다. 목록 밖 직접 영향 회귀 4건은 1회씩 수행됐고, 이후 검사 확대는 사전 PD 승인으로 제한했다.
 - 시각 근거: 실제 390px·320px·데스크톱 화면 15장. 완료 대기 2장은 모의 공개 방 상태를 같은 렌더러로 그린 것으로 실서버 E2E 증거가 아니다. 보드 7×13의 마지막 행은 기존 내부 스크롤 끝에서 보이고 선택 가능하다. 실서버 브라우저 E2E·CJ 플레이 QA는 미실행이다.
-- Saturn 독립 판정·최종 CI 6개는 아직 대기다. 이 보고는 제품 QA PASS나 출시 승인으로 쓰지 않는다.
+- [Saturn 독립 QA PASS 기록](../Saturn/report.md): 13AC 코드·실제 이미지 대조, 신규 #293 검사 59/0 exit0 1회, 파일 무수정. 문서 표현 1건을 PD가 정정했다. 최신 CI 6개는 [PR #305 Checks](https://github.com/ChangjoSung/Digit-Duel/pull/305/checks)의 최종 HEAD로 확인한다. CJ 플레이 QA·출시 승인은 대기다.
 
 ## 보존과 남은 결정
 
-main/origin/main 보존 기준은 `9b306bbfda103263cb2feea90fd9c89527eb9290`. main의 미커밋 계약 6파일·untracked unity/·stash `9ebd041242f61e10906ae388e8037c03c33ad386` 및 `cc644636b67788727963b2158001bc66cb40fe86`·handoff `b44e3021eb4118f5d59cca0e2742a7c5c4ba1a84`는 유지하며 종료 때 독립 대조한다. PR #304는 최종 v0.4.13 Release/운영 갱신 때의 병합 계획 그대로다. 최신 Release v0.4.12, main Release·운영/베타 Render 갱신은 실행하지 않았다. #294·#295 전체 개편·#296 전투는 이번 착수 범위가 아니다.
+main/origin/main 보존 기준은 `9b306bbfda103263cb2feea90fd9c89527eb9290`. main의 미커밋 계약 6파일·untracked unity/·stash `9ebd041242f61e10906ae388e8037c03c33ad386` 및 `cc644636b67788727963b2158001bc66cb40fe86`·handoff `b44e3021eb4118f5d59cca0e2742a7c5c4ba1a84`는 새 fetch와 SHA-256 대조로 보존을 확인했다. PR #304는 최종 v0.4.13 Release/운영 갱신 때의 병합 계획 그대로다. 최신 Release v0.4.12, main Release·운영/베타 Render 갱신은 실행하지 않았다. #294·#295 전체 개편·#296 전투는 이번 착수 범위가 아니다.
+
+필수 MCP: Codex Notion 44도구·Render 23도구. GDD-13 실제 fetch 재확인(2026-10-01, last edit00:04:14.765Z), GDD-23/24 기존 갱신 후 실제 재조회 증거는 Venus 동기화 문서. Render 인증 요구를 기존 `codex mcp login render` 재인증으로 복구했고, 10:38 KST 실제 `list_workspaces`가 기존 `tea-daj3p25g1s2s739al7q0`를 반환했다. Claude Notion은 기존 로컬 연결만 사용했고 다른 계정·연결·Google/Slack/Unity MCP는 추가·검사·호출하지 않았다.
