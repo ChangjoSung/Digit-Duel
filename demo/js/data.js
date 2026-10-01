@@ -59,8 +59,9 @@ const ECO={
   win:3, lose:1, bushPerZone:4, capHpPct:0.7,
   startGoods:["potion","cool","cure","ball","ticket","power","time","escape"], // 시작 상점 (2.2) — #238 (2026-09-25 CJ): 정기 상점 상품 8종 전체를 실제 구매. 티켓 '사용'은 정기 상점 전용 유지
   goods:["potion","cool","cure","ball","ticket","power","time","escape"], // 정기 상점 (7.3)
-  shopSec:90, bagPickSec:20,                                    // 상점 1인 90초 (PVE·핫시트 순차 최대 180초 — 자기 상점이 보이는 순간부터, 2026-09-24 CJ D1) · B08 20초
-  placeSec:90, actSec:30, battleSec:60                          // #263: 배치 90초(S01 을 직접 끝낸 좌석만) · 게임 행동 30초(출전 후보 선택 포함 · 전투 중 정지) · 전투 행동 60초(2026-09-25 CJ T4)
+  prepSec:180,                                                  // #293 (2026-10-01 CJ): 경기 전 준비(시작 상점 → 배치 → 완료) 공통 180초 한 번 — 양쪽 같은 마감 · 재발급 없음
+  shopSec:90, bagPickSec:20,                                    // 정기 상점 1인 90초 (PVE·핫시트 순차 최대 180초 — 자기 상점이 보이는 순간부터, 2026-09-24 CJ D1) · B08 20초
+  actSec:30, battleSec:60                                       // #263: 게임 행동 30초(출전 후보 선택 포함 · 전투 중 정지) · 전투 행동 60초(2026-09-25 CJ T4). 배치 90초(placeSec)는 #293 으로 폐지 — 준비 180초에 포함
 };
 /* ===== #21 시드 가능한 RNG — 게임 로직의 모든 난수는 rand()를 경유. setSeed(n)로 결정적 재현, setSeed(null)로 Math.random 복귀 ===== */
 let RNG=null; // null → Math.random (테스트 하네스의 Math.random 오버라이드와 호환)

@@ -86,6 +86,13 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
 
   for (const u of v.units) {
     for (const k of NEVER_TO_OPPONENT) {
+      /* #293 (2026-10-01 CJ QA REVISE 6) — **정체가 공개된** 상대 말(C-2)만 등급을 싣는다(말 얼굴 배경색): 엔진 값 그대로.
+         미공개 말(B)의 등급과 그 밖의 모든 키는 종전대로 금지다. */
+      if (k === 'grade' && u.type) {
+        const g = T.S.pieces.find((p) => room._alias(p.id) === u.id).grade;
+        ok(u.grade === (g === undefined ? null : g), `공개된 상대 보드 말의 grade = 엔진 값 (등급 C-2 · #293)`);
+        continue;
+      }
       ok(!(k in u), `상대 보드 말에 ${k} 미전송 (등급 ${u.type ? 'C-2' : 'B'})`);
     }
   }

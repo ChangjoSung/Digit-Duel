@@ -12,7 +12,7 @@ const NET={mode:false,me:null,ws:null,replaying:false,queue:[],modalSeq:0,syncMo
      room_joined/room_resumed/lobby_ready) → 이후 room_state/error. 코드 접속(위 code 경로)은 이 필드들과 무관하게
      그대로 동작한다(기존 릴레이 — 현재는 테스트 전용 server/test/relay/server.js, 건드리지 않음). */
   uiTab:"public", rooms:[], roomsLoading:false, roomId:null, roomName:null, seatToken:null, publicMode:false, // #217 CJ 승인: 공개 로비가 기본 진입(Earth/lobby-guide.md) — 코드 접속은 SUPERSEDED된 검토 옵션으로만 남는다
-  myReady:false, peerReady:false, lobbyOnly:false, revision:0, waitingForPeer:false,
+  myReady:false, peerReady:false, steps:/** @type {(string|null)[]|null} */(null), lobbyOnly:false, revision:0, waitingForPeer:false,
   /* #217 Jupiter/battle-fx-protocol.md v2 §7 — (epoch,roomId,seat) 단위 큐 커서. enqueuedSeq는 로컬 재생
      큐에 이미 넣은 최대 seq, playedSeq는 실제 재생이 끝난 최대 seq. 새 room/epoch가 되면 netFxResetCursor가
      둘 다 0으로 되돌린다 — 옛 seq와 절대 비교하지 않는다(§7-1). fxQueue는 재생 대기 중인 이벤트 배열. */
@@ -617,7 +617,7 @@ function netStubPiece(u){
 function netStubStats(u){
   if(u&&typeof u.def==="number") return {def:u.def,spd:u.spd||0,dodge:u.dodge||0,crit:u.crit||0,statusPct:u.statusPct||0,grade:u.grade!==undefined?u.grade:null};
   const rd=u&&u.rosterId!==undefined&&u.rosterId!==null?ROSTER.find(r=>r.id===u.rosterId):null;
-  if(rd){ const b=ARCHETYPE_BASE[rd.arch]; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:1}; }
+  if(rd){ const b=ARCHETYPE_BASE[rd.arch]; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:Number.isInteger(u.grade)?u.grade:1}; } // #293: 정체가 공개된 상대 말은 서버가 실제 등급을 싣는다(배경색)
   if(u&&u.type==="king") return {def:KING_BASE.def,spd:KING_BASE.spd,dodge:KING_BASE.dodge,crit:KING_BASE.crit,statusPct:KING_BASE.statusPct,grade:null};
   if(u&&u.type==="ally"){ const b=ALLY_BASE.assassin; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:null}; }
   const std=ARCHETYPE_BASE.std; return {def:std.def,spd:std.spd,dodge:std.dodge,crit:std.crit,statusPct:std.statusPct,grade:1};
@@ -632,6 +632,8 @@ function netApplyRoomState(data,isResumeFrame){
   if(typeof data.round==="number") NET.round=data.round; // #238 경기 번호 — fx 커서 경계(새 경기 엔진의 fx seq 는 1부터 다시 선다)
   if(typeof data.economy==="boolean") NET.economy=data.economy; // #237 경기 전(OPEN/SETUP) 뷰만 싣는다
   if(data.seats&&Array.isArray(data.seats.ready)){ NET.myReady=!!data.seats.ready[NET.me]; NET.peerReady=!!data.seats.ready[1-NET.me]; NET.readyPending=null; } // ready 표시는 서버가 확정한 값만 쓴다
+  /* #293 (2026-10-01 CJ 2): 준비 단계 공개 — seats.step = 좌석별 "shop"|"place"|"done" 셋뿐. 그 밖의 값·없음은 "모름"(null)이고 화면은 추측하지 않는다 */
+  NET.steps=data.seats&&Array.isArray(data.seats.step)?[0,1].map(i=>["shop","place","done"].includes(data.seats.step[i])?data.seats.step[i]:null):null;
   netFxResetCursorIfNeeded(); // (epoch,roomId,seat) 경계 — 스냅샷 캐시보다 먼저
   const at=Date.now(); // #237 서버 시계·재연결 유예는 남은 ms 로 온다 — 받은 순간부터 로컬로 줄여 표시만 한다(마감 판정은 서버)
   NET.ecoClock=data.clock?Object.assign({at},data.clock):null;
@@ -768,7 +770,10 @@ function netEcoWire(a){
 }
 function netClockText(){
   const c=NET.ecoClock; if(!c) return "";
-  const ms=c.running?c.leftMs-(Date.now()-c.at):c.leftMs;
+  /* #293: 준비 시계(key "prep")는 서버 절대 마감(deadline)과 그 프레임의 서버 시각(serverNow)으로 온다 — 남은 시간 = 마감 − 서버 시각 − 받은 뒤 흐른 시간.
+     양쪽 좌석이 같은 마감을 받으므로 같은 시계를 본다. 이 기기 시계로 새 180초를 만들지 않는다(없으면 종전 leftMs) */
+  const left=Number.isFinite(c.deadline)&&Number.isFinite(c.serverNow)?c.deadline-c.serverNow:c.leftMs;
+  const ms=c.running?left-(Date.now()-c.at):left;
   return `⏱ ${Math.max(0,Math.ceil(ms/1000))}초${c.running?"":" (정지)"}`;
 }
 /* 상점·B08·상대 차례에도 기권할 수 있다(경제 방 GDD-23 2.4) — 확인 창은 로컬, 확정만 서버 명령(차례 판정은 서버).

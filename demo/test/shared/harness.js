@@ -430,7 +430,13 @@ function load(htmlPath,opts){
   ui238:typeof castFx==="function"?{castFx,battleSynChips,netSynthBattle,resultSeatsHtml,resultSideOffline,uiLeaveConfirm,renderBoardInfo,netResumeBarSync,modalFocus,MODAL_FOCUS,
     /* 2026-09-28 CJ 재수정 8항목 — 기준판 로드 호환: 부재 시 undefined */
     synHelp:typeof synHelp==="function"?synHelp:undefined,synTier:typeof synTier==="function"?synTier:undefined,synTierText:typeof synTierText==="function"?synTierText:undefined,
-    SYNHELP:typeof SYNHELP!=="undefined"?SYNHELP:undefined,allyRole:typeof allyRole==="function"?allyRole:undefined,uiScreenName:typeof uiScreenName==="function"?uiScreenName:undefined}:undefined,
+    SYNHELP:typeof SYNHELP!=="undefined"?SYNHELP:undefined,allyRole:typeof allyRole==="function"?allyRole:undefined,uiScreenName:typeof uiScreenName==="function"?uiScreenName:undefined,
+    /* #293 CJ QA REVISE(2026-10-01) — 말 얼굴 등급 배경 · 시너지 덧붙임 칩 (기준판 로드 호환: 부재 시 undefined) */
+    GI:typeof GI!=="undefined"?GI:undefined,pcGradeCls:typeof pcGradeCls==="function"?pcGradeCls:undefined,synExtraChips:typeof synExtraChips==="function"?synExtraChips:undefined,
+    synHelpClose:typeof synHelpClose==="function"?synHelpClose:undefined}:undefined,
+  PREPCLK:typeof PREPCLK!=="undefined"?PREPCLK:undefined, synExtraView:typeof synExtraView==="function"?synExtraView:undefined,
+  synKingdomEffect:typeof synKingdomEffect==="function"?synKingdomEffect:undefined, netStubPiece:typeof netStubPiece==="function"?netStubPiece:undefined,
+  ARCH_KO:typeof ARCH_KO!=="undefined"?ARCH_KO:undefined,
   html:${JSON.stringify(html)}};`;
   eval(code);
   const T=global.__T;

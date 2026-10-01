@@ -45,7 +45,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
   eq(count(h,/class="goodCard"/g),8,"A7 상품 카드 8장");
   eq([...h.matchAll(/--g:(\d)"/g)].map(m=>m[1]).join(""),"01234567","A7b Earth goods.svg 8칸을 ECO.goods 순서로 쓴다");
   ok(/하수인 몫 🪙6은 남겨 둡니다/.test(h.replace(/<[^>]+>/g,""))&&!/필요한 새로 고침/.test(h),"A8 예비 재화 문구 = 빈 칸 × 🪙1 (옛 '필요한 새로 고침' 문장 삭제 · 🪙 는 코인 그림 + srOnly 글자)");
-  ok(/티켓 1장 보유 — 사용은 정기 상점에서/.test(h)&&!/__shop\('ticket'\)/.test(h),"A9 S01 에는 티켓 사용 버튼 없이 보유 안내만");
+  ok(/aria-label="시작 상점은 티켓 없이 속성을 바꿀 수 있습니다"/.test(h)&&/<\/i>무료<\/span>/.test(h)&&!/__shop\('ticket'\)/.test(h),"A9 S01 에는 티켓 사용 버튼 없이 티켓 아이콘 + '무료' 안내만 (#293 2026-10-01 CJ 4 — 보유 수 배지 대체)");
 }
 /* ===== B. 상점 시트 ===== */
 {
@@ -85,7 +85,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
   T.render(); ok(!/resultSeats/.test(T.byId("sidePanel").innerHTML),"D1 경기 중에는 결과 블록이 없다 (상대 정보 선공개 0)");
   const side=T.ui238.resultSideOffline(1);
   eq(side.pieces.length,9,"D2 보드 9칸 = 왕 1 · 동료 2 · 하수인 6 (폭탄·함정 제외)");
-  ok(side.pieces.every(e=>["king","ally","minion"].includes(e.type)&&!("grade" in e)&&!("id" in e)),"D3 항목은 서버 final 과 같은 허용 칸만");
+  ok(side.pieces.every(e=>["king","ally","minion"].includes(e.type)&&!("id" in e)&&Object.keys(e).every(k=>["type","rosterId","name","element","alive","hp","maxHp","grade","hpSeen"].includes(k))),"D3 항목은 서버 final 과 같은 허용 칸만 (#293: 등급 = 결과 얼굴 배경이라 grade 포함 · id·위치·스킬·원장 없음)");
   eq(side.syn,T.synView(1,S),"D4 시너지는 Core synView 원값 그대로 (UI 재계산 없음)");
   S.pieces.find(x=>x.owner===1&&x.type==="minion").alive=false;
   T.gameOver(0,"wipe"); T.drain(); T.render();
@@ -100,9 +100,9 @@ function pvePlay(seed){ const T=pveSetup(seed);
   ok(/시너지 정보를 받지 못했습니다/.test(T.ui238.resultSeatsHtml()),"E1 final 이 없으면 재계산 없이 안내만");
   const e=(o)=>Object.assign({type:"minion",rosterId:"M-F1",name:"새끼 화룡",element:"fire",alive:true,hp:40,maxHp:100},o);
   N.final={sides:[{seat:0,pieces:[e({hp:77})],bag:[],syn:{el:{fire:2,water:0,lightning:0,land:0,grass:0},arch:{std:1},dead:0,stage:{fire:0,water:-1,lightning:-1,land:-1,grass:-1}}},
-    {seat:1,pieces:[e({hp:55}),e({hp:30,maxHp:90,hpSeen:true,name:"화염 투사"})],bag:[e({hp:12})],syn:{el:{fire:1},arch:{},dead:0}}]};
+    {seat:1,pieces:[e({hp:55,grade:3}),e({hp:30,maxHp:90,hpSeen:true,name:"화염 투사"})],bag:[e({hp:12})],syn:{el:{fire:1},arch:{},dead:0}}]};
   const h=T.ui238.resultSeatsHtml();
-  ok(/HP 77\/100/.test(h)&&/HP 55%/.test(h)&&/HP 30\/90/.test(h)&&/HP 12%/.test(h),"E2 내 값은 실제, 상대는 싸운 개체만 실제·그 밖은 %");
+  ok(/· HP 77</.test(h)&&/>77<\/span>/.test(h)&&/>55<\/span>/.test(h)&&/>30<\/span>/.test(h)&&/>12<\/span>/.test(h)&&!/\d%/.test(h)&&/class="uSlot faceBox gf g3"/.test(h),"E2 양쪽 모두 서버가 보낸 실제 HP(% 없음 · #293 2026-10-01 CJ 6) · 상대 등급 = 배경색");
   ok(/🎒 가방/.test(h)&&h.includes("불 2칸 · (2) 달성")&&h.includes('title="표준 1칸"')&&!h.includes("표준 1칸 ·"),"E3 가방 소절 · 왕국 단계는 서버 stage 그대로 · 아키타입은 칸 수만 (경계 재계산 없음)");
   const src=fs.readFileSync(path.join(path.dirname(htmlPath),"js","network.js"),"utf8");
   ok(/NET\.final=data\.state==="FINISHED"&&data\.final/.test(src)&&/NET\.final=null/.test(fs.readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8")),

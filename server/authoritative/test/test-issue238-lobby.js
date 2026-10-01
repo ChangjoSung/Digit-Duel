@@ -66,7 +66,7 @@ function playToFinish(room) {
   // 5) 경기 종료 → 결과 유지(최종 공개 말판·정보 경계) → 좌석별 복귀
   playToFinish(room);
   const fin = room.toSeatView(0);
-  ok(fin.state === 'FINISHED' && fin.units.length > 0 && fin.units.every((u) => u.grade === undefined && u.skills === undefined), 'FINISHED 말판 공개 — 등급·스킬 없음');
+  ok(fin.state === 'FINISHED' && fin.units.length > 0 && fin.units.every((u) => 'grade' in u && u.skills === undefined), 'FINISHED 말판 공개 — #293 등급 공개(말 얼굴 배경) · 스킬 없음');
   ok(records.length === 1 && records[0].matchId, '경기 1 기록 1회');
   const m1 = records[0].matchId;
   const tok0 = room.seats[0].credential.current, name = room.name, rev = room.revision;
@@ -146,7 +146,7 @@ function playToFinish(room) {
   lob.sweep();
   ok(lob.getRoom(lr.roomId) && lr.isListable(), '빈 대기방은 목록에 남는다');
 
-  // 8) 나가기는 대기방 취소 · 방장 혼자 시작 불가 · 경제 방은 5초 뒤 시작 상점 90초가 그때부터
+  // 8) 나가기는 대기방 취소 · 방장 혼자 시작 불가 · 경제 방은 5초 뒤 준비 180초(#293 공통 마감)가 그때부터
   const solo = new Room(2, { isPublic: true, epoch: 'aaaaaaaa', startGate: true, countdownMs: CD });
   solo.openHostSeat(fakeWs());
   ok(cmd(solo, 0, 'lobby_start').reason === 'E_ILLEGAL_ACTION', '혼자 시작 거부');
@@ -168,20 +168,23 @@ function playToFinish(room) {
   ok(!eco.engines, '경제 방도 참가만으로 상점을 열지 않는다');
   cmd(eco, 1, 'lobby_ready'); cmd(eco, 0, 'lobby_start');
   await wait(CD + 30);
-  const c = eco._clock[0];
-  ok(eco.state === STATES.SETUP && eco.engines && c && c.key === 'shop:0' && c.deadline - Date.now() > 85000, '5초 완료 순간 S01 90초 시작');
+  const c = eco._prep, ev = [0, 1].map((s) => eco.toSeatView(s));
+  ok(eco.state === STATES.SETUP && eco.engines && c && c.deadline - Date.now() > 175000 && c.deadline - Date.now() <= 180000
+    && eco._clock.every((x) => x === null) && ev.every((x) => x.clock.key === 'prep' && x.clock.running && x.clock.deadline === c.deadline)
+    && ev.every((x) => JSON.stringify(x.seats.step) === '["shop","shop"]'),
+  '5초 완료 순간 준비 180초 시작 — 방에 하나 · 양 좌석 같은 마감 · seats.step 은 shop (#293)');
   eco._finalize(STATES.CANCELED, null, { notify: false });
 
   // 8b) 경제 거래는 revision 을 보지 않는다 — 새 경기 S01 은 진열 번호가 다시 0 부터라 지난 경기 거래와 모양이 같다. round 경계가 막는다.
-  const e2 = gateRoom(5, { economy: true, shopMs: 40 });
+  const e2 = gateRoom(5, { economy: true, prepMs: 40 });
   cmd(e2, 1, 'lobby_ready'); cmd(e2, 0, 'lobby_start');
   await wait(CD + 30);
   const sh1 = e2.engines[0].S.eco.shop;
   const offer = { t: 'action', round: 1, action: { t: 'shopBuy', shop: sh1.turn, seq: sh1.seq[1], i: 0 } };
-  await wait(200); // S01 40ms 만료 → 자동 구매·배치·준비 → 경기 시작
+  await wait(200); // 준비 40ms 만료 → 자동 구매·배치·준비 → 경기 시작
   ok(e2.state === STATES.IN_PROGRESS, '경제 경기 1 시작(시간 초과 자동 배치)');
   cmd(e2, 0, 'resign'); cmd(e2, 0, 'lobby_return'); cmd(e2, 1, 'lobby_return');
-  e2._clockMs.shop = undefined; // 경기 2 는 운영 90초
+  e2._clockMs.prep = undefined; // 경기 2 는 운영 180초
   cmd(e2, 1, 'lobby_ready'); cmd(e2, 0, 'lobby_start');
   await wait(CD + 30);
   const sh2 = e2.engines[0].S.eco.shop;

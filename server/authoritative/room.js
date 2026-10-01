@@ -67,9 +67,6 @@ const RECRUIT_SWAP_STAGES = new Set(['skill', 'target', 'slot']); // demo/index.
 const ROSTER_SIZE = 6; // applyNetSetup: data.roster.length===6
 
 function now() { return Date.now(); }
-// #237 상대 HP 100 눈금 — 최대 HP(=등급)를 지우고 비율만 남긴다. 올림이라 살아 있는 말(HP≥1)은 1 이상이다.
-// #262 CJ QA(2026-09-27): 전투에 나선 적 없는(hpSeen 없는) 공개 상대 보드 말에만 쓴다.
-function pct100(v, max) { return Math.ceil(((Number(v) || 0) * 100) / (Number(max) || 1)); }
 /* 주어 불명 전투 문구의 HP 계열 수치(피해·회복·방어막·흡수·유효·해일 X·버틴 HP·과부하 상한)를 '?'로 가린다.
    라운드·횟수·퍼센트·쿨·차수·좌석(2R·1회·15%·⌛0·3차·P1)은 HP 와 무관한 규칙 상수라 그대로 둔다.
    #262 CJ QA(2026-09-27): 주어가 있는 줄은 두 전투원 모두 실제 값이다(전투 중 양쪽 HP 공개) — 종전 #237 100 눈금 변환은 폐지. */
@@ -323,7 +320,7 @@ function lockstepDigest(T) {
       num(p.reaperSeal),
       // #237 말 단위 경제 칸 — 원장·신규 표시·교체 표식(GDD-23 7.5·7.6)
       num(p.paid), !!p.fresh, !!p.swapMark,
-      // #262 전투 HP 노출 표식 — 좌석 뷰의 상대 HP 표기(100 눈금/실제)를 가른다
+      // #262 전투 HP 노출 표식 (#293 으로 좌석 뷰의 100 눈금 가림은 폐지 — 표식 자체는 Core 상태로 남는다)
       !!p.hpSeen]),
     eco: ecoDigest(S.eco, stats, num),
   });
@@ -348,10 +345,10 @@ class Room {
   // seed: 테스트 재현용 엔진 시드 주입(단위 테스트 전용). lobby.createRoom은 절대 넘기지 않는다 — 운영 룸은 매치 시작 시
   // crypto 난수로 비밀 시드를 뽑는다. 어떤 네트워크 입력도 이 값에 닿지 않는다.
   // economy: #237 경제 경기(시작 상점 → 배치 → 정기 상점·B08). 로비가 넘기며, 끄면 종전 무료 로스터 경기다.
-  // shopMs·bagPickMs: 테스트 재현용 시계 주입(graceMs 와 같은 관례). 기본은 Core 상수(ECO.shopSec·bagPickSec).
+  // shopMs·bagPickMs·prepMs: 테스트 재현용 시계 주입(graceMs 와 같은 관례). 기본은 Core 상수(ECO.shopSec·bagPickSec·prepSec).
   // startGate: #238 두 번째 참가를 WAITING 대기방으로 받는다(로비가 넘긴다 — 운영 기본). 끄면 종전처럼 참가 즉시 시작(단위 테스트 관례).
   // countdownMs: 방장 시작 카운트다운 주입(테스트 전용). 기본 5초.
-  constructor(roomId, { isPublic, epoch, graceMs, seed, economy, shopMs, bagPickMs, placeMs, actMs, battleMs, startGate, countdownMs }) {
+  constructor(roomId, { isPublic, epoch, graceMs, seed, economy, shopMs, bagPickMs, prepMs, actMs, battleMs, startGate, countdownMs }) {
     this.roomId = roomId;
     this.isPublic = !!isPublic;
     this.epoch = epoch;
@@ -362,8 +359,11 @@ class Room {
     this.countdownMs = countdownMs != null ? countdownMs : START_COUNTDOWN_MS;
     this._countdown = null; // #238 {deadline, handle} — 방장 시작 뒤 서버 5초. 준비 취소·단절·나가기로 취소된다
     this.round = 0;         // #238 이 방의 경기 번호 — 5초 완료(경기 시작)마다 +1. 모든 좌석 뷰에 실린다
-    this._clockMs = { shop: shopMs, bagPick: bagPickMs, place: placeMs, act: actMs, battle: battleMs }; // #263 배치 90초·행동 30초·전투 행동 60초 주입
-    this._clock = [null, null]; // #237 좌석에 묶인 게임 시계 {key, left, deadline, handle, expired, owner} — 상점·배치·B08. 단절 중에는 left 만 들고 멈춘다
+    this._clockMs = { shop: shopMs, bagPick: bagPickMs, prep: prepMs, act: actMs, battle: battleMs }; // #263 행동 30초·전투 행동 60초 · #293 준비 180초 주입
+    /* #293 (2026-10-01 CJ) 경기 전 준비 시계 {deadline, handle, expired} — **방에 하나**, 서버 epoch 절대 마감이다.
+       S01 이 열릴 때 한 번 서고 상점 완료·배치·준비·준비 취소·단절·재연결 어느 것도 다시 걸거나 멈추지 않는다. */
+    this._prep = null;
+    this._clock = [null, null]; // #237 좌석에 묶인 게임 시계 {key, left, deadline, handle, expired, owner} — 정기 상점·B08. 단절 중에는 left 만 들고 멈춘다
     /* #263 답할 좌석이 단계마다 바뀌는 두 시계는 방이 하나씩만 들고 owner 로 가리킨다 — 자리를 옮겨도 같은 시계라
        남은 시간이 보존된다(B02 출전 후보 선택은 방어자에게 넘어간다 · 전투 행동은 그 라운드의 행동자다). */
     this._act = null;    // 보드 행동 30초 (주 행동 · 출전 후보 선택(B02) · 도망 교환) — 한 턴에 하나
@@ -402,7 +402,6 @@ class Room {
       credential: null, ws: null, connected: false,
       ready: false, placed: false, rawSetup: null, seq: 0,
       disconnectExpiry: null, disconnectTimer: null,
-      shopTimedOut: false, // #263 S01 을 시간 초과로 끝낸 좌석 — 그 자리에서 자동 배치·준비까지 끝나므로 배치 90초를 받지 않는다
       emoteAt: 0, // #262 마지막 이모티콘 성공 시각(서버 시계) — 좌석에 붙어 재접속에도 남는다. 뷰·재생·DB 에 싣지 않는다
       lobbyReady: false, // #238 대기방 참가자 준비(좌석 1만) — 배치 준비(ready)와 별개
       returned: false,   // #238 결과(FINISHED)에서 대기방으로 복귀했다
@@ -736,13 +735,10 @@ class Room {
        (#237 의 "항복은 단절 중에도 받는다"를 최신 지시가 대체한다). 흐르는 것은 재접속 유예뿐이고
        복구(resync)와 경기 전 나가기(leave = 취소)만 남는다. 유예 만료 몰수·경기 전 취소·동시 만료 NO_CONTEST 는 그대로다. */
     if ((msg.t === 'setup' || msg.t === 'ready' || msg.t === 'unready' || msg.t === 'resign') && this._paused()) return err('E_PAUSED');
-    /* #263 배치 90초가 지난 뒤의 늦은 배치·준비도 받지 않는다 — 보드 입력과 같은 시한 대조다(_late).
+    /* #293 준비 180초가 지난 뒤의 늦은 배치·준비·준비 취소도 받지 않는다 — 보드 입력과 같은 시한 대조다(_late).
        기권은 시한이 걸린 입력이 아니라 여기 없다(단절 정지만 막는다 · 2026-09-25 CJ). 서버 자신의 만료 처리는
        _autoPlace 가 _handleSetup/_handleReady 를 직접 부르므로 이 문을 지나지 않는다 — 자기 배치를 막지 않는다. */
-    if (msg.t === 'setup' || msg.t === 'ready' || msg.t === 'unready') {
-      const pc = this._clock[seatIndex];
-      if (pc && pc.key === 'place' && this._late(pc)) return err('E_DEADLINE');
-    }
+    if ((msg.t === 'setup' || msg.t === 'ready' || msg.t === 'unready') && this.state === STATES.SETUP && this._late(this._prep)) return err('E_DEADLINE');
     if (msg.t === 'setup') return this._handleSetup(seatIndex, msg);
     if (msg.t === 'ready') return this._handleReady(seatIndex, true);
     if (msg.t === 'unready') return this._handleReady(seatIndex, false);
@@ -808,8 +804,7 @@ class Room {
     seat.rawSetup = { roster: msg.roster.slice(), pos: msg.pos.map((q) => [q[0], q[1]]) };
     seat.placed = true;
     seat.ready = false; // 자기 배치를 바꾼 좌석의 ready만 해제 (analysis.md §2.3)
-    this.revision += 1;
-    this._syncClock(); // #263 배치 90초는 "아직 배치를 확정하지 않은 좌석"의 시계다 — placed/ready 가 바뀌면 다시 센다
+    this.revision += 1; // #293 준비 시계는 배치·준비로 바뀌지 않는다 — 여기서 시계를 건드리지 않는다
     return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex) };
   }
 
@@ -821,7 +816,6 @@ class Room {
     if (seat.ready === wantReady) return { ok: true, type: 'room_state', data: this.toSeatView(seatIndex), noop: true };
     seat.ready = wantReady;
     this.revision += 1;
-    this._syncClock(); // #263 — 준비를 세우거나 내리면 그 좌석의 배치 90초도 서거나 사라진다
     if (this.seats[0].ready && this.seats[1].ready) {
       const started = this._startMatch();
       if (!started.ok) return started;
@@ -865,7 +859,7 @@ class Room {
     this._countdown = null;
   }
 
-  // 5초 완료 — 조건을 다시 보고 경기를 연다. S01 90초는 _openEconomy 의 _syncClock 에서 지금부터 흐른다.
+  // 5초 완료 — 조건을 다시 보고 경기를 연다. 준비 180초는 _openEconomy 가 지금 한 번 세운다(#293).
   _onCountdown() {
     const c = this._countdown;
     if (!c) return;
@@ -915,7 +909,7 @@ class Room {
     this.state = state;
     this.revision += 1;
     this.seats.forEach((seat, i) => {
-      Object.assign(seat, { ready: false, placed: false, rawSetup: null, shopTimedOut: false, lobbyReady: false, returned: false });
+      Object.assign(seat, { ready: false, placed: false, rawSetup: null, lobbyReady: false, returned: false });
       if (seat.credential && !seat.connected && seat.disconnectExpiry == null) { seat.disconnectExpiry = now() + this.graceMs; this._armGrace(i); } // 끊긴 좌석 — 대기방 유예 60초(이미 걸린 유예는 그대로)
     });
   }
@@ -943,8 +937,42 @@ class Room {
       return this._engineFault(e);
     }
     this.engines = engines;
-    this._syncClock();
+    this._clearPrep();
+    this._armPrep(now() + this._ms('prep', engines[0].ECO.prepSec)); // #293 방에 하나 — 이 뒤로 다시 세우는 자리는 없다
     return { ok: true };
+  }
+
+  // ===== #293 준비 180초 (2026-10-01 CJ) — 양 좌석 공통 · 서버 절대 마감 · 재발급·정지 없음 =====
+
+  _armPrep(deadline) {
+    const handle = setTimeout(() => this._onPrep(), Math.max(0, deadline - now()));
+    if (handle.unref) handle.unref();
+    this._prep = { deadline, handle, expired: false };
+  }
+
+  _clearPrep() {
+    if (this._prep && this._prep.handle) clearTimeout(this._prep.handle);
+    this._prep = null;
+  }
+
+  /* 만료 — 단절 유예 중에도 돈다(입력 잠금 E_PAUSED 와 유예 60초는 그대로). 좌석마다 그 시점의 말 기준으로 마무리한다:
+     상점 미완료 = Core shopTimeout(자동 구매 — 진열이 모자랄 때만 예비 코인으로 새로 고침 1회 · 속성 자동 배정 · 자동 배치),
+     상점 완료 = 이미 보낸 배치·준비는 그대로 두고 남은 것만 자동 배치(_autoPlace). 두 좌석이 준비되면 _handleReady 가 개시한다.
+     합법 만료가 거부되거나 개시에 이르지 못하면 Core 계약이 깨진 것이다 — 조용히 멈추지 않고 룸을 닫는다(fail-closed). */
+  _onPrep() {
+    const c = this._prep;
+    if (!c || c.expired || this.state !== STATES.SETUP || !this.engines) return;
+    if (now() < c.deadline) { this._armPrep(c.deadline); return; } // setTimeout 조기 발화 — 같은 마감으로 다시 건다
+    clearTimeout(c.handle); c.expired = true; c.handle = null;
+    for (let seat = 0; seat < 2 && this.state === STATES.SETUP && this.engines; seat++) {
+      if (!this.engines[0].S.eco.shop.done[seat]) {
+        const res = this._apply(seat, { t: 'shopTimeout', player: seat }, true);
+        if (!res.ok) break;
+      }
+      this._autoPlace(seat);
+    }
+    if (this.state === STATES.SETUP && this.engines) this._engineFault(new Error('prep expiry did not start the match'));
+    if (this.onUpdate) this.onUpdate();
   }
 
   _startMatch() {
@@ -985,6 +1013,7 @@ class Room {
     this.state = STATES.IN_PROGRESS;
     this.matchId = crypto.randomBytes(16).toString('hex');
     this.startedAt = now();
+    this._clearPrep(); // 조기 시작 — 준비 시계는 여기서 끝난다
     this._syncClock();
     // revision: 이 시작은 ready 명령과 같은 동기 구간 — _handleReady가 이미 한 번 올렸다.
     return { ok: true };
@@ -1028,7 +1057,7 @@ class Room {
   _authorizeEco(seatIndex, a) {
     const T = this.engines[0], S = T.S, E = S.eco;
     if (!E) return err('E_ILLEGAL_ACTION');
-    const c = this._clock[seatIndex];
+    const c = this.state === STATES.SETUP ? this._prep : this._clock[seatIndex]; // S01 은 공통 준비 마감(#293), 정기 상점·B08 은 좌석 시계
     const late = this._late(c);
     if (a.t === 'bagPick') {
       const bp = E.bagPick;
@@ -1336,25 +1365,15 @@ class Room {
   _late(c) { return !!c && (c.expired || (c.deadline != null && now() >= c.deadline)); }
 
   /* **좌석에 묶인** 시한 입력 — 키는 그 입력 하나를 가리키고, 키가 바뀌면 전체 시간으로 새로 선다.
-     #237 상점(S01·정기, 완료 전)·B08(소유자) · #263 배치 90초. 좌석마다 하나뿐이라 순서가 곧 우선순위다.
-     답할 좌석이 단계마다 바뀌는 행동 30초·전투 행동 60초는 _wantAct·_wantBattle 이 따로 들고 있다. */
+     #237 정기 상점(완료 전)·B08(소유자). 좌석마다 하나뿐이라 순서가 곧 우선순위다.
+     답할 좌석이 단계마다 바뀌는 행동 30초·전투 행동 60초는 _wantAct·_wantBattle 이 따로 들고 있다.
+     #293 경기 전(S01·배치)은 좌석 시계가 없다 — 방의 준비 180초(_prep) 하나가 맡는다. */
   _wantSeatClock(seatIndex) {
     const T = this.engines && this.engines[0], S = T && T.S, E = S && S.eco;
-    if (!E || (this.state !== STATES.SETUP && this.state !== STATES.IN_PROGRESS)) return null;
-    const sh = E.shop, seat = this.seats[seatIndex];
-    if (sh && !sh.done[seatIndex] && (S.phase === 'shop' || (sh.kind === 'start' && S.phase === 'setup'))) {
+    if (!E || this.state !== STATES.IN_PROGRESS) return null;
+    const sh = E.shop;
+    if (sh && !sh.done[seatIndex] && S.phase === 'shop') {
       return { key: 'shop:' + sh.turn, ms: this._ms('shop', T.ECO.shopSec) };
-    }
-    /* #263 배치 90초 — S01 을 **90초 안에 직접** 끝냈는데 아직 배치를 확정하지 않은 좌석만 받는다.
-       시간 초과로 끝난 좌석(shopTimedOut)은 그 자리에서 자동 배치·준비까지 끝났으므로 다시 걸지 않는다.
-       끝 조건이 placed 가 아니라 **placed && ready** 인 이유: 이 시한의 만료 동작이 "자동 배치하고 **준비 상태로 전이**"라
-       준비까지가 이 시한의 끝이다. placed 만 보면 setup 만 보내고 ready 를 영영 안 보내는 좌석에서 시계가 사라져
-       경기가 시작되지 않는 교착이 남는다(그 교착을 없애려고 있는 시한이다). 배치를 다시 보내면 _handleSetup 이
-       ready 를 내리므로 시계도 그 시점의 남은 시간으로 다시 선다.
-       #284 준비 완료 동안은 시계를 없애지 않고 **멈춘다** — 없애면 준비 취소가 새 90초를 받는다(S02 "멈춘 자리부터").
-       만료된 시계도 남아 있어 만료 뒤 준비 취소는 E_DEADLINE 이다. */
-    if (this.state === STATES.SETUP && sh && sh.done[seatIndex] && !seat.shopTimedOut) {
-      return { key: 'place', ms: this._ms('place', T.ECO.placeSec), paused: seat.placed && seat.ready };
     }
     if (E.bagPick && E.bagPick.owner === seatIndex && S.phase === 'bagPick') {
       return { key: 'bag:' + E.bagPick.token, ms: this._ms('bagPick', T.ECO.bagPickSec) };
@@ -1475,6 +1494,7 @@ class Room {
   }
 
   _clearClock() {
+    this._clearPrep();
     for (const c of this._clock.concat([this._act, this._pick, this._bclock])) if (c && c.handle) clearTimeout(c.handle);
     this._clock = [null, null];
     this._act = null;
@@ -1483,15 +1503,14 @@ class Room {
   }
 
   /* 시한 만료 — 서버 시각 기준. 확정된 거래는 이미 엔진에 있고(수락 순간 확정), 여기서는 Core 의 만료 액션 하나만 넣는다:
-     상점 = shopTimeout (S01 은 **노출된 적격 칸만** 자동 구매 — #263 으로 자동 새로 고침은 폐지다 — 뒤이어 속성 자동 배정·자동 배치),
-     B08 = 포획한 말 방출(기존 가방 불변, 7.7). 배치·행동은 아래 전용 처리기로 간다.
+     정기 상점 = shopTimeout, B08 = 포획한 말 방출(기존 가방 불변, 7.7). 행동은 아래 전용 처리기로 간다.
+     경기 전 준비 180초(S01·배치)는 _onPrep 이 맡는다(#293).
      합법 만료가 거부되면 Core 계약이 깨진 것이다 — 조용히 멈추지 않고 룸을 닫는다(fail-closed). */
   _onClock(seatIndex, key) {
     const c = this._clockByKey(seatIndex, key);
     if (!c || c.key !== key || c.expired || this._pausedFor(key) || !this.engines) return;
     const seat = c.owner != null ? c.owner : seatIndex; // 답할 좌석은 그 사이 옮겨 갔을 수 있다(B02 방어자·전투 행동자)
     c.expired = true; c.handle = null; c.deadline = null;
-    if (key === 'place') { this._autoPlace(seat); if (this.onUpdate) this.onUpdate(); return; }              // #263 배치 90초
     if (key.startsWith('act:') || key.startsWith('pick:')) { this._actTimeout(key.startsWith('pick:')); if (this.onUpdate) this.onUpdate(); return; } // #263 행동 30초·대상 선택 30초
     if (key.startsWith('battle:')) { this._battleTimeout(seat); if (this.onUpdate) this.onUpdate(); return; } // #263 T4 전투 행동 60초
     const E = this.engines[0].S.eco;
@@ -1500,12 +1519,6 @@ class Room {
       : { t: 'shopTimeout', player: seat };
     const res = this._apply(seat, action, true);
     if (!res.ok && this.engines) this._engineFault(new Error('clock expiry refused: ' + key));
-    /* #263: S01 시간 초과 좌석은 Core 가 자동 구매에 이어 자동 배치까지 끝냈다 — 그 배치를 좌석 배치로 확정하고
-       곧바로 준비한다. 배치 90초는 다시 걸지 않는다(shopTimedOut). */
-    if (res.ok && this.state === STATES.SETUP && this.engines) {
-      this.seats[seat].shopTimedOut = true;
-      this._autoPlace(seat);
-    }
     if (this.onUpdate) this.onUpdate();
   }
 
@@ -1583,7 +1596,7 @@ class Room {
     return skip >= 0 ? skip : view.buttons.findIndex((b) => !b.disabled);
   }
 
-  /* #263 배치 자동 완성 — 아직 놓이지 않은 말을 Core 가 자기 진영 빈 칸에 놓고(합법 위치 보장), 그 결과를
+  /* #263·#293 배치 자동 완성(준비 180초 만료 때) — 아직 놓이지 않은 말을 Core 가 자기 진영 빈 칸에 놓고(합법 위치 보장), 그 결과를
      좌석 배치로 확정한 뒤 준비까지 세운다. 좌표는 좌석0 기준으로 되돌려 _handleSetup 의 검증(내 진영 행·열 범위·중복
      없음·로스터 일치)을 그대로 지난다 — 서버가 만든 배치도 클라이언트 배치와 같은 문을 통과한다. 상대에게는 나가지 않는다. */
   _autoPlace(seatIndex) {
@@ -1684,9 +1697,11 @@ class Room {
       };
       if (!this.engines) return base;
       /* #237 경제 경기의 경기 전 — 시작 상점(phase 'shop') → 배치(phase 'setup'). 자기 말(산 필드 칸·왕·동료 속성)과 자기 경제만
-         싣는다. 상대는 아무것도 없다: 상대의 구매·진열·재화·완료 여부는 이 뷰 어디에도 나가지 않는다(7.9). */
+         싣는다. 상대의 구매·진열·재화·필드·가방·시너지는 이 뷰 어디에도 나가지 않는다(7.9).
+         #293 (2026-10-01 CJ) 상대에 대해 나가는 것은 **단계 하나**뿐이다 — seats.step: 상점 미완료 'shop' / 상점 완료·미준비 'place' / 준비 완료 'done'. */
       const T = this.engines[seatIndex], S = T.S, sh = S.eco && S.eco.shop;
       return Object.assign(base, {
+        seats: { ready, step: [0, 1].map((i) => (sh && !sh.done[i] ? 'shop' : (ready[i] ? 'done' : 'place'))) },
         phase: sh && !sh.done[seatIndex] ? 'shop' : 'setup',
         // #285 S01 에서 산 아이템·볼도 자기 몫만 싣는다 — 경기 중 뷰와 같은 필드라 클라이언트가 상점 동안에도 보유를 그린다.
         you: Object.assign({ placed: seat.placed, pieces: S.pieces.filter((p) => p.owner === seatIndex).map((p) => this._serializeOwn(T, p)),
@@ -1805,24 +1820,21 @@ class Room {
 
   /* #238 S04 결과(FINISHED 전용) — 양측 필드 9칸(사망 포함 · Core synCount 와 같은 거름)과 Core synView 그대로.
      시너지 산식을 새로 만들지 않는다(전투 중 종료면 synView 가 그 전투 스냅샷을 준다). 별칭·위치·등급·스킬·원장은
-     싣지 않는다. 상대 HP 는 _serializeKnownOpponent 와 같은 규칙 — 실제로 싸운 개체(hpSeen)만 실제값, 나머지는 100 눈금.
-     JSON 복제로 엔진 상태와 참조를 공유하지 않는다. */
+     싣지 않는다. JSON 복제로 엔진 상태와 참조를 공유하지 않는다.
+     #293 (2026-10-01 CJ) 종료 리빌이므로 양측 모두 **실제 HP/최대 HP 와 등급**(말 얼굴 배경색)을 싣는다 — 100 눈금 폐지. */
   /* 가방(bag, 최대 3)도 같은 필드로 싣는다 — PD·Venus 해석(2026-09-28): CJ '양측 하수인 전체'는 소유 하수인 전부이고,
      Core 시너지가 이미 가방 전설을 센다. 가방 말은 하수인이며 보드 자리가 없다. */
   _finalView(T, seatIndex) {
     const S = T.S;
-    const unit = (u, seat, type) => {
-      const hp = seat !== seatIndex && this.economy && !u.hpSeen ? { hp: pct100(u.hp, u.maxHp), maxHp: 100 } : { hp: u.hp, maxHp: u.maxHp };
-      return {
-        type, rosterId: type === 'minion' ? T.ecoKey(u) : null, name: u.name, element: u.element || null,
-        alive: u.alive !== false, hp: hp.hp, maxHp: hp.maxHp, ...(u.hpSeen ? { hpSeen: true } : {}),
-      };
-    };
+    const unit = (u, type) => ({
+      type, rosterId: type === 'minion' ? T.ecoKey(u) : null, name: u.name, element: u.element || null,
+      alive: u.alive !== false, hp: u.hp, maxHp: u.maxHp, grade: u.grade === undefined ? null : u.grade, ...(u.hpSeen ? { hpSeen: true } : {}),
+    });
     return {
       sides: [0, 1].map((seat) => ({
         seat,
-        pieces: S.pieces.filter((p) => p.owner === seat && p.placed === true && T.SYN_FIELD_TYPES.includes(p.type)).map((p) => unit(p, seat, p.type)),
-        bag: S.eco ? S.eco.bag[seat].map((u) => unit(u, seat, 'minion')) : [],
+        pieces: S.pieces.filter((p) => p.owner === seat && p.placed === true && T.SYN_FIELD_TYPES.includes(p.type)).map((p) => unit(p, p.type)),
+        bag: S.eco ? S.eco.bag[seat].map((u) => unit(u, 'minion')) : [],
         syn: JSON.parse(JSON.stringify(T.synView(seat, S))),
       })),
     };
@@ -1863,10 +1875,16 @@ class Room {
   }
 
   /* 자기 시한 입력의 남은 시간(ms). 단절 중에는 멈춘 값 그대로다.
+     #293 경기 전(SETUP)은 방의 준비 시계 하나다 — 두 좌석이 같은 deadline(서버 epoch ms)을 받고 serverNow 로 기기 시계를 보정한다.
+     준비·단절로 멈추지 않으므로 running 은 언제나 true 다.
      #263 한 좌석이 여러 시계에 걸릴 수 있으므로(전투 행동 60초 + 멈춰 있는 행동 30초, B08 20초 + 멈춰 있는 행동 30초)
      **지금 흐르고 있는 것**을 보여 준다 — 멈춘 시계뿐이면 그중 첫 번째다. key 는 종전처럼 앞 토막만 나가고
      (shop·place·bag·act·battle) 진행 지점·좌석은 싣지 않는다. */
   _clockView(seatIndex) {
+    if (this.state === STATES.SETUP) {
+      const p = this._prep, t = now();
+      return p ? { key: 'prep', leftMs: Math.max(0, p.deadline - t), running: true, deadline: p.deadline, serverNow: t } : null;
+    }
     const mine = [this._bclock, this._pick, this._act, this._clock[seatIndex]].filter((x) => x && x.owner === seatIndex);
     const c = mine.find((x) => x.deadline != null) || mine[0];
     if (!c) return null;
@@ -2049,18 +2067,15 @@ class Room {
      ③ 유일하게 유도 불가인 것은 상대 동료의 암살자/방패병 구분이다. 엔진이 말에 subtype 을 남기지 않으므로
         서버가 그 스탯을 보내면 **새 노출**이 되는데, 이를 소비하는 표시가 없다 — GDD-23 7.9(등급·미사용
         스킬·집계 비공개)의 최소 공개 원칙대로 경계를 유지한다.
-     ④ 등급(grade)은 7.9·8.1⑦이 소유자 전용으로 못박은 값이라 공개 상대 뷰에 실을 수 없다.
      상대 동료 스탯이 정말 필요해지면 두 전투원이 서로 공개된 **전투 뷰**에서 다시 합의해 내보낸다. */
-  /* #237 (GDD-23 7.9·8.1⑦) 경제 경기에서는 최대 HP 가 등급마다 달라 "종(name) + maxHp" 로 상대 등급이 역산된다.
-     그래서 전투에 나선 적 없는 상대 말 HP 는 **100 눈금 비율**로만 싣는다: maxHp=100 고정, hp=ceil(hp/maxHp×100)(살아 있으면 1 이상).
-     #262 CJ QA(2026-09-27) — 전투에 실제로 나선 개체(Core startRounds 가 전투원 fa/fd 에 세우는 hpSeen, 개체와 함께 이동)는
-     전투 중 이미 실제 HP/최대 HP 를 보였으므로 보드에서도 실제 현재 HP/최대 HP 를 싣고 hpSeen:true 로 알린다.
-     정체 공개(함정·종료 리빌)만으로는 해당하지 않는다. 등급·스탯·스킬·원장 등 HP 밖 필드는 종전 그대로 싣지 않는다. */
+  /* #293 (2026-10-01 CJ QA REVISE 6) 정체가 공개된 상대 말은 **실제 HP/최대 HP 와 등급**을 싣는다 — 종전 #237 의
+     "싸운 적 없는 상대 말은 100 눈금"과 "등급은 소유자 전용"을 CJ 최신 지시가 대체한다(전투를 하면 등급도 드러나므로 가림이 무의미).
+     등급은 하수인에만 있고(왕·동료는 null) 말 얼굴 배경색이 읽는다. hpSeen 은 종전 필드 그대로 둔다.
+     스탯·스킬·원장·동료 역할은 종전 그대로 싣지 않는다. 미공개 말(_serializeUnknownOpponent)은 위치·생존뿐이다. */
   _serializeKnownOpponent(p) {
-    const hp = this.economy && !p.hpSeen ? { hp: pct100(p.hp, p.maxHp), maxHp: 100 } : { hp: p.hp, maxHp: p.maxHp };
     return {
       id: this._alias(p.id), r: p.r, c: p.c, owner: p.owner, alive: p.alive, immobile: p.immobile,
-      type: p.type, name: p.name, element: p.element, hp: hp.hp, maxHp: hp.maxHp, healing: p.healing,
+      type: p.type, name: p.name, element: p.element, hp: p.hp, maxHp: p.maxHp, grade: p.grade === undefined ? null : p.grade, healing: p.healing,
       // #217 Saturn ctx_e6437fa06ae4 REVISE — 공개 상대 보드 하수인 아이콘(artDirOf)이 쓰는 유일한 키.
       // name이 이미 ROSTER 20종을 1:1로 특정하므로(art-restore-fields.md §"새 노출 아님") 형태만 추가하는
       // 표시 whitelist 복구다 — 정보량 증가 없음. 하수인이 아니면(왕/동료) 항상 null.

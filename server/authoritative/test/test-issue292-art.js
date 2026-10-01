@@ -6,7 +6,7 @@ const { makeCounter, fakeWs, both, STATES } = H;
 const { ok, done } = makeCounter('issue292-art');
 
 function ecoRoom(id) {
-  const room = new H.Room(id, { isPublic: false, epoch: 'aaaaaaaa', graceMs: 5000, economy: true, seed: 292, shopMs: 60000, bagPickMs: 60000, placeMs: 60000, actMs: 60000 });
+  const room = new H.Room(id, { isPublic: false, epoch: 'aaaaaaaa', graceMs: 5000, economy: true, seed: 292, shopMs: 60000, bagPickMs: 60000, prepMs: 60000, actMs: 60000 });
   room.openHostSeat(fakeWs());
   room.joinGuestSeat(fakeWs());
   return room;
@@ -55,7 +55,9 @@ const HIDDEN_KEYS = new Set(['id', 'r', 'c', 'owner', 'alive', 'immobile', 'swap
   const check = (label) => {
     const v = room.toSeatView(seat);
     const ua = v.units.find((u) => u.id === room._alias(qa.id)), ub = v.units.find((u) => u.id === room._alias(qb.id));
-    ok(ua && ua.rosterId === 'L-DRAGON' && !('legend' in ua) && !('grade' in ua), label + ' 공개 상대 전설 rosterId=L-DRAGON: ' + JSON.stringify(ua));
+    const pa = S0(room).pieces.find((x) => x.id === qa.id); // #293 공개된 상대 말은 실제 HP + 등급을 싣는다(원시 legend 는 그대로 없다)
+    ok(ua && ua.rosterId === 'L-DRAGON' && !('legend' in ua) && ua.grade === (pa.grade === undefined ? null : pa.grade) && ua.hp === pa.hp && ua.maxHp === pa.maxHp,
+      label + ' 공개 상대 전설 rosterId=L-DRAGON: ' + JSON.stringify(ua));
     ok(ub && Object.keys(ub).every((k) => HIDDEN_KEYS.has(k)), label + ' 미공개 상대 전설은 위치·생존만: ' + JSON.stringify(ub));
     const raw = JSON.stringify(v);
     ok(!raw.includes('L-WITCH') && !raw.includes('"legend"'), label + ' 좌석 프레임 어디에도 미공개 전설 종 키·원시 legend 없음');

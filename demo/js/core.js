@@ -1511,9 +1511,9 @@ function ecoReduce(state,action){
         ecoSellUnit(next,p,fp0); sh2.sold[p].push(ecoKey(fp0));
         Object.assign(ecoEditPiece(next,fp0),{rosterId:null,legend:null,name:null,element:null,paid:0,fresh:false,swapMark:false,skills:null,revealedSkills:null});
         ecoSyncRoster(next,p);
-        /* 90초 자동 완료(shopTimeout)는 새로 고침 없이 지금 진열만 산다 — 빈 칸이 살 수 있는 칸·코인보다 많아지는 판매는 교착이라 거부 */
-        if(ecoEmptyField(next,p).length>sh2.slots[p].filter(s=>ecoSlotOpen(sh2,p,s)).length||!ecoReserveOk(next,p,0))
-          return ecoRefuse(state,p,"판매 뒤 필드 6칸을 다시 채울 진열이 부족합니다 — 🔄 새로 고침 뒤 판매하세요");
+        /* #293 (2026-10-01 CJ 3): 진열 칸 수 가드는 없앴다 — 6칸을 다 산 직후에도 판다. 예비 코인(빈칸 + 모자란 진열의 새로 고침 1회 값)만 강제하고,
+           만료 때 진열이 모자라면 shopTimeout 이 그 코인으로 새로 고침 1회 뒤 채운다 */
+        if(!ecoReserveOk(next,p,0)) return ecoRefuse(state,p,"필드 6칸을 채울 코인을 남겨야 합니다");
         return ecoChanged(next,p,`${fp0.name} 판매 (+🪙${fp0.paid||0})`);
       }
       const i=state.eco.bag[p].findIndex(u=>u.uid===action.uid);
@@ -1547,13 +1547,17 @@ function ecoReduce(state,action){
       let next=ecoNext(state);
       if(start){
         if(action.t==="shopTimeout"){
-          /* #263 (2026-09-25 CJ): **그 순간 노출된** 적격 칸을 ①부터 자동 구매한다. 자동 새로 고침은 폐지다(비용 0·횟수 0) —
-             진열이 6칸이고 필드도 6칸이라 이미 산 만큼 품절이 되어도 남은 노출 칸 수 = 빈 필드 칸 수다.
-             예비 재화(ecoReserveOk)가 빈 칸 수만큼의 코인을 강제하므로 하수인 외 지출 뒤에도 자동 구매 비용은 보장된다. */
-          for(let n=0;n<ECO.slots&&ecoEmptyField(next,p).length;n++){
-            const i=ecoBuyable(next,p); if(i<0) break;
-            const r=ecoReduce(next,{t:"shopBuy",player:p,i,seq:next.eco.shop.seq[p]});
-            if(r.events[0].type!=="shopChanged") break; next=r.state;
+          /* #263 (2026-09-25 CJ): **그 순간 노출된** 적격 칸을 ①부터 자동 구매한다. 평소의 자동 새로 고침은 폐지다.
+             #293 (2026-10-01 CJ 17:58): 판매로 남은 진열이 모자랄 때**만** 예비 코인으로 기존 새로 고침 1회(ECO.refresh) 뒤 새 무작위 진열에서 마저 산다.
+             예비 재화(ecoReserveOk)가 빈 칸 수 + 그 새로 고침 값을 강제하므로 비용은 보장된다 — 무료 생성·품절 칸 재개방은 없다. */
+          for(let pass=0;pass<2&&ecoEmptyField(next,p).length;pass++){
+            if(pass){ const r=ecoReduce(next,{t:"shopRefresh",player:p,seq:next.eco.shop.seq[p]});
+              if(r.events[0].type!=="shopChanged") break; next=r.state; }
+            for(let n=0;n<ECO.slots&&ecoEmptyField(next,p).length;n++){
+              const i=ecoBuyable(next,p); if(i<0) break;
+              const r=ecoReduce(next,{t:"shopBuy",player:p,i,seq:next.eco.shop.seq[p]});
+              if(r.events[0].type!=="shopChanged") break; next=r.state;
+            }
           }
         }
         if(ecoEmptyField(next,p).length) return ecoRefuse(state,p,"필드 6칸을 모두 채워야 완료할 수 있습니다");
@@ -1561,8 +1565,8 @@ function ecoReduce(state,action){
         assignLeaderElements(p,next);                                      // 고르지 않은 왕·동료만 필드 최다 왕국 (2.2 · #263 동률은 난수 1회)
       }
       next.eco.shop.done[p]=true;
-      /* #263: 시간 초과로 끝난 좌석은 그 자리에서 배치까지 끝내고 곧바로 준비한다 — 배치 90초를 다시 걸지 않는다.
-         직접 완료(shopDone)한 좌석은 여기서 놓지 않는다: 그 좌석만 별도의 배치 90초를 받는다.
+      /* #263: 시간 초과로 끝난 좌석은 그 자리에서 배치까지 끝내고 곧바로 준비한다.
+         직접 완료(shopDone)한 좌석은 여기서 놓지 않는다 — 공통 준비 180초(#293 ECO.prepSec)의 남은 시간 동안 직접 놓는다.
          done[p] 를 세운 **뒤에** 놓는다 — setupAuto 는 시작 상점을 마친 좌석만 받는다. */
       if(start&&action.t==="shopTimeout"){
         const auto=reduceCoreAction(next,resolveCoreAction(next,{t:"autoPlace",player:p}));
@@ -2302,8 +2306,24 @@ function synView(owner,state){
 function ecoSynView(state,p){
   const leaders=state.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally"));
   if(state.eco.shop.kind!=="start") return Object.assign(synView(p,state),{deadAllies:leaders.filter(x=>x.type==="ally"&&!x.alive).length,pending:[]});
-  const pieces=state.pieces.filter(x=>x.owner===p&&(x.type==="minion"?!!ecoKey(x):x.leaderElChosen)).map(x=>Object.assign({},x,{placed:true}));
-  return Object.assign(synView(p,Object.assign({},state,{pieces})),{deadAllies:0,pending:leaders.filter(x=>!x.leaderElChosen)});
+  /* #293 (2026-10-01 CJ 6): 상점 완료 뒤에는 고르지 않은 왕·동료도 실제 배정된 속성으로 센다(pending 없음) — 미리보기 거름은 완료 전까지만 */
+  const done=!!state.eco.shop.done[p];
+  const pieces=state.pieces.filter(x=>x.owner===p&&(x.type==="minion"?!!ecoKey(x):done||x.leaderElChosen)).map(x=>Object.assign({},x,{placed:true}));
+  return Object.assign(synView(p,Object.assign({},state,{pieces})),{deadAllies:0,pending:done?[]:leaders.filter(x=>!x.leaderElChosen)});
+}
+/* #293 (2026-10-01 CJ 7) 시너지 열·경기 중 시너지 줄의 덧붙임 칩 — **소유자 전용**, 새 효과·수치 없음(applySynergy 가 쓰는 값 그대로 읽는다).
+   legends: 필드에 놓여 살아 있는 내 전설 중 개인 효과 값이 0 보다 큰 것만(가방 전설은 개인 효과가 없어 나오지 않는다).
+     용 = 달성한 최고 왕국 효과 {el,fx} · 마녀 = 상태 부여 확률 가산 · 사신 = 공격 가산.  deadAllies: 죽은 동료 수 0~2(동료의 복수·왕의 분노 해금). */
+function synExtraView(owner,state){
+  const g=state||S, B=g.battle, s=(B&&B.syn&&B.syn[owner])||synCount(owner,g), legends=[];
+  for(const x of g.pieces){
+    if(x.owner!==owner||x.type!=="minion"||x.placed!==true||x.alive===false) continue;
+    const L=LEGEND_ROSTER.find(l=>l.key===x.legend||(!!x.rosterId&&l.id===x.rosterId)); if(!L) continue; // 온라인 좌석 뷰는 전설을 종 키(ecoKey)로만 싣는다
+    if(L.key==="dragon"){ const el=synDragonEl(s); if(el) legends.push({legend:"dragon",name:x.name,el,fx:synKingdomEffect(s,el)}); }
+    else if(L.key==="witch"){ const v=Math.min(V2_LEGEND_SYN.witch.max,synElemKinds(s)*V2_LEGEND_SYN.witch.statusPct); if(v>0) legends.push({legend:"witch",name:x.name,v}); }
+    else if(L.key==="reaper"){ const v=Math.min(V2_LEGEND_SYN.reaper.max,s.dead*V2_LEGEND_SYN.reaper.atk); if(v>0) legends.push({legend:"reaper",name:x.name,v}); }
+  }
+  return {legends,deadAllies:g.pieces.filter(x=>x.owner===owner&&x.type==="ally"&&x.alive===false).length};
 }
 function startRounds(attP,defP,fa,fd){
   S.battlesUsed++; met(attP.owner,"battles");

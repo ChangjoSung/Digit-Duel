@@ -4,7 +4,9 @@
    규칙(거래·시계·준비·자동 구매/배치)은 #236·#263·#285 회귀가 본다 — 여기는 이번에 새로 생긴 표시 논리만:
      A 카드 4정보 + 그림 · 등급 테두리 = grade(가격 무관) · 상태가 테두리를 안 바꾼다      B 필드 판매(S01 전용) · 가방 [교체][판매] 한 줄
      C 교체 선택 6카드 · 빈칸/사망 비활성 · shopSwap 1회 · HP 그대로 · 취소 = 무변경      D 시너지 단계 색 = 순위(칸 수 아님) · 기여 카드 수 = 칩 숫자
-     E 진행 막대 = 내 단계(직접 완료 · 시간 초과 · 준비 취소) · 상대는 준비 완료만 · 추측 없음    F 트레이 14칸 · 글 줄이기 · 그리기는 상태를 바꾸지 않는다 */
+     E 진행 막대 = 두 좌석 표식(서버 seats.step) · 중앙 준비 팝업 · 추측 없음    F 트레이 14칸 · 글 줄이기 · 그리기는 상태를 바꾸지 않는다
+   CJ QA REVISE(2026-10-01) 로 대체된 기대값: 판매 확인 창 → 즉시 판매 · 상점/배치 시계 두 개 → 공통 준비 시계 하나 · 상대 '준비 중' 상자/하단 대기 영역 → 막대 위 표식 + 중앙 팝업 ·
+   트레이 ★ 카드 → 보드와 같은 말 얼굴(등급 = 배경 · HP 실제 값) · 우측 열 11칩 → + 왕관 칩.  G 말 얼굴(땅·왕/동료·상대 공개 범위)  H 시너지 덧붙임 칩 */
 "use strict";
 const path=require("path"), fs=require("fs");
 const H=require("../shared/harness");
@@ -61,10 +63,12 @@ const visible=h=>h.replace(/<small class="srOnly[\s\S]*?<\/small>/g,"").replace(
   ok(acts.includes(`aria-label="${bag.name} 판매 🪙${bag.paid} 환급"`),"B3 환급액은 접근성 이름에 남는다");
   const rules=[...css.matchAll(/\.shopSheet \.slotGrid\.bag \.uSlot \.acts\{flex-direction:(\w+);\}/g)].map(m=>m[1]);
   eq(rules[rules.length-1],"row","B4 좁은 폭 예외(세로 두 줄)보다 뒤에서 한 줄로 되돌린다");
-  T.__shop("sell",bag.uid);
-  ok(T.S===S0&&/원장 100%/.test(T.byId("overlayBox").innerHTML),"B5 [판매] = 기존 확인 창 1회 (상태 무변경)"); T.closeModal();
   const sh0=T.S.eco.shop; T.S.eco.shop=Object.assign({},sh0,{kind:"turn",turn:20}); const th=T.shopHtml(0); T.S.eco.shop=sh0;
   ok(!/sellField/.test(th)&&count(th,/__shop\('sell',/g)===1&&/20턴 상점/.test(th)&&!/flowHead|flowSteps/.test(th),"B6 턴 상점: 필드 [판매] 없음 · 가방만 판매 · 진행 막대 없음");
+  const c0=T.S.eco.coins[0]; T.byId("overlayBox").innerHTML=""; T.__shop("sell",bag.uid); T.__shop("sell",bag.uid);
+  ok(T.S.eco.bag[0].length===0&&T.S.eco.coins[0]===c0+bag.paid&&T.S.eco.shop.sold[0].includes(T.ecoKey(bag))&&!/판매 확인|원장 100%/.test(T.byId("overlayBox").innerHTML),"B5 [판매] = 확인 창 없이 요청 1회 (코인 +원장 · 종 잠금 · 연타 1회)");
+  const fx=field(T,0)[0]; T.__shop("sellField",fx.id);
+  ok(!T.ecoKey(fx)&&T.S.eco.coins[0]===c0+bag.paid+1&&!/판매 확인/.test(T.byId("overlayBox").innerHTML),"B7 필드 [판매]도 확인 창 없이 즉시 (6칸 구매 직후 · 진열 품절이어도)");
 }
 /* ===== C. 교체 선택 ===== */
 {
@@ -100,7 +104,7 @@ const visible=h=>h.replace(/<small class="srOnly[\s\S]*?<\/small>/g,"").replace(
   eq([v.el.fire,v.arch.std],[4,4],"D0 전제: 불 4칸 · 표준 4칸");
   const h=side(T), rail=h.slice(h.indexOf('class="synRail"'),h.indexOf("</aside>"));
   const tierOf=(k,n)=>{ const m=rail.match(new RegExp(`class="synChip(?: on)? t(\\d)"[^>]*onclick="synHelp\\('${k}',${n},this,0\\)"`)); return m?+m[1]:null; };
-  eq(count(rail,/class="synChip/g),11,"D1 우측 열 = 칩 11개(왕국 5 + 아키타입 6)");
+  eq([count(rail,/class="synChip/g),count(rail,/onclick="synHelp\('(?!crown)/g)],[12,11],"D1 우측 열 = 왕국 5 + 아키타입 6 + 왕·동료(왕관) 칩 1");
   eq([tierOf("fire",4),tierOf("std",4)],[v.stage.fire+1,U.synTier("std",4)+1],"D2 칩 단계 = 왕국 syn.stage · 아키타입 synTier");
   ok(tierOf("fire",4)===2&&tierOf("std",4)===3&&tierOf("water",1)===0,"D3 같은 4칸이라도 왕국(2단계)과 표준(3단계)의 색이 다르다 · 미달은 무채색(t0)");
   eq([3,4,5,6].map(n=>U.synTier("std",n)).concat([5,6].map(n=>U.synTier("def",n))),[1,2,3,4,3,3],"D4 아키타입은 한 칸마다 단계가 오르고 방어형은 6칸이어도 5단계에서 멈춘다");
@@ -137,12 +141,12 @@ const stepOf=h=>{ const m=h.match(/aria-current="step">[\s\S]*?<b>0\d<\/b> ([^<]
 const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0?h.indexOf('<aside class="synRail"'):h.indexOf("</header>"));
 { /* 오프라인(PVE): 01 → 02 직접 완료 */
   const T=pveSetup(55); let h=side(T);
-  ok(stepOf(h)==="상점"&&/id="shopClock" role="timer"/.test(h)&&!/id="placeClock"/.test(h)&&h.includes(`aria-label="재화 ${T.S.eco.coins[0]}"`)&&count(h,/aria-label="재화 /g)===1,"E1 S01: 내 표식 01 상점 · 시계 하나(상점) · 내 코인만");
+  ok(stepOf(h)==="상점"&&count(h,/role="timer"/g)===1&&/id="prepClock" role="timer"/.test(h)&&!/id="(shop|place)Clock"/.test(h)&&h.includes(`aria-label="재화 ${T.S.eco.coins[0]}"`)&&count(h,/aria-label="재화 /g)===1,"E1 S01: 내 표식 01 상점 · 시계 하나(공통 준비) · 내 코인만");
   ok(/<button type="button" class="primary go" onclick="window\.__shop\('done'\)" disabled title="필드 빈칸 6개를 채우세요">다음 단계/.test(h)&&!/data-prep-step|prepTabs/.test(h),"E2 [다음 단계]는 필드 6칸 전 비활성(사유는 title·접근성 이름) · 01/02 탭 없음");
   buy(T,6); h=side(T);
   ok(/onclick="window\.__shop\('done'\)" >다음 단계/.test(h),"E3 6칸을 채우면 [다음 단계] 활성");
   T.__shop("done"); h=side(T);
-  ok(stepOf(h)==="배치"&&T.UI.prep==="place"&&/id="placeClock" role="timer"/.test(h)&&!/id="shopClock"/.test(h)&&!/shopSheet/.test(h),"E4 직접 완료 → 02 배치 · 시계는 배치 시계 하나 · 상점 본문 없음");
+  ok(stepOf(h)==="배치"&&T.UI.prep==="place"&&count(h,/role="timer"/g)===1&&/id="prepClock" role="timer"/.test(h)&&!/id="(shop|place)Clock"/.test(h)&&!/shopSheet/.test(h),"E4 직접 완료 → 02 배치 · 시계는 같은 준비 시계 하나 · 상점 본문 없음");
   ok(/onclick="setupDone\(\)" disabled title="말 14개를 더 배치하세요">배치 완료/.test(h),"E5 [배치 완료]는 14개 전 비활성");
   T.netAction({t:"auto"}); h=side(T);
   ok(/onclick="setupDone\(\)" >배치 완료/.test(h),"E6 14개를 놓으면 [배치 완료] 활성 (기존 준비 경로)");
@@ -162,24 +166,44 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
     const empty=room.engines[seat].S.pieces.filter(x=>x.owner===seat&&x.type==="minion"&&!x.rosterId).length, i=v.shop.slots.findIndex(x=>x&&!x.sold);
     shopAct(seat,empty?(i>=0?"shopBuy":"shopRefresh"):"shopDone",empty&&i>=0?{i}:{}); } };
   const view=()=>P.byId("sidePanel").innerHTML;
+  const olOf=h=>h.slice(h.indexOf("<ol"),h.indexOf("</ol>")), opAt=h=>{ const m=olOf(h).match(/<li[^>]*><span class="mks" aria-hidden="true">(?:<span class="mk me">[^<]*<\/span>)?<span class="mk op">[^<]+<\/span><\/span><span><b>0(\d)<\/b>/); return m?+m[1]:0; };
   let v=feed(), h=view();
-  ok(stepOf(h)==="상점"&&/class="flowOpp" role="status" aria-label="[^"]* — 준비 중"/.test(h)&&!/class="mk op"/.test(h.slice(h.indexOf("<ol"),h.indexOf("</ol>"))),"E7 공개 방 S01: 내 01 · 상대는 단계 없는 '준비 중'(막대 위에 상대 표식 없음)");
+  ok(stepOf(h)==="상점"&&opAt(h)===1&&!/flowOpp/.test(h),"E7 공개 방 S01: 두 표식 모두 01 상점(서버 seats.step) · 떨어진 상대 상자 없음");
   ok(P.byId("app").getAttribute("data-flow")==="1","E8 공통 틀 표시 속성(data-flow)");
   finish(1); v=feed(); const afterOpp=view();
-  eq(bar(afterOpp),bar(h),"E9 상대가 상점을 끝내도 내 화면의 진행 막대는 그대로 — 좌석 뷰에 없는 값으로 상대 위치를 정하지 않는다");
-  ok(!("step" in (v.seats||{}))&&Array.isArray(v.seats.ready),"E10 서버 좌석 뷰는 seats.ready 뿐(단계 필드 없음 · 서버 무변경)");
+  ok(JSON.stringify(v.seats.step)==='["shop","place"]'&&stepOf(afterOpp)==="상점"&&opAt(afterOpp)===2,"E9 상대가 상점을 끝내면 서버 seats.step 대로 상대 표식만 02 배치로 간다 (내 단계 그대로)");
+  ok(Array.isArray(v.seats.ready)&&Array.isArray(v.seats.step)&&v.seats.step.length===2&&v.seats.step.every(x=>["shop","place","done"].includes(x)),"E10 서버 좌석 뷰 seats.step = shop/place/done 뿐");
+  ok(Object.keys(v.seats).sort().join()==="ready,step"&&(v.units||[]).length===0&&!("opp" in v)&&!("peer" in v),"E10b 준비 구간 좌석 뷰에 상대의 구매·코인·필드가 새로 나가지 않는다 (단계 값뿐)");
+  P.NET.steps=null; P.render(); ok(opAt(view())===0&&stepOf(view())==="상점","E10c seats.step 이 없으면(구 서버) 상대 위치를 추측하지 않는다"); feed();
   finish(0); v=feed(); h=view();
-  ok(stepOf(h)==="배치"&&/준비 중/.test(bar(h)),"E11 내 상점 완료 → 02 배치 · 상대는 여전히 '준비 중'");
-  P.NET.peerReady=true; P.render(); h=view();
-  ok(!/flowOpp/.test(h)&&/<li><span class="mks" aria-hidden="true"><span class="mk op">[^<]+<\/span><\/span><span><b>03<\/b> 완료/.test(h),"E12 상대 준비 완료(seats.ready) → 상대 표식 03 완료");
-  P.NET.peerReady=false; global.autoPlace(); global.setupDone(); P.render(); h=view();
+  ok(stepOf(h)==="배치"&&opAt(h)===2,"E11 내 상점 완료 → 두 표식 모두 02 배치");
+  P.NET.steps=["place","done"]; P.NET.peerReady=true; P.render(); h=view();
+  ok(!/flowOpp/.test(h)&&opAt(h)===3,"E12 상대 준비 완료(seats.step done) → 상대 표식 03 완료");
+  feed(); global.autoPlace(); global.setupDone(); P.render(); h=view();
   ok(P.NET.readyWanted&&stepOf(h)==="배치"&&/onclick="netRoomReady\(false\)">준비 취소/.test(bar(h))&&/서버에 준비를 알리는 중|상대의 준비를 기다리는 중|상대를 기다리는 중/.test(h),"E13 준비 요청 중: 서버 확정 전에는 내 표식이 02 에 머문다 · 진행 버튼 자리에 [준비 취소]");
-  P.NET.myReady=true; P.render(); h=view();
-  ok(stepOf(h)==="완료"&&!/role="timer"/.test(h)&&/onclick="uiLeaveConfirm\(\)">방 나가기/.test(h)&&/내 준비: .*완료/.test(h),"E14 서버 확정(seats.ready) → 03 완료 · 시계 없음 · 나가기는 ⚙ 안 · 현행 대기 내용 유지");
-  P.NET.myReady=false; P.NET.readyWanted=false; P.render(); h=view();
-  ok(stepOf(h)==="배치"&&/class="tray"/.test(h),"E15 준비 취소 → 02 배치 화면으로 복귀");
-  P.NET.myReady=true; P.render(); h=view(); // 준비 의사 없이 서버가 준비 완료 = S01 시간 초과 자동 완료(01 → 03 직행)
+  P.NET.myReady=true; P.NET.steps=["done","place"]; P.render(); h=view();
+  const pop=(h.match(/<div class="readyPop" role="status" aria-live="polite">([\s\S]*?)<\/div>/)||[])[1]||"";
+  ok(stepOf(h)==="완료"&&/id="prepClock" role="timer"/.test(h)&&/onclick="uiLeaveConfirm\(\)">방 나가기/.test(h)&&/준비 완료 · 상대 기다리는 중…/.test(pop),"E14 서버 확정 → 03 완료 · 공통 시계는 계속 보인다 · 나가기는 ⚙ 안 · 중앙 상태 팝업");
+  ok(!/netRoomTitle|내 준비:|상대: /.test(h)&&!/button/.test(pop)&&count(h,/준비 취소/g)===1&&/onclick="netRoomReady\(false\)">준비 취소/.test(bar(h)),"E14b 하단 대기 영역(방 이름·준비 배지) 없음 · [준비 취소]는 우상단 진행 버튼 자리 하나뿐(팝업 안 중복 없음)");
+  ok(/\.readyPop\{position:fixed;[^}]*background:#0b1a3c/.test(css),"E14c 팝업은 보드 중앙의 불투명 상자");
+  P.NET.myReady=false; P.NET.readyWanted=false; P.NET.steps=["place","place"]; P.render(); h=view();
+  ok(stepOf(h)==="배치"&&/class="tray"/.test(h)&&!/readyPop/.test(h),"E15 준비 취소 → 팝업이 닫히고 02 배치 화면으로 복귀");
+  P.NET.myReady=true; P.NET.steps=["done","place"]; P.render(); h=view(); // 준비 의사 없이 서버가 준비 완료 = 준비 시간 초과 자동 완료(01 → 03 직행)
   ok(stepOf(h)==="완료"&&/자동 배치 완료/.test(h),"E16 시간 초과 자동 완료 좌석 = 03 완료 + 기존 '자동 배치 완료' 한 줄");
+  /* 공통 마감 — 같은 revision 에서 두 좌석의 준비 시계가 같은 절대 마감이다 */
+  { const a=room.toSeatView(0).clock, b=room.toSeatView(1).clock;
+    ok(!!a&&!!b&&a.key==="prep"&&b.key==="prep"&&Number.isFinite(a.deadline)&&a.deadline===b.deadline,"E17 두 좌석 시계 뷰 = key prep · 같은 deadline"); }
+}
+{ /* 오프라인 핫시트: 이 기기가 아는 실제 단계로 두 표식 · 티켓 '무료' */
+  const T=H.load(htmlPath); T.setSeed(58); T.startMode("pvp"); T.TQ.length=0; let h=side(T);
+  const at=(h,cls)=>h.slice(h.indexOf("<ol"),h.indexOf("</ol>")).split("<li").slice(1).findIndex(x=>x.includes('class="mk '+cls+'"'))+1;
+  ok(at(h,"me")===1&&at(h,"op")===1&&!/flowOpp/.test(h),"E18 핫시트 시작: P1 · P2 표식 모두 01 상점 (CJ 이미지 1)");
+  buy(T,6); act(T,{t:"shopDone",player:0}); h=side(T);
+  ok(at(h,"me")===2&&at(h,"op")===1,"E19 P1 상점 완료 → P1 02 배치 · P2 는 01 그대로");
+  const st=pveSetup(59).shopHtml(0), head=st.slice(st.indexOf("왕·동료 속성"),st.indexOf("leadRow"));
+  ok(/role="img" aria-label="시작 상점은 티켓 없이 속성을 바꿀 수 있습니다"[^>]*><i class="gi" style="--i:42"[^>]*><\/i>무료<\/span>/.test(head),"E20 시작 상점 제목 옆 티켓 아이콘 + '무료' — 보유 0장이어도 항상 · 접근성 이름");
+  { const R=pveSetup(60); act(R,{t:"shopTimeout",player:0}); R.S.eco.tickets[0]=2; R.ecoOpenShop(R.S,"regular",20); R.S.phase="shop"; const rh=R.shopHtml(0);
+    ok(/티켓 사용 \(2\)/.test(rh)&&!/>무료</.test(rh),"E21 정기 상점의 티켓 ×N 표시·사용 버튼은 그대로"); }
 }
 /* ===== F. 트레이 · 글 줄이기 · 무변경 ===== */
 {
@@ -191,15 +215,79 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   act(T,{t:"shopDone",player:0});
   const b0=sig(T); let h=side(T);
   const tray=h.slice(h.indexOf('<div class="tray">'),h.indexOf('class="row trayActs"'));
-  const items=tray.split(/(?=<button class="(?:uSlot|trayItem))/).slice(1), min=items.filter(x=>/^<button class="uSlot uCard g\d trayItem/.test(x));
-  eq([items.length,min.length],[14,6],"F4 트레이 14 고정 칸 · 하수인 6칸은 공통 카드");
-  ok(min.every(c=>/class="stars"/.test(c)&&/class="tags"/.test(c)&&/class="(icon|face)"/.test(c)&&/HP <\/span>\d+\/\d+/.test(c)&&/<b class="srOnly">[^<]+<\/b>/.test(c)),"F5 트레이 하수인 = 그림·등급·왕국·아키타입·HP · 이름은 접근성 이름");
-  ok(items.filter(x=>!min.includes(x)).every(c=>!/class="stars"|uCard/.test(c)&&/aria-label="(왕|동료|폭탄|함정)/.test(c)),"F6 왕·동료·폭탄·함정에는 등급·아키타입을 붙이지 않는다");
+  const items=tray.split(/(?=<button class="(?:uSlot|trayItem))/).slice(1), min=items.filter(x=>/<span class="pc p0 gf g1">/.test(x));
+  eq([items.length,min.length],[14,6],"F4 트레이 14 고정 칸 · 하수인 6칸은 등급 배경(g1) 말 얼굴");
+  const fm=field(T,0), GI=T.ui238.GI;
+  ok(min.every((c,i)=>{ const x=fm[i], rd=T.ROSTER.find(r=>r.id===x.rosterId);
+    return c.includes(`<i class="gi cr tl" style="--i:${GI[rd.element]}"`)&&c.includes(`<i class="gi cr tr" style="--i:${GI[rd.arch]}"`)&&/class="(icon|face)"/.test(c)
+      &&c.includes(`<span class="hp pill"><i class="gi" style="--i:22" aria-hidden="true"></i>${x.hp}</span>`)&&c.includes(`aria-label="${x.name} · ${T.ELEM_KO[rd.element]} · ${T.ARCH_KO[rd.arch]} · 등급 1 · HP ${x.hp}"`); }),
+    "F5 트레이 하수인 = 왕국(왼쪽 위)·아키타입(오른쪽 위)·그림·♥ 실제 HP · 이름·등급은 접근성 이름");
+  ok(!/★|class="stars"|uCard|\d%|\d\/\d/.test(tray),"F5b 트레이에 ★ · % · 현재/최대 표기가 없다");
+  ok(items.filter(x=>!min.includes(x)).every(c=>!/class="stars"|uCard| gf| g\d"|등급/.test(c)&&/aria-label="(왕|동료|폭탄|함정)/.test(c)),"F6 왕·동료·폭탄·함정에는 등급(배경)·아키타입을 붙이지 않는다");
   ok(/말을 클릭 → 자기 진영 칸 클릭/.test(h)&&!/말을 클릭/.test(visible(h))&&/무작위 배치/.test(h)&&/전체 회수/.test(h),"F7 배치 안내 문장은 접근성 전용 · 무작위 배치/전체 회수 한 줄");
   T.netAction({t:"auto"}); h=side(T);
   eq(count(h,/trayItem placed" type="button"[^>]*disabled/g),14,"F8 놓은 칸은 ✓(placed) 표시");
   const b1=sig(T); T.render(); T.render(); T.ui238.synHelp("fire",1,null,0);
   ok(sig(T)===b1&&b0!==b1,"F9 그리기·시너지 안내는 말·경제 상태를 바꾸지 않는다");
+}
+/* ===== G. 말 얼굴 — 땅/풀 왕국 · 왕·동료(배정 속성 + 역할) · 상대 공개 범위 · 결과 ===== */
+{
+  const T=pveSetup(61), U=T.ui238, GI=U.GI; buy(T,6);
+  const f=field(T,0), R=T.ROSTER, land=R.find(r=>r.element==="land"), grass=R.find(r=>r.element==="grass");
+  T.applySpecies(f[0],land,1); T.applySpecies(f[1],grass,3);
+  const lead=T.S.pieces.filter(x=>x.owner===0&&(x.type==="king"||x.type==="ally")), king=lead.find(x=>x.type==="king"), ally=lead.find(x=>x.type==="ally");
+  ok(T.pcBodyHtml(f[0]).includes(`<i class="gi cr tl" style="--i:${GI.land}"`)&&T.pcBodyHtml(f[1]).includes(`<i class="gi cr tl" style="--i:${GI.grass}"`),"G1 땅 · 풀 하수인도 왕국 아이콘이 나온다 (5속성 전부)");
+  ok(U.pcGradeCls(f[1])===" gf g3"&&U.pcGradeCls(f[0])===" gf g1"&&U.pcGradeCls(king)===""&&/등급 3/.test(T.pcLabel(f[1]))&&!/★|%/.test(T.pcBodyHtml(f[1])+T.pcLabel(f[1])),"G2 등급 = 배경 클래스(g1~g5) + 접근성 이름 · ★/% 없음 · 왕·동료는 중립");
+  const kb0=T.pcBodyHtml(king), v0=T.ecoSynView(T.S,0), sum=v=>T.V2_ELEM_ORDER.reduce((n,k)=>n+v.el[k],0), arch0=JSON.stringify(v0.arch);
+  ok(!/cr tl/.test(kb0)&&kb0.includes(`<i class="gi cr tr" style="--i:${GI.crown}"`)&&v0.pending.length===3&&sum(v0)===6,"G3 상점 완료 전 미선택 왕: 왕국 자리 비움 · 역할 기호만 · 시너지에 세지 않는다");
+  act(T,{t:"shopDone",player:0});
+  const v1=T.ecoSynView(T.S,0), el=king.element;
+  ok(!king.leaderElChosen&&!!el&&lead.every(x=>x.element===el)&&T.pcBodyHtml(king).includes(`<i class="gi cr tl" style="--i:${GI[el]}"`),"G4 상점 완료 뒤 미선택 왕·동료도 실제 배정 속성이 얼굴에 나온다");
+  ok(v1.pending.length===0&&sum(v1)===9&&v1.el[el]===v0.el[el]+3&&JSON.stringify(v1.arch)===arch0,"G5 시너지 열 집계에도 반영 (왕국 +3) · 아키타입 집계는 늘지 않는다");
+  { U.synHelp(el,v1.el[el],null,0); eq(count(U.SYNHELP.el.innerHTML,/class="uSlot uCard/g),v1.el[el],"G5b 기여 카드 수 = 칩 숫자 (배정된 왕·동료 포함)"); U.synHelpClose(false); }
+  ok(/역할 — 왕 · HP \d+$/.test(T.pcLabel(king))&&/역할 — (공격|방어) 동료/.test(T.pcLabel(ally))&&/cr tr/.test(T.pcBodyHtml(ally))&&T.pcBodyHtml(king).includes(`<span class="hp pill"><i class="gi" style="--i:22" aria-hidden="true"></i>${king.hp}</span>`),"G6 왕·동료 = 왕국 + 역할 기호 + ♥ 실제 HP · 접근성 이름 '역할 — …'");
+  /* 보드 — 내 말 칩에 등급 배경 · 상대 미공개 말은 ? 뿐 */
+  T.netAction({t:"auto"}); T.netAction({t:"setupDone"}); T.render();
+  const chips=[]; for(const c of T.byId("board").children) for(const k of (c.children||[])) if(/(^| )pc( |$)/.test(k.className||"")) chips.push(k);
+  const mineChip=chips.find(k=>/ own/.test(k.className)&&/ gf g\d/.test(k.className)), hid=chips.filter(k=>/hiddenId/.test(k.className));
+  ok(T.S.phase==="play"&&!!mineChip&&/cr tl/.test(mineChip.innerHTML)&&/hp pill/.test(mineChip.innerHTML),"G7 보드의 내 하수인 = 등급 배경 + 같은 얼굴");
+  ok(hid.every(k=>!/ gf| g\d/.test(k.className)&&!/cr t|hp|icon|<i /.test(k.innerHTML)),"G8 정체 미공개 상대 말 = ? 뿐 (종·왕국·역할·HP·등급 없음)");
+  /* 공개 방: 정체가 공개된 상대 말 = 서버가 보낸 실제 HP·등급 그대로 (% 없음) */
+  const stub=T.netStubPiece({id:"u-e",r:4,c:4,owner:1,alive:true,immobile:0,type:"minion",element:land.element,name:land.name,rosterId:land.id,hp:77,maxHp:130,grade:3});
+  T.NET.publicMode=true; T.NET.me=0;
+  ok(stub.grade===3&&stub.hp===77&&U.pcGradeCls(stub)===" gf g3"&&/>77<\/span>/.test(T.pcInfoHtml(stub))&&!/%/.test(T.pcInfoHtml(stub)+T.pcLabel(stub))&&/등급 3 · HP 77$/.test(T.pcLabel(stub)),"G9 공개된 상대 말 = 서버 실제 HP + 등급(배경) · % 없음");
+  /* 결과 화면 — 같은 얼굴 · 실제 값 · % 와 ★ 없음 */
+  T.NET.final={sides:[{seat:0,pieces:[{type:"minion",rosterId:land.id,name:land.name,element:"land",alive:true,hp:50,maxHp:120,grade:2}],bag:[],syn:T.synView(0,T.S)},
+    {seat:1,pieces:[{type:"minion",rosterId:grass.id,name:grass.name,element:"grass",alive:false,hp:0,maxHp:200,grade:4},{type:"king",name:"왕",element:"fire",alive:true,hp:88,maxHp:100}],bag:[],syn:T.synView(1,T.S)}]};
+  const rs=U.resultSeatsHtml().replace(/<div class="synRow">[\s\S]*?<\/section>/g,""); T.NET.publicMode=false; T.NET.final=null;
+  ok(/class="uSlot faceBox gf g2"/.test(rs)&&/class="uSlot faceBox gf g4 dead"/.test(rs)&&/>50<\/span>/.test(rs)&&/>88<\/span>/.test(rs)&&/aria-hidden="true">사망<\/i>/.test(rs)&&!/\d%|★|class="stars"/.test(rs),"G10 결과 = 보드와 같은 얼굴 · 실제 HP + 등급 배경(상대 포함) · 사망 표식 · % / ★ 없음");
+  ok(/\.pc\.gf\.p0,\.pc\.gf\.p1\{background:var\(--gc\);\}/.test(css)&&/\.resultSeat \.uSlot\.gf\{background:var\(--gc\);\}/.test(css),"G11 등급 배경 = 상점과 같은 Earth 토큰(--gc ← --g1~--g5) · 새 색 없음");
+}
+/* ===== H. 시너지 덧붙임 칩 — 전설 개인 시너지(필드에 살아 있고 값 > 0 일 때만) · 왕·동료(왕관) 0/1/2 ===== */
+{
+  const T=pveSetup(62), U=T.ui238; act(T,{t:"shopTimeout",player:0}); T.netAction({t:"setupDone"});
+  const S=T.S, f=field(T,0), chips=()=>U.synExtraChips(0), lg=h=>h.filter(x=>/synChip on lg/.test(x));
+  ok(S.phase==="play"&&lg(chips()).length===0&&T.synExtraView(0,S).legends.length===0,"H1 전설이 없으면 전설 칩이 없다");
+  S.eco.bag[0]=[unit(T,"L-WITCH")];
+  ok(lg(chips()).length===0,"H2 가방에만 있는 전설은 개인 시너지 칩이 없다 (가방에서 켜지는 개인 효과 없음)");
+  S.eco.bag[0]=[]; T.applyLegend(f[0],"witch");
+  const kinds=T.synElemKinds(T.synCount(0,S)), want=Math.min(T.V2_LEGEND_SYN.witch.max,kinds*T.V2_LEGEND_SYN.witch.statusPct), ex=T.synExtraView(0,S);
+  ok(kinds>0&&ex.legends.length===1&&ex.legends[0].legend==="witch"&&ex.legends[0].v===want&&lg(chips()).length===1&&lg(chips())[0].includes("+"+Math.round(want*100)+"%"),"H3 필드에 살아 있는 마녀 = 칩 1개 · 값은 Core(속성 종류 × 5%p · 상한 25)와 같다");
+  f[0].alive=false; ok(lg(chips()).length===0,"H4 그 전설이 죽으면 칩이 사라진다"); f[0].alive=true;
+  T.applyLegend(f[0],"reaper");
+  ok(T.synCount(0,S).dead===0&&lg(chips()).length===0,"H5 사신: 사망 칸 0 이면 값 0 — 칩 없음(활성 전에는 보이지 않는다)");
+  f[1].alive=false; const rv=T.synExtraView(0,S).legends[0];
+  ok(!!rv&&rv.legend==="reaper"&&rv.v===Math.min(T.V2_LEGEND_SYN.reaper.max,1*T.V2_LEGEND_SYN.reaper.atk)&&lg(chips())[0].includes("+5%"),"H6 사망 칸 1 → 사신 칩 +5% (Core 값)");
+  f[1].alive=true; T.applyLegend(f[0],"dragon");
+  const del=T.synDragonEl(T.synCount(0,S)), dx=T.synExtraView(0,S).legends[0];
+  ok(del?(dx.legend==="dragon"&&dx.el===del&&dx.fx===T.synKingdomEffect(T.synCount(0,S),del)&&lg(chips()).length===1):lg(chips()).length===0,"H7 용: 달성한 최고 왕국 효과가 있을 때만 칩 (Core synDragonEl 값)");
+  const allies=S.pieces.filter(x=>x.owner===0&&x.type==="ally"), crown=()=>chips().find(x=>/synHelp\('crown'/.test(x));
+  ok(/synHelp\('crown',0,/.test(crown())&&/class="synChip t0"/.test(crown())&&/죽은 동료 0\/2 · 미달/.test(crown()),"H8 왕관 칩은 항상 · 0명은 미달 표시");
+  allies[0].alive=false; ok(/synHelp\('crown',1,/.test(crown())&&/class="synChip on t1"/.test(crown())&&crown().includes(T.SKILLS["LD-REVENGE"].ko),"H9 동료 1명 사망 → 동료의 복수 해금");
+  allies[1].alive=false; ok(/synHelp\('crown',2,/.test(crown())&&/class="synChip on t2"/.test(crown())&&crown().includes(T.SKILLS["LD-WRATH"].ko)&&T.synExtraView(0,S).deadAllies===2,"H10 2명 사망 → 왕의 분노 해금");
+  T.render(); const hud=T.byId("boardInfo").innerHTML;
+  ok(/class="hudSyn"/.test(hud)&&/synHelp\('crown',2,/.test(hud),"H11 경기 중 시너지 줄도 같은 칩 목록을 쓴다");
+  ok(JSON.stringify(Object.keys(T.synExtraView(1,S)).sort())==='["deadAllies","legends"]'&&!/ecoSynView|synExtraView/.test(T.aiShop.toString()),"H12 소유자 전용 읽기 selector — 새 효과·수치 없음(AI 입력 아님)");
 }
 console.log(`smoke_issue293: ${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

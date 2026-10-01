@@ -38,28 +38,43 @@ for(const [mode,opts] of [["pvp",{}],["pvp",{eco:true}],["pve",{eco:true}]]){
 
 /* C. S01 필드 판매 — 원장 100% · 종 잠금 · HP 비율 · 빈칸 · 교착 가드 · 불법 대상 */
 {
+  /* #293 (2026-10-01 CJ 3 · 5 · 17:58): 6칸을 모두 산 직후(진열 전부 품절)에도 판다 — 진열 칸 수 가드 폐지 · 확인 창 없음.
+     예비 코인(빈칸 + 모자란 진열의 새로 고침 1회 값)은 계속 강제하고, 만료 때 모자라면 그 코인으로 새로 고침 1회 뒤 채운다 */
   const T=pveSetup(3);
-  act(T,{t:"shopBuy",player:0,i:0,seq:T.S.eco.shop.seq[0]});
-  const f=field(T,0).find(x=>T.ecoKey(x)), key=T.ecoKey(f);
-  ok(f.paid===1&&T.S.eco.coins[0]===9,"C0 필드 1칸 구매 (🪙1)");
-  ok((T.shopHtml(0).match(/__shop\('sellField'/g)||[]).length===1,"C1 S01 필드 하수인마다 판매 버튼");
-  const st0=T.S;
-  ok(kind(act(T,{t:"shopSell",player:0,pieceId:f.id}))==="shopRefused"&&T.S===st0,"C2 산 칸이 품절이라 판매 뒤 빈 칸 6 > 살 수 있는 칸 5 → 거부 · 상태 불변");
-  T.__shop("sellField",f.id); ok(T.S===st0,"C3 화면 판매 버튼은 확인 창만 (상태 무변경)"); T.closeModal();
-  act(T,{t:"shopRefresh",player:0,seq:T.S.eco.shop.seq[0]});
+  for(let n=0;n<6;n++) act(T,{t:"shopBuy",player:0,i:T.ecoBuyable(T.S,0),seq:T.S.eco.shop.seq[0]});
+  const fs=field(T,0), f=fs[0], key=T.ecoKey(f);
+  ok(f.paid===1&&T.S.eco.coins[0]===4&&T.S.eco.shop.slots[0].every(s=>s&&s.soldOut)&&T.ecoBuyable(T.S,0)<0,"C0 필드 6칸 구매 (🪙10−6=4) · 진열 6칸 전부 품절");
+  ok((T.shopHtml(0).match(/__shop\('sellField'/g)||[]).length===6,"C1 S01 필드 하수인마다 판매 버튼");
   const c=T.S.eco.coins[0];
-  ok(kind(act(T,{t:"shopSell",player:0,pieceId:f.id}))==="shopChanged","C4 새로 고침 뒤(빈 칸 6 ≤ 진열 6) 판매 허용");
+  ok(kind(act(T,{t:"shopSell",player:0,pieceId:f.id}))==="shopChanged","C2 진열이 전부 품절이어도 구매 직후 필드 판매 허용 (진열 칸 수 가드 폐지)");
   const S=T.S, g=S.pieces.find(x=>x.id===f.id);
   ok(S.eco.coins[0]===c+1,"C5 원장 100% 환급");
-  ok(!T.ecoKey(g)&&T.ecoEmptyField(S,0).length===6&&!S.roster[0].includes(key),"C6 그 칸은 빈칸 · 로스터에서 빠짐");
+  ok(!T.ecoKey(g)&&T.ecoEmptyField(S,0).length===1&&!S.roster[0].includes(key),"C6 그 칸은 빈칸 · 로스터에서 빠짐");
   ok(S.eco.shop.sold[0].includes(key)&&S.eco.soldHp[0][key]===1,"C7 종 잠금 · HP 비율 기록");
+  { const i=S.eco.shop.slots[0].findIndex(s=>s.key===key), st=T.S, co=S.eco.coins[0];
+    ok(kind(act(T,{t:"shopBuy",player:0,i,seq:S.eco.shop.seq[0]}))==="shopRefused"&&S.eco.coins[0]===co&&T.ecoEmptyField(st,0).length===1,"C4 판 종은 이번 상점에서 다시 살 수 없다 (품절 칸 유지 · 재개방 없음)"); }
+  { const f2=fs[1], k2=T.ecoKey(f2); T.byId("overlayBox").innerHTML=""; T.__shop("sellField",f2.id);
+    ok(!T.ecoKey(f2)&&S.eco.coins[0]===c+2&&S.eco.shop.sold[0].includes(k2)&&!/판매 확인/.test(T.byId("overlayBox").innerHTML),"C3 화면 [판매] = 확인 창 없이 요청 1회로 즉시 판매 (🪙 +1)");
+    T.__shop("sellField",f2.id); ok(S.eco.coins[0]===c+2,"C3b 같은 칸 연타는 두 번째 판매를 만들지 않는다"); }
   refused(T,{t:"shopSell",player:0,pieceId:f.id},"C8 빈칸 판매 거부");
   refused(T,{t:"shopSell",player:0,pieceId:S.pieces.find(x=>x.owner===0&&x.type==="king").id},"C9 왕 판매 거부");
   const opp=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&T.ecoKey(x));
   refused(T,{t:"shopSell",player:0,pieceId:opp.id},"C10 상대 하수인 판매 거부");
   refused(T,{t:"shopDone",player:0},"C11 판매 뒤 6칸 미만이면 완료 거부");
+  /* 만료 — 빈칸 2 · 살 수 있는 진열 0: 그 좌석 코인으로 새로 고침 1회(🪙1) + 구매 2(🪙2) → 6칸 · 완료 · 자동 배치. 무료 생성 없음 */
+  const c12=S.eco.coins[0], locked=S.eco.shop.sold[0].slice();
   act(T,{t:"shopTimeout",player:0});
   ok(T.ecoEmptyField(T.S,0).length===0&&T.S.eco.shop.done[0],"C12 시간 초과 자동 완료가 판매한 칸까지 채운다 (교착 없음)");
+  ok(c12===6&&T.S.eco.coins[0]===c12-T.ECO.refresh-2,"C12b 진열이 모자랄 때만 예비 코인으로 새로 고침 1회 + 구매가 (🪙6 → 3)");
+  ok(field(T,0).every(x=>!locked.includes(T.ecoKey(x))&&x.paid===1)&&new Set(field(T,0).map(x=>T.ecoKey(x))).size===6,"C12c 채운 말은 새 진열에서 산 것 — 판 종 잠금 유지 · 중복 없음 · 원장 🪙1");
+  ok(T.S.pieces.filter(x=>x.owner===0).every(x=>x.placed),"C12d 만료 좌석은 자동 배치까지 끝난다");
+}
+{ /* 예비 코인 — 판매 뒤 빈칸을 다시 채울 코인(+모자란 진열의 새로 고침 값)이 안 되면 거부 */
+  const T=pveSetup(5);
+  for(let n=0;n<6;n++) act(T,{t:"shopBuy",player:0,i:T.ecoBuyable(T.S,0),seq:T.S.eco.shop.seq[0]});
+  for(let n=0;n<4;n++) act(T,{t:"shopGood",player:0,item:"ball"});
+  const f=field(T,0)[0], sig=J([T.S.pieces,T.S.eco]), r=act(T,{t:"shopSell",player:0,pieceId:f.id});
+  ok(T.S.eco.coins[0]===0&&kind(r)==="shopRefused"&&/코인을 남겨야/.test(r.events[0].message)&&J([T.S.pieces,T.S.eco])===sig,"C15 🪙0 에서 판매(+1)는 빈칸 1 + 새로 고침 1 = 2 에 못 미쳐 거부 · 상태 불변");
 }
 { /* 정기 상점에서는 필드 직접 판매 불가 (교체 → 가방 판매) */
   const T=pveSetup(4); act(T,{t:"shopTimeout",player:0});
