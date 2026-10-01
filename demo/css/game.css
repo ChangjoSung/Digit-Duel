@@ -1328,7 +1328,9 @@ button.uCard:focus-visible,.trayItem:focus-visible{outline:3px solid #fff; outli
 #app[data-flow] .trayItem.sel{outline:3px solid var(--pick); outline-offset:1px; z-index:1;}
 .trayItem .selT{position:absolute; top:-7px; right:-4px; z-index:2; padding:1px 3px; font-style:normal; font-size:8px; font-weight:bold; line-height:1.2; color:#2a1208; background:var(--pick); border-radius:6px;} /* 모서리 표식 — 등급·HP 를 가리지 않는다 */
 .trayItem.placed{cursor:default;} .trayItem.placed>*{opacity:.3;}
-.trayItem.placed>.pc{opacity:1;} .trayItem.placed>.pc .icon,.trayItem.placed>.pc .face{opacity:.3;} /* 놓은 칸: 등급 배경·왕국/아키타입 기호·HP 는 불투명 그대로 — 그림만 옅게 하고 ✓ 를 얹는다 */
+.trayItem.placed>.pc{opacity:1;} .trayItem.placed>.pc .icon{opacity:.3;} /* 놓은 칸: 등급 배경·왕국/아키타입 기호·HP·그림 없는 이름표/기호(.face)는 불투명 그대로 — 실제 그림(.icon)만 옅게 하고 ✓ 를 얹는다 */
+button.trayItem.placed:disabled{opacity:1;} /* 놓은 칸은 disabled 버튼이다 — 공통 button:disabled{opacity:.35} 는 조상 불투명도라 자식의 opacity:1 로 되돌릴 수 없어 등급 배경·HP 까지 옅어졌다. 비활성 표시는 위의 옅은 그림 + ✓ 가 맡는다 (다른 disabled 버튼은 그대로) */
+.pc.gf.inbush .face{opacity:1;} /* 수풀 칸의 그림 없는 이름표도 불투명 — 옅어지는 것은 실제 그림(.pc.inbush .icon)뿐 */
 .trayItem.placed::after{content:"✓"; position:absolute; inset:0; display:grid; place-items:center; font-size:26px; font-weight:bold; color:var(--ok);}
 .trayActs{display:flex; gap:6px; margin:0;} .trayActs button{flex:1 1 0; min-height:44px; font-weight:bold;}
 /* 시너지 안내 안의 기여 카드 */

@@ -47,7 +47,32 @@
 | `s6-postfix-ready-{320,390}.png/.json` | 팝업 262×57 한 줄(문구 높이 21px) — 낱말 중간 끊김 없음 |
 | `s5-postfix-placed-bush-390.png` | **없음** — `orca screenshot`이 두 번(재시도 포함) `runtime closed the connection`으로 실패. 390px 수풀/놓은 칸은 화면 증거 없이 같은 CSS 규칙(320 실측)으로만 뒷받침된다 |
 
-## 현재 — 팝업을 말판 래퍼에 고정 (dispatch `ctx_321806340e49` / task `task_00369866ca8e` · 2026-10-01)
+## 현재 — 놓은 트레이 칸의 조상 불투명도 (dispatch `ctx_e0bd81e317d0` / task `task_e1de62b8d571` · 2026-10-01)
+
+**놓은 칸·수풀 이름표에 대해서는 이 절의 `s9`만 현재 증거다.** `s5`·`s7-final-placed-bush-390`의 "놓은 칸 `.pc` 1 · HP 1 · 기호 1"은 **요소 자신의 opacity 만 잰 값**이라 틀린 결론이었다(아래 원인). `s1`~`s8`은 이전 기록으로 그대로 둔다. 판정은 하지 않는다(Saturn 몫).
+
+- 원인 1: 놓은 칸은 `disabled` 버튼이다(`ui.js` `trayHtml`). 공통 규칙 `button:disabled{opacity:.35}`(`game.css` 166)가 **버튼 전체**를 한 층으로 합성하므로 자식 `.pc{opacity:1}`·HP·모서리 기호는 되돌릴 수 없었다 — 등급 배경·HP 까지 35%.
+- 원인 2: `.trayItem.placed>.pc .face{opacity:.3}`가 그림 없는 이름표·폭탄/함정 기호까지 옅게 했다. 수풀 칸은 `.pc.inbush .face{opacity:.7}`(#122)가 이름표에 그대로 걸렸다.
+- 수정(`demo/css/game.css`만 · 선언 3개): ① `button.trayItem.placed:disabled{opacity:1}` 추가 ② 놓은 칸 규칙에서 `.face` 제거 → `.trayItem.placed>.pc .icon{opacity:.3}`만 ③ `.pc.gf.inbush .face{opacity:1}` 추가(등급 하수인의 이름표만 — 왕·동료·폭탄·함정의 수풀 기호 70%는 #122 그대로). `button:disabled` 공통 규칙과 다른 disabled 규칙(`#turnBar` · `.flowBar .go` · `button.uCard` 등)은 무수정. `disabled` 속성 · `— 배치됨` 접근성 이름 · ✓ 는 그대로.
+- 조상 사슬 확인(계산값, `<html>`까지 전부): 놓은 칸 버튼에서 위로 opacity≠1 인 조상 0개 → 버튼 1 · `.pc` 1 · HP 알약 1 · 모서리 기호 1 · 이름표 1 · 폭탄/함정 기호 1 · **그림 `img.icon`만 0.3**. 수풀 칸: 이름표 1 · 그림 0.7(종전).
+- 현재 해시(미커밋): `game.css` 139,466B `efe00252be3e7bd7` · `ui.js` 225,745B `f527d69f7c3370ad` · `core.js` 295,223B `3f347effbacb80a4`(둘 다 `72ed531`과 동일 — JS·서버·테스트 수정 0). **검사 실행 0회**(CSS 전용 · 종전 99/173/typecheck/CI 6/6 은 `72ed531` 기준 재사용, 새 CSS 는 커밋 뒤 필수 CI 대상).
+- 방법: `python -m http.server 8293`(런처 PID 29436 → 리스너 PID 22896, 종료 뒤 8293 LISTENING 0) + Orca 내장 브라우저 탭 1개(생성·종료). 상태는 **합성**: PVE `shopTimeout` + `autoPlace`, 하수인 1개에 `legend`를 넣어 g5, 2개를 수풀 9행으로 옮김. 그림 없는 경우는 **DOM 에서만** `img.icon`을 기존 `pcFaceHtml` 폴백 마크업(`span.face>span.nm`)으로 바꿔 봤다(제품 코드 무수정).
+
+| 파일 | 실측 (계산값 + PNG 픽셀) |
+|---|---|
+| `s9-placed-opacity-390.png/.json` | 놓은 14칸 전부 `disabled` · 버튼 opacity 1 · ✓ `rgb(79,216,138)`. 트레이 g1 배경 픽셀 `255,255,255` = 보드 g1 `255,255,255`. 트레이 g5 `196,160,71` = 보드 g5 `196,160,71`. HP 알약 가장 밝은 픽셀 `255,255,255`(트레이·보드 동일). 이름표 영역 `11,14,41`~`255,255,255`. 수풀 이름표 칸·그림 칸 배경 `255,255,255`. 넘침 없음(390) |
+| `s9-placed-opacity-320.png/.json` | 계산값 390과 동일. 트레이 g1 `255,255,255` · g5 `196,160,71` · HP 최대 `255,255,255` · 수풀 g1 두 칸 `255,255,255`. 넘침 없음(320) |
+
+호출: tab create 1 · switch 3 · close 1 · viewport 2 · eval 7 · screenshot 3(390 첫 시도 `runtime closed` → 탭 활성화 뒤 성공, 320 1회).
+
+**한계**
+- 320 에서는 말판 아래 행이 트레이에 가려 **수풀이 아닌 보드 g1·g5 는 화면에 없다**(픽셀 없음 · JSON 에 `invalid` 표기). 320 의 보드 비교는 수풀 g1 두 칸뿐이다.
+- g5 픽셀(`196,160,71`)은 계산 배경색(`200,156,60`)과 다르다 — 트레이와 보드가 같은 값이라는 것만 확인했고 차이의 원인은 조사하지 않았다.
+- ✓(26px · 칸 중앙)가 이제 불투명한 이름표·폭탄/함정 기호 위에 겹친다. 390 첫 칸의 이름 "스파크"가 ✓ 에 일부 가려진다 — 읽힘 판단은 root/CJ 몫.
+- 이 화면에는 트레이 밖의 `disabled` 버튼이 없어 "다른 비활성 버튼은 그대로"는 **선택자 범위(새 규칙이 `.trayItem.placed`에만 걸림)로만** 뒷받침된다 — 화면 실측 없음.
+- 대비율 측정 도구 없음(픽셀 최소·최대만). 실제 서버·실기기·데스크톱 폭 없음.
+
+## 팝업을 말판 래퍼에 고정 (dispatch `ctx_321806340e49` / task `task_00369866ca8e` · 2026-10-01 · `72ed531`에 커밋됨 — 팝업 증거로는 그대로 유효, 아래 "미커밋"·해시 표기는 당시 기준)
 
 **이 절의 `s8`만 현재 미커밋 소스의 팝업 증거다.** `s1`~`s6`과 아래 `s7`의 팝업 파일(`s7-final-ready-*` · `s7-incidental-ready-811.json`)은 **이전 기록**이다 — `s7`은 root 가 REVISE 로 돌려보낸 상수 계산식(`left:calc(50% - 24px)` · `top:calc(110px + …*.9309)` · `position:fixed`) 기준이고 그 식은 지웠다. `s7-final-placed-bush-390.*`은 팝업과 무관해 그대로 유효하다(재촬영 없음). 판정은 하지 않는다(Saturn 몫).
 
