@@ -83,6 +83,7 @@ block("B 안전한 뒤로가기",()=>{
 
   /* 배치 단계 → 로스터 단계: 고른 로스터와 이미 놓은 말이 그대로 남는다 */
   T.UI.entered=true; T.startMode("pve",{aiLevel:"grade5"});
+  T.S.eco=null; // #293 계약 3.2: 배치 → 로스터 자유 전환은 비경제 로스터 선택의 계약이다 (경제 판은 shop.done 이 단계를 잠근다) — 입력 전제만 맞춘다, 기대값 무수정
   T.fillRosterRandom(0); T.autoPlaceCore(0);
   const roster0=T.S.roster[0].slice(), placed0=T.S.pieces.filter(x=>x.owner===0&&x.placed).length;
   T.UI.prep="place"; T.uiApply();
