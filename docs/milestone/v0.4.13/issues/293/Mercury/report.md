@@ -1,12 +1,12 @@
 # v0.4.13 UI/UX 재편 · Mercury 운영 보고
 
-확인 시각: 2026-10-01 04:41 KST (게시 전 게이트 확인)
+현행 접수: 2026-10-01 09:00 KST. 초기 인수 게이트: 2026-10-01 04:41 KST.
 
-CJ 최신 [원문](../references/CJ_COMMENT.md)과 원본 두 장을 기준으로 GitHub 메타데이터를 재편했다. 제품 구현·Saturn QA·CJ 플레이 QA·릴리스·배포는 이번 작업 범위에 포함하지 않았다. 시안은 구조 검토용이며 기획 확정이나 동작 검증을 의미하지 않는다.
+CJ 후속 [원문](../references/CJ_COMMENT.md)은 전체 흐름 PASS와 추가 카드·색상·한 줄 조건의 문서 반영 후 #293 구현 착수를 승인했다. 현재 Venus 구현 계약·Notion, Earth 시각 조건을 갱신 중이며 그 완료 후 Mars 구현, Saturn 읽기 전용 QA로 진행한다. 최종 CJ 플레이 QA·milestone 병합·main Release·Render 배포 승인은 별도다. 아래 초기 재편·인수 확인은 해당 시점 증거이며 현재 승인 범위는 이 절과 최신 CJ Comment를 따른다.
 
 | Issue | 현재 목표 | 처리 |
 |---|---|---|
-| [#293](https://github.com/ChangjoSung/Digit-Duel/issues/293) | 시작 상점 → 배치 → 완료, 카드 방식 교체 | Earth 전체 흐름·교체 모달 시안과 CJ 원본을 본문에 게시. 상세 검토 대기 |
+| [#293](https://github.com/ChangjoSung/Digit-Duel/issues/293) | 시작 상점 → 배치 → 완료, 카드 방식 교체 | Earth 전체 흐름·교체 모달 시안 게시 → CJ 흐름 PASS. 카드·색상·한 줄 조건 문서 반영 후 구현 승인 |
 | [#294](https://github.com/ChangjoSung/Digit-Duel/issues/294) | 메인 화면 Right Side 시너지, Top Bar, Bottom Bar 가방 팝업, 하수인 설명 | 옛 #293의 사망 시너지·기여 목록 요구 승계. S03 게임 보드라는 해석은 추론 표시 |
 | [#295](https://github.com/ChangjoSung/Digit-Duel/issues/295) | 턴 상점, 시작 상점과 비슷한 UI/UX | CJ 지정 번호로 OPEN 재개. 옛 방·핑·단절 개선/PR303/CJ QA PASS 본문 전체를 역사 섹션에 보존 |
 | [#296](https://github.com/ChangjoSung/Digit-Duel/issues/296) | 배틀 전체 UI/UX, 기술 가독성, 피해0~0 | 옛 #297 요구 통합. 전설 마녀 상향 기획 폐지/밸런싱 다음 마일스톤 명시 |
@@ -14,7 +14,19 @@ CJ 최신 [원문](../references/CJ_COMMENT.md)과 원본 두 장을 기준으�
 
 [Milestone18](https://github.com/ChangjoSung/Digit-Duel/milestone/18)은 전체 UI/UX 개선으로 갱신했다. 옛 본문은 GitHub 본문 접기 섹션과 저장소 밖 `C:/Users/pc_77/orca/archives/Digit-Duel/uiux-replan-20261001/issue-*-before.json`에 보존했다. 새 Issue 댓글은 작성하지 않았다. 신규 제품 수용 조건은 전부 미완료다.
 
-## 분석 판정과 실사용 위험
+## 후속 카드·색상·한 줄 조건의 객관적 분석
+
+- 흐름 PASS와 러프 카드 외형은 구분한다. 기존 시안의 이름·예시 HP·압축 치수를 제품에 복사하면 필수 정보와 터치 표적이 부족하다. 카드마다 등급·왕국·아키타입·HP를 실제 데이터로 표시하고 기존 하수인 아트를 재사용한다.
+- 현행 ui.js의 구매 카드에는 등급·왕국·아키타입이 있고 필드/가방에는 왕국·아키타입이 빠져 있다. 기존 unitIco/unitTags/ecoKey와 등급·HP 상태를 재사용하면 새 카드 데이터 모델이나 아트 로더가 필요 없다.
+- 현행 game.css 좁은 화면의 `.slotGrid.bag .uSlot .acts{flex-direction:column}`은 CJ 한 줄 조건과 충돌한다. 충분한 카드 폭·버튼 영역을 확보한 수평 배열로 바꾸고, 단순히 작은 버튼으로 밀어 넣지 않는다. 모든 정보를 한 줄로 억지로 압축하라는 요청은 아니다.
+- 하수인 등급 테두리와 선택·사망·disabled 강조는 독립으로 표현한다. 색상을 지워도 등급/달성 단계/선택을 구분할 수 있는 표식·접근성 이름을 유지한다. grade1~5는 지불 금액과 다른 값이다.
+- 시너지 색은 ui.js의 기존 synSteps/synTier가 반환하는 실제 달성 단계 기준이다. 숫자만 보고 같은 색을 붙이면 왕국·아키타입의 다른 상승 규칙을 잘못 나타낸다. Core 시너지 집계·단계·사망/포획 동결·가방 전설 예외는 바꾸지 않는다.
+- TopBar의 시간·코인과 가방 교체·판매를 한 줄로 구성한다. 반복 설명은 줄이되 이름·HP·가격·실패/대기·접근성 정보를 없애는 근거로 쓰지 않는다.
+- 텍스트 교체 목록은 필드6칸의 카드 선택 모달로 바꾸되 살아 있는 내 필드 하수인만 적격이다. 빈칸·사망·왕/동료 허용, HP 초기화, 추가 이동 규칙은 승인되지 않았다.
+- current server room.js 경기 전 projection은 seats.ready와 자기 경제/말만 공개한다. 상대 상점/배치 단계는 공개된 값으로만 표시하고 private roster에서 추정하지 않는다. 상세 계약에서 확정 정보와 알 수 없는 상태를 구분한다.
+- 구현 범위는 #293 시작 상점·배치·완료/교체와 그 카드·시너지 표시다. 공통 표시 함수를 재사용하는 기존 턴 상점에 생기는 표시 변화는 명시하고 #294~#296 전체 UI/UX 착수로 확대하지 않는다.
+
+## 초기 분석 판정과 실사용 위험
 
 - [Earth 구조 대조표](../Earth/report.md), [Venus 기획 분석](../Venus/analysis.md), [Notion 결정 기록](../Venus/decision-sync.md)을 취합했다. 구조 시안은 CJ 비교 대상으로 충분하지만 실사용 화면 규격·행동 계약 승인과는 별개다.
 - 최초 시안에서 양쪽 플레이어의 단계 표식 누락, 배치 화면 잔여 코인4를 상단 시너지4로 오독, 최대 데미지를 최대HP로 오독한 점을 발견해 기존 자산 수정 모델의 Earth에 정정을 맡겼다. 정정본 SVG/PNG 두 장과 보고서를 원본에 다시 대조했다. 양측 단계 표식·단일 코인·8개 아이템 명칭 정정을 확인했다.
