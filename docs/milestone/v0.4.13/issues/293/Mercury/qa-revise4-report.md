@@ -1,6 +1,6 @@
 # [피드백][결정] #293 CJ QA REVISE 추가 4건
 
-현재 단계: **2026-10-02, 추가 네 항목 구현·독립 QA·필수 CI 6/6·Free QA 재배포 완료**. CJ 플레이 판정은 REVISE 후 재테스트 대기이며 #293 OPEN·PR305 Draft를 유지한다. [최신 QA 사이트](https://digit-duel-mipa-qa.onrender.com/?qa=c8b2b7c)는 제품 SHA `c8b2b7c2186f08c8d37bc8be25effc4731e98f0f`를 실행한다. [직전 7건 보고](qa-revise-report.md)는 이전 납품의 증거다.
+현재 단계: **2026-10-02, 추가 네 항목 구현·독립 QA·필수 CI 6/6·Free QA 재배포 및 CJ 플레이 QA PASS**. CJ Comment 원문 `CJ QA Test : PASS`를 접수했다. [최신 QA 사이트](https://digit-duel-mipa-qa.onrender.com/?qa=c8b2b7c)는 제품 SHA `c8b2b7c2186f08c8d37bc8be25effc4731e98f0f`를 실행한다. 이전 계획의 milestone 병합 금지 경계에 따라 #293 OPEN·PR305 Draft는 병합·종결 승인 전까지 유지한다. [직전 7건 보고](qa-revise-report.md)는 이전 납품의 증거다.
 
 입력은 [CJ 원문·원본 3장](../references/CJ_QA_REVISE4_20261002.md), 기준은 [Venus 계약](../Venus/implementation-contract.md) 9장·AC14~18이다. 선행 계약 커밋은 `17dd0bfa51e322ba76ff83be577e0f920949376a`. 기존 AC1~13은 명시적으로 바뀐 기대값 외에 유지한다.
 
@@ -40,11 +40,11 @@ Saturn은 명시 인수 `gpt-6.1-sol/xhigh/default`, `danger-full-access/never`�
 
 첫 HTTP 검사에서 HTML 원시 blob 대조만 실패했다(200, 실제 게임 HTML). 차이는 기존 CRLF 체크아웃 속성으로 확인했으며 위 12파일 대조를 해당 속성을 적용해 완료했다. 제품 변경·재배포는 하지 않았다. 이 보고서 후속 커밋은 문서만 포함하므로 실행 제품 SHA와 구분하며, 최신 HEAD CI는 [PR305 Checks](https://github.com/ChangjoSung/Digit-Duel/pull/305/checks)에서 확인한다.
 
-**한계:** 화면 PNG는 합성 상태이고 마지막 팝업 수명 정리 전 촬영이다. 정기 상점 팝업 PNG는 당시 남아 있던 설명창을 담은 이전 증거이며 수정 후 수명 PASS 화면으로 쓰지 않는다. 실제 두 사람 온라인·단절 중 inert 닫기·나간 뒤 새 방 생성/입장·실기기·넓은 PC·대비율 및 마지막 수정 후 화면은 CJ 재테스트 범위다. 새 기능·의존성·WorkTree·테스트 파일은 추가하지 않았다.
+**증거 범위:** 화면 PNG는 합성 상태이고 마지막 팝업 수명 정리 전 촬영이다. 정기 상점 팝업 PNG는 당시 남아 있던 설명창을 담은 이전 증거이며 수정 후 수명 PASS 화면으로 쓰지 않는다. 실제 두 사람 온라인·단절 중 inert 닫기·나간 뒤 새 방 생성/입장·실기기·넓은 PC·대비율 및 마지막 수정 후 화면은 자동·PNG 증거로 확인하지 않았다. CJ의 최종 플레이 판정은 PASS이며 개별 시나리오·기기별 결과는 별도로 제공되지 않았다. 제품 변경·재배포·QA 재실행 없이 판정만 반영했다. 새 기능·의존성·WorkTree·테스트 파일은 추가하지 않았다.
 
 ## CJ QA Test List
 
-재배포 완료 후 최신 QA 링크에서 테스트한다. 두 기기의 게임을 새로 시작하며, 이전에 열어 둔 탭은 새로고침한다.
+CJ가 최신 QA 납품에 `CJ QA Test : PASS`를 통보했다. 아래는 전달한 Q4-01~05 목록이며 개별 ID별 결과를 임의로 보충하지 않는다.
 
 | ID | 조작 | 기대 결과 |
 |---|---|---|
