@@ -343,6 +343,11 @@ try{
   ok(/^P\|/.test(String(T.NET.overlaySig)),"F20 정지 토글을 오버레이 서명이 알아챈다 (상점·B08 이 잠긴 모습으로 다시 그려진다)");
   T.netLeaveRoom();
   ok(T.sent.some(x=>x.t==="leave"),"F21 정지 중에도 방 나가기(복구 포기)는 보낸다 — 잠그는 것은 게임 입력이다");
+  /* #293 (2026-10-02 CJ 4 · AC17): 나간 뒤 방 목록 소켓이 publicMode 를 다시 켜도 그 방의 단절 정지(X01)가 되살아나지 않는다 */
+  T.NET.publicMode=true; T.render();
+  const bar=T.byId("netResumeBar"), app=T.byId("app");
+  ok(T.NET.pause===null&&!T.netPaused()&&!T.NET.pauseTimer&&(!bar||bar.classList.contains("hidden"))&&!(app&&app.getAttribute("inert")==="")&&T.byId("overlay").classList.contains("hidden"),
+     "F22 나간 뒤 정지 상태·초 타이머·inert·열린 창이 남지 않는다 (방 목록 연결이 와도 X01 부활 없음)");
 }
 
 

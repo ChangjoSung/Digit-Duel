@@ -36,7 +36,9 @@ function pvePlay(seed){ const T=pveSetup(seed);
   const T=pveSetup(31), E={get tickets(){return T.S.eco.tickets;},get buffInv(){return T.S.eco.buffInv;},get coins(){return T.S.eco.coins;}}; // reducer 가 새 상태를 돌려주므로 매번 읽는다
   eq(T.ECO.startGoods,T.ECO.goods,"A1 S01 상품 = 정기 상점 상품 8종 (2026-09-25 CJ · #238)");
   ok(kind(act(T,{t:"shopGood",player:0,item:"ticket"}))==="shopChanged"&&E.tickets[0]===1,"A2 S01 에서 교체 티켓 구매");
-  for(const k of ["power","time","escape"]) ok(kind(act(T,{t:"shopGood",player:0,item:k}))==="shopChanged"&&E.buffInv[0][k]===1,"A3 S01 전투 버프 구매: "+k);
+  /* #293 (2026-10-02 CJ 2): 수호자 3종 🪙3 — 예비 재화가 그대로라 시작 시점(🪙10 · 빈칸 6)에는 티켓 1 + 수호자 1개까지 */
+  ok(kind(act(T,{t:"shopGood",player:0,item:"power"}))==="shopChanged"&&E.buffInv[0].power===1&&E.coins[0]===6,"A3 S01 전투 버프 구매: power (🪙3)");
+  for(const k of ["time","escape"]) ok(kind(act(T,{t:"shopGood",player:0,item:k}))==="shopRefused"&&E.buffInv[0][k]===0,"A3 둘째 수호자는 예비 재화로 거부: "+k);
   eq(E.coins[0],6,"A4 하수인 외 지출은 🪙4 까지 (🪙10 − 6칸 몫)");
   ok(kind(act(T,{t:"shopGood",player:0,item:"potion"}))==="shopRefused"&&E.coins[0]===6,"A5 예비 재화(빈 칸 6 × 🪙1)는 그대로 막는다");
   const king=T.S.pieces.find(x=>x.owner===0&&x.type==="king");

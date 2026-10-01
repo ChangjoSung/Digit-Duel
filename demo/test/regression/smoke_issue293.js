@@ -77,13 +77,15 @@ const visible=h=>h.replace(/<small class="srOnly[\s\S]*?<\/small>/g,"").replace(
   f[0].rosterId=null; f[1].alive=false;                 // 빈칸 1 · 사망 1 (턴 상점에서 생기는 모양) — 자격 표시만 본다
   T.__shop("swap",u.uid);
   let box=T.byId("overlayBox").innerHTML, grid=box.slice(box.indexOf('class="slotGrid swapGrid"'));
-  ok(/교체할 필드 하수인 선택/.test(box)&&/aria-label="닫기"/.test(box)&&!!lastBtn(T,"취소"),"C1 [교체] → 제목 · ✕ · 취소가 있는 선택 창");
+  ok(/교체할 필드 하수인 선택/.test(box)&&box.includes(`aria-label="닫기" onclick="window.__shop('swapX',${u.uid})"`)&&T.byId("obBtns").children.length===0&&!lastBtn(T,"취소"),"C1 [교체] → 제목 · ✕(닫기 직결)만 — 맨 아래 [취소] 없음 (2026-10-02 CJ)");
   eq([count(grid,/class="uSlot/g),count(grid,/<button[^>]*disabled aria-disabled="true"/g),count(grid,/__shop\('swapTo'/g)],[6,2,4],"C2 필드 6칸 · 빈칸/사망 2칸은 실제 disabled · 살아 있는 4칸만 선택");
   const S0=T.S, before=sig(T);
   T.__shop("swapTo",f[1].id,u.uid); T.__shop("swapTo",f[0].id,u.uid);
   ok(T.S===S0&&sig(T)===before,"C3 사망·빈칸을 직접 불러도 요청이 나가지 않는다");
-  lastBtn(T,"취소").onclick();
-  ok(T.S===S0&&sig(T)===before&&T.byId("overlay").classList.contains("hidden"),"C4 취소 = 상태 무변경 · 창 닫힘");
+  T.__shop("swapX",u.uid);
+  ok(T.S===S0&&sig(T)===before&&T.byId("overlay").classList.contains("hidden"),"C4 ✕ = 상태 무변경 · 창 닫힘");
+  ok(/find\(b=>b\.textContent==="취소"&&!b\.disabled\)\s*\|\|\$\("overlayBox"\)\.querySelector\("\.acctHead \.acctX"\)/.test(T.html)&&!/querySelector\('#obBtns button'\)\.click\(\)/.test(T.html),
+     "C4b Esc = [취소]가 없는 창에서는 그 ✕ · ✕ 는 맨 아래 버튼을 대신 누르지 않는다 (입력 잠금 가드 밖)");
   f[0].rosterId=key0; f[1].alive=true; f[2].hp=37; u.hp=11;
   const outName=f[2].name, inName=u.name, id=f[2].id;
   T.__shop("swap",u.uid); T.__shop("swapTo",id,u.uid);
@@ -91,6 +93,42 @@ const visible=h=>h.replace(/<small class="srOnly[\s\S]*?<\/small>/g,"").replace(
   ok(now.name===inName&&now.hp===11&&b.name===outName&&b.hp===37,"C5 선택 1회 = 기존 shopSwap — 1:1 교체 · HP 그대로 이동");
   const after=sig(T); T.__shop("swapTo",id,S1.eco.bag[0][0].uid); T.__shop("swapTo",id,u.uid);
   ok(sig(T)===after,"C6 연타는 두 번째 요청을 만들지 않는다 (선택 1회 = shopSwap 1회)");
+}
+/* ===== C'. 2026-10-02 CJ: 수호자 3종 🪙3 · 상품 설명 팝업 (Venus 계약 9.2 · 9.3 · AC15 · AC16) ===== */
+{
+  const T=pveSetup(56), U=T.ui238; buy(T,6);
+  const BUFF=["power","time","escape"], DESC={potion:"최대 HP 20% 회복",cool:"스킬 쿨타임 초기화",cure:"상태이상 해제",ball:"HP 30% 미만인 적 하수인 포획",ticket:"왕 · 동료 속성 교체 (정기 상점에서 사용)",
+    power:"이 전투 동안 내 피해 최대치 고정",time:"이 전투 최대 3라운드 · 1라운드에만 사용 (사신의 낫 불가)",escape:"이 전투 동안 도망 성공률 70%"};
+  const off=(h,n)=>count(h,new RegExp(`class="buy" disabled aria-label="[^"]*구매 🪙${n}"`,"g"));
+  let h=T.shopHtml(0);
+  eq([T.S.eco.coins[0],count(h,/구매 🪙3"/g),count(h,/구매 🪙1"/g),off(h,3),off(h,1)],[4,3,5,0,0],"C'1 전제 🪙4 · 수호자 3종 버튼 🪙3 · 나머지 5종 🪙1 · 전부 활성");
+  act(T,{t:"shopGood",player:0,item:"power"});
+  eq([T.S.eco.coins[0],T.S.eco.buffInv[0].power],[1,1],"C'2 수호자 구매 = 🪙3 차감 · 보유 +1");
+  T.S.eco.coins[0]=2; h=T.shopHtml(0);
+  eq([off(h,3),off(h,1)],[3,0],"C'3 🪙2 — 수호자 [구매]만 비활성 (활성 판정은 상품별)");
+  const s2=T.S; act(T,{t:"shopGood",player:0,item:"time"});
+  ok(T.S===s2&&T.S.eco.coins[0]===2&&T.S.eco.buffInv[0].time===0,"C'4 🪙2 로 수호자는 거부 · 상태 무변경");
+  act(T,{t:"shopGood",player:0,item:"cure"});
+  eq(T.S.eco.coins[0],1,"C'5 나머지 상품은 그대로 🪙1");
+  /* 설명 팝업 — 시너지 안내와 같은 창(SYNHELP) · 이름 + 가격 + 설명 한 줄 · 코인/보유 무변경 · 맨 아래 설명 줄 없음 */
+  const s3=T.S, before=sig(T);
+  const bad=T.ECO.goods.filter(k=>{ T.__shop("info",k); const d=U.SYNHELP.el.innerHTML, pr=BUFF.includes(k)?3:1;
+    return !(d.includes(`<span class="desc">${DESC[k]}</span>`)&&d.includes(`<span class="srOnly">가격 </span>${pr}</span>`)&&(BUFF.includes(k)?T.ECO.buffPrice:T.ECO.goodPrice)===pr&&d.includes(`style="--g:${T.ECO.goods.indexOf(k)}"`)
+      &&/class="acctX" aria-label="닫기" onclick="synHelpClose\(true\)"/.test(d)&&!/보유|구매|<button class="buy"/.test(d.replace(/<[^>]+>/g,""))); });
+  eq(bad,[],"C'6 상품 8종 팝업 = 아이콘 · 이름 · Core 가격 · 계약 문구 그대로 · ✕ (구매 버튼·보유 문구 없음)");
+  ok(U.SYNHELP.el.getAttribute("role")==="dialog"&&U.SYNHELP.el.className==="synHelp"&&T.S===s3&&sig(T)===before,"C'7 시너지 안내와 같은 창(role=dialog) · 열어도 코인·보유·상태 무변경");
+  h=T.shopHtml(0);
+  ok(!/goodDesc/.test(h)&&count(h,/aria-haspopup="dialog" aria-label="[^"]* 설명 · 보유 \d+" onclick="window\.__shop\('info','\w+',this\)"/g)===8&&!/goodDesc|goodInfo/.test(T.html.replace(/\/\*[\s\S]*?\*\//g,"")),"C'8 맨 아래 설명 줄(#goodDesc) 삭제 · 아이콘 8개가 팝업을 연다");
+  /* 팝업 수명 — 열어 둔 설명 팝업은 그 화면과 함께 끝난다: 상점 완료 · 준비 시간 만료 · 정기 상점 닫힘 · 새 판 (공용 정리 = uiApply 화면 전환 · closeModal/modal · gameReset) */
+  const pop=X=>{ X.__shop("info","potion"); return !!X.ui238.SYNHELP.el; }, gone=X=>!X.ui238.SYNHELP.el;
+  const o1=pop(T); act(T,{t:"shopDone",player:0}); const c1=gone(T);
+  const T2=pveSetup(57), o2=pop(T2); act(T2,{t:"shopTimeout",player:0}); T2.render(); const c2=gone(T2);
+  const o3=pop(T2)||(T2.ui238.synHelp("fire",1,null),!!T2.ui238.SYNHELP.el); T2.startMode("pve",{aiLevel:"grade5"}); const c3=gone(T2);
+  const T4=pveSetup(58); act(T4,{t:"shopTimeout",player:0}); T4.netAction({t:"auto"}); T4.netAction({t:"setupDone"}); T4.TQ.length=0;
+  T4.S.turnCount=20; T4.ecoOpenShop(T4.S,"regular",20); T4.S.eco.shop.done[1]=true; T4.S.eco.shop.next=0; T4.S.phase="shop"; T4.render();
+  T4.modal(T4.shopHtml(0),[]); T4.__shop("info","potion",{closest:()=>T4.byId("overlayBox")});
+  const o4=!!T4.ui238.SYNHELP.el&&T4.byId("overlayBox").contains(T4.ui238.SYNHELP.el); T4.closeModal(); const c4=gone(T4);
+  eq([o1,c1,o2,c2,o3,c3,o4,c4],[true,true,true,true,true,true,true,true],"C'9 설명 팝업 수명: 상점 완료 · 준비 만료 · 새 판 · 정기 상점 창 닫힘에서 남지 않는다 (열림/닫힘 쌍)");
 }
 /* ===== D. 시너지 단계 색 · 기여 카드 ===== */
 {
@@ -211,7 +249,7 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
 {
   const T=pveSetup(56); buy(T,6);
   const raw=T.shopHtml(0), vis=visible(raw);
-  ok(/남겨 둡니다/.test(pveSetup(57).shopHtml(0))&&/아이콘을 누르면 설명이 보입니다/.test(raw)&&/미선택 → 자동/.test(raw),"F1 안내 문장은 접근성 전용으로 남아 있다");
+  ok(/남겨 둡니다/.test(pveSetup(57).shopHtml(0))&&/aria-haspopup="dialog" aria-label="[^"]* 설명 · 보유 \d+"/.test(raw)&&/미선택 → 자동/.test(raw),"F1 안내 문장은 접근성 전용으로 남아 있다 (2026-10-02 CJ: #goodDesc 안내 줄 삭제 → 아이콘 접근성 이름 '설명')");
   ok(!/남겨 둡니다|아이콘을 누르면|미선택|원장|환급/.test(vis)&&!/남겨 둡니다/.test(visible(pveSetup(57).shopHtml(0))),"F2 화면 글에서는 안내 문장·환급액이 빠졌다");
   ok(/하수인 구매/.test(vis)&&/필드 6\/6/.test(vis)&&/가방 0\/3/.test(vis)&&/왕·동료 속성/.test(vis)&&/아이템/.test(vis),"F3 제목·수량은 남아 있다");
   act(T,{t:"shopDone",player:0});

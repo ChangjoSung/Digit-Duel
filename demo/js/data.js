@@ -53,7 +53,7 @@ const BAL={
 };
 /* #236 (GDD-23 2.1~2.3 · 7.2~7.7) 경제 수치 — 로컬 모드(PVE·핫시트·sim) 전용. 온라인은 #237 전환 전까지 위 BAL 의 종전 경제를 쓴다 */
 const ECO={
-  start:10, field:6, bagMax:3, slots:6, legendPrice:10, goodPrice:1, refresh:1,   // #263 (2026-09-25 CJ): 하수인 진열은 S01·정기 모두 6칸 고정
+  start:10, field:6, bagMax:3, slots:6, legendPrice:10, goodPrice:1, buffPrice:3, refresh:1,   // #293 (2026-10-02 CJ): 수호자 3종만 🪙3 (ecoGoodPrice) · #263 (2026-09-25 CJ): 하수인 진열은 S01·정기 모두 6칸 고정
   shopTurns:[20,40,60,80], bonus:{20:2,40:3,60:4,80:5},
   tiers:{20:[1,2],40:[2,3],60:[3,4],80:[4,5]}, lowPct:0.6,      // 칸마다 낮은 등급 60% / 높은 등급 40% (⭐5 = 전설)
   win:3, lose:1, bushPerZone:4, capHpPct:0.7,
@@ -232,6 +232,8 @@ const BUFFS={
   escape:{ko:"🏃 도망의 수호자",desc:"이 전투 동안 도망 성공률을 70%로 높입니다"}
 };
 const BUFF_KEYS=["power","time","escape"];
+/* #293 (2026-10-02 CJ): 상품 구매가 — 수호자 3종 🪙3 · 나머지 🪙1. Core 판정과 화면 표시가 이 함수 하나를 읽는다 (시작·정기 상점 공통) */
+function ecoGoodPrice(k){ return BUFF_KEYS.includes(k)?ECO.buffPrice:ECO.goodPrice; }
 const GOOD_KO={potion:"회복약",cool:"쿨링수",cure:"해독제",ball:"몬스터 볼",ticket:"🎟 시너지 교체 티켓",power:BUFFS.power.ko,time:BUFFS.time.ko,escape:BUFFS.escape.ko}; // #236 상점 품목
 /* ===== #233 (GDD-23 3장) 8스탯 전투 엔진 계약 — 순수 데이터·헬퍼. 보호형(guard)·땅속성 종은 #234 전까지 로스터에 없다.
    여기 실린 표는 GDD-23 3.3·3.4·3.5·3.6 을 그대로 옮긴 것이며, 실제 라이브 로스터(ROSTER·king·ally)는

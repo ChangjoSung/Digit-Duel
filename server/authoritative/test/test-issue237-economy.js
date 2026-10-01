@@ -159,17 +159,21 @@ async function main() {
       const S = S0(room);
       return k === 'ball' ? S.balls[seat] : k === 'ticket' ? S.eco.tickets[seat] : S.eco.buffInv[seat][k] !== undefined ? S.eco.buffInv[seat][k] : S.inv[seat].filter((x) => x === k).length;
     };
-    for (const [seat, goods] of [[0, ['ticket', 'power', 'time', 'escape']], [1, ['potion', 'cool', 'cure', 'ball']]]) {
+    // #293 (2026-10-02 CJ): 수호자 3종은 🪙3, 나머지 5종은 🪙1 — 예비 재화(빈 칸 6)는 그대로라 S01 의 칸 밖 지출 🪙4 안에서 수호자는 1개까지다.
+    for (const [seat, goods] of [[0, ['ticket', 'power']], [1, ['potion', 'cool', 'cure', 'ball']]]) {
       for (const k of goods) {
+        const cost = ['power', 'time', 'escape'].includes(k) ? 3 : 1;
         const c = S0(room).eco.coins[seat], n = store(seat, k);
         const r = shop(room, seat, 'shopGood', { item: k });
-        ok(r.ok && S0(room).eco.coins[seat] === c - 1 && store(seat, k) === n + 1 && room.engines[1 - seat].S.eco.coins[seat] === c - 1,
-          `S01 ${k} 구매 수락: 🪙-1 · 보관처 +1 · 두 엔진 반영`);
+        ok(r.ok && S0(room).eco.coins[seat] === c - cost && store(seat, k) === n + 1 && room.engines[1 - seat].S.eco.coins[seat] === c - cost,
+          `S01 ${k} 구매 수락: 🪙-${cost} · 보관처 +1 · 두 엔진 반영`);
       }
-      const s5 = snap(room), g5 = shop(room, seat, 'shopGood', { item: 'potion' });
-      ok(!g5.ok && g5.reason === 'E_ILLEGAL_ACTION' && snap(room) === s5 && S0(room).eco.coins[seat] === 6, `좌석 ${seat} 다섯째 상품은 예비 재화(빈 칸 6)로 거부 · 상태 불변`);
+      for (const k of seat ? ['potion'] : ['potion', 'time', 'escape']) {
+        const s5 = snap(room), g5 = shop(room, seat, 'shopGood', { item: k });
+        ok(!g5.ok && g5.reason === 'E_ILLEGAL_ACTION' && snap(room) === s5 && S0(room).eco.coins[seat] === 6, `좌석 ${seat} 🪙6 에서 ${k} 는 예비 재화(빈 칸 6)로 거부 · 상태 불변`);
+      }
     }
-    ok(!JSON.stringify(view(room, 1)).includes('"tickets":1') && view(room, 0).you.eco.tickets === 1 && view(room, 0).you.eco.buffInv.escape === 1, 'S01 상품 보유는 소유자 뷰에만');
+    ok(!JSON.stringify(view(room, 1)).includes('"tickets":1') && view(room, 0).you.eco.tickets === 1 && view(room, 0).you.eco.buffInv.power === 1, 'S01 상품 보유는 소유자 뷰에만');
     const king = view(room, 0).you.pieces.find((p) => p.type === 'king').id, s6 = snap(room);
     const use = shop(room, 0, 'shopTicket', { id: king, el: 'water' });
     ok(!use.ok && snap(room) === s6, 'S01 티켓 사용은 여전히 거부 — 사용 시점은 [기획 필요]');
@@ -254,9 +258,20 @@ async function main() {
     const s = snap(room);
     const mv = H.act(room, cur, { t: 'skipMain' });
     ok(!mv.ok && snap(room) === s, '상점 동안 보드 행동 거부(보드 일시 정지) — 항복은 12절');
+    both(room, (E) => { E.S.eco.coins[0] = 11; }); // 픽스처 코인 — 수호자 3종 × 🪙3 뒤 🪙2 가 남는다 (#293 2026-10-02 CJ)
     const before1 = stable(view(room, 1));
     const g = shop(room, 0, 'shopGood', { item: 'power' });
-    ok(g.ok && S0(room).eco.buffInv[0].power === 1, '정기 상점 전투 버프 구매');
+    ok(g.ok && S0(room).eco.buffInv[0].power === 1 && S0(room).eco.coins[0] === 8 && room.engines[1].S.eco.coins[0] === 8, '정기 상점 전투 버프 구매 · 🪙-3');
+    for (const k of ['time', 'escape']) {
+      const c = S0(room).eco.coins[0], r = shop(room, 0, 'shopGood', { item: k });
+      ok(r.ok && S0(room).eco.buffInv[0][k] === 1 && S0(room).eco.coins[0] === c - 3 && room.engines[1].S.eco.coins[0] === c - 3, `정기 상점 ${k} 구매 · 🪙-3`);
+    }
+    for (const k of ['power', 'time', 'escape']) {
+      const s2 = snap(room), poor = shop(room, 0, 'shopGood', { item: k });
+      ok(!poor.ok && poor.reason === 'E_ILLEGAL_ACTION' && snap(room) === s2 && S0(room).eco.coins[0] === 2, `🪙2 에서 ${k} 는 코인 부족으로 거부 · 상태 불변`);
+    }
+    const cheap = shop(room, 0, 'shopGood', { item: 'potion' });
+    ok(cheap.ok && S0(room).eco.coins[0] === 1, '🪙2 에서 🪙1 상품은 그대로 구매 · 🪙-1');
     ok(stable(view(room, 1)) === before1, '상대 정기 상점 거래는 내 뷰를 바꾸지 않는다');
     const unit = view(room, 0).you.eco;
     ok(!JSON.stringify(view(room, 1)).includes('"buffInv":{"power":1'), '상대 재고 비노출');

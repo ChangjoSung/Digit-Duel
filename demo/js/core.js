@@ -1496,9 +1496,10 @@ function ecoReduce(state,action){
     case "shopGood": {
       const k=action.item;
       if(!(start?ECO.startGoods:ECO.goods).includes(k)) return ecoRefuse(state,p,"이 상점에서는 팔지 않습니다");
-      if(state.eco.coins[p]<ECO.goodPrice) return ecoRefuse(state,p,"🪙 코인이 부족합니다");
-      if(!ecoReserveOk(state,p,ECO.goodPrice)) return ecoRefuse(state,p,"필드 6칸을 채울 코인을 남겨야 합니다");
-      const next=ecoNext(state); next.eco.coins[p]-=ECO.goodPrice;
+      const price=ecoGoodPrice(k);
+      if(state.eco.coins[p]<price) return ecoRefuse(state,p,"🪙 코인이 부족합니다");
+      if(!ecoReserveOk(state,p,price)) return ecoRefuse(state,p,"필드 6칸을 채울 코인을 남겨야 합니다");
+      const next=ecoNext(state); next.eco.coins[p]-=price;
       if(k==="ball") next.balls[p]++; else if(k==="ticket") next.eco.tickets[p]++;
       else if(BUFF_KEYS.includes(k)) next.eco.buffInv[p][k]++; else next.inv[p].push(k);
       return ecoChanged(next,p,`${GOOD_KO[k]} 구매`);

@@ -1023,7 +1023,9 @@ function netRematchReset(){
   NET.fxRound=null; netFxResetCursorIfNeeded(); // 지난 경기의 재생 큐·전투 무대 정지
   newGame("pvp");
 }
-window.netLeaveRoom=function(){ NET.explicitLeave=true; netClearResume(); if(NET.roomId) netSendCmd("leave"); netLeave(); LOBBY.next="rooms"; newGame("pvp",{phase:"menu"}); render(); netListRooms(); }; // #261 L03 나가기 → L02
+window.netLeaveRoom=function(){ NET.explicitLeave=true; netClearResume(); if(NET.roomId) netSendCmd("leave"); netLeave();
+  try{ synHelpClose(false); closeModal(); }catch(e){} // #293: 단절 화면에서 바로 나가면 그 경기의 열린 창(교체 선택 등)도 로비로 따라오지 않는다
+  LOBBY.next="rooms"; newGame("pvp",{phase:"menu"}); render(); netListRooms(); }; // #261 L03 나가기 → L02
 /* ===== #217 재접속(bounded resume) — Venus 구현 승인(implementation-approval.md "재접속 유예(60초)")에 따른 자동 재개.
    대상은 명시적 leave가 아닌 소켓 단절(비의사)뿐이다. 3초 간격으로 재시도하고, 서버가 권위 응답(room_resumed ·
    회복 불가능한 error · 세션 무효)을 줄 때만 끝난다. #238 X03 Saturn REVISE: 60초 유예·몰수는 서버만 판정한다 — 클라이언트는

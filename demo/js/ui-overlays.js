@@ -8,6 +8,7 @@ function modal(html,buttons){
   UI.ask=null; if(UI.hold) aiHoldRelease();      // #122 REVISE: 뒤로가기 확인창도 함께 무효 (옛 버튼이 새 창을 닫지 못한다) · 확인창이 사라졌으면 AI 보류도 푼다
   try{ const ob0=$("overlayBox"); if(ob0&&ob0.classList) ob0.classList.remove("battleBox"); }catch(e){} // #122 전투 화면 전용 레이아웃 클래스 해제
   handoffCover(false); // #236 HIGH1: 가림 전용 불투명 상태는 그 가림 창에만 — 다음 모달(선택 창 등)은 일반 반투명 배경
+  modalHelpDrop();
   $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
   const ob=$("obBtns");
   /* 버튼 튜플은 [문구, 콜백] 또는 [문구, 콜백, disabled] 다. Saturn REVISE P2: "선택 불가"를 문구로만 알리지 않고
@@ -22,7 +23,9 @@ function modal(html,buttons){
   $("overlay").classList.remove("hidden");
   modalFocus();
 }
-function closeModal(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; $("overlay").classList.add("hidden"); handoffCover(false);
+/* #293: 이 창 안에 떠 있던 안내 창(시너지 · 상품 설명)은 창이 닫히거나 내용이 바뀔 때 함께 끝난다 — 남으면 다음 Esc 를 삼킨다 */
+function modalHelpDrop(){ try{ if(SYNHELP.el&&$("overlayBox").contains(SYNHELP.el)) synHelpClose(false); }catch(e){} }
+function closeModal(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; modalHelpDrop(); $("overlay").classList.add("hidden"); handoffCover(false);
   if(UI.ask){ UI.ask=null; if(UI.hold) aiHoldRelease(); } // #122 REVISE: 다른 경로로 확인창이 닫혀도 AI 보류가 남지 않는다
   modalRefocus(); }
 /* #238 모달 포커스 (GDD-24 00.6): 열리면 첫 주요 버튼(없으면 제목)으로, Tab 은 모달 안에서만 돈다 — 예외로 이모티콘 여는 버튼·팝오버는
@@ -51,7 +54,9 @@ function modalRefocus(){ try{
   }catch(e){} }
 if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("keydown",e=>{
   const o=$("overlay"); if(!o||o.classList.contains("hidden")||(typeof EMO!=="undefined"&&EMO.open&&e.key==="Escape")) return;
-  if(e.key==="Escape"){ const c=[...$("overlayBox").querySelectorAll("#obBtns button")].find(b=>b.textContent==="취소"&&!b.disabled); if(c){ e.preventDefault(); c.click(); } return; }
+  if(e.key==="Escape"){ const c=[...$("overlayBox").querySelectorAll("#obBtns button")].find(b=>b.textContent==="취소"&&!b.disabled)
+      ||$("overlayBox").querySelector(".acctHead .acctX"); // #293: [취소] 없이 ✕ 만 있는 창(교체 선택)은 Esc = ✕
+    if(c){ e.preventDefault(); c.click(); } return; }
   if(e.key!=="Tab") return;
   const f=modalFocusables(); if(!f.length) return;
   const i=f.indexOf(/** @type {any} */(document.activeElement));

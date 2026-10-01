@@ -29,9 +29,9 @@ for(const [mode,opts] of [["pvp",{}],["pvp",{eco:true}],["pve",{eco:true}]]){
   const c0=S().eco.coins[0], st=S();
   T.__shop("info","potion");
   ok(S()===st&&S().eco.coins[0]===c0&&J(S().inv[0])==='["potion"]',"B4 아이콘 = 코인·상태 무변경");
-  const d=T.byId("goodDesc").innerHTML;
-  ok(T.UI.goodInfo==="potion"&&/회복약/.test(d)&&/HP 20% 회복/.test(d)&&/보유 1/.test(d)&&/1/.test(d),"B5 설명 = 이름·효과·가격·보유");
-  ok(/HP 20% 회복/.test(T.shopHtml(0)),"B6 다시 그려도 고른 설명 유지");
+  const d=T.ui238.SYNHELP.el.innerHTML; // #293 (2026-10-02 CJ 3): 맨 아래 설명 줄 → 시너지 안내와 같은 팝업
+  ok(/회복약/.test(d)&&/최대 HP 20% 회복/.test(d)&&/가격 <\/span>1</.test(d)&&!/보유/.test(d),"B5 설명 팝업 = 이름·가격·효과 (보유는 카드 ×n 배지)");
+  ok(!/goodDesc|HP 20% 회복/.test(T.shopHtml(0)),"B6 상점 본문에는 설명 줄이 없다");
   T.__shop("good","ball");
   ok(S().eco.coins[0]===c0-1&&S().balls[0]===2,"B7 [구매] = 🪙1 차감 · 볼 +1");
 }
