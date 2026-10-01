@@ -1,5 +1,7 @@
 # #293 독립 QA 기록 — Mercury 작성
 
+> **이 문서는 이전 단계의 역사적 QA 기록이다.** 최신 CJ7건 수정 소스0a132ec의 독립 검증은 [Mercury가 옮긴 Saturn 원시 완료 결과](../Mercury/qa-revise-saturn.md)를 따른다.
+
 - 판정 주체: Saturn(읽기 전용) · 기록 주체: Mercury_PD. Saturn은 제품·테스트·보고서 파일을 수정하지 않았다.
 - 대상: `0e3afc032f0d3f54e138e585a45e575058fd3129` · base `4f638a12dbab5e85b5b3b8d1d50ab17d029ea5b3` · 기존 Issue #293 / PR #305.
 - Task `task_7654cd492e75` · dispatch `ctx_1a0b862375ac` · terminal `term_72147b7a-30ff-48c7-8486-97309c064ba8` · thread `01a0f506-2980-7810-ad38-f224302027ee`.

@@ -1,5 +1,7 @@
 # [결정][피드백] #293 시작 상점 → 배치 → 완료 — Mercury 운영 보고
 
+**2026-10-01 20:19 KST 현재:** 최신 CJ7건 수정 제품 `0a132ecdc8783007bc91b99fde596ec68ff89666`의 CI6/6·Saturn 독립 검증·[QA 배포](https://digit-duel-mipa-qa.onrender.com/?qa=0a132ec) 완료, CJ 재테스트 대기. [현행 보고·CJ Test List](qa-revise-report.md)·[독립 QA](qa-revise-saturn.md)·[실측 사용량](qa-revise-usage.md)을 따른다. 아래 옛 기록의 “현재”는 당시 시점이며 최신 판정 기준이 아니다.
+
 > **현행 기준: 2026-10-01 CJ 7건 REVISE.** 아래는 15:14 KST까지의 이전 구현·QA 환경 기록이며, 90초·판매 확인·상대 단계 비공개 조건은 최신 CJ 지시로 폐기됐다. 현재 규칙·새 수정 배포 상태·CJ 테스트 목록은 [최신 수정 보고](qa-revise-report.md)를 따른다.
 
 2026-10-01 · Mercury_PD · CJ 최신 Comment: QA REVISE, 기존 QA 사이트 정리 후 #293 최신 구현을 지정 도메인에 재배포하고 CJ QA Test List 보고.

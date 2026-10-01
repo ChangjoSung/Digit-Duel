@@ -1,5 +1,7 @@
 # [결정][피드백] #293 Render QA 재배포 · CJ QA Test List
 
+**2026-10-01 20:19 KST 현재 배포:** [QA 사이트](https://digit-duel-mipa-qa.onrender.com/?qa=0a132ec), 소스 `0a132ecdc8783007bc91b99fde596ec68ff89666`, deploy `dep-dav4168jo6nc73fdma9g` live(20:15:29 KST). 기존 Free 서비스 srv-dauvf1m0tbcc73ctepsg/자동 배포 Off 유지. 실제 HTTP·healthz·readyz200, 제공 JS/CSS5개 Git blob 바이트 일치. [최신 보고·R-01~R-10](qa-revise-report.md)·[Saturn 독립 검증](qa-revise-saturn.md)을 따른다. **CJ REVISE 후 재테스트 대기**. 아래 옛 배포 소스/테스트 목록은 이력이며 현재 기준이 아니다.
+
 > **현행 기준: 2026-10-01 CJ 7건 REVISE.** 아래는 15:14 KST까지의 이전 구현·QA 환경 기록이며, 90초·판매 확인·상대 단계 비공개 조건은 최신 CJ 지시로 폐기됐다. 현재 규칙·새 수정 배포 상태·CJ 테스트 목록은 [최신 수정 보고](qa-revise-report.md)를 따른다.
 
 2026-10-01 · Mercury_PD · 확인 시각 15:14 KST(06:14 UTC).
