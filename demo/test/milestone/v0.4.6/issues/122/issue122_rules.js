@@ -63,9 +63,15 @@ block("A 화면 상태",()=>{
   T.renderSide();
   const sp=T.byId("sidePanel").innerHTML;
   ok(/data-step="roster"/.test(sp)&&/data-step="place"/.test(sp),"A11 로스터·배치 두 절이 동시에 DOM 에 있다 (보이기만 전환)");
-  ok(/시작 상점/.test(sp)&&/비공개 배치/.test(sp)&&/배치 완료/.test(sp),"A12 기존 안내·버튼 문구 보존 (#236: 01 = 시작 상점)");
+  /* #293 (2026-10-01 CJ 흐름 PASS · 계약 3.2/3.3): 경제 판의 '01 시작 상점 n/6' 탭 문구는 진행 막대(01 상점 — 02 배치 — 03 완료)로 바뀌었다.
+     배치 안내(접근성 전용)·[배치 완료] 버튼은 그대로 있어야 하고, 막대의 현재 단계는 상태(상점 완료)에서 나온 '배치'여야 한다 */
+  const cur=sp.match(/aria-current="step">[\s\S]*?<b>0\d<\/b> ([^<]+)<\/span>/);
+  ok(/class="flowBar"/.test(sp)&&["상점","배치","완료"].every((t,i)=>sp.includes(`<b>0${i+1}</b> ${t}</span>`))&&!!cur&&cur[1]==="배치"
+    &&/비공개 배치/.test(sp)&&/배치 완료/.test(sp)&&!/prepTabs|data-prep-step/.test(sp),"A12 진행 막대 3단계(현재 = 배치) · 배치 안내·버튼 문구 보존 · 경제 판에 01/02 탭 없음 (#293)");
   ok(T.UI.prep==="place","A13 시작 상점을 마치면(6칸) 배치 단계로 넘어간다");
-  T.uiPrep("roster"); ok(T.UI.prep==="roster","A14 탭으로 로스터 단계로 되돌아간다");
+  /* #293: 경제 판의 단계는 탭이 아니라 그 좌석의 shop.done 이 정한다 — 닫힌 S01 은 다시 열리지 않는다(재개방 없음). 비경제 로스터 선택은 종전 자유 전환 */
+  T.uiPrep("roster"); ok(T.UI.prep==="place"&&T.S.eco.shop.done[0]===true&&T.els.app.getAttribute("data-prep")==="place","A14 끝난 시작 상점은 01 호출로 다시 열리지 않는다 (#293 단계 = 상태 파생)");
+  T.S.eco=null; T.uiPrep("place"); const freeTo=T.UI.prep; T.uiPrep("roster"); ok(freeTo==="place"&&T.UI.prep==="roster","A14b 비경제 로스터 선택은 탭으로 로스터 단계로 되돌아간다 (종전)");
 });
 
 /* ===== B. 같은 문서 로비 복귀·재대전 (#128 정책 불변) ===== */
