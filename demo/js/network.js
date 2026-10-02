@@ -890,7 +890,8 @@ function netFxApplyMsgFx(bid,fx,gen){
       if((sd.sh||0)>(fx.st.shield||0)&&sd.hp!==undefined&&sd.hp>fx.hp.val) stage=BAL.fx.barStep||0; }
     if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text||""; // #237 상대 문구의 🛡·🌊 100 눈금 %는 서버 scaleText 가 이미 붙인다
       if(fx.st.max){ (d[fx.st.side]||(d[fx.st.side]={})).sh=fx.st.shield||0; const stx=$("shtxt-"+fx.st.side); if(stx) stx.textContent=fx.st.shield||0;
-        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; } }
+        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; }
+      battleStSync(fx.st.side); } // #296 CJ REVISE1: 카드의 상태 칩 · 방어막 괄호를 같은 글자에서 다시 그린다(ui.js — 오프라인 applyFx 와 같은 함수)
     if(fx.hp&&typeof fx.hp.val==="number"){ const side=fx.hp.side; (d[side]||(d[side]={})).hp=fx.hp.val;
       const seq=++NET_HPSTAGE[side], bar=$("hpfill-"+side), t=$("hptxt-"+side);
       const write=()=>{ if(bar&&fx.hp.max) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%"; if(t) t.textContent=fx.hp.val; };

@@ -614,8 +614,8 @@ function glyphOk(ch){
 /* #245 전투 화면의 DOM 토글 — 표시 계층 소유. core.js 의 전투 모달은 이 이름만 부르고 DOM 을 직접 만지지 않는다.
    마크업·클래스·aria 계약은 분리 전과 글자 단위로 같다 (옮기기만 했다). */
 function uiBattleBox(){ try{ const ob=$("overlayBox"); if(ob&&ob.classList) ob.classList.add("battleBox"); }catch(e){} }
-function uiBattleMenu(menu){ // 행동창 아래 '← 뒤로'는 하위 메뉴가 열렸을 때만
-  try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(menu) bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){}
+function uiBattleMenu(menu){ // 행동창 아래 '← 뒤로'는 싸우기에서만 — #296 CJ REVISE1: 가방 · 포획 · 도망은 패널 안 [돌아가기]
+  try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(menu==="fight") bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){}
   try{ const root=$("bmenu"); if(root){ if(menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
     for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
   try{ emoteSync(); }catch(e){} // #296: 패널 높이가 바뀌면 가운데 정렬된 창의 상단 줄이 움직인다 — 이모티콘 자리를 다시 잰다
@@ -683,7 +683,8 @@ function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·
       if(prevSh>(fx.st.shield||0)&&prevHp!==undefined&&prevHp>fx.hp.val) stage=fxMs("barStep"); }
     if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text;
       if(fx.st.max){ if(B) B["dispSh"+fx.st.side]=fx.st.shield||0; const stx=$("shtxt-"+fx.st.side); if(stx) stx.textContent=fx.st.shield||0; // #106 5.5 방어막 바 — 항상 즉시 (흡수가 먼저 줄고 HP 는 barStep 뒤)
-        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; } }
+        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; }
+      battleStSync(fx.st.side); }
     if(fx.hp){ const side=fx.hp.side; if(B) B["dispHp"+side]=fx.hp.val;
       const seq=++HPSTAGE[side], bar=$("hpfill-"+side), t=$("hptxt-"+side); // 새 HP 갱신은 같은 side 의 대기 중인 지연 쓰기를 무효화한다 (최신 값이 이긴다)
       const write=()=>{ if(bar) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%"; if(t) t.textContent=fx.hp.val; };
@@ -859,11 +860,7 @@ function renderTurnBar(){
   }
   const sel=S.selected&&!S.selected.tray?S.selected:null;
   const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
-  /* #294 (2026-10-02 CJ REVISE): 내 차례에 고른 내 말의 [설명] — 상단에서 행동 줄 첫 줄로. 읽기 전용(전송 0)이라 mk 의 입력 잠금(정지 · 시한)을 타지 않는다. 보드 탭은 종전대로 선택 */
-  if(sel&&!aiTurn){ const v=NET.mode?NET.me:S.current, b=document.createElement("button"); b.type="button"; b.className="infoBtn"; b.setAttribute("aria-haspopup","dialog");
-    /* #295 CJ REVISE(2026-10-02): 보이는 글자는 '<종 이름> 하수인 정보'만 — 속성 · HP 는 접근성 이름에 남는다. 하수인이 아닌 내 말은 설명 창 제목과 같은 이름 + '정보'(종을 지어내지 않는다) */
-    b.textContent=sel.type==="minion"&&sel.name?`${sel.name} 하수인 정보`:`${sel.type==="ally"&&allyRole(sel)?leadNm(sel):TYPE_KO[sel.type]} 정보`;
-    b.setAttribute("aria-label",`${idLabel(v,sel)} · HP ${sel.hp}/${sel.maxHp} — 정보`); b.onclick=()=>unitHelpPiece(sel.id,b); tb.appendChild(b); }
+  /* #296 CJ REVISE1(2026-10-03): 고른 말의 [하수인 정보]는 행동 줄이 아니라 우측 시너지 열 아래 고정 칸(renderBoardInfo · infoSlotHtml) — 켜고 끌 때 말판 규격이 바뀌지 않게 */
   ico(mk("탐색",()=>netAction({t:"search"}),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))),"search","탐색"); // #20: 폭탄·함정은 탐색 실행 불가
   const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
   ico(mk(S.teleport?"텔레포트 취소":"🌀 텔레포트",()=>netAction({t:"tele"}),teleDis),S.teleport?"close":"warp",S.teleport?"취소":"텔레포트"); // #14 스왑형 · #114 경기당 횟수 제한 없음 (주 행동 1회 소모)
@@ -976,8 +973,12 @@ function renderBoardInfo(){
     +`<span class="hudStat" aria-label="${S.turnCount+1}턴"><small>턴</small><span>${gi("refresh")}${S.turnCount+1}${isBurning()?" 🔥":""}</span></span>`
     +(S.eco?`<span class="hudStat coin" aria-label="재화 ${S.eco.coins[p]}"><small>코인</small><span>${gi("coin")}${S.eco.coins[p]}</span></span>`:"")
     +`<span class="hudStat" aria-label="전투 ${S.battlesUsed}/2"><small>전투</small><span>${gi("battle")}${S.battlesUsed}/2</span></span></div>`
-    +(S.eco?synRailHtml(p):"");
+    +`<div class="sideCol">${S.eco?synRailHtml(p):""}${infoSlotHtml(p,mineTurn)}</div>`;
 }
+/* #296 CJ REVISE1(2026-10-03): 우측 시너지 열 아래 **늘 같은 자리 · 같은 크기 · 같은 글자**('하수인 정보')의 버튼. 내 차례에 고른 살아 있는 내 **하수인**일 때만 켜지고(읽기 전용 · 전송 0 — unitHelpPiece · PD 확정),
+   그 밖에는 꺼진 채 자리를 지킨다. 상대 차례의 내 말 탭은 종전대로 바로 설명 창(ownInfoTarget). 종 이름 · HP 는 접근성 이름에만 */
+function infoSlotHtml(p,mineTurn){ const s=mineTurn&&S.selected&&!S.selected.tray?S.selected:null, own=s&&s.owner===p&&s.type==="minion"&&s.alive!==false?s:null;
+  return `<button type="button" class="infoBtn" aria-haspopup="dialog" ${own?`aria-label="${escAttr(`${idLabel(p,own)} · HP ${own.hp}/${own.maxHp} — 정보`)}" onclick="unitHelpPiece(${escAttr(JSON.stringify(String(own.id)))},this)"`:`disabled aria-label="하수인 정보 — 내 차례에 내 하수인을 고르면 열립니다"`}>하수인 정보</button>`; }
 /* ===== #294 공용 신원 부품 — 준비(상점 · 배치 · 완료)와 메인이 같은 함수 · 같은 마크업 =====
    보는 사람 기준: 왼쪽 = 나, 오른쪽 = 상대(좌석 번호로 색을 정하지 않는다). 온라인 이름·대표는 서버가 준 NET.players · NET.reps(network.js 가 규칙 검사)만 —
    대표가 없으면 중립 아이콘(lobbyRepHtml 은 모르는 ID 를 기본 종으로 그리므로 부르지 않는다), 이름이 없으면 나/상대만.
@@ -1480,18 +1481,23 @@ function synNote(from){ synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${g
    2026-10-02 CJ REVISE(스케치 4): 탭 없는 한 장 — 머리줄(이름 ★등급 · ✕) / 왼쪽 큰 그림 + 오른쪽 기본 능력치 칸 · 정보 줄 · 개인 시너지 / 아래 스킬(이름 · 위력 · 쿨타임 칸 + 짧은 설명).
    d = {nm, g, face, tags:왕국·아키타입 아이콘 | 없음, stats:[[아이콘, 이름, 값]] | null, rows:[글자], syn:글자 | null, skills:[{nm,star,pct,cd,once,left,desc}] | null}.
    stats · syn · skills 가 null 이면 그 구역 자체가 없다(공개된 상대 말 · 폭탄 · 함정). 값이 없는 칸은 만들지 않는다 — 지어낸 수치 없음 */
-function unitHelpOpen(d,from,pid){
+/* #296 CJ REVISE1(2026-10-03): 스킬 줄 한 벌 — 설명 창(unitHelpOpen)과 전투 싸우기가 **같은 마크업**(ol.uhSkills > li > span.uhSk 칩 + small 설명)을 쓴다.
+   act(x) 가 버튼 속성 문자열을 주면 그 줄 내용을 <button> 으로 감싼다(전투 · 잠긴 줄 제외). x.note = 전투의 봉인 · 불가 칩(설명 창에는 없다) */
+function skillListHtml(skills,act){
   const chip=(lb,v,ic)=>`<span class="uhChip" role="img" aria-label="${escAttr(lb+" "+v)}">${ic} ${v}</span>`;
+  return `<ol class="uhSkills">${skills.map(x=>{ const a=act&&!x.lock?act(x):null, inner=`<span class="uhSk"><b>${x.nm}</b>`
+      +(x.lock?`<span class="uhChip" role="img" aria-label="잠김 — 등급 ${x.star} 필요">🔒 ${"★".repeat(x.star)} 필요</span>`:x.star?`<span class="stars" aria-label="등급 ${x.star}부터">${"★".repeat(x.star)}</span>`:"")+(x.pct?chip("위력",x.pct+"%","💪🏻"):"")
+      +(x.once?`<span class="uhChip">전투당 1회</span>`:x.cd===null?"":chip("쿨타임",x.cd,"⌛"))+(x.left?`<span class="uhChip cd">남은 쿨타임 ${x.left}</span>`:"")+(x.note?`<span class="uhChip cd">${x.note}</span>`:"")
+      +`</span>${x.desc?`<small>${x.desc}</small>`:""}`;
+    return `<li${x.lock?` class="lock"`:""}>${a?`<button type="button" ${a}>${inner}</button>`:inner}</li>`; }).join("")}</ol>`; }
+function unitHelpOpen(d,from,pid){
   /* 2026-10-02 CJ REVISE 2: 능력치 칸이 있으면(내 말 · 가방 · 진열) 그림 옆은 능력치 2×4 칸뿐 — 높이가 그림과 같다. 왕국·아키타입 아이콘은 그 위, 정보 줄 · 개인 시너지는 그 아래.
      칸 = [아이콘, 짧은 이름, 값, 전체 이름(aria · title), 읽어 줄 값]. 능력치가 없는 창(공개된 상대 말 · 폭탄 · 함정)은 종전 배치 그대로 */
   const st=!!(d.stats&&d.stats.length), rows=`<ul class="uhRows">${d.rows.filter(Boolean).map(r=>`<li>${r}</li>`).join("")}</ul>`, syn=d.syn?`<p class="uhSyn">${gi("crown")} ${escAttr(d.syn)}</p>`:"";
   const stats=st?`<ul class="uhStats" aria-label="기본 능력치">${d.stats.map(s=>`<li aria-label="${escAttr((s[3]||s[1])+" "+(s[4]||s[2]))}" title="${escAttr(s[3]||s[1])}"><span aria-hidden="true">${s[0]}</span><small aria-hidden="true">${s[1]}</small><b aria-hidden="true">${s[2]}</b></li>`).join("")}</ul>`:"";
   synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${escAttr(d.nm)}${d.g?` <span class="stars" aria-label="등급 ${d.g}">${"★".repeat(d.g)}</span>`:""}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>`
     +(st?d.tags||"":"")+`<div class="uhTop"><span class="uhFace">${d.face}</span>`+(st?stats:`<div class="uhInfo">${d.tags||""}${rows}${syn}</div>`)+`</div>`+(st?rows+syn:"")
-    +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4><ol class="uhSkills">${d.skills.map(x=>`<li${x.lock?` class="lock"`:""}><span class="uhSk"><b>${x.nm}</b>`
-      +(x.lock?`<span class="uhChip" role="img" aria-label="잠김 — 등급 ${x.star} 필요">🔒 ${"★".repeat(x.star)} 필요</span>`:x.star?`<span class="stars" aria-label="등급 ${x.star}부터">${"★".repeat(x.star)}</span>`:"")+(x.pct?chip("위력",x.pct+"%","💪🏻"):"")
-      +(x.once?`<span class="uhChip">전투당 1회</span>`:x.cd===null?"":chip("쿨타임",x.cd,"⌛"))+(x.left?`<span class="uhChip cd">남은 쿨타임 ${x.left}</span>`:"")
-      +`</span>${x.desc?`<small>${x.desc}</small>`:""}</li>`).join("")}</ol>`:""),from);
+    +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4>${skillListHtml(d.skills)}`:""),from);
   SYNHELP.el.classList.add("uh"); SYNHELP.pid=pid===undefined?null:pid;
 }
 /* 기본 능력치 칸 — u 에 실제로 있는 숫자만(전투 엔진이 쓰는 필드 그대로: data.js applyArchStats · applyFixedStats). HP · 공격력은 등급 성장분 포함, 시너지 · 전투 중 버프는 넣지 않는다.
@@ -1507,7 +1513,7 @@ function unitStatChips(u,max){ const pc=v=>Math.round(v*100)+"%", lb=k=>SYN_STAT
 /* 2026-10-02 CJ REVISE 2: 가진 스킬(교체해 넣은 것 포함 — 그대로) 뒤에, 그 종이 더 높은 등급에서 여는 스킬을 잠긴 줄(lock · 필요한 등급 = 종 표 순서)로 잇는다.
    남은 쿨은 없다. 종 표가 없는 전설 · 왕 · 동료는 잠긴 줄이 없다. 이 함수는 내 말 · 내 가방 · 내 진열에서만 불린다 — 상대 말 창은 부르지 않는다 */
 function unitSkillRows(ids,el,cds,key){ const sp=V2_SPECIES[key]||[], own=ids||[];
-  const row=(id,i,lock)=>{ const sk=SKILLS[id]; return sk?{nm:skillNameKo(id,el),star:sp.indexOf(id)+1,pct:sk.v2&&sk.pct||0,cd:sk.reaper||typeof sk.cd!=="number"?null:sk.cd,once:!!sk.once,left:!lock&&cds&&cds[i]||0,lock,
+  const row=(id,i,lock)=>{ const sk=SKILLS[id]; return sk?{i,nm:skillNameKo(id,el),star:sp.indexOf(id)+1,pct:sk.v2&&sk.pct||0,cd:sk.reaper||typeof sk.cd!=="number"?null:sk.cd,once:!!sk.once,left:!lock&&cds&&cds[i]||0,lock,
     desc:sk.kind==="basic"?"":sk.desc||""}:null; };
   return own.map((id,i)=>row(id,i,false)).concat(sp.slice(own.length).filter(id=>!own.includes(id)).map(id=>row(id,0,true))).filter(Boolean); }
 /* 보드 말 — 내 말은 전부, 상대 말은 **정체가 공개되고 지금 보이는 것만** 서버가 이미 싣는 값(이름 · 종류 · 그림 · 왕국 · 등급 · HP · 이동 불가 · 교체 표식)으로.
@@ -1554,6 +1560,15 @@ function infoBtn(call,label,inner){ return `<span class="faceBtn" role="button" 
 /* ===== #296 전투 화면 표시 경계 (CJ 콘티 2026-10-02 · Mercury 구현 전 최종 보고) =====
    기본 6스탯 = 그 전투원에 **실제로 실린 값**(등급 성장분 포함 · 시너지/일시 효과 제외). 온라인은 서버가 두 전투원 모두에 싣는다(전투 한정 공개 P1) — 오프라인도 같은 여섯 칸만 그린다.
    없는 값(누락 · null · NaN)은 "—"(정보 없음 · #294 와 같은 표기)다 — 0 이나 종 표 값으로 만들지 않는다. 진짜 0 은 0 그대로 */
+/* #296 CJ REVISE1: 상태 · 버프 칩 — stIcons 원문(이미 양쪽 공개 범위) 낱말 하나 = 칩 하나. 보이는 글자는 그 낱말에서 한글 이름만 뺀 것(값 · 단위 그대로 — 숫자를 골라 내지 않는다), 전체 낱말은 title.
+   방어막(🛡n)은 HP 바 안에 있어 뺀다.
+   버프 키(B.buffA/D)는 그 전투원 칸에만. 연출이 bst- 글자를 바꾸면 battleStSync 가 같은 함수로 다시 그린다(오프라인 applyFx · 온라인 network.js) */
+const ST_BUFF=["🛡","🌀","🎯"]; // 경화 · 감쇠 · 집중 = 자기 강화
+function stChipsHtml(t,bk){ return String(t||"").split(" ").filter(x=>x&&x!=="-"&&!/^🛡\d+%?$/.test(x)).map(x=>{ const ic=(x.match(/^[^\p{L}\d]+/u)||[""])[0];
+    return `<span class="stChip${ST_BUFF.includes(ic)?" up":""}" title="${escAttr(x)}">${ic}<b>${escAttr(x.slice(ic.length).replace(/[가-힣]+/g,""))}</b></span>`; }).join("")
+  +(bk&&BUFFS[bk]?`<span class="stChip up" title="${escAttr(BUFFS[bk].ko)}">${gi(bk)||BUFFS[bk].ko.split(" ")[0]}</span>`:""); }
+function battleStSync(side){ try{ const s=$("bst-"+side), c=$("bch-"+side), B=S&&S.battle; if(s&&c) c.innerHTML=stChipsHtml(s.textContent,B&&(side==="A"?B.buffA:B.buffD));
+  }catch(e){} }
 const BSTAT=[["atk","atk"],["def","def"],["spd","swift"],["dodge","💨",1],["crit","🎯",1],["statusPct","💫",1]];
 function battleStatHtml(f){ return `<ul class="bStats" aria-label="기본 능력치">${BSTAT.map(([k,ic,pc])=>{ const v=f[k], ok=typeof v==="number"&&isFinite(v), t=!ok?"—":pc?Math.round(v*100)+"%":v, nm=SYN_STAT_KO[k][0];
   return `<li aria-label="${nm} ${ok?t:"정보 없음"}" title="${nm}"><span aria-hidden="true">${gi(ic)||ic}</span><b aria-hidden="true">${t}</b></li>`; }).join("")}</ul>`; }
@@ -1599,15 +1614,15 @@ function battleModal(board){
        마크업 조각·id(hpfill-·shfill-·hptxt-·bst-)와 문구는 종전 그대로라 연출(applyFx)·비공개 마스킹 경로는 불변이다. */
     /* #296 콘티: 머리(등급 · 이름 · 주인) / HP · 현재 방어막 한 줄 / 기본 6스탯 3×2. 2026-10-02 CJ 정정: 상대 전투원도 실제 등급 · 이름 · HP · 방어막 · 기본 6스탯 · 상태(디버프)를 보인다 — **상대 스킬은 어디에도 없다**(이름 · 쿨 · 미공개 자리표시 모두) */
     const g=pf.legend?5:Number.isInteger(pf.grade)?pf.grade:0;
+    /* #296 CJ REVISE1(2026-10-03 · Image2): 양쪽 같은 카드 — ★ 이름 옆 아키타입 · 속성 아이콘 / HP 바 안에 '❤ 현재/최대(+방어막)'(실제 0 도 (+0) · 방어막 막대는 같은 바 아래쪽) /
+       6스탯 3×2 / 적용 중인 상태 · 버프 아이콘 칩. id 와 갱신 뜻은 그대로: bst- = stIcons 원문(화면 밖 접근성 글자) → 칩은 battleStSync 가 같은 글자에서 다시 그린다 */
+    const tg=[rd?ARCH_KO[rd.arch]:"",pf.element?ELEM_KO[pf.element]:""].filter(Boolean).join(" · "), bk=sid==="A"?B.buffA:B.buffD;
     return `<div class="fighter"><div class="fhead">
-      <b>${g?`<span class="stars" aria-label="등급 ${g}">${"★".repeat(g)}</span> `:""}${fighterName(sid,B)}</b> <small>(${pname(piece.owner)})</small>
-      ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
-      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}</div>
-      <div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>
-      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp} · <span title="현재 방어막" aria-label="현재 방어막">🛡 <span id="shtxt-${sid}">${dsh}</span></span></div>
+      <div class="fname"><b>${g?`<span class="stars" aria-label="등급 ${g}">${"★".repeat(g)}</span> `:""}${fighterName(sid,B)}</b><small class="srOnly">(${pname(piece.owner)})</small>${tg?`<span class="ftags" role="img" aria-label="${tg}" title="${tg}">${rd?gi(rd.arch):""}${pf.element?gi(pf.element):""}</span>`:""}</div>
+      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div><div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}<span class="hpNum">❤ <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}<span class="shNum" title="현재 방어막">(+<span id="shtxt-${sid}">${dsh}</span>)</span></span></div>
       ${battleStatHtml(pf)}
       </div><div class="fscroll">
-      <div class="status"><span id="bst-${sid}">${stIcons(pf)}</span></div>
+      <div class="status"><span class="srOnly" id="bst-${sid}">${stIcons(pf)}</span><span class="stChips" id="bch-${sid}" aria-hidden="true">${stChipsHtml(stIcons(pf),bk)}</span></div>
     </div></div>`;
   };
   const token=sid=>{ // 스테이지 토큰: 하수인 본체·대리 출전 포획 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료 본체는 현행 속성색 원형 + 이모지 유지 (규격 6.3 · #91)
@@ -1649,23 +1664,18 @@ function battleModal(board){
   let cmdBtns;
   if(maskCmd) cmdBtns=`<small role="status">상대 차례입니다 — 상대 스킬은 표시하지 않습니다.</small>`;
   else if(f.skills){ // 4슬롯 커맨드 — 기본 공격 버튼 없음. 전부 불가하면 공격 대신 수동 [턴 종료] (#146)
-    const sp=V2_SPECIES[f.rosterId||f.artRosterId]||[]; // ★n = 종 스킬표에서 그 스킬이 열리는 등급(unitSkillRows 와 같은 뜻) — 전설 · 왕 · 동료는 표가 없다
-    cmdBtns=f.skills.map((sid2,i)=>{
-      const sk2=SKILLS[sid2], onCd=f.cds[i]>0;
+    /* #296 CJ REVISE1(2026-10-03): 하수인 정보 창과 **같은 줄 데이터(unitSkillRows) · 같은 마크업(skillListHtml)**. 쓸 수 있는 줄만 버튼(window.__act(i)) — 쿨 · 봉인 · 불가는 칩 + disabled,
+       잠긴 소개 줄은 버튼 없이 그대로. 위력 칩은 고정 설명 값(SKILLS.pct)뿐 — 계산한 피해 범위는 없다 */
+    const rows=unitSkillRows(f.skills,f.element,f.cds,f.rosterId||f.artRosterId).filter(x=>!x.lock||mineView).map(x=>{ if(x.lock) return x;
+      const i=x.i, sk2=SKILLS[f.skills[i]], onCd=f.cds[i]>0;
       /* #121 계약 5.3: 사신의 낫은 쿨이 아니라 **봉인**으로 막힌다. 표시도 "봉인"이고 사유를 그대로 보여 준다
          (쿨링수·냉각·전술 연계·급속 순환으로는 풀리지 않는다 — 게이트가 cds[] 와 분리되어 있다) */
       const seal=sk2.reaper?reaperWhy(side,ST):null;
       const cond=!onCd&&!seal&&!battleSlotOk(f,i,side,ST); // #234: 전투당 1회 사용 · 사용 조건 미충족 · 수면 포자(기본기만)
-      const locked=onCd||!!seal||cond;
-      const label=`${skillNameKo(sid2,f.element)}${onCd?` (쿨${f.cds[i]})`:seal?" (봉인)":cond?" (불가)":""}`;
       const cross=sk2.el&&f.element&&sk2.el!==f.element; // #92 본체와 다른 속성의 공격기 — 판정 속성을 설명에 덧붙여 비교 가능하게
       const tip=(sk2.desc||"")+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:"")+(sk2.cls?` · ${SKILL_CLS_KO[sk2.cls]} 분류(상성표 밖)`:"")+(seal?` · ${seal}`:"");
-      const st=sp.indexOf(sid2)+1;
-      return `<li${locked?` class="off"`:""}><button ${dis||locked?"disabled":""} title="${escAttr(tip)}" onclick="window.__act(${i})">${st?`<span class="stars" aria-hidden="true">${"★".repeat(st)}</span> `:""}${label}</button>${tip?`<small>${escAttr(tip)}</small>`:""}</li>`;
-    }).join("")
-      +(mineView?unitSkillRows(f.skills,f.element,null,f.rosterId||f.artRosterId).filter(x=>x.lock).map(x=>
-        `<li class="lock"><button disabled aria-label="${escAttr(`${x.nm} — 잠김 · 등급 ${x.star} 필요`)}">🔒 ${x.nm} — ${"★".repeat(x.star)} 필요</button>${x.desc?`<small>${escAttr(x.desc)}</small>`:""}</li>`).join(""):"");
-    cmdBtns=`<ol class="bSkills">${cmdBtns}</ol>`;
+      return Object.assign(x,{note:seal?"봉인":cond?"불가":"",off:onCd||!!seal||cond,tip}); });
+    cmdBtns=skillListHtml(rows,x=>`${dis||x.off?"disabled ":""}${x.tip?`title="${escAttr(x.tip)}" `:""}onclick="window.__act(${x.i})"`);
     /* #146 계약 (v0.4.7 CJ 2026-09-10) — #121 계약 5.3 의 "폴백 기본 공격"을 **철회**한다.
        4슬롯이 전부 쿨·봉인·조건 미충족으로 불가하면 **어떤 공격도 제공하지 않는다**. 안내와 명시적 수동 [턴 종료]만 둔다.
        · 보조기·시그니처가 하나라도 합법이면 예외 없이 그 슬롯을 쓴다 (여기 오지 않는다).
@@ -1684,24 +1694,32 @@ function battleModal(board){
   const throwWhy=ballWhy(ST,side)||"", canThrow=!throwWhy; // #236: 투척 가능 판정은 Core 한 곳 (전설·보유 종 제외 포함)
   /* #146 계약: 도망에는 **HP 조건도 시도 횟수 상한도 없다**. 성공률만 전투원별로 다르다 (기본 30% · 도망의 수호자 70%) */
   const fleeP=fleeProbOf(f);
-  const fleeNote=f.fleeBoost?" · 🏃 도망의 수호자 — 이 전투 도망 성공률 70%":"";
-  const ballBtn=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
+  /* #296 CJ REVISE1(Image3·4): 못 던지면 잠금(🔒 · aria-disabled · onclick 없음) — 초점은 남아 title 로 Core 사유(ballWhy)를 읽는다. 상대 화면에는 사유를 싣지 않는다(볼 수 · 보유 종 비공개) */
+  const ballBtn=`<button type="button" class="${canThrow?"":"lock"}" ${dis?"disabled ":!canThrow?`aria-disabled="true" `:""}title="${escAttr(mineView&&throwWhy?throwWhy:"볼 1개 소모 · 성공 시 포획 종료 (라운드당 1회)")}"${canThrow?` onclick="window.__throwBall()"`:""}>${canThrow?"🔴":"🔒"} 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
+  /* 우상단 조건 칩 = 실제 값만: 상대 HP 30% 미만(충족 ✓ 초록 / 미충족 = 실제 HP 비율 빨강) · 내 몬스터볼 수(×0 빨강 · 상대 화면에는 없음) */
+  const capOk=opp.hp<opp.maxHp*0.3, ballN=S.balls[ownerP];
+  const capChips=`<span class="cond ${capOk?"ok":"no"}" role="img" aria-label="${escAttr(`상대 HP ${opp.hp}/${opp.maxHp} — 30% 미만 ${capOk?"충족":"미충족"}`)}" title="상대 HP 30% 미만">❤ ${capOk?"✓":Math.round(opp.hp/opp.maxHp*100)+"%"}</span>`
+    +(mineView?`<span class="cond ${ballN>0?"ok":"no"}" role="img" aria-label="몬스터볼 ${ballN}개" title="몬스터볼">${gi("ball")}×${ballN}</span>`:"");
+  const subBack=`<button type="button" class="subBack" onclick="window.__menu(null)">↺ 돌아가기</button>`; // 하위 메뉴 안 로컬 복귀 — window.__menu(null) 와 같은 길(전송 0 · 규칙 상태 무변경)
   const fleeBtn=`<button class="danger" ${dis||f.fleeLock?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패하면 상대의 기본 공격 1회를 맞고 내 전투 행동 1회를 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
   /* #121 계약 2.3: 아이템 사용 제한은 **플레이어별 라운드 1회**만 남는다 — 전투당 2회(itemPerBattle)와 연속 동일 금지(lastItem)는 제거됐다.
      두 값은 BAL 에서 Infinity / 미참조가 되었고, 여기서도 더 이상 버튼을 막지 않는다. */
   /* Saturn REVISE P1(비공개): 마스킹 기준을 **소유자 관측**으로 바꾼다. 종전 `NET.mode&&ownerP!==NET.me` 는 온라인만 가려서
      PVE 의 AI 행동 차례에 AI 의 가방·패키지 재고가 사람 화면에 그대로 보였다. viewerIsOwner() 는 온라인·PVE·핫시트를 함께 처리한다.
      (mineView 는 위 #146 비공개 판정과 같은 값을 쓰도록 전투원 판정 앞에서 한 번만 계산한다.) */
-  let itemBtns=!mineView?`<small>상대 아이템 비공개</small>`:S.inv[ownerP].map((k,i)=>
-    `<button ${dis||itemRound?"disabled":""} title="${ITEMS[k].desc}" onclick="window.__useItem(${i})"><b>${ITEMS[k].ko}</b> <small>${ITEMS[k].desc}</small></button>`).join(""); // #296: 설명을 버튼 안에 — 터치에서도 읽힌다(title 은 그대로)
+  /* #296 CJ REVISE1(Image5): 가방 = 3열 칸(아이콘 · 이름 · 실제 수량 · 짧은 효과). 아이템은 ITEMS 종류별 한 칸 — 누르면 그 종류의 **첫 실제 칸 번호**(S.inv.indexOf)로 기존 __useItem(i). ×0 칸은 잠금 */
+  const tile=(ic,nm,n,fx,attr)=>`<button type="button" class="bagTile" ${attr}>${ic}<b>${nm}</b><span class="qty">×${n}</span><small>${fx}</small></button>`;
+  let itemBtns=!mineView?`<small>상대 아이템 비공개</small>`:Object.keys(ITEMS).map(k=>{ const i=S.inv[ownerP].indexOf(k), n=S.inv[ownerP].filter(x=>x===k).length;
+    return tile(gi(k),ITEMS[k].ko,n,ITEMS[k].desc,`${dis||itemRound||i<0?"disabled ":""}title="${escAttr(itemRound?"이번 라운드에 이미 사용":ITEMS[k].desc)}" onclick="window.__useItem(${i})"`); }).join("");
   /* #121 계약 2.2·3.1 패키지: 재고·개봉 선택은 **소유자에게만** 보인다. 개봉·버프 선택은 무료 보너스 행동이라
      주 행동·전투 행동·아이템 라운드 카운터를 하나도 소모하지 않는다 (확정 순간에만 재고가 움직인다). */
   const pk=S.pkgs[ownerP], buffUsed=(side==="A"?B.buffA:B.buffD);
   /* 계약 9: 한 전투 안의 UI 표시 — 양측에 적용된 버프를 상태줄로 보여 준다 (적용된 효과는 공개 정보) */
-  const buffLine=(B.buffA||B.buffD)?`<div class="status">✨ ${[B.buffA?`${fighterName("A",B)} ${BUFFS[B.buffA].ko}`:"",B.buffD?`${fighterName("D",B)} ${BUFFS[B.buffD].ko}`:""].filter(Boolean).join(" · ")}</div>`:"";
-  let pkgBtns=!mineView?`<small>상대 패키지 비공개</small>`:S.eco?BUFF_KEYS.map(k=>`<button ${dis||S.eco.buffInv[ownerP][k]<=0||!!buffUsed||(k==="time"&&B.round!==1)?"disabled":""} title="${BUFFS[k].desc}" onclick="window.__buffUse('${k}')"><b>${BUFFS[k].ko} ${S.eco.buffInv[ownerP][k]}</b> <small>${BUFFS[k].desc}</small></button>`).join(""):
-    [`<button ${dis||pk.itemGift<=0?"disabled":""} title="아이템 선물 패키지를 열어 회복약·쿨링수·해독제·공용 볼 중 1개를 받습니다 (행동 미소모)" onclick="window.__openPkg('itemGift')">🎁 아이템 선물 ${pk.itemGift}</button>`,
-     `<button ${dis||pk.battleBuff<=0||!!buffUsed?"disabled":""} title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')">✨ 전투 버프 ${pk.battleBuff}</button>`].join("");
+  /* #296 CJ REVISE1: 적용된 버프는 그 전투원 카드의 칩(stChipsHtml)으로 — 따로 쓰던 상태 줄은 없앤다(양측 공개는 그대로) */
+  let pkgBtns=!mineView?`<small>상대 패키지 비공개</small>`:S.eco?BUFF_KEYS.map(k=>tile(gi(k),goodNm(k),S.eco.buffInv[ownerP][k],GOOD_DESC[k],
+      `${dis||S.eco.buffInv[ownerP][k]<=0||!!buffUsed||(k==="time"&&B.round!==1)?"disabled ":""}title="${escAttr(buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":BUFFS[k].desc)}" onclick="window.__buffUse('${k}')"`)).join(""):
+    [tile(`<i class="gi emo" aria-hidden="true">🎁</i>`,"아이템 선물",pk.itemGift,"아이템 1개 받기",`${dis||pk.itemGift<=0?"disabled ":""}title="아이템 선물 패키지를 열어 회복약·쿨링수·해독제·공용 볼 중 1개를 받습니다 (행동 미소모)" onclick="window.__openPkg('itemGift')"`),
+     tile(`<i class="gi emo" aria-hidden="true">✨</i>`,"전투 버프",pk.battleBuff,"버프 1개 적용",`${dis||pk.battleBuff<=0||!!buffUsed?"disabled ":""}title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')"`)].join("");
   const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
   const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
   /* #122 REVISE(2026-09-10 CJ QA 4): 하위 메뉴의 '← 뒤로'를 **하위 메뉴 패널 바로 아래**로 내린다 (직전 REVISE의 제목 옆 좌상단을 대체).
@@ -1717,20 +1735,16 @@ function battleModal(board){
     <div class="bhead bround"><span>⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}</span>
       ${mineView&&!aiActor?`<span class="badge" id="battleClock" role="timer">${turnClockText("battle")}</span>`:`<span class="badge" role="status">⏳ 상대 응답 대기</span>`}${battleSynChips(cP.owner,cF,B,"a")}</div>
     <div id="bstage" class="scene"${platVar?` style="${platVar}"`:""}><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
-    ${buffLine}
     <div id="msgBox">${busy?"":inBonus?`⚡ ${fighterName(side,B)} 추가 공격 — ${mineView?"기본기 · 2차 · 3차 중 선택 (피해 60%)":"선택을 기다리는 중"}`:(noAtkShow?NO_ATTACK_MSG:`${fighterName(side,B)}의 행동을 선택하세요.`)}</div>
     <div class="bmenu${menu?" hidden":""}" id="bmenu"><b style="grid-column:1/-1;font-size:12px;color:var(--dim)">${pname(ownerP)}:</b>
       <button ${dis?"disabled":""} onclick="window.__menu('fight')">⚔️ 싸우기</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('bag')">🎒 가방</button>
       <button ${dis||inBonus?"disabled":""} onclick="window.__menu('ball')">🔴 포획</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('flee')">🏃 도망가기</button>
       ${noAtkShow?`<button class="primary" style="grid-column:1/-1" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`:""}</div>
-    ${sub("fight",`<small>⚔️ 싸우기 — 기술 4슬롯</small>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}${cmdBtns}`)}
-    ${sub("bag",`<small>🎒 가방 — 아이템은 보너스 행동 (라운드당 1회, 전투 횟수·연속 동일 제한 없음) · 사용 후 같은 행동자의 메뉴로 복귀${itemRound?" · <b>이번 라운드에 이미 사용</b>":""}</small>
-      <div class="row bList">${itemBtns||"<small>아이템 없음</small>"}</div>
-      <small>📦 패키지 — 개봉·버프 적용은 행동·아이템 카운터를 소모하지 않습니다${buffUsed?` · 적용된 버프: <b>${BUFFS[buffUsed].ko}</b>`:""}</small>
-      <div class="row bList">${pkgBtns}</div>`)}
-    ${sub("ball",`<small>🔴 포획 — 상대 하수인 HP 30% 미만 · 볼 ${mineView?`${S.balls[ownerP]}개`:"비공개"} · 성공 ${pct(BAL.enemyCapProb)}${mineView&&throwWhy?` · <b>${throwWhy}</b>`:""}</small><div class="row">${ballBtn}</div>`)}
-    ${sub("flee",`<small>🏃 도망가기 — HP 조건 없음 · 성공 ${pct(fleeP)} · 실패하면 상대의 <b>기본 공격 1회</b>를 맞고 내 전투 행동 1회를 소모${fleeNote}</small><div class="row">${fleeBtn}</div>`)}
-    <button id="bmenuBack" class="bmenuBack${menu?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button>`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
+    ${sub("fight",`<small>⚔️ 싸우기</small>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}${cmdBtns}`)}
+    ${sub("bag",`<div class="subHead"><b>🎒 가방</b>${subBack}</div><div class="bagGrid" aria-label="아이템">${itemBtns}</div><div class="bagGrid" aria-label="패키지">${pkgBtns}</div>`)}
+    ${sub("ball",`<div class="subHead"><b>${canThrow?"포획을 시도할까요?":"지금은 포획이 불가합니다."}</b><span class="conds">${capChips}</span></div><div class="subActs">${ballBtn}${subBack}</div>`)}
+    ${sub("flee",`<div class="subHead"><b>정말로 도망갈까요?</b></div><div class="subActs">${fleeBtn}${subBack}</div>`)}
+    <button id="bmenuBack" class="bmenuBack${menu==="fight"?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button>`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
   uiBattleBox(); // #122 세로 전투 화면 레이아웃 — DOM 은 표시 계층이 만진다
   try{ emoteSync(); }catch(e){} // #296: 전투 창을 (다시) 그린 직후 — 이모티콘 버튼을 새 상단 한 줄의 자리에 맞춘다(상점 shopClockStart 와 같은 자리 · 표시 위치만)

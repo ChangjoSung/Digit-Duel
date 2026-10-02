@@ -263,8 +263,8 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   const v=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:5,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:120,shield:30,tideMark:40}),fx:fx([])});
   v.you.eco=eco; msg(T,{v:1,type:"room_state",data:v}); T.drain();
   const h=ovHtml(T);
-  ok(/id="bst-D">🛡30 🌊해일≤40</.test(h)&&/해일 예고 40"/.test(h)&&/id="hptxt-D">50<\/span>\/120 · /.test(h)&&/id="shtxt-D">30</.test(h),"J1 상대 전투원도 실제 현재/최대 HP·방어막·해일 표식(% 없음)");
-  ok(/id="bst-A">🛡5 🌊해일≤7</.test(h)&&/해일 예고 7"/.test(h)&&/id="hptxt-A">15<\/span>\/20 · /.test(h)&&/id="shtxt-A">5</.test(h),"J2 자기 전투원은 실제값 그대로(형식 불변)");
+  ok(/id="bst-D">🛡30 🌊해일≤40</.test(h)&&/해일 예고 40"/.test(h)&&/id="hptxt-D">50<\/span>\/120<span class="shNum"/.test(h)&&/id="shtxt-D">30</.test(h),"J1 상대 전투원도 실제 현재/최대 HP·방어막·해일 표식(% 없음)");
+  ok(/id="bst-A">🛡5 🌊해일≤7</.test(h)&&/해일 예고 7"/.test(h)&&/id="hptxt-A">15<\/span>\/20<span class="shNum"/.test(h)&&/id="shtxt-A">5</.test(h),"J2 자기 전투원은 실제값 그대로(형식 불변)");
   const v2=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:4,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:120,shield:25,tideMark:40},{actSeq:1,phase:1,actor:"D"}),fx:fx([
     {seq:1,src:"msg",battleId:9,round:1,actSeq:1,key:"damageFx",big:false,txt:"5 흡수",fx:{st:{side:"D",text:"🛡25 🌊해일≤40",shield:25,max:120}}},
     {seq:2,src:"msg",battleId:9,round:1,actSeq:1,key:null,big:false,txt:"1 흡수",fx:{st:{side:"A",text:"🛡4 🌊해일≤7",shield:4,max:20}}}])});

@@ -218,14 +218,14 @@ const T=loadH(htmlPath);
 {
   const P=setup(T,"pvp"); giveSpecies(T,P.me,R(T,"M-F1")); giveSpecies(T,P.em,R(T,"M-W1")); P.me.skills[1]="lightning_effect";
   T.S.current=0; openBattle(T,P.me,P.em); let h=ob(T);
-  ok(/>⚡감전 침<\/button>/.test(h)&&h.includes("<small>50% 확률 감전(후공 1회) · 번개 속성으로 판정</small>")&&h.includes('title="50% 확률 감전(후공 1회) · 번개 속성으로 판정"'),"E1 소유자 전투 버튼: 타 속성 공격기는 속성 이모지 접두 + 설명에 판정 속성");
-  ok(/[> ]화염탄<\/button>/.test(h)&&h.includes('title="안정 공격기"')&&!h.includes("불 속성으로 판정"),"E1b 같은 속성 공격기 버튼·설명은 변경 없음");
+  ok(/<b>⚡감전 침<\/b>/.test(h)&&h.includes("<small>50% 확률 감전(후공 1회)</small>")&&h.includes('title="50% 확률 감전(후공 1회) · 번개 속성으로 판정"'),"E1 소유자 전투 버튼: 타 속성 공격기는 속성 이모지 접두 + 설명에 판정 속성");
+  ok(/<b>화염탄<\/b>/.test(h)&&h.includes('title="안정 공격기"')&&!h.includes("불 속성으로 판정"),"E1b 같은 속성 공격기 버튼·설명은 변경 없음");
   ok(h.includes("⚡감전 침")&&!h.includes("화염탄 · ⚡감전 침")&&!/class="fscroll">[\s\S]*?감전 침[\s\S]*?id="msgBox"/.test(h),"E1c #296: 정보 패널에는 스킬 이름 줄이 없다(HP · 방어막 · 6스탯 · 상태만) — 내 스킬은 싸우기 줄에서 속성 표시");
   // 상대 화면(PVE 뷰어 0): AI 상대 하수인이 배운 기술은 사용 전 ?공격기
   const Q=setup(T,"pve"); giveSpecies(T,Q.em,R(T,"M-W1")); Q.em.skills[1]="lightning_effect"; giveSpecies(T,Q.me,R(T,"M-G1"));
   T.S.current=1; openBattle(T,Q.em,Q.me); h=ob(T);
   /* #296 (2026-10-02 CJ 정정): 상대 스킬은 전투 화면 어디에도 없다 — 이름 · 칸 수 · "?" 자리표시 모두 */
-  const noFoeSkill=x=>!/window\.__act\(/.test(x)&&!x.includes("미공개")&&!x.includes("감전 침")&&!x.includes("class=\"bSkills\"");
+  const noFoeSkill=x=>!/window\.__act\(/.test(x)&&!x.includes("미공개")&&!x.includes("감전 침")&&!x.includes("class=\"bSkills\"")&&!x.includes("class=\"uhSkills\"");
   ok(noFoeSkill(h)&&!h.includes("⚡감전")&&!h.includes("?공격기"),"E2 상대 화면: 상대 스킬 줄 · 이름 · 자리표시 없음 (AC4 · #296)");
   ok(!/title="[^"]*감전/.test(h),"E2b 상대 화면 버튼 title 에도 설명 없음");
   T.execSlot("A",1); T.TQ.length=0; h=ob(T);

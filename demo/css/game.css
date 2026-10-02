@@ -1351,9 +1351,13 @@ button.trayItem.placed:disabled{opacity:1;} /* 놓은 칸은 disabled 버튼이�
 #app[data-screen="board"] #appBar{display:none;}
 #app[data-screen="board"] #screenBody{padding:0 4px;}
 #app[data-screen="board"] #boardInfo{top:0; z-index:5; display:flex; flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:4px; padding:4px 0; border:0; border-radius:0; background:var(--panel); box-shadow:-4px 0 0 var(--panel),4px 0 0 var(--panel);}
-#app[data-screen="board"]:has(#boardInfo .synRail) #screenBody{padding-right:52px;}
-#app[data-screen="board"]:has(#boardInfo .synRail) #boardInfo{margin-right:-48px;}
-/* 선택한 내 말의 [설명] — 행동 줄 첫 줄 전체(이름 · HP 는 한 줄 말줄임) */
+#app[data-screen="board"]:has(#boardInfo .sideCol) #screenBody{padding-right:52px;}
+#app[data-screen="board"]:has(#boardInfo .sideCol) #boardInfo{margin-right:-48px;}
+/* #296 CJ REVISE1: 우측 열 = 시너지 칩(안에서 스크롤) + 그 아래 고정 [하수인 정보] 46×56 — 켜짐/꺼짐에도 크기 · 자리 · 글자가 같다 */
+#boardInfo .sideCol{position:absolute; top:100%; right:0; width:46px; max-height:calc(100dvh - 300px); display:flex; flex-direction:column; gap:4px;}
+#boardInfo .sideCol .synRail{position:static; flex:1 1 auto; min-height:0; max-height:none;}
+#boardInfo .sideCol .infoBtn{flex:0 0 56px; width:46px; min-width:0; height:56px; padding:2px; font-size:11.5px; line-height:1.2; white-space:normal; word-break:keep-all;}
+#boardInfo .sideCol .infoBtn:disabled{opacity:1; color:#7f8aa3; background:#0a1733; border-color:#2a3550; cursor:default;}
 .infoBtn{min-width:44px; min-height:44px; padding:0 8px; font-size:13px; font-weight:bold; color:#fff; background:#173c86; border:2px solid #0b1f4d; border-radius:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .emoSlot{flex:0 0 44px;}
 .hudStats{display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:4px;}
@@ -1367,7 +1371,7 @@ body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #e
 body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #emotePop{top:58px;}
 body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #emoteBubs{top:58px;}
 /* 3) 우측 내 시너지 열 — 준비 화면과 같은 부품. 상단 묶음 아래 오른쪽에 매달리고, 행동 줄 위까지 안에서 스크롤(끝이 가려지지 않게 스크롤 막대를 보인다) */
-#boardInfo .synRail{max-height:calc(100dvh - 300px); scrollbar-width:thin;}
+#boardInfo .synRail{scrollbar-width:thin;}
 #boardInfo .synRail::-webkit-scrollbar{display:block; width:3px;}
 /* 4) 행동 줄 — 3열 × 2행(탐색 · 텔레포트 · 회복 / 상점 · 가방 · 기권), 각 48px. 전용 표시(교환 생략 · 강제 전투 안내 등)는 한 줄 전체 */
 #app[data-screen="board"] #turnBar{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px;}
@@ -1497,12 +1501,45 @@ fieldset.pauseLock:has(>.shopSheet.turn)>small{position:absolute; width:1px; hei
 .bStats{list-style:none; margin:2px 0 0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2px;}
 .bStats li{display:flex; align-items:center; justify-content:center; gap:2px; min-width:0; border-radius:4px; background:#0b1326; font-size:10.5px; line-height:16px; white-space:nowrap; color:#fff;}
 .bStats b{font-size:10.5px; font-variant-numeric:tabular-nums;} .bStats .gi{font-size:11px;}
-/* 스킬 줄 = 한 줄에 한 스킬: 버튼(★ 이름 · 쿨/봉인/불가) + 그 아래 고정 설명. 못 쓰는 줄 · 잠긴 소개 줄은 흐리게 — 잠긴 줄에는 명령이 없다 */
-.bSkills{list-style:none; margin:4px 0; padding:0; display:flex; flex-direction:column; gap:6px;}
-.bSkills li>button{display:block; width:100%; min-height:44px; text-align:left; white-space:normal; overflow-wrap:anywhere;}
-.bSkills li>small{display:block; margin:2px 2px 0; font-size:12px; line-height:1.35; overflow-wrap:anywhere;}
-.bSkills .stars{color:#ffd66b; font-size:11px; letter-spacing:0;}
-.bSkills li.lock{opacity:.6;} .bSkills li.lock>button{border-style:dashed;}
-/* 가방: 한 줄에 한 항목 — 이름 + 설명이 버튼 안에서 읽힌다 */
-.bsub .bList button{flex:1 1 100%; min-height:44px; text-align:left; white-space:normal;}
-.bsub .bList button small{display:inline; margin:0; color:inherit; opacity:.85;}
+/* ===== #296 CJ REVISE1 (2026-10-03 · Image2~7) =====
+   1) 전투 창은 프레임 맨 위부터(상점 시트와 같은 --appTop · --appH) — 이모티콘을 피하던 위 86px 여백과 가운데 정렬을 쓰지 않는다. 이모티콘 버튼은 상단 한 줄의 자리(emoteSync --emoT)에 그대로 */
+body .overlay:has(.battleTop){align-items:flex-start; padding-top:var(--appTop);}
+#overlayBox.battleBox{max-height:var(--appH);}
+/* 2) 전투원 카드(양쪽 같은 틀): ★ 이름 + 아키타입 · 속성 아이콘 / HP 바 안 '❤ 현재/최대(+방어막)' + 바 아래쪽 방어막 막대 / 6스탯 / 상태 · 버프 칩 */
+.bslot .fname{display:flex; align-items:center; gap:3px; min-width:0;}
+.bslot .fname b{flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.bslot .ftags{display:inline-flex; gap:1px; flex:0 0 auto; margin-left:auto;} .bslot .ftags .gi{font-size:16px;}
+.bslot .hpbar{height:16px; margin-top:2px; border-radius:6px;}
+.bslot .hpbar>.shbar{position:absolute; left:0; right:0; bottom:0; width:auto; height:4px; margin:0; border-radius:0; background:none; transition:none;}
+.bslot .hpNum{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:bold; line-height:1; color:#fff; text-shadow:0 1px 2px #000,0 0 2px #000; white-space:nowrap; font-variant-numeric:tabular-nums;}
+.bslot .shNum{color:#bfe3ff;}
+.stChips{display:flex; flex-wrap:wrap; gap:2px; margin-top:2px;}
+.stChip{display:inline-flex; align-items:center; gap:1px; padding:0 3px; border-radius:5px; border:1.5px solid #ff5b6e; background:#0b1326; font-size:12px; line-height:16px; color:#fff;}
+.stChip.up{border-color:#5ad17a;} .stChip b{font-size:11px; font-variant-numeric:tabular-nums;} .stChip .gi{font-size:13px;}
+/* 3) 하위 메뉴: 짧은 제목 줄(+ 우상단 조건 칩 · 가방의 [돌아가기]) / 실행 · [돌아가기] 나란히 */
+.bsub .subHead{display:flex; align-items:center; gap:6px; min-height:36px; margin-bottom:6px;}
+.bsub .subHead>b{flex:1 1 auto; min-width:0; font-size:15px; color:#fff; word-break:keep-all;}
+.bsub .conds{display:flex; gap:4px; flex:0 0 auto;}
+.bsub .cond{display:inline-flex; align-items:center; gap:2px; padding:2px 6px; border:2px solid; border-radius:8px; font-size:13px; font-weight:bold; white-space:nowrap;}
+.bsub .cond.ok{border-color:#5ad17a; color:#9df0b0;} .bsub .cond.no{border-color:#ff5b6e; color:#ffb0b9;} .bsub .cond .gi{font-size:16px;}
+.bsub .subActs{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;}
+.bsub .subActs button{min-height:48px; margin:0; white-space:normal; word-break:keep-all;}
+.bsub .subHead .subBack{flex:0 0 auto; min-height:44px; padding:0 10px;}
+.bsub button.lock{opacity:.55; border-style:dashed; cursor:not-allowed;}
+/* 4) 가방 = 3열 칸: 아이콘 · 수량 / 이름 / 짧은 효과 — 아이템 줄과 버프 · 패키지 줄을 선 하나로 나눈다 */
+.bsub .bagGrid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px;}
+.bsub .bagGrid+.bagGrid{margin-top:6px; padding-top:6px; border-top:1px solid var(--line);}
+.bsub .bagTile{display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-areas:"ic qty" "nm nm" "fx fx"; align-items:center; gap:0 4px; min-width:0; min-height:76px; margin:0; padding:4px 6px; text-align:left; white-space:normal;}
+.bagTile .gi{grid-area:ic; font-size:24px;} .bagTile b{grid-area:nm; font-size:12.5px; overflow-wrap:anywhere;}
+.bagTile .qty{grid-area:qty; justify-self:end; font-size:13px; font-weight:bold; font-variant-numeric:tabular-nums;}
+.bsub .bagTile small{grid-area:fx; display:block; margin:0; font-size:11px; line-height:1.25; color:#cfe0ff; word-break:keep-all; overflow-wrap:anywhere;}
+/* 5) 싸우기 = 하수인 정보 창과 같은 스킬 줄(ol.uhSkills) — 쓸 수 있는 줄은 줄 전체가 버튼, 못 쓰는 줄 · 잠긴 소개 줄은 흐리게(글자는 그대로 읽힌다) */
+.bsub .uhSkills{list-style:none; margin:4px 0; padding:0; display:flex; flex-direction:column; gap:4px;}
+.bsub .uhSkills li{padding:6px 8px; border-radius:8px; background:#06102a; border:1px solid #1f3e78; font-size:13px; line-height:1.35; color:#cfe0ff;}
+.bsub .uhSkills li:has(>button){padding:0;}
+.bsub .uhSkills li>button{display:block; width:100%; min-height:44px; margin:0; padding:6px 8px; text-align:left; white-space:normal; color:inherit; background:none; border:0; border-radius:8px;}
+.bsub .uhSkills li:has(>button:not(:disabled)){border:2px solid var(--accent);}
+.bsub .uhSkills li>button:disabled{opacity:1;} .bsub .uhSkills li:has(>button:disabled){opacity:.6;}
+.bsub .uhSkills li b{color:#fff; margin-right:4px; font-size:14px;}
+.bsub .uhSkills li.lock{opacity:.55;}
+.bsub .uhSkills small{display:block; margin-top:2px; font-size:12px; line-height:1.35; color:#cfe0ff;}
