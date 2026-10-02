@@ -313,6 +313,46 @@ async function main() {
     ok(S0(room).phase === 'play' && S0(room).eco.shop === null, '양측 만료 → 상점 닫힘·다음 턴');
   }
 
+  /* ===== 7b. #295 (2026-10-02 CJ) 정기 상점 기본 180초 — 주입 없는 Core 상수(ECO.shopSec) =====
+     위 60000·250 은 테스트 주입값이지 기본값이 아니다. 여기만 shopMs 를 비워 실제 기본 경로(_ms → ECO.shopSec)를 탄다.
+     벽시계를 고정해 경계를 결정적으로 본다(test-issue263 의 Date.now 고정 관례). gap = 단절로 멈춘 시간 — 상점 시계에 들어가지 않는다. */
+  {
+    const room = startedEco(295, { shopMs: undefined, graceMs: 60000 });
+    const real = Date.now, t0 = real();
+    let gap = 0;
+    const at = (ms) => { Date.now = () => t0 + gap + ms; };
+    try {
+      at(0);
+      openRegular(room);
+      ok(room.engines[0].ECO.shopSec === 180 && room._clock.every((c) => c && c.key.startsWith('shop:') && c.left === 180000 && c.deadline === t0 + 180000)
+        && view(room, 0).clock.key === 'shop' && view(room, 0).clock.leftMs === 180000, '#295 주입 없는 정기 상점 = 좌석별 180000ms');
+      at(90000);
+      const before1 = stable(view(room, 1));
+      const g = shop(room, 0, 'shopGood', { item: 'potion' });
+      ok(g.ok && view(room, 0).clock.leftMs === 90000 && stable(view(room, 1)) === before1, '#295 90000ms(종전 마감) 뒤에도 열려 있다 · 거래 수락 · 상대 뷰 불변');
+      const coins0 = S0(room).eco.coins[0], inv0 = S0(room).inv[0].join(), bag0 = S0(room).eco.bag[0].length;
+      room.socketClosed(1);
+      ok(room._clock.every((c) => c.deadline === null && c.left === 90000), '#295 단절 → 양 좌석 상점 시계가 남은 90000ms 를 들고 멈춘다');
+      gap = 30000; at(90000);
+      const res = room.resumeSeat(1, room.seats[1].credential.current, fakeWs());
+      ok(res.ok && room._clock.every((c) => c.left === 90000 && c.deadline === t0 + 30000 + 180000) && view(room, 1).clock.leftMs === 90000,
+        '#295 재연결 → 남은 시간부터 이어진다(180000 으로 되돌아가지 않는다)');
+      at(179999);
+      const b = shop(room, 1, 'shopGood', { item: 'potion' });
+      ok(b.ok && view(room, 0).clock.leftMs === 1, '#295 179999ms 에도 거래 수락');
+      const d = shop(room, 1, 'shopDone'), dl = room._clock[0].deadline;
+      ok(d.ok && room._clock[1] === null && view(room, 1).clock === null && dl === t0 + 30000 + 180000 && S0(room).phase === 'shop',
+        '#295 자기 완료 → 자기 시계만 사라진다 · 상대 시계·상점은 그대로');
+      at(180000);
+      const s = snap(room), key = room._clock[0].key;
+      const late = shop(room, 0, 'shopGood', { item: 'potion' });
+      ok(!late.ok && late.reason === 'E_DEADLINE' && snap(room) === s, '#295 180000ms 정각 = 마감 · 거래 거부 · 상태 불변');
+      room._onClock(0, key); // setTimeout 이 부르는 그 진입점
+      ok(S0(room).phase === 'play' && S0(room).eco.shop === null && S0(room).eco.coins[0] === coins0 && S0(room).inv[0].join() === inv0 && S0(room).eco.bag[0].length === bag0,
+        '#295 만료 → 상점 닫힘 · 확정 거래 유지 · 자동 구매 없음');
+    } finally { Date.now = real; room._clearClock(); }
+  }
+
   // ===== 8. B08 — 소유자 전용 선택 · 지난 토큰 · 만료 시 포획 말만 방출 =====
   {
     const room = startedEco(9, { bagPickMs: 60 });

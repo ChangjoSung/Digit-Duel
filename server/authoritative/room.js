@@ -1899,7 +1899,7 @@ class Room {
 
   /* #294 공개 보드 시계(표시 전용) — 방에 하나인 대상 선택 30초(_pick)·행동 30초(_act)를 **읽기만** 해 양 좌석에 같은 값을 준다.
      좌석 인자가 없다: 고르기 규칙은 위 _clockView 에서 소유 좌석 거름과 _bclock·_clock[좌석]만 뺀 것이다.
-     key·owner 와 전투 60초·정기 상점 90초·B08 20초는 싣지 않는다. 시계를 세우거나 _tick 을 부르지 않으므로
+     key·owner 와 전투 60초·정기 상점 180초(#295)·B08 20초는 싣지 않는다. 시계를 세우거나 _tick 을 부르지 않으므로
      몇 번을 만들어도 마감은 그대로이고, serverNow·흐르는 중의 leftMs 만 만드는 순간의 값이다. */
   _boardClockView() {
     if (this.state !== STATES.IN_PROGRESS) return null;

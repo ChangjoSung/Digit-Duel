@@ -251,6 +251,24 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   /* 공통 마감 — 같은 revision 에서 두 좌석의 준비 시계가 같은 절대 마감이다 */
   { const a=room.toSeatView(0).clock, b=room.toSeatView(1).clock;
     ok(!!a&&!!b&&a.key==="prep"&&b.key==="prep"&&Number.isFinite(a.deadline)&&a.deadline===b.deadline,"E17 두 좌석 시계 뷰 = key prep · 같은 deadline"); }
+  /* ===== #295 (2026-10-02 CJ) 턴 상점 완료 대기 — 경기 전과 같은 팝업 한 장. 내 좌석 뷰의 done + 단계 shop 만 본다(상대 완료·시계 필드 없음) ===== */
+  { const S0=P.S, keep={phase:S0.phase,shop:S0.eco.shop,pause:P.NET.pause}, doc=global.document, ce=doc.createElement; let made=[];
+    doc.createElement=function(){ const e=ce.apply(doc,arguments); made.push(e); return e; }; // 스텁 DOM 은 innerHTML 을 풀지 않는다 — 팝업을 담는 임시 노드의 마크업을 그대로 본다
+    const popOf=()=>{ made=[]; P.render(); const e=made.find(x=>/readyPop/.test(x.innerHTML||"")); return e?e.innerHTML:""; };
+    const shown=()=>!P.byId("overlay").classList.contains("hidden"), box=()=>P.byId("overlayBox").innerHTML, bi=()=>P.byId("boardInfo").innerHTML;
+    const sh=d=>({kind:"regular",turn:20,seq:[0,0],slots:[[],[]],sold:[[],[]],done:[d,true],active:null,next:null}); // netEcoState 모양 — 상대 자리는 늘 true(서버가 보내지 않는 값)
+    S0.phase="shop"; S0.eco.shop=sh(false); let w=popOf();
+    ok(w===""&&shown()&&/20턴 상점/.test(box())&&/onclick="netEcoResign\(\)">🏳️ 기권/.test(box())&&bi()==="","W1 내 상점 미완료 = 대기 팝업 없음 · 상점 시트(⚙ 안 기권)");
+    S0.eco.shop=sh(true); w=popOf(); const wm=w.match(/^<div class="readyPop" role="status" aria-live="polite"><b>([^<]*)<\/b><small>([^<]*)<\/small><\/div>$/)||[];
+    ok(wm[1]==="내 구매 완료 · 상대 기다리는 중…"&&/상대가 아직 상점에서 구매 중/.test(wm[2])&&!/button|onclick|취소|\d+초|🪙/.test(w),"W2 서버 확정 완료 + 단계 shop = 준비 대기와 같은 readyPop 마크업 · 내 완료 + 상대 구매 중 문구 · 버튼/취소/시계/코인 없음");
+    ok(!shown(),"W3 완료 뒤에는 상점 창이 닫힌다(시트·확인 창 없이 말판 팝업만)");
+    ok(/^<div class="topBar">/.test(bi())&&/onclick="netEcoResign\(\)">🏳️ 기권/.test(bi())&&!/shopClock|shopDone|__shop/.test(bi()),"W4 대기 중 말판 상단 = 신원 + ⚙ 기권(기존 확인 창 경로) — 완료 되돌리기·내 상점 시계 없음");
+    P.NET.pause=[{seat:1,graceLeftMs:60000,at:Date.now()}]; w=popOf();
+    ok(/내 구매 완료 · 연결 대기 중/.test(w)&&/상점 시간이 멈춰/.test(w)&&!/구매 중/.test(w)&&/disabled aria-disabled="true">🏳️ 기권/.test(bi()),"W5 단절 정지 중 = 정지 사실만 말한다(상대 구매 중이라 하지 않는다) · 기권 잠금");
+    P.NET.pause=keep.pause; S0.phase=keep.phase; S0.eco.shop=keep.shop; w=popOf(); ok(w===""&&!/netEcoResign/.test(bi()),"W6 단계가 shop 을 벗어나면 팝업·대기 상단이 남지 않는다");
+    doc.createElement=ce;
+    const src=fs.readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8");
+    ok(/const w=shopWaitPopHtml\(\); if\(w\)\{[^\n]*t\.querySelector\("\.readyPop"\); if\(pop\) \$\("left"\)\.appendChild\(pop\);/.test(src)&&/readyPopHtml\(wait\?"준비 완료 · 상대 기다리는 중…":line/.test(src)&&/if\(op==="done"\)\{ sell\(\{t:"shopDone"\}\)/.test(src),"W7 같은 자리(#left) · 준비 대기와 같은 readyPopHtml · 완료는 연타 잠금 경로"); }
 }
 { /* 오프라인 핫시트: 이 기기가 아는 실제 단계로 두 표식 · 티켓 '무료' */
   const T=H.load(htmlPath); T.setSeed(58); T.startMode("pvp"); T.TQ.length=0; let h=side(T);
@@ -261,7 +279,23 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   const st=pveSetup(59).shopHtml(0), head=st.slice(st.indexOf("왕·동료 속성"),st.indexOf("leadRow"));
   ok(/role="img" aria-label="시작 상점은 티켓 없이 속성을 바꿀 수 있습니다"[^>]*><i class="gi" style="--i:42"[^>]*><\/i>무료<\/span>/.test(head),"E20 시작 상점 제목 옆 티켓 아이콘 + '무료' — 보유 0장이어도 항상 · 접근성 이름");
   { const R=pveSetup(60); act(R,{t:"shopTimeout",player:0}); R.S.eco.tickets[0]=2; R.ecoOpenShop(R.S,"regular",20); R.S.phase="shop"; const rh=R.shopHtml(0);
-    ok(/티켓 사용 \(2\)/.test(rh)&&!/>무료</.test(rh),"E21 정기 상점의 티켓 ×N 표시·사용 버튼은 그대로"); }
+    /* #295 (2026-10-02 CJ): 티켓 버튼 + 3단 선택 창 → 시작 상점과 같은 3줄(말 + 속성 5). 제목 줄 ×N · 속성 → 기존 확인 1회 → 기존 shopTicket */
+    const rows=h=>h.split('class="row leadRow"').slice(1).map(r=>r.slice(0,r.indexOf("</div>"))), lr=rows(rh), king=R.S.pieces.find(x=>x.owner===0&&x.type==="king");
+    ok(/aria-label="시너지 교체 티켓 2장"[^>]*><i class="gi" style="--i:42"[^>]*><\/i>×2<\/span>/.test(rh)&&!/>무료</.test(rh)&&!/__shop\('lead'/.test(rh),"E21 정기 상점 제목 줄 = 티켓 ×N · 무료 변경 없음 (#295)");
+    ok(lr.length===3&&lr.every(r=>count(r,/__shop\('ticket',/g)===5&&count(r,/aria-pressed="true"/g)===1&&count(r,/ disabled title="현재 속성"/g)===1&&count(r,/ disabled /g)===1),"E21b 왕·동료 3줄 × 속성 5 — 현재 속성만 비활성(선택 표시 + 사유)");
+    R.byId("overlayBox").innerHTML=""; const to=["fire","water","lightning","land","grass"].find(e=>e!==king.element); R.__shop("ticket",king.id,king.element);
+    ok(!/티켓 사용 확인/.test(R.byId("overlayBox").innerHTML),"E21c 현재 속성은 확인 창도 열지 않는다");
+    R.__shop("ticket",king.id,to); ok(/티켓 사용 확인/.test(R.byId("overlayBox").innerHTML)&&R.S.eco.tickets[0]===2&&king.element!==to,"E21d 다른 속성 → 기존 확인 창 1회(확정 전에는 티켓·속성 그대로)");
+    R.byId("obBtns").children.find(b=>b.textContent==="사용").onclick(); ok(king.element===to&&R.S.eco.tickets[0]===1,"E21e [사용] → 기존 shopTicket 1회 (티켓 −1 · 속성 변경)");
+    R.S.eco.tickets[0]=0; ok(rows(R.shopHtml(0)).every(r=>count(r,/ disabled /g)===5)&&count(R.shopHtml(0),/ disabled title="티켓이 없습니다"/g)===12,"E21f 티켓 0장 = 전부 비활성 + 사유");
+    R.S.eco.tickets[0]=1; R.S.pieces.find(x=>x.owner===0&&x.type==="ally").alive=false;
+    ok(rows(R.shopHtml(0)).filter(r=>count(r,/ disabled title="사망한 말은 바꿀 수 없습니다"/g)===5).length===1,"E21g 사망한 동료 줄 = 전부 비활성 + 사유");
+    /* #295 구조: 상단 한 줄(50/50) · [N턴 상점 | 완료] · 우측 내 시너지 열 · 본문 순서(구매 → 필드 → 가방 → 왕·동료 → 아이템) · 옛 머리줄/본문 시너지 줄/단계 막대 없음 */
+    const th=R.shopHtml(0), pos=["shopGrid","> 필드 ","> 가방 ","왕·동료 속성","goodsGrid"].map(k=>th.indexOf(k));
+    ok(/^<div class="shopSheet turn"><header class="shopTop"><div class="topBar"><div class="idHead">/.test(th)&&/<div class="tbTools"><span class="badge clk" id="shopClock" role="timer">[^<]*<\/span><span class="badge coin" aria-label="재화 \d+">/.test(th)
+      &&/<div class="flowBar"><h2>20턴 상점<\/h2><button type="button" class="primary go" onclick="window.__shop\('done'\)">완료<\/button><\/div><aside class="synRail" aria-label="내 시너지">/.test(th),"T1 턴 상점 머리 = 공용 상단 한 줄(신원 | 내 시계 · 내 코인 · ⚙) + [N턴 상점 | 완료] + 내 시너지 열");
+    ok(pos.every((x,i)=>x>0&&(!i||x>pos[i-1]))&&!/shopHead|flowHead|flowSteps|prepClock|class="synRow"|새로 고침<|uiBack|uiLeaveConfirm/.test(th)&&count(th,/class="refresh"/g)===1&&count(th,/role="timer"/g)===1,"T2 본문 순서 · 옛 머리줄/본문 시너지 줄/단계 막대/준비 시계/나가기 없음 · 새로 고침은 구매 제목 줄 하나");
+    { const v=R.ecoSynView(R.S,0), rail=th.slice(th.indexOf('<aside class="synRail"'),th.indexOf("</aside>")); ok(["fire","water","lightning","land","grass"].every(k=>rail.includes(`synHelp('${k}',${v.el[k]|0},this,0)`)),"T3 시너지 열의 칸 수 = ecoSynView 그대로(내 것만)"); } }
 }
 /* ===== F. 트레이 · 글 줄이기 · 무변경 ===== */
 {

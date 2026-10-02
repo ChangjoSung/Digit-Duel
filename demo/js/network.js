@@ -800,9 +800,7 @@ function netEcoResign(){ if(netPaused()){ showToast(NET_PAUSE_MSG); return; }
   modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,[["기권 확정",()=>{ if(!netSendAction({t:"resign"})) return; closeModal(); NET.overlaySig=null; render(); }],["취소",()=>{ closeModal(); NET.overlaySig=null; render(); }]]); }
 function netRenderEcoOverlay(kind){
   const wait=(h,p)=>_modalCore(`<h2>${h}</h2><p style="margin:8px 0;color:var(--dim)">${p}</p>`+netResignBtn(),[]);
-  if(kind==="shop"){ const p=shopViewer();
-    if(p===null) return wait("🛒 상점 완료","상대가 상점을 마치면 경기가 이어집니다.");
-    _modalCore(shopHtml(p)+netResignBtn(),[]); shopClockStart(p); return; }
+  if(kind==="shop"){ const p=shopViewer(); _modalCore(shopHtml(p),[]); shopClockStart(p); return; } // #295: 기권은 시트 ⚙ 안(shopHtml) · 내 완료 뒤 대기는 창이 아니라 말판 팝업(netOverlayWanted)
   if(S.eco.bagPick.owner===NET.me){ bagPickShow(); return; }
   wait("🎒 상대가 가방을 정리하는 중…","상대가 내보낼 말을 고르면 경기가 이어집니다.");
 }
@@ -1186,7 +1184,7 @@ function netRenderModalOverlay(m){
 function netOverlayWanted(){
   if(NET.stageBid!=null) return {kind:"battle",bid:NET.stageBid};
   if(S&&S._pendingModal) return {kind:"modal"};
-  if(S&&S.eco&&S.phase==="shop"&&S.eco.shop) return {kind:"shop"};                // #237 정기 상점 (자기 진열 · 완료 뒤 상대 대기)
+  if(S&&S.eco&&S.phase==="shop"&&S.eco.shop) return {kind:shopWaiting()?"none":"shop"}; // #237 정기 상점 (자기 진열) · #295 내 완료 뒤 상대 대기 = 창 없음(시트·열린 확인 창·시계를 아래 none 경로가 치우고 말판 팝업 readyPop 이 뜬다)
   if(S&&S.eco&&S.phase==="bagPick"&&S.eco.bagPick) return {kind:"bag"};           // #237 B08 (소유자 선택 · 상대는 대기)
   if(S&&S.battle) return {kind:"battle",bid:NET.fxLiveBid};
   return {kind:"none"};
