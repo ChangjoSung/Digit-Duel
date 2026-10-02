@@ -86,6 +86,14 @@ function pvePlay(seed){ const T=pveSetup(seed);
     ok(empties.every(x=>!/onclick|tabindex|role="button"/.test(x))&&!/__shop\(|netAction|shopSwap|shopSell|shopBuy|<button/.test(d.slice(0,d.indexOf("</div><h3>"))),"C2c 빈칸 '+' 는 누를 수 없는 장식 · 창 윗부분에 사용·교체·판매·구매 명령이 없다");
     ok(count(d,/class="ownItem/g)===8&&/aria-label="회복약 2개"/.test(d)&&/aria-label="쿨링수 0개"[^>]*>[\s\S]*?×0/.test(d),"C2d 아이템 = 실제 보유 8종(×0 포함) — 수량을 지어내지 않는다");
     ok(/onclick="unitHelpBag\(\d+,this\)"/.test(grid)&&!/onclick="unitHelpBag[^"]*"[^>]*>[^<]*<button/.test(grid),"C2e 카드 그림 = 읽기 전용 설명 진입(명령 버튼과 별개 대상)");
+    /* #294 CJ REVISE(2026-10-02): 서랍 아래 이름 · 배지(선물/버프/전투/주 행동/코인) · 선택 요약 · 기본 안내 문장 삭제 */
+    S.selected=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive); T.render(); const d2=T.byId("sidePanel").innerHTML; S.selected=null;
+    ok(!/<h2>|class="badge|cnb|주 행동|전투 \d\/2|선택: |자기 말을 클릭|파란 칸/.test(d2)&&count(d2,/class="ownItem/g)===8,"C2k 가방 창 아래에 이름 · 배지 · 선택 요약 · 기본 안내가 없다(말을 골라도) — 카드 3칸 + 아이템 8종뿐");
+    T.ui238.unitHelpBag(u.uid,null); { const b=T.ui238.SYNHELP.el.innerHTML, pc=v=>Math.round(v*100)+"%", sk=T.speciesSkills(T.ROSTER[0].id,2);
+      ok(/id="synHelpT">[^<]+ <span class="stars" aria-label="등급 2">★★<\/span>/.test(b)&&[`HP ${u.hp}/${u.maxHp}`,`공격력 ${u.atk}`,`방어력 ${u.def}`,`속도 ${u.spd}`,`회피 ${pc(u.dodge)}`,`치명타 ${pc(u.crit)}`].every(a=>b.includes(`aria-label="${a}"`))&&u.statusPct===0&&!/상태 부여 확률|명중/.test(b)
+        &&sk.length===2&&sk.every((id,i)=>b.includes(`<b>${T.SKILLS[id].ko}</b><span class="stars" aria-label="등급 ${i+1}부터">${"★".repeat(i+1)}</span>`)&&b.includes(`aria-label="위력 ${T.SKILLS[id].pct}%"`)&&b.includes(`aria-label="쿨타임 ${T.SKILLS[id].cd}"`))
+        &&!b.includes(T.SKILLS[sk[0]].desc)&&b.includes(`<small>${T.SKILLS[sk[1]].desc}</small>`)&&!/uhTabs|<button(?![^>]*acctX)/.test(b),"C2l 가방 하수인 설명 = 이름 ★등급 · 기본 능력치(개체의 실제 필드) · 스킬(SKILLS pct · cd · 종 스킬표 순서 = 열리는 등급 · 글은 desc 원문, 기본기는 글 없음) · 상태 부여 0 은 칸 없음 — 탭 · 명령 없음"); }
+    T.ui238.synHelpClose(false);
     S.current=1; T.render(); const bag2=kids().find(k=>/^가방 보기/.test(lab(k)));
     ok(!!bag2&&!bag2.disabled&&kids().filter(k=>k.getAttribute&&k.getAttribute("data-ico")).every(k=>k.disabled),"C2f 상대(AI) 차례: 행동 버튼은 잠기고 가방 보기만 열린다(정보 보기)");
     S.current=0; S.eco.bag[0]=[]; S.inv[0]=[]; T.render(); }
@@ -115,6 +123,13 @@ function pvePlay(seed){ const T=pveSetup(seed);
       &&count(h,/aria-label="재화 /g)===1,"C4a 상태 네 칸 = 남은 시간 · 턴(S.turnCount+1) · 내 코인 · 전투 n/2 — 상대 코인 없음");
     const gear=h.slice(h.indexOf('<details class="flowGear"'),h.indexOf("</details>"));
     ok(/onclick="uiBack\(\)"/.test(gear)&&/<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공<\/button>/.test(gear)&&count(gear,/<button/g)===2,"C4b ⚙ = 기존 나가기 진입점(uiBack — 기권 확인 경로) + 사운드 줄은 비활성"); }
+  { /* #294 CJ REVISE(2026-10-02): 상단 한 줄 = 왼쪽 신원 · 오른쪽 차례/⚙ — 도구 줄 · 선택 요약은 없고, 고른 내 말의 [설명]은 행동 줄 첫 버튼(전송 0 · 선택 유지) */
+    const tools=h.slice(h.indexOf('class="tbTools"'),h.indexOf('class="hudStats"'));
+    ok(/^<div class="topBar"><div class="idHead">/.test(h)&&/>내 차례<\/b>/.test(tools)&&/class="flowGear"/.test(tools)&&/<b class="who" aria-label="내 차례 · [^"]+">/.test(tools)&&!/hudTools|infoBtn/.test(h)&&!/자기 말을 선택|주 행동|HP /.test(h.slice(0,h.indexOf('class="hudStats"')).replace(/<[^>]+>/g,"")),"C4c 상단 한 줄: 신원 | 짧은 차례 문구(긴 안내는 접근성 이름에만) · ⚙ — 보이는 선택 요약 · [설명] 없음");
+    const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive); S.selected=m; T.renderTurnBar(); const ib=kids()[0], n0=T.wsLog.length;
+    const okBtn=/\binfoBtn\b/.test(ib.className)&&ib.textContent.includes(`HP ${m.hp}/${m.maxHp} — 설명`)&&!ib.disabled; ib.onclick();
+    ok(okBtn&&!!T.ui238.SYNHELP.el&&S.selected===m&&T.wsLog.length===n0,"C4d 고른 내 말의 [설명] = 행동 줄 첫 버튼 → 설명 창 · 선택 유지 · 송신 0");
+    T.ui238.synHelpClose(false); S.selected=null; T.renderTurnBar(); ok(!kids().some(k=>/\binfoBtn\b/.test(k.className||"")),"C4e 고른 말이 없으면 [설명] 버튼도 없다"); }
   ok(/id="actClock" role="timer"/.test(h)&&/aria-label="재화 \d+"/.test(h)&&!/상세 ›/.test(h),"C4 위 줄 = 남은 시간(#actClock)·턴·재화 · 옛 [상세 ›] 없음");
   ok(["탐색","🌀 텔레포트","🌿 회복","기권"].every(t=>kids().some(k=>k.textContent===t&&k.getAttribute&&k.getAttribute("data-ico"))),"C5 행동 버튼은 문구 그대로 + 아이콘(data-ico)");
 }

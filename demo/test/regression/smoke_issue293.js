@@ -204,7 +204,7 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
     const empty=room.engines[seat].S.pieces.filter(x=>x.owner===seat&&x.type==="minion"&&!x.rosterId).length, i=v.shop.slots.findIndex(x=>x&&!x.sold);
     shopAct(seat,empty?(i>=0?"shopBuy":"shopRefresh"):"shopDone",empty&&i>=0?{i}:{}); } };
   const view=()=>P.byId("sidePanel").innerHTML;
-  const olOf=h=>h.slice(h.indexOf("<ol"),h.indexOf("</ol>")), opAt=h=>{ const m=olOf(h).match(/<li[^>]*><span class="mks" aria-hidden="true">(?:<span class="mk me">[^<]*<\/span>)?<span class="mk op">[^<]+<\/span><\/span><span><b>0(\d)<\/b>/); return m?+m[1]:0; };
+  const olOf=h=>h.slice(h.indexOf("<ol"),h.indexOf("</ol>")), opAt=h=>{ const li=olOf(h).split("<li").slice(1).find(x=>x.includes('class="mk op"')), m=li&&li.match(/<b>0(\d)<\/b>/); return m?+m[1]:0; }; // #294 REVISE: 표식 안은 대표 얼굴(중첩 태그)이라 칸 단위로 찾는다
   let v=feed(), h=view();
   ok(stepOf(h)==="상점"&&opAt(h)===1&&!/flowOpp/.test(h),"E7 공개 방 S01: 두 표식 모두 01 상점(서버 seats.step) · 떨어진 상대 상자 없음");
   ok(P.byId("app").getAttribute("data-flow")==="1","E8 공통 틀 표시 속성(data-flow)");
@@ -217,19 +217,19 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
     const U=P.ui238, long="가나다라마바사아자차카타", frame=(players,reps)=>ws.onmessage({data:JSON.stringify({v:1,type:"room_state",revision:room.toSeatView(0).revision,seat:0,players,reps,data:room.toSeatView(0)})});
     const seats=h=>h.slice(h.indexOf('class="idHead"'),h.indexOf("</div>",h.indexOf('class="idHead"'))).split('class="idSeat ').slice(1);
     frame([long,"상대닉"],["M-F1","M-W1"]); P.byId("overlay").classList.add("hidden"); let s=seats(view());
-    ok(s.length===2&&/^me"/.test(s[0])&&/^op"/.test(s[1])&&s[0].includes(`<b>${long}</b>`)&&s[1].includes("<b>상대닉</b>")&&/<small>나<\/small>/.test(s[0])&&/<small>상대<\/small>/.test(s[1])
-      &&s[0].includes(U.lobbyRepHtml("M-F1","xs"))&&s[1].includes(U.lobbyRepHtml("M-W1","xs")),"I1 준비 머리줄 = 내 대표 · 이름(NET.players/reps) VS 상대 대표 · 이름 — 색(me/op) + 글자(나/상대)");
+    ok(s.length===2&&/^me"/.test(s[0])&&/^op"/.test(s[1])&&s[0].includes(`<b class="idNm">${long}</b>`)&&s[1].includes(`<b class="idNm">상대닉</b>`)&&!/<small>/.test(s.join(""))&&/^<div class="topBar"><div class="idHead">/.test(view().slice(view().indexOf('<div class="topBar"')))&&count(view(),/class="idHead"/g)===1&&!/flowTop/.test(view())
+      &&s[0].includes(U.lobbyRepHtml("M-F1","xs"))&&s[1].includes(U.lobbyRepHtml("M-W1","xs")),"I1 공용 상단 한 줄(topBar) 왼쪽 = 내 대표 · 이름(NET.players/reps) VS 상대 대표 · 이름 — 색(me/op) · 따로 떨어진 신원 줄 없음");
     ok(s[0].includes(`aria-label="나 · ${long} — 프로필 보기"`)&&!/king|ally|leader/.test(s.join("")),"I2 12자 전체 이름은 접근성 이름에 그대로 · 왕/동료 그림이 아니다");
-    const mks=olOf(view()); ok(mks.includes(`<span class="mk me">${U.lobbyRepHtml("M-F1","xs")}나</span>`)&&mks.includes(`<span class="mk op">${U.lobbyRepHtml("M-W1","xs")}상대</span>`),"I3 진행 표식 = 같은 대표 그림 + 나/상대");
+    const mks=olOf(view()); ok(mks.includes(`<span class="mk me">${U.lobbyRepHtml("M-F1","xs")}</span>`)&&mks.includes(`<span class="mk op">${U.lobbyRepHtml("M-W1","xs")}</span>`)&&!/P[12]|나|상대닉/.test(mks.split("<li").slice(1).map(x=>x.slice(0,x.indexOf("<span><b>")).replace(/<[^>]+>/g,"")).join("")),"I3 진행 표식 = 같은 대표 얼굴뿐 — P1/P2 · 첫 글자 · 나/상대 글자 없음");
     U.idHelp(0,0,null); ok(!!U.SYNHELP.el&&U.SYNHELP.el.getAttribute("role")==="dialog"&&U.SYNHELP.el.innerHTML.includes(`<b>${long}</b>`)&&!/<button(?![^>]*acctX)/.test(U.SYNHELP.el.innerHTML),"I4 신원 표식 창 = 대표 + 전체 이름뿐(읽기 전용 · 명령 없음)");
     U.synHelpClose(false);
     frame(["<img src=x>","상대닉"],["L-DRAGON",null]); P.byId("overlay").classList.add("hidden"); s=seats(view());
-    ok(P.NET.players[0]===null&&P.NET.reps[0]===null&&/^nt"/.test(s[0])&&/^nt"/.test(s[1])&&!/<img/.test(s[0])&&/class="repFace xs nt"/.test(s[0])&&!/<b>/.test(s[0])&&/<small>나<\/small>/.test(s[0])
-      &&s[1].includes("<b>상대닉</b>")&&/class="repFace xs nt"/.test(s[1]),"I5 규칙 밖 이름·대표(전설 ID · null)는 중립 아이콘 + 나/상대만 — 기본 종 그림으로 꾸미지 않는다");
-    ok(!/mk (me|op)">[^<]*<span class="repFace/.test(olOf(view())),"I6 대표가 없으면 진행 표식은 종전 글자 표식");
+    ok(P.NET.players[0]===null&&P.NET.reps[0]===null&&/^me"/.test(s[0])&&/^op"/.test(s[1])&&!/<img/.test(s[0])&&/class="repFace xs nt"/.test(s[0])&&s[0].includes(`<b class="idNm">나</b>`)
+      &&s[1].includes(`<b class="idNm">상대닉</b>`)&&/class="repFace xs nt"/.test(s[1]),"I5 규칙 밖 이름·대표(전설 ID · null)는 중립 아이콘 + 나/상대만 — 기본 종 그림으로 꾸미지 않는다 · 테두리 색(me/op)은 그대로");
+    ok(count(olOf(view()),/<span class="mk (me|op)"><span class="repFace xs nt">/g)===2&&!/<img/.test(olOf(view()))&&!/[가-힣A-Za-z0-9]/.test(olOf(view()).split("<li").slice(1).map(x=>x.slice(x.indexOf(">")+1,x.indexOf("<span><b>")).replace(/<[^>]+>/g,"")).join("")),"I6 대표가 없으면 진행 표식도 같은 중립 아이콘 — 글자 표식 없음");
     frame([long,"상대닉"],["M-F1","M-W1"]); P.byId("overlay").classList.add("hidden");
     const me0=P.NET.me; P.NET.me=1; const flip=seats(U.idHeadHtml(0)); P.NET.me=me0;
-    ok(/^me"/.test(flip[0])&&flip[0].includes("<b>상대닉</b>")&&flip[0].includes(U.lobbyRepHtml("M-W1","xs"))&&/^op"/.test(flip[1])&&flip[1].includes(`<b>${long}</b>`),"I7 좌석 1 로 보면 왼쪽(나) = 좌석 1 값 — 좌석 0 을 내 색으로 고정하지 않는다");
+    ok(/^me"/.test(flip[0])&&flip[0].includes(`<b class="idNm">상대닉</b>`)&&flip[0].includes(U.lobbyRepHtml("M-W1","xs"))&&/^op"/.test(flip[1])&&flip[1].includes(`<b class="idNm">${long}</b>`),"I7 좌석 1 로 보면 왼쪽(나) = 좌석 1 값 — 좌석 0 을 내 색으로 고정하지 않는다");
     P.NET.players=null; P.NET.reps=null; feed(); }
   finish(0); v=feed(); h=view();
   ok(stepOf(h)==="배치"&&opAt(h)===2,"E11 내 상점 완료 → 두 표식 모두 02 배치");
@@ -365,7 +365,7 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
     &&count(rail,/onclick="synHelp\('(?!crown)/g)===11&&Object.values(v.arch).some(n=>n===0),"H11 메인 시너지 열 = 왕국 5 + 아키타입 6(미달 0 포함) + 왕관 — 숫자는 Core synView 값");
   { const at=s=>rail.indexOf(s), ks=T.V2_ELEM_ORDER.concat(Object.keys(T.V2_ARCH_SYN)).map(k=>at(`synHelp('${k}',`)), cr=at("synHelp('crown',"), lgAt=at("synChip on lg");
     ok(ks.every((x,i)=>x>=0&&(!i||x>ks[i-1]))&&cr>ks[10]&&(lgAt<0?lg(chips()).length===0:lgAt>cr),"H11c 열 순서 = 왕국 5 → 아키타입 6 → 왕관 → 활성 전설"); }
-  ok(hud.includes(U.idHeadHtml(0))&&/class="idSeat nt"/.test(hud)&&!/class="hudVs"/.test(hud),"H11b 메인 상단도 같은 신원 부품(오프라인 = 중립 아이콘 + pname)");
+  ok(hud.includes(U.idHeadHtml(0))&&/^<div class="topBar"><div class="idHead"><button type="button" class="idSeat me"/.test(hud)&&/class="idSeat op"/.test(hud)&&count(hud,/class="repFace xs nt"/g)===2&&!/class="hudVs"|hudTools/.test(hud),"H11b 메인 상단도 같은 공용 한 줄(오프라인 = 중립 아이콘 + pname · 테두리 me/op)");
   { /* 기여 = 숫자(전투가 없을 때) · 사망 유지 · 일반 가방 제외 · 가방 전설 꼬리표 · 전투 중에는 명단 없음 */
     allies.forEach(x=>{ x.alive=true; }); S.eco.bag[0]=[unit(T,T.ROSTER.find(r=>!f.some(x=>x.rosterId===r.id)).id,1),unit(T,"L-WITCH")]; const lost=f[2]; lost.alive=false;
     const v2=T.synView(0,S), cardsOf=(k,n)=>{ U.synHelp(k,n,null,0); const d=U.SYNHELP.el.innerHTML; U.synHelpClose(false); return d; };

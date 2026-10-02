@@ -683,7 +683,9 @@ function proxyBattle(T,att,def,pickA,pickD){
   const hidden=["fire_std","water_std","grass_std","lightning_sustain"].filter(d=>!knownDirs.has(d));
   const dom=()=>boardDump(T)+"|"+T.byId("sidePanel").innerHTML+"|"+T.byId("overlayBox").innerHTML;
   ok(hidden.length>=3&&hidden.every(d=>dom().indexOf(d)<0),"K9a 보드·사이드 패널(선택된 왕 정보 포함)에 내/상대 포획·예비 하수인의 종 폴더가 없다 ["+hidden.join(",")+"]");
-  ok(/예비 하수인\(번개\) HP 70\/100/.test(T.byId("sidePanel").innerHTML)&&/포획 하수인\(불\) HP 100\/100/.test(T.byId("sidePanel").innerHTML),"K9b 예비·포획 배지는 기존처럼 속성·HP 텍스트만");
+  /* #294 CJ REVISE(2026-10-02 그림 2·3) 대체 기대값: 가방 서랍의 배지 줄 · 선택 요약 삭제 — 포획 하수인은 내 말 설명 창에 종전 글자(속성 · HP)로, 종 폴더는 여전히 없다 */
+  T.ui238.unitHelpPiece(P.king0.id,null); const kHelp=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:""; T.ui238.synHelpClose(false);
+  ok(!/예비 하수인|포획 하수인/.test(T.byId("sidePanel").innerHTML)&&/<li>포획 하수인\(불\) HP 100\/100<\/li>/.test(kHelp)&&hidden.every(d=>kHelp.indexOf(d)<0),"K9b 가방 서랍에는 예비·포획 배지가 없고, 포획 하수인은 내 왕 설명 창에 속성·HP 텍스트만(종 폴더 없음)");
   T.S.mainUsed=false; T.S.battlesUsed=0; T.byId("obBtns").children.length=0;
   T.initBattle(P.king0,P.em); T.drain(500);
   ok(/출전 선택/.test(T.byId("overlayBox").innerHTML)&&hidden.every(d=>T.byId("overlayBox").innerHTML.indexOf(d)<0),"K9c 출전 선택 모달(비공개 선택)에 종 폴더 없음");

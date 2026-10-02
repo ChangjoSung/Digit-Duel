@@ -1229,8 +1229,6 @@ body:has(#emoteLayer.inRoom:not(.hidden)) .waitScreen .chatLock{margin-right:58p
 #app[data-flow][data-prep="roster"] .prepStep[data-step="place"],#app[data-flow][data-prep="place"] .prepStep[data-step="roster"]{display:none;}
 .flowHead{order:-1; position:sticky; top:0; z-index:5; flex:0 0 auto; margin-right:-48px; padding:4px 0; display:flex; flex-direction:column; gap:4px;
   background:var(--panel); box-shadow:-4px 0 0 var(--panel),4px 0 0 var(--panel);}
-.flowTop{display:flex; align-items:center; gap:6px; min-height:44px; padding:0 0 0 6px; border-radius:10px; background:#0b1a3c; border:2px solid var(--blueEdge); color:#fff;}
-.flowTop .badge{flex:0 0 auto; margin:0; padding:3px 7px; font-size:14px; font-weight:bold; white-space:nowrap; color:#fff; background:#06102a; border-color:#1f3e78;}
 .flowGear{position:relative; flex:0 0 auto;}
 .flowGear summary{list-style:none; width:44px; height:44px; display:grid; place-items:center; font-size:26px; cursor:pointer; border-radius:8px;}
 .flowGear summary::-webkit-details-marker{display:none;}
@@ -1340,25 +1338,29 @@ button.trayItem.placed:disabled{opacity:1;} /* 놓은 칸은 disabled 버튼이�
 }
 
 /* ---------- #294 (2026-10-02 CJ) 메인 화면 흐름 + 공용 신원 머리줄 — Earth UI_CONTRACT · Venus 구현 계약 ----------
-   위에서 아래: 신원 줄(52) → 도구 줄(44) → 상태 네 칸(48) → 말판 | 우측 내 시너지 열(44) → 행동 줄 3×2. 규칙·수치·시계 길이는 그대로 */
-/* 1) 공용 신원 — [대표 32][나·이름] VS [대표 32][상대·이름]. 대표·VS 는 줄지 않고 이름만 한 줄 말줄임. 테두리 = 보는 사람 기준(내 파랑 · 상대 빨강 · 중립 회색) + 글자 나/상대 */
-.idHead{flex:1 1 100%; min-width:0; min-height:52px; display:flex; align-items:center; gap:4px; padding:0 4px; border-radius:10px; background:#0b1a3c; border:2px solid var(--blueEdge);}
-.idSeat{flex:1 1 0; min-width:0; min-height:44px; display:flex; align-items:center; gap:4px; padding:0; text-align:left; font:inherit; color:#fff; background:none; border:0; border-radius:8px; cursor:pointer;}
+   위에서 아래: 공용 상단 한 줄(52) → 상태 네 칸(48) → 말판 | 우측 내 시너지 열(44) → 행동 줄 3×2. 규칙·수치·시계 길이는 그대로 */
+/* 1) 공용 신원 — [대표 32][이름] VS [대표 32][이름]. 대표·VS 는 줄지 않고 이름만 한 줄 말줄임. 테두리 = 보는 사람 기준(내 파랑 · 상대 빨강) */
+/* 2026-10-02 CJ REVISE: 공용 상단 **한 줄**(.topBar) — 정확히 반반(테두리는 안쪽 그림자라 폭을 먹지 않는다): 왼쪽 = 신원(나 VS 상대), 오른쪽 = 그 화면의 도구.
+   대표 테두리는 대표가 없어도 항상 내 파랑 / 상대 빨강(신원 칸 · 표식 창 · 진행 표식 공통) */
+.topBar{flex:0 0 auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); min-height:52px; border-radius:10px; background:#0b1a3c; box-shadow:inset 0 0 0 2px var(--blueEdge); color:#fff;}
+.topBar>*{box-sizing:border-box; min-width:0;}
+.idHead{display:flex; align-items:center; gap:2px; padding:0 0 0 4px;}
+.tbTools{display:flex; align-items:center; justify-content:flex-end; gap:3px; padding:0 2px 0 4px;}
+.tbTools .who{flex:1 1 auto; min-width:0; font-size:13px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.tbTools .badge{flex:0 1 auto; min-width:0; margin:0; padding:3px 5px; font-size:13px; font-weight:bold; white-space:nowrap; overflow:hidden; color:#fff; background:#06102a; border-color:#1f3e78;}
+.idSeat{flex:1 1 0; min-width:44px; min-height:44px; display:flex; align-items:center; gap:2px; padding:0; text-align:left; font:inherit; color:#fff; background:none; border:0; border-radius:8px; cursor:pointer;}
 .idSeat:focus-visible{outline:3px solid #fff; outline-offset:-3px;}
-.idSeat .repFace.xs{flex:0 0 32px; display:grid; width:32px; height:32px; font-size:20px; box-sizing:content-box; border-radius:6px; background:#0b1a3c; border:2px solid #8a93a8;}
+.idSeat .repFace.xs{flex:0 0 32px; display:grid; width:32px; height:32px; font-size:20px; box-sizing:content-box; border-radius:6px; background:#0b1a3c; border:2px solid #5b8cff;}
 .idSeat .repFace.xs img{width:32px; height:32px;}
-.idSeat.me .repFace,.idCard.me{border-color:#5b8cff;} .idSeat.op .repFace,.idCard.op{border-color:#ff5b6e;}
-.idNm{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; line-height:18px;}
-.idNm small{font-size:12px; font-weight:bold; color:#8a93a8;} .idSeat.me .idNm small{color:#9dbaff;} .idSeat.op .idNm small{color:#ff9aa6;}
-.idNm b{font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.idVs{flex:0 0 24px; text-align:center; font-size:12px; font-weight:bold; color:#ffd66b;}
-.idCard{display:flex; align-items:center; gap:10px; padding:8px; border-radius:8px; background:#06102a; border:2px solid #8a93a8;}
+.idSeat.op .repFace.xs,.idCard.op,.mk.op .repFace.xs{border-color:#ff5b6e;}
+.idNm{flex:1 1 auto; min-width:0; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.idVs{flex:0 0 18px; text-align:center; font-size:11px; font-weight:bold; color:#ffd66b;}
+.idCard{display:flex; align-items:center; gap:10px; padding:8px; border-radius:8px; background:#06102a; border:2px solid #5b8cff;}
 .idCard b{min-width:0; font-size:16px; overflow-wrap:anywhere;} .idCard .repFace.nt{font-size:28px;}
-/* 준비 화면: 신원 줄이 첫 줄, 시계 · 코인 · ⚙ 는 다음 줄 오른쪽 */
-.flowTop{flex-wrap:wrap; padding:0; border:0; background:none; gap:4px 6px;} .flowTop .clk{margin-left:auto;}
-#app[data-flow] #toasts{top:164px;} #app[data-flow] ~ #emoteLayer #emoteBubs{top:162px;}
-.flowSteps .mks{height:22px;} .mk:has(.repFace){display:inline-flex; align-items:center; gap:2px; height:22px; padding:0 5px 0 1px; font-size:11px;}
-.mk .repFace.xs{border-radius:50%; background:#0b1a3c; overflow:hidden;}
+#app[data-flow] #toasts{top:112px;} #app[data-flow] ~ #emoteLayer #emoteBubs{top:110px;}
+/* 진행 표식 = 같은 대표 얼굴(20px)뿐 — 글자 없음, 파랑/빨강 테두리 */
+.flowSteps .mks{height:24px;} .flowSteps .mk{display:inline-flex; min-width:0; height:24px; padding:0; background:none;}
+.mk .repFace.xs{box-sizing:content-box; border-radius:50%; background:#0b1a3c; overflow:hidden; border:2px solid #5b8cff;}
 .flowGear .menu button:disabled{opacity:1; color:#8a93a8; background:none; border:1px dashed #5d6474; font-size:12px; cursor:default;}
 /* 2) 메인 상단 — 앱 줄(←·로고)은 접고 나가기는 ⚙ 안(같은 기권 확인 경로) */
 #app[data-screen="board"] #appBar{display:none;}
@@ -1366,11 +1368,8 @@ button.trayItem.placed:disabled{opacity:1;} /* 놓은 칸은 disabled 버튼이�
 #app[data-screen="board"] #boardInfo{top:0; z-index:5; display:flex; flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:4px; padding:4px 0; border:0; border-radius:0; background:var(--panel); box-shadow:-4px 0 0 var(--panel),4px 0 0 var(--panel);}
 #app[data-screen="board"]:has(#boardInfo .synRail) #screenBody{padding-right:52px;}
 #app[data-screen="board"]:has(#boardInfo .synRail) #boardInfo{margin-right:-48px;}
-#boardInfo .idHead{flex:0 0 auto;}
-.hudTools{display:flex; align-items:center; gap:4px; min-height:44px; padding:0 0 0 8px; border-radius:10px; background:#0b1a3c; border:2px solid var(--blueEdge); color:#fff;}
-#boardInfo .hudTools .sel{flex:1 1 auto; min-width:0; font-size:12px; color:#cfe0ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-#boardInfo .hudTools .who{font-size:14px; color:#fff;}
-.infoBtn{flex:0 0 auto; min-width:44px; min-height:44px; padding:0 8px; font-size:13px; font-weight:bold; color:#fff; background:#173c86; border:2px solid #0b1f4d; border-radius:10px;}
+/* 선택한 내 말의 [설명] — 행동 줄 첫 줄 전체(이름 · HP 는 한 줄 말줄임) */
+.infoBtn{min-width:44px; min-height:44px; padding:0 8px; font-size:13px; font-weight:bold; color:#fff; background:#173c86; border:2px solid #0b1f4d; border-radius:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .emoSlot{flex:0 0 44px;}
 .hudStats{display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:4px;}
 #boardInfo .hudStat{flex-direction:column; justify-content:center; gap:0; min-width:0; min-height:48px; padding:2px; font-size:16px; line-height:20px; font-variant-numeric:tabular-nums; text-align:center;}
@@ -1379,9 +1378,9 @@ button.trayItem.placed:disabled{opacity:1;} /* 놓은 칸은 disabled 버튼이�
 #boardInfo .hudStat{height:48px; overflow:hidden;} #boardInfo .hudStat.time>span{font-size:13px; line-height:15px; word-break:keep-all;} /* 정지 · 처리 중 문구는 두 줄까지 — 칸 높이는 그대로(말판이 밀리지 않는다) */
 #boardInfo .hudStat .gi{font-size:16px;}
 /* 감정표현(기존 고정 층 · 기능 불변)은 도구 줄의 ⚙ 왼쪽 자리로 — 전투·상점 창이 열려 있는 동안은 종전 자리 그대로 */
-body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #emoteBtn{top:62px; right:54px; min-width:44px; height:44px; font-size:20px;}
-body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #emotePop{top:110px;}
-body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #emoteBubs{top:110px;}
+body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #emoteBtn{top:8px; right:54px; min-width:44px; height:44px; font-size:20px;}
+body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #emotePop{top:58px;}
+body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #emoteBubs{top:58px;}
 /* 3) 우측 내 시너지 열 — 준비 화면과 같은 부품. 상단 묶음 아래 오른쪽에 매달리고, 행동 줄 위까지 안에서 스크롤(끝이 가려지지 않게 스크롤 막대를 보인다) */
 #boardInfo .synRail{max-height:calc(100dvh - 300px); scrollbar-width:thin;}
 #boardInfo .synRail::-webkit-scrollbar{display:block; width:3px;}
@@ -1409,14 +1408,25 @@ body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #e
 .faceBtn{display:inline-grid; place-items:center; min-width:44px; min-height:44px; border-radius:8px; cursor:pointer;}
 .faceBtn:focus-visible{outline:3px solid #fff; outline-offset:-2px;}
 .uCard .faceBtn{grid-area:ic;}
-.uhTabs{display:flex; gap:4px;}
-.uhTabs button{flex:1 1 0; min-height:44px; font-size:14px; font-weight:bold; color:#cfe0ff; background:#06102a; border:2px solid #1f3e78; border-radius:10px;}
-.uhTabs button[aria-pressed="true"]{color:#fff; background:#1b3a78; border-color:var(--gold1);}
-.uhPane{display:flex; align-items:flex-start; gap:10px;} .uhPane[hidden]{display:none;}
-.uhFace{flex:0 0 64px; width:64px; height:64px; display:grid; place-items:center; font-size:36px; border-radius:8px; background:#06102a; border:1px solid #1f3e78;}
-.uhFace .icon{width:56px; height:56px; image-rendering:pixelated;} .uhFace .icon.leader{image-rendering:auto;}
-.uhPane ul{flex:1 1 auto; min-width:0; list-style:none; margin:0; padding:0; display:flex; flex-direction:column; font-size:14px; line-height:20px;}
-.synHelp .uhPane ul li{padding:0; border:0; background:none; font-size:14px; color:#eef2fb;}
+/* 2026-10-02 CJ REVISE(스케치 4): 탭 없는 한 장 — 왼쪽 큰 그림 | 오른쪽 기본 능력치 칸(2열) · 정보 줄 · 개인 시너지 / 아래 스킬 */
+.synHelp h3 .stars{font-size:13px; letter-spacing:0; color:#ffd66b;}
+.uhTop{display:flex; align-items:flex-start; gap:8px;}
+.uhFace{flex:0 0 104px; width:104px; height:104px; display:grid; place-items:center; font-size:56px; border-radius:8px; background:#06102a; border:1px solid #1f3e78;}
+.uhFace .icon{width:96px; height:96px; image-rendering:pixelated;} .uhFace .icon.leader{image-rendering:auto;}
+.uhInfo{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:4px;}
+.uhInfo .tags{display:flex; gap:4px; font-size:22px;}
+.uhStats,.uhRows{list-style:none; margin:0; padding:0;}
+.uhStats{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px;}
+.synHelp .uhStats li{display:flex; align-items:center; gap:3px; min-width:0; padding:3px 4px; font-size:13px; line-height:18px; white-space:nowrap; color:#fff;}
+.synHelp .uhStats li:first-child,.synHelp .uhStats li[title="상태 부여 확률"]{grid-column:1/-1;} /* HP 현재/최대 · 이름표가 긴 상태 부여 확률은 한 줄 전체 */
+.uhStats small{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:11px; color:#a9bcdc;} .uhStats .gi{font-size:16px;}
+.uhStats b{margin:0; font-variant-numeric:tabular-nums;}
+.synHelp .uhRows li{padding:0; border:0; background:none; font-size:13px; line-height:18px; color:#eef2fb;}
+.synHelp .uhSyn{font-size:12px;} .uhSyn .gi{font-size:16px;}
+.uhSkT{margin:2px 0 0; display:flex; align-items:center; gap:4px; font-size:14px; color:#ffd66b;} .uhSkT .gi{font-size:18px;}
+.uhSk{display:flex; flex-wrap:wrap; align-items:center; gap:4px;} .uhSk .stars{color:#ffd66b; font-size:11px; letter-spacing:0;}
+.uhChip{padding:1px 6px; border-radius:6px; font-size:12px; font-weight:bold; white-space:nowrap; color:#fff; background:#1b3a78;} .uhChip.cd{background:#7a2733;}
+.synHelp .uhSkills small{display:block; margin-top:2px; font-size:12px; line-height:1.35; color:#cfe0ff;}
 .tagMk{grid-area:ac; padding:1px 5px; font-style:normal; font-size:11px; font-weight:bold; line-height:1.3; color:#fff; background:#25395c; border-radius:6px; opacity:1 !important;}
 .tagMk.dead{background:#7a2733;}
 @media (max-width:360px){ .hudIco .sub,#app[data-screen="board"] #turnBar .hudIco .lb{font-size:12px; letter-spacing:-.3px;} #app[data-screen="board"] #turnBar .hudIco .gi{font-size:20px;} }

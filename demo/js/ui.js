@@ -872,6 +872,9 @@ function renderTurnBar(){
   }
   const sel=S.selected&&!S.selected.tray?S.selected:null;
   const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
+  /* #294 (2026-10-02 CJ REVISE): 내 차례에 고른 내 말의 [설명] — 상단에서 행동 줄 첫 줄로. 읽기 전용(전송 0)이라 mk 의 입력 잠금(정지 · 시한)을 타지 않는다. 보드 탭은 종전대로 선택 */
+  if(sel&&!aiTurn){ const v=NET.mode?NET.me:S.current, b=document.createElement("button"); b.type="button"; b.className="infoBtn"; b.setAttribute("aria-haspopup","dialog");
+    b.textContent=`${idLabel(v,sel)} · HP ${sel.hp}/${sel.maxHp} — 설명`; b.onclick=()=>unitHelpPiece(sel.id,b); tb.appendChild(b); }
   ico(mk("탐색",()=>netAction({t:"search"}),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))),"search","탐색"); // #20: 폭탄·함정은 탐색 실행 불가
   const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
   ico(mk(S.teleport?"텔레포트 취소":"🌀 텔레포트",()=>netAction({t:"tele"}),teleDis),S.teleport?"close":"warp",S.teleport?"취소":"텔레포트"); // #14 스왑형 · #114 경기당 횟수 제한 없음 (주 행동 1회 소모)
@@ -936,21 +939,11 @@ function renderSide(){
     return;
   }
   const p = NET.mode?NET.me:(S.mode==="pvp"?humanViewer():0); // 온라인: 사이드 패널은 항상 내 정보 · #236 핫시트 상점·B08 은 그 화면 주인
-  let h=`<h2>${pname(p)}</h2>
-  <div class="row">${S.pkgs?`<span class="badge">🎁 ${S.pkgs[p].itemGift}</span><span class="badge">✨ ${S.pkgs[p].battleBuff}</span>`:""}
-  <span class="badge">전투 ${S.battlesUsed}/2</span>
-  ${S.reserve[p]?`<span class="badge">예비 하수인(${ELEM_KO[S.reserve[p].element]}) HP ${S.reserve[p].hp}/${S.reserve[p].maxHp}</span>`:""}
-  <span class="badge">${S.mainUsed?"주 행동 완료":"주 행동 가능"}</span>${S.eco?`<span class="badge cnb" data-n="${S.eco.coins[p]}">🪙 ${S.eco.coins[p]}</span>`:""}</div>`;
-  /* #294 가방 창(서랍 윗부분): 카드 3칸(실제 가방 + 빈칸 '+' 장식 — 누를 수 없고 명령 없음) → 내 보유 아이템(실제 수량 · ×0 포함). 이 창에는 사용·교체·판매·구매가 없다 —
-     카드 그림 = 읽기 전용 설명. 선택 요약·안내·추측 메모는 그 아래 종전 그대로. 소유자 전용(7.9) */
-  h=(S.eco?`<div class="slotGrid bag" role="list" aria-label="가방 하수인 ${S.eco.bag[p].length}/${ECO.bagMax}">${[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; return u?unitCard(u,{attr:`role="listitem"`,info:`unitHelpBag(${u.uid},this)`}):EMPTY_SLOT; }).join("")}</div><h3>${gi("potion")} 아이템</h3>`:"")
-    +ownGridHtml(p)+h;
-  if(S.selected&&!S.selected.tray&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대가 선택한 말 정보(HP 등) 비노출
-    const s=S.selected;
-    h+=`<h2>선택: ${idLabel(p,s)}</h2><div class="status">HP ${s.hp}/${s.maxHp}${s.immobile>0?` · 이동 불가 ${s.immobile}턴`:""}${s.cap?` · 포획 하수인(${ELEM_KO[s.cap.element]}) HP ${s.cap.hp}/${s.cap.maxHp}`:""}${s.healing?` · 🌿회복 자세(턴마다 +${Math.round(s.maxHp*BAL.healPostPct)})`:""}</div>
-    ${s.skills?`<div class="status">${s.skills.map((id,i)=>skillNameKo(id,s.element)+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
-    <small>이동: 파란 칸 · 전투: 빨간 칸 클릭</small>`;
-  } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
+  /* #294 가방 창(서랍): 카드 3칸(실제 가방 + 빈칸 '+' 장식 — 누를 수 없고 명령 없음) → 내 보유 아이템(실제 수량 · ×0 포함). 이 창에는 사용·교체·판매·구매가 없다 —
+     카드 그림 = 읽기 전용 설명. 2026-10-02 CJ REVISE: 이름 · 패키지/전투/주 행동/코인 배지 · 선택 요약 · 기본 안내 문장은 없앴다(선택 말 값은 설명 창, 차례·코인·전투는 상단).
+     조건부 안내(텔레포트 · 도망 교환 · 강제 전투)와 추측 메모는 아이템 아래 종전 그대로. 소유자 전용(7.9) */
+  let h=(S.eco?`<div class="slotGrid bag" role="list" aria-label="가방 하수인 ${S.eco.bag[p].length}/${ECO.bagMax}">${[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; return u?unitCard(u,{attr:`role="listitem"`,info:`unitHelpBag(${u.uid},this)`}):EMPTY_SLOT; }).join("")}</div><h3>${gi("potion")} 아이템</h3>`:"")
+    +ownGridHtml(p);
   /* #131 (v0.4.7 CJ 2026-09-10): 텔레포트 2단계 안내 문구는 계약 문자열 그대로 쓴다.
      함정에 걸린 말(immobile>0)은 **양끝 어느 쪽으로도** 고를 수 없고 실행도 되지 않는다 (함정 유닛 자체를 막는 규칙이 아니다 —
      막히는 것은 "함정에 걸려 이동 불가 상태인 말"이다). 도망 교환·강제 밀기에는 이 제한을 확장하지 않는다. */
@@ -979,14 +972,12 @@ function renderBoardInfo(){
   if(!S||S.phase!=="play"){ el.innerHTML=""; return; }
   const p=NET.mode?NET.me:(S.mode==="pvp"?S.current:0);
   const mineTurn=!isAI(S.current)&&(!NET.mode||S.current===NET.me);
-  const sel=(S.selected&&!S.selected.tray&&mineTurn)?S.selected:null;
-  const who=isAI(S.current)?`🤖 ${pname(S.current)}`:mineTurn?"내 차례":"상대 차례";
-  const info=sel?`${idLabel(p,sel)} · HP ${sel.hp}/${sel.maxHp}`
-    :(!mineTurn?"상대가 행동을 선택하고 있습니다":(S.mainUsed?"주 행동 완료":"자기 말을 선택하세요"));
-  /* #294 메인 상단: ① 공용 신원 머리줄(준비 화면과 같은 부품) ② 도구 줄(차례 · 감정표현 자리 · ⚙) ③ 상태 네 칸(남은 시간 · 턴 · 내 코인 · 전투 n/2 — 전부 현행 값, 상대 코인 없음)
-     선택 요약과 [설명](보드 탭은 종전대로 선택·이동·전투)은 도구 줄 안 ④ 우측 내 시너지 열. 시간 칸은 비어도 자리를 지킨다 */
-  el.innerHTML=idHeadHtml(p)
-    +`<div class="hudTools"><span class="sel"><b class="who">${who}</b> · ${info}</span>${sel?`<button type="button" class="infoBtn" aria-haspopup="dialog" aria-label="${escAttr(idLabel(p,sel))} 설명" onclick="unitHelpPiece(${escAttr(JSON.stringify(sel.id))},this)">설명</button>`:""}${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(`<button type="button" class="danger" onclick="uiBack()">나가기 (기권 확인)</button>`)}</div>`
+  const who=isAI(S.current)?"AI 차례":mineTurn?"내 차례":"상대 차례";
+  const sel=(S.selected&&!S.selected.tray&&mineTurn)?S.selected:null; // 긴 안내 문장은 화면에서 빼고 차례 문구의 접근성 이름에만(종전 문자열 그대로)
+  const info=sel?`${idLabel(p,sel)} · HP ${sel.hp}/${sel.maxHp}`:(!mineTurn?"상대가 행동을 선택하고 있습니다":(S.mainUsed?"주 행동 완료":"자기 말을 선택하세요"));
+  /* #294 (2026-10-02 CJ REVISE) 메인 상단: ① 공용 상단 한 줄(준비 화면과 같은 부품) — 왼쪽 절반 신원, 오른쪽 절반 짧은 차례 문구 · 감정표현 자리 · ⚙
+     ② 상태 네 칸(남은 시간 · 턴 · 내 코인 · 전투 n/2 — 전부 현행 값, 상대 코인 없음) ③ 우측 내 시너지 열. 선택 말 [설명]은 행동 줄(renderTurnBar)로 갔다. 시간 칸은 비어도 자리를 지킨다 */
+  el.innerHTML=topBarHtml(p,`<b class="who" aria-label="${escAttr(who+" · "+info)}">${who}</b>${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(`<button type="button" class="danger" onclick="uiBack()">나가기 (기권 확인)</button>`)}`)
     +`<div class="hudStats"><span class="hudStat time" title="남은 시간"><small>시간</small><span id="actClock" role="timer">${turnClockText("act")}</span></span>`
     +`<span class="hudStat" aria-label="${S.turnCount+1}턴"><small>턴</small><span>${gi("refresh")}${S.turnCount+1}${isBurning()?" 🔥":""}</span></span>`
     +(S.eco?`<span class="hudStat coin" aria-label="재화 ${S.eco.coins[p]}"><small>코인</small><span>${gi("coin")}${S.eco.coins[p]}</span></span>`:"")
@@ -995,8 +986,9 @@ function renderBoardInfo(){
 }
 /* ===== #294 공용 신원 부품 — 준비(상점 · 배치 · 완료)와 메인이 같은 함수 · 같은 마크업 =====
    보는 사람 기준: 왼쪽 = 나, 오른쪽 = 상대(좌석 번호로 색을 정하지 않는다). 온라인 이름·대표는 서버가 준 NET.players · NET.reps(network.js 가 규칙 검사)만 —
-   대표가 없으면 중립 아이콘 + 회색 테두리(lobbyRepHtml 은 모르는 ID 를 기본 종으로 그리므로 부르지 않는다), 이름이 없으면 나/상대만.
-   오프라인은 계정 대표가 없다 — 중립 아이콘 + pname(). 왕·동료 그림 · 좌석 토큰 · 내부 ID 로 대신하지 않는다 */
+   대표가 없으면 중립 아이콘(lobbyRepHtml 은 모르는 ID 를 기본 종으로 그리므로 부르지 않는다), 이름이 없으면 나/상대만.
+   오프라인은 계정 대표가 없다 — 중립 아이콘 + pname(). 왕·동료 그림 · 좌석 토큰 · 내부 ID 로 대신하지 않는다.
+   2026-10-02 CJ REVISE: 테두리는 대표가 없어도 **항상** 내 파랑 / 상대 빨강(신원 칸 · 표식 창 · 진행 표식 공통). 이름 자리는 한 줄(닉네임, 없으면 나/상대) — 전체 이름은 접근성 이름과 표식 창 */
 function idSeat(rel,p){
   const on=NET.publicMode||NET.mode, seat=on?(rel?1-NET.me:NET.me):(rel?1-p:p);
   return {lb:rel?"상대":"나",nm:on?(NET.players&&NET.players[seat])||null:pname(seat),rep:on&&NET.reps&&lobbyRepOk(NET.reps[seat])?NET.reps[seat]:null};
@@ -1004,13 +996,15 @@ function idSeat(rel,p){
 function idFaceHtml(rep,cls){ return rep?lobbyRepHtml(rep,cls):`<span class="repFace ${cls} nt">${gi("profile")}</span>`; }
 function idHeadHtml(p){
   const one=rel=>{ const d=idSeat(rel,p);
-    return `<button type="button" class="idSeat ${d.rep?(rel?"op":"me"):"nt"}" aria-haspopup="dialog" aria-label="${escAttr(d.lb+(d.nm?" · "+d.nm:""))} — 프로필 보기" onclick="idHelp(${rel},${p},this)">${idFaceHtml(d.rep,"xs")}<span class="idNm"><small>${d.lb}</small>${d.nm?`<b>${escAttr(d.nm)}</b>`:""}</span></button>`; };
+    return `<button type="button" class="idSeat ${rel?"op":"me"}" aria-haspopup="dialog" aria-label="${escAttr(d.lb+(d.nm?" · "+d.nm:""))} — 프로필 보기" onclick="idHelp(${rel},${p},this)">${idFaceHtml(d.rep,"xs")}<b class="idNm">${escAttr(d.nm||d.lb)}</b></button>`; };
   return `<div class="idHead">${one(0)}<small class="idVs" aria-hidden="true">VS</small>${one(1)}</div>`;
 }
+/* 공용 상단 한 줄 — 왼쪽 절반 = 신원(나 VS 상대), 오른쪽 절반 = 그 화면의 도구(준비: 시계 · 코인 · ⚙ / 메인: 차례 · 감정표현 자리 · ⚙). 따로 떨어진 신원 줄 · 도구 줄은 없다 */
+function topBarHtml(p,tools){ return `<div class="topBar">${idHeadHtml(p)}<div class="tbTools">${tools}</div></div>`; }
 /* 신원 표식 — 대표 그림 + 나/상대 + 전체 이름뿐(읽기 전용 · 전송 0). 값은 누르는 순간의 NET 에서 읽는다 — 이전 경기 값을 들고 있지 않는다 */
 function idHelp(rel,p,from){ const d=idSeat(rel,p);
   synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${d.lb}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
-    <div class="idCard ${d.rep?(rel?"op":"me"):"nt"}">${idFaceHtml(d.rep,"sm")}<b>${escAttr(d.nm||d.lb)}</b></div>`,from); }
+    <div class="idCard ${rel?"op":"me"}">${idFaceHtml(d.rep,"sm")}<b>${escAttr(d.nm||d.lb)}</b></div>`,from); }
 /* ⚙ 설정 — 그 화면의 기존 나가기 진입점(동작 · 확인 창 불변) + 사운드 · 환경설정 자리(비활성 · 동작/저장 없음) */
 function gearHtml(leave){ return `<details class="flowGear"><summary aria-label="설정">${gi("gear")}</summary><div class="menu"><b>설정</b>${leave}<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공</button></div></details>`; }
 function renderSetup(sp){
@@ -1475,19 +1469,33 @@ if(typeof document!=="undefined"&&document.addEventListener) document.addEventLi
 function synNote(from){ synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${gi("crown")} 전설 개인 시너지</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div><p>${escAttr(from.getAttribute("title"))}</p>`,from); }
 /* ===== #294 하수인 · 스킬 설명 창 — 읽기 전용(전송 · seq · 시계 · 선택 무변경). 안내 창 틀(synHelpOpen) 한 장을 쓴다 =====
    창은 아래 세 진입점이 **허용 필드만으로 만든 표시용 묶음**(d)만 받는다 — 말 객체를 그대로 넘기지 않는다(오프라인은 기기에 상대 말 전체 값이 있다).
-   d = {nm, face, rows:[글자], skills:[[이름, 설명, 남은 쿨]] | null}. skills 가 null 이면 스킬 탭 자체가 없다(공개된 상대 말) */
+   2026-10-02 CJ REVISE(스케치 4): 탭 없는 한 장 — 머리줄(이름 ★등급 · ✕) / 왼쪽 큰 그림 + 오른쪽 기본 능력치 칸 · 정보 줄 · 개인 시너지 / 아래 스킬(이름 · 위력 · 쿨타임 칸 + 짧은 설명).
+   d = {nm, g, face, tags:왕국·아키타입 아이콘 | 없음, stats:[[아이콘, 이름, 값]] | null, rows:[글자], syn:글자 | null, skills:[{nm,star,pct,cd,once,left,desc}] | null}.
+   stats · syn · skills 가 null 이면 그 구역 자체가 없다(공개된 상대 말 · 폭탄 · 함정). 값이 없는 칸은 만들지 않는다 — 지어낸 수치 없음 */
 function unitHelpOpen(d,from,pid){
-  const sk=d.skills&&d.skills.length;
-  synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${escAttr(d.nm)}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>`
-    +(sk?`<div class="uhTabs" role="group" aria-label="설명 보기"><button type="button" aria-pressed="true" onclick="unitTab(0)">하수인</button><button type="button" aria-pressed="false" onclick="unitTab(1)">스킬</button></div>`:"")
-    +`<div class="uhPane"><span class="uhFace">${d.face}</span><ul>${d.rows.filter(Boolean).map(r=>`<li>${r}</li>`).join("")}</ul></div>`
-    +(sk?`<ol class="uhPane" hidden>${d.skills.map(x=>`<li><b>${x[0]}</b> ${x[1]||""}${x[2]?` <small>남은 쿨타임 ${x[2]}</small>`:""}</li>`).join("")}</ol>`:""),from);
+  const chip=(lb,v,ic)=>`<span class="uhChip" role="img" aria-label="${escAttr(lb+" "+v)}">${ic} ${v}</span>`;
+  synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${escAttr(d.nm)}${d.g?` <span class="stars" aria-label="등급 ${d.g}">${"★".repeat(d.g)}</span>`:""}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>`
+    +`<div class="uhTop"><span class="uhFace">${d.face}</span><div class="uhInfo">${d.tags||""}`
+    +(d.stats&&d.stats.length?`<ul class="uhStats" aria-label="기본 능력치">${d.stats.map(s=>`<li aria-label="${escAttr(s[1]+" "+s[2])}" title="${escAttr(s[1])}"><span aria-hidden="true">${s[0]}</span><small aria-hidden="true">${s[1]}</small><b aria-hidden="true">${s[2]}</b></li>`).join("")}</ul>`:"")
+    +`<ul class="uhRows">${d.rows.filter(Boolean).map(r=>`<li>${r}</li>`).join("")}</ul>`
+    +(d.syn?`<p class="uhSyn">${gi("crown")} ${escAttr(d.syn)}</p>`:"")+`</div></div>`
+    +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4><ol class="uhSkills">${d.skills.map(x=>`<li><span class="uhSk"><b>${x.nm}</b>`
+      +(x.star?`<span class="stars" aria-label="등급 ${x.star}부터">${"★".repeat(x.star)}</span>`:"")+(x.pct?chip("위력",x.pct+"%","💪🏻"):"")
+      +(x.once?`<span class="uhChip">전투당 1회</span>`:x.cd===null?"":chip("쿨타임",x.cd,"⌛"))+(x.left?`<span class="uhChip cd">남은 쿨타임 ${x.left}</span>`:"")
+      +`</span>${x.desc?`<small>${x.desc}</small>`:""}</li>`).join("")}</ol>`:""),from);
   SYNHELP.pid=pid===undefined?null:pid;
 }
-function unitTab(i){ const d=SYNHELP.el; if(!d) return;
-  [...d.querySelectorAll(".uhTabs button")].forEach((b,j)=>b.setAttribute("aria-pressed",String(i===j)));
-  [...d.querySelectorAll(".uhPane")].forEach((x,j)=>{ if(i===j) x.removeAttribute("hidden"); else x.setAttribute("hidden",""); }); }
-function unitSkillRows(ids,el,cds){ return (ids||[]).filter(id=>SKILLS[id]).map((id,i)=>[skillNameKo(id,el),SKILLS[id].desc||"",cds&&cds[i]||0]); }
+/* 기본 능력치 칸 — u 에 실제로 있는 숫자만(전투 엔진이 쓰는 필드 그대로: data.js applyArchStats · applyFixedStats). HP · 공격력은 등급 성장분 포함, 시너지 · 전투 중 버프는 넣지 않는다.
+   이름표는 SYN_STAT_KO. 상태 부여 확률은 0 이면 칸이 없다. 명중 스탯은 이 게임에 없다 — 칸을 만들지 않는다. max = 진열 칸(개체가 없어 최대 HP 만) */
+function unitStatChips(u,max){ const pc=v=>Math.round(v*100)+"%", lb=k=>SYN_STAT_KO[k][0];
+  return [[gi("heal"),"HP",max?u.maxHp:`${u.hp}/${u.maxHp}`]].concat(/** @type {any[][]} */([["atk",gi("atk")],["def",gi("def")],["spd",gi("swift")],["dodge","💨",pc],["crit","🎯",pc],["statusPct","💫",v=>`+${pc(v)}p`]])
+    .filter(s=>typeof u[s[0]]==="number"&&(s[0]!=="statusPct"||u.statusPct>0)).map(s=>[s[1],lb(s[0]),s[2]?s[2](u[s[0]]):u[s[0]]])); }
+/* 스킬 줄 — SKILLS 표 그대로: 위력 = pct(v2 스킬만 · 옛 pow 는 파생값이라 쓰지 않는다) · 쿨타임 = cd · 전투당 1회 = once · 남은 쿨 = 그 개체의 cds.
+   ★n = 종 스킬표(V2_SPECIES)에서의 순서 = 그 스킬이 열리는 등급(speciesSkills). 전설 · 왕 · 동료 스킬은 그런 뜻이 없어 붙이지 않는다.
+   글은 desc 원문 그대로(줄여 쓰지 않는다) — 위력 · 쿨 칸으로 뜻이 다 전해지는 기본기에만 붙이지 않는다 */
+function unitSkillRows(ids,el,cds,key){ const sp=V2_SPECIES[key]||[];
+  return (ids||[]).map((id,i)=>{ const sk=SKILLS[id]; return sk?{nm:skillNameKo(id,el),star:sp.indexOf(id)+1,pct:sk.v2&&sk.pct||0,cd:sk.reaper||typeof sk.cd!=="number"?null:sk.cd,once:!!sk.once,left:cds&&cds[i]||0,
+    desc:sk.kind==="basic"?"":sk.desc||""}:null; }).filter(Boolean); }
 /* 보드 말 — 내 말은 전부, 상대 말은 **정체가 공개되고 지금 보이는 것만** 서버가 이미 싣는 값(이름 · 종류 · 그림 · 왕국 · 등급 · HP · 이동 불가 · 교체 표식)으로.
    미공개 ? 말 · 안 보이는 말 · 죽은 상대 말은 창이 없다(그 말의 어떤 값도 마크업에 넣지 않는다) */
 /* 폭탄 · 함정 한 줄 설명 — 기존 안내(ui-overlays.js TUT_PAGES '폭탄과 함정')의 이동 문장 그대로. 새 규칙 문구가 아니다(회귀가 두 곳의 일치를 본다) */
@@ -1497,23 +1505,31 @@ function unitHelpPiece(id,from){
   const own=x.owner===v; if(!own&&!(x.revealed&&x.alive&&x.placed&&visibleTo(v,x))) return;
   const m=pcMeta(x), unit=m.unit, nm=x.type==="minion"&&x.name?x.name:x.type==="ally"&&allyRole(x)?leadNm(x):TYPE_KO[x.type];
   const el=m.eco?m.elKo:x.element?ELEM_KO[x.element]:"";
-  const rows=[!unit?TYPE_KO[x.type]:"",UNIT_NOTE[x.type]||"",m.g?`등급 ${m.g}`:"",el?`왕국 ${el}`:"",m.trKo&&x.type==="minion"?`아키타입 ${m.trKo}`:m.trKo,
-    unit?`HP ${x.hp}/${x.maxHp}`:"",x.alive===false?"사망":"",x.immobile>0?`이동 불가 ${x.immobile}턴`:"",
-    own&&x.healing?"회복 자세":"",!own&&x.swapMark?"상점에서 교체됨":"",own?"":"상대 말 — 공개된 정보만 표시"];
-  unitHelpOpen({nm,face:pcFaceHtml(x),rows,skills:own&&unit?unitSkillRows(x.skills,x.element,x.cds):null},from,x.id);
+  /* 내 말: HP 는 능력치 칸 · 회복 자세/포획 하수인은 종전 가방 서랍의 선택 요약에서 옮겨 왔다. 상대 말(공개): 종전 허용 줄 그대로 — 능력치 칸 · 시너지 · 스킬 없음(오프라인 포함) */
+  const tx=[el?`왕국 ${el}`:"",m.trKo&&x.type==="minion"?`아키타입 ${m.trKo}`:m.trKo], tg=tx.filter(Boolean).join(" · ");
+  const tags=own&&unit&&m.eco&&tg?`<span class="tags" role="img" aria-label="${tg}" title="${tg}">${m.el?gi(m.el):""}${m.tr?gi(m.tr):""}</span>`:"";
+  const rows=[!unit?TYPE_KO[x.type]:"",UNIT_NOTE[x.type]||"",!own&&m.g?`등급 ${m.g}`:"",tags?"":tx[0],tags?"":tx[1],
+    unit&&!own?`HP ${x.hp}/${x.maxHp}`:"",x.alive===false?"사망":"",x.immobile>0?`이동 불가 ${x.immobile}턴`:"",
+    own&&x.healing?`🌿회복 자세(턴마다 +${Math.round(x.maxHp*BAL.healPostPct)})`:"",own&&x.cap?`포획 하수인(${ELEM_KO[x.cap.element]}) HP ${x.cap.hp}/${x.cap.maxHp}`:"",
+    !own&&x.swapMark?"상점에서 교체됨":"",own?"":"상대 말 — 공개된 정보만 표시"];
+  const L=own&&x.type==="minion"?LEGEND_ROSTER.find(l=>l.key===x.legend||(!!x.rosterId&&l.id===x.rosterId)):null, lg=L&&S.eco?synExtraView(v,S).legends.find(l=>l.legend===L.key):null;
+  unitHelpOpen({nm,g:m.g,face:pcFaceHtml(x),tags,rows,stats:own&&unit?unitStatChips(x):null,syn:lg?legendSynText(lg):null,
+    skills:own&&unit?unitSkillRows(x.skills,x.element,x.cds,x.rosterId):null},from,x.id);
 }
 /* 내 가방 하수인 · 상점 진열 칸(진열 종 + 진열 등급 — 종 표에서 읽는다). 둘 다 지금 화면 주인의 것만 찾는다 */
 function unitHelpBag(uid,from){
   const v=humanViewer(), u=S&&S.eco&&S.eco.bag[v]?S.eco.bag[v].find(y=>y.uid===uid):null; if(!u) return;
   const key=ecoKey(u), g=unitGrade(key,u.grade), L=LEGEND_ROSTER.find(l=>l.id===key);
-  unitHelpOpen({nm:u.name||unitName(key),face:unitIco(key),rows:[`등급 ${g}`,unitTagText(key),`HP ${u.hp}/${u.maxHp}`,"가방"],
-    skills:unitSkillRows(u.skills||(L?L.skills:speciesSkills(key,g)),u.element,u.cds)},from);
+  unitHelpOpen({nm:u.name||unitName(key),g,face:unitIco(key),tags:unitTags(key),rows:["가방"],stats:unitStatChips(u),syn:null, // 가방 전설은 개인 효과가 없다(synExtraView)
+    skills:unitSkillRows(u.skills||(L?L.skills:speciesSkills(key,g)),u.element,u.cds,key)},from);
 }
+/* 진열 칸은 개체가 아직 없다 — 구매 때 Core 가 쓰는 같은 주입 함수(applySpecies · applyLegend)로 그 종 · 그 등급의 값을 읽는다(표를 따로 베끼지 않는다) */
 function unitHelpSlot(i,from){
   const v=humanViewer(), sh=S&&S.eco?S.eco.shop:null, s=sh&&sh.slots[v]?sh.slots[v][i]:null; if(!s) return;
-  const g=unitGrade(s.key,s.grade), hp=unitHp(s.key,g), L=LEGEND_ROSTER.find(l=>l.id===s.key), r=ROSTER.find(x=>x.id===s.key);
-  unitHelpOpen({nm:unitName(s.key),face:unitIco(s.key),rows:[`등급 ${g}`,unitTagText(s.key),hp===null?"":`HP ${hp}`,`가격 🪙${ecoPrice(s.grade)}`],
-    skills:unitSkillRows(L?L.skills:speciesSkills(s.key,g),r?r.element:null,null)},from);
+  const g=unitGrade(s.key,s.grade), L=LEGEND_ROSTER.find(l=>l.id===s.key), r=ROSTER.find(x=>x.id===s.key), u=/** @type {any} */({});
+  if(L) applyLegend(u,L.key); else if(r) applySpecies(u,r,g);
+  unitHelpOpen({nm:unitName(s.key),g,face:unitIco(s.key),tags:unitTags(s.key),rows:[`가격 🪙${ecoPrice(s.grade)}`],stats:u.maxHp?unitStatChips(u,true):null,syn:null,
+    skills:unitSkillRows(u.skills,u.element,null,s.key)},from);
 }
 /* 열린 설명 창의 대상 말이 죽거나 안 보이게 되면 닫는다 — 낡은 내용을 남기지 않는다(render 마다 한 번) */
 function unitHelpSync(){ const id=SYNHELP.pid; if(id===null||!SYNHELP.el) return;
@@ -2168,18 +2184,19 @@ function synRailHtml(p){ const start=S.phase==="setup"; if(start&&!S.eco.shop) r
 /* #293 (2026-10-01 CJ 7) 덧붙임 칩 — 시너지 열과 경기 중 시너지 줄이 같이 쓴다. 값은 Core synExtraView 그대로(새 효과·수치 없음):
    전설 개인 시너지는 필드에 살아 있는 내 전설의 효과가 실제로 0 보다 클 때만(가방 전설은 개인 효과가 없어 칩도 없다) · 왕·동료(왕관) 칩은 항상, 0명은 미달 표시 */
 function synCrownTitle(d){ return `죽은 동료 ${d}/2 · ${d>=2?`${SKILLS["LD-REVENGE"].ko} · ${SKILLS["LD-WRATH"].ko}`:d===1?`${SKILLS["LD-REVENGE"].ko} · 2명이면 ${SKILLS["LD-WRATH"].ko}`:`미달 · 1명이면 ${SKILLS["LD-REVENGE"].ko}`}`; }
+/* 전설 개인 시너지 문구 — 열의 전설 칩과 설명 창이 같은 문장을 쓴다(값은 synExtraView 그대로) */
+function legendSynText(l){ const pc=x=>Math.round(x*100)+"%"; return `${l.name} 개인 시너지 — `+(l.legend==="dragon"?`${ELEM_KO[l.el]} 왕국 효과: ${synTierText(l.el,l.fx)}`:l.legend==="witch"?`상태 부여 확률 +${pc(l.v)}`:`공격 +${pc(l.v)}`); }
 function synExtraChips(p){
   const v=synExtraView(p,S), pc=x=>Math.round(x*100)+"%";
-  return [synChipHtml("crown",v.deadAllies,v.deadAllies>=1,synCrownTitle(v.deadAllies),synTier("crown",v.deadAllies))].concat(v.legends.map(l=>{ const t=`${l.name} 개인 시너지 — `+(l.legend==="dragon"?`${ELEM_KO[l.el]} 왕국 효과: ${synTierText(l.el,l.fx)}`:l.legend==="witch"?`상태 부여 확률 +${pc(l.v)}`:`공격 +${pc(l.v)}`);
+  return [synChipHtml("crown",v.deadAllies,v.deadAllies>=1,synCrownTitle(v.deadAllies),synTier("crown",v.deadAllies))].concat(v.legends.map(l=>{ const t=legendSynText(l);
     const call=`synNote(this)`; // #294: 누르면 같은 안내 창에 이름 · 효과 문구(title 그대로)
     return `<span class="synChip on lg" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${t}" title="${t}" onclick="${call}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${call};}">${gi("crown")}<b>${l.legend==="dragon"?gi(l.el):"+"+pc(l.v)}</b></span>`; })); // #294 Saturn REVISE: 계약 5 순서 = 왕국 → 아키타입 → 왕관 → 활성 전설
 }
 function flowHeadHtml(p,btn){
   const pub=NET.publicMode, seats=pub?[NET.me,1-NET.me]:[p,1-p];
   const nm=i=>escAttr(pub&&NET.players&&NET.players[seats[i]]||pname(seats[i]));
-  /* #294: 진행 표식 = 같은 대표 그림 20px + 나/상대. 대표가 없으면 종전 글자 표식 그대로 */
-  const mk=i=>{ const d=idSeat(i,p); return d.rep?lobbyRepHtml(d.rep,"xs")+d.lb
-    :escAttr(pub&&NET.players&&NET.players[seats[i]]?Array.from(String(NET.players[seats[i]]))[0]:S.mode==="pvp"?"P"+(seats[i]+1):i?"상대":"나"); };
+  /* #294 (2026-10-02 CJ REVISE): 진행 표식 = 상단과 같은 대표 얼굴뿐(없으면 같은 중립 아이콘) · 파랑/빨강 테두리. P1/P2 · 첫 글자 · 나/상대 글자는 보이지 않는다(누구인지는 목록의 접근성 이름) */
+  const mk=i=>idFaceHtml(idSeat(i,p).rep,"xs");
   /* #293 (2026-10-01 CJ 2): 두 좌석 표식을 막대 위 실제 단계에 올린다. 온라인은 서버 seats.step("shop"|"place"|"done")만 읽는다 —
      없으면(구 서버) 내 단계는 내 좌석 뷰, 상대는 확정된 준비 완료(03)만. 오프라인은 이 기기가 아는 실제 진행 상태. 떨어진 상대 상자는 없앴다 */
   const local=q=>S.eco.shop&&!S.eco.shop.done[q]?0:S.pieces.some(x=>x.owner===q&&!x.placed)||(q===S.setupPlayer&&!isAI(q))?1:2;
@@ -2188,9 +2205,9 @@ function flowHeadHtml(p,btn){
   const op=!pub?local(1-p):NET.roomState==="OPEN"?-1:srv(1-NET.me)>=0?srv(1-NET.me):NET.peerReady?2:-1;
   const STEP=["상점","배치","완료"];
   const clock=`<span class="badge clk" id="prepClock" role="timer">${turnClockText("prep")}</span>`; // 공통 180초 — 준비 완료 뒤에도 계속 보인다
-  return `<header class="flowHead"><div class="flowTop">${idHeadHtml(p)}${clock}`
+  return `<header class="flowHead">`+topBarHtml(p,clock
     +`<span class="badge coin" aria-label="재화 ${S.eco.coins[p]}">${gi("coin","cn")} ${S.eco.coins[p]}</span>`
-    +gearHtml(uiPubPrestart()?`<button type="button" class="danger" onclick="uiLeaveConfirm()">방 나가기</button>`:`<button type="button" class="danger" onclick="uiBack()">로비로 돌아가기</button>`)+`</div>`
+    +gearHtml(uiPubPrestart()?`<button type="button" class="danger" onclick="uiLeaveConfirm()">방 나가기</button>`:`<button type="button" class="danger" onclick="uiBack()">로비로 돌아가기</button>`))
     +`<div class="flowBar">`
     +`<ol class="flowSteps" aria-label="진행 단계 — ${nm(0)}: ${STEP[my]}${op>=0?` · ${nm(1)}: ${STEP[op]}`:""}">${STEP.map((t,i)=>`<li${i===my?` class="cur" aria-current="step"`:i<my?` class="past"`:""}><span class="mks" aria-hidden="true">${i===my?`<span class="mk me">${mk(0)}</span>`:""}${i===op?`<span class="mk op">${mk(1)}</span>`:""}</span><span><b>0${i+1}</b> ${t}</span></li>`).join("")}</ol>${btn}</div>`
     +synRailHtml(p)+`</header>`;
