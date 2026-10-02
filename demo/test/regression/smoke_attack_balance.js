@@ -149,7 +149,10 @@ function setupDuel(T,aId,dId){
   const box=T.els.overlayBox.innerHTML;
   const pw=(f,i)=>T.dmgRange(T.slotPow(f,T.SKILLS[f.skills[i]]));
   ok(pw(T.S.battle.fa,0)==="24~36"&&pw(T.S.battle.fa,1)==="34~52"&&pw(T.S.battle.fa,3)==="36~54","D1 공격형(불) Core 위력 파생값 화염탄 24~36 · 폭염 강타 34~52 · 결정타 36~54 (변경 전 25~37 · 36~54 · 42~62)");
-  ok(/화염탄<\/button>/.test(box)&&/폭염 강타<\/button>/.test(box)&&!/\d+~\d+/.test(box)&&!/위력 \?/.test(box),"D2 #296 전투 화면에는 계산한 위력/피해 범위가 없다(이름 + 고정 설명만)");
+  // #296 REVISE1: 싸우기 = 하수인 정보 창과 같은 줄(ol.uhSkills > li > button > span.uhSk 이름 + small 고정 설명)
+  const rows=[...box.matchAll(/<li><button [^>]*onclick="window\.__act\((\d)\)"><span class="uhSk"><b>([^<]+)<\/b>[\s\S]*?<\/span><small>([^<]*)<\/small><\/button><\/li>/g)].map(m=>[+m[1],m[2],m[3]]);
+  const sk=T.S.battle.fa.skills;
+  ok(rows.length===4&&rows[0][1]==="화염탄"&&rows[1][1]==="폭염 강타"&&rows.every(([i,,d])=>d===T.SKILLS[sk[i]].desc)&&!/\d+~\d+/.test(box)&&!/위력 \?/.test(box),"D2 #296 전투 화면에는 계산한 위력/피해 범위가 없다(이름 + 고정 설명만)");
   ok(/집중/.test(box)&&/title="사용 후 다음 피격 피해 \+15%"/.test(box),"D3 보조기 집중 · 결정타 설명 문구 불변");
   /* #146 (v0.4.7 CJ 2026-09-10): 전 슬롯 불가 시의 기본 공격 폴백이 철회됐다 — 4슬롯 전투원에게는 그 버튼이 나오지 않는다.
      #95 의 수치 계약(공격형 atk 25 → 20~30)은 그대로이므로, 기본 공격을 실제로 갖는 **왕·동료 본체 경로**로 그 표기를 계속 고정한다. */
