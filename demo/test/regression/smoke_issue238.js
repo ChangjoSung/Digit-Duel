@@ -135,9 +135,14 @@ function pvePlay(seed){ const T=pveSetup(seed);
     const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive), slot=()=>{ T.ui238.renderBoardInfo(); const b=T.byId("boardInfo").innerHTML; return (b.split('<div class="sideCol">')[1]||"").match(/<button type="button" class="infoBtn"[^>]*>[^<]*<\/button>/); };
     S.selected=m; T.renderTurnBar(); const on=slot(), n0=T.wsLog.length, call=on&&(on[0].match(/onclick="([^"]+)"/)||[])[1];
     const okBtn=!!on&&/>하수인 정보<\/button>$/.test(on[0])&&!/ disabled/.test(on[0])&&/HP \d+\/\d+/.test(on[0])&&!kids().some(k=>/\binfoBtn\b/.test(k.className||""));
-    if(call) Function("unitHelpPiece",call.replace(/&quot;/g,'"').replace("this","null"))(T.ui238.unitHelpPiece);
-    ok(okBtn&&!!T.ui238.SYNHELP.el&&S.selected===m&&T.wsLog.length===n0,"C4d 고른 내 말 → 시너지 열 아래 [하수인 정보] 켜짐(행동 줄에는 없음) → 설명 창 · 선택 유지 · 송신 0");
-    T.ui238.synHelpClose(false); S.selected=null; T.renderTurnBar(); const off=slot();
+    const press=()=>{ if(call) Function("infoSlotOpen",call.replace(/&quot;/g,'"').replace("this","null"))(T.ui238.infoSlotOpen); const o=!!T.ui238.SYNHELP.el; T.ui238.synHelpClose(false); return o; };
+    ok(okBtn&&press()&&S.selected===m&&T.wsLog.length===n0,"C4d 고른 내 말 → 시너지 열 아래 [하수인 정보] 켜짐(행동 줄에는 없음) → 설명 창 · 선택 유지 · 송신 0");
+    /* #296 Saturn 재현: 재생 중에는 칸이 꺼진 채 그려지고, 켜진 채 그려 둔 오래된 버튼을 눌러도(재생 · 열린 창 · 선택 변경) 설명 창이 열리지 않는다 */
+    T.NET.replaying=true; const rp=slot(), rpPress=press(); T.NET.replaying=false;
+    T.MEMO_UI.overlayOpen=true; const ovPress=press(); T.MEMO_UI.overlayOpen=false;
+    S.selected=null; const selPress=press(); S.selected=m; const back=press();
+    ok(!!rp&&/ disabled /.test(rp[0])&&!/onclick/.test(rp[0])&&!rpPress&&!ovPress&&!selPress&&back&&T.wsLog.length===n0,"C4d2 재생 중 칸 꺼짐 · 오래된 켜진 버튼은 재생/열린 창/선택 해제 때 무반응(전송 0) — 조건이 돌아오면 다시 열린다");
+    S.selected=null; T.renderTurnBar(); const off=slot();
     ok(!!off&&/ disabled /.test(off[0])&&/>하수인 정보<\/button>$/.test(off[0])&&!/onclick/.test(off[0]),"C4e 고른 말이 없어도 같은 자리 · 같은 글자 칸이 꺼진 채 남는다(말판 규격 불변)");
     const nm=S.pieces.find(x=>x.owner===0&&x.type!=="minion"&&x.alive); S.selected=nm||null; const oth=slot();
     ok(!!nm&&!!oth&&/ disabled /.test(oth[0])&&oth[0]===off[0],"C4f 하수인이 아닌 내 말을 골라도 칸은 꺼진 같은 마크업(PD 확정: 살아 있는 내 하수인만)"); S.selected=null; }

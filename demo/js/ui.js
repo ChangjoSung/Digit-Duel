@@ -977,8 +977,12 @@ function renderBoardInfo(){
 }
 /* #296 CJ REVISE1(2026-10-03): 우측 시너지 열 아래 **늘 같은 자리 · 같은 크기 · 같은 글자**('하수인 정보')의 버튼. 내 차례에 고른 살아 있는 내 **하수인**일 때만 켜지고(읽기 전용 · 전송 0 — unitHelpPiece · PD 확정),
    그 밖에는 꺼진 채 자리를 지킨다. 상대 차례의 내 말 탭은 종전대로 바로 설명 창(ownInfoTarget). 종 이름 · HP 는 접근성 이름에만 */
-function infoSlotHtml(p,mineTurn){ const s=mineTurn&&S.selected&&!S.selected.tray?S.selected:null, own=s&&s.owner===p&&s.type==="minion"&&s.alive!==false?s:null;
-  return `<button type="button" class="infoBtn" aria-haspopup="dialog" ${own?`aria-label="${escAttr(`${idLabel(p,own)} · HP ${own.hp}/${own.maxHp} — 정보`)}" onclick="unitHelpPiece(${escAttr(JSON.stringify(String(own.id)))},this)"`:`disabled aria-label="하수인 정보 — 내 차례에 내 하수인을 고르면 열립니다"`}>하수인 정보</button>`; }
+function infoSlotOwn(p,mineTurn){ const s=!infoLocked()&&mineTurn&&S.selected&&!S.selected.tray?S.selected:null; return s&&s.owner===p&&s.type==="minion"&&s.alive!==false?s:null; }
+function infoSlotHtml(p,mineTurn){ const own=infoSlotOwn(p,mineTurn);
+  return `<button type="button" class="infoBtn" aria-haspopup="dialog" ${own?`aria-label="${escAttr(`${idLabel(p,own)} · HP ${own.hp}/${own.maxHp} — 정보`)}" onclick="infoSlotOpen(${escAttr(JSON.stringify(String(own.id)))},this)"`:`disabled aria-label="하수인 정보 — 내 차례에 내 하수인을 고르면 열립니다"`}>하수인 정보</button>`; }
+/* 누른 순간 다시 판정 — 그려 둔 뒤 재생 · 연출 · 창 · 선택 변경이 있었으면(오래된 DOM) 아무 일도 없다. 읽기 전용 · 전송 0 */
+function infoSlotOpen(id,from){ if(!S) return; const own=infoSlotOwn(NET.mode?NET.me:(S.mode==="pvp"?S.current:0),!isAI(S.current)&&(!NET.mode||S.current===NET.me));
+  if(own&&String(own.id)===String(id)) unitHelpPiece(own.id,from); }
 /* ===== #294 공용 신원 부품 — 준비(상점 · 배치 · 완료)와 메인이 같은 함수 · 같은 마크업 =====
    보는 사람 기준: 왼쪽 = 나, 오른쪽 = 상대(좌석 번호로 색을 정하지 않는다). 온라인 이름·대표는 서버가 준 NET.players · NET.reps(network.js 가 규칙 검사)만 —
    대표가 없으면 중립 아이콘(lobbyRepHtml 은 모르는 ID 를 기본 종으로 그리므로 부르지 않는다), 이름이 없으면 나/상대만.

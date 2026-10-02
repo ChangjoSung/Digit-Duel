@@ -96,8 +96,9 @@ function memoClickTarget(r,c){
 }
 /* #294 상대 차례(온라인 · PVE 의 AI 차례)에 내 말을 누르면 읽기 전용 설명 창 — 종전에는 아무 일도 없던 탭이다(전송 · 선택 · seq 0).
    내 차례의 내 말 탭은 종전대로 선택이고(설명은 선택 요약의 [설명] 버튼), 도망 교환 · 전투 · 연출 잠금 · 열린 창이 있으면 종전 경로 그대로다 */
+function infoLocked(){ return !S||S.phase!=="play"||!!S.battle||!!S.fleePick||!!NET.replaying||MEMO_UI.overlayOpen||fxLocked(); } // 내 말 설명 창 공통 잠금 — ownInfoTarget · #296 [하수인 정보] 칸
 function ownInfoTarget(r,c){
-  if(!S||S.phase!=="play"||S.battle||S.fleePick||NET.replaying||MEMO_UI.overlayOpen||fxLocked()) return null;
+  if(infoLocked()) return null;
   const v=humanViewer(), p=at(r,c); if((v!==0&&v!==1)||!p||p.owner!==v) return null;
   const myTurn=NET.mode?netActor()===NET.me:!isAI(S.current);
   return !myTurn&&(NET.mode||S.mode==="pve")?p:null;
