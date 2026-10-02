@@ -779,7 +779,7 @@ function openTicket(T,p){ const k=T.S.pieces.find(x=>x.owner===p&&x.type==="king
     endTurnAt(T,20); const first=S.eco.shop.active, second=1-first;
     ok(S.phase==="shop"&&first===1&&covered(T),"Q3 20턴 상점 — P2 먼저, 가림부터");
     adv(10*S90); ok(!S.eco.shop.done[first],"Q3 첫 좌석 가림 대기는 시간에 들어가지 않는다");
-    confirm(T); eq(T.byId("shopClock").textContent,"⏱ 180초","Q3 첫 좌석 가림 확인 → 180초 시작");
+    confirm(T); eq(T.byId("shopClock").textContent+" | "+T.byId("shopClock").getAttribute("aria-label"),"180 | 남은 시간 180초","Q3 첫 좌석 가림 확인 → 180초 시작 (#295 후속: 화면은 초 숫자 · 전체 문장은 접근성 이름)");
     const u=unit(T,T.ROSTER.find(r=>!ownKeys(T,first).includes(r.id)).id,2,2); S.eco.bag[first]=[u];
     adv(20000); const c1=S.eco.coins[first], b1=S.balls[first];
     act(T,{t:"shopGood",player:first,item:"ball"}); openTicket(T,first);                 // 확정 구매 1 + 열린 티켓 확인 창(미확정 — #293: 판매 확인 창은 없어졌다)
@@ -788,7 +788,7 @@ function openTicket(T,p){ const k=T.S.pieces.find(x=>x.owner===p&&x.type==="king
     adv(1); ok(S.eco.shop.done[first]&&S.eco.coins[first]===c1-1&&S.balls[first]===b1+1&&S.eco.bag[first].includes(u),"Q3 첫 좌석 180초 만료 → 확정 구매 보존 · 미확정 창 취소(가방 그대로 · 자동 거래 없음)");
     ok(S.phase==="shop"&&S.eco.shop.active===second&&covered(T),"Q3 만료 뒤 가림을 거쳐 다음 좌석");
     adv(10*S90); ok(!S.eco.shop.done[second],"Q3 둘째 좌석 가림 대기 불산입 (앞 좌석 시계 누수 없음)");
-    confirm(T); eq(T.byId("shopClock").textContent,"⏱ 180초","Q3 둘째 좌석도 자기 상점 표시 순간부터 새 180초");
+    confirm(T); eq(T.byId("shopClock").textContent+" | "+T.byId("shopClock").getAttribute("aria-label"),"180 | 남은 시간 180초","Q3 둘째 좌석도 자기 상점 표시 순간부터 새 180초");
     adv(S90); ok(S.phase==="shop"&&!S.eco.shop.done[second],"Q3 둘째 좌석 90초엔 진행 중");
     adv(S90-1); ok(S.phase==="shop"&&!S.eco.shop.done[second],"Q3 둘째 좌석 179.999초엔 진행 중");
     adv(1); ok(S.phase==="play"&&!S.eco.shop,"Q3 둘째 좌석 180초 만료 → 상점 종료 · 순차 합계 최대 360초 (가림 제외)");

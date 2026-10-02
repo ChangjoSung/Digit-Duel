@@ -874,7 +874,9 @@ function renderTurnBar(){
   const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
   /* #294 (2026-10-02 CJ REVISE): 내 차례에 고른 내 말의 [설명] — 상단에서 행동 줄 첫 줄로. 읽기 전용(전송 0)이라 mk 의 입력 잠금(정지 · 시한)을 타지 않는다. 보드 탭은 종전대로 선택 */
   if(sel&&!aiTurn){ const v=NET.mode?NET.me:S.current, b=document.createElement("button"); b.type="button"; b.className="infoBtn"; b.setAttribute("aria-haspopup","dialog");
-    b.textContent=`${idLabel(v,sel)} · HP ${sel.hp}/${sel.maxHp} — 설명`; b.onclick=()=>unitHelpPiece(sel.id,b); tb.appendChild(b); }
+    /* #295 CJ REVISE(2026-10-02): 보이는 글자는 '<종 이름> 하수인 정보'만 — 속성 · HP 는 접근성 이름에 남는다. 하수인이 아닌 내 말은 설명 창 제목과 같은 이름 + '정보'(종을 지어내지 않는다) */
+    b.textContent=sel.type==="minion"&&sel.name?`${sel.name} 하수인 정보`:`${sel.type==="ally"&&allyRole(sel)?leadNm(sel):TYPE_KO[sel.type]} 정보`;
+    b.setAttribute("aria-label",`${idLabel(v,sel)} · HP ${sel.hp}/${sel.maxHp} — 정보`); b.onclick=()=>unitHelpPiece(sel.id,b); tb.appendChild(b); }
   ico(mk("탐색",()=>netAction({t:"search"}),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))),"search","탐색"); // #20: 폭탄·함정은 탐색 실행 불가
   const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
   ico(mk(S.teleport?"텔레포트 취소":"🌀 텔레포트",()=>netAction({t:"tele"}),teleDis),S.teleport?"close":"warp",S.teleport?"취소":"텔레포트"); // #14 스왑형 · #114 경기당 횟수 제한 없음 (주 행동 1회 소모)
@@ -1176,8 +1178,9 @@ function emoteSync(){
   const cl=uiScreenName()==="room"&&document.querySelector?document.querySelector(".waitScreen .chatLock"):null;
   try{ L.classList.toggle("inRoom",!!cl); L.style.top=cl&&cl.getBoundingClientRect?Math.round(cl.getBoundingClientRect().top)+"px":""; }catch(e){}
   /* 말판 상단 한 줄의 감정표현 자리(.emoSlot) 실제 오른쪽 끝에 맞춘다 — 말판 안쪽 스크롤 막대가 생기면 ⚙·자리가 그 폭만큼 왼쪽으로 가므로 고정 px 로는 ⚙와 겹친다. 자리가 없으면 CSS 기본값 */
-  try{ const sl=document.querySelector?document.querySelector("#boardInfo .emoSlot"):null, r=sl&&sl.getBoundingClientRect?sl.getBoundingClientRect():null;
-    L.style.setProperty("--emoR",r&&r.width?Math.round(L.getBoundingClientRect().right-r.right)+"px":""); }catch(e){}
+  /* #295 CJ REVISE: 정기 상점 시트가 열려 있으면 그 상단 한 줄의 자리(.shopTop .emoSlot)가 우선 — 같은 버튼 하나가 그 자리에 놓인다(위쪽 --emoT 는 상점 규칙만 읽는다) */
+  try{ const sl=document.querySelector?document.querySelector("#overlay:not(.hidden) .shopTop .emoSlot")||document.querySelector("#boardInfo .emoSlot"):null, r=sl&&sl.getBoundingClientRect?sl.getBoundingClientRect():null, lr=r&&r.width?L.getBoundingClientRect():null;
+    L.style.setProperty("--emoR",lr?Math.round(lr.right-r.right)+"px":""); L.style.setProperty("--emoT",lr?Math.round(r.top-lr.top)+"px":""); }catch(e){}
   const set=/** @type {HTMLFieldSetElement} */($("emoteSet"));
   if(!set.innerHTML) set.innerHTML=EMOTES.map(([id,e,ko])=>`<button type="button" data-emote="${id}" onclick="emoteSend('${id}')">${e} ${ko}</button>`).join("");
   const left=Math.max(0,NET.emoteUntil-Date.now()), sec=Math.ceil(left/1000);
@@ -2084,17 +2087,19 @@ function shopHtml(p){
   const sh=S.eco.shop, start=sh.kind==="start", coins=S.eco.coins[p];
   const cost=s=>{ const u=ecoUnitOf(S,p,s.key); if(!u) return {c:ecoPrice(s.grade),up:null};
     const c=s.grade>u.grade?ecoPrice(s.grade)-ecoPrice(u.grade):ecoPrice(s.grade);
-    return {c,full:ecoPrice(s.grade),up:`⭐${u.grade} → ${s.grade>u.grade?s.grade:u.grade+1}`}; };
+    return {c,full:ecoPrice(s.grade),up:[u.grade,s.grade>u.grade?s.grade:u.grade+1]}; };
   /* #238 (2026-09-28 CJ 시각 REVISE · SHOP 스케치): 한 줄에 하나 — 왼쪽 ★ 등급 · 썸네일 · 짧은 이름 · 속성/아키타입 아이콘 · 오른쪽 🪙 가격 */
   /* #293: 같은 한 줄에 등급 테두리(g1~g5)와 그 등급으로 샀을 때의 최대 HP(실제 데이터)를 더한다 */
-  const card=(i,s,tail,cls)=>{ const g=unitGrade(s.key,s.grade), hp=unitHp(s.key,g);
-    return `<div class="shopCard g${g}${cls}" aria-label="진열 ${i+1}"><span class="stars" aria-label="등급 ${g}">${"★".repeat(g)}</span>${infoBtn(`unitHelpSlot(${i},this)`,unitName(s.key),unitIco(s.key))}<span class="nm"><b>${unitName(s.key)}</b><span class="meta">${unitTags(s.key)}${hp===null?"":hpHtml(hp)}</span></span>${tail}</div>`; };
+  /* #295 CJ REVISE(2026-10-02): 승급 카드도 한 줄 높이 — 왼쪽 등급 칸에 세로로 '보유 ★ ↓ 승급 뒤 ★'(up=[보유, 승급 뒤] · 값은 cost() 그대로). 옛 전폭 배지 줄은 없다 */
+  const card=(i,s,tail,cls,up)=>{ const g=unitGrade(s.key,s.grade), hp=unitHp(s.key,g);
+    const stars=up?`<span class="stars up" role="img" aria-label="등급 ${up[0]} → ${up[1]} 승급"><span>${"★".repeat(up[0])}</span><i>↓</i><span>${"★".repeat(up[1])}</span></span>`:`<span class="stars" aria-label="등급 ${g}">${"★".repeat(g)}</span>`;
+    return `<div class="shopCard g${g}${cls}" aria-label="진열 ${i+1}">${stars}${infoBtn(`unitHelpSlot(${i},this)`,unitName(s.key),unitIco(s.key))}<span class="nm"><b>${unitName(s.key)}</b><span class="meta">${unitTags(s.key)}${hp===null?"":hpHtml(hp)}</span></span>${tail}</div>`; };
   const slots=sh.slots[p].map((s,i)=>{
     if(!s) return `<div class="shopCard empty"><small>빈칸<span class="srOnly"> (살 수 없음)</span></small></div>`;
     if(s.soldOut) return card(i,s,`<b class="tag">SOLD OUT</b>`," soldOut"); // #263: 산 칸은 새로 고침 전까지 품절
     if(sh.sold[p].includes(s.key)) return card(i,s,`<b class="tag">판매함</b>`," soldOut");
     const pr=cost(s);
-    return card(i,s,`${pr.up?`<span class="badge up">${pr.up}</span>`:""}<button class="buy" ${pr.c>coins?"disabled":""} aria-label="${escAttr(unitName(s.key))} 구매 🪙${pr.c}" onclick="window.__shop('buy',${i})">${pr.up&&pr.full!==pr.c?`${gi("coin","cn")}<s>${pr.full}</s> ${pr.c}`:`${gi("coin","cn")}${pr.c}`}</button>`,"");
+    return card(i,s,`<button class="buy" ${pr.c>coins?"disabled":""} aria-label="${escAttr(unitName(s.key))} 구매 🪙${pr.c}" onclick="window.__shop('buy',${i})">${pr.up&&pr.full!==pr.c?`${gi("coin","cn")}<s>${pr.full}</s> ${pr.c}`:`${gi("coin","cn")}${pr.c}`}</button>`,"",pr.up);
   }).join("");
   /* 상품 8종 — #285: 아이콘 = 설명만 · 아래 [구매] = 구매만. #293: 가격·활성은 상품별(ecoGoodPrice — 수호자 3종 🪙3) · 설명은 팝업(goodHelp) */
   const gk=start?ECO.startGoods:ECO.goods;
@@ -2136,7 +2141,7 @@ function shopHtml(p){
      flowHeadHtml 은 부르지 않는다(준비 전용 시계 #prepClock · 01/02/03 단계 · 나가기). 시계는 종전 #shopClock, 온라인 기권은 ⚙ 안(확인 창을 취소하고 돌아와도 남는다) */
   const head=start?`<h2 class="srOnly">시작 상점</h2>${buyHead}
     ${empty?`<small class="srOnly shopWhy">필드 빈칸 ${empty}개 — 하수인 몫 ${coinize('🪙')}${ecoReserveNeed(S,p)}은 남겨 둡니다. 아이템·버프·새로 고침은 산 뒤에도 그만큼 남을 때만 살 수 있습니다.</small>`:""}`
-    :`<header class="shopTop">${topBarHtml(p,`<span class="badge clk" id="shopClock" role="timer">${shopClockText(p)}</span><span class="badge coin" aria-label="재화 ${coins}">${gi("coin","cn")} ${coins}</span>`+gearHtml(NET.publicMode?netResignBtn():""))}
+    :`<header class="shopTop">${topBarHtml(p,`<span class="badge clk" id="shopClock" role="timer">${shopClockText(p)}</span><span class="badge coin" aria-label="재화 ${coins}">${gi("coin","cn")} ${coins}</span>`+(emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:"")+gearHtml(NET.publicMode?netResignBtn():""))}
     <div class="flowBar"><h2>${sh.turn}턴 상점</h2><button type="button" class="primary go" onclick="window.__shop('done')">완료</button></div>${synRailHtml(p)}</header>${buyHead}`;
   return pauseLockOpen("상점 조작이")
     +`<div class="shopSheet${start?"":" turn"}">${head}
@@ -2253,17 +2258,28 @@ function shopShow(cover){
 }
 function shopClockStart(p){
   if(NET.publicMode){ shopClockStop(); // #237 공개 방: 마감·만료는 서버 시계(가림 없음 — 표시 순간부터 개인별) — 여기는 남은 시간 표시만
-    const tick=()=>{ const el=$("shopClock"); if(el) el.textContent=shopClockText(p); }; tick(); SHOPCLK.iv=setInterval(tick,500); return; }
+    const tick=()=>shopClockPaint(p);
+    tick(); SHOPCLK.iv=setInterval(tick,500);
+    try{ emoteSync(); }catch(e){} // #295 CJ REVISE: 시트를 (다시) 그린 직후 — 이모티콘 버튼을 새 상단 한 줄의 자리에 맞춘다(표시 위치만)
+    return; }
   if(!fxLive()||NET.mode||isAI(p)) return;                                  // 사람 좌석만 (온라인 종전 경제·AI·sim 제외)
   const o=$("overlay"); if(o&&o.classList&&o.classList.contains("handoff")) return; // 가림 중에는 누구의 180초도 흐르지 않는다
-  const key=S.eco.shop.kind+S.eco.shop.turn+":"+p; if(SHOPCLK.key===key) return; // 같은 좌석의 다시 그리기 = 마감 유지
+  const key=S.eco.shop.kind+S.eco.shop.turn+":"+p; if(SHOPCLK.key===key){ shopClockPaint(p); return; } // 같은 좌석의 다시 그리기 = 마감 유지(새 시트의 시계 칸만 바로 다시 그린다)
   shopClockStop(); SHOPCLK.key=key;
   const g=S; SHOPCLK.dl=Date.now()+ECO.shopSec*1000;
   SHOPCLK.t=setTimeout(()=>{ if(S!==g||!S.eco.shop||S.eco.shop.done[p]) return; closeModal(); dispatchCoreAction({t:"shopTimeout",player:p}); // 확정 거래는 보존 · 열린 확인 창(미확정)만 취소
   },ECO.shopSec*1000);                                                      // 정기 상점 전용 — 시작 상점은 공통 준비 180초(PREPCLK · #293)
-  const tick=()=>{ const el=$("shopClock"); if(el) el.textContent=shopClockText(p); }; tick();
+  const tick=()=>shopClockPaint(p); tick();
   SHOPCLK.iv=setInterval(tick,500);
 }
+/* #295 CJ REVISE 후속: 정기 상점 상단 한 줄(시계 · 코인 · 이모티콘 · ⚙)에 들어가게 시트의 시계 칸(#shopClock)만 짧게 그린다 — 온라인 · 오프라인 tick 이 같이 쓴다.
+   값은 shopClockText 와 같은 출처(온라인 = 서버 시계 netClockMs · 오프라인 = 이 좌석 SHOPCLK 마감). 보이는 글자는 초 숫자뿐이고 ⏱/⏸ · '초'는 폭에 따라 CSS(.cmp · .pz)가 붙인다.
+   전체 문장(초 · 정지 · 확인 중)은 aria-label. 온라인에서 서버 시계가 없으면 숫자를 지어내지 않고 '…', 오프라인에서 시계가 없는 좌석(AI · 가림)은 종전처럼 빈 칸 */
+function shopClockPaint(p){ const el=$("shopClock"); if(!el) return; const pub=NET.publicMode, c=pub?NET.ecoClock:null;
+  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000)):null, pz=!!c&&!c.running;
+  el.textContent=sec!==null?String(sec):pub?"…":"";
+  try{ if(sec===null&&!pub) el.removeAttribute("aria-label"); else el.setAttribute("aria-label",sec===null?"남은 시간 확인 중":`남은 시간 ${sec}초${pz?" · 정지":""}`); }catch(e){}
+  try{ el.classList.toggle("cmp",sec!==null); el.classList.toggle("pz",pz); }catch(e){} }
 function shopClockStop(){ clearTimeout(SHOPCLK.t); clearInterval(SHOPCLK.iv); SHOPCLK.t=SHOPCLK.iv=SHOPCLK.key=null; SHOPCLK.dl=0; }
 function shopClockText(p){ if(NET.publicMode) return netClockText(); return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000))}초`:""; }
 function bagClockStop(){ clearTimeout(BAGCLK.t); clearInterval(BAGCLK.iv); BAGCLK.t=BAGCLK.iv=null; }

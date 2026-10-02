@@ -132,7 +132,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
     const tools=h.slice(h.indexOf('class="tbTools"'),h.indexOf('class="hudStats"'));
     ok(/^<div class="topBar"><div class="idHead">/.test(h)&&/>내 차례<\/b>/.test(tools)&&/class="flowGear"/.test(tools)&&/<b class="who" aria-label="내 차례 · [^"]+">/.test(tools)&&!/hudTools|infoBtn/.test(h)&&!/자기 말을 선택|주 행동|HP /.test(h.slice(0,h.indexOf('class="hudStats"')).replace(/<[^>]+>/g,"")),"C4c 상단 한 줄: 신원 | 짧은 차례 문구(긴 안내는 접근성 이름에만) · ⚙ — 보이는 선택 요약 · [설명] 없음");
     const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive); S.selected=m; T.renderTurnBar(); const ib=kids()[0], n0=T.wsLog.length;
-    const okBtn=/\binfoBtn\b/.test(ib.className)&&ib.textContent.includes(`HP ${m.hp}/${m.maxHp} — 설명`)&&!ib.disabled; ib.onclick();
+    const okBtn=/\binfoBtn\b/.test(ib.className)&&ib.textContent===`${m.name} 하수인 정보`&&/HP \d+\/\d+/.test(lab(ib))&&!ib.disabled; /* #295 CJ REVISE(2026-10-02): 보이는 글자 = '<종 이름> 하수인 정보' · 속성 · HP 는 접근성 이름 */ ib.onclick();
     ok(okBtn&&!!T.ui238.SYNHELP.el&&S.selected===m&&T.wsLog.length===n0,"C4d 고른 내 말의 [설명] = 행동 줄 첫 버튼 → 설명 창 · 선택 유지 · 송신 0");
     T.ui238.synHelpClose(false); S.selected=null; T.renderTurnBar(); ok(!kids().some(k=>/\binfoBtn\b/.test(k.className||"")),"C4e 고른 말이 없으면 [설명] 버튼도 없다"); }
   ok(/id="actClock" role="timer"/.test(h)&&/aria-label="재화 \d+"/.test(h)&&!/상세 ›/.test(h),"C4 위 줄 = 남은 시간(#actClock)·턴·재화 · 옛 [상세 ›] 없음");
