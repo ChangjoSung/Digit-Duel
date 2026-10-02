@@ -1,6 +1,6 @@
 # #294 Mercury — CJ QA REVISE 납품 보고
 
-[피드백] 2026-10-02 CJ의 세 항목을 같은 #294 브랜치에서 수정했다. 제품 소스 `0931b8e5b45f96cbd17b415719ee0c6704fd5378`를 독립 Saturn이 **PASS**로 판정했다. #294 OPEN·PR306 Draft·CJ 재테스트 대기를 유지한다.
+[피드백] 2026-10-02 CJ의 세 항목을 같은 #294 브랜치에서 수정했다. 제품 소스 `0931b8e5b45f96cbd17b415719ee0c6704fd5378`를 독립 Saturn이 **PASS**로 판정했고, CI 기대값 보정 `3397ad5ce58f4427a4ca2a55aa4c6aed50fd2542`도 추가 독립 QA **PASS**다. #294 OPEN·PR306 Draft·CJ 재테스트 대기를 유지한다.
 
 최종 보고서 커밋은 제품·테스트를 바꾸지 않는다. 해당 최종 SHA의 CI6·기존 Free QA 배포·health·제공 파일 대조와 정리 완료 사실은 [기존 Issue #294](https://github.com/ChangjoSung/Digit-Duel/issues/294)와 [PR306](https://github.com/ChangjoSung/Digit-Duel/pull/306)에 기록한다. 아래 이전 납품은 과거 증거이며 이번 수정의 통과로 대신하지 않는다.
 
@@ -14,7 +14,7 @@
 | R3 하수인 정보 | 탭을 없애 이름·등급·X, 큰 초상 왼쪽/아이콘 기본 능력치 오른쪽, 스킬 아래로 구성했다. HP·공격·방어·속도·회피·치명타·상태 부여 확률과 스킬 위력/쿨/1회/남은 쿨을 기존 개체·구매 함수·SKILLS에서 읽는다. 엔진에 없는 명중 수치는 만들지 않는다. |
 | 정보 공개 | 공개된 상대 말은 종전 허용 목록만 표시하고 능력치·개인 시너지·스킬·쿨타임 구역을 만들지 않는다(오프라인도 동일). 미공개 ? 말은 추측 메모만 유지한다. |
 
-런타임 변경은 `demo/js/ui.js`·`demo/css/game.css` 두 파일이다. 회귀의 옛 UI 기대값 7개 파일을 치환했고 공개 정보·상태 불변 단언을 유지했다. 서버·Core·데이터·네트워크·index·하네스·규칙·의존성·아트는 이번 수정에서 바꾸지 않았다. Mercury는 제품·도구·테스트 코드를 작성하지 않았다.
+런타임 변경은 `demo/js/ui.js`·`demo/css/game.css` 두 파일이다. 회귀의 옛 UI 기대값 8개 파일을 치환했고 공개 정보·상태 불변 단언을 유지했다. 서버·Core·데이터·네트워크·index·하네스·규칙·의존성·아트는 이번 수정에서 바꾸지 않았다. Mercury는 제품·도구·테스트 코드를 작성하지 않았다.
 
 ## 독립 QA와 실패 이력
 
@@ -30,6 +30,16 @@ Saturn dispatch `ctx_851b37b6f6cc` / task `task_c92729b21521` / 완료 `msg_b08d
 회귀 합계 **1,170/0**. 공용 호출자·능력치/스킬 원천·상대 허용 목록·NET 송신/선택/seq/시계 불변·X/Esc/Tab/바깥 클릭·부모/자식 포커스·단계/만료/새 경기 정리를 함께 검토했다. 서버·경제·실서버 통합은 변경이 없어 이전 증거를 재사용했으며 여기서 다시 실행했다고 주장하지 않는다. 최종 필수 CI는 별도로 확인한다.
 
 Mars 자체 검증에서 typecheck 1차 exit2(배열 타입)→타입 주석 후 exit0, #293 123/1→표식 글자 집계 식 수정 후124/0, #238 163/1→접근성 이름 정규식 수정 후164/0 이력이 있다. 해당 세 명령만 각각 2회이며 나머지는 각1회다. 수정 뒤 Saturn의 첫 실행은 전부 통과했다. 실패·반복 횟수를 숨기거나 중복 합산하지 않는다.
+
+### 첫 CI 실패와 보정
+
+[CI36947034351](https://github.com/ChangjoSung/Digit-Duel/actions/runs/36947034351)는 `1855a4a`에서 5/6 PASS, A만 실패했다. `smoke_issue236` AC38(289/1)이 삭제된 가방 코인 배지를 기대했다. 제품 결함은 아니며 Mars가 놓친 옛 검사다. A는 set -e로 그 뒤 파일·단계를 실행하지 않았고 통과한 것으로 계산하지 않는다.
+
+fresh Mars `ctx_e2f5e45d9bda`가 검사 하나를 세 검사로 치환했다. 빈 가방/동일 코인으로 음성 검사가 무의미해지지 않도록 서로 다른 양쪽 가방·코인을 채워 내 카드/n/3/HP/8아이템/회복약 수, AI 가방 비공개/배지 없음, 상단 내 코인1개/AI 코인 비공개를 확인한다. 기존 공개 기록 비공개 검사는 유지했다. 테스트·Mars 보고만 변경했고 자체 실행 `smoke_issue236` **292/0·exit0·1회**다.
+
+추가 Saturn `ctx_8653f63c70fa` / task `task_e27c105bac76` / 완료 `msg_0db44489c47b`(2026-10-02T00:53:25Z)는 `1855a4a..3397ad5`를 독립 검토하고 **PASS, files_modified=[]**로 판정했다. `smoke_issue236` **292/0·exit0·1회**만 실행했다(2.746초). 예상값은 상태에서 읽으며 renderer 출력으로 만들지 않는다. 제품/서버/CSS/JS/자산/NET/Core/데이터/하네스/설정/의존성이 `0931b8e5`와 동일해 이전 1,170/0+22장 검증을 재사용한다. 추가 typecheck/다른 회귀/화면/서버/통합 검사는 없었다.
+
+추가 QA 명세의 원래 area=client 표기는 `role_scope_mismatch`로 실행 전에 거부하고, GO `msg_b0bcf63b4f2c`에서 required_role=Saturn·mode=QA·**area=QA**·mutation=none·instance_index=null로 바로잡았다(그 전 테스트0·파일 수정0). client는 검토 대상이다. 현재 JSONL turn `01a0fa14-2732-7c61-ada8-9574c02b0b06`, PID22876/CLI·footer를 GO와 완료 시 대조했다.
 
 ## 화면 대조와 한계
 
@@ -54,13 +64,15 @@ Venus의 Notion 사전/사후 fetch 각3회와 쓰기6회 모두 성공했다. �
 
 ## Worker 실행과 정리
 
-각 dispatch는 required_role·mode·area·mutation·instance_index를 검사했다. Venus=PLAN/docs, Mars=IMPLEMENT/client/code·docs, Saturn=QA/client/none, 단일 인스턴스다. adopted launch requested/effective는 null이며 추정으로 채우지 않았다.
+각 dispatch는 required_role·mode·area·mutation·instance_index를 검사했다. Venus=PLAN/docs, Mars=IMPLEMENT/client/code·docs, Saturn=QA/QA/none, 단일 인스턴스다. adopted launch requested/effective는 null이며 추정으로 채우지 않았다.
 
 | 역할·dispatch | 현재 실제 세션·모델·권한 |
 |---|---|
 | Venus `ctx_f65750c1da75` | `7a693283-1c92-412a-bb63-2192a92960ea` · claude-opus-5-5/high/bypass · PID14104 |
 | Mars `ctx_273570505c68` | `e93e76c4-4ac6-4c1e-84ae-e7e5d221ceec` · claude-opus-5-5/high/bypass · PID16156 |
 | Saturn `ctx_851b37b6f6cc` | `01a0f9fd-b634-7241-a7ab-706eede4574f` · gpt-6.1-sol/xhigh/default/danger-full-access/never · PID25628 |
+| Mars CI 보정 `ctx_e2f5e45d9bda` | `3e945748-acf0-4abe-ad54-6a719cc394a2` · claude-opus-5-5/high/bypass · PID19696 |
+| Saturn CI 보정 `ctx_8653f63c70fa` | `01a0fa13-105c-7e02-9551-32e93fc2798b` · gpt-6.1-sol/xhigh/default/danger-full-access/never · PID22876 |
 
 GO와 완료 시 현재 JSONL/PID·CLI/footer를 확인했다. Saturn 최종 turn_context `2026-10-02T00:33:52.868Z`는 같은 turn `01a0f9fe-9bb3-7d63-9227-dd50b100cefc`의 gpt-6.1-sol/xhigh/full-access/never를 확인한다. JSONL의 tier는 absent, 실행 CLI의 service_tier는 default다.
 
@@ -69,10 +81,12 @@ GO와 완료 시 현재 JSONL/PID·CLI/footer를 확인했다. Saturn 최종 tur
 | Venus | 58 | 5,671,478 | 288,004 | 59,076 |
 | Mars | 130 | 19,156,027 | 379,036 | 102,085 |
 | Saturn | 3,853,162 | 3,580,672 | 0 | 10,964 |
+| Mars CI 보정 | 28 | 1,631,639 | 116,830 | 12,029 |
+| Saturn CI 보정 | 1,722,498 | 1,612,800 | 0 | 8,210 |
 
-Claude는 assistant message ID를 중복 제거한 provider 집계(Venus29개/Mars65개)다. Codex 입력은 캐시 포함·출력은 reasoning 포함(2,342)이다. Mercury 증분 비용·절감률은 계산하지 않는다.
+Claude는 assistant message ID를 중복 제거한 provider 집계(Venus29개/Mars65개/CI 보정 Mars14개)다. Codex 입력은 캐시 포함·출력은 reasoning 포함(첫 Saturn2,342/보정 Saturn2,218)이다. 보정 Saturn의 완료 메시지에 적힌 중간 표본은 최종 합계가 아니며 표는 종료 뒤 현재 JSONL의 마지막 total_token_usage다. Mercury 증분 비용·절감률은 계산하지 않는다.
 
-세 Worker는 보고 수용 후 worker-release가 external_terminal/retained/processAction none을 반환했고, 별도로 **해당 소유 terminal만 close하여 ptyKilled:true**를 확인했다. orchestration의 retained 표시는 실제 PTY 생존을 뜻하지 않는다. Mars 캡처 Chrome 및 임시 프로필은 종료/삭제했다. 기존 필요한 node_modules와 사용자 브라우저/프로세스·main dirty·unity/·stash·handoff·PR304·원본 콘티·#293 완료 이력은 보존한다. #294 작업 트리/브랜치는 CJ 재테스트·PR용으로 유지한다.
+초기 세 Worker와 CI 보정 Mars·Saturn 모두 보고 수용 후 worker-release가 external_terminal/retained/processAction none을 반환했고, 별도로 **해당 소유 terminal만 close하여 ptyKilled:true**를 확인했다. orchestration의 retained 표시는 실제 PTY 생존을 뜻하지 않는다. Mars 캡처 Chrome 및 임시 프로필은 종료/삭제했다. 기존 필요한 node_modules와 사용자 브라우저/프로세스·main dirty·unity/·stash·handoff·PR304·원본 콘티·#293 완료 이력은 보존한다. #294 작업 트리/브랜치는 CJ 재테스트·PR용으로 유지한다.
 
 ## CJ 재테스트
 
@@ -81,6 +95,7 @@ Claude는 assistant message ID를 중복 제거한 provider 집계(Venus29개/Ma
 3. **Q5-03 시너지**: 왕관→활성 전설·기여·단계와 전투 중 제한의 기존 동작을 확인한다.
 4. **Q5-04 가방·하수인**: 중복 하단 삭제, n/3·8아이템, 초상/아이콘 기본 능력치/스킬, 상대 정보 제한, X/Esc/Tab·부모/자식·만료/새 경기 정리를 확인한다.
 5. **Q5-05 기존 행동**: 내 말 선택과 설명 진입, 텔레포트/도망/강제 전투/추측 메모, 상점·기권·환경 설정 진입의 기존 동작을 확인한다.
+
 
 <details>
 <summary>이전 납품·QA·CI 보정 보고 — CJ REVISE 전</summary>
