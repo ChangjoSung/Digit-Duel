@@ -204,7 +204,7 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
     const empty=room.engines[seat].S.pieces.filter(x=>x.owner===seat&&x.type==="minion"&&!x.rosterId).length, i=v.shop.slots.findIndex(x=>x&&!x.sold);
     shopAct(seat,empty?(i>=0?"shopBuy":"shopRefresh"):"shopDone",empty&&i>=0?{i}:{}); } };
   const view=()=>P.byId("sidePanel").innerHTML;
-  const olOf=h=>h.slice(h.indexOf("<ol"),h.indexOf("</ol>")), opAt=h=>{ const m=olOf(h).match(/<li[^>]*><span class="mks" aria-hidden="true">(?:<span class="mk me">[^<]*<\/span>)?<span class="mk op">[^<]+<\/span><\/span><span><b>0(\d)<\/b>/); return m?+m[1]:0; };
+  const olOf=h=>h.slice(h.indexOf("<ol"),h.indexOf("</ol>")), opAt=h=>{ const li=olOf(h).split("<li").slice(1).find(x=>x.includes('class="mk op"')), m=li&&li.match(/<b>0(\d)<\/b>/); return m?+m[1]:0; }; // #294 REVISE: 표식 안은 대표 얼굴(중첩 태그)이라 칸 단위로 찾는다
   let v=feed(), h=view();
   ok(stepOf(h)==="상점"&&opAt(h)===1&&!/flowOpp/.test(h),"E7 공개 방 S01: 두 표식 모두 01 상점(서버 seats.step) · 떨어진 상대 상자 없음");
   ok(P.byId("app").getAttribute("data-flow")==="1","E8 공통 틀 표시 속성(data-flow)");
@@ -213,6 +213,24 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   ok(Array.isArray(v.seats.ready)&&Array.isArray(v.seats.step)&&v.seats.step.length===2&&v.seats.step.every(x=>["shop","place","done"].includes(x)),"E10 서버 좌석 뷰 seats.step = shop/place/done 뿐");
   ok(Object.keys(v.seats).sort().join()==="ready,step"&&(v.units||[]).length===0&&!("opp" in v)&&!("peer" in v),"E10b 준비 구간 좌석 뷰에 상대의 구매·코인·필드가 새로 나가지 않는다 (단계 값뿐)");
   P.NET.steps=null; P.render(); ok(opAt(view())===0&&stepOf(view())==="상점","E10c seats.step 이 없으면(구 서버) 상대 위치를 추측하지 않는다"); feed();
+  { /* ===== #294 공용 신원 부품 — 서버가 준 NET.players · NET.reps 만, 보는 사람 기준, 누락은 중립 ===== */
+    const U=P.ui238, long="가나다라마바사아자차카타", frame=(players,reps)=>ws.onmessage({data:JSON.stringify({v:1,type:"room_state",revision:room.toSeatView(0).revision,seat:0,players,reps,data:room.toSeatView(0)})});
+    const seats=h=>h.slice(h.indexOf('class="idHead"'),h.indexOf("</div>",h.indexOf('class="idHead"'))).split('class="idSeat ').slice(1);
+    frame([long,"상대닉"],["M-F1","M-W1"]); P.byId("overlay").classList.add("hidden"); let s=seats(view());
+    ok(s.length===2&&/^me"/.test(s[0])&&/^op"/.test(s[1])&&s[0].includes(`<b class="idNm">${long}</b>`)&&s[1].includes(`<b class="idNm">상대닉</b>`)&&!/<small>/.test(s.join(""))&&/^<div class="topBar"><div class="idHead">/.test(view().slice(view().indexOf('<div class="topBar"')))&&count(view(),/class="idHead"/g)===1&&!/flowTop/.test(view())
+      &&s[0].includes(U.lobbyRepHtml("M-F1","xs"))&&s[1].includes(U.lobbyRepHtml("M-W1","xs")),"I1 공용 상단 한 줄(topBar) 왼쪽 = 내 대표 · 이름(NET.players/reps) VS 상대 대표 · 이름 — 색(me/op) · 따로 떨어진 신원 줄 없음");
+    ok(s[0].includes(`aria-label="나 · ${long} — 프로필 보기"`)&&!/king|ally|leader/.test(s.join("")),"I2 12자 전체 이름은 접근성 이름에 그대로 · 왕/동료 그림이 아니다");
+    const mks=olOf(view()); ok(mks.includes(`<span class="mk me">${U.lobbyRepHtml("M-F1","xs")}</span>`)&&mks.includes(`<span class="mk op">${U.lobbyRepHtml("M-W1","xs")}</span>`)&&!/P[12]|나|상대닉/.test(mks.split("<li").slice(1).map(x=>x.slice(0,x.indexOf("<span><b>")).replace(/<[^>]+>/g,"")).join("")),"I3 진행 표식 = 같은 대표 얼굴뿐 — P1/P2 · 첫 글자 · 나/상대 글자 없음");
+    U.idHelp(0,0,null); ok(!!U.SYNHELP.el&&U.SYNHELP.el.getAttribute("role")==="dialog"&&U.SYNHELP.el.innerHTML.includes(`<b>${long}</b>`)&&!/<button(?![^>]*acctX)/.test(U.SYNHELP.el.innerHTML),"I4 신원 표식 창 = 대표 + 전체 이름뿐(읽기 전용 · 명령 없음)");
+    U.synHelpClose(false);
+    frame(["<img src=x>","상대닉"],["L-DRAGON",null]); P.byId("overlay").classList.add("hidden"); s=seats(view());
+    ok(P.NET.players[0]===null&&P.NET.reps[0]===null&&/^me"/.test(s[0])&&/^op"/.test(s[1])&&!/<img/.test(s[0])&&/class="repFace xs nt"/.test(s[0])&&s[0].includes(`<b class="idNm">나</b>`)
+      &&s[1].includes(`<b class="idNm">상대닉</b>`)&&/class="repFace xs nt"/.test(s[1]),"I5 규칙 밖 이름·대표(전설 ID · null)는 중립 아이콘 + 나/상대만 — 기본 종 그림으로 꾸미지 않는다 · 테두리 색(me/op)은 그대로");
+    ok(count(olOf(view()),/<span class="mk (me|op)"><span class="repFace xs nt">/g)===2&&!/<img/.test(olOf(view()))&&!/[가-힣A-Za-z0-9]/.test(olOf(view()).split("<li").slice(1).map(x=>x.slice(x.indexOf(">")+1,x.indexOf("<span><b>")).replace(/<[^>]+>/g,"")).join("")),"I6 대표가 없으면 진행 표식도 같은 중립 아이콘 — 글자 표식 없음");
+    frame([long,"상대닉"],["M-F1","M-W1"]); P.byId("overlay").classList.add("hidden");
+    const me0=P.NET.me; P.NET.me=1; const flip=seats(U.idHeadHtml(0)); P.NET.me=me0;
+    ok(/^me"/.test(flip[0])&&flip[0].includes(`<b class="idNm">상대닉</b>`)&&flip[0].includes(U.lobbyRepHtml("M-W1","xs"))&&/^op"/.test(flip[1])&&flip[1].includes(`<b class="idNm">${long}</b>`),"I7 좌석 1 로 보면 왼쪽(나) = 좌석 1 값 — 좌석 0 을 내 색으로 고정하지 않는다");
+    P.NET.players=null; P.NET.reps=null; feed(); }
   finish(0); v=feed(); h=view();
   ok(stepOf(h)==="배치"&&opAt(h)===2,"E11 내 상점 완료 → 두 표식 모두 02 배치");
   P.NET.steps=["place","done"]; P.NET.peerReady=true; P.render(); h=view();
@@ -332,6 +350,7 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   ok(T.synCount(0,S).dead===0&&lg(chips()).length===0,"H5 사신: 사망 칸 0 이면 값 0 — 칩 없음(활성 전에는 보이지 않는다)");
   f[1].alive=false; const rv=T.synExtraView(0,S).legends[0];
   ok(!!rv&&rv.legend==="reaper"&&rv.v===Math.min(T.V2_LEGEND_SYN.reaper.max,1*T.V2_LEGEND_SYN.reaper.atk)&&lg(chips())[0].includes("+5%"),"H6 사망 칸 1 → 사신 칩 +5% (Core 값)");
+  ok(chips().length===2&&/synHelp\('crown'/.test(chips()[0])&&/synChip on lg/.test(chips()[1]),"H6b 순서 = 왕관 → 활성 전설 (#294 계약 5 · 칩 수 그대로)");
   f[1].alive=true; T.applyLegend(f[0],"dragon");
   const del=T.synDragonEl(T.synCount(0,S)), dx=T.synExtraView(0,S).legends[0];
   ok(del?(dx.legend==="dragon"&&dx.el===del&&dx.fx===T.synKingdomEffect(T.synCount(0,S),del)&&lg(chips()).length===1):lg(chips()).length===0,"H7 용: 달성한 최고 왕국 효과가 있을 때만 칩 (Core synDragonEl 값)");
@@ -340,7 +359,27 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   allies[0].alive=false; ok(/synHelp\('crown',1,/.test(crown())&&/class="synChip on t1"/.test(crown())&&crown().includes(T.SKILLS["LD-REVENGE"].ko),"H9 동료 1명 사망 → 동료의 복수 해금");
   allies[1].alive=false; ok(/synHelp\('crown',2,/.test(crown())&&/class="synChip on t2"/.test(crown())&&crown().includes(T.SKILLS["LD-WRATH"].ko)&&T.synExtraView(0,S).deadAllies===2,"H10 2명 사망 → 왕의 분노 해금");
   T.render(); const hud=T.byId("boardInfo").innerHTML;
-  ok(/class="hudSyn"/.test(hud)&&/synHelp\('crown',2,/.test(hud),"H11 경기 중 시너지 줄도 같은 칩 목록을 쓴다");
+  /* #294 대체 기대값: 달성 칩만 가로 줄(hudSyn) → 준비 화면과 같은 세로 열 전체(미달 포함) */
+  const rail=hud.slice(hud.indexOf('class="synRail"'),hud.indexOf("</aside>")), v=T.synView(0,S);
+  ok(!/hudSyn/.test(hud)&&/synHelp\('crown',2,/.test(rail)&&T.V2_ELEM_ORDER.every(k=>rail.includes(`synHelp('${k}',${v.el[k]},this,0)`))&&Object.keys(T.V2_ARCH_SYN).every(k=>rail.includes(`synHelp('${k}',${v.arch[k]},this,0)`))
+    &&count(rail,/onclick="synHelp\('(?!crown)/g)===11&&Object.values(v.arch).some(n=>n===0),"H11 메인 시너지 열 = 왕국 5 + 아키타입 6(미달 0 포함) + 왕관 — 숫자는 Core synView 값");
+  { const at=s=>rail.indexOf(s), ks=T.V2_ELEM_ORDER.concat(Object.keys(T.V2_ARCH_SYN)).map(k=>at(`synHelp('${k}',`)), cr=at("synHelp('crown',"), lgAt=at("synChip on lg");
+    ok(ks.every((x,i)=>x>=0&&(!i||x>ks[i-1]))&&cr>ks[10]&&(lgAt<0?lg(chips()).length===0:lgAt>cr),"H11c 열 순서 = 왕국 5 → 아키타입 6 → 왕관 → 활성 전설"); }
+  ok(hud.includes(U.idHeadHtml(0))&&/^<div class="topBar"><div class="idHead"><button type="button" class="idSeat me"/.test(hud)&&/class="idSeat op"/.test(hud)&&count(hud,/class="repFace xs nt"/g)===2&&!/class="hudVs"|hudTools/.test(hud),"H11b 메인 상단도 같은 공용 한 줄(오프라인 = 중립 아이콘 + pname · 테두리 me/op)");
+  { /* 기여 = 숫자(전투가 없을 때) · 사망 유지 · 일반 가방 제외 · 가방 전설 꼬리표 · 전투 중에는 명단 없음 */
+    allies.forEach(x=>{ x.alive=true; }); S.eco.bag[0]=[unit(T,T.ROSTER.find(r=>!f.some(x=>x.rosterId===r.id)).id,1),unit(T,"L-WITCH")]; const lost=f[2]; lost.alive=false;
+    const v2=T.synView(0,S), cardsOf=(k,n)=>{ U.synHelp(k,n,null,0); const d=U.SYNHELP.el.innerHTML; U.synHelpClose(false); return d; };
+    ok(T.V2_ELEM_ORDER.every(k=>count(cardsOf(k,v2.el[k]),/class="uSlot uCard/g)===v2.el[k])&&Object.keys(T.V2_ARCH_SYN).every(k=>count(cardsOf(k,v2.arch[k]),/class="uSlot uCard/g)===v2.arch[k]),"H13 경기 중 11개 칩 모두 기여 카드 수 = 칩 숫자(Core synView)");
+    S.eco.shop={kind:"start",turn:0,seq:[0,0],slots:[[],[]],sold:[[],[]],done:[false,false],active:null,next:null}; S.pieces.filter(x=>x.owner===0&&x.type!=="minion").forEach(x=>{ x.leaderElChosen=false; });
+    const stale=T.V2_ELEM_ORDER.every(k=>count(cardsOf(k,v2.el[k]),/class="uSlot uCard/g)===v2.el[k])&&T.V2_ELEM_ORDER.some(k=>S.pieces.some(x=>x.owner===0&&(x.type==="king"||x.type==="ally")&&x.placed&&x.element===k)); S.eco.shop=null;
+    ok(stale,"H13b 시작 상점 값이 남아 있어도 경기 중 기여 목록은 Core synCount(놓인 칸 — 왕·동료 포함)와 같다 — 준비 미리보기 거름을 쓰지 않는다");
+    const la=T.archOf(lost), dl=cardsOf(la,v2.arch[la]);
+    ok(dl.includes(`<span class="srOnly">사망 </span>${lost.name}`)&&/<i class="tagMk dead">사망<\/i>/.test(dl),"H14 죽은 기여 말은 목록에 남고 '사망' 표시가 붙는다");
+    const wa=T.archOf(S.eco.bag[0][1]), wl=cardsOf(wa,v2.arch[wa]);
+    ok(/<i class="tagMk">가방<\/i>/.test(wl)&&T.V2_ELEM_ORDER.every(k=>!cardsOf(k,v2.el[k]).includes(S.eco.bag[0][0].name))&&Object.keys(T.V2_ARCH_SYN).every(k=>!cardsOf(k,v2.arch[k]).includes(S.eco.bag[0][0].name)),"H15 가방 전설은 '가방' 꼬리표로 그 아키타입에 · 일반 가방 말은 어느 목록에도 없다");
+    S.battle={syn:{0:T.synCount(0,S),1:T.synCount(1,S)}}; const inB=cardsOf(la,v2.arch[la]); S.battle=null;
+    ok(!/synCon/.test(inB)&&/<ol>/.test(inB),"H16 전투가 열려 있는 동안에는 기여 명단 없이 단계표만");
+    S.eco.bag[0]=[]; lost.alive=true; }
   ok(JSON.stringify(Object.keys(T.synExtraView(1,S)).sort())==='["deadAllies","legends"]'&&!/ecoSynView|synExtraView/.test(T.aiShop.toString()),"H12 소유자 전용 읽기 selector — 새 효과·수치 없음(AI 입력 아님)");
 }
 console.log(`smoke_issue293: ${pass} passed, ${fail} failed`);

@@ -77,7 +77,8 @@ const realRandom=Math.random;
   ok(rs&&rs.hp===70&&rs.maxHp===100,"C1 finishByCapture 예비 하수인 HP 70/maxHP 100");
   ok(!e.alive&&S().metrics.enemyCaptures===1&&S().metrics.byPlayer[0].enemyCaptures===1,"C2 적 포획 제거·지표 P1 귀속");
   T.renderSide();
-  ok(/예비 하수인\([^)]*\) HP 70\/100/.test(T.els.sidePanel.innerHTML),"C3 예비 슬롯 배지 'HP 70/100' 표기");
+  /* #294 CJ REVISE(2026-10-02 그림 2·3) 대체 기대값: 가방 서랍의 배지 줄(예비 하수인 포함)은 삭제 — 예비 HP 는 출전 선택 UI(C6)가 종전대로 밝힌다 */
+  ok(!/예비 하수인|class="badge/.test(T.els.sidePanel.innerHTML),"C3 가방 서랍에 배지 줄(예비 슬롯 포함)이 없다 — 예비 HP 표기는 출전 선택 UI(C6)");
   // 숲 공용 포획 100/100
   H.freshPlay(T,"pvp"); H.clearBoard(T);
   const a=T.S.pieces.find(x=>x.owner===0&&x.type==="ally"); H.place(T,a,9,3);

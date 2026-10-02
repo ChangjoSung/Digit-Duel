@@ -240,6 +240,8 @@ type NetWireAction = (CoreAction | NetOnlyAction) & { bf?: BattleWire; auto?: bo
 type ReducerAction = NetWireAction;
 
 type NetClientFrame = NetRelayFrame | NetCommandFrame;
+/** #294 공개 보드 시계(room_state.boardClock · 표시 전용) — 양쪽 좌석이 같은 값을 받는다. key·owner 는 싣지 않는다. at = 이 기기가 받은 시각 */
+interface NetBoardClock { leftMs: number; running: boolean; deadline: number | null; serverNow: number | null; at: number }
 
 // ── 상태 계약 보조 ───────────────────────────────────────────────────────────
 // GameState·Piece 는 demo/js/state.js 의 리터럴에서 끌어온다. 아래는 그 리터럴 하나로 표현되지 않는

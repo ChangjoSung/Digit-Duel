@@ -71,13 +71,70 @@ function pvePlay(seed){ const T=pveSetup(seed);
   const T=pvePlay(33), S=T.S; S.turnCount=7; T.renderTurnBar(); T.ui238.renderBoardInfo();
   const kids=()=>T.byId("turnBar").children, lab=el=>el.getAttribute&&el.getAttribute("aria-label")||"";
   const shop=kids().find(k=>/^상점 — /.test(lab(k)));
-  ok(!!shop&&/\bhudIco dim\b/.test(shop.className)&&lab(shop)==="상점 — 13턴 뒤 열림"&&/<span class="num">13<\/span>/.test(shop.innerHTML),"C1 닫힌 상점 = Dim + 남은 턴 13 (행동 줄)");
+  /* #294 대체 기대값: 숫자 배지 → '상점' + 'N턴 후 열림' 두 줄. N 은 종전 계산(다음 상점 턴 − S.turnCount) 그대로이고 누를 수 없다 */
+  const nx=T.ECO.shopTurns.find(t=>t>S.turnCount);
+  ok(!!shop&&/\bhudIco dim\b/.test(shop.className)&&nx-S.turnCount===13&&lab(shop)==="상점 — 13턴 후 열림"&&shop.innerHTML.replace(/<[^>]+>/g,"")==="상점13턴 후 열림"&&!/class="num"/.test(shop.innerHTML)
+    &&!shop.onclick&&shop.getAttribute("role")==="img","C1 닫힌 상점 = '상점' + '13턴 후 열림'(현행 계산) · 숫자 배지 없음 · 누를 수 없음");
   const bag=kids().find(k=>/^가방 보기/.test(lab(k)));
-  ok(!!bag&&lab(bag)==="가방 보기 (0/3)"&&(bag.onclick(),T.UI.drawer==="side"),"C2 가방 버튼은 내 가방 서랍을 연다");
+  ok(!!bag&&lab(bag)==="가방 보기 (0/3)"&&/가방 0\/3/.test(bag.innerHTML)&&(bag.onclick(),T.UI.drawer==="side"),"C2 가방 버튼(가방 n/3)은 내 가방 서랍을 연다");
+  { /* #294 가방 창: 카드 3칸(실제 가방 + 빈칸 '+' 장식) · 실제 보유 아이템 8종 · 명령 없음 · 상대 차례에도 열린다 */
+    const u={uid:++S.eco.unitSeq,paid:0,fresh:false,revealed:false,reaperSeal:0,cap:null}; T.applySpecies(u,T.ROSTER[0],2); S.eco.bag[0]=[u]; S.inv[0]=["potion","potion"];
+    T.render(); const d=T.byId("sidePanel").innerHTML, grid=d.slice(d.indexOf('class="slotGrid bag"'),d.indexOf("</div><h3>"));
+    eq([count(grid,/class="uSlot uCard/g),count(grid,/class="uSlot empty" role="img" aria-label="빈칸">\+<\/div>/g)],[1,2],"C2a 가방 창 카드 3칸 = 실제 가방 1 + 빈칸 2");
+    ok(grid.includes(`<b>${u.name}</b>`)&&grid.includes(`${u.hp}/${u.maxHp}`)&&T.byId("drawerTitle").textContent==="🎒 가방 1/3","C2b 카드는 실제 가방 하수인(이름 · HP) · 머리줄 = 가방 n/3(실제 수 / ECO.bagMax)");
+    const empties=grid.split('class="uSlot empty"').slice(1).map(x=>x.split("</div>")[0]);
+    ok(empties.every(x=>!/onclick|tabindex|role="button"/.test(x))&&!/__shop\(|netAction|shopSwap|shopSell|shopBuy|<button/.test(d.slice(0,d.indexOf("</div><h3>"))),"C2c 빈칸 '+' 는 누를 수 없는 장식 · 창 윗부분에 사용·교체·판매·구매 명령이 없다");
+    ok(count(d,/class="ownItem/g)===8&&/aria-label="회복약 2개"/.test(d)&&/aria-label="쿨링수 0개"[^>]*>[\s\S]*?×0/.test(d),"C2d 아이템 = 실제 보유 8종(×0 포함) — 수량을 지어내지 않는다");
+    ok(/onclick="unitHelpBag\(\d+,this\)"/.test(grid)&&!/onclick="unitHelpBag[^"]*"[^>]*>[^<]*<button/.test(grid),"C2e 카드 그림 = 읽기 전용 설명 진입(명령 버튼과 별개 대상)");
+    /* #294 CJ REVISE(2026-10-02): 서랍 아래 이름 · 배지(선물/버프/전투/주 행동/코인) · 선택 요약 · 기본 안내 문장 삭제 */
+    S.selected=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive); T.render(); const d2=T.byId("sidePanel").innerHTML; S.selected=null;
+    ok(!/<h2>|class="badge|cnb|주 행동|전투 \d\/2|선택: |자기 말을 클릭|파란 칸/.test(d2)&&count(d2,/class="ownItem/g)===8,"C2k 가방 창 아래에 이름 · 배지 · 선택 요약 · 기본 안내가 없다(말을 골라도) — 카드 3칸 + 아이템 8종뿐");
+    T.ui238.unitHelpBag(u.uid,null); { const b=T.ui238.SYNHELP.el.innerHTML, pc=v=>Math.round(v*100)+"%", sk=T.speciesSkills(T.ROSTER[0].id,2);
+      /* 2026-10-02 CJ REVISE 2 대체 기대값: 능력치는 8칸(0 도 보인다 — 종전 '상태 부여 0 은 칸 없음' 폐지) · 아직 열리지 않은 ★3·★4 스킬은 잠긴 줄 */
+      eq([...b.matchAll(/<li aria-label="([^"]+)" title="/g)].map(m=>m[1]),[`HP ${u.hp}/${u.maxHp}`,`공격력 ${u.atk}`,`방어력 ${u.def}`,`속도 ${u.spd}`,`회피 ${pc(u.dodge)}`,`치명타 ${pc(u.crit)}`,"상태 부여 확률 +0%p","전투 시작 방어막 (최대 HP) 0%"],"C2l-1 가방 하수인 능력치 = 8칸 · 순서 HP·공격력/방어력·속도/회피·치명타/상태 부여·시작 방어막 · 0 도 보인다");
+      const all=T.V2_SPECIES[T.ROSTER[0].id];
+      eq([...b.matchAll(/<li class="lock"><span class="uhSk"><b>([^<]+)<\/b><span class="uhChip" role="img" aria-label="잠김 — 등급 (\d) 필요">🔒 (★+) 필요<\/span>/g)].map(m=>[m[1],+m[2],m[3].length]),[[T.SKILLS[all[2]].ko,3,3],[T.SKILLS[all[3]].ko,4,4]],"C2l-2 ★2 가방 하수인: ★3·★4 스킬은 잠긴 줄(🔒 ★N 필요 · 종 표 순서)");
+      ok(/id="synHelpT">[^<]+ <span class="stars" aria-label="등급 2">★★<\/span>/.test(b)&&u.statusPct===0&&u.shieldStartPct===0&&!/명중|남은 쿨타임/.test(b)&&/<small aria-hidden="true">상태 부여<\/small>/.test(b)&&/<small aria-hidden="true">시작 방어막<\/small>/.test(b)
+        &&b.indexOf('class="tags"')<b.indexOf('class="uhTop"')&&/class="uhFace">[\s\S]*?<\/span><ul class="uhStats"[\s\S]*?<\/ul><\/div><ul class="uhRows">/.test(b)
+        &&sk.length===2&&sk.every((id,i)=>b.includes(`<li><span class="uhSk"><b>${T.SKILLS[id].ko}</b><span class="stars" aria-label="등급 ${i+1}부터">${"★".repeat(i+1)}</span>`)&&b.includes(`aria-label="위력 ${T.SKILLS[id].pct}%"`)&&b.includes(`aria-label="쿨타임 ${T.SKILLS[id].cd}"`))
+        &&!b.includes(T.SKILLS[sk[0]].desc)&&b.includes(`<small>${T.SKILLS[sk[1]].desc}</small>`)&&b.includes(`<small>${T.SKILLS[all[3]].desc}</small>`)&&!/uhTabs|<button(?![^>]*acctX)/.test(b),"C2l 가방 하수인 설명 = 이름 ★등급 · 그림 옆은 능력치 칸뿐(아이콘은 위 · 정보 줄은 아래) · 짧은 이름표 · 스킬(SKILLS pct · cd · 종 스킬표 순서 = 열리는 등급 · 글은 desc 원문, 기본기는 글 없음 · 잠긴 줄도 글) — 탭 · 명령 없음"); }
+    T.ui238.synHelpClose(false);
+    S.current=1; T.render(); const bag2=kids().find(k=>/^가방 보기/.test(lab(k)));
+    ok(!!bag2&&!bag2.disabled&&kids().filter(k=>k.getAttribute&&k.getAttribute("data-ico")).every(k=>k.disabled),"C2f 상대(AI) 차례: 행동 버튼은 잠기고 가방 보기만 열린다(정보 보기)");
+    S.current=0; S.eco.bag[0]=[]; S.inv[0]=[]; T.render(); }
+  { /* #294 Saturn REVISE: 가방 창(role=dialog) 포커스 — 열면 창 안(✕) · Tab/Shift+Tab 은 창 안에서만 · 안내 창이 열려 있으면 Esc 는 그것만 · ✕/Esc 는 연 가방 버튼으로 · 상태 무변경.
+       스텁 문서는 index.html 을 파싱하지 않으므로 ✕ 와 창 안 카드 한 장을 직접 꽂는다(선택자 자체는 실브라우저 증거 bag-focus-log.json) */
+    const D=T.document, x=D.createElement("button"), card=D.createElement("span"), bagB=()=>kids().find(k=>/^가방 보기/.test(lab(k)));
+    T.byId("drawerHead").appendChild(x); T.byId("right").querySelectorAll=()=>[x,card]; ["overlay","tutOverlay"].forEach(id=>T.byId(id).classList.add("hidden")); // 실제 문서처럼 모달은 닫힌 상태
+    const key=(k,shift)=>{ const e={key:k,shiftKey:!!shift,pd:0,stop:false,preventDefault(){this.pd++;},stopImmediatePropagation(){this.stop=true;},stopPropagation(){}};
+      for(const fn of D._listeners.keydown){ fn(e); if(e.stop) break; } return [e.pd,D.activeElement]; };
+    const sig=()=>JSON.stringify([S.selected&&S.selected.id,S.current,S.turnCount,S.pieces.map(p=>[p.r,p.c,p.hp,p.alive]),S.eco.coins,T.wsLog.length]), s0=sig();
+    T.UI.drawer=null; bagB().onclick();
+    ok(T.UI.drawer==="side"&&D.activeElement===x&&!!x.focusOpts&&x.focusOpts.preventScroll===true,"C2g 가방 창을 열면 포커스가 창 안(✕)으로 — 스크롤을 건드리지 않는다");
+    eq([key("Tab"),key("Tab"),key("Tab",true)].map(r=>[r[0],r[1]===x?"x":r[1]===card?"card":"밖"]),[[1,"card"],[1,"x"],[1,"card"]],"C2h Tab · Shift+Tab 은 가방 창 안에서만 돈다(뒤 보드로 나가지 않는다)");
+    T.ui238.synHelp("fire",1,card); const child=!!T.ui238.SYNHELP.el; key("Escape");
+    ok(child&&!T.ui238.SYNHELP.el&&T.UI.drawer==="side"&&D.activeElement===card,"C2i 가방 창 안에서 연 안내 창: Esc 는 안내만 닫고 연 카드로 — 가방 창은 그대로");
+    key("Escape"); const escBack=T.UI.drawer===null&&D.activeElement===bagB();
+    bagB().onclick(); global.uiDrawer(null); // index.html ✕ 의 onclick
+    ok(escBack&&T.UI.drawer===null&&D.activeElement===bagB()&&sig()===s0,"C2j Esc · ✕ 는 가방 창을 닫고 연 가방 버튼으로 포커스 복귀 — 선택 · 송신 · 상태 무변경"); }
   T.UI.drawer=null;
   S.turnCount=85; T.renderTurnBar();
-  ok(kids().some(k=>lab(k)==="상점 — 더 열리지 않음"),"C3 80턴 뒤에는 '더 열리지 않음'");
+  ok(kids().some(k=>lab(k)==="상점 — 예정 없음"&&/예정 없음/.test(k.innerHTML)),"C3 80턴 뒤에는 '예정 없음' (#294 대체 문구)");
+  T.ui238.renderBoardInfo();
   const h=T.byId("boardInfo").innerHTML;
+  { /* #294 상단: 상태 네 칸(시간 · 턴 · 내 코인 · 전투) = 현행 값 · ⚙ = 기존 나가기 진입점 + 비활성 사운드 줄 */
+    const cells=h.slice(h.indexOf('class="hudStats"'),h.indexOf("</div>",h.indexOf('class="hudStats"'))).split(/class="hudStat[ "]/).slice(1);
+    ok(cells.length===4&&/id="actClock"/.test(cells[0])&&cells[1].includes(`aria-label="${S.turnCount+1}턴"`)&&cells[2].includes(`aria-label="재화 ${S.eco.coins[0]}"`)&&cells[3].includes(`aria-label="전투 ${S.battlesUsed}/2"`)
+      &&count(h,/aria-label="재화 /g)===1,"C4a 상태 네 칸 = 남은 시간 · 턴(S.turnCount+1) · 내 코인 · 전투 n/2 — 상대 코인 없음");
+    const gear=h.slice(h.indexOf('<details class="flowGear"'),h.indexOf("</details>"));
+    ok(/onclick="uiBack\(\)"/.test(gear)&&/<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공<\/button>/.test(gear)&&count(gear,/<button/g)===2,"C4b ⚙ = 기존 나가기 진입점(uiBack — 기권 확인 경로) + 사운드 줄은 비활성"); }
+  { /* #294 CJ REVISE(2026-10-02): 상단 한 줄 = 왼쪽 신원 · 오른쪽 차례/⚙ — 도구 줄 · 선택 요약은 없고, 고른 내 말의 [설명]은 행동 줄 첫 버튼(전송 0 · 선택 유지) */
+    const tools=h.slice(h.indexOf('class="tbTools"'),h.indexOf('class="hudStats"'));
+    ok(/^<div class="topBar"><div class="idHead">/.test(h)&&/>내 차례<\/b>/.test(tools)&&/class="flowGear"/.test(tools)&&/<b class="who" aria-label="내 차례 · [^"]+">/.test(tools)&&!/hudTools|infoBtn/.test(h)&&!/자기 말을 선택|주 행동|HP /.test(h.slice(0,h.indexOf('class="hudStats"')).replace(/<[^>]+>/g,"")),"C4c 상단 한 줄: 신원 | 짧은 차례 문구(긴 안내는 접근성 이름에만) · ⚙ — 보이는 선택 요약 · [설명] 없음");
+    const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive); S.selected=m; T.renderTurnBar(); const ib=kids()[0], n0=T.wsLog.length;
+    const okBtn=/\binfoBtn\b/.test(ib.className)&&ib.textContent.includes(`HP ${m.hp}/${m.maxHp} — 설명`)&&!ib.disabled; ib.onclick();
+    ok(okBtn&&!!T.ui238.SYNHELP.el&&S.selected===m&&T.wsLog.length===n0,"C4d 고른 내 말의 [설명] = 행동 줄 첫 버튼 → 설명 창 · 선택 유지 · 송신 0");
+    T.ui238.synHelpClose(false); S.selected=null; T.renderTurnBar(); ok(!kids().some(k=>/\binfoBtn\b/.test(k.className||"")),"C4e 고른 말이 없으면 [설명] 버튼도 없다"); }
   ok(/id="actClock" role="timer"/.test(h)&&/aria-label="재화 \d+"/.test(h)&&!/상세 ›/.test(h),"C4 위 줄 = 남은 시간(#actClock)·턴·재화 · 옛 [상세 ›] 없음");
   ok(["탐색","🌀 텔레포트","🌿 회복","기권"].every(t=>kids().some(k=>k.textContent===t&&k.getAttribute&&k.getAttribute("data-ico"))),"C5 행동 버튼은 문구 그대로 + 아이콘(data-ico)");
 }
@@ -233,6 +290,51 @@ function pvePlay(seed){ const T=pveSetup(seed);
   /* #293: 오프라인 경제 판(PVE)도 단계는 그 기기의 진행 상태(내 시작 상점 완료 여부)가 정한다 — 종전 자유 전환은 비경제 로스터 선택에만 남는다 */
   const V=pveSetup(40); global.uiPrep("place"); ok(V.UI.prep==="roster","I14 PVE 경제 판도 열린 S01 을 02 로 건너뛰지 못한다 (#293 진행 막대 = 상태 파생)");
   V.S.eco=null; global.uiPrep("place"); const freeTo=V.UI.prep; global.uiPrep("roster"); ok(freeTo==="place"&&V.UI.prep==="roster","I15 비경제 로스터 선택은 01 ↔ 02 자유 전환 (종전)");
+}
+/* ===== I2. #294 CJ REVISE 2 — 내 하수인 상세(가방 · 필드)가 **실제 서버 좌석 뷰**(Room.toSeatView 직렬화 → room_state → 수화)에서도 8스탯 · 스킬 · 잠긴 스킬을 같은 값으로 그린다 =====
+   서버 엔진의 말 · 가방 상태는 검사가 주입하고(종 · 등급을 고르기 위해), 회선 모양은 실제 직렬화 그대로다. '옛 서버' 한 건만 그 뷰에서 키를 지운 합성 프레임이다 */
+{
+  const {Room}=require(path.join(__dirname,"..","..","..","server","authoritative","room.js"));
+  const sws=()=>({readyState:1,sent:[],send(){},close(){ this.readyState=3; }});
+  const room=new Room(12,{isPublic:true,epoch:"e1",graceMs:60000,economy:true,seed:294,shopMs:600000,placeMs:600000,actMs:600000,bagPickMs:600000});
+  room.openHostSeat(sws()); room.joinGuestSeat(sws());
+  const client=v=>{ const P=H.load(htmlPath,{href:"file:///C:/Digit-Duel/demo/index.html",storage:H.mkStorage({tutorialSeen:"1"})}); if(P.TUT.open) P.tutClose(); // 새 클라이언트가 그 좌석 뷰 한 장을 room_state 로 받는다
+    P.netCreatePublicRoom(); const ws=P.wsLog[0]; ws.readyState=1; ws.protocol="digit-duel.v1"; ws.onopen();
+    ws.onmessage({data:JSON.stringify({v:1,type:"room_opened",epoch:"e1",roomId:12,seat:0,seatToken:"h",tokenGen:0,revision:0,seq:1,economy:true})});
+    P.UI.entered=true; P.byId("tutOverlay").classList.add("hidden");
+    ws.onmessage({data:JSON.stringify({v:1,type:"room_state",revision:v.revision,seat:0,data:v})}); P.byId("overlay").classList.add("hidden"); return P; };
+  const E=room.engines[0], sp=a=>E.ROSTER.find(r=>r.arch===a), guard=sp("guard"), sus=sp("sustain"), mk=()=>({uid:++E.S.eco.unitSeq,paid:1,fresh:false,revealed:false,reaperSeal:0,cap:null});
+  const bG=E.applySpecies(mk(),guard,1), bS=E.applySpecies(mk(),sus,2), bL=E.applyLegend(mk(),"witch"); bS.cds[1]=2; E.S.eco.bag[0]=[bG,bS,bL];
+  const fm=E.S.pieces.filter(x=>x.owner===0&&x.type==="minion"); E.applySpecies(fm[0],guard,1); E.applySpecies(fm[1],sus,4); E.applyLegend(fm[2],"dragon");
+  const v=room.toSeatView(0), wb=v.you.eco.bag; let P=client(v);
+  ok(wb.length===3&&wb.every(u=>Array.isArray(u.skills)&&u.skills.every(s=>s&&typeof s==="object"&&typeof s.id==="string"))&&wb.every(u=>typeof u.shieldStartPct==="number")&&!("cds" in wb[0]),"I2a 전제: 실제 회선의 가방 스킬은 {i,revealed,id,name,cd} 객체 배열 · shieldStartPct 는 숫자(#294 Jupiter)");
+  ok(P.S.eco.bag[0].every((u,i)=>JSON.stringify(u.skills)===JSON.stringify(wb[i].skills.map(s=>s.id))&&JSON.stringify(u.cds)===JSON.stringify(wb[i].skills.map(s=>s.cd))),"I2b 수화된 가방 말의 skills = id 배열 · cds = 회선 쿨(보드 말과 같은 netAdaptSkills 계약)");
+  const pc=x=>Math.round(x*100)+"%", html=()=>{ const h=P.ui238.SYNHELP.el?P.ui238.SYNHELP.el.innerHTML:""; P.ui238.synHelpClose(false); return h; };
+  const bag=u=>{ P.ui238.unitHelpBag(u.uid,null); return html(); }, own=t=>P.S.pieces.filter(x=>x.owner===0&&x.type===t), lm=own("minion"), pcs=x=>{ P.ui238.unitHelpPiece(x.id,null); return html(); };
+  const stats=h=>[...h.matchAll(/<li aria-label="([^"]+)" title="/g)].map(m=>m[1]), want=(u,sh)=>[`HP ${u.hp}/${u.maxHp}`,`공격력 ${u.atk}`,`방어력 ${u.def}`,`속도 ${u.spd}`,`회피 ${pc(u.dodge)}`,`치명타 ${pc(u.crit)}`,`상태 부여 확률 +${pc(u.statusPct)}p`,`전투 시작 방어막 (최대 HP) ${sh}`];
+  const open=h=>[...h.matchAll(/<li><span class="uhSk"><b>([^<]+)<\/b>/g)].map(m=>m[1]), lock=h=>[...h.matchAll(/<li class="lock"><span class="uhSk"><b>([^<]+)<\/b><span class="uhChip" role="img" aria-label="잠김 — 등급 (\d) 필요">/g)].map(m=>[m[1],+m[2]]);
+  const ko=id=>P.SKILLS[id].ko, all=k=>P.V2_SPECIES[k], skills=h=>h.slice(h.indexOf('class="uhSkT"'));
+  const hG=bag(bG), hS=bag(bS), hL=bag(bL);
+  eq(stats(hG),want(bG,"10%"),"I2c ★1 보호형(가방 · 실제 회선): 8칸 — 상태 부여 +0%p 도 보이고 시작 방어막 10%");
+  eq([open(hG),lock(hG)],[[ko(all(guard.id)[0])],[1,2,3].map(i=>[ko(all(guard.id)[i]),i+1])],"I2d ★1: 가진 스킬 1 + 잠긴 ★2·★3·★4(종 표 순서)");
+  eq(stats(hS),want(bS,"0%"),"I2e ★2 지속형(가방 · 실제 회선): 상태 부여 +10%p · 시작 방어막 0% 도 보인다");
+  eq([open(hS),lock(hS),count(hS,/남은 쿨타임 2/g)],[[0,1].map(i=>ko(all(sus.id)[i])),[2,3].map(i=>[ko(all(sus.id)[i]),i+1]),1],"I2f ★2: 가진 스킬 2(회선의 남은 쿨 2 표시) + 잠긴 ★3·★4 — 잠긴 줄에는 남은 쿨이 없다");
+  eq([stats(hL),open(hL),lock(hL)],[want(bL,"0%"),P.LEGEND_ROSTER.find(l=>l.key==="witch").skills.map(ko),[]],"I2g 전설(가방): 8칸 · 스킬 4개 전부 · 잠긴 줄 없음");
+  const fG=pcs(lm[0]), f4=pcs(lm[1]), fL=pcs(lm[2]), kg=pcs(own("king")[0]), al=pcs(own("ally")[0]);
+  eq([stats(fG),skills(fG)],[stats(hG),skills(hG)],"I2h 같은 종 · 같은 등급이면 필드 말 상세 = 가방 상세(능력치 8칸 · 스킬 · 잠긴 줄이 글자 그대로 같다)");
+  eq([stats(f4),open(f4),lock(f4)],[want(fm[1],"0%"),all(sus.id).map(ko),[]],"I2i ★4 필드 말: 4스킬 전부 열림 · 잠긴 줄 없음");
+  eq([stats(fL).length,lock(fL),stats(kg).length,lock(kg),stats(al).length,lock(al)],[8,[],8,[],8,[]],"I2j 전설 · 왕 · 동료(필드): 8칸 · 잠긴 줄 없음(종 표가 없다)");
+  ok(/시작 방어막 \(최대 HP\) 0%/.test(stats(kg)[7])&&/시작 방어막 \(최대 HP\) 0%/.test(stats(al)[7]),"I2k 왕 · 동료의 시작 방어막 = 서버가 실은 실제 값 0%");
+  { const old=JSON.parse(JSON.stringify(room.toSeatView(0))); old.you.eco.bag.concat(old.you.pieces).forEach(u=>{ delete u.shieldStartPct; }); P=client(old); // 합성: 옛 서버(키 없음)를 새 클라이언트가 받는다
+    const o=bag(bG), f=pcs(own("minion")[0]);    ok(stats(o)[7]==="전투 시작 방어막 (최대 HP) 정보 없음"&&stats(f)[7]==="전투 시작 방어막 (최대 HP) 정보 없음"&&stats(o).length===8&&/<b aria-hidden="true">—<\/b><\/li><\/ul>/.test(o)&&!/시작 방어막 \(최대 HP\) \d/.test(o+f),"I2l 서버가 시작 방어막을 싣지 않으면 '—'(정보 없음) — 0 을 지어내지 않는다(가방 · 필드)"); }
+  /* Saturn REVISE: def 도 없는 프레임(netStubStats 의 종 표 · 왕 · 동료 · 표준 폴백 분기)에서도 뼈대의 로컬 0 이 남지 않는다 — I2l 은 def 를 남겨 숫자 분기만 봤다 */
+  { const noDef=()=>{ const o=JSON.parse(JSON.stringify(room.toSeatView(0))); o.you.pieces.forEach(u=>{ delete u.def; delete u.shieldStartPct; }); return o; }, none="전투 시작 방어막 (최대 HP) 정보 없음", sh=x=>stats(pcs(x))[7];
+    P=client(noDef());
+    ok(P.S.pieces.filter(x=>x.owner===0).every(x=>x.shieldStartPct===null)&&[own("minion")[0],own("minion")[2],own("king")[0],own("ally")[0]].every(x=>sh(x)===none),"I2n def · 시작 방어막이 둘 다 없는 자기 프레임: 내 말 전부 null(뼈대의 0 이 남지 않음) · 하수인 · 전설 · 왕 · 동료 모두 '—'");
+    const w=noDef(), wm=w.you.pieces.filter(u=>u.type==="minion"); wm[0].shieldStartPct=0; wm[1].shieldStartPct=0.10; P=client(w);
+    eq([sh(own("minion")[0]),sh(own("minion")[1]),sh(own("minion")[2])],["전투 시작 방어막 (최대 HP) 0%","전투 시작 방어막 (최대 HP) 10%",none],"I2o def 없는 프레임이라도 서버가 실은 값은 그대로(0 → 0% · 0.10 → 10% — 종 표 값이 아니라 회선 값) · 안 실은 말만 '—'"); }
+  const o1=JSON.stringify(room.toSeatView(1)), mine=[guard.id,sus.id].flatMap(k=>all(k)).map(ko);
+  ok(!o1.includes("shieldStartPct\":0.1")&&mine.every(n=>!o1.includes(n)),"I2m 상대 좌석 뷰에는 내 가방 · 미공개 필드 말의 스킬 이름과 시작 방어막 값이 없다");
 }
 /* ===== J. #238 시각 REVISE (2026-09-28 CJ) — 이력 토글 제거 · 13종 아트 연결 · 로비 구성 ===== */
 {

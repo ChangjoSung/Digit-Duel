@@ -1,0 +1,172 @@
+[
+ {
+  "shot": "320-prep-place-header",
+  "png": [
+   640,
+   1280
+  ],
+  "deviceScaleFactor": 2,
+  "state": "synthetic",
+  "viewport": [
+   320,
+   640
+  ],
+  "docWidth": 320,
+  "toasts": 0,
+  "idHead": [
+   312,
+   52
+  ],
+  "portraits": [
+   36,
+   36
+  ],
+  "go": [
+   86,
+   48
+  ],
+  "goText": "배치 완료 (말 14개를 더 배치하세요)",
+  "marks": [
+   "나@나02 배치",
+   "상대@상대03 완료"
+  ],
+  "readyPop": null,
+  "step": "나02 배치"
+ },
+ {
+  "shot": "320-prep-done-header",
+  "png": [
+   640,
+   1280
+  ],
+  "deviceScaleFactor": 2,
+  "state": "synthetic",
+  "viewport": [
+   320,
+   640
+  ],
+  "docWidth": 320,
+  "toasts": 0,
+  "idHead": [
+   312,
+   52
+  ],
+  "portraits": [
+   36,
+   36
+  ],
+  "go": [
+   86,
+   48
+  ],
+  "goText": "준비 취소",
+  "marks": [
+   "상대@상대02 배치",
+   "나@나03 완료"
+  ],
+  "readyPop": "준비 완료 · 상대 기다리는 중…",
+  "step": "나03 완료"
+ },
+ {
+  "shot": "390-prep-place-header",
+  "png": [
+   780,
+   1688
+  ],
+  "deviceScaleFactor": 2,
+  "state": "synthetic",
+  "viewport": [
+   390,
+   844
+  ],
+  "docWidth": 390,
+  "toasts": 0,
+  "idHead": [
+   382,
+   52
+  ],
+  "portraits": [
+   36,
+   36
+  ],
+  "go": [
+   86,
+   48
+  ],
+  "goText": "배치 완료 (말 14개를 더 배치하세요)",
+  "marks": [
+   "나@나02 배치",
+   "상대@상대03 완료"
+  ],
+  "readyPop": null,
+  "step": "나02 배치"
+ },
+ {
+  "shot": "390-prep-done-header",
+  "png": [
+   780,
+   1688
+  ],
+  "deviceScaleFactor": 2,
+  "state": "synthetic",
+  "viewport": [
+   390,
+   844
+  ],
+  "docWidth": 390,
+  "toasts": 0,
+  "idHead": [
+   382,
+   52
+  ],
+  "portraits": [
+   36,
+   36
+  ],
+  "go": [
+   86,
+   48
+  ],
+  "goText": "준비 취소",
+  "marks": [
+   "상대@상대02 배치",
+   "나@나03 완료"
+  ],
+  "readyPop": "준비 완료 · 상대 기다리는 중…",
+  "step": "나03 완료"
+ },
+ {
+  "shot": "1100-prep-place-header",
+  "png": [
+   1100,
+   1000
+  ],
+  "deviceScaleFactor": 1,
+  "state": "synthetic",
+  "viewport": [
+   1100,
+   1000
+  ],
+  "docWidth": 1100,
+  "toasts": 0,
+  "idHead": [
+   424,
+   52
+  ],
+  "portraits": [
+   36,
+   36
+  ],
+  "go": [
+   86,
+   48
+  ],
+  "goText": "배치 완료 (말 14개를 더 배치하세요)",
+  "marks": [
+   "나@나02 배치",
+   "상대@상대03 완료"
+  ],
+  "readyPop": null,
+  "step": "나02 배치"
+ }
+]

@@ -1807,6 +1807,7 @@ class Room {
           ? { owner: seatIndex, token: S.eco.bagPick.token, unit: this._serializeUnit(T, S.eco.bagPick.unit) }
           : { owner: S.eco.bagPick.owner }) : null,
         clock: this._clockView(seatIndex),
+        boardClock: this._boardClockView(),
       } : {}),
       ...(this._pauseView() ? { pause: this._pauseView() } : {}), // 단절 중에만 — 없으면 경기가 흐르고 있다
       result: this.result,
@@ -1896,6 +1897,20 @@ class Room {
     return { key: c.key.split(':')[0], leftMs: left, running: c.deadline != null };
   }
 
+  /* #294 공개 보드 시계(표시 전용) — 방에 하나인 대상 선택 30초(_pick)·행동 30초(_act)를 **읽기만** 해 양 좌석에 같은 값을 준다.
+     좌석 인자가 없다: 고르기 규칙은 위 _clockView 에서 소유 좌석 거름과 _bclock·_clock[좌석]만 뺀 것이다.
+     key·owner 와 전투 60초·정기 상점 90초·B08 20초는 싣지 않는다. 시계를 세우거나 _tick 을 부르지 않으므로
+     몇 번을 만들어도 마감은 그대로이고, serverNow·흐르는 중의 leftMs 만 만드는 순간의 값이다. */
+  _boardClockView() {
+    if (this.state !== STATES.IN_PROGRESS) return null;
+    const cs = [this._pick, this._act].filter(Boolean);
+    const c = cs.find((x) => x.deadline != null) || cs[0];
+    if (!c) return null;
+    const t = now();
+    return { leftMs: c.expired ? 0 : (c.deadline != null ? Math.max(0, c.deadline - t) : c.left),
+      running: c.deadline != null, deadline: c.deadline, serverNow: t };
+  }
+
   // "상대 연결 대기" — 끊긴 좌석과 그 재연결 유예 잔여. 게임 시계는 이 동안 멈춰 있다(2.4).
   _pauseView() {
     if (!this._paused()) return null;
@@ -1912,6 +1927,7 @@ class Room {
       uid: u.uid, rosterId: T.ecoKey(u), name: u.name, element: u.element, // 전설도 진열 key 와 같은 종 키(ecoKey) — 원시 legend 칸은 #234 경계상 싣지 않는다
       grade: u.grade === undefined ? null : u.grade, hp: u.hp, maxHp: u.maxHp, atk: u.atk, skillAtk: u.skillAtk,
       def: u.def, spd: u.spd, dodge: u.dodge, crit: u.crit, statusPct: u.statusPct,
+      shieldStartPct: u.shieldStartPct, // #294 소유자 상세의 8스탯 — 엔진 값 그대로(0~1 비율). _serializeOwn 주석 참조
       skills: this._skillsFor(T, u, true), paid: u.paid || 0, fresh: !!u.fresh, revealed: !!u.revealed, reaperSeal: u.reaperSeal || 0,
     };
   }
@@ -2049,9 +2065,10 @@ class Room {
          않는다(demo/index.html mkPiece). 그래서 클라이언트 폴백은 자기 동료 둘을 모두 암살자(def5·spd12)로 본다 —
          서버가 실제 값을 보내면 방패병이 제 블록(def20·spd6)을 되찾는다. 동료 subtype 키를 새로 만들지 않고
          **주입된 값 자체**를 보내므로 엔진 계약(Mars 소유)을 건드리지 않는다.
-         shieldStartPct 는 보내지 않는다 — netStubStats 가 읽지 않고 그리는 곳도 없다(전투 시작 방어막은 서버가
-         계산해 shield 합계로 내려간다). shieldLayers 도 보내지 않는다(아래 _serializeBattle 주석과 같은 이유). */
-      def: p.def, spd: p.spd, dodge: p.dodge, crit: p.crit, statusPct: p.statusPct,
+         #294 (2026-10-02 CJ) shieldStartPct 도 보낸다 — 자기 말 상세가 8스탯을 실제 값으로 그린다. 엔진 값 그대로
+         (0~1 비율 · 기본값을 지어내지 않는다: 엔진 객체에 없으면 키도 없다). 소유자 전용이다 — 상대 뷰와 전투 뷰에는
+         여전히 싣지 않는다. shieldLayers 는 보내지 않는다(아래 _serializeBattle 주석과 같은 이유). */
+      def: p.def, spd: p.spd, dodge: p.dodge, crit: p.crit, statusPct: p.statusPct, shieldStartPct: p.shieldStartPct,
       grade: p.grade === undefined ? null : p.grade,
       crack: p.crack, harden: p.harden, hardenPct: p.hardenPct, evadeBuff: p.evadeBuff, dmgUpBuff: p.dmgUpBuff,
       /* #234 REVISE 2차 (CJ 결정 2026-09-17) 사신의 낫 전투를 넘는 봉인 0/1/2 — 소유자 전용(등급 A). 재연결 뒤에도 봉인 사유

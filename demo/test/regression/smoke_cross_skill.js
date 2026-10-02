@@ -232,7 +232,9 @@ const T=loadH(htmlPath);
   ok(J(Q.em.revealedSkills)===J([1])&&h.includes("⚡감전 침")&&h.includes("⚡감전 침(쿨2) · ? 미공개"),"E3 상대가 사용한 뒤에만 그 슬롯이 공개되어 이름·속성 표시 (슬롯0은 여전히 ?공격기)");
   // 사이드 패널(자기 말 선택)
   T.S.battle=null; T.S.current=0; T.S.selected=Q.me; Q.me.skills[0]="fire_heavy"; T.render();
-  ok(T.byId("sidePanel").innerHTML.includes("🔥폭염 강타 · 흡수 새싹"),"E4 사이드 패널 자기 말 기술 목록에 속성 표시");
+  /* #294 CJ REVISE(2026-10-02 그림 2·3) 대체 기대값: 가방 서랍의 선택 요약 삭제 — 자기 말 기술 목록은 설명 창의 스킬 줄(같은 skillNameKo 표기) */
+  T.ui238.unitHelpPiece(Q.me.id,null); const e4=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:""; T.ui238.synHelpClose(false);
+  ok(e4.includes("<b>🔥폭염 강타</b>")&&e4.includes("<b>흡수 새싹</b>")&&!/폭염 강타/.test(T.byId("sidePanel").innerHTML),"E4 자기 말 설명 창의 기술 목록에 속성 표시 (가방 서랍에는 선택 요약 없음)");
   // 로스터 팝업은 템플릿 그대로
   T.rosterInfo("M-F1"); h=ob(T);
   /* #234 (GDD-23 6.3): 로스터 팝업은 종별 스킬 4칸(새끼 화룡)을 보여 준다 — 교체 학습이 팝업에 섞이지 않는 성질은 그대로 */

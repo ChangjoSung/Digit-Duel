@@ -126,7 +126,9 @@ block("A' 회복 표시",()=>{
   e.healing=false; e.revealed=true; T.S.mainUsed=false; const n1=T.S.log.length; T.doHeal(e); const l2=T.S.log.slice(n1).map(x=>x.msg).join("|");
   ok(/회복 자세 시작/.test(l2),"A'5 공개 말의 회복 지정은 이름 포함 로그");
   // 사이드 패널 상태 표기
-  T.S.current=0; T.S.selected=m; T.renderSide(); ok(/회복 자세/.test(T.els.sidePanel.innerHTML),"A'6 선택 말 상태에 '회복 자세' 표기");
+  /* #294 CJ REVISE(2026-10-02): 가방 서랍의 선택 요약은 없앴다 — 회복 자세는 내 말 설명 창에 */
+  T.S.current=0; T.S.selected=m; T.renderSide(); T.ui238.unitHelpPiece(m.id,null);
+  ok(/회복 자세\(턴마다 \+\d+\)/.test(T.ui238.SYNHELP.el.innerHTML)&&!/회복 자세|선택: /.test(T.els.sidePanel.innerHTML),"A'6 선택 말의 '회복 자세' 표기는 설명 창에 (가방 서랍에는 선택 요약 없음)"); T.ui238.synHelpClose(false);
   // 턴바 버튼 상태
   T.S.mainUsed=false; T.renderTurnBar(); let hb=T.els.turnBar.children.find(x=>/회복/.test(x.textContent));
   ok(hb&&hb.disabled===true,"A'7 이미 자세인 말 선택 시 회복 버튼 비활성 (재지정 없음)");

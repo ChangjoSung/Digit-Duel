@@ -615,12 +615,15 @@ function netStubPiece(u){
    u.def 가 오면 나머지 5개도 왔다고 가정한다). 아직 이 필드가 없는 대상(공개된 상대 말·기준판 서버 등)은 공개된
    rosterId·type 만으로 클라이언트가 같은 8스탯 표를 다시 찾아 채운다. */
 function netStubStats(u){
-  if(u&&typeof u.def==="number") return {def:u.def,spd:u.spd||0,dodge:u.dodge||0,crit:u.crit||0,statusPct:u.statusPct||0,grade:u.grade!==undefined?u.grade:null};
+  /* #294 시작 방어막 — 서버가 실은 값만 옮긴다(0 포함). 없으면 **어느 분기든** null 로 덮는다: 경기 전 배치 뼈대에 얹히는 경로
+     (netApplyEcoSetup)에서 키가 빠지면 뼈대의 로컬 기본값 0 이 남아 설명 창이 "—" 대신 지어낸 0% 를 보인다. 표에서 추측해 채우지 않는다. */
+  const shieldStartPct=u&&typeof u.shieldStartPct==="number"?u.shieldStartPct:null;
+  if(u&&typeof u.def==="number") return {def:u.def,spd:u.spd||0,dodge:u.dodge||0,crit:u.crit||0,statusPct:u.statusPct||0,grade:u.grade!==undefined?u.grade:null,shieldStartPct};
   const rd=u&&u.rosterId!==undefined&&u.rosterId!==null?ROSTER.find(r=>r.id===u.rosterId):null;
-  if(rd){ const b=ARCHETYPE_BASE[rd.arch]; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:Number.isInteger(u.grade)?u.grade:1}; } // #293: 정체가 공개된 상대 말은 서버가 실제 등급을 싣는다(배경색)
-  if(u&&u.type==="king") return {def:KING_BASE.def,spd:KING_BASE.spd,dodge:KING_BASE.dodge,crit:KING_BASE.crit,statusPct:KING_BASE.statusPct,grade:null};
-  if(u&&u.type==="ally"){ const b=ALLY_BASE.assassin; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:null}; }
-  const std=ARCHETYPE_BASE.std; return {def:std.def,spd:std.spd,dodge:std.dodge,crit:std.crit,statusPct:std.statusPct,grade:1};
+  if(rd){ const b=ARCHETYPE_BASE[rd.arch]; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:Number.isInteger(u.grade)?u.grade:1,shieldStartPct}; } // #293: 정체가 공개된 상대 말은 서버가 실제 등급을 싣는다(배경색)
+  if(u&&u.type==="king") return {def:KING_BASE.def,spd:KING_BASE.spd,dodge:KING_BASE.dodge,crit:KING_BASE.crit,statusPct:KING_BASE.statusPct,grade:null,shieldStartPct};
+  if(u&&u.type==="ally"){ const b=ALLY_BASE.assassin; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:null,shieldStartPct}; }
+  const std=ARCHETYPE_BASE.std; return {def:std.def,spd:std.spd,dodge:std.dodge,crit:std.crit,statusPct:std.statusPct,grade:1,shieldStartPct};
 }
 function netApplyRoomState(data,isResumeFrame){
   if(!data) return;
@@ -637,6 +640,12 @@ function netApplyRoomState(data,isResumeFrame){
   netFxResetCursorIfNeeded(); // (epoch,roomId,seat) 경계 — 스냅샷 캐시보다 먼저
   const at=Date.now(); // #237 서버 시계·재연결 유예는 남은 ms 로 온다 — 받은 순간부터 로컬로 줄여 표시만 한다(마감 판정은 서버)
   NET.ecoClock=data.clock?Object.assign({at},data.clock):null;
+  /* #294 공개 보드 시계(표시 전용) — 없음(구 서버)·규격 밖 = undefined("확인 중"), null = 지금 보드 시계 없음(정기 상점·종료). 입력 잠금·만료는 종전 clock 만 본다 */
+  { const b=data.boardClock, n=v=>v===null||v===undefined||Number.isFinite(v), num=v=>Number.isFinite(v)?v:null; // 마감·서버 시각이 없으면 null(모름) — 있는 척하지 않는다(그때는 leftMs 로 계산)
+    /** @type {NetBoardClock|null|undefined} */
+    const bc=b===null?null:b&&typeof b==="object"&&Number.isFinite(b.leftMs)&&typeof b.running==="boolean"&&n(b.deadline)&&n(b.serverNow)
+      ?{leftMs:b.leftMs,running:b.running,deadline:num(b.deadline),serverNow:num(b.serverNow),at}:undefined;
+    NET.boardClock=bc; }
   const wasPaused=netPaused(); // #263 정지가 풀리는 순간 — 잠금 중 보류된 대기 콜백을 흘려보낸다(fxIdle 이 잠금을 다시 본다)
   NET.pause=Array.isArray(data.pause)&&data.pause.length?data.pause.map(x=>Object.assign({at},x)):null;
   /* #263 Saturn 2차 REVISE: 흘려보내기는 **권위 상태 재수화·다시 그리기 뒤**로 미룬다(netUnpauseFlush).
@@ -731,7 +740,7 @@ function netEcoState(data,i){
   const e=data.you&&data.you.eco; if(!e) return null;
   const two=(mine,other)=>i===0?[mine,other]:[other,mine], buff=()=>({power:0,time:0,escape:0}), sv=data.shop, bp=data.bagPick;
   return {coins:two(e.coins,0), tickets:two(e.tickets,0), buffInv:two(Object.assign(buff(),e.buffInv),buff()), soldHp:two(e.soldHp||{},{}),
-    bag:two((e.bag||[]).map(u=>Object.assign({},u)),[]), unitSeq:0,
+    bag:two((e.bag||[]).map(u=>Object.assign({},u,netAdaptSkills(u.skills))),[]), unitSeq:0, // #294 가방 말의 스킬도 보드 말과 같은 id 배열 계약으로(설명 창이 SKILLS 표를 id 로 찾는다 — 회선의 {i,id,name,cd} 객체 그대로면 스킬 줄이 비었다)
     bagPick:bp?{owner:bp.owner===NET.me?i:1-i,token:bp.token,unit:bp.unit||null}:null,
     shop:sv?{kind:sv.kind,turn:sv.shop,seq:two(sv.seq,0),slots:two(sv.slots.slice(),[]),sold:two((sv.sold||[]).slice(),[]),done:two(!!sv.done,true),active:null,next:null}:null};
 }
@@ -770,11 +779,14 @@ function netEcoWire(a){
 }
 function netClockText(){
   const c=NET.ecoClock; if(!c) return "";
+  return `⏱ ${Math.max(0,Math.ceil(netClockMs(c)/1000))}초${c.running?"":" (정지)"}`;
+}
+/** 서버 시계 한 개의 지금 남은 ms(표시값) — 준비·행동(clock)과 #294 공개 보드 시계(boardClock)가 같은 보정식을 쓴다 */
+function netClockMs(c){
   /* #293: 준비 시계(key "prep")는 서버 절대 마감(deadline)과 그 프레임의 서버 시각(serverNow)으로 온다 — 남은 시간 = 마감 − 서버 시각 − 받은 뒤 흐른 시간.
      양쪽 좌석이 같은 마감을 받으므로 같은 시계를 본다. 이 기기 시계로 새 180초를 만들지 않는다(없으면 종전 leftMs) */
   const left=Number.isFinite(c.deadline)&&Number.isFinite(c.serverNow)?c.deadline-c.serverNow:c.leftMs;
-  const ms=c.running?left-(Date.now()-c.at):left;
-  return `⏱ ${Math.max(0,Math.ceil(ms/1000))}초${c.running?"":" (정지)"}`;
+  return c.running?left-(Date.now()-c.at):left;
 }
 /* 상점·B08·상대 차례에도 기권할 수 있다(경제 방 GDD-23 2.4) — 확인 창은 로컬, 확정만 서버 명령(차례 판정은 서버).
    확인 창은 동기화 오버레이가 아니라 직접 닫는다 — 보드(오버레이 없음)에서 연 창이 남지 않게, 상점·B08 은 다음 동기화가 다시 그린다 */
@@ -1018,7 +1030,7 @@ function netRematchReset(){
   NET.mode=false; NET.started=false; NET.preparing=true; NET.queued=false; NET.queue=[]; NET.modalSeq=0; NET.syncModal=null;
   NET.mySetup=null; NET.myReady=false; NET.peerReady=false; NET.readyWanted=false; NET.readySent=false;
   NET.result=null; NET.final=null; NET.finalReveal=false; NET.autoEndBlockRev=null; NET.lastActionAuto=false; NET.lastActionEco=false;
-  NET.ecoClock=null; NET.ecoAlias=null; NET.overlaySig=null;
+  NET.ecoClock=null; NET.boardClock=undefined; NET.ecoAlias=null; NET.overlaySig=null;
   if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; }
   NET.fxRound=null; netFxResetCursorIfNeeded(); // 지난 경기의 재생 큐·전투 무대 정지
   newGame("pvp");

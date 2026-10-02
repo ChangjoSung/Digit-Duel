@@ -240,7 +240,14 @@ block("D1~D5 락스텝 블록",()=>{
   // 권한 가드 불변 — 이동·선택·텔레포트·턴 종료는 여전히 차단
   use(W); clearT(W); const m=myPiece(W);
   cellOf(W,m.r,m.c).onclick();
-  ok(W.S.selected===null&&toasts(W).some(t=>/상대 턴/.test(t))&&sentN(W)===s0[0],"D3 상대 턴에 자기 말 클릭 → 차단 토스트 · 선택 없음 · 송신 0");
+  /* #294 대체 기대값(계약 4.1 '상대 차례 · 내 말'): 종전 차단 토스트 → 읽기 전용 설명 창. 선택 없음 · 송신 0 은 그대로 */
+  const help=T=>T.ui238.SYNHELP.el, helpHtml=T=>help(T)?help(T).innerHTML:"";
+  ok(W.S.selected===null&&!!help(W)&&help(W).getAttribute("role")==="dialog"&&helpHtml(W).includes(`HP ${m.hp}/${m.maxHp}`)&&!pickerOpen(W)&&sentN(W)===s0[0]&&snapS(W)===snap0[0],"D3 상대 턴에 자기 말 클릭 → 읽기 전용 설명 창 · 선택 없음 · 송신 0 · 상태 불변");
+  { /* 바깥 탭은 닫기만 — 캡처 단계에서 click 을 삼켜 뒤의 칸·버튼 핸들러까지 가지 않는다(틀 한 곳) */
+    let stop=0, pd=0; const ev=t=>({target:t,stopPropagation(){ stop++; },preventDefault(){ pd++; }});
+    W.document.dispatch("click",ev(help(W))); ok(!!help(W)&&stop===0,"D3e 창 안을 누르면 닫히지 않고 삼키지도 않는다");
+    W.document.dispatch("click",ev(cellOf(W,m.r,m.c))); ok(!help(W)&&stop===1&&pd===1&&W.S.selected===null&&sentN(W)===s0[0],"D3f 바깥 탭 = 닫기만(전파 차단 1회) — 선택 · 송신 없음");
+    W.document.dispatch("click",ev(cellOf(W,m.r,m.c))); ok(stop===1,"D3g 창이 없으면 탭을 삼키지 않는다(평소 조작 그대로)"); }
   clearT(W); const ec=emptyCell(W); cellOf(W,ec[0],ec[1]).onclick();
   ok(toasts(W).some(t=>/상대 턴/.test(t))&&sentN(W)===s0[0]&&!pickerOpen(W),"D3b 상대 턴에 빈 칸 클릭 → 차단 토스트 · 송신 0 · 피커 없음");
   clearT(W); W.netAction({t:"tele"}); W.netAction({t:"endTurn"}); W.netAction({t:"skipMain"});
@@ -249,7 +256,18 @@ block("D1~D5 락스텝 블록",()=>{
   // 공개된 말 · 비가시(숲) 말 · 죽은 말 · 왕(공개 전) 은 메모 대상 판정이 각각 다르다
   const e2=enemyOf(W,x=>x.type==="minion"&&x.id!==e.id); both(P,(T,f)=>{ f(e2.id).revealed=true; });
   clearT(W); cellOf(W,e2.r,e2.c).onclick();
-  ok(!pickerOpen(W)&&toasts(W).some(t=>/이미 공개된 말/.test(t))&&sentN(W)===s0[0]&&!(e2.id in W.S.memos[W.NET.me]),"D4 상대 턴에 공개된 상대 말 클릭 → 기존 '이미 공개된 말' 안내 · 송신 0 · 메모 없음");
+  /* #294 대체 기대값: '이미 공개된 말' 토스트 → 설명 창(허용 필드만 — 스킬 탭 · 기술 이름 없음) */
+  const skillNames=x=>(x.skills||[]).concat(W.V2_SPECIES[x.rosterId]||[]).map(id=>W.SKILLS[id]&&W.SKILLS[id].ko).filter(Boolean); // #294 CJ REVISE 2: 가진 스킬 + 그 종의 ★1~4 스킬표 전부(잠긴 줄로도 새지 않는다)
+  ok(!pickerOpen(W)&&!!help(W)&&/상대 말 — 공개된 정보만 표시/.test(helpHtml(W))&&!/uhStats|uhSkills|uhSyn|uhChip|스킬|쿨타임|공격력|방어력|속도|회피|치명타|상태 부여|방어막|잠김|🔒|class="lock"/.test(helpHtml(W))&&skillNames(e2).length>0&&skillNames(e2).every(n=>!helpHtml(W).includes(n))
+    &&sentN(W)===s0[0]&&!(e2.id in W.S.memos[W.NET.me]),"D4 상대 턴에 공개된 상대 말 클릭 → 설명 창(스킬 탭·기술 없음) · 송신 0 · 메모 없음");
+  both(P,(T,f)=>{ f(e2.id).alive=false; }); W.render(); const goneOnDeath=!help(W); both(P,(T,f)=>{ f(e2.id).alive=true; }); W.render();
+  ok(goneOnDeath,"D4x 설명 창의 대상 말이 죽으면 다시 그릴 때 창이 닫힌다(낡은 내용 없음)");
+  W.ui238.unitHelpPiece(e.id,null); ok(!help(W)&&!e.revealed,"D4y 미공개 ? 말은 설명 창이 열리지 않는다(직접 불러도 — 종·속성·HP 가 마크업에 없다)");
+  { /* 내 폭탄 · 함정 = 종류 + 기존 안내(튜토리얼 '폭탄과 함정')의 이동 문장 그대로 — HP · 스킬 탭 없음 */
+    const tut=H.load(htmlPath).html.replace(/<\/?b>/g,""), note=t=>{ const x=W.S.pieces.find(y=>y.owner===W.NET.me&&y.type===t&&y.alive); W.ui238.unitHelpPiece(x.id,null); const d=helpHtml(W); W.ui238.synHelpClose(false); return d; };
+    const bomb=note("bomb"), trap=note("trap"), line=d=>(d.match(/<li>([^<]*움직[^<]*)<\/li>/)||[])[1];
+    ok(/<li>폭탄<\/li>/.test(bomb)&&/<li>함정<\/li>/.test(trap)&&!!line(bomb)&&!!line(trap)&&line(bomb)!==line(trap)&&tut.includes("폭탄은 "+line(bomb))&&tut.includes("함정은 "+line(trap))&&!/uhStats|uhSkills|HP /.test(bomb+trap),
+      "D4z 내 폭탄·함정 설명 = 종류 + 기존 안내 문장(폭탄 한 칸·버닝 2칸 / 함정 스스로 이동 불가)과 글자 그대로 일치 · HP·스킬 없음"); }
   const e3=enemyOf(W,x=>x.type==="minion"&&x.id!==e.id&&x.id!==e2.id);
   const fr=W.NET.me===0?5:9; // W 의 말(자기 진영)과 인접하지 않은 숲 칸 → 비가시
   both(P,(T,f)=>{ const x=f(e3.id); x.r=fr; x.c=4; });
@@ -371,7 +389,15 @@ block("D11 PVE 블록",()=>{
   ok(/📝 추측 메모/.test(T.els.sidePanel.innerHTML)&&/폭탄 추측/.test(T.els.sidePanel.innerHTML),"D11c AI 턴에도 사이드 패널 메모 목록 표시");
   cellOf(T,12,4).onclick(); ok(T.S.selected===null&&!pickerOpen(T),"D11d AI 턴에 자기 말 클릭은 여전히 아무 일도 없음 (선택 불가)");
   P.em.revealed=true; T.render(); clearT(T); cellOf(T,11,4).onclick();
-  ok(!pickerOpen(T)&&toasts(T).some(t=>/이미 공개된 말/.test(t)),"D11e AI 턴에 공개된 말 클릭 → 기존 안내");
+  { const d=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:"", sk=(P.em.skills||[]).concat(T.V2_SPECIES[P.em.rosterId]||[]).map(id=>T.SKILLS[id]&&T.SKILLS[id].ko).filter(Boolean);
+    ok(!pickerOpen(T)&&!!d&&!/uhStats|uhSkills|uhSyn|uhChip|스킬|쿨타임|공격력|방어력|속도|회피|치명타|상태 부여|방어막|잠김|🔒|class="lock"/.test(d)&&sk.length>0&&sk.every(n=>!d.includes(n))&&T.S.selected===null,"D11e AI 턴에 공개된 말 클릭 → 설명 창 — 오프라인(기기에 상대 전체 값이 있어도) 스킬 탭·기술 이름 없음");
+    T.ui238.synHelpClose(false); cellOf(T,12,4).onclick();
+    const own=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:"";
+    { const me=T.S.pieces.find(x=>x.owner===0&&x.r===12&&x.c===4&&x.alive), pc=v=>Math.round(v*100)+"%";
+      ok(T.S.selected===null&&!/uhTabs/.test(own)&&/class="uhSkills"/.test(own)&&/ 스킬<\/h4>/.test(own)
+        &&[`HP ${me.hp}/${me.maxHp}`,`공격력 ${me.atk}`,`방어력 ${me.def}`,`속도 ${me.spd}`,`회피 ${pc(me.dodge)}`,`치명타 ${pc(me.crit)}`,`상태 부여 확률 +${pc(me.statusPct)}p`,`전투 시작 방어막 (최대 HP) ${pc(me.shieldStartPct)}`].every(a=>own.includes(`aria-label="${a}"`))&&(own.match(/<li aria-label="[^"]+" title="/g)||[]).length===8&&!/명중/.test(own)
+        &&(me.skills||[]).every(id=>own.includes(T.SKILLS[id].ko)),"D11f AI 턴에 내 말 클릭 → 한 장 설명 창(탭 없음 · 기본 능력치 = 말의 실제 필드 8칸(#294 CJ REVISE 2: 0 도 보인다) · 명중 없음 · 보유 스킬 전부) · 선택 없음"); }
+    T.ui238.synHelpClose(false); }
   P.em.revealed=false;
   // 쌍둥이 실행: 같은 시드에서 AI 턴 중 메모 조작(피커 열기·저장·삭제)이 AI 결과·RNG 소비·selected·로그를 바꾸지 않는다
   const run=(memo)=>{ const X=H.load(htmlPath); X.setSeed(777); H.freshPlay(X,"pve","grade5"); X.S.current=1; X.S.mainUsed=false; X.render();
