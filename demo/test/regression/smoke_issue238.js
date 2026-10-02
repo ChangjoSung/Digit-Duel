@@ -536,6 +536,8 @@ function pvePlay(seed){ const T=pveSetup(seed);
   const T=H.load(htmlPath); H.freshPlay(T,"pvp"); H.clearBoard(T);
   const me=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), em=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
   H.place(T,me,12,4); H.place(T,em,11,4); T.TQ.length=0; T.startRounds(me,em,me,em); T.TQ.length=0;
+  T.S.battle.firstSide=T.S.battle.firstSideR1="A"; T.S.battle.phase=0; // 선턴은 속도 판정이라 무작위 로스터면 D가 될 수 있다 — 가방·스킬 검사는 A 차례 기준
+  ok(T.actorOfPhase()==="A","R1 전제 — 지금 차례 = A(owner0)");
   const B=T.S.battle, html=()=>T.byId("overlayBox").innerHTML, tileOf=(h,nm)=>(h.match(new RegExp('<button type="button" class="bagTile"[^>]*>(?:(?!</button>).)*<b>'+nm+'</b>(?:(?!</button>).)*</button>'))||[""])[0];
   T.S.inv[0]=["cure","potion","potion"]; B.menu="bag"; T.battleModal(); const h=html();
   const po=tileOf(h,"회복약"), cu=tileOf(h,"해독제"), co=tileOf(h,"쿨링수");
