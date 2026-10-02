@@ -1474,28 +1474,34 @@ function synNote(from){ synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${g
    stats · syn · skills 가 null 이면 그 구역 자체가 없다(공개된 상대 말 · 폭탄 · 함정). 값이 없는 칸은 만들지 않는다 — 지어낸 수치 없음 */
 function unitHelpOpen(d,from,pid){
   const chip=(lb,v,ic)=>`<span class="uhChip" role="img" aria-label="${escAttr(lb+" "+v)}">${ic} ${v}</span>`;
+  /* 2026-10-02 CJ REVISE 2: 능력치 칸이 있으면(내 말 · 가방 · 진열) 그림 옆은 능력치 2×4 칸뿐 — 높이가 그림과 같다. 왕국·아키타입 아이콘은 그 위, 정보 줄 · 개인 시너지는 그 아래.
+     칸 = [아이콘, 짧은 이름, 값, 전체 이름(aria · title), 읽어 줄 값]. 능력치가 없는 창(공개된 상대 말 · 폭탄 · 함정)은 종전 배치 그대로 */
+  const st=!!(d.stats&&d.stats.length), rows=`<ul class="uhRows">${d.rows.filter(Boolean).map(r=>`<li>${r}</li>`).join("")}</ul>`, syn=d.syn?`<p class="uhSyn">${gi("crown")} ${escAttr(d.syn)}</p>`:"";
+  const stats=st?`<ul class="uhStats" aria-label="기본 능력치">${d.stats.map(s=>`<li aria-label="${escAttr((s[3]||s[1])+" "+(s[4]||s[2]))}" title="${escAttr(s[3]||s[1])}"><span aria-hidden="true">${s[0]}</span><small aria-hidden="true">${s[1]}</small><b aria-hidden="true">${s[2]}</b></li>`).join("")}</ul>`:"";
   synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${escAttr(d.nm)}${d.g?` <span class="stars" aria-label="등급 ${d.g}">${"★".repeat(d.g)}</span>`:""}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>`
-    +`<div class="uhTop"><span class="uhFace">${d.face}</span><div class="uhInfo">${d.tags||""}`
-    +(d.stats&&d.stats.length?`<ul class="uhStats" aria-label="기본 능력치">${d.stats.map(s=>`<li aria-label="${escAttr(s[1]+" "+s[2])}" title="${escAttr(s[1])}"><span aria-hidden="true">${s[0]}</span><small aria-hidden="true">${s[1]}</small><b aria-hidden="true">${s[2]}</b></li>`).join("")}</ul>`:"")
-    +`<ul class="uhRows">${d.rows.filter(Boolean).map(r=>`<li>${r}</li>`).join("")}</ul>`
-    +(d.syn?`<p class="uhSyn">${gi("crown")} ${escAttr(d.syn)}</p>`:"")+`</div></div>`
-    +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4><ol class="uhSkills">${d.skills.map(x=>`<li><span class="uhSk"><b>${x.nm}</b>`
-      +(x.star?`<span class="stars" aria-label="등급 ${x.star}부터">${"★".repeat(x.star)}</span>`:"")+(x.pct?chip("위력",x.pct+"%","💪🏻"):"")
+    +(st?d.tags||"":"")+`<div class="uhTop"><span class="uhFace">${d.face}</span>`+(st?stats:`<div class="uhInfo">${d.tags||""}${rows}${syn}</div>`)+`</div>`+(st?rows+syn:"")
+    +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4><ol class="uhSkills">${d.skills.map(x=>`<li${x.lock?` class="lock"`:""}><span class="uhSk"><b>${x.nm}</b>`
+      +(x.lock?`<span class="uhChip" role="img" aria-label="잠김 — 등급 ${x.star} 필요">🔒 ${"★".repeat(x.star)} 필요</span>`:x.star?`<span class="stars" aria-label="등급 ${x.star}부터">${"★".repeat(x.star)}</span>`:"")+(x.pct?chip("위력",x.pct+"%","💪🏻"):"")
       +(x.once?`<span class="uhChip">전투당 1회</span>`:x.cd===null?"":chip("쿨타임",x.cd,"⌛"))+(x.left?`<span class="uhChip cd">남은 쿨타임 ${x.left}</span>`:"")
       +`</span>${x.desc?`<small>${x.desc}</small>`:""}</li>`).join("")}</ol>`:""),from);
-  SYNHELP.pid=pid===undefined?null:pid;
+  SYNHELP.el.classList.add("uh"); SYNHELP.pid=pid===undefined?null:pid;
 }
 /* 기본 능력치 칸 — u 에 실제로 있는 숫자만(전투 엔진이 쓰는 필드 그대로: data.js applyArchStats · applyFixedStats). HP · 공격력은 등급 성장분 포함, 시너지 · 전투 중 버프는 넣지 않는다.
-   이름표는 SYN_STAT_KO. 상태 부여 확률은 0 이면 칸이 없다. 명중 스탯은 이 게임에 없다 — 칸을 만들지 않는다. max = 진열 칸(개체가 없어 최대 HP 만) */
+   이름표는 SYN_STAT_KO. 2026-10-02 CJ REVISE 2: 8칸(HP·공격력 / 방어력·속도 / 회피·치명타 / 상태 부여·시작 방어막) — 0 도 그대로 보인다. 명중 스탯은 이 게임에 없다 — 칸을 만들지 않는다.
+   시작 방어막은 서버가 값을 싣지 않으면(옛 서버) "—"(정보 없음)이다 — 0 을 지어내지 않는다. max = 진열 칸(개체가 없어 최대 HP 만) */
 function unitStatChips(u,max){ const pc=v=>Math.round(v*100)+"%", lb=k=>SYN_STAT_KO[k][0];
-  return [[gi("heal"),"HP",max?u.maxHp:`${u.hp}/${u.maxHp}`]].concat(/** @type {any[][]} */([["atk",gi("atk")],["def",gi("def")],["spd",gi("swift")],["dodge","💨",pc],["crit","🎯",pc],["statusPct","💫",v=>`+${pc(v)}p`]])
-    .filter(s=>typeof u[s[0]]==="number"&&(s[0]!=="statusPct"||u.statusPct>0)).map(s=>[s[1],lb(s[0]),s[2]?s[2](u[s[0]]):u[s[0]]])); }
+  return [[gi("heal"),"HP",max?u.maxHp:`${u.hp}/${u.maxHp}`]].concat(/** @type {any[][]} */([["atk",gi("atk")],["def",gi("def")],["spd",gi("swift")],["dodge","💨",pc],["crit","🎯",pc],["statusPct","💫",v=>`+${pc(v)}p`,"상태 부여"]])
+    .filter(s=>typeof u[s[0]]==="number").map(s=>[s[1],s[3]||lb(s[0]),s[2]?s[2](u[s[0]]):u[s[0]],lb(s[0])]),
+    [typeof u.shieldStartPct==="number"?[gi("guard"),"시작 방어막",pc(u.shieldStartPct),lb("shieldPct")]:[gi("guard"),"시작 방어막","—",lb("shieldPct"),"정보 없음"]]); }
 /* 스킬 줄 — SKILLS 표 그대로: 위력 = pct(v2 스킬만 · 옛 pow 는 파생값이라 쓰지 않는다) · 쿨타임 = cd · 전투당 1회 = once · 남은 쿨 = 그 개체의 cds.
    ★n = 종 스킬표(V2_SPECIES)에서의 순서 = 그 스킬이 열리는 등급(speciesSkills). 전설 · 왕 · 동료 스킬은 그런 뜻이 없어 붙이지 않는다.
    글은 desc 원문 그대로(줄여 쓰지 않는다) — 위력 · 쿨 칸으로 뜻이 다 전해지는 기본기에만 붙이지 않는다 */
-function unitSkillRows(ids,el,cds,key){ const sp=V2_SPECIES[key]||[];
-  return (ids||[]).map((id,i)=>{ const sk=SKILLS[id]; return sk?{nm:skillNameKo(id,el),star:sp.indexOf(id)+1,pct:sk.v2&&sk.pct||0,cd:sk.reaper||typeof sk.cd!=="number"?null:sk.cd,once:!!sk.once,left:cds&&cds[i]||0,
-    desc:sk.kind==="basic"?"":sk.desc||""}:null; }).filter(Boolean); }
+/* 2026-10-02 CJ REVISE 2: 가진 스킬(교체해 넣은 것 포함 — 그대로) 뒤에, 그 종이 더 높은 등급에서 여는 스킬을 잠긴 줄(lock · 필요한 등급 = 종 표 순서)로 잇는다.
+   남은 쿨은 없다. 종 표가 없는 전설 · 왕 · 동료는 잠긴 줄이 없다. 이 함수는 내 말 · 내 가방 · 내 진열에서만 불린다 — 상대 말 창은 부르지 않는다 */
+function unitSkillRows(ids,el,cds,key){ const sp=V2_SPECIES[key]||[], own=ids||[];
+  const row=(id,i,lock)=>{ const sk=SKILLS[id]; return sk?{nm:skillNameKo(id,el),star:sp.indexOf(id)+1,pct:sk.v2&&sk.pct||0,cd:sk.reaper||typeof sk.cd!=="number"?null:sk.cd,once:!!sk.once,left:!lock&&cds&&cds[i]||0,lock,
+    desc:sk.kind==="basic"?"":sk.desc||""}:null; };
+  return own.map((id,i)=>row(id,i,false)).concat(sp.slice(own.length).filter(id=>!own.includes(id)).map(id=>row(id,0,true))).filter(Boolean); }
 /* 보드 말 — 내 말은 전부, 상대 말은 **정체가 공개되고 지금 보이는 것만** 서버가 이미 싣는 값(이름 · 종류 · 그림 · 왕국 · 등급 · HP · 이동 불가 · 교체 표식)으로.
    미공개 ? 말 · 안 보이는 말 · 죽은 상대 말은 창이 없다(그 말의 어떤 값도 마크업에 넣지 않는다) */
 /* 폭탄 · 함정 한 줄 설명 — 기존 안내(ui-overlays.js TUT_PAGES '폭탄과 함정')의 이동 문장 그대로. 새 규칙 문구가 아니다(회귀가 두 곳의 일치를 본다) */

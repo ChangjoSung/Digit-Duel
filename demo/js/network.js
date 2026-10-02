@@ -615,7 +615,8 @@ function netStubPiece(u){
    u.def 가 오면 나머지 5개도 왔다고 가정한다). 아직 이 필드가 없는 대상(공개된 상대 말·기준판 서버 등)은 공개된
    rosterId·type 만으로 클라이언트가 같은 8스탯 표를 다시 찾아 채운다. */
 function netStubStats(u){
-  if(u&&typeof u.def==="number") return {def:u.def,spd:u.spd||0,dodge:u.dodge||0,crit:u.crit||0,statusPct:u.statusPct||0,grade:u.grade!==undefined?u.grade:null};
+  if(u&&typeof u.def==="number") return {def:u.def,spd:u.spd||0,dodge:u.dodge||0,crit:u.crit||0,statusPct:u.statusPct||0,grade:u.grade!==undefined?u.grade:null,
+    shieldStartPct:typeof u.shieldStartPct==="number"?u.shieldStartPct:null}; // #294 자기 말의 시작 방어막 — 서버가 실은 값만 옮긴다. 없으면(옛 서버) null 로 **덮는다**(경기 전 배치 뼈대의 로컬 기본값 0 이 남지 않게 · 설명 창은 "—")
   const rd=u&&u.rosterId!==undefined&&u.rosterId!==null?ROSTER.find(r=>r.id===u.rosterId):null;
   if(rd){ const b=ARCHETYPE_BASE[rd.arch]; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:Number.isInteger(u.grade)?u.grade:1}; } // #293: 정체가 공개된 상대 말은 서버가 실제 등급을 싣는다(배경색)
   if(u&&u.type==="king") return {def:KING_BASE.def,spd:KING_BASE.spd,dodge:KING_BASE.dodge,crit:KING_BASE.crit,statusPct:KING_BASE.statusPct,grade:null};
@@ -737,7 +738,7 @@ function netEcoState(data,i){
   const e=data.you&&data.you.eco; if(!e) return null;
   const two=(mine,other)=>i===0?[mine,other]:[other,mine], buff=()=>({power:0,time:0,escape:0}), sv=data.shop, bp=data.bagPick;
   return {coins:two(e.coins,0), tickets:two(e.tickets,0), buffInv:two(Object.assign(buff(),e.buffInv),buff()), soldHp:two(e.soldHp||{},{}),
-    bag:two((e.bag||[]).map(u=>Object.assign({},u)),[]), unitSeq:0,
+    bag:two((e.bag||[]).map(u=>Object.assign({},u,netAdaptSkills(u.skills))),[]), unitSeq:0, // #294 가방 말의 스킬도 보드 말과 같은 id 배열 계약으로(설명 창이 SKILLS 표를 id 로 찾는다 — 회선의 {i,id,name,cd} 객체 그대로면 스킬 줄이 비었다)
     bagPick:bp?{owner:bp.owner===NET.me?i:1-i,token:bp.token,unit:bp.unit||null}:null,
     shop:sv?{kind:sv.kind,turn:sv.shop,seq:two(sv.seq,0),slots:two(sv.slots.slice(),[]),sold:two((sv.sold||[]).slice(),[]),done:two(!!sv.done,true),active:null,next:null}:null};
 }

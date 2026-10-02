@@ -39,3 +39,40 @@ boardClock: { leftMs, running, deadline, serverNow } | null
 - [확정] 경제 테스트는 이 WorkTree 단독으로는 못 돎(`ws` 미설치). 설치·설정 변경은 하지 않았고 CI 는 자체 설치를 씀.
 - [미실행] WebSocket 실송수신 · 브라우저 · 재접속 프레임 수동 확인 · 다른 서버 테스트(lobby·emotes 등) · typecheck. 재접속은 같은 `toSeatView` 경로라는 코드 읽기 + `resumeSeat` 뒤 뷰 단언으로만 봄.
 - [추론] `serverNow`·흐르는 `leftMs` 는 뷰 생성 순간 값이라 좌석 간 몇 ms 차이 가능(계약 허용).
+
+---
+
+# #294 CJ REVISE 2 — 자기 말 상세 8스탯: `shieldStartPct` 소유자 전송
+
+2026-10-02 · Jupiter(Claude `claude-opus-5-5` high · bypass · Ponytail full) · task `task_67b70d58834a` / dispatch `ctx_44286f3bfb8a` · HEAD `80341d3`. **구현 보고이며 Saturn QA PASS · 병합 승인이 아닙니다.** Git 명령 0회 · 클라이언트/Venus/Mars 파일 무수정.
+
+## 변경 (확정)
+
+| 파일 | 내용 |
+|---|---|
+| `server/authoritative/room.js` | `_serializeOwn` · `_serializeUnit` 에 `shieldStartPct` 한 칸씩(엔진 값 그대로, `|| 0` 없음) + 종전 "보내지 않는다" 주석 치환. 프로토콜·시계·액션·경제 동작 변경 0 |
+| `server/authoritative/test/test-combat-stats-boundary.js` | 1절의 "미전송" 단언 → "엔진 값과 같음"으로 교체·강화(전 말 · 숫자 0 · 0.10 주입 · 예비 · 상대 프레임). 3절에 전투 프레임 키 부재 단언 추가. `NEVER_TO_OPPONENT` · `NEVER_IN_BATTLE` 은 그대로 |
+| `server/authoritative/test/test-issue237-economy.js` | 8절(B08)에 단언 3개 — 소유자 가방·포획 말 = 엔진 값, 상대 프레임(`you` 제외)에 키 없음 |
+
+## 전송 모양 (Mars 인계)
+
+- 실리는 자리 다섯 곳, 모두 소유자 전용: `you.pieces[]`(SETUP/상점 · 경기), `you.reserve`, `you.eco.bag[]`, `bagPick.unit`(소유자일 때만 — 비소유자는 종전대로 `{owner}`).
+- 값은 **0~1 비율**(0.10 = 최대 HP 10%)이며 퍼센트가 아니다. 엔진 실제 값: 하수인 = 아키타입 값(현재 guard 만 0.10, 나머지 0) · 왕/동료 0 · 폭탄/함정 0 · 포획 예비 0. 0 은 숫자 `0` 으로 온다.
+- 기본값을 지어내지 않는다 — 엔진 객체에 필드가 없으면 키 자체가 없다(실제 엔진 경로는 항상 숫자를 넣는다).
+- 싣지 않는 곳(변경 없음): 상대 보드 말(공개·미공개) · 전투 뷰 양쪽 전투원 · 종료 `final` · fx.
+- 참고: `you.pieces[].cap` 은 종전부터 엔진 객체 그대로라 이 필드를 이미 담고 있었다(이번 변경 아님). `tools/typecheck/contracts.d.ts` 는 Mars 소유 — 건드리지 않음.
+
+## 검증 (각 1회 실행 · `server/` · `NODE_PATH=C:\Users\pc_77\orca\Digit-Duel\server\node_modules` 읽기 전용)
+
+| 명령 | 결과 | exit |
+|---|---|---|
+| `node authoritative/test/test-combat-stats-boundary.js` | **559 통과 · 0 실패** | 0 |
+| `node authoritative/test/test-issue237-economy.js` | **184 통과 · 0 실패**(종전 181 + 3) | 0 |
+
+재실행 0회. 남은 프로세스·임시 파일 없음(두 테스트 모두 자체 종료, scratchpad 미사용).
+
+## 한계 · 미확정
+
+- [미실행] 다른 서버 테스트 · typecheck · WebSocket 실송수신 · 브라우저. 범위 지시대로 영향받은 두 파일만 돌렸다.
+- [미검증] 종전 "미전송" 단언을 옛 코드에 대고 실패시키는 역방향 실행은 하지 않았다 — 옛 코드에서 새 단언이 실패한다는 것은 코드 읽기 근거다(키가 없으면 `typeof === 'number'` 가 거짓).
+- [추론] 현재 로스터에 guard 아키타입 종이 실제로 있는지는 확인하지 않았다 — 0.10 경로는 주입 픽스처로 검증했다.

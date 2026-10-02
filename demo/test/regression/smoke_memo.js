@@ -257,8 +257,8 @@ block("D1~D5 락스텝 블록",()=>{
   const e2=enemyOf(W,x=>x.type==="minion"&&x.id!==e.id); both(P,(T,f)=>{ f(e2.id).revealed=true; });
   clearT(W); cellOf(W,e2.r,e2.c).onclick();
   /* #294 대체 기대값: '이미 공개된 말' 토스트 → 설명 창(허용 필드만 — 스킬 탭 · 기술 이름 없음) */
-  const skillNames=x=>(x.skills||[]).map(id=>W.SKILLS[id]&&W.SKILLS[id].ko).filter(Boolean);
-  ok(!pickerOpen(W)&&!!help(W)&&/상대 말 — 공개된 정보만 표시/.test(helpHtml(W))&&!/uhStats|uhSkills|uhSyn|uhChip|스킬|쿨타임|공격력|방어력|속도|회피|치명타|상태 부여/.test(helpHtml(W))&&skillNames(e2).length>0&&skillNames(e2).every(n=>!helpHtml(W).includes(n))
+  const skillNames=x=>(x.skills||[]).concat(W.V2_SPECIES[x.rosterId]||[]).map(id=>W.SKILLS[id]&&W.SKILLS[id].ko).filter(Boolean); // #294 CJ REVISE 2: 가진 스킬 + 그 종의 ★1~4 스킬표 전부(잠긴 줄로도 새지 않는다)
+  ok(!pickerOpen(W)&&!!help(W)&&/상대 말 — 공개된 정보만 표시/.test(helpHtml(W))&&!/uhStats|uhSkills|uhSyn|uhChip|스킬|쿨타임|공격력|방어력|속도|회피|치명타|상태 부여|방어막|잠김|🔒|class="lock"/.test(helpHtml(W))&&skillNames(e2).length>0&&skillNames(e2).every(n=>!helpHtml(W).includes(n))
     &&sentN(W)===s0[0]&&!(e2.id in W.S.memos[W.NET.me]),"D4 상대 턴에 공개된 상대 말 클릭 → 설명 창(스킬 탭·기술 없음) · 송신 0 · 메모 없음");
   both(P,(T,f)=>{ f(e2.id).alive=false; }); W.render(); const goneOnDeath=!help(W); both(P,(T,f)=>{ f(e2.id).alive=true; }); W.render();
   ok(goneOnDeath,"D4x 설명 창의 대상 말이 죽으면 다시 그릴 때 창이 닫힌다(낡은 내용 없음)");
@@ -389,14 +389,14 @@ block("D11 PVE 블록",()=>{
   ok(/📝 추측 메모/.test(T.els.sidePanel.innerHTML)&&/폭탄 추측/.test(T.els.sidePanel.innerHTML),"D11c AI 턴에도 사이드 패널 메모 목록 표시");
   cellOf(T,12,4).onclick(); ok(T.S.selected===null&&!pickerOpen(T),"D11d AI 턴에 자기 말 클릭은 여전히 아무 일도 없음 (선택 불가)");
   P.em.revealed=true; T.render(); clearT(T); cellOf(T,11,4).onclick();
-  { const d=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:"", sk=(P.em.skills||[]).map(id=>T.SKILLS[id]&&T.SKILLS[id].ko).filter(Boolean);
-    ok(!pickerOpen(T)&&!!d&&!/uhStats|uhSkills|uhSyn|uhChip|스킬|쿨타임|공격력|방어력|속도|회피|치명타|상태 부여/.test(d)&&sk.length>0&&sk.every(n=>!d.includes(n))&&T.S.selected===null,"D11e AI 턴에 공개된 말 클릭 → 설명 창 — 오프라인(기기에 상대 전체 값이 있어도) 스킬 탭·기술 이름 없음");
+  { const d=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:"", sk=(P.em.skills||[]).concat(T.V2_SPECIES[P.em.rosterId]||[]).map(id=>T.SKILLS[id]&&T.SKILLS[id].ko).filter(Boolean);
+    ok(!pickerOpen(T)&&!!d&&!/uhStats|uhSkills|uhSyn|uhChip|스킬|쿨타임|공격력|방어력|속도|회피|치명타|상태 부여|방어막|잠김|🔒|class="lock"/.test(d)&&sk.length>0&&sk.every(n=>!d.includes(n))&&T.S.selected===null,"D11e AI 턴에 공개된 말 클릭 → 설명 창 — 오프라인(기기에 상대 전체 값이 있어도) 스킬 탭·기술 이름 없음");
     T.ui238.synHelpClose(false); cellOf(T,12,4).onclick();
     const own=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:"";
     { const me=T.S.pieces.find(x=>x.owner===0&&x.r===12&&x.c===4&&x.alive), pc=v=>Math.round(v*100)+"%";
       ok(T.S.selected===null&&!/uhTabs/.test(own)&&/class="uhSkills"/.test(own)&&/ 스킬<\/h4>/.test(own)
-        &&[`HP ${me.hp}/${me.maxHp}`,`공격력 ${me.atk}`,`방어력 ${me.def}`,`속도 ${me.spd}`,`회피 ${pc(me.dodge)}`,`치명타 ${pc(me.crit)}`].every(a=>own.includes(`aria-label="${a}"`))&&(me.statusPct>0)===/aria-label="상태 부여 확률 \+\d+%p"/.test(own)&&!/명중/.test(own)
-        &&(me.skills||[]).every(id=>own.includes(T.SKILLS[id].ko)),"D11f AI 턴에 내 말 클릭 → 한 장 설명 창(탭 없음 · 기본 능력치 = 말의 실제 필드(상태 부여 확률은 0 이면 칸 없음) · 명중 없음 · 보유 스킬 전부) · 선택 없음"); }
+        &&[`HP ${me.hp}/${me.maxHp}`,`공격력 ${me.atk}`,`방어력 ${me.def}`,`속도 ${me.spd}`,`회피 ${pc(me.dodge)}`,`치명타 ${pc(me.crit)}`,`상태 부여 확률 +${pc(me.statusPct)}p`,`전투 시작 방어막 (최대 HP) ${pc(me.shieldStartPct)}`].every(a=>own.includes(`aria-label="${a}"`))&&(own.match(/<li aria-label="[^"]+" title="/g)||[]).length===8&&!/명중/.test(own)
+        &&(me.skills||[]).every(id=>own.includes(T.SKILLS[id].ko)),"D11f AI 턴에 내 말 클릭 → 한 장 설명 창(탭 없음 · 기본 능력치 = 말의 실제 필드 8칸(#294 CJ REVISE 2: 0 도 보인다) · 명중 없음 · 보유 스킬 전부) · 선택 없음"); }
     T.ui238.synHelpClose(false); }
   P.em.revealed=false;
   // 쌍둥이 실행: 같은 시드에서 AI 턴 중 메모 조작(피커 열기·저장·삭제)이 AI 결과·RNG 소비·selected·로그를 바꾸지 않는다

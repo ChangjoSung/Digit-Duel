@@ -323,10 +323,19 @@ async function main() {
       for (const k of free.slice(0, 3)) { const u = E.ecoMakeUnit(S, k, 1); u.paid = 1; S.eco.bag[0].push(u); }
       const cap = E.ecoMakeUnit(S, free[3], 2);
       S.eco.bagPick = { owner: 0, unit: cap, token: cap.uid }; S.phase = 'bagPick';
+      S.eco.bag[0][0].shieldStartPct = 0.10; // #294 실제 값이 그대로 가는지 — 상수 0 구현을 가려낸다
     });
     room._syncClock();
     const v0 = view(room, 0), v1 = view(room, 1);
     ok(v0.phase === 'bagPick' && v0.bagPick.unit && v0.bagPick.token && v0.clock.running, '소유자: 포획 말·토큰·20초 시계');
+    /* #294 (2026-10-02 CJ) 소유자 상세 8스탯 — 가방·포획 말의 shieldStartPct 는 엔진 값 그대로(0 도 숫자 0). 상대 프레임은 자기 you 밖에 이 키가 없다. */
+    {
+      const eb = S0(room).eco.bag[0], { you: _you1, ...rest1 } = v1;
+      ok(v0.you.eco.bag.length === 3 && v0.you.eco.bag.every((u, i) => typeof u.shieldStartPct === 'number' && u.shieldStartPct === eb[i].shieldStartPct)
+        && v0.you.eco.bag[0].shieldStartPct === 0.10 && v0.you.eco.bag[1].shieldStartPct === 0, '소유자 가방: shieldStartPct = 엔진 값 (0.10 · 0)');
+      ok(typeof v0.bagPick.unit.shieldStartPct === 'number' && v0.bagPick.unit.shieldStartPct === S0(room).eco.bagPick.unit.shieldStartPct, '소유자 포획 말: shieldStartPct = 엔진 값');
+      ok(!JSON.stringify(rest1).includes('shieldStartPct') && v1.you.eco.bag.length === 0, '상대: you 밖에 shieldStartPct 없음 · 상대 가방은 자기 것(빈 가방)뿐');
+    }
     // #263: 비소유자에게 B08 시계는 나가지 않는다. 자기 행동 30초를 들고 있으면 그것이 보이되 **멈춰 있어야** 한다(20초와 별개의 시계).
     ok(JSON.stringify(v1.bagPick) === JSON.stringify({ owner: 0 })
       && (v1.clock === null || (v1.clock.key === 'act' && v1.clock.running === false))

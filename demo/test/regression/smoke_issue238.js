@@ -90,9 +90,14 @@ function pvePlay(seed){ const T=pveSetup(seed);
     S.selected=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive); T.render(); const d2=T.byId("sidePanel").innerHTML; S.selected=null;
     ok(!/<h2>|class="badge|cnb|주 행동|전투 \d\/2|선택: |자기 말을 클릭|파란 칸/.test(d2)&&count(d2,/class="ownItem/g)===8,"C2k 가방 창 아래에 이름 · 배지 · 선택 요약 · 기본 안내가 없다(말을 골라도) — 카드 3칸 + 아이템 8종뿐");
     T.ui238.unitHelpBag(u.uid,null); { const b=T.ui238.SYNHELP.el.innerHTML, pc=v=>Math.round(v*100)+"%", sk=T.speciesSkills(T.ROSTER[0].id,2);
-      ok(/id="synHelpT">[^<]+ <span class="stars" aria-label="등급 2">★★<\/span>/.test(b)&&[`HP ${u.hp}/${u.maxHp}`,`공격력 ${u.atk}`,`방어력 ${u.def}`,`속도 ${u.spd}`,`회피 ${pc(u.dodge)}`,`치명타 ${pc(u.crit)}`].every(a=>b.includes(`aria-label="${a}"`))&&u.statusPct===0&&!/상태 부여 확률|명중/.test(b)
-        &&sk.length===2&&sk.every((id,i)=>b.includes(`<b>${T.SKILLS[id].ko}</b><span class="stars" aria-label="등급 ${i+1}부터">${"★".repeat(i+1)}</span>`)&&b.includes(`aria-label="위력 ${T.SKILLS[id].pct}%"`)&&b.includes(`aria-label="쿨타임 ${T.SKILLS[id].cd}"`))
-        &&!b.includes(T.SKILLS[sk[0]].desc)&&b.includes(`<small>${T.SKILLS[sk[1]].desc}</small>`)&&!/uhTabs|<button(?![^>]*acctX)/.test(b),"C2l 가방 하수인 설명 = 이름 ★등급 · 기본 능력치(개체의 실제 필드) · 스킬(SKILLS pct · cd · 종 스킬표 순서 = 열리는 등급 · 글은 desc 원문, 기본기는 글 없음) · 상태 부여 0 은 칸 없음 — 탭 · 명령 없음"); }
+      /* 2026-10-02 CJ REVISE 2 대체 기대값: 능력치는 8칸(0 도 보인다 — 종전 '상태 부여 0 은 칸 없음' 폐지) · 아직 열리지 않은 ★3·★4 스킬은 잠긴 줄 */
+      eq([...b.matchAll(/<li aria-label="([^"]+)" title="/g)].map(m=>m[1]),[`HP ${u.hp}/${u.maxHp}`,`공격력 ${u.atk}`,`방어력 ${u.def}`,`속도 ${u.spd}`,`회피 ${pc(u.dodge)}`,`치명타 ${pc(u.crit)}`,"상태 부여 확률 +0%p","전투 시작 방어막 (최대 HP) 0%"],"C2l-1 가방 하수인 능력치 = 8칸 · 순서 HP·공격력/방어력·속도/회피·치명타/상태 부여·시작 방어막 · 0 도 보인다");
+      const all=T.V2_SPECIES[T.ROSTER[0].id];
+      eq([...b.matchAll(/<li class="lock"><span class="uhSk"><b>([^<]+)<\/b><span class="uhChip" role="img" aria-label="잠김 — 등급 (\d) 필요">🔒 (★+) 필요<\/span>/g)].map(m=>[m[1],+m[2],m[3].length]),[[T.SKILLS[all[2]].ko,3,3],[T.SKILLS[all[3]].ko,4,4]],"C2l-2 ★2 가방 하수인: ★3·★4 스킬은 잠긴 줄(🔒 ★N 필요 · 종 표 순서)");
+      ok(/id="synHelpT">[^<]+ <span class="stars" aria-label="등급 2">★★<\/span>/.test(b)&&u.statusPct===0&&u.shieldStartPct===0&&!/명중|남은 쿨타임/.test(b)&&/<small aria-hidden="true">상태 부여<\/small>/.test(b)&&/<small aria-hidden="true">시작 방어막<\/small>/.test(b)
+        &&b.indexOf('class="tags"')<b.indexOf('class="uhTop"')&&/class="uhFace">[\s\S]*?<\/span><ul class="uhStats"[\s\S]*?<\/ul><\/div><ul class="uhRows">/.test(b)
+        &&sk.length===2&&sk.every((id,i)=>b.includes(`<li><span class="uhSk"><b>${T.SKILLS[id].ko}</b><span class="stars" aria-label="등급 ${i+1}부터">${"★".repeat(i+1)}</span>`)&&b.includes(`aria-label="위력 ${T.SKILLS[id].pct}%"`)&&b.includes(`aria-label="쿨타임 ${T.SKILLS[id].cd}"`))
+        &&!b.includes(T.SKILLS[sk[0]].desc)&&b.includes(`<small>${T.SKILLS[sk[1]].desc}</small>`)&&b.includes(`<small>${T.SKILLS[all[3]].desc}</small>`)&&!/uhTabs|<button(?![^>]*acctX)/.test(b),"C2l 가방 하수인 설명 = 이름 ★등급 · 그림 옆은 능력치 칸뿐(아이콘은 위 · 정보 줄은 아래) · 짧은 이름표 · 스킬(SKILLS pct · cd · 종 스킬표 순서 = 열리는 등급 · 글은 desc 원문, 기본기는 글 없음 · 잠긴 줄도 글) — 탭 · 명령 없음"); }
     T.ui238.synHelpClose(false);
     S.current=1; T.render(); const bag2=kids().find(k=>/^가방 보기/.test(lab(k)));
     ok(!!bag2&&!bag2.disabled&&kids().filter(k=>k.getAttribute&&k.getAttribute("data-ico")).every(k=>k.disabled),"C2f 상대(AI) 차례: 행동 버튼은 잠기고 가방 보기만 열린다(정보 보기)");
@@ -285,6 +290,45 @@ function pvePlay(seed){ const T=pveSetup(seed);
   /* #293: 오프라인 경제 판(PVE)도 단계는 그 기기의 진행 상태(내 시작 상점 완료 여부)가 정한다 — 종전 자유 전환은 비경제 로스터 선택에만 남는다 */
   const V=pveSetup(40); global.uiPrep("place"); ok(V.UI.prep==="roster","I14 PVE 경제 판도 열린 S01 을 02 로 건너뛰지 못한다 (#293 진행 막대 = 상태 파생)");
   V.S.eco=null; global.uiPrep("place"); const freeTo=V.UI.prep; global.uiPrep("roster"); ok(freeTo==="place"&&V.UI.prep==="roster","I15 비경제 로스터 선택은 01 ↔ 02 자유 전환 (종전)");
+}
+/* ===== I2. #294 CJ REVISE 2 — 내 하수인 상세(가방 · 필드)가 **실제 서버 좌석 뷰**(Room.toSeatView 직렬화 → room_state → 수화)에서도 8스탯 · 스킬 · 잠긴 스킬을 같은 값으로 그린다 =====
+   서버 엔진의 말 · 가방 상태는 검사가 주입하고(종 · 등급을 고르기 위해), 회선 모양은 실제 직렬화 그대로다. '옛 서버' 한 건만 그 뷰에서 키를 지운 합성 프레임이다 */
+{
+  const {Room}=require(path.join(__dirname,"..","..","..","server","authoritative","room.js"));
+  const sws=()=>({readyState:1,sent:[],send(){},close(){ this.readyState=3; }});
+  const room=new Room(12,{isPublic:true,epoch:"e1",graceMs:60000,economy:true,seed:294,shopMs:600000,placeMs:600000,actMs:600000,bagPickMs:600000});
+  room.openHostSeat(sws()); room.joinGuestSeat(sws());
+  const client=v=>{ const P=H.load(htmlPath,{href:"file:///C:/Digit-Duel/demo/index.html",storage:H.mkStorage({tutorialSeen:"1"})}); if(P.TUT.open) P.tutClose(); // 새 클라이언트가 그 좌석 뷰 한 장을 room_state 로 받는다
+    P.netCreatePublicRoom(); const ws=P.wsLog[0]; ws.readyState=1; ws.protocol="digit-duel.v1"; ws.onopen();
+    ws.onmessage({data:JSON.stringify({v:1,type:"room_opened",epoch:"e1",roomId:12,seat:0,seatToken:"h",tokenGen:0,revision:0,seq:1,economy:true})});
+    P.UI.entered=true; P.byId("tutOverlay").classList.add("hidden");
+    ws.onmessage({data:JSON.stringify({v:1,type:"room_state",revision:v.revision,seat:0,data:v})}); P.byId("overlay").classList.add("hidden"); return P; };
+  const E=room.engines[0], sp=a=>E.ROSTER.find(r=>r.arch===a), guard=sp("guard"), sus=sp("sustain"), mk=()=>({uid:++E.S.eco.unitSeq,paid:1,fresh:false,revealed:false,reaperSeal:0,cap:null});
+  const bG=E.applySpecies(mk(),guard,1), bS=E.applySpecies(mk(),sus,2), bL=E.applyLegend(mk(),"witch"); bS.cds[1]=2; E.S.eco.bag[0]=[bG,bS,bL];
+  const fm=E.S.pieces.filter(x=>x.owner===0&&x.type==="minion"); E.applySpecies(fm[0],guard,1); E.applySpecies(fm[1],sus,4); E.applyLegend(fm[2],"dragon");
+  const v=room.toSeatView(0), wb=v.you.eco.bag; let P=client(v);
+  ok(wb.length===3&&wb.every(u=>Array.isArray(u.skills)&&u.skills.every(s=>s&&typeof s==="object"&&typeof s.id==="string"))&&wb.every(u=>typeof u.shieldStartPct==="number")&&!("cds" in wb[0]),"I2a 전제: 실제 회선의 가방 스킬은 {i,revealed,id,name,cd} 객체 배열 · shieldStartPct 는 숫자(#294 Jupiter)");
+  ok(P.S.eco.bag[0].every((u,i)=>JSON.stringify(u.skills)===JSON.stringify(wb[i].skills.map(s=>s.id))&&JSON.stringify(u.cds)===JSON.stringify(wb[i].skills.map(s=>s.cd))),"I2b 수화된 가방 말의 skills = id 배열 · cds = 회선 쿨(보드 말과 같은 netAdaptSkills 계약)");
+  const pc=x=>Math.round(x*100)+"%", html=()=>{ const h=P.ui238.SYNHELP.el?P.ui238.SYNHELP.el.innerHTML:""; P.ui238.synHelpClose(false); return h; };
+  const bag=u=>{ P.ui238.unitHelpBag(u.uid,null); return html(); }, own=t=>P.S.pieces.filter(x=>x.owner===0&&x.type===t), lm=own("minion"), pcs=x=>{ P.ui238.unitHelpPiece(x.id,null); return html(); };
+  const stats=h=>[...h.matchAll(/<li aria-label="([^"]+)" title="/g)].map(m=>m[1]), want=(u,sh)=>[`HP ${u.hp}/${u.maxHp}`,`공격력 ${u.atk}`,`방어력 ${u.def}`,`속도 ${u.spd}`,`회피 ${pc(u.dodge)}`,`치명타 ${pc(u.crit)}`,`상태 부여 확률 +${pc(u.statusPct)}p`,`전투 시작 방어막 (최대 HP) ${sh}`];
+  const open=h=>[...h.matchAll(/<li><span class="uhSk"><b>([^<]+)<\/b>/g)].map(m=>m[1]), lock=h=>[...h.matchAll(/<li class="lock"><span class="uhSk"><b>([^<]+)<\/b><span class="uhChip" role="img" aria-label="잠김 — 등급 (\d) 필요">/g)].map(m=>[m[1],+m[2]]);
+  const ko=id=>P.SKILLS[id].ko, all=k=>P.V2_SPECIES[k], skills=h=>h.slice(h.indexOf('class="uhSkT"'));
+  const hG=bag(bG), hS=bag(bS), hL=bag(bL);
+  eq(stats(hG),want(bG,"10%"),"I2c ★1 보호형(가방 · 실제 회선): 8칸 — 상태 부여 +0%p 도 보이고 시작 방어막 10%");
+  eq([open(hG),lock(hG)],[[ko(all(guard.id)[0])],[1,2,3].map(i=>[ko(all(guard.id)[i]),i+1])],"I2d ★1: 가진 스킬 1 + 잠긴 ★2·★3·★4(종 표 순서)");
+  eq(stats(hS),want(bS,"0%"),"I2e ★2 지속형(가방 · 실제 회선): 상태 부여 +10%p · 시작 방어막 0% 도 보인다");
+  eq([open(hS),lock(hS),count(hS,/남은 쿨타임 2/g)],[[0,1].map(i=>ko(all(sus.id)[i])),[2,3].map(i=>[ko(all(sus.id)[i]),i+1]),1],"I2f ★2: 가진 스킬 2(회선의 남은 쿨 2 표시) + 잠긴 ★3·★4 — 잠긴 줄에는 남은 쿨이 없다");
+  eq([stats(hL),open(hL),lock(hL)],[want(bL,"0%"),P.LEGEND_ROSTER.find(l=>l.key==="witch").skills.map(ko),[]],"I2g 전설(가방): 8칸 · 스킬 4개 전부 · 잠긴 줄 없음");
+  const fG=pcs(lm[0]), f4=pcs(lm[1]), fL=pcs(lm[2]), kg=pcs(own("king")[0]), al=pcs(own("ally")[0]);
+  eq([stats(fG),skills(fG)],[stats(hG),skills(hG)],"I2h 같은 종 · 같은 등급이면 필드 말 상세 = 가방 상세(능력치 8칸 · 스킬 · 잠긴 줄이 글자 그대로 같다)");
+  eq([stats(f4),open(f4),lock(f4)],[want(fm[1],"0%"),all(sus.id).map(ko),[]],"I2i ★4 필드 말: 4스킬 전부 열림 · 잠긴 줄 없음");
+  eq([stats(fL).length,lock(fL),stats(kg).length,lock(kg),stats(al).length,lock(al)],[8,[],8,[],8,[]],"I2j 전설 · 왕 · 동료(필드): 8칸 · 잠긴 줄 없음(종 표가 없다)");
+  ok(/시작 방어막 \(최대 HP\) 0%/.test(stats(kg)[7])&&/시작 방어막 \(최대 HP\) 0%/.test(stats(al)[7]),"I2k 왕 · 동료의 시작 방어막 = 서버가 실은 실제 값 0%");
+  { const old=JSON.parse(JSON.stringify(room.toSeatView(0))); old.you.eco.bag.concat(old.you.pieces).forEach(u=>{ delete u.shieldStartPct; }); P=client(old); // 합성: 옛 서버(키 없음)를 새 클라이언트가 받는다
+    const o=bag(bG), f=pcs(own("minion")[0]);    ok(stats(o)[7]==="전투 시작 방어막 (최대 HP) 정보 없음"&&stats(f)[7]==="전투 시작 방어막 (최대 HP) 정보 없음"&&stats(o).length===8&&/<b aria-hidden="true">—<\/b><\/li><\/ul>/.test(o)&&!/시작 방어막 \(최대 HP\) \d/.test(o+f),"I2l 서버가 시작 방어막을 싣지 않으면 '—'(정보 없음) — 0 을 지어내지 않는다(가방 · 필드)"); }
+  const o1=JSON.stringify(room.toSeatView(1)), mine=[guard.id,sus.id].flatMap(k=>all(k)).map(ko);
+  ok(!o1.includes("shieldStartPct\":0.1")&&mine.every(n=>!o1.includes(n)),"I2m 상대 좌석 뷰에는 내 가방 · 미공개 필드 말의 스킬 이름과 시작 방어막 값이 없다");
 }
 /* ===== J. #238 시각 REVISE (2026-09-28 CJ) — 이력 토글 제거 · 13종 아트 연결 · 로비 구성 ===== */
 {

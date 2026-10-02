@@ -47,9 +47,31 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
     for (const k of ['crack', 'harden', 'hardenPct', 'evadeBuff', 'dmgUpBuff']) {
       ok(typeof p[k] === 'number', `${label} 새 지속 상태 ${k} 전송`);
     }
-    ok(!('shieldStartPct' in p), label + ' shieldStartPct는 보내지 않는다(소비자 없음)');
     ok(!('shieldLayers' in p), label + ' shieldLayers는 보내지 않는다(합계 shield만 표시)');
   }
+
+  /* #294 (2026-10-02 CJ) — 자기 말 상세의 8스탯: shieldStartPct 는 **엔진 값 그대로** 온다(0 도 숫자 0 · 폭탄/함정 포함).
+     값을 한 번 바꿔 봐야 상수 0 을 박아 넣은 구현을 가려낸다 — 자기 하수인 하나와 예비에 0.10 을 심는다. */
+  const T = room.engine;
+  const engineOf = (p) => T.S.pieces.find((x) => room._alias(x.id) === p.id);
+  for (const p of mine(v)) {
+    ok(typeof p.shieldStartPct === 'number' && p.shieldStartPct === engineOf(p).shieldStartPct,
+      `자기 ${p.type} shieldStartPct = 엔진 값(${engineOf(p).shieldStartPct})`);
+  }
+  ok(mine(v).some((p) => p.shieldStartPct === 0), '기본값 0 은 빠지지 않고 숫자 0 으로 온다');
+  const custom = T.S.pieces.find((p) => p.owner === 0 && p.type === 'minion' && p.placed).id;
+  both(room, (E) => {
+    byId(E, custom).shieldStartPct = 0.10;
+    E.S.reserve[0] = { element: 'fire', hp: 50, maxHp: 50, shieldStartPct: 0.10 };
+  });
+  const v0 = room.toSeatView(0), v1 = room.toSeatView(1);
+  ok(v0.you.pieces.find((p) => p.id === room._alias(custom)).shieldStartPct === 0.10, '자기 하수인의 실제 값 0.10 이 그대로 온다');
+  ok(v0.you.reserve.shieldStartPct === 0.10, '자기 예비 하수인의 실제 값 0.10 이 그대로 온다');
+  // 상대 좌석 프레임 — 자기 몫(you)을 뺀 어디에도 이 키가 없다(you 는 좌석 1 자신의 값이라 검사 대상이 아니다).
+  const { you: _own1, ...rest1 } = v1;
+  ok(JSON.stringify(rest1).indexOf('shieldStartPct') === -1, '상대 좌석 프레임(you 제외)에 shieldStartPct 키가 없다');
+  ok(v1.you.reserve === null && v1.you.pieces.every((p) => engineOf(p).owner === 1 && p.shieldStartPct === engineOf(p).shieldStartPct),
+    '상대의 you 는 자기 말의 엔진 값만 — 좌석 0 의 말·예비가 섞이지 않는다');
 
   // 3.5 — 하수인은 ⭐ 등급을 갖고, 왕·동료는 등급이 없다(null).
   const minion = mine(v).find((p) => p.type === 'minion');
@@ -115,10 +137,13 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
   // 균열·경화를 실제 값으로 걸어 둔다(#234 전까지 이를 거는 기술이 없어 라이브로는 0이지만, 계약은 값이 있을 때
   // 그 값이 그대로 양쪽 화면에 도달하는지로 판정해야 한다 — stIcons가 hardenPct를 숫자로 찍는다).
   both(room, (E) => { E.S.battle.fa.crack = 2; E.S.battle.fd.harden = 3; E.S.battle.fd.hardenPct = 0.25; });
+  // #294 — 자기 말 뷰에는 실리게 됐지만 전투 뷰는 그대로다. 두 전투원에 실제 값을 심어 놓고 프레임 전체를 본다.
+  both(room, (E) => { E.S.battle.fa.shieldStartPct = 0.10; E.S.battle.fd.shieldStartPct = 0.10; });
 
   for (const seat of [0, 1]) {
     const b = room.toSeatView(seat).battle;
     ok(!!b, `좌석 ${seat} 전투 뷰 존재`);
+    ok(JSON.stringify(b).indexOf('shieldStartPct') === -1, `좌석 ${seat} 전투 프레임 어디에도 shieldStartPct 키가 없다(#294 뒤에도)`);
     for (const sideKey of ['a', 'd']) {
       const s = b[sideKey];
       const label = `좌석 ${seat} battle.${sideKey}`;

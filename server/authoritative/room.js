@@ -1927,6 +1927,7 @@ class Room {
       uid: u.uid, rosterId: T.ecoKey(u), name: u.name, element: u.element, // 전설도 진열 key 와 같은 종 키(ecoKey) — 원시 legend 칸은 #234 경계상 싣지 않는다
       grade: u.grade === undefined ? null : u.grade, hp: u.hp, maxHp: u.maxHp, atk: u.atk, skillAtk: u.skillAtk,
       def: u.def, spd: u.spd, dodge: u.dodge, crit: u.crit, statusPct: u.statusPct,
+      shieldStartPct: u.shieldStartPct, // #294 소유자 상세의 8스탯 — 엔진 값 그대로(0~1 비율). _serializeOwn 주석 참조
       skills: this._skillsFor(T, u, true), paid: u.paid || 0, fresh: !!u.fresh, revealed: !!u.revealed, reaperSeal: u.reaperSeal || 0,
     };
   }
@@ -2064,9 +2065,10 @@ class Room {
          않는다(demo/index.html mkPiece). 그래서 클라이언트 폴백은 자기 동료 둘을 모두 암살자(def5·spd12)로 본다 —
          서버가 실제 값을 보내면 방패병이 제 블록(def20·spd6)을 되찾는다. 동료 subtype 키를 새로 만들지 않고
          **주입된 값 자체**를 보내므로 엔진 계약(Mars 소유)을 건드리지 않는다.
-         shieldStartPct 는 보내지 않는다 — netStubStats 가 읽지 않고 그리는 곳도 없다(전투 시작 방어막은 서버가
-         계산해 shield 합계로 내려간다). shieldLayers 도 보내지 않는다(아래 _serializeBattle 주석과 같은 이유). */
-      def: p.def, spd: p.spd, dodge: p.dodge, crit: p.crit, statusPct: p.statusPct,
+         #294 (2026-10-02 CJ) shieldStartPct 도 보낸다 — 자기 말 상세가 8스탯을 실제 값으로 그린다. 엔진 값 그대로
+         (0~1 비율 · 기본값을 지어내지 않는다: 엔진 객체에 없으면 키도 없다). 소유자 전용이다 — 상대 뷰와 전투 뷰에는
+         여전히 싣지 않는다. shieldLayers 는 보내지 않는다(아래 _serializeBattle 주석과 같은 이유). */
+      def: p.def, spd: p.spd, dodge: p.dodge, crit: p.crit, statusPct: p.statusPct, shieldStartPct: p.shieldStartPct,
       grade: p.grade === undefined ? null : p.grade,
       crack: p.crack, harden: p.harden, hardenPct: p.hardenPct, evadeBuff: p.evadeBuff, dmgUpBuff: p.dmgUpBuff,
       /* #234 REVISE 2차 (CJ 결정 2026-09-17) 사신의 낫 전투를 넘는 봉인 0/1/2 — 소유자 전용(등급 A). 재연결 뒤에도 봉인 사유

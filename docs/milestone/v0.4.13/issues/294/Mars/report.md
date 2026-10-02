@@ -208,6 +208,85 @@ CI run `36947034351` 의 A 가 `demo/test/regression/smoke_issue236.js:634` AC38
 - 같은 옛 계약 점검 [코드 읽기만]: A 의 그 단계는 `set -e` 라 236 뒤의 파일(259 · 286 · 263_client · 260 · 262 · 238 · 285 · 295 · 293)과 이후 단계는 이 CI run 에서 **돌지 않았습니다.** 그중 `renderSide` 경기 분기를 보는 것은 238 · 293(3.5 에서 통과) · 285 E(아이템 칸 — 유지된 부분)뿐이고, `issue122_rules` · `trap_icon` · `own_side` 는 배치 · 결과 · 메모 분기만 봅니다. 삭제된 배지 문구(`🪙 ` · `주 행동` · `자기 말을 클릭` · `예비 하수인`)를 기대하는 단언은 회귀 · 통합 폴더에 더 없었습니다. **실행으로 확인한 것은 236 뿐**이며 나머지는 다음 CI 가 봅니다.
 - 이것은 Mars 자체 점검이며 독립 QA PASS 가 아닙니다. Git 명령 없음 · 새 파일 없음.
 
+## 3.7 CJ QA REVISE 2 — 하수인 상세 8스탯 · 잠긴 스킬 · 온라인 가방 스킬 (dispatch `ctx_0af7250b6cf4` / task `task_28e0658790cc` · 기준 HEAD `80341d3` 위 미커밋 수정)
+
+참조 원본: `references/CJ_REVISE2_20261002_1.png`(가방) · `_2.png`(상점). 실행값: Claude Code `claude-opus-5-5` · effort high · bypassPermissions(PID 37024 기동 인수) · Ponytail full. Git 명령 없음.
+
+### 원인 [확정 — 코드에서 확인]
+
+| 증상 (CJ 화면) | 원인 |
+|---|---|
+| 능력치가 6칸 | `unitStatChips`(ui.js)가 상태 부여 확률을 **0 이면 걸러 냈고**, 시작 방어막(`shieldStartPct`)은 목록에 **아예 없었습니다.** 지속형 외에는 상태 부여가 0 이라 항상 6칸이었습니다. |
+| 온라인 가방 상세에 스킬이 없음 | `netEcoState`(network.js)가 가방 말을 회선 모양 그대로 복사했습니다. 회선의 스킬은 `{i,revealed,id,name,cd}` 객체인데 설명 창은 `SKILLS[id]` 를 **id 문자열**로 찾아 전부 빈 줄이 됐습니다. 보드 말은 `netAdaptSkills` 를 거쳐 정상이었고 가방만 빠져 있었습니다. |
+| (온라인) 시작 방어막 값 | 서버가 싣지 않던 값입니다. Jupiter 가 `_serializeOwn` · `_serializeUnit`(자기 좌석 전용)에 추가했고, 클라이언트는 **온 숫자만** 옮깁니다. |
+
+### 바꾼 것
+
+| 파일 | 내용 |
+|---|---|
+| `demo/js/ui.js` | `unitStatChips`: 8칸(HP·공격력 / 방어력·속도 / 회피·치명타 / 상태 부여·시작 방어막), 0 도 표시(`+0%p` · `0%`). 짧은 이름표 `상태 부여` · `시작 방어막`, aria · title 은 전체 이름(`상태 부여 확률` · `전투 시작 방어막 (최대 HP)`). 시작 방어막 값이 없으면 `—` + "정보 없음"(0 을 지어내지 않음). `unitSkillRows`: 가진 스킬 뒤에 그 종의 더 높은 등급 스킬을 잠긴 줄로(이름 · `🔒 ★N 필요` · 위력 · 쿨타임 · 설명, 남은 쿨 없음). 전설 · 왕 · 동료는 종 표가 없어 잠긴 줄 없음. `unitHelpOpen`: 능력치가 있는 창은 그림 옆에 능력치 묶음만 두고 아이콘 줄은 위, 정보 줄 · 개인 시너지는 아래. 능력치가 없는 창(공개된 상대 말 · 폭탄 · 함정)은 종전 배치 그대로. |
+| `demo/js/network.js` | `netEcoState`: 가방 말에 기존 `netAdaptSkills` 적용(새 함수 없음). `netStubStats` 자기 말 분기: `shieldStartPct` 는 서버가 실은 숫자만, 없으면 `null`. |
+| `demo/css/game.css` | `.uhStats` 2열 × 4행 · `.uhTop` stretch(능력치 묶음 높이 = 그림 104px) · 하수인 설명 창 폭 `min(420px, 100vw−16px)` · 잠긴 줄 흐림 · 359px 이하에서는 이름표를 숨기고 아이콘 + 값. |
+| `demo/test/regression/smoke_issue238.js` | C2l 기대값 교체(8칸 · 잠긴 ★3·★4) + **I2 블록 13건 신설**(아래). |
+| `demo/test/regression/smoke_memo.js` | D4 · D11e(상대 말 창): 그 종의 ★1~4 스킬 이름 전부 · 잠김 표식 · 방어막이 없어야 함. D11f(내 말): 8칸. |
+
+**구현 중 찾은 것 1건:** 경기 전(상점 · 배치) 단계는 로컬 배치 뼈대 위에 서버 값을 덮습니다. 서버가 `shieldStartPct` 를 싣지 않으면 뼈대의 로컬 기본값 `0` 이 남아 보호형이 `0%` 로 보였습니다(지어낸 값). 그래서 값이 없을 때 키를 빼지 않고 `null` 로 덮게 했습니다(I2l 이 잡았습니다).
+
+`bagPick.unit`(B08 포획 말)은 손대지 않았습니다 — 화면이 이름 · 등급만 읽고 상세 창 진입이 없습니다.
+
+### 상대 정보 경계
+
+상대 말 창은 `unitStatChips` · `unitSkillRows` 를 부르지 않습니다(종전 그대로 · `own&&unit` 일 때만). 잠긴 줄은 `unitSkillRows` 안에서만 만들어지므로 상대 창에는 종 스킬표가 나오지 않습니다 — 오프라인(기기에 상대 전체 값이 있는 경우) 포함. `smoke_memo` D4 · D11e 와 캡처 로그 `synthetic-revealed-opponent-privacy`(3개 폭 모두 유출 0)로 확인했습니다.
+
+### 검사 — 실행 횟수와 결과
+
+| 명령 | 횟수 | 결과 |
+|---|---|---|
+| `node demo/test/regression/smoke_issue238.js` | 5 | ① 178/1 실패(I2l) → ② 검사 구조만 고친 뒤 재실행, 같은 실패 → ③ 진단 출력용 1회 → ④ `network.js` 수정 뒤 **179/0** → ⑤ 마지막 CSS · `ui.js` 변경 뒤 최종 **179 passed / 0 failed · exit 0** |
+| `node demo/test/regression/smoke_memo.js` | 3 | 매번 **pass 129 / fail 0** (① 최초 ② `network.js` 수정 뒤 ③ 최종) |
+| `node demo/test/regression/smoke_issue293.js` | 3 | 매번 **124 passed / 0 failed** (같은 세 시점) |
+| `npm run typecheck` | 3 | 매번 exit 0 (같은 세 시점) |
+| `node tools/typecheck/test/typecheck_test.js` | 1 | **72 passed / 0 failed** |
+| 캡처 스크립트 | 3 | ① 최초(320 에서 이름표 · HP 값 잘림 확인) → ② CSS 조정 뒤(390 에서 `상태 부여` 한 칸 잘림) → ③ 최종(전 장면 잘림 0) |
+
+재실행은 모두 실패 수정 또는 그 뒤의 코드 변경 때문입니다. 다른 회귀 · 통합 테스트는 실행하지 않았습니다(다음 CI 가 봅니다).
+
+I2 블록(실제 서버 `Room.toSeatView` 직렬화 → `room_state` → 클라이언트 수화): 회선 가방 스킬이 객체 배열이고 `shieldStartPct` 가 숫자임을 전제로 확인 → 수화 뒤 id 배열 · 쿨 일치 → ★1 보호형(가방) 8칸 `+0%p` · `10%` + 잠긴 ★2~4 → ★2 지속형 `+10%p` · `0%` · 남은 쿨 2 · 잠긴 ★3~4 → 전설 4스킬 · 잠김 없음 → 같은 종 · 등급의 필드 상세 = 가방 상세(글자 그대로) → ★4 필드 4스킬 전부 열림 → 전설 · 왕 · 동료 8칸 · 잠김 없음 → 키 없는 옛 서버 프레임(이 한 건만 합성) `—` → 상대 좌석 뷰에 내 스킬 이름 · 방어막 값 없음. 서버 엔진의 말 · 가방 **상태**는 검사가 주입했고(종 · 등급을 고르기 위해) 회선 **모양**은 실제 직렬화입니다.
+
+### 화면 — `evidence/revise2-20261002/` (PNG 55장 + `capture-log.json` + `capture-script.js.txt`)
+
+설치된 Chrome headless · CDP · `file://` · 새 의존성 없음 · 서버 프로세스 없음. 320×640 · 390×844 · 1100×1000.
+
+- **`*-synthetic-*`** = 오프라인 PVE 엔진 상태에 Core 주입 함수로 말을 넣은 **합성**.
+- **`*-wire-*`** = 실제 서버 코드가 직렬화한 좌석 뷰 JSON 을 브라우저의 실제 수신 처리기(`ws.onmessage`)에 넣은 것. **WebSocket 객체는 대역이며 실제 네트워크 연결 · 실제 서버 프로세스는 없습니다.** 실제 두 클라이언트 온라인 경기는 하지 않았습니다.
+
+| 장면 | 파일(폭마다) |
+|---|---|
+| ★1 보호형 가방 · 방어막 10% | `synthetic-bag-g1-guard-shield10` · `wire-bag-g1-guard-shield10` |
+| 같은 말 필드 | `synthetic-field-g1-guard` · `wire-field-g1-guard-shield10` |
+| ★2 지속형 가방 · 상태 부여 +10%p | `synthetic-bag-g2-sustain-status10` · `wire-bag-g2-sustain-status10` |
+| ★4 · 4스킬 전부 | `synthetic-bag-g4-all-skills` · `wire-field-g4-sustain-all-skills` |
+| 전설 · 왕 · 동료 · 진열 칸 | `synthetic-field-legend` · `wire-bag-legend` · `synthetic-field-king` · `wire-field-king` · `synthetic-field-ally` · `synthetic-shop-slot` |
+| 창이 길 때 맨 아래 | `…-scrolled-bottom` |
+
+실측(`capture-log.json` · 42장면 전부): 그림 높이와 능력치 묶음 높이 차 **0px**, 위쪽 차 0px · 8칸 · 값 잘림 0 · 이름표 잘림 0 · 마지막 스킬 줄까지 창 안에서 도달 · 가로 넘침 없음 · 페이지 오류 0 · 창을 보는 동안 송신 0.
+
+CJ 원본과의 대조: 원본의 6칸(HP 한 줄 전체 + 5칸)이 8칸 2×4 로, 가방 원본에 없던 스킬 구역이 생겼습니다. 원본은 1440px 실기기 화면이고 이번 캡처는 headless 라 글꼴 · 여백은 같은 조건이 아닙니다.
+
+### 확인하지 못한 것 · 위험
+
+- 실제 WebSocket 온라인 경기에서의 화면(두 클라이언트) — CJ QA 대기.
+- 320px 에서는 이름표가 보이지 않고 아이콘 + 값만 보입니다(이름은 aria-label · title). 360~389px 폭은 캡처하지 않았습니다 — 폭이 좁아 `상태 부여` · `시작 방어막` 이름표가 말줄임될 수 있습니다(값은 잘리지 않는 구조). [추론]
+- 잠긴 줄의 흐림은 `opacity .55` 입니다. 대비 수치는 재지 않았습니다.
+- 탐색으로 스킬을 교체한 하수인: 가진 스킬은 그대로 두고, 잠긴 줄은 "종 표에서 가진 개수 뒤의 스킬 중 아직 없는 것"으로 냅니다. 코드로만 확인했고 전용 검사는 추가하지 않았습니다.
+- 서버 파일은 수정하지 않았습니다. `shieldStartPct` 회선 추가와 서버 경계 검사는 Jupiter 납품입니다.
+
+### 자원
+
+Chrome headless PID 21892 · 9676 · 34476(포트 9431) — 스크립트가 종료했고 `tasklist` 로 없음을 확인. 임시 프로필 삭제. 캡처 스크립트 원본은 세션 scratchpad, 사본이 `capture-script.js.txt`. 임시 로그 · 일회용 스크립트 삭제. 로컬 서버 없음.
+
+이것은 Mars 자체 점검이며 독립 QA PASS 가 아닙니다.
+
 ## 4. 계약과 다르던 점 — Root(Mercury) 수용 완료
 
 1. **`smoke_memo` D3 기대값 교체** — 계약 9장 대체 목록에는 없지만 4.1 표("상대 차례 · 내 말 → 설명 창")가 요구해 "차단 토스트"를 "설명 창 · 선택 없음 · 송신 0"으로 바꿨습니다.

@@ -1410,17 +1410,19 @@ body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #e
 .uCard .faceBtn{grid-area:ic;}
 /* 2026-10-02 CJ REVISE(스케치 4): 탭 없는 한 장 — 왼쪽 큰 그림 | 오른쪽 기본 능력치 칸(2열) · 정보 줄 · 개인 시너지 / 아래 스킬 */
 .synHelp h3 .stars{font-size:13px; letter-spacing:0; color:#ffd66b;}
-.uhTop{display:flex; align-items:flex-start; gap:8px;}
+.uhTop{display:flex; align-items:stretch; gap:8px;}
 .uhFace{flex:0 0 104px; width:104px; height:104px; display:grid; place-items:center; font-size:56px; border-radius:8px; background:#06102a; border:1px solid #1f3e78;}
 .uhFace .icon{width:96px; height:96px; image-rendering:pixelated;} .uhFace .icon.leader{image-rendering:auto;}
 .uhInfo{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:4px;}
 .uhInfo .tags{display:flex; gap:4px; font-size:22px;}
 .uhStats,.uhRows{list-style:none; margin:0; padding:0;}
-.uhStats{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px;}
-.synHelp .uhStats li{display:flex; align-items:center; gap:3px; min-width:0; padding:3px 4px; font-size:13px; line-height:18px; white-space:nowrap; color:#fff;}
-.synHelp .uhStats li:first-child,.synHelp .uhStats li[title="상태 부여 확률"]{grid-column:1/-1;} /* HP 현재/최대 · 이름표가 긴 상태 부여 확률은 한 줄 전체 */
-.uhStats small{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:11px; color:#a9bcdc;} .uhStats .gi{font-size:16px;}
-.uhStats b{margin:0; font-variant-numeric:tabular-nums;}
+.synHelp>.tags{display:flex; gap:4px; font-size:22px;}
+.uhStats{flex:1 1 auto; min-width:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(0,1fr)); gap:3px;} /* CJ REVISE 2: 2×4 여덟 칸 — 높이 = 그림(.uhFace 104px · .uhTop 이 늘인다) */.synHelp.uh{width:min(420px,calc(100vw - 16px));} /* 하수인 설명 창만 조금 넓게 — 2열 칸에 이름표 + 값이 들어가게 */
+.synHelp .uhStats li{display:flex; align-items:center; gap:2px; min-width:0; padding:0 3px; font-size:13px; line-height:18px; white-space:nowrap; color:#fff;}
+@media (max-width:359px){ .uhStats small{display:none;} } /* 320px: 칸이 좁아 이름표 대신 아이콘 + 값(이름은 aria-label · title) — 값은 잘리지 않는다 */
+.synHelp .uhSkills li.lock{opacity:.55;} /* 아직 열리지 않은 등급의 스킬 */
+.uhStats small{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:10px; color:#a9bcdc;} .uhStats .gi{font-size:14px;} .uhStats li>span{font-size:11px;}
+.synHelp .uhStats b{margin:0 0 0 auto; font-size:12px; font-variant-numeric:tabular-nums;}
 .synHelp .uhRows li{padding:0; border:0; background:none; font-size:13px; line-height:18px; color:#eef2fb;}
 .synHelp .uhSyn{font-size:12px;} .uhSyn .gi{font-size:16px;}
 .uhSkT{margin:2px 0 0; display:flex; align-items:center; gap:4px; font-size:14px; color:#ffd66b;} .uhSkT .gi{font-size:18px;}
