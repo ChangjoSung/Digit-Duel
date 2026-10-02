@@ -630,8 +630,16 @@ function proxyBattle(T,win){
   const aiBag=S.eco.bag[1].map(u=>u.name);
   ok(!S.log.some(l=>/🪙|원장/.test(l.msg))&&!S.log.some(l=>aiBag.some(n=>l.msg.includes(n))),"AC38 공개 기록에 재화·가방·원장 없음 (중립 문구만)");
   ok(S.log.some(l=>/상점을 이용했습니다/.test(l.msg)),"AC38 상대에게는 '상점을 이용했습니다' 중립 문구");
-  T.renderSide(); const sp=T.byId("sidePanel").innerHTML;
-  ok(sp.includes("🪙 "+S.eco.coins[0])&&!aiBag.some(n=>sp.includes(n)),"AC38 PVE 사이드 패널은 사람(소유자) 재화·가방만");
+  /* #294 CJ REVISE(2026-10-02): 가방 창의 코인 배지는 없앴다 — 내 코인은 상단 상태 칸(renderBoardInfo) 한 곳뿐이다.
+     양쪽 가방·코인을 서로 다른 값으로 세워 "내 것만 보인다"와 "상대 것은 어디에도 없다"를 함께 본다 */
+  const free=T.ROSTER.filter(r=>![0,1].some(p=>ownKeys(T,p).includes(r.id))), mine=unit(T,free[0].id,2,2), theirs=unit(T,free[1].id,2,2);
+  S.eco.bag[0]=[mine]; S.eco.bag[1]=[theirs]; S.eco.coins[1]=S.eco.coins[0]+7;
+  const potions=S.inv[0].filter(x=>x==="potion").length;
+  T.renderSide(); T.renderBoardInfo(); const sp=T.byId("sidePanel").innerHTML, bi=T.byId("boardInfo").innerHTML, coinLabels=h=>(h.match(/aria-label="재화 /g)||[]).length;
+  ok(mine.name!==theirs.name&&sp.includes(`aria-label="가방 하수인 1/${T.ECO.bagMax}"`)&&sp.includes(`<b>${mine.name}</b>`)&&sp.includes(`${mine.hp}/${mine.maxHp}`)
+    &&(sp.match(/class="ownItem/g)||[]).length===8&&sp.includes(`aria-label="회복약 ${potions}개"`),"AC38 PVE 가방 창 = 사람(소유자) 가방 n/3 · 카드 · 아이템 8종");
+  ok(!sp.includes(theirs.name)&&!aiBag.some(n=>sp.includes(n))&&!bi.includes(theirs.name)&&coinLabels(sp)===0&&!/class="badge/.test(sp),"AC38 가방 창에 상대(AI) 가방 없음 · 코인 배지 재도입 없음");
+  ok(bi.includes(`aria-label="재화 ${S.eco.coins[0]}"`)&&coinLabels(bi)===1&&!bi.includes(`재화 ${S.eco.coins[1]}`),"AC38 내 코인은 상단 상태 칸 한 곳 · 상대(AI) 코인 없음");
 }
 {
   const T=hotseatPlay(132), S=T.S; const f=field(T,1)[0]; H.place(T,f,7,4); f.revealed=false; f.swapMark=true; S.current=0;
