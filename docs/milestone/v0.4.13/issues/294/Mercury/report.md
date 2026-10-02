@@ -1,3 +1,74 @@
+# #294 Mercury — CJ QA REVISE2 납품 보고
+
+CJ 지적대로 개별 스탯은 **8개**다. 기존 UI의 상태 부여 확률 0 숨김과 전투 시작 방어막 누락은 표시 누락이었고, 여섯 개로는 충분하지 않다. 가방은 온라인 스킬 객체를 ID 배열로 변환하지 않아 스킬 설명이 빠졌다.
+
+최신 CJ 추가 지시를 반영해 8항목을 **4행×2열**, HP도 반 폭으로 배치하고 썸네일 높이·상하단을 전체 스탯 묶음과 맞췄다. 일반 종 스킬 4개를 모두 표시하며 미해금 스킬은 Dim·자물쇠·필요 등급, 이름·위력·쿨·설명을 보인다. 보드·상점·가방은 같은 상세 생성 경로를 사용한다. 소유자에게만 서버의 실제 시작 방어막 값을 전달하고, 값이 없으면 —로 표시한다.
+
+최종 제품 검증 소스: `26d9212bd9b4ad70da23b9eff0c724e14ee1d757`(초기 구현·시각 검증 `2059191c418d10faa452aaf98556e8411effbbb5` 이후 구형 프레임 방어막 누락 경계 수정). 최종 보고서 커밋은 제품·테스트를 바꾸지 않는다. 해당 최종 SHA의 필수 CI6·기존 Free Render 배포 SHA·health·제공 파일 영수증은 [Issue #294](https://github.com/ChangjoSung/Digit-Duel/issues/294)와 [PR306](https://github.com/ChangjoSung/Digit-Duel/pull/306)에 기록한다. #294 OPEN·PR306 Draft·CJ 재테스트 대기 유지.
+
+| 배열 | 왼쪽 | 오른쪽 |
+|---|---|---|
+| 1행 | HP 현재/최대(진열은 최대) | 공격력 |
+| 2행 | 방어력 | 속도 |
+| 3행 | 회피 | 치명타 |
+| 4행 | 상태 부여 확률(+N%p, 0 포함) | 전투 시작 방어막(최대 HP 비율 N%, 0 포함) |
+
+게임 규칙·성장·스킬 해금·가격·시계·상대 공개 범위는 기존 계약을 따른다. 새로운 스탯·명중·아트·의존성·WorkTree·Branch는 추가하지 않았다.
+
+## 독립 QA
+
+초기 고정 소스2059191의 Saturn 판정은 REVISE(검사7개 실제1회씩·1247/0, PNG55장·CJ원본2장 직접 대조, 파일 수정 없음). 현대 서버/화면은 통과했지만 방어력까지 없는 구형 프레임에서 로컬 방어막 기본값이 남는 경계를 발견했다. 새로운 Mars가 공용 netStubStats 다섯 분기 모두에 실제 값(0 포함)/누락(null)을 명시하고 I2n/I2o 회귀를 추가했다. 새 고정 SHA26d9212에서 fresh Saturn은 영향받은 typecheck·#238만 각1회 수행해 exit0·181/0, **PASS**를 보고했다(`msg_5fe0a023293f`). UI/CSS/서버/스킬/아트는 변경되지 않아 기존 시각·서버·기타 회귀 결과를 재사용했다. Saturn 두 세션 모두 files_modified=[]; 초기 REVISE를 성공으로 바꾸지 않고 최종 PASS로 해소했다.
+
+Windows npm.ps1은 실행 정책으로 TypeScript 시작 전에 차단됐다(1회). 정책 변경 없이 root가 승인한 npm.cmd 실행으로 실제 typecheck1회 통과. 기존 typecheck_test 자체 임시 fixture와 finally 정리만 허용했고 Saturn의 직접 파일/스크립트 생성은 없었다.
+
+## 구현·검증과 한계
+
+Mars 자체 검사 최종값: #238179/0, memo129/0, #293124/0, typecheck exit0, typecheck_test72/0. Jupiter: combat boundary559/0, economy184/0, 각1회. 브라우저 캡처42장면(320/390/1100px), PNG55장: 그림·8칸 높이/상단 차0px, 값 잘림0, 마지막 스킬까지 도달, 상대 상세 유출0. 상세는 [Mars 보고서](../Mars/report.md) 3.7과 [Jupiter 보고서](../Jupiter/report.md).
+
+- 320px는 이름표 대신 아이콘·값을 표시하며 이름은 aria/title로 제공한다. 360~389px 별도 실측은 하지 않았다.
+- wire 캡처는 실제 Room.toSeatView JSON과 실제 수신 처리기를 사용했지만 WebSocket은 대역이다. 실제 온라인 경기·CJ 실기기 플레이는 재테스트 대기다.
+- 잠금 Dim opacity .55. 스킬 교체 뒤 상세는 기존 보유 스킬을 유지하며 이후 종 스킬만 잠금으로 붙인다.
+
+## 문서와 작업 운영
+
+Venus 계약·보고·동기화 기록 갱신. Notion 기존 GDD13/23/24 targeted6회 성공, 첫 UUID 형식 오류1회는 미적용. 전후3페이지 대조(만료되는 첨부 서명 쿼리만 제외): 비대상 본문·문서 속성·#293/#295/QA 이력 유지. DecisionLog42→43, 규칙 본문 개정 없음. [동기화 영수증](../Venus/decision-sync.md) 7장.
+
+Mars 실행 횟수는 #2385·memo3·#2933·typecheck3·typecheck_test1·캡처3. #238의 실패 진단용 추가 실행은 수정 뒤 재실행 제한을 지키지 않은 운영 편차다. 완료 보고에서 확인했으며 해당 Worker는 이미 release·PTY 종료했고 재사용하지 않았다. 통과 검사를 진단 때문에 반복하지 않는 계약을 Saturn에 재명시했다. 실패/수정/최종 재검사의 실제 횟수는 Mars 보고서에 보존한다.
+
+## CJ 재테스트 Q5-01~05
+
+1. 같은 종·등급을 상점/보드/가방에서 열어 8개 값·스킬 내용이 같고 0도 보이는지 확인.
+2. 320/390px에서 4×2 전체와 썸네일의 상하단·높이, 값과 긴 HP가 잘리지 않는지 확인.
+3. ★1/★2/★4 하수인의 미래 스킬 Dim·자물쇠·필요 등급과 실제 해금 후 표시를 확인.
+4. 가방에서 스킬·남은 쿨을 읽고 닫기/X/Esc/Tab이 종전대로 동작하는지 확인.
+5. 공개된 상대 상세에 스탯·스킬이 새로 노출되지 않는지, 준비·메인 TopBar와 기존 가방 동작이 유지되는지 확인.
+
+## Worker 사용량과 완료 영수증
+
+모든 Worker는 fresh session, 지정 역할·현재 모델/effort를 시작/GO/완료 게이트에서 확인했다. Claude는 Opus5.5 high·bypass, Saturn은 gpt-6.1-sol xhigh·명시적 service_tier=default·danger-full-access/never. Saturn JSONL에는 tier가 없어 tier 확인 근거는 실제 argv와 footer이며 adopted requested/effective null을 유효 모델로 추정하지 않았다.
+
+| 세션 | 입력 | 캐시 읽기 | 캐시 쓰기 | 출력 | 추론 |
+|---|---:|---:|---:|---:|---:|
+| Venus 017ed8d4 | 28 | 1,972,008 | 170,174 | 38,874 | 미제공 |
+| Mars 112c6c5f | 98 | 9,277,363 | 232,694 | 70,289 | 미제공 |
+| Jupiter 7eeae8ed | 34 | 1,928,815 | 108,019 | 16,423 | 미제공 |
+| Saturn 초기 01a0fa49 | 4,583,332 | 4,369,664 | 0 | 16,100 | 5,686 |
+| Mars 수정 4a47f9c4 | 20 | 1,029,279 | 98,061 | 12,762 | 미제공 |
+| Saturn 최종 01a0fa58 | 1,248,206 | 1,150,848 | 0 | 8,292 | 2,598 |
+
+Claude는 중복 assistant id를 제외한 실제 usage 합계(14/49/17/10개), Codex는 새 세션 마지막 token_count total 값이다. Codex 입력에는 캐시 읽기가, 출력에는 추론이 포함되어 중복 합산하지 않는다. Mercury root는 동일 범위의 시작/종료 사용량 계측이 제공되지 않아 미측정이며 절감률·구독 절감 주장은 하지 않는다.
+
+최종 Saturn task task_013b75117b67·dispatch ctx_25550364e104·session 01a0fa58-d34c-7610-bec3-6f5e2c991c8a·turn 01a0fa59-f591-7191-8ce3-6d5c1a7e69bc, 완료 모델 JSONL/argv/footer 현재 대조, 읽기 전용·clean HEAD 확인. 결과 archive 뒤 release·PTY kill·PID28776 종료·delivery_9793349b885f ACK. 이번 6 task는 5 succeeded·1 초기 QA failed(최종 PASS로 해소), 모두 완료했으며 lease 없음.
+
+## 보존과 정리
+
+main 기존 변경·unity/·stash·handoff·PR304·#293 병합/종결 이력 보존. main/milestone 병합·Release·운영 Render 변경·결제 없음. 소유한 Worker와 QA 브라우저를 결과 회수 뒤 정리한다. 최종 상태와 자원 영수증은 Issue/PR이 원본이다.
+
+
+
+<details>
+<summary>이전 CJ REVISE 납품80341d3 이력</summary>
+
 # #294 Mercury — CJ QA REVISE 납품 보고
 
 [피드백] 2026-10-02 CJ의 세 항목을 같은 #294 브랜치에서 수정했다. 제품 소스 `0931b8e5b45f96cbd17b415719ee0c6704fd5378`를 독립 Saturn이 **PASS**로 판정했고, CI 기대값 보정 `3397ad5ce58f4427a4ca2a55aa4c6aed50fd2542`도 추가 독립 QA **PASS**다. #294 OPEN·PR306 Draft·CJ 재테스트 대기를 유지한다.
@@ -203,5 +274,7 @@ fresh Mars `ctx_a3e304b060e0` / `task_04b308adc161`가 기존 `smoke_public_eco_
 Mars 세션 `b3d4503e-30ba-4f04-8813-3b15b24a7679`의 현재 assistant model Opus5.5·PID22420 high/bypass·현재 footer를 확인했다. adopted requested/effective null. 기존 ws의 절대 require 경로를 기존 main 의존성으로 돌리는 저장소 밖 임시 -r 스크립트를 로컬 검사에서만 사용했다(CI에는 server/node_modules가 있어 필요 없음). 자체 검사 서버/Node 프로세스가 자연 종료됐다. 이 환경 조정은 제품 검사 기대값을 바꾸지 않으며 Saturn이 독립 확인한다.
 
 제품 경로는 `80a2955`와 동일하다. 새 소스 SHA에서 Saturn은 이 테스트 변경만 읽기 전용 검토·단독 실서버 실행하며, 기존 419/0·미영향 1,019/0·이미지 검증을 반복하지 않는다. 최종 독립 판정과 새 SHA CI/배포 결과는 Issue/PR 본문의 납품 원장에 기록한다.
+
+</details>
 
 </details>
