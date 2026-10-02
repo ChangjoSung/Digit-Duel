@@ -60,7 +60,7 @@ const ECO={
   startGoods:["potion","cool","cure","ball","ticket","power","time","escape"], // 시작 상점 (2.2) — #238 (2026-09-25 CJ): 정기 상점 상품 8종 전체를 실제 구매. 티켓 '사용'은 정기 상점 전용 유지
   goods:["potion","cool","cure","ball","ticket","power","time","escape"], // 정기 상점 (7.3)
   prepSec:180,                                                  // #293 (2026-10-01 CJ): 경기 전 준비(시작 상점 → 배치 → 완료) 공통 180초 한 번 — 양쪽 같은 마감 · 재발급 없음
-  shopSec:90, bagPickSec:20,                                    // 정기 상점 1인 90초 (PVE·핫시트 순차 최대 180초 — 자기 상점이 보이는 순간부터, 2026-09-24 CJ D1) · B08 20초
+  shopSec:180, bagPickSec:20,                                   // #295 (2026-10-02 CJ): 정기 상점 1인 180초 — 좌석별 시계(PVE·핫시트 순차 최대 360초 · 자기 상점이 보이는 순간부터 · 온라인은 단절 중 정지). 준비 공통 시계(prepSec)와 값만 같고 합치지 않는다 · B08 20초
   actSec:30, battleSec:60                                       // #263: 게임 행동 30초(출전 후보 선택 포함 · 전투 중 정지) · 전투 행동 60초(2026-09-25 CJ T4). 배치 90초(placeSec)는 #293 으로 폐지 — 준비 180초에 포함
 };
 /* ===== #21 시드 가능한 RNG — 게임 로직의 모든 난수는 rand()를 경유. setSeed(n)로 결정적 재현, setSeed(null)로 Math.random 복귀 ===== */

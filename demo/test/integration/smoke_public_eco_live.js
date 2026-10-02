@@ -244,8 +244,8 @@ async function finishStartShop(c){
     host.W.__shop("good","ball"); await waitReply(host,n0,"regular good");
     ok(coins(host)===hc-1&&host.T.S.balls[host.T.NET.me]>=1,"E20 정기 상점 소모품 구매가 서버 판정으로 반영");
     n0=host.ctor.frames.length; host.W.__shop("done"); await waitReply(host,n0,"host done");
-    await waitFor(()=>/상점 완료/.test(host.T.byId("overlayBox").innerHTML),5000,"host waits");
-    ok(host.T.S.phase==="shop","E21 먼저 끝낸 좌석은 상대 완료까지 대기 화면");
+    await waitFor(()=>host.T.byId("overlay").classList.contains("hidden")&&/20턴 상점/.test(host.T.byId("boardInfo").innerHTML),5000,"host waits");
+    ok(host.T.S.phase==="shop"&&/netEcoResign/.test(host.T.byId("boardInfo").innerHTML),"E21 먼저 끝낸 좌석은 상점 창이 닫히고 상대 완료까지 말판 대기(#295 — ⚙ 기권 유지)");
     n0=guest.ctor.frames.length; guest.W.__shop("done"); await waitReply(guest,n0,"guest done");
     await waitFor(()=>host.T.S.phase==="play"&&guest.T.S.phase==="play",5000,"play resumes");
     await waitFor(()=>host.T.byId("overlay").classList.contains("hidden"),5000,"shop overlay closes");
