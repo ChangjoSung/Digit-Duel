@@ -327,6 +327,12 @@ function pvePlay(seed){ const T=pveSetup(seed);
   ok(/시작 방어막 \(최대 HP\) 0%/.test(stats(kg)[7])&&/시작 방어막 \(최대 HP\) 0%/.test(stats(al)[7]),"I2k 왕 · 동료의 시작 방어막 = 서버가 실은 실제 값 0%");
   { const old=JSON.parse(JSON.stringify(room.toSeatView(0))); old.you.eco.bag.concat(old.you.pieces).forEach(u=>{ delete u.shieldStartPct; }); P=client(old); // 합성: 옛 서버(키 없음)를 새 클라이언트가 받는다
     const o=bag(bG), f=pcs(own("minion")[0]);    ok(stats(o)[7]==="전투 시작 방어막 (최대 HP) 정보 없음"&&stats(f)[7]==="전투 시작 방어막 (최대 HP) 정보 없음"&&stats(o).length===8&&/<b aria-hidden="true">—<\/b><\/li><\/ul>/.test(o)&&!/시작 방어막 \(최대 HP\) \d/.test(o+f),"I2l 서버가 시작 방어막을 싣지 않으면 '—'(정보 없음) — 0 을 지어내지 않는다(가방 · 필드)"); }
+  /* Saturn REVISE: def 도 없는 프레임(netStubStats 의 종 표 · 왕 · 동료 · 표준 폴백 분기)에서도 뼈대의 로컬 0 이 남지 않는다 — I2l 은 def 를 남겨 숫자 분기만 봤다 */
+  { const noDef=()=>{ const o=JSON.parse(JSON.stringify(room.toSeatView(0))); o.you.pieces.forEach(u=>{ delete u.def; delete u.shieldStartPct; }); return o; }, none="전투 시작 방어막 (최대 HP) 정보 없음", sh=x=>stats(pcs(x))[7];
+    P=client(noDef());
+    ok(P.S.pieces.filter(x=>x.owner===0).every(x=>x.shieldStartPct===null)&&[own("minion")[0],own("minion")[2],own("king")[0],own("ally")[0]].every(x=>sh(x)===none),"I2n def · 시작 방어막이 둘 다 없는 자기 프레임: 내 말 전부 null(뼈대의 0 이 남지 않음) · 하수인 · 전설 · 왕 · 동료 모두 '—'");
+    const w=noDef(), wm=w.you.pieces.filter(u=>u.type==="minion"); wm[0].shieldStartPct=0; wm[1].shieldStartPct=0.10; P=client(w);
+    eq([sh(own("minion")[0]),sh(own("minion")[1]),sh(own("minion")[2])],["전투 시작 방어막 (최대 HP) 0%","전투 시작 방어막 (최대 HP) 10%",none],"I2o def 없는 프레임이라도 서버가 실은 값은 그대로(0 → 0% · 0.10 → 10% — 종 표 값이 아니라 회선 값) · 안 실은 말만 '—'"); }
   const o1=JSON.stringify(room.toSeatView(1)), mine=[guard.id,sus.id].flatMap(k=>all(k)).map(ko);
   ok(!o1.includes("shieldStartPct\":0.1")&&mine.every(n=>!o1.includes(n)),"I2m 상대 좌석 뷰에는 내 가방 · 미공개 필드 말의 스킬 이름과 시작 방어막 값이 없다");
 }

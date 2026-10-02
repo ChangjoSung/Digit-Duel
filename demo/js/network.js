@@ -615,13 +615,15 @@ function netStubPiece(u){
    u.def 가 오면 나머지 5개도 왔다고 가정한다). 아직 이 필드가 없는 대상(공개된 상대 말·기준판 서버 등)은 공개된
    rosterId·type 만으로 클라이언트가 같은 8스탯 표를 다시 찾아 채운다. */
 function netStubStats(u){
-  if(u&&typeof u.def==="number") return {def:u.def,spd:u.spd||0,dodge:u.dodge||0,crit:u.crit||0,statusPct:u.statusPct||0,grade:u.grade!==undefined?u.grade:null,
-    shieldStartPct:typeof u.shieldStartPct==="number"?u.shieldStartPct:null}; // #294 자기 말의 시작 방어막 — 서버가 실은 값만 옮긴다. 없으면(옛 서버) null 로 **덮는다**(경기 전 배치 뼈대의 로컬 기본값 0 이 남지 않게 · 설명 창은 "—")
+  /* #294 시작 방어막 — 서버가 실은 값만 옮긴다(0 포함). 없으면 **어느 분기든** null 로 덮는다: 경기 전 배치 뼈대에 얹히는 경로
+     (netApplyEcoSetup)에서 키가 빠지면 뼈대의 로컬 기본값 0 이 남아 설명 창이 "—" 대신 지어낸 0% 를 보인다. 표에서 추측해 채우지 않는다. */
+  const shieldStartPct=u&&typeof u.shieldStartPct==="number"?u.shieldStartPct:null;
+  if(u&&typeof u.def==="number") return {def:u.def,spd:u.spd||0,dodge:u.dodge||0,crit:u.crit||0,statusPct:u.statusPct||0,grade:u.grade!==undefined?u.grade:null,shieldStartPct};
   const rd=u&&u.rosterId!==undefined&&u.rosterId!==null?ROSTER.find(r=>r.id===u.rosterId):null;
-  if(rd){ const b=ARCHETYPE_BASE[rd.arch]; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:Number.isInteger(u.grade)?u.grade:1}; } // #293: 정체가 공개된 상대 말은 서버가 실제 등급을 싣는다(배경색)
-  if(u&&u.type==="king") return {def:KING_BASE.def,spd:KING_BASE.spd,dodge:KING_BASE.dodge,crit:KING_BASE.crit,statusPct:KING_BASE.statusPct,grade:null};
-  if(u&&u.type==="ally"){ const b=ALLY_BASE.assassin; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:null}; }
-  const std=ARCHETYPE_BASE.std; return {def:std.def,spd:std.spd,dodge:std.dodge,crit:std.crit,statusPct:std.statusPct,grade:1};
+  if(rd){ const b=ARCHETYPE_BASE[rd.arch]; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:Number.isInteger(u.grade)?u.grade:1,shieldStartPct}; } // #293: 정체가 공개된 상대 말은 서버가 실제 등급을 싣는다(배경색)
+  if(u&&u.type==="king") return {def:KING_BASE.def,spd:KING_BASE.spd,dodge:KING_BASE.dodge,crit:KING_BASE.crit,statusPct:KING_BASE.statusPct,grade:null,shieldStartPct};
+  if(u&&u.type==="ally"){ const b=ALLY_BASE.assassin; return {def:b.def,spd:b.spd,dodge:b.dodge,crit:b.crit,statusPct:b.statusPct,grade:null,shieldStartPct}; }
+  const std=ARCHETYPE_BASE.std; return {def:std.def,spd:std.spd,dodge:std.dodge,crit:std.crit,statusPct:std.statusPct,grade:1,shieldStartPct};
 }
 function netApplyRoomState(data,isResumeFrame){
   if(!data) return;

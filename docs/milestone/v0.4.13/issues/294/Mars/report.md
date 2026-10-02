@@ -287,6 +287,31 @@ Chrome headless PID 21892 · 9676 · 34476(포트 9431) — 스크립트가 종�
 
 이것은 Mars 자체 점검이며 독립 QA PASS 가 아닙니다.
 
+## 3.8 Saturn REVISE — 시작 방어막 폴백 분기 누락 (dispatch `ctx_e136ca2a2937` / task `task_3f3327e66633` · 기준 HEAD `2059191` 위 미커밋 수정)
+
+실행값: Claude Code `claude-opus-5-5` · effort high · `--dangerously-skip-permissions`(PID 26200 기동 인수) · 세션 `4a47f9c4` · Ponytail full. Git 명령 없음.
+
+- **원인 [확정 — 코드 읽기]**: 3.7 의 `null` 덮기를 `netStubStats`(`network.js`)의 **숫자 `def` 분기에만** 넣었습니다. `def` 가 없는 프레임이 타는 종 표 · 왕 · 동료 · 표준 폴백 4개 분기는 `shieldStartPct` 키를 내지 않았고, 경기 전 경로(`netApplyEcoSetup` → `hydrate` `setupEco` → `commitCoreState` 의 `Object.assign`)가 로컬 배치 뼈대 위에 얹으면서 뼈대의 로컬 `0` 이 남아 `—` 대신 `0%` 가 보였습니다. I2l 은 `shieldStartPct` 만 지우고 `def` 를 남겨 이 분기를 지나가지 않았습니다.
+- **호출자 추적**: `netStubStats` 호출자는 `netStubPiece` 하나, `netStubPiece` 호출자는 `netBuildAuthoritativeBoard`(내 말 · 상대 말 · 예비 — 통째 교체라 남는 값 없음)와 `netApplyEcoSetup`(뼈대에 얹음 — 결함 경로)입니다.
+- **수정 = `netStubStats` 한 곳**: 값을 맨 위에서 한 번 정하고(숫자면 그대로 · `0` 포함, 아니면 `null`) 다섯 분기 모두에 싣습니다. 종 표에서 추측해 채우지 않습니다. 상대 말은 키 없음 → `null` 로 바뀔 뿐 화면은 종전과 같습니다(상대 창은 능력치 칸을 만들지 않음). 서버 · UI · CSS · 허용 목록 변경 없음.
+- **단언 2건 추가**(`smoke_issue238.js` I2 블록 · 실제 `Room.toSeatView` 프레임에서 키만 지운 합성):
+
+| 단언 | 내용 |
+|---|---|
+| I2n | `def` · `shieldStartPct` 가 둘 다 없는 자기 프레임 — 내 말 전부 `null`(뼈대의 `0` 없음) · 하수인 · 전설 · 왕 · 동료 상세가 `—`(정보 없음) |
+| I2o | 같은 `def` 없는 프레임에 한 하수인 `0`, 다른 하수인 `0.10` 을 실음 — `0%` · `10%`(종 표가 아니라 회선 값) · 안 실은 말만 `—` |
+
+- 실행(마지막 수정 뒤 각 1회 · 이것만): 결과는 아래 표. 다른 회귀 · 캡처는 하지 않았습니다(`2059191` 의 기존 결과 재사용).
+
+| 명령 | 결과 |
+|---|---|
+| `npm.cmd run typecheck` | exit 0 (1회) |
+| `node demo/test/regression/smoke_issue238.js` | **181 passed / 0 failed · exit 0** (1회 · 종전 179) |
+
+- 한계: 새 단언이 수정 전 코드에서 실패하는지는 실행으로 확인하지 않았습니다(실행 1회 제한 — 코드 읽기로만 확인). 자원: 새 프로세스 · 서버 · 캡처 · 새 파일 없음.
+
+이것은 Mars 자체 점검이며 독립 QA PASS 가 아닙니다.
+
 ## 4. 계약과 다르던 점 — Root(Mercury) 수용 완료
 
 1. **`smoke_memo` D3 기대값 교체** — 계약 9장 대체 목록에는 없지만 4.1 표("상대 차례 · 내 말 → 설명 창")가 요구해 "차단 토스트"를 "설명 창 · 선택 없음 · 송신 0"으로 바꿨습니다.
