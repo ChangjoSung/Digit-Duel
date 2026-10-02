@@ -278,13 +278,9 @@
   .bmenu{grid-template-columns:repeat(2,1fr); gap:8px;}
   .bmenu button{min-height:50px; border-width:2px; border-radius:4px 12px 4px 12px; box-shadow:2px 3px 0 #00000022;}
   .bsub{border:2px solid var(--line); border-radius:10px; padding:8px; background:var(--panel2);}
-  /* #122 REVISE(2026-09-10 CJ QA 4): 하위 메뉴의 '← 뒤로'는 **행동 공간 아래**에 둔다 —
-     플레이 중 시선과 엄지가 머무는 곳이 명령창이므로 그 바로 밑에 있어야 읽고 누르기 좋다 (직전 REVISE의 좌상단 배치를 대체).
-     머리줄에는 제목만 남는다. 화면 좌상단의 전역 뒤로가기(#btnBack)와는 별개이며 여기서 전투를 강제로 빠져나가지 않는다. */
+  /* 머리줄에는 제목만 남는다 — 하위 패널 복귀는 패널 안 [↺ 돌아가기](.subHead .subBack · #296 CJ) */
   #overlayBox.battleBox .bhead{display:flex; align-items:center; gap:8px; min-width:0;}
   #overlayBox.battleBox .bhead h2{margin:0; min-width:0; flex:1;}
-  #overlayBox.battleBox .bmenuBack{display:block; width:100%; margin-top:8px; font-size:13px; padding:8px 10px; min-height:42px; white-space:nowrap;}
-  #overlayBox.battleBox .bmenuBack.hidden{display:none;}
   #battleLog{background:#00000055; color:var(--dim);}
 
   /* ================= #126 승패 연출 — 짧고 강한 표시 계층 =================
@@ -1516,7 +1512,7 @@ body .overlay:has(.battleTop){align-items:flex-start; padding-top:var(--appTop);
 .stChips{display:flex; flex-wrap:wrap; gap:2px; margin-top:2px;}
 .stChip{display:inline-flex; align-items:center; gap:1px; padding:0 3px; border-radius:5px; border:1.5px solid #ff5b6e; background:#0b1326; font-size:12px; line-height:16px; color:#fff;}
 .stChip.up{border-color:#5ad17a;} .stChip b{font-size:11px; font-variant-numeric:tabular-nums;} .stChip .gi{font-size:13px;}
-/* 3) 하위 메뉴: 짧은 제목 줄(+ 우상단 조건 칩 · 가방의 [돌아가기]) / 실행 · [돌아가기] 나란히 */
+/* 3) 하위 메뉴: 짧은 제목 줄(+ 우상단 조건 칩 · 싸우기 · 가방의 [돌아가기]) / 실행 · [돌아가기] 나란히 */
 .bsub .subHead{display:flex; align-items:center; gap:6px; min-height:36px; margin-bottom:6px;}
 .bsub .subHead>b{flex:1 1 auto; min-width:0; font-size:15px; color:#fff; word-break:keep-all;}
 .bsub .conds{display:flex; gap:4px; flex:0 0 auto;}

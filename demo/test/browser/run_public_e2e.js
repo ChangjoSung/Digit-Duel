@@ -123,7 +123,7 @@ async function screenState(b) {
     const ov=document.getElementById('overlay'), box=document.getElementById('overlayBox');
     const btns=sel=>[...document.querySelectorAll(sel)].filter(x=>!x.disabled&&vis(x)&&x.offsetParent!==null).map(x=>(x.textContent||'').trim());
     return { locked:document.body.classList.contains('fx-lock'), overlay:vis(ov), battle:!!document.getElementById('bmenu')&&vis(ov),
-      bmenu:btns('#bmenu button'), fight:btns('#bsub-fight button'), infoBtns:document.querySelectorAll('#bsub-fight .bSkills li>small').length, teleStage:(S&&S.teleport)?S.teleport.stage:0, fleeMine:!!(S&&S.fleePick&&S.fleePick.owner===NET.me), flee:btns('#bsub-flee button'), obBtns:btns('#obBtns button'),
+      bmenu:btns('#bmenu button'), fight:btns('#bsub-fight button:not(.subBack)'), infoBtns:document.querySelectorAll('#bsub-fight .bSkills li>small').length, teleStage:(S&&S.teleport)?S.teleport.stage:0, fleeMine:!!(S&&S.fleePick&&S.fleePick.owner===NET.me), flee:btns('#bsub-flee button'), obBtns:btns('#obBtns button'),
       turnBar:btns('#turnBar button'), who:(document.querySelector('#boardInfo .who')||{}).textContent||'', side:(document.getElementById('sidePanel')||{}).textContent||'',
       hlAttack:document.querySelectorAll('#board .cell.hl-attack').length, hlMove:document.querySelectorAll('#board .cell.hl-move').length,
       fxBanner:vis(document.getElementById('fxBanner'))?(document.getElementById('fxTitle')||{}).textContent:'', msgBox:(document.getElementById('msgBox')||{}).textContent||'',
@@ -155,7 +155,6 @@ async function botTurn(b, st, role, rnd) {
     if (st.flee.length) { await b.clickWhere('#bsub-flee button', st.flee[0], { exact: true }); S.fleeClicks++; return 'flee'; }
     if (st.bmenu.some((t) => t === '턴 종료')) { await b.clickWhere('#bmenu button', '턴 종료', { exact: true }); S.battleClicks++; return 'pass'; }
     if (st.bmenu.length) {
-      const back = await b.clickWhere('#bmenuBack', null); if (back && st.fight.length === 0 && st.flee.length === 0) { /* 하위 메뉴가 비활성이면 뒤로 */ }
       if (rnd() < 0.08 && st.bmenu.includes('🏃 도망가기')) { await b.clickWhere('#bmenu button', '🏃 도망가기', { exact: true }); return 'menu:flee'; }
       await b.clickWhere('#bmenu button', '⚔️ 싸우기', { exact: true }); return 'menu:fight';
     }

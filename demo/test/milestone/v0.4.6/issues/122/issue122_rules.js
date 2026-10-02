@@ -255,9 +255,9 @@ block("E 보존",()=>{
   ok(!/싸우지 않고 종료/.test(tb())||T.optionalBattleLeft(),"E2 '싸우지 않고 종료'는 선택 전투가 남아 있을 때만");
   ok(/기권/.test(tb()),"E3 기권은 항상 있다");
   /* 전투 모달은 인덱스 중계가 아니라 시맨틱 액션 — buttons 는 빈 배열 그대로 */
-  /* #238: 전투 이력 <details> 는 없앴다 — battleModal 본문의 유일한 modal( 호출이 마지막 [← 뒤로] 템플릿 바로 뒤에 [] 를 넘기는지 본다 */
+  /* #238: 전투 이력 <details> 는 없앴다 · #296 CJ: 바깥 [← 뒤로]도 없앴다 — battleModal 본문의 유일한 modal( 호출이 마지막 도망 패널 템플릿 바로 뒤에 [] 를 넘기는지 본다 */
   const bm=SRC.slice(SRC.indexOf("function battleModal("),SRC.indexOf("\nfunction ",SRC.indexOf("function battleModal(")+1));
-  ok((bm.match(/\bmodal\(/g)||[]).length===1&&/id="bmenuBack"[^\n]*<\/button>`,[^\n]*\n\s*\[\]\);/.test(bm),"E4 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용)");
+  ok((bm.match(/\bmodal\(/g)||[]).length===1&&/\$\{sub\("flee",[^\n]*\)\}`,[^\n]*\n\s*\[\]\);/.test(bm),"E4 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용)");
   ok(/__act\(/.test(SRC)&&/__pass\(\)/.test(SRC)&&/__flee\(\)/.test(SRC)&&/__throwBall\(\)/.test(SRC),"E5 전투 시맨틱 액션 단일 경로 유지");
   /* 4슬롯 전부 불가일 때만 수동 [턴 종료] · 소유자 화면 전용 */
   ok(/const noAtkShow=noAtk&&mineView;/.test(SRC),"E6 전투 내 수동 [턴 종료] 는 4슬롯 전부 불가 + 소유자 화면일 때만 (#146)");

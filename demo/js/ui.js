@@ -614,8 +614,7 @@ function glyphOk(ch){
 /* #245 전투 화면의 DOM 토글 — 표시 계층 소유. core.js 의 전투 모달은 이 이름만 부르고 DOM 을 직접 만지지 않는다.
    마크업·클래스·aria 계약은 분리 전과 글자 단위로 같다 (옮기기만 했다). */
 function uiBattleBox(){ try{ const ob=$("overlayBox"); if(ob&&ob.classList) ob.classList.add("battleBox"); }catch(e){} }
-function uiBattleMenu(menu){ // 행동창 아래 '← 뒤로'는 싸우기에서만 — #296 CJ REVISE1: 가방 · 포획 · 도망은 패널 안 [돌아가기]
-  try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(menu==="fight") bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){}
+function uiBattleMenu(menu){ // #296 CJ: 네 하위 패널 모두 패널 안 [돌아가기]로 복귀 — 바깥 '← 뒤로' 없음
   try{ const root=$("bmenu"); if(root){ if(menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
     for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
   try{ emoteSync(); }catch(e){} // #296: 패널 높이가 바뀌면 가운데 정렬된 창의 상단 줄이 움직인다 — 이모티콘 자리를 다시 잰다
@@ -1726,8 +1725,8 @@ function battleModal(board){
      tile(`<i class="gi emo" aria-hidden="true">✨</i>`,"전투 버프",pk.battleBuff,"버프 1개 적용",`${dis||pk.battleBuff<=0||!!buffUsed?"disabled ":""}title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')"`)].join("");
   const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
   const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
-  /* #122 REVISE(2026-09-10 CJ QA 4): 하위 메뉴의 '← 뒤로'를 **하위 메뉴 패널 바로 아래**로 내린다 (직전 REVISE의 제목 옆 좌상단을 대체).
-     핸들러는 종전 그대로 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */
+  /* #296 CJ: 싸우기 · 가방 · 포획 · 도망 모두 패널 제목 줄의 [↺ 돌아가기](subBack)로 복귀한다 (#122 바깥 '← 뒤로' 대체).
+     핸들러는 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */
   const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}</div>`;
   /* #296 콘티 상단: ① 공용 신원 한 줄(#294 topBarHtml — 나 VS 상대 · 배틀 중 · 감정표현 자리 · ⚙) ② 차례 + 왕국 · 개인 시너지 ③ 라운드 + **내 행동 시계** + 아키타입 시너지.
      칩은 화면 주인의 전투원 것(핫시트는 지금 기기를 든 행동자). 시계는 화면 주인의 행동 차례에만 — 상대 차례는 대기 표시뿐이다(상대 60초 비공개). 발판 색 = 그 전투원의 속성(전설은 전설색) */
@@ -1744,11 +1743,10 @@ function battleModal(board){
       <button ${dis?"disabled":""} onclick="window.__menu('fight')">⚔️ 싸우기</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('bag')">🎒 가방</button>
       <button ${dis||inBonus?"disabled":""} onclick="window.__menu('ball')">🔴 포획</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('flee')">🏃 도망가기</button>
       ${noAtkShow?`<button class="primary" style="grid-column:1/-1" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`:""}</div>
-    ${sub("fight",`<small>⚔️ 싸우기</small>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}${cmdBtns}`)}
+    ${sub("fight",`<div class="subHead"><b>⚔️ 싸우기</b>${subBack}</div>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}${cmdBtns}`)}
     ${sub("bag",`<div class="subHead"><b>🎒 가방</b>${subBack}</div><div class="bagGrid" aria-label="아이템">${itemBtns}</div><div class="bagGrid" aria-label="패키지">${pkgBtns}</div>`)}
     ${sub("ball",`<div class="subHead"><b>${canThrow?"포획을 시도할까요?":"지금은 포획이 불가합니다."}</b><span class="conds">${capChips}</span></div><div class="subActs">${ballBtn}${subBack}</div>`)}
-    ${sub("flee",`<div class="subHead"><b>정말로 도망갈까요?</b></div><div class="subActs">${fleeBtn}${subBack}</div>`)}
-    <button id="bmenuBack" class="bmenuBack${menu==="fight"?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button>`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
+    ${sub("flee",`<div class="subHead"><b>정말로 도망갈까요?</b></div><div class="subActs">${fleeBtn}${subBack}</div>`)}`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
   uiBattleBox(); // #122 세로 전투 화면 레이아웃 — DOM 은 표시 계층이 만진다
   try{ emoteSync(); }catch(e){} // #296: 전투 창을 (다시) 그린 직후 — 이모티콘 버튼을 새 상단 한 줄의 자리에 맞춘다(상점 shopClockStart 와 같은 자리 · 표시 위치만)
