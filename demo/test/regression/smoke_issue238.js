@@ -196,6 +196,18 @@ function pvePlay(seed){ const T=pveSetup(seed);
   ok(!T.ui238.battleSynChips(0,{element:"fire"},{syn:[Object.assign({},own,{stage:{fire:-1}}),null]}).includes("왕국"),"F6b 공급 stage 가 -1 이면 칸 수 2 여도 왕국 칩 없음 (UI 경계 재계산 없음)");
   eq(T.ui238.battleSynChips(1,{element:"fire"},{syn:[null,own]}),"","F7 상대 전투원 칩은 그리지 않는다 (비공개)");
   eq(T.ui238.battleSynChips(0,{element:"fire"},{}),"","F8 스냅샷이 없으면 칩 없음");
+  { const k=T.ui238.battleSynChips(0,{element:"fire"},{syn:[own,null]},"k"), a=T.ui238.battleSynChips(0,{element:"fire"},{syn:[own,null]},"a"); // #296 콘티 두 줄
+    ok(k.includes("불 왕국 2칸")&&!k.includes("아키타입")&&a.includes("공격 아키타입 3칸")&&!a.includes("왕국"),"F9 #296 첫째 줄 = 왕국만 · 둘째 줄 = 아키타입만 (같은 스냅샷 · 재계산 없음)");
+    eq(T.ui238.battleSynChips(1,{element:"fire"},{syn:[null,own]},"k")+T.ui238.battleSynChips(0,{element:"fire"},{},"a"),"","F10 #296 줄을 나눠도 상대 칩 · 스냅샷 없는 칩은 없다");
+    /* F11 #296 개인 시너지 = **지금 싸우는 전설**이 실제로 받는 값(Core applySynergy 와 같은 갈래) — 고정 스냅샷에서만. 보드에 없는 가방 대리 전설도 맞고, 보드의 다른 전설은 섞이지 않는다 */
+    const bagWitch={legend:"witch",element:"fire"}, B11={syn:[Object.assign({},own,{el:{fire:2,water:1,lightning:0,land:0,grass:0},dead:3}),null],attP:{type:"king"},defP:{}}; // attP ≠ 전투원 = 대리 출전
+    const before=JSON.stringify(T.S.pieces.map(x=>[x.id,x.placed,x.alive,x.legend||null])), w=T.ui238.battleSynChips(0,bagWitch,B11,"k"), wv=Math.round(Math.min(T.V2_LEGEND_SYN.witch.max,2*T.V2_LEGEND_SYN.witch.statusPct)*100);
+    ok(wv>0&&w.includes("마녀 개인 시너지")&&w.includes("+"+wv+"%")&&!w.includes("왕국")&&!T.S.pieces.some(x=>x.owner===0&&x.legend==="witch"),"F11 가방 대리 마녀(보드에 없음) = 스냅샷 속성 2종 → 상태 부여 +"+wv+"% 칩 · 전설은 왕국 칩 없음");
+    const r=T.ui238.battleSynChips(0,{legend:"reaper",element:null},B11,"k"), rv=Math.round(Math.min(T.V2_LEGEND_SYN.reaper.max,3*T.V2_LEGEND_SYN.reaper.atk)*100);
+    ok(r.includes("사신 개인 시너지")&&r.includes("+"+rv+"%")&&!r.includes("마녀")&&T.ui238.battleSynChips(0,{legend:"reaper",element:null},{syn:[own,null]},"k")===""&&T.ui238.battleSynChips(0,{element:"fire"},B11,"k").includes("불 왕국 2칸")&&!T.ui238.battleSynChips(0,{element:"fire"},B11,"k").includes("개인")
+      &&JSON.stringify(T.S.pieces.map(x=>[x.id,x.placed,x.alive,x.legend||null]))===before,"F11b 사신 = 스냅샷 dead 3 → 공격 +"+rv+"% · 효과 0 이면 칩 없음 · 일반 전투원에는 개인 칩 없음 (보드 무변경)");
+    const k11=T.ui238.battleSynChips(0,{element:null},B11,"k"), a11=T.ui238.battleSynChips(0,{element:null},B11,"a");
+    ok(k11===""&&a11.includes("공격 아키타입 3칸"),"F11c 속성 없는 왕 · 동료 본체 = 왕국 칩 없음 · 아키타입 합은 참전자 전원(스냅샷 그대로)"); }
   /* 온라인 어댑터 — battle.ownSyn 만 내 좌석 칸에, 상대 칸은 null · 없으면 syn 없음 */
   const N=T.NET; N.mode=true; N.publicMode=true; N.me=1;
   const side=(o,id)=>({owner:o,type:"minion",rosterId:id,element:"fire",hp:50,maxHp:100,skills:[]});
@@ -442,7 +454,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
   T.ART.loaded.clear();
   /* 5 전투 우상단 · 6 시너지 안내 */
   const ui=fs.readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8");
-  ok(/class="bhead"><h2[^\n]*<\/h2>\$\{mySide==="A"\?battleSynChips\(B\.attP\.owner,B\.fa,B\):battleSynChips\(B\.defP\.owner,B\.fd,B\)\}<\/div>/.test(ui)&&!/fscroll">\$\{battleSynChips/.test(ui),"K31 시너지 칩은 전투창 제목 줄 오른쪽 · HP 카드 문장 삭제");
+  ok(/class="bhead"><h2[^\n]*<\/h2>\$\{battleSynChips\(cP\.owner,cF,B,"k"\)\}<\/div>/.test(ui)&&/battleSynChips\(cP\.owner,cF,B,"a"\)\}<\/div>/.test(ui)&&!/fscroll">\$\{battleSynChips/.test(ui),"K31 시너지 칩은 전투창 제목 줄 오른쪽(#296: 왕국·개인 = 차례 줄 · 아키타입 = 라운드 줄) · HP 카드 문장 삭제");
   const U=T.ui238;
   eq([U.synTier("fire",1),U.synTier("fire",5),U.synTier("fire",9),U.synTier("def",6),U.synTier("std",6),U.synTier("atk",1)],[-1,1,3,3,4,-1],"K32 단계 경계 = V2_KINGDOM_STEPS · V2_ARCH_STEPS(배열 길이 상한)");
   const fk=T.V2_KINGDOM_STAGES.fire[1], st=T.V2_ARCH_SYN.std[0];

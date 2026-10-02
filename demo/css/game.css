@@ -530,12 +530,7 @@
   #netResumeBar.hidden{display:none;}
   /* v0.4.10 CJ 모바일 QA — 기술 버튼 옆 ⓘ 설명(터치·키보드). 표시 전용이라 연출 잠금 중에도 누를 수 있다 */
   .skillCmd{display:inline-flex; align-items:stretch; gap:2px;}
-  .skillInfoBtn{min-width:44px; min-height:44px; padding:0 8px; font-size:16px; line-height:1;}
-  body.fx-lock #overlayBox .skillInfoBtn, body.fx-lock #overlayBox .skillInfoClose{pointer-events:auto;}
-  .skillInfoBox{margin:6px 0 2px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--panel); font-size:13px; line-height:1.45; overflow-wrap:anywhere;}
-  .skillInfoBox b{display:block; margin-bottom:2px;}
-  .skillInfoBox .skillInfoClose{margin-top:6px; min-height:44px;}
-  .skillInfoBox.hidden{display:none;}
+
   /* 출전 준비 2단계 탭 (로스터 선택 ↔ 비공개 배치) — 두 절 모두 항상 DOM 에 있고 보이기만 바뀐다 */
   .prepTabs{display:flex; gap:6px; margin-bottom:6px;}
   .prepTabs button{flex:1; min-height:38px; font-size:12.5px;}
@@ -1463,8 +1458,8 @@ body .overlay:has(.shopSheet.turn){align-items:flex-start; padding-top:var(--app
 .shopTop .clk.cmp::before{content:"⏱ ";} .shopTop .clk.cmp::after{content:"초";} .shopTop .clk.cmp.pz::before{content:"⏸ ";}
 .shopTop .clk.pz{color:#ffd66b;}
 /* 같은 이모티콘 버튼 하나가 그 자리에 — 자리의 실제 위 · 오른쪽 끝은 emoteSync 가 잰다(안쪽 스크롤 막대 · PC 프레임 포함) */
-body:has(#overlay:not(.hidden) .shopSheet.turn) #emoteLayer #emoteBtn{top:var(--emoT,8px); right:var(--emoR,54px); min-width:44px; height:44px; font-size:20px;}
-body:has(#overlay:not(.hidden) .shopSheet.turn) #emoteLayer #emotePop,body:has(#overlay:not(.hidden) .shopSheet.turn) #emoteLayer #emoteBubs{top:calc(var(--emoT,8px) + 50px);}
+body:has(#overlay:not(.hidden) .shopSheet.turn) #emoteLayer #emoteBtn,body:has(#overlay:not(.hidden) .battleTop) #emoteLayer #emoteBtn{top:var(--emoT,8px); right:var(--emoR,54px); min-width:44px; height:44px; font-size:20px;}
+body:has(#overlay:not(.hidden) .shopSheet.turn) #emoteLayer #emotePop,body:has(#overlay:not(.hidden) .shopSheet.turn) #emoteLayer #emoteBubs,body:has(#overlay:not(.hidden) .battleTop) #emoteLayer #emotePop,body:has(#overlay:not(.hidden) .battleTop) #emoteLayer #emoteBubs{top:calc(var(--emoT,8px) + 50px);}
 /* 3) 승급 카드 = 일반 카드와 같은 한 줄 — 왼쪽 등급 칸에 세로로 '보유 ★ / ↓ / 승급 뒤 ★'(다섯 개는 두 줄로 접힌다) */
 .shopSheet .shopCard .stars.up{display:flex; flex-direction:column; align-items:center; font-size:8px; line-height:8px; letter-spacing:-1px; overflow-wrap:anywhere;}
 .shopSheet .shopCard .stars.up i{font-style:normal; font-size:9px; line-height:9px; letter-spacing:0; color:#fff;}
@@ -1484,3 +1479,30 @@ body:has(#overlay:not(.hidden) .shopSheet.turn) #emoteLayer #emotePop,body:has(#
 fieldset.pauseLock:has(>.shopSheet.turn)>small{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
 /* ≤420(모바일 390 등): 시계는 '⏱180'(초 글자 없이 · 정지는 ⏸) — 오른쪽 50% 를 넘어 신원 칸으로 밀려나지 않게. 전체 문장은 aria-label */
 @media (max-width:420px) and (min-width:361px){ .shopTop .tbTools{gap:2px;} .shopTop .tbTools .emoSlot{margin-right:1px;} .shopTop .tbTools .badge{padding:2px 1px;} .shopTop .clk.cmp::before{content:"⏱";} .shopTop .clk.cmp.pz::before{content:"⏸";} .shopTop .clk.cmp::after{content:none;} }
+/* ===== #296 전투 화면 (CJ 콘티 2026-10-02) — 기존 부품(.topBar · .synChip · .skillCmd · #bstage) 위의 배치만. 새 자산 · 새 렌더러 없음 =====
+   위에서부터: 공용 신원 한 줄 / 차례 + 왕국·개인 칩 / 라운드 + 내 시계 + 아키타입 칩 / 무대(상대 정보 좌상 · 상대 그림 우상 · 내 그림 좌하 · 내 정보 우하) / 전투 메시지 / 행동 */
+#overlayBox.battleBox .battleTop{margin:-6px -6px 6px;}
+#overlayBox.battleBox .battleTop .tbTools .who{font-size:14px;}
+#overlayBox.battleBox .bhead{min-height:36px;}
+#overlayBox.battleBox .bround{margin:2px 0 6px; font-size:13px; color:var(--dim); white-space:nowrap;}
+#overlayBox.battleBox .bround .badge{margin:0; font-variant-numeric:tabular-nums;}
+/* 발판 = 그 전투원의 속성색(전설은 전설색) · 값이 없으면 종전 수풀색. 어두운 무대에 섞어 눈부시지 않게 — 주인 구분은 색이 아니라 자리 · 이름 · (나/상대) 글자다 */
+#bstage.scene::before{--pc:var(--platOp,#4b8c58);} #bstage.scene::after{--pc:var(--platMe,#4b8c58);}
+#bstage.scene::before,#bstage.scene::after{background:radial-gradient(ellipse at 50% 36%,color-mix(in srgb,var(--pc) 72%,#16203a) 0%,color-mix(in srgb,var(--pc) 48%,#16203a) 70%,color-mix(in srgb,var(--pc) 34%,#16203a) 100%);}
+/* 정보 패널: 머리(★ 이름 · 주인) / HP 바 · 방어막 바 / HP · 현재 방어막 한 줄 / 기본 6스탯 3×2 — 여기까지 고정, 상태 · 기술 이름만 안에서 스크롤 */
+.bslot{width:min(50%,172px);} .bslot .fighter{max-height:134px;}
+#bstage.scene{height:312px;} /* 패널이 6스탯 두 줄만큼 커졌다 — 위(상대) · 아래(나) 묶음 사이를 벌려 정보 패널이 반대편 그림을 덮지 않게(위쪽 묶음은 top, 아래쪽 묶음은 bottom 기준이라 자리 규칙은 그대로) */
+@media (max-width:360px){ .bStats{gap:1px;} .bStats li,.bStats b{font-size:10px;} .bStats .gi{font-size:10px;} .bslot{width:min(49%,172px);} .bslot.slot-op{left:2px;} .bslot.slot-me{right:2px;} }
+.bslot .stars{color:#ffd66b; font-size:10px; letter-spacing:-1px;}
+.bStats{list-style:none; margin:2px 0 0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2px;}
+.bStats li{display:flex; align-items:center; justify-content:center; gap:2px; min-width:0; border-radius:4px; background:#0b1326; font-size:10.5px; line-height:16px; white-space:nowrap; color:#fff;}
+.bStats b{font-size:10.5px; font-variant-numeric:tabular-nums;} .bStats .gi{font-size:11px;}
+/* 스킬 줄 = 한 줄에 한 스킬: 버튼(★ 이름 · 쿨/봉인/불가) + 그 아래 고정 설명. 못 쓰는 줄 · 잠긴 소개 줄은 흐리게 — 잠긴 줄에는 명령이 없다 */
+.bSkills{list-style:none; margin:4px 0; padding:0; display:flex; flex-direction:column; gap:6px;}
+.bSkills li>button{display:block; width:100%; min-height:44px; text-align:left; white-space:normal; overflow-wrap:anywhere;}
+.bSkills li>small{display:block; margin:2px 2px 0; font-size:12px; line-height:1.35; overflow-wrap:anywhere;}
+.bSkills .stars{color:#ffd66b; font-size:11px; letter-spacing:0;}
+.bSkills li.lock{opacity:.6;} .bSkills li.lock>button{border-style:dashed;}
+/* 가방: 한 줄에 한 항목 — 이름 + 설명이 버튼 안에서 읽힌다 */
+.bsub .bList button{flex:1 1 100%; min-height:44px; text-align:left; white-space:normal;}
+.bsub .bList button small{display:inline; margin:0; color:inherit; opacity:.85;}

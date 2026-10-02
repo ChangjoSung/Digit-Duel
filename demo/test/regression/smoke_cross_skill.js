@@ -218,18 +218,19 @@ const T=loadH(htmlPath);
 {
   const P=setup(T,"pvp"); giveSpecies(T,P.me,R(T,"M-F1")); giveSpecies(T,P.em,R(T,"M-W1")); P.me.skills[1]="lightning_effect";
   T.S.current=0; openBattle(T,P.me,P.em); let h=ob(T);
-  ok(/>⚡감전 침 \d+~\d+<\/button>/.test(h)&&h.includes('title="50% 확률 감전(후공 1회) · 번개 속성으로 판정"'),"E1 소유자 전투 버튼: 타 속성 공격기는 속성 이모지 접두 + 설명에 판정 속성");
-  ok(/>화염탄 \d+~\d+<\/button>/.test(h)&&h.includes('title="안정 공격기"')&&!h.includes("불 속성으로 판정"),"E1b 같은 속성 공격기 버튼·설명은 변경 없음");
-  ok(h.includes("⚡감전 침")&&h.includes("화염탄 · ⚡감전 침 · 응급 치유 · 전술 연계"),"E1c 소유자 패널 기술 목록에도 속성 표시");
+  ok(/>⚡감전 침<\/button>/.test(h)&&h.includes("<small>50% 확률 감전(후공 1회) · 번개 속성으로 판정</small>")&&h.includes('title="50% 확률 감전(후공 1회) · 번개 속성으로 판정"'),"E1 소유자 전투 버튼: 타 속성 공격기는 속성 이모지 접두 + 설명에 판정 속성");
+  ok(/[> ]화염탄<\/button>/.test(h)&&h.includes('title="안정 공격기"')&&!h.includes("불 속성으로 판정"),"E1b 같은 속성 공격기 버튼·설명은 변경 없음");
+  ok(h.includes("⚡감전 침")&&!h.includes("화염탄 · ⚡감전 침")&&!/class="fscroll">[\s\S]*?감전 침[\s\S]*?id="msgBox"/.test(h),"E1c #296: 정보 패널에는 스킬 이름 줄이 없다(HP · 방어막 · 6스탯 · 상태만) — 내 스킬은 싸우기 줄에서 속성 표시");
   // 상대 화면(PVE 뷰어 0): AI 상대 하수인이 배운 기술은 사용 전 ?공격기
   const Q=setup(T,"pve"); giveSpecies(T,Q.em,R(T,"M-W1")); Q.em.skills[1]="lightning_effect"; giveSpecies(T,Q.me,R(T,"M-G1"));
   T.S.current=1; openBattle(T,Q.em,Q.me); h=ob(T);
-  const qb=(h.match(/<button[^>]*>\? [^<]+<\/button>/g)||[]).map(x=>x.replace(/<[^>]+>/g,""));
-  /* #234 (GDD-23 7.9 등급·미사용 스킬 비공개): 보유 칸 수가 곧 등급이므로 상대 화면은 미공개 칸을 칸 수만큼 그리지 않고 "? 미공개" 하나로 묶는다 */
-  ok(J(qb)===J(["? 미공개"])&&!h.includes("감전 침")&&!h.includes("⚡감전")&&h.includes("? 미공개")&&!h.includes("?공격기"),"E2 상대 화면: 배운 기술도 사용 전에는 '? 공격기'·패널 '?공격기'·이름 없음 (AC4)");
+  /* #296 (2026-10-02 CJ 정정): 상대 스킬은 전투 화면 어디에도 없다 — 이름 · 칸 수 · "?" 자리표시 모두 */
+  const noFoeSkill=x=>!/window\.__act\(/.test(x)&&!x.includes("미공개")&&!x.includes("감전 침")&&!x.includes("class=\"bSkills\"");
+  ok(noFoeSkill(h)&&!h.includes("⚡감전")&&!h.includes("?공격기"),"E2 상대 화면: 상대 스킬 줄 · 이름 · 자리표시 없음 (AC4 · #296)");
   ok(!/title="[^"]*감전/.test(h),"E2b 상대 화면 버튼 title 에도 설명 없음");
   T.execSlot("A",1); T.TQ.length=0; h=ob(T);
-  ok(J(Q.em.revealedSkills)===J([1])&&h.includes("⚡감전 침")&&h.includes("⚡감전 침(쿨2) · ? 미공개"),"E3 상대가 사용한 뒤에만 그 슬롯이 공개되어 이름·속성 표시 (슬롯0은 여전히 ?공격기)");
+  { const noMsg=h.replace(/<div id="msgBox">[\s\S]*?<\/div>/,""); // 전투 메시지(공개 로그)는 쓴 기술 이름을 말할 수 있다 — 패널 · 행동 영역만 본다(다음 차례는 내 차례라 내 명령은 있다)
+    ok(J(Q.em.revealedSkills)===J([1])&&!noMsg.includes("감전 침")&&!noMsg.includes("미공개"),"E3 상대가 사용한 뒤에도(Core 공개 기록은 그대로) 패널 · 행동 영역에 상대 스킬이 없다 (#296)"); }
   // 사이드 패널(자기 말 선택)
   T.S.battle=null; T.S.current=0; T.S.selected=Q.me; Q.me.skills[0]="fire_heavy"; T.render();
   /* #294 CJ REVISE(2026-10-02 그림 2·3) 대체 기대값: 가방 서랍의 선택 요약 삭제 — 자기 말 기술 목록은 설명 창의 스킬 줄(같은 skillNameKo 표기) */

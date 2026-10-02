@@ -96,7 +96,12 @@ const HIDDEN_KEYS = new Set(['id', 'r', 'c', 'owner', 'alive', 'immobile', 'swap
         const v = room.toSeatView(seat), a = v.battle && v.battle.a;
         ok(a && a.bodyFight === false && a.type === 'ally' && a.artRosterId === key && a.rosterId === null,
           label + ' 좌석 ' + seat + (seat === cur ? '(소유자)' : '(상대)') + ' battle.a artRosterId=' + (a && a.artRosterId));
-        ok(a && !('legend' in a) && !('grade' in a) && !('cap' in a) && !('uid' in a), label + ' 좌석 ' + seat + ' 원시 legend·grade·cap·uid 없음');
+        ok(a && !('legend' in a) && !('cap' in a) && !('uid' in a), label + ' 좌석 ' + seat + ' 원시 legend·cap·uid 없음');
+        // #296 (2026-10-02 CJ 정정) 대리 출전 등급 — 보드 말(동료, 등급 없음)이 아니라 출전한 가방 개체의 실제 등급이 양 좌석에 온다
+        ok(a && Number.isInteger(B.fa.grade) && a.grade === B.fa.grade && B.attP.grade == null, label + ' 좌석 ' + seat + ' battle.a.grade = 가방 개체 실제 등급 ' + (a && a.grade) + '(본체 동료는 등급 없음)');
+        // #296 대리 출전 개체의 기본 6스탯 — 종·본체(동료 16)가 아니라 **그 가방 개체**(⭐2 성장분·전설)의 실제 값이 양 좌석에 온다
+        ok(a && ['atk', 'def', 'spd', 'dodge', 'crit', 'statusPct'].every((k) => Number.isFinite(B.fa[k]) && a[k] === B.fa[k]) && a.atk > 0 && a.atk !== B.attP.atk,
+          label + ' 좌석 ' + seat + ' battle.a 기본 6스탯 = 가방 개체 실제 값(atk ' + (a && a.atk) + ' · 본체 ' + B.attP.atk + ')');
         const bs = v.fx.events.find((e) => e.key === 'battleStart');
         ok(bs && bs.scene.a.artRosterId === key && bs.scene.a.rosterId === null, label + ' 좌석 ' + seat + ' battleStart scene.a 같은 값: ' + JSON.stringify(bs && bs.scene.a));
       }
