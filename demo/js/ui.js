@@ -618,6 +618,7 @@ function uiBattleMenu(menu){ // 행동창 아래 '← 뒤로'는 하위 메뉴�
   try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(menu) bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){}
   try{ const root=$("bmenu"); if(root){ if(menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
     for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
+  try{ emoteSync(); }catch(e){} // #296: 패널 높이가 바뀌면 가운데 정렬된 창의 상단 줄이 움직인다 — 이모티콘 자리를 다시 잰다
 }
 /* ===== #245 표시 계층이 소유하는 DOM·타이머 =====
    여기 아래 블록은 분리 전 core.js 에 있던 것을 그대로 옮긴 것이다. 규칙 판정은 한 줄도 없고,
@@ -1732,6 +1733,7 @@ function battleModal(board){
     <button id="bmenuBack" class="bmenuBack${menu?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button>`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
   uiBattleBox(); // #122 세로 전투 화면 레이아웃 — DOM 은 표시 계층이 만진다
+  try{ emoteSync(); }catch(e){} // #296: 전투 창을 (다시) 그린 직후 — 이모티콘 버튼을 새 상단 한 줄의 자리에 맞춘다(상점 shopClockStart 와 같은 자리 · 표시 위치만)
   try{ turnClockSync(); }catch(e){} // #263 T4 전투 행동 60초 — 전투 화면이 열린 그 자리에서 선다 (render 를 기다리지 않는다)
   window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
     if(S.battle!==B) return; B.menu=key||null;

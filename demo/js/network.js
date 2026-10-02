@@ -924,7 +924,7 @@ function netFxRenderOne(ev,gen,done){
     while(NET.fxQueue.length&&NET.fxQueue[0].src==="msg"&&!NET.fxQueue[0].key&&NET.fxQueue[0].battleId===bid){ // 같은 그룹 후속 줄 즉시 병합
       const n=NET.fxQueue.shift(); lines.push(n.txt||""); netFxApplyMsgFx(bid,n.fx,gen);
       NET.fxPlayedSeq=Math.max(NET.fxPlayedSeq,n.seq||0); }
-    try{ const mb=$("msgBox"); if(mb){ mb.innerHTML=lines.map(netFxEsc).join("<br>"); if(mb.classList){ if(ev.big) mb.classList.add("big"); else mb.classList.remove("big"); } } }catch(e){}
+    try{ const mb=$("msgBox"); if(mb){ mb.innerHTML=lines.map(netFxEsc).join("<br>"); if(mb.classList){ if(ev.big) mb.classList.add("big"); else mb.classList.remove("big"); } emoteSync(); } }catch(e){} // #296: 줄 수가 바뀌면 가운데 정렬된 전투 창의 상단 줄이 움직인다 — 이모티콘 자리를 다시 잰다
     const ms=ev.key?(BAL.fx[ev.key]||0):(BAL.fx.msgStep||0);
     after(ms>0?ms:600); return;
   }
@@ -1204,7 +1204,8 @@ function netSyncOverlays(force){
     else { NET.overlaySig="none"; if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; } }
   } else if(w.kind==="modal"){ netRenderModalOverlay(S._pendingModal); NET._overlayOpen=true; }
   else if(w.kind==="shop"||w.kind==="bag"){ netRenderEcoOverlay(w.kind); NET._overlayOpen=true; }
-  else if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; shopClockStop(); bagClockStop(); }
+  else if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; shopClockStop(); bagClockStop();
+    try{ emoteSync(); }catch(e){} } // #296: render 의 emoteSync 는 이 창이 열려 있을 때 쟀다 — 닫힌 뒤 말판 자리로 다시 잰다
 }
 const _renderCoreForBattle=render;
 const _renderWithOverlays=function(){ _renderCoreForBattle(); if(NET.publicMode) netSyncOverlays(); netResumeBarSync(); };

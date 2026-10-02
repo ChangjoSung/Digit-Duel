@@ -391,8 +391,19 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   const battleView=mkSeatView({revision:3,state:"IN_PROGRESS",battle:{battleId:1,round:1,phase:0,actor:"A",actSeq:0,maxRounds:null,log:["⚔️ 개시"],
     a:battleSide({owner:0,type:"minion",element:rd.element,rosterId:rd.id,skills:ownSkills}),
     d:battleSide({owner:1,type:"minion",element:"water",rosterId:null,skills:[{i:0,revealed:false,kind:"attack"},{i:1,revealed:false,kind:"attack"},{i:2,revealed:false,kind:"support"},{i:3,revealed:false,kind:"sig"}]})}});
+  /* #296 Saturn REVISE — 이모티콘 버튼은 전투 상단 줄의 자리(.battleTop .emoSlot)를 **그 줄이 그려진 뒤에** 잰다.
+     스텁 DOM 은 innerHTML 을 풀지 않으므로 자리 조회만 가로챈다: 전투 창이 열려 있을 때만 자리가 있다 */
+  const doc=$el(T,"overlay").ownerDocument, q0=doc.querySelector, EL=$el(T,"emoteLayer"); let slotTop=169;
+  EL.getBoundingClientRect=()=>({top:0,right:390,width:390});
+  doc.querySelector=s=>/\.battleTop \.emoSlot/.test(s)?(!$el(T,"overlay").classList.contains("hidden")&&/class="battleTop"/.test($el(T,"overlayBox").innerHTML)?{getBoundingClientRect:()=>({top:slotTop,right:316,width:44})}:null):q0(s);
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:3,seat:0,data:battleView})});
   const html=$el(T,"overlayBox").innerHTML;
+  ok(/class="emoSlot"/.test(html)&&EL.style["--emoT"]==="169px"&&EL.style["--emoR"]==="74px","L4e 전투 진입: 상단 줄이 그려진 뒤 이모티콘 자리를 잰다(--emoT 169px · --emoR 74px): "+EL.style["--emoT"]+"/"+EL.style["--emoR"]);
+  slotTop=155; global.__menu("fight");
+  ok(EL.style["--emoT"]==="155px","L4f 하위 메뉴 전환(창 높이 변화) 뒤 자리를 다시 잰다: "+EL.style["--emoT"]);
+  global.__menu(null);
+  { const css=require("fs").readFileSync(require("path").join(__dirname,"..","..","css","game.css"),"utf8");
+    ok(/\.battleTop \.tbTools \.emoSlot\{height:44px;\}/.test(css)&&/#overlayBox\.battleBox \.battleTop\{[^}]*position:sticky/.test(css),"L4g 전투 상단 이모티콘 자리 높이 44px · 상단 줄은 창 안 스크롤에도 제자리(sticky)"); }
   ok(T.S.battle&&T.S.battle.actorOwner===0&&T.netActor()===0,"L4 전투 상태가 반영되고 행위자가 서버 값 그대로다");
   ok(/⚔️ 싸우기/.test(html)&&/🎒 가방/.test(html)&&/🔴 포획/.test(html)&&/🏃 도망가기/.test(html)&&/id="bstage"/.test(html),"L5 원본 전투 화면의 4카테고리 메뉴와 무대가 그려진다");
   ok(/window.__act\(0\)/.test(html)&&/\(쿨2\)/.test(html),"L5b 내 기술 4슬롯이 원본 라벨(쿨 표기 포함)로 나온다");
@@ -418,6 +429,7 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:4,seat:0,data:endView})});
   ok(T.S.battle===null,"L7 전투 종료 스냅샷 반영");
   ok($el(T,"overlay").classList.contains("hidden"),"L8 재생할 전투 이벤트가 없으면 전투가 끝날 때 오버레이를 닫는다");
+  ok(EL.style["--emoT"]===""&&EL.style["--emoR"]==="","L8e 전투 창이 닫힌 뒤 이모티콘 자리를 다시 잰다(전투 상단 값이 말판에 남지 않는다): "+EL.style["--emoT"]+"/"+EL.style["--emoR"]);
 }
 { // 왕·동료 본체(skills 없음) — 원본 기본 공격 버튼 · 아이템 라운드·볼 투척 1회 제한 반영
   const T=inPlay();

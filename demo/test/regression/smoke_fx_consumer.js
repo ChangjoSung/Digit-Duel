@@ -96,6 +96,8 @@ const ovHtml=T=>T.byId("overlayBox").innerHTML;
   msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(7,{owner:0},{owner:1,type:"ally",hp:100,shield:5}),fx:fx([])})});
   T.drain();
   const tokD=T.byId("tok-D"), tokA=T.byId("tok-A");
+  const doc=tokD.ownerDocument, q0=doc.querySelector, emoSeen=[]; // #296: 이모티콘 자리 조회(emoteSync)가 본 #msgBox 내용을 적는다
+  doc.querySelector=s=>{ if(/\.battleTop \.emoSlot/.test(s)) emoSeen.push(T.byId("msgBox").innerHTML); return q0(s); };
   msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(7,{owner:0},{owner:1,type:"ally",hp:63,shield:0},{actSeq:1,phase:1,actor:"D"}),fx:fx([
     {seq:1,src:"msg",battleId:7,round:1,actSeq:1,key:"damageFx",big:false,txt:"37 피해!",fx:{shake:"D",flash:"fire",sig:true,st:{side:"D",text:"-",max:100,shield:0},hp:{side:"D",val:63,max:100},float:{side:"D",sign:"neg",amount:37}}},
     {seq:2,src:"msg",battleId:7,round:1,actSeq:1,key:null,big:false,txt:"🔥 화상!",fx:{st:{side:"D",text:"🔥화상2R"}}},
@@ -110,6 +112,8 @@ const ovHtml=T=>T.byId("overlayBox").innerHTML;
   ok(T.byId("hpfill-D").style.width==="63%"&&T.byId("hptxt-D").textContent===63,"D6 HP 바·숫자 → hpfill-D/hptxt-D");
   ok(!!tokD.querySelector(".dmgfloat .neg")||true,"D7 (float 요소는 1.1초 뒤 제거 — 아래 D8에서 생성 확인)");
   ok(T.byId("msgBox").innerHTML==="37 피해!<br>🔥 화상!","D8 #msgBox 에 그룹 줄이 합쳐져 표시된다(원본 playMsgs)");
+  ok(emoSeen.includes("37 피해!<br>🔥 화상!"),"D8e 메시지 줄을 쓴 뒤 이모티콘 자리를 다시 잰다(줄 수 변화로 전투 창 상단 줄이 움직인다): "+JSON.stringify(emoSeen));
+  doc.querySelector=q0;
   tokA.classList.remove("shake"); tokD.classList.remove("shake");
   msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(7,{owner:0,hp:90},{owner:1,type:"ally",hp:63},{actSeq:2}),fx:fx([
     {seq:3,src:"msg",battleId:7,round:1,actSeq:2,key:"itemFx",big:false,txt:"회복약",fx:{hp:{side:"A",val:90,max:100},float:{side:"A",sign:"pos",amount:10}}}])})});

@@ -96,6 +96,31 @@
 - 마녀 · 사신 개인 효과 식은 Core 와 같은 한 줄 사본이다(엔진 무수정 범위 · `ponytail:` 주석). Core 값이 바뀌면 상수표(`V2_LEGEND_SYN`)는 따라가지만 식 구조 변경은 따라가지 않는다.
 - 정식 QA 판정은 Saturn 소관이다. 전체 CI · 밸런스 시뮬레이션은 돌리지 않았다.
 
+## Saturn REVISE — 온라인 전투 상단 이모티콘 자리 (2026-10-02 · Mars_1)
+
+- `claude-opus-5-5` / high / `--dangerously-skip-permissions`(PID 41476 argv) · Ponytail full · 기준 `d3e061b` · Mercury GO 뒤 수정 · Git 0
+- Saturn 증거(`saturn-qa/focused-check.log` 7·9): 390 온라인 진입 · 싸우기에서 `.battleTop .emoSlot` 높이 0, 버튼은 CSS 기본 자리(x292/y8)에 남는다.
+
+**근본 원인(정적 확정 + 실측)**
+1. 순서: `render` 래퍼(network.js) = 본 `render()`(여기서 `emoteSync`) → `netSyncOverlays` → `battleModal`. 상단 줄이 생긴 **뒤에** 재는 호출이 없어 `--emoT/--emoR` 가 비고 기본값(8px/54px)으로 떨어졌다. 상점은 `shopClockStart` 가 그린 직후 재서 됐다.
+2. 자리 높이: `height:44px` 는 `.shopTop` 자리에만 있었다.
+3. 창 높이 변화(재렌더 없음): `uiBattleMenu` 하위 메뉴 전환 · fx 메시지 줄 쓰기(`netFxRenderOne`) → 가운데 정렬된 창의 상단 줄이 움직인다(실측 5줄 = 14.2px).
+4. 창 안 스크롤: 상단 줄이 sticky 가 아니라 고정 층 버튼과 갈라진다.
+5. 같은 순서 문제의 형제 경로: 전투 창이 닫힐 때 `render` 는 창이 열린 상태로 재고 그 뒤에 창이 닫혀 전투 값이 말판에 남는다.
+
+**수정(기존 훅 · 선택자 재사용, 새 관찰자 없음)**
+| 파일 | 내용 |
+|---|---|
+| `demo/js/ui.js` | `battleModal` 의 `uiBattleBox()` 직후 · `uiBattleMenu` 끝에 `emoteSync()` 한 줄씩 |
+| `demo/js/network.js` | `netSyncOverlays` 닫기 갈래 · `netFxRenderOne` 메시지 줄 쓰기 뒤 `emoteSync()` |
+| `demo/css/game.css` | 기존 `.shopTop .tbTools .emoSlot{height:44px}` 에 `.battleTop` 추가 · `#overlayBox.battleBox .battleTop` sticky(`top:-6px` = 위 여백과 같아 스크롤 전 자리 불변) |
+| `demo/test/regression/smoke_public_rooms.js` | L4e 진입 뒤 잰 값 · L4f 메뉴 전환 뒤 재측정 · L4g CSS · L8e 닫힌 뒤 값 비움 |
+| `demo/test/regression/smoke_fx_consumer.js` | D8e 메시지 줄을 쓴 뒤 재측정 |
+
+**검증**: `smoke_public_rooms` 211/0(2회 — 2회째는 `network.js` 추가 변경 뒤) · `smoke_fx_consumer` 134/0(1회) · `npm run typecheck` exit 0(2회 — 같은 사유) · 실제 Edge 390×844, `Room.toSeatView(0)` 픽스처(일회성 인라인 · 저장소 밖) 3회(1회째 = 메시지 증가 실측 + 닫기 단계 픽스처 한계 발견, 2회째 = 메시지 훅 뒤, 3회째 = sticky 위치 보정 뒤) → **13/0**: 루트 → 싸우기 → 창 맨 아래 스크롤 → 뒤로 → 가방 → 스크롤 → 뒤로 모두 버튼 = 자리(위 · 오른쪽 <2px, 44px, 중심 hit-test = 버튼, ⚙ 왼쪽) · 실제 포인터로 팝오버 열기(6개 · 버튼 아래)/닫기 · 송신 0 · 실제 메시지 경로 4줄 뒤 자리 유지 · 전투 종료 뒤 전투 값 비움.
+산출물: `C:/Users/pc_77/orca/artifacts/Digit-Duel/issue-296/mars-revise-emote/`(`run.log` · `metrics.json` · `390_*.png`).
+**한계**: WSS · 전체 흐름 E2E 아님(픽스처 주입). 그 픽스처는 말판(`#boardInfo`) 배치를 거치지 않아 닫힌 뒤 말판 자리 정렬은 실측하지 못했다(값 비움만). 320 · PC 폭은 다시 찍지 않았다. 상대 차례 항목은 PD 지시대로 손대지 않았다. 내 스킬 설명 · 잠긴 소개 · 상대 스킬 부재 · 범위 삭제 · 6스탯 계약 무변경.
+
 ## 기획 반영 필요(Venus/Mercury)
 
 GDD-23 7.9 · GDD-24 00.7: 전투 한정 상대 기본 6스탯 · 등급 공개, 상대 스킬 비표시, 위력 범위 삭제, v0.4.10 ⓘ 설명 버튼 → 줄 안 설명으로 대체.

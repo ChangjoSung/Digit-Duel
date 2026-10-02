@@ -1454,7 +1454,7 @@ body .overlay:has(.shopSheet.turn){align-items:flex-start; padding-top:var(--app
 /* 오른쪽 50% 한 줄: 내 시계 · 내 코인 · 이모티콘 자리 44 · ⚙ 44 (이모티콘이 꺼진 경기는 자리도 없다). 시계 칸은 숫자만 받아(.cmp) ⏱ · 초 · 정지(⏸)를 CSS 가 붙인다 — 전체 문장은 aria-label */
 .shopTop .tbTools{gap:3px; padding:0 2px 0 0;}
 .shopTop .tbTools .badge{flex:0 0 auto; overflow:visible; padding:2px 4px; font-size:13px; line-height:16px; font-variant-numeric:tabular-nums;}
-.shopTop .tbTools .emoSlot{height:44px;}
+.shopTop .tbTools .emoSlot,.battleTop .tbTools .emoSlot{height:44px;}
 .shopTop .clk.cmp::before{content:"⏱ ";} .shopTop .clk.cmp::after{content:"초";} .shopTop .clk.cmp.pz::before{content:"⏸ ";}
 .shopTop .clk.pz{color:#ffd66b;}
 /* 같은 이모티콘 버튼 하나가 그 자리에 — 자리의 실제 위 · 오른쪽 끝은 emoteSync 가 잰다(안쪽 스크롤 막대 · PC 프레임 포함) */
@@ -1481,7 +1481,7 @@ fieldset.pauseLock:has(>.shopSheet.turn)>small{position:absolute; width:1px; hei
 @media (max-width:420px) and (min-width:361px){ .shopTop .tbTools{gap:2px;} .shopTop .tbTools .emoSlot{margin-right:1px;} .shopTop .tbTools .badge{padding:2px 1px;} .shopTop .clk.cmp::before{content:"⏱";} .shopTop .clk.cmp.pz::before{content:"⏸";} .shopTop .clk.cmp::after{content:none;} }
 /* ===== #296 전투 화면 (CJ 콘티 2026-10-02) — 기존 부품(.topBar · .synChip · .skillCmd · #bstage) 위의 배치만. 새 자산 · 새 렌더러 없음 =====
    위에서부터: 공용 신원 한 줄 / 차례 + 왕국·개인 칩 / 라운드 + 내 시계 + 아키타입 칩 / 무대(상대 정보 좌상 · 상대 그림 우상 · 내 그림 좌하 · 내 정보 우하) / 전투 메시지 / 행동 */
-#overlayBox.battleBox .battleTop{margin:-6px -6px 6px;}
+#overlayBox.battleBox .battleTop{margin:-6px -6px 6px; position:sticky; top:-6px; z-index:5; background:var(--panel); box-shadow:0 -8px 0 var(--panel);} /* 상점 상단 줄처럼 창 안 스크롤에도 제자리 — 고정 층의 이모티콘 버튼이 자리에서 떨어지지 않는다. top = 위 여백(-6px)과 같은 값(기준은 창의 안쪽 여백 끝)이라 스크롤 전 자리 그대로 · 위 8px 틈은 그림자로 가린다 */
 #overlayBox.battleBox .battleTop .tbTools .who{font-size:14px;}
 #overlayBox.battleBox .bhead{min-height:36px;}
 #overlayBox.battleBox .bround{margin:2px 0 6px; font-size:13px; color:var(--dim); white-space:nowrap;}
