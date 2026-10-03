@@ -20,10 +20,14 @@
 #   - 헬스체크 경로는 /healthz (인증 없음, 200 "ok").
 #   - DD_AUTH_PUBLIC_DEPLOY=1 로 옵트인해야 리버스 프록시 뒤 배포 모드가 켜진다(피어 IP 미검사 —
 #     Host/Origin/좌석 토큰이 경계). 켜지 않으면 이 서비스는 기존 로컬 전용 기본값 그대로 뜬다.
-#   - DD_AUTH_PUBLIC_HOST 는 Render가 실제로 배정한 도메인이어야 한다. 서비스 이름을 digit-duel로
-#     신청해도 이미 다른 사용자가 그 이름을 쓰고 있으면 Render가 접미사를 붙인 다른 onrender.com
-#     서브도메인을 배정할 수 있다 — 아래 값은 후보일 뿐이며, root는 실제 배정된 주소를 확인한 뒤
-#     이 값을 그 주소로 맞춰야 한다(다르면 모든 페이지 요청이 400 bad host로 막힌다).
+#   - #313 DD_AUTH_PUBLIC_HOST 는 공식 커스텀 도메인 digit-duel.site(apex, Gabia 구매)다. Render가 실제
+#     배정한 기본 주소 digit-duel-mipa.onrender.com 은 Render가 주입하는 RENDER_EXTERNAL_HOSTNAME 으로
+#     서버가 자동으로 함께 허용한다(공개 배포 옵트인일 때만·형식 검증 통과 시) — 기술 대체·롤백 경로이며
+#     따로 설정하지 않는다. 그 밖의 Host 는 400 bad host. www.digit-duel.site 는 Render가 apex 등록 시
+#     자동으로 추가해 apex 로 리다이렉트한다고 공식 문서가 설명한다 — 서버 허용 목록에는 넣지 않았다.
+#   - **plan 구분**: 실제 운영 서비스(srv-daj498mq1p3s73a31s3g)는 대시보드에서 만든 유료 인스턴스
+#     (0.5 CPU / 512 MB)다. 아래 `plan: free` 는 #217 당시 참고값일 뿐이다 — 이 파일을 Blueprint 로 적용하면
+#     운영 서비스가 Free 로 바뀔 수 있으니 적용하지 않는다(도메인·환경변수 변경은 대시보드에서 직접).
 #   - PORT는 Render가 자동 주입한다고 공식 문서가 설명한다 — 이 서비스에는 값을 설정하지 않는다.
 #     서버 코드(authoritative/server.js)는 DD_AUTH_PORT가 없으면 PORT를 그대로 듣도록만 돼 있고,
 #     "직접 PORT를 지정하면 Render가 그것을 무시/override 하는지"는 이 저장소가 검증하지 않았다 —
@@ -57,10 +61,12 @@ services:
     buildCommand: npm ci --prefix server
     startCommand: npm start --prefix server
     healthCheckPath: /healthz
+    domains:
+      - digit-duel.site  # #313 apex — Render가 www 를 자동 추가해 apex 로 리다이렉트
     autoDeployTrigger: checksPass  # root 보고: CI 통과 후 배포("after-CI-pass")
     envVars:
       - key: DD_AUTH_PUBLIC_DEPLOY
         value: "1"
-      # root: Render가 실제로 배정한 도메인으로 교체할 것. 후보값일 뿐 확정 아님.
+      # #313 공식 커스텀 도메인. 기본 onrender.com 주소는 RENDER_EXTERNAL_HOSTNAME 으로 자동 허용(위 주석).
       - key: DD_AUTH_PUBLIC_HOST
-        value: digit-duel.onrender.com
+        value: digit-duel.site

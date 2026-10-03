@@ -208,6 +208,12 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   let v=feed(), h=view();
   ok(stepOf(h)==="상점"&&opAt(h)===1&&!/flowOpp/.test(h),"E7 공개 방 S01: 두 표식 모두 01 상점(서버 seats.step) · 떨어진 상대 상자 없음");
   ok(P.byId("app").getAttribute("data-flow")==="1","E8 공통 틀 표시 속성(data-flow)");
+  { /* #313 시작 상점 이모티콘 = 턴 상점과 같은 상단 한 줄 ⚙ 왼쪽 자리(.flowHead .emoSlot)를 잰다. 스텁 DOM 은 innerHTML 을 풀지 않으므로 자리 조회만 가로챈다 */
+    const EL=P.byId("emoteLayer"), doc=EL.ownerDocument, q0=doc.querySelector;
+    EL.getBoundingClientRect=()=>({top:0,right:390,width:390});
+    doc.querySelector=s=>/\.flowHead \.emoSlot/.test(s)&&/class="flowHead"[\s\S]*class="emoSlot"[\s\S]*class="flowGear"/.test(view())?{getBoundingClientRect:()=>({top:4,right:340,width:44})}:q0(s);
+    P.render(); doc.querySelector=q0;
+    ok(EL.style["--emoT"]==="4px"&&EL.style["--emoR"]==="50px","E8b 시작 상점 이모티콘: 머리 ⚙ 왼쪽 자리를 잰다(--emoT 4px · --emoR 50px): "+EL.style["--emoT"]+"/"+EL.style["--emoR"]); }
   finish(1); v=feed(); const afterOpp=view();
   ok(JSON.stringify(v.seats.step)==='["shop","place"]'&&stepOf(afterOpp)==="상점"&&opAt(afterOpp)===2,"E9 상대가 상점을 끝내면 서버 seats.step 대로 상대 표식만 02 배치로 간다 (내 단계 그대로)");
   ok(Array.isArray(v.seats.ready)&&Array.isArray(v.seats.step)&&v.seats.step.length===2&&v.seats.step.every(x=>["shop","place","done"].includes(x)),"E10 서버 좌석 뷰 seats.step = shop/place/done 뿐");

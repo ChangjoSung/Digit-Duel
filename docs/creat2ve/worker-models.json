@@ -38,7 +38,7 @@
     {
       "agent": "codex",
       "effort": "xhigh",
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "role": "Mercury",
       "service_tier": "default",
       "skills": ["ponytail"]
@@ -86,12 +86,12 @@
     {
       "agent": "codex",
       "effort": "xhigh",
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "role": "Saturn",
       "service_tier": "default",
       "skills": ["ponytail"]
     }
   ],
   "issue": 250,
-  "decision": "2026-09-23 CJ: all Creat2ve role models reset; Codex roles use service_tier=default (No Fast); next Mercury_PD handoff uses gpt-6-sol xhigh with full access"
+  "decision": "2026-09-30 CJ: Mercury_PD and Saturn_QA use gpt-6.1-sol xhigh; all other role models remain unchanged. Codex roles use service_tier=default (No Fast); Mercury_PD handoff uses full access and approval never"
 }
