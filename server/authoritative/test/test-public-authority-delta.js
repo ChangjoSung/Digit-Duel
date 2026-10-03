@@ -85,9 +85,8 @@ function main() {
     const vb = room.toSeatView(cur), vbOther = room.toSeatView(other);
     ok(vb.battle && Number.isInteger(vb.battle.battleId), '실제 강제 전투 개시 — battle.battleId 정수로 존재');
     ok(vbOther.battle && vbOther.battle.battleId === vb.battle.battleId, '양 좌석이 같은 battleId를 봄');
-    ok(!('cd' in vb.battle.a) && !('atk' in vb.battle.a) && !('skillAtk' in vb.battle.a)
-      && !('cd' in vb.battle.d) && !('atk' in vb.battle.d) && !('skillAtk' in vb.battle.d),
-      'cd/atk/skillAtk는 Mars 철회(msg_db7a8fa06aee)로 battle.a/d에 노출하지 않음');
+    ok(!('cd' in vb.battle.a) && !('skillAtk' in vb.battle.a) && !('cd' in vb.battle.d) && !('skillAtk' in vb.battle.d),
+      'cd/skillAtk는 Mars 철회(msg_db7a8fa06aee)로 battle.a/d에 노출하지 않음 (atk 는 #296 전투 한정 기본 6스탯으로 공개)');
     const startFx = vb.fx.events.find((e) => e.key === 'battleStart');
     ok(startFx && startFx.battleId === vb.battle.battleId, 'battle.battleId가 그 전투의 fx battleStart 이벤트 battleId와 일치(대응 관계)');
     bId1 = vb.battle.battleId;

@@ -1,0 +1,381 @@
+{
+  "issue": 296,
+  "cjApproval": "2026-10-02: 승인합니다. 구현 시작하세요.",
+  "scopeSource": "Latest CJ correction in references/CJ_COMMENT.md and Venus/implementation-contract.md; historical analyses superseded",
+  "phase": "emote_fix_implemented_fresh_affected_QA_pending",
+  "runId": "run_ccd335ec87c3",
+  "base": "e48a8aabbf68d967cf47d45958e56d041ef63217",
+  "branch": "ChangjoSung/issue-296-battle-flow",
+  "PD": {
+    "role": "COORDINATION_GIT_DOC_METADATA",
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh",
+    "serviceTierLaunch": "fast",
+    "effectiveApiPriority": "not exposed",
+    "sandbox": "danger-full-access",
+    "approval": "never",
+    "requestedSandbox": "workspace-write",
+    "requestedApproval": "on-request",
+    "settingsChanged": false
+  },
+  "workers": [
+    {
+      "role": "Jupiter_initial",
+      "taskId": "task_2fd2f5c5bb4f",
+      "dispatchId": "ctx_d1ff68862617",
+      "terminal": "term_abef9bac-7324-4091-9f89-5960284e7e50",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "66c022fd-242e-40b8-8a1e-f03f755421f3",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Mars_initial",
+      "taskId": "task_4e65bdc07eb5",
+      "dispatchId": "ctx_bc7c062690c9",
+      "terminal": "term_fb1d9ae7-27e8-43e3-9d5d-7be5e5dbe096",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "c059e1e8-0164-45d2-9942-3a0cd2e0a88a",
+      "lifecycle": "accepted_done_cleanup_transferred_to_Mars_integration"
+    },
+    {
+      "role": "Venus_initial",
+      "taskId": "task_eaf0b70d7125",
+      "dispatchId": "ctx_f4ff44206299",
+      "terminal": "term_2f0923f4-cdba-40f6-9cb1-e36bbdbfdda8",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "cb9b4033-d2e3-40db-89f9-e2cf8da4ae2f",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Jupiter_CJ_correction",
+      "taskId": "task_8c2910b09388",
+      "dispatchId": "ctx_6c196482cdf7",
+      "terminal": "term_2d44b47f-989a-48a2-9966-bd13ea33cec9",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "1f817d8b-3c80-4575-9c71-248502243201",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Venus_CJ_correction",
+      "taskId": "task_a2b072b12c0b",
+      "dispatchId": "ctx_87e824689a9d",
+      "terminal": "term_0b97dfeb-fcc5-4382-ab82-99ef0f1fb48c",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "13ad6d18-be59-4e13-a3cc-08dc47232a12",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Venus_wording",
+      "taskId": "task_b022f5ef010d",
+      "dispatchId": "ctx_d5374db2cbe6",
+      "terminal": "term_efd1b475-c272-46fa-aca7-1c6e00f00ea7",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "f057471e-ecfe-4a03-8e94-d871be815570",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Mars_integration",
+      "taskId": "task_ac7f96aa240f",
+      "dispatchId": "ctx_3b2d1cb26f08",
+      "terminal": "term_fb1d9ae7-27e8-43e3-9d5d-7be5e5dbe096",
+      "requested": {
+        "agent": null,
+        "model": null,
+        "effort": null
+      },
+      "effective": {
+        "agent": null,
+        "model": null,
+        "effort": null
+      },
+      "processIncarnation": "c059e1e8-0164-45d2-9942-3a0cd2e0a88a",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Jupiter_final_comments",
+      "taskId": "task_8b0f000ccd2f",
+      "dispatchId": "ctx_5e6282df8bc1",
+      "terminal": "term_891046d8-dcea-48ea-8ec6-2ce34ae02127",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "12cf29be-d505-46ac-bad8-f19639ef4415",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Mars_final_comments",
+      "taskId": "task_48ba93e56a0d",
+      "dispatchId": "ctx_2fdb5d872fcd",
+      "terminal": "term_d99643a7-01e0-4da1-9eb2-2966a98a7c38",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "a46052aa-33c7-4d9d-9455-8191e6ed15d5",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Saturn_QA",
+      "taskId": "task_256bc758cfb8",
+      "dispatchId": "ctx_bb83d9a27525",
+      "terminal": "term_9aa74586-f985-403e-b3d7-2bf585cc7224",
+      "requested": {
+        "agent": null,
+        "model": null,
+        "effort": null
+      },
+      "effective": {
+        "agent": null,
+        "model": null,
+        "effort": null
+      },
+      "processIncarnation": "7d109596-d515-4ae1-af69-e51fa98cd723",
+      "lifecycle": "accepted_done_REVISE; external tab explicitly closed by coordinator; PID22060 absent"
+    },
+    {
+      "role": "Mars_emote_fix",
+      "taskId": "task_7f7596d00b2b",
+      "dispatchId": "ctx_a6c675bfb5bd",
+      "terminal": "term_0f0a5bec-9597-49e9-8d2a-d2ec7902f7bd",
+      "requested": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "effective": {
+        "agent": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "processIncarnation": "b2c8de71-e505-4285-a170-c0625609d922",
+      "lifecycle": "accepted_done_archived_released_closed"
+    },
+    {
+      "role": "Saturn_fresh_emote_QA",
+      "taskId": "task_c99b85d89f0f",
+      "dispatchId": "ctx_bc7d82ebcdd4",
+      "terminal": "term_dd2b1ef1-15a2-4934-b9a2-c4028fc50f35",
+      "requested": {
+        "agent": null,
+        "model": null,
+        "effort": null
+      },
+      "effective": {
+        "agent": null,
+        "model": null,
+        "effort": null
+      },
+      "processIncarnation": "e7ecb6c6-2258-4b00-89c9-38d76403ecb9",
+      "lifecycle": "fresh preflight PASS, exact source GO pending"
+    }
+  ],
+  "prohibited": [
+    "root main modifications",
+    "PR304 modifications",
+    "milestone/main/dev merge",
+    "Render deployment",
+    "release",
+    "production",
+    "payment"
+  ],
+  "recordedAt": "2026-10-02T18:54:00+09:00",
+  "notion": {
+    "pages": [
+      "3dc1e7f1708580329da6fe4986654f7b",
+      "3dc1e7f1708581a48421fcec63d3cdf8"
+    ],
+    "updates": 25,
+    "verification": "semantic 25/25; one adjacent-bold serialization normalized",
+    "properties": "Project/human Editor/Edit Date verified unchanged"
+  },
+  "validation": {
+    "implementationOnly": true,
+    "marsSuites": 22,
+    "affectedFollowup": {
+      "issue238": "186/0",
+      "public_rooms": "207/0"
+    },
+    "typecheck": 0,
+    "live": "23/0, 2games, 164actions",
+    "eco": "54/0",
+    "browserE2E": "failed before battle: obsolete title entry, changed battle assertion not executed",
+    "saturn": "fresh affected QA pending; actual modelgate preflight PASS",
+    "requiredCI": "latest source CI pending after emote fix push",
+    "initialCI": {
+      "conclusion": "success",
+      "headSha": "d3e061b1f7d1f3c646af7a66e1c2a52384aadf30",
+      "jobs": [
+        {
+          "conclusion": "success",
+          "name": "B. 서버 (프로토콜·보안·설정)",
+          "status": "completed",
+          "url": "https://github.com/ChangjoSung/Digit-Duel/actions/runs/36990525560/job/110785409857"
+        },
+        {
+          "conclusion": "success",
+          "name": "B2. Windows 실행기 회귀",
+          "status": "completed",
+          "url": "https://github.com/ChangjoSung/Digit-Duel/actions/runs/36990525560/job/110785410132"
+        },
+        {
+          "conclusion": "success",
+          "name": "A. 규칙 회귀·AI 완주 (헤드리스)",
+          "status": "completed",
+          "url": "https://github.com/ChangjoSung/Digit-Duel/actions/runs/36990525560/job/110785410140"
+        },
+        {
+          "conclusion": "success",
+          "name": "D. 납품 아트 자산 무결성",
+          "status": "completed",
+          "url": "https://github.com/ChangjoSung/Digit-Duel/actions/runs/36990525560/job/110785410145"
+        },
+        {
+          "conclusion": "success",
+          "name": "C. 문서 링크·이미지 무결성",
+          "status": "completed",
+          "url": "https://github.com/ChangjoSung/Digit-Duel/actions/runs/36990525560/job/110785410167"
+        },
+        {
+          "conclusion": "success",
+          "name": "E. Roblox 클라이언트·규칙 (Luau)",
+          "status": "completed",
+          "url": "https://github.com/ChangjoSung/Digit-Duel/actions/runs/36990525560/job/110785410188"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/ChangjoSung/Digit-Duel/actions/runs/36990525560"
+    },
+    "firstSaturn": {
+      "source": "d3e061b1f7d1f3c646af7a66e1c2a52384aadf30",
+      "verdict": "REVISE",
+      "acceptedWorkerDone": "msg_ad24d8225bdf",
+      "timestamp": "2026-10-02T09:46:10Z",
+      "model": "gpt-6.1-sol/xhigh/default/danger-full-access/never",
+      "modelGate": "current turn_context/live footer/argv before completion verified",
+      "filesModified": [],
+      "checks": {
+        "first": {
+          "passed": 9,
+          "failed": 3,
+          "exit": 1
+        },
+        "failureOnlyOppositeSeat": {
+          "passed": 0,
+          "failed": 1,
+          "exit": 1
+        },
+        "provenProductDefects": 2,
+        "invalidFixtureAssertions": 2
+      },
+      "reason": "online emote entry/menu misplaced at page(292,8), header slot height0",
+      "referenceComparison": "original CJ image,10 retained and3 fresh actual renders",
+      "unverified": [
+        "real browser WSS/full entry flow"
+      ],
+      "evidence": "C:/Users/pc_77/orca/artifacts/Digit-Duel/issue-296/saturn-qa",
+      "lifecycle": "external terminal worker-release retained; coordinator explicitly closed own exact tab; PID22060 absent"
+    },
+    "emoteFix": {
+      "publicRooms": "211/0 twice due subsequent network.js change",
+      "fxConsumer": "134/0 once",
+      "typecheck": "exit0 twice due subsequent source change",
+      "browser": "13/0, 390 fixture, 3 runs following measured message drift/new hook/sticky offset corrections",
+      "evidence": "C:/Users/pc_77/orca/artifacts/Digit-Duel/issue-296/mars-revise-emote/",
+      "limits": [
+        "actual WSS/full flow not verified",
+        "320 and PC not recaptured",
+        "post-exit board slot unmeasured; stale offsets clearing verified"
+      ]
+    }
+  },
+  "finalEvidence": "C:/Users/pc_77/orca/artifacts/Digit-Duel/issue-296/implementation-completion.json",
+  "saturnPreflight": {
+    "timestamp": "2026-10-02T18:32:28+09:00",
+    "session": "01a0fbf2-4739-73b0-abe8-b7127a7db7e9",
+    "turn": "01a0fbf2-a8f5-7320-83a6-8082f0a36989",
+    "turn_context": "gpt-6.1-sol/xhigh/danger-full-access/never",
+    "argv": "gpt-6.1-sol/xhigh/service_tier=default/danger-full-access/never",
+    "liveFooter": "GPT-6.1-Sol xhigh; no Fast/model popup",
+    "apiPriority": "not exposed"
+  },
+  "freshSaturnPreflight": {
+    "timestamp": "2026-10-02T09:53:16Z",
+    "turn_context": "2026-10-02T09:50:22.237Z",
+    "turn": "01a0fc05-9e29-7e61-bccd-21b718a17e40",
+    "PID": 37416,
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh",
+    "tierArg": "default",
+    "sandbox": "danger-full-access",
+    "approval": "never",
+    "apiPriority": "unobservable",
+    "mutation": "none; preflight only"
+  }
+}

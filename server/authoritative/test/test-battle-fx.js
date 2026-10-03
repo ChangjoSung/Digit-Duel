@@ -526,8 +526,9 @@ function resolveSyncModals(room, seatHint, maxSteps) {
   const legends = H.createEngine().LEGEND_ROSTER.map((L) => ({ key: L.key, id: L.id }));
   ok(JSON.stringify(legends.map((L) => L.id)) === '["L-DRAGON","L-WITCH","L-REAPER"]', 'T18 전제: 전설 3종 종 키: ' + JSON.stringify(legends));
   // battle.a/d 의 skills 는 기존 은닉 목록(_skillsFor)이라 여기서는 새 원시 칸(legend·grade·cap)만 본다. scene 은 skills 까지 없어야 한다.
-  const noRaw = (s, label) => ok(!('legend' in s) && !('grade' in s) && !('cap' in s) && (!/scene/.test(label) || !('skills' in s)),
-    label + ' 원시 legend·grade·cap' + (/scene/.test(label) ? '·skills' : '') + ' 없음: ' + JSON.stringify(Object.keys(s)));
+  // #296 (2026-10-02 CJ 정정) battle.a/d 는 실제 전투원 grade 를 싣는다 — scene(FX)에는 여전히 없다.
+  const noRaw = (s, label) => ok(!('legend' in s) && !('cap' in s) && (!/scene/.test(label) || (!('skills' in s) && !('grade' in s))),
+    label + ' 원시 legend·cap' + (/scene/.test(label) ? '·grade·skills' : '') + ' 없음: ' + JSON.stringify(Object.keys(s)));
   legends.forEach((L, i) => {
     // (a) 본체 출전 — 보드 하수인 칸에 전설이 앉은 상태(상점 교체와 같은 모양: type minion · rosterId null · legend 키)
     {

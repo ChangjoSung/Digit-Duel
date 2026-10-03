@@ -533,13 +533,13 @@ block("J 전투 메뉴",()=>{
   ok(/id="bmenu"/.test(h())&&/⚔️ 싸우기/.test(h())&&/🎒 가방/.test(h())&&/🔴 포획/.test(h())&&/🏃 도망가기/.test(h()),"J1 루트 4카테고리");
   ok(/id="bsub-fight" /.test(h())||/id="bsub-fight"/.test(h()),"J2 하위 패널이 모두 그려져 있다 (활성 패널만 보임)");
   ok(/class="bsub hidden" id="bsub-fight"/.test(h())&&/class="bsub hidden" id="bsub-bag"/.test(h()),"J3 초기에는 하위 패널 숨김");
-  ok(/__act\(0\)/.test(h())&&/__throwBall\(\)/.test(h())&&/__flee\(\)/.test(h()),"J4 기존 규칙 버튼(__act·__throwBall·__flee)이 그대로 존재 (온라인 송신 경로 불변)");
-  ok(/<button disabled[^>]*__throwBall/.test(h())&&/상대 HP (\d+)\/\1 — 최대 HP의 30% 미만/.test(h()),"J5 포획 조건 미충족 사유 표시·비활성");
+  ok(/__act\(0\)/.test(h())&&/던지기 \(성공/.test(h())&&/__flee\(\)/.test(h()),"J4 기존 규칙 버튼(__act·__throwBall·__flee)이 그대로 존재 (온라인 송신 경로 불변)");
+  ok(/<button type="button" class="lock" (disabled |aria-disabled="true" )title="상대 HP (\d+)\/\2 — 최대 HP의 30% 미만이어야 합니다">🔒/.test(h())&&!/__throwBall\(\)/.test(h())&&/class="cond no"[^>]*>❤ 100%/.test(h()),"J5 포획 조건 미충족 사유 표시·비활성");
   /* #146 (v0.4.7 CJ 2026-09-10): 도망의 HP 게이트가 폐지됐다 — 만피여도 버튼이 활성이고 조건 미충족 사유 문구 자체가 없다.
      대신 표기 성공률이 기본 30% 다. #122 REVISE(2026-09-10 CJ QA 2)로 실패 페널티가 다시 생겨,
      안내는 "상대의 기본 공격 1회를 맞는다"로 바뀐다 — 종전 #146 의 "추가 반격은 없고" 문구는 더 이상 쓰지 않는다. */
   ok(/<button class="danger" [^>]*__flee/.test(h())&&!/<button class="danger" disabled[^>]*__flee/.test(h()),"J6 도망 버튼은 HP 조건 없이 항상 활성 (#146)");
-  ok(!/50% 미만이어야 합니다/.test(h())&&/HP 조건 없음/.test(h())&&/성공 30%/.test(h()),"J6b 도망 안내: HP 조건 문구 삭제·성공률 30% 표기 (#146)");
+  ok(!/50% 미만이어야 합니다/.test(h())&&/HP 조건 없이/.test(h())&&/성공 30%/.test(h()),"J6b 도망 안내: HP 조건 문구 삭제·성공률 30% 표기 (#146)");
   ok(!/추가 반격은 없고/.test(h())&&/기본 공격 1회/.test(h())&&/전투 행동 1회/.test(h()),"J6c 도망 실패 페널티(상대 기본 공격 1회)가 안내에 반영 (#122 CJ QA 2)");
   ok(/id="shfill-A"/.test(h())&&/id="shfill-D"/.test(h())&&!/가한 유효 피해/.test(h()),"J7 방어막 바 신설 · '가한 유효 피해' 게이지 제거");
   // (구 J0 setter 순서 검증은 시간 단계 증거가 아니므로 제거 — 5.5 방어막 → HP 표시 단계는 아래 K 블록이 가짜 타이머로 검증한다. REVISE msg_d847280b3dba 2번)

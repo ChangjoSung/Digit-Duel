@@ -574,7 +574,7 @@ function netHandlePublicMessage(m){
    SKILLS 테이블에 즉석 등록해 원본 표시 코드가 그대로 동작하게 한다(진짜 정체는 여전히 새지 않는다 —
    서버가 이미 안 준 값이므로 여기서 만들어 낼 수도 없다). */
 function netAdaptSkills(list){
-  if(!Array.isArray(list)) return {skills:null,cds:[0,0,0,0],revealedSkills:null};
+  if(!Array.isArray(list)) return {skills:null,cds:[0,0,0,0],revealedSkills:null,usable:null};
   const skills=list.map(s=>{
     if(s&&s.revealed) return s.id;
     const kind=(s&&s.kind)||"?";
@@ -584,7 +584,7 @@ function netAdaptSkills(list){
   });
   const cds=list.map(s=>(s&&s.cd)||0);
   const revealedSkills=list.map((s,i)=>s&&s.revealed?i:-1).filter(i=>i>=0);
-  return {skills,cds,revealedSkills};
+  return {skills,cds,revealedSkills,usable:list.map(s=>s&&typeof s.usable==="boolean"?s.usable:null)}; // #296 서버 slotUsable 결과 — 내 활성 칸에만 온다(상대 칸 · 구 서버 = null)
 }
 function netStubPiece(u){
   if(!u) return null;
@@ -889,8 +889,9 @@ function netFxApplyMsgFx(bid,fx,gen){
     if(fx.st&&fx.st.max&&fx.hp&&fx.hp.side===fx.st.side){ const sd=d[fx.st.side]||{};
       if((sd.sh||0)>(fx.st.shield||0)&&sd.hp!==undefined&&sd.hp>fx.hp.val) stage=BAL.fx.barStep||0; }
     if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text||""; // #237 상대 문구의 🛡·🌊 100 눈금 %는 서버 scaleText 가 이미 붙인다
-      if(fx.st.max){ (d[fx.st.side]||(d[fx.st.side]={})).sh=fx.st.shield||0;
-        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; } }
+      if(fx.st.max){ (d[fx.st.side]||(d[fx.st.side]={})).sh=fx.st.shield||0; const stx=$("shtxt-"+fx.st.side); if(stx) stx.textContent=fx.st.shield||0;
+        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; }
+      battleStSync(fx.st.side); } // #296 CJ REVISE1: 카드의 상태 칩 · 방어막 괄호를 같은 글자에서 다시 그린다(ui.js — 오프라인 applyFx 와 같은 함수)
     if(fx.hp&&typeof fx.hp.val==="number"){ const side=fx.hp.side; (d[side]||(d[side]={})).hp=fx.hp.val;
       const seq=++NET_HPSTAGE[side], bar=$("hpfill-"+side), t=$("hptxt-"+side);
       const write=()=>{ if(bar&&fx.hp.max) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%"; if(t) t.textContent=fx.hp.val; };
@@ -924,7 +925,7 @@ function netFxRenderOne(ev,gen,done){
     while(NET.fxQueue.length&&NET.fxQueue[0].src==="msg"&&!NET.fxQueue[0].key&&NET.fxQueue[0].battleId===bid){ // 같은 그룹 후속 줄 즉시 병합
       const n=NET.fxQueue.shift(); lines.push(n.txt||""); netFxApplyMsgFx(bid,n.fx,gen);
       NET.fxPlayedSeq=Math.max(NET.fxPlayedSeq,n.seq||0); }
-    try{ const mb=$("msgBox"); if(mb){ mb.innerHTML=lines.map(netFxEsc).join("<br>"); if(mb.classList){ if(ev.big) mb.classList.add("big"); else mb.classList.remove("big"); } } }catch(e){}
+    try{ const mb=$("msgBox"); if(mb){ mb.innerHTML=lines.map(netFxEsc).join("<br>"); if(mb.classList){ if(ev.big) mb.classList.add("big"); else mb.classList.remove("big"); } emoteSync(); } }catch(e){} // #296: 줄 수가 바뀌면 가운데 정렬된 전투 창의 상단 줄이 움직인다 — 이모티콘 자리를 다시 잰다
     const ms=ev.key?(BAL.fx[ev.key]||0):(BAL.fx.msgStep||0);
     after(ms>0?ms:600); return;
   }
@@ -1086,41 +1087,35 @@ function netResumeExpire(){ netAbandonResume("🌐 연결이 끊긴 동안 이 �
 window.netCancelResume=function(){ netAbandonResume("🌐 재접속을 취소했습니다."); netListRooms(); };
 /* ===== #217 전투 화면 — 원본 battleModal()을 그대로 재사용한다 =====
    서버 스냅샷(protocol v4.2 §7 battle 화이트리스트)으로 원본 battleModal()이 읽는 모양의 표시용 전투 객체를 짓는다.
-   4카테고리 메뉴·기술 4슬롯(쿨·봉인 사유·위력 범위)·가방·패키지·포획 조건·도망 확률·수동 턴 종료·버프 줄·아트 토큰·
+   4카테고리 메뉴·기술 4슬롯(쿨·봉인 사유 — #296: 동적 위력 범위 표기는 삭제)·가방·패키지·포획 조건·도망 확률·수동 턴 종료·버프 줄·아트 토큰·
    전투 이력이 원본과 같은 코드로 그려진다. 버튼은 원본 window.__act/__useItem/__throwBall/__flee/__pass/__openPkg →
    netAction → 공개 방에서는 의도만 전송(netSendAction)한다. 규칙 코어(__actCore 등)는 공개 방에서 호출되지 않는다.
-   정보 경계: 상대 전투원의 미공개 기술은 서버가 kind만 주므로 자리표시 키로만 그린다(netAdaptSkills). 상대 가방·패키지·
-   볼은 원본 mineView 마스킹 그대로 "비공개"다. 상대 전투원의 공격력은 공개된 종(ROSTER)·왕/동료 상수(BAL)로만 유도하고,
-   유도할 수 없는 대리 출전(포획 하수인) 수치는 만들지 않는다(표기 "?"). */
+   정보 경계: 상대 전투원의 미공개 기술은 서버가 kind만 주고, 전선 어댑터(netAdaptSkills)는 그대로 자리표시 키로 옮긴다.
+   #296: 전투 화면은 상대 기술을 아예 그리지 않는다(자리표시도 없음) — 어댑터는 무변경이고 표시만 빠졌다. 상대 가방·패키지·
+   볼은 원본 mineView 마스킹 그대로 "비공개"다.
+   #296: 기본 6스탯(atk·def·spd·dodge·crit·statusPct)은 서버가 **두 전투원 모두에** 실은 실제 값만 옮긴다(유한한 숫자 · 0 포함).
+   없거나 null 이면 undefined 로 둔다 — 종 표(1등급)·BAL·cap/reserve 로 되살리지 않는다(화면 표기 "—" 정보 없음). 등급(grade)도 서버가 실은 정수만 옮긴다. */
 function netSynthFighter(sd,you){
   sd=sd||{};
-  const mine=sd.owner===NET.me, body=sd.bodyFight!==false;
+  const body=sd.bodyFight!==false;
   const rd=body&&sd.type==="minion"&&sd.rosterId?ROSTER.find(r=>r.id===sd.rosterId):null;
   /* #238 전설 정체 — 서버는 공개된 전설을 기존 종 키 칸(본체 rosterId · 대리 artRosterId)에 L-DRAGON/L-WITCH/L-REAPER 로 싣는다.
-     닫힌 LEGEND_ROSTER 에 있는 값만 f.legend 로 되살린다(등급·기술·가방은 여전히 없다) */
+     닫힌 LEGEND_ROSTER 에 있는 값만 f.legend 로 되살린다(기술·가방은 여전히 없다).
+     #296: 현재 전투원의 등급은 이제 공개 값이다(sd.grade 정수만 옮긴다). 전선에 전설 원본(raw legend)은 여전히 없다 */
   const lgId=body?(sd.type==="minion"?sd.rosterId:null):sd.artRosterId;
   const lg=typeof lgId==="string"?LEGEND_ROSTER.find(x=>x.id===lgId)||null:null;
   const ad=netAdaptSkills(sd.skills);
-  const own=you&&Array.isArray(you.pieces)?you.pieces:[];
-  let atk=typeof sd.atk==="number"?sd.atk:undefined, skillAtk=typeof sd.skillAtk==="number"?sd.skillAtk:undefined;
-  if(atk===undefined){
-    if(body&&rd){ atk=rd.atk; skillAtk=rd.skill; }                                   // 공개된 종의 고정 수치
-    else if(body&&(sd.type==="king"||sd.type==="ally")){ const b=BAL[sd.type]||{}; atk=b.atk||0; skillAtk=b.skill||0; }
-    else if(!body&&mine){ // 내 대리 출전 — 내 말의 cap(자기 좌석 정보)에서 읽는다
-      const hit=own.find(p=>p&&p.type===sd.type&&p.cap&&p.cap.element===sd.element&&(p.cap.artRosterId||(p.cap.legend?ecoKey(p.cap):null)||null)===(sd.artRosterId||null)) // 전설 cap 은 artRosterId 가 없다 — 서버와 같은 ecoKey
-        ||(you&&you.reserve&&you.reserve.element===sd.element?{cap:you.reserve}:null);
-      if(hit&&hit.cap){ atk=hit.cap.atk; skillAtk=hit.cap.skillAtk; } }
-  }
+  const num=k=>typeof sd[k]==="number"&&isFinite(sd[k])?sd[k]:undefined;
   const piece={id:null,owner:sd.owner,type:sd.type||null,rosterId:rd?rd.id:null,name:rd?rd.name:(body&&lg?lg.name:null),element:body?(sd.element||null):null,cap:null};
   const f=body?piece:{};
   Object.assign(f,{element:sd.element||null,hp:sd.hp,maxHp:sd.maxHp,shield:sd.shield||0,burn:sd.burn||0,weaken:sd.weaken||0,
     shock:sd.shock||0,shockFresh:!!sd.shockFresh,dmgCut:sd.dmgCut||0,focusCharge:!!sd.focusCharge,vulnMark:!!sd.vulnMark,
     crack:sd.crack||0,harden:sd.harden||0,hardenPct:sd.hardenPct||0, // #233: Jupiter room.js 가 battle.a/d 에 함께 보낸다(stIcons 표시용)
     evadeDown:sd.evadeDown||0,evadeDownR:sd.evadeDownR||0,tideMark:sd.tideMark||0,tideHeld:!!sd.tideHeld, // #241 표시용 — 서버가 보내면 쓰고 없으면 0 (Jupiter 후속)
-    skills:ad.skills,cds:ad.cds,revealedSkills:ad.revealedSkills,atk:atk,skillAtk:skillAtk||0,cd:typeof sd.cd==="number"?sd.cd:0,
+    skills:ad.skills,cds:ad.cds,revealedSkills:ad.revealedSkills,usable:ad.usable,grade:Number.isInteger(sd.grade)?sd.grade:undefined,atk:num("atk"),def:num("def"),spd:num("spd"),dodge:num("dodge"),crit:num("crit"),statusPct:num("statusPct"),skillAtk:num("skillAtk")||0,cd:typeof sd.cd==="number"?sd.cd:0,
     powerBuff:sd.buff==="power",fleeBoost:sd.buff==="escape",artRosterId:body||lg?null:(sd.artRosterId||null),legend:lg?lg.key:null,
     reaperSeal:sd.reaperSeal||0, // #234 REVISE 2차: 자기 전투원에만 온다 — 상대 쪽은 키가 없어 0
-    synAtk:sd.synAtk||0}); // #235: 같은 owner-only 경계 — 위력 표기(slotPow/effAtk)가 읽는다. 상대 쪽은 키가 없어 0이고 로컬 역산도 하지 않는다
+    synAtk:sd.synAtk||0}); // #235: 같은 owner-only 경계 — 상대 쪽은 키가 없어 0이고 로컬 역산도 하지 않는다. #296: 전투 화면의 동적 위력 범위 UI 는 삭제됐다 — 현재 표시는 ownSyn · 현재 전투원 칩이다
   if(!body) piece.cap=f;
   return {piece,f};
 }
@@ -1210,7 +1205,8 @@ function netSyncOverlays(force){
     else { NET.overlaySig="none"; if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; } }
   } else if(w.kind==="modal"){ netRenderModalOverlay(S._pendingModal); NET._overlayOpen=true; }
   else if(w.kind==="shop"||w.kind==="bag"){ netRenderEcoOverlay(w.kind); NET._overlayOpen=true; }
-  else if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; shopClockStop(); bagClockStop(); }
+  else if(NET._overlayOpen){ closeModal(); NET._overlayOpen=false; shopClockStop(); bagClockStop();
+    try{ emoteSync(); }catch(e){} } // #296: render 의 emoteSync 는 이 창이 열려 있을 때 쟀다 — 닫힌 뒤 말판 자리로 다시 잰다
 }
 const _renderCoreForBattle=render;
 const _renderWithOverlays=function(){ _renderCoreForBattle(); if(NET.publicMode) netSyncOverlays(); netResumeBarSync(); };

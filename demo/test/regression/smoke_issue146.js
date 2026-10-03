@@ -74,7 +74,7 @@ section("A",()=>{
 
   const P=setup(T); giveSpecies(T,P.me,R(T,"M-F1")); giveSpecies(T,P.em,R(T,"M-G1"));
   openBattle(T,P.me,P.em); const B=T.S.battle; actAsA(T); B.fa.hp=B.fa.maxHp; freshModal(T);
-  ok(!/50% 미만이어야 합니다/.test(ob(T))&&/HP 조건 없음/.test(ob(T)),"A5 만피에서도 도망 가능 — HP 조건 안내 자체가 없다");
+  ok(!/50% 미만이어야 합니다/.test(ob(T))&&/HP 조건 없이/.test(ob(T)),"A5 만피에서도 도망 가능 — HP 조건 안내 자체가 없다");
   ok(!/<button class="danger" disabled/.test(ob(T))&&/성공 30%/.test(ob(T)),"A6 도망 버튼 활성 · 표기 30%");
   ok(T.fleeProbOf(B.fa)===0.3&&T.fleeProbOf(B.fd)===0.3,"A7 판정 확률도 30% (표기와 같은 원천)");
   B.fa.fleeBoost=true; freshModal(T);

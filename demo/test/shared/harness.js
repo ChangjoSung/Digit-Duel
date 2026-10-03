@@ -439,7 +439,7 @@ function load(htmlPath,opts){
     synHelpClose:typeof synHelpClose==="function"?synHelpClose:undefined,
     /* #294 메인 화면 흐름 — 공용 신원 부품 · 설명 창 · 시너지 열 (기준판 로드 호환: 부재 시 undefined) */
     idHeadHtml:typeof idHeadHtml==="function"?idHeadHtml:undefined,idHelp:typeof idHelp==="function"?idHelp:undefined,
-    unitHelpPiece:typeof unitHelpPiece==="function"?unitHelpPiece:undefined,unitHelpBag:typeof unitHelpBag==="function"?unitHelpBag:undefined,unitHelpSlot:typeof unitHelpSlot==="function"?unitHelpSlot:undefined,
+    unitHelpPiece:typeof unitHelpPiece==="function"?unitHelpPiece:undefined,infoSlotOpen:typeof infoSlotOpen==="function"?infoSlotOpen:undefined,unitHelpBag:typeof unitHelpBag==="function"?unitHelpBag:undefined,unitHelpSlot:typeof unitHelpSlot==="function"?unitHelpSlot:undefined,
     lobbyRepHtml:typeof lobbyRepHtml==="function"?lobbyRepHtml:undefined,synRailHtml:typeof synRailHtml==="function"?synRailHtml:undefined,synContrib:typeof synContrib==="function"?synContrib:undefined}:undefined,
   PREPCLK:typeof PREPCLK!=="undefined"?PREPCLK:undefined, synExtraView:typeof synExtraView==="function"?synExtraView:undefined,
   synKingdomEffect:typeof synKingdomEffect==="function"?synKingdomEffect:undefined, netStubPiece:typeof netStubPiece==="function"?netStubPiece:undefined,

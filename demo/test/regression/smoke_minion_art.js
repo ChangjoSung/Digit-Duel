@@ -553,7 +553,7 @@ function proxyBattle(T,att,def,pickA,pickD){
   const st=T.byId("overlayBox").innerHTML;
   ok(!/👑|🤝/.test(tokA+tokOf(T,"D")),"K4f 대리 출전 토큰에는 왕·동료 이모지가 없다 (본체 표현은 본체 출전 때만)");
   ok(B.fd.hp===T.BAL.enemyCapHp&&B.fd.maxHp===T.BAL.captured.hp&&B.fd.atk===T.BAL.captured.atk&&B.fd.skillAtk===T.BAL.captured.skill&&B.fd.cdMax===T.BAL.captured.cd,"K4g 표시 종이 붙어도 전투 수치는 포획 공용 규격(HP 70/100 · 공 20 · 기 30 · CD 2) — 종 스탯(M-L5 95/20/28)으로 바뀌지 않는다");
-  ok(/HP <span id="hptxt-D">70<\/span>\/100/.test(st),"K4h 정보 패널 HP 표기도 70/100");
+  ok(/<span class="hpNum">❤️ <span id="hptxt-D">70<\/span>\/100</.test(st),"K4h 정보 패널 HP 표기도 70/100 (#296 HP 바 안 hpNum 표기)");
   T.close(); T.S.battle=null; T.TQ.length=0;
   // 본체 출전은 그대로 (본체 vs 본체는 규칙상 밀어내기이므로 각각 하수인을 상대로 연다): 왕 본체(포획 보유) vs 하수인 → 👑 · 하수인 vs 동료 본체(예비 보유) → 🤝
   const T2=H.load(htmlPath); const Q=setup(T2,"pvp"); const eAlly2=T2.S.pieces.find(x=>x.owner===1&&x.type==="ally");

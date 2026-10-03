@@ -2116,17 +2116,22 @@ class Room {
   /* #234 (GDD-23 7.9 "등급 · 쓰지 않은 스킬은 소유자 화면에만") — 스킬 칸 수가 곧 등급(⭐N = N칸)이 됐다.
      종전처럼 상대 칸마다 {i,revealed:false,kind} 를 보내면 배열 길이로 등급이, kind 로 미사용 스킬 종류가 드러난다.
      그래서 상대에게는 **공개된 칸만** 원래 인덱스 i 와 함께 보내고, 미공개 칸이 하나라도 남아 있으면 개수·종류 없는
-     자리표시 {revealed:false} **하나**만 덧붙인다. 클라이언트 표시(battleModal 패널·커맨드)가 이미 미공개 칸을 개수 없이
-     "? 미공개" 하나로 접으므로 화면은 같다(netAdaptSkills 는 위치로 읽고 i 를 쓰지 않는다).
-     남는 한계: "미공개 칸이 남았는가" 1비트는 그 화면 표시와 같은 양으로 나간다(보고서 11.3). 공개된 스킬 이름은 종의 ⭐ 순서를
-     따르므로 공개 자체가 등급 하한을 알려 주는 것은 규칙상 공개 범위다. */
-  _skillsFor(T, p, mine) {
+     자리표시 {revealed:false} **하나**만 덧붙인다(netAdaptSkills 는 위치로 읽고 i 를 쓰지 않는다).
+     남는 한계: "미공개 칸이 남았는가" 1비트는 회선으로 나간다(보고서 11.3). 공개된 스킬 이름은 종의 ⭐ 순서를
+     따르므로 공개 자체가 등급 하한을 알려 주는 것은 규칙상 공개 범위다.
+     #296 (2026-10-02 CJ 정정) — **회선은 그대로**다(공개된 칸 + 접힌 미공개 존재 표식 하나). 바뀐 것은 화면뿐이다:
+     최신 전투 UI 는 상대 스킬을 **아예 그리지 않는다**(목록·쓴 기술 줄·가려진 줄·칸 수·"?" 모두 없음). 표시 규칙이지
+     새 비공개 규칙이 아니므로 이 직렬화는 좁히지도 넓히지도 않았다. */
+  /* #296 side('A'|'D')는 **진행 중 전투의 자기 전투원**에만 넘긴다 — 그때만 칸마다 usable(Core slotUsable 결과 그대로: 쿨·전투당 1회·
+     사용 조건·수면·사신 봉인·추가 공격 허용 칸)을 싣는다. onceUsed·burrowRound 원본과 규칙 사본은 싣지 않고, 상대 칸에는 키 자체가 없다. */
+  _skillsFor(T, p, mine, side) {
     if (!p.skills) return null;
     const out = [];
     let hidden = false;
     p.skills.forEach((sid, i) => {
       if (mine || (p.revealedSkills && p.revealedSkills.includes(i))) {
-        out.push({ i, revealed: true, id: sid, name: T.skillNameKo ? T.skillNameKo(sid, p.element) : sid, cd: p.cds ? p.cds[i] : 0 });
+        out.push({ i, revealed: true, id: sid, name: T.skillNameKo ? T.skillNameKo(sid, p.element) : sid, cd: p.cds ? p.cds[i] : 0,
+          ...(mine && side ? { usable: !!T.slotUsable(p, i, side, T.S) } : {}) });
       } else hidden = true;
     });
     if (hidden) out.push({ revealed: false });
@@ -2135,11 +2140,21 @@ class Room {
 
   // 전투 문맥 공개 (§2.6.2) — 그 전투 동안 양쪽이 이미 보는 hp/shield/상태·이 전투에서 쓴 아이템/볼/버프 기록.
   _serializeBattle(T, battle, seatIndex) {
+    const num = (v) => (Number.isFinite(v) ? v : null); // #296 숫자 0 은 0 그대로, 누락·비유한 값만 null(화면 "—" · "?" 아님)
     const side = (owner, f, piece, sfx) => {
       const bodyFight = f === piece; // 본체 출전(f===piece) vs 포획·예비 하수인 대리 출전(#91 artDirOfFighter와 같은 구분)
       // #262 CJ QA(2026-09-27) — 전투 중에는 두 전투원(대리 출전 포함) 모두 실제 HP/최대 HP·방어막·해일 X·기록 피해를 싣는다(#237 100 눈금 폐지)
       return {
         owner, hp: f.hp, maxHp: f.maxHp,
+        /* #296 (2026-10-02 CJ "상대도 공개" · P1) 기본 6스탯 — **지금 싸우는 실제 전투원**(본체·cap·가방 대리 출전 모두 f)의 값을
+           양 좌석·양쪽 전투원에 싣는다. 등급 성장분이 든 개체 값 그대로이고 시너지 가산(syn*)·일시 효과는 더하지 않는다.
+           표시 전용이다: 피해 판정은 서버 Core 가 f 로 직접 내고 이 값은 어떤 판정 경로로도 되돌아오지 않는다.
+           보드 뷰(_serializeKnownOpponent)에는 여전히 싣지 않는다 — 전투가 끝나 battle 이 사라지면 함께 사라진다. */
+        atk: num(f.atk), def: num(f.def), spd: num(f.spd), dodge: num(f.dodge), crit: num(f.crit), statusPct: num(f.statusPct),
+        /* #296 (2026-10-02 CJ 정정) 전투원 이미지 옆 등급 — **지금 싸우는 실제 전투원 f** 의 등급을 양 좌석에 싣는다(대리 출전이면
+           cap·가방 개체의 등급이지 보드 말 piece 의 등급이 아니다). 엔진 값이 정수일 때만 그 값, 아니면 null — 왕·동료·등급 없는
+           개체에 하수인 등급을 지어내지 않는다. 보드 뷰 경계는 그대로다(공개된 말만 _serializeKnownOpponent 가 싣는다). */
+        grade: Number.isInteger(f.grade) ? f.grade : null,
         shield: f.shield || 0, burn: f.burn || 0, weaken: f.weaken || 0,
         shock: f.shock || 0, shockFresh: !!f.shockFresh, dmgCut: f.dmgCut || 0, focusCharge: !!f.focusCharge,
         /* #233 (GDD-23 4.5) 균열·경화 — 이미 내려보내는 burn/weaken/shock/dmgCut/vulnMark 와 **같은 등급**이다.
@@ -2155,17 +2170,13 @@ class Room {
              층 배열은 획득원 태그(guardStart·selfSkill·grassLegacy·기술 이름)를 달고 다녀 상대의 아키타입과
              아직 쓰지 않은 기술을 역산하게 해 준다 — 표시에 불필요하면서 §2.6.2 의 기술 은닉을 우회하는 값이라
              내보내지 않는다. 락스텝 요약(lockstepDigest)에는 서버 안에서만 들어간다.
-           · def/spd/dodge/crit/statusPct/grade — 전투 화면에 렌더 경로가 없다. 기술 위력 표기(dmgRange·slotPow)는
-             atk 만 쓰고, atk/skillAtk 자체도 #217 에서 "유도 가능·표시 불필요"로 철회한 선례를 그대로 따른다.
-             grade 는 GDD-23 7.9·8.1⑦이 소유자 전용으로 못박았다.
+           · shieldStartPct·uid — 시작 방어막 비율·개체 식별자는 #296 뒤에도 싣지 않는다
+             (기본 6스탯 atk/def/spd/dodge/crit/statusPct 와 실제 전투원 grade 는 #296 에서 위 allowlist 로 옮겼다 · skillAtk 는 계속 없다).
            · absorbed·pendingFx — 서버 판정용 내부 상태이고 표시 대상이 아니다. */
         // 기존 버그: 대리 출전이면 실제 싸우는 건 f(cap)인데 piece(왕/동료 본체, skills:null)를 읽어 항상 null이 됐다.
-        vulnMark: !!f.vulnMark, skills: this._skillsFor(T, f, owner === seatIndex),
-        // #217 Mars ctx_75a85d4c58fb 델타 — cd/atk/skillAtk는 제안 후 Mars가 철회했다(msg_db7a8fa06aee):
-        // 왕/동료 본체는 BAL.ally/king에 skill이 없어 skillAtk=0·스킬 버튼 자체가 없으므로 cd가 항상 무의미하고,
-        // atk/skillAtk도 자기 pieces/cap 또는 공개 ROSTER/BAL로 대부분 유도 가능해 필수 노출이 아니다(포획 대리
-        // 출전의 상대 cap 수치만 유도 불가하지만 원본 UI도 그 경우 "?"만 보여줄 뿐이다) — 불필요한 공개 확장은
-        // 하지 않는다.
+        vulnMark: !!f.vulnMark, skills: this._skillsFor(T, f, owner === seatIndex, sfx),
+        // #217 에서 철회했던 cd/atk/skillAtk 중 atk 만 #296 이 되살렸다(전설·등급 성장·가방 대리 출전은 클라이언트가 유도할 수 없어
+        // 위력이 0~0 으로 표기됐다). 전투원 단위 cd·skillAtk 는 여전히 싣지 않는다.
         rec: battle['rec' + sfx] || 0, // 이 쪽이 상대에게 기록한 피해(상대 최대 HP 로 상한)
         items: battle['items' + sfx] || 0, itemRound: !!battle['itemRound' + sfx],
         lastItem: battle['lastItem' + sfx] != null ? battle['lastItem' + sfx] : null,
@@ -2191,7 +2202,7 @@ class Room {
            기술 종류(kind)/이름/쿨의 은닉 범위는 그대로다(위 skills 라인). */
         type: piece.type, element: f.element || null, bodyFight,
         // #238 전설 정체 — 공개된 전설 종 키(L-DRAGON/L-WITCH/L-REAPER)를 기존 종 키 칸에 싣는다(Core ecoKey · 일반 값 불변).
-        // 원시 legend·등급·기술·cap 은 싣지 않는다. engine.js sceneSideOf 와 같은 규칙 — 바뀌면 양쪽을 함께 고친다.
+        // 원시 legend·기술·cap 은 싣지 않는다(등급은 #296 부터 위 grade 칸). engine.js sceneSideOf 와 같은 규칙 — 바뀌면 양쪽을 함께 고친다.
         rosterId: bodyFight && piece.type === 'minion' ? (T.ecoKey(piece) || null) : null,
         // #292 대리 출전: cap 은 artRosterId, 경제 가방 말(포획분 포함)은 그 개체의 종 키(ecoKey) — 출전 중인 개체만, 가방 목록은 싣지 않는다
         artRosterId: bodyFight ? null : (f.artRosterId || T.ecoKey(f) || null),

@@ -130,11 +130,26 @@ function pvePlay(seed){ const T=pveSetup(seed);
     ok(/onclick="uiBack\(\)"/.test(gear)&&/<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공<\/button>/.test(gear)&&count(gear,/<button/g)===2,"C4b ⚙ = 기존 나가기 진입점(uiBack — 기권 확인 경로) + 사운드 줄은 비활성"); }
   { /* #294 CJ REVISE(2026-10-02): 상단 한 줄 = 왼쪽 신원 · 오른쪽 차례/⚙ — 도구 줄 · 선택 요약은 없고, 고른 내 말의 [설명]은 행동 줄 첫 버튼(전송 0 · 선택 유지) */
     const tools=h.slice(h.indexOf('class="tbTools"'),h.indexOf('class="hudStats"'));
-    ok(/^<div class="topBar"><div class="idHead">/.test(h)&&/>내 차례<\/b>/.test(tools)&&/class="flowGear"/.test(tools)&&/<b class="who" aria-label="내 차례 · [^"]+">/.test(tools)&&!/hudTools|infoBtn/.test(h)&&!/자기 말을 선택|주 행동|HP /.test(h.slice(0,h.indexOf('class="hudStats"')).replace(/<[^>]+>/g,"")),"C4c 상단 한 줄: 신원 | 짧은 차례 문구(긴 안내는 접근성 이름에만) · ⚙ — 보이는 선택 요약 · [설명] 없음");
-    const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive); S.selected=m; T.renderTurnBar(); const ib=kids()[0], n0=T.wsLog.length;
-    const okBtn=/\binfoBtn\b/.test(ib.className)&&ib.textContent===`${m.name} 하수인 정보`&&/HP \d+\/\d+/.test(lab(ib))&&!ib.disabled; /* #295 CJ REVISE(2026-10-02): 보이는 글자 = '<종 이름> 하수인 정보' · 속성 · HP 는 접근성 이름 */ ib.onclick();
-    ok(okBtn&&!!T.ui238.SYNHELP.el&&S.selected===m&&T.wsLog.length===n0,"C4d 고른 내 말의 [설명] = 행동 줄 첫 버튼 → 설명 창 · 선택 유지 · 송신 0");
-    T.ui238.synHelpClose(false); S.selected=null; T.renderTurnBar(); ok(!kids().some(k=>/\binfoBtn\b/.test(k.className||"")),"C4e 고른 말이 없으면 [설명] 버튼도 없다"); }
+    ok(/^<div class="topBar"><div class="idHead">/.test(h)&&/>내 차례<\/b>/.test(tools)&&/class="flowGear"/.test(tools)&&/<b class="who" aria-label="내 차례 · [^"]+">/.test(tools)&&!/hudTools|infoBtn/.test(h.slice(0,h.indexOf('class="hudStats"')))&&!/자기 말을 선택|주 행동|HP /.test(h.slice(0,h.indexOf('class="hudStats"')).replace(/<[^>]+>/g,"")),"C4c 상단 한 줄: 신원 | 짧은 차례 문구(긴 안내는 접근성 이름에만) · ⚙ — 보이는 선택 요약 · [설명] 없음");
+    /* #296 CJ REVISE1(2026-10-03): [하수인 정보] = 우측 시너지 열 아래 늘 있는 고정 칸 — 글자 고정 · 고른 내 말이 있을 때만 켜짐 · 행동 줄에는 없다 */
+    const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive), slot=()=>{ T.ui238.renderBoardInfo(); const b=T.byId("boardInfo").innerHTML; return (b.split('<div class="sideCol">')[1]||"").match(/<button type="button" class="infoBtn"[^>]*>[^<]*<\/button>/); };
+    S.selected=m; T.renderTurnBar(); const on=slot(), n0=T.wsLog.length, call=on&&(on[0].match(/onclick="([^"]+)"/)||[])[1];
+    const okBtn=!!on&&/>말 정보<\/button>$/.test(on[0])&&!/ disabled/.test(on[0])&&/HP \d+\/\d+/.test(on[0])&&!kids().some(k=>/\binfoBtn\b/.test(k.className||""));
+    const press=()=>{ if(call) Function("infoSlotOpen",call.replace(/&quot;/g,'"').replace("this","null"))(T.ui238.infoSlotOpen); const o=!!T.ui238.SYNHELP.el; T.ui238.synHelpClose(false); return o; };
+    ok(okBtn&&press()&&S.selected===m&&T.wsLog.length===n0,"C4d 고른 내 말 → 시너지 열 아래 [하수인 정보] 켜짐(행동 줄에는 없음) → 설명 창 · 선택 유지 · 송신 0");
+    /* #296 Saturn 재현: 재생 중에는 칸이 꺼진 채 그려지고, 켜진 채 그려 둔 오래된 버튼을 눌러도(재생 · 열린 창 · 선택 변경) 설명 창이 열리지 않는다 */
+    T.NET.replaying=true; const rp=slot(), rpPress=press(); T.NET.replaying=false;
+    T.MEMO_UI.overlayOpen=true; const ovPress=press(); T.MEMO_UI.overlayOpen=false;
+    S.selected=null; const selPress=press(); S.selected=m; const back=press();
+    ok(!!rp&&/ disabled /.test(rp[0])&&!/onclick/.test(rp[0])&&!rpPress&&!ovPress&&!selPress&&back&&T.wsLog.length===n0,"C4d2 재생 중 칸 꺼짐 · 오래된 켜진 버튼은 재생/열린 창/선택 해제 때 무반응(전송 0) — 조건이 돌아오면 다시 열린다");
+    S.selected=null; T.renderTurnBar(); const off=slot();
+    ok(!!off&&/ disabled /.test(off[0])&&/>말 정보<\/button>$/.test(off[0])&&!/onclick/.test(off[0]),"C4e 고른 말이 없어도 같은 자리 · 같은 글자 칸이 꺼진 채 남는다(말판 규격 불변)");
+    /* #296 CJ REVISE2: 폭탄 · 함정 · 왕도 같은 [말 정보] → 같은 unitHelpPiece 창(폭탄 · 함정은 HP 없음 — 접근성 이름에도 HP 를 지어내지 않는다) · 상대 말 · 재생 중에는 꺼짐 */
+    const mine=t=>S.pieces.find(x=>x.owner===0&&x.type===t&&x.alive&&x.placed), pick=x=>{ S.selected=x; const b=slot(); const c=b&&(b[0].match(/onclick="([^"]+)"/)||[])[1]; if(c) Function("infoSlotOpen",c.replace(/&quot;/g,'"').replace("this","null"))(T.ui238.infoSlotOpen); const d=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:""; T.ui238.synHelpClose(false); return {b:b&&b[0],d}; };
+    const bm=pick(mine("bomb")), tp=pick(mine("trap")), kg=pick(mine("king")), en=pick(S.pieces.find(x=>x.owner===1&&x.alive));
+    T.NET.replaying=true; const rb=pick(mine("bomb")); T.NET.replaying=false;
+    ok(!!bm.b&&!/ disabled/.test(bm.b)&&!/HP /.test(bm.b)&&/<li>폭탄<\/li>/.test(bm.d)&&!!tp.b&&!/HP /.test(tp.b)&&/<li>함정<\/li>/.test(tp.d)&&/HP \d+\/\d+/.test(kg.b||"")&&/uhStats/.test(kg.d)&&/ disabled /.test(en.b||"")&&!en.d&&/ disabled /.test(rb.b||"")&&!rb.d&&T.wsLog.length===n0,
+      "C4f 폭탄 · 함정 · 왕도 [말 정보] → 같은 설명 창(폭탄 · 함정 HP 없음) · 상대 말 · 재생 중은 꺼짐 · 송신 0"); S.selected=null; }
   ok(/id="actClock" role="timer"/.test(h)&&/aria-label="재화 \d+"/.test(h)&&!/상세 ›/.test(h),"C4 위 줄 = 남은 시간(#actClock)·턴·재화 · 옛 [상세 ›] 없음");
   ok(["탐색","🌀 텔레포트","🌿 회복","기권"].every(t=>kids().some(k=>k.textContent===t&&k.getAttribute&&k.getAttribute("data-ico"))),"C5 행동 버튼은 문구 그대로 + 아이콘(data-ico)");
 }
@@ -196,6 +211,18 @@ function pvePlay(seed){ const T=pveSetup(seed);
   ok(!T.ui238.battleSynChips(0,{element:"fire"},{syn:[Object.assign({},own,{stage:{fire:-1}}),null]}).includes("왕국"),"F6b 공급 stage 가 -1 이면 칸 수 2 여도 왕국 칩 없음 (UI 경계 재계산 없음)");
   eq(T.ui238.battleSynChips(1,{element:"fire"},{syn:[null,own]}),"","F7 상대 전투원 칩은 그리지 않는다 (비공개)");
   eq(T.ui238.battleSynChips(0,{element:"fire"},{}),"","F8 스냅샷이 없으면 칩 없음");
+  { const k=T.ui238.battleSynChips(0,{element:"fire"},{syn:[own,null]},"k"), a=T.ui238.battleSynChips(0,{element:"fire"},{syn:[own,null]},"a"); // #296 콘티 두 줄
+    ok(k.includes("불 왕국 2칸")&&!k.includes("아키타입")&&a.includes("공격 아키타입 3칸")&&!a.includes("왕국"),"F9 #296 첫째 줄 = 왕국만 · 둘째 줄 = 아키타입만 (같은 스냅샷 · 재계산 없음)");
+    eq(T.ui238.battleSynChips(1,{element:"fire"},{syn:[null,own]},"k")+T.ui238.battleSynChips(0,{element:"fire"},{},"a"),"","F10 #296 줄을 나눠도 상대 칩 · 스냅샷 없는 칩은 없다");
+    /* F11 #296 개인 시너지 = **지금 싸우는 전설**이 실제로 받는 값(Core applySynergy 와 같은 갈래) — 고정 스냅샷에서만. 보드에 없는 가방 대리 전설도 맞고, 보드의 다른 전설은 섞이지 않는다 */
+    const bagWitch={legend:"witch",element:"fire"}, B11={syn:[Object.assign({},own,{el:{fire:2,water:1,lightning:0,land:0,grass:0},dead:3}),null],attP:{type:"king"},defP:{}}; // attP ≠ 전투원 = 대리 출전
+    const before=JSON.stringify(T.S.pieces.map(x=>[x.id,x.placed,x.alive,x.legend||null])), w=T.ui238.battleSynChips(0,bagWitch,B11,"k"), wv=Math.round(Math.min(T.V2_LEGEND_SYN.witch.max,2*T.V2_LEGEND_SYN.witch.statusPct)*100);
+    ok(wv>0&&w.includes("마녀 개인 시너지")&&w.includes("+"+wv+"%")&&!w.includes("왕국")&&!T.S.pieces.some(x=>x.owner===0&&x.legend==="witch"),"F11 가방 대리 마녀(보드에 없음) = 스냅샷 속성 2종 → 상태 부여 +"+wv+"% 칩 · 전설은 왕국 칩 없음");
+    const r=T.ui238.battleSynChips(0,{legend:"reaper",element:null},B11,"k"), rv=Math.round(Math.min(T.V2_LEGEND_SYN.reaper.max,3*T.V2_LEGEND_SYN.reaper.atk)*100);
+    ok(r.includes("사신 개인 시너지")&&r.includes("+"+rv+"%")&&!r.includes("마녀")&&T.ui238.battleSynChips(0,{legend:"reaper",element:null},{syn:[own,null]},"k")===""&&T.ui238.battleSynChips(0,{element:"fire"},B11,"k").includes("불 왕국 2칸")&&!T.ui238.battleSynChips(0,{element:"fire"},B11,"k").includes("개인")
+      &&JSON.stringify(T.S.pieces.map(x=>[x.id,x.placed,x.alive,x.legend||null]))===before,"F11b 사신 = 스냅샷 dead 3 → 공격 +"+rv+"% · 효과 0 이면 칩 없음 · 일반 전투원에는 개인 칩 없음 (보드 무변경)");
+    const k11=T.ui238.battleSynChips(0,{element:null},B11,"k"), a11=T.ui238.battleSynChips(0,{element:null},B11,"a");
+    ok(k11===""&&a11.includes("공격 아키타입 3칸"),"F11c 속성 없는 왕 · 동료 본체 = 왕국 칩 없음 · 아키타입 합은 참전자 전원(스냅샷 그대로)"); }
   /* 온라인 어댑터 — battle.ownSyn 만 내 좌석 칸에, 상대 칸은 null · 없으면 syn 없음 */
   const N=T.NET; N.mode=true; N.publicMode=true; N.me=1;
   const side=(o,id)=>({owner:o,type:"minion",rosterId:id,element:"fire",hp:50,maxHp:100,skills:[]});
@@ -442,7 +469,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
   T.ART.loaded.clear();
   /* 5 전투 우상단 · 6 시너지 안내 */
   const ui=fs.readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8");
-  ok(/class="bhead"><h2[^\n]*<\/h2>\$\{mySide==="A"\?battleSynChips\(B\.attP\.owner,B\.fa,B\):battleSynChips\(B\.defP\.owner,B\.fd,B\)\}<\/div>/.test(ui)&&!/fscroll">\$\{battleSynChips/.test(ui),"K31 시너지 칩은 전투창 제목 줄 오른쪽 · HP 카드 문장 삭제");
+  ok(/class="bhead"><h2[^\n]*<\/h2>\$\{battleSynChips\(cP\.owner,cF,B,"k"\)\}<\/div>/.test(ui)&&/battleSynChips\(cP\.owner,cF,B,"a"\)\}<\/div>/.test(ui)&&!/fscroll">\$\{battleSynChips/.test(ui),"K31 시너지 칩은 전투창 제목 줄 오른쪽(#296: 왕국·개인 = 차례 줄 · 아키타입 = 라운드 줄) · HP 카드 문장 삭제");
   const U=T.ui238;
   eq([U.synTier("fire",1),U.synTier("fire",5),U.synTier("fire",9),U.synTier("def",6),U.synTier("std",6),U.synTier("atk",1)],[-1,1,3,3,4,-1],"K32 단계 경계 = V2_KINGDOM_STEPS · V2_ARCH_STEPS(배열 길이 상한)");
   const fk=T.V2_KINGDOM_STAGES.fire[1], st=T.V2_ARCH_SYN.std[0];
@@ -507,6 +534,31 @@ function pvePlay(seed){ const T=pveSetup(seed);
   N.online=4; N.ws={readyState:1,send(){},close(){}}; T.netHandlePublicMessage({type:"lobby_ready"});
   ok(N.online===null,"M6 새 로비 소켓(lobby_ready) = 첫 목록 전까지 —");
   ok(/\.roomsOnline\{flex:0 0 auto;/.test(css),"M7 헤더 한 줄(← · 제목 · 인원)");
+}
+/* ===== R1. #296 CJ REVISE1 — 가방 묶음 = 실제 칸 번호 · 상태 칩은 연출 글자를 따라간다 · 하위 창 [돌아가기] = 로컬 · 싸우기 = 설명 창과 같은 스킬 마크업 ===== */
+{
+  const T=H.load(htmlPath); H.freshPlay(T,"pvp"); H.clearBoard(T);
+  const me=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), em=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
+  H.place(T,me,12,4); H.place(T,em,11,4); T.TQ.length=0; T.startRounds(me,em,me,em); T.TQ.length=0;
+  T.S.battle.firstSide=T.S.battle.firstSideR1="A"; T.S.battle.phase=0; // 선턴은 속도 판정이라 무작위 로스터면 D가 될 수 있다 — 가방·스킬 검사는 A 차례 기준
+  ok(T.actorOfPhase()==="A","R1 전제 — 지금 차례 = A(owner0)");
+  const B=T.S.battle, html=()=>T.byId("overlayBox").innerHTML, tileOf=(h,nm)=>(h.match(new RegExp('<button type="button" class="bagTile"[^>]*>(?:(?!</button>).)*<b>'+nm+'</b>(?:(?!</button>).)*</button>'))||[""])[0];
+  T.S.inv[0]=["cure","potion","potion"]; B.menu="bag"; T.battleModal(); const h=html();
+  const po=tileOf(h,"회복약"), cu=tileOf(h,"해독제"), co=tileOf(h,"쿨링수");
+  ok(/×2<\/span>/.test(po)&&/__useItem\(1\)/.test(po)&&/×1<\/span>/.test(cu)&&/__useItem\(0\)/.test(cu)&&/×0<\/span>/.test(co)&&/ disabled /.test(co),"R1a 같은 종류는 한 칸 ×N · 누르면 그 종류의 첫 실제 칸 번호(회복약=1 · 해독제=0) · 없는 종류는 ×0 잠금");
+  ok((h.match(/class="bagGrid"/g)||[]).length===2&&!/라운드당 1회|보너스 행동/.test(h.replace(/title="[^"]*"/g,""))&&/<div class="subHead"><b>🎒 가방<\/b><button type="button" class="subBack" onclick="window\.__menu\(null\)">/.test(h),"R1b 가방 = 두 묶음 3열 칸 · 긴 안내 없음 · 제목 줄 오른쪽 [돌아가기]");
+  const s0=JSON.stringify([B.actSeq,B.round,B.phase,T.S.inv,T.S.balls,T.wsLog.length]);
+  global.__menu("fight"); global.__menu(null); global.__menu("bag"); global.__menu(null); global.__menu("ball"); global.__menu(null); global.__menu("flee"); global.__menu(null);
+  ok(B.menu===null&&JSON.stringify([B.actSeq,B.round,B.phase,T.S.inv,T.S.balls,T.wsLog.length])===s0,"R1c 하위 창 [돌아가기](window.__menu(null)) = 행동 · 자원 · 전송 무변경");
+  ok(/<div class="subHead"><b>정말로 도망갈까요\?<\/b><\/div><div class="subActs"><button class="danger"[^>]*__flee\(\)[^>]*>🏃 도망 \(성공 \d+%\)<\/button><button type="button" class="subBack"/.test(h)&&(h.match(/class="subBack"/g)||[]).length===4&&!/bmenuBack|← 뒤로/.test(h),"R1d 도망 = 질문 한 줄 + [도망 (성공%)] [돌아가기] · 네 하위 창 모두 안쪽 [돌아가기] · 바깥 '← 뒤로' 없음");
+  global.__useItem(1);
+  ok(JSON.stringify(T.S.inv[0])==='["cure","potion"]',"R1e 묶인 회복약 칸의 실제 칸 번호로 사용 — 해독제는 그대로: "+JSON.stringify(T.S.inv[0]));
+  T.battleModal(); T.applyFx({st:{side:"D",text:"🛡5 🔥화상2R 🛡경화25%·2R",max:em.maxHp||100,shield:5}});
+  const ch=T.byId("bch-D").innerHTML;
+  ok(T.byId("bst-D").textContent==="🛡5 🔥화상2R 🛡경화25%·2R"&&T.byId("shtxt-D").textContent===5&&/title="🔥화상2R">🔥<b>2R<\/b>/.test(ch)&&/class="stChip up" title="🛡경화25%·2R">🛡<b>25%·2R<\/b>/.test(ch)&&!/title="🛡5"/.test(ch),"R1f 연출이 bst- 글자를 바꾸면 칩도 같은 낱말로(값 · 단위 그대로) · 단순 방어막은 바 안 숫자(shtxt-)로만");
+  B.menu="fight"; T.battleModal(); const fh=html(); T.ui238.unitHelpPiece(me.id,null); const uh=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:""; T.ui238.synHelpClose(false);
+  const row=(uh.match(/<span class="uhSk"><b>[^<]+<\/b>/)||[""])[0];
+  ok(!!row&&fh.includes(row)&&/<ol class="uhSkills">/.test(fh)&&/<div class="subHead"><b>⚔️ 싸우기<\/b><button type="button" class="subBack" onclick="window\.__menu\(null\)">↺ 돌아가기<\/button><\/div>/.test(fh)&&!/bmenuBack/.test(fh)&&!/\d+~\d+/.test(fh),"R1g 싸우기 = 하수인 정보 창과 같은 스킬 줄 마크업(ol.uhSkills · span.uhSk) · 제목 줄 오른쪽 안쪽 [돌아가기] · 범위 숫자 없음");
 }
 console.log(`smoke_issue238: ${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
