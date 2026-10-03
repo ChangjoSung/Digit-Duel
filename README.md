@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <a href="docs/releases/v0.4.13.md"><img src="https://img.shields.io/badge/v0.4.13-release_candidate-4c9a2a" alt="v0.4.13 출시 준비"></a>
+  <a href="https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.13"><img src="https://img.shields.io/badge/v0.4.13-release-4c9a2a" alt="v0.4.13 릴리스"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-Apache--2.0-blue" alt="코드 라이선스 Apache-2.0"></a>
 </p>
 
-**[▶ 웹에서 플레이](https://digit-duel-mipa.onrender.com)** · 출시 준비 **[v0.4.13](docs/releases/v0.4.13.md)** · 현재 정식 **[v0.4.12](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.12)**
+**[▶ 웹에서 플레이](https://digit-duel-mipa.onrender.com)** · 최신 릴리스 **[v0.4.13](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.13)**
 
 ## 게임 소개
 
@@ -40,18 +40,18 @@
     <td align="center" width="50%"><a href="docs/screenshots/v0.4.13/04-waiting-room.png"><img src="docs/screenshots/v0.4.13/04-waiting-room.png" alt="대기실" width="100%"></a><br><b>대기실</b></td>
   </tr>
   <tr>
-    <td align="center" width="50%"><a href="docs/screenshots/v0.4.13/05-start-shop.png"><img src="docs/screenshots/v0.4.13/05-start-shop.png" alt="시작 상점" width="100%"></a><br><b>시작 상점</b></td>
     <td align="center" width="50%"><a href="docs/screenshots/v0.4.13/06-strategy-board.png"><img src="docs/screenshots/v0.4.13/06-strategy-board.png" alt="전략 보드" width="100%"></a><br><b>전략 보드</b></td>
+    <td align="center" width="50%"><a href="docs/screenshots/v0.4.13/08-element-battle.png"><img src="docs/screenshots/v0.4.13/08-element-battle.png" alt="속성 전투" width="100%"></a><br><b>속성 전투</b></td>
   </tr>
   <tr>
+    <td align="center" width="50%"><a href="docs/screenshots/v0.4.13/05-start-shop.png"><img src="docs/screenshots/v0.4.13/05-start-shop.png" alt="시작 상점" width="100%"></a><br><b>시작 상점</b></td>
     <td align="center" width="50%"><a href="docs/screenshots/v0.4.13/07-turn-shop.png"><img src="docs/screenshots/v0.4.13/07-turn-shop.png" alt="턴 상점" width="100%"></a><br><b>턴 상점</b></td>
-    <td align="center" width="50%"><a href="docs/screenshots/v0.4.13/08-element-battle.png"><img src="docs/screenshots/v0.4.13/08-element-battle.png" alt="속성 전투" width="100%"></a><br><b>속성 전투</b></td>
   </tr>
 </table>
 
 ## 새로운 기능
 
-**v0.4.13 — 화면과 게임 흐름 개선** · 출시 승인 대기
+**v0.4.13 — 화면과 게임 흐름 개선**
 
 - **시작 준비** — 상점과 배치가 공통 180초를 사용합니다. 양쪽이 준비되면 바로 시작하고, 시간이 끝나면 부족한 말을 보충해 배치합니다.
 - **메인 화면·말 정보** — 대표 하수인 TopBar, 개인 시너지, HP·방어막·능력치와 기술 설명을 정리했습니다. 고정 말 정보 버튼으로 폭탄·함정도 확인합니다.
@@ -65,8 +65,7 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 출시 준비 | [v0.4.13](docs/releases/v0.4.13.md) — CJ 승인 대기 |
-| 현재 정식 버전 | [v0.4.12](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.12) |
+| 현재 정식 버전 | [v0.4.13](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.13) |
 | 플레이 주소 | [digit-duel-mipa.onrender.com](https://digit-duel-mipa.onrender.com) |
 | 장르·인원 | 숨은 정체·속성 전투를 결합한 온라인 1대1 턴제 전략 |
 | 환경 | PC·휴대폰의 최신 브라우저, 인터넷과 가입용 이메일 |
