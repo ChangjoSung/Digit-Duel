@@ -1141,8 +1141,9 @@ body:has(#emoteLayer.inRoom:not(.hidden)) .waitScreen .chatLock{margin-right:58p
 .shopSheet .leadRow button[aria-pressed="true"]{opacity:1; border:3px solid var(--gold1); box-shadow:0 0 10px #ffd66b88; background:#1b3a78;}
 /* 5) 전투 — 내 시너지 아이콘은 전투창 우상단(제목 줄 오른쪽) */
 #overlayBox.battleBox .bhead h2{white-space:nowrap;}
-#overlayBox.battleBox .bsyn{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:3px; margin:-7px 0 -7px auto;} /* 44px 칩이 제목 줄 높이를 늘리지 않는다(전투 배치 불변) */
-#overlayBox.battleBox .bsyn .synChip{font-size:17px; padding:0 4px; min-width:44px; gap:2px;}
+#overlayBox.battleBox .bsyn{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:3px; margin-left:auto;}
+/* #296 CJ REVISE2: 위아래 두 줄(차례 · 라운드)의 칩이 겹치지 않게 줄 높이 안(32px)으로 — 음수 여백 없음. 테두리 · 점은 보드 열과 같은 단계 색(.t0~.t5) */
+#overlayBox.battleBox .bsyn .synChip{font-size:16px; height:32px; min-height:32px; padding:0 5px; min-width:40px; gap:2px; border-radius:10px;}
 /* 6) 시너지 안내 — 칩(role=button) · 안내 카드 */
 .synHelp{position:fixed; left:50%; bottom:max(16px,env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:59; width:min(360px,calc(100vw - 24px)); max-height:70vh; overflow-y:auto;
   display:flex; flex-direction:column; gap:6px; padding:10px 12px 12px; text-align:left; color:#eef2fb; background:linear-gradient(180deg,#132a5c,#0b1a3c);
@@ -1349,8 +1350,10 @@ button.trayItem.placed:disabled{opacity:1;} /* 놓은 칸은 disabled 버튼이�
 #app[data-screen="board"] #boardInfo{top:0; z-index:5; display:flex; flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:4px; padding:4px 0; border:0; border-radius:0; background:var(--panel); box-shadow:-4px 0 0 var(--panel),4px 0 0 var(--panel);}
 #app[data-screen="board"]:has(#boardInfo .sideCol) #screenBody{padding-right:52px;}
 #app[data-screen="board"]:has(#boardInfo .sideCol) #boardInfo{margin-right:-48px;}
-/* #296 CJ REVISE1: 우측 열 = 시너지 칩(안에서 스크롤) + 그 아래 고정 [하수인 정보] 46×56 — 켜짐/꺼짐에도 크기 · 자리 · 글자가 같다 */
-#boardInfo .sideCol{position:absolute; top:100%; right:0; width:46px; max-height:calc(100dvh - 300px); display:flex; flex-direction:column; gap:4px;}
+/* #296 CJ REVISE1: 우측 열 = 시너지 칩(안에서 스크롤) + 그 아래 고정 [말 정보] 46×56 — 켜짐/꺼짐에도 크기 · 자리 · 글자가 같다.
+   CJ REVISE2: 열 = 말판 위 끝(HUD 아래 + #screenBody 간격)부터 실제 말판 높이(--boardH × fitBoard 의 --sideBs)까지 — 버튼은 말판 아래 끝(= 행동 줄 바로 위), 시너지 칸이 그 위를 채운다 */
+#boardInfo .sideCol{position:absolute; top:calc(100% + 10px); right:0; width:46px; height:calc(var(--boardH) * var(--sideBs,1)); display:flex; flex-direction:column; gap:4px;}
+@media (max-height:760px){ #boardInfo .sideCol{top:calc(100% + 4px);} } /* #286 낮은 화면의 #screenBody 간격 4px 와 같은 값 */
 #boardInfo .sideCol .synRail{position:static; flex:1 1 auto; min-height:0; max-height:none;}
 #boardInfo .sideCol .infoBtn{flex:0 0 56px; width:46px; min-width:0; height:56px; padding:2px; font-size:11.5px; line-height:1.2; white-space:normal; word-break:keep-all;}
 #boardInfo .sideCol .infoBtn:disabled{opacity:1; color:#7f8aa3; background:#0a1733; border-color:#2a3550; cursor:default;}

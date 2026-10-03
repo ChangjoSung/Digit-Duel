@@ -323,13 +323,15 @@ function fitBoard(){
     let s=Math.min(avail/376,1);
     /* #286 (2026-09-29 CJ 안드로이드): 대전(S03)은 세로도 맞춘다 — #screenBody 에서 말판 위(HUD·여백)를 뺀 실측 높이/700.
        하한은 칸 32px(32/52) — 그보다 작아질 화면(가로 모드 등)은 #238 처럼 그 크기로 두고 세로 스크롤한다. 배치(prep)는 아래 트레이가 말판에 붙어 폭 맞춤 그대로 */
-    const b=$("screenBody"), app=$("app");
+    const b=$("screenBody"), app=$("app"); let vis=Infinity;
     if(b&&b.getBoundingClientRect&&w.getBoundingClientRect&&app&&app.getAttribute&&app.getAttribute("data-screen")==="board"){
       const h=b.clientHeight-(w.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop);
-      if(h>0) s=Math.min(s,Math.max(h/700,32/52));
+      if(h>0){ s=Math.min(s,Math.max(h/700,32/52)); vis=h/700; }
     }
     if(!(s>0.2)) s=1;
-    w.style.setProperty("--bs",String(Math.floor(s*1000)/1000)); // 내림 — 반올림 1px 로 마지막 행이 잘리지 않게
+    const fl=x=>String(Math.floor(x*1000)/1000); w.style.setProperty("--bs",fl(s)); // 내림 — 반올림 1px 로 마지막 행이 잘리지 않게
+    /* #296 CJ REVISE2: 우측 열(#boardInfo .sideCol · CSS)이 읽는 말판 높이 배율 — 말판 배율 그대로, 단 하한(32px 칸)으로 말판이 화면보다 길어지면 보이는 높이까지(고정 HUD 에 붙은 열의 [말 정보]가 잘리지 않게) */
+    if(b&&b.style&&b.style.setProperty) b.style.setProperty("--sideBs",fl(Math.min(s,vis)));
   }catch(e){}
 }
 if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("resize",()=>{try{fitBoard(); emoteSync();}catch(e){}}); // #238 L03 이모티콘 위치도 다시 잰다
@@ -964,7 +966,7 @@ function renderBoardInfo(){
   const mineTurn=!isAI(S.current)&&(!NET.mode||S.current===NET.me);
   const who=isAI(S.current)?"AI 차례":mineTurn?"내 차례":"상대 차례";
   const sel=(S.selected&&!S.selected.tray&&mineTurn)?S.selected:null; // 긴 안내 문장은 화면에서 빼고 차례 문구의 접근성 이름에만(종전 문자열 그대로)
-  const info=sel?`${idLabel(p,sel)} · HP ${sel.hp}/${sel.maxHp}`:(!mineTurn?"상대가 행동을 선택하고 있습니다":(S.mainUsed?"주 행동 완료":"자기 말을 선택하세요"));
+  const info=sel?`${idLabel(p,sel)}${hpLabel(sel)}`:(!mineTurn?"상대가 행동을 선택하고 있습니다":(S.mainUsed?"주 행동 완료":"자기 말을 선택하세요"));
   /* #294 (2026-10-02 CJ REVISE) 메인 상단: ① 공용 상단 한 줄(준비 화면과 같은 부품) — 왼쪽 절반 신원, 오른쪽 절반 짧은 차례 문구 · 감정표현 자리 · ⚙
      ② 상태 네 칸(남은 시간 · 턴 · 내 코인 · 전투 n/2 — 전부 현행 값, 상대 코인 없음) ③ 우측 내 시너지 열. 선택 말 [설명]은 행동 줄(renderTurnBar)로 갔다. 시간 칸은 비어도 자리를 지킨다 */
   el.innerHTML=topBarHtml(p,`<b class="who" aria-label="${escAttr(who+" · "+info)}">${who}</b>${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(`<button type="button" class="danger" onclick="uiBack()">나가기 (기권 확인)</button>`)}`)
@@ -974,11 +976,13 @@ function renderBoardInfo(){
     +`<span class="hudStat" aria-label="전투 ${S.battlesUsed}/2"><small>전투</small><span>${gi("battle")}${S.battlesUsed}/2</span></span></div>`
     +`<div class="sideCol">${S.eco?synRailHtml(p):""}${infoSlotHtml(p,mineTurn)}</div>`;
 }
-/* #296 CJ REVISE1(2026-10-03): 우측 시너지 열 아래 **늘 같은 자리 · 같은 크기 · 같은 글자**('하수인 정보')의 버튼. 내 차례에 고른 살아 있는 내 **하수인**일 때만 켜지고(읽기 전용 · 전송 0 — unitHelpPiece · PD 확정),
-   그 밖에는 꺼진 채 자리를 지킨다. 상대 차례의 내 말 탭은 종전대로 바로 설명 창(ownInfoTarget). 종 이름 · HP 는 접근성 이름에만 */
-function infoSlotOwn(p,mineTurn){ const s=!infoLocked()&&mineTurn&&S.selected&&!S.selected.tray?S.selected:null; return s&&s.owner===p&&s.type==="minion"&&s.alive!==false?s:null; }
+/* #296 CJ REVISE1(2026-10-03): 우측 시너지 열 아래 **늘 같은 자리 · 같은 크기 · 같은 글자**의 버튼. 내 차례에 고른 살아 있는(놓인) 내 말일 때만 켜지고(읽기 전용 · 전송 0 — unitHelpPiece),
+   그 밖에는 꺼진 채 자리를 지킨다. 상대 차례의 내 말 탭은 종전대로 바로 설명 창(ownInfoTarget). 종 이름 · HP 는 접근성 이름에만.
+   CJ REVISE2(2026-10-03): 글자 '말 정보' · 폭탄 · 함정(왕 · 동료 포함)도 같은 unitHelpPiece 창 — HP 는 유닛(하수인 · 왕 · 동료)만 */
+function hpLabel(x){ return pcMeta(x).unit?` · HP ${x.hp}/${x.maxHp}`:""; }
+function infoSlotOwn(p,mineTurn){ const s=!infoLocked()&&mineTurn&&S.selected&&!S.selected.tray?S.selected:null; return s&&s.owner===p&&s.alive!==false&&s.placed!==false?s:null; }
 function infoSlotHtml(p,mineTurn){ const own=infoSlotOwn(p,mineTurn);
-  return `<button type="button" class="infoBtn" aria-haspopup="dialog" ${own?`aria-label="${escAttr(`${idLabel(p,own)} · HP ${own.hp}/${own.maxHp} — 정보`)}" onclick="infoSlotOpen(${escAttr(JSON.stringify(String(own.id)))},this)"`:`disabled aria-label="하수인 정보 — 내 차례에 내 하수인을 고르면 열립니다"`}>하수인 정보</button>`; }
+  return `<button type="button" class="infoBtn" aria-haspopup="dialog" ${own?`aria-label="${escAttr(`${idLabel(p,own)}${hpLabel(own)} — 정보`)}" onclick="infoSlotOpen(${escAttr(JSON.stringify(String(own.id)))},this)"`:`disabled aria-label="말 정보 — 내 차례에 내 말을 고르면 열립니다"`}>말 정보</button>`; }
 /* 누른 순간 다시 판정 — 그려 둔 뒤 재생 · 연출 · 창 · 선택 변경이 있었으면(오래된 DOM) 아무 일도 없다. 읽기 전용 · 전송 0 */
 function infoSlotOpen(id,from){ if(!S) return; const own=infoSlotOwn(NET.mode?NET.me:(S.mode==="pvp"?S.current:0),!isAI(S.current)&&(!NET.mode||S.current===NET.me));
   if(own&&String(own.id)===String(id)) unitHelpPiece(own.id,from); }
@@ -1403,8 +1407,8 @@ function battleSynChips(owner,pf,B,row){
   const L=pf.legend?LEGEND_ROSTER.find(l=>l.key===pf.legend):null, del=L&&L.key==="dragon"?synDragonEl(raw):null;
   const lv=!L?0:L.key==="witch"?Math.min(V2_LEGEND_SYN.witch.max,synElemKinds(raw)*V2_LEGEND_SYN.witch.statusPct):L.key==="reaper"?Math.min(V2_LEGEND_SYN.reaper.max,(raw.dead||0)*V2_LEGEND_SYN.reaper.atk):0;
   const lg=del?{legend:"dragon",name:L.name,el:del,fx:synKingdomEffect(raw,del)}:lv>0?{legend:L.key,name:L.name,v:lv}:null;
-  const chips=(row==="a"?[]:i>=0?[synChipHtml(pf.element,v.el[pf.element],true)]:[])
-    .concat(row==="k"?[]:Object.keys(V2_ARCH_SYN).filter(a=>v&&v.arch&&v.arch[a]>=V2_ARCH_STEPS[0]).map(a=>synChipHtml(a,v.arch[a],true))) // 받는(달성) 시너지만 — 보드 HUD 와 같은 기준
+  const chips=(row==="a"?[]:i>=0?[synChipHtml(pf.element,v.el[pf.element],true,undefined,i)]:[]) // #296 CJ REVISE2: 보드 열과 같은 단계 색(왕국 = stage · 아키타입 = synTier)
+    .concat(row==="k"?[]:Object.keys(V2_ARCH_SYN).filter(a=>v&&v.arch&&v.arch[a]>=V2_ARCH_STEPS[0]).map(a=>synChipHtml(a,v.arch[a],true,undefined,synTier(a,v.arch[a])))) // 받는(달성) 시너지만 — 보드 HUD 와 같은 기준
     .concat(lg&&row!=="a"?[legendChipHtml(lg)]:[]);
   return chips.length?`<div class="bsyn" role="group" aria-label="내 전투원이 받는 시너지">${chips.join("")}</div>`:"";
 }
@@ -1505,9 +1509,10 @@ function unitHelpOpen(d,from,pid){
 }
 /* 기본 능력치 칸 — u 에 실제로 있는 숫자만(전투 엔진이 쓰는 필드 그대로: data.js applyArchStats · applyFixedStats). HP · 공격력은 등급 성장분 포함, 시너지 · 전투 중 버프는 넣지 않는다.
    이름표는 SYN_STAT_KO. 2026-10-02 CJ REVISE 2: 8칸(HP·공격력 / 방어력·속도 / 회피·치명타 / 상태 부여·시작 방어막) — 0 도 그대로 보인다. 명중 스탯은 이 게임에 없다 — 칸을 만들지 않는다.
-   시작 방어막은 서버가 값을 싣지 않으면(옛 서버) "—"(정보 없음)이다 — 0 을 지어내지 않는다. max = 진열 칸(개체가 없어 최대 HP 만) */
+   시작 방어막은 서버가 값을 싣지 않으면(옛 서버) "—"(정보 없음)이다 — 0 을 지어내지 않는다. max = 진열 칸(개체가 없어 최대 HP 만).
+   #296 CJ REVISE2: HP 칸 하트는 빨강(기존 🎒 와 같은 .gi.emo 글자 아이콘) — 값은 그대로 */
 function unitStatChips(u,max){ const pc=v=>Math.round(v*100)+"%", lb=k=>SYN_STAT_KO[k][0];
-  return [[gi("heal"),"HP",max?u.maxHp:`${u.hp}/${u.maxHp}`]].concat(/** @type {any[][]} */([["atk",gi("atk")],["def",gi("def")],["spd",gi("swift")],["dodge","💨",pc],["crit","🎯",pc],["statusPct","💫",v=>`+${pc(v)}p`,"상태 부여"]])
+  return [[`<i class="gi emo" aria-hidden="true">❤️</i>`,"HP",max?u.maxHp:`${u.hp}/${u.maxHp}`]].concat(/** @type {any[][]} */([["atk",gi("atk")],["def",gi("def")],["spd",gi("swift")],["dodge","💨",pc],["crit","🎯",pc],["statusPct","💫",v=>`+${pc(v)}p`,"상태 부여"]])
     .filter(s=>typeof u[s[0]]==="number").map(s=>[s[1],s[3]||lb(s[0]),s[2]?s[2](u[s[0]]):u[s[0]],lb(s[0])]),
     [typeof u.shieldStartPct==="number"?[gi("guard"),"시작 방어막",pc(u.shieldStartPct),lb("shieldPct")]:[gi("guard"),"시작 방어막","—",lb("shieldPct"),"정보 없음"]]); }
 /* 스킬 줄 — SKILLS 표 그대로: 위력 = pct(v2 스킬만 · 옛 pow 는 파생값이라 쓰지 않는다) · 쿨타임 = cd · 전투당 1회 = once · 남은 쿨 = 그 개체의 cds.
@@ -1622,7 +1627,7 @@ function battleModal(board){
     const tg=[rd?ARCH_KO[rd.arch]:"",pf.element?ELEM_KO[pf.element]:""].filter(Boolean).join(" · "), bk=sid==="A"?B.buffA:B.buffD;
     return `<div class="fighter"><div class="fhead">
       <div class="fname"><b>${g?`<span class="stars" aria-label="등급 ${g}">${"★".repeat(g)}</span> `:""}${fighterName(sid,B)}</b><small class="srOnly">(${pname(piece.owner)})</small>${tg?`<span class="ftags" role="img" aria-label="${tg}" title="${tg}">${rd?gi(rd.arch):""}${pf.element?gi(pf.element):""}</span>`:""}</div>
-      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div><div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}<span class="hpNum">❤ <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}<span class="shNum" title="현재 방어막">(+<span id="shtxt-${sid}">${dsh}</span>)</span></span></div>
+      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div><div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}<span class="hpNum">❤️ <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}<span class="shNum" title="현재 방어막">(+<span id="shtxt-${sid}">${dsh}</span>)</span></span></div>
       ${battleStatHtml(pf)}
       </div><div class="fscroll">
       <div class="status"><span class="srOnly" id="bst-${sid}">${stIcons(pf)}</span><span class="stChips" id="bch-${sid}" aria-hidden="true">${stChipsHtml(stIcons(pf),bk)}</span></div>

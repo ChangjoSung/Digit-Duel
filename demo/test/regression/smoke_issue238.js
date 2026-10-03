@@ -134,7 +134,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
     /* #296 CJ REVISE1(2026-10-03): [하수인 정보] = 우측 시너지 열 아래 늘 있는 고정 칸 — 글자 고정 · 고른 내 말이 있을 때만 켜짐 · 행동 줄에는 없다 */
     const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive), slot=()=>{ T.ui238.renderBoardInfo(); const b=T.byId("boardInfo").innerHTML; return (b.split('<div class="sideCol">')[1]||"").match(/<button type="button" class="infoBtn"[^>]*>[^<]*<\/button>/); };
     S.selected=m; T.renderTurnBar(); const on=slot(), n0=T.wsLog.length, call=on&&(on[0].match(/onclick="([^"]+)"/)||[])[1];
-    const okBtn=!!on&&/>하수인 정보<\/button>$/.test(on[0])&&!/ disabled/.test(on[0])&&/HP \d+\/\d+/.test(on[0])&&!kids().some(k=>/\binfoBtn\b/.test(k.className||""));
+    const okBtn=!!on&&/>말 정보<\/button>$/.test(on[0])&&!/ disabled/.test(on[0])&&/HP \d+\/\d+/.test(on[0])&&!kids().some(k=>/\binfoBtn\b/.test(k.className||""));
     const press=()=>{ if(call) Function("infoSlotOpen",call.replace(/&quot;/g,'"').replace("this","null"))(T.ui238.infoSlotOpen); const o=!!T.ui238.SYNHELP.el; T.ui238.synHelpClose(false); return o; };
     ok(okBtn&&press()&&S.selected===m&&T.wsLog.length===n0,"C4d 고른 내 말 → 시너지 열 아래 [하수인 정보] 켜짐(행동 줄에는 없음) → 설명 창 · 선택 유지 · 송신 0");
     /* #296 Saturn 재현: 재생 중에는 칸이 꺼진 채 그려지고, 켜진 채 그려 둔 오래된 버튼을 눌러도(재생 · 열린 창 · 선택 변경) 설명 창이 열리지 않는다 */
@@ -143,9 +143,13 @@ function pvePlay(seed){ const T=pveSetup(seed);
     S.selected=null; const selPress=press(); S.selected=m; const back=press();
     ok(!!rp&&/ disabled /.test(rp[0])&&!/onclick/.test(rp[0])&&!rpPress&&!ovPress&&!selPress&&back&&T.wsLog.length===n0,"C4d2 재생 중 칸 꺼짐 · 오래된 켜진 버튼은 재생/열린 창/선택 해제 때 무반응(전송 0) — 조건이 돌아오면 다시 열린다");
     S.selected=null; T.renderTurnBar(); const off=slot();
-    ok(!!off&&/ disabled /.test(off[0])&&/>하수인 정보<\/button>$/.test(off[0])&&!/onclick/.test(off[0]),"C4e 고른 말이 없어도 같은 자리 · 같은 글자 칸이 꺼진 채 남는다(말판 규격 불변)");
-    const nm=S.pieces.find(x=>x.owner===0&&x.type!=="minion"&&x.alive); S.selected=nm||null; const oth=slot();
-    ok(!!nm&&!!oth&&/ disabled /.test(oth[0])&&oth[0]===off[0],"C4f 하수인이 아닌 내 말을 골라도 칸은 꺼진 같은 마크업(PD 확정: 살아 있는 내 하수인만)"); S.selected=null; }
+    ok(!!off&&/ disabled /.test(off[0])&&/>말 정보<\/button>$/.test(off[0])&&!/onclick/.test(off[0]),"C4e 고른 말이 없어도 같은 자리 · 같은 글자 칸이 꺼진 채 남는다(말판 규격 불변)");
+    /* #296 CJ REVISE2: 폭탄 · 함정 · 왕도 같은 [말 정보] → 같은 unitHelpPiece 창(폭탄 · 함정은 HP 없음 — 접근성 이름에도 HP 를 지어내지 않는다) · 상대 말 · 재생 중에는 꺼짐 */
+    const mine=t=>S.pieces.find(x=>x.owner===0&&x.type===t&&x.alive&&x.placed), pick=x=>{ S.selected=x; const b=slot(); const c=b&&(b[0].match(/onclick="([^"]+)"/)||[])[1]; if(c) Function("infoSlotOpen",c.replace(/&quot;/g,'"').replace("this","null"))(T.ui238.infoSlotOpen); const d=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:""; T.ui238.synHelpClose(false); return {b:b&&b[0],d}; };
+    const bm=pick(mine("bomb")), tp=pick(mine("trap")), kg=pick(mine("king")), en=pick(S.pieces.find(x=>x.owner===1&&x.alive));
+    T.NET.replaying=true; const rb=pick(mine("bomb")); T.NET.replaying=false;
+    ok(!!bm.b&&!/ disabled/.test(bm.b)&&!/HP /.test(bm.b)&&/<li>폭탄<\/li>/.test(bm.d)&&!!tp.b&&!/HP /.test(tp.b)&&/<li>함정<\/li>/.test(tp.d)&&/HP \d+\/\d+/.test(kg.b||"")&&/uhStats/.test(kg.d)&&/ disabled /.test(en.b||"")&&!en.d&&/ disabled /.test(rb.b||"")&&!rb.d&&T.wsLog.length===n0,
+      "C4f 폭탄 · 함정 · 왕도 [말 정보] → 같은 설명 창(폭탄 · 함정 HP 없음) · 상대 말 · 재생 중은 꺼짐 · 송신 0"); S.selected=null; }
   ok(/id="actClock" role="timer"/.test(h)&&/aria-label="재화 \d+"/.test(h)&&!/상세 ›/.test(h),"C4 위 줄 = 남은 시간(#actClock)·턴·재화 · 옛 [상세 ›] 없음");
   ok(["탐색","🌀 텔레포트","🌿 회복","기권"].every(t=>kids().some(k=>k.textContent===t&&k.getAttribute&&k.getAttribute("data-ico"))),"C5 행동 버튼은 문구 그대로 + 아이콘(data-ico)");
 }
