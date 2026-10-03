@@ -166,3 +166,14 @@
 **절차 이탈 기록**: 작업 시작 시 HEAD · 상태 확인을 위해 `git log -1` · `git status --short` · 편집 직후 `git diff --stat`(모두 읽기 전용)을 실행함. Worker Git 금지(읽기 포함)에 어긋나므로 여기 남김. 쓰기 · stash · 브랜치 조작은 0.
 
 **미검증**: 실제 온라인 두 좌석 · 안드로이드 기기 · 실제 포인터 입력(isTrusted) · Saturn 재검수 · 새 HEAD CI · CJ 플레이 QA.
+
+## 10. PR317 필수 CI A 실패 수정 — `smoke_fx_timing` D절 픽스처 (2026-10-03 · 기준 커밋 HEAD `d24000e` · 미커밋)
+
+판정(자체 검증): **테스트 픽스처만 수정 · 미커밋**. 제품 · Core · 서버 · CSS 변경 0, 새 의존성 · 전역 설정 0. 실행: Claude `claude-opus-5-5`(시스템 표시 모델 ID) · bypass · Ponytail full. 요청 effort는 high이지만, 세션 안에서 effort · footer를 직접 볼 수 없어 시작과 끝 모두 확인하지 못함.
+
+- **옛 실패**(CI 37129037832 · A만 실패, 나머지 5개 성공): D0은 통과함. 하지만 D1~D6에서 피해가 없고 바 쓰기도 0회였음. 이어서 168줄 `hpW[0].t`에서 TypeError가 나 exit 2로 끝남.
+- **원인(정적 확인 · 해당 CI 실행 재현은 아님)**: D절은 `dD.dodge=0`으로 회피를 0으로 두었음. 하지만 전투를 시작할 때 `applySynergy`(`core.js:2347`→`2284`)가 무작위 로스터(판 위의 비전투 말 · 가방 전설)를 집계해 `fd.synDodge` · `synSpd`를 다시 씀. `effEvade`(`data.js:610`)가 `synDodge`를 더하므로, `resolveHit`(`core.js:2626`)에서 방어자가 회피할 수 있음. 회피하면 피해 0 · 바 쓰기 0이 되어 관측 결과와 맞음. Saturn의 정적 추론과 같음.
+- **수정**(`demo/test/regression/smoke_fx_timing.js` +1줄): `doMove` 직전에 기존 헬퍼 `H.synNeutral(T,[aD,dD])`를 둠. 다른 회귀(`smoke_turnflow_timers` 등)도 같은 이유로 이 헬퍼를 씀. 이 헬퍼는 `rand()`를 쓰지 않아 난수 소비가 그대로임. D · E · G의 단언 · 임계값 · 시간은 바꾸지 않음. E는 피해 · 회피에 기대지 않는 경로(직접 `applyFx` · SENTINEL)라 같은 원인이 없음. G는 시드가 고정된 두 실행을 비교하므로 손대지 않음.
+- **새 근거**: ① 스크래치에서 경계 있는 메모리 내 검사를 1회 함. 실제 `doMove`→initBattle을 무작위 로스터 200회로 돌림. 헬퍼가 없으면 `effEvade(fd)>0`이 1회, 선턴≠A가 2회 나왔음. 헬퍼가 있으면 둘 다 0회 · 전투 미생성 0회, exit 0. ② `node demo/test/regression/smoke_fx_timing.js`를 1회 실행해 **82/0 · exit 0**을 얻음. 출력과 exit는 같은 실행에서 수집함. 그 밖의 실행은 없음. 전체 스위트 · typecheck · smoke316은 지시대로 실행하지 않음.
+- **절차 이탈 기록**: 시작할 때 HEAD를 확인하려고 `git rev-parse HEAD`(읽기 전용)를 1회 실행함. Worker Git 금지(읽기 포함)에 어긋나므로 여기 남김. 쓰기 · stash · 브랜치 조작은 0.
+- **미검증**: 새 HEAD CI · Saturn 재검수.
