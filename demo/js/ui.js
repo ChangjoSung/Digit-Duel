@@ -1544,7 +1544,8 @@ function unitHelpPiece(id,from){
   const tags=own&&unit&&m.eco&&tg?`<span class="tags" role="img" aria-label="${tg}" title="${tg}">${m.el?gi(m.el):""}${m.tr?gi(m.tr):""}</span>`:"";
   const rows=[!unit?TYPE_KO[x.type]:"",UNIT_NOTE[x.type]||"",!own&&m.g?`등급 ${m.g}`:"",tags?"":tx[0],tags?"":tx[1],
     unit&&!own?`${HEART_HTML} HP ${x.hp}/${x.maxHp}`:"", // #316 ⑥ 공개된 상대 = 서버가 실은 hp/maxHp 만(방어막 추정 없음) · 같은 빨간 하트
-    own&&unit&&x.shield>0?`${gi("guard")} 현재 방어막 ${x.shield}`:"", // #316 ⑥ 내 말의 현재 방어막 — 실제 값이 있을 때만(시작 방어막 % 칸과 별개)x.alive===false?"사망":"",x.immobile>0?`이동 불가 ${x.immobile}턴`:"",
+    own&&unit&&x.shield>0?`${gi("guard")} 현재 방어막 ${x.shield}`:"", // #316 ⑥ 내 말의 현재 방어막 — 실제 값이 있을 때만(시작 방어막 % 칸과 별개)
+    x.alive===false?"사망":"",x.immobile>0?`이동 불가 ${x.immobile}턴`:"",
     own&&x.healing?`🌿회복 자세(턴마다 +${Math.round(x.maxHp*BAL.healPostPct)})`:"",own&&x.cap?`포획 하수인(${ELEM_KO[x.cap.element]}) HP ${x.cap.hp}/${x.cap.maxHp}`:"",
     !own&&x.swapMark?"상점에서 교체됨":"",own?"":"상대 말 — 공개된 정보만 표시"];
   const L=own&&x.type==="minion"?LEGEND_ROSTER.find(l=>l.key===x.legend||(!!x.rosterId&&l.id===x.rosterId)):null, lg=L&&S.eco?synExtraView(v,S).legends.find(l=>l.legend===L.key):null;

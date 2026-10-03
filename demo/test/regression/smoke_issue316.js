@@ -94,6 +94,11 @@ function battle(seed){ const T=ecoPlay(seed);
   ok(rows.length===3&&rows.every(r=>/<small class="hp">[\s\S]*?<\/small>/.test(r.slice(0,r.indexOf("<button"))))&&rows.some(r=>r.includes("73/100"))&&rows.every(r=>/class="faceBtn"[^>]*onclick="unitHelpPiece\(/.test(r)),"⑥a 상점 속성 줄 = 왕 · 동료 그림 아래 실제 HP(공통 hpHtml) + 읽기 전용 말 정보 진입(속성 버튼 밖)");
   U.unitHelpPiece(king.id,null); let h=help();
   ok(/aria-label="HP 73\/100"/.test(h)&&/현재 방어막 12/.test(h),"⑥b 정보 창: 왕 HP 칸(빨간 하트) + 현재 방어막(실제 값)");
+  /* Saturn REVISE R1: 정보 창 줄(<ul class="uhRows"> 의 <li>)을 글자만 남겨 하나씩 본다 — 방어막 줄 뒤 사망 · 이동 불가 줄이 따로 살아 있어야 한다 */
+  const li=s=>(((s.match(/<ul class="uhRows">([\s\S]*?)<\/ul>/)||[])[1]||"").match(/<li>[\s\S]*?<\/li>/g)||[]).map(r=>r.replace(/<[^>]+>/g,"").trim());
+  ok(!li(h).some(r=>/사망|이동 불가/.test(r)),"⑥b2 살아 있고 이동 가능(immobile 0)하면 사망 · 이동 불가 줄 없음");
+  king.immobile=2; king.alive=false; U.unitHelpPiece(king.id,null); const r2=li(help()); king.immobile=0; king.alive=true;
+  ok(r2.includes("현재 방어막 12")&&r2.includes("사망")&&r2.includes("이동 불가 2턴"),"⑥b3 hp73/100 · 방어막12 · 이동 불가2 · 사망 = 세 줄 각각 [실측 "+JSON.stringify(r2)+"]");
   U.unitHelpPiece(ally.id,null); h=help();
   ok(/aria-label="HP \d+\/\d+"/.test(h)&&!/현재 방어막/.test(h),"⑥c 동료: HP 칸 · 방어막 0 이면 줄 없음");
   for(const t of ["bomb","trap"]){ const x=S.pieces.find(y=>y.owner===0&&y.type===t); U.unitHelpPiece(x.id,null); ok(!/HP|❤️/.test(help()),"⑥d "+t+" 은 HP 없음(지어내지 않는다)"); }

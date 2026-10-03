@@ -1140,7 +1140,7 @@ body:has(#emoteLayer.inRoom:not(.hidden)) .waitScreen .chatLock{margin-right:58p
 .shopSheet .leadRow{flex-wrap:nowrap; align-items:center;}
 .shopSheet .leadRow .leadFace{flex:0 0 44px; width:44px; height:44px; display:grid; place-items:center; font-size:26px; border-radius:10px; background:#06102a; border:2px solid #2a4f98;}
 .shopSheet .leadRow .leadFace img{width:40px; height:40px;}
-.shopSheet .leadRow button{flex:1 1 0; min-width:40px; padding:0;}
+.shopSheet .leadRow button{flex:1 0 44px; min-width:44px; padding:0;} /* #316 Saturn REVISE R2: 시작 · 턴 상점 공통 — 속성 버튼 5개는 어느 폭에서도 44px 이상 */
 .shopSheet .leadRow button[aria-pressed="true"]{opacity:1; border:3px solid var(--gold1); box-shadow:0 0 10px #ffd66b88; background:#1b3a78;}
 /* 5) 전투 — 내 시너지 아이콘은 전투창 우상단(제목 줄 오른쪽) */
 #overlayBox.battleBox .bhead h2{white-space:nowrap;}
@@ -1333,8 +1333,10 @@ button.trayItem.placed:disabled{opacity:1;} /* 놓은 칸은 disabled 버튼이�
    가방은 2열(카드가 넓어져 [교체][판매] 한 줄 각 44px 이상) · 왕·동료 줄은 말 그림을 줄여 속성 버튼 5개를 44px 로 · 트레이는 5열 */
 @media (max-width:360px){
   .shopSheet .slotGrid.bag{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .shopSheet .leadRow{gap:2px;} .shopSheet .leadRow .leadFace{flex:0 0 32px; width:32px;} .shopSheet .leadRow .leadFace img{width:30px; height:30px;}
+  .shopSheet .leadRow{gap:1px;} .shopSheet .leadRow .leadFace{flex:0 0 32px; width:32px;} .shopSheet .leadRow .leadFace img{width:30px; height:30px;}
   #app[data-flow] .tray{grid-template-columns:repeat(5,minmax(0,1fr));}
+  /* #316 Saturn REVISE R2: S01(roster) 320 — 그림 44 + 속성 44×5 + 간격 1×5 = 269px 가 들게 턴 상점(46px 열 · 스크롤 막대 숨김)과 같은 방식으로 폭을 돌려준다 */
+  #app[data-flow][data-prep="roster"] #screenBody{padding:0 46px 8px 2px; scrollbar-width:none;} #app[data-flow][data-prep="roster"] .flowHead{margin-right:-46px;}
   .flowSteps li+li::before{display:none;} /* 좁은 막대에서는 이음줄이 단계 글자를 지나간다 — 글자만 둔다 */
 }
 
@@ -1452,7 +1454,6 @@ body:not(:has(#overlay:not(.hidden))) #app[data-screen="board"] ~ #emoteLayer #e
 .shopSheet.turn .slotGrid.bag .uSlot .acts{gap:1px;} .shopSheet.turn .slotGrid.bag .uSlot .acts button{flex:1 1 0; min-width:44px; padding:0;} /* 시너지 열만큼 좁아진 가방 3열에서도 [교체][판매] 44px */
 @media (max-width:360px){ #overlayBox:has(.shopSheet){padding:0 2px 8px; scrollbar-width:none;} .shopSheet.turn .leadRow{gap:1px;} } /* 320: 왕·동료 속성 버튼 5개가 44px 를 지키게 좌우 여백·스크롤 막대 자리를 돌려준다 */
 /* #295 후속: 왕·동료 속성 버튼은 어느 폭에서도 44px 이상 — 모자라는 폭은 말 그림 칸이 줄어서 낸다(실폭 305px = 320 화면 + 세로 스크롤 막대 15px 포함). 시작 상점 줄은 그대로 */
-.shopSheet.turn .leadRow button{flex:1 0 44px; min-width:44px;}
 .shopSheet.turn .leadRow .leadFace{flex:0 1 44px; min-width:20px; overflow:hidden;} .shopSheet.turn .leadRow .leadFace img{max-width:100%; height:auto;}
 @media (max-width:360px){ .shopSheet.turn{padding-right:46px;} .shopTop{margin-right:-46px;} .shopSheet.turn .leadRow .leadFace{flex-basis:32px;} }
 
@@ -1493,7 +1494,7 @@ body:has(#overlay:not(.hidden) .shopSheet.turn) #emoteLayer #emotePop,body:has(#
 .shopSheet .shopCard.empty{border-style:dashed; border-color:#2a4f98;}
 .shopSheet .shopCard.soldOut{opacity:1;} .shopSheet .shopCard.soldOut>*{opacity:.75;}
 /* 320: 시계 = 숫자만(정지는 왼쪽 두 줄 막대 + 색) · 코인 = 아이콘 + 숫자 — 세 자리 초 · 세 자리 코인 · 이모티콘 44 · ⚙ 44 가 한 줄에. 가장 긴 종 이름(7자)도 잘리지 않게 */
-@media (max-width:360px){ .shopSheet.turn{padding-right:50px;} .shopSheet.turn .shopTop{margin-right:-50px;}
+@media (max-width:360px){ .shopSheet.turn{padding-right:46px; padding-left:2px;} .shopSheet.turn .shopTop{margin-right:-46px; margin-left:-2px;} .shopTop .synRail{right:0;} /* #316 Saturn REVISE R2: S01 과 같은 거터 — 그림 44 + 속성 44×5 + 간격이 시너지 열에 닿지 않는다 */
   .shopTop .tbTools,.flowHead .tbTools{gap:1px; padding:0;} .shopTop .tbTools .emoSlot,.flowHead .tbTools .emoSlot{margin-right:2px;}
   .shopTop .tbTools .badge,.flowHead .tbTools .badge{padding:2px 1px; border:0; font-size:11px; letter-spacing:-.3px;} .shopTop .tbTools .badge .gi,.flowHead .tbTools .badge .gi{font-size:11px;}
   .tbTools .clk.cmp::before,.tbTools .clk.cmp::after,.tbTools .clk.cmp.pz::before{content:none;} .tbTools .clk.pz{border-left:3px double #ffd66b; padding-left:2px;}
