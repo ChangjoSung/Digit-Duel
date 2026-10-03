@@ -447,6 +447,57 @@ async function main() {
     }
   }
 
+  // ===== #316 포획 경계 — 서버 판정 = 두 좌석 Core ballWhy (엄격 HP<30% · 동종 · 전설 · 볼 · 라운드 1회) =====
+  {
+    const room = startedEco(316);
+    const cur = S0(room).current;
+    const keys = (seat) => new Set(S0(room).pieces.filter((p) => p.owner === seat && p.rosterId).map((p) => p.rosterId));
+    const k0 = keys(cur), k1 = keys(1 - cur);
+    const att = S0(room).pieces.find((p) => p.owner === cur && p.type === 'minion' && p.rosterId && !k1.has(p.rosterId));
+    const foe = S0(room).pieces.find((p) => p.owner === 1 - cur && p.type === 'minion' && p.rosterId && !k0.has(p.rosterId));
+    H.openBattle(room, { att: att.id, def: foe.id });
+    const side = room.engines[0].actorOfPhase(), o = side === 'A' ? cur : 1 - cur;
+    const tgt = (E) => (side === 'A' ? E.S.battle.fd : E.S.battle.fa);
+    const set = (fn) => both(room, (E) => fn(E, tgt(E)));
+    const why = () => room.engines.map((E) => H.withEngine(E, () => E.ballWhy(E.S, side)));
+    const rejected = (re, label) => {
+      const w = why(), s = snap(room), r = H.act(room, o, { t: 'ball' });
+      ok(w[0] === w[1] && re.test(String(w[0])) && !r.ok && r.reason === 'E_ILLEGAL_ACTION' && snap(room) === s, label + ' → 두 좌석 같은 사유 · 서버 거부 · 상태 불변 ' + w[0]);
+    };
+    set((E, t) => { t.maxHp = 100; t.hp = 30; E.S.balls[o] = 1; });
+    rejected(/30%/, 'HP 30/100 (정확히 30%)');
+    set((E, t) => { t.hp = 29; });
+    ok(why().every((w) => w === null), 'HP 29/100 (30% 미만) → 두 좌석 허용');
+    set((E, t) => { t.hp = 16; E.S.eco.bag[o].push(E.ecoMakeUnit(E.S, E.ecoKey(t), 1)); });
+    rejected(/이미 가진 종/, '동종 보유(가방)');
+    set((E, t) => { E.S.eco.bag[o].pop(); t.legend = 'L-DRAGON'; });
+    rejected(/전설/, '전설');
+    set((E, t) => { delete t.legend; E.S.balls[o] = 0; });
+    rejected(/몬스터볼/, '볼 0');
+    set((E) => { E.S.balls[o] = 1; E.S.battle[side === 'A' ? 'ballThrowA' : 'ballThrowD'] = true; });
+    rejected(/이번 라운드/, '같은 라운드 재투척');
+    set((E) => { E.S.battle[side === 'A' ? 'ballThrowA' : 'ballThrowD'] = false; });
+    const w = why(), r = H.act(room, o, { t: 'ball' });
+    ok(w.every((x) => x === null) && r.ok && S0(room).balls[o] === 0, '동종 미보유 · HP 16/100 · 볼 1 · 미투척 → 두 좌석 허용 · 서버 수락(볼 소모)');
+    room._clearClock();
+  }
+  // ===== #316 자기 사망·포획당한 필드 칸 — 자기 좌석 뷰에 alive:false 로 남고 Core synCount 와 일치 · 상대 뷰 노출 없음 =====
+  {
+    const room = startedEco(3161);
+    const mine = S0(room).pieces.filter((p) => p.owner === 0 && p.type === 'minion' && p.rosterId && p.element).slice(0, 2);
+    both(room, (E) => { for (const m of mine) H.byId(E, m.id).alive = false; });
+    const v0 = view(room, 0), v1 = view(room, 1), E0 = room.engines[0];
+    const dead = mine.map((m) => v0.you.pieces.find((p) => p.id === room._alias(m.id)));
+    ok(dead.every((p, i) => p && p.alive === false && p.r === mine[i].r && p.c === mine[i].c && p.rosterId === mine[i].rosterId), '자기 사망 칸: 원래 자리 · 종 · alive:false 로 실린다');
+    const viewS = Object.assign({}, E0.S, { pieces: v0.you.pieces.map((p) => Object.assign({}, p, { placed: true })) });
+    const a = H.withEngine(E0, () => E0.synCount(0, E0.S)), b = H.withEngine(E0, () => E0.synCount(0, viewS));
+    ok(JSON.stringify(a) === JSON.stringify(b) && a.dead === 2, '좌석 뷰 칸으로 센 synCount = 서버 Core synCount (사망 동결 2칸 포함) ' + JSON.stringify(b));
+    ok(!JSON.stringify(v1.units).includes(room._alias(mine[0].id)) && !JSON.stringify(v1.units).includes(room._alias(mine[1].id)), '상대 뷰: 내 사망 칸 미노출(종전 그대로)');
+    const king = v0.you.pieces.find((p) => p.type === 'king'), ally = v0.you.pieces.find((p) => p.type === 'ally');
+    ok([king, ally].every((p) => p && Number.isFinite(p.hp) && Number.isFinite(p.maxHp) && p.maxHp > 0 && Number.isFinite(p.shield)), '자기 왕·동료: 실제 hp/maxHp/shield 실림 (#316 말 정보)');
+    room._clearClock();
+  }
+
   // ===== 10. 서버 재시작 · 단절 중 항복 =====
   {
     const room = ecoRoom(12);

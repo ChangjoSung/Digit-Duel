@@ -52,7 +52,7 @@ const visible=h=>h.replace(/<small class="srOnly[\s\S]*?<\/small>/g,"").replace(
   T.S.eco.bag[0].push(unit(T,"L-DRAGON"));
   const lg=cards(T.shopHtml(0).split('class="slotGrid')[2])[1];
   ok(/class="uSlot uCard g5"/.test(lg)&&/aria-label="전설 · /.test(lg)&&lg.includes(`style="--i:${13}"`),"A6 전설 = g5 테두리 · 왕국 자리는 왕관");
-  ok(/\.g1\{--gc:var\(--g1\);\}/.test(css)&&["#ffffff","#bce2cf","#376bce","#7651a8","#c89c3c"].every((c,i)=>css.includes(`--g${i+1}:${c}`)),"A7 등급 1~5 테두리 색 = Earth 토큰");
+  ok(/\.g1\{--gc:var\(--g1\);\}/.test(css)&&["#3fae5a","#3a7be0","#9257d8","#f0c330","#e0393e"].every((c,i)=>css.includes(`--g${i+1}:${c}`)),"A7 등급 1~5 테두리 색 = 공통 토큰(#316 ④ CJ: 1성 초록 · 2성 파랑 · 3성 보라 · 4성 노랑 · 전설 빨강)");
 }
 /* ===== B. 필드 판매(S01 전용) · 가방 한 줄 ===== */
 {
@@ -161,7 +161,7 @@ const visible=h=>h.replace(/<small class="srOnly[\s\S]*?<\/small>/g,"").replace(
   eq([v2.el.fire,v2.arch.swift],[4,0],"D7 가방 일반 하수인은 칩 숫자에 없다");
   eq(mism(v2),[],"D8 S01: 기여 카드 수 = 칩 숫자 (왕국 5 + 아키타입 6)");
   const fire=con("fire",4), lead=fire.split('class="uSlot uCard lead"')[1];
-  ok(count(fire,/class="uSlot uCard lead"/g)===1&&!!lead&&!/class="stars"|class="hp"|등급/.test(lead)&&/<b>왕<\/b>/.test(lead)&&count(fire,/class="stars"/g)===3,"D9 왕·동료 기여 카드 = 말 그림 + 이름 + 왕국 아이콘만(등급·아키타입·HP 없음) · 하수인 3장은 공통 카드");
+  ok(count(fire,/class="uSlot uCard lead"/g)===1&&!!lead&&!/class="stars"|등급/.test(lead)&&/<small class="hp">[\s\S]*?\d+\/\d+<\/small>/.test(lead.split("</div>")[0])&&/<b>왕<\/b>/.test(lead)&&count(fire,/class="stars"/g)===3,"D9 왕·동료 기여 카드 = 말 그림 + 이름 + 왕국 아이콘 + 실제 HP(#316 ⑥ CJ) · 등급 · 아키타입 없음 · 하수인 3장은 공통 카드");
   T.S.eco.bag[0].push(unit(T,"L-DRAGON"));
   const v3=T.ecoSynView(T.S,0);
   ok(v3.arch.std===5&&/class="uSlot uCard g5"/.test(con("std",5))&&mism(v3).length===0,"D10 가방 전설은 아키타입 칸에 들고 기여 카드에도 나온다");
@@ -211,7 +211,7 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
   { /* #313 시작 상점 이모티콘 = 턴 상점과 같은 상단 한 줄 ⚙ 왼쪽 자리(.flowHead .emoSlot)를 잰다. 스텁 DOM 은 innerHTML 을 풀지 않으므로 자리 조회만 가로챈다 */
     const EL=P.byId("emoteLayer"), doc=EL.ownerDocument, q0=doc.querySelector;
     EL.getBoundingClientRect=()=>({top:0,right:390,width:390});
-    doc.querySelector=s=>/\.flowHead \.emoSlot/.test(s)&&/class="flowHead"[\s\S]*class="emoSlot"[\s\S]*class="flowGear"/.test(view())?{getBoundingClientRect:()=>({top:4,right:340,width:44})}:q0(s);
+    doc.querySelector=s=>/\.flowHead \.emoSlot/.test(s)&&/class="flowHead[^"]*"[\s\S]*class="emoSlot"[\s\S]*class="flowGear"/.test(view())?{getBoundingClientRect:()=>({top:4,right:340,width:44})}:q0(s);
     P.render(); doc.querySelector=q0;
     ok(EL.style["--emoT"]==="4px"&&EL.style["--emoR"]==="50px","E8b 시작 상점 이모티콘: 머리 ⚙ 왼쪽 자리를 잰다(--emoT 4px · --emoR 50px): "+EL.style["--emoT"]+"/"+EL.style["--emoR"]); }
   finish(1); v=feed(); const afterOpp=view();
@@ -298,8 +298,8 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
     ok(rows(R.shopHtml(0)).filter(r=>count(r,/ disabled title="사망한 말은 바꿀 수 없습니다"/g)===5).length===1,"E21g 사망한 동료 줄 = 전부 비활성 + 사유");
     /* #295 구조: 상단 한 줄(50/50) · [N턴 상점 | 완료] · 우측 내 시너지 열 · 본문 순서(구매 → 필드 → 가방 → 왕·동료 → 아이템) · 옛 머리줄/본문 시너지 줄/단계 막대 없음 */
     const th=R.shopHtml(0), pos=["shopGrid","> 필드 ","> 가방 ","왕·동료 속성","goodsGrid"].map(k=>th.indexOf(k));
-    ok(/^<div class="shopSheet turn"><header class="shopTop"><div class="topBar"><div class="idHead">/.test(th)&&/<div class="tbTools"><span class="badge clk" id="shopClock" role="timer">[^<]*<\/span><span class="badge coin" aria-label="재화 \d+">/.test(th)
-      &&/<div class="flowBar"><h2>20턴 상점<\/h2><button type="button" class="primary go" onclick="window.__shop\('done'\)">완료<\/button><\/div><aside class="synRail" aria-label="내 시너지">/.test(th),"T1 턴 상점 머리 = 공용 상단 한 줄(신원 | 내 시계 · 내 코인 · ⚙) + [N턴 상점 | 완료] + 내 시너지 열");
+    ok(/^<div class="shopSheet turn"><header class="shopTop"><div class="topBar"><div class="idHead">/.test(th)&&/<div class="tbTools"><h2 class="who">20턴 상점<\/h2>/.test(th)
+      &&/<div class="flowBar flowAct"><span class="badge clk" id="shopClock" role="timer">[^<]*<\/span><span class="badge coin" aria-label="재화 \d+">[\s\S]*?<\/span><button type="button" class="primary go" onclick="window.__shop\('done'\)">완료<\/button><\/div><aside class="synRail" aria-label="내 시너지">/.test(th),"T1 턴 상점 고정 2행(#316 ⑤ CJ) = ① 신원 | N턴 상점 · ⚙ ② 내 시계 · 내 코인 · [완료] + 내 시너지 열");
     ok(pos.every((x,i)=>x>0&&(!i||x>pos[i-1]))&&!/shopHead|flowHead|flowSteps|prepClock|class="synRow"|새로 고침<|uiBack|uiLeaveConfirm/.test(th)&&count(th,/class="refresh"/g)===1&&count(th,/role="timer"/g)===1,"T2 본문 순서 · 옛 머리줄/본문 시너지 줄/단계 막대/준비 시계/나가기 없음 · 새로 고침은 구매 제목 줄 하나");
     { const v=R.ecoSynView(R.S,0), rail=th.slice(th.indexOf('<aside class="synRail"'),th.indexOf("</aside>")); ok(["fire","water","lightning","land","grass"].every(k=>rail.includes(`synHelp('${k}',${v.el[k]|0},this,0)`)),"T3 시너지 열의 칸 수 = ecoSynView 그대로(내 것만)"); } }
 }
@@ -366,8 +366,8 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
     T.S.phase="over"; T.S.winner=0; const rs2=U.resultSeatsHtml(), own=rs2.slice(rs2.indexOf('resultSeat mine'),rs2.indexOf('resultVs')), opp=rs2.slice(rs2.indexOf('resultVs'));
     const allySlots=own.split('<div class="uSlot').filter(x=>/역할 — (공격|방어) 동료/.test(x));
     ok(count(own,/역할 — (공격|방어) 동료/g)===4&&allySlots.length===2&&allySlots.every(x=>new RegExp(`<i class="gi cr tr" style="--i:(${GI.atk}|${GI.def})"`).test(x))&&!/역할 — (공격|방어) 동료/.test(opp),"G13 결과 화면: 내 동료 둘은 역할 기호 + 접근성 이름 '역할 — …' · 상대 동료는 역할 표시 없음 ["+[count(own,/역할 — (공격|방어) 동료/g),count(own,/cr tr/g),/역할 — (공격|방어) 동료/.test(opp),own.length,opp.length].join(",")+"]"); }
-  ok(/\.pc\.gf\.p0\.inbush::before,\.pc\.gf\.p1\.inbush::before\{content:none;\}/.test(css)&&!/\.pc\.gf[^{]*inbush[^{]*\{background-color:transparent/.test(css)
-    &&/\.trayItem\.placed>\.pc\{opacity:1;\}/.test(css)&&/\.readyPop\{[^}]*word-break:keep-all;/.test(css)&&/\.gf \.nm,\.gf \.face \.sym\.ng\{[^}]*background:#06102a; color:#fff;\}/.test(css),"G14 수풀·놓은 칸: 등급 배경 불투명 유지(반투명 층 없음) · 준비 팝업 낱말 단위 줄바꿈 · 그림 없는 이름표는 밝은 등급 배경에서도 읽힌다");
+  ok(/\.pc\.gf\.inbush\.p0,\.pc\.gf\.inbush\.p1\{background:transparent;\} \.pc\.gf\.p0\.inbush::before,\.pc\.gf\.p1\.inbush::before\{background:var\(--gc\);\}/.test(css)&&!/inbush::before\{content:none;\}/.test(css)
+    &&/\.trayItem\.placed>\.pc\{opacity:1;\}/.test(css)&&/\.readyPop\{[^}]*word-break:keep-all;/.test(css)&&/\.gf \.nm,\.gf \.face \.sym\.ng\{[^}]*background:#06102a; color:#fff;\}/.test(css),"G14 수풀 칸: 등급 바탕 50% 알파 층(#316 ④ CJ 복원) · 놓은 칸 · 준비 팝업 낱말 단위 줄바꿈 · 그림 없는 이름표는 밝은 등급 배경에서도 읽힌다");
   { const X=pveSetup(63); act(X,{t:"shopTimeout",player:0}); X.netAction({t:"setupDone"}); const a=field(X,0)[0], d=field(X,1)[0];
     X.applySpecies(d,X.ROSTER.find(r=>!field(X,0).some(y=>X.ecoKey(y)===r.id)),1); // 내가 갖지 않은 종 — '이미 가진 종' 사유가 앞서지 않게
     X.startRounds(a,d,a,d); X.drain(); a.hp=Math.max(1,a.maxHp-7); d.hp=d.maxHp; const why=X.ballWhy(X.S,"A");

@@ -1733,8 +1733,12 @@ class Room {
     // 새지 않는다.
     const revealAll = this.state === STATES.FINISHED;
     for (const p of S.pieces) {
-      if (!p.alive || !p.placed) continue;
+      if (!p.placed) continue;
+      /* #316 (2026-10-03 CJ) 자기 사망·포획당한 칸도 alive:false 로 그대로 싣는다 — Core synCount 가 그 칸을 동결해 세므로
+         (오프라인 S.pieces 와 같은 모양) 화면 상점·시너지 기여 목록·집계가 서버와 일치한다. 보드·행동 판정은 Core at()/alivePieces 가
+         이미 거른다. 상대의 사망 칸은 종전처럼 싣지 않는다(노출 확대 없음). */
       if (p.owner === seatIndex) { youPieces.push(this._serializeOwn(T, p)); continue; }
+      if (!p.alive) continue;
       if (!revealAll && !T.visibleTo(seatIndex, p)) continue; // 등급 A — 레코드 자체를 뺀다(종료 리빌 제외)
       units.push(revealAll || p.revealed === true ? this._serializeKnownOpponent(p) : this._serializeUnknownOpponent(p));
     }

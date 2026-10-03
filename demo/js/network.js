@@ -802,7 +802,7 @@ function netRenderEcoOverlay(kind){
   const wait=(h,p)=>_modalCore(`<h2>${h}</h2><p style="margin:8px 0;color:var(--dim)">${p}</p>`+netResignBtn(),[]);
   if(kind==="shop"){ const p=shopViewer(); _modalCore(shopHtml(p),[]); shopClockStart(p); return; } // #295: 기권은 시트 ⚙ 안(shopHtml) · 내 완료 뒤 대기는 창이 아니라 말판 팝업(netOverlayWanted)
   if(S.eco.bagPick.owner===NET.me){ bagPickShow(); return; }
-  wait("🎒 상대가 가방을 정리하는 중…","상대가 내보낼 말을 고르면 경기가 이어집니다.");
+  wait("🎒 가방 초과","상대방이 가방이 가득 차서 포획 하수인을 더 들고갈 수 없습니다. 행동 진행 중이므로 잠시만 기다려주세요."); // #316 ② CJ 원문 — 가방 내용 · 선택 대상 · 남은 초는 여전히 없다
 }
 
 /* ===== #217 공개 방 표시 계층 — 서버 fx 이벤트 재생(Jupiter/battle-fx-protocol.md v3 §6·§7) =====
