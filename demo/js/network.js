@@ -799,10 +799,9 @@ function netEcoResign(){ if(netPaused()){ showToast(NET_PAUSE_MSG); return; }
      정지면 false 를 돌려주므로 창을 닫지 않고 사유만 띄운다(복구되면 그 자리에서 다시 누를 수 있다). */
   modal(`<h2>🏳️ 기권</h2><p>정말 기권하시겠습니까?</p>`,[["기권 확정",()=>{ if(!netSendAction({t:"resign"})) return; closeModal(); NET.overlaySig=null; render(); }],["취소",()=>{ closeModal(); NET.overlaySig=null; render(); }]]); }
 function netRenderEcoOverlay(kind){
-  const wait=(h,p)=>_modalCore(`<h2>${h}</h2><p style="margin:8px 0;color:var(--dim)">${p}</p>`+netResignBtn(),[]);
   if(kind==="shop"){ const p=shopViewer(); _modalCore(shopHtml(p),[]); shopClockStart(p); return; } // #295: 기권은 시트 ⚙ 안(shopHtml) · 내 완료 뒤 대기는 창이 아니라 말판 팝업(netOverlayWanted)
   if(S.eco.bagPick.owner===NET.me){ bagPickShow(); return; }
-  wait("🎒 가방 초과","상대방이 가방이 가득 차서 포획 하수인을 더 들고갈 수 없습니다. 행동 진행 중이므로 잠시만 기다려주세요."); // #316 ② CJ 원문 — 가방 내용 · 선택 대상 · 남은 초는 여전히 없다
+  _modalCore(`<h2>🎒 가방 초과</h2><p style="margin:8px 0;color:var(--dim)">상대방이 가방이 가득 차서 포획 하수인을 더 들고갈 수 없습니다. 행동 진행 중이므로 잠시만 기다려주세요.</p>`,[]); // #316 ② CJ 원문 — 가방 내용 · 선택 대상 · 남은 초는 여전히 없다 · (2026-10-03 CJ) 기권 버튼 없음
 }
 
 /* ===== #217 공개 방 표시 계층 — 서버 fx 이벤트 재생(Jupiter/battle-fx-protocol.md v3 §6·§7) =====
@@ -1106,13 +1105,17 @@ function netSynthFighter(sd,you){
   const lg=typeof lgId==="string"?LEGEND_ROSTER.find(x=>x.id===lgId)||null:null;
   const ad=netAdaptSkills(sd.skills);
   const num=k=>typeof sd[k]==="number"&&isFinite(sd[k])?sd[k]:undefined;
+  /* #316 CJ REVISE3 ②: 서버 effectiveStats(두 전투원 · 적용 중인 6스탯 합계) — 유한한 숫자만, 아니면 그 칸 undefined('—'). 객체가 없으면 eff 없음 → 화면은 여섯 칸 모두 '—'(기본 6칸 atk·def… 은 종전대로 옮긴다).
+     가산칸(synDef 등) · 출처는 전선에 없고 여기서 역산하지 않는다 */
+  const es=sd.effectiveStats&&typeof sd.effectiveStats==="object"?sd.effectiveStats:null;
+  const eff=es?Object.fromEntries(["atk","def","spd","dodge","crit","statusPct"].map(k=>[k,typeof es[k]==="number"&&isFinite(es[k])?es[k]:undefined])):undefined;
   const piece={id:null,owner:sd.owner,type:sd.type||null,rosterId:rd?rd.id:null,name:rd?rd.name:(body&&lg?lg.name:null),element:body?(sd.element||null):null,cap:null};
   const f=body?piece:{};
   Object.assign(f,{element:sd.element||null,hp:sd.hp,maxHp:sd.maxHp,shield:sd.shield||0,burn:sd.burn||0,weaken:sd.weaken||0,
     shock:sd.shock||0,shockFresh:!!sd.shockFresh,dmgCut:sd.dmgCut||0,focusCharge:!!sd.focusCharge,vulnMark:!!sd.vulnMark,
     crack:sd.crack||0,harden:sd.harden||0,hardenPct:sd.hardenPct||0, // #233: Jupiter room.js 가 battle.a/d 에 함께 보낸다(stIcons 표시용)
     evadeDown:sd.evadeDown||0,evadeDownR:sd.evadeDownR||0,tideMark:sd.tideMark||0,tideHeld:!!sd.tideHeld, // #241 표시용 — 서버가 보내면 쓰고 없으면 0 (Jupiter 후속)
-    skills:ad.skills,cds:ad.cds,revealedSkills:ad.revealedSkills,usable:ad.usable,grade:Number.isInteger(sd.grade)?sd.grade:undefined,atk:num("atk"),def:num("def"),spd:num("spd"),dodge:num("dodge"),crit:num("crit"),statusPct:num("statusPct"),skillAtk:num("skillAtk")||0,cd:typeof sd.cd==="number"?sd.cd:0,
+    skills:ad.skills,cds:ad.cds,revealedSkills:ad.revealedSkills,usable:ad.usable,grade:Number.isInteger(sd.grade)?sd.grade:undefined,atk:num("atk"),def:num("def"),spd:num("spd"),dodge:num("dodge"),crit:num("crit"),statusPct:num("statusPct"),eff,skillAtk:num("skillAtk")||0,cd:typeof sd.cd==="number"?sd.cd:0,
     powerBuff:sd.buff==="power",fleeBoost:sd.buff==="escape",artRosterId:body||lg?null:(sd.artRosterId||null),legend:lg?lg.key:null,
     reaperSeal:sd.reaperSeal||0, // #234 REVISE 2차: 자기 전투원에만 온다 — 상대 쪽은 키가 없어 0
     synAtk:sd.synAtk||0}); // #235: 같은 owner-only 경계 — 상대 쪽은 키가 없어 0이고 로컬 역산도 하지 않는다. #296: 전투 화면의 동적 위력 범위 UI 는 삭제됐다 — 현재 표시는 ownSyn · 현재 전투원 칩이다

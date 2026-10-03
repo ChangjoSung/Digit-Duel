@@ -798,13 +798,14 @@ function renderBoard(){
         const healVis=!!p.healing&&(viewer===2||p.owner===viewer||p.revealed); // #106 H8: 회복 이펙트는 소유자 화면 항상, 상대 화면은 공개 말만
         /* #122 (CJ 추가 피드백): 이 칸이 실제 수풀이면 표시만 반투명으로 낮춘다 (inbush). 규칙·가시성 판정은 위에서 이미 끝났고
            여기서 바뀌는 것은 없다 — 안 보이는 말은 이 분기에 들어오지도 않는다. */
-        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?pcGradeCls(p):" hiddenId")+(p.immobile>0?" immob":"")+(healVis?" healing":"")+(ghost?" fx-ghost":"")+(inForest({r})?" inbush":"");
+        const foe=known&&viewer!==2&&p.owner!==viewer; // #316 CJ REVISE3 ⑦: 공개된 상대 말 = 보는 사람 기준 '적' 표식 + 빨간 테(색만이 아니다). 미공개 말(?·메모)은 그대로
+        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(foe?" foe":"")+(known?pcGradeCls(p):" hiddenId")+(p.immobile>0?" immob":"")+(healVis?" healing":"")+(ghost?" fx-ghost":"")+(inForest({r})?" inbush":"");
         const g=!known&&S.phase==="play"&&viewer!==2?memoOpt(S.memos[viewer][p.id]):null; // #36 뷰어 전용 추측 — 실제 공개(known)면 실제 렌더 우선
         // #89 확정 말은 종 아이콘(하수인) 또는 같은 메모 이모지 + 정보 행. 미공개 말은 현행 그대로 ? 또는 뷰어 자신의 추측 이모지만 — 종 아이콘·경로를 만들지 않는다
         chip.innerHTML = known
           ? pcBodyHtml(p)
           : g ? glyphSpan(g.key,"guess") : "?"; // 추측도 확정과 같은 기호 규칙 — 그릴 수 없는 기호만 같은 뜻의 텍스트로
-        if(known) chip.setAttribute("aria-label",pcLabel(p)); // 이미 공개된 값만 — 미공개 말에는 붙이지 않는다
+        if(known) chip.setAttribute("aria-label",(foe?"상대 말 · ":"")+pcLabel(p)); // 이미 공개된 값만 — 미공개 말에는 붙이지 않는다
         if(p.swapMark&&!known){ chip.innerHTML+=`<span class="swapMark" title="상점에서 교체됨">↺</span>`; chip.setAttribute("title","상점에서 교체됨 (정체 비공개)"); } // #236 (7.5) 공개 칸에 들어온 비공개 말
         if(g){ chip.className+=" memo-guess"; chip.setAttribute("title",`추측: ${g.ko} (내 메모 · 정체 미공개)`); chip.setAttribute("aria-label",`정체 미공개 상대 말 — 내 추측: ${g.ko}`); }
         cell.appendChild(chip);
@@ -974,7 +975,26 @@ function renderBoardInfo(){
     +`<span class="hudStat" aria-label="${S.turnCount+1}턴"><small>턴</small><span>${gi("refresh")}${S.turnCount+1}${isBurning()?" 🔥":""}</span></span>`
     +(S.eco?`<span class="hudStat coin" aria-label="재화 ${S.eco.coins[p]}"><small>코인</small><span>${gi("coin")}${S.eco.coins[p]}</span></span>`:"")
     +`<span class="hudStat" aria-label="전투 ${S.battlesUsed}/2"><small>전투</small><span>${gi("battle")}${S.battlesUsed}/2</span></span></div>`
-    +`<div class="sideCol">${S.eco?synRailHtml(p):""}${infoSlotHtml(p,mineTurn)}</div>`;
+    +`<div class="sideCol">${S.eco?synRailHtml(p):""}${infoSlotHtml(p,mineTurn)}</div>`+cycleColHtml();
+}
+/* #316 CJ REVISE3 ③ 속성 상성 — 순서는 BEATS 한 곳에서 만든다(규칙 사본 · 배율 없음). 읽기 전용 · 입력 · 송신 0.
+   elemCycle() = 불 → 그 불을 이기는 속성 → … → 다시 불 = [불, 물, 번개, 땅, 풀, 불] */
+function elemCycle(){ const o=["fire"]; for(let i=0;i<5;i++) o.push(Object.keys(BEATS).find(k=>BEATS[k]===o[o.length-1])||"fire"); return o; }
+const CYCLE_SR=()=>{ const o=elemCycle(); return `속성 상성 (이기는 쪽 → 지는 쪽): ${o.slice(1).map((w,i)=>`${ELEM_KO[w]} → ${ELEM_KO[o[i]]}`).join(", ")}`; };
+/* 말판 왼쪽 좁은 띠 — 위→아래 불 · 물 · 번개 · 땅 · 풀 · 불, 사이 ↑ = 아래가 위를 이긴다(CJ 그림). 글자 없음 — 뜻은 접근성 이름에만 */
+function cycleColHtml(){ return `<div class="cycleCol" role="img" aria-label="${CYCLE_SR()}">${elemCycle().map((k,i)=>(i?`<i class="up" aria-hidden="true"></i>`:"")+gi(k)).join("")}</div>`; }
+/* 전투 상성표 창 — 오각형 고리(불 위 · 시계 방향 물 · 번개 · 땅 · 풀), 화살표 = 이기는 쪽 → 지는 쪽(BEATS). 지금 실제 전투원(대리 출전 포함 · 본체 말 아님)의 속성만
+   나(파란 실선 고리 + '나') / 상대(빨간 점선 고리 + '상대') 로 표시. 속성 없는 전투원(전설 등)은 아래 줄에 '속성 없음'. 상대 스킬 · 공격 속성은 싣지 않는다 */
+function cycleHelpHtml(meF,opF){
+  const pos=["fire","water","lightning","land","grass"], P=k=>{ const a=(-90+pos.indexOf(k)*72)*Math.PI/180; return [100+70*Math.cos(a),100+70*Math.sin(a)]; };
+  const arrows=pos.map(k=>{ const [x1,y1]=P(k), [x2,y2]=P(BEATS[k]), d=Math.hypot(x2-x1,y2-y1), u=(x2-x1)/d, v=(y2-y1)/d, r=27;
+    return `<line x1="${(x1+u*r).toFixed(1)}" y1="${(y1+v*r).toFixed(1)}" x2="${(x2-u*(r+3)).toFixed(1)}" y2="${(y2-v*(r+3)).toFixed(1)}"/>`; }).join("");
+  const me=meF&&meF.element, op=opF&&opF.element, who=f=>f&&f.element?ELEM_KO[f.element]:"속성 없음";
+  const nodes=pos.map(k=>{ const [x,y]=P(k);
+    return `<span class="cycNode${k===me?" me":""}${k===op?" op":""}" style="left:${(x/2).toFixed(1)}%;top:${(y/2).toFixed(1)}%">${gi(k)}<b>${ELEM_KO[k]}</b>${k===me?`<i class="tag me">나</i>`:""}${k===op?`<i class="tag op">상대</i>`:""}</span>`; }).join("");
+  return `<div class="acctHead"><h3 id="synHelpT">상성표</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
+    <div class="cycMap" role="img" aria-label="${escAttr(`${CYCLE_SR()} · 나: ${who(meF)} · 상대: ${who(opF)}`)}"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><marker id="cycArw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs><g>${arrows}</g></svg>${nodes}</div>
+    <small>화살표: 이기는 속성 → 지는 속성 · <b class="tagT me">나</b> ${who(meF)} · <b class="tagT op">상대</b> ${who(opF)}</small>`;
 }
 /* #296 CJ REVISE1(2026-10-03): 우측 시너지 열 아래 **늘 같은 자리 · 같은 크기 · 같은 글자**의 버튼. 내 차례에 고른 살아 있는(놓인) 내 말일 때만 켜지고(읽기 전용 · 전송 0 — unitHelpPiece),
    그 밖에는 꺼진 채 자리를 지킨다. 상대 차례의 내 말 탭은 종전대로 바로 설명 창(ownInfoTarget). 종 이름 · HP 는 접근성 이름에만.
@@ -1586,7 +1606,14 @@ function stChipsHtml(t,bk){ return String(t||"").split(" ").filter(x=>x&&x!=="-"
 function battleStSync(side){ try{ const s=$("bst-"+side), c=$("bch-"+side), B=S&&S.battle; if(s&&c) c.innerHTML=stChipsHtml(s.textContent,B&&(side==="A"?B.buffA:B.buffD));
   }catch(e){} }
 const BSTAT=[["atk","atk"],["def","def"],["spd","swift"],["dodge","💨",1],["crit","🎯",1],["statusPct","💫",1]];
-function battleStatHtml(f){ return `<ul class="bStats" aria-label="기본 능력치">${BSTAT.map(([k,ic,pc])=>{ const v=f[k], ok=typeof v==="number"&&isFinite(v), t=!ok?"—":pc?Math.round(v*100)+"%":v, nm=SYN_STAT_KO[k][0];
+/* #316 CJ REVISE3 ②: 전투 6스탯 = 지금 적용 중인 값(기본 + 시너지 · 일시 증감). 공개 방 = 서버 effectiveStats(Core 와 같은 식 · network.js 가 숫자만 옮김),
+   오프라인 = Core 판정과 같은 식(effAtk · def+synDef · effSpd · effEvade · min(50%, crit+synCrit) · statusPct+synStatusPct). 읽기만 — 전투원 값은 바꾸지 않는다.
+   공개 방에서 서버가 effectiveStats(객체 · 칸)를 안 실었으면 '—'(정보 없음) — 기본값을 적용값처럼 보이거나 상대 가산칸을 추정하지 않는다(PD 계약). 오프라인 기본값이 없어도 '—' */
+function battleEff(f){ if(f.eff&&typeof f.eff==="object") return f.eff; if(NET.publicMode) return {};
+  const n=k=>typeof f[k]==="number"&&isFinite(f[k]);
+  return {atk:n("atk")?effAtk(f):undefined,def:n("def")?f.def+(f.synDef||0):undefined,spd:n("spd")?effSpd(f):undefined,dodge:n("dodge")?effEvade(f):undefined,
+    crit:n("crit")?Math.min(0.5,f.crit+(f.synCrit||0)):undefined,statusPct:n("statusPct")?f.statusPct+(f.synStatusPct||0):undefined}; }
+function battleStatHtml(f){ const e=battleEff(f); return `<ul class="bStats" aria-label="적용 능력치">${BSTAT.map(([k,ic,pc])=>{ const v=e[k], ok=typeof v==="number"&&isFinite(v), t=!ok?"—":k==="statusPct"?`+${Math.round(v*100)}%p`:pc?Math.round(v*100)+"%":Math.round(v), nm=SYN_STAT_KO[k][0];
   return `<li aria-label="${nm} ${ok?t:"정보 없음"}" title="${nm}"><span aria-hidden="true">${gi(ic)||ic}</span><b aria-hidden="true">${t}</b></li>`; }).join("")}</ul>`; }
 /* 2026-10-02 CJ 정정: 전투 화면에는 **계산한 위력/피해 범위를 그리지 않는다**(종전 dmgRange 호출 세 곳 삭제 — 0~0 표기의 자리 자체가 없다).
    스킬의 위력 · 효과 · 쿨타임은 SKILLS 의 고정 설명(desc · #294 설명 창과 같은 원문)으로 읽는다. 실제 피해는 언제나 Core/서버가 낸다 */
@@ -1758,7 +1785,8 @@ function battleModal(board){
   modal(`<header class="battleTop">${topBarHtml(NET.mode?NET.me:S.mode==="pve"?0:ownerP,`<b class="who">배틀 중</b>${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(NET.publicMode?netResignBtn():"")}`)}</header>
     <div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>${synTogHtml}</div>
     <div class="bhead bround"><span>⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}</span>
-      ${mineView&&!aiActor?`<span class="badge" id="battleClock" role="timer">${turnClockText("battle")}</span>`:`<span class="badge" role="status">⏳ 상대 응답 대기</span>`}</div>
+      ${mineView&&!aiActor?`<span class="badge" id="battleClock" role="timer">${turnClockText("battle")}</span>`:`<span class="badge" role="status">⏳ 상대 응답 대기</span>`}
+      <button type="button" class="cycBtn" aria-haspopup="dialog" aria-label="상성표 보기" title="상성표" onclick="battleCycleOpen(this)"><svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="9"/>${["fire","water","lightning","land","grass"].map((k,i)=>{ const a=(-90+i*72)*Math.PI/180; return `<circle class="d" cx="${(14+9*Math.cos(a)).toFixed(1)}" cy="${(14+9*Math.sin(a)).toFixed(1)}" r="3.6" style="fill:var(--${k})"/>`; }).join("")}</svg></button></div>
     <div id="bstage" class="scene"${platVar?` style="${platVar}"`:""}><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
     <div id="msgBox">${busy?"":inBonus?`⚡ ${fighterName(side,B)} 추가 공격 — ${mineView?"기본기 · 2차 · 3차 중 선택 (피해 60%)":"선택을 기다리는 중"}`:(noAtkShow?NO_ATTACK_MSG:`${fighterName(side,B)}의 행동을 선택하세요.`)}</div>
     <div class="bmenu${menu?" hidden":""}" id="bmenu"><b style="grid-column:1/-1;font-size:12px;color:var(--dim)">${pname(ownerP)}:</b>
@@ -1806,6 +1834,11 @@ function battleModal(board){
     if(fxLive()){ fxPlay({key:"roundBanner",kind:"banner",cls:viewerIsOwner(ownerP)&&!(S.mode==="pvp"&&!NET.mode)?"mine":"",title:turnLabel,sub:`Round ${B.round} / ${BAL.maxRounds}`}); fxWhenIdle(()=>{ if(S.battle===B) battleModal(); }); return; } }
   if(aiActor) aiScheduleBattle();
 }
+/* #316 CJ REVISE3 ③ 상성표 — 누르는 순간 지금 전투의 실제 전투원(B.fa/B.fd · 대리 출전 포함 · 본체 말 아님)만 읽는다. 나 = battleModal 의 화면 주인 쪽(cs)과 같은 식.
+   표시 전용(명령 · 송신 · 시계 · 하위 메뉴 무변경). 모달 안 안내 창(synHelpOpen)이라 ✕ · Esc · 바깥 누름 → 이 버튼으로 초점 복귀, 전투가 다시 그려지면(modal) 함께 닫힌다 */
+function battleCycleOpen(from){ const B=S&&S.battle; if(!B) return;
+  const my=S.mode==="pve"?(B.attP.owner===0?"A":"D"):NET.mode?(B.attP.owner===NET.me?"A":"D"):"A", cs=S.mode==="pvp"&&!NET.mode?actorOfPhase(S):my;
+  synHelpOpen(cycleHelpHtml(cs==="A"?B.fa:B.fd,cs==="A"?B.fd:B.fa),from); if(SYNHELP.el) SYNHELP.el.classList.add("cyc"); }
 window.__recruitCore=(step,i,token)=>{ dispatchCoreAction({t:"recruit",step,i,token}); };
 /* #316 ①: 포획 잠금 사유 한 줄 — Core ballWhy 문자열을 짧게 줄여 보이기만 한다(판정 재계산 없음 · 모르는 사유는 원문 그대로). HP·볼 칩은 두 조건뿐이라 이 줄이 실제 사유다 */
 const CAP_WHY_SHORT=/** @type {[RegExp,string][]} */([[/^이미 가진 종/,"이미 가진 하수인"],[/^전설은/,"전설은 포획 불가"],[/^상대 HP/,"상대 HP 30% 이상"],[/^몬스터볼이 없/,"몬스터 볼 없음"],
@@ -1916,10 +1949,10 @@ function pcBodyHtml(p){ const m=pcMeta(p);
 /* ===== #236 상점·가방·B08 화면 — 플레이 QA 용 기능형 최소 UI (최종 카드·레드닷 위치·연출은 #238) =====
    화면은 소유자 시점 상태만 읽고, 입력은 전부 Core 액션 하나로 보낸다. 거래 판정·회계는 Core(ecoReduce) 한 곳이다.
    확인 팝업은 승급·판매·티켓만(GDD-23 7.5·8.2), 버튼은 누르는 순간 잠긴다(once). 정기 상점 180초는 사람 좌석마다(PVE·핫시트 — 2026-09-24 CJ D1 · 길이는 #295 2026-10-02 CJ)
-   자기 상점이 처음 보이는 순간부터 흐른다: 가림이 떠 있는 동안은 시작하지 않고, 가림 확인 뒤 상점이 그려질 때 시작한다. B08 20초도 같은 원칙(가림 뒤). */
+   자기 상점이 처음 보이는 순간부터 흐른다: 가림이 떠 있는 동안은 시작하지 않고, 가림 확인 뒤 상점이 그려질 때 시작한다. B08 30초(#316)도 같은 원칙(가림 뒤). */
 const once=fn=>{ let used=false; return ()=>{ if(used) return; used=true; fn(); }; };
 const SHOPCLK={t:null,iv:null,key:null,dl:0}, BAGCLK={t:null,iv:null};
-/* ===== #263 게임 시한 — 정기 상점 180초(#295) · 준비 180초(#293) · 보드 행동 30초 · 전투 행동 60초(T4) · B08 20초 (다섯 종) =====
+/* ===== #263 게임 시한 — 정기 상점 180초(#295) · 준비 180초(#293) · 보드 행동 30초 · 전투 행동 60초(T4) · B08 30초(#316) (다섯 종) =====
    복수 강제 대상 선택의 30초(T3)는 **새 종류가 아니라 행동 30초를 한 번 더 도는 것**이다 — 저장 자리만 따로 둔다.
    (2026-09-25 CJ 후속 T1~T4 · Venus 타이머 규칙 동기화 · Jupiter 보고 7절)
    온라인(공개 방)은 서버가 마감을 소유한다 — 여기는 room_state.clock 의 남은 시간을 그대로 **표시만** 한다(추론 금지).
@@ -1929,7 +1962,7 @@ const SHOPCLK={t:null,iv:null,key:null,dl:0}, BAGCLK={t:null,iv:null};
      · 키가 그 시한 입력 하나를 가리키고, 키가 바뀌면 전체 시간으로 새로 선다. 키가 같으면 남은 시간이 그대로 이어진다.
      · 정지(가림·전투·대상 선택·B08·연출)는 남은 시간을 들고 멈춘다 — Q2=A "후보 확정 뒤 전투 중 정지".
      · 만료된 보드 행동은 전투가 끝난 자리에서 마무리한다(서버 _settleExpiredAct 와 같은 자리).
-   정기 상점 180초(SHOPCLK · 길이만 #295)·B08 20초(BAGCLK)는 종전 그대로다. 재연결 유예 60초는 게임 시계가 아니다 — 단절 중 유일하게 흐른다.
+   정기 상점 180초(SHOPCLK · 길이만 #295)·B08 30초(BAGCLK · 길이만 #316)는 종전 그대로다. 재연결 유예 60초는 게임 시계가 아니다 — 단절 중 유일하게 흐른다.
    Q5(2026-09-25 CJ 최종): 회복·선택 전투를 고르는 시간은 **보드 30초**에 포함되고, 전투에 들어간 뒤의 명령이 60초다.
    B02 출전 후보는 단일 강제 대상이면 보드 30초의 잔여, 복수 강제 대상이면 대상 선택 30초의 잔여를 쓴다(전용 B02 타이머 없음). */
 const TURNCLK={c:{},iv:null,firing:false,late:false};   // c[kind] = {key,p,left,dl,t,expired,fired}
@@ -1955,7 +1988,7 @@ function turnClockWants(){
     ?{kind:"pick",p:S.current,key:["pick",S.turnCount,S.battlesUsed,S.movedPiece.id].join(":"),ms:ECO.actSec*1000,paused:cov}:null;
   if(pick) out.push(pick);
   /* 보드 행동 30초 — 한 턴에 하나. 키는 턴이 바뀔 때만 바뀌므로 주 행동 뒤 **남은 시간**이 그 턴이 끝날 때까지 이어진다.
-     전투·대상 선택·B08·연출 동안 멈춘다(Q2=A · Jupiter 7-6.4 — 20초·60초와는 끝까지 별개의 시계다). */
+     전투·대상 선택·B08·연출 동안 멈춘다(Q2=A · Jupiter 7-6.4 — 30초(B08 · #316)·60초와는 끝까지 별개의 시계다). */
   if(!isAI(S.current)) out.push({kind:"act",p:S.current,key:"act:"+S.turnCount+":"+S.current,ms:ECO.actSec*1000,
     paused:cov||!!S.battle||!!pick||S.phase==="bagPick"||fxLocked()});
   return out;
@@ -2411,12 +2444,12 @@ function bagPickShow(){
        결정은 기존 bagPick{i,token} 하나뿐(shopSwap 아님). 카드 = 실제 버튼 · 정지 중 실제 disabled · 같은 표(token)는 한 번만 보낸다 */
     const n=S.eco.bag[p].length, dis=paused?`disabled aria-disabled="true" `:"";
     const card=(u,i,act,c)=>unitCard(u,{tag:"button",attr:`type="button" ${dis}aria-label="${escAttr(`${u.name} — ${act} (🪙${c})`)}" onclick="window.__bagPick(${i})"`,tail:`<span class="acts"><b>${act}</b> ${COIN_HTML}${c}</span>`});
-    modal(`<h2 id="bagT">🎒 가방 초과</h2><p>가방이 가득찼습니다. 가방 하수인을 교체하거나 즉시 풀어주세요.</p> <span class="badge" id="bagClock"></span>${paused?`<small role="status">⏸ 연결 대기 — 경기·시간이 멈춰 선택이 잠겨 있습니다.</small>`:""}
-      <div class="slotGrid swapGrid bagPickGrid" role="group" aria-labelledby="bagT">${S.eco.bag[p].map((u,i)=>card(u,i,"교체",u.paid||0)).join("")}${card(bp.unit,n,"풀어주기",0)}</div>${NET.publicMode?netResignBtn():""}`,[]);
+    modal(`<h2 id="bagT">🎒 가방 초과</h2><p>가방이 가득찼습니다. 가방 하수인을 교체하거나 즉시 풀어주세요.</p> <span class="badge" id="bagClock" role="timer">${NET.publicMode?netClockText():`⏱ ${ECO.bagPickSec}초`}</span>${paused?`<small role="status">⏸ 연결 대기 — 경기·시간이 멈춰 선택이 잠겨 있습니다.</small>`:""}
+      <div class="slotGrid swapGrid bagPickGrid" role="group" aria-labelledby="bagT">${S.eco.bag[p].map((u,i)=>card(u,i,"교체",u.paid||0)).join("")}${card(bp.unit,n,"풀어주기",0)}</div>`,[]); // #316 (2026-10-03 CJ): B08 창에는 기권 버튼이 없다 — 보드 · 상점 · 전투의 기권은 그대로
     window.__bagPick=i=>{ if(S.eco.bagPick!==bp||UI.bagLock===tok||!(i>=0&&i<=n)) return; if(netPaused()){ showToast(NET_PAUSE_MSG); return; } if(fxLocked()) return; // 모달 버튼과 같은 가드
       UI.bagLock=tok; go(i); };
     if(NET.publicMode){ bagClockStop(); const tick=()=>{ const el=$("bagClock"); if(el) el.textContent=netClockText(); }; tick(); BAGCLK.iv=setInterval(tick,500); } // 마감·만료는 서버 시계
-    else if(fxLive()){ bagClockStop(); const dl=Date.now()+ECO.bagPickSec*1000; // 20초는 소유자에게 창이 보이는 순간부터 (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
+    else if(fxLive()){ bagClockStop(); const dl=Date.now()+ECO.bagPickSec*1000; // 30초(#316 · ECO.bagPickSec)는 소유자에게 창이 보이는 순간부터 — 첫 표시도 같은 값(위 배지) (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
       BAGCLK.t=setTimeout(()=>{ if(S.eco.bagPick===bp) go(S.eco.bag[p].length); },ECO.bagPickSec*1000); // 무응답 → 포획한 말만 방출
       BAGCLK.iv=setInterval(()=>{ const el=$("bagClock"); if(el) el.textContent=`⏱ ${Math.max(0,Math.ceil((dl-Date.now())/1000))}초`; },500); } };
   if(S.mode==="pvp"&&!NET.mode&&S.current!==p) handoff(`${pname(p)} — 가방 초과 선택`,show); else show(); // 핫시트: 포획한 쪽이 화면 주인이 아니면 가림 먼저

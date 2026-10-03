@@ -156,5 +156,62 @@ function battle(seed){ const T=ecoPlay(seed);
   ok(cards.length===6&&cards.map(c=>/dead/.test(c)).join()===order.join()&&order.filter(Boolean).length===2,"⑤e 정기 상점 필드 = 원래 6칸 순서 · 사망 2칸은 사망 카드");
   room._clearClock();
 }
+/* ===== CJ REVISE3 (2026-10-03) ① 공개된 상대 말 표식 ② 전투 6스탯 = 적용 중인 값 ③ 상성 띠 · 전투 상성표 버튼 ===== */
+{
+  const T=battle(322), S=T.S, B=S.battle, html=()=>T.byId("overlayBox").innerHTML, n0=T.wsLog.length, slot=(h,s)=>h.split(`class="bslot slot-${s}"`)[1].split("</ul>")[0];
+  const f=B.fa; Object.assign(f,{atk:24,def:5,spd:14,dodge:0.1,crit:0.05,statusPct:0,synAtk:0.1,synDef:3,synSpd:1,synDodge:0.03,synCrit:0.5,synStatusPct:0.05});
+  const snap=()=>JSON.stringify(["atk","def","spd","dodge","crit","statusPct","synAtk","synDef","synSpd","synDodge","synCrit","synStatusPct"].map(k=>f[k])), s0=snap();
+  B.menu=null; T.battleModal(); let me=slot(html(),"me");
+  ok(/aria-label="공격력 26"/.test(me)&&/aria-label="방어력 8"/.test(me)&&/aria-label="속도 15"/.test(me)&&/aria-label="회피 13%"/.test(me)&&/aria-label="치명타 50%"/.test(me)&&/aria-label="상태 부여 확률 \+5%p"/.test(me)&&/>\+5%p<\/b>/.test(me),
+    "R3-②a 오프라인 = Core 식(effAtk 26.4→26 · def+synDef · effSpd 15 · effEvade 13% · 치명 50% 상한 · 💫 +5%p 가산)");
+  T.battleModal(); ok(snap()===s0,"R3-②b 표시만 — 다시 그려도 기본값 · 가산칸이 쌓이거나 바뀌지 않는다");
+  B.fd.eff={atk:22.4,def:12,spd:15,dodge:0.13,crit:undefined,statusPct:0.05}; T.battleModal(); const op=slot(html(),"op"); delete B.fd.eff;
+  ok(/aria-label="공격력 22"/.test(op)&&/aria-label="속도 15"/.test(op)&&/aria-label="회피 13%"/.test(op)&&/aria-label="치명타 정보 없음"/.test(op)&&/aria-label="상태 부여 확률 \+5%p"/.test(op),"R3-②c 서버 effectiveStats 가 있으면 그 값(없는 칸 '—')");
+  const sb=T.ui238.netSynthBattle({battleId:1,round:1,phase:0,actor:"A",a:{owner:0,type:"minion",hp:85,maxHp:85,spd:14,dodge:0.1,statusPct:0,effectiveStats:{atk:24,def:5,spd:15,dodge:0.13,crit:0.05,statusPct:0.05}},
+    d:{owner:1,type:"minion",hp:90,maxHp:90,effectiveStats:{atk:"9",def:null,spd:NaN,dodge:Infinity,crit:0,statusPct:0}}},{});
+  const nb=T.ui238.netSynthBattle({battleId:2,round:1,phase:0,actor:"A",a:{owner:0,type:"minion",hp:1,maxHp:1},d:{owner:1,type:"minion",hp:1,maxHp:1,effectiveStats:null}},{});
+  ok(sb.fa.eff.spd===15&&sb.fa.spd===14&&sb.fa.eff.statusPct===0.05&&sb.fd.eff.atk===undefined&&sb.fd.eff.def===undefined&&sb.fd.eff.spd===undefined&&sb.fd.eff.dodge===undefined&&sb.fd.eff.crit===0
+    &&nb.fa.eff===undefined&&nb.fd.eff===undefined&&!("synSpd" in sb.fd)&&!("synDef" in sb.fd),"R3-②d hydrate: 유한한 숫자만(진짜 0 유지) · 문자열/null/NaN/Infinity 는 '—' · 없으면 eff 없음(종전 기본값) · 가산칸 역산 없음");
+  /* ③ 전투 상성표 버튼 — 라운드 줄 오른쪽 하나 · 양쪽 차례 모두 · 그리기만으로 송신 0 */
+  const rnd=h=>h.slice(h.indexOf('class="bhead bround"'),h.indexOf('id="bstage"'));
+  ok(count(html(),/class="cycBtn"/g)===1&&/onclick="battleCycleOpen\(this\)"/.test(rnd(html()))&&/aria-label="상성표 보기"/.test(rnd(html())),"R3-③a 전투: 라운드 줄 오른쪽 상성표 버튼 하나(이름 있음)");
+  B.firstSide=B.firstSideR1="D"; T.battleModal(); ok(count(rnd(html()),/class="cycBtn"/g)===1&&T.wsLog.length===n0,"R3-③b 상대 차례에도 같은 버튼 · 송신 0");
+}
+{
+  const T=ecoPlay(323), S=T.S;
+  const mine=S.pieces.find(x=>x.owner===0&&x.type==="minion"), em=S.pieces.filter(x=>x.owner===1&&x.type==="minion");
+  H.place(T,mine,7,3); H.place(T,em[0],7,4); H.place(T,em[1],6,4); em[0].revealed=true; em[1].revealed=false; T.renderBoard();
+  const chip=(r,c)=>{ const k=T.byId("board").children.find(x=>x.dataset.r===r&&x.dataset.c===c); return k&&k.children[0]; };
+  const a=chip(7,4), b=chip(6,4), o=chip(7,3);
+  ok(a&&/\bfoe\b/.test(a.className)&&/^상대 말 · /.test(a.getAttribute("aria-label")||"")&&/ gf g\d/.test(a.className)&&/^pc p1 /.test(a.className),"R3-①a 공개된 상대 말 = foe(보이는 '적' 표식 · CSS) + '상대 말' 접근성 이름 · 등급 바탕 그대로 · 상대 색");
+  ok(o&&!/\bfoe\b/.test(o.className)&&/\bown\b/.test(o.className)&&!/^상대/.test(o.getAttribute("aria-label")||""),"R3-①b 바로 옆 내 말에는 표식 없음");
+  ok(!b||(!/\bfoe\b/.test(b.className)&&/hiddenId/.test(b.className)&&b.getAttribute("aria-label")===null),"R3-①c 미공개 상대 말 = ?/메모 그대로(foe · 정체 문구 없음)");
+  mine.revealed=true; S.mode="pvp"; S.current=1; T.renderBoard(); const a1=chip(7,4), o1=chip(7,3); // 핫시트 P1 시점: 같은 말의 소유 색 · 표식이 보는 사람 기준으로 뒤집힌다
+  const css=require("fs").readFileSync(path.join(path.dirname(htmlPath),"css","game.css"),"utf8");
+  ok(/^pc p1 own /.test(a1.className)&&!/\bfoe\b/.test(a1.className)&&/^pc p0 foe /.test(o1.className)&&/^상대 말 · /.test(o1.getAttribute("aria-label")||"")
+    &&/#board \.pc\.own:not\(\.gf\):not\(\.inbush\)\{background:#33406e;\}/.test(css)&&/#board \.pc\.own\.gf\{border-color:#33406e;\}/.test(css)&&/#board \.pc\.foe \.info::before[^{]*\{content:"적"/.test(css),
+    "R3-①e P1 시점: 내 말 = own(파랑으로 덮음) · 표식 없음, 공개된 상대(P0) 말 = foe('적' · 빨강) — 좌석 클래스는 그대로");
+  S.mode="pve"; S.current=0;
+  S.phase="over"; T.renderBoard(); ok(!T.byId("board").children.some(k=>k.children[0]&&/\bfoe\b/.test(k.children[0].className))&&/^pc p1 /.test(chip(7,4).className)&&/^pc p0 /.test(chip(7,3).className),"R3-①d 종료 전체 공개(관전 시점)에는 표식 없음 · 좌석 색 그대로");
+  S.phase="play"; T.ui238.renderBoardInfo(); const bi=T.byId("boardInfo").innerHTML, col=bi.slice(bi.indexOf('class="cycleCol"'));
+  const byI=Object.fromEntries(Object.entries(T.ui238.GI).map(([k,v])=>[v,k])), seq=[...col.matchAll(/--i:(\d+)/g)].map(m=>byI[m[1]]);
+  eq(seq,["fire","water","lightning","land","grass","fire"],"R3-③c 말판 왼쪽 띠 = 위→아래 불 · 물 · 번개 · 땅 · 풀 · 불");
+  ok(seq.slice(1).every((w,i)=>T.BEATS[w]===seq[i])&&count(col,/class="up"/g)===5&&/role="img" aria-label="속성 상성 \(이기는 쪽 → 지는 쪽\): 물 → 불/.test(col)&&!/<b>|<small>/.test(col),"R3-③d 아래가 위를 이긴다(BEATS 그대로) · ↑ 5개 · 글자는 접근성 이름에만");
+}
+/* ===== CJ REVISE3 ④ B08 30초 · 창 안 기권 없음 (소유자 · 상대 대기 모두) ===== */
+{
+  const T=ecoPlay(324); const S=T.S, html=()=>T.byId("overlayBox").innerHTML, r=T.ROSTER;
+  const mk=(i,g)=>{ const u={uid:++S.eco.unitSeq,paid:g,fresh:false,revealed:false,reaperSeal:0,cap:null}; T.applySpecies(u,r[i],g); return u; };
+  S.eco.bag[0]=[mk(10,1),mk(11,2),mk(12,3)]; const cap=mk(13,1); cap.paid=0;
+  S.eco.bagPick={owner:0,unit:cap,token:cap.uid}; S.phase="bagPick"; const n0=T.wsLog.length, c0=S.eco.coins[0];
+  T.bagPickShow(); let h=html();
+  ok(T.ECO.bagPickSec===30&&/<span class="badge" id="bagClock" role="timer">⏱ 30초<\/span>/.test(h)&&!/기권|netEcoResign/.test(h)&&S.eco.bagPick&&T.wsLog.length===n0&&S.eco.coins[0]===c0,"R3-④a 오프라인 소유자 창 = 처음부터 ⏱ 30초 · 기권 없음 · 여는 것만으로 결정 · 송신 0");
+  const N=T.NET; Object.assign(N,{mode:true,publicMode:true,me:0,ecoClock:{leftMs:27000,running:false,at:Date.now()}}); S.eco.bagPick={owner:0,unit:cap,token:91};
+  T.netRenderEcoOverlay("bag"); h=html();
+  ok(/id="bagClock" role="timer">⏱ 27초 \(정지\)<\/span>/.test(h)&&!/기권|netEcoResign/.test(h)&&/__bagPick\(0\)/.test(h)&&T.wsLog.length===n0,"R3-④b 공개 방 소유자 창 = 서버가 준 남은 시간(지어낸 30 아님) · 기권 없음 · 송신 0");
+  N.me=1; T.netRenderEcoOverlay("bag"); h=html();
+  ok(h.includes("상대방이 가방이 가득 차서")&&!/기권|netEcoResign|bagClock|__bagPick/.test(h),"R3-④c 상대 대기 창 = CJ 원문뿐 · 기권 없음(보드 · 상점 · 전투 기권은 별도로 유지)");
+  ok(/onclick="netEcoResign\(\)"/.test(T.netResignBtn()),"R3-④d 기권 버튼 부품 자체는 그대로(다른 화면용)");
+}
 console.log(`smoke_issue316: ${pass} passed, ${fail} failed`);
 process.exitCode=fail?1:0;

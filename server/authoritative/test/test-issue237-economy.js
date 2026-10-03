@@ -367,7 +367,7 @@ async function main() {
     });
     room._syncClock();
     const v0 = view(room, 0), v1 = view(room, 1);
-    ok(v0.phase === 'bagPick' && v0.bagPick.unit && v0.bagPick.token && v0.clock.running, '소유자: 포획 말·토큰·20초 시계');
+    ok(v0.phase === 'bagPick' && v0.bagPick.unit && v0.bagPick.token && v0.clock.running, '소유자: 포획 말·토큰·B08 시계');
     /* #294 (2026-10-02 CJ) 소유자 상세 8스탯 — 가방·포획 말의 shieldStartPct 는 엔진 값 그대로(0 도 숫자 0). 상대 프레임은 자기 you 밖에 이 키가 없다. */
     {
       const eb = S0(room).eco.bag[0], { you: _you1, ...rest1 } = v1;
@@ -376,21 +376,21 @@ async function main() {
       ok(typeof v0.bagPick.unit.shieldStartPct === 'number' && v0.bagPick.unit.shieldStartPct === S0(room).eco.bagPick.unit.shieldStartPct, '소유자 포획 말: shieldStartPct = 엔진 값');
       ok(!JSON.stringify(rest1).includes('shieldStartPct') && v1.you.eco.bag.length === 0, '상대: you 밖에 shieldStartPct 없음 · 상대 가방은 자기 것(빈 가방)뿐');
     }
-    // #263: 비소유자에게 B08 시계는 나가지 않는다. 자기 행동 30초를 들고 있으면 그것이 보이되 **멈춰 있어야** 한다(20초와 별개의 시계).
+    // #263: 비소유자에게 B08 시계는 나가지 않는다. 자기 행동 30초를 들고 있으면 그것이 보이되 **멈춰 있어야** 한다(B08 시계와 별개).
     ok(JSON.stringify(v1.bagPick) === JSON.stringify({ owner: 0 })
       && (v1.clock === null || (v1.clock.key === 'act' && v1.clock.running === false))
       && !JSON.stringify(v1).includes(free[3]), '상대: 누가 고르는 중인지만 — 포획 말·가방 비노출');
-    /* #294 공개 보드 시계 — B08 동안 양 좌석이 **멈춘 행동 30초**를 같은 값으로 본다. B08 20초(소유자 clock)·토큰은 실리지 않는다. */
+    /* #294 공개 보드 시계 — B08 동안 양 좌석이 **멈춘 행동 30초**를 같은 값으로 본다. B08 소유자 clock·토큰은 실리지 않는다. */
     ok(v0.clock.key === 'bag' && [v0, v1].every((v) => v.boardClock && v.boardClock.running === false && v.boardClock.deadline === null
       && v.boardClock.leftMs === room._act.left && Object.keys(v.boardClock).sort().join() === 'deadline,leftMs,running,serverNow'),
-      '#294 B08 동안 boardClock 은 멈춘 행동 시계(양 좌석 같은 값) — 20초 시계·key·owner·토큰 없음');
+      '#294 B08 동안 boardClock 은 멈춘 행동 시계(양 좌석 같은 값) — B08 시계·key·owner·토큰 없음');
     const s = snap(room);
     const other = room._handleAction(1, { baseRevision: 0, action: { t: 'bagPick', token: v0.bagPick.token, i: 0 } });
     const stale = room._handleAction(0, { baseRevision: 0, action: { t: 'bagPick', token: v0.bagPick.token + 99, i: 0 } });
     ok(!other.ok && other.reason === 'E_NOT_ACTOR' && !stale.ok && stale.reason === 'E_SHOP_STALE' && snap(room) === s, '상대 입력·지난 토큰 거부 · 상태 불변');
     const bag = S0(room).eco.bag[0].map((u) => u.uid).join();
     await sleep(140);
-    ok(S0(room).phase === 'play' && !S0(room).eco.bagPick && S0(room).eco.bag[0].map((u) => u.uid).join() === bag, '20초 만료 → 포획 말만 방출, 기존 가방 불변');
+    ok(S0(room).phase === 'play' && !S0(room).eco.bagPick && S0(room).eco.bag[0].map((u) => u.uid).join() === bag, 'B08 만료 → 포획 말만 방출, 기존 가방 불변');
   }
   {
     const room = startedEco(10);
@@ -408,6 +408,16 @@ async function main() {
     ok(r.ok && S0(room).eco.coins[1] === c1 + 2 && S0(room).eco.bag[1][1].uid === tok && S0(room).phase === 'play', '기존 가방 말 선택 → 원장 환급 매각 · 포획 말이 그 자리');
     const again = room._handleAction(1, { baseRevision: 0, action: { t: 'bagPick', token: tok, i: 0 } });
     ok(!again.ok && S0(room).eco.coins[1] === c1 + 2, '같은 B08 두 번째 응답 거부');
+    room._clearClock();
+  }
+  { // #316 (2026-10-03 CJ) B08 기본 시한 30초 — 서버 상수 없이 Core ECO.bagPickSec 만 읽는다. 시계 주입 없는 방에서 소유자 시계만 30초
+    const room = startedEco('r-316-b08', { bagPickMs: null });
+    both(room, (E) => { const S = E.S, u = E.ecoMakeUnit(S, E.ROSTER[0].id, 1); S.eco.bagPick = { owner: 0, unit: u, token: u.uid }; S.phase = 'bagPick'; });
+    room._syncClock();
+    const c0 = view(room, 0).clock, v1 = view(room, 1);
+    ok(room.engines[0].ECO.bagPickSec === 30 && room._wantSeatClock(0).ms === 30 * 1000 && room._wantSeatClock(1) === null, '#316 B08 기본 30*1000 · 소유자 좌석에만');
+    ok(c0.key === 'bag' && c0.running && c0.leftMs > 29000 && c0.leftMs <= 30000, `#316 소유자 시계 30초로 흐른다(${c0.leftMs})`);
+    ok(JSON.stringify(v1.bagPick) === JSON.stringify({ owner: 0 }) && (v1.clock === null || v1.clock.key !== 'bag'), '#316 상대: 소유자만 · B08 시계 비노출');
     room._clearClock();
   }
 

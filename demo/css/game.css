@@ -1564,3 +1564,36 @@ body .overlay:has(.battleTop){align-items:flex-start; padding-top:var(--appTop);
 .bsub .uhSkills li.lock{opacity:.55;}
 .bsub .uhSkills small{display:block; margin-top:2px; font-size:12px; line-height:1.35; color:#cfe0ff;}
 @media (max-width:360px){ .shopSheet .leadRow .leadFace,.shopSheet.turn .leadRow .leadFace{flex:0 0 44px; width:44px;} } /* #316 ⑥ 좁은 폭에서도 그림 칸 44px — 아래 띠의 실제 HP(현재/최대)가 잘리지 않는다(속성 버튼 5개는 남은 폭) */
+/* ---------- #316 CJ REVISE3 (2026-10-03) ---------- */
+/* ⑦ 공개된 상대 말 = 보는 사람 기준 — 굵은 빨간 테 + 보이는 '적' 글자 표식(HP 알약 왼쪽 같은 줄 · 그림 · 위 모서리 기호 · 등급 바탕을 가리지 않는다). 미공개(?·메모) 말은 없음 */
+#board .pc.foe{border-color:#ff3347;}
+#board .pc.foe:not(.healing){box-shadow:inset 0 0 0 2px #ff3347;}
+#board .pc.foe .info::before,#board .pc.foe:not(:has(.info))::after{content:"적"; flex:0 0 auto; padding:0; border-radius:3px; background:#06102a; color:#ff5a6a; font-size:9px; line-height:11px; font-weight:bold;}
+#board .pc.foe .info{gap:1px;} #board .pc.foe .info .hp.pill{padding:0 2px;}
+/* ⑦ 소유 색 = 보는 사람 기준(내 말 파랑 · 공개된 상대 빨강). 좌석 색(.p0/.p1)은 관전(viewer 2 · own/foe 없음)에서만 남는다 — P1 좌석에서 내 말이 빨강으로 보이던 구조. 등급 바탕(.gf)은 그대로 */
+#board .pc.own:not(.gf):not(.inbush){background:#33406e;} #board .pc.foe:not(.gf):not(.inbush){background:#6e3340;}
+#board .pc.own.inbush:not(.gf)::before{background:#33406e;} #board .pc.foe.inbush:not(.gf)::before{background:#6e3340;}
+#board .pc.own.gf{border-color:#33406e;}
+#board .pc.foe:not(:has(.info))::after{position:absolute; left:50%; bottom:1px; transform:translateX(-50%); z-index:3; pointer-events:none;} /* HP 줄이 없는 공개 말(폭탄 · 함정 등)도 같은 글자 */
+/* ③ 말판 왼쪽 좁은 상성 띠(우측 시너지 열과 같은 높이 · 같은 자리 기준). 말판은 띠 폭만큼만 비켜 선다(fitBoard 가 폭을 다시 잰다) */
+#app[data-screen="board"]:has(#boardInfo .cycleCol) #screenBody{padding-left:30px;}
+#app[data-screen="board"]:has(#boardInfo .cycleCol) #boardInfo{margin-left:-26px;}
+#boardInfo .cycleCol{position:absolute; top:calc(100% + 10px); left:0; width:24px; height:calc(var(--boardH) * var(--sideBs,1)); box-sizing:border-box; padding:4px 0; display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; border-radius:8px; background:#0a1733; border:1px solid #2a4f98;}
+@media (max-height:760px){ #boardInfo .cycleCol{top:calc(100% + 4px);} }
+#boardInfo .cycleCol .gi{font-size:18px;}
+#boardInfo .cycleCol .up{flex:0 0 auto; width:7px; height:7px; margin-top:4px; border:solid #9fc0ff; border-width:2px 0 0 2px; transform:rotate(45deg);}
+/* ③ 전투 상성표 — 라운드 줄 오른쪽 44px 버튼(줄 높이 44 그대로) + 안내 창(.synHelp 같은 틀) */
+#overlayBox.battleBox .bround .cycBtn{flex:0 0 44px; width:44px; height:44px; min-height:44px; margin-left:auto; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:10px; background:#0a1733; border:2px solid #3d5580;}
+.cycBtn svg{width:30px; height:30px;} .cycBtn svg circle{fill:none; stroke:#9fc0ff; stroke-width:1.6;} .cycBtn svg circle.d{stroke:#06102a; stroke-width:1;}
+.synHelp.cyc .cycMap{position:relative; width:min(240px,100%); aspect-ratio:1; margin:6px auto;}
+.synHelp.cyc .cycMap svg{position:absolute; inset:0; width:100%; height:100%;}
+.synHelp.cyc .cycMap line{stroke:#9fc0ff; stroke-width:2.5; marker-end:url(#cycArw);} .synHelp.cyc .cycMap marker path{fill:#9fc0ff;}
+.cycNode{position:absolute; transform:translate(-50%,-50%); width:52px; height:52px; box-sizing:border-box; border-radius:50%; background:#06102a; border:2px solid #2a4f98; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; color:#cfe0ff;}
+.cycNode .gi{font-size:22px;} .cycNode b{font-weight:bold; line-height:1.1;}
+.cycNode.me{border:3px solid var(--accent); box-shadow:0 0 10px #5b8cff88; color:#fff;}
+.cycNode.op{outline:3px dashed var(--danger); outline-offset:3px; color:#fff;}
+.cycNode .tag,.synHelp .tagT{font-style:normal; font-size:10.5px; font-weight:bold; color:#fff; padding:0 4px; line-height:15px;}
+.cycNode .tag{position:absolute; top:-12px;} .cycNode .tag.me{left:-10px; border-radius:2px; background:var(--accent);} .cycNode .tag.op{right:-14px; border-radius:8px; background:var(--danger);}
+.synHelp .tagT.me{border-radius:2px; background:var(--accent);} .synHelp .tagT.op{border-radius:8px; background:var(--danger);}
+@media (max-width:360px){ #app[data-screen="board"]:has(#boardInfo .cycleCol) #screenBody{padding-left:20px;} #app[data-screen="board"]:has(#boardInfo .cycleCol) #boardInfo{margin-left:-16px;}
+  #boardInfo .cycleCol{left:-2px; width:16px;} #boardInfo .cycleCol .gi{font-size:14px;} #boardInfo .cycleCol .up{width:5px; height:5px;} } /* 320: 띠를 좁혀 말판 칸 32px 하한(#286)을 지킨다 */
