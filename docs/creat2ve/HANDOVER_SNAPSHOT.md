@@ -1,6 +1,17 @@
 # Digit-Duel — Mercury_PD 인수인계
 
-## 2026-09-30 현행 인계 준비 · 수신 PD 최종 확인 대기
+## 2026-10-03 현행 체크포인트 · PR #304 포함 운영 통합 진행
+
+- **CJ 최신 지시:** PR #304를 main에 포함한다. #313의 `digit-duel.site` 연결, 시작 상점 이모티콘 상단 이동, README 시작 상점·속성 전투 재촬영도 승인됐다. dev 통합과 필수 CI를 거쳐 main·기존 운영 Render에 반영한다. 별도 GO를 요청하지 않는다.
+- **완료된 출시:** v0.4.13은 출시됐고 PR #311·#312는 MERGED다. 출시 시 main은 `487745ef0b1c412993aa015194d96ae1f494f618`, dev는 `04aaa890b9e0b80ccebd3930f4dbe021388c232e`이며 전체 트리는 동일했다. #293·#294·#295 및 #296의 완료된 제품 QA를 재착수하지 않는다. 기존 v0.4.13 태그는 보존한다.
+- **현재 작업:** #313과 PR #314의 변경 커밋은 `918fc8fa062f3f58bc8a59b3d266ea8badda4042`다. 필수 CI 6/6 PASS이며 독립 Saturn 검수·dev/main 통합·운영 배포 확인을 진행 중이다. 최종 SHA·배포·정리 결과는 `C:/Users/pc_77/orca/artifacts/Digit-Duel/custom-domain-digit-duel-site-20261003/`의 최종 보고에서 확인한다. 이 절은 완료를 미리 선언하지 않는다.
+- **도메인·QA:** Gabia의 A `@ → 216.24.57.1`, CNAME `www → digit-duel-mipa.onrender.com.`을 저장했다. Render의 apex·www DNS 검증과 인증서 발급은 완료했고 www는 apex로 리다이렉트한다. 서버 코드 배포 후 `DD_AUTH_PUBLIC_HOST=digit-duel.site`를 적용한다. 운영 서비스·요금제·DB는 유지하고 QA 서비스는 Suspended·AutoDeploy Off로 유지한다.
+- **실행 설정:** 프로젝트 기본값은 Mercury·Saturn `gpt-6.1-sol`/xhigh/No Fast다. 이번 PD 세션만 CJ가 Fast·workspace-write/on-request를 지정했다. 실제 호스트 권한은 danger-full-access/never여서 차이를 보고했으며 설정을 확대·변경하지 않았다. 다른 Worker·프로젝트·계정 기본값은 유지한다. Saturn은 명시한 `service_tier=default` 실행 인수와 실제 세션을 확인한다.
+- **보존·역할:** 원본 main checkout은 `9b306bb`에서 보존 중이며 pull/reset/checkout/stage/commit하지 않는다. 기존 dirty 6파일·index·unity/·stash 2개·handoff `b44e302`를 보존한다. PR #304 보류만 최신 CJ 지시로 해제됐다. Mercury는 조정·Git·문서·메타데이터, Mars는 클라이언트·촬영 도구, Jupiter는 서버, Saturn은 읽기 전용 QA이며 Ponytail full을 적용한다.
+
+아래 2026-09-30 이하 체크포인트는 과거 기록이다. 현재 상태나 새 착수 지시로 사용하지 않는다.
+
+## 2026-09-30 당시 인계 준비 · 과거 기록
 
 - **CJ 최신 결정:** Mercury_PD와 Saturn_QA만 Codex gpt-6.1-sol·xhigh·service_tier=default(No Fast)로 변경한다. Venus·Mars·Jupiter의 claude-opus-5-5/high, Earth 신규 gpt-6-astra/medium, 기존 자산 수정 gpt-6-luna/xhigh는 유지한다. [OpenAI 공식 모델 문서](https://developers.openai.com/api/docs/models/gpt-6.1-sol)는 모델 ID와 xhigh 지원을 명시한다. 인수 전 수신 터미널에서 실제 모델·effort·tier를 새로 확인한다.
 - **PD 위치와 Git:** 원본 C:/Users/pc_77/orca/Digit-Duel은 main → origin/main, 양쪽 SHA 9b306bbfda103263cb2feea90fd9c89527eb9290이다. origin/milestone/v0.4.13은 4f638a12dbab5e85b5b3b8d1d50ab17d029ea5b3이다. 원본에서 미추적 unity/와 stash 9ebd041242f61e10906ae388e8037c03c33ad386, cc644636b67788727963b2158001bc66cb40fe86을 보존한다. 로컬 ChangjoSung/mercury-pd-v0413-handoff-0929의 고유 커밋 b44e302도 미병합이라 보존한다. 새 모델 계약 6파일의 동일한 로컬 사본은 원본 main에 미커밋 적용하고 PR #304 병합 때까지 보존한다. main 커밋 SHA는 바꾸지 않는다.
