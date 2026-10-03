@@ -330,15 +330,16 @@ try{
   const u={name:"길동",grade:1,hp:5,maxHp:5,paid:3,uid:1};
   T.S.eco.bag[0]=[u,Object.assign({},u,{uid:2}),Object.assign({},u,{uid:3})];
   T.S.eco.bagPick={owner:0,token:"tk",unit:{name:"포획",grade:2}};
+  const bagBtns=()=>T.byId("overlayBox").innerHTML.match(/<button class="uSlot uCard[^>]*onclick="window\.__bagPick\(\d\)"/g)||[]; // #316 ②: B08 = 교체 창과 같은 카드 버튼 4장
   setPause(T,true); T.bagPickShow();
-  eq(lastBtns(T,4).filter(b=>b.disabled===true).length,4,"F8 정지 중 B08 선택 버튼 4개가 모두 실제 disabled 다");
+  eq(bagBtns().filter(b=>/ disabled /.test(b)).length+"/"+bagBtns().length,"4/4","F8 정지 중 B08 선택 카드 4장이 모두 실제 disabled 다");
   ok(/선택이 잠겨 있습니다/.test(T.byId("overlayBox").innerHTML),"F9 B08 창에도 사유를 적는다");
   eq(T.netSendAction({t:"bagPick",i:0,token:"tk"}),false,"F10 그래도 보내려 하면 송신 끝에서 막히고 false 를 돌려준다");
   eq(sentActs(T).length,0,"F11 정지 중 B08 선택은 회선에 나가지 않는다");
   setPause(T,false); T.bagPickShow();
-  eq(lastBtns(T,4).filter(b=>b.disabled===true).length,0,"F12 복구되면 같은 창의 선택이 되돌아온다");
-  lastBtns(T,4)[0].onclick();
-  eq(sentActs(T).join(","),"bagPick","F13 복구 뒤 선택이 회선으로 나간다");
+  eq(bagBtns().filter(b=>/ disabled /.test(b)).length+"/"+bagBtns().length,"0/4","F12 복구되면 같은 창의 선택이 되돌아온다");
+  global.__bagPick(0); global.__bagPick(0);
+  eq(sentActs(T).join(","),"bagPick","F13 복구 뒤 선택이 회선으로 나간다 (같은 표의 연타는 1회)");
 }
 { /* 먼저 열려 있던 기권 확인 창 — Saturn 이 지적한 netSendCmd("resign") 직행 경로 */
   const T=ecoNetBoot();

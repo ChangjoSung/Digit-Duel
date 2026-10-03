@@ -367,7 +367,7 @@ async function main() {
     });
     room._syncClock();
     const v0 = view(room, 0), v1 = view(room, 1);
-    ok(v0.phase === 'bagPick' && v0.bagPick.unit && v0.bagPick.token && v0.clock.running, '소유자: 포획 말·토큰·20초 시계');
+    ok(v0.phase === 'bagPick' && v0.bagPick.unit && v0.bagPick.token && v0.clock.running, '소유자: 포획 말·토큰·B08 시계');
     /* #294 (2026-10-02 CJ) 소유자 상세 8스탯 — 가방·포획 말의 shieldStartPct 는 엔진 값 그대로(0 도 숫자 0). 상대 프레임은 자기 you 밖에 이 키가 없다. */
     {
       const eb = S0(room).eco.bag[0], { you: _you1, ...rest1 } = v1;
@@ -376,21 +376,21 @@ async function main() {
       ok(typeof v0.bagPick.unit.shieldStartPct === 'number' && v0.bagPick.unit.shieldStartPct === S0(room).eco.bagPick.unit.shieldStartPct, '소유자 포획 말: shieldStartPct = 엔진 값');
       ok(!JSON.stringify(rest1).includes('shieldStartPct') && v1.you.eco.bag.length === 0, '상대: you 밖에 shieldStartPct 없음 · 상대 가방은 자기 것(빈 가방)뿐');
     }
-    // #263: 비소유자에게 B08 시계는 나가지 않는다. 자기 행동 30초를 들고 있으면 그것이 보이되 **멈춰 있어야** 한다(20초와 별개의 시계).
+    // #263: 비소유자에게 B08 시계는 나가지 않는다. 자기 행동 30초를 들고 있으면 그것이 보이되 **멈춰 있어야** 한다(B08 시계와 별개).
     ok(JSON.stringify(v1.bagPick) === JSON.stringify({ owner: 0 })
       && (v1.clock === null || (v1.clock.key === 'act' && v1.clock.running === false))
       && !JSON.stringify(v1).includes(free[3]), '상대: 누가 고르는 중인지만 — 포획 말·가방 비노출');
-    /* #294 공개 보드 시계 — B08 동안 양 좌석이 **멈춘 행동 30초**를 같은 값으로 본다. B08 20초(소유자 clock)·토큰은 실리지 않는다. */
+    /* #294 공개 보드 시계 — B08 동안 양 좌석이 **멈춘 행동 30초**를 같은 값으로 본다. B08 소유자 clock·토큰은 실리지 않는다. */
     ok(v0.clock.key === 'bag' && [v0, v1].every((v) => v.boardClock && v.boardClock.running === false && v.boardClock.deadline === null
       && v.boardClock.leftMs === room._act.left && Object.keys(v.boardClock).sort().join() === 'deadline,leftMs,running,serverNow'),
-      '#294 B08 동안 boardClock 은 멈춘 행동 시계(양 좌석 같은 값) — 20초 시계·key·owner·토큰 없음');
+      '#294 B08 동안 boardClock 은 멈춘 행동 시계(양 좌석 같은 값) — B08 시계·key·owner·토큰 없음');
     const s = snap(room);
     const other = room._handleAction(1, { baseRevision: 0, action: { t: 'bagPick', token: v0.bagPick.token, i: 0 } });
     const stale = room._handleAction(0, { baseRevision: 0, action: { t: 'bagPick', token: v0.bagPick.token + 99, i: 0 } });
     ok(!other.ok && other.reason === 'E_NOT_ACTOR' && !stale.ok && stale.reason === 'E_SHOP_STALE' && snap(room) === s, '상대 입력·지난 토큰 거부 · 상태 불변');
     const bag = S0(room).eco.bag[0].map((u) => u.uid).join();
     await sleep(140);
-    ok(S0(room).phase === 'play' && !S0(room).eco.bagPick && S0(room).eco.bag[0].map((u) => u.uid).join() === bag, '20초 만료 → 포획 말만 방출, 기존 가방 불변');
+    ok(S0(room).phase === 'play' && !S0(room).eco.bagPick && S0(room).eco.bag[0].map((u) => u.uid).join() === bag, 'B08 만료 → 포획 말만 방출, 기존 가방 불변');
   }
   {
     const room = startedEco(10);
@@ -408,6 +408,16 @@ async function main() {
     ok(r.ok && S0(room).eco.coins[1] === c1 + 2 && S0(room).eco.bag[1][1].uid === tok && S0(room).phase === 'play', '기존 가방 말 선택 → 원장 환급 매각 · 포획 말이 그 자리');
     const again = room._handleAction(1, { baseRevision: 0, action: { t: 'bagPick', token: tok, i: 0 } });
     ok(!again.ok && S0(room).eco.coins[1] === c1 + 2, '같은 B08 두 번째 응답 거부');
+    room._clearClock();
+  }
+  { // #316 (2026-10-03 CJ) B08 기본 시한 30초 — 서버 상수 없이 Core ECO.bagPickSec 만 읽는다. 시계 주입 없는 방에서 소유자 시계만 30초
+    const room = startedEco('r-316-b08', { bagPickMs: null });
+    both(room, (E) => { const S = E.S, u = E.ecoMakeUnit(S, E.ROSTER[0].id, 1); S.eco.bagPick = { owner: 0, unit: u, token: u.uid }; S.phase = 'bagPick'; });
+    room._syncClock();
+    const c0 = view(room, 0).clock, v1 = view(room, 1);
+    ok(room.engines[0].ECO.bagPickSec === 30 && room._wantSeatClock(0).ms === 30 * 1000 && room._wantSeatClock(1) === null, '#316 B08 기본 30*1000 · 소유자 좌석에만');
+    ok(c0.key === 'bag' && c0.running && c0.leftMs > 29000 && c0.leftMs <= 30000, `#316 소유자 시계 30초로 흐른다(${c0.leftMs})`);
+    ok(JSON.stringify(v1.bagPick) === JSON.stringify({ owner: 0 }) && (v1.clock === null || v1.clock.key !== 'bag'), '#316 상대: 소유자만 · B08 시계 비노출');
     room._clearClock();
   }
 
@@ -445,6 +455,57 @@ async function main() {
         ok(u.ok && S0(room).eco.buffInv[cur].power === 0 && !u2.ok, '전투 버프 사용 · 재고 0 이면 거부');
       } else ok(true, '(선턴이 상대라 버프 검사 생략)');
     }
+  }
+
+  // ===== #316 포획 경계 — 서버 판정 = 두 좌석 Core ballWhy (엄격 HP<30% · 동종 · 전설 · 볼 · 라운드 1회) =====
+  {
+    const room = startedEco(316);
+    const cur = S0(room).current;
+    const keys = (seat) => new Set(S0(room).pieces.filter((p) => p.owner === seat && p.rosterId).map((p) => p.rosterId));
+    const k0 = keys(cur), k1 = keys(1 - cur);
+    const att = S0(room).pieces.find((p) => p.owner === cur && p.type === 'minion' && p.rosterId && !k1.has(p.rosterId));
+    const foe = S0(room).pieces.find((p) => p.owner === 1 - cur && p.type === 'minion' && p.rosterId && !k0.has(p.rosterId));
+    H.openBattle(room, { att: att.id, def: foe.id });
+    const side = room.engines[0].actorOfPhase(), o = side === 'A' ? cur : 1 - cur;
+    const tgt = (E) => (side === 'A' ? E.S.battle.fd : E.S.battle.fa);
+    const set = (fn) => both(room, (E) => fn(E, tgt(E)));
+    const why = () => room.engines.map((E) => H.withEngine(E, () => E.ballWhy(E.S, side)));
+    const rejected = (re, label) => {
+      const w = why(), s = snap(room), r = H.act(room, o, { t: 'ball' });
+      ok(w[0] === w[1] && re.test(String(w[0])) && !r.ok && r.reason === 'E_ILLEGAL_ACTION' && snap(room) === s, label + ' → 두 좌석 같은 사유 · 서버 거부 · 상태 불변 ' + w[0]);
+    };
+    set((E, t) => { t.maxHp = 100; t.hp = 30; E.S.balls[o] = 1; });
+    rejected(/30%/, 'HP 30/100 (정확히 30%)');
+    set((E, t) => { t.hp = 29; });
+    ok(why().every((w) => w === null), 'HP 29/100 (30% 미만) → 두 좌석 허용');
+    set((E, t) => { t.hp = 16; E.S.eco.bag[o].push(E.ecoMakeUnit(E.S, E.ecoKey(t), 1)); });
+    rejected(/이미 가진 종/, '동종 보유(가방)');
+    set((E, t) => { E.S.eco.bag[o].pop(); t.legend = 'L-DRAGON'; });
+    rejected(/전설/, '전설');
+    set((E, t) => { delete t.legend; E.S.balls[o] = 0; });
+    rejected(/몬스터볼/, '볼 0');
+    set((E) => { E.S.balls[o] = 1; E.S.battle[side === 'A' ? 'ballThrowA' : 'ballThrowD'] = true; });
+    rejected(/이번 라운드/, '같은 라운드 재투척');
+    set((E) => { E.S.battle[side === 'A' ? 'ballThrowA' : 'ballThrowD'] = false; });
+    const w = why(), r = H.act(room, o, { t: 'ball' });
+    ok(w.every((x) => x === null) && r.ok && S0(room).balls[o] === 0, '동종 미보유 · HP 16/100 · 볼 1 · 미투척 → 두 좌석 허용 · 서버 수락(볼 소모)');
+    room._clearClock();
+  }
+  // ===== #316 자기 사망·포획당한 필드 칸 — 자기 좌석 뷰에 alive:false 로 남고 Core synCount 와 일치 · 상대 뷰 노출 없음 =====
+  {
+    const room = startedEco(3161);
+    const mine = S0(room).pieces.filter((p) => p.owner === 0 && p.type === 'minion' && p.rosterId && p.element).slice(0, 2);
+    both(room, (E) => { for (const m of mine) H.byId(E, m.id).alive = false; });
+    const v0 = view(room, 0), v1 = view(room, 1), E0 = room.engines[0];
+    const dead = mine.map((m) => v0.you.pieces.find((p) => p.id === room._alias(m.id)));
+    ok(dead.every((p, i) => p && p.alive === false && p.r === mine[i].r && p.c === mine[i].c && p.rosterId === mine[i].rosterId), '자기 사망 칸: 원래 자리 · 종 · alive:false 로 실린다');
+    const viewS = Object.assign({}, E0.S, { pieces: v0.you.pieces.map((p) => Object.assign({}, p, { placed: true })) });
+    const a = H.withEngine(E0, () => E0.synCount(0, E0.S)), b = H.withEngine(E0, () => E0.synCount(0, viewS));
+    ok(JSON.stringify(a) === JSON.stringify(b) && a.dead === 2, '좌석 뷰 칸으로 센 synCount = 서버 Core synCount (사망 동결 2칸 포함) ' + JSON.stringify(b));
+    ok(!JSON.stringify(v1.units).includes(room._alias(mine[0].id)) && !JSON.stringify(v1.units).includes(room._alias(mine[1].id)), '상대 뷰: 내 사망 칸 미노출(종전 그대로)');
+    const king = v0.you.pieces.find((p) => p.type === 'king'), ally = v0.you.pieces.find((p) => p.type === 'ally');
+    ok([king, ally].every((p) => p && Number.isFinite(p.hp) && Number.isFinite(p.maxHp) && p.maxHp > 0 && Number.isFinite(p.shield)), '자기 왕·동료: 실제 hp/maxHp/shield 실림 (#316 말 정보)');
+    room._clearClock();
   }
 
   // ===== 10. 서버 재시작 · 단절 중 항복 =====
