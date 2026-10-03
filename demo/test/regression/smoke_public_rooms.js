@@ -472,7 +472,9 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
      서버 계약(Jupiter): battle.a/d 양쪽에 atk·def·spd·dodge·crit·statusPct(유한한 실제 값 또는 null) · grade(실제 정수 · 없으면 키 없음) · 내 활성 칸 skills[i].usable(boolean).
      화면 계약: 계산한 위력/피해 범위 없음(0~0 의 자리 자체가 없다) · 내 스킬 = 고정 설명 + 미해금 잠긴 줄 · 상대 스킬은 어디에도 없음 · 상대도 등급/HP/방어막/6스탯/상태 */
   const open=(a,d,o)=>{ const T=inPlay(); T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:3,seat:0,data:mkSeatView(Object.assign({revision:3,state:"IN_PROGRESS",
-    battle:Object.assign({battleId:9,round:1,phase:0,actor:"A",actSeq:0,maxRounds:null,log:[],a:battleSide(a),d:battleSide(d)},o||{})}))})}); return {T,h:$el(T,"overlayBox").innerHTML}; };
+    battle:Object.assign({battleId:9,round:1,phase:0,actor:"A",actSeq:0,maxRounds:null,log:[],a:battleSide(effOf(a)),d:battleSide(effOf(d))},o||{})}))})}); return {T,h:$el(T,"overlayBox").innerHTML}; };
+  /* #316 REVISE3: 전투 6칸은 서버 effectiveStats(적용값)를 그린다 — 아래 기대값(서버가 실은 값 그대로 · null/NaN 은 '—')은 서버가 적용값=기본값으로 실은 경우다 */
+  const effOf=x=>Object.assign({effectiveStats:Object.fromEntries(["atk","def","spd","dodge","crit","statusPct"].filter(k=>k in x).map(k=>[k,x[k]]))},x);
   const T0=inPlay(), W=T0.LEGEND_ROSTER.find(l=>l.key==="witch"), sp=T0.V2_SPECIES["M-F1"], nm=(id,el)=>T0.skillNameKo(id,el);
   const sk=(ids,x)=>ids.map((id,i)=>Object.assign({i,revealed:true,id,name:id,cd:0,usable:true},x&&x[i])); // 서버는 내 활성 칸에 언제나 usable 을 싣는다(room.js _skillsFor)
   const wPow=W.skills.find(id=>T0.SKILLS[id].pow), noRange=h=>!/\d+~\d+/.test(h)&&!/위력 \?/.test(h), desc=id=>"<small>"+T0.SKILLS[id].desc.slice(0,10);
@@ -482,9 +484,11 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
     ok(x.T.S.battle.fa.atk===undefined&&x.h.includes("<b>"+nm(wPow,null)+"</b>")&&noRange(x.h)&&/aria-label="공격력 정보 없음"/.test(x.h)&&!/<b aria-hidden="true">(\?|0)<\/b>/.test(x.h.split('class="bslot slot-me"')[1].split("</ul>")[0]),"P1 전설 본체 · 공격력 누락 = 스탯 칸 '—'(정보 없음) — 0~0 · ? · 0 을 만들지 않는다");
     const y=open({owner:0,type:"minion",rosterId:"L-WITCH",skills:sk(W.skills),atk:32,def:12,spd:13,dodge:0.1,crit:0.05,statusPct:0.25},foe);
     ok(y.T.S.battle.fa.atk===32&&noRange(y.h)&&(T0.SKILLS[wPow].kind==="basic"?y.h.includes('aria-label="위력 '+T0.SKILLS[wPow].pct+'%"'):y.h.includes(desc(wPow)))&&/aria-label="등급 5">★★★★★<\/span>/.test(y.h),"P2 전설 본체 · 서버 공격력 32 — 화면에는 계산 범위 없이 고정 설명 · 전설 ★5");
-    ok(/aria-label="공격력 32"/.test(y.h)&&/aria-label="방어력 12"/.test(y.h)&&/aria-label="속도 13"/.test(y.h)&&/aria-label="회피 10%"/.test(y.h)&&/aria-label="치명타 5%"/.test(y.h)&&/aria-label="상태 부여 확률 25%"/.test(y.h),"P3 내 패널 기본 6스탯 = 서버 값 그대로");
+    ok(/aria-label="공격력 32"/.test(y.h)&&/aria-label="방어력 12"/.test(y.h)&&/aria-label="속도 13"/.test(y.h)&&/aria-label="회피 10%"/.test(y.h)&&/aria-label="치명타 5%"/.test(y.h)&&/aria-label="상태 부여 확률 \+25%p"/.test(y.h),"P3 내 패널 6스탯 = 서버 값 그대로(effectiveStats 없으면 기본값 · #316 REVISE3 💫 는 가산 %p)");
     ok(/aria-label="방어력 7"/.test(y.h)&&/aria-label="치명타 0%"/.test(y.h)&&/aria-label="공격력 16"/.test(y.h),"P4 상대 패널도 서버가 실은 기본 6스탯(진짜 0 은 0%)");
     ok(/id="shtxt-A">0</.test(y.h)&&(y.h.match(/class="bStats"/g)||[]).length===2,"P5 양쪽 패널 = HP · 현재 방어막 한 줄 + 6스탯 칸");
+    const ne=open({owner:0,type:"minion",rosterId:"L-WITCH",skills:sk(W.skills),atk:32,def:12,spd:13,dodge:0.1,crit:0.05,statusPct:0.25,effectiveStats:undefined},foe);
+    ok(ne.T.S.battle.fa.atk===32&&ne.T.S.battle.fa.eff===undefined&&(ne.h.split('class="bslot slot-me"')[1].split("</ul>")[0].match(/aria-label="[^"]+ 정보 없음"/g)||[]).length===6,"P5b #316 서버가 effectiveStats 를 안 실으면 기본값을 적용값처럼 쓰지 않고 6칸 모두 '—'");
     const z=open({owner:0,type:"minion",rosterId:"L-WITCH",skills:sk(W.skills),atk:0,def:null,spd:NaN},foe);
     ok(z.T.S.battle.fa.atk===0&&/aria-label="공격력 0"/.test(z.h)&&/aria-label="방어력 정보 없음"/.test(z.h)&&/aria-label="속도 정보 없음"/.test(z.h)&&noRange(z.h),"P6 진짜 0 은 0 그대로(공격력 0) · null/NaN 은 '—' — 둘을 구분한다");
   }

@@ -140,6 +140,7 @@ function trackWidth(el,name,sink){ el.style=new Proxy({},{set(t,k,v){ if(k==="wi
      회피율 0 은 ① 의 rand() 소비를 바꾸지 않는다. 측정·순서 단언은 그대로다. 보고서 §10. */
   board("pvp"); const aD=first(0,"minion"), dD=first(1,"minion"); H.place(T,aD,8,4); H.place(T,dD,6,4);
   dD.spd=aD.spd; dD.grade=aD.grade; dD.dodge=0;
+  H.synNeutral(T,[aD,dD]); // #235: 무작위 로스터의 속공 시너지 synDodge·synSpd 가 전투 시작(applySynergy)에서 위 회피 0·선턴을 덮지 않게 집계를 0 으로 못 박는다
   T.doMove(aD,7,4);
   let n=0; while(T.fxLocked()&&n++<400) await sleep(10);
   const B=T.S.battle;

@@ -1387,7 +1387,7 @@ class Room {
      남은 시간이 그대로 이어진다("후보마다 30초를 다시 주지 않는다" · Q2=A).
      키는 턴이 바뀔 때만 바뀐다 — 주 행동을 마친 뒤 남은 시간은 그 턴이 끝날 때까지 그 값이다.
      정지: 강제 전투 대상 선택창(그 30초는 아래 _wantPick 이 따로 센다) · 전투가 열려 있는 동안(전투 행동 60초가
-     따로 흐른다) · B08 가방 초과 20초 동안(별개의 시계다) · 단절 중. 멈춘 동안의 남은 시간은 그대로 보존되고
+     따로 흐른다) · B08 가방 초과 30초(#316) 동안(별개의 시계다) · 단절 중. 멈춘 동안의 남은 시간은 그대로 보존되고
      그 자리들이 끝나면 **그 값부터** 이어 흐른다. */
   _wantAct() {
     const T = this.engines && this.engines[0], S = T && T.S;
@@ -1420,7 +1420,7 @@ class Room {
   /* #263 T4 전투 행동 60초 (2026-09-25 CJ) — 싸우기·가방·포획·도망을 고르는 시간. **전투 행동 하나마다** 새로 선다:
      키에 행동 토큰(actSeq)·라운드·단계를 실어 차례가 넘어가면 새 60초가 되고, 같은 행동을 다시 그려도(메뉴 열기·
      개봉 표·재연결) 키가 같아 남은 시간이 그대로 이어진다. 한 턴의 두 번째 전투는 battlesUsed 가 달라 같은 actSeq 여도
-     다른 키다. 단절 중에만 멈춘다 — 재연결 유예 60초·B08 20초와는 끝까지 별개의 시계다(한쪽 만료가 다른 쪽을 부르지 않는다). */
+     다른 키다. 단절 중에만 멈춘다 — 재연결 유예 60초·B08 30초(#316)와는 끝까지 별개의 시계다(한쪽 만료가 다른 쪽을 부르지 않는다). */
   _wantBattle() {
     const T = this.engines && this.engines[0], S = T && T.S;
     if (!S || this.state !== STATES.IN_PROGRESS || !S.battle || S.phase !== 'play') return null;
@@ -1733,8 +1733,12 @@ class Room {
     // 새지 않는다.
     const revealAll = this.state === STATES.FINISHED;
     for (const p of S.pieces) {
-      if (!p.alive || !p.placed) continue;
+      if (!p.placed) continue;
+      /* #316 (2026-10-03 CJ) 자기 사망·포획당한 칸도 alive:false 로 그대로 싣는다 — Core synCount 가 그 칸을 동결해 세므로
+         (오프라인 S.pieces 와 같은 모양) 화면 상점·시너지 기여 목록·집계가 서버와 일치한다. 보드·행동 판정은 Core at()/alivePieces 가
+         이미 거른다. 상대의 사망 칸은 종전처럼 싣지 않는다(노출 확대 없음). */
       if (p.owner === seatIndex) { youPieces.push(this._serializeOwn(T, p)); continue; }
+      if (!p.alive) continue;
       if (!revealAll && !T.visibleTo(seatIndex, p)) continue; // 등급 A — 레코드 자체를 뺀다(종료 리빌 제외)
       units.push(revealAll || p.revealed === true ? this._serializeKnownOpponent(p) : this._serializeUnknownOpponent(p));
     }
@@ -1882,7 +1886,7 @@ class Room {
   /* 자기 시한 입력의 남은 시간(ms). 단절 중에는 멈춘 값 그대로다.
      #293 경기 전(SETUP)은 방의 준비 시계 하나다 — 두 좌석이 같은 deadline(서버 epoch ms)을 받고 serverNow 로 기기 시계를 보정한다.
      준비·단절로 멈추지 않으므로 running 은 언제나 true 다.
-     #263 한 좌석이 여러 시계에 걸릴 수 있으므로(전투 행동 60초 + 멈춰 있는 행동 30초, B08 20초 + 멈춰 있는 행동 30초)
+     #263 한 좌석이 여러 시계에 걸릴 수 있으므로(전투 행동 60초 + 멈춰 있는 행동 30초, B08 30초 + 멈춰 있는 행동 30초)
      **지금 흐르고 있는 것**을 보여 준다 — 멈춘 시계뿐이면 그중 첫 번째다. key 는 종전처럼 앞 토막만 나가고
      (shop·place·bag·act·battle) 진행 지점·좌석은 싣지 않는다. */
   _clockView(seatIndex) {
@@ -1899,7 +1903,7 @@ class Room {
 
   /* #294 공개 보드 시계(표시 전용) — 방에 하나인 대상 선택 30초(_pick)·행동 30초(_act)를 **읽기만** 해 양 좌석에 같은 값을 준다.
      좌석 인자가 없다: 고르기 규칙은 위 _clockView 에서 소유 좌석 거름과 _bclock·_clock[좌석]만 뺀 것이다.
-     key·owner 와 전투 60초·정기 상점 180초(#295)·B08 20초는 싣지 않는다. 시계를 세우거나 _tick 을 부르지 않으므로
+     key·owner 와 전투 60초·정기 상점 180초(#295)·B08 30초(#316)는 싣지 않는다. 시계를 세우거나 _tick 을 부르지 않으므로
      몇 번을 만들어도 마감은 그대로이고, serverNow·흐르는 중의 leftMs 만 만드는 순간의 값이다. */
   _boardClockView() {
     if (this.state !== STATES.IN_PROGRESS) return null;
@@ -2151,6 +2155,19 @@ class Room {
            표시 전용이다: 피해 판정은 서버 Core 가 f 로 직접 내고 이 값은 어떤 판정 경로로도 되돌아오지 않는다.
            보드 뷰(_serializeKnownOpponent)에는 여전히 싣지 않는다 — 전투가 끝나 battle 이 사라지면 함께 사라진다. */
         atk: num(f.atk), def: num(f.def), spd: num(f.spd), dodge: num(f.dodge), crit: num(f.crit), statusPct: num(f.statusPct),
+        /* #316 (2026-10-03 CJ REVISE) 실제 적용값 6칸 — 위 기본값은 그대로 두고 **합계만** 따로 싣는다(양 좌석·양 전투원).
+           식은 서버 Core 판정과 같다: atk=effAtk(×(1+synAtk) 백분율) · def=def+synDef(가산 점수, 피해 감소 50% 상한은 타격 시점) ·
+           spd=effSpd(+spdBuff·synSpd) · dodge=effEvade(+synDodge·evadeBuff−evadeDown, 0~40%) · crit=critP(상한 50%) ·
+           statusPct=statusPct+synStatusPct(가산 %p — 최종 확률 아님: 기술마다 min(1, 표기+이 값), 모래 폭풍 ×0.5).
+           기본값이 없거나 비유한이면 null(대체값 없음). syn*·evadeBuff·spdBuff 원본 키와 출처는 싣지 않는다. */
+        effectiveStats: {
+          atk: Number.isFinite(f.atk) ? num(T.effAtk(f)) : null,
+          def: Number.isFinite(f.def) ? num(f.def + (f.synDef || 0)) : null,
+          spd: Number.isFinite(f.spd) ? num(T.effSpd(f)) : null,
+          dodge: Number.isFinite(f.dodge) ? num(T.effEvade(f)) : null,
+          crit: Number.isFinite(f.crit) ? num(Math.min(0.5, f.crit + (f.synCrit || 0))) : null,
+          statusPct: Number.isFinite(f.statusPct) ? num(f.statusPct + (f.synStatusPct || 0)) : null,
+        },
         /* #296 (2026-10-02 CJ 정정) 전투원 이미지 옆 등급 — **지금 싸우는 실제 전투원 f** 의 등급을 양 좌석에 싣는다(대리 출전이면
            cap·가방 개체의 등급이지 보드 말 piece 의 등급이 아니다). 엔진 값이 정수일 때만 그 값, 아니면 null — 왕·동료·등급 없는
            개체에 하수인 등급을 지어내지 않는다. 보드 뷰 경계는 그대로다(공개된 말만 _serializeKnownOpponent 가 싣는다). */

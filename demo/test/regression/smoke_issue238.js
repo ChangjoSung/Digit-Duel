@@ -95,7 +95,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
       const all=T.V2_SPECIES[T.ROSTER[0].id];
       eq([...b.matchAll(/<li class="lock"><span class="uhSk"><b>([^<]+)<\/b><span class="uhChip" role="img" aria-label="잠김 — 등급 (\d) 필요">🔒 (★+) 필요<\/span>/g)].map(m=>[m[1],+m[2],m[3].length]),[[T.SKILLS[all[2]].ko,3,3],[T.SKILLS[all[3]].ko,4,4]],"C2l-2 ★2 가방 하수인: ★3·★4 스킬은 잠긴 줄(🔒 ★N 필요 · 종 표 순서)");
       ok(/id="synHelpT">[^<]+ <span class="stars" aria-label="등급 2">★★<\/span>/.test(b)&&u.statusPct===0&&u.shieldStartPct===0&&!/명중|남은 쿨타임/.test(b)&&/<small aria-hidden="true">상태 부여<\/small>/.test(b)&&/<small aria-hidden="true">시작 방어막<\/small>/.test(b)
-        &&b.indexOf('class="tags"')<b.indexOf('class="uhTop"')&&/class="uhFace">[\s\S]*?<\/span><ul class="uhStats"[\s\S]*?<\/ul><\/div><ul class="uhRows">/.test(b)
+        &&b.indexOf('class="tags"')<b.indexOf('class="uhTop"')&&/class="uhFace[^"]*">[\s\S]*?<\/span><ul class="uhStats"[\s\S]*?<\/ul><\/div><ul class="uhRows">/.test(b)
         &&sk.length===2&&sk.every((id,i)=>b.includes(`<li><span class="uhSk"><b>${T.SKILLS[id].ko}</b><span class="stars" aria-label="등급 ${i+1}부터">${"★".repeat(i+1)}</span>`)&&b.includes(`aria-label="위력 ${T.SKILLS[id].pct}%"`)&&b.includes(`aria-label="쿨타임 ${T.SKILLS[id].cd}"`))
         &&!b.includes(T.SKILLS[sk[0]].desc)&&b.includes(`<small>${T.SKILLS[sk[1]].desc}</small>`)&&b.includes(`<small>${T.SKILLS[all[3]].desc}</small>`)&&!/uhTabs|<button(?![^>]*acctX)/.test(b),"C2l 가방 하수인 설명 = 이름 ★등급 · 그림 옆은 능력치 칸뿐(아이콘은 위 · 정보 줄은 아래) · 짧은 이름표 · 스킬(SKILLS pct · cd · 종 스킬표 순서 = 열리는 등급 · 글은 desc 원문, 기본기는 글 없음 · 잠긴 줄도 글) — 탭 · 명령 없음"); }
     T.ui238.synHelpClose(false);
@@ -469,7 +469,7 @@ function pvePlay(seed){ const T=pveSetup(seed);
   T.ART.loaded.clear();
   /* 5 전투 우상단 · 6 시너지 안내 */
   const ui=fs.readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8");
-  ok(/class="bhead"><h2[^\n]*<\/h2>\$\{battleSynChips\(cP\.owner,cF,B,"k"\)\}<\/div>/.test(ui)&&/battleSynChips\(cP\.owner,cF,B,"a"\)\}<\/div>/.test(ui)&&!/fscroll">\$\{battleSynChips/.test(ui),"K31 시너지 칩은 전투창 제목 줄 오른쪽(#296: 왕국·개인 = 차례 줄 · 아키타입 = 라운드 줄) · HP 카드 문장 삭제");
+  ok(/class="bhead"><h2[^\n]*<\/h2>\$\{synTogHtml\}<\/div>/.test(ui)&&/synAll=battleSynChips\(cP\.owner,cF,B\)/.test(ui)&&!/battleSynChips\(cP\.owner,cF,B,"a"\)/.test(ui)&&!/fscroll">\$\{battleSynChips/.test(ui),"K31 시너지 칩은 전투창 차례 줄 우상단 토글 하나(#316 ③ — 왕국·개인·아키타입을 한 줄로 펼침) · HP 카드 문장 삭제");
   const U=T.ui238;
   eq([U.synTier("fire",1),U.synTier("fire",5),U.synTier("fire",9),U.synTier("def",6),U.synTier("std",6),U.synTier("atk",1)],[-1,1,3,3,4,-1],"K32 단계 경계 = V2_KINGDOM_STEPS · V2_ARCH_STEPS(배열 길이 상한)");
   const fk=T.V2_KINGDOM_STAGES.fire[1], st=T.V2_ARCH_SYN.std[0];

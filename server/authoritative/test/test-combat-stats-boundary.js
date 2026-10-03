@@ -278,6 +278,34 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
     check(room, '1회 칸');
     if (room._clearClock) room._clearClock();
   }
+  /* #316 (2026-10-03 CJ REVISE) effectiveStats — 기본값 옆에 서버 Core 식 그대로의 실제 적용 합계. 포자 요정 사진 재현:
+     spd14·회피10%·💫0 + 속공(2)(속도+1·회피+3%p) + 지속(2)(💫+5%p) → 15 · 13% · +5%p. 기본값·엔진 상태는 그대로, 원본 가산칸은 회선에 없다. */
+  {
+    const EFF = ['atk', 'def', 'spd', 'dodge', 'crit', 'statusPct'];
+    const room = battle('r-316-eff'), T = room.engine;
+    both(room, (E) => {
+      Object.assign(E.S.battle.fa, { atk: 20, def: 8, spd: 14, dodge: 0.10, crit: 0.05, statusPct: 0,
+        synAtk: 0.12, synDef: 12, synSpd: 1, synDodge: 0.03, synCrit: 0.10, synStatusPct: 0.05 });
+      Object.assign(E.S.battle.fd, { dodge: 0.30, crit: 0.45, synDodge: 0.12, synCrit: 0.25, evadeBuff: 0.05 });
+    });
+    const before = lockstepDigest(T);
+    for (const seat of [0, 1]) {
+      const b = room.toSeatView(seat).battle, e = b.a.effectiveStats, at = `#316 좌석 ${seat}`;
+      ok(b.a.spd === 14 && b.a.dodge === 0.10 && b.a.statusPct === 0 && b.a.atk === 20 && b.a.def === 8, `${at} 기본 6스탯은 그대로(기본값)`);
+      ok(e.spd === 15 && Math.round(e.dodge * 100) === 13 && Math.round(e.statusPct * 100) === 5, `${at} 포자 요정 재현 15 · 13% · +5%p: ${JSON.stringify(e)}`);
+      ok(Math.abs(e.atk - 22.4) < 1e-9 && e.def === 20 && Math.abs(e.crit - 0.15) < 1e-9, `${at} 공격 ×(1+12%)=22.4 · 방어 8+12 가산 · 치명 5+10%p`);
+      ok(e.dodge === T.effEvade(T.S.battle.fa) && e.atk === T.effAtk(T.S.battle.fa) && e.spd === T.effSpd(T.S.battle.fa), `${at} Core effEvade/effAtk/effSpd 와 같다`);
+      ok(b.d.effectiveStats.dodge === 0.40 && b.d.effectiveStats.crit === 0.5, `${at} 상한: 회피 40% · 치명 50% (${JSON.stringify(b.d.effectiveStats)})`);
+      ok(EFF.every((k) => k in b.a.effectiveStats && k in b.d.effectiveStats) && Object.keys(e).length === 6, `${at} 두 전투원 모두 정확히 6칸`);
+      const opp = b.a.owner === seat ? b.d : b.a, js = JSON.stringify(opp);
+      ok(!/"syn(Def|Spd|Dodge|Crit|StatusPct|El)"|"evadeBuff"|"spdBuff"/.test(JSON.stringify(b)) && js.indexOf('"syn') === -1, `${at} 원본 가산칸·일시 효과 키는 어느 전투원에도 없다`);
+    }
+    ok(lockstepDigest(T) === before && T.S.battle.fa.spd === 14 && T.S.battle.fa.synSpd === 1, '#316 직렬화가 엔진 상태를 바꾸지 않는다');
+    both(room, (E) => { delete E.S.battle.fa.spd; E.S.battle.fa.dodge = NaN; });
+    const n = room.toSeatView(0).battle.a.effectiveStats;
+    ok(n.spd === null && n.dodge === null && n.atk !== null, '#316 기본값이 없거나 비유한이면 합계도 null(대체값 없음)');
+    if (room._clearClock) room._clearClock();
+  }
 }
 
 // ===== 4) 락스텝 감지력 — 새 규칙 필드가 어긋나면 요약이 반드시 달라진다 =====
