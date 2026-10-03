@@ -176,6 +176,12 @@ function battle(seed){ const T=ecoPlay(seed);
   const rnd=h=>h.slice(h.indexOf('class="bhead bround"'),h.indexOf('id="bstage"'));
   ok(count(html(),/class="cycBtn"/g)===1&&/onclick="battleCycleOpen\(this\)"/.test(rnd(html()))&&/aria-label="상성표 보기"/.test(rnd(html())),"R3-③a 전투: 라운드 줄 오른쪽 상성표 버튼 하나(이름 있음)");
   B.firstSide=B.firstSideR1="D"; T.battleModal(); ok(count(rnd(html()),/class="cycBtn"/g)===1&&T.wsLog.length===n0,"R3-③b 상대 차례에도 같은 버튼 · 송신 0");
+  /* R3-③e 바깥 누름(공용 click 캡처): 상성표(.cyc)만 연 버튼으로 초점 복귀 · 다른 안내 창은 종전(복귀 없음). battleCycleOpen = 공용 창 + .cyc 라 같은 틀로 본다 */
+  const U=T.ui238, D=T.document, cyc=D.createElement("button"), out=D.createElement("button"), ev=t=>({target:t,stopPropagation(){},preventDefault(){}});
+  U.idHelp(0,0,cyc); U.SYNHELP.el.classList.add("cyc"); out.focus(); D.dispatch("click",ev(out));
+  ok(!U.SYNHELP.el&&D.activeElement===cyc&&T.wsLog.length===n0,"R3-③e 상성표 바깥 누름 = 닫고 상성표 버튼으로 초점 복귀 · 송신 0");
+  U.idHelp(0,0,cyc); out.focus(); D.dispatch("click",ev(out));
+  ok(!U.SYNHELP.el&&D.activeElement===out,"R3-③f 다른 안내 창의 바깥 누름은 종전 그대로(초점 복귀 없음)");
 }
 {
   const T=ecoPlay(323), S=T.S;

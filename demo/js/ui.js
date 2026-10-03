@@ -977,7 +977,7 @@ function renderBoardInfo(){
     +`<span class="hudStat" aria-label="전투 ${S.battlesUsed}/2"><small>전투</small><span>${gi("battle")}${S.battlesUsed}/2</span></span></div>`
     +`<div class="sideCol">${S.eco?synRailHtml(p):""}${infoSlotHtml(p,mineTurn)}</div>`+cycleColHtml();
 }
-/* #316 CJ REVISE3 ③ 속성 상성 — 순서는 BEATS 한 곳에서 만든다(규칙 사본 · 배율 없음). 읽기 전용 · 입력 · 송신 0.
+/* #316 CJ REVISE3 ③ 속성 상성 — 순서는 BEATS 한 곳에서 만든다(규칙 사본 없음 · 배율은 BAL 그대로). 읽기 전용 · 입력 · 송신 0.
    elemCycle() = 불 → 그 불을 이기는 속성 → … → 다시 불 = [불, 물, 번개, 땅, 풀, 불] */
 function elemCycle(){ const o=["fire"]; for(let i=0;i<5;i++) o.push(Object.keys(BEATS).find(k=>BEATS[k]===o[o.length-1])||"fire"); return o; }
 const CYCLE_SR=()=>{ const o=elemCycle(); return `속성 상성 (이기는 쪽 → 지는 쪽): ${o.slice(1).map((w,i)=>`${ELEM_KO[w]} → ${ELEM_KO[o[i]]}`).join(", ")}`; };
@@ -993,8 +993,8 @@ function cycleHelpHtml(meF,opF){
   const nodes=pos.map(k=>{ const [x,y]=P(k);
     return `<span class="cycNode${k===me?" me":""}${k===op?" op":""}" style="left:${(x/2).toFixed(1)}%;top:${(y/2).toFixed(1)}%">${gi(k)}<b>${ELEM_KO[k]}</b>${k===me?`<i class="tag me">나</i>`:""}${k===op?`<i class="tag op">상대</i>`:""}</span>`; }).join("");
   return `<div class="acctHead"><h3 id="synHelpT">상성표</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
-    <div class="cycMap" role="img" aria-label="${escAttr(`${CYCLE_SR()} · 나: ${who(meF)} · 상대: ${who(opF)}`)}"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><marker id="cycArw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs><g>${arrows}</g></svg>${nodes}</div>
-    <small>화살표: 이기는 속성 → 지는 속성 · <b class="tagT me">나</b> ${who(meF)} · <b class="tagT op">상대</b> ${who(opF)}</small>`;
+    <div class="cycMap" role="img" aria-label="${escAttr(`${CYCLE_SR()} · 유리 ×${BAL.advMult} · 불리 ×${BAL.disMult} · 무속성 ×1.0 · 나: ${who(meF)} · 상대: ${who(opF)}`)}"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><marker id="cycArw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs><g>${arrows}</g></svg>${nodes}</div>
+    <small>화살표: 이기는 속성 → 지는 속성<br>유리 ×${BAL.advMult} · 불리 ×${BAL.disMult} · 무속성 ×1.0<br><b class="tagT me">나</b> ${who(meF)} · <b class="tagT op">상대</b> ${who(opF)}</small>`;
 }
 /* #296 CJ REVISE1(2026-10-03): 우측 시너지 열 아래 **늘 같은 자리 · 같은 크기 · 같은 글자**의 버튼. 내 차례에 고른 살아 있는(놓인) 내 말일 때만 켜지고(읽기 전용 · 전송 0 — unitHelpPiece),
    그 밖에는 꺼진 채 자리를 지킨다. 상대 차례의 내 말 탭은 종전대로 바로 설명 창(ownInfoTarget). 종 이름 · HP 는 접근성 이름에만.
@@ -1501,7 +1501,7 @@ if(typeof document!=="undefined"&&document.addEventListener){
   },true);
   /* #294: 바깥 탭은 **닫기만** 한다 — 종전 pointerdown 닫기는 같은 탭의 click 이 뒤의 보드 칸 · 행동 버튼 · 판매/교체/구매에 그대로 떨어졌다.
      click 을 캡처 단계에서 삼키므로 대상의 onclick 까지 가지 않는다(창마다 따로 막지 않는다 — 틀 한 곳) */
-  document.addEventListener("click",e=>{ const d=SYNHELP.el; if(d&&!d.contains(/** @type {Node} */(e.target))){ e.stopPropagation(); e.preventDefault(); synHelpClose(false); } },true);
+  document.addEventListener("click",e=>{ const d=SYNHELP.el; if(d&&!d.contains(/** @type {Node} */(e.target))){ e.stopPropagation(); e.preventDefault(); synHelpClose(d.classList.contains("cyc")); } },true); // #316 상성표만 연 버튼(cycBtn)으로 초점 복귀 — 다른 안내 창은 종전대로
 }
 if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("keydown",e=>{ // #294 가방 창(서랍) Esc = 그 창만 닫고 가방 버튼으로 포커스 복귀 (안내 창이 열려 있으면 위 캡처 핸들러가 먼저 그것만 닫는다)
   if(e.key!=="Escape"||!UI.drawer||uiOverlayOpen()||EMO.open) return;
