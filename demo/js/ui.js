@@ -1174,7 +1174,7 @@ function emoteSync(){
   try{ L.classList.toggle("inRoom",!!cl); L.style.top=cl&&cl.getBoundingClientRect?Math.round(cl.getBoundingClientRect().top)+"px":""; }catch(e){}
   /* 말판 상단 한 줄의 감정표현 자리(.emoSlot) 실제 오른쪽 끝에 맞춘다 — 말판 안쪽 스크롤 막대가 생기면 ⚙·자리가 그 폭만큼 왼쪽으로 가므로 고정 px 로는 ⚙와 겹친다. 자리가 없으면 CSS 기본값 */
   /* #295 CJ REVISE: 정기 상점 시트가 열려 있으면 그 상단 한 줄의 자리(.shopTop .emoSlot)가 우선 — 같은 버튼 하나가 그 자리에 놓인다(위쪽 --emoT 는 상점 규칙만 읽는다) */
-  try{ const sl=document.querySelector?document.querySelector("#overlay:not(.hidden) .shopTop .emoSlot,#overlay:not(.hidden) .battleTop .emoSlot")||document.querySelector("#boardInfo .emoSlot"):null, r=sl&&sl.getBoundingClientRect?sl.getBoundingClientRect():null, lr=r&&r.width?L.getBoundingClientRect():null;
+  try{ const sl=document.querySelector?document.querySelector("#overlay:not(.hidden) .shopTop .emoSlot,#overlay:not(.hidden) .battleTop .emoSlot")||document.querySelector("#boardInfo .emoSlot,.flowHead .emoSlot"):null, r=sl&&sl.getBoundingClientRect?sl.getBoundingClientRect():null, lr=r&&r.width?L.getBoundingClientRect():null;
     L.style.setProperty("--emoR",lr?Math.round(lr.right-r.right)+"px":""); L.style.setProperty("--emoT",lr?Math.round(r.top-lr.top)+"px":""); }catch(e){}
   const set=/** @type {HTMLFieldSetElement} */($("emoteSet"));
   if(!set.innerHTML) set.innerHTML=EMOTES.map(([id,e,ko])=>`<button type="button" data-emote="${id}" onclick="emoteSend('${id}')">${e} ${ko}</button>`).join("");
@@ -1948,7 +1948,7 @@ function prepClockStart(){
   if(NET.mode||!fxLive()||PREPCLK.g===S||isAI(S.setupPlayer)) return;   // 같은 경기의 다시 그리기·차례 넘김 = 마감 유지 · 사람 좌석이 있을 때만
   prepClockStop(); PREPCLK.g=S; PREPCLK.dl=Date.now()+ECO.prepSec*1000;
   PREPCLK.t=setTimeout(prepClockFire,ECO.prepSec*1000);
-  PREPCLK.iv=setInterval(()=>{ const el=$("prepClock"); if(el) el.textContent=turnClockText("prep"); },500);
+  PREPCLK.iv=setInterval(prepClockPaint,500);
 }
 function prepClockFire(){
   const g=PREPCLK.g; clearInterval(PREPCLK.iv); PREPCLK.iv=PREPCLK.t=null;
@@ -2054,7 +2054,8 @@ function turnClockLate(kind){
   return !!c&&c.expired;
 }
 function turnClockTick(){
-  for(const k of [["prepClock","prep"],["actClock","act"],["battleClock","battle"]]){ const el=$(k[0]); if(el) el.textContent=turnClockText(k[1]); }
+  prepClockPaint();
+  for(const k of [["actClock","act"],["battleClock","battle"]]){ const el=$(k[0]); if(el) el.textContent=turnClockText(k[1]); }
   /* 온라인에서 서버 마감이 지나는 순간 — 푸시가 오기 전에도 조작 버튼을 그 자리에서 잠근다(표시 간격이 알아챈다).
      지나간 뒤 한 번만 다시 그린다: render → turnClockSync → 여기로 돌아와도 late 가 그대로라 되풀이되지 않는다. */
   if(!NET.publicMode) return;
@@ -2262,6 +2263,7 @@ function flowHeadHtml(p,btn){
   const clock=`<span class="badge clk" id="prepClock" role="timer">${turnClockText("prep")}</span>`; // 공통 180초 — 준비 완료 뒤에도 계속 보인다
   return `<header class="flowHead">`+topBarHtml(p,clock
     +`<span class="badge coin" aria-label="재화 ${S.eco.coins[p]}">${gi("coin","cn")} ${S.eco.coins[p]}</span>`
+    +(emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:"") // #313 CJ: 시작 상점도 턴 상점과 같은 ⚙ 왼쪽 자리
     +gearHtml(uiPubPrestart()?`<button type="button" class="danger" onclick="uiLeaveConfirm()">방 나가기</button>`:`<button type="button" class="danger" onclick="uiBack()">로비로 돌아가기</button>`))
     +`<div class="flowBar">`
     +`<ol class="flowSteps" aria-label="진행 단계 — ${nm(0)}: ${STEP[my]}${op>=0?` · ${nm(1)}: ${STEP[op]}`:""}">${STEP.map((t,i)=>`<li${i===my?` class="cur" aria-current="step"`:i<my?` class="past"`:""}><span class="mks" aria-hidden="true">${i===my?`<span class="mk me">${mk(0)}</span>`:""}${i===op?`<span class="mk op">${mk(1)}</span>`:""}</span><span><b>0${i+1}</b> ${t}</span></li>`).join("")}</ol>${btn}</div>`
@@ -2304,10 +2306,16 @@ function shopClockStart(p){
 /* #295 CJ REVISE 후속: 정기 상점 상단 한 줄(시계 · 코인 · 이모티콘 · ⚙)에 들어가게 시트의 시계 칸(#shopClock)만 짧게 그린다 — 온라인 · 오프라인 tick 이 같이 쓴다.
    값은 shopClockText 와 같은 출처(온라인 = 서버 시계 netClockMs · 오프라인 = 이 좌석 SHOPCLK 마감). 보이는 글자는 초 숫자뿐이고 ⏱/⏸ · '초'는 폭에 따라 CSS(.cmp · .pz)가 붙인다.
    전체 문장(초 · 정지 · 확인 중)은 aria-label. 온라인에서 서버 시계가 없으면 숫자를 지어내지 않고 '…', 오프라인에서 시계가 없는 좌석(AI · 가림)은 종전처럼 빈 칸 */
-function shopClockPaint(p){ const el=$("shopClock"); if(!el) return; const pub=NET.publicMode, c=pub?NET.ecoClock:null;
-  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000)):null, pz=!!c&&!c.running;
-  el.textContent=sec!==null?String(sec):pub?"…":"";
-  try{ if(sec===null&&!pub) el.removeAttribute("aria-label"); else el.setAttribute("aria-label",sec===null?"남은 시간 확인 중":`남은 시간 ${sec}초${pz?" · 정지":""}`); }catch(e){}
+function shopClockPaint(p){ const pub=NET.publicMode, c=pub?NET.ecoClock:null;
+  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000)):null;
+  clockPaint($("shopClock"),sec,pub?"…":"",!!c&&!c.running); }
+/* #313 CJ: 시작 상점 상단 한 줄도 이모티콘 자리를 받는다 — 준비 시계(#prepClock)를 정기 상점 시계와 같은 짧은 모양으로. 값은 turnClockText("prep") 와 같은 출처, 시계가 없으면 종전처럼 빈 칸 */
+function prepClockPaint(){ const pub=NET.publicMode, c=pub&&NET.ecoClock&&NET.ecoClock.key==="prep"?NET.ecoClock:null;
+  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):PREPCLK.g===S&&PREPCLK.dl&&S.phase==="setup"?Math.max(0,Math.ceil((PREPCLK.dl-Date.now())/1000)):null;
+  clockPaint($("prepClock"),sec,"",!!c&&!c.running); }
+function clockPaint(el,sec,none,pz){ if(!el) return;
+  el.textContent=sec!==null?String(sec):none;
+  try{ if(sec===null&&!none) el.removeAttribute("aria-label"); else el.setAttribute("aria-label",sec===null?"남은 시간 확인 중":`남은 시간 ${sec}초${pz?" · 정지":""}`); }catch(e){}
   try{ el.classList.toggle("cmp",sec!==null); el.classList.toggle("pz",pz); }catch(e){} }
 function shopClockStop(){ clearTimeout(SHOPCLK.t); clearInterval(SHOPCLK.iv); SHOPCLK.t=SHOPCLK.iv=SHOPCLK.key=null; SHOPCLK.dl=0; }
 function shopClockText(p){ if(NET.publicMode) return netClockText(); return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000))}초`:""; }
