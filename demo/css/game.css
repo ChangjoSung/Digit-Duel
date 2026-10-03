@@ -1138,7 +1138,7 @@ body:has(#emoteLayer.inRoom:not(.hidden)) .waitScreen .chatLock{margin-right:58p
 #emoteLayer.inRoom #emoteBubs{top:-40px;}
 /* 4) S01 왕 · 공격 동료 · 방어 동료 — 말 그림 + 속성 5, 선택 = 금색 테두리 */
 .shopSheet .leadRow{flex-wrap:nowrap; align-items:center;}
-.shopSheet .leadRow .leadFace{flex:0 0 44px; width:44px; height:44px; display:grid; place-items:center; font-size:26px; border-radius:10px; background:#06102a; border:2px solid #2a4f98;}
+.shopSheet .leadRow .leadFace{flex:0 0 44px; width:44px; height:44px; display:grid; place-items:center; font-size:26px; border-radius:10px; background:#06102a; outline:2px solid #2a4f98; outline-offset:-2px;} /* #316 Saturn REVISE a74af9e: 테두리를 안쪽 outline으로 — overflow:hidden이 border 안쪽(40px)으로 정보 버튼 클릭 영역을 자르지 않게(실제 44×44) */
 .shopSheet .leadRow .leadFace img{width:40px; height:40px;}
 .shopSheet .leadRow button{flex:1 0 44px; min-width:44px; padding:0;} /* #316 Saturn REVISE R2: 시작 · 턴 상점 공통 — 속성 버튼 5개는 어느 폭에서도 44px 이상 */
 .shopSheet .leadRow button[aria-pressed="true"]{opacity:1; border:3px solid var(--gold1); box-shadow:0 0 10px #ffd66b88; background:#1b3a78;}
@@ -1288,7 +1288,7 @@ button.uCard:focus-visible,.trayItem:focus-visible{outline:3px solid #fff; outli
 .uCard.lead .leadFace{display:grid; place-items:center;} .uCard.lead .leadFace img{width:40px; height:40px; image-rendering:auto;}
 .uCard.lead{grid-template-areas:"tg tg" "ic ic" "nm nm" "hp hp";} .uCard.lead .tags{justify-self:end;} /* #316 ⑥ 왕 · 동료 카드도 HP 줄 */
 .shopSheet .leadRow .leadFace{position:relative; overflow:hidden;} .leadRow .leadFace .faceBtn{display:grid; place-items:center; width:100%; height:100%; cursor:pointer;}
-.leadRow .leadFace .hp{position:absolute; left:0; right:0; bottom:0; font-size:8px; line-height:11px; letter-spacing:-.3px; text-align:center; white-space:nowrap; color:#fff; background:#06102ad9; pointer-events:none;} .leadRow .leadFace .hp .gi{font-size:7px;} /* #316 ⑥ 그림 아래 띠 = 실제 HP(보드 말 HP 알약과 같은 어두운 바탕) */
+.leadRow .leadFace .hp{position:absolute; left:2px; right:2px; bottom:2px; border-radius:0 0 8px 8px; font-size:8px; line-height:11px; letter-spacing:-.3px; text-align:center; white-space:nowrap; color:#fff; background:#06102ad9; pointer-events:none;} .leadRow .leadFace .hp .gi{font-size:7px;} /* #316 ⑥ 그림 아래 띠 = 실제 HP(보드 말 HP 알약과 같은 어두운 바탕) */
 .shopSheet .slotGrid,.shopSheet .slotGrid.bag,.swapGrid,.synCon{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px;}
 .slotGrid .uSlot.empty{min-height:92px; display:grid; place-items:center; font-size:26px; color:#6f86b8; background:#0a173380; border:2px dashed #2a4f98; border-radius:8px;}
 .swapGrid{margin:8px 0 4px;} .swapGrid .uSlot{min-height:112px;}

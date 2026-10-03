@@ -81,3 +81,14 @@
 **대표 캡처 교체**(`media/`, 배너 등 FX 큐가 빈 뒤 촬영 · 게임 동작 무변경): `info-king-shield-320.png`(20턴 상점 위 왕 정보 창 HP 73/100 · 현재 방어막 12), `battle-pc.png`(1280 · 포획 사유 `이미 가진 하수인` · 토글 펼침), 그리고 레이아웃이 바뀐 `s01-320.png` · `turnshop-lead-320.png`(왕·동료 속성 줄 44px). 캡처용 페이지 조작: 정적 서버라 계정 확인을 페이지 안에서만 `AUTH.state` 우회, 전투는 회귀 하네스와 같은 방법으로 말 배치. 본인 탭만 열고 닫음(PD Render 탭 · 8091/PID22708 · 8084/PID5012 무변경, 새 서버 0).
 
 **미해결 · 한계**: Saturn 재검수 · 새 HEAD CI · CJ 플레이 QA 미실행. 실제 안드로이드 기기 미확인(320/390 뷰포트 실측만).
+
+## 7. Saturn REVISE 2차 — 말 정보 그림 클릭 영역 (2026-10-03 · 같은 미커밋 트리 · 기준 HEAD `a74af9e`)
+
+판정(자체 검증): **수정 완료 · 미커밋**. Mars 자체 검증이며 Saturn 재검수 PASS가 아닙니다. 근거: `artifacts/.../Saturn-REVISE-a74af9e.md`. 실행: Claude `claude-opus-5-5` · high · `--dangerously-skip-permissions` · Ponytail full. Git · 서버/Core · Notion/GitHub 쓰기 0.
+
+- **원인**: `.shopSheet .leadRow .leadFace`(44×44)의 `border:2px` + `overflow:hidden` → 안쪽 `.faceBtn`(44×44)이 padding box 40×40으로 잘림. 테두리 2px과 오른쪽·아래 2px 띠는 정보 진입이 안 되고, 320에서 오른쪽 끝 점은 옆 속성 버튼에 맞음(ba916ba부터 같은 CSS).
+- **최소 변경**(`demo/css/game.css` 두 줄 · JS · markup 0): 그림 칸 `border:2px solid #2a4f98` → `outline:2px solid #2a4f98; outline-offset:-2px`(같은 자리 · 같은 색, 레이아웃에 영향 없음 → `.faceBtn`이 테두리 상자 전체 44×44를 채움). 위치를 잡은 HP 띠가 outline 위에 그려지므로 `.leadRow .leadFace .hp`를 `left/right/bottom:2px` + 아래 모서리 8px로 바꿔 종전처럼 테두리 안쪽에 둠(`pointer-events:none` 그대로).
+- **실측**(Orca 내장 브라우저 · 본인 탭 · PD 8091 재사용 · 같은 출처 iframe 320/390/1280 · 오프라인 PVE · S01 + 20턴 상점 모달, 그림 칸 3개씩): `elementFromPoint` 0.25px 스캔 → 모든 칸의 frame 44×44 = faceBtn 44×44(오프셋 0,0), 적중 범위 [-0.75, 43.75](Saturn 측정과 같은 0.75px 좌표 편향 · 종전 40.75), **둥근 모서리 도형 안 미적중 0**. 오른쪽(43.5,22) · 아래(22,43.5) · 왼쪽 · 위 0.5px 점 클릭 → 모두 faceBtn · 정보 창(`.uhRows`) 열림, 왕·동료 속성/선택 무변경, 코인 무변경, `dispatchCoreAction`/`netAction` 호출 0, Esc로 닫힘. 오른쪽 끝 바깥은 faceBtn 미적중(속성 버튼 침범 0).
+- **유지 확인**: 속성 버튼 15개 S01/턴 320 44.59×44 · 390 51/54×44 · PC 59.39/62.39×44, 행 clientWidth=scrollWidth, 문서 · 모달 가로 넘침 0, 턴 상점 속성 버튼 오른쪽 끝 ≤ 시너지 열 왼쪽(320 274/274 · 390 338/342 · PC 804/808). 320 확대 캡처로 테두리 링 · HP 띠 모양이 종전과 같음을 직접 확인 → 시각이 같아 `media/` 새 이미지 · 교체 0.
+- **검사**: CSS 전용이라 37 회귀 · 서버 · typecheck · 전체 CI는 재실행하지 않음(지시). 실제 렌더 hit 스캔 2회(1회차 뒤 HP 띠 겹침을 발견해 고친 뒤 최종 CSS로 1회) + 턴 모달 시너지 열 측정 1회. 본인 탭만 열고 닫음 · 8091(PID 16448/부모 22708) · 8084(PID 5012) · Render 탭 무변경.
+- **미검증**: 키보드 포커스 링(`.faceBtn:focus-visible`)은 프로그램 포커스로 `:focus-visible`가 켜지지 않아 실제 렌더에서 확인하지 못함(Chrome 그리기 순서상 자식 outline이 부모 outline 위). 실제 안드로이드 터치 · Saturn 재검수 · 새 HEAD CI · CJ 플레이 QA 미실행.
