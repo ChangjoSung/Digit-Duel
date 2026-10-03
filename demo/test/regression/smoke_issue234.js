@@ -627,7 +627,9 @@ fixRand(0.5); // 회피 없음(회피율 0) · 분산 ×1.0 · 치명 없음 · 
     again(t);
     ok(t.a.reaperSeal===1&&/지난 전투에서 사용/.test(T.reaperWhy("A")||"")&&T.slotUsable(t.a,3,"A")===false,"RV2k ⑤ 전투 2 는 봉인 — 사유 표시 ("+T.reaperWhy("A")+")");
     T.byId("obBtns").children.length=0; T.battleModal();
-    ok(/사신의 낫 \(봉인\)/.test(T.byId("overlayBox").innerHTML)&&/지난 전투에서 사용/.test(T.byId("overlayBox").innerHTML),"RV2k2 ⑤ 소유자 전투 화면에 (봉인)·사유가 보인다");
+    /* #296 REVISE1: 공용 skillListHtml — 이름은 그대로, 봉인은 별도 보이는 칩(uhChip cd), 같은 버튼은 disabled, 사유(reaperWhy)는 title 에 그대로 */
+    { const why=T.reaperWhy("A")||"", btn=(T.byId("overlayBox").innerHTML.match(/<button type="button" [^>]*onclick="window\.__act\(3\)">[\s\S]*?<\/button>/)||[""])[0];
+      ok(/^<button type="button" disabled /.test(btn)&&/<b>사신의 낫<\/b>/.test(btn)&&/<span class="uhChip cd">봉인<\/span>/.test(btn)&&/지난 전투에서 사용/.test(why)&&btn.includes(T.escAttr(" · "+why)+'"'),"RV2k2 ⑤ 소유자 전투 화면 — 사신의 낫 줄에 봉인 칩 · disabled · 사유 title ("+why+")"); }
     act("A",3); ok(!!T.S.battle&&t.d.hp===100&&!t.B.blog.some(x=>/사신의 낫/.test(x)),"RV2l ⑤ 봉인 중 호출은 즉사 없음 · 공용 로그에 이름 없음");
     /* ⑦ 쿨링수로 봉인이 풀리지 않는다 */
     t.a.cds=t.a.skills.map(()=>2); t.B.itemRoundA=false; T.S.inv[0]=["cool"];

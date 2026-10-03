@@ -1,0 +1,8325 @@
+[
+ [
+  "wire-source",
+  {
+   "bag": [
+    {
+     "uid": 1,
+     "rosterId": "M-F6",
+     "grade": 1,
+     "shieldStartPct": 0.1,
+     "statusPct": 0,
+     "skills": [
+      {
+       "i": 0,
+       "revealed": true,
+       "id": "M-F6-1",
+       "name": "딱지 들이받기",
+       "cd": 0
+      }
+     ]
+    },
+    {
+     "uid": 2,
+     "rosterId": "M-F5",
+     "grade": 2,
+     "shieldStartPct": 0,
+     "statusPct": 0.1,
+     "skills": [
+      {
+       "i": 0,
+       "revealed": true,
+       "id": "M-F5-1",
+       "name": "재 뿌리기",
+       "cd": 0
+      },
+      {
+       "i": 1,
+       "revealed": true,
+       "id": "M-F5-2",
+       "name": "재의 저주",
+       "cd": 2
+      }
+     ]
+    },
+    {
+     "uid": 3,
+     "rosterId": "L-WITCH",
+     "grade": 5,
+     "shieldStartPct": 0,
+     "statusPct": 0.25,
+     "skills": [
+      {
+       "i": 0,
+       "revealed": true,
+       "id": "L-WITCH-1",
+       "name": "저주 손짓",
+       "cd": 0
+      },
+      {
+       "i": 1,
+       "revealed": true,
+       "id": "L-WITCH-2",
+       "name": "독약 병",
+       "cd": 0
+      },
+      {
+       "i": 2,
+       "revealed": true,
+       "id": "L-WITCH-3",
+       "name": "변덕 주문",
+       "cd": 0
+      },
+      {
+       "i": 3,
+       "revealed": true,
+       "id": "L-WITCH-4",
+       "name": "마녀의 장난",
+       "cd": 0
+      }
+     ]
+    }
+   ],
+   "phase": "shop"
+  }
+ ],
+ [
+  "chrome",
+  {
+   "pid": 34476,
+   "port": 9431
+  }
+ ],
+ [
+  "320",
+  "synthetic-bag-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    515,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "synthetic-bag-g2-sustain-status10",
+  {
+   "title": "재의 주술사\n★★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    493,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 109/109",
+     "HP",
+     "109/109",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 22",
+     "공격력",
+     "22",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "lock",
+     "잿불 심기 🔒 ★★★ 필요 ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP",
+     0.55
+    ],
+    [
+     "lock",
+     "영겁의 재 🔒 ★★★★ 필요 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 ",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 2",
+    "잠김 — 등급 4 필요"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "synthetic-bag-g4-all-skills",
+  {
+   "title": "화염 투사\n★★★★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    477,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 131/131",
+     "HP",
+     "131/131",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 33",
+     "공격력",
+     "33",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 5",
+     "방어력",
+     "5",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 10",
+     "속도",
+     "10",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 10%",
+     "치명타",
+     "10%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "불꽃 주먹 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "화염 방사 ★★ 💪🏻 170% ⌛ 3 💪🏻 170% · 화상 50% / ⌛3",
+     1
+    ],
+    [
+     "",
+     "조준 사격 ★★★ 💪🏻 120% ⌛ 2 💪🏻 120%, 대상이 화상이면 치명타 확정 / ⌛2",
+     1
+    ],
+    [
+     "",
+     "폭발 연소 ★★★★ 💪🏻 120% ⌛ 4 대상 화상의 남은 피해 전부(남은 라운드 × 1회 피해) × 1",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 170%",
+    "쿨타임 3",
+    "등급 3부터",
+    "위력 120%",
+    "쿨타임 2",
+    "등급 4부터",
+    "위력 120%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "synthetic-field-g1-guard",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    497,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "synthetic-field-legend",
+  {
+   "title": "마녀\n★★★★★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    475,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 165/165",
+     "HP",
+     "165/165",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 32",
+     "공격력",
+     "32",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 12",
+     "방어력",
+     "12",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 13",
+     "속도",
+     "13",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 5%",
+     "치명타",
+     "5%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +25%p",
+     "상태 부여",
+     "+25%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "저주 손짓 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "독약 병 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 50% · 약화 50% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "변덕 주문 ⌛ 3 대상 버프 1개 제거 · 자기 상태이상 1개 해제 / ⌛3",
+     1
+    ],
+    [
+     "",
+     "마녀의 장난 💪🏻 80% ⌛ 3 💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "위력 100%",
+    "쿨타임 0",
+    "위력 110%",
+    "쿨타임 2",
+    "쿨타임 3",
+    "위력 80%",
+    "쿨타임 3"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "synthetic-field-king",
+  {
+   "title": "왕",
+   "box": [
+    8,
+    410,
+    304,
+    214
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    22,
+    500,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    500,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      134,
+      500,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      217.5,
+      500,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      526.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      217.5,
+      526.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      553.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      553.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      580.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      580.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "synthetic-field-ally",
+  {
+   "title": "공격 동료",
+   "box": [
+    8,
+    410,
+    304,
+    214
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    22,
+    500,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    500,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      134,
+      500,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      217.5,
+      500,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 5",
+     "방어력",
+     "5",
+     [
+      134,
+      526.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 12",
+     "속도",
+     "12",
+     [
+      217.5,
+      526.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      134,
+      553.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 10%",
+     "치명타",
+     "10%",
+     [
+      217.5,
+      553.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      580.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      580.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "synthetic-shop-slot",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    515,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110",
+     "HP",
+     "110",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가격 🪙1"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "synthetic-revealed-opponent-privacy",
+  {
+   "opened": true,
+   "hasStatsOrSkills": false,
+   "leakedSkillNames": [],
+   "catalogChecked": 5
+  }
+ ],
+ [
+  "320",
+  "synthetic-page-errors",
+  []
+ ],
+ [
+  "320",
+  "wire-hydrated",
+  {
+   "phase": "setup",
+   "bag": [
+    [
+     1,
+     "M-F6",
+     1,
+     [
+      "M-F6-1"
+     ],
+     [
+      0
+     ],
+     0.1
+    ],
+    [
+     2,
+     "M-F5",
+     2,
+     [
+      "M-F5-1",
+      "M-F5-2"
+     ],
+     [
+      0,
+      2
+     ],
+     0
+    ],
+    [
+     3,
+     "L-WITCH",
+     5,
+     [
+      "L-WITCH-1",
+      "L-WITCH-2",
+      "L-WITCH-3",
+      "L-WITCH-4"
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     0
+    ]
+   ],
+   "net": [
+    12,
+    0,
+    true
+   ],
+   "screen": "prep"
+  }
+ ],
+ [
+  "320",
+  "wire-bag-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    515,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "wire-field-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    497,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "wire-bag-g2-sustain-status10",
+  {
+   "title": "재의 주술사\n★★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    515,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 109/109",
+     "HP",
+     "109/109",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 22",
+     "공격력",
+     "22",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 남은 쿨타임 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "lock",
+     "잿불 심기 🔒 ★★★ 필요 ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP",
+     0.55
+    ],
+    [
+     "lock",
+     "영겁의 재 🔒 ★★★★ 필요 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 ",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 2",
+    "잠김 — 등급 4 필요"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "wire-field-g4-sustain-all-skills",
+  {
+   "title": "재의 주술사\n★★★★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    475,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 138/138",
+     "HP",
+     "138/138",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 26",
+     "공격력",
+     "26",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "잿불 심기 ★★★ ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP 5% 회복",
+     1
+    ],
+    [
+     "",
+     "영겁의 재 ★★★★ 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 화상은 해독",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "등급 3부터",
+    "쿨타임 2",
+    "등급 4부터"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "wire-bag-legend",
+  {
+   "title": "마녀\n★★★★★",
+   "box": [
+    8,
+    176,
+    304,
+    448
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    493,
+    444
+   ],
+   "face": [
+    22,
+    266,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    266,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 165/165",
+     "HP",
+     "165/165",
+     [
+      134,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 32",
+     "공격력",
+     "32",
+     [
+      217.5,
+      266,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 12",
+     "방어력",
+     "12",
+     [
+      134,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 13",
+     "속도",
+     "13",
+     [
+      217.5,
+      292.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      134,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 5%",
+     "치명타",
+     "5%",
+     [
+      217.5,
+      319.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +25%p",
+     "상태 부여",
+     "+25%p",
+     [
+      134,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      346.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "저주 손짓 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "독약 병 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 50% · 약화 50% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "변덕 주문 ⌛ 3 대상 버프 1개 제거 · 자기 상태이상 1개 해제 / ⌛3",
+     1
+    ],
+    [
+     "",
+     "마녀의 장난 💪🏻 80% ⌛ 3 💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "위력 100%",
+    "쿨타임 0",
+    "위력 110%",
+    "쿨타임 2",
+    "쿨타임 3",
+    "위력 80%",
+    "쿨타임 3"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "wire-field-king",
+  {
+   "title": "왕",
+   "box": [
+    8,
+    410,
+    304,
+    214
+   ],
+   "vw": 320,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    22,
+    500,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    500,
+    164,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      134,
+      500,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      217.5,
+      500,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      526.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      217.5,
+      526.75,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      553.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      217.5,
+      553.5,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      580.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      217.5,
+      580.25,
+      80.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "320",
+  "wire-sent-while-viewing",
+  0
+ ],
+ [
+  "320",
+  "wire-page-errors",
+  []
+ ],
+ [
+  "390",
+  "synthetic-bag-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    363.5,
+    374,
+    464.5
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    22,
+    453.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    453.5,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      134,
+      453.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      252.5,
+      453.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      480.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      252.5,
+      480.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      507,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      507,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      533.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      252.5,
+      533.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "synthetic-bag-g2-sustain-status10",
+  {
+   "title": "재의 주술사\n★★",
+   "box": [
+    8,
+    331.13,
+    374,
+    496.88
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    493,
+    493
+   ],
+   "face": [
+    22,
+    421.13,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    421.13,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 109/109",
+     "HP",
+     "109/109",
+     [
+      134,
+      421.13,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 22",
+     "공격력",
+     "22",
+     [
+      252.5,
+      421.13,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      447.88,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      252.5,
+      447.88,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      134,
+      474.63,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      474.63,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      134,
+      501.38,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      501.38,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "lock",
+     "잿불 심기 🔒 ★★★ 필요 ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP",
+     0.55
+    ],
+    [
+     "lock",
+     "영겁의 재 🔒 ★★★★ 필요 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 ",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 2",
+    "잠김 — 등급 4 필요"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "synthetic-bag-g4-all-skills",
+  {
+   "title": "화염 투사\n★★★★",
+   "box": [
+    8,
+    363.5,
+    374,
+    464.5
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    22,
+    453.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    453.5,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 131/131",
+     "HP",
+     "131/131",
+     [
+      134,
+      453.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 33",
+     "공격력",
+     "33",
+     [
+      252.5,
+      453.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 5",
+     "방어력",
+     "5",
+     [
+      134,
+      480.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 10",
+     "속도",
+     "10",
+     [
+      252.5,
+      480.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      507,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 10%",
+     "치명타",
+     "10%",
+     [
+      252.5,
+      507,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      533.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      533.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "불꽃 주먹 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "화염 방사 ★★ 💪🏻 170% ⌛ 3 💪🏻 170% · 화상 50% / ⌛3",
+     1
+    ],
+    [
+     "",
+     "조준 사격 ★★★ 💪🏻 120% ⌛ 2 💪🏻 120%, 대상이 화상이면 치명타 확정 / ⌛2",
+     1
+    ],
+    [
+     "",
+     "폭발 연소 ★★★★ 💪🏻 120% ⌛ 4 대상 화상의 남은 피해 전부(남은 라운드 × 1회 피해) × 1",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 170%",
+    "쿨타임 3",
+    "등급 3부터",
+    "위력 120%",
+    "쿨타임 2",
+    "등급 4부터",
+    "위력 120%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "synthetic-field-g1-guard",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    381.5,
+    374,
+    446.5
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    443,
+    443
+   ],
+   "face": [
+    22,
+    471.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    471.5,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      134,
+      471.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      252.5,
+      471.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      498.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      252.5,
+      498.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      525,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      525,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      551.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      252.5,
+      551.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "synthetic-field-legend",
+  {
+   "title": "마녀\n★★★★★",
+   "box": [
+    8,
+    365.31,
+    374,
+    462.69
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    459,
+    459
+   ],
+   "face": [
+    22,
+    455.31,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    455.31,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 165/165",
+     "HP",
+     "165/165",
+     [
+      134,
+      455.31,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 32",
+     "공격력",
+     "32",
+     [
+      252.5,
+      455.31,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 12",
+     "방어력",
+     "12",
+     [
+      134,
+      482.06,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 13",
+     "속도",
+     "13",
+     [
+      252.5,
+      482.06,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      134,
+      508.81,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 5%",
+     "치명타",
+     "5%",
+     [
+      252.5,
+      508.81,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +25%p",
+     "상태 부여",
+     "+25%p",
+     [
+      134,
+      535.56,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      535.56,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "저주 손짓 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "독약 병 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 50% · 약화 50% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "변덕 주문 ⌛ 3 대상 버프 1개 제거 · 자기 상태이상 1개 해제 / ⌛3",
+     1
+    ],
+    [
+     "",
+     "마녀의 장난 💪🏻 80% ⌛ 3 💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "위력 100%",
+    "쿨타임 0",
+    "위력 110%",
+    "쿨타임 2",
+    "쿨타임 3",
+    "위력 80%",
+    "쿨타임 3"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "synthetic-field-king",
+  {
+   "title": "왕",
+   "box": [
+    8,
+    614,
+    374,
+    214
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    22,
+    704,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    704,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      134,
+      704,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      252.5,
+      704,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      730.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      252.5,
+      730.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      757.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      757.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      784.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      784.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "synthetic-field-ally",
+  {
+   "title": "공격 동료",
+   "box": [
+    8,
+    614,
+    374,
+    214
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    22,
+    704,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    704,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      134,
+      704,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      252.5,
+      704,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 5",
+     "방어력",
+     "5",
+     [
+      134,
+      730.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 12",
+     "속도",
+     "12",
+     [
+      252.5,
+      730.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      134,
+      757.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 10%",
+     "치명타",
+     "10%",
+     [
+      252.5,
+      757.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      784.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      784.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "synthetic-shop-slot",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    363.5,
+    374,
+    464.5
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    22,
+    453.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    453.5,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110",
+     "HP",
+     "110",
+     [
+      134,
+      453.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      252.5,
+      453.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      480.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      252.5,
+      480.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      507,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      507,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      533.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      252.5,
+      533.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가격 🪙1"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "synthetic-revealed-opponent-privacy",
+  {
+   "opened": true,
+   "hasStatsOrSkills": false,
+   "leakedSkillNames": [],
+   "catalogChecked": 5
+  }
+ ],
+ [
+  "390",
+  "synthetic-page-errors",
+  []
+ ],
+ [
+  "390",
+  "wire-hydrated",
+  {
+   "phase": "setup",
+   "bag": [
+    [
+     1,
+     "M-F6",
+     1,
+     [
+      "M-F6-1"
+     ],
+     [
+      0
+     ],
+     0.1
+    ],
+    [
+     2,
+     "M-F5",
+     2,
+     [
+      "M-F5-1",
+      "M-F5-2"
+     ],
+     [
+      0,
+      2
+     ],
+     0
+    ],
+    [
+     3,
+     "L-WITCH",
+     5,
+     [
+      "L-WITCH-1",
+      "L-WITCH-2",
+      "L-WITCH-3",
+      "L-WITCH-4"
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     0
+    ]
+   ],
+   "net": [
+    12,
+    0,
+    true
+   ],
+   "screen": "prep"
+  }
+ ],
+ [
+  "390",
+  "wire-bag-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    363.5,
+    374,
+    464.5
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    22,
+    453.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    453.5,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      134,
+      453.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      252.5,
+      453.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      480.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      252.5,
+      480.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      507,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      507,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      533.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      252.5,
+      533.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "wire-field-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    8,
+    381.5,
+    374,
+    446.5
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    443,
+    443
+   ],
+   "face": [
+    22,
+    471.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    471.5,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      134,
+      471.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      252.5,
+      471.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      498.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      252.5,
+      498.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      525,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      525,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      551.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      252.5,
+      551.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "wire-bag-g2-sustain-status10",
+  {
+   "title": "재의 주술사\n★★",
+   "box": [
+    8,
+    331.13,
+    374,
+    496.88
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    493,
+    493
+   ],
+   "face": [
+    22,
+    421.13,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    421.13,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 109/109",
+     "HP",
+     "109/109",
+     [
+      134,
+      421.13,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 22",
+     "공격력",
+     "22",
+     [
+      252.5,
+      421.13,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      447.88,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      252.5,
+      447.88,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      134,
+      474.63,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      474.63,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      134,
+      501.38,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      501.38,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 남은 쿨타임 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "lock",
+     "잿불 심기 🔒 ★★★ 필요 ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP",
+     0.55
+    ],
+    [
+     "lock",
+     "영겁의 재 🔒 ★★★★ 필요 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 ",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 2",
+    "잠김 — 등급 4 필요"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "wire-field-g4-sustain-all-skills",
+  {
+   "title": "재의 주술사\n★★★★",
+   "box": [
+    8,
+    349.13,
+    374,
+    478.88
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    475,
+    475
+   ],
+   "face": [
+    22,
+    439.13,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    439.13,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 138/138",
+     "HP",
+     "138/138",
+     [
+      134,
+      439.13,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 26",
+     "공격력",
+     "26",
+     [
+      252.5,
+      439.13,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      465.88,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      252.5,
+      465.88,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      134,
+      492.63,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      492.63,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      134,
+      519.38,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      519.38,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "잿불 심기 ★★★ ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP 5% 회복",
+     1
+    ],
+    [
+     "",
+     "영겁의 재 ★★★★ 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 화상은 해독",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "등급 3부터",
+    "쿨타임 2",
+    "등급 4부터"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "wire-bag-legend",
+  {
+   "title": "마녀\n★★★★★",
+   "box": [
+    8,
+    347.31,
+    374,
+    480.69
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    477,
+    477
+   ],
+   "face": [
+    22,
+    437.31,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    437.31,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 165/165",
+     "HP",
+     "165/165",
+     [
+      134,
+      437.31,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 32",
+     "공격력",
+     "32",
+     [
+      252.5,
+      437.31,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 12",
+     "방어력",
+     "12",
+     [
+      134,
+      464.06,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 13",
+     "속도",
+     "13",
+     [
+      252.5,
+      464.06,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      134,
+      490.81,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 5%",
+     "치명타",
+     "5%",
+     [
+      252.5,
+      490.81,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +25%p",
+     "상태 부여",
+     "+25%p",
+     [
+      134,
+      517.56,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      517.56,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "저주 손짓 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "독약 병 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 50% · 약화 50% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "변덕 주문 ⌛ 3 대상 버프 1개 제거 · 자기 상태이상 1개 해제 / ⌛3",
+     1
+    ],
+    [
+     "",
+     "마녀의 장난 💪🏻 80% ⌛ 3 💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "위력 100%",
+    "쿨타임 0",
+    "위력 110%",
+    "쿨타임 2",
+    "쿨타임 3",
+    "위력 80%",
+    "쿨타임 3"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "wire-field-king",
+  {
+   "title": "왕",
+   "box": [
+    8,
+    614,
+    374,
+    214
+   ],
+   "vw": 390,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    22,
+    704,
+    104,
+    104
+   ],
+   "statsBlock": [
+    134,
+    704,
+    234,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      134,
+      704,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      252.5,
+      704,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      134,
+      730.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      252.5,
+      730.75,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      134,
+      757.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      252.5,
+      757.5,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      134,
+      784.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      252.5,
+      784.25,
+      115.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "390",
+  "wire-sent-while-viewing",
+  0
+ ],
+ [
+  "390",
+  "wire-page-errors",
+  []
+ ],
+ [
+  "1100",
+  "synthetic-bag-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    340,
+    519.5,
+    420,
+    464.5
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    354,
+    609.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    609.5,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      466,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      607.5,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      607.5,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      466,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      607.5,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "synthetic-bag-g2-sustain-status10",
+  {
+   "title": "재의 주술사\n★★",
+   "box": [
+    340,
+    503.31,
+    420,
+    480.69
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    477,
+    477
+   ],
+   "face": [
+    354,
+    593.31,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    593.31,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 109/109",
+     "HP",
+     "109/109",
+     [
+      466,
+      593.31,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 22",
+     "공격력",
+     "22",
+     [
+      607.5,
+      593.31,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      620.06,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      607.5,
+      620.06,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      466,
+      646.81,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      646.81,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      466,
+      673.56,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      673.56,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "lock",
+     "잿불 심기 🔒 ★★★ 필요 ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP",
+     0.55
+    ],
+    [
+     "lock",
+     "영겁의 재 🔒 ★★★★ 필요 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 ",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 2",
+    "잠김 — 등급 4 필요"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "synthetic-bag-g4-all-skills",
+  {
+   "title": "화염 투사\n★★★★",
+   "box": [
+    340,
+    519.5,
+    420,
+    464.5
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    354,
+    609.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    609.5,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 131/131",
+     "HP",
+     "131/131",
+     [
+      466,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 33",
+     "공격력",
+     "33",
+     [
+      607.5,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 5",
+     "방어력",
+     "5",
+     [
+      466,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 10",
+     "속도",
+     "10",
+     [
+      607.5,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      466,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 10%",
+     "치명타",
+     "10%",
+     [
+      607.5,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "불꽃 주먹 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "화염 방사 ★★ 💪🏻 170% ⌛ 3 💪🏻 170% · 화상 50% / ⌛3",
+     1
+    ],
+    [
+     "",
+     "조준 사격 ★★★ 💪🏻 120% ⌛ 2 💪🏻 120%, 대상이 화상이면 치명타 확정 / ⌛2",
+     1
+    ],
+    [
+     "",
+     "폭발 연소 ★★★★ 💪🏻 120% ⌛ 4 대상 화상의 남은 피해 전부(남은 라운드 × 1회 피해) × 1",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 170%",
+    "쿨타임 3",
+    "등급 3부터",
+    "위력 120%",
+    "쿨타임 2",
+    "등급 4부터",
+    "위력 120%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "synthetic-field-g1-guard",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    340,
+    537.5,
+    420,
+    446.5
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    443,
+    443
+   ],
+   "face": [
+    354,
+    627.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    627.5,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      466,
+      627.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      607.5,
+      627.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      654.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      607.5,
+      654.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      466,
+      681,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      681,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      707.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      607.5,
+      707.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "synthetic-field-legend",
+  {
+   "title": "마녀\n★★★★★",
+   "box": [
+    340,
+    537.5,
+    420,
+    446.5
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    443,
+    443
+   ],
+   "face": [
+    354,
+    627.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    627.5,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 165/165",
+     "HP",
+     "165/165",
+     [
+      466,
+      627.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 32",
+     "공격력",
+     "32",
+     [
+      607.5,
+      627.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 12",
+     "방어력",
+     "12",
+     [
+      466,
+      654.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 13",
+     "속도",
+     "13",
+     [
+      607.5,
+      654.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      466,
+      681,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 5%",
+     "치명타",
+     "5%",
+     [
+      607.5,
+      681,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +25%p",
+     "상태 부여",
+     "+25%p",
+     [
+      466,
+      707.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      707.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "저주 손짓 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "독약 병 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 50% · 약화 50% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "변덕 주문 ⌛ 3 대상 버프 1개 제거 · 자기 상태이상 1개 해제 / ⌛3",
+     1
+    ],
+    [
+     "",
+     "마녀의 장난 💪🏻 80% ⌛ 3 💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "위력 100%",
+    "쿨타임 0",
+    "위력 110%",
+    "쿨타임 2",
+    "쿨타임 3",
+    "위력 80%",
+    "쿨타임 3"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "synthetic-field-king",
+  {
+   "title": "왕",
+   "box": [
+    340,
+    770,
+    420,
+    214
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    354,
+    860,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    860,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      466,
+      860,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      607.5,
+      860,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      886.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      607.5,
+      886.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      466,
+      913.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      913.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      940.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      940.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "synthetic-field-ally",
+  {
+   "title": "공격 동료",
+   "box": [
+    340,
+    770,
+    420,
+    214
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    354,
+    860,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    860,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      466,
+      860,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      607.5,
+      860,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 5",
+     "방어력",
+     "5",
+     [
+      466,
+      886.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 12",
+     "속도",
+     "12",
+     [
+      607.5,
+      886.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      466,
+      913.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 10%",
+     "치명타",
+     "10%",
+     [
+      607.5,
+      913.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      940.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      940.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "synthetic-shop-slot",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    340,
+    519.5,
+    420,
+    464.5
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    354,
+    609.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    609.5,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110",
+     "HP",
+     "110",
+     [
+      466,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      607.5,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      607.5,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      466,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      607.5,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가격 🪙1"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "synthetic-revealed-opponent-privacy",
+  {
+   "opened": true,
+   "hasStatsOrSkills": false,
+   "leakedSkillNames": [],
+   "catalogChecked": 5
+  }
+ ],
+ [
+  "1100",
+  "synthetic-page-errors",
+  []
+ ],
+ [
+  "1100",
+  "wire-hydrated",
+  {
+   "phase": "setup",
+   "bag": [
+    [
+     1,
+     "M-F6",
+     1,
+     [
+      "M-F6-1"
+     ],
+     [
+      0
+     ],
+     0.1
+    ],
+    [
+     2,
+     "M-F5",
+     2,
+     [
+      "M-F5-1",
+      "M-F5-2"
+     ],
+     [
+      0,
+      2
+     ],
+     0
+    ],
+    [
+     3,
+     "L-WITCH",
+     5,
+     [
+      "L-WITCH-1",
+      "L-WITCH-2",
+      "L-WITCH-3",
+      "L-WITCH-4"
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ],
+     0
+    ]
+   ],
+   "net": [
+    12,
+    0,
+    true
+   ],
+   "screen": "prep"
+  }
+ ],
+ [
+  "1100",
+  "wire-bag-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    340,
+    519.5,
+    420,
+    464.5
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    354,
+    609.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    609.5,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      466,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      607.5,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      607.5,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      466,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      607.5,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "wire-field-g1-guard-shield10",
+  {
+   "title": "화산 딱정벌레\n★",
+   "box": [
+    340,
+    537.5,
+    420,
+    446.5
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    443,
+    443
+   ],
+   "face": [
+    354,
+    627.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    627.5,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 110/110",
+     "HP",
+     "110/110",
+     [
+      466,
+      627.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 19",
+     "공격력",
+     "19",
+     [
+      607.5,
+      627.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      654.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 7",
+     "속도",
+     "7",
+     [
+      607.5,
+      654.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      466,
+      681,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      681,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      707.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 10%",
+     "시작 방어막",
+     "10%",
+     [
+      607.5,
+      707.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "딱지 들이받기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "lock",
+     "용암 껍질 🔒 ★★ 필요 💪🏻 110% ⌛ 2 💪🏻 110% · 자기 방어막 최대 HP 12% · ",
+     0.55
+    ],
+    [
+     "lock",
+     "열기 축적 🔒 ★★★ 필요 ⌛ 3 자기 방어막 최대 HP 15% · 대상에게 화상 70% / ⌛3",
+     0.55
+    ],
+    [
+     "lock",
+     "화산 폭발 🔒 ★★★★ 필요 💪🏻 100% ⌛ 4 자기 방어막을 전부 소모해 💪🏻 100% + 소모",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "잠김 — 등급 2 필요",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 3",
+    "잠김 — 등급 4 필요",
+    "위력 100%",
+    "쿨타임 4"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "wire-bag-g2-sustain-status10",
+  {
+   "title": "재의 주술사\n★★",
+   "box": [
+    340,
+    503.31,
+    420,
+    480.69
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    477,
+    477
+   ],
+   "face": [
+    354,
+    593.31,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    593.31,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 109/109",
+     "HP",
+     "109/109",
+     [
+      466,
+      593.31,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 22",
+     "공격력",
+     "22",
+     [
+      607.5,
+      593.31,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      620.06,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      607.5,
+      620.06,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      466,
+      646.81,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      646.81,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      466,
+      673.56,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      673.56,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 남은 쿨타임 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "lock",
+     "잿불 심기 🔒 ★★★ 필요 ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP",
+     0.55
+    ],
+    [
+     "lock",
+     "영겁의 재 🔒 ★★★★ 필요 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 ",
+     0.55
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "잠김 — 등급 3 필요",
+    "쿨타임 2",
+    "잠김 — 등급 4 필요"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "wire-field-g4-sustain-all-skills",
+  {
+   "title": "재의 주술사\n★★★★",
+   "box": [
+    340,
+    521.31,
+    420,
+    462.69
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    459,
+    459
+   ],
+   "face": [
+    354,
+    611.31,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    611.31,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 138/138",
+     "HP",
+     "138/138",
+     [
+      466,
+      611.31,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 26",
+     "공격력",
+     "26",
+     [
+      607.5,
+      611.31,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      638.06,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      607.5,
+      638.06,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 5%",
+     "회피",
+     "5%",
+     [
+      466,
+      664.81,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      664.81,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +10%p",
+     "상태 부여",
+     "+10%p",
+     [
+      466,
+      691.56,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      691.56,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [
+    [
+     "",
+     "재 뿌리기 ★ 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "재의 저주 ★★ 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 100% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "잿불 심기 ★★★ ⌛ 2 대상이 화상이면 그 화상 수치를 8%로 갱신(큰 값) · 자기 최대 HP 5% 회복",
+     1
+    ],
+    [
+     "",
+     "영겁의 재 ★★★★ 전투당 1회 대상에게 화상 100%(없으면 새로 부여) 후 지속 +2R, 이 화상은 해독",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "등급 1부터",
+    "위력 100%",
+    "쿨타임 0",
+    "등급 2부터",
+    "위력 110%",
+    "쿨타임 2",
+    "등급 3부터",
+    "쿨타임 2",
+    "등급 4부터"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "wire-bag-legend",
+  {
+   "title": "마녀\n★★★★★",
+   "box": [
+    340,
+    519.5,
+    420,
+    464.5
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    461,
+    461
+   ],
+   "face": [
+    354,
+    609.5,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    609.5,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 165/165",
+     "HP",
+     "165/165",
+     [
+      466,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 32",
+     "공격력",
+     "32",
+     [
+      607.5,
+      609.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 12",
+     "방어력",
+     "12",
+     [
+      466,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 13",
+     "속도",
+     "13",
+     [
+      607.5,
+      636.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 10%",
+     "회피",
+     "10%",
+     [
+      466,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 5%",
+     "치명타",
+     "5%",
+     [
+      607.5,
+      663,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +25%p",
+     "상태 부여",
+     "+25%p",
+     [
+      466,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      689.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [
+    "가방"
+   ],
+   "skills": [
+    [
+     "",
+     "저주 손짓 💪🏻 100% ⌛ 0",
+     1
+    ],
+    [
+     "",
+     "독약 병 💪🏻 110% ⌛ 2 💪🏻 110% · 화상 50% · 약화 50% / ⌛2",
+     1
+    ],
+    [
+     "",
+     "변덕 주문 ⌛ 3 대상 버프 1개 제거 · 자기 상태이상 1개 해제 / ⌛3",
+     1
+    ],
+    [
+     "",
+     "마녀의 장난 💪🏻 80% ⌛ 3 💪🏻 80% · 화상 · 약화 · 감전 · 풀 회복(이번 공격이 HP",
+     1
+    ]
+   ],
+   "skillLabels": [
+    "위력 100%",
+    "쿨타임 0",
+    "위력 110%",
+    "쿨타임 2",
+    "쿨타임 3",
+    "위력 80%",
+    "쿨타임 3"
+   ],
+   "lastSkillReachable": true,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "wire-field-king",
+  {
+   "title": "왕",
+   "box": [
+    340,
+    770,
+    420,
+    214
+   ],
+   "vw": 1100,
+   "docOverflow": false,
+   "scroll": [
+    210,
+    210
+   ],
+   "face": [
+    354,
+    860,
+    104,
+    104
+   ],
+   "statsBlock": [
+    466,
+    860,
+    280,
+    104
+   ],
+   "heightDiff": 0,
+   "topDiff": 0,
+   "tagsOutsideTop": true,
+   "rowsOutsideTop": true,
+   "synOutsideTop": null,
+   "cols": 2,
+   "stats": [
+    [
+     "HP 100/100",
+     "HP",
+     "100/100",
+     [
+      466,
+      860,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "공격력 16",
+     "공격력",
+     "16",
+     [
+      607.5,
+      860,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "방어력 10",
+     "방어력",
+     "10",
+     [
+      466,
+      886.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "속도 8",
+     "속도",
+     "8",
+     [
+      607.5,
+      886.75,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "회피 0%",
+     "회피",
+     "0%",
+     [
+      466,
+      913.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "치명타 0%",
+     "치명타",
+     "0%",
+     [
+      607.5,
+      913.5,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "상태 부여 확률 +0%p",
+     "상태 부여",
+     "+0%p",
+     [
+      466,
+      940.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ],
+    [
+     "전투 시작 방어막 (최대 HP) 0%",
+     "시작 방어막",
+     "0%",
+     [
+      607.5,
+      940.25,
+      138.5,
+      23.75
+     ],
+     {
+      "valueCut": false,
+      "labelCut": false
+     }
+    ]
+   ],
+   "rows": [],
+   "skills": [],
+   "skillLabels": [],
+   "lastSkillReachable": null,
+   "buttons": 1
+  }
+ ],
+ [
+  "1100",
+  "wire-sent-while-viewing",
+  0
+ ],
+ [
+  "1100",
+  "wire-page-errors",
+  []
+ ]
+]

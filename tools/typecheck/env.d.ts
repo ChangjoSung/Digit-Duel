@@ -48,6 +48,7 @@ declare var netJoinPublicRoom: UiHandler;
 declare var netLeaveRoom: UiHandler;
 declare var netLobbyReady: UiHandler;   // #238 대기방 참가자 준비
 declare var netLobbyStart: UiHandler;   // #238 대기방 방장 시작(서버 5초)
+declare var netLobbyKick: UiHandler;    // #295 방장 — 끊긴 참가자 내보내기
 declare var netReturnToRoom: UiHandler; // #238 결과 → 같은 대기방
 declare var netListRooms: UiHandler;
 declare var netPrepare: UiHandler;

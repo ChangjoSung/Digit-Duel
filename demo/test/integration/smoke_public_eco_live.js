@@ -6,7 +6,8 @@
    "상대 연결 대기"·입력 잠금(클라이언트 송신 끝 차단 + 우회 프레임은 서버 E_PAUSED)·게임 시계 정지, 재접속 뒤 남은 시간부터 재개 (6) 왕·동료 속성 선택 → 완료 → 비공개 배치 → 개시,
    서버 말 = 산 말 (7) 20턴 뒤 정기 상점이 양측에 열리고 소모품 구매·완료 뒤 경기 재개 (8) 상대 미공개 말·경제 비노출
    (9) 서버 재시작 → 재개는 즉시 E_EPOCH·무효 안내 (10) 클라이언트 예외 0.
-   #263 T1~T4 추가: (11) 경기 중 보드 행동 30초가 차례 좌석에만 내려오고(owner 전용) 기다리는 좌석은 카운트다운 대신 대기 표시
+   #263 T1~T4 추가: (11) 경기 중 보드 행동 30초의 입력용 clock 은 차례 좌석에만 내려온다(owner 전용).
+   #294: 표시 전용 boardClock{leftMs,running,deadline,serverNow} 은 두 좌석에 같은 마감으로 내려와 기다리는 좌석도 같은 초를 본다
    (12) 차례가 넘어가면 새 30초 (13) 경기 중 단절은 보드 30초를 잔여째 멈추고 재연결 유예 60초만 흐르며, 복구 뒤 그 값부터 이어 센다
    (14) 두 클라이언트 모두 로컬 마감을 걸지 않는다(만료·강제 대상 판정은 서버 권위).
    서버 의존성(server/node_modules/ws)이 필요하다. */
@@ -90,7 +91,10 @@ async function finishStartShop(c){
     ok(true,"E1 5초 완료 뒤 두 좌석에 시작 상점(S01)이 동시에 열린다");
     const hv=lastState(host);
     ok(hv.phase==="shop"&&typeof hv.shop.seq==="number"&&typeof hv.you.eco.coins==="number"&&(hv.units||[]).length===0,"E2 좌석 뷰는 자기 진열·자기 재화만 싣는다(상대 경제·말 없음)");
-    ok(hv.clock&&hv.clock.key==="shop"&&hv.clock.leftMs>80000&&hv.clock.leftMs<=90000,"E3 서버 개인 상점 시계 90초 "+JSON.stringify(hv.clock));
+    /* #293 (2026-10-01 CJ 1): 경기 전은 방의 준비 시계 하나 — 180초 · 서버 epoch 절대 마감 · 두 좌석이 같은 deadline (개인 상점 90초 폐지) */
+    const gv0=lastState(guest);
+    ok(hv.clock&&hv.clock.key==="prep"&&hv.clock.running===true&&hv.clock.leftMs>170000&&hv.clock.leftMs<=180000&&Number.isFinite(hv.clock.deadline)&&hv.clock.leftMs===hv.clock.deadline-hv.clock.serverNow,"E3 서버 준비 시계 180초 · 절대 마감(leftMs = deadline − serverNow) "+JSON.stringify(hv.clock));
+    ok(!!gv0.clock&&gv0.clock.key==="prep"&&gv0.clock.deadline===hv.clock.deadline,"E3b 두 좌석의 준비 마감이 같다 "+JSON.stringify(gv0.clock));
     ok(/시작 상점/.test(host.T.byId("sidePanel").innerHTML)&&/⏱ \d+초/.test(host.T.byId("sidePanel").innerHTML),"E4 배치 화면 안에 시작 상점과 서버 시계가 그려진다");
 
     // 구매 — 서버 응답으로만 반영, 산 칸은 빈칸
@@ -114,14 +118,14 @@ async function finishStartShop(c){
     await sleep(50);
     ok(coins(host)===c2-1,"E8 같은 requestId 두 번 → 한 번만 적용 (🪙 "+c2+"→"+coins(host)+")");
 
-    // 단절 — 상대 화면 정지·입력 거부·시계 정지, 재접속 뒤 남은 시간부터
+    // 단절 — 상대 화면 정지·입력 거부. #293: 준비 시계는 단절 중에도 서버에서 계속 흐른다(같은 마감 · 재발급·정지 없음)
     host.ctor.block=true;
     try{ host.T.NET.ws._socket.destroy(); }catch(e){ host.T.NET.ws.terminate(); }
     await waitFor(()=>guest.T.NET.pause&&guest.T.NET.pause.length,8000,"guest sees pause");
     const bar=guest.T.byId("netResumeBar");
     ok(/상대 연결 대기/.test(bar.innerHTML)&&!bar.classList.contains("hidden"),"E9 상대 화면에 '상대 연결 대기'·재연결 유예 표시");
     const gClock=Object.assign({},guest.T.NET.ecoClock);
-    ok(gClock.running===false,"E10 단절 동안 상대의 상점 시계도 멈춘다 "+JSON.stringify(gClock));
+    ok(gClock.key==="prep"&&gClock.running===true&&gClock.deadline===hv.clock.deadline&&gClock.serverNow>hv.clock.serverNow&&gClock.leftMs===gClock.deadline-gClock.serverNow,"E10 단절 동안에도 준비 시계는 멈추지 않는다 — 같은 마감 · 서버 시각만 흐른다 "+JSON.stringify(gClock));
     const ge=guest.ctor.errors.length; const gc=coins(guest);
     guest.W.__shop("good","potion");   // 화면 버튼 경로 — #263 Saturn REVISE 뒤로는 클라이언트 송신 끝에서 먼저 막힌다
     await sleep(400);
@@ -137,7 +141,9 @@ async function finishStartShop(c){
     await waitFor(()=>!host.T.NET.resuming&&host.T.NET.ws&&host.T.NET.ws.readyState===1&&!guest.T.NET.pause,20000,"resume");
     await waitFor(()=>guest.T.NET.ecoClock&&guest.T.NET.ecoClock.running,5000,"clock resumes");
     const g2=guest.T.NET.ecoClock;
-    ok(g2.leftMs<=gClock.leftMs&&g2.leftMs>=gClock.leftMs-1000,"E12 재접속 뒤 남은 시간부터 재개 (정지 "+gClock.leftMs+" → 재개 "+g2.leftMs+")");
+    const el=g2.serverNow-gClock.serverNow, h2=lastState(host).clock;
+    ok(g2.key==="prep"&&g2.deadline===gClock.deadline&&el>=1900&&gClock.leftMs-g2.leftMs===el,"E12 재접속 뒤에도 같은 절대 마감 — 단절 동안 흐른 시간("+el+"ms)만큼 남은 시간이 줄었다 ("+gClock.leftMs+" → "+g2.leftMs+" · 새 시간·정지 없음)");
+    ok(!!h2&&h2.key==="prep"&&h2.deadline===gClock.deadline,"E12b 재접속한 좌석도 같은 마감을 받는다 "+JSON.stringify(h2));
     ok(open0(host)&&host.T.S.pieces.filter(x=>x.owner===0&&x.type==="minion"&&x.rosterId).length===1,"E13 재접속한 좌석이 같은 시작 상점·산 말을 되찾는다");
 
     // S01 완료 → 배치 → 개시
@@ -157,29 +163,40 @@ async function finishStartShop(c){
     ok(pv.you.eco&&!("eco" in (pv.units[0]||{}))&&(pv.units||[]).every(u=>u.paid===undefined&&u.grade===undefined),"E17 경기 중 좌석 뷰도 자기 경제만(상대 말에 원장·등급 없음)");
 
     /* ===== #263 T1~T4 — 실서버 2클라이언트에서 본 보드 행동 30초 (경기 중 시계) =====
-       서버 _clockView 는 그 시계의 **주인 좌석에만** 내려 준다(owner===seatIndex). 그래서 기다리는 좌석은
-       clock:null 이고, 화면은 상대의 남은 초를 지어내는 대신 대기 표시를 쓴다(AC9 "새 카운트다운을 추가하지 않는다"). */
+       서버 _clockView(입력용 clock)는 그 시계의 **주인 좌석에만** 내려 준다(owner===seatIndex) — 기다리는 좌석은 clock:null 그대로다.
+       #294: 표시 전용 boardClock 은 같은 시계를 읽기만 해 두 좌석에 내려 준다(key·owner 없음). 같은 revision 의 두 좌석은
+       running·deadline 이 같고, serverNow·흐르는 중의 leftMs 는 뷰를 만드는 순간의 값이라 좌석마다 몇 ms 다를 수 있다(계약 3.1). */
     const actor=()=>clients.find(c=>c.T.S.current===c.T.NET.me);
     const waiter=()=>clients.find(c=>c.T.S.current!==c.T.NET.me);
-    await waitFor(()=>{ const a=actor(); return a&&lastState(a)&&lastState(a).clock; },8000,"act clock arrives");
+    const bcShape=b=>!!b&&Object.keys(b).sort().join()==="deadline,leftMs,running,serverNow"; // 계약 4필드뿐 — key·owner 가 실리면 실패
+    const sameRev=(a,b)=>lastState(a).revision===lastState(b).revision;
+    await waitFor(()=>{ const a=actor(), w=waiter(); return a&&w&&lastState(a).clock&&lastState(w).boardClock&&sameRev(a,w); },8000,"act clock arrives");
     {
-      const A=actor(), W=waiter(), ac=lastState(A).clock;
+      const A=actor(), W=waiter(), ac=lastState(A).clock, ab=lastState(A).boardClock, wb=lastState(W).boardClock;
       ok(ac.key==="act"&&ac.running===true&&ac.leftMs>0&&ac.leftMs<=30000,"E15b 차례 좌석에 서버 보드 행동 30초가 선다 "+JSON.stringify(ac));
-      ok(lastState(W).clock===null,"E15c 기다리는 좌석에는 시계를 내리지 않는다(owner 전용) — 상대의 남은 초를 지어내지 않는다");
+      ok(lastState(W).clock===null,"E15c 기다리는 좌석에는 입력용 시계(clock)를 내리지 않는다(owner 전용)");
+      ok(bcShape(ab)&&bcShape(wb)&&ab.running===true&&wb.running===true&&Number.isFinite(ab.deadline)&&wb.deadline===ab.deadline
+        &&[ab,wb].every(b=>b.leftMs===b.deadline-b.serverNow&&b.leftMs>0&&b.leftMs<=30000),
+        "E15c2 #294 공개 보드 시계 — 두 좌석이 4필드만·같은 마감·흐르는 중(leftMs = deadline − serverNow ≤ 30초) "+JSON.stringify([ab,wb]));
       A.T.renderTurnBar();
       ok(/^⏱ \d+초$/.test(A.T.byId("actClock").textContent),"E15d 차례 좌석 화면(#actClock)에 서버가 준 남은 시간이 그대로 보인다 ["+A.T.byId("actClock").textContent+"]");
       W.T.renderTurnBar();
-      ok(W.T.turnClockText("act")==="","E15e 기다리는 좌석에는 보드 카운트다운이 없다 (상대의 남은 초를 지어내지 않고 대기로 구분)");
+      const wt=W.T.turnClockText("act"), wm=/^⏱ (\d+)초$/.exec(wt);
+      ok(!!wm&&+wm[1]>0&&+wm[1]<=Math.ceil(wb.leftMs/1000),"E15e #294 기다리는 좌석도 서버 마감에서 계산한 초를 본다 — 서버 값보다 큰 초를 지어내지 않는다 ["+wt+"] ≤ "+wb.leftMs+"ms");
       ok(clients.every(c=>Object.keys(c.T.TURNCLK.c).length===0),"E15f 두 클라이언트 모두 로컬 마감을 하나도 걸지 않는다 (만료·강제 대상 판정은 서버 권위)");
     }
     { /* 차례가 넘어가면 그 좌석이 **새 30초**를 받는다 — 남은 시간을 물려받지 않는다(키가 턴마다 바뀐다) */
-      const A=actor(), me0=A.T.NET.me, turn0=A.T.S.turnCount;
+      const A=actor(), me0=A.T.NET.me, turn0=A.T.S.turnCount, d0=lastState(A).boardClock.deadline;
       await waitFor(()=>{ const c=actor();
         if(c&&c.T.S.phase==="play"&&!c.T.S.battle&&!c.T.S._pendingModal&&!c.T.fxLocked()) c.T.netAction(c.T.S.mainUsed?{t:"endTurn"}:{t:"skipMain"});
         return host.T.S.turnCount>turn0&&actor()&&actor().T.NET.me!==me0; },20000,"turn advances to peer");
-      const B=actor(), bc=lastState(B).clock;
+      const B=actor(), bc=lastState(B).clock, O=clients.find(c=>c!==B);
       ok(bc&&bc.key==="act"&&bc.running===true&&bc.leftMs>20000,"E15g 차례가 넘어간 좌석은 새 보드 30초를 받는다 "+JSON.stringify(bc));
-      ok(lastState(clients.find(c=>c!==B)).clock===null,"E15h 방금 차례를 넘긴 좌석의 시계는 사라진다");
+      ok(lastState(O).clock===null,"E15h 방금 차례를 넘긴 좌석의 입력용 시계는 사라진다");
+      await waitFor(()=>sameRev(B,O),5000,"both seats on the same revision after turn change");
+      const bb=lastState(B).boardClock, ob=lastState(O).boardClock;
+      ok(bcShape(bb)&&bcShape(ob)&&bb.running===true&&ob.running===true&&ob.deadline===bb.deadline&&bb.deadline>d0&&lastState(O).clock===null,
+        "E15h2 #294 차례를 넘긴 좌석도 새 턴의 같은 공개 마감을 본다(입력용 clock 은 없음) "+d0+" → "+JSON.stringify([bb,ob]));
     }
     { /* 경기 중 단절 — 게임 시계(보드 30초)는 잔여를 안고 멈추고 **재연결 유예 60초만** 흐른다(서로 다른 시계).
          차례가 아닌 좌석을 끊어, 차례 좌석의 act 시계가 실제로 멈추는 것을 그 좌석 뷰에서 본다. */
@@ -188,19 +205,25 @@ async function finishStartShop(c){
       try{ W.T.NET.ws._socket.destroy(); }catch(e){ W.T.NET.ws.terminate(); }
       await waitFor(()=>A.T.NET.pause&&A.T.NET.pause.length,8000,"play-phase pause");
       await waitFor(()=>{ const c=lastState(A).clock; return c&&c.running===false; },5000,"act clock pauses");
-      const paused=lastState(A).clock;
+      const paused=lastState(A).clock, pb=lastState(A).boardClock, pausedText=`⏱ 정지 · ${Math.ceil(paused.leftMs/1000)}초`;
       ok(paused.key==="act"&&paused.running===false&&paused.leftMs>0,"E15i 경기 중 단절 → 보드 행동 30초가 잔여를 안고 멈춘다 "+JSON.stringify(paused));
-      ok(/\(정지\)/.test(A.T.turnClockText("act")),"E15j 차례 좌석 화면에도 (정지) 로 보인다");
+      ok(bcShape(pb)&&pb.running===false&&pb.deadline===null&&pb.leftMs===paused.leftMs,"E15i2 #294 공개 보드 시계도 같은 잔여로 멈춘다(running:false · 마감 없음) "+JSON.stringify(pb));
+      ok(A.T.turnClockText("act")===pausedText,"E15j #294 차례 좌석 화면은 서버가 든 잔여 초를 '정지 · N초' 로 보인다 ["+A.T.turnClockText("act")+"] = ["+pausedText+"]");
       const g=A.T.NET.pause[0];
       ok(g&&typeof g.graceLeftMs==="number"&&g.graceLeftMs>0&&g.graceLeftMs<=60000,"E15k 그동안 재연결 유예 60초만 흐른다 — 게임 시계와 별개의 시계다 "+JSON.stringify(g));
       ok(/재연결 유예 \d+초/.test(A.T.byId("netResumeBar").innerHTML),"E15l 상대 연결 대기 줄에 유예 잔여가 보인다");
       await sleep(1200);
       ok(lastState(A).clock.leftMs===paused.leftMs,"E15m 정지 중에는 보드 30초가 한 ms 도 줄지 않는다");
+      ok(lastState(A).boardClock.leftMs===paused.leftMs&&lastState(A).boardClock.running===false&&A.T.turnClockText("act")===pausedText,"E15m2 #294 공개 보드 시계·화면 초도 정지 중 그대로다 ["+A.T.turnClockText("act")+"]");
       W.ctor.block=false;
       await waitFor(()=>!W.T.NET.resuming&&W.T.NET.ws&&W.T.NET.ws.readyState===1&&!A.T.NET.pause,20000,"play-phase resume");
       await waitFor(()=>{ const c=lastState(A).clock; return c&&c.running===true; },5000,"act clock resumes");
       const after=lastState(A).clock;
       ok(after.key===paused.key&&after.leftMs<=paused.leftMs,"E15n 복구되면 **남은 시간부터** 이어 센다 (새 30초가 아니다) "+paused.leftMs+" → "+after.leftMs);
+      await waitFor(()=>{ const b=lastState(W).boardClock; return b&&b.running===true&&sameRev(A,W); },5000,"reconnected seat gets the running board clock");
+      const ra=lastState(A).boardClock, rw=lastState(W).boardClock;
+      ok(bcShape(ra)&&bcShape(rw)&&ra.running===true&&Number.isFinite(ra.deadline)&&rw.deadline===ra.deadline&&ra.leftMs<=paused.leftMs&&rw.leftMs<=paused.leftMs&&lastState(W).clock===null,
+        "E15n2 #294 재접속한 좌석도 같은 공개 마감·잔여부터(새 30초 아님) — 입력용 clock 은 여전히 owner 전용 "+JSON.stringify([ra,rw]));
       ok(clients.every(c=>Object.keys(c.T.TURNCLK.c).length===0),"E15o 복구 뒤에도 로컬 마감은 서지 않는다");
     }
 
@@ -221,8 +244,8 @@ async function finishStartShop(c){
     host.W.__shop("good","ball"); await waitReply(host,n0,"regular good");
     ok(coins(host)===hc-1&&host.T.S.balls[host.T.NET.me]>=1,"E20 정기 상점 소모품 구매가 서버 판정으로 반영");
     n0=host.ctor.frames.length; host.W.__shop("done"); await waitReply(host,n0,"host done");
-    await waitFor(()=>/상점 완료/.test(host.T.byId("overlayBox").innerHTML),5000,"host waits");
-    ok(host.T.S.phase==="shop","E21 먼저 끝낸 좌석은 상대 완료까지 대기 화면");
+    await waitFor(()=>host.T.byId("overlay").classList.contains("hidden")&&/20턴 상점/.test(host.T.byId("boardInfo").innerHTML),5000,"host waits");
+    ok(host.T.S.phase==="shop"&&/netEcoResign/.test(host.T.byId("boardInfo").innerHTML),"E21 먼저 끝낸 좌석은 상점 창이 닫히고 상대 완료까지 말판 대기(#295 — ⚙ 기권 유지)");
     n0=guest.ctor.frames.length; guest.W.__shop("done"); await waitReply(guest,n0,"guest done");
     await waitFor(()=>host.T.S.phase==="play"&&guest.T.S.phase==="play",5000,"play resumes");
     await waitFor(()=>host.T.byId("overlay").classList.contains("hidden"),5000,"shop overlay closes");

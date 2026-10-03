@@ -391,23 +391,27 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   const battleView=mkSeatView({revision:3,state:"IN_PROGRESS",battle:{battleId:1,round:1,phase:0,actor:"A",actSeq:0,maxRounds:null,log:["⚔️ 개시"],
     a:battleSide({owner:0,type:"minion",element:rd.element,rosterId:rd.id,skills:ownSkills}),
     d:battleSide({owner:1,type:"minion",element:"water",rosterId:null,skills:[{i:0,revealed:false,kind:"attack"},{i:1,revealed:false,kind:"attack"},{i:2,revealed:false,kind:"support"},{i:3,revealed:false,kind:"sig"}]})}});
+  /* #296 Saturn REVISE — 이모티콘 버튼은 전투 상단 줄의 자리(.battleTop .emoSlot)를 **그 줄이 그려진 뒤에** 잰다.
+     스텁 DOM 은 innerHTML 을 풀지 않으므로 자리 조회만 가로챈다: 전투 창이 열려 있을 때만 자리가 있다 */
+  const doc=$el(T,"overlay").ownerDocument, q0=doc.querySelector, EL=$el(T,"emoteLayer"); let slotTop=169;
+  EL.getBoundingClientRect=()=>({top:0,right:390,width:390});
+  doc.querySelector=s=>/\.battleTop \.emoSlot/.test(s)?(!$el(T,"overlay").classList.contains("hidden")&&/class="battleTop"/.test($el(T,"overlayBox").innerHTML)?{getBoundingClientRect:()=>({top:slotTop,right:316,width:44})}:null):q0(s);
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:3,seat:0,data:battleView})});
   const html=$el(T,"overlayBox").innerHTML;
+  ok(/class="emoSlot"/.test(html)&&EL.style["--emoT"]==="169px"&&EL.style["--emoR"]==="74px","L4e 전투 진입: 상단 줄이 그려진 뒤 이모티콘 자리를 잰다(--emoT 169px · --emoR 74px): "+EL.style["--emoT"]+"/"+EL.style["--emoR"]);
+  slotTop=155; global.__menu("fight");
+  ok(EL.style["--emoT"]==="155px","L4f 하위 메뉴 전환(창 높이 변화) 뒤 자리를 다시 잰다: "+EL.style["--emoT"]);
+  global.__menu(null);
+  { const css=require("fs").readFileSync(require("path").join(__dirname,"..","..","css","game.css"),"utf8");
+    ok(/\.battleTop \.tbTools \.emoSlot\{height:44px;\}/.test(css)&&/#overlayBox\.battleBox \.battleTop\{[^}]*position:sticky/.test(css),"L4g 전투 상단 이모티콘 자리 높이 44px · 상단 줄은 창 안 스크롤에도 제자리(sticky)"); }
   ok(T.S.battle&&T.S.battle.actorOwner===0&&T.netActor()===0,"L4 전투 상태가 반영되고 행위자가 서버 값 그대로다");
   ok(/⚔️ 싸우기/.test(html)&&/🎒 가방/.test(html)&&/🔴 포획/.test(html)&&/🏃 도망가기/.test(html)&&/id="bstage"/.test(html),"L5 원본 전투 화면의 4카테고리 메뉴와 무대가 그려진다");
-  ok(/window.__act\(0\)/.test(html)&&/\(쿨2\)/.test(html),"L5b 내 기술 4슬롯이 원본 라벨(쿨 표기 포함)로 나온다");
-  ok(/window.__useItem\(0\)/.test(html)&&/🎁 아이템 선물/.test(html),"L5c 가방(보유 아이템)·패키지 버튼이 원본대로 나온다");
+  ok(/window.__act\(0\)/.test(html)&&/남은 쿨타임 2/.test(html),"L5b 내 기술 4슬롯 + 쿨 표기(#296 REVISE1: 설명 창과 같은 '남은 쿨타임 n' 칩)");
+  ok(/window.__useItem\(0\)/.test(html)&&/🎁<\/i><b>아이템 선물<\/b>/.test(html),"L5c 가방(보유 아이템)·패키지 칸이 나온다(#296 REVISE1 3열 칸)");
   ok(/id="tok-A"/.test(html)&&/id="hpfill-D"/.test(html),"L5e 원본 무대 id(tok-A/hpfill-D)를 그대로 쓴다 — fx 적용 경로가 원본 applyFx와 같다");
   ok(!/water_stable|water_effect|water_heavy/.test(html),"L5f 상대 미공개 기술은 이름·id 없이 종류 자리표시만");
-  // v0.4.10 CJ 모바일 QA — 기술 설명 ⓘ (표시 전용)
-  ok((html.match(/class="skillInfoBtn"/g)||[]).length===4&&/aria-label="[^"]+ 설명 보기"/.test(html)&&/id="skillInfoBox" class="skillInfoBox hidden"/.test(html),"L5h 정체를 아는 내 기술 4개마다 ⓘ 설명 버튼(접근성 이름 포함)과 닫힌 설명 상자가 있다");
-  const sentInfo=T.wsLog[0].sent.length, revInfo=T.NET.revision;
-  global.__skillInfo(1);
-  const box=$el(T,"skillInfoBox");
-  ok(!box.classList.contains("hidden")&&box.innerHTML.indexOf(T.SKILLS[sk[1]].desc.slice(0,8))>=0&&/닫기/.test(box.innerHTML),"L5i ⓘ 를 누르면 그 기술의 원본 설명(desc)이 상자에 열린다 — 쿨 중인 기술도 열린다");
-  ok(T.wsLog[0].sent.length===sentInfo&&T.NET.revision===revInfo&&T.S.battle.actSeq===0,"L5j 설명 보기는 아무것도 보내지 않고 전투 행동·턴을 소비하지 않는다");
-  global.__skillInfo(1);
-  ok(box.classList.contains("hidden"),"L5k 같은 ⓘ(또는 닫기)를 다시 누르면 닫힌다");
+  // #296 (2026-10-02 CJ 정정) — 내 기술 설명은 줄 안에 그대로(ⓘ 토글 · 계산 위력 없음). 표시 전용
+  ok((html.match(/<ol class="uhSkills">/g)||[]).length===1&&sk.every(id=>!T.SKILLS[id].desc||T.SKILLS[id].kind==="basic"||html.includes("<small>"+T.SKILLS[id].desc.slice(0,8)))&&!/skillInfo/.test(html)&&!/\d+~\d+/.test(html),"L5h 내 기술 4줄마다 고정 설명(desc)이 줄 안에 보인다 — ⓘ 토글 · 위력 범위 없음");
   let sentBefore=T.wsLog[0].sent.length;
   global.__act(0);
   const la=JSON.parse(T.wsLog[0].sent[T.wsLog[0].sent.length-1]);
@@ -425,6 +429,7 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:4,seat:0,data:endView})});
   ok(T.S.battle===null,"L7 전투 종료 스냅샷 반영");
   ok($el(T,"overlay").classList.contains("hidden"),"L8 재생할 전투 이벤트가 없으면 전투가 끝날 때 오버레이를 닫는다");
+  ok(EL.style["--emoT"]===""&&EL.style["--emoR"]==="","L8e 전투 창이 닫힌 뒤 이모티콘 자리를 다시 잰다(전투 상단 값이 말판에 남지 않는다): "+EL.style["--emoT"]+"/"+EL.style["--emoR"]);
 }
 { // 왕·동료 본체(skills 없음) — 원본 기본 공격 버튼 · 아이템 라운드·볼 투척 1회 제한 반영
   const T=inPlay();
@@ -434,8 +439,8 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:3,seat:0,data:battleView})});
   const html=$el(T,"overlayBox").innerHTML;
   ok(/window.__act\('basic'\)/.test(html)&&/기본 공격 /.test(html),"L9 skills가 없는 전투원(왕·동료)은 원본 기본 공격 버튼(위력 범위 포함)");
-  ok(/<button disabled title="[^"]*" onclick="window.__useItem\(0\)">/.test(html),"L10 itemRound가 true면 아이템 버튼이 비활성화된다");
-  ok(/<button disabled title="[^"]*" onclick="window.__throwBall\(\)">/.test(html)&&/이번 라운드에 이미 던졌습니다/.test(html),"L11 ballThrow가 true면 볼 버튼이 비활성화되고 원본 사유를 보인다");
+  ok(/class="bagTile" disabled title="[^"]*" onclick="window.__useItem\(0\)">/.test(html),"L10 itemRound가 true면 아이템 버튼이 비활성화된다");
+  ok(/<button type="button" class="lock" (disabled |aria-disabled="true" )title="이번 라운드에 이미 던졌습니다">🔒 던지기/.test(html)&&!/__throwBall\(\)/.test(html),"L11 ballThrow가 true면 볼 버튼이 잠기고(onclick 없음) 원본 사유를 title 로 보인다(#296 REVISE1)");
   const sentBefore=T.wsLog[0].sent.length;
   global.__act("basic");
   ok(T.wsLog[0].sent.length===sentBefore+1&&JSON.parse(T.wsLog[0].sent[T.wsLog[0].sent.length-1]).action.k==="basic",
@@ -450,7 +455,7 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:3,seat:0,data:battleView})});
   const html=$el(T,"overlayBox").innerHTML;
   ok(/상대 아이템 비공개/.test(html)&&/상대 패키지 비공개/.test(html),"L14 상대 차례에는 상대 가방·패키지가 비공개로 그려진다");
-  ok(!/<button onclick="window.__act/.test(html)&&/<button disabled onclick="window.__act\('basic'\)">/.test(html),"L15 상대 차례의 행동 버튼은 전부 비활성");
+  ok(!/window\.__act/.test(html)&&/상대 스킬은 표시하지 않습니다/.test(html),"L15 상대 차례: 행동 버튼 · 상대 스킬 줄이 없다 (#296)");
   const before=T.wsLog[0].sent.length; global.__act("basic");
   ok(T.wsLog[0].sent.length===before&&/상대 턴/.test(toasts(T).join("|")),"L16 비행위자가 눌러도 보내지 않는다 (netAction 행위자 가드)");
   { // 상대 하수인 차례 — 미공개 기술에는 설명 버튼이 없고, 공개된 기술에만 있다
@@ -460,7 +465,59 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
       d:battleSide({owner:1,type:"minion",element:rd2.element,rosterId:rd2.id,skills:[{i:0,revealed:true,id:sk2[0],name:sk2[0],cd:0},{i:1,revealed:false,kind:"attack"},{i:2,revealed:false,kind:"support"},{i:3,revealed:false,kind:"sig"}]})}});
     T2.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:3,seat:0,data:v2})});
     const h2=$el(T2,"overlayBox").innerHTML;
-    ok((h2.match(/class="skillInfoBtn"/g)||[]).length===1&&/onclick="window.__skillInfo\(0\)"/.test(h2)&&!/__skillInfo\([123]\)/.test(h2),"L17 상대 전투원: 공개된 기술(0)에만 ⓘ, 미공개 기술(1~3)에는 설명 버튼이 없다");
+    ok(!/window\.__act/.test(h2)&&!/미공개/.test(h2)&&!h2.includes(T2.skillNameKo(sk2[0],rd2.element))&&!/class="(bSkills|uhSkills)"/.test(h2),"L17 상대 전투원: 서버가 공개 기술을 실어도 화면에는 상대 스킬(이름 · 설명 · 자리표시)이 없다 (#296)");
+  }
+}
+{ /* ===== #296 전투 화면 — 서버가 실은 실제 값만 쓴다 (2026-10-02 CJ 정정 반영) =====
+     서버 계약(Jupiter): battle.a/d 양쪽에 atk·def·spd·dodge·crit·statusPct(유한한 실제 값 또는 null) · grade(실제 정수 · 없으면 키 없음) · 내 활성 칸 skills[i].usable(boolean).
+     화면 계약: 계산한 위력/피해 범위 없음(0~0 의 자리 자체가 없다) · 내 스킬 = 고정 설명 + 미해금 잠긴 줄 · 상대 스킬은 어디에도 없음 · 상대도 등급/HP/방어막/6스탯/상태 */
+  const open=(a,d,o)=>{ const T=inPlay(); T.wsLog[0].onmessage({data:JSON.stringify({v:1,type:"room_state",revision:3,seat:0,data:mkSeatView(Object.assign({revision:3,state:"IN_PROGRESS",
+    battle:Object.assign({battleId:9,round:1,phase:0,actor:"A",actSeq:0,maxRounds:null,log:[],a:battleSide(a),d:battleSide(d)},o||{})}))})}); return {T,h:$el(T,"overlayBox").innerHTML}; };
+  const T0=inPlay(), W=T0.LEGEND_ROSTER.find(l=>l.key==="witch"), sp=T0.V2_SPECIES["M-F1"], nm=(id,el)=>T0.skillNameKo(id,el);
+  const sk=(ids,x)=>ids.map((id,i)=>Object.assign({i,revealed:true,id,name:id,cd:0,usable:true},x&&x[i])); // 서버는 내 활성 칸에 언제나 usable 을 싣는다(room.js _skillsFor)
+  const wPow=W.skills.find(id=>T0.SKILLS[id].pow), noRange=h=>!/\d+~\d+/.test(h)&&!/위력 \?/.test(h), desc=id=>"<small>"+T0.SKILLS[id].desc.slice(0,10);
+  const foe={owner:1,type:"ally",atk:16,def:7,spd:9,dodge:0.05,crit:0,statusPct:0.1};
+  { // 전설 본체 — 종 표(ROSTER)에 없는 L-* 식별자. 종전 0~0 의 재현 조건
+    const x=open({owner:0,type:"minion",rosterId:"L-WITCH",skills:sk(W.skills)},foe);
+    ok(x.T.S.battle.fa.atk===undefined&&x.h.includes("<b>"+nm(wPow,null)+"</b>")&&noRange(x.h)&&/aria-label="공격력 정보 없음"/.test(x.h)&&!/<b aria-hidden="true">(\?|0)<\/b>/.test(x.h.split('class="bslot slot-me"')[1].split("</ul>")[0]),"P1 전설 본체 · 공격력 누락 = 스탯 칸 '—'(정보 없음) — 0~0 · ? · 0 을 만들지 않는다");
+    const y=open({owner:0,type:"minion",rosterId:"L-WITCH",skills:sk(W.skills),atk:32,def:12,spd:13,dodge:0.1,crit:0.05,statusPct:0.25},foe);
+    ok(y.T.S.battle.fa.atk===32&&noRange(y.h)&&(T0.SKILLS[wPow].kind==="basic"?y.h.includes('aria-label="위력 '+T0.SKILLS[wPow].pct+'%"'):y.h.includes(desc(wPow)))&&/aria-label="등급 5">★★★★★<\/span>/.test(y.h),"P2 전설 본체 · 서버 공격력 32 — 화면에는 계산 범위 없이 고정 설명 · 전설 ★5");
+    ok(/aria-label="공격력 32"/.test(y.h)&&/aria-label="방어력 12"/.test(y.h)&&/aria-label="속도 13"/.test(y.h)&&/aria-label="회피 10%"/.test(y.h)&&/aria-label="치명타 5%"/.test(y.h)&&/aria-label="상태 부여 확률 25%"/.test(y.h),"P3 내 패널 기본 6스탯 = 서버 값 그대로");
+    ok(/aria-label="방어력 7"/.test(y.h)&&/aria-label="치명타 0%"/.test(y.h)&&/aria-label="공격력 16"/.test(y.h),"P4 상대 패널도 서버가 실은 기본 6스탯(진짜 0 은 0%)");
+    ok(/id="shtxt-A">0</.test(y.h)&&(y.h.match(/class="bStats"/g)||[]).length===2,"P5 양쪽 패널 = HP · 현재 방어막 한 줄 + 6스탯 칸");
+    const z=open({owner:0,type:"minion",rosterId:"L-WITCH",skills:sk(W.skills),atk:0,def:null,spd:NaN},foe);
+    ok(z.T.S.battle.fa.atk===0&&/aria-label="공격력 0"/.test(z.h)&&/aria-label="방어력 정보 없음"/.test(z.h)&&/aria-label="속도 정보 없음"/.test(z.h)&&noRange(z.h),"P6 진짜 0 은 0 그대로(공격력 0) · null/NaN 은 '—' — 둘을 구분한다");
+  }
+  { // 일반 하수인 2등급 — 1등급 종 표 값이 아니라 서버 값. 미래 등급 스킬은 잠긴 소개 줄(#294 설명 그대로)
+    const g2=T0.ROSTER.find(r=>r.id==="M-F1").atk+9;
+    const x=open({owner:0,type:"minion",element:"fire",rosterId:"M-F1",skills:sk(sp.slice(0,2)),atk:g2,grade:2},foe);
+    ok(x.T.S.battle.fa.atk===g2&&new RegExp('aria-label="공격력 '+g2+'"').test(x.h)&&x.T.S.battle.fa.grade===2&&/aria-label="등급 2">★★<\/span>/.test(x.h),"P7 2등급 본체 = 서버 공격력("+g2+") · 서버 등급 ★★ — 1등급 종 표 값으로 그리지 않는다");
+    ok((x.h.match(/<li class="lock">/g)||[]).length===2&&x.h.includes("<b>"+nm(sp[2],"fire")+'</b><span class="uhChip" role="img" aria-label="잠김 — 등급 3 필요">🔒 ★★★ 필요')&&x.h.includes("<b>"+nm(sp[3],"fire")+'</b><span class="uhChip" role="img" aria-label="잠김 — 등급 4 필요">🔒 ★★★★ 필요')&&!/__act\([23]\)/.test(x.h)&&x.h.includes(desc(sp[3])),"P8 내 종의 미해금 스킬 = 요구 등급 + #294 고정 설명이 적힌 잠긴 소개 줄 · 명령 없음");
+    const full=open({owner:0,type:"minion",element:"fire",rosterId:"M-F1",skills:sk(sp),atk:g2,grade:4},foe);
+    ok(!T0.SKILLS[sp[2]].pow&&full.h.includes("<b>"+nm(sp[2],"fire")+"</b>")&&full.h.includes(desc(sp[2]))&&noRange(full.h)&&!/<li class="lock">/.test(full.h),"P9 비피해 기술(자기 강화)도 이름 + 설명뿐 · 4칸을 다 가지면 잠긴 줄 없음");
+    const none=open({owner:0,type:"minion",element:"fire",rosterId:"M-F1",skills:sk(sp.slice(0,2))},foe);
+    ok(none.T.S.battle.fa.atk===undefined&&/aria-label="공격력 정보 없음"/.test(none.h)&&none.T.S.battle.fa.grade===undefined&&!/aria-label="등급 \d"/.test(none.h),"P10 서버가 공격력 · 등급을 안 실으면 일반 종도 종 표로 되살리지 않는다('—' · ★ 없음)");
+  }
+  { // 가방 대리 출전(왕의 대리) — 내 말 cap/reserve 가 없어도 서버 값으로
+    const x=open({owner:0,type:"king",bodyFight:false,element:"fire",artRosterId:"M-F1",skills:sk(sp.slice(0,3)),atk:27,grade:3},foe);
+    ok(x.T.S.battle.fa.atk===27&&/aria-label="공격력 27"/.test(x.h)&&noRange(x.h)&&(x.h.match(/<li class="lock">/g)||[]).length===1,"P11 가방 대리 출전 = 서버 공격력 27(cap/reserve 복원 없음) · 그 종의 잠긴 줄 1개");
+    const y=open({owner:0,type:"king"},{owner:1,type:"king",bodyFight:false,element:"fire",artRosterId:"M-F1",grade:3,atk:21,def:6,spd:8,dodge:0,crit:0.05,statusPct:0,shield:4,burn:2,
+      skills:[{i:0,revealed:true,id:sp[0],name:sp[0],cd:0},{revealed:false}]},{phase:1,actor:"D"});
+    ok(!y.h.includes(nm(sp[0],"fire"))&&!/미공개/.test(y.h)&&!/class="(bSkills|uhSkills)"/.test(y.h)&&!/window\.__act/.test(y.h)&&noRange(y.h),"P12 상대 차례(대리 출전): 서버가 공개 기술을 실어도 상대 스킬 줄 · 이름 · 자리표시 · 잠긴 줄이 없다");
+    ok(/aria-label="등급 3">★★★<\/span>/.test(y.h)&&/aria-label="공격력 21"/.test(y.h)&&/aria-label="회피 0%"/.test(y.h)&&/id="shtxt-D">4</.test(y.h)&&/id="bst-D">[^<]*화상2R/.test(y.h),"P12b 상대 전투원 = 실제 등급 · HP · 현재 방어막 · 기본 6스탯 · 상태(디버프)");
+    ok(!/id="battleClock"/.test(y.h)&&/⏳ 상대 응답 대기/.test(y.h)&&/class="battleTop"/.test(y.h)&&/배틀 중/.test(y.h),"P13 상대 차례 = 대기 표시뿐(상대 행동 시계 없음) · 상단 신원 한 줄");
+    const me=open({owner:0,type:"minion",element:"fire",rosterId:"M-F1",skills:sk(sp),atk:20},{owner:1,type:"minion",element:"water",rosterId:"M-W1",atk:18,skills:[{i:0,revealed:true,id:T0.V2_SPECIES["M-W1"][0],name:"x",cd:2},{revealed:false}]});
+    ok(!me.h.split('class="bslot slot-op"')[1].split('class="bslot slot-me"')[0].includes(nm(T0.V2_SPECIES["M-W1"][0],"water"))&&!/미공개/.test(me.h),"P13b 내 차례에도 상대 패널에 상대 스킬(이름 · 쿨 · 자리표시)이 없다");
+  }
+  { // 사용 가능 상태 = 서버 slotUsable 결과 (전투당 1회 · 조건부 기술을 로컬 규칙으로 다시 따지지 않는다)
+    const x=open({owner:0,type:"minion",element:"fire",rosterId:"M-F1",skills:sk(sp,[{usable:false},{usable:true},{usable:true},{usable:true}]),atk:20},foe);
+    ok(/<button type="button" disabled (title="[^"]*" )?onclick="window\.__act\(0\)">/.test(x.h)&&x.h.includes('<span class="uhChip cd">불가</span>')&&/<button type="button" (title="[^"]*" )?onclick="window\.__act\(1\)">/.test(x.h)&&!/__pass\(\)/.test(x.h),"P14 서버 usable:false 칸만 잠김 + (불가) · 나머지는 활성");
+    const y=open({owner:0,type:"minion",element:"fire",rosterId:"M-F1",skills:sk(sp,[0,1,2,3].map(()=>({usable:false}))),atk:20},foe);
+    ok(!/<button type="button" (title="[^"]*" )?onclick="window\.__act/.test(y.h)&&/<button type="button" disabled (title="[^"]*" )?onclick="window\.__act\(0\)">/.test(y.h)&&/__pass\(\)/.test(y.h)&&y.h.indexOf(y.T.NO_ATTACK_MSG)>=0,"P15 전 칸 usable:false = 안내 + 수동 [턴 종료] (같은 서버 결과)");
+    ok(/id="battleClock"/.test(x.h)&&!/⏳ 상대 응답 대기/.test(x.h),"P16 내 차례에만 내 행동 시계 칸");
+    /* 공개 방에서 usable 이 빠진 칸은 잠근다 — 합성 전투원에는 onceUsed · burrowRound 가 없어 Core 규칙으로 메우면 "쓸 수 있음"으로 틀리게 나온다(쿨 0 · 조건 없는 기본기도 열지 않는다) */
+    const z=open({owner:0,type:"minion",element:"fire",rosterId:"M-F1",skills:sp.map((id,i)=>({i,revealed:true,id,name:id,cd:0})),atk:20},foe);
+    ok(z.T.NET.publicMode&&z.T.S.battle.fa.usable.every(u=>u===null)&&!/<button type="button" (title="[^"]*" )?onclick="window\.__act/.test(z.h)&&(z.h.match(/<span class="uhChip cd">불가<\/span>/g)||[]).length===4&&/__pass\(\)/.test(z.h),"P17 공개 방 · usable 누락 = 4칸 모두 잠김(로컬 Core 규칙으로 추정하지 않는다) + 수동 [턴 종료]");
   }
 }
 { // v3 data.modal — 소유 좌석은 실제 html/버튼, 비소유 좌석은 대기 화면만
@@ -537,7 +594,8 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   const p4=$el(T,"sidePanel").innerHTML;
   ok(T.S.phase==="over"&&T.NET.finalReveal===true&&/resultSeat mine win/.test(p4)&&/Win!/.test(p4)&&/resultVs/.test(p4)&&/Lose!/.test(p4),"P4 FINISHED는 종료 공개 상태와 결과(내 승리 · VS · 상대 패)를 보인다");
   /* #238 CJ 8항(2026-09-28): 온라인 결과의 출구는 같은 대기방 복귀 하나다(방을 파괴하지 않는다 · 즉석 재대전 없음) */
-  ok((p4.match(/<button/g)||[]).length===1&&/netReturnToRoom\(\)/.test(p4)&&!/rematch\(\)/.test(p4)&&!/접속 코드|새 대전은/.test(p4),"P5 결과 화면 출구는 [방으로 돌아가기] 하나 · 재대전·안내 문구 없음");
+  /* #295 CJ 2026-09-30 REVISE: 결과 화면에는 [내보내기]도 없다 — 버튼은 [방으로 돌아가기] 하나 */
+  ok((p4.match(/<button/g)||[]).length===1&&!/netLobbyKick/.test(p4)&&/netReturnToRoom\(\)/.test(p4)&&!/rematch\(\)/.test(p4)&&!/접속 코드|새 대전은/.test(p4),"P5 결과 화면 출구는 [방으로 돌아가기] 하나 · 재대전·안내 문구 없음");
   T.netReturnToRoom();
   const ret=lastSent(T.wsLog[0]);
   ok(ret.t==="lobby_return"&&ret.round===T.NET.round&&ret.seatToken&&ret.requestId,"P5b 복귀는 lobby_return 봉투(round·좌석 토큰 포함)");

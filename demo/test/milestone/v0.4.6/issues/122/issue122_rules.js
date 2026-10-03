@@ -63,9 +63,15 @@ block("A 화면 상태",()=>{
   T.renderSide();
   const sp=T.byId("sidePanel").innerHTML;
   ok(/data-step="roster"/.test(sp)&&/data-step="place"/.test(sp),"A11 로스터·배치 두 절이 동시에 DOM 에 있다 (보이기만 전환)");
-  ok(/시작 상점/.test(sp)&&/비공개 배치/.test(sp)&&/배치 완료/.test(sp),"A12 기존 안내·버튼 문구 보존 (#236: 01 = 시작 상점)");
+  /* #293 (2026-10-01 CJ 흐름 PASS · 계약 3.2/3.3): 경제 판의 '01 시작 상점 n/6' 탭 문구는 진행 막대(01 상점 — 02 배치 — 03 완료)로 바뀌었다.
+     배치 안내(접근성 전용)·[배치 완료] 버튼은 그대로 있어야 하고, 막대의 현재 단계는 상태(상점 완료)에서 나온 '배치'여야 한다 */
+  const cur=sp.match(/aria-current="step">[\s\S]*?<b>0\d<\/b> ([^<]+)<\/span>/);
+  ok(/class="flowBar"/.test(sp)&&["상점","배치","완료"].every((t,i)=>sp.includes(`<b>0${i+1}</b> ${t}</span>`))&&!!cur&&cur[1]==="배치"
+    &&/비공개 배치/.test(sp)&&/배치 완료/.test(sp)&&!/prepTabs|data-prep-step/.test(sp),"A12 진행 막대 3단계(현재 = 배치) · 배치 안내·버튼 문구 보존 · 경제 판에 01/02 탭 없음 (#293)");
   ok(T.UI.prep==="place","A13 시작 상점을 마치면(6칸) 배치 단계로 넘어간다");
-  T.uiPrep("roster"); ok(T.UI.prep==="roster","A14 탭으로 로스터 단계로 되돌아간다");
+  /* #293: 경제 판의 단계는 탭이 아니라 그 좌석의 shop.done 이 정한다 — 닫힌 S01 은 다시 열리지 않는다(재개방 없음). 비경제 로스터 선택은 종전 자유 전환 */
+  T.uiPrep("roster"); ok(T.UI.prep==="place"&&T.S.eco.shop.done[0]===true&&T.els.app.getAttribute("data-prep")==="place","A14 끝난 시작 상점은 01 호출로 다시 열리지 않는다 (#293 단계 = 상태 파생)");
+  T.S.eco=null; T.uiPrep("place"); const freeTo=T.UI.prep; T.uiPrep("roster"); ok(freeTo==="place"&&T.UI.prep==="roster","A14b 비경제 로스터 선택은 탭으로 로스터 단계로 되돌아간다 (종전)");
 });
 
 /* ===== B. 같은 문서 로비 복귀·재대전 (#128 정책 불변) ===== */
@@ -131,7 +137,7 @@ block("C 경기 종료 연출",()=>{
   const rl=T.resultBannerOf({owner:1});
   ok(/전투에서 패배/.test(rl.title)&&/\blose\b/.test(rl.cls),"C9 전투 패배 배너");
   ok(!/finishBattle\(null/.test(SRC)&&!/cls:"draw"/.test(SRC.replace(/match draw/g,"")),"C10 전투 결과에 무승부 분기가 없다 (draw 는 경기 결과 전용)");
-  ok(/동률 \$\{pct\(ra\)\} — 방어자 승/.test(SRC),"C11 판정 동률은 종전대로 방어자 승 (규칙 무변경)");
+  ok(/else \{S\.metrics\.ties\+\+; finishBattle\("D",`동률 \$\{ha\} vs \$\{hd\} — 방어자 승`\);\}/.test(SRC)&&/const ra=B\.fa\.hp\/B\.fa\.maxHp, rd=B\.fd\.hp\/B\.fd\.maxHp;/.test(SRC),"C11 판정 동률은 종전대로 방어자 승 (규칙 무변경)");
 
   /* C12 왕 제거로 끝나는 전투 — 배너가 한 번만, 그리고 그것이 경기 결과다 */
   board("pve",["grade5","grade5"]);
@@ -249,9 +255,9 @@ block("E 보존",()=>{
   ok(!/싸우지 않고 종료/.test(tb())||T.optionalBattleLeft(),"E2 '싸우지 않고 종료'는 선택 전투가 남아 있을 때만");
   ok(/기권/.test(tb()),"E3 기권은 항상 있다");
   /* 전투 모달은 인덱스 중계가 아니라 시맨틱 액션 — buttons 는 빈 배열 그대로 */
-  /* #238: 전투 이력 <details> 는 없앴다 — battleModal 본문의 유일한 modal( 호출이 마지막 [← 뒤로] 템플릿 바로 뒤에 [] 를 넘기는지 본다 */
+  /* #238: 전투 이력 <details> 는 없앴다 · #296 CJ: 바깥 [← 뒤로]도 없앴다 — battleModal 본문의 유일한 modal( 호출이 마지막 도망 패널 템플릿 바로 뒤에 [] 를 넘기는지 본다 */
   const bm=SRC.slice(SRC.indexOf("function battleModal("),SRC.indexOf("\nfunction ",SRC.indexOf("function battleModal(")+1));
-  ok((bm.match(/\bmodal\(/g)||[]).length===1&&/id="bmenuBack"[^\n]*<\/button>`,[^\n]*\n\s*\[\]\);/.test(bm),"E4 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용)");
+  ok((bm.match(/\bmodal\(/g)||[]).length===1&&/\$\{sub\("flee",[^\n]*\)\}`,[^\n]*\n\s*\[\]\);/.test(bm),"E4 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용)");
   ok(/__act\(/.test(SRC)&&/__pass\(\)/.test(SRC)&&/__flee\(\)/.test(SRC)&&/__throwBall\(\)/.test(SRC),"E5 전투 시맨틱 액션 단일 경로 유지");
   /* 4슬롯 전부 불가일 때만 수동 [턴 종료] · 소유자 화면 전용 */
   ok(/const noAtkShow=noAtk&&mineView;/.test(SRC),"E6 전투 내 수동 [턴 종료] 는 4슬롯 전부 불가 + 소유자 화면일 때만 (#146)");

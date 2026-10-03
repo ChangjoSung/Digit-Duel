@@ -464,6 +464,33 @@ const mkImg=T=>{ const el=T.document.createElement("img"); el.onerror=function()
   }
 }
 
+/* ===== K. #292 재접속 — 끊긴 동안 영구 결손으로 굳은 파일이 재개(room_resumed) 뒤 다시 확인된다 =====
+   유예(60초) 동안 회선이 없으면 복구 예산(연속 3회)이 먼저 끝나 gone 으로 굳는다. 재개 프레임은 실제 소켓 디스패처로 넣는다 */
+{
+  const T=loadRec({href:"file:///C:/Digit-Duel/demo/index.html",storage:H.mkStorage({tutorialSeen:"1"})});
+  if(T.TUT.open) T.tutClose();
+  T.netCreatePublicRoom(); const ws=T.wsLog[0]; ws.readyState=1; ws.protocol="digit-duel.v1"; ws.onopen();
+  const msg=m=>ws.onmessage({data:JSON.stringify(m)});
+  msg({v:1,type:"room_opened",epoch:"e1",roomId:"R1",seat:0,seatToken:"t",tokenGen:0,revision:0,seq:1});
+  T.artPreload();
+  const P=board(T), dir=T.artDirOf(P.me), icon=T.ART_BASE+dir+"/icon.png", bat=T.ART_BASE+dir+"/battle.png";
+  fire(T,u=>u!==icon&&u!==bat,"ok");                        // 다른 파일은 끊기기 전에 받았다
+  fire(T,u=>u===icon||u===bat,"err");                       // 끊긴 동안 이 종의 두 파일이 떨어진다
+  burn(T,T.ART_BASE+dir+"/");
+  T.render();
+  ok(GONE(T,dir,"icon.png")&&GONE(T,dir,"battle.png")&&!isArt(T,P.me)&&T.clock.pending()===0,"K1 끊긴 동안 예산을 다 써 gone 으로 굳고 보드는 폴백 (재현)");
+  const n0=nReq(T);
+  msg({v:1,type:"room_resumed",epoch:"e1",roomId:"R1",seat:0,seatToken:"t2",tokenGen:1});
+  T.clock.advance(1000);
+  const again=reqs(T).slice(n0).map(e=>e.src);
+  ok(again.length===2&&again.includes(icon)&&again.includes(bat),"K2 재개 즉시 굳은 두 파일만 다시 조회한다 (새 URL 0건) "+JSON.stringify(again));
+  fire(T,()=>true,"ok"); T.clock.advance(10); T.render();
+  ok(!T.ART.failed.has(dir)&&isArt(T,P.me)&&T.artBattleOk(dir),"K3 재개 뒤 회선이 살아 있으면 보드 아이콘·전투 도트가 아트로 돌아온다");
+  /* 재개 뒤에도 정말 없는 파일이면 다시 유한하게 끝난다 */
+  T.artFail(dir,mkImg(T)); const rounds=burn(T,icon);
+  ok(rounds<=T.ART_RETRY.max&&GONE(T,dir,"icon.png")&&T.clock.pending()===0,"K4 재개로 새로 받은 예산도 유한하다 ("+rounds+"회)");
+}
+
 /* ===== G. 변경 전 소스 음성 대조 — 같은 동작을 기준판에서 재현한다 ===== */
 {
   let baseHtml=null;
