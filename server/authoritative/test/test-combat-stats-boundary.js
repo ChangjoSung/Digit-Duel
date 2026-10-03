@@ -22,7 +22,11 @@ const NEVER_TO_OPPONENT = STAT_BUNDLE.concat(['grade', 'shieldStartPct', 'shield
 // #233 최종 엔진분 추가: 지속 카운터(…R)·1회용 게이트(…Fresh)·확정 효과(critForce·dodgeForce)·순서 효과
 // (vanguardTurn)는 모두 stIcons(demo/index.html) 목록에 없다. 공개 방 클라이언트는 피해를 계산하지 않으므로
 // (서버 권위) 표시에도 계산에도 쓰이지 않는다 — 엔진에 필드가 늘었다는 이유만으로 공개 범위를 넓히지 않는다.
-const NEVER_IN_BATTLE = STAT_BUNDLE.concat(['grade', 'shieldStartPct', 'shieldLayers', 'evadeBuff', 'dmgUpBuff',
+/* #296 (2026-10-02 CJ "상대도 공개" · P1) — 기본 6스탯은 **전투 뷰 한정** allowlist(BASIC6)로 옮겼다. 보드 상대 뷰(NEVER_TO_OPPONENT)는
+   그대로 금지이고, 개체 식별자·1회/조건 기술의 내부 상태·전투원 단위 skillAtk 는 전투 뷰에도 없다.
+   2026-10-02 CJ 정정 — **실제 전투원의 등급(grade)** 은 전투 뷰에서 양 좌석 공개다(대리 출전 포함 · 왕/동료는 null). 보드 경계는 그대로. */
+const BASIC6 = ['atk', 'def', 'spd', 'dodge', 'crit', 'statusPct'];
+const NEVER_IN_BATTLE = ['uid', 'cap', 'legend', 'skillAtk', 'onceUsed', 'burrowRound'].concat(['shieldStartPct', 'shieldLayers', 'evadeBuff', 'dmgUpBuff',
 // (shockFresh 는 예외 — #233 이전부터 전투 뷰에 실렸고 netSynthFighter 가 읽는다. 종전 계약 그대로 둔다.)
   'absorbed', 'pendingFx', 'stats', 'evadeBuffR', 'dmgUpBuffR', 'crackFresh', 'hardenFresh',
   'evadeBuffRFresh', 'dmgUpBuffRFresh', 'critForce', 'dodgeForce', 'vanguardTurn', 'burnFresh']);
@@ -47,9 +51,31 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
     for (const k of ['crack', 'harden', 'hardenPct', 'evadeBuff', 'dmgUpBuff']) {
       ok(typeof p[k] === 'number', `${label} 새 지속 상태 ${k} 전송`);
     }
-    ok(!('shieldStartPct' in p), label + ' shieldStartPct는 보내지 않는다(소비자 없음)');
     ok(!('shieldLayers' in p), label + ' shieldLayers는 보내지 않는다(합계 shield만 표시)');
   }
+
+  /* #294 (2026-10-02 CJ) — 자기 말 상세의 8스탯: shieldStartPct 는 **엔진 값 그대로** 온다(0 도 숫자 0 · 폭탄/함정 포함).
+     값을 한 번 바꿔 봐야 상수 0 을 박아 넣은 구현을 가려낸다 — 자기 하수인 하나와 예비에 0.10 을 심는다. */
+  const T = room.engine;
+  const engineOf = (p) => T.S.pieces.find((x) => room._alias(x.id) === p.id);
+  for (const p of mine(v)) {
+    ok(typeof p.shieldStartPct === 'number' && p.shieldStartPct === engineOf(p).shieldStartPct,
+      `자기 ${p.type} shieldStartPct = 엔진 값(${engineOf(p).shieldStartPct})`);
+  }
+  ok(mine(v).some((p) => p.shieldStartPct === 0), '기본값 0 은 빠지지 않고 숫자 0 으로 온다');
+  const custom = T.S.pieces.find((p) => p.owner === 0 && p.type === 'minion' && p.placed).id;
+  both(room, (E) => {
+    byId(E, custom).shieldStartPct = 0.10;
+    E.S.reserve[0] = { element: 'fire', hp: 50, maxHp: 50, shieldStartPct: 0.10 };
+  });
+  const v0 = room.toSeatView(0), v1 = room.toSeatView(1);
+  ok(v0.you.pieces.find((p) => p.id === room._alias(custom)).shieldStartPct === 0.10, '자기 하수인의 실제 값 0.10 이 그대로 온다');
+  ok(v0.you.reserve.shieldStartPct === 0.10, '자기 예비 하수인의 실제 값 0.10 이 그대로 온다');
+  // 상대 좌석 프레임 — 자기 몫(you)을 뺀 어디에도 이 키가 없다(you 는 좌석 1 자신의 값이라 검사 대상이 아니다).
+  const { you: _own1, ...rest1 } = v1;
+  ok(JSON.stringify(rest1).indexOf('shieldStartPct') === -1, '상대 좌석 프레임(you 제외)에 shieldStartPct 키가 없다');
+  ok(v1.you.reserve === null && v1.you.pieces.every((p) => engineOf(p).owner === 1 && p.shieldStartPct === engineOf(p).shieldStartPct),
+    '상대의 you 는 자기 말의 엔진 값만 — 좌석 0 의 말·예비가 섞이지 않는다');
 
   // 3.5 — 하수인은 ⭐ 등급을 갖고, 왕·동료는 등급이 없다(null).
   const minion = mine(v).find((p) => p.type === 'minion');
@@ -86,6 +112,13 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
 
   for (const u of v.units) {
     for (const k of NEVER_TO_OPPONENT) {
+      /* #293 (2026-10-01 CJ QA REVISE 6) — **정체가 공개된** 상대 말(C-2)만 등급을 싣는다(말 얼굴 배경색): 엔진 값 그대로.
+         미공개 말(B)의 등급과 그 밖의 모든 키는 종전대로 금지다. */
+      if (k === 'grade' && u.type) {
+        const g = T.S.pieces.find((p) => room._alias(p.id) === u.id).grade;
+        ok(u.grade === (g === undefined ? null : g), `공개된 상대 보드 말의 grade = 엔진 값 (등급 C-2 · #293)`);
+        continue;
+      }
       ok(!(k in u), `상대 보드 말에 ${k} 미전송 (등급 ${u.type ? 'C-2' : 'B'})`);
     }
   }
@@ -108,15 +141,20 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
   // 균열·경화를 실제 값으로 걸어 둔다(#234 전까지 이를 거는 기술이 없어 라이브로는 0이지만, 계약은 값이 있을 때
   // 그 값이 그대로 양쪽 화면에 도달하는지로 판정해야 한다 — stIcons가 hardenPct를 숫자로 찍는다).
   both(room, (E) => { E.S.battle.fa.crack = 2; E.S.battle.fd.harden = 3; E.S.battle.fd.hardenPct = 0.25; });
+  // #294 — 자기 말 뷰에는 실리게 됐지만 전투 뷰는 그대로다. 두 전투원에 실제 값을 심어 놓고 프레임 전체를 본다.
+  both(room, (E) => { E.S.battle.fa.shieldStartPct = 0.10; E.S.battle.fd.shieldStartPct = 0.10; });
 
   for (const seat of [0, 1]) {
     const b = room.toSeatView(seat).battle;
     ok(!!b, `좌석 ${seat} 전투 뷰 존재`);
+    ok(JSON.stringify(b).indexOf('shieldStartPct') === -1, `좌석 ${seat} 전투 프레임 어디에도 shieldStartPct 키가 없다(#294 뒤에도)`);
     for (const sideKey of ['a', 'd']) {
       const s = b[sideKey];
       const label = `좌석 ${seat} battle.${sideKey}`;
       for (const k of ['crack', 'harden', 'hardenPct']) ok(typeof s[k] === 'number', `${label} ${k} 전송(stIcons가 그린다)`);
       for (const k of NEVER_IN_BATTLE) ok(!(k in s), `${label} ${k} 미전송`);
+      for (const k of BASIC6) ok(typeof s[k] === 'number', `${label} ${k} 전송(#296 전투 한정 allowlist)`);
+      ok(s.grade === 1, `${label} grade = 실제 전투원 등급 ⭐1 (#296 양 좌석 공개)`);
     }
     // 뷰어와 무관하게 양쪽 전투원의 값이 그대로 온다 — 원본 stIcons가 두 패널을 마스킹 없이 그리는 것과 같다.
     ok(b.a.crack === 2, `좌석 ${seat} 공격 측 균열 2R이 양쪽 화면에 도달`);
@@ -138,6 +176,107 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
     const b = room.toSeatView(seat).battle;
     ok(!('firstSide' in b), `좌석 ${seat} battle 프레임에 firstSide 미전송(actor 로 유도되는 중복 값)`);
     ok(b.actor === 'A' || b.actor === 'D', `좌석 ${seat} battle.actor 가 공개 행위자 원본으로 온다`);
+  }
+}
+
+// ===== 3b) #296 전투 한정 기본 6스탯 + 자기 활성 칸 usable — 실제 전투원 값 · 양 좌석 · 재연결 =====
+{
+  const NO_KEYS = ['uid', 'cap', 'legend', 'skillAtk', 'shieldStartPct', 'onceUsed', 'burrowRound'];
+  const reconnect = (room, seat) => {
+    room.socketClosed(seat);
+    const r = room.resumeSeat(seat, room.seats[seat].credential.current, H.fakeWs());
+    if (!r.ok) throw new Error('fixture resume failed: ' + r.reason);
+  };
+  // 공격자 말을 mutate(E, 말)로 바꾼 뒤(두 좌석 엔진 동일) 합법 경로로 전투를 연다. pick = 공격자 고르기(기본: 차례인 쪽 하수인).
+  const battle = (id, mutate, pick) => {
+    const room = startedRoom(id), T = room.engine, cur = T.S.current;
+    const att = T.S.pieces.find(pick || ((p) => p.owner === cur && p.type === 'minion' && p.alive && p.placed)).id;
+    const def = T.S.pieces.find((p) => p.owner === 1 - byId(T, att).owner && p.type === 'minion' && p.alive && p.placed).id;
+    if (mutate) both(room, (E) => mutate(E, byId(E, att)));
+    H.openBattle(room, { att, def });
+    for (let n = 0; n < 6 && !T.S.battle; n++) { // 왕·동료는 출전 선택에서 멈춘다 — 본체 출전(0번)
+      const pm = room._pendingModal();
+      if (!pm) break;
+      H.act(room, pm.owner, { t: 'modal', seq: pm.seq, i: 0 });
+    }
+    if (!T.S.battle) throw new Error('fixture: battle did not open — ' + id);
+    return room;
+  };
+  const check = (room, label) => {
+    const T = room.engine, B = T.S.battle;
+    for (const seat of [0, 1]) {
+      const b = room.toSeatView(seat).battle;
+      for (const [k, f] of [['a', B.fa], ['d', B.fd]]) {
+        const s = b[k], own = s.owner === seat, at = `${label} 좌석 ${seat} battle.${k}(${own ? '내' : '상대'})`;
+        ok(BASIC6.every((x) => Number.isFinite(f[x]) && s[x] === f[x]), `${at} 기본 6스탯 = 실제 전투원 값: ${JSON.stringify(BASIC6.map((x) => s[x]))}`);
+        ok(s.grade === (Number.isInteger(f.grade) ? f.grade : null), `${at} grade = 실제 전투원 등급(${f.grade})`);
+        ok(NO_KEYS.every((x) => !(x in s)) && JSON.stringify(s).indexOf('"syn') === (own ? JSON.stringify(s).indexOf('"synAtk"') : -1),
+          `${at} uid·내부 상태 없음, 시너지는 ${own ? '내 synAtk 하나뿐' : '키 자체가 없다'}`);
+        if (own) {
+          ok(s.skills.length === f.skills.length && s.skills.every((x) => x.usable === T.slotUsable(f, x.i, k.toUpperCase(), T.S)),
+            `${at} 내 활성 칸마다 usable = Core slotUsable: ${JSON.stringify(s.skills.map((x) => x.usable))}`);
+        } else {
+          ok(JSON.stringify(s.skills).indexOf('usable') === -1 && s.skills.filter((x) => !x.revealed).length <= 1,
+            `${at} 상대 칸에는 usable 키·미사용 칸 수가 없다: ${JSON.stringify(s.skills)}`);
+        }
+      }
+    }
+    return room.toSeatView(0).battle;
+  };
+  const twice = (room, label) => { check(room, label); reconnect(room, 0); reconnect(room, 1); return check(room, label + ' 재연결 뒤'); };
+  const species = (E, id, grade) => (p) => E.applySpecies(p, E.ROSTER.find((r) => r.id === (id || p.rosterId)), grade);
+
+  { // 일반 ⭐2 본체 — 1등급 표가 아니라 성장한 개체 값
+    const room = battle('r-296-g2', (E, p) => species(E, null, 2)(p));
+    const T = room.engine, fa = T.S.battle.fa, g1 = {};
+    T.applySpecies(g1, T.ROSTER.find((r) => r.id === fa.rosterId), 1);
+    ok(fa.grade === 2 && fa.atk > g1.atk, `전제: ⭐2 본체 공격력 ${fa.atk} > ⭐1 표 ${g1.atk}`);
+    ok(twice(room, '⭐2 본체').a.atk === fa.atk, '⭐2 본체: 양 좌석이 1등급 표 값이 아닌 실제 공격력을 받는다');
+    ok([0, 1].every((seat) => room.toSeatView(seat).battle.a.grade === 2), '⭐2 본체: 양 좌석 battle.a.grade === 2 (추측값 0·1 아님)');
+    // 숫자 0 과 누락·비유한 값의 구분 — 0 은 0, 없는 값은 null(키는 남는다). 0 으로 뭉개지지 않는다.
+    both(room, (E) => { const b = E.S.battle; b.fa.atk = 0; b.fd.crit = 0; delete b.fd.spd; b.fa.dodge = NaN; b.fd.def = Infinity; });
+    for (const seat of [0, 1]) {
+      const b = room.toSeatView(seat).battle;
+      ok(b.a.atk === 0 && b.d.crit === 0, `좌석 ${seat} 정상 숫자 0 은 0 그대로`);
+      ok(b.d.spd === null && b.a.dodge === null && b.d.def === null && BASIC6.every((x) => x in b.a && x in b.d),
+        `좌석 ${seat} 누락·NaN·Infinity 는 null(키 유지) — 0 으로 바뀌지 않는다`);
+    }
+    if (room._clearClock) room._clearClock();
+  }
+  { // 전설 본체 — L-* 는 일반 ROSTER 에 없어 클라이언트가 유도할 수 없던 값
+    const room = battle('r-296-legend', (E, p) => E.applyLegend(p, 'dragon'));
+    const fa = room.engine.S.battle.fa;
+    const b = twice(room, '전설 본체');
+    ok(fa.legend === 'dragon' && b.a.atk === fa.atk && fa.atk > 0 && b.a.rosterId === 'L-DRAGON', `전설 본체: 공격력 ${b.a.atk}(0 아님) · 종 키만 공개`);
+    if (room._clearClock) room._clearClock();
+  }
+  { // 동료(방패병) 본체 — 엔진 실제 값 16(mkPiece). ALLY_BASE 표의 14/18 을 복원하지 않는다(수치·판정 불변).
+    const room = battle('r-296-ally', null, (p) => p.type === 'ally' && p.alive && p.def === 20);
+    const B = room.engine.S.battle;
+    ok(B.fa === B.attP && B.fa.atk === 16, '전제: 방패병 본체 출전 · 엔진 공격력 16');
+    ok(check(room, '동료 본체').a.atk === 16, '동료 본체: 양 좌석이 엔진 값 16 을 받는다(표 14/18 아님)');
+    ok([0, 1].every((seat) => room.toSeatView(seat).battle.a.grade === null), '동료 본체: grade=null — 하수인 등급을 지어내지 않는다');
+    if (room._clearClock) room._clearClock();
+  }
+  { // 조건부 칸(지하 매복 afterBurrow) — 쿨은 0 인데 못 쓰는 칸 / 굴 파기 다음 라운드에만 true
+    const room = battle('r-296-burrow', (E, p) => species(E, 'M-E1', 4)(p));
+    const T = room.engine, own = T.S.battle.attP.owner;
+    const slot = () => room.toSeatView(own).battle.a.skills[3];
+    ok(slot().id === 'M-E1-4' && slot().cd === 0 && slot().usable === false, '지하 매복: 쿨 0 이어도 굴 파기 전에는 usable=false');
+    both(room, (E) => { E.S.battle.round = 2; E.S.battle.fa.burrowRound = 1; });
+    ok(slot().usable === true, '지하 매복: 굴 파기 다음 라운드에는 usable=true');
+    check(room, '조건부 칸');
+    if (room._clearClock) room._clearClock();
+  }
+  { // 전투당 1회 칸(영겁의 재 once) — 사용 뒤에는 쿨 0 이어도 false
+    const room = battle('r-296-once', (E, p) => species(E, 'M-F5', 4)(p));
+    const T = room.engine, own = T.S.battle.attP.owner;
+    const slot = () => room.toSeatView(own).battle.a.skills[3];
+    ok(slot().id === 'M-F5-4' && slot().usable === true, '전투당 1회 칸: 쓰기 전에는 usable=true');
+    both(room, (E) => { E.S.battle.fa.onceUsed = { [E.SKILLS['M-F5-4'].id]: true }; });
+    ok(slot().cd === 0 && slot().usable === false, '전투당 1회 칸: 사용 뒤에는 쿨 0 이어도 usable=false');
+    check(room, '1회 칸');
+    if (room._clearClock) room._clearClock();
   }
 }
 

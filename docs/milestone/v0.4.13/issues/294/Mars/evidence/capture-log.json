@@ -1,0 +1,407 @@
+[
+ [
+  "320",
+  "play reached",
+  "play:0"
+ ],
+ [
+  "320",
+  "main metrics",
+  {
+   "doc": [
+    320,
+    320
+   ],
+   "head": [
+    312,
+    52
+   ],
+   "tools": [
+    312,
+    48
+   ],
+   "stats": [
+    [
+     75,
+     48
+    ],
+    [
+     75,
+     48
+    ],
+    [
+     75,
+     48
+    ],
+    [
+     75,
+     48
+    ]
+   ],
+   "portraits": [
+    36,
+    36
+   ],
+   "nameEllipsis": [
+    [
+     true,
+     "ellipsis"
+    ],
+    [
+     true,
+     "ellipsis"
+    ]
+   ],
+   "railChips": 13,
+   "chipMin": [
+    44,
+    44
+   ],
+   "railScroll": [
+    600,
+    340
+   ],
+   "dock": [
+    [
+     100,
+     48
+    ],
+    [
+     100,
+     48
+    ],
+    [
+     100,
+     48
+    ],
+    [
+     100,
+     48
+    ],
+    [
+     100,
+     48
+    ],
+    [
+     100,
+     48
+    ]
+   ],
+   "cell": 31.98,
+   "bodyScroll": [
+    599,
+    530
+   ]
+  }
+ ],
+ [
+  "320",
+  "detail opened by real click on [설명] · skill tab by real click",
+  "{\"open\":true,\"infoBtn\":[44,44],\"skillPaneVisible\":true,\"focusInside\":true}"
+ ],
+ [
+  "320",
+  "outside real tap on gear while dialog open → dialog closed only (menu not opened, state unchanged)",
+  "{\"closed\":true,\"gearOpen\":false,\"same\":true}"
+ ],
+ [
+  "320",
+  "same tap with no dialog → gear menu opens normally",
+  "true"
+ ],
+ [
+  "320",
+  "Esc closes dialog and refocuses opener",
+  "{\"closed\":true,\"refocus\":true}"
+ ],
+ [
+  "320",
+  "bag drawer",
+  "{\"title\":\"🎒 가방 1/3\",\"slots\":[[93,116],[93,116],[93,116]],\"items\":8,\"itemMinH\":44,\"role\":\"dialog\"}"
+ ],
+ [
+  "320",
+  "Esc closes bag drawer",
+  "true"
+ ],
+ [
+  "320",
+  "opp-turn clock text / revealed dialog has no skill tab",
+  "{\"clock\":\"⏱ 정지 · 9초\",\"who\":\"🤖 상대(P2 · 열두글자닉네임최대길이임)\",\"tabs\":false}"
+ ],
+ [
+  "320",
+  "new game closes dialog/drawer",
+  "{\"help\":false,\"drawer\":null}"
+ ],
+ [
+  "390",
+  "play reached",
+  "play:0"
+ ],
+ [
+  "390",
+  "main metrics",
+  {
+   "doc": [
+    390,
+    390
+   ],
+   "head": [
+    382,
+    52
+   ],
+   "tools": [
+    382,
+    48
+   ],
+   "stats": [
+    [
+     93,
+     48
+    ],
+    [
+     93,
+     48
+    ],
+    [
+     93,
+     48
+    ],
+    [
+     93,
+     48
+    ]
+   ],
+   "portraits": [
+    36,
+    36
+   ],
+   "nameEllipsis": [
+    [
+     true,
+     "ellipsis"
+    ],
+    [
+     true,
+     "ellipsis"
+    ]
+   ],
+   "railChips": 13,
+   "chipMin": [
+    44,
+    44
+   ],
+   "railScroll": [
+    600,
+    544
+   ],
+   "dock": [
+    [
+     122,
+     48
+    ],
+    [
+     122,
+     48
+    ],
+    [
+     122,
+     48
+    ],
+    [
+     122,
+     48
+    ],
+    [
+     122,
+     48
+    ],
+    [
+     122,
+     48
+    ]
+   ],
+   "cell": 41.13,
+   "bodyScroll": [
+    728,
+    728
+   ]
+  }
+ ],
+ [
+  "390",
+  "detail opened by real click on [설명] · skill tab by real click",
+  "{\"open\":true,\"infoBtn\":[44,44],\"skillPaneVisible\":true,\"focusInside\":true}"
+ ],
+ [
+  "390",
+  "outside real tap on gear while dialog open → dialog closed only (menu not opened, state unchanged)",
+  "{\"closed\":true,\"gearOpen\":false,\"same\":true}"
+ ],
+ [
+  "390",
+  "same tap with no dialog → gear menu opens normally",
+  "true"
+ ],
+ [
+  "390",
+  "Esc closes dialog and refocuses opener",
+  "{\"closed\":true,\"refocus\":true}"
+ ],
+ [
+  "390",
+  "bag drawer",
+  "{\"title\":\"🎒 가방 1/3\",\"slots\":[[117,116],[117,116],[117,116]],\"items\":8,\"itemMinH\":44,\"role\":\"dialog\"}"
+ ],
+ [
+  "390",
+  "Esc closes bag drawer",
+  "true"
+ ],
+ [
+  "390",
+  "opp-turn clock text / revealed dialog has no skill tab",
+  "{\"clock\":\"⏱ 정지 · 9초\",\"who\":\"🤖 상대(P2 · 열두글자닉네임최대길이임)\",\"tabs\":false}"
+ ],
+ [
+  "390",
+  "new game closes dialog/drawer",
+  "{\"help\":false,\"drawer\":null}"
+ ],
+ [
+  "1100",
+  "play reached",
+  "play:0"
+ ],
+ [
+  "1100",
+  "main metrics",
+  {
+   "doc": [
+    1100,
+    1100
+   ],
+   "head": [
+    424,
+    52
+   ],
+   "tools": [
+    424,
+    48
+   ],
+   "stats": [
+    [
+     103,
+     48
+    ],
+    [
+     103,
+     48
+    ],
+    [
+     103,
+     48
+    ],
+    [
+     103,
+     48
+    ]
+   ],
+   "portraits": [
+    36,
+    36
+   ],
+   "nameEllipsis": [
+    [
+     true,
+     "ellipsis"
+    ],
+    [
+     true,
+     "ellipsis"
+    ]
+   ],
+   "railChips": 13,
+   "chipMin": [
+    44,
+    44
+   ],
+   "railScroll": [
+    600,
+    600
+   ],
+   "dock": [
+    [
+     136,
+     48
+    ],
+    [
+     136,
+     48
+    ],
+    [
+     136,
+     48
+    ],
+    [
+     136,
+     48
+    ],
+    [
+     136,
+     48
+    ],
+    [
+     136,
+     48
+    ]
+   ],
+   "cell": 48.26,
+   "bodyScroll": [
+    824,
+    824
+   ]
+  }
+ ],
+ [
+  "1100",
+  "detail opened by real click on [설명] · skill tab by real click",
+  "{\"open\":true,\"infoBtn\":[44,44],\"skillPaneVisible\":true,\"focusInside\":true}"
+ ],
+ [
+  "1100",
+  "outside real tap on gear while dialog open → dialog closed only (menu not opened, state unchanged)",
+  "{\"closed\":true,\"gearOpen\":false,\"same\":true}"
+ ],
+ [
+  "1100",
+  "same tap with no dialog → gear menu opens normally",
+  "true"
+ ],
+ [
+  "1100",
+  "Esc closes dialog and refocuses opener",
+  "{\"closed\":true,\"refocus\":true}"
+ ],
+ [
+  "1100",
+  "bag drawer",
+  "{\"title\":\"🎒 가방 1/3\",\"slots\":[[131,116],[131,116],[131,116]],\"items\":8,\"itemMinH\":44,\"role\":\"dialog\"}"
+ ],
+ [
+  "1100",
+  "Esc closes bag drawer",
+  "true"
+ ],
+ [
+  "1100",
+  "opp-turn clock text / revealed dialog has no skill tab",
+  "{\"clock\":\"⏱ 정지 · 9초\",\"who\":\"🤖 상대(P2 · 열두글자닉네임최대길이임)\",\"tabs\":false}"
+ ],
+ [
+  "1100",
+  "new game closes dialog/drawer",
+  "{\"help\":false,\"drawer\":null}"
+ ]
+]

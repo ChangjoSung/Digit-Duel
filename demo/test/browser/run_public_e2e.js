@@ -123,7 +123,7 @@ async function screenState(b) {
     const ov=document.getElementById('overlay'), box=document.getElementById('overlayBox');
     const btns=sel=>[...document.querySelectorAll(sel)].filter(x=>!x.disabled&&vis(x)&&x.offsetParent!==null).map(x=>(x.textContent||'').trim());
     return { locked:document.body.classList.contains('fx-lock'), overlay:vis(ov), battle:!!document.getElementById('bmenu')&&vis(ov),
-      bmenu:btns('#bmenu button'), fight:btns('#bsub-fight button:not(.skillInfoBtn):not(.skillInfoClose)'), infoBtns:document.querySelectorAll('#bsub-fight .skillInfoBtn').length, teleStage:(S&&S.teleport)?S.teleport.stage:0, fleeMine:!!(S&&S.fleePick&&S.fleePick.owner===NET.me), flee:btns('#bsub-flee button'), obBtns:btns('#obBtns button'),
+      bmenu:btns('#bmenu button'), fight:btns('#bsub-fight button:not(.subBack)'), infoBtns:document.querySelectorAll('#bsub-fight .bSkills li>small').length, teleStage:(S&&S.teleport)?S.teleport.stage:0, fleeMine:!!(S&&S.fleePick&&S.fleePick.owner===NET.me), flee:btns('#bsub-flee button'), obBtns:btns('#obBtns button'),
       turnBar:btns('#turnBar button'), who:(document.querySelector('#boardInfo .who')||{}).textContent||'', side:(document.getElementById('sidePanel')||{}).textContent||'',
       hlAttack:document.querySelectorAll('#board .cell.hl-attack').length, hlMove:document.querySelectorAll('#board .cell.hl-move').length,
       fxBanner:vis(document.getElementById('fxBanner'))?(document.getElementById('fxTitle')||{}).textContent:'', msgBox:(document.getElementById('msgBox')||{}).textContent||'',
@@ -135,13 +135,10 @@ function markSync(b, kind) { SYNCSTAT[kind]++; if (!SYNC) SYNC = { kind, by: b.n
 async function skillInfoProbe(b) {
   INFO.done = true;
   const rev0 = await b.ev('NET.revision');
-  const t = await b.clickWhere('#bsub-fight .skillInfoBtn', null);
-  await sleep(900);
-  const st = await b.ev(`(()=>{ const box=document.getElementById('skillInfoBox'); const r=box?box.getBoundingClientRect():{height:0}; return {open:!!box&&getComputedStyle(box).display!=='none'&&r.height>0, text:box?box.textContent.slice(0,120):'', rev:NET.revision, expanded:[...document.querySelectorAll('#bsub-fight .skillInfoBtn')].some(x=>x.getAttribute('aria-expanded')==='true'), btnH:Math.round(((document.querySelector('#bsub-fight .skillInfoBtn')||{getBoundingClientRect:()=>({height:0})}).getBoundingClientRect()).height)}; })()`);
+  /* #296 (2026-10-02 CJ 정정): ⓘ 토글이 없어졌다 — 설명은 스킬 줄 안에 그대로 보인다. 누르지 않고 실제 보이는지만 잰다 */
+  const st = await b.ev(`(()=>{ const s=document.querySelector('#bsub-fight .bSkills li>small'), r=s?s.getBoundingClientRect():{height:0}, bt=document.querySelector('#bsub-fight .bSkills li>button'); return {open:!!s&&r.height>0, text:s?s.textContent.slice(0,120):'', rev:NET.revision, btnH:Math.round(bt?bt.getBoundingClientRect().height:0)}; })()`);
   await b.shot('14_skill_info_open_guest_432');
-  check('I1 모바일(432px) 전투 기술 ⓘ 실제 클릭 → 설명 상자 열림·aria-expanded·44px 이상, 전송/턴 소비 없음(revision 불변)', !!t && st.open && st.expanded && st.btnH >= 44 && st.rev === rev0, st);
-  await b.clickWhere('#skillInfoBox .skillInfoClose', '닫기'); await sleep(300);
-  check('I2 [닫기]로 설명 상자가 닫힌다', await b.ev(`getComputedStyle(document.getElementById('skillInfoBox')).display==='none'`));
+  check('I1 모바일(432px) 전투 기술 설명이 줄 안에 보인다 · 스킬 버튼 44px 이상 · 전송/턴 소비 없음(revision 불변)', st.open && st.text.length>0 && st.btnH >= 44 && st.rev === rev0, st);
   return 'skillInfo';
 }
 async function botTurn(b, st, role, rnd) {
@@ -154,11 +151,10 @@ async function botTurn(b, st, role, rnd) {
     }
     if (st.fight.length) {
       if (role === 'guest' && !INFO.done && st.infoBtns > 0) return await skillInfoProbe(b); // CJ 모바일 QA — 432px 창에서 ⓘ 설명 실제 클릭
-      const skill = st.fight[Math.floor(rnd() * st.fight.length)]; await b.clickWhere('#bsub-fight button:not(.skillInfoBtn):not(.skillInfoClose)', skill, { exact: true }); S.battleClicks++; return 'skill:' + skill; }
+      const skill = st.fight[Math.floor(rnd() * st.fight.length)]; await b.clickWhere('#bsub-fight button', skill, { exact: true }); S.battleClicks++; return 'skill:' + skill; }
     if (st.flee.length) { await b.clickWhere('#bsub-flee button', st.flee[0], { exact: true }); S.fleeClicks++; return 'flee'; }
     if (st.bmenu.some((t) => t === '턴 종료')) { await b.clickWhere('#bmenu button', '턴 종료', { exact: true }); S.battleClicks++; return 'pass'; }
     if (st.bmenu.length) {
-      const back = await b.clickWhere('#bmenuBack', null); if (back && st.fight.length === 0 && st.flee.length === 0) { /* 하위 메뉴가 비활성이면 뒤로 */ }
       if (rnd() < 0.08 && st.bmenu.includes('🏃 도망가기')) { await b.clickWhere('#bmenu button', '🏃 도망가기', { exact: true }); return 'menu:flee'; }
       await b.clickWhere('#bmenu button', '⚔️ 싸우기', { exact: true }); return 'menu:fight';
     }
@@ -336,7 +332,7 @@ async function noHScroll(b) { return b.ev(`document.documentElement.scrollWidth<
     check('E1 양측 결과 화면·승자·revision 일치', hn.phase === 'over' && gn.phase === 'over' && hn.winner === gn.winner && hn.revision === gn.revision, { host: hn, guest: gn });
     check('E2 결과 화면 문구(VICTORY/DEFEAT·공개 방 안내)', await host.ev(`/VICTORY|DEFEAT/.test(document.getElementById('sidePanel').textContent)&&/공개 방 목록/.test(document.getElementById('sidePanel').textContent)`));
     check('E3 종료 공개: 결과 화면에서 상대 말 정체가 모두 보인다(미공개 칩 0)', (await hidingAudit(host)).hiddenChips === 0, await hidingAudit(host));
-    if (!INFO.done && SCENARIO !== 'swap') check('I1 모바일(432px) 전투 기술 ⓘ 실제 클릭', false, '게스트 전투 차례에 도달하지 못해 검증하지 못함');
+    if (!INFO.done && SCENARIO !== 'swap') check('I1 모바일(432px) 전투 기술 설명 표시', false, '게스트 전투 차례에 도달하지 못해 검증하지 못함');
     check('S1 도망 교환·텔레포트 스왑 실제 클릭 직후 양측 current·turn·revision 일치, 이후 진행(교착 0)', SYNCSTAT.compared > 0 && SYNCSTAT.teleSwap > 0 && (SCENARIO !== 'swap' || SYNCSTAT.fleeSwap + SYNCSTAT.fleeSkip > 0) && SYNCSTAT.mismatches.length === 0 && SYNCSTAT.progressed >= SYNCSTAT.compared - (SYNC ? 1 : 0), SYNCSTAT);
     if (!(SYNCSTAT.fleeSwap + SYNCSTAT.fleeSkip)) RESULT.notes.push('S1: 이번 실행에서 도망 성공(교환 선택)은 브라우저에서 발생하지 않았다 — 교환 동기화는 실서버 2클라이언트 통합(smoke_public_live T3)이 증빙.');
     if (SCENARIO === 'swap') RESULT.notes.push('swap 시나리오는 전투에서 도망만 누른다 — B1(기술 클릭)은 전체 실행(run_pub6/7)이 증빙'); else check('B1 실제 전투 행동 클릭이 서버에 수락되어 진행', STATS.host.battleClicks + STATS.guest.battleClicks > 0, STATS);

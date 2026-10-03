@@ -126,7 +126,9 @@ block("A' 회복 표시",()=>{
   e.healing=false; e.revealed=true; T.S.mainUsed=false; const n1=T.S.log.length; T.doHeal(e); const l2=T.S.log.slice(n1).map(x=>x.msg).join("|");
   ok(/회복 자세 시작/.test(l2),"A'5 공개 말의 회복 지정은 이름 포함 로그");
   // 사이드 패널 상태 표기
-  T.S.current=0; T.S.selected=m; T.renderSide(); ok(/회복 자세/.test(T.els.sidePanel.innerHTML),"A'6 선택 말 상태에 '회복 자세' 표기");
+  /* #294 CJ REVISE(2026-10-02): 가방 서랍의 선택 요약은 없앴다 — 회복 자세는 내 말 설명 창에 */
+  T.S.current=0; T.S.selected=m; T.renderSide(); T.ui238.unitHelpPiece(m.id,null);
+  ok(/회복 자세\(턴마다 \+\d+\)/.test(T.ui238.SYNHELP.el.innerHTML)&&!/회복 자세|선택: /.test(T.els.sidePanel.innerHTML),"A'6 선택 말의 '회복 자세' 표기는 설명 창에 (가방 서랍에는 선택 요약 없음)"); T.ui238.synHelpClose(false);
   // 턴바 버튼 상태
   T.S.mainUsed=false; T.renderTurnBar(); let hb=T.els.turnBar.children.find(x=>/회복/.test(x.textContent));
   ok(hb&&hb.disabled===true,"A'7 이미 자세인 말 선택 시 회복 버튼 비활성 (재지정 없음)");
@@ -241,7 +243,7 @@ block("D 판정",()=>{
   const setup=()=>{ board("pvp"); const m1=first(0,"minion"), m2=first(1,"minion"); H.place(T,m1,7,4); H.place(T,m2,6,4); T.S.selected=null; T.startRounds(m1,m2,m1,m2); T.drain(); return [m1,m2]; };
   let [a,d]=setup(); a.hp=65; d.hp=40; T.S.battle.recA=5; T.S.battle.recD=90; T.judge(); T.drain();
   ok(a.alive&&!d.alive&&S().metrics.judged===1&&S().metrics.attackerWins===1,"D1 판정: A 65% > D 40% → 공격자 승 (누적 유효 피해 recD 90 > recA 5 여도 무관)");
-  ok(T.S.log.some(l=>/판정 65% vs 40%/.test(l.msg)),"D1b 로그에 비율 표기");
+  ok(T.S.log.some(l=>l.msg.includes(`판정 65/${a.maxHp} vs 40/${d.maxHp}`))&&!T.S.log.some(l=>/판정 \d+% vs/.test(l.msg)),"D1b 로그에 실제 HP(현재/최대) 표기 — % 없음 (#293 · 승패는 비율 그대로)");
   [a,d]=setup(); a.hp=50; d.hp=50; T.judge(); T.drain();
   ok(!a.alive&&d.alive&&S().metrics.ties===1&&S().metrics.defenderWins===1,"D2 동률 → 방어자 승");
   [a,d]=setup(); a.hp=50; d.hp=50; a.shield=40; T.judge(); T.drain();
@@ -531,13 +533,13 @@ block("J 전투 메뉴",()=>{
   ok(/id="bmenu"/.test(h())&&/⚔️ 싸우기/.test(h())&&/🎒 가방/.test(h())&&/🔴 포획/.test(h())&&/🏃 도망가기/.test(h()),"J1 루트 4카테고리");
   ok(/id="bsub-fight" /.test(h())||/id="bsub-fight"/.test(h()),"J2 하위 패널이 모두 그려져 있다 (활성 패널만 보임)");
   ok(/class="bsub hidden" id="bsub-fight"/.test(h())&&/class="bsub hidden" id="bsub-bag"/.test(h()),"J3 초기에는 하위 패널 숨김");
-  ok(/__act\(0\)/.test(h())&&/__throwBall\(\)/.test(h())&&/__flee\(\)/.test(h()),"J4 기존 규칙 버튼(__act·__throwBall·__flee)이 그대로 존재 (온라인 송신 경로 불변)");
-  ok(/<button disabled[^>]*__throwBall/.test(h())&&/상대 HP 100% — 30% 미만/.test(h()),"J5 포획 조건 미충족 사유 표시·비활성");
+  ok(/__act\(0\)/.test(h())&&/던지기 \(성공/.test(h())&&/__flee\(\)/.test(h()),"J4 기존 규칙 버튼(__act·__throwBall·__flee)이 그대로 존재 (온라인 송신 경로 불변)");
+  ok(/<button type="button" class="lock" (disabled |aria-disabled="true" )title="상대 HP (\d+)\/\2 — 최대 HP의 30% 미만이어야 합니다">🔒/.test(h())&&!/__throwBall\(\)/.test(h())&&/class="cond no"[^>]*>❤ 100%/.test(h()),"J5 포획 조건 미충족 사유 표시·비활성");
   /* #146 (v0.4.7 CJ 2026-09-10): 도망의 HP 게이트가 폐지됐다 — 만피여도 버튼이 활성이고 조건 미충족 사유 문구 자체가 없다.
      대신 표기 성공률이 기본 30% 다. #122 REVISE(2026-09-10 CJ QA 2)로 실패 페널티가 다시 생겨,
      안내는 "상대의 기본 공격 1회를 맞는다"로 바뀐다 — 종전 #146 의 "추가 반격은 없고" 문구는 더 이상 쓰지 않는다. */
   ok(/<button class="danger" [^>]*__flee/.test(h())&&!/<button class="danger" disabled[^>]*__flee/.test(h()),"J6 도망 버튼은 HP 조건 없이 항상 활성 (#146)");
-  ok(!/50% 미만이어야 합니다/.test(h())&&/HP 조건 없음/.test(h())&&/성공 30%/.test(h()),"J6b 도망 안내: HP 조건 문구 삭제·성공률 30% 표기 (#146)");
+  ok(!/50% 미만이어야 합니다/.test(h())&&/HP 조건 없이/.test(h())&&/성공 30%/.test(h()),"J6b 도망 안내: HP 조건 문구 삭제·성공률 30% 표기 (#146)");
   ok(!/추가 반격은 없고/.test(h())&&/기본 공격 1회/.test(h())&&/전투 행동 1회/.test(h()),"J6c 도망 실패 페널티(상대 기본 공격 1회)가 안내에 반영 (#122 CJ QA 2)");
   ok(/id="shfill-A"/.test(h())&&/id="shfill-D"/.test(h())&&!/가한 유효 피해/.test(h()),"J7 방어막 바 신설 · '가한 유효 피해' 게이지 제거");
   // (구 J0 setter 순서 검증은 시간 단계 증거가 아니므로 제거 — 5.5 방어막 → HP 표시 단계는 아래 K 블록이 가짜 타이머로 검증한다. REVISE msg_d847280b3dba 2번)

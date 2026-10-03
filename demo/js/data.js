@@ -53,14 +53,15 @@ const BAL={
 };
 /* #236 (GDD-23 2.1~2.3 · 7.2~7.7) 경제 수치 — 로컬 모드(PVE·핫시트·sim) 전용. 온라인은 #237 전환 전까지 위 BAL 의 종전 경제를 쓴다 */
 const ECO={
-  start:10, field:6, bagMax:3, slots:6, legendPrice:10, goodPrice:1, refresh:1,   // #263 (2026-09-25 CJ): 하수인 진열은 S01·정기 모두 6칸 고정
+  start:10, field:6, bagMax:3, slots:6, legendPrice:10, goodPrice:1, buffPrice:3, refresh:1,   // #293 (2026-10-02 CJ): 수호자 3종만 🪙3 (ecoGoodPrice) · #263 (2026-09-25 CJ): 하수인 진열은 S01·정기 모두 6칸 고정
   shopTurns:[20,40,60,80], bonus:{20:2,40:3,60:4,80:5},
   tiers:{20:[1,2],40:[2,3],60:[3,4],80:[4,5]}, lowPct:0.6,      // 칸마다 낮은 등급 60% / 높은 등급 40% (⭐5 = 전설)
   win:3, lose:1, bushPerZone:4, capHpPct:0.7,
   startGoods:["potion","cool","cure","ball","ticket","power","time","escape"], // 시작 상점 (2.2) — #238 (2026-09-25 CJ): 정기 상점 상품 8종 전체를 실제 구매. 티켓 '사용'은 정기 상점 전용 유지
   goods:["potion","cool","cure","ball","ticket","power","time","escape"], // 정기 상점 (7.3)
-  shopSec:90, bagPickSec:20,                                    // 상점 1인 90초 (PVE·핫시트 순차 최대 180초 — 자기 상점이 보이는 순간부터, 2026-09-24 CJ D1) · B08 20초
-  placeSec:90, actSec:30, battleSec:60                          // #263: 배치 90초(S01 을 직접 끝낸 좌석만) · 게임 행동 30초(출전 후보 선택 포함 · 전투 중 정지) · 전투 행동 60초(2026-09-25 CJ T4)
+  prepSec:180,                                                  // #293 (2026-10-01 CJ): 경기 전 준비(시작 상점 → 배치 → 완료) 공통 180초 한 번 — 양쪽 같은 마감 · 재발급 없음
+  shopSec:180, bagPickSec:20,                                   // #295 (2026-10-02 CJ): 정기 상점 1인 180초 — 좌석별 시계(PVE·핫시트 순차 최대 360초 · 자기 상점이 보이는 순간부터 · 온라인은 단절 중 정지). 준비 공통 시계(prepSec)와 값만 같고 합치지 않는다 · B08 20초
+  actSec:30, battleSec:60                                       // #263: 게임 행동 30초(출전 후보 선택 포함 · 전투 중 정지) · 전투 행동 60초(2026-09-25 CJ T4). 배치 90초(placeSec)는 #293 으로 폐지 — 준비 180초에 포함
 };
 /* ===== #21 시드 가능한 RNG — 게임 로직의 모든 난수는 rand()를 경유. setSeed(n)로 결정적 재현, setSeed(null)로 Math.random 복귀 ===== */
 let RNG=null; // null → Math.random (테스트 하네스의 Math.random 오버라이드와 호환)
@@ -231,6 +232,8 @@ const BUFFS={
   escape:{ko:"🏃 도망의 수호자",desc:"이 전투 동안 도망 성공률을 70%로 높입니다"}
 };
 const BUFF_KEYS=["power","time","escape"];
+/* #293 (2026-10-02 CJ): 상품 구매가 — 수호자 3종 🪙3 · 나머지 🪙1. Core 판정과 화면 표시가 이 함수 하나를 읽는다 (시작·정기 상점 공통) */
+function ecoGoodPrice(k){ return BUFF_KEYS.includes(k)?ECO.buffPrice:ECO.goodPrice; }
 const GOOD_KO={potion:"회복약",cool:"쿨링수",cure:"해독제",ball:"몬스터 볼",ticket:"🎟 시너지 교체 티켓",power:BUFFS.power.ko,time:BUFFS.time.ko,escape:BUFFS.escape.ko}; // #236 상점 품목
 /* ===== #233 (GDD-23 3장) 8스탯 전투 엔진 계약 — 순수 데이터·헬퍼. 보호형(guard)·땅속성 종은 #234 전까지 로스터에 없다.
    여기 실린 표는 GDD-23 3.3·3.4·3.5·3.6 을 그대로 옮긴 것이며, 실제 라이브 로스터(ROSTER·king·ally)는
@@ -1135,10 +1138,12 @@ function artDirOf(p){
 function artDirOfFighter(pf,piece){
   if(!pf||!piece) return null;
   if(pf===piece) return artDirOf(piece);
-  if(pf!==piece.cap) return null;
+  // #292 경제 가방 대리 출전(가방 말·포획해 가방에 든 말)은 cap 이 아니라 그 소유자 가방의 개체 자체가 싸운다 — 그 개체만 더 받는다
+  const inBag=pf!==piece.cap;
+  if(inBag&&!(typeof S!=="undefined"&&S&&S.eco&&S.eco.bag[piece.owner]&&S.eco.bag[piece.owner].includes(pf))) return null;
   if(typeof pf.legend==="string"&&Object.prototype.hasOwnProperty.call(LEGEND_ART_KEY,pf.legend)) return LEGEND_ART_KEY[pf.legend]; // #238 전설 대리 출전(가방) — 속성 없음
-  if(!pf.artRosterId) return null;
-  const rd=ROSTER.find(r=>r.id===pf.artRosterId); if(!rd||rd.element!==pf.element) return null;
+  const id=inBag?pf.rosterId:pf.artRosterId; if(!id) return null; // cap 은 표시 전용 artRosterId 만, 가방 개체는 그 종 rosterId (#292)
+  const rd=ROSTER.find(r=>r.id===id); if(!rd||rd.element!==pf.element) return null;
   const dir=rd.element+"_"+rd.arch;
   return ART_DIR_SET.has(dir)?dir:null;
 }

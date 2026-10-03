@@ -1,0 +1,120 @@
+{
+ "shop320": {
+  "vw": 320,
+  "vh": 640,
+  "hScroll": false,
+  "topBarOneLine": true,
+  "flowBarOneLine": true,
+  "bagActsOneLine": true,
+  "bagActs": {
+   "n": 2,
+   "minW": 59,
+   "minH": 44
+  },
+  "fieldSell": {
+   "n": 6,
+   "minW": 75,
+   "minH": 44
+  },
+  "leadBtns": {
+   "n": 15,
+   "minW": 44,
+   "minH": 44
+  },
+  "buy": {
+   "n": 5,
+   "minW": 64,
+   "minH": 44
+  },
+  "refresh": {
+   "n": 1,
+   "minW": 72,
+   "minH": 44
+  },
+  "goods": {
+   "n": 8,
+   "minW": 44,
+   "minH": 44
+  },
+  "goodBuy": {
+   "n": 8,
+   "minW": 54,
+   "minH": 44
+  },
+  "railChip": {
+   "n": 11,
+   "minW": 44,
+   "minH": 44
+  },
+  "gear": {
+   "n": 1,
+   "minW": 44,
+   "minH": 44
+  },
+  "go": {
+   "n": 1,
+   "minW": 86,
+   "minH": 44
+  }
+ },
+ "input320": {
+  "swapModalOpenedByRealTap": true,
+  "swapCards": "89,89,89,89,89,89"
+ },
+ "place320": {
+  "vw": 320,
+  "vh": 640,
+  "hScroll": false,
+  "cell": [
+   37,
+   37
+  ],
+  "cells": 91,
+  "hiddenPxAtScroll0": 175,
+  "scrollMax": 260,
+  "lastRowAllVisibleAndHit": true,
+  "tray": {
+   "n": 14,
+   "minW": 50,
+   "minH": 60
+  },
+  "trayActs": {
+   "n": 2,
+   "minW": 129,
+   "minH": 44
+  },
+  "go": {
+   "n": 1,
+   "minW": 86,
+   "minH": 44
+  }
+ },
+ "place390": {
+  "vw": 390,
+  "vh": 844,
+  "hScroll": false,
+  "cell": [
+   46,
+   46
+  ],
+  "cells": 91,
+  "hiddenPxAtScroll0": 33,
+  "scrollMax": 118,
+  "lastRowAllVisibleAndHit": true,
+  "tray": {
+   "n": 14,
+   "minW": 45,
+   "minH": 60
+  },
+  "trayActs": {
+   "n": 2,
+   "minW": 164,
+   "minH": 44
+  },
+  "go": {
+   "n": 1,
+   "minW": 86,
+   "minH": 44
+  }
+ }
+}

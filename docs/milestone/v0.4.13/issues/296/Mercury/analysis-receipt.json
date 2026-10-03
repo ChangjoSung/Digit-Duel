@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "issue": 296,
+  "phase": "pre-implementation-analysis",
+  "runId": "run_f69ec222aff9",
+  "worktree": "C:/Users/pc_77/orca/workspaces/Digit-Duel/issue-296-battle-flow",
+  "base": "e48a8aabbf68d967cf47d45958e56d041ef63217",
+  "productChanges": false,
+  "testsRun": false,
+  "formalQaRun": false,
+  "deployments": false,
+  "rootRuntime": {
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh",
+    "serviceTierArgument": "fast",
+    "effectiveApiPriority": "not_exposed",
+    "currentSandbox": "danger-full-access",
+    "currentApprovalPolicy": "never",
+    "requestedSandbox": "workspace-write",
+    "requestedApprovalPolicy": "on-request",
+    "configurationChangedByPd": false
+  },
+  "earth": {
+    "taskId": "task_72f70664abd2",
+    "dispatchId": "ctx_b4043c86bfaf",
+    "terminal": "term_b99aca84-1001-44c8-a6c1-2fe69eb05ea3",
+    "model": "gpt-6-luna",
+    "effort": "xhigh",
+    "serviceTierArgument": "default",
+    "reportPath": "docs/milestone/v0.4.13/issues/296/Earth/analysis.md",
+    "filesModified": [
+      "docs/milestone/v0.4.13/issues/296/Earth/analysis.md",
+      "docs/milestone/v0.4.13/issues/296/Earth/battle-flow.svg"
+    ],
+    "completion": "rejected_dispatch_capability_invalid",
+    "artifactsReviewedByPd": true,
+    "orchestrationState": "abandoned",
+    "externalTerminalState": "retained_idle_after_final_turn",
+    "acceptedWorkerDone": false,
+    "processStopped": false,
+    "failureEvidence": [
+      "msg_7d13cbbc7511",
+      "msg_772937f7e579",
+      "msg_c48790382d88",
+      "msg_f09c534ad866"
+    ]
+  },
+  "acceptedAndReleased": [
+    "ctx_7d63d3b8675a",
+    "ctx_842f9d7551f5",
+    "ctx_cf829b04ec60"
+  ],
+  "artifactReview": {
+    "xmlParse": "valid",
+    "sixBaseStatContract": "present_in_both_viewports",
+    "productVisualQa": "not_run",
+    "pngCapture": "runtime_unavailable_single_request",
+    "browserPreviewClosed": true
+  },
+  "finalizedAtKst": "2026-10-02T17:48:54+09:00",
+  "preservation": {
+    "main": "9b306bbfda103263cb2feea90fd9c89527eb9290",
+    "originMain": "9b306bbfda103263cb2feea90fd9c89527eb9290",
+    "milestone": "e48a8aabbf68d967cf47d45958e56d041ef63217",
+    "handoff": "b44e3021eb4118f5d59cca0e2742a7c5c4ba1a84",
+    "stash": [
+      "9ebd041242f61e10906ae388e8037c03c33ad386",
+      "cc644636b67788727963b2158001bc66cb40fe86"
+    ],
+    "originalSixDirtyFileHashesUnchanged": true,
+    "originalIndexHashUnchanged": true,
+    "unityTouched": false,
+    "pr304Touched": false
+  },
+  "reclaimableWorkers": 0
+}

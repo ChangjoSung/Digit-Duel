@@ -1,0 +1,102 @@
+/* #294 CJ REVISE 2 캡처 — 설치된 Chrome headless · CDP · file:// · 서버/의존성 없음.
+   두 종류를 파일 이름으로 구분한다:
+   - synthetic-* : 오프라인 PVE 엔진 상태에 가방 · 필드 말을 Core 주입 함수(applySpecies · applyLegend)로 넣은 합성 상태.
+   - wire-*      : 실제 서버 코드(server/authoritative/room.js Room.toSeatView)가 직렬화한 좌석 뷰 JSON 을, 브라우저의 실제 수신 처리기(ws.onmessage → netApplyRoomState)에 넣은 것.
+                   WebSocket 객체는 대역(stub)이다 — 실제 네트워크 연결 · 실제 서버 프로세스는 없다. */
+const {spawn}=require("child_process"), fs=require("fs"), path=require("path");
+const ROOT="C:/Users/pc_77/orca/workspaces/Digit-Duel/issue-294-main-flow";
+const OUT=path.join(ROOT,"docs/milestone/v0.4.13/issues/294/Mars/evidence/revise2-20261002");
+const PORT=9431, PROF=path.join(__dirname,"chrome-prof-"+PORT);
+fs.mkdirSync(OUT,{recursive:true});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const LOG=[];
+/* 실제 서버 직렬화 — smoke_issue238.js I2 와 같은 주입(가방: ★1 보호형 · ★2 지속형(2번 스킬 쿨 2) · 전설 마녀 / 필드: ★1 보호형 · ★4 지속형 · 전설 용) */
+function wireView(){
+  const {Room}=require(path.join(ROOT,"server/authoritative/room.js"));
+  const sws=()=>({readyState:1,sent:[],send(){},close(){ this.readyState=3; }});
+  const room=new Room(12,{isPublic:true,epoch:"e1",graceMs:60000,economy:true,seed:294,shopMs:600000,placeMs:600000,actMs:600000,bagPickMs:600000});
+  room.openHostSeat(sws()); room.joinGuestSeat(sws());
+  const E=room.engines[0], sp=a=>E.ROSTER.find(r=>r.arch===a), mk=()=>({uid:++E.S.eco.unitSeq,paid:1,fresh:false,revealed:false,reaperSeal:0,cap:null});
+  const bG=E.applySpecies(mk(),sp("guard"),1), bS=E.applySpecies(mk(),sp("sustain"),2), bL=E.applyLegend(mk(),"witch"); bS.cds[1]=2; E.S.eco.bag[0]=[bG,bS,bL];
+  const fm=E.S.pieces.filter(x=>x.owner===0&&x.type==="minion"); E.applySpecies(fm[0],sp("guard"),1); E.applySpecies(fm[1],sp("sustain"),4); E.applyLegend(fm[2],"dragon");
+  const v=room.toSeatView(0); try{ room.close&&room.close(); }catch(e){}
+  return {v,uids:[bG.uid,bS.uid,bL.uid]};
+}
+(async()=>{
+  const W=wireView(); LOG.push(["wire-source",{bag:W.v.you.eco.bag.map(u=>({uid:u.uid,rosterId:u.rosterId,grade:u.grade,shieldStartPct:u.shieldStartPct,statusPct:u.statusPct,skills:u.skills})),phase:W.v.phase}]);
+  const chrome=spawn("C:/Program Files/Google/Chrome/Application/chrome.exe",["--headless=new","--remote-debugging-port="+PORT,"--user-data-dir="+PROF,"--no-first-run","--disable-gpu","--allow-file-access-from-files","--hide-scrollbars","about:blank"],{windowsHide:true,stdio:"ignore"});
+  LOG.push(["chrome",{pid:chrome.pid,port:PORT}]);
+  try{
+    let tabs=null; for(let i=0;i<40&&!tabs;i++){ await sleep(250); try{ tabs=await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); }catch(e){} }
+    const ws=new WebSocket(tabs.find(t=>t.type==="page").webSocketDebuggerUrl); await new Promise(r=>ws.onopen=r);
+    let id=0; const pend=new Map(); ws.onmessage=m=>{ const d=JSON.parse(m.data); if(d.id&&pend.has(d.id)){ pend.get(d.id)(d); pend.delete(d.id); } };
+    const cdp=(method,params)=>new Promise((res,rej)=>{ const i=++id; pend.set(i,d=>d.error?rej(new Error(method+": "+d.error.message)):res(d.result)); ws.send(JSON.stringify({id:i,method,params:params||{}})); });
+    const ev=async expr=>{ const r=await cdp("Runtime.evaluate",{expression:expr,returnByValue:true,awaitPromise:true}); if(r.exceptionDetails) throw new Error("eval: "+(r.exceptionDetails.exception&&r.exceptionDetails.exception.description||r.exceptionDetails.text)+"\n"+expr.slice(0,200)); return r.result.value; };
+    await cdp("Page.enable"); await cdp("Runtime.enable");
+    const shot=async(vp,name)=>{ const r=await cdp("Page.captureScreenshot",{format:"png"}); fs.writeFileSync(path.join(OUT,`${vp}-${name}.png`),Buffer.from(r.data,"base64")); };
+    /* 설명 창 실측: 그림 높이 = 능력치 8칸 묶음 높이(차이 px) · 칸마다 값이 잘리는지 · 아이콘 줄/정보 줄이 그 묶음 밖인지 · 스킬 줄이 창 안에서 끝까지 닿는지(맨 아래로 굴린 뒤 마지막 줄) */
+    const geo=()=>ev(`(()=>{ const R=e=>{ if(!e) return null; const b=e.getBoundingClientRect(); return [+b.left.toFixed(2),+b.top.toFixed(2),+b.width.toFixed(2),+b.height.toFixed(2)]; }, Q=s=>document.querySelector(s), QA=s=>[...document.querySelectorAll(s)];
+      const d=Q("#synHelp"); if(!d) return null; const f=Q("#synHelp .uhFace").getBoundingClientRect(), st=Q("#synHelp .uhStats"), s=st?st.getBoundingClientRect():null, top=Q("#synHelp .uhTop");
+      const before=d.scrollTop; d.scrollTop=d.scrollHeight; const last=QA("#synHelp .uhSkills li").pop(), lb=last?last.getBoundingClientRect():null, db=d.getBoundingClientRect(); const reach=lb?lb.bottom<=db.bottom+0.5&&lb.top>=db.top-0.5:null; d.scrollTop=before;
+      return {title:Q("#synHelpT").innerText,box:R(d),vw:innerWidth,docOverflow:document.documentElement.scrollWidth>innerWidth,scroll:[d.scrollHeight,d.clientHeight],
+        face:R(Q("#synHelp .uhFace")),statsBlock:R(st),heightDiff:s?+Math.abs(f.height-s.height).toFixed(2):null,topDiff:s?+Math.abs(f.top-s.top).toFixed(2):null,
+        tagsOutsideTop:Q("#synHelp .tags")?!top.contains(Q("#synHelp .tags")):null,rowsOutsideTop:Q("#synHelp .uhRows")?!top.contains(Q("#synHelp .uhRows")):null,synOutsideTop:Q("#synHelp .uhSyn")?!top.contains(Q("#synHelp .uhSyn")):null,
+        cols:st?getComputedStyle(st).gridTemplateColumns.split(" ").length:null,
+        stats:QA("#synHelp .uhStats li").map(e=>{ const b=e.querySelector("b"), sm=e.querySelector("small"); return [e.getAttribute("aria-label"),sm.innerText,b.innerText,R(e),{valueCut:b.getBoundingClientRect().right>e.getBoundingClientRect().right+0.5,labelCut:sm.scrollWidth>sm.clientWidth}]; }),
+        rows:QA("#synHelp .uhRows li").map(e=>e.innerText),skills:QA("#synHelp .uhSkills li").map(e=>[e.className,e.innerText.replace(/\\s+/g," ").slice(0,60),+getComputedStyle(e).opacity]),
+        skillLabels:QA("#synHelp .uhSkills [aria-label]").map(e=>e.getAttribute("aria-label")),lastSkillReachable:reach,buttons:QA("#synHelp button").length}; })()`);
+    const scene=async(vp,L,name,open,scrolled)=>{ await ev(`(()=>{ synHelpClose(false); ${open}; return 1; })()`); await sleep(150); const g=await geo(); L(name,g); await shot(vp,name);
+      if(scrolled&&g&&g.scroll[0]>g.scroll[1]){ await ev(`(()=>{ const d=document.querySelector("#synHelp"); d.scrollTop=d.scrollHeight; return 1; })()`); await sleep(100); await shot(vp,name+"-scrolled-bottom"); } };
+    for(const [vp,w,h,dpr] of [["320",320,640,2],["390",390,844,2],["1100",1100,1000,1]]){
+      const L=(k,v)=>LOG.push([vp,k,v]);
+      await cdp("Emulation.setDeviceMetricsOverride",{width:w,height:h,deviceScaleFactor:dpr,mobile:w<600});
+      /* ---------- A. 합성(오프라인 PVE) ---------- */
+      await cdp("Page.navigate",{url:"file:///"+ROOT+"/demo/index.html"}); await sleep(1500);
+      await ev(`(()=>{ window.__errs=[]; window.onerror=m=>{ window.__errs.push(String(m)); }; try{ tutClose("skip"); }catch(e){} setSeed(33); startMode("pve",{aiLevel:"grade5"}); render(); return S.phase; })()`); await sleep(900);
+      await ev(`(()=>{ const sp=a=>ROSTER.find(r=>r.arch===a), mk=(rd,g)=>{ const u={uid:++S.eco.unitSeq,paid:0,fresh:false,revealed:false,hpSeen:false,reaperSeal:0,cap:null}; applySpecies(u,rd,g); return u; };
+        S.eco.bag[0]=[mk(sp("guard"),1),mk(sp("sustain"),2),mk(sp("atk"),4)]; window.__bag=S.eco.bag[0].map(u=>u.uid);
+        const fm=S.pieces.filter(x=>x.owner===0&&x.type==="minion"); applySpecies(fm[0],sp("guard"),1); applyLegend(fm[1],"witch"); window.__fm=fm.map(x=>x.id); render(); return 1; })()`); await sleep(300);
+      await scene(vp,L,"synthetic-bag-g1-guard-shield10",`unitHelpBag(window.__bag[0],null)`,true);
+      await scene(vp,L,"synthetic-bag-g2-sustain-status10",`unitHelpBag(window.__bag[1],null)`,true);
+      await scene(vp,L,"synthetic-bag-g4-all-skills",`unitHelpBag(window.__bag[2],null)`,true);
+      await scene(vp,L,"synthetic-field-g1-guard",`unitHelpPiece(window.__fm[0],null)`,false);
+      await scene(vp,L,"synthetic-field-legend",`unitHelpPiece(window.__fm[1],null)`,true);
+      await scene(vp,L,"synthetic-field-king",`unitHelpPiece(S.pieces.find(x=>x.owner===0&&x.type==="king").id,null)`,false);
+      await scene(vp,L,"synthetic-field-ally",`unitHelpPiece(S.pieces.find(x=>x.owner===0&&x.type==="ally").id,null)`,false);
+      await scene(vp,L,"synthetic-shop-slot",`unitHelpSlot(0,null)`,true);
+      /* 공개된 상대 말 — 능력치 · 스킬 · 잠긴 줄이 없어야 한다(오프라인은 기기에 상대 전체 값이 있다) */
+      L("synthetic-revealed-opponent-privacy",await ev(`(()=>{ synHelpClose(false); const e=S.pieces.find(x=>x.owner===1&&x.type==="minion"); const keep=[e.revealed,e.placed,e.r,e.c]; e.revealed=true; e.placed=true; const m=S.pieces.find(x=>x.owner===0&&x.type==="king");
+        const tr=S.tempReveal; S.tempReveal=new Set([e.id]); unitHelpPiece(e.id,null); const h=document.querySelector("#synHelp")?document.querySelector("#synHelp").innerHTML:""; synHelpClose(false); S.tempReveal=tr; [e.revealed,e.placed,e.r,e.c]=keep;
+        const names=(e.skills||[]).concat(V2_SPECIES[e.rosterId]||[]).map(id=>SKILLS[id]&&SKILLS[id].ko).filter(Boolean);
+        return {opened:!!h,hasStatsOrSkills:/uhStats|uhSkills|uhChip|class="lock"|🔒|잠김|방어막|상태 부여/.test(h),leakedSkillNames:names.filter(n=>h.includes(n)),catalogChecked:names.length}; })()`));
+      L("synthetic-page-errors",await ev(`window.__errs`));
+      /* ---------- B. 실제 서버 직렬화 → 실제 수신 처리기 (WebSocket 은 대역) ---------- */
+      await cdp("Page.navigate",{url:"file:///"+ROOT+"/demo/index.html"}); await sleep(1500);
+      const st=await ev(`(()=>{ window.__errs=[]; window.onerror=m=>{ window.__errs.push(String(m)); }; try{ tutClose("skip"); }catch(e){}
+        window.WebSocket=function(url,proto){ window.__ws=this; this.url=url; this.readyState=0; this.sent=[]; this.send=x=>{ this.sent.push(x); }; this.close=()=>{ this.readyState=3; }; }; WebSocket.CONNECTING=0; WebSocket.OPEN=1; WebSocket.CLOSING=2; WebSocket.CLOSED=3;
+        netCreatePublicRoom(); const ws=window.__ws; if(!ws) return "no-ws"; ws.readyState=1; ws.protocol="digit-duel.v1"; ws.onopen&&ws.onopen();
+        ws.onmessage({data:JSON.stringify({v:1,type:"room_opened",epoch:"e1",roomId:12,seat:0,seatToken:"h",tokenGen:0,revision:0,seq:1,economy:true})});
+        UI.entered=true; const v=${JSON.stringify(W.v)};
+        ws.onmessage({data:JSON.stringify({v:1,type:"room_state",revision:v.revision,seat:0,data:v})}); render();
+        return {phase:S.phase,bag:S.eco&&S.eco.bag[0].map(u=>[u.uid,u.rosterId,u.grade,u.skills,u.cds,u.shieldStartPct]),net:[NET.roomId,NET.me,NET.publicMode],screen:document.getElementById("app").getAttribute("data-screen")}; })()`); await sleep(600);
+      L("wire-hydrated",st);
+      await ev(`(()=>{ const o=document.getElementById("overlay"); if(o&&!o.classList.contains("hidden")&&typeof closeModal==="function") closeModal(); document.querySelectorAll("#toasts .toast").forEach(t=>t.remove()); render(); return 1; })()`); await sleep(300);
+      await shot(vp,"wire-prep-shop-screen");
+      const lm=`S.pieces.filter(x=>x.owner===0&&x.type==="minion")`;
+      await scene(vp,L,"wire-bag-g1-guard-shield10",`unitHelpBag(${W.uids[0]},null)`,true);
+      await scene(vp,L,"wire-field-g1-guard-shield10",`unitHelpPiece(${lm}[0].id,null)`,true);
+      await scene(vp,L,"wire-bag-g2-sustain-status10",`unitHelpBag(${W.uids[1]},null)`,true);
+      await scene(vp,L,"wire-field-g4-sustain-all-skills",`unitHelpPiece(${lm}[1].id,null)`,true);
+      await scene(vp,L,"wire-bag-legend",`unitHelpBag(${W.uids[2]},null)`,true);
+      await scene(vp,L,"wire-field-king",`unitHelpPiece(S.pieces.find(x=>x.owner===0&&x.type==="king").id,null)`,false);
+      L("wire-sent-while-viewing",await ev(`window.__ws.sent.length`));
+      L("wire-page-errors",await ev(`window.__errs`));
+    }
+    ws.close();
+  }catch(e){ LOG.push(["ERROR",String(e&&e.stack||e)]); console.error(e); }
+  finally{ fs.writeFileSync(path.join(OUT,"capture-log.json"),JSON.stringify(LOG,null,1)); chrome.kill(); await sleep(800); try{ fs.rmSync(PROF,{recursive:true,force:true}); }catch(e){}
+    console.log("done",LOG.length,LOG.filter(x=>x[0]==="ERROR").length?"WITH ERROR":"","chromePid",chrome.pid);
+    /* 요약: 장면마다 그림/능력치 높이 차 · 값 잘림 · 마지막 스킬 도달 */
+    for(const x of LOG) if(x[2]&&x[2].stats) console.log(x[0],x[1],"hDiff",x[2].heightDiff,"topDiff",x[2].topDiff,"n",x[2].stats.length,"valueCut",x[2].stats.filter(s=>s[4].valueCut).length,"labelCut",x[2].stats.filter(s=>s[4].labelCut).map(s=>s[1]).join("/"),"skills",x[2].skills.length,"reach",x[2].lastSkillReachable,"overflow",x[2].docOverflow);
+    for(const x of LOG) if(!(x[2]&&x[2].stats)&&x[1]!=="wire-source") console.log(JSON.stringify(x).slice(0,400)); process.exit(0); }
+})();
