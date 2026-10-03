@@ -92,3 +92,14 @@
 - **유지 확인**: 속성 버튼 15개 S01/턴 320 44.59×44 · 390 51/54×44 · PC 59.39/62.39×44, 행 clientWidth=scrollWidth, 문서 · 모달 가로 넘침 0, 턴 상점 속성 버튼 오른쪽 끝 ≤ 시너지 열 왼쪽(320 274/274 · 390 338/342 · PC 804/808). 320 확대 캡처로 테두리 링 · HP 띠 모양이 종전과 같음을 직접 확인 → 시각이 같아 `media/` 새 이미지 · 교체 0.
 - **검사**: CSS 전용이라 37 회귀 · 서버 · typecheck · 전체 CI는 재실행하지 않음(지시). 실제 렌더 hit 스캔 2회(1회차 뒤 HP 띠 겹침을 발견해 고친 뒤 최종 CSS로 1회) + 턴 모달 시너지 열 측정 1회. 본인 탭만 열고 닫음 · 8091(PID 16448/부모 22708) · 8084(PID 5012) · Render 탭 무변경.
 - **미검증**: 키보드 포커스 링(`.faceBtn:focus-visible`)은 프로그램 포커스로 `:focus-visible`가 켜지지 않아 실제 렌더에서 확인하지 못함(Chrome 그리기 순서상 자식 outline이 부모 outline 위). 실제 안드로이드 터치 · Saturn 재검수 · 새 HEAD CI · CJ 플레이 QA 미실행.
+
+## 8. Saturn REVISE 3차: 하수인 진열 그림 클릭 영역 (2026-10-03 · 같은 미커밋 트리 · 기준 HEAD `3a9f002`)
+
+판정(자체 검증): **수정 완료 · 미커밋**. Mars 자체 검증이며 Saturn 재검수 PASS가 아닙니다. 근거: `artifacts/.../Saturn-REVISE-3a9f002.md`. 실행: Claude `claude-opus-5-5` · high · `--dangerously-skip-permissions` · Ponytail full. 서버/Core · Notion/GitHub 쓰기 0.
+
+- **원인**: `.shopSheet .shopCard` grid의 그림 열이 36px인데 안쪽 `.faceBtn`은 공통 `min-width:44px`(1417행)입니다. 버튼이 8px 넘쳐 간격 6px(320 턴 상점은 4px)를 지나 `.nm` 위로 2px(4px) 들어가고, 뒤에 그려지는 이름 칸이 버튼 오른쪽 끝을 덮었습니다. 984행 grid는 a74 → 3a 동안 그대로이므로 leadFace outline 수정에서 생긴 회귀가 아닙니다.
+- **최소 변경**(`demo/css/game.css` 984행 한 곳 · JS · markup 0): `grid-template-columns:30px 36px …` → `30px 44px …`. 그림(36×36)은 넓어진 칸 가운데에 그대로 놓이고, 이름 열만 8px 좁아집니다.
+- **실측**(Orca 내장 브라우저 · 본인 탭 · PD 8091 재사용 · 같은 출처 iframe 320/390/1280 · 오프라인 PVE · S01 + 20턴 상점 모달, 화면마다 진열 6칸): 버튼 최소 44×44. 버튼 오른쪽 끝 ≤ `.nm` 왼쪽, 등급 칸 오른쪽 끝 ≤ 버튼 왼쪽, `.nm` 오른쪽 끝 ≤ 가격 버튼/품절 표시 왼쪽에서 겹침 0. `elementFromPoint` 좌·우·상·하 0.5px 점과 가운데 점이 모두 그 칸의 faceBtn을 가리켰습니다(미적중 0/180). 이름 말줄임 0(320 포함). 왕·동료 그림 칸 44×44 = faceBtn 44×44. 속성 버튼 최소 폭은 320 44.59, 390 51/54, 1280 59.39/62.39이고 높이는 모두 44입니다. 문서·시트·카드 가로 넘침은 0입니다.
+- **입력 경로**(합성 입력 · `isTrusted=false`): 화면마다 첫·마지막 진열 칸의 오른쪽 끝(right−0.5) 점을 `elementFromPoint`로 집고 DOM `click()` → 정보 창(`.uhRows`) 열림 12/12. `S.eco`(코인 · 티켓 · 진열 · 판매 기록) 변화 0, `dispatchCoreAction`/`netAction` 호출 0.
+- **검사**: CSS 전용이라 37 회귀 · 서버 · typecheck · 전체 CI는 재실행하지 않았습니다(지시). 측정 스크립트 3회 실행. 1회차는 `AUTH` 접근 오류였고, 2회차는 턴 모달 뒤 S01 시트까지 함께 세는 선택자 오류여서 버렸으며, 결과는 `.shopSheet.turn`으로 범위를 좁힌 3회차입니다. 화면 모양 변화는 그림 칸 폭 8px뿐이라 `media/` 교체는 0입니다. 본인 탭만 열고 닫았고 8091 · 8084 · Render 탭은 건드리지 않았습니다. 본인 탭의 `orca snapshot`/`reload`는 `runtime_unavailable`를 냈지만 `eval`은 정상이었습니다.
+- **미검증**: 실제 trusted 터치/클릭, 실제 안드로이드 기기, Saturn 재검수, 새 HEAD CI, CJ 플레이 QA.
