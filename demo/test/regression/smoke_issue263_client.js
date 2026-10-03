@@ -130,10 +130,10 @@ try{
   /* B1 PVE — 준비 시계는 S01 이 열릴 때 한 번 서고, 상점을 직접 끝내 배치로 넘어가도 다시 서지 않는다 */
   const T=boot("pve",{aiLevel:"grade5"}), S=T.S;
   eq(T.ECO.prepSec,180,"B0 준비 시간 상수 = 180초");
-  eq(T.byId("prepClock").textContent,"⏱ 180초","B2 S01 표시 즉시 남은 시간 180초");
+  eq(T.byId("prepClock").getAttribute("aria-label"),"남은 시간 180초","B2 S01 표시 즉시 남은 시간 180초");
   adv(40000); buyAllAndDone(T,0); T.render(); T.render();
   ok(S.eco.shop.done[0]&&S.phase==="setup"&&T.UI.prep==="place","B1 S01 직접 완료 → 02 비공개 배치");
-  eq(T.byId("prepClock").textContent,"⏱ 140초","B3 상점 완료·다시 그리기는 마감을 되돌리지 않는다 (배치에 새 90초 없음)");
+  eq(T.byId("prepClock").getAttribute("aria-label"),"남은 시간 140초","B3 상점 완료·다시 그리기는 마감을 되돌리지 않는다 (배치에 새 90초 없음)");
   adv(P180-40000-1); ok(unplaced(T,0)>0&&S.phase==="setup","B4 179.999초엔 아직 배치 중");
   adv(1); ok(unplaced(T,0)===0&&S.phase==="play","B5 180초 만료 → 미배치 말 자동 배치 + 준비(경기 시작)");
   eq(T.byId("prepClock").textContent,"","B6 경기가 시작되면 준비 시계 표시가 비워진다 (.badge:empty 로 숨는다)")
@@ -143,7 +143,7 @@ try{
   const T1=boot("pve",{aiLevel:"grade5"}), S1=T1.S;
   buyAllAndDone(T1,0); T1.netAction({t:"auto"}); T1.render();
   eq(unplaced(T1,0),0,"B7 사람이 14개를 모두 배치했다");
-  eq(T1.byId("prepClock").textContent,"⏱ 180초","B8 다 놓아도 확정 전까지 준비 180초는 계속 흐른다 (교착 방지)");
+  eq(T1.byId("prepClock").getAttribute("aria-label"),"남은 시간 180초","B8 다 놓아도 확정 전까지 준비 180초는 계속 흐른다 (교착 방지)");
   const mine=S1.pieces.filter(x=>x.owner===0);
   const keep=mine.slice(2).map(x=>[x.id,x.r,x.c]);      // 직접 놓은 좌표 — 만료 뒤에도 그대로여야 한다
   mine[0].placed=false; mine[1].placed=false;           // 두 개만 미배치로 되돌려 "못 놓은 말만 채운다"를 본다
@@ -163,13 +163,13 @@ try{
 
   /* B15 핫시트 — 두 사람이 180초 하나를 함께 쓴다. 가림(handoff)·차례 넘김에 멈추지도 다시 서지도 않는다 */
   const T3=boot("pvp"), S3=T3.S;
-  eq(T3.byId("prepClock").textContent,"⏱ 180초","B15 P1 화면에서 공통 준비 180초 시작");
+  eq(T3.byId("prepClock").getAttribute("aria-label"),"남은 시간 180초","B15 P1 화면에서 공통 준비 180초 시작");
   adv(60000); buyAllAndDone(T3,0); T3.netAction({t:"auto"}); T3.netAction({t:"setupDone"});
   ok(S3.setupPlayer===1&&covered(T3),"B16 P1 직접 완료 → P2 가림");
   adv(60000); ok(S3.phase==="setup"&&!S3.eco.shop.done[1],"B17 가림이 떠 있는 동안에도 같은 시계가 흐른다 — 120초엔 아직 만료 전");
   ok(confirmCover(T3),"B18 가림 확인");
   T3.render();
-  eq(T3.byId("prepClock").textContent,"⏱ 60초","B19 P2 는 새 시간이 아니라 남은 60초 (재발급 없음)");
+  eq(T3.byId("prepClock").getAttribute("aria-label"),"남은 시간 60초","B19 P2 는 새 시간이 아니라 남은 60초 (재발급 없음)");
   adv(60000-1); ok(S3.phase==="setup"&&!S3.eco.shop.done[1],"B19a 179.999초엔 P2 진행 중");
   adv(1); ok(S3.phase==="play"&&unplaced(T3,1)===0&&T3.ecoEmptyField(S3,1).length===0,"B20 180초 만료 → P2 자동 구매·배치·준비 → 경기 시작");
 

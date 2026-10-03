@@ -9,7 +9,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-Apache--2.0-blue" alt="코드 라이선스 Apache-2.0"></a>
 </p>
 
-**[▶ 웹에서 플레이](https://digit-duel-mipa.onrender.com)** · 최신 릴리스 **[v0.4.13](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.13)**
+**[▶ 웹에서 플레이](https://digit-duel.site)** · 최신 릴리스 **[v0.4.13](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.13)**
 
 ## 게임 소개
 
@@ -66,7 +66,7 @@
 | 항목 | 내용 |
 | --- | --- |
 | 현재 정식 버전 | [v0.4.13](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.13) |
-| 플레이 주소 | [digit-duel-mipa.onrender.com](https://digit-duel-mipa.onrender.com) |
+| 플레이 주소 | [digit-duel.site](https://digit-duel.site) |
 | 장르·인원 | 숨은 정체·속성 전투를 결합한 온라인 1대1 턴제 전략 |
 | 환경 | PC·휴대폰의 최신 브라우저, 인터넷과 가입용 이메일 |
 | 플랫폼 | HTML 웹 게임 |
@@ -75,7 +75,7 @@
 
 ## 플레이 방법
 
-1. [게임 페이지](https://digit-duel-mipa.onrender.com)에서 가입하거나 ID·비밀번호로 로그인합니다.
+1. [게임 페이지](https://digit-duel.site)에서 가입하거나 ID·비밀번호로 로그인합니다.
 2. 로비에서 **멀티플레이**를 누릅니다. 한 사람이 방을 만들고 상대가 참가합니다. 참가자가 준비하면 방장이 시작합니다.
 3. 공통 **180초** 안에 시작 상점에서 하수인 6명을 고르고 왕·동료 속성을 정한 뒤 말 14개를 배치합니다. 양쪽이 준비를 마치면 바로 시작합니다.
 4. 자기 차례 **30초** 안에 이동·탐색·회복·텔레포트를 선택합니다. 내 말의 정보는 오른쪽 **말 정보**에서 확인합니다.

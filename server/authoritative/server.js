@@ -45,6 +45,12 @@ const LAN_OPT_IN = process.env.DD_LAN === '1' || process.argv.includes('--lan');
 const PUBLIC_DEPLOY = process.env.DD_AUTH_PUBLIC_DEPLOY === '1';
 const PUBLIC_HOST = process.env.DD_AUTH_PUBLIC_HOST || null; // §2.1 DD_PUBLIC_HOST 상당
 const PUBLIC_HOST_CHECK = PUBLIC_HOST ? S.validatePublicHost(PUBLIC_HOST) : { ok: true, host: null };
+// #313 커스텀 도메인 — DD_AUTH_PUBLIC_HOST 를 공식 도메인으로 바꿔도 Render 가 주입하는 기본 onrender.com 주소
+// (RENDER_EXTERNAL_HOSTNAME)를 기술 대체·롤백 경로로 함께 허용한다. 공개 배포 옵트인일 때만, 같은 형식 검증을 통과할 때만
+// 더한다 — 형식이 어긋나면 더하지 않고(닫힘) 경고만 남긴다(플랫폼 주입값 하나로 운영 서버 기동을 막지 않는다).
+const RENDER_HOST_RAW = process.env.RENDER_EXTERNAL_HOSTNAME || null;
+const RENDER_HOST_CHECK = PUBLIC_DEPLOY && RENDER_HOST_RAW ? S.validatePublicHost(RENDER_HOST_RAW) : { ok: false, reason: 'absent' };
+const PUBLIC_HOSTS = [PUBLIC_HOST_CHECK.host, RENDER_HOST_CHECK.ok && RENDER_HOST_CHECK.host].filter(Boolean);
 
 // #276 네이티브 HTTPS 옵트인 — LAN 에서 로그인하려면 TLS 가 필요하다(평문 원격 인증은 accounts.transport() 가 계속 403).
 // 둘 다 없으면 기존 HTTP 그대로(Render 는 엣지 TLS). 둘 다 있으면 같은 포트·핸들러·WebSocket 을 TLS 로 연다.
@@ -133,7 +139,7 @@ function peerAllowed(ip) {
 }
 
 function allowedHost(hostHeader) {
-  return S.isAllowedHost(hostHeader, PUBLIC_HOST ? [PUBLIC_HOST.toLowerCase()] : []);
+  return S.isAllowedHost(hostHeader, PUBLIC_HOSTS);
 }
 
 function bucketFor(map, ip, capacity, refill) {
@@ -708,7 +714,9 @@ function listen() {
     console.log(`  접속 주소: ${SCHEME}://127.0.0.1:${actual}`);
     if (TLS.options) console.log('  TLS: 네이티브 HTTPS(TLS 1.2+) — 인증서가 이 접속 주소의 이름을 담고 접속 기기가 그 인증서를 신뢰해야 한다');
     if (PUBLIC_DEPLOY) {
-      console.log(`  WAN 접속 주소(플랫폼 도메인): https://${PUBLIC_HOST}`);
+      console.log(`  WAN 접속 주소(공식 도메인): https://${PUBLIC_HOST}`);
+      if (RENDER_HOST_CHECK.ok && RENDER_HOST_CHECK.host !== PUBLIC_HOST_CHECK.host) console.log(`  플랫폼 기본 주소(대체·롤백, Host 허용): https://${RENDER_HOST_CHECK.host}`);
+      else if (RENDER_HOST_RAW && !RENDER_HOST_CHECK.ok) console.log(`  경고: RENDER_EXTERNAL_HOSTNAME 형식 오류(사유: ${RENDER_HOST_CHECK.reason}) — Host 허용 목록에 더하지 않았다`);
       console.log('  주의: 이 모드는 소켓 피어 IP를 신뢰 경계로 쓰지 않는다 — Host·Origin·좌석 토큰만으로 막는다.');
       console.log('  주의: 리버스 프록시 뒤에서는 IP당 요청/연결 한도가 이 인스턴스 전체가 나누는 공유 한도가 된다(docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md).');
     } else if (LAN_OPT_IN) {
@@ -735,4 +743,4 @@ function listen() {
 // 한 IP(루프백)에서 수십 건을 보내는 테스트가 예산에 막히지 않게 예산도 비운다.
 function useAccounts(a) { accounts = a; authBuckets.clear(); }
 
-module.exports = { server, wss, lobby, EPOCH, useAccounts, heartbeatTick, ROOT, parseCredential, presentedCredential, peerAllowed, PUBLIC_DEPLOY, PUBLIC_HOST, LAN_OPT_IN, PORT, SCHEME };
+module.exports = { server, wss, lobby, EPOCH, useAccounts, heartbeatTick, ROOT, parseCredential, presentedCredential, peerAllowed, allowedHost, PUBLIC_DEPLOY, PUBLIC_HOST, LAN_OPT_IN, PORT, SCHEME };

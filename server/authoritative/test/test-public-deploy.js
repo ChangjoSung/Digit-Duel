@@ -62,6 +62,25 @@ function unitTests() {
     eq(m.peerAllowed('192.168.1.5'), true, 'LAN 옵트인 — 사설 대역 피어 허용');
   });
 
+  section('#313 Host 허용 — 커스텀 도메인 + Render 주입 기본 주소(대체·롤백), 그 밖은 거부');
+  const CUSTOM = 'digit-duel.site';
+  const FALLBACK = 'digit-duel-mipa.onrender.com';
+  withEnv({ DD_AUTH_PUBLIC_DEPLOY: '1', DD_AUTH_PUBLIC_HOST: CUSTOM, RENDER_EXTERNAL_HOSTNAME: FALLBACK }, (m) => {
+    eq(m.allowedHost(CUSTOM), true, '커스텀 도메인 허용');
+    eq(m.allowedHost('Digit-Duel.Site:443'), true, '커스텀 도메인 대소문자·포트 표기 허용');
+    eq(m.allowedHost(FALLBACK), true, 'Render 주입 기본 주소 허용');
+    eq(m.allowedHost('evil.example'), false, '모르는 Host 거부');
+    eq(m.allowedHost('www.' + CUSTOM), false, 'www 등 하위 도메인은 자동 허용하지 않음(와일드카드 없음)');
+    eq(m.allowedHost('127.0.0.1:8081'), true, '루프백(로컬 헬스체크 등) 기존대로 허용');
+  });
+  withEnv({ DD_AUTH_PUBLIC_DEPLOY: '1', DD_AUTH_PUBLIC_HOST: CUSTOM, RENDER_EXTERNAL_HOSTNAME: 'https://' + FALLBACK }, (m) => {
+    eq(m.allowedHost(FALLBACK), false, '형식 오류 주입값 — 허용 목록에 더하지 않음(닫힘)');
+    eq(m.allowedHost(CUSTOM), true, '형식 오류 주입값이어도 커스텀 도메인은 그대로 허용');
+  });
+  withEnv({ DD_AUTH_PUBLIC_DEPLOY: '', DD_AUTH_PUBLIC_HOST: '', RENDER_EXTERNAL_HOSTNAME: FALLBACK }, (m) => {
+    eq(m.allowedHost(FALLBACK), false, '공개 배포 옵트인 없음 — 주입값을 허용하지 않음(닫힘)');
+  });
+
   section('PORT 우선순위 — DD_AUTH_PORT > PORT(플랫폼 주입) > 8081');
   withEnv({ DD_AUTH_PORT: '', PORT: '' }, (m) => eq(m.PORT, 8081, '둘 다 미설정 — 기본 8081'));
   withEnv({ DD_AUTH_PORT: '', PORT: '9500' }, (m) => eq(m.PORT, 9500, 'PORT만 설정(Render 방식) — PORT 사용'));
@@ -78,7 +97,7 @@ function startServer(env) {
       env: {
         ...process.env,
         DD_AUTH_PORT: '', PORT: '0', DD_LAN: '0', DD_AUTH_BIND: '',
-        DD_AUTH_PUBLIC_DEPLOY: '', DD_AUTH_PUBLIC_HOST: '',
+        DD_AUTH_PUBLIC_DEPLOY: '', DD_AUTH_PUBLIC_HOST: '', RENDER_EXTERNAL_HOSTNAME: '',
         ...env,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -141,7 +160,8 @@ function requestOnce(port, opts) {
 
 async function acceptAndProxyTests() {
   section('정상 설정 — Render 방식(PORT만, DD_AUTH_PORT 미설정)으로 공개 배포 기동');
-  const started = await startServer({ DD_AUTH_PUBLIC_DEPLOY: '1', DD_AUTH_PUBLIC_HOST: HOST, PORT: '0' });
+  const RENDER_DEFAULT = 'digit-duel-readiness-default.onrender.com';
+  const started = await startServer({ DD_AUTH_PUBLIC_DEPLOY: '1', DD_AUTH_PUBLIC_HOST: HOST, RENDER_EXTERNAL_HOSTNAME: RENDER_DEFAULT, PORT: '0' });
   ok(started.code === null && /listening/.test(started.out), 'listen 성공: ' + started.out);
   ok(/공개 배포\(WAN\)/.test(started.out), '공개 배포 모드로 안내: ' + started.out);
   ok(/0\.0\.0\.0/.test(started.out), 'PUBLIC_DEPLOY 기본 바인드 — 0.0.0.0(DD_AUTH_BIND 미지정): ' + started.out);
@@ -154,6 +174,9 @@ async function acceptAndProxyTests() {
       // 리버스 프록시가 원본 Host/Origin을 그대로 전달했다고 가정한 요청.
       const good = await requestOnce(port, { headers: { Host: HOST, Origin: 'https://' + HOST } });
       ok(good.status === 200 && good.body === 'ok', '프록시가 전달한 실제 배포 Host/Origin — 200: ' + JSON.stringify(good));
+
+      const fallback = await requestOnce(port, { headers: { Host: RENDER_DEFAULT, Origin: 'https://' + RENDER_DEFAULT } });
+      ok(fallback.status === 200, '#313 Render 주입 기본 주소 Host/Origin — 대체 경로 200: ' + JSON.stringify(fallback));
 
       const badHost = await requestOnce(port, { headers: { Host: 'evil.example', Origin: 'https://evil.example' } });
       ok(badHost.status === 400, '허용 목록 밖 Host — 공개 배포 모드에서도 여전히 400: ' + JSON.stringify(badHost));

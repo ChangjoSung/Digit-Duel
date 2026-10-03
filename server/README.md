@@ -35,7 +35,8 @@ Render 는 저장소 루트에서 `npm ci --prefix server` / `npm start --prefix
 | `PORT` | (없음) | 플랫폼(Render 등)이 주입하는 포트. `DD_AUTH_PORT` 가 없을 때만 쓴다 |
 | `DD_AUTH_PORT` | `8081` | 명시하면 `PORT` 보다 우선(기존 로컬/LAN 실행기·문서 그대로) |
 | `DD_AUTH_PUBLIC_DEPLOY` | (없음) | `1` 이면 리버스 프록시 뒤 배포 모드. 소켓 피어 IP 검사를 건너뛰고 Host·Origin·좌석 토큰만으로 막는다. `DD_AUTH_PUBLIC_HOST` 없이 켜면 기동을 중단한다 |
-| `DD_AUTH_PUBLIC_HOST` | (없음) | 배포 도메인. 스킴·포트·경로 없이 호스트명만(`my-service.onrender.com`). 형식이 어긋나거나 사설/루프백 주소면 기동을 중단한다 |
+| `DD_AUTH_PUBLIC_HOST` | (없음) | 배포 도메인. 스킴·포트·경로 없이 호스트명만(`my-service.onrender.com`). 형식이 어긋나거나 사설/루프백 주소면 기동을 중단한다. #313 운영값은 공식 도메인 `digit-duel.site` |
+| `RENDER_EXTERNAL_HOSTNAME` | Render 주입 | 설정하지 않는다. `DD_AUTH_PUBLIC_DEPLOY=1` 이고 형식 검증을 통과하면 이 기본 `onrender.com` 주소도 Host 허용 목록에 더한다(커스텀 도메인 전환 후 대체·롤백 경로). 형식 오류면 더하지 않는다. 그 밖의 Host 는 400 |
 | `DD_AUTH_BIND` | 옵트인별 기본값 | 명시 지정 시 IP 리터럴만(`security.js` 의 `resolveBindAddress` 공유) |
 | `DD_AUTH_TLS_CERT` · `DD_AUTH_TLS_KEY` | (없음) | #276 네이티브 HTTPS(LAN 로그인용). 인증서·개인 키 PEM **절대 경로** 둘 다 주면 같은 포트·핸들러·WebSocket 을 HTTPS/WSS(TLS 1.2+)로 열고 안내 주소도 `https://` 다. 둘 다 없으면 기존 HTTP 그대로(Render 는 엣지 TLS 라 쓰지 않는다). 하나만·상대 경로·읽기 실패·PEM 오류·키 불일치면 HTTP 로 내려가지 않고 기동을 중단한다(사유는 오류 코드만). 개인 키는 Git 밖에 둔다. 인증서가 접속 주소 이름(내부망 IP)을 담고 접속 기기가 그것을 신뢰해야 한다 — 발급·신뢰 등록은 실행기(Mars) 몫 |
 

@@ -1,4 +1,4 @@
 # Digit-Duel only; explicit Worker launch arguments override these defaults.
-model = "gpt-6-sol"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "xhigh"
 service_tier = "default"

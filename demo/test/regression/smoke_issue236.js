@@ -738,7 +738,7 @@ function openTicket(T,p){ const k=T.S.pieces.find(x=>x.owner===p&&x.type==="king
     /* Q1 PVE: S01 이 그려지는 순간부터 공통 준비 180초(ECO.prepSec) · 다시 그려도 마감 유지 · 만료 = 자동 구매 완료 */
     { const T=boot("pve",{aiLevel:"grade5"}), S=T.S;
       eq(T.ECO.prepSec,180,"Q1 준비 시간 상수 = 180초");
-      eq(T.byId("prepClock").textContent,"⏱ 180초","Q1 PVE S01 표시 즉시 남은 시간 180초");
+      eq(T.byId("prepClock").getAttribute("aria-label"),"남은 시간 180초","Q1 PVE S01 표시 즉시 남은 시간 180초");
       adv(40000); T.render(); T.render(); ok(T.byId("sidePanel").innerHTML.includes("⏱ 140초"),"Q1 다시 그리기는 마감을 되돌리지 않는다 (남은 140초)");
       adv(S180-40000-1); ok(!S.eco.shop.done[0],"Q1 PVE S01 179.999초엔 진행 중 (90초에 끝나지 않는다)");
       /* #263 (2026-09-25 CJ): 만료 좌석은 자동 구매에 이어 **자동 배치·준비**까지 그 자리에서 끝난다 */
@@ -756,7 +756,7 @@ function openTicket(T,p){ const k=T.S.pieces.find(x=>x.owner===p&&x.type==="king
     }
     /* Q2 핫시트 S01: 두 사람이 **180초 하나**를 함께 쓴다 — P1 이 30초에 직접 끝내면 P2 는 남은 시간뿐이고, 가림이 떠 있어도 그대로 흐른다 */
     { const H2=boot("pvp"), G=H2.S;
-      eq(H2.byId("prepClock").textContent,"⏱ 180초","Q2 P1 S01 표시 즉시 공통 180초 시작");
+      eq(H2.byId("prepClock").getAttribute("aria-label"),"남은 시간 180초","Q2 P1 S01 표시 즉시 공통 180초 시작");
       adv(30000);
       for(let n=0;n<6;n++) act(H2,{t:"shopBuy",player:0,i:H2.ecoBuyable(G,0),seq:G.eco.shop.seq[0]});
       act(H2,{t:"shopDone",player:0}); H2.render();
@@ -765,7 +765,7 @@ function openTicket(T,p){ const k=T.S.pieces.find(x=>x.owner===p&&x.type==="king
       ok(covered(H2)&&G.setupPlayer===1,"Q2 P1 배치 확정 → P2 가림");
       adv(100000); ok(G.phase==="setup"&&!G.eco.shop.done[1],"Q2 가림 중에도 같은 시계가 흐른다 — 130초엔 아직 만료 전");
       confirm(H2); ok(!covered(H2),"Q2 가림 확인 → P2 상점 표시");
-      eq(H2.byId("prepClock").textContent,"⏱ 50초","Q2 P2 는 새 180초가 아니라 남은 50초 (재발급·정지 없음)");
+      eq(H2.byId("prepClock").getAttribute("aria-label"),"남은 시간 50초","Q2 P2 는 새 180초가 아니라 남은 50초 (재발급·정지 없음)");
       adv(50000-1); ok(!G.eco.shop.done[1]&&G.phase==="setup","Q2 179.999초엔 P2 진행 중");
       adv(1); ok(H2.ecoEmptyField(G,1).length===0&&!G.pieces.some(x=>!x.placed)&&G.phase==="play","Q2 180초 만료 → P2 자동 구매 · 자동 배치 · 경기 시작"); }
     /* 아무도 끝내지 못한 채 만료 — 두 좌석을 차례로 자동 마무리해 시작한다 */
