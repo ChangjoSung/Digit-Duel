@@ -31,6 +31,8 @@ declare var __throwBall: UiHandler;
 declare var __useItem: UiHandler;
 declare var __shop: UiHandler;    // #236 상점 화면 버튼
 declare var __buffUse: UiHandler; // #236 산 전투 버프
+declare var __synTog: UiHandler;  // #316 ③ 전투 시너지 토글(로컬 표시 전용)
+declare var __bagPick: UiHandler; // #316 ② B08 카드 선택 → 기존 bagPick
 // setSeed·tutOpen·tutHintClose·metricsSnapshot 은 함수 선언이 이미 전역이라 여기서 다시 적지 않는다.
 declare var artFail: UiHandler;
 declare var artPortraitFail: UiHandler;
