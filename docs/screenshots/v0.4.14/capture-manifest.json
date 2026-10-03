@@ -1,0 +1,62 @@
+{
+ "task": "task_ed4340c821af / ctx_be36afb956b9 — v0.4.14 README·Release 사진 4장(05~08) 교체",
+ "capturedAt": "2026-10-04 (KST) 00:30-00:46",
+ "worker": "Mars (Claude Code claude-opus-5-5 · effort high · --dangerously-skip-permissions, PID 18084)",
+ "source": {
+  "worktree": "C:/Users/pc_77/orca/workspaces/Digit-Duel/release-v0414-docs",
+  "HEAD": "7fcd81b82901d2b899159d61ce13f0be51662396 (= loose refs/remotes/origin/dev, ref 파일로 읽음 · Git 명령 미사용)",
+  "tree": "bad7771f7cd54cca8ada16e90042c87b9a3d3e28 (커밋 loose object 를 zlib 로 직접 읽음)",
+  "parents": ["2b7d9488b339b9a1571565c1eaff840b5921f5db", "75dbaff3bec362968ac2a7dc219982f6db00f4ca"],
+  "fileSha256": {
+   "demo/index.html": "57e7adb3b85d6b9ccf218a860e70b4133ff88c1a4d38584aed2907f0917bd35a",
+   "demo/js/account.js": "2bb95fa019b5d53860be07cb01696ded31476d1493c5932f2d0acac31aba7eff",
+   "demo/js/ai.js": "6332b9f7fbfe29dfa10bfdabb8da9eeb2d5d139b4a1662a1418797fb98ece555",
+   "demo/js/bootstrap.js": "81287aa896c803abd41ad7a139fe434412c2765f8e190a6ed430e7ce0daeebd9",
+   "demo/js/core.js": "80e0aed92efd4241315ddde7c2b6c5daca27c0643b4a2cb0efc315e8a7956241",
+   "demo/js/data.js": "6a4f0cb52359aab70f6dcca059d2e9917b102bd58b492fbb140bffdfb3c2aa4c",
+   "demo/js/lobby.js": "76fbf1c4b9d05a91945a43357516c48ba6055b90e551e430165b86167346530f",
+   "demo/js/network.js": "cb733fbe7b785ead45eed09d766838dd0c830a60e5ac731369d4c0d41745d839",
+   "demo/js/state.js": "bbf9ca426ac644cc636bcadd738661ffb7d9ae885531dacd7b04e9b0f8480232",
+   "demo/js/ui.js": "64c6d4e6ce5107605e87630239cad72bf6836bc532725c4ddfffa7763e6dae6a",
+   "demo/js/ui-overlays.js": "4fed7d3912d5e9f20fbc6e3382d9efb2071f0f8b6361c04f37b1dbbb63342c72",
+   "demo/css/game.css": "1323073afddb787363dd238a85f78587f0eeb1b5e38f96f805d061216f3eac0f"
+  }
+ },
+ "renderPath": {
+  "page": "file:///C:/Users/pc_77/orca/workspaces/Digit-Duel/release-v0414-docs/demo/index.html (수정 없는 dev 렌더러 · 게임 자산 demo/assets 상대경로 로드 · 서버·DB·네트워크 없음 · AUTH.state=off)",
+  "browser": "Google Chrome 154.0.8037.97 headless=new 1개, 격리 프로필 mars/profiles/A(종료 후 삭제), CDP Emulation 390x844 CSS · DPR 2 · mobile",
+  "tooling": "저장소 밖 C:/Users/pc_77/orca/artifacts/Digit-Duel/release-v0.4.14-20261004/mars/{driver.js,cli.js,auto.js,fight.js,bottomcheck.js} — v0.4.13 헬퍼 최소 수정(file:// URL · 1클라이언트 · 전진 방향 -1) + fight.js 신규",
+  "input": "실제 CDP 마우스 클릭(구매·다음 단계·무작위 배치·배치 완료·말 이동·전투 시작·싸우기/기술·시너지 펼치기). Runtime.evaluate 는 좌표·상태 읽기와 아래 2가지에만 사용"
+ },
+ "provenance": {
+  "kind": "오프라인 PVE 경기 1판(AI 5급 · 로컬 경제)의 실제 렌더 — 온라인 공개 방 플레이가 아님",
+  "fixtureEntry": "로비의 싱글플레이 카드는 잠금(🔒)이라 페이지 안에서 기존 함수 startMode('pve',{aiLevel:'grade5'}) 를 직접 호출해 경기를 시작함(게임 상태 주입·수치 변경 없음)",
+  "uiScroll": "05·07은 스크롤 컨테이너(#screenBody · #overlayBox) scrollTop 만 지정해 고정 머리와 행 경계를 맞춤(게임 상태 무관)",
+  "flow": "시작 상점 1★ 3구매 → 05 → 3구매·다음 단계 → 무작위 배치 → auto.js 실제 클릭 전진 → 턴14 AI 공격 접촉 전투 → 08 → fight.js 로 전투 종료(상대 공개) → 턴15 보드 06 → 턴20 상점 2★ 1구매(가방) → 07",
+  "synthetic": "없음(가짜 화면·이미지 생성·DOM 편집 없음). 계정·실서버·QA 게임 미사용"
+ },
+ "images": {
+  "docs/screenshots/v0.4.14/05-start-shop.png": {"px": [780, 1688], "bytes": 226223, "sha256": "7ba168217ac59bf0bb29b80ddd3324b624f1abdba611b42332e57ba39d21a2dc", "cropCss": {"x": 0, "y": 0, "width": 390, "height": 844}, "dpr": 2,
+   "note": "S01 시작 상점 1★ 3구매 뒤 #screenBody scrollTop 352 — 고정 머리(VS·단계·⏱·🪙·다음 단계) 유지, 필드 3/6 · 가방 · 왕·동료 속성 3줄이 행 경계에서 끝남, 시너지 열"},
+  "docs/screenshots/v0.4.14/06-strategy-board.png": {"px": [780, 1688], "bytes": 329186, "sha256": "959c7a33b6d5dbdec9ad4daf6e95a1341f8f50467c45826506aa0725d687e9f4", "cropCss": {"x": 0, "y": 0, "width": 390, "height": 844}, "dpr": 2,
+   "note": "턴15 내 차례 보드 전체 뷰포트 — 전투로 공개된 상대 물방울 요정(빨간 테 · 적 표식 · HP31), 탐색 가능한 수풀 칸(점선·돋보기), 왼쪽 상성 순환표, 시너지 열, 하단 행동 줄"},
+  "docs/screenshots/v0.4.14/07-turn-shop.png": {"px": [780, 1688], "bytes": 320979, "sha256": "941d5de6d3a11114adfdaf34bc367aff3fa9b9d2900f043c1adad6dbe6e5d3c7", "cropCss": {"x": 0, "y": 0, "width": 390, "height": 844}, "dpr": 2,
+   "note": "20턴 상점 2★ 화염 투사 1구매(가방) 뒤 #overlayBox scrollTop 307 — 고정 머리(⏱·🪙·완료) 유지, 2★ 파랑/1★ 초록 등급 테, 필드 6/6 · 가방 1/3 · 왕·동료 속성 3줄(동료 HP 29/100)이 행 경계에서 끝남"},
+  "docs/screenshots/v0.4.14/08-element-battle.png": {"px": [780, 1688], "bytes": 310662, "sha256": "d92bc9ce85b78da6f75e97c9d548f54e15986c6d1d4f1a81020bd056af8dca2b", "cropCss": {"x": 0, "y": 0, "width": 390, "height": 844}, "dpr": 2,
+   "note": "턴14 AI 하수인(물방울 요정) vs 내 동료 접촉 전투 라운드1 내 차례 — 시너지 토글 펼침(한 줄 칩), 상성표 버튼, 양쪽 실효 스탯 6칸, 행동 버튼 4개, 뒤 보드 어둡게"}
+ },
+ "pairs": {"05/07": "780x1688 = 780x1688", "06/08": "780x1688 = 780x1688"},
+ "checks": {
+  "bottomBand": "bottomcheck.js 마지막 80px 서로 다른 색 05:6934 · 06:2031 · 07:6900 · 08:659 — 모두 OK(빈 띠 없음)",
+  "visual": "4장 모두 Mars 직접 확인 — 잘린 버튼·빈 하단 없음, 네이티브 하수인·왕·동료·아이콘 로드",
+  "pageErrors": "driver /errors = [] (Runtime.exceptionThrown 0)",
+  "captures": "각 화면 유효 최종본 1회. 05·06·07은 첫 probe 가 스크롤 행 잘림/상대 미공개/가방 행 잘림이라 장면 조정 뒤 1회 더 촬영해 그 probe 파일을 그대로 복사",
+  "keptUnchanged": "docs/screenshots/v0.4.13/01~04 미변경(현재 sha256 01 a5132955… · 02 a287c1df… · 03 be28fe17… · 04 6ad8c76d…)"
+ },
+ "cleanup": {
+  "pids": {"driver": 34416, "chromeA": 29676, "strayChromeVersionProbe": 7824},
+  "listeners": [9390, 9391],
+  "result": "driver /quit 로 driver·Chrome A 종료, 프로필 삭제. 버전 확인용 chrome --version 이 기본 프로필 Chrome(PID 7824, 부모=Mars bash 1908, 자식 6)을 실수로 띄워 taskkill /T 로 그 트리만 종료. 이후 chrome.exe 0 · 9390/9391 LISTEN 0. 서버·DB 미기동, 8084·다른 프로세스 무접촉"
+ },
+ "env": {"ref": "origin/dev", "refSha": "7fcd81b82901d2b899159d61ce13f0be51662396", "viewport": "390x844 CSS", "dpr": 2, "chrome": "154.0.8037.97 headless=new", "node": "v24.16.0"}
+}
