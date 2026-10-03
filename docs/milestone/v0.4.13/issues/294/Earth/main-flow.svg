@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1920" height="1820" viewBox="0 0 1920 1820">
+ <title>Digit Duel #294 — main flow / shared identity / proposed states</title>
+ <desc>Editable design proposal, not a product screenshot. Native 320 and 390 pixel mobile frames and a 1100 pixel desktop viewport, followed by preparation, bag, synergy and information dialog examples. All values are illustrative. Existing project artwork reused.</desc>
+ <metadata>©2026 Sung Changjo and contributors. Original and reused artwork excluded from Apache-2.0; see ASSET-LICENSE.md and UI_CONTRACT.md. No image-generation model used.</metadata>
+ <defs>
+  <style>
+   text{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;fill:#e8ecf5;font-size:14px}
+   .title{font-size:26px;font-weight:700}.section{font-size:18px;font-weight:700}.label{font-size:12px;fill:#b7c2d8}.tiny{font-size:12px}.name{font-size:13px;font-weight:700}.value{font-size:18px;font-weight:700}.note{font-size:14px;fill:#b7c2d8}.dim{fill:#8a93a8}.gold{fill:#ffd66b}.me{fill:#8fb2ff}.op{fill:#ff8a98}.ok{fill:#4fd88a}
+   .frame{fill:#12151c;stroke:#333c52;stroke-width:1}.panel{fill:#0b1a3c;stroke:#2f7fe0;stroke-width:2}.inner{fill:#242b3d;stroke:#333c52}.button{fill:#15306a;stroke:#2f7fe0;stroke-width:1.5}.mutedButton{fill:#242b3d;stroke:#5d6474}.rule{stroke:#333c52;stroke-width:1}.chip{fill:#242b3d;stroke:#5d6474;stroke-width:1.5}.chipOn{fill:#3a2416;stroke:#b8754a;stroke-width:2}.chipSilver{fill:#2b3038;stroke:#9ea9b7;stroke-width:2}
+  </style>
+  <linearGradient id="panelFade" x2="0" y2="1"><stop stop-color="#132a5c"/><stop offset="1" stop-color="#0b1a3c"/></linearGradient>
+  <image id="atlas" href="../../../../../../demo/assets/ui/ui-icons.png" width="3072" height="64"/>
+  <symbol id="i-battle" viewBox="64 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-bag" viewBox="128 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-gear" viewBox="256 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-search" viewBox="448 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-turn" viewBox="512 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-coin" viewBox="768 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-crown" viewBox="832 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-fire" viewBox="896 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-water" viewBox="960 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-grass" viewBox="1024 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-lightning" viewBox="1088 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-land" viewBox="1152 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-atk" viewBox="1216 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-def" viewBox="1280 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-swift" viewBox="1344 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-heal" viewBox="1408 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-profile" viewBox="1920 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-warp" viewBox="2048 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-timer" viewBox="2112 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-flag" viewBox="2176 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-std" viewBox="2240 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-sustain" viewBox="2304 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-guard" viewBox="2368 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-potion" viewBox="2432 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-cool" viewBox="2496 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-cure" viewBox="2560 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-ball" viewBox="2624 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-ticket" viewBox="2688 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-power" viewBox="2752 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-time" viewBox="2816 0 64 64"><use href="#atlas"/></symbol>
+  <symbol id="i-escape" viewBox="2880 0 64 64"><use href="#atlas"/></symbol>
+  <g id="selfFace"><rect width="34" height="34" rx="6" fill="#0b1a3c" stroke="#5b8cff" stroke-width="2"/><image href="../../../../../../demo/assets/minions/fire_std/icon.png" x="1" y="1" width="32" height="32" style="image-rendering:pixelated"/></g>
+  <g id="opFace"><rect width="34" height="34" rx="6" fill="#0b1a3c" stroke="#ff5b6e" stroke-width="2"/><image href="../../../../../../demo/assets/minions/water_std/icon.png" x="1" y="1" width="32" height="32" style="image-rendering:pixelated"/></g>
+  <g id="selfIdentity"><use href="#selfFace"/><text x="40" y="12" class="tiny me">나</text><text x="40" y="29" class="name">창조</text></g>
+  <g id="opIdentity"><use href="#opFace"/><text x="40" y="12" class="tiny op">상대</text><text x="40" y="29" class="name">별빛여행자…</text></g>
+  <g id="tools"><rect width="44" height="44" rx="8" class="button"/><path d="M11 12H33V28H23L17 33V28H11Z" fill="none" stroke="#e8ecf5" stroke-width="1.5"/><text x="22" y="23" text-anchor="middle">···</text><rect x="48" width="44" height="44" rx="8" class="mutedButton"/><use href="#i-gear" x="58" y="10" width="24" height="24" opacity=".55"/></g>
+  <pattern id="cells" patternUnits="userSpaceOnUse" width="52" height="52"><path d="M52 0H0V52" fill="none" stroke="#66718a" stroke-width="1"/></pattern>
+  <pattern id="forestHatch" patternUnits="userSpaceOnUse" width="13" height="13"><path d="M-3 3L3 -3M0 13L13 0M10 16L16 10" stroke="#355743" stroke-width="1"/></pattern>
+  <g id="board364"><rect width="364" height="676" fill="#2a2f3d"/><rect width="364" height="156" fill="#2a3350"/><rect y="520" width="364" height="156" fill="#502a33"/><rect y="156" width="364" height="104" fill="#1f3a2a"/><rect y="416" width="364" height="104" fill="#1f3a2a"/><rect y="156" width="364" height="104" fill="url(#forestHatch)"/><rect y="416" width="364" height="104" fill="url(#forestHatch)"/><rect width="364" height="676" fill="url(#cells)" stroke="#66718a"/><text x="182" y="337" text-anchor="middle" style="font-size:21px;fill:#b7c2d8">7 × 13</text><text x="182" y="363" text-anchor="middle" class="note">기존 말 · 시야 · 좌표 유지</text></g>
+  <g id="railAll">
+   <rect width="44" height="44" rx="8" class="chipOn"/><use href="#i-fire" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">3</text><text x="22" y="37" text-anchor="middle" class="tiny">● ○ ○</text>
+   <g transform="translate(0 46)"><rect width="44" height="44" rx="8" class="chip"/><use href="#i-water" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">0</text><text x="22" y="37" text-anchor="middle" class="tiny dim">미달</text></g>
+   <g transform="translate(0 92)"><rect width="44" height="44" rx="8" class="chip"/><use href="#i-lightning" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">1</text><text x="22" y="37" text-anchor="middle" class="tiny dim">미달</text></g>
+   <g transform="translate(0 138)"><rect width="44" height="44" rx="8" class="chipOn"/><use href="#i-land" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">2</text><text x="22" y="37" text-anchor="middle" class="tiny">● ○ ○</text></g>
+   <g transform="translate(0 184)"><rect width="44" height="44" rx="8" class="chipOn"/><use href="#i-grass" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">3</text><text x="22" y="37" text-anchor="middle" class="tiny">● ○ ○</text></g>
+   <g transform="translate(0 230)"><rect width="44" height="44" rx="8" class="chipSilver"/><use href="#i-std" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">3</text><text x="22" y="37" text-anchor="middle" class="tiny">2단계</text></g>
+   <g transform="translate(0 276)"><rect width="44" height="44" rx="8" class="chip"/><use href="#i-atk" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">1</text><text x="22" y="37" text-anchor="middle" class="tiny dim">미달</text></g>
+   <g transform="translate(0 322)"><rect width="44" height="44" rx="8" class="chip"/><use href="#i-def" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">1</text><text x="22" y="37" text-anchor="middle" class="tiny dim">미달</text></g>
+   <g transform="translate(0 368)"><rect width="44" height="44" rx="8" class="chip"/><use href="#i-swift" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">1</text><text x="22" y="37" text-anchor="middle" class="tiny dim">미달</text></g>
+   <g transform="translate(0 414)"><rect width="44" height="44" rx="8" class="chip"/><use href="#i-sustain" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">0</text><text x="22" y="37" text-anchor="middle" class="tiny dim">미달</text></g>
+   <g transform="translate(0 460)"><rect width="44" height="44" rx="8" class="chip"/><use href="#i-guard" x="4" y="3" width="22" height="22"/><text x="33" y="20" text-anchor="middle" class="name">0</text><text x="22" y="37" text-anchor="middle" class="tiny dim">미달</text></g>
+   <g transform="translate(0 506)"><rect width="44" height="44" rx="8" class="chip"/><use href="#i-crown" x="11" y="2" width="22" height="22"/><text x="22" y="38" text-anchor="middle" class="tiny">0/2</text></g>
+  </g>
+  <clipPath id="rail320"><rect width="44" height="454"/></clipPath>
+  <g id="close"><rect width="44" height="44" rx="8" class="button"/><path d="M15 15L29 29M29 15L15 29" stroke="#e8ecf5" stroke-width="2"/></g>
+ </defs>
+ <rect width="1920" height="1820" fill="#090f1c"/>
+ <text x="24" y="36" class="title">DIGIT DUEL / #294 MAIN FLOW</text><text x="705" y="35" class="note">EARTH · 2026.10.02 · PROPOSAL / 기존 자산 재사용 · 수치 예시 · 제품 QA 아님</text>
+ <text x="24" y="68" class="section">01 / 320px</text><text x="368" y="68" class="section">02 / 390px</text><text x="790" y="68" class="section">03 / DESKTOP 1100 × 1000 · 중앙 432px 프레임</text>
+
+ <g id="main-320" transform="translate(24 84)">
+  <rect width="320" height="780" rx="12" class="frame"/>
+  <rect width="320" height="100" rx="12" fill="#0b1a3c"/>
+  <use href="#selfIdentity" x="8" y="9"/><text x="150" y="30" class="name op">VS</text><use href="#opIdentity" x="178" y="9"/>
+  <path d="M8 51H312" class="rule"/><text x="12" y="78" class="name">내 차례</text><use href="#tools" x="220" y="52"/>
+  <g id="hud-320" transform="translate(8 104)">
+   <rect width="73" height="48" rx="7" class="inner"/><text x="8" y="15" class="label">남은 시간</text><text x="8" y="38" class="value">23초</text>
+   <rect x="77" width="73" height="48" rx="7" class="inner"/><text x="85" y="15" class="label">현재 턴</text><text x="85" y="38" class="value">18</text>
+   <rect x="154" width="73" height="48" rx="7" class="inner"/><text x="162" y="15" class="label">내 코인</text><use href="#i-coin" x="162" y="22" width="20" height="20"/><text x="188" y="38" class="value">2</text>
+   <rect x="231" width="73" height="48" rx="7" class="inner"/><text x="239" y="15" class="label">전투 횟수</text><text x="239" y="38" class="value">0/2</text>
+  </g>
+  <text x="8" y="171" class="label">자기 말을 선택하세요</text><text x="268" y="171" class="tiny">시너지</text>
+  <g transform="translate(8 180) scale(.697802198)"><use href="#board364"/></g>
+  <g transform="translate(268 180)"><g clip-path="url(#rail320)"><use href="#railAll"/></g><path d="M46 0V454" stroke="#333c52" stroke-width="2"/><path d="M46 0V290" stroke="#8a93a8" stroke-width="2"/><text x="22" y="471" text-anchor="middle" class="tiny">더 보기 ↓</text></g>
+  <g id="dock-320" transform="translate(8 668)">
+   <rect width="98.67" height="48" rx="8" class="button"/><use href="#i-search" x="10" y="12" width="24" height="24"/><text x="43" y="29" class="name">탐색</text>
+   <rect x="102.67" width="98.67" height="48" rx="8" class="button"/><use href="#i-warp" x="110" y="12" width="24" height="24"/><text x="138" y="29" class="tiny">텔레포트</text>
+   <rect x="205.33" width="98.67" height="48" rx="8" class="button"/><use href="#i-heal" x="216" y="12" width="24" height="24"/><text x="250" y="29" class="name">회복</text>
+   <rect y="52" width="98.67" height="48" rx="8" class="mutedButton"/><text x="49" y="70" text-anchor="middle" class="tiny">상점</text><text x="49" y="89" text-anchor="middle" class="tiny">3턴 후 열림</text>
+   <rect x="102.67" y="52" width="98.67" height="48" rx="8" class="button"/><use href="#i-bag" x="110" y="64" width="24" height="24"/><text x="139" y="82" class="tiny">가방 1/3</text>
+   <rect x="205.33" y="52" width="98.67" height="48" rx="8" fill="#351d2c" stroke="#ff5b6e"/><use href="#i-flag" x="216" y="64" width="24" height="24"/><text x="250" y="82" class="name">기권</text>
+  </g>
+ </g>
+ <text x="24" y="891" class="note">3열×2행 dock / 모든 버튼 ≥44px</text><text x="24" y="914" class="note">보드는 254×471.7 · 13행 유지</text><text x="24" y="937" class="note">rail의 아래 항목은 독립 스크롤</text><text x="24" y="960" class="note">12자 이름은 말줄임 + 전체 이름 보기</text>
+
+ <g id="main-390" transform="translate(368 84)">
+  <rect width="390" height="906" rx="12" class="frame"/><rect width="390" height="100" rx="12" fill="#0b1a3c"/>
+  <use href="#selfIdentity" x="8" y="9"/><text x="184" y="30" class="name op">VS</text><use href="#opIdentity" x="222" y="9"/>
+  <path d="M8 51H382" class="rule"/><text x="12" y="78" class="name">상대 차례</text><use href="#tools" x="290" y="52"/>
+  <g transform="translate(8 104)">
+   <rect width="90.5" height="48" rx="7" class="inner"/><text x="8" y="15" class="label">남은 시간</text><text x="8" y="37" class="name">확인 중</text>
+   <rect x="94.5" width="90.5" height="48" rx="7" class="inner"/><text x="102.5" y="15" class="label">현재 턴</text><text x="102.5" y="38" class="value">18</text>
+   <rect x="189" width="90.5" height="48" rx="7" class="inner"/><text x="197" y="15" class="label">내 코인</text><use href="#i-coin" x="197" y="22" width="20" height="20"/><text x="224" y="38" class="value">2</text>
+   <rect x="283.5" width="90.5" height="48" rx="7" class="inner"/><text x="291.5" y="15" class="label">전투 횟수</text><text x="291.5" y="38" class="value">0/2</text>
+  </g>
+  <text x="8" y="171" class="label">상대가 행동 중 · 시간 공개 계약 대기</text><text x="338" y="171" class="tiny">시너지</text>
+  <g transform="translate(8 180) scale(.89010989)"><use href="#board364"/></g><use href="#railAll" x="338" y="180"/>
+  <text x="360" y="750" class="tiny" text-anchor="middle">내 정보</text>
+  <g id="dock-390" transform="translate(8 794)">
+   <rect width="122" height="48" rx="8" class="mutedButton"/><use href="#i-search" x="16" y="12" width="24" height="24" opacity=".5"/><text x="50" y="29" class="name dim">탐색</text>
+   <rect x="126" width="122" height="48" rx="8" class="mutedButton"/><use href="#i-warp" x="135" y="12" width="24" height="24" opacity=".5"/><text x="168" y="29" class="name dim">텔레포트</text>
+   <rect x="252" width="122" height="48" rx="8" class="mutedButton"/><use href="#i-heal" x="269" y="12" width="24" height="24" opacity=".5"/><text x="303" y="29" class="name dim">회복</text>
+   <rect y="52" width="122" height="48" rx="8" class="mutedButton"/><text x="61" y="70" text-anchor="middle" class="tiny">상점</text><text x="61" y="89" text-anchor="middle" class="tiny">3턴 후 열림</text>
+   <rect x="126" y="52" width="122" height="48" rx="8" class="button"/><use href="#i-bag" x="135" y="64" width="24" height="24"/><text x="167" y="81" class="name">가방 1/3</text>
+   <rect x="252" y="52" width="122" height="48" rx="8" fill="#351d2c" stroke="#ff5b6e"/><use href="#i-flag" x="269" y="64" width="24" height="24"/><text x="303" y="81" class="name">기권</text>
+  </g>
+ </g>
+ <text x="368" y="1017" class="note">상대 시간: 공개 계약 후 승인값 표시</text><text x="368" y="1040" class="note">현재 시안은 로컬 타이머를 만들지 않음</text>
+
+ <g id="desktop-1100" transform="translate(790 84)">
+  <rect width="1100" height="1000" rx="12" fill="#101723" stroke="#333c52"/>
+  <text x="24" y="36" class="label">1100 × 1000 VIEWPORT</text>
+  <g id="desktop-game-frame" transform="translate(334 12)">
+   <rect width="432" height="976" rx="12" class="frame"/><rect width="432" height="100" rx="12" fill="#0b1a3c"/>
+   <use href="#selfIdentity" x="8" y="9"/><text x="205" y="30" class="name op">VS</text><use href="#opIdentity" x="250" y="9"/>
+   <path d="M8 51H424" class="rule"/><text x="12" y="78" class="name">내 차례</text><use href="#tools" x="332" y="52"/>
+   <g transform="translate(8 104)">
+    <rect width="101" height="48" rx="7" class="inner"/><text x="8" y="15" class="label">남은 시간</text><text x="8" y="38" class="value">23초</text>
+    <rect x="105" width="101" height="48" rx="7" class="inner"/><text x="113" y="15" class="label">현재 턴</text><text x="113" y="38" class="value">18</text>
+    <rect x="210" width="101" height="48" rx="7" class="inner"/><text x="218" y="15" class="label">내 코인</text><use href="#i-coin" x="218" y="22" width="20" height="20"/><text x="246" y="38" class="value">2</text>
+    <rect x="315" width="101" height="48" rx="7" class="inner"/><text x="323" y="15" class="label">전투 횟수</text><text x="323" y="38" class="value">0/2</text>
+   </g>
+   <text x="8" y="171" class="label">자기 말을 선택하세요</text><text x="380" y="171" class="tiny">시너지</text>
+   <use href="#board364" x="8" y="180"/><use href="#railAll" x="380" y="180"/>
+   <g transform="translate(8 868)">
+    <rect width="136" height="48" rx="8" class="button"/><use href="#i-search" x="22" y="12" width="24" height="24"/><text x="59" y="29" class="name">탐색</text>
+    <rect x="140" width="136" height="48" rx="8" class="button"/><use href="#i-warp" x="151" y="12" width="24" height="24"/><text x="185" y="29" class="name">텔레포트</text>
+    <rect x="280" width="136" height="48" rx="8" class="button"/><use href="#i-heal" x="304" y="12" width="24" height="24"/><text x="341" y="29" class="name">회복</text>
+    <rect y="52" width="136" height="48" rx="8" class="mutedButton"/><text x="68" y="70" text-anchor="middle" class="tiny">상점</text><text x="68" y="89" text-anchor="middle" class="tiny">3턴 후 열림</text>
+    <rect x="140" y="52" width="136" height="48" rx="8" class="button"/><use href="#i-bag" x="151" y="64" width="24" height="24"/><text x="185" y="82" class="name">가방 1/3</text>
+    <rect x="280" y="52" width="136" height="48" rx="8" fill="#351d2c" stroke="#ff5b6e"/><use href="#i-flag" x="304" y="64" width="24" height="24"/><text x="341" y="82" class="name">기권</text>
+   </g>
+  </g>
+  <g id="desktop-callouts">
+   <text x="28" y="157" class="section">A / IDENTITY</text><text x="28" y="187" class="note">계정 대표 + 이름</text><text x="28" y="210" class="note">왕·동료와 구분</text><text x="28" y="233" class="note">#293 전 단계와 공통</text><path d="M215 160H315" stroke="#5b8cff"/>
+   <text x="28" y="400" class="section">B / BOARD</text><text x="28" y="430" class="note">7열 × 13행</text><text x="28" y="453" class="note">수풀 4–5 / 9–10행</text><text x="28" y="476" class="note">시야·배치 규칙 그대로</text><path d="M215 405H315" stroke="#5b8cff"/>
+   <text x="800" y="268" class="section">C / MY SYNERGY</text><text x="800" y="298" class="note">왕국 5 + 아키타입 6</text><text x="800" y="321" class="note">+ 왕관 + 활성 전설</text><text x="800" y="344" class="note">색 = 단계 / 숫자 = 기여</text><text x="800" y="367" class="note">사망 ≠ 기여 제거</text><path d="M772 273H792" stroke="#5b8cff"/>
+   <rect x="800" y="413" width="272" height="144" rx="10" class="inner"/><text x="816" y="439" class="name">추가 개인 전설 / 조건부 예시</text><use href="#i-crown" x="817" y="455" width="26" height="26"/><text x="854" y="475" class="name gold">전설명 · 실제 활성 효과</text><text x="816" y="507" class="tiny">소유·활성 확인 시에만 rail에 추가</text><text x="816" y="531" class="tiny">고정 칸 수로 잘라내지 않음</text>
+   <text x="800" y="648" class="section">D / STATE</text><text x="800" y="678" class="note">정상 · 정지 · 만료 · 미수신</text><text x="800" y="701" class="note">시계는 서버 계약을 따른다</text><text x="800" y="724" class="note">읽기와 행동을 분리한다</text>
+   <text x="28" y="858" class="section">E / DOCK</text><text x="28" y="888" class="note">상점 남은 턴을 문장으로</text><text x="28" y="911" class="note">가방은 내 정보만 열기</text><text x="28" y="934" class="note">기권은 기존 확인 경로</text><path d="M215 863H315" stroke="#5b8cff"/>
+  </g>
+ </g>
+
+ <path d="M24 1110H1890" class="rule"/>
+ <text x="24" y="1147" class="section">04 / SHARED PREP · 320px</text><text x="368" y="1147" class="section">05 / BAG · 390px viewport</text><text x="790" y="1147" class="section">06 / SYNERGY INFO</text><text x="1174" y="1147" class="section">07 / MINION + SKILLS</text>
+ <g id="prep-shared" transform="translate(24 1168)">
+  <rect width="320" height="296" rx="12" class="frame"/><rect width="320" height="100" rx="12" fill="#0b1a3c"/>
+  <use href="#selfIdentity" x="8" y="9"/><text x="150" y="30" class="name op">VS</text><use href="#opIdentity" x="178" y="9"/>
+  <use href="#i-timer" x="12" y="61" width="24" height="24"/><text x="43" y="78" class="name">준비 142초</text><use href="#i-coin" x="157" y="61" width="22" height="22"/><text x="184" y="78" class="name">2</text><rect x="268" y="52" width="44" height="44" rx="8" class="mutedButton"/><use href="#i-gear" x="278" y="62" width="24" height="24" opacity=".55"/>
+  <rect x="8" y="105" width="216" height="75" rx="8" class="inner"/>
+  <text x="15" y="166" class="tiny">01 상점</text><text x="83" y="166" class="tiny">02 배치</text><text x="158" y="166" class="tiny">03 완료</text>
+  <g transform="translate(86 114) scale(.6)"><use href="#opFace"/></g><text x="111" y="130" class="tiny op">상대</text>
+  <g transform="translate(162 114) scale(.6)"><use href="#selfFace"/></g><text x="187" y="130" class="tiny me">나</text>
+  <rect x="230" y="111" width="82" height="62" rx="8" class="button"/><text x="271" y="147" text-anchor="middle" class="name">준비 취소</text>
+  <rect x="12" y="199" width="296" height="77" rx="10" class="panel"/><text x="160" y="230" text-anchor="middle" class="name">준비 완료</text><text x="160" y="254" text-anchor="middle">상대 기다리는 중…</text>
+ </g>
+ <text x="24" y="1491" class="note">shop / place / done 모두 동일 identity</text><text x="24" y="1514" class="note">준비 시간·취소 버튼은 팝업 위에 유지</text>
+ <g id="neutral-fallback" transform="translate(24 1542)">
+  <rect width="320" height="90" rx="10" class="inner"/><use href="#i-profile" x="14" y="16" width="32" height="32"/><text x="58" y="30" class="name">상대</text><text x="58" y="50" class="label">대표 정보 확인 중</text><text x="14" y="75" class="tiny">누락/오류 → 중립 표시 · 비밀 ID 노출 없음</text>
+ </g>
+
+ <g id="bag-dialog" transform="translate(368 1168)">
+  <rect width="390" height="520" rx="12" fill="#12151c"/>
+  <rect x="8" y="8" width="374" height="500" rx="14" fill="url(#panelFade)" stroke="#2f7fe0" stroke-width="2"/>
+  <use href="#i-bag" x="22" y="22" width="24" height="24"/><text x="54" y="42" class="section">가방 1/3</text><use href="#close" x="326" y="18"/>
+  <text x="22" y="77" class="label">카드를 눌러 설명 보기</text>
+  <g id="bag-card" transform="translate(22 88)"><rect width="111" height="130" rx="8" fill="#0d1f47" stroke="#ffffff" stroke-width="2"/><text x="8" y="19" class="tiny gold">★</text><use href="#i-fire" x="64" y="4" width="20" height="20"/><use href="#i-std" x="86" y="4" width="20" height="20"/><image href="../../../../../../demo/assets/minions/fire_std/icon.png" x="35" y="30" width="40" height="40" style="image-rendering:pixelated"/><text x="55" y="89" text-anchor="middle" class="name">불 표준형</text><text x="55" y="111" text-anchor="middle" class="tiny">HP 95/95 · 예시</text></g>
+  <g id="bag-empty" transform="translate(139 88)"><rect width="111" height="130" rx="8" fill="#172238" stroke="#5d6474" stroke-dasharray="4 4"/><text x="55" y="65" text-anchor="middle" style="font-size:28px;fill:#8a93a8">+</text><text x="55" y="95" text-anchor="middle" class="tiny dim">빈칸</text></g><use href="#bag-empty" transform="translate(117 0)"/>
+  <text x="22" y="250" class="name">내 보유 아이템</text><text x="22" y="271" class="label">실제 보유 수량 · 아래는 배치 예시</text>
+  <g transform="translate(22 284)">
+   <rect width="81" height="70" rx="7" class="inner"/><use href="#i-potion" x="8" y="7" width="24" height="24"/><text x="49" y="26" class="name">×1</text><text x="40" y="54" text-anchor="middle" class="tiny">회복약</text>
+   <rect x="88" width="81" height="70" rx="7" class="inner"/><use href="#i-cool" x="96" y="7" width="24" height="24"/><text x="137" y="26" class="name dim">×0</text><text x="128" y="54" text-anchor="middle" class="tiny">쿨링수</text>
+   <rect x="176" width="81" height="70" rx="7" class="inner"/><use href="#i-cure" x="184" y="7" width="24" height="24"/><text x="225" y="26" class="name dim">×0</text><text x="216" y="54" text-anchor="middle" class="tiny">해독제</text>
+   <rect x="264" width="81" height="70" rx="7" class="inner"/><use href="#i-ball" x="272" y="7" width="24" height="24"/><text x="313" y="26" class="name">×1</text><text x="304" y="54" text-anchor="middle" class="tiny">볼</text>
+   <rect y="77" width="81" height="70" rx="7" class="inner"/><use href="#i-ticket" x="8" y="84" width="24" height="24"/><text x="49" y="103" class="name dim">×0</text><text x="40" y="131" text-anchor="middle" class="tiny">속성 티켓</text>
+   <rect x="88" y="77" width="81" height="70" rx="7" class="inner"/><use href="#i-power" x="96" y="84" width="24" height="24"/><text x="137" y="103" class="name dim">×0</text><text x="128" y="131" text-anchor="middle" class="tiny">힘의 수호자</text>
+   <rect x="176" y="77" width="81" height="70" rx="7" class="inner"/><use href="#i-time" x="184" y="84" width="24" height="24"/><text x="225" y="103" class="name dim">×0</text><text x="216" y="131" text-anchor="middle" class="tiny">시간 수호자</text>
+   <rect x="264" y="77" width="81" height="70" rx="7" class="inner"/><use href="#i-escape" x="272" y="84" width="24" height="24"/><text x="313" y="103" class="name dim">×0</text><text x="304" y="131" text-anchor="middle" class="tiny">도망 수호자</text>
+  </g>
+  <text x="22" y="466" class="label">+ 빈칸은 구매·확장 버튼이 아닙니다</text><text x="22" y="489" class="label">열기·닫기·설명은 게임 명령을 보내지 않음</text>
+ </g>
+
+ <g id="synergy-dialog" transform="translate(790 1168)">
+  <rect width="360" height="510" rx="14" fill="url(#panelFade)" stroke="#2f7fe0" stroke-width="2"/><use href="#i-fire" x="16" y="21" width="26" height="26"/><text x="51" y="43" class="section">불 왕국</text><use href="#close" x="304" y="12"/>
+  <text x="16" y="84" class="name">3칸 · 첫 단계 적용 중</text><text x="16" y="108" class="label">실제 효과 문구는 현행 표에서 표시</text>
+  <rect x="16" y="127" width="328" height="48" rx="8" class="chipOn"/><text x="30" y="156" class="name">● 적용 중인 단계와 효과</text>
+  <text x="16" y="201" class="section">기여 하수인</text><text x="16" y="225" class="label">숫자와 목록은 같은 데이터 기준</text>
+  <rect x="16" y="240" width="328" height="62" rx="8" class="inner"/><use href="#selfFace" x="28" y="254"/><text x="76" y="265" class="name">불 표준형</text><text x="76" y="287" class="tiny ok">필드 · 생존 · 기여</text>
+  <rect x="16" y="310" width="328" height="62" rx="8" class="inner"/><use href="#selfFace" x="28" y="324"/><text x="76" y="335" class="name">불 하수인 · 이름 예시</text><rect x="76" y="344" width="172" height="20" rx="4" fill="#484052"/><text x="84" y="359" class="tiny">사망 · 기여 유지 · HP 0</text>
+  <rect x="16" y="380" width="328" height="56" rx="8" class="inner"/><use href="#i-crown" x="28" y="393" width="28" height="28"/><text x="76" y="414" class="name">왕 또는 동료 · 실제 배정 속성</text>
+  <text x="16" y="466" class="label">전투에서는 “이번 전투 기준” 표시</text><text x="16" y="488" class="label">일반 가방 제외 / 가방 전설은 기존 예외만</text>
+ </g>
+
+ <g id="minion-detail" transform="translate(1174 1168)">
+  <rect width="360" height="510" rx="14" fill="url(#panelFade)" stroke="#2f7fe0" stroke-width="2"/><text x="16" y="43" class="section">하수인 설명</text><use href="#close" x="304" y="12"/>
+  <image href="../../../../../../demo/assets/minions/fire_std/portrait.webp" x="16" y="78" width="110" height="110" preserveAspectRatio="xMidYMid meet"/>
+  <text x="142" y="104" class="section">불 표준형</text><text x="142" y="129" class="label">내 하수인 · 예시</text><use href="#i-fire" x="142" y="142" width="22" height="22"/><use href="#i-std" x="176" y="142" width="22" height="22"/><text x="142" y="187" class="tiny">허용된 등급 · HP</text>
+  <rect x="16" y="211" width="160" height="44" rx="7" class="button"/><text x="96" y="239" text-anchor="middle" class="name">하수인</text><rect x="184" y="211" width="160" height="44" rx="7" fill="#1c2130" stroke="#5b8cff" stroke-width="2"/><text x="264" y="239" text-anchor="middle" class="name">스킬</text>
+  <text x="16" y="292" class="name">보유 스킬 이름</text><text x="16" y="320">승인된 설명과 현재 공개된 수치만 표시</text><text x="16" y="346">긴 설명은 이 창 안에서 스크롤합니다</text><path d="M16 367H344" class="rule"/>
+  <text x="16" y="398" class="label">정보 탭 선택 ≠ 스킬 사용</text><text x="16" y="424" class="label">판매·교체·이동 버튼과 별도 진입</text><text x="16" y="450" class="label">미공개 상대 HP/기술을 추정하지 않음</text><text x="16" y="482" class="label">X / Esc 닫기 · 열었던 곳으로 포커스 복귀</text>
+ </g>
+ <g id="state-notes" transform="translate(1556 1168)">
+  <text y="25" class="section">STATE NOTES</text>
+  <rect y="48" width="334" height="82" rx="9" class="inner"/><text x="16" y="78" class="name">정지 · 23초</text><text x="16" y="106" class="label">단절 중 입력 잠금 / 서버 정지값</text>
+  <rect y="146" width="334" height="82" rx="9" class="inner"/><text x="16" y="176" class="name">0초 · 처리 중</text><text x="16" y="204" class="label">로컬 재시작·시간초과 명령 생성 없음</text>
+  <rect y="244" width="334" height="82" rx="9" class="inner"/><text x="16" y="274" class="name">확인 중</text><text x="16" y="302" class="label">미수신과 0초를 구별</text>
+  <text y="368" class="note">팝업 배경 입력 차단</text><text y="393" class="note">시한·새 경기·공개범위 변경 시 갱신</text><text y="418" class="note">정보 열기는 경제/행동 명령이 아님</text><text y="467" class="note">새 래스터 생성 없음</text><text y="492" class="note">기존 portrait / UI atlas 재사용</text>
+ </g>
+ <path d="M24 1720H1890" class="rule"/>
+ <text x="24" y="1756" class="name">HANDOFF / Venus: 공개·규칙 계약 → Mars/Jupiter: 구현 → Saturn: 검증 → CJ: 검토</text>
+ <text x="24" y="1785" class="note">Source: CJ_CONCEPT_CONTI_20261002.png · #293 UI_CONTRACT · demo/js/ui.js, core.js, lobby.js · ©2026 Sung Changjo and contributors · Artwork: all rights reserved</text>
+</svg>

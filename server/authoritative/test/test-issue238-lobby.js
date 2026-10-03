@@ -66,7 +66,7 @@ function playToFinish(room) {
   // 5) 경기 종료 → 결과 유지(최종 공개 말판·정보 경계) → 좌석별 복귀
   playToFinish(room);
   const fin = room.toSeatView(0);
-  ok(fin.state === 'FINISHED' && fin.units.length > 0 && fin.units.every((u) => u.grade === undefined && u.skills === undefined), 'FINISHED 말판 공개 — 등급·스킬 없음');
+  ok(fin.state === 'FINISHED' && fin.units.length > 0 && fin.units.every((u) => 'grade' in u && u.skills === undefined), 'FINISHED 말판 공개 — #293 등급 공개(말 얼굴 배경) · 스킬 없음');
   ok(records.length === 1 && records[0].matchId, '경기 1 기록 1회');
   const m1 = records[0].matchId;
   const tok0 = room.seats[0].credential.current, name = room.name, rev = room.revision;
@@ -115,7 +115,7 @@ function playToFinish(room) {
   ok(room.state === STATES.FINISHED && room.toSeatView(0).result && !room.seats[1].credential && !room._returnLive(), '복귀 참가자 나가기 — 방장 결과·방 유지');
   cmd(room, 0, 'lobby_return');
   ok(room.state === STATES.OPEN, '방장 복귀 → 빈 대기방');
-  // 7b') 방장이 먼저 복귀해 기다리는 중 참가자가 결과에서 나가면 즉시 빈 방 · 방장이 대기방에서 나가면 참가자가 결과 중이어도 파괴
+  // 7b') 방장이 먼저 복귀해 기다리는 중 참가자가 결과에서 나가면 즉시 빈 방 · 방장이 대기방에서 나가면 방장 단절과 같다(#295 REVISE #3 — 종전 파괴 대체)
   room.joinGuestSeat(fakeWs()); cmd(room, 1, 'lobby_ready'); cmd(room, 0, 'lobby_start');
   await wait(CD + 30); playToFinish(room);
   cmd(room, 0, 'lobby_return');
@@ -123,9 +123,11 @@ function playToFinish(room) {
   room.joinGuestSeat(fakeWs()); cmd(room, 1, 'lobby_ready'); cmd(room, 0, 'lobby_start');
   await wait(CD + 30); playToFinish(room);
   cmd(room, 0, 'lobby_return'); cmd(room, 0, 'leave');
-  ok(room.state === STATES.CLOSED, '대기방 방장 나가기 — 참가자가 결과 중이어도 방 파괴');
+  ok(room.state === STATES.FINISHED && room.owner === 1 && room.seats[1].credential && !room.seats[0].credential, '대기방 방장 나가기 — 결과 중 참가자가 방장 승계(owner 1)');
+  cmd(room, 1, 'lobby_return');
+  ok(room.state === STATES.OPEN && room.owner === 0 && room.seats[0].credential, '승계 방장 복귀 → 좌석0 빈 대기방');
 
-  // 7b) 복귀한 좌석은 5분 정리로 조용히 닫히지 않는다 — 결과 중인 상대가 끊기면 60초 유예 뒤 닫는다
+  // 7b) 복귀한 좌석은 5분 정리로 조용히 닫히지 않는다 — 결과 중인 상대가 끊기면 60초 유예 뒤 그 좌석만 비운다(#295 — 종전 닫힘 대체)
   const lob = new Lobby({ epoch: 'aaaaaaaa' });
   const lr = lob.createRoom('1.1.1.1', { isPublic: true }).room;
   lr.graceMs = 30; lr.countdownMs = CD;
@@ -140,11 +142,11 @@ function playToFinish(room) {
   ok(!lr._closeAt && lob.getRoom(lr.roomId), '복귀 좌석이 있으면 정리 예약 해제');
   lr.socketClosed(1);
   await wait(60);
-  ok(lr.state === STATES.CLOSED, '결과 중 상대 단절 유예 만료 → 닫힘');
+  ok(lr.state === STATES.OPEN && !lr.seats[1].credential, '결과 중 상대 단절 유예 만료 → 좌석 비움·빈 대기방(OPEN)');
   lob.sweep();
-  ok(!lob.getRoom(lr.roomId), '닫힌 방 목록 제거');
+  ok(lob.getRoom(lr.roomId) && lr.isListable(), '빈 대기방은 목록에 남는다');
 
-  // 8) 나가기는 대기방 취소 · 방장 혼자 시작 불가 · 경제 방은 5초 뒤 시작 상점 90초가 그때부터
+  // 8) 나가기는 대기방 취소 · 방장 혼자 시작 불가 · 경제 방은 5초 뒤 준비 180초(#293 공통 마감)가 그때부터
   const solo = new Room(2, { isPublic: true, epoch: 'aaaaaaaa', startGate: true, countdownMs: CD });
   solo.openHostSeat(fakeWs());
   ok(cmd(solo, 0, 'lobby_start').reason === 'E_ILLEGAL_ACTION', '혼자 시작 거부');
@@ -158,26 +160,31 @@ function playToFinish(room) {
   await wait(CD + 30);
   ok(lv.state === STATES.SETUP && lv.round === 1, '새 참가자 준비 → 방장 시작 → 5초');
   lv._finalize(STATES.CANCELED, null, { notify: false });
-  const hv = gateRoom(6); cmd(hv, 1, 'lobby_ready'); cmd(hv, 0, 'lobby_start'); cmd(hv, 0, 'leave');
-  ok(hv.state === STATES.CANCELED && !hv._countdown, '대기방 방장 나가기 → 방 파괴·카운트다운 정리');
+  const hv = gateRoom(6); const hvGuest = hv.seats[1]; cmd(hv, 1, 'lobby_ready'); cmd(hv, 0, 'lobby_start'); cmd(hv, 0, 'leave');
+  ok(hv.state === STATES.OPEN && !hv._countdown && hv.seats[0] === hvGuest && !hvGuest.lobbyReady, '대기방 방장 나가기 → 참가자 승격 OPEN·카운트다운 정리(#295 REVISE #3)');
+  const hs = gateRoom(7); hs.socketClosed(1); cmd(hs, 0, 'leave');
+  ok(hs.state === STATES.CANCELED, '연결된 참가자 없는 방장 나가기 → 방 파괴(종전)');
   const eco = gateRoom(4, { economy: true });
   ok(!eco.engines, '경제 방도 참가만으로 상점을 열지 않는다');
   cmd(eco, 1, 'lobby_ready'); cmd(eco, 0, 'lobby_start');
   await wait(CD + 30);
-  const c = eco._clock[0];
-  ok(eco.state === STATES.SETUP && eco.engines && c && c.key === 'shop:0' && c.deadline - Date.now() > 85000, '5초 완료 순간 S01 90초 시작');
+  const c = eco._prep, ev = [0, 1].map((s) => eco.toSeatView(s));
+  ok(eco.state === STATES.SETUP && eco.engines && c && c.deadline - Date.now() > 175000 && c.deadline - Date.now() <= 180000
+    && eco._clock.every((x) => x === null) && ev.every((x) => x.clock.key === 'prep' && x.clock.running && x.clock.deadline === c.deadline)
+    && ev.every((x) => JSON.stringify(x.seats.step) === '["shop","shop"]'),
+  '5초 완료 순간 준비 180초 시작 — 방에 하나 · 양 좌석 같은 마감 · seats.step 은 shop (#293)');
   eco._finalize(STATES.CANCELED, null, { notify: false });
 
   // 8b) 경제 거래는 revision 을 보지 않는다 — 새 경기 S01 은 진열 번호가 다시 0 부터라 지난 경기 거래와 모양이 같다. round 경계가 막는다.
-  const e2 = gateRoom(5, { economy: true, shopMs: 40 });
+  const e2 = gateRoom(5, { economy: true, prepMs: 40 });
   cmd(e2, 1, 'lobby_ready'); cmd(e2, 0, 'lobby_start');
   await wait(CD + 30);
   const sh1 = e2.engines[0].S.eco.shop;
   const offer = { t: 'action', round: 1, action: { t: 'shopBuy', shop: sh1.turn, seq: sh1.seq[1], i: 0 } };
-  await wait(200); // S01 40ms 만료 → 자동 구매·배치·준비 → 경기 시작
+  await wait(200); // 준비 40ms 만료 → 자동 구매·배치·준비 → 경기 시작
   ok(e2.state === STATES.IN_PROGRESS, '경제 경기 1 시작(시간 초과 자동 배치)');
   cmd(e2, 0, 'resign'); cmd(e2, 0, 'lobby_return'); cmd(e2, 1, 'lobby_return');
-  e2._clockMs.shop = undefined; // 경기 2 는 운영 90초
+  e2._clockMs.prep = undefined; // 경기 2 는 운영 180초
   cmd(e2, 1, 'lobby_ready'); cmd(e2, 0, 'lobby_start');
   await wait(CD + 30);
   const sh2 = e2.engines[0].S.eco.shop;

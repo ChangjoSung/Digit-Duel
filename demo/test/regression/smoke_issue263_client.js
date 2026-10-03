@@ -1,13 +1,13 @@
-/* #263 클라이언트(Mars) — 배치 90초 · 게임 행동 30초 · 단절 정지 입력 잠금 · 6칸 진열/SOLD OUT 화면
+/* #263 클라이언트(Mars) — 준비 180초(#293 — 종전 상점 90초 + 배치 90초 대체) · 게임 행동 30초 · 단절 정지 입력 잠금 · 6칸 진열/SOLD OUT 화면
    실행: node demo/test/regression/smoke_issue263_client.js [demo/index.html]
    파일을 쓰지 않는다 (Saturn --read-only 재실행 안전).
    근거: Issue #263 본문(2026-09-25 CJ Q1=A·Q2=A) · GDD-23 2.2·2.4 · docs/milestone/v0.4.11/issues/263/Jupiter/report.md 4절
 
    절
      A  진열 6칸 · 산 칸 SOLD OUT 은 화면에서도 구매 불가 (서버 {key,grade,soldOut,sold} 좌석 뷰 모양 포함)
-     B  로컬(PVE·핫시트) 배치 90초 — 직접 완료한 좌석만 · 시간 초과 좌석은 다시 걸지 않는다 · 가림 불산입 · 만료 = 자동 배치 + 준비
+     B  로컬(PVE·핫시트) 준비 180초(#293 2026-10-01 CJ 1) — 상점·배치가 한 마감 · 재발급·정지 없음(가림 포함) · 핫시트는 둘이 하나 · 만료 = 자동 구매/배치 + 준비
      C  로컬 행동 30초 — 전투 판정·연출 중 정지(Q2=A) · 만료 1회 턴 넘김 · 출전 후보도 같은 30초 · AI 턴엔 없다
-     D  온라인 — 서버 시계(room_state.clock)의 place·act 를 표시만 한다(로컬 마감 0) · running:false 는 "(정지)"
+     D  온라인 — 서버 시계(room_state.clock)의 prep·act 를 표시만 한다(로컬 마감 0) · running:false 는 "(정지)" · prep 은 절대 마감(deadline − serverNow)
      E  단절 정지 — 양측 게임 입력·기권 잠금(사유 표시) · 복구 시 해제
      F  정지 중 송신 끝(Saturn REVISE) — 상점 window.__shop · B08 · **먼저 열려 있던** 기권 확인 창이 netAction 을
         우회해 보내던 구멍 · 정지 중 잠긴 모습 · 복구 뒤 입력 복원 · 복구 명령(leave)은 잠기지 않는다
@@ -75,7 +75,7 @@ const toastText=T=>T.byId("toasts").children.map(x=>x.textContent).join("|");
 const lastBtns=(T,n)=>T.byId("obBtns").children.slice(-n); // 스텁 문서는 obBtns 를 비우지 않는다 — 마지막 창의 버튼만 본다
 const sentActs=T=>T.sent.map(x=>x.t==="action"?x.action.t:x.t);
 
-const P90=90000, A30=30000;
+const P90=90000, P180=180000, A30=30000;
 
 /* #263 후속(T1~T4) 절 I·J·K 용 — S01 을 시간 초과로 끝내고 곧바로 경기 중(play)으로 들어간 판.
    주 행동은 이미 썼다고 두어(mainUsed) 남는 시한이 "고르는 시간"뿐이게 한다. 턴 시작 연출은 흘려 보드 30초를 흐르게 한다. */
@@ -125,51 +125,58 @@ try{
   ok(/판매함/.test(T.shopHtml(0)),"A7 종전 판매 잠금 칸(sold)은 '판매함' 으로 남는다");
 }
 
-/* ===== B. 로컬 배치 90초 ===== */
+/* ===== B. 로컬 준비 180초 (#293 2026-10-01 CJ 1 — 상점 90초 + 배치 90초 재발급 폐지) ===== */
 {
-  /* B1 PVE — S01 을 직접 끝내면 그 좌석만 배치 90초를 받는다 */
+  /* B1 PVE — 준비 시계는 S01 이 열릴 때 한 번 서고, 상점을 직접 끝내 배치로 넘어가도 다시 서지 않는다 */
   const T=boot("pve",{aiLevel:"grade5"}), S=T.S;
-  buyAllAndDone(T,0); T.render();
+  eq(T.ECO.prepSec,180,"B0 준비 시간 상수 = 180초");
+  eq(T.byId("prepClock").textContent,"⏱ 180초","B2 S01 표시 즉시 남은 시간 180초");
+  adv(40000); buyAllAndDone(T,0); T.render(); T.render();
   ok(S.eco.shop.done[0]&&S.phase==="setup"&&T.UI.prep==="place","B1 S01 직접 완료 → 02 비공개 배치");
-  eq(T.byId("placeClock").textContent,"⏱ 90초","B2 배치 화면 표시 즉시 남은 시간 90초");
-  adv(40000); T.render(); T.render();
-  eq(T.byId("placeClock").textContent,"⏱ 50초","B3 다시 그리기는 마감을 되돌리지 않는다");
-  adv(P90-40000-1); ok(unplaced(T,0)>0&&S.phase==="setup","B4 89.999초엔 아직 배치 중");
-  adv(1); ok(unplaced(T,0)===0&&S.phase==="play","B5 90초 만료 → 미배치 말 자동 배치 + 준비(경기 시작)");
-  eq(T.byId("placeClock").textContent,"","B6 경기가 시작되면 배치 시계 표시가 비워진다 (.badge:empty 로 숨는다)")
+  eq(T.byId("prepClock").textContent,"⏱ 140초","B3 상점 완료·다시 그리기는 마감을 되돌리지 않는다 (배치에 새 90초 없음)");
+  adv(P180-40000-1); ok(unplaced(T,0)>0&&S.phase==="setup","B4 179.999초엔 아직 배치 중");
+  adv(1); ok(unplaced(T,0)===0&&S.phase==="play","B5 180초 만료 → 미배치 말 자동 배치 + 준비(경기 시작)");
+  eq(T.byId("prepClock").textContent,"","B6 경기가 시작되면 준비 시계 표시가 비워진다 (.badge:empty 로 숨는다)")
 
-  /* B7 14개를 다 놓고도 [배치 완료]를 누르지 않은 좌석 — 시계는 **확정 전까지** 흐른다(서버 placed && ready 와 같은 끝 조건).
+  /* B7 14개를 다 놓고도 [배치 완료]를 누르지 않은 좌석 — 시계는 **확정 전까지** 흐른다(교착 방지).
      만료는 직접 놓은 좌표를 보존하고 못 놓은 말만 채운 뒤 한 번만 확정한다. */
   const T1=boot("pve",{aiLevel:"grade5"}), S1=T1.S;
   buyAllAndDone(T1,0); T1.netAction({t:"auto"}); T1.render();
   eq(unplaced(T1,0),0,"B7 사람이 14개를 모두 배치했다");
-  eq(T1.byId("placeClock").textContent,"⏱ 90초","B8 다 놓아도 확정 전까지 배치 90초는 계속 흐른다 (교착 방지)");
+  eq(T1.byId("prepClock").textContent,"⏱ 180초","B8 다 놓아도 확정 전까지 준비 180초는 계속 흐른다 (교착 방지)");
   const mine=S1.pieces.filter(x=>x.owner===0);
   const keep=mine.slice(2).map(x=>[x.id,x.r,x.c]);      // 직접 놓은 좌표 — 만료 뒤에도 그대로여야 한다
   mine[0].placed=false; mine[1].placed=false;           // 두 개만 미배치로 되돌려 "못 놓은 말만 채운다"를 본다
   T1.render();
-  adv(P90); ok(T1.S.phase==="play","B9 만료 → 미배치 말만 채우고 한 번 확정해 경기가 시작된다");
+  adv(P180); ok(T1.S.phase==="play","B9 만료 → 미배치 말만 채우고 한 번 확정해 경기가 시작된다");
   ok(keep.every(([id,r,c])=>{ const x=T1.S.pieces.find(y=>y.id===id); return x&&x.r===r&&x.c===c; }),
      "B10 직접 놓은 좌표는 자동 배치가 덮어쓰지 않는다");
   eq(unplaced(T1,0),0,"B11 되돌린 두 말도 합법 위치에 놓였다");
 
-  /* B12 S01 을 90초 만료로 끝낸 좌석은 자동 구매·자동 배치에 이어 **그 자리에서 확정**한다 — 배치 90초를 다시 걸지 않는다 */
+  /* B12 아무것도 하지 않은 좌석 — 90초에는 아무 일도 없고, 180초 만료에 자동 구매·자동 배치에 이어 **그 자리에서 확정**한다 */
   const T2=boot("pve",{aiLevel:"grade5"});
-  adv(P90); // 상점 90초 만료 (SHOPCLK) — 실제 화면 경로 그대로
-  eq(unplaced(T2,0),0,"B12 S01 시간 초과 좌석은 자동 구매에 이어 자동 배치까지 끝난다");
+  adv(P90); ok(!T2.S.eco.shop.done[0]&&T2.S.phase==="setup"&&T2.ecoEmptyField(T2.S,0).length===6,"B12a 90초에는 만료되지 않는다 (상점 90초 폐지)");
+  adv(P90);
+  eq(unplaced(T2,0),0,"B12 준비 시간 초과 좌석은 자동 구매에 이어 자동 배치까지 끝난다");
   ok(T2.S.phase==="play","B13 그 좌석은 곧바로 준비(확정)로 이어져 경기가 시작된다");
-  eq(!!T2.TURNCLK.c.place,false,"B14 그 좌석에는 배치 90초가 새로 걸리지 않는다");
+  eq(!!T2.TURNCLK.c.place,false,"B14 배치 전용 시계는 어디에도 없다");
 
-  /* B9 핫시트 — 가림(handoff) 중에는 배치 시간이 흐르지 않는다 */
+  /* B15 핫시트 — 두 사람이 180초 하나를 함께 쓴다. 가림(handoff)·차례 넘김에 멈추지도 다시 서지도 않는다 */
   const T3=boot("pvp"), S3=T3.S;
-  buyAllAndDone(T3,0); T3.render();
-  eq(T3.byId("placeClock").textContent,"⏱ 90초","B15 P1 배치 90초 시작");
-  adv(P90+1); ok(S3.setupPlayer===1&&covered(T3),"B16 P1 만료 → 자동 배치·준비 뒤 P2 가림");
-  adv(10*P90); ok(!S3.eco.shop.done[1],"B17 가림이 15분 떠 있어도 P2 시간은 흐르지 않는다");
+  eq(T3.byId("prepClock").textContent,"⏱ 180초","B15 P1 화면에서 공통 준비 180초 시작");
+  adv(60000); buyAllAndDone(T3,0); T3.netAction({t:"auto"}); T3.netAction({t:"setupDone"});
+  ok(S3.setupPlayer===1&&covered(T3),"B16 P1 직접 완료 → P2 가림");
+  adv(60000); ok(S3.phase==="setup"&&!S3.eco.shop.done[1],"B17 가림이 떠 있는 동안에도 같은 시계가 흐른다 — 120초엔 아직 만료 전");
   ok(confirmCover(T3),"B18 가림 확인");
-  buyAllAndDone(T3,1); T3.render();
-  eq(T3.byId("placeClock").textContent,"⏱ 90초","B19 P2 도 자기 화면 표시 순간부터 새 90초");
-  adv(P90); ok(S3.phase==="play"&&unplaced(T3,1)===0,"B20 P2 만료 → 자동 배치·준비 → 경기 시작");
+  T3.render();
+  eq(T3.byId("prepClock").textContent,"⏱ 60초","B19 P2 는 새 시간이 아니라 남은 60초 (재발급 없음)");
+  adv(60000-1); ok(S3.phase==="setup"&&!S3.eco.shop.done[1],"B19a 179.999초엔 P2 진행 중");
+  adv(1); ok(S3.phase==="play"&&unplaced(T3,1)===0&&T3.ecoEmptyField(S3,1).length===0,"B20 180초 만료 → P2 자동 구매·배치·준비 → 경기 시작");
+
+  /* B21 핫시트에서 P1 이 끝내지 못한 채 만료 — 두 좌석을 차례로 자동 마무리해 시작한다(새 시간을 주지 않는다) */
+  const T4=boot("pvp");
+  adv(P180-1); ok(T4.S.phase==="setup"&&T4.S.setupPlayer===0,"B21a 179.999초엔 P1 진행 중");
+  adv(1); ok(T4.S.phase==="play"&&unplaced(T4,0)===0&&unplaced(T4,1)===0&&T4.ecoEmptyField(T4.S,0).length+T4.ecoEmptyField(T4.S,1).length===0,"B21 만료 → 두 좌석 모두 자동 구매·배치 뒤 경기 시작");
 }
 
 /* ===== C. 로컬 행동 30초 ===== */
@@ -239,6 +246,37 @@ try{
   adv(5000); eq(N.byId("actClock").textContent,"⏱ 9초 (정지)","D5 정지 중에는 표시도 줄지 않는다");
   N.netApplyRoomState(netFrame({key:"bag",leftMs:9000,running:true}),false);
   eq(N.byId("actClock").textContent,"","D6 다른 시한(B08)일 때는 행동 배지가 비어 있다 (.badge:empty 로 숨는다)");
+  { /* ===== #294 공개 보드 시계(boardClock) — 표시 전용. 상대 차례에도 같은 마감에서 초를 계산하고, 화면은 명령을 만들지 않는다 ===== */
+    const bf=(bc,cur,clock)=>{ const f=netFrame(clock||null); f.current=cur; if(bc!==undefined) f.boardClock=bc; return f; };
+    const M=netBoot(), wire={readyState:1,sent:[],send(m){ this.sent.push(m); },close(){}}, sent=()=>wire.sent.length, dl=7e12; M.NET.ws=wire; // 열린 회선 — 화면이 무엇이든 보내면 여기 쌓인다
+    M.netApplyRoomState(bf({leftMs:23000,running:true,deadline:dl,serverNow:dl-23000},1),false); const s0=sent();
+    eq(M.byId("actClock").textContent,"⏱ 23초","L1 상대 차례(내 clock 없음)에도 시간 칸에 서버 보드 시계의 초가 보인다");
+    ok(M.NET.ecoClock===null&&!M.turnClockLate("act")&&Object.keys(M.TURNCLK.c).length===0,"L2 입력 잠금·늦은 입력 판정은 종전 clock 만 본다 — 로컬 마감을 걸지 않는다");
+    adv(4000); eq(M.byId("actClock").textContent,"⏱ 19초","L3 상대 차례에도 표시 간격이 돌아 받은 순간부터 줄어든다");
+    M.netApplyRoomState(bf({leftMs:99000,running:true,deadline:dl,serverNow:dl-15000},0,{key:"act",leftMs:15000,running:true}),false);
+    eq(M.byId("actClock").textContent,"⏱ 15초","L4 내 차례도 같은 마감(deadline − serverNow)에서 계산한다 — leftMs 가 달라도 마감이 기준");
+    M.netApplyRoomState(bf({leftMs:9000,running:false,deadline:null,serverNow:dl},1),false); adv(5000);
+    eq(M.byId("actClock").textContent,"⏱ 정지 · 9초","L5 running:false(전투·B08·단절)는 '정지'로 값이 멈춘다");
+    M.netApplyRoomState(bf({leftMs:0,running:true,deadline:dl,serverNow:dl},1),false); adv(3000);
+    eq(M.byId("actClock").textContent,"⏱ 0초 · 처리 중","L6 만료 직후 = '0초 · 처리 중'");
+    eq(sent(),s0,"L7 만료 뒤에도 화면은 턴 넘김 등 어떤 명령도 보내지 않는다(만료 처리는 서버)");
+    M.netApplyRoomState(bf(null,1),false); eq(M.byId("actClock").textContent,"","L8 boardClock:null(정기 상점·종료) = 표시 없음");
+    M.netApplyRoomState(bf(undefined,1),false); adv(31000);
+    eq(M.byId("actClock").textContent,"확인 중","L9 필드가 없으면(구 서버) 상대 차례는 '확인 중' — 로컬 30초를 지어내지 않는다");
+    M.netApplyRoomState(bf({leftMs:"12",running:true,owner:1,key:"act"},1),false);
+    ok(M.NET.boardClock===undefined&&M.byId("actClock").textContent==="확인 중","L10 규격 밖 값은 쓰지 않는다");
+    M.netApplyRoomState(bf({leftMs:5000,running:false,deadline:null,serverNow:null,owner:1,key:"pick"},1),false);
+    ok(JSON.stringify(Object.keys(M.NET.boardClock).sort())==='["at","deadline","leftMs","running","serverNow"]',"L11 받은 시계에서 계약 필드만 보관한다(key·owner 를 들고 있지 않는다)");
+    M.netApplyRoomState(bf({leftMs:5000,running:true},1),false);
+    ok(M.NET.boardClock.deadline===null&&M.NET.boardClock.serverNow===null&&M.byId("actClock").textContent==="⏱ 5초","L12 마감·서버 시각이 빠진 시계는 그 칸을 null(모름)로 두고 leftMs 로 계산한다"); }
+  /* #293 준비 시계 — 서버 절대 마감(deadline)과 그 프레임의 서버 시각(serverNow)으로 그린다. 이 기기 시계·leftMs 로 새 180초를 만들지 않는다 */
+  const dl=5e12;
+  N.netApplyRoomState(netFrame({key:"prep",leftMs:999000,running:true,deadline:dl,serverNow:dl-120000}),false);
+  eq(N.turnClockText("prep"),"⏱ 120초","D7 준비 시계 = deadline − serverNow (서버 기준)");
+  adv(20000); eq(N.turnClockText("prep"),"⏱ 100초","D8 받은 뒤 흐른 시간만큼만 준다");
+  N.netApplyRoomState(netFrame({key:"prep",leftMs:999000,running:true,deadline:dl,serverNow:dl-95000}),true);
+  eq(N.turnClockText("prep"),"⏱ 95초","D9 재연결 프레임도 같은 마감 — 새 180초가 되지 않는다");
+  ok(Object.keys(N.TURNCLK.c).length===0&&!N.PREPCLK.g,"D10 온라인 준비 시계에는 로컬 마감이 없다 (판정은 서버)");
 }
 
 /* ===== E. 단절 정지 — 양측 게임 입력·기권 잠금 ===== */
@@ -328,6 +366,11 @@ try{
   ok(/^P\|/.test(String(T.NET.overlaySig)),"F20 정지 토글을 오버레이 서명이 알아챈다 (상점·B08 이 잠긴 모습으로 다시 그려진다)");
   T.netLeaveRoom();
   ok(T.sent.some(x=>x.t==="leave"),"F21 정지 중에도 방 나가기(복구 포기)는 보낸다 — 잠그는 것은 게임 입력이다");
+  /* #293 (2026-10-02 CJ 4 · AC17): 나간 뒤 방 목록 소켓이 publicMode 를 다시 켜도 그 방의 단절 정지(X01)가 되살아나지 않는다 */
+  T.NET.publicMode=true; T.render();
+  const bar=T.byId("netResumeBar"), app=T.byId("app");
+  ok(T.NET.pause===null&&!T.netPaused()&&!T.NET.pauseTimer&&(!bar||bar.classList.contains("hidden"))&&!(app&&app.getAttribute("inert")==="")&&T.byId("overlay").classList.contains("hidden"),
+     "F22 나간 뒤 정지 상태·초 타이머·inert·열린 창이 남지 않는다 (방 목록 연결이 와도 X01 부활 없음)");
 }
 
 
@@ -372,9 +415,12 @@ const sideHtml=T=>{ T.renderSide(); return T.byId("sidePanel").innerHTML; };
 }
 { /* 배치 화면(02 비공개 배치)의 조작 버튼도 같은 잠금을 쓴다 — 종전에는 netAction 토스트만 뜨고 모습은 열려 있었다 */
   const T=setupNetBoot(false);
+  T.S.eco.shop.done[0]=true; // #293: 배치 화면은 내 시작 상점을 끝낸 뒤에만 그려진다(진행 막대 = 상태 파생) — 종전 픽스처는 01·02 두 절을 함께 그리던 화면에 기대고 있었다
   setPause(T,true);
   const html=sideHtml(T);
-  ok(/<fieldset class="pauseLock" disabled[^>]*>[\s\S]*?autoPlace\(\)[\s\S]*?setupDone\(\)[\s\S]*?<\/fieldset>/.test(html),"G14 정지 중 배치 조작(무작위 배치·전체 회수·배치 완료)이 통째로 잠긴다");
+  /* #293 (2026-10-01 CJ): [배치 완료]는 진행 막대 옆(상단)으로 올라가 트레이 버튼과 같은 fieldset 에 있지 않다 — 잠금은 그대로다:
+     무작위 배치·전체 회수는 종전 <fieldset disabled> 안, [배치 완료]는 버튼 자체가 disabled */
+  ok(/<fieldset class="pauseLock" disabled[^>]*>[\s\S]*?autoPlace\(\)[\s\S]*?clearPlace\(\)[\s\S]*?<\/fieldset>/.test(html)&&/<button[^>]*onclick="setupDone\(\)" disabled/.test(html),"G14 정지 중 배치 조작(무작위 배치·전체 회수·배치 완료)이 통째로 잠긴다");
   ok(/배치 조작이 잠겨 있습니다/.test(html),"G15 배치 화면에도 사유를 적는다");
   T.netAction({t:"auto"});
   eq(T.sent.length,0,"G16 정지 중 배치 입력은 회선에 나가지 않는다 (종전 netAction 가드 유지)");

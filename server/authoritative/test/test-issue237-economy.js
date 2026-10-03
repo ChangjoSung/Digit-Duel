@@ -10,7 +10,7 @@ const { ok, done } = makeCounter('issue237-economy');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function ecoRoom(id, opts) {
-  const room = new H.Room(id, Object.assign({ isPublic: false, epoch: 'aaaaaaaa', graceMs: 5000, economy: true, seed: 237, shopMs: 60000, bagPickMs: 60000, placeMs: 60000, actMs: 60000 }, opts || {}));
+  const room = new H.Room(id, Object.assign({ isPublic: false, epoch: 'aaaaaaaa', graceMs: 5000, economy: true, seed: 237, shopMs: 60000, bagPickMs: 60000, prepMs: 60000, actMs: 60000 }, opts || {}));
   room.openHostSeat(fakeWs());
   room.joinGuestSeat(fakeWs());
   return room;
@@ -69,7 +69,10 @@ async function main() {
     const v0 = view(room, 0), v1 = view(room, 1);
     ok(room.state === STATES.SETUP && v0.phase === 'shop' && v1.phase === 'shop', '두 좌석이 모이면 S01 이 양측에 동시에 열린다(SETUP=경기 전)');
     ok(v0.you.eco.coins === 10 && v0.you.eco.bag.length === 0 && v0.shop.slots.length === 6 && v0.shop.slots.every((x) => x && x.grade === 1), '🪙10 · 가방 0 · ⭐1 진열 6칸 (#263)');
-    ok(v0.clock && v0.clock.running && v0.clock.leftMs <= 60000 && v1.clock.running, '좌석마다 상점 시계가 표시 순간부터 흐른다');
+    ok(v0.clock && v0.clock.running && v0.clock.leftMs <= 60000 && v1.clock.running
+      && v0.clock.key === 'prep' && v1.clock.key === 'prep' && Number.isFinite(v0.clock.deadline) && v0.clock.deadline === v1.clock.deadline && Number.isFinite(v0.clock.serverNow),
+      '#293 양 좌석이 같은 준비 마감(prep · 서버 epoch)을 받고 표시 순간부터 흐른다');
+    ok(JSON.stringify(v0.seats.step) === '["shop","shop"]' && JSON.stringify(v1.seats.step) === '["shop","shop"]', '#293 seats.step — 양측 시작 상점');
     ok(S0(room).eco.shop.active === null, '온라인 상점은 순차(active)가 아니라 동시다');
     ok(!('units' in v0) || v0.units.length === 0, 'S01 동안 상대 말은 없다');
 
@@ -117,8 +120,16 @@ async function main() {
     const d = view(room, 0);
     ok(d.phase === 'setup' && d.shop.done && S0(room).pieces.filter((p) => p.owner === 0 && p.type === 'minion' && p.rosterId).length === 6,
       '새로 고침 없이 6칸에서 여섯을 사고 완료 → 배치 단계 (#263)');
-    // #263: 직접 완료한 좌석은 상점 시계 대신 배치 90초를 받는다.
-    ok(d.clock && d.clock.key === 'place' && d.clock.running, '직접 완료 → 배치 시계 시작 (#263)');
+    // #293: 직접 완료해도 새 시계는 없다 — 같은 준비 마감이 이어지고, 상대에게는 단계(seats.step)만 나간다.
+    ok(d.clock && d.clock.key === 'prep' && d.clock.running && d.clock.deadline === v0.clock.deadline && view(room, 1).clock.deadline === v0.clock.deadline,
+      '직접 완료 → 준비 마감 그대로 (#293 재발급 없음)');
+    {
+      const o = view(room, 1);
+      ok(JSON.stringify(d.seats.step) === '["place","shop"]' && JSON.stringify(o.seats.step) === '["place","shop"]', 'seats.step — 상점 완료·미준비 = place (양 좌석 뷰 동일)');
+      ok(Object.keys(o.seats).sort().join() === 'ready,step' && o.units.length === 0 && o.you.pieces.every((p) => p.owner === 1)
+        && o.you.eco.coins === S0(room).eco.coins[1] && o.shop.seq === S0(room).eco.shop.seq[1],
+        '준비 구간 상대 뷰에 내 말·진열·코인이 새로 나가지 않는다 — 상대에 대해 공개되는 것은 ready 와 단계뿐');
+    }
     const s4 = snap(room);
     const late = room._handleAction(0, { baseRevision: 0, action: { t: 'shopRefresh', shop: 0, seq: d.shop.seq } });
     ok(!late.ok && late.reason === 'E_ILLEGAL_ACTION' && snap(room) === s4, '완료한 상점은 다시 열리지 않는다');
@@ -127,6 +138,14 @@ async function main() {
     const early = room.handleCommand(1, { t: 'setup', roster: S0(room).roster[1].slice(), pos: H.makeSetup().pos });
     ok(!early.ok && early.reason === 'E_ILLEGAL_ACTION', '상점을 마치기 전 배치 거부');
     finishStart(room, 1);
+    {
+      const pos = H.makeSetup().pos;
+      room.handleCommand(0, { t: 'setup', roster: S0(room).roster[0].slice(), pos });
+      room.handleCommand(0, { t: 'ready' });
+      ok(JSON.stringify(view(room, 1).seats.step) === '["done","place"]', 'seats.step — 준비 완료 = done');
+      room.handleCommand(0, { t: 'unready' });
+      ok(JSON.stringify(view(room, 1).seats.step) === '["place","place"]' && view(room, 1).clock.deadline === v0.clock.deadline, '준비 취소 → place · 마감 그대로');
+    }
     placeAndStart(room);
     ok(room.state === STATES.IN_PROGRESS && S0(room).phase === 'play' && S0(room).eco.shop === null && S0(room).eco.coins[0] === 0,
       '양측 배치·ready → 개시, 산 말·재화 그대로');
@@ -135,22 +154,26 @@ async function main() {
 
   // ===== 1b. #238 S01 상품 8종 실구매 — 아이템 5종 · 전투 버프 3종, 예비 재화 · 사용 시점 · 만료 자동 구매 =====
   {
-    const room = ecoRoom(238, { shopMs: 200 });
+    const room = ecoRoom(238, { prepMs: 200 });
     const store = (seat, k) => {
       const S = S0(room);
       return k === 'ball' ? S.balls[seat] : k === 'ticket' ? S.eco.tickets[seat] : S.eco.buffInv[seat][k] !== undefined ? S.eco.buffInv[seat][k] : S.inv[seat].filter((x) => x === k).length;
     };
-    for (const [seat, goods] of [[0, ['ticket', 'power', 'time', 'escape']], [1, ['potion', 'cool', 'cure', 'ball']]]) {
+    // #293 (2026-10-02 CJ): 수호자 3종은 🪙3, 나머지 5종은 🪙1 — 예비 재화(빈 칸 6)는 그대로라 S01 의 칸 밖 지출 🪙4 안에서 수호자는 1개까지다.
+    for (const [seat, goods] of [[0, ['ticket', 'power']], [1, ['potion', 'cool', 'cure', 'ball']]]) {
       for (const k of goods) {
+        const cost = ['power', 'time', 'escape'].includes(k) ? 3 : 1;
         const c = S0(room).eco.coins[seat], n = store(seat, k);
         const r = shop(room, seat, 'shopGood', { item: k });
-        ok(r.ok && S0(room).eco.coins[seat] === c - 1 && store(seat, k) === n + 1 && room.engines[1 - seat].S.eco.coins[seat] === c - 1,
-          `S01 ${k} 구매 수락: 🪙-1 · 보관처 +1 · 두 엔진 반영`);
+        ok(r.ok && S0(room).eco.coins[seat] === c - cost && store(seat, k) === n + 1 && room.engines[1 - seat].S.eco.coins[seat] === c - cost,
+          `S01 ${k} 구매 수락: 🪙-${cost} · 보관처 +1 · 두 엔진 반영`);
       }
-      const s5 = snap(room), g5 = shop(room, seat, 'shopGood', { item: 'potion' });
-      ok(!g5.ok && g5.reason === 'E_ILLEGAL_ACTION' && snap(room) === s5 && S0(room).eco.coins[seat] === 6, `좌석 ${seat} 다섯째 상품은 예비 재화(빈 칸 6)로 거부 · 상태 불변`);
+      for (const k of seat ? ['potion'] : ['potion', 'time', 'escape']) {
+        const s5 = snap(room), g5 = shop(room, seat, 'shopGood', { item: k });
+        ok(!g5.ok && g5.reason === 'E_ILLEGAL_ACTION' && snap(room) === s5 && S0(room).eco.coins[seat] === 6, `좌석 ${seat} 🪙6 에서 ${k} 는 예비 재화(빈 칸 6)로 거부 · 상태 불변`);
+      }
     }
-    ok(!JSON.stringify(view(room, 1)).includes('"tickets":1') && view(room, 0).you.eco.tickets === 1 && view(room, 0).you.eco.buffInv.escape === 1, 'S01 상품 보유는 소유자 뷰에만');
+    ok(!JSON.stringify(view(room, 1)).includes('"tickets":1') && view(room, 0).you.eco.tickets === 1 && view(room, 0).you.eco.buffInv.power === 1, 'S01 상품 보유는 소유자 뷰에만');
     const king = view(room, 0).you.pieces.find((p) => p.type === 'king').id, s6 = snap(room);
     const use = shop(room, 0, 'shopTicket', { id: king, el: 'water' });
     ok(!use.ok && snap(room) === s6, 'S01 티켓 사용은 여전히 거부 — 사용 시점은 [기획 필요]');
@@ -162,9 +185,9 @@ async function main() {
     room._clearClock();
   }
 
-  // ===== 2. S01 서버 시계 만료 — 자동 구매·속성 자동 배정·자동 배치(#263), 명령 없는 전이 알림 =====
+  // ===== 2. 준비 180초 서버 시계 만료(#293) — 자동 구매·속성 자동 배정·자동 배치(#263), 명령 없는 전이 알림 =====
   {
-    const room = ecoRoom(2, { shopMs: 60, placeMs: 60000, actMs: 60000 });
+    const room = ecoRoom(2, { prepMs: 60, actMs: 60000 });
     let pushed = 0; room.onUpdate = () => { pushed++; };
     shop(room, 1, 'shopBuy', { i: 2 });
     await sleep(160);
@@ -172,10 +195,10 @@ async function main() {
       '만료 → 확정 거래 보존 + 노출 칸 자동 구매(필드 6칸)');
     ok(S0(room).pieces.filter((p) => p.owner === 1 && (p.type === 'king' || p.type === 'ally')).every((p) => p.element), '미선택 왕·동료 속성 자동 배정');
     // #263: 시간 초과 좌석은 그 자리에서 자동 배치·준비까지 끝난다 — 양측이 만료됐으므로 경기가 곧바로 시작된다.
-    ok(room.seats.every((st) => st.shopTimedOut && st.placed && st.ready) && room.state === STATES.IN_PROGRESS && S0(room).phase === 'play',
-      '시간 초과 좌석은 자동 배치·준비 → 배치 90초 없이 개시 (#263)');
+    ok(room.seats.every((st) => st.placed && st.ready) && room._prep === null && room.state === STATES.IN_PROGRESS && S0(room).phase === 'play',
+      '시간 초과 좌석은 자동 배치·준비 → 새 90초 없이 개시 (#263·#293)');
     ok(S0(room).pieces.every((p) => p.placed), '자동 배치된 말은 모두 합법 위치에 놓인다');
-    ok(pushed >= 2, '두 좌석 만료가 양측 푸시로 알려진다');
+    ok(pushed >= 1, '#293 공통 만료(방에 하나)가 양측 푸시로 알려진다'); // 종전 좌석별 만료 2회 → 방 만료 1회(onUpdate 한 번이 양 좌석에 나간다)
     const c = room._act; // #263 행동 30초는 방이 하나만 들고 owner 로 답할 좌석을 가리킨다
     ok(c && c.key.startsWith('act:') && c.owner === S0(room).current, '개시 뒤에는 차례 좌석의 행동 30초가 선다 (#263)');
   }
@@ -183,16 +206,17 @@ async function main() {
   // ===== 3. 마감 — 서버 시각이 지난 요청은 타이머 발화 전이라도 거부 =====
   {
     const room = ecoRoom(3);
-    room._clock[0].deadline = Date.now() - 1;
+    room._prep.deadline = Date.now() - 1;
     const s = snap(room);
     const r = shop(room, 0, 'shopBuy', { i: 0 });
     ok(!r.ok && r.reason === 'E_DEADLINE' && snap(room) === s, '마감 뒤 도착한 거래 거부 · 상태 불변');
     room._clearClock();
   }
 
-  // ===== 4. 단절 — 입력·게임 시계 정지, 재연결 뒤 잔여 시간 재개, 경기 전 만료는 취소 =====
+  // ===== 4. 단절 — 입력 정지 · #293 준비 시계는 같은 마감으로 계속 흐른다 · 재연결은 마감을 바꾸지 않는다 · 경기 전 유예 만료는 취소 =====
   {
-    const room = ecoRoom(4, { shopMs: 400, graceMs: 5000 });
+    const room = ecoRoom(4, { prepMs: 60000, graceMs: 5000 });
+    const d = room._prep.deadline;
     await sleep(30);
     room.socketClosed(1);
     const left = view(room, 0).clock.leftMs;
@@ -200,14 +224,17 @@ async function main() {
     const r = shop(room, 0, 'shopBuy', { i: 0 });
     ok(!r.ok && r.reason === 'E_PAUSED' && snap(room) === s, '상대 단절 중 거래 거부(E_PAUSED) · 상태 불변');
     const pv = view(room, 0);
-    ok(pv.pause && pv.pause[0].seat === 1 && pv.pause[0].graceLeftMs > 0 && !pv.clock.running, '상대 화면: 연결 대기 표시 · 시계 멈춤');
-    await sleep(450);
-    ok(view(room, 0).clock.leftMs === left && room._clock[0].expired === false && room.state === STATES.SETUP, '단절 중에는 상점 시간이 흐르지 않는다(만료 없음)');
+    ok(pv.pause && pv.pause[0].seat === 1 && pv.pause[0].graceLeftMs > 0 && pv.clock.key === 'prep' && pv.clock.running && pv.clock.deadline === d,
+      '상대 화면: 연결 대기 표시 · 준비 시계는 같은 마감으로 계속 흐른다(#293)');
+    await sleep(50);
+    ok(view(room, 0).clock.leftMs < left && room._prep.deadline === d && room._prep.expired === false && room.state === STATES.SETUP,
+      '단절 중에도 준비 시간은 흐른다 — 마감 불변(종전 "단절 중 정지" 대체)');
     const ready = room.handleCommand(0, { t: 'ready' });
     ok(!ready.ok && ready.reason === 'E_PAUSED', '단절 중 ready·배치도 멈춘다');
     const res = room.resumeSeat(1, room.seats[1].credential.current, fakeWs());
     const rv = view(room, 0);
-    ok(res.ok && !rv.pause && rv.clock.running && rv.clock.leftMs <= left && rv.clock.leftMs > left - 50, '재연결 → 저장한 잔여 시간부터 재개');
+    ok(res.ok && !rv.pause && rv.clock.running && rv.clock.deadline === d && view(room, 1).clock.deadline === d && rv.clock.leftMs < left,
+      '재연결 → 마감 그대로(재발급 없음) · 양 좌석 같은 값');
     ok(shop(room, 0, 'shopBuy', { i: 0 }).ok, '재개 뒤 거래 수락');
     room._clearClock();
   }
@@ -227,13 +254,25 @@ async function main() {
     ok(v0.phase === 'shop' && v1.phase === 'shop' && S0(room).eco.shop.active === null && v0.shop.shop === 20, '20턴 끝 → 양측 동시 정기 상점');
     ok(v0.you.eco.coins === coins[0] + 2 && v1.you.eco.coins === coins[1] + 2, '턴 보너스 🪙2');
     ok(v0.clock.running && v1.clock.running, '양측 90초 시계');
+    ok(v0.boardClock === null && v1.boardClock === null, '#294 정기 상점 90초는 공개 보드 시계에 실리지 않는다 — boardClock 은 null');
     ok(v0.shop.syn && typeof v0.shop.syn.el === 'object' && Array.isArray(v0.shop.syn.pending), '시너지 현황은 자기 상점 뷰에만');
     const s = snap(room);
     const mv = H.act(room, cur, { t: 'skipMain' });
     ok(!mv.ok && snap(room) === s, '상점 동안 보드 행동 거부(보드 일시 정지) — 항복은 12절');
+    both(room, (E) => { E.S.eco.coins[0] = 11; }); // 픽스처 코인 — 수호자 3종 × 🪙3 뒤 🪙2 가 남는다 (#293 2026-10-02 CJ)
     const before1 = stable(view(room, 1));
     const g = shop(room, 0, 'shopGood', { item: 'power' });
-    ok(g.ok && S0(room).eco.buffInv[0].power === 1, '정기 상점 전투 버프 구매');
+    ok(g.ok && S0(room).eco.buffInv[0].power === 1 && S0(room).eco.coins[0] === 8 && room.engines[1].S.eco.coins[0] === 8, '정기 상점 전투 버프 구매 · 🪙-3');
+    for (const k of ['time', 'escape']) {
+      const c = S0(room).eco.coins[0], r = shop(room, 0, 'shopGood', { item: k });
+      ok(r.ok && S0(room).eco.buffInv[0][k] === 1 && S0(room).eco.coins[0] === c - 3 && room.engines[1].S.eco.coins[0] === c - 3, `정기 상점 ${k} 구매 · 🪙-3`);
+    }
+    for (const k of ['power', 'time', 'escape']) {
+      const s2 = snap(room), poor = shop(room, 0, 'shopGood', { item: k });
+      ok(!poor.ok && poor.reason === 'E_ILLEGAL_ACTION' && snap(room) === s2 && S0(room).eco.coins[0] === 2, `🪙2 에서 ${k} 는 코인 부족으로 거부 · 상태 불변`);
+    }
+    const cheap = shop(room, 0, 'shopGood', { item: 'potion' });
+    ok(cheap.ok && S0(room).eco.coins[0] === 1, '🪙2 에서 🪙1 상품은 그대로 구매 · 🪙-1');
     ok(stable(view(room, 1)) === before1, '상대 정기 상점 거래는 내 뷰를 바꾸지 않는다');
     const unit = view(room, 0).you.eco;
     ok(!JSON.stringify(view(room, 1)).includes('"buffInv":{"power":1'), '상대 재고 비노출');
@@ -274,6 +313,46 @@ async function main() {
     ok(S0(room).phase === 'play' && S0(room).eco.shop === null, '양측 만료 → 상점 닫힘·다음 턴');
   }
 
+  /* ===== 7b. #295 (2026-10-02 CJ) 정기 상점 기본 180초 — 주입 없는 Core 상수(ECO.shopSec) =====
+     위 60000·250 은 테스트 주입값이지 기본값이 아니다. 여기만 shopMs 를 비워 실제 기본 경로(_ms → ECO.shopSec)를 탄다.
+     벽시계를 고정해 경계를 결정적으로 본다(test-issue263 의 Date.now 고정 관례). gap = 단절로 멈춘 시간 — 상점 시계에 들어가지 않는다. */
+  {
+    const room = startedEco(295, { shopMs: undefined, graceMs: 60000 });
+    const real = Date.now, t0 = real();
+    let gap = 0;
+    const at = (ms) => { Date.now = () => t0 + gap + ms; };
+    try {
+      at(0);
+      openRegular(room);
+      ok(room.engines[0].ECO.shopSec === 180 && room._clock.every((c) => c && c.key.startsWith('shop:') && c.left === 180000 && c.deadline === t0 + 180000)
+        && view(room, 0).clock.key === 'shop' && view(room, 0).clock.leftMs === 180000, '#295 주입 없는 정기 상점 = 좌석별 180000ms');
+      at(90000);
+      const before1 = stable(view(room, 1));
+      const g = shop(room, 0, 'shopGood', { item: 'potion' });
+      ok(g.ok && view(room, 0).clock.leftMs === 90000 && stable(view(room, 1)) === before1, '#295 90000ms(종전 마감) 뒤에도 열려 있다 · 거래 수락 · 상대 뷰 불변');
+      const coins0 = S0(room).eco.coins[0], inv0 = S0(room).inv[0].join(), bag0 = S0(room).eco.bag[0].length;
+      room.socketClosed(1);
+      ok(room._clock.every((c) => c.deadline === null && c.left === 90000), '#295 단절 → 양 좌석 상점 시계가 남은 90000ms 를 들고 멈춘다');
+      gap = 30000; at(90000);
+      const res = room.resumeSeat(1, room.seats[1].credential.current, fakeWs());
+      ok(res.ok && room._clock.every((c) => c.left === 90000 && c.deadline === t0 + 30000 + 180000) && view(room, 1).clock.leftMs === 90000,
+        '#295 재연결 → 남은 시간부터 이어진다(180000 으로 되돌아가지 않는다)');
+      at(179999);
+      const b = shop(room, 1, 'shopGood', { item: 'potion' });
+      ok(b.ok && view(room, 0).clock.leftMs === 1, '#295 179999ms 에도 거래 수락');
+      const d = shop(room, 1, 'shopDone'), dl = room._clock[0].deadline;
+      ok(d.ok && room._clock[1] === null && view(room, 1).clock === null && dl === t0 + 30000 + 180000 && S0(room).phase === 'shop',
+        '#295 자기 완료 → 자기 시계만 사라진다 · 상대 시계·상점은 그대로');
+      at(180000);
+      const s = snap(room), key = room._clock[0].key;
+      const late = shop(room, 0, 'shopGood', { item: 'potion' });
+      ok(!late.ok && late.reason === 'E_DEADLINE' && snap(room) === s, '#295 180000ms 정각 = 마감 · 거래 거부 · 상태 불변');
+      room._onClock(0, key); // setTimeout 이 부르는 그 진입점
+      ok(S0(room).phase === 'play' && S0(room).eco.shop === null && S0(room).eco.coins[0] === coins0 && S0(room).inv[0].join() === inv0 && S0(room).eco.bag[0].length === bag0,
+        '#295 만료 → 상점 닫힘 · 확정 거래 유지 · 자동 구매 없음');
+    } finally { Date.now = real; room._clearClock(); }
+  }
+
   // ===== 8. B08 — 소유자 전용 선택 · 지난 토큰 · 만료 시 포획 말만 방출 =====
   {
     const room = startedEco(9, { bagPickMs: 60 });
@@ -284,14 +363,27 @@ async function main() {
       for (const k of free.slice(0, 3)) { const u = E.ecoMakeUnit(S, k, 1); u.paid = 1; S.eco.bag[0].push(u); }
       const cap = E.ecoMakeUnit(S, free[3], 2);
       S.eco.bagPick = { owner: 0, unit: cap, token: cap.uid }; S.phase = 'bagPick';
+      S.eco.bag[0][0].shieldStartPct = 0.10; // #294 실제 값이 그대로 가는지 — 상수 0 구현을 가려낸다
     });
     room._syncClock();
     const v0 = view(room, 0), v1 = view(room, 1);
     ok(v0.phase === 'bagPick' && v0.bagPick.unit && v0.bagPick.token && v0.clock.running, '소유자: 포획 말·토큰·20초 시계');
+    /* #294 (2026-10-02 CJ) 소유자 상세 8스탯 — 가방·포획 말의 shieldStartPct 는 엔진 값 그대로(0 도 숫자 0). 상대 프레임은 자기 you 밖에 이 키가 없다. */
+    {
+      const eb = S0(room).eco.bag[0], { you: _you1, ...rest1 } = v1;
+      ok(v0.you.eco.bag.length === 3 && v0.you.eco.bag.every((u, i) => typeof u.shieldStartPct === 'number' && u.shieldStartPct === eb[i].shieldStartPct)
+        && v0.you.eco.bag[0].shieldStartPct === 0.10 && v0.you.eco.bag[1].shieldStartPct === 0, '소유자 가방: shieldStartPct = 엔진 값 (0.10 · 0)');
+      ok(typeof v0.bagPick.unit.shieldStartPct === 'number' && v0.bagPick.unit.shieldStartPct === S0(room).eco.bagPick.unit.shieldStartPct, '소유자 포획 말: shieldStartPct = 엔진 값');
+      ok(!JSON.stringify(rest1).includes('shieldStartPct') && v1.you.eco.bag.length === 0, '상대: you 밖에 shieldStartPct 없음 · 상대 가방은 자기 것(빈 가방)뿐');
+    }
     // #263: 비소유자에게 B08 시계는 나가지 않는다. 자기 행동 30초를 들고 있으면 그것이 보이되 **멈춰 있어야** 한다(20초와 별개의 시계).
     ok(JSON.stringify(v1.bagPick) === JSON.stringify({ owner: 0 })
       && (v1.clock === null || (v1.clock.key === 'act' && v1.clock.running === false))
       && !JSON.stringify(v1).includes(free[3]), '상대: 누가 고르는 중인지만 — 포획 말·가방 비노출');
+    /* #294 공개 보드 시계 — B08 동안 양 좌석이 **멈춘 행동 30초**를 같은 값으로 본다. B08 20초(소유자 clock)·토큰은 실리지 않는다. */
+    ok(v0.clock.key === 'bag' && [v0, v1].every((v) => v.boardClock && v.boardClock.running === false && v.boardClock.deadline === null
+      && v.boardClock.leftMs === room._act.left && Object.keys(v.boardClock).sort().join() === 'deadline,leftMs,running,serverNow'),
+      '#294 B08 동안 boardClock 은 멈춘 행동 시계(양 좌석 같은 값) — 20초 시계·key·owner·토큰 없음');
     const s = snap(room);
     const other = room._handleAction(1, { baseRevision: 0, action: { t: 'bagPick', token: v0.bagPick.token, i: 0 } });
     const stale = room._handleAction(0, { baseRevision: 0, action: { t: 'bagPick', token: v0.bagPick.token + 99, i: 0 } });
@@ -406,22 +498,38 @@ async function main() {
     ok(view(room, cur).log.some((l) => /기권/.test(l.msg)) && view(room, 1 - cur).log.some((l) => /기권/.test(l.msg)), '양 좌석 로그에 기권 문구');
     // #238 S04 — 양측 필드 9칸(사망 포함) + Core synView 그대로 · 비공개 필드 없음 · 엔진과 참조 분리
     const f0 = view(room, 0).final, T = room.engines[0];
-    const keys = new Set(['type', 'rosterId', 'name', 'element', 'alive', 'hp', 'maxHp', 'hpSeen']);
+    const keys = new Set(['type', 'rosterId', 'name', 'element', 'alive', 'hp', 'maxHp', 'grade', 'hpSeen', 'allyKind']); // #293 grade — 결과 말 얼굴 배경색 · allyKind — 아는 동료 역할만
+    const noRole = (sides) => JSON.stringify(sides.map((sd) => sd.pieces.map((p) => Object.assign({}, p, { allyKind: undefined }))));
+    const roles = (sd) => sd.pieces.filter((p) => p.type === 'ally').map((p) => p.allyKind).sort();
     ok(f0 && f0.sides.length === 2 && f0.sides.every((sd, s) => sd.seat === s && sd.pieces.length === 9 && sd.pieces.filter((p) => !p.alive).length === 1
       && sd.pieces.filter((p) => p.type === 'minion').length === 6 && sd.pieces.every((p) => Object.keys(p).every((k) => keys.has(k)))),
-    'final: 양측 9칸(하수인 6 · 왕 · 동료 2) · 사망 포함 · 화이트리스트 필드만(별칭·위치·등급·스킬·원장·가방 없음)');
+    'final: 양측 9칸(하수인 6 · 왕 · 동료 2) · 사망 포함 · 화이트리스트 필드만(별칭·위치·스킬·원장 없음)');
     ok(f0.sides.every((sd, s) => JSON.stringify(sd.syn) === JSON.stringify(T.synView(s, T.S))), 'final.syn 은 Core synView 그대로(새 산식 없음)');
     const field = (s) => T.S.pieces.filter((p) => p.owner === s && p.placed && T.SYN_FIELD_TYPES.includes(p.type));
-    const real = (list, eng) => list.every((p, i) => p.hp === eng[i].hp && p.maxHp === eng[i].maxHp);
-    const opp = f0.sides[1].pieces, seenIdx = opp.findIndex((p) => p.hpSeen);
-    ok(opp.filter((p) => p.hpSeen).length === 1 && real([opp[seenIdx]], [field(1)[seenIdx]]) && opp.filter((p) => !p.hpSeen).every((p) => p.maxHp === 100)
-      && real(f0.sides[0].pieces, field(0)),
-      '상대 HP 는 싸운 개체만 실제값 · 나머지 100 눈금 · 내 말은 실제값');
+    const real = (list, eng) => list.every((p, i) => p.hp === eng[i].hp && p.maxHp === eng[i].maxHp && p.grade === (eng[i].grade === undefined ? null : eng[i].grade));
+    const opp = f0.sides[1].pieces;
+    ok(opp.filter((p) => p.hpSeen).length === 1 && real(opp, field(1)) && real(f0.sides[0].pieces, field(0))
+      && opp.filter((p) => p.type === 'minion').every((p) => Number.isInteger(p.grade)) && opp.filter((p) => p.type !== 'minion').every((p) => p.grade === null)
+      && noRole(view(room, 1).final.sides) === noRole(f0.sides),
+      '#293 결과: 양측 모든 말이 실제 HP/최대 HP + 등급(하수인만 · 왕·동료 null) — 100 눈금 없음 · 두 좌석 뷰 동일(아는 동료 역할 제외)');
+    {
+      const f1 = view(room, 1).final, own = JSON.stringify(['assassin', 'shield']);
+      ok(JSON.stringify(roles(f0.sides[0])) === own && JSON.stringify(roles(f1.sides[1])) === own
+        && f0.sides.concat(f1.sides).every((sd) => sd.pieces.concat(sd.bag).every((p) => p.type === 'ally' || !('allyKind' in p))),
+        '#293 결과: 자기 동료 2기는 실제 역할(assassin·shield) · 동료가 아닌 말·가방에는 allyKind 없음');
+      const hid = T.S.pieces.filter((p) => p.owner === 1 && p.type === 'ally' && !(p.revealedSkills || []).some((i) => /^(AS|SH)-/.test(String(p.skills[i]))));
+      ok(hid.length > 0 && f0.sides[1].pieces.filter((p) => p.type === 'ally' && !('allyKind' in p)).length === hid.length
+        && !/"skills"|"revealedSkills"/.test(JSON.stringify(f0.sides.map((sd) => [sd.pieces, sd.bag]))), '#293 결과: 기술이 공개되지 않은 상대 동료는 역할 키 자체가 없음 · skills/revealedSkills 비노출');
+      const sh = T.S.pieces.find((p) => p.owner === 1 && p.type === 'ally' && p.allyKind === 'shield'), keep = sh.revealedSkills;
+      both(room, (E) => { E.S.pieces.find((p) => p.id === sh.id).revealedSkills = [0]; });
+      ok(roles(view(room, 0).final.sides[1]).includes('shield'), '#293 결과: 상대 동료는 AS-/SH- 기술이 이미 공개된 경우에만 역할 공개');
+      both(room, (E) => { E.S.pieces.find((p) => p.id === sh.id).revealedSkills = keep; });
+    }
     const h0 = snap(room);
     f0.sides[0].syn.el.fire = 99; f0.sides[0].pieces[0].hp = -1;
     const bag0 = f0.sides[1].bag, bag1 = view(room, 1).final.sides[1].bag, eb = T.S.eco.bag[1];
     ok(f0.sides[0].bag.length === 0 && bag0.length === 1 && bag0[0].type === 'minion' && bag0[0].rosterId === T.ecoKey(eb[0]) && Object.keys(bag0[0]).every((k) => keys.has(k))
-      && bag0[0].maxHp === 100 && real(bag1, eb), 'final.bag: 양측 가방 하수인 · 같은 화이트리스트 · 상대에게는 100 눈금 · 소유자는 실제값');
+      && real(bag0, eb) && real(bag1, eb), 'final.bag: 양측 가방 하수인 · 같은 화이트리스트 · 상대·소유자 모두 실제 HP + 등급(#293)');
     ok(snap(room) === h0 && view(room, 0).final.sides[0].pieces[0].hp !== -1 && T.synView(0, T.S).el.fire !== 99, '뷰를 고쳐도 엔진 · 다음 뷰는 그대로');
   }
   {
@@ -587,7 +695,7 @@ async function main() {
     ok(room.state === STATES.VOID && room.result.reason === 'RESTART' && room.engines === null && room._clock.every((c) => c === null), '정기 상점 중 서버 재시작 = VOID · 시계 해제');
   }
 
-  // ===== 14. 뷰 경계 — 경제 방 표시 · 자기 전설 종 키 · 상대 HP 100 눈금(등급 역산 불가) =====
+  // ===== 14. 뷰 경계 — 경제 방 표시 · 자기 전설 종 키 · #293 공개 상대 말 실제 HP + 등급 / 미공개 말은 위치·생존뿐 =====
   {
     const open = new H.Room(29, { isPublic: true, epoch: 'aaaaaaaa', economy: true });
     open.openHostSeat(fakeWs());
@@ -609,21 +717,27 @@ async function main() {
     const unitOf = () => view(room, 0).units.find((u) => u.id === room._alias(q.id));
     both(room, (E) => { const p = E.S.pieces.find((x) => x.id === q.id); p.revealed = true; p.hp = Math.floor(p.maxHp * 0.37); });
     const u1 = unitOf();
-    ok(u1 && u1.maxHp === 100 && u1.hp === Math.ceil((q.hp * 100) / q.maxHp) && !('grade' in u1) && !('def' in u1) && !('skills' in u1) && !('paid' in u1),
-      '공개된 상대 말: HP 는 100 눈금 비율만 · 등급·스탯·스킬·원장 없음');
+    ok(u1 && u1.maxHp === q.maxHp && u1.hp === q.hp && u1.grade === q.grade && Number.isInteger(u1.grade) && !('def' in u1) && !('skills' in u1) && !('paid' in u1),
+      '#293 공개된 상대 말: 싸운 적 없어도 실제 HP/최대 HP + 등급 · 스탯·스킬·원장 없음 ' + JSON.stringify(u1));
     both(room, (E) => { const p = E.S.pieces.find((x) => x.id === q.id); p.grade = 4; p.maxHp *= 2; p.hp *= 2; });
-    ok(JSON.stringify(unitOf()) === JSON.stringify(u1), '같은 종 · 같은 HP 비율이면 등급(최대 HP)이 달라도 상대 뷰가 한 글자도 같다');
+    const u1b = unitOf();
+    ok(u1b.grade === 4 && u1b.maxHp === q.maxHp && u1b.hp === q.hp && u1b.maxHp === u1.maxHp * 2, '등급·최대 HP 가 바뀌면 상대 뷰도 그 실제 값을 싣는다');
     const opp = JSON.stringify(view(room, 0).units);
-    ok(!/"(grade|coins|bag|soldHp|buffInv|tickets|syn|paid|legend|hpSeen)"/.test(opp), '상대 말 레코드에 등급·경제·시너지 키 없음 · 전투 전에는 hpSeen 없음');
-    // #262 CJ QA(2026-09-27) — 전투에 나서 HP 가 공개된 개체(hpSeen)는 보드에서도 실제 현재 HP/최대 HP. HP 밖 비공개 필드는 그대로 없다.
+    ok(!/"(coins|bag|soldHp|buffInv|tickets|syn|paid|legend|hpSeen)"/.test(opp), '상대 말 레코드에 경제·시너지 키 없음 · 전투 전에는 hpSeen 없음');
+    // #262 CJ QA(2026-09-27) — 전투에 나선 개체(hpSeen)도 같은 실제 값. HP·등급 밖 비공개 필드는 그대로 없다.
     both(room, (E) => { E.S.pieces.find((x) => x.id === q.id).hpSeen = true; });
     const u2 = unitOf();
-    ok(u2 && u2.hpSeen === true && u2.hp === q.hp && u2.maxHp === q.maxHp &&!('grade' in u2) && !('def' in u2) && !('skills' in u2) && !('paid' in u2) && !('cap' in u2) && !('reaperSeal' in u2),
-      '전투 노출(hpSeen) 상대 말: 실제 HP/최대 HP · 등급·스탯·스킬·원장·포획·봉인 없음 ' + JSON.stringify(u2));
-    // 미공개 상대 말은 hpSeen 이 있어도 위치·생존만 — HP·정체·표식 없음
+    ok(u2 && u2.hpSeen === true && u2.hp === q.hp && u2.maxHp === q.maxHp && u2.grade === 4 && !('def' in u2) && !('skills' in u2) && !('paid' in u2) && !('cap' in u2) && !('reaperSeal' in u2),
+      '전투 노출(hpSeen) 상대 말: 실제 HP/최대 HP + 등급 · 스탯·스킬·원장·포획·봉인 없음 ' + JSON.stringify(u2));
+    // 공개된 상대 왕·동료 — 등급이 없다(null). 역할(공격/방어 동료)을 가르는 새 필드도 없다.
+    const lead = S0(room).pieces.find((p) => p.owner === 1 && p.type === 'ally' && p.alive);
+    const lk = room._serializeKnownOpponent(lead);
+    ok(lk.grade === null && lk.hp === lead.hp && lk.maxHp === lead.maxHp && !['def', 'spd', 'skills', 'allyKind', 'subtype', 'role'].some((k) => k in lk),
+      '공개된 상대 동료: 실제 HP · 등급 null · 역할·스탯 필드 없음 ' + JSON.stringify(lk));
+    // 미공개 상대 말은 hpSeen 이 있어도 위치·생존만 — HP·정체·등급·표식 없음
     both(room, (E) => { E.S.pieces.find((x) => x.id === q.id).revealed = false; });
     const u3 = unitOf();
-    ok(u3 && !['hp', 'maxHp', 'name', 'type', 'element', 'rosterId', 'hpSeen'].some((k) => k in u3), '미공개 상대 말: hpSeen 이어도 HP·정체·표식 없음 ' + JSON.stringify(u3));
+    ok(u3 && !['hp', 'maxHp', 'grade', 'name', 'type', 'element', 'rosterId', 'hpSeen'].some((k) => k in u3), '미공개 상대 말: hpSeen 이어도 HP·정체·등급·표식 없음 ' + JSON.stringify(u3));
   }
 
   {
@@ -714,7 +828,7 @@ async function main() {
       }
     }
     ok(withSubj > 0 && leaks.length === 0, `전투 문구·상태 아이콘·떠오르는 수치·전투 로그·기록 피해: 실제 값(${withSubj}줄) · 주어 불명만 '?' ` + JSON.stringify(leaks).slice(0, 400));
-    // 전투 뒤(또는 중) 보드 — 전투에 나선 상대 말은 실제 현재 HP/최대 HP + hpSeen, 나서지 않은 공개 상대 말은 100 눈금
+    // 전투 뒤(또는 중) 보드 — 전투에 나선 상대 말은 실제 현재 HP/최대 HP + hpSeen, #293 나서지 않은 공개 상대 말도 실제 값 + 등급
     for (let n = 0; n < 20 && S0(room).battle; n++) {
       const T = room.engines[0], Bn = T.S.battle, side = T.actorOfPhase();
       H.act(room, side === 'A' ? Bn.attP.owner : Bn.defP.owner, { t: 'act', k: 0 });
@@ -728,12 +842,13 @@ async function main() {
     ok(foeNow.hpSeen === true && fk.hpSeen === true && fk.hp === foeNow.hp && fk.maxHp === foeNow.maxHp
       && (!fu || (fu.hpSeen === true && fu.hp === foeNow.hp && fu.maxHp === foeNow.maxHp))
       && (fu || !room.engines[0].visibleTo(cur, foeNow) || !foeNow.alive)
-      && ou && !('hpSeen' in ou) && ou.maxHp === 100 && ou.hp === Math.ceil((other.hp * 100) / other.maxHp)
-      && !/"(grade|def|spd|skills|cds|cap|paid|reaperSeal|synAtk|coins|bag)"/.test(JSON.stringify(units)),
-    '전투 뒤 보드: 나선 상대 말 실제 HP · 안 나선 공개 말 100 눈금 · HP 밖 비공개 필드 없음 ' + JSON.stringify([fu, fk, ou]).slice(0, 300));
+      && fk.grade === foeNow.grade
+      && ou && !('hpSeen' in ou) && ou.maxHp === other.maxHp && ou.hp === other.hp && ou.grade === other.grade && Number.isInteger(ou.grade)
+      && !/"(def|spd|skills|cds|cap|paid|reaperSeal|synAtk|coins|bag)"/.test(JSON.stringify(units)),
+    '전투 뒤 보드: 나선 상대 말·안 나선 공개 말 모두 실제 HP + 등급(#293) · 그 밖 비공개 필드 없음 ' + JSON.stringify([fu, fk, ou]).slice(0, 300));
   }
   {
-    // 보드 회복 틱 로그 "HP +N" — 전투에 안 나선 상대 말은 100 눈금, 자기 말과 전투 노출(hpSeen) 상대 말은 실제 값(#262)
+    // 보드 회복 틱 로그 "HP +N" — #293 자기 말·상대 말(전투 노출 여부 무관) 모두 실제 값, % 는 어디에도 없다
     const room = startedEco(35);
     const cur = S0(room).current;
     const mineP = S0(room).pieces.find((p) => p.owner === cur && p.type === 'minion');
@@ -749,11 +864,10 @@ async function main() {
     H.act(room, cur, { t: 'endTurn' });
     const mineName = S0(room).pieces.find((x) => x.id === mineP.id), oppName = S0(room).pieces.find((x) => x.id === oppP.id);
     const lines = view(room, cur).log.map((l) => l.msg).filter((m) => /HP \+\d+%? \(회복 자세\)/.test(m));
-    const wantMine = `HP +${gain(mineName)} (회복 자세)`, wantOpp = `HP +${Math.ceil((gain(oppName) * 100) / oppName.maxHp)}% (회복 자세)`;
+    const wantMine = `HP +${gain(mineName)} (회복 자세)`, wantOpp = `HP +${gain(oppName)} (회복 자세)`;
     ok(lines.some((m) => m.includes(mineName.name) && m.includes(wantMine)) && lines.some((m) => m.includes(oppName.name) && m.includes(wantOpp))
-      && !lines.some((m) => m.includes(oppName.name) && m.includes(`HP +${gain(oppName)} `))
-      && lines.some((m) => m.includes(mineName.name) && !m.includes('%')),
-    '보드 회복 로그: 자기 말 실제 값(% 없음) · 상대 말 100 눈금 + % ' + JSON.stringify(lines));
+      && !lines.some((m) => m.includes('%')),
+    '보드 회복 로그: 자기 말·싸운 적 없는 공개 상대 말 모두 실제 값 · % 없음(#293) ' + JSON.stringify(lines));
     const seenName = S0(room).pieces.find((x) => x.id === seenP.id);
     ok(lines.some((m) => m.includes(seenName.name) && m.includes(`HP +${gain(seenName)} (회복 자세)`)) && !lines.some((m) => m.includes(seenName.name) && m.includes('%')),
       '보드 회복 로그: 전투 노출(hpSeen) 상대 말은 실제 값(% 없음) ' + JSON.stringify(lines));
@@ -868,7 +982,7 @@ async function main() {
     ok(stale.type === 'error' && stale.code === 'E_SHOP_STALE' && room.engines[0].S.eco.coins[1] === 9, 'WS: 새 requestId 라도 지난 진열 번호면 E_SHOP_STALE');
     guest.ws.close();
     const wait = await host.next((m) => m.type === 'room_state' && m.data.pause);
-    ok(wait.data.pause[0].seat === 1 && !wait.data.clock.running, 'WS: 단절 확정 즉시 상대에게 연결 대기 푸시 · 시계 정지');
+    ok(wait.data.pause[0].seat === 1 && wait.data.clock.key === 'prep' && wait.data.clock.running, 'WS: 단절 확정 즉시 상대에게 연결 대기 푸시 · #293 준비 시계는 계속 흐른다');
     host.ws.close();
     // 경기 전 항복(취소) — 응답과 상대 푸시 모두 CANCELED
     const h2 = conn('c-eco237b');

@@ -96,6 +96,8 @@ const ovHtml=T=>T.byId("overlayBox").innerHTML;
   msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(7,{owner:0},{owner:1,type:"ally",hp:100,shield:5}),fx:fx([])})});
   T.drain();
   const tokD=T.byId("tok-D"), tokA=T.byId("tok-A");
+  const doc=tokD.ownerDocument, q0=doc.querySelector, emoSeen=[]; // #296: 이모티콘 자리 조회(emoteSync)가 본 #msgBox 내용을 적는다
+  doc.querySelector=s=>{ if(/\.battleTop \.emoSlot/.test(s)) emoSeen.push(T.byId("msgBox").innerHTML); return q0(s); };
   msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(7,{owner:0},{owner:1,type:"ally",hp:63,shield:0},{actSeq:1,phase:1,actor:"D"}),fx:fx([
     {seq:1,src:"msg",battleId:7,round:1,actSeq:1,key:"damageFx",big:false,txt:"37 피해!",fx:{shake:"D",flash:"fire",sig:true,st:{side:"D",text:"-",max:100,shield:0},hp:{side:"D",val:63,max:100},float:{side:"D",sign:"neg",amount:37}}},
     {seq:2,src:"msg",battleId:7,round:1,actSeq:1,key:null,big:false,txt:"🔥 화상!",fx:{st:{side:"D",text:"🔥화상2R"}}},
@@ -110,6 +112,8 @@ const ovHtml=T=>T.byId("overlayBox").innerHTML;
   ok(T.byId("hpfill-D").style.width==="63%"&&T.byId("hptxt-D").textContent===63,"D6 HP 바·숫자 → hpfill-D/hptxt-D");
   ok(!!tokD.querySelector(".dmgfloat .neg")||true,"D7 (float 요소는 1.1초 뒤 제거 — 아래 D8에서 생성 확인)");
   ok(T.byId("msgBox").innerHTML==="37 피해!<br>🔥 화상!","D8 #msgBox 에 그룹 줄이 합쳐져 표시된다(원본 playMsgs)");
+  ok(emoSeen.includes("37 피해!<br>🔥 화상!"),"D8e 메시지 줄을 쓴 뒤 이모티콘 자리를 다시 잰다(줄 수 변화로 전투 창 상단 줄이 움직인다): "+JSON.stringify(emoSeen));
+  doc.querySelector=q0;
   tokA.classList.remove("shake"); tokD.classList.remove("shake");
   msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(7,{owner:0,hp:90},{owner:1,type:"ally",hp:63},{actSeq:2}),fx:fx([
     {seq:3,src:"msg",battleId:7,round:1,actSeq:2,key:"itemFx",big:false,txt:"회복약",fx:{hp:{side:"A",val:90,max:100},float:{side:"A",sign:"pos",amount:10}}}])})});
@@ -252,15 +256,15 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   ok(!/netFxReducedMotion/.test(T.html),"I3 JS 표시 시간은 움직임 설정으로 줄이지 않는다(원본과 같은 시간·문구 유지)");
 }
 
-/* ===== J. #262 (CJ 2026-09-27) 경제방 HP — 전투원은 양쪽 실제 현재/최대(% 없음) · 보드 상대 말은 전투 노출(hpSeen) 전 N%, 뒤 실제 현재 HP ===== */
+/* ===== J. #262 (CJ 2026-09-27) 경제방 HP — 전투원은 양쪽 실제 현재/최대(% 없음) · 보드 상대 말은 정체가 공개되면 실제 현재 HP (#293 2026-10-01 CJ 6: 전투 노출 전 N% 표기 폐지) ===== */
 {
   const T=seated(0);
   const eco={coins:0,tickets:0,buffInv:{},soldHp:{},bag:[]};
   const v=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:5,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:120,shield:30,tideMark:40}),fx:fx([])});
   v.you.eco=eco; msg(T,{v:1,type:"room_state",data:v}); T.drain();
   const h=ovHtml(T);
-  ok(/id="bst-D">🛡30 🌊해일≤40</.test(h)&&/해일 예고 40"/.test(h)&&/id="hptxt-D">50<\/span>\/120</.test(h),"J1 상대 전투원도 실제 현재/최대 HP·방어막·해일 표식(% 없음)");
-  ok(/id="bst-A">🛡5 🌊해일≤7</.test(h)&&/해일 예고 7"/.test(h)&&/id="hptxt-A">15<\/span>\/20</.test(h),"J2 자기 전투원은 실제값 그대로(형식 불변)");
+  ok(/id="bst-D">🛡30 🌊해일≤40</.test(h)&&/해일 예고 40"/.test(h)&&/id="hptxt-D">50<\/span>\/120<span class="shNum"/.test(h)&&/id="shtxt-D">30</.test(h),"J1 상대 전투원도 실제 현재/최대 HP·방어막·해일 표식(% 없음)");
+  ok(/id="bst-A">🛡5 🌊해일≤7</.test(h)&&/해일 예고 7"/.test(h)&&/id="hptxt-A">15<\/span>\/20<span class="shNum"/.test(h)&&/id="shtxt-A">5</.test(h),"J2 자기 전투원은 실제값 그대로(형식 불변)");
   const v2=view(T,{battle:battle(9,{owner:0,hp:15,maxHp:20,shield:4,tideMark:7},{owner:1,type:"ally",hp:50,maxHp:120,shield:25,tideMark:40},{actSeq:1,phase:1,actor:"D"}),fx:fx([
     {seq:1,src:"msg",battleId:9,round:1,actSeq:1,key:"damageFx",big:false,txt:"5 흡수",fx:{st:{side:"D",text:"🛡25 🌊해일≤40",shield:25,max:120}}},
     {seq:2,src:"msg",battleId:9,round:1,actSeq:1,key:null,big:false,txt:"1 흡수",fx:{st:{side:"A",text:"🛡4 🌊해일≤7",shield:4,max:20}}}])});
@@ -271,7 +275,7 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   const opp=(hp,maxHp,extra)=>Object.assign({id:"u-o1",r:4,c:4,owner:1,alive:true,immobile:0,type:"minion",name:"불꽃도마뱀",element:"fire",hp,maxHp,healing:false,rosterId:null},extra||{});
   const board=u=>{ const b=view(T,{units:[u]}); b.you.eco=eco; msg(T,{v:1,type:"room_state",data:b}); T.drain(); const p=T.S.pieces.find(x=>x.owner===1); return T.pcInfoHtml(p)+"|"+T.pcLabel(p); };
   const b1=board(opp(57,100)), b2=board(opp(45,120,{hpSeen:true}));
-  ok(/>57%</.test(b1)&&/HP 57%$/.test(b1),"J5 전투 노출 전 공개 상대 말은 종전 N% 유지: "+b1);
+  ok(/>57</.test(b1)&&/HP 57$/.test(b1)&&!/%|\/100/.test(b1),"J5 전투 노출 전 공개 상대 말도 실제 현재 HP 만(% 표기 폐지 · #293): "+b1);
   ok(/>45</.test(b2)&&/HP 45$/.test(b2)&&!/%|\/120|\/100/.test(b2),"J6 전투 노출(hpSeen) 뒤 보드는 실제 현재 HP 만(% · N/100 없음): "+b2);
 }
 
@@ -305,11 +309,11 @@ function hookAdd(el,cls,fn){ const add=el.classList.add.bind(el.classList); el.c
   play({owner:1,type:"king",bodyFight:false,element:"fire",artRosterId:"L-FAKE"},{owner:0,type:"king"});
   ok(!T.S.battle.fa.legend&&JSON.stringify(clsOf(tokA()))==='["ar-std"]',"K3b 닫힌 목록 밖 종 키는 전설로 되살리지 않는다");
   T.drain();
-  // 내 왕의 전설 대리 출전 — 원시 cap 에는 artRosterId 가 없다. ecoKey(cap) 로 짝지어 자기 공격력을 보존한다
-  const v=view(T,{battle:battle(++bid,{owner:0,type:"king",bodyFight:false,element:null,artRosterId:"L-REAPER"},{owner:1,type:"ally"}),fx:fx([])});
-  v.you.pieces[0].cap={legend:"reaper",element:null,atk:31,skillAtk:9,hp:50,maxHp:50};
+  // #296: 내 왕의 전설 대리 출전 — 공격력은 **서버가 전투 뷰에 실은 값**만 쓴다. 내 말의 cap(다른 수치)에서 되살리지 않는다
+  const v=view(T,{battle:battle(++bid,{owner:0,type:"king",bodyFight:false,element:null,artRosterId:"L-REAPER",atk:31,skillAtk:9},{owner:1,type:"ally"}),fx:fx([])});
+  v.you.pieces[0].cap={legend:"reaper",element:null,atk:77,skillAtk:66,hp:50,maxHp:50};
   msg(T,{v:1,type:"room_state",data:v}); T.drain();
-  ok(T.S.battle.fa.legend==="reaper"&&T.S.battle.fa.atk===31&&T.S.battle.fa.skillAtk===9,"K4 내 전설 대리 출전 = ecoKey(cap) 로 짝지어 자기 공격력 31/9 유지");
+  ok(T.S.battle.fa.legend==="reaper"&&T.S.battle.fa.atk===31&&T.S.battle.fa.skillAtk===9,"K4 내 전설 대리 출전 = 서버 전투 뷰의 공격력 31/9 그대로 (cap 77/66 으로 되살리지 않는다 · #296)");
   // 옛 전투(용)의 시전 이벤트는 더 새 전투(일반 하수인) 스냅샷이 먼저 와도 옛 전투원으로 그린다
   const rd=T.ROSTER.find(r=>r.arch==="guard"), old=++bid;
   msg(T,{v:1,type:"room_state",data:view(T,{battle:battle(old,{owner:1,type:"minion",rosterId:"L-DRAGON",element:null,skills:[{i:0,revealed:false,kind:"attack"}]},{owner:0,type:"king"}),fx:fx([])})}); T.drain();

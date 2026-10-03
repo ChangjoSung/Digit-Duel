@@ -54,6 +54,7 @@ const mbLog=[]; { const mb=T.byId("msgBox"); let v=""; Object.defineProperty(mb,
      회피율 0 은 ① 의 rand() 소비를 바꾸지 않는다. 측정·순서 단언은 그대로다. 보고서 §10. */
   board("pvp"); const a=first(0,"minion"), d=first(1,"minion"); H.place(T,a,8,4); H.place(T,d,6,4); mbLog.length=0;
   d.spd=a.spd; d.grade=a.grade; d.dodge=0;
+  H.synNeutral(T,[a,d]); // 무작위 로스터(가방 전설·왕 속성)의 속공 시너지 synSpd·synDodge 가 D 선턴·회피를 만들지 않게 집계를 0 으로 (#235)
   const t3=now(); T.doMove(a,7,4);
   ok(!!T.S.battle&&T.fxLocked(),"3a 이동 → 접촉 → 전투 진입 (규칙 즉시) · 잠금");
   let n=0; while(T.fxLocked()&&n++<200) await sleep(10);
@@ -104,6 +105,7 @@ const mbLog=[]; { const mb=T.byId("msgBox"); let v=""; Object.defineProperty(mb,
      회피율 0 은 ① 의 rand() 소비를 바꾸지 않는다. 측정·순서 단언은 그대로다. 보고서 §10. */
   board("pvp"); const a7=first(0,"minion"), d7=first(1,"minion"); H.place(T,a7,8,4); H.place(T,d7,6,4);
   d7.spd=a7.spd; d7.grade=a7.grade; d7.dodge=0;
+  H.synNeutral(T,[a7,d7]); // 3절과 같은 이유 — 속공 시너지가 켜지면 D 가 선턴이 되어 __act(0) 이 A 의 방어막을 치지 않는다
   T.doMove(a7,7,4); n=0; while(T.fxLocked()&&n++<200) await sleep(10); // 접촉 → 카운트다운 → 라운드 배너 → 메뉴
   const B7=T.S.battle; ok(!!B7&&!T.fxLocked()&&B7.phase===0,"7a 전투 메뉴 활성 (공격자 A 행동)");
   B7.fd.shield=10; B7.dispShD=10; // 방어자에게 방어막 10 (표시 기준값도 함께 — 실제 경로에서는 방어막 획득 메시지의 applyFx 가 채운다)

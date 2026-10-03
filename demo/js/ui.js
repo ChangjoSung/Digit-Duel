@@ -40,7 +40,7 @@ function applyUiEvents(events){
     if(event.type==="logAppended"){ renderLog(); continue; }
     if(event.type==="battleRedraw"){ battleModal(); continue; }
     if(event.type==="closeOverlay"){ closeModal(); continue; }
-    if(event.type==="gameReset"){ fxReleaseAll(); shopClockStop(); bagClockStop(); turnClockStop(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다 (#263 배치·행동도 같다)
+    if(event.type==="gameReset"){ synHelpClose(false); fxReleaseAll(); shopClockStop(); bagClockStop(); turnClockStop(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다 (#263 배치·행동도 같다)
     if(event.type==="tutHint") continue; // #260 (CJ 2026-09-27): 경기 중 1회 도움말은 제품에서 띄우지 않는다 — Core 는 종전대로 이벤트만 낸다
     if(event.type==="memoPick"){ memoModal(event.piece); continue; }
     if(event.type==="contactSituation"){ situationFx(event.att,event.def); continue; }
@@ -161,7 +161,7 @@ const $=id=>/** @type {any} */(document.getElementById(id)); // #245: DOM 접근
         **새 창을 닫지 못한다** (오래된 확인 버튼이 새 게임 모달을 close 하는 사고 방지).
    hold/holdQ: sim 관전 종료 확인창이 떠 있는 동안 AI **예약 실행**만 잠시 미뤄 두는 표시 제어.
         AI 판단·난수·승패·시간표를 바꾸지 않는다 — "언제 다음 수를 두는가"만 미루고, 취소하면 그대로 이어진다. */
-const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[],screen:"title",goodInfo:/** @type {string|null} */(null)}; // #260 screen: 직전에 그린 화면 — 로비에 들어오는 순간을 한 곳에서 안다
+const UI={entered:false,drawer:null,prep:"roster",ask:null,hold:false,holdQ:[],screen:"title",helpKey:"",swapLock:false,sellLock:""}; // #260 screen: 직전에 그린 화면 — 로비에 들어오는 순간을 한 곳에서 안다
 function uiScreenName(){
   if(!UI.entered) return "title";
   if(!S) return "lobby";
@@ -180,12 +180,17 @@ function uiApply(){
     a.setAttribute("data-screen",sc);
     uiPrepSync();
     a.setAttribute("data-prep",UI.prep);
+    /* #293: 안내 창(시너지 · 상품 설명)은 그 화면의 것 — 화면·준비 단계가 바뀌면(상점 완료 · 준비 만료 · 로비/결과) 함께 닫는다. 같은 화면의 다시 그리기는 닫지 않는다 */
+    const hk=sc+":"+UI.prep+(sc==="board"&&S?":"+S.phase+":"+S.turnCount:""); if(hk!==UI.helpKey){ UI.helpKey=hk; synHelpClose(false); } // #294 보드: 정기 상점·B08·턴(만료 포함)이 바뀌어도 닫는다
+    try{ const rt=$("right"); if(rt&&rt.setAttribute){ if(sc==="board"&&UI.drawer){ rt.setAttribute("role","dialog"); rt.setAttribute("aria-labelledby","drawerTitle"); } else if(rt.removeAttribute){ rt.removeAttribute("role"); rt.removeAttribute("aria-labelledby"); } } }catch(e){}
+    /* #293: 시작 상점 → 배치 → 완료 공통 틀(상단 한 줄 · 진행 막대 · 우측 시너지 열)이 그려지는 화면 — 배치만 바꾸는 표시 속성 */
+    if(sc==="prep"&&S&&S.eco&&!(NET.publicMode&&NET.resuming)) a.setAttribute("data-flow","1"); else if(a.removeAttribute) a.removeAttribute("data-flow");
     if(sc==="board"&&UI.drawer) a.setAttribute("data-drawer",UI.drawer);
     else if(a.removeAttribute) a.removeAttribute("data-drawer");
     /* #238 (2026-09-28 CJ): [기록]·📜 공개 기록·📊 경기 지표 토글은 제품 화면에서 없앴다 — 서랍은 가방 아이콘이 여는 '내 가방·정보' 하나뿐이다.
        엔진의 공개 기록·지표 값(S.log·S.metrics)과 renderLog·renderMetrics 함수는 AI·회귀가 읽으므로 그대로 둔다 */
     const t=$("drawerTitle");
-    if(t) t.textContent="🎒 내 가방 · 정보";
+    if(t) t.textContent=S&&S.eco?`🎒 가방 ${S.eco.bag[NET.mode?NET.me:(S.mode==="pvp"?humanViewer():0)].length}/${ECO.bagMax}`:"🎒 내 가방 · 정보"; // #294 머리줄 = 실제 가방 수 / ECO.bagMax
     /* #122 REVISE(2026-09-10 CJ QA 3): 출전 준비 2단계 탭의 **눌림 표시**를 여기서 함께 맞춘다.
        종전에는 aria-pressed 를 renderSetup() 만 찍었는데 uiPrep() 는 uiApply() 만 부르고 패널을 다시 그리지 않아
        (data-prep 은 바뀌어 내용은 전환되는데) '01 로스터 선택' 이 계속 파랗게 눌린 채 남았다 — CJ 관측 "시스템은 정상, UI 전환은 안 됨".
@@ -204,12 +209,17 @@ function uiApply(){
     }
   }catch(e){}
 }
-window.uiDrawer=function(k){ UI.drawer=(k&&UI.drawer===k)?null:(k||null); uiApply(); try{ fitBoard(); }catch(e){} };
+/* #294 Saturn REVISE: 가방 창(role=dialog)은 열릴 때 창 안(✕)으로 포커스를 옮기고, 어떻게 닫히든(✕ · Esc · 바깥 · ←) 연 가방 버튼으로 돌려준다 — 표시만(전송 · 선택 · seq 무변경) */
+window.uiDrawer=function(k){ const was=UI.drawer; UI.drawer=(k&&UI.drawer===k)?null:(k||null); uiApply(); try{ fitBoard(); }catch(e){}
+  try{ const b=/** @type {any} */(UI.drawer?document.querySelector("#drawerHead button"):was?document.querySelector('#turnBar button.hudIco[aria-haspopup="dialog"]'):null); if(b) b.focus({preventScroll:true}); }catch(e){} };
 window.uiStart=function(){ UI.entered=true; uiApply(); try{ render(); }catch(e){} };
 /* 단계를 바꾸면 말판이 보이거나 숨겨지므로 그 자리에서 보드 배율을 다시 잰다 (숨어 있는 동안에는 폭이 0 이라 잴 수 없다) */
 /* #238 Saturn REVISE: 공개 경제 방 시작 전의 01/02 는 탭·늦은 콜백이 아니라 서버 좌석 뷰(내 시작 상점 완료 여부)가 정한다.
    열린 S01 을 02 로 건너뛰지도, 끝난 S01 을 다시 열지도 않는다. PVE·비경제 공개 방은 null(종전 자유 전환) */
-function uiPrepLock(){ return NET.publicMode&&!NET.started&&NET.economy&&S&&S.eco?(S.eco.shop&&!S.eco.shop.done[0]?"roster":"place"):null; }
+/* #293: 오프라인 경제 판(PVE·핫시트)도 01/02 는 그 기기의 진행 상태(내 시작 상점 완료 여부)가 정한다 — 진행 막대는 탭이 아니다. 비경제 로스터 선택만 종전 자유 전환 */
+function uiPrepLock(){
+  if(NET.publicMode&&!NET.started&&NET.economy&&S&&S.eco) return S.eco.shop&&!S.eco.shop.done[0]?"roster":"place";
+  return !NET.mode&&S&&S.eco&&S.phase==="setup"&&S.eco.shop&&S.eco.shop.kind==="start"?(S.eco.shop.done[S.setupPlayer]?"place":"roster"):null; }
 function uiPrepSync(){ const lk=uiPrepLock(); if(lk) UI.prep=lk; return lk; }
 window.uiPrep=function(step){ UI.prep=(step==="place")?"place":"roster"; uiApply(); try{ fitBoard(); }catch(e){} };
 
@@ -241,7 +251,7 @@ function uiBackSpec(){ // null = 이전 화면이 없다(타이틀) → 버튼�
   if(sc==="prep"){
     if(NET.queued) return {label:"← 대기 취소",title:"매칭 대기를 취소합니다 (배치는 그대로 유지됩니다)"};
     if(uiPubPrestart()) return {label:"← 방 나가기",title:"지금 나가면 이 경기는 바로 취소되고 공식 전적에 남지 않습니다 (먼저 확인을 묻습니다)"};
-    if(UI.prep==="place") return {label:"← 로스터",title:"01 로스터 선택으로 돌아갑니다 (고른 로스터와 배치는 그대로 유지됩니다)"};
+    if(UI.prep==="place"&&!uiPrepLock()) return {label:"← 로스터",title:"01 로스터 선택으로 돌아갑니다 (고른 로스터와 배치는 그대로 유지됩니다)"};
     return {label:"← 로비",title:"출전 준비를 그만두고 로비로 돌아갑니다 (준비한 내용이 있으면 먼저 확인을 묻습니다)"};
   }
   if(sc==="board"){
@@ -268,7 +278,7 @@ window.uiBack=function(){
     /* #238 Saturn REVISE: 공개 방 시작 전(S01·S02 편집·대기 모두)의 ← 는 [방 나가기]와 같은 확인 → leave 명령(서버 즉시 CANCELED · 공식 전적 없음).
        S02 에서 S01 로 돌아가는 화면 이동은 없다(승인 S02) */
     if(uiPubPrestart()){ uiLeaveConfirm(); return; }
-    if(UI.prep==="place"){ uiPrep("roster"); return; }           // 표시 단계만 되돌린다 — 로스터·배치는 S 안에 그대로 남는다
+    if(UI.prep==="place"&&!uiPrepLock()){ uiPrep("roster"); return; }           // 표시 단계만 되돌린다 — 로스터·배치는 S 안에 그대로 남는다
     /* 로스터 단계에서 나가면 준비가 사라진다. 사라질 것이 있을 때만 확인을 묻는다 */
     const dirty=!!(NET.preparing||(S&&(S.roster[0].length||S.roster[1].length||S.pieces.some(x=>x.placed))));
     if(!dirty){ toLobby(); return; }
@@ -313,13 +323,15 @@ function fitBoard(){
     let s=Math.min(avail/376,1);
     /* #286 (2026-09-29 CJ 안드로이드): 대전(S03)은 세로도 맞춘다 — #screenBody 에서 말판 위(HUD·여백)를 뺀 실측 높이/700.
        하한은 칸 32px(32/52) — 그보다 작아질 화면(가로 모드 등)은 #238 처럼 그 크기로 두고 세로 스크롤한다. 배치(prep)는 아래 트레이가 말판에 붙어 폭 맞춤 그대로 */
-    const b=$("screenBody"), app=$("app");
+    const b=$("screenBody"), app=$("app"); let vis=Infinity;
     if(b&&b.getBoundingClientRect&&w.getBoundingClientRect&&app&&app.getAttribute&&app.getAttribute("data-screen")==="board"){
       const h=b.clientHeight-(w.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop);
-      if(h>0) s=Math.min(s,Math.max(h/700,32/52));
+      if(h>0){ s=Math.min(s,Math.max(h/700,32/52)); vis=h/700; }
     }
     if(!(s>0.2)) s=1;
-    w.style.setProperty("--bs",String(Math.floor(s*1000)/1000)); // 내림 — 반올림 1px 로 마지막 행이 잘리지 않게
+    const fl=x=>String(Math.floor(x*1000)/1000); w.style.setProperty("--bs",fl(s)); // 내림 — 반올림 1px 로 마지막 행이 잘리지 않게
+    /* #296 CJ REVISE2: 우측 열(#boardInfo .sideCol · CSS)이 읽는 말판 높이 배율 — 말판 배율 그대로, 단 하한(32px 칸)으로 말판이 화면보다 길어지면 보이는 높이까지(고정 HUD 에 붙은 열의 [말 정보]가 잘리지 않게) */
+    if(b&&b.style&&b.style.setProperty) b.style.setProperty("--sideBs",fl(Math.min(s,vis)));
   }catch(e){}
 }
 if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("resize",()=>{try{fitBoard(); emoteSync();}catch(e){}}); // #238 L03 이모티콘 위치도 다시 잰다
@@ -502,6 +514,15 @@ window.artFail=function(dir,el){
   artScheduleRecovery(dir,artIconFile(dir));
   if(first) artRerender();   // 재그리기는 종전대로 상태가 바뀔 때 한 번만
 };
+/* #292 재접속: 끊긴 동안 떨어진 파일은 회선이 없어서였지 결손의 증거가 아니다. 재접속 유예(60초)가 복구 예산(약 5초)보다 길어
+   재개 뒤에도 gone·failed 로 굳어 새로고침 전까지 이모지로 남았다. 재개 성공 때 그 파일들만 예산을 새로 받아 다시 확인한다 —
+   대상은 이미 실패로 기록된 고정 프리로드 파일뿐이라 새 URL·정체 상관 요청이 없고, 재개 1회당 파일마다 ART_RETRY.max 회로 유한하다 */
+function artResumeRecovery(){
+  const gone=[...ART.gone]; ART.gone.clear();
+  for(const [k,st] of ART.retry) if(!st.timer&&!st.busy) ART.retry.delete(k); // 진행 중인 조회는 그대로 끝나게 둔다
+  for(const k of gone){ const i=k.lastIndexOf("/"); artScheduleFile(k.slice(0,i),k.slice(i+1)); }
+  for(const d of ART.failed) artScheduleRecovery(d,artIconFile(d));
+}
 /* 전투 도트 실패: 지금 보고 있는 전투에서도 즉시 현행 이모지 토큰으로 바꿔 끼운다 — 전투원 자리가 비어 보이지 않는다.
    battleModal() 을 다시 부르지 않으므로 메시지 재생·FX 에 재진입하지 않고, 토큰의 id·위치 클래스는 그대로라 shake·ko·dmgfloat 경로가 유지된다 */
 window.artSpriteFail=function(dir,el){
@@ -595,24 +616,10 @@ function glyphOk(ch){
 /* #245 전투 화면의 DOM 토글 — 표시 계층 소유. core.js 의 전투 모달은 이 이름만 부르고 DOM 을 직접 만지지 않는다.
    마크업·클래스·aria 계약은 분리 전과 글자 단위로 같다 (옮기기만 했다). */
 function uiBattleBox(){ try{ const ob=$("overlayBox"); if(ob&&ob.classList) ob.classList.add("battleBox"); }catch(e){} }
-function uiSkillInfoExpanded(i){ // ⓘ 버튼의 aria-expanded — i 가 null 이면 전부 닫힘 표시
-  try{ const ob=$("overlayBox"); const btn=ob&&ob.querySelectorAll?ob.querySelectorAll(".skillInfoBtn"):[];
-    Array.prototype.forEach.call(btn,b=>{ if(i===null) b.setAttribute("aria-expanded","false");
-      else if(b.getAttribute("onclick")===`window.__skillInfo(${i})`) b.setAttribute("aria-expanded","true"); }); }catch(e){}
-}
-function uiSkillInfoToggle(i,t){ // 같은 ⓘ 를 다시 누르거나 [닫기]로 닫는다
-  const box=$("skillInfoBox"); if(!box||!t) return;
-  const open=!box.classList.contains("hidden")&&box.getAttribute&&box.getAttribute("data-idx")===String(i);
-  uiSkillInfoExpanded(null);
-  if(open){ box.classList.add("hidden"); box.innerHTML=""; if(box.setAttribute) box.setAttribute("data-idx",""); return; }
-  box.innerHTML=`<b>${escAttr(t.label)}</b><div>${escAttr(t.tip)}</div><button type="button" class="skillInfoClose" onclick="window.__skillInfo(${i})">닫기</button>`;
-  if(box.setAttribute) box.setAttribute("data-idx",String(i)); box.classList.remove("hidden");
-  uiSkillInfoExpanded(i);
-}
-function uiBattleMenu(menu){ // 행동창 아래 '← 뒤로'는 하위 메뉴가 열렸을 때만
-  try{ const bb=$("bmenuBack"); if(bb&&bb.classList){ if(menu) bb.classList.remove("hidden"); else bb.classList.add("hidden"); } }catch(e){}
+function uiBattleMenu(menu){ // #296 CJ: 네 하위 패널 모두 패널 안 [돌아가기]로 복귀 — 바깥 '← 뒤로' 없음
   try{ const root=$("bmenu"); if(root){ if(menu) root.classList.add("hidden"); else root.classList.remove("hidden"); }
     for(const k of ["fight","bag","ball","flee"]){ const el=$("bsub-"+k); if(el){ if(k===menu) el.classList.remove("hidden"); else el.classList.add("hidden"); } } }catch(e){}
+  try{ emoteSync(); }catch(e){} // #296: 패널 높이가 바뀌면 가운데 정렬된 창의 상단 줄이 움직인다 — 이모티콘 자리를 다시 잰다
 }
 /* ===== #245 표시 계층이 소유하는 DOM·타이머 =====
    여기 아래 블록은 분리 전 core.js 에 있던 것을 그대로 옮긴 것이다. 규칙 판정은 한 줄도 없고,
@@ -676,8 +683,9 @@ function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·
       const side=fx.st.side, prevSh=B["dispSh"+side]!==undefined?B["dispSh"+side]:0, prevHp=B["dispHp"+side];
       if(prevSh>(fx.st.shield||0)&&prevHp!==undefined&&prevHp>fx.hp.val) stage=fxMs("barStep"); }
     if(fx.st){ const s=$("bst-"+fx.st.side); if(s) s.textContent=fx.st.text;
-      if(fx.st.max){ if(B) B["dispSh"+fx.st.side]=fx.st.shield||0; // #106 5.5 방어막 바 — 항상 즉시 (흡수가 먼저 줄고 HP 는 barStep 뒤)
-        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; } }
+      if(fx.st.max){ if(B) B["dispSh"+fx.st.side]=fx.st.shield||0; const stx=$("shtxt-"+fx.st.side); if(stx) stx.textContent=fx.st.shield||0; // #106 5.5 방어막 바 — 항상 즉시 (흡수가 먼저 줄고 HP 는 barStep 뒤)
+        const sb=$("shfill-"+fx.st.side); if(sb) sb.style.width=Math.max(0,Math.min(100,(fx.st.shield||0)/fx.st.max*100))+"%"; }
+      battleStSync(fx.st.side); }
     if(fx.hp){ const side=fx.hp.side; if(B) B["dispHp"+side]=fx.hp.val;
       const seq=++HPSTAGE[side], bar=$("hpfill-"+side), t=$("hptxt-"+side); // 새 HP 갱신은 같은 side 의 대기 중인 지연 쓰기를 무효화한다 (최신 값이 이긴다)
       const write=()=>{ if(bar) bar.style.width=Math.max(0,fx.hp.val/fx.hp.max*100)+"%"; if(t) t.textContent=fx.hp.val; };
@@ -765,8 +773,9 @@ function render(){
     : S.phase==="shop" ? `— 🛒 ${S.eco.shop.turn}턴 상점` : S.phase==="bagPick" ? "— 🎒 가방 초과" : "";
   renderBoard(); renderSide(); renderTurnBar(); // #238: 지표 서랍이 없어 renderMetrics 는 부르지 않는다(함수·S.metrics 는 회귀용으로 남음)
   try{ uiApply(); renderBoardInfo(); fitBoard(); }catch(e){} // #122 표시 계층 — 화면 상태·상태 줄·보드 스케일
+  try{ unitHelpSync(); }catch(e){} // #294 열린 설명 창의 대상이 죽거나 안 보이면 닫는다
   try{ emoteSync(); }catch(e){} // #262 이모티콘 고정 층 — 단계·연결·간격 표시만
-  try{ turnClockSync(); }catch(e){} // #263 배치 90초·행동 30초 (온라인은 서버 시계 표시만)
+  try{ turnClockSync(); }catch(e){} // #263 행동 30초 · #293 준비 180초 표시 (온라인은 서버 시계 표시만)
   try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
 }
 function renderBoard(){
@@ -789,7 +798,7 @@ function renderBoard(){
         const healVis=!!p.healing&&(viewer===2||p.owner===viewer||p.revealed); // #106 H8: 회복 이펙트는 소유자 화면 항상, 상대 화면은 공개 말만
         /* #122 (CJ 추가 피드백): 이 칸이 실제 수풀이면 표시만 반투명으로 낮춘다 (inbush). 규칙·가시성 판정은 위에서 이미 끝났고
            여기서 바뀌는 것은 없다 — 안 보이는 말은 이 분기에 들어오지도 않는다. */
-        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?"":" hiddenId")+(p.immobile>0?" immob":"")+(healVis?" healing":"")+(ghost?" fx-ghost":"")+(inForest({r})?" inbush":"");
+        chip.className="pc p"+p.owner+(p.owner===viewer?" own":"")+(known?pcGradeCls(p):" hiddenId")+(p.immobile>0?" immob":"")+(healVis?" healing":"")+(ghost?" fx-ghost":"")+(inForest({r})?" inbush":"");
         const g=!known&&S.phase==="play"&&viewer!==2?memoOpt(S.memos[viewer][p.id]):null; // #36 뷰어 전용 추측 — 실제 공개(known)면 실제 렌더 우선
         // #89 확정 말은 종 아이콘(하수인) 또는 같은 메모 이모지 + 정보 행. 미공개 말은 현행 그대로 ? 또는 뷰어 자신의 추측 이모지만 — 종 아이콘·경로를 만들지 않는다
         chip.innerHTML = known
@@ -823,7 +832,7 @@ function renderBoard(){
       }
     }
     const game=S, pick=S.fleePick;
-    cell.onclick=()=>{if(S===game&&S.fleePick===pick) onCell(r,c);}; // #114 오래된 도망 후보 DOM은 새 선택·새 게임에 입력하지 않는다
+    cell.onclick=()=>{ if(S!==game||S.fleePick!==pick) return; const o=ownInfoTarget(r,c); if(o) unitHelpPiece(o.id,null); else onCell(r,c); }; // #294 상대 차례의 내 말 = 설명 창(로컬) · #114 오래된 도망 후보 DOM은 새 선택·새 게임에 입력하지 않는다
     bd.appendChild(cell);
   }
 }
@@ -852,16 +861,20 @@ function renderTurnBar(){
   }
   const sel=S.selected&&!S.selected.tray?S.selected:null;
   const ev=sel?S.events.find(e=>e.r===sel.r&&e.c===sel.c&&!e.consumed&&S.traces[S.current].has(e.r+"_"+e.c)):null;
+  /* #296 CJ REVISE1(2026-10-03): 고른 말의 [하수인 정보]는 행동 줄이 아니라 우측 시너지 열 아래 고정 칸(renderBoardInfo · infoSlotHtml) — 켜고 끌 때 말판 규격이 바뀌지 않게 */
   ico(mk("탐색",()=>netAction({t:"search"}),!(sel&&ev&&!S.mainUsed&&sel.owner===S.current&&canSearchPiece(sel))),"search","탐색"); // #20: 폭탄·함정은 탐색 실행 불가
   const teleDis=S.mainUsed||!teleportAvailable(S.current)||S.teleUsed[S.current]>=BAL.teleMax;
   ico(mk(S.teleport?"텔레포트 취소":"🌀 텔레포트",()=>netAction({t:"tele"}),teleDis),S.teleport?"close":"warp",S.teleport?"취소":"텔레포트"); // #14 스왑형 · #114 경기당 횟수 제한 없음 (주 행동 1회 소모)
   ico(mk("🌿 회복",()=>netAction({t:"heal",id:sel?sel.id:null}),!(sel&&canHeal(sel))),"heal","회복"); // #106 T2 회복 주 행동 — 자기 말 선택·하수인/동료/왕 (#114: 만피 말도 '기다리기'로 지정 가능)
   if(S.eco){ /* #238 (GDD-23 8.2 · BAT 보드 하단 줄): 상점(닫힘 = Dim + 다음 오픈까지 남은 턴 · 누를 수 없음) · 가방(내 가방·정보 서랍) */
     const me=NET.mode?NET.me:(S.mode==="pvp"?S.current:0), nx=ECO.shopTurns.find(t=>t>S.turnCount), left=nx!==undefined?nx-S.turnCount:null;
-    const sh=document.createElement("span"); sh.className="hudIco dim"; sh.setAttribute("role","img"); sh.setAttribute("aria-label",`상점 — ${left!==null?`${left}턴 뒤 열림`:"더 열리지 않음"}`);
-    sh.innerHTML=`${gi("bag")}<span class="num">${left!==null?left:"–"}</span><span class="lb">상점</span>`; tb.appendChild(sh);
+    /* #294: 닫힌 상점 = '상점' + 'N턴 후 열림' 두 줄(숫자 배지 없음 · 누를 수 없음). N 은 종전 계산 그대로, 더 없으면 '예정 없음' */
+    const open=left!==null?`${left}턴 후 열림`:"예정 없음";
+    const sh=document.createElement("span"); sh.className="hudIco dim"; sh.setAttribute("role","img"); sh.setAttribute("aria-label",`상점 — ${open}`);
+    sh.innerHTML=`${gi("bag")}<span class="tx"><span class="lb">상점</span><span class="sub">${open}</span></span>`; tb.appendChild(sh);
     const bg=document.createElement("button"); bg.type="button"; bg.className="hudIco"; bg.setAttribute("aria-label",`가방 보기 (${S.eco.bag[me].length}/${ECO.bagMax})`);
-    bg.innerHTML=`<i class="gi emo" aria-hidden="true">🎒</i><span class="num">${S.eco.bag[me].length}</span><span class="lb">가방</span>`; bg.onclick=()=>uiDrawer("side"); tb.appendChild(bg); // 정보 보기 — 규칙 입력이 아니다(잠금 무관)
+    bg.setAttribute("aria-haspopup","dialog");
+    bg.innerHTML=`<i class="gi emo" aria-hidden="true">🎒</i><span class="tx"><span class="lb">가방 ${S.eco.bag[me].length}/${ECO.bagMax}</span></span>`; bg.onclick=()=>uiDrawer("side"); tb.appendChild(bg); // 정보 보기 — 규칙 입력이 아니다(잠금 무관)
   }
   const forced=S.forcedTargets&&S.forcedTargets.length>0;
   /* #114 CJ 선택 A: 평소 [주 행동 생략]·[턴 종료] 버튼은 없다 — 할 수 있는 행동이 없으면 자동으로 넘어간다(autoEndCheck).
@@ -876,6 +889,10 @@ function renderTurnBar(){
 /* #114 도망 교환 선택의 입력 주인이 이 화면의 사람인가 — PVE: 사람(0) · 핫시트: 기기 공유(소유자 시점으로 전환) · 온라인: NET.me */
 function renderSide(){
   const sp=$("sidePanel");
+  { const old=$("left").querySelector(".readyPop"); if(old) old.remove(); } // #293 말판 래퍼로 옮겨 둔 준비 팝업은 매 렌더에 치운다 — 아래 준비 대기 분기와 #295 상점 완료 대기만 다시 붙인다
+  /* #295 (2026-10-02 CJ): 턴 상점 완료 대기 = 경기 전 준비 대기와 같은 팝업(readyPopHtml) · 같은 자리(#left 가운데). 버튼 없음 — 완료는 되돌릴 수 없다.
+     "상대 구매 중"은 서버가 확정한 내 완료 + 단계 shop 지속에서만 말한다(상대 완료·시계 필드를 만들지 않는다). 단절 정지 중에는 그 사실만 말한다 */
+  { const w=shopWaitPopHtml(); if(w){ const t=document.createElement("div"); t.innerHTML=w; const pop=t.querySelector(".readyPop"); if(pop) $("left").appendChild(pop); } }
   /* #217 실브라우저 E2E로 발견: 이 재접속 배너가 renderSetup() 안에만 있어 배치(setup) 단계에서 끊겼을
      때만 보였다 — 실제 대국 중(play)에 끊기면 화면이 그냥 마지막 상태에 멈춰 아무 피드백이 없었다(진짜
      클라이언트 버그, 테스트 오탐과는 별개). phase 분기보다 먼저 확인해 어느 단계에서 끊겨도 동일하게 뜨게
@@ -904,6 +921,7 @@ function renderSide(){
       :NET.publicMode&&S.metrics.winType==="forfeit"?(viewerIsOwner(S.winner)?"상대 연결 종료 · 몰수승":"연결 종료 · 몰수패")
       :S.mode==="sim"?pname(S.winner)+" 승리":"";
     /* 2026-09-28 CJ 8: 온라인 종료 뒤에는 방을 부수지 않고 같은 멀티 대기방(L03)으로 — [방으로 돌아가기](서버 lobby_return · 누르면 잠금, 서버가 받아 준 뒤에만 화면이 바뀐다).
+       #295 CJ 2026-09-30 REVISE: 결과 화면에는 [내보내기]가 없다(방장·참가자 모두 · 내보내기는 방 대기에서만).
        결과 카드 아래에는 최종 공개 말판(#left — FINISHED 뷰가 공개한 말만 · CSS 로 순서만 바꾼다). 오프라인은 종전 [로비로 돌아가기] */
     const back=uiPubFinished()?`<button class="primary big" onclick="this.disabled=true;netReturnToRoom()">방으로 돌아가기</button>`:`<button class="primary big" onclick="toLobby()">로비로 돌아가기</button>`;
     sp.innerHTML=`<h2 class="srOnly">경기 종료</h2>${why?`<p class="resultWhy">${why}</p>`:""}${resultSeatsHtml()}
@@ -911,20 +929,11 @@ function renderSide(){
     return;
   }
   const p = NET.mode?NET.me:(S.mode==="pvp"?humanViewer():0); // 온라인: 사이드 패널은 항상 내 정보 · #236 핫시트 상점·B08 은 그 화면 주인
-  let h=`<h2>${pname(p)}</h2>
-  <div class="row">${S.pkgs?`<span class="badge">🎁 ${S.pkgs[p].itemGift}</span><span class="badge">✨ ${S.pkgs[p].battleBuff}</span>`:""}
-  <span class="badge">전투 ${S.battlesUsed}/2</span>
-  ${S.reserve[p]?`<span class="badge">예비 하수인(${ELEM_KO[S.reserve[p].element]}) HP ${S.reserve[p].hp}/${S.reserve[p].maxHp}</span>`:""}
-  <span class="badge">${S.mainUsed?"주 행동 완료":"주 행동 가능"}</span></div>
-  ${ownGridHtml(p)}`;
-  if(S.eco) h+=`<div class="row"><span class="badge cnb" data-n="${S.eco.coins[p]}">🪙 ${S.eco.coins[p]}</span></div>
-    <div class="row">${[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; return `<span class="badge">🎒 ${u?`${u.name} ${ecoStars(u.grade)} HP ${u.hp}/${u.maxHp}`:"빈칸"}</span>`; }).join("")}</div>`; // #236 소유자 전용 (7.9) // #121 계약 2.1: 보유 상한 없음 — 분모를 쓰지 않는다
-  if(S.selected&&!S.selected.tray&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)){ // 온라인: 상대가 선택한 말 정보(HP 등) 비노출
-    const s=S.selected;
-    h+=`<h2>선택: ${idLabel(p,s)}</h2><div class="status">HP ${s.hp}/${s.maxHp}${s.immobile>0?` · 이동 불가 ${s.immobile}턴`:""}${s.cap?` · 포획 하수인(${ELEM_KO[s.cap.element]}) HP ${s.cap.hp}/${s.cap.maxHp}`:""}${s.healing?` · 🌿회복 자세(턴마다 +${Math.round(s.maxHp*BAL.healPostPct)})`:""}</div>
-    ${s.skills?`<div class="status">${s.skills.map((id,i)=>skillNameKo(id,s.element)+(s.cds[i]?`(쿨${s.cds[i]})`:"")).join(" · ")}</div>`:""}
-    <small>이동: 파란 칸 · 전투: 빨간 칸 클릭</small>`;
-  } else if(!isAI(S.current)) h+=`<small>자기 말을 클릭해 선택하세요.</small>`;
+  /* #294 가방 창(서랍): 카드 3칸(실제 가방 + 빈칸 '+' 장식 — 누를 수 없고 명령 없음) → 내 보유 아이템(실제 수량 · ×0 포함). 이 창에는 사용·교체·판매·구매가 없다 —
+     카드 그림 = 읽기 전용 설명. 2026-10-02 CJ REVISE: 이름 · 패키지/전투/주 행동/코인 배지 · 선택 요약 · 기본 안내 문장은 없앴다(선택 말 값은 설명 창, 차례·코인·전투는 상단).
+     조건부 안내(텔레포트 · 도망 교환 · 강제 전투)와 추측 메모는 아이템 아래 종전 그대로. 소유자 전용(7.9) */
+  let h=(S.eco?`<div class="slotGrid bag" role="list" aria-label="가방 하수인 ${S.eco.bag[p].length}/${ECO.bagMax}">${[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; return u?unitCard(u,{attr:`role="listitem"`,info:`unitHelpBag(${u.uid},this)`}):EMPTY_SLOT; }).join("")}</div><h3>${gi("potion")} 아이템</h3>`:"")
+    +ownGridHtml(p);
   /* #131 (v0.4.7 CJ 2026-09-10): 텔레포트 2단계 안내 문구는 계약 문자열 그대로 쓴다.
      함정에 걸린 말(immobile>0)은 **양끝 어느 쪽으로도** 고를 수 없고 실행도 되지 않는다 (함정 유닛 자체를 막는 규칙이 아니다 —
      막히는 것은 "함정에 걸려 이동 불가 상태인 말"이다). 도망 교환·강제 밀기에는 이 제한을 확장하지 않는다. */
@@ -950,32 +959,56 @@ function renderSide(){
    내용은 전부 renderSide 가 이미 같은 뷰어 기준으로 계산해 둔 값의 요약이라 새 정보를 만들지 않는다 (비공개 경계 동일). */
 function renderBoardInfo(){
   const el=$("boardInfo"); if(!el) return;
+  /* #295 상점 완료 대기: 시트가 닫힌 말판 위에도 같은 상단 한 줄 — 신원 + ⚙(기권 · 기존 확인 창 · 단절 중 잠금). 내 상점 시계·상대 정보는 없다 */
+  if(shopWaiting()){ el.innerHTML=topBarHtml(NET.me,`<b class="who">${S.eco.shop.turn}턴 상점</b>${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(netResignBtn())}`); return; }
   if(!S||S.phase!=="play"){ el.innerHTML=""; return; }
   const p=NET.mode?NET.me:(S.mode==="pvp"?S.current:0);
   const mineTurn=!isAI(S.current)&&(!NET.mode||S.current===NET.me);
-  const sel=(S.selected&&!S.selected.tray&&mineTurn)?S.selected:null;
-  const who=isAI(S.current)?`🤖 ${pname(S.current)}`:fxTurnLabel(S.current,false);
-  const info=sel?`${idLabel(p,sel)} · HP ${sel.hp}/${sel.maxHp}`
-    :(!mineTurn?"상대가 행동을 선택하고 있습니다":(S.mainUsed?"주 행동 완료":"자기 말을 선택하세요"));
-  /* #238 (2026-09-28 CJ 시각 REVISE · BAT 보드 상단): ⏱ 남은 시간 · 🔄 현재 턴 · 🪙 재화 — 아이콘 + 숫자. 긴 안내는 한 줄(.sel)만.
-     상점·가방 아이콘은 하단 행동 줄(renderTurnBar)로 옮겼고, 옛 [상세 ›] 글자 버튼은 없앴다(가방 아이콘이 같은 서랍을 연다) */
-  const me=NET.mode&&NET.players?NET.players[NET.me]:null, op=NET.mode&&NET.players?NET.players[1-NET.me]:null;
-  el.innerHTML=`<span class="hudVs">${gi("profile")}<b>${escAttr(me||pname(p))}</b><small>vs</small><b>${escAttr(op||pname(1-p))}</b></span>`
-    +`<span class="hudStat time" title="남은 시간"><span id="actClock" role="timer">${turnClockText("act")}</span></span>`
-    +`<span class="hudStat" aria-label="${S.turnCount+1}턴">${gi("refresh")}${S.turnCount+1}${isBurning()?" 🔥":""}</span>`
-    +(S.eco?`<span class="hudStat coin" aria-label="재화 ${S.eco.coins[p]}">${gi("coin")}${S.eco.coins[p]}</span>`:"")
-    +`<span class="hudStat" aria-label="전투 ${S.battlesUsed}/2">${gi("battle")}${S.battlesUsed}/2</span>`
-    +(S.eco?hudSynHtml(p):"")
-    +`<span class="sel who">${who} · ${info}</span>`;
+  const who=isAI(S.current)?"AI 차례":mineTurn?"내 차례":"상대 차례";
+  const sel=(S.selected&&!S.selected.tray&&mineTurn)?S.selected:null; // 긴 안내 문장은 화면에서 빼고 차례 문구의 접근성 이름에만(종전 문자열 그대로)
+  const info=sel?`${idLabel(p,sel)}${hpLabel(sel)}`:(!mineTurn?"상대가 행동을 선택하고 있습니다":(S.mainUsed?"주 행동 완료":"자기 말을 선택하세요"));
+  /* #294 (2026-10-02 CJ REVISE) 메인 상단: ① 공용 상단 한 줄(준비 화면과 같은 부품) — 왼쪽 절반 신원, 오른쪽 절반 짧은 차례 문구 · 감정표현 자리 · ⚙
+     ② 상태 네 칸(남은 시간 · 턴 · 내 코인 · 전투 n/2 — 전부 현행 값, 상대 코인 없음) ③ 우측 내 시너지 열. 선택 말 [설명]은 행동 줄(renderTurnBar)로 갔다. 시간 칸은 비어도 자리를 지킨다 */
+  el.innerHTML=topBarHtml(p,`<b class="who" aria-label="${escAttr(who+" · "+info)}">${who}</b>${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(`<button type="button" class="danger" onclick="uiBack()">나가기 (기권 확인)</button>`)}`)
+    +`<div class="hudStats"><span class="hudStat time" title="남은 시간"><small>시간</small><span id="actClock" role="timer">${turnClockText("act")}</span></span>`
+    +`<span class="hudStat" aria-label="${S.turnCount+1}턴"><small>턴</small><span>${gi("refresh")}${S.turnCount+1}${isBurning()?" 🔥":""}</span></span>`
+    +(S.eco?`<span class="hudStat coin" aria-label="재화 ${S.eco.coins[p]}"><small>코인</small><span>${gi("coin")}${S.eco.coins[p]}</span></span>`:"")
+    +`<span class="hudStat" aria-label="전투 ${S.battlesUsed}/2"><small>전투</small><span>${gi("battle")}${S.battlesUsed}/2</span></span></div>`
+    +`<div class="sideCol">${S.eco?synRailHtml(p):""}${infoSlotHtml(p,mineTurn)}</div>`;
 }
-/* #238 (BAT 보드 '시너지' 칸): 내 시너지 요약 — 소유자 값(Core synView, 전투 칩·결과와 같은 함수)에서 달성한 왕국·아키타입만 아이콘 + 칸 수. 상대 값은 읽지 않는다 */
-function hudSynHtml(p){
-  try{ const v=synView(p,S);
-    const on=V2_ELEM_ORDER.filter(k=>v.stage&&v.stage[k]>=0).map(k=>[k,v.el[k],ELEM_KO[k]])
-      .concat(Object.keys(V2_ARCH_SYN).filter(k=>v.arch[k]>=V2_ARCH_STEPS[0]).map(k=>[k,v.arch[k],ARCH_KO[k]]));
-    return on.length?`<span class="hudSyn" role="group" aria-label="내 시너지">${on.map(x=>synChipHtml(x[0],x[1],true)).join("")}</span>`:""; // CJ 6: 칩마다 누르면 단계별 효과 안내
-  }catch(e){ return ""; }
+/* #296 CJ REVISE1(2026-10-03): 우측 시너지 열 아래 **늘 같은 자리 · 같은 크기 · 같은 글자**의 버튼. 내 차례에 고른 살아 있는(놓인) 내 말일 때만 켜지고(읽기 전용 · 전송 0 — unitHelpPiece),
+   그 밖에는 꺼진 채 자리를 지킨다. 상대 차례의 내 말 탭은 종전대로 바로 설명 창(ownInfoTarget). 종 이름 · HP 는 접근성 이름에만.
+   CJ REVISE2(2026-10-03): 글자 '말 정보' · 폭탄 · 함정(왕 · 동료 포함)도 같은 unitHelpPiece 창 — HP 는 유닛(하수인 · 왕 · 동료)만 */
+function hpLabel(x){ return pcMeta(x).unit?` · HP ${x.hp}/${x.maxHp}`:""; }
+function infoSlotOwn(p,mineTurn){ const s=!infoLocked()&&mineTurn&&S.selected&&!S.selected.tray?S.selected:null; return s&&s.owner===p&&s.alive!==false&&s.placed!==false?s:null; }
+function infoSlotHtml(p,mineTurn){ const own=infoSlotOwn(p,mineTurn);
+  return `<button type="button" class="infoBtn" aria-haspopup="dialog" ${own?`aria-label="${escAttr(`${idLabel(p,own)}${hpLabel(own)} — 정보`)}" onclick="infoSlotOpen(${escAttr(JSON.stringify(String(own.id)))},this)"`:`disabled aria-label="말 정보 — 내 차례에 내 말을 고르면 열립니다"`}>말 정보</button>`; }
+/* 누른 순간 다시 판정 — 그려 둔 뒤 재생 · 연출 · 창 · 선택 변경이 있었으면(오래된 DOM) 아무 일도 없다. 읽기 전용 · 전송 0 */
+function infoSlotOpen(id,from){ if(!S) return; const own=infoSlotOwn(NET.mode?NET.me:(S.mode==="pvp"?S.current:0),!isAI(S.current)&&(!NET.mode||S.current===NET.me));
+  if(own&&String(own.id)===String(id)) unitHelpPiece(own.id,from); }
+/* ===== #294 공용 신원 부품 — 준비(상점 · 배치 · 완료)와 메인이 같은 함수 · 같은 마크업 =====
+   보는 사람 기준: 왼쪽 = 나, 오른쪽 = 상대(좌석 번호로 색을 정하지 않는다). 온라인 이름·대표는 서버가 준 NET.players · NET.reps(network.js 가 규칙 검사)만 —
+   대표가 없으면 중립 아이콘(lobbyRepHtml 은 모르는 ID 를 기본 종으로 그리므로 부르지 않는다), 이름이 없으면 나/상대만.
+   오프라인은 계정 대표가 없다 — 중립 아이콘 + pname(). 왕·동료 그림 · 좌석 토큰 · 내부 ID 로 대신하지 않는다.
+   2026-10-02 CJ REVISE: 테두리는 대표가 없어도 **항상** 내 파랑 / 상대 빨강(신원 칸 · 표식 창 · 진행 표식 공통). 이름 자리는 한 줄(닉네임, 없으면 나/상대) — 전체 이름은 접근성 이름과 표식 창 */
+function idSeat(rel,p){
+  const on=NET.publicMode||NET.mode, seat=on?(rel?1-NET.me:NET.me):(rel?1-p:p);
+  return {lb:rel?"상대":"나",nm:on?(NET.players&&NET.players[seat])||null:pname(seat),rep:on&&NET.reps&&lobbyRepOk(NET.reps[seat])?NET.reps[seat]:null};
 }
+function idFaceHtml(rep,cls){ return rep?lobbyRepHtml(rep,cls):`<span class="repFace ${cls} nt">${gi("profile")}</span>`; }
+function idHeadHtml(p){
+  const one=rel=>{ const d=idSeat(rel,p);
+    return `<button type="button" class="idSeat ${rel?"op":"me"}" aria-haspopup="dialog" aria-label="${escAttr(d.lb+(d.nm?" · "+d.nm:""))} — 프로필 보기" onclick="idHelp(${rel},${p},this)">${idFaceHtml(d.rep,"xs")}<b class="idNm">${escAttr(d.nm||d.lb)}</b></button>`; };
+  return `<div class="idHead">${one(0)}<small class="idVs" aria-hidden="true">VS</small>${one(1)}</div>`;
+}
+/* 공용 상단 한 줄 — 왼쪽 절반 = 신원(나 VS 상대), 오른쪽 절반 = 그 화면의 도구(준비: 시계 · 코인 · ⚙ / 메인: 차례 · 감정표현 자리 · ⚙). 따로 떨어진 신원 줄 · 도구 줄은 없다 */
+function topBarHtml(p,tools){ return `<div class="topBar">${idHeadHtml(p)}<div class="tbTools">${tools}</div></div>`; }
+/* 신원 표식 — 대표 그림 + 나/상대 + 전체 이름뿐(읽기 전용 · 전송 0). 값은 누르는 순간의 NET 에서 읽는다 — 이전 경기 값을 들고 있지 않는다 */
+function idHelp(rel,p,from){ const d=idSeat(rel,p);
+  synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${d.lb}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
+    <div class="idCard ${rel?"op":"me"}">${idFaceHtml(d.rep,"sm")}<b>${escAttr(d.nm||d.lb)}</b></div>`,from); }
+/* ⚙ 설정 — 그 화면의 기존 나가기 진입점(동작 · 확인 창 불변) + 사운드 · 환경설정 자리(비활성 · 동작/저장 없음) */
+function gearHtml(leave){ return `<details class="flowGear"><summary aria-label="설정">${gi("gear")}</summary><div class="menu"><b>설정</b>${leave}<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공</button></div></details>`; }
 function renderSetup(sp){
   const p=S.setupPlayer;
   if(NET.queued){ // 온라인: 배치 완료 → 매칭 대기
@@ -991,17 +1024,26 @@ function renderSetup(sp){
   }
   // (재접속 배너는 renderSide() 최상단으로 옮겼다 — 배치 단계만이 아니라 대국 중 단절에도 뜨도록. §위 주석 참조)
   /* #238 (GDD-23 2.2 · 매트릭스 S02): S01 시간 초과로 서버가 자동 구매·배치·준비까지 끝낸 좌석(준비 의사 없이 서버 준비 완료)은
-     배치 화면·배치 90초 대신 이 대기 화면에 "자동 배치 완료" 를 보인다. [준비 취소]로 다시 편집하는 길은 그대로다. */
+     배치 화면 대신 이 대기 화면에 "자동 배치 완료" 를 보인다. [준비 취소]로 다시 편집하는 길은 그대로다. */
   const autoReady=NET.publicMode&&!NET.started&&!NET.readyWanted&&NET.myReady&&!!(S.eco&&S.eco.shop&&S.eco.shop.done[0]);
   if(NET.publicMode&&!NET.started&&(NET.readyWanted||autoReady)){ // #217/#218 공개 방: 준비 의사 이후 — 표시는 서버가 확정한 값(room_state state·seats.ready)만 쓴다
     /* 상대 입장 대기(OPEN)와 상대 준비 대기(SETUP)를 서버 상태로 구별한다(Earth/lobby-guide.md). 내 준비는 서버가
        seats.ready 로 확정하기 전까지 "요청 중"이다 — 두 참가자 준비 뒤에도 서버 시작 상태 전에는 로컬로 시작하지 않는다. */
     const opp=NET.roomState==="OPEN"?"입장 대기":NET.peerReady?"준비 완료":"준비 중";
     const line=(autoReady?"시간이 지나 서버가 남은 말을 사고 자동 배치했습니다(자동 배치 완료). ":"")+(NET.roomState==="OPEN"?"상대를 기다리는 중…":!NET.myReady?"서버에 준비를 알리는 중…":NET.peerReady?"두 참가자가 준비했습니다. 서버가 대국을 시작하는 중…":"상대의 준비를 기다리는 중…");
+    /* #293 완료(대기): 경제 판은 같은 상단·진행 막대 아래에 현행 대기 내용만 — [준비 취소]는 진행 버튼 자리, [방 나가기]는 ⚙. 비경제 방은 종전 한 줄 그대로 */
+    const cancel=`${pauseLockOpen("준비 취소가")}<button type="button"${S.eco?` class="go"`:""} onclick="netRoomReady(false)">준비 취소</button>${pauseLockClose()}`;
+    /* #293 (2026-10-01 CJ 2): 경제 판의 하단 대기 영역(방 이름·대기 문장·준비 배지)은 없앴다 — 보드 중앙 상태 팝업 하나.
+       [준비 취소]는 팝업이 아니라 기존 우상단 진행 버튼 자리 하나뿐이고(중복 없음), 누르면 서버가 준비를 풀어 팝업이 닫히고 다시 배치한다. 시계는 계속 흐른다 */
+    if(S.eco){ const wait=NET.myReady&&!NET.peerReady&&NET.roomState!=="OPEN";
+      sp.innerHTML=flowHeadHtml(p,cancel)+readyPopHtml(wait?"준비 완료 · 상대 기다리는 중…":line,wait&&autoReady?"시간이 지나 서버가 남은 말을 사고 자동 배치했습니다(자동 배치 완료).":"");
+      /* 말판 중앙 고정: 팝업 노드를 말판 래퍼 #left(position:relative)로 옮긴다 — 위치는 CSS 가 그 상자의 가운데로 잡고, 말판과 함께 스크롤한다 */
+      const pop=sp.querySelector(".readyPop"); if(pop) $("left").appendChild(pop);
+      return; }
     sp.innerHTML=`<h2 id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</h2>
       <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">${line}</p>
       <div class="row"><span class="badge">내 준비: ${NET.myReady?"<span class=\"netOkDot\" aria-hidden=\"true\">●</span> 완료":NET.roomState==="OPEN"?"상대 입장 후 전송":"요청 중…"}</span><span class="badge">상대: ${NET.peerReady?"<span class=\"netOkDot\" aria-hidden=\"true\">●</span> ":""}${opp}</span>${lobbySeatRepHtml(1-NET.me)}</div>
-      <div class="row netRoomActions">${pauseLockOpen("준비 취소가")}<button type="button" onclick="netRoomReady(false)">준비 취소</button>${pauseLockClose()}<button type="button" class="danger" onclick="uiLeaveConfirm()">방 나가기</button></div>`;
+      <div class="row netRoomActions">${cancel}<button type="button" class="danger" onclick="uiLeaveConfirm()">방 나가기</button></div>`;
     return;
   }
   if(NET.publicMode&&!NET.started&&NET.economy&&!S.eco){ // #237 경제 방: 시작 상점은 서버 좌석 뷰로 열린다 — 그 전(상대 입장 대기)에 무료 로스터를 그리지 않는다
@@ -1009,6 +1051,16 @@ function renderSetup(sp){
       :`<h2 id="netRoomTitle">${escAttr(NET.roomName||("방 "+NET.roomId))} <small>#${escAttr(String(NET.roomId))}</small></h2>
       <p style="margin:8px 0;color:var(--dim)" role="status" aria-live="polite">시작 상점을 여는 중…</p>
       <div class="row netRoomActions"><button type="button" class="danger" onclick="uiLeaveConfirm()">방 나가기</button></div>`;
+    return;
+  }
+  if(S.eco){ /* #293 S01 → 배치: 단계는 탭이 아니라 내 시작 상점 완료 여부(uiPrepLock)가 정한다. 진행 버튼 = 기존 shopDone · 기존 준비(setupDone) 그대로 */
+    uiPrepSync();
+    const done=!S.eco.shop||!!S.eco.shop.done[p], paused=netPaused(), empty=done?0:ecoEmptyField(S,p).length, left=S.pieces.filter(x=>x.owner===p&&!x.placed).length;
+    const why=done?(left?`말 ${left}개를 더 배치하세요`:""):(empty?`필드 빈칸 ${empty}개를 채우세요`:"");
+    const btn=`<button type="button" class="primary go" onclick="${done?"setupDone()":"window.__shop('done')"}" ${why||paused?"disabled":""}${why?` title="${why}"`:""}>${done?"배치 완료":"다음 단계"}`
+      +`<span class="srOnly">${why?` (${why})`:done&&NET.publicMode?" → 준비 완료":""}</span></button>`;
+    sp.innerHTML=flowHeadHtml(p,btn)+`<section class="prepStep" data-step="roster">${done?"":shopHtml(p)}</section><section class="prepStep" data-step="place">${done?trayHtml(p):""}</section>`;
+    prepClockStart(); // #293 준비 180초 — 경기당 한 번(상점·배치·차례 넘김에 다시 걸지 않는다 · 온라인은 서버 시계)
     return;
   }
   const sel=S.roster[p], rosterDone=sel.length===6, lk=uiPrepSync();
@@ -1019,12 +1071,9 @@ function renderSetup(sp){
   let h=(NET.publicMode&&!NET.started?`<div class="netRoomBar"><b id="netRoomTitle">공개 방 #${escAttr(String(NET.roomId))}</b>
     <span class="badge" role="status" aria-live="polite">상대: ${NET.roomState==="OPEN"?"입장 대기":NET.peerReady?"준비 완료":"준비 중"}</span>${lobbySeatRepHtml(1-NET.me)}
     <button type="button" class="danger" onclick="uiLeaveConfirm()">방 나가기</button></div>`:"")+`<div class="prepTabs">
-    <button type="button" data-prep-step="roster" aria-pressed="${UI.prep==="roster"}"${lk==="place"?" disabled":""} onclick="uiPrep('roster')">01 ${S.eco?"시작 상점":"로스터 선택"} ${sel.length}/6</button>
+    <button type="button" data-prep-step="roster" aria-pressed="${UI.prep==="roster"}"${lk==="place"?" disabled":""} onclick="uiPrep('roster')">01 로스터 선택 ${sel.length}/6</button>
     <button type="button" data-prep-step="place" aria-pressed="${UI.prep==="place"}"${lk==="roster"?" disabled":""} onclick="uiPrep('place')">02 비공개 배치 ${14-unplaced.length}/14</button></div>
   <section class="prepStep" data-step="roster">`;
-  if(S.eco){ // #236 S01 — 무료 로스터 선택 대신 🪙10 으로 ⭐1 6명을 산다 (8.1 ⑪)
-    h+=S.eco.shop.done[p]?`<h2>🛒 시작 상점 완료</h2><small>02 비공개 배치로 넘어가세요.</small>`:shopHtml(p);
-  } else {
   h+=`<h2>${NET.preparing?"🌐 온라인 대전 — 내":pname(p)} 로스터 선택 (${sel.length}/6)</h2>
   <small>30종 중 6종을 중복 없이 선택 (카드 클릭 → 정보 팝업에서 선택). 속성은 종에 고정 · 경기 시작은 모두 ⭐1(1차 기본기).</small>`;
   for(const el of V2_ELEM_ORDER){ // #234 (GDD-23 6.3): 5속성 × 6아키타입
@@ -1034,7 +1083,6 @@ function renderSetup(sp){
         <b class="el-${rd.element}">${rd.name}</b>
         <small>${ELEM_KO[rd.element]}·${ARCH_KO[rd.arch]} · HP${rd.hp} 공${rd.atk} · ${speciesSkills(rd.id,4).map(s=>SKILLS[s].ko).join("·")}</small></div>`;
     h+=`</div>`;
-  }
   }
   h+=`</section><section class="prepStep" data-step="place">
   <h2>비공개 배치 (${14-unplaced.length}/14) <span class="badge" id="placeClock">${turnClockText("place")}</span></h2>
@@ -1051,7 +1099,6 @@ function renderSetup(sp){
     <button onclick="clearPlace()">전체 회수</button>
     <button class="primary" onclick="setupDone()" ${unplaced.length||!rosterDone?"disabled":""}>${NET.publicMode?"배치 완료 → 준비 완료":NET.preparing?"배치 완료 → 매칭 시작":"배치 완료"}</button></div>${pauseLockClose()}</section>`;
   sp.innerHTML=h;
-  if(S.eco&&!S.eco.shop.done[p]) shopClockStart(p); // #236 S01 90초는 상점이 실제로 그려진 뒤 시작 (가림 중이면 shopClockStart 가 거절)
 }
 /* #238 (2026-09-28 CJ): 시작 상점·배치 중 [방 나가기] = 즉시 경기 취소(공식 전적 없음 · 몰수 아님). 확인 창 하나(Esc = 취소) 뒤 종전 경로 그대로 */
 function uiLeaveConfirm(){ netLocalModal(); modal(`<h2>방 나가기</h2><p>지금 나가면 이 경기는 바로 취소됩니다. 공식 전적에는 남지 않습니다.</p>`,[["나가기",once(()=>{ closeModal(); netLeaveRoom(); })],["취소",closeModal]]); }
@@ -1094,12 +1141,14 @@ function netLeave(){ // 온라인 상태 완전 해제 — 이 정리 없이 로
   NET.rooms=[]; NET.roomsLoading=false; NET.roomId=null; NET.seatToken=null; NET.publicMode=false; NET.players=null; NET.reps=null;
   NET.myReady=false; NET.peerReady=false; NET.waitingForPeer=false; NET.pendingRoomAction=null; // #217/#218 공개 방 상태도 함께 해제
   netClearResume(); NET.explicitLeave=false; NET.epoch=null; NET.tokenGen=0; // #217 재접속 타이머·유예 상태도 함께 해제
+  /* #293 (2026-10-02 CJ 4): 단절 정지(X01)는 그 방의 표시다 — 지우지 않으면 방 목록 소켓이 publicMode 를 다시 켜는 순간 남은 NET.pause 로 X01·inert·초 타이머가 로비 위에 되살아난다 */
+  NET.pause=null; NET.lobby=null; NET.boardClock=undefined; try{ netResumeBarSync(); }catch(e){}
   NET.roomState=null; NET.readyWanted=false; NET.readySent=false; NET.lobbyPending=null; NET.result=null; NET.final=null; NET.finalReveal=false; NET.autoEndBlockRev=null; NET.lastActionAuto=false;
   /* #217 표시 계층(fx 재생 큐·전투 무대·오버레이 소유)도 해제 — 옛 방의 예약 콜백은 세대 증가로 스스로 멈춘다 */
   NET.fxGen=(NET.fxGen||0)+1; NET.fxQueue=[]; NET.fxPlaying=false; NET.fxCur=null; NET.fxEpoch=null; NET.fxRoomId=null; NET.fxSeat=null;
   NET.fxBattleSnaps={}; NET.fxDisp={}; NET.stageBid=null; NET.fxLiveBid=null; NET.battleMenu=null; NET.overlaySig=null; NET._overlayOpen=false;
   try{ fxSetLockClass(false); const fb=$("fxBanner"); if(fb&&fb.classList) fb.classList.add("hidden"); }catch(e){}
-  emoteReset(false); NET.peerConnected=null; // #262 말풍선·타이머·응답 대기·간격 사본 잔존 0
+  emoteReset(false); NET.peerConnected=null; NET.peerPing=null; NET.selfPing=null; NET.owner=0; // #262 말풍선·타이머·응답 대기·간격 사본 잔존 0
   setSeed(null); // 공유 시드 해제 — 이후 오프라인 경기는 다시 Math.random
 }
 /* ===== #262 경기 중 이모티콘 — 화면 (2026-09-27 CJ 승인 · GDD-24 00.8) =====
@@ -1123,6 +1172,10 @@ function emoteSync(){
   /* 2026-09-28 CJ 3: L03 대기방에서는 같은 고정 층을 채팅 🔒 줄 높이에 둔다(표시 위치만 — 층·팝오버·간격 규칙은 그대로) */
   const cl=uiScreenName()==="room"&&document.querySelector?document.querySelector(".waitScreen .chatLock"):null;
   try{ L.classList.toggle("inRoom",!!cl); L.style.top=cl&&cl.getBoundingClientRect?Math.round(cl.getBoundingClientRect().top)+"px":""; }catch(e){}
+  /* 말판 상단 한 줄의 감정표현 자리(.emoSlot) 실제 오른쪽 끝에 맞춘다 — 말판 안쪽 스크롤 막대가 생기면 ⚙·자리가 그 폭만큼 왼쪽으로 가므로 고정 px 로는 ⚙와 겹친다. 자리가 없으면 CSS 기본값 */
+  /* #295 CJ REVISE: 정기 상점 시트가 열려 있으면 그 상단 한 줄의 자리(.shopTop .emoSlot)가 우선 — 같은 버튼 하나가 그 자리에 놓인다(위쪽 --emoT 는 상점 규칙만 읽는다) */
+  try{ const sl=document.querySelector?document.querySelector("#overlay:not(.hidden) .shopTop .emoSlot,#overlay:not(.hidden) .battleTop .emoSlot")||document.querySelector("#boardInfo .emoSlot"):null, r=sl&&sl.getBoundingClientRect?sl.getBoundingClientRect():null, lr=r&&r.width?L.getBoundingClientRect():null;
+    L.style.setProperty("--emoR",lr?Math.round(lr.right-r.right)+"px":""); L.style.setProperty("--emoT",lr?Math.round(r.top-lr.top)+"px":""); }catch(e){}
   const set=/** @type {HTMLFieldSetElement} */($("emoteSet"));
   if(!set.innerHTML) set.innerHTML=EMOTES.map(([id,e,ko])=>`<button type="button" data-emote="${id}" onclick="emoteSend('${id}')">${e} ${ko}</button>`).join("");
   const left=Math.max(0,NET.emoteUntil-Date.now()), sec=Math.ceil(left/1000);
@@ -1199,7 +1252,7 @@ window.startMode=(mode,opts)=>{
   newGame(mode,{aiLevel:lv,eco:!NET.mode}); // #236 로컬 모드(PVE·핫시트·sim) 경제. 온라인 경제는 #237 공개 방 서버 권위뿐(network.js netApplyEcoSetup) — 코드 접속 릴레이(무해석 락스텝)는 종전 경제
   if(mode==="pvp"||mode==="pve"){
     addLog(mode==="pve"?`PVE(${AI_LEVEL_KO[S.aiLevel[1]]}${S.aiLevel[1]==="dan5"?" · 탐색·추론 기반 강AI":""}) — 당신의 14개 말을 배치하세요.`:"PVP — 두 플레이어가 번갈아 비공개 배치합니다.","sys");
-    if(S.eco&&mode==="pve") aiShop(1); // #236 GDD-23 2.3: 사람 S01(90초)이 열리는 순간 AI 는 즉시 완료 — 배치(aiAutoPlace)는 종전대로 사람 배치 뒤
+    if(S.eco&&mode==="pve") aiShop(1); // #236 GDD-23 2.3: 사람 S01(공통 준비 180초)이 열리는 순간 AI 는 즉시 완료 — 배치(aiAutoPlace)는 종전대로 사람 배치 뒤
     render();
   } else { // sim
     aiAutoPlace(0);
@@ -1342,11 +1395,21 @@ function pkgOpenModal(kind,ownerP,round,id){
 /* #238 B04 (GDD-23 8.2 · 5.6): 내 전투원이 받는 시너지 칩 — 소유자 화면에만. 온라인은 서버 battle.ownSyn(내 좌석 synView 복제),
    오프라인은 Core selector(synView — 전투 시작 고정 스냅샷)가 준 칸 수·단계를 그대로 읽는다. 경계표로 다시 따지지 않는다. */
 /* 2026-09-28 CJ 5: HP 카드 안의 시너지 문장을 없애고 전투창 우상단(제목 줄 오른쪽)에 보드 HUD 와 같은 아이콘 + 칸 수로 — 누르면 synHelp 안내 */
-function battleSynChips(owner,pf,B){
+/* #296 (CJ 콘티 2026-10-02): row "k" = 첫째 줄(왕국 + **지금 싸우는 전설**의 개인 시너지) · "a" = 둘째 줄(아키타입) · 없으면 전부.
+   이 전투원이 **실제로 받는 것만**, Core applySynergy 와 같은 갈래로 고른다: 전설은 왕국 수혜자가 아니다(용만 달성한 최고 왕국을 개인 효과로) ·
+   개인 효과는 지금 출전한 전설(필드 본체든 가방 대리든)의 것 · 아키타입 합은 참전자 전원(왕 · 동료 포함).
+   값은 **참전 확정 때 고정된 스냅샷**(B.syn — 온라인은 서버 ownSyn)과 상수표(V2_LEGEND_SYN)에서만 읽는다 — 지금 보드(synExtraView)를 보지 않으므로 보드에 없는 가방 전설도 맞고,
+   전투 중 보드가 바뀌어도 그대로다. 스냅샷이 없으면 아무 칩도 없다.
+   ponytail: 마녀 · 사신 식은 Core applySynergy · synExtraView 와 같은 한 줄 사본(엔진 무수정 범위) — Core 가 전투원 단위 selector 를 내놓으면 그것으로 바꾼다 */
+function battleSynChips(owner,pf,B,row){
   const raw=B&&B.syn&&B.syn[owner]; if(!raw||!viewerIsOwner(owner)) return "";
-  const v=raw.stage?raw:synView(owner,S), i=pf.element&&v&&v.stage?v.stage[pf.element]:-1;
-  const chips=(i>=0?[synChipHtml(pf.element,v.el[pf.element],true)]:[])
-    .concat(Object.keys(V2_ARCH_SYN).filter(a=>v&&v.arch&&v.arch[a]>=V2_ARCH_STEPS[0]).map(a=>synChipHtml(a,v.arch[a],true))); // 받는(달성) 시너지만 — 보드 HUD 와 같은 기준
+  const v=raw.stage?raw:synView(owner,S), i=!pf.legend&&pf.element&&v&&v.stage?v.stage[pf.element]:-1;
+  const L=pf.legend?LEGEND_ROSTER.find(l=>l.key===pf.legend):null, del=L&&L.key==="dragon"?synDragonEl(raw):null;
+  const lv=!L?0:L.key==="witch"?Math.min(V2_LEGEND_SYN.witch.max,synElemKinds(raw)*V2_LEGEND_SYN.witch.statusPct):L.key==="reaper"?Math.min(V2_LEGEND_SYN.reaper.max,(raw.dead||0)*V2_LEGEND_SYN.reaper.atk):0;
+  const lg=del?{legend:"dragon",name:L.name,el:del,fx:synKingdomEffect(raw,del)}:lv>0?{legend:L.key,name:L.name,v:lv}:null;
+  const chips=(row==="a"?[]:i>=0?[synChipHtml(pf.element,v.el[pf.element],true,undefined,i)]:[]) // #296 CJ REVISE2: 보드 열과 같은 단계 색(왕국 = stage · 아키타입 = synTier)
+    .concat(row==="k"?[]:Object.keys(V2_ARCH_SYN).filter(a=>v&&v.arch&&v.arch[a]>=V2_ARCH_STEPS[0]).map(a=>synChipHtml(a,v.arch[a],true,undefined,synTier(a,v.arch[a])))) // 받는(달성) 시너지만 — 보드 HUD 와 같은 기준
+    .concat(lg&&row!=="a"?[legendChipHtml(lg)]:[]);
   return chips.length?`<div class="bsyn" role="group" aria-label="내 전투원이 받는 시너지">${chips.join("")}</div>`:"";
 }
 /* ===== 2026-09-28 CJ 6: 시너지 안내 — 이름 + 실제 단계별 효과(달성 단계 강조). 수치는 원본 표(V2_KINGDOM_STAGES · V2_ARCH_SYN)를 그대로 읽고
@@ -1367,27 +1430,162 @@ function synTierText(k,t){
     +(t.kind==="shock"?` · 대상은 다음 ${t.rounds}라운드 후공(상대보다 나중에 행동)`:t.rounds?` · ${t.rounds}라운드`:t.hits?` · ${t.hits}회`:""); // 감전 = 후턴(core fighterOrderCat)
   return Object.keys(t).map(s=>`${SYN_STAT_KO[s][0]} +${SYN_STAT_KO[s][1]?pc(t[s]):t[s]}`).join(" · ");
 }
-function synChipHtml(k,n,on,title){ const t=`${synName(k)} ${n}칸`;
-  return `<span class="synChip${on?" on":""}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${title||t} — 효과 보기" title="${title||t}" onclick="synHelp('${k}',${n|0},this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();synHelp('${k}',${n|0},this);}">${gi(k)}<b>${n|0}</b></span>`; }
-const SYNHELP={el:null,from:null};
-function synHelp(k,n,from){
+/* #293: tier(달성 단계 순위 −1~) 를 주면 단계 색(t0~t5 = 순위 −1~4, 순위마다 다른 색 · Earth UI_CONTRACT) + 단계 점을 얹는다 — 색은 칸 수가 아니라 순위다(왕국 4칸 ≠ 표준 4칸).
+   owner 를 주면 안내에 기여 카드가 붙는다(내 상점·배치 화면의 내 칩만). 둘 다 없으면 종전 칩 그대로 */
+function synChipHtml(k,n,on,title,tier,owner){ const t=`${synName(k)} ${n}칸`, ranked=tier!==undefined, call=`synHelp('${k}',${n|0},this${owner===undefined?"":","+(owner|0)})`;
+  return `<span class="synChip${on?" on":""}${ranked?` t${tier+1}`:""}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${title||t} — 효과 보기" title="${title||t}" onclick="${call}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${call};}">${gi(k)}<b>${n|0}</b>${ranked?`<i class="pips" aria-hidden="true">${synSteps(k).map((s,i)=>i<=tier?"●":"○").join("")}</i>`:""}</span>`; }
+/* #293 기여 칸 — 칩 숫자를 만든 **바로 그 칸들**. Core synCount(· S01 미리보기는 ecoSynView)와 같은 거름으로 고르기만 한다(새 집계 없음):
+   왕국 = 그 속성의 필드 하수인·왕·동료(전설·무속성 제외) · 아키타입 = 그 타입의 필드 하수인 + 가방 전설. 소유자 자신의 말만 읽는다 */
+function synContrib(p,k){
+  const start=S.phase==="setup"&&!!(S.eco&&S.eco.shop&&S.eco.shop.kind==="start"), el=!!V2_KINGDOM_STAGES[k]; // #294: 미리보기 거름은 준비 구간에서만 — 경기 중에는 남아 있는 시작 상점 값과 무관하게 Core synCount(놓인 칸)와 같다
+  const on=x=>start?(x.type==="minion"?!!ecoKey(x):!!x.leaderElChosen||!!S.eco.shop.done[p]):x.placed===true; // ecoSynView 와 같은 거름 — 상점 완료 뒤에는 배정된 왕·동료도 센다
+  const f=S.pieces.filter(x=>x.owner===p&&SYN_FIELD_TYPES.indexOf(x.type)>=0&&on(x)&&(el?!x.legend&&x.element===k:x.type==="minion"&&archOf(x)===k));
+  return el?f:f.concat(synBagLegends(p,S).filter(u=>legendArchOf(u)===k));
+}
+const SYNHELP={el:null,from:null,pid:null}; // pid: 설명 창이 보고 있는 보드 말(#294 — 죽거나 안 보이면 닫는다)
+function synHelp(k,n,from,owner){
   if(!synSteps(k)) return; synHelpClose(false);
+  const cs=owner===undefined||k==="crown"||!S||!S.eco||S.battle?[]:synContrib(owner,k); // #294: 전투 스냅샷은 칸 수만 든다 — 전투가 열려 있는 동안에는 명단을 붙이지 않는다(단계표만)
+  const mark=x=>x.alive===false?`<i class="tagMk dead">사망</i>`:S.pieces.indexOf(x)<0?`<i class="tagMk">가방</i>`:""; // 죽은 기여 말은 지우지 않고 표시 · 필드 밖 전설(가방·예비·포획)은 꼬리표
   const st=synSteps(k), crown=k==="crown", tbl=crown?SYN_CROWN.map(id=>SKILLS[id]):V2_KINGDOM_STAGES[k]||V2_ARCH_SYN[k], cur=synTier(k,n);
-  const d=document.createElement("div"); d.id="synHelp"; d.className="synHelp"; d.setAttribute("role","dialog"); d.setAttribute("aria-labelledby","synHelpT");
-  d.innerHTML=`<div class="acctHead"><h3 id="synHelpT">${gi(k)} ${synName(k)}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
+  synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${gi(k)} ${synName(k)}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
     <p>지금 ${n}${crown?"명":"칸"} · ${cur<0?`(${st[0]})부터 효과`:`(${st[cur]}) 단계 적용 중`}</p>
     <ol>${tbl.map((t,i)=>`<li${i===cur?` class="on" aria-current="true"`:""}><b>(${st[i]})</b> ${synTierText(k,t)}</li>`).join("")}</ol>
-    <small>${crown?`동료 1명 사망 → 왕과 살아 있는 동료에 ${SKILLS[SYN_CROWN[0]].ko} · 2명 사망 → 왕에 ${SKILLS[SYN_CROWN[1]].ko} 추가`:V2_KINGDOM_STAGES[k]?"필드 9칸(하수인 6 · 왕 · 동료 2) 중 이 속성 칸 수 · 확률에 상태 부여 확률이 더해진다(100% 상한)":"필드 하수인 6칸 + 가방 전설 중 이 타입 칸 수 · 참전자 전원이 받는다"}</small>`;
+    <small>${crown?`동료 1명 사망 → 왕과 살아 있는 동료에 ${SKILLS[SYN_CROWN[0]].ko} · 2명 사망 → 왕에 ${SKILLS[SYN_CROWN[1]].ko} 추가`:V2_KINGDOM_STAGES[k]?"필드 9칸(하수인 6 · 왕 · 동료 2) 중 이 속성 칸 수 · 확률에 상태 부여 확률이 더해진다(100% 상한)":"필드 하수인 6칸 + 가방 전설 중 이 타입 칸 수 · 참전자 전원이 받는다"}</small>`
+    +(cs.length?`<div class="slotGrid synCon" role="list" aria-label="기여 ${cs.length}칸">${cs.map(x=>x.type==="king"||x.type==="ally"
+      ?`<div class="uSlot uCard lead${x.alive===false?" dead":""}" role="listitem">${leadFaceHtml(x)}<b>${leadNm(x)}</b><span class="tags" role="img" aria-label="${ELEM_KO[x.element]}" title="${ELEM_KO[x.element]}">${gi(x.element)}</span>${mark(x)}</div>`
+      :unitCard(x,{attr:`role="listitem"`,tail:mark(x)})).join("")}</div>`:""),from);
+}
+/* 안내 창 한 장(시너지 · #293 상품 설명 공용) — 틀·닫기(✕ · Esc · 바깥 누름)·포커스 복귀는 여기 한 곳 */
+function synHelpOpen(html,from){ synHelpClose(false);
+  const d=document.createElement("div"); d.id="synHelp"; d.className="synHelp"; d.setAttribute("role","dialog"); d.setAttribute("aria-labelledby","synHelpT");
+  d.innerHTML=html;
   const host=(from&&from.closest&&from.closest("#overlayBox"))||$("app")||document.body; // 모달 안이면 모달 안에 — 포커스 순환(Tab)에 함께 든다
   host.appendChild(d); SYNHELP.el=d; SYNHELP.from=from||null;
   try{ d.querySelector("button").focus({preventScroll:true}); }catch(e){}
 }
-function synHelpClose(refocus){ const d=SYNHELP.el, f=SYNHELP.from; SYNHELP.el=SYNHELP.from=null;
+function synHelpClose(refocus){ const d=SYNHELP.el, f=SYNHELP.from; SYNHELP.el=SYNHELP.from=SYNHELP.pid=null;
   if(d&&d.parentNode) d.parentNode.removeChild(d); if(refocus&&f&&f.isConnected&&f.focus) f.focus({preventScroll:true}); }
 if(typeof document!=="undefined"&&document.addEventListener){
-  document.addEventListener("keydown",e=>{ if(SYNHELP.el&&e.key==="Escape"){ e.stopImmediatePropagation(); e.preventDefault(); synHelpClose(true); } },true); // 모달의 Esc(=취소)보다 먼저 — 안내만 닫는다
-  document.addEventListener("pointerdown",e=>{ const d=SYNHELP.el; if(d&&!d.contains(/** @type {Node} */(e.target))) synHelpClose(false); });
+  document.addEventListener("keydown",e=>{ const h=SYNHELP.el, d=h||(UI.drawer&&uiScreenName()==="board"&&!uiOverlayOpen()&&!EMO.open?$("right"):null); if(!d) return; // 안내 창이 먼저 · 없으면 열린 가방 창(#294 Saturn REVISE: Tab 이 뒤 보드로 나가지 않는다)
+    if(e.key==="Escape"){ if(!h) return; e.stopImmediatePropagation(); e.preventDefault(); synHelpClose(true); return; } // 모달의 Esc(=취소)보다 먼저 — 안내만 닫는다 (가방 창의 Esc 는 아래 핸들러)
+    if(e.key!=="Tab") return;
+    const f=[...d.querySelectorAll("button:not([disabled]),[tabindex]:not([tabindex='-1'])")].filter(x=>/** @type {any} */(x).offsetParent!==null); if(!f.length) return; // #294 Tab 은 어디서 열렸든(보드 · 준비 · 상점/전투 창 안) 이 창 안에서만 돈다 — 뒤 창의 구매·판매 버튼으로 나가지 않는다. 가방 창은 보이는 것만(숨은 패널 제외)
+    const i=f.indexOf(/** @type {any} */(document.activeElement)), to=e.shiftKey?(i<=0?f.length-1:i-1):(i<0||i===f.length-1?0:i+1);
+    e.stopImmediatePropagation(); e.preventDefault(); /** @type {any} */(f[to]).focus();
+  },true);
+  /* #294: 바깥 탭은 **닫기만** 한다 — 종전 pointerdown 닫기는 같은 탭의 click 이 뒤의 보드 칸 · 행동 버튼 · 판매/교체/구매에 그대로 떨어졌다.
+     click 을 캡처 단계에서 삼키므로 대상의 onclick 까지 가지 않는다(창마다 따로 막지 않는다 — 틀 한 곳) */
+  document.addEventListener("click",e=>{ const d=SYNHELP.el; if(d&&!d.contains(/** @type {Node} */(e.target))){ e.stopPropagation(); e.preventDefault(); synHelpClose(false); } },true);
 }
+if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("keydown",e=>{ // #294 가방 창(서랍) Esc = 그 창만 닫고 가방 버튼으로 포커스 복귀 (안내 창이 열려 있으면 위 캡처 핸들러가 먼저 그것만 닫는다)
+  if(e.key!=="Escape"||!UI.drawer||uiOverlayOpen()||EMO.open) return;
+  uiDrawer(null); }); // 포커스 복귀는 uiDrawer 한 곳
+/* 전설 개인 시너지 칩 — 같은 안내 창에 효과 문구(칩의 title 그대로 · 새 수치 없음) */
+function synNote(from){ synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${gi("crown")} 전설 개인 시너지</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div><p>${escAttr(from.getAttribute("title"))}</p>`,from); }
+/* ===== #294 하수인 · 스킬 설명 창 — 읽기 전용(전송 · seq · 시계 · 선택 무변경). 안내 창 틀(synHelpOpen) 한 장을 쓴다 =====
+   창은 아래 세 진입점이 **허용 필드만으로 만든 표시용 묶음**(d)만 받는다 — 말 객체를 그대로 넘기지 않는다(오프라인은 기기에 상대 말 전체 값이 있다).
+   2026-10-02 CJ REVISE(스케치 4): 탭 없는 한 장 — 머리줄(이름 ★등급 · ✕) / 왼쪽 큰 그림 + 오른쪽 기본 능력치 칸 · 정보 줄 · 개인 시너지 / 아래 스킬(이름 · 위력 · 쿨타임 칸 + 짧은 설명).
+   d = {nm, g, face, tags:왕국·아키타입 아이콘 | 없음, stats:[[아이콘, 이름, 값]] | null, rows:[글자], syn:글자 | null, skills:[{nm,star,pct,cd,once,left,desc}] | null}.
+   stats · syn · skills 가 null 이면 그 구역 자체가 없다(공개된 상대 말 · 폭탄 · 함정). 값이 없는 칸은 만들지 않는다 — 지어낸 수치 없음 */
+/* #296 CJ REVISE1(2026-10-03): 스킬 줄 한 벌 — 설명 창(unitHelpOpen)과 전투 싸우기가 **같은 마크업**(ol.uhSkills > li > span.uhSk 칩 + small 설명)을 쓴다.
+   act(x) 가 버튼 속성 문자열을 주면 그 줄 내용을 <button> 으로 감싼다(전투 · 잠긴 줄 제외). x.note = 전투의 봉인 · 불가 칩(설명 창에는 없다) */
+function skillListHtml(skills,act){
+  const chip=(lb,v,ic)=>`<span class="uhChip" role="img" aria-label="${escAttr(lb+" "+v)}">${ic} ${v}</span>`;
+  return `<ol class="uhSkills">${skills.map(x=>{ const a=act&&!x.lock?act(x):null, inner=`<span class="uhSk"><b>${x.nm}</b>`
+      +(x.lock?`<span class="uhChip" role="img" aria-label="잠김 — 등급 ${x.star} 필요">🔒 ${"★".repeat(x.star)} 필요</span>`:x.star?`<span class="stars" aria-label="등급 ${x.star}부터">${"★".repeat(x.star)}</span>`:"")+(x.pct?chip("위력",x.pct+"%","💪🏻"):"")
+      +(x.once?`<span class="uhChip">전투당 1회</span>`:x.cd===null?"":chip("쿨타임",x.cd,"⌛"))+(x.left?`<span class="uhChip cd">남은 쿨타임 ${x.left}</span>`:"")+(x.note?`<span class="uhChip cd">${x.note}</span>`:"")
+      +`</span>${x.desc?`<small>${x.desc}</small>`:""}`;
+    return `<li${x.lock?` class="lock"`:""}>${a?`<button type="button" ${a}>${inner}</button>`:inner}</li>`; }).join("")}</ol>`; }
+function unitHelpOpen(d,from,pid){
+  /* 2026-10-02 CJ REVISE 2: 능력치 칸이 있으면(내 말 · 가방 · 진열) 그림 옆은 능력치 2×4 칸뿐 — 높이가 그림과 같다. 왕국·아키타입 아이콘은 그 위, 정보 줄 · 개인 시너지는 그 아래.
+     칸 = [아이콘, 짧은 이름, 값, 전체 이름(aria · title), 읽어 줄 값]. 능력치가 없는 창(공개된 상대 말 · 폭탄 · 함정)은 종전 배치 그대로 */
+  const st=!!(d.stats&&d.stats.length), rows=`<ul class="uhRows">${d.rows.filter(Boolean).map(r=>`<li>${r}</li>`).join("")}</ul>`, syn=d.syn?`<p class="uhSyn">${gi("crown")} ${escAttr(d.syn)}</p>`:"";
+  const stats=st?`<ul class="uhStats" aria-label="기본 능력치">${d.stats.map(s=>`<li aria-label="${escAttr((s[3]||s[1])+" "+(s[4]||s[2]))}" title="${escAttr(s[3]||s[1])}"><span aria-hidden="true">${s[0]}</span><small aria-hidden="true">${s[1]}</small><b aria-hidden="true">${s[2]}</b></li>`).join("")}</ul>`:"";
+  synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${escAttr(d.nm)}${d.g?` <span class="stars" aria-label="등급 ${d.g}">${"★".repeat(d.g)}</span>`:""}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>`
+    +(st?d.tags||"":"")+`<div class="uhTop"><span class="uhFace">${d.face}</span>`+(st?stats:`<div class="uhInfo">${d.tags||""}${rows}${syn}</div>`)+`</div>`+(st?rows+syn:"")
+    +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4>${skillListHtml(d.skills)}`:""),from);
+  SYNHELP.el.classList.add("uh"); SYNHELP.pid=pid===undefined?null:pid;
+}
+/* 기본 능력치 칸 — u 에 실제로 있는 숫자만(전투 엔진이 쓰는 필드 그대로: data.js applyArchStats · applyFixedStats). HP · 공격력은 등급 성장분 포함, 시너지 · 전투 중 버프는 넣지 않는다.
+   이름표는 SYN_STAT_KO. 2026-10-02 CJ REVISE 2: 8칸(HP·공격력 / 방어력·속도 / 회피·치명타 / 상태 부여·시작 방어막) — 0 도 그대로 보인다. 명중 스탯은 이 게임에 없다 — 칸을 만들지 않는다.
+   시작 방어막은 서버가 값을 싣지 않으면(옛 서버) "—"(정보 없음)이다 — 0 을 지어내지 않는다. max = 진열 칸(개체가 없어 최대 HP 만).
+   #296 CJ REVISE2: HP 칸 하트는 빨강(기존 🎒 와 같은 .gi.emo 글자 아이콘) — 값은 그대로 */
+function unitStatChips(u,max){ const pc=v=>Math.round(v*100)+"%", lb=k=>SYN_STAT_KO[k][0];
+  return [[`<i class="gi emo" aria-hidden="true">❤️</i>`,"HP",max?u.maxHp:`${u.hp}/${u.maxHp}`]].concat(/** @type {any[][]} */([["atk",gi("atk")],["def",gi("def")],["spd",gi("swift")],["dodge","💨",pc],["crit","🎯",pc],["statusPct","💫",v=>`+${pc(v)}p`,"상태 부여"]])
+    .filter(s=>typeof u[s[0]]==="number").map(s=>[s[1],s[3]||lb(s[0]),s[2]?s[2](u[s[0]]):u[s[0]],lb(s[0])]),
+    [typeof u.shieldStartPct==="number"?[gi("guard"),"시작 방어막",pc(u.shieldStartPct),lb("shieldPct")]:[gi("guard"),"시작 방어막","—",lb("shieldPct"),"정보 없음"]]); }
+/* 스킬 줄 — SKILLS 표 그대로: 위력 = pct(v2 스킬만 · 옛 pow 는 파생값이라 쓰지 않는다) · 쿨타임 = cd · 전투당 1회 = once · 남은 쿨 = 그 개체의 cds.
+   ★n = 종 스킬표(V2_SPECIES)에서의 순서 = 그 스킬이 열리는 등급(speciesSkills). 전설 · 왕 · 동료 스킬은 그런 뜻이 없어 붙이지 않는다.
+   글은 desc 원문 그대로(줄여 쓰지 않는다) — 위력 · 쿨 칸으로 뜻이 다 전해지는 기본기에만 붙이지 않는다 */
+/* 2026-10-02 CJ REVISE 2: 가진 스킬(교체해 넣은 것 포함 — 그대로) 뒤에, 그 종이 더 높은 등급에서 여는 스킬을 잠긴 줄(lock · 필요한 등급 = 종 표 순서)로 잇는다.
+   남은 쿨은 없다. 종 표가 없는 전설 · 왕 · 동료는 잠긴 줄이 없다. 이 함수는 내 말 · 내 가방 · 내 진열에서만 불린다 — 상대 말 창은 부르지 않는다 */
+function unitSkillRows(ids,el,cds,key){ const sp=V2_SPECIES[key]||[], own=ids||[];
+  const row=(id,i,lock)=>{ const sk=SKILLS[id]; return sk?{i,nm:skillNameKo(id,el),star:sp.indexOf(id)+1,pct:sk.v2&&sk.pct||0,cd:sk.reaper||typeof sk.cd!=="number"?null:sk.cd,once:!!sk.once,left:!lock&&cds&&cds[i]||0,lock,
+    desc:sk.kind==="basic"?"":sk.desc||""}:null; };
+  return own.map((id,i)=>row(id,i,false)).concat(sp.slice(own.length).filter(id=>!own.includes(id)).map(id=>row(id,0,true))).filter(Boolean); }
+/* 보드 말 — 내 말은 전부, 상대 말은 **정체가 공개되고 지금 보이는 것만** 서버가 이미 싣는 값(이름 · 종류 · 그림 · 왕국 · 등급 · HP · 이동 불가 · 교체 표식)으로.
+   미공개 ? 말 · 안 보이는 말 · 죽은 상대 말은 창이 없다(그 말의 어떤 값도 마크업에 넣지 않는다) */
+/* 폭탄 · 함정 한 줄 설명 — 기존 안내(ui-overlays.js TUT_PAGES '폭탄과 함정')의 이동 문장 그대로. 새 규칙 문구가 아니다(회귀가 두 곳의 일치를 본다) */
+const UNIT_NOTE={bomb:"한 칸씩 움직일 수 있어요(버닝 타임엔 2칸).",trap:"스스로 움직일 수 없어요."};
+function unitHelpPiece(id,from){
+  const v=humanViewer(), x=S&&(v===0||v===1)?S.pieces.find(y=>String(y.id)===String(id)):null; if(!x) return;
+  const own=x.owner===v; if(!own&&!(x.revealed&&x.alive&&x.placed&&visibleTo(v,x))) return;
+  const m=pcMeta(x), unit=m.unit, nm=x.type==="minion"&&x.name?x.name:x.type==="ally"&&allyRole(x)?leadNm(x):TYPE_KO[x.type];
+  const el=m.eco?m.elKo:x.element?ELEM_KO[x.element]:"";
+  /* 내 말: HP 는 능력치 칸 · 회복 자세/포획 하수인은 종전 가방 서랍의 선택 요약에서 옮겨 왔다. 상대 말(공개): 종전 허용 줄 그대로 — 능력치 칸 · 시너지 · 스킬 없음(오프라인 포함) */
+  const tx=[el?`왕국 ${el}`:"",m.trKo&&x.type==="minion"?`아키타입 ${m.trKo}`:m.trKo], tg=tx.filter(Boolean).join(" · ");
+  const tags=own&&unit&&m.eco&&tg?`<span class="tags" role="img" aria-label="${tg}" title="${tg}">${m.el?gi(m.el):""}${m.tr?gi(m.tr):""}</span>`:"";
+  const rows=[!unit?TYPE_KO[x.type]:"",UNIT_NOTE[x.type]||"",!own&&m.g?`등급 ${m.g}`:"",tags?"":tx[0],tags?"":tx[1],
+    unit&&!own?`HP ${x.hp}/${x.maxHp}`:"",x.alive===false?"사망":"",x.immobile>0?`이동 불가 ${x.immobile}턴`:"",
+    own&&x.healing?`🌿회복 자세(턴마다 +${Math.round(x.maxHp*BAL.healPostPct)})`:"",own&&x.cap?`포획 하수인(${ELEM_KO[x.cap.element]}) HP ${x.cap.hp}/${x.cap.maxHp}`:"",
+    !own&&x.swapMark?"상점에서 교체됨":"",own?"":"상대 말 — 공개된 정보만 표시"];
+  const L=own&&x.type==="minion"?LEGEND_ROSTER.find(l=>l.key===x.legend||(!!x.rosterId&&l.id===x.rosterId)):null, lg=L&&S.eco?synExtraView(v,S).legends.find(l=>l.legend===L.key):null;
+  unitHelpOpen({nm,g:m.g,face:pcFaceHtml(x),tags,rows,stats:own&&unit?unitStatChips(x):null,syn:lg?legendSynText(lg):null,
+    skills:own&&unit?unitSkillRows(x.skills,x.element,x.cds,x.rosterId):null},from,x.id);
+}
+/* 내 가방 하수인 · 상점 진열 칸(진열 종 + 진열 등급 — 종 표에서 읽는다). 둘 다 지금 화면 주인의 것만 찾는다 */
+function unitHelpBag(uid,from){
+  const v=humanViewer(), u=S&&S.eco&&S.eco.bag[v]?S.eco.bag[v].find(y=>y.uid===uid):null; if(!u) return;
+  const key=ecoKey(u), g=unitGrade(key,u.grade), L=LEGEND_ROSTER.find(l=>l.id===key);
+  unitHelpOpen({nm:u.name||unitName(key),g,face:unitIco(key),tags:unitTags(key),rows:["가방"],stats:unitStatChips(u),syn:null, // 가방 전설은 개인 효과가 없다(synExtraView)
+    skills:unitSkillRows(u.skills||(L?L.skills:speciesSkills(key,g)),u.element,u.cds,key)},from);
+}
+/* 진열 칸은 개체가 아직 없다 — 구매 때 Core 가 쓰는 같은 주입 함수(applySpecies · applyLegend)로 그 종 · 그 등급의 값을 읽는다(표를 따로 베끼지 않는다) */
+function unitHelpSlot(i,from){
+  const v=humanViewer(), sh=S&&S.eco?S.eco.shop:null, s=sh&&sh.slots[v]?sh.slots[v][i]:null; if(!s) return;
+  const g=unitGrade(s.key,s.grade), L=LEGEND_ROSTER.find(l=>l.id===s.key), r=ROSTER.find(x=>x.id===s.key), u=/** @type {any} */({});
+  if(L) applyLegend(u,L.key); else if(r) applySpecies(u,r,g);
+  unitHelpOpen({nm:unitName(s.key),g,face:unitIco(s.key),tags:unitTags(s.key),rows:[`가격 🪙${ecoPrice(s.grade)}`],stats:u.maxHp?unitStatChips(u,true):null,syn:null,
+    skills:unitSkillRows(u.skills,u.element,null,s.key)},from);
+}
+/* 열린 설명 창의 대상 말이 죽거나 안 보이게 되면 닫는다 — 낡은 내용을 남기지 않는다(render 마다 한 번) */
+function unitHelpSync(){ const id=SYNHELP.pid; if(id===null||!SYNHELP.el) return;
+  const v=humanViewer(), x=S?S.pieces.find(y=>y.id===id):null;
+  if(!x||!x.alive||(x.owner!==v&&!(x.revealed&&x.placed&&visibleTo(v,x)))) synHelpClose(false); }
+/** 읽기 전용 설명 진입 — <span role=button>(단절 정지 <fieldset disabled> 안에서도 열린다 · 옆의 [교체]·[판매]·[구매]와 별개 대상) */
+function infoBtn(call,label,inner){ return `<span class="faceBtn" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${escAttr(label)} 설명" onclick="${call}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${call};}">${inner}</span>`; }
+/* ===== #296 전투 화면 표시 경계 (CJ 콘티 2026-10-02 · Mercury 구현 전 최종 보고) =====
+   기본 6스탯 = 그 전투원에 **실제로 실린 값**(등급 성장분 포함 · 시너지/일시 효과 제외). 온라인은 서버가 두 전투원 모두에 싣는다(전투 한정 공개 P1) — 오프라인도 같은 여섯 칸만 그린다.
+   없는 값(누락 · null · NaN)은 "—"(정보 없음 · #294 와 같은 표기)다 — 0 이나 종 표 값으로 만들지 않는다. 진짜 0 은 0 그대로 */
+/* #296 CJ REVISE1: 상태 · 버프 칩 — stIcons 원문(이미 양쪽 공개 범위) 낱말 하나 = 칩 하나. 보이는 글자는 그 낱말에서 한글 이름만 뺀 것(값 · 단위 그대로 — 숫자를 골라 내지 않는다), 전체 낱말은 title.
+   방어막(🛡n)은 HP 바 안에 있어 뺀다.
+   버프 키(B.buffA/D)는 그 전투원 칸에만. 연출이 bst- 글자를 바꾸면 battleStSync 가 같은 함수로 다시 그린다(오프라인 applyFx · 온라인 network.js) */
+const ST_BUFF=["🛡","🌀","🎯"]; // 경화 · 감쇠 · 집중 = 자기 강화
+function stChipsHtml(t,bk){ return String(t||"").split(" ").filter(x=>x&&x!=="-"&&!/^🛡\d+%?$/.test(x)).map(x=>{ const ic=(x.match(/^[^\p{L}\d]+/u)||[""])[0];
+    return `<span class="stChip${ST_BUFF.includes(ic)?" up":""}" title="${escAttr(x)}">${ic}<b>${escAttr(x.slice(ic.length).replace(/[가-힣]+/g,""))}</b></span>`; }).join("")
+  +(bk&&BUFFS[bk]?`<span class="stChip up" title="${escAttr(BUFFS[bk].ko)}">${gi(bk)||BUFFS[bk].ko.split(" ")[0]}</span>`:""); }
+function battleStSync(side){ try{ const s=$("bst-"+side), c=$("bch-"+side), B=S&&S.battle; if(s&&c) c.innerHTML=stChipsHtml(s.textContent,B&&(side==="A"?B.buffA:B.buffD));
+  }catch(e){} }
+const BSTAT=[["atk","atk"],["def","def"],["spd","swift"],["dodge","💨",1],["crit","🎯",1],["statusPct","💫",1]];
+function battleStatHtml(f){ return `<ul class="bStats" aria-label="기본 능력치">${BSTAT.map(([k,ic,pc])=>{ const v=f[k], ok=typeof v==="number"&&isFinite(v), t=!ok?"—":pc?Math.round(v*100)+"%":v, nm=SYN_STAT_KO[k][0];
+  return `<li aria-label="${nm} ${ok?t:"정보 없음"}" title="${nm}"><span aria-hidden="true">${gi(ic)||ic}</span><b aria-hidden="true">${t}</b></li>`; }).join("")}</ul>`; }
+/* 2026-10-02 CJ 정정: 전투 화면에는 **계산한 위력/피해 범위를 그리지 않는다**(종전 dmgRange 호출 세 곳 삭제 — 0~0 표기의 자리 자체가 없다).
+   스킬의 위력 · 효과 · 쿨타임은 SKILLS 의 고정 설명(desc · #294 설명 창과 같은 원문)으로 읽는다. 실제 피해는 언제나 Core/서버가 낸다 */
+/* 사용 가능 판정 — 공개 방(서버 권위)은 서버가 내 활성 칸에 실은 slotUsable 결과(f.usable[i])**만** 쓴다. 값이 없으면 잠근다(fail-closed):
+   합성 전투원에는 전투당 1회 사용 기록(onceUsed) · 잠복 라운드(burrowRound)가 없어 Core 규칙으로 메우면 틀린 답이 나온다. 오프라인(전체 상태 보유)은 기존 Core 규칙.
+   버튼 잠금 · "(불가)" 안내 · 수동 [턴 종료]가 이 한 함수를 본다 */
+function battleSlotOk(f,i,side,state){ return f.usable&&typeof f.usable[i]==="boolean"?f.usable[i]:!NET.publicMode&&slotUsable(f,i,side,state); }
 function battleModal(board){
   const B=board||S.battle; if(!B) return;
   /* #245 Saturn REVISE(M2): 지난 전투 스냅샷을 그릴 때 전역 S.battle 을 잠시 갈아끼우던 자리.
@@ -1422,22 +1620,17 @@ function battleModal(board){
        상태 목록과 기술 4슬롯만 **.fscroll** 안에서 세로로 스크롤한다 — 좁은 폭에서도 이름·HP 가 밀려나지 않고
        7상태를 전부 읽을 수 있으며 판이 자라 전투원 도트를 덮지도 않는다 (Saturn·PD 실측 지적).
        마크업 조각·id(hpfill-·shfill-·hptxt-·bst-)와 문구는 종전 그대로라 연출(applyFx)·비공개 마스킹 경로는 불변이다. */
+    /* #296 콘티: 머리(등급 · 이름 · 주인) / HP · 현재 방어막 한 줄 / 기본 6스탯 3×2. 2026-10-02 CJ 정정: 상대 전투원도 실제 등급 · 이름 · HP · 방어막 · 기본 6스탯 · 상태(디버프)를 보인다 — **상대 스킬은 어디에도 없다**(이름 · 쿨 · 미공개 자리표시 모두) */
+    const g=pf.legend?5:Number.isInteger(pf.grade)?pf.grade:0;
+    /* #296 CJ REVISE1(2026-10-03 · Image2): 양쪽 같은 카드 — ★ 이름 옆 아키타입 · 속성 아이콘 / HP 바 안에 '❤ 현재/최대(+방어막)'(실제 0 도 (+0) · 방어막 막대는 같은 바 아래쪽) /
+       6스탯 3×2 / 적용 중인 상태 · 버프 아이콘 칩. id 와 갱신 뜻은 그대로: bst- = stIcons 원문(화면 밖 접근성 글자) → 칩은 battleStSync 가 같은 글자에서 다시 그린다 */
+    const tg=[rd?ARCH_KO[rd.arch]:"",pf.element?ELEM_KO[pf.element]:""].filter(Boolean).join(" · "), bk=sid==="A"?B.buffA:B.buffD;
     return `<div class="fighter"><div class="fhead">
-      <b>${fighterName(sid,B)}</b> <small>(${pname(piece.owner)})</small>
-      ${rd?`<span class="badge">${ARCH_KO[rd.arch]}</span>`:""}${pf.element?`<span class="badge el-${pf.element}">${ELEM_KO[pf.element]}</span>`:""}
-      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}</div>
-      <div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>
-      <div class="status">HP <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}</div>
+      <div class="fname"><b>${g?`<span class="stars" aria-label="등급 ${g}">${"★".repeat(g)}</span> `:""}${fighterName(sid,B)}</b><small class="srOnly">(${pname(piece.owner)})</small>${tg?`<span class="ftags" role="img" aria-label="${tg}" title="${tg}">${rd?gi(rd.arch):""}${pf.element?gi(pf.element):""}</span>`:""}</div>
+      <div class="hpbar"><div id="hpfill-${sid}" style="width:${Math.max(0,dhp/pf.maxHp*100)}%"></div><div class="shbar" title="방어막"><div id="shfill-${sid}" style="width:${Math.max(0,Math.min(100,dsh/pf.maxHp*100))}%"></div></div>${pf.tideMark>0?`<i class="tideline" title="해일 예고 ${pf.tideMark}" style="left:${Math.min(100,pf.tideMark/pf.maxHp*100)}%"></i>`:""}<span class="hpNum">❤️ <span id="hptxt-${sid}">${dhp}</span>/${pf.maxHp}<span class="shNum" title="현재 방어막">(+<span id="shtxt-${sid}">${dsh}</span>)</span></span></div>
+      ${battleStatHtml(pf)}
       </div><div class="fscroll">
-      <div class="status"><span id="bst-${sid}">${stIcons(pf)}</span></div>
-      ${pf.skills?`<div class="status">${(()=>{
-        /* #234 (GDD-23 7.9): 등급·미사용 스킬은 비공개 — 보유 칸 수가 곧 등급이므로 상대 화면에는 공개된 스킬만 이름으로 쓰고
-           나머지는 개수 없이 "?" 하나로 묶는다. 소유자·관전(sim)은 전부 본다. */
-        const all=viewer===2||piece.owner===viewer;
-        const parts=pf.skills.map((sid2,i)=>(all||(pf.revealedSkills&&pf.revealedSkills.includes(i)))?`${skillNameKo(sid2,pf.element)}${pf.cds[i]?`(쿨${pf.cds[i]})`:""}`:null);
-        const shown=parts.filter(x=>x!==null); if(!all&&shown.length<parts.length) shown.push("? 미공개");
-        return shown.join(" · ");
-      })()}</div>`:""}
+      <div class="status"><span class="srOnly" id="bst-${sid}">${stIcons(pf)}</span><span class="stChips" id="bch-${sid}" aria-hidden="true">${stChipsHtml(stIcons(pf),bk)}</span></div>
     </div></div>`;
   };
   const token=sid=>{ // 스테이지 토큰: 하수인 본체·대리 출전 포획 하수인은 128 전투 도트, 자산 규격이 없는 왕·동료 본체는 현행 속성색 원형 + 이모지 유지 (규격 6.3 · #91)
@@ -1466,38 +1659,31 @@ function battleModal(board){
   const dis=aiActor||busy||(NET.mode&&ownerP!==NET.me)||turnClockLate("battle"); // 온라인: 상대 행동 차례엔 조작 불가 · #263 T4 시한이 지난 뒤의 늦은 입력도 잠근다
   /* Saturn REVISE P1(비공개): 마스킹 기준은 **소유자 관측**이다 — 온라인·PVE·핫시트를 함께 처리한다 */
   const mineView=viewerIsOwner(ownerP);
-  /* #235 비공개: 💪 시너지 가산(synAtk)은 **그 좌석의 필드 아키타입 집계**에서 나온다. 위력 표기에 그대로 실으면
-     종·등급이 이미 공개된 전투원 옆에서 상대가 가산분을 역산해 로스터 구성을 읽는다(7.9 소유자 전용).
-     그래서 비소유자 화면의 위력 표기만 가산 없는 사본으로 뽑는다 — 규칙 사본을 만들지 않고 같은 Core 함수(slotPow·effAtk)를 그대로 쓴다.
-     실제 피해는 언제나 Core 가 낸다. 소유자 화면은 execSlot 과 같은 값을 본다. */
-  const fShow=mineView?f:Object.assign({},f,{synAtk:0});
   /* #146: 지금 이 전투원이 **합법으로 쓸 수 있는 공격 수단이 하나도 없는가**. 왕·동료 본체(skills 없음)는 기본 공격이 있으므로 항상 false.
      비공개: "공격할 것이 없습니다"는 **상대의 미공개 기술 4칸이 전부 막혀 있다**는 사실을 그대로 알려 주는 정보다.
-     그래서 안내도 [턴 종료] 버튼도 **소유자 화면에만** 그린다 (비소유자에게는 종전처럼 마스킹된 4슬롯 버튼만 보인다). */
-  const noAtk=!!f.skills&&!f.skills.some((sid2,i)=>slotUsable(f,i,side,ST));
+     그래서 안내도 [턴 종료] 버튼도 **소유자 화면에만** 그린다 (비소유자 화면에는 상대 스킬 줄 자체가 없다 — #296). */
+  const noAtk=!!f.skills&&!f.skills.some((sid2,i)=>battleSlotOk(f,i,side,ST));
   const noAtkShow=noAtk&&mineView;
-  let cmdBtns; const skillTips=[]; // skillTips: ⓘ 설명 버튼이 여는 [{label,tip}] (정체를 아는 기술만)
-  if(f.skills){ // 4슬롯 커맨드 — 기본 공격 버튼 없음. 전부 불가하면 공격 대신 수동 [턴 종료] (#146)
-    const maskCmd=viewer!==2&&ownerP!==viewer;
-    cmdBtns=f.skills.map((sid2,i)=>{
-      const sk2=SKILLS[sid2], onCd=f.cds[i]>0;
-      const known=!maskCmd||(f.revealedSkills&&f.revealedSkills.includes(i));
-      if(!known) return ""; // #234 (7.9): 상대 화면에는 미공개 칸을 칸 수만큼 그리지 않는다(아래에서 "?" 하나로 묶는다)
+  /* #296 (2026-10-02 CJ 정정) 싸우기 줄:
+     · 내 전투원 = 가진 스킬 한 줄씩(★ 이름 · 쿨/봉인/불가 + **고정 설명** desc) + 내 종이 더 높은 등급에서 여는 스킬의 잠긴 소개 줄(#294 unitSkillRows 그대로 · 읽기 전용 · 명령 없음).
+     · 상대 전투원 차례 = **상대 스킬을 하나도 그리지 않는다**(쓴 스킬 · 칸 수 · "?" 자리표시 모두 없음). 관전(sim)은 전부 본다.
+     · 계산한 위력 범위는 없다. 설명은 줄 안에 그대로 보이므로 따로 여는 ⓘ 도 없다(터치 · 쿨 중에도 읽힌다) */
+  const maskCmd=viewer!==2&&ownerP!==viewer;
+  let cmdBtns;
+  if(maskCmd) cmdBtns=`<small role="status">상대 차례입니다 — 상대 스킬은 표시하지 않습니다.</small>`;
+  else if(f.skills){ // 4슬롯 커맨드 — 기본 공격 버튼 없음. 전부 불가하면 공격 대신 수동 [턴 종료] (#146)
+    /* #296 CJ REVISE1(2026-10-03): 하수인 정보 창과 **같은 줄 데이터(unitSkillRows) · 같은 마크업(skillListHtml)**. 쓸 수 있는 줄만 버튼(window.__act(i)) — 쿨 · 봉인 · 불가는 칩 + disabled,
+       잠긴 소개 줄은 버튼 없이 그대로. 위력 칩은 고정 설명 값(SKILLS.pct)뿐 — 계산한 피해 범위는 없다 */
+    const rows=unitSkillRows(f.skills,f.element,f.cds,f.rosterId||f.artRosterId).filter(x=>!x.lock||mineView).map(x=>{ if(x.lock) return x;
+      const i=x.i, sk2=SKILLS[f.skills[i]], onCd=f.cds[i]>0;
       /* #121 계약 5.3: 사신의 낫은 쿨이 아니라 **봉인**으로 막힌다. 표시도 "봉인"이고 사유를 그대로 보여 준다
          (쿨링수·냉각·전술 연계·급속 순환으로는 풀리지 않는다 — 게이트가 cds[] 와 분리되어 있다) */
       const seal=sk2.reaper?reaperWhy(side,ST):null;
-      const cond=!onCd&&!seal&&!slotUsable(f,i,side,ST); // #234: 전투당 1회 사용 · 사용 조건 미충족 · 수면 포자(기본기만)
-      const locked=onCd||!!seal||cond;
-      const label=known?`${skillNameKo(sid2,f.element)}${sk2.pow?" "+dmgRange(slotPow(fShow,sk2)):""}${onCd?` (쿨${f.cds[i]})`:seal?" (봉인)":cond?" (불가)":""}`:`? ${SKIND_KO[sk2.kind]}`;
-      const cross=known&&sk2.el&&f.element&&sk2.el!==f.element; // #92 본체와 다른 속성의 공격기 — 판정 속성을 설명에 덧붙여 비교 가능하게
-      const tip=known?sk2.desc+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:"")+(sk2.cls?` · ${SKILL_CLS_KO[sk2.cls]} 분류(상성표 밖)`:"")+(seal?` · ${seal}`:""):"";
-      skillTips[i]=known&&tip?{label,tip}:null;
-      /* v0.4.10 CJ 모바일 QA: hover 가 없는 터치 기기에서도 기술 설명을 볼 수 있게 기술 버튼 옆에 ⓘ 설명 버튼을 둔다.
-         설명 버튼은 표시 전용이다 — 송신·규칙 상태·전투 행동·턴 소비가 없고, 내 차례가 아니거나 기술이 쿨·봉인이어도 열린다.
-         정체를 모르는 기술(비공개 "? 종류")에는 설명 버튼을 만들지 않는다(tip 이 비어 있다). PC hover(title)는 그대로다. */
-      return `<span class="skillCmd"><button ${dis||locked?"disabled":""} title="${escAttr(tip)}" onclick="window.__act(${i})">${label}</button>${skillTips[i]?`<button type="button" class="skillInfoBtn" aria-label="${escAttr(label)} 설명 보기" aria-controls="skillInfoBox" aria-expanded="false" onclick="window.__skillInfo(${i})">ⓘ</button>`:""}</span>`;
-    }).join("");
-    if(maskCmd&&f.skills.some((x,i)=>!(f.revealedSkills&&f.revealedSkills.includes(i)))) cmdBtns+=`<span class="skillCmd"><button disabled>? 미공개</button></span>`;
+      const cond=!onCd&&!seal&&!battleSlotOk(f,i,side,ST); // #234: 전투당 1회 사용 · 사용 조건 미충족 · 수면 포자(기본기만)
+      const cross=sk2.el&&f.element&&sk2.el!==f.element; // #92 본체와 다른 속성의 공격기 — 판정 속성을 설명에 덧붙여 비교 가능하게
+      const tip=(sk2.desc||"")+(cross?` · ${ELEM_KO[sk2.el]} 속성으로 판정`:"")+(sk2.cls?` · ${SKILL_CLS_KO[sk2.cls]} 분류(상성표 밖)`:"")+(seal?` · ${seal}`:"");
+      return Object.assign(x,{note:seal?"봉인":cond?"불가":"",off:onCd||!!seal||cond,tip}); });
+    cmdBtns=skillListHtml(rows,x=>`${dis||x.off?"disabled ":""}${x.tip?`title="${escAttr(x.tip)}" `:""}onclick="window.__act(${x.i})"`);
     /* #146 계약 (v0.4.7 CJ 2026-09-10) — #121 계약 5.3 의 "폴백 기본 공격"을 **철회**한다.
        4슬롯이 전부 쿨·봉인·조건 미충족으로 불가하면 **어떤 공격도 제공하지 않는다**. 안내와 명시적 수동 [턴 종료]만 둔다.
        · 보조기·시그니처가 하나라도 합법이면 예외 없이 그 슬롯을 쓴다 (여기 오지 않는다).
@@ -1508,60 +1694,68 @@ function battleModal(board){
     if(noAtkShow) cmdBtns+=`<button class="primary" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`;
   } else { // 왕·동료 본체·구형 경로: 기본 공격 유지
     const canSkill=f.skillAtk&&f.cd===0;
-    /* #235: 기본 공격의 실제 위력은 execSlot 이 effAtk(f) 로 낸다 — 표기도 같은 Core 함수를 본다(위 fShow 마스킹 동일) */
-    cmdBtns=`<button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격 ${dmgRange(effAtk(fShow))}</button>`
-      +(f.skillAtk?`<button ${dis||!canSkill?"disabled":""} onclick="window.__act('skill')">${f.element?SKILL_KO[f.element]:"스킬"} ${dmgRange(f.skillAtk)}${f.cd?` (쿨${f.cd})`:""}</button>`:"");
+    cmdBtns=`<div class="row"><button ${dis?"disabled":""} onclick="window.__act('basic')">기본 공격</button>`
+      +(f.skillAtk?`<button ${dis||!canSkill?"disabled":""} onclick="window.__act('skill')">${f.element?SKILL_KO[f.element]:"스킬"}${f.cd?` (쿨${f.cd})`:""}</button>`:"")+`</div>`;
   }
   // #12 볼 투척: 대상이 적 하수인·HP<30%·볼 보유·예비 슬롯 빈 상태·라운드당 1회 / #13 도망: 자기 HP<50%
   const oppPiece=side==="A"?B.defP:B.attP, thrown=side==="A"?B.ballThrowA:B.ballThrowD;
   const throwWhy=ballWhy(ST,side)||"", canThrow=!throwWhy; // #236: 투척 가능 판정은 Core 한 곳 (전설·보유 종 제외 포함)
   /* #146 계약: 도망에는 **HP 조건도 시도 횟수 상한도 없다**. 성공률만 전투원별로 다르다 (기본 30% · 도망의 수호자 70%) */
   const fleeP=fleeProbOf(f);
-  const fleeNote=f.fleeBoost?" · 🏃 도망의 수호자 — 이 전투 도망 성공률 70%":"";
-  const ballBtn=`<button ${dis||!canThrow?"disabled":""} title="적 하수인 HP 30% 미만·볼 1개 소모·성공 시 포획 종료 (라운드당 1회)" onclick="window.__throwBall()">🔴 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
+  /* #296 CJ REVISE1(Image3·4): 못 던지면 잠금(🔒 · aria-disabled · onclick 없음) — 초점은 남아 title 로 Core 사유(ballWhy)를 읽는다. 상대 화면에는 사유를 싣지 않는다(볼 수 · 보유 종 비공개) */
+  const ballBtn=`<button type="button" class="${canThrow?"":"lock"}" ${dis?"disabled ":!canThrow?`aria-disabled="true" `:""}title="${escAttr(mineView&&throwWhy?throwWhy:"볼 1개 소모 · 성공 시 포획 종료 (라운드당 1회)")}"${canThrow?` onclick="window.__throwBall()"`:""}>${canThrow?"🔴":"🔒"} 던지기 (성공 ${pct(BAL.enemyCapProb)})</button>`;
+  /* 우상단 조건 칩 = 실제 값만: 상대 HP 30% 미만(충족 ✓ 초록 / 미충족 = 실제 HP 비율 빨강) · 내 몬스터볼 수(×0 빨강 · 상대 화면에는 없음) */
+  const capOk=opp.hp<opp.maxHp*0.3, ballN=S.balls[ownerP];
+  const capChips=`<span class="cond ${capOk?"ok":"no"}" role="img" aria-label="${escAttr(`상대 HP ${opp.hp}/${opp.maxHp} — 30% 미만 ${capOk?"충족":"미충족"}`)}" title="상대 HP 30% 미만">❤ ${capOk?"✓":Math.round(opp.hp/opp.maxHp*100)+"%"}</span>`
+    +(mineView?`<span class="cond ${ballN>0?"ok":"no"}" role="img" aria-label="몬스터볼 ${ballN}개" title="몬스터볼">${gi("ball")}×${ballN}</span>`:"");
+  const subBack=`<button type="button" class="subBack" onclick="window.__menu(null)">↺ 돌아가기</button>`; // 하위 메뉴 안 로컬 복귀 — window.__menu(null) 와 같은 길(전송 0 · 규칙 상태 무변경)
   const fleeBtn=`<button class="danger" ${dis||f.fleeLock?"disabled":""} title="HP 조건 없이 언제나 시도 · 실패하면 상대의 기본 공격 1회를 맞고 내 전투 행동 1회를 소모합니다" onclick="window.__flee()">🏃 도망 (성공 ${pct(fleeP)})</button>`;
   /* #121 계약 2.3: 아이템 사용 제한은 **플레이어별 라운드 1회**만 남는다 — 전투당 2회(itemPerBattle)와 연속 동일 금지(lastItem)는 제거됐다.
      두 값은 BAL 에서 Infinity / 미참조가 되었고, 여기서도 더 이상 버튼을 막지 않는다. */
   /* Saturn REVISE P1(비공개): 마스킹 기준을 **소유자 관측**으로 바꾼다. 종전 `NET.mode&&ownerP!==NET.me` 는 온라인만 가려서
      PVE 의 AI 행동 차례에 AI 의 가방·패키지 재고가 사람 화면에 그대로 보였다. viewerIsOwner() 는 온라인·PVE·핫시트를 함께 처리한다.
      (mineView 는 위 #146 비공개 판정과 같은 값을 쓰도록 전투원 판정 앞에서 한 번만 계산한다.) */
-  let itemBtns=!mineView?`<small>상대 아이템 비공개</small>`:S.inv[ownerP].map((k,i)=>
-    `<button ${dis||itemRound?"disabled":""} title="${ITEMS[k].desc}" onclick="window.__useItem(${i})">${ITEMS[k].ko}</button>`).join("");
+  /* #296 CJ REVISE1(Image5): 가방 = 3열 칸(아이콘 · 이름 · 실제 수량 · 짧은 효과). 아이템은 ITEMS 종류별 한 칸 — 누르면 그 종류의 **첫 실제 칸 번호**(S.inv.indexOf)로 기존 __useItem(i). ×0 칸은 잠금 */
+  const tile=(ic,nm,n,fx,attr)=>`<button type="button" class="bagTile" ${attr}>${ic}<b>${nm}</b><span class="qty">×${n}</span><small>${fx}</small></button>`;
+  let itemBtns=!mineView?`<small>상대 아이템 비공개</small>`:Object.keys(ITEMS).map(k=>{ const i=S.inv[ownerP].indexOf(k), n=S.inv[ownerP].filter(x=>x===k).length;
+    return tile(gi(k),ITEMS[k].ko,n,ITEMS[k].desc,`${dis||itemRound||i<0?"disabled ":""}title="${escAttr(itemRound?"이번 라운드에 이미 사용":ITEMS[k].desc)}" onclick="window.__useItem(${i})"`); }).join("");
   /* #121 계약 2.2·3.1 패키지: 재고·개봉 선택은 **소유자에게만** 보인다. 개봉·버프 선택은 무료 보너스 행동이라
      주 행동·전투 행동·아이템 라운드 카운터를 하나도 소모하지 않는다 (확정 순간에만 재고가 움직인다). */
   const pk=S.pkgs[ownerP], buffUsed=(side==="A"?B.buffA:B.buffD);
   /* 계약 9: 한 전투 안의 UI 표시 — 양측에 적용된 버프를 상태줄로 보여 준다 (적용된 효과는 공개 정보) */
-  const buffLine=(B.buffA||B.buffD)?`<div class="status">✨ ${[B.buffA?`${fighterName("A",B)} ${BUFFS[B.buffA].ko}`:"",B.buffD?`${fighterName("D",B)} ${BUFFS[B.buffD].ko}`:""].filter(Boolean).join(" · ")}</div>`:"";
-  let pkgBtns=!mineView?`<small>상대 패키지 비공개</small>`:S.eco?BUFF_KEYS.map(k=>`<button ${dis||S.eco.buffInv[ownerP][k]<=0||!!buffUsed||(k==="time"&&B.round!==1)?"disabled":""} onclick="window.__buffUse('${k}')">${BUFFS[k].ko} ${S.eco.buffInv[ownerP][k]}</button>`).join(""):
-    [`<button ${dis||pk.itemGift<=0?"disabled":""} title="아이템 선물 패키지를 열어 회복약·쿨링수·해독제·공용 볼 중 1개를 받습니다 (행동 미소모)" onclick="window.__openPkg('itemGift')">🎁 아이템 선물 ${pk.itemGift}</button>`,
-     `<button ${dis||pk.battleBuff<=0||!!buffUsed?"disabled":""} title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')">✨ 전투 버프 ${pk.battleBuff}</button>`].join("");
+  /* #296 CJ REVISE1: 적용된 버프는 그 전투원 카드의 칩(stChipsHtml)으로 — 따로 쓰던 상태 줄은 없앤다(양측 공개는 그대로) */
+  let pkgBtns=!mineView?`<small>상대 패키지 비공개</small>`:S.eco?BUFF_KEYS.map(k=>tile(gi(k),goodNm(k),S.eco.buffInv[ownerP][k],GOOD_DESC[k],
+      `${dis||S.eco.buffInv[ownerP][k]<=0||!!buffUsed||(k==="time"&&B.round!==1)?"disabled ":""}title="${escAttr(buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":BUFFS[k].desc)}" onclick="window.__buffUse('${k}')"`)).join(""):
+    [tile(`<i class="gi emo" aria-hidden="true">🎁</i>`,"아이템 선물",pk.itemGift,"아이템 1개 받기",`${dis||pk.itemGift<=0?"disabled ":""}title="아이템 선물 패키지를 열어 회복약·쿨링수·해독제·공용 볼 중 1개를 받습니다 (행동 미소모)" onclick="window.__openPkg('itemGift')"`),
+     tile(`<i class="gi emo" aria-hidden="true">✨</i>`,"전투 버프",pk.battleBuff,"버프 1개 적용",`${dis||pk.battleBuff<=0||!!buffUsed?"disabled ":""}title="${buffUsed?"이번 전투에 이미 버프를 적용했습니다 (전투당 1개)":"전투 버프 패키지를 열어 힘·시간·도망 중 1개를 적용합니다 (행동 미소모)"}" onclick="window.__openPkg('battleBuff')"`)].join("");
   const turnLabel=fxTurnLabel(ownerP,true); // T3: 현재 행동자 대형 표시 (#106: 핫시트 "P1 턴!", PVE·온라인 "나의 턴!/상대 턴!")
   const menu=B.menu||null; // #106 5.3 4카테고리 하위 메뉴 — 로컬 표시 상태(송신 없음). 모든 하위 패널을 그려 두고 활성 패널만 보인다
-  /* #122 REVISE(2026-09-10 CJ QA 4): 하위 메뉴의 '← 뒤로'를 **하위 메뉴 패널 바로 아래**로 내린다 (직전 REVISE의 제목 옆 좌상단을 대체).
-     핸들러는 종전 그대로 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */
+  /* #296 CJ: 싸우기 · 가방 · 포획 · 도망 모두 패널 제목 줄의 [↺ 돌아가기](subBack)로 복귀한다 (#122 바깥 '← 뒤로' 대체).
+     핸들러는 window.__menu(null) 시맨틱 호출이며(모달 buttons 인덱스 중계 아님) 전투에서 강제로 빠져나가는 버튼은 만들지 않는다 */
   const sub=(key,inner)=>`<div class="bsub${menu===key?"":" hidden"}" id="bsub-${key}">${inner}</div>`;
-  modal(`<div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>${mySide==="A"?battleSynChips(B.attP.owner,B.fa,B):battleSynChips(B.defP.owner,B.fd,B)}</div>
-    <div style="font-size:12px;color:var(--dim);margin:2px 0 6px">⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}
-      <span class="badge" id="battleClock" role="timer">${turnClockText("battle")}</span>${NET.mode&&ownerP!==NET.me?`<span class="badge" role="status">⏳ 상대 응답 대기</span>`:""}</div>
-    <div id="bstage" class="scene"><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
-    ${buffLine}
+  /* #296 콘티 상단: ① 공용 신원 한 줄(#294 topBarHtml — 나 VS 상대 · 배틀 중 · 감정표현 자리 · ⚙) ② 차례 + 왕국 · 개인 시너지 ③ 라운드 + **내 행동 시계** + 아키타입 시너지.
+     칩은 화면 주인의 전투원 것(핫시트는 지금 기기를 든 행동자). 시계는 화면 주인의 행동 차례에만 — 상대 차례는 대기 표시뿐이다(상대 60초 비공개). 발판 색 = 그 전투원의 속성(전설은 전설색) */
+  const cs=S.mode==="pvp"&&!NET.mode?side:mySide, cP=cs==="A"?B.attP:B.defP, cF=cs==="A"?B.fa:B.fd;
+  const plat=sid=>{ const pf=sid==="A"?B.fa:B.fd; return pf.element?`var(--${pf.element})`:pf.legend?"var(--g5)":""; };
+  const platVar=[["Op",plat(topSide)],["Me",plat(mySide)]].filter(x=>x[1]).map(x=>`--plat${x[0]}:${x[1]}`).join(";");
+  modal(`<header class="battleTop">${topBarHtml(NET.mode?NET.me:S.mode==="pve"?0:ownerP,`<b class="who">배틀 중</b>${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(NET.publicMode?netResignBtn():"")}`)}</header>
+    <div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>${battleSynChips(cP.owner,cF,B,"k")}</div>
+    <div class="bhead bround"><span>⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}</span>
+      ${mineView&&!aiActor?`<span class="badge" id="battleClock" role="timer">${turnClockText("battle")}</span>`:`<span class="badge" role="status">⏳ 상대 응답 대기</span>`}${battleSynChips(cP.owner,cF,B,"a")}</div>
+    <div id="bstage" class="scene"${platVar?` style="${platVar}"`:""}><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
     <div id="msgBox">${busy?"":inBonus?`⚡ ${fighterName(side,B)} 추가 공격 — ${mineView?"기본기 · 2차 · 3차 중 선택 (피해 60%)":"선택을 기다리는 중"}`:(noAtkShow?NO_ATTACK_MSG:`${fighterName(side,B)}의 행동을 선택하세요.`)}</div>
     <div class="bmenu${menu?" hidden":""}" id="bmenu"><b style="grid-column:1/-1;font-size:12px;color:var(--dim)">${pname(ownerP)}:</b>
       <button ${dis?"disabled":""} onclick="window.__menu('fight')">⚔️ 싸우기</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('bag')">🎒 가방</button>
       <button ${dis||inBonus?"disabled":""} onclick="window.__menu('ball')">🔴 포획</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('flee')">🏃 도망가기</button>
       ${noAtkShow?`<button class="primary" style="grid-column:1/-1" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`:""}</div>
-    ${sub("fight",`<small>⚔️ 싸우기 — 기술 4슬롯</small>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}<div class="row">${cmdBtns}</div><div id="skillInfoBox" class="skillInfoBox hidden" role="note" aria-live="polite"></div>`)}
-    ${sub("bag",`<small>🎒 가방 — 아이템은 보너스 행동 (라운드당 1회, 전투 횟수·연속 동일 제한 없음) · 사용 후 같은 행동자의 메뉴로 복귀${itemRound?" · <b>이번 라운드에 이미 사용</b>":""}</small>
-      <div class="row">${itemBtns||"<small>아이템 없음</small>"}</div>
-      <small>📦 패키지 — 개봉·버프 적용은 행동·아이템 카운터를 소모하지 않습니다${buffUsed?` · 적용된 버프: <b>${BUFFS[buffUsed].ko}</b>`:""}</small>
-      <div class="row">${pkgBtns}</div>`)}
-    ${sub("ball",`<small>🔴 포획 — 상대 하수인 HP 30% 미만 · 볼 ${mineView?`${S.balls[ownerP]}개`:"비공개"} · 성공 ${pct(BAL.enemyCapProb)}${mineView&&throwWhy?` · <b>${throwWhy}</b>`:""}</small><div class="row">${ballBtn}</div>`)}
-    ${sub("flee",`<small>🏃 도망가기 — HP 조건 없음 · 성공 ${pct(fleeP)} · 실패하면 상대의 <b>기본 공격 1회</b>를 맞고 내 전투 행동 1회를 소모${fleeNote}</small><div class="row">${fleeBtn}</div>`)}
-    <button id="bmenuBack" class="bmenuBack${menu?"":" hidden"}" type="button" onclick="window.__menu(null)">← 뒤로</button>`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
+    ${sub("fight",`<div class="subHead"><b>⚔️ 싸우기</b>${subBack}</div>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}${cmdBtns}`)}
+    ${sub("bag",`<div class="subHead"><b>🎒 가방</b>${subBack}</div><div class="bagGrid" aria-label="아이템">${itemBtns}</div><div class="bagGrid" aria-label="패키지">${pkgBtns}</div>`)}
+    ${sub("ball",`<div class="subHead"><b>${canThrow?"포획을 시도할까요?":"지금은 포획이 불가합니다."}</b><span class="conds">${capChips}</span></div><div class="subActs">${ballBtn}${subBack}</div>`)}
+    ${sub("flee",`<div class="subHead"><b>정말로 도망갈까요?</b></div><div class="subActs">${fleeBtn}${subBack}</div>`)}`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
   uiBattleBox(); // #122 세로 전투 화면 레이아웃 — DOM 은 표시 계층이 만진다
+  try{ emoteSync(); }catch(e){} // #296: 전투 창을 (다시) 그린 직후 — 이모티콘 버튼을 새 상단 한 줄의 자리에 맞춘다(상점 shopClockStart 와 같은 자리 · 표시 위치만)
   try{ turnClockSync(); }catch(e){} // #263 T4 전투 행동 60초 — 전투 화면이 열린 그 자리에서 선다 (render 를 기다리지 않는다)
-  window.__skillInfo=i=>uiSkillInfoToggle(i,skillTips[i]);  // 기술 설명 토글 — 표시 전용(송신 0 · 규칙 상태 무변경 · 전투 행동/턴 소비 없음)
   window.__menu=key=>{ // 하위 메뉴 전환 — 로컬 전용(송신 0), 규칙 상태 무변경, 재렌더 없이 패널 표시만 바꾼다
     if(S.battle!==B) return; B.menu=key||null;
     uiBattleMenu(B.menu);
@@ -1642,6 +1836,7 @@ function pieceMemoKey(p){ return !p?null:(p.type==="minion"?(p.element?"minion_"
 /* #238 CJ 4: 동료 역할(공격·방어) — 내 말은 소유자 값(allyKind · 온라인은 내 기술 id), 상대 말은 **공개된 기술 id** 로만 안다.
    모르면 null 이라 공용 companion 그림이다(말 id·요청·DOM·클래스로 추정하지 않는다) */
 function allyRole(p){ if(!p||p.type!=="ally") return null;
+  if(p.resultRole) return p.resultRole; // 결과 화면 항목 — 권위 final(서버·resultEntry)이 공개 범위 안에서 실어 준 값만
   const mine=viewerIsOwner(p.owner); if(mine&&p.allyKind) return p.allyKind;
   const k=(p.skills||[]).filter((s,i)=>mine||(p.revealedSkills||[]).includes(i)).map(String).find(s=>/^(AS|SH)-/.test(s));
   return k?(k[0]==="S"?"shield":"assassin"):null; }
@@ -1658,30 +1853,48 @@ function pcFaceHtml(p){
   if(key) return `<span class="face">${glyphSpan(key,"sym")}</span>`;
   return `<span class="face"><span class="nm">${p.type==="minion"&&p.name?p.name:(TYPE_KO[p.type]||"?")}</span></span>`;
 }
-/* 정보 행 — 원소 기호(하수인만) + 현재 HP(하수인·동료·왕만). 폭탄·함정은 전체 공개에서도 HP 를 표시하지 않는다 (규격 7.8·7.9) */
-/* #237 공개 경제 방의 상대 말 HP 는 서버가 100 눈금 비율로만 보낸다(최대 HP 로 등급이 역산되지 않게) — % 로 표기한다. 자기 말은 실제 값.
-   #262 (CJ 2026-09-27) 전투에서 싸운 말(hpSeen)은 서버가 실제 값을 보내므로 % 없이 현재 HP 만. 전투원 패널은 양쪽 모두 실제 현재/최대 */
-function hpPctView(p){ return !!(NET.publicMode&&S&&S.eco&&p.owner!==NET.me&&!p.hpSeen); }
+/* ===== #293 (2026-10-01 CJ 6) 말 얼굴 — 보드·배치 트레이·결과가 이 한 부품을 쓴다 (경제 판) =====
+   왼쪽 위 = 왕국(5속성 전부 · 전설은 왕관) / 오른쪽 위 = 하수인 아키타입, 왕·동료는 **역할 기호**(아키타입 아님 — 집계에 아무것도 더하지 않는다) /
+   아래 = ♥ + 실제 현재 HP(% 없음) / 배경 = 하수인 등급 색 g1~g5(★ 없음 · 왕·동료는 등급이 없어 중립). 등급·역할은 접근성 이름에도 남긴다.
+   이 함수는 정체가 공개된(known) 말에만 불린다 — 미공개 상대 말은 종전대로 아무것도 없다. 상대 값은 서버가 보낸 실제 값 그대로다.
+   왕·동료의 왕국은 속성이 실제로 정해진 뒤에만(직접 골랐거나 상점 완료로 배정) — 그 전에는 비워 둔다. */
+function pcMeta(p){
+  const unit=p.type==="minion"||p.type==="ally"||p.type==="king";
+  if(!S||!S.eco||!unit) return {unit,eco:false,g:0,el:null,tr:null,trKo:""};
+  if(p.type==="minion"){ const key=ecoKey(p)||p.rosterId||null, L=LEGEND_ROSTER.find(l=>l.id===key||l.key===p.legend), arch=L?L.arch:archOf(p);
+    return {unit,eco:true,g:key||L?unitGrade(L?L.id:key,p.grade):0,el:L?"crown":p.element||null,elKo:L?"전설":ELEM_KO[p.element]||"",tr:arch||null,trKo:arch?ARCH_KO[arch]:""}; }
+  const sh=S.eco.shop, set=!!p.leaderElChosen||!sh||sh.kind!=="start"||!!sh.done[p.owner], role=p.type==="king"?"king":allyRole(p);
+  return {unit,eco:true,g:0,el:set&&p.element?p.element:null,elKo:set&&p.element?ELEM_KO[p.element]:"",
+    tr:({king:"crown",assassin:"atk",shield:"def"})[role]||null,trKo:role?"역할 — "+({king:"왕",assassin:"공격 동료",shield:"방어 동료"})[role]:""};
+}
+/* 정보 행 — 현재 HP(하수인·동료·왕만). 폭탄·함정은 전체 공개에서도 HP 를 표시하지 않는다 (규격 7.8·7.9). 비경제 판은 종전 원소 기호 + HP */
 function pcInfoHtml(p){
-  const key=p.type==="minion"?pieceMemoKey(p):null;
-  const hp=(p.type==="minion"||p.type==="ally"||p.type==="king")?p.hp+(hpPctView(p)?"%":""):"";
+  const m=pcMeta(p);
+  if(m.eco) return `<span class="info"><span class="hp pill">${gi("heal")}${p.hp}</span></span>`;
+  const key=p.type==="minion"?pieceMemoKey(p):null, hp=m.unit?String(p.hp):""; // 문자열 — HP 0 도 그대로 나온다
   if(!key&&!hp) return "";
   return `<span class="info">${key?glyphSpan(key,"sym"):""}${hp?`<span class="hp">${hp}</span>`:""}</span>`;
 }
 function pcLabel(p){ // 확정 말의 접근성 문구 — 이미 공개된 값만 쓴다
-  return (p.type==="minion"&&p.name?p.name:TYPE_KO[p.type])+(p.type==="minion"&&p.element?" · "+ELEM_KO[p.element]:"")
-    +((p.type==="minion"||p.type==="ally"||p.type==="king")?" · HP "+p.hp+(hpPctView(p)?"%":""):"");
+  const m=pcMeta(p), nm=p.type==="minion"&&p.name?p.name:TYPE_KO[p.type];
+  if(m.eco) return [nm,m.elKo,m.trKo,m.g?`등급 ${m.g}`:"","HP "+p.hp].filter(Boolean).join(" · ");
+  return nm+(p.type==="minion"&&p.element?" · "+ELEM_KO[p.element]:"")+(m.unit?" · HP "+p.hp:"");
 }
-/* 말판과 배치 트레이가 같은 함수를 쓴다 — 한쪽만 아이콘으로 바뀌는 불일치가 생기지 않는다 (규격 7.10.4) */
-function pcBodyHtml(p){return pcFaceHtml(p)+pcInfoHtml(p);}
+/** 등급 배경 클래스 — 얼굴을 담는 칸(보드 말·트레이 칸·결과 칸)에 붙인다. 등급이 없으면 빈 문자열(중립 배경) */
+function pcGradeCls(p){ const g=pcMeta(p).g; return g?` gf g${g}`:""; }
+/* 말판·배치 트레이·결과가 같은 함수를 쓴다 — 한쪽만 다르게 보이는 불일치가 생기지 않는다 (규격 7.10.4) */
+function pcBodyHtml(p){ const m=pcMeta(p);
+  /* 왕국 기호는 추측 메모 표(MEMO_OPTS — 땅이 없다)가 아니라 아이콘 아틀라스에서 — 5속성 전부 나온다. 아틀라스에 없는 키는 같은 뜻의 기호 글자로 */
+  const el=m.eco&&m.el?gi(m.el,"cr tl")||`<span class="cr tl" aria-hidden="true">${ELEM_EMO[m.el]||""}</span>`:"";
+  return el+(m.eco&&m.tr?gi(m.tr,"cr tr"):"")+pcFaceHtml(p)+pcInfoHtml(p); }
 
 /* ===== #236 상점·가방·B08 화면 — 플레이 QA 용 기능형 최소 UI (최종 카드·레드닷 위치·연출은 #238) =====
    화면은 소유자 시점 상태만 읽고, 입력은 전부 Core 액션 하나로 보낸다. 거래 판정·회계는 Core(ecoReduce) 한 곳이다.
-   확인 팝업은 승급·판매·티켓만(GDD-23 7.5·8.2), 버튼은 누르는 순간 잠긴다(once). 상점 90초는 사람 좌석마다(PVE·핫시트 — 2026-09-24 CJ D1)
+   확인 팝업은 승급·판매·티켓만(GDD-23 7.5·8.2), 버튼은 누르는 순간 잠긴다(once). 정기 상점 180초는 사람 좌석마다(PVE·핫시트 — 2026-09-24 CJ D1 · 길이는 #295 2026-10-02 CJ)
    자기 상점이 처음 보이는 순간부터 흐른다: 가림이 떠 있는 동안은 시작하지 않고, 가림 확인 뒤 상점이 그려질 때 시작한다. B08 20초도 같은 원칙(가림 뒤). */
 const once=fn=>{ let used=false; return ()=>{ if(used) return; used=true; fn(); }; };
 const SHOPCLK={t:null,iv:null,key:null,dl:0}, BAGCLK={t:null,iv:null};
-/* ===== #263 게임 시한 — 상점 90초 · 배치 90초 · 보드 행동 30초 · 전투 행동 60초(T4) · B08 20초 (다섯 종) =====
+/* ===== #263 게임 시한 — 정기 상점 180초(#295) · 준비 180초(#293) · 보드 행동 30초 · 전투 행동 60초(T4) · B08 20초 (다섯 종) =====
    복수 강제 대상 선택의 30초(T3)는 **새 종류가 아니라 행동 30초를 한 번 더 도는 것**이다 — 저장 자리만 따로 둔다.
    (2026-09-25 CJ 후속 T1~T4 · Venus 타이머 규칙 동기화 · Jupiter 보고 7절)
    온라인(공개 방)은 서버가 마감을 소유한다 — 여기는 room_state.clock 의 남은 시간을 그대로 **표시만** 한다(추론 금지).
@@ -1691,25 +1904,16 @@ const SHOPCLK={t:null,iv:null,key:null,dl:0}, BAGCLK={t:null,iv:null};
      · 키가 그 시한 입력 하나를 가리키고, 키가 바뀌면 전체 시간으로 새로 선다. 키가 같으면 남은 시간이 그대로 이어진다.
      · 정지(가림·전투·대상 선택·B08·연출)는 남은 시간을 들고 멈춘다 — Q2=A "후보 확정 뒤 전투 중 정지".
      · 만료된 보드 행동은 전투가 끝난 자리에서 마무리한다(서버 _settleExpiredAct 와 같은 자리).
-   상점 90초(SHOPCLK)·B08 20초(BAGCLK)는 종전 그대로다. 재연결 유예 60초는 게임 시계가 아니다 — 단절 중 유일하게 흐른다.
+   정기 상점 180초(SHOPCLK · 길이만 #295)·B08 20초(BAGCLK)는 종전 그대로다. 재연결 유예 60초는 게임 시계가 아니다 — 단절 중 유일하게 흐른다.
    Q5(2026-09-25 CJ 최종): 회복·선택 전투를 고르는 시간은 **보드 30초**에 포함되고, 전투에 들어간 뒤의 명령이 60초다.
    B02 출전 후보는 단일 강제 대상이면 보드 30초의 잔여, 복수 강제 대상이면 대상 선택 30초의 잔여를 쓴다(전용 B02 타이머 없음). */
 const TURNCLK={c:{},iv:null,firing:false,late:false};   // c[kind] = {key,p,left,dl,t,expired,fired}
-const TURNCLK_KINDS=["place","act","pick","battle"];
+const TURNCLK_KINDS=["prep","act","pick","battle"];                      // prep = 서버 준비 시계의 표시·늦은 입력 잠금 전용(로컬 마감은 PREPCLK)
 /** 지금 이 기기에서 흐르는 시한 입력들 (온라인·sim·헤드리스는 빈 배열 — 판정은 서버가 한다) */
 function turnClockWants(){
   if(!S||!S.eco||NET.mode||!fxLive()) return [];                        // 온라인·sim·헤드리스 스텁 제외 (온라인은 서버 시계)
   const cov=turnClockCovered();
-  if(S.phase==="setup"){
-    /* 배치 90초 — S01 을 끝낸 좌석이 **배치를 확정(setupConfirm)하기 전**까지다. 끝 조건이 "다 놓았다"가 아닌 이유는
-       서버 _wantSeatClock 이 placed 가 아니라 `placed && ready` 를 보는 이유와 같다: 14개를 다 놓고 [배치 완료]를 끝내
-       누르지 않는 좌석에서 시계가 사라지면 경기가 시작되지 않는 교착이 남는데, 그 교착을 없애려고 있는 시한이다.
-       확정하면 setupPlayer 가 넘어가거나(핫시트) phase 가 play 로 바뀌어(PVE·마지막 좌석) 이 시한이 사라진다. */
-    const p=S.setupPlayer;
-    if(isAI(p)||!S.eco.shop||!S.eco.shop.done[p]) return [];
-    return [{kind:"place",p,key:"place:"+p,ms:ECO.placeSec*1000,paused:cov}];
-  }
-  if(S.phase!=="play"&&S.phase!=="bagPick") return [];
+  if(S.phase!=="play"&&S.phase!=="bagPick") return [];                  // 준비 구간(setup)은 공통 180초 하나(PREPCLK) — 배치 90초는 없다(#293)
   const out=[];
   /* T4 전투 행동 60초 — 싸우기·가방·포획·도망을 고르는 시간. **전투 행동 하나마다** 새로 선다: 키에 행동 토큰(actSeq)·
      라운드·단계를 실어 차례가 넘어가면 새 60초가 되고, 같은 행동을 다시 그려도(하위 메뉴·개봉 표) 남은 시간이 이어진다. */
@@ -1733,13 +1937,35 @@ function turnClockWants(){
 }
 function turnClockCovered(){ try{ const o=$("overlay"); return !!(o&&o.classList&&o.classList.contains("handoff")); }catch(e){ return false; } }
 function turnClockStop(){ for(const k of TURNCLK_KINDS){ const c=TURNCLK.c[k]; if(c&&c.t) clearTimeout(c.t); }
-  TURNCLK.c={}; clearInterval(TURNCLK.iv); TURNCLK.iv=null; TURNCLK.late=false; }
+  TURNCLK.c={}; clearInterval(TURNCLK.iv); TURNCLK.iv=null; TURNCLK.late=false; prepClockStop(); }
+/* ===== #293 (2026-10-01 CJ 1) 준비 180초 — 시작 상점 → 배치 → 완료가 **한 마감**을 쓴다(ECO.prepSec). 다시 걸지도 멈추지도 않는다 =====
+   온라인은 서버 마감(room_state.clock key "prep")을 표시만 한다. 오프라인(PVE·핫시트)은 이 기기가 경기당 한 번만 건다 —
+   핫시트는 두 사람이 이 하나를 함께 쓰고 가림·차례 넘김에도 그대로 흐른다. 만료되면 아직 끝내지 못한 사람 좌석을 차례로
+   자동 마무리한다: 상점 미완료 = 기존 shopTimeout(자동 구매·속성 배정·자동 배치) · 상점 완료 = 기존 autoPlace, 이어서 기존 배치 확정. */
+const PREPCLK={g:null,dl:0,t:null,iv:null};
+function prepClockStop(){ clearTimeout(PREPCLK.t); clearInterval(PREPCLK.iv); PREPCLK.g=PREPCLK.t=PREPCLK.iv=null; PREPCLK.dl=0; }
+function prepClockStart(){
+  if(NET.mode||!fxLive()||PREPCLK.g===S||isAI(S.setupPlayer)) return;   // 같은 경기의 다시 그리기·차례 넘김 = 마감 유지 · 사람 좌석이 있을 때만
+  prepClockStop(); PREPCLK.g=S; PREPCLK.dl=Date.now()+ECO.prepSec*1000;
+  PREPCLK.t=setTimeout(prepClockFire,ECO.prepSec*1000);
+  PREPCLK.iv=setInterval(()=>{ const el=$("prepClock"); if(el) el.textContent=turnClockText("prep"); },500);
+}
+function prepClockFire(){
+  const g=PREPCLK.g; clearInterval(PREPCLK.iv); PREPCLK.iv=PREPCLK.t=null;
+  for(let n=0;n<2&&S===g&&S.phase==="setup";n++){
+    const p=S.setupPlayer; if(isAI(p)) break;
+    closeModal();                                                       // 열린 확인 창·가림(미확정)만 닫는다 — 확정 거래·놓은 말은 보존
+    dispatchCoreAction(S.eco.shop&&S.eco.shop.kind==="start"&&!S.eco.shop.done[p]?{t:"shopTimeout",player:p}:{t:"autoPlace",player:p});
+    if(S.phase!=="setup"||S.setupPlayer!==p||S.pieces.some(x=>x.owner===p&&!x.placed)) break;
+    window.setupDoneCore();
+  }
+}
 function turnClockSync(){
   if(NET.publicMode&&Object.keys(TURNCLK.c).length) turnClockStop();    // 서버 시계 — 로컬 마감은 걸지 않고 표시 간격만 돌린다
   const wants=NET.publicMode?[]:turnClockWants();
   for(const k of TURNCLK_KINDS) turnClockArm(k,wants.find(w=>w.kind===k)||null);
   const sc=NET.ecoClock;
-  const live=NET.publicMode?(!!sc&&TURNCLK_KINDS.indexOf(sc.key)>=0):Object.keys(TURNCLK.c).length>0;
+  const live=NET.publicMode?((!!sc&&TURNCLK_KINDS.indexOf(sc.key)>=0)||(!!NET.boardClock&&!!S&&S.phase==="play")):Object.keys(TURNCLK.c).length>0; // #294 상대 차례의 공개 보드 시계도 표시 간격을 돌린다
   if(live&&!TURNCLK.iv) TURNCLK.iv=setInterval(turnClockSync,500);      // 정지 해제(전투·연출·가림이 끝난 자리)는 다시 그리기를 기다리지 않는다
   else if(!live&&TURNCLK.iv){ clearInterval(TURNCLK.iv); TURNCLK.iv=null; }
   turnClockTick();
@@ -1770,12 +1996,6 @@ function turnClockFire(kind,key){
   if(!w||w.key!==key||w.paused) return;                                 // 정지 중이면 그대로 두고, 풀린 뒤 turnClockSync 가 다시 부른다
   const p=c.p; c.fired=true; TURNCLK.firing=true;
   try{
-    if(kind==="place"){
-      closeModal();
-      dispatchCoreAction({t:"autoPlace",player:p});
-      if(S.phase==="setup"&&S.setupPlayer===p&&!S.pieces.some(x=>x.owner===p&&!x.placed)) window.setupDoneCore();
-      return;
-    }
     if(kind==="battle"){
       const B=S.battle; if(!B) return;
       /* 쓸 수 있는 기술이 남아 있어도(그리고 R1 추가 공격 중에도) 건너뛴다 — timeout 표식이 수동 넘기기의 조건을 지난다.
@@ -1813,7 +2033,14 @@ function turnClockStep(){
     보드 배지는 대상 선택 30초가 도는 동안 **그 시계**를 보여 준다 — 서버 _clockView 가 "지금 흐르는 것 하나"를 보내는 것과 같고,
     둘 다 "지금 남은 초"라는 뜻이라 화면은 구분하지 않는다(Jupiter 7-5.2). */
 function turnClockText(kind){
-  if(NET.publicMode){ const c=NET.ecoClock; return c&&(c.key===kind||(kind==="act"&&c.key==="pick"))?netClockText():""; }
+  if(NET.publicMode){
+    const board=kind==="act"&&!!S&&S.phase==="play";
+    /* #294 보드 상단 시간 칸 = 공개 보드 시계(boardClock · 양쪽 좌석 같은 값). 상대 차례에도 초가 보인다. 표시만 한다 — 만료 명령·로컬 30초를 만들지 않는다 */
+    if(board&&NET.boardClock!==undefined){ const b=NET.boardClock; if(!b) return "";
+      const sec=Math.max(0,Math.ceil(netClockMs(b)/1000)); return sec<=0?"⏱ 0초 · 처리 중":b.running?`⏱ ${sec}초`:`⏱ 정지 · ${sec}초`; }
+    const c=NET.ecoClock;
+    return c&&(c.key===kind||(kind==="act"&&c.key==="pick"))?netClockText():board&&NET.mode&&!!S.eco&&S.current!==NET.me?"확인 중":""; } // 필드가 없으면(구 서버) 내 차례는 종전 clock, 상대 차례는 '확인 중'
+  if(kind==="prep") return PREPCLK.g===S&&PREPCLK.dl&&S.phase==="setup"?`⏱ ${Math.max(0,Math.ceil((PREPCLK.dl-Date.now())/1000))}초`:"";
   const c=kind==="act"?(TURNCLK.c.pick||TURNCLK.c.act):TURNCLK.c[kind];
   if(!c) return "";
   const ms=c.dl?c.dl-Date.now():c.left;
@@ -1827,7 +2054,7 @@ function turnClockLate(kind){
   return !!c&&c.expired;
 }
 function turnClockTick(){
-  for(const k of [["placeClock","place"],["actClock","act"],["battleClock","battle"]]){ const el=$(k[0]); if(el) el.textContent=turnClockText(k[1]); }
+  for(const k of [["prepClock","prep"],["actClock","act"],["battleClock","battle"]]){ const el=$(k[0]); if(el) el.textContent=turnClockText(k[1]); }
   /* 온라인에서 서버 마감이 지나는 순간 — 푸시가 오기 전에도 조작 버튼을 그 자리에서 잠근다(표시 간격이 알아챈다).
      지나간 뒤 한 번만 다시 그린다: render → turnClockSync → 여기로 돌아와도 late 가 그대로라 되풀이되지 않는다. */
   if(!NET.publicMode) return;
@@ -1841,14 +2068,24 @@ function shopViewer(){ // 지금 이 기기에서 상점을 쓰는 사람 (없�
   if(sh.active!==null) return sh.active;
   const p=[0,1].find(x=>!isAI(x)&&!sh.done[x]); return p===undefined?null:p;
 }
+/* #295 온라인 턴 상점에서 내 좌석 완료(직접·만료)가 서버로 확정됐고 단계가 아직 shop — 상대를 기다리는 동안. 핫시트·PVE 에는 없다(순차 · AI 즉시 완료) */
+function shopWaiting(){ return !!(NET.publicMode&&S&&S.eco&&S.phase==="shop"&&S.eco.shop&&shopViewer()===null); }
+/* 말판 중앙 상태 팝업 한 장 — 경기 전 준비 대기(#293)와 턴 상점 완료 대기(#295)가 같은 마크업 */
+function readyPopHtml(b,small){ return `<div class="readyPop" role="status" aria-live="polite"><b>${b}</b>${small?`<small>${small}</small>`:""}</div>`; }
+function shopWaitPopHtml(){ return !shopWaiting()?"":netPaused()?readyPopHtml("내 구매 완료 · 연결 대기 중","연결이 끊겨 경기와 상점 시간이 멈춰 있습니다. 연결이 돌아오면 이어집니다.")
+  :readyPopHtml("내 구매 완료 · 상대 기다리는 중…","상대가 아직 상점에서 구매 중입니다. 끝나면 바로 경기로 돌아갑니다."); }
 function ecoName(k){ const r=ROSTER.find(x=>x.id===k); if(r) return `${ELEM_EMO[r.element]}${r.name}`; const L=LEGEND_ROSTER.find(x=>x.id===k); return L?`${L.emo}${L.name}`:"?"; }
 function ecoStars(g){ return "⭐".repeat(Math.min(5,g||1)); }
 /* ===== #238 상점 시트(S01·S05) — 진열 6카드 · 상품 8종 · 필드 6/가방 3 고정 슬롯. 거래 판정·회계·예비 재화는 전부 Core 값을 읽기만 한다 ===== */
-const GOOD_DESC={ball:"포획 1회 (전투 중 HP 30% 미만)",ticket:"왕·동료 속성 교체 — 정기 상점에서 사용"};
+/* #293 (2026-10-02 CJ 3 · Venus 계약 9.3): 상점 설명 팝업 문구 8종 — 한 줄. 전투·선물 화면의 ITEMS/BUFFS.desc 는 그대로 */
+const GOOD_DESC={potion:"최대 HP 20% 회복",cool:"스킬 쿨타임 초기화",cure:"상태이상 해제",ball:"HP 30% 미만인 적 하수인 포획",ticket:"왕 · 동료 속성 교체 (정기 상점에서 사용)",
+  power:"이 전투 동안 내 피해 최대치 고정",time:"이 전투 최대 3라운드 · 1라운드에만 사용 (사신의 낫 불가)",escape:"이 전투 동안 도망 성공률 70%"};
 function goodOwned(p,k){ return k==="ball"?S.balls[p]:k==="ticket"?S.eco.tickets[p]:BUFF_KEYS.includes(k)?S.eco.buffInv[p][k]:S.inv[p].filter(x=>x===k).length; }
 function goodNm(k){ return GOOD_KO[k].replace(/^[^\s가-힣]+\s/,""); }
-/* #285: 아이콘은 설명만(이름·효과·가격·보유) — 구매는 아래 [구매] 버튼 하나 */
-function goodInfoText(p,k){ return `${goodNm(k)} — ${GOOD_DESC[k]||(ITEMS[k]||BUFFS[k]).desc} · 🪙${ECO.goodPrice} · 보유 ${goodOwned(p,k)}`; }
+/* #285: 아이콘은 설명만 — 구매는 아래 [구매] 버튼 하나. #293: 설명 = 시너지 안내와 같은 창 한 장(머리줄 아이콘+이름 · 큰 아이콘 | 이름+가격 / 설명). 코인·보유·전송 무변경 */
+function goodHelp(k,from){ if(!GOOD_DESC[k]) return; const nm=goodNm(k), ico=`<span class="ico" style="--g:${ECO.goods.indexOf(k)}" aria-hidden="true"></span>`, pr=ecoGoodPrice(k);
+  synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${ico} ${nm}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
+    <div class="goodHelp">${ico}<b>${nm} <span class="price">${gi("coin","cn")}<span class="srOnly">가격 </span>${pr}</span></b><span class="desc">${GOOD_DESC[k]}</span></div>`,from); }
 /* #285 가방 서랍 — 내 보유 아이템·볼·버프 수량 아이콘 (상대 정보 없음 · p 는 화면 주인) */
 function ownGridHtml(p){ return `<div class="ownGrid" role="list" aria-label="보유 아이템">`+(S.eco?ECO.goods:["potion","cool","cure","ball"]).map(k=>{ const n=goodOwned(p,k);
   return `<span class="ownItem${n?"":" none"}" role="listitem" aria-label="${escAttr(`${goodNm(k)} ${n}개`)}" title="${escAttr(goodNm(k))}"><span class="ico" style="--g:${ECO.goods.indexOf(k)}" aria-hidden="true"></span><b aria-hidden="true">×${n}</b></span>`; }).join("")+`</div>`; }
@@ -1857,67 +2094,101 @@ function unitIco(key){ const dir=artDirOf({type:"minion",rosterId:key}), L=LEGEN
     :`<span class="face" aria-hidden="true">${L?L.emo:r?ELEM_EMO[r.element]:"?"}</span>`; } // 도트가 없는 종(땅·보호 등)은 속성 기호
 function unitName(key){ const r=ROSTER.find(x=>x.id===key)||LEGEND_ROSTER.find(x=>x.id===key); return r?r.name:"?"; }
 /* #238: 속성·아키타입은 아이콘 두 개(이름은 접근성 이름·툴팁) — 전설은 속성 대신 왕관 */
+function unitTagText(key){ const r=ROSTER.find(x=>x.id===key)||LEGEND_ROSTER.find(x=>x.id===key); return r?`${r.element?ELEM_KO[r.element]:"전설"} · ${ARCH_KO[r.arch]||""}`:""; }
 function unitTags(key){ const r=ROSTER.find(x=>x.id===key)||LEGEND_ROSTER.find(x=>x.id===key); if(!r) return "";
-  const t=`${r.element?ELEM_KO[r.element]:"전설"} · ${ARCH_KO[r.arch]||""}`;
+  const t=unitTagText(key);
   return `<span class="tags" role="img" aria-label="${t}" title="${t}">${r.element?gi(r.element):gi("crown")}${gi(r.arch)}</span>`; }
-function slotHtml(u,body){ return `<div class="uSlot${u?"":" empty"}${u&&u.alive===false?" dead":""}">${body}</div>`; }
+/* ===== #293 공통 하수인 카드 — 어디서나 그림 · 이름 · 등급(테두리 g1~g5 + ★) · 왕국/아키타입 아이콘 · HP. 테두리는 개체 grade 만 본다(가격·원장 무관).
+   선택·사망·비활성은 테두리를 덮지 않는 별도 표시(CSS). 왕·동료·폭탄·함정에는 쓰지 않는다 — 등급·아키타입을 지어내지 않는다 */
+function unitGrade(key,grade){ return LEGEND_ROSTER.some(x=>x.id===key)?5:Math.max(1,Math.min(4,grade||1)); }
+function unitHp(key,grade){ const r=ROSTER.find(x=>x.id===key); if(r) return gradeHp(r.hp,grade); const L=LEGEND_ROSTER.find(x=>x.id===key); return L&&LEGEND_BASE[L.key]?LEGEND_BASE[L.key].hp:null; }
+function hpHtml(txt){ return `<small class="hp">${gi("heal")}<span class="srOnly">HP </span>${txt}</small>`; }
+/** @param {any} u 필드 말·가방 개체(실제 name·hp·maxHp·grade) @param {{tag?:string,cls?:string,attr?:string,tail?:string,sr?:boolean,info?:string}} [o] sr = 이름은 접근성 전용(좁은 칸) · info = 그림을 누르면 부를 읽기 전용 설명 호출(#294) */
+function unitCard(u,o){ o=o||{}; const key=ecoKey(u), g=unitGrade(key,u.grade), dead=u.alive===false, tag=o.tag||"div";
+  return `<${tag} class="uSlot uCard g${g}${dead?" dead":""}${o.cls?" "+o.cls:""}"${o.attr?" "+o.attr:""}><span class="stars" aria-label="등급 ${g}">${"★".repeat(g)}</span>${unitTags(key)}${o.info?infoBtn(o.info,u.name||unitName(key),unitIco(key)):unitIco(key)}`
+    +`<b${o.sr?` class="srOnly"`:""}>${dead?`<span class="srOnly">사망 </span>`:""}${escAttr(u.name||unitName(key))}</b>${dead?`<i class="deadMk" aria-hidden="true">💀</i>`:""}${hpHtml(`${u.hp}/${u.maxHp}`)}${o.tail||""}</${tag}>`; }
+const EMPTY_SLOT=`<div class="uSlot empty" role="img" aria-label="빈칸">+</div>`;
+function leadNm(x){ return x.type==="king"?"왕":({assassin:"공격 동료",shield:"방어 동료"})[allyRole(x)]||TYPE_KO[x.type]; }
+function leadFaceHtml(x){ const nm=leadNm(x), ld=leaderArtDir(x,allyRole(x));
+  return `<span class="leadFace" title="${nm}">${ld?`<img src="${artUrl(ld,LEADER_FILES.icon)}" alt="" width="40" height="40">`:`<span aria-hidden="true">${x.type==="king"?"👑":"🛡"}</span>`}<span class="srOnly">${nm}</span></span>`; }
 function shopHtml(p){
   const sh=S.eco.shop, start=sh.kind==="start", coins=S.eco.coins[p];
   const cost=s=>{ const u=ecoUnitOf(S,p,s.key); if(!u) return {c:ecoPrice(s.grade),up:null};
     const c=s.grade>u.grade?ecoPrice(s.grade)-ecoPrice(u.grade):ecoPrice(s.grade);
-    return {c,full:ecoPrice(s.grade),up:`⭐${u.grade} → ${s.grade>u.grade?s.grade:u.grade+1}`}; };
+    return {c,full:ecoPrice(s.grade),up:[u.grade,s.grade>u.grade?s.grade:u.grade+1]}; };
   /* #238 (2026-09-28 CJ 시각 REVISE · SHOP 스케치): 한 줄에 하나 — 왼쪽 ★ 등급 · 썸네일 · 짧은 이름 · 속성/아키타입 아이콘 · 오른쪽 🪙 가격 */
-  const card=(i,s,tail,cls)=>`<div class="shopCard${cls}" aria-label="진열 ${i+1}"><span class="stars" aria-label="등급 ${s.grade}">${"★".repeat(Math.min(5,s.grade||1))}</span>${unitIco(s.key)}<span class="nm"><b>${unitName(s.key)}</b>${unitTags(s.key)}</span>${tail}</div>`;
+  /* #293: 같은 한 줄에 등급 테두리(g1~g5)와 그 등급으로 샀을 때의 최대 HP(실제 데이터)를 더한다 */
+  /* #295 CJ REVISE(2026-10-02): 승급 카드도 한 줄 높이 — 왼쪽 등급 칸에 세로로 '보유 ★ ↓ 승급 뒤 ★'(up=[보유, 승급 뒤] · 값은 cost() 그대로). 옛 전폭 배지 줄은 없다 */
+  const card=(i,s,tail,cls,up)=>{ const g=unitGrade(s.key,s.grade), hp=unitHp(s.key,g);
+    const stars=up?`<span class="stars up" role="img" aria-label="등급 ${up[0]} → ${up[1]} 승급"><span>${"★".repeat(up[0])}</span><i>↓</i><span>${"★".repeat(up[1])}</span></span>`:`<span class="stars" aria-label="등급 ${g}">${"★".repeat(g)}</span>`;
+    return `<div class="shopCard g${g}${cls}" aria-label="진열 ${i+1}">${stars}${infoBtn(`unitHelpSlot(${i},this)`,unitName(s.key),unitIco(s.key))}<span class="nm"><b>${unitName(s.key)}</b><span class="meta">${unitTags(s.key)}${hp===null?"":hpHtml(hp)}</span></span>${tail}</div>`; };
   const slots=sh.slots[p].map((s,i)=>{
-    if(!s) return `<div class="shopCard empty"><small>${i+1}. 빈칸 (살 수 없음)</small></div>`;
+    if(!s) return `<div class="shopCard empty"><small>빈칸<span class="srOnly"> (살 수 없음)</span></small></div>`;
     if(s.soldOut) return card(i,s,`<b class="tag">SOLD OUT</b>`," soldOut"); // #263: 산 칸은 새로 고침 전까지 품절
     if(sh.sold[p].includes(s.key)) return card(i,s,`<b class="tag">판매함</b>`," soldOut");
     const pr=cost(s);
-    return card(i,s,`${pr.up?`<span class="badge up">${pr.up}</span>`:""}<button class="buy" ${pr.c>coins?"disabled":""} aria-label="${escAttr(unitName(s.key))} 구매 🪙${pr.c}" onclick="window.__shop('buy',${i})">${pr.up&&pr.full!==pr.c?`${gi("coin","cn")}<s>${pr.full}</s> ${pr.c}`:`${gi("coin","cn")}${pr.c}`}</button>`,"");
+    return card(i,s,`<button class="buy" ${pr.c>coins?"disabled":""} aria-label="${escAttr(unitName(s.key))} 구매 🪙${pr.c}" onclick="window.__shop('buy',${i})">${pr.up&&pr.full!==pr.c?`${gi("coin","cn")}<s>${pr.full}</s> ${pr.c}`:`${gi("coin","cn")}${pr.c}`}</button>`,"",pr.up);
   }).join("");
-  const goodOk=coins>=ECO.goodPrice&&ecoReserveOk(S,p,ECO.goodPrice);
-  /* 상품 8종 — #285: 아이콘 = 설명(#goodDesc)만 · 아래 [구매] = 구매만 */
+  /* 상품 8종 — #285: 아이콘 = 설명만 · 아래 [구매] = 구매만. #293: 가격·활성은 상품별(ecoGoodPrice — 수호자 3종 🪙3) · 설명은 팝업(goodHelp) */
   const gk=start?ECO.startGoods:ECO.goods;
-  const goods=gk.map(k=>{ const nm=goodNm(k), own=goodOwned(p,k);
-    return `<div class="goodCard"><button type="button" class="goodIco" aria-controls="goodDesc" aria-label="${escAttr(`${nm} 설명 · 보유 ${own}`)}" onclick="window.__shop('info','${k}')"><span class="ico" style="--g:${ECO.goods.indexOf(k)}" aria-hidden="true"></span>${own?`<span class="own">×${own}</span>`:""}</button><button type="button" class="buy" ${goodOk?"":"disabled"} aria-label="${escAttr(`${nm} 구매 🪙${ECO.goodPrice}`)}" onclick="window.__shop('good','${k}')">구매 ${gi("coin","cn")}${ECO.goodPrice}</button></div>`; }).join("");
-  const field=S.pieces.filter(x=>x.owner===p&&x.type==="minion").map(x=>!ecoKey(x)?slotHtml(null,`<small>빈칸</small>`)
-    :slotHtml(x,`${unitIco(ecoKey(x))}<span class="stars">${"★".repeat(Math.min(5,/** @type {any} */(x).grade||1))}</span><b>${x.alive?"":"💀 "}${x.name}</b><small>HP ${x.hp}/${x.maxHp}</small>${start&&x.alive?`<span class="acts"><button class="danger" aria-label="${escAttr(`${x.name} 판매 🪙${x.paid||0} 환급`)}" onclick="window.__shop('sellField',${x.id})">판매 +${coinize('🪙')}${x.paid||0}</button></span>`:""}`)).join("");
-  const bag=[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; if(!u) return slotHtml(null,`<small>빈칸</small>`);
-    return slotHtml(u,`${unitIco(ecoKey(u))}<span class="stars">${"★".repeat(Math.min(5,u.grade||1))}</span><b>${u.name}</b><small>HP ${u.hp}/${u.maxHp} · ${coinize('🪙')}${u.paid||0}</small>
-      <span class="acts"><button onclick="window.__shop('swap',${u.uid})">교체</button><button class="danger" onclick="window.__shop('sell',${u.uid})">판매 +${coinize('🪙')}${u.paid||0}</button></span>`); }).join("");
+  const goods=gk.map(k=>{ const nm=goodNm(k), own=goodOwned(p,k), pr=ecoGoodPrice(k), goodOk=coins>=pr&&ecoReserveOk(S,p,pr);
+    return `<div class="goodCard"><button type="button" class="goodIco" aria-haspopup="dialog" aria-label="${escAttr(`${nm} 설명 · 보유 ${own}`)}" onclick="window.__shop('info','${k}',this)"><span class="ico" style="--g:${ECO.goods.indexOf(k)}" aria-hidden="true"></span>${own?`<span class="own">×${own}</span>`:""}</button><button type="button" class="buy" ${goodOk?"":"disabled"} aria-label="${escAttr(`${nm} 구매 🪙${pr}`)}" onclick="window.__shop('good','${k}')">구매 ${gi("coin","cn")}${pr}</button></div>`; }).join("");
+  /* #293: 필드·가방 = 공통 카드. 버튼 글자는 [판매]·[교체]만 — 환급액은 접근성 이름과 확인 창에 남는다. 가방 두 버튼은 한 줄 */
+  const sellNm=u=>escAttr(`${u.name} 판매 🪙${u.paid||0} 환급`);
+  const field=S.pieces.filter(x=>x.owner===p&&x.type==="minion").map(x=>!ecoKey(x)?EMPTY_SLOT
+    :unitCard(x,{info:`unitHelpPiece(${escAttr(JSON.stringify(x.id))},this)`,tail:start&&x.alive?`<span class="acts"><button class="danger" aria-label="${sellNm(x)}" onclick="window.__shop('sellField',${escAttr(JSON.stringify(x.id))})">판매</button></span>`:""})).join("");
+  const bag=[0,1,2].map(i=>{ const u=S.eco.bag[p][i]; if(!u) return EMPTY_SLOT;
+    return unitCard(u,{info:`unitHelpBag(${u.uid},this)`,tail:`<span class="acts"><button data-swap="${u.uid}" aria-haspopup="dialog" aria-label="${escAttr(u.name)} 교체" onclick="window.__shop('swap',${u.uid})">교체</button><button class="danger" aria-label="${sellNm(u)}" onclick="window.__shop('sell',${u.uid})">판매</button></span>`}); }).join("");
   /* 2026-09-28 CJ 4: 왕 · 공격 동료 · 방어 동료 3줄 = 말 그림 + 속성 아이콘 5개, 선택은 금색 테두리(aria-pressed). "동료 · 불 선택됨" 문장은 접근성 이름에만 */
-  const ROLE_KO={assassin:"공격 동료",shield:"방어 동료"}, ord=x=>x.type==="king"?0:allyRole(x)==="shield"?2:1;
+  const ord=x=>x.type==="king"?0:allyRole(x)==="shield"?2:1;
   const leaders=S.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally")).sort((a,b)=>ord(a)-ord(b));
-  const lead=start?`<h3>${gi("crown")} 왕·동료 속성</h3>`+leaders.map(x=>{ const nm=x.type==="king"?"왕":ROLE_KO[allyRole(x)]||TYPE_KO[x.type], ld=leaderArtDir(x,allyRole(x));
-      return `<div class="row leadRow" role="group" aria-label="${nm}${x.leaderElChosen?` — ${ELEM_KO[x.element]} 선택됨`:" — 무료, 고르지 않으면 필드 최다 속성"}"><span class="leadFace" title="${nm}">${ld?`<img src="${artUrl(ld,LEADER_FILES.icon)}" alt="" width="40" height="40">`:`<span aria-hidden="true">${x.type==="king"?"👑":"🛡"}</span>`}<span class="srOnly">${nm}</span></span>`
-      +V2_ELEM_ORDER.map(el=>`<button aria-pressed="${!!x.leaderElChosen&&x.element===el}" aria-label="${nm} ${ELEM_KO[el]}" ${x.leaderElChosen&&x.element===el?"disabled":""} onclick="window.__shop('lead',${x.id},'${el}')">${gi(el)}</button>`).join("")+`</div>`; }).join("")
-      +(S.eco.tickets[p]?`<small>🎟 티켓 ${S.eco.tickets[p]}장 보유 — 사용은 정기 상점에서 합니다.</small>`:"")
-    :`<div class="row"><button ${S.eco.tickets[p]>0?"":"disabled"} onclick="window.__shop('ticket')">🎟 티켓 사용 (${S.eco.tickets[p]})</button></div>`;
+  const tk=S.eco.tickets[p], pend=leaders.filter(x=>!x.leaderElChosen);
+  /* #293 (2026-10-01 CJ 4): 시작 상점 제목 옆에는 보유 수와 무관하게 티켓 아이콘 + "무료"를 항상 — 정기 상점의 ×n·사용 조건은 그대로. 안내 문장("미선택 → 자동")은 접근성 전용 */
+  const free="시작 상점은 티켓 없이 속성을 바꿀 수 있습니다";
+  const lead=start?`<div class="secHead"><h3>${gi("crown")} 왕·동료 속성</h3><span class="badge" role="img" aria-label="${free}" title="${free}">${gi("ticket")}무료</span></div>`
+      +leaders.map(x=>{ const nm=leadNm(x);
+      return `<div class="row leadRow" role="group" aria-label="${nm}${x.leaderElChosen?` — ${ELEM_KO[x.element]} 선택됨`:" — 무료, 고르지 않으면 필드 최다 속성"}">${leadFaceHtml(x)}`
+      +V2_ELEM_ORDER.map(el=>`<button aria-pressed="${!!x.leaderElChosen&&x.element===el}" aria-label="${nm} ${ELEM_KO[el]}" ${x.leaderElChosen&&x.element===el?"disabled":""} onclick="window.__shop('lead',${escAttr(JSON.stringify(x.id))},'${el}')">${gi(el)}</button>`).join("")+`</div>`; }).join("")
+      +(pend.length?`<small class="srOnly">미선택 → 자동: ${pend.map(leadNm).join("·")} — 상점 완료 때 필드 최다 속성으로 자동 배정 (시너지 칸 수에 아직 없음)</small>`:"")
+    /* #295 턴 상점: 시작 상점과 같은 3줄(말 그림 + 속성 아이콘 5) — 다른 속성을 누르면 기존 티켓 확인 1회 → 기존 shopTicket. 무료 변경은 없다.
+       티켓 0 · 사망 · 현재 속성은 실제 disabled + 사유(접근성 이름 · 툴팁). 보유 수는 제목 줄 ×N */
+    :`<div class="secHead"><h3>${gi("crown")} 왕·동료 속성</h3><span class="badge" role="img" aria-label="시너지 교체 티켓 ${tk}장" title="시너지 교체 티켓 ${tk}장">${gi("ticket")}×${tk}</span></div>`
+      +leaders.map(x=>{ const nm=leadNm(x);
+      return `<div class="row leadRow" role="group" aria-label="${nm} — ${x.alive?`${ELEM_KO[x.element]||"-"} · 티켓으로 교체`:"사망"}">${leadFaceHtml(x)}`
+      +V2_ELEM_ORDER.map(el=>{ const why=!x.alive?"사망한 말은 바꿀 수 없습니다":x.element===el?"현재 속성":tk<1?"티켓이 없습니다":"";
+        return `<button aria-pressed="${x.element===el}" aria-label="${nm} ${ELEM_KO[el]} — ${why||"티켓 1장 사용"}" ${why?`disabled title="${why}"`:""} onclick="window.__shop('ticket',${escAttr(JSON.stringify(x.id))},'${el}')">${gi(el)}</button>`; }).join("")+`</div>`; }).join("");
   const empty=ecoEmptyField(S,p).length, noBuy=ecoBuyable(S,p)<0;
   /* #263 Saturn REVISE: 단절 정지 중에는 상점 조작 전체가 잠긴 모습이어야 한다. 버튼마다 disabled 를 붙이는 대신
-     <fieldset disabled> 하나로 감싼다 — 브라우저가 안쪽 버튼을 전부 비활성으로 만들고(키보드·스크린리더 포함)
-     기권 버튼(netResignBtn)은 이 밖에 붙으므로 그 자리 규칙을 그대로 쓴다. 송신 차단은 netSendAction 이 맡는다. */
+     <fieldset disabled> 하나로 감싼다 — 브라우저가 안쪽 버튼을 전부 비활성으로 만든다(키보드·스크린리더 포함 · #295: ⚙ 안의 기권도 이 안이다).
+     송신 차단은 netSendAction 이 맡는다. */
+  const refresh=`<button class="refresh" ${coins<ECO.refresh||!ecoReserveOk(S,p,ECO.refresh,ECO.slots)?"disabled":""} aria-label="새로 고침 🪙${ECO.refresh}" onclick="window.__shop('refresh')">${gi("refresh","cn")} ${gi("coin","cn")}${ECO.refresh}</button>`;
+  const buyHead=`<div class="secHead"><h3>하수인 구매</h3>${refresh}</div>`;
+  /* #293 S01: 시계·코인·[다음 단계]는 공통 상단(flowHeadHtml), 시너지는 우측 열로 갔다 — 여기는 한 장 세로 스크롤 본문만.
+     안내 문장은 접근성 전용(srOnly)으로 남기고 화면에서는 뺐다.
+     #295 턴 상점(모달): 같은 부품으로 상단 한 줄(왼쪽 신원 / 오른쪽 내 좌석 시계 · 내 코인 · ⚙) + [N턴 상점 | 완료] + 우측 내 시너지 열.
+     flowHeadHtml 은 부르지 않는다(준비 전용 시계 #prepClock · 01/02/03 단계 · 나가기). 시계는 종전 #shopClock, 온라인 기권은 ⚙ 안(확인 창을 취소하고 돌아와도 남는다) */
+  const head=start?`<h2 class="srOnly">시작 상점</h2>${buyHead}
+    ${empty?`<small class="srOnly shopWhy">필드 빈칸 ${empty}개 — 하수인 몫 ${coinize('🪙')}${ecoReserveNeed(S,p)}은 남겨 둡니다. 아이템·버프·새로 고침은 산 뒤에도 그만큼 남을 때만 살 수 있습니다.</small>`:""}`
+    :`<header class="shopTop">${topBarHtml(p,`<span class="badge clk" id="shopClock" role="timer">${shopClockText(p)}</span><span class="badge coin" aria-label="재화 ${coins}">${gi("coin","cn")} ${coins}</span>`+(emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:"")+gearHtml(NET.publicMode?netResignBtn():""))}
+    <div class="flowBar"><h2>${sh.turn}턴 상점</h2><button type="button" class="primary go" onclick="window.__shop('done')">완료</button></div>${synRailHtml(p)}</header>${buyHead}`;
   return pauseLockOpen("상점 조작이")
-    +`<div class="shopSheet"><div class="shopHead"><h2>${start?"시작 상점":`${sh.turn}턴 상점`}</h2>
-    <span class="badge" id="shopClock" role="timer">${shopClockText(p)}</span><span class="badge coin" aria-label="재화 ${coins}">${gi("coin","cn")} ${coins}</span>
-    <button class="refresh" ${coins<ECO.refresh||!ecoReserveOk(S,p,ECO.refresh,ECO.slots)?"disabled":""} aria-label="새로 고침 🪙${ECO.refresh}" onclick="window.__shop('refresh')">${gi("refresh","cn")} 새로 고침 ${gi("coin","cn")}${ECO.refresh}</button>
-    <button class="primary done" ${start&&empty?"disabled":""} onclick="window.__shop('done')">완료${start?" → 배치":""}</button></div>
-    ${start&&empty?`<small class="shopWhy">필드 빈칸 ${empty}개 — 하수인 몫 ${coinize('🪙')}${ecoReserveNeed(S,p)}은 남겨 둡니다. <span class="srOnly">아이템·버프·새로 고침은 산 뒤에도 그만큼 남을 때만 살 수 있습니다.</span></small>`:""}
+    +`<div class="shopSheet${start?"":" turn"}">${head}
     <div class="shopGrid">${slots}</div>
-    ${start&&empty&&noBuy?`<small class="shopWhy">살 수 있는 칸이 없습니다 — 🔄 새로 고침으로 새 진열을 받으세요.</small>`:""}
+    ${start&&empty&&noBuy?`<small class="shopWhy" role="status">살 수 있는 칸이 없습니다 — 새로 고침으로 새 진열을 받으세요.</small>`:""}
     <h3>${gi("team")} 필드 ${ECO.field-empty}/${ECO.field}</h3><div class="slotGrid">${field}</div>
     <h3>${gi("bag")} 가방 ${S.eco.bag[p].length}/${ECO.bagMax}</h3><div class="slotGrid bag">${bag}</div>
-    ${shopSynHtml(p)}
     ${lead}
-    <h3>${gi("potion")} 아이템</h3><div class="goodsGrid">${goods}</div>
-    <p id="goodDesc" class="goodDesc" role="status">${gk.includes(UI.goodInfo)?coinize(goodInfoText(p,UI.goodInfo)):"아이콘을 누르면 설명이 보입니다."}</p></div>`
+    <h3>${gi("potion")} 아이템</h3><div class="goodsGrid">${goods}</div></div>`
     +pauseLockClose();
 }
 /* ===== #238 S04 결과 — 양측 하수인 전체(사망 포함) + 시너지. UI 는 새로 세지 않는다:
    온라인은 서버가 FINISHED 에만 싣는 data.final 좌석 블록, 오프라인은 이 기기의 권위 엔진(Core synView) 값을 같은 모양으로 읽는다.
    종료 전(over 가 아닌 단계)에는 불리지 않으므로 상대 비공개 정보가 먼저 나가지 않는다. */
-function resultEntry(x){ const e={type:x.type,rosterId:ecoKey(x)||x.rosterId||null,name:x.name,element:x.element||null,alive:x.alive!==false,hp:x.hp,maxHp:x.maxHp};
-  return x.hpSeen?Object.assign(e,{hpSeen:true}):e; }
+function resultEntry(x){ const e={type:x.type,rosterId:ecoKey(x)||x.rosterId||null,name:x.name,element:x.element||null,alive:x.alive!==false,hp:x.hp,maxHp:x.maxHp,grade:x.grade||null}; // #293: grade = 결과 얼굴의 등급 배경(서버 final 과 같은 칸)
+  /* 동료의 역할(allyKind)은 **이미 아는 것만** 결과 얼굴(그림·역할 기호)에 남긴다 — 보드와 같은 공개 규칙(allyRole: 내 동료 · 공개된 기술로 드러난 상대 동료).
+     모르는 상대 역할은 넣지 않는다. 서버 final 도 같은 범위만 싣는다 */
+  const role=x.type==="ally"?allyRole(x):null;
+  return Object.assign(e,role?{allyKind:role}:null,x.hpSeen?{hpSeen:true}:null); }
 /** 오프라인(PVE·sim 제외): 서버 final 과 같은 모양 {seat,pieces,bag,syn} — 보드 9칸(폭탄·함정 제외, 사망 포함) + 가방 + Core synView 원값 */
 function resultSideOffline(p){
   return {seat:p,pieces:S.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally"||x.type==="minion")).map(resultEntry),
@@ -1927,10 +2198,10 @@ function resultSeatsHtml(){
   if(S.mode==="sim") return "";
   const me=NET.mode?NET.me:0;
   const sides=NET.publicMode?(NET.final&&Array.isArray(NET.final.sides)?NET.final.sides:[]):[0,1].map(resultSideOffline);
-  const hpTxt=(e,p)=>NET.publicMode&&p!==me&&!e.hpSeen?`${e.hp}%`:`${e.hp}/${e.maxHp}`; // 상대: 싸운 개체만 실제 값 (서버가 이미 그렇게 보낸다)
-  const ent=(e,p,bag)=>{ const nm=escAttr(String(e.name||TYPE_KO[e.type]||"?"));
-    const ld=e.type==="king"||e.type==="ally"?leaderArtDir({type:e.type}):null; // #124 왕·동료 그림 — 실제로 불러온 뒤에만(아니면 종전 이모지)
-    return slotHtml(e,`${e.type==="minion"||bag?unitIco(e.rosterId):ld?`<img class="icon leader" src="${artUrl(ld,LEADER_FILES.icon)}" alt="" aria-hidden="true" width="32" height="32">`:`<span class="face" aria-hidden="true">${e.type==="king"?"👑":"🛡"}</span>`}<b class="srOnly">${e.alive?"":"💀 "}${nm}</b>${e.alive?"":`<i class="dead" aria-hidden="true">💀</i>`}<small title="${nm}${e.element?` · ${ELEM_KO[e.element]}`:""}">HP ${hpTxt(e,p)}</small>`); };
+  /* #293 (2026-10-01 CJ 6): 결과 칸도 보드·트레이와 같은 얼굴(pcBodyHtml) — 왕국 · 아키타입/역할 · ♥ 실제 HP · 등급 배경. % 와 ★ 는 어디에도 없다.
+     상대 값은 서버가 종료 뒤 보낸 실제 값 그대로다. 사망은 등급 배경을 덮지 않는 별도 표식('사망') */
+  const ent=(e,p,bag)=>{ const x=Object.assign({},e,{owner:p,type:bag?"minion":e.type,resultRole:e.allyKind==="assassin"||e.allyKind==="shield"?e.allyKind:null}) /* resultRole = 결과 항목이 이미 실은(공개 범위 안의) 역할 */, nm=escAttr((e.alive?"":"사망 · ")+pcLabel(x));
+    return `<div class="uSlot faceBox${pcGradeCls(x)}${e.alive?"":" dead"}" title="${nm}"><span class="pc">${pcBodyHtml(x)}</span><b class="srOnly">${e.alive?"":"💀 "}${nm}</b>${e.alive?"":`<i class="dead" aria-hidden="true">사망</i>`}</div>`; };
   /* #238 (2026-09-28 CJ 시각 REVISE · BAT 결과): 승자 위 · VS · 패자 아래 — 프로필 + Win!/Lose! · 하수인 줄 · 시너지 아이콘 칩. 이력 토글 없음 */
   const order=S.winner===1-me?[1-me,me]:[me,1-me];
   return `<div class="resultSeats">`+order.map((p,idx)=>{
@@ -1942,7 +2213,7 @@ function resultSeatsHtml(){
       :`<small>시너지 정보를 받지 못했습니다.</small>`;
     const pcs=d&&Array.isArray(d.pieces)?d.pieces:[], bag=d&&Array.isArray(d.bag)?d.bag:[];
     const res=S.winner===null?(NET.publicMode?"무효":"Draw"):S.winner===p?"Win!":"Lose!"; // 공개 방 무승부는 무효(양측 연결 종료)
-    return (idx?`<div class="resultVs" aria-hidden="true">VS</div>`:"")+`<section class="resultSeat${p===me?" mine":""}${S.winner===p?" win":S.winner===null?"":" lose"}"><h3>${gi("profile")}<span>${p===me&&NET.mode?"나":pname(p)}</span><b class="res">${res}</b>${S.winner===p?" 🏆":""}</h3>
+    return (idx?`<div class="resultVs" aria-hidden="true">VS</div>`:"")+`<section class="resultSeat${p===me?" mine":""}${S.winner===p?" win":S.winner===null?"":" lose"}"><h3>${gi("profile")}<span>${p===me&&NET.mode?"나":pname(p)}</span><b class="res">${res}</b>${S.winner===p?" 🏆":""}${NET.publicMode?lobbySeatPingSpan(p===me):""}</h3>
       <div class="slotGrid">${pcs.map(e=>ent(e,p,false)).join("")||`<small>말 정보 없음</small>`}</div>
       ${bag.length?`<h4>🎒 가방</h4><div class="slotGrid bag">${bag.map(e=>ent(e,p,true)).join("")}</div>`:""}
       <div class="synRow">${synLine}</div></section>`;
@@ -1950,21 +2221,63 @@ function resultSeatsHtml(){
 }
 function synStage(n,steps){ let i=-1; steps.forEach((s,k)=>{ if(n>=s) i=k; }); const nx=steps[i+1];
   return `${i<0?"미달":`(${steps[i]}) 달성`}${nx?` · (${nx})까지 ${nx-n}칸`:" · 최고 단계"}`; }
-/* 5차 E16 — 내 왕국·아키타입 칸 수 · 달성 단계 · 다음 단계까지. 단계 경계는 #235 상수 그대로 (새 효과·수치 없음) */
-function shopSynHtml(p){
-  const v=ecoSynView(S,p), start=S.eco.shop.kind==="start", stage=synStage;
-  /* #238 (2026-09-28 CJ 시각 REVISE): 문장 칩 11개 → 아이콘 + 칸 수. 단계 문장은 툴팁·접근성 이름(같은 문자열) · 달성 칩만 밝게 */
-  /* 2차 REVISE: 칩은 44px 버튼 — 누르거나(터치) Enter/Space(키보드)로 그 칩의 단계 설명을 아래 한 줄(#synWhy, 읽기 전용 status)에 보인다.
-     값은 Core ecoSynView·synStage 그대로(새 계산·기록 없음) · 접힌 화면에는 긴 문장이 없다 */
-  /* 2026-09-28 CJ 6: 칩은 공용 synChipHtml — 누르면(터치·Enter/Space) 이름 + 단계별 실제 효과 안내(synHelp). 칸 수·다음 단계 문장은 칩 제목(title)에 남긴다 */
-  const chip=(k,n,t,on)=>synChipHtml(k,n,on,t);
-  const el=V2_ELEM_ORDER.map(k=>chip(k,v.el[k],`${ELEM_KO[k]} ${v.el[k]}칸 · ${stage(v.el[k],V2_KINGDOM_STEPS)}`,v.el[k]>=V2_KINGDOM_STEPS[0])).join("");
-  const arch=Object.keys(V2_ARCH_SYN).map(k=>{ const st=synSteps(k); return chip(k,v.arch[k],`${ARCH_KO[k]} ${v.arch[k]}칸 · ${stage(v.arch[k],st)}`,v.arch[k]>=st[0]); }).join("");
-  const d=v.deadAllies;
-  const lead=start?(v.pending.length?`<small>미선택 → 자동: ${v.pending.map(x=>TYPE_KO[x.type]).join("·")}<span class="srOnly"> — 상점 완료 때 필드 최다 속성으로 자동 배정 (위 칸 수에 아직 없음)</span></small>`:"")
-    :`<div class="synRow">${chip("crown",d,`죽은 동료 ${d}/2 · ${d>=2?`${SKILLS["LD-REVENGE"].ko} · ${SKILLS["LD-WRATH"].ko}`:d===1?`${SKILLS["LD-REVENGE"].ko} · 2명이면 ${SKILLS["LD-WRATH"].ko}`:`미달 · 1명이면 ${SKILLS["LD-REVENGE"].ko}`}`,d>=1)}</div>`; // Saturn REVISE 1: 같은 synHelp 안내 칩
-  return `<h3>${gi("synergy")} 시너지${start?`<span class="srOnly"> (미리보기 — 필드에 산 하수인 + 고른 왕·동료 속성)</span>`:""}</h3>
-    <div class="synRow">${el}</div><div class="synRow">${arch}</div>${lead}`;
+/* 5차 E16 — 내 왕국·아키타입 칸 수 · 달성 단계 · 다음 단계까지. 단계 경계는 #235 상수 그대로 (새 효과·수치 없음).
+   #293: 칩 11개(왕국 5 + 아키타입 6)는 한 함수 — 단계 순위는 왕국 = Core syn.stage, 아키타입 = synTier. 누르면 단계 설명 + 기여 카드(synHelp) */
+function shopSynChips(p,v){
+  return V2_ELEM_ORDER.map(k=>synChipHtml(k,v.el[k],v.stage[k]>=0,`${ELEM_KO[k]} ${v.el[k]}칸 · ${synStage(v.el[k],V2_KINGDOM_STEPS)}`,v.stage[k],p))
+    .concat(Object.keys(V2_ARCH_SYN).map(k=>{ const t=synTier(k,v.arch[k]); return synChipHtml(k,v.arch[k],t>=0,`${ARCH_KO[k]} ${v.arch[k]}칸 · ${synStage(v.arch[k],synSteps(k))}`,t,p); }));
+}
+/* ===== #293 시작 상점 → 배치 → 완료 공통 틀 =====
+   상단 한 줄(나 VS 상대 · 시계 · 내 코인 · ⚙) + 진행 막대(01 상점 — 02 배치 — 03 완료)와 진행 버튼 + 우측 시너지 열.
+   두 좌석 표식은 서버 seats.step(오프라인은 이 기기의 실제 진행)만 본다 — 내 S 나 시간으로 상대 단계를 추측하지 않는다.
+   시계는 공통 준비 180초 하나(#prepClock) — 준비 완료 뒤에도 보인다. 상대 코인·구매·시너지는 어디에도 없다 */
+/* #294: 메인도 같은 열 — 준비(시작 상점이 열려 있는 동안)는 미리보기 ecoSynView, 경기 중은 Core synView(전투 중이면 그 전투 스냅샷) 그대로. 미달(0)도 전부 표시 · 내 것만.
+   #295: 턴 상점(단계 shop)의 열도 종전 상점 시너지 줄과 같은 ecoSynView — 거래·티켓 확정 직후의 값 */
+function synRailHtml(p){ const start=S.phase==="setup"; if(start&&!S.eco.shop) return "";
+  return `<aside class="synRail" aria-label="내 시너지">${shopSynChips(p,start||S.phase==="shop"?ecoSynView(S,p):synView(p,S)).concat(synExtraChips(p)).join("")}</aside>`; }
+/* #293 (2026-10-01 CJ 7) 덧붙임 칩 — 시너지 열과 경기 중 시너지 줄이 같이 쓴다. 값은 Core synExtraView 그대로(새 효과·수치 없음):
+   전설 개인 시너지는 필드에 살아 있는 내 전설의 효과가 실제로 0 보다 클 때만(가방 전설은 개인 효과가 없어 칩도 없다) · 왕·동료(왕관) 칩은 항상, 0명은 미달 표시 */
+function synCrownTitle(d){ return `죽은 동료 ${d}/2 · ${d>=2?`${SKILLS["LD-REVENGE"].ko} · ${SKILLS["LD-WRATH"].ko}`:d===1?`${SKILLS["LD-REVENGE"].ko} · 2명이면 ${SKILLS["LD-WRATH"].ko}`:`미달 · 1명이면 ${SKILLS["LD-REVENGE"].ko}`}`; }
+/* 전설 개인 시너지 문구 — 열의 전설 칩과 설명 창이 같은 문장을 쓴다(값은 synExtraView 그대로) */
+function legendSynText(l){ const pc=x=>Math.round(x*100)+"%"; return `${l.name} 개인 시너지 — `+(l.legend==="dragon"?`${ELEM_KO[l.el]} 왕국 효과: ${synTierText(l.el,l.fx)}`:l.legend==="witch"?`상태 부여 확률 +${pc(l.v)}`:`공격 +${pc(l.v)}`); }
+function synExtraChips(p){
+  const v=synExtraView(p,S);
+  return [synChipHtml("crown",v.deadAllies,v.deadAllies>=1,synCrownTitle(v.deadAllies),synTier("crown",v.deadAllies))].concat(v.legends.map(legendChipHtml)); // #294 Saturn REVISE: 계약 5 순서 = 왕국 → 아키타입 → 왕관 → 활성 전설
+}
+/* 전설 개인 시너지 칩 한 개 — 시너지 열과 전투 첫째 줄(#296)이 같이 쓴다. 누르면 같은 안내 창에 이름 · 효과 문구(title 그대로 · #294) */
+function legendChipHtml(l){ const t=legendSynText(l), call=`synNote(this)`;
+  return `<span class="synChip on lg" role="button" tabindex="0" aria-haspopup="dialog" aria-label="${t}" title="${t}" onclick="${call}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${call};}">${gi("crown")}<b>${l.legend==="dragon"?gi(l.el):"+"+Math.round(l.v*100)+"%"}</b></span>`; }
+function flowHeadHtml(p,btn){
+  const pub=NET.publicMode, seats=pub?[NET.me,1-NET.me]:[p,1-p];
+  const nm=i=>escAttr(pub&&NET.players&&NET.players[seats[i]]||pname(seats[i]));
+  /* #294 (2026-10-02 CJ REVISE): 진행 표식 = 상단과 같은 대표 얼굴뿐(없으면 같은 중립 아이콘) · 파랑/빨강 테두리. P1/P2 · 첫 글자 · 나/상대 글자는 보이지 않는다(누구인지는 목록의 접근성 이름) */
+  const mk=i=>idFaceHtml(idSeat(i,p).rep,"xs");
+  /* #293 (2026-10-01 CJ 2): 두 좌석 표식을 막대 위 실제 단계에 올린다. 온라인은 서버 seats.step("shop"|"place"|"done")만 읽는다 —
+     없으면(구 서버) 내 단계는 내 좌석 뷰, 상대는 확정된 준비 완료(03)만. 오프라인은 이 기기가 아는 실제 진행 상태. 떨어진 상대 상자는 없앴다 */
+  const local=q=>S.eco.shop&&!S.eco.shop.done[q]?0:S.pieces.some(x=>x.owner===q&&!x.placed)||(q===S.setupPlayer&&!isAI(q))?1:2;
+  const srv=q=>["shop","place","done"].indexOf(NET.steps?NET.steps[q]:null);
+  const my=!pub?local(p):srv(NET.me)>=0?srv(NET.me):S.eco.shop&&!S.eco.shop.done[p]?0:NET.myReady?2:1;
+  const op=!pub?local(1-p):NET.roomState==="OPEN"?-1:srv(1-NET.me)>=0?srv(1-NET.me):NET.peerReady?2:-1;
+  const STEP=["상점","배치","완료"];
+  const clock=`<span class="badge clk" id="prepClock" role="timer">${turnClockText("prep")}</span>`; // 공통 180초 — 준비 완료 뒤에도 계속 보인다
+  return `<header class="flowHead">`+topBarHtml(p,clock
+    +`<span class="badge coin" aria-label="재화 ${S.eco.coins[p]}">${gi("coin","cn")} ${S.eco.coins[p]}</span>`
+    +gearHtml(uiPubPrestart()?`<button type="button" class="danger" onclick="uiLeaveConfirm()">방 나가기</button>`:`<button type="button" class="danger" onclick="uiBack()">로비로 돌아가기</button>`))
+    +`<div class="flowBar">`
+    +`<ol class="flowSteps" aria-label="진행 단계 — ${nm(0)}: ${STEP[my]}${op>=0?` · ${nm(1)}: ${STEP[op]}`:""}">${STEP.map((t,i)=>`<li${i===my?` class="cur" aria-current="step"`:i<my?` class="past"`:""}><span class="mks" aria-hidden="true">${i===my?`<span class="mk me">${mk(0)}</span>`:""}${i===op?`<span class="mk op">${mk(1)}</span>`:""}</span><span><b>0${i+1}</b> ${t}</span></li>`).join("")}</ol>${btn}</div>`
+    +synRailHtml(p)+`</header>`;
+}
+/* 배치 트레이 — 14 고정 칸(하수인 6 · 폭탄 3 · 동료 2 · 함정 2 · 왕 1), 놓은 칸은 ✓. 전부 보드와 같은 말 얼굴(pcBodyHtml) — 이름·등급은 접근성 이름 */
+function trayHtml(p){
+  const ORD={minion:0,bomb:1,ally:2,trap:3,king:4}, all=S.pieces.filter(x=>x.owner===p).sort((a,b)=>ORD[a.type]-ORD[b.type]);
+  const left=all.filter(x=>!x.placed).length;
+  return `<h2 class="srOnly">비공개 배치 (${all.length-left}/${all.length})</h2><small class="srOnly">말을 클릭 → 자기 진영 칸 클릭. 배치된 말 클릭 시 회수.</small>
+  <div class="secHead"><h3>${gi("team")} 필드 하수인 목록</h3><span class="badge">${all.length-left}/${all.length}</span></div><div class="tray">`
+    +all.map(x=>{ const sel=!!(S.selected&&S.selected.id===x.id), cls=`trayItem${sel?" sel":""}${x.placed?" placed":""}`;
+      const attr=`type="button" aria-label="${escAttr(pcLabel(x))}${x.placed?" — 배치됨":""}" title="${escAttr(pcLabel(x))}" ${x.placed?`disabled`:`aria-pressed="${sel}" onclick="selTray(${escAttr(JSON.stringify(x.id))})"`}`;
+      const pick=sel?`<i class="selT" aria-hidden="true">선택</i>`:"";
+      return `<button class="${cls}" ${attr}><span class="pc p${p}${pcGradeCls(x)}">${pcBodyHtml(x)}</span>${pick}</button>`; }).join("") // #293 CJ 6: 하수인도 보드와 같은 얼굴(★ 없음 · 등급 = 배경)
+    +`</div>${pauseLockOpen("배치 조작이")}<div class="row trayActs"><button onclick="autoPlace()">무작위 배치</button><button onclick="clearPlace()">전체 회수</button></div>${pauseLockClose()}`;
 }
 function shopShow(cover){
   const p=shopViewer(); if(p===null) return;
@@ -1974,26 +2287,33 @@ function shopShow(cover){
 }
 function shopClockStart(p){
   if(NET.publicMode){ shopClockStop(); // #237 공개 방: 마감·만료는 서버 시계(가림 없음 — 표시 순간부터 개인별) — 여기는 남은 시간 표시만
-    const tick=()=>{ const el=$("shopClock"); if(el) el.textContent=shopClockText(p); }; tick(); SHOPCLK.iv=setInterval(tick,500); return; }
+    const tick=()=>shopClockPaint(p);
+    tick(); SHOPCLK.iv=setInterval(tick,500);
+    try{ emoteSync(); }catch(e){} // #295 CJ REVISE: 시트를 (다시) 그린 직후 — 이모티콘 버튼을 새 상단 한 줄의 자리에 맞춘다(표시 위치만)
+    return; }
   if(!fxLive()||NET.mode||isAI(p)) return;                                  // 사람 좌석만 (온라인 종전 경제·AI·sim 제외)
-  const o=$("overlay"); if(o&&o.classList&&o.classList.contains("handoff")) return; // 가림 중에는 누구의 90초도 흐르지 않는다
-  const key=S.eco.shop.kind+S.eco.shop.turn+":"+p; if(SHOPCLK.key===key) return; // 같은 좌석의 다시 그리기 = 마감 유지
+  const o=$("overlay"); if(o&&o.classList&&o.classList.contains("handoff")) return; // 가림 중에는 누구의 180초도 흐르지 않는다
+  const key=S.eco.shop.kind+S.eco.shop.turn+":"+p; if(SHOPCLK.key===key){ shopClockPaint(p); return; } // 같은 좌석의 다시 그리기 = 마감 유지(새 시트의 시계 칸만 바로 다시 그린다)
   shopClockStop(); SHOPCLK.key=key;
   const g=S; SHOPCLK.dl=Date.now()+ECO.shopSec*1000;
   SHOPCLK.t=setTimeout(()=>{ if(S!==g||!S.eco.shop||S.eco.shop.done[p]) return; closeModal(); dispatchCoreAction({t:"shopTimeout",player:p}); // 확정 거래는 보존 · 열린 확인 창(미확정)만 취소
-    /* #263: S01 시간 초과 좌석은 Core 가 자동 구매에 이어 자동 배치까지 끝냈다 — 그 자리에서 곧바로 배치를 확정한다.
-       배치 90초를 다시 걸지 않는다(서버 _onClock 의 shopTimedOut → _autoPlace 와 같은 자리). 정기 상점은 대상이 아니다. */
-    if(S&&S.phase==="setup"&&S.eco&&S.eco.shop&&S.eco.shop.kind==="start"&&S.eco.shop.done[p]&&S.setupPlayer===p
-       &&!S.pieces.some(x=>x.owner===p&&!x.placed)) window.setupDoneCore();
-  },ECO.shopSec*1000);
-  const tick=()=>{ const el=$("shopClock"); if(el) el.textContent=shopClockText(p); }; tick();
+  },ECO.shopSec*1000);                                                      // 정기 상점 전용 — 시작 상점은 공통 준비 180초(PREPCLK · #293)
+  const tick=()=>shopClockPaint(p); tick();
   SHOPCLK.iv=setInterval(tick,500);
 }
+/* #295 CJ REVISE 후속: 정기 상점 상단 한 줄(시계 · 코인 · 이모티콘 · ⚙)에 들어가게 시트의 시계 칸(#shopClock)만 짧게 그린다 — 온라인 · 오프라인 tick 이 같이 쓴다.
+   값은 shopClockText 와 같은 출처(온라인 = 서버 시계 netClockMs · 오프라인 = 이 좌석 SHOPCLK 마감). 보이는 글자는 초 숫자뿐이고 ⏱/⏸ · '초'는 폭에 따라 CSS(.cmp · .pz)가 붙인다.
+   전체 문장(초 · 정지 · 확인 중)은 aria-label. 온라인에서 서버 시계가 없으면 숫자를 지어내지 않고 '…', 오프라인에서 시계가 없는 좌석(AI · 가림)은 종전처럼 빈 칸 */
+function shopClockPaint(p){ const el=$("shopClock"); if(!el) return; const pub=NET.publicMode, c=pub?NET.ecoClock:null;
+  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000)):null, pz=!!c&&!c.running;
+  el.textContent=sec!==null?String(sec):pub?"…":"";
+  try{ if(sec===null&&!pub) el.removeAttribute("aria-label"); else el.setAttribute("aria-label",sec===null?"남은 시간 확인 중":`남은 시간 ${sec}초${pz?" · 정지":""}`); }catch(e){}
+  try{ el.classList.toggle("cmp",sec!==null); el.classList.toggle("pz",pz); }catch(e){} }
 function shopClockStop(){ clearTimeout(SHOPCLK.t); clearInterval(SHOPCLK.iv); SHOPCLK.t=SHOPCLK.iv=SHOPCLK.key=null; SHOPCLK.dl=0; }
 function shopClockText(p){ if(NET.publicMode) return netClockText(); return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000))}초`:""; }
 function bagClockStop(){ clearTimeout(BAGCLK.t); clearInterval(BAGCLK.iv); BAGCLK.t=BAGCLK.iv=null; }
 window.__shop=(op,a,b)=>{
-  const p=shopViewer(); if(p===null) return;
+  const p=shopViewer(); if(p===null){ if(op==="swapX") closeModal(); return; } // 닫기는 상점이 이미 끝났어도 된다
   /* #237 공개 방: 거래는 서버가 판정한다 — 의도만 보내고 결과는 room_state 로 받는다(시작 상점은 배치 화면 안이라 확인 창만 닫는다).
      확인·선택 창은 소유자 로컬 창이다(동기화 모달 중계·비소유자 마스킹 대상이 아니다). */
   const go=act=>{ act=Object.assign({player:p},act);
@@ -2012,23 +2332,35 @@ window.__shop=(op,a,b)=>{
   }
   if(op==="refresh"){ go({t:"shopRefresh",seq:S.eco.shop.seq[p]}); return; }
   if(op==="good"){ go({t:"shopGood",item:a}); return; }
-  if(op==="info"){ UI.goodInfo=a; const el=$("goodDesc"); if(el) el.innerHTML=coinize(goodInfoText(p,a)); return; } // 설명만 — 코인·상태 무변경
-  if(op==="sellField"){ const x=S.pieces.find(y=>y.id===a); if(!x||!ecoKey(x)) return;
-    confirm(`<h2>필드 판매 확인</h2><p>${x.name} ${ecoStars(/** @type {any} */(x).grade)} — 🪙${/** @type {any} */(x).paid||0} 환급 (원장 100%)</p><small>그 칸은 빈칸이 되어 완료 전에 다시 채워야 합니다. 이번 상점에서는 이 종을 다시 살 수 없습니다.</small>`,"판매",{t:"shopSell",pieceId:a});
-    return; }
+  if(op==="info"){ goodHelp(a,b); return; } // 설명만 — 코인·상태 무변경
+  /* #293 (2026-10-01 CJ 5): 필드·가방 판매는 확인 창 없이 누르는 즉시 요청 1회 — 결과는 판매 토스트와 코인 칸. 같은 화면 상태에서의 연타는 한 번만 보낸다 */
+  const sell=act=>{ if(NET.publicMode){ if(netPaused()){ showToast(NET_PAUSE_MSG); return; } // 오프라인은 즉시 반영이라 두 번째 누름이 대상을 찾지 못한다
+      const sig=NET.revision+JSON.stringify(act); if(UI.sellLock===sig) return; UI.sellLock=sig; }
+    go(act); };
+  if(op==="sellField"){ const x=S.pieces.find(y=>y.id===a); if(!x||!ecoKey(x)) return; sell({t:"shopSell",pieceId:a}); return; }
   if(op==="lead"){ go({t:"leaderEl",pieceId:a,el:b}); return; }
-  if(op==="done"){ go({t:"shopDone"}); return; }
-  if(op==="sell"){ const u=S.eco.bag[p].find(x=>x.uid===a); if(!u) return;
-    confirm(`<h2>판매 확인</h2><p>${u.name} ${ecoStars(u.grade)} — 🪙${u.paid||0} 환급 (원장 100%)</p><small>이번 상점에서는 이 종을 다시 살 수 없고, 다음에 사면 지금 HP 비율(${pct(u.hp/u.maxHp)})로 들어옵니다.</small>`,"판매",{t:"shopSell",uid:a});
+  if(op==="done"){ sell({t:"shopDone"}); return; } // #295: 완료 연타도 같은 화면 상태에서 요청 1회(판매와 같은 잠금) — 완료는 되돌릴 수 없다
+  if(op==="sell"){ if(!S.eco.bag[p].some(x=>x.uid===a)) return; sell({t:"shopSell",uid:a}); return; }
+  /* #293 교체 선택: 필드 6칸을 필드와 같은 2×3 순서의 카드로. 살아 있는 내 필드 하수인만 누를 수 있고(빈칸·사망 칸은 실제 disabled),
+     한 번 누르면 기존 shopSwap 요청 1회(UI.swapLock = 연타 잠금). ✕·Esc 는 아무것도 바꾸지 않고 닫고 누른 [교체]로 포커스를 돌려준다
+     (2026-10-02 CJ: 맨 아래 [취소] 삭제 — ✕ 가 swapX 를 직접 부르고 Esc 는 공용 모달 Esc 가 이 ✕ 를 누른다. 닫기는 게임 입력이 아니라 연출·단절 잠금과 무관).
+     판정·HP 이동·거부 사유는 Core/서버 그대로 — S01 과 턴 상점이 이 한 경로를 쓴다 */
+  if(op==="swapX"){ back(); try{ const x=/** @type {any} */(document.querySelector(`[data-swap="${a}"]`)); if(x) x.focus(); }catch(e){} return; }
+  if(op==="swap"){ if(!S.eco.bag[p].some(x=>x.uid===a)) return; UI.swapLock=false;
+    md(`<div class="acctHead"><h2 id="swapT">교체할 필드 하수인 선택</h2><button type="button" class="acctX" aria-label="닫기" onclick="window.__shop('swapX',${a})">✕</button></div>
+      <div class="slotGrid swapGrid" role="group" aria-labelledby="swapT">`+S.pieces.filter(x=>x.owner===p&&x.type==="minion").map(x=>!ecoKey(x)
+        ?`<button type="button" class="uSlot empty" disabled aria-disabled="true" aria-label="빈칸 — 교체할 수 없습니다" title="빈칸 — 교체할 수 없습니다">+</button>`
+        :unitCard(x,{tag:"button",attr:x.alive?`type="button" aria-label="${escAttr(`${x.name} HP ${x.hp}/${x.maxHp} — 이 하수인과 교체`)}" onclick="window.__shop('swapTo',${escAttr(JSON.stringify(x.id))},${a})"`
+          :`type="button" disabled aria-disabled="true" aria-label="${escAttr(x.name)} — 사망한 하수인과는 교체할 수 없습니다" title="사망한 하수인과는 교체할 수 없습니다"`})).join("")+`</div>`,[]);
+    try{ const c=$("overlayBox").querySelector(".swapGrid button:not([disabled])"); if(c) c.focus({preventScroll:true}); }catch(e){} // 첫 선택 가능 카드로
     return; }
-  if(op==="swap"){ const f=S.pieces.filter(x=>x.owner===p&&x.type==="minion"&&x.alive&&ecoKey(x));
-    md(`<h2>교체 대상</h2><p>가방 말과 1:1 로 바꿀 살아 있는 필드 하수인을 고르세요. HP 는 그대로입니다.</p>`,
-      f.map(x=>[`${x.name} ${ecoStars(/** @type {any} */(x).grade)} HP ${x.hp}/${x.maxHp}`,once(()=>go({t:"shopSwap",pieceId:x.id,uid:a}))]).concat([["취소",back]]));
-    return; }
-  if(op==="ticket"){ const ls=S.pieces.filter(x=>x.owner===p&&(x.type==="king"||x.type==="ally")&&x.alive);
-    md(`<h2>🎟 시너지 교체 티켓</h2><p>속성을 바꿀 왕·동료를 고르세요.</p>`,ls.map(x=>[`${TYPE_KO[x.type]} (${ELEM_KO[x.element]||"-"})`,()=>
-      md(`<h2>새 속성</h2>`,V2_ELEM_ORDER.filter(el=>el!==x.element).map(el=>[`${ELEM_EMO[el]} ${ELEM_KO[el]}`,()=>
-        confirm(`<h2>티켓 사용 확인</h2><p>${TYPE_KO[x.type]} ${ELEM_KO[x.element]} → ${ELEM_KO[el]} (스킬도 바뀝니다 · HP 유지 · 다음 전투부터 시너지 반영)</p>`,"사용",{t:"shopTicket",pieceId:x.id,el})]).concat([["취소",back]]))]).concat([["취소",back]]));
+  if(op==="swapTo"){ if(UI.swapLock) return; if(netPaused()){ showToast(NET_PAUSE_MSG); return; } if(fxLocked()) return; // 모달 버튼과 같은 가드
+    if(!S.pieces.some(x=>x.id===a&&x.owner===p&&x.type==="minion"&&x.alive&&ecoKey(x))||!S.eco.bag[p].some(u=>u.uid===b)) return;
+    UI.swapLock=true; go({t:"shopSwap",pieceId:a,uid:b}); return; }
+  /* #295: 말·속성은 시트의 왕·동료 줄에서 이미 골랐다(a = 말, b = 새 속성) — 여기는 기존 확인 창 1회뿐. 판정은 Core/서버 shopTicket 그대로 */
+  if(op==="ticket"){ const x=S.pieces.find(y=>y.id===a&&y.owner===p&&(y.type==="king"||y.type==="ally")&&y.alive);
+    if(!x||x.element===b||!V2_ELEM_ORDER.includes(b)||S.eco.tickets[p]<1) return;
+    confirm(`<h2>티켓 사용 확인</h2><p>${leadNm(x)} ${ELEM_KO[x.element]||"-"} → ${ELEM_KO[b]} (스킬도 바뀝니다 · HP 유지 · 다음 전투부터 시너지 반영)</p>`,"사용",{t:"shopTicket",pieceId:x.id,el:b});
   }
 };
 function bagPickShow(){

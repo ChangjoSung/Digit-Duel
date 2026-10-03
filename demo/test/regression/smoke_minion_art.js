@@ -553,7 +553,7 @@ function proxyBattle(T,att,def,pickA,pickD){
   const st=T.byId("overlayBox").innerHTML;
   ok(!/👑|🤝/.test(tokA+tokOf(T,"D")),"K4f 대리 출전 토큰에는 왕·동료 이모지가 없다 (본체 표현은 본체 출전 때만)");
   ok(B.fd.hp===T.BAL.enemyCapHp&&B.fd.maxHp===T.BAL.captured.hp&&B.fd.atk===T.BAL.captured.atk&&B.fd.skillAtk===T.BAL.captured.skill&&B.fd.cdMax===T.BAL.captured.cd,"K4g 표시 종이 붙어도 전투 수치는 포획 공용 규격(HP 70/100 · 공 20 · 기 30 · CD 2) — 종 스탯(M-L5 95/20/28)으로 바뀌지 않는다");
-  ok(/HP <span id="hptxt-D">70<\/span>\/100/.test(st),"K4h 정보 패널 HP 표기도 70/100");
+  ok(/<span class="hpNum">❤️ <span id="hptxt-D">70<\/span>\/100</.test(st),"K4h 정보 패널 HP 표기도 70/100 (#296 HP 바 안 hpNum 표기)");
   T.close(); T.S.battle=null; T.TQ.length=0;
   // 본체 출전은 그대로 (본체 vs 본체는 규칙상 밀어내기이므로 각각 하수인을 상대로 연다): 왕 본체(포획 보유) vs 하수인 → 👑 · 하수인 vs 동료 본체(예비 보유) → 🤝
   const T2=H.load(htmlPath); const Q=setup(T2,"pvp"); const eAlly2=T2.S.pieces.find(x=>x.owner===1&&x.type==="ally");
@@ -683,7 +683,9 @@ function proxyBattle(T,att,def,pickA,pickD){
   const hidden=["fire_std","water_std","grass_std","lightning_sustain"].filter(d=>!knownDirs.has(d));
   const dom=()=>boardDump(T)+"|"+T.byId("sidePanel").innerHTML+"|"+T.byId("overlayBox").innerHTML;
   ok(hidden.length>=3&&hidden.every(d=>dom().indexOf(d)<0),"K9a 보드·사이드 패널(선택된 왕 정보 포함)에 내/상대 포획·예비 하수인의 종 폴더가 없다 ["+hidden.join(",")+"]");
-  ok(/예비 하수인\(번개\) HP 70\/100/.test(T.byId("sidePanel").innerHTML)&&/포획 하수인\(불\) HP 100\/100/.test(T.byId("sidePanel").innerHTML),"K9b 예비·포획 배지는 기존처럼 속성·HP 텍스트만");
+  /* #294 CJ REVISE(2026-10-02 그림 2·3) 대체 기대값: 가방 서랍의 배지 줄 · 선택 요약 삭제 — 포획 하수인은 내 말 설명 창에 종전 글자(속성 · HP)로, 종 폴더는 여전히 없다 */
+  T.ui238.unitHelpPiece(P.king0.id,null); const kHelp=T.ui238.SYNHELP.el?T.ui238.SYNHELP.el.innerHTML:""; T.ui238.synHelpClose(false);
+  ok(!/예비 하수인|포획 하수인/.test(T.byId("sidePanel").innerHTML)&&/<li>포획 하수인\(불\) HP 100\/100<\/li>/.test(kHelp)&&hidden.every(d=>kHelp.indexOf(d)<0),"K9b 가방 서랍에는 예비·포획 배지가 없고, 포획 하수인은 내 왕 설명 창에 속성·HP 텍스트만(종 폴더 없음)");
   T.S.mainUsed=false; T.S.battlesUsed=0; T.byId("obBtns").children.length=0;
   T.initBattle(P.king0,P.em); T.drain(500);
   ok(/출전 선택/.test(T.byId("overlayBox").innerHTML)&&hidden.every(d=>T.byId("overlayBox").innerHTML.indexOf(d)<0),"K9c 출전 선택 모달(비공개 선택)에 종 폴더 없음");

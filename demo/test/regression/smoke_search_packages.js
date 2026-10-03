@@ -282,10 +282,10 @@ function swapSkill(X,target,skillIdx,slot){
   const Q7=setup(T); giveSpecies(T,Q7.me,R(T,"M-F1")); giveSpecies(T,Q7.em,R(T,"M-G1"));
   openBattle(T,Q7.me,Q7.em); B=T.S.battle; B.fa.hp=B.fa.maxHp;
   T.battleModal();
-  ok(!/50% 미만이어야 합니다/.test(ob(T))&&/HP 조건 없음/.test(ob(T)),"C7 만피여도 도망 가능 — HP 조건 안내 자체가 없다 (#146)");
+  ok(!/50% 미만이어야 합니다/.test(ob(T))&&/HP 조건 없이/.test(ob(T)),"C7 만피여도 도망 가능 — HP 조건 안내 자체가 없다 (#146)");
   ok(/성공 30%/.test(ob(T))&&T.BAL.fleeProb===0.3&&T.fleeProbOf(B.fa)===0.3,"C7a 기본 성공률 30% (표기·판정 동일 원천)");
   B.fa.fleeBoost=true; T.battleModal();
-  ok(/도망의 수호자/.test(ob(T))&&/성공 70%/.test(ob(T)),"C7b 도망의 수호자 적용 시 이 전투 성공률 70% 표기");
+  ok(/성공 70%/.test(ob(T))&&!/성공 30%/.test(ob(T)),"C7b 도망의 수호자 적용 시 이 전투 성공률 70% 표기");
   ok(T.BAL.fleeProbGuard===0.7&&T.fleeProbOf(B.fa)===0.7&&T.fleeProbOf(B.fd)===0.3,"C7c 70% 는 치환이다 — 버프를 쓴 전투원만 바뀌고 상대는 30% 그대로 (가산 +70%p 아님)");
   const tries0=T.S.metrics.fleeTries;
   T.setSeed(2); T.__fleeCore(); T.drain(3000);
@@ -1056,7 +1056,7 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     A.S.battle.menu="ball"; A.battleModal();
     const hb=ob(A);
     ok(!/47/.test(hb),"J2a 온라인 비소유자 화면에 상대 볼 보유 수(47)가 없다 (Saturn P1)");
-    ok(!/🎁 아이템 선물 7/.test(hb)&&!/✨ 전투 버프 8/.test(hb),"J2b 비소유자 화면에 상대 패키지 재고(7·8)가 없다");
+    ok(!/🎁 아이템 선물 7/.test(hb)&&!/✨ 전투 버프 8/.test(hb)&&!/아이템 선물<\/b><span class="qty">×7/.test(hb)&&!/전투 버프<\/b><span class="qty">×8/.test(hb),"J2b 비소유자 화면에 상대 패키지 재고(7·8)가 없다");
     ok(/상대 아이템 비공개/.test(hb)&&/상대 패키지 비공개/.test(hb),"J2c 대신 비공개 안내만 보인다");
     ok(!/회복약|쿨링수|해독제/.test(hb.replace(/title="[^"]*"/g,"")),"J2d 상대 아이템 종류도 보이지 않는다");
     A.NET.mode=false; A.NET.me=null; A.NET.started=false; A.TQ.length=0;
@@ -1070,7 +1070,7 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     const pb=ob(Bv);
     ok(Bv.actorOfPhase()==="A"&&Bv.S.battle.attP.owner===1,"J2e 전제: PVE 에서 AI(1) 가 행동자");
     ok(!/47/.test(pb),"J2f PVE 에서도 AI 의 볼 보유 수가 사람 화면에 보이지 않는다 (Saturn P1 — 종전 NET.mode 전용 마스킹의 구멍)");
-    ok(!/🎁 아이템 선물 7/.test(pb)&&!/✨ 전투 버프 8/.test(pb),"J2g PVE 에서도 AI 패키지 재고가 보이지 않는다");
+    ok(!/🎁 아이템 선물 7/.test(pb)&&!/✨ 전투 버프 8/.test(pb)&&!/아이템 선물<\/b><span class="qty">×7/.test(pb)&&!/전투 버프<\/b><span class="qty">×8/.test(pb),"J2g PVE 에서도 AI 패키지 재고가 보이지 않는다");
     ok(/상대 아이템 비공개/.test(pb)&&/상대 패키지 비공개/.test(pb),"J2h PVE AI 차례에도 비공개 안내");
     // (c) 내 차례에는 내 재고가 그대로 보인다 (마스킹이 과하지 않다)
     Bv.S.battle=null; Bv.S.current=0; Bv.S.battlesUsed=0;
@@ -1078,7 +1078,7 @@ function setupNewGame(X){ X.newGame("pvp"); X.aiAutoPlace(0); X.aiAutoPlace(1); 
     Bv.startRounds(Qb.me,Qb.em,Qb.me,Qb.em); Bv.TQ.length=0; actAsA(Bv);
     Bv.S.battle.menu="ball"; Bv.battleModal();
     const mb=ob(Bv);
-    ok(/볼 5개/.test(mb)&&/🎁 아이템 선물 2/.test(mb)&&/✨ 전투 버프 3/.test(mb),"J2i 내 차례에는 내 볼·패키지 재고가 그대로 보인다 (과도 마스킹 아님)");
+    ok(/몬스터볼 5개/.test(mb)&&/아이템 선물<\/b><span class="qty">×2/.test(mb)&&/전투 버프<\/b><span class="qty">×3/.test(mb),"J2i 내 차례에는 내 볼·패키지 재고가 그대로 보인다 (과도 마스킹 아님)");
     Bv.TQ.length=0;
   }
 

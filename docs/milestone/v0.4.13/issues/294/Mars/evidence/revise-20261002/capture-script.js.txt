@@ -1,0 +1,122 @@
+/* #294 CJ REVISE 캡처 — 설치된 Chrome headless · CDP · file:// · 서버/의존성 없음. 합성 상태(오프라인 PVE 엔진). */
+const {spawn}=require("child_process"), fs=require("fs"), path=require("path"), os=require("os");
+const ROOT="C:/Users/pc_77/orca/workspaces/Digit-Duel/issue-294-main-flow";
+const OUT=path.join(ROOT,"docs/milestone/v0.4.13/issues/294/Mars/evidence/revise-20261002");
+const PORT=9417, PROF=path.join(__dirname,"chrome-prof-"+PORT);
+const ONLY=process.argv[2]||"";
+fs.mkdirSync(OUT,{recursive:true});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const LOG=[];
+(async()=>{
+  const chrome=spawn("C:/Program Files/Google/Chrome/Application/chrome.exe",["--headless=new","--remote-debugging-port="+PORT,"--user-data-dir="+PROF,"--no-first-run","--disable-gpu","--allow-file-access-from-files","--hide-scrollbars","about:blank"],{windowsHide:true,stdio:"ignore"});
+  LOG.push(["chrome",{pid:chrome.pid,port:PORT}]);
+  try{
+    let tabs=null; for(let i=0;i<40&&!tabs;i++){ await sleep(250); try{ tabs=await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); }catch(e){} }
+    const ws=new WebSocket(tabs.find(t=>t.type==="page").webSocketDebuggerUrl); await new Promise(r=>ws.onopen=r);
+    let id=0; const pend=new Map(); ws.onmessage=m=>{ const d=JSON.parse(m.data); if(d.id&&pend.has(d.id)){ pend.get(d.id)(d); pend.delete(d.id); } };
+    const cdp=(method,params)=>new Promise((res,rej)=>{ const i=++id; pend.set(i,d=>d.error?rej(new Error(method+": "+d.error.message)):res(d.result)); ws.send(JSON.stringify({id:i,method,params:params||{}})); });
+    const ev=async expr=>{ const r=await cdp("Runtime.evaluate",{expression:expr,returnByValue:true,awaitPromise:true}); if(r.exceptionDetails) throw new Error("eval: "+(r.exceptionDetails.exception&&r.exceptionDetails.exception.description||r.exceptionDetails.text)+"\n"+expr.slice(0,200)); return r.result.value; };
+    await cdp("Page.enable"); await cdp("Runtime.enable");
+    const shot=async(vp,name)=>{ const r=await cdp("Page.captureScreenshot",{format:"png"}); fs.writeFileSync(path.join(OUT,`${vp}-${name}.png`),Buffer.from(r.data,"base64")); };
+    const key=async(k,shift)=>{ const vk={Tab:9,Escape:27,Enter:13}[k], p={key:k,code:k,windowsVirtualKeyCode:vk,nativeVirtualKeyCode:vk,modifiers:shift?8:0}; await cdp("Input.dispatchKeyEvent",Object.assign({type:"rawKeyDown"},p)); if(k==="Enter") await cdp("Input.dispatchKeyEvent",Object.assign({type:"char",text:"\r"},p)); await cdp("Input.dispatchKeyEvent",Object.assign({type:"keyUp"},p)); await sleep(60); };
+    const click=async sel=>{ const r=await ev(`(()=>{const e=${sel}; if(!e) return null; e.scrollIntoView({block:"nearest"}); const b=e.getBoundingClientRect(); return [b.left+b.width/2,b.top+b.height/2];})()`); if(!r) throw new Error("click target missing: "+sel);
+      for(const type of ["mousePressed","mouseReleased"]) await cdp("Input.dispatchMouseEvent",{type,x:r[0],y:r[1],button:"left",clickCount:1}); await sleep(120); };
+    const RECT=`const R=e=>{ if(!e) return null; const b=e.getBoundingClientRect(); return [+b.left.toFixed(2),+b.top.toFixed(2),+b.width.toFixed(2),+b.height.toFixed(2)]; }, Q=s=>document.querySelector(s), QA=s=>[...document.querySelectorAll(s)];`;
+    const topGeo=()=>ev(`(()=>{ ${RECT} const tb=Q(".topBar"), nm=QA(".topBar .idNm");
+      return {doc:[document.documentElement.scrollWidth,innerWidth],topBars:QA(".topBar").length,topBar:R(tb),left:R(Q(".topBar .idHead")),right:R(Q(".topBar .tbTools")),
+        seats:QA(".topBar .idSeat").map(R),faces:QA(".topBar .idSeat .repFace").map(e=>[R(e),getComputedStyle(e).borderTopColor]),vs:R(Q(".topBar .idVs")),
+        names:nm.map(e=>[e.textContent,e.scrollWidth>e.clientWidth,getComputedStyle(e).textOverflow,e.parentNode.getAttribute("aria-label")]),
+        tools:[...Q(".topBar .tbTools").children].map(e=>[e.className||e.tagName,R(e),e.textContent.trim().slice(0,20)]),gear:R(Q(".topBar .flowGear summary")),
+        marks:QA(".flowSteps .mk").map(e=>[e.className,R(e.firstElementChild),getComputedStyle(e.firstElementChild).borderTopColor,e.textContent.trim()]),
+        stepsText:Q(".flowSteps")?Q(".flowSteps").innerText.replace(/\\s+/g," "):null,stepsLabel:Q(".flowSteps")?Q(".flowSteps").getAttribute("aria-label"):null,
+        hudStats:QA("#boardInfo .hudStat").map(R),emote:R(Q("#emoteBtn")),emoteShown:!!Q("#emoteBtn")&&getComputedStyle(Q("#emoteLayer")).display!=="none"}; })()`);
+    const helpGeo=()=>ev(`(()=>{ ${RECT} const d=Q("#synHelp"); if(!d) return null;
+      return {box:R(d),scroll:[d.scrollHeight,d.clientHeight],title:Q("#synHelpT").innerText,close:R(Q("#synHelp .acctX")),face:R(Q("#synHelp .uhFace")),tags:Q("#synHelp .uhInfo .tags")?Q("#synHelp .uhInfo .tags").getAttribute("aria-label"):null,
+        stats:QA("#synHelp .uhStats li").map(e=>[e.getAttribute("aria-label"),R(e),e.scrollWidth>e.clientWidth]),rows:QA("#synHelp .uhRows li").map(e=>e.innerText),syn:Q("#synHelp .uhSyn")?Q("#synHelp .uhSyn").innerText:null,
+        skills:QA("#synHelp .uhSkills li").map(e=>e.innerText.replace(/\\s+/g," ")),skillLabels:QA("#synHelp .uhSkills [aria-label]").map(e=>e.getAttribute("aria-label")),
+        buttons:QA("#synHelp button").length,active:document.activeElement?(document.activeElement.className||document.activeElement.tagName):null,text:d.innerText.replace(/\\s+/g," ")}; })()`);
+    const sig=()=>ev(`JSON.stringify([S.selected&&S.selected.id,S.current,S.turnCount,S.phase,S.pieces.map(p=>[p.r,p.c,p.hp,p.alive]),S.eco&&S.eco.coins,S.eco&&S.eco.bag.map(b=>b.length),S.inv,NET.ws?1:0])`);
+    const ONLINE=`NET.publicMode=true; NET.me=1; NET.players=["가나다라마바사아자차카타","ABCDEFGHIJKL"]; NET.reps=["M-F1","M-W1"];`;
+    const OFFLINE=`NET.publicMode=false; NET.me=null; NET.players=null; NET.reps=null;`;
+    /* 온라인 표시 값(이름 12자 · 대표 · 내 좌석 1)을 **그 한 번의 호출에만** 넣어 실제 부품 함수(topBar 왼쪽 = idHeadHtml · 진행 표식 = idFaceHtml)의 마크업을 지금 화면에 꽂는다 — 경기 상태 · 네트워크는 그대로 오프라인 */
+    const injectOnline=()=>ev(`(()=>{ const keep=[NET.publicMode,NET.me,NET.players,NET.reps]; ${ONLINE}
+      const p=S.phase==="setup"?S.setupPlayer:0; document.querySelector(".topBar .idHead").outerHTML=idHeadHtml(p);
+      document.querySelectorAll(".flowSteps .mk").forEach(m=>{ m.innerHTML=idFaceHtml(idSeat(m.classList.contains("op")?1:0,p).rep,"xs"); });
+      [NET.publicMode,NET.me,NET.players,NET.reps]=keep; return true; })()`);
+    const VPS=[["320",320,640,2],["390",390,844,2],["1100",1100,1000,1]].filter(v=>!ONLY||v[0]===ONLY);
+    for(const [vp,w,h,dpr] of VPS){
+      const L=(k,v)=>LOG.push([vp,k,v]);
+      await cdp("Emulation.setDeviceMetricsOverride",{width:w,height:h,deviceScaleFactor:dpr,mobile:w<600});
+      await cdp("Page.navigate",{url:"file:///"+ROOT+"/demo/index.html"}); await sleep(1500);
+      await ev(`(()=>{ try{ tutClose("skip"); }catch(e){} setSeed(33); startMode("pve",{aiLevel:"grade5"}); render(); return S.phase; })()`); await sleep(900);
+      L("errors-after-start",await ev(`(window.__errs=window.__errs||[],window.onerror=(m)=>{window.__errs.push(String(m));},[])`));
+      /* 1) 준비(상점) — PVE 중립 대표 */
+      L("prep-shop-pve",await topGeo()); await shot(vp,"prep-shop-pve-placeholder");
+      /* 2) 준비(상점) — 12자 이름 · 대표 · 내 좌석 1 */
+      await injectOnline(); L("prep-shop-long-seat1",await topGeo()); await shot(vp,"prep-shop-longnames-seat1");
+      /* 3) 진열 칸 설명 — 실제 마우스 */
+      await ev(`render()`); await sleep(100); const s0=await sig();
+      await click(`document.querySelector(".shopCard .faceBtn")`); L("slot-detail",await helpGeo()); await shot(vp,"prep-slot-detail");
+      await key("Escape"); L("slot-detail-esc",{closed:await ev(`!document.querySelector("#synHelp")`),focusBack:await ev(`document.activeElement&&document.activeElement.className`),stateSame:(await sig())===s0});
+      /* 4) 배치 단계 머리줄 */
+      await ev(`(()=>{ dispatchCoreAction({t:"shopTimeout",player:0}); render(); return 1; })()`); await sleep(2600);
+      if(vp==="390"){ L("prep-place-pve",await topGeo()); await shot(vp,"prep-place-pve-placeholder"); }
+      /* 5) 메인 */
+      await ev(`(()=>{ netAction({t:"auto"}); netAction({t:"setupDone"}); S.current=0; S.mainUsed=false; S.battlesUsed=0; S.forcedTargets=[]; S.forcedQueue=[]; S.movedPiece=null; render(); return S.phase; })()`); await sleep(2600);
+      await ev(`(()=>{ document.querySelectorAll("#toasts .toast").forEach(t=>t.remove()); if(typeof closeModal==="function"&&!document.getElementById("overlay").classList.contains("hidden")) closeModal(); render(); return 1; })()`);
+      L("main-pve",Object.assign(await topGeo(),{phase:await ev(`S.phase`),screen:await ev(`document.getElementById("app").getAttribute("data-screen")`)})); await shot(vp,"main-pve-placeholder");
+      await injectOnline(); L("main-long-seat1",await topGeo()); await shot(vp,"main-longnames-seat1");
+      /* 5b) 감정표현 자리 — 오프라인에는 감정표현이 없어, 방 표시 값만 잠깐 넣어 기존 버튼이 상단 오른쪽 반의 빈 자리(.emoSlot)에 놓이는지만 잰다(합성) */
+      L("main-emote-slot-synthetic",await ev(`(()=>{ ${RECT} window.__emo=[NET.publicMode,NET.roomId,NET.roomState]; NET.publicMode=true; NET.roomId=1; NET.roomState=EMOTE_STATES[EMOTE_STATES.length-1]; const on=emoteActive(); renderBoardInfo(); emoteSync();
+        return {active:on,state:NET.roomState,slot:R(Q(".topBar .emoSlot")),btn:R(Q("#emoteBtn")),right:R(Q(".topBar .tbTools")),who:R(Q(".topBar .who")),gear:R(Q(".topBar .flowGear summary"))}; })()`)); await shot(vp,"main-emote-slot-synthetic");
+      await ev(`(()=>{ [NET.publicMode,NET.roomId,NET.roomState]=window.__emo; renderBoardInfo(); emoteSync(); return 1; })()`);
+      await ev(`render()`);
+      /* 6) 내 말 선택(실제 마우스) → 행동 줄 [설명] → 설명 창 · 키보드 */
+      const mine=await ev(`(()=>{ const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive&&x.placed); return [m.id,m.r,m.c,m.name]; })()`);
+      await click(`document.querySelector('#board [data-r="${mine[1]}"][data-c="${mine[2]}"]')`);
+      const selOk=await ev(`S.selected&&S.selected.id===${JSON.stringify(mine[0])}`);
+      const btn=await ev(`(()=>{ ${RECT} const b=Q("#turnBar .infoBtn"); return b?{rect:R(b),text:b.textContent,first:b===Q("#turnBar").firstElementChild,ellipsis:b.scrollWidth>b.clientWidth}:null; })()`);
+      L("select-own",{selected:selOk,infoBtn:btn,turnBarKids:await ev(`[...document.querySelectorAll("#turnBar>*")].map(e=>{const b=e.getBoundingClientRect(); return [(e.textContent||"").trim().slice(0,14),Math.round(b.width),Math.round(b.height)];})`)});
+      await shot(vp,"main-selected-infobtn");
+      const s1=await sig(); await click(`document.querySelector("#turnBar .infoBtn")`);
+      const g=await helpGeo(); L("own-minion-detail",g); await shot(vp,"detail-own-minion");
+      const seq=[]; for(let i=0;i<3;i++){ await key("Tab"); seq.push(await ev(`[!!document.activeElement.closest("#synHelp"),document.activeElement.className||document.activeElement.tagName]`)); }
+      await key("Tab",true); seq.push(await ev(`[!!document.activeElement.closest("#synHelp"),document.activeElement.className||document.activeElement.tagName]`));
+      if(vp==="390") await shot(vp,"detail-own-minion-keyboard-focus");
+      await key("Escape");
+      L("own-minion-detail-keyboard",{tabInside:seq,closedByEsc:await ev(`!document.querySelector("#synHelp")`),focusBack:await ev(`document.activeElement.className`),stateSame:(await sig())===s1});
+      /* 7) 왕 · 동료 (내 것) */
+      if(vp!=="320"){ await ev(`(()=>{ S.selected=null; render(); unitHelpPiece(S.pieces.find(x=>x.owner===0&&x.type==="king").id,null); return 1; })()`); L("own-king-detail",await helpGeo()); await shot(vp,"detail-own-king");
+        await ev(`(()=>{ synHelpClose(false); unitHelpPiece(S.pieces.find(x=>x.owner===0&&x.type==="ally").id,null); return 1; })()`); L("own-ally-detail",await helpGeo()); if(vp==="390") await shot(vp,"detail-own-ally"); await ev(`synHelpClose(false)`); }
+      /* 8) 전설(개인 시너지) — 내 필드 하수인 하나를 Core 주입 함수로 마녀로 바꾼 합성 상태 */
+      if(vp==="390"){ await ev(`(()=>{ S.selected=null; const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive&&x.placed&&x.id!==${JSON.stringify(mine[0])}); applyLegend(m,"witch"); render(); unitHelpPiece(m.id,null); return m.id; })()`);
+        L("own-legend-detail",Object.assign(await helpGeo(),{view:await ev(`JSON.stringify(synExtraView(0,S).legends)`)})); await shot(vp,"detail-own-legend-synergy"); await ev(`synHelpClose(false)`); }
+      /* 9) 공개된 상대 말 — 허용 필드만 */
+      await ev(`(()=>{ const e=S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.alive&&x.placed); e.revealed=true; window.__e=e.id; const m=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive&&x.placed); window.__keep=[e.r,e.c]; render(); unitHelpPiece(e.id,null); return 1; })()`);
+      const og=await helpGeo(); const priv=await ev(`(()=>{ const e=S.pieces.find(x=>x.id===window.__e), h=document.querySelector("#synHelp")?document.querySelector("#synHelp").innerHTML:"";
+        return {opened:!!h,visible:visibleTo(0,e),hasStats:/uhStats|uhChip|uhSkills|uhSyn/.test(h),hasStatWords:/공격력|방어력|속도|회피|치명타|상태 부여|스킬|쿨타임|위력/.test(h),skillNamesLeaked:(e.skills||[]).filter(id=>SKILLS[id]&&h.includes(SKILLS[id].ko)),deviceHas:{atk:e.atk,def:e.def,skills:(e.skills||[]).length}}; })()`);
+      L("revealed-opponent-detail",Object.assign({privacy:priv},og)); if(og) await shot(vp,"detail-revealed-opponent"); await ev(`synHelpClose(false)`);
+      L("unknown-opponent",await ev(`(()=>{ const e=S.pieces.find(x=>x.owner===1&&!x.revealed&&x.alive&&x.placed); unitHelpPiece(e.id,null); const o=!!document.querySelector("#synHelp"); synHelpClose(false); return {opened:o}; })()`));
+      /* 10) 가방 창 — 실제 가방 2 + 빈칸 1 · 키보드 */
+      await ev(`(()=>{ const mk=(key,g)=>{ const u={uid:++S.eco.unitSeq,paid:0,fresh:false,revealed:false,hpSeen:false,reaperSeal:0,cap:null}; applySpecies(u,ROSTER.find(r=>r.id===key),g); return u; };
+        S.eco.bag[0]=[mk("M-F5",1),mk("M-L4",4)]; S.selected=S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.alive&&x.placed); render(); return 1; })()`);
+      const s2=await sig(); await click(`[...document.querySelectorAll("#turnBar .hudIco")].find(b=>/가방/.test(b.textContent))`); await sleep(250);
+      L("bag",await ev(`(()=>{ ${RECT} const sp=Q("#sidePanel"), r=Q("#right"); return {drawer:UI.drawer,title:Q("#drawerTitle").textContent,active:document.activeElement.getAttribute("aria-label")||document.activeElement.className,right:R(r),scroll:[r.scrollHeight,r.clientHeight],
+        cards:QA("#sidePanel .slotGrid.bag>*").map(e=>[e.className,R(e)]),items:QA("#sidePanel .ownItem").map(e=>[e.getAttribute("aria-label"),R(e)]),
+        afterItems:sp.innerText.slice(sp.innerText.lastIndexOf("×")+2).trim(),h2:QA("#sidePanel h2").map(e=>e.innerText),badges:QA("#sidePanel .badge").length,smalls:QA("#sidePanel small:not(.hp)").map(e=>e.innerText),buttons:QA("#sidePanel button").length,doc:[document.documentElement.scrollWidth,innerWidth]}; })()`));
+      await shot(vp,"bag");
+      await key("Tab"); const f1=await ev(`[!!document.activeElement.closest("#right"),document.activeElement.getAttribute("aria-label")]`); await key("Enter");
+      const bg=await helpGeo(); L("bag-detail",Object.assign({focusBeforeEnter:f1},bg)); await shot(vp,"bag-detail");
+      const seq2=[]; for(let i=0;i<2;i++){ await key("Tab"); seq2.push(await ev(`!!document.activeElement.closest("#synHelp")`)); }
+      await key("Escape"); const a1=await ev(`[!document.querySelector("#synHelp"),UI.drawer,document.activeElement.getAttribute("aria-label")]`);
+      await key("Escape"); const a2=await ev(`[UI.drawer,document.activeElement.getAttribute("aria-label")]`);
+      L("bag-keyboard",{tabInsideDetail:seq2,esc1:a1,esc2:a2,stateSame:(await sig())===s2});
+      /* 11) 조건부 안내는 그대로(강제 전투 · 메모) — 가방 창 아래 */
+      if(vp==="390"){ await ev(`(()=>{ const e=S.pieces.find(x=>x.owner===1&&!x.revealed&&x.alive&&x.placed); S.memos[0][e.id]="bomb"; S.forcedTargets=[S.pieces.find(x=>x.id===window.__e)]; render(); uiDrawer("side"); return 1; })()`); await sleep(250);
+        L("bag-conditional-guidance",await ev(`[...document.querySelectorAll("#sidePanel h2")].map(e=>e.innerText)`)); await shot(vp,"bag-conditional-guidance"); await ev(`(()=>{ S.forcedTargets=[]; uiDrawer(null); return 1; })()`); }
+      L("page-errors",await ev(`window.__errs`));
+    }
+    ws.close();
+  }catch(e){ LOG.push(["ERROR",String(e&&e.stack||e)]); console.error(e); }
+  finally{ fs.writeFileSync(path.join(OUT,"capture-log"+(ONLY?"-"+ONLY:"")+".json"),JSON.stringify(LOG,null,1)); chrome.kill(); await sleep(800); try{ fs.rmSync(PROF,{recursive:true,force:true}); }catch(e){} console.log("done",LOG.length,LOG.filter(x=>x[0]==="ERROR").length?"WITH ERROR":""); }
+})();

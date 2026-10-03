@@ -11,7 +11,7 @@
      F. sim 관전 — 기권할 주체가 없는 AI vs AI 관전만 확인 뒤 로비로 나간다. 취소하면 관전이 이어지고,
         나간 뒤 남아 있던 AI 콜백이 새 로비를 오염시키지 않는다.
      G. 보존 — location.reload() 없음 · 튜토리얼 자동 표시 플래그(#128) 무변경 · 저장소 무변경 ·
-        전투 하위 메뉴 '← 뒤로'는 계속 window.__menu(null) 시맨틱 핸들러(모달 buttons 빈 배열).
+        전투 하위 메뉴 복귀([↺ 돌아가기] · #296)는 계속 window.__menu(null) 시맨틱 핸들러(모달 buttons 빈 배열).
      H. 어두운 배경 — :root 팔레트가 이전 게임(2055d5a~1) 값이고, 아이보리 리스킨 값이 남아 있지 않으며,
         #tutOverlay 잠금 블록이 그대로 있어 승인된 튜토리얼 10단계 화면이 흔들리지 않는다.
 
@@ -83,6 +83,7 @@ block("B 안전한 뒤로가기",()=>{
 
   /* 배치 단계 → 로스터 단계: 고른 로스터와 이미 놓은 말이 그대로 남는다 */
   T.UI.entered=true; T.startMode("pve",{aiLevel:"grade5"});
+  T.S.eco=null; // #293 계약 3.2: 배치 → 로스터 자유 전환은 비경제 로스터 선택의 계약이다 (경제 판은 shop.done 이 단계를 잠근다) — 입력 전제만 맞춘다, 기대값 무수정
   T.fillRosterRandom(0); T.autoPlaceCore(0);
   const roster0=T.S.roster[0].slice(), placed0=T.S.pieces.filter(x=>x.owner===0&&x.placed).length;
   T.UI.prep="place"; T.uiApply();
@@ -260,19 +261,29 @@ block("G0 출전 준비 탭 눌림 표시",()=>{
 block("G 보존 계약",()=>{
   /* #122 REVISE(2026-09-10 CJ QA 4): CJ 지시로 '← 뒤로'가 **행동 공간 아래**로 내려갔다 (직전 REVISE 의 제목 왼쪽 배치를 대체).
      "플레이할 때 행동 공간 밑에 뒤로가기가 있어야 시야적으로 좋다" — 머리줄에는 제목만 남고, 버튼은 네 하위 패널 다음·전투 이력 앞에 선다. */
-  ok(/<div class="bhead"><h2 style="font-size:22px">/.test(SRC)&&!/<div class="bhead">[\s\S]{0,120}bmenuBack/.test(SRC),
+  ok(/<div class="bhead"><h2 style="font-size:22px">/.test(SRC)&&!/<div class="bhead">[\s\S]{0,120}__menu\(null\)/.test(SRC),
     "G1a-1 전투 패널 머리줄에는 제목만 남는다 (좌상단 '← 뒤로' 제거)");
-  /* #238 (2026-09-28 CJ): 전투 '전투 이력' <details> 토글이 제거돼 '← 뒤로'가 전투 모달 본문의 마지막 요소가 됐다.
-     위치 계약(네 하위 패널 바로 아래)과 시맨틱 핸들러는 그대로이므로 앵커만 <details> 대신 템플릿 끝(`)으로 옮긴다 */
-  ok(/\$\{sub\("flee",[\s\S]*?\)\}\s+<button id="bmenuBack" class="bmenuBack\$\{menu\?"":" hidden"\}" type="button" onclick="window\.__menu\(null\)">← 뒤로<\/button>`/.test(SRC),
-    "G1a-2 '← 뒤로'는 하위 메뉴 패널 **아래**(전투 모달 본문 마지막 · #238 전투 이력 제거)에 있고 핸들러는 계속 window.__menu(null) 시맨틱 호출");
-  ok(/#overlayBox\.battleBox \.bmenuBack\{[^}]*display:block[^}]*width:100%/.test(SRC)&&/#overlayBox\.battleBox \.bmenuBack\.hidden\{display:none;\}/.test(SRC),
-    "G1a-3 행동창 아래 전체 폭 버튼이며 하위 메뉴가 닫히면 숨는다");
-  ok(/const sub=\(key,inner\)=>`<div class="bsub\$\{menu===key\?"":" hidden"\}" id="bsub-\$\{key\}">\$\{inner\}<\/div>`;/.test(SRC),
-    "G1b 하위 패널 안에는 중복 뒤로가기를 남기지 않는다");
-  ok(/const bb=\$\("bmenuBack"\)[\s\S]{0,160}B\.menu\?bb\.classList\.remove|__menu=key=>\{[\s\S]{0,400}bmenuBack/.test(SRC),
-    "G1c 상단 '← 뒤로'는 하위 메뉴가 열렸을 때만 보인다 (같은 __menu 핸들러가 토글)");
-  ok(/← 뒤로<\/button>`,[^\n]*\n\s*\[\]\)/.test(SRC),"G2 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용 · #238 이후 본문 끝 = '← 뒤로')");
+  /* #296 CJ ('싸우기도 내부 복귀 버튼으로 통일'): 바깥 '← 뒤로'(#bmenuBack)를 없앴다 — 싸우기·가방·포획·도망 네 패널 모두 안쪽 [↺ 돌아가기](subBack)로 복귀한다.
+     #238 이후 전투 모달 본문의 마지막 요소는 도망 패널이다 */
+  ok(!/id="bmenuBack"|\.bmenuBack|\$\("bmenuBack"\)/.test(SRC)&&/\$\{sub\("flee",[^\n]*\)\}`,/.test(SRC),
+    "G1a-2 바깥 '← 뒤로'(#bmenuBack) 마크업·토글·CSS 가 없고 전투 모달 본문은 도망 패널로 끝난다");
+  ok(/const sub=\(key,inner\)=>`<div class="bsub\$\{menu===key\?"":" hidden"\}" id="bsub-\$\{key\}">\$\{inner\}<\/div>`;/.test(SRC)
+   &&/const subBack=`<button type="button" class="subBack" onclick="window\.__menu\(null\)">↺ 돌아가기<\/button>`;/.test(SRC)
+   &&["fight","bag","ball","flee"].every(k=>(SRC.match(new RegExp('\\$\\{sub\\("'+k+'",`[^\\n]*\\$\\{subBack\\}','g'))||[]).length===1)
+   &&/\$\{sub\("fight",`<div class="subHead"><b>⚔️ 싸우기<\/b>\$\{subBack\}<\/div>/.test(SRC),
+    "G1b 네 패널 모두 안쪽 [↺ 돌아가기] 한 개(같은 window.__menu(null) 로컬 복귀) · 싸우기는 가방처럼 제목 줄 오른쪽");
+  /* 실제 전투를 열고 제품 window.__menu 로 토글한다 (smoke_issue238 R1 과 같은 픽스처). 이 블록 뒤 H 는 소스 정적 검사뿐이다 */
+  H.freshPlay(T,"pvp"); H.clearBoard(T);
+  const me=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"), em=T.S.pieces.find(x=>x.owner===1&&x.type==="minion");
+  H.place(T,me,12,4); H.place(T,em,11,4); T.TQ.length=0; T.startRounds(me,em,me,em); T.TQ.length=0; T.battleModal();
+  const B=T.S.battle, ob=T.byId("overlayBox").innerHTML, snap=()=>JSON.stringify([B.actSeq,B.round,B.phase,T.S.inv,T.S.balls,T.S.pkgs,T.wsLog.length]), s0=snap();
+  const hid=id=>T.byId(id).classList.contains("hidden");
+  ok((ob.match(/<button type="button" class="subBack" onclick="window\.__menu\(null\)">↺ 돌아가기<\/button>/g)||[]).length===4&&!/bmenuBack|← 뒤로/.test(ob),
+    "G1c 전투 화면에 안쪽 [↺ 돌아가기] 네 개 · 바깥 '← 뒤로' 없음");
+  ok(["fight","bag","ball","flee"].every(k=>{ global.__menu(k); const open=!hid("bsub-"+k)&&hid("bmenu");
+      global.__menu(null); return open&&B.menu===null&&!hid("bmenu")&&["fight","bag","ball","flee"].every(j=>hid("bsub-"+j)); })&&snap()===s0,
+    "G1d 네 패널 각각 [돌아가기](window.__menu(null)) → 루트 행동 선택 복귀 · 행동·자원·전송 무변경");
+  ok(/\$\{sub\("flee",[^\n]*\)\}`,[^\n]*\n\s*\[\]\)/.test(SRC),"G2 battleModal 의 buttons 는 계속 빈 배열 (온라인 인덱스 중계 미사용 · 본문 끝 = 도망 패널)");
   ok(!/toLobby\(\)"[^>]*>\s*←/.test(SRC),"G3 전투 화면에 강제 이탈(로비 직행) 버튼을 만들지 않았다");
   /* 보드 기하·말 규격·수풀 판정·연출 상수는 이번 수정 범위 밖 */
   ok(/#board\{[^}]*repeat\(7,52px\)/.test(SRC)&&/grid-auto-rows:52px/.test(SRC),"G4 7×13 · 칸 52px 기하 불변");

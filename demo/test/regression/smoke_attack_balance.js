@@ -140,15 +140,19 @@ function setupDuel(T,aId,dId){
   ok(D.hp===100-47,"C6c 폭염 강타 분산 상단 47 = round(38×25÷22 × 1.2 × (1-방어력 10%)) — 연속 구간 상단 47+49=96 < 100 HP, 여전히 한 턴 제거 불가 [사실 기록, #233 GDD-23 4.2③⑧⑪]");
 }
 
-/* ===== D. 전투 UI 위력 범위 표기 (dmgRange · 자동 파생) ===== */
+/* ===== D. 전투 UI — #296 (2026-10-02 CJ 정정): 계산한 위력 범위를 화면에 그리지 않는다. 수치 계약(#95)은 표시가 아니라 Core 파생값(slotPow · dmgRange)으로 고정한다 ===== */
 {
   const T=H.load(htmlPath);
   T.startMode("sim",{aiLevel:["grade5","grade5"]}); // sim 뷰어(2): 양측 기술 전부 공개 표기
   setupDuel(T,"M-F2","M-F1");
   T.S.mode="sim"; T.battleModal();
   const box=T.els.overlayBox.innerHTML;
-  ok(/화염탄 24~36/.test(box)&&/폭염 강타 34~52/.test(box)&&/결정타 36~54/.test(box),"D1 공격형(불) 커맨드 표기 화염탄 24~36 · 폭염 강타 34~52 · 결정타 36~54 (변경 전 25~37 · 36~54 · 42~62)");
-  ok(!/결정타 42~62/.test(box)&&!/폭염 강타 36~54/.test(box),"D2 옛 범위 표기 없음");
+  const pw=(f,i)=>T.dmgRange(T.slotPow(f,T.SKILLS[f.skills[i]]));
+  ok(pw(T.S.battle.fa,0)==="24~36"&&pw(T.S.battle.fa,1)==="34~52"&&pw(T.S.battle.fa,3)==="36~54","D1 공격형(불) Core 위력 파생값 화염탄 24~36 · 폭염 강타 34~52 · 결정타 36~54 (변경 전 25~37 · 36~54 · 42~62)");
+  // #296 REVISE1: 싸우기 = 하수인 정보 창과 같은 줄(ol.uhSkills > li > button > span.uhSk 이름 + small 고정 설명)
+  const rows=[...box.matchAll(/<li><button [^>]*onclick="window\.__act\((\d)\)"><span class="uhSk"><b>([^<]+)<\/b>[\s\S]*?<\/span><small>([^<]*)<\/small><\/button><\/li>/g)].map(m=>[+m[1],m[2],m[3]]);
+  const sk=T.S.battle.fa.skills;
+  ok(rows.length===4&&rows[0][1]==="화염탄"&&rows[1][1]==="폭염 강타"&&rows.every(([i,,d])=>d===T.SKILLS[sk[i]].desc)&&!/\d+~\d+/.test(box)&&!/위력 \?/.test(box),"D2 #296 전투 화면에는 계산한 위력/피해 범위가 없다(이름 + 고정 설명만)");
   ok(/집중/.test(box)&&/title="사용 후 다음 피격 피해 \+15%"/.test(box),"D3 보조기 집중 · 결정타 설명 문구 불변");
   /* #146 (v0.4.7 CJ 2026-09-10): 전 슬롯 불가 시의 기본 공격 폴백이 철회됐다 — 4슬롯 전투원에게는 그 버튼이 나오지 않는다.
      #95 의 수치 계약(공격형 atk 25 → 20~30)은 그대로이므로, 기본 공격을 실제로 갖는 **왕·동료 본체 경로**로 그 표기를 계속 고정한다. */
@@ -156,15 +160,15 @@ function setupDuel(T,aId,dId){
   /* #122 REVISE(2026-09-10 CJ QA 2): 도망 하위 패널의 안내 문구가 "상대의 기본 공격 1회"를 설명하므로 innerHTML 에
      '기본 공격' 이라는 **글자**는 남는다. 이 검사의 원래 의도는 "4슬롯 전투원에게 기본 공격 **버튼**이 없다" 이므로
      버튼 자체(__act('basic') 핸들러 · 피해 범위 표기)로 좁혀 고정한다 — 느슨해지지 않고 오히려 정확해진다. */
-  ok(!/__act\('basic'\)/.test(T.els.overlayBox.innerHTML)&&!/기본 공격 \d+~\d+/.test(T.els.overlayBox.innerHTML),"D4 4슬롯 전부 쿨 → 기본 공격 폴백 버튼 없음 (#146)");
+  ok(!/__act\('basic'\)/.test(T.els.overlayBox.innerHTML)&&!/기본 공격 (위력 )?\d+~\d+/.test(T.els.overlayBox.innerHTML),"D4 4슬롯 전부 쿨 → 기본 공격 폴백 버튼 없음 (#146)");
   ok(T.els.overlayBox.innerHTML.indexOf(T.NO_ATTACK_MSG)>=0&&T.els.overlayBox.innerHTML.indexOf("__pass()")>=0,"D4b 안내 문구 + 수동 [턴 종료] 버튼");
   const keepSkills=f.skills; f.skills=undefined; T.battleModal();
-  ok(/기본 공격 20~30/.test(T.els.overlayBox.innerHTML),"D4c 기본 공격을 갖는 본체 경로의 표기는 20~30 유지 (공격형 atk 25 · 변경 전 21~31)");
+  ok(/__act\('basic'\)">기본 공격<\/button>/.test(T.els.overlayBox.innerHTML)&&T.dmgRange(T.effAtk(f))==="20~30","D4c 기본 공격을 갖는 본체 경로: 버튼은 범위 없이 · Core 값은 20~30 유지 (공격형 atk 25 · 변경 전 21~31)");
   f.skills=keepSkills;
   T.close();
   // 다른 종 표기 불변 — 표준형(불)이 행동자일 때 화염탄 21~31 · 전술 연계 24~36 (커맨드는 현재 행동자 것만 표시된다)
   setupDuel(T,"M-F1","M-F2"); T.S.mode="sim"; T.battleModal();
-  ok(/화염탄 21~31/.test(T.els.overlayBox.innerHTML)&&/전술 연계 24~36/.test(T.els.overlayBox.innerHTML),"D5 표준형 표기 불변 화염탄 21~31 · 전술 연계 24~36");
+  ok(pw(T.S.battle.fa,0)==="21~31"&&pw(T.S.battle.fa,3)==="24~36"&&!/\d+~\d+/.test(T.els.overlayBox.innerHTML),"D5 표준형 Core 위력 불변 화염탄 21~31 · 전술 연계 24~36 (화면 표기 없음)");
   T.close();
 }
 
