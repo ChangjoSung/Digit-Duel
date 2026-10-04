@@ -1,0 +1,69 @@
+{
+ "task": "task_5324a85cfbb2 / ctx_4e1a6cc0149d — #332 v0.4.15 README 사진 4장(05~08) 새 촬영 · 01~04는 v0.4.13 CJ 승인본 재사용",
+ "capturedAt": "2026-10-05 (KST) 02:14-02:19",
+ "worker": "Mars (Claude Code claude-opus-5-5 · effort high · --dangerously-skip-permissions, PID 37860). Mercury preflight GO 뒤 촬영",
+ "source": {
+  "worktree": "C:/Users/pc_77/orca/workspaces/Digit-Duel/release-v0415-docs",
+  "HEAD": "18924a58c863c057c350ccdd6726ff2ed1e534ea (= refs/remotes/origin/dev, ref 파일로 읽음 · Git 명령 미사용)",
+  "tree": "c5aeb63fa1387f83643ce17d3a7352469ed9c6a6 (커밋 loose object 를 zlib 로 직접 읽음)",
+  "parents": ["f57c936cabfbbcccb3624fd1acf0033989733ee3", "a0651e6e83201036dffb741e0e9c631f3b02ac84"],
+  "fileSha256": {
+   "demo/index.html": "57e7adb3b85d6b9ccf218a860e70b4133ff88c1a4d38584aed2907f0917bd35a",
+   "demo/js/account.js": "2bb95fa019b5d53860be07cb01696ded31476d1493c5932f2d0acac31aba7eff",
+   "demo/js/ai.js": "6332b9f7fbfe29dfa10bfdabb8da9eeb2d5d139b4a1662a1418797fb98ece555",
+   "demo/js/bootstrap.js": "81287aa896c803abd41ad7a139fe434412c2765f8e190a6ed430e7ce0daeebd9",
+   "demo/js/core.js": "80e0aed92efd4241315ddde7c2b6c5daca27c0643b4a2cb0efc315e8a7956241",
+   "demo/js/data.js": "6cb2c3dc377b8c7f776b253a9ca4c215465490d4bf2402cd6072d1e068d107d8",
+   "demo/js/lobby.js": "76fbf1c4b9d05a91945a43357516c48ba6055b90e551e430165b86167346530f",
+   "demo/js/network.js": "c8c549e252b726590957a3691f58cead047ef699cdf367284382b98f8c889b66",
+   "demo/js/state.js": "bbf9ca426ac644cc636bcadd738661ffb7d9ae885531dacd7b04e9b0f8480232",
+   "demo/js/ui.js": "fe0d313244273e8e55b965e7509c9e3ee35401e6acb49a6e39281a3939bb1519",
+   "demo/js/ui-overlays.js": "4fed7d3912d5e9f20fbc6e3382d9efb2071f0f8b6361c04f37b1dbbb63342c72",
+   "demo/css/game.css": "1e5644d4aa5f1bb428b17078b3ca3e496bef5ed37c03b99d43847793b9819597"
+  },
+  "note": "작업 트리 파일의 SHA256. v0.4.14 촬영본 대비 data.js · network.js · ui.js · game.css 4개가 달라졌다(#325 변경 파일과 일치)"
+ },
+ "renderPath": {
+  "page": "file:///C:/Users/pc_77/orca/workspaces/Digit-Duel/release-v0415-docs/demo/index.html (수정 없는 dev 렌더러 · demo/assets 상대경로 로드 · 서버·DB·네트워크 없음)",
+  "browser": "Google Chrome headless=new 1개(UA HeadlessChrome/154 · chrome --version 미실행), 격리 프로필 mars/profiles/A(종료 후 삭제), CDP Emulation 390x844 CSS · DPR 2 · mobile",
+  "tooling": "저장소 밖 C:/Users/pc_77/orca/artifacts/Digit-Duel/release-v0.4.15-20261005/mars/{driver.js,cli.js,auto.js,fight.js,bottomcheck.js} — v0.4.14 헬퍼 복사, driver.js 의 페이지 경로 한 줄만 변경",
+  "input": "실제 CDP 마우스 클릭(구매·다음 단계·무작위 배치·배치 완료·말 이동·싸우기/기술·시너지 펼치기·승급 확인). Runtime.evaluate 는 좌표·상태 읽기와 아래 fixtureEntry · uiScroll 에만 사용"
+ },
+ "provenance": {
+  "kind": "오프라인 PVE 경기 1판(AI 5급 · 로컬 경제)의 실제 렌더 — 온라인 공개 방 플레이가 아니며 온라인 QA · PVE 출시 근거가 아님",
+  "fixtureEntry": "로비의 싱글플레이 카드가 잠겨 있어 페이지 안에서 기존 함수 startMode('pve',{aiLevel:'grade5'}) 를 직접 호출해 경기를 시작함(게임 상태 주입·수치 변경 없음)",
+  "uiScroll": "05·07은 스크롤 컨테이너(#screenBody 352 · #overlayBox 313) scrollTop 만 지정해 고정 머리와 행 경계를 맞춤(게임 상태 무관)",
+  "flow": "시작 상점 1★ 불 3구매 → 05 → 3구매·다음 단계 → 무작위 배치 → auto.js 실제 클릭 전진 → 턴12 AI 모래 여우 접촉 전투(내 돌창 거인 · fight.js 로 종료, 상대 공개) → 턴13 보드 06 → 새끼 화룡을 옆 칸으로 이동해 접촉 전투 → 08 → fight.js 로 전투 종료 → 턴20 상점에서 화산 딱정벌레 ⭐1→⭐2 승급 · 2★ 화염 투사 1구매(가방) → 07",
+  "synthetic": "없음(가짜 화면·이미지 생성·DOM 편집 없음). 계정·실서버·QA 게임 미사용"
+ },
+ "images": {
+  "docs/screenshots/v0.4.15/05-start-shop.png": {"px": [780, 1688], "bytes": 222548, "sha256": "460929f0fe261345f59e0d15e2ee24d5f2b091e403819c5c4a462af877cdcfae", "cropCss": {"x": 0, "y": 0, "width": 390, "height": 844}, "dpr": 2,
+   "note": "시작 상점 1★ 불 3구매 뒤 — 고정 머리(VS·단계·⏱·🪙·다음 단계), 필드 3/6 · 가방 · 왕·동료 속성 3줄이 행 경계에서 끝남, 시너지 열(불 3)"},
+  "docs/screenshots/v0.4.15/06-strategy-board.png": {"px": [780, 1688], "bytes": 317478, "sha256": "d9e01d28845760cb899636332c49789e59aedbd7a49c1835b83fd62ce877acaa", "cropCss": {"x": 0, "y": 0, "width": 390, "height": 844}, "dpr": 2,
+   "note": "턴13 내 차례 보드 전체 뷰포트 — 전투로 공개된 상대 모래 여우(빨간 테 · 적 표식 · HP34), 탐색 가능한 수풀 칸(점선·돋보기), 왼쪽 상성 순환표, 시너지 열(불 7), 하단 행동 줄"},
+  "docs/screenshots/v0.4.15/07-turn-shop.png": {"px": [780, 1688], "bytes": 311829, "sha256": "57e9c59be1ea9abd0f47e444a79186a4387d430c9d9e8b440395c2bf38f03dce", "cropCss": {"x": 0, "y": 0, "width": 390, "height": 844}, "dpr": 2,
+   "note": "20턴 상점 — v0.4.15 등급 성장표가 보이는 구성: 승급한 2★ 화산 딱정벌레 HP 149/149(1★ 110), 가방의 2★ 화염 투사 HP 122, SOLD OUT 줄, 필드 6/6 · 가방 1/3 · 왕·동료 속성 3줄이 행 경계에서 끝남"},
+  "docs/screenshots/v0.4.15/08-element-battle.png": {"px": [780, 1688], "bytes": 259512, "sha256": "1fb80bc524ca45986c0ea3fa4f07d25f69c3c247de8aa90aa803b53d5fb31b82", "cropCss": {"x": 0, "y": 0, "width": 390, "height": 844}, "dpr": 2,
+   "note": "턴13 내 새끼 화룡(불) vs AI 모래 여우(땅) 접촉 전투 라운드1 내 차례 — v0.4.15 표시 변경: 여섯째 칸 왕국 효과 발동률(내 쪽 60% · 상대 미활성), 상성표 왼쪽 스텟 버튼. 시너지 한 줄 펼침, 행동 버튼 4개"}
+ },
+ "reused": {
+  "note": "01~04는 새로 찍지 않고 v0.4.13 CJ 승인본을 그대로 쓴다(파일 미변경 · sha256 은 v0.4.14 manifest 기록과 같음)",
+  "docs/screenshots/v0.4.13/01-login.png": "a5132955aa76ef49fac0eec38933ba9e3c627095bb83f6a0b9a5ee9c29240afc",
+  "docs/screenshots/v0.4.13/02-main-lobby.png": "a287c1df239288c67c967781cde10a4ebfd3eda709dabb3204738b292e088294",
+  "docs/screenshots/v0.4.13/03-public-rooms.png": "be28fe173f0c57f62168b8d695b7ec2eb3e15b2ecee31fec0b798687b4191a57",
+  "docs/screenshots/v0.4.13/04-waiting-room.png": "6ad8c76ddd92673febd9f19be1fbd0754744a739805ead054f860a2917427001"
+ },
+ "checks": {
+  "bottomBand": "bottomcheck.js 마지막 80px 서로 다른 색 05:6934 · 06:2035 · 07:5636 · 08:890 — 모두 OK(빈 띠 없음) · 1회 실행",
+  "visual": "4장 모두 Mars 직접 확인 — 빈 하단·버전 문구 없음, 네이티브 하수인·왕·동료·아이콘 로드",
+  "pageErrors": "driver /errors = [] (Runtime.exceptionThrown 0)",
+  "captures": "probe 9장 중 4장을 그대로 복사(p05b · p06a · p07b · p08c). 버린 probe: 05 스크롤 전, 08 상대 차례/양쪽 미활성 전투, 06 공개 상대 없는 턴14, 07 가방 행 잘림",
+  "notRun": "온라인 QA · 제품 회귀 · 공개 방 화면 재검증은 범위 밖이라 실행하지 않음"
+ },
+ "cleanup": {
+  "pids": {"driver": 16768, "chromeA": 37268},
+  "listeners": [9390, 9391],
+  "result": "driver /quit 로 driver·Chrome A 종료, 프로필 삭제. 이후 9390/9391 LISTEN 0 · 이 프로필을 쓰는 chrome.exe 0. 서버·DB 미기동, 다른 프로세스 무접촉"
+ },
+ "env": {"ref": "origin/dev", "refSha": "18924a58c863c057c350ccdd6726ff2ed1e534ea", "viewport": "390x844 CSS", "dpr": 2, "chrome": "HeadlessChrome/154 headless=new", "node": "v24.16.0"}
+}

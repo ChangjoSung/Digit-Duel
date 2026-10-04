@@ -2,11 +2,11 @@
 
 최신 정식 버전은 **[v0.4.14](v0.4.14.md)** — 멀티플레이 수정과 화면 개선입니다.
 
-개발 중인 다음 버전은 **[v0.5.0 — Roblox 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/12)**(#118 · 별도 작업자)과 **[v0.6.0 — Unity 포팅](https://github.com/ChangjoSung/Digit-Duel/milestone/4)**(미착수)입니다. 둘 다 미출시이며 아래 표에 들어오지 않습니다 — 이 표는 출시된 버전만 담습니다.
+출시 준비: **[v0.4.15](v0.4.15.md)** — 배틀 스텟 표시·설명과 등급 성장 개선. CJ 문서 승인 후 출시합니다.
 
-> **2026-09-11 버전 재배번** ([#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · CJ 승인). 지금의 v0.4.6은 **계획 단계에서 `v0.4.7`로 불리던 것**입니다. 같은 재편에서 **Roblox 포팅은 `v0.5.0`**, **Unity 포팅은 `v0.6.0`**이 됐습니다. 위 표의 **태그 `v0.4.7`은 그 옛 이름과 다른 것**으로, 이번에 처음 만들어진 릴리스 태그입니다 — 계획 버전은 Milestone, 배포 버전은 태그로 따로 관리합니다.
+개발 계획: **[v0.4.16 — 싱글플레이·튜토리얼](https://github.com/ChangjoSung/Digit-Duel/milestone/20)** · **[v0.5.0 — Roblox](https://github.com/ChangjoSung/Digit-Duel/milestone/12)** · **[v0.6.0 — Unity](https://github.com/ChangjoSung/Digit-Duel/milestone/4)**. 모두 미출시입니다.
 
-**v0.4.6 에는 `roblox/` 소스가 함께 들어 있지만 출시 기능이 아닙니다.** 필수 검사 `E. Roblox 클라이언트·규칙 (Luau)`가 그 폴더에서 돌아 분리할 수 없기 때문이며, Roblox 는 v0.5.0 으로 따로 출시합니다. **코드가 `main`에 있다고 해서 출시된 것이 아닙니다.**
+> [2026-09-11 재배번](https://github.com/ChangjoSung/Digit-Duel/issues/169): 계획 이름 `v0.4.7`은 v0.4.6으로 변경됐고, 이후 릴리스 태그 v0.4.7과는 별개입니다. 저장소의 `roblox/`는 검사 대상 소스이며 출시 기능이 아닙니다.
 
 | 출시일 | 버전 | 주요 변경 |
 |---|---|---|
