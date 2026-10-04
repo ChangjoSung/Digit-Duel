@@ -1501,7 +1501,7 @@ if(typeof document!=="undefined"&&document.addEventListener){
   },true);
   /* #294: 바깥 탭은 **닫기만** 한다 — 종전 pointerdown 닫기는 같은 탭의 click 이 뒤의 보드 칸 · 행동 버튼 · 판매/교체/구매에 그대로 떨어졌다.
      click 을 캡처 단계에서 삼키므로 대상의 onclick 까지 가지 않는다(창마다 따로 막지 않는다 — 틀 한 곳) */
-  document.addEventListener("click",e=>{ const d=SYNHELP.el; if(d&&!d.contains(/** @type {Node} */(e.target))){ e.stopPropagation(); e.preventDefault(); synHelpClose(d.classList.contains("cyc")); } },true); // #316 상성표만 연 버튼(cycBtn)으로 초점 복귀 — 다른 안내 창은 종전대로
+  document.addEventListener("click",e=>{ const d=SYNHELP.el; if(d&&!d.contains(/** @type {Node} */(e.target))){ e.stopPropagation(); e.preventDefault(); synHelpClose(d.classList.contains("cyc")||d.classList.contains("bsh")); } },true); // #316 상성표 · #327 스텟 설명만 연 버튼으로 초점 복귀 — 다른 안내 창은 종전대로
 }
 if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("keydown",e=>{ // #294 가방 창(서랍) Esc = 그 창만 닫고 가방 버튼으로 포커스 복귀 (안내 창이 열려 있으면 위 캡처 핸들러가 먼저 그것만 닫는다)
   if(e.key!=="Escape"||!UI.drawer||uiOverlayOpen()||EMO.open) return;
@@ -1552,8 +1552,10 @@ function unitSkillRows(ids,el,cds,key){ const sp=V2_SPECIES[key]||[], own=ids||[
   return own.map((id,i)=>row(id,i,false)).concat(sp.slice(own.length).filter(id=>!own.includes(id)).map(id=>row(id,0,true))).filter(Boolean); }
 /* 보드 말 — 내 말은 전부, 상대 말은 **정체가 공개되고 지금 보이는 것만** 서버가 이미 싣는 값(이름 · 종류 · 그림 · 왕국 · 등급 · HP · 이동 불가 · 교체 표식)으로.
    미공개 ? 말 · 안 보이는 말 · 죽은 상대 말은 창이 없다(그 말의 어떤 값도 마크업에 넣지 않는다) */
-/* 폭탄 · 함정 한 줄 설명 — 기존 안내(ui-overlays.js TUT_PAGES '폭탄과 함정')의 이동 문장 그대로. 새 규칙 문구가 아니다(회귀가 두 곳의 일치를 본다) */
-const UNIT_NOTE={bomb:"한 칸씩 움직일 수 있어요(버닝 타임엔 2칸).",trap:"스스로 움직일 수 없어요."};
+/* 폭탄 · 함정 설명(#329) — 말 정보 창에만 쓰는 문장이다. 이동과 접촉 결과를 현행 규칙대로 적는다(canMoveTo · contactEligible · bombAttack · initBattleRun 의 함정 갈래 · immobile=2).
+   튜토리얼(ui-overlays.js '폭탄과 함정') · 로그 · 토스트 문장과는 따로다 — 이 두 문자열을 고칠 때 그쪽을 맞추지 않는다 */
+const UNIT_NOTE={bomb:"한 칸씩 움직여요(버닝 타임엔 2칸). 상대 옆에 새로 붙거나 공격받으면 터져서 하수인·폭탄·함정은 함께, 동료·왕이면 폭탄만 사라져요.",
+  trap:"스스로 못 움직여요. 상대 하수인·동료·왕이 건드리면 함정은 사라지고, 그 말은 정체가 드러나 자기 차례 2번 못 움직여요."};
 function unitHelpPiece(id,from){
   const v=humanViewer(), x=S&&(v===0||v===1)?S.pieces.find(y=>String(y.id)===String(id)):null; if(!x) return;
   const own=x.owner===v; if(!own&&!(x.revealed&&x.alive&&x.placed&&visibleTo(v,x))) return;
@@ -1605,7 +1607,7 @@ function stChipsHtml(t,bk){ return String(t||"").split(" ").filter(x=>x&&x!=="-"
   +(bk&&BUFFS[bk]?`<span class="stChip up" title="${escAttr(BUFFS[bk].ko)}">${gi(bk)||BUFFS[bk].ko.split(" ")[0]}</span>`:""); }
 function battleStSync(side){ try{ const s=$("bst-"+side), c=$("bch-"+side), B=S&&S.battle; if(s&&c) c.innerHTML=stChipsHtml(s.textContent,B&&(side==="A"?B.buffA:B.buffD));
   }catch(e){} }
-const BSTAT=[["atk","atk"],["def","def"],["spd","swift"],["dodge","💨",1],["crit","🎯",1],["statusPct","💫",1]];
+const BSTAT=[["atk","atk"],["def","def"],["spd","swift"],["dodge","💨",1],["crit","🎯",1]]; // 여섯째 칸(💫)은 #326 왕국 효과 발동률 — 아래 battleKpHtml
 /* #316 CJ REVISE3 ②: 전투 6스탯 = 지금 적용 중인 값(기본 + 시너지 · 일시 증감). 공개 방 = 서버 effectiveStats(Core 와 같은 식 · network.js 가 숫자만 옮김),
    오프라인 = Core 판정과 같은 식(effAtk · def+synDef · effSpd · effEvade · min(50%, crit+synCrit) · statusPct+synStatusPct). 읽기만 — 전투원 값은 바꾸지 않는다.
    공개 방에서 서버가 effectiveStats(객체 · 칸)를 안 실었으면 '—'(정보 없음) — 기본값을 적용값처럼 보이거나 상대 가산칸을 추정하지 않는다(PD 계약). 오프라인 기본값이 없어도 '—' */
@@ -1613,8 +1615,17 @@ function battleEff(f){ if(f.eff&&typeof f.eff==="object") return f.eff; if(NET.p
   const n=k=>typeof f[k]==="number"&&isFinite(f[k]);
   return {atk:n("atk")?effAtk(f):undefined,def:n("def")?f.def+(f.synDef||0):undefined,spd:n("spd")?effSpd(f):undefined,dodge:n("dodge")?effEvade(f):undefined,
     crit:n("crit")?Math.min(0.5,f.crit+(f.synCrit||0)):undefined,statusPct:n("statusPct")?f.statusPct+(f.synStatusPct||0):undefined}; }
-function battleStatHtml(f){ const e=battleEff(f); return `<ul class="bStats" aria-label="적용 능력치">${BSTAT.map(([k,ic,pc])=>{ const v=e[k], ok=typeof v==="number"&&isFinite(v), t=!ok?"—":k==="statusPct"?`+${Math.round(v*100)}%p`:pc?Math.round(v*100)+"%":Math.round(v), nm=SYN_STAT_KO[k][0];
-  return `<li aria-label="${nm} ${ok?t:"정보 없음"}" title="${nm}"><span aria-hidden="true">${gi(ic)||ic}</span><b aria-hidden="true">${t}</b></li>`; }).join("")}</ul>`; }
+/* #326 여섯째 칸 = 왕국 효과 발동률(그 전투원의 왕국 1판정이 실제로 쓰는 확률). 오프라인 = Core kingdomProcView(v2Apply 와 같은 식 · 읽기만),
+   공개 방 = 서버 kingdomProc(network.js 가 닫힌 값만 옮긴 f.kp) — 없으면 '—'(추정하지 않는다). 발동 가능 / 미활성 / 없음 / 정보 없음은 서로 다른 글자 · 이름이다.
+   종전 칸의 기술용 가산치(+N%p = 적용 statusPct)는 0 보다 클 때 title · 접근성 이름 끝에만 붙는다(화면 글자는 늘리지 않는다) */
+const KP_KO={burn:"화상(상대)",weaken:"약화(상대)",shock:"감전(상대)",harden:"경화(자신)",absorb:"흡수(자신)"};
+function battleKpHtml(f,e){ const kp=NET.publicMode||f.eff?f.kp:kingdomProcView(f), on=kp&&kp.state==="active", pc=on?Math.round(kp.p*1000)/10+"%":"", sp=e.statusPct;
+  const t=!kp?"—":on?pc:kp.state==="inactive"?"미활성":"없음";
+  const nm=(!kp?"왕국 효과 발동률 정보 없음":on?`왕국 효과 발동률 ${pc} · ${KP_KO[kp.kind]}`:kp.state==="inactive"?"왕국 효과 미활성 — 같은 속성 2칸부터":"왕국 효과 없음")
+    +(typeof sp==="number"&&isFinite(sp)&&sp>0?` · 기술 효과 +${Math.round(sp*100)}%p`:"");
+  return `<li class="kp" aria-label="${nm}" title="${nm}"><span aria-hidden="true">💫</span><b aria-hidden="true">${t}</b></li>`; }
+function battleStatHtml(f){ const e=battleEff(f); return `<ul class="bStats" aria-label="적용 능력치">${BSTAT.map(([k,ic,pc])=>{ const v=e[k], ok=typeof v==="number"&&isFinite(v), t=!ok?"—":pc?Math.round(v*100)+"%":Math.round(v), nm=SYN_STAT_KO[k][0];
+  return `<li aria-label="${nm} ${ok?t:"정보 없음"}" title="${nm}"><span aria-hidden="true">${gi(ic)||ic}</span><b aria-hidden="true">${t}</b></li>`; }).join("")}${battleKpHtml(f,e)}</ul>`; }
 /* 2026-10-02 CJ 정정: 전투 화면에는 **계산한 위력/피해 범위를 그리지 않는다**(종전 dmgRange 호출 세 곳 삭제 — 0~0 표기의 자리 자체가 없다).
    스킬의 위력 · 효과 · 쿨타임은 SKILLS 의 고정 설명(desc · #294 설명 창과 같은 원문)으로 읽는다. 실제 피해는 언제나 Core/서버가 낸다 */
 /* 사용 가능 판정 — 공개 방(서버 권위)은 서버가 내 활성 칸에 실은 slotUsable 결과(f.usable[i])**만** 쓴다. 값이 없으면 잠근다(fail-closed):
@@ -1786,6 +1797,7 @@ function battleModal(board){
     <div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>${synTogHtml}</div>
     <div class="bhead bround"><span>⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}</span>
       ${mineView&&!aiActor?`<span class="badge" id="battleClock" role="timer">${turnClockText("battle")}</span>`:`<span class="badge" role="status">⏳ 상대 응답 대기</span>`}
+      <button type="button" class="cycBtn statBtn" aria-haspopup="dialog" aria-label="스텟 설명 보기" title="하수인 스텟" onclick="battleStatHelpOpen(this)">${gi("atk")}<small aria-hidden="true">스텟</small></button>
       <button type="button" class="cycBtn" aria-haspopup="dialog" aria-label="상성표 보기" title="상성표" onclick="battleCycleOpen(this)"><svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="9"/>${["fire","water","lightning","land","grass"].map((k,i)=>{ const a=(-90+i*72)*Math.PI/180; return `<circle class="d" cx="${(14+9*Math.cos(a)).toFixed(1)}" cy="${(14+9*Math.sin(a)).toFixed(1)}" r="3.6" style="fill:var(--${k})"/>`; }).join("")}</svg></button></div>
     <div id="bstage" class="scene"${platVar?` style="${platVar}"`:""}><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
     <div id="msgBox">${busy?"":inBonus?`⚡ ${fighterName(side,B)} 추가 공격 — ${mineView?"기본기 · 2차 · 3차 중 선택 (피해 60%)":"선택을 기다리는 중"}`:(noAtkShow?NO_ATTACK_MSG:`${fighterName(side,B)}의 행동을 선택하세요.`)}</div>
@@ -1839,6 +1851,17 @@ function battleModal(board){
 function battleCycleOpen(from){ const B=S&&S.battle; if(!B) return;
   const my=S.mode==="pve"?(B.attP.owner===0?"A":"D"):NET.mode?(B.attP.owner===NET.me?"A":"D"):"A", cs=S.mode==="pvp"&&!NET.mode?actorOfPhase(S):my;
   synHelpOpen(cycleHelpHtml(cs==="A"?B.fa:B.fd,cs==="A"?B.fd:B.fa),from); if(SYNHELP.el) SYNHELP.el.classList.add("cyc"); }
+/* #327 하수인 스텟 설명 창 — 전투 카드 여섯 칸의 뜻(고정 문구 · 전투원 값을 읽지 않는다). 상성표와 같은 틀 · 같은 수명:
+   표시 전용(명령 · 송신 · 시계 · 하위 메뉴 무변경), ✕ · Esc · 바깥 누름 → 이 버튼으로 초점 복귀, 전투가 다시 그려지면(modal) 함께 닫힌다 */
+const BSTAT_HELP=[["atk","공격력","스킬 피해의 기준입니다."],["def","방어력","받는 피해를 1당 1% 줄입니다. 최대 50%."],
+  ["swift","속도","첫 라운드 순서를 정하는 데 씁니다. 다음 라운드부터는 번갈아 먼저 행동합니다."],["💨","회피","상대 공격을 피할 확률입니다. 최대 40%."],
+  ["🎯","치명타","피해가 1.5배가 될 확률입니다. 최대 50%."],
+  ["💫","왕국 효과","공격이 맞으면 왕국 효과가 걸릴 확률입니다. 화상·약화·감전은 상대, 경화·흡수는 자신. 스킬 효과는 별도입니다."]];
+const BSTAT_HELP_NOTE="시너지가 반영된 현재 값입니다.";
+function battleStatHelpOpen(from){ if(!(S&&S.battle)) return;
+  synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">하수인 스텟</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
+    <ol>${BSTAT_HELP.map(([ic,nm,tx])=>`<li><span aria-hidden="true">${gi(ic)||ic}</span> <b>${nm}</b>${tx}</li>`).join("")}</ol><small>${BSTAT_HELP_NOTE}</small>`,from);
+  if(SYNHELP.el) SYNHELP.el.classList.add("bsh"); }
 window.__recruitCore=(step,i,token)=>{ dispatchCoreAction({t:"recruit",step,i,token}); };
 /* #316 ①: 포획 잠금 사유 한 줄 — Core ballWhy 문자열을 짧게 줄여 보이기만 한다(판정 재계산 없음 · 모르는 사유는 원문 그대로). HP·볼 칩은 두 조건뿐이라 이 줄이 실제 사유다 */
 const CAP_WHY_SHORT=/** @type {[RegExp,string][]} */([[/^이미 가진 종/,"이미 가진 하수인"],[/^전설은/,"전설은 포획 불가"],[/^상대 HP/,"상대 HP 30% 이상"],[/^몬스터볼이 없/,"몬스터 볼 없음"],

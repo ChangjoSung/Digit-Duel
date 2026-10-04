@@ -71,9 +71,9 @@ const GDD_SKEL={std:[140,.70,.50,2,0,0],atk:[170,.50,.30,3,0,0],def:[120,.40,.30
 const GDD_ELFX={fire:"burn",water:"weaken",lightning:"shock",land:"crack",grass:"absorb"};
 /* 6.4 · 3.6 전설 */
 const GDD_LEG={
-  dragon:{arch:"std",stats:[175,35,15,11,.05,.10,0],sk:[["용 발톱",100,0],["비늘 세우기",null,3],["날개 강타",140,2],["드래곤 숨결",140,3]]},
-  witch:{arch:"sustain",stats:[165,32,12,13,.10,.05,.25],sk:[["저주 손짓",100,0],["독약 병",110,2],["변덕 주문",null,3],["마녀의 장난",80,3]]},
-  reaper:{arch:"atk",stats:[158,40,8,14,.15,.20,0],sk:[["낫 베기",100,0],["영혼 수확",130,2],["죽음의 그림자",null,3],["사신의 낫",null,"seal"]]}
+  dragon:{arch:"std",stats:[270,50,15,11,.05,.10,0],sk:[["용 발톱",100,0],["비늘 세우기",null,3],["날개 강타",140,2],["드래곤 숨결",140,3]]},
+  witch:{arch:"sustain",stats:[257,46,12,13,.10,.05,.25],sk:[["저주 손짓",100,0],["독약 병",110,2],["변덕 주문",null,3],["마녀의 장난",80,3]]},
+  reaper:{arch:"atk",stats:[244,58,8,14,.15,.20,0],sk:[["낫 베기",100,0],["영혼 수확",130,2],["죽음의 그림자",null,3],["사신의 낫",null,"seal"]]}
 };
 /* 6.2 왕 · 동료 */
 const GDD_LEADER={
@@ -210,11 +210,11 @@ function idx(f,id){ return f.skills.indexOf(id); }
   const rd=rdOf("새끼 화룡");
   for(const g of [1,2,3,4]){ T.applySpecies(a,rd,g);
     ok(a.skills.length===g&&a.skills.every((id,i)=>id===T.V2_SPECIES[rd.id][i])&&a.cds.length===g,`B1 ⭐${g} = 1~${g}차 스킬 ${g}개`); }
-  T.applySpecies(a,rd,4); ok(a.hp===145&&a.atk===29&&a.grade===4,"B2 ⭐4 표준형 = ❤️145 · 💪29 (3.4 예시)");
+  T.applySpecies(a,rd,4); ok(a.hp===225&&a.atk===42&&a.grade===4,"B2 ⭐4 표준형 = ❤️225 · 💪42 (3.4 · #328 채택표)");
   T.applySpecies(a,rd,9); eq(a.skills.length,4,"B3 등급 상한 4 — 5칸 이상 열리지 않는다");
   /* 전설 */
   const L=T.applyLegend(a,"reaper");
-  ok(L&&a.skills.length===4&&a.grade===5&&a.element===null&&a.legend==="reaper"&&T.archOf(a)==="atk"&&a.hp===158&&a.atk===40&&a.crit===0.20,"B4 사신 = ⭐5 고정·스킬 4개·무속성·공격형·3.6 스탯");
+  ok(L&&a.skills.length===4&&a.grade===5&&a.element===null&&a.legend==="reaper"&&T.archOf(a)==="atk"&&a.hp===244&&a.atk===58&&a.crit===0.20,"B4 사신 = ⭐5 고정·스킬 4개·무속성·공격형·3.6 스탯");
   T.applyLegend(a,"dragon"); ok(T.archOf(a)==="std",   "B5 용 = 표준형");
   T.applyLegend(a,"witch");  ok(T.archOf(a)==="sustain"&&a.statusPct===0.25,"B6 마녀 = 지속형 · 💫+25%p");
 }

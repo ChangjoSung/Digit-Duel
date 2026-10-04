@@ -257,6 +257,24 @@ fixRand(0.5); // 회피 0 · 분산 ×1.0 · 치명 없음 · 확률 0.5 미만 
   eq(B.fd.shock,1,"K10 💫 가산 — 70% + 15%p = 85% > 0.80 이면 발동");
   B=openBolt(); B.fa.synStatusPct=5; act("A",0);
   eq(B.fd.shock,1,"K11 가산해도 100% 상한 (난수 1 미만이면 언제나 발동)");
+  /* #326 왕국 효과 발동률 — 읽기 전용 헬퍼(kingdomProcView)가 내는 p 가 **실제 왕국 판정의 경계**와 같다.
+     같은 장면에서 난수를 p 바로 아래/위로 고정해 실제 경로(act → v2SkillSettle → v2KingdomProc → v2Apply)의 발동이 갈리는지 본다 — 식을 테스트에 다시 적어 맞춰 보지 않는다.
+     헬퍼는 난수를 쓰지 않고 전투원 값을 바꾸지 않는다 */
+  const kpCase=(setup,want,name)=>{ const open=()=>{ const b=openBolt(); setup(b.fa); return b; }, proc=roll=>{ fixRand(roll); const b=open(); act("A",0); return b.fd.shock===1; };
+    fixRand(0.5); const b=open(), keys=["statusPct","synStatusPct","synEl","sandStormR","shock"], snap=()=>JSON.stringify(keys.map(k=>b.fa[k])), s0=snap(), n0=RC.n, v=T.kingdomProcView(b.fa);
+    ok(v.state==="active"&&v.kind==="shock"&&near(v.p,want)&&RC.n===n0&&snap()===s0&&(want>=1?proc(0.999):proc(want-0.01)&&!proc(want+0.01)),name); };
+  kpCase(()=>{},0.70,"K12 #326 가산 0 — 발동률 70% = 실제 판정 경계(0.69 발동 · 0.71 미발동) · 난수 0 · 전투원 불변");
+  kpCase(f=>{ f.statusPct=0.10; f.synStatusPct=0.05; },0.85,"K13 #326 지속형 기본 +10%p · 시너지 +5%p — 85% = 실제 판정 경계");
+  kpCase(f=>{ f.statusPct=0.10; f.synStatusPct=0.50; },1,"K14 #326 합계 130% — 상한 100%(난수 0.999 도 발동)");
+  kpCase(f=>{ f.statusPct=0.10; f.synStatusPct=0.50; f.sandStormR=2; },0.5,"K15 #326 상한 뒤 모래 폭풍 절반 — 50%(상한보다 먼저 절반이면 65% 라 0.51 이 발동했을 것)");
+  { fixRand(0.5); const b=openBolt(); b.fd.element="water"; // 상대: 💧 1칸 — 왕국을 받을 수 있지만 (2) 미달
+    eq(JSON.stringify(T.kingdomProcView(b.fd)),'{"state":"inactive","kind":null,"p":null}',"K16 #326 속성은 있고 왕국 (2) 미달 = inactive(0% 가 아니다)");
+    board(); field(0,{minions:["dragon","M-L1","M-L1","M-L1","M-L1","M-L1"],el:"lightning"}); field(1,{minions:["witch",null,null,null,null,null],allies:0,king:false});
+    const d=battle(fighterOf(0,0),fighterOf(1,0)), dv=T.kingdomProcView(d.fa);
+    ok(dv.state==="active"&&dv.kind==="shock"&&near(dv.p,T.statusProcP(d.fa,d.fa.synEl.p))&&T.kingdomProcView(d.fd).state==="none","K17 #326 용 = 달성 왕국의 효과로 active · 마녀(무속성 전설 직접 참전) = none");
+    board(); field(0,{minions:["dragon",null,null,null,null,null],allies:0,king:false}); field(1,{minions:["reaper",null,null,null,null,null],allies:0,king:false});
+    const e=battle(fighterOf(0,0),fighterOf(1,0));
+    ok(T.kingdomProcView(e.fa).state==="inactive"&&T.kingdomProcView(e.fd).state==="none","K18 #326 용 + 달성 왕국 없음 = inactive · 사신 = none"); }
   fixRand(0.5);
 }
 
