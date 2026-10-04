@@ -1,9 +1,4 @@
 {
- "env": {
-  "ref": "origin/dev",
-  "refSha": "18924a58c863c057c350ccdd6726ff2ed1e534ea",
-  "note": "Mercury 문서 메타데이터 보완: 기존 verify --manifest 계약에 맞춘 현재 README 8장 검수 목록. title의 📷 접두사는 검증기가 제거하며 README에는 표시하지 않는다. 검수 기준 ref이며 실제 촬영·재사용 출처는 아래 frames 및 기존 provenance/reused를 따른다."
- },
  "frames": [
   {"count": "1/8", "file": "01-login.png", "path": "docs/screenshots/v0.4.13/01-login.png", "title": "📷 로그인", "sha256": "a5132955aa76ef49fac0eec38933ba9e3c627095bb83f6a0b9a5ee9c29240afc", "source": "v0.4.13 CJ 승인본 재사용"},
   {"count": "2/8", "file": "02-main-lobby.png", "path": "docs/screenshots/v0.4.13/02-main-lobby.png", "title": "📷 메인 로비", "sha256": "a287c1df239288c67c967781cde10a4ebfd3eda709dabb3204738b292e088294", "source": "v0.4.13 CJ 승인본 재사용"},
