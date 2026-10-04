@@ -43,6 +43,9 @@ function diverges(room, fn, undo) {
     'G3 서버 코드(주석 제외)에 시너지 표 이름이 없다 — 값을 복사해 두지 않았다');
   ok(!/synCount|synArchBonus|synKingdomStage|synDragonEl/.test(srv),
     'G4 서버 코드에 집계 재구현이 없다 — 판정은 전부 공용 Core 가 한다');
+  // #326 왕국 효과 발동률 — 식(왕국 단계 확률 + 가산 · 100% 상한 · 모래 폭풍 절반)은 공용 헬퍼 한 곳에만 있고 서버는 부르기만 한다
+  ok(typeof T.kingdomProcView === 'function' && /kingdomProcView\(/.test(srv) && !/synEl\.p\b|sandStormR\s*>|Math\.min\(\s*1\s*,/.test(srv),
+    'G5 서버는 Core kingdomProcView 를 부를 뿐 발동률 식을 다시 쓰지 않는다');
 }
 
 // ===== 2) 락스텝 — 스냅샷과 전투원 가산칸이 요약에 들어간다 =====
@@ -111,6 +114,16 @@ function diverges(room, fn, undo) {
     ok(view.indexOf('synGuard') === -1 && view.indexOf('shieldLayers') === -1,
       'R2 좌석 ' + seat + ' 뷰에 방어막 층·획득원 태그가 없다 (보호형 시너지 역산 차단)');
   }
+  /* #326 (GDD-23 7.9 · 2026-10-04 CJ 승인) — 왕국 효과는 원본(synEl)이 아니라 발동률 합계·종류·상태 한 칸(kingdomProc)으로만,
+     실제 참전 경로(applySynergy)가 굳힌 두 전투원 모두 양 좌석에 같은 값으로 간다. 위 R1 의 원본 키 금지는 그대로다. */
+  const kp = [0, 1].map((seat) => { const b = room.toSeatView(seat).battle; return [b.a.kingdomProc, b.d.kingdomProc]; });
+  ok(JSON.stringify(kp[0]) === JSON.stringify(kp[1]), 'R4 양 좌석 뷰의 두 전투원 kingdomProc 이 같다: ' + JSON.stringify(kp[0]));
+  [T.S.battle.fa, T.S.battle.fd].forEach((f, i) => {
+    const w = kp[0][i], h = T.kingdomProcView(f);
+    ok(!!w && Object.keys(w).sort().join() === 'kind,p,state' && w.state === h.state && w.state === (f.synEl ? 'active' : 'inactive')
+      && w.kind === (f.synEl ? f.synEl.kind : null) && w.p === (f.synEl ? h.p : null),
+      'R4b 전투원 ' + i + ' kingdomProc = Core 헬퍼 값 · state/kind/p 셋뿐: ' + JSON.stringify(w));
+  });
   // 요약에는 있고 뷰에는 없다 — 두 경계가 실제로 다른 것을 확인한다(서버 내부 비교 전용)
   ok(lockstepDigest(T).indexOf('"syn"') !== -1, 'R3 요약(서버 내부)에는 시너지가 들어간다');
 }

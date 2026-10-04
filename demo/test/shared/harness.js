@@ -267,6 +267,7 @@ function load(htmlPath,opts){
   ARCHETYPE_BASE:typeof ARCHETYPE_BASE!=="undefined"?ARCHETYPE_BASE:undefined, KING_BASE:typeof KING_BASE!=="undefined"?KING_BASE:undefined,
   ALLY_BASE:typeof ALLY_BASE!=="undefined"?ALLY_BASE:undefined, LEGEND_BASE:typeof LEGEND_BASE!=="undefined"?LEGEND_BASE:undefined,
   gradeHp:typeof gradeHp==="function"?gradeHp:undefined, gradeAtk:typeof gradeAtk==="function"?gradeAtk:undefined,
+  kingdomProcView:typeof kingdomProcView==="function"?kingdomProcView:undefined, battleStatHelpOpen:typeof battleStatHelpOpen==="function"?battleStatHelpOpen:undefined, statusProcP:typeof statusProcP==="function"?statusProcP:undefined, // #326 왕국 효과 발동률(읽기 전용 파생값)
   applyArchStats:typeof applyArchStats==="function"?applyArchStats:undefined, applyFixedStats:typeof applyFixedStats==="function"?applyFixedStats:undefined,
   shieldAdd:typeof shieldAdd==="function"?shieldAdd:undefined, shieldConsume:typeof shieldConsume==="function"?shieldConsume:undefined, shieldClearAll:typeof shieldClearAll==="function"?shieldClearAll:undefined,
   resolveHit:typeof resolveHit==="function"?resolveHit:undefined, resolveReflect:typeof resolveReflect==="function"?resolveReflect:undefined,
