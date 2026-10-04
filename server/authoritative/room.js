@@ -125,6 +125,8 @@ function catalog() {
 // #241 (CJ 승인 2026-09-17 스킬 정리) — spdDownR→evadeDownR(V1 회피율 감소) · mirrorR(R3)·burrowR·fortressR(단순화) 삭제. 순서도 엔진과 같다.
 const V2_TIMED_KEYS = Object.freeze(['absorbR', 'spdBuffR', 'evadeDownR', 'healCutR', 'vanguardTurn', 'retaliateBurnR',
   'reflectR', 'counterR', 'overloadR', 'nullHitR', 'sandStormR', 'ringR', 'enduredR', 'breedR', 'immuneShockR', 'mossR']);
+// #326 회선에 실리는 왕국 효과 종류 — 닫힌 allowlist(spec §1.4). 수치·단계표가 아니라 **회선 어휘**라 여기 고정한다.
+const KINGDOM_PROC_KINDS = Object.freeze(['burn', 'weaken', 'shock', 'harden', 'absorb']);
 function lockstepDigest(T) {
   const S = T.S;
   const B = S.battle;
@@ -2145,6 +2147,16 @@ class Room {
   // 전투 문맥 공개 (§2.6.2) — 그 전투 동안 양쪽이 이미 보는 hp/shield/상태·이 전투에서 쓴 아이템/볼/버프 기록.
   _serializeBattle(T, battle, seatIndex) {
     const num = (v) => (Number.isFinite(v) ? v : null); // #296 숫자 0 은 0 그대로, 누락·비유한 값만 null(화면 "—" · "?" 아님)
+    /* #326 왕국 효과 발동률 — 값은 공용 Core 헬퍼 kingdomProcView(f)(data.js · v2Apply 와 같은 식) 하나가 낸다. 서버는 식을 갖지 않고
+       닫힌 값(state 3종 · kind 5종 · p 유한 0~1 원값)만 **새 객체로** 옮긴다 — 헬퍼가 칸을 늘려도 회선으로 새지 않는다.
+       헬퍼가 없거나 모양이 어긋나면 null(화면 "—" · 대체 계산 없음). active 가 아니면 kind·p 는 언제나 null 이다. */
+    const kingdomProc = (f) => {
+      const v = typeof T.kingdomProcView === 'function' ? T.kingdomProcView(f) : null;
+      if (!v) return null;
+      if (v.state === 'inactive' || v.state === 'none') return { state: v.state, kind: null, p: null };
+      return v.state === 'active' && KINGDOM_PROC_KINDS.includes(v.kind) && Number.isFinite(v.p) && v.p >= 0 && v.p <= 1
+        ? { state: 'active', kind: v.kind, p: v.p } : null;
+    };
     const side = (owner, f, piece, sfx) => {
       const bodyFight = f === piece; // 본체 출전(f===piece) vs 포획·예비 하수인 대리 출전(#91 artDirOfFighter와 같은 구분)
       // #262 CJ QA(2026-09-27) — 전투 중에는 두 전투원(대리 출전 포함) 모두 실제 HP/최대 HP·방어막·해일 X·기록 피해를 싣는다(#237 100 눈금 폐지)
@@ -2168,6 +2180,9 @@ class Room {
           crit: Number.isFinite(f.crit) ? num(Math.min(0.5, f.crit + (f.synCrit || 0))) : null,
           statusPct: Number.isFinite(f.statusPct) ? num(f.statusPct + (f.synStatusPct || 0)) : null,
         },
+        /* #326 (2026-10-04 CJ 승인 · GDD-23 7.9) effectiveStats 6칸은 그대로 두고 **나란히** 싣는다 — 양 좌석·양 전투원 같은 값.
+           공개되는 것은 최종 발동률 합계·효과 종류·상태뿐이다. synEl 원본(단계·mag·rounds)·synStatusPct·칸 수는 계속 싣지 않는다. */
+        kingdomProc: kingdomProc(f),
         /* #296 (2026-10-02 CJ 정정) 전투원 이미지 옆 등급 — **지금 싸우는 실제 전투원 f** 의 등급을 양 좌석에 싣는다(대리 출전이면
            cap·가방 개체의 등급이지 보드 말 piece 의 등급이 아니다). 엔진 값이 정수일 때만 그 값, 아니면 null — 왕·동료·등급 없는
            개체에 하수인 등급을 지어내지 않는다. 보드 뷰 경계는 그대로다(공개된 말만 _serializeKnownOpponent 가 싣는다). */

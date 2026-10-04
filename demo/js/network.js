@@ -1094,6 +1094,7 @@ window.netCancelResume=function(){ netAbandonResume("🌐 재접속을 취소했
    볼은 원본 mineView 마스킹 그대로 "비공개"다.
    #296: 기본 6스탯(atk·def·spd·dodge·crit·statusPct)은 서버가 **두 전투원 모두에** 실은 실제 값만 옮긴다(유한한 숫자 · 0 포함).
    없거나 null 이면 undefined 로 둔다 — 종 표(1등급)·BAL·cap/reserve 로 되살리지 않는다(화면 표기 "—" 정보 없음). 등급(grade)도 서버가 실은 정수만 옮긴다. */
+const NET_KP_KINDS=["burn","weaken","shock","harden","absorb"]; // #326 kingdomProc.kind 허용값(4.5 왕국 효과 5종)
 function netSynthFighter(sd,you){
   sd=sd||{};
   const body=sd.bodyFight!==false;
@@ -1109,13 +1110,18 @@ function netSynthFighter(sd,you){
      가산칸(synDef 등) · 출처는 전선에 없고 여기서 역산하지 않는다 */
   const es=sd.effectiveStats&&typeof sd.effectiveStats==="object"?sd.effectiveStats:null;
   const eff=es?Object.fromEntries(["atk","def","spd","dodge","crit","statusPct"].map(k=>[k,typeof es[k]==="number"&&isFinite(es[k])?es[k]:undefined])):undefined;
+  /* #326 서버 kingdomProc(왕국 효과 발동률) — 닫힌 값만 통과: active = 종류 5종 + 유한한 p(0~1) · inactive/none = kind·p 없음(null · 생략).
+     하나라도 어긋나면 값 없음(undefined → '—'). 상대의 synEl · 가산칸은 전선에 없고 여기서 추정하지 않는다 */
+  const kq=sd.kingdomProc&&typeof sd.kingdomProc==="object"?sd.kingdomProc:null;
+  const kp=!kq?undefined:kq.state==="active"?(NET_KP_KINDS.includes(kq.kind)&&typeof kq.p==="number"&&isFinite(kq.p)&&kq.p>=0&&kq.p<=1?{state:"active",kind:kq.kind,p:kq.p}:undefined)
+    :(kq.state==="inactive"||kq.state==="none")&&kq.kind==null&&kq.p==null?{state:kq.state,kind:null,p:null}:undefined;
   const piece={id:null,owner:sd.owner,type:sd.type||null,rosterId:rd?rd.id:null,name:rd?rd.name:(body&&lg?lg.name:null),element:body?(sd.element||null):null,cap:null};
   const f=body?piece:{};
   Object.assign(f,{element:sd.element||null,hp:sd.hp,maxHp:sd.maxHp,shield:sd.shield||0,burn:sd.burn||0,weaken:sd.weaken||0,
     shock:sd.shock||0,shockFresh:!!sd.shockFresh,dmgCut:sd.dmgCut||0,focusCharge:!!sd.focusCharge,vulnMark:!!sd.vulnMark,
     crack:sd.crack||0,harden:sd.harden||0,hardenPct:sd.hardenPct||0, // #233: Jupiter room.js 가 battle.a/d 에 함께 보낸다(stIcons 표시용)
     evadeDown:sd.evadeDown||0,evadeDownR:sd.evadeDownR||0,tideMark:sd.tideMark||0,tideHeld:!!sd.tideHeld, // #241 표시용 — 서버가 보내면 쓰고 없으면 0 (Jupiter 후속)
-    skills:ad.skills,cds:ad.cds,revealedSkills:ad.revealedSkills,usable:ad.usable,grade:Number.isInteger(sd.grade)?sd.grade:undefined,atk:num("atk"),def:num("def"),spd:num("spd"),dodge:num("dodge"),crit:num("crit"),statusPct:num("statusPct"),eff,skillAtk:num("skillAtk")||0,cd:typeof sd.cd==="number"?sd.cd:0,
+    skills:ad.skills,cds:ad.cds,revealedSkills:ad.revealedSkills,usable:ad.usable,grade:Number.isInteger(sd.grade)?sd.grade:undefined,atk:num("atk"),def:num("def"),spd:num("spd"),dodge:num("dodge"),crit:num("crit"),statusPct:num("statusPct"),eff,kp,skillAtk:num("skillAtk")||0,cd:typeof sd.cd==="number"?sd.cd:0,
     powerBuff:sd.buff==="power",fleeBoost:sd.buff==="escape",artRosterId:body||lg?null:(sd.artRosterId||null),legend:lg?lg.key:null,
     reaperSeal:sd.reaperSeal||0, // #234 REVISE 2차: 자기 전투원에만 온다 — 상대 쪽은 키가 없어 0
     synAtk:sd.synAtk||0}); // #235: 같은 owner-only 경계 — 상대 쪽은 키가 없어 0이고 로컬 역산도 하지 않는다. #296: 전투 화면의 동적 위력 범위 UI 는 삭제됐다 — 현재 표시는 ownSyn · 현재 전투원 칩이다

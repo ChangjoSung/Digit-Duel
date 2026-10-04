@@ -70,19 +70,15 @@ function endRound(B){ B.phase=1; T.nextPhase(); T.TQ.length=0; if(B.msgQ) B.msgQ
 /* ===== A. 3.4 등급 성장 — 일반 하수인 ===== */
 {
   eq(T.gradeHp(100,1),100,"A1 ⭐1 HP 성장 없음");
-  eq(T.gradeHp(100,2),115,"A2 ⭐2 HP ×1.15");
-  eq(T.gradeHp(100,3),130,"A3 ⭐3 HP ×1.30");
-  eq(T.gradeHp(100,4),145,"A4 ⭐4 HP ×1.45 (GDD 3.4 예: 표준형 ⭐4 = 145)");
   eq(T.gradeAtk(22,1),22,"A5 ⭐1 공격력 성장 없음");
-  eq(T.gradeAtk(22,2),24,"A6 ⭐2 공격력 22×1.10=24.2 → 24 (정수 반올림)");
-  eq(T.gradeAtk(22,3),26,"A7 ⭐3 공격력 22×1.20=26.4 → 26 (GDD 4.7 예시 기준값)");
-  eq(T.gradeAtk(22,4),29,"A8 ⭐4 공격력 22×1.30=28.6 → 29 (GDD 3.4 예: 표준형 ⭐4 = 29)");
-  eq(T.gradeHp(95,2),109,"A9 지속형 ⭐2 HP 95×1.15=109.25 → 109 (GDD 4.7 고대 골렘)");
-  /* GDD 3.6 의 "일반 ⭐4 대조표" 세 줄을 그대로 맞춘다 — 전설 수치를 넣기 전 기준선이 맞는지 본다 */
-  eq(T.gradeHp(95,4),138,"A10 지속형 ⭐4 HP = 138 (GDD 3.6 대조표)");
-  eq(T.gradeAtk(20,4),26,"A11 지속형 ⭐4 공격력 = 26 (GDD 3.6 대조표)");
-  eq(T.gradeHp(90,4),131,"A12 공격형 ⭐4 HP = 131 (GDD 3.6 대조표)");
-  eq(T.gradeAtk(25,4),33,"A13 공격형 ⭐4 공격력 = 33 (GDD 3.6 대조표)");
+  /* #328 (2026-10-04 CJ 승인 · 채택표 A): 정수 % 표 HP [100,135,175,225] · 공격력 [100,125,155,190], round(1성 값 × % ÷ 100) 한 번.
+     아래 정수표는 Venus spec §3.1 그대로다 — .5 경계 9칸(공격형 HP 122·158·203 · 보호형 HP 149·193·248 · 공격력 표준 ⭐2 28 · 방어 ⭐2 23 · 공격 ⭐4 48)은
+     소수 배율을 곱하는 구현이면 내려갈 수 있는 칸이라 값으로 못 박는다(종전 식은 공격형 ⭐2 HP 103.5 를 103 으로 내렸다) */
+  const G328={std:["100/22","135/28","175/34","225/42"],atk:["90/25","122/31","158/39","203/48"],def:["120/18","162/23","210/28","270/34"],
+    swift:["85/24","115/30","149/37","191/46"],sustain:["95/20","128/25","166/31","214/38"],guard:["110/19","149/24","193/29","248/36"]};
+  for(const a of Object.keys(T.ARCHETYPE_BASE)){ const b=T.ARCHETYPE_BASE[a];
+    eq([1,2,3,4].map(g=>T.gradeHp(b.hp,g)+"/"+T.gradeAtk(b.atk,g)).join(" "),(G328[a]||[]).join(" "),`A2 ${a} ⭐1~4 HP/공격력 = #328 채택 정수표`); }
+  eq(T.gradeHp(100,9)+"/"+T.gradeHp(100,0),"225/100","A3 등급 범위 밖은 ⭐4 · ⭐1 로 자른다(표 밖 색인 없음)");
   /* 등급 없음(null/0/undefined)은 ⭐1 과 같게 취급한다 — 왕·동료·등급 필드 없는 레거시 하수인 */
   eq(T.gradeHp(100,null),100,"A14 등급 없음(null) = 성장 없음");
   eq(T.gradeHp(100,undefined),100,"A15 등급 없음(undefined) = 성장 없음");
@@ -122,9 +118,11 @@ function endRound(B){ B.phase=1; T.nextPhase(); T.TQ.length=0; if(B.msgQ) B.msgQ
   eq(kf.shieldStartPct,0,"B9 왕·동료는 시작 방어막 없음");
   /* 3.6 전설 — 등급 성장 없음, ⭐5 고정으로 비교 */
   const GB=T.LEGEND_BASE;
-  ok(GB.dragon.hp===175&&GB.dragon.atk===35&&GB.dragon.def===15&&GB.dragon.spd===11&&GB.dragon.dodge===0.05&&GB.dragon.crit===0.10,"B10 🐉 용 스탯 (GDD 3.6)");
-  ok(GB.witch.hp===165&&GB.witch.atk===32&&GB.witch.def===12&&GB.witch.spd===13&&GB.witch.dodge===0.10&&GB.witch.crit===0.05&&GB.witch.statusPct===0.25,"B11 🕯 마녀 스탯 — 💫 +25%p (GDD 3.6)");
-  ok(GB.reaper.hp===158&&GB.reaper.atk===40&&GB.reaper.def===8&&GB.reaper.spd===14&&GB.reaper.dodge===0.15&&GB.reaper.crit===0.20,"B12 💀 사신 스탯 (GDD 3.6)");
+  ok(GB.dragon.hp===270&&GB.dragon.atk===50&&GB.dragon.def===15&&GB.dragon.spd===11&&GB.dragon.dodge===0.05&&GB.dragon.crit===0.10,"B10 🐉 용 스탯 (GDD 3.6 · #328 270/50)");
+  ok(GB.witch.hp===257&&GB.witch.atk===46&&GB.witch.def===12&&GB.witch.spd===13&&GB.witch.dodge===0.10&&GB.witch.crit===0.05&&GB.witch.statusPct===0.25,"B11 🕯 마녀 스탯 — 💫 +25%p (GDD 3.6 · #328 257/46)");
+  ok(GB.reaper.hp===244&&GB.reaper.atk===58&&GB.reaper.def===8&&GB.reaper.spd===14&&GB.reaper.dodge===0.15&&GB.reaper.crit===0.20,"B12 💀 사신 스탯 (GDD 3.6 · #328 244/58 — 한 번에 곱한 243/57 이 아니다)");
+  ok(T.LEGEND_ROSTER.every(L=>{ const b=AB[L.arch], g=GB[L.key]; return g.hp===Math.round(T.gradeHp(b.hp,4)*120/100)&&g.atk===Math.round(T.gradeAtk(b.atk,4)*120/100); }),
+    "B12b #328 전설 HP · 공격력 = 같은 아키타입 ⭐4 정수값 × 120% 를 다시 반올림(두 단계)");
   ok(GB.dragon.hp>T.gradeHp(100,4)&&GB.witch.hp>T.gradeHp(95,4)&&GB.reaper.hp>T.gradeHp(90,4),"B13 전설 HP는 같은 아키타입 일반 ⭐4 보다 높다 (GDD 3.6 근거)");
   ok(GB.dragon.atk>T.gradeAtk(22,4)&&GB.witch.atk>T.gradeAtk(20,4)&&GB.reaper.atk>T.gradeAtk(25,4),"B14 전설 공격력은 같은 아키타입 일반 ⭐4 보다 높다");
   const lf={}; T.applyFixedStats(lf,GB.dragon,5);

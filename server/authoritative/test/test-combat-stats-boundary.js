@@ -306,6 +306,94 @@ function ownOf(view, pred) { return view.you.pieces.filter(pred); }
     ok(n.spd === null && n.dodge === null && n.atk !== null, '#316 기본값이 없거나 비유한이면 합계도 null(대체값 없음)');
     if (room._clearClock) room._clearClock();
   }
+  /* #326 (2026-10-04 CJ 승인 · spec §1.4·§1.7) kingdomProc — effectiveStats 옆에 왕국 효과 발동률 합계·종류·상태만 싣는다.
+     기대값은 계약 식에서 손으로 낸 값이다: p = min(1, synEl.p + statusPct + synStatusPct), 모래 폭풍이면 **상한 뒤** 절반.
+     왕국 단계는 제품 표(V2_KINGDOM_STAGES)의 실제 항목을 **참조로** 꽂는다 — 서버에도 이 테스트에도 수치 사본은 없다. */
+  {
+    const PRIVATE = /"syn(El|StatusPct|Def|Spd|Dodge|Crit)"|"(mag|rounds|hits|stage|sandStormR)"/;
+    const eq = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+    // 양 좌석 뷰의 두 전투원 값이 서로 같고 Core 헬퍼 값과도 같다(원값 · 반올림 없음). 좌석 0 의 battle 을 돌려준다.
+    const seats = (room, label) => {
+      const T = room.engine, B = T.S.battle, v = [0, 1].map((seat) => room.toSeatView(seat).battle);
+      for (const [k, f] of [['a', B.fa], ['d', B.fd]]) {
+        const w = v[0][k].kingdomProc, h = T.kingdomProcView(f);
+        ok(!!w && eq(w, v[1][k].kingdomProc), `${label} battle.${k} 양 좌석 kingdomProc 동일: ${JSON.stringify(w)}`);
+        ok(!!w && w.state === h.state && w.kind === (h.state === 'active' ? h.kind : null) && w.p === (h.state === 'active' ? h.p : null),
+          `${label} battle.${k} = Core kingdomProcView(원값)`);
+        ok(!!w && eq(Object.keys(w).sort(), ['kind', 'p', 'state']), `${label} battle.${k} 칸은 state·kind·p 셋뿐`);
+      }
+      for (const seat of [0, 1]) {
+        // 두 전투원 칸(a·d)만 본다 — 프레임의 ownSyn.stage 는 #238 부터 있는 **자기 좌석 몫** 시너지 칩(소유자 전용)이라 대상이 아니다
+        ok(!PRIVATE.test(JSON.stringify([v[seat].a, v[seat].d])), `${label} 좌석 ${seat} 두 전투원 칸에 왕국 원본·가산칸·단계 키가 없다`);
+        ok(!/"syn(El|StatusPct)"|"sandStormR"/.test(JSON.stringify(v[seat])), `${label} 좌석 ${seat} 전투 프레임 어디에도 synEl·synStatusPct·sandStormR 키가 없다`);
+        ok(Object.keys(v[seat].a.effectiveStats).length === 6 && Object.keys(v[seat].d.effectiveStats).length === 6, `${label} 좌석 ${seat} effectiveStats 는 6칸 그대로`);
+      }
+      return v[0];
+    };
+    const room = battle('r-326-proc'), T = room.engine, K = T.V2_KINGDOM_STAGES;
+    ok(typeof T.kingdomProcView === 'function', '#326 전제: 공용 Core 헬퍼 kingdomProcView 가 서버 네임스페이스에 있다');
+    const fa = (o) => both(room, (E) => Object.assign(E.S.battle.fa, o(E.V2_KINGDOM_STAGES)));
+
+    fa((k) => ({ synEl: k.fire[1], statusPct: 0, synStatusPct: 0, sandStormR: 0 })); // CJ Image 1: 불 (4) 단계 40% · 가산 0
+    ok(K.fire[1].p === 0.40 && K.fire[1].kind === 'burn', '#326 전제: 불 (4) 단계 = 화상 40% (제품 표)');
+    const before = lockstepDigest(T);
+    let a = seats(room, '#326 가산 0').a;
+    ok(a.kingdomProc.state === 'active' && a.kingdomProc.kind === 'burn' && a.kingdomProc.p === 0.40, `#326 가산 0 → 화상 40%: ${JSON.stringify(a.kingdomProc)}`);
+
+    fa(() => ({ statusPct: 0.10, synStatusPct: 0.05 })); // 지속형 기본 10%p + 지속형 시너지 5%p
+    a = seats(room, '#326 지속형 기본+시너지').a;
+    ok(Math.abs(a.kingdomProc.p - 0.55) < 1e-9, `#326 40% + 10%p + 5%p = 55%: ${a.kingdomProc.p}`);
+    ok(Math.abs(a.effectiveStats.statusPct - 0.15) < 1e-9 && a.statusPct === 0.10, '#326 effectiveStats.statusPct 는 종전 가산치(+15%p) 그대로 · 기본값 10%p 그대로');
+    fa(() => ({ sandStormR: 2 }));
+    ok(Math.abs(seats(room, '#326 모래 폭풍').a.kingdomProc.p - 0.275) < 1e-9, '#326 모래 폭풍 중 55% → 27.5%');
+
+    fa((k) => ({ synEl: k.fire[3], sandStormR: 0 })); // 100% + 15%p = 115% → 상한 100%
+    ok(K.fire[3].p === 1 && seats(room, '#326 상한').a.kingdomProc.p === 1, '#326 합계 115% 는 100% 로 자른다');
+    fa(() => ({ sandStormR: 1 }));
+    ok(seats(room, '#326 상한 뒤 절반').a.kingdomProc.p === 0.5, '#326 상한을 먼저 자른 뒤 절반 = 50% (57.5% 아님)');
+
+    for (const el of Object.keys(K)) { // 왕국마다 효과 종류가 제품 표 그대로 나간다
+      fa((k) => ({ synEl: k[el][0], statusPct: 0, synStatusPct: 0, sandStormR: 0 }));
+      const w = seats(room, `#326 ${el}`).a.kingdomProc;
+      ok(w.state === 'active' && w.kind === K[el][0].kind && w.p === K[el][0].p, `#326 ${el} (2) 단계 → ${K[el][0].kind} ${K[el][0].p}`);
+    }
+    ok(eq(Object.keys(K).map((el) => K[el][0].kind).sort(), ['absorb', 'burn', 'harden', 'shock', 'weaken']), '#326 회선 kind 5종 = 제품 왕국 효과 5종');
+
+    fa(() => ({ synEl: null, statusPct: 0.10, synStatusPct: 0.05 })); // 속성은 있는데 왕국 미달 — 가산치가 있어도 0% 가 아니라 미활성
+    ok(eq(seats(room, '#326 미활성').a.kingdomProc, { state: 'inactive', kind: null, p: null }), '#326 왕국 미달 속성 전투원 → inactive · kind/p null');
+    fa((k) => ({ synEl: k.fire[1], statusPct: 0, synStatusPct: 0 }));
+    ok(lockstepDigest(T) === before && T.S.battle.fa.synEl === K.fire[1], '#326 직렬화가 엔진 상태를 바꾸지 않는다(같은 상태 → 같은 요약 · 표 항목 참조 그대로)');
+
+    // 헬퍼 출력이 계약 밖이면 값 없음(null) — 서버가 추정으로 메우지 않고, 여분 칸은 회선에 실리지 않는다
+    const desc = room.engines.map((E) => Object.getOwnPropertyDescriptor(E, 'kingdomProcView'));
+    const stub = (v) => room.engines.forEach((E) => Object.defineProperty(E, 'kingdomProcView', { value: () => v, configurable: true }));
+    const wire = () => [0, 1].map((seat) => room.toSeatView(seat).battle.a.kingdomProc);
+    for (const bad of [{ state: 'active', kind: 'burn', p: 1.5 }, { state: 'active', kind: 'burn', p: NaN }, { state: 'active', kind: 'burn', p: -0.1 },
+      { state: 'active', kind: 'sleep', p: 0.4 }, { state: 'active', kind: null, p: 0.4 }, { state: 'on', kind: 'burn', p: 0.4 }, null]) {
+      stub(bad);
+      ok(wire().every((w) => w === null), `#326 계약 밖 헬퍼 출력은 null: ${JSON.stringify(bad)}`);
+    }
+    stub({ state: 'active', kind: 'shock', p: 0, synEl: { mag: 9 }, stage: 3 });
+    ok(wire().every((w) => eq(w, { state: 'active', kind: 'shock', p: 0 })), '#326 0% 는 0 그대로(누락 아님) · 여분 칸(synEl·stage)은 버린다');
+    stub({ state: 'none', kind: 'burn', p: 0.4 });
+    ok(wire().every((w) => eq(w, { state: 'none', kind: null, p: null })), '#326 active 가 아니면 kind·p 는 언제나 null');
+    room.engines.forEach((E, i) => Object.defineProperty(E, 'kingdomProcView', desc[i]));
+    if (room._clearClock) room._clearClock();
+
+    // 전설 — 실제 참전 경로(applySynergy)가 굳힌 값. 마녀·사신(무속성)은 none, 용은 달성 왕국이 있으면 active · 없으면 inactive(none 아님)
+    for (const key of ['witch', 'reaper']) {
+      const r = battle('r-326-' + key, (E, p) => E.applyLegend(p, key)), f = r.engine.S.battle.fa;
+      ok(f.legend === key && f.synEl === null, `#326 전제: ${key} 직접 참전 · 왕국 수혜 없음`);
+      ok(eq(seats(r, '#326 ' + key).a.kingdomProc, { state: 'none', kind: null, p: null }), `#326 ${key} → none (가산치가 있어도 0%·미활성 아님)`);
+      if (r._clearClock) r._clearClock();
+    }
+    const r = battle('r-326-dragon', (E, p) => E.applyLegend(p, 'dragon'));
+    both(r, (E) => Object.assign(E.S.battle.fa, { synEl: null }));
+    ok(r.engine.S.battle.fa.legend === 'dragon' && seats(r, '#326 용 미달').a.kingdomProc.state === 'inactive', '#326 용 · 달성 왕국 없음 → inactive');
+    both(r, (E) => Object.assign(E.S.battle.fa, { synEl: E.V2_KINGDOM_STAGES.lightning[1], statusPct: 0, synStatusPct: 0, sandStormR: 0 }));
+    ok(eq(seats(r, '#326 용 달성').a.kingdomProc, { state: 'active', kind: 'shock', p: 0.30 }), '#326 용 · 달성 왕국(번개 (4)) → 감전 30%');
+    if (r._clearClock) r._clearClock();
+  }
 }
 
 // ===== 4) 락스텝 감지력 — 새 규칙 필드가 어긋나면 요약이 반드시 달라진다 =====
