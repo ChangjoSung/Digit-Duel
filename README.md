@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <a href="docs/releases/v0.4.15.md"><img src="https://img.shields.io/badge/v0.4.15-preview-4c9a2a" alt="v0.4.15 출시 준비"></a>
+  <a href="https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.15"><img src="https://img.shields.io/badge/v0.4.15-release-4c9a2a" alt="v0.4.15"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-Apache--2.0-blue" alt="코드 라이선스 Apache-2.0"></a>
 </p>
 
-**[▶ 웹에서 플레이](https://digit-duel.site)** · 출시 준비 **[v0.4.15](docs/releases/v0.4.15.md)** · 운영 **[v0.4.14](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.14)**
+**[▶ 웹에서 플레이](https://digit-duel.site)** · **[v0.4.15](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.15)**
 
 ## 게임 소개
 
@@ -64,8 +64,7 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 출시 준비 버전 | [v0.4.15](docs/releases/v0.4.15.md) |
-| 운영 버전 | [v0.4.14](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.14) |
+| Release Version | [v0.4.15](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.15) |
 | 플레이 주소 | [digit-duel.site](https://digit-duel.site) |
 | 장르·인원 | 숨은 정체·속성 전투를 결합한 온라인 1대1 턴제 전략 |
 | 환경 | PC·휴대폰의 최신 브라우저, 인터넷과 가입용 이메일 |
