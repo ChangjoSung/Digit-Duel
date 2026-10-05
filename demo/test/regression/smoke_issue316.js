@@ -161,17 +161,38 @@ function battle(seed){ const T=ecoPlay(seed);
   const T=battle(322), S=T.S, B=S.battle, html=()=>T.byId("overlayBox").innerHTML, n0=T.wsLog.length, slot=(h,s)=>h.split(`class="bslot slot-${s}"`)[1].split("</ul>")[0];
   const f=B.fa; Object.assign(f,{atk:24,def:5,spd:14,dodge:0.1,crit:0.05,statusPct:0,synAtk:0.1,synDef:3,synSpd:1,synDodge:0.03,synCrit:0.5,synStatusPct:0.05});
   const snap=()=>JSON.stringify(["atk","def","spd","dodge","crit","statusPct","synAtk","synDef","synSpd","synDodge","synCrit","synStatusPct"].map(k=>f[k])), s0=snap();
+  f.element="fire"; f.legend=null; f.synEl={kind:"burn",p:0.4,mag:0.04,rounds:1}; // #326 여섯째 칸 = 왕국 효과 발동률 — 왕국 (4) 40% + 💫 5%p
   B.menu=null; T.battleModal(); let me=slot(html(),"me");
-  ok(/aria-label="공격력 26"/.test(me)&&/aria-label="방어력 8"/.test(me)&&/aria-label="속도 15"/.test(me)&&/aria-label="회피 13%"/.test(me)&&/aria-label="치명타 50%"/.test(me)&&/aria-label="상태 부여 확률 \+5%p"/.test(me)&&/>\+5%p<\/b>/.test(me),
-    "R3-②a 오프라인 = Core 식(effAtk 26.4→26 · def+synDef · effSpd 15 · effEvade 13% · 치명 50% 상한 · 💫 +5%p 가산)");
+  ok(/aria-label="공격력 26"/.test(me)&&/aria-label="방어력 8"/.test(me)&&/aria-label="속도 15"/.test(me)&&/aria-label="회피 13%"/.test(me)&&/aria-label="치명타 50%"/.test(me)
+    &&/aria-label="왕국 효과 발동률 45% · 화상\(상대\) · 기술 효과 \+5%p"/.test(me)&&/>45%<\/b>/.test(me)&&count(me,/<li /g)===6,
+    "R3-②a 오프라인 = Core 식(effAtk 26.4→26 · def+synDef · effSpd 15 · effEvade 13% · 치명 50% 상한) · #326 여섯째 칸 = 왕국 효과 발동률 45%(기술용 가산 +5%p 는 이름에만)");
   T.battleModal(); ok(snap()===s0,"R3-②b 표시만 — 다시 그려도 기본값 · 가산칸이 쌓이거나 바뀌지 않는다");
   B.fd.eff={atk:22.4,def:12,spd:15,dodge:0.13,crit:undefined,statusPct:0.05}; T.battleModal(); const op=slot(html(),"op"); delete B.fd.eff;
-  ok(/aria-label="공격력 22"/.test(op)&&/aria-label="속도 15"/.test(op)&&/aria-label="회피 13%"/.test(op)&&/aria-label="치명타 정보 없음"/.test(op)&&/aria-label="상태 부여 확률 \+5%p"/.test(op),"R3-②c 서버 effectiveStats 가 있으면 그 값(없는 칸 '—')");
+  ok(/aria-label="공격력 22"/.test(op)&&/aria-label="속도 15"/.test(op)&&/aria-label="회피 13%"/.test(op)&&/aria-label="치명타 정보 없음"/.test(op)&&/aria-label="왕국 효과 발동률 정보 없음 · 기술 효과 \+5%p"/.test(op),
+    "R3-②c 서버 effectiveStats 가 있으면 그 값(없는 칸 '—') · #326 서버 값을 쓰는 전투원은 kingdomProc 이 없으면 '—' — 로컬 synEl 로 메우지 않는다");
+  /* #326 여섯째 칸의 네 표시 — 발동 가능(소수 한 자리) · 미활성 · 없음 · 정보 없음이 서로 다른 글자 · 이름이다 */
+  { const kpOf=s=>{ T.battleModal(); const m=slot(html(),s).match(/<li class="kp" aria-label="([^"]+)" title="([^"]+)"><span aria-hidden="true">💫<\/span><b aria-hidden="true">([^<]*)<\/b>/)||[]; return m[1]===m[2]?m[1]+"|"+m[3]:"이름≠title"; };
+    const keep=[f.synEl,f.synStatusPct,f.element,f.legend,f.sandStormR];
+    f.sandStormR=2; const a1=kpOf("me"); f.sandStormR=0; f.synStatusPct=0; f.synEl=null; const a2=kpOf("me"); f.element=null; f.legend="dragon"; const a3=kpOf("me"); f.legend="witch"; const a4=kpOf("me");
+    [f.synEl,f.synStatusPct,f.element,f.legend,f.sandStormR]=keep;
+    B.fd.eff={atk:1,def:1,spd:1,dodge:0,crit:0,statusPct:0}; B.fd.kp={state:"active",kind:"shock",p:0.275}; const a5=kpOf("op"); B.fd.kp={state:"inactive",kind:null,p:null}; const a6=kpOf("op"); delete B.fd.kp; const a7=kpOf("op"); delete B.fd.eff;
+    eq(JSON.stringify([a1,a2,a3,a4,a5,a6,a7]),JSON.stringify(["왕국 효과 발동률 22.5% · 화상(상대) · 기술 효과 +5%p|22.5%","왕국 효과 미활성 — 같은 속성 2칸부터|미활성","왕국 효과 미활성 — 같은 속성 2칸부터|미활성","왕국 효과 없음|없음",
+      "왕국 효과 발동률 27.5% · 감전(상대)|27.5%","왕국 효과 미활성 — 같은 속성 2칸부터|미활성","왕국 효과 발동률 정보 없음|—"]),
+      "R3-②e #326 여섯째 칸: 모래 폭풍 절반 22.5% · 속성 있음/용 + 왕국 미달 = 미활성 · 마녀 = 없음 · 서버 값 27.5% 감전(상대) · 서버 미활성 · 서버 값 없음 = —");
+    T.battleModal(); ok(snap()===s0,"R3-②f 여섯째 칸도 표시만 — 그린 뒤 기본값 · 가산칸 그대로"); }
   const sb=T.ui238.netSynthBattle({battleId:1,round:1,phase:0,actor:"A",a:{owner:0,type:"minion",hp:85,maxHp:85,spd:14,dodge:0.1,statusPct:0,effectiveStats:{atk:24,def:5,spd:15,dodge:0.13,crit:0.05,statusPct:0.05}},
     d:{owner:1,type:"minion",hp:90,maxHp:90,effectiveStats:{atk:"9",def:null,spd:NaN,dodge:Infinity,crit:0,statusPct:0}}},{});
   const nb=T.ui238.netSynthBattle({battleId:2,round:1,phase:0,actor:"A",a:{owner:0,type:"minion",hp:1,maxHp:1},d:{owner:1,type:"minion",hp:1,maxHp:1,effectiveStats:null}},{});
   ok(sb.fa.eff.spd===15&&sb.fa.spd===14&&sb.fa.eff.statusPct===0.05&&sb.fd.eff.atk===undefined&&sb.fd.eff.def===undefined&&sb.fd.eff.spd===undefined&&sb.fd.eff.dodge===undefined&&sb.fd.eff.crit===0
-    &&nb.fa.eff===undefined&&nb.fd.eff===undefined&&!("synSpd" in sb.fd)&&!("synDef" in sb.fd),"R3-②d hydrate: 유한한 숫자만(진짜 0 유지) · 문자열/null/NaN/Infinity 는 '—' · 없으면 eff 없음(종전 기본값) · 가산칸 역산 없음");
+    &&nb.fa.eff===undefined&&nb.fd.eff===undefined&&!("synSpd" in sb.fd)&&!("synDef" in sb.fd)&&sb.fa.kp===undefined&&!("synEl" in sb.fa),"R3-②d hydrate: 유한한 숫자만(진짜 0 유지) · 문자열/null/NaN/Infinity 는 '—' · 없으면 eff 없음(종전 기본값) · 가산칸 역산 없음");
+  /* #326 회선 kingdomProc — 닫힌 값만 통과(state 3종 · kind 5종 · p 유한수 0~1). 하나라도 어긋나면 값 없음('—') — 고쳐 쓰거나 추정하지 않는다 */
+  { const kq=k=>T.ui238.netSynthBattle({battleId:3,round:1,phase:0,actor:"A",a:{owner:0,type:"minion",hp:1,maxHp:1,kingdomProc:k},d:{owner:1,type:"minion",hp:1,maxHp:1}},{}).fa.kp, J=JSON.stringify;
+    ok(J(kq({state:"active",kind:"harden",p:0.6,stage:2,synEl:{p:0.6}}))==='{"state":"active","kind":"harden","p":0.6}'&&kq({state:"active",kind:"burn",p:0}).p===0&&kq({state:"active",kind:"absorb",p:1}).p===1
+      &&J(kq({state:"inactive",kind:null,p:null}))==='{"state":"inactive","kind":null,"p":null}'&&J(kq({state:"none"}))==='{"state":"none","kind":null,"p":null}',
+      "R3-②g kingdomProc 정상값: active 는 종류 · p(0 · 1 포함)만 옮기고 덧붙은 칸은 버린다 · inactive/none 은 kind·p 없음");
+    ok([undefined,null,"active",0.5,{},{state:"active",kind:"crack",p:0.5},{state:"active",kind:"burn",p:1.01},{state:"active",kind:"burn",p:-0.1},{state:"active",kind:"burn",p:NaN},{state:"active",kind:"burn",p:Infinity},
+        {state:"active",kind:"burn",p:"0.5"},{state:"active",kind:"burn",p:null},{state:"active",kind:null,p:0.5},{state:"on",kind:"burn",p:0.5},{state:"inactive",kind:"burn",p:0.4},{state:"none",kind:null,p:0}].every(k=>kq(k)===undefined),
+      "R3-②h kingdomProc 비정상(없음 · 모르는 state/kind · 범위 밖/비유한/문자열 p · 미활성인데 값이 실림)은 전부 값 없음"); }
   /* ③ 전투 상성표 버튼 — 라운드 줄 오른쪽 하나 · 양쪽 차례 모두 · 그리기만으로 송신 0 */
   const rnd=h=>h.slice(h.indexOf('class="bhead bround"'),h.indexOf('id="bstage"'));
   ok(count(html(),/class="cycBtn"/g)===1&&/onclick="battleCycleOpen\(this\)"/.test(rnd(html()))&&/aria-label="상성표 보기"/.test(rnd(html())),"R3-③a 전투: 라운드 줄 오른쪽 상성표 버튼 하나(이름 있음)");
@@ -182,6 +203,16 @@ function battle(seed){ const T=ecoPlay(seed);
   ok(!U.SYNHELP.el&&D.activeElement===cyc&&T.wsLog.length===n0,"R3-③e 상성표 바깥 누름 = 닫고 상성표 버튼으로 초점 복귀 · 송신 0");
   U.idHelp(0,0,cyc); out.focus(); D.dispatch("click",ev(out));
   ok(!U.SYNHELP.el&&D.activeElement===out,"R3-③f 다른 안내 창의 바깥 누름은 종전 그대로(초점 복귀 없음)");
+  /* #327 하수인 스텟 설명 — 상성표 왼쪽 버튼 하나 · 창은 표시 전용(송신 · 전투 행동 · 하위 메뉴 불변) · ✕/Esc/바깥 누름 → 연 버튼으로 초점 · 전투를 다시 그리면 닫힌다 */
+  const row=rnd(html()), sbtn=D.createElement("button"), st=()=>JSON.stringify([B.actSeq,B.round,B.phase,B.menu,B.fa.hp,B.fd.hp,T.wsLog.length]), st0=st();
+  ok(count(row,/class="cycBtn statBtn"/g)===1&&/aria-haspopup="dialog" aria-label="스텟 설명 보기" title="하수인 스텟" onclick="battleStatHelpOpen\(this\)"/.test(row)&&row.indexOf("battleStatHelpOpen")<row.indexOf("battleCycleOpen"),
+    "S1 #327 라운드 줄: 스텟 설명 버튼 하나(이름 · title · dialog) · 상성표 버튼 왼쪽");
+  T.battleStatHelpOpen(sbtn); const sh=U.SYNHELP.el, sh0=sh?sh.innerHTML:"";
+  ok(!!sh&&/<h3 id="synHelpT">하수인 스텟<\/h3><button type="button" class="acctX" aria-label="닫기"/.test(sh0)&&count(sh0,/<li>/g)===6&&st()===st0,"S2 #327 창: 제목 · ✕ · 6행 · 열기만으로 송신 0 · 전투 상태 불변");
+  out.focus(); D.dispatch("click",ev(out)); ok(!U.SYNHELP.el&&D.activeElement===sbtn&&st()===st0,"S3 #327 바깥 누름 = 닫고 스텟 버튼으로 초점 복귀 · 전투 상태 불변");
+  T.battleStatHelpOpen(sbtn); out.focus(); D.dispatch("keydown",{key:"Escape",stopImmediatePropagation(){},preventDefault(){}});
+  ok(!U.SYNHELP.el&&D.activeElement===sbtn&&!!S.battle&&st()===st0,"S4 #327 Esc = 창만 닫는다(전투 유지) · 초점 복귀");
+  T.battleStatHelpOpen(sbtn); T.battleModal(); ok(!U.SYNHELP.el&&st()===st0,"S5 #327 전투가 다시 그려지면 창이 남지 않는다");
 }
 {
   const T=ecoPlay(323), S=T.S;

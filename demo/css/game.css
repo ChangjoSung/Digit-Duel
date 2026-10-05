@@ -1516,9 +1516,11 @@ fieldset.pauseLock:has(>.shopSheet.turn)>small{position:absolute; width:1px; hei
 /* 정보 패널: 머리(★ 이름 · 주인) / HP 바 · 방어막 바 / HP · 현재 방어막 한 줄 / 기본 6스탯 3×2 — 여기까지 고정, 상태 · 기술 이름만 안에서 스크롤 */
 .bslot{width:min(50%,172px);} .bslot .fighter{max-height:134px;}
 #bstage.scene{height:312px;} /* 패널이 6스탯 두 줄만큼 커졌다 — 위(상대) · 아래(나) 묶음 사이를 벌려 정보 패널이 반대편 그림을 덮지 않게(위쪽 묶음은 top, 아래쪽 묶음은 bottom 기준이라 자리 규칙은 그대로) */
-@media (max-width:360px){ .bStats{gap:1px;} .bStats li,.bStats b{font-size:10px;} .bStats .gi{font-size:10px;} .bslot{width:min(49%,172px);} .bslot.slot-op{left:2px;} .bslot.slot-me{right:2px;} }
+@media (max-width:360px){ .bStats{gap:1px;} .bStats li,.bStats b{font-size:10px;} .bStats .gi{font-size:10px;} .bStats li{gap:1px;} .bStats li>span{font-size:9px;} .bStats li.kp b{font-size:9px; letter-spacing:-.3px;} /* #326 320 폭: 이모지 아이콘 · 여섯째 칸 글자만 한 단계 작게 */
+  #overlayBox.battleBox .bround{gap:4px;} #overlayBox.battleBox .bround>span:first-child{flex:0 0 auto;} #overlayBox.battleBox .bround .badge{min-width:0; overflow:hidden; text-overflow:ellipsis;} /* #327 버튼이 둘이 된 줄 — 가장 긴 '상대 응답 대기' 배지만 줄여 쓴다 */
+  .bslot{width:min(49%,172px);} .bslot.slot-op{left:2px;} .bslot.slot-me{right:2px;} }
 .bslot .stars{color:#ffd66b; font-size:10px; letter-spacing:-1px;}
-.bStats{list-style:none; margin:2px 0 0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2px;}
+.bStats{list-style:none; margin:2px 0 0; padding:0; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr); gap:2px;} /* #326 셋째 열만 조금 넓게 — 여섯째 칸의 '미활성' · '27.5%' 자리 */
 .bStats li{display:flex; align-items:center; justify-content:center; gap:2px; min-width:0; border-radius:4px; background:#0b1326; font-size:10.5px; line-height:16px; white-space:nowrap; color:#fff;}
 .bStats b{font-size:10.5px; font-variant-numeric:tabular-nums;} .bStats .gi{font-size:11px;}
 /* ===== #296 CJ REVISE1 (2026-10-03 · Image2~7) =====
@@ -1584,6 +1586,8 @@ body .overlay:has(.battleTop){align-items:flex-start; padding-top:var(--appTop);
 #boardInfo .cycleCol .up{flex:0 0 auto; width:7px; height:7px; margin-top:4px; border:solid #9fc0ff; border-width:2px 0 0 2px; transform:rotate(45deg);}
 /* ③ 전투 상성표 — 라운드 줄 오른쪽 44px 버튼(줄 높이 44 그대로) + 안내 창(.synHelp 같은 틀) */
 #overlayBox.battleBox .bround .cycBtn{flex:0 0 44px; width:44px; height:44px; min-height:44px; margin-left:auto; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:10px; background:#0a1733; border:2px solid #3d5580;}
+#overlayBox.battleBox .bround .statBtn{flex-direction:column; gap:0; color:#cfe0ff;} #overlayBox.battleBox .bround .statBtn+.cycBtn{margin-left:0;} /* #327 스텟 설명 버튼 — 상성표 왼쪽 · 같은 44px 틀 */
+.statBtn .gi{font-size:20px;} .statBtn small{font-size:10px; line-height:11px; font-weight:bold;}
 .cycBtn svg{width:30px; height:30px;} .cycBtn svg circle{fill:none; stroke:#9fc0ff; stroke-width:1.6;} .cycBtn svg circle.d{stroke:#06102a; stroke-width:1;}
 .synHelp.cyc .cycMap{position:relative; width:min(240px,100%); aspect-ratio:1; margin:6px auto;}
 .synHelp.cyc .cycMap svg{position:absolute; inset:0; width:100%; height:100%;}

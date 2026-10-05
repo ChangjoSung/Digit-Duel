@@ -263,11 +263,11 @@ block("D1~D5 락스텝 블록",()=>{
   both(P,(T,f)=>{ f(e2.id).alive=false; }); W.render(); const goneOnDeath=!help(W); both(P,(T,f)=>{ f(e2.id).alive=true; }); W.render();
   ok(goneOnDeath,"D4x 설명 창의 대상 말이 죽으면 다시 그릴 때 창이 닫힌다(낡은 내용 없음)");
   W.ui238.unitHelpPiece(e.id,null); ok(!help(W)&&!e.revealed,"D4y 미공개 ? 말은 설명 창이 열리지 않는다(직접 불러도 — 종·속성·HP 가 마크업에 없다)");
-  { /* 내 폭탄 · 함정 = 종류 + 기존 안내(튜토리얼 '폭탄과 함정')의 이동 문장 그대로 — HP · 스킬 탭 없음 */
-    const tut=H.load(htmlPath).html.replace(/<\/?b>/g,""), note=t=>{ const x=W.S.pieces.find(y=>y.owner===W.NET.me&&y.type===t&&y.alive); W.ui238.unitHelpPiece(x.id,null); const d=helpHtml(W); W.ui238.synHelpClose(false); return d; };
+  { /* 내 폭탄 · 함정 = 종류 + 규칙 한 줄 — HP · 스킬 탭 없음. #329: 이 줄은 말 정보 창 전용 문장이다(튜토리얼 문장과의 글자 일치 요구는 폐지 — 튜토리얼은 smoke_tutorial 이 따로 고정한다) */
+    const note=t=>{ const x=W.S.pieces.find(y=>y.owner===W.NET.me&&y.type===t&&y.alive); W.ui238.unitHelpPiece(x.id,null); const d=helpHtml(W); W.ui238.synHelpClose(false); return d; };
     const bomb=note("bomb"), trap=note("trap"), line=d=>(d.match(/<li>([^<]*움직[^<]*)<\/li>/)||[])[1];
-    ok(/<li>폭탄<\/li>/.test(bomb)&&/<li>함정<\/li>/.test(trap)&&!!line(bomb)&&!!line(trap)&&line(bomb)!==line(trap)&&tut.includes("폭탄은 "+line(bomb))&&tut.includes("함정은 "+line(trap))&&!/uhStats|uhSkills|HP /.test(bomb+trap),
-      "D4z 내 폭탄·함정 설명 = 종류 + 기존 안내 문장(폭탄 한 칸·버닝 2칸 / 함정 스스로 이동 불가)과 글자 그대로 일치 · HP·스킬 없음"); }
+    ok(/<li>폭탄<\/li>/.test(bomb)&&/<li>함정<\/li>/.test(trap)&&!!line(bomb)&&!!line(trap)&&line(bomb)!==line(trap)&&!/uhStats|uhSkills|HP /.test(bomb+trap),
+      "D4z 내 폭탄·함정 설명 = 종류 + 규칙 한 줄(폭탄 · 함정이 서로 다른 문장) · HP·스킬 없음"); }
   const e3=enemyOf(W,x=>x.type==="minion"&&x.id!==e.id&&x.id!==e2.id);
   const fr=W.NET.me===0?5:9; // W 의 말(자기 진영)과 인접하지 않은 숲 칸 → 비가시
   both(P,(T,f)=>{ const x=f(e3.id); x.r=fr; x.c=4; });

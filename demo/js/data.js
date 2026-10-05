@@ -254,15 +254,18 @@ const ALLY_BASE={
   assassin:{hp:100,atk:18,def:5, spd:12,dodge:0.10,crit:0.10,statusPct:0}, // 동료1 — 암살자
   shield:  {hp:100,atk:14,def:20,spd:6, dodge:0,    crit:0,   statusPct:0}  // 동료2 — 방패병
 };
-/* 3.6 전설 하수인 고정 스탯(등급 없음, grade=5로 취급 — 등급 비교에서는 최고 등급으로 참여). #234 전까지 로스터에 없다. */
+/* 3.6 전설 하수인 고정 스탯(등급 없음, grade=5로 취급 — 등급 비교에서는 최고 등급으로 참여). #234 전까지 로스터에 없다.
+   #328: HP · 공격력 = 같은 아키타입(용=표준 · 마녀=지속 · 사신=공격) ⭐4 정수값 × 1.20 반올림. 성장 표가 바뀌면 같은 원칙으로 다시 계산한다(회귀가 대조한다) */
 const LEGEND_BASE={
-  dragon:{hp:175,atk:35,def:15,spd:11,dodge:0.05,crit:0.10,statusPct:0},
-  witch: {hp:165,atk:32,def:12,spd:13,dodge:0.10,crit:0.05,statusPct:0.25},
-  reaper:{hp:158,atk:40,def:8, spd:14,dodge:0.15,crit:0.20,statusPct:0}
+  dragon:{hp:270,atk:50,def:15,spd:11,dodge:0.05,crit:0.10,statusPct:0},
+  witch: {hp:257,atk:46,def:12,spd:13,dodge:0.10,crit:0.05,statusPct:0.25},
+  reaper:{hp:244,atk:58,def:8, spd:14,dodge:0.15,crit:0.20,statusPct:0}
 };
-/* 3.4 등급 성장 — ❤️ HP ×(1+0.15×(등급-1)), 💪 공격력 ×(1+0.10×(등급-1)), 정수 반올림. 등급 없음(null/undefined)·1급은 성장 없음. */
-function gradeHp(base,grade){ return (!grade||grade<=1)?Math.round(base):Math.round(base*(1+0.15*(grade-1))); }
-function gradeAtk(base,grade){ return (!grade||grade<=1)?Math.round(base):Math.round(base*(1+0.10*(grade-1))); }
+/* 3.4 등급 성장(#328) — ⭐1 대비 정수 % 표(⭐1~4), round(1성 값 × % ÷ 100). 정수 % 로 나누므로 .5 경계가 소수 곱 오차로 내려가지 않는다(90×135% = 121.5 → 122).
+   등급 없음(null/undefined)·1급은 성장 없음. 이 두 함수가 유일한 성장 경로다(상점 · 포획 · 진열 · 서버 모두 applySpecies 를 거친다) */
+const GRADE_HP_PCT=[100,135,175,225], GRADE_ATK_PCT=[100,125,155,190];
+function gradeHp(base,grade){ return Math.round(base*GRADE_HP_PCT[Math.max(1,Math.min(4,grade||1))-1]/100); }
+function gradeAtk(base,grade){ return Math.round(base*GRADE_ATK_PCT[Math.max(1,Math.min(4,grade||1))-1]/100); }
 /* def·spd·dodge·crit·statusPct는 등급으로 바뀌지 않는다(3.4) — 아키타입 표 값을 그대로 대상 전투원에 주입 */
 function applyArchStats(f,arch,grade){
   const b=ARCHETYPE_BASE[arch]; if(!b) return;
@@ -631,9 +634,16 @@ function v2IncomingCap(f,dmg){
 }
 /* 상태이상 · 버프 부여 — 확률 = 표기 + 💫(상한 100%) · 모래 폭풍이면 절반. force 는 판정·난수 없음(확정 효과 · 확률 100% 효과).
    접지(감전 면역)는 감전만 막는다. (#241: 거울 수면 되돌림 분기는 '옮기기' 교체로 삭제) */
+function statusProcP(f,prob){ const p=Math.min(1,(prob||0)+(f.statusPct||0)+(f.synStatusPct||0)); return f.sandStormR>0?p*0.5:p; } // #235 지속형 시너지 · 마녀의 집회도 같은 가산 자리 · #326 판정(v2Apply)과 표시가 이 식 하나를 본다(난수 없음)
+/* #326 전투 카드 여섯째 칸 — 이 전투원의 왕국 효과 1판정이 실제로 쓰는 확률(v2KingdomProc → v2Apply 와 같은 식). 읽기 전용: 전투원 값을 쓰지 않고 난수도 없다.
+   active = 참전 확정 때 정해진 f.synEl 이 있다 · inactive = 왕국을 받을 수 있는데(속성 있음 · 용) 아직 (2) 미달 · none = 받을 수 없다(무속성 전설 마녀 · 사신) */
+function kingdomProcView(f){
+  const e=f&&f.synEl; if(e) return {state:"active",kind:e.kind,p:statusProcP(f,e.p)};
+  return {state:f&&(f.legend?f.legend==="dragon":!!f.element)?"inactive":"none",kind:null,p:null};
+}
 function v2Apply(cSide,caster,tSide,target,kind,prob,o){
   o=o||{};
-  if(!o.force){ let p=Math.min(1,(prob||0)+(caster.statusPct||0)+(caster.synStatusPct||0)); if(caster.sandStormR>0) p*=0.5; // #235 지속형 시너지 · 마녀의 집회도 같은 가산 자리
+  if(!o.force){ const p=statusProcP(caster,prob);
     if(!(rand()<p)){ S.metrics.statusFailed++; bmsg("상태이상 부여 실패!"); return false; } }
   if(kind==="shock"&&target.immuneShockR>0){ bmsg(`⚡ ${fighterName(tSide)}는 감전 면역이다.`); return false; }
   S.metrics.statusApplied++;
