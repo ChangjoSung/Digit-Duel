@@ -26,7 +26,7 @@ function arena(T,leg,o){
   T.applyLegend(me,leg);
   if(o.opLegend) T.applyLegend(op,o.opLegend); else T.applySpecies(op,T.ROSTER.find(r=>r.id==="M-G3"),1);
   T.startRounds(me,op,me,op);
-  const B=T.S.battle; B.fd.dodge=0; B.fd.evadeDown=0; B.fa.dodge=0;
+  const B=T.S.battle; B.fd.dodge=0; B.fd.synDodge=0; B.fd.evadeBuff=0; B.fd.evadeDown=0; B.fa.dodge=0; // effEvade 0 — 시너지 회피까지
   const seen=[]; const push=B.msgQ.push; B.msgQ.push=function(...m){ seen.push(...m); return push.apply(this,m); };
   return {B,seen,fa:B.fa,fd:B.fd};
 }

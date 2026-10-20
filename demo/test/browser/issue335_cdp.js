@@ -194,7 +194,7 @@ const MEASURE=`(()=>{ const q=s=>document.querySelector(s), cs=e=>getComputedSty
           const P=await page(vp,BASE+(mode==="fallback"?"/__block/fx/index.html":"/index.html"),mode==="reduce"?[{name:"prefers-reduced-motion",value:"reduce"}]:null);
           try{
             await P.ev(PVE("S03"));
-            await P.ev(`(()=>{ ${MINE} const a=mine("minion")[0], d=foes("minion")[0]; applyLegend(a,"${leg}"); a.spd=99; startRounds(a,d,a,d); const B=S.battle; B.fd.dodge=0; B.fd.evadeDown=0;
+            await P.ev(`(()=>{ ${MINE} const a=mine("minion")[0], d=foes("minion")[0]; applyLegend(a,"${leg}"); a.spd=99; startRounds(a,d,a,d); const B=S.battle; B.fd.dodge=0; B.fd.synDodge=0; B.fd.evadeBuff=0; B.fd.evadeDown=0; // 확정 명중 — 시너지 회피(synDodge)까지 0
               ${leg==="reaper"?`B.round=4; B.fa.hp=1;`:""} return true; })()`);
             /* 개시 카운트다운(countStep ×4)이 끝나고 남은 전투 메시지가 재생될 때까지 — 끝나야 명령 버튼이 열린다 */
             for(let i=0;i<120&&await P.ev(`(()=>{ if(!FX.cur&&!FX.q.length&&!MSGPLAYING&&S.battle.msgQ.length) battleModal(); return fxLocked()||S.battle.msgQ.length>0; })()`);i++) await sleep(150);
