@@ -7,7 +7,7 @@ const H = require('./helpers');
 const { both, byId, act, STATES } = H;
 const { ok, done } = H.makeCounter('battle-fx');
 
-const MSG_FX_KEYS = new Set(['shake', 'sig', 'flash', 'ko', 'float', 'hp', 'st', 'cast']);
+const MSG_FX_KEYS = new Set(['shake', 'sig', 'flash', 'ko', 'float', 'hp', 'st', 'cast', 'skill']);
 const MSG_EVENT_KEYS = new Set(['seq', 'src', 'battleId', 'round', 'actSeq', 'key', 'big', 'txt', 'fx']);
 const STAGE_EVENT_KEYS = new Set(['seq', 'src', 'battleId', 'turn', 'key', 'kind', 'title', 'sub', 'cls', 'cells', 'scene']);
 const SCENE_SIDE_KEYS = new Set(['owner', 'type', 'element', 'bodyFight', 'rosterId', 'artRosterId']);
@@ -586,5 +586,87 @@ function resolveSyncModals(room, seatHint, maxSteps) {
     }
   });
 }
+
+// ===== 19) #335 전설 4번 기술 적중 연출 fx.skill — 닫힌 3값 + 같은 행 표적 shake(A|D)일 때만, 두 층(engine
+// normalizeMsgFx · room _serializeFxMsgFx) 모두 재검증. 그 밖의 값·표적 없음/잘못된 표적은 skill 만 지운다. =====
+const LEGEND4 = ['L-DRAGON-4', 'L-WITCH-4', 'L-REAPER-4'];
+{
+  const room = H.startedRoom(3350);
+  const cur = startBattle(room);
+  const good = LEGEND4.map((skill, i) => ['sk-ok-' + i, { shake: i % 2 ? 'A' : 'D', skill }]);
+  // 방어막이 전부 흡수한 0 HP 피해 적중 — 피해 수치 0 이어도 표적만 맞으면 skill 은 남는다
+  good.push(['sk-zero', { shake: 'D', skill: 'L-WITCH-4', float: { side: 'D', html: '<span class="neg">-0</span>' },
+    hp: { side: 'D', val: 30, max: 30 }, st: { side: 'D', text: '🛡', shield: 5, max: 30 } }]);
+  const bad = [['sk-old', { shake: 'D', skill: 'L-DRAGON-3' }], ['sk-case', { shake: 'D', skill: 'l-dragon-4' }],
+    ['sk-pad', { shake: 'D', skill: 'L-DRAGON-4 ' }], ['sk-num', { shake: 'D', skill: 4 }],
+    ['sk-obj', { shake: 'D', skill: { id: 'L-DRAGON-4' } }], ['sk-arr', { shake: 'D', skill: ['L-REAPER-4'] }],
+    ['sk-boxed', { shake: 'D', skill: new String('L-WITCH-4') }], // eslint-disable-line no-new-wrappers
+    ['sk-noshake', { skill: 'L-DRAGON-4', sig: true }], ['sk-badshake', { shake: 'X', skill: 'L-REAPER-4', sig: true }]];
+  const leakRow = ['sk-leak', { shake: 'A', skill: 'L-DRAGON-4', piece: { id: 900000001, owner: 1 }, secret: 'x', legend: 'dragon' }];
+  both(room, (E) => { for (const [txt, fx] of good.concat(bad, [leakRow])) E.S.battle.msgQ.push({ txt, fx, key: 'damageFx', big: false }); });
+  const views = [0, 1].map((seat) => room.toSeatView(seat));
+  const ev = (seat, txt) => views[seat].fx.events.find((e) => e.src === 'msg' && e.txt === txt);
+  const cap = (seat, txt) => room.engines[seat].__fx.items.find((e) => e.txt === txt);
+  for (const [txt, fx] of good) {
+    for (const seat of [0, 1]) {
+      const c = cap(seat, txt), e = ev(seat, txt);
+      ok(c && c.fx.skill === fx.skill && c.fx.shake === fx.shake && e && e.fx.skill === fx.skill && e.fx.shake === fx.shake,
+        'T19 ' + txt + ' 유효 skill+shake 는 엔진 캡처·좌석 ' + seat + ' 뷰 두 층 통과: ' + JSON.stringify(e && e.fx));
+      assertEventShape(e, 'T19 ' + txt);
+    }
+    ok(JSON.stringify(ev(0, txt).fx) === JSON.stringify(ev(1, txt).fx), 'T19 ' + txt + ' 두 좌석 fx 동일');
+  }
+  const zero = ev(cur, 'sk-zero').fx;
+  ok(zero.float.amount === 0 && zero.st.shield === 5 && zero.skill === 'L-WITCH-4', 'T19 흡수 0 피해 적중의 float·st·skill 함께 유지: ' + JSON.stringify(zero));
+  for (const [txt] of bad) {
+    for (const seat of [0, 1]) {
+      const c = cap(seat, txt), e = ev(seat, txt);
+      ok(!!c && !!e && (!c.fx || !('skill' in c.fx)) && (!e.fx || !('skill' in e.fx)),
+        'T19 ' + txt + ' 잘못된 skill/표적은 엔진 캡처·좌석 ' + seat + ' 뷰 모두 skill 생략: ' + JSON.stringify(e && e.fx));
+      if (e.fx) assertEventShape(e, 'T19 ' + txt);
+    }
+  }
+  const leak = ev(cur, 'sk-leak').fx;
+  ok(JSON.stringify(Object.keys(leak).sort()) === '["shake","skill"]' && JSON.stringify(cap(cur, 'sk-leak').fx) === JSON.stringify(leak),
+    'T19 유효 skill 행에 섞인 비공개·여분 필드(piece·secret·legend)는 두 층 모두 버림: ' + JSON.stringify(leak));
+  ok(ev(cur, 'sk-noshake').fx.sig === true && ev(cur, 'sk-badshake').fx.sig === true, 'T19 skill 만 지우고 다른 유효 fx 는 유지');
+  // room 층 단독 — 엔진 정규화를 거치지 않은 원시 객체도 room 이 스스로 거른다(이중 화이트리스트)
+  const R = (fx) => room._serializeFxMsgFx(fx);
+  ok(R({ shake: 'A', skill: 'L-REAPER-4' }).skill === 'L-REAPER-4', 'T19 room 층: 유효 값 통과');
+  ok(R({ skill: 'L-REAPER-4' }) === null && !('skill' in R({ shake: 'Z', skill: 'L-REAPER-4', sig: true })) && !('skill' in R({ shake: 'A', skill: 'L-REAPER-9' }))
+    && !('skill' in R({ shake: 'A', skill: { toString: () => 'L-REAPER-4' } })), 'T19 room 층: 표적 없음·잘못된 표적·미지 ID·객체 skill 거부');
+}
+// 실제 Core 적중 — 전용기 자신의 적중 행 하나에만 skill, 표적 shake 와 같은 행, 두 좌석 동일(방어막 전부 흡수 포함)
+function legendHit(seed, skillId, prep) {
+  const room = H.startedRoom(seed);
+  startBattle(room);
+  const T = room.engine;
+  const key = T.actorOfPhase() === 'A' ? 'fa' : 'fd', oKey = key === 'fa' ? 'fd' : 'fa';
+  const seat = T.netActor();
+  both(room, (E) => {
+    const B = E.S.battle, f = B[key], o = B[oKey];
+    f.skills = f.skills.slice(); f.cds = f.skills.map(() => 0); f.skills[1] = skillId;
+    o.dodge = 0; o.evadeBuff = 0; o.dodgeForce = false;
+    if (prep) prep(E, f, o, B);
+  });
+  const before = [0, 1].map((s) => room.toSeatView(s).fx.lastSeq), oHp = T.S.battle[oKey].hp;
+  const r = act(room, seat, { t: 'act', k: 1 });
+  const rows = [0, 1].map((s) => room.toSeatView(s).fx.events.filter((e) => e.seq > before[s] && e.src === 'msg'));
+  return { r, rows, oHp, target: key === 'fa' ? 'D' : 'A' };
+}
+[['L-DRAGON-4', null], ['L-WITCH-4', null], ['L-DRAGON-4', 'shield'],
+  ['L-REAPER-4', (E, f, o, B) => { f.hp = 1; B.round = 4; }]].forEach(([id, prep], i) => {
+  const shield = prep === 'shield';
+  const p = shield ? (E, f, o) => { o.shieldLayers = [{ src: 'test', amt: 99999 }]; o.shield = 99999; } : prep;
+  const label = 'T19 Core ' + id + (shield ? ' 방어막 전부 흡수' : '');
+  const { r, rows, oHp, target } = legendHit(3360 + i, id, p);
+  ok(r.ok, label + ' 행동 수락: ' + JSON.stringify(r.reason));
+  const tagged = rows.map((rs) => rs.filter((e) => e.fx && 'skill' in e.fx));
+  ok(tagged.every((t) => t.length === 1 && t[0].fx.skill === id && t[0].fx.shake === target),
+    label + ' 두 좌석 모두 적중 행 1개에만 skill·표적 shake=' + target + ': ' + JSON.stringify(tagged.map((t) => t.map((e) => e.fx))));
+  ok(JSON.stringify(tagged[0].map((e) => e.fx)) === JSON.stringify(tagged[1].map((e) => e.fx)), label + ' 두 좌석 skill 행 fx 동일');
+  if (shield) ok(tagged[0][0] && tagged[0][0].fx.hp && tagged[0][0].fx.hp.val === oHp, label + ' 실제 HP 피해 0 인데도 적중 행 유지');
+  for (const rs of rows) for (const e of rs) assertEventShape(e, label);
+});
 
 process.exit(done());

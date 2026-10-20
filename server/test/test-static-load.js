@@ -51,6 +51,11 @@ function pageLoadCorpus() {
   const corpus = ['/'].concat([...html.matchAll(/\b(?:src|href)="((?:js|css)\/[^"]+)"/g)].map((m) => '/' + m[1]));
   for (const d of dirs) for (const f of ['icon.png', 'battle.png']) corpus.push(`/assets/minions/${d}/${f}`);
   for (const d of ['companion', 'king']) for (const f of ['icon64.png', 'battle256.png']) corpus.push(`/assets/leaders/${d}/${f}`);
+  // #335 Argon 스킨이 CSS 로 부르는 이미지(variables.css 6 · argon.css 5)와 ui.js 의 전설 FX 시트 프리로드 3 — 고정 목록
+  for (const f of ['board/bush@2x.png', 'board/tile-base@2x.png', 'buttons/button-frame@2x.png', 'ornaments/crest@2x.png',
+    'panels/panel-frame@2x.png', 'tokens/token-unknown@2x.png', 'tokens/rarity-1.svg', 'tokens/rarity-2.svg',
+    'tokens/rarity-3.svg', 'tokens/rarity-4.svg', 'tokens/rarity-5.svg']) corpus.push(`/assets/ui/argon/${f}`);
+  for (const k of ['dragon', 'witch', 'reaper']) corpus.push(`/assets/fx/${k}_96x8.png`);
   return corpus;
 }
 

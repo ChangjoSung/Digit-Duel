@@ -2505,6 +2505,7 @@ function legacySkillAct(side){
    전투 결과 + 경기 결과를 직렬로 두 번 재생하지 않는다. 결과 상수(resultBanner 2500ms)는 그대로다.
    전투 판정의 동률은 종전대로 **방어자 승**이며 전투 무승부 화면을 만들지 않는다 — 무승부 문구는 경기 무승부에만 쓴다. */
 let ENDING_BATTLE=false; // finishBattle·finishByCapture 가 종료 배너를 직접 고르는 구간 (gameOver 의 자동 재생을 잠시 막는다)
+let FX_SKILL_HIT=null; // #335 {side,id} — 전설 드래곤·마녀 4번 기술 실행(execSlot→execV2) 동안만 서고, 그 사용의 첫 적중 행 fx.skill 로 소비된다 (표시 전용)
 function matchBannerOf(){
   const w=S.winner, typeKo=S.metrics.winType?WINTYPE_KO[S.metrics.winType]:"";
   if(w===null) return {title:"무승부",sub:"경기 무승부 — 시뮬레이션 턴 상한 도달",cls:"match draw"};
@@ -2625,6 +2626,7 @@ function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp,
   if(opp.dodgeForce){ evaded=true; opp.dodgeForce=false; }
   else evaded=rand()<effEvade(opp); // #241 V1: 기본 + 증가 − 회피율 감소, 0~40% (난수 소비 횟수 불변)
   if(evaded){
+    FX_SKILL_HIT=null; // #335 빗나간 전용기는 표시하지 않고, 뒤따르는 타격으로 넘기지도 않는다
     bmsg(`💨 ${fighterName(oSide)}는 회피했다!`,{st:stFx(oSide,opp)});
     if(hopts.critForce===undefined&&f.critForce&&!hopts.penalty) f.critForce=false; // #234 REVISE 3차 P14: v2Hit 밖 경로도 회피 시 확정 치명 소모
     return {evaded:true,dmg:0,crit:false,absorbed:0,actual:0,counted:0};
@@ -2676,9 +2678,10 @@ function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp,
   const freeAbsorb=Math.min(absorbed,capLeft); opp.absorbed+=freeAbsorb;
   const counted=actual+(absorbed-freeAbsorb);
   addRec(side,counted);
-  bmsg(`${dmg} 피해!${crit?" (치명타)":""}${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,
-    {shake:oSide,flash:atkEl||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
-     hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
+  const hitFx={shake:oSide,flash:atkEl||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
+     hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)};
+  if(FX_SKILL_HIT&&FX_SKILL_HIT.side===side&&!hopts.penalty){ hitFx.skill=FX_SKILL_HIT.id; FX_SKILL_HIT=null; } // #335 전설 전용기 명중 행 표시 (피해 0·흡수만이어도 적중이면 붙인다)
+  bmsg(`${dmg} 피해!${crit?" (치명타)":""}${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,hitFx,{key:"damageFx"});
   return {evaded:false,dmg,crit,absorbed,breaks,actual,counted,bySrc}; // breaks(3.2 "깨짐"): 이 타격으로 남은 양이 0이 된 방어막 층 수
 }
 /* GDD-23 4.3 반사·반격 — 일반 파이프라인의 부분집합만 탄다(회피·분산·상성 판정 없음: 반사는 상성도 없다, 반격은 ④만 탄다).
@@ -2778,12 +2781,16 @@ function execSlot(side,slot,opts){
        사용 즉시 이 말에 전투를 넘는 봉인을 건다(다음 참전 전투 봉인) */
     f.reaperSeal=2;
     const lethal=opp.hp; instaKill(opp); addRec(side,lethal); // #233 (GDD-23 4.3): 즉사 — 단계 없음, 방어막 무시
-    bmsg(`💀 ${fighterName(oSide)}는 보호막째 베였다 — 즉사!`,
-      {shake:oSide,float:{side:oSide,html:`<span class="neg">즉사</span>`},hp:{side:oSide,val:0,max:opp.maxHp},st:stFx(oSide,opp)},{key:"damageFx"});
+    const execFx={shake:oSide,float:{side:oSide,html:`<span class="neg">즉사</span>`},hp:{side:oSide,val:0,max:opp.maxHp},st:stFx(oSide,opp)};
+    if(sk.id==="L-REAPER-4") execFx.skill="L-REAPER-4"; // #335 성공한 처형 행만 — 옛 사신 기술 ID 는 붙이지 않는다
+    bmsg(`💀 ${fighterName(oSide)}는 보호막째 베였다 — 즉사!`,execFx,{key:"damageFx"});
     if(checkDeath()) return;
     nextPhase(); return;
   }
-  if(sk&&sk.v2){ execV2(side,slot,sk); return; } // #234 (GDD-23 6장): 하수인 30종·전설·왕·동료 스킬 실행기
+  if(sk&&sk.v2){ // #234 (GDD-23 6장): 하수인 30종·전설·왕·동료 스킬 실행기
+    FX_SKILL_HIT=(sk.id==="L-DRAGON-4"||sk.id==="L-WITCH-4")?{side,id:sk.id}:null; // #335 이 사용의 첫 피해 행에만 fx.skill — 규칙·난수 무관
+    try{ execV2(side,slot,sk); } finally{ FX_SKILL_HIT=null; }
+    return; }
   if(sk){ f.cds[slot]=sk.cd;
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
   const gate=(force,prob)=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기: 화상·약화 statusProb 70% · 감전 shockProb 50% (#96) · 잔류장 100% — force는 rand 미소비)

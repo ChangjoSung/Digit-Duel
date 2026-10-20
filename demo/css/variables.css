@@ -1,0 +1,107 @@
+/* ==========================================================================
+   Digit-Duel v0.4.15 — Argon Tabletop Fantasy UI Skin Tokens (Phase 0)
+   Baseline commit: 1f79d4e0042018dd576a82025d0dc9ccbed0a9f1
+   Scope: html[data-ui-skin="argon"]
+   Contract:
+   - Display tokens ONLY.
+   - Geometry/runtime tokens (--frame, --boardW, --boardH, --bs, --sideBs,
+     --appTop, --appH, --i, --g, --p, --castC, --platOp, --platMe, --emoT,
+     --emoR, --a, --d, --x, --tut-*) are NEVER overridden here.
+   - #tutOverlay keeps its locked 10-step tutorial palette from game.css.
+   - Pure selector specificity under html[data-ui-skin="argon"], zero external font/CDN imports.
+   ========================================================================== */
+
+html[data-ui-skin="argon"] {
+  /* 1. Existing Display Token Overrides (Walnut · Brass · Dark Parchment Slate)
+        Contrast verified >= 4.5:1 (body text #f5efe4 on #1e1612 = 14.6:1,
+        secondary text #c5b49a on #1e1612 = 8.1:1, on #291e18 = 7.1:1) */
+  --bg: #120d0a;
+  --panel: #1e1612;
+  --panel2: #291e18;
+  --line: #5c4328;
+  --txt: #f5efe4;
+  --dim: #c5b49a;
+  --accent: #e5b85c;
+  --accentFill: #2b579a;
+  --danger: #ff616d;
+  --ok: #52d98b;
+
+  /* Board zone & tactical surface tokens */
+  --zoneA: #25334d;
+  --zoneB: #4f2831;
+  --forest: #1e3929;
+  --mid: #2c241e;
+
+  /* 5-Element cycle & combat feedback tokens (Fire -> Grass -> Land -> Lightning -> Water -> Fire) */
+  --fire: #ff7a4d;
+  --water: #4da3ff;
+  --grass: #5fd06b;
+  --lightning: #ffd84d;
+  --land: #c89d6c;
+  --heal: #4fd88a;
+  --guard: #4da3ff;
+  --buff: #ffd84d;
+
+  /* Shell & header brass/walnut surface tokens */
+  --navy: #221811;
+  --navy2: #302218;
+  --navyLine: #0e0906;
+
+  /* Gold CTA & ornate border tokens */
+  --gold1: #ffe082;
+  --gold2: #df9228;
+  --goldInk: #2b1704;
+  --blueEdge: #b88b44;
+  --blueGlow: #e5b85c38;
+
+  /* Minion Star Grades (★1~★4 normal, ★5 fixed legendary) & Synergy rank tiers */
+  --g1: #3fae5a;
+  --g2: #3a7be0;
+  --g3: #9257d8;
+  --g4: #f0c330;
+  --g5: #e0393e;
+  --syn0: #d7d2c9;
+  --syn1: #b8754a;
+  --syn2: #9ea9b7;
+  --syn3: #c99b39;
+  --syn4: #376bce;
+  --syn5: #7651a8;
+  --pick: #f3a871;
+  --deadInk: #d7d2c9;
+  --go: #b3261e;
+  --goEdge: #6b1510;
+  --goInk: #ffffff;
+
+  /* 2. Argon Skin Extension Tokens (--ag-*) */
+  --ag-walnut-deep: #160f0b;
+  --ag-walnut-surface: #221711;
+  --ag-walnut-raised: #2f2118;
+  --ag-parchment-dark: #38291e;
+  --ag-brass-hi: #f6d88c;
+  --ag-brass-mid: #c89643;
+  --ag-brass-low: #78531e;
+  --ag-brass-rim: #4a3314;
+  --ag-crimson-hi: #cf3b45;
+  --ag-crimson-low: #7d1b22;
+  --ag-focus-ring: #ffe89e;
+  --ag-shadow-elev: 0 10px 28px #000000bf;
+  --ag-shadow-inset: inset 0 1px 0 #ffe6a333, inset 0 -2px 0 #00000080;
+
+  /* 3. Argon Sliced Asset URLs & 9-Slice Metrics */
+  --ag-panel-frame-url: url("../assets/ui/argon/panels/panel-frame@2x.png");
+  --ag-panel-slice: 32;
+  --ag-panel-border: 16px;
+  --ag-panel-pad: 8px;
+  --ag-panel-safe-inset: 24px;
+
+  --ag-btn-frame-url: url("../assets/ui/argon/buttons/button-frame@2x.png");
+  --ag-btn-slice: 16;
+  --ag-btn-border: 8px;
+  --ag-btn-pad-y: 6px;
+  --ag-btn-pad-x: 12px;
+
+  --ag-tile-base-url: url("../assets/ui/argon/board/tile-base@2x.png");
+  --ag-bush-url: url("../assets/ui/argon/board/bush@2x.png");
+  --ag-token-unknown-url: url("../assets/ui/argon/tokens/token-unknown@2x.png");
+  --ag-crest-url: url("../assets/ui/argon/ornaments/crest@2x.png");
+}

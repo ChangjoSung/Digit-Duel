@@ -1,0 +1,1016 @@
+/* ==========================================================================
+   Digit-Duel v0.4.15 — Argon Tabletop Fantasy UI Presentation Layer
+   Baseline commit: 1f79d4e0042018dd576a82025d0dc9ccbed0a9f1
+   Scope: html[data-ui-skin="argon"]
+   Coverage:
+   - Phase 0: 9-Slice Panel Frame, 9-Slice Button Frame (4 States), Token & Reset Guard
+   - Phase 1: S03 Strategy Board, B03 Elemental Battle, FX Layer, B01/B02/B08/X01/X03 Overlays
+   - Phase 2: S01 Start Shop, S01r Ready Wait, S02 Secret Placement, S05 Turn Shop, S04 Result
+   - Phase 3: T01 Title, A01 Account 3-Tab, A02 Preload, L01 Lobby, L02 Rooms, L03 Wait Room, Emotes
+   Strict Contract:
+   - Pure selector specificity under html[data-ui-skin="argon"], zero external CDN/font imports.
+   - Zero transform/filter/opacity<1/isolation/contain/backdrop-filter/clip-path/mask
+     on html, body, #app, #screenBody, #left, #right, #overlay, #overlayBox,
+     #boardWrap, #netResumeBar, #tutOverlay, #fxBanner.
+   - #tutOverlay 10-step tutorial screen remains 100% untouched.
+   ========================================================================== */
+
+/* ==========================================================================
+   [PHASE 0] APP SHELL, 9-SLICE PANEL FRAMES & 9-SLICE 4-STATE BUTTONS
+   ========================================================================== */
+
+html[data-ui-skin="argon"] body {
+  background-color: var(--bg);
+  background-image: radial-gradient(120% 60% at 50% 0%, #2b1d14 0%, transparent 65%);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #app {
+  background-color: var(--panel);
+  box-shadow: 0 0 0 2px var(--ag-brass-low), 0 18px 60px #000c;
+}
+
+html[data-ui-skin="argon"] #appBar {
+  background: linear-gradient(180deg, #2b1d14 0%, #1b120c 100%);
+  border-bottom: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #appBar #phaseLabel {
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] #appBar .backBtn,
+html[data-ui-skin="argon"] #appBar .barBtn,
+html[data-ui-skin="argon"] #appBar .tutBtn {
+  background: linear-gradient(180deg, #38261b 0%, #221710 100%);
+  border: 1px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .panel {
+  background-color: var(--panel);
+  border-color: var(--line);
+}
+
+/* Large Independent Modal / Card 9-Slice Frame
+   Physical 256x256, slice 32 -> 16px CSS border + 8px padding = 24px safe inset.
+   EXCLUDED: #left, #screenBody, #board .cell, .bslot .fighter, .uSlot,
+   .shopCard, .goodCard, #tutBox, and #overlayBox:has(.shopSheet). */
+html[data-ui-skin="argon"] .overlay .box:not(.battleBox):not(:has(.shopSheet)),
+html[data-ui-skin="argon"] .acctCard,
+html[data-ui-skin="argon"] .histCard,
+html[data-ui-skin="argon"] .synHelp,
+html[data-ui-skin="argon"] .readyPop,
+html[data-ui-skin="argon"] #netResumeBar .xBox,
+html[data-ui-skin="argon"] .ag-sample-panel {
+  background-color: var(--ag-walnut-surface);
+  background-image: linear-gradient(180deg, #2b1d15 0%, #1b120d 100%);
+  background-clip: padding-box;
+  border-style: solid;
+  border-width: var(--ag-panel-border);
+  border-color: var(--ag-brass-mid);
+  border-image-source: var(--ag-panel-frame-url);
+  border-image-slice: 32;
+  border-image-width: 16px;
+  border-image-repeat: stretch;
+  padding: var(--ag-panel-pad);
+  border-radius: 14px;
+  box-shadow: var(--ag-shadow-elev);
+  color: var(--txt);
+}
+
+@media (max-width: 360px) {
+  html[data-ui-skin="argon"] #overlayBox:not(.battleBox):not(:has(.shopSheet)) {
+    border-width: 12px;
+    border-image-width: 12px;
+    padding: 8px;
+  }
+}
+
+/* Primary & Standard CTA 9-Slice Button Frame (4-State Spec)
+   Physical 192x96, slice 16 -> 8px CSS border + 6px 12px padding + 20px line-height = 48px min-height. */
+html[data-ui-skin="argon"] #titleScreen > button.primary,
+html[data-ui-skin="argon"] #acctPanel > .acctOpen,
+html[data-ui-skin="argon"] #acctPanel > .ghost,
+html[data-ui-skin="argon"] .lobbyLoading button.primary,
+html[data-ui-skin="argon"] .l01Main > button,
+html[data-ui-skin="argon"] .roomCreate .primary,
+html[data-ui-skin="argon"] .waitScreen .netRoomActions > button,
+html[data-ui-skin="argon"] #app[data-screen="result"] #sidePanel button.big,
+html[data-ui-skin="argon"] .overlay .box:not(.battleBox) #obBtns button,
+html[data-ui-skin="argon"] .bmenu > button,
+html[data-ui-skin="argon"] .bsub .subActs > button,
+html[data-ui-skin="argon"] .ag-sample-btn {
+  min-height: 48px;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: var(--ag-btn-border);
+  border-color: var(--ag-brass-mid);
+  border-image-source: var(--ag-btn-frame-url);
+  border-image-slice: 16;
+  border-image-width: 8px;
+  border-image-repeat: stretch;
+  padding: var(--ag-btn-pad-y) var(--ag-btn-pad-x);
+  line-height: 20px;
+  border-radius: 10px;
+  background-color: var(--ag-walnut-raised);
+  background-image: linear-gradient(180deg, #3c291d 0%, #241810 100%);
+  background-clip: padding-box;
+  color: var(--txt);
+  font-weight: bold;
+  text-shadow: 0 1px 2px #000c;
+  box-shadow: var(--ag-shadow-inset), 0 3px 0 #0e0906;
+  transition: background-color 0.14s ease, box-shadow 0.14s ease, color 0.14s ease;
+}
+
+/* Variant: Primary Royal Gold Fill */
+html[data-ui-skin="argon"] #titleScreen > button.primary,
+html[data-ui-skin="argon"] .lobbyLoading button.primary,
+html[data-ui-skin="argon"] button.l01Multi,
+html[data-ui-skin="argon"] .roomCreate .primary,
+html[data-ui-skin="argon"] .waitScreen .netRoomActions button.primary,
+html[data-ui-skin="argon"] #app[data-screen="result"] #sidePanel .primary,
+html[data-ui-skin="argon"] .overlay .box:not(.battleBox) #obBtns button:first-child,
+html[data-ui-skin="argon"] .ag-sample-btn.primary {
+  background-color: #d89028;
+  background-image: linear-gradient(180deg, var(--gold1) 0%, var(--gold2) 100%);
+  color: var(--goldInk);
+  text-shadow: 0 1px 0 #fff7;
+  box-shadow: inset 0 2px 0 #fff8, 0 3px 0 #4a2a06;
+}
+
+/* Variant: Danger / Destructive Crimson Seal */
+html[data-ui-skin="argon"] .waitScreen .netRoomActions button.danger,
+html[data-ui-skin="argon"] .overlay .box:not(.battleBox) button.danger,
+html[data-ui-skin="argon"] .ag-sample-btn.danger {
+  background-color: var(--ag-crimson-low);
+  background-image: linear-gradient(180deg, #8f242c 0%, #4d1116 100%);
+  color: #ffe8eb;
+  text-shadow: 0 1px 2px #000d;
+  box-shadow: inset 0 1px 0 #ff9aa644, 0 3px 0 #29070a;
+}
+
+/* State 2: Hover & Focus-Visible (2px outside outline) */
+html[data-ui-skin="argon"] button:hover:not(:disabled):not(.locked):not(:where(#tutOverlay *)) {
+  border-color: var(--ag-brass-hi);
+}
+
+html[data-ui-skin="argon"] #titleScreen > button.primary:hover:not(:disabled),
+html[data-ui-skin="argon"] button.l01Multi:hover:not(:disabled),
+html[data-ui-skin="argon"] .roomCreate .primary:hover:not(:disabled),
+html[data-ui-skin="argon"] .waitScreen .netRoomActions button.primary:hover:not(:disabled),
+html[data-ui-skin="argon"] #app[data-screen="result"] #sidePanel .primary:hover:not(:disabled),
+html[data-ui-skin="argon"] .overlay .box:not(.battleBox) #obBtns button:first-child:hover:not(:disabled),
+html[data-ui-skin="argon"] .ag-sample-btn.primary:hover:not(:disabled) {
+  background-image: linear-gradient(180deg, #ffea9f 0%, #eca032 100%);
+}
+
+/* #335 통합 정정: 전역 button 상태 규칙은 승인된 튜토리얼 10단계(#tutOverlay) 안으로 들어가지 않는다 — :where 로 감싸 특이성은 그대로 둔다 */
+html[data-ui-skin="argon"] button:focus-visible:not(:where(#tutOverlay *)),
+html[data-ui-skin="argon"] [role="button"]:focus-visible:not(:where(#tutOverlay *)),
+html[data-ui-skin="argon"] summary:focus-visible:not(:where(#tutOverlay *)),
+html[data-ui-skin="argon"] .ag-sample-btn.is-focus {
+  outline: 2px solid var(--ag-focus-ring);
+  outline-offset: 2px;
+}
+
+/* State 3: Pressed (:active) */
+html[data-ui-skin="argon"] #titleScreen > button.primary:active:not(:disabled),
+html[data-ui-skin="argon"] #acctPanel > .acctOpen:active:not(:disabled),
+html[data-ui-skin="argon"] .l01Main > button:active:not(:disabled),
+html[data-ui-skin="argon"] .waitScreen .netRoomActions > button:active:not(:disabled),
+html[data-ui-skin="argon"] .overlay .box:not(.battleBox) #obBtns button:active:not(:disabled),
+html[data-ui-skin="argon"] .bmenu > button:active:not(:disabled),
+html[data-ui-skin="argon"] .bsub .subActs > button:active:not(:disabled),
+html[data-ui-skin="argon"] .ag-sample-btn.is-pressed {
+  box-shadow: inset 0 3px 6px #000b, 0 1px 0 #0e0906;
+  background-image: linear-gradient(180deg, #1f140d 0%, #302016 100%);
+  color: #e6dac8;
+}
+
+html[data-ui-skin="argon"] #titleScreen > button.primary:active:not(:disabled),
+html[data-ui-skin="argon"] button.l01Multi:active:not(:disabled),
+html[data-ui-skin="argon"] .waitScreen .netRoomActions button.primary:active:not(:disabled),
+html[data-ui-skin="argon"] .overlay .box:not(.battleBox) #obBtns button:first-child:active:not(:disabled),
+html[data-ui-skin="argon"] .ag-sample-btn.primary.is-pressed {
+  background-image: linear-gradient(180deg, #c97f1d 0%, #f0b247 100%);
+  color: var(--goldInk);
+}
+
+/* State 4: Disabled & Locked */
+html[data-ui-skin="argon"] button:disabled:not(:where(#tutOverlay *)),
+html[data-ui-skin="argon"] .ag-sample-btn:disabled {
+  cursor: default;
+  box-shadow: none;
+}
+
+html[data-ui-skin="argon"] button.locked:not(:where(#tutOverlay *)),
+html[data-ui-skin="argon"] .ag-sample-btn.locked {
+  background-color: #211b17;
+  background-image: linear-gradient(180deg, #2a231e 0%, #1a1512 100%);
+  border-color: #6e6256;
+  color: #bfb4a6;
+}
+
+
+/* ==========================================================================
+   [PHASE 1] S03 STRATEGY BOARD, B03 ELEMENTAL BATTLE, FX & OVERLAY LOCKS
+   ========================================================================== */
+
+/* 1.1 S03 7x13 Strategy Board Tiles & Pieces (Geometry 52x52, gap 2, 376x700 frozen) */
+html[data-ui-skin="argon"] #board .cell:not(.forest):not(.fx-boom) {
+  background-color: var(--mid);
+  background-image: var(--ag-tile-base-url);
+  background-size: 52px 52px;
+  background-repeat: no-repeat;
+  border-color: #4b3928;
+}
+
+html[data-ui-skin="argon"] #board .cell.zA:not(.forest):not(.fx-boom) {
+  background-color: var(--zoneA);
+  border-color: #46608c;
+}
+
+html[data-ui-skin="argon"] #board .cell.zB:not(.forest):not(.fx-boom) {
+  background-color: var(--zoneB);
+  border-color: #7d3e4b;
+}
+
+html[data-ui-skin="argon"] #board .cell.forest:not(.fx-boom) {
+  background-color: var(--forest);
+  background-image: var(--ag-bush-url);
+  background-size: 52px 52px;
+  background-repeat: no-repeat;
+  border-color: #2e5d3b;
+}
+
+/* Preserve move/attack/selection outlines & traced bush clue on top of tile art */
+html[data-ui-skin="argon"] #board .cell.hl-move {
+  outline: 2px solid #58a6ff;
+  outline-offset: -2px;
+}
+
+html[data-ui-skin="argon"] #board .cell.hl-attack {
+  outline: 2px solid var(--danger);
+  outline-offset: -2px;
+}
+
+html[data-ui-skin="argon"] #board .cell.hl-sel {
+  outline: 2px solid var(--gold1);
+  outline-offset: -2px;
+}
+
+/* Unrevealed '?' Mystery Piece Stone Base (No baked text; DOM renders '?' and .guess memo) */
+html[data-ui-skin="argon"] #board .pc.hiddenId:not(.inbush) {
+  background-color: #323948;
+  background-image: var(--ag-token-unknown-url);
+  background-size: 48px 48px;
+  background-repeat: no-repeat;
+  border-color: #161a22;
+}
+
+html[data-ui-skin="argon"] #board .pc.hiddenId.inbush::before {
+  background-color: #323948;
+  background-image: var(--ag-token-unknown-url);
+  background-size: 48px 48px;
+}
+
+/* HP Pill & Fallback Nameplate Readability */
+html[data-ui-skin="argon"] .pc .info .hp.pill,
+html[data-ui-skin="argon"] .gf .nm,
+html[data-ui-skin="argon"] .gf .face .sym.ng {
+  background-color: #140d09eb;
+  color: #ffffff;
+}
+
+/* 1.2 S03 Board Top Identity Bar, 4-Stat HUD, Left 5-Element Strip & Right Synergy Rail */
+html[data-ui-skin="argon"] .topBar {
+  background: linear-gradient(180deg, #2d1f16 0%, #1c130d 100%);
+  box-shadow: inset 0 0 0 2px var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .idSeat .repFace.xs,
+html[data-ui-skin="argon"] .mk .repFace.xs {
+  background-color: #1a120d;
+  border-color: #5b8cff;
+}
+
+html[data-ui-skin="argon"] .idSeat.op .repFace.xs,
+html[data-ui-skin="argon"] .idCard.op,
+html[data-ui-skin="argon"] .mk.op .repFace.xs {
+  border-color: #ff5b6e;
+}
+
+html[data-ui-skin="argon"] .tbTools .badge,
+html[data-ui-skin="argon"] .flowAct .badge,
+html[data-ui-skin="argon"] .secHead .badge {
+  background-color: #17100b;
+  border-color: var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #boardInfo .hudStat {
+  background: linear-gradient(180deg, #261a12 0%, #170f0b 100%);
+  border: 1px solid var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #boardInfo .hudStat small {
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] #boardInfo .hudStat.coin {
+  color: var(--gold1);
+}
+
+html[data-ui-skin="argon"] #boardInfo .cycleCol {
+  background: linear-gradient(180deg, #261a12 0%, #18100b 100%);
+  border: 1px solid var(--ag-brass-mid);
+}
+
+html[data-ui-skin="argon"] #boardInfo .cycleCol .up {
+  border-color: var(--ag-brass-hi);
+}
+
+html[data-ui-skin="argon"] .infoBtn {
+  background: linear-gradient(180deg, #3c291d 0%, #241810 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #boardInfo .sideCol .infoBtn:disabled {
+  background: #1a130e;
+  border-color: #4a392b;
+  color: #8f8070;
+}
+
+/* 1.3 S03 Bottom 3x2 Command Deck (#actionDock > #turnBar) — Thin Tactile Borders */
+html[data-ui-skin="argon"] #app[data-screen="board"] #actionDock {
+  background: linear-gradient(180deg, #261a13 0%, #160f0a 100%);
+  border-top: 2px solid var(--ag-brass-mid);
+}
+
+html[data-ui-skin="argon"] #app[data-screen="board"] #turnBar button[data-ico],
+html[data-ui-skin="argon"] #app[data-screen="board"] #turnBar .hudIco {
+  background: linear-gradient(180deg, #3a271b 0%, #22160f 100%);
+  border: 2px solid var(--ag-brass-mid);
+  box-shadow: var(--ag-shadow-inset);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #app[data-screen="board"] #turnBar button.danger[data-ico] {
+  background: linear-gradient(180deg, #6e1d24 0%, #3d0f13 100%);
+  border-color: var(--danger);
+  color: #ffe8eb;
+}
+
+html[data-ui-skin="argon"] #app[data-screen="board"] #turnBar .hudIco.dim {
+  background: #1b130e;
+  border-color: #544334;
+}
+
+html[data-ui-skin="argon"] #app[data-screen="board"] #turnBar .hudIco.dim .lb {
+  color: var(--dim);
+}
+
+/* 1.4 S03 Read-Only Board Bag Drawer (#app[data-screen="board"] #right) */
+html[data-ui-skin="argon"] #app[data-screen="board"] #right {
+  background: linear-gradient(180deg, #2a1d15 0%, #18100b 100%);
+  border: 2px solid var(--ag-brass-mid);
+  border-bottom: 0;
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .ownItem {
+  background: #211610;
+  border-color: var(--ag-brass-low);
+  color: var(--txt);
+}
+
+/* 1.5 B03 Elemental Battle Arena (#overlayBox.battleBox, #bstage.scene, .bslot, #msgBox) */
+html[data-ui-skin="argon"] #overlayBox.battleBox {
+  background: linear-gradient(180deg, #241811 0%, #160f0a 100%);
+  border: 2px solid var(--ag-brass-mid);
+  box-shadow: 0 0 0 2px #0d0805, 0 14px 44px #000d;
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #overlayBox.battleBox .battleTop {
+  background: #241811;
+  box-shadow: 0 -8px 0 #241811;
+}
+
+html[data-ui-skin="argon"] #overlayBox.battleBox .bround .cycBtn,
+html[data-ui-skin="argon"] #overlayBox.battleBox .bround .statBtn {
+  background: linear-gradient(180deg, #362419 0%, #20150e 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #overlayBox.battleBox .bround .cycBtn svg circle {
+  stroke: var(--ag-brass-hi);
+}
+
+html[data-ui-skin="argon"] #bstage.scene {
+  background: linear-gradient(180deg, #1b1726 0%, #24212c 50%, #1e3324 100%);
+  border: 2px solid var(--ag-brass-mid);
+  box-shadow: inset 0 0 24px #000a;
+}
+
+/* Compact Battle Fighter HUD Plates (.bslot .fighter — thin border + grade color .gb) */
+html[data-ui-skin="argon"] .bslot .fighter {
+  background: #1f1610f2;
+  border: 2px solid var(--ag-brass-mid);
+  box-shadow: 2px 3px 0 #00000080;
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .bslot .fighter.gb {
+  border-color: var(--gc);
+}
+
+html[data-ui-skin="argon"] .bStats li {
+  background: #120c08;
+  border: 1px solid #3d2c1e;
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .stChip {
+  background: #140d09;
+}
+
+html[data-ui-skin="argon"] #msgBox {
+  background: linear-gradient(180deg, #2b1e15 0%, #1c130d 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+  box-shadow: inset 0 1px 0 #ffe6a322, 2px 3px 0 #00000066;
+}
+
+html[data-ui-skin="argon"] .bsub {
+  background: linear-gradient(180deg, #281c14 0%, #1a120d 100%);
+  border: 2px solid var(--ag-brass-mid);
+}
+
+html[data-ui-skin="argon"] .bsub .uhSkills li {
+  background: #17100b;
+  border-color: var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .bsub .uhSkills li small,
+html[data-ui-skin="argon"] .bsub .bagTile small {
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .bsub .uhSkills li:has(> button:not(:disabled)) {
+  border: 2px solid var(--gold1);
+  background: linear-gradient(180deg, #332318 0%, #21160f 100%);
+}
+
+html[data-ui-skin="argon"] .bsub .bagTile {
+  background: linear-gradient(180deg, #332318 0%, #20150e 100%);
+  border: 1px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+/* 1.6 Overlays: Synergy/Unit/Item/Cycle Help (.synHelp), Memo Grid, B02/B08, FX Banner */
+html[data-ui-skin="argon"] .synHelp li,
+html[data-ui-skin="argon"] .goodHelp,
+html[data-ui-skin="argon"] .uhFace {
+  background: #160f0b;
+  border-color: var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .uhFace.gb {
+  border-color: var(--gc);
+}
+
+html[data-ui-skin="argon"] .synHelp li.on {
+  border-color: var(--gold1);
+  background: #2b1d13;
+}
+
+html[data-ui-skin="argon"] .synHelp small,
+html[data-ui-skin="argon"] .goodHelp .desc,
+html[data-ui-skin="argon"] .synHelp .uhSkills small,
+html[data-ui-skin="argon"] .uhStats small {
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .uhChip {
+  background: #3d2a1b;
+  border: 1px solid var(--ag-brass-mid);
+}
+
+html[data-ui-skin="argon"] .uhChip.cd {
+  background: #6e1d24;
+  border-color: var(--danger);
+}
+
+html[data-ui-skin="argon"] .cycNode {
+  background: #1b120d;
+  border-color: var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .synHelp.cyc .cycMap line {
+  stroke: var(--ag-brass-hi);
+}
+
+html[data-ui-skin="argon"] .synHelp.cyc .cycMap marker path {
+  fill: var(--ag-brass-hi);
+}
+
+html[data-ui-skin="argon"] .memo-opt {
+  background: linear-gradient(180deg, #322218 0%, #1f150e 100%);
+  border: 1px solid var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .memo-opt[aria-pressed="true"] {
+  background: var(--accentFill);
+  border-color: var(--gold1);
+  color: #ffffff;
+}
+
+
+/* ==========================================================================
+   [PHASE 2] S01 START SHOP, S01r READY WAIT, S02 PLACEMENT, S05 TURN SHOP, S04 RESULT
+   ========================================================================== */
+
+/* 2.1 S01 / S02 Prep Flow Header & 3-Step Stepper (.flowHead, .flowSteps, .go) */
+html[data-ui-skin="argon"] .flowSteps {
+  background: #17100b;
+  border: 1px solid var(--ag-brass-low);
+}
+
+html[data-ui-skin="argon"] .flowSteps li {
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .flowSteps li.past {
+  color: #dfd3c3;
+}
+
+html[data-ui-skin="argon"] .flowSteps li.cur {
+  color: #ffffff;
+}
+
+html[data-ui-skin="argon"] .flowSteps li.cur b {
+  color: var(--gold1);
+}
+
+html[data-ui-skin="argon"] .flowSteps li + li::before {
+  background: var(--ag-brass-low);
+}
+
+html[data-ui-skin="argon"] .flowGear .menu {
+  background: linear-gradient(180deg, #2b1d15 0%, #1a110c 100%);
+  border: 2px solid var(--ag-brass-mid);
+}
+
+html[data-ui-skin="argon"] .flowBar .primary.go {
+  background: linear-gradient(180deg, #cf352c 0%, #8f1d16 100%);
+  border: 2px solid #f29b94;
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 #fff5, 0 2px 0 #3d0a07;
+}
+
+/* 2.2 S01 & S05 Shop Sheet (.shopSheet, .shopCard, .uSlot.uCard, .leadRow, .goodCard) */
+html[data-ui-skin="argon"] #overlayBox:has(.shopSheet) {
+  background: var(--panel);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .shopSheet h3 {
+  color: var(--gold1);
+}
+
+html[data-ui-skin="argon"] .secHead .refresh {
+  background: linear-gradient(180deg, #3c291d 0%, #241810 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .shopSheet .shopCard {
+  background: linear-gradient(180deg, #2d1f16 0%, #1b120d 100%);
+  border-color: var(--gc, var(--ag-brass-mid));
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .shopSheet .shopCard.empty,
+html[data-ui-skin="argon"] .slotGrid .uSlot.empty {
+  background: #17100b99;
+  border-color: var(--ag-brass-low);
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .shopSheet .shopCard .buy,
+html[data-ui-skin="argon"] .shopSheet .goodCard .buy {
+  background: linear-gradient(180deg, var(--gold1) 0%, var(--gold2) 100%);
+  border: 2px solid #7a4a0c;
+  color: var(--goldInk);
+}
+
+/* Common Minion Slot Card (.uSlot.uCard) with Rarity SVG Frame / Grade Border */
+html[data-ui-skin="argon"] .uSlot.uCard {
+  background-color: #211610;
+  background-image: linear-gradient(180deg, #2c1e15 0%, #1a110c 100%);
+  border-color: var(--gc, var(--ag-brass-mid));
+  color: var(--txt);
+}
+
+/* #335 통합 정정: 성급 SVG 프레임을 배경 100%×100% 로 늘리면 안쪽 선이 카드 글자(교체 🪙1 · 이름)를 가로지른다.
+   같은 SVG 를 9-slice 테두리(slice 12 = 둥근 모서리 · 폭 6px)로 그려 프레임을 테두리 띠 안에만 둔다 — 자산·색은 그대로다. */
+html[data-ui-skin="argon"] .uSlot.uCard.g1 { border-image: url("../assets/ui/argon/tokens/rarity-1.svg") 12 / 6px stretch; }
+html[data-ui-skin="argon"] .uSlot.uCard.g2 { border-image: url("../assets/ui/argon/tokens/rarity-2.svg") 12 / 6px stretch; }
+html[data-ui-skin="argon"] .uSlot.uCard.g3 { border-image: url("../assets/ui/argon/tokens/rarity-3.svg") 12 / 6px stretch; }
+html[data-ui-skin="argon"] .uSlot.uCard.g4 { border-image: url("../assets/ui/argon/tokens/rarity-4.svg") 12 / 6px stretch; }
+html[data-ui-skin="argon"] .uSlot.uCard.g5 {
+  border-image: url("../assets/ui/argon/tokens/rarity-5.svg") 12 / 6px stretch;
+  background-image: linear-gradient(180deg, #36181a 0%, #1c0d0e 100%);
+}
+
+html[data-ui-skin="argon"] .uCard .acts button {
+  background: linear-gradient(180deg, #3c291d 0%, #241810 100%);
+  border: 1px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .uCard .acts button.danger {
+  background: linear-gradient(180deg, #6e1d24 0%, #3d0f13 100%);
+  border-color: var(--danger);
+  color: #ffe8eb;
+}
+
+/* Leader Element Selector Rows (.leadRow) */
+html[data-ui-skin="argon"] .shopSheet .leadRow .leadFace {
+  background: #17100b;
+  outline-color: var(--ag-brass-mid);
+}
+
+html[data-ui-skin="argon"] .shopSheet .leadRow button {
+  background: #241810;
+  border-color: var(--ag-brass-low);
+}
+
+html[data-ui-skin="argon"] .shopSheet .leadRow button[aria-pressed="true"] {
+  background: #3d2a1b;
+  border-color: var(--gold1);
+  box-shadow: 0 0 10px #ffd66b88;
+}
+
+/* 8 Shop Goods (.goodCard) */
+html[data-ui-skin="argon"] .shopSheet .goodCard {
+  background: linear-gradient(180deg, #2b1d15 0%, #1a110c 100%);
+  border-color: var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .shopSheet .goodCard .own {
+  background: var(--accentFill);
+  color: #ffffff;
+}
+
+/* Synergy Chips (.synChip) */
+html[data-ui-skin="argon"] .synChip {
+  background: #1a120d;
+  border-color: var(--ag-brass-low);
+  color: var(--dim);
+}
+
+/* 2.3 S02 14-Piece Placement Tray (#app[data-flow] .trayItem) */
+html[data-ui-skin="argon"] #app[data-flow] .trayItem {
+  background: #241810;
+  border-color: var(--gc, var(--ag-brass-low));
+}
+
+html[data-ui-skin="argon"] .trayActs button {
+  background: linear-gradient(180deg, #3c291d 0%, #241810 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+/* 2.4 S04 Match Result Summary Cards (.resultSeat) */
+html[data-ui-skin="argon"] #app[data-screen="result"] #right > .panel {
+  background: #1c130de6;
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .resultSeat {
+  background: linear-gradient(180deg, #2d1f16 0%, #1b120d 100%);
+  border: 2px solid var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .resultSeat.win {
+  border-color: var(--gold1);
+  box-shadow: 0 0 14px #ffd66b44;
+}
+
+html[data-ui-skin="argon"] .resultSeat.lose {
+  border-color: #8f2d38;
+}
+
+html[data-ui-skin="argon"] .resultSeat .uSlot:not(.gf) {
+  background: #17100b;
+  border-color: var(--ag-brass-low);
+}
+
+
+/* ==========================================================================
+   [PHASE 3] T01 TITLE, A01/A02 AUTH & PRELOAD, L01~L03 LOBBY/ROOMS & EMOTES
+   ========================================================================== */
+
+/* 3.1 T01 Title Screen & Optional Crest Ornament (No baked text, zero layout overflow) */
+html[data-ui-skin="argon"] #titleScreen .logo::before {
+  content: "";
+  display: block;
+  width: 96px;
+  height: 48px;
+  margin: 0 auto 4px;
+  background: var(--ag-crest-url) center / contain no-repeat;
+}
+
+html[data-ui-skin="argon"] #titleScreen .titleArt {
+  background: #18110ce6;
+  border: 2px solid var(--ag-brass-mid);
+  box-shadow: 0 0 18px var(--blueGlow), var(--ag-shadow-elev);
+}
+
+html[data-ui-skin="argon"] #titleScreen .titleArt i {
+  background: #2b2119;
+}
+
+html[data-ui-skin="argon"] #titleScreen .titleArt i.f {
+  background: #234730;
+}
+
+html[data-ui-skin="argon"] #titleScreen .titleArt i.a {
+  background: #2b3c66;
+}
+
+html[data-ui-skin="argon"] #titleScreen .titleArt i.b {
+  background: #6b2d38;
+}
+
+html[data-ui-skin="argon"] #titleScreen .titleArt i.q {
+  background: #363d4d;
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #acctPanel .acctUser {
+  background: #1c130de0;
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+/* 3.2 A01 Account 3-Tab Ledger (.acctCard, .acctTabs, .acctField) */
+html[data-ui-skin="argon"] #acctPanel .acctX,
+html[data-ui-skin="argon"] .acctX {
+  background: linear-gradient(180deg, #38261b 0%, #21160f 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #acctPanel .acctTabs button.link {
+  color: #e6cfa8;
+}
+
+html[data-ui-skin="argon"] #acctPanel .acctTabs button.link u {
+  color: var(--gold1);
+}
+
+html[data-ui-skin="argon"] #acctPanel .acctField small,
+html[data-ui-skin="argon"] #acctPanel .acctNote {
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] #acctPanel input[type="text"],
+html[data-ui-skin="argon"] #acctPanel input[type="password"],
+html[data-ui-skin="argon"] #acctPanel input[type="email"],
+html[data-ui-skin="argon"] .roomsScreen .roomSearch input,
+html[data-ui-skin="argon"] .roomsScreen .roomCreate input {
+  background: #140d09;
+  border: 1px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+/* 3.3 A02 Asset Preload Screen (.lobbyLoading, .loadBar, .loadList) */
+html[data-ui-skin="argon"] .lobbyLoading .logo {
+  position: relative;
+  padding-top: 46px;
+  color: var(--gold1);
+}
+
+html[data-ui-skin="argon"] .lobbyLoading .logo::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96px;
+  height: 48px;
+  background: var(--ag-crest-url) center / contain no-repeat;
+  pointer-events: none;
+}
+
+html[data-ui-skin="argon"] .lobbyLoading h2 {
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #app[data-screen="lobby"] #sidePanel .lobbyLoading button.big {
+  flex: 0 0 auto;
+  width: min(86%, 300px);
+}
+
+html[data-ui-skin="argon"] .loadBar {
+  background: #140d09;
+  border: 2px solid var(--ag-brass-mid);
+}
+
+html[data-ui-skin="argon"] .loadBar > i {
+  background: linear-gradient(90deg, #d89028 0%, #ffe082 100%);
+}
+
+html[data-ui-skin="argon"] .loadBar .runner {
+  background: radial-gradient(circle, #ffd66b 0%, #c85a18 68%, transparent 72%);
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ff9d2e88;
+}
+
+html[data-ui-skin="argon"] .loadBar .runner img {
+  opacity: 0;
+}
+
+html[data-ui-skin="argon"] .loadList li {
+  background: #1c130de0;
+  border-color: var(--ag-brass-low);
+  color: var(--txt);
+}
+
+/* 3.4 L01 Main Lobby (.l01Me, .l01Cur, .l01Tiles, .l01Stage, .l01Main, .l01Nav, .repGrid) */
+html[data-ui-skin="argon"] .l01Me,
+html[data-ui-skin="argon"] .l01Cur .badge,
+html[data-ui-skin="argon"] .l01Rep .repName {
+  background: #1e150fe0;
+  border-color: var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .icoBtn,
+html[data-ui-skin="argon"] .l01Tiles .tile,
+html[data-ui-skin="argon"] .l01Nav .nav {
+  background: linear-gradient(180deg, #38251a 0%, #20150e 100%);
+  border: 2px solid var(--ag-brass-mid);
+  box-shadow: var(--ag-shadow-inset), 0 2px 6px #0008;
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .l01Nav .nav.cur {
+  background: linear-gradient(180deg, var(--gold1) 0%, var(--gold2) 100%);
+  border-color: #7a4a0c;
+  color: var(--goldInk);
+}
+
+html[data-ui-skin="argon"] .repPick {
+  background: linear-gradient(180deg, #2e1f16 0%, #1c130d 100%);
+  border: 1px solid var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .repPick[aria-pressed="true"] {
+  background: #3d2a1b;
+  border: 2px solid var(--gold1);
+}
+
+html[data-ui-skin="argon"] .lobbyHist .histList li {
+  border-top-color: var(--ag-brass-low);
+}
+
+/* 3.5 L02 Public Room List (.roomsScreen, .roomSearch, .roomRow) */
+html[data-ui-skin="argon"] .roomsScreen .roomsHead,
+html[data-ui-skin="argon"] .roomSearch .row {
+  background: #1e150fe0;
+  border: 2px solid var(--ag-brass-mid);
+}
+
+html[data-ui-skin="argon"] .roomSearch .row button {
+  background: linear-gradient(180deg, #3c291d 0%, #241810 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .roomCols {
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .roomsScreen .roomRow {
+  background: linear-gradient(180deg, #2f2017 0%, #1c130d 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .roomsScreen .roomRow:not(.st-OPEN) {
+  background: repeating-linear-gradient(135deg, #1b130e 0 8px, #251a13 8px 16px);
+  border-color: #5c4938;
+}
+
+html[data-ui-skin="argon"] .roomsScreen .roomMeta .badge {
+  background: #140d09;
+  border-color: var(--ag-brass-low);
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .roomsScreen .roomRow:not(.st-OPEN) > button {
+  background: #18110c;
+  border: 2px dashed #6e5a47;
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .roomsScreen .roomEmpty,
+html[data-ui-skin="argon"] .chatLock {
+  background: #1c130de0;
+  border-color: var(--ag-brass-low);
+  color: var(--dim);
+}
+
+/* 3.6 L03 1v1 Waiting Room (.waitScreen, .waitSeat, .waitState) */
+html[data-ui-skin="argon"] .waitScreen .waitSeat {
+  background: linear-gradient(180deg, #2f2017 0%, #1c130d 100%);
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .waitScreen .waitSeat.me {
+  border-color: var(--gold1);
+  box-shadow: 0 0 12px #ffd66b44;
+}
+
+html[data-ui-skin="argon"] .waitScreen .waitSeat.empty {
+  border-style: dashed;
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .waitScreen .waitSeat.off {
+  background: #17110d;
+  border-color: #4f4033;
+}
+
+html[data-ui-skin="argon"] .waitScreen .waitTag {
+  background: #140d09;
+  border-color: var(--ag-brass-low);
+  color: var(--dim);
+}
+
+html[data-ui-skin="argon"] .waitScreen .waitSeat.ready .waitTag {
+  border-color: var(--gold1);
+  color: var(--gold1);
+}
+
+html[data-ui-skin="argon"] .waitState {
+  background: #1e150fe0;
+  border: 2px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+/* 3.7 Shared Emotes, Toasts & Reduced Motion */
+html[data-ui-skin="argon"] #emoteBtn {
+  background: linear-gradient(180deg, #3c291d 0%, #241810 100%);
+  border: 2px solid var(--gold1);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] #emotePop {
+  background: linear-gradient(180deg, #2b1d15 0%, #1a110c 100%);
+  border: 2px solid var(--ag-brass-mid);
+  box-shadow: var(--ag-shadow-elev);
+}
+
+html[data-ui-skin="argon"] #emoteSet button {
+  background: linear-gradient(180deg, #362419 0%, #21160f 100%);
+  border: 1px solid var(--ag-brass-low);
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .emoteBub {
+  background: #160f0bf2;
+  color: var(--txt);
+}
+
+html[data-ui-skin="argon"] .toast {
+  background: #1c130df5;
+  border: 1px solid var(--ag-brass-mid);
+  color: var(--txt);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui-skin="argon"] button:not(:where(#tutOverlay *)),
+  html[data-ui-skin="argon"] .ag-sample-btn {
+    transition: none;
+  }
+}

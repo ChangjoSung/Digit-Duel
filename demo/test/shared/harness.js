@@ -443,6 +443,8 @@ function load(htmlPath,opts){
     unitHelpPiece:typeof unitHelpPiece==="function"?unitHelpPiece:undefined,infoSlotOpen:typeof infoSlotOpen==="function"?infoSlotOpen:undefined,unitHelpBag:typeof unitHelpBag==="function"?unitHelpBag:undefined,unitHelpSlot:typeof unitHelpSlot==="function"?unitHelpSlot:undefined,
     lobbyRepHtml:typeof lobbyRepHtml==="function"?lobbyRepHtml:undefined,synRailHtml:typeof synRailHtml==="function"?synRailHtml:undefined,synContrib:typeof synContrib==="function"?synContrib:undefined}:undefined,
   PREPCLK:typeof PREPCLK!=="undefined"?PREPCLK:undefined, synExtraView:typeof synExtraView==="function"?synExtraView:undefined,
+  /* #335 전설 4번 기술 명중 시트 — 기준판 로드 호환: 부재 시 undefined */
+  skillSheet:typeof skillSheetFx==="function"?{skillSheetFx,skillSheetPreload,SKILL_SHEET,SKILL_SHEET_OK,SKILL_SHEET_MS,netFxApplyMsgFx,netFxEnqueue,NET_PAUSE_MSG}:undefined,
   synKingdomEffect:typeof synKingdomEffect==="function"?synKingdomEffect:undefined, netStubPiece:typeof netStubPiece==="function"?netStubPiece:undefined,
   ARCH_KO:typeof ARCH_KO!=="undefined"?ARCH_KO:undefined,
   html:${JSON.stringify(html)}};`;

@@ -410,7 +410,8 @@ function validateRelayMessage(raw, isBinary, limitsOverride) {
 const STATIC_BUDGET = {
   // #238 자산 증가 후 실제 코퍼스(test-static-load.js pageLoadCorpus)가 최소 선언값이다:
   // index 1 + CSS/JS 11 + 하수인 33×2 + 리더 2×2 = 82. 부수 요청은 concurrentPageLoads 배수 버스트가 담는다.
-  pageLoadRequests: 82,
+  // #335 Argon 스킨 CSS 3 + CSS 가 부르는 Argon 이미지 11 + 전설 FX 시트 프리로드 3 = 99.
+  pageLoadRequests: 99,
   concurrentPageLoads: 6,  // 같은 IP 에서 겹칠 수 있는 로드 수
 };
 

@@ -362,7 +362,7 @@ function netPaused(){ try{ return !!NET.publicMode&&(NET.resuming||!!(NET.pause&
    브라우저가 안쪽 폼 요소를 전부 비활성으로 만든다(키보드·스크린리더 포함). 상점·출전 준비가 같은 모양을 쓴다.
    복구 입력(방 나가기·재접속 포기)은 이 밖에 둔다 — 잠그는 것은 게임 입력이지 복구가 아니다.
    송신 차단은 여전히 netSendAction·netRoomReady 가 맡는다(모습만으로 막지 않는다). */
-function pauseLockOpen(subject){ return netPaused()?`<fieldset class="pauseLock" disabled aria-disabled="true"><small role="status">⏸ 연결 대기 — 경기·시간이 멈춰 ${subject} 잠겨 있습니다.</small>`:""; }
+function pauseLockOpen(subject){ return netPaused()?`<fieldset class="pauseLock" disabled aria-disabled="true"><small role="status">⏸ 연결 대기 — ${subject} 잠겨 있습니다.</small>`:""; } // #335 X01: 시작 상점·배치(SETUP)의 준비 마감은 단절 중에도 흐르므로 '시간이 멈췄다'고 쓰지 않는다
 function pauseLockClose(){ return netPaused()?`</fieldset>`:""; }
 function fxSetLockClass(on){ try{ const b=document.body; if(b&&b.classList){ if(on) b.classList.add("fx-lock"); else b.classList.remove("fx-lock"); } }catch(e){} }
 /* #126 (v0.4.7): 결과 배너의 섬광·파편 레이어. 각도·거리·지연이 전부 **인덱스 계산**이라 rand() 도 Math.random 도 쓰지 않는다
@@ -431,7 +431,7 @@ function fxIdle(){ // 큐·메시지 재생이 모두 끝났을 때 한 번 — 
   try{ if(S&&S.phase==="play") renderTurnBar(); }catch(e){}
   try{ autoEndCheck(); }catch(e){}
 }
-function fxReleaseAll(){ FX.gen++; FX.q.length=0; FX.cur=null; FX.idle.length=0; FX.hold=[]; FX.auto=null; FX.log.length=0; MSGQ.length=0; MSGPLAYING=false; MSGAFTER=null; fxHide(); }
+function fxReleaseAll(){ FX.gen++; FX.q.length=0; FX.cur=null; FX.idle.length=0; FX.hold=[]; FX.auto=null; FX.log.length=0; MSGQ.length=0; MSGPLAYING=false; MSGAFTER=null; fxHide(); skillSheetClear(); }
 /* 뷰어가 지금 턴(또는 전투 행동)의 행동자인가 — 거울 문구(4.7) 기준. 핫시트·sim 은 항상 행동자 시점 */
 /* ===== #245 표시 자원(아트 이미지·프리로드·캔버스 글리프 측정) — 표시 계층 소유 =====
    분리 전 data.js 에 있던 것을 그대로 옮겼다. 요청 집합·타이밍·폴백 문구·복구 예산은 글자 단위로 같고,
@@ -695,6 +695,7 @@ function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·
           try{ write(); }catch(e){} },stage); }
       else write(); }
     if(fx.shake){ const t=$("tok-"+fx.shake); if(t){t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake");} }
+    if(fx.skill) skillSheetFx(fx.skill,fx.shake);
     if(fx.flash){ const st=$("bstage"); if(st){st.style.boxShadow=`inset 0 0 70px var(--${fx.flash})`;
       setTimeout(()=>{try{st.style.boxShadow="";}catch(e){}},380);} }
     if(fx.sig){ const st=$("bstage"); if(st&&st.classList){st.classList.remove("sigblink"); void st.offsetWidth; st.classList.add("sigblink");
@@ -706,6 +707,26 @@ function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·
     if(fx.cast==="A"||fx.cast==="D") castFx(fx.cast);
   }catch(e){}
 }
+/* #335 전설 4번 기술 명중 시트 — 닫힌 3값 fx.skill 만 읽고 표적은 같은 행의 fx.shake 다. 오프라인 applyFx·온라인 netFxApplyMsgFx 가 함께 쓴다.
+   damageFx 그룹 t0 부터 96×8 프레임을 80ms 씩 640ms 1회(F8 은 투명) 그리고 스스로 지운다 — 대기·입력 잠금을 더하지 않는다.
+   고정 3장 프리로드가 끝난 시트만 그린다: 실패·미로드·움직임 줄이기면 아무것도 그리지 않고 흔들림·피해 숫자는 그대로다. */
+const SKILL_SHEET={"L-DRAGON-4":"dragon","L-WITCH-4":"witch","L-REAPER-4":"reaper"}, SKILL_SHEET_OK=new Set(), SKILL_SHEET_MS=640;
+function skillSheetPreload(){ // 정체와 무관하게 항상 같은 3건 — 하수인 아트 프리로드(artPreload) 집합과는 따로 센다
+  for(const k of Object.values(SKILL_SHEET)){ try{ const im=document.createElement("img"); im.onload=()=>{SKILL_SHEET_OK.add(k);}; im.src=`assets/fx/${k}_96x8.png`; }catch(e){} }
+}
+function skillSheetFx(skill,side){
+  const k=typeof skill==="string"&&Object.prototype.hasOwnProperty.call(SKILL_SHEET,skill)?SKILL_SHEET[skill]:null;
+  if(!k||(side!=="A"&&side!=="D")||!SKILL_SHEET_OK.has(k)) return;
+  try{ if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; }catch(e){}
+  try{
+    const t=$("tok-"+side); if(!t||!t.appendChild) return;
+    const old=t.querySelector?t.querySelector(".skfx"):null; if(old&&old.parentNode) old.parentNode.removeChild(old); // 같은 토큰의 앞 시트는 새 시트가 대신한다
+    const d=document.createElement("i"); d.classList.add("skfx","skfx-"+k); d.setAttribute("aria-hidden","true"); t.appendChild(d);
+    setTimeout(()=>{ try{ if(d.parentNode) d.parentNode.removeChild(d); }catch(e){} },SKILL_SHEET_MS); // 자기 노드만 지운다 — 모달이 다시 그려졌으면 이미 떨어져 있다
+  }catch(e){}
+}
+function skillSheetClear(){ try{ for(const n of document.querySelectorAll(".skfx")) if(n.parentNode) n.parentNode.removeChild(n); }catch(e){} } // 세대 취소(새 게임·공개 방 재설정·재접속 요약) — 같은 전투 DOM 이 남아도 재생 중인 시트를 걷는다
+skillSheetPreload();
 /* #238 기술 연출 — 일반 하수인 30종 = 아키타입 모양 6 × 속성 색 5 공용 프리셋, 전설 3종만 전용 연출(GDD-23 8.2).
    이미 공개된 그 전투의 전투원만 읽는다(새 정보 없음). 1회 1.2초 이하 · 움직임 줄이기는 CSS 가 같은 색 테두리로만 남기고 문구는 msgBox 가 같다. */
 const CAST_CLS=["cast","lg-dragon","lg-witch","lg-reaper"].concat(Object.keys(ARCH_KO).map(k=>"ar-"+k));
