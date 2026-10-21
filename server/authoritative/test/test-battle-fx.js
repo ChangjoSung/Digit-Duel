@@ -669,4 +669,71 @@ function legendHit(seed, skillId, prep) {
   for (const rs of rows) for (const e of rs) assertEventShape(e, label);
 });
 
+// ===== 20) #335 v2 하수인 4번 전용기 33종 — 닫힌 ID 집합(=실제 SKILLS '-4' 33개)·표적 측 지표(shake|hp.side|st.side)·
+// 실제 Core 1사용 1성공행·실패/무효/회피 0행·두 좌석 동일. 분류는 PD-Decisions 5 계약(피해18=일반15+전설3 / 자기8 / 상대 비피해7). =====
+{
+  const { SIG_FX_RE } = require('../engine');
+  const E0 = H.createEngine();
+  const sig33 = Object.keys(E0.SKILLS).filter((k) => /-4$/.test(k) && /^(?:M|L)-/.test(k)).sort();
+  ok(sig33.length === 33 && sig33.every((k) => SIG_FX_RE.test(k)), 'T20 실제 SKILLS 하수인·전설 4번 33개 전부 허용: ' + sig33.length);
+  ok(Object.keys(E0.SKILLS).filter((k) => SIG_FX_RE.test(k)).length === 33, 'T20 허용 정규식이 SKILLS 의 다른 ID(1~3번·리더)를 받지 않음');
+  const SELF8 = ['M-W3-4', 'M-G3-4', 'M-L3-4', 'M-W6-4', 'M-G6-4', 'M-E3-4', 'M-E5-4', 'M-E6-4'];
+  const OPP7 = ['M-W4-4', 'M-G4-4', 'M-F5-4', 'M-W5-4', 'M-G5-4', 'M-L5-4', 'M-E4-4'];
+  const DMG = sig33.filter((k) => !SELF8.includes(k) && !OPP7.includes(k));
+  ok(DMG.length === 18 && DMG.filter((k) => k[0] === 'L').length === 3, 'T20 분류 15+8+7(+전설3 피해): ' + DMG.join(','));
+  // 표적 측 지표 — 클라이언트와 같은 우선순위(shake → hp.side → st.side)
+  const tgt = (fx) => fx.shake || (fx.hp && fx.hp.side) || (fx.st && fx.st.side);
+  const room0 = H.startedRoom(3370);
+  const R = (fx) => room0._serializeFxMsgFx(fx);
+  ok(R({ hp: { side: 'A', val: 9, max: 9 }, skill: 'M-G6-4' }).skill === 'M-G6-4' && R({ st: { side: 'D', text: '' }, skill: 'M-L5-4' }).skill === 'M-L5-4',
+    'T20 room 층: shake 없는 자기 회복(hp)·상대 상태(st) 행도 표적 측이 있으면 통과');
+  for (const bad of ['M-F1-3', 'M-F7-4', 'M-X1-4', 'M-F1-4\n', 'L-KING-4', 'K-F1-4', 'SK-F1', 'assets/fx/dragon_96x8.png', 'M-F1-44', ' M-F1-4']) {
+    ok(!('skill' in (R({ shake: 'D', skill: bad }) || {})), 'T20 room 층: 실제 33개 밖 ID 거부 ' + JSON.stringify(bad));
+  }
+  for (const fx of [{ skill: 'M-W3-4', float: { side: 'A', sign: 'pos', amount: 1 } }, { skill: 'M-W3-4', hp: { side: 'X' } }, { skill: 'M-W3-4', st: { side: 'B' } }, { skill: 'M-W3-4', cast: 'A', flash: 'buff', sig: true }]) {
+    ok(!('skill' in (R(fx) || {})), 'T20 room 층: 표적 측 지표(shake|hp|st) 없는 행은 skill 거부 ' + JSON.stringify(fx));
+  }
+  // 실제 Core — 같은 규칙으로 엔진 캡처(normalizeMsgFx)·좌석 뷰 두 층을 통과한다. 상태 부여 확률은 100%(statusPct 1)로 고정해 성공 경로만 본다.
+  const prepFor = (id) => (E, f, o, B) => {
+    f.statusPct = 1;
+    if (id === 'M-E1-4') { B.round = 2; f.burrowRound = 1; }
+    if (id === 'M-E5-4') { B.round = 4; f.hp = Math.max(1, f.hp - 10); }
+    if (id === 'L-REAPER-4') { f.hp = 1; B.round = 4; }
+  };
+  const tagged = (rows) => rows.map((rs) => rs.filter((e) => e.fx && 'skill' in e.fx));
+  sig33.forEach((id, i) => {
+    const { r, rows, target } = legendHit(3400 + i, id, prepFor(id));
+    const want = SELF8.includes(id) ? (target === 'D' ? 'A' : 'D') : target, label = 'T20 Core ' + id;
+    ok(r.ok, label + ' 행동 수락: ' + JSON.stringify(r.reason));
+    const t = tagged(rows);
+    ok(t.every((x) => x.length === 1 && x[0].fx.skill === id && tgt(x[0].fx) === want),
+      label + ' 두 좌석 모두 성공행 1개에만 skill·표적 측=' + want + ': ' + JSON.stringify(t.map((x) => x.map((e) => e.fx))));
+    ok(JSON.stringify(t[0]) === JSON.stringify(t[1]), label + ' 두 좌석 skill 행 동일(온라인 2클라이언트 같은 계약)');
+    if (!DMG.includes(id) && t[0][0]) {
+      ok(!t[0][0].fx.shake && !(t[0][0].fx.float && t[0][0].fx.float.sign === 'neg') && !t[0][0].fx.ko, label + ' 비피해 행에 가짜 shake·피해 수치·KO 없음');
+    }
+    for (const rs of rows) for (const e of rs) assertEventShape(e, label);
+  });
+  // 실패·무효·회피·1~3번 사용은 0행 (토큰이 다음 행이나 다른 사용으로 넘어가지 않는다)
+  const none = [
+    ['회피(확정 회피)', 'M-F1-4', (E, f, o) => { o.dodgeForce = true; }],
+    ['감전 면역 부여 실패', 'M-L5-4', (E, f, o) => { f.statusPct = 1; o.immuneShockR = 2; }],
+    ['환영 무도로 무효된 자기 전용기', 'M-W3-4', (E, f) => { f.nullifyNext = true; }],
+    ['환영 무도로 무효된 상대 전용기', 'M-G5-4', (E, f) => { f.nullifyNext = true; }],
+    ['1~3번 슬롯 기술', 'M-F1-3', null],
+  ];
+  none.forEach(([what, id, prep], i) => {
+    const { r, rows } = legendHit(3450 + i, id, prep);
+    ok(r.ok && tagged(rows).every((x) => x.length === 0), 'T20 Core ' + what + ' ' + id + ' → skill 행 0: ' + JSON.stringify(tagged(rows).map((x) => x.map((e) => e.fx))));
+  });
+  // 사용 전 시전자 측 피해(번식 포자 지속 피해)는 자기 전용기의 성공행이 아니다 — 같은 측이어도 run 밖 행에는 붙지 않는다
+  {
+    const { r, rows, target } = legendHit(3460, 'M-G3-4', (E, f) => { f.breedR = 2; f.breedBy = target0(E); });
+    const t = tagged(rows), self = target === 'D' ? 'A' : 'D';
+    ok(r.ok && t.every((x) => x.length === 1 && tgt(x[0].fx) === self && !x[0].fx.shake && !x[0].fx.float),
+      'T20 Core 번식 포자 사용 전 자기 피해 행 제외, 천년목 성공행 1개만: ' + JSON.stringify(t.map((x) => x.map((e) => [e.txt, e.fx]))));
+  }
+}
+function target0(E) { return E.actorOfPhase() === 'A' ? 'D' : 'A'; } // 번식 포자 시전자 = 상대 측
+
 process.exit(done());

@@ -14,6 +14,9 @@ const COIN_CH="🪙", COIN_HTML=`<span class="cnw"><i class="gi" style="--i:12" 
 function coinize(html){ return String(html).split(COIN_CH).join(COIN_HTML); }
 /* 실제 브라우저 요소만(회귀 스텁은 글자 그대로) — textContent 는 바뀌지 않는다 */
 function coinizeEl(el){ try{ if(typeof HTMLElement!=="undefined"&&el instanceof HTMLElement&&el.textContent.indexOf(COIN_CH)>=0) el.innerHTML=coinize(escAttr(el.textContent)); }catch(e){} }
+/* #335 Argon v2 글자 이모지 표시 훅 — 이모지 글자를 그대로 두고(textContent·접근성 이름·회귀 문구 불변) .emi 와 같은 뜻의 아이콘 칸 번호(--i)만 얹는다.
+   스킨 OFF 는 game.css .gi.emo 그대로 = 원래 이모지, Argon 은 css/argon.css 가 글자를 숨기고 그 칸을 그린다 */
+function emoGi(ch,k,hidden){ return `<i class="gi emo emi" style="--i:${GI[k]}"${hidden?' aria-hidden="true"':""}>${ch}</i>`; }
 function gi(k,cls){ return GI[k]===undefined?"":`<i class="gi${cls?" "+cls:""}" style="--i:${GI[k]}" aria-hidden="true"></i>`; }
 /* #245 Saturn REVISE(M2): 공개 기록에 줄을 더하는 일은 권위 상태 변경이라 Core(core.js addLog)가 소유한다.
    표시 계층에 남는 것은 renderLog() 뿐이고, Core 는 UI_PORT.logged() 로 그것을 부른다. */
@@ -695,7 +698,7 @@ function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·
           try{ write(); }catch(e){} },stage); }
       else write(); }
     if(fx.shake){ const t=$("tok-"+fx.shake); if(t){t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake");} }
-    if(fx.skill) skillSheetFx(fx.skill,fx.shake);
+    if(fx.skill) skillSheetFx(fx.skill,skillFxSide(fx));
     if(fx.flash){ const st=$("bstage"); if(st){st.style.boxShadow=`inset 0 0 70px var(--${fx.flash})`;
       setTimeout(()=>{try{st.style.boxShadow="";}catch(e){}},380);} }
     if(fx.sig){ const st=$("bstage"); if(st&&st.classList){st.classList.remove("sigblink"); void st.offsetWidth; st.classList.add("sigblink");
@@ -707,13 +710,21 @@ function applyFx(fx){ // CSS 이펙트(흔들림·속성 플래시·피해 팝·
     if(fx.cast==="A"||fx.cast==="D") castFx(fx.cast);
   }catch(e){}
 }
-/* #335 전설 4번 기술 명중 시트 — 닫힌 3값 fx.skill 만 읽고 표적은 같은 행의 fx.shake 다. 오프라인 applyFx·온라인 netFxApplyMsgFx 가 함께 쓴다.
-   damageFx 그룹 t0 부터 96×8 프레임을 80ms 씩 640ms 1회(F8 은 투명) 그리고 스스로 지운다 — 대기·입력 잠금을 더하지 않는다.
-   고정 3장 프리로드가 끝난 시트만 그린다: 실패·미로드·움직임 줄이기면 아무것도 그리지 않고 흔들림·피해 숫자는 그대로다. */
-const SKILL_SHEET={"L-DRAGON-4":"dragon","L-WITCH-4":"witch","L-REAPER-4":"reaper"}, SKILL_SHEET_OK=new Set(), SKILL_SHEET_MS=640;
-function skillSheetPreload(){ // 정체와 무관하게 항상 같은 3건 — 하수인 아트 프리로드(artPreload) 집합과는 따로 센다
-  for(const k of Object.values(SKILL_SHEET)){ try{ const im=document.createElement("img"); im.onload=()=>{SKILL_SHEET_OK.add(k);}; im.src=`assets/fx/${k}_96x8.png`; }catch(e){} }
+/* #335 4번 대표기 시트 — 와이어 fx.skill 은 실제 기술 ID(닫힌 33개)이고, 시트 파일 이름(slug)은 이 클라이언트 표에서만 고른다.
+   일반 30종 = 그 종의 전투 도트 폴더와 같은 <속성>_<아키타입>, 전설 3종 = dragon·witch·reaper. 표적은 같은 행의 fx.shake || hp.side || st.side (skillFxSide).
+   오프라인 applyFx·온라인 netFxApplyMsgFx 가 함께 쓴다. 행이 재생되는 그룹 t0 부터 96×8 프레임을 80ms 씩 640ms 1회(F8 은 투명) 그리고 스스로 지운다 — 대기·입력 잠금을 더하지 않는다.
+   로드가 끝난 시트만 그린다: 실패·미로드·움직임 줄이기면 아무것도 그리지 않고 흔들림·피해 숫자·문구는 그대로다. */
+const SKILL_SHEET=Object.assign(Object.fromEntries(V2_SPECIES_DEF.map(d=>[d[0]+"-4",d[2]+"_"+d[3]])),{"L-DRAGON-4":"dragon","L-WITCH-4":"witch","L-REAPER-4":"reaper"}),
+  SKILL_SHEET_OK=new Set(), SKILL_SHEET_REQ=new Set(), SKILL_SHEET_MS=640, SKILL_SHEET_FIXED=["dragon","witch","reaper"];
+function skillSheetLoad(k){ // 1회만 요청 · 실패면 그 시트는 그리지 않는다(재시도 없음)
+  if(SKILL_SHEET_REQ.has(k)) return; SKILL_SHEET_REQ.add(k);
+  try{ const im=document.createElement("img"); im.onload=()=>{SKILL_SHEET_OK.add(k);}; im.src=`assets/fx/${k}_96x8.png`; }catch(e){}
 }
+function skillSheetPreload(){ for(const k of SKILL_SHEET_FIXED) skillSheetLoad(k); } // 정체와 무관하게 항상 같은 3건 — 하수인 아트 프리로드(artPreload) 집합과는 따로 센다
+/* 일반 30종 시트는 첫 화면에서 받지 않는다 — 전투 무대가 이미 그린 공개 전투 도트 폴더(artDirOfFighter)와 같은 이름일 때만, 그 전투에서 최대 2장(A·D).
+   요청 집합은 화면에 보이는 외형 종에서만 나온다(미사용 기술·등급·숨은 말과 무관) */
+function skillSheetWant(dir){ if(typeof dir==="string"&&SKILL_SHEET_FIXED.indexOf(dir)<0&&Object.values(SKILL_SHEET).indexOf(dir)>=0) skillSheetLoad(dir); }
+function skillFxSide(fx){ return fx.shake||(fx.hp&&fx.hp.side)||(fx.st&&fx.st.side); } // core sigFxSide 와 같은 우선순위
 function skillSheetFx(skill,side){
   const k=typeof skill==="string"&&Object.prototype.hasOwnProperty.call(SKILL_SHEET,skill)?SKILL_SHEET[skill]:null;
   if(!k||(side!=="A"&&side!=="D")||!SKILL_SHEET_OK.has(k)) return;
@@ -896,7 +907,7 @@ function renderTurnBar(){
     sh.innerHTML=`${gi("bag")}<span class="tx"><span class="lb">상점</span><span class="sub">${open}</span></span>`; tb.appendChild(sh);
     const bg=document.createElement("button"); bg.type="button"; bg.className="hudIco"; bg.setAttribute("aria-label",`가방 보기 (${S.eco.bag[me].length}/${ECO.bagMax})`);
     bg.setAttribute("aria-haspopup","dialog");
-    bg.innerHTML=`<i class="gi emo" aria-hidden="true">🎒</i><span class="tx"><span class="lb">가방 ${S.eco.bag[me].length}/${ECO.bagMax}</span></span>`; bg.onclick=()=>uiDrawer("side"); tb.appendChild(bg); // 정보 보기 — 규칙 입력이 아니다(잠금 무관)
+    bg.innerHTML=`${emoGi("🎒","bag",true)}<span class="tx"><span class="lb">가방 ${S.eco.bag[me].length}/${ECO.bagMax}</span></span>`; bg.onclick=()=>uiDrawer("side"); tb.appendChild(bg); // 정보 보기 — 규칙 입력이 아니다(잠금 무관)
   }
   const forced=S.forcedTargets&&S.forcedTargets.length>0;
   /* #114 CJ 선택 A: 평소 [주 행동 생략]·[턴 종료] 버튼은 없다 — 할 수 있는 행동이 없으면 자동으로 넘어간다(autoEndCheck).
@@ -1710,8 +1721,9 @@ function battleModal(board){
     const pos=sid===mySide?"tok-me":"tok-op", label=pf.element&&!lb?ELEM_KO[pf.element]:TYPE_KO[piece.type];
     // #89/#91 지금 실제로 싸우는 전투원 기준: 본체면 그 말의 종, 대리 출전(포획·예비 하수인)이면 cap 에 기록된 종. 왕·동료 본체 그림은 없으므로 null → 이모지
     const dir=artDirOfFighter(pf,piece);
-    if(artBattleOk(dir))   // #201: 전투 파일이 영구 결손으로 판정되면 다시 내보내지 않는다 (요청 왕복·보드 아이콘 억제 방지)
-      return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid,B)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`;
+    if(artBattleOk(dir)){   // #201: 전투 파일이 영구 결손으로 판정되면 다시 내보내지 않는다 (요청 왕복·보드 아이콘 억제 방지)
+      skillSheetWant(dir); // #335 이 공개 도트와 같은 종의 4번 대표기 시트만 미리 받는다 (입력·재생 대기 없음)
+      return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid,B)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`; }
     /* #124: 왕·동료 **본체** 출전이면 새 아트를 그 정체 역할로 그린다. 대리 출전(포획 하수인)은 위 분기라 여기 오지 않는다.
        자산이 없거나 실패하면 아래 현행 이모지 토큰으로 그대로 되돌아간다 (artSpriteFail 이 같은 자리를 바꿔 끼운다) */
     const ld=leaderBattleDir(pf,piece,allyRole(piece));
@@ -1823,8 +1835,8 @@ function battleModal(board){
     <div id="bstage" class="scene"${platVar?` style="${platVar}"`:""}><div class="bslot slot-op">${panel(topSide)}</div>${token(topSide)}<div class="bslot slot-me">${panel(mySide)}</div>${token(mySide)}</div>
     <div id="msgBox">${busy?"":inBonus?`⚡ ${fighterName(side,B)} 추가 공격 — ${mineView?"기본기 · 2차 · 3차 중 선택 (피해 60%)":"선택을 기다리는 중"}`:(noAtkShow?NO_ATTACK_MSG:`${fighterName(side,B)}의 행동을 선택하세요.`)}</div>
     <div class="bmenu${menu?" hidden":""}" id="bmenu"><b style="grid-column:1/-1;font-size:12px;color:var(--dim)">${pname(ownerP)}:</b>
-      <button ${dis?"disabled":""} onclick="window.__menu('fight')">⚔️ 싸우기</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('bag')">🎒 가방</button>
-      <button ${dis||inBonus?"disabled":""} onclick="window.__menu('ball')">🔴 포획</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('flee')">🏃 도망가기</button>
+      <button ${dis?"disabled":""} onclick="window.__menu('fight')">${emoGi("⚔️","battle")} 싸우기</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('bag')">${emoGi("🎒","bag")} 가방</button>
+      <button ${dis||inBonus?"disabled":""} onclick="window.__menu('ball')">${emoGi("🔴","ball")} 포획</button><button ${dis||inBonus?"disabled":""} onclick="window.__menu('flee')">${emoGi("🏃","escape")} 도망가기</button>
       ${noAtkShow?`<button class="primary" style="grid-column:1/-1" ${dis?"disabled":""} title="이번 전투 행동을 넘깁니다 (주 행동·턴당 전투 횟수·약화 횟수는 소모하지 않습니다)" onclick="window.__pass()">턴 종료</button>`:""}</div>
     ${sub("fight",`<div class="subHead"><b>⚔️ 싸우기</b>${subBack}</div>${noAtkShow?`<div class="status">${NO_ATTACK_MSG}</div>`:""}${cmdBtns}`)}
     ${sub("bag",`<div class="subHead"><b>🎒 가방</b>${subBack}</div><div class="bagGrid" aria-label="아이템">${itemBtns}</div><div class="bagGrid" aria-label="패키지">${pkgBtns}</div>`)}

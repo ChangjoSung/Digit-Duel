@@ -290,7 +290,7 @@ function load(htmlPath,opts){
   synCount:typeof synCount==="function"?synCount:undefined, synKingdomStage:typeof synKingdomStage==="function"?synKingdomStage:undefined,
   synArchBonus:typeof synArchBonus==="function"?synArchBonus:undefined,
   synElemKinds:typeof synElemKinds==="function"?synElemKinds:undefined, synDragonEl:typeof synDragonEl==="function"?synDragonEl:undefined,
-  synView:typeof synView==="function"?synView:undefined, LEGEND_ROSTER:typeof LEGEND_ROSTER!=="undefined"?LEGEND_ROSTER:undefined, V2_FX:typeof V2_FX!=="undefined"?V2_FX:undefined,
+  synView:typeof synView==="function"?synView:undefined, LEGEND_ROSTER:typeof LEGEND_ROSTER!=="undefined"?LEGEND_ROSTER:undefined, V2_FX:typeof V2_FX!=="undefined"?V2_FX:undefined, V2_AI_HINT:typeof V2_AI_HINT!=="undefined"?V2_AI_HINT:undefined,
   speciesSkills:typeof speciesSkills==="function"?speciesSkills:undefined, applySpecies:typeof applySpecies==="function"?applySpecies:undefined, applyLegend:typeof applyLegend==="function"?applyLegend:undefined, leaderSkillIds:typeof leaderSkillIds==="function"?leaderSkillIds:undefined, syncLeaderSkills:typeof syncLeaderSkills==="function"?syncLeaderSkills:undefined, syncOwnerLeaders:typeof syncOwnerLeaders==="function"?syncOwnerLeaders:undefined, leaderDefaultElement:typeof leaderDefaultElement==="function"?leaderDefaultElement:undefined, assignLeaderElements:typeof assignLeaderElements==="function"?assignLeaderElements:undefined, execV2:typeof execV2==="function"?execV2:undefined, v2Apply:typeof v2Apply==="function"?v2Apply:undefined, v2Heal:typeof v2Heal==="function"?v2Heal:undefined, v2CdUpTarget:typeof v2CdUpTarget==="function"?v2CdUpTarget:undefined, v2ReqOk:typeof v2ReqOk==="function"?v2ReqOk:undefined, v2RoundStart:typeof v2RoundStart==="function"?v2RoundStart:undefined, effSpd:typeof effSpd==="function"?effSpd:undefined, resetV2:typeof resetV2==="function"?resetV2:undefined, aiV2SupportScore:typeof aiV2SupportScore==="function"?aiV2SupportScore:undefined, aiPickRoster:typeof aiPickRoster==="function"?aiPickRoster:undefined,
   /* #241 스킬 정리 — 회피율 감소 · 해일 예고 · 거울 수면 · AI 예정 선턴 (기준판 로드 호환: 부재 시 undefined) */
   effEvade:typeof effEvade==="function"?effEvade:undefined, v2TideCheck:typeof v2TideCheck==="function"?v2TideCheck:undefined, v2PeekStatus:typeof v2PeekStatus==="function"?v2PeekStatus:undefined,
@@ -444,7 +444,7 @@ function load(htmlPath,opts){
     lobbyRepHtml:typeof lobbyRepHtml==="function"?lobbyRepHtml:undefined,synRailHtml:typeof synRailHtml==="function"?synRailHtml:undefined,synContrib:typeof synContrib==="function"?synContrib:undefined}:undefined,
   PREPCLK:typeof PREPCLK!=="undefined"?PREPCLK:undefined, synExtraView:typeof synExtraView==="function"?synExtraView:undefined,
   /* #335 전설 4번 기술 명중 시트 — 기준판 로드 호환: 부재 시 undefined */
-  skillSheet:typeof skillSheetFx==="function"?{skillSheetFx,skillSheetPreload,SKILL_SHEET,SKILL_SHEET_OK,SKILL_SHEET_MS,netFxApplyMsgFx,netFxEnqueue,NET_PAUSE_MSG}:undefined,
+  skillSheet:typeof skillSheetFx==="function"?{skillSheetFx,skillSheetPreload,SKILL_SHEET,SKILL_SHEET_OK,SKILL_SHEET_MS,skillSheetWant,skillSheetLoad,skillFxSide,SKILL_SHEET_REQ,emoGi,netFxApplyMsgFx,netFxEnqueue,NET_PAUSE_MSG}:undefined,
   synKingdomEffect:typeof synKingdomEffect==="function"?synKingdomEffect:undefined, netStubPiece:typeof netStubPiece==="function"?netStubPiece:undefined,
   ARCH_KO:typeof ARCH_KO!=="undefined"?ARCH_KO:undefined,
   html:${JSON.stringify(html)}};`;

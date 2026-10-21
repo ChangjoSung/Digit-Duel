@@ -898,7 +898,7 @@ function netFxApplyMsgFx(bid,fx,gen){
       if(stage>0) setTimeout(()=>{ if(NET.fxGen!==gen||NET_HPSTAGE[side]!==seq||$("hpfill-"+side)!==bar) return; try{ write(); }catch(e){} },stage);
       else write(); }
     if(fx.shake){ const tk=$("tok-"+fx.shake); if(tk){ tk.classList.remove("shake"); void tk.offsetWidth; tk.classList.add("shake"); } }
-    if(fx.skill) skillSheetFx(fx.skill,fx.shake); // #335 오프라인 applyFx 와 같은 닫힌 3값·표적 계약 (ui.js)
+    if(fx.skill) skillSheetFx(fx.skill,skillFxSide(fx)); // #335 오프라인 applyFx 와 같은 닫힌 33값·표적 계약 (ui.js)
     if(fx.flash){ const st=$("bstage"); if(st){ st.style.boxShadow=`inset 0 0 70px var(--${fx.flash})`;
       setTimeout(()=>{ if(NET.fxGen!==gen) return; try{ if($("bstage")===st) st.style.boxShadow=""; }catch(e){} },380); } }
     if(fx.sig){ const st=$("bstage"); if(st&&st.classList){ st.classList.remove("sigblink"); void st.offsetWidth; st.classList.add("sigblink");

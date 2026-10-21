@@ -277,13 +277,14 @@ function decodeFloat(f) {
 
 // bmsg의 fx 인자를 알려진 원시 필드만 남기고 재구성한다 — 객체를 통째로 전달하지 않는다
 // (room.js _serializeOwn/_serializeBattle 등 기존 화이트리스트 관례와 동일). piece·DOM·함수 참조는 여기 없다.
-// #335 전설 4번 기술 적중 연출 — 닫힌 3값만, 같은 행의 표적 shake(A|D)가 있을 때만 싣는다(room.js 재검증 공유)
-const LEGEND_FX_SKILLS = new Set(['L-DRAGON-4', 'L-WITCH-4', 'L-REAPER-4']);
+// #335 v2 하수인 4번 전용기 연출 — 일반30+전설3 의 실제 스킬 ID 33개만(닫힌 정규식), 같은 행에 표적 측 지표
+// (shake | hp.side | st.side)가 있을 때만 싣는다. 자기 회복·버프 행은 shake 없이 hp/st 로 표적을 가진다(room.js 재검증 공유).
+const SIG_FX_RE = /^(?:M-[FWGLE][1-6]|L-(?:DRAGON|WITCH|REAPER))-4$/;
+const sigFxSkill = (fx, out) => ((out.shake || out.hp || out.st) && typeof fx.skill === 'string' && SIG_FX_RE.test(fx.skill) ? fx.skill : undefined);
 function normalizeMsgFx(fx) {
   if (!fx || typeof fx !== 'object') return null;
   const out = {};
   if (fx.shake === 'A' || fx.shake === 'D') out.shake = fx.shake;
-  if (out.shake && LEGEND_FX_SKILLS.has(fx.skill)) out.skill = fx.skill;
   if (fx.sig === true) out.sig = true;
   if (typeof fx.flash === 'string') out.flash = fx.flash;
   if (fx.ko === 'A' || fx.ko === 'D') out.ko = fx.ko;
@@ -299,6 +300,8 @@ function normalizeMsgFx(fx) {
       shield: Number(fx.st.shield) || 0, max: Number(fx.st.max) || 0,
     };
   }
+  const skill = sigFxSkill(fx, out);
+  if (skill) out.skill = skill;
   return Object.keys(out).length ? out : null;
 }
 
@@ -540,4 +543,4 @@ function withEngine(T, fn) {
   return result;
 }
 
-module.exports = { createEngine, withEngine, createScheduler, EngineFault, LEGEND_FX_SKILLS };
+module.exports = { createEngine, withEngine, createScheduler, EngineFault, SIG_FX_RE, sigFxSkill };

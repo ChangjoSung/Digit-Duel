@@ -2505,7 +2505,14 @@ function legacySkillAct(side){
    전투 결과 + 경기 결과를 직렬로 두 번 재생하지 않는다. 결과 상수(resultBanner 2500ms)는 그대로다.
    전투 판정의 동률은 종전대로 **방어자 승**이며 전투 무승부 화면을 만들지 않는다 — 무승부 문구는 경기 무승부에만 쓴다. */
 let ENDING_BATTLE=false; // finishBattle·finishByCapture 가 종료 배너를 직접 고르는 구간 (gameOver 의 자동 재생을 잠시 막는다)
-let FX_SKILL_HIT=null; // #335 {side,id} — 전설 드래곤·마녀 4번 기술 실행(execSlot→execV2) 동안만 서고, 그 사용의 첫 적중 행 fx.skill 로 소비된다 (표시 전용)
+/* #335 4번 대표기 시트 토큰 {id,side,dmg} — 와이어 값은 실제 기술 ID 그대로(닫힌 33개). execV2 의 run(ctx) 동안만 서고(finally 해제),
+   bmsg 한 곳에서 선언 표적과 같은 측의 첫 성공 행 1개에 fx.skill 로 소비된다. 피해기는 진짜 적중 행(fx.shake)만, 비피해기는 st·hp 행이다.
+   회피는 resolveHit 이 행보다 먼저 지운다. 사신의 낫은 execV2 를 타지 않고 처형 행에 직접 붙는다. 규칙·난수·시계 무관 (표시 전용) */
+const SIG_FX_RE=/^(?:M-[FWGLE][1-6]|L-(?:DRAGON|WITCH|REAPER))-4$/;
+let FX_SKILL_HIT=null;
+function sigFxSide(fx){ return fx.shake||(fx.hp&&fx.hp.side)||(fx.st&&fx.st.side)||null; } // 행의 표적 측 — 클라이언트 skillFxSide 와 같은 우선순위
+function sigFxArm(side,sk){ const oSide=side==="A"?"D":"A"; // 선언 표적: 피해기 = 상대 · 비피해기는 V2_AI_HINT.debuff(상대 7종)면 상대, 아니면 자기(8종)
+  return sk&&SIG_FX_RE.test(sk.id)&&!sk.reaper?{id:sk.id,side:sk.pct||V2_AI_HINT.debuff.includes(sk.fx)?oSide:side,dmg:!!sk.pct}:null; }
 function matchBannerOf(){
   const w=S.winner, typeKo=S.metrics.winType?WINTYPE_KO[S.metrics.winType]:"";
   if(w===null) return {title:"무승부",sub:"경기 무승부 — 시뮬레이션 턴 상한 도달",cls:"match draw"};
@@ -2680,7 +2687,6 @@ function resolveHit(side,f,opp,oSide,base,flatBonus,atkEl,dragonMult,extraDmgUp,
   addRec(side,counted);
   const hitFx={shake:oSide,flash:atkEl||null,float:{side:oSide,html:`<span class="neg">-${dmg}</span>${absorbed?`<span class="abs"> (흡수 ${absorbed})</span>`:""}`},
      hp:{side:oSide,val:opp.hp,max:opp.maxHp},st:stFx(oSide,opp)};
-  if(FX_SKILL_HIT&&FX_SKILL_HIT.side===side&&!hopts.penalty){ hitFx.skill=FX_SKILL_HIT.id; FX_SKILL_HIT=null; } // #335 전설 전용기 명중 행 표시 (피해 0·흡수만이어도 적중이면 붙인다)
   bmsg(`${dmg} 피해!${crit?" (치명타)":""}${absorbed?` (흡수 ${absorbed})`:""} · 유효 ${counted}`,hitFx,{key:"damageFx"});
   return {evaded:false,dmg,crit,absorbed,breaks,actual,counted,bySrc}; // breaks(3.2 "깨짐"): 이 타격으로 남은 양이 0이 된 방어막 층 수
 }
@@ -2788,9 +2794,7 @@ function execSlot(side,slot,opts){
     nextPhase(); return;
   }
   if(sk&&sk.v2){ // #234 (GDD-23 6장): 하수인 30종·전설·왕·동료 스킬 실행기
-    FX_SKILL_HIT=(sk.id==="L-DRAGON-4"||sk.id==="L-WITCH-4")?{side,id:sk.id}:null; // #335 이 사용의 첫 피해 행에만 fx.skill — 규칙·난수 무관
-    try{ execV2(side,slot,sk); } finally{ FX_SKILL_HIT=null; }
-    return; }
+    execV2(side,slot,sk); return; } // #335 4번 대표기 토큰은 execV2 의 run(ctx) 구간이 세우고 지운다
   if(sk){ f.cds[slot]=sk.cd;
     if(f.revealedSkills&&!f.revealedSkills.includes(slot)) f.revealedSkills.push(slot); } // 기술 공개: 사용 시 이름 공개
   const gate=(force,prob)=>{ // 상태 부여 — 기존 D10 경로 재사용 (효과기: 화상·약화 statusProb 70% · 감전 shockProb 50% (#96) · 잔류장 100% — force는 rand 미소비)
@@ -2908,7 +2912,9 @@ function stIcons(f){
 /* 전투 메시지 시퀀스 — 로직은 동기 완결, 표시 계층만 타이머 재생 (헤드리스: 큐만 적재 후 즉시 소진) */
 /* #106 5.4: opts.key 가 있는 메시지는 새 표시 그룹을 연다(그룹 시간 = BAL.fx[key] — skillFx·damageFx·itemFx·captureFx·fleeFx·judgeBanner·roundEndFx).
    key 없는 메시지는 직전 그룹에 줄로 덧붙는다(쿨 감소·상태 부여·약화 해제 등). 재생 시작 시점에 그룹이 없으면 msgStep(0.6초) 단독 그룹. opts.big: 큰 글씨 */
-function bmsg(txt,fx,opts,to){const B=to||S.battle; if(!B) return; B.blog.push(txt); B.msgQ.push({txt,fx:fx||null,key:opts&&opts.key||null,big:!!(opts&&opts.big)});}
+function bmsg(txt,fx,opts,to){const B=to||S.battle; if(!B) return; B.blog.push(txt);
+  if(FX_SKILL_HIT&&fx&&!fx.ko&&sigFxSide(fx)===FX_SKILL_HIT.side&&(!FX_SKILL_HIT.dmg||fx.shake===FX_SKILL_HIT.side)){ fx.skill=FX_SKILL_HIT.id; FX_SKILL_HIT=null; } // #335 4번 대표기 — 이 사용의 첫 성공 표적 행 1개 (표시 전용)
+  B.msgQ.push({txt,fx:fx||null,key:opts&&opts.key||null,big:!!(opts&&opts.big)});}
 function addRec(side,amount){
   const B=S.battle;
   if(side==="A") B.recA=Math.min(B.fd.maxHp,B.recA+amount);

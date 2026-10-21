@@ -51,10 +51,17 @@ function pageLoadCorpus() {
   const corpus = ['/'].concat([...html.matchAll(/\b(?:src|href)="((?:js|css)\/[^"]+)"/g)].map((m) => '/' + m[1]));
   for (const d of dirs) for (const f of ['icon.png', 'battle.png']) corpus.push(`/assets/minions/${d}/${f}`);
   for (const d of ['companion', 'king']) for (const f of ['icon64.png', 'battle256.png']) corpus.push(`/assets/leaders/${d}/${f}`);
-  // #335 Argon 스킨이 CSS 로 부르는 이미지(variables.css 6 · argon.css 5)와 ui.js 의 전설 FX 시트 프리로드 3 — 고정 목록
-  for (const f of ['board/bush@2x.png', 'board/tile-base@2x.png', 'buttons/button-frame@2x.png', 'ornaments/crest@2x.png',
-    'panels/panel-frame@2x.png', 'tokens/token-unknown@2x.png', 'tokens/rarity-1.svg', 'tokens/rarity-2.svg',
-    'tokens/rarity-3.svg', 'tokens/rarity-4.svg', 'tokens/rarity-5.svg']) corpus.push(`/assets/ui/argon/${f}`);
+  // #335 Argon 스킨이 CSS 로 부르는 이미지 — index.html 이 거는 CSS 의 url("../assets/ui/argon/…") 전부(v2: 24).
+  // 일반 30종 4번 시트(fx.css .skfx-*)는 첫 화면에 받지 않으므로(공개 전투원 기준 최대 2장) 넣지 않는다.
+  const argon = new Set();
+  for (const m of html.matchAll(/<link[^>]+href="(css\/[^"]+\.css)"/g)) {
+    for (const u of fs.readFileSync(path.join(DEMO, m[1]), 'utf8').matchAll(/url\(\s*["']?\.\.\/(assets\/ui\/argon\/[^"')]+)["']?\s*\)/g)) argon.add('/' + u[1]);
+  }
+  for (const f of [...argon].sort()) {
+    ok(fs.existsSync(path.join(DEMO, f)), `CSS 가 부르는 Argon 자산이 실제로 있다: ${f}`);
+    corpus.push(f);
+  }
+  // ui.js 의 전설 FX 시트 고정 프리로드 3 (SKILL_SHEET_FIXED)
   for (const k of ['dragon', 'witch', 'reaper']) corpus.push(`/assets/fx/${k}_96x8.png`);
   return corpus;
 }
