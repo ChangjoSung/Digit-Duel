@@ -43,11 +43,13 @@ const ID33=(()=>{ const T=H.load(htmlPath); return T.ROSTER.filter(r=>/^M-/.test
 const SELF8=["M-W3-4","M-W6-4","M-L3-4","M-E3-4","M-E5-4","M-E6-4","M-G3-4","M-G6-4"], OPP7=["M-F5-4","M-W4-4","M-W5-4","M-L5-4","M-E4-4","M-G4-4","M-G5-4"];
 const SIG_RE=/^(?:M-[FWGLE][1-6]|L-(?:DRAGON|WITCH|REAPER))-4$/;
 /* 4번 기술 1회 — 회피 0 · 사용 조건(굴 파기 다음 라운드 · 4라운드 · 사신 봉인 해제) 충족 */
-function sigPrep(a,id){ if(id==="M-E1-4") a.fa.burrowRound=a.B.round-1; if(id==="M-E5-4"||id==="L-REAPER-4") a.B.round=4; if(id==="L-REAPER-4"){ a.fa.hp=1; a.B.phase=0; } }
+/* 지하 매복 = 굴 파기(1R) 다음 라운드 (v2ReqOk: burrowRound>0) */
+function sigPrep(a,id){ if(id==="M-E1-4"){ a.B.round=2; a.fa.burrowRound=1; } if(id==="M-E5-4"||id==="L-REAPER-4") a.B.round=4; if(id==="L-REAPER-4"){ a.fa.hp=1; a.B.phase=0; } }
 function useSig(seed,id,prep){
   const T=load(seed), sid=id.slice(0,-2), a=arena(T,/^L-/.test(sid)?sid.slice(2).toLowerCase():sid);
   sigPrep(a,id); if(prep) prep(a,T);
-  T.execSlot("A",slotOf(a.fa,id)); return Object.assign(a,{T,t:tagged(a.seen)});
+  const usable=T.slotUsable(a.fa,slotOf(a.fa,id),"A"); // UI 가 실제로 누를 수 있는 상태인지 — execSlot 직접 호출로 사용 조건을 건너뛰지 않는다
+  T.execSlot("A",slotOf(a.fa,id)); return Object.assign(a,{T,usable,t:tagged(a.seen)});
 }
 { /* A1~A3 드래곤 숨결 일반 명중 */
   const T=load(3351), {seen,fa}=arena(T,"dragon");
@@ -130,6 +132,7 @@ function useSig(seed,id,prep){
 for(const id of ID33){ // 성공 사용 1회 = 표시 행 정확히 1개 · 표적 측 = 선언 · 자기 효과에 가짜 흔들림 없음
   const a=useSig(3400+ID33.indexOf(id),id), dmg=!SELF8.includes(id)&&!OPP7.includes(id), want=SELF8.includes(id)?"A":"D", r=a.t[0];
   const side=r&&(r.fx.shake||(r.fx.hp&&r.fx.hp.side)||(r.fx.st&&r.fx.st.side));
+  ok(a.usable===true,`A25a ${id} 사용 조건 충족 (slotUsable — 화면에서 누를 수 있는 상태)`);
   ok(a.t.length===1&&r.fx.skill===id&&side===want&&!r.fx.ko&&(dmg?r.fx.shake==="D"&&r.key==="damageFx":!r.fx.shake),`A25 ${id} 성공 행 1개 · 표적 ${want}${dmg?" · 진짜 적중 행(shake·damageFx)":" · 흔들림 없음"} [${a.t.map(m=>m.txt).join(" | ")}]`);
   ok(!a.seen.some(m=>m.key==="skillFx"&&m.fx&&m.fx.skill),`A26 ${id} 시전 줄에는 없다`);
 }
