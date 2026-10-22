@@ -7,7 +7,7 @@ const H = require('./helpers');
 const { both, byId, act, STATES } = H;
 const { ok, done } = H.makeCounter('battle-fx');
 
-const MSG_FX_KEYS = new Set(['shake', 'sig', 'flash', 'ko', 'float', 'hp', 'st', 'cast']);
+const MSG_FX_KEYS = new Set(['shake', 'sig', 'flash', 'ko', 'float', 'hp', 'st', 'cast', 'skill']);
 const MSG_EVENT_KEYS = new Set(['seq', 'src', 'battleId', 'round', 'actSeq', 'key', 'big', 'txt', 'fx']);
 const STAGE_EVENT_KEYS = new Set(['seq', 'src', 'battleId', 'turn', 'key', 'kind', 'title', 'sub', 'cls', 'cells', 'scene']);
 const SCENE_SIDE_KEYS = new Set(['owner', 'type', 'element', 'bodyFight', 'rosterId', 'artRosterId']);
@@ -586,5 +586,154 @@ function resolveSyncModals(room, seatHint, maxSteps) {
     }
   });
 }
+
+// ===== 19) #335 전설 4번 기술 적중 연출 fx.skill — 닫힌 3값 + 같은 행 표적 shake(A|D)일 때만, 두 층(engine
+// normalizeMsgFx · room _serializeFxMsgFx) 모두 재검증. 그 밖의 값·표적 없음/잘못된 표적은 skill 만 지운다. =====
+const LEGEND4 = ['L-DRAGON-4', 'L-WITCH-4', 'L-REAPER-4'];
+{
+  const room = H.startedRoom(3350);
+  const cur = startBattle(room);
+  const good = LEGEND4.map((skill, i) => ['sk-ok-' + i, { shake: i % 2 ? 'A' : 'D', skill }]);
+  // 방어막이 전부 흡수한 0 HP 피해 적중 — 피해 수치 0 이어도 표적만 맞으면 skill 은 남는다
+  good.push(['sk-zero', { shake: 'D', skill: 'L-WITCH-4', float: { side: 'D', html: '<span class="neg">-0</span>' },
+    hp: { side: 'D', val: 30, max: 30 }, st: { side: 'D', text: '🛡', shield: 5, max: 30 } }]);
+  const bad = [['sk-old', { shake: 'D', skill: 'L-DRAGON-3' }], ['sk-case', { shake: 'D', skill: 'l-dragon-4' }],
+    ['sk-pad', { shake: 'D', skill: 'L-DRAGON-4 ' }], ['sk-num', { shake: 'D', skill: 4 }],
+    ['sk-obj', { shake: 'D', skill: { id: 'L-DRAGON-4' } }], ['sk-arr', { shake: 'D', skill: ['L-REAPER-4'] }],
+    ['sk-boxed', { shake: 'D', skill: new String('L-WITCH-4') }], // eslint-disable-line no-new-wrappers
+    ['sk-noshake', { skill: 'L-DRAGON-4', sig: true }], ['sk-badshake', { shake: 'X', skill: 'L-REAPER-4', sig: true }]];
+  const leakRow = ['sk-leak', { shake: 'A', skill: 'L-DRAGON-4', piece: { id: 900000001, owner: 1 }, secret: 'x', legend: 'dragon' }];
+  both(room, (E) => { for (const [txt, fx] of good.concat(bad, [leakRow])) E.S.battle.msgQ.push({ txt, fx, key: 'damageFx', big: false }); });
+  const views = [0, 1].map((seat) => room.toSeatView(seat));
+  const ev = (seat, txt) => views[seat].fx.events.find((e) => e.src === 'msg' && e.txt === txt);
+  const cap = (seat, txt) => room.engines[seat].__fx.items.find((e) => e.txt === txt);
+  for (const [txt, fx] of good) {
+    for (const seat of [0, 1]) {
+      const c = cap(seat, txt), e = ev(seat, txt);
+      ok(c && c.fx.skill === fx.skill && c.fx.shake === fx.shake && e && e.fx.skill === fx.skill && e.fx.shake === fx.shake,
+        'T19 ' + txt + ' 유효 skill+shake 는 엔진 캡처·좌석 ' + seat + ' 뷰 두 층 통과: ' + JSON.stringify(e && e.fx));
+      assertEventShape(e, 'T19 ' + txt);
+    }
+    ok(JSON.stringify(ev(0, txt).fx) === JSON.stringify(ev(1, txt).fx), 'T19 ' + txt + ' 두 좌석 fx 동일');
+  }
+  const zero = ev(cur, 'sk-zero').fx;
+  ok(zero.float.amount === 0 && zero.st.shield === 5 && zero.skill === 'L-WITCH-4', 'T19 흡수 0 피해 적중의 float·st·skill 함께 유지: ' + JSON.stringify(zero));
+  for (const [txt] of bad) {
+    for (const seat of [0, 1]) {
+      const c = cap(seat, txt), e = ev(seat, txt);
+      ok(!!c && !!e && (!c.fx || !('skill' in c.fx)) && (!e.fx || !('skill' in e.fx)),
+        'T19 ' + txt + ' 잘못된 skill/표적은 엔진 캡처·좌석 ' + seat + ' 뷰 모두 skill 생략: ' + JSON.stringify(e && e.fx));
+      if (e.fx) assertEventShape(e, 'T19 ' + txt);
+    }
+  }
+  const leak = ev(cur, 'sk-leak').fx;
+  ok(JSON.stringify(Object.keys(leak).sort()) === '["shake","skill"]' && JSON.stringify(cap(cur, 'sk-leak').fx) === JSON.stringify(leak),
+    'T19 유효 skill 행에 섞인 비공개·여분 필드(piece·secret·legend)는 두 층 모두 버림: ' + JSON.stringify(leak));
+  ok(ev(cur, 'sk-noshake').fx.sig === true && ev(cur, 'sk-badshake').fx.sig === true, 'T19 skill 만 지우고 다른 유효 fx 는 유지');
+  // room 층 단독 — 엔진 정규화를 거치지 않은 원시 객체도 room 이 스스로 거른다(이중 화이트리스트)
+  const R = (fx) => room._serializeFxMsgFx(fx);
+  ok(R({ shake: 'A', skill: 'L-REAPER-4' }).skill === 'L-REAPER-4', 'T19 room 층: 유효 값 통과');
+  ok(R({ skill: 'L-REAPER-4' }) === null && !('skill' in R({ shake: 'Z', skill: 'L-REAPER-4', sig: true })) && !('skill' in R({ shake: 'A', skill: 'L-REAPER-9' }))
+    && !('skill' in R({ shake: 'A', skill: { toString: () => 'L-REAPER-4' } })), 'T19 room 층: 표적 없음·잘못된 표적·미지 ID·객체 skill 거부');
+}
+// 실제 Core 적중 — 전용기 자신의 적중 행 하나에만 skill, 표적 shake 와 같은 행, 두 좌석 동일(방어막 전부 흡수 포함)
+function legendHit(seed, skillId, prep) {
+  const room = H.startedRoom(seed);
+  startBattle(room);
+  const T = room.engine;
+  const key = T.actorOfPhase() === 'A' ? 'fa' : 'fd', oKey = key === 'fa' ? 'fd' : 'fa';
+  const seat = T.netActor();
+  both(room, (E) => {
+    const B = E.S.battle, f = B[key], o = B[oKey];
+    f.skills = f.skills.slice(); f.cds = f.skills.map(() => 0); f.skills[1] = skillId;
+    o.dodge = 0; o.evadeBuff = 0; o.dodgeForce = false;
+    if (prep) prep(E, f, o, B);
+  });
+  const before = [0, 1].map((s) => room.toSeatView(s).fx.lastSeq), oHp = T.S.battle[oKey].hp;
+  const r = act(room, seat, { t: 'act', k: 1 });
+  const rows = [0, 1].map((s) => room.toSeatView(s).fx.events.filter((e) => e.seq > before[s] && e.src === 'msg'));
+  return { r, rows, oHp, target: key === 'fa' ? 'D' : 'A' };
+}
+[['L-DRAGON-4', null], ['L-WITCH-4', null], ['L-DRAGON-4', 'shield'],
+  ['L-REAPER-4', (E, f, o, B) => { f.hp = 1; B.round = 4; }]].forEach(([id, prep], i) => {
+  const shield = prep === 'shield';
+  const p = shield ? (E, f, o) => { o.shieldLayers = [{ src: 'test', amt: 99999 }]; o.shield = 99999; } : prep;
+  const label = 'T19 Core ' + id + (shield ? ' 방어막 전부 흡수' : '');
+  const { r, rows, oHp, target } = legendHit(3360 + i, id, p);
+  ok(r.ok, label + ' 행동 수락: ' + JSON.stringify(r.reason));
+  const tagged = rows.map((rs) => rs.filter((e) => e.fx && 'skill' in e.fx));
+  ok(tagged.every((t) => t.length === 1 && t[0].fx.skill === id && t[0].fx.shake === target),
+    label + ' 두 좌석 모두 적중 행 1개에만 skill·표적 shake=' + target + ': ' + JSON.stringify(tagged.map((t) => t.map((e) => e.fx))));
+  ok(JSON.stringify(tagged[0].map((e) => e.fx)) === JSON.stringify(tagged[1].map((e) => e.fx)), label + ' 두 좌석 skill 행 fx 동일');
+  if (shield) ok(tagged[0][0] && tagged[0][0].fx.hp && tagged[0][0].fx.hp.val === oHp, label + ' 실제 HP 피해 0 인데도 적중 행 유지');
+  for (const rs of rows) for (const e of rs) assertEventShape(e, label);
+});
+
+// ===== 20) #335 v2 하수인 4번 전용기 33종 — 닫힌 ID 집합(=실제 SKILLS '-4' 33개)·표적 측 지표(shake|hp.side|st.side)·
+// 실제 Core 1사용 1성공행·실패/무효/회피 0행·두 좌석 동일. 분류는 PD-Decisions 5 계약(피해18=일반15+전설3 / 자기8 / 상대 비피해7). =====
+{
+  const { SIG_FX_RE } = require('../engine');
+  const E0 = H.createEngine();
+  const sig33 = Object.keys(E0.SKILLS).filter((k) => /-4$/.test(k) && /^(?:M|L)-/.test(k)).sort();
+  ok(sig33.length === 33 && sig33.every((k) => SIG_FX_RE.test(k)), 'T20 실제 SKILLS 하수인·전설 4번 33개 전부 허용: ' + sig33.length);
+  ok(Object.keys(E0.SKILLS).filter((k) => SIG_FX_RE.test(k)).length === 33, 'T20 허용 정규식이 SKILLS 의 다른 ID(1~3번·리더)를 받지 않음');
+  const SELF8 = ['M-W3-4', 'M-G3-4', 'M-L3-4', 'M-W6-4', 'M-G6-4', 'M-E3-4', 'M-E5-4', 'M-E6-4'];
+  const OPP7 = ['M-W4-4', 'M-G4-4', 'M-F5-4', 'M-W5-4', 'M-G5-4', 'M-L5-4', 'M-E4-4'];
+  const DMG = sig33.filter((k) => !SELF8.includes(k) && !OPP7.includes(k));
+  ok(DMG.length === 18 && DMG.filter((k) => k[0] === 'L').length === 3, 'T20 분류 15+8+7(+전설3 피해): ' + DMG.join(','));
+  // 표적 측 지표 — 클라이언트와 같은 우선순위(shake → hp.side → st.side)
+  const tgt = (fx) => fx.shake || (fx.hp && fx.hp.side) || (fx.st && fx.st.side);
+  const room0 = H.startedRoom(3370);
+  const R = (fx) => room0._serializeFxMsgFx(fx);
+  ok(R({ hp: { side: 'A', val: 9, max: 9 }, skill: 'M-G6-4' }).skill === 'M-G6-4' && R({ st: { side: 'D', text: '' }, skill: 'M-L5-4' }).skill === 'M-L5-4',
+    'T20 room 층: shake 없는 자기 회복(hp)·상대 상태(st) 행도 표적 측이 있으면 통과');
+  for (const bad of ['M-F1-3', 'M-F7-4', 'M-X1-4', 'M-F1-4\n', 'L-KING-4', 'K-F1-4', 'SK-F1', 'assets/fx/dragon_96x8.png', 'M-F1-44', ' M-F1-4']) {
+    ok(!('skill' in (R({ shake: 'D', skill: bad }) || {})), 'T20 room 층: 실제 33개 밖 ID 거부 ' + JSON.stringify(bad));
+  }
+  for (const fx of [{ skill: 'M-W3-4', float: { side: 'A', sign: 'pos', amount: 1 } }, { skill: 'M-W3-4', hp: { side: 'X' } }, { skill: 'M-W3-4', st: { side: 'B' } }, { skill: 'M-W3-4', cast: 'A', flash: 'buff', sig: true }]) {
+    ok(!('skill' in (R(fx) || {})), 'T20 room 층: 표적 측 지표(shake|hp|st) 없는 행은 skill 거부 ' + JSON.stringify(fx));
+  }
+  // 실제 Core — 같은 규칙으로 엔진 캡처(normalizeMsgFx)·좌석 뷰 두 층을 통과한다. 상태 부여 확률은 100%(statusPct 1)로 고정해 성공 경로만 본다.
+  const prepFor = (id) => (E, f, o, B) => {
+    f.statusPct = 1;
+    if (id === 'M-E1-4') { B.round = 2; f.burrowRound = 1; }
+    if (id === 'M-E5-4') { B.round = 4; f.hp = Math.max(1, f.hp - 10); }
+    if (id === 'L-REAPER-4') { f.hp = 1; B.round = 4; }
+  };
+  const tagged = (rows) => rows.map((rs) => rs.filter((e) => e.fx && 'skill' in e.fx));
+  sig33.forEach((id, i) => {
+    const { r, rows, target } = legendHit(3400 + i, id, prepFor(id));
+    const want = SELF8.includes(id) ? (target === 'D' ? 'A' : 'D') : target, label = 'T20 Core ' + id;
+    ok(r.ok, label + ' 행동 수락: ' + JSON.stringify(r.reason));
+    const t = tagged(rows);
+    ok(t.every((x) => x.length === 1 && x[0].fx.skill === id && tgt(x[0].fx) === want),
+      label + ' 두 좌석 모두 성공행 1개에만 skill·표적 측=' + want + ': ' + JSON.stringify(t.map((x) => x.map((e) => e.fx))));
+    ok(JSON.stringify(t[0]) === JSON.stringify(t[1]), label + ' 두 좌석 skill 행 동일(온라인 2클라이언트 같은 계약)');
+    if (!DMG.includes(id) && t[0][0]) {
+      ok(!t[0][0].fx.shake && !(t[0][0].fx.float && t[0][0].fx.float.sign === 'neg') && !t[0][0].fx.ko, label + ' 비피해 행에 가짜 shake·피해 수치·KO 없음');
+    }
+    for (const rs of rows) for (const e of rs) assertEventShape(e, label);
+  });
+  // 실패·무효·회피·1~3번 사용은 0행 (토큰이 다음 행이나 다른 사용으로 넘어가지 않는다)
+  const none = [
+    ['회피(확정 회피)', 'M-F1-4', (E, f, o) => { o.dodgeForce = true; }],
+    ['감전 면역 부여 실패', 'M-L5-4', (E, f, o) => { f.statusPct = 1; o.immuneShockR = 2; }],
+    ['환영 무도로 무효된 자기 전용기', 'M-W3-4', (E, f) => { f.nullifyNext = true; }],
+    ['환영 무도로 무효된 상대 전용기', 'M-G5-4', (E, f) => { f.nullifyNext = true; }],
+    ['1~3번 슬롯 기술', 'M-F1-3', null],
+  ];
+  none.forEach(([what, id, prep], i) => {
+    const { r, rows } = legendHit(3450 + i, id, prep);
+    ok(r.ok && tagged(rows).every((x) => x.length === 0), 'T20 Core ' + what + ' ' + id + ' → skill 행 0: ' + JSON.stringify(tagged(rows).map((x) => x.map((e) => e.fx))));
+  });
+  // 사용 전 시전자 측 피해(번식 포자 지속 피해)는 자기 전용기의 성공행이 아니다 — 같은 측이어도 run 밖 행에는 붙지 않는다
+  {
+    const { r, rows, target } = legendHit(3460, 'M-G3-4', (E, f) => { f.breedR = 2; f.breedBy = target0(E); });
+    const t = tagged(rows), self = target === 'D' ? 'A' : 'D';
+    ok(r.ok && t.every((x) => x.length === 1 && tgt(x[0].fx) === self && !x[0].fx.shake && !x[0].fx.float),
+      'T20 Core 번식 포자 사용 전 자기 피해 행 제외, 천년목 성공행 1개만: ' + JSON.stringify(t.map((x) => x.map((e) => [e.txt, e.fx]))));
+  }
+}
+function target0(E) { return E.actorOfPhase() === 'A' ? 'D' : 'A'; } // 번식 포자 시전자 = 상대 측
 
 process.exit(done());

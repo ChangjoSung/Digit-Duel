@@ -764,7 +764,8 @@ function execV2(side,slot,sk){
   ctx.hit=(pct,o)=>v2Hit(ctx,pct,o||{});
   ctx.st=(kind,p,o)=>v2Apply(side,f,oSide,opp,kind,p,o||{});
   const run=V2_FX[sk.fx]||v2Default;
-  run(ctx);
+  FX_SKILL_HIT=sigFxArm(side,sk); // #335 4번 대표기 — 무효·사전 피해(v2PreUse) 뒤, 이 사용의 효과 구간에서만 (core.js bmsg 가 소비)
+  try{ run(ctx); } finally{ FX_SKILL_HIT=null; }
   if(!S.battle) return;
   v2SkillSettle(side,f,oSide,opp); if(!S.battle) return; // #235 왕국 1판정 + 흡수(4.5) 정산 — 레거시 경로와 같은 공용 경계
   finishV2(side);

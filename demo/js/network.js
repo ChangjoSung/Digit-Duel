@@ -422,7 +422,7 @@ function netHandlePublicSocketClosed(ev){
  */
 function netSendCmd(t,extra){ netSend(/** @type {NetCommandFrame} */(Object.assign({v:1,requestId:netReqId(),seatToken:NET.seatToken,tokenGen:NET.tokenGen,round:NET.round,t},extra||{}))); } // #238 round: 다른 경기의 늦은 명령은 서버가 거부한다
 /* #263 Saturn REVISE: 정지 사유 문구 한 곳 — 토스트·모달·상태 줄이 같은 말을 쓴다 */
-const NET_PAUSE_MSG="⏸ 연결이 끊겨 경기와 시간이 멈췄습니다 — 복구될 때까지 기권을 포함한 입력이 잠깁니다.";
+const NET_PAUSE_MSG="⏸ 연결이 끊겨 연결 대기 중입니다 — 복구될 때까지 기권을 포함한 입력이 잠깁니다."; // #335 X01: 경기 전 준비 마감은 단절 중에도 흐르므로 '시간이 멈췄다'고 단정하지 않는다
 /** #263 Saturn REVISE: 공개 방 **게임 입력의 단일 송신 끝**. netAction 을 거치지 않는 호출(상점 window.__shop ·
     B08 bagPickShow · 모달 중계 · 기권 확인 창)도 전부 여기를 지나므로 단절 정지 차단을 이 한 곳에 둔다 —
     호출자마다 다시 걸지 않는다(빠뜨린 호출자가 곧 구멍이었다). 복구 경로(resync·leave·ready)는 netSendCmd
@@ -823,7 +823,7 @@ function netFxResetCursorIfNeeded(){
     NET.fxEnqueuedSeq=0; NET.fxPlayedSeq=0; NET.fxQueue=[]; NET.fxPlaying=false; NET.fxCur=null;
     NET.fxScenes={}; NET.fxBattleSnaps={}; NET.fxDisp={}; NET.fxLiveBid=null; NET.stageBid=null; NET.battleMenu=null;
     NET.fxGen=(NET.fxGen||0)+1; // 세대 증가 — 이전 세대의 예약된 setTimeout은 전부 자기 gen 검사에서 스스로 멈춘다
-    fxSetLockClass(false);
+    fxSetLockClass(false); skillSheetClear(); // #335 재생 중이던 전용기 시트도 이 세대와 함께 걷는다
   }
 }
 function netFxRememberScene(ev){
@@ -849,10 +849,11 @@ function netFxEnqueue(fx,isResumeFrame){ // 큐에 올리기만 한다 — 재�
   if(isResumeFrame){
     /* §7-4 권장 baseline — 창에 쌓인 오래된 연출을 전부 재생하면 재접속 직후 혼란스럽다. 한 번에 커서를
        맞추고, 마지막 이벤트가 결전/승패 배너면 그것 하나만 "재접속하자마자 결과가 보인다"로 재생한다. */
-    NET.fxQueue=[];
+    NET.fxQueue=[]; skillSheetClear(); // #335 재접속 요약 — 끊기기 전 재생 중이던 시트를 남기지 않는다
     events.forEach(netFxRememberScene);
     const last=events.length?events[events.length-1]:null;
-    if(last&&typeof last.seq==="number"&&last.seq>NET.fxPlayedSeq&&(last.key==="resultBanner"||(last.src==="msg"&&last.fx&&last.fx.ko))) NET.fxQueue.push(last);
+    if(last&&typeof last.seq==="number"&&last.seq>NET.fxPlayedSeq&&(last.key==="resultBanner"||(last.src==="msg"&&last.fx&&last.fx.ko)))
+      NET.fxQueue.push(last.fx&&last.fx.skill?Object.assign({},last,{fx:Object.assign({},last.fx,{skill:null})}):last); // #335 재접속 요약 재생에는 전용기 시트를 붙이지 않는다
     if(typeof fx.lastSeq==="number"){ NET.fxEnqueuedSeq=Math.max(NET.fxEnqueuedSeq,fx.lastSeq); NET.fxPlayedSeq=Math.max(NET.fxPlayedSeq,fx.lastSeq); }
   } else {
     // §7-3 갭: 창 밖으로 밀린 이벤트는 합성하지 않고 지금 창에 있는 것부터 이어간다(진단 로그만).
@@ -897,6 +898,7 @@ function netFxApplyMsgFx(bid,fx,gen){
       if(stage>0) setTimeout(()=>{ if(NET.fxGen!==gen||NET_HPSTAGE[side]!==seq||$("hpfill-"+side)!==bar) return; try{ write(); }catch(e){} },stage);
       else write(); }
     if(fx.shake){ const tk=$("tok-"+fx.shake); if(tk){ tk.classList.remove("shake"); void tk.offsetWidth; tk.classList.add("shake"); } }
+    if(fx.skill) skillSheetFx(fx.skill,skillFxSide(fx)); // #335 오프라인 applyFx 와 같은 닫힌 33값·표적 계약 (ui.js)
     if(fx.flash){ const st=$("bstage"); if(st){ st.style.boxShadow=`inset 0 0 70px var(--${fx.flash})`;
       setTimeout(()=>{ if(NET.fxGen!==gen) return; try{ if($("bstage")===st) st.style.boxShadow=""; }catch(e){} },380); } }
     if(fx.sig){ const st=$("bstage"); if(st&&st.classList){ st.classList.remove("sigblink"); void st.offsetWidth; st.classList.add("sigblink");
@@ -1243,12 +1245,15 @@ function netResumeBarSync(){
   if(el.setAttribute){ el.setAttribute("role","status"); el.setAttribute("aria-live","polite"); }
   const fresh=!el.innerHTML||(el.classList&&el.classList.contains("hidden"));
   let title, line;
+  const prep=["OPEN","SETUP"].includes(NET.roomState);
   if(peer){ const g=peer.graceLeftMs==null?null:Math.max(0,Math.ceil((peer.graceLeftMs-(Date.now()-peer.at))/1000));
     title=`⏸ ${peer.seat===NET.me?"내 연결":"상대 연결"} 대기`;
-    line=`경기와 시간이 멈췄습니다${g===null?"":` (재연결 유예 ${g}초)`}. 기권을 포함한 양측 입력이 잠기고, 연결이 돌아오면 남은 시간부터 이어집니다.`; }
+    /* #335 X01: 경기 전(OPEN·SETUP)의 준비 마감은 공유 절대 마감이라 단절 중에도 흐른다 — 멈추는 것은 경기 중 보드·전투·상점·B08 시계뿐이다 (문구만, 시계 동작 불변) */
+    line=prep?`경기 시작 전입니다${g===null?"":` (재연결 유예 ${g}초)`}. 준비 마감 시간은 멈추지 않고 계속 흐릅니다. 기권을 포함한 양측 입력이 잠기고, 아래 [방 나가기]로 경기를 취소할 수 있습니다.`
+      :`보드·전투·상점·가방 정리(B08) 시간이 멈췄습니다${g===null?"":` (재연결 유예 ${g}초)`}. 기권을 포함한 양측 입력이 잠기고, 연결이 돌아오면 남은 시간부터 이어집니다.`; }
   else { title="🌐 재접속 중…"; line=`연결이 끊겼습니다. 자동으로 다시 연결합니다 (시도 ${NET.resumeAttempts}회). 연결이 돌아오면 멈춘 자리부터 이어집니다.`; }
   /* 경기 시작 전(OPEN·SETUP) 정지에서는 [방 나가기](= 경기 취소)가 복구 입력으로 남는다(#263 G4) — 아래 화면이 inert 라 이 층에 둔다 */
-  const leave=peer&&["OPEN","SETUP"].includes(NET.roomState)?`<button type="button" class="danger" onclick="netLeaveRoom()">방 나가기 (경기 취소)</button>`:"";
+  const leave=peer&&prep?`<button type="button" class="danger" onclick="netLeaveRoom()">방 나가기 (경기 취소)</button>`:"";
   el.innerHTML=`<div class="xBox"><b id="xTitle" tabindex="-1">${title}</b><span>${line}</span>${leave}</div>`;
   if(el.classList) el.classList.remove("hidden");
   xLock(true);
