@@ -412,7 +412,8 @@ const STATIC_BUDGET = {
   // index 1 + CSS/JS 11 + 하수인 33×2 + 리더 2×2 = 82. 부수 요청은 concurrentPageLoads 배수 버스트가 담는다.
   // #335 Argon 스킨 CSS 3 + CSS 가 부르는 Argon 이미지 11 + 전설 FX 시트 프리로드 3 = 99.
   // #335 v2 Argon 이미지 11 → 24(배경 3·전투 무대 2·재질 2·버튼 5·아이콘 아틀라스 1 추가) = 112. 일반 30종 FX 시트는 첫 화면 밖.
-  pageLoadRequests: 112,
+  // #335 파일럿 v1.5 cohesion-pilot.css 1 + 그 CSS 의 UI 이미지 4 + 파일럿 witch FX 시트 고정 프리로드 1 = 118. 파일럿 종 그림은 그릴 때만.
+  pageLoadRequests: 118,
   concurrentPageLoads: 6,  // 같은 IP 에서 겹칠 수 있는 로드 수
 };
 

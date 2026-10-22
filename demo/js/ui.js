@@ -319,6 +319,7 @@ window.uiBack=function(){
    실제 DOM 이 있을 때만 측정한다 — 헤드리스 스텁은 기본값 1 그대로다 (기존 회귀의 기하 전제 불변). */
 function fitBoard(){
   try{
+    pilotLobbyNoticeSync(); // #335 HOOK-05: 로비(#left 숨김 → avail 0)에서도 매 render·resize 마다 알림 높이를 잰다
     const w=$("boardWrap"); if(!w||!w.style||!w.style.setProperty) return;
     const avail=w.clientWidth||0; if(!avail) return;
     /* #238 Saturn 시각 REVISE: 대전 말판도 가로 폭에만 맞춘다 — 종전 뷰포트 높이/700 상한은 320×640 에서 칸을 28px 로 줄였다.
@@ -562,6 +563,43 @@ window.artPortraitFail=function(el,dir){
   }catch(e){}
   try{el.style.display="none";}catch(e){}
 };
+/* #335 회화풍 대표3종 파일럿 (HOOK-01~03 · 표시 전용) — html[data-ui-skin=argon][data-art-pilot=cohesion] 일 때만 켜진다. 끄면 종전 마크업 그대로다.
+   이미 종 그림을 그리던 자리(공개 · 소유 정보)에서만 같은 종의 namespace 파일로 바꿔 고른다 — 미공개 말 · 고정 프리로드 집합 · 요청 시점은 그대로다.
+   실패: data-fb 의 기존 파일(같은 종 · 그 자리의 종전 파일)을 차례로 → 다 떨어지면 그 자리의 기존 폴백(전투 = artSpriteFail · 그 밖 = 이모지).
+   CSS(cohesion-pilot.css)는 src 의 namespace 로만 고르므로, 기존 파일로 내려간 순간 종전 도트 렌더(반전 · pixelated · 그림자 없음)로 돌아간다 */
+const PILOT_DIRS=new Set(["fire_atk","water_std","legend_witch"]), PILOT_FX=new Set(["fire_atk","water_std","witch"]);
+/* 한 번 실패한 파일럿 파일 — 다시 그릴 때(전투 재렌더 등) 다시 요청하지 않고 처음부터 종전 마크업으로 간다.
+   ponytail: 페이지 수명 동안 영구 — 일시 실패 복구(#201 ART_RETRY)는 기존 파일에만 있다. 필요하면 같은 예산을 파일럿 파일에도 */
+const PILOT_GONE=new Set();
+function pilotOn(){ const h=document.documentElement; return !!h&&h.getAttribute("data-ui-skin")==="argon"&&h.getAttribute("data-art-pilot")==="cohesion"; }
+function pilotUrl(dir,file){ return "assets/ui/argon-cohesion-pilot/minions/"+dir+"/"+file; }
+function pilotPick(dir,file){ return !!dir&&PILOT_DIRS.has(dir)&&!PILOT_GONE.has(pilotUrl(dir,file))&&pilotOn(); }
+function pilotEmo(dir){ const L=LEGEND_ROSTER.find(l=>LEGEND_ART[l.id]===dir); return L?L.emo:ELEM_EMO[dir.split("_")[0]]||"?"; }
+window.pilotImgFail=function(el,dir,kind){
+  if(!el||!PILOT_DIRS.has(dir)) return;
+  const cur=el.getAttribute("src")||""; if(cur.indexOf("assets/ui/argon-cohesion-pilot/")===0) PILOT_GONE.add(cur);
+  const fb=(el.getAttribute("data-fb")||"").split(" ").filter(Boolean), f=fb.shift();
+  if(f){ el.setAttribute("data-fb",fb.join(" ")); el.src=artUrl(dir,f); if(kind==="rep") pilotLobbyNoticeSync(); return; }
+  el.onerror=null; el.removeAttribute("data-fb");
+  if(kind==="sprite"){ artSpriteFail(dir,el); return; }
+  if(kind==="roster"){ artPortraitFail(el,dir); return; } // 종전 사슬의 다음 단계(portrait.png → 안내 문구)
+  if(kind!=="rep") artFail(dir,el);
+  if(kind==="icon") return; // 보드·카드: artFail 의 다시 그리기가 종전 폴백을 그린다
+  try{ const s=document.createElement("span"); s.setAttribute("aria-hidden","true"); if(kind==="face") s.className="face"; s.textContent=pilotEmo(dir); el.replaceWith(s); }catch(e){}
+};
+/* #335 HOOK-05 (v1.5 presentation-hooks.json 그대로 · artPilotOn → 이 파일의 pilotOn): 실제 .netLobbyMsg 높이 + .l01 row-gap 을 --ag-l01-notice-shift 로 · 알림/파일럿 초상화가 없으면 지운다 */
+function pilotLobbyNoticeSync(){
+  const l01=document.querySelector(".l01");
+  if(!l01) return;
+  const msg=l01.querySelector(".netLobbyMsg"), img=l01.querySelector('.l01Stage .l01Rep img[src*="/argon-cohesion-pilot/"]');
+  if(!pilotOn()||!msg||!img){ l01.style.removeProperty("--ag-l01-notice-shift"); return; }
+  const h=Math.round(msg.getBoundingClientRect().height), gap=parseFloat(getComputedStyle(l01).rowGap)||8;
+  l01.style.setProperty("--ag-l01-notice-shift",(h+gap)+"px");
+}
+/* 32/40px 종 아이콘 한 벌 — pcFaceHtml(보드·트레이·결과) · unitIco(상점·가방) 가 같은 마크업을 쓴다. 파일럿이면 96 icon@2x (실패 → 종전 icon.png → artFail) */
+function artIconImg(dir){ return pilotPick(dir,"icon@2x.png")
+  ?`<img class="icon" src="${pilotUrl(dir,"icon@2x.png")}" alt="" aria-hidden="true" width="32" height="32" data-fb="icon.png" onerror="pilotImgFail(this,'${dir}','icon')">`
+  :`<img class="icon" src="${artUrl(dir,"icon.png")}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${dir}',this)">`; }
 /* 프리로드는 페이지 로드 시 20종 일괄이다 — 개별 말이 개별 파일을 요청하지 않으므로 요청 목록이 정체와 상관관계를 만들지 않는다.
    설명창 원본(portrait 20종 약 3.1MB)은 여기서 받지 않고 설명창을 열 때만 받는다 */
 function artPreload(){
@@ -718,7 +756,9 @@ const SKILL_SHEET=Object.assign(Object.fromEntries(V2_SPECIES_DEF.map(d=>[d[0]+"
   SKILL_SHEET_OK=new Set(), SKILL_SHEET_REQ=new Set(), SKILL_SHEET_MS=640, SKILL_SHEET_FIXED=["dragon","witch","reaper"];
 function skillSheetLoad(k){ // 1회만 요청 · 실패면 그 시트는 그리지 않는다(재시도 없음)
   if(SKILL_SHEET_REQ.has(k)) return; SKILL_SHEET_REQ.add(k);
-  try{ const im=document.createElement("img"); im.onload=()=>{SKILL_SHEET_OK.add(k);}; im.src=`assets/fx/${k}_96x8.png`; }catch(e){}
+  const pk=PILOT_FX.has(k)&&pilotOn()?"cohesion-pilot/"+k:null; // #335 파일럿: 같은 시점에 namespace 시트를 먼저 · 그것이 실패할 때만 기존 시트 1회
+  const get=(f,fail)=>{ try{ const im=document.createElement("img"); im.onload=()=>{SKILL_SHEET_OK.add(f);}; if(fail) im.onerror=fail; im.src=`assets/fx/${f}_96x8.png`; }catch(e){} };
+  get(pk||k,pk?()=>get(k):null);
 }
 function skillSheetPreload(){ for(const k of SKILL_SHEET_FIXED) skillSheetLoad(k); } // 정체와 무관하게 항상 같은 3건 — 하수인 아트 프리로드(artPreload) 집합과는 따로 센다
 /* 일반 30종 시트는 첫 화면에서 받지 않는다 — 전투 무대가 이미 그린 공개 전투 도트 폴더(artDirOfFighter)와 같은 이름일 때만, 그 전투에서 최대 2장(A·D).
@@ -727,12 +767,13 @@ function skillSheetWant(dir){ if(typeof dir==="string"&&SKILL_SHEET_FIXED.indexO
 function skillFxSide(fx){ return fx.shake||(fx.hp&&fx.hp.side)||(fx.st&&fx.st.side); } // core sigFxSide 와 같은 우선순위
 function skillSheetFx(skill,side){
   const k=typeof skill==="string"&&Object.prototype.hasOwnProperty.call(SKILL_SHEET,skill)?SKILL_SHEET[skill]:null;
-  if(!k||(side!=="A"&&side!=="D")||!SKILL_SHEET_OK.has(k)) return;
+  const pk=SKILL_SHEET_OK.has("cohesion-pilot/"+k); // #335 파일럿 시트가 실제로 왔을 때만 그 시트(skfx-pilot) — 아니면 종전 시트 · 종전 판정
+  if(!k||(side!=="A"&&side!=="D")||!(pk||SKILL_SHEET_OK.has(k))) return;
   try{ if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; }catch(e){}
   try{
     const t=$("tok-"+side); if(!t||!t.appendChild) return;
     const old=t.querySelector?t.querySelector(".skfx"):null; if(old&&old.parentNode) old.parentNode.removeChild(old); // 같은 토큰의 앞 시트는 새 시트가 대신한다
-    const d=document.createElement("i"); d.classList.add("skfx","skfx-"+k); d.setAttribute("aria-hidden","true"); t.appendChild(d);
+    const d=document.createElement("i"); d.classList.add("skfx","skfx-"+k); if(pk) d.classList.add("skfx-pilot"); d.setAttribute("aria-hidden","true"); t.appendChild(d);
     setTimeout(()=>{ try{ if(d.parentNode) d.parentNode.removeChild(d); }catch(e){} },SKILL_SHEET_MS); // 자기 노드만 지운다 — 모달이 다시 그려졌으면 이미 떨어져 있다
   }catch(e){}
 }
@@ -1334,7 +1375,9 @@ window.rosterInfo=rid=>{ // 로스터 정보 팝업 — [선택하기]/[선택 �
   netLocalModal(); // 로스터 정보 팝업은 로컬 전용 — 선택 확정(toggleRoster)만 동기화
   // #89 설명창 일러스트: 자기 로스터를 고르는 화면이므로 정보 은닉 대상이 아니다 (규격 5.3). 512 원본을 192로 축소 표시하고 실패 시 png → 숨김
   const rdir=rd.element+"_"+rd.arch;
-  const rart=ART_DIR_SET.has(rdir)?`<div class="rosterArt"><img src="${artUrl(rdir,"portrait.webp")}" alt="${rd.name} 일러스트" width="192" height="192" onerror="artPortraitFail(this,'${rdir}')"></div>`:"";
+  const rart=ART_DIR_SET.has(rdir)?`<div class="rosterArt">${pilotPick(rdir,"portrait.webp") // #335 파일럿 512 초상화 (실패 → 종전 portrait.webp → portrait.png → 안내 문구)
+    ?`<img src="${pilotUrl(rdir,"portrait.webp")}" alt="${rd.name} 일러스트" width="192" height="192" data-fb="portrait.webp" onerror="pilotImgFail(this,'${rdir}','roster')">`
+    :`<img src="${artUrl(rdir,"portrait.webp")}" alt="${rd.name} 일러스트" width="192" height="192" onerror="artPortraitFail(this,'${rdir}')">`}</div>`:"";
   modal(`<h2 class="el-${rd.element}">${rd.name}</h2>${rart}
     <div class="row"><span class="badge el-${rd.element}">${ELEM_KO[rd.element]}</span><span class="badge">${ARCH_KO[rd.arch]}형</span>${on?`<span class="badge">✔ 선택됨</span>`:""}</div>
     <div class="status" style="margin:6px 0">⭐1 HP ${rd.hp} · 공격 ${rd.atk} (스킬 위력 💪N% = 공격력 × N%)</div>
@@ -1557,10 +1600,12 @@ function skillListHtml(skills,act){
 function unitHelpOpen(d,from,pid){
   /* 2026-10-02 CJ REVISE 2: 능력치 칸이 있으면(내 말 · 가방 · 진열) 그림 옆은 능력치 2×4 칸뿐 — 높이가 그림과 같다. 왕국·아키타입 아이콘은 그 위, 정보 줄 · 개인 시너지는 그 아래.
      칸 = [아이콘, 짧은 이름, 값, 전체 이름(aria · title), 읽어 줄 값]. 능력치가 없는 창(공개된 상대 말 · 폭탄 · 함정)은 종전 배치 그대로 */
+  /* #335 HOOK-01: 96px 그림 칸 — 종전 그림(32px 아이콘)을 그리던 경우(artOk)에만 같은 종 512 초상화로. 실패 → 종전 아이콘 → 이모지 */
+  const face=d.dir&&artOk(d.dir)&&pilotPick(d.dir,"portrait.webp")?`<img class="icon" src="${pilotUrl(d.dir,"portrait.webp")}" alt="" aria-hidden="true" width="32" height="32" data-fb="icon.png" onerror="pilotImgFail(this,'${d.dir}','face')">`:d.face;
   const st=!!(d.stats&&d.stats.length), rows=`<ul class="uhRows">${d.rows.filter(Boolean).map(r=>`<li>${r}</li>`).join("")}</ul>`, syn=d.syn?`<p class="uhSyn">${gi("crown")} ${escAttr(d.syn)}</p>`:"";
   const stats=st?`<ul class="uhStats" aria-label="기본 능력치">${d.stats.map(s=>`<li aria-label="${escAttr((s[3]||s[1])+" "+(s[4]||s[2]))}" title="${escAttr(s[3]||s[1])}"><span aria-hidden="true">${s[0]}</span><small aria-hidden="true">${s[1]}</small><b aria-hidden="true">${s[2]}</b></li>`).join("")}</ul>`:"";
   synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${escAttr(d.nm)}${d.g?` <span class="stars" aria-label="등급 ${d.g}">${"★".repeat(d.g)}</span>`:""}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>`
-    +(st?d.tags||"":"")+`<div class="uhTop"><span class="uhFace${d.g?` gb g${d.g}`:""}">${d.face}</span>`+(st?stats:`<div class="uhInfo">${d.tags||""}${rows}${syn}</div>`)+`</div>`+(st?rows+syn:"")
+    +(st?d.tags||"":"")+`<div class="uhTop"><span class="uhFace${d.g?` gb g${d.g}`:""}">${face}</span>`+(st?stats:`<div class="uhInfo">${d.tags||""}${rows}${syn}</div>`)+`</div>`+(st?rows+syn:"")
     +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4>${skillListHtml(d.skills)}`:""),from);
   SYNHELP.el.classList.add("uh"); SYNHELP.pid=pid===undefined?null:pid;
 }
@@ -1603,14 +1648,14 @@ function unitHelpPiece(id,from){
     own&&x.healing?`🌿회복 자세(턴마다 +${Math.round(x.maxHp*BAL.healPostPct)})`:"",own&&x.cap?`포획 하수인(${ELEM_KO[x.cap.element]}) HP ${x.cap.hp}/${x.cap.maxHp}`:"",
     !own&&x.swapMark?"상점에서 교체됨":"",own?"":"상대 말 — 공개된 정보만 표시"];
   const L=own&&x.type==="minion"?LEGEND_ROSTER.find(l=>l.key===x.legend||(!!x.rosterId&&l.id===x.rosterId)):null, lg=L&&S.eco?synExtraView(v,S).legends.find(l=>l.legend===L.key):null;
-  unitHelpOpen({nm,g:m.g,face:pcFaceHtml(x),tags,rows,stats:own&&unit?unitStatChips(x):null,syn:lg?legendSynText(lg):null,
+  unitHelpOpen({nm,g:m.g,face:pcFaceHtml(x),dir:artDirOf(x),tags,rows,stats:own&&unit?unitStatChips(x):null,syn:lg?legendSynText(lg):null,
     skills:own&&unit?unitSkillRows(x.skills,x.element,x.cds,x.rosterId):null},from,x.id);
 }
 /* 내 가방 하수인 · 상점 진열 칸(진열 종 + 진열 등급 — 종 표에서 읽는다). 둘 다 지금 화면 주인의 것만 찾는다 */
 function unitHelpBag(uid,from){
   const v=humanViewer(), u=S&&S.eco&&S.eco.bag[v]?S.eco.bag[v].find(y=>y.uid===uid):null; if(!u) return;
   const key=ecoKey(u), g=unitGrade(key,u.grade), L=LEGEND_ROSTER.find(l=>l.id===key);
-  unitHelpOpen({nm:u.name||unitName(key),g,face:unitIco(key),tags:unitTags(key),rows:["가방"],stats:unitStatChips(u),syn:null, // 가방 전설은 개인 효과가 없다(synExtraView)
+  unitHelpOpen({nm:u.name||unitName(key),g,face:unitIco(key),dir:artDirOf({type:"minion",rosterId:key}),tags:unitTags(key),rows:["가방"],stats:unitStatChips(u),syn:null, // 가방 전설은 개인 효과가 없다(synExtraView)
     skills:unitSkillRows(u.skills||(L?L.skills:speciesSkills(key,g)),u.element,u.cds,key)},from);
 }
 /* 진열 칸은 개체가 아직 없다 — 구매 때 Core 가 쓰는 같은 주입 함수(applySpecies · applyLegend)로 그 종 · 그 등급의 값을 읽는다(표를 따로 베끼지 않는다) */
@@ -1618,7 +1663,7 @@ function unitHelpSlot(i,from){
   const v=humanViewer(), sh=S&&S.eco?S.eco.shop:null, s=sh&&sh.slots[v]?sh.slots[v][i]:null; if(!s) return;
   const g=unitGrade(s.key,s.grade), L=LEGEND_ROSTER.find(l=>l.id===s.key), r=ROSTER.find(x=>x.id===s.key), u=/** @type {any} */({});
   if(L) applyLegend(u,L.key); else if(r) applySpecies(u,r,g);
-  unitHelpOpen({nm:unitName(s.key),g,face:unitIco(s.key),tags:unitTags(s.key),rows:[`가격 🪙${ecoPrice(s.grade)}`],stats:u.maxHp?unitStatChips(u,true):null,syn:null,
+  unitHelpOpen({nm:unitName(s.key),g,face:unitIco(s.key),dir:artDirOf({type:"minion",rosterId:s.key}),tags:unitTags(s.key),rows:[`가격 🪙${ecoPrice(s.grade)}`],stats:u.maxHp?unitStatChips(u,true):null,syn:null,
     skills:unitSkillRows(u.skills,u.element,null,s.key)},from);
 }
 /* 열린 설명 창의 대상 말이 죽거나 안 보이게 되면 닫는다 — 낡은 내용을 남기지 않는다(render 마다 한 번) */
@@ -1723,6 +1768,9 @@ function battleModal(board){
     const dir=artDirOfFighter(pf,piece);
     if(artBattleOk(dir)){   // #201: 전투 파일이 영구 결손으로 판정되면 다시 내보내지 않는다 (요청 왕복·보드 아이콘 억제 방지)
       skillSheetWant(dir); // #335 이 공개 도트와 같은 종의 4번 대표기 시트만 미리 받는다 (입력·재생 대기 없음)
+      /* #335 HOOK-03: 화면 기준 좌석(tok-me = 아군 아래 왼쪽 A 포즈 · tok-op = 상대 위 오른쪽 D 포즈)으로 고른다 — 공격/방어 sid 가 아니다. 같은 공개 도트 자리 · 같은 id·클래스 */
+      const pose=pos==="tok-me"?"battle-a@2x.png":"battle-d@2x.png";
+      if(pilotPick(dir,pose)) return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite" src="${pilotUrl(dir,pose)}" alt="${fighterName(sid,B)}" width="128" height="128" data-fb="battle.png icon.png" onerror="pilotImgFail(this,'${dir}','sprite')"><small>${label}</small></div>`;
       return `<div class="btok art ${pos}${bcls}" id="tok-${sid}"><img class="bsprite" src="${artUrl(dir,"battle.png")}" alt="${fighterName(sid,B)}" width="128" height="128" onerror="artSpriteFail('${dir}',this)"><small>${label}</small></div>`; }
     /* #124: 왕·동료 **본체** 출전이면 새 아트를 그 정체 역할로 그린다. 대리 출전(포획 하수인)은 위 분기라 여기 오지 않는다.
        자산이 없거나 실패하면 아래 현행 이모지 토큰으로 그대로 되돌아간다 (artSpriteFail 이 같은 자리를 바꿔 끼운다) */
@@ -1957,7 +2005,7 @@ function allyRole(p){ if(!p||p.type!=="ally") return null;
 /* 확정(known) 말의 얼굴 — 하수인은 종 아이콘, 그 외는 같은 메모 기호. 자산이 없거나 실패하면 현행 텍스트로 복귀한다 (규격 14.6.4) */
 function pcFaceHtml(p){
   const dir=artDirOf(p);
-  if(artOk(dir)) return `<img class="icon" src="${artUrl(dir,"icon.png")}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${dir}',this)">`;
+  if(artOk(dir)) return artIconImg(dir);
   /* #124: 왕·동료도 보드에서 그 정체 역할로 보인다 (Venus 6장 AC-A5 정정). 자산이 로드된 뒤에만 그림이고 그 전에는 아래 이모지 그대로다.
      이 파생본은 1254px 원본을 단순 축소한 **픽셀 스타일 아트**이고 하수인처럼 32px 도트로 그린 원본이 아니다.
      그래서 32px 표시에는 최근접 확대(pixelated) 대신 브라우저 보간을 쓴다 (.pc .icon.leader) — 하수인 렌더 계약은 그대로다 */
@@ -2205,7 +2253,7 @@ function goodHelp(k,from){ if(!GOOD_DESC[k]) return; const nm=goodNm(k), ico=`<s
 function ownGridHtml(p){ return `<div class="ownGrid" role="list" aria-label="보유 아이템">`+(S.eco?ECO.goods:["potion","cool","cure","ball"]).map(k=>{ const n=goodOwned(p,k);
   return `<span class="ownItem${n?"":" none"}" role="listitem" aria-label="${escAttr(`${goodNm(k)} ${n}개`)}" title="${escAttr(goodNm(k))}"><span class="ico" style="--g:${ECO.goods.indexOf(k)}" aria-hidden="true"></span><b aria-hidden="true">×${n}</b></span>`; }).join("")+`</div>`; }
 function unitIco(key){ const dir=artDirOf({type:"minion",rosterId:key}), L=LEGEND_ROSTER.find(x=>x.id===key), r=ROSTER.find(x=>x.id===key);
-  return artOk(dir)?`<img class="icon" src="${artUrl(dir,"icon.png")}" alt="" aria-hidden="true" width="32" height="32" onerror="artFail('${dir}',this)">`
+  return artOk(dir)?artIconImg(dir)
     :`<span class="face" aria-hidden="true">${L?L.emo:r?ELEM_EMO[r.element]:"?"}</span>`; } // 도트가 없는 종(땅·보호 등)은 속성 기호
 function unitName(key){ const r=ROSTER.find(x=>x.id===key)||LEGEND_ROSTER.find(x=>x.id===key); return r?r.name:"?"; }
 /* #238: 속성·아키타입은 아이콘 두 개(이름은 접근성 이름·툴팁) — 전설은 속성 대신 왕관 */

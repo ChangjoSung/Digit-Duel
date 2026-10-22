@@ -51,11 +51,11 @@ function pageLoadCorpus() {
   const corpus = ['/'].concat([...html.matchAll(/\b(?:src|href)="((?:js|css)\/[^"]+)"/g)].map((m) => '/' + m[1]));
   for (const d of dirs) for (const f of ['icon.png', 'battle.png']) corpus.push(`/assets/minions/${d}/${f}`);
   for (const d of ['companion', 'king']) for (const f of ['icon64.png', 'battle256.png']) corpus.push(`/assets/leaders/${d}/${f}`);
-  // #335 Argon 스킨이 CSS 로 부르는 이미지 — index.html 이 거는 CSS 의 url("../assets/ui/argon/…") 전부(v2: 24).
+  // #335 Argon 스킨이 CSS 로 부르는 이미지 — index.html 이 거는 CSS 의 url("../assets/ui/argon/…") 전부(v2: 24) + 파일럿 argon-cohesion-pilot/ 4 = 28.
   // 일반 30종 4번 시트(fx.css .skfx-*)는 첫 화면에 받지 않으므로(공개 전투원 기준 최대 2장) 넣지 않는다.
   const argon = new Set();
   for (const m of html.matchAll(/<link[^>]+href="(css\/[^"]+\.css)"/g)) {
-    for (const u of fs.readFileSync(path.join(DEMO, m[1]), 'utf8').matchAll(/url\(\s*["']?\.\.\/(assets\/ui\/argon\/[^"')]+)["']?\s*\)/g)) argon.add('/' + u[1]);
+    for (const u of fs.readFileSync(path.join(DEMO, m[1]), 'utf8').matchAll(/url\(\s*["']?\.\.\/(assets\/ui\/argon(?:-cohesion-pilot)?\/[^"')]+)["']?\s*\)/g)) argon.add('/' + u[1]);
   }
   for (const f of [...argon].sort()) {
     ok(fs.existsSync(path.join(DEMO, f)), `CSS 가 부르는 Argon 자산이 실제로 있다: ${f}`);
@@ -63,6 +63,11 @@ function pageLoadCorpus() {
   }
   // ui.js 의 전설 FX 시트 고정 프리로드 3 (SKILL_SHEET_FIXED)
   for (const k of ['dragon', 'witch', 'reaper']) corpus.push(`/assets/fx/${k}_96x8.png`);
+  // #335 파일럿(index.html data-art-pilot=cohesion): skillSheetLoad 가 witch 는 namespace 시트를 먼저 요청한다(PILOT_FX ∩ SKILL_SHEET_FIXED).
+  // fire_atk·water_std 파일럿 시트와 파일럿 종 그림은 전투·표시 시점에만 받으므로 넣지 않는다.
+  const pilotWitch = '/assets/fx/cohesion-pilot/witch_96x8.png';
+  ok(fs.existsSync(path.join(DEMO, pilotWitch)), `파일럿 고정 프리로드 시트가 실제로 있다: ${pilotWitch}`);
+  corpus.push(pilotWitch);
   return corpus;
 }
 
