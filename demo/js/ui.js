@@ -589,7 +589,7 @@ window.pilotImgFail=function(el,dir,kind){
 };
 /* #335 HOOK-05 (v1.5 presentation-hooks.json 그대로 · artPilotOn → 이 파일의 pilotOn): 실제 .netLobbyMsg 높이 + .l01 row-gap 을 --ag-l01-notice-shift 로 · 알림/파일럿 초상화가 없으면 지운다 */
 function pilotLobbyNoticeSync(){
-  const l01=document.querySelector(".l01");
+  const l01=/** @type {HTMLElement|null} */(document.querySelector(".l01"));
   if(!l01) return;
   const msg=l01.querySelector(".netLobbyMsg"), img=l01.querySelector('.l01Stage .l01Rep img[src*="/argon-cohesion-pilot/"]');
   if(!pilotOn()||!msg||!img){ l01.style.removeProperty("--ag-l01-notice-shift"); return; }
