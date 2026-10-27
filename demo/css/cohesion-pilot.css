@@ -50,7 +50,7 @@ html[data-ui-skin="argon"][data-art-pilot="cohesion"] #titleScreen .titleArt i.q
 }
 
 /* ==========================================================================
-   [2] REPRESENTATIVE 3 MINIONS (fire_atk, water_std, legend_witch)
+   [2] PAINTED MINIONS (every species listed in ui.js PILOT_DIRS)
    Smooth high-resolution interpolation ONLY for images served from the pilot
    namespace ([src*="/argon-cohesion-pilot/"]). Legacy pixel art stays pixelated.
    ========================================================================== */
@@ -241,7 +241,7 @@ html[data-ui-skin="argon"][data-art-pilot="cohesion"] #bstage.scene .btok.art .b
 }
 
 /* ==========================================================================
-   [4] REPRESENTATIVE 3 SLOT-4 SIGNATURE FX (fire_atk, water_std, witch)
+   [4] PILOT SLOT-4 SIGNATURE FX (fire_atk, water_std, witch = ui.js PILOT_FX; the other 30 keep fx.css sheets)
    Reused PASS calibrated FX sheets (768x96, 8 frames, 0.64s steps(8), F4 peak, F8==0).
    Selects on .skfx-pilot.skfx-<slug> so if the pilot sheet fails preload (404),
    .skfx-pilot is omitted by skillSheetFx and the legacy fx.css sheet plays cleanly.

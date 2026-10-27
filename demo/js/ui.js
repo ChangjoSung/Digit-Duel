@@ -563,11 +563,12 @@ window.artPortraitFail=function(el,dir){
   }catch(e){}
   try{el.style.display="none";}catch(e){}
 };
-/* #335 회화풍 대표3종 파일럿 (HOOK-01~03 · 표시 전용) — html[data-ui-skin=argon][data-art-pilot=cohesion] 일 때만 켜진다. 끄면 종전 마크업 그대로다.
+/* #335 회화풍 미니언 그림 (HOOK-01~03 · 표시 전용) — html[data-ui-skin=argon][data-art-pilot=cohesion] 일 때만 켜진다. 끄면 종전 마크업 그대로다.
+   PILOT_DIRS = ART_DIRS 33종 전부(각 종 portrait.webp · icon@2x · battle-a/d@2x 4개 파일). PILOT_FX = 새 FX 시트가 승인된 3종만(나머지 30종은 기존 fx.css 시트).
    이미 종 그림을 그리던 자리(공개 · 소유 정보)에서만 같은 종의 namespace 파일로 바꿔 고른다 — 미공개 말 · 고정 프리로드 집합 · 요청 시점은 그대로다.
    실패: data-fb 의 기존 파일(같은 종 · 그 자리의 종전 파일)을 차례로 → 다 떨어지면 그 자리의 기존 폴백(전투 = artSpriteFail · 그 밖 = 이모지).
    CSS(cohesion-pilot.css)는 src 의 namespace 로만 고르므로, 기존 파일로 내려간 순간 종전 도트 렌더(반전 · pixelated · 그림자 없음)로 돌아간다 */
-const PILOT_DIRS=new Set(["fire_atk","water_std","legend_witch"]), PILOT_FX=new Set(["fire_atk","water_std","witch"]);
+const PILOT_DIRS=new Set(ART_DIRS), PILOT_FX=new Set(["fire_atk","water_std","witch"]);
 /* 한 번 실패한 파일럿 파일 — 다시 그릴 때(전투 재렌더 등) 다시 요청하지 않고 처음부터 종전 마크업으로 간다.
    ponytail: 페이지 수명 동안 영구 — 일시 실패 복구(#201 ART_RETRY)는 기존 파일에만 있다. 필요하면 같은 예산을 파일럿 파일에도 */
 const PILOT_GONE=new Set();
