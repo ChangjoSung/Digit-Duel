@@ -11,7 +11,7 @@
 | [`client/`](client) | 클라이언트 런타임 자산 정량 감사(4번 대표기 시트 33장) | A. 규칙 회귀·AI 완주 (헤드리스 — `smoke_issue335.js` 가 모듈로 부른다) |
 | [`milestone/v0.4.6/issues/122/`](milestone/v0.4.6/issues/122) | 뒤로가기·어두운 배경 브라우저 증빙 | 로컬 Chrome 검수용 |
 
-버전 열은 출시된 파일의 최초 태그, Issue 열은 도입 작업을 가리킨다. 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니며**, 해당 Issue에서 추가됐지만 아직 출시 태그에 포함되지 않은 파일임을 뜻한다. 옛 경로 대조는 [#134 MOVES.csv](../docs/milestone/v0.4.6/issues/134/Mercury/MOVES.csv)에서 본다.
+버전 열은 도구 도입 당시의 기록이며 과거 계획 번호가 포함돼 있다. 현재 출시·개발·운영 상태는 [Mercury PM 운영 원장](../docs/creat2ve/PM_BOARD.html)에서 확인한다. 실제 최초 출시 태그가 필요하면 해당 파일의 Git 이력을 대조한다. Issue 열은 도입 작업이며, 옛 경로는 [#134 MOVES.csv](../docs/milestone/v0.4.6/issues/134/Mercury/MOVES.csv)에서 찾는다.
 
 ## 정적 계약 검사 (`typecheck/`)
 
@@ -27,11 +27,11 @@ npm run test:typecheck # 음성 — 일부러 틀린 코드가 실제로 걸리�
 
 | 파일 | 버전 | Issue | 하는 일 | 파일 쓰기 |
 |---|---|---|---|---|
-| [`tsconfig.json`](typecheck/tsconfig.json) | v0.4.11(미출시) | #245 | `demo/js/*.js` 를 `allowJs`·`checkJs` 로 읽는 양성 검사. `noEmit` 이라 산출물이 없다 | 0건 |
-| [`contracts.d.ts`](typecheck/contracts.d.ts) | v0.4.11(미출시) | #245 | 액션·이벤트·프로토콜 계약과 중첩 상태(`BattleState`·`RecruitState`) 선언. **`GameState`·`Piece` 는 여기 없다** — `demo/js/state.js` 의 `newGameState()`·`mkPiece()` 리터럴에서 직접 끌어오므로 표를 두 벌 관리하지 않는다 | 0건 |
-| [`env.d.ts`](typecheck/env.d.ts) | v0.4.11(미출시) | #245 | classic script 가 `window.x=…` 로 붙여 맨이름으로 부르는 전역 선언. 포괄 인덱스 시그니처를 쓰지 않는다 — 그러면 오타난 전역까지 통과해 검사가 사라진다 | 0건 |
-| [`test/typecheck_test.js`](typecheck/test/typecheck_test.js) | v0.4.11(미출시) | #245 | 검사 자체의 회귀. 네 계약마다 음성 대조군이 실제로 걸리는지, 설정·억제 주석으로 무력화되지 않았는지, 서버 `ACTION_TYPES` 가 전부 클라이언트 계약에 있는지를 본다 | 0건 (서버 파일은 읽기만) |
-| [`test/negative/*.js`](typecheck/test/negative) | v0.4.11(미출시) | #245 | 일부러 계약을 어긴 대조군. 양성 검사(`tsconfig.json`)는 이 폴더를 읽지 않는다 — `test/tsconfig.negative.json` 에서만 읽는다 | — |
+| [`tsconfig.json`](typecheck/tsconfig.json) | v0.4.11 | #245 | `demo/js/*.js` 를 `allowJs`·`checkJs` 로 읽는 양성 검사. `noEmit` 이라 산출물이 없다 | 0건 |
+| [`contracts.d.ts`](typecheck/contracts.d.ts) | v0.4.11 | #245 | 액션·이벤트·프로토콜 계약과 중첩 상태(`BattleState`·`RecruitState`) 선언. **`GameState`·`Piece` 는 여기 없다** — `demo/js/state.js` 의 `newGameState()`·`mkPiece()` 리터럴에서 직접 끌어오므로 표를 두 벌 관리하지 않는다 | 0건 |
+| [`env.d.ts`](typecheck/env.d.ts) | v0.4.11 | #245 | classic script 가 `window.x=…` 로 붙여 맨이름으로 부르는 전역 선언. 포괄 인덱스 시그니처를 쓰지 않는다 — 그러면 오타난 전역까지 통과해 검사가 사라진다 | 0건 |
+| [`test/typecheck_test.js`](typecheck/test/typecheck_test.js) | v0.4.11 | #245 | 검사 자체의 회귀. 네 계약마다 음성 대조군이 실제로 걸리는지, 설정·억제 주석으로 무력화되지 않았는지, 서버 `ACTION_TYPES` 가 전부 클라이언트 계약에 있는지를 본다 | 0건 (서버 파일은 읽기만) |
+| [`test/negative/*.js`](typecheck/test/negative) | v0.4.11 | #245 | 일부러 계약을 어긴 대조군. 양성 검사(`tsconfig.json`)는 이 폴더를 읽지 않는다 — `test/tsconfig.negative.json` 에서만 읽는다 | — |
 
 검사가 **통과한다는 사실만으로는** 계약이 살아 있다는 증거가 못 된다: 전부 `any` 로 만들거나 `checkJs` 를 끄면 똑같이 통과한다.
 그래서 CI 는 양성과 음성을 **둘 다** 돌린다.

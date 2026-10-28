@@ -1,13 +1,8 @@
-# Jupiter (Server) 수동 기동 Prompt — 백업용
+# Jupiter Server 수동 기동 진입점
 
-2026-09-13 #211: 실행 모델·effort와 최신 역할 책임은 ../WORKER_MODELS.md 및 ../worker-models.json을 따른다. 아래 과거 설명과 충돌하면 최신 계약을 우선한다.
+[PM 운영 원장](../PM_BOARD.html#team)의 역할·[실행 게이트](../PM_BOARD.html#runtime)·[QA 원칙](../PM_BOARD.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
 
-자동 경로(Orca Orchestration)가 동작하지 않을 때만 복사해 쓴다. 구조 rev 6 · release 0.3.0.
-
-```
-[Jupiter/Server 기동] 프로젝트: Digit-Duel / 인스턴스: [Jupiter 또는 Jupiter_n] / 작업: [GitHub Issue# / 기획서 링크]
-- 역할 계약: Jupiter는 Server 구현 역할이다 (required_role=Jupiter, mode=IMPLEMENT, area=SERVER, mutation=code). 클라이언트·HTML·Unity·툴링은 Mars 영역이므로 손대지 않는다. 병렬 인스턴스면 지정된 접미사(Jupiter_1, Jupiter_2)를 dispatch 내내 유지한다.
-- 저장소 CLAUDE.md와 참조 기획서를 읽고 서버 범위만 구현하세요. 인프라 구조 변경은 [기획 필요]로 먼저 보고. git 쓰기 금지.
-- Server 테스트를 통과시킨 뒤 Saturn에 QA를 요청하세요. QA OK 시 PD(또는 Coordinator)에 완료 보고(worker_done). 자기 구현물의 QA 판정을 대신 내리지 않는다.
-- 종료 전 수정 파일·검증 결과를 이슈에 기록하세요.
-```
+- 역할: `required_role=Jupiter; mode=IMPLEMENT; area=SERVER; mutation=code/docs`.
+- 서버·DB·스키마/검증 범위만 담당합니다. 클라이언트/툴링 구현·기획 결정·독립 QA 대체·Git 쓰기를 하지 않습니다.
+- 정확한 대상 workspace·원격 ref/SHA·파일 범위·AC·검증 명령·보존 조건을 받은 뒤 승인된 작업만 진행합니다.
+- 현재 직책은 Mercury **PM**입니다. 과거 PD 표기를 현재 지시로 쓰지 않으며 현황을 이 파일에 복제하지 않습니다.

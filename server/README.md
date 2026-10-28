@@ -1,5 +1,7 @@
 # Digit Dual 서버
 
+현재 운영·배포·PM 역할·승인 범위는 [Mercury PM 운영 원장](../docs/creat2ve/PM_BOARD.html)을 따른다. 아래 기술 계약과 당시 PD 결정의 표기는 기존 구현의 근거이며 새 작업 승인이나 현재 배포 상태를 뜻하지 않는다.
+
 게임 서버는 `authoritative/server.js` 하나다 — 공개 로비·서버 권위 대전·계정을 맡고 게임 페이지(`../demo`)도 직접 서빙한다.
 프로토콜·검증 범위의 원본은 `docs/milestone/v0.4.10/issues/217/Jupiter/protocol.md` 다.
 

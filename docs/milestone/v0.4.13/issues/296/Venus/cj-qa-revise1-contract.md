@@ -112,7 +112,7 @@
 9. **보존**: 같은 입력의 전투 결과가 같다. 표시 문자열 · 선택자 외 기대값을 낮추지 않는다. `#bmenuBack`을 보던 기존 회귀(싸우기 포함)와 도망 · 포획 · 가방 경로 · 행동 줄 정보 버튼을 보던 회귀는 새 위치(안쪽 돌아가기 · 고정 칸)로 **옮기되** 검사 강도를 줄이지 않는다.
 10. **모바일**: 320 · 390 · PC 프레임에서 가로 넘침 없음 · 겹침 없음 · 누르는 곳 44px 이상을 대표 화면 1회씩 대조한다. CJ 그림 7장과 실제 렌더를 화면별로 나란히 본다(QA_MINIMUM_POLICY의 시각 REVISE 규칙).
 
-검증은 [QA_MINIMUM_POLICY](../../../../../creat2ve/QA_MINIMUM_POLICY.md)를 따릅니다: 기존 검사에 좁은 단언 추가 · 관련 회귀와 필수 CI 6개는 변경 뒤 각 1회 · 네트워크 반복 수동 검사 없음.
+검증은 [QA_MINIMUM_POLICY](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/QA_MINIMUM_POLICY.md)를 따릅니다: 기존 검사에 좁은 단언 추가 · 관련 회귀와 필수 CI 6개는 변경 뒤 각 1회 · 네트워크 반복 수동 검사 없음.
 
 ## 5. 문서 반영 위치
 

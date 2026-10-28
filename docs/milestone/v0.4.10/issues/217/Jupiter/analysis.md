@@ -2,7 +2,7 @@
 
 - 작성: Jupiter_Server (Claude Opus 5, high), 2026-09-13. 이전 두 판(Sonnet 5 medium)에서 같은 원인의 정합성 결함이 반복돼 **누적 패치가 아니라 전면 재작성**으로 교체한 판이다. 이전 판의 확인된 사실·출처는 보존하고, 서로 어긋나던 정책 서술과 이미 기본값이 정해진 "열린 질문"은 제거했다.
 - 범위: `mutation=docs`. 코드·Git·GitHub·Notion 쓰기 없음. 이 파일 한 개만 갱신한다.
-- 이슈 본문의 "Jupiter 분석 결과"는 Mercury_PD가 직접 작성한 기술 벤치마크이며 [HANDOVER_SNAPSHOT.md](../../../../../creat2ve/HANDOVER_SNAPSHOT.md)에서 **비권위**로 명시됐다. 이 문서는 그 결과를 승계하지 않고 `server/`·`demo/index.html` 원본을 직접 읽어 다시 세웠다.
+- 이슈 본문의 "Jupiter 분석 결과"는 Mercury_PD가 직접 작성한 기술 벤치마크이며 [HANDOVER_SNAPSHOT.md](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/HANDOVER_SNAPSHOT.md)에서 **비권위**로 명시됐다. 이 문서는 그 결과를 승계하지 않고 `server/`·`demo/index.html` 원본을 직접 읽어 다시 세웠다.
 - 2026-09-13 델타 개정: Saturn 1차 검수가 지적한 여섯 개의 유한한 정합성 결함만 고쳤다 — ① 등급 C "전체 레코드"의 미공개 기술·내부 필드 노출(§2.6·§2.6.1·§2.6.2) ② `setupPlayer` 게이트와 좌석 독립 배치의 충돌(§2.5.4) ③ 에폭을 나르지 않는 재개 자격(§2.4.1.1) ④ 회전 응답 반복 유실 시 영구 잠김(§2.4.3) ⑤ 명시적 `leave`와 소켓 단절의 미분리·이중 승리(§2.3.1) ⑥ 상태 개수 주장과 부분 문자열 검증(§2.3·§3). 전면 재작성이 아니며 새 기능을 넣지 않았다. 대응 수용 기준 행은 §3에 A6·A7·B6·D5·F6·F7·G3으로 추가했다.
 - 검토 상태: **CJ 미승인 · Saturn 독립 QA 미실시.** 이 문서는 제안이며, 승인·검증을 받은 바 없다. 이번 개정으로 바뀐 정책도 전부 [권고]이고 승인 대상이다.
 

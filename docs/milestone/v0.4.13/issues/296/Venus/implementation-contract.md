@@ -110,7 +110,7 @@ flowchart TB
 8. 메뉴 전환 · 뒤로는 전송 0이며 행동을 소모하지 않는다. 시계 · 확률 · 쿨 · 라운드 값 불변.
 9. 대표 모바일 폭에서 콘티의 구간 순서 · 가운데 정렬 · 겹침 없음을 1회 대조한다.
 
-검증은 [QA_MINIMUM_POLICY](../../../../../creat2ve/QA_MINIMUM_POLICY.md)를 따릅니다: 기존 검사에 좁은 단언 추가, 관련 회귀와 필수 CI 6개는 변경 뒤 각 1회, 전수 QA · 반복 네트워크 · 전체 밸런스 시뮬레이션 없음. `test-combat-stats-boundary.js`의 전투 스탯 금지 단언은 **전투 한정 allowlist로 치환**하되 보드 · 시너지 은닉 단언은 낮추지 않습니다.
+검증은 [QA_MINIMUM_POLICY](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/QA_MINIMUM_POLICY.md)를 따릅니다: 기존 검사에 좁은 단언 추가, 관련 회귀와 필수 CI 6개는 변경 뒤 각 1회, 전수 QA · 반복 네트워크 · 전체 밸런스 시뮬레이션 없음. `test-combat-stats-boundary.js`의 전투 스탯 금지 단언은 **전투 한정 allowlist로 치환**하되 보드 · 시너지 은닉 단언은 낮추지 않습니다.
 
 ## 6. 배경 · 범위 밖 · 미확정
 
