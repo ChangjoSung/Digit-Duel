@@ -530,7 +530,7 @@ block("J 전투 메뉴",()=>{
   e.spd=m.spd; e.grade=m.grade;
   T.startRounds(m,e,m,e); T.drain();
   const h=()=>T.els.overlayBox.innerHTML;
-  ok(/id="bmenu"/.test(h())&&/⚔️ 싸우기/.test(h())&&/🎒 가방/.test(h())&&/🔴 포획/.test(h())&&/🏃 도망가기/.test(h()),"J1 루트 4카테고리");
+  { const o=h().replace(/<i class="gi emo emi" style="--i:\d+">([^<]*)<\/i>/g,"$1"); ok(/id="bmenu"/.test(o)&&/⚔️ 싸우기/.test(o)&&/🎒 가방/.test(o)&&/🔴 포획/.test(o)&&/🏃 도망가기/.test(o),"J1 루트 4카테고리"); } // #335 표시 훅(emoGi)을 걷어낸 글자로 본다
   ok(/id="bsub-fight" /.test(h())||/id="bsub-fight"/.test(h()),"J2 하위 패널이 모두 그려져 있다 (활성 패널만 보임)");
   ok(/class="bsub hidden" id="bsub-fight"/.test(h())&&/class="bsub hidden" id="bsub-bag"/.test(h()),"J3 초기에는 하위 패널 숨김");
   ok(/__act\(0\)/.test(h())&&/던지기 \(성공/.test(h())&&/__flee\(\)/.test(h()),"J4 기존 규칙 버튼(__act·__throwBall·__flee)이 그대로 존재 (온라인 송신 경로 불변)");

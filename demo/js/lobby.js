@@ -127,6 +127,9 @@ function lobbyRepHtml(id,cls){
   /* #238 L01 가운데 큰 대표 그림은 512 설명창 그림(portrait.webp) — 같은 게이트(아이콘이 실제로 왔을 때만)라 요청 경계가 늘지 않는다 */
   /* 2차 REVISE: L03 큰 카드(lg)는 32px 아이콘 확대 대신 고정 프리로드 집합의 128 전투 도트(이미 받은 뒤에만 · 아니면 아이콘) — 새 요청 없음 */
   const big=cls==="lg"&&ok&&artBattleOk(dir)&&ART.loaded.has(dir+"/battle.png");
+  /* #335 HOOK-02: 파일럿이면 lg·xl 이 같은 게이트(ok)에서 그 종의 파일럿 512 초상화 하나로, 작은 칸은 파일럿 icon@2x 로 맞춘다(ROSTER 대표만 — 전설은 대표로 고를 수 없다). 실패 → 그 크기의 종전 파일 → 이모지 */
+  const pf=cls==="lg"||cls==="xl"?"portrait.webp":"icon@2x.png";
+  if(ok&&pilotPick(dir,pf)) return `<span class="repFace ${cls||""} el-${rd.element}"><img${cls==="lg"?` class="b128"`:""} src="${pilotUrl(dir,pf)}" alt="" data-fb="${cls==="xl"?"portrait.webp icon.png":cls==="lg"&&big?"battle.png":"icon.png"}" onerror="pilotImgFail(this,'${dir}','rep')"></span>`;
   const art=ok?(cls==="xl"?`<img src="${artUrl(dir,"portrait.webp")}" alt="" onerror="this.onerror=null;this.src='${artUrl(dir,"icon.png")}'">`:big?`<img class="b128" src="${artUrl(dir,"battle.png")}" alt="">`:`<img src="${artUrl(dir,"icon.png")}" alt="">`):`<span aria-hidden="true">${ELEM_EMO[rd.element]}</span>`;
   return `<span class="repFace ${cls||""} el-${rd.element}">${art}</span>`;
 }

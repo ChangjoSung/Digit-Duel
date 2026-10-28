@@ -222,12 +222,13 @@ section("B",()=>{
   ok(!/__act\('basic'\)/.test(ob(X))&&!/기본 공격 \d+~\d+/.test(ob(X)),"B2 기본 공격 버튼이 없다");
   ok(ob(X).indexOf(X.NO_ATTACK_MSG)>=0,"B3 안내 문구 '"+X.NO_ATTACK_MSG+"'");
   ok(ob(X).indexOf("__pass()")>=0,"B4 명시적 수동 [턴 종료] 버튼");
-  ok(/🎒 가방/.test(ob(X))&&/🔴 포획/.test(ob(X))&&/🏃 도망가기/.test(ob(X)),"B5 아이템·버프·포획·도망 메뉴는 그대로 유지된다");
+  { const o=ob(X).replace(/<i class="gi emo emi" style="--i:\d+">([^<]*)<\/i>/g,"$1"); ok(/🎒 가방/.test(o)&&/🔴 포획/.test(o)&&/🏃 도망가기/.test(o),"B5 아이템·버프·포획·도망 메뉴는 그대로 유지된다"); } // #335 표시 훅(emoGi)을 걷어낸 글자로 본다
   /* B5b (Saturn msg_31b27e86d2e2): 안내와 **같은 화면**에서 바로 실행할 수 있어야 한다 —
      루트 전투 메뉴(4카테고리 블록)에도 명시적 [턴 종료]가 보이고, 싸우기 하위 패널의 버튼과 같은 handler(window.__pass)를 쓴다. */
   const rootMenu=X=>{ const h=ob(X), i=h.indexOf('id="bmenu"'); return i<0?"":h.slice(i,h.indexOf("</div>",i)+6); };
   ok(rootMenu(X).indexOf("__pass()")>=0,"B5b 루트 전투 메뉴에도 [턴 종료] 버튼이 바로 보인다 (안내와 같은 화면에서 실행 가능)");
-  ok(/⚔️ 싸우기/.test(rootMenu(X))&&/🎒 가방/.test(rootMenu(X))&&/🔴 포획/.test(rootMenu(X))&&/🏃 도망가기/.test(rootMenu(X)),
+  const rootTxt=rootMenu(X).replace(/<i class="gi emo emi" style="--i:\d+">([^<]*)<\/i>/g,"$1"); // #335 표시 훅(emoGi)을 걷어낸 글자로 본다
+  ok(/⚔️ 싸우기/.test(rootTxt)&&/🎒 가방/.test(rootTxt)&&/🔴 포획/.test(rootTxt)&&/🏃 도망가기/.test(rootTxt),
     "B5c 기존 4카테고리(싸우기·가방·포획·도망)가 루트에 그대로 남는다");
   /* B6 버튼을 누르기 전에는 아무것도 진행되지 않는다 */
   const snapB=J([Bx.round,Bx.phase,Bx.fa.hp,Bx.fd.hp]);

@@ -8,6 +8,7 @@
 | [`docs/`](docs) | 추적 중인 `*.md`의 내부 링크·이미지 무결성 | C. 문서 링크·이미지 무결성 |
 | [`media/`](media) | README 미디어 캡처와 오프라인 검증 | C. 문서 링크·이미지 무결성 |
 | [`art/`](art) | 하수인·왕·동료 아트 파이프라인(결정적 익스포터·검증기) | D. 납품 아트 자산 무결성 |
+| [`client/`](client) | 클라이언트 런타임 자산 정량 감사(4번 대표기 시트 33장) | A. 규칙 회귀·AI 완주 (헤드리스 — `smoke_issue335.js` 가 모듈로 부른다) |
 | [`milestone/v0.4.6/issues/122/`](milestone/v0.4.6/issues/122) | 뒤로가기·어두운 배경 브라우저 증빙 | 로컬 Chrome 검수용 |
 
 버전 열은 출시된 파일의 최초 태그, Issue 열은 도입 작업을 가리킨다. 현재 출시된 최신 태그는 v0.4.5다. **v0.4.7은 아직 출시 전 계획 마일스톤이라 '최초 출시 태그'가 아니며**, 해당 Issue에서 추가됐지만 아직 출시 태그에 포함되지 않은 파일임을 뜻한다. 옛 경로 대조는 [#134 MOVES.csv](../docs/milestone/v0.4.6/issues/134/Mercury/MOVES.csv)에서 본다.
@@ -54,6 +55,12 @@ npm run test:typecheck # 음성 — 일부러 틀린 코드가 실제로 걸리�
 ## 이슈 전용 브라우저 증빙 (`milestone/`)
 
 이슈 전용 브라우저 도구 [`back_dark_shots.js`](milestone/v0.4.6/issues/122/back_dark_shots.js)는 실제 클릭·계산색 대비·360/390/데스크톱 화면을 확인한다. 기본 산출물은 `docs/milestone/v0.4.6/issues/122/Mars/revise-back-dark/media/`이며 `--out`으로 바꿀 수 있다. `--read-only`도 Chrome 임시 프로필을 만들기 때문에 Saturn의 파일 수정 금지 검수에서는 실행하지 않는다. 기존 도구와 승패·아트 전체 증빙은 보존한다.
+
+## 클라이언트 자산 감사 (`client/`)
+
+| 파일 | 버전 | Issue | 하는 일 | 파일 쓰기 |
+|---|---|---|---|---|
+| [`fx_sheet_audit.js`](client/fx_sheet_audit.js) | 미출시 | #335 | `demo/assets/fx/` 의 4번 대표기 런타임 시트 33장을 외부 의존성 없이 픽셀로 푼다. 기대 목록은 `demo/js/data.js` 에서 읽고(일반 30종 `<속성>_<아키타입>` + 전설 3종), 768×96 RGBA · ≤80KB · F8 알파 0 · F7 알파 질량 ≤5% · 셀 안전 여백 4px · F4 정점 · F1~F4 그림을 판정한다. `node tools/client/fx_sheet_audit.js [--dir <폴더>] [--json <경로>]` | `--json` 을 줄 때만 |
 
 ## 아트 파이프라인 (`art/`)
 

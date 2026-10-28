@@ -1,0 +1,260 @@
+/* ==========================================================================
+   Digit-Duel v0.4.15 — Argon Art Cohesion Pilot Presentation Layer (v1.5)
+   Baseline commit: 9e35bf641ac6a1050f9681999e92e576dcd3ef54
+   Scope: html[data-ui-skin="argon"][data-art-pilot="cohesion"]
+   Strict Contract:
+   - Pure selector specificity under html[data-ui-skin="argon"][data-art-pilot="cohesion"].
+   - Zero !important, zero @layer, zero content:url(), zero external CDN/font URLs.
+   - Zero transform/filter/opacity<1/isolation/contain/backdrop-filter/clip-path/mask
+     on html, body, #app, #screenBody, #left, #right, #overlay, #overlayBox,
+     #boardWrap, #netResumeBar, #tutOverlay, #fxBanner.
+   - Minion rules select on the pilot namespace ([src*="/argon-cohesion-pilot/"]),
+     so if any pilot image falls back to its preserved legacy file (assets/minions/<slug>/...),
+     legacy pixel rendering (scaleX(-1) on tok-me, pixelated, no contact shadow, base pedestal) returns cleanly.
+   - FX rules select on .btok .skfx-pilot.skfx-<slug>, so if a pilot FX sheet fails preload (404),
+     the legacy fx.css sheet (assets/fx/<slug>_96x8.png) remains active.
+   ========================================================================== */
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] {
+  --ag-pilot-title-vignette-url: url("../assets/ui/argon-cohesion-pilot/title/title-vignette@2x.png");
+  --ag-pilot-shadow-a-url: url("../assets/ui/argon-cohesion-pilot/backgrounds/shadow-a@2x.png");
+  --ag-pilot-shadow-d-url: url("../assets/ui/argon-cohesion-pilot/backgrounds/shadow-d@2x.png");
+  --ag-pedestal-url: url("../assets/ui/argon-cohesion-pilot/backgrounds/pedestal-stone-calibrated.webp");
+}
+
+/* ==========================================================================
+   [1] TITLE SCREEN CENTER DECORATIVE BOARD VIGNETTE (#titleScreen .titleArt)
+   Frozen CSS geometry: game.css:476-478 (7x3 grid, square 1:1 <i> cells, gap:3px, padding:6px)
+   and game.css:866 (width: min(62%, 220px) -> 176.1x82.9 @ 320, 219.5x101.5 @ 390, 220x101.7 @ 1920).
+   background-size: contain keeps the 512x256 (2:1) vignette unstretched.
+   ========================================================================== */
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #titleScreen .titleArt {
+  background-color: transparent;
+  background-image: var(--ag-pilot-title-vignette-url);
+  background-position: center center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  border-color: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.72));
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #titleScreen .titleArt i,
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #titleScreen .titleArt i.f,
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #titleScreen .titleArt i.a,
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #titleScreen .titleArt i.b,
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #titleScreen .titleArt i.q {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   [2] PAINTED MINIONS (every species listed in ui.js PILOT_DIRS)
+   Smooth high-resolution interpolation ONLY for images served from the pilot
+   namespace ([src*="/argon-cohesion-pilot/"]). Legacy pixel art stays pixelated.
+   ========================================================================== */
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] :is(
+  .pc .icon,
+  .shopCard .icon,
+  .uSlot .icon,
+  .uCard .icon,
+  .repFace img,
+  .repFace.lg img.b128,
+  .uhFace .icon,
+  .rosterArt img,
+  .btok .bsprite
+)[src*="/argon-cohesion-pilot/"] {
+  image-rendering: auto;
+}
+
+/* Warm tabletop framing inside Unit Help (.uhFace) & Roster Detail (.rosterArt) */
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .uhFace:has(
+  .icon[src*="/argon-cohesion-pilot/"]
+) {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(234, 185, 87, 0.16) 0%, rgba(23, 15, 9, 0.96) 74%),
+    #170f09;
+  box-shadow: inset 0 1px 0 rgba(255, 232, 168, 0.22), 0 4px 10px rgba(0, 0, 0, 0.55);
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .rosterArt:has(
+  img[src*="/argon-cohesion-pilot/"]
+) img {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(234, 185, 87, 0.15) 0%, rgba(20, 12, 7, 0.72) 76%);
+  border: 1.5px solid var(--ag-brass-low);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 168, 0.18), 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   [3] L01 LOBBY & B03 BATTLE STAGE PEDESTAL GROUNDING & SEAT POSE ORIENTATION
+   - L01: Continuous container-relative grounding formula (--ag-l01-ground-y) that
+     tracks both the 9:16 sanctuary cover background's rendered height
+     (--ag-l01-bg-h = max(var(--appH), min(177.78vw, 768px)), altar top at +0.115 * bgH
+     below #screenBody vertical center) and the untransformed foot baseline inside .l01Stage
+     (+0.416 * min(72vw, 310px) - 10vh + stage-bias below #screenBody vertical center).
+     Because both the altar top and .l01Stage share #screenBody's vertical center
+     (var(--appTop) + 0.5 * var(--appH)), their difference aligns the feet, contact shadow,
+     and .repName with the dark slate altar top surface continuously across all mobile and
+     desktop heights (320x640, 390x844, 1280x800, 1366x768, 1440x900, 1920x1080).
+   - v1.5 Shared Scroll Coordinate System (P1): On #app[data-screen="lobby"] #screenBody
+     when a pilot representative is rendered, background-attachment: local with explicit
+     viewport-box-equivalent size (auto var(--ag-l01-bg-h)) and position
+     (center calc(0.5 * (var(--appH) - var(--ag-l01-bg-h)))) keeps the exact cover geometry
+     at scrollTop = 0 while scrolling the sanctuary altar in the same content coordinate
+     system as .l01Rep, .repBtn, .repFace.xl (contact shadow), and .repName when #screenBody
+     scrolls (e.g. 320x640 error state scrollTop 0 -> 92px -> 0).
+   - v1.5 Variable Notice Height Compensation (P2): Uses calc(-1 * var(--ag-l01-notice-shift, 92px))
+     fed by HOOK-05 (pilotLobbyNoticeSync: .netLobbyMsg border-box height + .l01 flex rowGap)
+     so both 1-line notices (loadFail: 84px + 8px = 92px) and multi-line notices
+     (390x844 backlog: 102px + 8px = 110px) keep errorFoot === normalFoot (delta = 0px).
+   - B03: Scopes opponent (#bstage.scene::before) and ally (#bstage.scene::after)
+     pedestal geometry per seat via :has(.tok-op/me .bsprite[src*="/argon-cohesion-pilot/"])
+     so non-pilot species and 404 fallback seats preserve base pedestal geometry.
+   ========================================================================== */
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"]
+  #app[data-screen="lobby"]
+  #screenBody:has(.l01Stage .l01Rep img[src*="/argon-cohesion-pilot/"]) {
+  --ag-l01-bg-h: max(var(--appH), min(177.78vw, 768px));
+  background-attachment: local;
+  background-size: auto var(--ag-l01-bg-h);
+  background-position: center calc(0.5 * (var(--appH) - var(--ag-l01-bg-h)));
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .l01Stage .l01Rep:has(
+  img[src*="/argon-cohesion-pilot/"]
+) {
+  --ag-l01-bg-h: max(var(--appH), min(177.78vw, 768px));
+  --ag-l01-rep-w: min(72vw, 310px);
+  --ag-l01-stage-bias: 11px;
+  --ag-l01-name-gap: 10px;
+  --ag-l01-ground-y: calc(
+    0.115 * var(--ag-l01-bg-h) + 10vh - 0.416 * var(--ag-l01-rep-w) - var(--ag-l01-stage-bias)
+  );
+}
+
+/* At <=360px width, game.css:1066 stacks .l01Main into 1 column, shifting .l01Stage midpoint up by 32px */
+@media (max-width: 360px) {
+  html[data-ui-skin="argon"][data-art-pilot="cohesion"] .l01Stage .l01Rep:has(
+    img[src*="/argon-cohesion-pilot/"]
+  ) {
+    --ag-l01-stage-bias: -21px;
+    --ag-l01-name-gap: 2px;
+  }
+}
+
+/* When the optional .netLobbyMsg notice banner is rendered after .l01Main and before .l01Nav,
+   it reduces .l01Stage's flex height from the bottom by (notice border-box height + .l01 flex row-gap),
+   exposed as --ag-l01-notice-shift (default 92px = 84px 1-line notice + 8px gap; 110px for 390x844 backlog).
+   Compensating .l01Rep's bottom margin by calc(-1 * var(--ag-l01-notice-shift, 92px)) preserves
+   the exact normal-state vertical center of .l01Rep across variable notice heights. */
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .l01:has(.netLobbyMsg) .l01Stage .l01Rep:has(
+  img[src*="/argon-cohesion-pilot/"]
+) {
+  margin-bottom: calc(-1 * var(--ag-l01-notice-shift, 92px));
+  --ag-l01-name-gap: 5px;
+}
+
+/* At <=360px width, .l01Main stacks into 1 column (132px tall); preserve .l01Stage's 245px normal height
+   when displaying a pilot representative so .l01Main stays below the altar and nameplate while
+   #screenBody scrolls the sanctuary altar, representative, contact shadow, and nameplate in shared coordinates. */
+@media (max-width: 360px) {
+  html[data-ui-skin="argon"][data-art-pilot="cohesion"] .l01:has(.netLobbyMsg) .l01Stage:has(
+    .l01Rep img[src*="/argon-cohesion-pilot/"]
+  ) {
+    min-height: 245px;
+  }
+  html[data-ui-skin="argon"][data-art-pilot="cohesion"] .l01:has(.netLobbyMsg) .l01Stage .l01Rep:has(
+    img[src*="/argon-cohesion-pilot/"]
+  ) {
+    margin-bottom: 0;
+    --ag-l01-name-gap: 2px;
+  }
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .l01Stage .l01Rep:has(
+  img[src*="/argon-cohesion-pilot/"]
+) .repBtn {
+  transform: translateY(var(--ag-l01-ground-y));
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .l01Stage .l01Rep:has(
+  img[src*="/argon-cohesion-pilot/"]
+) .repName {
+  transform: translateY(calc(var(--ag-l01-ground-y) + var(--ag-l01-name-gap)));
+  position: relative;
+  z-index: 2;
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .l01Stage .l01Rep .repFace.xl:has(
+  img[src*="/argon-cohesion-pilot/"]
+) {
+  background-image: var(--ag-pilot-shadow-a-url);
+  background-position: center 145%;
+  background-size: 92% 92%;
+  background-repeat: no-repeat;
+}
+
+/* Per-seat pedestal geometry isolation: only a seat displaying a pilot sprite uses pilot pedestal geometry */
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #bstage.scene:has(.tok-op .bsprite[src*="/argon-cohesion-pilot/"])::before {
+  width: 156px;
+  height: 48px;
+  right: -12px;
+  top: 108px;
+  box-shadow: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.78));
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #bstage.scene:has(.tok-me .bsprite[src*="/argon-cohesion-pilot/"])::after {
+  width: 168px;
+  height: 52px;
+  left: -20px;
+  bottom: 10px;
+  box-shadow: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.78));
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #bstage.scene .btok.art.tok-me:has(
+  .bsprite[src*="/argon-cohesion-pilot/"]
+) {
+  background-image: var(--ag-pilot-shadow-a-url);
+  background-position: center 0;
+  background-size: 128px 128px;
+  background-repeat: no-repeat;
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #bstage.scene .btok.art.tok-op:has(
+  .bsprite[src*="/argon-cohesion-pilot/"]
+) {
+  background-image: var(--ag-pilot-shadow-d-url);
+  background-position: center 0;
+  background-size: 128px 128px;
+  background-repeat: no-repeat;
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] #bstage.scene .btok.art .bsprite[src*="/argon-cohesion-pilot/"] {
+  transform: none;
+  filter: drop-shadow(0 4px 6px rgba(10, 5, 2, 0.68));
+}
+
+/* ==========================================================================
+   [4] PILOT SLOT-4 SIGNATURE FX (fire_atk, water_std, witch = ui.js PILOT_FX; the other 30 keep fx.css sheets)
+   Reused PASS calibrated FX sheets (768x96, 8 frames, 0.64s steps(8), F4 peak, F8==0).
+   Selects on .skfx-pilot.skfx-<slug> so if the pilot sheet fails preload (404),
+   .skfx-pilot is omitted by skillSheetFx and the legacy fx.css sheet plays cleanly.
+   ========================================================================== */
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .btok .skfx-pilot.skfx-fire_atk {
+  background-image: url("../assets/fx/cohesion-pilot/fire_atk_96x8.png");
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .btok .skfx-pilot.skfx-water_std {
+  background-image: url("../assets/fx/cohesion-pilot/water_std_96x8.png");
+}
+
+html[data-ui-skin="argon"][data-art-pilot="cohesion"] .btok .skfx-pilot.skfx-witch {
+  background-image: url("../assets/fx/cohesion-pilot/witch_96x8.png");
+}

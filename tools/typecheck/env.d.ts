@@ -56,6 +56,8 @@ declare var netListRooms: UiHandler;
 declare var netPrepare: UiHandler;
 declare var netRoomReady: UiHandler;
 declare var netUiTab: UiHandler;
+// #335 파일럿 <img onerror="pilotImgFail(this,dir,kind)"> — kind 는 실제 호출처 다섯 곳(ui.js·lobby.js)의 값 그대로다
+declare var pilotImgFail: (el: HTMLImageElement, dir: string, kind: "icon" | "roster" | "face" | "sprite" | "rep") => void;
 declare var rematch: UiHandler;
 declare var rosterInfo: UiHandler;
 declare var selTray: UiHandler;
