@@ -268,6 +268,7 @@ section("B",()=>{
   /* B11 왕·동료 본체는 기본 공격을 유지한다 */
   {
     const F=load(); const Q3=setup(F);
+    giveSpecies(F,Q3.em,R(F,"M-G1")); // 방어측 종 고정 — 무작위 종이 보호형(M-*6)이면 시작 방어막(최대 HP 10%)이 기본 공격을 전부 흡수해 HP 가 그대로다
     const ally=Q3.ally0; ally.skills=undefined; ally.cds=undefined; ally.skillAtk=0; ally.cd=0;
     openBattle(F,ally,Q3.em); const B3=F.S.battle; B3.fd.dodge=0; actAsA(F); freshModal(F);
     ok(/기본 공격/.test(ob(F)),"B11 동료 본체(4슬롯 없음)는 기본 공격 버튼을 유지한다");

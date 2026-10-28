@@ -270,6 +270,28 @@ async function main() {
   ok(safe(plain) && plain.requireTLS === true && plain.secure === false && plain.port === 587 && plain.auth.user === 'us@er' && plain.auth.pass === 'p:ss',
     'SMTP smtp:// → 최종 requireTLS(STARTTLS 필수)·ignoreTLS 없음·인증 디코드');
   ok(safe(tlsO) && tlsO.secure === true && tlsO.port === 465, 'SMTP smtps:// → 최종 secure(처음부터 TLS) · 루트 경로 / 허용');
+  // #347·#348·#349 (GHSA-85x2-q946-cp5h · m943-m63m-w62w · 8c8m-p3m8-cjg8, nodemailer < 10.1.4): addressparser 가 따옴표 속 '>',
+  // 따옴표·주석 속 ';'(그룹 끝), 중첩 주석의 안쪽 ')' 에서 끊어 공격자 주소를 수신자로 승격. smtpMailer.send 를 실제 nodemailer
+  // jsonTransport(전송 없음)로 돌려 envelope·헤더 수신자를 정확히 본다. normalizeEmail 이 이 문법을 먼저 막지만 그것과 별개로 검사한다.
+  nm.createTransport = () => origCreate.call(nm, { jsonTransport: true });
+  const mailTo = async (to) => {
+    const info = await A.smtpMailer({ DD_SMTP_URL: 'smtp://example.test:587', DD_MAIL_FROM: 'dd@example.test' }).send(to, '123456');
+    const hdr = JSON.parse(info.message).to.flatMap((x) => (x.group || [x]).map((g) => g.address));
+    return { env: info.envelope.to, hdr, from: info.envelope.from };
+  };
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const q = await mailTo('<"a@evil.invalid>"@good.test>');
+  ok(same(q.env, ['"a@evil.invalid "@good.test']) && same(q.hdr, q.env), 'nodemailer 따옴표 속 ">"(#347): 수신자 정확히 ["\\"a@evil.invalid \\"@good.test"]·헤더 동일: ' + JSON.stringify(q.env));
+  for (const to of ['G: (a; <evil@evil.invalid>) <v@victim.test>;', 'G: "a;" "<evil@evil.invalid>" <v@victim.test>;']) {
+    const g = await mailTo(to);
+    ok(same(g.env, ['v@victim.test']) && same(g.hdr, ['v@victim.test']), 'nodemailer 주석·따옴표 속 ";" 그룹 경계(#348): ' + to + ' → ' + JSON.stringify(g.env));
+  }
+  const n = await mailTo('Victim (x(y) <evil@evil.invalid>) <v@victim.test>');
+  ok(same(n.env, ['v@victim.test']) && same(n.hdr, ['v@victim.test']), 'nodemailer 중첩 주석 조기 종료(#349): ' + JSON.stringify(n.env));
+  const plainTo = await mailTo('Kim.Lee+dd@example.co.kr');
+  ok(same(plainTo.env, ['Kim.Lee+dd@example.co.kr']) && same(plainTo.hdr, plainTo.env) && plainTo.from === 'dd@example.test', 'nodemailer 일반 주소: envelope·헤더·발신 그대로');
+  ok(['<"a@evil.invalid>"@good.test>', 'G: (a; <evil@evil.invalid>) <v@victim.test>;', 'G: "a;" "<evil@evil.invalid>" <v@victim.test>;',
+    'Victim (x(y) <evil@evil.invalid>) <v@victim.test>'].every((e) => A.normalizeEmail(e) === null), '이메일 거부: 공지의 복합 주소 문법(따옴표·그룹·주석)');
   nm.createTransport = origCreate;
 
   /* ===== 1. DB 없는 서버 — 기존 무계정 경로 그대로 ===== */
