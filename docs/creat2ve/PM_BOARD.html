@@ -235,7 +235,15 @@ details.fold>summary{font-size:14px;color:var(--navy2);padding:4px 0}
 .chain li.cj{background:var(--cj-soft)}
 .box code{font-size:12.5px}
 .mob{display:none}
-@media(max-width:640px){.diagram svg.fit{min-width:0}.mob{display:block}.roles1{grid-template-columns:1fr}.shots{gap:10px}}
+/* 2.1 좁은 화면 흐름: 작은 SVG 대신 읽히는 단계 카드 */
+.flow-m{list-style:none;counter-reset:s;padding:0;margin:8px 0 16px}
+.flow-m li{counter-increment:s;position:relative;margin:0 0 6px;border:1px solid var(--line2);border-radius:8px;padding:8px 10px 8px 42px;font-size:14px;line-height:1.5}
+.flow-m li::before{content:counter(s);position:absolute;left:10px;top:9px;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;font-size:13px;line-height:22px;text-align:center}
+.flow-m li b{display:block;color:var(--navy)}
+.flow-m .g,.flow-m .r{display:inline-block;margin-top:4px;border-radius:12px;padding:1px 10px;font-weight:700;font-size:13px}
+.flow-m .g{background:var(--cj-soft);color:var(--cj)}
+.flow-m .r{background:var(--warn-soft);color:var(--warn)}
+@media(max-width:640px){.diagram svg.fit{min-width:0}.mob{display:block}#flow+.diagram{display:none}.roles1{grid-template-columns:1fr}.shots{grid-template-columns:1fr;gap:10px}}
 @media print{.shots figure.shot img{width:auto;max-width:100%}.mob{display:none}}
 </style>
 </head>
@@ -448,7 +456,15 @@ details.fold>summary{font-size:14px;color:var(--navy2);padding:4px 0}
 </g>
 </svg>
 </div>
-<p class="mob small">1 CJ 접수 → 2 범위·기획 <b>CJ Work Start</b> → 3 소관 구현 → 4 Saturn QA(REVISE면 3으로) → 5 <b>CJ QA</b> → 6 Git·CI <b>CJ 출시 승인</b> → 7 운영</p>
+<ol class="mob flow-m" aria-label="일곱 단계 흐름">
+<li><b>CJ 접수</b>CJ → Mercury PM · 단순 지시는 바로 수정·검증</li>
+<li><b>범위 · 기획</b>Mercury PM · Venus · 범위·AC·배정 기록 <span class="g">CJ 방향 결정 · Work Start</span></li>
+<li><b>소관 구현</b>Earth · Mars · Jupiter · Git 쓰기 없이 결과 전달</li>
+<li><b>Saturn 독립 QA</b>Saturn → Mercury PM · 파일 무수정 검사 <span class="r">REVISE면 3단계로</span></li>
+<li><b>CJ QA</b>CJ · CI·Saturn PASS로 대체 불가 <span class="g">CJ QA PASS</span></li>
+<li><b>Git · CI · 출시 승인</b>Mercury PM · PR·필수 CI 6개·Release <span class="g">CJ 통합 · 출시 승인</span></li>
+<li><b>운영</b>Mercury PM · CJ · 현황 갱신·예약 감시 <span class="g">CJ 운영 자원 결정</span></li>
+</ol>
 
 <h3 id="process-steps">3-2. 단계별 핵심</h3>
 <ul class="contract-list">
