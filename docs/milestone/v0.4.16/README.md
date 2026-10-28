@@ -9,7 +9,7 @@ v0.4.16은 개발 중이다. 최신 정식 출시는 [v0.4.15](../../releases/v0
 | Issue | 내용 | 상태 |
 | --- | --- | --- |
 | [#335](https://github.com/ChangjoSung/Digit-Duel/issues/335) | 테이블탑 판타지 UI·전체33종 회화풍 미술·33종4번 대표기 FX | CJ 최종 QA PASS, PR336 통합·CLOSED |
-| [#386](https://github.com/ChangjoSung/Digit-Duel/issues/386) | 새 UI의 README·플레이 사진·브랜치 트랙 정비 | CJ README QA 대기 |
+| [#386](https://github.com/ChangjoSung/Digit-Duel/issues/386) | 새 UI의 README·플레이 사진·브랜치 트랙 정비 | CJ README QA PASS, PR387·388 통합·CLOSED |
 | [#265](https://github.com/ChangjoSung/Digit-Duel/issues/265) | 싱글플레이 UI System Flow | 미착수 |
 | [#322](https://github.com/ChangjoSung/Digit-Duel/issues/322) | 무제한 AI 대전 | 미착수 |
 | [#323](https://github.com/ChangjoSung/Digit-Duel/issues/323) | 왕국9단계 PVE | 미착수 |
