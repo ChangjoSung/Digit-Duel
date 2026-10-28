@@ -1,6 +1,6 @@
 # Digit-Duel 문서 진입점
 
-현재 상태·업무·승인·팀·QA·인수인계는 **[Mercury PM 운영 원장](creat2ve/PM_BOARD.html)** 한 곳에서 관리합니다.
+회사·프로젝트 소개와 현재 상태·업무·승인·팀·QA·인수인계는 **[창조게임즈 회사·프로젝트 소개서](creat2ve/PM_BOARD.html)** 한 곳에서 관리합니다.
 
 - [게임 소개](../README.md)와 [Git/CI 기여 안내](../CONTRIBUTING.md)는 기존 진입점입니다.
 - [실행 모델 설정](creat2ve/worker-models.json)은 기계 설정 원본입니다.
