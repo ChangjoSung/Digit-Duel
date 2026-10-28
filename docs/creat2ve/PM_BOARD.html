@@ -789,11 +789,14 @@ details.fold>summary{font-size:14px;color:var(--navy2);padding:4px 0}
 <script>
 (function(){
   function openTo(){
-    var t = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    var t; try { t = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch (x) {}
+    if (!t) return;
+    var own = t.querySelector(':scope > details'); if (own) own.open = true;
     for (var e = t; e; e = e.parentElement) if (e.tagName === 'DETAILS') e.open = true;
-    if (t) t.scrollIntoView();
+    t.scrollIntoView();
   }
   addEventListener('hashchange', openTo); openTo();
+  addEventListener('click', function(ev){ if (ev.target.closest && ev.target.closest('a[href^="#"]')) setTimeout(openTo); });
   addEventListener('beforeprint', function(){ document.querySelectorAll('details').forEach(function(d){ d.open = true; }); });
 })();
 </script>
