@@ -43,9 +43,12 @@ function mkCtor(tag){
   const F=function(url,protocols){ const w=new WS(url,protocols); w.__tag=tag; log.push(w); F.last=w;
     // 진단 전용: 이 좌석 소켓이 보낸 action 과 받은 error 만 기록한다(응답 변경 없음)
     const send=w.send.bind(w); w.send=(d,...r)=>{ try{ const m=JSON.parse(d); if(m.t==="action"){ F.sent.push(JSON.stringify(m.action).slice(0,120)); if(F.sent.length>6) F.sent.shift(); } }catch(e){} return send(d,...r); };
-    w.on("message",d=>{ try{ const m=JSON.parse(String(d)); if(m.type==="error"){ F.rejects.push(m.code+"@"+(F.sent[F.sent.length-1]||"")); if(F.rejects.length>6) F.rejects.shift(); } }catch(e){} });
+    w.on("message",d=>{ try{ const m=JSON.parse(String(d)); if(m.type==="error"){ F.rejects.push(m.code+"@"+(F.sent[F.sent.length-1]||"")); if(F.rejects.length>6) F.rejects.shift(); if(/"t":"flee"/.test(F.sent[F.sent.length-1]||"")) F.flee.rej++; }
+      // 진단 전용: 이 좌석이 받은 전투 문구에서 도망 시도·성공을 센다(서버 metrics 는 공개 방 스냅샷에 없다)
+      const ev=m.type==="room_state"&&m.data&&m.data.fx&&m.data.fx.events;
+      if(Array.isArray(ev)) for(const e of ev) if(e&&e.src==="msg"&&typeof e.txt==="string"&&/도망 (시도|성공!)/.test(e.txt)&&!F.fleeSeq.has(e.seq)){ F.fleeSeq.add(e.seq); F.flee[/성공!/.test(e.txt)?"oks":"tries"]++; } }catch(e){} });
     return w; };
-  F.log=log; F.sent=[]; F.rejects=[]; return F;
+  F.log=log; F.sent=[]; F.rejects=[]; F.flee={sent:0,rej:0,tries:0,oks:0}; F.fleeSeq=new Set(); return F;
 }
 
 function mkClient(name,port){
@@ -89,7 +92,12 @@ function botStep(c){
     if(T.netActor()!==me) return;
     const B=S.battle, side=B.attP.owner===me?"A":"D", f=side==="A"?B.fa:B.fd;
     const r=rnd();
-    if(r<0.18){ c.W.__flee(); c.seen.acts++; return; } // 도망(성공 시 교환 선택)을 자주 시도해 교환 동기화 경로를 밟는다
+    /* T3 커버리지: 도망 교환 선택은 서버 rand()<0.3 성공 + 후방 자기 말이 있을 때만 열린다(없으면 fleeSwapPrompt 가 즉시 생략).
+       CI 40615576899(fleeSwap0/fleeSkip0): 18% 확률 시도만으로는 두 판에 한 번도 열리지 않을 수 있었다. 교환 미관측 동안은
+       자기 전투 행동마다 도망을 한 번 먼저 시도한다(teleSwap 우선과 같은 방식). 거부(뿌리 고정·추가 공격 단계)된 같은
+       행동 지점에서는 다시 고르지 않고 기존 혼합으로 넘어간다. 관측 후엔 기존 18% 확률로 돌아간다. */
+    const fk=c.T.NET.fxLiveBid+":"+B.round+":"+B.phase+":"+(B.actSeq||0);
+    if((SYNCSTAT.fleeSwap+SYNCSTAT.fleeSkip===0&&c.fleeKey!==fk)||r<0.18){ c.fleeKey=fk; c.ctor.flee.sent++; c.W.__flee(); c.seen.acts++; return; } // 도망(성공 시 교환 선택)을 시도해 교환 동기화 경로를 밟는다
     if(r<0.12&&S.inv[me].length&&!(side==="A"?B.itemRoundA:B.itemRoundD)){ c.W.__useItem(0); c.seen.acts++; return; }
     if(r<0.16&&S.pkgs[me]&&S.pkgs[me].itemGift>0){ c.W.__openPkg("itemGift"); c.seen.acts++; return; }
     if(f.skills){ const us=f.skills.map((_,i)=>T.slotUsable(f,i,side)?i:-1).filter(i=>i>=0);
@@ -211,7 +219,7 @@ async function playGame(g,port){
   ok(host.T.byId("overlay").classList.contains("hidden")&&guest.T.byId("overlay").classList.contains("hidden"),`G${g}-E3 재생이 끝나면 전투 무대·선택창이 닫혀 있다`);
   ok(reconnected||turns<6,`G${g}-R2 재접속 시나리오 실행`);
   const seen={battle:host.seen.battle+guest.seen.battle,modal:host.seen.modal+guest.seen.modal,acts:host.seen.acts+guest.seen.acts,flee:host.seen.flee+guest.seen.flee,stageHeld:host.seen.stageHeld+guest.seen.stageHeld};
-  console.log(`game ${g}: winner=${host.T.S.winner} winType=${host.T.S.metrics.winType} turns=${turns} seen=${JSON.stringify(seen)} errors=${host.errors.length+guest.errors.length}`);
+  console.log(`game ${g}: winner=${host.T.S.winner} winType=${host.T.S.metrics.winType} turns=${turns} seen=${JSON.stringify(seen)} flee=${JSON.stringify({host:host.ctor.flee,guest:guest.ctor.flee})} errors=${host.errors.length+guest.errors.length}`);
   ok(host.errors.length+guest.errors.length===0,`G${g}-X1 클라이언트 예외·정보 누출 0 ${(host.errors.concat(guest.errors)[0]||"").slice(0,300)}`);
   for(const c of clients){ try{ c.T.toLobby&&c.T.toLobby(); }catch(e){} try{ if(c.T.NET.ws) c.T.NET.ws.close(); }catch(e){} }
   return seen;
