@@ -281,7 +281,7 @@ async function main() {
   };
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const q = await mailTo('<"a@evil.invalid>"@good.test>');
-  ok(q.env.length === 1 && q.env[0].endsWith('"@good.test') && same(q.hdr, q.env), 'nodemailer 따옴표 속 ">"(#347): 수신자 1명·도메인 good.test: ' + JSON.stringify(q.env));
+  ok(same(q.env, ['"a@evil.invalid "@good.test']) && same(q.hdr, q.env), 'nodemailer 따옴표 속 ">"(#347): 수신자 정확히 ["\\"a@evil.invalid \\"@good.test"]·헤더 동일: ' + JSON.stringify(q.env));
   for (const to of ['G: (a; <evil@evil.invalid>) <v@victim.test>;', 'G: "a;" "<evil@evil.invalid>" <v@victim.test>;']) {
     const g = await mailTo(to);
     ok(same(g.env, ['v@victim.test']) && same(g.hdr, ['v@victim.test']), 'nodemailer 주석·따옴표 속 ";" 그룹 경계(#348): ' + to + ' → ' + JSON.stringify(g.env));
