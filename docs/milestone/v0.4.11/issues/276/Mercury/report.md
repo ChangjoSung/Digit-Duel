@@ -28,7 +28,7 @@ CJ가 확인한 차단 원인은 LAN HTTP 안내와 현행 원격 인증 HTTPS �
 | 서버 HTTPS | 절대 경로 PEM 인증서·키 쌍으로 동일 포트·핸들러·WebSocket을 HTTPS/WSS(TLS1.2+)로 운영. 잘못된 TLS 설정은 오류 코드로 기동 중단 |
 | 단일 BAT | 기존 helper가 전용 CA:false 서버 leaf·localhost/루프백/현재 사설 IPv4 SAN을 준비하고 CurrentUser Root에 그 leaf만 등록. 90일 발급·만료14일 전 재발급, 일치하는 기존 인증서·키 재사용 |
 | 주소 안내 | native TLS 서버 로그의 가상·링크 로컬 주소 열거를 제거. 실행기가 인증서에 담긴 접속 주소를 안내 |
-| 재발 방지 | [QA 원칙](../../../../../creat2ve/QA_MINIMUM_POLICY.md)에 실제 광고 주소의 로그인·쿠키·인증 WSS 대표 흐름을 완료 근거로 추가 |
+| 재발 방지 | [QA 원칙](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/QA_MINIMUM_POLICY.md)에 실제 광고 주소의 로그인·쿠키·인증 WSS 대표 흐름을 완료 근거로 추가 |
 
 인증서·키는 Git 밖의 `C:/Users/pc_77/orca/qa/Digit-Duel/issue-262-local/secrets/tls`에 있다. 현재 사용자 신뢰 항목은 서버 leaf `4E10A2D305BA6FBAB2C03E4F5174EC99C02A5DC1` 하나다. 다른 접속 기기에는 공개 인증서 `server.crt`의 신뢰 등록이 필요하다. 서버·폴더 역할과 환경 설정은 [server README](../../../../../../server/README.md)를 따른다.
 

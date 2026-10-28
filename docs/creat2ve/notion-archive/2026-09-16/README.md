@@ -12,7 +12,7 @@ CJ 지시로 Digit-Duel 기획 문서의 중복·과거 기록을 정리했다. 
 
 ## 정리 결과와 판단
 
-프로젝트 GDD 14개 중 현재 역할이 다른 4개를 남겼다. 나머지 10개와 자식 DIGEST 2개는 Notion 화면에서 휴지통으로 이동했다. 구 규칙·수치·로스터·완료 이슈 분석은 아래 원문과 기존 `docs/milestone/`의 버전별 계약으로 보관한다. README 작성 지침은 [현행 지침](../../README_RELEASE_STYLE.md)으로 이관했다.
+프로젝트 GDD 14개 중 현재 역할이 다른 4개를 남겼다. 나머지 10개와 자식 DIGEST 2개는 Notion 화면에서 휴지통으로 이동했다. 구 규칙·수치·로스터·완료 이슈 분석은 아래 원문과 기존 `docs/milestone/`의 버전별 계약으로 보관한다. README 작성 지침은 [현행 지침](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/README_RELEASE_STYLE.md)으로 이관했다.
 
 Game Overview는 규칙 설명과 긴 운영 이력이 섞여 있어 8개 항목으로 다시 정리했다. 새 기획의 30종과 출시본의 20종을 구분한다. 온라인 문서는 미구현 제안과 출시 상태의 모순을 제거하고, 현행 서버 프로토콜·실제 room 계약과 대조했다. 재배포·게임 QA를 실행한 결과가 아니다.
 

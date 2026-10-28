@@ -1,3 +1,5 @@
+> **2026-10-28 운영 원장 전환:** 현재 업무·승인·인수인계는 [Mercury PM 운영 원장](../../creat2ve/PM_BOARD.html)에서 관리합니다. 아래 표와 보고는 작성 당시의 기록이며 새 작업 승인이나 현재 운영 상태로 재활성화하지 않습니다.
+
 # v0.4.16 — 싱글플레이·튜토리얼·UI 컨셉 변경
 
 [개발 브랜치 README](../../../README.md) · [GitHub Milestone 20](https://github.com/ChangjoSung/Digit-Duel/milestone/20)

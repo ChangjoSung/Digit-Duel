@@ -2,10 +2,10 @@
   "schema_version": 1,
   "approved_on": "2026-09-23",
   "consumer": "Mercury: explicit Orca worker-start arguments",
-  "runtime_verification": "Inspect the prompt composer and resolve model-switch dialogs before input. Verify current turn model/effort, live footer and tier before GO and at completion; never reuse prior preflight. Mismatched-model results are diagnostic only; formal QA needs an approved-model fresh worker. See WORKER_MODELS.md.",
+  "runtime_verification": "Inspect the prompt composer and resolve model-switch dialogs before input. Verify current turn model/effort, live footer and tier before GO and at completion; never reuse prior preflight. Mismatched-model results are diagnostic only; formal QA needs an approved-model fresh worker. See PM_BOARD.html#runtime.",
   "handoff_permission_contract": {
     "status": "authorized",
-    "scope": "Mercury_PD handoff approved by CJ on 2026-09-28; Digit-Duel only",
+    "scope": "Mercury PM handoff in Digit-Duel only; stable role Mercury; title changed by CJ on 2026-10-28",
     "sandbox": "danger-full-access",
     "approval_policy": "never",
     "decision": "Do not propagate this permission to other workers, projects, or managed/host policy bypasses"
@@ -19,9 +19,13 @@
     "external_render_resource_and_payment_gate_unchanged": true
   },
   "ponytail_contract": {
-    "version": "4.10.0",
     "default_mode": "full",
-    "required_roles": ["Mercury", "Mars", "Jupiter", "Saturn"],
+    "required_roles": [
+      "Mercury",
+      "Mars",
+      "Jupiter",
+      "Saturn"
+    ],
     "conditional_roles": {
       "Venus": {
         "mode": "lite",
@@ -32,7 +36,9 @@
       "Earth": "pure art and asset creation; route code or tooling changes to Mars"
     },
     "safety": "Never reduce role boundaries, required validation, input validation, error handling, security, accessibility, or explicit requirements",
-    "measurement": "Do not claim project token savings before 5-10 representative tasks are measured"
+    "measurement": "Do not claim project token savings before 5-10 representative tasks are measured",
+    "approved_version_on_2026_09_18": "4.10.0",
+    "version_policy": "Read the installed skill for each provider; Mercury observed 5.3.2 on 2026-10-28. Do not infer other provider installations from historical approval."
   },
   "workers": [
     {
@@ -40,16 +46,22 @@
       "effort": "xhigh",
       "model": "gpt-6.1-sol",
       "role": "Mercury",
-      "service_tier": "default",
-      "skills": ["ponytail"]
+      "service_tier": "priority",
+      "skills": [
+        "ponytail"
+      ]
     },
     {
       "agent": "claude",
       "effort": "high",
       "model": "claude-opus-5-5",
       "role": "Venus",
-      "skills": ["eli-adult"],
-      "conditional_skills": ["ponytail"]
+      "skills": [
+        "eli-adult"
+      ],
+      "conditional_skills": [
+        "ponytail"
+      ]
     },
     {
       "agent": "codex",
@@ -57,7 +69,7 @@
       "model": "gpt-6-astra",
       "task_kind": "new_asset",
       "role": "Earth",
-      "service_tier": "default",
+      "service_tier": "priority",
       "skills": []
     },
     {
@@ -66,7 +78,7 @@
       "model": "gpt-6-luna",
       "task_kind": "existing_asset",
       "role": "Earth",
-      "service_tier": "default",
+      "service_tier": "priority",
       "skills": []
     },
     {
@@ -74,24 +86,32 @@
       "effort": "high",
       "model": "claude-opus-5-5",
       "role": "Mars",
-      "skills": ["ponytail"]
+      "skills": [
+        "ponytail"
+      ]
     },
     {
       "agent": "claude",
       "effort": "high",
       "model": "claude-opus-5-5",
       "role": "Jupiter",
-      "skills": ["ponytail"]
+      "skills": [
+        "ponytail"
+      ]
     },
     {
       "agent": "codex",
       "effort": "xhigh",
       "model": "gpt-6.1-sol",
       "role": "Saturn",
-      "service_tier": "default",
-      "skills": ["ponytail"]
+      "service_tier": "priority",
+      "skills": [
+        "ponytail"
+      ]
     }
   ],
   "issue": 250,
-  "decision": "2026-09-30 CJ: Mercury_PD and Saturn_QA use gpt-6.1-sol xhigh; all other role models remain unchanged. Codex roles use service_tier=default (No Fast); Mercury_PD handoff uses full access and approval never"
+  "decision": "2026-10-28 CJ: Mercury title is PM, stable role Mercury. The 2026-10-13 Fast service_tier=priority approval and 2026-09-30 role model/effort assignments, permissions and role boundaries remain unchanged. Actual API processing tier is reported only when observed. See PM_BOARD.html.",
+  "coordinator_title": "PM",
+  "title_changed_on": "2026-10-28"
 }
