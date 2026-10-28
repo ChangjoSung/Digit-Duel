@@ -221,6 +221,22 @@ details>div{padding:12px 0}
 details.fold>summary{font-size:14px;color:var(--navy2);padding:4px 0}
 @media(max-width:640px){.diagram{padding:8px}table.t{font-size:13.5px}table.t th{white-space:normal}}
 @media print{.diagram svg.fit{min-width:0;max-width:none}}
+/* 2.1 이미지 중심: 실제 화면은 비율 그대로(잘라내지 않음), 누르면 원본 */
+.shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:640px;margin:6px auto 0}
+.shots figure.shot{margin:0}
+.shots figure.shot img{width:100%;height:auto;object-fit:contain}
+.cap{font-size:13px;color:var(--ink3);text-align:center;margin:8px 0 18px}
+.roles1{list-style:none;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px;font-size:14px}
+.roles1 li{border-left:3px solid var(--navy-soft);padding-left:10px}
+.roles1 li b{color:var(--navy);margin-right:6px}
+.chain{list-style:none;padding:0;margin:10px 0 16px;display:flex;flex-wrap:wrap;gap:8px 6px;font-size:13.5px;line-height:1.5}
+.chain li{margin:0;background:var(--navy-soft);border-radius:8px;padding:5px 12px}
+.chain li+li::before{content:"→";color:var(--ink3);margin:0 8px 0 -2px}
+.chain li.cj{background:var(--cj-soft)}
+.box code{font-size:12.5px}
+.mob{display:none}
+@media(max-width:640px){.diagram svg.fit{min-width:0}.mob{display:block}.roles1{grid-template-columns:1fr}.shots{gap:10px}}
+@media print{.shots figure.shot img{width:auto;max-width:100%}.mob{display:none}}
 </style>
 </head>
 <body>
@@ -234,17 +250,17 @@ details.fold>summary{font-size:14px;color:var(--navy2);padding:4px 0}
 <li><a href="#about">1. 회사·프로젝트 소개</a></li>
 <li><a href="#orchestration">2. AI Orchestration Structure</a></li>
 <li class="sub"><a href="#org-chart">2-1. 조직도</a></li>
-<li class="sub"><a href="#roles">2-2. 역할과 경계</a></li>
+<li class="sub"><a href="#roles">2-2. 역할 한 줄</a></li>
 <li class="sub"><a href="#role-rules">2-3. 구조를 지키는 규칙</a></li>
 <li><a href="#process">3. 구현 방법</a></li>
 <li class="sub"><a href="#flow">3-1. 한눈에 보는 흐름</a></li>
-<li class="sub"><a href="#process-steps">3-2. 단계별 상세</a></li>
-<li class="sub"><a href="#process-example">3-3. 실제 예</a></li>
-<li class="sub"><a href="#process-limits">3-4. 오해와 한계</a></li>
+<li class="sub"><a href="#process-steps">3-2. 단계별 핵심</a></li>
+<li class="sub"><a href="#process-example">3-3. 실제 산출물 #335</a></li>
+<li class="sub"><a href="#process-limits">3-4. 한계</a></li>
 <li><a href="#stack">4. AI Model · Tool · Skill</a></li>
-<li class="sub"><a href="#models">4-1. AI 모델</a></li>
-<li class="sub"><a href="#tools">4-2. 도구</a></li>
-<li class="sub"><a href="#skills">4-3. 스킬</a></li>
+<li class="sub"><a href="#models">4-1. 모델 ↔ 담당</a></li>
+<li class="sub"><a href="#tools">4-2. 도구 → 쓰는 곳</a></li>
+<li class="sub"><a href="#skills">4-3. 스킬 → 행동 원칙</a></li>
 <li><a href="#doc-ownership">5. 작성·관리 책임</a></li>
 <li><a href="#ledger">운영 원장 상세</a></li>
 <li class="sub"><a href="#current">현재 상태</a></li>
@@ -264,53 +280,46 @@ details.fold>summary{font-size:14px;color:var(--navy2);padding:4px 0}
 <div class="kicker">CHANGJO GAMES · 회사·프로젝트 소개서</div>
 <h1>창조게임즈 회사·프로젝트 소개서</h1>
 <p class="subt">Digit-Duel과 AI 협업 개발·운영 체계</p>
+<p class="lead">창조게임즈(CHANGJO GAMES)는 사람 결정권자 CJ와 역할별 AI Worker가 함께 데스크톱·모바일 브라우저 Web 게임 <b>Digit-Duel</b>을 만드는 작업용 게임 브랜드다.</p>
 <table class="meta"><tbody>
-<tr><th scope="row">브랜드</th><td>창조게임즈 / CHANGJO GAMES — 작업용 게임 브랜드 표기다. 회사 등록·법인·상표를 확인했다는 뜻이 아니다.</td></tr>
-<tr><th scope="row">대표 프로젝트</th><td>Digit-Duel · 데스크톱·모바일 브라우저 Web 게임</td></tr>
-<tr><th scope="row">문서 개정</th><td>2.0 초안 · 2026-10-28 · 회사·프로젝트 소개 틀 추가 · <span class="pill status-wait">CJ 재QA 대기</span> · <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/company-profile-frame-20261028/final-readback.json">이번 검수·CI 결과</a></td></tr>
-<tr><th scope="row">문서 성격</th><td>회사·프로젝트 소개와 Mercury PM 운영 원장을 한 파일에 둔 단일 정본이다. 앞부분 1~5장은 설명, 뒷부분 <a href="#ledger">운영 원장 상세</a>는 현황·승인·QA·인수인계 원문이다.</td></tr>
-<tr><th scope="row">파일</th><td><code>docs/creat2ve/PM_BOARD.html</code> · 파일명 유지. 세부 File Tree·파일명 이동·Markdown 추가 정리는 다음 토론 대상이다.</td></tr>
+<tr><th scope="row">문서 개정</th><td>2.1 초안 · 2026-10-28 · <span class="pill status-wait">CJ 재QA 대기</span> · <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/company-profile-visual-20261028/final-readback.json">이번 검수·CI 결과</a></td></tr>
 </tbody></table>
+<details class="fold"><summary>문서 정보 · 미확정 사항 · 용어</summary><div>
+<ul class="contract-list small">
+<li><b>브랜드:</b> 작업용 게임 브랜드 표기다. 회사 등록·법인·상표를 확인했다는 뜻이 아니다. 회사 비전·사업 범위·다른 프로젝트 계획은 <b>미확정</b>이며, CJ가 확정하면 1장에 추가한다.</li>
+<li><b>문서 성격:</b> 앞부분 1~5장은 소개, 뒷부분 <a href="#ledger">운영 원장 상세</a>는 현황·승인·QA·인수인계 원문이다. 한 파일의 단일 정본이다.</li>
+<li><b>파일:</b> <code>docs/creat2ve/PM_BOARD.html</code> · 파일명 유지. 세부 File Tree·파일명 이동·Markdown 추가 정리는 다음 토론 대상이다.</li>
+<li><b>이전 개정:</b> 2.0 초안(소개 틀 추가)의 <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/company-profile-frame-20261028/final-readback.json">검수·CI 결과</a>는 역사 기록이며 2.1의 PASS가 아니다.</li>
+<li><b>AI Worker:</b> <a href="#current">현재 상태</a>·<a href="#work">업무</a>·<a href="#authority">권위·승인</a>과 해당 역할 절을 먼저 읽는다.</li>
+</ul>
+<div class="tbl-wrap"><table class="t"><thead><tr><th>용어</th><th>이 문서에서의 뜻</th></tr></thead><tbody>
+<tr><td><b>AI Orchestration</b></td><td>여러 AI 작업자를 역할별로 나누고, 한 조정자가 배정·취합하는 운영 방식</td></tr>
+<tr><td><b>Worker</b></td><td>한 가지 일을 맡아 실행되는 AI 세션. 결과를 PM에게 메시지로 보고한다.</td></tr>
+<tr><td><b>QA · AC</b></td><td>품질 검사 · 완료 조건(Acceptance Criteria)</td></tr>
+<tr><td><b>CI</b></td><td>코드가 합쳐질 때 GitHub가 자동으로 돌리는 필수 검사. 사람의 제품 QA를 대신하지 않는다.</td></tr>
+<tr><td><b>Release · Production</b></td><td>버전 번호가 붙은 정식 출시본 · 실제 이용자가 접속하는 서버. 개발 트랙 통합과 구분한다.</td></tr>
+</tbody></table></div>
+</div></details>
 </section>
 
 <section class="paper" id="about"><h2><span class="no">1.</span>회사·프로젝트 소개</h2>
-<div class="summary"><h3>두 문장 요약</h3><ol>
-<li><b>창조게임즈(CHANGJO GAMES)</b>는 사람 결정권자 CJ와 역할별 AI Worker가 함께 게임을 만드는 작업용 브랜드이고, 현재 대표 프로젝트는 브라우저에서 즐기는 2인 온라인 턴제 전략 보드게임 <b>Digit-Duel</b>이다.</li>
-<li>개발은 CJ가 방향과 승인을, Mercury PM이 조정을, 소관 역할이 제작을, Saturn이 파일을 고치지 않는 독립 검사를 맡는 <b>AI Orchestration</b> 구조로 운영한다.</li>
-</ol></div>
-<h3>창조게임즈</h3>
-<p>창조게임즈는 이 저장소의 게임 개발과 운영을 묶어 부르는 이름이다. 이 문서가 확인한 사실은 Digit-Duel 한 프로젝트와 그 개발·운영 체계까지다.</p>
-<div class="note info"><b class="tag">미확정</b>회사 비전·사업 범위·다른 프로젝트 계획은 정해지지 않았다. 이 문서는 정해지지 않은 내용을 채우지 않으며, CJ가 확정하면 이 절에 추가한다.</div>
-<h3>Digit-Duel</h3>
-<p><b>상대 말의 정체를 추리하며 싸우는 2인 온라인 턴제 전략 보드게임</b>이다. 각자 말 14개를 비밀리에 배치하고, 하수인을 움직여 단서를 모으며, 속성 전투로 상대를 제압한다. 대상 환경은 데스크톱·모바일 브라우저 Web이고 정식 게임은 <a href="https://digit-duel.site">digit-duel.site</a>에서 운영한다. 게임 설명은 저장소 README의 게임 소개를 따른다.</p>
-<h3>지금의 현황 <span class="muted small">2026-10-28 관측</span></h3>
-<ul>
-<li><b>정식 출시:</b> 최신 Release는 v0.4.15(2026-10-05)다. Production에는 그 뒤 보안 수정이 반영된 main이 Live다.</li>
-<li><b>v0.4.16 개발 중:</b> UI·하수인 미술 33종·대표기 FX(#335)와 README(#386)는 CJ QA PASS로 닫혔다. 개발 트랙에 반영된 것이며 정식 출시와는 별개다.</li>
-<li><b>착수 대기:</b> 싱글플레이·튜토리얼 관련 4건(#265·#322·#323·#324)은 CJ Work Start 전이다.</li>
-<li><b>운영 경고:</b> 신규 주간 백업 검증(#282)은 BLOCKED다.</li>
-</ul>
-<p class="small muted">정확한 SHA·배포 ID·근거는 <a href="#current">상세 1. 현재 상태</a>와 <a href="#work">상세 2. 업무·미결 사항</a>이 정본이다. 이 요약과 상세가 다르면 상세를 다시 확인해 둘을 함께 고친다.</p>
-<h3>읽는 데 필요한 용어</h3>
-<div class="tbl-wrap"><table class="t"><thead><tr><th>용어</th><th>이 문서에서의 뜻</th></tr></thead><tbody>
-<tr><td><b>AI Orchestration</b></td><td>여러 AI 작업자를 역할별로 나누고, 한 조정자가 일을 배정·취합하는 운영 방식. 오케스트라의 지휘처럼 각자 자기 파트만 맡는다.</td></tr>
-<tr><td><b>Worker</b></td><td>한 가지 일을 맡아 실행되는 AI 세션. 일을 마치면 결과를 PM에게 메시지로 보고한다.</td></tr>
-<tr><td><b>QA</b></td><td>품질 검사. 만든 결과가 완료 조건(AC, Acceptance Criteria)을 지키는지 확인하는 일이다.</td></tr>
-<tr><td><b>CI</b></td><td>코드가 합쳐질 때 GitHub가 자동으로 돌리는 필수 검사. 사람의 제품 QA를 대신하지 않는다.</td></tr>
-<tr><td><b>Release · Production</b></td><td>Release는 버전 번호가 붙은 정식 출시본, Production은 실제 이용자가 접속하는 서버다. 개발 트랙에 합쳐진 것과 둘은 구분한다.</td></tr>
-</tbody></table></div>
-<h3>이 문서를 읽는 방법</h3>
-<div class="tbl-wrap"><table class="t"><tbody>
-<tr><th scope="row">처음 읽을 때</th><td>1장 소개와 2·3장의 조직도·흐름도만 보면 전체 구조를 파악할 수 있다.</td></tr>
-<tr><th scope="row">모델·도구가 궁금할 때</th><td><a href="#stack">4. AI Model · Tool · Skill</a>을 본다.</td></tr>
-<tr><th scope="row">현재 수치·승인·Git 규칙</th><td><a href="#ledger">운영 원장 상세</a>의 원문을 펼친다.</td></tr>
-<tr><th scope="row">AI Worker</th><td>기동 진입 파일의 안내대로 <a href="#current">현재 상태</a>·<a href="#work">업무</a>·<a href="#authority">권위·승인</a>과 해당 역할 절을 먼저 읽는다.</td></tr>
-</tbody></table></div>
+<p class="lead"><b>Digit-Duel</b>은 상대 말의 정체를 추리하며 싸우는 2인 온라인 턴제 전략 보드게임이다. 말 14개를 비밀리에 배치하고, 하수인으로 단서를 모아 속성 전투로 상대를 제압한다.</p>
+<div class="shots">
+<figure class="shot"><a href="../screenshots/v0.4.16/01-login.png"><img src="../screenshots/v0.4.16/01-login.png" width="780" height="1688" loading="lazy" alt="Digit-Duel 로그인 화면: 성당 배경, Digit Duel 로고, 보드 미리보기, 로그인 버튼"></a><figcaption><b>그림 1.</b> 로그인</figcaption></figure>
+<figure class="shot"><a href="../screenshots/v0.4.16/02-main-lobby.png"><img src="../screenshots/v0.4.16/02-main-lobby.png" width="780" height="1688" loading="lazy" alt="Digit-Duel 메인 로비: 전적·재화, 대표 하수인 전시, 멀티플레이 버튼과 하단 메뉴"></a><figcaption><b>그림 2.</b> 메인 로비</figcaption></figure>
+</div>
+<p class="cap">v0.4.16 개발 화면 · 미출시 · #386 README 승인 원판 · 그림을 누르면 원본</p>
+<div class="stats">
+<div class="stat"><div class="v">v0.4.15</div><div class="k">정식 Release · 2026-10-05<br><a href="https://digit-duel.site">digit-duel.site</a> 운영</div></div>
+<div class="stat"><div class="v">v0.4.16</div><div class="k">개발 중 · 미출시<br>#335·#386 CJ PASS</div></div>
+<div class="stat"><div class="v">4<small>건</small></div><div class="k">착수 대기<br>#265·#322·#323·#324</div></div>
+<div class="stat"><div class="v">#282</div><div class="k">신규 주간 백업 검증<br>BLOCKED</div></div>
+</div>
+<p class="small muted">2026-10-28 관측. Production은 v0.4.15 뒤 보안 수정 main이 Live다. 정확한 SHA·근거는 <a href="#current">상세 1. 현재 상태</a>·<a href="#work">상세 2. 업무</a>가 정본이다.</p>
 </section>
 
 <section class="paper" id="orchestration"><h2><span class="no">2.</span>AI Orchestration Structure</h2>
-<p class="lead">사람 한 명(CJ)이 방향을 정하고, AI PM이 일을 나누고, 소관 역할이 만들고, 만들지 않은 쪽이 검사한다. 역할 이름은 태양계 행성에서 따왔다.</p>
-<div class="note info"><b class="tag">비유</b>건설 현장과 비슷하다. CJ는 건축주, Mercury PM은 현장소장, Venus·Earth·Mars·Jupiter는 공종별 시공팀, Saturn은 시공에 손대지 않는 감리다. Argon은 현장 밖에서 납품하는 협력업체에 가깝다. 비유는 단순화이며 실제 권한은 아래 표와 <a href="#team">상세 3. 팀·Mercury PM 역할</a>을 따른다.</div>
+<p class="lead">CJ가 정하고, Mercury PM이 나누고, 소관 역할이 만들고, 만들지 않은 Saturn이 검사한다.</p>
 
 <h3 id="org-chart">2-1. 조직도</h3>
 <div class="diagram">
@@ -363,30 +372,30 @@ details.fold>summary{font-size:14px;color:var(--navy2);padding:4px 0}
 </svg>
 </div>
 
-<h3 id="roles">2-2. 역할과 경계</h3>
-<div class="tbl-wrap"><table class="t"><thead><tr><th>역할</th><th>맡는 일</th><th>하지 않는 일</th></tr></thead><tbody>
-<tr><td><b>CJ</b> <span class="pill h">사람</span></td><td>방향 결정, 착수(Work Start), 최종 제품·미술 QA, 출시 승인</td><td>— 미확정 기획·운영 자원·결제의 결정권자다. AI가 대신 결정하지 않는다.</td></tr>
-<tr><td><b>Mercury · PM</b><br><code>Mercury</code></td><td>CJ 요청 접수, 범위·일정·완료 조건 조정, Worker 배정, Git·GitHub·Orca 메타데이터, 현황 갱신, 인수인계</td><td>제품·도구·테스트 코드 구현, 기획 결정 대체, 독립 QA 판정 대체</td></tr>
-<tr><td><b>Venus · 기획</b><br><code>PLAN</code></td><td>기획서·규칙 의미, Notion 기획 관리, 설명·소개 문서 집필</td><td>제품·도구·테스트 코드, Git 쓰기. 문서의 편집·저장 같은 앱 기능은 Mars 소관</td></tr>
-<tr><td><b>Earth · 아트</b><br><code>ART</code></td><td>아트·자산·UI 시각 설계</td><td>코드 구현(Mars로 전달), 기획 결정 대체, Git 쓰기</td></tr>
-<tr><td><b>Mars · Web 클라이언트·툴링</b><br><code>CLIENT_TOOLING</code></td><td>Web 클라이언트·빌드·툴링·테스트 구현</td><td>서버 구현, 기획 결정·독립 QA 대체, Git 쓰기</td></tr>
-<tr><td><b>Jupiter · 서버</b><br><code>SERVER</code></td><td>서버·DB·Table 스키마와 검증</td><td>클라이언트·툴링 구현, Table 의미·수치 결정(Venus·CJ 소관), Git 쓰기</td></tr>
-<tr><td><b>Saturn · 독립 QA</b><br><code>READ_ONLY_QA</code></td><td>파일을 고치지 않는 독립 검사. 판정·재현·한계를 PM에게 메시지로 전달</td><td>제품·테스트·보고서를 포함한 모든 파일 쓰기와 Git 쓰기. 잘못된 테스트도 직접 고치지 않고 REVISE로 돌려보낸다.</td></tr>
-<tr><td><b>Argon</b><br>외주 미술 제작 파트너</td><td>팀 밖에서 미술 제작물을 납품한다. 납품물·artifact 원본은 보존한다.</td><td>고정 역할(Earth 등)이나 역할 모델의 대체로 쓰지 않는다.</td></tr>
-</tbody></table></div>
+<h3 id="roles">2-2. 역할 한 줄</h3>
+<ul class="roles1">
+<li><b>CJ</b>방향·착수·최종 QA·출시 승인. 미확정 기획·운영 자원·결제 결정</li>
+<li><b>Mercury PM</b>접수·배정·Git·현황·인계. 구현·기획 결정·QA 판정은 대행 않음</li>
+<li><b>Venus</b>기획·규칙 의미·문서 집필. 코드·Git 쓰기 없음</li>
+<li><b>Earth</b>아트·자산·UI 시각 설계. 코드는 Mars로 전달</li>
+<li><b>Mars</b>Web 클라이언트·빌드·툴링·테스트. 서버 구현 없음</li>
+<li><b>Jupiter</b>서버·DB·Table 스키마. Table 의미·수치는 Venus·CJ</li>
+<li><b>Saturn</b>파일 무수정 독립 QA. 판정은 PM에게 메시지</li>
+<li><b>Argon</b>팀 밖 외주 미술. 고정 역할·역할 모델 대체 아님</li>
+</ul>
 
 <h3 id="role-rules">2-3. 구조를 지키는 규칙</h3>
 <ul class="contract-list">
-<li><b>역할이 먼저, 모델은 나중:</b> 역할을 정한 뒤 승인된 모델을 배정한다. 공급자나 빈 슬롯을 이유로 다른 역할이 대신하지 않는다.</li>
-<li><b>만드는 쪽과 검사하는 쪽을 분리:</b> 구현 역할은 자기 작업의 QA 판정을 내리지 않는다. 정식 QA 판정은 Saturn과 CJ의 몫이다.</li>
-<li><b>보고는 메시지로, 기록은 한 곳에:</b> Worker는 판정·변경 파일·검사·미해결·증거 링크를 PM에게 전달한다. PM이 이 문서의 기존 항목을 갱신하고, 역할별 완료 Markdown은 따로 만들지 않는다.</li>
-<li><b>같은 파일 동시 편집 금지:</b> 한 파일은 한 시점에 한 담당만 편집한다.</li>
+<li>역할을 먼저 정하고 승인 모델을 배정한다. 빈 슬롯을 다른 역할이 대신하지 않는다.</li>
+<li>만든 역할은 자기 작업을 판정하지 않는다. 정식 QA는 Saturn과 CJ의 몫이다.</li>
+<li>Git 쓰기는 PM만 한다. Worker는 결과·검사·한계·증거 링크를 PM에게 보내고, PM이 이 문서의 기존 항목을 갱신한다.</li>
+<li>한 파일은 한 시점에 한 담당만 편집한다.</li>
 </ul>
+<p class="small muted">권한 원문: <a href="#team">상세 3. 팀·Mercury PM 역할</a></p>
 </section>
 
 <section class="paper" id="process"><h2><span class="no">3.</span>구현 방법</h2>
-<p class="lead">일 하나가 들어와 운영되기까지 일곱 단계를 거친다. 단계마다 담당이 다르고, 분홍색 CJ 확인 지점을 지나야 다음 단계로 간다.</p>
-<div class="note info"><b class="tag">작은 일과 큰 일</b>단순 지시는 필요한 수정·검증으로 바로 진행한다. 여러 역할이 얽힌 복합 안건은 소관 분석 → PM 취합 → CJ 방향 결정 → 구현 → Saturn 검수 → CJ QA → 정리 순서를 모두 거친다.</div>
+<p class="lead">일 하나는 일곱 단계를 거치며, 분홍색 CJ 확인 지점을 지나야 다음 단계로 간다. 단순 지시는 바로 수정·검증한다.</p>
 
 <h3 id="flow">3-1. 한눈에 보는 흐름</h3>
 <div class="diagram">
@@ -439,87 +448,90 @@ details.fold>summary{font-size:14px;color:var(--navy2);padding:4px 0}
 </g>
 </svg>
 </div>
+<p class="mob small">1 CJ 접수 → 2 범위·기획 <b>CJ Work Start</b> → 3 소관 구현 → 4 Saturn QA(REVISE면 3으로) → 5 <b>CJ QA</b> → 6 Git·CI <b>CJ 출시 승인</b> → 7 운영</p>
 
-<h3 id="process-steps">3-2. 단계별 상세</h3>
-<ol class="steps">
-<li><h4>CJ 접수</h4><p>PM이 CJ Comment를 결정·피드백·질문으로 분류하고 승인된 범위만 구체화한다. 단순 지시는 필요한 수정·검증으로 바로 진행한다.</p><div class="tools"><span class="pill h">CJ</span><span class="pill r">Mercury PM</span></div></li>
-<li><h4>범위·기획</h4><p>PM이 범위·일정·완료 조건(AC)을 정하고, Worker 배정에 역할·작업 공간·기준 ref·파일 범위·보존 조건·필수 검사를 기록한다. 기획이 불명확하면 Venus가 확정·추론·미확정을 구분해 [기획 필요]로 보고한다. CJ의 Work Start 없이 제품 작업을 시작하지 않는다.</p><div class="tools"><span class="pill r">Mercury PM</span><span class="pill r">Venus</span><span class="pill h">CJ 방향 결정</span></div></li>
-<li><h4>소관 구현</h4><p>Earth는 아트·자산, Mars는 Web 클라이언트·빌드·툴링·테스트, Jupiter는 서버·DB를 맡는다. 구현 역할은 Git에 쓰지 않고 판정·변경 파일·검사·미해결·증거 링크를 PM에게 전달한다.</p><div class="tools"><span class="pill r">Earth</span><span class="pill r">Mars</span><span class="pill r">Jupiter</span></div></li>
-<li><h4>Saturn 독립 QA</h4><p>Saturn이 파일을 고치지 않고 검사한다. 잘못된 테스트도 직접 고치지 않고 REVISE로 구현 역할에 돌려보낸다. 승인 모델 게이트를 통과한 결과만 정식 QA로 분류한다.</p><div class="tools"><span class="pill r">Saturn</span></div></li>
-<li><h4>CJ QA</h4><p>CJ가 제품·미술을 최종 확인한다. CI 성공이나 Saturn PASS는 CJ의 제품 QA를 대신하지 않는다.</p><div class="tools"><span class="pill h">CJ 최종 QA</span></div></li>
-<li><h4>Git·CI·출시 승인</h4><p>PM이 이슈 브랜치 → milestone 트랙 → dev → main 순서로 통합하고 필수 CI 6개를 유지한다. Issue 종결은 모든 AC·통합·CJ 승인 확인 뒤다. 정식 Release와 Production 배포는 CJ 승인 범위에서만 진행한다.</p><div class="tools"><span class="pill r">Mercury PM</span><span class="pill h">CJ 승인</span></div></li>
-<li><h4>운영</h4><p>PM이 이 문서의 현황을 갱신하고 Orca 예약으로 서버 상태·백업 검증을 감시한다. DB·계정·결제·요금제 같은 운영 자원과 새 유료 자원은 CJ가 결정한다.</p><div class="tools"><span class="pill r">Mercury PM</span><span class="pill h">CJ</span></div></li>
-</ol>
-<p class="small muted">브랜치 규칙·PR 기록 항목·root 보존 같은 세부 계약은 <a href="#authority">상세 4. 권위·승인·Git 규칙</a>, 검사 원칙은 <a href="#qa-policy">상세 5. QA 운영 원칙</a>이 정본이다.</p>
-
-<h3 id="process-example">3-3. 실제 예: #335 UI·미술·FX</h3>
-<div class="case"><div class="ch"><h4>하수인 미술 33종과 4번 대표기 FX 33종</h4><span class="pill status-pass">CJ PASS · CLOSED</span></div><div class="cb"><dl>
-<dt>2 범위</dt><dd>#335 Issue로 범위와 완료 조건을 관리했다.</dd>
-<dt>3~4 구현·QA</dt><dd>소관 역할의 제작 뒤 Saturn 검수에서 REVISE·초기 실패·재검증을 거쳤고, 그 기록은 증거로 보존한다.</dd>
-<dt>5 CJ QA</dt><dd>CJ 제품·미술 QA PASS.</dd>
-<dt>6 통합</dt><dd>PR336으로 dev에 통합했다. 정식 Release·Production 배포는 아직 별도 판단 대상이다 — 6단계 안에서도 '통합'과 '출시'는 다른 승인이다.</dd>
-</dl></div></div>
-
-<h3 id="process-limits">3-4. 오해하기 쉬운 점과 한계</h3>
+<h3 id="process-steps">3-2. 단계별 핵심</h3>
 <ul class="contract-list">
-<li><b>AI가 결정하지 않는다.</b> 방향·착수·출시·운영 자원·결제는 CJ가 정한다.</li>
-<li><b>통과의 종류가 다르다.</b> CI 성공, Saturn PASS, CJ QA PASS는 서로를 대신하지 않는다. dev 통합은 정식 출시가 아니다.</li>
-<li><b>공유 QA 서버의 한계:</b> DB 없는 게스트 검수 환경이라 실제 회원·SMTP·영구 전적 E2E를 지원한다고 보고하지 않는다.</li>
-<li><b>측정하지 않은 효과는 주장하지 않는다.</b> 사용량 절감률·모델 우열은 동일 조건 측정 전에는 쓰지 않는다.</li>
+<li><b>배정:</b> 역할·작업 공간·기준 ref·파일 범위·보존 조건·필수 검사를 기록한다. 기획이 불명확하면 Venus가 [기획 필요]로 보고한다.</li>
+<li><b>통과는 서로 대신하지 않는다:</b> 필수 CI 6개, Saturn PASS, CJ QA PASS는 별개다. Saturn은 승인 모델 게이트를 통과한 결과만 정식 QA다.</li>
+<li><b>통합 ≠ 출시:</b> 이슈 브랜치 → milestone → dev → main. Release·Production 배포는 CJ 승인 범위다. Issue는 AC·통합·CJ 승인 확인 뒤 닫는다.</li>
+<li><b>운영:</b> PM이 현황을 갱신하고 Orca 예약으로 서버·백업 검증을 감시한다. 운영 자원·결제는 CJ가 정한다.</li>
+</ul>
+<p class="small muted">세부 규칙: <a href="#authority">상세 4. 권위·승인·Git</a> · <a href="#qa-policy">상세 5. QA 원칙</a></p>
+
+<h3 id="process-example">3-3. 실제 산출물: #335 UI·미술·FX <span class="pill status-pass">CJ PASS · CLOSED</span></h3>
+<div class="shots">
+<figure class="shot"><a href="../screenshots/v0.4.16/06-strategy-board.png"><img src="../screenshots/v0.4.16/06-strategy-board.png" width="860" height="1864" loading="lazy" alt="전략 보드 화면: 위쪽은 정체를 숨긴 상대 말(?), 아래쪽은 체력이 표시된 내 하수인 배치, 속성 표시와 행동 버튼"></a><figcaption><b>그림 3.</b> 전략 보드</figcaption></figure>
+<figure class="shot"><a href="../screenshots/v0.4.16/08-element-battle.png"><img src="../screenshots/v0.4.16/08-element-battle.png" width="860" height="1864" loading="lazy" alt="속성 전투 화면: 고대 골렘(땅)과 새싹 파수꾼(풀)의 능력치, 싸우기·가방·포획·도망가기 버튼"></a><figcaption><b>그림 4.</b> 속성 전투</figcaption></figure>
+</div>
+<p class="cap">v0.4.16 개발 화면 · 미출시 · #335 하수인 미술 반영 · 그림을 누르면 원본</p>
+<ol class="chain">
+<li>#335 Issue 범위·AC</li>
+<li>하수인 미술 33종 · 4번 대표기 FX 33종 제작</li>
+<li>Saturn REVISE·재검증</li>
+<li class="cj">CJ QA PASS</li>
+<li>PR336 dev 통합 · 정식 출시는 별도 판단</li>
+</ol>
+
+<h3 id="process-limits">3-4. 한계</h3>
+<ul class="contract-list">
+<li>AI는 방향·착수·출시·운영 자원·결제를 결정하지 않는다.</li>
+<li>공유 QA 서버는 DB 없는 게스트 환경이다. 실제 회원·SMTP·영구 전적 E2E를 지원한다고 보고하지 않는다.</li>
+<li>사용량 절감률·모델 우열은 동일 조건 측정 전에는 쓰지 않는다.</li>
 </ul>
 </section>
 
 <section class="paper" id="stack"><h2><span class="no">4.</span>AI Model · Tool · Skill</h2>
-<p class="lead">세 단어를 구분한다. <b>모델</b>은 일을 생각하는 AI 엔진, <b>도구</b>는 그 엔진이 실제로 다루는 프로그램·서비스, <b>스킬</b>은 특정 작업을 매번 같은 방식으로 하게 하는 작업 지침서다.</p>
-<div class="note info"><b class="tag">비유</b>모델은 사람, 도구는 장비, 스킬은 작업 매뉴얼이다. 같은 사람도 매뉴얼에 따라 일하는 방식이 달라지고, 장비가 없으면 할 수 없는 일이 있다.</div>
-<div class="note warn"><b class="tag">다음 토론에서 확정</b>도구·스킬의 세부 분류 체계와 추가 목록은 다음 토론에서 확정한다. 아래 역할별 모델·effort·Skill 배치는 이미 CJ가 승인한 실행 계약이며 미정이 아니다.</div>
+<p class="lead"><b>모델</b>은 생각하는 AI 엔진, <b>도구</b>는 엔진이 다루는 프로그램·서비스, <b>스킬</b>은 같은 일을 같은 방식으로 하게 하는 작업 지침이다.</p>
+<ol class="chain" aria-label="조합 예: 이 문서">
+<li>역할 <b>Venus</b></li>
+<li>모델 <code>claude-opus-5-5 / high</code></li>
+<li>도구 Claude Code · Orca</li>
+<li>스킬 eli-adult</li>
+<li>이 HTML</li>
+<li class="cj">PM 검증 → CJ 승인</li>
+</ol>
 
-<h3 id="models">4-1. AI 모델</h3>
-<div class="tbl-wrap"><table class="t"><thead><tr><th>역할</th><th>실행기 / 모델 / effort</th><th>처리 tier 설정</th></tr></thead><tbody>
-<tr><td>Mercury PM</td><td><code>codex / gpt-6.1-sol / xhigh</code></td><td>Fast <code>priority</code></td></tr>
-<tr><td>Venus</td><td><code>claude / claude-opus-5-5 / high</code></td><td>—</td></tr>
-<tr><td>Earth 신규 자산</td><td><code>codex / gpt-6-astra / medium</code></td><td>Fast <code>priority</code></td></tr>
-<tr><td>Earth 기존 자산 수정</td><td><code>codex / gpt-6-luna / xhigh</code></td><td>Fast <code>priority</code></td></tr>
-<tr><td>Mars · Jupiter</td><td><code>claude / claude-opus-5-5 / high</code></td><td>—</td></tr>
-<tr><td>Saturn</td><td><code>codex / gpt-6.1-sol / xhigh</code></td><td>Fast <code>priority</code></td></tr>
-</tbody></table></div>
-<ul class="contract-list">
-<li>이 배치는 CJ 승인(2026-09-30 역할별 모델·effort, 2026-10-13 GPT 작업 Fast)이며 모델의 우열 평가가 아니다.</li>
-<li><code>priority</code>는 설정값이다. 실제 API 처리 tier는 미관측이며 관측한 경우에만 보고한다.</li>
-<li>기계가 읽는 정본은 <a href="worker-models.json">worker-models.json</a>, 실행 확인 절차는 <a href="#runtime">상세 3의 모델·실행 확인</a>이다. 불일치하면 자동 대체 없이 보고한다.</li>
-</ul>
+<h3 id="models">4-1. 모델 ↔ 담당</h3>
+<div class="two">
+<div class="box"><div class="tag">codex · Fast priority</div><h4><code>gpt-6.1-sol / xhigh</code></h4><p>Mercury PM · Saturn</p></div>
+<div class="box"><div class="tag">claude</div><h4><code>claude-opus-5-5 / high</code></h4><p>Venus · Mars · Jupiter</p></div>
+<div class="box"><div class="tag">codex · Fast priority</div><h4><code>gpt-6-astra / medium</code></h4><p>Earth 신규 자산</p></div>
+<div class="box"><div class="tag">codex · Fast priority</div><h4><code>gpt-6-luna / xhigh</code></h4><p>Earth 기존 자산 수정</p></div>
+</div>
+<p class="small muted">CJ 승인 배치(2026-09-30 모델·effort, 2026-10-13 GPT Fast)이며 우열 평가가 아니다. <code>priority</code>는 설정값이고 실제 API 처리 tier는 미관측이다. 정본은 <a href="worker-models.json">worker-models.json</a>·<a href="#runtime">모델·실행 확인</a>이며, 불일치는 자동 대체 없이 보고한다.</p>
 
-<h3 id="tools">4-2. 도구</h3>
-<div class="tbl-wrap"><table class="t"><thead><tr><th>도구</th><th>무엇인가</th><th>이 프로젝트에서 쓰는 곳</th></tr></thead><tbody>
-<tr><td><b>Orca</b></td><td>여러 AI 코딩 에이전트를 한 화면에서 실행·관리하는 데스크톱 프로그램</td><td>Worker 기동·작업 공간, 배정·보고 메시지, 운영 예약(#282 감시)</td></tr>
-<tr><td><b>Codex · Claude Code</b></td><td>모델을 터미널에서 실행하는 에이전트 실행기</td><td>역할별 Worker의 실제 실행(4-1의 실행기 열)</td></tr>
-<tr><td><b>Git · GitHub</b></td><td>코드 이력 관리와 협업 서비스. Issues·Milestones·PR·Actions(CI)·Releases</td><td>계획·AC·통합·필수 CI·정식 출시 기록</td></tr>
-<tr><td><b>Render</b></td><td>웹 서비스 호스팅</td><td>Production(digit-duel.site)과 공유 QA 서버</td></tr>
-<tr><td><b>Notion</b></td><td>문서 협업 도구</td><td>GDD 등 게임 기획 원본(Venus 관리)</td></tr>
+<h3 id="tools">4-2. 도구 → 쓰는 곳</h3>
+<div class="tbl-wrap"><table class="t"><tbody>
+<tr><th scope="row">Orca</th><td>AI 에이전트 실행·관리 앱 → Worker 기동·작업 공간, 배정·보고 메시지, #282 예약</td></tr>
+<tr><th scope="row">Codex · Claude Code</th><td>터미널 에이전트 실행기 → 역할별 Worker 실행</td></tr>
+<tr><th scope="row">Git · GitHub</th><td>Issues·Milestones·PR·Actions(CI)·Releases → 계획·AC·통합·필수 CI·정식 출시</td></tr>
+<tr><th scope="row">Render</th><td>웹 호스팅 → Production(digit-duel.site)·공유 QA 서버</td></tr>
+<tr><th scope="row">Notion</th><td>문서 협업 → GDD 등 기획 원본(Venus 관리)</td></tr>
 </tbody></table></div>
 
-<h3 id="skills">4-3. 스킬</h3>
-<div class="tbl-wrap"><table class="t"><thead><tr><th>스킬</th><th>하는 일</th><th>적용 역할</th></tr></thead><tbody>
-<tr><td><b>eli-adult</b></td><td>처음 읽는 성인이 이해하도록 요약을 앞에 두고, 용어를 정의하고, 도표와 한계 표기로 설명 문서를 구성한다.</td><td>Venus 필수 · 이 문서 집필</td></tr>
-<tr><td><b>ponytail</b></td><td>필요 이상으로 만드는 과잉 구현을 줄이는 작업 규칙. 보안·접근성·필수 검증·역할 경계는 줄이지 않는다.</td><td>Mercury·Mars·Jupiter·Saturn full · Venus는 기술 기획 검토 때만 lite · Earth 순수 아트는 미적용. 절감률은 미측정</td></tr>
-<tr><td><b>orchestration</b></td><td>PM이 Worker에게 일을 배정하고 질문·완료 보고를 주고받는 Orca 협업 절차</td><td>Mercury PM 배정·취합, Worker 보고</td></tr>
-<tr><td><b>imagegen</b></td><td>새 래스터 이미지(배경·캐릭터·질감)를 원본을 보존하며 제작하는 지침</td><td>Earth, 필요할 때만. 유료 API 경로는 CJ가 명시 선택한 범위</td></tr>
-</tbody></table></div>
+<h3 id="skills">4-3. 스킬 → 행동 원칙</h3>
+<div class="two">
+<div class="box"><div class="tag">Venus 필수</div><h4>eli-adult</h4><p>처음 읽는 성인 기준: 정확한 용어, 실제 구조 도해, 미확정은 미확정으로 표기</p></div>
+<div class="box"><div class="tag">Mercury·Mars·Jupiter·Saturn full</div><h4>ponytail</h4><p>과잉 구현을 줄인다. 보안·접근성·필수 검증·역할 경계는 줄이지 않는다. Venus는 기술 기획 검토 때만 lite, Earth 순수 아트 미적용, 절감률 미측정</p></div>
+<div class="box"><div class="tag">PM · Worker</div><h4>orchestration</h4><p>PM 배정, Worker 질문·완료 보고를 메시지로 주고받는 Orca 절차</p></div>
+<div class="box"><div class="tag">Earth · 필요할 때만</div><h4>imagegen</h4><p>새 래스터 이미지를 원본을 보존하며 제작. 유료 API는 CJ가 명시 선택한 범위</p></div>
+</div>
+<p class="small muted">도구·스킬의 세부 분류와 추가 목록은 다음 토론에서 확정한다. 역할별 모델·effort·Skill 배치는 이미 승인된 실행 계약이다.</p>
 </section>
 
 <section class="paper" id="doc-ownership"><h2><span class="no">5.</span>이 문서의 작성·관리 책임</h2>
-<div class="note cj"><b class="tag">CJ 승인 · 2026-10-28</b>회사·프로젝트 소개서 방향 승인에 따라 이 문서의 쓰기 책임을 아래처럼 나눈다. 이전의 'PM만 정본을 갱신' 문구는 이 범위에서 대체된다.</div>
-<div class="tbl-wrap"><table class="t"><thead><tr><th>담당</th><th>책임</th><th>하지 않는 일</th></tr></thead><tbody>
-<tr><td><b>Venus</b></td><td>소개서 집필과 큰 개편. 승인 템플릿의 문서 HTML만 작성한다.</td><td>도구·저장·편집 같은 앱 기능 구현(Mars 소관), Git 쓰기</td></tr>
-<tr><td><b>Mercury PM</b></td><td>지속적인 현황 갱신, 사실 검증, Git 최종 반영</td><td>기획 결정·독립 QA 판정 대체</td></tr>
-<tr><td><b>소관 역할</b><br>Earth · Mars · Jupiter</td><td>자기 영역의 기술 사실 확인</td><td>다른 영역 서술 확정</td></tr>
-<tr><td><b>Saturn</b></td><td>파일 무수정 읽기 검수</td><td>문서 직접 수정</td></tr>
-<tr><td><b>CJ</b></td><td>최종 승인</td><td>—</td></tr>
-</tbody></table></div>
+<ol class="chain">
+<li><b>Venus</b> 집필·큰 개편</li>
+<li><b>Mercury PM</b> 사실 검증·현황·Git 최종 반영</li>
+<li><b>소관 역할</b> 자기 영역 기술 사실 확인</li>
+<li><b>Saturn</b> 파일 무수정 읽기 검수</li>
+<li class="cj"><b>CJ</b> 최종 승인</li>
+</ol>
 <ul class="contract-list">
-<li>같은 파일을 여러 담당이 동시에 편집하지 않는다.</li>
-<li>물리 파일명은 <code>PM_BOARD.html</code>을 유지한다. 세부 File Tree·파일명 이동·Markdown 추가 정리는 다음 토론 대상이다. 새 보고서·로고·브랜딩 자산은 만들지 않는다.</li>
-<li><b>이번 개편 상태:</b> Venus 집필 완료, CJ 재QA 대기. 독립 검수·CI의 진행 및 최종 결과는 <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/company-profile-frame-20261028/final-readback.json">이번 개편 영수증</a>에서 확인한다. <a href="#migration">상세 10. 이번 전환 결과</a>의 검사·PASS는 이전 문서 전환의 기록이며 이번 개편의 PASS가 아니다.</li>
+<li><b>CJ 승인 · 2026-10-28:</b> 이 분담이 이전의 'PM만 정본을 갱신' 문구를 이 범위에서 대체한다. Venus는 문서 HTML만 쓰며 앱 기능(Mars 소관)·Git 쓰기는 하지 않는다. PM은 기획 결정·독립 QA 판정을 대체하지 않는다.</li>
+<li>같은 파일을 여러 담당이 동시에 편집하지 않는다. 새 보고서·로고·브랜딩 자산은 만들지 않는다.</li>
+<li><b>2.1 상태:</b> Venus 집필 완료 · <span class="pill status-wait">CJ 재QA 대기</span> · <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/company-profile-visual-20261028/final-readback.json">이번 검수·CI 영수증</a>. 이 판은 PR391 검토본이며 CJ 재QA 전까지 root·milestone 정본은 기존 판을 유지한다. <a href="#migration">상세 10. 이번 전환 결과</a>의 PASS는 이전 전환의 기록이다.</li>
 </ul>
 </section>
 
