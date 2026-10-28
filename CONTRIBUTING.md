@@ -58,7 +58,7 @@ It needs no secrets and requests only `contents: read`. Six jobs run in parallel
 
 Jobs A, B, C, and E run on `ubuntu-24.04`. B2 and D run on Windows, for different
 reasons: B2 because `server/test/test-launcher.js` skips itself off `win32`, and D
-because it compares **delivered bytes**. The same `Pillow==12.3.0` pin passed on
+because it compares **delivered bytes** (current pin: `Pillow==13.0.0`). The then-current `Pillow==12.3.0` pin passed on
 Windows and failed on `ubuntu-24.04` for 14 of the 28 delivered PNGs, so job D
 pins the environment the assets were baked in — `windows-2025`, Python 3.14.3.
 The evidence and what it does and does not establish is in
