@@ -87,3 +87,6 @@
 /docs/milestone/v0.4.3/issues/89/Saturn/minion-art-integration-saturn-initial.md text eol=lf
 /docs/milestone/v0.4.3/issues/89/Mars/artifacts/minion_art_cdp_report.json text eol=lf
 /docs/milestone/v0.4.4/reports/Mars/v044-technical-analysis-mars.md text eol=lf
+
+# Keep the self-contained operating report byte-stable across checkouts.
+/docs/creat2ve/CHANGJO_GAMES_ORG_RNR.html text eol=lf
