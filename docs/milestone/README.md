@@ -1,3 +1,5 @@
+> **2026-10-29 문서 정본 전환:** 현행 부서·PM 문서는 회사 Obsidian에서 관리합니다. [현재 진입 안내](../../AGENTS.md)를 따르며 아래의 과거 날짜·표·보고는 이력으로 보존합니다. [운영 HTML](../creat2ve/CHANGJO_GAMES_ORG_RNR.html)은 열람 출력입니다.
+
 > **2026-10-28 운영 원장 전환:** 현재 업무·승인·인수인계는 [CHANGJO GAMES Org Chart and R&R](../creat2ve/CHANGJO_GAMES_ORG_RNR.html)에서 관리합니다. 아래 표와 보고는 작성 당시의 기록이며 새 작업 승인이나 현재 운영 상태로 재활성화하지 않습니다.
 
 # 마일스톤 보관소
