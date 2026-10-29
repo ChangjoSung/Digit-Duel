@@ -1601,3 +1601,28 @@ body .overlay:has(.battleTop){align-items:flex-start; padding-top:var(--appTop);
 .synHelp .tagT.me{border-radius:2px; background:var(--accent);} .synHelp .tagT.op{border-radius:8px; background:var(--danger);}
 @media (max-width:360px){ #app[data-screen="board"]:has(#boardInfo .cycleCol) #screenBody{padding-left:20px;} #app[data-screen="board"]:has(#boardInfo .cycleCol) #boardInfo{margin-left:-16px;}
   #boardInfo .cycleCol{left:-2px; width:16px;} #boardInfo .cycleCol .gi{font-size:14px;} #boardInfo .cycleCol .up{width:5px; height:5px;} } /* 320: 띠를 좁혀 말판 칸 32px 하한(#286)을 지킨다 */
+/* ===== #265·#322·#324 v0.4.16 싱글플레이(single.js) — 방 목록 머리줄(.roomsScreen)·카드(.histCard)·잠금(button.locked)을 그대로 쓴다 =====
+   상태는 색만이 아니라 글자로도 말한다(도전 가능 · 클리어 · 잠김 · 추후 공개 · 저장 중 · 저장됨). 추후 공개는 잠금 아이콘 없는 흐린 칸. 움직임 없음 — 모션 감소 대상이 없다 */
+#spGuide{position:fixed; inset:0; z-index:58; display:grid; place-items:center; padding:16px; background:#020612b3; overflow-y:auto;}
+#spGuide.hidden{display:none;}
+#spGuide .histCard{width:min(420px,100%);}
+#spGuide h2{margin:0; font-size:17px; color:#fff;}
+#spGuide p{margin:0; line-height:1.55;}
+#spGuide .row{display:flex; width:100%; gap:8px; flex-wrap:nowrap; margin:4px 0 0;}
+#spGuide .row button{flex:1 1 0; min-width:0; min-height:44px; white-space:nowrap;} /* 320 에서도 [건너뛰기]가 두 줄로 깨지지 않게 */
+.spKicker{font-size:12px; color:#a9bcdc;}
+.spCards{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.spCard{position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-height:120px; padding:10px; text-align:center;}
+.spCard .gi{font-size:40px;} .spCard b{font-size:17px;} .spCard small{font-size:12px;}
+.spTiers{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); gap:6px;} /* 한 열 — PC 도 게임 패널 폭(432)이라 다열은 칸이 좁아진다(Earth 시각 REVISE) */
+.spTier{position:relative; width:100%; min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 12px; overflow-wrap:anywhere; text-align:right;}
+.spTier b{flex:0 0 auto; text-align:left;}
+.spTier small{font-size:11px; line-height:1.3;}
+.spTier.st-future{opacity:.5; border-style:dotted;}
+.spReview{list-style:none; margin:4px 0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px 10px; font-size:13px;}
+.spReview small{color:#a9bcdc;}
+.spNote{margin:0; color:#a9bcdc;}
+@media (max-width:420px){ .spCards{grid-template-columns:minmax(0,1fr);} .spCard{min-height:88px;} }
+/* L01 [싱글플레이] — 잠금이 풀려 글자만 남은 칸이 좁은 폭(390)에서 '싱글플레/이'로 깨지지 않게 아이콘·여백만 줄인다 */
+html[data-ui-skin="argon"] .l01Main > button.l01Single{padding-left:10px; padding-right:10px; gap:4px;}
+.l01Main .l01Single .gi{font-size:28px;} .l01Single>span:not(.srOnly){white-space:nowrap;}

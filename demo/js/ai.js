@@ -10,7 +10,7 @@ function aiHoldRelease(){ const q=UI.holdQ; UI.holdQ=[]; UI.hold=false; for(cons
    판단·정책·난수 순서는 어느 쪽에서도 같다 — 바뀌는 것은 "언제 부르는가"뿐이다. */
 const aiIdle=fn=>{ if(typeof fxWhenIdle==="function") fxWhenIdle(fn); else fn(); };
 const aiDelay=(fn,ms)=>{ if(typeof setTimeout==="function") setTimeout(fn,ms); else fn(); };
-const aiHeldNow=()=>typeof UI!=="undefined"&&!!UI.hold;
+const aiHeldNow=()=>typeof UI!=="undefined"&&(!!UI.hold||typeof spHeld==="function"&&spHeld()); // #324 학습 경기의 안내·선택 창도 같은 보류(닫히면 spHold 가 큐를 푼다)
 /* ===== #245 Saturn REVISE(M2) AI 어댑터가 자기만 쓰는 기록 — 게임 상태(S)가 아니다 =====
    종전에는 예약 플래그·성격 프로파일·선봉·최근 이동 이력·사고 시간을 전부 S 에 직접 썼다. 그중 어느 것도
    규칙 판정·승패·회선 프레임에 들어가지 않고 Core 는 한 번도 읽지 않는다 — 판단하는 쪽의 메모일 뿐이다.
@@ -72,7 +72,9 @@ function aiStep(){
 function aiProf(me){
   const P=aiMem().profile;
   if(!P[me]){
-    if(aiLevelOf(me)==="dan5") P[me]={aggression:1,capture:1,kingRush:1,caution:1,eps:0}; // #21 5단: 고정 프로파일·ε 무작위 없음
+    const tier=AI_TIER[S.aiLevel&&S.aiLevel[me]];
+    if(tier&&tier.prof) P[me]=Object.assign({},tier.prof); // #322 고정 티어 설정 — 난수를 쓰지 않는다
+    else if(aiLevelOf(me)==="dan5") P[me]={aggression:1,capture:1,kingRush:1,caution:1,eps:0}; // #21 5단: 고정 프로파일·ε 무작위 없음
     else {
       const r=()=>0.6+rand()*0.8;
       P[me]={aggression:r(),capture:r(),kingRush:r(),caution:r(),eps:0.05+rand()*0.10}; // 난수 소비 순서·횟수는 종전과 같다
@@ -484,7 +486,7 @@ function aiRecruitResolve(own,p){
    구조: 후보 행동(이동·텔레포트 스왑·탐색·생략) → 1-ply 위치 평가(+강제 전투 기대치·공격 기회) → 상위 K 후보에 대해
    2-ply: 보이는 적의 최선 응수(공격·이동)로 내 평가가 얼마나 나빠지는지 감점 → 최종 = 0.4·1-ply + 0.6·최악 응수 후 평가.
    판단 시간 상한(BAL.aiStrongBudgetMs) 초과 시 남은 후보는 1-ply 순위로 처리. 반복 완화: 최근 이력 칸 복귀 감점. */
-function aiLevelOf(p){return (S.aiLevel&&S.aiLevel[p])||"grade5";}
+function aiLevelOf(p){ const lv=(S.aiLevel&&S.aiLevel[p])||"grade5"; return AI_TIER[lv]?AI_TIER[lv].engine:lv; } // #322 티어는 엔진(grade5·dan5)으로 갈라진다
 function aiUnitValue(x,me){ // 말 가치 (자기 말 또는 공개된 적 말) — 적의 포획 하수인 보유(cap)는 비공개 정보라 자기 말만 반영
   if(x.type==="king") return 200;
   if(x.type==="ally") return 40+(x.cap&&x.owner===me?25:0);

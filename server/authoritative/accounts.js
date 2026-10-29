@@ -157,21 +157,25 @@ function pgStore(query) {
       } catch (e) { return taken(e); }
     },
     async findAccount(userId) {
-      return one(await query('SELECT id, user_id, nickname, password_hash, credential_gen, email IS NOT NULL AS has_email FROM accounts WHERE user_id = $1', [userId]));
+      return one(await query(`SELECT id, user_id, nickname, password_hash, credential_gen, email IS NOT NULL AS has_email
+        FROM accounts WHERE user_id = $1`, [userId]));
     },
     // 로그인 성공: 세대를 올리고 그 세대로 세션 하나를 넣고 그 계정의 다른 세션 행을 지운다(지우기는 청소일 뿐 — 유효성은 세대가 정한다).
     // gen = 비밀번호를 검증할 때 읽은 자격 세대. 그 사이 재설정이 끝났으면 아무것도 바꾸지 않고 null(→ 로그인 실패, 아무도 끊지 않음).
+    // → {login_gen, tutorial_done, ai_cleared_tier} | null. 진행은 이 UPDATE 가 잠근 행의 값 — 비밀번호 검증 중에 커밋된 진행 쓰기까지
+    //   포함한, 새 세션 발급 시점의 최신 값이다(findAccount 의 검증 전 값을 응답하지 않는다).
     async loginSession(accountId, gen, sess) {
-      const row = one(await query(`WITH acct AS (
-            UPDATE accounts SET login_gen = login_gen + 1 WHERE id = $1 AND credential_gen = $4 RETURNING id, credential_gen, login_gen),
+      return one(await query(`WITH acct AS (
+            UPDATE accounts SET login_gen = login_gen + 1 WHERE id = $1 AND credential_gen = $4
+            RETURNING id, credential_gen, login_gen, tutorial_done_at IS NOT NULL AS tutorial_done, ai_cleared_tier),
           ins AS (INSERT INTO sessions (token_hash, account_id, expires_at, credential_gen, login_gen)
                   SELECT $2, id, now() + $3::interval, credential_gen, login_gen FROM acct),
           wipe AS (DELETE FROM sessions WHERE account_id IN (SELECT id FROM acct))
-        SELECT login_gen FROM acct`, [accountId, sess.hash, ms(sess.ttlMs), gen]));
-      return row ? row.login_gen : null;
+        SELECT login_gen, tutorial_done, ai_cleared_tier FROM acct`, [accountId, sess.hash, ms(sess.ttlMs), gen]));
     },
     async findSession(hash) {
-      return one(await query(`SELECT a.id, a.user_id, a.nickname, a.email IS NOT NULL AS has_email, a.rep_minion, s.expires_at, s.login_gen FROM sessions s
+      return one(await query(`SELECT a.id, a.user_id, a.nickname, a.email IS NOT NULL AS has_email, a.rep_minion, s.expires_at, s.login_gen,
+          a.tutorial_done_at IS NOT NULL AS tutorial_done, a.ai_cleared_tier FROM sessions s
         JOIN accounts a ON a.id = s.account_id AND a.credential_gen = s.credential_gen AND a.login_gen = s.login_gen
         WHERE s.token_hash = $1 AND s.expires_at > now()`, [hash]));
     },
@@ -255,6 +259,25 @@ function pgStore(query) {
           turns integer, duration_ms bigint, ended_at timestamptz)
         ON CONFLICT (match_id, account_id) DO NOTHING`, [JSON.stringify(rows)]);
     },
+
+    /* v0.4.16 싱글 진행(006) — 계정 행 한 건 UPDATE(행 잠금으로 직렬화). 단조: 완료 시각은 처음 한 번만, 단계는 올리기만. */
+    // → {tutorial_done, ai_cleared_tier} | null(계정 없음)
+    async completeTutorial(accountId) {
+      return one(await query(`UPDATE accounts SET tutorial_done_at = COALESCE(tutorial_done_at, now()) WHERE id = $1
+        RETURNING true AS tutorial_done, ai_cleared_tier`, [accountId]));
+    },
+    // 튜토리얼 완료 + 바로 다음 단계까지만(n+1 — 잠금 대기 뒤에는 커밋된 최신 값으로 다시 판정된다). 이미 넘은 낮은 단계는 그대로(성공).
+    // 문장 시작 때 커밋된 값으로 조건 밖이면 잠금을 기다리지 않고 바로 saved false — 아직 커밋 전인 앞 단계는 "그 전"으로 본다(재시도 가능).
+    // → {tutorial_done, ai_cleared_tier, saved} — saved false = 잠긴 단계(값은 이 문장 시작 시점) | null(계정 없음)
+    async clearAiTier(accountId, tier) {
+      return one(await query(`WITH up AS (
+          UPDATE accounts SET ai_cleared_tier = GREATEST(ai_cleared_tier, $2::int)
+          WHERE id = $1 AND tutorial_done_at IS NOT NULL AND $2::int <= ai_cleared_tier + 1
+          RETURNING true AS tutorial_done, ai_cleared_tier, true AS saved)
+        SELECT * FROM up
+        UNION ALL SELECT tutorial_done_at IS NOT NULL, ai_cleared_tier, false FROM accounts WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM up)`,
+      [accountId, tier]));
+    },
   };
 }
 
@@ -290,6 +313,11 @@ const HISTORY_LIMIT = 20;  // 화면 최근 20경기(CJ 확정). 서버는 전�
 const DEFAULT_REP = 'M-F1'; // 새끼 화룡(CJ 확정)
 const rosterIds = () => require('./room').catalog().rosterIds; // 일반 30종 — 서버 엔진의 ROSTER 가 권위(전설·왕·동료 제외)
 
+/* v0.4.16 싱글 진행 — 로컬 AI 결과의 자기신고(CJ 2026-10-30, 위조 가능 수용). 형식·순서만 검사하고 승패를 판정·기록하지 않는다. */
+const AI_TIER_MAX = 3;                              // 1 브론즈 · 2 실버 · 3 골드(006 CHECK 0..3)
+const WIN_ENDS = new Set(['king', 'edge', 'wipe']); // 정상 종료(기권·무승부·이탈은 요청이 없다)
+const progressOf = (r) => ({ tutorialDone: !!r.tutorial_done, aiClearedTier: Number(r.ai_cleared_tier) || 0 });
+
 /* ===== 서비스 ===== */
 
 // revoke 기술자(server.js endSessions): {sessionHash} = 그 세션 하나 · {accountId, belowLoginGen, reason?} = 그 계정에서
@@ -311,7 +339,7 @@ function createAccounts(store, policy, mailer, outbox) {
   const CODE_INVALID = ok(401, { error: 'E_CODE_INVALID' });
   const MAIL_UNAVAILABLE = ok(503, { error: 'E_MAIL_UNAVAILABLE' });
   const RESET_INVALID = ok(401, { error: 'E_RESET_INVALID' });
-  const user = (a, hasEmail) => ({ userId: a.user_id, nickname: a.nickname, hasEmail: !!hasEmail });
+  const user = (a, hasEmail) => ({ userId: a.user_id, nickname: a.nickname, hasEmail: !!hasEmail, progress: progressOf(a) });
   // 새 세션을 받은 요청이 들고 온 다른 세션(이 브라우저가 쓰던 옛 쿠키) — 성공한 뒤에만 지우고 그 소켓을 끊는다.
   // 지우기가 실패해도 쿠키는 새 것으로 바뀌므로 소켓만은 끊는다(그 토큰은 이 응답 뒤 브라우저에 남지 않는다).
   const dropCarried = async (carried, revoke) => {
@@ -336,7 +364,7 @@ function createAccounts(store, policy, mailer, outbox) {
       if (row.taken) return ok(409, { error: row.taken === 'nickname' ? 'E_NICKNAME_TAKEN' : 'E_ID_TAKEN' });
       const revoke = [];
       await dropCarried(carried, revoke);
-      return Object.assign(ok(201, { userId: id, nickname: nick, hasEmail: true }, sess), { revoke });
+      return Object.assign(ok(201, { userId: id, nickname: nick, hasEmail: true, progress: progressOf({}) }, sess), { revoke });
     },
 
     async login({ userId, password }, carried) {
@@ -351,12 +379,12 @@ function createAccounts(store, policy, mailer, outbox) {
       if (!acct || !good) return AUTH_FAILED; // 실패는 아무 세션·소켓도 건드리지 않는다
       const sess = newSession();
       // 검증한 비밀번호가 아직 현재 자격일 때만 세션을 쓴다 — 그 사이 재설정이 이겼으면 같은 일반 실패다.
-      const gen = await store.loginSession(acct.id, acct.credential_gen, sess);
-      if (gen == null) return AUTH_FAILED;
+      const row = await store.loginSession(acct.id, acct.credential_gen, sess);
+      if (!row) return AUTH_FAILED;
       loginLimiter.reset(id);
-      const revoke = [{ accountId: String(acct.id), belowLoginGen: gen, reason: 'login_replaced' }];
+      const revoke = [{ accountId: String(acct.id), belowLoginGen: row.login_gen, reason: 'login_replaced' }];
       await dropCarried(carried, revoke);
-      return Object.assign(ok(200, user(acct, acct.has_email), sess), { revoke });
+      return Object.assign(ok(200, user(Object.assign({}, acct, row), acct.has_email), sess), { revoke });
     },
 
     // 이 세션만 끝낸다. revoke: 이미 열린 WS 도 끊으라는 신호(server.js) — DB 에서 지운 **뒤에만**.
@@ -376,6 +404,7 @@ function createAccounts(store, policy, mailer, outbox) {
         id: String(row.id), userId: row.user_id, nickname: row.nickname, hasEmail: !!row.has_email,
         sessionHash: hash, loginGen: Number(row.login_gen), expiresAt: new Date(row.expires_at).getTime(),
         repMinion: row.rep_minion || DEFAULT_REP, // #260 좌석 입장 때 이 값을 방에 고정한다(server.js bindSeat)
+        progress: progressOf(row),
       } : null;
     },
 
@@ -401,6 +430,25 @@ function createAccounts(store, policy, mailer, outbox) {
       if (typeof minionId !== 'string' || !rosterIds().has(minionId)) return BAD_INPUT;
       if (!(await store.setRepMinion(account.id, minionId))) return ok(401, { error: 'E_NO_SESSION' });
       return ok(200, { representativeMinion: minionId });
+    },
+
+    /* ===== v0.4.16 싱글 진행 쓰기 — 세션 계정에만, 본문 userId 가 그 계정일 때만(늦은 응답·재로그인 뒤 계정 간 전이 차단) ===== */
+    // {v:1, userId, end:'skip'|'king'|'edge'|'wipe'} → 200 {progress}. 몇 번을 보내도 같은 결과(멱등).
+    async completeTutorial(account, { v, userId, end }) {
+      if (!account) return ok(401, { error: 'E_NO_SESSION' });
+      if (v !== 1 || !(end === 'skip' || WIN_ENDS.has(end))) return BAD_INPUT;
+      if (normalizeUserId(userId) !== account.userId) return ok(409, { error: 'E_ACCOUNT_MISMATCH' });
+      const row = await store.completeTutorial(account.id);
+      return row ? ok(200, { progress: progressOf(row) }) : ok(401, { error: 'E_NO_SESSION' });
+    },
+    // {v:1, userId, tier:1..3, end:'king'|'edge'|'wipe'} → 200 {progress} | 409 E_TIER_LOCKED(튜토리얼 미완료·건너뛴 단계, 저장 없음).
+    async clearAiTier(account, { v, userId, tier, end }) {
+      if (!account) return ok(401, { error: 'E_NO_SESSION' });
+      if (v !== 1 || !Number.isInteger(tier) || tier < 1 || tier > AI_TIER_MAX || !WIN_ENDS.has(end)) return BAD_INPUT;
+      if (normalizeUserId(userId) !== account.userId) return ok(409, { error: 'E_ACCOUNT_MISMATCH' });
+      const row = await store.clearAiTier(account.id, tier);
+      if (!row) return ok(401, { error: 'E_NO_SESSION' });
+      return row.saved ? ok(200, { progress: progressOf(row) }) : ok(409, { error: 'E_TIER_LOCKED', progress: progressOf(row) });
     },
 
     /* 경기 결과 기록 — 버리지 않는다: 먼저 아웃박스(파일, fsync)에 동기로 적고(→ 이 호출이 끝난 뒤에야 결과 프레임이 나간다),
@@ -565,6 +613,8 @@ const ROUTES = {
   'HEAD /api/auth/session': {},
   'GET /api/profile': {},                     // #260 비밀 값이 없다 — HTTPS 게이트 없음(세션 조회와 같다)
   'POST /api/profile/representative': {},
+  'POST /api/profile/tutorial': {},           // v0.4.16 싱글 진행 — 같은 계정 경계(세션·CSRF·JSON)
+  'POST /api/profile/ai-clear': {},
 };
 
 // 비밀 값(비밀번호·코드) 교환을 받아도 되는 전송인가.
@@ -617,9 +667,11 @@ async function handleAuth(req, res, pathname, ctx) {
       case '/api/auth/logout': out = await A.logout(token); out.clear = true; break;
       case '/api/profile': out = await A.profile(await A.resolve(token)); break;
       case '/api/profile/representative': out = await A.setRepresentative(await A.resolve(token), body); break;
+      case '/api/profile/tutorial': out = await A.completeTutorial(await A.resolve(token), body); break;
+      case '/api/profile/ai-clear': out = await A.clearAiTier(await A.resolve(token), body); break;
       default: { // session
         const who = await A.resolve(token);
-        out = who ? { status: 200, body: { userId: who.userId, nickname: who.nickname, hasEmail: who.hasEmail } } : { status: 401, body: { error: 'E_NO_SESSION' } };
+        out = who ? { status: 200, body: { userId: who.userId, nickname: who.nickname, hasEmail: who.hasEmail, progress: who.progress } } : { status: 401, body: { error: 'E_NO_SESSION' } };
       }
     }
   } catch (e) {
@@ -637,5 +689,5 @@ module.exports = {
   POLICY, COOKIE, USER_ID_RE, SAME_PASSWORD_MSG, ID_NOT_FOUND_MSG,
   hashSecret, verifySecret, normalizeUserId, normalizeNickname, normalizeEmail, tokenHash, newResetCode,
   pgStore, createAccounts, smtpMailer, handleAuth, transport, parseCookies, sessionTokenFrom, sessionCookie,
-  matchRows, DEFAULT_REP, HISTORY_LIMIT,
+  matchRows, DEFAULT_REP, HISTORY_LIMIT, AI_TIER_MAX,
 };

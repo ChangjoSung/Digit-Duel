@@ -71,7 +71,16 @@ function setSeed(seed){RNG=(seed===null||seed===undefined)?null:mulberry32(Numbe
 /* #245 Saturn REVISE(M1): 종전 window.setSeed 미러는 지웠다 — classic script 최상위 함수 선언은 이미 전역이라
    같은 이름을 가리키는 중복이었고, 그 한 줄 때문에 data.js 가 빈 VM 에서 ReferenceError 로 죽었다. */
 /* ===== #21 AI 난이도: grade5(5급 — 휴리스틱 기준선) / dan5(5단 — 탐색·추론 기반 강AI) ===== */
-const AI_LEVEL_KO={grade5:"5급",dan5:"5단"};
+const AI_LEVEL_KO={grade5:"5급",dan5:"5단",bronze:"브론즈",silver:"실버",gold:"골드"};
+/* #322 v0.4.16 무제한 AI 티어 — 새 엔진이 아니라 기존 두 엔진(engine)의 설정이다. tier 는 서버 진행 값(1 브론즈 · 2 실버 · 3 골드).
+   prof 가 있으면 판마다 무작위로 정하던 성향·ε 대신 그 값으로 고정한다(없으면 그 엔진의 종전 동작 그대로).
+   값은 PLAN Singleplayer Draft v0.4.16 확정 계약 §8(Venus 초기값) — 순서는 demo/test/reports/tier_compare.js 로 실측한다(§9).
+   2026-10-30 실측(seed 1~20 × 선후공): 이 값과 Venus 조정안 A·B·C 모두 '브론즈 < 실버' 순서 미확인 — 더 어렵다고 주장하지 않는다(Venus 판단 대기).
+   티어가 아닌 기존 경로(grade5·dan5 · sim · 회귀)는 동작과 rand() 소비 순서가 그대로다. 학습 경기(#324)는 브론즈 */
+const AI_TIER={
+  bronze:{tier:1,engine:"grade5",prof:{aggression:0.7,capture:0.7,kingRush:0.6,caution:1.3,eps:0.30}},
+  silver:{tier:2,engine:"grade5",prof:{aggression:1,capture:1,kingRush:1,caution:1,eps:0.10}},   // 종전 grade5 무작위 범위의 기대값 고정
+  gold:{tier:3,engine:"dan5"}};                                                                   // 종전 dan5 그대로(고정 성향 · ε 경로 없음)
 /* #233 (GDD-23 4.1): 실제 플레이 가능 속성은 여전히 4종이다 — 땅(land)은 상성 순환표에는 들어가지만
    실제로 그 속성을 쓰는 로스터 종·기술은 #234(로스터 확장) 전까지 없다. ELEMS는 스킬·모집·AI 후보 생성 등
    "지금 실제로 고를 수 있는 속성" 루프가 쓰는 배열이라 4종 그대로 둔다. */

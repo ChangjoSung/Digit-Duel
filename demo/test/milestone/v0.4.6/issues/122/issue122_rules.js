@@ -56,7 +56,9 @@ block("A 화면 상태",()=>{
   ok(/data-screen="title"/.test(SRC),"A9 첫 렌더 이전의 초기 화면은 타이틀");
   ok(!/onclick="location\.reload/.test(SRC),"A10 화면 출구에 문서 재로드 버튼이 남아 있지 않다 (같은 문서 전환)");
   /* #238 (2026-09-28 CJ 시각 REVISE): 결과 화면 출구는 [로비로] 하나 — [다시 대전] 버튼은 없앴고 rematch() 는 엔진 함수로 남는다(B8~B10) */
-  ok(/onclick="toLobby\(\)"/.test(SRC)&&!/onclick="rematch\(\)"/.test(SRC)&&typeof T.rematch==="function","A10b 결과 화면 출구는 [로비로] 하나 (rematch 엔진 함수 유지)");
+  /* #265 (v0.4.16 · CJ 2026-10-30): 싱글 PVE 결과(S04)만 [다시 하기]·[싱글로]를 둔다 — single.js 의 S04 한 곳. 그 밖의 결과(ui.js)는 [로비로] 하나 그대로 */
+  const UIJS=require("fs").readFileSync(path.join(path.dirname(htmlPath),"js","ui.js"),"utf8"), SPJS=require("fs").readFileSync(path.join(path.dirname(htmlPath),"js","single.js"),"utf8");
+  ok(/onclick="toLobby\(\)"/.test(UIJS)&&!/onclick="rematch\(\)"/.test(UIJS)&&(SRC.match(/onclick="rematch\(\)"/g)||[]).length===1&&/onclick="rematch\(\)"/.test(SPJS)&&typeof T.rematch==="function","A10b 결과 화면 출구는 [로비로] 하나 · [다시 하기]는 싱글 S04 한 곳뿐 (rematch 엔진 함수 유지)");
   /* 출전 준비 2단계 — 두 절이 항상 함께 렌더된다 */
   T.startMode("pvp"); T.UI.prep="roster";
   T.dispatchCoreAction({t:"shopTimeout",player:0}); // #236: 로컬 모드의 01 단계는 시작 상점(S01)이다 — 무료 로스터 선택(toggleRoster)은 거부된다

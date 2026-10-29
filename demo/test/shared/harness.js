@@ -425,6 +425,9 @@ function load(htmlPath,opts){
   /* #260 계정 로비 — 기준판 로드 호환: 부재 시 undefined */
   LOBBY:typeof LOBBY!=="undefined"?LOBBY:undefined,
   lobby:typeof lobbyHtml==="function"?{lobbyHtml,lobbyReady,lobbyLoad,lobbyLocked,lobbyRetry,lobbyRepOpen,lobbyRepPick,lobbySeatRepHtml,lobbyParseProfile,LOBBY_API,LOBBY_TIMEOUT_MS}:undefined,
+  /* #324 싱글·학습 경기(single.js) — 기준판 로드 호환: 부재 시 undefined */
+  AI_TIER:typeof AI_TIER!=="undefined"?AI_TIER:undefined, // #322 무제한 AI 티어 (기준판 로드 호환)
+  single:typeof spOnUser==="function"?{SP,SP_TIERS,SP_GUIDE,spOnUser,spRoute,spTutEnter,spAskGo,spAskSkip,spGuideCheck,spGuideClose,spMatchEnded,spRetry,spOpen,spView,spPlay,spTierState,spLobbyHtml,spResultHtml,spHeld,spRecheck,spToTiers,spBack,spBackSpec,clkHold,clkLeft,SHOPCLK,BAGCLK,AI_TIER,applyUiEvent,spCycleText,spToast,uiBack:window.uiBack}:undefined,
   /* #262 경기 중 이모티콘 — 기준판 로드 호환: 부재 시 undefined */
   emote:typeof emoteSync==="function"?{EMOTES,EMO,emoteSync,emoteToggle,emoteSend,emoteSetMuted,emoteClose,netEmoteCanSend}:undefined,
   /* #261 멀티 방 목록·대기 — 기준판 로드 호환: 부재 시 undefined */
