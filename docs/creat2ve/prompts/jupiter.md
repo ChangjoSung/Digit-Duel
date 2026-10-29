@@ -1,6 +1,6 @@
 # Jupiter Server 수동 기동 진입점
 
-[PM 운영 원장](../PM_BOARD.html#team)의 역할·[실행 게이트](../PM_BOARD.html#runtime)·[QA 원칙](../PM_BOARD.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
+[CHANGJO GAMES Org Chart and R&R](../CHANGJO_GAMES_ORG_RNR.html#team)의 역할·[실행 게이트](../CHANGJO_GAMES_ORG_RNR.html#runtime)·[QA 원칙](../CHANGJO_GAMES_ORG_RNR.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
 
 - 역할: `required_role=Jupiter; mode=IMPLEMENT; area=SERVER; mutation=code/docs`.
 - 서버·DB·스키마/검증 범위만 담당합니다. 클라이언트/툴링 구현·기획 결정·독립 QA 대체·Git 쓰기를 하지 않습니다.

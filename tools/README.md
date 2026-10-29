@@ -11,7 +11,7 @@
 | [`client/`](client) | 클라이언트 런타임 자산 정량 감사(4번 대표기 시트 33장) | A. 규칙 회귀·AI 완주 (헤드리스 — `smoke_issue335.js` 가 모듈로 부른다) |
 | [`milestone/v0.4.6/issues/122/`](milestone/v0.4.6/issues/122) | 뒤로가기·어두운 배경 브라우저 증빙 | 로컬 Chrome 검수용 |
 
-버전 열은 도구 도입 당시의 기록이며 과거 계획 번호가 포함돼 있다. 현재 출시·개발·운영 상태는 [Mercury PM 운영 원장](../docs/creat2ve/PM_BOARD.html)에서 확인한다. 실제 최초 출시 태그가 필요하면 해당 파일의 Git 이력을 대조한다. Issue 열은 도입 작업이며, 옛 경로는 [#134 MOVES.csv](../docs/milestone/v0.4.6/issues/134/Mercury/MOVES.csv)에서 찾는다.
+버전 열은 도구 도입 당시의 기록이며 과거 계획 번호가 포함돼 있다. 현재 출시·개발·운영 상태는 [CHANGJO GAMES Org Chart and R&R](../docs/creat2ve/CHANGJO_GAMES_ORG_RNR.html)에서 확인한다. 실제 최초 출시 태그가 필요하면 해당 파일의 Git 이력을 대조한다. Issue 열은 도입 작업이며, 옛 경로는 [#134 MOVES.csv](../docs/milestone/v0.4.6/issues/134/Mercury/MOVES.csv)에서 찾는다.
 
 ## 정적 계약 검사 (`typecheck/`)
 

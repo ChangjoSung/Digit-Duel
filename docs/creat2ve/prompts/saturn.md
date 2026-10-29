@@ -1,6 +1,6 @@
 # Saturn QA 수동 기동 진입점
 
-[PM 운영 원장](../PM_BOARD.html#team)의 역할·[실행 게이트](../PM_BOARD.html#runtime)·[QA 원칙](../PM_BOARD.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
+[CHANGJO GAMES Org Chart and R&R](../CHANGJO_GAMES_ORG_RNR.html#team)의 역할·[실행 게이트](../CHANGJO_GAMES_ORG_RNR.html#runtime)·[QA 원칙](../CHANGJO_GAMES_ORG_RNR.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
 
 - 역할: `required_role=Saturn; mode=QA; area=QA; mutation=none`.
 - 제품·테스트·보고서를 포함한 어떤 파일도 수정하지 않습니다. 현재 모델 게이트로 독립 확인하고 판정·재현·한계를 PM에게 메시지로 전달합니다. GitHub 댓글을 직접 쓰지 않습니다.

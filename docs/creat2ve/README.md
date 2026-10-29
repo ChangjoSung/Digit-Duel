@@ -1,6 +1,6 @@
 # Digit-Duel 운영 문서 진입점
 
-**[Mercury PM 운영 원장](PM_BOARD.html)** 이 현황·승인·역할·QA·PM 인수인계의 단일 정본입니다.
+**[CHANGJO GAMES Org Chart and R&R](CHANGJO_GAMES_ORG_RNR.html)** 이 현황·승인·역할·QA·PM 인수인계의 단일 정본입니다.
 
 - [worker-models.json](worker-models.json): 승인된 모델/effort의 기계 설정. 실행 인수 전달과 실제 관측은 별도 확인합니다.
 - [prompts/](prompts/): 기존 수동 기동 경로를 유지하는 짧은 연결 파일입니다.

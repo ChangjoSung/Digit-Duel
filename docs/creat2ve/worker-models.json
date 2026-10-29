@@ -2,7 +2,7 @@
   "schema_version": 1,
   "approved_on": "2026-09-23",
   "consumer": "Mercury: explicit Orca worker-start arguments",
-  "runtime_verification": "Inspect the prompt composer and resolve model-switch dialogs before input. Verify current turn model/effort, live footer and tier before GO and at completion; never reuse prior preflight. Mismatched-model results are diagnostic only; formal QA needs an approved-model fresh worker. See PM_BOARD.html#runtime.",
+  "runtime_verification": "Inspect the prompt composer and resolve model-switch dialogs before input. Verify current turn model/effort, live footer and tier before GO and at completion; never reuse prior preflight. Mismatched-model results are diagnostic only; formal QA needs an approved-model fresh worker. See CHANGJO_GAMES_ORG_RNR.html#runtime.",
   "handoff_permission_contract": {
     "status": "authorized",
     "scope": "Mercury PM handoff in Digit-Duel only; stable role Mercury; title changed by CJ on 2026-10-28",
@@ -111,7 +111,7 @@
     }
   ],
   "issue": 250,
-  "decision": "2026-10-28 CJ: Mercury title is PM, stable role Mercury. The 2026-10-13 Fast service_tier=priority approval and 2026-09-30 role model/effort assignments, permissions and role boundaries remain unchanged. Actual API processing tier is reported only when observed. See PM_BOARD.html.",
+  "decision": "2026-10-28 CJ: Mercury title is PM, stable role Mercury. The 2026-10-13 Fast service_tier=priority approval and 2026-09-30 role model/effort assignments, permissions and role boundaries remain unchanged. Actual API processing tier is reported only when observed. See CHANGJO_GAMES_ORG_RNR.html.",
   "coordinator_title": "PM",
   "title_changed_on": "2026-10-28"
 }
