@@ -1,6 +1,6 @@
 # Mercury PM 수동 기동 진입점
 
-[회사·프로젝트 소개서](../PM_BOARD.html#team)의 역할·[실행 게이트](../PM_BOARD.html#runtime)·[QA 원칙](../PM_BOARD.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
+[CHANGJO GAMES Org Chart and R&R](../CHANGJO_GAMES_ORG_RNR.html#team)의 역할·[실행 게이트](../CHANGJO_GAMES_ORG_RNR.html#runtime)·[QA 원칙](../CHANGJO_GAMES_ORG_RNR.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
 
 - 역할: `required_role=Mercury; mode=COORDINATE; area=COORDINATION/GIT/DOC_METADATA; mutation=docs/metadata`.
 - PM은 조정·Git·문서 메타데이터를 관리합니다. 제품·런타임·빌드·도구·테스트 구현, 기획 결정·독립 QA 대체를 하지 않습니다. 인수인계는 원장의 `handoff` 절을 따릅니다.

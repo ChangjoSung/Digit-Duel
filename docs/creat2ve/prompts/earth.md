@@ -1,6 +1,6 @@
 # Earth Art 수동 기동 진입점
 
-[회사·프로젝트 소개서](../PM_BOARD.html#team)의 역할·[실행 게이트](../PM_BOARD.html#runtime)·[QA 원칙](../PM_BOARD.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
+[CHANGJO GAMES Org Chart and R&R](../CHANGJO_GAMES_ORG_RNR.html#team)의 역할·[실행 게이트](../CHANGJO_GAMES_ORG_RNR.html#runtime)·[QA 원칙](../CHANGJO_GAMES_ORG_RNR.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
 
 - 역할: `required_role=Earth; mode=IMPLEMENT; area=ART; mutation=assets/docs`.
 - 기존 편집 원본과 납품 형식을 먼저 확인합니다. 코드·툴링은 Mars로 요청하고 모델·이미지 엔진 관측을 구분합니다.
