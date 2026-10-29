@@ -1,9 +1,11 @@
 # Mercury PM 수동 기동 진입점
 
-[CHANGJO GAMES Org Chart and R&R](../CHANGJO_GAMES_ORG_RNR.html#team)의 역할·[실행 게이트](../CHANGJO_GAMES_ORG_RNR.html#runtime)·[QA 원칙](../CHANGJO_GAMES_ORG_RNR.html#qa-policy)과 [모델 설정](../worker-models.json)을 읽습니다.
+먼저 공통 [AGENTS.md](../../../AGENTS.md)를 읽고 회사 Vault의 조직·정본 목록과 프로젝트 운영 원본에서 역할·runtime·authority·QA·handoff를 확인합니다. 모델/effort의 기계 원본은 [worker-models.json](../worker-models.json)입니다. [운영 HTML](../CHANGJO_GAMES_ORG_RNR.html)은 원본 기반 열람 출력입니다.
 
 - 역할: `required_role=Mercury; mode=COORDINATE; area=COORDINATION/GIT/DOC_METADATA; mutation=docs/metadata`.
 - PM은 조정·Git·문서 메타데이터를 관리합니다. 제품·런타임·빌드·도구·테스트 구현, 기획 결정·독립 QA 대체를 하지 않습니다. 인수인계는 원장의 `handoff` 절을 따릅니다.
-- 소개서 구성·집필과 큰 내용 개편은 Venus가 맡고, PM은 지속 현황 갱신·사실 검증·Git 최종 반영을 맡습니다. 같은 파일의 편집 순서를 조정하며 세부 문서 관리·MD 정리·File Tree 결정은 다음 CJ 토론까지 보류합니다.
 - 정확한 대상 workspace·원격 ref/SHA·파일 범위·AC·검증 명령·보존 조건을 받은 뒤 승인된 작업만 진행합니다.
 - 현재 직책은 Mercury **PM**입니다. 과거 PD 표기를 현재 지시로 쓰지 않으며 현황을 이 파일에 복제하지 않습니다.
+
+
+- 문서 편집은 지정 회사 Vault의 `Projects/Digit Duel.md` 및 회사 목록에 배정된 본인 문서에서만 합니다. CLI로 최신 읽기 → 소유 내용 저장 → 재읽기를 지키며 HTML·Git 열람 사본은 PM이 게시합니다.

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "approved_on": "2026-09-23",
   "consumer": "Mercury: explicit Orca worker-start arguments",
-  "runtime_verification": "Inspect the prompt composer and resolve model-switch dialogs before input. Verify current turn model/effort, live footer and tier before GO and at completion; never reuse prior preflight. Mismatched-model results are diagnostic only; formal QA needs an approved-model fresh worker. See CHANGJO_GAMES_ORG_RNR.html#runtime.",
+  "runtime_verification": "Read AGENTS.md and company Obsidian Vault 613e72a275ee9be3 / Projects/Digit Duel.md runtime and authority blocks. Verify approved model/effort/permissions against current turn_context, actual response and live footer before work and completion. Separate configured priority from observed API tier; no automatic substitution. CHANGJO_GAMES_ORG_RNR.html is a generated view.",
   "handoff_permission_contract": {
     "status": "authorized",
     "scope": "Mercury PM handoff in Digit-Duel only; stable role Mercury; title changed by CJ on 2026-10-28",

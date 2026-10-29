@@ -1,9 +1,14 @@
+> **Obsidian 원본의 열람 출력 · 직접 편집 금지**
+> Source: `DD-SERVER-OPS` / `server-readme.md` · block SHA-256 `d10ba340752ed9fb3cbfb0ce351bd517b9507cd7ac0226bc598b3a9b9271e839` · 게시 2026-10-29T10:15:04.216Z
+> [편집 원본](obsidian://open?vault=613e72a275ee9be3&file=Projects%2FDigit%20Duel%2FSERVER%2FServer%20Operations.md) · [저장소 진입 안내](../AGENTS.md)
+> 전문 내용 변경은 지정 소유 Role이 Obsidian에서 수행하고 PM이 다시 게시합니다. 아래 날짜·실행·PASS는 원문 당시 범위입니다.
+
 # Digit Dual 서버
 
-현재 운영·배포·PM 역할·승인 범위는 [CHANGJO GAMES Org Chart and R&R](../docs/creat2ve/CHANGJO_GAMES_ORG_RNR.html)을 따른다. 아래 기술 계약과 당시 PD 결정의 표기는 기존 구현의 근거이며 새 작업 승인이나 현재 배포 상태를 뜻하지 않는다.
+현재 운영·배포·PM 역할·승인 범위는 [Digit Duel 프로젝트 운영](obsidian://open?vault=613e72a275ee9be3&file=Projects%2FDigit%20Duel.md)·[CHANGJO GAMES Org Chart and R&R](obsidian://open?vault=613e72a275ee9be3&file=Org%20Chart%20and%20R%26R.md)을 따른다. 아래 기술 계약과 당시 PD 결정의 표기는 기존 구현의 근거이며 새 작업 승인이나 현재 배포 상태를 뜻하지 않는다.
 
 게임 서버는 `authoritative/server.js` 하나다 — 공개 로비·서버 권위 대전·계정을 맡고 게임 페이지(`../demo`)도 직접 서빙한다.
-프로토콜·검증 범위의 원본은 `docs/milestone/v0.4.10/issues/217/Jupiter/protocol.md` 다.
+프로토콜·검증 범위의 원본은 이 노트의 [서버 프로토콜 절](obsidian://open?vault=613e72a275ee9be3&file=Projects%2FDigit%20Duel%2FSERVER%2FServer%20Operations.md%23%EC%9B%90%EB%B3%B8%20%C2%B7%20%EC%84%9C%EB%B2%84%20%ED%94%84%EB%A1%9C%ED%86%A0%EC%BD%9C)이다(이관 전 `docs/milestone/v0.4.10/issues/217/Jupiter/protocol.md`).
 
 ## 구조 (#276)
 
@@ -66,7 +71,7 @@ WS 업그레이드 분당 60회, 인증 실패 5분에 10회로 차단. `X-Forwa
 배포 자체로 막히지 않으며, 이를 풀기 위한 별도 클라이언트 수정이나 CJ 승인은 필요하지 않다.** 다만 이
 경로가 실제 인터넷 클라이언트 ↔ Render 배포 사이에서 브라우저로 끝까지 검증된 적은 이 세션에서 없다 —
 실배포 후 실제 접속 확인이 남은 항목이다. 전체 근거는
-[`docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md`](../docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md)에 있다.
+[`docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md`](https://github.com/ChangjoSung/Digit-Duel/blob/369e5010dea778adbd88b7bfcdad9490bdb76b1d/docs/milestone/v0.4.10/issues/217/Jupiter/deploy-readiness.md)에 있다.
 
 #### QA용 Postgres 연결 (선택 · #264)
 
@@ -267,7 +272,7 @@ DB 가 없는 서버(오프라인·LAN·로컬 회귀)는 계정 없이 기존 �
   **그 세대보다 낮은** 세션"만 끊으므로, 늦게 도착한 옛 로그인의 폐기가 더 새 로그인의 소켓이나 진행 중 업그레이드를 끊지 못한다.
   WS 업그레이드의 세션 조회가 도는 동안 도착한 폐기는 그 조회에 기록돼, 폐기 전 상태를 읽은 조회로는 소켓이 인가되지 않는다(401).
 
-설계·검증 근거는 [`docs/milestone/v0.4.11/issues/259/Jupiter/report.md`](../docs/milestone/v0.4.11/issues/259/Jupiter/report.md) 가 원본이다.
+설계·검증 근거는 [`docs/milestone/v0.4.11/issues/259/Jupiter/report.md`](https://github.com/ChangjoSung/Digit-Duel/blob/369e5010dea778adbd88b7bfcdad9490bdb76b1d/docs/milestone/v0.4.11/issues/259/Jupiter/report.md) 가 원본이다.
 
 ## 테스트 전용 릴레이 fixture (`test/relay/server.js`)
 
@@ -421,7 +426,7 @@ WebSocket 업그레이드는 별도 버킷(`upgradeBuckets`, 분당 60)과 `Atte
 링크·확장자 검사와 응답 헤더도 그대로다.
 
 재현 수치·베이스라인 대조·변이 검출 결과와 채택하지 않은 대안(`Retry-After`, 정적 캐시 정책)은
-[HotFix #201 Jupiter 보고서](../docs/hotfix/201/Jupiter/report.md)에 있다.
+[HotFix #201 Jupiter 보고서](https://github.com/ChangjoSung/Digit-Duel/blob/369e5010dea778adbd88b7bfcdad9490bdb76b1d/docs/hotfix/201/Jupiter/report.md)에 있다.
 
 ### 남은 트레이드오프
 
