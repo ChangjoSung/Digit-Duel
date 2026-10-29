@@ -40,7 +40,7 @@
 <a class="stat" href="#work"><span class="stat-label">출시 / 운영</span><strong>v0.4.15</strong><span>Production f4bfd29</span></a>
 <a class="stat" href="#work"><span class="stat-label">제품 기획</span><strong>4건 초안</strong><span>#265 · #322 · #323 · #324</span></a>
 <a class="stat" href="#obsidian-transition"><span class="stat-label">문서 전환</span><strong>전 부서</strong><span>회사 Vault · 소유자별 정본</span></a>
-<a class="stat attention" href="#pm-auto-entry"><span class="stat-label">PM 자동 진입</span><strong>지원 제약</strong><span>후보 미적용 · 실제 자동 인수 미완료</span></a>
+<a class="stat attention" href="#pm-auto-entry"><span class="stat-label">PM 인수 진입</span><strong>전용 명령</strong><span>읽기 전용 · 초기 지시 자동 전달</span></a>
 </div>
 <div class="next-actions" id="next-actions">
 <h3>다음 행동</h3>
@@ -55,10 +55,10 @@
 <p class="note info">이 문서는 Digit Duel의 현행 운영 적용본이다. 회사 공통 역할 체계와 신규 도입 제안은 현재 실행 계약과 구분한다. 다른 프로젝트에는 별도 검증·승인 없이 적용하지 않는다.</p>
 <table class="meta"><tbody>
 <tr><th scope="row">관리 책임</th><td>Mercury <b>PM</b> · CJ 2026-10-28 직책 전환 결정</td></tr>
-<tr><th scope="row">문서 개정</th><td>2.3 · 2026-10-29 KST · 전 부서 Obsidian 정본·File Tree</td></tr>
+<tr><th scope="row">문서 개정</th><td>2.4 · 2026-10-30 KST · PM 진입 환경·Mermaid·이슈 점검</td></tr>
 <tr><th scope="row">열람 경로</th><td class="path">C:/Users/pc_77/orca/Digit-Duel/docs/creat2ve/CHANGJO_GAMES_ORG_RNR.html</td></tr>
-<tr><th scope="row">Git 보관</th><td>이전 v2.1은 PR392 → milestone/v0.4.16 <code>369e501</code>. 이번 개정의 통합·CI 판정은 <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/approved-issue-operations-20261029/git-integration.json">실행 영수증</a>을 확인한다. root HEAD는 동기화하지 않는다.</td></tr>
-<tr><th scope="row">이번 자료 기준</th><td>제품 상태는 아래 개별 관측 시각 기준. 문서 Git 보관은 2026-10-29 PR392 통합 증거 기준. root main / 9b306bb는 의도적 과거 HEAD다.</td></tr>
+<tr><th scope="row">Git 보관</th><td>이전 v2.3은 PR393 → milestone/v0.4.16 <code>22f0c92</code>. 이번 개정의 통합·CI 판정은 <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/pm-entry-resolution-20261030/git-integration.json">실행 영수증</a>을 확인한다. root HEAD는 동기화하지 않는다.</td></tr>
+<tr><th scope="row">이번 자료 기준</th><td>제품 상태는 아래 개별 관측 시각 기준. 이전 문서 Git 보관은 2026-10-29 PR393, 이번 PM 진입·Issue 점검은 2026-10-30 실행 근거 기준. root main / 9b306bb는 의도적 과거 HEAD다.</td></tr>
 <tr><th scope="row">문서 정본</th><td><a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Org%20Chart%20and%20R%26R.md">회사 정본·소유자 목록</a> · <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel.md">Digit Duel 운영 원본</a> · 부서별 문서. 모델·Issue·코드/검사/배포는 각각의 기존 원본을 유지한다. HTML 본문은 이 원본에서 생성하며 직접 편집하지 않는다.</td></tr></tbody></table>
 </div></details>
 <details class="fold"><summary>출시·개발·배포 관측 · 전체 SHA · 확인 범위</summary><div class="fold-body">
@@ -859,7 +859,7 @@
 <td>완료</td>
 <td>문서 Git 보관·조직 상세 정본 전환</td>
 <td>Mercury · Mars · Saturn</td>
-<td>PR391·392 통합. 회사 노트 2개 유지, 조직 상세 1개 영역만 Obsidian 정본. 나머지 계약은 기존 정본.</td>
+<td>PR393 통합 · 필수 CI 6/6, 문서·인수 검증 PASS. 회사·PM·부서 10개 문서와 첨부 10개를 지정 Obsidian 정본으로 전환했다. 초기 PR391·392의 부분 전환은 이력이다.</td>
 </tr>
 <tr>
 <td>다음</td>
@@ -880,10 +880,10 @@
 <td><a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Org%20Chart%20and%20R%26R.md">회사 정본·소유자 목록</a>에서 항목별 소유자·효력·검증·복구 근거를 확인한다. 현행 부서 본문은 Obsidian, HTML·게시용 Git 문서는 열람 출력이다.</td>
 </tr>
 <tr>
-<td>환경 차단</td>
-<td>PM 자동 진입 → 새 PM 무입력 인수</td>
+<td>운영</td>
+<td>전용 명령 → 새 PM 인수</td>
 <td>Mars · Mercury</td>
-<td><span class="pill status-blocked">지원 제약 유지</span> Orca 1.4.243에 PM 시작 식별·최초 지시 상호배제 경로 미확인. 지원 경로 확보 뒤 실제 GUI + 신규 배치로 검증. 후보 설치·자동 인수 성공 아님.</td>
+<td><span class="pill status-pass">CJ 선택 · 전용 시작 명령</span> 기본 + 대신 <code>node tools/pm-entry/pm-entry.mjs --run</code>을 사용한다. 정확한 root·모델·읽기 범위를 고정하고 초기 지시를 argv로 전달한다. 기동·인수 결과와 미검증은 [실행 영수증](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/pm-entry-resolution-20261030/entry-runtime-proof.json)에서 구분한다.</td>
 </tr>
 <tr>
 <td>릴리스 준비</td>
@@ -893,7 +893,41 @@
 </tr>
 </tbody>
 </table>
-</div><p class="small">CJ: 이슈 관리부터 진행, 운영 원장 미결 사항 모두 승인. 진행 허가는 다시 묻지 않는다. 실제 입력·선행 조건·검증 결과는 승인과 구분한다. 현황은 GitHub 링크와 근거 시점으로 연결하며 별도 상태 문서를 늘리지 않는다.</p>
+</div><details class="fold"><summary>2026-10-30 GitHub 확인 · 남은 Issue 10건</summary><div class="fold-body">
+<p>GitHub 재조회 시점 <code>2026-10-29T17:56:53.067Z</code>. 상태·AC·공식 종결은 링크에서 확인한다. 이 문서는 부서 관점의 의존·판단 맥락만 남긴다.</p>
+<div class="tbl-wrap"><table class="t">
+<thead>
+<tr>
+<th>범위</th>
+<th>Issue</th>
+<th>다음 행동·경계</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web 기획 · Venus / Mars</td>
+<td><a href="https://github.com/ChangjoSung/Digit-Duel/issues/265">#265</a> · <a href="https://github.com/ChangjoSung/Digit-Duel/issues/322">#322</a> · <a href="https://github.com/ChangjoSung/Digit-Duel/issues/323">#323</a> · <a href="https://github.com/ChangjoSung/Digit-Duel/issues/324">#324</a></td>
+<td>기존 자료 최소안·AI 첫 경기 학습 방향 확정. 공용 PVE·타이머/기권·ε·9단계 승률·학습 진입 기술 확인 → Venus 갱신 → 세부값 확정. #322/#323은 #265 하위, #324는 독립.</td>
+</tr>
+<tr>
+<td>운영 · Jupiter / Mercury</td>
+<td><a href="https://github.com/ChangjoSung/Digit-Duel/issues/282">#282</a></td>
+<td>독립 복구 공개키·4주 보관·실제 알림·경기 종료/outbox/재시작·Production 영속성 증거. 진행 승인과 실제 검증 완료를 구분.</td>
+</tr>
+<tr>
+<td>Unity · 별도 트랙 보존</td>
+<td><a href="https://github.com/ChangjoSung/Digit-Duel/issues/184">#184</a> · <a href="https://github.com/ChangjoSung/Digit-Duel/issues/185">#185</a> · <a href="https://github.com/ChangjoSung/Digit-Duel/issues/186">#186</a> · <a href="https://github.com/ChangjoSung/Digit-Duel/issues/187">#187</a></td>
+<td>서버 담당·계약, TSV, C# Core, Android UI PoC/실기 QA. 본문은 9월 기준이므로 재개 시 최신 Web 규칙과 차이를 확인한다. 이번 작업에서 재개·소유자 재배정하지 않는다.</td>
+</tr>
+<tr>
+<td>Roblox · 타 담당 트랙 보존</td>
+<td><a href="https://github.com/ChangjoSung/Digit-Duel/issues/118">#118</a></td>
+<td>마지막 댓글의 v42 납품은 당시 보고. CJ Studio·실플레이 검수가 남았다는 기록이며 현재 게시·제품 동작 재검증 아님.</td>
+</tr>
+</tbody>
+</table>
+</div></div></details>
+<p class="small">CJ: 이슈 관리부터 진행, 운영 원장 미결 사항 모두 승인. 진행 허가는 다시 묻지 않는다. 실제 입력·선행 조건·검증 결과는 승인과 구분한다. 현황은 GitHub 링크와 근거 시점으로 연결하며 별도 상태 문서를 늘리지 않는다.</p>
 </div>
 <div class="tbl-wrap">
 <table class="t"><thead><tr><th>업무</th><th>현황</th><th>다음 행동·게이트</th></tr></thead><tbody>
@@ -1138,13 +1172,15 @@
 <h3 id="pm-auto-entry">Digit Duel 전용 PM 자동 진입 · 실제 상태와 최소 구현안</h3>
 <div class="status-grid">
 <div class="status-card done"><b>수동 인수 확인</b><span>정본 발견 → CJ 보고 도달</span></div>
-<div class="status-card pending"><b>자동 진입 미완료</b><span>무입력 신규 배치는 입력 대기</span></div>
-<div class="status-card"><b>필요한 환경 지원</b><span>PM 시작 식별 · 첫 지시 전달 상호배제</span></div>
+<div class="status-card pending"><b>전용 명령 운영</b><span>새 PM · 읽기 전용 인수</span></div>
+<div class="status-card"><b>채택 경로</b><span>프로젝트 전용 명령 · 초기 지시 argv 전달</span></div>
 </div>
 <details class="fold"><summary>hook 구성 · 무입력·수동 시험 · 최소 구현안</summary><div class="fold-body">
-<p>목표는 Orca + 신규 Codex → 작업 공간/진입 지침 → 현행 정본·Role·모델/승인 범위 → 미결·차단 파악 → CJ 인수 보고다. 기본 범위는 읽기·파악·보고이며 제품 착수·Worker 대량 기동·삭제·배포를 포함하지 않는다.</p>
+<p>CJ는 2026-10-30 기본 + 대신 프로젝트 전용 PM 시작 명령을 선택했다. 현재 목표는 시작 명령 → 신규 Codex → 작업 공간/진입 지침 → 현행 정본·Role·모델/승인 범위 → 미결·차단 파악 → CJ 인수 보고다. 기본 범위는 읽기·파악·보고이며 제품 착수·Worker 대량 기동·삭제·배포를 포함하지 않는다.</p>
 <div class="tbl-wrap">
-<table class="t"><thead><tr><th scope="col">구성</th><th scope="col">이번 실조회</th><th scope="col">판정</th></tr></thead><tbody>
+<table class="t"><thead><tr><th scope="col">구성</th><th scope="col">시점별 근거</th><th scope="col">판정</th></tr></thead><tbody>
+<tr><td>2026-10-30 환경 재조사</td><td>Orca 1.4.244 / Codex 0.165.0. 기본 +는 빈 prompt로 기동하며 agentDefaultArgs·명령·환경은 전역 설정뿐이다. 저장소 hookSettings·orca.yaml은 기존 root의 + 첫 지시를 설정하지 않는다. SessionStart의 additionalContext는 문맥 추가다.</td><td><b>기본 + 미지원 · 채택 경로와 구분.</b> <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/pm-entry-resolution-20261030/orca-feature-contract.json">정확한 PM root·신규 +·빈 입력 전용 기능 계약</a>. 실제 GUI 무입력 인수 PASS 아님.</td></tr>
+<tr><td>CJ가 선택한 시작 명령</td><td><code>node tools/pm-entry/pm-entry.mjs --run</code>. 정확한 root·승인 모델·읽기 전용 인수 범위를 고정해 launch --prompt로 초기 지시를 전달한다. 예약·상주 프로그램·다른 세션 전송 없음.</td><td><b>선택 완료 · 초기 지시 자동 전달.</b> 실제 기동·인수 판정은 <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/pm-entry-resolution-20261030/entry-runtime-proof.json">실행 영수증</a>을 따른다. 최초 검토 개입과 이후 설정 정정은 별도 기록한다. <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/pm-entry-resolution-20261030/mars/pm-entry-resolution-receipt.json">Mars 근거·한계·복구</a>.</td></tr>
 <tr><td>단일 진입 안내</td><td>AGENTS.md가 Codex PM 기본 진입, CLAUDE.md는 공통 안내의 호환 진입점이다. 회사·프로젝트·부서 문서는 지정 Obsidian 원본, HTML은 열람 출력, 기계 설정은 JSON을 따른다. 항목별 효력은 전환표에서 확인한다.</td><td>문서·현재 참조 정리 완료. 최초 턴 자동 시작과는 별개.</td></tr>
 <tr><td>프로젝트 hook</td><td><code>.codex/hooks.json</code>·inline hook 없음. <code>.codex/config.toml</code>은 기존 모델/effort/tier만 설정. Claude 프로젝트 설정도 PM 진입 hook 없음.</td><td><b>추가 구현 필요.</b> 신규 hook/전역 설정을 이번에 설치하지 않음.</td></tr>
 <tr><td>Orca 저장소 설정</td><td>해당 저장소의 hook mode auto, setupRunPolicy run-by-default, startupPolicy start-immediately. setup/archive 스크립트는 빈 값.</td><td>설정 존재. WorkTree setup 정책이며 +의 PM 최초 보고 실행 검증으로 볼 수 없음.</td></tr>
@@ -1155,8 +1191,9 @@
 <tr><td>최초 턴 연결</td><td>Mars가 Orca 1.4.243 CLI·번들 코드와 Codex 0.165.0의 실제 기동 경로를 조사했다. SessionStart 문맥 주입은 최초 턴을 시작하지 않는다. native terminal send는 있으나 대기 중 역할 지시·UI draft와의 상호배제나 전송 시 process incarnation 선행 조건이 없다.</td><td><b>필수 조건 충족 경로 미확인·적용 차단.</b> 프로젝트별 PM startup prompt/launch intent의 원자적 전달 또는 다른 최초 지시와의 지원된 상호배제가 필요하다. 전역 설정·UI 타이핑으로 우회하지 않는다.</td></tr>
 <tr><td>최소 후보 검토</td><td>프로젝트·startup·세션 1회·재귀·실행 경로 검사를 포함한 artifact 후보를 준비했다. 자체 모의/음성검사 및 변이 11건 탐지는 통과했다. UI draft 미검사와 최초 지시 경쟁 조건이 남고, 첫 턴 전 transcript 존재도 실제 신규 배치에서 미검증이다.</td><td><b>적용 불가 후보로 보존.</b> 자체 검사 PASS는 실제 hook·GUI + 무입력 인수 PASS가 아니다. 설치·신뢰·실제 전송·새 Codex 기동 없음. <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/pm-next-work-execution-20261029/mars/pm-auto-entry-final-receipt.json">Mars 기술 영수증·제약</a>.</td></tr></tbody></table>
 </div>
-<p><b>최소 연결의 남은 조건:</b> Orca가 GUI +의 PM 시작을 명확히 식별하고 첫 지시를 원자적으로 전달하거나, 다른 Role·예약·Dispatch의 최초 지시와 상호배제를 지원해야 한다. 현재 후보는 설치하지 않는다. 기존 명시적 Mercury 역할·초기 prompt 기동은 지원되는 수동 대체 경로이며 무입력 목표의 완료는 아니다.</p>
-<ul class="contract-list"><li><b>오작동 방지:</b> 정규화된 정확한 root와 프로젝트 ID를 허용 목록으로 고정. 명시 배정 Role·예약·Dispatch는 우선하며 해당 배치를 확실히 구별할 수 없으면 자동 PM 진입을 생략한다. startup만 허용하고 resume/clear/fork/compact는 제외. 세션 ID·프로젝트·진입 버전별 1회 표시로 중복을 방지하며 handler가 Worker나 자기 자신을 다시 기동하지 않는다.</li><li><b>권한·복구:</b> 승인 모델·effort·tier·예약 주기를 유지한다. 새 hook의 신뢰 요구는 실제 환경의 정확한 변경분으로 확인하며 신뢰 우회를 하지 않는다. 실패하면 새 프로젝트 hook/handler와 해당 저장소 기동 연결만 사전 사본으로 복구한다. 기존 계정 상태 hook·다른 프로젝트는 건드리지 않는다.</li><li><b>검증:</b> 실제 GUI + 신규 배치에서 별도 입력 없이 올바른 cwd·AGENTS·현행 정본·Mercury·설정/실행 차이·허용 범위·미결·다음 행동을 읽고 CJ 보고까지 도달해야 한다. 잘못된 공간/다른 Role/예약/재개/중복은 실행되지 않아야 한다. 수동 prompt 시험은 대조군으로만 기록한다.</li></ul>
+<p><b>현재 실행 계약:</b> CJ 선택에 따라 기본 + 연결 대신 프로젝트 전용 명령을 쓴다. 첫 지시는 Codex argv로 전달하고 hook이나 기존 세션에 사후 전송하지 않는다. 매 명시 실행은 새 PM 1개를 만든다. 응답 유실 재시도는 반환된 operationId로만 replay한다. 자동 재귀·예약·세션 재개는 시작 경로가 아니다.</p>
+<p><b>프로젝트 환경:</b> <code>.codex/config.toml</code>에서 <code>[plugins.&quot;ponytail@ponytail&quot;] enabled=false</code>로 Codex의 Ponytail 자동 로딩만 이 프로젝트에서 제외한다. 설치된 Ponytail SKILL full은 시작 prompt로 직접 읽는다. 개별 <code>hooks.state</code> 제외는 유효 설정에 표시됐지만 시작 검토 화면이 남아 채택하지 않았다. 기존 Orca 상태 hook·계정 신뢰·다른 프로젝트·모델·effort·tier·권한은 유지한다. 정정 후 신규 기동은 검토 화면·추가 입력 없이 실제 문서 읽기를 시작했다. 최종 인수·검수 결과는 [실행 영수증](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/pm-entry-resolution-20261030/entry-runtime-proof.json)을 확인한다.</p>
+<ul class="contract-list"><li><b>오작동 방지:</b> 정확한 root 경로와 WorkTree ID·승인 모델을 고정하고 임의 인수를 거부한다. 명시 실행당 새 PM 1개이며 자동 재귀·예약·resume·기존 Role 세션 전송을 하지 않는다. 응답 유실은 반환된 operationId로만 재시도해 같은 기동을 replay한다.</li><li><b>권한·복구:</b> 모델·effort·tier·권한·기존 Orca 상태 hook·계정 신뢰·다른 프로젝트를 보존한다. Ponytail full은 설치 파일을 직접 읽는다. 복구는 새 시작 파일과 프로젝트의 Ponytail 자동 로딩 제외 설정만 사전 사본과 대조해 되돌린다.</li><li><b>검증:</b> 명령 1회 실행 뒤 추가 입력 없이 올바른 cwd·AGENTS·현행 정본·Mercury·실행 관측·승인 범위·미결·다음 행동의 CJ 보고에 도달해야 한다. launch 전달 영수증만으로 성공 처리하지 않는다. 기본 + 기능 구현·제품 착수·PM 소유권 이전으로 확대하지 않는다.</li></ul>
 <p class="small">기능 근거: <a href="https://learn.chatgpt.com/docs/hooks">Codex 공식 hooks</a> · <a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">AGENTS.md 발견 규칙</a>. 이번 현장 시험은 로컬 진입 문서 검사이며 정식 독립 Saturn QA나 제품 E2E PASS가 아니다.</p>
 </div></details>
 <details class="fold"><summary>연결 관측 · 시점별 근거와 한계</summary><div class="fold-body">
@@ -1474,6 +1511,11 @@
 </thead>
 <tbody>
 <tr>
+<td>2026-10-30 PM 환경·Mermaid·Issue</td>
+<td><a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/pm-entry-resolution-20261030/">실행 근거</a></td>
+<td>Orca 1.4.244 조사·후보와 실제 실행 구분. 회사 Vault Mermaid 승인·SVG 표시. GitHub 열린 Issue 10건 재조회.</td>
+</tr>
+<tr>
 <td>#335 최종 통합</td>
 <td><a href="https://github.com/ChangjoSung/Digit-Duel/pull/336">PR336</a> · <a href="file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/issue-335-approved-integration-20261028/PD-Report.md">최종 보고</a></td>
 <td>CJ PASS·최종 후보·Saturn·CI·dev 통합. 파일명의 PD는 당시 작성자 표기다.</td>
@@ -1534,6 +1576,16 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>2026-10-30<br/>PM 시작 경로 선택</td>
+<td>CJ: 프로젝트 전용 PM 시작 명령 사용(권장안).</td>
+<td>기본 + 경로 요구를 전용 명령으로 대체한다. 예약·상주·전역 설정 추가 없이 정확한 root에 새 Codex PM을 기동한다. 첫 검증의 plugin 검토 개입을 보존하고 프로젝트별 자동 hook 제외 후 추가 입력 없는 기동·인수를 확인한다.</td>
+</tr>
+<tr>
+<td>2026-10-30<br/>PM 진입 환경·표시·Issue</td>
+<td>CJ: 무입력 PM 환경 제약 해결 요청, Obsidian Mermaid 신뢰 승인, 남은 Issue 통합 보고.</td>
+<td>회사 Vault Mermaid 허용·실제 SVG 표시 확인. GitHub 10건 재조회. 기본 +의 프로젝트별 첫 지시는 Orca 지원 부재를 재확인했고 기능 계약·별도 시작 후보를 준비했다. 후보를 설치·무입력 성공으로 처리하지 않는다.</td>
+</tr>
 <tr>
 <td>2026-10-29<br/>전 부서 문서·File Tree</td>
 <td>CJ: 모든 부서 문서 저장을 Obsidian으로 변경. File Tree를 깔끔하게 정리.</td>
@@ -1640,7 +1692,7 @@
 </div></details></section><section class="paper" id="migration">
 <h2>전환 결과 · 시점별 근거</h2>
 <details class="fold"><summary>시점별 전환·검증 이력 열기</summary><div class="fold-body">
-<p><b>전환 검증:</b> 2026-10-29 Saturn 읽기 전용 독립 QA PASS(87항목). 문서 10개·첨부 10개(8,961,090 bytes)의 CLI 저장·복원·해시와 내용·링크를 대조했다. 생산자 회귀 143 PASS / symlink 3 SKIP은 별도 근거다. GUI는 File Tree·표·이미지 표본 확인, Mermaid 표시 신뢰는 미승인 상태다. 자동 진입·제품·인쇄 QA PASS를 뜻하지 않는다. <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel%2FQA%2FQA.md">QA 원본</a>.</p>
+<p><b>전환 검증:</b> 2026-10-29 Saturn 읽기 전용 독립 QA PASS(87항목). 문서 10개·첨부 10개(8,961,090 bytes)의 CLI 저장·복원·해시와 내용·링크를 대조했다. 생산자 회귀 143 PASS / symlink 3 SKIP은 별도 근거다. GUI는 File Tree·표·이미지 표본 확인, Mermaid 표시는 당시 미승인이었으며 이후 2026-10-30 CJ 신뢰 승인과 실제 SVG 표시를 확인했다. 자동 진입·제품·인쇄 QA PASS를 뜻하지 않는다. <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel%2FQA%2FQA.md">QA 원본</a>.</p>
 <p><b>현재 문서 운영:</b> 회사·프로젝트·각 부서의 현행 본문은 지정 Obsidian 원본에서 관리한다. 소유자·효력·검증·복구는 <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Org%20Chart%20and%20R%26R.md">회사 정본·소유자 목록</a>과 이번 실행 영수증을 따른다. HTML은 통합 열람 출력이며 Issue·코드·검사·배포·기계 설정은 각 시스템에 유지한다. 자동 진입·제품·인쇄 QA와 문서 이관 검증을 구분한다.</p>
 <p><b>아래 표는 2026-10-28 단일 HTML 통합 당시의 이력이다.</b> 당시 화면 확인·검증·문서 PR을 이번 이름 변경의 새 PASS나 Git 반영으로 재사용하지 않는다.</p>
 <div class="tbl-wrap">
