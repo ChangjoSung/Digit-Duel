@@ -43,8 +43,8 @@ function applyUiEvents(events){
     if(event.type==="logAppended"){ renderLog(); continue; }
     if(event.type==="battleRedraw"){ battleModal(); continue; }
     if(event.type==="closeOverlay"){ closeModal(); continue; }
-    if(event.type==="gameReset"){ synHelpClose(false); fxReleaseAll(); shopClockStop(); bagClockStop(); turnClockStop(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다 (#263 배치·행동도 같다)
-    if(event.type==="tutHint"){ spGuideEvent(event.key); continue; } // #260 (CJ 2026-09-27): 경기 중 1회 도움말은 제품에서 띄우지 않는다 — #324 학습 경기에서만 짧은 안내로 쓴다(single.js · 그 밖은 0회)
+    if(event.type==="gameReset"){ synHelpClose(false); fxReleaseAll(); shopClockStop(); bagClockStop(); turnClockStop(); spRngRestore(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다 (#263 배치·행동도 같다)
+    if(event.type==="tutHint") continue; // #260 (CJ 2026-09-27): 경기 중 1회 도움말은 제품에서 띄우지 않는다 — #324 Rev2 튜토리얼도 §3R.3 단계 말풍선만 쓴다(옛 상황 도움말과 겹치지 않게 0회)
     if(event.type==="memoPick"){ memoModal(event.piece); continue; }
     if(event.type==="contactSituation"){ situationFx(event.att,event.def); continue; }
     if(event.type==="contactBanner"){ contactBannerFx(event.piece,event.sub); continue; }
@@ -854,7 +854,7 @@ function render(){
   try{ emoteSync(); }catch(e){} // #262 이모티콘 고정 층 — 단계·연결·간격 표시만
   try{ turnClockSync(); }catch(e){} // #263 행동 30초 · #293 준비 180초 표시 (온라인은 서버 시계 표시만)
   try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
-  try{ spGuideCheck(); }catch(e){} // #324 학습 경기의 첫 장면 안내(한 번에 하나 · 학습 경기 밖에서는 아무것도 하지 않는다)
+  try{ spTick(); }catch(e){} // #324 Rev2 튜토리얼 단계 판정·말풍선·스포트라이트(튜토리얼 경기 밖에서는 안내를 걷기만 한다)
 }
 function renderBoard(){
   const bd=$("board"); bd.innerHTML="";
@@ -1107,7 +1107,7 @@ function idHelp(rel,p,from){ const d=idSeat(rel,p);
   synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${d.lb}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
     <div class="idCard ${rel?"op":"me"}">${idFaceHtml(d.rep,"sm")}<b>${escAttr(d.nm||d.lb)}</b></div>`,from); }
 /* ⚙ 설정 — 그 화면의 기존 나가기 진입점(동작 · 확인 창 불변) + 사운드 · 환경설정 자리(비활성 · 동작/저장 없음) */
-function gearHtml(leave){ return `<details class="flowGear"><summary aria-label="설정">${gi("gear")}</summary><div class="menu"><b>설정</b>${leave}<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공</button></div></details>`; }
+function gearHtml(leave){ leave=spGearLeave(leave); return `<details class="flowGear"><summary aria-label="설정">${gi("gear")}</summary><div class="menu"><b>설정</b>${leave}<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공</button></div></details>`; }
 function renderSetup(sp){
   const p=S.setupPlayer;
   if(NET.queued){ // 온라인: 배치 완료 → 매칭 대기
@@ -1397,7 +1397,7 @@ function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중
 }
 window.autoPlaceCore=()=>dispatchCoreAction({t:"auto"});
 window.clearPlaceCore=()=>dispatchCoreAction({t:"clear"});
-window.setupDoneCore=()=>dispatchCoreAction({t:"setupConfirm",preparing:NET.preparing,publicMode:NET.publicMode});
+window.setupDoneCore=()=>{ const first=spFirstPlayer(); dispatchCoreAction(first===0?{t:"setupConfirm",preparing:NET.preparing,publicMode:NET.publicMode,first}:{t:"setupConfirm",preparing:NET.preparing,publicMode:NET.publicMode}); }; // #324 튜토리얼 심화만 플레이어 선공을 싣는다(그 밖은 종전 무작위)
 
 /* ===== #245 Saturn REVISE(M1) 전투·모집·패키지 화면 — Core 에서 옮겨 온 그대로 =====
    Core 는 HTML 을 만들지도, window 콜백을 달지도 않는다. 아래 세 화면과 그 버튼이 부르는 Core 액션 중계는
@@ -1898,6 +1898,7 @@ function battleModal(board){
     ${sub("flee",`<div class="subHead"><b>정말로 도망갈까요?</b></div><div class="subActs">${fleeBtn}${subBack}</div>`)}`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
   uiBattleBox(); // #122 세로 전투 화면 레이아웃 — DOM 은 표시 계층이 만진다
+  try{ spTick(); }catch(e){} // #324 전투 창은 render() 없이 그려진다 — 튜토리얼 단계(B6→B7)·대상·말풍선을 이 창 기준으로 갱신(튜토리얼 밖은 무동작)
   window.__synTog=v=>{ try{ const st=$("bsynStrip"), t=$("bsynTog"); if(!st||!t) return; const on=v===undefined?st.hidden:!!v; // 표시만 — 송신 · 규칙 상태 0
     UI.synOpen=on?synKey:null; st.hidden=!on; t.setAttribute("aria-expanded",String(on)); t.setAttribute("aria-label",`활성 시너지 ${synN}개 — ${on?"접기":"펼치기"}`);
     if(!on&&t.focus) t.focus({preventScroll:true}); }catch(e){} };
@@ -2088,19 +2089,19 @@ function turnClockWants(){
   if(S.battle){
     const B=S.battle, side=actorOfPhase(), p=(side==="A"?B.attP:B.defP).owner;
     if(!isAI(p)) out.push({kind:"battle",p,key:["battle",S.turnCount,S.battlesUsed,B.actSeq||0,B.round,B.phase].join(":"),
-      ms:ECO.battleSec*1000,paused:cov||fxLocked()||!B.intro||spHeld()}); // 진입 카운트다운이 아직 큐에 들어가기 전(intro 전)도 정지다 — 연출 시간은 60초를 먹지 않는다
+      ms:ECO.battleSec*1000,paused:cov||fxLocked()||!B.intro||spClockHeld()}); // 진입 카운트다운이 아직 큐에 들어가기 전(intro 전)도 정지다 — 연출 시간은 60초를 먹지 않는다
   }
   /* T3 강제 전투 대상 선택 30초 — 적격 대상이 **둘 이상**일 때만 선다(하나면 T2 로 곧바로 전투라 시계를 새로 세지 않는다).
      고른 뒤 이어지는 출전 선택(B02)도 **같은 시계로 이어 센다** — 보드 시계로 돌아가면 고르는 데 쓴 시간이 사라져
      B02 가 사실상 새 30초를 받는다. 키에 이동한 말과 그 턴의 전투 횟수를 실어 텔레포트 큐의 다음 항목은 새 30초를 받는다. */
   const pick=(S.phase==="play"&&!S.battle&&S.movedPiece
     &&((S.forcedTargets&&S.forcedTargets.length>1)||(!!S.entryPick&&!!TURNCLK.c.pick)))
-    ?{kind:"pick",p:S.current,key:["pick",S.turnCount,S.battlesUsed,S.movedPiece.id].join(":"),ms:ECO.actSec*1000,paused:cov||spHeld()}:null;
+    ?{kind:"pick",p:S.current,key:["pick",S.turnCount,S.battlesUsed,S.movedPiece.id].join(":"),ms:ECO.actSec*1000,paused:cov||spClockHeld()}:null;
   if(pick) out.push(pick);
   /* 보드 행동 30초 — 한 턴에 하나. 키는 턴이 바뀔 때만 바뀌므로 주 행동 뒤 **남은 시간**이 그 턴이 끝날 때까지 이어진다.
      전투·대상 선택·B08·연출 동안 멈춘다(Q2=A · Jupiter 7-6.4 — 30초(B08 · #316)·60초와는 끝까지 별개의 시계다). */
   if(!isAI(S.current)) out.push({kind:"act",p:S.current,key:"act:"+S.turnCount+":"+S.current,ms:ECO.actSec*1000,
-    paused:cov||!!S.battle||!!pick||S.phase==="bagPick"||fxLocked()||spHeld()});
+    paused:cov||!!S.battle||!!pick||S.phase==="bagPick"||fxLocked()||spClockHeld()});
   return out;
 }
 function turnClockCovered(){ try{ const o=$("overlay"); return !!(o&&o.classList&&o.classList.contains("handoff")); }catch(e){ return false; } }
@@ -2112,8 +2113,8 @@ function turnClockStop(){ for(const k of TURNCLK_KINDS){ const c=TURNCLK.c[k]; i
    자동 마무리한다: 상점 미완료 = 기존 shopTimeout(자동 구매·속성 배정·자동 배치) · 상점 완료 = 기존 autoPlace, 이어서 기존 배치 확정. */
 const PREPCLK={g:null,dl:0,t:null,iv:null,pz:null,fire:()=>prepClockFire()};
 function prepClockStop(){ clearTimeout(PREPCLK.t); clearInterval(PREPCLK.iv); PREPCLK.g=PREPCLK.t=PREPCLK.iv=PREPCLK.pz=null; PREPCLK.dl=0; }
-/* #324 학습 경기의 안내·선택 창(spHeld)이 떠 있는 동안 준비·정기 상점·B08 마감은 남은 시간을 들고 멈추고, 닫히면 그 값부터 이어 흐른다.
-   행동·대상 선택·전투 시계는 turnClockWants 의 paused 가 같은 사실을 본다. 일반 PVE·핫시트·온라인은 spHeld() 가 늘 false 라 종전 그대로 */
+/* #324 튜토리얼의 질문·안내 창·말풍선(spClockHeld)이 떠 있는 동안 준비·정기 상점·B08 마감은 남은 시간을 들고 멈추고, 닫히면 그 값부터 이어 흐른다.
+   행동·대상 선택·전투 시계는 turnClockWants 의 paused 가 같은 사실을 본다. 일반 PVE·핫시트·온라인은 spClockHeld() 가 늘 false 라 종전 그대로 */
 function clkLeft(C){ return C.pz!==null?C.pz:Math.max(0,C.dl-Date.now()); }
 function clkHold(on){ for(const C of [PREPCLK,SHOPCLK,BAGCLK]){
   if(on&&C.t!==null&&C.pz===null){ C.pz=Math.max(0,C.dl-Date.now()); clearTimeout(C.t); C.t=null; }
@@ -2123,7 +2124,7 @@ function prepClockStart(){
   prepClockStop(); PREPCLK.g=S; PREPCLK.dl=Date.now()+ECO.prepSec*1000;
   PREPCLK.t=setTimeout(PREPCLK.fire,ECO.prepSec*1000);
   PREPCLK.iv=setInterval(prepClockPaint,500);
-  if(spHeld()) clkHold(true);
+  if(spClockHeld()) clkHold(true);
 }
 function prepClockFire(){
   const g=PREPCLK.g; clearInterval(PREPCLK.iv); PREPCLK.iv=PREPCLK.t=null;
@@ -2462,7 +2463,7 @@ function trayHtml(p){
 function shopShow(cover){
   const p=shopViewer(); if(p===null) return;
   if(S.eco.shop.kind==="start"){ closeModal(); render(); return; }       // S01 은 출전 준비 화면 안에 그린다 (renderSetup)
-  const open=()=>{ if(shopViewer()!==p) return; modal(shopHtml(p),[]); shopClockStart(p); try{ railFit(); }catch(e){} }; // #316 ⑤ 오프라인 시트도 열린 직후 시너지 열 높이를 잰다(온라인은 shopClockStart → emoteSync)
+  const open=()=>{ if(shopViewer()!==p) return; modal(shopHtml(p),[]); shopClockStart(p); try{ railFit(); }catch(e){} try{ spTick(); }catch(e){} }; // #324 정기 상점 창도 render() 없이 열린다 — 튜토리얼 A8·연습 상점 단계 갱신 // #316 ⑤ 오프라인 시트도 열린 직후 시너지 열 높이를 잰다(온라인은 shopClockStart → emoteSync)
   if(cover&&S.mode==="pvp") handoff(`${pname(p)} — 🛒 ${S.eco.shop.turn}턴 상점`,open); else open();
 }
 function shopClockStart(p){
@@ -2478,7 +2479,7 @@ function shopClockStart(p){
   const g=S; SHOPCLK.dl=Date.now()+ECO.shopSec*1000;
   SHOPCLK.fire=()=>{ SHOPCLK.t=null; if(S!==g||!S.eco.shop||S.eco.shop.done[p]) return; closeModal(); dispatchCoreAction({t:"shopTimeout",player:p}); }; // 확정 거래는 보존 · 열린 확인 창(미확정)만 취소
   SHOPCLK.t=setTimeout(SHOPCLK.fire,ECO.shopSec*1000);                      // 정기 상점 전용 — 시작 상점은 공통 준비 180초(PREPCLK · #293)
-  if(spHeld()) clkHold(true);
+  if(spClockHeld()) clkHold(true);
   const tick=()=>shopClockPaint(p); tick();
   SHOPCLK.iv=setInterval(tick,500);
 }
@@ -2569,7 +2570,7 @@ function bagPickShow(){
     if(NET.publicMode){ bagClockStop(); const tick=()=>{ const el=$("bagClock"); if(el) el.textContent=netClockText(); }; tick(); BAGCLK.iv=setInterval(tick,500); } // 마감·만료는 서버 시계
     else if(fxLive()){ bagClockStop(); BAGCLK.dl=Date.now()+ECO.bagPickSec*1000; // 30초(#316 · ECO.bagPickSec)는 소유자에게 창이 보이는 순간부터 — 첫 표시도 같은 값(위 배지) (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
       BAGCLK.fire=()=>{ BAGCLK.t=null; if(S.eco.bagPick===bp) go(S.eco.bag[p].length); }; // 무응답 → 포획한 말만 방출
-      BAGCLK.t=setTimeout(BAGCLK.fire,ECO.bagPickSec*1000); if(spHeld()) clkHold(true);
+      BAGCLK.t=setTimeout(BAGCLK.fire,ECO.bagPickSec*1000); if(spClockHeld()) clkHold(true);
       BAGCLK.iv=setInterval(()=>{ const el=$("bagClock"); if(el) el.textContent=`⏱ ${Math.ceil(clkLeft(BAGCLK)/1000)}초${BAGCLK.pz!==null?" (정지)":""}`; },500); } };
   if(S.mode==="pvp"&&!NET.mode&&S.current!==p) handoff(`${pname(p)} — 가방 초과 선택`,show); else show(); // 핫시트: 포획한 쪽이 화면 주인이 아니면 가림 먼저
 }

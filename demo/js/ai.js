@@ -10,7 +10,7 @@ function aiHoldRelease(){ const q=UI.holdQ; UI.holdQ=[]; UI.hold=false; for(cons
    판단·정책·난수 순서는 어느 쪽에서도 같다 — 바뀌는 것은 "언제 부르는가"뿐이다. */
 const aiIdle=fn=>{ if(typeof fxWhenIdle==="function") fxWhenIdle(fn); else fn(); };
 const aiDelay=(fn,ms)=>{ if(typeof setTimeout==="function") setTimeout(fn,ms); else fn(); };
-const aiHeldNow=()=>typeof UI!=="undefined"&&(!!UI.hold||typeof spHeld==="function"&&spHeld()); // #324 학습 경기의 안내·선택 창도 같은 보류(닫히면 spHold 가 큐를 푼다)
+const aiHeldNow=()=>typeof UI!=="undefined"&&(!!UI.hold||typeof spHeld==="function"&&spHeld()); // #324 튜토리얼의 질문·모달 안내·기본 회복 확인도 같은 보류(풀리면 spSync 가 큐를 푼다)
 /* ===== #245 Saturn REVISE(M2) AI 어댑터가 자기만 쓰는 기록 — 게임 상태(S)가 아니다 =====
    종전에는 예약 플래그·성격 프로파일·선봉·최근 이동 이력·사고 시간을 전부 S 에 직접 썼다. 그중 어느 것도
    규칙 판정·승패·회선 프레임에 들어가지 않고 Core 는 한 번도 읽지 않는다 — 판단하는 쪽의 메모일 뿐이다.
@@ -55,6 +55,7 @@ const aiCmd=a=>dispatchCoreAction(Object.assign({frame:battleCmdFrame()},a));
 const aiSkip=toast=>dispatchCoreAction(toast===false?{t:"skipMain",origin:"ai",toast:false}:{t:"skipMain",origin:"ai"});
 function aiStep(){
   if(!S||S.phase!=="play"||!isAI(S.current)||S.battle||S.fleePick) return; // #114: 상대(사람)의 도망 교환 선택이 끝나야 재개 (fleeResolve → done 이 재스케줄)
+  if(typeof spAiScript==="function"&&spAiScript(false)) return; // #324 Rev2 기본 연습 보드·연습 장면의 상대 대본(그 밖의 경기는 false — 종전 AI 그대로)
   const me=S.current;
   if(!S.mainUsed){ if(aiLevelOf(me)==="dan5") aiMainStrong(me); else aiMain(me); emitCore({type:"render"}); aiSchedule(); return; } // #21 난이도 분기
   if(!(S.forcedTargets&&S.forcedTargets.length)) dispatchCoreAction({t:"drainForced",autoStart:false}); // #18 안전장치
@@ -352,6 +353,7 @@ function aiBattleAction(){
   const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner;
   if(!isAI(ownerP)) return;
+  if(typeof spAiScript==="function"&&spAiScript(true)) return; // #324 Rev2 기본 B7 — 규칙상 합법인 고정 전투 명령(그 밖의 경기는 종전 AI)
   if(aiLevelOf(ownerP)==="dan5"){ aiBattleActionStrong(side); return; } // #21 5단 전투 행동 (기대치 기반)
   const prof=aiProf(ownerP), caut=aiCaution(ownerP); // T6 전투 성향 프로파일
   const inBonus=!!(B.bonus&&B.bonus.stage==="active"&&B.bonus.side===side); // #241 R1 번개 꼬리 추가 공격 — 스킬 선택만 합법(L17)

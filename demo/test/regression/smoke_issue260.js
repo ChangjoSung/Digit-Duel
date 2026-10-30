@@ -51,8 +51,8 @@ const gets=p=>calls.filter(c=>c.url===p&&!(c.init.method));
   ok(T.uiScreenName()==="lobby"&&T.lobby.lobbyReady(),"A4 계정 없는 경로(file://) — 자산 뒤 로비");
   ok(!/startMode\(|핫시트|5급|5단|AI vs AI|튜토리얼|tutOpen/.test(s),"A5 로비에 옛 PVE·핫시트·관전·튜토리얼 진입점 없음");
   const ui=JS("ui.js");
-  /* #324 (v0.4.16): Core tutHint 는 학습 경기의 짧은 안내(spGuideEvent)로만 간다 — 그 밖의 경기 0회는 smoke_issue324.js E8 이 실제 경로로 본다 */
-  ok(!/\btutHint\(/.test(ui)&&/event\.type==="tutHint"\)\{ spGuideEvent\(event\.key\); continue; \}/.test(ui),"A6 경기 중 도움말 — 옛 도움말(tutHint)은 띄우지 않고 학습 경기 안내로만 넘긴다(Core 이벤트는 그대로)");
+  /* #324 Rev2(2026-10-30): Core tutHint 는 어떤 경기에서도 띄우지 않는다 — 튜토리얼도 §3R.3 단계 말풍선만(smoke_issue324.js E 가 실제 경로로 본다) */
+  ok(!/\btutHint\(/.test(ui)&&/event\.type==="tutHint"\) continue;/.test(ui),"A6 경기 중 도움말 — 옛 도움말(tutHint)은 튜토리얼 포함 어디서도 띄우지 않는다(Core 이벤트는 그대로)");
   ok(typeof T.tutOpen==="function"&&typeof T.tutHint==="function","A7 튜토리얼 모듈은 회귀 검사용으로 남는다");
   T.startMode("pve"); ok(T.S.mode==="pve"&&T.S.phase==="setup","A8 엔진 진입점 startMode 는 그대로(테스트 호출)");
 }

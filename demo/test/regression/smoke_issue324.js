@@ -1,15 +1,16 @@
-/* #265·#322·#324 (v0.4.16) 싱글플레이 클라이언트 회귀 — node demo/test/regression/smoke_issue324.js
-   서버(/api/auth/* · POST /api/profile/tutorial · POST /api/profile/ai-clear)는 fetch 스텁이다 — SERVER Operations 2026-10-30(Jupiter) 계약,
-   의미·문구는 PLAN Singleplayer Draft 'v0.4.16 확정 계약'(Venus). 실서버 저장 E2E 는 이 파일이 아니다(Mars artifact 의 브라우저 증빙).
-     A. 진입 분기(§2) — 타이틀 [시작] → 로비로 보내는 지점에서 서버 미완료만 학습 경기(질문 1회) · 완료는 로비 · 확인 불가(필드 누락·형식·장애)는 로비 ·
-        좌석 재접속 우선 · 계정 없는 경로 강요 없음
-     B. 건너뛰기(§3.1·§3.6·§3.7) — ACK 뒤에만 로비 + 해금 알림 1회 · 유실은 조회 1회 자동 · [다시 시도]는 조회 → 필요할 때만 저장 · 401 같은 계정만 ·
-        다른 계정·늦은 응답 차단 · 명시적 거절
-     C. 학습 종료 사유(§3.5) — king/edge/wipe 승·패만 저장 · 기권·무승부 0건 · [로비로] ACK 전 비활성 · R 복습(확인함/다음 경기에서)
-     D. 학습 정지(§3.4) — 질문·안내 동안 준비·정기 상점·B08 마감 정지·남은 시간 재개 · 행동·전투·대상 선택 paused · AI 보류·재개 · 일반 PVE 무관
-     E. 안내(§3.3) — H1~H6 확정 문구·장면 첫 발생 1회 · Core tutHint 는 학습 경기에서만 · H5 순환 = BEATS · Esc·[확인]
-     F. 싱글 화면(§5·§6·§7) — P01 카드 2장 · P02 8칸 상태 글자(도전 가능·클리어·잠김·추후 공개) · 새 티어 승리만 저장 · 결과 [다시 도전]·[난이도로] ·
-        확인 불가 재조회 · 계정 없는 체험 = 이번 로드 메모리 해금
+/* #265·#322·#324 (v0.4.16 · 튜토리얼 Rev2) 싱글플레이 클라이언트 회귀 — node demo/test/regression/smoke_issue324.js
+   서버(/api/auth/* · POST /api/profile/tutorial v2 · POST /api/profile/ai-clear)는 fetch 스텁이다 — SERVER Operations(Jupiter) v2 카테고리 계약,
+   의미·문구는 PLAN Singleplayer Draft §3R(Venus · 단계·문구·트리거 유일 표 3R.3). 실서버 저장 E2E 는 이 파일이 아니다(Mars artifact 의 브라우저 증빙).
+   기본 B1~B9 는 **실제 엔진**의 고정 합법 보드 위에서 실제 입력 경로(onCell · netAction · __shop)로 끝까지 간다 — 경기 종료를 주입하지 않는다.
+   '통제 종료'(dispatch gameOver)는 심화 자유 경기·저장 경계·401 처럼 경기 내용과 무관한 분기에서만 쓰고, 그 줄의 이름에 적는다(실제 완주가 아니다).
+     A. 진입 분기(§2 · 3R.1) — 미해금만 질문(카테고리별 문구) · 해금·면제는 로비 · 카테고리 없음·형식 이상·순서 이상은 확인 불가 → 로비 · 좌석 우선 · 계정 없음
+     B. 첫 질문 건너뛰기(3R.5) — POST v2 all/skip 1회 · ACK 뒤에만 로비 + 해금 알림 1회 · 유실·401·계정 전환·409 처리됨 ACK · 명시적 거절
+     C. 기본(3R.3 B1~B9 · 3R.4) — 실제 탐색·강제 이동·보장 전투(기본 공격만)·회복 자세+차례 종료 회복·텔레포트 끝줄 승리 · 조기 종료 0 · 대상 하나 · 숨은 말 미노출
+     D. 진행도·저장(BP · 3R.5) — ACK 와 이동 연출 둘 다 · 늦은 ACK·연타 중복 0 · 기본만으로 해금 0 · ⚙ 기본 건너뛰기 · 중단 = 저장 0 · 시드 원복
+     E. 심화(A1~A11) — 실제 구매·속성·아이템·배치 3동작 · 플레이어 선공 · 실제 본 것(상점·버닝)만 기록 · 못 본 연습 0/1/2 · 남은 연습·⚙ 건너뛰기 · 결과 보존 · 해금 1회
+     F. 싱글 화면(§5·§6·§7) — P01·P02 · 새 티어 승리만 저장 · 확인 불가 재조회 · 계정 없는 체험
+     H. 401 원 화면 보존·좌석 우선·유한 마감·같은 계정 새 세대
+     T. 정지 범위 — 튜토리얼 말풍선·모달 동안만 시계·AI 보류 · 일반 PVE·온라인 무관 · tutHint 0
      G. AI 티어(§8) — 데이터 표 값 · 고정 프로필은 난수 미소비 · 티어 없는 기존 경로 rand 순서 불변 */
 "use strict";
 const H=require("../shared/harness");
@@ -20,7 +21,8 @@ function ok(cond,name){ if(cond) pass++; else { fail++; fails.push(name); consol
 
 const HTTPS="https://dd.example.com/";
 const NEO={userId:"neo_1",nickname:"네오",hasEmail:true}, OLD={userId:"old_1",nickname:"고참",hasEmail:true};
-const PG=(d,t)=>({tutorialDone:d,aiClearedTier:t||0});
+const PG=(b,a,t)=>({tutorialDone:a!=="pending",aiClearedTier:t||0,tutorial:{basic:b,advanced:a}});
+const NEW=PG("pending","pending"), MID=PG("completed","pending"), DONE=t=>PG("completed","completed",t), EXEMPT=t=>PG("exempt","exempt",t);
 const PROF={nickname:"네오",representativeMinion:"M-F1",stats:{wins:0,losses:0},matches:[],pendingMatches:0};
 const calls=[]; let routes={};
 const fetchStub=async(url,init)=>{
@@ -34,7 +36,7 @@ const fetchStub=async(url,init)=>{
 const tick=async()=>{ for(let i=0;i<14;i++) await new Promise(r=>setImmediate(r)); };
 async function boot(href,rt,storage){
   routes=Object.assign({"GET /api/profile":[200,PROF]},rt); calls.length=0;
-  const T=H.load(htmlPath,{href,fetch:fetchStub,storage:storage||H.mkStorage()});
+  const T=H.load(htmlPath,{href,fetch:fetchStub,storage:storage||H.mkStorage(),winEvents:true});
   await tick(); return T;
 }
 const posts=p=>calls.filter(c=>c.init.method==="POST"&&(!p||c.url===p));
@@ -43,103 +45,150 @@ const body=c=>JSON.parse(c.init.body);
 const sess=(u,p)=>[200,Object.assign({},u,p===undefined?{}:{progress:p})];
 const dlg=T=>T.byId("spGuide");
 const dlgOpen=T=>!dlg(T).classList.contains("hidden")&&dlg(T).innerHTML!==""; // 헤드리스 요소는 HTML 의 초기 class 를 모른다 — 닫힘 = 비운 innerHTML 도 본다
+const coach=T=>T.byId("spCoach").innerHTML;
 const txt=h=>String(h).replace(/<[^>]+>/g," ").replace(/\s+/g," ");
 const side=T=>T.byId("sidePanel").innerHTML;
 const assetsLoad=T=>{ for(const a of T.LOBBY.assets||[]) if(a.state==="loading") a.img.onload(); };
 const later=()=>{ let release; const p=new Promise(r=>{ release=r; }); return {p,release}; };
 const TUT_API="/api/profile/tutorial", CLR_API="/api/profile/ai-clear", SESS="/api/auth/session";
-const end=(T,winner,winType)=>{ T.dispatchCoreAction({t:"gameOver",winner,winType}); T.render(); }; // 실제 경기는 종료 뒤 다시 그린다
+const end=(T,winner,winType)=>{ T.dispatchCoreAction({t:"gameOver",winner,winType}); T.render(); }; // 통제 종료 — 실제 완주가 아니다(이름에 적는다)
 const toast=T=>T.LOBBY.toast?T.LOBBY.toast.t:"";
-async function tutAsk(rt){ const T=await boot(HTTPS,Object.assign({"GET /api/auth/session":sess(NEO,PG(false))},rt)); T.uiStart(); return T; }
+/* 서버 스텁 — v2 의미(3R.6)를 그대로 흉내 낸다: all = 대기 전부 건너뜀 · 같은 결과 반복 200 · 다른 결과 409 + 현재 상태 · 심화는 기본 처리 뒤에만 */
+function tutServer(start){
+  const st={basic:start.tutorial.basic,advanced:start.tutorial.advanced}, cur=()=>PG(st.basic,st.advanced,start.aiClearedTier);
+  const want=b=>b.end==="skip"?"skipped":"completed";
+  return {st,cur,post:init=>{ const b=JSON.parse(init.body);
+    if(b.v!==2) return [400,{error:"E_CLIENT_OUTDATED"}];
+    if(b.category==="all"){ for(const k of ["basic","advanced"]) if(st[k]==="pending") st[k]="skipped"; return [200,{progress:cur()}]; }
+    if(b.category==="advanced"&&st.basic==="pending") return [409,{error:"E_BASIC_REQUIRED",progress:cur()}];
+    if(st[b.category]!=="pending"&&st[b.category]!==want(b)) return [409,{error:"E_TUTORIAL_CONFLICT",progress:cur()}];
+    st[b.category]=want(b); return [200,{progress:cur()}]; }};
+}
+async function tutAsk(rt,prog){ const T=await boot(HTTPS,Object.assign({"GET /api/auth/session":sess(NEO,prog||NEW)},rt)); T.uiStart(); return T; }
+/* 기본 보드를 실제 입력으로 한 단계씩 — 차례 넘김(자동 종료 · 상대 대본)은 타이머를 돌려 기다린다 */
+const pump=(T,until,n)=>{ for(let i=0;i<(n||40)&&!until();i++){ T.drain(400); T.render(); } return until(); };
+const pc=(T,id)=>T.S.pieces.find(x=>x.id===id);
+function basicTo(T,step){
+  const X=T.single, Tt=X.SP.tut, I=Tt.ids, order=["B1","B2","B3","B4","B5","B6","B7","B8","B9"];
+  T.BAL.fx.autoEnd=true; // 기본 보드는 현행 자동 턴 종료 그대로(하네스 기본은 꺼 둔다)
+  const go=()=>{ const s=Tt.step;
+    if(s==="B1"||s==="B3"||s==="B4") X.spNext();
+    else if(s==="B2"){ const K=pc(T,I.K); T.onCell(K.r,K.c); T.ui238.infoSlotOpen(I.K,null); T.render(); X.spNext(); }
+    else if(s==="B5"){ const M=pc(T,I.M); T.onCell(M.r,M.c); T.netAction({t:"search"}); pump(T,()=>Tt.step!=="B5"); }
+    else if(s==="B6"){ const M=pc(T,I.M); T.onCell(M.r,M.c); T.onCell(I.dest[0],I.dest[1]); T.drain(50); } // 전투 창은 render() 없이 열린다 — 손으로 다시 그리지 않는다
+    else if(s==="B7"){ for(let i=0;i<80&&T.S.battle;i++){ const B=T.S.battle, sd=T.actorOfPhase(), own=(sd==="A"?B.attP:B.defP).owner;
+        if(own===0){ global.__menu("fight"); global.__act(0); } T.drain(400); T.render(); } pump(T,()=>Tt.step!=="B7"); }
+    else if(s==="B8"){ const M=pc(T,I.M); T.onCell(M.r,M.c); T.netAction({t:"heal",id:I.M}); T.render(); pump(T,()=>Tt.f.gain!=null); X.spNext(); pump(T,()=>T.S.current===0&&T.S.turnCount>=Tt.t0+6); }
+  };
+  for(let n=0;n<12&&Tt.step!==step&&order.indexOf(Tt.step)>=0;n++) go();
+  return Tt.step===step;
+}
 
 (async()=>{
 /* ===== A. 진입 분기 ===== */
 {
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(false))});
-  ok(T.AUTH.state==="in"&&T.uiScreenName()==="title"&&!T.single.SP.ask,"A1 세션 복원 직후에는 타이틀 그대로(분기는 로비로 보내는 지점)");
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,NEW)});
+  ok(T.AUTH.state==="in"&&T.uiScreenName()==="title"&&!T.single.SP.ask,"A1 세션 복원 직후에는 타이틀 그대로(분기는 [시작] 뒤)");
   T.uiStart();
-  ok(T.S.mode==="pve"&&T.S.phase==="setup"&&T.S.aiLevel[1]==="bronze"&&T.uiScreenName()!=="lobby","A2 미완료 → [시작] 이 로비 대신 학습 경기(브론즈 AI)");
+  ok(T.S.mode==="pve"&&T.S.phase==="play"&&T.single.SP.tut&&T.single.SP.tut.cat==="basic"&&T.uiScreenName()!=="lobby","A2 기본 대기 → [시작] 이 로비 대신 기본 연습 보드(실제 엔진 경기)");
   const d=dlg(T).innerHTML;
-  ok(T.single.SP.ask&&dlgOpen(T)&&/첫 경기로 배워 볼까요\?/.test(d)&&/AI와 연습 경기를 하며 기본 규칙을 배워요\. 이 경기는 공식 전적에 들어가지 않아요\./.test(d)&&/>진행</.test(d)&&/>건너뛰기</.test(d),"A3 스킵 질문 1회 — 확정 문구 · [진행][건너뛰기]");
+  ok(T.single.SP.ask&&dlgOpen(T)&&/튜토리얼로 배워 볼까요\?/.test(d)&&/기본 규칙을 익히고 AI와 첫 경기를 해요\. 공식 전적에는 들어가지 않아요\./.test(d)&&/>진행</.test(d)&&/>건너뛰기</.test(d),"A3 질문 1회 — 3R.3 Q 기본 문구 · [진행][건너뛰기]");
   T.document.dispatch("keydown",{key:"Escape",preventDefault(){},stopImmediatePropagation(){}});
   ok(T.single.SP.ask&&dlgOpen(T),"A3b Esc 로 사라지지 않는다");
   ok(T.byId("app").getAttribute("inert")===""&&T.byId("overlay").getAttribute("inert")==="","A4 질문 동안 게임 화면·게임 모달은 inert");
-  const tag=fs.readFileSync(htmlPath,"utf8").match(/<div id="spGuide"[^>]*>/)[0];
-  ok(/role="dialog"/.test(tag)&&/aria-modal="true"/.test(tag)&&/aria-labelledby="spDlgT"/.test(tag),"A4b 질문·안내 창 = aria-modal 대화상자");
+  ok(!coach(T),"A4c 질문 동안 마녀 말풍선 없음(질문 하나만)");
+  const tag=fs.readFileSync(htmlPath,"utf8"), g=tag.match(/<div id="spGuide"[^>]*>/)[0], c=tag.match(/<div id="spCoach"[^>]*>/)[0];
+  ok(/role="dialog"/.test(g)&&/aria-modal="true"/.test(g)&&/role="region"/.test(c)&&!/aria-modal/.test(c)&&/<div id="spSpot"[^>]*aria-hidden="true"/.test(tag),"A4b 질문·패널 = 모달 대화상자 · 말풍선 = 비모달 영역 · 스포트라이트 = 읽지 않는 층");
   ok(posts().length===0,"A5 입장만으로는 저장 요청 0");
 }
 {
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(OLD,PG(true,0))});
-  T.uiStart(); ok(T.uiScreenName()==="lobby"&&!T.single.SP.ask,"A6 완료 계정(기존 계정 이관) — [시작] 은 로비");
+  const T=await tutAsk({},MID);
+  const d=dlg(T).innerHTML;
+  ok(T.single.SP.tut.cat==="advanced"&&T.S.phase==="setup"&&/심화 튜토리얼을 이어서 할까요\?/.test(d)&&/상점과 배치를 배우고 AI와 첫 경기를 해요\./.test(d),"A5b 기본 처리 · 심화 대기 → 심화 질문 문구 · 시작 상점(실제 경기 준비)");
 }
-for(const [nm,p] of [["필드 없음",undefined],["형식 오류",{tutorialDone:"no",aiClearedTier:0}],["범위 밖",{tutorialDone:false,aiClearedTier:4}],["null",null]]){
+for(const [nm,p] of [["심화 완료",DONE(0)],["이관 면제",EXEMPT(1)],["모두 건너뜀",PG("skipped","skipped")]]){
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(OLD,p)});
+  T.uiStart(); assetsLoad(T); await tick();
+  ok(T.uiScreenName()==="lobby"&&!T.single.SP.ask&&!T.single.SP.tut&&!/튜토리얼|학습 완료/.test(txt(side(T)))&&T.byId("spLive").textContent==="","A6 "+nm+" — [시작] 은 로비 · 해금 알림·학습 완료 표시 없음");
+}
+for(const [nm,p] of [["필드 없음",undefined],["카테고리 없음(옛 서버)",{tutorialDone:false,aiClearedTier:0}],["카테고리 값 이상",{tutorialDone:false,aiClearedTier:0,tutorial:{basic:"done",advanced:"pending"}}],
+  ["해금 파생 불일치",{tutorialDone:true,aiClearedTier:0,tutorial:{basic:"completed",advanced:"pending"}}],["순서 이상(심화만 처리)",{tutorialDone:true,aiClearedTier:0,tutorial:{basic:"pending",advanced:"skipped"}}],
+  ["범위 밖 티어",{tutorialDone:false,aiClearedTier:4,tutorial:{basic:"pending",advanced:"pending"}}],["null",null],
+  ["미해금인데 클리어 있음",{tutorialDone:false,aiClearedTier:3,tutorial:{basic:"pending",advanced:"pending"}}],["기본만 면제",{tutorialDone:false,aiClearedTier:0,tutorial:{basic:"exempt",advanced:"pending"}}],["기본 면제·심화 완료",{tutorialDone:true,aiClearedTier:0,tutorial:{basic:"exempt",advanced:"completed"}}]]){
   const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,p)});
   T.uiStart();
-  ok(T.uiScreenName()==="lobby"&&T.single.SP.progress===null&&!T.single.SP.ask,`A7 progress ${nm} = 확인 불가 → 로비(미완료로 강제하지 않음)`);
+  ok(T.uiScreenName()==="lobby"&&T.single.SP.progress===null&&!T.single.SP.ask,`A7 progress ${nm} = 확인 불가 → 로비(대기로도 해금으로도 보지 않음)`);
+}
+for(const [nm,p] of [["완료/면제(옛 서버 롤백 뒤)",PG("completed","exempt")],["건너뜀/면제(옛 서버 롤백 뒤)",PG("skipped","exempt",1)]]){
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,p)});
+  T.uiStart();
+  ok(T.uiScreenName()==="lobby"&&T.single.SP.progress&&T.single.SP.progress.tutorialDone&&T.single.SP.progress.tutorial.advanced==="exempt"&&!T.single.SP.ask,`A7b ${nm} = 유효(007·accounts 가 실제로 내는 값) → 해금 로비`);
 }
 {
   const T=await boot(HTTPS,{"GET /api/auth/session":[503,{error:"E_ACCOUNTS_UNAVAILABLE"}]});
-  T.uiStart(); ok(T.AUTH.state==="down"&&T.S.phase==="menu"&&!T.single.SP.ask,"A8 계정 서버 장애 — 학습으로 보내지 않는다(입장 차단 그대로)");
+  T.uiStart(); ok(T.AUTH.state==="down"&&T.S.phase==="menu"&&!T.single.SP.ask,"A8 계정 서버 장애 — 튜토리얼로 보내지 않는다(입장 차단 그대로)");
 }
 {
   const st=H.mkStorage({"dd_seat.neo_1":JSON.stringify({u:"neo_1",epoch:"0123abcd",roomId:7,seat:0,seatToken:"A".repeat(22),tokenGen:0})});
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(false))},st);
-  T.uiStart(); ok(T.NET.roomId===7&&T.S.mode!=="pve"&&!T.single.SP.ask,"A9 진행 중 좌석 재접속이 우선 — 학습 경기로 끌고 가지 않는다");
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,NEW)},st);
+  T.uiStart(); ok(T.NET.roomId===7&&T.S.mode!=="pve"&&!T.single.SP.ask,"A9 진행 중 좌석 재접속이 우선 — 튜토리얼로 끌고 가지 않는다");
 }
 {
   const T=await boot("file:///C:/Digit-Duel/demo/index.html",{});
-  T.uiStart(); ok(T.AUTH.state==="off"&&T.uiScreenName()==="lobby"&&!T.single.SP.ask,"A10 file:// — 학습 강요 없이 로비");
+  T.uiStart(); ok(T.AUTH.state==="off"&&T.uiScreenName()==="lobby"&&!T.single.SP.ask,"A10 file:// — 튜토리얼 강요 없이 로비");
 }
 {
-  const T=await boot(HTTPS,{"GET /api/auth/session":[401,{error:"E_NO_SESSION"}],"POST /api/auth/signup":[201,Object.assign({},NEO,{progress:PG(false)})]});
+  const T=await boot(HTTPS,{"GET /api/auth/session":[401,{error:"E_NO_SESSION"}],"POST /api/auth/signup":[201,Object.assign({},NEO,{progress:NEW})]});
   T.acct.acctView("signup"); T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; T.byId("acctPw2").value="pw123456"; T.byId("acctNick").value="네오"; T.byId("acctEmail").value="neo@example.com";
   await T.acct.acctSubmit(); await tick();
-  ok(T.AUTH.state==="in"&&T.single.SP.progress.tutorialDone===false&&T.S.mode==="pve"&&T.single.SP.ask&&dlgOpen(T),"A11 새 가입 성공(미완료) → 추가 [시작] 없이 학습 질문");
+  ok(T.AUTH.state==="in"&&T.single.SP.progress.tutorial.basic==="pending"&&T.S.mode==="pve"&&T.single.SP.ask&&dlgOpen(T),"A11 새 가입 성공(대기) → 추가 [시작] 없이 튜토리얼 질문");
 }
 {
-  const T=await boot(HTTPS,{"GET /api/auth/session":[401,{error:"E_NO_SESSION"}],"POST /api/auth/login":[200,Object.assign({},OLD,{progress:PG(true,1)})]});
+  const T=await boot(HTTPS,{"GET /api/auth/session":[401,{error:"E_NO_SESSION"}],"POST /api/auth/login":[200,Object.assign({},OLD,{progress:EXEMPT(1)})]});
   T.byId("acctId").value="old_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(T.uiScreenName()==="lobby"&&!T.single.SP.ask&&T.S.mode!=="pve","A12 새 로그인 성공(완료) → 추가 [시작] 없이 로비 로딩");
+  ok(T.uiScreenName()==="lobby"&&!T.single.SP.ask&&T.S.mode!=="pve","A12 새 로그인 성공(이관 면제) → 추가 [시작] 없이 로비 로딩");
 }
 {
   const T=await boot(HTTPS,{"GET /api/auth/session":[401,{error:"E_NO_SESSION"}],"POST /api/auth/login":[200,Object.assign({},NEO,{})]});
   T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(T.uiScreenName()==="lobby"&&!T.single.SP.ask&&T.single.SP.progress===null,"A13 새 로그인 · progress 확인 불가 → 로비(학습 강제 없음)");
+  ok(T.uiScreenName()==="lobby"&&!T.single.SP.ask&&T.single.SP.progress===null,"A13 새 로그인 · progress 확인 불가 → 로비(튜토리얼 강제 없음)");
 }
 {
   const st=H.mkStorage({"dd_seat.neo_1":JSON.stringify({u:"neo_1",epoch:"0123abcd",roomId:7,seat:0,seatToken:"A".repeat(22),tokenGen:0})});
-  const T=await boot(HTTPS,{"GET /api/auth/session":[401,{error:"E_NO_SESSION"}],"POST /api/auth/login":[200,Object.assign({},NEO,{progress:PG(false)})]},st);
+  const T=await boot(HTTPS,{"GET /api/auth/session":[401,{error:"E_NO_SESSION"}],"POST /api/auth/login":[200,Object.assign({},NEO,{progress:NEW})]},st);
   T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(T.NET.roomId===7&&T.S.mode!=="pve"&&!T.single.SP.ask,"A14 새 로그인 · 남은 좌석 기록 → 재접속이 우선(학습 자동 진입 없음)");
+  ok(T.NET.roomId===7&&T.S.mode!=="pve"&&!T.single.SP.ask,"A14 새 로그인 · 남은 좌석 기록 → 재접속이 우선(튜토리얼 자동 진입 없음)");
 }
 
-/* ===== B. 건너뛰기 ===== */
+/* ===== B. 첫 질문 [건너뛰기] — 대기 카테고리 전부 건너뜀(1요청) ===== */
 {
-  const L=later();
-  const T=await tutAsk({"POST /api/profile/tutorial":()=>L.p.then(()=>[200,{progress:PG(true)}])});
+  const L=later(), srv=tutServer(NEW);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>L.p.then(()=>srv.post(init))});
   T.single.spAskSkip(); await tick();
   const p=posts(TUT_API), d=dlg(T).innerHTML;
-  ok(p.length===1&&JSON.stringify(body(p[0]))===JSON.stringify({v:1,userId:"neo_1",end:"skip"})&&p[0].init.headers["Content-Type"]==="application/json","B1 [건너뛰기] = POST {v:1,userId,end:skip} JSON 1회");
+  ok(p.length===1&&JSON.stringify(body(p[0]))===JSON.stringify({v:2,userId:"neo_1",category:"all",end:"skip"})&&p[0].init.headers["Content-Type"]==="application/json","B1 [건너뛰기] = POST {v:2,userId,category:all,end:skip} JSON 1회");
   ok(/저장 중…/.test(d)&&(d.match(/ disabled>/g)||[]).length===2&&T.uiScreenName()!=="lobby","B2 저장 중 — 두 버튼 비활성 · 로비 아님(ACK 전)");
+  T.single.spAskSkip(); T.single.spAskGo(); await tick(); ok(posts(TUT_API).length===1,"B2b 저장 중 연타 — 중복 요청 0");
   L.release(); await tick();
-  ok(T.uiScreenName()==="lobby"&&!dlgOpen(T)&&!T.single.SP.ask&&T.single.SP.progress.tutorialDone,"B3 ACK 뒤 바로 로비");
+  ok(T.uiScreenName()==="lobby"&&!dlgOpen(T)&&!T.single.SP.ask&&T.single.SP.progress.tutorialDone&&T.single.SP.progress.tutorial.basic==="skipped","B3 ACK 뒤 바로 로비 · 두 카테고리 건너뜀");
   assetsLoad(T); await tick();
   ok(T.byId("spLive").textContent==="🔓 무제한 AI 대전이 열렸어요. 브론즈부터 도전해 보세요.","B4 해금 알림 — 확정 문구 · 상태 공지(로비 로딩 뒤)");
   T.byId("spLive").textContent=""; T.toLobby(); assetsLoad(T); await tick();
   ok(T.byId("spLive").textContent==="","B5 해금 알림은 1회");
   ok(/class="l01Single" id="l01Single" onclick="spOpen\(\)"/.test(side(T))&&!/data-lock="single"/.test(side(T)),"B6 같은 세션 로비에서 싱글플레이 즉시 활성");
+  ok(T.single.rng()===null&&!T.single.SP.rng,"B6b 로비로 나오면 튜토리얼 시드가 원래 RNG(Math.random)로 돌아왔다");
 }
 { // 503 → 조회 1회: 커밋됨 → 성공(재전송 없음)
   let n=0;
-  const T=await tutAsk({"GET /api/auth/session":()=>sess(NEO,PG(n++>0)),"POST /api/profile/tutorial":[503,{error:"E_ACCOUNTS_UNAVAILABLE"}]});
+  const T=await tutAsk({"GET /api/auth/session":()=>sess(NEO,n++>0?PG("skipped","skipped"):NEW),"POST /api/profile/tutorial":[503,{error:"E_ACCOUNTS_UNAVAILABLE"}]});
   T.single.spAskSkip(); await tick();
-  ok(posts(TUT_API).length===1&&T.uiScreenName()==="lobby"&&T.single.SP.progress.tutorialDone,"B7 503(불명) → 조회가 완료를 보이면 재전송 없이 성공");
+  ok(posts(TUT_API).length===1&&T.uiScreenName()==="lobby"&&T.single.SP.progress.tutorialDone,"B7 503(불명) → 조회가 처리됨을 보이면 재전송 없이 성공");
 }
-{ // 연결 실패 → 조회 미완료 → '저장하지 못했어요.' → [건너뛰기]=다시 시도 → 같은 본문 → 성공
-  let fails=1;
-  const T=await tutAsk({"POST /api/profile/tutorial":()=>fails-->0?Promise.reject(new TypeError("x")):[200,{progress:PG(true)}]});
+{ // 연결 실패 → 조회 대기 → '저장하지 못했어요.' → [건너뛰기]=다시 시도 → 같은 본문 → 성공
+  let fails=1; const srv=tutServer(NEW);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>fails-->0?Promise.reject(new TypeError("x")):srv.post(init)});
   T.single.spAskSkip(); await tick();
-  ok(T.single.SP.ask&&T.single.SP.save.st==="fail"&&/저장하지 못했어요\./.test(dlg(T).innerHTML)&&/role="alert"/.test(dlg(T).innerHTML)&&!/ disabled>/.test(dlg(T).innerHTML),"B8 유실 → 조회 1회(미완료) → 같은 질문 화면에 실패 · [진행]도 그대로");
+  ok(T.single.SP.ask&&T.single.SP.save.st==="fail"&&/저장하지 못했어요\./.test(dlg(T).innerHTML)&&/role="alert"/.test(dlg(T).innerHTML)&&!/ disabled>/.test(dlg(T).innerHTML),"B8 유실 → 조회 1회(대기) → 같은 질문 화면에 실패 · [진행]도 그대로");
   ok(posts(TUT_API).length===1&&gets(SESS).length===2&&T.uiScreenName()!=="lobby","B8b 자동 반복 재시도 없음 · 해금 0");
   T.single.spAskSkip(); await tick();
   const p=posts(TUT_API);
@@ -147,134 +196,440 @@ for(const [nm,p] of [["필드 없음",undefined],["형식 오류",{tutorialDone:
 }
 { // 조회도 실패 → '저장 여부를 확인하지 못했어요.' → 다시 시도 = 조회 먼저(커밋돼 있으면 POST 없음)
   let sessOk=true;
-  const T=await tutAsk({"GET /api/auth/session":()=>sessOk?sess(NEO,PG(false)):Promise.reject(new TypeError("x")),"POST /api/profile/tutorial":()=>{ sessOk=false; return Promise.reject(new TypeError("x")); }});
+  const T=await tutAsk({"GET /api/auth/session":()=>sessOk?sess(NEO,NEW):Promise.reject(new TypeError("x")),"POST /api/profile/tutorial":()=>{ sessOk=false; return Promise.reject(new TypeError("x")); }});
   T.single.spAskSkip(); await tick();
   ok(T.single.SP.save.st==="fail"&&T.single.SP.save.unknown&&/저장 여부를 확인하지 못했어요\./.test(dlg(T).innerHTML),"B10 조회도 실패 → '저장 여부를 확인하지 못했어요.'");
-  routes["GET /api/auth/session"]=sess(NEO,PG(true)); T.single.spAskSkip(); await tick();
+  routes["GET /api/auth/session"]=sess(NEO,PG("skipped","skipped")); T.single.spAskSkip(); await tick();
   ok(posts(TUT_API).length===1&&T.uiScreenName()==="lobby","B11 [다시 시도] = 조회 먼저 — 커밋돼 있으면 POST 없이 성공");
 }
 { // 401 → 로그인 화면(경기·질문 문맥 보존) · 같은 계정 재로그인 → 원 질문 화면 · 상태 조회만(자동 POST 0) → [건너뛰기]=다시 시도 → ACK → 로비
-  let st="in";
-  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,PG(false)),
-    "POST /api/profile/tutorial":()=>{ if(st==="in"){ st="gone"; return [401,{error:"E_NO_SESSION"}]; } return [200,{progress:PG(true)}]; },"POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:PG(false)})]; }});
+  let st="in"; const srv=tutServer(NEW);
+  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,srv.cur()),
+    "POST /api/profile/tutorial":init=>{ if(st==="in"){ st="gone"; return [401,{error:"E_NO_SESSION"}]; } return srv.post(init); },"POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:srv.cur()})]; }});
   const game=T.S;
   T.single.spAskSkip(); await tick();
   ok(T.AUTH.state==="anon"&&T.uiScreenName()==="title"&&T.S===game&&!dlgOpen(T)&&T.single.SP.pending&&T.single.SP.pending.uid==="neo_1","B12 401 → 로그인 화면 · 질문 창 닫힘 · 경기·저장 문맥은 원래 계정에 묶여 보존");
   T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(posts(TUT_API).length===1&&T.S===game&&T.single.SP.ask&&dlgOpen(T)&&/저장하지 못했어요/.test(dlg(T).innerHTML)&&!/ disabled>/.test(dlg(T).innerHTML),"B13 같은 계정 재로그인 → 원 질문 화면 · 상태 조회만(자동 재전송 0) · 미완료면 [다시 시도] 대기");
+  ok(posts(TUT_API).length===1&&T.S===game&&T.single.SP.ask&&dlgOpen(T)&&/저장하지 못했어요/.test(dlg(T).innerHTML)&&!/ disabled>/.test(dlg(T).innerHTML),"B13 같은 계정 재로그인 → 원 질문 화면 · 상태 조회만(자동 재전송 0) · 대기면 [다시 시도] 대기");
   T.single.spAskSkip(); await tick();
   const p=posts(TUT_API);
-  ok(p.length===2&&body(p[1]).userId==="neo_1"&&body(p[1]).end==="skip"&&T.uiScreenName()==="lobby","B13b 사용자가 다시 누를 때만 같은 저장 → ACK 뒤 로비");
+  ok(p.length===2&&body(p[1]).userId==="neo_1"&&body(p[1]).category==="all"&&T.uiScreenName()==="lobby","B13b 사용자가 다시 누를 때만 같은 저장 → ACK 뒤 로비");
 }
 { // 401 → 다른 계정 로그인 → 옛 저장 재전송 없음
   let gone=false;
-  const T=await tutAsk({"GET /api/auth/session":()=>gone?[401,{error:"E_NO_SESSION"}]:sess(NEO,PG(false)),"POST /api/profile/tutorial":()=>{ gone=true; return [401,{error:"E_NO_SESSION"}]; },"POST /api/auth/login":[200,Object.assign({},OLD,{progress:PG(true,2)})]});
+  const T=await tutAsk({"GET /api/auth/session":()=>gone?[401,{error:"E_NO_SESSION"}]:sess(NEO,NEW),"POST /api/profile/tutorial":()=>{ gone=true; return [401,{error:"E_NO_SESSION"}]; },"POST /api/auth/login":[200,Object.assign({},OLD,{progress:EXEMPT(2)})]});
   T.single.spAskSkip(); await tick();
   T.byId("acctId").value="old_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(posts(TUT_API).length===1&&T.single.SP.pending===null&&T.single.SP.uid==="old_1"&&T.single.SP.progress.aiClearedTier===2&&T.uiScreenName()==="lobby"&&!T.single.SP.ask,"B14 다른 계정 재로그인 — 옛 계정 저장을 넘기지 않고 그 계정 상태(완료)로 로비");
+  ok(posts(TUT_API).length===1&&T.single.SP.pending===null&&T.single.SP.uid==="old_1"&&T.single.SP.progress.aiClearedTier===2&&T.uiScreenName()==="lobby"&&!T.single.SP.ask,"B14 다른 계정 재로그인 — 옛 계정 저장을 넘기지 않고 그 계정 상태(면제)로 로비");
 }
 { // 늦은 응답 — 다른 탭 계정 전환 뒤 도착한 200
   const L=later();
-  const T=await tutAsk({"POST /api/profile/tutorial":()=>L.p.then(()=>[200,{progress:PG(true)}])});
+  const T=await tutAsk({"POST /api/profile/tutorial":()=>L.p.then(()=>[200,{progress:PG("skipped","skipped")}])});
   T.single.spAskSkip(); await tick();
-  routes["GET /api/auth/session"]=sess(OLD,PG(false));
+  routes["GET /api/auth/session"]=sess(OLD,NEW);
   T.acct.acctOnStorage({key:"dd_acct",newValue:JSON.stringify({u:"old_1",t:1})}); await tick();
   L.release(); await tick();
   ok(T.AUTH.user.userId==="old_1"&&T.single.SP.uid==="old_1"&&T.single.SP.progress.tutorialDone===false&&!T.single.SP.note,"B15 계정 전환 뒤 늦은 저장 응답은 새 계정에 반영·알림되지 않는다");
 }
-for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"]]){
+for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_CLIENT_OUTDATED"]]){
   const T=await tutAsk({"POST /api/profile/tutorial":[code,{error:err}]});
   T.single.spAskSkip(); await tick();
   ok(posts(TUT_API).length===1&&T.single.SP.save.st==="fail"&&!T.single.SP.save.unknown&&/저장하지 못했어요\./.test(dlg(T).innerHTML)&&!T.single.SP.progress.tutorialDone,`B16 ${code} ${err} — 명시적 실패(자동 재시도·해금 0)`);
 }
-
-/* ===== C. 학습 경기 종료 ===== */
-for(const [wt,winner,want] of [["king",1,"king"],["edge",0,"edge"],["wipe",1,"wipe"],["resign",1,null],["draw",null,null]]){
-  const L=later();
-  const T=await tutAsk({"POST /api/profile/tutorial":()=>L.p.then(()=>[200,{progress:PG(true)}])});
-  T.single.spAskGo(); T.single.spGuideClose();
-  end(T,winner,wt); await tick();
-  const p=posts(TUT_API);
-  if(want){
-    ok(p.length===1&&body(p[0]).end===want,`C1 ${wt} (${winner===0?"승":"패"}) → 학습 완료 저장 end=${want}`);
-    ok(/<button type="button" class="primary big" id="spGo" disabled onclick="toLobby\(\)">로비로<\/button>/.test(side(T))&&/저장 중…/.test(side(T)),`C2 ${wt} — ACK 전 [로비로] 비활성 · 저장 중`);
-    L.release(); await tick();
-    const s=side(T);
-    ok(/✓ 저장됨/.test(s)&&/id="spGo" onclick="toLobby\(\)">로비로/.test(s)&&/공식 전적/.test(s),`C3 ${wt} — ACK 뒤 저장됨 · [로비로] 활성`);
-    ok(/확인함/.test(s)&&/다음 경기에서/.test(s)&&(s.match(/<li>/g)||[]).length>=6,`C4 ${wt} — R 복습 H1~H6(본 것 '확인함' · 못 본 것 '다음 경기에서')`);
-  } else {
-    ok(p.length===0,`C5 ${wt} → 저장 요청 0`);
-    ok(/학습이 끝나지 않았어요/.test(side(T))&&/>다시 시작</.test(side(T)),`C6 ${wt} — '학습이 끝나지 않았어요' · [다시 시작]`);
-    T.toLobby(); ok(T.S.mode==="pve"&&T.single.SP.ask&&dlgOpen(T),`C7 ${wt} 뒤 [다시 시작] → 스킵 질문부터(미완료 유지)`);
-  }
+{ // 409 + 현재 상태가 처리됨 = 먼저 저장된 값이 ACK(3R.1) · 409 인데 상태가 대기면 실패
+  const T=await tutAsk({"POST /api/profile/tutorial":[409,{error:"E_TUTORIAL_CONFLICT",progress:PG("completed","skipped")}]});
+  T.single.spAskSkip(); await tick();
+  ok(posts(TUT_API).length===1&&T.uiScreenName()==="lobby"&&T.single.SP.progress.tutorial.basic==="completed","B17 409 E_TUTORIAL_CONFLICT + 처리된 progress → ACK(재시도 반복 없음) · 서버 값 그대로");
+  const U=await tutAsk({"POST /api/profile/tutorial":[409,{error:"E_TUTORIAL_CONFLICT",progress:NEW}]});
+  U.single.spAskSkip(); await tick();
+  ok(U.single.SP.save.st==="fail"&&U.single.SP.ask&&!U.single.SP.progress.tutorialDone,"B17b 409 + 여전히 대기 → 실패 · 해금 0");
+  const V=await tutAsk({"POST /api/profile/tutorial":[409,{error:"E_TUTORIAL_CONFLICT"}]});
+  V.single.spAskSkip(); await tick();
+  ok(V.single.SP.save.st==="fail"&&!V.single.SP.save.unknown,"B17c 409 인데 progress 없음 → 실패(지어낸 ACK 없음)");
 }
 
-/* ===== D. 학습 정지 ===== */
+/* ===== C. 기본 B1~B9 — 실제 엔진 고정 보드 ===== */
+{
+  const srv=tutServer(NEW);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>srv.post(init)});
+  T.BAL.fx.autoEnd=true; // 기본도 현행 자동 턴 종료 그대로(하네스 기본은 꺼 둔다)
+  const X=T.single, Tt=X.SP.tut, I=Tt.ids, D=X.SP_BASIC;
+  /* 고정 보드 합법성(3R.4) */
+  const foe0=JSON.stringify(T.S.pieces.filter(x=>x.owner===1).map(x=>[x.id,x.r,x.c]));
+  const per=o=>{ const c={}; for(const x of T.S.pieces.filter(y=>y.owner===o)) c[x.type]=(c[x.type]||0)+1; return JSON.stringify(c); };
+  const cells=new Set(T.S.pieces.filter(x=>x.placed&&x.alive).map(x=>x.r+"_"+x.c));
+  ok(per(0)===per(1)&&per(0)===JSON.stringify({minion:6,bomb:3,ally:2,trap:2,king:1})&&cells.size===28&&T.S.pieces.every(x=>x.placed&&x.alive&&T.boardCellOk(x.r,x.c)),"C0 고정 보드 — 진영마다 하수인 6·폭탄 3·동료 2·함정 2·왕 1 · 겹침·보드 밖 0");
+  ok(T.byId("board").children.length===91&&Math.max(...T.S.pieces.map(x=>x.r))===13&&T.S.mode==="pve"&&!T.S.eco&&T.S.turnCount===12&&T.S.current===0&&T.S.phase==="play","C0b 실제 13행×7열 · PVE 엔진 · 턴 13(표시) 내 차례");
+  ok(T.S.pieces.filter(x=>x.owner===0&&x.type==="trap").every(x=>T.zoneOf(0).includes(x.r)),"C0c 함정은 자기 진영(이동 불가 말)");
+  ok(T.isBurning()===false&&T.S.turnCount+7<20,"C0d B9 까지 +7 턴 — 정기 상점(20)·버닝(65)에 닿지 않는다");
+  X.spAskGo();
+  ok(Tt.step==="B1"&&/기본 1\/9/.test(coach(T))&&coach(T).includes(X.SP_SAY.B1)&&/>다음</.test(coach(T)),"C1 B1 — '기본 1/9' · 3R.3 문구 · [다음]");
+  const zone=X.spSpec(Tt).zone; ok(zone&&zone[0][0]===11&&zone[0][1]===13,"C1b B1 강조 = 내 진영 11~13행(전체 13×7 보드 위)");
+  ok(X.spClockHeld()&&!X.spHeld(),"C1c 기본 말풍선 동안 시계 정지(보드 시계 없음) · 상대 보류는 아님");
+  X.spNext(); ok(Tt.step==="B2"&&coach(T).includes(X.SP_SAY.B2),"C2 B2 문구");
+  const K=pc(T,I.K), g2=X.spGateSet();
+  ok(g2&&g2.out.length===1&&g2.out[0]===T.byId("board").querySelector(`.cell[data-r="${K.r}"][data-c="${K.c}"]`),"C2b B2 대상 하나 = 내 왕 칸");
+  { const mk=X.spTagPieces(Tt);
+    ok(mk.length===5&&JSON.stringify(mk.map(x=>x.type))===JSON.stringify(["minion","king","ally","bomb","trap"])&&mk.every(x=>x.owner===0&&x.alive&&x.r>=11)&&mk[1].id===I.K,"C2j 이름표·번호 5개는 모두 내 진영(11~13행)의 실제 내 말 — 왕 = 대상(제품 선택 그대로)"); }
+  ok(/<ul class="srOnly">/.test(coach(T))&&["하수인 — 싸우는 말","왕 — 잃으면 패배","동료 — 왕을 돕는 싸움꾼","폭탄 — 닿은 하수인과 함께 사라짐","함정 — 밟은 말은 2차례 못 움직임"].every(t=>coach(T).includes(t)),"C2i 떠 있는 이름표(읽지 않는 층)의 5개 역할 문구는 말풍선 안 화면 밖 목록으로 읽힌다");
+  ok(JSON.stringify(Object.values(X.SP_TAGS))===JSON.stringify(["싸우는 말","잃으면 패배","왕을 돕는 싸움꾼","닿은 하수인과 함께 사라짐","밟은 말은 2차례 못 움직임"])&&X.spSpec(Tt).tags,"C2c B2 내 말 5종 짧은 이름표(따로 띄우는 창 없음)");
+  X.spNext(); ok(Tt.step==="B2","C2d 왕 정보 창을 열기 전 [다음] 은 진행하지 않는다");
+  { const blocked={closest:()=>null,parentNode:null}; let stop=0; X.spGateEv({type:"click",target:blocked,preventDefault(){},stopImmediatePropagation(){ stop++; },stopPropagation(){}});
+    const cell=g2.out[0]; cell.closest=()=>null; let stop2=0; X.spGateEv({type:"click",target:cell,preventDefault(){},stopImmediatePropagation(){ stop2++; },stopPropagation(){}});
+    const gear={closest:s=>/\.flowGear/.test(s)?{}:null}; let stop3=0; X.spGateEv({type:"click",target:gear,preventDefault(){},stopImmediatePropagation(){ stop3++; },stopPropagation(){}});
+    ok(stop===1&&stop2===0&&stop3===0,"C2e 대상 밖 누름은 막고 · 대상과 ⚙ 는 통과(앱 전체 inert 아님)"); }
+  T.onCell(K.r,K.c); ok(T.S.selected&&T.S.selected.id===I.K,"C2f 실제 셀 입력으로 왕 선택");
+  X.spHit(Tt); T.ui238.infoSlotOpen(I.K,null); T.ui238.synHelpClose(true); T.drain(5); // 실제 브라우저처럼 — [말 정보] 누름(대상 통과) → 설명 창 열고 닫기, 다시 그리기 없음
+  ok(Tt.f.info&&/>다음</.test(coach(T)),"C2g 왕 정보 창(실제 [말 정보] 누름) → 다시 그리기 없이도 [다음](브라우저 run1 첫 실패 재현 방지)");
+  Tt.f.legend=true; T.render(); // 좁은 화면에서 떠 있는 이름표가 겹치면 쓰는 범례(같은 문구 · 칸 안 번호와 짝)
+  ok(["하수인 — 싸우는 말","왕 — 잃으면 패배","동료 — 왕을 돕는 싸움꾼","폭탄 — 닿은 하수인과 함께 사라짐","함정 — 밟은 말은 2차례 못 움직임"].every((t,i)=>coach(T).includes(`${i+1}</b>${t}`)),"C2h 범례 모드 — 5개 역할 문구 그대로 · 번호 1~5 순서");
+  Tt.f.legend=false; T.render();
+  X.spNext(); ok(Tt.step==="B3"&&coach(T).includes(X.SP_SAY.B3),"C3 B3 문구");
+  const F=pc(T,I.F), hid=T.S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.r===9&&x.c===7), ring=X.spSpec(Tt).ring.cell;
+  ok(T.visibleTo(0,F)&&T.inForest(F)&&!F.revealed&&ring[0]===F.r&&ring[1]===F.c,"C3b 강조 = 숲 안 '보이는 ?'(존재만 · 정체 미공개)");
+  ok(hid&&T.inForest(hid)&&!T.visibleTo(0,hid)&&T.byId("board").querySelector(`.cell[data-r="${hid.r}"][data-c="${hid.c}"]`).children.length===0&&!(ring[0]===hid.r&&ring[1]===hid.c),"C3c 떨어진 숲의 상대 말은 칸에 그려지지 않고(존재도 비공개) 강조도 가리키지 않는다");
+  X.spNext(); ok(Tt.step==="B4"&&X.spSpec(Tt).pics==="win"&&/상대 왕 잡기/.test(coach(T))&&/내 왕이 상대 끝줄/.test(coach(T))&&/상대 하수인\+동료 전멸/.test(coach(T))&&/폭탄·함정·왕은 세지 않음/.test(coach(T)),"C4 B4 승리 도해 3장(보드 조작 없음)");
+  X.spNext(); ok(Tt.step==="B5"&&coach(T).includes(X.SP_SAY.B5),"C5 B5 문구");
+  const M=pc(T,I.M), ev=T.S.events[I.ev];
+  ok(ev.r===M.r&&ev.c===M.c&&!ev.consumed&&T.S.traces[0].has(ev.r+"_"+ev.c),"C5b 내 하수인이 '발견된' 흔적 칸 위");
+  T.onCell(M.r,M.c); const g5=X.spGateSet(); ok(g5&&g5.out.length===1&&g5.out[0].textContent==="탐색","C5c 말 선택 뒤 대상 = 실제 [탐색] 버튼 하나");
+  T.netAction({t:"search"}); T.render();
+  ok(T.S.events[I.ev].consumed&&T.S.pkgs[0].itemGift===1&&T.S.metrics.byPlayer[0].searches===1,"C5d 실제 탐색 — 흔적 소모 · 선물(아이템 선물 패키지) · 탐색 1회(주 행동)");
+  pump(T,()=>Tt.step==="B6");
+  ok(Tt.step==="B6"&&T.S.current===0&&T.S.turnCount===14&&T.S.phase==="play","C5e 현행 자동 차례 종료 → 상대 대본(행동 없이 종료) → 내 차례 ②");
+  ok(JSON.stringify(T.S.pieces.filter(x=>x.owner===1).map(x=>[x.id,x.r,x.c]))===foe0&&T.S.metrics.byPlayer[1].searches===0&&T.S.metrics.byPlayer[1].battles===0,"C5f 상대는 탐색·전투·이동 0(행동 없이 차례 종료 대본)");
+  const M6=pc(T,I.M); T.onCell(M6.r,M6.c);
+  const g6=X.spGateSet(); ok(g6.out[0]===T.byId("board").querySelector(`.cell[data-r="8"][data-c="2"]`)&&T.canMoveTo(pc(T,I.M),8,2),"C6 B6 대상 = 표시된 칸 하나(합법 1칸 이동)");
+  T.onCell(8,2); T.drain(20); // 다시 그리기 없이 — 실제 브라우저처럼 전투 창만 그려진다(브라우저 run2 첫 실패 재현 방지)
+  const B=T.S.battle;
+  ok(Tt.step==="B7"&&!!B&&B.attP.id===I.M&&B.defP.id===I.E&&T.S.metrics.forcedBattles===1,"C6b 새로 붙어 강제 전투 시작(실제 이동 경로) → 다시 그리기 없이 B7");
+  ok(B.fa.element==="water"&&B.fd.element==="fire"&&T.BEATS.water==="fire","C7 상성 유리 짝(물 → 불 · 기존 데이터 그대로)");
+  ok(coach(T).includes(X.SP_SAY.B7)&&X.SP_SAY.B7.startsWith(X.spCycleText()),"C7b B7 문구 · 순환 = 현행 BEATS");
+  { const B0=T.S.battle, m0=B0.menu; B0.menu=null; const a=X.spSpec(Tt).tg.sel; B0.menu="fight"; const b=X.spSpec(Tt).tg.sel; B0.menu=m0;
+    ok(a===`button[onclick="window.__menu('fight')"]`&&b===`button[onclick="window.__act(0)"]`,"C7c B7 대상 = [싸우기] → 강조된 기본 공격(1번 칸) 하나 — 가방·포획·도망은 대상 밖(막힘)"); }
+  let hpBefore=pc(T,I.M).hp; basicTo(T,"B8");
+  const E=pc(T,I.E), M8=pc(T,I.M);
+  ok(!E.alive&&M8.alive&&!T.S.battle&&T.S.phase==="play","C7d 실제 전투 엔진 — E 제거(보장 경로 · 보정 없음)");
+  ok(M8.hp<M8.maxHp,"C7e M 이 실제로 다쳤다(B8 회복 대상)");
+  ok(T.S.pieces.filter(x=>x.owner===1&&(x.type==="minion"||x.type==="ally")&&x.alive).length>=2&&T.S.winner===null,"C7f B7 뒤 상대 하수인+동료 2 이상 · 조기 승리 0");
+  ok(Tt.step==="B8"&&T.S.current===0&&T.S.turnCount===16,"C8 상대 차례(대본) 뒤 내 차례 ③ = B8");
+  T.onCell(M8.r,M8.c); const g8=X.spGateSet(); ok(g8.out[0].textContent==="🌿 회복","C8b 대상 = [회복]");
+  const hp0=M8.hp; T.netAction({t:"heal",id:I.M}); T.render();
+  ok(pc(T,I.M).healing&&pc(T,I.M).hp===hp0&&Tt.hold&&X.spHeld(),"C8c 회복 = 자세 지정(즉시 회복 없음) · 상대 차례 보류 시작");
+  pump(T,()=>Tt.f.gain!=null);
+  const gain=Tt.f.gain;
+  ok(gain===Math.round(pc(T,I.M).maxHp*0.05)||gain===pc(T,I.M).hp-hp0,"C8d 내 차례 종료 처리에서 HP 증가(최대 HP 5%)");
+  ok(T.S.current===1&&T.UI.holdQ.length>=1&&T.S.metrics.byPlayer[1].autoEnds===0&&new RegExp(`HP \\+${gain}`).test(coach(T)),"C8e HP 증가를 보이는 동안 상대 차례 보류 · [다음] 대기");
+  X.spNext(); pump(T,()=>T.S.current===0&&T.S.turnCount>=Tt.t0+6);
+  ok(Tt.step==="B9"&&T.S.current===0&&T.S.turnCount===18&&!Tt.hold,"C9 [다음] → 상대 차례(대본) → 내 차례 ④ = B9");
+  ok(coach(T).includes(X.SP_SAY.B9)&&X.spGateSet().out[0].textContent==="🌀 텔레포트","C9b B9 문구 · 대상 = [텔레포트]");
+  const Tp=pc(T,I.T), K9=pc(T,I.K);
+  ok(Tp.r===1&&T.teleportSwapBlock(Tp,K9)===null&&T.S.winner===null&&posts(TUT_API).length===0,"C9c 상대 끝줄의 내 말 · 사전 차단 없음 · 그 전 승리·저장 0");
+  T.netAction({t:"tele"}); T.render(); ok(X.spGateSet().out[0]===T.byId("board").querySelector(`.cell[data-r="1"][data-c="7"]`),"C9d 다음 대상 = 상대 끝줄의 내 말");
+  T.onCell(Tp.r,Tp.c); T.render(); ok(X.spGateSet().out[0]===T.byId("board").querySelector(`.cell[data-r="${K9.r}"][data-c="${K9.c}"]`),"C9e 다음 대상 = 내 왕");
+  T.onCell(K9.r,K9.c); await tick();
+  ok(T.S.phase==="over"&&T.S.winner===0&&T.S.metrics.winType==="edge"&&pc(T,I.K).r===1,"C9f 엔진의 실제 끝줄 승리(텔레포트 교환 · 주입 없음)");
+  const p=posts(TUT_API);
+  ok(p.length===1&&JSON.stringify(body(p[0]))===JSON.stringify({v:2,userId:"neo_1",category:"basic",end:"edge"}),"C9g 기본 = 완료 저장 1회 {v:2,category:basic,end:edge}");
+  ok(T.single.SP.progress.tutorial.basic==="completed"&&!T.single.SP.progress.tutorialDone&&!T.single.SP.note&&T.single.spTierState(0)==="locked","C9h 기본만 처리 — 해금 0 · 해금 알림 0");
+  ok(T.S.metrics.byPlayer[1].battles===0&&T.S.pieces.filter(x=>x.owner===1&&x.alive).length===13,"C9i 상대는 처음부터 끝까지 전투 개시·탐색·이동 0(행동 없이 종료만)");
+}
+{ // B7 실패 → B6 시작 상태부터 다시(저장 0 · 소프트락 없음)
+  const T=await tutAsk({}); const X=T.single, Tt=X.SP.tut; X.spAskGo();
+  basicTo(T,"B7"); const game=T.S;
+  T.S.battle=null; T.render(); // E 가 남은 채 전투가 끝난 상황(통제 — 보장 경로에서는 나오지 않는다)
+  ok(Tt.step==="B6"&&T.S!==game&&Tt.attempt===1&&T.S.turnCount===14&&T.S.events[Tt.ids.ev].consumed&&pc(T,Tt.ids.E).alive&&posts(TUT_API).length===0,"C10 B7 패배·E 남음 → 같은 B6 시작 상태(턴 15 · 흔적 소모)로 새 보드 · 저장 0");
+}
+
+{ // 연출 중 전이 — 다시 그리기는 연출 중에만 있었고 연출이 끝나도 다시 그리지 않는다(브라우저 run5 B7→B8 멈춤 재현 방지)
+  const T=await tutAsk({}); const X=T.single, Tt=X.SP.tut; X.spAskGo(); basicTo(T,"B8");
+  ok(Tt.step==="B8","C11 (전제) 실제 경로로 B8");
+  Tt.step="B7"; T.FX.cur={key:"turnBanner"}; T.render();
+  ok(Tt.step==="B8","C11b 전투가 끝났고 내 차례면 연출 중이어도 B8(연출 끝을 기다리는 전이 없음)");
+  T.FX.cur=null;
+  const U=await tutAsk({}); const Y=U.single, Ut=Y.SP.tut; Y.spAskGo(); basicTo(U,"B7"); const g0=U.S;
+  U.S.battle=null; U.FX.cur={key:"battleEnd"}; U.render(); // E 가 남은 채 전투가 끝났는데 연출 중(통제 — 보장 경로에서는 나오지 않는다)
+  ok(Ut.step==="B7"&&U.S===g0&&Ut.idle&&U.FX.idle.length>=1,"C12 실패 재시작은 연출 뒤 — 연출이 끝날 때 한 번 다시 판정하도록 대기 1개(폴링 없음)");
+  U.render(); ok(U.FX.idle.length===1,"C12b 다시 그려도 대기는 하나뿐");
+  U.FX.cur=null; for(const f of U.FX.idle.splice(0)) f();
+  ok(Ut.step==="B6"&&U.S!==g0&&Ut.attempt===1,"C12c 연출이 끝나면 B6 시작 상태부터 다시");
+  const V=await tutAsk({}); const Z=V.single, Vt=Z.SP.tut; Z.spAskGo(); basicTo(V,"B7");
+  V.S.battle=null; V.FX.cur={key:"battleEnd"}; V.render(); const pend=V.FX.idle.splice(0); V.FX.cur=null;
+  V.toLobby(); const g1=V.S; for(const f of pend) f();
+  ok(V.S===g1&&Vt.step==="B7"&&Vt.attempt===0,"C12d 문맥이 바뀐 뒤(로비·다른 경기) 늦은 연출 대기는 아무것도 하지 않는다");
+  const W=await tutAsk({}); const Wx=W.single, Wt=Wx.SP.tut; Wx.spAskGo(); basicTo(W,"B7"); const g2=W.S;
+  W.S.battle=null; W.FX.cur={key:"battleEnd"}; W.render(); const pend2=W.FX.idle.splice(0); W.FX.cur=null;
+  W.acct.acctEndSession("세션 종료",false,true); // 같은 경기·문맥을 남긴 채 로그아웃(401 keep 경로와 같은 함수)
+  ok(W.AUTH.state!=="in"&&W.S===g2,"C12e (전제) 로그아웃 · 경기 객체 그대로");
+  for(const f of pend2) f(); W.render();
+  ok(W.S===g2&&Wt.step==="B7"&&Wt.attempt===0&&!coach(W)&&!dlgOpen(W)&&Wt.idle===null,"C12f 로그아웃 중 연출 대기 — 재시작·말풍선·창 0 · 자기 대기 표시만 지움");
+}
+
+{ // 늦은 그리기(대상 누름 뒤 setTimeout) — 경기 종료·로그아웃 뒤에는 말풍선을 되살리지 않는다(브라우저 BP 뒤 '기본 9/9' 잔상 재현 방지)
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>tutServer(NEW).post(init)}); const X=T.single, Tt=X.SP.tut; X.spAskGo(); basicTo(T,"B9");
+  const Tp=pc(T,Tt.ids.T), K=pc(T,Tt.ids.K); T.netAction({t:"tele"}); T.onCell(Tp.r,Tp.c);
+  X.spHit(Tt); T.onCell(K.r,K.c); await tick(); T.drain(20); // 마지막 대상 누름의 늦은 그리기가 승리·진행도 뒤에 돈다
+  ok(T.S.phase==="over"&&X.SP.dlg==="bp"&&!coach(T),"C13 끝줄 승리 뒤 늦은 그리기 — 말풍선 잔상 0(진행도만)");
+  const U=await tutAsk({}); const Y=U.single, Ut=Y.SP.tut; Y.spAskGo(); Y.spNext();
+  Y.spHit(Ut); U.acct.acctEndSession("세션 종료",false,true); U.drain(20);
+  ok(U.AUTH.state!=="in"&&!coach(U),"C13b 로그아웃(경기 보존) 뒤 늦은 그리기 — 말풍선 0");
+}
+{ // C14 창 resize·scroll(제품이 실제로 등록한 리스너) — 질문·확인 창·로그아웃·401 보류·다른 계정·다른 경기에서는 말풍선·스포트라이트·초점·읽기 공지 0 · 같은 계정 복원 뒤에는 다시 그린다(spDraw 단일 관문)
+  const win=(T,Tt,ev)=>{ Tt.focus=""; T.byId("spLive").textContent=""; return (ev?[ev]:["resize","scroll"]).map(e=>T.winDispatch(e)); }; // 그린 흔적(초점 키·공지)을 지우고 리스너를 부른다
+  const quiet=(T,Tt)=>!coach(T)&&!T.byId("spSpot").innerHTML&&Tt.focus===""&&T.byId("spLive").textContent==="";
+  const each=(T,Tt,f)=>["resize","scroll"].every(e=>(win(T,Tt,e),f(T,Tt))); // 이벤트 하나씩 따로(초점 키·공지를 매번 지우므로 앞 이벤트의 그림이 뒤 판정을 가리지 않는다)
+  let who=NEO; const T=await tutAsk({"GET /api/auth/session":()=>who===NEO?sess(NEO,NEW):who?sess(OLD,EXEMPT(0)):[401,{error:"E_NO_SESSION"}],"POST /api/auth/login":()=>{ who=OLD; return [200,Object.assign({},OLD,{progress:EXEMPT(0)})]; }}); const X=T.single, Tt=X.SP.tut; // 로그인 뒤 세션 조회도 그 계정 · 끝난 세션은 401
+  const n=win(T,Tt); ok(n[0]>=1&&n[1]>=1&&X.SP.ask&&quiet(T,Tt),"C14 (전제) resize·scroll 리스너 등록 · 첫 질문 보류 중 그리기 0");
+  X.spAskGo(); X.spNext(); win(T,Tt);
+  ok(Tt.step==="B2"&&coach(T)&&Tt.focus.startsWith("B2|")&&!!T.byId("spLive").textContent,"C14a 평소 B2 — resize·scroll 이 안내를 다시 그린다");
+  X.spSkipAsk();
+  ok(X.SP.dlg==="skipq"&&each(T,Tt,quiet),"C14b ⚙ 건너뛰기 확인 창 뒤 — resize·scroll 이 말풍선·스포트라이트·초점·공지를 되살리지 않는다");
+  X.spSkipNo(); win(T,Tt);
+  ok(!X.SP.dlg&&coach(T)&&Tt.focus.startsWith("B2|"),"C14c [계속하기] 뒤 — 다시 그린다");
+  who=null; T.acct.acctEndSession("세션 종료",false,true); await tick(); win(T,Tt); // 실제로 끝난 세션(재조회 401)
+  ok(T.AUTH.state!=="in"&&X.SP.tut===Tt&&quiet(T,Tt),"C14d 로그아웃(경기 보존 · 창 없음) — 그리기 0");
+  T.byId("acctId").value="old_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick(); win(T,Tt);
+  ok(T.AUTH.user.userId==="old_1"&&X.SP.tut!==Tt&&quiet(T,Tt),"C14e 다른 계정 로그인 — 옛 문맥 그리기 0");
+  let st="in"; const srv=tutServer(MID);
+  const U=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,srv.cur()),
+    "POST /api/profile/tutorial":init=>{ if(st==="in"){ st="gone"; return [401,{error:"E_NO_SESSION"}]; } return srv.post(init); },
+    "POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:srv.cur()})]; }},MID); const Y=U.single, Ut=Y.SP.tut;
+  Y.spAskGo(); const game=U.S; Y.spSkipAsk(); Y.spSkipGo(); await tick();
+  ok(Ut.step==="A1"&&U.AUTH.state==="anon"&&U.S===game&&Y.SP.tut===Ut&&Y.SP.pending&&each(U,Ut,quiet),"C14f A1 ⚙ 건너뛰기 POST 401 + 세션 401(경기·문맥 보존 · 로그인 화면) — resize·scroll 그리기 0");
+  U.byId("acctId").value="neo_1"; U.byId("acctPw").value="pw123456"; await U.acct.acctSubmit(); await tick(); U.render(); win(U,Ut);
+  ok(U.S===game&&Y.SP.tut===Ut&&!Y.SP.pending&&Y.SP.dlg==="skipq"&&dlgOpen(U)&&quiet(U,Ut),"C14g 같은 계정 복원 — 확인 창 다시 · 그 뒤 말풍선 0");
+  Y.spSkipNo();
+  ok(!Y.SP.dlg&&coach(U)&&each(U,Ut,(U,Ut)=>Ut.focus.startsWith("A1|")&&!!U.byId("spLive").textContent),"C14h 복원 뒤 [계속하기] — 정상 안내 · resize·scroll 이 다시 그린다");
+  U.newGame("pvp",{phase:"menu"}); U.render(); win(U,Ut);
+  ok(U.S!==game&&quiet(U,Ut),"C14i 다른 경기 — 옛 튜토리얼 문맥 그리기 0");
+}
+
+/* ===== D. 진행도(BP) · 저장 ===== */
+{ // ACK 와 이동 연출이 둘 다 끝나야 [다음 단계로] — 늦은 ACK · 연타 · 중복 0
+  const L=later(), srv=tutServer(NEW);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>L.p.then(()=>srv.post(init))}); const X=T.single, Tt=X.SP.tut;
+  X.spAskGo(); basicTo(T,"B9");
+  T.FX.force=true; // 실제 연출 시간 — 이동 연출이 타이머로 끝난다
+  const Tp=pc(T,Tt.ids.T), K=pc(T,Tt.ids.K); T.netAction({t:"tele"}); T.onCell(Tp.r,Tp.c); T.onCell(K.r,K.c); await tick();
+  T.fxReleaseAll(); T.render(); X.spTick();
+  const goBtn=()=>(dlg(T).innerHTML.match(/<button[^>]*id="spGo"[^>]*>/)||[""])[0];
+  ok(X.SP.dlg==="bp"&&dlgOpen(T)&&/기본 완료/.test(dlg(T).innerHTML)&&dlg(T).innerHTML.includes(X.SP_SAY.BPdone)&&/저장 중…/.test(dlg(T).innerHTML)&&/disabled/.test(goBtn()),"D1 승리 연출 뒤 진행도 — '기본을 마쳤어요!' · 저장 중 · [다음 단계로] 비활성");
+  L.release(); await tick();
+  ok(/✓ 저장됨/.test(dlg(T).innerHTML)&&!Tt.anim&&/disabled/.test(goBtn()),"D2 ACK 만 끝남(마녀 이동 중) — 여전히 비활성");
+  X.spBpNext(); ok(X.SP.dlg==="bp","D2b 이동 중 눌러도 넘어가지 않는다");
+  T.drain(20);
+  ok(Tt.anim&&!/disabled/.test(goBtn())&&/class="spProg go"/.test(dlg(T).innerHTML),"D3 ACK + 이동 끝 → [다음 단계로] 활성 · 마녀가 심화 칸");
+  X.spBpNext(); X.spBpNext(); T.FX.force=false;
+  ok(posts(TUT_API).length===1&&!dlgOpen(T)&&X.SP.tut.cat==="advanced"&&X.SP.tut.step==="A1"&&!X.SP.ask&&T.S.phase==="setup","D4 [다음 단계로] → 질문 없이 심화 A1(시작 상점) · 연타에도 저장 1회");
+  ok(T.single.rng()===null,"D4b 심화로 넘어가며 기본 보드 시드가 원래 RNG 로 돌아왔다");
+}
+{ // 진행도 이동 연출(실제 시간) 중 401 → 늦은 타이머가 진행도를 다시 열거나 이동 끝을 세우지 않는다 → 같은 계정 재로그인 → 연출 다시 · ACK 뒤 활성
+  let st="in"; const L=later(), srv=tutServer(NEW);
+  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,srv.cur()),
+    "POST /api/profile/tutorial":init=>{ if(st==="in") return L.p.then(()=>{ st="gone"; return [401,{error:"E_NO_SESSION"}]; }); return srv.post(init); },
+    "POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:srv.cur()})]; }}); const X=T.single, Tt=X.SP.tut;
+  X.spAskGo(); basicTo(T,"B9"); T.FX.force=true;
+  const Tp=pc(T,Tt.ids.T), K=pc(T,Tt.ids.K); T.netAction({t:"tele"}); T.onCell(Tp.r,Tp.c); T.onCell(K.r,K.c); await tick();
+  T.fxReleaseAll(); T.render(); const game=T.S;
+  ok(X.SP.dlg==="bp"&&dlgOpen(T)&&!Tt.anim&&Tt.f.anim,"D5c (전제) 진행도 열림 · 마녀 이동 연출 시작(실제 시간 타이머 대기)");
+  L.release(); await tick();
+  ok(T.AUTH.state==="anon"&&X.SP.pending&&!dlgOpen(T),"D5d 저장 401 → 로그인 화면 · 진행도 닫힘 · 문맥 보존");
+  T.drain(50); T.render();
+  ok(!dlgOpen(T)&&!Tt.anim&&!Tt.f.anim&&!coach(T),"D5e 늦은 연출 타이머 — 진행도 다시 열기·이동 끝 표시 0(자기 시작 표시만 지움)");
+  T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick(); T.render();
+  ok(T.S===game&&X.SP.dlg==="bp"&&dlgOpen(T)&&/disabled/.test((dlg(T).innerHTML.match(/<button[^>]*id="spGo"[^>]*>/)||[""])[0]),"D5f 같은 계정 재로그인 → 진행도 복원 · 아직 비활성");
+  T.drain(50); X.spRetry(); await tick(); T.drain(50);
+  ok(Tt.anim&&X.SP.save.st==="ok"&&!/disabled/.test((dlg(T).innerHTML.match(/<button[^>]*id="spGo"[^>]*>/)||[""])[0]),"D5g 연출 다시 끝까지 + 재시도 ACK → [다음 단계로] 활성(멈춤 없음)");
+  T.FX.force=false;
+}
+{ // 움직임 줄이기(헤드리스 = 정적) — 이동은 즉시, ACK 만 기다린다
+  const L=later();
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>L.p.then(()=>tutServer(NEW).post(init))}); const X=T.single, Tt=X.SP.tut;
+  X.spAskGo(); basicTo(T,"B9"); const Tp=pc(T,Tt.ids.T), K=pc(T,Tt.ids.K); T.netAction({t:"tele"}); T.onCell(Tp.r,Tp.c); T.onCell(K.r,K.c); await tick(); T.render();
+  const goBtn=()=>(dlg(T).innerHTML.match(/<button[^>]*id="spGo"[^>]*>/)||[""])[0];
+  ok(Tt.anim&&/class="spProg go"/.test(dlg(T).innerHTML)&&/disabled/.test(goBtn()),"D5 움직임 줄이기 — 마녀가 바로 심화 칸 · ACK 전 비활성");
+  L.release(); await tick();
+  ok(/✓ 저장됨/.test(dlg(T).innerHTML)&&!/disabled/.test(goBtn()),"D5b ACK 뒤 활성");
+}
+{ // ⚙ 기본 건너뛰기 → 기본만 건너뜀 → 진행도(건너뜀 문구) → 심화
+  const srv=tutServer(NEW);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>srv.post(init)}); const X=T.single, Tt=X.SP.tut; X.spAskGo(); X.spNext();
+  ok(/튜토리얼 건너뛰기/.test(T.renderBoardInfo()||T.byId("boardInfo").innerHTML)&&!/나가기 \(기권 확인\)/.test(T.byId("boardInfo").innerHTML),"D6 ⚙ — 기권 자리에 '튜토리얼 건너뛰기'(기권과 다른 글자)");
+  X.spSkipAsk(); const d=dlg(T).innerHTML;
+  ok(X.SP.dlg==="skipq"&&/기본 튜토리얼을 건너뛸까요\?/.test(d)&&/건너뛰면 심화 튜토리얼로 넘어가요\./.test(d)&&/class="primary" onclick="spSkipNo\(\)"/.test(d)&&X.spHeld(),"D7 확인 창 — 3R.3 문구 · [계속하기] 기본 초점 · 그동안 보류");
+  T.document.dispatch("keydown",{key:"Escape",preventDefault(){},stopImmediatePropagation(){}});
+  ok(!X.SP.dlg&&!dlgOpen(T)&&Tt.step==="B2"&&posts().length===0,"D8 Esc = [계속하기] — 그대로 계속 · 저장 0");
+  X.spSkipAsk(); X.spSkipGo(); X.spSkipGo(); await tick();
+  const p=posts(TUT_API);
+  ok(p.length===1&&JSON.stringify(body(p[0]))===JSON.stringify({v:2,userId:"neo_1",category:"basic",end:"skip"})&&srv.st.advanced==="pending","D9 [건너뛰기] → 기본 = 건너뜀 1회(심화는 그대로 대기)");
+  ok(X.SP.dlg==="bp"&&/기본 건너뜀/.test(dlg(T).innerHTML)&&dlg(T).innerHTML.includes(X.SP_SAY.BPskip)&&/건너뜀/.test(txt(dlg(T).innerHTML)),"D10 진행도 — 건너뜀 문구·표시(완료로 표시하지 않음)");
+  ok(!coach(T)&&!T.byId("spSpot").innerHTML,"D10c 진행도가 뜨는 순간 뒤의 말풍선·스포트라이트 0(다시 그리기 없이)");
+  ok(!X.SP.progress.tutorialDone&&!X.SP.note,"D10b 기본 건너뜀만으로 해금 0");
+  X.spBpNext(); ok(X.SP.tut.cat==="advanced"&&X.SP.tut.step==="A1","D11 [다음 단계로] → 심화");
+}
+{ // 중단 — 새로고침·기권·무승부는 저장 0 · 다음 진입 때 그 카테고리 처음
+  const T=await tutAsk({}); const X=T.single; X.spAskGo(); X.spNext();
+  end(T,1,"resign"); await tick();
+  ok(posts(TUT_API).length===0&&/학습이 끝나지 않았어요/.test(side(T))&&/>다시 시작</.test(side(T)),"D12 기권(통제 종료) — 저장 0 · '학습이 끝나지 않았어요' · [다시 시작]");
+  T.toLobby(); ok(T.S.mode==="pve"&&X.SP.ask&&dlgOpen(T)&&X.SP.tut.cat==="basic"&&X.SP.tut.step===null,"D13 [다시 시작] → 질문부터(기본 처음)");
+  const U=await tutAsk({},MID); U.single.spAskGo(); end(U,null,"draw"); await tick();
+  ok(posts(TUT_API).length===0&&/학습이 끝나지 않았어요/.test(side(U)),"D14 심화 무승부(통제 종료) — 저장 0");
+  const V=await tutAsk({},MID); ok(V.single.SP.tut.cat==="advanced"&&posts().length===0,"D15 새로 불러오기(새로고침) = 저장 0 · 미처리 카테고리(심화)부터 다시 · 자동 건너뜀 0");
+}
+
+{ // 정본 ACK(409) — 다른 창이 먼저 정한 값을 그대로 보이고 다음 행동도 그 값을 따른다(3R.1)
+  for(const [nm,resp,title,say,btn,next] of [
+    ["다른 창에서 기본 건너뜀",PG("skipped","pending"),"기본 건너뜀","BPskip","다음 단계로","A1"],
+    ["다른 창에서 심화까지 정함",PG("completed","skipped"),"기본 완료","BPdone","로비로","lobby"],
+    ["면제(이관)",PG("exempt","exempt"),"기본 면제","BPskip","로비로","lobby"]]){
+    const T=await tutAsk({"POST /api/profile/tutorial":[409,{error:"E_TUTORIAL_CONFLICT",progress:resp}]}); const X=T.single;
+    X.spAskGo(); end(T,0,"edge"); await tick(); T.render(); // 통제 종료 — 저장 경계의 표시만 본다(실제 완주 아님)
+    const d=dlg(T).innerHTML;
+    ok(X.SP.save.st==="ok"&&new RegExp(`<h2 id="spDlgT">${title}</h2>`).test(d)&&d.includes(X.SP_SAY[say])&&new RegExp(`>${btn}</button>`).test(d),`D16 ${nm} — 409 정본 ACK: 제목 '${title}' · 문구 · [${btn}]`);
+    const ko={completed:"완료",skipped:"건너뜀",exempt:"면제",pending:"다음"};
+    ok(new RegExp(`심화 ${ko[resp.tutorial.advanced]}"`).test(d)&&new RegExp(`st-${resp.tutorial.advanced}"><b>심화`).test(d),`D16c ${nm} — 진행도 심화 칸·읽는 이름도 정본(${ko[resp.tutorial.advanced]})`);
+    X.spBpNext(); assetsLoad(T); await tick();
+    ok(next==="A1"?X.SP.tut&&X.SP.tut.cat==="advanced"&&X.SP.tut.step==="A1":T.uiScreenName()==="lobby"&&!X.SP.tut&&posts(TUT_API).length===1,`D16b ${nm} → ${next==="A1"?"심화 A1":"이미 정해진 심화를 다시 하지 않고 로비"}`);
+  }
+  const T=await tutAsk({"POST /api/profile/tutorial":[409,{error:"E_TUTORIAL_CONFLICT",progress:PG("completed","skipped")}]},MID); const X=T.single, A=X.SP.tut;
+  X.spAskGo(); T.aiAutoPlace(0); global.setupDone(); T.drain(50); A.step=null; A.seen.shop=A.seen.burn=true; T.render();
+  end(T,0,"king"); await tick(); T.render();
+  const d=dlg(T).innerHTML;
+  ok(/<h2 id="spDlgT">심화 건너뜀<\/h2>/.test(d)&&d.includes(X.SP_SAY.A11skip)&&!d.includes(X.SP_SAY.A11done)&&/st-skipped/.test(d),"D17 심화 완료 요청에 409 정본 '건너뜀' — 결과 제목·문구·칩 모두 건너뜀(완료라 쓰지 않음)");
+}
+
+/* ===== E. 심화 A1~A11 ===== */
+{
+  const srv=tutServer(MID);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>srv.post(init)},MID); const X=T.single, A=X.SP.tut;
+  X.spAskGo();
+  const i=A.f.slot, key=A.f.key;
+  ok(A.step==="A1"&&/심화 1\/11/.test(coach(T))&&coach(T).includes(X.SP_SAY.A1)&&T.S.eco.shop.kind==="start"&&key,"E1 A1 — '심화 1/11' · 실제 시작 상점");
+  ok(X.spSpec(A).tg.sel===`[onclick="unitHelpSlot(${i},this)"]`&&T.S.eco.shop.slots[0][i].key===key,"E1b A1 첫 대상 = 살 수 있는 카드의 상세 창 하나");
+  ok(X.spClockHeld()&&!X.spHeld(),"E1c 심화 말풍선 동안 준비 시계 정지 · AI 보류는 아님");
+  T.ui238.unitHelpSlot(i,null); A.f.a1info=true; // 상세 창(실제 진열 설명 창)
+  ok(X.spSpec(A).tg.sel===`[onclick="window.__shop('buy',${i})"]`,"E1d 다음 대상 = 그 카드의 구매 버튼");
+  T.__shop("buy",i); T.render();
+  ok(T.ecoUnitOf(T.S,0,key)&&A.step==="A2","E2 실제 구매 1회 → A2");
+  ok(coach(T).includes(X.SP_SAY.A2)&&/>다음</.test(coach(T)),"E2b A2 시너지 문구 · [다음]");
+  X.spNext(); ok(A.step==="A3"&&coach(T).includes(X.SP_SAY.A3)&&X.spSpec(A).tg.sel===".leadRow button","E3 A3 문구 · 대상 = 누를 수 있는 속성 버튼(초점이 묶음 div 가 아니라 버튼에)");
+  const king=T.S.pieces.find(x=>x.owner===0&&x.type==="king"), coins=T.S.eco.coins[0];
+  T.__shop("lead",king.id,"water"); T.render();
+  ok(A.step==="A4"&&pc(T,king.id).element==="water"&&pc(T,king.id).leaderElChosen&&T.S.eco.coins[0]===coins,"E3b 실제 속성 변경 1회(무료) → A4");
+  X.spNext(); ok(A.step==="A4","E4 아이템 칸을 보기 전 [다음] 은 진행하지 않는다");
+  A.f.item=true; X.spNext(); ok(A.step==="A5"&&X.spGateSet()===null,"E4b 아이템 칸 → [다음] → A5 자유 구매(막지 않음)");
+  T.aiShop(0); T.render(); // 남은 코인으로 필드 채우고 [다음 단계](실제 상점 경로)
+  ok(A.step==="A6"&&T.UI.prep==="place"&&coach(T).includes(X.SP_SAY.A6),"E5 [다음 단계] → A6 배치");
+  const my=T.S.pieces.filter(x=>x.owner===0);
+  global.selTray(my[0].id); T.render();
+  const z=T.byId("board").querySelector(`.cell[data-r="12"][data-c="1"]`), zFoe=T.byId("board").querySelector(`.cell[data-r="2"][data-c="1"]`);
+  ok(z.getAttribute("tabindex")==="0"&&z.getAttribute("role")==="button"&&/12행 1열 빈칸/.test(z.getAttribute("aria-label"))&&zFoe.getAttribute("tabindex")===null&&X.spGateSet().out.includes(z),"E6a 말을 고른 뒤 내 진영 빈칸 = 키보드 대상(Tab · 이름 · 상대 진영 칸은 아님)");
+  z.onkeydown({key:"Enter",preventDefault(){}}); T.render(); ok(A.f.pid===my[0].id&&!A.f.back&&T.S.pieces.find(x=>x.id===my[0].id).r===12,"E6 말 하나 놓기(Enter — 실제 셀 입력 경로)");
+  T.onCell(12,1); T.render(); ok(A.f.back,"E6b 놓은 말 눌러 회수");
+  global.autoPlace(); T.render(); ok(A.step==="A7"&&T.S.pieces.filter(x=>x.owner===0).every(x=>x.placed),"E6c [무작위 배치] → A7");
+  const r0=(T.setSeed(77),T.rand()); T.setSeed(77);
+  global.setupDone(); T.drain(50); T.render();
+  ok(T.S.phase==="play"&&T.S.current===0&&T.S.metrics.firstPlayer===0&&/선공: 플레이어/.test(T.S.log.map(l=>l.msg).join("\n"))&&!/무작위 선공/.test(T.S.log.map(l=>l.msg).join("\n")),"E7 [배치 완료] → 브론즈 AI전 · 플레이어 선공(무작위 아님)");
+  ok(T.S.aiLevel[1]==="bronze"&&T.S.eco&&A.step==="A7"&&/>확인</.test(coach(T))&&coach(T).includes(X.SP_SAY.A7),"E7b 정상 경제 브론즈 경기 · A7 말풍선 [확인]");
+  X.spNext(); ok(A.step===null&&!coach(T)&&!X.spClockHeld()&&X.spGateSet()===null,"E7c [확인] → 안내 없는 자유 경기(시계 정상 · 입력 제한 없음)");
+  /* 자유 경기 — 실제 20턴 정기 상점(통제: 턴 수만 미리 세운 고정 장면 아님 — 실제 endTurn 경로) */
+  T.S.turnCount=19; T.S.current=1; T.dispatchCoreAction({t:"endTurn"}); T.render();
+  ok(T.S.phase==="shop"&&A.step==="A8"&&coach(T).includes(X.SP_SAY.A8)&&X.SP_SHOP_TIERS.every(([t,g,b],k)=>T.ECO.shopTurns[k]===t&&T.ECO.bonus[t]===b),"E8 실제 20턴 정기 상점이 열린 순간 A8 · 도해 = ECO 값(20/40/60/80 · 보너스)");
+  X.spNext(); ok(A.seen.shop&&!A.seen.burn&&A.step===null,"E8b [확인] → 본 여부: 상점 = 예(턴 수가 아니라 확인으로)");
+  /* 통제 종료 — 패배(왕 제거) */
+  end(T,1,"king"); await tick();
+  ok(A.step==="A10"&&coach(T).includes(X.SP_SAY.A10loss)&&/남은 연습 건너뛰기/.test(coach(T))&&posts(TUT_API).length===0,"E9 실제 패배 뒤 A10 '아쉬워요!' · [남은 연습 건너뛰기] · 아직 저장 0");
+  const match=T.S;
+  X.spNext();
+  ok(A.practice==="burn"&&A.step==="A10b"&&/연습 장면/.test(coach(T))&&coach(T).includes(X.SP_SAY.A10b)&&T.isBurning()&&T.S.turnCount===64&&T.S.current===0,"E10 못 본 것만 — 상점은 봤으니 버닝 연습만(65턴 내 차례 · '연습 장면')");
+  const P=pc(T,A.f.burnId); ok(T.canMoveTo(P,6,4)&&P.r===8&&/const expedZone=\(owner,r\)=> owner===0 \? r<=5 : r>=9;/.test(fs.readFileSync(path.join(__dirname,"..","..","js","core.js"),"utf8")),"E10b 곧게 2칸 합법 · 상대 숲·진영(1~5행)은 2칸 불가 구역");
+  ok(JSON.stringify(X.spSpec(A).zone)===JSON.stringify([[1,5,"1칸"],[6,13,"2칸"]]),"E10c 보드 위 허용 구역 비교(1칸 · 2칸)");
+  T.onCell(P.r,P.c); T.onCell(6,4); await tick();
+  const p=posts(TUT_API);
+  ok(T.S===match&&T.S.winner===1&&T.S.metrics.winType==="king"&&A.res==="completed"&&p.length===1&&JSON.stringify(body(p[0]))===JSON.stringify({v:2,userId:"neo_1",category:"advanced",end:"king"}),"E11 연습 마침 → 원래 경기 결과(패배 · 왕 제거) 그대로 · 심화 = 완료 {end:king}");
+  ok(X.SP.dlg==="a11"&&/심화 완료/.test(dlg(T).innerHTML)&&dlg(T).innerHTML.includes(X.SP_SAY.A11done)&&/✓ 저장됨/.test(dlg(T).innerHTML),"E11b A11 결과 패널 · 저장됨");
+  ok(posts(CLR_API).length===0&&X.SP.progress.aiClearedTier===0,"E11c 튜토리얼·연습에서 PVE 클리어·보상 0");
+  X.spA11Go(); assetsLoad(T); await tick();
+  ok(T.uiScreenName()==="lobby"&&T.byId("spLive").textContent==="🔓 무제한 AI 대전이 열렸어요. 브론즈부터 도전해 보세요."&&X.spTierState(0)==="open","E12 [로비로] → 로비 + 해금 알림 1회 · 브론즈 열림");
+  ok(T.single.rng()===null,"E12b 연습 장면 시드도 원래 RNG 로");
+}
+for(const [nm,seen,want] of [["둘 다 못 봄(20턴 전 종료)",{},["shop","burn"]],["버닝만 못 봄",{shop:true},["burn"]],["둘 다 봄",{shop:true,burn:true},[]]]){
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>tutServer(MID).post(init)},MID); const X=T.single, A=X.SP.tut;
+  X.spAskGo(); T.aiAutoPlace(0); global.setupDone(); T.drain(50); A.step=null; Object.assign(A.seen,seen); T.render();
+  end(T,0,"edge"); await tick();
+  const order=[]; for(let n=0;n<4&&A.step!==null&&!X.SP.dlg;n++){ if(A.step==="A10"){ X.spNext(); continue; } order.push(A.practice);
+    if(A.practice==="shop"){ ok(T.S.phase==="shop"&&T.shopViewer()===0&&T.S.eco.shop.turn===20&&coach(T).includes(X.SP_SAY.A8),"E13 상점 연습 — 20턴 정기 상점 열림(고정 장면)"); A.f.card=true; X.spNext(); }
+    else { const P=pc(T,A.f.burnId); T.onCell(P.r,P.c); T.onCell(6,4); await tick(); } }
+  ok(JSON.stringify(order)===JSON.stringify(want)&&X.SP.dlg==="a11"&&body(posts(TUT_API)[0]).end==="edge"&&T.S.winner===0,`E14 ${nm} → 연습 ${want.length?want.join("→"):"없음"} → 심화 완료(end=edge · 승리 보존)`);
+}
+{ // [남은 연습 건너뛰기] = 심화 건너뜀(해금 · 모든 학습 완료 아님)
+  const srv=tutServer(MID);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>srv.post(init)},MID); const X=T.single, A=X.SP.tut;
+  X.spAskGo(); T.aiAutoPlace(0); global.setupDone(); T.drain(50); A.step=null; T.render(); end(T,0,"wipe"); await tick();
+  X.spNext(); ok(A.practice==="shop","E15 (전제) 상점 연습 중");
+  ok(/남은 연습 건너뛰기/.test(T.byId("boardInfo").innerHTML+coach(T)),"E15b 연습 중 ⚙·말풍선 = [남은 연습 건너뛰기]");
+  X.spPracticeSkip(); await tick();
+  ok(srv.st.advanced==="skipped"&&body(posts(TUT_API)[0]).end==="skip"&&X.SP.dlg==="a11"&&/심화 건너뜀/.test(dlg(T).innerHTML)&&dlg(T).innerHTML.includes(X.SP_SAY.A11skip)&&T.S.metrics.winType==="wipe","E15c 심화 = 건너뜀 · '남은 학습을 건너뛰었어요' · 원래 경기 결과 보존");
+  ok(X.SP.progress.tutorialDone&&X.SP.progress.tutorial.advanced==="skipped","E15d 해금(건너뜀으로 — 완료 표시 아님)");
+}
+{ // 심화 ⚙ 건너뛰기 → 확인 창 저장 중 → ACK → 로비 + 해금 알림
+  const L=later(), srv=tutServer(MID);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>L.p.then(()=>srv.post(init))},MID); const X=T.single;
+  X.spAskGo(); X.spSkipAsk(); const d=dlg(T).innerHTML;
+  ok(/심화 튜토리얼을 건너뛸까요\?/.test(d)&&/싱글플레이는 열리지만 남은 학습은 건너뜀으로 남아요\./.test(d),"E16 심화 확인 창 문구");
+  X.spSkipGo(); await tick();
+  ok(/저장 중…/.test(dlg(T).innerHTML)&&X.SP.dlg==="skipq"&&T.uiScreenName()!=="lobby","E16b 확인 창 '저장 중…' · ACK 전 로비 아님");
+  L.release(); await tick(); assetsLoad(T); await tick();
+  ok(T.uiScreenName()==="lobby"&&srv.st.advanced==="skipped"&&T.byId("spLive").textContent==="🔓 무제한 AI 대전이 열렸어요. 브론즈부터 도전해 보세요.","E16c ACK → 로비 + 해금 알림");
+}
+{ // 버닝(실제) — 65턴 이후 첫 내 차례에 A9 · 곧게 2칸 갈 수 있는 말 강조
+  const T=await tutAsk({},MID); const X=T.single, A=X.SP.tut;
+  X.spAskGo(); T.aiAutoPlace(0); global.setupDone(); T.drain(50); A.step=null; A.seen.shop=true;
+  const m=T.S.pieces.find(x=>x.owner===0&&x.type==="minion"&&x.placed); m.r=8; m.c=3;
+  T.S.turnCount=63; T.S.current=1; T.dispatchCoreAction({t:"endTurn"}); T.render();
+  ok(A.step==="A9"&&coach(T).includes(X.SP_SAY.A9)&&A.f.burnId!=null&&T.canMoveTo(pc(T,A.f.burnId),pc(T,A.f.burnId).r-2,pc(T,A.f.burnId).c)||A.step==="A9"&&T.canMoveTo(pc(T,A.f.burnId),pc(T,A.f.burnId).r+2,pc(T,A.f.burnId).c),"E17 실제 버닝 첫 내 차례 → A9 · 곧게 2칸 갈 수 있는 내 말 강조");
+  X.spNext(); ok(A.seen.burn&&A.step===null,"E17b [확인] → 본 여부: 버닝 = 예");
+}
+
+/* ===== T. 정지 범위 · 튜토리얼 밖 영향 0 ===== */
+{
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,DONE(0))});
+  T.FX.force=true; T.single.spPlay(0);
+  ok(!T.single.spHeld()&&!T.single.spClockHeld()&&T.single.SP.tut===null&&T.PREPCLK.pz===null&&T.PREPCLK.t!==null,"T1 일반 PVE(무제한 AI) — 튜토리얼 정지 없음 · 준비 시계 종전대로");
+  T.single.applyUiEvent({type:"tutHint",key:"teleport"}); T.render();
+  ok(!coach(T)&&!dlgOpen(T)&&T.single.spGearLeave("X")==="X"&&T.single.spFirstPlayer()===null,"T2 일반 PVE — 말풍선·tutHint 0 · ⚙ 종전(기권) · 배치 확정에 선공 없음(무작위)");
+  T.uiResetScreen(); T.FX.force=false;
+}
+{
+  const T=await tutAsk({},MID); T.single.spAskGo(); T.aiAutoPlace(0); global.setupDone(); T.drain(50); T.single.SP.tut.step=null;
+  T.single.applyUiEvent({type:"tutHint",key:"burning"}); T.render();
+  ok(!coach(T)&&!dlgOpen(T),"T3 튜토리얼 자유 경기에도 옛 상황 도움말(tutHint) 0 — 3R.3 말풍선만");
+  ok(T.single.spAiScript(false)===false,"T4 심화 실제 경기 — 상대는 종전 브론즈 AI(대본 없음)");
+}
 {
   const T=await tutAsk({});
-  T.FX.force=true; T.uiResetScreen(); T.single.SP.ask=false; T.single.SP.held=false;
-  T.single.spTutEnter(); // 실제 시계를 거는 조건(fxLive)으로 다시 들어간다
+  T.FX.force=true; T.uiResetScreen(); T.single.SP.ask=false; T.single.SP.held=false; T.single.SP.tut=null;
+  routes["GET /api/auth/session"]=sess(NEO,MID); T.single.SP.progress=MID; T.single.spTutEnter();
   const P=T.PREPCLK;
-  ok(P.g===T.S&&P.t===null&&P.pz>T.ECO.prepSec*1000-500&&P.pz<=T.ECO.prepSec*1000&&/정지/.test(T.turnClockText("prep")),"D1 질문 중 준비 180초는 시작하지 않은 채 멈춰 있다(표시 '정지')");
+  ok(P.g===T.S&&P.t===null&&P.pz>T.ECO.prepSec*1000-500&&/정지/.test(T.turnClockText("prep")),"T5 심화 질문 중 준비 180초는 멈춰 있다(표시 '정지')");
   P.pz=123456; T.single.spAskGo();
-  ok(T.single.SP.guide==="H1"&&P.pz!==null&&P.pz<=123456&&P.pz>123300,"D2 [진행] → 곧바로 H1 안내 — 같은 남은 시간으로 정지 유지");
-  T.single.spGuideClose();
-  ok(P.pz===null&&P.t!==null&&Math.abs(P.dl-Date.now()-123456)<200,"D3 [확인] → 그 남은 시간부터 재개(새 180초 아님)");
+  ok(T.single.SP.tut.step==="A1"&&P.pz!==null&&P.pz<=123456,"T6 [진행] → A1 말풍선 동안 같은 남은 시간으로 정지 유지");
+  T.single.SP.tut.step=null; T.single.spTick();
+  ok(P.pz===null&&P.t!==null&&Math.abs(P.dl-Date.now()-123456)<300,"T7 말풍선이 걷히면 그 남은 시간부터 재개(새 180초 아님)");
   for(const [nm,C] of [["정기 상점",T.single.SHOPCLK],["B08 가방",T.single.BAGCLK]]){
     let fired=0; C.fire=()=>{ fired++; }; C.t=1; C.dl=Date.now()+5000; C.pz=null;
     T.single.clkHold(true);
-    ok(C.pz>4800&&C.pz<=5000&&C.t===null&&T.single.clkLeft(C)===C.pz,`D4 ${nm} 마감 — 정지 동안 남은 시간 보존`);
+    ok(C.pz>4800&&C.pz<=5000&&C.t===null&&T.single.clkLeft(C)===C.pz,`T8 ${nm} 마감 — 정지 동안 남은 시간 보존`);
     T.single.clkHold(false);
-    ok(C.pz===null&&C.t!==null&&fired===0&&Math.abs(C.dl-Date.now()-5000)<300,`D5 ${nm} — 재개(만료 처리 없음)`);
+    ok(C.pz===null&&C.t!==null&&fired===0&&Math.abs(C.dl-Date.now()-5000)<300,`T9 ${nm} — 재개(만료 처리 없음)`);
     C.t=null; C.fire=null;
   }
-  T.uiResetScreen(); T.startMode("pve",{aiLevel:"bronze"}); T.aiAutoPlace(0); T.aiAutoPlace(1); // 경제 PVE 를 곧바로 대전 단계로
-  T.S.eco.shop=null; T.S.phase="play"; T.S.current=0; T.S.mainUsed=false; T.TQ.length=0;
-  T.single.SP.tut={game:T.S,seen:{H1:1,H2:1,H3:1,H4:1,H5:1,H6:1}}; T.single.SP.ask=false; T.single.SP.guide=null; T.single.SP.held=false;
-  const w0=T.turnClockWants(); T.single.SP.guide="H3"; const w1=T.turnClockWants(); T.single.SP.guide=null;
-  ok(w0.length>0&&w0.every(w=>!w.paused)&&w1.length===w0.length&&w1.every(w=>w.paused),"D6 보드 행동 시계 — 평소 흐르고 안내 동안 paused");
-  T.S.current=1; T.single.SP.guide="H3"; T.single.SP.held=true; T.TQ.length=0; T.AI.pending=false;
-  T.aiSchedule(); T.drain(50);
-  ok(T.UI.holdQ.length===1&&T.S.current===1&&!T.S.mainUsed,"D7 안내 동안 학습 AI 예약은 보류(수 0)");
-  T.single.spGuideClose(); T.drain(5000);
-  ok(T.UI.holdQ.length===0&&(T.S.mainUsed||T.S.current!==1||T.S.phase!=="play"),"D8 [확인] → AI 가 이어서 둔다");
   T.uiResetScreen(); T.FX.force=false;
-}
-{
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(true,0))});
-  T.FX.force=true; T.single.spPlay(0);
-  ok(!T.single.spHeld()&&T.single.SP.tut===null&&T.PREPCLK.pz===null&&T.PREPCLK.t!==null,"D9 일반 PVE(무제한 AI) — 학습 정지 없음 · 준비 시계 종전대로 흐름");
-  T.uiResetScreen(); T.FX.force=false;
-}
-
-/* ===== E. 안내 ===== */
-{
-  const T=await tutAsk({});
-  T.single.spAskGo();
-  const G=T.single.SP_GUIDE;
-  ok(T.single.SP.guide==="H1"&&dlg(T).innerHTML.includes(G.H1.x)&&/>확인</.test(dlg(T).innerHTML),"E1 [진행] 직후 H1(시작 상점) — 확정 문구 · [확인]");
-  T.document.dispatch("keydown",{key:"Escape",preventDefault(){},stopImmediatePropagation(){}});
-  ok(T.single.SP.guide===null&&!dlgOpen(T),"E2 안내는 Esc 로도 닫힌다");
-  T.render(); ok(!dlgOpen(T),"E3 같은 장면 안내는 다시 뜨지 않는다");
-  T.S.eco.shop.done[0]=true; T.UI.prep="place"; T.render();
-  ok(T.single.SP.guide==="H2"&&dlg(T).innerHTML.includes("말을 배치해요. 상대에게 내 말은 정체를 알 수 없는 ?로 보여요. 왕을 숨기세요."),"E4 배치가 처음 열릴 때 H2");
-  T.single.spGuideClose();
-  T.single.applyUiEvent({type:"tutHint",key:"teleport"});
-  ok(T.single.SP.guide==="teleport"&&dlg(T).innerHTML.includes(T.TUT_HINTS.teleport.text),"E5 Core tutHint(예외 이동 등) → 학습 경기에서는 기존 상황 도움말 문구로");
-  T.single.spGuideClose(); T.single.applyUiEvent({type:"tutHint",key:"teleport"});
-  ok(T.single.SP.guide===null,"E6 같은 도움말은 한 경기 1회");
-  ok(G.H5.x.includes(T.single.spCycleText())&&T.single.spCycleText()==="불→풀→땅→번개→물→불","E7 H5 상성 순환 = 현행 BEATS (V7 대조)");
-  ok(G.H3.x==="상대 왕 잡기 · 내 왕이 상대 끝줄에 서기 · 상대 하수인·동료 전멸, 셋 중 하나면 이겨요."&&/대각선 X/.test(G.H4.x)&&G.H6.x==="정기 상점이에요. 하수인과 상품을 사고 팔 수 있어요.","E8 H3·H4·H6 확정 문구");
-}
-{
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(true,0))});
-  T.single.spPlay(0); T.single.applyUiEvent({type:"tutHint",key:"teleport"}); T.render();
-  ok(!dlgOpen(T)&&T.single.SP.guide===null,"E9 학습 경기가 아닌 PVE — 안내 0회(#260 그대로)");
 }
 
 /* ===== F. 싱글 화면 ===== */
 {
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(true,1)),"POST /api/profile/ai-clear":[200,{progress:PG(true,2)}]});
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,DONE(1)),"POST /api/profile/ai-clear":[200,{progress:DONE(2)}]});
   T.uiStart(); assetsLoad(T); await tick();
   T.single.spOpen(); let s=side(T);
   ok((s.match(/class="[^"]*spCard"/g)||[]).length===2&&/무제한 AI 대전/.test(s)&&/잠김 · v0\.4\.17 예정/.test(s),"F1 P01 = 카드 2장(무제한 AI · 왕국 '잠김 · v0.4.17 예정')");
@@ -294,7 +649,7 @@ for(const [wt,winner,want] of [["king",1,"king"],["edge",0,"edge"],["wipe",1,"wi
   T.single.spPlay(0); ok(T.S.mode==="pve"&&T.S.aiLevel[1]==="bronze"&&T.single.SP.run.tier===1,"F9 클리어한 브론즈 재도전(무료)");
   ok(T.NET.publicMode===false&&T.NET.ws===null&&!T.NET.mode,"F9b PVE 시작 전에 방 목록 소켓을 닫는다 — 로컬 경기 행동이 공개 방 회선으로 가지 않는다");
   end(T,0,"king"); await tick();
-  ok(posts(CLR_API).length===0&&/이미 클리어한 단계예요/.test(txt(side(T))),"F10 이미 클리어한 단계의 승리 — 요청 생략");
+  ok(posts(CLR_API).length===0&&/이미 클리어한 단계예요/.test(txt(side(T))),"F10 이미 클리어한 단계의 승리(통제 종료) — 요청 생략");
   ok(/>다시 도전</.test(side(T))&&/>난이도로</.test(side(T))&&T.byId("btnBack").textContent==="← 난이도"&&!/방으로 돌아가기|로비로 돌아가기/.test(side(T)),"F11 S04p [다시 도전]·[난이도로] · ← 난이도");
   T.rematch(); ok(T.S.mode==="pve"&&T.S.phase==="setup"&&T.S.aiLevel[1]==="bronze"&&T.single.SP.run.game===T.S,"F12 [다시 도전] = 같은 티어 새 경기");
   T.single.spToTiers(); assetsLoad(T); await tick();
@@ -302,7 +657,7 @@ for(const [wt,winner,want] of [["king",1,"king"],["edge",0,"edge"],["wipe",1,"wi
   T.single.spPlay(1); end(T,1,"king"); await tick();
   ok(posts(CLR_API).length===0&&/승리하지 않아 실버 클리어가 아니에요/.test(txt(side(T))),"F14 패배 — 요청 0");
   T.rematch(); end(T,0,"resign"); await tick(); ok(posts(CLR_API).length===0,"F15 기권 종료 — 승자여도 요청 0");
-  const L=later(); routes["POST /api/profile/ai-clear"]=()=>L.p.then(()=>[200,{progress:PG(true,2)}]);
+  const L=later(); routes["POST /api/profile/ai-clear"]=()=>L.p.then(()=>[200,{progress:DONE(2)}]);
   T.rematch(); end(T,0,"wipe"); await tick();
   const p=posts(CLR_API);
   ok(p.length===1&&JSON.stringify(body(p[0]))===JSON.stringify({v:1,userId:"neo_1",tier:2,end:"wipe"}),"F16 새 티어 승리 → POST ai-clear {v:1,userId,tier:2,end}");
@@ -312,121 +667,74 @@ for(const [wt,winner,want] of [["king",1,"king"],["edge",0,"edge"],["wipe",1,"wi
   ok(T.single.spTierState(2)==="open"&&T.single.spTierState(1)==="cleared","F19 골드 도전 가능 · 실버 클리어");
 }
 {
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(true,3))});
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,EXEMPT(3))});
   T.LOBBY.view="tiers"; const t=txt(T.single.spLobbyHtml());
   ok([0,1,2].every(i=>T.single.spTierState(i)==="cleared")&&/플래티넘 추후 공개/.test(t)&&!/플래티넘 도전 가능/.test(t),"F20 골드 클리어도 상위 티어를 열지 않는다");
 }
 {
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(true,0)),"POST /api/profile/ai-clear":[409,{error:"E_TIER_LOCKED"}]});
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,DONE(0)),"POST /api/profile/ai-clear":[409,{error:"E_TIER_LOCKED"}]});
   T.single.spPlay(0); end(T,0,"king"); await tick();
   ok(T.single.SP.save.st==="fail"&&/저장하지 못했어요/.test(side(T))&&/>다시 시도</.test(side(T))&&gets(SESS).length>=2,"F21 E_TIER_LOCKED — '저장하지 못했어요.' + [다시 시도] · 진행 다시 받기");
 }
-{ // 확인 불가 → [싱글플레이] 가 다시 조회(§2.5)
+{ // 확인 불가 → [싱글플레이] 가 다시 조회(§2.6)
   const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,undefined)});
   T.uiStart(); assetsLoad(T); await tick();
   T.single.spOpen(); await tick();
-  ok(T.LOBBY.view==="home"&&toast(T)==="진행 정보를 불러오지 못했어요. 다시 시도해 주세요."&&gets(SESS).length===2,"F22 확인 불가 — 다시 조회 · 또 실패면 안내(학습 강제·해금 없음)");
-  routes["GET /api/auth/session"]=sess(NEO,PG(false)); T.single.spOpen(); await tick();
-  ok(T.S.mode==="pve"&&T.single.SP.ask,"F23 다시 조회 결과 미완료 → 학습 경기");
+  ok(T.LOBBY.view==="home"&&toast(T)==="진행 정보를 불러오지 못했어요. 다시 시도해 주세요."&&gets(SESS).length===2,"F22 확인 불가 — 다시 조회 · 또 실패면 안내(튜토리얼 강제·해금 없음)");
+  routes["GET /api/auth/session"]=sess(NEO,NEW); T.single.spOpen(); await tick();
+  ok(T.S.mode==="pve"&&T.single.SP.ask,"F23 다시 조회 결과 미해금 → 튜토리얼");
   const U=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,undefined)});
   U.uiStart(); assetsLoad(U); await tick();
-  routes["GET /api/auth/session"]=sess(NEO,PG(true,0)); U.single.spOpen(); await tick();
-  ok(U.LOBBY.view==="single","F24 다시 조회 결과 완료 → P01");
+  routes["GET /api/auth/session"]=sess(NEO,DONE(0)); U.single.spOpen(); await tick();
+  ok(U.LOBBY.view==="single","F24 다시 조회 결과 해금 → P01");
 }
 { // 계정 없는 체험 — 이번 로드 메모리
   const T=await boot("file:///C:/Digit-Duel/demo/index.html",{});
   T.uiStart(); assetsLoad(T); T.single.spOpen(); T.single.spView("tiers");
   ok(T.single.spTierState(0)==="open"&&T.single.spTierState(1)==="locked"&&/이 접속에서만 유지 · 저장 안 됨/.test(side(T)),"F25 계정 없는 체험 — 브론즈 열림 · '이 접속에서만 유지 · 저장 안 됨'");
   T.single.spPlay(0); end(T,0,"king"); await tick();
-  ok(posts().length===0&&T.single.SP.local===1&&T.single.spTierState(1)==="open"&&/이 접속에서만 유지 · 저장 안 됨/.test(txt(side(T))),"F26 체험 승리 — 요청 0 · 실버는 이번 로드에서만 열림");
+  ok(posts().length===0&&T.single.SP.local===1&&T.single.spTierState(1)==="open"&&/이 접속에서만 유지 · 저장 안 됨/.test(txt(side(T))),"F26 체험 승리(통제 종료) — 요청 0 · 실버는 이번 로드에서만 열림");
   const U=H.load(htmlPath); ok(U.single.SP.local===0,"F27 새로 불러오면 체험 해금은 사라진다(영구 저장 없음)");
 }
 
-/* ===== H. Saturn 독립 반례(P2×3) — 401 원 화면 보존·명시 재시도 · ACK 전 결과 이탈 금지 · 좌석 우선 · 세션 GET 유한 마감 ===== */
-{ // H1·H2 학습 정상 종료(wipe 패) 저장 401 → 같은 계정 재로그인 → 원 결과 화면 · 조회만 · 재시도 400 에도 결과·문맥 유지
-  let st="in", n=0;
-  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,PG(false)),
-    "POST /api/profile/tutorial":()=>{ n++; if(st==="in"){ st="gone"; return [401,{error:"E_NO_SESSION"}]; } return n===2?[400,{error:"E_BAD_INPUT"}]:[200,{progress:PG(true)}]; },
-    "POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:PG(false)})]; }});
-  T.single.spAskGo(); T.single.spGuideClose(); const game=T.S;
-  end(T,1,"wipe"); await tick();
-  ok(T.AUTH.state==="anon"&&T.uiScreenName()==="title"&&T.S===game&&T.S.phase==="over","H1 저장 401 → 로그인 화면 · 끝난 학습 경기(결과)는 보존");
-  T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(T.uiScreenName()==="result"&&T.S===game&&posts(TUT_API).length===1&&/저장하지 못했어요/.test(side(T))&&/>다시 시도</.test(side(T))&&/id="spGo" disabled/.test(side(T)),"H1b 같은 계정 재로그인 → 원 결과 화면 · 상태 조회만(자동 POST 0) · [다시 시도] · [로비로] 비활성");
-  T.single.spRetry(); await tick();
-  ok(posts(TUT_API).length===2&&T.uiScreenName()==="result"&&T.S===game&&T.single.SP.save&&T.single.SP.save.st==="fail"&&!T.single.SP.ask,"H1c 사용자 재시도 400 → 결과 화면·저장 문맥 그대로(새 학습 질문으로 가지 않음)");
-  T.fxReleaseAll(); T.byId("overlay").classList.add("hidden"); T.byId("tutOverlay").classList.add("hidden"); T.single.uiBack(); // 결과 연출 잠금·(헤드리스 초기 class 없는) 게임 모달을 걷고 저장 가드만 본다
-  ok(T.uiScreenName()==="result"&&T.S===game&&T.single.SP.save.st==="fail","H2 ACK 전 학습 결과 — ← 로 떠나지 않는다(저장 문맥 보존)");
-  T.single.spRetry(); await tick();
-  ok(posts(TUT_API).length===3&&/✓ 저장됨/.test(side(T))&&/id="spGo" onclick="toLobby\(\)">로비로/.test(side(T)),"H1d 다시 재시도 200 → 저장됨 · [로비로] 활성");
+/* ===== H. 401 원 화면 보존 · 좌석 우선 · 유한 마감 · 같은 계정 새 세대 ===== */
+{ // H1 기본 진행도 저장 401 → 같은 계정 재로그인 → 원 진행도 패널 · 조회만 · 재시도 400 에도 문맥 유지 → 200
+  let st="in", n=0; const srv=tutServer(NEW);
+  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,srv.cur()),
+    "POST /api/profile/tutorial":init=>{ n++; if(st==="in"){ st="gone"; return [401,{error:"E_NO_SESSION"}]; } return n===2?[400,{error:"E_BAD_INPUT"}]:srv.post(init); },
+    "POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:srv.cur()})]; }});
+  const X=T.single; X.spAskGo(); basicTo(T,"B9"); const Tt=X.SP.tut, Tp=pc(T,Tt.ids.T), K=pc(T,Tt.ids.K);
+  T.netAction({t:"tele"}); T.onCell(Tp.r,Tp.c); T.onCell(K.r,K.c); await tick(); const game=T.S;
+  ok(T.AUTH.state==="anon"&&T.uiScreenName()==="title"&&T.S===game&&T.S.phase==="over"&&X.SP.pending&&X.SP.pending.dlg==="bp","H1 저장 401 → 로그인 화면 · 끝난 기본 경기와 진행도 문맥 보존");
+  T.render(); for(const f of T.FX.idle.splice(0)) f(); T.render();
+  ok(!dlgOpen(T)&&!coach(T),"H1a 로그아웃 중 다시 그리기·연출 대기가 진행도·말풍선을 열지 않는다");
+  T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick(); T.render();
+  ok(T.S===game&&X.SP.dlg==="bp"&&dlgOpen(T)&&posts(TUT_API).length===1&&/저장하지 못했어요/.test(dlg(T).innerHTML)&&/>다시 시도</.test(dlg(T).innerHTML)&&/disabled/.test((dlg(T).innerHTML.match(/<button[^>]*id="spGo"[^>]*>/)||[""])[0]),"H1b 같은 계정 재로그인 → 원 진행도 · 상태 조회만(자동 재전송 0) · [다음 단계로] 비활성");
+  X.spRetry(); await tick();
+  ok(posts(TUT_API).length===2&&X.SP.dlg==="bp"&&T.S===game&&X.SP.save.st==="fail"&&!X.SP.ask,"H1c 사용자 재시도 400 → 진행도·저장 문맥 그대로(새 질문으로 가지 않음)");
+  X.spRetry(); await tick();
+  ok(posts(TUT_API).length===3&&/✓ 저장됨/.test(dlg(T).innerHTML)&&body(posts(TUT_API)[2]).end==="edge","H1d 다시 재시도 200 → 저장됨(원 결과 end=edge)");
 }
 { // H2b 무제한 AI 클리어 저장 실패 — 버튼·← 모두 떠나지 않는다
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(true,0)),"POST /api/profile/ai-clear":[400,{error:"E_BAD_INPUT"}]});
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,DONE(0)),"POST /api/profile/ai-clear":[400,{error:"E_BAD_INPUT"}]});
   T.single.spPlay(0); const game=T.S; end(T,0,"king"); await tick();
-  T.fxReleaseAll(); T.byId("overlay").classList.add("hidden"); T.byId("tutOverlay").classList.add("hidden"); T.single.uiBack(); // 결과 연출 잠금·(헤드리스 초기 class 없는) 게임 모달을 걷고 저장 가드만 본다
+  T.fxReleaseAll(); T.byId("overlay").classList.add("hidden"); T.byId("tutOverlay").classList.add("hidden"); T.single.uiBack();
   ok(T.uiScreenName()==="result"&&T.S===game&&T.single.SP.save.st==="fail"&&/id="spGo" disabled/.test(side(T))&&/>다시 시도</.test(side(T)),"H2b 클리어 저장 실패 — [다시 도전]·[난이도로]·← 로 떠나지 않고 [다시 시도]만");
 }
 { // H3·H10 건너뛰기 401 → 같은 계정 좌석 기록 생김 → 재로그인 → 좌석 재접속 우선(문맥 보존·자동 POST 0) → 좌석이 끝나 로비로 오면 원 질문 · 상태 조회 · 수동 재시도
-  let st="in", done=false;
-  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,PG(done)),
-    "POST /api/profile/tutorial":()=>{ if(st==="in"){ st="gone"; return [401,{error:"E_NO_SESSION"}]; } done=true; return [200,{progress:PG(true)}]; },"POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:PG(false)})]; }});
+  let st="in"; const srv=tutServer(NEW);
+  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,srv.cur()),
+    "POST /api/profile/tutorial":init=>{ if(st==="in"){ st="gone"; return [401,{error:"E_NO_SESSION"}]; } return srv.post(init); },"POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:srv.cur()})]; }});
   const game=T.S;
   T.single.spAskSkip(); await tick();
   T.storage.setItem("dd_seat.neo_1",JSON.stringify({u:"neo_1",epoch:"0123abcd",roomId:7,seat:0,seatToken:"A".repeat(22),tokenGen:0}));
   T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(T.NET.roomId===7&&T.NET.publicMode&&!!T.storage.getItem("dd_seat.neo_1")&&!T.single.SP.ask&&!dlgOpen(T)&&T.single.SP.pending&&T.single.SP.pending.game===game&&posts(TUT_API).length===1,"H3 좌석 재접속 우선 — 방·좌석 기록 유지 · 원 저장 문맥은 따로 보존 · 자동 POST 0");
-  T.toLobby(); await tick(); for(let i=0;i<50&&T.single.SP.pending;i++) T.drain(1); await tick(); // 로비 진입의 지연 게이트까지만 돌린다(그 뒤 조회 응답이 먼저 오게) // 좌석 흐름이 끝나 로비로(netLeave → 로비 진입)
-  ok(T.S===game&&T.single.SP.ask&&dlgOpen(T)&&/저장하지 못했어요/.test(dlg(T).innerHTML)&&posts(TUT_API).length===1&&T.single.SP.save&&T.single.SP.save.st==="fail","H10 좌석 종료 뒤 로비 진입 → 새 학습이 아니라 원 질문 화면 · 상태 조회(미완료) · 자동 POST 0");
+  ok(T.NET.roomId===7&&T.NET.publicMode&&!!T.storage.getItem("dd_seat.neo_1")&&!T.single.SP.ask&&!dlgOpen(T)&&T.single.SP.pending&&T.single.SP.pending.game===game&&posts(TUT_API).length===1,"H3 좌석 재접속 우선 — 방·좌석 기록 유지 · 원 저장 문맥 보존 · 자동 POST 0");
+  T.toLobby(); await tick(); for(let i=0;i<50&&T.single.SP.pending;i++) T.drain(1); await tick();
+  ok(T.S===game&&T.single.SP.ask&&dlgOpen(T)&&/저장하지 못했어요/.test(dlg(T).innerHTML)&&posts(TUT_API).length===1&&T.single.SP.save&&T.single.SP.save.st==="fail","H10 좌석 종료 뒤 로비 진입 → 새 튜토리얼이 아니라 원 질문 화면 · 조회만");
+  ok(!T.NET.publicMode&&T.NET.ws===null,"H10a 되살린 질문 화면 — 방 목록 소켓 해제");
   T.single.spAskSkip(); await tick();
   ok(posts(TUT_API).length===2&&T.uiScreenName()==="lobby"&&T.single.SP.progress.tutorialDone,"H10b 사용자 재시도 → ACK → 로비");
-}
-{ // H11 학습 정상 종료 결과 401 → 좌석 재접속 → 좌석 종료 → 원 결과 화면 · 서버가 이미 완료면 재전송 없이 저장됨
-  let st="in";
-  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,PG(st==="re2")),
-    "POST /api/profile/tutorial":()=>{ st="gone"; return [401,{error:"E_NO_SESSION"}]; },"POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:PG(false)})]; }});
-  T.single.spAskGo(); T.single.spGuideClose(); const game=T.S;
-  end(T,1,"king"); await tick();
-  T.storage.setItem("dd_seat.neo_1",JSON.stringify({u:"neo_1",epoch:"0123abcd",roomId:7,seat:0,seatToken:"A".repeat(22),tokenGen:0}));
-  T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  st="re2"; // 좌석 중 다른 기기에서 학습 완료가 커밋됐다
-  T.toLobby(); await tick(); for(let i=0;i<50&&T.single.SP.pending;i++) T.drain(1); await tick(); // 로비 진입의 지연 게이트까지만 돌린다(그 뒤 조회 응답이 먼저 오게)
-  ok(T.S===game&&T.uiScreenName()==="result"&&/✓ 저장됨/.test(side(T))&&posts(TUT_API).length===1&&!T.single.SP.ask,"H11 좌석 종료 뒤 원 학습 결과 화면 · 상태 조회가 완료를 보여 재전송 없이 저장됨(완료한 학습을 다시 시키지 않음)");
-  ok(!T.NET.publicMode&&T.NET.ws===null,"H11b 되살린 결과 화면 — 방 목록 소켓 해제");
-}
-{ // H12 Saturn P2 — 건너뛰기 401 → 좌석 → 좌석 종료 로비 진입(방 목록 소켓) → 원 질문 복원 → [진행] → H1 [확인] → 실제 상점 입력이 로컬 경기에 적용 · 공개 방 회선 송신 0
-  let st="in";
-  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,PG(false)),
-    "POST /api/profile/tutorial":()=>{ st="gone"; return [401,{error:"E_NO_SESSION"}]; },"POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:PG(false)})]; }});
-  const game=T.S;
-  T.single.spAskSkip(); await tick();
-  T.storage.setItem("dd_seat.neo_1",JSON.stringify({u:"neo_1",epoch:"0123abcd",roomId:7,seat:0,seatToken:"A".repeat(22),tokenGen:0}));
-  T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(T.NET.roomId===7&&T.single.SP.pending&&T.single.SP.pending.game===game,"H12 (전제) 좌석 재접속 우선 · 원 문맥 보존");
-  T.toLobby(); await tick();
-  const lob=T.NET.ws; if(lob) lob.readyState=1; // 열린 방 목록 소켓 — 남아 있으면 프레임이 실제로 나간다
-  ok(!!lob&&T.NET.publicMode&&T.NET.lobbyOnly&&T.single.SP.pending,"H12a (전제) 좌석 종료 뒤 로비 진입이 방 목록 소켓을 열었다 · 지연 게이트 전");
-  for(let i=0;i<50&&T.single.SP.pending;i++) T.drain(1); await tick();
-  ok(T.S===game&&T.single.SP.ask&&dlgOpen(T)&&!T.NET.publicMode&&T.NET.ws===null&&lob.closed&&T.NET.roomId===null,"H12b 원 질문 복원 — spStart 와 같은 회선 해제(publicMode 끔·ws 닫음 — lobbyOnly 는 ws 없이 읽히지 않는다)");
-  lob.onmessage({data:JSON.stringify({type:"lobby_ready"})}); lob.onclose({code:1000});
-  ok(!T.NET.publicMode&&T.NET.ws===null&&T.S===game&&T.single.SP.ask,"H12c 닫힌 방 목록 소켓의 늦은 콜백은 되살린 경기·회선 상태를 건드리지 않는다");
-  T.single.spAskGo(); ok(T.single.SP.guide==="H1","H12d [진행] → H1"); T.single.spGuideClose();
-  const c0=T.S.eco.coins[0], q0=T.S.eco.shop.seq[0], n0=lob.sent.length;
-  T.__shop("refresh");
-  ok(T.S.eco.coins[0]===c0-1&&T.S.eco.shop.seq[0]===q0+1&&lob.sent.length===n0&&!T.wsLog.some(w=>w.sent.some(m=>/shopRefresh/.test(m))),"H12e 실제 상점 [새로 고침] → 로컬 코인·seq 반영 · 공개 방 회선 송신 0");
-  ok(T.single.SP.tut&&T.single.SP.tut.game===game&&T.single.SP.tut.seen.H1&&posts(TUT_API).length===1&&T.single.SP.uid==="neo_1","H12f 원 학습 경기·안내 기록 유지 · 자동 POST 0");
-}
-{ // H13 학습 정상 종료 결과 401 → 좌석 → 좌석 종료 → 원 결과 화면(미완료) → 사용자 [다시 시도] → 저장됨 · 회선 해제
-  let st="in";
-  const T=await tutAsk({"GET /api/auth/session":()=>st==="gone"?[401,{error:"E_NO_SESSION"}]:sess(NEO,PG(false)),
-    "POST /api/profile/tutorial":()=>{ if(st==="in"){ st="gone"; return [401,{error:"E_NO_SESSION"}]; } return [200,{progress:PG(true)}]; },"POST /api/auth/login":()=>{ st="re"; return [200,Object.assign({},NEO,{progress:PG(false)})]; }});
-  T.single.spAskGo(); T.single.spGuideClose(); const game=T.S;
-  end(T,0,"edge"); await tick();
-  T.storage.setItem("dd_seat.neo_1",JSON.stringify({u:"neo_1",epoch:"0123abcd",roomId:7,seat:0,seatToken:"A".repeat(22),tokenGen:0}));
-  T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  T.toLobby(); await tick(); for(let i=0;i<50&&T.single.SP.pending;i++) T.drain(1); await tick();
-  ok(T.S===game&&T.uiScreenName()==="result"&&/>다시 시도</.test(side(T))&&posts(TUT_API).length===1&&!T.NET.publicMode&&T.NET.ws===null,"H13 좌석 종료 뒤 원 결과 화면 · 자동 POST 0 · 회선 해제");
-  T.single.spRetry(); await tick();
-  ok(posts(TUT_API).length===2&&body(posts(TUT_API)[1]).end==="edge"&&/✓ 저장됨/.test(side(T))&&T.S===game,"H13b 사용자 재시도 → 원 결과(end=edge) 저장됨");
 }
 { // H4 POST 503 → 세션 GET 무응답 → 유한 마감 뒤 '저장 여부를 확인하지 못했어요' + 버튼 활성
   const T=await tutAsk({"POST /api/profile/tutorial":[503,{error:"E_ACCOUNTS_UNAVAILABLE"}]});
@@ -438,10 +746,10 @@ for(const [wt,winner,want] of [["king",1,"king"],["edge",0,"edge"],["wipe",1,"wi
 }
 { // H5 401 뒤 다른 계정 로그인 — 남겨 둔 옛 계정 경기를 버린다
   let gone=false;
-  const T=await tutAsk({"GET /api/auth/session":()=>gone?[401,{error:"E_NO_SESSION"}]:sess(NEO,PG(false)),"POST /api/profile/tutorial":()=>{ gone=true; return [401,{error:"E_NO_SESSION"}]; },"POST /api/auth/login":[200,Object.assign({},OLD,{progress:PG(true,2)})]});
+  const T=await tutAsk({"GET /api/auth/session":()=>gone?[401,{error:"E_NO_SESSION"}]:sess(NEO,NEW),"POST /api/profile/tutorial":()=>{ gone=true; return [401,{error:"E_NO_SESSION"}]; },"POST /api/auth/login":[200,Object.assign({},OLD,{progress:EXEMPT(2)})]});
   const game=T.S; T.single.spAskSkip(); await tick();
   T.byId("acctId").value="old_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-  ok(T.S!==game&&T.S.mode!=="pve"&&T.uiScreenName()==="lobby"&&!T.single.SP.ask&&!T.single.spHeld(),"H5 다른 계정 — 옛 계정의 남겨 둔 학습 경기·질문·정지 상태를 버리고 그 계정 로비로");
+  ok(T.S!==game&&T.S.mode!=="pve"&&T.uiScreenName()==="lobby"&&!T.single.SP.ask&&!T.single.spHeld()&&T.single.rng()===null,"H5 다른 계정 — 옛 계정의 튜토리얼 경기·질문·정지·시드를 버리고 그 계정 로비로");
 }
 { // H6 [싱글플레이] 재조회 무응답 → 유한 마감 뒤 안내
   const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,undefined)});
@@ -449,30 +757,25 @@ for(const [wt,winner,want] of [["king",1,"king"],["edge",0,"edge"],["wipe",1,"wi
   routes["GET /api/auth/session"]="hang"; T.single.spOpen(); await tick(); T.drain(50); await tick();
   ok(T.LOBBY.view==="home"&&toast(T)==="진행 정보를 불러오지 못했어요. 다시 시도해 주세요.","H6 확인 불가 재조회 무응답 → 마감 뒤 안내(무기한 대기 없음)");
 }
-
-{ // H7·H8 같은 계정 · 새 인증 세대 — 옛 '미완료' 캐시를 쓰지 않는다
-  for(const [nm,lp,want] of [["progress 누락",undefined,"lobby"],["다른 기기에서 완료",PG(true,1),"lobby"],["여전히 미완료",PG(false),"pve"]]){
-    const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,PG(false)),"POST /api/auth/logout":[200,{}],"POST /api/auth/login":[200,Object.assign({},NEO,lp===undefined?{}:{progress:lp})]});
-    ok(T.single.SP.progress&&T.single.SP.progress.tutorialDone===false,`H7 (전제) ${nm} — 첫 세대 캐시 = 미완료`);
+{ // H7·H8 같은 계정 · 새 인증 세대 — 옛 '대기' 캐시를 쓰지 않는다
+  for(const [nm,lp,want] of [["progress 누락",undefined,"lobby"],["다른 기기에서 해금",DONE(1),"lobby"],["여전히 대기",NEW,"pve"]]){
+    const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,NEW),"POST /api/auth/logout":[200,{}],"POST /api/auth/login":[200,Object.assign({},NEO,lp===undefined?{}:{progress:lp})]});
+    ok(T.single.SP.progress&&T.single.SP.progress.tutorialDone===false,`H7 (전제) ${nm} — 첫 세대 캐시 = 미해금`);
     await T.acct.acctLogout(); await tick();
     routes["GET /api/auth/session"]=lp===undefined?sess(NEO,undefined):sess(NEO,lp);
     T.byId("acctId").value="neo_1"; T.byId("acctPw").value="pw123456"; await T.acct.acctSubmit(); await tick();
-    ok(want==="lobby"?T.uiScreenName()==="lobby"&&!T.single.SP.ask:T.S.mode==="pve"&&T.single.SP.ask,`H8 같은 계정 재로그인 · ${nm} → ${want==="lobby"?"로비(옛 미완료 캐시로 학습 강제 안 함)":"학습 질문"}`);
+    ok(want==="lobby"?T.uiScreenName()==="lobby"&&!T.single.SP.ask:T.S.mode==="pve"&&T.single.SP.ask,`H8 같은 계정 재로그인 · ${nm} → ${want==="lobby"?"로비(옛 대기 캐시로 튜토리얼 강제 안 함)":"튜토리얼 질문"}`);
     if(lp===undefined) ok(T.single.SP.progress===null,"H8b 새 세대에 progress 없음 = 확인 불가(null)");
   }
 }
-
-{ // H9 로비 자산 로딩 중 재진입(재로그인·로비 복귀·다시 시도) — 끝난 요청이 지금 로비를 끝내 준다(무기한 로딩 없음)
-  const T=await boot(HTTPS,{"GET /api/auth/session":sess(OLD,PG(true,0))});
+{ // H9 로비 자산 로딩 중 재진입 — 끝난 요청이 지금 로비를 끝내 준다(무기한 로딩 없음)
+  const T=await boot(HTTPS,{"GET /api/auth/session":sess(OLD,EXEMPT(0))});
   T.uiStart(); await tick();
   const first=T.LOBBY.assets.slice();
   ok(!T.lobby.lobbyReady()&&first.every(a=>a.state==="loading"),"H9 (전제) 첫 진입 — 자산 2개 받는 중");
-  T.lobby.lobbyLoad(); await tick(); // 같은 로딩 중 재진입(gen 증가)
+  T.lobby.lobbyLoad(); await tick();
   for(const a of first) a.img.onload(); await tick();
   ok(T.lobby.lobbyReady()&&T.LOBBY.assets.every(a=>a.state==="ok")&&/id="lobbyNick"/.test(side(T)),"H9b 재진입 뒤에도 원래 요청의 완료로 로비가 열린다");
-  const U=await boot(HTTPS,{"GET /api/auth/session":sess(OLD,PG(true,0)),"GET /api/profile":()=>later().p}); // 프로필 응답은 오지 않는다
-  U.uiStart(); await tick(); const g1=U.LOBBY.gen; U.lobby.lobbyLoad(); await tick();
-  ok(U.LOBBY.gen===g1+1&&U.LOBBY.prof==="loading","H9c 프로필(신원) 응답의 gen 가드는 그대로 — 옛 진입의 응답을 새 진입에 쓰지 않는다");
 }
 
 /* ===== G. AI 티어 ===== */
@@ -488,6 +791,9 @@ for(const [wt,winner,want] of [["king",1,"king"],["edge",0,"edge"],["wipe",1,"wi
   H.freshPlay(T,"pve",["grade5","grade5"]); T.setSeed(9); for(let i=0;i<5;i++) T.rand(); const r5=T.rand(); T.setSeed(9); const pg=T.aiProf(1); const rr=T.rand();
   ok(rr===r5&&pg.eps>=0.05&&pg.eps<=0.15,"G4 티어 없는 기존 grade5 — 프로필 난수 5회 소비 그대로(rand 순서 불변)");
   H.freshPlay(T,"pve",["grade5","silver"]); ok(T.pname(1)==="AI(실버)","G5 상대 이름에 티어 이름");
+  /* 선공 — 호스트가 선공을 주지 않으면 종전 그대로 난수 1회 */
+  T.newGame("pve",{aiLevel:["grade5","bronze"]}); T.aiAutoPlace(0); T.aiAutoPlace(1); T.setSeed(5); const want=Math.floor(T.rand()*2); T.setSeed(5);
+  T.S.phase="setup"; T.beginPlay(); ok(T.S.current===want&&T.S.metrics.firstPlayer===want,"G6 튜토리얼 밖 beginPlay — 종전 무작위 선공(난수 1회 · 같은 자리)");
 }
 
 console.log(`\nsmoke_issue324: ${pass} passed, ${fail} failed`);
