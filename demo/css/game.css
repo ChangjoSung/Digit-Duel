@@ -1601,3 +1601,91 @@ body .overlay:has(.battleTop){align-items:flex-start; padding-top:var(--appTop);
 .synHelp .tagT.me{border-radius:2px; background:var(--accent);} .synHelp .tagT.op{border-radius:8px; background:var(--danger);}
 @media (max-width:360px){ #app[data-screen="board"]:has(#boardInfo .cycleCol) #screenBody{padding-left:20px;} #app[data-screen="board"]:has(#boardInfo .cycleCol) #boardInfo{margin-left:-16px;}
   #boardInfo .cycleCol{left:-2px; width:16px;} #boardInfo .cycleCol .gi{font-size:14px;} #boardInfo .cycleCol .up{width:5px; height:5px;} } /* 320: 띠를 좁혀 말판 칸 32px 하한(#286)을 지킨다 */
+/* ===== #265·#322·#324 v0.4.16 싱글플레이(single.js) — 방 목록 머리줄(.roomsScreen)·카드(.histCard)·잠금(button.locked)을 그대로 쓴다 =====
+   상태는 색만이 아니라 글자로도 말한다(도전 가능 · 클리어 · 잠김 · 추후 공개 · 저장 중 · 저장됨). 추후 공개는 잠금 아이콘 없는 흐린 칸. 움직임 없음 — 모션 감소 대상이 없다 */
+#spGuide{position:fixed; inset:0; z-index:58; display:grid; place-items:center; padding:16px; background:#020612b3; overflow-y:auto;}
+#spGuide.hidden{display:none;}
+#spGuide .histCard{width:min(420px,100%);}
+#spGuide h2{margin:0; font-size:17px; color:#fff;}
+#spGuide p{margin:0; line-height:1.55;}
+#spGuide .row{display:flex; width:100%; gap:8px; flex-wrap:nowrap; margin:4px 0 0;}
+#spGuide .row button{flex:1 1 0; min-width:0; min-height:44px; white-space:nowrap;} /* 320 에서도 [건너뛰기]가 두 줄로 깨지지 않게 */
+.spKicker{font-size:12px; color:#a9bcdc;}
+.spCards{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.spCard{position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-height:120px; padding:10px; text-align:center;}
+.spCard .gi{font-size:40px;} .spCard b{font-size:17px;} .spCard small{font-size:12px;}
+.spTiers{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); gap:6px;} /* 한 열 — PC 도 게임 패널 폭(432)이라 다열은 칸이 좁아진다(Earth 시각 REVISE) */
+.spTier{position:relative; width:100%; min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 12px; overflow-wrap:anywhere; text-align:right;}
+.spTier b{flex:0 0 auto; text-align:left;}
+.spTier small{font-size:11px; line-height:1.3;}
+.spTier.st-future{opacity:.5; border-style:dotted;}
+.spReview{list-style:none; margin:4px 0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px 10px; font-size:13px;}
+.spReview small{color:#a9bcdc;}
+.spNote{margin:0; color:#a9bcdc;}
+@media (max-width:420px){ .spCards{grid-template-columns:minmax(0,1fr);} .spCard{min-height:88px;} }
+/* L01 [싱글플레이] — 잠금이 풀려 글자만 남은 칸이 좁은 폭(390)에서 '싱글플레/이'로 깨지지 않게 아이콘·여백만 줄인다 */
+html[data-ui-skin="argon"] .l01Main > button.l01Single{padding-left:10px; padding-right:10px; gap:4px;}
+.l01Main .l01Single .gi{font-size:28px;} .l01Single>span:not(.srOnly){white-space:nowrap;}
+/* ===== #324 Rev2 튜토리얼 — 마녀 안내(#spCoach · 비모달) · 스포트라이트(#spSpot · 누름 통과) · 진행도/결과 패널(#spGuide) =====
+   ART 2026-10-30 시각 계약: PC = 마녀 전신 왼쪽(대상이 왼쪽이면 오른쪽) · 320/390 = 보드 밖 위·아래 짧은 띠. 말풍선은 기존 카드(.histCard → Argon 월넛·브라스)를 쓴다.
+   대상 고리·구역 띠·이름표는 그림이 아니라 테두리·글자 — 색만으로 전하지 않는다. 움직임 줄이기 = 전이 없음(진행도 마녀는 바로 심화 칸) */
+#spCoach{position:fixed; z-index:54; display:flex; pointer-events:none; padding:8px;}
+#spCoach.hidden{display:none;}
+#spCoach .spCoachIn{pointer-events:auto; display:flex; align-items:flex-end; gap:6px; width:100%;}
+#spCoach .spWitch{flex:0 0 auto; width:72px; height:72px; object-fit:contain; object-position:bottom; filter:drop-shadow(0 4px 8px #000c);}
+#spCoach .spBubble{flex:1 1 auto; min-width:0; width:auto; gap:6px; padding:10px 12px;}
+#spCoach .spProgTx{margin:0; font-size:12px; color:var(--dim);}
+#spCoach .spSay{margin:0; font-size:15px; line-height:1.5; color:var(--txt); word-break:keep-all; overflow-wrap:anywhere;}
+#spCoach .row{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin:0;}
+#spCoach .row button{min-height:44px; min-width:96px;}
+#spCoach .spGain{margin:0; font-weight:bold; color:var(--heal);}
+#spCoach.at-top{top:0; left:0; right:0;} #spCoach.at-bottom{bottom:0; left:0; right:0;}
+#spCoach.at-top .spCoachIn{align-items:flex-start;}
+@media (min-width:900px){
+  #spCoach{width:min(360px,30vw); top:50%; transform:translateY(-50%);}
+  #spCoach.at-left{left:8px;} #spCoach.at-right{right:8px;}
+  #spCoach .spCoachIn{flex-direction:column; align-items:stretch;}
+  #spCoach .spWitch{width:160px; height:200px; align-self:flex-start;}
+  #spCoach.at-right .spWitch{align-self:flex-end;}
+}
+#spSpot{position:fixed; inset:0; z-index:53; pointer-events:none;}
+#spSpot.hidden{display:none;}
+#spSpot i{position:fixed; display:block; font-style:normal; pointer-events:none;}
+#spSpot .spDim{position:fixed; left:0; top:0; pointer-events:none;} #spSpot .spDimR{fill:#000; fill-opacity:.6;} /* 주변 가림막 — 구멍은 single.js 가 실제 대상 사각형으로 뚫는다 */
+#spSpot .spRing{border:3px solid var(--accent); border-radius:10px; box-shadow:0 0 0 4px #000a,0 0 18px var(--accent);}
+#spSpot .spZone{border:2px dashed var(--accent); border-radius:8px; background:#eab9571f;}
+#spSpot .spZone b{position:absolute; right:4px; top:2px; padding:1px 6px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:6px;}
+#spSpot .spTag{transform:translateX(-50%); z-index:1;}
+#spSpot .spTag b{display:block; max-width:84px; padding:1px 5px; font-size:11px; word-break:keep-all; line-height:1.25; text-align:center; color:var(--goldInk); background:var(--accent); border-radius:6px; box-shadow:0 1px 3px #000c;}
+.spPics{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:0;}
+.spPic{margin:0; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; font-size:11px; line-height:1.3;}
+.spMini{display:grid; grid-template-columns:repeat(3,18px); grid-auto-rows:16px; gap:1px; padding:2px; background:var(--navyLine); border-radius:4px;}
+.spMini span{display:flex; align-items:center; justify-content:center; font-size:10px; background:var(--mid);}
+.spMini span.zA{background:var(--zoneA);} .spMini span.zB{background:var(--zoneB);}
+.spTiers2{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px;}
+.spTiers2 li{display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 2px; border:1px solid var(--line); border-radius:6px; font-size:12px; text-align:center;}
+.spTiers2 small{font-size:10px; color:var(--dim);}
+.spPanel .spProg{position:relative; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px; padding:44px 4px 6px;}
+.spCat{display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px; border:2px solid var(--line); border-radius:8px; text-align:center;}
+.spCat.st-completed,.spCat.st-skipped,.spCat.st-exempt{border-color:var(--accent);}
+.spCat small{font-size:12px; color:var(--dim);}
+.spArrow{font-style:normal; color:var(--accent);}
+.spPanel .spMk{position:absolute; top:0; left:12%; width:40px; height:44px; object-fit:contain; transition:left .9s ease-in-out;}
+.spPanel .spProg.go .spMk{left:calc(88% - 40px);}
+@media (prefers-reduced-motion: reduce){ .spPanel .spMk{transition:none;} } /* 가림막·대상 고리는 늘 정지(ART Dim 계약) */
+@media (max-width:420px){ #spCoach .spWitch{width:60px; height:60px;} #spCoach .spSay{font-size:14px;} .spPics{gap:3px;} .spMini{grid-template-columns:repeat(3,14px); grid-auto-rows:12px;} }
+#spSpot .spMark b{display:flex; align-items:center; justify-content:center; width:18px; height:18px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:50%; box-shadow:0 1px 3px #000c;}
+#spCoach .spLegend{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:2px 8px; font-size:13px;}
+#spCoach .spLegend .spMk{display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-right:4px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:50%;}
+#spCoach.inBattle .spWitch{width:44px; height:44px;} #spCoach.inBattle .spSay{font-size:13px;} #spCoach.inBattle .spBubble{padding:6px 10px; gap:2px;}
+/* ⚙ 메뉴·상세/상성/스텟 창(#synHelp — 전투 창 z50 안에 붙으면 말풍선 z54 밑)이 열려 있는 동안 안내·스포트라이트를 잠시 숨긴다 — 위에 떠 있는 말풍선이 메뉴(튜토리얼 건너뛰기)·창 제목·닫기를 가리지 않게. 닫히면 그대로 돌아온다 */
+@media (max-width:360px){ #spCoach .spWitch{width:44px; height:44px;} #spCoach .spBubble{padding:8px 10px; gap:4px;} } /* 320 — 그림·여백만 줄인다(글자 크기·범례 한 줄 그대로) */
+#spCoach.at-mid{left:0; right:0;} /* 좁은 전투 — 두 전투원 칸 사이(top 은 single.js 가 위 칸 아래 끝으로) */
+@media (max-width:360px){ #spCoach.inBattle .spBubble{padding:3px 8px; gap:0;} #spCoach.inBattle .spSay{line-height:1.35;} #spCoach.inBattle .spProgTx{line-height:1.2;} } /* 320 전투 — 여백·줄 간격만(글자 13px 그대로) */
+
+/* Current tutorial panel stays over the single backdrop; keep its reading/close instruction. */
+/* The live menu and summary apertures bypass Dim inside sticky stacking contexts without lifting the header. */
+#spCoach.withPanel .spWitch{display:none;}
+body:has(#spCoach.withPanel) #synHelp{max-height:calc(100vh - 150px);}
+
+@media (max-height:500px){ #spCoach .spLegend{max-height:32px; line-height:16px; overflow-y:auto; overscroll-behavior:contain;} #spCoach{padding:4px;} #spCoach .spWitch{display:none;} #spCoach .spBubble{padding:4px 8px; gap:2px;} #spCoach .spSay{font-size:13px; line-height:1.35;} }

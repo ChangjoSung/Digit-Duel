@@ -231,6 +231,8 @@ function load(htmlPath,opts){
   /* window.localStorage 경로(tutStore)도 자기 로드의 저장소를 보도록 얇은 프록시로 감싼다.
      읽기 중 스토리지·location·WebSocket만 가로채고 나머지(window.__act 등 제품이 붙이는 심볼)는 전역 그대로 — 격리 최소 침습. */
   const OVERRIDE={location:loc,WebSocket:WebSocketCtor,sessionStorage,indexedDB,document:doc};
+  const winEv={}; // opts.winEvents: 제품의 window 리스너(resize·scroll …)를 이 로드에 붙잡아 T.winDispatch 로 부른다 — 생략 시 종전대로 등록 없음
+  if(opts.winEvents) OVERRIDE.addEventListener=(t,fn)=>{(winEv[t]=winEv[t]||[]).push(fn);};
   /* #94: 제품이 window.xxx= 로 붙이는 진입점(startMode·autoPlaceCore·__actCore …)을 로드별로도 기록한다.
      window.xxx 읽기는 항상 자기 로드의 것을 돌려주고, 전역(bare 식별자 호출 경로)은 종전대로 "마지막 로드"가 갖되
      T.activate() 로 어느 로드든 다시 전역의 주인이 될 수 있다 — 두 온라인 클라이언트를 한 프로세스에서 번갈아 구동하는 락스텝 픽스처용.
@@ -425,6 +427,9 @@ function load(htmlPath,opts){
   /* #260 계정 로비 — 기준판 로드 호환: 부재 시 undefined */
   LOBBY:typeof LOBBY!=="undefined"?LOBBY:undefined,
   lobby:typeof lobbyHtml==="function"?{lobbyHtml,lobbyReady,lobbyLoad,lobbyLocked,lobbyRetry,lobbyRepOpen,lobbyRepPick,lobbySeatRepHtml,lobbyParseProfile,LOBBY_API,LOBBY_TIMEOUT_MS}:undefined,
+  /* #324 싱글·학습 경기(single.js) — 기준판 로드 호환: 부재 시 undefined */
+  AI_TIER:typeof AI_TIER!=="undefined"?AI_TIER:undefined, // #322 무제한 AI 티어 (기준판 로드 호환)
+  single:typeof spOnUser==="function"?{SP,SP_TIERS,SP_SAY,SP_Q,SP_SKIP,SP_TAGS,SP_SHOP_TIERS,SP_BASIC,spOnUser,spRoute,spTutEnter,spAskGo,spAskSkip,spSkipAsk,spSkipGo,spSkipNo,spNext,spTick,spSpec,spGateSet,spGateEv,spBpNext,spA11Go,spPracticeSkip,spMatchEnded,spRetry,spOpen,spView,spPlay,spTierState,spLobbyHtml,spResultHtml,spHeld,spClockHeld,spRecheck,spToTiers,spBack,spBackSpec,spAiScript,spBurnPiece,spParseProgress,spGearLeave,spFirstPlayer,spHit,spTagPieces,spT,clkHold,clkLeft,SHOPCLK,BAGCLK,AI_TIER,applyUiEvent,spCycleText,spToast,uiBack:window.uiBack,rng:()=>RNG}:undefined,
   /* #262 경기 중 이모티콘 — 기준판 로드 호환: 부재 시 undefined */
   emote:typeof emoteSync==="function"?{EMOTES,EMO,emoteSync,emoteToggle,emoteSend,emoteSetMuted,emoteClose,netEmoteCanSend}:undefined,
   /* #261 멀티 방 목록·대기 — 기준판 로드 호환: 부재 시 undefined */
@@ -454,6 +459,7 @@ function load(htmlPath,opts){
      계정 흐름 자체는 opts.fetch 를 주는 smoke_issue259.js 가 비동기 그대로 검사한다. */
   if(!opts.fetch&&T.AUTH&&T.AUTH.state==="checking") T.AUTH.state="off";
   T.drain=drain; T.TQ=TQ; T.els=els; T.document=doc;
+  T.winDispatch=(t,ev)=>{ for(const fn of winEv[t]||[]) fn(ev||{}); return (winEv[t]||[]).length; };
   T.wsLog=wsLog; T.WebSocketCtor=WebSocketCtor; T.location=loc;
   T.storage=storage; T.sessionStorage=sessionStorage; T.indexedDB=indexedDB; T.cookieWrites=cookieWrites;
   T.byId=id=>doc.getElementById(id); // 이 로드의 문서에서만 요소를 집는다 (전역 document 경유 금지)

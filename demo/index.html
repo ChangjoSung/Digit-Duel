@@ -56,6 +56,12 @@
 <div id="emoteLive" class="srOnly" aria-live="polite"></div>
 <!-- #26 상황 도움말·튜토리얼 모달 — #260(CJ 2026-09-27)으로 제품 진입점·자동 표시·경기 중 도움말은 없다. 모듈은 회귀 검사용으로만 남는다 -->
 <div id="tutHint" class="hidden" role="status" aria-live="polite"></div>
+<!-- #324 학습 경기의 건너뛰기 질문·장면 안내 — 게임 모달(z50)·연출 배너(z55) 위 · 재접속 줄(z70) 아래. 열린 동안 시계·AI 정지(single.js) -->
+<div id="spGuide" class="hidden" role="dialog" aria-modal="true" aria-labelledby="spDlgT" aria-describedby="spDlgD"></div>
+<div id="spLive" class="srOnly" aria-live="polite"></div>
+<!-- #324 Rev2 튜토리얼 마녀 안내(비모달 말풍선 · 대상과 ⚙ 는 늘 누를 수 있다)와 스포트라이트 층(누름 통과) — 게임 모달(z50) 위 · 연출 배너(z55)·질문 창(z58) 아래 -->
+<div id="spCoach" class="hidden" role="region" aria-label="튜토리얼 안내"></div>
+<div id="spSpot" class="hidden" aria-hidden="true"></div>
 <div id="tutOverlay" class="hidden" aria-hidden="true"><div id="tutBox" role="dialog" aria-modal="true" aria-labelledby="tutTitle" aria-describedby="tutBody" tabindex="-1"></div></div>
 
   <script src="js/data.js"></script>
@@ -67,6 +73,7 @@
   <script src="js/network.js"></script>
   <script src="js/account.js"></script>
   <script src="js/lobby.js"></script>
+  <script src="js/single.js"></script>
   <script src="js/bootstrap.js"></script>
 </body>
 </html>

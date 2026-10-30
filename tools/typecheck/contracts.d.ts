@@ -29,7 +29,7 @@ type CoreAction =
   | { t: "autoPlace"; player: number } // #263 배치 자동 완성 — 좌석을 실어 보내는 "auto" (정규화되면 setupAuto)
   | { t: "clear" }
   | { t: "setupAuto"; player: number; roster: string[]; positions: { id: number; r: number; c: number }[] }
-  | { t: "setupConfirm"; preparing: boolean; publicMode: boolean }
+  | { t: "setupConfirm"; preparing: boolean; publicMode: boolean; first?: 0 | 1 } // #324 튜토리얼 심화 선공
   | { t: "tele" }
   | { t: "skipMain"; origin?: string; toast?: string | false }
   /* #245 Saturn REVISE(M2): AI 가 고른 행동은 origin 표식을 달고 들어온다 — "🤖 …" 기록·안내를 Core 가 내기 위한
@@ -61,7 +61,7 @@ type CoreAction =
   | { t: "act"; k: string; frame?: any; wire?: BattleWire }
   | { t: "netSetup"; player: number; data: any }
   | { t: "hydrate"; seat: number; view: any }
-  | { t: "beginPlay" }
+  | { t: "beginPlay"; first?: 0 | 1 } // #324 호스트 선공(튜토리얼 심화만) — 없으면 무작위
   | { t: "startTurn" }
   | { t: "forcedClear" }
   | { t: "btBannerShown" }
@@ -153,7 +153,7 @@ type CoreEvent =
   | { type: "setupNetworkReady"; setup: { roster: string[]; pos: number[][] }; publicMode: boolean }
   | { type: "setupHandoff"; player: number }
   | { type: "setupBegin" }
-  | { type: "setupAiBegin" }
+  | { type: "setupAiBegin"; first?: 0 | 1 }
   | { type: "teleTrapped"; player: number; message: string }
   | { type: "teleRefused"; player: number; message: string }
   | { type: "teleSwapped"; player: number; pieces: BoardPiece[]; healBroken: boolean[]; traces: number; forced: { id: number; list: number[] } | null; kingReach?: boolean } // kingReach 갈래만 — 화면 갱신을 matchEnded·kingReached 에 넘긴다
@@ -171,7 +171,7 @@ type CoreEvent =
   | { type: "recruitClosed" }
   | { type: "kingReached"; owner: number }
   | { type: "netSetupCorrupt"; player: number }
-  | { type: "playBegan"; player: number; bt: boolean }
+  | { type: "playBegan"; player: number; bt: boolean; fixed?: boolean }
   | { type: "turnStarted"; bt: boolean }
   | { type: "turnEnded"; player: number; healed: any[]; simDraw?: boolean; bt?: boolean; shop?: boolean } // #236 shop: 정기 상점이 열려 다음 턴을 미뤘다 // sim 무승부 갈래만 simDraw, 정상 교대 갈래만 bt (실측: emit 지점 2곳)
   | { type: "matchEnded"; winner: number | null; winType: string | null; interrupted: boolean; banner: boolean; resignLoser?: number } // resignLoser 는 resign 갈래만 덧붙인다
