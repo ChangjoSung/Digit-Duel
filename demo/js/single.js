@@ -260,9 +260,9 @@ function spSpec(T){
   const s=T.step, sp=/** @type {any} */({prog,say:SP_SAY[s]||"",next:null,tg:null});
   if(T.cat==="basic"){
     const K=spPc(I.K), M=spPc(I.M), Tp=spPc(I.T), sel=spSelId(), my=S.current===0&&S.phase==="play"&&!S.battle;
-    if(s==="B1"){ sp.next="다음"; sp.zone=[[11,13,""]]; }
+    if(s==="B1"){ sp.next="다음"; sp.zone=[[11,13,""]]; sp.board=true; } // 보드 전체를 밝게 두고 내 진영을 표시
     else if(s==="B2"){ sp.tags=true; if(T.f.info) sp.next="다음"; else sp.tg=sel===I.K?spTg.sel(".infoBtn"):spTg.cell(K,"내 왕"); }
-    else if(s==="B3"){ sp.next="다음"; sp.ring=spTg.cell(spPc(I.F)); }
+    else if(s==="B3"){ const F=spPc(I.F); sp.next="다음"; sp.ring=spTg.cell(F); sp.near=F?alivePieces().filter(p=>p.owner===0&&Math.abs(p.r-F.r)+Math.abs(p.c-F.c)===1):[]; } // 보이는 ? 와 그 옆의 내 말(보이는 까닭)만 — 숨은 말은 가리키지 않는다
     else if(s==="B4"){ sp.next="다음"; sp.pics="win"; }
     else if(s==="B5"){ if(!T.f.done&&my) sp.tg=sel===I.M?spTg.btn("탐색"):spTg.cell(M,"흔적 위의 내 말"); }
     else if(s==="B6"){ if(my) sp.tg=sel===I.M?spTg.cell({r:T.ids.dest[0],c:T.ids.dest[1]},"표시된 칸"):spTg.cell(M,"싸울 내 말"); }
@@ -321,7 +321,7 @@ function spGateEv(e){
   const g=spGateSet(); if(!g) return;
   const t=/** @type {any} */(e.target); if(!t||!t.closest) return;
   if(e.type==="keydown"&&!(e.key==="Enter"||e.key===" ")) return;
-  if(t.closest(SP_FREE)) return;
+  if(t.closest(SP_FREE)){ spLate(g.T); return; } // 시너지 띠 펼치기처럼 자리가 바뀌는 설명 — 가림막 구멍을 다시 맞춘다
   if(g.out.some(x=>x&&x.contains(t))){ spHit(g.T); return; }
   e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
 }
@@ -329,7 +329,8 @@ function spGateEv(e){
 function spHit(T){ const s=T.step;
   if(s==="B2"&&spSelId()===T.ids.K) T.f.info=true; // 왕을 고른 뒤의 대상 = [말 정보] — 설명 창 열기·닫기는 다시 그리지 않으므로 누른 순간 표시한다
   else if(s==="A1"&&!T.f.a1info) T.f.a1info=true; else if(s==="A4") T.f.item=true; else if(s==="A10s") T.f.card=true;
-  const tok=spCtx(); setTimeout(()=>{ if(spCtxOk(T,tok)&&T.step&&!SP.ask&&!SP.dlg) spDraw(T); },0); } // 늦은 그리기 — 같은 문맥·같은 로그인일 때만(경기 종료·진행도·401·계정 전환 뒤에는 아무것도 하지 않는다)
+  spLate(T); }
+function spLate(T){ const tok=spCtx(); setTimeout(()=>{ if(spCtxOk(T,tok)&&T.step&&!SP.ask&&!SP.dlg) spDraw(T); },0); } // 늦은 그리기 — 같은 문맥·같은 로그인일 때만(경기 종료·진행도·401·계정 전환 뒤에는 아무것도 하지 않는다)
 if(typeof document!=="undefined"&&document.addEventListener){ document.addEventListener("click",spGateEv,true); document.addEventListener("keydown",spGateEv,true); }
 /* 상태로 끝나는 단계 — render 마다(spTick) 본다 */
 function spWatch(T){
@@ -439,8 +440,24 @@ function spRect(el){ try{ const r=el&&el.getBoundingClientRect?el.getBoundingCli
 function spBox(r,cls,txt,pad){ pad=pad||0; return `<i class="${cls}" style="left:${Math.round(r.left-pad)}px;top:${Math.round(r.top-pad)}px;width:${Math.round(r.width+pad*2)}px;height:${Math.round(r.height+pad*2)}px">${txt?`<b>${txt}</b>`:""}</i>`; }
 function spRows(a,b){ const r1=spRect(spCell(a,1)), r2=spRect(spCell(b,COLS)); return r1&&r2?{left:r1.left,top:r1.top,width:r2.right-r1.left,height:r2.bottom-r1.top}:null; }
 /* 스포트라이트 층 — 대상 고리 · 강조 영역(구역 띠) · B2 이름표. 모두 pointer-events:none, 규칙상 안 보이는 말은 가리키지 않는다(대상은 늘 보이는 칸·버튼) */
+/* 주변 가림막(Dim) — 입력 문(spGateSet)이 지금 받는 묶음 + 배울 자리(구역·고리·이름표 말·전투원 칸) + 늘 열린 ⚙·설명 버튼만 뚫고 나머지를 어둡게.
+   실제 DOM 사각형으로만 그린다(버튼을 옮기거나 복제하지 않는다). 누를 대상이 있어야 하는데 화면에 없으면(없음·0크기·화면 밖) 가림막 없이 — 검은 벽을 남기지 않는다.
+   자유 단계(A5·확인 뒤 자유 경기)·상대 차례 기다림은 끈다. 말풍선 버튼([다음]·[확인]·[남은 연습 건너뛰기])이 입력을 붙잡는 안내 단계는 뚫을 곳이 없어도 배경을 어둡게(CJ) */
+const SP_OPEN=".flowGear,#btnBack,#overlay .cycBtn,#overlay .bsynTog,#overlay .bsynStrip"; // SP_FREE 중 가림막 밑에 놓이는 것
+function spDimHtml(T,sp){
+  const W=window.innerWidth||0, H=window.innerHeight||0, on=r=>!!r&&[r.left,r.top,r.width,r.height].every(Number.isFinite)&&r.width>0&&r.height>0&&r.left+r.width>0&&r.top+r.height>0&&r.left<W&&r.top<H;
+  if(sp.free||!(Number.isFinite(W)&&Number.isFinite(H)&&W>0&&H>0)) return ""; // 창 크기가 유한 양수일 때만
+  const all=sel=>{ try{ return [...document.querySelectorAll(sel)].map(spRect); }catch(e){ return []; } };
+  const g=spGateSet(), tg=(g?g.out:[]).map(spRect).filter(on), p=sp.tg&&!sp.tg.zone?sp.tg.el():null;
+  if(sp.tg&&(sp.tg.zone?!tg.length:!p||p.disabled||!on(spRect(p)))) return ""; // 누를 대상 그 자체(A6 고른 뒤 = 놓을 빈칸 하나라도)가 없음·비활성·화면 밖이면 가림막 0 — 함께 연 묶음·배울 자리로 대신 켜지 않는다
+  const ctx=(sp.zone||[]).map(z=>spRows(z[0],z[1])).concat(sp.board?[spRect($("board"))]:[], sp.ring&&sp.ring.el?[spRect(sp.ring.el())]:[],
+    (sp.tags?spTagPieces(T):sp.near||[]).map(p=>spRect(spCell(p.r,p.c))), sp.info?all("#overlay .bslot"):[]).filter(on);
+  const holes=tg.concat(ctx); if(!holes.length&&!sp.next&&!sp.leave) return ""; // 안내 버튼만 있는 단계(B4·A4·A7·A8·A10)는 배경만 어둡게 — 도해·버튼은 말풍선(z54)
+  const box=r=>{ const x=Math.floor(r.left-8), y=Math.floor(r.top-8); return `<rect x="${x}" y="${y}" width="${Math.ceil(r.left+r.width+8)-x}" height="${Math.ceil(r.top+r.height+8)-y}" rx="10"/>`; }; // ART: 실제 경계에서 8 CSS px 바깥까지 원래 밝기(소수 좌표는 바깥으로 올림)
+  return `<svg class="spDim" width="${W}" height="${H}"><mask id="spDimM"><rect width="${W}" height="${H}" fill="#fff"/><g fill="#000">${holes.concat(all(SP_OPEN).filter(on)).map(box).join("")}</g></mask><rect class="spDimR" width="${W}" height="${H}" mask="url(#spDimM)"/></svg>`;
+}
 function spSpot(T,sp,el){
-  const s=$("spSpot"); let h="";
+  const s=$("spSpot"); let h=spDimHtml(T,sp); // 가림막이 먼저 — 고리·구역 띠·이름표는 그 위에
   for(const z of sp.zone||[]){ const r=spRows(z[0],z[1]); if(r) h+=spBox(r,"spZone",z[2],2); }
   const ring=el||(sp.ring&&sp.ring.el?sp.ring.el():null), rr=spRect(ring); if(rr) h+=spBox(rr,el?"spRing tg":"spRing",el&&sp.tg.lb?"":"",4);
   if(sp.tags) spTagPieces(T).forEach((p,i)=>{ const r=spRect(spCell(p.r,p.c)); if(!r) return;
@@ -449,7 +466,8 @@ function spSpot(T,sp,el){
   if(SP_DRAWN.spot!==h){ SP_DRAWN.spot=h; s.innerHTML=h;
     if(sp.tags&&!T.f.legend&&!spTagFit(s,rr)){ T.f.legend=true; SP_DRAWN.coach=SP_DRAWN.spot=""; spDraw(T); return; } } // 떠 있는 이름표가 겹침 없이 다 들어가지 못하면 번호 + 말풍선 범례(같은 문구)
   if(h) s.classList.remove("hidden"); else s.classList.add("hidden");
-  spPlace(rr);
+  const z=!rr&&sp.tg&&sp.tg.zone&&sp.zone?spRows(sp.zone[0][0],sp.zone[0][1]):null; // A6 말을 고른 뒤 — 대상 = 내 진영 빈칸 전부: 말풍선이 그 줄들을 덮지 않게
+  spPlace(rr||(z&&{left:z.left,top:z.top,width:z.width,height:z.height,right:z.left+z.width,bottom:z.top+z.height}));
 }
 /* B2 이름표 5개(하수인 · 왕 · 동료 · 폭탄 · 함정 순서 = SP_TAGS) — 모두 내 진영(11~13행)의 실제 내 말. 왕은 대상 그 말 · 하수인은 진영 안의 하수인(같은 역할 문구) — 좁은 화면 위 말풍선 아래로 다 보이게 */
 function spTagPieces(T){ const mine=alivePieces().filter(p=>p.owner===0&&zoneOf(0).includes(p.r));

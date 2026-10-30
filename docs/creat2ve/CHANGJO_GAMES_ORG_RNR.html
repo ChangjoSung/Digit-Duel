@@ -45,8 +45,8 @@
 <div class="next-actions" id="next-actions">
 <h3>다음 행동</h3>
 <ul>
-<li><b>Mercury · Jupiter</b><span>커밋·CI · 별도 QA 반영 준비</span></li>
-<li><b>CJ</b><span>배포 확인 뒤 튜토리얼·화면 재검수</span></li>
+<li><b>Mercury · Jupiter</b><span>정확 커밋 CI → 기존 DB QA 반영</span></li>
+<li><b>Venus · Mars</b><span>AI 품질 미달 · Gold 진단 후속</span></li>
 <li><b>Jupiter · CJ</b><span>#282 공개키 인수 · 독립 복구 검증 준비</span></li>
 </ul>
 </div>
@@ -55,9 +55,9 @@
 <p class="note info">이 문서는 Digit Duel의 현행 운영 적용본이다. 회사 공통 역할 체계와 신규 도입 제안은 현재 실행 계약과 구분한다. 다른 프로젝트에는 별도 검증·승인 없이 적용하지 않는다.</p>
 <table class="meta"><tbody>
 <tr><th scope="row">관리 책임</th><td>Mercury <b>PM</b> · CJ 2026-10-28 직책 전환 결정</td></tr>
-<tr><th scope="row">문서 개정</th><td>2.19 · 2026-10-30 KST · 튜토리얼 개편 · 소스 검수 완료</td></tr>
+<tr><th scope="row">문서 개정</th><td>2.23 · 2026-10-30 KST · Dim 소스 검수 · CI/DB QA 대기</td></tr>
 <tr><th scope="row">열람 경로</th><td class="path">C:/Users/pc_77/orca/Digit-Duel/docs/creat2ve/CHANGJO_GAMES_ORG_RNR.html</td></tr>
-<tr><th scope="row">Git 보관</th><td><a href="https://github.com/ChangjoSung/Digit-Duel/pull/397">초안 PR397</a> 재사용. child <code>02c8312</code> 위 수정14파일을 동결·독립 소스 검수했다. 이 v2.19는 커밋 전 원장 출력이며 새 Git SHA·CI·QA 배포는 아직 없다. 기존 CI02c·원격 QA586은 개편 전 근거. root HEAD/index/stash·모델·권한·Production을 보존한다.</td></tr>
+<tr><th scope="row">Git 보관</th><td><a href="https://github.com/ChangjoSung/Digit-Duel/pull/397">초안 PR397</a>. 기준2923dfc에서 소유자3파일 Dim 변경을 검수했다. 새 커밋·정확HEAD CI는 대기다. 현재 공유 QA는2923dfc이며 아직 Dim 미적용. 이 v2.23은 커밋 전 시점 출력이고 이후 실제 검사는 최신 Obsidian/GitHub/CI/배포 원본을 확인한다. root main9b/index/stash/기존 변경 보존, draft·미병합·AI 출시 보류.</td></tr>
 <tr><th scope="row">이번 자료 기준</th><td>제품 상태는 아래 개별 관측 시각 기준. 이전 문서 Git 보관은 2026-10-29 PR393, 이번 PM 진입·Issue 점검은 2026-10-30 실행 근거 기준. root main / 9b306bb는 의도적 과거 HEAD다.</td></tr>
 <tr><th scope="row">문서 정본</th><td><a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Org%20Chart%20and%20R%26R.md">회사 정본·소유자 목록</a> · <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel.md">Digit Duel 운영 원본</a> · 부서별 문서. 모델·Issue·코드/검사/배포는 각각의 기존 원본을 유지한다. HTML 본문은 이 원본에서 생성하며 직접 편집하지 않는다.</td></tr></tbody></table>
 </div></details>
@@ -94,12 +94,12 @@
 </tr>
 <tr>
 <td>공유 QA · 별도 DB</td>
-<td><a href="https://digit-duel-mipa-qa.onrender.com">digit-duel-mipa-qa.onrender.com</a> · 실제 배포 <code>58610bbbe2caaa895dd460bbb515f047c8525a14</code> · Live</td>
-<td>2026-10-30 09:43~09:49 KST. 별도 PG18/SG/Free 월0원·11월29일 만료, migration001~006. HTTPS 인증·진행 저장·WSS 및 브라우저 스킵 흐름 확인. AutoDeploy/PR Preview Off, Production 무변경. <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel%2FSERVER%2FServer%20Operations.md">SERVER 소유 원본</a></td>
+<td><a href="https://digit-duel-mipa-qa.onrender.com">digit-duel-mipa-qa.onrender.com</a> · 실제 배포 <code>2923dfc87c794d8db0fdf654b156fdb9962a25e0</code> · Live<br/><code>dep-dbi2gi49v7es73a6vqq0</code></td>
+<td>2026-10-30T05:25:57.345Z 확인. 기존 Free PG18/SG·11월29일 만료, migration001~007. 원격 API67/0·서빙17파일·실제 전체스킵/재로그인 DOM8/0. AutoDeploy/PR Preview Off·설정/Production 무변경. <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel%2FSERVER%2FServer%20Operations.md">SERVER 원본</a></td>
 </tr>
 </tbody>
 </table>
-</div><div class="note warn"><b class="tag">QA 한계</b>공유 QA는 별도 합성 DB의 튜토리얼·싱글 검수용이다. 현재 QA배포58610bb는 기존 설명 구조이며 튜토리얼 CJ 제품 QA는 REVISE다. 새 설계 배포·실제 경기 완주·AI 실력 순서·실기 모바일·스크린리더는 미검증이다. 클라이언트 자기신고 진행이며 전적·재화 보장은 아니다. HTTPS/WSS와 내부 DB 구간의 기존 TLS off 정책을 구분한다.</div>
+</div><div class="note warn"><b class="tag">QA 범위</b>Dim 소스의 기술 검수는 기능 한정 PASS·화면 표본 한정이며 CJ 제품 QA는 REVISE다. 새 커밋 CI·DB QA 반영은 대기, 기존2923dfc CI/API 근거를 새 Dim PASS로 확대하지 않는다. 실기·청취·수치 대비·사람 자유전·온라인 실제 복원은 미검증. AI #322 품질·출시 보류 유지.</div>
 <p class="small">이슈 6건은 2026-10-29 12:19 KST GitHub API에서 #335/#386 CLOSED, #265/#322/#323/#324 OPEN을 재확인했다. 당시 착수 대기는 이번 CJ 미결 승인으로 갱신했다. 현재 Issue 상태·AC의 정본은 GitHub다. #282의 10월 29일 09:00~09:03 실행은 readyz 확인만 수행했으며 신규 백업·월간 복원 PASS가 아니다. <a href="https://github.com/ChangjoSung/Digit-Duel/issues/282">해당 Issue의 시점별 근거</a>를 따른다. 최신 Release·Dependabot 0건은 위에 적힌 기존 관측을 현재 신규 검사로 확대하지 않는다.</p>
 </div></details></section><section class="paper" id="ai-organization">
 <h2>전체 AI 조직도와 확장 배치</h2>
@@ -837,8 +837,8 @@
 </div></details>
 </div></details></section><section class="paper" id="work">
 <h2>업무·미결 사항</h2>
-<h3>튜토리얼 개편 · 독립 소스 검수 완료</h3>
-<p><b>기본9·심화11 및 카테고리 저장을 구현했다.</b> CJ가 승인한 방향과 5항목 보고 형식을 유지한다. 새 제품 QA·출시는 별도이며 #322 AI 품질 보류를 해소하지 않는다.</p>
+<h3>Dim 보완 · 소스 검수 완료 / CI·DB QA 대기</h3>
+<p><b>CJ 승인 Dim 구현과 소스 검수를 마쳤다.</b> 새 코드의 정확 커밋·필수 CI와 기존 DB QA 반영은 다음 게이트다. CJ 제품 QA는 REVISE 유지, #322 AI 품질·출시 보류도 유지한다.</p>
 <div class="tbl-wrap"><table class="t">
 <thead>
 <tr>
@@ -849,28 +849,63 @@
 <tbody>
 <tr>
 <td>이번 수행 Work</td>
-<td>Venus PLAN3R·Earth 시각 계약에 따라 마녀·핵심 문구·실제 행동·진행도를 구현. Jupiter 추가007/범주 API와 Mars 클라이언트14파일 동결. 기존10노트 안에서 소유 부서가 기록했다.</td>
+<td>기존 강조 계층에 검정60% Dim, 대상/다중 선택·설명 맥락 창(8px 이상 바깥 픽셀 정렬), 안내·설정 접근을 구현. 가이드 다음/확인도 적용하고 자유 단계는 해제. 사용불가/잘못된 좌표는 Dim 해제, 상세 도움말 중 안내·강조를 숨겨 닫기 접근을 보완. 제품3파일, 기존 부서 정본만 갱신했다.</td>
 </tr>
 <tr>
 <td>검증 결과</td>
-<td>실제 기본 DOM 완주·edge·HTTP/SQL 기본 저장/해금0, 심화 키보드·중도재진입·스킵/401/재로그인·저장 분기 확인. 자연 Core king57은 별도 프로그램 실행이며 브라우저 심화 종료는 controlled 주입으로 구분. 화면 표본12/12·메뉴9/9·B7 3폭8/8, 관련 회귀/타입·Saturn 독립 소스 한정 PASS. 현재 제품 P1/P2 0, CI·원격 수정본 검사는 아직 미수행.</td>
+<td>최종 smoke324 301/0·typecheck 성공·self73/0, 원본0a0997 음성298/3. 실제 브라우저 정상147/0·다음50/0는 이전 소스의 영향 없는 분기 재사용으로 구분, 새 사용불가13/0·도움말22/0·실제 전투 도입 관측7/0. Saturn 원반례18/0·정상 SVG360 동일·소스25해시 및 이미지/조작 근거를 독립 대조, 기능 한정 PASS·화면 표본 한정·P1/P2 0. 배포 검사 helper의 P2도 독립20+10/0으로 해소했다.</td>
 </tr>
 <tr>
 <td>남은 Work</td>
-<td>child 커밋/정확 HEAD CI6 → 기존 별도 DB QA 반영·HTTPS/진행/WSS/전체스킵 DOM → CJ 수정본 학습·화면 QA. #322·#282·후속 포팅은 아래 별도 목록.</td>
+<td>PM 검토용 Git·PR397 → 정확 새 HEAD 필수CI6 → Jupiter 기존 별도 DB QA 반영/파일·대표 입력 검증 → Saturn 최종 근거 대조 → CJ Dim 제품 재검수. 이후 #322 진단, #282 복구와 기존 후속을 분리한다.</td>
 </tr>
 <tr>
 <td>CJ 판단·입력</td>
-<td>이번 구현 방향 추가 승인 없음. QA 주소·계정·버전 준비 후 제품 확인. #282 공개키/전체 지문은 여전히 미제공.</td>
+<td>방향 재승인 없음. 새 QA 버전/계정/체크리스트 준비 후 화면 재검수를 요청한다. 현재 QA2923dfc에는 Dim이 없다. 정식 출시 승인 단계가 아니다.</td>
 </tr>
 <tr>
 <td>다음 행동</td>
-<td>Mercury Git/정본·Jupiter QA 배포를 조정한다. 개편 전 QA586을 새 튜토리얼로 오인하지 않는다. 공유 검수 준비 전 CJ 테스트를 요청하지 않는다.</td>
+<td>소스 판정과 helper0P2를 근거로 기존 feature에 검토용 커밋·push. root main9b/index/stash/기존 변경 보존, 새 자원·요금·Production·AI/API/스키마 변경 없음.</td>
 </tr>
 </tbody>
 </table>
-</div><p><b>승인 흐름:</b> 기본 고정 실습9 → 기본 ACK·진행도 → 심화 상점/배치·정상 자유전 → 실제로 못 본 후반 체험만 → 심화 ACK·로비. 기본만 처리하면 미해금, 심화 처리 뒤 해금한다. 카테고리 완료/스킵/면제와 미처리를 구분하고 기존 계정 해금을 유지한다. 자유전 완료 시간은 보장하지 않는다.</p>
-<p>상세 문구·조건은 <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel%2FPLAN%2FSingleplayer%20Draft.md">PLAN3R.3 단일 원본</a>, 구현·검사·한계는 소유 부서와 <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel%2FQA%2FQA.md">QA 원본</a>을 따른다. [최종 소스 영수증](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-revise-implementation-20261030/reviewed-revision.json). 실기 모바일·스크린리더 청취·사람의 심화 자유전 완주와 온라인 IN_PROGRESS/⑦ 실회선은 미검증이다.</p>
+</div><p><b>근거·한계:</b> [소스 판정](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-dim-implementation-20261030/reviewed-revision.json) · [동결3+연결22](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-dim-implementation-20261030/source-freeze-v2.json) · [CLIENT](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-dim-implementation-20261030/client-final-v2-cli.md). 순수 CSS 문자열 검사는 최종 제외했고 실제 도움말 동작22건을 근거로 쓴다. 원실패·검사기 오류·수정 전/후·통제 fixture와 재사용 범위를 보존했다. 실기·스크린리더 청취·수치 WCAG 대비·사람 자유전 완주·온라인 실제 복원은 이 판정 밖이다.</p>
+<details class="fold"><summary>직전 개편·DB QA 배포 근거 · 2923dfc 당시 기록</summary><div class="fold-body">
+<h3>튜토리얼 수정본 · CJ QA 준비 완료</h3>
+<p><b>기본9·심화11 개편과 별도 DB QA 배포를 완료했다.</b> 기술 검수는 기능 한정 PASS. CJ 제품 QA와 #322 AI 품질·출시 판단을 대신하지 않는다.</p>
+<div class="tbl-wrap"><table class="t">
+<thead>
+<tr>
+<th>필수 브리핑</th>
+<th>현재 상태·다음 행동</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>이번 수행 Work</td>
+<td>마녀·핵심 설명·실제 실습·진행도, 카테고리 완료/스킵·면제 저장을 구현. 수정14파일+원장 출력을 기존 PR397에 보관하고 같은 SHA를 기존 별도 QA에 반영했다. 보고 형식을 상시 기록했다.</td>
+</tr>
+<tr>
+<td>검증 결과</td>
+<td>실제 기본 완주/HTTP·SQL ACK, 심화 UI/키보드·저장 예외·실제 Core 왕 포획57턴, 화면 표본12/12·메뉴9/9·B7 3폭8/8. 최신 관련회귀275/0, 독립 소스/기능 한정 PASS(P1/P2 0), 정확 HEAD CI6/6, 원격 API67/0·서빙17파일·실제 전체스킵/재로그인8/0 근거 대조.</td>
+</tr>
+<tr>
+<td>남은 Work</td>
+<td>CJ 학습·가독성·길이 QA → 기술 미검증/피드백 보완 → #322 AI 품질 진단·재검증. #282 입력·독립 복구, v0.4.17/포팅은 별도 목록.</td>
+</tr>
+<tr>
+<td>CJ 판단·입력</td>
+<td>새 검수 계정으로 수정본 QA 후 PASS/REVISE. 구현 방향 재승인 불필요. #282 공개키/전체 지문은 아직 인수 필요. 정식 출시 승인을 요청할 단계는 아니다.</td>
+</tr>
+<tr>
+<td>다음 행동</td>
+<td><a href="https://digit-duel-mipa-qa.onrender.com">digit-duel-mipa-qa.onrender.com</a>에서 [QA 계정 파일](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-revise-implementation-20261030/Jupiter-remote/private/cj2-accounts.json)를 사용한다. learn은 기본부터, adv는 기본을 API로 처리한 심화 진입용 상태 표본, skip은 전체스킵용 미완료 계정이다. 비밀 값은 문서/채팅에 복사하지 않는다.</td>
+</tr>
+</tbody>
+</table>
+</div><p><b>CJ 확인 순서:</b> 기본 설명·실제 행동·저장 후 진행도 → 심화 상점/배치·경기 길이·미확인 후반 체험 → 스킵·재로그인·로비/브론즈 해금. 자유전 시간 상한은 없으며 실제 사람의 심화 완주는 아직 미검증이다.</p>
+<p><b>검증 구분:</b> 브라우저 기본은 실제 Core 완주다. 심화 브라우저 종료는 controlled 분기 검사이며 자연 Core king57은 별도 프로그램 실행이다. 원격 DOM8/0은 생산자 실제 조작·Saturn 근거 대조로, 독립 원격 재실행이나 실기/청취 PASS가 아니다. 원시 실패·수정·검사기 오류를 보존했다. [최종 판정](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-revise-implementation-20261030/final-validation.json) · <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel%2FPLAN%2FSingleplayer%20Draft.md">PLAN3R.3</a> · <a href="obsidian://open?vault=613e72a275ee9be3&amp;file=Projects%2FDigit%20Duel%2FQA%2FQA.md">QA 원본</a>.</p>
+</div></details>
 <details class="fold"><summary>이번 승인·진행 기록 · 과정별 관측(현행 상태는 위 표)</summary><div class="fold-body">
 <h3>현재 순차 실행 · 2026-10-30</h3>
 <p>CJ가 직전 Work List의 순차 진행과 구현 후 필수 브리핑을 지시했다. 첫 단계는 DB 연동 검수 환경 준비다. 새 유료 자원/Production 변경 대신 기설치 PG18의 새 합성 DB·시험 계정과 격리 작업 공간의 검수 서버를 우선 준비한다. 다음 AI 보완은 권장안인 기존 합격 기준 유지·티어별 엔진 정책 재설계 범위이며 수치는 담당 부서의 검증 전 확정하지 않는다. 최신 코드 기술 검증 → CJ 제품 QA → 통합/출시 조건 순서를 유지한다. 로컬 검수 환경의 준비·생산자 DB 검증은 완료했고 현재 정지 상태다. 다음 AI 재검증은 아래 기준으로 진행하며 아직 품질 통과로 표시하지 않는다.</p>
@@ -948,28 +983,22 @@
 </thead>
 <tbody>
 <tr>
-<td>1 · 소스 검수 완료</td>
-<td>수정본 Git 보관·필수 CI</td>
-<td>Mercury · Saturn</td>
-<td>승인 코드14파일 및 원장 출력만 기존 PR397에 반영. 정확 새 HEAD CI6, draft·미병합 유지.</td>
-</tr>
-<tr>
-<td>2 · 검수 환경</td>
-<td>기존 별도 QA에 같은 SHA 반영</td>
-<td>Jupiter · Mercury</td>
-<td>Free PG18/SG·11월29일 만료. 007·HTTPS 인증/저장/WSS·실제 전체스킵 확인, Production 무변경.</td>
-</tr>
-<tr>
-<td>3 · 제품 확인</td>
-<td>튜토리얼·싱글 화면 QA · #324/#265</td>
+<td>1 · 검수 준비</td>
+<td>튜토리얼·싱글 화면 · #324/#265</td>
 <td>CJ · Mercury 취합</td>
-<td>주소·시험 계정·버전 준비 뒤 기본/심화 학습·길이·스킵/재로그인·모바일 가독성 재검수. 현재 CJ REVISE 유지.</td>
+<td>별도 DB QA에서 기본/심화 학습·길이·시각·스킵/복귀를 재검수. 코드2923dfc·CI6/6·QA 배포 완료, CJ REVISE는 새 판정까지 유지.</td>
 </tr>
 <tr>
-<td>4 · AI 보류</td>
+<td>2 · 기술 미검증</td>
+<td>실제 온라인 복원·실기·청취</td>
+<td>Mars · Saturn / CJ 실기</td>
+<td>IN_PROGRESS/⑦ 실회선·물리 모바일·스크린리더·사람 자유전 완주. 기존 메모리/에뮬레이션/controlled 근거와 구분.</td>
+</tr>
+<tr>
+<td>3 · AI 보류</td>
 <td>실력 순서·Gold 진단 · #322</td>
 <td>Venus · Mars</td>
-<td>기존 기준 유지. S1/S2 미달·실험 원복·확인 시드 미실행. 이번 개편으로 AI 품질 PASS/출시를 주장하지 않음.</td>
+<td>기존 기준 유지·S1/S2 미달·실험 원복·확인 시드 미실행. 이번 코드 기술 PASS로 난이도 품질/출시를 통과시키지 않음.</td>
 </tr>
 <tr>
 <td>병행</td>
@@ -981,24 +1010,24 @@
 <td>v0.4.17</td>
 <td><a href="https://github.com/ChangjoSung/Digit-Duel/issues/323">#323 왕국</a> · <a href="https://github.com/ChangjoSung/Digit-Duel/issues/396">#396 보상</a></td>
 <td>소관 부서</td>
-<td>왕국/재화/서버 승패 검증. 이번 무보상 자기신고를 소급 보상 증거로 쓰지 않음.</td>
+<td>왕국·재화·서버 승패 검증. 현재 자기신고만으로 소급 보상하지 않음.</td>
 </tr>
 <tr>
 <td>후속 포팅</td>
 <td>Unity #184~187 · Roblox #118</td>
 <td>별도 트랙</td>
-<td>현행 Web 규칙과 최신 차이를 확인한 뒤 각 승인 범위에서 재개. 이번에 이동·구현하지 않음.</td>
+<td>각 버전/승인 범위로 보존. 이번에 이동·구현하지 않음.</td>
 </tr>
 <tr>
 <td>운영 유지</td>
 <td>정본·PM 진입·5항목 보고</td>
 <td>Mercury 조정 · 각 부서 소유</td>
-<td>기존10노트·전용 명령·root 보존 유지. 역할/Agent/문서 수를 성과로 늘리지 않음.</td>
+<td>기존10노트·전용 명령·root 보존, 무료 QA 만료11월29일 관리. 신규 역할별 현황 사본·상시 Agent 증식 없음.</td>
 </tr>
 </tbody>
 </table>
 </div><details class="fold"><summary>2026-10-30 GitHub 확인 · 남은 Issue 11건</summary><div class="fold-body">
-<p>GitHub 재조회 시점 <code>2026-10-29T17:56:53.067Z</code>. 상태·AC·공식 종결은 링크에서 확인한다. 이 문서는 부서 관점의 의존·판단 맥락만 남긴다.</p>
+<p>GitHub 재조회 시점 <code>2026-10-30T05:32:59.291Z</code>. 상태·AC·공식 종결은 링크에서 확인한다. 이 문서는 부서 관점의 의존·판단 맥락만 남긴다.</p>
 <div class="tbl-wrap"><table class="t">
 <thead>
 <tr>
@@ -1297,13 +1326,20 @@
 </tr>
 </tbody>
 </table>
-</div><h3>이번 실행 인계 · 2026-10-30</h3>
-<p><b>v2.19 · 소스 검수 완료, Git/CI·QA 배포 전.</b> PLAN3R/ART 계약·서버007/카테고리 API·마녀 단계형 튜토리얼을 구현했다. 코드14파일의 최종 동결·소유자 기록과 Saturn 소스 한정 PASS는 [영수증](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-revise-implementation-20261030/reviewed-revision.json)을 따른다. 기본 실제 DOM 완주/DB ACK와 자연 Core king57, 브라우저 controlled 심화 종료를 구분한다. 기존 raw 실패·수정·검사기 오류는 QA에 보존한다.</p>
+</div><h3>최신 구현 인계 · Dim 소스 검수</h3>
+<p>v2.23. 소스 source-freeze-v2.json의3변경+22연결 해시를 Saturn이 기능 한정 PASS/P1P2 0으로 대조했다. 최종301/0·원본음성298/3·재사용147/50과 새13/22/7 렌더 근거를 구분한다. 기존부서/QA 정본 기록과 검토용 Git·정확HEAD CI6·기존 DB QA 반영·최종 증거 대조가 다음이다. CJ REVISE와 AI 출시 HOLD 유지, 새 버전 QA 전 계정 안내·수행/잔여5항목 보고를 제공한다. root·설정·사용자데이터·Production 보존.</p>
+<h3>착수 인계 · 당시 기록</h3>
+<p>CJ가 분석 보고 뒤 Work Start를 명시 승인했다. Mercury는 run_c9d50e981774에서 Earth/Mars 소관 작업과 이후 Saturn/기존QA 검수를 조정한다. 원본 root·Git/index/stash/사용자파일 보존, 제품은 기존 feature 공간에서만 구현하고 모델·권한·Production·요금·API/AI 계약을 바꾸지 않는다. 이전 Saturn 사용자 소유 터미널은 재사용/종료하지 않는다. 이번 완료 보고도 고정5항목을 유지한다.</p>
+<h3>최신 CJ 피드백 인계 · Dim REVISE</h3>
+<p>CJ는2923dfc 튜토리얼을 REVISE하고 버튼 누르는 단계 주변 반투명 검은 Dim을 지시했다. PM이 현행 고리/입력 문·레이어와 다중 선택/자유 단계/메뉴·401 예외를 분석하고 #324에 미완료 AC를 추가했다. 이번은 분석·기록만 수행, 제품/AI/API/스키마·Git/배포 변경0, 신규 부서 판정/독립 QA 없음. 기존 기능 PASS/CI를 Dim PASS로 재사용하지 않는다. 다음은 Earth 시각값 → Mars 구현 → 관련 검사/Saturn → DB QA 새 버전 → CJ 재검수. 상세는 위 work의 유일한 최신 요약을 따른다. 새 보고 형식은 기존5항목을 계속 유지한다.</p>
+<h3>직전 배포 인계 · 2026-10-30 (아래는 당시 관측)</h3>
+<p><b>v2.20 · 수정본 DB QA 준비 완료.</b> 실제 소스/배포는 feature/265-singleplayer-20261030의 2923dfc87c794d8db0fdf654b156fdb9962a25e0, PR397 draft·미병합, CI41006968623 6/6. 별도 QA https://digit-duel-mipa-qa.onrender.com / dep-dbi2gi49v7es73a6vqq0 / migration007 / 원격 API67·DOM8 통과. Source14+연결11 불변, Saturn 최종 기능 한정 PASS·이번 범위 P1/P2 0. [QA 계정 파일](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-revise-implementation-20261030/Jupiter-remote/private/cj2-accounts.json); learn/skip은 미완료, adv/done은 명시한 API 상태 표본이다. 비밀 값은 복사하지 않는다.</p>
 <ul>
-<li><b>다음:</b> child커밋/정확 HEAD CI6 → 기존 Free 별도 QA 같은 SHA 배포/007/HTTPS·WSS·진행·전체스킵 DOM → CJ 학습·화면 재검수. 현재 원격586은 이전 설계다. Production·AI 기준·권한/모델·root를 변경하지 않는다.</li>
-<li><b>품질/미결:</b> #322 AI 순서 미달·출시 보류 유지. 실기·청취·사람 심화 자유전·온라인 실제 복원은 미검증. #282 공개키/지문·독립 복원 등 입력/증거, #323/#396 v0.4.17, Unity4/Roblox1 별도다.</li>
-<li><b>문서:</b> 지정 회사 Vault10노트·GitHub·기계JSON이 정본. HTML은 단방향 열람 출력. CLI는 PM이 한 Role씩 조정하며 연결 실패 시 우회하지 않는다. 서버/클라이언트 세부 기록은 각 소유 부서가 책임진다.</li>
-<li><b>상시 보고 계약:</b> 구현 후 항상 결론을 먼저 쓰고 <b>이번 수행 Work → 검증 결과 → 남은 Work List(순서/담당/의존) → CJ 판단·입력 → 다음 행동</b>을 보고한다. 실제QA 주소·버전·시험계정 파일·체크리스트·한계를 준비하고, 승인된 방향을 반복 질문하지 않는다.</li>
+<li><b>다음 CJ 행동:</b> 기본/심화 학습·길이·가독성·스킵/재로그인 QA. 구현 방향 재승인을 묻지 않는다. CJ 제품 REVISE와 #322 AI 품질·출시 보류는 유지한다. Production 작업0·새 리소스/요금/전역 설정 변경0, 기존 Free QA만 CJ용 유지(11월29일 만료).</li>
+<li><b>한계:</b> 기본은 실제 DOM/Core/DB 완주, 심화 브라우저 종료는 controlled이며 별도 자연 Core 왕 포획57턴과 구분. 실기·청취·사람 자유전·온라인 실제 복원·더 짧은 화면/모든 프레임은 미검증. 기존 계정 면제는 로컬 PG 검증이며 원격 구계정 테스트는 하지 않았다.</li>
+<li><b>운영:</b> 업무9건은 성공으로 종결됐다. 회수 대상 터미널7개는 해제, Mars 최초 행은 같은 터미널의 후속 B7 회수로 정리됐고, Saturn release는 <code>user_takeover</code>로 사용자 소유 보존이다. 회수 대기0·추가 종료0, 소유 로컬 PG/Web/Chrome 정지·초기화 확인. root main/9b306bb·index·stash·기존 변경/설정 보존, HTML만 정본에서 출력. PR HTMLv2.19는 커밋 전 스냅숏, 최신 업무·판정은 Obsidian/GitHub/검사·배포 원본을 독립 확인한다.</li>
+<li><b>상시 보고:</b> 구현 후 <b>이번 수행 Work → 검증 결과 → 남은 Work List(순서/담당/의존) → CJ 판단·입력 → 다음 행동</b>을 결론부터 보고한다. QA 주소·버전·시험 계정 파일·체크리스트·한계를 제공한다. 부서는 내용/기록을 책임지고 PM은 범위·정본·누락·의존을 조정한다.</li>
+<li><b>별도 미결:</b> #282 공개키/지문과 독립 복구 등 증거, #323/#396 v0.4.17, Unity4/Roblox1. [최종 판정·근거](file:///C:/Users/pc_77/orca/artifacts/Digit-Duel/tutorial-revise-implementation-20261030/final-validation.json).</li>
 </ul>
 <h2>PM 인수인계</h2>
 <figure class="visual" data-figure="intake"><div class="figure-scroll"><svg aria-labelledby="fig-intake-title fig-intake-desc" role="img" viewBox="0 0 1000 385" xmlns="http://www.w3.org/2000/svg"><title id="fig-intake-title">새 PM이 파악할 여섯 단계</title><desc id="fig-intake-desc">작업 공간 확인, 진입 안내, 정본 읽기, 역할과 실행 확인, 현황·미결 파악, CJ 인수 보고. 채택한 프로젝트 전용 명령의 무추가 입력 인수를 검증했다. 기본 + 경로와 구분한다.</desc><rect fill="#edf3fa" height="142" rx="13" stroke="#234e82" stroke-width="1.4" width="310" x="10" y="32"></rect><g fill="none" stroke="#234e82" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" transform="translate(28 49) scale(1)"><path d="M2 5h8l3 3h9v13H2zM2 8h20"></path></g><text data-max-width="242" fill="#234e82" font-size="22" font-weight="700" text-anchor="start" x="62" y="68">01  작업 공간</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="28" y="100">cwd · 브랜치 · HEAD</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="28" y="126">사용자 변경 보존</text><path d="M322 104 L342 104" fill="none" stroke="#234e82" stroke-width="2"></path><path d="m-7-5 7 5-7 5" fill="none" stroke="#234e82" stroke-width="2" transform="translate(342 104) rotate(0.0)"></path><rect fill="#edf3fa" height="142" rx="13" stroke="#234e82" stroke-width="1.4" width="310" x="345" y="32"></rect><g fill="none" stroke="#234e82" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" transform="translate(363 49) scale(1)"><path d="M4 2h12l4 4v16H4zM8 8h8M8 12h8m-8 4h5"></path></g><text data-max-width="242" fill="#234e82" font-size="22" font-weight="700" text-anchor="start" x="397" y="68">02  진입 안내</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="363" y="100">AGENTS.md</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="363" y="126">명시 Role·예약 범위 우선</text><path d="M657 104 L677 104" fill="none" stroke="#234e82" stroke-width="2"></path><path d="m-7-5 7 5-7 5" fill="none" stroke="#234e82" stroke-width="2" transform="translate(677 104) rotate(0.0)"></path><rect fill="#edf3fa" height="142" rx="13" stroke="#234e82" stroke-width="1.4" width="310" x="680" y="32"></rect><g fill="none" stroke="#234e82" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" transform="translate(698 49) scale(1)"><path d="m9 15 6-6M8 17l-2 2a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m2-1 2-2a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0"></path></g><text data-max-width="242" fill="#234e82" font-size="22" font-weight="700" text-anchor="start" x="732" y="68">03  현행 정본</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="698" y="100">Obsidian · JSON</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="698" y="126">항목별 전환 상태 확인</text><rect fill="#edf3fa" height="142" rx="13" stroke="#234e82" stroke-width="1.4" width="310" x="10" y="223"></rect><g fill="none" stroke="#234e82" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" transform="translate(28 240) scale(1)"><circle cx="12" cy="12" r="6"></circle><ellipse cx="12" cy="12" rx="12" ry="4" transform="rotate(-28 12 12)"></ellipse></g><text data-max-width="242" fill="#234e82" font-size="22" font-weight="700" text-anchor="start" x="62" y="259">04  역할·실행</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="28" y="291">Mercury / PM</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="28" y="317">승인·설정·실행 구분</text><path d="M322 295 L342 295" fill="none" stroke="#234e82" stroke-width="2"></path><path d="m-7-5 7 5-7 5" fill="none" stroke="#234e82" stroke-width="2" transform="translate(342 295) rotate(0.0)"></path><rect fill="#edf3fa" height="142" rx="13" stroke="#234e82" stroke-width="1.4" width="310" x="345" y="223"></rect><g fill="none" stroke="#234e82" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" transform="translate(363 240) scale(1)"><circle cx="12" cy="12" r="10"></circle><path d="M12 5v8h6"></path></g><text data-max-width="242" fill="#234e82" font-size="22" font-weight="700" text-anchor="start" x="397" y="259">05  현황·미결</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="363" y="291">현재 업무 · 차단</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="363" y="317">근거 시각 · 다음 행동</text><path d="M657 295 L677 295" fill="none" stroke="#234e82" stroke-width="2"></path><path d="m-7-5 7 5-7 5" fill="none" stroke="#234e82" stroke-width="2" transform="translate(677 295) rotate(0.0)"></path><rect fill="#edf3fa" height="142" rx="13" stroke="#234e82" stroke-width="1.4" width="310" x="680" y="223"></rect><g fill="none" stroke="#234e82" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" transform="translate(698 240) scale(1)"><circle cx="12" cy="12" r="11"></circle><path d="m6 12 4 4 8-9"></path></g><text data-max-width="242" fill="#234e82" font-size="22" font-weight="700" text-anchor="start" x="732" y="259">06  CJ 인수 보고</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="698" y="291">역할 · 범위 · 미결</text><text data-max-width="274" fill="#52627a" font-size="17" font-weight="400" text-anchor="start" x="698" y="317">실제 확인과 기록 구분</text><path d="M823 174 L823 201" fill="none" stroke="#c5d2e0" stroke-width="2"></path><path d="M823 201 L165 201" fill="none" stroke="#c5d2e0" stroke-width="2"></path><path d="M165 201 L165 223" fill="none" stroke="#c5d2e0" stroke-width="2"></path></svg></div><figcaption><b>새 PM의 진입 순서.</b> 프로젝트 전용 명령의 무추가 입력 인수를 검증했습니다. 기본 + 경로와 구분합니다.</figcaption></figure>
@@ -1728,6 +1764,16 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>2026-10-30<br/>Dim Work Start</td>
+<td>CJ: 직전 객관적 분석·PM 권장안에 Work Start 지시.</td>
+<td>Earth 시각조건·Mars 기존 강조 계층 Dim 구현 → 관련 검사·Saturn 독립 검수 → 정확 새 SHA CI·기존 DB QA → CJ 재검수. 신규 제안 Role·유료/Production·AI/서버 정책 확대로 해석하지 않는다.</td>
+</tr>
+<tr>
+<td>2026-10-30<br/>CJ QA Dim REVISE</td>
+<td>CJ: QA REVISE. 버튼 누르는 Step 주변에 반투명 검은 가림막을 두어 클릭 대상 가독성 향상. 객관적 분석·통합 보고 요청.</td>
+<td>PM 정적 분석/기존 #324·QA·인계 기록. 현재 주변 Dim 없음. 필수 대상/다중 허용 선택/안내·탈출 경로 보존과 자유 단계 해제, 검정 약60% 초기값은 권장안. 이번 제품 구현·새 검수/배포 없음. 소관 구현→독립 검수→DB QA→CJ 재검수 순서, 기존 AI 품질/출시 HOLD 유지.</td>
+</tr>
 <tr>
 <td>2026-10-30<br/>튜토리얼 전체 승인·보고 형식 유지</td>
 <td>CJ: 현재 보고 형식을 계속 유지. PM 권장 방향 모두 승인, Work Start.</td>

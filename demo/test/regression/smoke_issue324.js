@@ -68,6 +68,16 @@ async function tutAsk(rt,prog){ const T=await boot(HTTPS,Object.assign({"GET /ap
 /* 기본 보드를 실제 입력으로 한 단계씩 — 차례 넘김(자동 종료 · 상대 대본)은 타이머를 돌려 기다린다 */
 const pump=(T,until,n)=>{ for(let i=0;i<(n||40)&&!until();i++){ T.drain(400); T.render(); } return until(); };
 const pc=(T,id)=>T.S.pieces.find(x=>x.id===id);
+/* 주변 가림막(Dim) 기하 — 헤드리스 요소에는 크기가 없다: 실제 보드 칸(13×7)에 40px 격자 사각형(dy = 스크롤 이동)과 창 크기를 주고 제품의 window 리스너로 다시 그린다 */
+const geo=(T,W,H,dy,extra,ev)=>{ global.innerWidth=W; global.innerHeight=H;
+  for(const c of T.byId("board").children){ const x=+c.dataset.c*40, y=+c.dataset.r*40+(dy||0); c.getBoundingClientRect=()=>({left:x,top:y,width:40,height:40,right:x+40,bottom:y+40}); }
+  T.byId("board").getBoundingClientRect=()=>({left:40,top:40+(dy||0),width:280,height:520,right:320,bottom:560+(dy||0)});
+  for(const [el,r] of extra||[]) el.getBoundingClientRect=()=>r;
+  T.winDispatch(ev||"resize"); };
+const ungeo=T=>{ delete global.innerWidth; delete global.innerHeight; delete T.byId("board").getBoundingClientRect; for(const c of T.byId("board").children) delete c.getBoundingClientRect; };
+const dimOn=T=>/<svg class="spDim" width="(\d+)" height="(\d+)"/.exec(T.byId("spSpot").innerHTML);
+const holes=T=>[...T.byId("spSpot").innerHTML.matchAll(/<rect x="(-?\d+)" y="(-?\d+)" width="(\d+)" height="(\d+)" rx/g)].map(m=>m.slice(1,5).join(","));
+const cellHole=(r,c,dy)=>[c*40-8,r*40+(dy||0)-8,56,56].join(","); // ART: 실제 경계 + 8 CSS px
 function basicTo(T,step){
   const X=T.single, Tt=X.SP.tut, I=Tt.ids, order=["B1","B2","B3","B4","B5","B6","B7","B8","B9"];
   T.BAL.fx.autoEnd=true; // 기본 보드는 현행 자동 턴 종료 그대로(하네스 기본은 꺼 둔다)
@@ -403,6 +413,38 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   U.newGame("pvp",{phase:"menu"}); U.render(); win(U,Ut);
   ok(U.S!==game&&quiet(U,Ut),"C14i 다른 경기 — 옛 튜토리얼 문맥 그리기 0");
 }
+{ // C15 주변 가림막(Dim) — 구멍 = 입력 문(spGateSet)이 받는 실제 대상 사각형 + 배울 자리 · 대상 없음/화면 밖 = 가림막 0(단계·저장 그대로) · resize·scroll 다시 계산 · 창·로그아웃·다른 경기 0
+  let live=true; const T=await tutAsk({"GET /api/auth/session":()=>live?sess(NEO,NEW):[401,{error:"E_NO_SESSION"}]}); const X=T.single, Tt=X.SP.tut, I=Tt.ids, sp=()=>T.byId("spSpot").innerHTML; // 끝난 세션은 재조회 401
+  geo(T,390,844); ok(X.SP.ask&&!dimOn(T),"C15 (전제) 첫 질문 동안 가림막 0");
+  X.spAskGo(); geo(T,390,844);
+  ok(Tt.step==="B1"&&dimOn(T)&&dimOn(T)[1]==="390"&&dimOn(T)[2]==="844"&&JSON.stringify(holes(T))===JSON.stringify(["32,432,296,136","32,32,296,536"]),"C15a B1 설명 — 창 크기 가림막 · 구멍 = 내 진영 11~13행 + 보드 전체(배울 자리)");
+  X.spNext(); geo(T,390,844); const K=pc(T,I.K), tags=X.spTagPieces(Tt), foe=T.S.pieces.find(x=>x.owner===1&&x.alive);
+  ok(Tt.step==="B2"&&holes(T)[0]===cellHole(K.r,K.c)&&tags.length===5&&tags.every(p=>holes(T).includes(cellHole(p.r,p.c)))&&holes(T).length===6&&!holes(T).includes(cellHole(foe.r,foe.c)),"C15b B2 — 구멍 = 대상(내 왕 칸) + 이름표 붙은 내 말 5칸 · 상대 말 칸은 어둡다");
+  basicTo(T,"B3"); geo(T,390,844); { const F=pc(T,I.F), hid=T.S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.r===9&&x.c===7), tr=T.S.pieces.find(x=>x.owner===0&&x.r===11&&x.c===5);
+    ok(Tt.step==="B3"&&JSON.stringify(holes(T))===JSON.stringify([cellHole(F.r,F.c),cellHole(tr.r,tr.c)])&&!holes(T).includes(cellHole(hid.r,hid.c)),"C15b2 B3 — 구멍 = 보이는 ? + 그 옆 내 함정만 · 숲에 숨은 상대 말 칸은 밝히지 않는다"); }
+  basicTo(T,"B4"); geo(T,390,844); ok(Tt.step==="B4"&&dimOn(T)&&holes(T).length===0&&/spPics/.test(coach(T)),"C15b3 B4 도해 설명 — 배경 가림막(뚫린 곳 0) · 도해·[다음]은 말풍선 층");
+  geo(T,-390,844); const negV=!/spDim/.test(sp()); geo(T,Infinity,844);
+  ok(negV&&!/spDim/.test(sp())&&Tt.step==="B4"&&posts().length===0,"C15b4 B4 [다음] 안내 — 창 크기가 음수·무한이면 resize 뒤 가림막 0(잘못된 SVG 없음) · 단계·저장 그대로"); geo(T,390,844);
+  basicTo(T,"B5"); const M=pc(T,I.M); geo(T,390,844);
+  const gate=()=>X.spGateSet().out.map(e=>{ const r=e.getBoundingClientRect(); return [r.left-8,r.top-8,r.width+16,r.height+16].join(","); });
+  ok(Tt.step==="B5"&&JSON.stringify(holes(T))===JSON.stringify([cellHole(M.r,M.c)])&&JSON.stringify(gate())===JSON.stringify(holes(T)),"C15c B5 — 구멍 하나 = 입력 문이 받는 바로 그 칸(흔적 위의 내 말)");
+  geo(T,390,844,-2000,null,"scroll"); ok(Tt.step==="B5"&&!dimOn(T),"C15d 대상이 화면 밖(scroll) — 검은 벽 없음 · 단계 그대로");
+  geo(T,390,844,-380,null,"scroll"); ok(dimOn(T)&&JSON.stringify(holes(T))===JSON.stringify([cellHole(M.r,M.c,-380)]),"C15e 대상이 화면 위 끝에 걸침 — 가림막 · 구멍은 실제 자리(잘린 부분은 화면 밖)");
+  geo(T,1280,800); ok((dimOn(T)||[])[1]==="1280"&&(dimOn(T)||[])[2]==="800"&&holes(T)[0]===cellHole(M.r,M.c),"C15f resize — 창 크기·구멍 다시 계산");
+  T.onCell(M.r,M.c); geo(T,390,844); const sb=X.spGateSet().out[0];
+  ok(sb&&sb.textContent==="탐색"&&!dimOn(T)&&Tt.step==="B5"&&posts().length===0,"C15g 대상([탐색])의 크기를 못 얻음 — 가림막 0 · 자동 진행·저장 0");
+  const sbR=()=>[[X.spGateSet().out[0],{left:100,top:700,width:80,height:44,right:180,bottom:744}]]; // 다시 그린 차례 줄의 지금 [탐색] 버튼
+  geo(T,390,844,0,sbR()); ok(JSON.stringify(holes(T))===JSON.stringify(["92,692,96,60"]),"C15h 대상이 생기면 resize 로 — 구멍 = 그 버튼 하나(말 칸은 어둡다)");
+  sb.disabled=true; ok(["resize","scroll"].every(e=>(geo(T,390,844,0,sbR(),e),!/spDim/.test(sp())))&&Tt.step==="B5"&&posts().length===0,"C15h2 보이는 같은 [탐색]이 비활성 — resize·scroll 리스너 뒤 가림막 0 · 단계·저장 그대로");
+  sb.disabled=false; geo(T,390,844,0,sbR(),"scroll"); ok(JSON.stringify(holes(T))===JSON.stringify(["92,692,96,60"])&&Tt.step==="B5","C15h3 다시 활성 — scroll 로 가림막·구멍(그 버튼) 되살아남");
+  geo(T,390,844,0,[[sb,{left:100,top:700,width:Infinity,height:44,right:Infinity,bottom:744}]]); const infR=!/spDim/.test(sp()); geo(T,Infinity,844,0,sbR());
+  ok(infR&&!/spDim/.test(sp())&&Tt.step==="B5"&&posts().length===0,"C15h4 대상 너비·창 너비가 유한하지 않음 — 가림막 0(Infinity SVG 없음) · 단계·저장 그대로");
+  X.spSkipAsk(); geo(T,390,844); ok(X.SP.dlg==="skipq"&&!sp(),"C15i ⚙ 건너뛰기 확인 창 — 가림막 0(resize 뒤에도)");
+  X.spSkipNo(); geo(T,390,844,0,sbR()); ok(!X.SP.dlg&&JSON.stringify(holes(T))===JSON.stringify(["92,692,96,60"]),"C15j [계속하기] — 다시 그린다");
+  live=false; T.acct.acctEndSession("세션 종료",false,true); await tick(); geo(T,390,844); ok(T.AUTH.state!=="in"&&!sp(),"C15k 로그아웃(경기 보존) — 가림막 0 · resize 로 되살아나지 않음");
+  T.newGame("pvp",{phase:"menu"}); T.render(); geo(T,390,844); ok(!sp(),"C15l 다른 경기 — 가림막 0");
+  ungeo(T);
+}
 
 /* ===== D. 진행도(BP) · 저장 ===== */
 { // ACK 와 이동 연출이 둘 다 끝나야 [다음 단계로] — 늦은 ACK · 연타 · 중복 0
@@ -517,13 +559,17 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   T.__shop("lead",king.id,"water"); T.render();
   ok(A.step==="A4"&&pc(T,king.id).element==="water"&&pc(T,king.id).leaderElChosen&&T.S.eco.coins[0]===coins,"E3b 실제 속성 변경 1회(무료) → A4");
   X.spNext(); ok(A.step==="A4","E4 아이템 칸을 보기 전 [다음] 은 진행하지 않는다");
-  A.f.item=true; X.spNext(); ok(A.step==="A5"&&X.spGateSet()===null,"E4b 아이템 칸 → [다음] → A5 자유 구매(막지 않음)");
+  A.f.item=true; geo(T,390,844); ok(A.step==="A4"&&dimOn(T)&&holes(T).length===0&&/>다음</.test(coach(T)),"E4a 아이템 칸을 본 뒤 [다음] 만 남은 안내 — 주변 가림막(CJ 범위 확인: 말풍선 버튼이 입력을 붙잡는 단계)"); ungeo(T);
+  X.spNext(); ok(A.step==="A5"&&X.spGateSet()===null,"E4b 아이템 칸 → [다음] → A5 자유 구매(막지 않음)");
+  geo(T,390,844); ok(!dimOn(T),"E4c A5 자유 구매 — 가림막 0"); ungeo(T);
   T.aiShop(0); T.render(); // 남은 코인으로 필드 채우고 [다음 단계](실제 상점 경로)
   ok(A.step==="A6"&&T.UI.prep==="place"&&coach(T).includes(X.SP_SAY.A6),"E5 [다음 단계] → A6 배치");
   const my=T.S.pieces.filter(x=>x.owner===0);
   global.selTray(my[0].id); T.render();
   const z=T.byId("board").querySelector(`.cell[data-r="12"][data-c="1"]`), zFoe=T.byId("board").querySelector(`.cell[data-r="2"][data-c="1"]`);
   ok(z.getAttribute("tabindex")==="0"&&z.getAttribute("role")==="button"&&/12행 1열 빈칸/.test(z.getAttribute("aria-label"))&&zFoe.getAttribute("tabindex")===null&&X.spGateSet().out.includes(z),"E6a 말을 고른 뒤 내 진영 빈칸 = 키보드 대상(Tab · 이름 · 상대 진영 칸은 아님)");
+  geo(T,390,844); { const zc=X.spGateSet().out;
+    ok(dimOn(T)&&zc.length>1&&zc.every(c=>holes(T).includes(cellHole(+c.dataset.r,+c.dataset.c)))&&!holes(T).includes(cellHole(2,1)),"E6d A6 가림막 구멍 = 놓을 수 있는 내 진영 빈칸 전부(하나로 줄이지 않음) · 상대 진영은 어둡다"); } ungeo(T);
   z.onkeydown({key:"Enter",preventDefault(){}}); T.render(); ok(A.f.pid===my[0].id&&!A.f.back&&T.S.pieces.find(x=>x.id===my[0].id).r===12,"E6 말 하나 놓기(Enter — 실제 셀 입력 경로)");
   T.onCell(12,1); T.render(); ok(A.f.back,"E6b 놓은 말 눌러 회수");
   global.autoPlace(); T.render(); ok(A.step==="A7"&&T.S.pieces.filter(x=>x.owner===0).every(x=>x.placed),"E6c [무작위 배치] → A7");
@@ -531,14 +577,18 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   global.setupDone(); T.drain(50); T.render();
   ok(T.S.phase==="play"&&T.S.current===0&&T.S.metrics.firstPlayer===0&&/선공: 플레이어/.test(T.S.log.map(l=>l.msg).join("\n"))&&!/무작위 선공/.test(T.S.log.map(l=>l.msg).join("\n")),"E7 [배치 완료] → 브론즈 AI전 · 플레이어 선공(무작위 아님)");
   ok(T.S.aiLevel[1]==="bronze"&&T.S.eco&&A.step==="A7"&&/>확인</.test(coach(T))&&coach(T).includes(X.SP_SAY.A7),"E7b 정상 경제 브론즈 경기 · A7 말풍선 [확인]");
+  geo(T,390,844); ok(dimOn(T)&&X.spGateSet()!==null,"E7b2 [확인] 이 입력을 붙잡는 동안 — 주변 가림막(CJ: 자유 경기는 확인 뒤)"); ungeo(T);
   X.spNext(); ok(A.step===null&&!coach(T)&&!X.spClockHeld()&&X.spGateSet()===null,"E7c [확인] → 안내 없는 자유 경기(시계 정상 · 입력 제한 없음)");
+  geo(T,390,844); ok(!T.byId("spSpot").innerHTML,"E7d 확인 뒤 자유 경기 — 가림막 0"); ungeo(T);
   /* 자유 경기 — 실제 20턴 정기 상점(통제: 턴 수만 미리 세운 고정 장면 아님 — 실제 endTurn 경로) */
   T.S.turnCount=19; T.S.current=1; T.dispatchCoreAction({t:"endTurn"}); T.render();
   ok(T.S.phase==="shop"&&A.step==="A8"&&coach(T).includes(X.SP_SAY.A8)&&X.SP_SHOP_TIERS.every(([t,g,b],k)=>T.ECO.shopTurns[k]===t&&T.ECO.bonus[t]===b),"E8 실제 20턴 정기 상점이 열린 순간 A8 · 도해 = ECO 값(20/40/60/80 · 보너스)");
+  geo(T,390,844); ok(dimOn(T)&&/spTiers2/.test(coach(T)),"E8c A8 도해 [확인] — 배경 가림막 · 등급 도해는 말풍선 층"); ungeo(T);
   X.spNext(); ok(A.seen.shop&&!A.seen.burn&&A.step===null,"E8b [확인] → 본 여부: 상점 = 예(턴 수가 아니라 확인으로)");
   /* 통제 종료 — 패배(왕 제거) */
   end(T,1,"king"); await tick();
   ok(A.step==="A10"&&coach(T).includes(X.SP_SAY.A10loss)&&/남은 연습 건너뛰기/.test(coach(T))&&posts(TUT_API).length===0,"E9 실제 패배 뒤 A10 '아쉬워요!' · [남은 연습 건너뛰기] · 아직 저장 0");
+  geo(T,390,844); ok(dimOn(T)&&posts(TUT_API).length===0,"E9b A10 결과 요약([다음]·[남은 연습 건너뛰기]) — 주변 가림막 · 저장 0"); ungeo(T);
   const match=T.S;
   X.spNext();
   ok(A.practice==="burn"&&A.step==="A10b"&&/연습 장면/.test(coach(T))&&coach(T).includes(X.SP_SAY.A10b)&&T.isBurning()&&T.S.turnCount===64&&T.S.current===0,"E10 못 본 것만 — 상점은 봤으니 버닝 연습만(65턴 내 차례 · '연습 장면')");

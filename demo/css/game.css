@@ -1651,13 +1651,13 @@ html[data-ui-skin="argon"] .l01Main > button.l01Single{padding-left:10px; paddin
 #spSpot{position:fixed; inset:0; z-index:53; pointer-events:none;}
 #spSpot.hidden{display:none;}
 #spSpot i{position:fixed; display:block; font-style:normal; pointer-events:none;}
+#spSpot .spDim{position:fixed; left:0; top:0; pointer-events:none;} #spSpot .spDimR{fill:#000; fill-opacity:.6;} /* 주변 가림막 — 구멍은 single.js 가 실제 대상 사각형으로 뚫는다 */
+body:has(#synHelp) #spSpot .spDim,body:has(#fxBanner:not(.hidden)) #spSpot .spDim{display:none;} /* 상세·상성·스텟 창(전투 창 z50 안에 붙기도 한다)·연출 배너 동안 가림막을 걷는다 — 겹친 어둠 없이 그대로 읽힌다 */
 #spSpot .spRing{border:3px solid var(--accent); border-radius:10px; box-shadow:0 0 0 4px #000a,0 0 18px var(--accent);}
-#spSpot .spRing.tg{animation:spPulse 1.2s ease-in-out infinite;}
 #spSpot .spZone{border:2px dashed var(--accent); border-radius:8px; background:#eab9571f;}
 #spSpot .spZone b{position:absolute; right:4px; top:2px; padding:1px 6px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:6px;}
 #spSpot .spTag{transform:translateX(-50%); z-index:1;}
 #spSpot .spTag b{display:block; max-width:84px; padding:1px 5px; font-size:11px; word-break:keep-all; line-height:1.25; text-align:center; color:var(--goldInk); background:var(--accent); border-radius:6px; box-shadow:0 1px 3px #000c;}
-@keyframes spPulse{0%,100%{box-shadow:0 0 0 4px #000a,0 0 8px var(--accent);}50%{box-shadow:0 0 0 4px #000a,0 0 22px var(--accent);}}
 .spPics{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:0;}
 .spPic{margin:0; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; font-size:11px; line-height:1.3;}
 .spMini{display:grid; grid-template-columns:repeat(3,18px); grid-auto-rows:16px; gap:1px; padding:2px; background:var(--navyLine); border-radius:4px;}
@@ -1673,14 +1673,14 @@ html[data-ui-skin="argon"] .l01Main > button.l01Single{padding-left:10px; paddin
 .spArrow{font-style:normal; color:var(--accent);}
 .spPanel .spMk{position:absolute; top:0; left:12%; width:40px; height:44px; object-fit:contain; transition:left .9s ease-in-out;}
 .spPanel .spProg.go .spMk{left:calc(88% - 40px);}
-@media (prefers-reduced-motion: reduce){ #spSpot .spRing.tg{animation:none;} .spPanel .spMk{transition:none;} }
+@media (prefers-reduced-motion: reduce){ .spPanel .spMk{transition:none;} } /* 가림막·대상 고리는 늘 정지(ART Dim 계약) */
 @media (max-width:420px){ #spCoach .spWitch{width:60px; height:60px;} #spCoach .spSay{font-size:14px;} .spPics{gap:3px;} .spMini{grid-template-columns:repeat(3,14px); grid-auto-rows:12px;} }
 #spSpot .spMark b{display:flex; align-items:center; justify-content:center; width:18px; height:18px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:50%; box-shadow:0 1px 3px #000c;}
 #spCoach .spLegend{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:2px 8px; font-size:13px;}
 #spCoach .spLegend .spMk{display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-right:4px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:50%;}
 #spCoach.inBattle .spWitch{width:44px; height:44px;} #spCoach.inBattle .spSay{font-size:13px;} #spCoach.inBattle .spBubble{padding:6px 10px; gap:2px;}
-/* ⚙ 메뉴가 열려 있는 동안 안내·스포트라이트를 잠시 숨긴다 — 위에 떠 있는 말풍선이 메뉴(튜토리얼 건너뛰기)를 가리지 않게. 닫히면(다시 그리기·선택) 그대로 돌아온다 */
-body:has(.flowGear[open]) #spCoach,body:has(.flowGear[open]) #spSpot{visibility:hidden;}
+/* ⚙ 메뉴·상세/상성/스텟 창(#synHelp — 전투 창 z50 안에 붙으면 말풍선 z54 밑)이 열려 있는 동안 안내·스포트라이트를 잠시 숨긴다 — 위에 떠 있는 말풍선이 메뉴(튜토리얼 건너뛰기)·창 제목·닫기를 가리지 않게. 닫히면 그대로 돌아온다 */
+body:has(.flowGear[open]) #spCoach,body:has(.flowGear[open]) #spSpot,body:has(#synHelp) #spCoach,body:has(#synHelp) #spSpot{visibility:hidden;}
 @media (max-width:360px){ #spCoach .spWitch{width:44px; height:44px;} #spCoach .spBubble{padding:8px 10px; gap:4px;} } /* 320 — 그림·여백만 줄인다(글자 크기·범례 한 줄 그대로) */
 #spCoach.at-mid{left:0; right:0;} /* 좁은 전투 — 두 전투원 칸 사이(top 은 single.js 가 위 칸 아래 끝으로) */
 @media (max-width:360px){ #spCoach.inBattle .spBubble{padding:3px 8px; gap:0;} #spCoach.inBattle .spSay{line-height:1.35;} #spCoach.inBattle .spProgTx{line-height:1.2;} } /* 320 전투 — 여백·줄 간격만(글자 13px 그대로) */
