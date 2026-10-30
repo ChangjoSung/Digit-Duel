@@ -83,11 +83,11 @@ function basicTo(T,step){
   T.BAL.fx.autoEnd=true; // 기본 보드는 현행 자동 턴 종료 그대로(하네스 기본은 꺼 둔다)
   const go=()=>{ const s=Tt.step;
     if(s==="B1"||s==="B3"||s==="B4") X.spNext();
-    else if(s==="B2"){ const K=pc(T,I.K); T.onCell(K.r,K.c); T.ui238.infoSlotOpen(I.K,null); T.render(); X.spNext(); }
+    else if(s==="B2"){ const K=pc(T,I.K); T.onCell(K.r,K.c); T.ui238.infoSlotOpen(I.K,null); T.ui238.synHelpClose(true); T.render(); X.spNext(); }
     else if(s==="B5"){ const M=pc(T,I.M); T.onCell(M.r,M.c); T.netAction({t:"search"}); pump(T,()=>Tt.step!=="B5"); }
     else if(s==="B6"){ const M=pc(T,I.M); T.onCell(M.r,M.c); T.onCell(I.dest[0],I.dest[1]); T.drain(50); } // 전투 창은 render() 없이 열린다 — 손으로 다시 그리지 않는다
     else if(s==="B7"){ for(let i=0;i<80&&T.S.battle;i++){ const B=T.S.battle, sd=T.actorOfPhase(), own=(sd==="A"?B.attP:B.defP).owner;
-        if(own===0){ global.__menu("fight"); global.__act(0); } T.drain(400); T.render(); } pump(T,()=>Tt.step!=="B7"); }
+        if(own===0){ global.__menu("fight"); global.__act(0); } T.drain(400); T.render(); } pump(T,()=>Tt.f.result); X.spNext(); }
     else if(s==="B8"){ const M=pc(T,I.M); T.onCell(M.r,M.c); T.netAction({t:"heal",id:I.M}); T.render(); pump(T,()=>Tt.f.gain!=null); X.spNext(); pump(T,()=>T.S.current===0&&T.S.turnCount>=Tt.t0+6); }
   };
   for(let n=0;n<12&&Tt.step!==step&&order.indexOf(Tt.step)>=0;n++) go();
@@ -95,6 +95,54 @@ function basicTo(T,step){
 }
 
 (async()=>{
+{ // Oct31 negative controls: live DOM bounds clipped by a scroll ancestor, disabled target, actual info read/close.
+  const T=await tutAsk({}), X=T.single; X.spAskGo(); X.spNext();
+  const t=X.SP.tut, K=pc(T,t.ids.K), cell=T.byId("board").querySelector(`.cell[data-r="${K.r}"][data-c="${K.c}"]`);
+  const parent=T.document.createElement("div"); parent.style.overflowY="auto"; parent.clientWidth=400; parent.clientHeight=200;
+  parent.getBoundingClientRect=()=>({left:0,top:0,right:400,bottom:200,width:400,height:200});
+  const b=T.byId("board"), old=b.parentNode; parent.appendChild(b);
+  global.getComputedStyle=e=>({overflowX:e.style.overflowX||"visible",overflowY:e.style.overflowY||"visible",display:"block",visibility:"visible"});
+  geo(T,400,700,0);
+  ok(!/spRing/.test(T.byId("spSpot").innerHTML),"N1 fully scroll-clipped king has no phantom ring");
+  ok(dimOn(T)&&holes(T).length===0,"N1c fully clipped target retains one Dim without apertures");
+  parent.clientHeight=K.r*40+20; parent.getBoundingClientRect=()=>({left:0,top:0,right:400,bottom:parent.clientHeight,width:400,height:parent.clientHeight}); T.winDispatch("scroll");
+  ok(holes(T)[0]===[K.c*40-8,K.r*40-8,56,28].join(","),"N1b partial scroll clipping trims aperture padding at parent edge");
+  parent.clientHeight=700; parent.getBoundingClientRect=()=>({left:0,top:0,right:400,bottom:700,width:400,height:700});cell.disabled=true;T.winDispatch("scroll");
+  ok(!/spRing/.test(T.byId("spSpot").innerHTML),"N2 disabled target has no phantom ring");cell.disabled=false;
+  if(old)old.appendChild(b);else b.parentNode=null;delete global.getComputedStyle;ungeo(T);
+  T.onCell(K.r,K.c);X.spHit(t);T.drain(5);X.spNext();
+  ok(t.step==="B2"&&!t.f.info,"N3 click intent without actual info opening cannot complete B2");
+  T.ui238.infoSlotOpen(t.ids.K,null); X.spNext();
+  ok(t.step==="B2"&&t.f.info&&!X.spSpec(t).next,"N4 actual open still requires actual close before next");
+  geo(T,400,700); ok(dimOn(T)&&!/spRing/.test(T.byId("spSpot").innerHTML),"N5 information preserves Dim and suppresses old target ring");
+  T.ui238.synHelpClose(true); X.spNext(); ok(t.step==="B3","N6 actual close then next advances once"); ungeo(T);
+}
+
+{ // P2-SETTINGS-1: dropdown extends beyond its summary in a sticky header.
+  const T=await tutAsk({}), X=T.single; X.spAskGo(); X.spNext();
+  const rect=(left,top,width,height)=>({left,top,width,height,right:left+width,bottom:top+height});
+  const summary={getBoundingClientRect:()=>rect(332,4,44,44),closest:()=>({})};
+  const menu={getBoundingClientRect:()=>rect(210,48,166,130),closest:()=>({})};
+  const gear={getBoundingClientRect:summary.getBoundingClientRect,closest:()=>null,querySelector:s=>s==='summary'?summary:s==='.menu'?menu:null};
+  menu.parentElement=gear;
+  const query=T.document.querySelector.bind(T.document);let open=true;
+  T.document.querySelector=s=>s==='.flowGear[open]'?(open?gear:null):s==='.flowGear[open] .menu'?(open?menu:null):query(s);
+  geo(T,390,700);
+  ok(holes(T).includes('202,40,182,146'),'N7 actual dropdown bounds including lower menu are bright');
+  ok(holes(T).includes('324,0,60,56'),'N8 current summary close route remains bright');
+  ok(holes(T).length===2&&!/spRing/.test(T.byId('spSpot').innerHTML),'N9 open menu removes old target aperture/ring');
+  let focused=null,stopped=0;
+  const first={focus:()=>{focused='skip';},closest:s=>s==='.flowGear[open]'?gear:null};
+  summary.focus=()=>{focused='summary';};summary.closest=s=>s==='.flowGear[open]'?gear:null;
+  gear.querySelector=s=>s==='summary'?summary:s==='.menu button:not([disabled])'?first:s==='.menu'?menu:null;
+  const tab=(target,shiftKey)=>X.spGateEv({type:'keydown',key:'Tab',target,shiftKey,preventDefault(){},stopImmediatePropagation(){stopped++;}});
+  tab(summary,false);ok(focused==='skip'&&stopped===1,'N11 menu Tab reaches skip before outer modal focus trap');
+  tab(first,true);ok(focused==='summary'&&stopped===2,'N12 menu Shift Tab returns to summary close route');
+  open=false;T.winDispatch('resize');
+  ok(!holes(T).includes('202,40,182,146')&&!holes(T).includes('324,0,60,56')&&/spRing/.test(T.byId('spSpot').innerHTML),'N10 close restores current target and dims normal gear');
+  T.document.querySelector=query;ungeo(T);
+}
+
 /* ===== A. 진입 분기 ===== */
 {
   const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,NEW)});
@@ -276,7 +324,7 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   ok(Tt.step==="B1"&&/기본 1\/9/.test(coach(T))&&coach(T).includes(X.SP_SAY.B1)&&/>다음</.test(coach(T)),"C1 B1 — '기본 1/9' · 3R.3 문구 · [다음]");
   const zone=X.spSpec(Tt).zone; ok(zone&&zone[0][0]===11&&zone[0][1]===13,"C1b B1 강조 = 내 진영 11~13행(전체 13×7 보드 위)");
   ok(X.spClockHeld()&&!X.spHeld(),"C1c 기본 말풍선 동안 시계 정지(보드 시계 없음) · 상대 보류는 아님");
-  X.spNext(); ok(Tt.step==="B2"&&coach(T).includes(X.SP_SAY.B2),"C2 B2 문구");
+  X.spNext(); ok(Tt.step==="B2"&&coach(T).includes("다섯 말의 역할을 살펴보세요."),"C2 B2 문구");
   const K=pc(T,I.K), g2=X.spGateSet();
   ok(g2&&g2.out.length===1&&g2.out[0]===T.byId("board").querySelector(`.cell[data-r="${K.r}"][data-c="${K.c}"]`),"C2b B2 대상 하나 = 내 왕 칸");
   { const mk=X.spTagPieces(Tt);
@@ -292,7 +340,7 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   X.spHit(Tt); T.ui238.infoSlotOpen(I.K,null); T.ui238.synHelpClose(true); T.drain(5); // 실제 브라우저처럼 — [말 정보] 누름(대상 통과) → 설명 창 열고 닫기, 다시 그리기 없음
   ok(Tt.f.info&&/>다음</.test(coach(T)),"C2g 왕 정보 창(실제 [말 정보] 누름) → 다시 그리기 없이도 [다음](브라우저 run1 첫 실패 재현 방지)");
   Tt.f.legend=true; T.render(); // 좁은 화면에서 떠 있는 이름표가 겹치면 쓰는 범례(같은 문구 · 칸 안 번호와 짝)
-  ok(["하수인 — 싸우는 말","왕 — 잃으면 패배","동료 — 왕을 돕는 싸움꾼","폭탄 — 닿은 하수인과 함께 사라짐","함정 — 밟은 말은 2차례 못 움직임"].every((t,i)=>coach(T).includes(`${i+1}</b>${t}`)),"C2h 범례 모드 — 5개 역할 문구 그대로 · 번호 1~5 순서");
+  ok(!/spLegend/.test(coach(T))&&coach(T).includes("왕의 정보를 확인했어요."),"C2h Oct31 PLAN: actual read/close confirms without repeating role overview");
   Tt.f.legend=false; T.render();
   X.spNext(); ok(Tt.step==="B3"&&coach(T).includes(X.SP_SAY.B3),"C3 B3 문구");
   const F=pc(T,I.F), hid=T.S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.r===9&&x.c===7), ring=X.spSpec(Tt).ring.cell;
@@ -314,7 +362,7 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   const B=T.S.battle;
   ok(Tt.step==="B7"&&!!B&&B.attP.id===I.M&&B.defP.id===I.E&&T.S.metrics.forcedBattles===1,"C6b 새로 붙어 강제 전투 시작(실제 이동 경로) → 다시 그리기 없이 B7");
   ok(B.fa.element==="water"&&B.fd.element==="fire"&&T.BEATS.water==="fire","C7 상성 유리 짝(물 → 불 · 기존 데이터 그대로)");
-  ok(coach(T).includes(X.SP_SAY.B7)&&X.SP_SAY.B7.startsWith(X.spCycleText()),"C7b B7 문구 · 순환 = 현행 BEATS");
+  ok(/초록 막대는 남은 HP|전투가 시작/.test(coach(T))&&X.SP_SAY.B7.startsWith(X.spCycleText()),"C7b B7 문구 · 순환 = 현행 BEATS");
   { const B0=T.S.battle, m0=B0.menu; B0.menu=null; const a=X.spSpec(Tt).tg.sel; B0.menu="fight"; const b=X.spSpec(Tt).tg.sel; B0.menu=m0;
     ok(a===`button[onclick="window.__menu('fight')"]`&&b===`button[onclick="window.__act(0)"]`,"C7c B7 대상 = [싸우기] → 강조된 기본 공격(1번 칸) 하나 — 가방·포획·도망은 대상 밖(막힘)"); }
   let hpBefore=pc(T,I.M).hp; basicTo(T,"B8");
@@ -355,8 +403,11 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   const T=await tutAsk({}); const X=T.single, Tt=X.SP.tut; X.spAskGo(); basicTo(T,"B8");
   ok(Tt.step==="B8","C11 (전제) 실제 경로로 B8");
   Tt.step="B7"; T.FX.cur={key:"turnBanner"}; T.render();
-  ok(Tt.step==="B8","C11b 전투가 끝났고 내 차례면 연출 중이어도 B8(연출 끝을 기다리는 전이 없음)");
-  T.FX.cur=null;
+  ok(Tt.step==="B7"&&!X.spSpec(Tt).next,"C11b Oct31 PLAN: FX blocks result and recovery transition");
+  X.spNext(); ok(Tt.step==="B7","C11c next during FX cannot advance");
+  T.FX.cur=null; for(const f of T.FX.idle.splice(0)) f();
+  ok(Tt.step==="B7"&&Tt.f.result&&X.spSpec(Tt).next==="다음","C11d idle callback shows result without a timer or extra render");
+  X.spNext(); ok(Tt.step==="B8","C11e result confirmation enters recovery once");
   const U=await tutAsk({}); const Y=U.single, Ut=Y.SP.tut; Y.spAskGo(); basicTo(U,"B7"); const g0=U.S;
   U.S.battle=null; U.FX.cur={key:"battleEnd"}; U.render(); // E 가 남은 채 전투가 끝났는데 연출 중(통제 — 보장 경로에서는 나오지 않는다)
   ok(Ut.step==="B7"&&U.S===g0&&Ut.idle&&U.FX.idle.length>=1,"C12 실패 재시작은 연출 뒤 — 연출이 끝날 때 한 번 다시 판정하도록 대기 1개(폴링 없음)");
@@ -428,8 +479,8 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   basicTo(T,"B5"); const M=pc(T,I.M); geo(T,390,844);
   const gate=()=>X.spGateSet().out.map(e=>{ const r=e.getBoundingClientRect(); return [r.left-8,r.top-8,r.width+16,r.height+16].join(","); });
   ok(Tt.step==="B5"&&JSON.stringify(holes(T))===JSON.stringify([cellHole(M.r,M.c)])&&JSON.stringify(gate())===JSON.stringify(holes(T)),"C15c B5 — 구멍 하나 = 입력 문이 받는 바로 그 칸(흔적 위의 내 말)");
-  geo(T,390,844,-2000,null,"scroll"); ok(Tt.step==="B5"&&!dimOn(T),"C15d 대상이 화면 밖(scroll) — 검은 벽 없음 · 단계 그대로");
-  geo(T,390,844,-380,null,"scroll"); ok(dimOn(T)&&JSON.stringify(holes(T))===JSON.stringify([cellHole(M.r,M.c,-380)]),"C15e 대상이 화면 위 끝에 걸침 — 가림막 · 구멍은 실제 자리(잘린 부분은 화면 밖)");
+  geo(T,390,844,-2000,null,"scroll"); ok(Tt.step==="B5"&&dimOn(T)&&holes(T).length===0&&!/spRing/.test(sp()),"C15d fully offscreen target keeps Dim with zero holes/rings and unchanged step");
+  geo(T,390,844,-380,null,"scroll"); ok(dimOn(T)&&JSON.stringify(holes(T))===JSON.stringify(["72,0,56,28"]),"C15e 대상이 화면 위 끝에 걸침 — 가림막 · 구멍은 실제 자리(잘린 부분은 화면 밖)");
   geo(T,1280,800); ok((dimOn(T)||[])[1]==="1280"&&(dimOn(T)||[])[2]==="800"&&holes(T)[0]===cellHole(M.r,M.c),"C15f resize — 창 크기·구멍 다시 계산");
   T.onCell(M.r,M.c); geo(T,390,844); const sb=X.spGateSet().out[0];
   ok(sb&&sb.textContent==="탐색"&&!dimOn(T)&&Tt.step==="B5"&&posts().length===0,"C15g 대상([탐색])의 크기를 못 얻음 — 가림막 0 · 자동 진행·저장 0");
@@ -551,7 +602,7 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   ok(X.spClockHeld()&&!X.spHeld(),"E1c 심화 말풍선 동안 준비 시계 정지 · AI 보류는 아님");
   T.ui238.unitHelpSlot(i,null); A.f.a1info=true; // 상세 창(실제 진열 설명 창)
   ok(X.spSpec(A).tg.sel===`[onclick="window.__shop('buy',${i})"]`,"E1d 다음 대상 = 그 카드의 구매 버튼");
-  T.__shop("buy",i); T.render();
+  T.ui238.synHelpClose(true); T.__shop("buy",i); T.render();
   ok(T.ecoUnitOf(T.S,0,key)&&A.step==="A2","E2 실제 구매 1회 → A2");
   ok(coach(T).includes(X.SP_SAY.A2)&&/>다음</.test(coach(T)),"E2b A2 시너지 문구 · [다음]");
   X.spNext(); ok(A.step==="A3"&&coach(T).includes(X.SP_SAY.A3)&&X.spSpec(A).tg.sel===".leadRow button","E3 A3 문구 · 대상 = 누를 수 있는 속성 버튼(초점이 묶음 div 가 아니라 버튼에)");

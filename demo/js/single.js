@@ -261,13 +261,35 @@ function spSpec(T){
   if(T.cat==="basic"){
     const K=spPc(I.K), M=spPc(I.M), Tp=spPc(I.T), sel=spSelId(), my=S.current===0&&S.phase==="play"&&!S.battle;
     if(s==="B1"){ sp.next="다음"; sp.zone=[[11,13,""]]; sp.board=true; } // 보드 전체를 밝게 두고 내 진영을 표시
-    else if(s==="B2"){ sp.tags=true; if(T.f.info) sp.next="다음"; else sp.tg=sel===I.K?spTg.sel(".infoBtn"):spTg.cell(K,"내 왕"); }
+    else if(s==="B2"){
+      sp.tags=!T.f.info&&!SYNHELP.el;
+      if(SYNHELP.el&&String(SYNHELP.pid)===String(I.K)) sp.say="왕과 동료는 자기 속성 스킬로 싸워요. 폭탄에 닿아도 폭탄만 사라져요. 살펴본 뒤 창을 닫아 주세요.";
+      else if(T.f.info){ sp.say="왕의 정보를 확인했어요. [다음]으로 넘어가요."; sp.next="다음"; }
+      else if(sel===I.K){ sp.say="[말 정보]를 열어 왕의 스킬을 살펴보세요."; sp.tg=spTg.sel(".infoBtn"); }
+      else { sp.say=T.f.overview?"내 왕을 눌러 보세요.":"다섯 말의 역할을 살펴보세요. 왕을 잃으면 져요. 내 왕을 눌러 보세요."; sp.tg=spTg.cell(K,"내 왕"); }
+    }
     else if(s==="B3"){ const F=spPc(I.F); sp.next="다음"; sp.ring=spTg.cell(F); sp.near=F?alivePieces().filter(p=>p.owner===0&&Math.abs(p.r-F.r)+Math.abs(p.c-F.c)===1):[]; } // 보이는 ? 와 그 옆의 내 말(보이는 까닭)만 — 숨은 말은 가리키지 않는다
     else if(s==="B4"){ sp.next="다음"; sp.pics="win"; }
     else if(s==="B5"){ if(!T.f.done&&my) sp.tg=sel===I.M?spTg.btn("탐색"):spTg.cell(M,"흔적 위의 내 말"); }
-    else if(s==="B6"){ if(my) sp.tg=sel===I.M?spTg.cell({r:T.ids.dest[0],c:T.ids.dest[1]},"표시된 칸"):spTg.cell(M,"싸울 내 말"); }
-    else if(s==="B7"){ const B=S.battle; sp.say=SP_SAY.B7; if(B) sp.tg=B.menu==="fight"?spTg.sel(`button[onclick="window.__act(0)"]`):spTg.sel(`button[onclick="window.__menu('fight')"]`); sp.info=true; }
-    else if(s==="B8"){ if(T.f.gain!=null){ sp.next="다음"; sp.gain=T.f.gain; sp.ring=spTg.cell(M); } else if(my&&!T.f.healed) sp.tg=sel===I.M?spTg.btn("🌿 회복"):spTg.cell(M,"다친 내 말"); }
+    else if(s==="B6"){
+      sp.say=sel===I.M?"말은 위·아래·옆으로 한 칸 움직여요. 표시된 칸으로 가면 상대 옆에 붙어 전투가 시작돼요.":"싸울 내 말을 눌러 보세요.";
+      if(my&&!fxLocked()) sp.tg=sel===I.M?spTg.cell({r:T.ids.dest[0],c:T.ids.dest[1]},"표시된 칸"):spTg.cell(M,"싸울 내 말");
+    }
+    else if(s==="B7"){
+      const B=S.battle, side=B?actorOfPhase():null, own=B&&(side==="A"?B.attP:B.defP).owner===0;
+      sp.say="전투가 시작되고 있어요.";
+      if(T.f.result&&!B&&!fxLocked()){ sp.say="이겼어요! 전투 뒤 남은 HP를 확인하고 [다음]을 눌러요."; sp.next="다음"; }
+      else if(B&&B.intro&&!(B.msgQ&&B.msgQ.length)&&!fxLocked()&&own){
+        sp.tg=B.menu==="fight"?spTg.sel(`button[onclick="window.__act(0)"]`):spTg.sel(`button[onclick="window.__menu('fight')"]`);
+        sp.say=B.menu==="fight"?"빛나는 기본 기술로 공격해 보세요.":T.f.cueDone?"다시 [싸우기]를 눌러요.":"초록 막대는 남은 HP예요. 이번엔 내 말의 상성이 유리해요. [싸우기]를 눌러요.";
+        sp.info=true;
+      } else if(T.f.cueShown) sp.say=fxLocked()||!B?"전투 결과를 확인하고 있어요.":"상대의 행동을 기다려요.";
+    }
+    else if(s==="B8"){
+      sp.say="회복 결과를 기다려요.";
+      if(T.f.gain!=null&&!T.f.advancing&&!fxLocked()){ sp.say="HP가 회복됐어요. [다음]으로 넘어가요."; sp.next="다음"; sp.gain=T.f.gain; sp.ring=spTg.cell(M); }
+      else if(my&&!T.f.healed&&!fxLocked()){ sp.say=sel===I.M?"[회복]을 고르면 차례가 끝날 때마다 최대 HP의 5%가 차요. 다른 행동을 하거나 싸우면 회복이 풀려요.":"다친 내 말을 눌러 보세요."; sp.tg=sel===I.M?spTg.btn("🌿 회복"):spTg.cell(M,"다친 내 말"); }
+    }
     else if(s==="B9"){ if(my) sp.tg=!S.teleport?spTg.btn("🌀 텔레포트"):S.teleport.stage===1?spTg.cell(Tp,"상대 끝줄의 내 말"):spTg.cell(K,"내 왕"); }
     return sp;
   }
@@ -299,9 +321,10 @@ const SP_N={B1:1,B2:2,B3:3,B4:4,B5:5,B6:6,B7:7,B8:8,B9:9,A1:1,A2:2,A3:3,A4:4,A5:
 function spStep(T,s){ T.step=s; T.f={n:SP_N[s]||T.f.n,slot:T.f.slot,burnId:T.f.burnId,dest:T.f.dest}; T.focus="";
   if(s==="A1"&&S.eco&&S.eco.shop){ T.f.slot=Math.max(0,ecoBuyable(S,0)); T.f.key=(S.eco.shop.slots[0][T.f.slot]||{}).key||null; } }
 function spNext(){
-  const T=spT(); if(!T||!T.step||SP.ask||SP.dlg) return; const s=T.step;
+  const T=spT(); if(!T||!T.step||SP.ask||SP.dlg||SP.pending||!spSignedIn()||spPanel()||(T.cat==="basic"&&fxLocked())) return; const s=T.step;
   if(s==="B1") spStep(T,"B2"); else if(s==="B2"&&T.f.info) spStep(T,"B3"); else if(s==="B3") spStep(T,"B4"); else if(s==="B4") spStep(T,"B5");
-  else if(s==="B8"&&T.f.gain!=null){ T.hold=false; spStep(T,"B9"); }
+  else if(s==="B7"&&T.f.result&&!S.battle&&S.current===0&&S.turnCount>=T.t0+4) spStep(T,"B8");
+  else if(s==="B8"&&T.f.gain!=null&&!T.f.advancing){ T.hold=false; T.f.advancing=true; }
   else if(s==="A2") spStep(T,"A3"); else if(s==="A4"&&T.f.item) spStep(T,"A5");
   else if(s==="A7"&&S.phase==="play"){ T.step=null; }
   else if(s==="A8"){ T.seen.shop=true; T.step=null; } else if(s==="A9"){ T.seen.burn=true; T.step=null; }
@@ -320,32 +343,41 @@ const SP_FREE="#spCoach,#spGuide,#synHelp,.flowGear,#btnBack,#toasts,.cycBtn,.st
 function spGateEv(e){
   const g=spGateSet(); if(!g) return;
   const t=/** @type {any} */(e.target); if(!t||!t.closest) return;
+  if(e.type==="keydown"&&e.key==="Tab"){
+    const gear=t.closest(".flowGear[open]"), summary=gear&&gear.querySelector("summary"), first=gear&&gear.querySelector(".menu button:not([disabled])");
+    const to=!e.shiftKey&&t===summary?first:e.shiftKey&&t===first?summary:null;
+    // Native summary is absent from the outer battle modal focus list.
+    if(to){ e.preventDefault(); e.stopImmediatePropagation(); to.focus(); }
+    return;
+  }
   if(e.type==="keydown"&&!(e.key==="Enter"||e.key===" ")) return;
   if(t.closest(SP_FREE)){ spLate(g.T); return; } // 시너지 띠 펼치기처럼 자리가 바뀌는 설명 — 가림막 구멍을 다시 맞춘다
-  if(g.out.some(x=>x&&x.contains(t))){ spHit(g.T); return; }
+  if(!spPanel()&&g.out.some(x=>x&&x.contains(t))){ spHit(g.T); return; }
   e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
 }
 /* 보는 단계(설명 창·아이템 칸·진열 카드)는 그 대상을 누른 것으로 끝난다 — 행동 단계는 상태(spWatch)로 끝난다 */
 function spHit(T){ const s=T.step;
-  if(s==="B2"&&spSelId()===T.ids.K) T.f.info=true; // 왕을 고른 뒤의 대상 = [말 정보] — 설명 창 열기·닫기는 다시 그리지 않으므로 누른 순간 표시한다
-  else if(s==="A1"&&!T.f.a1info) T.f.a1info=true; else if(s==="A4") T.f.item=true; else if(s==="A10s") T.f.card=true;
+  if(s==="A1"&&!T.f.a1info) T.f.a1info=true; else if(s==="A4") T.f.item=true; else if(s==="A10s") T.f.card=true;
   spLate(T); }
-function spLate(T){ const tok=spCtx(); setTimeout(()=>{ if(spCtxOk(T,tok)&&T.step&&!SP.ask&&!SP.dlg) spDraw(T); },0); } // 늦은 그리기 — 같은 문맥·같은 로그인일 때만(경기 종료·진행도·401·계정 전환 뒤에는 아무것도 하지 않는다)
+function spLate(T){ const tok=spCtx(); setTimeout(()=>{ if(spCtxOk(T,tok)&&T.step&&!SP.ask&&!SP.dlg) spTick(); },0); } // 늦은 그리기 — 같은 문맥·같은 로그인일 때만(경기 종료·진행도·401·계정 전환 뒤에는 아무것도 하지 않는다)
 if(typeof document!=="undefined"&&document.addEventListener){ document.addEventListener("click",spGateEv,true); document.addEventListener("keydown",spGateEv,true); }
 /* 상태로 끝나는 단계 — render 마다(spTick) 본다 */
 function spWatch(T){
   const I=T.ids, s=T.step;
   if(T.cat==="basic"){
     const M=spPc(I.M), E=spPc(I.E);
-    if(s==="B2"&&!T.f.info&&SYNHELP.el&&String(SYNHELP.pid)===String(I.K)) T.f.info=true;
+    if(s==="B2"&&SYNHELP.el&&String(SYNHELP.pid)===String(I.K)) T.f.info=true;
+    if(s==="B7"&&T.f.cueShown&&S.battle&&S.battle.menu==="fight") T.f.cueDone=true;
+    if(fxLocked()) spIdleTick(T);
     if(s==="B5"){ if(!T.f.done&&S.events[I.ev]&&S.events[I.ev].consumed) T.f.done=true;
       if(T.f.done&&S.phase==="play"&&S.current===0&&S.turnCount>=T.t0+2) spStep(T,"B6"); }
     if(s==="B6"&&S.battle) spStep(T,"B7");
     if(s==="B7"&&!S.battle&&S.phase==="play"){
       if(E&&E.alive||!M||!M.alive){ if(fxLocked()){ spIdleTick(T); return; } T.attempt++; spBasicBuild(T,"B6"); spStep(T,"B6"); return; } // 지거나 E 가 남으면 연출 뒤 B6 시작 상태부터 다시(저장 없음 · 소프트락 없음)
-      if(S.current===0&&S.turnCount>=T.t0+4){ spStep(T,"B8"); } } // 성공 전이는 연출을 기다리지 않는다(연출이 끝날 때 다시 그리기가 없다)
+      if(S.current===0&&S.turnCount>=T.t0+4&&!fxLocked()) T.f.result=true; }
     if(s==="B8"&&M){ if(!T.f.healed&&M.healing&&S.current===0){ T.f.healed=true; T.f.hp0=M.hp; T.hold=true; } // 회복 지정 → 내 차례 종료의 회복을 보일 때까지 상대 차례 보류
-      if(T.f.healed&&T.f.gain==null&&S.current===1&&M.hp>T.f.hp0) T.f.gain=M.hp-T.f.hp0; }
+      if(T.f.healed&&T.f.gain==null&&S.current===1&&M.hp>T.f.hp0) T.f.gain=M.hp-T.f.hp0;
+      if(T.f.advancing&&S.current===0&&S.turnCount>=T.t0+6&&!fxLocked()) spStep(T,"B9"); }
     if(s==="B9"&&!T.f.at9&&S.current===0&&S.turnCount>=T.t0+6) T.f.at9=true;
     return;
   }
@@ -412,7 +444,7 @@ function spCoachHtml(T,sp){
   const btn=sp.next?`<button type="button" class="primary" id="spNext" onclick="spNext()">${sp.next}</button>`:"";
   const leave=sp.leave?`<button type="button" class="ghost" onclick="spPracticeSkip()">남은 연습 건너뛰기</button>`:"";
   const roles=sp.tags&&!T.f.legend?`<ul class="srOnly">${Object.keys(SP_TAGS).map(k=>`<li>${TYPE_KO[k]} — ${SP_TAGS[k]}</li>`).join("")}</ul>`:""; // 떠 있는 이름표(읽지 않는 층)의 같은 문구 — 화면에는 한 번만
-  const legend=sp.tags&&T.f.legend?`<ol class="spLegend" aria-label="내 말 역할">${Object.keys(SP_TAGS).map((k,i)=>`<li><b class="spMk" aria-hidden="true">${i+1}</b>${TYPE_KO[k]} — ${SP_TAGS[k]}</li>`).join("")}</ol>`:"";
+  const legend=sp.tags&&T.f.legend?`<ol class="spLegend" tabindex="0" aria-label="내 말 역할">${Object.keys(SP_TAGS).map((k,i)=>`<li><b class="spMk" aria-hidden="true">${i+1}</b>${TYPE_KO[k]} — ${SP_TAGS[k]}</li>`).join("")}</ol>`:"";
   const gain=sp.gain!=null?`<p class="spGain" role="status">${gi("heal")} HP +${sp.gain}</p>`:"";
   return `<div class="spCoachIn">${spWitchImg("spWitch")}<div class="spBubble histCard"><p class="spProgTx">${sp.prog}</p><p class="spSay" id="spSay">${sp.say}</p>${gain}${roles}${legend}${sp.pics?spPicsHtml(sp.pics):""}${btn||leave?`<div class="row">${leave}${btn}</div>`:""}</div></div>`;
 }
@@ -426,9 +458,15 @@ function spDraw(T){
   if(el&&sp.tg.cell){ el.setAttribute("tabindex","0"); el.setAttribute("role","button"); if(sp.tg.lb) el.setAttribute("aria-label",sp.tg.lb);
     spKeyCell(el); }
   if(sp.tg&&sp.tg.zone) for(const z of spZoneCells()) spKeyCell(z); // A6 말을 고른 뒤 — 놓을 수 있는 내 진영 빈칸 전부를 키보드로도(Tab · Enter/Space)
-  const key=T.step+"|"+(sp.tg?(sp.tg.cell||"")+String(!!el)+(sp.tg.zone?"z":""):"")+"|"+(sp.next||"");
-  if(T.focus!==key){ const say=T.focus.split("|")[0]!==T.step; T.focus=key; try{ const f=el||(sp.tg&&sp.tg.zone?spZoneCells()[0]:null)||(sp.next?$("spNext"):null); if(f&&f.focus) f.focus({preventScroll:false}); }catch(e){}
-    if(say){ const lv=$("spLive"); if(lv) lv.textContent=sp.prog+" — "+sp.say; } } // 단계가 바뀔 때만 상태 공지(고정 aria-live 영역)
+  const key=T.step+"|"+(sp.tg?(sp.tg.cell||sp.tg.sel||sp.say)+String(!!el)+(sp.tg.zone?"z":""):"")+"|"+(sp.next||"")+"|"+!!spPanel();
+  if(T.focus!==key){ T.focus=key; try{ const f=spPanel()?null:el||(sp.tg&&sp.tg.zone?spZoneCells()[0]:null)||(sp.next?$("spNext"):null); if(f&&f.focus) f.focus({preventScroll:true}); }catch(e){} }
+  const lv=$("spLive"), message=sp.prog+" — "+sp.say;
+  if(lv&&lv.textContent!==message) lv.textContent=message; // Announce a changed action once, never on geometry-only redraw.
+  if(T.step==="B2"&&spSelId()===T.ids.K) T.f.overview=true;
+  if(T.step==="B7"&&sp.info&&!spPanel()&&sp.tg&&spVisible(el)) T.f.cueShown=true;
+  const panel=spPanel(), host=panel&&panel.closest&&panel.closest("#overlay")||document.body;
+  for(const layer of [s,c]) if(layer.parentNode!==host&&host&&host.appendChild) host.appendChild(layer);
+  c.classList[panel?"add":"remove"]("withPanel");
   spSpot(T,sp,el);
 }
 /* 대상 칸을 버튼처럼 — 초점·이름·Enter/Space(실제 click 을 내 입력 문을 지나게 보낸다) */
@@ -437,37 +475,76 @@ function spKeyCell(el){ el.setAttribute("tabindex","0"); el.setAttribute("role",
   el.onkeydown=ev=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); if(typeof el.click==="function") el.click(); else if(el.onclick) el.onclick(); } }; }
 function spZoneCells(){ return zoneOf(0).flatMap(r=>[1,2,3,4,5,6,7].filter(c=>!at(r,c)).map(c=>spCell(r,c))).filter(Boolean); } // 내 진영의 빈칸만(상대 정보 없음)
 function spRect(el){ try{ const r=el&&el.getBoundingClientRect?el.getBoundingClientRect():null; return r&&r.width>0?r:null; }catch(e){ return null; } }
-function spBox(r,cls,txt,pad){ pad=pad||0; return `<i class="${cls}" style="left:${Math.round(r.left-pad)}px;top:${Math.round(r.top-pad)}px;width:${Math.round(r.width+pad*2)}px;height:${Math.round(r.height+pad*2)}px">${txt?`<b>${txt}</b>`:""}</i>`; }
-function spRows(a,b){ const r1=spRect(spCell(a,1)), r2=spRect(spCell(b,COLS)); return r1&&r2?{left:r1.left,top:r1.top,width:r2.right-r1.left,height:r2.bottom-r1.top}:null; }
+/* Apertures, rings, zones and label anchors share live clipping; padding cannot cross it. */
+function spVisible(el){
+  const r=spRect(el), W=window.innerWidth||0,H=window.innerHeight||0;
+  if(!r||el.disabled||![r.left,r.top,r.right,r.bottom,W,H].every(Number.isFinite)||W<=0||H<=0) return null;
+  const clip={left:0,top:0,right:W,bottom:H};
+  if(el.closest&&!el.closest("#synHelp,.flowGear,#spCoach")) {
+    const overlay=el.closest("#overlay");
+    for(const head of document.querySelectorAll("#boardInfo,.flowHead,.shopTop,.battleTop")){
+      const hr=spRect(head);
+      if(hr&&!head.contains(el)&&!!head.closest("#overlay")===!!overlay&&hr.left<r.right&&hr.right>r.left&&hr.bottom>0&&hr.top<H) clip.top=Math.max(clip.top,hr.bottom);
+    }
+  }
+  for(let a=el;a;a=a.parentElement||a.parentNode){
+    if(typeof getComputedStyle!=="function") break;
+    if(a.nodeType&&a.nodeType!==1) break;
+    const st=getComputedStyle(a); if(st.display==="none"||st.visibility==="hidden") return null;
+    if(a===el) continue; const ar=spRect(a); if(!ar) continue;
+    if(/auto|scroll|hidden|clip/.test(st.overflowX)){ clip.left=Math.max(clip.left,ar.left+(a.clientLeft||0));clip.right=Math.min(clip.right,ar.left+(a.clientLeft||0)+(a.clientWidth||ar.width)); }
+    if(/auto|scroll|hidden|clip/.test(st.overflowY)){ clip.top=Math.max(clip.top,ar.top+(a.clientTop||0));clip.bottom=Math.min(clip.bottom,ar.top+(a.clientTop||0)+(a.clientHeight||ar.height)); }
+  }
+  if(el.closest&&!el.closest("#overlay,#synHelp,#spCoach,.flowGear")) for(const id of ["appBar","actionDock"]){
+    const dock=$(id), dr=spRect(dock); if(!dr||dock.contains(el)||r.left>=dr.right||r.right<=dr.left) continue;
+    if(id==="appBar"&&r.top<dr.bottom) clip.top=Math.max(clip.top,dr.bottom);
+    if(id==="actionDock"&&r.bottom>dr.top) clip.bottom=Math.min(clip.bottom,dr.top);
+  }
+  const left=Math.max(r.left,clip.left),top=Math.max(r.top,clip.top),right=Math.min(r.right,clip.right),bottom=Math.min(r.bottom,clip.bottom);
+  return right>left&&bottom>top?{left,top,right,bottom,width:right-left,height:bottom-top,clip}:null;
+}
+function spPad(r,pad){ const c=r.clip||{left:0,top:0,right:window.innerWidth,bottom:window.innerHeight};
+  const left=Math.max(c.left,r.left-pad),top=Math.max(c.top,r.top-pad),right=Math.min(c.right,r.right+pad),bottom=Math.min(c.bottom,r.bottom+pad);
+  return {left,top,right,bottom,width:right-left,height:bottom-top}; }
+function spBox(r,cls,txt,pad){ const clip=r.clip; r=spPad(r,pad||0);
+  const edge=clip?`clip-path:inset(-${Math.min(20,r.top-clip.top)}px -${Math.min(20,clip.right-r.right)}px -${Math.min(20,clip.bottom-r.bottom)}px -${Math.min(20,r.left-clip.left)}px);`:"";
+  return `<i class="${cls}" style="${edge}left:${Math.round(r.left)}px;top:${Math.round(r.top)}px;width:${Math.round(r.width)}px;height:${Math.round(r.height)}px">${txt?`<b>${txt}</b>`:""}</i>`; }
+function spRows(a,b){ const rs=[];for(let row=a;row<=b;row++) for(let c=1;c<=COLS;c++){const r=spVisible(spCell(row,c));if(r)rs.push(r);} if(!rs.length)return null;
+  const left=Math.min(...rs.map(r=>r.left)),top=Math.min(...rs.map(r=>r.top)),right=Math.max(...rs.map(r=>r.right)),bottom=Math.max(...rs.map(r=>r.bottom));
+  return {left,top,right,bottom,width:right-left,height:bottom-top,clip:rs[0].clip}; }
+function spPanel(){ return SYNHELP.el||spEl(".flowGear[open] .menu"); }
 /* 스포트라이트 층 — 대상 고리 · 강조 영역(구역 띠) · B2 이름표. 모두 pointer-events:none, 규칙상 안 보이는 말은 가리키지 않는다(대상은 늘 보이는 칸·버튼) */
 /* 주변 가림막(Dim) — 입력 문(spGateSet)이 지금 받는 묶음 + 배울 자리(구역·고리·이름표 말·전투원 칸) + 늘 열린 ⚙·설명 버튼만 뚫고 나머지를 어둡게.
    실제 DOM 사각형으로만 그린다(버튼을 옮기거나 복제하지 않는다). 누를 대상이 있어야 하는데 화면에 없으면(없음·0크기·화면 밖) 가림막 없이 — 검은 벽을 남기지 않는다.
    자유 단계(A5·확인 뒤 자유 경기)·상대 차례 기다림은 끈다. 말풍선 버튼([다음]·[확인]·[남은 연습 건너뛰기])이 입력을 붙잡는 안내 단계는 뚫을 곳이 없어도 배경을 어둡게(CJ) */
-const SP_OPEN=".flowGear,#btnBack,#overlay .cycBtn,#overlay .bsynTog,#overlay .bsynStrip"; // SP_FREE 중 가림막 밑에 놓이는 것
+const SP_OPEN="#btnBack,#overlay .cycBtn,#overlay .bsynTog,#overlay .bsynStrip";
 function spDimHtml(T,sp){
-  const W=window.innerWidth||0, H=window.innerHeight||0, on=r=>!!r&&[r.left,r.top,r.width,r.height].every(Number.isFinite)&&r.width>0&&r.height>0&&r.left+r.width>0&&r.top+r.height>0&&r.left<W&&r.top<H;
-  if(sp.free||!(Number.isFinite(W)&&Number.isFinite(H)&&W>0&&H>0)) return ""; // 창 크기가 유한 양수일 때만
-  const all=sel=>{ try{ return [...document.querySelectorAll(sel)].map(spRect); }catch(e){ return []; } };
-  const g=spGateSet(), tg=(g?g.out:[]).map(spRect).filter(on), p=sp.tg&&!sp.tg.zone?sp.tg.el():null;
-  if(sp.tg&&(sp.tg.zone?!tg.length:!p||p.disabled||!on(spRect(p)))) return ""; // 누를 대상 그 자체(A6 고른 뒤 = 놓을 빈칸 하나라도)가 없음·비활성·화면 밖이면 가림막 0 — 함께 연 묶음·배울 자리로 대신 켜지 않는다
-  const ctx=(sp.zone||[]).map(z=>spRows(z[0],z[1])).concat(sp.board?[spRect($("board"))]:[], sp.ring&&sp.ring.el?[spRect(sp.ring.el())]:[],
-    (sp.tags?spTagPieces(T):sp.near||[]).map(p=>spRect(spCell(p.r,p.c))), sp.info?all("#overlay .bslot"):[]).filter(on);
-  const holes=tg.concat(ctx); if(!holes.length&&!sp.next&&!sp.leave) return ""; // 안내 버튼만 있는 단계(B4·A4·A7·A8·A10)는 배경만 어둡게 — 도해·버튼은 말풍선(z54)
-  const box=r=>{ const x=Math.floor(r.left-8), y=Math.floor(r.top-8); return `<rect x="${x}" y="${y}" width="${Math.ceil(r.left+r.width+8)-x}" height="${Math.ceil(r.top+r.height+8)-y}" rx="10"/>`; }; // ART: 실제 경계에서 8 CSS px 바깥까지 원래 밝기(소수 좌표는 바깥으로 올림)
-  return `<svg class="spDim" width="${W}" height="${H}"><mask id="spDimM"><rect width="${W}" height="${H}" fill="#fff"/><g fill="#000">${holes.concat(all(SP_OPEN).filter(on)).map(box).join("")}</g></mask><rect class="spDimR" width="${W}" height="${H}" mask="url(#spDimM)"/></svg>`;
+  const W=window.innerWidth||0,H=window.innerHeight||0;
+  if(![W,H].every(Number.isFinite)||W<=0||H<=0||sp.free) return "";
+  const all=sel=>{try{return [...document.querySelectorAll(sel)].map(spVisible).filter(Boolean);}catch(e){return [];}};
+  const panel=spPanel(),g=spGateSet();
+  const clipped=!panel&&sp.tg&&(sp.tg.zone?!g.out.some(spVisible):!spVisible(sp.tg.el()));
+  if(clipped&&!g.out.some(e=>{const r=spRect(e);return !e.disabled&&r&&[r.left,r.top,r.right,r.bottom].every(Number.isFinite);})) return "";
+  const holes=clipped?[]:panel?[spVisible(panel),panel===SYNHELP.el?null:spVisible(panel.parentElement.querySelector("summary"))].filter(Boolean):(g?g.out:[]).map(spVisible).filter(Boolean).concat(
+    (sp.zone||[]).map(z=>spRows(z[0],z[1])),sp.board?[spVisible($("board"))]:[],sp.ring&&sp.ring.el?[spVisible(sp.ring.el())]:[],
+    (sp.tags?spTagPieces(T):sp.near||[]).map(p=>spVisible(spCell(p.r,p.c))),sp.info?all("#overlay .bslot"):[],all(SP_OPEN)).filter(Boolean);
+  const box=r=>{r=spPad(r,8);const x=Math.floor(r.left),y=Math.floor(r.top);return `<rect x="${x}" y="${y}" width="${Math.ceil(r.right)-x}" height="${Math.ceil(r.bottom)-y}" rx="10"/>`;};
+  return `<svg class="spDim" width="${W}" height="${H}"><mask id="spDimM"><rect width="${W}" height="${H}" fill="#fff"/><g fill="#000">${holes.map(box).join("")}</g></mask><rect class="spDimR" width="${W}" height="${H}" mask="url(#spDimM)"/></svg>`;
 }
 function spSpot(T,sp,el){
-  const s=$("spSpot"); let h=spDimHtml(T,sp); // 가림막이 먼저 — 고리·구역 띠·이름표는 그 위에
-  for(const z of sp.zone||[]){ const r=spRows(z[0],z[1]); if(r) h+=spBox(r,"spZone",z[2],2); }
-  const ring=el||(sp.ring&&sp.ring.el?sp.ring.el():null), rr=spRect(ring); if(rr) h+=spBox(rr,el?"spRing tg":"spRing",el&&sp.tg.lb?"":"",4);
-  if(sp.tags) spTagPieces(T).forEach((p,i)=>{ const r=spRect(spCell(p.r,p.c)); if(!r) return;
+  const panel=spPanel();
+  if(panel) spPlace(spRect(panel));
+  const s=$("spSpot"); let h=spDimHtml(T,sp); // Measure the panel after reserving room for the reading instruction.
+  for(const z of panel?[]:sp.zone||[]){ const r=spRows(z[0],z[1]); if(r) h+=spBox(r,"spZone",z[2],2); }
+  const ring=panel?null:el||(sp.ring&&sp.ring.el?sp.ring.el():null), rr=spVisible(ring); if(rr) h+=spBox(rr,el?"spRing tg":"spRing",el&&sp.tg.lb?"":"",4);
+  if(sp.tags&&!panel) spTagPieces(T).forEach((p,i)=>{ const r=spVisible(spCell(p.r,p.c)); if(!r) return;
     h+=T.f.legend?`<i class="spMark" data-cr="${Math.round(r.right)}" data-cb="${Math.round(r.bottom)}" style="left:${Math.round(r.left+3)}px;top:${Math.round(r.top+3)}px"><b>${i+1}</b></i>` // 칸 안 번호 — 말풍선 범례와 짝
       :`<i class="spTag" data-cx="${Math.round(r.left+r.width/2)}" data-up="${Math.round(r.top-2)}" data-dn="${Math.round(r.bottom+2)}" style="left:${Math.round(r.left+r.width/2)}px;top:${Math.round(r.bottom+2)}px"><b>${SP_TAGS[p.type]}</b></i>`; });
   if(SP_DRAWN.spot!==h){ SP_DRAWN.spot=h; s.innerHTML=h;
     if(sp.tags&&!T.f.legend&&!spTagFit(s,rr)){ T.f.legend=true; SP_DRAWN.coach=SP_DRAWN.spot=""; spDraw(T); return; } } // 떠 있는 이름표가 겹침 없이 다 들어가지 못하면 번호 + 말풍선 범례(같은 문구)
   if(h) s.classList.remove("hidden"); else s.classList.add("hidden");
   const z=!rr&&sp.tg&&sp.tg.zone&&sp.zone?spRows(sp.zone[0][0],sp.zone[0][1]):null; // A6 말을 고른 뒤 — 대상 = 내 진영 빈칸 전부: 말풍선이 그 줄들을 덮지 않게
-  spPlace(rr||(z&&{left:z.left,top:z.top,width:z.width,height:z.height,right:z.left+z.width,bottom:z.top+z.height}));
+  spPlace(panel?spRect(panel):rr||(z&&{left:z.left,top:z.top,width:z.width,height:z.height,right:z.left+z.width,bottom:z.top+z.height}));
 }
 /* B2 이름표 5개(하수인 · 왕 · 동료 · 폭탄 · 함정 순서 = SP_TAGS) — 모두 내 진영(11~13행)의 실제 내 말. 왕은 대상 그 말 · 하수인은 진영 안의 하수인(같은 역할 문구) — 좁은 화면 위 말풍선 아래로 다 보이게 */
 function spTagPieces(T){ const mine=alivePieces().filter(p=>p.owner===0&&zoneOf(0).includes(p.r));
@@ -491,25 +568,36 @@ function spPlace(rr){
   const c=$("spCoach"); if(!c||!c.classList) return;
   let wide=false, H=800, W=400; try{ W=window.innerWidth||400; H=window.innerHeight||800; wide=W>=900; }catch(e){}
   const fight=!!(S&&S.battle); if(fight) c.classList.add("inBattle"); else c.classList.remove("inBattle"); // 전투 창 안에서는 작은 말풍선
+  const panel=spPanel();
+  if(panel&&panel===SYNHELP.el&&wide) panel.style.maxHeight="";
+  if(panel&&panel===SYNHELP.el&&!wide){
+    for(const pos of ["left","right","bottom","mid"]) c.classList.remove("at-"+pos);
+    c.classList.add("at-top"); c.style.top=spHudBottom()+"px";
+    const cr=spRect(c); if(cr) panel.style.maxHeight=Math.max(80,H-cr.bottom-24)+"px";
+    return;
+  }
   const slots=fight?[...document.querySelectorAll("#overlay .bslot")].map(spRect).filter(Boolean):[];
   const upper=slots.length?slots.reduce((a,b)=>a.top<=b.top?a:b):null;
   /* 좁은 전투: 아래 → 두 전투원 칸 사이 그림 띠(mid) → 위. 넓은 화면: 왼쪽/오른쪽 */
   const opts=wide?["left","right"]:fight?["bottom","mid","top"]:["top","bottom"];
   const order=wide?(!rr||rr.left+rr.width/2>=W*0.4?[0,1]:[1,0]):fight?[0,1,2]:(!rr||rr.top+rr.height/2>=H/2?[0,1]:[1,0]);
   const hud=wide?0:spHudBottom(), ov=(a,b)=>!!a&&!!b&&a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
+  const gears=[...document.querySelectorAll(fight?"#overlay .flowGear summary":".flowGear summary")].map(spRect).filter(Boolean);
+  const fits=cr=>!cr||!gears.some(r=>ov(cr,r));
   const keep=[rr].concat(slots,[...document.querySelectorAll("#spSpot .spZone b,#spSpot .spTag")].map(spRect)).filter(Boolean); // 대상 + 전투원 HP·능력치 칸 + 구역 띠 글자(1칸·2칸) · 이름표는 가리지 않는다
   const pad=8; // #spCoach 안쪽 여백 — 판정은 보이는 말풍선+마녀(.spCoachIn) 크기로
   const put=i=>{ for(const o of ["left","right","top","bottom","mid"]) c.classList.remove("at-"+o); const o=opts[i]; c.classList.add("at-"+o);
     c.style.top=o==="top"&&hud?hud+"px":o==="mid"&&upper?Math.round(upper.bottom+2-pad)+"px":""; // ⚙·신원·차례 줄은 늘 보이고 눌린다 · mid = 위 전투원 칸 바로 아래
     return spRect(fight&&c.querySelector(".spCoachIn")||c); }; // 전투에서는 보이는 말풍선+마녀 크기로 판정(그 밖은 종전 바깥 상자 그대로)
   const done=cr=>{ spMarkFit(cr); };
-  for(const i of order){ if(opts[i]==="mid"&&!upper) continue; const cr=put(i); if(!cr||!keep.some(k=>ov(cr,k))) return done(cr); }
-  for(const i of order){ if(opts[i]==="mid"&&!upper) continue; const cr=put(i); if(!cr||!ov(cr,rr)) return done(cr); } // 어디든 무언가를 가리면 적어도 대상은 가리지 않는 쪽(지원 크기 320·390·PC 에서는 위 줄에서 끝난다)
+  for(const i of order){ if(opts[i]==="mid"&&!upper) continue; const cr=put(i); if(fits(cr)&&(!cr||!keep.some(k=>ov(cr,k)))) return done(cr); }
+  for(const i of order){ if(opts[i]==="mid"&&!upper) continue; const cr=put(i); if(fits(cr)&&(!cr||!ov(cr,rr))) return done(cr); } // 어디든 무언가를 가리면 적어도 대상은 가리지 않는 쪽(지원 크기 320·390·PC 에서는 위 줄에서 끝난다)
   done(put(order[0]));
 }
 /* 범례 번호가 말풍선 밑에 들면 같은 칸의 오른쪽 아래 모서리로 옮긴다(칸 안 · 다른 번호와 겹치지 않음) */
 function spMarkFit(cr){ if(!cr) return; try{ for(const m of /** @type {any[]} */([...document.querySelectorAll("#spSpot .spMark")])){ const r=spRect(m.firstElementChild||m);
   if(r&&cr.left<r.right&&cr.right>r.left&&cr.top<r.bottom&&cr.bottom>r.top){ m.style.left=(Number(m.dataset.cr)-r.width-3)+"px"; m.style.top=(Number(m.dataset.cb)-r.height-3)+"px"; } } }catch(e){} }
+if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("toggle",()=>{const T=spT();if(T&&T.step)spLate(T);},true);
 if(typeof window!=="undefined"&&window.addEventListener){ window.addEventListener("resize",()=>{ const T=spT(); if(T&&T.step) spDraw(T); }); window.addEventListener("scroll",()=>{ const T=spT(); if(T&&T.step) spDraw(T); },true); }
 
 /* ===== 기본 B1~B9 — 고정 합법 보드 (실제 엔진 · 실제 규칙) =====

@@ -339,6 +339,7 @@ function fitBoard(){
     const fl=x=>String(Math.floor(x*1000)/1000); w.style.setProperty("--bs",fl(s)); // 내림 — 반올림 1px 로 마지막 행이 잘리지 않게
     /* #296 CJ REVISE2: 우측 열(#boardInfo .sideCol · CSS)이 읽는 말판 높이 배율 — 말판 배율 그대로, 단 하한(32px 칸)으로 말판이 화면보다 길어지면 보이는 높이까지(고정 HUD 에 붙은 열의 [말 정보]가 잘리지 않게) */
     if(b&&b.style&&b.style.setProperty) b.style.setProperty("--sideBs",fl(Math.min(s,vis)));
+    if(typeof spT==="function"){ const t=spT(); if(t&&t.step) spDraw(t); }
   }catch(e){}
 }
 if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("resize",()=>{try{fitBoard(); emoteSync();}catch(e){}}); // #238 L03 이모티콘 위치도 다시 잰다
@@ -1569,9 +1570,11 @@ function synHelpOpen(html,from){ synHelpClose(false);
   const host=(from&&from.closest&&from.closest("#overlayBox"))||$("app")||document.body; // 모달 안이면 모달 안에 — 포커스 순환(Tab)에 함께 든다
   host.appendChild(d); SYNHELP.el=d; SYNHELP.from=from||null;
   try{ d.querySelector("button").focus({preventScroll:true}); }catch(e){}
+  if(typeof spTick==="function") spTick();
 }
 function synHelpClose(refocus){ const d=SYNHELP.el, f=SYNHELP.from; SYNHELP.el=SYNHELP.from=SYNHELP.pid=null;
-  if(d&&d.parentNode) d.parentNode.removeChild(d); if(refocus&&f&&f.isConnected&&f.focus) f.focus({preventScroll:true}); }
+  if(d&&d.parentNode) d.parentNode.removeChild(d); if(refocus&&f&&f.isConnected&&f.focus) f.focus({preventScroll:true});
+  if(d&&typeof spTick==="function") spTick(); }
 if(typeof document!=="undefined"&&document.addEventListener){
   document.addEventListener("keydown",e=>{ const h=SYNHELP.el, d=h||(UI.drawer&&uiScreenName()==="board"&&!uiOverlayOpen()&&!EMO.open?$("right"):null); if(!d) return; // 안내 창이 먼저 · 없으면 열린 가방 창(#294 Saturn REVISE: Tab 이 뒤 보드로 나가지 않는다)
     if(e.key==="Escape"){ if(!h) return; e.stopImmediatePropagation(); e.preventDefault(); synHelpClose(true); return; } // 모달의 Esc(=취소)보다 먼저 — 안내만 닫는다 (가방 창의 Esc 는 아래 핸들러)
@@ -1614,6 +1617,7 @@ function unitHelpOpen(d,from,pid){
     +(st?d.tags||"":"")+`<div class="uhTop"><span class="uhFace${d.g?` gb g${d.g}`:""}">${face}</span>`+(st?stats:`<div class="uhInfo">${d.tags||""}${rows}${syn}</div>`)+`</div>`+(st?rows+syn:"")
     +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4>${skillListHtml(d.skills)}`:""),from);
   SYNHELP.el.classList.add("uh"); SYNHELP.pid=pid===undefined?null:pid;
+  if(typeof spTick==="function") spTick();
 }
 /* 기본 능력치 칸 — u 에 실제로 있는 숫자만(전투 엔진이 쓰는 필드 그대로: data.js applyArchStats · applyFixedStats). HP · 공격력은 등급 성장분 포함, 시너지 · 전투 중 버프는 넣지 않는다.
    이름표는 SYN_STAT_KO. 2026-10-02 CJ REVISE 2: 8칸(HP·공격력 / 방어력·속도 / 회피·치명타 / 상태 부여·시작 방어막) — 0 도 그대로 보인다. 명중 스탯은 이 게임에 없다 — 칸을 만들지 않는다.
