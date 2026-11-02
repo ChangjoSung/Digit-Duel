@@ -1886,7 +1886,7 @@ function battleModal(board){
     +`<button type="button" class="bsynTog" id="bsynTog" aria-expanded="${synOn}" aria-controls="bsynStrip" aria-label="활성 시너지 ${synN}개 — ${synOn?"접기":"펼치기"}" onclick="window.__synTog()">${gi("synergy")}<b>${synN}</b></button></div>`;
   let synKeep=null; try{ const st=$("bsynStrip"), a=document.activeElement, w=st&&st.parentElement;
     if(st&&UI.synOpen===synKey) synKeep={x:st.scrollLeft,f:w&&w.contains(a)?[...w.querySelectorAll("[tabindex],button")].indexOf(a):-1}; }catch(e){}
-  let sprKeep=[]; try{ sprKeep=[...document.querySelectorAll("#bstage .bsprite")]; }catch(e){} // #401 아래 modal() 뒤에서 같은 도트를 그대로 되돌린다
+  let sprKeep=[]; try{ sprKeep=[...document.querySelectorAll("#bstage .bsprite")]; }catch(e){} // #401 전투 창을 다시 그린 뒤 같은 도트를 그대로 되돌린다 (아래)
   modal(`<header class="battleTop">${topBarHtml(NET.mode?NET.me:S.mode==="pve"?0:ownerP,`<b class="who">배틀 중</b>${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(NET.publicMode?netResignBtn():"")}`)}</header>
     <div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>${synTogHtml}</div>
     <div class="bhead bround"><span>⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}</span>
