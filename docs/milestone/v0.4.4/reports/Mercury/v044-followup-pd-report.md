@@ -66,4 +66,4 @@ rev3의 [최종 Saturn 재검수](../../issues/104/Saturn/issue104-orientation-s
 | 턴 개편 구현·QA 계약 | [turn-flow 규격](../../specs/v0.4.4-turn-flow-spec.md) |
 | 최신 규칙 읽는 정리본 | [DIGEST 2호](../../specs/v0.4.4-rules-digest.md), [Notion DIGEST](https://app.notion.com/p/3cd1e7f17085813992ccd85ce72b1d0f) |
 | CJ 결정 및 규칙 본문 | [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) Decision Log30·4.3~4.6·4.11·6장, GDD12·14·16 관련 본문 |
-| 작업 상태·인수인계 | [스냅샷](../../../../creat2ve/HANDOVER_SNAPSHOT.md), GitHub #93/#104/#105/#106 |
+| 작업 상태·인수인계 | [스냅샷](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/HANDOVER_SNAPSHOT.md), GitHub #93/#104/#105/#106 |

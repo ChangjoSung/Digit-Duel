@@ -1,3 +1,7 @@
+> **2026-10-29 문서 정본 전환:** 현행 부서·PM 문서는 회사 Obsidian에서 관리합니다. [현재 진입 안내](../../AGENTS.md)를 따르며 아래의 과거 날짜·표·보고는 이력으로 보존합니다. [운영 HTML](../creat2ve/CHANGJO_GAMES_ORG_RNR.html)은 열람 출력입니다.
+
+> **2026-10-28 운영 원장 전환:** 현재 업무·승인·인수인계는 [CHANGJO GAMES Org Chart and R&R](../creat2ve/CHANGJO_GAMES_ORG_RNR.html)에서 관리합니다. 아래 표와 보고는 작성 당시의 기록이며 새 작업 승인이나 현재 운영 상태로 재활성화하지 않습니다.
+
 # 마일스톤 보관소
 
 > **2026-09-10 버전 재배번 ([#169](https://github.com/ChangjoSung/Digit-Duel/issues/169) · CJ 승인).** 종전 `v0.4.7`(HTML)→**`v0.4.6`**, 종전 `v0.4.6`(Roblox)→**`v0.5.0`**, 종전 `v0.5.0`(Unity)→**`v0.6.0`**. 폴더는 마일스톤 버전을 따라가는 주소라 함께 옮겼고 대조표는 [MOVES.csv](MOVES.csv)에 있다. **옮겨진 기록 본문의 옛 버전 서술은 작성 당시의 판정이라 고치지 않았다.**

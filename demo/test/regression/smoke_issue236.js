@@ -718,7 +718,7 @@ function proxyBattle(T,win){
 /* #295: 티켓 미확정 창 = 왕·동료 줄의 속성 아이콘 → 확인 창 1회(종전 3단 선택 창 대체). 버튼이 눌리도록 티켓 1장을 쥐여 준다 */
 function openTicket(T,p){ const k=T.S.pieces.find(x=>x.owner===p&&x.type==="king"); T.S.eco.tickets[p]=1;
   T.__shop("ticket",k.id,["fire","water","lightning","land","grass"].find(e=>e!==k.element));
-  ok(/티켓 사용 확인/.test(T.byId("overlayBox").innerHTML),"티켓 속성 아이콘 → 확인 창(미확정) 1회"); }
+  ok(/티켓 사용 확인/.test(T.byId("subBox").innerHTML),"티켓 속성 아이콘 → 확인 창(미확정) 1회 (2026-11-02 §3S.5 부모 상점 위 하위 창)"); }
 /* ===== Q. 정기 상점 180초(#295 2026-10-02 CJ — 종전 90초 대체) — 사람 좌석마다, 자기 상점이 보이는 순간부터 (2026-09-24 CJ D1 · AC39 · AC40) =====
    시작 상점(S01)은 #293 (2026-10-01 CJ 1)로 **공통 준비 180초 하나**다 — 상점·배치·핫시트 두 사람이 같은 마감을 쓰고 가림·차례 넘김에 다시 걸리지도 멈추지도 않는다.
    하네스 스텁 타이머는 지연을 무시하므로 여기서만 가짜 시계(Date.now·setTimeout·clearTimeout)를 건다. 경과는 adv(ms) 로만 흐른다. */

@@ -9,7 +9,7 @@
 - 구현 위치 C:/Users/pc_77/orca/workspaces/Digit-Duel/feature-233-combat-engine, feature/233-combat-engine. PR base milestone/v0.4.11 = 654a6e2c1c36fe825d3242c0fe464df494ef4cdb.
 - 원본 milestone/v0.6.0·사용자 미커밋 파일·보호 경로·백업을 보존한다. Mercury는 운영 문서·Git·조정만 담당했다.
 - Saturn Terra high READ_ONLY PASS: 클라이언트 집중 309/0, 서버 경계 547/0, 각 1회. 실제 단일 반올림·재부여·화상 R1 제외·공개 방 순서 복원·균열 상태 보너스를 확인했다.
-- [최소 QA 정책](../../../../../creat2ve/QA_MINIMUM_POLICY.md)을 원본/구현 작업공간 CLAUDE.md·HANDOVER_SNAPSHOT.md에 연결했다. 수동 브라우저/네트워크 매트릭스는 실행하지 않았다. 필수 CI 6개는 PR에서 확인한다.
+- [최소 QA 정책](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/QA_MINIMUM_POLICY.md)을 원본/구현 작업공간 CLAUDE.md·HANDOVER_SNAPSHOT.md에 연결했다. 수동 브라우저/네트워크 매트릭스는 실행하지 않았다. 필수 CI 6개는 PR에서 확인한다.
 - 운영 이탈: Mars가 마지막 회귀 안정화 후 전체 회귀 3회 반복을 시작한 것을 07:13 UTC에 발견해 해당 터미널 interrupt로 중단했다. 이를 필수 QA였다고 기록하지 않는다.
 
 ## 실행·장애 이력

@@ -217,7 +217,7 @@ function reduceCoreAction(state,action){
         return {state:next,events:[{type:"setupNetworkReady",setup,publicMode:action.publicMode}]};
       }
       if(state.mode==="pvp"&&player===0){ next.setupPlayer=1; return {state:next,events:[{type:"setupHandoff",player:1}]}; }
-      return {state:next,events:[{type:state.mode==="pvp"?"setupBegin":"setupAiBegin"}]};
+      return {state:next,events:[state.mode==="pvp"?{type:"setupBegin"}:action.first===0||action.first===1?{type:"setupAiBegin",first:action.first}:{type:"setupAiBegin"}]}; // #324 호스트가 실어 보낸 선공(튜토리얼 심화만)은 경기 개시까지 그대로
     }
     case "tele": return {state:Object.assign({},state,{teleport:state.teleport?null:{stage:1,piece:null},selected:null}),events:[{type:"render"}]};
     case "skipMain": return {state:Object.assign({},state,{mainUsed:true}),events:[{type:"mainSkipped",player:state.current,origin:action.origin,toast:action.toast}]};
@@ -914,10 +914,10 @@ function reduceCoreAction(state,action){
        metrics.firstPlayer 를 직접 쓰고 startTurn() 이 다시 Object.assign 으로 얹었다 — 같은 경기 시작이
        커밋 경계를 두 번 우회했다. 표시(선공 로그·턴 배너·BT 고지·핫시트 넘김·렌더·AI 스케줄)는 playBegan 이벤트다. */
     case "beginPlay": {
-      const current=Math.floor(rand()*2);                       // 무작위 선공 (Q6 확정) — 난수 소비 1회, 종전과 같은 자리
+      const current=action.first===0||action.first===1?action.first:Math.floor(rand()*2); // 무작위 선공 (Q6 확정) — 난수 소비 1회, 종전과 같은 자리. #324 배치 확정 액션이 선공을 실어 온 경기(튜토리얼 심화)만 난수 없이 그 값
       const metrics=Object.assign({},state.metrics,{firstPlayer:current,byPlayer:state.metrics.byPlayer.map(x=>Object.assign({},x))});
       const started=startTurnState(Object.assign({},state,{phase:"play",current,metrics},state.eco?{eco:Object.assign({},state.eco,{shop:null})}:{})); // #236: 시작 상점은 배치와 함께 끝난다
-      return {state:started.state,events:[{type:"playBegan",player:current,bt:started.bt}]};
+      return {state:started.state,events:[action.first===current?{type:"playBegan",player:current,bt:started.bt,fixed:true}:{type:"playBegan",player:current,bt:started.bt}]};
     }
     /* #245 턴 시작 초기화만 따로 — 종전 startTurn() 래퍼가 startTurnState 의 결과를 Object.assign 으로 S 에 직접 얹던 자리다.
        같은 상태 계산(startTurnState)을 쓰고 표시는 turnStarted 이벤트로만 나간다. */
@@ -1160,7 +1160,7 @@ function applyCoreEffects(event){
       return true;
     }
     case "setupBegin": beginPlay(); return true;                                    // 배치 완료 → 경기 개시 (Core 액션)
-    case "setupAiBegin": emitCore({type:"aiSetupTurn",player:1}); addLog("AI 배치 완료.","ai"); beginPlay(); return true;
+    case "setupAiBegin": emitCore({type:"aiSetupTurn",player:1}); addLog("AI 배치 완료.","ai"); if(event.first===0||event.first===1) dispatchCoreAction({t:"beginPlay",first:event.first}); else beginPlay(); return true;
     case "moved": {                                                                 // 이동 — 상태는 reducer 가 끝냈고 여기는 문구·배너·전투 개시
       if(event.healBroken) healBreakLog(event.piece);
       if(event.collision) collisionLog(event.piece);                                // 숲 충돌 문구는 종전 순서(자세 해제 다음, 강제 전투 앞)
@@ -1244,7 +1244,7 @@ function applyCoreEffects(event){
       return true;
     }
     case "playBegan": {
-      addLog(`무작위 선공: ${pname(event.player)}`,"sys");
+      addLog(`${event.fixed?"선공":"무작위 선공"}: ${pname(event.player)}`,"sys"); // #324 튜토리얼 심화는 플레이어 선공(무작위가 아니다)
       startTurnMessages(event.bt);
       afterTurnStart();
       return true;

@@ -185,6 +185,7 @@ html[data-ui-skin="argon"] .roomCreate .primary,
 html[data-ui-skin="argon"] .waitScreen .netRoomActions > button,
 html[data-ui-skin="argon"] #app[data-screen="result"] #sidePanel button.big,
 html[data-ui-skin="argon"] .overlay .box:not(.battleBox) #obBtns button,
+html[data-ui-skin="argon"] .overlay.sub .subBtns button,
 html[data-ui-skin="argon"] .bmenu > button,
 html[data-ui-skin="argon"] .bsub .subActs > button,
 html[data-ui-skin="argon"] .ag-sample-btn {
@@ -215,6 +216,7 @@ html[data-ui-skin="argon"] .roomCreate .primary,
 html[data-ui-skin="argon"] .waitScreen .netRoomActions button.primary,
 html[data-ui-skin="argon"] #app[data-screen="result"] #sidePanel .primary,
 html[data-ui-skin="argon"] .overlay .box:not(.battleBox) #obBtns button:first-child,
+html[data-ui-skin="argon"] .overlay.sub .subBtns button:first-child,
 html[data-ui-skin="argon"] .ag-sample-btn.primary {
   background-color: #df962c;
   background-image: var(--ag-btn-gold-url);
@@ -255,6 +257,7 @@ html[data-ui-skin="argon"] #acctPanel > .acctOpen:active:not(:disabled),
 html[data-ui-skin="argon"] .l01Main > button:active:not(:disabled),
 html[data-ui-skin="argon"] .waitScreen .netRoomActions > button:active:not(:disabled),
 html[data-ui-skin="argon"] .overlay .box:not(.battleBox) #obBtns button:active:not(:disabled),
+html[data-ui-skin="argon"] .overlay.sub .subBtns button:active:not(:disabled),
 html[data-ui-skin="argon"] .bmenu > button:active:not(:disabled),
 html[data-ui-skin="argon"] .bsub .subActs > button:active:not(:disabled),
 html[data-ui-skin="argon"] .ag-sample-btn.is-pressed {
@@ -1460,3 +1463,25 @@ html[data-ui-skin="argon"] .toast {
     transition: none;
   }
 }
+
+/* 2026-11-02 §3S.7 싱글 선택·난이도 — 기존 버튼 질감(sapphire 활성 · emerald 클리어 · bronze 잠김 · walnut 추후)과 황동 경계. 상태는 글자·아이콘·경계로도 구별(색만 아님) */
+html[data-ui-skin="argon"] .spScreen .spCard,
+html[data-ui-skin="argon"] .spScreen .spTier {
+  border: 2px solid var(--ag-brass-mid);
+  border-radius: 12px;
+  background-color: var(--ag-walnut-raised);
+  background-image: var(--ag-btn-bronze-url);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  color: var(--txt);
+  font-weight: bold;
+  text-shadow: 0 1px 2px #000e;
+  box-shadow: var(--ag-shadow-inset), 0 3px 6px #000b;
+}
+html[data-ui-skin="argon"] .spScreen .st-open { background-image: var(--ag-btn-sapphire-url); border-color: var(--ag-brass-hi); }
+html[data-ui-skin="argon"] .spScreen .st-cleared { background-image: var(--ag-btn-emerald-url); border-color: var(--ag-brass-hi); }
+html[data-ui-skin="argon"] .spScreen .st-locked { filter: saturate(0.7) brightness(0.85); }
+html[data-ui-skin="argon"] .spScreen .st-future { background-image: none; background-color: var(--ag-walnut-surface); border-style: dashed; border-color: var(--ag-brass-low); color: #d9cbb0; opacity: 0.8; }
+html[data-ui-skin="argon"] .spScreen .st-unknown { border-style: dashed; border-color: #e89a8e; }
+html[data-ui-skin="argon"] .spScreen .spTier small { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+html[data-ui-skin="argon"] .spScreen .spTier small .gi { font-size: 20px; }

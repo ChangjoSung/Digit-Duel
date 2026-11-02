@@ -25,7 +25,7 @@
 | 변경 형식 | `git diff --check` 오류 0. Git의 LF→CRLF 경고는 있었고 파일을 정규화하지 않았다. |
 | Saturn 독립 QA | 첫 감사에서 정지 중 상점·B08·기권 송신을 발견해 REVISE, 두 번째에서 준비 취소 송신·해제 직후 콜백 순서를 발견해 NO-GO. 두 수리 뒤 정지 경계 감사는 **GO**(108/0, SETUP 상태 변경·게임 송신 0건). 권한 준수 `read-only` 재감사 `ctx_d6603b122ff5`도 **GO**(108/0, 파일 변경 0)로 수동 기록했다. |
 
-**운영 예외.** 첫 Saturn의 `read-only` 샌드박스가 Orca 런타임 메타데이터를 읽지 못해 `worker_done`이 실패했다. 그 뒤 Mercury가 후속 Saturn 터미널 두 개를 `-s danger-full-access`로 시작한 것은 [인수인계의 Worker 권한 확대 금지](../../../../../creat2ve/HANDOVER_SNAPSHOT.md)에 어긋났다. 두 Worker는 실제로 파일을 수정하지 않았지만 권한 설정 자체는 잘못됐다. 이를 숨기거나 정상 권한으로 소급하지 않는다. 최종 `-s read-only` 재감사는 `worker_done`을 보낼 수 없어 dispatch를 abandoned 처리하고 Task를 **수동 완료**했다. 향후 같은 제약에서 Worker 권한을 넓히지 않는다. [GitHub #263 정정 기록](https://github.com/ChangjoSung/Digit-Duel/issues/263#issuecomment-5827787963)에도 남겼다.
+**운영 예외.** 첫 Saturn의 `read-only` 샌드박스가 Orca 런타임 메타데이터를 읽지 못해 `worker_done`이 실패했다. 그 뒤 Mercury가 후속 Saturn 터미널 두 개를 `-s danger-full-access`로 시작한 것은 [인수인계의 Worker 권한 확대 금지](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/HANDOVER_SNAPSHOT.md)에 어긋났다. 두 Worker는 실제로 파일을 수정하지 않았지만 권한 설정 자체는 잘못됐다. 이를 숨기거나 정상 권한으로 소급하지 않는다. 최종 `-s read-only` 재감사는 `worker_done`을 보낼 수 없어 dispatch를 abandoned 처리하고 Task를 **수동 완료**했다. 향후 같은 제약에서 Worker 권한을 넓히지 않는다. [GitHub #263 정정 기록](https://github.com/ChangjoSung/Digit-Duel/issues/263#issuecomment-5827787963)에도 남겼다.
 
 ## 남은 결정과 제한
 

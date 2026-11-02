@@ -5,7 +5,7 @@
    - 계정 프로필은 시간 제한(LOBBY_TIMEOUT_MS)이 있는 같은 출처 fetch 하나다. 실패하면 로딩 화면에서 오류·[다시 시도]를 보이고
      전적을 0 으로 꾸미지 않는다. 세션 만료(401 E_NO_SESSION)는 #259 acctEndSession 그대로 로그인 화면으로 간다.
    - 방 목록은 로딩과 함께 요청하지만 기다리지 않는다 — 실패해도 로비는 열리고 방 카드 안에서 다시 시도한다(#217 netRoomsHtml).
-   - 재화는 0 고정, 잠긴 메뉴는 누르면 '추후 공개' 안내만 한다(CJ 2026-09-27). 싱글 두 카드도 잠금이다.
+   - 재화는 0 고정, 잠긴 메뉴는 누르면 '추후 공개' 안내만 한다(CJ 2026-09-27). 싱글플레이는 v0.4.16 에 열렸다(single.js — 왕국 카드는 잠금).
    - 대표 하수인: 일반 ROSTER 30종 중 하나(기본 M-F1 새끼 화룡). 서버가 검증·저장하고, 방에는 입장 때 값이 고정된다(서버).
      전투 성능·상점·소유권과 무관한 프로필 표시다. 30종 모두 아트가 있다(#238) — 그림이 아직·못 오면 기존 속성 이모지(ELEM_EMO)로 그린다.
    서버 계약: GET /api/profile → {nickname, representativeMinion, stats:{wins,losses}, matches:[≤20 {result:WIN|LOSS|NO_CONTEST, reason,
@@ -64,18 +64,21 @@ function lobbyLoad(){
   const g=++LOBBY.gen;
   LOBBY.err=null; LOBBY.notice=""; LOBBY.toast=null; LOBBY.focused=false; LOBBY.hist=false; LOBBY.create=false;
   LOBBY.view=LOBBY.next||"home"; LOBBY.next=null; // #261 결과·타이틀에서 오면 L01, 방 나가기·재접속 포기면 L02
-  if(!LOBBY.assets||LOBBY.assets.some(a=>a.state==="fail")) lobbyLoadAssets(g); // 성공한 자산은 다시 받지 않는다(실패한 것만 다시 시도)
+  if(!LOBBY.assets||LOBBY.assets.some(a=>a.state==="fail")) lobbyLoadAssets(); // 성공한 자산은 다시 받지 않는다(실패한 것만 다시 시도) · 받는 중이면 그 요청이 끝내 준다
   if(AUTH.state==="in") lobbyLoadProfile(g);
   else { LOBBY.prof="off"; LOBBY.profile=null; } // 증명된 계정 없는 서버(file://·DB 없음) — 프로필 없이 로비
   if(/^https?:$/.test(location.protocol)&&!NET.roomId) try{ netListRooms(); }catch(e){} // 기다리지 않는다
   render(); lobbyFocus(); if(lobbyReady()) LOBBY.focused=true; // 이미 끝난 로딩(계정 없는 서버·자산 재사용)은 로비 제목으로 바로
+  spLobbyEnter(); // #324 미완료 계정은 학습 경기로 · 해금 알림 1회
 }
 /* 화면이 바뀌면 그 화면의 제목으로 키보드·스크린리더 초점을 옮긴다 — 로딩 제목 → (끝나면) 로비 닉네임 제목 */
-function lobbyFocus(){ const h=$(!lobbyReady()?"lobbyLoadTitle":LOBBY.view==="rooms"?"roomsTitle":"lobbyNick"); try{ if(h&&h.focus) h.focus({preventScroll:true}); }catch(e){} }
-function lobbyLoadAssets(g){
+function lobbyFocus(){ const h=$(!lobbyReady()?"lobbyLoadTitle":LOBBY.view==="rooms"?"roomsTitle":LOBBY.view==="single"||LOBBY.view==="tiers"?"spTitle":"lobbyNick"); try{ if(h&&h.focus) h.focus({preventScroll:true}); }catch(e){} }
+/* 자산 결과는 어느 로비 진입이 요청했든 같은 파일의 사실이다 — 로딩 중 재진입(재로그인·로비 복귀·다시 시도)에서도 끝난 요청이 지금 화면을 끝내 준다.
+   옛 배열에서 갈아 끼운 자산 객체(a)는 지금 배열에 없어 화면에 영향이 없다. 신원이 걸린 프로필 응답만 gen·AUTH.gen 으로 버린다(lobbyLoadProfile) */
+function lobbyLoadAssets(){
   LOBBY.assets=LOBBY_ASSETS.map(url=>{ const old=(LOBBY.assets||[]).find(a=>a.url===url); return old&&old.state==="ok"?old:{url,state:"loading"}; });
   for(const a of LOBBY.assets.filter(x=>x.state==="loading")){
-    const done=st=>{ if(g!==LOBBY.gen||a.state!=="loading") return; a.state=st;
+    const done=st=>{ if(a.state!=="loading") return; a.state=st;
       if(lobbyArtOk()){ const el=$("app"); if(el&&el.classList) el.classList.add("uiArt"); } // 둘 다 실제로 왔을 때만 그림 아이콘·테두리(아니면 이모지·CSS)
       lobbyRerender(); };
     try{
@@ -98,7 +101,7 @@ function lobbyLoadProfile(g){
     lobbyRerender();
   });
 }
-function lobbyRerender(){ try{ if(uiScreenName()!=="lobby") return; render(); if(lobbyReady()&&!LOBBY.focused){ LOBBY.focused=true; lobbyFocus(); } }catch(e){} } // 로딩이 끝난 순간 한 번만
+function lobbyRerender(){ try{ if(uiScreenName()!=="lobby") return; render(); if(lobbyReady()&&!LOBBY.focused){ LOBBY.focused=true; lobbyFocus(); spNote(); } }catch(e){} } // 로딩이 끝난 순간 한 번만 (#324 해금 알림도 그때)
 function lobbyRetry(){ lobbyLoad(); }
 /* #295 내 공식 전적 다시 받기 — 방 대기(L03)에 들어오는 순간(참가·결과 복귀·재개) 한 번. 하트비트·room_state 마다 부르지 않는다(netApplyRoomState).
    결과 저장 대기(pendingMatches>0)·실패면 '저장 중'·'확인 불가'로 두고 옛 승·패를 확정처럼 보이지 않으며, 로비·방 대기에 있는 동안 다시 묻는다.
@@ -186,6 +189,7 @@ function lobbyLockBtn(k,name,inner,cls){ return `<button type="button" class="lo
 function lobbyHtml(){
   if(!lobbyReady()) return lobbyLoadingHtml();
   if(LOBBY.view==="rooms") return lobbyRoomsHtml();
+  if(LOBBY.view==="single"||LOBBY.view==="tiers") return spLobbyHtml(); // #265 P01 싱글 선택 · #322 무제한 AI 난이도 (single.js)
   const p=LOBBY.profile, rd=p?ROSTER.find(r=>r.id===p.repMinion):null;
   return `<section class="l01" aria-labelledby="lobbyNick">
     <div class="l01Top">
@@ -206,7 +210,7 @@ function lobbyHtml(){
     ${lobbyFileWarn()}
     <div class="l01Main">
       <button type="button" class="primary big l01Multi" onclick="lobbyRooms()">${gi("battle")}<span>멀티플레이</span><span class="srOnly"> — 방 목록 열기 · 방 이름으로 찾아 참가 대기 방에 바로 참가하세요. 초대 코드는 필요하지 않습니다.</span></button>
-      ${lobbyLockBtn("single","싱글플레이 — 무제한 AI 대전 · 도전! 왕국 대전",`${gi("team")}<span>싱글플레이</span>`,"l01Single")}
+      <button type="button" class="l01Single" id="l01Single" onclick="spOpen()">${gi("team")}<span>싱글플레이</span><span class="srOnly"> — 무제한 AI 대전 · 도전! 왕국 대전</span></button>
     </div>
     ${lobbyNetMsgHtml()}
     <span class="badge netStatusLine" id="netStatus" role="status" aria-live="polite" style="display:none"></span>
@@ -224,8 +228,8 @@ function lobbyHtml(){
    위 줄(L01 미션 줄 · L02 프로필 줄) 바로 아래에 겹쳐 뜨고 배치를 밀지 않는다. 다시 누르면 새 토스트로 바꾸고 옛 타이머는 새 것을 지우지 않는다.
    다시 그려도(render) 남은 시간만큼 이어서 보이고, 화면을 옮기면(로비↔목록·재진입) 지운다. 실제 오류·참가 불가 안내는 종전 #lobbyNotice 그대로 */
 const LOBBY_TOAST_MS=2300;
-function lobbyLocked(name){
-  const k=LOBBY.toast={t:`🔒 ${name} — 추후 공개 예정입니다.`,at:Date.now()};
+function lobbyLocked(name,text){ // text: 같은 토스트 자리의 다른 안내(#265 싱글 — 잠김 사유·추후 공개·v0.4.17)
+  const k=LOBBY.toast={t:text||`🔒 ${name} — 추후 공개 예정입니다.`,at:Date.now()};
   lobbyToastPaint(); setTimeout(()=>{ if(LOBBY.toast===k){ LOBBY.toast=null; lobbyToastPaint(); } },LOBBY_TOAST_MS);
 }
 function lobbyToastHtml(){ const k=LOBBY.toast; return k?`<div class="toast" style="animation-delay:-${Math.min(Date.now()-k.at,LOBBY_TOAST_MS)}ms">${escAttr(k.t)}</div>`:""; }
