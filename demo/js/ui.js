@@ -1886,6 +1886,7 @@ function battleModal(board){
     +`<button type="button" class="bsynTog" id="bsynTog" aria-expanded="${synOn}" aria-controls="bsynStrip" aria-label="활성 시너지 ${synN}개 — ${synOn?"접기":"펼치기"}" onclick="window.__synTog()">${gi("synergy")}<b>${synN}</b></button></div>`;
   let synKeep=null; try{ const st=$("bsynStrip"), a=document.activeElement, w=st&&st.parentElement;
     if(st&&UI.synOpen===synKey) synKeep={x:st.scrollLeft,f:w&&w.contains(a)?[...w.querySelectorAll("[tabindex],button")].indexOf(a):-1}; }catch(e){}
+  let sprKeep=[]; try{ sprKeep=[...document.querySelectorAll("#bstage .bsprite")]; }catch(e){} // #401 전투 창을 다시 그린 뒤 같은 도트를 그대로 되돌린다 (아래)
   modal(`<header class="battleTop">${topBarHtml(NET.mode?NET.me:S.mode==="pve"?0:ownerP,`<b class="who">배틀 중</b>${emoteActive()?`<span class="emoSlot" aria-hidden="true"></span>`:""}${gearHtml(NET.publicMode?netResignBtn():"")}`)}</header>
     <div class="bhead"><h2 style="font-size:22px">▶ ${turnLabel}${aiActor?" 🤖":""}</h2>${synTogHtml}</div>
     <div class="bhead bround"><span>⚔️ 라운드 ${B.round}/${battleMaxRounds(ST)}${B.maxRounds?" 🧭":""}</span>
@@ -1903,6 +1904,10 @@ function battleModal(board){
     ${sub("ball",`<div class="subHead"><b>${canThrow?"포획을 시도할까요?":"지금은 포획이 불가합니다."}</b><span class="conds">${capChips}</span></div>${mineView&&throwWhy?`<p class="capWhy" role="status">🔒 ${capWhyShort(throwWhy)}</p>`:""}<div class="subActs">${ballBtn}${subBack}</div>`)}
     ${sub("flee",`<div class="subHead"><b>정말로 도망갈까요?</b></div><div class="subActs">${fleeBtn}${subBack}</div>`)}`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
+  /* #401 전투 창은 차례·배너마다 innerHTML 로 통째로 다시 그려진다. 새로 만든 <img> 가 이미 받은 그림을 다시 쓰지 못하는 브라우저
+     (Samsung Internet 실기 영상: 매 재렌더 양쪽 도트 ~0.3초 공백)에서도 깜빡이지 않게, 마크업이 완전히 같은 도트는 그려져 있던 노드를 되돌린다.
+     다른 전투원·포즈·폴백(src·alt·onerror 차이)이면 새 노드를 그대로 쓴다 — 마크업·id·접근성은 불변 */
+  try{ for(const n of document.querySelectorAll("#bstage .bsprite")){ const i=sprKeep.findIndex(x=>x.isEqualNode(n)); if(i>=0) n.replaceWith(sprKeep.splice(i,1)[0]); } }catch(e){} // 같은 종 미러전: 옛 노드는 한 번씩만
   uiBattleBox(); // #122 세로 전투 화면 레이아웃 — DOM 은 표시 계층이 만진다
   try{ spTick(); }catch(e){} // #324 전투 창은 render() 없이 그려진다 — 튜토리얼 단계(B6→B7)·대상·말풍선을 이 창 기준으로 갱신(튜토리얼 밖은 무동작)
   window.__synTog=v=>{ try{ const st=$("bsynStrip"), t=$("bsynTog"); if(!st||!t) return; const on=v===undefined?st.hidden:!!v; // 표시만 — 송신 · 규칙 상태 0
