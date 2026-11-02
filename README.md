@@ -102,6 +102,8 @@ Google 로그인·로비 상점·채팅은 잠겨 있고, 도전! 왕국 대전�
 
 ## 저장소 구조
 
+[개발자 문서·전체 파일 트리](docs/README.md) · [기여·PR·CI](CONTRIBUTING.md)
+
 ~~~
 demo/               웹 게임과 게임 자산
 server/             계정·공개 방·경기 판정 서버

@@ -2,6 +2,11 @@
 
 Thank you for contributing to Digit-Duel.
 
+Start with the [developer document map](docs/README.md) for the repository tree,
+department ownership and authoritative documentation. Coding agents must read
+[AGENTS.md](AGENTS.md) before acting; company documents are edited in the
+designated Obsidian notes, and generated HTML is a reading view.
+
 By intentionally submitting a contribution for inclusion in this repository,
 you agree that your contribution is licensed under the Apache License,
 Version 2.0, as described in section 5 of [`LICENSE`](LICENSE). You retain the

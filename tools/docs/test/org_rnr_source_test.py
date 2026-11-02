@@ -47,11 +47,12 @@ def note(fm=EFFECTIVE, body=None, begin=m.BEGIN, end=m.END, fm_extra=''):
     return head + begin + '\n' + (block() if body is None else body) + '\n' + end + '\n'
 
 
-def fake(reads, root=None, timeout=False, on_second_read=None, note=m.NOTE):
+def fake(reads, root=None, timeout=False, on_second_read=None, note=m.NOTE, err=''):
     n = {'read': 0}
 
     def run(cmd, **kw):
-        assert cmd[0] == m.OBSIDIAN and cmd[1] == 'vault=' + m.VAULT_ID and kw.get('timeout'), cmd
+        # 선택자는 등록 이름만 — 문서 논리 ID(613…)를 CLI 에 넘기면 현재 앱 등록(344…)과 달라 정본을 못 읽는다
+        assert cmd[0] == m.OBSIDIAN and cmd[1] == 'vault=CHANGJO GAMES' and not any(m.VAULT_ID in c for c in cmd) and kw.get('timeout'), cmd
         if timeout:
             raise subprocess.TimeoutExpired(cmd, kw['timeout'])
         if cmd[2:] == ['vault', 'info=path']:
@@ -62,7 +63,7 @@ def fake(reads, root=None, timeout=False, on_second_read=None, note=m.NOTE):
             if n['read'] == 2 and on_second_read:
                 on_second_read()
             out = reads[min(n['read'], len(reads)) - 1]
-        return subprocess.CompletedProcess(cmd, 0, out, '')
+        return subprocess.CompletedProcess(cmd, 0, out, err)
     return run
 
 
@@ -97,7 +98,7 @@ with tempfile.TemporaryDirectory() as d:
     models_sha = sha(MODELS.read_bytes())
     user_tmp = d / (T.name + '.tmp')
     user_tmp.write_bytes(b'user temp')
-    migration = note(body=old.strip('\n').replace('href="#runtime"', f'href="{m.REPORT_URI}runtime"'))
+    migration = note(body=old.strip('\n').replace('href="#', 'href="' + m.REPORT_URI))  # 생성 HTML 의 내부 # 앵커 전부를 노트 형식(절대 URI)으로 — project 픽스처(RAW)와 같은 변환
     apply = lambda *src: ['apply', '--target', T, '--target-sha256', sha(T.read_bytes()),
                           *(['--source-sha256', sha(src[0].encode())] if src else [])]
 
@@ -170,6 +171,8 @@ with tempfile.TemporaryDirectory() as d:
         'frontmatter 중복 키(마지막 값만 보면 통과)': (note(fm(status='pilot-review'), fm_extra='status: active\n'), {}),
         '잘못된 Vault 루트': (note(), dict(root='E:/Toolkit/Mirror/CJ Library/CJ Library')),
         '잘못된 vault_id': (note(fm(vault_id='e513c031d697ec24')), {}),
+        'frontmatter vault_id=현재 앱 등록 ID(논리 ID 아님)': (note(fm(vault_id='344d2fcab953ed17')), {}),
+        'CLI stderr 파서 오류(stdout 정상이어도)': (note(), dict(err='SyntaxError: Unexpected token in JSON at position 0')),
         '잘못된 노트 document_id': (note(fm(document_id='DD-PM-ENTRY')), {}),
         '잘못된 owner': (note(fm(owner='Mars')), {}),
         '상태 불명(status 없음)': (note(no('status')), {}),
@@ -190,6 +193,16 @@ with tempfile.TemporaryDirectory() as d:
     for why, (src, kw) in negatives.items():
         check(call(apply(src), [src], **kw) == 1 and T.read_bytes() == orig, why)
     check(call(apply(), timeout=True) == 1 and T.read_bytes() == orig, 'CLI timeout')
+    for bad in ('', '  \n', 'Error: Vault not found.', 'SyntaxError: Unexpected end of JSON input'):
+        check(call(apply(), [bad]) == 1 and T.read_bytes() == orig, f'CLI 오류/빈 출력 {bad!r}')
+    try:
+        m.subprocess.run = fake([note()])
+        m.obsidian('read', 'path=' + 'x' * m.MAX_ARGV)
+        check(False, 'CLI 인수 과대 거부')
+    except m.Fail as e:
+        check('과대' in str(e), 'CLI 인수 과대는 호출 전 거부')
+    finally:
+        m.subprocess.run = REAL_RUN
     check(call(apply(), [loss]) == 1 and T.read_bytes() == orig, '최초 이관 문장 1개 손실 차단')
     check(call(apply(), [note()]) == 1 and T.read_bytes() == orig, '최초 이관에 검토 안 된 편집 차단')
     check(call(apply(note(body=block('v0'))), [note()]) == 1 and T.read_bytes() == orig, '검토한 source SHA 와 다른 노트')
@@ -204,6 +217,8 @@ with tempfile.TemporaryDirectory() as d:
     mig = T.read_bytes()
     r = json.loads(rc.read_text(encoding='utf-8'))
     check(r['apply_kind'] == 'migration' and r['coverage']['structure_equal'], '최초 이관 의미·링크·ID 동등')
+    check(r['source'] == f'obsidian-cli vault=CHANGJO GAMES root={m.VAULT_ROOT} vault_id=613e72a275ee9be3 path={m.NOTE}'
+          and r['frontmatter']['vault_id'] == m.VAULT_ID == '613e72a275ee9be3', '영수증: 등록 이름 선택자·고정 루트·논리 ID 분리 기록')
     check(mig.startswith(PRE) and mig.endswith(POST) and b'href="#runtime"' in mig, '최초 이관 영역 밖 byte 보존·#runtime 환원')
 
     # ── 양성: 검토된 편집 반영 · 영역 밖 보존 ──
@@ -325,8 +340,12 @@ with tempfile.TemporaryDirectory() as d:
     mk = pnote
     head, tail = RAW['current'].rsplit('\n<details class="fold"><summary>출시', 1)
     moved = mk(current=head, team='<details class="fold"><summary>출시' + tail + '\n' + RAW['team'])  # 섹션 경계를 넘은 이동
-    drop_row = re.sub(r'<tr><td>2026-10-28</td><td><b>Mercury의 직책 PD → PM</b>.*?</tr>\n', '', RAW['decisions'], count=1, flags=re.S)
-    assert drop_row != RAW['decisions']
+    # 고정 문구·한 줄 행에 기대지 않는다: 첫 tbody 의 첫 데이터 <tr>…</tr> 전체(여러 줄)를 지운다
+    drop_row = re.sub(r'(<tbody>\s*)<tr\b.*?</tr>\s*', r'\1', RAW['decisions'], count=1, flags=re.S)
+    assert RAW['decisions'].count('<tr') - drop_row.count('<tr') == 1
+    # 문장 손실·편집 fixture 도 현재 work 블록의 실제 텍스트 노드 문장 중 블록 안에서 유일한 첫 문장을 고른다
+    SENT = next((s for s in re.findall(r'(?<=>)[^<>]*?[^<>\s.]\.(?=[\s<])', RAW['work']) if RAW['work'].count(s) == 1), None)
+    assert SENT
     pneg = {
         'project staged apply': (pnote(P_STAGED), {}),
         'project source_of_truth=true·status=staged': (mk(fm=pfm(status='staged')), {}),
@@ -362,14 +381,14 @@ with tempfile.TemporaryDirectory() as d:
     r = read_rc()
     check(r['coverage']['text']['missing'] == [] and r['coverage']['sections'] == {**dict.fromkeys(SIDS, True), 'current': False, 'team': False},
           '섹션 간 이동은 합친 사실로는 안 보이고 섹션별 비교로 잡힘')
-    check(pcall(papply(), [mk(work=RAW['work'].replace('승인 대기로 표시하지 않음.', '', 1))]) == 1 and P.read_bytes() == porig, '최초 이관 문장 손실 차단')
+    check(pcall(papply(), [mk(work=RAW['work'].replace(SENT, '', 1))]) == 1 and P.read_bytes() == porig, '최초 이관 문장 손실 차단')
     check(pcall(papply(), [mk(work=RAW['work'] + '\n\n추가 문단')]) == 1 and P.read_bytes() == porig, '최초 이관에 검토 안 된 편집 차단')
     check(pcall(papply(mk(decisions=drop_row)) + ['--receipt', prc], [mk(decisions=drop_row)]) == 1 and P.read_bytes() == porig
           and read_rc()['history_check'] == '기존 행 삭제', '검토된 편집이어도 결정 이력 행 삭제 차단')
     # 결정 이력: 기존 DOM 불변 + tbody 맨 앞 안전한 새 행만(검토된 편집 경로, source SHA 일치에서도)
     D = RAW['decisions']
     new_row = '<tr><td>2026-10-30</td><td>fixture 결정</td><td>추가만</td></tr>'
-    swapped = re.sub(r'(<tbody>)(<tr>.*?</tr>)(\n?)(<tr>.*?</tr>)', r'\1\4\3\2', D, count=1, flags=re.S)
+    swapped = re.sub(r'(<tbody>\s*)(<tr>.*?</tr>)(\s*)(<tr>.*?</tr>)', r'\1\4\3\2', D, count=1, flags=re.S)
     assert D.count('<tr>') >= 20 and swapped != D
     hist = {
         '기존 tr 전부 hidden(Saturn P2 재현)': D.replace('<tr>', '<tr hidden>'),
@@ -401,7 +420,7 @@ with tempfile.TemporaryDirectory() as d:
     r = read_rc()
     pmig = P.read_bytes()
     check(r['apply_kind'] == 'migration' and r['coverage']['structure_equal'] and outside(P) == POUT, 'project 최초 이관 구조 동등·밖 byte 동일')
-    edited = mk(work=RAW['work'].replace('1차 정리 완료', '2차 정리 완료', 1), decisions=RAW['decisions'].replace('<tbody>', '<tbody>' + new_row, 1))
+    edited = mk(work=RAW['work'].replace(SENT, SENT + ' 2차 정리 완료', 1), decisions=RAW['decisions'].replace('<tbody>', '<tbody>' + new_row, 1))
     check(pcall(papply(edited) + ['--receipt', prc], [edited]) == 0, 'project 검토된 편집 apply 성공')
     pnew = P.read_bytes()
     check(pnew != pmig and '2차 정리 완료'.encode() in pnew and new_row.encode() in pnew and outside(P) == POUT
