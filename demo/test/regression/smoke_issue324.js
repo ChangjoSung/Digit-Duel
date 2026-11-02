@@ -46,6 +46,7 @@ const sess=(u,p)=>[200,Object.assign({},u,p===undefined?{}:{progress:p})];
 const dlg=T=>T.byId("spGuide");
 const dlgOpen=T=>!dlg(T).classList.contains("hidden")&&dlg(T).innerHTML!==""; // 헤드리스 요소는 HTML 의 초기 class 를 모른다 — 닫힘 = 비운 innerHTML 도 본다
 const coach=T=>T.byId("spCoach").innerHTML;
+const card=T=>T.byId("spCard").innerHTML; // 2026-11-02 §3S.9.2 띠 밖 참고 카드
 const txt=h=>String(h).replace(/<[^>]+>/g," ").replace(/\s+/g," ");
 const side=T=>T.byId("sidePanel").innerHTML;
 const assetsLoad=T=>{ for(const a of T.LOBBY.assets||[]) if(a.state==="loading") a.img.onload(); };
@@ -346,7 +347,7 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   const F=pc(T,I.F), hid=T.S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.r===9&&x.c===7), ring=X.spSpec(Tt).ring.cell;
   ok(T.visibleTo(0,F)&&T.inForest(F)&&!F.revealed&&ring[0]===F.r&&ring[1]===F.c,"C3b 강조 = 숲 안 '보이는 ?'(존재만 · 정체 미공개)");
   ok(hid&&T.inForest(hid)&&!T.visibleTo(0,hid)&&T.byId("board").querySelector(`.cell[data-r="${hid.r}"][data-c="${hid.c}"]`).children.length===0&&!(ring[0]===hid.r&&ring[1]===hid.c),"C3c 떨어진 숲의 상대 말은 칸에 그려지지 않고(존재도 비공개) 강조도 가리키지 않는다");
-  X.spNext(); ok(Tt.step==="B4"&&X.spSpec(Tt).pics==="win"&&/상대 왕 잡기/.test(coach(T))&&/내 왕이 상대 끝줄/.test(coach(T))&&/상대 하수인\+동료 전멸/.test(coach(T))&&/폭탄·함정·왕은 세지 않음/.test(coach(T)),"C4 B4 승리 도해 3장(보드 조작 없음)");
+  X.spNext(); ok(Tt.step==="B4"&&X.spSpec(Tt).pics==="win"&&/상대 왕 잡기/.test(card(T))&&/내 왕이 상대 끝줄/.test(card(T))&&/상대 하수인\+동료 전멸/.test(card(T))&&/폭탄·함정·왕은 세지 않음/.test(card(T))&&!/spPics/.test(coach(T)),"C4 B4 승리 도해 3장(보드 조작 없음) — §3S.9.2 띠 밖 참고 카드(띠에는 없음)");
   X.spNext(); ok(Tt.step==="B5"&&coach(T).includes(X.SP_SAY.B5),"C5 B5 문구");
   const M=pc(T,I.M), ev=T.S.events[I.ev];
   ok(ev.r===M.r&&ev.c===M.c&&!ev.consumed&&T.S.traces[0].has(ev.r+"_"+ev.c),"C5b 내 하수인이 '발견된' 흔적 칸 위");
@@ -473,7 +474,7 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   ok(Tt.step==="B2"&&holes(T)[0]===cellHole(K.r,K.c)&&tags.length===5&&tags.every(p=>holes(T).includes(cellHole(p.r,p.c)))&&holes(T).length===6&&!holes(T).includes(cellHole(foe.r,foe.c)),"C15b B2 — 구멍 = 대상(내 왕 칸) + 이름표 붙은 내 말 5칸 · 상대 말 칸은 어둡다");
   basicTo(T,"B3"); geo(T,390,844); { const F=pc(T,I.F), hid=T.S.pieces.find(x=>x.owner===1&&x.type==="minion"&&x.r===9&&x.c===7), tr=T.S.pieces.find(x=>x.owner===0&&x.r===11&&x.c===5);
     ok(Tt.step==="B3"&&JSON.stringify(holes(T))===JSON.stringify([cellHole(F.r,F.c),cellHole(tr.r,tr.c)])&&!holes(T).includes(cellHole(hid.r,hid.c)),"C15b2 B3 — 구멍 = 보이는 ? + 그 옆 내 함정만 · 숲에 숨은 상대 말 칸은 밝히지 않는다"); }
-  basicTo(T,"B4"); geo(T,390,844); ok(Tt.step==="B4"&&dimOn(T)&&holes(T).length===0&&/spPics/.test(coach(T)),"C15b3 B4 도해 설명 — 배경 가림막(뚫린 곳 0) · 도해·[다음]은 말풍선 층");
+  basicTo(T,"B4"); geo(T,390,844); ok(Tt.step==="B4"&&dimOn(T)&&holes(T).length<=1&&/spPics/.test(card(T))&&/id="spNext"/.test(coach(T)),"C15b3 B4 도해 설명 — 배경 가림막 · 도해는 참고 카드(Dim 밖) · [다음]은 띠");
   geo(T,-390,844); const negV=!/spDim/.test(sp()); geo(T,Infinity,844);
   ok(negV&&!/spDim/.test(sp())&&Tt.step==="B4"&&posts().length===0,"C15b4 B4 [다음] 안내 — 창 크기가 음수·무한이면 resize 뒤 가림막 0(잘못된 SVG 없음) · 단계·저장 그대로"); geo(T,390,844);
   basicTo(T,"B5"); const M=pc(T,I.M); geo(T,390,844);
@@ -544,12 +545,21 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   L.release(); await tick();
   ok(/✓ 저장됨/.test(dlg(T).innerHTML)&&!/disabled/.test(goBtn()),"D5b ACK 뒤 활성");
 }
+{ // 2026-11-02 §3S.3 [그만두기] — 학습 종료(미저장): 저장 0건 · '학습이 끝나지 않았어요' + [다시 시작] → 그 카테고리 질문부터 · '기권'·'패배' 글자 없음
+  const srv=tutServer(NEW);
+  const T=await tutAsk({"POST /api/profile/tutorial":init=>srv.post(init)}); const X=T.single; X.spAskGo(); X.spNext();
+  const g0=T.S; X.spSkipAsk(); X.spQuit(); await tick(); const d=dlg(T).innerHTML;
+  ok(X.SP.dlg==="quit"&&/학습이 끝나지 않았어요/.test(d)&&/id="spGo"[^>]*>다시 시작/.test(d)&&!/기권|패배/.test(txt(d))&&posts(TUT_API).length===0&&T.S===g0&&T.S.phase==="play"&&X.spHeld(),"Q1 [그만두기] — 저장 0 · 경기를 기권으로 끝내지 않음 · 결과 창 · 그동안 시계·AI 보류");
+  X.spQuitRestart(); await tick();
+  ok(X.SP.ask&&X.SP.tut&&X.SP.tut.cat==="basic"&&T.S!==g0&&posts(TUT_API).length===0,"Q2 [다시 시작] → 같은 카테고리 질문부터(새 경기) · 저장 0");
+}
 { // ⚙ 기본 건너뛰기 → 기본만 건너뜀 → 진행도(건너뜀 문구) → 심화
   const srv=tutServer(NEW);
   const T=await tutAsk({"POST /api/profile/tutorial":init=>srv.post(init)}); const X=T.single, Tt=X.SP.tut; X.spAskGo(); X.spNext();
-  ok(/튜토리얼 건너뛰기/.test(T.renderBoardInfo()||T.byId("boardInfo").innerHTML)&&!/나가기 \(기권 확인\)/.test(T.byId("boardInfo").innerHTML),"D6 ⚙ — 기권 자리에 '튜토리얼 건너뛰기'(기권과 다른 글자)");
+  { T.renderBoardInfo(); const bi=T.byId("boardInfo").innerHTML; T.renderTurnBar&&T.renderTurnBar(); const tb=T.byId("turnBar").innerHTML;
+    ok(/class="icoBtn spExit" aria-label="튜토리얼 나가기"/.test(bi)&&!/flowGear|설정|기권/.test(bi)&&!/기권/.test(tb),"D6 (2026-11-02 §3S.3) ⚙·설정 메뉴·턴 줄 [기권] 없음 — 같은 자리에 '튜토리얼 나가기' 아이콘 버튼 하나"); }
   X.spSkipAsk(); const d=dlg(T).innerHTML;
-  ok(X.SP.dlg==="skipq"&&/기본 튜토리얼을 건너뛸까요\?/.test(d)&&/건너뛰면 심화 튜토리얼로 넘어가요\./.test(d)&&/class="primary" onclick="spSkipNo\(\)"/.test(d)&&X.spHeld(),"D7 확인 창 — 3R.3 문구 · [계속하기] 기본 초점 · 그동안 보류");
+  ok(X.SP.dlg==="skipq"&&d.includes(X.SP_EXIT.basic[0])&&d.includes(X.SP_EXIT.basic[1])&&/class="primary" onclick="spSkipNo\(\)"[^>]*>계속하기/.test(d)&&/onclick="spSkipGo\(\)"[^>]*>건너뛰기/.test(d)&&/onclick="spQuit\(\)"[^>]*>그만두기/.test(d)&&X.spHeld(),"D7 (§3S.3) 나가기 확인 창 — 문구 · [계속하기] 기본 초점 · [건너뛰기] · [그만두기] · 그동안 보류");
   T.document.dispatch("keydown",{key:"Escape",preventDefault(){},stopImmediatePropagation(){}});
   ok(!X.SP.dlg&&!dlgOpen(T)&&Tt.step==="B2"&&posts().length===0,"D8 Esc = [계속하기] — 그대로 계속 · 저장 0");
   X.spSkipAsk(); X.spSkipGo(); X.spSkipGo(); await tick();
@@ -634,17 +644,19 @@ for(const [code,err] of [[409,"E_ACCOUNT_MISMATCH"],[400,"E_BAD_INPUT"],[400,"E_
   /* 자유 경기 — 실제 20턴 정기 상점(통제: 턴 수만 미리 세운 고정 장면 아님 — 실제 endTurn 경로) */
   T.S.turnCount=19; T.S.current=1; T.dispatchCoreAction({t:"endTurn"}); T.render();
   ok(T.S.phase==="shop"&&A.step==="A8"&&coach(T).includes(X.SP_SAY.A8)&&X.SP_SHOP_TIERS.every(([t,g,b],k)=>T.ECO.shopTurns[k]===t&&T.ECO.bonus[t]===b),"E8 실제 20턴 정기 상점이 열린 순간 A8 · 도해 = ECO 값(20/40/60/80 · 보너스)");
-  geo(T,390,844); ok(dimOn(T)&&/spTiers2/.test(coach(T)),"E8c A8 도해 [확인] — 배경 가림막 · 등급 도해는 말풍선 층"); ungeo(T);
+  geo(T,390,844); ok(dimOn(T)&&/spTiers2/.test(card(T))&&!/spTiers2/.test(coach(T))&&coach(T).includes(X.SP_SAY.A8),"E8c A8 [확인] — 배경 가림막 · 등급표는 참고 카드(§3S.9.2) · 문구 §3S.9.1"); ungeo(T);
   X.spNext(); ok(A.seen.shop&&!A.seen.burn&&A.step===null,"E8b [확인] → 본 여부: 상점 = 예(턴 수가 아니라 확인으로)");
   /* 통제 종료 — 패배(왕 제거) */
   end(T,1,"king"); await tick();
   ok(A.step==="A10"&&coach(T).includes(X.SP_SAY.A10loss)&&/남은 연습 건너뛰기/.test(coach(T))&&posts(TUT_API).length===0,"E9 실제 패배 뒤 A10 '아쉬워요!' · [남은 연습 건너뛰기] · 아직 저장 0");
+  ok(/aria-label="남은 연습 건너뛰기"/.test(T.single.spExitBtn())&&!/onclick="spPracticeSkip\(\)"/.test(coach(T))&&/로 건너뛰기<\/span><span class="srOnly"> · 나가기 버튼으로 남은 연습 건너뛰기/.test(coach(T))&&(coach(T).match(/<button/g)||[]).length===1,"E9c (2026-11-02 §3S.9.3) 연습 장면 — 띠 버튼 1개([다음]) · 나가기 버튼 이름 '남은 연습 건너뛰기' · 진행 글자 뒤 '✕로 건너뛰기'");
   geo(T,390,844); ok(dimOn(T)&&posts(TUT_API).length===0,"E9b A10 결과 요약([다음]·[남은 연습 건너뛰기]) — 주변 가림막 · 저장 0"); ungeo(T);
   const match=T.S;
   X.spNext();
   ok(A.practice==="burn"&&A.step==="A10b"&&/연습 장면/.test(coach(T))&&coach(T).includes(X.SP_SAY.A10b)&&T.isBurning()&&T.S.turnCount===64&&T.S.current===0,"E10 못 본 것만 — 상점은 봤으니 버닝 연습만(65턴 내 차례 · '연습 장면')");
   const P=pc(T,A.f.burnId); ok(T.canMoveTo(P,6,4)&&P.r===8&&/const expedZone=\(owner,r\)=> owner===0 \? r<=5 : r>=9;/.test(fs.readFileSync(path.join(__dirname,"..","..","js","core.js"),"utf8")),"E10b 곧게 2칸 합법 · 상대 숲·진영(1~5행)은 2칸 불가 구역");
-  ok(JSON.stringify(X.spSpec(A).zone)===JSON.stringify([[1,5,"1칸"],[6,13,"2칸"]]),"E10c 보드 위 허용 구역 비교(1칸 · 2칸)");
+  { const sp=X.spSpec(A), legal=[]; for(let r=1;r<=13;r++) for(let c=1;c<=7;c++) if(Math.abs(r-P.r)+Math.abs(c-P.c)<=2&&(r===P.r||c===P.c)&&!(r===P.r&&c===P.c)&&T.canMoveTo(P,r,c)) legal.push([r,c]);
+    ok(!sp.zone&&JSON.stringify(sp.dest.slice().sort())===JSON.stringify(legal.sort())&&sp.dest.some(d=>d[0]===6&&d[1]===4),"E10c (§3S.2) 구역 띠 없음 — 그 말의 실제 합법 도착 칸(canMoveTo)만 · 2칸 앞 포함"); }
   T.onCell(P.r,P.c); T.onCell(6,4); await tick();
   const p=posts(TUT_API);
   ok(T.S===match&&T.S.winner===1&&T.S.metrics.winType==="king"&&A.res==="completed"&&p.length===1&&JSON.stringify(body(p[0]))===JSON.stringify({v:2,userId:"neo_1",category:"advanced",end:"king"}),"E11 연습 마침 → 원래 경기 결과(패배 · 왕 제거) 그대로 · 심화 = 완료 {end:king}");
@@ -677,7 +689,7 @@ for(const [nm,seen,want] of [["둘 다 못 봄(20턴 전 종료)",{},["shop","bu
   const L=later(), srv=tutServer(MID);
   const T=await tutAsk({"POST /api/profile/tutorial":init=>L.p.then(()=>srv.post(init))},MID); const X=T.single;
   X.spAskGo(); X.spSkipAsk(); const d=dlg(T).innerHTML;
-  ok(/심화 튜토리얼을 건너뛸까요\?/.test(d)&&/싱글플레이는 열리지만 남은 학습은 건너뜀으로 남아요\./.test(d),"E16 심화 확인 창 문구");
+  ok(d.includes(X.SP_EXIT.advanced[0])&&d.includes(X.SP_EXIT.advanced[1]),"E16 (§3S.3) 심화 나가기 확인 창 문구");
   X.spSkipGo(); await tick();
   ok(/저장 중…/.test(dlg(T).innerHTML)&&X.SP.dlg==="skipq"&&T.uiScreenName()!=="lobby","E16b 확인 창 '저장 중…' · ACK 전 로비 아님");
   L.release(); await tick(); assetsLoad(T); await tick();
@@ -698,7 +710,7 @@ for(const [nm,seen,want] of [["둘 다 못 봄(20턴 전 종료)",{},["shop","bu
   T.FX.force=true; T.single.spPlay(0);
   ok(!T.single.spHeld()&&!T.single.spClockHeld()&&T.single.SP.tut===null&&T.PREPCLK.pz===null&&T.PREPCLK.t!==null,"T1 일반 PVE(무제한 AI) — 튜토리얼 정지 없음 · 준비 시계 종전대로");
   T.single.applyUiEvent({type:"tutHint",key:"teleport"}); T.render();
-  ok(!coach(T)&&!dlgOpen(T)&&T.single.spGearLeave("X")==="X"&&T.single.spFirstPlayer()===null,"T2 일반 PVE — 말풍선·tutHint 0 · ⚙ 종전(기권) · 배치 확정에 선공 없음(무작위)");
+  ok(!coach(T)&&!dlgOpen(T)&&!T.single.spTutOn()&&/flowGear/.test(T.gearHtml("<b>L</b>"))&&!/spExit/.test(T.gearHtml("x"))&&T.single.spFirstPlayer()===null,"T2 일반 PVE — 말풍선·tutHint 0 · ⚙ 종전(기권) · 나가기 버튼 0 · 배치 확정에 선공 없음(무작위)");
   T.uiResetScreen(); T.FX.force=false;
 }
 {
@@ -733,17 +745,17 @@ for(const [nm,seen,want] of [["둘 다 못 봄(20턴 전 종료)",{},["shop","bu
   const T=await boot(HTTPS,{"GET /api/auth/session":sess(NEO,DONE(1)),"POST /api/profile/ai-clear":[200,{progress:DONE(2)}]});
   T.uiStart(); assetsLoad(T); await tick();
   T.single.spOpen(); let s=side(T);
-  ok((s.match(/class="[^"]*spCard"/g)||[]).length===2&&/무제한 AI 대전/.test(s)&&/잠김 · v0\.4\.17 예정/.test(s),"F1 P01 = 카드 2장(무제한 AI · 왕국 '잠김 · v0.4.17 예정')");
-  ok(/class="locked spCard" aria-disabled="true" data-lock="kingdom" aria-label="도전! 왕국 대전, 잠김, v0\.4\.17 예정"/.test(s),"F2 왕국 카드 — aria-disabled · 읽는 이름에 상태");
+  ok((s.match(/class="spCard /g)||[]).length===2&&/무제한 AI 대전/.test(s)&&/추후 공개/.test(s)&&!/무료|횟수|v0\.4|전적|보상|저장/.test(txt(s)),"F1 (2026-11-02 §3S.7) P01 = 카드 2장(무제한 AI · 왕국 '추후 공개') · 무료/횟수/버전 글자 없음");
+  ok(/class="spCard st-future" aria-disabled="true" data-lock="kingdom" aria-label="도전! 왕국 대전, 추후 공개"/.test(s)&&!/class="lk"/.test(s),"F2 왕국 카드 — aria-disabled · 읽는 이름에 상태 · 잠금 아이콘 없는 흐린 카드");
   T.render(); ok(T.byId("btnBack").textContent==="← 로비","F3 P01 ← 로비");
   T.single.spToast("🔒 도전! 왕국 대전은 v0.4.17에 열려요."); ok(/v0\.4\.17에 열려요/.test(T.byId("lobbyToast").innerHTML),"F3b 왕국 안내는 기존 로비 토스트 자리");
   T.single.spView("tiers"); s=side(T); const t=txt(s);
   const order=["브론즈","실버","골드","플래티넘","다이아","마스터","그랜드마스터","천상계"].map(n=>t.indexOf(n+" "));
   ok(order.every((x,i)=>x>=0&&(i===0||x>order[i-1])),"F4 P02 8칸 순서(브론즈→천상계)");
-  ok(/브론즈 클리어/.test(t)&&/실버 도전 가능/.test(t)&&/골드 잠김 · 실버에서 이기면 열려요/.test(t)&&/aria-label="골드, 잠김, 실버에서 이기면 열려요"/.test(s),"F5 상태 글자 — 클리어 · 도전 가능 · 잠김 사유(읽는 이름 포함)");
+  ok(/브론즈 클리어/.test(t)&&/실버 도전 가능/.test(t)&&/골드 잠김/.test(t)&&!/이기면 열려요/.test(t)&&/aria-label="골드, 잠김, 실버에서 이기면 열려요"/.test(s)&&!/무료|횟수|전적|보상|저장/.test(t),"F5 (§3S.7) 상태 글자 — 클리어 · 도전 가능 · 잠김(사유는 읽는 이름·토스트만) · 상시 무료/전적/저장 문장 없음");
   const fut=s.match(/<button[^>]*st-future[\s\S]*?<\/button>/g)||[];
   ok(fut.length===5&&fut.every(b=>/추후 공개/.test(b)&&!/class="lk"/.test(b)&&/aria-disabled="true"/.test(b)),"F6 상위 5칸 '추후 공개' — 잠금 아이콘 없음(잠김과 다른 표시)");
-  ok(/class="lk"/.test((s.match(/<button[^>]*t-gold[\s\S]*?<\/button>/)||[""])[0]),"F6b 잠긴 골드에는 잠금 아이콘");
+  ok(/--i:31/.test((s.match(/<button[^>]*t-gold[\s\S]*?<\/button>/)||[""])[0]),"F6b 잠긴 골드에는 잠금 아이콘(GI.lock)");
   T.render(); ok(T.byId("btnBack").textContent==="← 싱글","F7 P02 ← 싱글");
   T.single.spPlay(2); ok(T.S.phase==="menu"&&toast(T)==="실버에서 이기면 열려요","F8 잠긴 골드 — 입장 없이 토스트 '실버에서 이기면 열려요'");
   ok(T.NET.publicMode===true&&!!T.NET.ws,"F8b (전제) HTTP 로비는 방 목록 소켓으로 publicMode 가 켜져 있다");

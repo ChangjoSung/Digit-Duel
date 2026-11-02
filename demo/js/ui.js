@@ -332,7 +332,7 @@ function fitBoard(){
        하한은 칸 32px(32/52) — 그보다 작아질 화면(가로 모드 등)은 #238 처럼 그 크기로 두고 세로 스크롤한다. 배치(prep)는 아래 트레이가 말판에 붙어 폭 맞춤 그대로 */
     const b=$("screenBody"), app=$("app"); let vis=Infinity;
     if(b&&b.getBoundingClientRect&&w.getBoundingClientRect&&app&&app.getAttribute&&app.getAttribute("data-screen")==="board"){
-      const h=b.clientHeight-(w.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop);
+      const h=b.clientHeight-spBandH()-(w.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop); // 2026-11-02 §3S.1 튜토리얼 안내 띠가 예약한 아래 여백은 가용 높이가 아니다
       if(h>0){ s=Math.min(s,Math.max(h/700,32/52)); vis=h/700; }
     }
     if(!(s>0.2)) s=1;
@@ -856,6 +856,7 @@ function render(){
   try{ turnClockSync(); }catch(e){} // #263 행동 30초 · #293 준비 180초 표시 (온라인은 서버 시계 표시만)
   try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
   try{ spTick(); }catch(e){} // #324 Rev2 튜토리얼 단계 판정·말풍선·스포트라이트(튜토리얼 경기 밖에서는 안내를 걷기만 한다)
+  try{ subCheck(); }catch(e){} // 2026-11-02 §3S.5 상점 하위 확인창 — 부모 상점 맥락이 끝났으면 요청 없이 닫는다
 }
 function renderBoard(){
   const bd=$("board"); bd.innerHTML="";
@@ -931,12 +932,13 @@ function renderTurnBar(){
   /* #237 서버 권위 경제 방은 상대 차례에도 기권할 수 있다(GDD-23 2.4 · room.js _handleResign) — 그 밖은 종전 자기 턴 규칙.
      #263 (2026-09-25 CJ): 단절 정지 중에는 그 예외도 닫힌다 — 서버가 E_PAUSED 로 거부하므로 버튼부터 비활성이다. */
   const ecoResign=NET.publicMode&&!!S.eco;
-  const mkResign=()=>{ const b=ico(mk("기권",ecoResign?netEcoResign:confirmResign,false,"danger"),"flag","기권"); if(ecoResign) b.disabled=paused; };
+  const mkResign=()=>{ if(spTutOn()) return; const b=ico(mk("기권",ecoResign?netEcoResign:confirmResign,false,"danger"),"flag","기권"); if(ecoResign) b.disabled=paused; };
   if(S.fleePick){ // #114 도망 교환 선택 중: 소유자(S.current 와 다를 수 있음)만 [교환 생략] — 그 외 턴 조작은 전부 숨긴다. 기권은 자기 턴 규칙 그대로
     const mine=fleePickMine();
-    const b=document.createElement("button"); b.textContent="교환 생략 (그대로 밀어내기)"; b.onclick=()=>{if(fresh()) netAction({t:"fleeSkip"});}; b.disabled=!mine; b.className="primary"; tb.appendChild(b);
+    /* 2026-11-02 §3S.6: "교환 안 함" — 턴 줄의 다른 버튼과 같은 아이콘 스킨(data-ico) · 동작(fleeSkip) 그대로. 같은 뜻의 배지는 빼고 설명은 정보 영역 한 곳(renderSide) */
+    const b=document.createElement("button"); b.textContent="교환 안 함"; b.setAttribute("aria-label","교환 안 함 — 교환하지 않고 밀어내기를 처리해요"); b.onclick=()=>{if(fresh()) netAction({t:"fleeSkip"});}; b.disabled=!mine; tb.appendChild(b); ico(b,"escape","교환 안 함");
     mkResign();
-    const s=document.createElement("span"); s.className="badge"; s.textContent=mine?"🏃 도망 성공 — 후방 말(파란 칸)을 클릭해 교환하거나 생략":"🏃 상대가 말을 교체 중입니다…"; tb.appendChild(s);
+    if(!mine){ const s=document.createElement("span"); s.className="badge"; s.textContent="🏃 상대가 말을 교체 중입니다…"; tb.appendChild(s); }
     return; // #263 도망 교환도 같은 행동 30초 안이다 — #238: 남은 시간(#actClock)은 상단 HUD(renderBoardInfo)가 보인다
   }
   const sel=S.selected&&!S.selected.tray?S.selected:null;
@@ -1022,7 +1024,7 @@ function renderSide(){
     h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?TELE_PICK1_MSG:TELE_PICK2_MSG}</small>`
       +(S.teleport.stage===1?"":`<small>첫 말을 다시 클릭하면 선택이 취소됩니다.</small>`);
   if(S.fleePick) h+=fleePickMine() // #114 도망 교환: 소유자 안내 / 상대 대기 (거울) — 후보·위치는 소유자 화면에만
-    ?`<h2>🏃 도망 성공 — 위치 교환</h2><small>${S.mode==="pvp"&&!NET.mode?`🔒 ${pname(S.fleePick.owner)}만 확인 (상대는 시선 회피) · `:""}후방의 자기 말(파란 칸)을 클릭하면 도망친 말과 자리를 바꿉니다. 교환 후 전선의 말과 상대 말을 한 칸씩 밀어냅니다. 생략하면 도망친 말과 상대 말을 밀어냅니다.</small>`
+    ?`<h2>🏃 도망 성공 — 위치 교환</h2><small>${S.mode==="pvp"&&!NET.mode?`🔒 ${pname(S.fleePick.owner)}만 확인 (상대는 시선 회피) · `:""}후방 내 말(파란 칸)을 누르면 자리를 바꿔요. 교환하지 않으면 그대로 밀어내요.</small>`
     :`<h2>🛗 도망 성공!</h2><small>상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다.</small>`;
   if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
   if(!isAI(S.current)||NET.mode||S.mode==="pve"){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기 · #94 온라인·PVE는 상대 턴·AI 턴에도 표시(메모 편집 가능)
@@ -1108,7 +1110,7 @@ function idHelp(rel,p,from){ const d=idSeat(rel,p);
   synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${d.lb}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
     <div class="idCard ${rel?"op":"me"}">${idFaceHtml(d.rep,"sm")}<b>${escAttr(d.nm||d.lb)}</b></div>`,from); }
 /* ⚙ 설정 — 그 화면의 기존 나가기 진입점(동작 · 확인 창 불변) + 사운드 · 환경설정 자리(비활성 · 동작/저장 없음) */
-function gearHtml(leave){ leave=spGearLeave(leave); return `<details class="flowGear"><summary aria-label="설정">${gi("gear")}</summary><div class="menu"><b>설정</b>${leave}<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공</button></div></details>`; }
+function gearHtml(leave){ if(spTutOn()) return spExitBtn(); return `<details class="flowGear"><summary aria-label="설정">${gi("gear")}</summary><div class="menu"><b>설정</b>${leave}<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공</button></div></details>`; }
 function renderSetup(sp){
   const p=S.setupPlayer;
   if(NET.queued){ // 온라인: 배치 완료 → 매칭 대기
@@ -2505,21 +2507,24 @@ function shopClockStop(){ clearTimeout(SHOPCLK.t); clearInterval(SHOPCLK.iv); SH
 function shopClockText(p){ if(NET.publicMode) return netClockText(); return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.ceil(clkLeft(SHOPCLK)/1000)}초`:""; }
 function bagClockStop(){ clearTimeout(BAGCLK.t); clearInterval(BAGCLK.iv); BAGCLK.t=BAGCLK.iv=BAGCLK.pz=BAGCLK.fire=null; BAGCLK.dl=0; }
 window.__shop=(op,a,b)=>{
-  const p=shopViewer(); if(p===null){ if(op==="swapX") closeModal(); return; } // 닫기는 상점이 이미 끝났어도 된다
+  const p=shopViewer(); if(p===null){ if(op==="swapX") subClose("cancel"); return; } // 닫기는 상점이 이미 끝났어도 된다
   /* #237 공개 방: 거래는 서버가 판정한다 — 의도만 보내고 결과는 room_state 로 받는다(시작 상점은 배치 화면 안이라 확인 창만 닫는다).
      확인·선택 창은 소유자 로컬 창이다(동기화 모달 중계·비소유자 마스킹 대상이 아니다). */
   const go=act=>{ act=Object.assign({player:p},act);
-    if(NET.publicMode){ if(!netSendAction(netEcoWire(act))) return; if(S.eco.shop.kind==="start") closeModal(); return; } // #263 보내지 못했으면(정지) 창을 닫지 않는다
-    dispatchCoreAction(act); };
-  const back=()=>shopShow(false);
-  const md=(html,buttons)=>{ netLocalModal(); modal(html,buttons); };
-  const confirm=(html,label,act)=>md(coinize(html),[[label,once(()=>go(act))],["취소",back]]);
+    if(NET.publicMode){ if(!netSendAction(netEcoWire(act))) return false; return true; } // #263 보내지 못했으면(정지) 창을 닫지 않는다
+    dispatchCoreAction(act); return true; };
+  /* 2026-11-02 §3S.5: 승급·티켓 확인과 교체 선택은 부모 상점 위 하위 창(ui-overlays subModal) — 부모를 갈아 끼우지 않는다.
+     확정 = 기존 go(act) 1회(오프라인은 닫고 보낸다 · 공개 방은 보냈을 때만 닫는다). 취소·✕·Esc = 하위 창만 닫고 연 버튼으로 */
+  const confirm=(html,label,act,find)=>{ let busy=false;
+    subModal(coinize(html),[[label,()=>{ if(busy) return; busy=true;
+      if(NET.publicMode){ if(go(act)) subClose("ok"); else busy=false; return; }
+      subClose("ok"); go(act); }],["취소",()=>subClose("cancel"),true]],{p,find}); };
   if(op==="buy"){
     const s=S.eco.shop.slots[p][a]; if(!s) return;
     const u=ecoUnitOf(S,p,s.key), act={t:"shopBuy",i:a,seq:S.eco.shop.seq[p]};
     if(!u){ go(act); return; }                                        // 신규 구매는 확인 없이 확정 · 신규 표시(🔴)
     const g=s.grade>u.grade?s.grade:u.grade+1, c=s.grade>u.grade?ecoPrice(s.grade)-ecoPrice(u.grade):ecoPrice(s.grade);
-    confirm(`<h2>승급 확인</h2><p>${u.name} ⭐${u.grade} → ⭐${g} · 🪙${c}</p><small>그 자리에서 오르고 새 최대 HP 까지 회복하며 스킬 칸이 열립니다.</small>`,"승급",act);
+    confirm(`<h2>승급 확인</h2><p>${u.name} ⭐${u.grade} → ⭐${g} · 🪙${c}</p><small>그 자리에서 오르고 새 최대 HP 까지 회복하며 스킬 칸이 열립니다.</small>`,"승급",act,[`[onclick="window.__shop('buy',${a})"]`,`[onclick="unitHelpSlot(${a},this)"]`,()=>[...document.querySelectorAll("[onclick]")].find(e=>e.getAttribute("onclick")===`unitHelpPiece(${JSON.stringify(u.id)},this)`)||null]); // 같은 칸 → 같은 말(id) → 상점 제목
     return;
   }
   if(op==="refresh"){ go({t:"shopRefresh",seq:S.eco.shop.seq[p]}); return; }
@@ -2537,22 +2542,25 @@ window.__shop=(op,a,b)=>{
      한 번 누르면 기존 shopSwap 요청 1회(UI.swapLock = 연타 잠금). ✕·Esc 는 아무것도 바꾸지 않고 닫고 누른 [교체]로 포커스를 돌려준다
      (2026-10-02 CJ: 맨 아래 [취소] 삭제 — ✕ 가 swapX 를 직접 부르고 Esc 는 공용 모달 Esc 가 이 ✕ 를 누른다. 닫기는 게임 입력이 아니라 연출·단절 잠금과 무관).
      판정·HP 이동·거부 사유는 Core/서버 그대로 — S01 과 턴 상점이 이 한 경로를 쓴다 */
-  if(op==="swapX"){ back(); try{ const x=/** @type {any} */(document.querySelector(`[data-swap="${a}"]`)); if(x) x.focus(); }catch(e){} return; }
+  if(op==="swapX"){ subClose("cancel"); return; } // ✕·Esc — 하위 창만 닫고 누른 [교체]로(사라졌으면 같은 가방 칸 → 상점 제목)
   if(op==="swap"){ if(!S.eco.bag[p].some(x=>x.uid===a)) return; UI.swapLock=false;
-    md(`<div class="acctHead"><h2 id="swapT">교체할 필드 하수인 선택</h2><button type="button" class="acctX" aria-label="닫기" onclick="window.__shop('swapX',${a})">✕</button></div>
+    subModal(`<div class="acctHead"><h2 id="swapT">교체할 필드 하수인 선택</h2><button type="button" class="acctX" aria-label="닫기" onclick="window.__shop('swapX',${a})">✕</button></div>
       <div class="slotGrid swapGrid" role="group" aria-labelledby="swapT">`+S.pieces.filter(x=>x.owner===p&&x.type==="minion").map(x=>!ecoKey(x)
         ?`<button type="button" class="uSlot empty" disabled aria-disabled="true" aria-label="빈칸 — 교체할 수 없습니다" title="빈칸 — 교체할 수 없습니다">+</button>`
         :unitCard(x,{tag:"button",attr:x.alive?`type="button" aria-label="${escAttr(`${x.name} HP ${x.hp}/${x.maxHp} — 이 하수인과 교체`)}" onclick="window.__shop('swapTo',${escAttr(JSON.stringify(x.id))},${a})"`
-          :`type="button" disabled aria-disabled="true" aria-label="${escAttr(x.name)} — 사망한 하수인과는 교체할 수 없습니다" title="사망한 하수인과는 교체할 수 없습니다"`})).join("")+`</div>`,[]);
-    try{ const c=$("overlayBox").querySelector(".swapGrid button:not([disabled])"); if(c) c.focus({preventScroll:true}); }catch(e){} // 첫 선택 가능 카드로
+          :`type="button" disabled aria-disabled="true" aria-label="${escAttr(x.name)} — 사망한 하수인과는 교체할 수 없습니다" title="사망한 하수인과는 교체할 수 없습니다"`})).join("")+`</div>`,[],{p,find:[`[data-swap="${a}"]`]}); // 첫 선택 가능 카드로 초점(subModal)
     return; }
   if(op==="swapTo"){ if(UI.swapLock) return; if(netPaused()){ showToast(NET_PAUSE_MSG); return; } if(fxLocked()) return; // 모달 버튼과 같은 가드
     if(!S.pieces.some(x=>x.id===a&&x.owner===p&&x.type==="minion"&&x.alive&&ecoKey(x))||!S.eco.bag[p].some(u=>u.uid===b)) return;
-    UI.swapLock=true; go({t:"shopSwap",pieceId:a,uid:b}); return; }
+    UI.swapLock=true; if(NET.publicMode){ if(go({t:"shopSwap",pieceId:a,uid:b})) subClose("ok"); else UI.swapLock=false; return; } subClose("ok"); go({t:"shopSwap",pieceId:a,uid:b}); return; }
   /* #295: 말·속성은 시트의 왕·동료 줄에서 이미 골랐다(a = 말, b = 새 속성) — 여기는 기존 확인 창 1회뿐. 판정은 Core/서버 shopTicket 그대로 */
   if(op==="ticket"){ const x=S.pieces.find(y=>y.id===a&&y.owner===p&&(y.type==="king"||y.type==="ally")&&y.alive);
     if(!x||x.element===b||!V2_ELEM_ORDER.includes(b)||S.eco.tickets[p]<1) return;
-    confirm(`<h2>티켓 사용 확인</h2><p>${leadNm(x)} ${ELEM_KO[x.element]||"-"} → ${ELEM_KO[b]} (스킬도 바뀝니다 · HP 유지 · 다음 전투부터 시너지 반영)</p>`,"사용",{t:"shopTicket",pieceId:x.id,el:b});
+    /* §3S.9.4 초점 경로: 연 버튼 → 같은 말·같은 속성 버튼 → 같은 말 줄의 누를 수 있는 버튼(티켓 0장이면 얼굴 정보) → 상점 제목 */
+    const tk=e=>`window.__shop('ticket',${JSON.stringify(x.id)},'${e}')`, row=()=>[...document.querySelectorAll(".leadRow")].find(r=>[...r.querySelectorAll("button")].some(q=>(q.getAttribute("onclick")||"").startsWith(`window.__shop('ticket',${JSON.stringify(x.id)},`)));
+    confirm(`<h2>티켓 사용 확인</h2><p>${leadNm(x)} ${ELEM_KO[x.element]||"-"} → ${ELEM_KO[b]} (스킬도 바뀝니다 · HP 유지 · 다음 전투부터 시너지 반영)</p>`,"사용",{t:"shopTicket",pieceId:x.id,el:b},
+      [()=>[...document.querySelectorAll(".leadRow button")].find(q=>q.getAttribute("onclick")===tk(b)),()=>{ const r=row(); return r?[...r.querySelectorAll("button")].find(q=>!q.disabled)||null:null; },
+       ()=>[...document.querySelectorAll("[onclick]")].find(e=>e.getAttribute("onclick")===`unitHelpPiece(${JSON.stringify(x.id)},this)`)||null]); // 같은 말(id)의 얼굴 정보
   }
 };
 function bagPickShow(){

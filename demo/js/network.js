@@ -1229,9 +1229,10 @@ render=_renderWithOverlays;
    X03 은 서버 시각을 받을 수 없으므로 초 카운트다운과 [포기] 버튼을 두지 않는다(유예 만료는 서버가 재접속 응답 오류로 알린다). */
 const XLOCK={nodes:[]};
 function xLock(on){
-  if(on&&!XLOCK.nodes.length){ for(const id of ["app","overlay","emoteLayer"]){ const n=document.getElementById(id);
+  if(on&&!XLOCK.nodes.length){ for(const id of ["app","overlay","subOverlay","emoteLayer"]){ const n=document.getElementById(id);
     if(!n||!n.setAttribute||(n.hasAttribute&&n.hasAttribute("inert"))) continue; n.setAttribute("inert",""); n.setAttribute("aria-hidden","true"); XLOCK.nodes.push(n); } }
-  if(!on){ for(const n of XLOCK.nodes){ try{ n.removeAttribute("inert"); n.removeAttribute("aria-hidden"); }catch(e){} } XLOCK.nodes=[]; }
+  if(!on){ const had=XLOCK.nodes.length>0; for(const n of XLOCK.nodes){ try{ n.removeAttribute("inert"); n.removeAttribute("aria-hidden"); }catch(e){} } XLOCK.nodes=[];
+    if(had) try{ subKeepFocus(); }catch(e){} } // 2026-11-02 §3S.9.4 화면 잠금이 풀린 그 자리에서 열린 상점 하위 창으로 초점 복귀(UI 초점만 · NET 상태 무변경)
 }
 function netResumeBarSync(){
   let el=document.getElementById("netResumeBar");
@@ -1254,11 +1255,24 @@ function netResumeBarSync(){
   else { title="🌐 재접속 중…"; line=`연결이 끊겼습니다. 자동으로 다시 연결합니다 (시도 ${NET.resumeAttempts}회). 연결이 돌아오면 멈춘 자리부터 이어집니다.`; }
   /* 경기 시작 전(OPEN·SETUP) 정지에서는 [방 나가기](= 경기 취소)가 복구 입력으로 남는다(#263 G4) — 아래 화면이 inert 라 이 층에 둔다 */
   const leave=peer&&prep?`<button type="button" class="danger" onclick="netLeaveRoom()">방 나가기 (경기 취소)</button>`:"";
+  const fi=el.querySelectorAll?[...el.querySelectorAll("#xTitle,button")].indexOf(/** @type {any} */(document.activeElement)):-1; // 1초 갱신이 내용을 갈아 끼워도 패널 안 초점 자리를 지킨다(§3S.9.4)
   el.innerHTML=`<div class="xBox"><b id="xTitle" tabindex="-1">${title}</b><span>${line}</span>${leave}</div>`;
   if(el.classList) el.classList.remove("hidden");
   xLock(true);
-  if(fresh){ const t=document.getElementById("xTitle"); if(t&&t.focus) try{ t.focus(); }catch(e){} }
+  if(fresh||fi>=0){ const t=/** @type {HTMLElement|null} */((el.querySelectorAll&&el.querySelectorAll("#xTitle,button")[Math.max(0,fi)])||document.getElementById("xTitle")); if(t&&t.focus) try{ t.focus(); }catch(e){} }
 }
+/* 2026-11-02 §3S.9.4 대기 패널이 보이면 키 입력은 패널만 받는다 — 아래 창(inert)의 Tab/Esc·전역 단축키 처리기보다 먼저(window capture).
+   Tab 은 패널 안(제목 · [방 나가기])에서만 돈다. 패널 버튼의 Enter/Space 기본 동작은 그대로 · NET 상태·프로토콜 무변경 */
+if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("keydown",e=>{
+  const p=document.getElementById("netResumeBar"); if(!p||p.classList.contains("hidden")||!p.innerHTML) return;
+  e.stopImmediatePropagation();
+  if(e.key==="Escape") e.preventDefault();
+  if(e.key!=="Tab"&&(p.contains(document.activeElement)||!/^(Escape|Enter| )$/.test(e.key))) return;
+  e.preventDefault();                                                                          // 패널 밖(body)에 있던 초점은 패널 제목으로
+  const f=/** @type {HTMLElement[]} */([...p.querySelectorAll("#xTitle,button:not([disabled])")]), i=f.indexOf(/** @type {any} */(document.activeElement));
+  const to=f[e.key!=="Tab"||i<0?0:e.shiftKey?(i<=0?f.length-1:i-1):(i>=f.length-1?0:i+1)];
+  if(to) to.focus();
+},true);
 window.netConnect=function(){
   if(NET.ws){ showToast("이미 서버에 연결 중입니다."); return; }
   const inp=$("netServer");

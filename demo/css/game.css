@@ -1618,7 +1618,8 @@ body .overlay:has(.battleTop){align-items:flex-start; padding-top:var(--appTop);
 .spTier{position:relative; width:100%; min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 12px; overflow-wrap:anywhere; text-align:right;}
 .spTier b{flex:0 0 auto; text-align:left;}
 .spTier small{font-size:11px; line-height:1.3;}
-.spTier.st-future{opacity:.5; border-style:dotted;}
+.spTier.st-future{opacity:.6; border-style:dotted;}
+.spCard.st-future{opacity:.6; border-style:dotted;}
 .spReview{list-style:none; margin:4px 0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px 10px; font-size:13px;}
 .spReview small{color:#a9bcdc;}
 .spNote{margin:0; color:#a9bcdc;}
@@ -1629,30 +1630,51 @@ html[data-ui-skin="argon"] .l01Main > button.l01Single{padding-left:10px; paddin
 /* ===== #324 Rev2 튜토리얼 — 마녀 안내(#spCoach · 비모달) · 스포트라이트(#spSpot · 누름 통과) · 진행도/결과 패널(#spGuide) =====
    ART 2026-10-30 시각 계약: PC = 마녀 전신 왼쪽(대상이 왼쪽이면 오른쪽) · 320/390 = 보드 밖 위·아래 짧은 띠. 말풍선은 기존 카드(.histCard → Argon 월넛·브라스)를 쓴다.
    대상 고리·구역 띠·이름표는 그림이 아니라 테두리·글자 — 색만으로 전하지 않는다. 움직임 줄이기 = 전이 없음(진행도 마녀는 바로 심화 칸) */
-#spCoach{position:fixed; z-index:54; display:flex; pointer-events:none; padding:8px;}
+/* 2026-11-02 §3S.1 안내 띠 — 게임 화면 아래 · 행동 줄 바로 위(left·width·bottom 은 single.js spBand 가 프레임에 맞춘다). 마녀 40px · 진행 글자 · 문장 · 단계 버튼 0~1개.
+   지금 보이는 스크롤 틀의 아래 여백 = 띠 실제 높이(--spBand) — 내용은 띠 위에서 끝나고 띠는 대상을 덮지 않는다 */
+#spCoach{position:fixed; z-index:54; display:flex; pointer-events:none; padding:3px 6px;}
+#spCoach.atEdge{padding-bottom:calc(3px + env(safe-area-inset-bottom));}
 #spCoach.hidden{display:none;}
-#spCoach .spCoachIn{pointer-events:auto; display:flex; align-items:flex-end; gap:6px; width:100%;}
-#spCoach .spWitch{flex:0 0 auto; width:72px; height:72px; object-fit:contain; object-position:bottom; filter:drop-shadow(0 4px 8px #000c);}
-#spCoach .spBubble{flex:1 1 auto; min-width:0; width:auto; gap:6px; padding:10px 12px;}
-#spCoach .spProgTx{margin:0; font-size:12px; color:var(--dim);}
-#spCoach .spSay{margin:0; font-size:15px; line-height:1.5; color:var(--txt); word-break:keep-all; overflow-wrap:anywhere;}
-#spCoach .row{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin:0;}
-#spCoach .row button{min-height:44px; min-width:96px;}
+#spCoach .spCoachIn{pointer-events:auto; display:flex; align-items:center; gap:6px; width:100%;}
+#spCoach .spWitch{flex:0 0 auto; width:40px; height:40px; object-fit:contain; object-position:bottom; filter:drop-shadow(0 2px 4px #000c);}
+#spCoach .spBubble{flex:1 1 auto; min-width:0; width:auto; display:flex; flex-direction:row; align-items:center; gap:8px; padding:4px 8px;}
+html[data-ui-skin="argon"] #spCoach .spBubble.histCard{border-width:5px; border-image-width:5px; padding:3px 8px; border-radius:10px;} /* 같은 월넛·황동 9-slice 를 얇은 띠 테두리로 */
+#spCoach .spTx{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px;}
+#spCoach .spProgTx{margin:0; display:flex; align-items:center; gap:6px; font-size:12px; line-height:1.3; color:var(--dim);}
+#spCoach .spSay{margin:0; font-size:14px; line-height:1.3; color:var(--txt); word-break:keep-all; overflow-wrap:anywhere;}
+#spCoach .row{flex:0 0 auto; display:flex; flex-direction:column; gap:4px; margin:0;}
+#spCoach .row button{min-height:44px; min-width:64px; padding:4px 10px; white-space:nowrap;}
+#spCoach .spArrowBtn{position:relative; min-width:44px; min-height:28px; padding:0 8px; font-size:16px; line-height:1; border-radius:8px;}
+#spCoach .spArrowBtn::after{content:""; position:absolute; left:0; right:0; top:-10px; bottom:-12px;} /* 보이는 28px 그대로 · 누름 영역 44px(띠 높이를 늘리지 않는다) */
 #spCoach .spGain{margin:0; font-weight:bold; color:var(--heal);}
-#spCoach.at-top{top:0; left:0; right:0;} #spCoach.at-bottom{bottom:0; left:0; right:0;}
-#spCoach.at-top .spCoachIn{align-items:flex-start;}
-@media (min-width:900px){
-  #spCoach{width:min(360px,30vw); top:50%; transform:translateY(-50%);}
-  #spCoach.at-left{left:8px;} #spCoach.at-right{right:8px;}
-  #spCoach .spCoachIn{flex-direction:column; align-items:stretch;}
-  #spCoach .spWitch{width:160px; height:200px; align-self:flex-start;}
-  #spCoach.at-right .spWitch{align-self:flex-end;}
-}
+#spCoach .spPics,#spCoach .spTiers2{margin-top:2px;}
+@media (max-width:359px){ #spCoach .spWitch{display:none;} } /* 320 — 문장 폭을 위해 마녀만 뺀다(글자·버튼 크기 그대로) */
+@media (max-height:500px){ #spCoach .spWitch{display:none;} }
+/* §3S.9.2 참고 카드 — 띠 밖 · 스크롤 틀 내용 맨 끝 일반 흐름(보드 #boardWrap 뒤 · 상점 #overlayBox 끝). 같은 histCard 얇은 테두리 · 글자 크기 그대로 · 안쪽 스크롤 없음 */
+#spCard{width:auto; margin:8px 0 0; padding:6px 10px; gap:4px; box-sizing:border-box;}
+html[data-ui-skin="argon"] #spCard.histCard{border-width:5px; border-image-width:5px; padding:6px 10px; border-radius:10px;}
+#spCoach .spX{font-size:12px; vertical-align:-1px;}
+/* 예약: 띠가 떠 있는 동안 지금 보이는 스크롤 틀은 띠 높이만큼 아래 여백 · 창(상점 시트·전투·정보)은 띠 위에서 끝난다 */
+body.spBandOn #app #screenBody{padding-bottom:var(--spBand); scroll-padding-bottom:var(--spBand);} /* 화면별 #app[data-screen] #screenBody 여백보다 우선 */
+body.spBandOn .overlay:not(.sub){padding-bottom:var(--spBandOv); box-sizing:border-box;}
+body.spBandOn .synHelp{bottom:calc(var(--spBandOv) + 8px);}
+body.spBandOn #app[data-screen="prep"] .tray{position:static;} /* 튜토리얼 띠가 아래를 차지하는 동안 배치 트레이는 붙박이(sticky)가 아니다 — 짧은 화면(320×400)에서도 진영 3×7 전부를 자연 스크롤로 누를 수 있게(일반 모드는 sticky 그대로) */
+body.spBandOn #overlayBox:has(.shopSheet.turn){height:calc(var(--appH) - var(--spBandOv));} /* 정기 상점 시트(고정 높이)도 띠 위에서 끝난다 — 참고 카드·내용 끝이 띠에 가리지 않게 */ /* 정보 창(B2 왕 정보 · 시너지 설명)도 띠 위에서 끝난다 */
+body.spBandOn .overlay:not(.sub) .box{max-height:calc(100% - 8px);}
+/* §3S.3 튜토리얼 나가기 — ⚙ 자리의 기존 아이콘 버튼(닫기). 연출 잠금 중에도 눌린다(창이 열리는 것만) */
+.spExit{flex:0 0 auto; width:44px; height:44px; min-width:44px; min-height:44px; padding:0; font-size:26px;}
+body.fx-lock #overlayBox button.spExit,body.fx-lock #boardInfo button.spExit,body.fx-lock #sidePanel button.spExit{pointer-events:auto;}
+/* §3S.5 상점 하위 확인창 — 부모 상점 위에 겹친다(부모는 뒤에 어둡게 남는다 · 상점 시계 아래부터) */
+.overlay.sub{z-index:52; background:#0009; box-sizing:border-box; padding-left:8px; padding-right:8px; padding-bottom:8px;}
+.overlay.sub .box{max-height:100%;}
+.overlay.sub .subBtns{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+.overlay.sub .subBtns button{flex:1 1 0; min-width:96px; min-height:44px;}
 #spSpot{position:fixed; inset:0; z-index:53; pointer-events:none;}
 #spSpot.hidden{display:none;}
 #spSpot i{position:fixed; display:block; font-style:normal; pointer-events:none;}
 #spSpot .spDim{position:fixed; left:0; top:0; pointer-events:none;} #spSpot .spDimR{fill:#000; fill-opacity:.6;} /* 주변 가림막 — 구멍은 single.js 가 실제 대상 사각형으로 뚫는다 */
 #spSpot .spRing{border:3px solid var(--accent); border-radius:10px; box-shadow:0 0 0 4px #000a,0 0 18px var(--accent);}
+#spSpot .spRing.dest{border:2px dashed var(--accent); box-shadow:0 0 0 3px #000a;} /* A9·A10b 합법 도착 칸 */
 #spSpot .spZone{border:2px dashed var(--accent); border-radius:8px; background:#eab9571f;}
 #spSpot .spZone b{position:absolute; right:4px; top:2px; padding:1px 6px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:6px;}
 #spSpot .spTag{transform:translateX(-50%); z-index:1;}
@@ -1673,19 +1695,12 @@ html[data-ui-skin="argon"] .l01Main > button.l01Single{padding-left:10px; paddin
 .spPanel .spMk{position:absolute; top:0; left:12%; width:40px; height:44px; object-fit:contain; transition:left .9s ease-in-out;}
 .spPanel .spProg.go .spMk{left:calc(88% - 40px);}
 @media (prefers-reduced-motion: reduce){ .spPanel .spMk{transition:none;} } /* 가림막·대상 고리는 늘 정지(ART Dim 계약) */
-@media (max-width:420px){ #spCoach .spWitch{width:60px; height:60px;} #spCoach .spSay{font-size:14px;} .spPics{gap:3px;} .spMini{grid-template-columns:repeat(3,14px); grid-auto-rows:12px;} }
+@media (max-width:420px){ .spPics{gap:3px;} .spMini{grid-template-columns:repeat(3,14px); grid-auto-rows:12px;} }
 #spSpot .spMark b{display:flex; align-items:center; justify-content:center; width:18px; height:18px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:50%; box-shadow:0 1px 3px #000c;}
-#spCoach .spLegend{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:2px 8px; font-size:13px;}
-#spCoach .spLegend .spMk{display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-right:4px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:50%;}
-#spCoach.inBattle .spWitch{width:44px; height:44px;} #spCoach.inBattle .spSay{font-size:13px;} #spCoach.inBattle .spBubble{padding:6px 10px; gap:2px;}
+#spCard .spLegend{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(126px,1fr)); gap:0 8px; font-size:12.5px; line-height:1.3;}
+#spCard .spLegend .spMk{display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-right:4px; font-size:12px; color:var(--goldInk); background:var(--accent); border-radius:50%;}
 /* ⚙ 메뉴·상세/상성/스텟 창(#synHelp — 전투 창 z50 안에 붙으면 말풍선 z54 밑)이 열려 있는 동안 안내·스포트라이트를 잠시 숨긴다 — 위에 떠 있는 말풍선이 메뉴(튜토리얼 건너뛰기)·창 제목·닫기를 가리지 않게. 닫히면 그대로 돌아온다 */
-@media (max-width:360px){ #spCoach .spWitch{width:44px; height:44px;} #spCoach .spBubble{padding:8px 10px; gap:4px;} } /* 320 — 그림·여백만 줄인다(글자 크기·범례 한 줄 그대로) */
-#spCoach.at-mid{left:0; right:0;} /* 좁은 전투 — 두 전투원 칸 사이(top 은 single.js 가 위 칸 아래 끝으로) */
-@media (max-width:360px){ #spCoach.inBattle .spBubble{padding:3px 8px; gap:0;} #spCoach.inBattle .spSay{line-height:1.35;} #spCoach.inBattle .spProgTx{line-height:1.2;} } /* 320 전투 — 여백·줄 간격만(글자 13px 그대로) */
 
 /* Current tutorial panel stays over the single backdrop; keep its reading/close instruction. */
 /* The live menu and summary apertures bypass Dim inside sticky stacking contexts without lifting the header. */
 #spCoach.withPanel .spWitch{display:none;}
-body:has(#spCoach.withPanel) #synHelp{max-height:calc(100vh - 150px);}
-
-@media (max-height:500px){ #spCoach .spLegend{max-height:32px; line-height:16px; overflow-y:auto; overscroll-behavior:contain;} #spCoach{padding:4px;} #spCoach .spWitch{display:none;} #spCoach .spBubble{padding:4px 8px; gap:2px;} #spCoach .spSay{font-size:13px; line-height:1.35;} }
