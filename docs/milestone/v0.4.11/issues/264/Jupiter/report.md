@@ -1,7 +1,7 @@
 # #264 Render Free Postgres QA 준비 — Jupiter(Server) 구현 보고
 
 - 역할: Jupiter / mode IMPLEMENT / area SERVER / mutation code_docs
-- 작업 트리: `ChangjoSung/issue-264-render-db-current` (base `fafc619` = `origin/milestone/v0.4.11`, #250 `5435b40` 포함은 [WORKER_MODELS.md](../../../../../creat2ve/WORKER_MODELS.md) 점검 기록 기준) — **미커밋·미통합**. Git 쓰기(와 Worker Git 읽기)는 하지 않았다.
+- 작업 트리: `ChangjoSung/issue-264-render-db-current` (base `fafc619` = `origin/milestone/v0.4.11`, #250 `5435b40` 포함은 [WORKER_MODELS.md](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/WORKER_MODELS.md) 점검 기록 기준) — **미커밋·미통합**. Git 쓰기(와 Worker Git 읽기)는 하지 않았다.
 - 이력: 첫 구현은 #250 이전 base `33490f9` 의 `issue-264-render-db` 트리에서 잘못된 모델로 만들어졌다(사고 기록은 WORKER_MODELS.md). 이 문서는 그 소스를 **현재 base 로 이식**하고 첫 Saturn REVISE(§11)를 고친 판이다. 옛 트리는 건드리지 않았다.
 - 모델: Jupiter `claude-opus-5-5` / high · Ponytail full.
 - 기준: [Issue #264](https://github.com/ChangjoSung/Digit-Duel/issues/264) · GDD-23 §2.4 · §9 Decision Log(2026-09-25 #264 후속 행) · [#217 배포 준비](../../../../v0.4.10/issues/217/Jupiter/deploy-readiness.md)

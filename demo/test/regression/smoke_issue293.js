@@ -76,14 +76,18 @@ const visible=h=>h.replace(/<small class="srOnly[\s\S]*?<\/small>/g,"").replace(
   const f=field(T,0), u=T.S.eco.bag[0][0], key0=f[0].rosterId;
   f[0].rosterId=null; f[1].alive=false;                 // 빈칸 1 · 사망 1 (턴 상점에서 생기는 모양) — 자격 표시만 본다
   T.__shop("swap",u.uid);
-  let box=T.byId("overlayBox").innerHTML, grid=box.slice(box.indexOf('class="slotGrid swapGrid"'));
-  ok(/교체할 필드 하수인 선택/.test(box)&&box.includes(`aria-label="닫기" onclick="window.__shop('swapX',${u.uid})"`)&&T.byId("obBtns").children.length===0&&!lastBtn(T,"취소"),"C1 [교체] → 제목 · ✕(닫기 직결)만 — 맨 아래 [취소] 없음 (2026-10-02 CJ)");
+  let box=T.byId("subBox").innerHTML, grid=box.slice(box.indexOf('class="slotGrid swapGrid"'));
+  ok(/교체할 필드 하수인 선택/.test(box)&&box.includes(`aria-label="닫기" onclick="window.__shop('swapX',${u.uid})"`)&&!/>취소</.test(box)&&!T.byId("subOverlay").classList.contains("hidden"),"C1 [교체] → 제목 · ✕(닫기 직결)만 — 맨 아래 [취소] 없음 (2026-10-02 CJ) · 2026-11-02 §3S.5 부모 상점 위 하위 창");
   eq([count(grid,/class="uSlot/g),count(grid,/<button[^>]*disabled aria-disabled="true"/g),count(grid,/__shop\('swapTo'/g)],[6,2,4],"C2 필드 6칸 · 빈칸/사망 2칸은 실제 disabled · 살아 있는 4칸만 선택");
   const S0=T.S, before=sig(T);
   T.__shop("swapTo",f[1].id,u.uid); T.__shop("swapTo",f[0].id,u.uid);
   ok(T.S===S0&&sig(T)===before,"C3 사망·빈칸을 직접 불러도 요청이 나가지 않는다");
+  ok(/shopSheet/.test(T.byId("sidePanel").innerHTML)&&T.byId("overlay").classList.contains("hidden"),"C3b (2026-11-02 §3S.5) 하위 창이 떠도 부모 시작 상점은 그대로(갈아 끼우지 않음)");
   T.__shop("swapX",u.uid);
-  ok(T.S===S0&&sig(T)===before&&T.byId("overlay").classList.contains("hidden"),"C4 ✕ = 상태 무변경 · 창 닫힘");
+  ok(T.S===S0&&sig(T)===before&&T.byId("subOverlay").classList.contains("hidden"),"C4 ✕ = 상태 무변경 · 하위 창 닫힘");
+  T.__shop("swap",u.uid); T.S.eco.shop.seq[0]++; T.render();
+  ok(T.byId("subOverlay").classList.contains("hidden")&&T.S===S0&&sig(T)!==null,"C4c (§3S.5) 하위 창이 열린 채 진열 seq 가 바뀌면 요청 없이 닫힌다");
+  T.S.eco.shop.seq[0]--; T.render();
   ok(/find\(b=>b\.textContent==="취소"&&!b\.disabled\)\s*\|\|\$\("overlayBox"\)\.querySelector\("\.acctHead \.acctX"\)/.test(T.html)&&!/querySelector\('#obBtns button'\)\.click\(\)/.test(T.html),
      "C4b Esc = [취소]가 없는 창에서는 그 ✕ · ✕ 는 맨 아래 버튼을 대신 누르지 않는다 (입력 잠금 가드 밖)");
   f[0].rosterId=key0; f[1].alive=true; f[2].hp=37; u.hp=11;
@@ -93,6 +97,10 @@ const visible=h=>h.replace(/<small class="srOnly[\s\S]*?<\/small>/g,"").replace(
   ok(now.name===inName&&now.hp===11&&b.name===outName&&b.hp===37,"C5 선택 1회 = 기존 shopSwap — 1:1 교체 · HP 그대로 이동");
   const after=sig(T); T.__shop("swapTo",id,S1.eco.bag[0][0].uid); T.__shop("swapTo",id,u.uid);
   ok(sig(T)===after,"C6 연타는 두 번째 요청을 만들지 않는다 (선택 1회 = shopSwap 1회)");
+  { /* 2026-11-02 Saturn 재현 — 확정 뒤 대기 초점이 새 경기(같은 선택자)로 넘어가지 않는다 */
+    T.__shop("swap",T.S.eco.bag[0][0].uid); T.sub.subClose("ok"); const pend=!!T.sub.SUB.refocus; T.byId("toasts"); T.document.activeElement=T.document.body;
+    const old=T.S; T.startMode("pve",{aiLevel:"bronze"}); T.render();
+    ok(pend&&T.S!==old&&T.sub.SUB.refocus===null&&T.document.activeElement===T.document.body,"C4d 확정 뒤 대기 초점 — 경기가 바뀌면 버린다(새 경기의 같은 칸으로 초점 이동 없음)"); }
 }
 /* ===== C'. 2026-10-02 CJ: 수호자 3종 🪙3 · 상품 설명 팝업 (Venus 계약 9.2 · 9.3 · AC15 · AC16) ===== */
 {
@@ -291,8 +299,21 @@ const bar=h=>h.slice(h.indexOf('class="flowBar"'),h.indexOf('class="synRail"')>0
     ok(lr.length===3&&lr.every(r=>count(r,/__shop\('ticket',/g)===5&&count(r,/aria-pressed="true"/g)===1&&count(r,/ disabled title="현재 속성"/g)===1&&count(r,/ disabled /g)===1),"E21b 왕·동료 3줄 × 속성 5 — 현재 속성만 비활성(선택 표시 + 사유)");
     R.byId("overlayBox").innerHTML=""; const to=["fire","water","lightning","land","grass"].find(e=>e!==king.element); R.__shop("ticket",king.id,king.element);
     ok(!/티켓 사용 확인/.test(R.byId("overlayBox").innerHTML),"E21c 현재 속성은 확인 창도 열지 않는다");
-    R.__shop("ticket",king.id,to); ok(/티켓 사용 확인/.test(R.byId("overlayBox").innerHTML)&&R.S.eco.tickets[0]===2&&king.element!==to,"E21d 다른 속성 → 기존 확인 창 1회(확정 전에는 티켓·속성 그대로)");
-    R.byId("obBtns").children.find(b=>b.textContent==="사용").onclick(); ok(king.element===to&&R.S.eco.tickets[0]===1,"E21e [사용] → 기존 shopTicket 1회 (티켓 −1 · 속성 변경)");
+    R.__shop("ticket",king.id,to); ok(/티켓 사용 확인/.test(R.byId("subBox").innerHTML)&&!/티켓 사용 확인/.test(R.byId("overlayBox").innerHTML)&&R.S.eco.tickets[0]===2&&king.element!==to,"E21d 다른 속성 → 기존 확인 창 1회(확정 전에는 티켓·속성 그대로)");
+    R.byId("subBox").children.find(c=>/subBtns/.test(c.className)).children.find(b=>b.textContent==="사용").onclick(); ok(R.byId("subOverlay").classList.contains("hidden"),"E21d2 [사용] — 하위 창을 닫고 기존 요청"); ok(king.element===to&&R.S.eco.tickets[0]===1,"E21e [사용] → 기존 shopTicket 1회 (티켓 −1 · 속성 변경)");
+    { /* 2026-11-02 §3S.9.4 — 하위 창 초점·단절 정지 */
+      const sbtn=t=>R.byId("subBox").children.find(c=>/subBtns/.test(c.className)).children.find(q=>q.textContent===t);
+      R.S.eco.tickets[0]=1; R.modal(R.shopHtml(0),[]); const ally=R.S.pieces.find(x=>x.owner===0&&x.type==="ally"&&x.alive), to2=["fire","water","lightning","land","grass"].find(e=>e!==ally.element);
+      R.__shop("ticket",ally.id,to2); const inSub=()=>R.byId("subBox").contains(R.document.activeElement);
+      ok(inSub(),"E21h 티켓 확인 하위 창 — 초점이 하위 창 안");
+      R.modal(R.shopHtml(0),[]); ok(inSub()&&!R.byId("subOverlay").classList.contains("hidden"),"E21i 같은 상점 부모 다시 그리기(정지·해제 재렌더) — 초점은 하위 창에 남고 부모가 가져가지 않는다");
+      const nb={pm:R.NET.publicMode,pz:R.NET.pause}; R.NET.publicMode=true; R.NET.pause=[{seat:1}];
+      sbtn("사용").onclick(); ok(!R.byId("subOverlay").classList.contains("hidden")&&R.S.eco.tickets[0]===1&&ally.element!==to2,"E21j 단절 정지 중 [사용] — 안내만 · 하위 창 유지 · 요청 0");
+      sbtn("취소").onclick(); ok(R.byId("subOverlay").classList.contains("hidden")&&R.S.eco.tickets[0]===1&&ally.element!==to2,"E21k 단절 정지 중 [취소] — 요청 없는 로컬 닫기(하위 창만)");
+      R.NET.publicMode=nb.pm; R.NET.pause=nb.pz;
+      ok(/\["app","overlay","subOverlay","emoteLayer"\]/.test(R.html)&&/if\(!SUB\.open\|\|subBlocked\(\)\) return;/.test(R.html)&&/if\(had\) try\{ subKeepFocus\(\); \}catch\(e\)\{\}/.test(R.html),"E21l 위층 단절 대기 패널 — 하위 창도 inert · 하위 창 Tab/Esc 처리기가 패널 입력을 빼앗지 않는다");
+      ok(/window\.addEventListener\("keydown",e=>\{\s*const p=document\.getElementById\("netResumeBar"\);[^]*?e\.stopImmediatePropagation\(\);[^]*?querySelectorAll\("#xTitle,button:not\(\[disabled\]\)"\)[^]*?\},true\);/.test(R.html),"E21m 단절 대기 패널 키보드 — window capture 에서 아래 창 키 처리 차단 · Tab 은 패널(제목·버튼) 안에서만");
+    }
     R.S.eco.tickets[0]=0; ok(rows(R.shopHtml(0)).every(r=>count(r,/ disabled /g)===5)&&count(R.shopHtml(0),/ disabled title="티켓이 없습니다"/g)===12,"E21f 티켓 0장 = 전부 비활성 + 사유");
     R.S.eco.tickets[0]=1; R.S.pieces.find(x=>x.owner===0&&x.type==="ally").alive=false;
     ok(rows(R.shopHtml(0)).filter(r=>count(r,/ disabled title="사망한 말은 바꿀 수 없습니다"/g)===5).length===1,"E21g 사망한 동료 줄 = 전부 비활성 + 사유");

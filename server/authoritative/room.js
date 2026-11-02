@@ -31,7 +31,7 @@
 // 5) 종료 전이(_finalize)는 revision을 정확히 한 번 올리고, 시작 전 종료 뷰는 phase를 'canceled'|'void'|'closed'로 준다.
 const crypto = require('crypto');
 const { SeatCredential } = require('./seatToken');
-const { createEngine, withEngine } = require('./engine');
+const { createEngine, withEngine, sigFxSkill } = require('./engine');
 
 const DISCONNECT_GRACE_MS = 60 * 1000;
 const DEDUP_TTL_MS = 120 * 1000;
@@ -2011,6 +2011,8 @@ class Room {
       out.st = { side: fx.st.side, text: typeof fx.st.text === 'string' ? fx.st.text : '', // 상태 아이콘의 🛡방어막·🌊해일≤X
         shield: Number(fx.st.shield) || 0, max: Number(fx.st.max) || 0 };
     }
+    const skill = sigFxSkill(fx, out); // #335 v2 닫힌 33개 ID + 표적 측 지표(shake|hp|st) 재검증 — engine 과 같은 함수
+    if (skill) out.skill = skill;
     return Object.keys(out).length ? out : null;
   }
 

@@ -2,3 +2,8 @@
 model = "gpt-6.1-sol"
 model_reasoning_effort = "xhigh"
 service_tier = "priority"
+
+# Digit-Duel only: prevent plugin auto-hook review from blocking PM intake.
+# Read the installed Ponytail SKILL.md full rules explicitly; keep Orca status hooks.
+[plugins."ponytail@ponytail"]
+enabled = false

@@ -70,4 +70,4 @@ Mars 원문에 남은 사용자 브라우저를 건드리지 않았다는 넓은
 | 승인 규칙·AC | [Venus 계약](../Venus/gameplay-spec.md) |
 | 현행 Notion 규칙·결정 | GDD13 본문4.3·4.6과 DL45 / GDD18 |
 | GitHub 상태 | Issue146·131·128·130 / Milestone13 |
-| 조정·인수인계 | 이 보고 / [HANDOVER](../../../../../creat2ve/HANDOVER_SNAPSHOT.md) |
+| 조정·인수인계 | 이 보고 / [HANDOVER](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/HANDOVER_SNAPSHOT.md) |

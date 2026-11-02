@@ -132,7 +132,8 @@ async function up(poolOrClient, migrations) {
 // db_meta 는 CLI(meta) 전용이라 넣지 않는다. 앱 SQL 이 새 표·열을 쓰게 되면 여기에도 더한다.
 // ponytail: 표·열 존재만 본다 — 타입·제약·인덱스까지 필요해지면 그때 넓힌다.
 const REQUIRED_SCHEMA = {
-  accounts: ['id', 'user_id', 'nickname', 'password_hash', 'credential_gen', 'login_gen', 'email', 'email_norm', 'rep_minion'],
+  accounts: ['id', 'user_id', 'nickname', 'password_hash', 'credential_gen', 'login_gen', 'email', 'email_norm', 'rep_minion', 'tutorial_done_at', 'ai_cleared_tier',
+    'tutorial_basic', 'tutorial_basic_at', 'tutorial_advanced'],
   sessions: ['token_hash', 'account_id', 'expires_at', 'credential_gen', 'login_gen'],
   password_resets: ['account_id', 'code_hash', 'code_expires_at', 'attempts', 'sent_at', 'send_count', 'window_start', 'grant_hash', 'grant_expires_at', 'grant_gen'],
   match_results: ['id', 'match_id', 'account_id', 'result', 'reason', 'opponent_nickname', 'turns', 'duration_ms', 'ended_at'],

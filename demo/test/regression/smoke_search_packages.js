@@ -630,7 +630,7 @@ function swapSkill(X,target,skillIdx,slot){
     T.battleModal();
     ok(!/__act\('basic'\)/.test(ob(T))&&!/기본 공격 \d+~\d+/.test(ob(T)),"E3h 3슬롯 쿨 + 사신 봉인 → 기본 공격 버튼이 없다 (#146 폴백 철회)");
     ok(ob(T).indexOf(T.NO_ATTACK_MSG)>=0&&ob(T).indexOf("__pass()")>=0,"E3h2 안내 문구 + 수동 [턴 종료] 버튼만 나온다");
-    ok(/🎒 가방/.test(ob(T))&&/🔴 포획/.test(ob(T))&&/🏃 도망가기/.test(ob(T)),"E3h3 가방·포획·도망 메뉴는 그대로 쓸 수 있다");
+    { const o=ob(T).replace(/<i class="gi emo emi" style="--i:\d+">([^<]*)<\/i>/g,"$1"); ok(/🎒 가방/.test(o)&&/🔴 포획/.test(o)&&/🏃 도망가기/.test(o),"E3h3 가방·포획·도망 메뉴는 그대로 쓸 수 있다"); } // #335 표시 훅(emoGi)을 걷어낸 글자로 본다
     ok(!T.slotUsable(B.fa,3,"A"),"E3i 사신 슬롯은 쿨 0 이어도 합법이 아니다");
     /* 불법 슬롯을 강제로 보내도 즉사가 새지 않고, **합법 슬롯이 하나도 없으므로 기본 공격으로도 떨어지지 않는다**.
        규칙 상태는 그대로이고 화면만 다시 그려져 [턴 종료] 선택지가 남는다 (버튼을 누르기 전에는 강제 진행 없음). */

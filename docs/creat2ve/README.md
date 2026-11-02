@@ -1,16 +1,12 @@
-# Digit-Duel — Creat2ve Vibe Coding Structure 적용 문서
+# Digit-Duel 운영 문서 진입점
 
-이 폴더는 creat2ve-structure bootstrap 도구가 생성·관리한다 (구조 rev 6 · release 0.3.0, 기준일 2026-09-02).
+회사·프로젝트·각 부서의 현행 문서 정본은 **회사 Obsidian Vault**다. [AGENTS.md](../../AGENTS.md)에서 정확한 Vault·필독 순서를 확인하고 `Org Chart and R&R.md`의 정본 목록과 `Projects/Digit Duel.md`를 읽는다.
 
-| 파일 | 종류 | 설명 |
-|---|---|---|
-| `Creat2veVibeCodingStructure.html` | managed | 자기완결 핸드북 사본 (브라우저로 열어 읽는다. 스크립트 없음, 외부 자원 없음) |
-| `AUTHORITY.md` | seed | 이 프로젝트의 권위 문서 등록표 — 링크를 사람이 채운다 |
-| `HANDOVER_SNAPSHOT.md` | seed | 인수인계 스냅샷 — PD가 세션 교대·마일스톤 종료 시 치환 갱신 |
-| `github-infra.json` | managed | 라벨·마일스톤 권장안 — 사람 승인 후 PD가 `gh`로 적용 |
-| `prompts/*.md` | managed | 부서별 수동 백업 Prompt — 자동 경로 장애 시만 사용 |
+- [운영 HTML](CHANGJO_GAMES_ORG_RNR.html): 두 원본에서 생성한 열람·인쇄용 보고서.
+- [worker-models.json](worker-models.json): 모델/effort의 기계 설정. 업무·AC·공식 종결은 GitHub, 코드·검사·배포는 각 시스템을 유지한다.
+- [prompts/](prompts/): 기존 Role 기동의 짧은 진입점. 부서 내용은 지정 Obsidian 문서에서만 편집한다.
+- [범용 핸드북](Creat2veVibeCodingStructure.html)·`github-infra.json`: 범용 구조 보관본이며 Digit Duel 최신 CJ 결정이 우선한다.
 
-- **managed** 파일은 구조 rev 또는 release가 오르면 bootstrap `plan → 승인 → apply`로 갱신된다. 직접 고치지 않는다.
-- **seed** 파일은 처음 한 번만 생성되며 이후 프로젝트 소유다. 자유롭게 고친다.
-- 무결성 확인: creat2ve-structure 저장소에서 `node tools/bootstrap.mjs status --target <이 프로젝트>`.
-- 운영 계약 원본은 저장소 루트 `CLAUDE.md`의 `<!-- creat2ve:begin -->` … `<!-- creat2ve:end -->` 구간이다.
+HTML 본문은 직접 편집하지 않는다. `tools/docs/org_rnr_source.py preview|apply`의 기본 scope는 회사 조직 `ai-organization`, `--scope project-operations`는 프로젝트 나머지 12개 영역이다. CLI preview에서 원본·대상·구조·해시를 검토하고 `apply --target-sha256 <preview 값> --source-sha256 <검토한 원본 값>`으로 반영한다. `--fixture`는 오프라인 미리보기 전용이다. 연결·소유자·효력·해시 불일치는 쓰기 전 중단한다. 기존 Python `beautifulsoup4`·`markdown-it-py`가 필요하며 회귀는 `python -B tools/docs/test/org_rnr_source_test.py`다.
+
+역사·코드·게임 자산·백업은 원래 위치에 보존한다. 저장소의 필요한 안내 문서는 정본 링크·기준 시각·source ID/해시를 표시한 열람 출력으로 게시한다. 다른 프로젝트에 규칙을 전파하지 않는다.

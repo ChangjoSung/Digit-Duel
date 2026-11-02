@@ -66,4 +66,4 @@ Venus 문서·즉시 후속, Mars 제품·렌더 후속, Saturn 독립 QA는 모
 | 구현·독립 QA·화면 근거 | [Mars 보고](../Mars/report.md), [Saturn 원문](../Saturn/report.md), Mars/artifacts |
 | 추가 문서 이관 | GDD19·GDD20, GDD13 DL48 |
 | 과거 제품·절차 예외 | [#146 PD 기록](../../146/Mercury/report.md) |
-| 현재 조정·인수인계 | 이 보고, [HANDOVER](../../../../../creat2ve/HANDOVER_SNAPSHOT.md) |
+| 현재 조정·인수인계 | 이 보고, [HANDOVER](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/HANDOVER_SNAPSHOT.md) |

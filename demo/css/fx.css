@@ -1,0 +1,44 @@
+/* #335 33종 4번 대표기 시트 (ui.js skillSheetFx) — 스킨과 무관한 게임 연출이라 Argon 범위 밖에 둔다.
+   96×96 프레임 8장(768×96)을 80ms 씩 1회 재생한다. steps(8) 은 0…-672px(F1~F8, F8 투명)을 고르고,
+   끝 값 -768px 은 반복 없음(no-repeat)이라 시트 밖 = 투명이다 — 9번째 프레임으로 첫 장이 다시 보이지 않는다.
+   표적 전투원 몸통 중심(0.5, 0.5)에 두고, 토큰 안(z2 층)이라 정보판(.bslot z3) 아래·피해 숫자(뒤에 붙는 .dmgfloat) 아래에 그려진다. */
+.btok .skfx{position:absolute; left:50%; top:50%; width:96px; height:96px; margin:-48px 0 0 -48px; pointer-events:none;
+  background-repeat:no-repeat; background-position:0 0; background-size:768px 96px; image-rendering:pixelated;
+  animation:skfxPlay .64s steps(8) 1 forwards;}
+.btok.art .skfx{top:64px;} /* 128px 전투 도트의 몸통 중심 — 아래 이름표 높이를 빼고 잰다 */
+.skfx-dragon{background-image:url("../assets/fx/dragon_96x8.png");}
+.skfx-witch{background-image:url("../assets/fx/witch_96x8.png");}
+.skfx-reaper{background-image:url("../assets/fx/reaper_96x8.png");}
+/* 일반 30종 = <속성>_<아키타입> (ui.js SKILL_SHEET 가 실제 기술 ID 에서 고른다) — 전투 무대가 공개 도트를 그릴 때만 받는다 */
+.skfx-fire_std{background-image:url("../assets/fx/fire_std_96x8.png");}
+.skfx-fire_atk{background-image:url("../assets/fx/fire_atk_96x8.png");}
+.skfx-fire_def{background-image:url("../assets/fx/fire_def_96x8.png");}
+.skfx-fire_swift{background-image:url("../assets/fx/fire_swift_96x8.png");}
+.skfx-fire_sustain{background-image:url("../assets/fx/fire_sustain_96x8.png");}
+.skfx-fire_guard{background-image:url("../assets/fx/fire_guard_96x8.png");}
+.skfx-water_std{background-image:url("../assets/fx/water_std_96x8.png");}
+.skfx-water_atk{background-image:url("../assets/fx/water_atk_96x8.png");}
+.skfx-water_def{background-image:url("../assets/fx/water_def_96x8.png");}
+.skfx-water_swift{background-image:url("../assets/fx/water_swift_96x8.png");}
+.skfx-water_sustain{background-image:url("../assets/fx/water_sustain_96x8.png");}
+.skfx-water_guard{background-image:url("../assets/fx/water_guard_96x8.png");}
+.skfx-lightning_std{background-image:url("../assets/fx/lightning_std_96x8.png");}
+.skfx-lightning_atk{background-image:url("../assets/fx/lightning_atk_96x8.png");}
+.skfx-lightning_def{background-image:url("../assets/fx/lightning_def_96x8.png");}
+.skfx-lightning_swift{background-image:url("../assets/fx/lightning_swift_96x8.png");}
+.skfx-lightning_sustain{background-image:url("../assets/fx/lightning_sustain_96x8.png");}
+.skfx-lightning_guard{background-image:url("../assets/fx/lightning_guard_96x8.png");}
+.skfx-land_std{background-image:url("../assets/fx/land_std_96x8.png");}
+.skfx-land_atk{background-image:url("../assets/fx/land_atk_96x8.png");}
+.skfx-land_def{background-image:url("../assets/fx/land_def_96x8.png");}
+.skfx-land_swift{background-image:url("../assets/fx/land_swift_96x8.png");}
+.skfx-land_sustain{background-image:url("../assets/fx/land_sustain_96x8.png");}
+.skfx-land_guard{background-image:url("../assets/fx/land_guard_96x8.png");}
+.skfx-grass_std{background-image:url("../assets/fx/grass_std_96x8.png");}
+.skfx-grass_atk{background-image:url("../assets/fx/grass_atk_96x8.png");}
+.skfx-grass_def{background-image:url("../assets/fx/grass_def_96x8.png");}
+.skfx-grass_swift{background-image:url("../assets/fx/grass_swift_96x8.png");}
+.skfx-grass_sustain{background-image:url("../assets/fx/grass_sustain_96x8.png");}
+.skfx-grass_guard{background-image:url("../assets/fx/grass_guard_96x8.png");}
+@keyframes skfxPlay{to{background-position:-768px 0;}}
+@media (prefers-reduced-motion: reduce){ .btok .skfx{display:none;} }

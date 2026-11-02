@@ -45,7 +45,7 @@ HP 숫자 한 줄과 메모 8종 이모지 재사용을 포함한 게임 적용�
 | 문서 | 역할 |
 |---|---|
 | [외형 규격](../../specs/minion-visual-spec-v0.4.3.md) | 제작 기준·현재 수량·최종 QA·제품 결정 |
-| [인계 스냅샷](../../../../creat2ve/HANDOVER_SNAPSHOT.md) | 현재 통합 상태·남은 작업 |
+| [인계 스냅샷](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/HANDOVER_SNAPSHOT.md) | 현재 통합 상태·남은 작업 |
 | [GDD-13](https://app.notion.com/p/3cd1e7f17085817f8c35fa8548116f38) 9·12장 | CJ 결정 본문·Decision Log |
 
 원본 및 파생 아트의 자산 조건은 [ASSET-LICENSE.md](../../../../../ASSET-LICENSE.md)를 따른다.

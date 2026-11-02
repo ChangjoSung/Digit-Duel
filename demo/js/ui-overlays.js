@@ -9,7 +9,11 @@ function modal(html,buttons){
   try{ const ob0=$("overlayBox"); if(ob0&&ob0.classList) ob0.classList.remove("battleBox"); }catch(e){} // #122 전투 화면 전용 레이아웃 클래스 해제
   handoffCover(false); // #236 HIGH1: 가림 전용 불투명 상태는 그 가림 창에만 — 다음 모달(선택 창 등)은 일반 반투명 배경
   synHelpClose(false); // #294: 전투·상점·확인 창이 열리면 보드 위 설명 창도 끝난다(창 안의 안내는 종전 modalHelpDrop 과 같다)
-  $("overlayBox").innerHTML=html+`<div class="row" id="obBtns"></div>`;
+  const ob1=$("overlayBox"), shopKeep=/\bshopSheet\b/.test(ob1.innerHTML||"")&&/\bshopSheet\b/.test(html)?ob1.scrollTop:null; // 2026-11-02 §3S.5 같은 상점 시트를 다시 그려도 스크롤 위치 유지
+  ob1.innerHTML=html+`<div class="row" id="obBtns"></div>`;
+  if(shopKeep!=null) ob1.scrollTop=shopKeep;
+  if(SUB.open&&SUB.kind!=="start"&&shopKeep==null) subClose("expire"); // 정기 상점 시트가 아닌 창이 부모 자리를 가져갔다
+  if(SUB.open) subCheck(); // 부모를 다른 창이 가져갔거나 진열이 바뀌었으면 하위 창을 닫는다
   const ob=$("obBtns");
   /* 버튼 튜플은 [문구, 콜백] 또는 [문구, 콜백, disabled] 다. Saturn REVISE P2: "선택 불가"를 문구로만 알리지 않고
      실제 disabled 를 건다 — 키보드·스크린리더·중복 클릭·동기화 중계 모두에서 같은 의미가 된다.
@@ -25,7 +29,74 @@ function modal(html,buttons){
 }
 /* #293: 이 창 안에 떠 있던 안내 창(시너지 · 상품 설명)은 창이 닫히거나 내용이 바뀔 때 함께 끝난다 — 남으면 다음 Esc 를 삼킨다 */
 function modalHelpDrop(){ try{ if(SYNHELP.el&&$("overlayBox").contains(SYNHELP.el)) synHelpClose(false); }catch(e){} }
+/* ===== 2026-11-02 §3S.5 상점 하위 확인창(승급·티켓·교체) — 부모 상점(#overlayBox 정기 상점 · #screenBody 시작 상점)을 갈아 끼우지 않고 그 위에 겹친다.
+   부모는 그대로 뒤에 어둡게 남고(입력은 하위 층이 막는다) 상점 시계는 하위 창이 덮지 않는다. 취소·✕·Esc = 하위 창만 닫고 연 버튼(→ 같은 칸 → 상점 제목)으로 초점.
+   부모 맥락(경기·단계·상점 차례·완료·seq·인증 세대)이 바뀌면 요청 없이 닫는다(seq 변경만 안내 1회). 버튼 가드는 modal() 과 같다(단절 정지 → NET_PAUSE_MSG · 연출 잠금 무시). */
+const SUB={open:false,key:"",opener:null,find:/** @type {string[]} */([]),refocus:/** @type {any} */(null)};
+function subKey(p){ const sh=S&&S.eco&&S.eco.shop; return sh?[S.phase,sh.kind,sh.turn,sh.done&&sh.done[p]?1:0,typeof AUTH!=="undefined"?AUTH.gen:0].join("|"):"none"; }
+function subSeq(p){ const sh=S&&S.eco&&S.eco.shop; return sh&&sh.seq?sh.seq[p]:null; }
+function subLayer(){ let o=document.getElementById("subOverlay");
+  if(!o){ o=document.createElement("div"); o.id="subOverlay"; document.body.appendChild(o); }
+  if(!o.innerHTML){ o.className="overlay sub hidden"; o.innerHTML=`<div class="box" id="subBox" role="dialog" aria-modal="true" aria-labelledby="subT"></div>`; }
+  return o; }
+function subModal(html,buttons,ctx){
+  const o=subLayer(), box=$("subBox"), a=document.activeElement;
+  SUB.open=true; SUB.game=S; SUB.p=ctx.p; SUB.kind=S.eco.shop.kind; SUB.key=subKey(ctx.p); SUB.seq=subSeq(ctx.p); SUB.find=ctx.find||[]; SUB.refocus=null;
+  SUB.opener=a&&a!==document.body?a:null;
+  box.innerHTML=html.replace(/<h2(?![^>]*\bid=)/,`<h2 id="subT"`);
+  try{ const t=/<h2[^>]*\bid="([^"]+)"/.exec(box.innerHTML); box.setAttribute("aria-labelledby",t?t[1]:"subT"); }catch(e){} // 창 이름 = 제목(교체 창은 기존 swapT)
+  const row=document.createElement("div"); row.className="row subBtns"; box.appendChild(row);
+  for(const [txt,fn,local] of buttons){ const b=document.createElement("button"); b.type="button"; b.textContent=txt;
+    b.onclick=local?()=>fn():()=>{ if(netPaused()){ showToast(NET_PAUSE_MSG); return; } if(fxLocked()) return; fn(); }; row.appendChild(b); } // local = 요청 없는 닫기(§3S.9.4 단절 정지 중에도 · 확정만 정지 안내)
+  try{ const clk=$("shopClock")||$("prepClock"), r=clk&&clk.getBoundingClientRect?clk.getBoundingClientRect():null; o.style.paddingTop=r&&r.height>0?Math.round(r.bottom+6)+"px":""; }catch(e){} // 상점 시계 아래부터 — 하위 창이 시계를 덮지 않는다
+  o.classList.remove("hidden");
+  try{ const f=box.querySelector(".swapGrid button:not([disabled])")||row.querySelector("button"); if(f) f.focus({preventScroll:true}); }catch(e){}
+}
+/* how: "cancel" = 연 버튼으로 초점 · "ok" = 확정 뒤 다시 그려진 같은 칸으로 · "expire" = 맥락 종료(요청 없음) */
+function subClose(how){
+  if(!SUB.open) return; SUB.open=false;
+  const o=$("subOverlay"); if(o){ o.classList.add("hidden"); const b=$("subBox"); if(b) b.innerHTML=""; }
+  if(how==="expire") return;
+  const op=SUB.opener; SUB.opener=null; SUB.refocus=how==="ok"?{find:SUB.find,until:Date.now()+4000,game:SUB.game,p:SUB.p,key:SUB.key,gen:typeof AUTH!=="undefined"?AUTH.gen:0}:null;
+  if(how!=="ok") subFocus(op,SUB.find);
+}
+function subFocus(op,find){ try{
+  let t=op&&op.isConnected!==false&&!op.disabled&&document.contains(op)?op:null;
+  for(const s of find||[]){ if(t) break; const e=typeof s==="function"?s():document.querySelector(s); if(e&&!e.disabled) t=e; }
+  if(!t){ t=document.querySelector(".shopTop .who,.flowHead .who"); if(t) t.setAttribute("tabindex","-1"); }
+  if(t&&t.focus) t.focus({preventScroll:true}); return !!t; }catch(e){ return false; } }
+/* render() 끝 · modal() · closeModal() 가 부른다 — 부모 맥락이 끝났으면 닫는다. 확정 뒤 부모가 다시 그려지면 같은 칸으로 초점 */
+function subCheck(){
+  if(SUB.open){
+    const sh=S&&S.eco&&S.eco.shop, gone=S!==SUB.game||!sh||shopViewer()!==SUB.p||subKey(SUB.p)!==SUB.key;
+    if(gone) subClose("expire");
+    else if(subSeq(SUB.p)!==SUB.seq){ subClose("expire"); showToast("상점이 바뀌었어요. 다시 골라 주세요."); }
+    else subKeepFocus();
+    return;
+  }
+  const r=SUB.refocus; if(!r) return;
+  if(!subRefocusOk(r)){ SUB.refocus=null; return; }
+  const a=document.activeElement; if(a&&a!==document.body&&a.isConnected!==false&&document.contains(a)) return;
+  if(subFocus(null,r.find)) SUB.refocus=null;
+}
+/* 확정 뒤 대기 중인 초점 복귀가 아직 같은 맥락인가 — 같은 경기 객체 · 같은 인증 세대 · 같은 상점 차례(단계·종류·턴·완료) · 기한 4초 안 */
+function subRefocusOk(r){ return !!r&&Date.now()<=r.until&&S===r.game&&(typeof AUTH==="undefined"||AUTH.gen===r.gen)&&!!(S&&S.eco&&S.eco.shop)&&shopViewer()===r.p&&subKey(r.p)===r.key; }
+/* 위층(단절 대기 패널 · xLock)이 막고 있는가 — 그동안 하위 창은 입력·초점을 받지 않는다(§3S.9.4) */
+function subBlocked(){ const o=$("subOverlay"); if(o&&o.hasAttribute&&o.hasAttribute("inert")) return true; const n=$("netResumeBar"); return !!(n&&n.classList&&!n.classList.contains("hidden")&&n.innerHTML); }
+/* 열린 하위 창 밖으로 초점이 나갔으면(부모 다시 그리기 · 정지 해제) 하위 창 안으로 되돌린다 */
+function subKeepFocus(){ try{ if(!SUB.open||subBlocked()) return; const box=$("subBox"), a=document.activeElement; if(!box||!box.contains||box.contains(a)) return;
+  const f=box.querySelector(".swapGrid button:not([disabled])")||box.querySelector(".subBtns button"); if(f&&f.focus) f.focus({preventScroll:true}); }catch(e){} }
+/* 하위 창 키보드 — Esc = 취소(교체 창은 ✕) · Tab 은 하위 창 안에서만. 부모 모달의 키 처리보다 먼저(capture) */
+if(typeof document!=="undefined"&&document.addEventListener) document.addEventListener("keydown",e=>{
+  if(!SUB.open||subBlocked()) return; const box=$("subBox"); if(!box) return; // 위층 패널의 Tab/Esc 를 빼앗지 않는다
+  if(e.key==="Escape"){ e.preventDefault(); e.stopImmediatePropagation(); const x=box.querySelector(".acctX"); if(x) x.click(); else subClose("cancel"); return; }
+  if(e.key!=="Tab") return;
+  e.stopImmediatePropagation(); const f=[...box.querySelectorAll("button:not([disabled])")]; if(!f.length) return;
+  const i=f.indexOf(/** @type {any} */(document.activeElement)), to=e.shiftKey?(i<=0?f.length-1:i-1):(i<0||i>=f.length-1?0:i+1);
+  e.preventDefault(); f[to].focus();
+},true);
 function closeModal(){MEMO_UI.token=null; MEMO_UI.overlayOpen=false; modalHelpDrop(); $("overlay").classList.add("hidden"); handoffCover(false);
+  if(SUB.open&&SUB.kind!=="start") subClose("expire"); // 정기 상점 시트(부모)가 닫혔다 — 하위 창도 요청 없이 끝난다(시작 상점은 #screenBody 라 subCheck 가 본다)
   if(UI.ask){ UI.ask=null; if(UI.hold) aiHoldRelease(); } // #122 REVISE: 다른 경로로 확인창이 닫혀도 AI 보류가 남지 않는다
   modalRefocus(); }
 /* #238 모달 포커스 (GDD-24 00.6): 열리면 첫 주요 버튼(없으면 제목)으로, Tab 은 모달 안에서만 돈다 — 예외로 이모티콘 여는 버튼·팝오버는
@@ -42,6 +113,9 @@ function modalFocus(){ try{
   if(typeof document==="undefined"||!document.activeElement) return;
   const box=$("overlayBox"), a=document.activeElement; if(!box||!box.contains) return;
   if(box.contains(a)) return;
+  if(SUB.refocus&&!subRefocusOk(SUB.refocus)) SUB.refocus=null;                 // 다른 경기·계정·상점 맥락이면 버린다
+  if(SUB.refocus&&/\bshopSheet\b/.test(box.innerHTML||"")&&subFocus(null,SUB.refocus.find)){ SUB.refocus=null; return; } // 하위 창 확정 뒤 부모가 다시 그려졌다 — 같은 칸 → 같은 말 → 상점 제목
+  if(SUB.open){ const sb=$("subBox"); if(sb&&sb.contains&&sb.contains(a)) return; } // §3S.9.4 하위 창이 열려 있으면 부모 다시 그리기가 초점을 가져가지 않는다
   if(!MODAL_FOCUS.opener&&a!==document.body) MODAL_FOCUS.opener=a;
   const t=box.querySelector("#obBtns button:not([disabled]),button:not([disabled])")||box.querySelector("h2");
   if(t&&t.focus){ if(t.tagName==="H2") t.setAttribute("tabindex","-1"); t.focus({preventScroll:true}); }

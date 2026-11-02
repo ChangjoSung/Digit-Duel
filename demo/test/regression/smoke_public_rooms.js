@@ -405,7 +405,7 @@ function battleSide(o){ return Object.assign({owner:0,hp:15,maxHp:20,shield:0,bu
   { const css=require("fs").readFileSync(require("path").join(__dirname,"..","..","css","game.css"),"utf8");
     ok(/\.battleTop \.tbTools \.emoSlot\{height:44px;\}/.test(css)&&/#overlayBox\.battleBox \.battleTop\{[^}]*position:sticky/.test(css),"L4g 전투 상단 이모티콘 자리 높이 44px · 상단 줄은 창 안 스크롤에도 제자리(sticky)"); }
   ok(T.S.battle&&T.S.battle.actorOwner===0&&T.netActor()===0,"L4 전투 상태가 반영되고 행위자가 서버 값 그대로다");
-  ok(/⚔️ 싸우기/.test(html)&&/🎒 가방/.test(html)&&/🔴 포획/.test(html)&&/🏃 도망가기/.test(html)&&/id="bstage"/.test(html),"L5 원본 전투 화면의 4카테고리 메뉴와 무대가 그려진다");
+  { const o=html.replace(/<i class="gi emo emi" style="--i:\d+">([^<]*)<\/i>/g,"$1"); ok(/⚔️ 싸우기/.test(o)&&/🎒 가방/.test(o)&&/🔴 포획/.test(o)&&/🏃 도망가기/.test(o)&&/id="bstage"/.test(o),"L5 원본 전투 화면의 4카테고리 메뉴와 무대가 그려진다"); } // #335 표시 훅(emoGi)을 걷어낸 글자로 본다
   ok(/window.__act\(0\)/.test(html)&&/남은 쿨타임 2/.test(html),"L5b 내 기술 4슬롯 + 쿨 표기(#296 REVISE1: 설명 창과 같은 '남은 쿨타임 n' 칩)");
   ok(/window.__useItem\(0\)/.test(html)&&/🎁<\/i><b>아이템 선물<\/b>/.test(html),"L5c 가방(보유 아이템)·패키지 칸이 나온다(#296 REVISE1 3열 칸)");
   ok(/id="tok-A"/.test(html)&&/id="hpfill-D"/.test(html),"L5e 원본 무대 id(tok-A/hpfill-D)를 그대로 쓴다 — fx 적용 경로가 원본 applyFx와 같다");

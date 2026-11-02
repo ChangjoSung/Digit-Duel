@@ -1,6 +1,6 @@
 # #263 Jupiter — Core/서버 권위 구현 보고
 
-- 기준: [Issue #263](https://github.com/ChangjoSung/Digit-Duel/issues/263) 본문(2026-09-25 CJ Q1=A·Q2=A 확정) · GDD-23 2.2·2.4 · [CLAUDE.md](../../../../../../CLAUDE.md) · [QA 최소 운영](../../../../../creat2ve/QA_MINIMUM_POLICY.md)
+- 기준: [Issue #263](https://github.com/ChangjoSung/Digit-Duel/issues/263) 본문(2026-09-25 CJ Q1=A·Q2=A 확정) · GDD-23 2.2·2.4 · [CLAUDE.md](../../../../../../CLAUDE.md) · [QA 최소 운영](https://github.com/ChangjoSung/Digit-Duel/blob/6c495b4f01ffb72b4caba8c05384dc61a42f57bb/docs/creat2ve/QA_MINIMUM_POLICY.md)
 - 작업 브랜치: `ChangjoSung/issue-263-shop-timers` (base `fafc619`) · Ponytail full 적용 · Git 쓰기·PR·이슈 조작·배포 없음
 - 범위: Core(`demo/js/core.js`·`data.js`)와 서버 권위(`server/authoritative/room.js`). UI 는 Mars 소관이라 **규칙이 깨지는 자리 한 줄**만 고쳤다(아래 4).
 
