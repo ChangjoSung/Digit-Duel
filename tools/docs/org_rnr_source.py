@@ -8,7 +8,9 @@ scope : 기본 ai-organization(위 노트 → #ai-organization). project-operati
         paper section 12개를 한 번의 원자 저장으로 바꾼다. 블록은 섹션 순서대로 각 한 쌍, 고정 ID·SVG 는 제 섹션 블록에만.
         #decisions 는 기존 DOM(구조·속성·링크·표시 상태·조상) 그대로에 안전한 새 행을 tbody 맨 앞에 추가하는 것만 허용.
 
-source: Vault ID·절대 루트·상대 노트를 고정한 Obsidian CLI 읽기만 쓴다. 실패하면 다른 Vault·파일시스템으로 우회하지 않는다.
+source: 등록 이름(VAULT_NAME)으로 고른 Obsidian CLI 읽기만 쓰고, 절대 루트(VAULT_ROOT)·상대 노트·frontmatter 논리 vault_id(VAULT_ID)를
+        각각 고정 검사한다. 앱 등록 ID 는 논리 ID 와 다를 수 있어 선택자로 쓰지 않는다. 실패하면 다른 Vault·파일시스템으로 우회하지 않는다.
+        CLI 는 한 번에 하나씩, 짧은 인수(MAX_ARGV)로만 부르고 오류·파서 오류·빈 출력이면 실패한다.
         --fixture 는 오프라인 미리보기 전용(영수증 source 에 fixture 로 표시)이며 apply 에서는 거부한다. source 는 절대 쓰지 않는다.
         Vault 안 파일(별칭 포함)은 fixture 로 받지 않는다 — CLI 대신 파일시스템으로 Vault 를 읽는 우회가 되므로.
 block : 노트 안 BEGIN/END 표식 한 쌍 사이 Markdown. #ai-organization 의 자식(#ai-role-register 등)은 이 한 블록에만 있다.
@@ -33,7 +35,9 @@ from bs4 import BeautifulSoup, Comment, NavigableString
 from markdown_it import MarkdownIt
 
 OBSIDIAN = 'C:/Users/pc_77/AppData/Local/Programs/Obsidian/Obsidian.com'
-VAULT_ID = '613e72a275ee9be3'
+VAULT_ID = '613e72a275ee9be3'  # 문서 논리 ID(frontmatter vault_id). CLI 선택자 아님
+VAULT_NAME = 'CHANGJO GAMES'  # CLI 런타임 선택자(앱 등록 이름). 실제 루트는 VAULT_ROOT 로 다시 확인한다
+MAX_ARGV = 1024  # UTF-8 인수 byte 상한 — 긴 인수의 main-process Socket JSON.parse 오류 회피(2KB 프레임 여유)
 VAULT_ROOT = 'E:/Toolkit/Mirror/CJ Library/CHANGJO GAMES'
 NOTE = 'Org Chart and R&R.md'
 # 회사 Vault 원본 노트 전체(승인 department-manifest 10개 FileTree). 출력·fixture 가 이 파일들의 별칭이면 거부한다.
@@ -117,11 +121,16 @@ def sha(b):
 
 
 def obsidian(*args):
+    args = ['vault=' + VAULT_NAME, *args]
+    if len(' '.join(args).encode('utf-8')) > MAX_ARGV:
+        raise Fail('Obsidian CLI 인수 과대')
     try:
-        p = subprocess.run([OBSIDIAN, 'vault=' + VAULT_ID, *args], capture_output=True, text=True, encoding='utf-8', timeout=20)
+        p = subprocess.run([OBSIDIAN, *args], capture_output=True, text=True, encoding='utf-8', timeout=20)
     except (OSError, subprocess.TimeoutExpired) as e:
         raise Fail(f'Obsidian CLI 실패: {type(e).__name__}')
-    if p.returncode or not p.stdout.strip() or p.stdout.lstrip().startswith('Error'):
+    # 노트 본문은 JSON.parse 를 설명할 수 있어 stdout 은 첫 줄 오류 표식만, stderr 는 파서 오류 흔적을 본다
+    if (p.returncode or not p.stdout.strip() or re.match(r'\s*\w*Error\b', p.stdout)
+            or re.search(r'JSON\.parse|SyntaxError|Unexpected (?:token|end of JSON)', p.stderr or '')):
         raise Fail(f'Obsidian CLI 실패: rc={p.returncode} {(p.stderr or p.stdout).strip()[:200]}')
     return p.stdout
 
@@ -394,7 +403,7 @@ def main(argv=None):
         if vault_alias(p) or any(same(p, g) for g in (a.target, *APPLY_TARGETS, *([a.fixture] if a.fixture else []))):
             ap.error(f'출력 경로 거부(target·정본·fixture·Vault): {p}')
     r = {'mode': a.mode, 'scope': a.scope, 'target': str(a.target.resolve()),
-         'source': f'fixture:{a.fixture.resolve()}' if a.fixture else f'obsidian-cli vault={VAULT_ID} root={VAULT_ROOT} path={sc["note"]}'}
+         'source': f'fixture:{a.fixture.resolve()}' if a.fixture else f'obsidian-cli vault={VAULT_NAME} root={VAULT_ROOT} vault_id={VAULT_ID} path={sc["note"]}'}
     sids = [sid for sid, _ in sc['sections']]
     try:
         src = read_source(a.fixture, sc['note'])

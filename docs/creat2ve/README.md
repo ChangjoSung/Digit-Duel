@@ -1,4 +1,53 @@
-# Digit-Duel 운영 문서 진입점
+# CHANGJO GAMES · Digit-Duel 운영 안내
+
+[개발자 문서](../README.md) · [운영 보고 열기](CHANGJO_GAMES_ORG_RNR.html) · [GitHub 업무](https://github.com/ChangjoSung/Digit-Duel/issues)
+
+## 읽는 순서
+
+1. 작업자는 [AGENTS.md](../../AGENTS.md)에서 정확한 workspace·Vault·역할·보존 조건을 확인합니다.
+2. 회사 Vault의 `Org Chart and R&R.md`에서 문서별 소유자와 효력을 확인합니다.
+3. `Projects/Digit Duel.md`의 current → work → team/runtime → authority → qa-policy → handoff와 decisions를 읽습니다.
+4. 배정된 부서 정본과 해당 GitHub Issue의 현재 AC를 읽고 작업합니다. 과거 착수문은 자동 재개하지 않습니다.
+
+## 회사 Vault 문서 트리
+
+```text
+CHANGJO GAMES/
+├─ Org Chart and R&R.md             Mercury · 회사 역할·정본 목록
+└─ Projects/
+   ├─ Digit Duel.md                 Mercury · 현황·업무·권한·인계
+   └─ Digit Duel/
+      ├─ PLAN/                      Venus
+      │  ├─ Rules.md                규칙
+      │  ├─ UI UX.md                화면·입력 계약
+      │  ├─ Singleplayer Draft.md   싱글 확정 계약·후속 제안
+      │  └─ Decision Log.md         제품 결정·변경 이력
+      ├─ ART/
+      │  └─ Art Specification.md    Earth · 시각 계약·자산 인수
+      ├─ CLIENT_TOOLING/
+      │  └─ Client and Tools.md     Mars · 클라이언트·도구
+      ├─ SERVER/
+      │  └─ Server Operations.md    Jupiter · 서버·DB·운영·복구
+      └─ QA/
+         └─ QA.md                   Mercury 기록 · Saturn 판정
+```
+
+Vault 등록 이름은 **CHANGJO GAMES**, 실제 루트는 `E:/Toolkit/Mirror/CJ Library/CHANGJO GAMES`, 문서 논리 ID는 `613e72a275ee9be3`입니다. 앱 등록 ID와 논리 ID를 혼동하지 않습니다. Windows CLI는 [AGENTS.md](../../AGENTS.md)의 절대 `Obsidian.com` 경로·짧은 순차 호출·저장 후 재읽기 계약을 따릅니다.
+
+## 회사 작업 흐름
+
+| 단계 | 책임 | 결과가 기록되는 곳 |
+| --- | --- | --- |
+| 방향·제품 판정 | CJ | PM 운영 원본의 결정 이력 |
+| 접수·범위·의존·Git/PR 조정 | Mercury PM | 프로젝트 운영 원본·GitHub |
+| 기획·시각 계약 | Venus · Earth | PLAN · ART |
+| 구현·관련 검사 | Mars · Jupiter | 코드·실행 영수증·CLIENT_TOOLING · SERVER |
+| 파일 무수정 독립 검수 | Saturn | 메시지 → Mercury의 QA 기록 |
+| 제품 확인·출시 | CJ · Mercury | GitHub AC·PR·tag/Release·실제 배포 |
+
+Worker는 승인된 Role·workspace·변경 범위와 검증 조건을 받아 시작합니다. 모델·effort 설정, 실제 응답 성공, API 처리 tier는 구분합니다. 완료 보고와 실제 전용 터미널 정리를 확인하며 사용자 세션은 보존합니다.
+
+## 편집·게시 경계
 
 회사·프로젝트·각 부서의 현행 문서 정본은 **회사 Obsidian Vault**다. [AGENTS.md](../../AGENTS.md)에서 정확한 Vault·필독 순서를 확인하고 `Org Chart and R&R.md`의 정본 목록과 `Projects/Digit Duel.md`를 읽는다.
 
