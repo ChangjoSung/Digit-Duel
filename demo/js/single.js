@@ -492,7 +492,7 @@ function spDraw(T){
   const sp=spSpec(T), el0=sp.tg&&sp.tg.el?sp.tg.el():sp.ring&&sp.ring.el?sp.ring.el():null, r0=el0&&!spPanel()?spRect(el0):null;
   const zIn=z=>{ const v=spVisible(z), r=spRect(z), y=r?(r.top+r.bottom)/2:0; return !!v&&y>=v.top&&y<=v.bottom; }; // 칸 가운데(누르는 자리)가 띠 위 보이는 영역 안
   const zc=!el0&&sp.tg&&sp.tg.zone&&!spPanel()?spZoneCells():null, zr=zc&&zc.length&&!zc.some(zIn)?spRect(zc[0]):null; // A6 칸 고르기 — 대상 = 내 진영 빈칸 전체(누를 수 있는 칸이 하나도 없을 때)
-  const ar=r0&&!spVisible(el0)?r0:zr, arrow=ar?(ar.top>=Math.min(spBandTop(),window.innerHeight||0)-4?"↓":"↑"):""; // 대상이 있는데 띠 위 보이는 영역 밖
+  const ar=r0&&!spVisible(el0)?r0:zr, arrow=ar?((ar.top+ar.bottom)/2>=Math.min(spBandTop(),window.innerHeight||0)?"↓":"↑"):""; // 대상이 있는데 띠 위 보이는 영역 밖 — 방향도 보이기 판정(zIn)과 같은 가운데 기준(위 끝만 띠 위에 걸쳐도 아래)
   const parts=spCoachHtml(T,sp,arrow), html=coinize(parts.band);
   spCardSync(spPanel()?"":coinize(parts.card));                                                        // 정보 창·메뉴가 열리면 카드는 숨고 닫히면 같은 자리에서 다시
   if(SP_DRAWN.coach!==html){ SP_DRAWN.coach=html; c.innerHTML=html; c.classList.remove("hidden"); } // 브라우저가 정규화한 innerHTML 이 아니라 마지막으로 쓴 원문과 비교 — 같은 내용이면 DOM(초점 · 읽기)을 건드리지 않는다

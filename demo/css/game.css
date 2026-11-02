@@ -1653,6 +1653,8 @@ html[data-ui-skin="argon"] #spCoach .spBubble.histCard{border-width:5px; border-
 /* §3S.9.2 참고 카드 — 띠 밖 · 스크롤 틀 내용 맨 끝 일반 흐름(보드 #boardWrap 뒤 · 상점 #overlayBox 끝). 같은 histCard 얇은 테두리 · 글자 크기 그대로 · 안쪽 스크롤 없음 */
 #spCard{width:auto; margin:8px 0 0; padding:6px 10px; gap:4px; box-sizing:border-box;}
 html[data-ui-skin="argon"] #spCard.histCard{border-width:5px; border-image-width:5px; padding:6px 10px; border-radius:10px;}
+#overlayBox:has(.shopSheet.turn)>#spCard{margin:8px 52px 0 4px;} /* 정기 상점(A8·A10s): 카드는 시트 밖 형제라 시트와 같은 좌우 거터로 오른쪽 시너지 열 자리를 비운다 */
+@media (max-width:360px){ #overlayBox:has(.shopSheet.turn)>#spCard{margin:8px 46px 0 2px;} }
 #spCoach .spX{font-size:12px; vertical-align:-1px;}
 /* 예약: 띠가 떠 있는 동안 지금 보이는 스크롤 틀은 띠 높이만큼 아래 여백 · 창(상점 시트·전투·정보)은 띠 위에서 끝난다 */
 body.spBandOn #app #screenBody{padding-bottom:var(--spBand); scroll-padding-bottom:var(--spBand);} /* 화면별 #app[data-screen] #screenBody 여백보다 우선 */
