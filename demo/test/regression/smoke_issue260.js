@@ -51,7 +51,8 @@ const gets=p=>calls.filter(c=>c.url===p&&!(c.init.method));
   ok(T.uiScreenName()==="lobby"&&T.lobby.lobbyReady(),"A4 계정 없는 경로(file://) — 자산 뒤 로비");
   ok(!/startMode\(|핫시트|5급|5단|AI vs AI|튜토리얼|tutOpen/.test(s),"A5 로비에 옛 PVE·핫시트·관전·튜토리얼 진입점 없음");
   const ui=JS("ui.js");
-  ok(!/\btutHint\(/.test(ui)&&/event\.type==="tutHint"\) continue;/.test(ui),"A6 경기 중 도움말 — 화면 소비기가 띄우지 않는다(Core 이벤트는 그대로)");
+  /* #324 Rev2(2026-10-30): Core tutHint 는 어떤 경기에서도 띄우지 않는다 — 튜토리얼도 §3R.3 단계 말풍선만(smoke_issue324.js E 가 실제 경로로 본다) */
+  ok(!/\btutHint\(/.test(ui)&&/event\.type==="tutHint"\) continue;/.test(ui),"A6 경기 중 도움말 — 옛 도움말(tutHint)은 튜토리얼 포함 어디서도 띄우지 않는다(Core 이벤트는 그대로)");
   ok(typeof T.tutOpen==="function"&&typeof T.tutHint==="function","A7 튜토리얼 모듈은 회귀 검사용으로 남는다");
   T.startMode("pve"); ok(T.S.mode==="pve"&&T.S.phase==="setup","A8 엔진 진입점 startMode 는 그대로(테스트 호출)");
 }
@@ -157,7 +158,8 @@ const gets=p=>calls.filter(c=>c.url===p&&!(c.init.method));
   const T=await boot(HTTPS,IN); T.uiStart(); assetsLoad(T); await tick();
   const s=side(T);
   const locked=s.match(/<button type="button" class="locked[^"]*" aria-disabled="true"/g)||[];
-  ok(locked.length===9,"E1 잠긴 버튼 9개(싱글 2 + 메뉴 7): "+locked.length);
+  ok(locked.length===8,"E1 잠긴 버튼 8개(메뉴 8 — #265 v0.4.16 싱글플레이는 열림): "+locked.length);
+  ok(/<button type="button" class="l01Single" id="l01Single" onclick="spOpen\(\)">/.test(s)&&!/data-lock="single"/.test(s),"E1b 싱글플레이는 활성 버튼(P01 로 연다) · 잠금 표식 없음");
   ok(/무제한 AI 대전/.test(s)&&/도전! 왕국 대전/.test(s)&&/설정/.test(s)&&/재화 획득/.test(s)&&/미션/.test(s)&&/이벤트/.test(s)&&/로비 상점/.test(s)&&/하수인 설정/.test(s)&&/랭크/.test(s),"E2 지정 메뉴 전부");
   ok(!/class="locked[^>]*\sdisabled[\s>]/.test(s),"E3 disabled 가 아니라 aria-disabled — 키보드 포커스·Enter/Space 로 안내");
   T.lobby.lobbyLocked("미션");

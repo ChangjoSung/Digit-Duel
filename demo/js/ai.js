@@ -10,7 +10,7 @@ function aiHoldRelease(){ const q=UI.holdQ; UI.holdQ=[]; UI.hold=false; for(cons
    판단·정책·난수 순서는 어느 쪽에서도 같다 — 바뀌는 것은 "언제 부르는가"뿐이다. */
 const aiIdle=fn=>{ if(typeof fxWhenIdle==="function") fxWhenIdle(fn); else fn(); };
 const aiDelay=(fn,ms)=>{ if(typeof setTimeout==="function") setTimeout(fn,ms); else fn(); };
-const aiHeldNow=()=>typeof UI!=="undefined"&&!!UI.hold;
+const aiHeldNow=()=>typeof UI!=="undefined"&&(!!UI.hold||typeof spHeld==="function"&&spHeld()); // #324 튜토리얼의 질문·모달 안내·기본 회복 확인도 같은 보류(풀리면 spSync 가 큐를 푼다)
 /* ===== #245 Saturn REVISE(M2) AI 어댑터가 자기만 쓰는 기록 — 게임 상태(S)가 아니다 =====
    종전에는 예약 플래그·성격 프로파일·선봉·최근 이동 이력·사고 시간을 전부 S 에 직접 썼다. 그중 어느 것도
    규칙 판정·승패·회선 프레임에 들어가지 않고 Core 는 한 번도 읽지 않는다 — 판단하는 쪽의 메모일 뿐이다.
@@ -55,6 +55,7 @@ const aiCmd=a=>dispatchCoreAction(Object.assign({frame:battleCmdFrame()},a));
 const aiSkip=toast=>dispatchCoreAction(toast===false?{t:"skipMain",origin:"ai",toast:false}:{t:"skipMain",origin:"ai"});
 function aiStep(){
   if(!S||S.phase!=="play"||!isAI(S.current)||S.battle||S.fleePick) return; // #114: 상대(사람)의 도망 교환 선택이 끝나야 재개 (fleeResolve → done 이 재스케줄)
+  if(typeof spAiScript==="function"&&spAiScript(false)) return; // #324 Rev2 기본 연습 보드·연습 장면의 상대 대본(그 밖의 경기는 false — 종전 AI 그대로)
   const me=S.current;
   if(!S.mainUsed){ if(aiLevelOf(me)==="dan5") aiMainStrong(me); else aiMain(me); emitCore({type:"render"}); aiSchedule(); return; } // #21 난이도 분기
   if(!(S.forcedTargets&&S.forcedTargets.length)) dispatchCoreAction({t:"drainForced",autoStart:false}); // #18 안전장치
@@ -72,7 +73,9 @@ function aiStep(){
 function aiProf(me){
   const P=aiMem().profile;
   if(!P[me]){
-    if(aiLevelOf(me)==="dan5") P[me]={aggression:1,capture:1,kingRush:1,caution:1,eps:0}; // #21 5단: 고정 프로파일·ε 무작위 없음
+    const tier=AI_TIER[S.aiLevel&&S.aiLevel[me]];
+    if(tier&&tier.prof) P[me]=Object.assign({},tier.prof); // #322 고정 티어 설정 — 난수를 쓰지 않는다
+    else if(aiLevelOf(me)==="dan5") P[me]={aggression:1,capture:1,kingRush:1,caution:1,eps:0}; // #21 5단: 고정 프로파일·ε 무작위 없음
     else {
       const r=()=>0.6+rand()*0.8;
       P[me]={aggression:r(),capture:r(),kingRush:r(),caution:r(),eps:0.05+rand()*0.10}; // 난수 소비 순서·횟수는 종전과 같다
@@ -350,6 +353,7 @@ function aiBattleAction(){
   const side=actorOfPhase(), f=side==="A"?B.fa:B.fd, opp=side==="A"?B.fd:B.fa;
   const ownerP=side==="A"?B.attP.owner:B.defP.owner;
   if(!isAI(ownerP)) return;
+  if(typeof spAiScript==="function"&&spAiScript(true)) return; // #324 Rev2 기본 B7 — 규칙상 합법인 고정 전투 명령(그 밖의 경기는 종전 AI)
   if(aiLevelOf(ownerP)==="dan5"){ aiBattleActionStrong(side); return; } // #21 5단 전투 행동 (기대치 기반)
   const prof=aiProf(ownerP), caut=aiCaution(ownerP); // T6 전투 성향 프로파일
   const inBonus=!!(B.bonus&&B.bonus.stage==="active"&&B.bonus.side===side); // #241 R1 번개 꼬리 추가 공격 — 스킬 선택만 합법(L17)
@@ -484,7 +488,7 @@ function aiRecruitResolve(own,p){
    구조: 후보 행동(이동·텔레포트 스왑·탐색·생략) → 1-ply 위치 평가(+강제 전투 기대치·공격 기회) → 상위 K 후보에 대해
    2-ply: 보이는 적의 최선 응수(공격·이동)로 내 평가가 얼마나 나빠지는지 감점 → 최종 = 0.4·1-ply + 0.6·최악 응수 후 평가.
    판단 시간 상한(BAL.aiStrongBudgetMs) 초과 시 남은 후보는 1-ply 순위로 처리. 반복 완화: 최근 이력 칸 복귀 감점. */
-function aiLevelOf(p){return (S.aiLevel&&S.aiLevel[p])||"grade5";}
+function aiLevelOf(p){ const lv=(S.aiLevel&&S.aiLevel[p])||"grade5"; return AI_TIER[lv]?AI_TIER[lv].engine:lv; } // #322 티어는 엔진(grade5·dan5)으로 갈라진다
 function aiUnitValue(x,me){ // 말 가치 (자기 말 또는 공개된 적 말) — 적의 포획 하수인 보유(cap)는 비공개 정보라 자기 말만 반영
   if(x.type==="king") return 200;
   if(x.type==="ally") return 40+(x.cap&&x.owner===me?25:0);

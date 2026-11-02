@@ -43,8 +43,8 @@ function applyUiEvents(events){
     if(event.type==="logAppended"){ renderLog(); continue; }
     if(event.type==="battleRedraw"){ battleModal(); continue; }
     if(event.type==="closeOverlay"){ closeModal(); continue; }
-    if(event.type==="gameReset"){ synHelpClose(false); fxReleaseAll(); shopClockStop(); bagClockStop(); turnClockStop(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다 (#263 배치·행동도 같다)
-    if(event.type==="tutHint") continue; // #260 (CJ 2026-09-27): 경기 중 1회 도움말은 제품에서 띄우지 않는다 — Core 는 종전대로 이벤트만 낸다
+    if(event.type==="gameReset"){ synHelpClose(false); fxReleaseAll(); shopClockStop(); bagClockStop(); turnClockStop(); spRngRestore(); continue; } // #236 이전 경기의 상점·B08 마감도 새 경기로 넘어가지 않는다 (#263 배치·행동도 같다)
+    if(event.type==="tutHint") continue; // #260 (CJ 2026-09-27): 경기 중 1회 도움말은 제품에서 띄우지 않는다 — #324 Rev2 튜토리얼도 §3R.3 단계 말풍선만 쓴다(옛 상황 도움말과 겹치지 않게 0회)
     if(event.type==="memoPick"){ memoModal(event.piece); continue; }
     if(event.type==="contactSituation"){ situationFx(event.att,event.def); continue; }
     if(event.type==="contactBanner"){ contactBannerFx(event.piece,event.sub); continue; }
@@ -128,6 +128,7 @@ function applyUiEvents(events){
     if(event.type==="recruitOpened"||event.type==="recruitStage"){ recruitModal(); if(event.type==="recruitOpened") render(); continue; } // 단계 전이는 Core 가 끝냈고 여기는 그 단계의 화면만 (AI 해결·튜토리얼은 Core 소유)
     if(event.type==="recruitClosed"){ closeModal(); continue; }        // 늦은 콜백·새 게임·턴 교대·말 사망 — 화면만 닫는다
     if(event.type==="matchEnded"){ // 상태·결과 배너·기권 문구는 Core 가 끝냈고 여기는 남은 화면 정리뿐
+      spMatchEnded(event); // #322·#324 학습 경기·무제한 AI 의 정상 종료 저장(그 밖의 경기는 아무것도 하지 않는다)
       if(event.interrupted){
         /* Saturn 추가 P2: **살아 있던 전투를 걷어냈을 때만** 열린 전투 모달을 닫고 낡은 마크업·연출 큐를 비운다.
            상태만 지우고 화면을 두면 buff-power 같은 CSS 애니메이션이 무한히 돌고 낡은 모달이 입력 면으로 남는다 (계약 3.1 은 표시까지 포함).
@@ -249,6 +250,7 @@ function uiPubFinished(){ return !!(NET.publicMode&&NET.roomState==="FINISHED");
 function uiBackSpec(){ // null = 이전 화면이 없다(타이틀) → 버튼을 숨긴다
   const sc=uiScreenName();
   if(sc==="title") return null;
+  const spb=spBackSpec(sc); if(spb) return spb; // #265 싱글 선택·난이도·싱글 결과
   if(sc==="lobby") return LOBBY.view==="rooms"?{label:"← 로비",title:"로비로 돌아갑니다"}:{label:"← 타이틀",title:"타이틀 화면으로 돌아갑니다"};
   if(sc==="room") return {label:"← 방 나가기",title:"방을 나가면 방이 취소되고 방 목록으로 돌아갑니다"};
   if(sc==="prep"){
@@ -269,6 +271,7 @@ window.uiBack=function(){
   if(sc==="title") return;
   if(sc==="board"&&UI.drawer){ uiDrawer(null); return; } // 서랍이 열려 있으면 서랍부터 닫는다 (화면은 그대로)
   if(uiOverlayOpen()){ showToast("진행 중인 창을 먼저 마쳐 주세요."); return; }
+  if(spBack(sc)) return; // #265 싱글 선택·난이도·싱글 결과 — 같은 화면 안의 뒤로(결과는 종료 연출 잠금을 따른다)
   if(sc==="lobby"){ if(LOBBY.view==="rooms"){ lobbyHome(); return; } UI.entered=false; UI.drawer=null; uiApply(); return; }
   if(sc==="room"){ netLeaveRoom(); return; } // #261 L03 [방 나가기]와 같은 경로(방 취소)
   if(sc==="result"){ // #126 종료 연출이 재생 중이면 결과 패널의 [로비로]와 같은 잠금을 따른다
@@ -329,13 +332,14 @@ function fitBoard(){
        하한은 칸 32px(32/52) — 그보다 작아질 화면(가로 모드 등)은 #238 처럼 그 크기로 두고 세로 스크롤한다. 배치(prep)는 아래 트레이가 말판에 붙어 폭 맞춤 그대로 */
     const b=$("screenBody"), app=$("app"); let vis=Infinity;
     if(b&&b.getBoundingClientRect&&w.getBoundingClientRect&&app&&app.getAttribute&&app.getAttribute("data-screen")==="board"){
-      const h=b.clientHeight-(w.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop);
+      const h=b.clientHeight-spBandH()-(w.getBoundingClientRect().top-b.getBoundingClientRect().top+b.scrollTop); // 2026-11-02 §3S.1 튜토리얼 안내 띠가 예약한 아래 여백은 가용 높이가 아니다
       if(h>0){ s=Math.min(s,Math.max(h/700,32/52)); vis=h/700; }
     }
     if(!(s>0.2)) s=1;
     const fl=x=>String(Math.floor(x*1000)/1000); w.style.setProperty("--bs",fl(s)); // 내림 — 반올림 1px 로 마지막 행이 잘리지 않게
     /* #296 CJ REVISE2: 우측 열(#boardInfo .sideCol · CSS)이 읽는 말판 높이 배율 — 말판 배율 그대로, 단 하한(32px 칸)으로 말판이 화면보다 길어지면 보이는 높이까지(고정 HUD 에 붙은 열의 [말 정보]가 잘리지 않게) */
     if(b&&b.style&&b.style.setProperty) b.style.setProperty("--sideBs",fl(Math.min(s,vis)));
+    if(typeof spT==="function"){ const t=spT(); if(t&&t.step) spDraw(t); }
   }catch(e){}
 }
 if(typeof window!=="undefined"&&window.addEventListener) window.addEventListener("resize",()=>{try{fitBoard(); emoteSync();}catch(e){}}); // #238 L03 이모티콘 위치도 다시 잰다
@@ -851,6 +855,8 @@ function render(){
   try{ emoteSync(); }catch(e){} // #262 이모티콘 고정 층 — 단계·연결·간격 표시만
   try{ turnClockSync(); }catch(e){} // #263 행동 30초 · #293 준비 180초 표시 (온라인은 서버 시계 표시만)
   try{ autoEndCheck(); }catch(e){} // #106 T7: 상태가 그려질 때마다 자동 턴 종료 조건 재평가 (예약은 1회, 발화는 행동자 클라이언트만)
+  try{ spTick(); }catch(e){} // #324 Rev2 튜토리얼 단계 판정·말풍선·스포트라이트(튜토리얼 경기 밖에서는 안내를 걷기만 한다)
+  try{ subCheck(); }catch(e){} // 2026-11-02 §3S.5 상점 하위 확인창 — 부모 상점 맥락이 끝났으면 요청 없이 닫는다
 }
 function renderBoard(){
   const bd=$("board"); bd.innerHTML="";
@@ -926,12 +932,13 @@ function renderTurnBar(){
   /* #237 서버 권위 경제 방은 상대 차례에도 기권할 수 있다(GDD-23 2.4 · room.js _handleResign) — 그 밖은 종전 자기 턴 규칙.
      #263 (2026-09-25 CJ): 단절 정지 중에는 그 예외도 닫힌다 — 서버가 E_PAUSED 로 거부하므로 버튼부터 비활성이다. */
   const ecoResign=NET.publicMode&&!!S.eco;
-  const mkResign=()=>{ const b=ico(mk("기권",ecoResign?netEcoResign:confirmResign,false,"danger"),"flag","기권"); if(ecoResign) b.disabled=paused; };
+  const mkResign=()=>{ if(spTutOn()) return; const b=ico(mk("기권",ecoResign?netEcoResign:confirmResign,false,"danger"),"flag","기권"); if(ecoResign) b.disabled=paused; };
   if(S.fleePick){ // #114 도망 교환 선택 중: 소유자(S.current 와 다를 수 있음)만 [교환 생략] — 그 외 턴 조작은 전부 숨긴다. 기권은 자기 턴 규칙 그대로
     const mine=fleePickMine();
-    const b=document.createElement("button"); b.textContent="교환 생략 (그대로 밀어내기)"; b.onclick=()=>{if(fresh()) netAction({t:"fleeSkip"});}; b.disabled=!mine; b.className="primary"; tb.appendChild(b);
+    /* 2026-11-02 §3S.6: "교환 안 함" — 턴 줄의 다른 버튼과 같은 아이콘 스킨(data-ico) · 동작(fleeSkip) 그대로. 같은 뜻의 배지는 빼고 설명은 정보 영역 한 곳(renderSide) */
+    const b=document.createElement("button"); b.textContent="교환 안 함"; b.setAttribute("aria-label","교환 안 함 — 교환하지 않고 밀어내기를 처리해요"); b.onclick=()=>{if(fresh()) netAction({t:"fleeSkip"});}; b.disabled=!mine; tb.appendChild(b); ico(b,"escape","교환 안 함");
     mkResign();
-    const s=document.createElement("span"); s.className="badge"; s.textContent=mine?"🏃 도망 성공 — 후방 말(파란 칸)을 클릭해 교환하거나 생략":"🏃 상대가 말을 교체 중입니다…"; tb.appendChild(s);
+    if(!mine){ const s=document.createElement("span"); s.className="badge"; s.textContent="🏃 상대가 말을 교체 중입니다…"; tb.appendChild(s); }
     return; // #263 도망 교환도 같은 행동 30초 안이다 — #238: 남은 시간(#actClock)은 상단 HUD(renderBoardInfo)가 보인다
   }
   const sel=S.selected&&!S.selected.tray?S.selected:null;
@@ -998,8 +1005,9 @@ function renderSide(){
     /* 2026-09-28 CJ 8: 온라인 종료 뒤에는 방을 부수지 않고 같은 멀티 대기방(L03)으로 — [방으로 돌아가기](서버 lobby_return · 누르면 잠금, 서버가 받아 준 뒤에만 화면이 바뀐다).
        #295 CJ 2026-09-30 REVISE: 결과 화면에는 [내보내기]가 없다(방장·참가자 모두 · 내보내기는 방 대기에서만).
        결과 카드 아래에는 최종 공개 말판(#left — FINISHED 뷰가 공개한 말만 · CSS 로 순서만 바꾼다). 오프라인은 종전 [로비로 돌아가기] */
-    const back=uiPubFinished()?`<button class="primary big" onclick="this.disabled=true;netReturnToRoom()">방으로 돌아가기</button>`:`<button class="primary big" onclick="toLobby()">로비로 돌아가기</button>`;
-    sp.innerHTML=`<h2 class="srOnly">경기 종료</h2>${why?`<p class="resultWhy">${why}</p>`:""}${resultSeatsHtml()}
+    const spr=spResultHtml(); // #322·#324 학습 경기·무제한 AI 결과(S04) — 종료 사유 · 저장 상태 · [다시 하기]·[싱글로]. 그 밖의 경기는 null
+    const back=spr?spr.btns:uiPubFinished()?`<button class="primary big" onclick="this.disabled=true;netReturnToRoom()">방으로 돌아가기</button>`:`<button class="primary big" onclick="toLobby()">로비로 돌아가기</button>`;
+    sp.innerHTML=`<h2 class="srOnly">경기 종료</h2>${spr?spr.head:why?`<p class="resultWhy">${why}</p>`:""}${resultSeatsHtml()}
     <div class="row" style="margin-top:10px;justify-content:center">${back}</div><h3 class="finalBoardT">최종 공개 말판</h3>`;
     return;
   }
@@ -1016,7 +1024,7 @@ function renderSide(){
     h+=`<h2>🌀 텔레포트 스왑</h2><small>${S.teleport.stage===1?TELE_PICK1_MSG:TELE_PICK2_MSG}</small>`
       +(S.teleport.stage===1?"":`<small>첫 말을 다시 클릭하면 선택이 취소됩니다.</small>`);
   if(S.fleePick) h+=fleePickMine() // #114 도망 교환: 소유자 안내 / 상대 대기 (거울) — 후보·위치는 소유자 화면에만
-    ?`<h2>🏃 도망 성공 — 위치 교환</h2><small>${S.mode==="pvp"&&!NET.mode?`🔒 ${pname(S.fleePick.owner)}만 확인 (상대는 시선 회피) · `:""}후방의 자기 말(파란 칸)을 클릭하면 도망친 말과 자리를 바꿉니다. 교환 후 전선의 말과 상대 말을 한 칸씩 밀어냅니다. 생략하면 도망친 말과 상대 말을 밀어냅니다.</small>`
+    ?`<h2>🏃 도망 성공 — 위치 교환</h2><small>${S.mode==="pvp"&&!NET.mode?`🔒 ${pname(S.fleePick.owner)}만 확인 (상대는 시선 회피) · `:""}후방 내 말(파란 칸)을 누르면 자리를 바꿔요. 교환하지 않으면 그대로 밀어내요.</small>`
     :`<h2>🛗 도망 성공!</h2><small>상대가 말을 교체 중입니다. 교체 후 말을 한칸씩 밀어냅니다.</small>`;
   if(S.forcedTargets&&S.forcedTargets.length&&!isAI(S.current)&&(!NET.mode||S.current===NET.me)) h+=`<h2>⚔️ 강제 전투</h2><small>새로 인접한 적(빨간 표시) 중 하나와 전투해야 턴을 마칠 수 있습니다.</small>`;
   if(!isAI(S.current)||NET.mode||S.mode==="pve"){ // #11·#36 추측 메모 목록 (뷰어 전용 — 상대 비노출): 이모지 + 쉬운 라벨, 공개된 말은 실제 정체 병기 · #94 온라인·PVE는 상대 턴·AI 턴에도 표시(메모 편집 가능)
@@ -1102,7 +1110,7 @@ function idHelp(rel,p,from){ const d=idSeat(rel,p);
   synHelpOpen(`<div class="acctHead"><h3 id="synHelpT">${d.lb}</h3><button type="button" class="acctX" aria-label="닫기" onclick="synHelpClose(true)">✕</button></div>
     <div class="idCard ${rel?"op":"me"}">${idFaceHtml(d.rep,"sm")}<b>${escAttr(d.nm||d.lb)}</b></div>`,from); }
 /* ⚙ 설정 — 그 화면의 기존 나가기 진입점(동작 · 확인 창 불변) + 사운드 · 환경설정 자리(비활성 · 동작/저장 없음) */
-function gearHtml(leave){ return `<details class="flowGear"><summary aria-label="설정">${gi("gear")}</summary><div class="menu"><b>설정</b>${leave}<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공</button></div></details>`; }
+function gearHtml(leave){ if(spTutOn()) return spExitBtn(); return `<details class="flowGear"><summary aria-label="설정">${gi("gear")}</summary><div class="menu"><b>설정</b>${leave}<button type="button" disabled aria-disabled="true">사운드 · 환경설정 — 추후 제공</button></div></details>`; }
 function renderSetup(sp){
   const p=S.setupPlayer;
   if(NET.queued){ // 온라인: 배치 완료 → 매칭 대기
@@ -1392,7 +1400,7 @@ function fillRosterRandom(p){ // 미선택분을 무작위 종으로 채움 (중
 }
 window.autoPlaceCore=()=>dispatchCoreAction({t:"auto"});
 window.clearPlaceCore=()=>dispatchCoreAction({t:"clear"});
-window.setupDoneCore=()=>dispatchCoreAction({t:"setupConfirm",preparing:NET.preparing,publicMode:NET.publicMode});
+window.setupDoneCore=()=>{ const first=spFirstPlayer(); dispatchCoreAction(first===0?{t:"setupConfirm",preparing:NET.preparing,publicMode:NET.publicMode,first}:{t:"setupConfirm",preparing:NET.preparing,publicMode:NET.publicMode}); }; // #324 튜토리얼 심화만 플레이어 선공을 싣는다(그 밖은 종전 무작위)
 
 /* ===== #245 Saturn REVISE(M1) 전투·모집·패키지 화면 — Core 에서 옮겨 온 그대로 =====
    Core 는 HTML 을 만들지도, window 콜백을 달지도 않는다. 아래 세 화면과 그 버튼이 부르는 Core 액션 중계는
@@ -1564,9 +1572,11 @@ function synHelpOpen(html,from){ synHelpClose(false);
   const host=(from&&from.closest&&from.closest("#overlayBox"))||$("app")||document.body; // 모달 안이면 모달 안에 — 포커스 순환(Tab)에 함께 든다
   host.appendChild(d); SYNHELP.el=d; SYNHELP.from=from||null;
   try{ d.querySelector("button").focus({preventScroll:true}); }catch(e){}
+  if(typeof spTick==="function") spTick();
 }
 function synHelpClose(refocus){ const d=SYNHELP.el, f=SYNHELP.from; SYNHELP.el=SYNHELP.from=SYNHELP.pid=null;
-  if(d&&d.parentNode) d.parentNode.removeChild(d); if(refocus&&f&&f.isConnected&&f.focus) f.focus({preventScroll:true}); }
+  if(d&&d.parentNode) d.parentNode.removeChild(d); if(refocus&&f&&f.isConnected&&f.focus) f.focus({preventScroll:true});
+  if(d&&typeof spTick==="function") spTick(); }
 if(typeof document!=="undefined"&&document.addEventListener){
   document.addEventListener("keydown",e=>{ const h=SYNHELP.el, d=h||(UI.drawer&&uiScreenName()==="board"&&!uiOverlayOpen()&&!EMO.open?$("right"):null); if(!d) return; // 안내 창이 먼저 · 없으면 열린 가방 창(#294 Saturn REVISE: Tab 이 뒤 보드로 나가지 않는다)
     if(e.key==="Escape"){ if(!h) return; e.stopImmediatePropagation(); e.preventDefault(); synHelpClose(true); return; } // 모달의 Esc(=취소)보다 먼저 — 안내만 닫는다 (가방 창의 Esc 는 아래 핸들러)
@@ -1609,6 +1619,7 @@ function unitHelpOpen(d,from,pid){
     +(st?d.tags||"":"")+`<div class="uhTop"><span class="uhFace${d.g?` gb g${d.g}`:""}">${face}</span>`+(st?stats:`<div class="uhInfo">${d.tags||""}${rows}${syn}</div>`)+`</div>`+(st?rows+syn:"")
     +(d.skills&&d.skills.length?`<h4 class="uhSkT">${gi("synergy")} 스킬</h4>${skillListHtml(d.skills)}`:""),from);
   SYNHELP.el.classList.add("uh"); SYNHELP.pid=pid===undefined?null:pid;
+  if(typeof spTick==="function") spTick();
 }
 /* 기본 능력치 칸 — u 에 실제로 있는 숫자만(전투 엔진이 쓰는 필드 그대로: data.js applyArchStats · applyFixedStats). HP · 공격력은 등급 성장분 포함, 시너지 · 전투 중 버프는 넣지 않는다.
    이름표는 SYN_STAT_KO. 2026-10-02 CJ REVISE 2: 8칸(HP·공격력 / 방어력·속도 / 회피·치명타 / 상태 부여·시작 방어막) — 0 도 그대로 보인다. 명중 스탯은 이 게임에 없다 — 칸을 만들지 않는다.
@@ -1893,6 +1904,7 @@ function battleModal(board){
     ${sub("flee",`<div class="subHead"><b>정말로 도망갈까요?</b></div><div class="subActs">${fleeBtn}${subBack}</div>`)}`, // #238 (2026-09-28 CJ): '전투 이력' 토글 제거 — B.blog 는 Core·회귀용으로 그대로
     []); // #122·Venus I-4: 전투는 인덱스 중계가 아니라 시맨틱 액션이므로 buttons 는 계속 빈 배열이다
   uiBattleBox(); // #122 세로 전투 화면 레이아웃 — DOM 은 표시 계층이 만진다
+  try{ spTick(); }catch(e){} // #324 전투 창은 render() 없이 그려진다 — 튜토리얼 단계(B6→B7)·대상·말풍선을 이 창 기준으로 갱신(튜토리얼 밖은 무동작)
   window.__synTog=v=>{ try{ const st=$("bsynStrip"), t=$("bsynTog"); if(!st||!t) return; const on=v===undefined?st.hidden:!!v; // 표시만 — 송신 · 규칙 상태 0
     UI.synOpen=on?synKey:null; st.hidden=!on; t.setAttribute("aria-expanded",String(on)); t.setAttribute("aria-label",`활성 시너지 ${synN}개 — ${on?"접기":"펼치기"}`);
     if(!on&&t.focus) t.focus({preventScroll:true}); }catch(e){} };
@@ -2056,7 +2068,7 @@ function pcBodyHtml(p){ const m=pcMeta(p);
    확인 팝업은 승급·판매·티켓만(GDD-23 7.5·8.2), 버튼은 누르는 순간 잠긴다(once). 정기 상점 180초는 사람 좌석마다(PVE·핫시트 — 2026-09-24 CJ D1 · 길이는 #295 2026-10-02 CJ)
    자기 상점이 처음 보이는 순간부터 흐른다: 가림이 떠 있는 동안은 시작하지 않고, 가림 확인 뒤 상점이 그려질 때 시작한다. B08 30초(#316)도 같은 원칙(가림 뒤). */
 const once=fn=>{ let used=false; return ()=>{ if(used) return; used=true; fn(); }; };
-const SHOPCLK={t:null,iv:null,key:null,dl:0}, BAGCLK={t:null,iv:null};
+const SHOPCLK={t:null,iv:null,key:null,dl:0,pz:null,fire:null}, BAGCLK={t:null,iv:null,dl:0,pz:null,fire:null}; // pz·fire: 학습 경기 정지(clkHold)
 /* ===== #263 게임 시한 — 정기 상점 180초(#295) · 준비 180초(#293) · 보드 행동 30초 · 전투 행동 60초(T4) · B08 30초(#316) (다섯 종) =====
    복수 강제 대상 선택의 30초(T3)는 **새 종류가 아니라 행동 30초를 한 번 더 도는 것**이다 — 저장 자리만 따로 둔다.
    (2026-09-25 CJ 후속 T1~T4 · Venus 타이머 규칙 동기화 · Jupiter 보고 7절)
@@ -2083,19 +2095,19 @@ function turnClockWants(){
   if(S.battle){
     const B=S.battle, side=actorOfPhase(), p=(side==="A"?B.attP:B.defP).owner;
     if(!isAI(p)) out.push({kind:"battle",p,key:["battle",S.turnCount,S.battlesUsed,B.actSeq||0,B.round,B.phase].join(":"),
-      ms:ECO.battleSec*1000,paused:cov||fxLocked()||!B.intro}); // 진입 카운트다운이 아직 큐에 들어가기 전(intro 전)도 정지다 — 연출 시간은 60초를 먹지 않는다
+      ms:ECO.battleSec*1000,paused:cov||fxLocked()||!B.intro||spClockHeld()}); // 진입 카운트다운이 아직 큐에 들어가기 전(intro 전)도 정지다 — 연출 시간은 60초를 먹지 않는다
   }
   /* T3 강제 전투 대상 선택 30초 — 적격 대상이 **둘 이상**일 때만 선다(하나면 T2 로 곧바로 전투라 시계를 새로 세지 않는다).
      고른 뒤 이어지는 출전 선택(B02)도 **같은 시계로 이어 센다** — 보드 시계로 돌아가면 고르는 데 쓴 시간이 사라져
      B02 가 사실상 새 30초를 받는다. 키에 이동한 말과 그 턴의 전투 횟수를 실어 텔레포트 큐의 다음 항목은 새 30초를 받는다. */
   const pick=(S.phase==="play"&&!S.battle&&S.movedPiece
     &&((S.forcedTargets&&S.forcedTargets.length>1)||(!!S.entryPick&&!!TURNCLK.c.pick)))
-    ?{kind:"pick",p:S.current,key:["pick",S.turnCount,S.battlesUsed,S.movedPiece.id].join(":"),ms:ECO.actSec*1000,paused:cov}:null;
+    ?{kind:"pick",p:S.current,key:["pick",S.turnCount,S.battlesUsed,S.movedPiece.id].join(":"),ms:ECO.actSec*1000,paused:cov||spClockHeld()}:null;
   if(pick) out.push(pick);
   /* 보드 행동 30초 — 한 턴에 하나. 키는 턴이 바뀔 때만 바뀌므로 주 행동 뒤 **남은 시간**이 그 턴이 끝날 때까지 이어진다.
      전투·대상 선택·B08·연출 동안 멈춘다(Q2=A · Jupiter 7-6.4 — 30초(B08 · #316)·60초와는 끝까지 별개의 시계다). */
   if(!isAI(S.current)) out.push({kind:"act",p:S.current,key:"act:"+S.turnCount+":"+S.current,ms:ECO.actSec*1000,
-    paused:cov||!!S.battle||!!pick||S.phase==="bagPick"||fxLocked()});
+    paused:cov||!!S.battle||!!pick||S.phase==="bagPick"||fxLocked()||spClockHeld()});
   return out;
 }
 function turnClockCovered(){ try{ const o=$("overlay"); return !!(o&&o.classList&&o.classList.contains("handoff")); }catch(e){ return false; } }
@@ -2105,13 +2117,20 @@ function turnClockStop(){ for(const k of TURNCLK_KINDS){ const c=TURNCLK.c[k]; i
    온라인은 서버 마감(room_state.clock key "prep")을 표시만 한다. 오프라인(PVE·핫시트)은 이 기기가 경기당 한 번만 건다 —
    핫시트는 두 사람이 이 하나를 함께 쓰고 가림·차례 넘김에도 그대로 흐른다. 만료되면 아직 끝내지 못한 사람 좌석을 차례로
    자동 마무리한다: 상점 미완료 = 기존 shopTimeout(자동 구매·속성 배정·자동 배치) · 상점 완료 = 기존 autoPlace, 이어서 기존 배치 확정. */
-const PREPCLK={g:null,dl:0,t:null,iv:null};
-function prepClockStop(){ clearTimeout(PREPCLK.t); clearInterval(PREPCLK.iv); PREPCLK.g=PREPCLK.t=PREPCLK.iv=null; PREPCLK.dl=0; }
+const PREPCLK={g:null,dl:0,t:null,iv:null,pz:null,fire:()=>prepClockFire()};
+function prepClockStop(){ clearTimeout(PREPCLK.t); clearInterval(PREPCLK.iv); PREPCLK.g=PREPCLK.t=PREPCLK.iv=PREPCLK.pz=null; PREPCLK.dl=0; }
+/* #324 튜토리얼의 질문·안내 창·말풍선(spClockHeld)이 떠 있는 동안 준비·정기 상점·B08 마감은 남은 시간을 들고 멈추고, 닫히면 그 값부터 이어 흐른다.
+   행동·대상 선택·전투 시계는 turnClockWants 의 paused 가 같은 사실을 본다. 일반 PVE·핫시트·온라인은 spClockHeld() 가 늘 false 라 종전 그대로 */
+function clkLeft(C){ return C.pz!==null?C.pz:Math.max(0,C.dl-Date.now()); }
+function clkHold(on){ for(const C of [PREPCLK,SHOPCLK,BAGCLK]){
+  if(on&&C.t!==null&&C.pz===null){ C.pz=Math.max(0,C.dl-Date.now()); clearTimeout(C.t); C.t=null; }
+  else if(!on&&C.pz!==null){ const ms=C.pz; C.pz=null; C.dl=Date.now()+ms; C.t=setTimeout(C.fire,ms); } } }
 function prepClockStart(){
   if(NET.mode||!fxLive()||PREPCLK.g===S||isAI(S.setupPlayer)) return;   // 같은 경기의 다시 그리기·차례 넘김 = 마감 유지 · 사람 좌석이 있을 때만
   prepClockStop(); PREPCLK.g=S; PREPCLK.dl=Date.now()+ECO.prepSec*1000;
-  PREPCLK.t=setTimeout(prepClockFire,ECO.prepSec*1000);
+  PREPCLK.t=setTimeout(PREPCLK.fire,ECO.prepSec*1000);
   PREPCLK.iv=setInterval(prepClockPaint,500);
+  if(spClockHeld()) clkHold(true);
 }
 function prepClockFire(){
   const g=PREPCLK.g; clearInterval(PREPCLK.iv); PREPCLK.iv=PREPCLK.t=null;
@@ -2203,7 +2222,7 @@ function turnClockText(kind){
       const sec=Math.max(0,Math.ceil(netClockMs(b)/1000)); return sec<=0?"⏱ 0초 · 처리 중":b.running?`⏱ ${sec}초`:`⏱ 정지 · ${sec}초`; }
     const c=NET.ecoClock;
     return c&&(c.key===kind||(kind==="act"&&c.key==="pick"))?netClockText():board&&NET.mode&&!!S.eco&&S.current!==NET.me?"확인 중":""; } // 필드가 없으면(구 서버) 내 차례는 종전 clock, 상대 차례는 '확인 중'
-  if(kind==="prep") return PREPCLK.g===S&&PREPCLK.dl&&S.phase==="setup"?`⏱ ${Math.max(0,Math.ceil((PREPCLK.dl-Date.now())/1000))}초`:"";
+  if(kind==="prep") return PREPCLK.g===S&&PREPCLK.dl&&S.phase==="setup"?`⏱ ${Math.ceil(clkLeft(PREPCLK)/1000)}초${PREPCLK.pz!==null?" (정지)":""}`:"";
   const c=kind==="act"?(TURNCLK.c.pick||TURNCLK.c.act):TURNCLK.c[kind];
   if(!c) return "";
   const ms=c.dl?c.dl-Date.now():c.left;
@@ -2450,7 +2469,7 @@ function trayHtml(p){
 function shopShow(cover){
   const p=shopViewer(); if(p===null) return;
   if(S.eco.shop.kind==="start"){ closeModal(); render(); return; }       // S01 은 출전 준비 화면 안에 그린다 (renderSetup)
-  const open=()=>{ if(shopViewer()!==p) return; modal(shopHtml(p),[]); shopClockStart(p); try{ railFit(); }catch(e){} }; // #316 ⑤ 오프라인 시트도 열린 직후 시너지 열 높이를 잰다(온라인은 shopClockStart → emoteSync)
+  const open=()=>{ if(shopViewer()!==p) return; modal(shopHtml(p),[]); shopClockStart(p); try{ railFit(); }catch(e){} try{ spTick(); }catch(e){} }; // #324 정기 상점 창도 render() 없이 열린다 — 튜토리얼 A8·연습 상점 단계 갱신 // #316 ⑤ 오프라인 시트도 열린 직후 시너지 열 높이를 잰다(온라인은 shopClockStart → emoteSync)
   if(cover&&S.mode==="pvp") handoff(`${pname(p)} — 🛒 ${S.eco.shop.turn}턴 상점`,open); else open();
 }
 function shopClockStart(p){
@@ -2464,8 +2483,9 @@ function shopClockStart(p){
   const key=S.eco.shop.kind+S.eco.shop.turn+":"+p; if(SHOPCLK.key===key){ shopClockPaint(p); return; } // 같은 좌석의 다시 그리기 = 마감 유지(새 시트의 시계 칸만 바로 다시 그린다)
   shopClockStop(); SHOPCLK.key=key;
   const g=S; SHOPCLK.dl=Date.now()+ECO.shopSec*1000;
-  SHOPCLK.t=setTimeout(()=>{ if(S!==g||!S.eco.shop||S.eco.shop.done[p]) return; closeModal(); dispatchCoreAction({t:"shopTimeout",player:p}); // 확정 거래는 보존 · 열린 확인 창(미확정)만 취소
-  },ECO.shopSec*1000);                                                      // 정기 상점 전용 — 시작 상점은 공통 준비 180초(PREPCLK · #293)
+  SHOPCLK.fire=()=>{ SHOPCLK.t=null; if(S!==g||!S.eco.shop||S.eco.shop.done[p]) return; closeModal(); dispatchCoreAction({t:"shopTimeout",player:p}); }; // 확정 거래는 보존 · 열린 확인 창(미확정)만 취소
+  SHOPCLK.t=setTimeout(SHOPCLK.fire,ECO.shopSec*1000);                      // 정기 상점 전용 — 시작 상점은 공통 준비 180초(PREPCLK · #293)
+  if(spClockHeld()) clkHold(true);
   const tick=()=>shopClockPaint(p); tick();
   SHOPCLK.iv=setInterval(tick,500);
 }
@@ -2473,35 +2493,38 @@ function shopClockStart(p){
    값은 shopClockText 와 같은 출처(온라인 = 서버 시계 netClockMs · 오프라인 = 이 좌석 SHOPCLK 마감). 보이는 글자는 초 숫자뿐이고 ⏱/⏸ · '초'는 폭에 따라 CSS(.cmp · .pz)가 붙인다.
    전체 문장(초 · 정지 · 확인 중)은 aria-label. 온라인에서 서버 시계가 없으면 숫자를 지어내지 않고 '…', 오프라인에서 시계가 없는 좌석(AI · 가림)은 종전처럼 빈 칸 */
 function shopClockPaint(p){ const pub=NET.publicMode, c=pub?NET.ecoClock:null;
-  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000)):null;
-  clockPaint($("shopClock"),sec,pub?"…":"",!!c&&!c.running); }
+  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?Math.ceil(clkLeft(SHOPCLK)/1000):null;
+  clockPaint($("shopClock"),sec,pub?"…":"",pub?!!c&&!c.running:SHOPCLK.pz!==null); }
 /* #313 CJ: 시작 상점 상단 한 줄도 이모티콘 자리를 받는다 — 준비 시계(#prepClock)를 정기 상점 시계와 같은 짧은 모양으로. 값은 turnClockText("prep") 와 같은 출처, 시계가 없으면 종전처럼 빈 칸 */
 function prepClockPaint(){ const pub=NET.publicMode, c=pub&&NET.ecoClock&&NET.ecoClock.key==="prep"?NET.ecoClock:null;
-  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):PREPCLK.g===S&&PREPCLK.dl&&S.phase==="setup"?Math.max(0,Math.ceil((PREPCLK.dl-Date.now())/1000)):null;
-  clockPaint($("prepClock"),sec,"",!!c&&!c.running); }
+  const sec=pub?(c?Math.max(0,Math.ceil(netClockMs(c)/1000)):null):PREPCLK.g===S&&PREPCLK.dl&&S.phase==="setup"?Math.ceil(clkLeft(PREPCLK)/1000):null;
+  clockPaint($("prepClock"),sec,"",pub?!!c&&!c.running:PREPCLK.pz!==null); }
 function clockPaint(el,sec,none,pz){ if(!el) return;
   el.textContent=sec!==null?String(sec):none;
   try{ if(sec===null&&!none) el.removeAttribute("aria-label"); else el.setAttribute("aria-label",sec===null?"남은 시간 확인 중":`남은 시간 ${sec}초${pz?" · 정지":""}`); }catch(e){}
   try{ el.classList.toggle("cmp",sec!==null); el.classList.toggle("pz",pz); }catch(e){} }
-function shopClockStop(){ clearTimeout(SHOPCLK.t); clearInterval(SHOPCLK.iv); SHOPCLK.t=SHOPCLK.iv=SHOPCLK.key=null; SHOPCLK.dl=0; }
-function shopClockText(p){ if(NET.publicMode) return netClockText(); return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.max(0,Math.ceil((SHOPCLK.dl-Date.now())/1000))}초`:""; }
-function bagClockStop(){ clearTimeout(BAGCLK.t); clearInterval(BAGCLK.iv); BAGCLK.t=BAGCLK.iv=null; }
+function shopClockStop(){ clearTimeout(SHOPCLK.t); clearInterval(SHOPCLK.iv); SHOPCLK.t=SHOPCLK.iv=SHOPCLK.key=SHOPCLK.pz=SHOPCLK.fire=null; SHOPCLK.dl=0; }
+function shopClockText(p){ if(NET.publicMode) return netClockText(); return SHOPCLK.key&&SHOPCLK.key.endsWith(":"+p)?`⏱ ${Math.ceil(clkLeft(SHOPCLK)/1000)}초`:""; }
+function bagClockStop(){ clearTimeout(BAGCLK.t); clearInterval(BAGCLK.iv); BAGCLK.t=BAGCLK.iv=BAGCLK.pz=BAGCLK.fire=null; BAGCLK.dl=0; }
 window.__shop=(op,a,b)=>{
-  const p=shopViewer(); if(p===null){ if(op==="swapX") closeModal(); return; } // 닫기는 상점이 이미 끝났어도 된다
+  const p=shopViewer(); if(p===null){ if(op==="swapX") subClose("cancel"); return; } // 닫기는 상점이 이미 끝났어도 된다
   /* #237 공개 방: 거래는 서버가 판정한다 — 의도만 보내고 결과는 room_state 로 받는다(시작 상점은 배치 화면 안이라 확인 창만 닫는다).
      확인·선택 창은 소유자 로컬 창이다(동기화 모달 중계·비소유자 마스킹 대상이 아니다). */
   const go=act=>{ act=Object.assign({player:p},act);
-    if(NET.publicMode){ if(!netSendAction(netEcoWire(act))) return; if(S.eco.shop.kind==="start") closeModal(); return; } // #263 보내지 못했으면(정지) 창을 닫지 않는다
-    dispatchCoreAction(act); };
-  const back=()=>shopShow(false);
-  const md=(html,buttons)=>{ netLocalModal(); modal(html,buttons); };
-  const confirm=(html,label,act)=>md(coinize(html),[[label,once(()=>go(act))],["취소",back]]);
+    if(NET.publicMode){ if(!netSendAction(netEcoWire(act))) return false; return true; } // #263 보내지 못했으면(정지) 창을 닫지 않는다
+    dispatchCoreAction(act); return true; };
+  /* 2026-11-02 §3S.5: 승급·티켓 확인과 교체 선택은 부모 상점 위 하위 창(ui-overlays subModal) — 부모를 갈아 끼우지 않는다.
+     확정 = 기존 go(act) 1회(오프라인은 닫고 보낸다 · 공개 방은 보냈을 때만 닫는다). 취소·✕·Esc = 하위 창만 닫고 연 버튼으로 */
+  const confirm=(html,label,act,find)=>{ let busy=false;
+    subModal(coinize(html),[[label,()=>{ if(busy) return; busy=true;
+      if(NET.publicMode){ if(go(act)) subClose("ok"); else busy=false; return; }
+      subClose("ok"); go(act); }],["취소",()=>subClose("cancel"),true]],{p,find}); };
   if(op==="buy"){
     const s=S.eco.shop.slots[p][a]; if(!s) return;
     const u=ecoUnitOf(S,p,s.key), act={t:"shopBuy",i:a,seq:S.eco.shop.seq[p]};
     if(!u){ go(act); return; }                                        // 신규 구매는 확인 없이 확정 · 신규 표시(🔴)
     const g=s.grade>u.grade?s.grade:u.grade+1, c=s.grade>u.grade?ecoPrice(s.grade)-ecoPrice(u.grade):ecoPrice(s.grade);
-    confirm(`<h2>승급 확인</h2><p>${u.name} ⭐${u.grade} → ⭐${g} · 🪙${c}</p><small>그 자리에서 오르고 새 최대 HP 까지 회복하며 스킬 칸이 열립니다.</small>`,"승급",act);
+    confirm(`<h2>승급 확인</h2><p>${u.name} ⭐${u.grade} → ⭐${g} · 🪙${c}</p><small>그 자리에서 오르고 새 최대 HP 까지 회복하며 스킬 칸이 열립니다.</small>`,"승급",act,[`[onclick="window.__shop('buy',${a})"]`,`[onclick="unitHelpSlot(${a},this)"]`,()=>[...document.querySelectorAll("[onclick]")].find(e=>e.getAttribute("onclick")===`unitHelpPiece(${JSON.stringify(u.id)},this)`)||null]); // 같은 칸 → 같은 말(id) → 상점 제목
     return;
   }
   if(op==="refresh"){ go({t:"shopRefresh",seq:S.eco.shop.seq[p]}); return; }
@@ -2519,22 +2542,25 @@ window.__shop=(op,a,b)=>{
      한 번 누르면 기존 shopSwap 요청 1회(UI.swapLock = 연타 잠금). ✕·Esc 는 아무것도 바꾸지 않고 닫고 누른 [교체]로 포커스를 돌려준다
      (2026-10-02 CJ: 맨 아래 [취소] 삭제 — ✕ 가 swapX 를 직접 부르고 Esc 는 공용 모달 Esc 가 이 ✕ 를 누른다. 닫기는 게임 입력이 아니라 연출·단절 잠금과 무관).
      판정·HP 이동·거부 사유는 Core/서버 그대로 — S01 과 턴 상점이 이 한 경로를 쓴다 */
-  if(op==="swapX"){ back(); try{ const x=/** @type {any} */(document.querySelector(`[data-swap="${a}"]`)); if(x) x.focus(); }catch(e){} return; }
+  if(op==="swapX"){ subClose("cancel"); return; } // ✕·Esc — 하위 창만 닫고 누른 [교체]로(사라졌으면 같은 가방 칸 → 상점 제목)
   if(op==="swap"){ if(!S.eco.bag[p].some(x=>x.uid===a)) return; UI.swapLock=false;
-    md(`<div class="acctHead"><h2 id="swapT">교체할 필드 하수인 선택</h2><button type="button" class="acctX" aria-label="닫기" onclick="window.__shop('swapX',${a})">✕</button></div>
+    subModal(`<div class="acctHead"><h2 id="swapT">교체할 필드 하수인 선택</h2><button type="button" class="acctX" aria-label="닫기" onclick="window.__shop('swapX',${a})">✕</button></div>
       <div class="slotGrid swapGrid" role="group" aria-labelledby="swapT">`+S.pieces.filter(x=>x.owner===p&&x.type==="minion").map(x=>!ecoKey(x)
         ?`<button type="button" class="uSlot empty" disabled aria-disabled="true" aria-label="빈칸 — 교체할 수 없습니다" title="빈칸 — 교체할 수 없습니다">+</button>`
         :unitCard(x,{tag:"button",attr:x.alive?`type="button" aria-label="${escAttr(`${x.name} HP ${x.hp}/${x.maxHp} — 이 하수인과 교체`)}" onclick="window.__shop('swapTo',${escAttr(JSON.stringify(x.id))},${a})"`
-          :`type="button" disabled aria-disabled="true" aria-label="${escAttr(x.name)} — 사망한 하수인과는 교체할 수 없습니다" title="사망한 하수인과는 교체할 수 없습니다"`})).join("")+`</div>`,[]);
-    try{ const c=$("overlayBox").querySelector(".swapGrid button:not([disabled])"); if(c) c.focus({preventScroll:true}); }catch(e){} // 첫 선택 가능 카드로
+          :`type="button" disabled aria-disabled="true" aria-label="${escAttr(x.name)} — 사망한 하수인과는 교체할 수 없습니다" title="사망한 하수인과는 교체할 수 없습니다"`})).join("")+`</div>`,[],{p,find:[`[data-swap="${a}"]`]}); // 첫 선택 가능 카드로 초점(subModal)
     return; }
   if(op==="swapTo"){ if(UI.swapLock) return; if(netPaused()){ showToast(NET_PAUSE_MSG); return; } if(fxLocked()) return; // 모달 버튼과 같은 가드
     if(!S.pieces.some(x=>x.id===a&&x.owner===p&&x.type==="minion"&&x.alive&&ecoKey(x))||!S.eco.bag[p].some(u=>u.uid===b)) return;
-    UI.swapLock=true; go({t:"shopSwap",pieceId:a,uid:b}); return; }
+    UI.swapLock=true; if(NET.publicMode){ if(go({t:"shopSwap",pieceId:a,uid:b})) subClose("ok"); else UI.swapLock=false; return; } subClose("ok"); go({t:"shopSwap",pieceId:a,uid:b}); return; }
   /* #295: 말·속성은 시트의 왕·동료 줄에서 이미 골랐다(a = 말, b = 새 속성) — 여기는 기존 확인 창 1회뿐. 판정은 Core/서버 shopTicket 그대로 */
   if(op==="ticket"){ const x=S.pieces.find(y=>y.id===a&&y.owner===p&&(y.type==="king"||y.type==="ally")&&y.alive);
     if(!x||x.element===b||!V2_ELEM_ORDER.includes(b)||S.eco.tickets[p]<1) return;
-    confirm(`<h2>티켓 사용 확인</h2><p>${leadNm(x)} ${ELEM_KO[x.element]||"-"} → ${ELEM_KO[b]} (스킬도 바뀝니다 · HP 유지 · 다음 전투부터 시너지 반영)</p>`,"사용",{t:"shopTicket",pieceId:x.id,el:b});
+    /* §3S.9.4 초점 경로: 연 버튼 → 같은 말·같은 속성 버튼 → 같은 말 줄의 누를 수 있는 버튼(티켓 0장이면 얼굴 정보) → 상점 제목 */
+    const tk=e=>`window.__shop('ticket',${JSON.stringify(x.id)},'${e}')`, row=()=>[...document.querySelectorAll(".leadRow")].find(r=>[...r.querySelectorAll("button")].some(q=>(q.getAttribute("onclick")||"").startsWith(`window.__shop('ticket',${JSON.stringify(x.id)},`)));
+    confirm(`<h2>티켓 사용 확인</h2><p>${leadNm(x)} ${ELEM_KO[x.element]||"-"} → ${ELEM_KO[b]} (스킬도 바뀝니다 · HP 유지 · 다음 전투부터 시너지 반영)</p>`,"사용",{t:"shopTicket",pieceId:x.id,el:b},
+      [()=>[...document.querySelectorAll(".leadRow button")].find(q=>q.getAttribute("onclick")===tk(b)),()=>{ const r=row(); return r?[...r.querySelectorAll("button")].find(q=>!q.disabled)||null:null; },
+       ()=>[...document.querySelectorAll("[onclick]")].find(e=>e.getAttribute("onclick")===`unitHelpPiece(${JSON.stringify(x.id)},this)`)||null]); // 같은 말(id)의 얼굴 정보
   }
 };
 function bagPickShow(){
@@ -2554,9 +2580,10 @@ function bagPickShow(){
     window.__bagPick=i=>{ if(S.eco.bagPick!==bp||UI.bagLock===tok||!(i>=0&&i<=n)) return; if(netPaused()){ showToast(NET_PAUSE_MSG); return; } if(fxLocked()) return; // 모달 버튼과 같은 가드
       UI.bagLock=tok; go(i); };
     if(NET.publicMode){ bagClockStop(); const tick=()=>{ const el=$("bagClock"); if(el) el.textContent=netClockText(); }; tick(); BAGCLK.iv=setInterval(tick,500); } // 마감·만료는 서버 시계
-    else if(fxLive()){ bagClockStop(); const dl=Date.now()+ECO.bagPickSec*1000; // 30초(#316 · ECO.bagPickSec)는 소유자에게 창이 보이는 순간부터 — 첫 표시도 같은 값(위 배지) (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
-      BAGCLK.t=setTimeout(()=>{ if(S.eco.bagPick===bp) go(S.eco.bag[p].length); },ECO.bagPickSec*1000); // 무응답 → 포획한 말만 방출
-      BAGCLK.iv=setInterval(()=>{ const el=$("bagClock"); if(el) el.textContent=`⏱ ${Math.max(0,Math.ceil((dl-Date.now())/1000))}초`; },500); } };
+    else if(fxLive()){ bagClockStop(); BAGCLK.dl=Date.now()+ECO.bagPickSec*1000; // 30초(#316 · ECO.bagPickSec)는 소유자에게 창이 보이는 순간부터 — 첫 표시도 같은 값(위 배지) (핫시트는 가림 뒤 — GDD-23 7.7, PD 확인)
+      BAGCLK.fire=()=>{ BAGCLK.t=null; if(S.eco.bagPick===bp) go(S.eco.bag[p].length); }; // 무응답 → 포획한 말만 방출
+      BAGCLK.t=setTimeout(BAGCLK.fire,ECO.bagPickSec*1000); if(spClockHeld()) clkHold(true);
+      BAGCLK.iv=setInterval(()=>{ const el=$("bagClock"); if(el) el.textContent=`⏱ ${Math.ceil(clkLeft(BAGCLK)/1000)}초${BAGCLK.pz!==null?" (정지)":""}`; },500); } };
   if(S.mode==="pvp"&&!NET.mode&&S.current!==p) handoff(`${pname(p)} — 가방 초과 선택`,show); else show(); // 핫시트: 포획한 쪽이 화면 주인이 아니면 가림 먼저
 }
 /* ===== #245 Saturn REVISE(M1·M6) 표시 포트 설치 =====

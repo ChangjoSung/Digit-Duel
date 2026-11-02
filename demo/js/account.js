@@ -60,6 +60,7 @@ function acctSetUser(b){
   const u={userId:String(b.userId),nickname:String(b.nickname||""),hasEmail:b.hasEmail!==false};
   if(!AUTH.user||AUTH.user.userId!==u.userId) AUTH.gen++;
   AUTH.state="in"; AUTH.user=u; AUTH.was=null; acctWatch(true);
+  spOnUser(b); // #324 같은 응답의 progress(튜토리얼 완료·AI 클리어 티어) — 없거나 틀리면 '확인 불가'로 두고 미완료로 추정하지 않는다
 }
 function acctSetAnon(){ acctWatch(false); AUTH.gen++; AUTH.rgen++; AUTH.state="anon"; AUTH.user=null; AUTH.view="login"; AUTH.sheet=false; AUTH.reset=null; }
 
@@ -83,6 +84,7 @@ async function acctCheck(passive){
     return;
   }
   acctResumeSaved();
+  spRoute(false); // #324 유효 세션 페이지 재진입은 타이틀 먼저(분기는 [시작]) — 여기서는 멈춘 저장만 확인한다
 }
 
 /* 입장 게이트 — null 이면 들어가도 된다. 서버가 최종 권위이고(WebSocket 401) 이것은 입장 전 안내다. */
@@ -92,9 +94,9 @@ function acctGateMsg(){
   if(AUTH.state==="checking") return "계정을 확인하는 중입니다. 잠시 후 다시 눌러 주세요.";
   return null;
 }
-function acctToTitle(msg){
+function acctToTitle(msg,keep){ // keep: #324 끝난 경기의 저장 확인이 남았다 — 경기 상태를 지우지 않고 로그인 화면만(같은 계정 재로그인 때 원 화면으로)
   try{ netLeave(); }catch(e){}
-  newGame("pvp",{phase:"menu"}); UI.entered=false; UI.drawer=null;
+  if(!keep) newGame("pvp",{phase:"menu"}); UI.entered=false; UI.drawer=null;
   render(); acctRender();
   if(msg) showToast("🔒 "+msg);
 }
@@ -317,6 +319,7 @@ async function acctSubmit(){
     AUTH.view="login"; acctRender();
     showToast(kind==="signup"?"🎉 가입했습니다.":"👋 로그인했습니다.");
     acctResumeSaved(); // 세션이 끊겼던 같은 계정의 좌석이 남아 있으면 이어서 재접속
+    spRoute(true); // #324 새 로그인·가입 — 401 로 멈춘 같은 계정의 저장 확인이 먼저, 아니면 추가 [시작] 없이 입장(미완료 = 학습 질문 · 완료 = 로비). 재접속 중이면 하지 않는다
     return;
   }
   if(r.status===503&&r.body.error==="E_ACCOUNTS_UNAVAILABLE"){ AUTH.state="down"; acctRender(); return; }
@@ -421,13 +424,13 @@ async function acctLogout(){
 const ACCT_SESSION_ENDED="🔒 로그아웃되었거나 다른 곳의 새 로그인·비밀번호 재설정·만료로 이 창의 로그인이 끝났습니다. 다시 로그인해 주세요.";
 /* login_replaced: 다른 브라우저·기기의 같은 계정 새 로그인, 또는 이 브라우저(같은 쿠키)의 다른 창에서 한 새 로그인 — 둘 다 이 문구 */
 const ACCT_REPLACED="🔒 다른 브라우저·기기 또는 이 브라우저의 다른 창에서 새로 로그인해 이 창은 자동으로 로그아웃되었습니다. 계속하려면 이 창에서 다시 로그인해 주세요.";
-function acctEndSession(msg,explicit){
+function acctEndSession(msg,explicit,keep){
   if(AUTH.state!=="in") return;
   const was=AUTH.user.userId;
   if(explicit) acctSeatDrop();
   else NET.seatToken=null; // netLeave 의 "이 탭 좌석 기록 삭제"를 건너뛴다
   acctSetAnon(); if(!explicit) AUTH.was=was;
-  acctToTitle(null);
+  acctToTitle(null,keep);
   showToast(msg);
   if(explicit) acctTell(null);
   else acctCheck(was);

@@ -48,7 +48,7 @@ function memStore() {
       a.login_gen += 1;
       wipe(id);
       addSess(a, sess);
-      return a.login_gen;
+      return { login_gen: a.login_gen };
     },
     async findSession(h) {
       guard();
