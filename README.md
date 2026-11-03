@@ -5,11 +5,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.16"><img src="https://img.shields.io/badge/release-v0.4.16-2e7d32" alt="정식 출시 v0.4.16"></a>
+  <a href="https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.17"><img src="https://img.shields.io/badge/release-v0.4.17-2e7d32" alt="정식 출시 v0.4.17"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-Apache--2.0-blue" alt="코드 라이선스 Apache-2.0"></a>
 </p>
 
-**[▶ 정식 웹 게임](https://digit-duel.site)** · **[최신 정식 출시 v0.4.16](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.16)**
+**[▶ 정식 웹 게임](https://digit-duel.site)** · **[최신 정식 출시 v0.4.17](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.17)**
 
 ## 게임 소개
 
@@ -30,7 +30,7 @@
 
 ## 게임 플레이 사진
 
-v0.4.16 화면입니다. 이미지를 누르면 원본 크기로 볼 수 있습니다.
+v0.4.16 화면이며 v0.4.17의 화면 구성도 같습니다. 이미지를 누르면 원본 크기로 볼 수 있습니다.
 
 <table>
   <tr>
@@ -65,6 +65,13 @@ v0.4.16 화면입니다. 이미지를 누르면 원본 크기로 볼 수 있습�
 
 ## 새로운 기능
 
+**v0.4.17 — 이미지 표시 안정화**
+
+- **그림 파일 재사용** — 로그인·로비·상점·보드·전투에서 쓰는 공용 그림 파일을 브라우저 캐시에서 재사용하도록 개선했습니다. 새로 접속하거나 새로고침하면 최신 버전 파일을 받습니다.
+- **전투 그림 유지** — 전투 화면이 차례마다 다시 그려져도 양쪽 하수인 그림을 그대로 유지합니다.
+
+[v0.4.17 릴리스 노트](docs/releases/v0.4.17.md)
+
 **v0.4.16 — 튜토리얼·싱글플레이와 테이블탑 판타지 UI**
 
 - **새 튜토리얼** — 새 계정으로 처음 로그인하면 마녀의 안내를 따라 기본 실습(말·이동·전투·승리 조건)과 심화 실습(상점·배치·AI와 첫 경기)으로 규칙을 배웁니다. 원하지 않으면 건너뛸 수 있습니다.
@@ -80,7 +87,7 @@ v0.4.16 화면입니다. 이미지를 누르면 원본 크기로 볼 수 있습�
 
 | 항목 | 내용 |
 | --- | --- |
-| Release Version | [v0.4.16](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.16) |
+| Release Version | [v0.4.17](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.17) |
 | 플레이 주소 | [digit-duel.site](https://digit-duel.site) |
 | 장르·인원 | 숨은 정체·속성 전투를 결합한 턴제 전략 — 온라인 1대1, AI 싱글플레이 |
 | 환경 | PC·휴대폰의 최신 브라우저, 인터넷과 가입용 이메일 |
@@ -101,6 +108,8 @@ v0.4.16 화면입니다. 이미지를 누르면 원본 크기로 볼 수 있습�
 Google 로그인·로비 상점·채팅은 잠겨 있고, 도전! 왕국 대전은 추후 공개입니다. 서버 재시작 시 진행 중인 경기는 복구되지 않으며 확정된 계정·전적·진행은 보존됩니다.
 
 ## 저장소 구조
+
+[개발자 문서·전체 파일 트리](docs/README.md) · [기여·PR·CI](CONTRIBUTING.md)
 
 ~~~
 demo/               웹 게임과 게임 자산

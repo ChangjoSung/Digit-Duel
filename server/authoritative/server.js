@@ -85,6 +85,9 @@ const ROOT = [
   path.join(__dirname, '..', '..', 'demo'),
   path.join(__dirname, '..', 'client', 'demo'),
 ].find((p) => fs.existsSync(path.join(p, 'index.html'))) || path.join(__dirname, '..', '..', 'demo');
+// #401 v0.4.17 정적 버전 경로 /b/<rev>/ — 기동 시 1회 계산(배포 체크아웃은 실행 중 바뀌지 않는다).
+const STATIC = fs.existsSync(ROOT) ? S.staticRevision(ROOT) : { rev: '0'.repeat(32), files: new Set() };
+const ROOT_REAL = fs.existsSync(ROOT) ? fs.realpathSync(ROOT) : ROOT;
 
 const PAGE_LOAD_REQUESTS = S.STATIC_BUDGET.pageLoadRequests;
 const CONCURRENT_PAGE_LOADS = S.STATIC_BUDGET.concurrentPageLoads;
@@ -211,11 +214,53 @@ function handleRequest(req, res) {
     }).catch(() => { if (!res.headersSent) deny(res, 500, 'internal error'); else res.destroy(); }); // 처리되지 않은 reject 로 프로세스가 죽지 않게
   }
 
-  const resolved = S.resolveStaticPath(ROOT, req.url);
+  // #401 v0.4.17 버전 경로. 원문 경로(req.url 의 ? 앞)로 판정해 정규화로 거부 입력이 사라지지 않게 하고,
+  // 나머지 경로는 기존 resolveStaticPath 검사를 그대로 거친다. 쿼리는 그대로 붙여 넘긴다.
+  const qi = (req.url || '').indexOf('?');
+  const rawPath = qi < 0 ? (req.url || '/') : req.url.slice(0, qi);
+  const query = qi < 0 ? '' : req.url.slice(qi);
+  const toCurrent = () => {
+    if (!/^[\x21-\x7e]*$/.test(query)) return deny(res, 400, 'bad query');
+    sendHead(res, 302, { Location: `/b/${STATIC.rev}/${query}`, 'Content-Length': '0' });
+    return res.end();
+  };
+  if (rawPath === '/' || rawPath === '/index.html') return toCurrent();
+  const vm = /^\/b\/([^/]*)(\/.*)?$/.exec(rawPath);
+  if (vm) {
+    const [, seg, rest] = vm;
+    if (!/^[0-9a-f]{32}$/.test(seg)) return deny(res, 404, 'not found');
+    if (!rest || rest === '/' || rest === '/index.html') { // 슬래시 없는 /b/<rev> 는 상대경로가 깨지므로 항상 302
+      return rest && seg === STATIC.rev ? sendStatic(req, res, S.resolveStaticPath(ROOT, '/index.html'), null) : toCurrent();
+    }
+    const r = S.resolveStaticPath(ROOT, rest);
+    if (!r.ok) return deny(res, r.status, r.reason);
+    const rel = path.relative(ROOT_REAL, r.file).split(path.sep).join('/');
+    if (!STATIC.files.has(rel) || r.mime.startsWith('text/html')) return deny(res, 404, 'not found');
+    // 현재 rev 만 immutable. 옛 rev 는 현재 바이트를 주되 매번 재검증(내용 ETag) — 옛 키에 새 바이트가 굳지 않게.
+    return sendStatic(req, res, r, seg === STATIC.rev ? 'immutable' : 'revalidate');
+  }
+
+  sendStatic(req, res, S.resolveStaticPath(ROOT, req.url), null); // 버전 없는 경로: 기존 그대로 no-store
+}
+
+function sendStatic(req, res, resolved, cache) {
   if (!resolved.ok) return deny(res, resolved.status, resolved.reason);
   fs.readFile(resolved.file, (e, data) => {
     if (e) return deny(res, 404, 'not found');
-    sendHead(res, 200, { 'Content-Type': resolved.mime, 'Content-Length': String(data.length) });
+    const h = { 'Content-Type': resolved.mime, 'Content-Length': String(data.length) };
+    if (cache === 'immutable') h['Cache-Control'] = 'public, max-age=31536000, immutable';
+    if (cache === 'revalidate') {
+      h['Cache-Control'] = 'no-cache';
+      h.ETag = '"' + crypto.createHash('sha256').update(data).digest('hex') + '"';
+      const inm = req.headers['if-none-match'];
+      // Cloudflare 압축이 강한 ETag 를 W/ 로 바꿔 돌려보내므로 W/ 는 떼고 비교한다
+      if (inm && inm.split(',').some((t) => t.trim().replace(/^W\//, '') === h.ETag)) {
+        delete h['Content-Length'];
+        sendHead(res, 304, h);
+        return res.end();
+      }
+    }
+    sendHead(res, 200, h);
     if (req.method === 'HEAD') return res.end();
     res.end(data);
   });
@@ -743,4 +788,4 @@ function listen() {
 // 한 IP(루프백)에서 수십 건을 보내는 테스트가 예산에 막히지 않게 예산도 비운다.
 function useAccounts(a) { accounts = a; authBuckets.clear(); }
 
-module.exports = { server, wss, lobby, EPOCH, useAccounts, heartbeatTick, ROOT, parseCredential, presentedCredential, peerAllowed, allowedHost, PUBLIC_DEPLOY, PUBLIC_HOST, LAN_OPT_IN, PORT, SCHEME };
+module.exports = { server, wss, lobby, EPOCH, useAccounts, heartbeatTick, ROOT, STATIC, parseCredential, presentedCredential, peerAllowed, allowedHost, PUBLIC_DEPLOY, PUBLIC_HOST, LAN_OPT_IN, PORT, SCHEME };

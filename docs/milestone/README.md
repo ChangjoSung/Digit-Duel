@@ -1,3 +1,27 @@
+# 버전·기록 길잡이
+
+[개발자 문서](../README.md) · [GitHub Milestones](https://github.com/ChangjoSung/Digit-Duel/milestones) · [출시 노트](../releases/README.md) · [회사 운영](../creat2ve/README.md)
+
+## 버전별 읽을 곳
+
+2026-11-03 CJ 버전 분리 기준입니다. 실제 범위·AC·종결은 연결된 GitHub가 정본이며, 이 안내를 별도 진행 원장으로 편집하지 않습니다.
+
+| 버전 | 목적 | 업무 정본·출시 근거 |
+| --- | --- | --- |
+| v0.4.16 | 출시 완료 · 튜토리얼·싱글·UI, CJ 정상 작동 확인 | [Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.16) · [출시 문서](v0.4.16/README.md) |
+| v0.4.17 | 출시 완료 · 배포 버전 안정화·버그 해결 | [Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.17) · [릴리스 노트](../releases/v0.4.17.md) · [Milestone 21](https://github.com/ChangjoSung/Digit-Duel/milestone/21) · [깜빡임 #401](https://github.com/ChangjoSung/Digit-Duel/issues/401) · [XERJ 검토 #402](https://github.com/ChangjoSung/Digit-Duel/issues/402) · [문서 정리 #403](https://github.com/ChangjoSung/Digit-Duel/issues/403) |
+| v0.4.18 | 싱글 플레이 구현 고도화 | [Milestone 22](https://github.com/ChangjoSung/Digit-Duel/milestone/22) · [상위 AI #322](https://github.com/ChangjoSung/Digit-Duel/issues/322) · [왕국 #323](https://github.com/ChangjoSung/Digit-Duel/issues/323) · [재화 #396](https://github.com/ChangjoSung/Digit-Duel/issues/396) |
+| v0.5.0 / v0.6.0 | 별도 Roblox / Unity 포팅 트랙 | [Roblox](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [Unity](https://github.com/ChangjoSung/Digit-Duel/milestone/4) |
+
+상세 미정의 추가 안정화·리팩토링·Tool 변경 (4)는 v0.4.18 범위이며 CJ가 내용을 안내한 뒤 등록합니다. 빈 Issue를 만들지 않습니다.
+
+## 과거 기록
+
+파일은 **버전 → Issue → 담당 부서** 순서입니다. 원문·실패·승인·검증 당시의 표현과 링크를 보존합니다. 현재 실행 계약은 [회사 운영 안내](../creat2ve/README.md)에서 확인합니다.
+
+<details>
+<summary>이전 버전 인덱스·경로 이동·역할 표기 이력 펼치기</summary>
+
 > **2026-10-29 문서 정본 전환:** 현행 부서·PM 문서는 회사 Obsidian에서 관리합니다. [현재 진입 안내](../../AGENTS.md)를 따르며 아래의 과거 날짜·표·보고는 이력으로 보존합니다. [운영 HTML](../creat2ve/CHANGJO_GAMES_ORG_RNR.html)은 열람 출력입니다.
 
 > **2026-10-28 운영 원장 전환:** 현재 업무·승인·인수인계는 [CHANGJO GAMES Org Chart and R&R](../creat2ve/CHANGJO_GAMES_ORG_RNR.html)에서 관리합니다. 아래 표와 보고는 작성 당시의 기록이며 새 작업 승인이나 현재 운영 상태로 재활성화하지 않습니다.
@@ -57,3 +81,5 @@ docs/milestone/
 ## 옛 경로를 만났을 때
 
 이 보관소의 문서는 2026-09-09 이전에는 `docs/qa/` · `docs/art/` · `docs/` 루트에 있었다. 본문이 인용하는 `docs/qa/…` 같은 평문 경로와 JSON·CSV의 출처 기록은 **그 시점의 사실 진술이라 고치지 않았다**. 현재 위치는 [MOVES.md](MOVES.md)와 [MOVES.csv](MOVES.csv)에서 찾는다. 클릭 가능한 링크·이미지는 새 경로로 갱신했다.
+
+</details>
