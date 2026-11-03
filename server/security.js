@@ -265,6 +265,29 @@ function resolveStaticPath(root, rawUrl) {
   return { ok: true, file: real, mime, size: st.size };
 }
 
+// #401 v0.4.17 — 정적 자산 버전 경로 /b/<rev>/ 의 rev. 실제로 서빙되는(resolveStaticPath 통과) 일반 파일만,
+// 심볼릭 링크·최상위 test/ 는 빼고, 정렬된 상대경로와 내용 해시로 만든다 — 바이트나 경로가 하나라도 바뀌면 rev 가 바뀐다.
+// 반환: { rev: 32자 hex, files: Set(상대경로 'a/b.png') }. 기동 시 1회(배포 체크아웃은 실행 중 바뀌지 않는다).
+function staticRevision(root) {
+  const rels = [];
+  const walk = (dir, rel) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const r = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) { if (r !== 'test') walk(path.join(dir, e.name), r); } else if (e.isFile()) rels.push(r);
+    }
+  };
+  walk(root, '');
+  const lines = [], files = new Set();
+  for (const r of rels.sort()) {
+    const res = resolveStaticPath(root, '/' + r.split('/').map(encodeURIComponent).join('/'));
+    if (!res.ok) continue;
+    const buf = fs.readFileSync(res.file);
+    lines.push(`${Buffer.byteLength(r)}:${r}|${buf.length}|${crypto.createHash('sha256').update(buf).digest('hex')}\n`);
+    files.add(r);
+  }
+  return { rev: crypto.createHash('sha256').update(lines.join('')).digest('hex').slice(0, 32), files };
+}
+
 /* ===== 공개 배포 호스트 (#217 WAN 준비) =====
  * DD_AUTH_PUBLIC_HOST 는 Host 허용 목록에 그대로 더해진다(isAllowedHost). 형식이 어긋나면
  * "설정은 했는데 모든 요청이 400(bad host)로 막히는" 조용한 고장이 된다 — 예: 스킴·포트·경로가
@@ -414,7 +437,8 @@ const STATIC_BUDGET = {
   // #335 v2 Argon 이미지 11 → 24(배경 3·전투 무대 2·재질 2·버튼 5·아이콘 아틀라스 1 추가) = 112. 일반 30종 FX 시트는 첫 화면 밖.
   // #335 파일럿 v1.5 cohesion-pilot.css 1 + 그 CSS 의 UI 이미지 4 + 파일럿 witch FX 시트 고정 프리로드 1 = 118. 파일럿 종 그림은 그릴 때만.
   // v0.4.16 싱글플레이 js/single.js 1 = 119.
-  pageLoadRequests: 119,
+  // v0.4.17 #401 버전 경로: / → /b/<rev>/ 리디렉트 1 = 120.
+  pageLoadRequests: 120,
   concurrentPageLoads: 6,  // 같은 IP 에서 겹칠 수 있는 로드 수
 };
 
@@ -515,6 +539,7 @@ module.exports = {
   resolveBindAddress,
   safeEqual,
   resolveStaticPath,
+  staticRevision,
   parseOfferedProtocols,
   presentedAccessCode,
   selectProtocol,

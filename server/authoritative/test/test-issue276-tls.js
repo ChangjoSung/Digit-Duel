@@ -82,7 +82,7 @@ async function main() {
 
   // (2) 같은 프로세스 HTTPS
   process.env.DD_AUTH_TLS_KEY = KEY;
-  const { server, useAccounts, SCHEME } = require('../server');
+  const { server, useAccounts, SCHEME, STATIC } = require('../server');
   ok(SCHEME === 'https' && server instanceof https.Server, 'TLS 짝이 있으면 https.Server');
   let logins = 0;
   useAccounts({
@@ -93,7 +93,9 @@ async function main() {
   const port = server.address().port;
   const host = `127.0.0.1:${port}`;
 
-  const page = await send(https, port, { ca, headers: { Host: host } });
+  const root = await send(https, port, { ca, headers: { Host: host } }); // #401 v0.4.17: / → 302 /b/<rev>/
+  ok(root.status === 302 && root.headers.location === `/b/${STATIC.rev}/`, 'HTTPS / → 302 /b/<rev>/ — ' + (root.status || root.error));
+  const page = await send(https, port, { ca, path: `/b/${STATIC.rev}/`, headers: { Host: host } });
   ok(page.status === 200 && /<html/i.test(page.body), 'HTTPS 게임 페이지 200 — ' + (page.status || page.error));
 
   const login = await send(https, port, { ca, method: 'POST', path: '/api/auth/login',

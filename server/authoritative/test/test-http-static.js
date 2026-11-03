@@ -10,7 +10,7 @@ const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
 const S = require('../../security');
-const { server, ROOT } = require('../server');
+const { server, ROOT, STATIC } = require('../server');
 const H = require('./helpers');
 const { ok, done } = H.makeCounter('http-static');
 
@@ -37,19 +37,22 @@ async function main() {
 
   // (1) 게임 페이지
   {
-    const res = await request(port, { path: '/' });
+    // #401 v0.4.17: / 와 /index.html 은 현재 버전 경로 /b/<rev>/ 로 302, 페이지는 그 경로에서 200
+    const root = await request(port, { path: '/' });
+    ok(root.status === 302 && root.headers.location === `/b/${STATIC.rev}/`, 'GET / → 302 /b/<rev>/');
+    const res = await request(port, { path: root.headers.location });
     const onDisk = fs.readFileSync(path.join(demo, 'index.html'));
-    ok(res.status === 200 && res.body.equals(onDisk), 'GET / → demo/index.html 원본 그대로 200');
+    ok(res.status === 200 && res.body.equals(onDisk), 'GET /b/<rev>/ → demo/index.html 원본 그대로 200');
     ok(/text\/html/.test(res.headers['content-type']) && res.headers['content-security-policy'] === S.SECURITY_HEADERS['Content-Security-Policy'], 'HTML MIME·릴레이와 같은 보안 헤더(CSP)');
     ok(/connect-src 'self' ws: wss:/.test(res.headers['content-security-policy']), 'CSP가 같은 출처 WebSocket 접속을 허용');
     const idx = await request(port, { path: '/index.html' });
-    ok(idx.status === 200 && idx.body.equals(onDisk), 'GET /index.html 200');
+    ok(idx.status === 302 && idx.headers.location === root.headers.location, 'GET /index.html → 같은 302');
     const js = await request(port, { path: '/js/core.js' });
     ok(js.status === 200 && /text\/javascript/.test(js.headers['content-type']) && js.body.equals(fs.readFileSync(path.join(demo, 'js', 'core.js'))), 'GET /js/core.js 200·JavaScript MIME');
     const css = await request(port, { path: '/css/game.css' });
     ok(css.status === 200 && /text\/css/.test(css.headers['content-type']) && css.body.equals(fs.readFileSync(path.join(demo, 'css', 'game.css'))), 'GET /css/game.css 200·CSS MIME');
-    const head = await request(port, { path: '/', method: 'HEAD' });
-    ok(head.status === 200 && head.body.length === 0 && Number(head.headers['content-length']) === onDisk.length, 'HEAD / 200·본문 없음·Content-Length');
+    const head = await request(port, { path: root.headers.location, method: 'HEAD' });
+    ok(head.status === 200 && head.body.length === 0 && Number(head.headers['content-length']) === onDisk.length, 'HEAD /b/<rev>/ 200·본문 없음·Content-Length');
   }
   // 하수인 자산 — 페이지가 상대경로로 로드하는 실제 파일 하나
   {
