@@ -2,14 +2,15 @@
 
 # 릴리스 노트
 
-최신 정식 버전은 **[v0.4.16](v0.4.16.md)** — 튜토리얼·싱글플레이(무제한 AI 대전)와 테이블탑 판타지 UI입니다.
+최신 정식 버전은 **[v0.4.17](v0.4.17.md)** — 이미지 표시 안정화입니다.
 
-개발 계획: **[v0.5.0 — Roblox](https://github.com/ChangjoSung/Digit-Duel/milestone/12)** · **[v0.6.0 — Unity](https://github.com/ChangjoSung/Digit-Duel/milestone/4)**. 모두 미출시입니다.
+개발 계획: **[v0.4.18 — 싱글 플레이 고도화](https://github.com/ChangjoSung/Digit-Duel/milestone/22)** · **[v0.5.0 — Roblox](https://github.com/ChangjoSung/Digit-Duel/milestone/12)** · **[v0.6.0 — Unity](https://github.com/ChangjoSung/Digit-Duel/milestone/4)**. 모두 미출시입니다.
 
 > [2026-09-11 재배번](https://github.com/ChangjoSung/Digit-Duel/issues/169): 계획 이름 `v0.4.7`은 v0.4.6으로 변경됐고, 이후 릴리스 태그 v0.4.7과는 별개입니다. 저장소의 `roblox/`는 검사 대상 소스이며 출시 기능이 아닙니다.
 
 | 출시일 | 버전 | 주요 변경 |
 |---|---|---|
+| 2026-11-03 | [v0.4.17](v0.4.17.md) | 공용 그림 파일 브라우저 캐시 재사용, 전투 하수인 그림 유지, 개발자 문서 정리 |
 | 2026-11-03 | [v0.4.16](v0.4.16.md) | 튜토리얼 기본·심화 실습, 무제한 AI 대전 브론즈·실버·골드, 계정 진행 저장, 테이블탑 판타지 UI·하수인 미술 |
 | 2026-10-05 | [v0.4.15](v0.4.15.md) | 왕국 효과 발동률·스텟 설명·등급 성장·폭탄/함정 설명 개선 |
 | 2026-10-04 | [v0.4.14](v0.4.14.md) | 포획 교체·배틀 실효 스탯·상성표, 전략 보드·상점 표시 개선 |

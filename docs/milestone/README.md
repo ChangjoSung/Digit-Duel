@@ -9,11 +9,11 @@
 | 버전 | 목적 | 업무 정본·출시 근거 |
 | --- | --- | --- |
 | v0.4.16 | 출시 완료 · 튜토리얼·싱글·UI, CJ 정상 작동 확인 | [Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.16) · [출시 문서](v0.4.16/README.md) |
-| v0.4.17 | 배포 버전 안정화·버그 해결 | [Milestone 21](https://github.com/ChangjoSung/Digit-Duel/milestone/21) · [깜빡임 #401](https://github.com/ChangjoSung/Digit-Duel/issues/401) · [XERJ 검토 #402](https://github.com/ChangjoSung/Digit-Duel/issues/402) · [문서 정리 #403](https://github.com/ChangjoSung/Digit-Duel/issues/403) |
+| v0.4.17 | 출시 완료 · 배포 버전 안정화·버그 해결 | [Release](https://github.com/ChangjoSung/Digit-Duel/releases/tag/v0.4.17) · [릴리스 노트](../releases/v0.4.17.md) · [Milestone 21](https://github.com/ChangjoSung/Digit-Duel/milestone/21) · [깜빡임 #401](https://github.com/ChangjoSung/Digit-Duel/issues/401) · [XERJ 검토 #402](https://github.com/ChangjoSung/Digit-Duel/issues/402) · [문서 정리 #403](https://github.com/ChangjoSung/Digit-Duel/issues/403) |
 | v0.4.18 | 싱글 플레이 구현 고도화 | [Milestone 22](https://github.com/ChangjoSung/Digit-Duel/milestone/22) · [상위 AI #322](https://github.com/ChangjoSung/Digit-Duel/issues/322) · [왕국 #323](https://github.com/ChangjoSung/Digit-Duel/issues/323) · [재화 #396](https://github.com/ChangjoSung/Digit-Duel/issues/396) |
 | v0.5.0 / v0.6.0 | 별도 Roblox / Unity 포팅 트랙 | [Roblox](https://github.com/ChangjoSung/Digit-Duel/milestone/12) · [Unity](https://github.com/ChangjoSung/Digit-Duel/milestone/4) |
 
-v0.4.17의 추가 안정화·리팩토링·Tool 변경은 CJ가 내용을 안내한 뒤 등록합니다. 상세 미정의 (4) 이후 빈 Issue를 만들지 않습니다.
+상세 미정의 추가 안정화·리팩토링·Tool 변경 (4)는 v0.4.18 범위이며 CJ가 내용을 안내한 뒤 등록합니다. 빈 Issue를 만들지 않습니다.
 
 ## 과거 기록
 
